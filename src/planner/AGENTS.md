@@ -10,7 +10,48 @@ It works on **neighbourhoods, never individuals**. Homes are counted into
 tracks or identifies real people (number plates, phone traces, names on
 houses). Use public totals (census, traffic counts) and simulated residents.
 
-## Three commands
+## Start here: the model and the tools
+
+Don't write a new script for a new question. Load the **town model** once
+(`model.js`: every home with its census figures, every place by kind, the
+street network, buses, the river) and answer with a **plan** of general
+**tools** (`tools.js`):
+
+| Tool | What it does |
+|---|---|
+| `travel` | minutes from every home to the nearest place of a kind, walking or bus-or-walk |
+| `summarise` | per-home values → one number per town / area / river bank / 250 m cell, weighted by households, need, no-car… |
+| `count` | places of a kind per area, per 1,000 households |
+| `attribute` | a census share per area (need, noCar, over65, deprived, badHealth) |
+| `relate` | does y go with x, allowing for controls (least squares across areas) |
+| `rank` | sort a result, with area names |
+| `combine` | weighted sum of results (a composite index) |
+| `bestSites` | where one more place of a kind would help most |
+| `compare` | score scenarios against today, with who gains |
+| `kinds` | which kinds of place the model holds |
+
+A plan is a JSON list of steps; `"$name"` passes an earlier result on:
+
+```json
+{ "question": "Do takeaways go with bad health once deprivation is allowed for?",
+  "steps": [
+    { "tool": "count", "args": { "kind": "food:takeaway" }, "as": "takeaways" },
+    { "tool": "attribute", "args": { "name": "badHealth" }, "as": "badHealth" },
+    { "tool": "attribute", "args": { "name": "deprived" }, "as": "deprived" },
+    { "tool": "relate", "args": { "y": "$badHealth", "x": { "takeaways": "$takeaways" }, "controls": { "deprived": "$deprived" } }, "as": "answer" }
+  ] }
+```
+
+```sh
+npm run planner -- tools                                   # every tool and its arguments
+npm run planner -- ask worcester public/planner/worcester/plans/takeaways-and-health.json
+```
+
+Plans live in `public/planner/<town>/plans/`; results are saved beside them
+as `<plan>.result.json`. Missing a capability? Add a **general** tool to
+`tools.js` (with a test), not a one-off script.
+
+## Commands that build the town folder
 
 ```sh
 npm run planner -- towns               # list towns
@@ -57,6 +98,8 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work, health, age, deprivation, cars; spreads households over buildings as home weights `w`; a 0–1 `need` score per area. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
 | `src/planner/buses.js` | Bus frequency per stop and door-to-door bus-or-walk minutes to services (one-seat rides, average wait from the timetable). No browser code. |
+| `src/planner/model.js` | The town model: one object with homes (+ census shares), places by kind, network, buses, river. No browser code. |
+| `src/planner/tools.js` | The general tools and `runPlan`. No browser code. |
 | `src/planner/scenarios.js` | Scenarios: apply a set of changes (places, homes, roads) and score them against today, with who gains. No browser code. |
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
@@ -156,7 +199,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

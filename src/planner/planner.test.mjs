@@ -4,6 +4,7 @@ import { mergeOverpass, overpassQueries, parseOverpass, roadKind } from './osm.j
 import { buildWalkGraph, metresBetween, nearestFrom } from './graph.js';
 import { analyseAccess, cellsToGeoJson } from './access.js';
 import { getTown } from './towns.js';
+import { relate } from './tools.js';
 import { rankChanges, suggestSites, sitesToGeoJson } from './sites.js';
 
 // A 5×5 street grid with ~100 m blocks around (0, 52); node id = row*10+col.
@@ -289,4 +290,40 @@ test('scenarios: apply changes, score against the base, and score added homes', 
   assert.equal(n.card.households, 75);
   assert.equal(n.card.added.households, 50);
   assert.ok(n.card.added.gp.walkMinutes > 3, 'new homes far from the only GP');
+});
+
+test('tools: a plan chains travel, summarise, relate and rank on one model', async () => {
+  const { buildModel } = await import('./model.js');
+  const { runPlan, TOOLS } = await import('./tools.js');
+  const town = gridTown();
+  town.places.push({ id: 'g', kind: 'gp', lon: at(0, 0)[0], lat: at(0, 0)[1] });
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  const [w, s] = at(0, 0);
+  const [e, n] = at(4, 4);
+  const mid = (s + n) / 2;
+  const mk = (code, y0, y1, noCar) => ({ code, name: `Grid ${code}`, households: 50, geometry: square(w - 0.001, y0, e + 0.001, y1), badHealth: 0.05, over65: 0.2, deprived: noCar / 2, noCar });
+  // Three areas by latitude: south (near the GP) has the most car-less households.
+  const third = (n - s) / 3;
+  const census = { areas: [mk('A', s - 0.001, s + third, 0.5), mk('B', s + third, s + 2 * third, 0.3), mk('C', s + 2 * third, n + 0.001, 0.1)] };
+  const model = buildModel({ town, census });
+  assert.ok(model.kinds().gp >= 1);
+  const out = runPlan(model, [
+    { tool: 'travel', args: { to: 'gp' }, as: 'gp' },
+    { tool: 'summarise', args: { values: '$gp', groupBy: 'area' }, as: 'gpByArea' },
+    { tool: 'summarise', args: { values: '$gp', weight: 'noCar' }, as: 'carless' },
+    { tool: 'summarise', args: { values: '$gp', stat: 'shareWithin', within: 3 }, as: 'within3' },
+    { tool: 'rank', args: { of: '$gpByArea', top: 1 }, as: 'furthest' },
+  ]);
+  assert.equal(out.gp.length, model.homes.length);
+  assert.equal(out.furthest[0].group, 'C', 'the north area is furthest from the GP');
+  assert.ok(out.carless.value.grid < runPlan(model, [{ tool: 'travel', args: { to: 'gp' }, as: 'g' }, { tool: 'summarise', args: { values: '$g' }, as: 'all' }]).all.value.grid, 'car-less households, weighted, are nearer');
+  assert.ok(out.within3.value.grid > 0 && out.within3.value.grid < 1);
+  assert.throws(() => runPlan(model, [{ tool: 'nope' }]), /unknown tool/);
+  assert.throws(() => runPlan(model, [{ tool: 'summarise', args: { values: '$missing' } }]), /before it exists/);
+  assert.ok(Object.values(TOOLS).every((t) => typeof t.fn === 'function' && t.about));
+  // relate recovers a planted linear relationship.
+  const y = { value: { a: 1, b: 3, c: 5, d: 7.1, e: 8.9 } };
+  const x = { value: { a: 0, b: 1, c: 2, d: 3, e: 4 } };
+  const r = relate(model, { y, x: { x } });
+  assert.ok(Math.abs(r.predictors.x.coefficient - 2) < 0.1 && r.r2 > 0.99);
 });

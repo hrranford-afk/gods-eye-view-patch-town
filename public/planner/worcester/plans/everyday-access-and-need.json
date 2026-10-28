@@ -1,0 +1,169 @@
+{
+  "question": "Who in Worcester finds everyday life hardest to reach, and are they the people who need it most?",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "school"
+      },
+      "as": "school"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "groupBy": "area"
+      },
+      "as": "foodByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$school",
+        "groupBy": "area"
+      },
+      "as": "schoolByArea"
+    },
+    {
+      "tool": "combine",
+      "args": {
+        "parts": [
+          {
+            "of": "$gpByArea",
+            "weight": 1
+          },
+          {
+            "of": "$foodByArea",
+            "weight": 1
+          },
+          {
+            "of": "$schoolByArea",
+            "weight": 1
+          }
+        ]
+      },
+      "as": "everydayMinutes"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "need"
+      },
+      "as": "need"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "deprived"
+      },
+      "as": "deprived"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$everydayMinutes",
+        "x": {
+          "need": "$need"
+        }
+      },
+      "as": "doesNeedGoWithDistance"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$everydayMinutes",
+        "x": {
+          "noCar": "$noCar"
+        },
+        "controls": {
+          "over65": "$over65",
+          "deprived": "$deprived"
+        }
+      },
+      "as": "carlessAfterAgeAndDeprivation"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$everydayMinutes",
+        "top": 8,
+        "namePrefix": "Worcester "
+      },
+      "as": "hardestToReach"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "bank"
+      },
+      "as": "gpByRiverBank"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "weight": "noCar",
+        "groupBy": "town"
+      },
+      "as": "gpForCarlessHouseholds"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "town"
+      },
+      "as": "gpForAllHouseholds"
+    }
+  ],
+  "show": [
+    "doesNeedGoWithDistance",
+    "carlessAfterAgeAndDeprivation",
+    "hardestToReach",
+    "gpByRiverBank",
+    "gpForCarlessHouseholds",
+    "gpForAllHouseholds"
+  ]
+}

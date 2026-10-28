@@ -255,6 +255,17 @@
       ],
       "unlocks": "FSA register snapshots over time (new and removed businesses), Companies House dissolutions, OSM disused:shop tags; a scenario that removes a shop and scores the households without a car around it",
       "finding": "For the one closed corner shop mapped (former Costcutter, Ambleside Drive, Warndon: the worst-health neighbourhood, half of households without a car), reopening it brings 289 households a shop an average 1.4 min closer, 71 of them without a car. Other small shops nearby cover most of the loss by distance; price and range may matter more and aren't in this data. Openings and closures over time still need FSA snapshots."
+    },
+    {
+      "id": "q19",
+      "question": "Who finds everyday life hardest to reach, and are they the people who need it most?",
+      "askedBy": "Harry",
+      "status": "answered",
+      "lonLat": [
+        -2.201,
+        52.1675
+      ],
+      "finding": "Answered by a plan of tools (plans/everyday-access-and-need.json), no new code. Need goes with shorter distances (t = -4.7): the most deprived, car-less neighbourhoods are nearer everyday services. The hardest to reach are newer suburbs: St Peters, Henwick, Perdiswell, the Warndon Villages, Lower Wick. Car-less households: GP 14 min by bus or walking vs 18.6 for all."
     }
   ]
 }

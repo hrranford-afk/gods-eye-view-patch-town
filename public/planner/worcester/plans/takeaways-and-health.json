@@ -1,0 +1,78 @@
+{
+  "question": "Do takeaways go with bad health once deprivation and age are allowed for?",
+  "steps": [
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:takeaway"
+      },
+      "as": "takeaways"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:smallShop"
+      },
+      "as": "cornerShops"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "badHealth"
+      },
+      "as": "badHealth"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "deprived"
+      },
+      "as": "deprived"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$badHealth",
+        "x": {
+          "takeawaysPer1000": "$takeaways"
+        },
+        "controls": {
+          "deprived": "$deprived",
+          "over65": "$over65"
+        }
+      },
+      "as": "takeawaysAndHealth"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$cornerShops",
+        "x": {
+          "noCar": "$noCar"
+        },
+        "controls": {
+          "deprived": "$deprived"
+        }
+      },
+      "as": "cornerShopsAndCars"
+    }
+  ],
+  "show": [
+    "takeawaysAndHealth",
+    "cornerShopsAndCars"
+  ]
+}

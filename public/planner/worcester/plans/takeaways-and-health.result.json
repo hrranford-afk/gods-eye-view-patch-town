@@ -1,0 +1,43 @@
+{
+  "question": "Do takeaways go with bad health once deprivation and age are allowed for?",
+  "ranAt": "2026-10-28T15:53:56.060Z",
+  "results": {
+    "takeawaysAndHealth": {
+      "groups": 76,
+      "r2": 0.86,
+      "predictors": {
+        "takeawaysPer1000": {
+          "coefficient": -0.000235,
+          "t": -1.5,
+          "control": false
+        },
+        "deprived": {
+          "coefficient": 0.22,
+          "t": 21,
+          "control": true
+        },
+        "over65": {
+          "coefficient": 0.0565,
+          "t": 4.8,
+          "control": true
+        }
+      }
+    },
+    "cornerShopsAndCars": {
+      "groups": 76,
+      "r2": 0.47,
+      "predictors": {
+        "noCar": {
+          "coefficient": 40.4,
+          "t": 6.9,
+          "control": false
+        },
+        "deprived": {
+          "coefficient": -31.1,
+          "t": -3.4,
+          "control": true
+        }
+      }
+    }
+  }
+}

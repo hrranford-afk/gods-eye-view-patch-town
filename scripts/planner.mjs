@@ -27,6 +27,8 @@ import { areasToGeoJson, attachCensus, attachNeed, buildAreas } from '../src/pla
 import { bestNewCrossing, riverReport } from '../src/planner/river.js';
 import { busReport } from '../src/planner/buses.js';
 import { compareScenarios } from '../src/planner/scenarios.js';
+import { buildModel } from '../src/planner/model.js';
+import { runPlan, TOOLS } from '../src/planner/tools.js';
 import { readdirSync } from 'node:fs';
 import { metresBetween } from '../src/planner/graph.js';
 
@@ -297,6 +299,46 @@ function scenariosTown(id) {
   console.log(`[planner] Wrote ${dir}/scenarios.json`);
 }
 
+/** Load the town model from a town folder: town.json plus whatever extras exist. */
+export function loadModel(dir) {
+  const read = (f) => (existsSync(path.join(dir, f)) ? JSON.parse(readFileSync(path.join(dir, f), 'utf8')) : null);
+  const town = read('town.json');
+  if (!town) throw new Error(`No town.json in ${dir}`);
+  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json') });
+}
+
+/**
+ * Run a plan of tool calls (src/planner/tools.js) against a town and save
+ * the named results next to the plan as <plan>.result.json.
+ */
+function askTown(id, planFile) {
+  const town = getTown(id);
+  if (!planFile) throw new Error('Usage: npm run planner -- ask <town> <plan.json>  (see npm run planner -- tools)');
+  const plan = JSON.parse(readFileSync(planFile, 'utf8'));
+  const model = loadModel(townDir(town.id));
+  const t0 = Date.now();
+  const results = runPlan(model, plan.steps || plan);
+  const keep = plan.show || Object.keys(results);
+  // Per-home arrays are large and meaningless on their own: keep only summaries.
+  const shown = Object.fromEntries(keep.filter((k) => !Array.isArray(results[k]) || typeof results[k][0] !== 'number').map((k) => [k, results[k]]));
+  const out = planFile.replace(/\.json$/, '.result.json');
+  writeFileSync(out, `${JSON.stringify({ question: plan.question, ranAt: new Date().toISOString(), results: shown }, null, 2)}\n`);
+  console.log(`[planner] ${plan.question || 'Plan'}: ${(plan.steps || plan).length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s → ${out}`);
+  for (const k of keep) {
+    const r = results[k];
+    if (Array.isArray(r) && typeof r[0] === 'number') continue;
+    console.log(`  ${k}:`, JSON.stringify(r).slice(0, 600));
+  }
+}
+
+/** Print every planner tool and its arguments. */
+function listTools() {
+  for (const [name, t] of Object.entries(TOOLS)) {
+    console.log(`${name}: ${t.about}`);
+    for (const [arg, d] of Object.entries(t.args)) console.log(`    ${arg}: ${d}`);
+  }
+}
+
 /** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
 function importTown(id, file) {
   const town = getTown(id);
@@ -425,10 +467,12 @@ try {
   else if (command === 'gps') await gpsTown(id);
   else if (command === 'food') await foodTown(id);
   else if (command === 'scenarios') scenariosTown(id);
+  else if (command === 'ask') askTown(id, file);
+  else if (command === 'tools') listTools();
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|analyse|scenarios|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

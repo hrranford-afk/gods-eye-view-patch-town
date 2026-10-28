@@ -24,6 +24,8 @@ easier to understand or nicer to live in.
 | CAIRN | **Bus or walk**: door-to-door time by bus (walk to stop, average wait from the real timetable, ride, walk) vs walking, per household | `buses.js`, `scripts/planner-gtfs.py` |
 | Harry | Corner shops, County Hall, empty shops and New Worcester all help each other | `food` command (FSA register), empty shops on the map, `scenarios.js` |
 | CAIRN | **Scenario scorecard with "who gains"**: every scenario says which households get closer to what, by how much, and how many have no car | `compareScenarios` / `gains` in `scenarios.js`, `npm run planner -- scenarios` |
+| Harry | Build it as a set of tools that work together to answer bigger questions, not scripts for specific ones | `model.js` + `tools.js` + `ask` plans |
+| CAIRN | **Plans as data**: a question is a JSON list of tool calls, saved with its result, so anyone (or any AI) can re-run, check or extend the reasoning | `public/planner/<town>/plans/` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
 ## Correction: official GP practices (28 Oct 2026)
@@ -41,6 +43,18 @@ hub idea is **withdrawn** (a large practice is already there). The real gap is
 **St Peters** (41 min around Foxglove Road), where every suggested site now
 lands. What held: GP distance still shows no link to health (t = 0.8).
 Figures below this section are from before the correction unless stated.
+
+## First questions answered by plans alone (28 Oct 2026)
+
+**Who finds everyday life hardest to reach, and are they the people who need it most?** (`plans/everyday-access-and-need.json`, 17 steps, 2 s)
+- Everyday minutes = bus-or-walk to a GP + walk to food + walk to a school, per neighbourhood.
+- **Need goes with *shorter* distances** (t = −4.7): Worcester's most deprived, least healthy, car-less neighbourhoods are closer to everyday services, not further. Car-less households are nearer even after age and deprivation (t = −2.3); their average GP trip is 14 min vs 18.6 for all.
+- Hardest to reach in the city: St Peters (014A–C, Arran Place), Henwick (006C, Cecilia Place), Perdiswell (001B, St Anne's Road), Warndon Villages (003C Rye Place, 008C Collings Avenue), Lower Wick (012E). Mostly newer, better-off suburbs.
+- GP by bus or walking: west bank 21 min, east 17.
+
+**Do takeaways go with bad health once deprivation and age are allowed for?** (`plans/takeaways-and-health.json`)
+- No (t = −1.5); deprivation (t = 21) and age (t = 4.8) explain 86%.
+- Corner shops follow car-less households (t = 6.9) and, with cars allowed for, *not* deprivation (t = −3.4). It's about cars.
 
 ## High streets, County Hall and the first scenarios (28 Oct 2026)
 
