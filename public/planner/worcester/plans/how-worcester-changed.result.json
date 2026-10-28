@@ -1,0 +1,62 @@
+{
+  "question": "How did Worcester change between the 2011 and 2021 censuses?",
+  "ranAt": "2026-10-28T16:26:31.209Z",
+  "results": {
+    "city_carCommute2011": {
+      "value": 0.7098,
+      "households": 43084
+    },
+    "city_carCommute2021": {
+      "value": 0.7555,
+      "households": 44726
+    },
+    "city_cycleCommute2011": {
+      "value": 0.045,
+      "households": 43084
+    },
+    "city_cycleCommute2021": {
+      "value": 0.0352,
+      "households": 44726
+    },
+    "city_walkCommute2011": {
+      "value": 0.1695,
+      "households": 43084
+    },
+    "city_walkCommute2021": {
+      "value": 0.1538,
+      "households": 44726
+    },
+    "city_busCommute2011": {
+      "value": 0.0499,
+      "households": 43084
+    },
+    "city_busCommute2021": {
+      "value": 0.0281,
+      "households": 44726
+    },
+    "city_noCar2011": {
+      "value": 0.2252,
+      "households": 43084
+    },
+    "city_noCar": {
+      "value": 0.2047,
+      "households": 44726
+    },
+    "city_badHealth2011": {
+      "value": 0.0497,
+      "households": 43084
+    },
+    "city_badHealth": {
+      "value": 0.0482,
+      "households": 44726
+    },
+    "city_residents2011": {
+      "value": 1581.1086,
+      "households": 43084
+    },
+    "city_residents": {
+      "value": 1668.6427,
+      "households": 44726
+    }
+  }
+}

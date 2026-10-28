@@ -1,0 +1,231 @@
+{
+  "question": "How did Worcester change between the 2011 and 2021 censuses?",
+  "steps": [
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "carCommute2011"
+      },
+      "as": "carCommute2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$carCommute2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_carCommute2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "carCommute2021"
+      },
+      "as": "carCommute2021"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$carCommute2021",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_carCommute2021"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "cycleCommute2011"
+      },
+      "as": "cycleCommute2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$cycleCommute2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_cycleCommute2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "cycleCommute2021"
+      },
+      "as": "cycleCommute2021"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$cycleCommute2021",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_cycleCommute2021"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "walkCommute2011"
+      },
+      "as": "walkCommute2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$walkCommute2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_walkCommute2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "walkCommute2021"
+      },
+      "as": "walkCommute2021"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$walkCommute2021",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_walkCommute2021"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "busCommute2011"
+      },
+      "as": "busCommute2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$busCommute2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_busCommute2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "busCommute2021"
+      },
+      "as": "busCommute2021"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$busCommute2021",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_busCommute2021"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar2011"
+      },
+      "as": "noCar2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$noCar2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_noCar2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$noCar",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_noCar"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "badHealth2011"
+      },
+      "as": "badHealth2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$badHealth2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_badHealth2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "badHealth"
+      },
+      "as": "badHealth"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$badHealth",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_badHealth"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "residents2011"
+      },
+      "as": "residents2011"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$residents2011",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_residents2011"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "residents"
+      },
+      "as": "residents"
+    },
+    {
+      "tool": "average",
+      "args": {
+        "of": "$residents",
+        "namePrefix": "Worcester "
+      },
+      "as": "city_residents"
+    }
+  ],
+  "show": [
+    "city_carCommute2011",
+    "city_carCommute2021",
+    "city_cycleCommute2011",
+    "city_cycleCommute2021",
+    "city_walkCommute2011",
+    "city_walkCommute2021",
+    "city_busCommute2011",
+    "city_busCommute2021",
+    "city_noCar2011",
+    "city_noCar",
+    "city_badHealth2011",
+    "city_badHealth",
+    "city_residents2011",
+    "city_residents"
+  ]
+}

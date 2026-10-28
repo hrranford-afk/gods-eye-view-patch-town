@@ -18,14 +18,16 @@
 import { attachCensus, attachNeed } from './census.js';
 import { buildWalkGraph, metresBetween } from './graph.js';
 import { findCrossings, bankOf } from './river.js';
+import { attachHistory } from './history.js';
 
 export const HOME_ATTRIBUTES = Object.freeze(['need', 'noCar', 'over65', 'deprived', 'badHealth']);
 
 /**
  * Build a model from a town file plus whichever extras exist:
- * census (census.json), gps (gps.json), buses (buses.json), food (food.json).
+ * census (census.json), gps (gps.json), buses (buses.json), food (food.json),
+ * history (history.json: new homes since 1995, Census 2011).
  */
-export function buildModel({ town, census = null, gps = null, buses = null, food = null }) {
+export function buildModel({ town, census = null, gps = null, buses = null, food = null, history = null }) {
   const data = { ...town, places: [...town.places], homes: town.homes.map((h) => ({ ...h })) };
   // Official GP practices replace OpenStreetMap's, which miss surgeries and
   // count hospital clinics as GPs.
@@ -44,6 +46,7 @@ export function buildModel({ town, census = null, gps = null, buses = null, food
   if (areas.length) {
     attachCensus(data, areas);
     attachNeed(areas);
+    if (history) attachHistory(areas, { growth: history.growth, then: history.census2011 });
     const byCode = new Map(areas.map((a) => [a.code, a]));
     for (const h of data.homes) {
       const a = byCode.get(h.area);

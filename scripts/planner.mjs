@@ -28,6 +28,7 @@ import { bestNewCrossing, riverReport } from '../src/planner/river.js';
 import { busReport } from '../src/planner/buses.js';
 import { compareScenarios } from '../src/planner/scenarios.js';
 import { buildModel } from '../src/planner/model.js';
+import { census2011ByArea, growthByArea } from '../src/planner/history.js';
 import { runPlan, TOOLS } from '../src/planner/tools.js';
 import { readdirSync } from 'node:fs';
 import { metresBetween } from '../src/planner/graph.js';
@@ -299,12 +300,62 @@ function scenariosTown(id) {
   console.log(`[planner] Wrote ${dir}/scenarios.json`);
 }
 
+// Census 2011 tables: travel to work (QS701EW), cars (KS404EW), health (KS301EW), population (KS101EW).
+const CENSUS_2011 = { travel: 'NM_568_1', cars: 'NM_621_1', health: 'NM_617_1', population: 'NM_144_1' };
+
+/**
+ * Old Worcester: new-build home sales since 1995 (Land Registry Price Paid)
+ * and Census 2011 for the same neighbourhoods. Writes history.json.
+ */
+async function historyTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const census = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8'));
+  console.log(`[planner] History for ${town.name}: new-build sales since 1995 (Land Registry)…`);
+  const ppd = await fetch(`https://landregistry.data.gov.uk/app/ppd/ppd_data.csv?header=true&limit=all&nb%5B%5D=true&town=${encodeURIComponent(town.name.toUpperCase())}&min_date=1995-01-01`);
+  if (!ppd.ok) throw new Error(`Land Registry answered ${ppd.status}`);
+  // Only the town's own county: "WORCESTER" also matches Worcester Park, Surrey.
+  const rows = parseCsv(await ppd.text()).filter((r) => r.county === (town.county || 'WORCESTERSHIRE'));
+  const postcodes = [...new Set(rows.map((r) => r.postcode).filter(Boolean))];
+  const where = new Map();
+  for (let i = 0; i < postcodes.length; i += 100) {
+    const res = await fetch('https://api.postcodes.io/postcodes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcodes: postcodes.slice(i, i + 100) }),
+    });
+    for (const x of (await res.json()).result) if (x.result) where.set(x.query, [x.result.longitude, x.result.latitude]);
+  }
+  const sales = rows.filter((r) => where.has(r.postcode)).map((r) => ({
+    year: Number(r.deed_date.slice(0, 4)), type: r.property_type, price: Number(r.price_paid),
+    lon: where.get(r.postcode)[0], lat: where.get(r.postcode)[1],
+  }));
+  const growth = growthByArea(census.areas, sales);
+  console.log(`[planner] ${sales.length} new homes located (of ${rows.length}); Census 2011…`);
+  const codes = census.areas.map((a) => a.code);
+  const tables = {};
+  for (const [name, dataset] of Object.entries(CENSUS_2011)) {
+    tables[name] = [];
+    for (let i = 0; i < codes.length; i += 50) {
+      const res = await fetch(`${NOMIS}/${dataset}.data.csv?date=latest&measures=20100&rural_urban=0&select=geography_code,cell_name,obs_value&geography=${codes.slice(i, i + 50).join(',')}`);
+      if (!res.ok) throw new Error(`Nomis ${dataset} answered ${res.status}`);
+      tables[name].push(...parseCsv(await res.text()));
+    }
+  }
+  const then = census2011ByArea(tables);
+  writeFileSync(path.join(dir, 'history.json'), JSON.stringify({
+    source: 'HM Land Registry Price Paid (new builds since 1995), postcodes.io; ONS Census 2011 (QS701EW, KS404EW, KS301EW, KS101EW)',
+    newBuildSales: sales, growth, census2011: then,
+  }));
+  const matched = codes.filter((c) => then[c]).length;
+  console.log(`[planner] Census 2011 matched for ${matched} of ${codes.length} neighbourhoods → ${dir}/history.json`);
+}
+
 /** Load the town model from a town folder: town.json plus whatever extras exist. */
 export function loadModel(dir) {
   const read = (f) => (existsSync(path.join(dir, f)) ? JSON.parse(readFileSync(path.join(dir, f), 'utf8')) : null);
   const town = read('town.json');
   if (!town) throw new Error(`No town.json in ${dir}`);
-  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json') });
+  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json') });
 }
 
 /**
@@ -468,11 +519,12 @@ try {
   else if (command === 'food') await foodTown(id);
   else if (command === 'scenarios') scenariosTown(id);
   else if (command === 'ask') askTown(id, file);
+  else if (command === 'history') await historyTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

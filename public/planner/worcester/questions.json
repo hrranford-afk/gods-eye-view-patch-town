@@ -266,6 +266,32 @@
         52.1675
       ],
       "finding": "Answered by a plan of tools (plans/everyday-access-and-need.json), no new code. Need goes with shorter distances (t = -4.7): the most deprived, car-less neighbourhoods are nearer everyday services. The hardest to reach are newer suburbs: St Peters, Henwick, Perdiswell, the Warndon Villages, Lower Wick. Car-less households: GP 14 min by bus or walking vs 18.6 for all."
+    },
+    {
+      "id": "q20",
+      "question": "What can Old Worcester teach New Worcester? Did services follow growth, and how did travel change?",
+      "askedBy": "Harry",
+      "status": "answered",
+      "lonLat": [
+        -2.179,
+        52.206
+      ],
+      "finding": "Neighbourhoods built up since 1995 are further from everyday life (t = 2.3 after deprivation and age): Worcester grew outward without services. Driving to work rose 71% -> 76% (2011 -> 2021, lockdown caveat), bus halved, cycling and walking fell. Perdiswell, Barbourne and Dines Green have everyday life close but still drive 71-83%: first places for walking and cycling. Recorded as lessons L1-L4 in NEW_WORCESTER.md.",
+      "spawned": [
+        "q21"
+      ]
+    },
+    {
+      "id": "q21",
+      "question": "How many people in Perdiswell and Barbourne would walk or cycle if routes were safer and quicker?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q20",
+      "lonLat": [
+        -2.219,
+        52.213
+      ],
+      "unlocks": "A travel-choice tool: Census 2021 travel to work by distance band (TS058) and origin-destination flows, Propensity to Cycle Tool scenarios, cycle route network from OSM, collision data (STATS19) for safety"
     }
   ]
 }

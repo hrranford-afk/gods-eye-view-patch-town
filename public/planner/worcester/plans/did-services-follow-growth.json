@@ -1,0 +1,147 @@
+{
+  "question": "Did services follow Worcester's growth? Are the newest neighbourhoods the hardest to reach?",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "school"
+      },
+      "as": "school"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "groupBy": "area"
+      },
+      "as": "foodByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$school",
+        "groupBy": "area"
+      },
+      "as": "schoolByArea"
+    },
+    {
+      "tool": "combine",
+      "args": {
+        "parts": [
+          {
+            "of": "$gpByArea",
+            "weight": 1
+          },
+          {
+            "of": "$foodByArea",
+            "weight": 1
+          },
+          {
+            "of": "$schoolByArea",
+            "weight": 1
+          }
+        ]
+      },
+      "as": "everydayMinutes"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "newHomesShare"
+      },
+      "as": "newHomesShare"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "deprived"
+      },
+      "as": "deprived"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$everydayMinutes",
+        "x": {
+          "newHomesShare": "$newHomesShare"
+        },
+        "controls": {
+          "deprived": "$deprived",
+          "over65": "$over65"
+        }
+      },
+      "as": "newerMeansFurther"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$gpByArea",
+        "x": {
+          "newHomesShare": "$newHomesShare"
+        },
+        "controls": {
+          "deprived": "$deprived"
+        }
+      },
+      "as": "newerMeansFurtherFromGP"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$newHomesShare",
+        "top": 8,
+        "namePrefix": "Worcester "
+      },
+      "as": "mostNewHomes"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$everydayMinutes",
+        "top": 8,
+        "namePrefix": "Worcester "
+      },
+      "as": "hardestToReach"
+    }
+  ],
+  "show": [
+    "newerMeansFurther",
+    "newerMeansFurtherFromGP",
+    "mostNewHomes",
+    "hardestToReach"
+  ]
+}

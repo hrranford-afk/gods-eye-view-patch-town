@@ -139,10 +139,30 @@ function nearestHomeGroup(model, groups) {
   };
 }
 
-/** attribute: a census share per area (need, noCar, over65, deprived, badHealth). */
-export function attribute(model, { name }) {
-  if (!HOME_ATTRIBUTES.includes(name)) throw new Error(`Unknown attribute "${name}"`);
-  return { value: Object.fromEntries(model.areas.filter((a) => a[name] != null).map((a) => [a.code, a[name]])) };
+/** Numeric fields the areas carry (census, need, history), for `attribute`. */
+export function areaFields(model) {
+  const fields = new Set();
+  for (const a of model.areas) for (const [k, v] of Object.entries(a)) if (typeof v === 'number') fields.add(k);
+  return [...fields].sort();
+}
+
+/**
+ * attribute: any numeric figure per area: census shares (need, noCar,
+ * over65, deprived, badHealth), history (newHomesShare, meanBuildYear,
+ * carCommute2011, carCommute2021, …), households, residents. Use `diff` to
+ * get a change: { name: 'carCommute2021', minus: 'carCommute2011' }.
+ */
+export function attribute(model, { name, minus = null }) {
+  const fields = areaFields(model);
+  for (const f of [name, minus].filter(Boolean)) {
+    if (!fields.includes(f)) throw new Error(`Unknown attribute "${f}". Areas have: ${fields.join(', ')}`);
+  }
+  const value = {};
+  for (const a of model.areas) {
+    if (a[name] == null || (minus && a[minus] == null)) continue;
+    value[a.code] = minus ? a[name] - a[minus] : a[name];
+  }
+  return { value };
 }
 
 /**
@@ -197,6 +217,23 @@ function invert(m) {
 }
 
 /**
+ * average: one household-weighted average across areas of a per-area
+ * result (from attribute, count or summarise by area). `namePrefix` limits
+ * it to areas whose name starts with it, e.g. 'Worcester ' for the city.
+ */
+export function average(model, { of, namePrefix = null }) {
+  let s = 0;
+  let n = 0;
+  for (const a of model.areas) {
+    const v = of.value[a.code];
+    if (!Number.isFinite(v) || !a.households || (namePrefix && !a.name.startsWith(namePrefix))) continue;
+    s += v * a.households;
+    n += a.households;
+  }
+  return { value: n ? Math.round((s / n) * 10000) / 10000 : null, households: n };
+}
+
+/**
  * rank: the groups of a result, sorted (highest first by default), with
  * area names. `namePrefix` keeps only areas whose name starts with it
  * (e.g. 'Worcester ' for the city's own neighbourhoods, not edge ones).
@@ -232,9 +269,11 @@ export const TOOLS = Object.freeze({
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
   summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
   count: { fn: count, about: 'Places of a kind per group and per 1,000 households.', args: { kind: 'kind or list', groupBy: "'area' (default), 'bank', 'cell', 'town'" } },
-  attribute: { fn: attribute, about: 'A census share per area.', args: { name: "'need', 'noCar', 'over65', 'deprived', 'badHealth'" } },
+  attribute: { fn: attribute, about: 'Any numeric figure per area (census, need, history); `minus` for a change.', args: { name: "e.g. 'need', 'noCar', 'newHomesShare', 'carCommute2021' (see fields)", minus: "optional, e.g. 'carCommute2011'" } },
+  fields: { fn: (m) => areaFields(m), about: 'Every numeric figure the areas carry, for attribute.', args: {} },
   relate: { fn: relate, about: 'Does y go with x, allowing for controls? (least squares across groups)', args: { y: 'a result ($name)', x: '{ label: result }', controls: '{ label: result }' } },
   rank: { fn: rank, about: 'Groups of a result, sorted, with names.', args: { of: 'a result ($name)', top: 'how many (10)', ascending: 'lowest first (false)', namePrefix: "keep areas whose name starts with this, e.g. 'Worcester '" } },
+  average: { fn: average, about: 'Household-weighted average of a per-area result across the town.', args: { of: 'a per-area result ($name)', namePrefix: "e.g. 'Worcester '" } },
   combine: { fn: combine, about: 'Weighted sum of results per group (a composite index).', args: { parts: '[{ of: $name, weight }]' } },
   bestSites: { fn: bestSites, about: 'Where one more place of a kind would help most.', args: { kind: 'kind', count: 'how many (3)', byNeed: 'weight by need (false)' } },
   compare: { fn: compare, about: 'Score scenarios against today, with who gains.', args: { scenarios: 'list of scenario objects (scenarios.js)' } },

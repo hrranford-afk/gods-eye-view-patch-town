@@ -327,3 +327,37 @@ test('tools: a plan chains travel, summarise, relate and rank on one model', asy
   const r = relate(model, { y, x: { x } });
   assert.ok(Math.abs(r.predictors.x.coefficient - 2) < 0.1 && r.r2 > 0.99);
 });
+
+test('history: new homes per area and era, Census 2011 beside 2021, and the average tool', async () => {
+  const { growthByArea, census2011ByArea, attachHistory } = await import('./history.js');
+  const { average } = await import('./tools.js');
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  const areas = [
+    { code: 'A', name: 'Town 001A', households: 100, residents: 230, geometry: square(0, 0, 1, 1), travel: { car: 30, bus: 5, rail: 0, cycle: 5, walk: 10, home: 10, other: 0, total: 60 } },
+    { code: 'B', name: 'Town 001B', households: 300, residents: 700, geometry: square(1, 0, 2, 1), travel: { car: 60, bus: 10, rail: 0, cycle: 10, walk: 20, home: 20, other: 0, total: 120 } },
+  ];
+  const growth = growthByArea(areas, [
+    { year: 1996, lon: 0.5, lat: 0.5 }, { year: 2016, lon: 0.5, lat: 0.5 }, { year: 2020, lon: 1.5, lat: 0.5 }, { year: 2020, lon: 9, lat: 9 },
+  ]);
+  assert.equal(growth.A.newHomes, 2);
+  assert.equal(growth.A.byEra['1995-2004'], 1);
+  assert.equal(growth.B.meanYear, 2020);
+  const then = census2011ByArea({
+    travel: [
+      { GEOGRAPHY_CODE: 'A', CELL_NAME: 'All categories: Method of travel to work', OBS_VALUE: '90' },
+      { GEOGRAPHY_CODE: 'A', CELL_NAME: 'Not in employment', OBS_VALUE: '30' },
+      { GEOGRAPHY_CODE: 'A', CELL_NAME: 'Work mainly at or from home', OBS_VALUE: '10' },
+      { GEOGRAPHY_CODE: 'A', CELL_NAME: 'Driving a car or van', OBS_VALUE: '25' },
+      { GEOGRAPHY_CODE: 'A', CELL_NAME: 'Bicycle', OBS_VALUE: '25' },
+    ],
+    cars: [{ GEOGRAPHY_CODE: 'A', CELL_NAME: 'All categories: Car or van availability', OBS_VALUE: '100' }, { GEOGRAPHY_CODE: 'A', CELL_NAME: 'No cars or vans in household', OBS_VALUE: '25' }],
+  });
+  attachHistory(areas, { growth, then });
+  assert.equal(areas[0].newHomesShare, 0.02);
+  assert.equal(areas[0].carCommute2011, 0.5); // 25 of the 50 who travel
+  assert.equal(areas[0].carCommute2021, 0.6); // 30 of 50
+  assert.equal(areas[0].noCar2011, 0.25);
+  const model = { areas };
+  assert.equal(average(model, { of: { value: { A: 1, B: 0 } } }).value, 0.25, 'weighted by households');
+  assert.equal(average(model, { of: { value: { A: 1, B: 0 } }, namePrefix: 'Town 001A' }).value, 1);
+});

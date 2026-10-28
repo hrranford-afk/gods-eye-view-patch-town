@@ -1,0 +1,109 @@
+{
+  "question": "Where did people change how they travel to work between 2011 and 2021, and does it follow distance to everyday life?",
+  "steps": [
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "carCommute2021",
+        "minus": "carCommute2011"
+      },
+      "as": "carShift"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "cycleCommute2021",
+        "minus": "cycleCommute2011"
+      },
+      "as": "cycleShift"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "walkCommute2021",
+        "minus": "walkCommute2011"
+      },
+      "as": "walkShift"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "newHomesShare"
+      },
+      "as": "newHomesShare"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "deprived"
+      },
+      "as": "deprived"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "groupBy": "area"
+      },
+      "as": "foodByArea"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$carShift",
+        "x": {
+          "newHomesShare": "$newHomesShare",
+          "foodWalk": "$foodByArea"
+        },
+        "controls": {
+          "deprived": "$deprived"
+        }
+      },
+      "as": "whatGoesWithMoreDriving"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$walkShift",
+        "top": 6,
+        "namePrefix": "Worcester "
+      },
+      "as": "walkingGrewMost"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$carShift",
+        "top": 6,
+        "namePrefix": "Worcester "
+      },
+      "as": "drivingGrewMost"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$cycleShift",
+        "top": 6,
+        "namePrefix": "Worcester "
+      },
+      "as": "cyclingGrewMost"
+    }
+  ],
+  "show": [
+    "whatGoesWithMoreDriving",
+    "walkingGrewMost",
+    "drivingGrewMost",
+    "cyclingGrewMost"
+  ]
+}

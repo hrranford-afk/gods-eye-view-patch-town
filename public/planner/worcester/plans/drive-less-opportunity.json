@@ -1,0 +1,128 @@
+{
+  "question": "Where is everyday life close by, but most people still drive? (where walking and cycling could win first)",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "school"
+      },
+      "as": "school"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "groupBy": "area"
+      },
+      "as": "foodByArea"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$school",
+        "groupBy": "area"
+      },
+      "as": "schoolByArea"
+    },
+    {
+      "tool": "combine",
+      "args": {
+        "parts": [
+          {
+            "of": "$gpByArea",
+            "weight": 1
+          },
+          {
+            "of": "$foodByArea",
+            "weight": 1
+          },
+          {
+            "of": "$schoolByArea",
+            "weight": 1
+          }
+        ]
+      },
+      "as": "everydayMinutes"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "carCommute2021"
+      },
+      "as": "carShare"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "cycleCommute2021"
+      },
+      "as": "cycleShare"
+    },
+    {
+      "tool": "combine",
+      "args": {
+        "parts": [
+          {
+            "of": "$carShare",
+            "weight": 100
+          },
+          {
+            "of": "$everydayMinutes",
+            "weight": -1
+          }
+        ]
+      },
+      "as": "driveLessOpportunity"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$driveLessOpportunity",
+        "top": 8,
+        "namePrefix": "Worcester "
+      },
+      "as": "bestPlacesToDriveLess"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$carShare",
+        "x": {
+          "everydayMinutes": "$everydayMinutes"
+        }
+      },
+      "as": "doesDistanceExplainDriving"
+    }
+  ],
+  "show": [
+    "bestPlacesToDriveLess",
+    "doesDistanceExplainDriving"
+  ]
+}

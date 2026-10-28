@@ -10,6 +10,13 @@ It works on **neighbourhoods, never individuals**. Homes are counted into
 tracks or identifies real people (number plates, phone traces, names on
 houses). Use public totals (census, traffic counts) and simulated residents.
 
+## The main thread: New Worcester
+
+Everything here serves one document: [`NEW_WORCESTER.md`](NEW_WORCESTER.md).
+It holds the lessons from Old Worcester, the principles they lead to, the
+scored candidate changes, and the open questions. When you find something,
+add it there (with the plan or scenario file that proves it).
+
 ## Start here: the model and the tools
 
 Don't write a new script for a new question. Load the **town model** once
@@ -22,7 +29,9 @@ street network, buses, the river) and answer with a **plan** of general
 | `travel` | minutes from every home to the nearest place of a kind, walking or bus-or-walk |
 | `summarise` | per-home values → one number per town / area / river bank / 250 m cell, weighted by households, need, no-car… |
 | `count` | places of a kind per area, per 1,000 households |
-| `attribute` | a census share per area (need, noCar, over65, deprived, badHealth) |
+| `attribute` | any figure per area: census shares, need, history (`newHomesShare`, `carCommute2011`…); `minus` gives a change |
+| `fields` | every figure the areas carry |
+| `average` | household-weighted average of a per-area figure across the town |
 | `relate` | does y go with x, allowing for controls (least squares across areas) |
 | `rank` | sort a result, with area names |
 | `combine` | weighted sum of results (a composite index) |
@@ -58,6 +67,7 @@ npm run planner -- towns               # list towns
 npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, retrying across mirrors
 npm run planner -- census worcester    # Census 2021: households, residents, travel to work per neighbourhood
 npm run planner -- gps worcester       # official NHS GP practices: list size, patient survey, location
+npm run planner -- history worcester   # Old Worcester: new homes since 1995 (Land Registry), Census 2011
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is
@@ -100,6 +110,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/buses.js` | Bus frequency per stop and door-to-door bus-or-walk minutes to services (one-seat rides, average wait from the timetable). No browser code. |
 | `src/planner/model.js` | The town model: one object with homes (+ census shares), places by kind, network, buses, river. No browser code. |
 | `src/planner/tools.js` | The general tools and `runPlan`. No browser code. |
+| `src/planner/history.js` | Old Worcester: new homes since 1995 per area and era (Land Registry), Census 2011 beside 2021. No browser code. |
 | `src/planner/scenarios.js` | Scenarios: apply a set of changes (places, homes, roads) and score them against today, with who gains. No browser code. |
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
@@ -199,7 +210,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js`, `history.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

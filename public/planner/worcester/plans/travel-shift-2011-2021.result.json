@@ -1,0 +1,123 @@
+{
+  "question": "Where did people change how they travel to work between 2011 and 2021, and does it follow distance to everyday life?",
+  "ranAt": "2026-10-28T16:26:33.882Z",
+  "results": {
+    "whatGoesWithMoreDriving": {
+      "groups": 74,
+      "r2": 0.28,
+      "predictors": {
+        "newHomesShare": {
+          "coefficient": -0.0898,
+          "t": -4.1,
+          "control": false
+        },
+        "foodWalk": {
+          "coefficient": -0.00155,
+          "t": -2,
+          "control": false
+        },
+        "deprived": {
+          "coefficient": -0.0209,
+          "t": -0.4,
+          "control": true
+        }
+      }
+    },
+    "walkingGrewMost": [
+      {
+        "group": "E01032338",
+        "name": "Worcester 008B",
+        "value": 0.05379760801447547
+      },
+      {
+        "group": "E01032339",
+        "name": "Worcester 008C",
+        "value": 0.047461653669369414
+      },
+      {
+        "group": "E01033249",
+        "name": "Worcester 011F",
+        "value": 0.0265738614619212
+      },
+      {
+        "group": "E01032336",
+        "name": "Worcester 003D",
+        "value": 0.017286675551208233
+      },
+      {
+        "group": "E01032326",
+        "name": "Worcester 014D",
+        "value": 0.017137880914970705
+      },
+      {
+        "group": "E01032283",
+        "name": "Worcester 013A",
+        "value": 0.01662006027340318
+      }
+    ],
+    "drivingGrewMost": [
+      {
+        "group": "E01032315",
+        "name": "Worcester 006B",
+        "value": 0.15300619739154564
+      },
+      {
+        "group": "E01032319",
+        "name": "Worcester 009B",
+        "value": 0.12121959237343849
+      },
+      {
+        "group": "E01032318",
+        "name": "Worcester 009A",
+        "value": 0.11078407003461721
+      },
+      {
+        "group": "E01032311",
+        "name": "Worcester 005D",
+        "value": 0.10093308451079708
+      },
+      {
+        "group": "E01032305",
+        "name": "Worcester 010A",
+        "value": 0.09485094013820194
+      },
+      {
+        "group": "E01032302",
+        "name": "Worcester 005B",
+        "value": 0.0884300682834942
+      }
+    ],
+    "cyclingGrewMost": [
+      {
+        "group": "E01033248",
+        "name": "Worcester 011E",
+        "value": 0.022036316292469424
+      },
+      {
+        "group": "E01032335",
+        "name": "Worcester 003C",
+        "value": 0.01525727088931094
+      },
+      {
+        "group": "E01032304",
+        "name": "Worcester 002B",
+        "value": 0.012482334141062076
+      },
+      {
+        "group": "E01032310",
+        "name": "Worcester 005C",
+        "value": 0.008783989747864658
+      },
+      {
+        "group": "E01032302",
+        "name": "Worcester 005B",
+        "value": 0.006637037909112315
+      },
+      {
+        "group": "E01033247",
+        "name": "Worcester 007F",
+        "value": 0.005018526335537732
+      }
+    ]
+  }
+}

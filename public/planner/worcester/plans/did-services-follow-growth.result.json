@@ -1,0 +1,127 @@
+{
+  "question": "Did services follow Worcester's growth? Are the newest neighbourhoods the hardest to reach?",
+  "ranAt": "2026-10-28T16:26:33.012Z",
+  "results": {
+    "newerMeansFurther": {
+      "groups": 76,
+      "r2": 0.33,
+      "predictors": {
+        "newHomesShare": {
+          "coefficient": 31.1,
+          "t": 2.3,
+          "control": false
+        },
+        "deprived": {
+          "coefficient": -61.2,
+          "t": -1.9,
+          "control": true
+        },
+        "over65": {
+          "coefficient": 93.1,
+          "t": 2.8,
+          "control": true
+        }
+      }
+    },
+    "newerMeansFurtherFromGP": {
+      "groups": 76,
+      "r2": 0.3,
+      "predictors": {
+        "newHomesShare": {
+          "coefficient": 9.77,
+          "t": 1.5,
+          "control": false
+        },
+        "deprived": {
+          "coefficient": -58.8,
+          "t": -4,
+          "control": true
+        }
+      }
+    },
+    "mostNewHomes": [
+      {
+        "group": "E01032335",
+        "name": "Worcester 003C",
+        "value": 0.765
+      },
+      {
+        "group": "E01032325",
+        "name": "Worcester 014C",
+        "value": 0.601
+      },
+      {
+        "group": "E01032339",
+        "name": "Worcester 008C",
+        "value": 0.521
+      },
+      {
+        "group": "E01032338",
+        "name": "Worcester 008B",
+        "value": 0.456
+      },
+      {
+        "group": "E01034324",
+        "name": "Worcester 013F",
+        "value": 0.441
+      },
+      {
+        "group": "E01032336",
+        "name": "Worcester 003D",
+        "value": 0.366
+      },
+      {
+        "group": "E01032286",
+        "name": "Worcester 012A",
+        "value": 0.318
+      },
+      {
+        "group": "E01032337",
+        "name": "Worcester 008A",
+        "value": 0.309
+      }
+    ],
+    "hardestToReach": [
+      {
+        "group": "E01032325",
+        "name": "Worcester 014C",
+        "value": 60
+      },
+      {
+        "group": "E01032316",
+        "name": "Worcester 006C",
+        "value": 58.2
+      },
+      {
+        "group": "E01032297",
+        "name": "Worcester 001B",
+        "value": 53.8
+      },
+      {
+        "group": "E01032335",
+        "name": "Worcester 003C",
+        "value": 53.3
+      },
+      {
+        "group": "E01032324",
+        "name": "Worcester 014B",
+        "value": 53.2
+      },
+      {
+        "group": "E01032339",
+        "name": "Worcester 008C",
+        "value": 52
+      },
+      {
+        "group": "E01032323",
+        "name": "Worcester 014A",
+        "value": 51.9
+      },
+      {
+        "group": "E01032290",
+        "name": "Worcester 012E",
+        "value": 46.6
+      }
+    ]
+  }
+}

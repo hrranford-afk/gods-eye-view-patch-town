@@ -1,0 +1,59 @@
+{
+  "question": "Where is everyday life close by, but most people still drive? (where walking and cycling could win first)",
+  "ranAt": "2026-10-28T16:27:00.412Z",
+  "results": {
+    "bestPlacesToDriveLess": [
+      {
+        "group": "E01032299",
+        "name": "Worcester 001D",
+        "value": 60.83
+      },
+      {
+        "group": "E01032280",
+        "name": "Worcester 007A",
+        "value": 59.68
+      },
+      {
+        "group": "E01032296",
+        "name": "Worcester 001A",
+        "value": 57.84
+      },
+      {
+        "group": "E01032321",
+        "name": "Worcester 009D",
+        "value": 57.38
+      },
+      {
+        "group": "E01032327",
+        "name": "Worcester 004C",
+        "value": 56.65
+      },
+      {
+        "group": "E01032301",
+        "name": "Worcester 005A",
+        "value": 56.64
+      },
+      {
+        "group": "E01032328",
+        "name": "Worcester 004D",
+        "value": 55.16
+      },
+      {
+        "group": "E01032311",
+        "name": "Worcester 005D",
+        "value": 54.49
+      }
+    ],
+    "doesDistanceExplainDriving": {
+      "groups": 76,
+      "r2": 0.4,
+      "predictors": {
+        "everydayMinutes": {
+          "coefficient": 0.0034,
+          "t": 7.1,
+          "control": false
+        }
+      }
+    }
+  }
+}
