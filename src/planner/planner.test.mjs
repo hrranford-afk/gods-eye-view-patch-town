@@ -390,3 +390,18 @@ test('good day: meets checks every item per home, flood zones tag homes, parks r
   assert.ok(park.places.length >= 4 && park.places.every((p) => p.kind === 'green:park'), 'a park is reachable from several edge points');
   assert.equal(parseOverpass({ elements: [{ type: 'way', id: 8, tags: { leisure: 'park', access: 'private' }, geometry: [{ lat: 52, lon: -2 }, { lat: 52.001, lon: -2 }] }] }, 't').places.length, 0);
 });
+
+test('atlas: every layer has a compass theme and reports mapped or missing', async () => {
+  const { LAYERS, COMPASS, atlasStatus } = await import('./atlas.js');
+  const themes = new Set(COMPASS.map(([id]) => id));
+  assert.ok(LAYERS.every((l) => themes.has(l.theme) && l.name && l.source), 'every layer is on the compass');
+  assert.equal(new Set(LAYERS.map((l) => l.id)).size, LAYERS.length, 'layer ids are unique');
+  const status = atlasStatus({ has: (f) => f === 'census.json', kinds: { 'meet:pub': 3, school: 0 }, info: () => ({ date: '2026-10-29', count: 78 }) });
+  const by = Object.fromEntries(status.map((s) => [s.id, s]));
+  assert.equal(by.census.status, 'mapped');
+  assert.equal(by.census.count, 78);
+  assert.equal(by.meet.status, 'mapped');
+  assert.equal(by.meet.count, 3);
+  assert.equal(by.schools.status, 'missing', 'zero places of a kind is not mapped');
+  assert.equal(by.flood.status, 'missing');
+});

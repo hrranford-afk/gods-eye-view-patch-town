@@ -17,6 +17,18 @@ It holds the lessons from Old Worcester, the principles they lead to, the
 scored candidate changes, and the open questions. When you find something,
 add it there (with the plan or scenario file that proves it).
 
+## What's mapped: the atlas
+
+`npm run planner -- atlas worcester` lists every layer the planner has or
+wants, grouped by the compass (people, health, nature, security, purpose,
+movement, land, voice), with its source and whether it's mapped yet. The
+list lives in `src/planner/atlas.js`; add a layer there first, then the
+command that builds it. **Map first, ask later**: fill the atlas, then
+questions come from what the map shows.
+
+On the globe the Town Planner has a **theme panel** (bottom right): each
+compass theme switches on and off, and the choice is remembered.
+
 ## Start here: the model and the tools
 
 Don't write a new script for a new question. Load the **town model** once
@@ -115,6 +127,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
+| `src/planner/atlas.js` | The data atlas: every layer by compass theme, with source and status. No browser code. |
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
 | `src/planner/planner.test.mjs` | Tests on a tiny made-up street grid. `node --test src/planner/` |
 | `src/planner/IDEAS.md` | Co-design log: what's been added, by whom, and what's next. |
@@ -210,7 +223,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js`, `history.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js`, `history.js`, `atlas.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

@@ -11,6 +11,44 @@ const PLACE_COLOR = Object.freeze({
   shop: '#4cc9f0', school: '#c77dff', gp: '#ff4d6d', bus: '#80ed99',
 });
 
+/**
+ * Map themes, following the New Worcester compass. Each has its own switch
+ * in the planner's theme panel; `on` is the default.
+ */
+export const THEMES = Object.freeze([
+  { id: 'access', label: 'Walking access (grid)', on: true },
+  { id: 'people', label: 'People: census neighbourhoods', on: false },
+  { id: 'health', label: 'Health: GP surgeries', on: true },
+  { id: 'meet', label: 'Meeting places', on: true },
+  { id: 'food', label: 'Food and shops', on: false },
+  { id: 'learning', label: 'Schools', on: false },
+  { id: 'movement', label: 'Movement: roads, buses, crossings', on: true },
+  { id: 'flood', label: 'Flood zones', on: false },
+  { id: 'land', label: 'Land: empty shops', on: false },
+  { id: 'ideas', label: 'Ideas: sites, scenarios, questions', on: true },
+]);
+
+/** Theme for a place kind. */
+export function placeTheme(kind) {
+  if (kind === 'gp') return 'health';
+  if (kind === 'school') return 'learning';
+  if (kind === 'bus') return 'movement';
+  if (kind.startsWith('meet:')) return 'meet';
+  return 'food';
+}
+
+const THEME_KEY = 'gev:planner:themes';
+
+function loadThemeState() {
+  const state = Object.fromEntries(THEMES.map((t) => [t.id, t.on]));
+  try {
+    Object.assign(state, JSON.parse(localStorage.getItem(THEME_KEY) || '{}'));
+  } catch {
+    // Storage can be unavailable (private windows, blocked site data).
+  }
+  return state;
+}
+
 /** Red (badly served) → amber → green (everything within a short walk). */
 export function scoreColor(score) {
   const t = Math.max(0, Math.min(1, score / 100));
@@ -33,6 +71,59 @@ function cellDescription(p) {
 export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner', fetchImpl = fetch } = {}) {
   const town = getTown(townId);
   let _dataSource = null;
+  let _viewer = null;
+  const _themes = loadThemeState();
+  const _byTheme = {};
+  // Entities of switched-off themes wait here until first switched on, so a
+  // heavy hidden theme (flood zones) costs nothing.
+  const _pending = {};
+  let _panel = null;
+
+  function setTheme(id, on) {
+    _themes[id] = on;
+    if (on && _pending[id]?.length && _dataSource) {
+      const entities = _dataSource.entities;
+      entities.suspendEvents();
+      for (const options of _pending[id]) (_byTheme[id] ||= []).push(entities.add(options));
+      entities.resumeEvents();
+      _pending[id] = [];
+    }
+    for (const e of _byTheme[id] || []) e.show = on;
+    try {
+      localStorage.setItem(THEME_KEY, JSON.stringify(_themes));
+    } catch {
+      // Remembering the choice is a convenience; the map works without it.
+    }
+    _viewer?.scene?.requestRender();
+  }
+
+  /** A small panel of theme switches, shown while the layer is on. */
+  function makePanel() {
+    const el = document.createElement('div');
+    el.className = 'planner-theme-panel';
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', 'Town Planner themes');
+    Object.assign(el.style, {
+      position: 'fixed', right: '16px', bottom: '96px', zIndex: 30, maxWidth: '260px',
+      font: '12px monospace', color: '#e8f6ff', background: 'rgba(4,16,24,0.86)',
+      border: '1px solid rgba(120,220,255,0.45)', borderRadius: '6px', padding: '8px 10px',
+    });
+    const title = document.createElement('div');
+    title.textContent = `${town.name} · themes`;
+    Object.assign(title.style, { fontWeight: '600', letterSpacing: '0.06em', marginBottom: '4px' });
+    el.appendChild(title);
+    for (const t of THEMES) {
+      const row = document.createElement('label');
+      Object.assign(row.style, { display: 'flex', gap: '6px', alignItems: 'center', padding: '2px 0', cursor: 'pointer' });
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = _themes[t.id] !== false;
+      box.addEventListener('change', () => setTheme(t.id, box.checked));
+      row.append(box, document.createTextNode(t.label));
+      el.appendChild(row);
+    }
+    return el;
+  }
   let _loaded = false;
   let _flown = false;
   let _count = 0;
@@ -51,12 +142,22 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
+    for (const t of THEMES) { _byTheme[t.id] = []; _pending[t.id] = []; }
+    const add = (theme, options) => {
+      if (_themes[theme] === false) {
+        (_pending[theme] ||= []).push(options);
+        return null;
+      }
+      const entity = entities.add(options);
+      (_byTheme[theme] ||= []).push(entity);
+      return entity;
+    };
     // Environment Agency flood zones: Zone 3 darker than Zone 2.
     for (const f of flood?.features || []) {
       const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
       const z3 = f.properties.flood_zone === 'FZ3';
       for (const rings of polys) {
-        entities.add({
+        add('flood', {
           name: `Flood Zone ${z3 ? 3 : 2} (Environment Agency)`,
           polygon: {
             hierarchy: new Cesium.PolygonHierarchy(
@@ -74,7 +175,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       const p = f.properties;
       const rings = f.geometry.type === 'Polygon' ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((poly) => poly[0]);
       for (const ring of rings) {
-        entities.add({
+        add('people', {
           name: `${p.name} (Census 2021)`,
           polyline: {
             positions: Cesium.Cartesian3.fromDegreesArray(ring.flat()),
@@ -91,7 +192,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     for (const f of access.features) {
       const ring = f.geometry.coordinates[0];
       const p = f.properties;
-      entities.add({
+      add('access', {
         name: `${town.name} · access ${p.score}/100`,
         rectangle: {
           coordinates: Cesium.Rectangle.fromDegrees(ring[0][0], ring[0][1], ring[2][0], ring[2][1]),
@@ -103,7 +204,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     for (const f of roads.features) {
       const style = ROAD_STYLE[f.properties.kind];
       if (!style) continue;
-      entities.add({
+      add('movement', {
         name: f.properties.name || f.properties.kind,
         polyline: {
           positions: Cesium.Cartesian3.fromDegreesArray(f.geometry.coordinates.flat()),
@@ -120,7 +221,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       if (f.properties.kind.startsWith('green:')) continue;
       const [lon, lat] = f.geometry.coordinates;
       const pr = f.properties;
-      entities.add({
+      add(placeTheme(pr.kind), {
         name: pr.name || SERVICE_KINDS[pr.kind]?.label,
         description: pr.listSize
           ? `<p><b>${pr.listSize.toLocaleString()} registered patients</b> (NHS)</p><p>Waiting time acceptable: ${pr.waitAcceptablePct}% · Needs met: ${pr.needsMetPct}% (GP Patient Survey; England 66% / 90%)</p>`
@@ -138,7 +239,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       const [lon, lat] = f.geometry.coordinates;
       const p = f.properties;
       const label = SERVICE_KINDS[p.kind]?.label || p.kind;
-      entities.add({
+      add('ideas', {
         name: `Suggested ${label.toLowerCase()} #${p.rank}`,
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
@@ -166,7 +267,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     for (const st of bus?.stops || []) {
       if (st.perHour < 1) continue;
       const frequent = st.perHour >= 4;
-      entities.add({
+      add('movement', {
         name: `${st.name}: ${st.perHour} buses/hour (7am–7pm)`,
         position: Cesium.Cartesian3.fromDegrees(st.lonLat[0], st.lonLat[1]),
         point: {
@@ -179,7 +280,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     }
     // River crossings, and the best spot for a new footbridge if one was found.
     for (const c of river?.crossings || []) {
-      entities.add({
+      add('movement', {
         name: `${c.name || 'Unnamed crossing'} (${c.drive ? 'road' : 'foot/cycle'})`,
         position: Cesium.Cartesian3.fromDegrees(c.lonLat[0], c.lonLat[1]),
         point: {
@@ -194,7 +295,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     }
     const fb = river?.bestNewFootbridge;
     if (fb) {
-      entities.add({
+      add('ideas', {
         name: 'Proposed footbridge',
         polyline: {
           positions: Cesium.Cartesian3.fromDegreesArray([...fb.from, ...fb.to]),
@@ -208,7 +309,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     // Empty shops, as mapped in OpenStreetMap (a lower bound).
     for (const f of vacant?.features || []) {
       const [lon, lat] = f.geometry.coordinates;
-      entities.add({
+      add('land', {
         name: `Empty shop${f.properties.name ? `: ${f.properties.name}` : ''}`,
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
@@ -239,7 +340,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         const who = Object.entries(sc.gains || {}).map(([k, g]) => ` ${g.households.toLocaleString()} households save ${g.averageMinutesSaved} min to a ${k} (${g.withoutCar} without a car).`).join('');
         return `<li><b>${sc.name}</b>: score ${d.overallScore >= 0 ? '+' : ''}${d.overallScore}, GP walk ${d.gpWalkMinutes} min (need-weighted ${d.gpNeedWeightedWalkMinutes}).${who}${added}</li>`;
       }).join('');
-      entities.add({
+      add('ideas', {
         name: `Scenario${spot.list.length > 1 ? 's' : ''}: ${spot.list.map((sc) => sc.name).join(' · ')}`,
         position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat),
         point: {
@@ -258,7 +359,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       if (!q.lonLat) continue;
       if (q.status === 'withdrawn') continue; // kept in the file as a record, not drawn
       const open = q.status !== 'answered';
-      entities.add({
+      add('ideas', {
         name: `${open ? 'Open question' : 'Answered'}: ${q.question}`,
         position: Cesium.Cartesian3.fromDegrees(q.lonLat[0], q.lonLat[1]),
         label: {
@@ -290,6 +391,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     updateInterval: 0,
 
     init(viewer) {
+      _viewer = viewer;
       _dataSource = new Cesium.CustomDataSource('planner');
       _dataSource.show = false;
       viewer.dataSources.add(_dataSource);
@@ -297,6 +399,8 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
 
     enable(viewer) {
       if (_dataSource) _dataSource.show = true;
+      _panel ||= makePanel();
+      document.body.appendChild(_panel);
       if (!_flown) {
         _flown = true;
         const [s, w, n, e] = town.bbox;
@@ -306,6 +410,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
 
     disable() {
       if (_dataSource) _dataSource.show = false;
+      _panel?.remove();
     },
 
     async update(viewer, { signal } = {}) {
@@ -341,6 +446,8 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     },
 
     destroy(viewer) {
+      _panel?.remove();
+      _panel = null;
       if (_dataSource) viewer?.dataSources.remove(_dataSource, true);
       _dataSource = null;
       _loaded = false;

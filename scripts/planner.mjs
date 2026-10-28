@@ -30,6 +30,8 @@ import { compareScenarios } from '../src/planner/scenarios.js';
 import { buildModel } from '../src/planner/model.js';
 import { census2011ByArea, growthByArea } from '../src/planner/history.js';
 import { runPlan, TOOLS } from '../src/planner/tools.js';
+import { atlasStatus, COMPASS } from '../src/planner/atlas.js';
+import { statSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { metresBetween } from '../src/planner/graph.js';
 
@@ -405,6 +407,35 @@ function askTown(id, planFile) {
   }
 }
 
+/** What's mapped for a town, by compass theme, and what's missing. Writes atlas.json. */
+function atlasTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const full = (f) => (f.startsWith('traffic/') ? path.join(process.cwd(), 'public', 'planner', f) : path.join(dir, f));
+  const has = (f) => existsSync(full(f));
+  const info = (f) => {
+    const out = { date: statSync(full(f)).mtime.toISOString().slice(0, 10) };
+    try {
+      const j = JSON.parse(readFileSync(full(f), 'utf8'));
+      out.count = j.features?.length ?? j.areas?.length ?? j.practices?.length ?? j.businesses?.length ?? j.questions?.length ?? j.scenarios?.length ?? j.points?.length ?? j.stops?.length ?? null;
+    } catch {
+      // Not every file is a list; the date is enough.
+    }
+    return out;
+  };
+  const kinds = {};
+  if (has('town.json')) for (const p of JSON.parse(readFileSync(full('town.json'), 'utf8')).places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+  const layers = atlasStatus({ has, kinds, info });
+  writeFileSync(path.join(dir, 'atlas.json'), `${JSON.stringify({ town: town.id, checkedAt: new Date().toISOString(), layers }, null, 2)}\n`);
+  for (const [theme, label] of COMPASS) {
+    const rows = layers.filter((l) => l.theme === theme);
+    console.log(`\n${label}`);
+    for (const l of rows) console.log(`  ${l.status === 'mapped' ? '✓' : '·'} ${l.name}${l.count != null ? ` (${l.count})` : ''} — ${l.source}${l.status === 'missing' ? '  [to map]' : ''}`);
+  }
+  const mapped = layers.filter((l) => l.status === 'mapped').length;
+  console.log(`\n[planner] ${mapped} of ${layers.length} layers mapped for ${town.name} → ${dir}/atlas.json`);
+}
+
 /** Print every planner tool and its arguments. */
 function listTools() {
   for (const [name, t] of Object.entries(TOOLS)) {
@@ -545,10 +576,11 @@ try {
   else if (command === 'history') await historyTown(id);
   else if (command === 'flood') await floodTown(id);
   else if (command === 'tools') listTools();
+  else if (command === 'atlas') atlasTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {
