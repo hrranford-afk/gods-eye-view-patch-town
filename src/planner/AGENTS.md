@@ -48,6 +48,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
 | `src/planner/planner.test.mjs` | Tests on a tiny made-up street grid. `node --test src/planner/` |
 | `src/planner/IDEAS.md` | Co-design log: what's been added, by whom, and what's next. |
+| `src/planner/ROADMAP.md` | Purpose, open data sources (checked reachable), unused app features, and the build order. |
 | `scripts/planner.mjs` | The command line above. |
 
 Output for a town lands in `public/planner/<town>/`:
