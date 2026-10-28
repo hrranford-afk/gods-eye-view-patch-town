@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseOverpass, roadKind } from './osm.js';
+import { mergeOverpass, overpassQueries, parseOverpass, roadKind } from './osm.js';
 import { buildWalkGraph, metresBetween, nearestFrom } from './graph.js';
 import { analyseAccess, cellsToGeoJson } from './access.js';
 import { getTown } from './towns.js';
@@ -129,4 +129,15 @@ test('best single change ranks the site that lifts the town most first', () => {
   assert.equal(best.kind, 'school');
   assert.ok(best.scoreGain > 0);
   assert.equal(worst.scoreGain, 0);
+});
+
+test('town fetch splits into tiled queries and merges duplicates', () => {
+  const queries = overpassQueries(getTown('worcester'), { tiles: 2 });
+  assert.equal(queries.length, 8);
+  assert.ok(queries.every((q) => /\(52\.\d+,-2\.\d+,52\.\d+,-2\.\d+\)/.test(q)));
+  const merged = mergeOverpass([
+    { elements: [{ type: 'way', id: 1 }, { type: 'node', id: 1 }] },
+    { elements: [{ type: 'way', id: 1 }, { type: 'way', id: 2 }] },
+  ]);
+  assert.deepEqual(merged.elements.map((e) => `${e.type}/${e.id}`), ['way/1', 'node/1', 'way/2']);
 });

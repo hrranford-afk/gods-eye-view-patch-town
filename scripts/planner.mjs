@@ -9,7 +9,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getTown, TOWNS } from '../src/planner/towns.js';
-import { overpassQuery, parseOverpass, SERVICE_KINDS } from '../src/planner/osm.js';
+import { mergeOverpass, overpassQueries, parseOverpass, SERVICE_KINDS } from '../src/planner/osm.js';
 import {
   analyseAccess,
   cellsToGeoJson,
@@ -18,26 +18,61 @@ import {
 } from '../src/planner/access.js';
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
 
-const OVERPASS_URL = process.env.PLANNER_OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
+// Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL puts one first.
+const OVERPASS_URLS = [...new Set([
+  process.env.PLANNER_OVERPASS_URL,
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+].filter(Boolean))];
+const PARALLEL = 3;
+const ATTEMPTS = 4;
 
 /** Folder holding one town's files; the app serves it at /planner/<town>/. */
 export function townDir(id, root = process.cwd()) {
   return path.join(root, 'public', 'planner', id);
 }
 
-async function fetchTown(id) {
-  const town = getTown(id);
-  console.log(`[planner] Fetching ${town.name} from ${OVERPASS_URL} (can take a minute)…`);
-  const res = await fetch(OVERPASS_URL, {
+async function askOverpass(query, attempt) {
+  const url = OVERPASS_URLS[attempt % OVERPASS_URLS.length];
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'User-Agent': 'gods-eye-view-planner',
     },
-    body: new URLSearchParams({ data: overpassQuery(town) }),
+    body: new URLSearchParams({ data: query }),
+    signal: AbortSignal.timeout(240_000),
   });
-  if (!res.ok) throw new Error(`Overpass answered ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = parseOverpass(await res.json(), town.id);
+  if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
+  return res.json();
+}
+
+async function fetchTown(id) {
+  const town = getTown(id);
+  const queries = overpassQueries(town);
+  console.log(`[planner] Fetching ${town.name} in ${queries.length} pieces from ${OVERPASS_URLS.length} servers (a few minutes)…`);
+  const results = new Array(queries.length);
+  let next = 0;
+  let done = 0;
+  const worker = async (w) => {
+    while (next < queries.length) {
+      const i = next++;
+      for (let attempt = w; ; attempt++) {
+        try {
+          results[i] = await askOverpass(queries[i], attempt);
+          console.log(`[planner]   piece ${++done}/${queries.length}`);
+          break;
+        } catch (err) {
+          if (attempt - w + 1 >= ATTEMPTS) throw new Error(`piece ${i + 1} failed ${ATTEMPTS} times: ${err.cause?.code || err.message}`);
+          console.log(`[planner]   piece ${i + 1}: ${err.cause?.code || err.message}, retrying elsewhere`);
+          await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
+    }
+  };
+  await Promise.all([...Array(PARALLEL).keys()].map(worker));
+  const data = parseOverpass(mergeOverpass(results), town.id);
   const dir = townDir(town.id);
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'town.json'), JSON.stringify(data));

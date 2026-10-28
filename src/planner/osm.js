@@ -37,13 +37,24 @@ export function roadKind(highway) {
   return 'other';
 }
 
-/** Overpass QL for one town's roads, services and homes. */
-export function overpassQuery(town, { timeoutS = 180 } = {}) {
-  const b = `(${town.bbox.join(',')})`;
-  return `[out:json][timeout:${timeoutS}];
-(
-  way["highway"]${b};
-)->.roads;
+/**
+ * Overpass QL for one town, split into small requests that busy public
+ * servers will answer: the bbox is cut into `tiles`×`tiles` pieces and each
+ * piece is asked for roads and for things (services + homes) separately.
+ * Results overlap at tile edges; mergeOverpass removes the duplicates.
+ */
+export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
+  const [s, w, n, e] = town.bbox;
+  const queries = [];
+  for (let i = 0; i < tiles; i++) {
+    for (let j = 0; j < tiles; j++) {
+      const box = [
+        s + ((n - s) * i) / tiles, w + ((e - w) * j) / tiles,
+        s + ((n - s) * (i + 1)) / tiles, w + ((e - w) * (j + 1)) / tiles,
+      ].map((x) => x.toFixed(5));
+      const b = `(${box.join(',')})`;
+      queries.push(`[out:json][timeout:${timeoutS}];way["highway"]${b};out geom;`);
+      queries.push(`[out:json][timeout:${timeoutS}];
 (
   nwr["shop"~"^(supermarket|convenience|greengrocer|butcher|bakery)$"]${b};
   nwr["amenity"="school"]${b};
@@ -51,9 +62,20 @@ export function overpassQuery(town, { timeoutS = 180 } = {}) {
   nwr["healthcare"~"^(doctor|clinic)$"]${b};
   node["highway"="bus_stop"]${b};
   way["building"~"^(${HOME_BUILDINGS.join('|')})$"]${b};
-)->.things;
-.roads out geom;
-.things out center tags;`;
+);
+out center tags;`);
+    }
+  }
+  return queries;
+}
+
+/** Join several Overpass responses, keeping one copy of each element. */
+export function mergeOverpass(responses) {
+  const seen = new Map();
+  for (const r of responses) {
+    for (const el of r?.elements || []) seen.set(`${el.type}/${el.id}`, el);
+  }
+  return { elements: [...seen.values()] };
 }
 
 function placeKind(tags = {}) {

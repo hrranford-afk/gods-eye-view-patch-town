@@ -14,10 +14,14 @@ houses). Use public totals (census, traffic counts) and simulated residents.
 
 ```sh
 npm run planner -- towns               # list towns
-npm run planner -- fetch worcester     # download OpenStreetMap data (needs overpass-api.de)
+npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, retrying across mirrors
 npm run planner -- analyse worcester   # score walking access, write map files
 npm run dev                            # open the app → Data Layers → "Town Planner"
 ```
+
+Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
+`HTTPS_PROXY` unless you add `NODE_USE_ENV_PROXY=1` (Node 22.21+). Set
+`PLANNER_OVERPASS_URL` to try a particular Overpass server first.
 
 ## Files
 
