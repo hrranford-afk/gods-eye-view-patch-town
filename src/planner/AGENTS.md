@@ -80,6 +80,14 @@ npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, r
 npm run planner -- census worcester    # Census 2021: households, residents, travel to work per neighbourhood
 npm run planner -- gps worcester       # official NHS GP practices: list size, patient survey, location
 npm run planner -- history worcester   # Old Worcester: new homes since 1995 (Land Registry), Census 2011
+npm run planner -- planning worcester  # brownfield land, listed buildings, conservation and air quality areas
+npm run planner -- deprivation worcester  # Indices of Deprivation 2025
+npm run planner -- crime worcester     # street crime, 12 months, counted per neighbourhood
+npm run planner -- collisions worcester  # road collisions, 5 years (STATS19)
+npm run planner -- schools worcester   # schools register: phase, places, pupils
+npm run planner -- prices worcester    # house sales since 2015, medians per neighbourhood
+npm run planner -- flood worcester     # Environment Agency Flood Zones 2 and 3
+npm run planner -- atlas worcester     # what's mapped, by compass theme
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is
@@ -127,6 +135,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
+| `src/planner/layers.js` | Parsers for deprivation, crime, collisions, schools and house prices into area figures and places. No browser code. |
 | `src/planner/atlas.js` | The data atlas: every layer by compass theme, with source and status. No browser code. |
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
 | `src/planner/planner.test.mjs` | Tests on a tiny made-up street grid. `node --test src/planner/` |
@@ -223,7 +232,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js`, `history.js`, `atlas.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js`, `model.js`, `tools.js`, `history.js`, `atlas.js`, `layers.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

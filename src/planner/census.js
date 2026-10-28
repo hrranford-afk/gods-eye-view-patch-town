@@ -57,7 +57,7 @@ function bboxOf(geometry) {
  * Build census areas from ONS boundaries (GeoJSON features with LSOA21CD /
  * LSOA21NM) and Nomis CSV rows (households, residents, travel to work).
  */
-export function buildAreas(boundaries, { households, residents, travel, health = [], age = [], deprivation = [], cars = [] }) {
+export function buildAreas(boundaries, { households, residents, travel, health = [], age = [], deprivation = [], cars = [], composition = [] }) {
   const byCode = new Map();
   for (const f of boundaries.features) {
     const code = f.properties.LSOA21CD;
@@ -106,6 +106,8 @@ export function buildAreas(boundaries, { households, residents, travel, health =
   share(health, 'C2021_HEALTH_6_NAME', (n) => n === 'Bad health' || n === 'Very bad health', (a, v) => { a.badHealth = v; });
   share(deprivation, 'C2021_DEP_6_NAME', (n) => /in (two|three|four) dimensions/.test(n), (a, v) => { a.deprived = v; });
   share(cars, 'C2021_CARS_5_NAME', (n) => n === 'No cars or vans in household', (a, v) => { a.noCar = v; });
+  // Households of one person aged 66+: the census's closest measure of loneliness risk.
+  share(composition, 'C2021_HHCOMP_15_NAME', (n) => n === 'One-person household: Aged 66 years and over', (a, v) => { a.livingAlone66 = v; });
   // Age has no total row: sum the bands.
   const ages = new Map();
   for (const r of age) {

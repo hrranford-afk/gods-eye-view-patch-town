@@ -1,10 +1,10 @@
 {
   "base": {
     "households": 54241,
-    "overallScore": 69.3,
+    "overallScore": 69.8,
     "withinTarget": {
       "shop": 0.79,
-      "school": 0.77,
+      "school": 0.79,
       "gp": 0.43,
       "bus": 0.78
     },
@@ -14,9 +14,9 @@
       "needWeightedWalkMinutes": 7.1
     },
     "school": {
-      "walkMinutes": 11.9,
-      "busOrWalkMinutes": 11.8,
-      "needWeightedWalkMinutes": 10.8
+      "walkMinutes": 11.4,
+      "busOrWalkMinutes": 11.2,
+      "needWeightedWalkMinutes": 10.2
     },
     "gp": {
       "walkMinutes": 21.6,
@@ -51,10 +51,10 @@
       },
       "card": {
         "households": 54241,
-        "overallScore": 70.1,
+        "overallScore": 70.7,
         "withinTarget": {
           "shop": 0.79,
-          "school": 0.77,
+          "school": 0.79,
           "gp": 0.46,
           "bus": 0.78
         },
@@ -64,9 +64,9 @@
           "needWeightedWalkMinutes": 7.1
         },
         "school": {
-          "walkMinutes": 11.9,
-          "busOrWalkMinutes": 11.8,
-          "needWeightedWalkMinutes": 10.8
+          "walkMinutes": 11.4,
+          "busOrWalkMinutes": 11.2,
+          "needWeightedWalkMinutes": 10.2
         },
         "gp": {
           "walkMinutes": 20.4,
@@ -75,7 +75,7 @@
         }
       },
       "change": {
-        "overallScore": 0.8,
+        "overallScore": 0.9,
         "gpWalkMinutes": -1.2,
         "gpNeedWeightedWalkMinutes": -0.8,
         "gpBusOrWalkMinutes": -0.6
@@ -116,10 +116,10 @@
       },
       "card": {
         "households": 54841,
-        "overallScore": 70.4,
+        "overallScore": 71,
         "withinTarget": {
           "shop": 0.8,
-          "school": 0.77,
+          "school": 0.8,
           "gp": 0.46,
           "bus": 0.78
         },
@@ -129,9 +129,9 @@
           "needWeightedWalkMinutes": 7.1
         },
         "school": {
-          "walkMinutes": 11.9,
-          "busOrWalkMinutes": 11.8,
-          "needWeightedWalkMinutes": 10.8
+          "walkMinutes": 11.4,
+          "busOrWalkMinutes": 11.2,
+          "needWeightedWalkMinutes": 10.2
         },
         "gp": {
           "walkMinutes": 20.2,
@@ -145,8 +145,8 @@
             "busOrWalkMinutes": 7.2
           },
           "school": {
-            "walkMinutes": 10.5,
-            "busOrWalkMinutes": 10.5
+            "walkMinutes": 9.9,
+            "busOrWalkMinutes": 9.9
           },
           "gp": {
             "walkMinutes": 0.7,
@@ -155,7 +155,7 @@
         }
       },
       "change": {
-        "overallScore": 1.1,
+        "overallScore": 1.2,
         "gpWalkMinutes": -1.4,
         "gpNeedWeightedWalkMinutes": -0.8,
         "gpBusOrWalkMinutes": -0.8
@@ -181,10 +181,10 @@
       },
       "card": {
         "households": 54841,
-        "overallScore": 69.3,
+        "overallScore": 69.9,
         "withinTarget": {
           "shop": 0.8,
-          "school": 0.77,
+          "school": 0.8,
           "gp": 0.42,
           "bus": 0.78
         },
@@ -194,9 +194,9 @@
           "needWeightedWalkMinutes": 7.1
         },
         "school": {
-          "walkMinutes": 11.9,
-          "busOrWalkMinutes": 11.8,
-          "needWeightedWalkMinutes": 10.8
+          "walkMinutes": 11.4,
+          "busOrWalkMinutes": 11.2,
+          "needWeightedWalkMinutes": 10.2
         },
         "gp": {
           "walkMinutes": 21.7,
@@ -210,8 +210,8 @@
             "busOrWalkMinutes": 7.2
           },
           "school": {
-            "walkMinutes": 10.5,
-            "busOrWalkMinutes": 10.5
+            "walkMinutes": 9.9,
+            "busOrWalkMinutes": 9.9
           },
           "gp": {
             "walkMinutes": 30.4,
@@ -220,7 +220,7 @@
         }
       },
       "change": {
-        "overallScore": 0,
+        "overallScore": 0.1,
         "gpWalkMinutes": 0.1,
         "gpNeedWeightedWalkMinutes": 0,
         "gpBusOrWalkMinutes": 0.2
@@ -252,10 +252,10 @@
       },
       "card": {
         "households": 54241,
-        "overallScore": 69.3,
+        "overallScore": 69.8,
         "withinTarget": {
           "shop": 0.79,
-          "school": 0.77,
+          "school": 0.79,
           "gp": 0.43,
           "bus": 0.78
         },
@@ -265,9 +265,9 @@
           "needWeightedWalkMinutes": 7.1
         },
         "school": {
-          "walkMinutes": 11.9,
-          "busOrWalkMinutes": 11.8,
-          "needWeightedWalkMinutes": 10.8
+          "walkMinutes": 11.4,
+          "busOrWalkMinutes": 11.2,
+          "needWeightedWalkMinutes": 10.2
         },
         "gp": {
           "walkMinutes": 21.6,
@@ -308,10 +308,10 @@
       },
       "card": {
         "households": 54241,
-        "overallScore": 70.9,
+        "overallScore": 71.5,
         "withinTarget": {
           "shop": 0.79,
-          "school": 0.77,
+          "school": 0.79,
           "gp": 0.49,
           "bus": 0.78
         },
@@ -321,9 +321,9 @@
           "needWeightedWalkMinutes": 7.1
         },
         "school": {
-          "walkMinutes": 11.9,
-          "busOrWalkMinutes": 11.8,
-          "needWeightedWalkMinutes": 10.8
+          "walkMinutes": 11.4,
+          "busOrWalkMinutes": 11.2,
+          "needWeightedWalkMinutes": 10.2
         },
         "gp": {
           "walkMinutes": 18.9,
@@ -332,7 +332,7 @@
         }
       },
       "change": {
-        "overallScore": 1.6,
+        "overallScore": 1.7,
         "gpWalkMinutes": -2.7,
         "gpNeedWeightedWalkMinutes": -1.7,
         "gpBusOrWalkMinutes": -1.4

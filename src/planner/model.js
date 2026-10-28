@@ -19,6 +19,7 @@ import { attachCensus, attachNeed, pointInGeometry } from './census.js';
 import { buildWalkGraph, metresBetween } from './graph.js';
 import { findCrossings, bankOf } from './river.js';
 import { attachHistory } from './history.js';
+import { attachLayers } from './layers.js';
 
 function boxOf(geometry) {
   const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
@@ -35,9 +36,13 @@ export const HOME_ATTRIBUTES = Object.freeze(['need', 'noCar', 'over65', 'depriv
  * Build a model from a town file plus whichever extras exist:
  * census (census.json), gps (gps.json), buses (buses.json), food (food.json),
  * history (history.json: new homes since 1995, Census 2011), flood
- * (flood.json: Environment Agency Flood Zones 2 and 3).
+ * (flood.json: Environment Agency Flood Zones 2 and 3), planning
+ * (planning.json: brownfield sites, listed buildings).
  */
-export function buildModel({ town, census = null, gps = null, buses = null, food = null, history = null, flood = null }) {
+export function buildModel({
+  town, census = null, gps = null, buses = null, food = null, history = null, flood = null, planning = null,
+  deprivation = null, crime = null, prices = null, schools = null, collisions = null,
+}) {
   const data = { ...town, places: [...town.places], homes: town.homes.map((h) => ({ ...h })) };
   // Official GP practices replace OpenStreetMap's, which miss surgeries and
   // count hospital clinics as GPs.
@@ -48,10 +53,23 @@ export function buildModel({ town, census = null, gps = null, buses = null, food
       data.places.push({ id: `ods/${p.code}`, kind: 'gp', name: p.name, lon: p.lon, lat: p.lat, listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct });
     }
   }
+  // Official schools replace OpenStreetMap's; each counts as `school` and as
+  // `school:<phase>` (e.g. school:Primary) so plans can ask about either.
+  if (schools?.schools?.length) {
+    data.places = data.places.filter((p) => p.kind !== 'school');
+    for (const x of schools.schools) {
+      if (x.lon == null || !['Primary', 'Secondary', 'All-through', 'Middle deemed primary', 'Middle deemed secondary'].includes(x.phase)) continue;
+      const base = { id: `urn/${x.urn}`, name: x.name, lon: x.lon, lat: x.lat, phase: x.phase, capacity: x.capacity, pupils: x.pupils };
+      data.places.push({ ...base, kind: 'school' }, { ...base, id: `${base.id}/phase`, kind: `school:${x.phase.split(' ').at(-1).toLowerCase()}` });
+    }
+  }
+  for (const c of collisions?.collisions || []) data.places.push({ id: `stats19/${c.lon},${c.lat},${c.year}`, kind: `collision:${c.severity}`, name: `${c.severity} collision ${c.year}`, lon: c.lon, lat: c.lat, year: c.year, casualties: c.casualties });
   for (const b of food?.businesses || []) {
     data.places.push({ id: `fsa/${b.name}/${b.lon}`, kind: `food:${b.kind}`, name: b.name, lon: b.lon, lat: b.lat, rating: b.rating });
   }
   for (const v of town.vacant || []) data.places.push({ ...v, kind: 'vacant' });
+  for (const b of planning?.brownfield || []) data.places.push({ id: `brownfield/${b.reference}`, kind: 'land:brownfield', name: b.name, lon: b.lon, lat: b.lat, hectares: b.hectares, maxDwellings: b.maxDwellings, permission: b.permission });
+  for (const l of planning?.listed || []) data.places.push({ id: `listed/${l.name}`, kind: 'heritage:listed', name: l.name, grade: l.grade, lon: l.lon, lat: l.lat });
   // Flood zone of a point: 3 (highest risk), 2, or 0.
   const zones = (flood?.features || []).map((f) => ({ zone: f.properties.flood_zone === 'FZ3' ? 3 : 2, geometry: f.geometry, box: boxOf(f.geometry) }));
   const floodZoneOf = ([lon, lat]) => {
@@ -68,6 +86,7 @@ export function buildModel({ town, census = null, gps = null, buses = null, food
     attachCensus(data, areas);
     attachNeed(areas);
     if (history) attachHistory(areas, { growth: history.growth, then: history.census2011 });
+    attachLayers(areas, { deprivation, crime, prices });
     if (zones.length) {
       const acc = new Map();
       for (const h of data.homes) {

@@ -57,12 +57,12 @@ young family in St Peters, a home-worker in Barbourne).
 
 ## 1. What Old Worcester tells us
 
-_Numbers from the plans as last re-run (29 Oct 2026 data build). Re-run any plan to refresh._
+_Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and schools). Re-run any plan to refresh. Car-less households being nearer than others, after age and deprivation, is now borderline (t = −1.9)._
 
 | # | Lesson | Evidence |
 |---|---|---|
-| L1 | **Worcester grew outward without bringing everyday life with it.** The neighbourhoods with the most homes built since 1995 are measurably further from a GP, food and a school, even after deprivation and age (t = 2.4). Rye Place (Warndon Villages): 77% of today's households are post-1995; Arran Place (St Peters): 60%. Both are among the hardest places to reach everyday life from. | `plans/did-services-follow-growth.json` |
-| L2 | **Need already lives close to services.** The most deprived, least healthy, car-less neighbourhoods are *nearer* everyday services, not further (t = −5.0). Their bad health tracks deprivation (r = 0.91), not distance (GP distance: no link, t = 0.8). Health in New Worcester is about people's circumstances, not just where the surgery is. | `plans/everyday-access-and-need.json`, IDEAS.md health check |
+| L1 | **Worcester grew outward without bringing everyday life with it.** The neighbourhoods with the most homes built since 1995 are measurably further from a GP, food and a school, even after deprivation and age (t = 2.5). Rye Place (Warndon Villages): 77% of today's households are post-1995; Arran Place (St Peters): 60%. Both are among the hardest places to reach everyday life from. | `plans/did-services-follow-growth.json` |
+| L2 | **Need already lives close to services.** The most deprived, least healthy, car-less neighbourhoods are *nearer* everyday services, not further (t = −5.2). Their bad health tracks deprivation (r = 0.91), not distance (GP distance: no link, t = 0.8). Health in New Worcester is about people's circumstances, not just where the surgery is. | `plans/everyday-access-and-need.json`, IDEAS.md health check |
 | L3 | **Car dependence grew.** Census 2011 → 2021 (city): driving to work 71% → 76%, bus 5.0% → 2.8%, cycling 4.5% → 3.5%, walking 17% → 15%. Households without a car fell from 22.5% to 20.5%. The 2021 census was taken in lockdown, which hit buses hardest, so treat the size of the swing with care. Driving grew most in older estates (Henwick, Dines Green, Cherwell Close). | `plans/how-worcester-changed.json`, `plans/travel-shift-2011-2021.json` |
 | L4 | **Distance explains a lot of driving, but not all.** Further from everyday life means more driving (t = 6.8). Yet Perdiswell (Checketts Lane, Northwick Avenue), Barbourne (Sharman Road, Canal Side) and Dines Green (Drake Avenue) have everything close and still drive to work 71–83% of the time. | `plans/drive-less-opportunity.json` |
 | L5 | **Corner shops are the car-less household's supermarket.** Small food shops follow households without a car (t = 6.9), not deprivation. Takeaways show no link with deprivation or bad health. | `plans/takeaways-and-health.json` |
@@ -94,15 +94,26 @@ All against Worcester today, official GP practices. From `scenarios.json`.
 
 | Change | Town score | Who gains | Principles | Status |
 |---|---|---|---|---|
-| GP surgery at Bath Road, St Peters | +1.7 | 7,877 households save ~19 min to a GP (744 without a car) | P1 (late), P2 | Strongest single change so far |
+| GP surgery at Bath Road, St Peters | +1.7 | 7,308 households save ~20 min to a GP (680 without a car) | P1 (late), P2 | Strongest single change so far |
 | County Hall: homes + health hub | +1.2 | 6,620 households save ~10 min to a GP; 600 new homes 0.7 min from it | P1, P5 | Needs site facts |
-| County Hall: health hub only | +0.8 | 6,620 households save ~10 min (607 without a car) | P2, P5 | |
+| County Hall: health hub only | +0.9 | 6,619 households save ~10 min (607 without a car) | P2, P5 | |
 | County Hall: homes only (600) | +0.1 | New residents ~30 min from a GP | breaks P1 | Don't, without a hub |
 | Reopen Ambleside Drive shop | +0.0 | 289 households save ~1.4 min (71 without a car) | P4 | Distance isn't the issue there |
 
 **Not yet testable:** a walking/cycling scenario for Perdiswell–Barbourne
 (P3) needs a travel-choice tool (how many would switch if routes improved).
 That's the next tool to build.
+
+## 3½. What's mapped now
+
+`npm run planner -- atlas worcester` lists it by compass theme: **24 of 30
+layers**. New this round: deprivation 2025 (all seven domains), street
+crime per neighbourhood (12 months), road collisions (5 years, by
+severity), the schools register (places and pupils), house prices since
+2015, older people living alone, brownfield land (67 sites, up to 3,448
+homes), listed buildings and conservation areas, meeting places, green
+space and flood zones. Still to map: pharmacies and dentists, trees,
+household income, jobs, cycle routes, wards and planning applications.
 
 ## 4. Open questions feeding New Worcester
 

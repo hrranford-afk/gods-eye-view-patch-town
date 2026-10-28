@@ -177,6 +177,7 @@ export function placesToGeoJson(places) {
         name: p.name,
         // Official GP practices (gps.json) carry list size and survey results.
         ...(p.listSize ? { listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct } : {}),
+        ...(p.capacity ? { phase: p.phase, capacity: p.capacity, pupils: p.pupils } : {}),
       },
     })),
   };

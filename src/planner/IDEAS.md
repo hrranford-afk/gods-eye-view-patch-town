@@ -26,7 +26,11 @@ easier to understand or nicer to live in.
 | CAIRN | **Scenario scorecard with "who gains"**: every scenario says which households get closer to what, by how much, and how many have no car | `compareScenarios` / `gains` in `scenarios.js`, `npm run planner -- scenarios` |
 | Harry | Build it as a set of tools that work together to answer bigger questions, not scripts for specific ones | `model.js` + `tools.js` + `ask` plans |
 | CAIRN | **Plans as data**: a question is a JSON list of tool calls, saved with its result, so anyone (or any AI) can re-run, check or extend the reasoning | `public/planner/<town>/plans/` |
+| Harry | Map first, ask questions later | `atlas.js` + `atlas` command, theme panel, deprivation / crime / collisions / schools / prices / planning layers |
+| CAIRN | **Atlas by compass**: every layer, mapped or wanted, sorted by what it says about a good day, so the gaps are visible and anyone can fill one | `src/planner/atlas.js` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
+
+> Current figures live in NEW_WORCESTER.md; the sections below are the log as it happened.
 
 ## Correction: official GP practices (28 Oct 2026)
 

@@ -31,6 +31,7 @@ import { buildModel } from '../src/planner/model.js';
 import { census2011ByArea, growthByArea } from '../src/planner/history.js';
 import { runPlan, TOOLS } from '../src/planner/tools.js';
 import { atlasStatus, COMPASS } from '../src/planner/atlas.js';
+import { collisionsIn, crimeByArea, deprivationByArea, pricesByArea, schoolsFrom } from '../src/planner/layers.js';
 import { statSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { metresBetween } from '../src/planner/graph.js';
@@ -137,7 +138,7 @@ const ONS_LSOA_2021 = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest
 const NOMIS = 'https://www.nomisweb.co.uk/api/v01/dataset';
 // Census 2021 tables: households (TS041), usual residents (TS001), travel to
 // work (TS061), general health (TS037), age (TS007A), household deprivation
-// (TS011) and car or van availability (TS045).
+// (TS011), car or van availability (TS045) and household composition (TS003).
 const CENSUS_TABLES = {
   households: ['NM_2059_1', 'geography_code,obs_value'],
   residents: ['NM_2021_1', 'geography_code,c2021_restype_3_name,obs_value'],
@@ -146,6 +147,7 @@ const CENSUS_TABLES = {
   age: ['NM_2020_1', 'geography_code,c2021_age_19_name,obs_value'],
   deprivation: ['NM_2031_1', 'geography_code,c2021_dep_6_name,obs_value'],
   cars: ['NM_2063_1', 'geography_code,c2021_cars_5_name,obs_value'],
+  composition: ['NM_2023_1', 'geography_code,c2021_hhcomp_15_name,obs_value'],
 };
 
 /** Download Census 2021 neighbourhoods (LSOAs) covering a town. */
@@ -375,12 +377,190 @@ async function floodTown(id) {
   console.log(`[planner] ${features.length} flood zone areas (${features.filter((f) => f.properties.flood_zone === 'FZ3').length} in Zone 3) → ${dir}/flood.json`);
 }
 
+/** Point of a planning.data entity: its point field, or the first corner of its shape. */
+function entityPoint(e) {
+  const m = /POINT \(([-\d.]+) ([-\d.]+)\)/.exec(e.point || '');
+  if (m) return [Number(m[1]), Number(m[2])];
+  const g = e.geometry;
+  if (g?.type === 'Point') return g.coordinates;
+  return null;
+}
+
+/**
+ * Land and heritage from planning.data.gov.uk: the brownfield register
+ * (current sites, with homes capacity and permission), listed buildings,
+ * conservation areas and air quality management areas. Writes planning.json.
+ */
+async function planningTown(id) {
+  const town = getTown(id);
+  const [s, w, n, e] = town.bbox;
+  const area = `POLYGON((${w} ${s},${e} ${s},${e} ${n},${w} ${n},${w} ${s}))`;
+  const fetchAll = async (dataset, format) => {
+    const out = [];
+    for (let offset = 0; ; offset += 500) {
+      const q = new URLSearchParams({ dataset, geometry: area, geometry_relation: 'intersects', limit: '500', offset: String(offset) });
+      const res = await fetch(`https://www.planning.data.gov.uk/entity.${format}?${q}`);
+      if (!res.ok) throw new Error(`planning.data ${dataset} answered ${res.status}`);
+      const page = await res.json();
+      const items = format === 'geojson' ? page.features : page.entities;
+      out.push(...items);
+      if (items.length < 500) return out;
+    }
+  };
+  console.log(`[planner] Land and heritage for ${town.name} (planning.data.gov.uk)…`);
+  const brownfield = (await fetchAll('brownfield-land', 'geojson'))
+    .filter((f) => !f.properties['end-date'] && f.geometry?.type === 'Point')
+    .map((f) => {
+      const p = f.properties;
+      const num = (v) => (v == null || v === '' ? null : Number(v));
+      return {
+        name: p['site-address'] || p.name, reference: p.reference, hectares: num(p.hectares),
+        minDwellings: num(p['minimum-net-dwellings']), maxDwellings: num(p['maximum-net-dwellings']),
+        permission: p['planning-permission-status'] || null, ownership: p['ownership-status'] || null,
+        lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1],
+      };
+    });
+  const listed = (await fetchAll('listed-building', 'json'))
+    .map((x) => ({ name: x.name, grade: x['listed-building-grade'] || null, lonLat: entityPoint(x) }))
+    .filter((x) => x.lonLat)
+    .map(({ lonLat, ...x }) => ({ ...x, lon: lonLat[0], lat: lonLat[1] }));
+  const polygons = async (dataset) => ({
+    type: 'FeatureCollection',
+    features: (await fetchAll(dataset, 'geojson')).filter((f) => !f.properties['end-date'] && f.geometry).map((f) => ({ type: 'Feature', properties: { name: f.properties.name }, geometry: f.geometry })),
+  });
+  const conservationAreas = await polygons('conservation-area');
+  const airQualityAreas = await polygons('air-quality-management-area');
+  const dir = townDir(town.id);
+  writeFileSync(path.join(dir, 'planning.json'), JSON.stringify({ source: 'planning.data.gov.uk (brownfield land, listed buildings, conservation areas, air quality management areas)', fetchedAt: new Date().toISOString(), brownfield, listed, conservationAreas, airQualityAreas }));
+  const homes = brownfield.reduce((t, b) => t + (b.maxDwellings || 0), 0);
+  console.log(`[planner] ${brownfield.length} current brownfield sites (up to ${homes} homes), ${listed.length} listed buildings, ${conservationAreas.features.length} conservation areas, ${airQualityAreas.features.length} air quality areas → ${dir}/planning.json`);
+}
+
+/** Download a file once per run into .gev-cache/planner (big national files). */
+async function cached(url, name) {
+  const dir = path.join(process.cwd(), '.gev-cache', 'planner');
+  mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, name);
+  if (!existsSync(file)) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
+    writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  }
+  return file;
+}
+
+const IOD_2025 = 'https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv';
+
+/** English Indices of Deprivation 2025 for the town's neighbourhoods → deprivation.json. */
+async function deprivationTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const codes = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas.map((a) => a.code);
+  const rows = parseCsv(readFileSync(await cached(IOD_2025, 'iod2025.csv'), 'utf8'));
+  const byArea = deprivationByArea(rows, codes);
+  writeFileSync(path.join(dir, 'deprivation.json'), JSON.stringify({ source: 'MHCLG English Indices of Deprivation 2025 (File 7)', byArea }));
+  console.log(`[planner] Deprivation 2025 for ${Object.keys(byArea).length} of ${codes.length} neighbourhoods → ${dir}/deprivation.json`);
+}
+
+/** The last 12 months of street crime (data.police.uk), counted per neighbourhood → crime.json. */
+async function crimeTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const areas = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas;
+  const [s, w, n, e] = town.bbox;
+  const poly = `${s},${w}:${s},${e}:${n},${e}:${n},${w}`;
+  const months = (await (await fetch('https://data.police.uk/api/crimes-street-dates')).json()).slice(0, 12).map((d) => d.date);
+  const crimes = [];
+  for (const m of months) {
+    const res = await fetch('https://data.police.uk/api/crimes-street/all-crime', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ poly, date: m }),
+    });
+    if (!res.ok) throw new Error(`police.uk answered ${res.status} for ${m}`);
+    crimes.push(...(await res.json()));
+  }
+  const byArea = crimeByArea(crimes, areas);
+  writeFileSync(path.join(dir, 'crime.json'), JSON.stringify({ source: 'data.police.uk street-level crime (counted per neighbourhood)', months: [months.at(-1), months[0]], byArea }));
+  console.log(`[planner] ${crimes.length} crimes, ${months.at(-1)} to ${months[0]}, counted per neighbourhood → ${dir}/crime.json`);
+}
+
+const STATS19 = 'https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-collision-last-5-years.csv';
+
+/** Road collisions in the town over the last 5 years (DfT STATS19) → collisions.json. */
+async function collisionsTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const rows = parseCsv(readFileSync(await cached(STATS19, 'stats19-collisions-5y.csv'), 'utf8'));
+  const collisions = collisionsIn(rows, town.bbox);
+  writeFileSync(path.join(dir, 'collisions.json'), JSON.stringify({ source: 'DfT road casualty statistics (STATS19), last 5 years', collisions }));
+  const by = {};
+  for (const c of collisions) by[c.severity] = (by[c.severity] || 0) + 1;
+  console.log(`[planner] ${collisions.length} collisions (${JSON.stringify(by)}) → ${dir}/collisions.json`);
+}
+
+/** Open schools from the DfE register, with places and pupils, located by postcode → schools.json. */
+async function schoolsTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const day = new Date();
+  let file = null;
+  for (let back = 0; back < 5 && !file; back++) {
+    const d = new Date(day - back * 864e5).toISOString().slice(0, 10).replaceAll('-', '');
+    file = await cached(`https://ea-edubase-api-prod.azurewebsites.net/edubase/downloads/public/edubasealldata${d}.csv`, `gias-${d}.csv`).catch(() => null);
+  }
+  if (!file) throw new Error('Could not download the schools register');
+  const schools = schoolsFrom(parseCsv(readFileSync(file, 'latin1')), { la: town.educationAuthority || 'Worcestershire' });
+  for (let i = 0; i < schools.length; i += 100) {
+    const res = await fetch('https://api.postcodes.io/postcodes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcodes: schools.slice(i, i + 100).map((x) => x.postcode) }),
+    });
+    const found = new Map((await res.json()).result.map((x) => [x.query, x.result]));
+    for (const x of schools.slice(i, i + 100)) {
+      const loc = found.get(x.postcode);
+      if (loc) { x.lon = loc.longitude; x.lat = loc.latitude; }
+    }
+  }
+  const [s, w, n, e] = town.bbox;
+  const near = schools.filter((x) => x.lat >= s - 0.01 && x.lat <= n + 0.01 && x.lon >= w - 0.015 && x.lon <= e + 0.015);
+  writeFileSync(path.join(dir, 'schools.json'), JSON.stringify({ source: 'DfE Get Information About Schools (open establishments)', schools: near }));
+  const pupils = near.reduce((t, x) => t + (x.pupils || 0), 0);
+  const places = near.reduce((t, x) => t + (x.capacity || 0), 0);
+  console.log(`[planner] ${near.length} open schools in or near ${town.name}: ${pupils} pupils, ${places} places → ${dir}/schools.json`);
+}
+
+/** Every house sale since 2015 (Land Registry), median prices per neighbourhood → prices.json. */
+async function pricesTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const areas = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas;
+  const res = await fetch(`https://landregistry.data.gov.uk/app/ppd/ppd_data.csv?header=true&limit=all&town=${encodeURIComponent(town.name.toUpperCase())}&min_date=2015-01-01`);
+  if (!res.ok) throw new Error(`Land Registry answered ${res.status}`);
+  const rows = parseCsv(await res.text()).filter((r) => r.county === (town.county || 'WORCESTERSHIRE') && r.transaction_category === 'A');
+  const where = new Map();
+  const postcodes = [...new Set(rows.map((r) => r.postcode).filter(Boolean))];
+  for (let i = 0; i < postcodes.length; i += 100) {
+    const pc = await fetch('https://api.postcodes.io/postcodes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcodes: postcodes.slice(i, i + 100) }),
+    });
+    for (const x of (await pc.json()).result) if (x.result) where.set(x.query, [x.result.longitude, x.result.latitude]);
+  }
+  const sales = rows.filter((r) => where.has(r.postcode)).map((r) => ({ year: Number(r.deed_date.slice(0, 4)), price: Number(r.price_paid), lon: where.get(r.postcode)[0], lat: where.get(r.postcode)[1] }));
+  const prices = pricesByArea(sales, areas);
+  writeFileSync(path.join(dir, 'prices.json'), JSON.stringify({ source: 'HM Land Registry Price Paid (standard sales since 2015)', sales: sales.length, ...prices }));
+  console.log(`[planner] ${sales.length} sales ${prices.years.join('–')}, medians for ${Object.keys(prices.byArea).length} neighbourhoods → ${dir}/prices.json`);
+}
+
 /** Load the town model from a town folder: town.json plus whatever extras exist. */
 export function loadModel(dir) {
   const read = (f) => (existsSync(path.join(dir, f)) ? JSON.parse(readFileSync(path.join(dir, f), 'utf8')) : null);
   const town = read('town.json');
   if (!town) throw new Error(`No town.json in ${dir}`);
-  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json'), flood: read('flood.json') });
+  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json'), flood: read('flood.json'), planning: read('planning.json'),
+    deprivation: read('deprivation.json'), crime: read('crime.json'), prices: read('prices.json'),
+    schools: read('schools.json'), collisions: read('collisions.json'),
+  });
 }
 
 /**
@@ -417,7 +597,7 @@ function atlasTown(id) {
     const out = { date: statSync(full(f)).mtime.toISOString().slice(0, 10) };
     try {
       const j = JSON.parse(readFileSync(full(f), 'utf8'));
-      out.count = j.features?.length ?? j.areas?.length ?? j.practices?.length ?? j.businesses?.length ?? j.questions?.length ?? j.scenarios?.length ?? j.points?.length ?? j.stops?.length ?? null;
+      out.count = j.features?.length ?? j.areas?.length ?? j.practices?.length ?? j.businesses?.length ?? j.questions?.length ?? j.scenarios?.length ?? j.points?.length ?? j.stops?.length ?? j.collisions?.length ?? j.schools?.length ?? (j.byArea ? Object.keys(j.byArea).length : null) ?? null;
     } catch {
       // Not every file is a list; the date is enough.
     }
@@ -461,37 +641,15 @@ function importTown(id, file) {
  */
 function prepareTown(town, dir, { quiet = false } = {}) {
   const log = quiet ? () => {} : console.log;
-  const data = JSON.parse(readFileSync(path.join(dir, 'town.json'), 'utf8'));
-  // Official GP practices replace OpenStreetMap's (which miss surgeries and
-  // count hospital clinics as GPs) when gps.json exists.
-  const gpsPath = path.join(dir, 'gps.json');
-  if (existsSync(gpsPath)) {
-    const { practices } = JSON.parse(readFileSync(gpsPath, 'utf8'));
-    data.places = data.places.filter((p) => p.kind !== 'gp');
-    for (const p of practices) {
-      if (p.lon == null) continue;
-      data.places.push({ id: `ods/${p.code}`, kind: 'gp', name: p.name, lon: p.lon, lat: p.lat, listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct });
-    }
-    log(`[planner] GP surgeries: ${practices.length} official NHS practices (gps.json) replace OpenStreetMap's`);
-  }
-  // With census.json present, homes are weighted to real household numbers.
-  const censusPath = path.join(dir, 'census.json');
-  let areas = null;
-  if (existsSync(censusPath)) {
-    areas = JSON.parse(readFileSync(censusPath, 'utf8')).areas;
-    const { unplaced } = attachCensus(data, areas);
-    attachNeed(areas);
-    const byCode = new Map(areas.map((a) => [a.code, a]));
-    for (const h of data.homes) {
-      h.need = byCode.get(h.area)?.need ?? null;
-      h.noCar = byCode.get(h.area)?.noCar ?? null;
-    }
-    writeFileSync(path.join(dir, 'areas.geojson'), JSON.stringify(areasToGeoJson(areas)));
-    log(`[planner] Census weights applied (${areas.length} neighbourhoods${unplaced.length ? `, ${unplaced.length} with no mapped buildings` : ''})`);
+  const model = loadModel(dir);
+  if (model.areas.length) {
+    writeFileSync(path.join(dir, 'areas.geojson'), JSON.stringify(areasToGeoJson(model.areas)));
+    log(`[planner] Census weights applied (${model.areas.length} neighbourhoods)`);
   } else {
     log(`[planner] No census.json: counting each mapped home once (run: npm run planner -- census ${town.id})`);
   }
-  return { data, areas };
+  log(`[planner] Places by kind: ${Object.entries(model.kinds()).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  return { data: model.town, areas: model.areas.length ? model.areas : null };
 }
 
 function analyseTown(id) {
@@ -517,6 +675,11 @@ function analyseTown(id) {
   writeFileSync(path.join(dir, 'access.geojson'), JSON.stringify(cellsToGeoJson(cells)));
   writeFileSync(path.join(dir, 'roads.geojson'), JSON.stringify(roadsToGeoJson(data.roads)));
   writeFileSync(path.join(dir, 'places.geojson'), JSON.stringify(placesToGeoJson(data.places)));
+  const planningPath = path.join(dir, 'planning.json');
+  if (existsSync(planningPath)) {
+    // The map layer reads land and heritage straight from planning.json.
+    log(`[planner] Land and heritage: planning.json present`);
+  }
   writeFileSync(path.join(dir, 'vacant.geojson'), JSON.stringify(placesToGeoJson((data.vacant || []).map((v) => ({ ...v, kind: 'vacant' })))));
   writeFileSync(path.join(dir, 'sites.geojson'), JSON.stringify(sitesToGeoJson(sites)));
   // Buses, if a timetable cut exists (scripts/planner-gtfs.py → buses.json).
@@ -575,12 +738,18 @@ try {
   else if (command === 'ask') askTown(id, file);
   else if (command === 'history') await historyTown(id);
   else if (command === 'flood') await floodTown(id);
+  else if (command === 'planning') await planningTown(id);
+  else if (command === 'deprivation') await deprivationTown(id);
+  else if (command === 'crime') await crimeTown(id);
+  else if (command === 'collisions') await collisionsTown(id);
+  else if (command === 'schools') await schoolsTown(id);
+  else if (command === 'prices') await pricesTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'atlas') atlasTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

@@ -1,6 +1,6 @@
 {
   "town": "worcester",
-  "checkedAt": "2026-10-28T18:18:48.371Z",
+  "checkedAt": "2026-10-28T18:32:19.711Z",
   "layers": [
     {
       "id": "census",
@@ -38,13 +38,13 @@
     {
       "id": "alone",
       "theme": "people",
-      "name": "People living alone, by age (loneliness risk)",
-      "source": "Census 2021 TS003 / TS011",
+      "name": "Households of one person aged 66+ (loneliness risk)",
+      "source": "Census 2021 TS003",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "census"
     },
     {
       "id": "gps",
@@ -85,10 +85,10 @@
       "name": "Air quality management areas",
       "source": "planning.data.gov.uk",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
       "count": null,
-      "date": null,
-      "command": null
+      "date": "2026-10-28",
+      "command": "planning"
     },
     {
       "id": "green",
@@ -137,24 +137,24 @@
     {
       "id": "deprivation",
       "theme": "security",
-      "name": "Index of Multiple Deprivation (income, jobs, housing, crime…)",
+      "name": "Indices of Deprivation 2025 (income, jobs, education, health, crime, barriers, living environment)",
       "source": "MHCLG",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "deprivation"
     },
     {
       "id": "prices",
       "theme": "security",
-      "name": "House prices (every sale since 1995)",
+      "name": "House prices (every sale since 2015, medians per area)",
       "source": "HM Land Registry Price Paid",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "prices"
     },
     {
       "id": "income",
@@ -170,13 +170,13 @@
     {
       "id": "crime",
       "theme": "security",
-      "name": "Street-level crime, by month",
+      "name": "Street crime, last 12 months, counted per neighbourhood",
       "source": "data.police.uk",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 75,
+      "date": "2026-10-28",
+      "command": "crime"
     },
     {
       "id": "schools",
@@ -192,13 +192,13 @@
     {
       "id": "schoolRegister",
       "theme": "purpose",
-      "name": "Schools: places, pupils, Ofsted rating",
+      "name": "Schools register: phase, places, pupils",
       "source": "DfE Get Information About Schools",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 52,
+      "date": "2026-10-28",
+      "command": "schools"
     },
     {
       "id": "jobs",
@@ -247,13 +247,13 @@
     {
       "id": "collisions",
       "theme": "movement",
-      "name": "Road collisions and casualties",
+      "name": "Road collisions, last 5 years, by severity",
       "source": "DfT STATS19",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 566,
+      "date": "2026-10-28",
+      "command": "collisions"
     },
     {
       "id": "cycleRoutes",
@@ -280,13 +280,13 @@
     {
       "id": "brownfield",
       "theme": "land",
-      "name": "Brownfield land register",
+      "name": "Brownfield land register (current sites, homes capacity)",
       "source": "planning.data.gov.uk",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
       "count": null,
-      "date": null,
-      "command": null
+      "date": "2026-10-28",
+      "command": "planning"
     },
     {
       "id": "heritage",
@@ -294,10 +294,10 @@
       "name": "Listed buildings and conservation areas",
       "source": "planning.data.gov.uk",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
       "count": null,
-      "date": null,
-      "command": null
+      "date": "2026-10-28",
+      "command": "planning"
     },
     {
       "id": "questions",

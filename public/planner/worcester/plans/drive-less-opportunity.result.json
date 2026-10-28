@@ -1,47 +1,47 @@
 {
   "question": "Where is everyday life close by, but most people still drive? (where walking and cycling could win first)",
-  "ranAt": "2026-10-28T18:13:11.197Z",
+  "ranAt": "2026-10-28T18:32:47.628Z",
   "results": {
     "bestPlacesToDriveLess": [
       {
         "group": "E01032299",
         "name": "Worcester 001D",
-        "value": 60.87
-      },
-      {
-        "group": "E01032280",
-        "name": "Worcester 007A",
-        "value": 59.71
-      },
-      {
-        "group": "E01032296",
-        "name": "Worcester 001A",
-        "value": 57.83
-      },
-      {
-        "group": "E01032321",
-        "name": "Worcester 009D",
-        "value": 57.45
-      },
-      {
-        "group": "E01032327",
-        "name": "Worcester 004C",
-        "value": 56.64
+        "value": 62.88
       },
       {
         "group": "E01032301",
         "name": "Worcester 005A",
-        "value": 56.62
+        "value": 59.83
       },
       {
-        "group": "E01032328",
-        "name": "Worcester 004D",
-        "value": 55.16
+        "group": "E01032296",
+        "name": "Worcester 001A",
+        "value": 59.65
+      },
+      {
+        "group": "E01032280",
+        "name": "Worcester 007A",
+        "value": 59.28
+      },
+      {
+        "group": "E01032321",
+        "name": "Worcester 009D",
+        "value": 58.62
       },
       {
         "group": "E01032311",
         "name": "Worcester 005D",
-        "value": 54.5
+        "value": 58.17
+      },
+      {
+        "group": "E01032327",
+        "name": "Worcester 004C",
+        "value": 56.94
+      },
+      {
+        "group": "E01032328",
+        "name": "Worcester 004D",
+        "value": 55.81
       }
     ],
     "doesDistanceExplainDriving": {
@@ -49,7 +49,7 @@
       "r2": 0.39,
       "predictors": {
         "everydayMinutes": {
-          "coefficient": 0.00336,
+          "coefficient": 0.00333,
           "t": 6.8,
           "control": false
         }

@@ -1,24 +1,24 @@
 {
   "question": "Did services follow Worcester's growth? Are the newest neighbourhoods the hardest to reach?",
-  "ranAt": "2026-10-28T18:13:09.164Z",
+  "ranAt": "2026-10-28T18:32:45.938Z",
   "results": {
     "newerMeansFurther": {
       "groups": 75,
-      "r2": 0.33,
+      "r2": 0.36,
       "predictors": {
         "newHomesShare": {
-          "coefficient": 31.4,
-          "t": 2.4,
+          "coefficient": 33,
+          "t": 2.5,
           "control": false
         },
         "deprived": {
-          "coefficient": -63.6,
-          "t": -1.9,
+          "coefficient": -68.6,
+          "t": -2.1,
           "control": true
         },
         "over65": {
-          "coefficient": 83.8,
-          "t": 2.5,
+          "coefficient": 86.8,
+          "t": 2.6,
           "control": true
         }
       }
@@ -85,42 +85,42 @@
       {
         "group": "E01032325",
         "name": "Worcester 014C",
-        "value": 59.95
+        "value": 60.34
       },
       {
         "group": "E01032316",
         "name": "Worcester 006C",
-        "value": 58.3
+        "value": 57.78
       },
       {
         "group": "E01032335",
         "name": "Worcester 003C",
-        "value": 53.33
+        "value": 56.66
       },
       {
         "group": "E01032324",
         "name": "Worcester 014B",
-        "value": 53.29
-      },
-      {
-        "group": "E01032339",
-        "name": "Worcester 008C",
-        "value": 51.98
+        "value": 52.88
       },
       {
         "group": "E01032323",
         "name": "Worcester 014A",
-        "value": 51.95
+        "value": 51.55
       },
       {
         "group": "E01032297",
         "name": "Worcester 001B",
-        "value": 50.33
+        "value": 50.05
+      },
+      {
+        "group": "E01032339",
+        "name": "Worcester 008C",
+        "value": 46.59
       },
       {
         "group": "E01032290",
         "name": "Worcester 012E",
-        "value": 46.67
+        "value": 46.2
       }
     ]
   }

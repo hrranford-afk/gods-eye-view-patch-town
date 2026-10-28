@@ -405,3 +405,39 @@ test('atlas: every layer has a compass theme and reports mapped or missing', asy
   assert.equal(by.schools.status, 'missing', 'zero places of a kind is not mapped');
   assert.equal(by.flood.status, 'missing');
 });
+
+test('layers: deprivation, crime per neighbourhood, collisions, schools and prices parse into area figures', async () => {
+  const { deprivationByArea, crimeByArea, collisionsIn, schoolsFrom, pricesByArea, attachLayers } = await import('./layers.js');
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  const areas = [{ code: 'A', residents: 2000, geometry: square(0, 0, 1, 1) }, { code: 'B', residents: 1000, geometry: square(1, 0, 2, 1) }];
+  const dep = deprivationByArea([
+    { 'LSOA code (2021)': 'A', 'Index of Multiple Deprivation (IMD) Score': '30.5', 'Index of Multiple Deprivation (IMD) Decile (where 1 is most deprived 10% of LSOAs)': '2', 'Income Score (rate)': '0.2' },
+    { 'LSOA code (2021)': 'Z', 'Index of Multiple Deprivation (IMD) Score': '5' },
+  ], ['A', 'B']);
+  assert.deepEqual(Object.keys(dep), ['A']);
+  assert.equal(dep.A.imdDecile, 2);
+  const crime = crimeByArea([
+    { category: 'burglary', location: { longitude: '0.5', latitude: '0.5' } },
+    { category: 'violent-crime', location: { longitude: '0.5', latitude: '0.5' } },
+    { category: 'violent-crime', location: { longitude: '9', latitude: '9' } },
+  ], areas);
+  assert.equal(crime.A.total, 2);
+  assert.equal(crime.B, undefined);
+  const col = collisionsIn([{ collision_year: '2024', collision_severity: '2', latitude: '0.5', longitude: '0.5', number_of_casualties: '1' }, { latitude: '5', longitude: '5' }], [0, 0, 1, 1]);
+  assert.deepEqual(col.map((c) => c.severity), ['serious']);
+  const sch = schoolsFrom([{ 'LA (name)': 'Shire', 'EstablishmentStatus (name)': 'Open', URN: '1', EstablishmentName: 'X', 'PhaseOfEducation (name)': 'Primary', SchoolCapacity: '210', NumberOfPupils: '230' }, { 'LA (name)': 'Shire', 'EstablishmentStatus (name)': 'Closed' }], { la: 'Shire' });
+  assert.equal(sch.length, 1);
+  assert.equal(sch[0].pupils, 230);
+  const prices = pricesByArea([
+    { year: 2015, price: 100, lon: 0.5, lat: 0.5 }, { year: 2015, price: 200, lon: 0.5, lat: 0.5 },
+    { year: 2025, price: 300, lon: 0.5, lat: 0.5 },
+  ], areas, { span: 1 });
+  assert.equal(prices.byArea.A.medianPriceEarly, 150);
+  assert.equal(prices.byArea.A.priceChange, 1);
+  attachLayers(areas, { deprivation: { byArea: dep }, crime: { byArea: crime }, prices });
+  assert.equal(areas[0].imdScore, 30.5);
+  assert.equal(areas[0].crimePer1000, 1);
+  assert.equal(areas[0].violencePer1000, 0.5);
+  assert.equal(areas[1].crimePer1000, 0, 'an area with no recorded crime counts zero, not missing');
+  assert.equal(areas[0].medianPrice, 300);
+});
