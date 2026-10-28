@@ -441,3 +441,35 @@ test('layers: deprivation, crime per neighbourhood, collisions, schools and pric
   assert.equal(areas[1].crimePer1000, 0, 'an area with no recorded crime counts zero, not missing');
   assert.equal(areas[0].medianPrice, 300);
 });
+
+test('more layers: cycle provision, pharmacies, jobs, income and wards, and grouping by ward', async () => {
+  const { cycleKind, parseOverpass } = await import('./osm.js');
+  assert.equal(cycleKind({ highway: 'cycleway' }), 'track');
+  assert.equal(cycleKind({ highway: 'path', bicycle: 'designated' }), 'track');
+  assert.equal(cycleKind({ highway: 'primary', 'cycleway:left': 'lane' }), 'lane');
+  assert.equal(cycleKind({ highway: 'residential' }), null);
+  const t = parseOverpass({ elements: [
+    { type: 'node', id: 1, lat: 52, lon: -2, tags: { amenity: 'pharmacy', name: 'Boots' } },
+    { type: 'node', id: 2, lat: 52, lon: -2, tags: { amenity: 'bicycle_parking' } },
+  ] }, 't');
+  assert.deepEqual(t.places.map((p) => p.kind), ['health:pharmacy', 'cycle:parking']);
+  const { attachLayers } = await import('./layers.js');
+  const areas = [{ code: 'A', residents: 1000 }];
+  attachLayers(areas, { jobs: { byArea: { A: { jobs: 500 } } }, income: { byArea: { A: { incomeTotal: 40000, incomeAfterHousing: 28000 } } }, wards: { byArea: { A: { ward: 'Cathedral', wardCode: 'E05' } } } });
+  assert.equal(areas[0].jobsPerResident, 0.5);
+  assert.equal(areas[0].incomeAfterHousing, 28000);
+  assert.equal(areas[0].ward, 'Cathedral');
+  const { buildModel } = await import('./model.js');
+  const { runPlan } = await import('./tools.js');
+  const town = gridTown();
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  const [w0, s0] = at(0, 0);
+  const [e0, n0] = at(4, 4);
+  const model = buildModel({
+    town,
+    census: { areas: [{ code: 'A', name: 'Grid 001A', households: 25, residents: 60, geometry: square(w0 - 0.001, s0 - 0.001, e0 + 0.001, n0 + 0.001) }] },
+    wards: { byArea: { A: { ward: 'Grid Ward', wardCode: 'W1' } } },
+  });
+  const out = runPlan(model, [{ tool: 'travel', args: { to: 'shop' }, as: 's' }, { tool: 'summarise', args: { values: '$s', groupBy: 'ward' }, as: 'byWard' }]);
+  assert.deepEqual(Object.keys(out.byWard.value), ['Grid Ward']);
+});

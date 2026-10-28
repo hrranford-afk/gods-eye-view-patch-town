@@ -61,13 +61,17 @@ function weightsOf(model, weight) {
 function groupsOf(model, groupBy) {
   if (groupBy === 'town') return model.homes.map(() => model.name);
   if (groupBy === 'area') return model.homes.map((h) => h.area);
+  if (groupBy === 'ward') {
+    const ward = new Map(model.areas.map((a) => [a.code, a.ward]));
+    return model.homes.map((h) => ward.get(h.area) ?? null);
+  }
   if (groupBy === 'bank') return model.homes.map((h) => model.bankOf([h.lon, h.lat]));
   if (groupBy === 'cell') {
     const dLat = 250 / 111_320;
     const dLon = 250 / (111_320 * Math.cos(((model.homes[0]?.lat ?? 52) * Math.PI) / 180));
     return model.homes.map((h) => `${Math.floor(h.lon / dLon) * dLon},${Math.floor(h.lat / dLat) * dLat}`);
   }
-  throw new Error(`Unknown groupBy "${groupBy}". Use town, area, bank or cell`);
+  throw new Error(`Unknown groupBy "${groupBy}". Use town, area, ward, bank or cell`);
 }
 
 /**
@@ -296,7 +300,7 @@ export function floodZone(model) {
 export const TOOLS = Object.freeze({
   kinds: { fn: (m) => m.kinds(), about: 'Every kind of place in the model and how many.', args: {} },
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
-  summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
+  summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'ward', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
   count: { fn: count, about: 'Places of a kind per group and per 1,000 households.', args: { kind: 'kind or list', groupBy: "'area' (default), 'bank', 'cell', 'town'" } },
   attribute: { fn: attribute, about: 'Any numeric figure per area (census, need, history); `minus` for a change.', args: { name: "e.g. 'need', 'noCar', 'newHomesShare', 'carCommute2021' (see fields)", minus: "optional, e.g. 'carCommute2011'" } },
   fields: { fn: (m) => areaFields(m), about: 'Every numeric figure the areas carry, for attribute.', args: {} },

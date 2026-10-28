@@ -1,10 +1,10 @@
 {
   "question": "Can people in Worcester have a good ordinary day within reach? A meeting place within 10 min, green space within 5, food within 10, a GP within 15 (walking or bus). Who misses out?",
-  "ranAt": "2026-10-28T18:32:52.534Z",
+  "ranAt": "2026-10-28T19:42:37.773Z",
   "results": {
     "goodDayTown": {
       "value": {
-        "worcester": 0.315
+        "worcester": 0.351
       },
       "households": {
         "worcester": 54233
@@ -12,7 +12,7 @@
     },
     "goodDayCarless": {
       "value": {
-        "worcester": 0.47
+        "worcester": 0.508
       },
       "households": {
         "worcester": 54233
@@ -20,7 +20,7 @@
     },
     "goodDayOver65": {
       "value": {
-        "worcester": 0.271
+        "worcester": 0.301
       },
       "households": {
         "worcester": 54233
@@ -36,7 +36,7 @@
     },
     "greenWithin5": {
       "value": {
-        "worcester": 0.584
+        "worcester": 0.745
       },
       "households": {
         "worcester": 54233
@@ -102,10 +102,10 @@
         "households": 582
       },
       {
-        "group": "E01032284",
-        "name": "Worcester 013B",
+        "group": "E01032290",
+        "name": "Worcester 012E",
         "value": 0,
-        "households": 834
+        "households": 658
       }
     ],
     "mostGoodDay": [
@@ -128,25 +128,25 @@
         "households": 658
       },
       {
+        "group": "E01032312",
+        "name": "Worcester 004B",
+        "value": 0.936,
+        "households": 658
+      },
+      {
         "group": "E01033249",
         "name": "Worcester 011F",
         "value": 0.915,
         "households": 748
-      },
-      {
-        "group": "E01032280",
-        "name": "Worcester 007A",
-        "value": 0.909,
-        "households": 904
       }
     ],
     "goodDayVsNeed": {
       "groups": 75,
-      "r2": 0.27,
+      "r2": 0.26,
       "predictors": {
         "need": {
-          "coefficient": 0.896,
-          "t": 5.3,
+          "coefficient": 0.913,
+          "t": 5,
           "control": false
         }
       }

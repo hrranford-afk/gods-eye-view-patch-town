@@ -552,6 +552,57 @@ async function pricesTown(id) {
   console.log(`[planner] ${sales.length} sales ${prices.years.join('–')}, medians for ${Object.keys(prices.byArea).length} neighbourhoods → ${dir}/prices.json`);
 }
 
+/** Workplace jobs per neighbourhood (ONS Business Register and Employment Survey) → jobs.json. */
+async function jobsTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const codes = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas.map((a) => a.code);
+  const byArea = {};
+  let year = null;
+  for (let i = 0; i < codes.length; i += 50) {
+    // industry 37748736 = all industries; employment_status 4 = employment; measure 1 = count.
+    const res = await fetch(`${NOMIS}/NM_189_1.data.csv?date=latest&industry=37748736&employment_status=4&measure=1&measures=20100&select=date_name,geography_code,obs_value&geography=${codes.slice(i, i + 50).join(',')}`);
+    if (!res.ok) throw new Error(`Nomis BRES answered ${res.status}`);
+    for (const row of parseCsv(await res.text())) {
+      byArea[row.GEOGRAPHY_CODE] = { jobs: Number(row.OBS_VALUE) };
+      year = row.DATE_NAME;
+    }
+  }
+  writeFileSync(path.join(dir, 'jobs.json'), JSON.stringify({ source: `ONS Business Register and Employment Survey ${year} (open access, rounded)`, year, byArea }));
+  const total = Object.values(byArea).reduce((t, a) => t + a.jobs, 0);
+  console.log(`[planner] ${total} jobs in ${Object.keys(byArea).length} neighbourhoods (${year}) → ${dir}/jobs.json`);
+}
+
+const INCOME_FYE2023 = 'https://www.ons.gov.uk/file?uri=/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales/financialyearending2023/datasetfinal.xlsx';
+
+/** Household income by neighbourhood (ONS small area estimates, via scripts/planner-income.py) → income.json. */
+async function incomeTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const xlsx = await cached(INCOME_FYE2023, 'income-fye2023.xlsx');
+  const { spawnSync } = await import('node:child_process');
+  const run = spawnSync('python3', ['scripts/planner-income.py', xlsx, path.join(dir, 'census.json'), path.join(dir, 'income.json')], { encoding: 'utf8' });
+  if (run.status !== 0) throw new Error(`planner-income.py failed: ${run.stderr || run.stdout}`);
+  console.log(`[planner] ${run.stdout.trim()}`);
+}
+
+/** Electoral ward of each neighbourhood (ONS LSOA → ward lookup, May 2024) → wards.json. */
+async function wardsTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const codes = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas.map((a) => a.code);
+  const byArea = {};
+  for (let i = 0; i < codes.length; i += 50) {
+    const where = `LSOA21CD IN (${codes.slice(i, i + 50).map((c) => `'${c}'`).join(',')})`;
+    const q = new URLSearchParams({ where, outFields: 'LSOA21CD,WD24CD,WD24NM', returnGeometry: 'false', f: 'json' });
+    const res = await fetch(`https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA21_WD24_LAD24_EW_LU/FeatureServer/0/query?${q}`);
+    if (!res.ok) throw new Error(`ONS lookup answered ${res.status}`);
+    for (const f of (await res.json()).features || []) byArea[f.attributes.LSOA21CD] = { ward: f.attributes.WD24NM, wardCode: f.attributes.WD24CD };
+  }
+  writeFileSync(path.join(dir, 'wards.json'), JSON.stringify({ source: 'ONS LSOA (2021) to Electoral Ward (May 2024) lookup', byArea }));
+  console.log(`[planner] ${new Set(Object.values(byArea).map((w) => w.ward)).size} wards for ${Object.keys(byArea).length} neighbourhoods → ${dir}/wards.json`);
+}
+
 /** Load the town model from a town folder: town.json plus whatever extras exist. */
 export function loadModel(dir) {
   const read = (f) => (existsSync(path.join(dir, f)) ? JSON.parse(readFileSync(path.join(dir, f), 'utf8')) : null);
@@ -560,6 +611,7 @@ export function loadModel(dir) {
   return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json'), flood: read('flood.json'), planning: read('planning.json'),
     deprivation: read('deprivation.json'), crime: read('crime.json'), prices: read('prices.json'),
     schools: read('schools.json'), collisions: read('collisions.json'),
+    jobs: read('jobs.json'), income: read('income.json'), wards: read('wards.json'),
   });
 }
 
@@ -610,10 +662,10 @@ function atlasTown(id) {
   for (const [theme, label] of COMPASS) {
     const rows = layers.filter((l) => l.theme === theme);
     console.log(`\n${label}`);
-    for (const l of rows) console.log(`  ${l.status === 'mapped' ? '✓' : '·'} ${l.name}${l.count != null ? ` (${l.count})` : ''} — ${l.source}${l.status === 'missing' ? '  [to map]' : ''}`);
+    for (const l of rows) console.log(`  ${l.status === 'mapped' ? '✓' : l.status === 'unavailable' ? '×' : '·'} ${l.name}${l.count != null ? ` (${l.count})` : ''} — ${l.source}${l.status === 'missing' ? '  [to map]' : ''}`);
   }
   const mapped = layers.filter((l) => l.status === 'mapped').length;
-  console.log(`\n[planner] ${mapped} of ${layers.length} layers mapped for ${town.name} → ${dir}/atlas.json`);
+  console.log(`\n[planner] ${mapped} of ${layers.length} layers mapped for ${town.name}${layers.some((l) => l.status === 'unavailable') ? ` (${layers.filter((l) => l.status === 'unavailable').length} not openly available)` : ''} → ${dir}/atlas.json`);
 }
 
 /** Print every planner tool and its arguments. */
@@ -674,6 +726,10 @@ function analyseTown(id) {
   }
   writeFileSync(path.join(dir, 'access.geojson'), JSON.stringify(cellsToGeoJson(cells)));
   writeFileSync(path.join(dir, 'roads.geojson'), JSON.stringify(roadsToGeoJson(data.roads)));
+  writeFileSync(path.join(dir, 'cycle.geojson'), JSON.stringify({
+    type: 'FeatureCollection',
+    features: data.roads.filter((r) => r.cycle).map((r) => ({ type: 'Feature', properties: { cycle: r.cycle, name: r.name }, geometry: { type: 'LineString', coordinates: r.coords.map(([x, y]) => [Math.round(x * 1e5) / 1e5, Math.round(y * 1e5) / 1e5]) } })),
+  }));
   writeFileSync(path.join(dir, 'places.geojson'), JSON.stringify(placesToGeoJson(data.places)));
   const planningPath = path.join(dir, 'planning.json');
   if (existsSync(planningPath)) {
@@ -744,12 +800,15 @@ try {
   else if (command === 'collisions') await collisionsTown(id);
   else if (command === 'schools') await schoolsTown(id);
   else if (command === 'prices') await pricesTown(id);
+  else if (command === 'jobs') await jobsTown(id);
+  else if (command === 'income') await incomeTown(id);
+  else if (command === 'wards') await wardsTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'atlas') atlasTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

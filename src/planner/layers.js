@@ -136,8 +136,23 @@ export function pricesByArea(sales, areas, { span = 3 } = {}) {
  * Put per-area figures onto census areas as plain numbers, so every tool can
  * use them: deprivation domains, crime per 1,000 residents, house prices.
  */
-export function attachLayers(areas, { deprivation = null, crime = null, prices = null } = {}) {
+export function attachLayers(areas, { deprivation = null, crime = null, prices = null, jobs = null, income = null, wards = null } = {}) {
   for (const a of areas) {
+    const j = jobs?.byArea?.[a.code];
+    if (j) {
+      a.jobs = j.jobs;
+      a.jobsPerResident = a.residents ? Math.round((j.jobs / a.residents) * 100) / 100 : null;
+    }
+    const inc = income?.byArea?.[a.code];
+    if (inc) {
+      a.incomeTotal = inc.incomeTotal ?? null;
+      a.incomeAfterHousing = inc.incomeAfterHousing ?? null;
+    }
+    const w = wards?.byArea?.[a.code];
+    if (w) {
+      a.ward = w.ward;
+      a.wardCode = w.wardCode;
+    }
     const d = deprivation?.byArea?.[a.code];
     if (d) Object.assign(a, d);
     const c = crime?.byArea?.[a.code];

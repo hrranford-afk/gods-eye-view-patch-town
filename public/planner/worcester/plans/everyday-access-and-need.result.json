@@ -1,6 +1,6 @@
 {
   "question": "Who in Worcester finds everyday life hardest to reach, and are they the people who need it most?",
-  "ranAt": "2026-10-28T18:32:50.037Z",
+  "ranAt": "2026-10-28T19:42:35.582Z",
   "results": {
     "doesNeedGoWithDistance": {
       "groups": 75,
@@ -78,7 +78,7 @@
     ],
     "gpByRiverBank": {
       "value": {
-        "east": 17.15,
+        "east": 17.151,
         "west": 20.621
       },
       "households": {
@@ -88,7 +88,7 @@
     },
     "gpForCarlessHouseholds": {
       "value": {
-        "worcester": 13.914
+        "worcester": 13.915
       },
       "households": {
         "worcester": 54233

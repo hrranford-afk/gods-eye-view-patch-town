@@ -1,6 +1,6 @@
 {
   "town": "worcester",
-  "checkedAt": "2026-10-28T18:32:19.711Z",
+  "checkedAt": "2026-10-28T19:41:56.655Z",
   "layers": [
     {
       "id": "census",
@@ -60,13 +60,13 @@
     {
       "id": "pharmacy",
       "theme": "health",
-      "name": "Pharmacies and dentists",
-      "source": "NHS ODS / NHS service search",
-      "licence": "OGL",
-      "status": "missing",
-      "count": null,
+      "name": "Pharmacies and dentists (as mapped)",
+      "source": "OpenStreetMap (official NHS lists not openly downloadable from here)",
+      "licence": "ODbL",
+      "status": "mapped",
+      "count": 18,
       "date": null,
-      "command": null
+      "command": "import"
     },
     {
       "id": "food",
@@ -97,7 +97,7 @@
       "source": "OpenStreetMap",
       "licence": "ODbL",
       "status": "mapped",
-      "count": 819,
+      "count": 2774,
       "date": null,
       "command": "import"
     },
@@ -115,13 +115,13 @@
     {
       "id": "trees",
       "theme": "nature",
-      "name": "Tree cover and protected trees",
-      "source": "planning.data.gov.uk; Forest Research",
-      "licence": "OGL",
-      "status": "missing",
-      "count": null,
+      "name": "Woodland and mapped trees",
+      "source": "OpenStreetMap (no protected-tree data published for Worcester)",
+      "licence": "ODbL",
+      "status": "mapped",
+      "count": 2737,
       "date": null,
-      "command": null
+      "command": "import"
     },
     {
       "id": "flood",
@@ -159,13 +159,13 @@
     {
       "id": "income",
       "theme": "security",
-      "name": "Household income (MSOA)",
-      "source": "ONS",
+      "name": "Household income, total and after housing costs (FYE 2023, MSOA)",
+      "source": "ONS small area income estimates",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "income"
     },
     {
       "id": "crime",
@@ -203,13 +203,13 @@
     {
       "id": "jobs",
       "theme": "purpose",
-      "name": "Jobs by area (workplace employment)",
+      "name": "Jobs by neighbourhood (workplace employment, 2024)",
       "source": "ONS BRES via Nomis",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "jobs"
     },
     {
       "id": "streets",
@@ -258,13 +258,13 @@
     {
       "id": "cycleRoutes",
       "theme": "movement",
-      "name": "Cycle routes and cycle parking",
+      "name": "Cycle tracks, lanes and parking",
       "source": "OpenStreetMap",
       "licence": "ODbL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null
+      "status": "mapped",
+      "count": 601,
+      "date": "2026-10-28",
+      "command": "analyse"
     },
     {
       "id": "vacant",
@@ -324,10 +324,21 @@
     {
       "id": "wards",
       "theme": "voice",
-      "name": "Wards and councillors; planning applications; local plan sites",
-      "source": "ONS; planning.data.gov.uk",
+      "name": "Electoral wards (May 2024)",
+      "source": "ONS lookup",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-28",
+      "command": "wards"
+    },
+    {
+      "id": "applications",
+      "theme": "voice",
+      "name": "Planning applications and councillors",
+      "source": "Not published openly for Worcester (none on planning.data.gov.uk; council portal not scraped)",
+      "licence": "—",
+      "status": "unavailable",
       "count": null,
       "date": null,
       "command": null

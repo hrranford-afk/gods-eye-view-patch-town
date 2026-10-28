@@ -24,12 +24,14 @@ HOME = re.compile(r"^(house|residential|apartments|detached|semidetached_house|t
 # Places people meet (third places), and public green space. Mirror of
 # MEET_AMENITIES / greenKind in src/planner/osm.js.
 MEET = {"cafe", "pub", "bar", "library", "community_centre", "social_centre", "arts_centre", "place_of_worship"}
+HEALTH = {"pharmacy", "dentist"}
 
 
 def is_green(tags):
     if tags.get("access") in ("private", "no"):
         return False
     return (tags.get("leisure") in ("park", "playground", "nature_reserve", "common", "recreation_ground", "village_green")
+            or tags.get("natural") == "wood" or tags.get("landuse") == "forest"
             or tags.get("landuse") in ("recreation_ground", "village_green")
             or (tags.get("leisure") == "garden" and tags.get("garden:type") != "residential" and "name" in tags))
 
@@ -47,6 +49,9 @@ def wanted_thing(tags):
         or tags.get("healthcare") in ("doctor", "clinic")
         or vacant_shop(tags)
         or tags.get("amenity") in MEET
+        or tags.get("amenity") in HEALTH or tags.get("healthcare") in HEALTH
+        or tags.get("amenity") == "bicycle_parking"
+        or tags.get("natural") == "tree"
     )
 
 

@@ -39,7 +39,7 @@ street network, buses, the river) and answer with a **plan** of general
 | Tool | What it does |
 |---|---|
 | `travel` | minutes from every home to the nearest place of a kind, walking or bus-or-walk |
-| `summarise` | per-home values → one number per town / area / river bank / 250 m cell, weighted by households, need, no-car… |
+| `summarise` | per-home values → one number per town / area / ward / river bank / 250 m cell, weighted by households, need, no-car… |
 | `count` | places of a kind per area, per 1,000 households |
 | `attribute` | any figure per area: census shares, need, history (`newHomesShare`, `carCommute2011`…); `minus` gives a change |
 | `fields` | every figure the areas carry |
@@ -87,6 +87,9 @@ npm run planner -- collisions worcester  # road collisions, 5 years (STATS19)
 npm run planner -- schools worcester   # schools register: phase, places, pupils
 npm run planner -- prices worcester    # house sales since 2015, medians per neighbourhood
 npm run planner -- flood worcester     # Environment Agency Flood Zones 2 and 3
+npm run planner -- jobs worcester      # workplace jobs per neighbourhood (BRES)
+npm run planner -- income worcester    # household income, FYE 2023 (needs: pip install openpyxl)
+npm run planner -- wards worcester     # electoral ward of each neighbourhood
 npm run planner -- atlas worcester     # what's mapped, by compass theme
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)

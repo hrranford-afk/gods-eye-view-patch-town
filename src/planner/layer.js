@@ -23,6 +23,7 @@ export const THEMES = Object.freeze([
   { id: 'food', label: 'Food and shops', on: false },
   { id: 'learning', label: 'Schools', on: false },
   { id: 'movement', label: 'Movement: roads, buses, crossings', on: true },
+  { id: 'cycling', label: 'Cycling: tracks, lanes, parking', on: false },
   { id: 'safety', label: 'Safety: serious and fatal road collisions', on: false },
   { id: 'flood', label: 'Flood zones', on: false },
   { id: 'land', label: 'Land: empty shops, brownfield', on: false },
@@ -34,6 +35,8 @@ export const THEMES = Object.freeze([
 export function placeTheme(kind) {
   if (kind === 'gp') return 'health';
   if (kind.startsWith('collision:')) return 'safety';
+  if (kind.startsWith('health:')) return 'health';
+  if (kind.startsWith('cycle:')) return 'cycling';
   if (kind === 'school') return 'learning';
   if (kind === 'bus') return 'movement';
   if (kind.startsWith('meet:')) return 'meet';
@@ -141,7 +144,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning }) {
+  function draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning, cycle }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -172,6 +175,14 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           },
         });
       }
+    }
+    // Cycle network: tracks solid, on-road lanes thinner.
+    for (const f of cycle?.features || []) {
+      const track = f.properties.cycle === 'track';
+      add('cycling', {
+        name: `${track ? 'Cycle track' : 'Cycle lane'}${f.properties.name ? `: ${f.properties.name}` : ''}`,
+        polyline: { positions: Cesium.Cartesian3.fromDegreesArray(f.geometry.coordinates.flat()), width: track ? 4 : 2.5, material: Cesium.Color.fromCssColorString(track ? '#20c997' : '#96f2d7').withAlpha(0.95), clampToGround: true },
+      });
     }
     // Brownfield register: sized by how many homes the site could take.
     for (const b of planning?.brownfield || []) {
@@ -255,7 +266,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       // Green space is many edge points per park, and `school:<phase>` repeats
       // `school`: neither is drawn as dots. Slight collisions are too many to show.
       const k = f.properties.kind;
-      if (k.startsWith('green:') || k.startsWith('school:') || k === 'collision:slight' || k.startsWith('land:') || k.startsWith('heritage:') || k === 'vacant' || k.startsWith('food:')) continue;
+      if (k.startsWith('green:') || k.startsWith('school:') || k === 'collision:slight' || k.startsWith('land:') || k.startsWith('heritage:') || k === 'vacant' || k.startsWith('food:') || k === 'tree') continue;
       const [lon, lat] = f.geometry.coordinates;
       const pr = f.properties;
       add(placeTheme(pr.kind), {
@@ -268,7 +279,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
           pixelSize: k === 'bus' ? 4 : k === 'collision:fatal' ? 10 : 7,
-          color: Cesium.Color.fromCssColorString(PLACE_COLOR[k] || (k.startsWith('meet:') ? '#ffa94d' : k === 'collision:fatal' ? '#e03131' : k === 'collision:serious' ? '#f08c00' : '#ffffff')),
+          color: Cesium.Color.fromCssColorString(PLACE_COLOR[k] || (k.startsWith('meet:') ? '#ffa94d' : k === 'collision:fatal' ? '#e03131' : k === 'collision:serious' ? '#f08c00' : k.startsWith('health:') ? '#f783ac' : k === 'cycle:parking' ? '#20c997' : '#ffffff')),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
@@ -455,7 +466,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning] = await Promise.all([
+        const [access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning, cycle] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
@@ -469,9 +480,10 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           getJson('vacant.geojson', signal).catch(() => null),
           getJson('flood.json', signal).catch(() => null),
           getJson('planning.json', signal).catch(() => null),
+          getJson('cycle.geojson', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning });
+        draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood, planning, cycle });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

@@ -42,6 +42,7 @@ export const HOME_ATTRIBUTES = Object.freeze(['need', 'noCar', 'over65', 'depriv
 export function buildModel({
   town, census = null, gps = null, buses = null, food = null, history = null, flood = null, planning = null,
   deprivation = null, crime = null, prices = null, schools = null, collisions = null,
+  jobs = null, income = null, wards = null,
 }) {
   const data = { ...town, places: [...town.places], homes: town.homes.map((h) => ({ ...h })) };
   // Official GP practices replace OpenStreetMap's, which miss surgeries and
@@ -86,7 +87,7 @@ export function buildModel({
     attachCensus(data, areas);
     attachNeed(areas);
     if (history) attachHistory(areas, { growth: history.growth, then: history.census2011 });
-    attachLayers(areas, { deprivation, crime, prices });
+    attachLayers(areas, { deprivation, crime, prices, jobs, income, wards });
     if (zones.length) {
       const acc = new Map();
       for (const h of data.homes) {

@@ -38,6 +38,7 @@ const MEET_AMENITIES = Object.freeze({
 /** Public green space kind for a way's tags, or null. */
 export function greenKind(tags = {}) {
   if (tags.access === 'private' || tags.access === 'no') return null;
+  if (tags.natural === 'wood' || tags.landuse === 'forest') return 'green:wood';
   if (tags.leisure === 'playground') return 'green:playground';
   if (tags.leisure === 'nature_reserve') return 'green:nature';
   if (['park', 'common', 'recreation_ground', 'village_green'].includes(tags.leisure)) return 'green:park';
@@ -61,6 +62,17 @@ function accessPoints(coords, spacingM = 60) {
     }
   }
   return out;
+}
+
+/**
+ * Cycle provision on a way: 'track' (a cycleway, or a path designated for
+ * bikes), 'lane' (a painted or protected lane on a road), or null.
+ */
+export function cycleKind(tags = {}) {
+  if (tags.highway === 'cycleway' || ((tags.highway === 'path' || tags.highway === 'footway') && tags.bicycle === 'designated')) return 'track';
+  const sides = [tags.cycleway, tags['cycleway:both'], tags['cycleway:left'], tags['cycleway:right']];
+  if (sides.some((v) => v === 'lane' || v === 'track' || v === 'share_busway')) return 'lane';
+  return null;
 }
 
 /** Roads people cannot (or should not) walk along. */
@@ -91,7 +103,7 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
         s + ((n - s) * (i + 1)) / tiles, w + ((e - w) * (j + 1)) / tiles,
       ].map((x) => x.toFixed(5));
       const b = `(${box.join(',')})`;
-      queries.push(`[out:json][timeout:${timeoutS}];(way["highway"]${b};way["waterway"="river"]${b};way["leisure"~"^(park|playground|nature_reserve|common|recreation_ground|village_green|garden)$"]${b};way["landuse"~"^(recreation_ground|village_green)$"]${b};);out geom;`);
+      queries.push(`[out:json][timeout:${timeoutS}];(way["highway"]${b};way["waterway"="river"]${b};way["leisure"~"^(park|playground|nature_reserve|common|recreation_ground|village_green|garden)$"]${b};way["landuse"~"^(recreation_ground|village_green|forest)$"]${b};way["natural"="wood"]${b};);out geom;`);
       queries.push(`[out:json][timeout:${timeoutS}];
 (
   nwr["shop"~"^(supermarket|convenience|greengrocer|butcher|bakery)$"]${b};
@@ -99,7 +111,9 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
   nwr["amenity"~"^(doctors|clinic)$"]${b};
   nwr["healthcare"~"^(doctor|clinic)$"]${b};
   node["highway"="bus_stop"]${b};
-  nwr["amenity"~"^(${Object.keys(MEET_AMENITIES).join('|')})$"]${b};
+  nwr["amenity"~"^(${Object.keys(MEET_AMENITIES).join('|')}|pharmacy|dentist|bicycle_parking)$"]${b};
+  nwr["healthcare"~"^(pharmacy|dentist)$"]${b};
+  node["natural"="tree"]${b};
   nwr["shop"="vacant"]${b};
   nwr["disused:shop"]${b};
   nwr["was:shop"]${b};
@@ -128,6 +142,10 @@ function placeKind(tags = {}) {
   if (tags.healthcare === 'doctor' || tags.healthcare === 'clinic') return 'gp';
   if (tags.highway === 'bus_stop') return 'bus';
   if (MEET_AMENITIES[tags.amenity]) return `meet:${MEET_AMENITIES[tags.amenity]}`;
+  if (tags.amenity === 'pharmacy' || tags.healthcare === 'pharmacy') return 'health:pharmacy';
+  if (tags.amenity === 'dentist' || tags.healthcare === 'dentist') return 'health:dentist';
+  if (tags.amenity === 'bicycle_parking') return 'cycle:parking';
+  if (tags.natural === 'tree') return 'tree';
   return null;
 }
 
@@ -163,6 +181,7 @@ export function parseOverpass(json, townId) {
         id: el.id,
         kind: roadKind(tags.highway),
         walk: !NO_WALK.has(tags.highway) && tags.foot !== 'no' && tags.access !== 'private',
+        cycle: cycleKind(tags),
         drive: !/^(footway|path|pedestrian|steps|cycleway|bridleway|track|corridor|construction|proposed)$/.test(tags.highway)
           && tags.motor_vehicle !== 'no' && tags.access !== 'no' && tags.access !== 'private',
         name: tags.name || tags.ref || '',

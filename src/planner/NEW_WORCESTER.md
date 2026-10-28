@@ -69,7 +69,7 @@ _Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and
 | L6 | **The river divides less than it looks.** West bank 21 min to a GP by bus or walking, east 17. Six walkable crossings, two for cars; a new footbridge saves under a minute. | `river.json`, `plans/everyday-access-and-need.json` |
 | L7 | **GP surgeries are big and some are stretched.** 9 practices, 6,900–21,900 patients each (England typical: 8,800). Patients finding the wait acceptable: 55–59% at Haresfield House, St Martin's Gate and St Johns House (England 66%). St Peters is the biggest gap. | `gps.json`, questions q3 |
 | L8 | **The centre has room.** ~27 of 35 mapped empty shops are in the city centre, including the former Debenhams. | `vacant.geojson` |
-| L10 | **Only 32% of households have a good day within reach** (meeting place, green space, food, GP). GP access is the bottleneck (48% within 15 min walking or by bus), then green space (58% within 5 min); meeting places and food are near most people (84%). Car-less households do better (47%), over-65s worse (27%). Need goes *with* a good day (t = 5.3): the central, poorer neighbourhoods have it; St Peters (Spetchley Road, Foxglove Road) and the Warndon Villages (Collings Avenue, Bradford Place) have none of it. | `plans/good-day.json` |
+| L10 | **Only 35% of households have a good day within reach** (meeting place ≤ 10 min, green space ≤ 5 min including woodland, food ≤ 10 min, GP ≤ 15 min walking or by bus). GP access is the bottleneck (48%); green space reaches 75%, meeting places and food 84%. Car-less households do better (51%), over-65s worse (30%). Need goes *with* a good day (t = 5.0): the central, poorer neighbourhoods have it; St Peters (Spetchley Road, Foxglove Road), the Warndon Villages (Collings Avenue, Bradford Place, Rye Place) and Lower Wick have none of it. | `plans/good-day.json` |
 | L11 | **Where life is closest, the river is too.** 96% of households are outside flood zones, but the best "good day" neighbourhood, St Clements by the river (Back Lane South), has 21% of homes in Flood Zone 3. New Worcester's dense, walkable centre has to live with the Severn. | `plans/good-day.json`, `flood.json` |
 | L9 | **Check the map against official lists.** OpenStreetMap missed three GP surgeries and counted hospital departments as GPs. The correction overturned three answers. | IDEAS.md correction |
 
@@ -106,14 +106,20 @@ That's the next tool to build.
 
 ## 3½. What's mapped now
 
-`npm run planner -- atlas worcester` lists it by compass theme: **24 of 30
-layers**. New this round: deprivation 2025 (all seven domains), street
-crime per neighbourhood (12 months), road collisions (5 years, by
-severity), the schools register (places and pupils), house prices since
-2015, older people living alone, brownfield land (67 sites, up to 3,448
-homes), listed buildings and conservation areas, meeting places, green
-space and flood zones. Still to map: pharmacies and dentists, trees,
-household income, jobs, cycle routes, wards and planning applications.
+`npm run planner -- atlas worcester` lists it by compass theme: **30 of 31
+layers mapped**. The one gap is planning applications and councillors,
+which aren't published openly for Worcester.
+
+| Theme | Mapped |
+|---|---|
+| People | Census 2021 and 2011, households of one person aged 66+, meeting places (231), wards (25) |
+| Health | GP practices (official, with list size and survey), food businesses (FSA), pharmacies and dentists (as mapped, incomplete), air quality area |
+| Nature | Parks, playgrounds, nature reserves, woodland, 768 mapped trees, the river and its crossings |
+| Security | Flood Zones 2–3, Indices of Deprivation 2025, street crime (12 months, per neighbourhood), house prices since 2015, household income (FYE 2023) |
+| Purpose | Schools register (places, pupils), jobs by neighbourhood (66,920 in 2024) |
+| Movement | Streets and paths, bus timetable, traffic and cycle counts 2000–2025, road collisions (5 years), cycle network (68 km of tracks, 4 km of lanes) |
+| Land | Empty shops, brownfield register (67 sites, up to 3,448 homes), listed buildings, conservation areas |
+| Voice | Questions (the question loop), scenarios |
 
 ## 4. Open questions feeding New Worcester
 
