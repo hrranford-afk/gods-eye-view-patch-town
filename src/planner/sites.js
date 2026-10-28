@@ -32,13 +32,15 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
   const { dist } = nearestFrom(graph, sources);
 
   // Unserved homes, grouped by the network node they walk from.
-  const unserved = new Map(); // node → [walk-to-node metres...]
+  const unserved = new Map(); // node → [[walk-to-node metres, households]...]
   for (const h of town.homes) {
+    const w = h.w ?? 1;
+    if (w <= 0) continue;
     const s = graph.snap([h.lon, h.lat]);
     if (!s || s.metres > MAX_SNAP_M) continue;
     if (s.metres + dist[s.node] <= target) continue;
     if (!unserved.has(s.node)) unserved.set(s.node, []);
-    unserved.get(s.node).push(s.metres);
+    unserved.get(s.node).push([s.metres, w]);
   }
 
   const candidates = [...unserved.keys()];
@@ -50,7 +52,7 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
     const homes = [];
     for (const [hn, offsets] of unserved) {
       if (!Number.isFinite(d[hn])) continue;
-      offsets.forEach((m, i) => { if (d[hn] + m <= target) homes.push(`${hn}:${i}`); });
+      offsets.forEach(([m, w], i) => { if (d[hn] + m <= target) homes.push([`${hn}:${i}`, w]); });
     }
     return { node, homes };
   });
@@ -62,13 +64,13 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
     let bestGain = 0;
     for (const r of reach) {
       let gain = 0;
-      for (const h of r.homes) if (!served.has(h)) gain++;
+      for (const [h, w] of r.homes) if (!served.has(h)) gain += w;
       if (gain > bestGain) { bestGain = gain; best = r; }
     }
     if (!best) break;
-    for (const h of best.homes) served.add(h);
+    for (const [h] of best.homes) served.add(h);
     const [lon, lat] = graph.coords[best.node];
-    sites.push({ kind, lon, lat, homesGained: bestGain });
+    sites.push({ kind, lon, lat, homesGained: Math.round(bestGain) });
   }
   return sites;
 }

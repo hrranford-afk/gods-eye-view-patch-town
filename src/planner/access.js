@@ -43,6 +43,9 @@ export function analyseAccess(town, { cellM = 250, extraRoads = [], extraPlaces 
   let skipped = 0;
 
   for (const home of town.homes) {
+    // Census weight: households this building stands for (1 without census).
+    const w = home.w ?? 1;
+    if (w <= 0) continue;
     const pt = [home.lon, home.lat];
     const s = graph.snap(pt);
     if (!s || s.metres > MAX_SNAP_M) { skipped++; continue; }
@@ -55,13 +58,13 @@ export function analyseAccess(town, { cellM = 250, extraRoads = [], extraPlaces 
       for (const kind of kinds) { cell.minutes[kind] = 0; cell.within[kind] = 0; }
       cells.set(key, cell);
     }
-    cell.homes++;
+    cell.homes += w;
     for (const kind of kinds) {
       const { dist, from, refs } = searches[kind];
       const net = s.metres + dist[s.node];
       const min = Number.isFinite(net) ? net / WALK_M_PER_MIN : 120;
-      cell.minutes[kind] += Math.min(min, 120);
-      if (min <= SERVICE_KINDS[kind].targetMin) cell.within[kind]++;
+      cell.minutes[kind] += Math.min(min, 120) * w;
+      if (min <= SERVICE_KINDS[kind].targetMin) cell.within[kind] += w;
       const ref = refs[from[s.node]];
       if (ref && Number.isFinite(net)) {
         const crow = metresBetween(pt, [ref.lon, ref.lat]);
@@ -86,7 +89,7 @@ export function analyseAccess(town, { cellM = 250, extraRoads = [], extraPlaces 
     }
     out.push({
       bbox: [c.gy * dLat, c.gx * dLon, (c.gy + 1) * dLat, (c.gx + 1) * dLon],
-      homes: c.homes,
+      homes: Math.round(c.homes),
       minutes,
       within,
       score: Math.round((scoreSum / kinds.length) * 100),

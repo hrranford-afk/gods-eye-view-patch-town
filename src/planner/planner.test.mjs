@@ -165,3 +165,35 @@ test('traffic: csv parses quotes, pulse indexes years, diversions need real coun
   const json = toTrafficLayerJson(points, { region: 'test' });
   assert.deepEqual(json.points[3].counted, [0, 0]);
 });
+
+test('census weights spread households over buildings and drive the scores', async () => {
+  const { pointInGeometry, buildAreas, attachCensus, areasToGeoJson } = await import('./census.js');
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  assert.ok(pointInGeometry([0.5, 0.5], square(0, 0, 1, 1)));
+  assert.ok(!pointInGeometry([1.5, 0.5], square(0, 0, 1, 1)));
+  const town = gridTown();
+  const [w, s] = at(0, 0);
+  const [e, n] = at(4, 4);
+  const areas = buildAreas(
+    { features: [{ properties: { LSOA21CD: 'E01', LSOA21NM: 'Grid 001A' }, geometry: square(w - 0.001, s - 0.001, e + 0.001, n + 0.001) }] },
+    {
+      households: [{ GEOGRAPHY_CODE: 'E01', OBS_VALUE: '100' }],
+      residents: [{ GEOGRAPHY_CODE: 'E01', C2021_RESTYPE_3_NAME: 'Total: All usual residents', OBS_VALUE: '230' }],
+      travel: [
+        { GEOGRAPHY_CODE: 'E01', C2021_TTWMETH_12_NAME: 'Total: All usual residents aged 16 years and over in employment', OBS_VALUE: '50' },
+        { GEOGRAPHY_CODE: 'E01', C2021_TTWMETH_12_NAME: 'Driving a car or van', OBS_VALUE: '30' },
+        { GEOGRAPHY_CODE: 'E01', C2021_TTWMETH_12_NAME: 'Bicycle', OBS_VALUE: '5' },
+        { GEOGRAPHY_CODE: 'E01', C2021_TTWMETH_12_NAME: 'Work mainly at or from home', OBS_VALUE: '10' },
+      ],
+    },
+  );
+  town.homes[0].b = 'apartments';
+  attachCensus(town, areas);
+  const total = town.homes.reduce((t, h) => t + h.w, 0);
+  assert.ok(Math.abs(total - 100) < 1e-9, `households should sum to the census: ${total}`);
+  assert.ok(town.homes[0].w > town.homes[1].w, 'a block of flats holds more households than a house');
+  assert.equal(analyseAccess(town, { cellM: 2000 }).summary.homes, 100);
+  const props = areasToGeoJson(areas).features[0].properties;
+  assert.equal(props.carPct, 75); // 30 of the 40 who travel
+  assert.equal(props.homePct, 20);
+});

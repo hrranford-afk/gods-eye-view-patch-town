@@ -23,6 +23,9 @@ export const SERVICE_KINDS = Object.freeze({
 const HOME_BUILDINGS = [
   'house', 'residential', 'apartments', 'detached', 'semidetached_house',
   'terrace', 'bungalow', 'flats',
+  // Most UK buildings are just `yes`; census weights (census.js) decide how
+  // many households each actually holds.
+  'yes',
 ];
 
 /** Roads people cannot (or should not) walk along. */
@@ -118,7 +121,7 @@ export function parseOverpass(json, townId) {
     if (kind) {
       places.push({ id: `${el.type}/${el.id}`, kind, name: tags.name || '', lon: point[0], lat: point[1] });
     } else if (tags.building) {
-      homes.push({ id: `${el.type}/${el.id}`, lon: point[0], lat: point[1] });
+      homes.push({ id: `${el.type}/${el.id}`, b: tags.building, lon: point[0], lat: point[1] });
     }
   }
   return { town: townId, fetchedAt: new Date().toISOString(), roads, places, homes };

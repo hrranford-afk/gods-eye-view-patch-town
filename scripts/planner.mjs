@@ -4,6 +4,7 @@
  *
  *   npm run planner -- fetch worcester     download OSM data (needs overpass-api.de)
  *   npm run planner -- import worcester f.json   use a scripts/planner-pbf.py cut instead
+ *   npm run planner -- census worcester    Census 2021 households + travel to work per neighbourhood
  *   npm run planner -- analyse worcester   score walking access, write map files
  *   npm run planner -- traffic west-midlands   yearly DfT traffic counts → time-lapse layer
  *   npm run planner -- towns               list known towns
@@ -21,6 +22,7 @@ import {
 } from '../src/planner/access.js';
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
 import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/traffic.js';
+import { areasToGeoJson, attachCensus, buildAreas } from '../src/planner/census.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
 // several separated by commas) replaces this list.
@@ -120,6 +122,47 @@ async function trafficRegion(name = 'west-midlands') {
   console.log(`[planner] Wrote ${dir}/${name}.json`);
 }
 
+const ONS_LSOA_2021 = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BGC_V5/FeatureServer/0/query';
+const NOMIS = 'https://www.nomisweb.co.uk/api/v01/dataset';
+// Census 2021 tables: households (TS041), usual residents (TS001), travel to work (TS061).
+const CENSUS_TABLES = {
+  households: ['NM_2059_1', 'geography_code,obs_value'],
+  residents: ['NM_2021_1', 'geography_code,c2021_restype_3_name,obs_value'],
+  travel: ['NM_2078_1', 'geography_code,c2021_ttwmeth_12_name,obs_value'],
+};
+
+/** Download Census 2021 neighbourhoods (LSOAs) covering a town. */
+async function censusTown(id) {
+  const town = getTown(id);
+  const [s, w, n, e] = town.bbox;
+  const q = new URLSearchParams({
+    geometry: `${w},${s},${e},${n}`, geometryType: 'esriGeometryEnvelope', inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects', outFields: 'LSOA21CD,LSOA21NM', outSR: '4326', f: 'geojson',
+  });
+  console.log(`[planner] Census 2021 for ${town.name}: neighbourhood boundaries…`);
+  const bres = await fetch(`${ONS_LSOA_2021}?${q}`);
+  if (!bres.ok) throw new Error(`ONS boundaries answered ${bres.status}`);
+  const boundaries = await bres.json();
+  const codes = boundaries.features.map((f) => f.properties.LSOA21CD);
+  const tables = {};
+  for (const [name, [dataset, select]] of Object.entries(CENSUS_TABLES)) {
+    tables[name] = [];
+    for (let i = 0; i < codes.length; i += 50) {
+      const url = `${NOMIS}/${dataset}.data.csv?date=latest&measures=20100&select=${select}&geography=${codes.slice(i, i + 50).join(',')}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Nomis ${dataset} answered ${res.status}`);
+      tables[name].push(...parseCsv(await res.text()));
+    }
+  }
+  const areas = buildAreas(boundaries, tables);
+  const dir = townDir(town.id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ town: town.id, source: 'ONS Census 2021 (TS001, TS041, TS061), LSOA 2021 boundaries', areas }));
+  const hh = areas.reduce((t, a) => t + a.households, 0);
+  const people = areas.reduce((t, a) => t + a.residents, 0);
+  console.log(`[planner] ${areas.length} neighbourhoods, ${hh} households, ${people} residents → ${dir}/census.json`);
+}
+
 /** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
 function importTown(id, file) {
   const town = getTown(id);
@@ -135,7 +178,19 @@ function analyseTown(id) {
   const town = getTown(id);
   const dir = townDir(town.id);
   const data = JSON.parse(readFileSync(path.join(dir, 'town.json'), 'utf8'));
+  // With census.json present, homes are weighted to real household numbers.
+  const censusPath = path.join(dir, 'census.json');
+  let areas = null;
+  if (existsSync(censusPath)) {
+    areas = JSON.parse(readFileSync(censusPath, 'utf8')).areas;
+    const { unplaced } = attachCensus(data, areas);
+    writeFileSync(path.join(dir, 'areas.geojson'), JSON.stringify(areasToGeoJson(areas)));
+    console.log(`[planner] Census weights applied (${areas.length} neighbourhoods${unplaced.length ? `, ${unplaced.length} with no mapped buildings` : ''})`);
+  } else {
+    console.log(`[planner] No census.json: counting each mapped home once (run: npm run planner -- census ${town.id})`);
+  }
   const { cells, summary } = analyseAccess(data);
+  summary.homesAre = areas ? 'Census 2021 households' : 'mapped residential buildings';
   const sites = Object.keys(SERVICE_KINDS).flatMap((kind) => suggestSites(data, { kind, count: 3 }));
   summary.suggestedSites = sites.map(({ kind, lon, lat, homesGained }) => ({ kind, lonLat: [lon, lat], homesGained }));
   const [best] = rankChanges(data, sites);
@@ -169,10 +224,11 @@ try {
   if (command === 'fetch') await fetchTown(id);
   else if (command === 'import') importTown(id, file);
   else if (command === 'traffic') await trafficRegion(id);
+  else if (command === 'census') await censusTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|analyse|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|analyse|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

@@ -54,6 +54,9 @@ export function createApplicationData({
   militaryAwarenessLayer.attachDataManager(dataManager);
   dataManager.register(createPlannerLayer({ townId: 'worcester' }));
   dataManager.register(createTrafficHistoryLayer({ region: 'west-midlands' }));
+  dataManager.register(
+    createTrafficHistoryLayer({ region: 'west-midlands', metric: 'cycles' }),
+  );
   for (const layer of localDataLayers) {
     dataManager.register(layer);
   }

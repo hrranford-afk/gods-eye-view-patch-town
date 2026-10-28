@@ -47,10 +47,29 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites }) {
+  function draw({ access, roads, places, sites, areas }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
+    // Census neighbourhoods: outlines only, click for how people get to work.
+    for (const f of areas?.features || []) {
+      const p = f.properties;
+      const rings = f.geometry.type === 'Polygon' ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((poly) => poly[0]);
+      for (const ring of rings) {
+        entities.add({
+          name: `${p.name} (Census 2021)`,
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArray(ring.flat()),
+            width: 1.5,
+            material: Cesium.Color.fromCssColorString('#7fdcff').withAlpha(0.5),
+            clampToGround: true,
+          },
+          description: `<p><b>${p.households.toLocaleString()} households</b> · ${p.residents.toLocaleString()} residents</p>`
+            + `<p>Getting to work (of those who travel): car ${p.carPct}% · bus ${p.busPct}% · cycle ${p.cyclePct}% · walk ${p.walkPct}%</p>`
+            + `<p>Work from home: ${p.homePct}%</p>`,
+        });
+      }
+    }
     for (const f of access.features) {
       const ring = f.geometry.coordinates[0];
       const p = f.properties;
@@ -150,15 +169,16 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites] = await Promise.all([
+        const [access, roads, places, sites, areas] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
           // Files from before site suggestions existed have no sites.geojson.
           getJson('sites.geojson', signal).catch(() => null),
+          getJson('areas.geojson', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites });
+        draw({ access, roads, places, sites, areas });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

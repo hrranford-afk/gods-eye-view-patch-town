@@ -1,6 +1,8 @@
 import * as Cesium from 'cesium';
 
-const METRES_PER_VEHICLE = 0.08; // column height: 100,000 vehicles/day ≈ 8 km
+// Column height per vehicle/day: 100,000 motor vehicles ≈ 8 km; 200 cyclists ≈ 4 km.
+const METRES_PER = Object.freeze({ all: 0.08, cycles: 20 });
+const METRIC_LABEL = Object.freeze({ all: 'traffic', cycles: 'cycling' });
 const STEP_MS = 1400; // time-lapse speed: one year per step
 
 /**
@@ -24,7 +26,7 @@ export function changeColor(now, before, counted, trend = 1) {
  * labelled in the year they happened. Reads the file
  * `npm run planner -- traffic <region>` writes.
  */
-export function createTrafficHistoryLayer({ region = 'west-midlands', baseUrl = '/planner/traffic', fetchImpl = fetch } = {}) {
+export function createTrafficHistoryLayer({ region = 'west-midlands', metric = 'all', baseUrl = '/planner/traffic', fetchImpl = fetch } = {}) {
   let _viewer = null;
   let _lines = null;
   let _labels = null;
@@ -37,22 +39,26 @@ export function createTrafficHistoryLayer({ region = 'west-midlands', baseUrl = 
   let _lastError = null;
 
   function drawYear() {
-    const { years, points, pulse, diversions } = _data;
+    const { years, points } = _data;
+    const pulse = metric === 'cycles' ? _data.cyclePulse : _data.pulse;
+    // Diversions are a motor-traffic finding; the cycling view leaves them out.
+    const diversions = metric === 'cycles' ? [] : _data.diversions;
     const i = _yearIndex;
     const year = years[i];
     const trend = i > 0 ? pulse[i].vehicleKm / pulse[i - 1].vehicleKm : 1;
     _lines.removeAll();
     let shown = 0;
     for (const p of points) {
-      const v = p.all[i];
+      const series = p[metric];
+      const v = series[i];
       if (!v) continue;
       shown++;
       const base = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 0);
-      const top = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, v * METRES_PER_VEHICLE);
+      const top = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, v * METRES_PER[metric]);
       _lines.add({
         positions: [base, top],
         width: p.type === 'Major' ? 4 : 2,
-        material: Cesium.Material.fromType('Color', { color: changeColor(v, p.all[i - 1], p.counted[i] === 1, trend) }),
+        material: Cesium.Material.fromType('Color', { color: changeColor(v, series[i - 1], p.counted[i] === 1, trend) }),
       });
     }
     _labels.removeAll();
@@ -82,7 +88,7 @@ export function createTrafficHistoryLayer({ region = 'west-midlands', baseUrl = 
       });
     }
     const index = pulse.find((r) => r.year === year)?.index;
-    _banner.textContent = `${year} · region traffic ${index} (2000 = 100) · ${shown} roads · red: grew more than the region · blue: fell${_paused ? ' · paused, click to play' : ''}`;
+    _banner.textContent = `${year} · region ${METRIC_LABEL[metric]} ${index} (2000 = 100) · ${shown} roads · red: grew more than the region · blue: fell${_paused ? ' · paused, click to play' : ''}`;
     _viewer?.scene?.requestRender();
   }
 
@@ -108,9 +114,9 @@ export function createTrafficHistoryLayer({ region = 'west-midlands', baseUrl = 
   }
 
   return {
-    id: 'traffic-history',
-    name: 'Traffic Time-lapse · West Midlands',
-    icon: '▥',
+    id: metric === 'cycles' ? 'cycling-history' : 'traffic-history',
+    name: metric === 'cycles' ? 'Cycling Time-lapse · West Midlands' : 'Traffic Time-lapse · West Midlands',
+    icon: metric === 'cycles' ? '⚲' : '▥',
     source: 'DfT',
     updateInterval: 0,
 

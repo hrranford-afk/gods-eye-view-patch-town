@@ -18,7 +18,7 @@ import sys
 import osmium
 
 SHOP = re.compile(r"^(supermarket|convenience|greengrocer|butcher|bakery)$")
-HOME = re.compile(r"^(house|residential|apartments|detached|semidetached_house|terrace|bungalow|flats)$")
+HOME = re.compile(r"^(house|residential|apartments|detached|semidetached_house|terrace|bungalow|flats|yes)$")
 
 
 def wanted_thing(tags):

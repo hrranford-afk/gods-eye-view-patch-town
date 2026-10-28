@@ -78,15 +78,16 @@ export function yearsOf(points) {
 /**
  * Regional pulse: total vehicle-km per day across points with a known link
  * length, per year, plus an index where the first year is 100. Uses counts
- * and estimates alike, as DfT's own totals do.
+ * and estimates alike, as DfT's own totals do. `metric` is 'all' (motor
+ * vehicles) or 'cycles'.
  */
-export function regionalPulse(points) {
+export function regionalPulse(points, { metric = 'all' } = {}) {
   const years = yearsOf(points);
   const totals = years.map((y) => {
     let vkm = 0;
     for (const p of points) {
       const v = p.years[y];
-      if (v && p.linkKm) vkm += v.all * p.linkKm;
+      if (v && p.linkKm) vkm += v[metric] * p.linkKm;
     }
     return vkm;
   });
@@ -173,6 +174,7 @@ export function toTrafficLayerJson(points, { region }) {
     source: 'Department for Transport road traffic statistics (AADF)',
     years,
     pulse: regionalPulse(points),
+    cyclePulse: regionalPulse(points, { metric: 'cycles' }),
     diversions: findDiversions(points),
     points: points.map((p) => ({
       id: p.id,
@@ -182,6 +184,7 @@ export function toTrafficLayerJson(points, { region }) {
       lon: Math.round(p.lon * 1e5) / 1e5,
       lat: Math.round(p.lat * 1e5) / 1e5,
       all: years.map((y) => p.years[y]?.all ?? null),
+      cycles: years.map((y) => p.years[y]?.cycles ?? null),
       counted: years.map((y) => (p.years[y] ? (p.years[y].counted ? 1 : 0) : null)),
     })),
   };
