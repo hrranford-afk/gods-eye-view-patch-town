@@ -62,25 +62,116 @@
       "id": "q5",
       "question": "Do older people in Lower Wick (35% over 65, 38 min walk to a GP) have a bus or car to get there?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q2",
       "lonLat": [
         -2.24196,
         52.17386
       ],
-      "unlocks": "Census 2021 car availability (TS045); bus timetables (Bus Open Data) for real public-transport times"
+      "unlocks": "Census 2021 car availability (TS045); bus timetables (Bus Open Data) for real public-transport times",
+      "finding": "Mostly yes. Worcester 012E (Lower Wick, around Montreal Close): 34% over 65, 15% of households have no car (city 20%). About 1 household in 7 there relies on walking 38 min or the bus. 012D: 10% no car.",
+      "spawned": [
+        "q7"
+      ]
     },
     {
       "id": "q6",
       "question": "Should 'best site' be ranked by need (health, age, deprivation) instead of just households within walking distance?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q2",
       "lonLat": [
-        -2.21246,
-        52.16665
+        -2.2365,
+        52.1824
       ],
-      "unlocks": "A need score per neighbourhood from data already loaded; change rankChanges to weight by need"
+      "unlocks": "A need score per neighbourhood from data already loaded; change rankChanges to weight by need",
+      "finding": "Yes, and it changes the answer. Weighting each household by its neighbourhood's need (bad health, over-65s, deprivation, no car) moves the best GP site from Norton Road (St Peters) to Malvern Road, St John's (WR2), west of the Severn, then Henwick (Farley Street). Census 2021 need score in census.json.",
+      "spawned": [
+        "q8"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "How often do buses actually run from Lower Wick to a GP surgery?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q5",
+      "lonLat": [
+        -2.2335,
+        52.1735
+      ],
+      "unlocks": "Bus Open Data GTFS timetables (West Midlands, 207 MB, reachable): trips per hour and journey times to each surgery"
+    },
+    {
+      "id": "q8",
+      "question": "Is the west side (St John's, Dines Green, Lower Wick) cut off by the River Severn, with too few crossings?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q6",
+      "lonLat": [
+        -2.2265,
+        52.1885
+      ],
+      "unlocks": "Detour ratios already computed (access.js) split by river side; count of walkable and drivable crossings; traffic counts on the crossings"
+    },
+    {
+      "id": "q9",
+      "question": "Why do corner shops seem to do better in poorer neighbourhoods, and the opposite in well-off ones?",
+      "askedBy": "Harry",
+      "status": "answered",
+      "lonLat": [
+        -2.205,
+        52.201
+      ],
+      "finding": "Partly true, weakly. The most deprived third of Worcester's neighbourhoods has ~1.7x the convenience shops per household (0.96 vs 0.58 per 1,000) and 2x the supermarkets. The likelier driver is car ownership, not money as such: 33% of households there have no car vs 11% in the least deprived third. Only 30 convenience shops are mapped in OSM, so treat as a hint.",
+      "spawned": [
+        "q10"
+      ]
+    },
+    {
+      "id": "q10",
+      "question": "Are corner shops thriving or just surviving, and what else (takeaways, cafes, pubs) clusters with deprivation and bad health?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q9",
+      "lonLat": [
+        -2.205,
+        52.201
+      ],
+      "unlocks": "Food Standards Agency hygiene ratings API (reachable): every food business with type and location; opening and closing dates over time"
+    },
+    {
+      "id": "q11",
+      "question": "What should happen to County Hall, Worcester?",
+      "askedBy": "Harry",
+      "status": "open",
+      "lonLat": [
+        -2.18325,
+        52.18548
+      ],
+      "unlocks": "Site size and condition; planning.data.gov.uk (local plan, constraints, listed status); access scores for the site as homes vs offices vs a health hub; traffic on Spetchley Road; Worcestershire County Council's own estate plans"
+    },
+    {
+      "id": "q12",
+      "question": "What should we do with Worcester's empty shops?",
+      "askedBy": "Harry",
+      "status": "open",
+      "lonLat": [
+        -2.2203,
+        52.1918
+      ],
+      "unlocks": "Where they are: OSM vacant/disused shop tags (patchy), FSA closures, Valuation Office business rates list, council vacancy surveys; footfall proxies (bus stops, car parks, traffic counts); what similar towns did"
+    },
+    {
+      "id": "q13",
+      "question": "What would a 'New Worcester' look like, cyclist-friendly vs driver-friendly?",
+      "askedBy": "Harry",
+      "status": "open",
+      "lonLat": [
+        -2.2215,
+        52.1925
+      ],
+      "unlocks": "Scenarios as sets of network edits, scored on one dashboard (access, traffic, cycling, health benefit via WHO HEAT, safety via STATS19). Ties together q7, q8, q11, q12"
     }
   ]
 }

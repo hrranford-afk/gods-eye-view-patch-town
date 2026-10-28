@@ -57,7 +57,7 @@ function bboxOf(geometry) {
  * Build census areas from ONS boundaries (GeoJSON features with LSOA21CD /
  * LSOA21NM) and Nomis CSV rows (households, residents, travel to work).
  */
-export function buildAreas(boundaries, { households, residents, travel }) {
+export function buildAreas(boundaries, { households, residents, travel, health = [], age = [], deprivation = [], cars = [] }) {
   const byCode = new Map();
   for (const f of boundaries.features) {
     const code = f.properties.LSOA21CD;
@@ -67,6 +67,11 @@ export function buildAreas(boundaries, { households, residents, travel }) {
       households: 0,
       residents: 0,
       travel: { car: 0, bus: 0, rail: 0, cycle: 0, walk: 0, home: 0, other: 0, total: 0 },
+      // Shares (0–1) for the need score; null where the table wasn't loaded.
+      badHealth: null,
+      over65: null,
+      deprived: null,
+      noCar: null,
       geometry: f.geometry,
     });
   }
@@ -85,7 +90,58 @@ export function buildAreas(boundaries, { households, residents, travel }) {
     if (/^Total/.test(name)) a.travel.total = Number(r.OBS_VALUE);
     else if (TRAVEL_MODES[name]) a.travel[TRAVEL_MODES[name]] += Number(r.OBS_VALUE);
   }
+  const share = (rows, col, isPart, setter) => {
+    const parts = new Map();
+    for (const r of rows) {
+      const a = byCode.get(r.GEOGRAPHY_CODE);
+      if (!a) continue;
+      const t = parts.get(a) || { part: 0, total: 0 };
+      const v = Number(r.OBS_VALUE);
+      if (/^Total/.test(r[col])) t.total = v;
+      else if (isPart(r[col])) t.part += v;
+      parts.set(a, t);
+    }
+    for (const [a, t] of parts) if (t.total) setter(a, t.part / t.total);
+  };
+  share(health, 'C2021_HEALTH_6_NAME', (n) => n === 'Bad health' || n === 'Very bad health', (a, v) => { a.badHealth = v; });
+  share(deprivation, 'C2021_DEP_6_NAME', (n) => /in (two|three|four) dimensions/.test(n), (a, v) => { a.deprived = v; });
+  share(cars, 'C2021_CARS_5_NAME', (n) => n === 'No cars or vans in household', (a, v) => { a.noCar = v; });
+  // Age has no total row: sum the bands.
+  const ages = new Map();
+  for (const r of age) {
+    const a = byCode.get(r.GEOGRAPHY_CODE);
+    if (!a || /^Total/.test(r.C2021_AGE_19_NAME)) continue;
+    const t = ages.get(a) || { old: 0, all: 0 };
+    const v = Number(r.OBS_VALUE);
+    t.all += v;
+    if (/^Aged (6[5-9]|[7-9]\d)|85 years and over/.test(r.C2021_AGE_19_NAME)) t.old += v;
+    ages.set(a, t);
+  }
+  for (const [a, t] of ages) if (t.all) a.over65 = t.old / t.all;
   return [...byCode.values()];
+}
+
+/** Factors in the need score, all shares where higher means more need. */
+export const NEED_FACTORS = Object.freeze(['badHealth', 'over65', 'deprived', 'noCar']);
+
+/**
+ * Need score per area, 0 (least) to 1 (most): the average of each factor's
+ * rank among the town's areas. Ranks rather than raw shares, so one factor
+ * with a wide spread (deprivation) can't drown out the others.
+ */
+export function attachNeed(areas) {
+  const usable = areas.filter((a) => a.households > 0 && NEED_FACTORS.every((f) => a[f] !== null));
+  for (const a of areas) a.need = null;
+  if (usable.length < 2) return areas;
+  for (const f of NEED_FACTORS) {
+    const sorted = [...usable].sort((x, y) => x[f] - y[f]);
+    sorted.forEach((a, i) => { a[`${f}Rank`] = i / (sorted.length - 1); });
+  }
+  for (const a of usable) {
+    a.need = Math.round((NEED_FACTORS.reduce((s, f) => s + a[`${f}Rank`], 0) / NEED_FACTORS.length) * 100) / 100;
+    for (const f of NEED_FACTORS) delete a[`${f}Rank`];
+  }
+  return areas;
 }
 
 /**
@@ -138,6 +194,11 @@ export function areasToGeoJson(areas) {
           cyclePct: pct(a.travel.cycle, t),
           walkPct: pct(a.travel.walk, t),
           homePct: pct(a.travel.home, a.travel.total),
+          badHealthPct: a.badHealth === null ? null : Math.round(a.badHealth * 1000) / 10,
+          over65Pct: a.over65 === null ? null : Math.round(a.over65 * 100),
+          deprivedPct: a.deprived === null ? null : Math.round(a.deprived * 100),
+          noCarPct: a.noCar === null ? null : Math.round(a.noCar * 100),
+          need: a.need ?? null,
         },
       };
     }),

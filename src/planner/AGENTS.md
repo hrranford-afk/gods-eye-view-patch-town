@@ -43,7 +43,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/osm.js` | OpenStreetMap → **town file**; service kinds and walking targets. |
 | `src/planner/graph.js` | Walking network and shortest-path search. No browser code. |
 | `src/planner/access.js` | Walking-access scores, grid cells, GeoJSON output. No browser code. |
-| `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work; spreads households over buildings as home weights `w`. No browser code. |
+| `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work, health, age, deprivation, cars; spreads households over buildings as home weights `w`; a 0–1 `need` score per area. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |

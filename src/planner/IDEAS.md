@@ -19,6 +19,7 @@ easier to understand or nicer to live in.
 | Harry | Make it about human happiness and health; see how people move (walking, cycling, commuting) | `census.js` (Census 2021 households and travel to work), cycling time-lapse |
 | Harry | Every answer should raise new questions that unlock more of the map | `questions.json` + **?**/**✓** markers on the layer |
 | CAIRN | **Questions as curriculum**: open questions carry the data that would answer them, so any AI (or PatchTown resident) can pick one up as its next task | "The question loop" in AGENTS.md |
+| CAIRN | **Need-weighted sites**: rank where a service should go by the need of the households it would reach (bad health, over-65s, deprivation, no car), not just how many | `attachNeed` in `census.js`, `suggestSites(..., { byNeed: true })` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
 ## First real run: Worcester (OpenStreetMap, 28 Oct 2026)
@@ -49,6 +50,11 @@ household-weighted walk to the nearest GP.
 Limits: self-reported health, one point in time, 64 areas; distance is not
 GP capacity (patients per GP is the next data to add, from NHS Digital); and
 most people don't walk to their GP. A finding to discuss, not a verdict.
+
+**Follow-ups (question loop):**
+- Lower Wick (q5): 15% of households have no car (city 20%), so roughly 1 in 7 relies on a 38-minute walk or the bus. Next: how often buses run (q7).
+- Ranked by need (q6), the best GP site moves from Norton Road (St Peters) to **Malvern Road, St John's (WR2)**, then Henwick, west of the Severn. Next: is the west side cut off by the river (q8)?
+- Corner shops (q9): the most deprived third of neighbourhoods has ~1.7x the convenience shops per household. The likelier reason is car ownership (33% no car vs 11%), not money as such. Weak signal, thin OSM data.
 
 ## Midlands traffic, 2000–2025 (DfT, 4,513 count points)
 

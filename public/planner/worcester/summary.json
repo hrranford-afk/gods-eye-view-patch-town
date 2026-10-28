@@ -346,6 +346,32 @@
       "homesGained": 321
     }
   ],
+  "needWeightedGpSites": [
+    {
+      "lonLat": [
+        -2.236495,
+        52.1823978
+      ],
+      "homesGained": 3613,
+      "needGained": 2085
+    },
+    {
+      "lonLat": [
+        -2.2463956,
+        52.1993663
+      ],
+      "homesGained": 2872,
+      "needGained": 1480
+    },
+    {
+      "lonLat": [
+        -2.2016461,
+        52.2090308
+      ],
+      "homesGained": 2250,
+      "needGained": 1425
+    }
+  ],
   "bestSingleChange": {
     "kind": "gp",
     "lonLat": [

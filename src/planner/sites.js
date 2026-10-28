@@ -15,9 +15,12 @@ const MAX_CANDIDATES = 1500;
 
 /**
  * Returns [{ kind, lon, lat, homesGained }] for up to `count`
- * sites. Options: kind (default 'shop'), count (default 3), extraRoads.
+ * sites. Options: kind (default 'shop'), count (default 3), extraRoads, and
+ * `byNeed`: weight each home by its neighbourhood's need score (census.js
+ * attachNeed), so sites go where unserved households need them most. With
+ * byNeed, `homesGained` is still plain households and `needGained` is added.
  */
-export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] } = {}) {
+export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [], byNeed = false } = {}) {
   const service = SERVICE_KINDS[kind];
   if (!service) throw new Error(`Unknown service kind "${kind}"`);
   const target = service.targetMin * WALK_M_PER_MIN;
@@ -40,7 +43,7 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
     if (!s || s.metres > MAX_SNAP_M) continue;
     if (s.metres + dist[s.node] <= target) continue;
     if (!unserved.has(s.node)) unserved.set(s.node, []);
-    unserved.get(s.node).push([s.metres, w]);
+    unserved.get(s.node).push([s.metres, w, byNeed ? w * (h.need ?? 0) : w]);
   }
 
   const candidates = [...unserved.keys()];
@@ -52,7 +55,7 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
     const homes = [];
     for (const [hn, offsets] of unserved) {
       if (!Number.isFinite(d[hn])) continue;
-      offsets.forEach(([m, w], i) => { if (d[hn] + m <= target) homes.push([`${hn}:${i}`, w]); });
+      offsets.forEach(([m, w, score], i) => { if (d[hn] + m <= target) homes.push([`${hn}:${i}`, w, score]); });
     }
     return { node, homes };
   });
@@ -61,16 +64,19 @@ export function suggestSites(town, { kind = 'shop', count = 3, extraRoads = [] }
   const sites = [];
   for (let n = 0; n < count; n++) {
     let best = null;
-    let bestGain = 0;
+    let bestScore = 0;
     for (const r of reach) {
-      let gain = 0;
-      for (const [h, w] of r.homes) if (!served.has(h)) gain += w;
-      if (gain > bestGain) { bestGain = gain; best = r; }
+      let score = 0;
+      for (const [h, , sc] of r.homes) if (!served.has(h)) score += sc;
+      if (score > bestScore) { bestScore = score; best = r; }
     }
     if (!best) break;
-    for (const [h] of best.homes) served.add(h);
+    let gained = 0;
+    for (const [h, w] of best.homes) if (!served.has(h)) { gained += w; served.add(h); }
     const [lon, lat] = graph.coords[best.node];
-    sites.push({ kind, lon, lat, homesGained: Math.round(bestGain) });
+    const site = { kind, lon, lat, homesGained: Math.round(gained) };
+    if (byNeed) site.needGained = Math.round(bestScore);
+    sites.push(site);
   }
   return sites;
 }

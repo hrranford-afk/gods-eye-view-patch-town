@@ -22,7 +22,7 @@ import {
 } from '../src/planner/access.js';
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
 import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/traffic.js';
-import { areasToGeoJson, attachCensus, buildAreas } from '../src/planner/census.js';
+import { areasToGeoJson, attachCensus, attachNeed, buildAreas } from '../src/planner/census.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
 // several separated by commas) replaces this list.
@@ -124,11 +124,17 @@ async function trafficRegion(name = 'west-midlands') {
 
 const ONS_LSOA_2021 = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BGC_V5/FeatureServer/0/query';
 const NOMIS = 'https://www.nomisweb.co.uk/api/v01/dataset';
-// Census 2021 tables: households (TS041), usual residents (TS001), travel to work (TS061).
+// Census 2021 tables: households (TS041), usual residents (TS001), travel to
+// work (TS061), general health (TS037), age (TS007A), household deprivation
+// (TS011) and car or van availability (TS045).
 const CENSUS_TABLES = {
   households: ['NM_2059_1', 'geography_code,obs_value'],
   residents: ['NM_2021_1', 'geography_code,c2021_restype_3_name,obs_value'],
   travel: ['NM_2078_1', 'geography_code,c2021_ttwmeth_12_name,obs_value'],
+  health: ['NM_2055_1', 'geography_code,c2021_health_6_name,obs_value'],
+  age: ['NM_2020_1', 'geography_code,c2021_age_19_name,obs_value'],
+  deprivation: ['NM_2031_1', 'geography_code,c2021_dep_6_name,obs_value'],
+  cars: ['NM_2063_1', 'geography_code,c2021_cars_5_name,obs_value'],
 };
 
 /** Download Census 2021 neighbourhoods (LSOAs) covering a town. */
@@ -157,7 +163,7 @@ async function censusTown(id) {
   const areas = buildAreas(boundaries, tables);
   const dir = townDir(town.id);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ town: town.id, source: 'ONS Census 2021 (TS001, TS041, TS061), LSOA 2021 boundaries', areas }));
+  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ town: town.id, source: 'ONS Census 2021 (TS001, TS007A, TS011, TS037, TS041, TS045, TS061), LSOA 2021 boundaries', areas }));
   const hh = areas.reduce((t, a) => t + a.households, 0);
   const people = areas.reduce((t, a) => t + a.residents, 0);
   console.log(`[planner] ${areas.length} neighbourhoods, ${hh} households, ${people} residents → ${dir}/census.json`);
@@ -184,6 +190,9 @@ function analyseTown(id) {
   if (existsSync(censusPath)) {
     areas = JSON.parse(readFileSync(censusPath, 'utf8')).areas;
     const { unplaced } = attachCensus(data, areas);
+    attachNeed(areas);
+    const needOf = new Map(areas.map((a) => [a.code, a.need]));
+    for (const h of data.homes) h.need = needOf.get(h.area) ?? null;
     writeFileSync(path.join(dir, 'areas.geojson'), JSON.stringify(areasToGeoJson(areas)));
     console.log(`[planner] Census weights applied (${areas.length} neighbourhoods${unplaced.length ? `, ${unplaced.length} with no mapped buildings` : ''})`);
   } else {
@@ -193,6 +202,11 @@ function analyseTown(id) {
   summary.homesAre = areas ? 'Census 2021 households' : 'mapped residential buildings';
   const sites = Object.keys(SERVICE_KINDS).flatMap((kind) => suggestSites(data, { kind, count: 3 }));
   summary.suggestedSites = sites.map(({ kind, lon, lat, homesGained }) => ({ kind, lonLat: [lon, lat], homesGained }));
+  if (areas) {
+    // Same search, but each household counts by its neighbourhood's need.
+    summary.needWeightedGpSites = suggestSites(data, { kind: 'gp', count: 3, byNeed: true })
+      .map(({ lon, lat, homesGained, needGained }) => ({ lonLat: [lon, lat], homesGained, needGained }));
+  }
   const [best] = rankChanges(data, sites);
   if (best) {
     summary.bestSingleChange = {
@@ -212,6 +226,9 @@ function analyseTown(id) {
   }
   for (const s of sites) {
     console.log(`  new ${s.kind.padEnd(6)} at ${s.lat.toFixed(5)}, ${s.lon.toFixed(5)} would serve ${s.homesGained} more homes`);
+  }
+  for (const s of summary.needWeightedGpSites || []) {
+    console.log(`  need-weighted GP at ${s.lonLat[1].toFixed(5)}, ${s.lonLat[0].toFixed(5)}: ${s.homesGained} households, need-weighted ${s.needGained}`);
   }
   if (best) {
     console.log(`[planner] Best single change: a new ${best.kind} at ${best.lat.toFixed(5)}, ${best.lon.toFixed(5)} lifts the town from ${best.scoreBefore} to ${best.scoreAfter}/100`);

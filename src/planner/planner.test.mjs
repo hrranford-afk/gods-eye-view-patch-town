@@ -197,3 +197,29 @@ test('census weights spread households over buildings and drive the scores', asy
   assert.equal(props.carPct, 75); // 30 of the 40 who travel
   assert.equal(props.homePct, 20);
 });
+
+test('need score ranks areas and steers site search toward need', async () => {
+  const { attachNeed } = await import('./census.js');
+  const areas = [
+    { households: 10, badHealth: 0.1, over65: 0.3, deprived: 0.4, noCar: 0.5 },
+    { households: 10, badHealth: 0.02, over65: 0.1, deprived: 0.05, noCar: 0.05 },
+    { households: 10, badHealth: null, over65: 0.2, deprived: 0.2, noCar: 0.2 },
+  ];
+  attachNeed(areas);
+  assert.equal(areas[0].need, 1);
+  assert.equal(areas[1].need, 0);
+  assert.equal(areas[2].need, null);
+  // Same street as the site test: unserved homes at both ends; need sits in the west.
+  const nodes = [...Array(81).keys()];
+  const pt = (i) => [i * 0.0012, 52];
+  const town = {
+    roads: [{ id: 'st', kind: 'local', walk: true, nodes, coords: nodes.map(pt) }],
+    places: [{ id: 's', kind: 'gp', lon: pt(40)[0], lat: 52 }],
+    homes: nodes.map((i) => ({ id: `h${i}`, lon: pt(i)[0], lat: 52.0001, w: i > 40 ? 2 : 1, need: i < 40 ? 1 : 0.1 })),
+  };
+  const [plain] = suggestSites(town, { kind: 'gp', count: 1 });
+  const [needy] = suggestSites(town, { kind: 'gp', count: 1, byNeed: true });
+  assert.ok(plain.lon > pt(40)[0], 'by headcount, the denser east end wins');
+  assert.ok(needy.lon < pt(40)[0], 'by need, the west end wins');
+  assert.ok(needy.needGained > 0);
+});
