@@ -45,6 +45,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/access.js` | Walking-access scores, grid cells, GeoJSON output. No browser code. |
 | `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work, health, age, deprivation, cars; spreads households over buildings as home weights `w`; a 0–1 `need` score per area. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
+| `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
@@ -60,6 +61,7 @@ Output for a town lands in `public/planner/<town>/`:
 - `roads.geojson`, `places.geojson`: what the layer draws
 - `sites.geojson`: the top 3 suggested sites per service, with `homesGained`
 - `census.json`, `areas.geojson`: Census 2021 neighbourhoods with households, residents and travel-to-work shares
+- `river.json`: the main river's crossings, per-bank households and walking minutes, and `bestNewFootbridge`
 - `summary.json`: headline numbers, the worst-served squares, the most cut-off squares, the suggested sites, and `bestSingleChange`
 
 Traffic lands in `public/planner/traffic/<region>.json`: `years`, `pulse`
@@ -132,7 +134,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

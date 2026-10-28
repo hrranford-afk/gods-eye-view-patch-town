@@ -1,0 +1,121 @@
+{
+  "river": "River Severn",
+  "crossings": [
+    {
+      "name": "Temeside Way",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.21835,
+        52.16282
+      ]
+    },
+    {
+      "name": "",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.23914,
+        52.23316
+      ]
+    },
+    {
+      "name": "Diglis Bridge",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.22478,
+        52.17626
+      ]
+    },
+    {
+      "name": "Worcester Bridge",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.2261,
+        52.1911
+      ]
+    },
+    {
+      "name": "Sabrina Bridge",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.23159,
+        52.19452
+      ]
+    },
+    {
+      "name": "Kepax Bridge",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.23545,
+        52.20748
+      ]
+    }
+  ],
+  "walkCrossings": 6,
+  "driveCrossings": 2,
+  "banks": {
+    "west": {
+      "households": 14303,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 10.9
+        },
+        "school": {
+          "nearestAcrossRiver": 0.01,
+          "meanMinutes": 12.7
+        },
+        "gp": {
+          "nearestAcrossRiver": 0.37,
+          "meanMinutes": 31.3
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 5.4
+        }
+      }
+    },
+    "east": {
+      "households": 40301,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 7.2
+        },
+        "school": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 11.8
+        },
+        "gp": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 16.4
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 3.9
+        }
+      }
+    }
+  },
+  "bestNewFootbridge": {
+    "from": [
+      -2.24449,
+      52.21966
+    ],
+    "to": [
+      -2.24355,
+      52.21978
+    ],
+    "spanM": 66,
+    "candidatesTried": 12,
+    "minutesSavedPerHousehold": 0.08,
+    "households": 54807,
+    "scoreBefore": 69.6,
+    "scoreAfter": 69.6
+  }
+}

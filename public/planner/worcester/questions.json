@@ -106,13 +106,17 @@
       "id": "q8",
       "question": "Is the west side (St John's, Dines Green, Lower Wick) cut off by the River Severn, with too few crossings?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q6",
       "lonLat": [
         -2.2265,
         52.1885
       ],
-      "unlocks": "Detour ratios already computed (access.js) split by river side; count of walkable and drivable crossings; traffic counts on the crossings"
+      "unlocks": "Detour ratios already computed (access.js) split by river side; count of walkable and drivable crossings; traffic counts on the crossings",
+      "spawned": [
+        "q14"
+      ],
+      "finding": "Yes, but not for lack of bridges. The Severn splits Worcester into a west bank (14,303 households) and east bank (40,301). There are 6 walkable crossings and only 2 for cars. West-bank households walk 31 min on average to a GP vs 16 min on the east; for 37% the nearest GP is across the river. The best new footbridge found (Church Lane, WR2, north of the city) saves under a minute per household. A GP at Malvern Road on the west bank cuts the west's average to 24 min; one at Norton Road (east) barely moves it (30 min). The gap is services on the west bank, not crossings."
     },
     {
       "id": "q9",
@@ -168,10 +172,22 @@
       "askedBy": "Harry",
       "status": "open",
       "lonLat": [
-        -2.2215,
-        52.1925
+        -2.2172,
+        52.1952
       ],
       "unlocks": "Scenarios as sets of network edits, scored on one dashboard (access, traffic, cycling, health benefit via WHO HEAT, safety via STATS19). Ties together q7, q8, q11, q12"
+    },
+    {
+      "id": "q14",
+      "question": "Could a west-bank health hub work at or near Malvern Road, St John's: is there a building or site, and do buses reach it?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q8",
+      "lonLat": [
+        -2.2365,
+        52.1824
+      ],
+      "unlocks": "planning.data.gov.uk brownfield land and sites; empty commercial buildings in St John's (links to q12); Bus Open Data timetables from Lower Wick, Dines Green and Henwick (links to q7); NHS practice list sizes for the existing west-bank surgeries (links to q3)"
     }
   ]
 }

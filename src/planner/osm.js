@@ -56,7 +56,7 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
         s + ((n - s) * (i + 1)) / tiles, w + ((e - w) * (j + 1)) / tiles,
       ].map((x) => x.toFixed(5));
       const b = `(${box.join(',')})`;
-      queries.push(`[out:json][timeout:${timeoutS}];way["highway"]${b};out geom;`);
+      queries.push(`[out:json][timeout:${timeoutS}];(way["highway"]${b};way["waterway"="river"]${b};);out geom;`);
       queries.push(`[out:json][timeout:${timeoutS}];
 (
   nwr["shop"~"^(supermarket|convenience|greengrocer|butcher|bakery)$"]${b};
@@ -99,16 +99,23 @@ function elementPoint(el) {
 /** Convert a raw Overpass JSON response into a town file. */
 export function parseOverpass(json, townId) {
   const roads = [];
+  const rivers = [];
   const places = [];
   const homes = [];
   for (const el of json?.elements || []) {
     const tags = el.tags || {};
+    if (el.type === 'way' && tags.waterway === 'river' && Array.isArray(el.geometry)) {
+      rivers.push({ id: el.id, name: tags.name || '', coords: el.geometry.map((g) => [g.lon, g.lat]) });
+      continue;
+    }
     if (el.type === 'way' && tags.highway && Array.isArray(el.geometry)) {
       if (el.nodes?.length !== el.geometry.length) continue;
       roads.push({
         id: el.id,
         kind: roadKind(tags.highway),
         walk: !NO_WALK.has(tags.highway) && tags.foot !== 'no' && tags.access !== 'private',
+        drive: !/^(footway|path|pedestrian|steps|cycleway|bridleway|track|corridor|construction|proposed)$/.test(tags.highway)
+          && tags.motor_vehicle !== 'no' && tags.access !== 'no' && tags.access !== 'private',
         name: tags.name || tags.ref || '',
         nodes: el.nodes,
         coords: el.geometry.map((g) => [g.lon, g.lat]),
@@ -124,5 +131,5 @@ export function parseOverpass(json, townId) {
       homes.push({ id: `${el.type}/${el.id}`, b: tags.building, lon: point[0], lat: point[1] });
     }
   }
-  return { town: townId, fetchedAt: new Date().toISOString(), roads, places, homes };
+  return { town: townId, fetchedAt: new Date().toISOString(), roads, rivers, places, homes };
 }

@@ -49,13 +49,14 @@ class Cutter(osmium.SimpleHandler):
     def way(self, w):
         tags = dict(w.tags)
         is_road = "highway" in tags
+        is_river = tags.get("waterway") == "river"
         is_thing = wanted_thing(tags) or HOME.match(tags.get("building", ""))
-        if not (is_road or is_thing):
+        if not (is_road or is_river or is_thing):
             return
         pts = [(nd.ref, nd.location) for nd in w.nodes if nd.location.valid()]
         if len(pts) != len(w.nodes) or not any(self.inside(l.lat, l.lon) for _, l in pts):
             return
-        if is_road:
+        if is_road or is_river:
             self.elements.append({
                 "type": "way", "id": w.id, "tags": tags,
                 "nodes": [ref for ref, _ in pts],

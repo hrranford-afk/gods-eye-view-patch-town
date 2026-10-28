@@ -23,6 +23,8 @@ import {
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
 import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/traffic.js';
 import { areasToGeoJson, attachCensus, attachNeed, buildAreas } from '../src/planner/census.js';
+import { bestNewCrossing, riverReport } from '../src/planner/river.js';
+import { metresBetween } from '../src/planner/graph.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
 // several separated by commas) replaces this list.
@@ -218,6 +220,24 @@ function analyseTown(id) {
   writeFileSync(path.join(dir, 'roads.geojson'), JSON.stringify(roadsToGeoJson(data.roads)));
   writeFileSync(path.join(dir, 'places.geojson'), JSON.stringify(placesToGeoJson(data.places)));
   writeFileSync(path.join(dir, 'sites.geojson'), JSON.stringify(sitesToGeoJson(sites)));
+  if (data.rivers?.length) {
+    // The main river: whichever named river has the most mapped length here.
+    const lengths = new Map();
+    for (const r of data.rivers) {
+      if (!r.name) continue;
+      let m = 0;
+      for (let k = 1; k < r.coords.length; k++) m += metresBetween(r.coords[k - 1], r.coords[k]);
+      lengths.set(r.name, (lengths.get(r.name) || 0) + m);
+    }
+    const [river] = [...lengths.entries()].sort((a, b) => b[1] - a[1])[0] || [];
+    if (river) {
+      const report = riverReport(data, { river });
+      report.bestNewFootbridge = bestNewCrossing(data, { river });
+      writeFileSync(path.join(dir, 'river.json'), `${JSON.stringify(report, null, 2)}\n`);
+      const { west, east } = report.banks;
+      console.log(`[planner] ${river}: ${report.walkCrossings} walkable / ${report.driveCrossings} drivable crossings; west bank ${west.households} households (GP ${west.services.gp.meanMinutes} min), east ${east.households} (GP ${east.services.gp.meanMinutes} min)`);
+    }
+  }
   writeFileSync(path.join(dir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
   const pct = (x) => `${Math.round(x * 100)}%`;
   console.log(`[planner] ${town.name}: ${summary.homes} homes in ${cells.length} cells, overall score ${summary.overallScore}/100`);

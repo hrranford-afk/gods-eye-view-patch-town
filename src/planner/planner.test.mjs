@@ -223,3 +223,30 @@ test('need score ranks areas and steers site search toward need', async () => {
   assert.ok(needy.lon < pt(40)[0], 'by need, the west end wins');
   assert.ok(needy.needGained > 0);
 });
+
+test('river: crossings, banks, services across the water, and a new footbridge', async () => {
+  const { findCrossings, riverReport, bestNewCrossing } = await import('./river.js');
+  // Two north-south streets 300 m apart, a river between, one bridge at the north end.
+  const step = 0.0009;
+  const west = [...Array(11).keys()].map((i) => [0, 52 + i * step]);
+  const east = west.map(([, lat]) => [0.0044, lat]);
+  const town = {
+    roads: [
+      { id: 'w', kind: 'local', walk: true, drive: true, name: 'West St', nodes: west.map((_, i) => i), coords: west },
+      { id: 'e', kind: 'local', walk: true, drive: true, name: 'East St', nodes: east.map((_, i) => 100 + i), coords: east },
+      { id: 'b', kind: 'local', walk: true, drive: true, name: 'Old Bridge', nodes: [10, 110], coords: [west[10], east[10]] },
+    ],
+    rivers: [{ id: 'r', name: 'River Test', coords: [[0.0022, 51.99], [0.0022, 52.02]] }],
+    places: [{ id: 'gp', kind: 'gp', lon: east[0][0], lat: east[0][1] }],
+    homes: west.map(([lon, lat], i) => ({ id: `h${i}`, lon: lon + 0.0001, lat })),
+  };
+  const { crossings } = findCrossings(town, { river: 'River Test' });
+  assert.deepEqual(crossings.map((c) => [c.name, c.walk, c.drive]), [['Old Bridge', true, true]]);
+  const report = riverReport(town, { river: 'River Test' });
+  assert.equal(report.banks.west.households, 11);
+  assert.equal(report.banks.west.services.gp.nearestAcrossRiver, 1);
+  const fb = bestNewCrossing(town, { river: 'River Test', minGapM: 300, maxSpanM: 400, cellM: 2000 });
+  assert.ok(fb, 'a footbridge should be found');
+  assert.ok(fb.from[1] < west[6][1], `the bridge should be toward the south, near the GP: ${fb.from}`);
+  assert.ok(fb.minutesSavedPerHousehold > 0);
+});

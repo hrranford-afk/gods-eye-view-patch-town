@@ -47,7 +47,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas, questions }) {
+  function draw({ access, roads, places, sites, areas, questions, river }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -136,6 +136,34 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         description: `<p>A new ${label.toLowerCase()} here would bring <b>${p.homesGained}</b> more homes within a ${SERVICE_KINDS[p.kind]?.targetMin}-minute walk.</p><p>A prompt to look closer, not a planning decision.</p>`,
       });
     }
+    // River crossings, and the best spot for a new footbridge if one was found.
+    for (const c of river?.crossings || []) {
+      entities.add({
+        name: `${c.name || 'Unnamed crossing'} (${c.drive ? 'road' : 'foot/cycle'})`,
+        position: Cesium.Cartesian3.fromDegrees(c.lonLat[0], c.lonLat[1]),
+        point: {
+          pixelSize: 9,
+          color: Cesium.Color.fromCssColorString(c.drive ? '#ffffff' : '#7fdcff'),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    }
+    const fb = river?.bestNewFootbridge;
+    if (fb) {
+      entities.add({
+        name: 'Proposed footbridge',
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray([...fb.from, ...fb.to]),
+          width: 6,
+          material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.fromCssColorString('#ffd166') }),
+          clampToGround: true,
+        },
+        description: `<p>Best new crossing found: ${fb.spanM} m span, saves ${fb.minutesSavedPerHousehold} walking minutes per household across all services (${fb.candidatesTried} spots tried).</p>`,
+      });
+    }
     // The question loop: open questions as "?" markers, answered ones as "✓".
     for (const q of questions?.questions || []) {
       if (!q.lonLat) continue;
@@ -193,7 +221,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas, questions] = await Promise.all([
+        const [access, roads, places, sites, areas, questions, river] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
@@ -201,9 +229,10 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           getJson('sites.geojson', signal).catch(() => null),
           getJson('areas.geojson', signal).catch(() => null),
           getJson('questions.json', signal).catch(() => null),
+          getJson('river.json', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas, questions });
+        draw({ access, roads, places, sites, areas, questions, river });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;
