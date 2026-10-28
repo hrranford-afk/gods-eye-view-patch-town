@@ -31,6 +31,23 @@ easier to understand or nicer to live in.
 - Best single change: a GP near Norton Road, St Peters (+3,899 households within 15 min with census weights; town 69.6 → 71.4).
 - Biggest food-shop gap: Plantation Drive, Lyppard Grange (+836 homes).
 
+## Health check: does a far GP mean worse health? (28 Oct 2026)
+
+64 neighbourhoods inside Worcester city. Census 2021 general health, age,
+deprivation and disability, compared with each neighbourhood's
+household-weighted walk to the nearest GP.
+
+- **No sign that GP walking distance affects health.** After allowing for age and deprivation, an extra minute's walk shows −0.014 points of "bad health" (t = −1.1, i.e. nothing). Disability is the same (t = −1.3).
+- **Deprivation explains almost everything.** Bad health vs share of deprived households: r = 0.91. With age added, the model explains 87% of the differences.
+- **The far-from-GP areas are better off and older.** GP walk vs deprivation r = −0.33; vs over-65s r = +0.53. These are suburbs where most people drive.
+- **The Norton Road GP (best single change) would mostly help healthier, less deprived households:** ~3,200 in St Peters/Norton (Worcester 013A, 014A–D), bad health 2–5% vs 4.8% city average. Some of them are older (24–26% over 65 in 014A and 014D).
+- **Worst health is in deprived neighbourhoods 7–18 min from a GP:** Worcester 002D (Selsey Close, 11.3% bad health, 41% deprived), 002B (Windermere Drive), 009A (Dines Green), 005B (Cherwell Close).
+- **A different, real gap: older people far from a GP.** Worcester 012E (Lower Wick, Montreal Close) and 012D (St Peters, Cormorant Rise): 34–35% over 65 and a 35–38 min walk.
+
+Limits: self-reported health, one point in time, 64 areas; distance is not
+GP capacity (patients per GP is the next data to add, from NHS Digital); and
+most people don't walk to their GP. A finding to discuss, not a verdict.
+
 ## Midlands traffic, 2000–2025 (DfT, 4,513 count points)
 
 ![Traffic time-lapse, 2011](../../docs/media/planner-traffic-2011.png)
@@ -42,6 +59,8 @@ easier to understand or nicer to live in.
 - These are leads to check against what was happening on the ground (roadworks, new junctions, closures), not proof.
 
 ## Next
+
+0. **GP capacity.** NHS Digital patients-registered-per-practice and GP workforce, so access means "can get an appointment", not just distance. Then score need (health, age, deprivation) against access.
 
 1. **Housing sites.** Candidates near services and outside Environment Agency flood zones (Severn/Teme). Needs the flood-zone data.
 2. **Real movement, counted not tracked.** ONS census travel-to-work flows and DfT traffic counts.
