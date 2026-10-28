@@ -1,0 +1,18 @@
+{
+  "id": "county-hall-health-hub",
+  "name": "County Hall health hub",
+  "description": "Turn part of County Hall (Spetchley Road) into a GP-led health hub.",
+  "assumptions": [
+    "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+  ],
+  "changes": {
+    "addPlaces": [
+      {
+        "kind": "gp",
+        "name": "County Hall health hub",
+        "lon": -2.18325,
+        "lat": 52.18548
+      }
+    ]
+  }
+}

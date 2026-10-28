@@ -1,0 +1,18 @@
+{
+  "id": "county-hall-homes",
+  "name": "County Hall homes",
+  "description": "Redevelop the County Hall campus as housing.",
+  "assumptions": [
+    "600 homes is an illustrative capacity for the County Hall campus, not a measured one; households sit at the site's centre."
+  ],
+  "changes": {
+    "addHomes": [
+      {
+        "name": "County Hall homes",
+        "lon": -2.18325,
+        "lat": 52.18548,
+        "households": 600
+      }
+    ]
+  }
+}

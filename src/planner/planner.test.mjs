@@ -271,3 +271,22 @@ test('buses: frequency per stop, and bus-or-walk beats walking for far homes', a
   assert.ok(best[0] < 25, `bus: ~1 min walk + 7.5 wait + 10 ride: ${best[0]}`);
   assert.equal(best[1], walk[1], 'near home just walks');
 });
+
+test('scenarios: apply changes, score against the base, and score added homes', async () => {
+  const { applyScenario, compareScenarios } = await import('./scenarios.js');
+  const town = gridTown();
+  town.places.push({ id: 'gp0', kind: 'gp', lon: at(4, 4)[0], lat: at(4, 4)[1] });
+  const hub = { id: 'hub', name: 'Hub', changes: { addPlaces: [{ kind: 'gp', name: 'Hub', lon: at(0, 0)[0], lat: at(0, 0)[1] }] } };
+  const homes = { id: 'homes', name: 'Homes', changes: { addHomes: [{ name: 'New', lon: at(0, 0)[0], lat: at(0, 0)[1], households: 50 }] } };
+  const applied = applyScenario(town, homes);
+  assert.equal(applied.homes.length, town.homes.length + 1);
+  assert.equal(town.homes.length, 25, 'the base town is not modified');
+  const { base, scenarios } = compareScenarios(town, [hub, homes]);
+  assert.equal(base.households, 25);
+  const [h, n] = scenarios;
+  assert.ok(h.change.gpWalkMinutes < 0, 'a second GP shortens the average walk');
+  assert.ok(h.gains.gp.households > 0 && h.gains.gp.averageMinutesSaved >= 1, 'gains name who is helped');
+  assert.equal(n.card.households, 75);
+  assert.equal(n.card.added.households, 50);
+  assert.ok(n.card.added.gp.walkMinutes > 3, 'new homes far from the only GP');
+});

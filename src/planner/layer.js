@@ -47,7 +47,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas, questions, river, bus }) {
+  function draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -185,6 +185,54 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         description: `<p>Best new crossing found: ${fb.spanM} m span, saves ${fb.minutesSavedPerHousehold} walking minutes per household across all services (${fb.candidatesTried} spots tried).</p>`,
       });
     }
+    // Empty shops, as mapped in OpenStreetMap (a lower bound).
+    for (const f of vacant?.features || []) {
+      const [lon, lat] = f.geometry.coordinates;
+      entities.add({
+        name: `Empty shop${f.properties.name ? `: ${f.properties.name}` : ''}`,
+        position: Cesium.Cartesian3.fromDegrees(lon, lat),
+        point: {
+          pixelSize: 7,
+          color: Cesium.Color.fromCssColorString('#9aa5ad'),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 1,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    }
+    // Scenarios: one marker per changed location, listing every scenario there.
+    const spots = new Map();
+    for (const sc of scenarios?.scenarios || []) {
+      const c = sc.changes || {};
+      for (const ch of [...(c.addPlaces || []), ...(c.addHomes || [])]) {
+        const key = `${ch.lon.toFixed(4)},${ch.lat.toFixed(4)}`;
+        if (!spots.has(key)) spots.set(key, { lon: ch.lon, lat: ch.lat, list: [] });
+        const spot = spots.get(key);
+        if (!spot.list.includes(sc)) spot.list.push(sc);
+      }
+    }
+    for (const spot of spots.values()) {
+      const rows = spot.list.map((sc) => {
+        const d = sc.change;
+        const added = sc.card.added ? ` New homes: GP ${sc.card.added.gp.walkMinutes} min, shop ${sc.card.added.shop.walkMinutes} min.` : '';
+        const who = Object.entries(sc.gains || {}).map(([k, g]) => ` ${g.households.toLocaleString()} households save ${g.averageMinutesSaved} min to a ${k} (${g.withoutCar} without a car).`).join('');
+        return `<li><b>${sc.name}</b>: score ${d.overallScore >= 0 ? '+' : ''}${d.overallScore}, GP walk ${d.gpWalkMinutes} min (need-weighted ${d.gpNeedWeightedWalkMinutes}).${who}${added}</li>`;
+      }).join('');
+      entities.add({
+        name: `Scenario${spot.list.length > 1 ? 's' : ''}: ${spot.list.map((sc) => sc.name).join(' · ')}`,
+        position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat),
+        point: {
+          pixelSize: 16,
+          color: Cesium.Color.fromCssColorString('#c77dff').withAlpha(0.9),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 3,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        description: `<p>Compared with Worcester today:</p><ul>${rows}</ul><p>${[...new Set(spot.list.flatMap((sc) => sc.assumptions))].join(' ')}</p>`,
+      });
+    }
     // The question loop: open questions as "?" markers, answered ones as "✓".
     for (const q of questions?.questions || []) {
       if (!q.lonLat) continue;
@@ -243,7 +291,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas, questions, river, bus] = await Promise.all([
+        const [access, roads, places, sites, areas, questions, river, bus, scenarios, vacant] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
@@ -253,9 +301,11 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           getJson('questions.json', signal).catch(() => null),
           getJson('river.json', signal).catch(() => null),
           getJson('bus.json', signal).catch(() => null),
+          getJson('scenarios.json', signal).catch(() => null),
+          getJson('vacant.geojson', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas, questions, river, bus });
+        draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

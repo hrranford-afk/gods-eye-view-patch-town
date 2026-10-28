@@ -21,12 +21,18 @@ SHOP = re.compile(r"^(supermarket|convenience|greengrocer|butcher|bakery)$")
 HOME = re.compile(r"^(house|residential|apartments|detached|semidetached_house|terrace|bungalow|flats|yes)$")
 
 
+def vacant_shop(tags):
+    """Shops mapped as empty: shop=vacant or a disused:/was:/abandoned: shop."""
+    return tags.get("shop") == "vacant" or any(k in tags for k in ("disused:shop", "was:shop", "abandoned:shop"))
+
+
 def wanted_thing(tags):
     """Mirror of the services/homes part of overpassQueries in osm.js."""
     return bool(
         SHOP.match(tags.get("shop", ""))
         or tags.get("amenity") in ("school", "doctors", "clinic")
         or tags.get("healthcare") in ("doctor", "clinic")
+        or vacant_shop(tags)
     )
 
 

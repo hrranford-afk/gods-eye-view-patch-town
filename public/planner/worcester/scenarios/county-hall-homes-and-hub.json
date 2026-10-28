@@ -1,0 +1,27 @@
+{
+  "id": "county-hall-homes-and-hub",
+  "name": "County Hall homes + health hub",
+  "description": "Housing on most of the campus, with a GP-led health hub on part of it.",
+  "assumptions": [
+    "600 homes is an illustrative capacity for the County Hall campus, not a measured one; households sit at the site's centre.",
+    "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+  ],
+  "changes": {
+    "addHomes": [
+      {
+        "name": "County Hall homes",
+        "lon": -2.18325,
+        "lat": 52.18548,
+        "households": 600
+      }
+    ],
+    "addPlaces": [
+      {
+        "kind": "gp",
+        "name": "County Hall health hub",
+        "lon": -2.18325,
+        "lat": 52.18548
+      }
+    ]
+  }
+}

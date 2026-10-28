@@ -1,0 +1,342 @@
+{
+  "base": {
+    "households": 54806,
+    "overallScore": 68.5,
+    "withinTarget": {
+      "shop": 0.79,
+      "school": 0.76,
+      "gp": 0.42,
+      "bus": 0.77
+    },
+    "shop": {
+      "walkMinutes": 8.2,
+      "busOrWalkMinutes": 8.1,
+      "needWeightedWalkMinutes": 7.2
+    },
+    "school": {
+      "walkMinutes": 12,
+      "busOrWalkMinutes": 11.9,
+      "needWeightedWalkMinutes": 10.9
+    },
+    "gp": {
+      "walkMinutes": 22,
+      "busOrWalkMinutes": 18.2,
+      "needWeightedWalkMinutes": 19.2
+    }
+  },
+  "scenarios": [
+    {
+      "gains": {
+        "gp": {
+          "households": 6620,
+          "averageMinutesSaved": 10,
+          "withoutCar": 607
+        }
+      },
+      "id": "county-hall-health-hub",
+      "name": "County Hall health hub",
+      "description": "Turn part of County Hall (Spetchley Road) into a GP-led health hub.",
+      "assumptions": [
+        "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+      ],
+      "changes": {
+        "addPlaces": [
+          {
+            "kind": "gp",
+            "name": "County Hall health hub",
+            "lon": -2.18325,
+            "lat": 52.18548
+          }
+        ]
+      },
+      "card": {
+        "households": 54806,
+        "overallScore": 69.3,
+        "withinTarget": {
+          "shop": 0.79,
+          "school": 0.76,
+          "gp": 0.45,
+          "bus": 0.77
+        },
+        "shop": {
+          "walkMinutes": 8.2,
+          "busOrWalkMinutes": 8.1,
+          "needWeightedWalkMinutes": 7.2
+        },
+        "school": {
+          "walkMinutes": 12,
+          "busOrWalkMinutes": 11.9,
+          "needWeightedWalkMinutes": 10.9
+        },
+        "gp": {
+          "walkMinutes": 20.8,
+          "busOrWalkMinutes": 17.6,
+          "needWeightedWalkMinutes": 18.5
+        }
+      },
+      "change": {
+        "overallScore": 0.8,
+        "gpWalkMinutes": -1.2,
+        "gpNeedWeightedWalkMinutes": -0.7,
+        "gpBusOrWalkMinutes": -0.6
+      }
+    },
+    {
+      "gains": {
+        "gp": {
+          "households": 6620,
+          "averageMinutesSaved": 10,
+          "withoutCar": 607
+        }
+      },
+      "id": "county-hall-homes-and-hub",
+      "name": "County Hall homes + health hub",
+      "description": "Housing on most of the campus, with a GP-led health hub on part of it.",
+      "assumptions": [
+        "600 homes is an illustrative capacity for the County Hall campus, not a measured one; households sit at the site's centre.",
+        "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+      ],
+      "changes": {
+        "addHomes": [
+          {
+            "name": "County Hall homes",
+            "lon": -2.18325,
+            "lat": 52.18548,
+            "households": 600
+          }
+        ],
+        "addPlaces": [
+          {
+            "kind": "gp",
+            "name": "County Hall health hub",
+            "lon": -2.18325,
+            "lat": 52.18548
+          }
+        ]
+      },
+      "card": {
+        "households": 55406,
+        "overallScore": 69.7,
+        "withinTarget": {
+          "shop": 0.79,
+          "school": 0.77,
+          "gp": 0.46,
+          "bus": 0.78
+        },
+        "shop": {
+          "walkMinutes": 8.2,
+          "busOrWalkMinutes": 8.1,
+          "needWeightedWalkMinutes": 7.2
+        },
+        "school": {
+          "walkMinutes": 12,
+          "busOrWalkMinutes": 11.8,
+          "needWeightedWalkMinutes": 10.9
+        },
+        "gp": {
+          "walkMinutes": 20.5,
+          "busOrWalkMinutes": 17.4,
+          "needWeightedWalkMinutes": 18.5
+        },
+        "added": {
+          "households": 600,
+          "shop": {
+            "walkMinutes": 7.2,
+            "busOrWalkMinutes": 7.2
+          },
+          "school": {
+            "walkMinutes": 10.5,
+            "busOrWalkMinutes": 10.5
+          },
+          "gp": {
+            "walkMinutes": 0.7,
+            "busOrWalkMinutes": 0.7
+          }
+        }
+      },
+      "change": {
+        "overallScore": 1.2,
+        "gpWalkMinutes": -1.5,
+        "gpNeedWeightedWalkMinutes": -0.7,
+        "gpBusOrWalkMinutes": -0.8
+      }
+    },
+    {
+      "gains": {},
+      "id": "county-hall-homes",
+      "name": "County Hall homes",
+      "description": "Redevelop the County Hall campus as housing.",
+      "assumptions": [
+        "600 homes is an illustrative capacity for the County Hall campus, not a measured one; households sit at the site's centre."
+      ],
+      "changes": {
+        "addHomes": [
+          {
+            "name": "County Hall homes",
+            "lon": -2.18325,
+            "lat": 52.18548,
+            "households": 600
+          }
+        ]
+      },
+      "card": {
+        "households": 55406,
+        "overallScore": 68.6,
+        "withinTarget": {
+          "shop": 0.79,
+          "school": 0.77,
+          "gp": 0.42,
+          "bus": 0.78
+        },
+        "shop": {
+          "walkMinutes": 8.2,
+          "busOrWalkMinutes": 8.1,
+          "needWeightedWalkMinutes": 7.2
+        },
+        "school": {
+          "walkMinutes": 12,
+          "busOrWalkMinutes": 11.8,
+          "needWeightedWalkMinutes": 10.9
+        },
+        "gp": {
+          "walkMinutes": 22.1,
+          "busOrWalkMinutes": 18.3,
+          "needWeightedWalkMinutes": 19.2
+        },
+        "added": {
+          "households": 600,
+          "shop": {
+            "walkMinutes": 7.2,
+            "busOrWalkMinutes": 7.2
+          },
+          "school": {
+            "walkMinutes": 10.5,
+            "busOrWalkMinutes": 10.5
+          },
+          "gp": {
+            "walkMinutes": 30.4,
+            "busOrWalkMinutes": 28.8
+          }
+        }
+      },
+      "change": {
+        "overallScore": 0.1,
+        "gpWalkMinutes": 0.1,
+        "gpNeedWeightedWalkMinutes": 0,
+        "gpBusOrWalkMinutes": 0.1
+      }
+    },
+    {
+      "gains": {
+        "shop": {
+          "households": 289,
+          "averageMinutesSaved": 1.4,
+          "withoutCar": 71
+        }
+      },
+      "id": "reopen-ambleside-shop",
+      "name": "Reopen the Ambleside Drive shop",
+      "description": "Reopen the closed Costcutter on Ambleside Drive, Warndon, as a food shop.",
+      "assumptions": [
+        "Mapped as a disused shop in OpenStreetMap; a reopened shop is assumed to sell everyday food."
+      ],
+      "changes": {
+        "addPlaces": [
+          {
+            "kind": "shop",
+            "name": "Ambleside Drive shop (reopened)",
+            "lon": -2.19043,
+            "lat": 52.20331
+          }
+        ]
+      },
+      "card": {
+        "households": 54806,
+        "overallScore": 68.5,
+        "withinTarget": {
+          "shop": 0.79,
+          "school": 0.76,
+          "gp": 0.42,
+          "bus": 0.77
+        },
+        "shop": {
+          "walkMinutes": 8.2,
+          "busOrWalkMinutes": 8.1,
+          "needWeightedWalkMinutes": 7.2
+        },
+        "school": {
+          "walkMinutes": 12,
+          "busOrWalkMinutes": 11.9,
+          "needWeightedWalkMinutes": 10.9
+        },
+        "gp": {
+          "walkMinutes": 22,
+          "busOrWalkMinutes": 18.2,
+          "needWeightedWalkMinutes": 19.2
+        }
+      },
+      "change": {
+        "overallScore": 0,
+        "gpWalkMinutes": 0,
+        "gpNeedWeightedWalkMinutes": 0,
+        "gpBusOrWalkMinutes": 0
+      }
+    },
+    {
+      "gains": {
+        "gp": {
+          "households": 7877,
+          "averageMinutesSaved": 19,
+          "withoutCar": 744
+        }
+      },
+      "id": "st-peters-bath-road-gp",
+      "name": "St Peters GP (Bath Road)",
+      "description": "A new surgery at the top need-weighted site, Bath Road, St Peters, for comparison.",
+      "assumptions": [
+        "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+      ],
+      "changes": {
+        "addPlaces": [
+          {
+            "kind": "gp",
+            "name": "Bath Road surgery",
+            "lon": -2.21245,
+            "lat": 52.1736
+          }
+        ]
+      },
+      "card": {
+        "households": 54806,
+        "overallScore": 70.2,
+        "withinTarget": {
+          "shop": 0.79,
+          "school": 0.76,
+          "gp": 0.49,
+          "bus": 0.77
+        },
+        "shop": {
+          "walkMinutes": 8.2,
+          "busOrWalkMinutes": 8.1,
+          "needWeightedWalkMinutes": 7.2
+        },
+        "school": {
+          "walkMinutes": 12,
+          "busOrWalkMinutes": 11.9,
+          "needWeightedWalkMinutes": 10.9
+        },
+        "gp": {
+          "walkMinutes": 19.2,
+          "busOrWalkMinutes": 16.8,
+          "needWeightedWalkMinutes": 17.5
+        }
+      },
+      "change": {
+        "overallScore": 1.7,
+        "gpWalkMinutes": -2.8,
+        "gpNeedWeightedWalkMinutes": -1.7,
+        "gpBusOrWalkMinutes": -1.4
+      }
+    }
+  ]
+}

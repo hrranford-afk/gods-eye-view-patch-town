@@ -1,0 +1,18 @@
+{
+  "id": "st-peters-bath-road-gp",
+  "name": "St Peters GP (Bath Road)",
+  "description": "A new surgery at the top need-weighted site, Bath Road, St Peters, for comparison.",
+  "assumptions": [
+    "A new GP practice here is assumed to have room for its new patients; capacity is not modelled."
+  ],
+  "changes": {
+    "addPlaces": [
+      {
+        "kind": "gp",
+        "name": "Bath Road surgery",
+        "lon": -2.21245,
+        "lat": 52.1736
+      }
+    ]
+  }
+}

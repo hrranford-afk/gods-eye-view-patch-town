@@ -1,10 +1,10 @@
 {
   "town": "worcester",
   "cellM": 250,
-  "homes": 54807,
+  "homes": 54806,
   "homesSkipped": 0,
   "places": {
-    "shop": 130,
+    "shop": 127,
     "school": 45,
     "gp": 9,
     "bus": 539
@@ -246,7 +246,7 @@
       "detour": 1.9
     }
   ],
-  "overallScoreExact": 68.54473327846915,
+  "overallScoreExact": 68.54623497536873,
   "homesAre": "Census 2021 households",
   "suggestedSites": [
     {
@@ -276,50 +276,50 @@
     {
       "kind": "school",
       "lonLat": [
-        -2.2078092,
-        52.1689814
+        -2.2079743,
+        52.1691663
       ],
       "homesGained": 3084
     },
     {
       "kind": "school",
       "lonLat": [
-        -2.1922163,
-        52.1991868
+        -2.1919105,
+        52.1992394
       ],
-      "homesGained": 1225
+      "homesGained": 1224
     },
     {
       "kind": "school",
       "lonLat": [
-        -2.2466643,
-        52.2031468
+        -2.2481913,
+        52.2061235
       ],
-      "homesGained": 1118
+      "homesGained": 1116
     },
     {
       "kind": "gp",
       "lonLat": [
-        -2.2069168,
-        52.1695563
+        -2.2079994,
+        52.1700614
       ],
-      "homesGained": 3940
+      "homesGained": 3987
     },
     {
       "kind": "gp",
       "lonLat": [
-        -2.1762867,
-        52.2031718
+        -2.1763012,
+        52.203439
       ],
-      "homesGained": 3299
+      "homesGained": 3311
     },
     {
       "kind": "gp",
       "lonLat": [
-        -2.192611,
-        52.18493
+        -2.1939516,
+        52.1817042
       ],
-      "homesGained": 2807
+      "homesGained": 2544
     },
     {
       "kind": "bus",
@@ -349,37 +349,37 @@
   "needWeightedGpSites": [
     {
       "lonLat": [
-        -2.212447,
-        52.1735959
+        -2.2129863,
+        52.1749018
       ],
-      "homesGained": 3551,
-      "needGained": 1372
+      "homesGained": 3441,
+      "needGained": 1378
     },
     {
       "lonLat": [
-        -2.192611,
-        52.18493
+        -2.1929606,
+        52.1871936
       ],
-      "homesGained": 2807,
-      "needGained": 1348
+      "homesGained": 2408,
+      "needGained": 1288
     },
     {
       "lonLat": [
-        -2.1950493,
-        52.214463
+        -2.1960178,
+        52.214575
       ],
-      "homesGained": 1783,
-      "needGained": 1234
+      "homesGained": 1809,
+      "needGained": 1242
     }
   ],
   "bestSingleChange": {
     "kind": "gp",
     "lonLat": [
-      -2.2069168,
-      52.1695563
+      -2.2079994,
+      52.1700614
     ],
-    "homesGained": 3940,
+    "homesGained": 3987,
     "scoreBefore": 68.5,
-    "scoreAfter": 70.3
+    "scoreAfter": 70.4
   }
 }

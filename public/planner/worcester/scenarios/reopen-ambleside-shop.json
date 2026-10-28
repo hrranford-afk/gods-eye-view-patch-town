@@ -1,0 +1,18 @@
+{
+  "id": "reopen-ambleside-shop",
+  "name": "Reopen the Ambleside Drive shop",
+  "description": "Reopen the closed Costcutter on Ambleside Drive, Warndon, as a food shop.",
+  "assumptions": [
+    "Mapped as a disused shop in OpenStreetMap; a reopened shop is assumed to sell everyday food."
+  ],
+  "changes": {
+    "addPlaces": [
+      {
+        "kind": "shop",
+        "name": "Ambleside Drive shop (reopened)",
+        "lon": -2.19043,
+        "lat": 52.20331
+      }
+    ]
+  }
+}

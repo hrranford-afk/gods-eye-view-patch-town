@@ -64,6 +64,9 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
   nwr["amenity"~"^(doctors|clinic)$"]${b};
   nwr["healthcare"~"^(doctor|clinic)$"]${b};
   node["highway"="bus_stop"]${b};
+  nwr["shop"="vacant"]${b};
+  nwr["disused:shop"]${b};
+  nwr["was:shop"]${b};
   way["building"~"^(${HOME_BUILDINGS.join('|')})$"]${b};
 );
 out center tags;`);
@@ -82,6 +85,7 @@ export function mergeOverpass(responses) {
 }
 
 function placeKind(tags = {}) {
+  if (tags.shop === 'vacant' || tags['disused:shop'] || tags['was:shop'] || tags['abandoned:shop']) return 'vacant';
   if (tags.shop) return 'shop';
   if (tags.amenity === 'school') return 'school';
   if (tags.amenity === 'doctors' || tags.amenity === 'clinic') return 'gp';
@@ -101,6 +105,7 @@ export function parseOverpass(json, townId) {
   const roads = [];
   const rivers = [];
   const places = [];
+  const vacant = [];
   const homes = [];
   for (const el of json?.elements || []) {
     const tags = el.tags || {};
@@ -125,11 +130,14 @@ export function parseOverpass(json, townId) {
     const point = elementPoint(el);
     if (!point) continue;
     const kind = placeKind(tags);
-    if (kind) {
+    if (kind === 'vacant') {
+      // Empty shops are kept apart from services so they never count as one.
+      vacant.push({ id: `${el.type}/${el.id}`, name: tags.name || tags['disused:name'] || tags['was:name'] || '', was: tags['disused:shop'] || tags['was:shop'] || '', checked: tags.check_date || null, lon: point[0], lat: point[1] });
+    } else if (kind) {
       places.push({ id: `${el.type}/${el.id}`, kind, name: tags.name || '', lon: point[0], lat: point[1] });
     } else if (tags.building) {
       homes.push({ id: `${el.type}/${el.id}`, b: tags.building, lon: point[0], lat: point[1] });
     }
   }
-  return { town: townId, fetchedAt: new Date().toISOString(), roads, rivers, places, homes };
+  return { town: townId, fetchedAt: new Date().toISOString(), roads, rivers, places, vacant, homes };
 }

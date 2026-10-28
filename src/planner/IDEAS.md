@@ -22,6 +22,8 @@ easier to understand or nicer to live in.
 | CAIRN | **Need-weighted sites**: rank where a service should go by the need of the households it would reach (bad health, over-65s, deprivation, no car), not just how many | `attachNeed` in `census.js`, `suggestSites(..., { byNeed: true })` |
 | CAIRN | **Best new footbridge**: try short links across the river away from existing crossings and keep the one that saves the most walking time | `bestNewCrossing` in `river.js` |
 | CAIRN | **Bus or walk**: door-to-door time by bus (walk to stop, average wait from the real timetable, ride, walk) vs walking, per household | `buses.js`, `scripts/planner-gtfs.py` |
+| Harry | Corner shops, County Hall, empty shops and New Worcester all help each other | `food` command (FSA register), empty shops on the map, `scenarios.js` |
+| CAIRN | **Scenario scorecard with "who gains"**: every scenario says which households get closer to what, by how much, and how many have no car | `compareScenarios` / `gains` in `scenarios.js`, `npm run planner -- scenarios` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
 ## Correction: official GP practices (28 Oct 2026)
@@ -39,6 +41,20 @@ hub idea is **withdrawn** (a large practice is already there). The real gap is
 **St Peters** (41 min around Foxglove Road), where every suggested site now
 lands. What held: GP distance still shows no link to health (t = 0.8).
 Figures below this section are from before the correction unless stated.
+
+## High streets, County Hall and the first scenarios (28 Oct 2026)
+
+- **Food businesses** (Food Standards Agency, 546 in Worcester; 111 small food shops vs 30 in OSM). Outside the city centre, small food shops are ~3.5x as common in the most deprived third (2.4 vs 0.7 per 1,000 households) and follow car-less households most closely (r = 0.36). **Takeaways show no link with deprivation** (r = 0.02).
+- **Empty shops:** 35 mapped in OSM, ~27 in the city centre (incl. the former Debenhams); a closed Costcutter on Ambleside Drive, Warndon.
+- **Scenarios** (all vs Worcester today, official GPs):
+
+| Scenario | Town score | Who gains |
+|---|---|---|
+| St Peters GP (Bath Road) | +1.7 | 7,877 households save ~19 min to a GP (744 without a car) |
+| County Hall homes + health hub | +1.2 | 6,620 save ~10 min to a GP; the 600 new homes are 0.7 min from it |
+| County Hall health hub | +0.8 | 6,620 households save ~10 min to a GP (607 without a car) |
+| County Hall homes (600, illustrative) | +0.1 | New residents would be ~30 min from a GP |
+| Reopen Ambleside Drive shop | +0.0 | 289 households save ~1.4 min to a shop (71 without a car) |
 
 ## First real run: Worcester (OpenStreetMap, 28 Oct 2026)
 

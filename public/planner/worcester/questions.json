@@ -145,13 +145,17 @@
       "id": "q10",
       "question": "Are corner shops thriving or just surviving, and what else (takeaways, cafes, pubs) clusters with deprivation and bad health?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q9",
       "lonLat": [
         -2.205,
         52.201
       ],
-      "unlocks": "Food Standards Agency hygiene ratings API (reachable): every food business with type and location; opening and closing dates over time"
+      "unlocks": "Food Standards Agency hygiene ratings API (reachable): every food business with type and location; opening and closing dates over time",
+      "spawned": [
+        "q18"
+      ],
+      "finding": "Food Standards Agency register (546 food businesses in Worcester; 111 small food shops vs 30 in OpenStreetMap). Leaving out the 2 city-centre neighbourhoods: small food shops are ~3.5x as common in the most deprived third (2.37 vs 0.67 per 1,000 households), and track households without a car (r = 0.36) a little more than deprivation (0.32). Takeaways show no link with deprivation (r = 0.02) or bad health (-0.03) in Worcester, against the usual assumption. Whether shops are thriving or just surviving needs openings and closures over time."
     },
     {
       "id": "q11",
@@ -162,7 +166,8 @@
         -2.18325,
         52.18548
       ],
-      "unlocks": "Site size and condition; planning.data.gov.uk (local plan, constraints, listed status); access scores for the site as homes vs offices vs a health hub; traffic on Spetchley Road; Worcestershire County Council's own estate plans"
+      "unlocks": "Site size and condition; planning.data.gov.uk (local plan, constraints, listed status); access scores for the site as homes vs offices vs a health hub; traffic on Spetchley Road; Worcestershire County Council's own estate plans",
+      "progress": "Scenarios (scenarios/*.json, scored by `npm run planner -- scenarios`): a health hub at County Hall lifts the town score +0.8 and cuts the average GP walk by 1.2 min. 600 homes alone (an illustrative number) would leave the new residents ~30 min from a GP (shop 7, school 10.5); homes + hub fixes that (+1.2 overall). But a surgery at Bath Road, St Peters, does more for existing residents (+1.7; GP walk -2.8 min, need-weighted -1.7). Still open: site size and condition, the council's plans, traffic on Spetchley Road. Who gains: a County Hall hub saves 6,620 households ~10 min to a GP (607 without a car); a Bath Road surgery saves 7,877 households ~19 min (744 without a car)."
     },
     {
       "id": "q12",
@@ -173,7 +178,8 @@
         -2.2203,
         52.1918
       ],
-      "unlocks": "Where they are: OSM vacant/disused shop tags (patchy), FSA closures, Valuation Office business rates list, council vacancy surveys; footfall proxies (bus stops, car parks, traffic counts); what similar towns did"
+      "unlocks": "Where they are: OSM vacant/disused shop tags (patchy), FSA closures, Valuation Office business rates list, council vacancy surveys; footfall proxies (bus stops, car parks, traffic counts); what similar towns did",
+      "progress": "35 empty shops are mapped in OpenStreetMap (a lower bound; volunteers record them unevenly): ~27 in the city centre around High Street, Foregate Street and Crowngate, including the former Debenhams and Ernest Jones (checked Aug 2025); Carpetright at Blackpole; and a former Costcutter on Ambleside Drive, Warndon. Shown as grey dots. Still open: an official vacancy count (business rates / council surveys) and what each unit could become, tested as scenarios."
     },
     {
       "id": "q13",
@@ -184,7 +190,8 @@
         -2.2172,
         52.1952
       ],
-      "unlocks": "Scenarios as sets of network edits, scored on one dashboard (access, traffic, cycling, health benefit via WHO HEAT, safety via STATS19). Ties together q7, q8, q11, q12"
+      "unlocks": "Scenarios as sets of network edits, scored on one dashboard (access, traffic, cycling, health benefit via WHO HEAT, safety via STATS19). Ties together q7, q8, q11, q12",
+      "progress": "Scenario tool built: a scenario is a named set of changes (new places, homes, roads) scored on one scorecard against Worcester today (access score, share within targets, walk and bus-or-walk minutes, need-weighted GP walk, and the new homes' own access). First four scenarios are about County Hall and St Peters. Cycling and car-free changes need a mode-choice model next."
     },
     {
       "id": "q14",
@@ -235,6 +242,19 @@
         52.2059
       ],
       "unlocks": "Patients registered by LSOA per practice (NHS Digital, blocked from this cloud box: needs another route or a local run)"
+    },
+    {
+      "id": "q18",
+      "question": "Are Worcester's corner shops opening or closing, and does losing one hurt households without a car?",
+      "askedBy": "CAIRN",
+      "status": "answered",
+      "from": "q10",
+      "lonLat": [
+        -2.19043,
+        52.20331
+      ],
+      "unlocks": "FSA register snapshots over time (new and removed businesses), Companies House dissolutions, OSM disused:shop tags; a scenario that removes a shop and scores the households without a car around it",
+      "finding": "For the one closed corner shop mapped (former Costcutter, Ambleside Drive, Warndon: the worst-health neighbourhood, half of households without a car), reopening it brings 289 households a shop an average 1.4 min closer, 71 of them without a car. Other small shops nearby cover most of the loss by distance; price and range may matter more and aren't in this data. Openings and closures over time still need FSA snapshots."
     }
   ]
 }

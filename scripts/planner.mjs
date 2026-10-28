@@ -26,6 +26,8 @@ import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/t
 import { areasToGeoJson, attachCensus, attachNeed, buildAreas } from '../src/planner/census.js';
 import { bestNewCrossing, riverReport } from '../src/planner/river.js';
 import { busReport } from '../src/planner/buses.js';
+import { compareScenarios } from '../src/planner/scenarios.js';
+import { readdirSync } from 'node:fs';
 import { metresBetween } from '../src/planner/graph.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
@@ -232,6 +234,69 @@ async function gpsTown(id) {
   console.log(`[planner] ${near.length} active practices in or near ${town.name} (of ${practices.length} ${town.nhsPracticePrefix}*) → ${dir}/gps.json`);
 }
 
+/** FSA business types collapsed to the planner's food kinds. */
+const FOOD_KINDS = {
+  'Takeaway/sandwich shop': 'takeaway',
+  'Restaurant/Cafe/Canteen': 'restaurant',
+  'Pub/bar/nightclub': 'pub',
+  'Retailers - supermarkets/hypermarkets': 'supermarket',
+  'Retailers - other': 'smallShop',
+  'Mobile caterer': 'mobile',
+};
+
+/** Every food business in a town from the Food Standards Agency register. */
+async function foodTown(id) {
+  const town = getTown(id);
+  if (!town.fsaAuthorities) throw new Error(`${town.name} has no fsaAuthorities in towns.js`);
+  const [s, w, n, e] = town.bbox;
+  const businesses = [];
+  for (const la of town.fsaAuthorities) {
+    for (let page = 1; ; page++) {
+      const res = await fetch(`https://api.ratings.food.gov.uk/Establishments?localAuthorityId=${la}&pageSize=1000&pageNumber=${page}`, { headers: { 'x-api-version': '2' } });
+      if (!res.ok) throw new Error(`FSA answered ${res.status}`);
+      const { establishments } = await res.json();
+      for (const b of establishments) {
+        const lat = Number(b.geocode?.latitude);
+        const lon = Number(b.geocode?.longitude);
+        const kind = FOOD_KINDS[b.BusinessType];
+        if (!kind || !lat || lat < s || lat > n || lon < w || lon > e) continue;
+        businesses.push({ name: b.BusinessName, kind, rating: b.RatingValue, ratedOn: b.RatingDate?.slice(0, 10) || null, lon, lat });
+      }
+      if (establishments.length < 1000) break;
+    }
+  }
+  const dir = townDir(town.id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'food.json'), JSON.stringify({ source: 'Food Standards Agency, Food Hygiene Rating Scheme', fetchedAt: new Date().toISOString(), businesses }));
+  const counts = {};
+  for (const b of businesses) counts[b.kind] = (counts[b.kind] || 0) + 1;
+  console.log(`[planner] ${businesses.length} food businesses in ${town.name}: ${JSON.stringify(counts)} → ${dir}/food.json`);
+}
+
+/** Score every scenario in public/planner/<town>/scenarios/ against the town as it is. */
+function scenariosTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const { data } = prepareTown(town, dir, { quiet: true });
+  const scenarioDir = path.join(dir, 'scenarios');
+  const scenarios = existsSync(scenarioDir)
+    ? readdirSync(scenarioDir).filter((f) => f.endsWith('.json')).sort().map((f) => JSON.parse(readFileSync(path.join(scenarioDir, f), 'utf8')))
+    : [];
+  if (!scenarios.length) throw new Error(`No scenarios in ${scenarioDir}`);
+  const busesPath = path.join(dir, 'buses.json');
+  const buses = existsSync(busesPath) ? JSON.parse(readFileSync(busesPath, 'utf8')) : undefined;
+  const result = compareScenarios(data, scenarios, { buses });
+  writeFileSync(path.join(dir, 'scenarios.json'), `${JSON.stringify(result, null, 2)}\n`);
+  const b = result.base;
+  console.log(`[planner] ${town.name} today: score ${b.overallScore}; GP walk ${b.gp.walkMinutes} min (need-weighted ${b.gp.needWeightedWalkMinutes}), bus-or-walk ${b.gp.busOrWalkMinutes}`);
+  for (const r of result.scenarios) {
+    const c = r.change;
+    const added = r.card.added ? `; new homes: GP ${r.card.added.gp.walkMinutes} min, shop ${r.card.added.shop.walkMinutes}, school ${r.card.added.school.walkMinutes}` : '';
+    console.log(`  ${r.name}: score ${c.overallScore >= 0 ? '+' : ''}${c.overallScore}; GP walk ${c.gpWalkMinutes} min, need-weighted ${c.gpNeedWeightedWalkMinutes}${added}`);
+  }
+  console.log(`[planner] Wrote ${dir}/scenarios.json`);
+}
+
 /** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
 function importTown(id, file) {
   const town = getTown(id);
@@ -243,9 +308,12 @@ function importTown(id, file) {
   console.log(`[planner] ${data.roads.length} roads, ${data.places.length} services, ${data.homes.length} homes → ${dir}/town.json`);
 }
 
-function analyseTown(id) {
-  const town = getTown(id);
-  const dir = townDir(town.id);
+/**
+ * Load a town file with everything the town folder offers applied: official
+ * GP practices (gps.json), census household weights and need (census.json).
+ */
+function prepareTown(town, dir, { quiet = false } = {}) {
+  const log = quiet ? () => {} : console.log;
   const data = JSON.parse(readFileSync(path.join(dir, 'town.json'), 'utf8'));
   // Official GP practices replace OpenStreetMap's (which miss surgeries and
   // count hospital clinics as GPs) when gps.json exists.
@@ -257,7 +325,7 @@ function analyseTown(id) {
       if (p.lon == null) continue;
       data.places.push({ id: `ods/${p.code}`, kind: 'gp', name: p.name, lon: p.lon, lat: p.lat, listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct });
     }
-    console.log(`[planner] GP surgeries: ${practices.length} official NHS practices (gps.json) replace OpenStreetMap's`);
+    log(`[planner] GP surgeries: ${practices.length} official NHS practices (gps.json) replace OpenStreetMap's`);
   }
   // With census.json present, homes are weighted to real household numbers.
   const censusPath = path.join(dir, 'census.json');
@@ -266,13 +334,23 @@ function analyseTown(id) {
     areas = JSON.parse(readFileSync(censusPath, 'utf8')).areas;
     const { unplaced } = attachCensus(data, areas);
     attachNeed(areas);
-    const needOf = new Map(areas.map((a) => [a.code, a.need]));
-    for (const h of data.homes) h.need = needOf.get(h.area) ?? null;
+    const byCode = new Map(areas.map((a) => [a.code, a]));
+    for (const h of data.homes) {
+      h.need = byCode.get(h.area)?.need ?? null;
+      h.noCar = byCode.get(h.area)?.noCar ?? null;
+    }
     writeFileSync(path.join(dir, 'areas.geojson'), JSON.stringify(areasToGeoJson(areas)));
-    console.log(`[planner] Census weights applied (${areas.length} neighbourhoods${unplaced.length ? `, ${unplaced.length} with no mapped buildings` : ''})`);
+    log(`[planner] Census weights applied (${areas.length} neighbourhoods${unplaced.length ? `, ${unplaced.length} with no mapped buildings` : ''})`);
   } else {
-    console.log(`[planner] No census.json: counting each mapped home once (run: npm run planner -- census ${town.id})`);
+    log(`[planner] No census.json: counting each mapped home once (run: npm run planner -- census ${town.id})`);
   }
+  return { data, areas };
+}
+
+function analyseTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const { data, areas } = prepareTown(town, dir);
   const { cells, summary } = analyseAccess(data);
   summary.homesAre = areas ? 'Census 2021 households' : 'mapped residential buildings';
   const sites = Object.keys(SERVICE_KINDS).flatMap((kind) => suggestSites(data, { kind, count: 3 }));
@@ -292,6 +370,7 @@ function analyseTown(id) {
   writeFileSync(path.join(dir, 'access.geojson'), JSON.stringify(cellsToGeoJson(cells)));
   writeFileSync(path.join(dir, 'roads.geojson'), JSON.stringify(roadsToGeoJson(data.roads)));
   writeFileSync(path.join(dir, 'places.geojson'), JSON.stringify(placesToGeoJson(data.places)));
+  writeFileSync(path.join(dir, 'vacant.geojson'), JSON.stringify(placesToGeoJson((data.vacant || []).map((v) => ({ ...v, kind: 'vacant' })))));
   writeFileSync(path.join(dir, 'sites.geojson'), JSON.stringify(sitesToGeoJson(sites)));
   // Buses, if a timetable cut exists (scripts/planner-gtfs.py → buses.json).
   const busesPath = path.join(dir, 'buses.json');
@@ -344,10 +423,12 @@ try {
   else if (command === 'traffic') await trafficRegion(id);
   else if (command === 'census') await censusTown(id);
   else if (command === 'gps') await gpsTown(id);
+  else if (command === 'food') await foodTown(id);
+  else if (command === 'scenarios') scenariosTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|analyse|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|analyse|scenarios|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

@@ -17,7 +17,9 @@ npm run planner -- towns               # list towns
 npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, retrying across mirrors
 npm run planner -- census worcester    # Census 2021: households, residents, travel to work per neighbourhood
 npm run planner -- gps worcester       # official NHS GP practices: list size, patient survey, location
+npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
+npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is
 npm run planner -- traffic west-midlands   # DfT yearly traffic counts 2000–2025 → time-lapse
 npm run dev                            # open the app → Data Layers → "Town Planner" / "Traffic Time-lapse"
 ```
@@ -55,6 +57,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work, health, age, deprivation, cars; spreads households over buildings as home weights `w`; a 0–1 `need` score per area. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
 | `src/planner/buses.js` | Bus frequency per stop and door-to-door bus-or-walk minutes to services (one-seat rides, average wait from the timetable). No browser code. |
+| `src/planner/scenarios.js` | Scenarios: apply a set of changes (places, homes, roads) and score them against today, with who gains. No browser code. |
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
@@ -72,6 +75,9 @@ Output for a town lands in `public/planner/<town>/`:
 - `sites.geojson`: the top 3 suggested sites per service, with `homesGained`
 - `census.json`, `areas.geojson`: Census 2021 neighbourhoods with households, residents and travel-to-work shares
 - `buses.json` (timetable cut) and `bus.json` (stops with buses/hour, share of households near a frequent stop, walk vs bus-or-walk minutes per service and per neighbourhood)
+- `food.json`: food businesses from the FSA register (kind, rating, location)
+- `vacant.geojson`: empty shops as mapped in OSM (`shop=vacant`, `disused:shop`, `was:shop`)
+- `scenarios/*.json` (inputs, see `scenarios.js` for the shape) and `scenarios.json` (results: base scorecard, each scenario's scorecard, change and gains)
 - `river.json`: the main river's crossings, per-bank households and walking minutes, and `bestNewFootbridge`
 - `summary.json`: headline numbers, the worst-served squares, the most cut-off squares, the suggested sites, and `bestSingleChange`
 
@@ -150,7 +156,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js`, `scenarios.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.
