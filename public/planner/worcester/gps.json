@@ -1,0 +1,104 @@
+{
+ "source": "Fingertips (QOF list size, GP Patient Survey), NHS ODS, postcodes.io",
+ "practices": [
+  {
+   "code": "M81006",
+   "name": "Severn Valley Medical Practice",
+   "postcode": "WR2 5HL",
+   "listSize": 21893,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 75.4,
+   "needsMetPct": 93.9,
+   "lon": -2.235042,
+   "lat": 52.190427
+  },
+  {
+   "code": "M81008",
+   "name": "Spring Gardens Group Medical Practice",
+   "postcode": "WR1 2BS",
+   "listSize": 20125,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 83.8,
+   "needsMetPct": 89.1,
+   "lon": -2.216367,
+   "lat": 52.191677
+  },
+  {
+   "code": "M81017",
+   "name": "Elbury Moor Medical Centre",
+   "postcode": "WR4 9TX",
+   "listSize": 12384,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 76.1,
+   "needsMetPct": 84.3,
+   "lon": -2.193594,
+   "lat": 52.20593
+  },
+  {
+   "code": "M81022",
+   "name": "Haresfield House Surgery",
+   "postcode": "WR5 1HG",
+   "listSize": 18168,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 55,
+   "needsMetPct": 93.2,
+   "lon": -2.202996,
+   "lat": 52.194829
+  },
+  {
+   "code": "M81035",
+   "name": "St Martin's Gate Surgery",
+   "postcode": "WR5 1EZ",
+   "listSize": 14183,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 57.8,
+   "needsMetPct": 94.7,
+   "lon": -2.203918,
+   "lat": 52.194953
+  },
+  {
+   "code": "M81037",
+   "name": "Thorneloe Lodge Surgery",
+   "postcode": "WR1 1RU",
+   "listSize": 11926,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 65.7,
+   "needsMetPct": 88.2,
+   "lon": -2.226837,
+   "lat": 52.202338
+  },
+  {
+   "code": "M81049",
+   "name": "Barbourne Health Centre",
+   "postcode": "WR3 7LH",
+   "listSize": 11547,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 66.4,
+   "needsMetPct": 95.7,
+   "lon": -2.224953,
+   "lat": 52.208752
+  },
+  {
+   "code": "M81063",
+   "name": "St Johns House Surgery",
+   "postcode": "WR2 5ER",
+   "listSize": 13797,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 59.2,
+   "needsMetPct": 84.2,
+   "lon": -2.24953,
+   "lat": 52.186352
+  },
+  {
+   "code": "M81072",
+   "name": "Albany House Surgery",
+   "postcode": "WR1 3DU",
+   "listSize": 6929,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 74,
+   "needsMetPct": 92,
+   "lon": -2.227193,
+   "lat": 52.200341
+  }
+ ]
+}

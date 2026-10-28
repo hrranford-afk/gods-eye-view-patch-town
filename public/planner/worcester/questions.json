@@ -8,10 +8,10 @@
       "askedBy": "Harry",
       "status": "answered",
       "lonLat": [
-        -2.2091886,
-        52.169766
+        -2.20692,
+        52.16956
       ],
-      "finding": "By walking distance alone: near Norton Road, St Peters (~3,900 households brought within 15 min).",
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): by walking distance, St Peters near Hidcote Close (WR5 3; ~3,900 households brought within 15 min). The earlier Norton Road answer used OpenStreetMap GPs, which missed surgeries and counted hospital clinics.",
       "spawned": [
         "q2"
       ]
@@ -26,7 +26,7 @@
         -2.2091886,
         52.169766
       ],
-      "finding": "No sign of it. After age and deprivation, GP walking distance shows no link with Census 2021 bad health or disability across 64 neighbourhoods. Deprivation explains most of the difference (r = 0.91).",
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): still no sign. After age and deprivation, GP walking distance shows no link with Census 2021 bad health (t = 0.8). Deprivation explains most of the difference.",
       "spawned": [
         "q3",
         "q4",
@@ -38,13 +38,18 @@
       "id": "q3",
       "question": "Can people actually get an appointment? Which surgeries are over capacity?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q2",
       "lonLat": [
-        -2.2262,
-        52.196
+        -2.204,
+        52.1949
       ],
-      "unlocks": "NHS Digital: patients registered per GP practice, GP workforce (FTE GPs per practice)"
+      "unlocks": "NHS Digital: patients registered per GP practice, GP workforce (FTE GPs per practice)",
+      "spawned": [
+        "q16",
+        "q17"
+      ],
+      "finding": "Partly, without GP staff numbers (not published where we can reach it). 9 practices serve Worcester, all large (6,900\u201321,900 patients; England's typical practice ~8,800). Patients finding the wait acceptable (GP Patient Survey 2024, England 66%): Haresfield House 55%, St Martin's Gate 58%, St Johns House 59%, up to Spring Gardens 84%. Pressure by geography (residents whose nearest surgery it is, vs its registered list): Elbury Moor 31,700 vs 12,400; Spring Gardens 27,300 vs 20,100; St Johns House 19,900 vs 13,800."
     },
     {
       "id": "q4",
@@ -69,7 +74,7 @@
         52.17386
       ],
       "unlocks": "Census 2021 car availability (TS045); bus timetables (Bus Open Data) for real public-transport times",
-      "finding": "Mostly yes. Worcester 012E (Lower Wick, around Montreal Close): 34% over 65, 15% of households have no car (city 20%). About 1 household in 7 there relies on walking 38 min or the bus. 012D: 10% no car.",
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): Lower Wick (012E) is 27 min from a GP on foot, ~25 by bus or walking. 15% of households have no car; only 11% have a frequent bus stop within 5 min.",
       "spawned": [
         "q7"
       ]
@@ -81,11 +86,11 @@
       "status": "answered",
       "from": "q2",
       "lonLat": [
-        -2.2365,
-        52.1824
+        -2.21245,
+        52.1736
       ],
       "unlocks": "A need score per neighbourhood from data already loaded; change rankChanges to weight by need",
-      "finding": "Yes, and it changes the answer. Weighting each household by its neighbourhood's need (bad health, over-65s, deprivation, no car) moves the best GP site from Norton Road (St Peters) to Malvern Road, St John's (WR2), west of the Severn, then Henwick (Farley Street). Census 2021 need score in census.json.",
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): ranking by need still moves the answer: the top need-weighted GP sites are Bath Road and Nunnery Lane in St Peters, and Winchcombe Drive in the Warndon Villages. (Before the correction it pointed to Malvern Road, St John's, but Severn Valley Medical Practice, the town's largest, is already there.)",
       "spawned": [
         "q8"
       ]
@@ -104,7 +109,7 @@
       "spawned": [
         "q15"
       ],
-      "finding": "Not often enough to help much. Bus Open Data timetable, Tuesday 3 Nov 2026: only 11% of households in Worcester 012E (Lower Wick) have a stop with 4+ buses an hour within 5 min (vs 98% around Selsey Close). A GP trip is 38 min walking and ~30 min door to door by bus (walk, average wait, ride, walk). Town-wide, 54% of households have a frequent stop within 5 min; buses cut the average GP trip from 20.3 to 17.4 min. With a GP at Malvern Road, Lower Wick's walk falls to ~16 min, quicker than any bus today."
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): buses help a little. Lower Wick: GP 27 min walking, ~25 by bus or walking; only 11% near a frequent stop. Town-wide, buses cut the average GP trip from 22 to 18 min; 54% of households have a stop with 4+ buses an hour within 5 min."
     },
     {
       "id": "q8",
@@ -120,7 +125,7 @@
       "spawned": [
         "q14"
       ],
-      "finding": "Yes, but not for lack of bridges. The Severn splits Worcester into a west bank (14,303 households) and east bank (40,301). There are 6 walkable crossings and only 2 for cars. West-bank households walk 31 min on average to a GP vs 16 min on the east; for 37% the nearest GP is across the river. The best new footbridge found (Church Lane, WR2, north of the city) saves under a minute per household. A GP at Malvern Road on the west bank cuts the west's average to 24 min; one at Norton Road (east) barely moves it (30 min). The gap is services on the west bank, not crossings."
+      "finding": "Corrected 28 Oct 2026 with official NHS practices (gps.json): the river matters less than it first looked. West bank 26 min to a GP on average, east bank 20.5 (earlier 31 vs 16 came from missing west-bank surgeries and hospital clinics counted as GPs on the east). 6 walkable crossings, 2 for cars; the best new footbridge saves under a minute per household."
     },
     {
       "id": "q9",
@@ -185,14 +190,15 @@
       "id": "q14",
       "question": "Could a west-bank health hub work at or near Malvern Road, St John's: is there a building or site, and do buses reach it?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "withdrawn",
       "from": "q8",
       "lonLat": [
         -2.2365,
         52.1824
       ],
       "unlocks": "planning.data.gov.uk brownfield land and sites; empty commercial buildings in St John's (links to q12); Bus Open Data timetables from Lower Wick, Dines Green and Henwick (links to q7); NHS practice list sizes for the existing west-bank surgeries (links to q3)",
-      "progress": "Location checks out on access: a GP at Malvern Road cuts Lower Wick (012E) from 38 to ~16 min walking and the west bank's average from 31 to 24 min. Still open: a building or site, and capacity of the existing west-bank surgeries."
+      "progress": "Location checks out on access: a GP at Malvern Road cuts Lower Wick (012E) from 38 to ~16 min walking and the west bank's average from 31 to 24 min. Still open: a building or site, and capacity of the existing west-bank surgeries.",
+      "finding": "Withdrawn: it rested on OpenStreetMap missing Severn Valley Medical Practice (21,893 patients), which already sits in St John's."
     },
     {
       "id": "q15",
@@ -205,6 +211,30 @@
         52.1735
       ],
       "unlocks": "bus.json (frequency per stop, bus-or-walk minutes per neighbourhood) + need score already loaded; route shapes from the GTFS shapes.txt to test a rerouted or extra service"
+    },
+    {
+      "id": "q16",
+      "question": "Is St Peters really without a GP within reach (41 min walk around Foxglove Road), or do branch surgeries fill the gap?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q3",
+      "lonLat": [
+        -2.201,
+        52.1705
+      ],
+      "unlocks": "Branch surgery sites (NHS ODS branch codes, practice websites); where St Peters residents are actually registered (practice-to-LSOA registration counts, NHS Digital)"
+    },
+    {
+      "id": "q17",
+      "question": "Why is Elbury Moor the nearest surgery for ~31,700 people but registers 12,400? Where do Warndon's residents actually go?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q3",
+      "lonLat": [
+        -2.1936,
+        52.2059
+      ],
+      "unlocks": "Patients registered by LSOA per practice (NHS Digital, blocked from this cloud box: needs another route or a local run)"
     }
   ]
 }

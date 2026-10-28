@@ -24,6 +24,22 @@ easier to understand or nicer to live in.
 | CAIRN | **Bus or walk**: door-to-door time by bus (walk to stop, average wait from the real timetable, ride, walk) vs walking, per household | `buses.js`, `scripts/planner-gtfs.py` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
+## Correction: official GP practices (28 Oct 2026)
+
+Checking OpenStreetMap's GP surgeries against the NHS list showed it **missed
+three practices** (including Severn Valley Medical Practice, 21,893 patients,
+on the west bank), misplaced St Johns House by ~700 m, and **counted hospital
+departments as GPs** (A&E, oncology, diabetes centre and others at
+Worcestershire Royal). `npm run planner -- gps` now loads the 9 official
+practices (list size, GP Patient Survey, location) and they replace OSM's.
+
+What changed: GP within 15 min 42% (was 46%); the west/east river gap is 26 vs
+20.5 min (was 31 vs 16); Lower Wick 27 min (was 38); the Malvern Road health
+hub idea is **withdrawn** (a large practice is already there). The real gap is
+**St Peters** (41 min around Foxglove Road), where every suggested site now
+lands. What held: GP distance still shows no link to health (t = 0.8).
+Figures below this section are from before the correction unless stated.
+
 ## First real run: Worcester (OpenStreetMap, 28 Oct 2026)
 
 ![Worcester access map](../../docs/media/planner-worcester.png)

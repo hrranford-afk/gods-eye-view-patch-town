@@ -99,8 +99,12 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       // With a timetable, bus stops are drawn from it instead (with frequency).
       if (bus && f.properties.kind === 'bus') continue;
       const [lon, lat] = f.geometry.coordinates;
+      const pr = f.properties;
       entities.add({
-        name: f.properties.name || SERVICE_KINDS[f.properties.kind]?.label,
+        name: pr.name || SERVICE_KINDS[pr.kind]?.label,
+        description: pr.listSize
+          ? `<p><b>${pr.listSize.toLocaleString()} registered patients</b> (NHS)</p><p>Waiting time acceptable: ${pr.waitAcceptablePct}% · Needs met: ${pr.needsMetPct}% (GP Patient Survey; England 66% / 90%)</p>`
+          : undefined,
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
           pixelSize: f.properties.kind === 'bus' ? 4 : 7,
@@ -184,6 +188,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     // The question loop: open questions as "?" markers, answered ones as "✓".
     for (const q of questions?.questions || []) {
       if (!q.lonLat) continue;
+      if (q.status === 'withdrawn') continue; // kept in the file as a record, not drawn
       const open = q.status !== 'answered';
       entities.add({
         name: `${open ? 'Open question' : 'Answered'}: ${q.question}`,

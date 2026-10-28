@@ -172,7 +172,12 @@ export function placesToGeoJson(places) {
     features: places.map((p) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [round5(p.lon), round5(p.lat)] },
-      properties: { kind: p.kind, name: p.name },
+      properties: {
+        kind: p.kind,
+        name: p.name,
+        // Official GP practices (gps.json) carry list size and survey results.
+        ...(p.listSize ? { listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct } : {}),
+      },
     })),
   };
 }

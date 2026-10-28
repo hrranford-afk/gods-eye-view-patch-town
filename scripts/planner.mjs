@@ -5,6 +5,7 @@
  *   npm run planner -- fetch worcester     download OSM data (needs overpass-api.de)
  *   npm run planner -- import worcester f.json   use a scripts/planner-pbf.py cut instead
  *   npm run planner -- census worcester    Census 2021 households + travel to work per neighbourhood
+ *   npm run planner -- gps worcester       official GP practices: list sizes, patient survey, locations
  *   npm run planner -- analyse worcester   score walking access, write map files
  *   npm run planner -- traffic west-midlands   yearly DfT traffic counts → time-lapse layer
  *   npm run planner -- towns               list known towns
@@ -172,6 +173,65 @@ async function censusTown(id) {
   console.log(`[planner] ${areas.length} neighbourhoods, ${hh} households, ${people} residents → ${dir}/census.json`);
 }
 
+const FINGERTIPS = 'https://fingertips.phe.org.uk/api';
+// Fingertips indicators for GP practices: QOF list size; GP Patient Survey
+// "waiting time acceptable" and "needs met at last appointment".
+const GP_INDICATORS = { listSize: 114, waitAcceptablePct: 94127, needsMetPct: 94129 };
+
+/**
+ * Official GP practices for a town: list sizes and patient-survey results
+ * (Fingertips), postcodes (NHS ODS directory) and locations (postcodes.io).
+ * OpenStreetMap's GP data can be incomplete and mixes in hospital clinics;
+ * when gps.json exists, analyse uses these practices as the `gp` services.
+ */
+async function gpsTown(id) {
+  const town = getTown(id);
+  if (!town.nhsPracticePrefix) throw new Error(`${town.name} has no nhsPracticePrefix in towns.js`);
+  console.log(`[planner] GP practices ${town.nhsPracticePrefix}* for ${town.name}: list sizes and patient survey…`);
+  const url = `${FINGERTIPS}/all_data/csv/by_indicator_id?indicator_ids=${Object.values(GP_INDICATORS).join(',')}&child_area_type_id=7&parent_area_type_id=15&parent_area_code=E92000001`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fingertips answered ${res.status}`);
+  const latest = new Map(); // code → { indicatorId → row }
+  for (const r of parseCsv(await res.text())) {
+    if (!r['Area Code']?.startsWith(town.nhsPracticePrefix) || !r.Value || r.Sex !== 'Persons') continue;
+    const m = latest.get(r['Area Code']) || {};
+    const prev = m[r['Indicator ID']];
+    if (!prev || r['Time period Sortable'] > prev['Time period Sortable']) m[r['Indicator ID']] = r;
+    latest.set(r['Area Code'], m);
+  }
+  const newest = [...latest.values()].map((m) => m[GP_INDICATORS.listSize]?.['Time period Sortable']).filter(Boolean).sort().at(-1);
+  const practices = [];
+  for (const [code, m] of latest) {
+    const list = m[GP_INDICATORS.listSize];
+    if (!list || list['Time period Sortable'] !== newest) continue; // closed or merged practices drop out
+    const ods = await fetch(`https://directory.spineservices.nhs.uk/ORD/2-0-0/organisations/${code}`);
+    if (!ods.ok) continue;
+    const org = (await ods.json()).Organisation;
+    if (org.Status !== 'Active') continue;
+    const value = (k) => (m[GP_INDICATORS[k]] ? Math.round(Number(m[GP_INDICATORS[k]].Value) * 10) / 10 : null);
+    practices.push({ code, name: list['Area Name'], postcode: org.GeoLoc.Location.PostCode, listSize: Number(list.Value), listYear: list['Time period'], waitAcceptablePct: value('waitAcceptablePct'), needsMetPct: value('needsMetPct') });
+  }
+  for (let i = 0; i < practices.length; i += 100) {
+    const batch = practices.slice(i, i + 100);
+    const pc = await fetch('https://api.postcodes.io/postcodes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcodes: batch.map((p) => p.postcode) }),
+    });
+    const found = new Map((await pc.json()).result.map((x) => [x.query, x.result]));
+    for (const p of batch) {
+      const loc = found.get(p.postcode);
+      if (loc) { p.lon = loc.longitude; p.lat = loc.latitude; }
+    }
+  }
+  // Keep practices in the town plus a ~2 km margin: people cross the edge.
+  const [s, w, n, e] = town.bbox;
+  const near = practices.filter((p) => p.lat >= s - 0.02 && p.lat <= n + 0.02 && p.lon >= w - 0.03 && p.lon <= e + 0.03);
+  const dir = townDir(town.id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'gps.json'), `${JSON.stringify({ source: 'Fingertips (QOF list size, GP Patient Survey), NHS ODS, postcodes.io', practices: near }, null, 1)}\n`);
+  console.log(`[planner] ${near.length} active practices in or near ${town.name} (of ${practices.length} ${town.nhsPracticePrefix}*) → ${dir}/gps.json`);
+}
+
 /** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
 function importTown(id, file) {
   const town = getTown(id);
@@ -187,6 +247,18 @@ function analyseTown(id) {
   const town = getTown(id);
   const dir = townDir(town.id);
   const data = JSON.parse(readFileSync(path.join(dir, 'town.json'), 'utf8'));
+  // Official GP practices replace OpenStreetMap's (which miss surgeries and
+  // count hospital clinics as GPs) when gps.json exists.
+  const gpsPath = path.join(dir, 'gps.json');
+  if (existsSync(gpsPath)) {
+    const { practices } = JSON.parse(readFileSync(gpsPath, 'utf8'));
+    data.places = data.places.filter((p) => p.kind !== 'gp');
+    for (const p of practices) {
+      if (p.lon == null) continue;
+      data.places.push({ id: `ods/${p.code}`, kind: 'gp', name: p.name, lon: p.lon, lat: p.lat, listSize: p.listSize, waitAcceptablePct: p.waitAcceptablePct, needsMetPct: p.needsMetPct });
+    }
+    console.log(`[planner] GP surgeries: ${practices.length} official NHS practices (gps.json) replace OpenStreetMap's`);
+  }
   // With census.json present, homes are weighted to real household numbers.
   const censusPath = path.join(dir, 'census.json');
   let areas = null;
@@ -271,10 +343,11 @@ try {
   else if (command === 'import') importTown(id, file);
   else if (command === 'traffic') await trafficRegion(id);
   else if (command === 'census') await censusTown(id);
+  else if (command === 'gps') await gpsTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|analyse|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|analyse|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

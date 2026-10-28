@@ -16,7 +16,8 @@ houses). Use public totals (census, traffic counts) and simulated residents.
 npm run planner -- towns               # list towns
 npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, retrying across mirrors
 npm run planner -- census worcester    # Census 2021: households, residents, travel to work per neighbourhood
-npm run planner -- analyse worcester   # score walking access, write map files (uses census.json if present)
+npm run planner -- gps worcester       # official NHS GP practices: list size, patient survey, location
+npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- traffic west-midlands   # DfT yearly traffic counts 2000–2025 → time-lapse
 npm run dev                            # open the app → Data Layers → "Town Planner" / "Traffic Time-lapse"
 ```
@@ -125,8 +126,12 @@ joins the network, plus new negative ids for its own new points.
   buildings inside it. Flats count 6 households per building, a guess.
 - New estates sometimes lack mapped footpaths in OpenStreetMap, which makes
   their walks look longer than they are.
-- Services are OpenStreetMap's: a missing GP surgery on the map is a missing
-  GP surgery in the score.
+- Shops, schools and bus stops are OpenStreetMap's: a missing one on the map
+  is a missing one in the score. **GPs come from the NHS list** when
+  `gps.json` exists, because OSM missed Worcester surgeries and tagged
+  hospital departments as clinics. Branch surgeries are not included yet.
+- Check any OSM layer against an official list before trusting a finding
+  built on it. The GP correction overturned three earlier answers.
 
 ## The question loop
 
@@ -136,7 +141,8 @@ notebook. Every question asked of the planner goes in it with an `id`,
 on the map it's about, and either a `finding` or `unlocks` (the data that
 would answer it). Answers list the new questions they `spawned`; spawned
 questions point back with `from`. The layer shows open questions as **?**
-and answered ones as **✓**.
+and answered ones as **✓**. A question built on a mistake is marked
+`withdrawn` with the reason, kept in the file, and not drawn.
 
 Picking up work? Start with an open question. When you answer it, record
 the finding honestly, including "no effect" results, and add the new
