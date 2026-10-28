@@ -3,9 +3,15 @@
 Written 28 Oct 2026 after the first Worcester and Midlands runs. Every source
 below was checked as reachable that day unless marked otherwise.
 
-## What this is for (proposed; Harry to confirm)
+## What this is for
 
-**A what-if sandbox for a real place.** Start with Worcester, then the
+Harry, 28 Oct 2026: **a high-resolution God's Eye View focused on human
+happiness and health.** Model a place well enough, then make small changes
+and see how life would have gone differently. For example: what would a
+cyclist-friendly Worcester city centre look like, compared with a
+driver-friendly one?
+
+In practice: **a what-if sandbox for a real place.** Start with Worcester, then the
 Midlands. It should let anyone see how the place works today, try a change
 (a road, a bridge, homes, a GP surgery, a closure), and see the effect on
 everyday life: how far people walk, where traffic goes, safety, flood risk.
@@ -40,6 +46,17 @@ People are counted, never tracked (see AGENTS.md).
 | TomTom flow | Live congestion | App already supports it | 🔑 needs a free key |
 | Google Photorealistic 3D Tiles | Worcester in true 3D | Far better visuals | 🔑 needs a key (free tier) |
 
+### How people move (without tracking anyone)
+
+| Source | What it gives | Notes |
+|---|---|---|
+| **Strava Metro** | Aggregated, anonymised walking/running/cycling counts per street | Free, but **only to councils, transport bodies and researchers**. Worcestershire County Council may already have it. Never scrape the public heatmap: it breaks Strava's terms. |
+| **Propensity to Cycle Tool** (pct.bike) | Cycling now and under scenarios (Government target, "Go Dutch", e-bikes), per area and route, from census commuting | Built for exactly the cyclist-friendly question. Open data; download location still to find |
+| **DfT counts, `pedal_cycles` column** | Cyclists per day at every count point, 2000–2025 | Already in our traffic file's source; not yet shown |
+| **Census 2021 method of travel to work** | Walk, cycle, bus, car shares per area | Via Nomis |
+| **WHO HEAT** | Turns extra walking and cycling into health benefit (deaths avoided, £ value) | The "health" score for a scenario |
+| Volunteers' own GPS traces | Real routes, with consent | Only ever opt-in, stored as counts per street, never as individual trips |
+
 ## God's Eye View features we are not using yet
 
 So far the planner draws flat squares, dots and columns. The app can do much more:
@@ -60,5 +77,6 @@ So far the planner draws flat squares, dots and columns. The app can do much mor
 1. **Trustworthy numbers.** OS OpenUPRN for every home, plus Census 2021 for people per area. Everything after this rests on it.
 2. **Housing-site finder.** Combine access scores with brownfield land, flood zones, green belt and conservation areas, using `planning.data.gov.uk` and the EA. This answers "where should houses be built" directly.
 3. **Show it properly.** Click-a-square → walk the real route (route finder), a scene-director tour of Worcester, and share links that include the year.
-4. **Movement.** Census commuting plus bus frequency plus the traffic counts, feeding the simulated-residents model.
-5. **Draw a change.** Whiteboard road or bridge → before/after across access, traffic and safety.
+4. **Movement.** Census commuting plus bus frequency, traffic and cycle counts, feeding the simulated-residents model.
+5. **Scenarios.** Named versions of the town (e.g. "cyclist-friendly centre", "driver-friendly centre") as sets of network edits. Each is scored on the same dashboard: access, traffic, cycling and walking, health benefit (WHO HEAT), safety and emissions.
+6. **Draw a change.** Whiteboard road or bridge → a new scenario, before/after.
