@@ -14,6 +14,7 @@ import militaryInstallationsLayer from '../data/militaryInstallations.js';
 import militaryAwarenessLayer from '../data/militaryAwareness.js';
 import localDataLayers from '../data/localLayers.js';
 import { createPlannerLayer } from '../planner/layer.js';
+import { createTrafficHistoryLayer } from '../planner/trafficLayer.js';
 import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 
 /** Register the application layer catalog before allowing state restoration. */
@@ -52,6 +53,7 @@ export function createApplicationData({
   dataManager.register(militaryAwarenessLayer);
   militaryAwarenessLayer.attachDataManager(dataManager);
   dataManager.register(createPlannerLayer({ townId: 'worcester' }));
+  dataManager.register(createTrafficHistoryLayer({ region: 'west-midlands' }));
   for (const layer of localDataLayers) {
     dataManager.register(layer);
   }

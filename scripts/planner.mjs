@@ -5,6 +5,7 @@
  *   npm run planner -- fetch worcester     download OSM data (needs overpass-api.de)
  *   npm run planner -- import worcester f.json   use a scripts/planner-pbf.py cut instead
  *   npm run planner -- analyse worcester   score walking access, write map files
+ *   npm run planner -- traffic west-midlands   yearly DfT traffic counts → time-lapse layer
  *   npm run planner -- towns               list known towns
  */
 import { createHash } from 'node:crypto';
@@ -19,6 +20,7 @@ import {
   roadsToGeoJson,
 } from '../src/planner/access.js';
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
+import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/traffic.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
 // several separated by commas) replaces this list.
@@ -93,6 +95,31 @@ async function fetchTown(id) {
   console.log(`[planner] ${data.roads.length} roads, ${data.places.length} services, ${data.homes.length} homes → ${dir}/town.json`);
 }
 
+/** DfT region ids for the AADF bulk download (10 = West Midlands). */
+const DFT_REGIONS = { 'west-midlands': 10, 'east-midlands': 8, 'south-west': 1, 'north-west': 5 };
+
+/** Download a region's yearly traffic counts and write the traffic layer file. */
+async function trafficRegion(name = 'west-midlands') {
+  const id = DFT_REGIONS[name];
+  if (!id) throw new Error(`Unknown region "${name}". Known: ${Object.keys(DFT_REGIONS).join(', ')}`);
+  const url = `https://storage.googleapis.com/dft-statistics/road-traffic/downloads/aadf/region_id/dft_aadf_region_id_${id}.csv`;
+  console.log(`[planner] Downloading DfT traffic counts for ${name}…`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`DfT answered ${res.status}`);
+  const points = buildCountPoints(parseCsv(await res.text()));
+  const layer = toTrafficLayerJson(points, { region: name });
+  const dir = path.join(process.cwd(), 'public', 'planner', 'traffic');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, `${name}.json`), JSON.stringify(layer));
+  const first = layer.pulse[0];
+  const last = layer.pulse.at(-1);
+  console.log(`[planner] ${layer.points.length} count points, ${first.year}–${last.year}; traffic index ${first.index} → ${last.index}`);
+  for (const e of layer.diversions.slice(0, 5)) {
+    console.log(`  ${e.from}→${e.to}: ${e.fell.road} (${e.fell.area}) lost ~${e.moved}/day while ${e.rose.road} ${e.km} km away gained`);
+  }
+  console.log(`[planner] Wrote ${dir}/${name}.json`);
+}
+
 /** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
 function importTown(id, file) {
   const town = getTown(id);
@@ -141,10 +168,11 @@ const [command, id, file] = process.argv.slice(2);
 try {
   if (command === 'fetch') await fetchTown(id);
   else if (command === 'import') importTown(id, file);
+  else if (command === 'traffic') await trafficRegion(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|analyse|towns> [town] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|analyse|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

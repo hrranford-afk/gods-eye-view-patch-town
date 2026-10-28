@@ -16,7 +16,8 @@ houses). Use public totals (census, traffic counts) and simulated residents.
 npm run planner -- towns               # list towns
 npm run planner -- fetch worcester     # download OpenStreetMap data in tiles, retrying across mirrors
 npm run planner -- analyse worcester   # score walking access, write map files
-npm run dev                            # open the app → Data Layers → "Town Planner"
+npm run planner -- traffic west-midlands   # DfT yearly traffic counts 2000–2025 → time-lapse
+npm run dev                            # open the app → Data Layers → "Town Planner" / "Traffic Time-lapse"
 ```
 
 If the Overpass servers are too busy, cut the town out of a ready-made
@@ -42,6 +43,8 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/graph.js` | Walking network and shortest-path search. No browser code. |
 | `src/planner/access.js` | Walking-access scores, grid cells, GeoJSON output. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
+| `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
+| `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
 | `src/planner/planner.test.mjs` | Tests on a tiny made-up street grid. `node --test src/planner/` |
 | `src/planner/IDEAS.md` | Co-design log: what's been added, by whom, and what's next. |
@@ -54,6 +57,12 @@ Output for a town lands in `public/planner/<town>/`:
 - `roads.geojson`, `places.geojson`: what the layer draws
 - `sites.geojson`: the top 3 suggested sites per service, with `homesGained`
 - `summary.json`: headline numbers, the worst-served squares, the most cut-off squares, the suggested sites, and `bestSingleChange`
+
+Traffic lands in `public/planner/traffic/<region>.json`: `years`, `pulse`
+(region vehicle-km per year, 2000 = 100), `diversions`, and `points`, each with
+`all` (vehicles/day per year, aligned to `years`) and `counted` (1 real count,
+0 DfT estimate). Diversions only ever use counted-to-counted changes, measured
+against the regional trend.
 
 ## The town file (the one shape everything shares)
 
@@ -102,7 +111,7 @@ joins the network, plus new negative ids for its own new points.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js` and `sites.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`.

@@ -1398,6 +1398,7 @@
       "src/planner/layer.js",
       "src/planner/osm.js",
       "src/planner/towns.js",
+      "src/planner/trafficLayer.js",
       "src/renderGovernor.js",
       "src/rightRailPolicy.js",
       "src/scenes/director.js",
