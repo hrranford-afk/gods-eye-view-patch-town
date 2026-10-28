@@ -3,6 +3,7 @@
  * Town planner command line. See src/planner/AGENTS.md.
  *
  *   npm run planner -- fetch worcester     download OSM data (needs overpass-api.de)
+ *   npm run planner -- import worcester f.json   use a scripts/planner-pbf.py cut instead
  *   npm run planner -- analyse worcester   score walking access, write map files
  *   npm run planner -- towns               list known towns
  */
@@ -92,6 +93,17 @@ async function fetchTown(id) {
   console.log(`[planner] ${data.roads.length} roads, ${data.places.length} services, ${data.homes.length} homes → ${dir}/town.json`);
 }
 
+/** Turn Overpass-style JSON (e.g. from scripts/planner-pbf.py) into a town file. */
+function importTown(id, file) {
+  const town = getTown(id);
+  if (!file) throw new Error('Usage: npm run planner -- import <town> <overpass.json>');
+  const data = parseOverpass(JSON.parse(readFileSync(file, 'utf8')), town.id);
+  const dir = townDir(town.id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'town.json'), JSON.stringify(data));
+  console.log(`[planner] ${data.roads.length} roads, ${data.places.length} services, ${data.homes.length} homes → ${dir}/town.json`);
+}
+
 function analyseTown(id) {
   const town = getTown(id);
   const dir = townDir(town.id);
@@ -125,13 +137,14 @@ function analyseTown(id) {
   console.log(`[planner] Wrote access, roads, places, sites (.geojson) and summary.json to ${dir}`);
 }
 
-const [command, id] = process.argv.slice(2);
+const [command, id, file] = process.argv.slice(2);
 try {
   if (command === 'fetch') await fetchTown(id);
+  else if (command === 'import') importTown(id, file);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|analyse|towns> [town]');
+    console.log('Usage: npm run planner -- <fetch|import|analyse|towns> [town] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

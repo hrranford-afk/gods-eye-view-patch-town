@@ -15,6 +15,16 @@ easier to understand or nicer to live in.
 | CAIRN | **"What if" without editing**: score the town with proposed roads or shops added on top | `analyseAccess(..., { extraRoads, extraPlaces })` |
 | CAIRN | **Best single change**: re-score the whole town for every suggested site and name the one change that lifts it most | `rankChanges` in `sites.js`, `bestSingleChange` in `summary.json` |
 
+## First real run: Worcester (OpenStreetMap, 28 Oct 2026)
+
+![Worcester access map](../../docs/media/planner-worcester.png)
+
+- 26,086 mapped homes, overall score **71/100**. Within the walking target: food shop 80%, school 78%, **GP 45%**, bus stop 81%.
+- Worst served: the southern edge (Kempsey Road / Norton, around Pear Tree Drive and Church Lane) and Whittington (Gilmour Drive).
+- Most cut off: Lyppard Grange in the Warndon Villages. Its winding cul-de-sacs make walks 2–2.6× the straight line.
+- Best single change: a GP near Norton Road, St Peters (+2,150 homes within 15 min; town 70.9 → 72.9).
+- Biggest food-shop gap: Plantation Drive, Lyppard Grange (+836 homes).
+
 ## Next
 
 1. **Housing sites.** Candidates near services and outside Environment Agency flood zones (Severn/Teme). Needs the flood-zone data.

@@ -19,6 +19,16 @@ npm run planner -- analyse worcester   # score walking access, write map files
 npm run dev                            # open the app → Data Layers → "Town Planner"
 ```
 
+If the Overpass servers are too busy, cut the town out of a ready-made
+OpenStreetMap extract instead (Worcester is in the West Midlands file):
+
+```sh
+curl -O https://download.openstreetmap.fr/extracts/europe/united_kingdom/england/west_midlands-latest.osm.pbf
+pip install osmium
+python3 scripts/planner-pbf.py west_midlands-latest.osm.pbf 52.155,-2.285,52.235,-2.155 worcester-osm.json
+npm run planner -- import worcester worcester-osm.json
+```
+
 Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 `HTTPS_PROXY` unless you add `NODE_USE_ENV_PROXY=1` (Node 22.21+). Set
 `PLANNER_OVERPASS_URL` to try a particular Overpass server first.
@@ -79,6 +89,16 @@ then re-scores the town for each one and sorts them by overall-score gain.
 
 A new road is a road object whose `nodes` reuse existing node ids where it
 joins the network, plus new negative ids for its own new points.
+
+## Known limits
+
+- Homes are buildings tagged as houses, flats, terraces and so on. Many UK
+  buildings are tagged just `building=yes`, so roughly half of homes are
+  missing. Scores are indicative, not counts.
+- New estates sometimes lack mapped footpaths in OpenStreetMap, which makes
+  their walks look longer than they are.
+- Services are OpenStreetMap's: a missing GP surgery on the map is a missing
+  GP surgery in the score.
 
 ## Rules for changes
 
