@@ -6,7 +6,8 @@
  *   npm run planner -- analyse worcester   score walking access, write map files
  *   npm run planner -- towns               list known towns
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getTown, TOWNS } from '../src/planner/towns.js';
 import { mergeOverpass, overpassQueries, parseOverpass, SERVICE_KINDS } from '../src/planner/osm.js';
@@ -18,15 +19,17 @@ import {
 } from '../src/planner/access.js';
 import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.js';
 
-// Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL puts one first.
-const OVERPASS_URLS = [...new Set([
-  process.env.PLANNER_OVERPASS_URL,
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-].filter(Boolean))];
+// Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
+// several separated by commas) replaces this list.
+const OVERPASS_URLS = process.env.PLANNER_OVERPASS_URL
+  ? process.env.PLANNER_OVERPASS_URL.split(',').map((u) => u.trim()).filter(Boolean)
+  : [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+  ];
 const PARALLEL = 3;
-const ATTEMPTS = 4;
+const ATTEMPTS = 6;
 
 /** Folder holding one town's files; the app serves it at /planner/<town>/. */
 export function townDir(id, root = process.cwd()) {
@@ -52,15 +55,25 @@ async function fetchTown(id) {
   const town = getTown(id);
   const queries = overpassQueries(town);
   console.log(`[planner] Fetching ${town.name} in ${queries.length} pieces from ${OVERPASS_URLS.length} servers (a few minutes)…`);
+  // Finished pieces are kept, so a rerun after a failure only fetches the rest.
+  const cacheDir = path.join(process.cwd(), '.gev-cache', 'planner', town.id);
+  mkdirSync(cacheDir, { recursive: true });
+  const cachePath = (q) => path.join(cacheDir, `${createHash('sha1').update(q).digest('hex')}.json`);
   const results = new Array(queries.length);
   let next = 0;
   let done = 0;
   const worker = async (w) => {
     while (next < queries.length) {
       const i = next++;
+      if (existsSync(cachePath(queries[i]))) {
+        results[i] = JSON.parse(readFileSync(cachePath(queries[i]), 'utf8'));
+        console.log(`[planner]   piece ${++done}/${queries.length} (saved earlier)`);
+        continue;
+      }
       for (let attempt = w; ; attempt++) {
         try {
           results[i] = await askOverpass(queries[i], attempt);
+          writeFileSync(cachePath(queries[i]), JSON.stringify(results[i]));
           console.log(`[planner]   piece ${++done}/${queries.length}`);
           break;
         } catch (err) {
