@@ -47,7 +47,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas, questions, river }) {
+  function draw({ access, roads, places, sites, areas, questions, river, bus }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -96,6 +96,8 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
       });
     }
     for (const f of places.features) {
+      // With a timetable, bus stops are drawn from it instead (with frequency).
+      if (bus && f.properties.kind === 'bus') continue;
       const [lon, lat] = f.geometry.coordinates;
       entities.add({
         name: f.properties.name || SERVICE_KINDS[f.properties.kind]?.label,
@@ -134,6 +136,21 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         description: `<p>A new ${label.toLowerCase()} here would bring <b>${p.homesGained}</b> more homes within a ${SERVICE_KINDS[p.kind]?.targetMin}-minute walk.</p><p>A prompt to look closer, not a planning decision.</p>`,
+      });
+    }
+    // Bus stops sized and coloured by daytime buses per hour.
+    for (const st of bus?.stops || []) {
+      if (st.perHour < 1) continue;
+      const frequent = st.perHour >= 4;
+      entities.add({
+        name: `${st.name}: ${st.perHour} buses/hour (7am–7pm)`,
+        position: Cesium.Cartesian3.fromDegrees(st.lonLat[0], st.lonLat[1]),
+        point: {
+          pixelSize: Math.min(4 + st.perHour / 3, 14),
+          color: Cesium.Color.fromCssColorString(frequent ? '#80ed99' : '#2f7a4a').withAlpha(0.9),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
       });
     }
     // River crossings, and the best spot for a new footbridge if one was found.
@@ -221,7 +238,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas, questions, river] = await Promise.all([
+        const [access, roads, places, sites, areas, questions, river, bus] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
@@ -230,9 +247,10 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           getJson('areas.geojson', signal).catch(() => null),
           getJson('questions.json', signal).catch(() => null),
           getJson('river.json', signal).catch(() => null),
+          getJson('bus.json', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas, questions, river });
+        draw({ access, roads, places, sites, areas, questions, river, bus });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

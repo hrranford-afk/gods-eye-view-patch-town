@@ -31,6 +31,14 @@ python3 scripts/planner-pbf.py west_midlands-latest.osm.pbf 52.155,-2.285,52.235
 npm run planner -- import worcester worcester-osm.json
 ```
 
+Buses come from the national Bus Open Data timetable (GTFS), cut to the
+town for one ordinary weekday; `analyse` then writes `bus.json`:
+
+```sh
+curl -L -o wm_gtfs.zip https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/west_midlands/
+python3 scripts/planner-gtfs.py wm_gtfs.zip 52.155,-2.285,52.235,-2.155 2026-11-03 public/planner/worcester/buses.json
+```
+
 Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 `HTTPS_PROXY` unless you add `NODE_USE_ENV_PROXY=1` (Node 22.21+). Set
 `PLANNER_OVERPASS_URL` to try a particular Overpass server first.
@@ -45,6 +53,7 @@ Behind a corporate or cloud proxy, Node's built-in `fetch` ignores
 | `src/planner/access.js` | Walking-access scores, grid cells, GeoJSON output. No browser code. |
 | `src/planner/census.js` | Census 2021 neighbourhoods (LSOAs): households, residents, travel to work, health, age, deprivation, cars; spreads households over buildings as home weights `w`; a 0–1 `need` score per area. No browser code. |
 | `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
+| `src/planner/buses.js` | Bus frequency per stop and door-to-door bus-or-walk minutes to services (one-seat rides, average wait from the timetable). No browser code. |
 | `src/planner/river.js` | Rivers as barriers: crossings, which bank each home is on, services across the water, best new footbridge. No browser code. |
 | `src/planner/traffic.js` | DfT yearly traffic counts: CSV → count points, regional pulse, diversion detector. No browser code. |
 | `src/planner/trafficLayer.js` | The traffic time-lapse layer (Cesium): columns per road, one year per step, diversions labelled. |
@@ -61,6 +70,7 @@ Output for a town lands in `public/planner/<town>/`:
 - `roads.geojson`, `places.geojson`: what the layer draws
 - `sites.geojson`: the top 3 suggested sites per service, with `homesGained`
 - `census.json`, `areas.geojson`: Census 2021 neighbourhoods with households, residents and travel-to-work shares
+- `buses.json` (timetable cut) and `bus.json` (stops with buses/hour, share of households near a frequent stop, walk vs bus-or-walk minutes per service and per neighbourhood)
 - `river.json`: the main river's crossings, per-bank households and walking minutes, and `bestNewFootbridge`
 - `summary.json`: headline numbers, the worst-served squares, the most cut-off squares, the suggested sites, and `bestSingleChange`
 
@@ -134,7 +144,7 @@ questions it raises.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js`, `river.js`, `buses.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.

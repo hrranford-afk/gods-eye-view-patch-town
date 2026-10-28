@@ -250,3 +250,24 @@ test('river: crossings, banks, services across the water, and a new footbridge',
   assert.ok(fb.from[1] < west[6][1], `the bridge should be toward the south, near the GP: ${fb.from}`);
   assert.ok(fb.minutesSavedPerHousehold > 0);
 });
+
+test('buses: frequency per stop, and bus-or-walk beats walking for far homes', async () => {
+  const { stopFrequency, busOrWalk } = await import('./buses.js');
+  // A 4 km straight street; GP at the east end; a bus every 15 min from west to east.
+  const nodes = [...Array(51).keys()];
+  const pt = (i) => [i * 0.0012, 52];
+  const town = {
+    roads: [{ id: 'st', kind: 'local', walk: true, nodes, coords: nodes.map(pt) }],
+    places: [{ id: 'gp', kind: 'gp', lon: pt(50)[0], lat: 52 }],
+    homes: [{ id: 'far', lon: pt(1)[0], lat: 52.0001 }, { id: 'near', lon: pt(49)[0], lat: 52.0001 }],
+  };
+  const buses = {
+    stops: [{ id: 'a', name: 'West', lon: pt(0)[0], lat: 52 }, { id: 'b', name: 'East', lon: pt(50)[0], lat: 52 }],
+    trips: [...Array(48).keys()].map((k) => ({ route: '1', calls: [[0, 420 + k * 15], [1, 420 + k * 15 + 10]] })),
+  };
+  assert.deepEqual(stopFrequency(buses), [4, 0]);
+  const { walk, best } = busOrWalk(town, buses, 'gp');
+  assert.ok(walk[0] > 45, `far home walks ~50 min: ${walk[0]}`);
+  assert.ok(best[0] < 25, `bus: ~1 min walk + 7.5 wait + 10 ride: ${best[0]}`);
+  assert.equal(best[1], walk[1], 'near home just walks');
+});

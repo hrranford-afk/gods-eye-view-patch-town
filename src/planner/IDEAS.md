@@ -21,6 +21,7 @@ easier to understand or nicer to live in.
 | CAIRN | **Questions as curriculum**: open questions carry the data that would answer them, so any AI (or PatchTown resident) can pick one up as its next task | "The question loop" in AGENTS.md |
 | CAIRN | **Need-weighted sites**: rank where a service should go by the need of the households it would reach (bad health, over-65s, deprivation, no car), not just how many | `attachNeed` in `census.js`, `suggestSites(..., { byNeed: true })` |
 | CAIRN | **Best new footbridge**: try short links across the river away from existing crossings and keep the one that saves the most walking time | `bestNewCrossing` in `river.js` |
+| CAIRN | **Bus or walk**: door-to-door time by bus (walk to stop, average wait from the real timetable, ride, walk) vs walking, per household | `buses.js`, `scripts/planner-gtfs.py` |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
 ## First real run: Worcester (OpenStreetMap, 28 Oct 2026)
@@ -57,6 +58,7 @@ most people don't walk to their GP. A finding to discuss, not a verdict.
 - Ranked by need (q6), the best GP site moves from Norton Road (St Peters) to **Malvern Road, St John's (WR2)**, then Henwick, west of the Severn. Next: is the west side cut off by the river (q8)?
 - Corner shops (q9): the most deprived third of neighbourhoods has ~1.7x the convenience shops per household. The likelier reason is car ownership (33% no car vs 11%), not money as such. Weak signal, thin OSM data.
 - **River (q8):** the Severn splits Worcester into a west bank (14,303 households) and an east bank (40,301), with 6 walkable crossings and 2 for cars. West-bank households walk **31 min** to a GP on average vs 16 min on the east; for 37% the nearest GP is across the river. The best new footbridge found (Church Lane, WR2) saves under a minute per household. A GP at Malvern Road (west bank) cuts the west's average to **24 min**; one at Norton Road barely moves it. **The gap is services on the west bank, not crossings.** Next: could a west-bank health hub work there (q14)?
+- **Buses (q7):** Tuesday 3 Nov 2026 timetable, 506 stops, 2,029 trips. 54% of Worcester households have a stop with 4+ buses an hour within 5 min. Lower Wick (012E): only 11%; a GP trip is 38 min walking, ~30 by bus. **With a GP at Malvern Road, Lower Wick walks it in ~16 min**, quicker than any bus today. Busiest stop: The Cross, 53 buses an hour.
 
 ## Midlands traffic, 2000–2025 (DfT, 4,513 count points)
 

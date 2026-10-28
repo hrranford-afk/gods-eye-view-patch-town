@@ -24,6 +24,7 @@ import { rankChanges, sitesToGeoJson, suggestSites } from '../src/planner/sites.
 import { buildCountPoints, parseCsv, toTrafficLayerJson } from '../src/planner/traffic.js';
 import { areasToGeoJson, attachCensus, attachNeed, buildAreas } from '../src/planner/census.js';
 import { bestNewCrossing, riverReport } from '../src/planner/river.js';
+import { busReport } from '../src/planner/buses.js';
 import { metresBetween } from '../src/planner/graph.js';
 
 // Public Overpass servers, tried in turn. PLANNER_OVERPASS_URL (one URL, or
@@ -220,6 +221,14 @@ function analyseTown(id) {
   writeFileSync(path.join(dir, 'roads.geojson'), JSON.stringify(roadsToGeoJson(data.roads)));
   writeFileSync(path.join(dir, 'places.geojson'), JSON.stringify(placesToGeoJson(data.places)));
   writeFileSync(path.join(dir, 'sites.geojson'), JSON.stringify(sitesToGeoJson(sites)));
+  // Buses, if a timetable cut exists (scripts/planner-gtfs.py → buses.json).
+  const busesPath = path.join(dir, 'buses.json');
+  if (existsSync(busesPath)) {
+    const report = busReport(data, JSON.parse(readFileSync(busesPath, 'utf8')));
+    writeFileSync(path.join(dir, 'bus.json'), JSON.stringify(report));
+    const gp = report.services.gp;
+    console.log(`[planner] Buses (${report.date}): ${Math.round(report.shareWithFrequentStopNearby * 100)}% of households have ${report.frequentMeans} within 5 min; GP ${gp.walkMinutes} min walking, ${gp.busOrWalkMinutes} by bus or walking`);
+  }
   if (data.rivers?.length) {
     // The main river: whichever named river has the most mapped length here.
     const lengths = new Map();

@@ -41,8 +41,8 @@
       "status": "open",
       "from": "q2",
       "lonLat": [
-        -2.2215,
-        52.1925
+        -2.2262,
+        52.196
       ],
       "unlocks": "NHS Digital: patients registered per GP practice, GP workforce (FTE GPs per practice)"
     },
@@ -94,13 +94,17 @@
       "id": "q7",
       "question": "How often do buses actually run from Lower Wick to a GP surgery?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q5",
       "lonLat": [
         -2.2335,
         52.1735
       ],
-      "unlocks": "Bus Open Data GTFS timetables (West Midlands, 207 MB, reachable): trips per hour and journey times to each surgery"
+      "unlocks": "Bus Open Data GTFS timetables (West Midlands, 207 MB, reachable): trips per hour and journey times to each surgery",
+      "spawned": [
+        "q15"
+      ],
+      "finding": "Not often enough to help much. Bus Open Data timetable, Tuesday 3 Nov 2026: only 11% of households in Worcester 012E (Lower Wick) have a stop with 4+ buses an hour within 5 min (vs 98% around Selsey Close). A GP trip is 38 min walking and ~30 min door to door by bus (walk, average wait, ride, walk). Town-wide, 54% of households have a frequent stop within 5 min; buses cut the average GP trip from 20.3 to 17.4 min. With a GP at Malvern Road, Lower Wick's walk falls to ~16 min, quicker than any bus today."
     },
     {
       "id": "q8",
@@ -187,7 +191,20 @@
         -2.2365,
         52.1824
       ],
-      "unlocks": "planning.data.gov.uk brownfield land and sites; empty commercial buildings in St John's (links to q12); Bus Open Data timetables from Lower Wick, Dines Green and Henwick (links to q7); NHS practice list sizes for the existing west-bank surgeries (links to q3)"
+      "unlocks": "planning.data.gov.uk brownfield land and sites; empty commercial buildings in St John's (links to q12); Bus Open Data timetables from Lower Wick, Dines Green and Henwick (links to q7); NHS practice list sizes for the existing west-bank surgeries (links to q3)",
+      "progress": "Location checks out on access: a GP at Malvern Road cuts Lower Wick (012E) from 38 to ~16 min walking and the west bank's average from 31 to 24 min. Still open: a building or site, and capacity of the existing west-bank surgeries."
+    },
+    {
+      "id": "q15",
+      "question": "Which neighbourhoods have the worst bus service for their need (old, no car, deprived) and where would one more frequent route help most?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q7",
+      "lonLat": [
+        -2.2335,
+        52.1735
+      ],
+      "unlocks": "bus.json (frequency per stop, bus-or-walk minutes per neighbourhood) + need score already loaded; route shapes from the GTFS shapes.txt to test a rerouted or extra service"
     }
   ]
 }
