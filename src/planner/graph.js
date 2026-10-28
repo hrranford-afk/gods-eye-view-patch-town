@@ -81,9 +81,10 @@ function createSnapper(coords, cellDeg = 0.002) {
 /**
  * Multi-source Dijkstra. `sources` is [{ node, metres, ref }], where `metres`
  * is the walk from the real place to its snapped node. Returns per-node
- * distance and the `ref` of the nearest source.
+ * distance and the `ref` of the nearest source. Nodes further than
+ * `maxMetres` are left at Infinity, which keeps local searches cheap.
  */
-export function nearestFrom(graph, sources) {
+export function nearestFrom(graph, sources, { maxMetres = Infinity } = {}) {
   const n = graph.coords.length;
   const dist = new Float64Array(n).fill(Infinity);
   const from = new Int32Array(n).fill(-1);
@@ -102,7 +103,7 @@ export function nearestFrom(graph, sources) {
     for (let k = 0; k < edges.length; k += 2) {
       const v = edges[k];
       const nd = d + edges[k + 1];
-      if (nd < dist[v]) {
+      if (nd < dist[v] && nd <= maxMetres) {
         dist[v] = nd;
         from[v] = from[u];
         heap.push(nd, v);

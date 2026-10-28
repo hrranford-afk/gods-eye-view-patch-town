@@ -71,7 +71,11 @@ export function analyseAccess(town, { cellM = 250, extraRoads = [], extraPlaces 
   }
 
   const out = [];
+  let metTargets = 0; // home × service pairs within target, unrounded
+  let homesScored = 0;
   for (const c of cells.values()) {
+    homesScored += c.homes;
+    for (const kind of kinds) metTargets += c.within[kind];
     const minutes = {};
     const within = {};
     let scoreSum = 0;
@@ -90,7 +94,10 @@ export function analyseAccess(town, { cellM = 250, extraRoads = [], extraPlaces 
     });
   }
 
-  return { cells: out, summary: summarise(out, { kinds, skipped, cellM, town, places }) };
+  const summary = summarise(out, { kinds, skipped, cellM, town, places });
+  // Unrounded twin of overallScore, so small changes still rank.
+  summary.overallScoreExact = homesScored ? (metTargets / (homesScored * kinds.length)) * 100 : 0;
+  return { cells: out, summary };
 }
 
 function summarise(cells, { kinds, skipped, cellM, town, places }) {

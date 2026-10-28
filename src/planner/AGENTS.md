@@ -27,6 +27,7 @@ npm run dev                            # open the app → Data Layers → "Town 
 | `src/planner/osm.js` | OpenStreetMap → **town file**; service kinds and walking targets. |
 | `src/planner/graph.js` | Walking network and shortest-path search. No browser code. |
 | `src/planner/access.js` | Walking-access scores, grid cells, GeoJSON output. No browser code. |
+| `src/planner/sites.js` | Suggested sites: where one more shop/school/GP/bus stop serves the most unserved homes. No browser code. |
 | `src/planner/layer.js` | The globe layer that draws the results (Cesium). |
 | `src/planner/planner.test.mjs` | Tests on a tiny made-up street grid. `node --test src/planner/` |
 | `src/planner/IDEAS.md` | Co-design log: what's been added, by whom, and what's next. |
@@ -37,7 +38,8 @@ Output for a town lands in `public/planner/<town>/`:
 - `town.json`: the **town file** (not committed, re-fetchable)
 - `access.geojson`: grid squares with `homes`, `score` (0–100), `minutes` and `within` per service, and `detour`
 - `roads.geojson`, `places.geojson`: what the layer draws
-- `summary.json`: headline numbers, the worst-served squares, and the most cut-off squares
+- `sites.geojson`: the top 3 suggested sites per service, with `homesGained`
+- `summary.json`: headline numbers, the worst-served squares, the most cut-off squares, the suggested sites, and `bestSingleChange`
 
 ## The town file (the one shape everything shares)
 
@@ -66,12 +68,17 @@ const after = analyseAccess(town, {
 }).summary;
 ```
 
+`suggestSites(town, { kind: 'shop', count: 3 })` (in `sites.js`) finds the
+spots on the network where one more service would bring the most homes
+within its walking target, picking greedily so each site adds new homes. `rankChanges(town, sites)`
+then re-scores the town for each one and sorts them by overall-score gain.
+
 A new road is a road object whose `nodes` reuse existing node ids where it
 joins the network, plus new negative ids for its own new points.
 
 ## Rules for changes
 
-- Keep `osm.js`, `graph.js` and `access.js` free of browser and Cesium code, so they run anywhere.
+- Keep `osm.js`, `graph.js`, `access.js` and `sites.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`.

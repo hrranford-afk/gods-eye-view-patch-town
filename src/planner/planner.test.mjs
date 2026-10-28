@@ -4,6 +4,7 @@ import { parseOverpass, roadKind } from './osm.js';
 import { buildWalkGraph, metresBetween, nearestFrom } from './graph.js';
 import { analyseAccess, cellsToGeoJson } from './access.js';
 import { getTown } from './towns.js';
+import { rankChanges, suggestSites, sitesToGeoJson } from './sites.js';
 
 // A 5×5 street grid with ~100 m blocks around (0, 52); node id = row*10+col.
 const STEP = 0.0009; // degrees ≈ 100 m north-south, ≈ 62 m east-west at 52°N
@@ -99,4 +100,33 @@ test('cells publish as closed GeoJSON polygons without home positions', () => {
   assert.ok(!('homesList' in fc.features[0].properties));
   assert.equal(getTown('Worcester').name, 'Worcester');
   assert.throws(() => getTown('atlantis'), /Known towns/);
+});
+
+test('suggested shop goes where the unserved homes are', () => {
+  // A long street: shop at the west end, homes spread 3 km east of it.
+  const roads = [];
+  const nodes = [...Array(41).keys()];
+  const pt = (i) => [i * 0.0012, 52];
+  roads.push({ id: 'st', kind: 'local', walk: true, nodes, coords: nodes.map(pt) });
+  const homes = nodes.map((i) => ({ id: `h${i}`, lon: pt(i)[0], lat: 52.0001 }));
+  const town = { roads, homes, places: [{ id: 's', kind: 'shop', lon: 0, lat: 52 }] };
+  const [first, second] = suggestSites(town, { kind: 'shop', count: 2 });
+  const servedNow = analyseAccess(town).summary.shareOfHomesMeetingTarget.shop;
+  assert.ok(first.lon > pt(15)[0], `first site should be east of the served end: ${first.lon}`);
+  assert.ok(first.homesGained >= second.homesGained);
+  const after = analyseAccess(town, { extraPlaces: [{ id: 'n', kind: 'shop', lon: first.lon, lat: first.lat }] });
+  assert.ok(after.summary.shareOfHomesMeetingTarget.shop > servedNow);
+  const ranks = sitesToGeoJson([first, second, { ...first, kind: 'bus' }]).features.map((f) => f.properties.rank);
+  assert.deepEqual(ranks, [1, 2, 1]);
+  assert.throws(() => suggestSites(town, { kind: 'pub' }), /Unknown service kind/);
+});
+
+test('best single change ranks the site that lifts the town most first', () => {
+  const town = gridTown();
+  const far = { kind: 'school', lon: at(2, 2)[0], lat: at(2, 2)[1], homesGained: 25 };
+  const useless = { kind: 'shop', lon: at(0, 4)[0], lat: at(0, 4)[1], homesGained: 0 };
+  const [best, worst] = rankChanges(town, [useless, far], { cellM: 2000 });
+  assert.equal(best.kind, 'school');
+  assert.ok(best.scoreGain > 0);
+  assert.equal(worst.scoreGain, 0);
 });

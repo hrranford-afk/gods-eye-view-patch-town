@@ -47,7 +47,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places }) {
+  function draw({ access, roads, places, sites }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -89,6 +89,34 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         },
       });
     }
+    for (const f of sites?.features || []) {
+      const [lon, lat] = f.geometry.coordinates;
+      const p = f.properties;
+      const label = SERVICE_KINDS[p.kind]?.label || p.kind;
+      entities.add({
+        name: `Suggested ${label.toLowerCase()} #${p.rank}`,
+        position: Cesium.Cartesian3.fromDegrees(lon, lat),
+        point: {
+          pixelSize: 14,
+          color: Cesium.Color.fromCssColorString(PLACE_COLOR[p.kind] || '#ffffff'),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 3,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        // Only each service's best site is labelled, so labels don't pile up.
+        label: p.rank !== 1 ? undefined : {
+          text: `+${label}: ${p.homesGained} homes`,
+          font: '13px monospace',
+          fillColor: Cesium.Color.WHITE,
+          showBackground: true,
+          pixelOffset: new Cesium.Cartesian2(0, -20),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        description: `<p>A new ${label.toLowerCase()} here would bring <b>${p.homesGained}</b> more homes within a ${SERVICE_KINDS[p.kind]?.targetMin}-minute walk.</p><p>A prompt to look closer, not a planning decision.</p>`,
+      });
+    }
     entities.resumeEvents();
     _count = access.features.length;
   }
@@ -122,13 +150,15 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places] = await Promise.all([
+        const [access, roads, places, sites] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
+          // Files from before site suggestions existed have no sites.geojson.
+          getJson('sites.geojson', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places });
+        draw({ access, roads, places, sites });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;
