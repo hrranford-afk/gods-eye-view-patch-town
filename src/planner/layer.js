@@ -47,7 +47,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas }) {
+  function draw({ access, roads, places, sites, areas, questions }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
@@ -136,6 +136,30 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         description: `<p>A new ${label.toLowerCase()} here would bring <b>${p.homesGained}</b> more homes within a ${SERVICE_KINDS[p.kind]?.targetMin}-minute walk.</p><p>A prompt to look closer, not a planning decision.</p>`,
       });
     }
+    // The question loop: open questions as "?" markers, answered ones as "✓".
+    for (const q of questions?.questions || []) {
+      if (!q.lonLat) continue;
+      const open = q.status !== 'answered';
+      entities.add({
+        name: `${open ? 'Open question' : 'Answered'}: ${q.question}`,
+        position: Cesium.Cartesian3.fromDegrees(q.lonLat[0], q.lonLat[1]),
+        label: {
+          text: open ? '?' : '✓',
+          font: 'bold 26px sans-serif',
+          fillColor: Cesium.Color.fromCssColorString(open ? '#ffd166' : '#80ed99'),
+          showBackground: true,
+          backgroundColor: Cesium.Color.fromCssColorString('#06141c').withAlpha(0.85),
+          backgroundPadding: new Cesium.Cartesian2(9, 5),
+          // Answered ticks sit off to the side so they don't cover site labels.
+          pixelOffset: new Cesium.Cartesian2(open ? 0 : 34, open ? -34 : 0),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        description: `<p><b>${q.question}</b></p><p>Asked by ${q.askedBy}${q.from ? `, following ${q.from}` : ''}</p>`
+          + (q.finding ? `<p>Found: ${q.finding}</p>` : '')
+          + (q.unlocks ? `<p>To answer, unlock: ${q.unlocks}</p>` : ''),
+      });
+    }
     entities.resumeEvents();
     _count = access.features.length;
   }
@@ -169,16 +193,17 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas] = await Promise.all([
+        const [access, roads, places, sites, areas, questions] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
           // Files from before site suggestions existed have no sites.geojson.
           getJson('sites.geojson', signal).catch(() => null),
           getJson('areas.geojson', signal).catch(() => null),
+          getJson('questions.json', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas });
+        draw({ access, roads, places, sites, areas, questions });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

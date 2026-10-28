@@ -17,6 +17,8 @@ easier to understand or nicer to live in.
 | Harry | See the Midlands as one organism: how traffic has grown, shifted and been diverted over the years | `traffic.js`, `trafficLayer.js` (time-lapse 2000–2025) |
 | CAIRN | **Diversion detector**: a road whose real counted traffic fell sharply while a nearby road's rose over the same years, beyond the regional trend. It finds roadworks and new roads from their fingerprint | `findDiversions` in `traffic.js` |
 | Harry | Make it about human happiness and health; see how people move (walking, cycling, commuting) | `census.js` (Census 2021 households and travel to work), cycling time-lapse |
+| Harry | Every answer should raise new questions that unlock more of the map | `questions.json` + **?**/**✓** markers on the layer |
+| CAIRN | **Questions as curriculum**: open questions carry the data that would answer them, so any AI (or PatchTown resident) can pick one up as its next task | "The question loop" in AGENTS.md |
 | CAIRN | **Census-weighted homes**: OSM says where buildings are, the census says how many households live in each neighbourhood. Sharing one over the other makes every score count real households | `attachCensus` in `census.js` |
 
 ## First real run: Worcester (OpenStreetMap, 28 Oct 2026)

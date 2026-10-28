@@ -116,9 +116,23 @@ joins the network, plus new negative ids for its own new points.
 - Services are OpenStreetMap's: a missing GP surgery on the map is a missing
   GP surgery in the score.
 
+## The question loop
+
+`public/planner/<town>/questions.json` is the planner's to-do list and lab
+notebook. Every question asked of the planner goes in it with an `id`,
+`question`, `askedBy`, `status` (`open` or `answered`), a `lonLat` for where
+on the map it's about, and either a `finding` or `unlocks` (the data that
+would answer it). Answers list the new questions they `spawned`; spawned
+questions point back with `from`. The layer shows open questions as **?**
+and answered ones as **✓**.
+
+Picking up work? Start with an open question. When you answer it, record
+the finding honestly, including "no effect" results, and add the new
+questions it raises.
+
 ## Rules for changes
 
 - Keep `osm.js`, `graph.js`, `access.js`, `sites.js`, `census.js` and `traffic.js` free of browser and Cesium code, so they run anywhere.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
-- Log what you added in `IDEAS.md`.
+- Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.
