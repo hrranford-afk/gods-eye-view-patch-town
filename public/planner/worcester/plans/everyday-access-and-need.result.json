@@ -1,35 +1,35 @@
 {
   "question": "Who in Worcester finds everyday life hardest to reach, and are they the people who need it most?",
-  "ranAt": "2026-10-28T15:53:20.656Z",
+  "ranAt": "2026-10-28T18:13:13.721Z",
   "results": {
     "doesNeedGoWithDistance": {
-      "groups": 76,
-      "r2": 0.23,
+      "groups": 75,
+      "r2": 0.25,
       "predictors": {
         "need": {
-          "coefficient": -49.4,
-          "t": -4.7,
+          "coefficient": -51.3,
+          "t": -5,
           "control": false
         }
       }
     },
     "carlessAfterAgeAndDeprivation": {
-      "groups": 76,
-      "r2": 0.33,
+      "groups": 75,
+      "r2": 0.32,
       "predictors": {
         "noCar": {
-          "coefficient": -63.3,
-          "t": -2.3,
+          "coefficient": -61.4,
+          "t": -2.2,
           "control": false
         },
         "over65": {
-          "coefficient": 44.9,
-          "t": 1.5,
+          "coefficient": 36.6,
+          "t": 1.2,
           "control": true
         },
         "deprived": {
-          "coefficient": -29.6,
-          "t": -0.7,
+          "coefficient": -34.3,
+          "t": -0.8,
           "control": true
         }
       }
@@ -38,68 +38,68 @@
       {
         "group": "E01032325",
         "name": "Worcester 014C",
-        "value": 60
+        "value": 59.95
       },
       {
         "group": "E01032316",
         "name": "Worcester 006C",
-        "value": 58.2
-      },
-      {
-        "group": "E01032297",
-        "name": "Worcester 001B",
-        "value": 53.8
+        "value": 58.3
       },
       {
         "group": "E01032335",
         "name": "Worcester 003C",
-        "value": 53.3
+        "value": 53.33
       },
       {
         "group": "E01032324",
         "name": "Worcester 014B",
-        "value": 53.2
+        "value": 53.29
       },
       {
         "group": "E01032339",
         "name": "Worcester 008C",
-        "value": 52
+        "value": 51.98
       },
       {
         "group": "E01032323",
         "name": "Worcester 014A",
-        "value": 51.9
+        "value": 51.95
+      },
+      {
+        "group": "E01032297",
+        "name": "Worcester 001B",
+        "value": 50.33
       },
       {
         "group": "E01032290",
         "name": "Worcester 012E",
-        "value": 46.6
+        "value": 46.67
       }
     ],
     "gpByRiverBank": {
       "value": {
-        "east": 17.1,
-        "west": 21.2
+        "east": 17.15,
+        "west": 20.621
       },
       "households": {
-        "east": 40300,
-        "west": 14303
+        "east": 40307,
+        "west": 13733
       }
     },
     "gpForCarlessHouseholds": {
       "value": {
-        "worcester": 14
+        "worcester": 13.914
       },
       "households": {
-        "worcester": 54803
+        "worcester": 54233
       }
     },
     "gpForAllHouseholds": {
       "value": {
-        "worcester": 18.6
+        "worcester": 18.396
       },
       "households": {
-        "worcester": 54803
+        "worcester": 54233
       }
     }
   }

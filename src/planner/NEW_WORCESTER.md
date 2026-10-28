@@ -23,20 +23,54 @@ So the loop is:
 Anyone (Harry, CAIRN, another AI, a PatchTown resident) can add to any
 step. Cite the plan or scenario file for every number.
 
+## The compass: a good day, within reach, for everyone
+
+The measure of New Worcester is not "how far is the GP?" but **could
+someone living here have a good ordinary day?** The evidence on what makes
+people thrive points the same way every time:
+
+1. **Other people.** Relationships are the strongest predictor of a long,
+   happy life; loneliness harms like smoking. → places to meet, close by.
+2. **Health that's built in.** Walking as part of the day, clean air, food. → short, pleasant walks.
+3. **Nature.** Green space within ~300 m (about 5 minutes) of home. → parks and the river, reachable.
+4. **Security.** A home you can afford and keep, not at risk of flooding.
+5. **Purpose.** Somewhere to work, learn, make, care, volunteer.
+6. **Time.** Hours lost to travel and waiting are among the least-liked parts of any day.
+7. **A say.** Being able to shape where you live. → this tool, open to residents.
+
+**2026 changes the job:** work is coming loose from place (remote work,
+AI), so town centres need new reasons to exist (meeting, learning, making,
+care, play); the population is ageing and isolation becomes the main
+health risk; the Severn floods and homes must decarbonise; and AI can make
+a city legible, letting anyone ask it an honest, checkable question. It
+should never decide what a good life is, and it must count people without
+tracking them.
+
+**The headline measure** (`plans/good-day.json`): the share of households
+with all of: a meeting place ≤ 10 min walk, green space ≤ 5 min, food ≤ 10
+min, a GP ≤ 15 min walking or by bus. More checks (housing cost, work and
+learning, air, safety) join as their data arrives. Next: play it out for
+real kinds of residents (an older person without a car in Lower Wick, a
+young family in St Peters, a home-worker in Barbourne).
+
 ---
 
 ## 1. What Old Worcester tells us
 
+_Numbers from the plans as last re-run (29 Oct 2026 data build). Re-run any plan to refresh._
+
 | # | Lesson | Evidence |
 |---|---|---|
-| L1 | **Worcester grew outward without bringing everyday life with it.** The neighbourhoods with the most homes built since 1995 are measurably further from a GP, food and a school, even after deprivation and age (t = 2.3). Rye Place (Warndon Villages): 77% of today's households are post-1995; Arran Place (St Peters): 60%. Both are among the hardest places to reach everyday life from. | `plans/did-services-follow-growth.json` |
-| L2 | **Need already lives close to services.** The most deprived, least healthy, car-less neighbourhoods are *nearer* everyday services, not further (t = −4.7). Their bad health tracks deprivation (r = 0.91), not distance (GP distance: no link, t = 0.8). Health in New Worcester is about people's circumstances, not just where the surgery is. | `plans/everyday-access-and-need.json`, IDEAS.md health check |
+| L1 | **Worcester grew outward without bringing everyday life with it.** The neighbourhoods with the most homes built since 1995 are measurably further from a GP, food and a school, even after deprivation and age (t = 2.4). Rye Place (Warndon Villages): 77% of today's households are post-1995; Arran Place (St Peters): 60%. Both are among the hardest places to reach everyday life from. | `plans/did-services-follow-growth.json` |
+| L2 | **Need already lives close to services.** The most deprived, least healthy, car-less neighbourhoods are *nearer* everyday services, not further (t = −5.0). Their bad health tracks deprivation (r = 0.91), not distance (GP distance: no link, t = 0.8). Health in New Worcester is about people's circumstances, not just where the surgery is. | `plans/everyday-access-and-need.json`, IDEAS.md health check |
 | L3 | **Car dependence grew.** Census 2011 → 2021 (city): driving to work 71% → 76%, bus 5.0% → 2.8%, cycling 4.5% → 3.5%, walking 17% → 15%. Households without a car fell from 22.5% to 20.5%. The 2021 census was taken in lockdown, which hit buses hardest, so treat the size of the swing with care. Driving grew most in older estates (Henwick, Dines Green, Cherwell Close). | `plans/how-worcester-changed.json`, `plans/travel-shift-2011-2021.json` |
-| L4 | **Distance explains a lot of driving, but not all.** Further from everyday life means more driving (t = 7.1, 40% of the variation). Yet Perdiswell (Checketts Lane, Northwick Avenue), Barbourne (Sharman Road, Canal Side) and Dines Green (Drake Avenue) have everything close and still drive to work 71–83% of the time. | `plans/drive-less-opportunity.json` |
+| L4 | **Distance explains a lot of driving, but not all.** Further from everyday life means more driving (t = 6.8). Yet Perdiswell (Checketts Lane, Northwick Avenue), Barbourne (Sharman Road, Canal Side) and Dines Green (Drake Avenue) have everything close and still drive to work 71–83% of the time. | `plans/drive-less-opportunity.json` |
 | L5 | **Corner shops are the car-less household's supermarket.** Small food shops follow households without a car (t = 6.9), not deprivation. Takeaways show no link with deprivation or bad health. | `plans/takeaways-and-health.json` |
 | L6 | **The river divides less than it looks.** West bank 21 min to a GP by bus or walking, east 17. Six walkable crossings, two for cars; a new footbridge saves under a minute. | `river.json`, `plans/everyday-access-and-need.json` |
 | L7 | **GP surgeries are big and some are stretched.** 9 practices, 6,900–21,900 patients each (England typical: 8,800). Patients finding the wait acceptable: 55–59% at Haresfield House, St Martin's Gate and St Johns House (England 66%). St Peters is the biggest gap. | `gps.json`, questions q3 |
 | L8 | **The centre has room.** ~27 of 35 mapped empty shops are in the city centre, including the former Debenhams. | `vacant.geojson` |
+| L10 | **Only 32% of households have a good day within reach** (meeting place, green space, food, GP). GP access is the bottleneck (48% within 15 min walking or by bus), then green space (58% within 5 min); meeting places and food are near most people (84%). Car-less households do better (47%), over-65s worse (27%). Need goes *with* a good day (t = 5.3): the central, poorer neighbourhoods have it; St Peters (Spetchley Road, Foxglove Road) and the Warndon Villages (Collings Avenue, Bradford Place) have none of it. | `plans/good-day.json` |
+| L11 | **Where life is closest, the river is too.** 96% of households are outside flood zones, but the best "good day" neighbourhood, St Clements by the river (Back Lane South), has 21% of homes in Flood Zone 3. New Worcester's dense, walkable centre has to live with the Severn. | `plans/good-day.json`, `flood.json` |
 | L9 | **Check the map against official lists.** OpenStreetMap missed three GP surgeries and counted hospital departments as GPs. The correction overturned three answers. | IDEAS.md correction |
 
 ## 2. Principles for New Worcester
@@ -50,6 +84,8 @@ Drawn from the lessons. Each should be testable with the tools.
 | P3 | **Make walking and cycling win first where distances are already short.** Start with Perdiswell, Barbourne and Dines Green, not the far suburbs. | L3, L4 |
 | P4 | **Protect the small shops car-less households rely on.** | L5 |
 | P5 | **Reuse before building out.** Empty centre units and public buildings (County Hall) before new edge estates. | L1, L8 |
+| P7 | **Every household gets a good day within reach.** The four checks (meet, green, food, GP), then more as data arrives. St Peters and the Warndon Villages first. | L10 |
+| P8 | **Build where it's dry.** New homes outside Flood Zones 2–3; protect, don't abandon, the riverside places that already work. Scenarios flag homes in flood zones. | L11 |
 | P6 | **Fix health at its cause.** Deprivation drives bad health more than distance; pair any service change with income, housing and work measures. | L2 |
 
 ## 3. Candidate changes (scored)

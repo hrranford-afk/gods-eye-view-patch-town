@@ -28,6 +28,41 @@ const HOME_BUILDINGS = [
   'yes',
 ];
 
+/** Amenities that count as places people meet ("third places"). */
+const MEET_AMENITIES = Object.freeze({
+  cafe: 'cafe', pub: 'pub', bar: 'pub', library: 'library',
+  community_centre: 'community', social_centre: 'community', arts_centre: 'community',
+  place_of_worship: 'worship',
+});
+
+/** Public green space kind for a way's tags, or null. */
+export function greenKind(tags = {}) {
+  if (tags.access === 'private' || tags.access === 'no') return null;
+  if (tags.leisure === 'playground') return 'green:playground';
+  if (tags.leisure === 'nature_reserve') return 'green:nature';
+  if (['park', 'common', 'recreation_ground', 'village_green'].includes(tags.leisure)) return 'green:park';
+  if (['recreation_ground', 'village_green'].includes(tags.landuse)) return 'green:park';
+  if (tags.leisure === 'garden' && tags['garden:type'] !== 'residential' && tags.name) return 'green:park';
+  return null;
+}
+
+/**
+ * Points you can reach a green space from: every corner of its outline at
+ * least `spacingM` apart. A big park reached only at its middle would look
+ * far from the homes along its edge.
+ */
+function accessPoints(coords, spacingM = 60) {
+  const out = [];
+  let last = null;
+  for (const c of coords) {
+    if (!last || Math.hypot((c[0] - last[0]) * 68_000, (c[1] - last[1]) * 111_000) >= spacingM) {
+      out.push(c);
+      last = c;
+    }
+  }
+  return out;
+}
+
 /** Roads people cannot (or should not) walk along. */
 const NO_WALK = new Set(['motorway', 'motorway_link', 'construction', 'proposed', 'raceway']);
 
@@ -56,7 +91,7 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
         s + ((n - s) * (i + 1)) / tiles, w + ((e - w) * (j + 1)) / tiles,
       ].map((x) => x.toFixed(5));
       const b = `(${box.join(',')})`;
-      queries.push(`[out:json][timeout:${timeoutS}];(way["highway"]${b};way["waterway"="river"]${b};);out geom;`);
+      queries.push(`[out:json][timeout:${timeoutS}];(way["highway"]${b};way["waterway"="river"]${b};way["leisure"~"^(park|playground|nature_reserve|common|recreation_ground|village_green|garden)$"]${b};way["landuse"~"^(recreation_ground|village_green)$"]${b};);out geom;`);
       queries.push(`[out:json][timeout:${timeoutS}];
 (
   nwr["shop"~"^(supermarket|convenience|greengrocer|butcher|bakery)$"]${b};
@@ -64,6 +99,7 @@ export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
   nwr["amenity"~"^(doctors|clinic)$"]${b};
   nwr["healthcare"~"^(doctor|clinic)$"]${b};
   node["highway"="bus_stop"]${b};
+  nwr["amenity"~"^(${Object.keys(MEET_AMENITIES).join('|')})$"]${b};
   nwr["shop"="vacant"]${b};
   nwr["disused:shop"]${b};
   nwr["was:shop"]${b};
@@ -91,6 +127,7 @@ function placeKind(tags = {}) {
   if (tags.amenity === 'doctors' || tags.amenity === 'clinic') return 'gp';
   if (tags.healthcare === 'doctor' || tags.healthcare === 'clinic') return 'gp';
   if (tags.highway === 'bus_stop') return 'bus';
+  if (MEET_AMENITIES[tags.amenity]) return `meet:${MEET_AMENITIES[tags.amenity]}`;
   return null;
 }
 
@@ -111,6 +148,13 @@ export function parseOverpass(json, townId) {
     const tags = el.tags || {};
     if (el.type === 'way' && tags.waterway === 'river' && Array.isArray(el.geometry)) {
       rivers.push({ id: el.id, name: tags.name || '', coords: el.geometry.map((g) => [g.lon, g.lat]) });
+      continue;
+    }
+    const green = el.type === 'way' && !tags.highway && Array.isArray(el.geometry) ? greenKind(tags) : null;
+    if (green) {
+      accessPoints(el.geometry.map((g) => [g.lon, g.lat])).forEach(([lon, lat], k) => {
+        places.push({ id: `way/${el.id}#${k}`, kind: green, name: tags.name || '', lon, lat });
+      });
       continue;
     }
     if (el.type === 'way' && tags.highway && Array.isArray(el.geometry)) {

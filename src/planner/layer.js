@@ -47,10 +47,28 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     return res.json();
   }
 
-  function draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant }) {
+  function draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood }) {
     const entities = _dataSource.entities;
     entities.suspendEvents();
     entities.removeAll();
+    // Environment Agency flood zones: Zone 3 darker than Zone 2.
+    for (const f of flood?.features || []) {
+      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      const z3 = f.properties.flood_zone === 'FZ3';
+      for (const rings of polys) {
+        entities.add({
+          name: `Flood Zone ${z3 ? 3 : 2} (Environment Agency)`,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray(rings[0].flat()),
+              rings.slice(1).map((h) => new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(h.flat()))),
+            ),
+            material: Cesium.Color.fromCssColorString(z3 ? '#1c7ed6' : '#74c0fc').withAlpha(z3 ? 0.45 : 0.3),
+            classificationType: Cesium.ClassificationType.TERRAIN,
+          },
+        });
+      }
+    }
     // Census neighbourhoods: outlines only, click for how people get to work.
     for (const f of areas?.features || []) {
       const p = f.properties;
@@ -98,6 +116,8 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     for (const f of places.features) {
       // With a timetable, bus stops are drawn from it instead (with frequency).
       if (bus && f.properties.kind === 'bus') continue;
+      // Green space is many edge points per park: shown by the flood/base map, not as dots.
+      if (f.properties.kind.startsWith('green:')) continue;
       const [lon, lat] = f.geometry.coordinates;
       const pr = f.properties;
       entities.add({
@@ -108,7 +128,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
           pixelSize: f.properties.kind === 'bus' ? 4 : 7,
-          color: Cesium.Color.fromCssColorString(PLACE_COLOR[f.properties.kind] || '#ffffff'),
+          color: Cesium.Color.fromCssColorString(PLACE_COLOR[f.properties.kind] || (f.properties.kind.startsWith('meet:') ? '#ffa94d' : '#ffffff')),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
@@ -291,7 +311,7 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
     async update(viewer, { signal } = {}) {
       if (_loaded || !_dataSource) return false;
       try {
-        const [access, roads, places, sites, areas, questions, river, bus, scenarios, vacant] = await Promise.all([
+        const [access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood] = await Promise.all([
           getJson('access.geojson', signal),
           getJson('roads.geojson', signal),
           getJson('places.geojson', signal),
@@ -303,9 +323,10 @@ export function createPlannerLayer({ townId = 'worcester', baseUrl = '/planner',
           getJson('bus.json', signal).catch(() => null),
           getJson('scenarios.json', signal).catch(() => null),
           getJson('vacant.geojson', signal).catch(() => null),
+          getJson('flood.json', signal).catch(() => null),
         ]);
         if (signal?.aborted || !_dataSource) return false;
-        draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant });
+        draw({ access, roads, places, sites, areas, questions, river, bus, scenarios, vacant, flood });
         _loaded = true;
         _lastUpdate = Date.now();
         _lastError = null;

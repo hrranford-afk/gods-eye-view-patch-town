@@ -350,12 +350,35 @@ async function historyTown(id) {
   console.log(`[planner] Census 2011 matched for ${matched} of ${codes.length} neighbourhoods → ${dir}/history.json`);
 }
 
+/** Environment Agency Flood Zones 2 and 3 (rivers and sea) for a town. */
+async function floodTown(id) {
+  const town = getTown(id);
+  const [s, w, n, e] = town.bbox;
+  const q = new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature',
+    typeNames: 'dataset-04532375-a198-476e-985e-0579a0a11b47:Flood_Zones_2_3_Rivers_and_Sea',
+    outputFormat: 'application/json', srsName: 'EPSG:4326', count: '10000',
+    bbox: `${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`,
+  });
+  const res = await fetch(`https://environment.data.gov.uk/spatialdata/flood-map-for-planning-flood-zones/wfs?${q}`);
+  if (!res.ok) throw new Error(`Environment Agency answered ${res.status}`);
+  const fc = await res.json();
+  // Keep a ring point only if it is ~5 m or more from the last one kept: the
+  // survey detail is finer than anything the planner needs.
+  const thin = (ring) => ring.filter((c, i) => i === 0 || i === ring.length - 1 || Math.hypot((c[0] - ring[i - 1][0]) * 68_000, (c[1] - ring[i - 1][1]) * 111_000) >= 5);
+  const round = (c) => (typeof c[0] === 'number' ? [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5] : typeof c[0][0] === 'number' ? thin(c).map(round) : c.map(round));
+  const features = fc.features.map((f) => ({ type: 'Feature', properties: { flood_zone: f.properties.flood_zone }, geometry: { type: f.geometry.type, coordinates: round(f.geometry.coordinates) } }));
+  const dir = townDir(town.id);
+  writeFileSync(path.join(dir, 'flood.json'), JSON.stringify({ type: 'FeatureCollection', source: 'Environment Agency, Flood Map for Planning (Rivers and Sea), Flood Zones 2 and 3', features }));
+  console.log(`[planner] ${features.length} flood zone areas (${features.filter((f) => f.properties.flood_zone === 'FZ3').length} in Zone 3) → ${dir}/flood.json`);
+}
+
 /** Load the town model from a town folder: town.json plus whatever extras exist. */
 export function loadModel(dir) {
   const read = (f) => (existsSync(path.join(dir, f)) ? JSON.parse(readFileSync(path.join(dir, f), 'utf8')) : null);
   const town = read('town.json');
   if (!town) throw new Error(`No town.json in ${dir}`);
-  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json') });
+  return buildModel({ town, census: read('census.json'), gps: read('gps.json'), buses: read('buses.json'), food: read('food.json'), history: read('history.json'), flood: read('flood.json') });
 }
 
 /**
@@ -520,11 +543,12 @@ try {
   else if (command === 'scenarios') scenariosTown(id);
   else if (command === 'ask') askTown(id, file);
   else if (command === 'history') await historyTown(id);
+  else if (command === 'flood') await floodTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|analyse|scenarios|ask|tools|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

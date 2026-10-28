@@ -21,6 +21,19 @@ SHOP = re.compile(r"^(supermarket|convenience|greengrocer|butcher|bakery)$")
 HOME = re.compile(r"^(house|residential|apartments|detached|semidetached_house|terrace|bungalow|flats|yes)$")
 
 
+# Places people meet (third places), and public green space. Mirror of
+# MEET_AMENITIES / greenKind in src/planner/osm.js.
+MEET = {"cafe", "pub", "bar", "library", "community_centre", "social_centre", "arts_centre", "place_of_worship"}
+
+
+def is_green(tags):
+    if tags.get("access") in ("private", "no"):
+        return False
+    return (tags.get("leisure") in ("park", "playground", "nature_reserve", "common", "recreation_ground", "village_green")
+            or tags.get("landuse") in ("recreation_ground", "village_green")
+            or (tags.get("leisure") == "garden" and tags.get("garden:type") != "residential" and "name" in tags))
+
+
 def vacant_shop(tags):
     """Shops mapped as empty: shop=vacant or a disused:/was:/abandoned: shop."""
     return tags.get("shop") == "vacant" or any(k in tags for k in ("disused:shop", "was:shop", "abandoned:shop"))
@@ -33,6 +46,7 @@ def wanted_thing(tags):
         or tags.get("amenity") in ("school", "doctors", "clinic")
         or tags.get("healthcare") in ("doctor", "clinic")
         or vacant_shop(tags)
+        or tags.get("amenity") in MEET
     )
 
 
@@ -56,13 +70,14 @@ class Cutter(osmium.SimpleHandler):
         tags = dict(w.tags)
         is_road = "highway" in tags
         is_river = tags.get("waterway") == "river"
+        is_park = is_green(tags)
         is_thing = wanted_thing(tags) or HOME.match(tags.get("building", ""))
-        if not (is_road or is_river or is_thing):
+        if not (is_road or is_river or is_park or is_thing):
             return
         pts = [(nd.ref, nd.location) for nd in w.nodes if nd.location.valid()]
         if len(pts) != len(w.nodes) or not any(self.inside(l.lat, l.lon) for _, l in pts):
             return
-        if is_road or is_river:
+        if is_road or is_river or is_park:
             self.elements.append({
                 "type": "way", "id": w.id, "tags": tags,
                 "nodes": [ref for ref, _ in pts],

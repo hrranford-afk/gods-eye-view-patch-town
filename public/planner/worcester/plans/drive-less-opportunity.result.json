@@ -1,37 +1,37 @@
 {
   "question": "Where is everyday life close by, but most people still drive? (where walking and cycling could win first)",
-  "ranAt": "2026-10-28T16:27:00.412Z",
+  "ranAt": "2026-10-28T18:13:11.197Z",
   "results": {
     "bestPlacesToDriveLess": [
       {
         "group": "E01032299",
         "name": "Worcester 001D",
-        "value": 60.83
+        "value": 60.87
       },
       {
         "group": "E01032280",
         "name": "Worcester 007A",
-        "value": 59.68
+        "value": 59.71
       },
       {
         "group": "E01032296",
         "name": "Worcester 001A",
-        "value": 57.84
+        "value": 57.83
       },
       {
         "group": "E01032321",
         "name": "Worcester 009D",
-        "value": 57.38
+        "value": 57.45
       },
       {
         "group": "E01032327",
         "name": "Worcester 004C",
-        "value": 56.65
+        "value": 56.64
       },
       {
         "group": "E01032301",
         "name": "Worcester 005A",
-        "value": 56.64
+        "value": 56.62
       },
       {
         "group": "E01032328",
@@ -41,16 +41,16 @@
       {
         "group": "E01032311",
         "name": "Worcester 005D",
-        "value": 54.49
+        "value": 54.5
       }
     ],
     "doesDistanceExplainDriving": {
-      "groups": 76,
-      "r2": 0.4,
+      "groups": 75,
+      "r2": 0.39,
       "predictors": {
         "everydayMinutes": {
-          "coefficient": 0.0034,
-          "t": 7.1,
+          "coefficient": 0.00336,
+          "t": 6.8,
           "control": false
         }
       }

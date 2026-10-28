@@ -361,3 +361,32 @@ test('history: new homes per area and era, Census 2011 beside 2021, and the aver
   assert.equal(average(model, { of: { value: { A: 1, B: 0 } } }).value, 0.25, 'weighted by households');
   assert.equal(average(model, { of: { value: { A: 1, B: 0 } }, namePrefix: 'Town 001A' }).value, 1);
 });
+
+test('good day: meets checks every item per home, flood zones tag homes, parks reachable from their edge', async () => {
+  const { buildModel } = await import('./model.js');
+  const { runPlan } = await import('./tools.js');
+  const town = gridTown();
+  town.places.push({ id: 'm', kind: 'meet:cafe', lon: at(0, 0)[0], lat: at(0, 0)[1] });
+  const square = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  // A flood zone covering the south-west corner home only.
+  const [lon0, lat0] = at(0, 0);
+  const flood = { features: [{ properties: { flood_zone: 'FZ3' }, geometry: square(lon0 - 0.0005, lat0 - 0.0005, lon0 + 0.0005, lat0 + 0.0005) }] };
+  const model = buildModel({ town, flood });
+  const out = runPlan(model, [
+    { tool: 'travel', args: { to: 'meet:*' }, as: 'meet' },
+    { tool: 'travel', args: { to: 'shop' }, as: 'shop' },
+    { tool: 'meets', args: { checks: [{ values: '$meet', max: 3 }, { values: '$shop', max: 3 }] }, as: 'both' },
+    { tool: 'summarise', args: { values: '$both' }, as: 'share' },
+    { tool: 'floodZone', args: {}, as: 'fz' },
+  ]);
+  // The cafe is south-west, the shop north-east: few homes have both within 3 minutes.
+  assert.ok(out.share.value.grid < 0.5, `share with both: ${out.share.value.grid}`);
+  assert.ok(out.both.every((v) => v === 0 || v === 1));
+  assert.equal(out.fz.filter((z) => z === 3).length, 1, 'only the corner home is in Flood Zone 3');
+  const { parseOverpass } = await import('./osm.js');
+  const park = parseOverpass({ elements: [{ type: 'way', id: 9, tags: { leisure: 'park', name: 'Gheluvelt Park' }, geometry: [
+    { lat: 52.2, lon: -2.22 }, { lat: 52.2, lon: -2.215 }, { lat: 52.203, lon: -2.215 }, { lat: 52.203, lon: -2.22 }, { lat: 52.2, lon: -2.22 },
+  ] }] }, 'test');
+  assert.ok(park.places.length >= 4 && park.places.every((p) => p.kind === 'green:park'), 'a park is reachable from several edge points');
+  assert.equal(parseOverpass({ elements: [{ type: 'way', id: 8, tags: { leisure: 'park', access: 'private' }, geometry: [{ lat: 52, lon: -2 }, { lat: 52.001, lon: -2 }] }] }, 't').places.length, 0);
+});

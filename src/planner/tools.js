@@ -91,7 +91,7 @@ export function summarise(model, values, { weight = 'households', groupBy = 'tow
   const value = {};
   const households = {};
   for (const [k, a] of acc) {
-    value[k] = Math.round((a.sum / a.n) * (stat === 'mean' ? 10 : 1000)) / (stat === 'mean' ? 10 : 1000);
+    value[k] = Math.round((a.sum / a.n) * 1000) / 1000;
     households[k] = Math.round(a.hh);
   }
   return { value, households };
@@ -259,9 +259,38 @@ export function bestSites(model, { kind, count: n = 3, byNeed = false }) {
   return suggestSites(town, { kind, count: n, byNeed });
 }
 
-/** compare: score scenarios (scenarios.js shape) against the town today. */
+/**
+ * compare: score scenarios (scenarios.js shape) against the town today.
+ * With flood data, any new homes a scenario adds inside Flood Zone 2 or 3
+ * are flagged in `floodWarnings`.
+ */
 export function compare(model, { scenarios }) {
-  return compareScenarios(model.town, scenarios, { buses: model.buses || undefined });
+  const result = compareScenarios(model.town, scenarios, { buses: model.buses || undefined });
+  if (model.hasFlood) {
+    result.scenarios.forEach((r, i) => {
+      const warnings = (scenarios[i].changes?.addHomes || [])
+        .map((h) => ({ name: h.name, households: h.households, floodZone: model.floodZoneOf([h.lon, h.lat]) }))
+        .filter((h) => h.floodZone >= 2);
+      if (warnings.length) r.floodWarnings = warnings;
+    });
+  }
+  return result;
+}
+
+/**
+ * meets: for every home, 1 if each check is met (its travel minutes are at
+ * most `max`), else 0. Summarise it with stat 'mean' for the share of
+ * households that have everything on the list. This is how a "good day
+ * within reach" is measured.
+ */
+export function meets(model, { checks }) {
+  return model.homes.map((_, i) => (checks.every(({ values, max }) => Number.isFinite(values[i]) && values[i] <= max) ? 1 : 0));
+}
+
+/** floodZone: each home's Environment Agency flood zone (3, 2 or 0), as per-home values. */
+export function floodZone(model) {
+  if (!model.hasFlood) throw new Error('floodZone needs flood.json (npm run planner -- flood <town>)');
+  return model.homes.map((h) => h.floodZone ?? 0);
 }
 
 export const TOOLS = Object.freeze({
@@ -276,6 +305,8 @@ export const TOOLS = Object.freeze({
   average: { fn: average, about: 'Household-weighted average of a per-area result across the town.', args: { of: 'a per-area result ($name)', namePrefix: "e.g. 'Worcester '" } },
   combine: { fn: combine, about: 'Weighted sum of results per group (a composite index).', args: { parts: '[{ of: $name, weight }]' } },
   bestSites: { fn: bestSites, about: 'Where one more place of a kind would help most.', args: { kind: 'kind', count: 'how many (3)', byNeed: 'weight by need (false)' } },
+  meets: { fn: meets, about: 'Per home: 1 if every check is within its limit (a "good day" checklist), else 0.', args: { checks: '[{ values: $travelResult, max: minutes }]' } },
+  floodZone: { fn: floodZone, about: "Each home's flood zone (3, 2 or 0), as per-home values.", args: {} },
   compare: { fn: compare, about: 'Score scenarios against today, with who gains.', args: { scenarios: 'list of scenario objects (scenarios.js)' } },
 });
 

@@ -292,6 +292,45 @@
         52.213
       ],
       "unlocks": "A travel-choice tool: Census 2021 travel to work by distance band (TS058) and origin-destination flows, Propensity to Cycle Tool scenarios, cycle route network from OSM, collision data (STATS19) for safety"
+    },
+    {
+      "id": "q22",
+      "question": "Can people in Worcester have a good ordinary day within reach: somewhere to meet, green space, food and a GP?",
+      "askedBy": "Harry",
+      "status": "answered",
+      "lonLat": [
+        -2.22,
+        52.198
+      ],
+      "finding": "32% of households have all four (meeting place <= 10 min, green <= 5, food <= 10, GP <= 15 walking or bus). GP is the bottleneck (48%), then green space (58%). Car-less households 47%, over-65s 27%. St Peters and the Warndon Villages have none; the centre has most. Need goes with a good day (t = 5.3). 96% of households are outside flood zones; riverside St Clements has 21% in Zone 3.",
+      "spawned": [
+        "q23",
+        "q24"
+      ]
+    },
+    {
+      "id": "q23",
+      "question": "What would a good day look like for real kinds of residents: an older person without a car in Lower Wick, a young family in St Peters, a home-worker in Barbourne?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q22",
+      "lonLat": [
+        -2.2335,
+        52.1735
+      ],
+      "unlocks": "Personas built from census profiles (age, household, car, work), a day's trips through the model (tools: travel, busOrWalk), time with others vs time travelling; then the same days in each New Worcester scenario"
+    },
+    {
+      "id": "q24",
+      "question": "Which single change would give the most St Peters and Warndon Villages households a good day within reach?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q22",
+      "lonLat": [
+        -2.201,
+        52.1705
+      ],
+      "unlocks": "Score scenarios on the good-day share, not just GP minutes: a GP, a meeting place, a pocket park, a frequent bus, each tested with compare + meets"
     }
   ]
 }

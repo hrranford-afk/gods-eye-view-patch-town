@@ -1,0 +1,209 @@
+{
+  "question": "Can people in Worcester have a good ordinary day within reach? A meeting place within 10 min, green space within 5, food within 10, a GP within 15 (walking or bus). Who misses out?",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDay"
+      },
+      "as": "goodDayTown"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDay",
+        "weight": "noCar"
+      },
+      "as": "goodDayCarless"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDay",
+        "weight": "over65"
+      },
+      "as": "goodDayOver65"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$meet",
+        "stat": "shareWithin",
+        "within": 10
+      },
+      "as": "meetWithin10"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "stat": "shareWithin",
+        "within": 5
+      },
+      "as": "greenWithin5"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "stat": "shareWithin",
+        "within": 10
+      },
+      "as": "foodWithin10"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "stat": "shareWithin",
+        "within": 15
+      },
+      "as": "gpWithin15"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDay",
+        "groupBy": "area"
+      },
+      "as": "goodDayByArea"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$goodDayByArea",
+        "top": 8,
+        "ascending": true,
+        "namePrefix": "Worcester "
+      },
+      "as": "leastGoodDay"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$goodDayByArea",
+        "top": 5,
+        "namePrefix": "Worcester "
+      },
+      "as": "mostGoodDay"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "need"
+      },
+      "as": "need"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$goodDayByArea",
+        "x": {
+          "need": "$need"
+        }
+      },
+      "as": "goodDayVsNeed"
+    },
+    {
+      "tool": "floodZone",
+      "args": {},
+      "as": "flood"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$flood",
+        "stat": "shareWithin",
+        "within": 1
+      },
+      "as": "shareNotInFloodZone"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "floodZone3Share"
+      },
+      "as": "fz3"
+    },
+    {
+      "tool": "rank",
+      "args": {
+        "of": "$fz3",
+        "top": 5,
+        "namePrefix": "Worcester "
+      },
+      "as": "mostFloodZone3"
+    }
+  ],
+  "show": [
+    "goodDayTown",
+    "goodDayCarless",
+    "goodDayOver65",
+    "meetWithin10",
+    "greenWithin5",
+    "foodWithin10",
+    "gpWithin15",
+    "leastGoodDay",
+    "mostGoodDay",
+    "goodDayVsNeed",
+    "shareNotInFloodZone",
+    "mostFloodZone3"
+  ]
+}

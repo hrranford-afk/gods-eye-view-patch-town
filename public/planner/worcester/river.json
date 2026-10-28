@@ -60,7 +60,7 @@
   "driveCrossings": 2,
   "banks": {
     "west": {
-      "households": 14303,
+      "households": 13733,
       "services": {
         "shop": {
           "nearestAcrossRiver": 0,
@@ -68,20 +68,20 @@
         },
         "school": {
           "nearestAcrossRiver": 0.01,
-          "meanMinutes": 12.7
+          "meanMinutes": 12.5
         },
         "gp": {
           "nearestAcrossRiver": 0.11,
-          "meanMinutes": 26.1
+          "meanMinutes": 24.8
         },
         "bus": {
           "nearestAcrossRiver": 0,
-          "meanMinutes": 5.4
+          "meanMinutes": 5.3
         }
       }
     },
     "east": {
-      "households": 40300,
+      "households": 40307,
       "services": {
         "shop": {
           "nearestAcrossRiver": 0,
@@ -114,8 +114,8 @@
     "spanM": 66,
     "candidatesTried": 12,
     "minutesSavedPerHousehold": 0.07,
-    "households": 54806,
-    "scoreBefore": 68.5,
-    "scoreAfter": 68.5
+    "households": 54241,
+    "scoreBefore": 69.3,
+    "scoreAfter": 69.3
   }
 }

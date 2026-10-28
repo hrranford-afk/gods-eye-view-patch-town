@@ -1,23 +1,23 @@
 {
   "question": "Where did people change how they travel to work between 2011 and 2021, and does it follow distance to everyday life?",
-  "ranAt": "2026-10-28T16:26:33.882Z",
+  "ranAt": "2026-10-28T18:13:18.780Z",
   "results": {
     "whatGoesWithMoreDriving": {
-      "groups": 74,
-      "r2": 0.28,
+      "groups": 73,
+      "r2": 0.29,
       "predictors": {
         "newHomesShare": {
-          "coefficient": -0.0898,
-          "t": -4.1,
+          "coefficient": -0.0928,
+          "t": -4.2,
           "control": false
         },
         "foodWalk": {
-          "coefficient": -0.00155,
-          "t": -2,
+          "coefficient": -0.00139,
+          "t": -1.8,
           "control": false
         },
         "deprived": {
-          "coefficient": -0.0209,
+          "coefficient": -0.0198,
           "t": -0.4,
           "control": true
         }
