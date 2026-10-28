@@ -12,3 +12,6 @@ output/
 3d-models/
 pinokio/ENVIRONMENT
 pinokio/.installed
+
+# Planner: raw OSM downloads are large and re-fetchable
+public/planner/*/town.json
