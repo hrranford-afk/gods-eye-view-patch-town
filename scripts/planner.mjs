@@ -513,7 +513,7 @@ async function schoolsTown(id) {
     file = await cached(`https://ea-edubase-api-prod.azurewebsites.net/edubase/downloads/public/edubasealldata${d}.csv`, `gias-${d}.csv`).catch(() => null);
   }
   if (!file) throw new Error('Could not download the schools register');
-  const schools = schoolsFrom(parseCsv(readFileSync(file, 'latin1')), { la: town.educationAuthority || 'Worcestershire' });
+  const schools = schoolsFrom(parseCsv(readFileSync(file, 'latin1')), { la: town.educationAuthority });
   for (let i = 0; i < schools.length; i += 100) {
     const res = await fetch('https://api.postcodes.io/postcodes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

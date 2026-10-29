@@ -24,6 +24,7 @@ export const TOWNS = Object.freeze({
     fsaAuthorities: Object.freeze([358, 359, 356]), // Worcester City, Wychavon, Malvern Hills
     postcodeDistricts: Object.freeze(['WR1', 'WR2', 'WR3', 'WR4', 'WR5']),
     county: 'WORCESTERSHIRE',
+    educationAuthority: 'Worcestershire',
     osmExtract: 'europe/united-kingdom/england/worcestershire',
     busRegion: 'west_midlands',
   }),
@@ -32,6 +33,7 @@ export const TOWNS = Object.freeze({
     ladCode: 'E07000081', // Gloucester City Council
     countyCode: 'E10000013', // Gloucestershire
     county: 'GLOUCESTERSHIRE', // as Land Registry writes it
+    educationAuthority: 'Gloucestershire',
     name: 'Gloucester',
     bbox: Object.freeze([51.81, -2.32, 51.895, -2.17]),
     nhsPracticePrefix: 'L84',
@@ -45,6 +47,7 @@ export const TOWNS = Object.freeze({
     ladCode: 'E07000078', // Cheltenham Borough Council
     countyCode: 'E10000013', // Gloucestershire
     county: 'GLOUCESTERSHIRE',
+    educationAuthority: 'Gloucestershire',
     name: 'Cheltenham',
     bbox: Object.freeze([51.865, -2.135, 51.935, -2.02]),
     nhsPracticePrefix: 'L84',
@@ -60,6 +63,8 @@ export const TOWNS = Object.freeze({
     name: 'Kidderminster',
     bbox: Object.freeze([52.355, -2.29, 52.415, -2.2]),
     postcodeDistricts: Object.freeze(['DY10', 'DY11']),
+    county: 'WORCESTERSHIRE',
+    educationAuthority: 'Worcestershire',
     nhsPracticePrefix: 'M81',
   }),
 });

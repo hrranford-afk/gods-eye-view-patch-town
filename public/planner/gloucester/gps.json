@@ -1,0 +1,148 @@
+{
+ "source": "Fingertips (QOF list size, GP Patient Survey), NHS ODS, postcodes.io",
+ "practices": [
+  {
+   "code": "L84009",
+   "name": "Hadwen Health",
+   "postcode": "GL4 4BL",
+   "listSize": 19295,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 56.5,
+   "needsMetPct": 89.9,
+   "lon": -2.204319,
+   "lat": 51.841487
+  },
+  {
+   "code": "L84014",
+   "name": "Hucclecote Surgery",
+   "postcode": "GL3 3HB",
+   "listSize": 9007,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 56.2,
+   "needsMetPct": 96.6,
+   "lon": -2.19366,
+   "lat": 51.857167
+  },
+  {
+   "code": "L84025",
+   "name": "Hoyland House",
+   "postcode": "GL6 6RD",
+   "listSize": 4647,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 67.2,
+   "needsMetPct": 92.6,
+   "lon": -2.194173,
+   "lat": 51.791001
+  },
+  {
+   "code": "L84026",
+   "name": "Aspen Medical Practice",
+   "postcode": "GL1 3PX",
+   "listSize": 31973,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 53.3,
+   "needsMetPct": 88.1,
+   "lon": -2.225793,
+   "lat": 51.865976
+  },
+  {
+   "code": "L84034",
+   "name": "Partners In Health, Pavilion Family Drs",
+   "postcode": "GL1 5JJ",
+   "listSize": 12249,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 46.5,
+   "needsMetPct": 86.5,
+   "lon": -2.242587,
+   "lat": 51.8534
+  },
+  {
+   "code": "L84047",
+   "name": "Churchdown Surgery",
+   "postcode": "GL3 2JH",
+   "listSize": 16069,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 67.4,
+   "needsMetPct": 97.2,
+   "lon": -2.171555,
+   "lat": 51.882493
+  },
+  {
+   "code": "L84050",
+   "name": "Rosebank Health",
+   "postcode": "GL1 5JQ",
+   "listSize": 40470,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 53.6,
+   "needsMetPct": 88.6,
+   "lon": -2.242191,
+   "lat": 51.852618
+  },
+  {
+   "code": "L84052",
+   "name": "Severnside Medical Practice",
+   "postcode": "GL1 2TZ",
+   "listSize": 9894,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 60.9,
+   "needsMetPct": 91.2,
+   "lon": -2.251588,
+   "lat": 51.866202
+  },
+  {
+   "code": "L84067",
+   "name": "Longlevens Surgery",
+   "postcode": "GL2 0AJ",
+   "listSize": 10117,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 69.5,
+   "needsMetPct": 96.5,
+   "lon": -2.212029,
+   "lat": 51.875918
+  },
+  {
+   "code": "L84081",
+   "name": "Kingsholm Surgery",
+   "postcode": "GL1 3EN",
+   "listSize": 4449,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 57.7,
+   "needsMetPct": 84.6,
+   "lon": -2.23902,
+   "lat": 51.868036
+  },
+  {
+   "code": "L84084",
+   "name": "Brockworth Surgery",
+   "postcode": "GL3 4PE",
+   "listSize": 11448,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 44.8,
+   "needsMetPct": 90.6,
+   "lon": -2.15669,
+   "lat": 51.844582
+  },
+  {
+   "code": "L84606",
+   "name": "The Alney Practice",
+   "postcode": "GL2 8DH",
+   "listSize": 11911,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 65.1,
+   "needsMetPct": 88.7,
+   "lon": -2.299154,
+   "lat": 51.884226
+  },
+  {
+   "code": "L84617",
+   "name": "Quedgeley Medical Centre",
+   "postcode": "GL2 4NF",
+   "listSize": 7123,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 73.8,
+   "needsMetPct": 95.5,
+   "lon": -2.27422,
+   "lat": 51.83132
+  }
+ ]
+}
