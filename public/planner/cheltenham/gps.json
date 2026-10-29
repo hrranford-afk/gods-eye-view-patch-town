@@ -1,0 +1,137 @@
+{
+ "source": "Fingertips (QOF list size, GP Patient Survey), NHS ODS, postcodes.io",
+ "practices": [
+  {
+   "code": "L84003",
+   "name": "Underwood Surgery",
+   "postcode": "GL50 3EQ",
+   "listSize": 11363,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 71.8,
+   "needsMetPct": 94.4,
+   "lon": -2.089361,
+   "lat": 51.901646
+  },
+  {
+   "code": "L84008",
+   "name": "St George's Surgery",
+   "postcode": "GL50 4DP",
+   "listSize": 12132,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 54.9,
+   "needsMetPct": 92.1,
+   "lon": -2.081493,
+   "lat": 51.906714
+  },
+  {
+   "code": "L84015",
+   "name": "Sixways Clinic",
+   "postcode": "GL52 6HS",
+   "listSize": 10923,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 65.1,
+   "needsMetPct": 92.2,
+   "lon": -2.05378,
+   "lat": 51.888955
+  },
+  {
+   "code": "L84022",
+   "name": "Yorkleigh Surgery(Ct)",
+   "postcode": "GL50 3ED",
+   "listSize": 7947,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 51.5,
+   "needsMetPct": 87,
+   "lon": -2.084693,
+   "lat": 51.900139
+  },
+  {
+   "code": "L84030",
+   "name": "Berkeley Place Surgery",
+   "postcode": "GL52 3EY",
+   "listSize": 17726,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 72.7,
+   "needsMetPct": 98,
+   "lon": -2.056045,
+   "lat": 51.910586
+  },
+  {
+   "code": "L84033",
+   "name": "Weston House Practice",
+   "postcode": "GL50 4DP",
+   "listSize": 19197,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 42.9,
+   "needsMetPct": 95.2,
+   "lon": -2.081493,
+   "lat": 51.906714
+  },
+  {
+   "code": "L84040",
+   "name": "The Leckhampton Surgery",
+   "postcode": "GL53 0LA",
+   "listSize": 12960,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 52.4,
+   "needsMetPct": 90.7,
+   "lon": -2.085911,
+   "lat": 51.883739
+  },
+  {
+   "code": "L84041",
+   "name": "Overton Park Surgery",
+   "postcode": "GL50 3BP",
+   "listSize": 13100,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 68.5,
+   "needsMetPct": 97.3,
+   "lon": -2.085287,
+   "lat": 51.899347
+  },
+  {
+   "code": "L84048",
+   "name": "The Stoke Road Surgery,",
+   "postcode": "GL52 8RP",
+   "listSize": 10423,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 71.6,
+   "needsMetPct": 95.1,
+   "lon": -2.068166,
+   "lat": 51.946678
+  },
+  {
+   "code": "L84049",
+   "name": "The Royal Well Surgery",
+   "postcode": "GL50 4DP",
+   "listSize": 8357,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 69.2,
+   "needsMetPct": 97.8,
+   "lon": -2.081493,
+   "lat": 51.906714
+  },
+  {
+   "code": "L84058",
+   "name": "St Catherine's Surgery",
+   "postcode": "GL50 4DP",
+   "listSize": 9397,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 38.1,
+   "needsMetPct": 83.1,
+   "lon": -2.081493,
+   "lat": 51.906714
+  },
+  {
+   "code": "L84059",
+   "name": "Royal Crescent Surgery",
+   "postcode": "GL52 3EY",
+   "listSize": 8170,
+   "listYear": "2024/25",
+   "waitAcceptablePct": 74.6,
+   "needsMetPct": 97.7,
+   "lon": -2.056045,
+   "lat": 51.910586
+  }
+ ]
+}
