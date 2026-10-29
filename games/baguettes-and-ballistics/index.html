@@ -32,6 +32,7 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 }
 .basebar { display: grid; gap: 4px; min-width: 0; flex: 1; max-width: 260px; }
 .basebar.red { text-align: right; }
+.basebar .eco { font-size: 13px; font-weight: 700; color: var(--paper); opacity: 0.85; }
 .basebar b { font-family: var(--display); font-size: 13px; letter-spacing: 0.04em; }
 .bar { height: 10px; border-radius: 6px; background: var(--glass); overflow: hidden; border: 2px solid rgba(255, 248, 236, 0.25); }
 .bar i { display: block; height: 100%; width: 100%; transition: width 0.2s; }
@@ -85,9 +86,9 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 </style>
 
 <div class="hud">
-  <div class="basebar blue"><b>YOUR TOY BOX</b><div class="bar"><i id="hpBlue"></i></div></div>
+  <div class="basebar blue"><b>YOUR TOY BOX</b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
   <div class="mid"><div class="cereal" id="cereal">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
-  <div class="basebar red"><b>ENEMY TOY BOX</b><div class="bar"><i id="hpRed"></i></div></div>
+  <div class="basebar red"><b>ENEMY TOY BOX</b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
 </div>
 <div class="hint" id="hint">Drag on the left to drive</div>
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
@@ -603,7 +604,7 @@ function reset() {
   for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].kind === 'base' || obstacles[i].kind === 'turret') obstacles.splice(i, 1);
   navDirty = true;
   Object.assign(state, {
-    cereal: [25, 25], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
+    cereal: [25, 25], freeTruck: [45, 45], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of OUTPOST_SPOTS) outposts.push(makeOutpost(x, z));
@@ -948,7 +949,9 @@ function commander(dt) {
   const want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
   const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
-  if (army < 8 + Math.floor(ramp * 6) && state.cereal[RED] >= price + 10) {
+  // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
+  const armyCap = state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
+  if (army < armyCap && state.cereal[RED] >= price + 10) {
     state.cereal[RED] -= price;
     spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
   }
@@ -990,7 +993,16 @@ function update(dt) {
   const p = state.player;
   // Income: one bolt a second from home, plus one per bottle cap held.
   // Income is what your trucks haul home, plus a trickle so nobody is ever stuck.
-  for (const team of [BLUE, RED]) state.cereal[team] += dt * 0.25;
+  // A side with no trucks gets a free one from its factory every 45 s.
+  for (const team of [BLUE, RED]) {
+    state.cereal[team] += dt * 0.25;
+    if (workersOf(team, 'truck').length) state.freeTruck[team] = 45;
+    else if ((state.freeTruck[team] -= dt) <= 0) {
+      state.freeTruck[team] = 45;
+      spawnWorker('truck', team);
+      if (team === BLUE) toast('The factory built you a free truck');
+    }
+  }
 
   // Player
   if (p.alive) {
@@ -1115,6 +1127,10 @@ function update(dt) {
   // HUD
   $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;
   $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
+  const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
+  $('ecoBlue').textContent = eco(BLUE);
+  $('ecoRed').textContent = eco(RED);
   $('hpRed').style.width = `${Math.max(0, state.bases[RED].hp / state.bases[RED].maxHp) * 100}%`;
   [...$('pips').children].forEach((el, i) => { el.style.background = ['#9a8f80', '#2f7df6', '#ef4136'][outposts[i].owner + 1]; });
   const atHome = p.alive && dist2(p, state.bases[BLUE]) < 16 * 16;
