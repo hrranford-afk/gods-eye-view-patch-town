@@ -1,0 +1,567 @@
+{
+  "question": "Which of the survey's links are real once Worcester city centre's few residents and many visitors are allowed for?",
+  "ranAt": "2026-10-29T09:24:20.520Z",
+  "results": {
+    "A_perResidentPlusWorker": {
+      "areas": 64,
+      "figures": [
+        "imdScore",
+        "incomeAfterHousing",
+        "badHealth",
+        "over65",
+        "livingAlone66",
+        "noCar",
+        "medianPrice",
+        "jobsPerResident",
+        "newHomesShare",
+        "carCommute2021",
+        "cycleCommute2021",
+        "walkCommute2021",
+        "floodZone3Share",
+        "crimePer1000Day",
+        "violencePer1000Day",
+        "antisocialPer1000Day",
+        "goodDay",
+        "gpMinutes",
+        "greenMinutes",
+        "meetMinutes",
+        "takeawaysPerDay",
+        "cornerShopsPerDay",
+        "pubsPerDay",
+        "seriousCrashesPerDay"
+      ],
+      "links": [
+        {
+          "a": "carCommute2021",
+          "b": "walkCommute2021",
+          "r": -0.98,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "badHealth",
+          "r": 0.87,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "carCommute2021",
+          "r": -0.87,
+          "areas": 64
+        },
+        {
+          "a": "goodDay",
+          "b": "gpMinutes",
+          "r": -0.85,
+          "areas": 64
+        },
+        {
+          "a": "over65",
+          "b": "livingAlone66",
+          "r": 0.81,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "walkCommute2021",
+          "r": 0.81,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "noCar",
+          "r": 0.8,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "crimePer1000Day",
+          "r": 0.8,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "violencePer1000Day",
+          "r": 0.77,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "violencePer1000Day",
+          "r": 0.76,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "medianPrice",
+          "r": -0.75,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "antisocialPer1000Day",
+          "r": 0.73,
+          "areas": 64
+        },
+        {
+          "a": "carCommute2021",
+          "b": "crimePer1000Day",
+          "r": -0.73,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "incomeAfterHousing",
+          "r": -0.72,
+          "areas": 64
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "noCar",
+          "r": -0.7,
+          "areas": 64
+        },
+        {
+          "a": "badHealth",
+          "b": "noCar",
+          "r": 0.7,
+          "areas": 64
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "badHealth",
+          "r": -0.69,
+          "areas": 64
+        },
+        {
+          "a": "walkCommute2021",
+          "b": "crimePer1000Day",
+          "r": 0.69,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "medianPrice",
+          "r": -0.68,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "crimePer1000Day",
+          "r": 0.68,
+          "areas": 64
+        },
+        {
+          "a": "medianPrice",
+          "b": "carCommute2021",
+          "r": 0.67,
+          "areas": 64
+        },
+        {
+          "a": "medianPrice",
+          "b": "walkCommute2021",
+          "r": -0.67,
+          "areas": 64
+        },
+        {
+          "a": "carCommute2021",
+          "b": "antisocialPer1000Day",
+          "r": -0.66,
+          "areas": 64
+        },
+        {
+          "a": "badHealth",
+          "b": "violencePer1000Day",
+          "r": 0.65,
+          "areas": 64
+        },
+        {
+          "a": "cornerShopsPerDay",
+          "b": "pubsPerDay",
+          "r": 0.65,
+          "areas": 64
+        },
+        {
+          "a": "medianPrice",
+          "b": "violencePer1000Day",
+          "r": -0.64,
+          "areas": 64
+        },
+        {
+          "a": "carCommute2021",
+          "b": "violencePer1000Day",
+          "r": -0.64,
+          "areas": 64
+        },
+        {
+          "a": "medianPrice",
+          "b": "crimePer1000Day",
+          "r": -0.63,
+          "areas": 64
+        },
+        {
+          "a": "carCommute2021",
+          "b": "pubsPerDay",
+          "r": -0.63,
+          "areas": 64
+        },
+        {
+          "a": "walkCommute2021",
+          "b": "antisocialPer1000Day",
+          "r": 0.62,
+          "areas": 64
+        }
+      ],
+      "surprises": [
+        {
+          "figure": "crimePer1000Day",
+          "area": "E01033248",
+          "value": 322.5,
+          "expected": 134,
+          "z": 4.6,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "crimePer1000Day",
+          "area": "E01032312",
+          "value": 215,
+          "expected": 65.44,
+          "z": 3.7,
+          "name": "Worcester 004B",
+          "ward": "Rainbow Hill"
+        },
+        {
+          "figure": "violencePer1000Day",
+          "area": "E01033248",
+          "value": 105.6,
+          "expected": 54.62,
+          "z": 3.6,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "violencePer1000Day",
+          "area": "E01032337",
+          "value": 66.2,
+          "expected": 16.48,
+          "z": 3.5,
+          "name": "Worcester 008A",
+          "ward": "Leopard Hill"
+        },
+        {
+          "figure": "violencePer1000Day",
+          "area": "E01033247",
+          "value": 79.6,
+          "expected": 45.57,
+          "z": 2.4,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "crimePer1000Day",
+          "area": "E01033246",
+          "value": 160.6,
+          "expected": 76.59,
+          "z": 2.1,
+          "name": "Worcester 007E",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "crimePer1000Day",
+          "area": "E01033247",
+          "value": 200.1,
+          "expected": 113.3,
+          "z": 2.1,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "violencePer1000Day",
+          "area": "E01032304",
+          "value": 84.1,
+          "expected": 55.04,
+          "z": 2,
+          "name": "Worcester 002B",
+          "ward": "Warndon & Elbury Park"
+        },
+        {
+          "figure": "violencePer1000Day",
+          "area": "E01032312",
+          "value": 53.3,
+          "expected": 24.6,
+          "z": 2,
+          "name": "Worcester 004B",
+          "ward": "Rainbow Hill"
+        }
+      ]
+    },
+    "B_perResidentWithoutCentre": {
+      "areas": 62,
+      "figures": [
+        "imdScore",
+        "incomeAfterHousing",
+        "badHealth",
+        "over65",
+        "livingAlone66",
+        "noCar",
+        "medianPrice",
+        "jobsPerResident",
+        "newHomesShare",
+        "carCommute2021",
+        "cycleCommute2021",
+        "walkCommute2021",
+        "floodZone3Share",
+        "crimePer1000",
+        "violencePer1000",
+        "antisocialPer1000",
+        "goodDay",
+        "gpMinutes",
+        "greenMinutes",
+        "meetMinutes",
+        "takeawaysPer1000",
+        "cornerShopsPer1000",
+        "pubsPer1000",
+        "seriousCrashesPer1000"
+      ],
+      "links": [
+        {
+          "a": "carCommute2021",
+          "b": "walkCommute2021",
+          "r": -0.96,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "badHealth",
+          "r": 0.87,
+          "areas": 62
+        },
+        {
+          "a": "goodDay",
+          "b": "gpMinutes",
+          "r": -0.86,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "noCar",
+          "r": 0.84,
+          "areas": 62
+        },
+        {
+          "a": "over65",
+          "b": "livingAlone66",
+          "r": 0.81,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "carCommute2021",
+          "r": -0.8,
+          "areas": 62
+        },
+        {
+          "a": "badHealth",
+          "b": "noCar",
+          "r": 0.79,
+          "areas": 62
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "noCar",
+          "r": -0.76,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "violencePer1000",
+          "r": 0.75,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "violencePer1000",
+          "r": 0.74,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "walkCommute2021",
+          "r": 0.72,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "incomeAfterHousing",
+          "r": -0.71,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "crimePer1000",
+          "r": 0.7,
+          "areas": 62
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "badHealth",
+          "r": -0.69,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "medianPrice",
+          "r": -0.68,
+          "areas": 62
+        },
+        {
+          "a": "carCommute2021",
+          "b": "crimePer1000",
+          "r": -0.67,
+          "areas": 62
+        },
+        {
+          "a": "walkCommute2021",
+          "b": "crimePer1000",
+          "r": 0.67,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "medianPrice",
+          "r": -0.66,
+          "areas": 62
+        },
+        {
+          "a": "badHealth",
+          "b": "violencePer1000",
+          "r": 0.66,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "gpMinutes",
+          "r": -0.64,
+          "areas": 62
+        },
+        {
+          "a": "carCommute2021",
+          "b": "violencePer1000",
+          "r": -0.63,
+          "areas": 62
+        },
+        {
+          "a": "carCommute2021",
+          "b": "goodDay",
+          "r": -0.63,
+          "areas": 62
+        },
+        {
+          "a": "carCommute2021",
+          "b": "gpMinutes",
+          "r": 0.63,
+          "areas": 62
+        },
+        {
+          "a": "imdScore",
+          "b": "crimePer1000",
+          "r": 0.6,
+          "areas": 62
+        },
+        {
+          "a": "walkCommute2021",
+          "b": "violencePer1000",
+          "r": 0.6,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "antisocialPer1000",
+          "r": 0.59,
+          "areas": 62
+        },
+        {
+          "a": "noCar",
+          "b": "goodDay",
+          "r": 0.59,
+          "areas": 62
+        },
+        {
+          "a": "walkCommute2021",
+          "b": "gpMinutes",
+          "r": -0.59,
+          "areas": 62
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "carCommute2021",
+          "r": 0.58,
+          "areas": 62
+        },
+        {
+          "a": "over65",
+          "b": "medianPrice",
+          "r": 0.58,
+          "areas": 62
+        }
+      ],
+      "surprises": [
+        {
+          "figure": "violencePer1000",
+          "area": "E01033249",
+          "value": 98,
+          "expected": 44.97,
+          "z": 3.7,
+          "name": "Worcester 011F",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "crimePer1000",
+          "area": "E01033249",
+          "value": 277.1,
+          "expected": 114.4,
+          "z": 3.5,
+          "name": "Worcester 011F",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "violencePer1000",
+          "area": "E01032337",
+          "value": 72,
+          "expected": 22.32,
+          "z": 3.5,
+          "name": "Worcester 008A",
+          "ward": "Leopard Hill"
+        },
+        {
+          "figure": "crimePer1000",
+          "area": "E01032312",
+          "value": 233.8,
+          "expected": 84.01,
+          "z": 3.2,
+          "name": "Worcester 004B",
+          "ward": "Rainbow Hill"
+        },
+        {
+          "figure": "crimePer1000",
+          "area": "E01032330",
+          "value": 217.2,
+          "expected": 81.93,
+          "z": 2.9,
+          "name": "Worcester 003A",
+          "ward": "Warndon & Elbury Park"
+        },
+        {
+          "figure": "crimePer1000",
+          "area": "E01033246",
+          "value": 211.4,
+          "expected": 94.45,
+          "z": 2.5,
+          "name": "Worcester 007E",
+          "ward": "Cathedral"
+        }
+      ]
+    }
+  }
+}

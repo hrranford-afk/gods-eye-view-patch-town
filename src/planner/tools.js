@@ -101,11 +101,19 @@ export function summarise(model, values, { weight = 'households', groupBy = 'tow
   return { value, households };
 }
 
-/** count: places of a kind per group, and per 1,000 households. */
-export function count(model, { kind, groupBy = 'area' }) {
+/**
+ * count: places of a kind per group, per 1,000 households, or with
+ * per: 'dayPopulation' per 1,000 residents + workers (areas only; fairer in
+ * town centres, where few live and many work and visit).
+ */
+export function count(model, { kind, groupBy = 'area', per = 'households' }) {
   const g = groupsOf(model, groupBy);
   const hh = {};
   model.homes.forEach((h, i) => { if (g[i] != null) hh[g[i]] = (hh[g[i]] || 0) + (h.w ?? 1); });
+  if (per === 'dayPopulation') {
+    if (groupBy !== 'area') throw new Error("count: per 'dayPopulation' needs groupBy 'area'");
+    for (const a of model.areas) if (a.code in hh) hh[a.code] = a.dayPopulation || 0;
+  }
   // A place belongs to the group of its nearest home.
   const keyOf = nearestHomeGroup(model, g);
   const n = {};
@@ -114,7 +122,7 @@ export function count(model, { kind, groupBy = 'area' }) {
     if (k != null) n[k] = (n[k] || 0) + 1;
   }
   const value = {};
-  for (const k of Object.keys(hh)) value[k] = Math.round(((n[k] || 0) / hh[k]) * 1000 * 100) / 100;
+  for (const k of Object.keys(hh)) if (hh[k] > 0) value[k] = Math.round(((n[k] || 0) / hh[k]) * 1000 * 100) / 100;
   return { value, count: n, households: Object.fromEntries(Object.entries(hh).map(([k, v]) => [k, Math.round(v)])) };
 }
 
@@ -301,7 +309,7 @@ export function floodZone(model) {
 function family(name) {
   if (/^(imdScore|imdDecile|need|deprived)$|Dep$/.test(name)) return 'deprivation';
   if (/^income/.test(name)) return 'income';
-  if (/Per1000$/.test(name) && /crime|violence|antisocial|burglary/.test(name)) return 'crime';
+  if (/Per1000(Day)?$/.test(name) && /crime|violence|antisocial|burglary/.test(name)) return 'crime';
   if (/Commute(2011|2021)$/.test(name)) return name.replace(/20(11|21)$/, '');
   if (/^(medianPrice|priceChange)$/.test(name)) return name;
   if (/^newHomes/.test(name)) return 'growth';
@@ -329,8 +337,9 @@ function pearson(x, y) {
  * from earlier steps ({ label: $result }). Only areas named with
  * `namePrefix` are used, if given.
  */
-export function survey(model, { fields = [], extra = {}, namePrefix = null, explainBy = 'imdScore', surprisesFor = null, top = 12, minAbsR = 0.4 } = {}) {
-  const areas = model.areas.filter((a) => !namePrefix || a.name.startsWith(namePrefix));
+export function survey(model, { fields = [], extra = {}, namePrefix = null, exclude = [], explainBy = 'imdScore', surprisesFor = null, top = 12, minAbsR = 0.4 } = {}) {
+  const skip = new Set(exclude);
+  const areas = model.areas.filter((a) => (!namePrefix || a.name.startsWith(namePrefix)) && !skip.has(a.name) && !skip.has(a.code));
   const cols = {};
   for (const f of fields) cols[f] = Object.fromEntries(areas.filter((a) => Number.isFinite(a[f])).map((a) => [a.code, a[f]]));
   for (const [label, r] of Object.entries(extra)) cols[label] = r.value;
@@ -381,7 +390,7 @@ export const TOOLS = Object.freeze({
   kinds: { fn: (m) => m.kinds(), about: 'Every kind of place in the model and how many.', args: {} },
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
   summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'ward', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
-  count: { fn: count, about: 'Places of a kind per group and per 1,000 households.', args: { kind: 'kind or list', groupBy: "'area' (default), 'bank', 'cell', 'town'" } },
+  count: { fn: count, about: 'Places of a kind per group, per 1,000 households (or residents + workers).', args: { kind: 'kind or list', groupBy: "'area' (default), 'ward', 'bank', 'cell', 'town'", per: "'households' (default) or 'dayPopulation'" } },
   attribute: { fn: attribute, about: 'Any numeric figure per area (census, need, history); `minus` for a change.', args: { name: "e.g. 'need', 'noCar', 'newHomesShare', 'carCommute2021' (see fields)", minus: "optional, e.g. 'carCommute2011'" } },
   fields: { fn: (m) => areaFields(m), about: 'Every numeric figure the areas carry, for attribute.', args: {} },
   relate: { fn: relate, about: 'Does y go with x, allowing for controls? (least squares across groups)', args: { y: 'a result ($name)', x: '{ label: result }', controls: '{ label: result }' } },
@@ -389,7 +398,7 @@ export const TOOLS = Object.freeze({
   average: { fn: average, about: 'Household-weighted average of a per-area result across the town.', args: { of: 'a per-area result ($name)', namePrefix: "e.g. 'Worcester '" } },
   combine: { fn: combine, about: 'Weighted sum of results per group (a composite index).', args: { parts: '[{ of: $name, weight }]' } },
   bestSites: { fn: bestSites, about: 'Where one more place of a kind would help most.', args: { kind: 'kind', count: 'how many (3)', byNeed: 'weight by need (false)' } },
-  survey: { fn: survey, about: 'Across many area figures: strongest links between them, and areas far better or worse than deprivation predicts.', args: { fields: 'area figures', extra: '{ label: $perAreaResult }', namePrefix: "e.g. 'Worcester '", explainBy: "figure to explain by (default 'imdScore')", surprisesFor: 'figures to find surprises in (default all)', top: 'how many (12)' } },
+  survey: { fn: survey, about: 'Across many area figures: strongest links between them, and areas far better or worse than deprivation predicts.', args: { fields: 'area figures', extra: '{ label: $perAreaResult }', namePrefix: "e.g. 'Worcester '", exclude: 'area names or codes to leave out', explainBy: "figure to explain by (default 'imdScore')", surprisesFor: 'figures to find surprises in (default all)', top: 'how many (12)' } },
   meets: { fn: meets, about: 'Per home: 1 if every check is within its limit (a "good day" checklist), else 0.', args: { checks: '[{ values: $travelResult, max: minutes }]' } },
   floodZone: { fn: floodZone, about: "Each home's flood zone (3, 2 or 0), as per-home values.", args: {} },
   compare: { fn: compare, about: 'Score scenarios against today, with who gains.', args: { scenarios: 'list of scenario objects (scenarios.js)' } },

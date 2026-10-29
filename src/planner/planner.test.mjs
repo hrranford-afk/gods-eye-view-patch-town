@@ -485,3 +485,15 @@ test('survey: finds a planted link across families and flags the area that break
   assert.equal(out.surprises[0].area, 'A7');
   assert.ok(out.surprises[0].z > 2);
 });
+
+test('daytime population: per resident + worker rates, count per dayPopulation, survey exclude', async () => {
+  const { attachLayers } = await import('./layers.js');
+  const areas = [{ code: 'C', name: 'Town 001A', residents: 500 }, { code: 'R', name: 'Town 001B', residents: 1500 }];
+  attachLayers(areas, { jobs: { byArea: { C: { jobs: 4500 }, R: { jobs: 0 } } }, crime: { byArea: { C: { total: 1000, byCategory: {} }, R: { total: 150, byCategory: {} } } } });
+  assert.equal(areas[0].crimePer1000, 2000, 'the centre looks terrible per resident');
+  assert.equal(areas[0].crimePer1000Day, 200, 'and far less so per resident + worker');
+  assert.equal(areas[1].crimePer1000Day, 100);
+  const { survey } = await import('./tools.js');
+  const many = Array.from({ length: 12 }, (_, i) => ({ code: `X${i}`, name: `Town ${i}`, imdScore: i, badHealth: i }));
+  assert.equal(survey({ areas: many }, { fields: ['imdScore', 'badHealth'], exclude: ['Town 0', 'X1'] }).areas, 10);
+});

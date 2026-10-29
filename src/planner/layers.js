@@ -155,8 +155,16 @@ export function attachLayers(areas, { deprivation = null, crime = null, prices =
     }
     const d = deprivation?.byArea?.[a.code];
     if (d) Object.assign(a, d);
+    // Daytime population: people who live here plus people who work here. A
+    // fairer base than residents alone where many visit and few live (a
+    // town centre); per-resident rates there look far worse than they are.
+    if (a.residents != null) a.dayPopulation = a.residents + (a.jobs || 0);
     const c = crime?.byArea?.[a.code];
     if (crime) {
+      const perDay = (n) => (a.dayPopulation ? Math.round(((n || 0) / a.dayPopulation) * 1000 * 10) / 10 : null);
+      a.crimePer1000Day = perDay(c?.total);
+      a.violencePer1000Day = perDay(c?.byCategory?.['violent-crime']);
+      a.antisocialPer1000Day = perDay(c?.byCategory?.['anti-social-behaviour']);
       const per = (n) => (a.residents ? Math.round(((n || 0) / a.residents) * 1000 * 10) / 10 : null);
       a.crimePer1000 = per(c?.total);
       a.violencePer1000 = per(c?.byCategory?.['violent-crime']);

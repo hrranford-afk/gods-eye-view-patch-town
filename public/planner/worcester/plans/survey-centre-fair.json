@@ -1,0 +1,248 @@
+{
+  "question": "Which of the survey's links are real once Worcester city centre's few residents and many visitors are allowed for?",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDayHome"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "area"
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "groupBy": "area"
+      },
+      "as": "greenMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$meet",
+        "groupBy": "area"
+      },
+      "as": "meetMinutes"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:takeaway"
+      },
+      "as": "takeawaysPer1000"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:smallShop"
+      },
+      "as": "cornerShopsPer1000"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "meet:pub"
+      },
+      "as": "pubsPer1000"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": [
+          "collision:serious",
+          "collision:fatal"
+        ]
+      },
+      "as": "seriousCrashesPer1000"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:takeaway",
+        "per": "dayPopulation"
+      },
+      "as": "takeawaysPerDay"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "food:smallShop",
+        "per": "dayPopulation"
+      },
+      "as": "cornerShopsPerDay"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": "meet:pub",
+        "per": "dayPopulation"
+      },
+      "as": "pubsPerDay"
+    },
+    {
+      "tool": "count",
+      "args": {
+        "kind": [
+          "collision:serious",
+          "collision:fatal"
+        ],
+        "per": "dayPopulation"
+      },
+      "as": "seriousCrashesPerDay"
+    },
+    {
+      "tool": "survey",
+      "args": {
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "badHealth",
+          "over65",
+          "livingAlone66",
+          "noCar",
+          "medianPrice",
+          "jobsPerResident",
+          "newHomesShare",
+          "carCommute2021",
+          "cycleCommute2021",
+          "walkCommute2021",
+          "floodZone3Share",
+          "crimePer1000Day",
+          "violencePer1000Day",
+          "antisocialPer1000Day"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes",
+          "takeawaysPerDay": "$takeawaysPerDay",
+          "cornerShopsPerDay": "$cornerShopsPerDay",
+          "pubsPerDay": "$pubsPerDay",
+          "seriousCrashesPerDay": "$seriousCrashesPerDay"
+        },
+        "surprisesFor": [
+          "crimePer1000Day",
+          "violencePer1000Day"
+        ],
+        "top": 15
+      },
+      "as": "A_perResidentPlusWorker"
+    },
+    {
+      "tool": "survey",
+      "args": {
+        "namePrefix": "Worcester ",
+        "exclude": [
+          "Worcester 007F",
+          "Worcester 011E"
+        ],
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "badHealth",
+          "over65",
+          "livingAlone66",
+          "noCar",
+          "medianPrice",
+          "jobsPerResident",
+          "newHomesShare",
+          "carCommute2021",
+          "cycleCommute2021",
+          "walkCommute2021",
+          "floodZone3Share",
+          "crimePer1000",
+          "violencePer1000",
+          "antisocialPer1000"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes",
+          "takeawaysPer1000": "$takeawaysPer1000",
+          "cornerShopsPer1000": "$cornerShopsPer1000",
+          "pubsPer1000": "$pubsPer1000",
+          "seriousCrashesPer1000": "$seriousCrashesPer1000"
+        },
+        "surprisesFor": [
+          "crimePer1000",
+          "violencePer1000"
+        ],
+        "top": 15
+      },
+      "as": "B_perResidentWithoutCentre"
+    }
+  ],
+  "show": [
+    "A_perResidentPlusWorker",
+    "B_perResidentWithoutCentre"
+  ]
+}
