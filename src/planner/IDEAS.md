@@ -120,6 +120,12 @@ most people don't walk to their GP. A finding to discuss, not a verdict.
 - Cycling (DfT cyclist counts, 2000 = 100): fell to ~66–70 in the mid-2000s, back to 110 in 2019, **peaked at 129 in 2020** (lockdown), and settled around 98 by 2025.
 - These are leads to check against what was happening on the ground (roadworks, new junctions, closures), not proof.
 
+## Survey, checked fairly (29 Oct 2026)
+
+- **Harry:** re-run the survey per resident + worker, to split real links from the city-centre distortion.
+- **CAIRN adds:** a daytime population (residents + jobs) on every area, `count` per daytime population, and `survey` with `exclude`, so any AI can repeat the check. Next: split crime against people from shop crime (q31).
+- Result: the corner shop / pub / takeaway / crime links (~0.9) were the centre's few residents. Surviving: crime with car-less households and deprivation; bad health with deprivation, income and violence.
+
 ## Next
 
 0. **GP capacity.** NHS Digital patients-registered-per-practice and GP workforce, so access means "can get an appointment", not just distance. Then score need (health, age, deprivation) against access.
