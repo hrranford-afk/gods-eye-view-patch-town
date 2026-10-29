@@ -323,7 +323,7 @@ async function historyTown(id) {
   const ppd = await fetch(`https://landregistry.data.gov.uk/app/ppd/ppd_data.csv?header=true&limit=all&nb%5B%5D=true&town=${encodeURIComponent(town.name.toUpperCase())}&min_date=1995-01-01`);
   if (!ppd.ok) throw new Error(`Land Registry answered ${ppd.status}`);
   // Only the town's own county: "WORCESTER" also matches Worcester Park, Surrey.
-  const rows = parseCsv(await ppd.text()).filter((r) => r.county === (town.county || 'WORCESTERSHIRE'));
+  const rows = parseCsv(await ppd.text()).filter((r) => r.county === town.county);
   const postcodes = [...new Set(rows.map((r) => r.postcode).filter(Boolean))];
   const where = new Map();
   for (let i = 0; i < postcodes.length; i += 100) {
@@ -540,7 +540,7 @@ async function pricesTown(id) {
   const areas = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas;
   const res = await fetch(`https://landregistry.data.gov.uk/app/ppd/ppd_data.csv?header=true&limit=all&town=${encodeURIComponent(town.name.toUpperCase())}&min_date=2015-01-01`);
   if (!res.ok) throw new Error(`Land Registry answered ${res.status}`);
-  const rows = parseCsv(await res.text()).filter((r) => r.county === (town.county || 'WORCESTERSHIRE') && r.transaction_category === 'A');
+  const rows = parseCsv(await res.text()).filter((r) => r.county === town.county && r.transaction_category === 'A');
   const where = new Map();
   const postcodes = [...new Set(rows.map((r) => r.postcode).filter(Boolean))];
   for (let i = 0; i < postcodes.length; i += 100) {
