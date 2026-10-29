@@ -35,6 +35,7 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 .basebar .eco { font-size: 13px; font-weight: 700; color: var(--paper); opacity: 0.85; }
 .basebar b { font-family: var(--display); font-size: 13px; letter-spacing: 0.04em; }
 .bar { height: 10px; border-radius: 6px; background: var(--glass); overflow: hidden; border: 2px solid rgba(255, 248, 236, 0.25); }
+.basebar .pct { font-variant-numeric: tabular-nums; }
 .bar i { display: block; height: 100%; width: 100%; transition: width 0.2s; }
 .blue .bar i { background: var(--blue); }
 .red .bar i { background: var(--red); margin-left: auto; }
@@ -86,9 +87,9 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 </style>
 
 <div class="hud">
-  <div class="basebar blue"><b>YOUR TOY BOX</b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
+  <div class="basebar blue"><b>YOUR TOY BOX <span class="pct" id="pctBlue"></span></b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
   <div class="mid"><div class="cereal" id="cereal">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
-  <div class="basebar red"><b>ENEMY TOY BOX</b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
+  <div class="basebar red"><b>ENEMY TOY BOX <span class="pct" id="pctRed"></span></b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
 </div>
 <div class="hint" id="hint">Drag on the left to drive</div>
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
@@ -237,11 +238,12 @@ const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < 
 // ---------- Vehicles ----------
 // Each vehicle: top speed, acceleration, turn rate, grip (1 = rails, low = drifts), hit points, radius, weapon.
 const WEAPONS = {
-  mg: { dmg: 6, rate: 0.09, range: 15, speed: 70, color: 0xffe066, size: 0.35 },
-  cannon: { dmg: 32, rate: 0.85, range: 19, speed: 40, splash: 3.5, color: 0x2b2b2b, size: 0.7 },
-  missile: { dmg: 16, rate: 0.45, range: 23, speed: 34, homing: true, color: 0xffffff, size: 0.45 },
-  flame: { dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
-  laser: { dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
+  // vsBase: how hard each weapon hits a toy box. Cannons and rockets break boxes; guns barely scratch them.
+  mg: { vsBase: 0.3, dmg: 6, rate: 0.09, range: 15, speed: 70, color: 0xffe066, size: 0.35 },
+  cannon: { vsBase: 1.5, dmg: 32, rate: 0.85, range: 19, speed: 40, splash: 3.5, color: 0x2b2b2b, size: 0.7 },
+  missile: { vsBase: 1.5, dmg: 16, rate: 0.45, range: 23, speed: 34, homing: true, color: 0xffffff, size: 0.45 },
+  flame: { vsBase: 0.5, dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
+  laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
 };
 const VEHICLES = {
   racer: { name: 'Racer', speed: 24, accel: 46, turn: 5, grip: 7, hp: 60, r: 1.6, weapon: 'mg', unlock: 0 },
@@ -352,7 +354,7 @@ function makeBase(team) {
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
   pad.rotation.x = -Math.PI / 2;
-  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1500, maxHp: 1500, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
+  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1200, maxHp: 1200, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
   obstacles.push({ x, z: 0, w: 12, d: 14, h: 7, kind: 'base' });
   entities.push(base);
   return base;
@@ -754,7 +756,9 @@ function fire(from, target, weapon, angle) {
   const m = new THREE.Mesh(weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5),
     new THREE.MeshBasicMaterial({ color: weapon.color, transparent: !!weapon.life, opacity: weapon.life ? 0.8 : 1 }));
   const y = from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : 1.6;
-  const ox = Math.cos(a) * ((from.r || 1) + 0.5), oz = Math.sin(a) * ((from.r || 1) + 0.5);
+  // Shots leave from the muzzle: just outside a car, or from the gun on a toy box's roof.
+  const muzzle = from.kind === 'base' ? 1.5 : (from.r || 1) + 0.5;
+  const ox = Math.cos(a) * muzzle, oz = Math.sin(a) * muzzle;
   m.position.set(from.x + ox, y, from.z + oz);
   scene.add(m);
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
@@ -771,10 +775,10 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
   }
 }
 
-function hurt(e, dmg, byTeam) {
+function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
-  // Toy boxes are sturdy: a quarter damage, so a base falls to a siege, not a few scouts.
-  e.hp -= e.kind === 'base' ? dmg * 0.25 : dmg;
+  // Toy boxes fall to siege weapons (cannons, rockets), not to a few scouts with guns.
+  e.hp -= e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
   if (e.hp > 0) return;
   const near = dist2(e, state.player) < 1600;
   burst(e.x, e.z, e.kind === 'base' ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : 16, e.kind === 'base' ? 22 : 11);
@@ -1064,12 +1068,12 @@ function update(dt) {
     if (!hit) {
       for (const e of entities) {
         if (e.team === s.team || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
-        if (dist2(s, e) < (e.r + 0.4) ** 2) { hurt(e, s.weapon.dmg, s.team); hit = true; break; }
+        if (dist2(s, e) < (e.r + 0.4) ** 2) { hurt(e, s.weapon.dmg, s.team, s.weapon); hit = true; break; }
       }
     }
     if (hit) {
       if (s.weapon.splash) {
-        for (const e of entities) if (e.team !== s.team && dist2(s, e) < s.weapon.splash ** 2) hurt(e, s.weapon.dmg * 0.5, s.team);
+        for (const e of entities) if (e.team !== s.team && dist2(s, e) < s.weapon.splash ** 2) hurt(e, s.weapon.dmg * 0.5, s.team, s.weapon);
         burst(s.x, s.z, 0xffc23d, 8, 6, s.y);
       } else if (!s.weapon.life) burst(s.x, s.z, s.weapon.color, 3, 4, s.y);
       scene.remove(s.mesh);
@@ -1131,6 +1135,7 @@ function update(dt) {
   const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
   $('ecoBlue').textContent = eco(BLUE);
   $('ecoRed').textContent = eco(RED);
+  for (const [t, id] of [[BLUE, 'pctBlue'], [RED, 'pctRed']]) $(id).textContent = `${Math.max(0, Math.ceil(state.bases[t].hp / state.bases[t].maxHp * 100))}%`;
   $('hpRed').style.width = `${Math.max(0, state.bases[RED].hp / state.bases[RED].maxHp) * 100}%`;
   [...$('pips').children].forEach((el, i) => { el.style.background = ['#9a8f80', '#2f7df6', '#ef4136'][outposts[i].owner + 1]; });
   const atHome = p.alive && dist2(p, state.bases[BLUE]) < 16 * 16;
@@ -1157,6 +1162,11 @@ function render(dt) {
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
+  }
+  for (const b of state.bases || []) {
+    const health = b.hp / b.maxHp;
+    b.mesh.rotation.z = (1 - Math.min(1, health * 2)) * 0.12 * (b.team === BLUE ? 1 : -1);
+    if (health < 0.5 && b.hp > 0 && Math.random() < dt * (health < 0.25 ? 10 : 4)) burst(b.x + (Math.random() - 0.5) * 8, b.z + (Math.random() - 0.5) * 8, health < 0.25 ? 0x3a332c : 0x8a8178, 2, 3, 7.5);
   }
   for (const o of outposts) {
     o.cloth.material.color.setHex(o.owner === BLUE ? COLORS[BLUE] : o.owner === RED ? COLORS[RED] : 0xc9c2b6);
