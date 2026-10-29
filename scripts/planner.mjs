@@ -659,8 +659,22 @@ function askTown(id, planFile) {
   }
 }
 
-/** What's mapped for a town, by compass theme, and what's missing. Writes atlas.json. */
-function atlasTown(id) {
+/** Fetch a source's page once: its HTTP status, or the error, to see if it's reachable from here. */
+async function probe(url) {
+  try {
+    const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'gods-eye-view-planner (open data inventory)' } });
+    await res.body?.cancel();
+    return res.status;
+  } catch (e) {
+    return e.name === 'TimeoutError' ? 'timeout' : e.cause?.code || e.message;
+  }
+}
+
+/**
+ * What's mapped for a town, by compass theme, and what's still to get.
+ * Writes atlas.json. With --check, probes each unmapped source's url.
+ */
+async function atlasTown(id, { check = false } = {}) {
   const town = getTown(id);
   const dir = townDir(town.id);
   const full = (f) => (f.startsWith('traffic/') ? path.join(process.cwd(), 'public', 'planner', f) : path.join(dir, f));
@@ -678,11 +692,17 @@ function atlasTown(id) {
   const kinds = {};
   if (has('town.json')) for (const p of JSON.parse(readFileSync(full('town.json'), 'utf8')).places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
   const layers = atlasStatus({ has, kinds, info });
+  if (check) {
+    for (const l of layers.filter((x) => x.url && x.status !== 'mapped')) l.reachable = await probe(l.url);
+  }
   writeFileSync(path.join(dir, 'atlas.json'), `${JSON.stringify({ town: town.id, checkedAt: new Date().toISOString(), layers }, null, 2)}\n`);
   for (const [theme, label] of COMPASS) {
     const rows = layers.filter((l) => l.theme === theme);
     console.log(`\n${label}`);
-    for (const l of rows) console.log(`  ${l.status === 'mapped' ? '✓' : l.status === 'unavailable' ? '×' : '·'} ${l.name}${l.count != null ? ` (${l.count})` : ''} — ${l.source}${l.status === 'missing' ? '  [to map]' : ''}`);
+    for (const l of rows) {
+      const todo = l.status === 'missing' ? `  [to map: priority ${l.priority ?? '?'}, ${l.level ?? '?'}${l.access === 'freeAccount' ? ', needs a free account' : ''}${l.reachable != null ? `, ${l.reachable === 200 ? 'reachable' : `answered ${l.reachable}`}` : ''}]` : '';
+      console.log(`  ${l.status === 'mapped' ? '✓' : l.status === 'unavailable' ? '×' : '·'} ${l.name}${l.count != null ? ` (${l.count})` : ''} — ${l.source}${todo}`);
+    }
   }
   const mapped = layers.filter((l) => l.status === 'mapped').length;
   console.log(`\n[planner] ${mapped} of ${layers.length} layers mapped for ${town.name}${layers.some((l) => l.status === 'unavailable') ? ` (${layers.filter((l) => l.status === 'unavailable').length} not openly available)` : ''} → ${dir}/atlas.json`);
@@ -825,7 +845,7 @@ try {
   else if (command === 'asylum') await asylumTown(id);
   else if (command === 'wards') await wardsTown(id);
   else if (command === 'tools') listTools();
-  else if (command === 'atlas') atlasTown(id);
+  else if (command === 'atlas') await atlasTown(id, { check: process.argv.includes('--check') });
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {

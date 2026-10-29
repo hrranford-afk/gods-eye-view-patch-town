@@ -112,13 +112,13 @@ That's the next tool to build.
 
 ## 3½. What's mapped now
 
-`npm run planner -- atlas worcester` lists it by compass theme: **32 of 33
-layers mapped**. The one gap is planning applications and councillors,
-which aren't published openly for Worcester.
+`npm run planner -- atlas worcester` lists it by compass theme: **32 of 76
+layers mapped**. The other 44 are the free-data inventory (the data plan
+below); 4 of them aren't published openly.
 
 | Theme | Mapped |
 |---|---|
-| People | Census 2021 and 2011, households of one person aged 66+, meeting places (231), wards (25) |
+| People | Census 2021 and 2011, households of one person aged 66+, migration (born abroad, recent arrivals, English), asylum support (council), meeting places (231), wards (25) |
 | Health | GP practices (official, with list size and survey), food businesses (FSA), pharmacies and dentists (as mapped, incomplete), air quality area |
 | Nature | Parks, playgrounds, nature reserves, woodland, 768 mapped trees, the river and its crossings |
 | Security | Flood Zones 2–3, Indices of Deprivation 2025, street crime (12 months, per neighbourhood), house prices since 2015, household income (FYE 2023) |
@@ -126,6 +126,39 @@ which aren't published openly for Worcester.
 | Movement | Streets and paths, bus timetable, traffic and cycle counts 2000–2025, road collisions (5 years), cycle network (68 km of tracks, 4 km of lanes) |
 | Land | Empty shops, brownfield register (67 sites, up to 3,448 homes), listed buildings, conservation areas |
 | Voice | Questions (the question loop), scenarios |
+
+### The data plan: map everything free first
+
+Every free source we know of is an entry in `src/planner/atlas.js`, mapped
+or not, with its level (point, neighbourhood, council), how it's got, why it
+matters and a priority. `npm run planner -- atlas worcester --check` probes
+each one and says if it's reachable from here. Rules:
+
+1. **Inventory before analysis.** A new source goes in the atlas first; then
+   a command fetches it; then it's in the model for every tool.
+2. **Finest open level, counted not tracked.** Neighbourhood where it exists,
+   council where that's all there is. Never a person.
+3. **Waves by priority.** Priority 1 sources that are open and reachable
+   come first, then 2, then 3. Each wave ends with the survey re-run, so new
+   layers are checked against everything already mapped.
+4. **Accounts are Harry's call.** Free sources that need a sign-up are listed,
+   not used, until Harry says yes.
+5. **Blocked stays blocked.** A 403 is recorded, not bypassed; look for the
+   same data elsewhere.
+
+**Wave 1 (priority 1, open, reachable, 14 sources):** wellbeing, population
+and its change, more Census 2021, life expectancy and local health, GP
+disease registers, modelled air pollution, river health and sewage spills,
+fuel poverty, child poverty, claimant count, commuting flows, Propensity to
+Cycle, business rates (every shop), and school results. School results
+answered 403 (bot protection), so they come from Explore Education
+Statistics instead.
+
+**Needs Harry's yes (free accounts):** EPC energy certificates (priority 1),
+DWP Stat-Xplore benefits, Landsat heat, Land Registry company ownership.
+
+**Not published:** Strava Metro (the council can apply), high street
+footfall, the local plan's site maps (PDF only), planning applications.
 
 ## 3¾. What the full map shows (the survey)
 

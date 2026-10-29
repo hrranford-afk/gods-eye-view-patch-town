@@ -512,3 +512,20 @@ test('census migration shares: born abroad, recent arrivals, little English', as
   assert.ok(Math.abs(a.arrivedRecently - 0.12) < 1e-9);
   assert.ok(Math.abs(a.littleEnglish - 5 / 95) < 1e-9);
 });
+
+test('atlas inventory: every source still to map says how fine, how got, why, and where', async () => {
+  const { LAYERS, atlasStatus } = await import('./atlas.js');
+  const ids = new Set();
+  for (const l of LAYERS) {
+    assert.ok(!ids.has(l.id), `duplicate ${l.id}`);
+    ids.add(l.id);
+    if (l.file || l.kinds || l.regionFile || l.id === 'applications') continue;
+    assert.ok(['open', 'freeAccount', 'notPublished'].includes(l.access), l.id);
+    assert.ok([1, 2, 3].includes(l.priority) && l.level && l.value, l.id);
+    assert.equal(Boolean(l.url), l.access !== 'notPublished', `${l.id}: url iff published`);
+    assert.equal(Boolean(l.unavailable), l.access === 'notPublished', l.id);
+  }
+  const [wellbeing] = atlasStatus({ has: () => false }).filter((l) => l.id === 'wellbeing');
+  assert.equal(wellbeing.status, 'missing');
+  assert.equal(wellbeing.priority, 1);
+});

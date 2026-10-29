@@ -26,6 +26,13 @@ list lives in `src/planner/atlas.js`; add a layer there first, then the
 command that builds it. **Map first, ask later**: fill the atlas, then
 questions come from what the map shows.
 
+Layers not mapped yet are the **free-data inventory**: each has `level`,
+`access` (open, freeAccount, notPublished), `priority`, `value` and `url`.
+Add `--check` to probe every url from where you run. Work in priority waves
+and re-run the survey after each (see "The data plan" in NEW_WORCESTER.md).
+Don't use freeAccount sources without the owner's yes; record a 403, don't
+bypass it.
+
 On the globe the Town Planner has a **theme panel** (bottom right): each
 compass theme switches on and off, and the choice is remembered.
 
@@ -90,7 +97,7 @@ npm run planner -- flood worcester     # Environment Agency Flood Zones 2 and 3
 npm run planner -- jobs worcester      # workplace jobs per neighbourhood (BRES)
 npm run planner -- income worcester    # household income, FYE 2023 (needs: pip install openpyxl)
 npm run planner -- wards worcester     # electoral ward of each neighbourhood
-npm run planner -- atlas worcester     # what's mapped, by compass theme
+npm run planner -- atlas worcester     # what's mapped, by compass theme (--check probes the rest)
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is
