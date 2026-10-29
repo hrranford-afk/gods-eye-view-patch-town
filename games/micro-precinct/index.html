@@ -1,0 +1,909 @@
+<title>Micro Precinct</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@500;700&display=swap">
+<style>
+/* Layout: full-screen toy tabletop; HUD floats over it, thumb controls in the bottom corners. */
+:root {
+  --blue: #2f7df6;
+  --red: #ef4136;
+  --gold: #ffc23d;
+  --ink: #1c1712;
+  --paper: #fff8ec;
+  --glass: rgba(28, 23, 18, 0.62);
+  --display: 'Bungee', 'Arial Black', Impact, sans-serif;
+  --body: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; overflow: hidden; background: #3b2a1c; color: var(--paper);
+  font-family: var(--body); touch-action: none; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+}
+canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+
+.hud {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 2; pointer-events: none;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.basebar { display: grid; gap: 4px; min-width: 0; flex: 1; max-width: 260px; }
+.basebar.red { text-align: right; }
+.basebar b { font-family: var(--display); font-size: 13px; letter-spacing: 0.04em; }
+.bar { height: 10px; border-radius: 6px; background: var(--glass); overflow: hidden; border: 2px solid rgba(255, 248, 236, 0.25); }
+.bar i { display: block; height: 100%; width: 100%; transition: width 0.2s; }
+.blue .bar i { background: var(--blue); }
+.red .bar i { background: var(--red); margin-left: auto; }
+.mid { display: grid; justify-items: center; gap: 6px; }
+.bolts { font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 0 var(--ink); font-variant-numeric: tabular-nums; }
+.pips { display: flex; gap: 6px; }
+.pips span { width: 14px; height: 14px; border-radius: 50%; background: #9a8f80; border: 2px solid var(--paper); }
+.toast { font-family: var(--display); font-size: 14px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); min-height: 18px; text-align: center; }
+
+.controls {
+  position: fixed; right: 0; bottom: 0; z-index: 3; display: grid; justify-items: end; gap: 10px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end; }
+button {
+  font: 700 15px/1 var(--body); color: var(--paper); background: var(--glass); border: 3px solid rgba(255, 248, 236, 0.4);
+  border-radius: 16px; padding: 10px 12px; min-width: 64px; min-height: 52px; display: grid; justify-items: center; gap: 3px;
+  touch-action: none; cursor: pointer;
+}
+button small { font-size: 12px; color: var(--gold); font-weight: 700; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button[disabled] { opacity: 0.4; }
+button.fire { width: 104px; height: 104px; border-radius: 50%; font: 20px var(--display); background: rgba(239, 65, 54, 0.75); border-color: var(--paper); }
+button.fire.on { background: var(--red); transform: scale(0.96); }
+
+.garage {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 3; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  display: flex; gap: 8px; padding: 8px; border-radius: 18px; background: var(--glass); max-width: calc(100vw - 300px); overflow-x: auto;
+}
+.garage button { min-width: 74px; }
+.garage button.cur { border-color: var(--blue); background: rgba(47, 125, 246, 0.55); }
+
+.stick { position: fixed; z-index: 3; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 3px solid rgba(255, 248, 236, 0.45); background: rgba(28, 23, 18, 0.25); pointer-events: none; }
+.stick i { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255, 248, 236, 0.75); }
+.hint { position: fixed; left: max(24px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); z-index: 2; font-weight: 700; color: rgba(255, 248, 236, 0.7); pointer-events: none; }
+
+.screen {
+  position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(28, 23, 18, 0.72);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.card { max-width: 560px; display: grid; gap: 14px; text-align: center; justify-items: center; }
+.card h1 { font: 44px/1 var(--display); margin: 0; color: var(--gold); text-shadow: 0 4px 0 var(--ink); text-wrap: balance; }
+.card p { margin: 0; font-size: 18px; line-height: 1.4; max-width: 46ch; }
+.card ul { margin: 0; padding: 0; list-style: none; font-size: 16px; line-height: 1.5; display: grid; gap: 2px; }
+.card .go { font: 24px var(--display); background: var(--blue); border-color: var(--paper); padding: 16px 30px; min-width: 200px; }
+@media (max-width: 700px) { .garage { max-width: calc(100vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); } .card h1 { font-size: 34px; } }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="hud">
+  <div class="basebar blue"><b>YOUR TOY BOX</b><div class="bar"><i id="hpBlue"></i></div></div>
+  <div class="mid"><div class="bolts" id="bolts">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
+  <div class="basebar red"><b>ENEMY TOY BOX</b><div class="bar"><i id="hpRed"></i></div></div>
+</div>
+<div class="hint" id="hint">Drag on the left to drive</div>
+<div class="stick" id="stick" hidden><i id="knob"></i></div>
+<div class="garage" id="garage" hidden></div>
+<div class="controls">
+  <div class="row">
+    <button id="bDrones">Drones<small>25</small></button>
+    <button id="bUpgrade" disabled>Upgrade<small id="upCost">—</small></button>
+  </div>
+  <div class="row">
+    <button id="bGun">Gun<small id="gunCost">20</small></button>
+    <button id="bRocket">Rocket<small id="rocketCost">35</small></button>
+    <button class="fire" id="bFire">FIRE</button>
+  </div>
+</div>
+<div class="screen" id="start">
+  <div class="card">
+    <h1>MICRO PRECINCT</h1>
+    <p>Tiny cars, big war on the kitchen table. Capture the bottle caps to earn bolts. Spend bolts on turrets, drones and new vehicles. Smash the red toy box.</p>
+    <ul>
+      <li><b>Drive:</b> drag anywhere on the left half (or WASD)</li>
+      <li><b>Fire:</b> hold FIRE (or Space). It aims for you</li>
+      <li><b>Build:</b> Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)</li>
+      <li><b>Swap vehicle:</b> drive home to your toy box</li>
+    </ul>
+    <button class="go" id="play">PLAY</button>
+  </div>
+</div>
+<div class="screen" id="end" hidden>
+  <div class="card"><h1 id="endTitle">YOU WIN</h1><p id="endText"></p><button class="go" id="again">PLAY AGAIN</button></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+// ---------- World ----------
+const W = 150, D = 96; // the tabletop, in toy units (1 unit ≈ 1 cm)
+const BLUE = 0, RED = 1;
+const COLORS = [0x2f7df6, 0xef4136];
+const $ = (id) => document.getElementById(id);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x3b2a1c);
+scene.fog = new THREE.Fog(0x3b2a1c, 90, 170);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 400);
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x5a3d26, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(-40, 80, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 60, bottom: -60, near: 1, far: 200 });
+scene.add(sun);
+
+const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.05, ...extra });
+function mesh(geo, material, x = 0, y = 0, z = 0, parent = scene) {
+  const m = new THREE.Mesh(geo, material);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// Wood grain, drawn once to a canvas.
+function woodTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#b07a4a'; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? '#a8713f' : '#b98656'; g.fillRect(0, i * 57, 1024, 55); }
+  for (let i = 0; i < 260; i++) {
+    g.strokeStyle = `rgba(80,45,20,${Math.random() * 0.18})`; g.lineWidth = Math.random() * 2 + 0.5;
+    const y = Math.random() * 512; g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= 1024; x += 64) g.lineTo(x, y + Math.sin(x / 90 + i) * 4);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTexture(), roughness: 0.75 }), 0, -2, 0);
+table.castShadow = false;
+
+// Obstacles: axis-aligned boxes the cars bump into (x, z centre, w, d).
+const obstacles = [];
+function block(x, z, w, d, h, color, kind) {
+  const o = { x, z, w, d, h, kind };
+  obstacles.push(o);
+  if (kind === 'book') {
+    mesh(new THREE.BoxGeometry(w, h, d), mat(color), x, h / 2, z);
+    mesh(new THREE.BoxGeometry(w - 1.2, h - 0.8, d + 0.05), mat(0xfaf3e3), x + 0.4, h / 2, z);
+  } else if (kind === 'pencil') {
+    const along = w > d, len = along ? w : d;
+    const p = mesh(new THREE.CylinderGeometry(1, 1, len - 3, 6), mat(color), x, 1, z);
+    p.rotation.set(along ? 0 : Math.PI / 2, 0, along ? Math.PI / 2 : 0);
+    const tip = mesh(new THREE.ConeGeometry(1, 3, 6), mat(0xe8c79a), along ? x + len / 2 - 1.5 : x, 1, along ? z : z + len / 2 - 1.5);
+    tip.rotation.set(along ? 0 : Math.PI / 2, 0, along ? -Math.PI / 2 : 0);
+    const rub = mesh(new THREE.CylinderGeometry(1, 1, 1.6, 12), mat(0xf28fb1), along ? x - len / 2 + 2.3 : x, 1, along ? z : z - len / 2 + 2.3);
+    rub.rotation.copy(p.rotation);
+  } else if (kind === 'mug') {
+    mesh(new THREE.CylinderGeometry(w / 2, w / 2 * 0.92, h, 28, 1, true), mat(color, { side: THREE.DoubleSide }), x, h / 2, z);
+    mesh(new THREE.CylinderGeometry(w / 2 - 0.5, w / 2 - 0.5, 0.4, 28), mat(0x4a2a14), x, h - 1.5, z);
+    const handle = mesh(new THREE.TorusGeometry(2.4, 0.6, 8, 16, Math.PI), mat(color), x + w / 2 + 0.2, h / 2, z);
+    handle.rotation.z = -Math.PI / 2;
+  } else {
+    mesh(new THREE.BoxGeometry(w, h, d), mat(color), x, h / 2, z);
+    if (kind === 'die') for (const [dx, dz] of [[-1, -1], [1, 1], [0, 0], [1, -1], [-1, 1]]) mesh(new THREE.SphereGeometry(0.35, 8, 6), mat(0x1c1712), x + dx * 1.1, h + 0.05, z + dz * 1.1);
+  }
+  return o;
+}
+// The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
+for (const s of [-1, 1]) {
+  block(s * 14, 0, 2, 26, 2, 0xf2b705, 'pencil');
+  block(s * 40, s * 8, 2, 22, 2, 0x2a9d5c, 'pencil');
+  block(s * 8, s * 36, 18, 12, 5, s > 0 ? 0x8c2f39 : 0x2b4c7e, 'book');
+  block(s * 46, -s * 32, 9, 9, 10, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug');
+  block(-s * 26, s * 2, 4, 4, 4, 0xfbfbf6, 'die');
+  block(s * 58, s * 30, 14, 8, 3, 0x6a4c93, 'book');
+}
+// Ground patches: spilled juice is slippery, cereal is slow.
+const patches = [
+  { x: 0, z: -22, r: 9, kind: 'juice' },
+  { x: 0, z: 22, r: 9, kind: 'cereal' },
+];
+for (const p of patches) {
+  if (p.kind === 'juice') {
+    const m = mesh(new THREE.CircleGeometry(p.r, 40), mat(0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }), p.x, 0.03, p.z);
+    m.rotation.x = -Math.PI / 2; m.castShadow = false;
+  } else {
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * p.r;
+      const loop = mesh(new THREE.TorusGeometry(0.55, 0.28, 6, 12), mat([0xff5a5f, 0xffd166, 0x06d6a0, 0x9b5de5][i % 4]), p.x + Math.cos(a) * r, 0.3, p.z + Math.sin(a) * r);
+      loop.rotation.set(Math.PI / 2 + Math.random() * 0.5, Math.random() * 3, 0);
+    }
+  }
+}
+const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r)?.kind;
+
+// ---------- Vehicles ----------
+// Each vehicle: top speed, acceleration, turn rate, grip (1 = rails, low = drifts), hit points, radius, weapon.
+const WEAPONS = {
+  mg: { dmg: 6, rate: 0.09, range: 15, speed: 70, color: 0xffe066, size: 0.35 },
+  cannon: { dmg: 32, rate: 0.85, range: 19, speed: 40, splash: 3.5, color: 0x2b2b2b, size: 0.7 },
+  missile: { dmg: 16, rate: 0.45, range: 23, speed: 34, homing: true, color: 0xffffff, size: 0.45 },
+  flame: { dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
+  laser: { dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
+};
+const VEHICLES = {
+  racer: { name: 'Racer', speed: 24, accel: 46, turn: 5, grip: 7, hp: 60, r: 1.6, weapon: 'mg', unlock: 0 },
+  tank: { name: 'Tank', speed: 11, accel: 22, turn: 2.4, grip: 12, hp: 220, r: 2.1, weapon: 'cannon', unlock: 0 },
+  hover: { name: 'Hover', speed: 19, accel: 30, turn: 4, grip: 1.6, hp: 90, r: 1.8, weapon: 'missile', unlock: 30, floats: true },
+  mech: { name: 'Mech', speed: 9.5, accel: 30, turn: 3.6, grip: 14, hp: 160, r: 1.9, weapon: 'flame', unlock: 40, builder: true },
+  monster: { name: 'Monster', speed: 16, accel: 26, turn: 3, grip: 9, hp: 240, r: 2.3, weapon: 'mg', unlock: 50, ram: 60, rough: true },
+  jet: { name: 'Jet Bike', speed: 32, accel: 60, turn: 4.4, grip: 5, hp: 50, r: 1.4, weapon: 'laser', unlock: 60 },
+};
+const ENEMY_TYPES = {
+  scout: { model: 'racer', speed: 17, hp: 40, weapon: 'mg', reward: 4 },
+  buggy: { model: 'monster', speed: 13, hp: 90, weapon: 'mg', reward: 6 },
+  heavy: { model: 'tank', speed: 8.5, hp: 180, weapon: 'cannon', reward: 10 },
+  drone: { model: 'racer', speed: 18, hp: 40, weapon: 'mg', reward: 4 },
+};
+
+function wheel(g, x, z, r = 0.8, w = 0.6) {
+  const m = mesh(new THREE.CylinderGeometry(r, r, w, 12), mat(0x1c1712), x, r, z, g);
+  m.rotation.x = Math.PI / 2;
+}
+// Toy models out of boxes and cylinders. Forward is +x.
+function buildModel(kind, team, scale = 1) {
+  const g = new THREE.Group();
+  const c = COLORS[team], dark = team === BLUE ? 0x1b4fa8 : 0x9c1c14;
+  if (kind === 'racer') {
+    mesh(new THREE.BoxGeometry(3.2, 0.8, 1.6), mat(c), 0, 0.9, 0, g);
+    mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), -0.2, 1.5, 0, g);
+    mesh(new THREE.BoxGeometry(0.4, 0.15, 2.2), mat(dark), -1.5, 1.6, 0, g);
+    for (const [x, z] of [[1.1, 0.9], [1.1, -0.9], [-1.1, 0.9], [-1.1, -0.9]]) wheel(g, x, z, 0.55, 0.5);
+  } else if (kind === 'tank') {
+    mesh(new THREE.BoxGeometry(4, 1.2, 2.8), mat(c), 0, 1.1, 0, g);
+    for (const z of [-1.5, 1.5]) mesh(new THREE.BoxGeometry(4.2, 0.9, 0.7), mat(0x2b2b2b), 0, 0.5, z, g);
+    const tur = mesh(new THREE.CylinderGeometry(1, 1.1, 0.8, 14), mat(dark), 0, 2.1, 0, g);
+    tur.name = 'turret';
+    const barrel = mesh(new THREE.CylinderGeometry(0.22, 0.22, 2.4, 8), mat(0x2b2b2b), 1.3, 0, 0, tur);
+    barrel.rotation.z = Math.PI / 2;
+  } else if (kind === 'hover') {
+    const skirt = mesh(new THREE.CylinderGeometry(1.8, 1.9, 0.6, 20), mat(0x2b2b2b), 0, 0.5, 0, g);
+    skirt.scale.set(1.2, 1, 0.85);
+    const body = mesh(new THREE.SphereGeometry(1.3, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(c), 0, 0.8, 0, g);
+    body.scale.set(1.3, 0.8, 0.9);
+    mesh(new THREE.BoxGeometry(0.3, 1.4, 1.8), mat(dark), -1.7, 1.6, 0, g);
+  } else if (kind === 'mech') {
+    for (const z of [-0.7, 0.7]) {
+      const leg = mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), mat(0x55504a), 0, 0.9, z, g);
+      leg.name = 'leg';
+    }
+    mesh(new THREE.BoxGeometry(2, 1.4, 2.2), mat(c), 0, 2.3, 0, g);
+    mesh(new THREE.BoxGeometry(0.8, 0.5, 1.2), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), 0.8, 2.6, 0, g);
+    for (const z of [-1.4, 1.4]) mesh(new THREE.BoxGeometry(1.6, 0.4, 0.4), mat(dark), 0.8, 2.2, z, g);
+  } else if (kind === 'monster') {
+    mesh(new THREE.BoxGeometry(3.4, 1.1, 2), mat(c), 0, 2.2, 0, g);
+    mesh(new THREE.BoxGeometry(1.4, 0.8, 1.6), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), -0.2, 3.1, 0, g);
+    for (const [x, z] of [[1.2, 1.3], [1.2, -1.3], [-1.2, 1.3], [-1.2, -1.3]]) wheel(g, x, z, 1.1, 0.9);
+  } else if (kind === 'jet') {
+    const body = mesh(new THREE.ConeGeometry(0.8, 3.6, 10), mat(c), 0.2, 1.2, 0, g);
+    body.rotation.z = -Math.PI / 2;
+    for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(1.2, 0.15, 1), mat(dark), -0.6, 1.1, z, g);
+    mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 10), mat(0x7cfffb, { emissive: 0x2ad1cc }), -1.7, 1.2, 0, g).rotation.z = Math.PI / 2;
+  }
+  g.scale.setScalar(scale);
+  scene.add(g);
+  return g;
+}
+
+// ---------- Game state ----------
+const state = {};
+const entities = [];  // everything that can be shot: player, units, turrets, bases
+const shots = [];
+const parts = [];
+const outposts = [];
+const OUTPOST_SPOTS = [[-30, -24], [-30, 24], [0, 0], [30, -24], [30, 24]];
+
+function makeBase(team) {
+  const x = team === BLUE ? -62 : 62;
+  const g = new THREE.Group();
+  mesh(new THREE.BoxGeometry(12, 7, 14), mat(COLORS[team]), 0, 3.5, 0, g);
+  mesh(new THREE.BoxGeometry(12.6, 1.2, 14.6), mat(0xfff8ec), 0, 7.2, 0, g);
+  mesh(new THREE.BoxGeometry(0.3, 4, 6), mat(0x1c1712), team === BLUE ? 6.1 : -6.1, 2, 0, g);
+  const gun = mesh(new THREE.CylinderGeometry(1, 1.2, 1.2, 12), mat(0x55504a), 0, 8.3, 0, g);
+  gun.name = 'turret';
+  mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.6, 8), mat(0x1c1712), 1.4, 0, 0, gun).rotation.z = Math.PI / 2;
+  g.position.set(x, 0, 0);
+  scene.add(g);
+  const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
+  pad.rotation.x = -Math.PI / 2;
+  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1500, maxHp: 1500, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 7, rate: 0.35, range: 16 }, cool: 0 };
+  obstacles.push({ x, z: 0, w: 12, d: 14, h: 7, kind: 'base' });
+  entities.push(base);
+  return base;
+}
+
+function makeOutpost(x, z) {
+  const g = new THREE.Group();
+  const cap = mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.9, 24), mat(0xc9c2b6, { metalness: 0.6, roughness: 0.3 }), 0, 0.45, 0, g);
+  const flag = mesh(new THREE.BoxGeometry(0.2, 4, 0.2), mat(0x1c1712), 0, 2.5, 0, g);
+  const cloth = mesh(new THREE.BoxGeometry(1.8, 1.1, 0.1), mat(0xc9c2b6), 0.95, 3.9, 0, g);
+  const ring = mesh(new THREE.RingGeometry(4.2, 4.6, 40), mat(0xfff8ec, { transparent: true, opacity: 0.35 }), 0, 0.06, 0, g);
+  ring.rotation.x = -Math.PI / 2;
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return { x, z, r: 4.5, owner: -1, progress: 0, cap, cloth, ring, group: g, flag };
+}
+
+function spawnUnit(type, team, x, z) {
+  const t = ENEMY_TYPES[type];
+  const v = VEHICLES[t.model];
+  const u = {
+    kind: 'unit', type, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: v.r * 0.9,
+    hp: t.hp, maxHp: t.hp, speed: t.speed, turn: v.turn, grip: v.grip, accel: v.accel, weapon: WEAPONS[t.weapon],
+    cool: Math.random() * 0.5, reward: t.reward, mesh: buildModel(t.model, team, 0.9), think: 0, goal: null,
+  };
+  entities.push(u);
+  return u;
+}
+
+function setVehicle(kind) {
+  const p = state.player;
+  if (p.mesh) scene.remove(p.mesh);
+  const v = VEHICLES[kind];
+  Object.assign(p, { vehicle: kind, hp: v.hp, maxHp: v.hp, r: v.r, weapon: WEAPONS[v.weapon], mesh: buildModel(kind, BLUE) });
+  renderGarage();
+  updateCosts();
+}
+
+function reset() {
+  for (const e of entities) { if (e.mesh) scene.remove(e.mesh); if (e.pad) scene.remove(e.pad); }
+  for (const s of shots) scene.remove(s.mesh);
+  for (const p of parts) scene.remove(p.mesh);
+  for (const o of outposts) scene.remove(o.group);
+  entities.length = shots.length = parts.length = outposts.length = 0;
+  for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].kind === 'base') obstacles.splice(i, 1);
+  Object.assign(state, {
+    bolts: [30, 30], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
+    bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
+  });
+  for (const [x, z] of OUTPOST_SPOTS) outposts.push(makeOutpost(x, z));
+  state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
+  entities.push(state.player);
+  setVehicle('racer');
+  $('pips').innerHTML = outposts.map(() => '<span></span>').join('');
+}
+
+// ---------- Input ----------
+const input = { x: 0, z: 0, fire: false, keys: new Set() };
+let stickId = null, stickX = 0, stickY = 0;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.clientX > innerWidth * 0.5 || stickId !== null) return;
+  stickId = e.pointerId; stickX = e.clientX; stickY = e.clientY;
+  Object.assign($('stick').style, { left: `${stickX}px`, top: `${stickY}px` });
+  $('stick').hidden = false; $('knob').style.transform = ''; $('hint').hidden = true;
+});
+addEventListener('pointermove', (e) => {
+  if (e.pointerId !== stickId) return;
+  let dx = e.clientX - stickX, dy = e.clientY - stickY;
+  const len = Math.hypot(dx, dy), max = 55;
+  if (len > max) { dx *= max / len; dy *= max / len; }
+  input.x = dx / max; input.z = dy / max;
+  $('knob').style.transform = `translate(${dx}px, ${dy}px)`;
+});
+const endStick = (e) => { if (e.pointerId !== stickId) return; stickId = null; input.x = input.z = 0; $('stick').hidden = true; };
+addEventListener('pointerup', endStick);
+addEventListener('pointercancel', endStick);
+addEventListener('keydown', (e) => {
+  input.keys.add(e.code);
+  if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
+  if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
+});
+addEventListener('keyup', (e) => input.keys.delete(e.code));
+function hold(btn, on) {
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); on(true); btn.classList.add('on'); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) btn.addEventListener(ev, () => { on(false); btn.classList.remove('on'); });
+}
+hold($('bFire'), (v) => { input.fire = v; });
+const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); });
+tap('bGun', () => build('gun'));
+tap('bRocket', () => build('rocket'));
+tap('bUpgrade', () => upgrade());
+tap('bDrones', () => drones());
+
+// ---------- Sound (tiny synth, starts on the first tap) ----------
+let audio = null;
+function sfx(kind) {
+  if (!audio) return;
+  const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+  o.connect(g); g.connect(audio.destination);
+  const set = { shoot: ['square', 520, 300, 0.03, 0.05], boom: ['sawtooth', 120, 40, 0.12, 0.35], cap: ['triangle', 440, 880, 0.08, 0.3], build: ['triangle', 300, 600, 0.08, 0.15], no: ['square', 160, 120, 0.06, 0.12] }[kind];
+  o.type = set[0]; o.frequency.setValueAtTime(set[1], t); o.frequency.exponentialRampToValueAtTime(set[2], t + set[4]);
+  g.gain.setValueAtTime(set[3], t); g.gain.exponentialRampToValueAtTime(0.0001, t + set[4]);
+  o.start(t); o.stop(t + set[4] + 0.02);
+}
+let lastShotSound = 0;
+
+// ---------- Helpers ----------
+const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+const angleTo = (a, b) => Math.atan2(b.z - a.z, b.x - a.x);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+let toastTimer = 0;
+function toast(text) { $('toast').textContent = text; toastTimer = 2.2; }
+
+function nearestEnemy(from, range, team = from.team) {
+  let best = null, bd = range * range;
+  for (const e of entities) {
+    if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+    const d = dist2(from, e) - (e.r || 0) ** 2;
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
+
+function collideObstacles(e) {
+  const half = W / 2 - e.r, halfD = D / 2 - e.r;
+  if (e.x < -half) { e.x = -half; e.vx = Math.abs(e.vx) * 0.3; }
+  if (e.x > half) { e.x = half; e.vx = -Math.abs(e.vx) * 0.3; }
+  if (e.z < -halfD) { e.z = -halfD; e.vz = Math.abs(e.vz) * 0.3; }
+  if (e.z > halfD) { e.z = halfD; e.vz = -Math.abs(e.vz) * 0.3; }
+  for (const o of obstacles) {
+    const cx = Math.max(o.x - o.w / 2, Math.min(e.x, o.x + o.w / 2));
+    const cz = Math.max(o.z - o.d / 2, Math.min(e.z, o.z + o.d / 2));
+    const dx = e.x - cx, dz = e.z - cz, d = Math.hypot(dx, dz);
+    if (d < e.r && d > 1e-4) {
+      const push = (e.r - d) / d;
+      e.x += dx * push; e.z += dz * push;
+      const nx = dx / d, nz = dz / d, vn = e.vx * nx + e.vz * nz;
+      if (vn < 0) { e.vx -= 1.5 * vn * nx; e.vz -= 1.5 * vn * nz; }
+    } else if (d <= 1e-4) {
+      e.x += e.r; // inside a block: nudge out
+    }
+  }
+}
+
+function collideMovers() {
+  const movers = entities.filter((e) => (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && e.hp > 0);
+  for (let i = 0; i < movers.length; i++) {
+    for (let j = i + 1; j < movers.length; j++) {
+      const a = movers[i], b = movers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
+      if (d < min && d > 1e-4) {
+        const push = (min - d) / d / 2;
+        a.x -= dx * push; a.z -= dz * push; b.x += dx * push; b.z += dz * push;
+        // Monster trucks crush what they ram.
+        if (a.kind === 'player' && VEHICLES[a.vehicle].ram && b.team !== a.team) hurt(b, VEHICLES[a.vehicle].ram * state.dt, a.team);
+        if (b.kind === 'player' && VEHICLES[b.vehicle].ram && a.team !== b.team) hurt(a, VEHICLES[b.vehicle].ram * state.dt, b.team);
+      }
+    }
+  }
+}
+
+// Drive towards a direction (unit vector dx,dz) with a throttle 0..1.
+function drive(e, dx, dz, throttle, dt, stats) {
+  if (throttle > 0.05) {
+    const want = Math.atan2(dz, dx), diff = wrap(want - e.heading);
+    e.heading += Math.sign(diff) * Math.min(Math.abs(diff), stats.turn * dt);
+    const facing = Math.max(0, Math.cos(diff)) * 0.7 + 0.3;
+    e.vx += Math.cos(e.heading) * stats.accel * throttle * facing * dt;
+    e.vz += Math.sin(e.heading) * stats.accel * throttle * facing * dt;
+  }
+  const patch = patchAt(e.x, e.z);
+  let grip = stats.grip, top = stats.speed;
+  if (patch === 'juice' && !stats.floats) grip *= 0.12;
+  if (patch === 'cereal' && !stats.floats && !stats.rough) top *= 0.45;
+  // Split velocity into forward and sideways; grip eats the sideways part (that's the drift).
+  const fx = Math.cos(e.heading), fz = Math.sin(e.heading);
+  let fwd = e.vx * fx + e.vz * fz, side = -e.vx * fz + e.vz * fx;
+  side *= Math.exp(-grip * dt);
+  fwd *= Math.exp(-(throttle > 0.05 ? 0.4 : 2.2) * dt);
+  if (fwd > top) fwd = top;
+  if (fwd < -top * 0.4) fwd = -top * 0.4;
+  e.vx = fx * fwd - fz * side; e.vz = fz * fwd + fx * side;
+  e.x += e.vx * dt; e.z += e.vz * dt;
+  collideObstacles(e);
+}
+
+function fire(from, target, weapon, angle) {
+  const spread = weapon.spread ? (Math.random() - 0.5) * weapon.spread : (Math.random() - 0.5) * 0.04;
+  const a = (angle ?? angleTo(from, target)) + spread;
+  const m = new THREE.Mesh(weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5),
+    new THREE.MeshBasicMaterial({ color: weapon.color, transparent: !!weapon.life, opacity: weapon.life ? 0.8 : 1 }));
+  const y = from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : 1.6;
+  const ox = Math.cos(a) * ((from.r || 1) + 0.5), oz = Math.sin(a) * ((from.r || 1) + 0.5);
+  m.position.set(from.x + ox, y, from.z + oz);
+  scene.add(m);
+  shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
+  if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx('shoot'); lastShotSound = state.time; }
+}
+
+function burst(x, z, color, n = 12, power = 10, y = 1.5) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color }));
+    m.position.set(x, y, z);
+    scene.add(m);
+    const a = Math.random() * Math.PI * 2, s = Math.random() * power;
+    parts.push({ mesh: m, vx: Math.cos(a) * s, vy: Math.random() * power, vz: Math.sin(a) * s, life: 0.6 + Math.random() * 0.5 });
+  }
+}
+
+function hurt(e, dmg, byTeam) {
+  if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
+  e.hp -= dmg;
+  if (e.hp > 0) return;
+  const near = dist2(e, state.player) < 1600;
+  burst(e.x, e.z, e.kind === 'base' ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : 16, e.kind === 'base' ? 22 : 11);
+  if (near) { sfx('boom'); state.shake = Math.min(1.2, state.shake + (e.kind === 'unit' ? 0.25 : 0.6)); }
+  if (e.kind === 'player') {
+    e.alive = false; e.mesh.visible = false; state.respawn = 3; toast('Wrecked! Back in 3…');
+    return;
+  }
+  if (e.reward || e.kind === 'turret') state.bolts[byTeam] += e.reward || 12;
+  if (e.kind === 'base') { endGame(e.team !== BLUE); return; }
+  scene.remove(e.mesh);
+}
+
+// ---------- Building ----------
+const TURRETS = {
+  gun: { name: 'Gun', cost: 20, weapon: WEAPONS.mg, hp: 140, range: 17, rate: 0.13, dmg: 6 },
+  rocket: { name: 'Rocket', cost: 35, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
+};
+const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
+function makeTurret(type, team, x, z) {
+  const t = TURRETS[type];
+  const g = new THREE.Group();
+  mesh(new THREE.CylinderGeometry(1.6, 2, 1.4, 12), mat(0x55504a), 0, 0.7, 0, g);
+  const head = mesh(new THREE.BoxGeometry(1.8, 1.1, 1.6), mat(COLORS[team]), 0, 2, 0, g);
+  head.name = 'turret';
+  if (type === 'gun') for (const z2 of [-0.4, 0.4]) mesh(new THREE.CylinderGeometry(0.18, 0.18, 2, 6), mat(0x1c1712), 1.6, 0, z2, head).rotation.z = Math.PI / 2;
+  else mesh(new THREE.BoxGeometry(1.4, 0.9, 1.4), mat(0xfff8ec), 0.6, 0.6, 0, head);
+  const pips = new THREE.Group();
+  g.add(pips);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips };
+  entities.push(tur);
+  obstacles.push({ x, z, w: 3, d: 3, h: 2, kind: 'turret', ref: tur });
+  return tur;
+}
+function canPlace(x, z, team) {
+  if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
+  if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way';
+  const enemyBase = state.bases[1 - team];
+  if (dist2({ x, z }, enemyBase) < 22 * 22) return 'Too close to their toy box';
+  if (entities.filter((e) => e.kind === 'turret' && e.team === team && e.hp > 0).length >= 10) return 'Turret limit reached (10)';
+  return null;
+}
+function build(type) {
+  const p = state.player;
+  if (!p.alive || state.over) return;
+  const cost = costOf(type);
+  const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4; // drop it behind you
+  const why = canPlace(x, z, BLUE);
+  if (why) { toast(why); sfx('no'); return; }
+  if (state.bolts[BLUE] < cost) { toast(`Need ${cost} bolts`); sfx('no'); return; }
+  state.bolts[BLUE] -= cost;
+  makeTurret(type, BLUE, x, z);
+  sfx('build'); toast(`${TURRETS[type].name} turret built`);
+}
+const upgradeCost = (t) => 20 + t.level * 15;
+function nearOwnTurret() {
+  let best = null, bd = 36;
+  for (const e of entities) if (e.kind === 'turret' && e.team === BLUE && e.hp > 0 && e.level < 3 && dist2(e, state.player) < bd) { bd = dist2(e, state.player); best = e; }
+  return best;
+}
+function levelUp(t) {
+  t.level += 1;
+  t.maxHp *= 1.5; t.hp = t.maxHp;
+  t.weapon.dmg *= 1.45; t.weapon.range *= 1.12; t.weapon.rate *= 0.85;
+  const pip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), mat(0xffc23d, { emissive: 0x6b4a00 }));
+  pip.position.set(-0.6 + (t.level - 2) * 1.2, 3, 0);
+  t.pips.add(pip);
+}
+function upgrade() {
+  const t = nearOwnTurret();
+  if (!t || !state.player.alive) { toast('Drive next to your turret'); sfx('no'); return; }
+  const cost = upgradeCost(t);
+  if (state.bolts[BLUE] < cost) { toast(`Need ${cost} bolts`); sfx('no'); return; }
+  state.bolts[BLUE] -= cost;
+  levelUp(t);
+  sfx('build'); toast(`Turret level ${t.level}`);
+}
+function drones() {
+  if (state.over) return;
+  if (state.bolts[BLUE] < 25) { toast('Need 25 bolts'); sfx('no'); return; }
+  state.bolts[BLUE] -= 25;
+  for (let i = 0; i < 3; i++) spawnUnit('drone', BLUE, -52 + i * 2, -4 + i * 4);
+  sfx('build'); toast('Drones away!');
+}
+
+// ---------- Garage ----------
+function renderGarage() {
+  const p = state.player;
+  $('garage').innerHTML = Object.entries(VEHICLES).map(([k, v]) => {
+    const owned = state.unlocked.has(k);
+    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${v.unlock} bolts`}</small></button>`;
+  }).join('');
+  for (const b of $('garage').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.preventDefault(); chooseVehicle(b.dataset.v); });
+}
+function chooseVehicle(k) {
+  const v = VEHICLES[k];
+  if (!state.unlocked.has(k)) {
+    if (state.bolts[BLUE] < v.unlock) { toast(`${v.name} costs ${v.unlock} bolts`); sfx('no'); return; }
+    state.bolts[BLUE] -= v.unlock;
+    state.unlocked.add(k);
+  }
+  setVehicle(k);
+  sfx('build'); toast(`${v.name} ready`);
+}
+addEventListener('keydown', (e) => {
+  const keys = Object.keys(VEHICLES);
+  const i = ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'].indexOf(e.code);
+  if (i >= 0 && !$('garage').hidden) chooseVehicle(keys[i]);
+});
+function updateCosts() {
+  if (!state.player) return;
+  $('gunCost').textContent = costOf('gun');
+  $('rocketCost').textContent = costOf('rocket');
+}
+
+// ---------- Enemy commander ----------
+// Earns like you, sends waves that grow over time, and guards caps it holds.
+function commander(dt) {
+  state.aiClock -= dt;
+  if (state.aiClock > 0) return;
+  state.aiClock = 1;
+  const ramp = Math.min(1, state.time / 300);
+  const bolts = state.bolts;
+  const roll = Math.random();
+  const want = roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
+  const price = { scout: 8, buggy: 14, heavy: 24 }[want];
+  if (bolts[RED] >= price + 10) {
+    bolts[RED] -= price;
+    spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
+  }
+  const held = outposts.filter((o) => o.owner === RED && !entities.some((e) => e.kind === 'turret' && e.team === RED && e.hp > 0 && dist2(e, o) < 64));
+  if (held.length && bolts[RED] >= 40 && Math.random() < 0.3 + ramp * 0.3) {
+    const o = held[0], x = o.x + 5, z = o.z + (o.z > 0 ? -4 : 4);
+    if (!canPlace(x, z, RED)) {
+      bolts[RED] -= 30;
+      const t = makeTurret(Math.random() < 0.5 ? 'gun' : 'rocket', RED, x, z);
+      if (ramp > 0.6) levelUp(t);
+    }
+  }
+}
+
+// ---------- Unit brains ----------
+function unitThink(u, dt) {
+  u.think -= dt;
+  if (u.think <= 0) {
+    u.think = 0.4 + Math.random() * 0.3;
+    u.target = nearestEnemy(u, 15);
+    if (!u.target) {
+      const mine = (o) => o.owner === u.team && o.progress * (u.team === BLUE ? 1 : -1) >= 1;
+      const open = outposts.filter((o) => !mine(o)).sort((a, b) => dist2(u, a) - dist2(u, b));
+      u.goal = open[0] || state.bases[1 - u.team];
+    }
+  }
+  const t = u.target && u.target.hp > 0 && !(u.target.kind === 'player' && !u.target.alive) ? u.target : null;
+  const goal = t || u.goal || state.bases[1 - u.team];
+  let dx = goal.x - u.x, dz = goal.z - u.z;
+  const d = Math.hypot(dx, dz) || 1;
+  dx /= d; dz /= d;
+  // Steer around blocks: push away from anything close.
+  for (const o of obstacles) {
+    if (o.ref === goal) continue;
+    const cx = Math.max(o.x - o.w / 2, Math.min(u.x, o.x + o.w / 2)), cz = Math.max(o.z - o.d / 2, Math.min(u.z, o.z + o.d / 2));
+    const ox = u.x - cx, oz = u.z - cz, od = Math.hypot(ox, oz);
+    if (od < 6 && od > 0.01) {
+      const w = (6 - od) / 6;
+      dx += (ox / od) * w * 1.6 - (oz / od) * w * 0.8; dz += (oz / od) * w * 1.6 + (ox / od) * w * 0.8;
+    }
+  }
+  const n = Math.hypot(dx, dz) || 1;
+  const stop = t ? Math.min(u.weapon.range * 0.7, 10) : goal.r ? goal.r * 0.5 : 1;
+  const throttle = d > stop ? 1 : 0;
+  drive(u, dx / n, dz / n, throttle, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip });
+  u.cool -= dt;
+  if (t && u.cool <= 0 && d < u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+}
+
+// ---------- Main loop ----------
+let last = performance.now();
+function step(now) {
+  requestAnimationFrame(step);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  state.dt = dt;
+  if (!state.over && $('start').hidden) update(dt);
+  render(dt);
+}
+
+function update(dt) {
+  state.time += dt;
+  const p = state.player;
+  // Income: one bolt a second from home, plus one per bottle cap held.
+  for (const team of [BLUE, RED]) state.bolts[team] += dt * (1 + outposts.filter((o) => o.owner === team).length) * (team === RED ? 1.1 : 1);
+
+  // Player
+  if (p.alive) {
+    let ix = input.x, iz = input.z;
+    if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
+    if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
+    if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
+    if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) iz += 1;
+    const mag = Math.min(1, Math.hypot(ix, iz));
+    drive(p, ix / (mag || 1), iz / (mag || 1), mag, dt, VEHICLES[p.vehicle]);
+    p.cool -= dt;
+    if ((input.fire || input.keys.has('Space')) && p.cool <= 0) {
+      const target = nearestEnemy(p, p.weapon.range);
+      // Aim at the nearest enemy in range if it's roughly ahead; otherwise shoot straight.
+      const aim = target && Math.abs(wrap(angleTo(p, target) - p.heading)) < 1.4 ? angleTo(p, target) : p.heading;
+      fire(p, target, p.weapon, aim);
+      p.cool = p.weapon.rate;
+    }
+    if (dist2(p, state.bases[BLUE]) < 14 * 14 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 30 * dt); // repairs at home
+  } else {
+    state.respawn -= dt;
+    if (state.respawn <= 0) {
+      Object.assign(p, { alive: true, x: -52, z: 0, vx: 0, vz: 0, heading: 0, hp: p.maxHp });
+      p.mesh.visible = true;
+    }
+  }
+
+  // Units, turrets, bases
+  for (const e of entities) {
+    if (e.hp <= 0) continue;
+    if (e.kind === 'unit') unitThink(e, dt);
+    if (e.kind === 'turret' || e.kind === 'base') {
+      e.cool -= dt;
+      const t = nearestEnemy(e, e.weapon.range);
+      if (t) {
+        const head = e.mesh.getObjectByName('turret');
+        if (head) head.rotation.y = -angleTo(e, t);
+        if (e.cool <= 0) { e.cool = e.weapon.rate; fire(e, t, e.weapon); }
+      }
+    }
+  }
+  collideMovers();
+
+  // Shots
+  for (let i = shots.length - 1; i >= 0; i--) {
+    const s = shots[i];
+    s.life -= dt;
+    if (s.weapon.homing && s.target && s.target.hp > 0) {
+      const want = Math.atan2(s.target.z - s.z, s.target.x - s.x), cur = Math.atan2(s.vz, s.vx);
+      const a = cur + Math.sign(wrap(want - cur)) * Math.min(Math.abs(wrap(want - cur)), 4 * dt);
+      s.vx = Math.cos(a) * s.weapon.speed; s.vz = Math.sin(a) * s.weapon.speed;
+    }
+    s.x += s.vx * dt; s.z += s.vz * dt;
+    s.mesh.position.set(s.x, s.y, s.z);
+    s.mesh.rotation.z = -Math.atan2(s.vz, s.vx);
+    let hit = s.life <= 0;
+    if (!hit && obstacles.some((o) => o.kind !== 'turret' && o.kind !== 'base' && o.h > s.y - 0.5 && Math.abs(s.x - o.x) < o.w / 2 && Math.abs(s.z - o.z) < o.d / 2)) hit = true;
+    if (!hit) {
+      for (const e of entities) {
+        if (e.team === s.team || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+        if (dist2(s, e) < (e.r + 0.4) ** 2) { hurt(e, s.weapon.dmg, s.team); hit = true; break; }
+      }
+    }
+    if (hit) {
+      if (s.weapon.splash) {
+        for (const e of entities) if (e.team !== s.team && dist2(s, e) < s.weapon.splash ** 2) hurt(e, s.weapon.dmg * 0.5, s.team);
+        burst(s.x, s.z, 0xffc23d, 8, 6, s.y);
+      } else if (!s.weapon.life) burst(s.x, s.z, s.weapon.color, 3, 4, s.y);
+      scene.remove(s.mesh);
+      shots.splice(i, 1);
+    }
+  }
+  // Remove the dead (bases stay for the end screen).
+  for (let i = entities.length - 1; i >= 0; i--) {
+    const e = entities[i];
+    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret')) {
+      entities.splice(i, 1);
+      if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); }
+    }
+  }
+
+  // Bottle caps: whoever has cars on it, alone, pushes the flag their way.
+  for (const o of outposts) {
+    let blue = 0, red = 0;
+    for (const e of entities) {
+      if ((e.kind !== 'unit' && e.kind !== 'player') || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+      if (dist2(e, o) < o.r * o.r) e.team === BLUE ? blue++ : red++;
+    }
+    const push = blue && !red ? 1 : red && !blue ? -1 : 0;
+    if (push) {
+      const before = o.owner;
+      o.progress = Math.max(-1, Math.min(1, o.progress + push * dt / 2.5));
+      if (o.progress >= 1) o.owner = BLUE; else if (o.progress <= -1) o.owner = RED; else if (Math.sign(o.progress) !== (o.owner === BLUE ? 1 : o.owner === RED ? -1 : 0)) o.owner = -1;
+      if (o.owner !== before && o.owner !== -1) {
+        state.bolts[o.owner] += 10;
+        if (o.owner === BLUE) { toast('Bottle cap captured! +10'); sfx('cap'); } else if (dist2(o, p) < 900) toast('They took a cap!');
+      }
+    }
+  }
+
+  commander(dt);
+
+  // HUD
+  $('bolts').textContent = `${Math.floor(state.bolts[BLUE])} bolts`;
+  $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
+  $('hpRed').style.width = `${Math.max(0, state.bases[RED].hp / state.bases[RED].maxHp) * 100}%`;
+  [...$('pips').children].forEach((el, i) => { el.style.background = ['#9a8f80', '#2f7df6', '#ef4136'][outposts[i].owner + 1]; });
+  const atHome = p.alive && dist2(p, state.bases[BLUE]) < 16 * 16;
+  if ($('garage').hidden === atHome) { $('garage').hidden = !atHome; if (atHome) renderGarage(); }
+  const t = nearOwnTurret();
+  $('bUpgrade').disabled = !t;
+  $('upCost').textContent = t ? upgradeCost(t) : '—';
+  toastTimer -= dt;
+  if (toastTimer <= 0) $('toast').textContent = '';
+}
+
+const camTarget = new THREE.Vector3();
+function render(dt) {
+  const time = performance.now() / 1000;
+  for (const e of entities) {
+    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player')) continue;
+    const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
+    e.mesh.position.set(e.x, floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0, e.z);
+    e.mesh.rotation.y = -e.heading;
+    if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
+  }
+  for (const o of outposts) {
+    o.cloth.material.color.setHex(o.owner === BLUE ? COLORS[BLUE] : o.owner === RED ? COLORS[RED] : 0xc9c2b6);
+    o.ring.material.opacity = 0.25 + Math.abs(o.progress) * 0.4;
+    o.cloth.position.y = 2.2 + (Math.abs(o.progress)) * 1.7;
+  }
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const q = parts[i];
+    q.life -= dt; q.vy -= 30 * dt;
+    q.mesh.position.x += q.vx * dt; q.mesh.position.y = Math.max(0.2, q.mesh.position.y + q.vy * dt); q.mesh.position.z += q.vz * dt;
+    q.mesh.rotation.x += dt * 8;
+    if (q.life <= 0) { scene.remove(q.mesh); parts.splice(i, 1); }
+  }
+  // Camera: high and angled, leading the way you're going. Pulls back on tall screens.
+  const p = state.player;
+  if (p) {
+    const zoom = camera.aspect < 1 ? 1.5 : 1;
+    camTarget.lerp(new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35), 1 - Math.exp(-4 * dt));
+    state.shake = Math.max(0, (state.shake || 0) - dt * 2.5);
+    const sh = state.shake * 0.8;
+    camera.position.set(camTarget.x + (Math.random() - 0.5) * sh, 50 * zoom, camTarget.z + 34 * zoom + (Math.random() - 0.5) * sh);
+    camera.lookAt(camTarget.x, 0, camTarget.z + 2);
+  }
+  renderer.render(scene, camera);
+}
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+function endGame(won) {
+  state.over = true;
+  $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
+  const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
+  $('endText').textContent = won ? `Their toy box is rubble. Time ${mins}:${secs}.` : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
+  setTimeout(() => { $('end').hidden = false; }, 1200);
+}
+function start() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { audio = null; }
+  $('start').hidden = true; $('end').hidden = true;
+  reset();
+}
+$('play').addEventListener('click', start);
+$('again').addEventListener('click', start);
+reset();
+requestAnimationFrame(step);
+</script>
