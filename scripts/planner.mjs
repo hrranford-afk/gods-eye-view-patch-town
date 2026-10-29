@@ -666,6 +666,16 @@ function compareTowns(ids, planFile) {
  */
 async function statsTown(id, which) {
   const { SOURCES, WAVES } = await import('./planner-sources.mjs');
+  // Sources in their own files (scripts/sources/*.mjs) join the list; together they are wave2.
+  const extraDir = path.join(path.dirname(new URL(import.meta.url).pathname), 'sources');
+  const extra = existsSync(extraDir) ? readdirSync(extraDir).filter((f) => f.endsWith('.mjs')).sort() : [];
+  const wave2 = [];
+  for (const f of extra) {
+    const mod = await import(`./sources/${f}`);
+    Object.assign(SOURCES, mod.SOURCES);
+    wave2.push(...Object.keys(mod.SOURCES));
+  }
+  WAVES.wave2 ||= wave2;
   const town = getTown(id);
   const dir = townDir(town.id);
   const areas = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas.map(({ code, name }) => ({ code, name }));

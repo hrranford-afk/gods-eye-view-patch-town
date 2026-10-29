@@ -5,7 +5,9 @@
  * src/planner/stats.js): figures per neighbourhood (`byArea`), for the whole
  * council (`council`), and sometimes `places` (points with a kind). Ids match
  * the atlas (src/planner/atlas.js). To add a source: an atlas entry first,
- * then a function here.
+ * then a function here, or in its own file in scripts/sources/ (each
+ * exports SOURCES; `stats` loads them all, and `wave2` runs those files'
+ * sources). Helpers below are exported for them.
  *
  * Every source receives `ctx`: { town, dir, areas (census areas: code,
  * name), homes (lon, lat, w, area), councils ({ name: code }), msoas
@@ -18,10 +20,10 @@ import { readFileSync } from 'node:fs';
 import { parseCsv } from '../src/planner/traffic.js';
 import { spreadToLsoas } from '../src/planner/stats.js';
 
-const round = (v, d = 3) => (Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : null);
+export const round = (v, d = 3) => (Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : null);
 
 /** Shares from a Nomis census table: { field: (category name) => bool } over the "Total" row. */
-function sharesFrom(rows, col, parts) {
+export function sharesFrom(rows, col, parts) {
   const byArea = {};
   const totals = {};
   for (const r of rows) if (/^Total/.test(r[col])) totals[r.GEOGRAPHY_CODE] = Number(r.OBS_VALUE);
@@ -78,7 +80,7 @@ export function gridRefToEN(ref) {
 }
 
 /** [lon, lat] → OS National Grid [easting, northing], by inverting osgbToLonLat (a few metres). */
-function lonLatToEN(lon, lat) {
+export function lonLatToEN(lon, lat) {
   // Start near Worcester's scale: 1 degree ≈ 68 km east, 111 km north at 52°N.
   let E = 400000 + (lon + 2) * 68500, N = -100000 + (lat - 49) * 111200;
   for (let i = 0; i < 6; i++) {
@@ -90,7 +92,7 @@ function lonLatToEN(lon, lat) {
 }
 
 /** Weighted mean of a grid value per area, sampling each home's cell. */
-function gridPerArea(homes, valueAt) {
+export function gridPerArea(homes, valueAt) {
   const acc = {};
   for (const h of homes) {
     if (!h.area) continue;
@@ -382,7 +384,7 @@ export function propertyUse(description) {
 }
 
 /** Postcodes → [lon, lat] via postcodes.io, 100 at a time. */
-async function geocodePostcodes(postcodes) {
+export async function geocodePostcodes(postcodes) {
   const out = {};
   const list = [...new Set(postcodes)];
   for (let i = 0; i < list.length; i += 100) {
