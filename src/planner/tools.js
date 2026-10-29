@@ -386,8 +386,33 @@ export function survey(model, { fields = [], extra = {}, namePrefix = null, excl
   };
 }
 
+/**
+ * profile: one line per figure for a whole town, so towns can be compared:
+ * the resident-weighted mean over its neighbourhoods, and the lowest and
+ * highest neighbourhood (how unequal it is inside). `extra` takes per-area
+ * results from earlier steps ($name), like survey.
+ */
+export function profile(model, { fields = [], extra = {}, namePrefix = null, exclude = [] } = {}) {
+  const skip = new Set(exclude);
+  const areas = model.areas.filter((a) => (!namePrefix || a.name.startsWith(namePrefix)) && !skip.has(a.name) && !skip.has(a.code));
+  const cols = Object.fromEntries(fields.map((f) => [f, Object.fromEntries(areas.filter((a) => Number.isFinite(a[f])).map((a) => [a.code, a[f]]))]));
+  for (const [label, r] of Object.entries(extra)) cols[label] = r.value;
+  const out = { areas: areas.length, residents: areas.reduce((t, a) => t + (a.residents || 0), 0), figures: {} };
+  for (const [f, byCode] of Object.entries(cols)) {
+    const rows = areas.filter((a) => Number.isFinite(byCode[a.code]));
+    if (!rows.length) continue;
+    const w = rows.reduce((t, a) => t + (a.residents || 1), 0);
+    const vals = rows.map((a) => byCode[a.code]);
+    const sig = (v) => Number(v.toPrecision(3));
+    out.figures[f] = { mean: sig(rows.reduce((t, a) => t + byCode[a.code] * (a.residents || 1), 0) / w), min: sig(Math.min(...vals)), max: sig(Math.max(...vals)), areas: rows.length };
+  }
+  return out;
+}
+
 export const TOOLS = Object.freeze({
   kinds: { fn: (m) => m.kinds(), about: 'Every kind of place in the model and how many.', args: {} },
+  profile: { fn: profile, about: 'A whole town in one line per figure: resident-weighted mean, lowest and highest neighbourhood. For comparing towns.', args: { fields: 'area fields', extra: 'optional {label: $result} per-area results', namePrefix: "e.g. 'Gloucester ' (the council's own neighbourhoods)", exclude: 'area names or codes to leave out' } },
+  council: { fn: (m) => m.council || {}, about: 'Figures published only for the whole council (wellbeing, population, sewage spills…), by source.', args: {} },
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
   summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'ward', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
   count: { fn: count, about: 'Places of a kind per group, per 1,000 households (or residents + workers).', args: { kind: 'kind or list', groupBy: "'area' (default), 'ward', 'bank', 'cell', 'town'", per: "'households' (default) or 'dayPopulation'" } },

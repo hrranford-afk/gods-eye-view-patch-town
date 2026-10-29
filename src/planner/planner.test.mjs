@@ -552,3 +552,18 @@ test('grid references and OS grid → longitude/latitude (Worcester Cathedral)',
   assert.equal(propertyUse('PUBLIC HOUSE AND PREMISES'), 'food');
   assert.equal(propertyUse('WAREHOUSE AND PREMISES'), 'industry');
 });
+
+test('profile: a whole town per figure, weighted by residents, with its range', async () => {
+  const { profile, runPlan } = await import('./tools.js');
+  const model = { areas: [
+    { code: 'A', name: 'Town 001A', residents: 1000, noCar: 0.1 },
+    { code: 'B', name: 'Town 001B', residents: 3000, noCar: 0.3 },
+    { code: 'C', name: 'Fringe 001A', residents: 5000, noCar: 0.9 },
+  ], council: { wellbeing: { anxiety: { 2023: 3 } } } };
+  const p = profile(model, { namePrefix: 'Town ', fields: ['noCar'], extra: { goodDay: { value: { A: 1, B: 0 } } } });
+  assert.equal(p.areas, 2);
+  assert.equal(p.residents, 4000);
+  assert.deepEqual(p.figures.noCar, { mean: 0.25, min: 0.1, max: 0.3, areas: 2 });
+  assert.equal(p.figures.goodDay.mean, 0.25);
+  assert.equal(runPlan(model, [{ tool: 'council', as: 'c' }]).c.wellbeing.anxiety[2023], 3);
+});

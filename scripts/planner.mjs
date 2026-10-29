@@ -906,13 +906,14 @@ try {
   else if (command === 'income') await incomeTown(id);
   else if (command === 'asylum') await asylumTown(id);
   else if (command === 'stats') await statsTown(id, process.argv[4] || 'wave1');
+  else if (command === 'compare') compareTowns(id, file);
   else if (command === 'wards') await wardsTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'atlas') await atlasTown(id, { check: process.argv.includes('--check') });
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|asylum|stats|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|asylum|stats|compare|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {
