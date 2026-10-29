@@ -1,6 +1,6 @@
 {
   "town": "worcester",
-  "checkedAt": "2026-10-29T09:47:44.946Z",
+  "checkedAt": "2026-10-29T10:19:51.008Z",
   "layers": [
     {
       "id": "census",
@@ -536,16 +536,15 @@
       "name": "Personal wellbeing: life satisfaction, happiness, anxiety (yearly)",
       "source": "ONS Annual Population Survey",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
       "count": null,
-      "date": null,
-      "command": null,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "council",
       "access": "open",
       "priority": 1,
       "value": "The happiness measure itself, to check the planner against",
-      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/wellbeing/datasets/headlineestimatesofpersonalwellbeing",
-      "reachable": 200
+      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/wellbeing/datasets/headlineestimatesofpersonalwellbeing"
     },
     {
       "id": "population",
@@ -553,16 +552,15 @@
       "name": "Population by age each year, and why it changes (births, deaths, moves in and out)",
       "source": "ONS mid-year estimates",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "LSOA / council",
       "access": "open",
       "priority": 1,
       "value": "Is Worcester growing from births or arrivals (q34); homes, schools, GPs by 2035",
-      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates",
-      "reachable": 200
+      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates"
     },
     {
       "id": "census2021More",
@@ -570,16 +568,15 @@
       "name": "More Census 2021: disability, unpaid carers, tenure, overcrowding, qualifications, work, ethnic group, distance to work",
       "source": "ONS / Nomis",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "LSOA",
       "access": "open",
       "priority": 1,
       "value": "Carers and disabled people are the ones distance hurts most",
-      "url": "https://www.nomisweb.co.uk/sources/census_2021_bulk",
-      "reachable": 200
+      "url": "https://www.nomisweb.co.uk/sources/census_2021_bulk"
     },
     {
       "id": "charities",
@@ -595,8 +592,7 @@
       "access": "open",
       "priority": 2,
       "value": "Where community life is organised, beyond buildings",
-      "url": "https://register-of-charities.charitycommission.gov.uk/register/full-register-download",
-      "reachable": 200
+      "url": "https://register-of-charities.charitycommission.gov.uk/register/full-register-download"
     },
     {
       "id": "localHealth",
@@ -604,16 +600,15 @@
       "name": "Life expectancy, deaths under 75, emergency admissions, child obesity",
       "source": "OHID Fingertips Local Health",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "MSOA",
       "access": "open",
       "priority": 1,
       "value": "Outcomes, not just risks: how long people live, neighbourhood by neighbourhood",
-      "url": "https://fingertips.phe.org.uk/profile/local-health",
-      "reachable": 200
+      "url": "https://fingertips.phe.org.uk/profile/local-health"
     },
     {
       "id": "gpConditions",
@@ -621,16 +616,15 @@
       "name": "GP disease registers: depression, diabetes, obesity, heart disease (per practice)",
       "source": "OHID Fingertips National GP profiles (QOF)",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 75,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "GP practice",
       "access": "open",
       "priority": 1,
       "value": "Depression and diabetes rates by the GP each neighbourhood uses",
-      "url": "https://fingertips.phe.org.uk/profile/general-practice",
-      "reachable": 200
+      "url": "https://fingertips.phe.org.uk/profile/general-practice"
     },
     {
       "id": "prescribing",
@@ -646,8 +640,7 @@
       "access": "open",
       "priority": 2,
       "value": "A monthly signal of mood and pain, by practice",
-      "url": "https://opendata.nhsbsa.net/",
-      "reachable": 200
+      "url": "https://opendata.nhsbsa.net/"
     },
     {
       "id": "airModel",
@@ -655,16 +648,15 @@
       "name": "Modelled air pollution: NO2 and PM2.5 on a 1 km grid, yearly",
       "source": "Defra UK-AIR",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 75,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "1 km grid",
       "access": "open",
       "priority": 1,
       "value": "Air quality everywhere, not only in the official management areas",
-      "url": "https://uk-air.defra.gov.uk/data/pcm-data",
-      "reachable": 200
+      "url": "https://uk-air.defra.gov.uk/data/pcm-data"
     },
     {
       "id": "noise",
@@ -680,8 +672,7 @@
       "access": "open",
       "priority": 2,
       "value": "Noise affects sleep and health; shows the cost of busy roads",
-      "url": "https://www.data.gov.uk/search?q=strategic+noise+mapping",
-      "reachable": 200
+      "url": "https://www.data.gov.uk/search?q=strategic+noise+mapping"
     },
     {
       "id": "ahah",
@@ -697,8 +688,7 @@
       "access": "open",
       "priority": 2,
       "value": "A national benchmark to check our own access scores against",
-      "url": "https://data.cdrc.ac.uk/dataset/access-healthy-assets-hazards-ahah",
-      "reachable": 200
+      "url": "https://data.cdrc.ac.uk/dataset/access-healthy-assets-hazards-ahah"
     },
     {
       "id": "activity",
@@ -714,8 +704,7 @@
       "access": "open",
       "priority": 3,
       "value": "Whether walkable places mean more active people",
-      "url": "https://activelives.sportengland.org/",
-      "reachable": 200
+      "url": "https://activelives.sportengland.org/"
     },
     {
       "id": "osGreenspace",
@@ -731,8 +720,7 @@
       "access": "open",
       "priority": 2,
       "value": "Better park entrances than OpenStreetMap edges",
-      "url": "https://osdatahub.os.uk/downloads/open/OpenGreenspace",
-      "reachable": 200
+      "url": "https://osdatahub.os.uk/downloads/open/OpenGreenspace"
     },
     {
       "id": "habitats",
@@ -748,8 +736,7 @@
       "access": "open",
       "priority": 2,
       "value": "What nature there is to protect or reach",
-      "url": "https://naturalengland-defra.opendata.arcgis.com/",
-      "reachable": 200
+      "url": "https://naturalengland-defra.opendata.arcgis.com/"
     },
     {
       "id": "riverHealth",
@@ -757,16 +744,15 @@
       "name": "River health and sewage overflow spills (hours per outfall)",
       "source": "Environment Agency (Catchment Data Explorer, storm overflow returns)",
       "licence": "OGL",
-      "status": "missing",
+      "status": "mapped",
       "count": null,
-      "date": null,
-      "command": null,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "river stretch / outfall",
       "access": "open",
       "priority": 1,
       "value": "Is the Severn swimmable; where the spills are",
-      "url": "https://environment.data.gov.uk/catchment-planning/",
-      "reachable": 200
+      "url": "https://environment.data.gov.uk/catchment-planning/"
     },
     {
       "id": "heat",
@@ -782,25 +768,23 @@
       "access": "freeAccount",
       "priority": 3,
       "value": "Which streets overheat in summer; where trees would help most",
-      "url": "https://earthexplorer.usgs.gov/",
-      "reachable": 200
+      "url": "https://earthexplorer.usgs.gov/"
     },
     {
       "id": "fuelPoverty",
       "theme": "security",
       "name": "Households in fuel poverty",
-      "source": "DESNZ sub-regional fuel poverty",
+      "source": "DESNZ via OHID Fingertips Local Health",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
-      "level": "LSOA",
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
+      "level": "MSOA",
       "access": "open",
       "priority": 1,
       "value": "Cold homes harm health; ties to deprivation and older housing",
-      "url": "https://www.gov.uk/government/collections/fuel-poverty-sub-regional-statistics",
-      "reachable": 200
+      "url": "https://www.gov.uk/government/collections/fuel-poverty-sub-regional-statistics"
     },
     {
       "id": "epc",
@@ -816,8 +800,7 @@
       "access": "freeAccount",
       "priority": 1,
       "value": "Which streets need retrofit; damp and cold",
-      "url": "https://epc.opendatacommunities.org/",
-      "reachable": 200
+      "url": "https://epc.opendatacommunities.org/"
     },
     {
       "id": "childPoverty",
@@ -825,16 +808,15 @@
       "name": "Children in low-income families",
       "source": "DWP",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "ward / council",
       "access": "open",
       "priority": 1,
       "value": "Child poverty per ward, yearly",
-      "url": "https://www.gov.uk/government/collections/children-in-low-income-families-local-area-statistics",
-      "reachable": 200
+      "url": "https://www.gov.uk/government/collections/children-in-low-income-families-local-area-statistics"
     },
     {
       "id": "benefits",
@@ -850,8 +832,7 @@
       "access": "freeAccount",
       "priority": 2,
       "value": "Monthly, so newer than the census",
-      "url": "https://stat-xplore.dwp.gov.uk/",
-      "reachable": 200
+      "url": "https://stat-xplore.dwp.gov.uk/"
     },
     {
       "id": "claimants",
@@ -859,16 +840,15 @@
       "name": "People claiming out-of-work benefits, monthly",
       "source": "ONS / DWP claimant count via Nomis",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "LSOA",
       "access": "open",
       "priority": 1,
       "value": "Monthly jobs pulse per neighbourhood",
-      "url": "https://www.nomisweb.co.uk/query/select/getdatasetbytheme.asp?theme=72",
-      "reachable": 200
+      "url": "https://www.nomisweb.co.uk/query/select/getdatasetbytheme.asp?theme=72"
     },
     {
       "id": "homelessness",
@@ -884,8 +864,7 @@
       "access": "open",
       "priority": 2,
       "value": "The sharpest housing need",
-      "url": "https://www.gov.uk/government/collections/homelessness-statistics",
-      "reachable": 200
+      "url": "https://www.gov.uk/government/collections/homelessness-statistics"
     },
     {
       "id": "foodBanks",
@@ -901,8 +880,7 @@
       "access": "open",
       "priority": 2,
       "value": "Where food insecurity shows up",
-      "url": "https://www.givefood.org.uk/api/",
-      "reachable": 200
+      "url": "https://www.givefood.org.uk/api/"
     },
     {
       "id": "rents",
@@ -918,8 +896,7 @@
       "access": "open",
       "priority": 2,
       "value": "Most migrants and young people rent; prices alone miss them",
-      "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/latest",
-      "reachable": 200
+      "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/latest"
     },
     {
       "id": "councilTax",
@@ -935,14 +912,13 @@
       "access": "open",
       "priority": 3,
       "value": "The housing mix, street by street",
-      "url": "https://www.gov.uk/government/collections/valuation-office-agency-council-tax-statistics",
-      "reachable": 200
+      "url": "https://www.gov.uk/government/collections/valuation-office-agency-council-tax-statistics"
     },
     {
       "id": "schoolResults",
       "theme": "purpose",
       "name": "School results and attendance (KS2, KS4)",
-      "source": "DfE compare school performance",
+      "source": "DfE compare school performance (403 here); DfE statistics API has council level only",
       "licence": "OGL",
       "status": "missing",
       "count": null,
@@ -950,10 +926,9 @@
       "command": null,
       "level": "school",
       "access": "open",
-      "priority": 1,
+      "priority": 2,
       "value": "How children are doing, school by school",
-      "url": "https://www.compare-school-performance.service.gov.uk/download-data",
-      "reachable": 403
+      "url": "https://www.compare-school-performance.service.gov.uk/download-data"
     },
     {
       "id": "ofsted",
@@ -969,8 +944,7 @@
       "access": "open",
       "priority": 2,
       "value": "Childcare within reach matters for working parents",
-      "url": "https://www.gov.uk/government/organisations/ofsted/about/statistics",
-      "reachable": 200
+      "url": "https://www.gov.uk/government/organisations/ofsted/about/statistics"
     },
     {
       "id": "businesses",
@@ -986,8 +960,7 @@
       "access": "open",
       "priority": 3,
       "value": "What work exists where",
-      "url": "https://www.nomisweb.co.uk/query/select/getdatasetbytheme.asp?theme=93",
-      "reachable": 200
+      "url": "https://www.nomisweb.co.uk/query/select/getdatasetbytheme.asp?theme=93"
     },
     {
       "id": "commuteFlows",
@@ -995,16 +968,15 @@
       "name": "Where people commute from and to (Census 2021)",
       "source": "ONS origin-destination",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "MSOA",
       "access": "open",
       "priority": 1,
       "value": "Real trips to test the model and the bus network against",
-      "url": "https://www.nomisweb.co.uk/sources/census_2021_od",
-      "reachable": 200
+      "url": "https://www.nomisweb.co.uk/sources/census_2021_od"
     },
     {
       "id": "pct",
@@ -1012,16 +984,15 @@
       "name": "Propensity to Cycle: how many could cycle each route",
       "source": "PCT (Leeds University)",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 76,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "route / LSOA",
       "access": "open",
       "priority": 1,
       "value": "Which routes to make cyclist-friendly (q21)",
-      "url": "https://www.pct.bike/",
-      "reachable": 200
+      "url": "https://www.pct.bike/"
     },
     {
       "id": "stationUse",
@@ -1037,8 +1008,7 @@
       "access": "open",
       "priority": 2,
       "value": "Foregate Street, Shrub Hill, Parkway use",
-      "url": "https://dataportal.orr.gov.uk/statistics/usage/estimates-of-station-usage/",
-      "reachable": 200
+      "url": "https://dataportal.orr.gov.uk/statistics/usage/estimates-of-station-usage/"
     },
     {
       "id": "roadworks",
@@ -1054,8 +1024,7 @@
       "access": "open",
       "priority": 2,
       "value": "Confirms the diversions seen in the traffic counts",
-      "url": "https://department-for-transport-streetmanager.github.io/street-manager-docs/open-data/",
-      "reachable": 200
+      "url": "https://department-for-transport-streetmanager.github.io/street-manager-docs/open-data/"
     },
     {
       "id": "motorway",
@@ -1071,8 +1040,7 @@
       "access": "open",
       "priority": 3,
       "value": "Near-live congestion by Worcester",
-      "url": "https://webtris.nationalhighways.co.uk/api/swagger/ui/index",
-      "reachable": 200
+      "url": "https://webtris.nationalhighways.co.uk/api/swagger/ui/index"
     },
     {
       "id": "evCharging",
@@ -1088,8 +1056,7 @@
       "access": "open",
       "priority": 3,
       "value": "Who can switch to electric",
-      "url": "https://openchargemap.org/site/develop/api",
-      "reachable": 200
+      "url": "https://openchargemap.org/site/develop/api"
     },
     {
       "id": "movementApps",
@@ -1129,16 +1096,15 @@
       "name": "Every shop, office and works with its rateable value",
       "source": "VOA rating list",
       "licence": "OGL",
-      "status": "missing",
-      "count": null,
-      "date": null,
-      "command": null,
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "stats",
       "level": "address",
       "access": "open",
       "priority": 1,
       "value": "Empty shops and the high street, properly counted",
-      "url": "https://voaratinglists.blob.core.windows.net/html/rlidata.htm",
-      "reachable": 200
+      "url": "https://voaratinglists.blob.core.windows.net/html/rlidata.htm"
     },
     {
       "id": "landOwnership",
@@ -1154,8 +1120,7 @@
       "access": "freeAccount",
       "priority": 3,
       "value": "Who owns empty sites like County Hall",
-      "url": "https://use-land-property-data.service.gov.uk/datasets/ccod",
-      "reachable": "fetch failed"
+      "url": "https://use-land-property-data.service.gov.uk/datasets/ccod"
     },
     {
       "id": "titleShapes",
@@ -1171,8 +1136,7 @@
       "access": "open",
       "priority": 3,
       "value": "Plot shapes for site planning",
-      "url": "https://use-land-property-data.service.gov.uk/datasets/inspire",
-      "reachable": "fetch failed"
+      "url": "https://use-land-property-data.service.gov.uk/datasets/inspire"
     },
     {
       "id": "lidar",
@@ -1188,8 +1152,7 @@
       "access": "open",
       "priority": 3,
       "value": "Shade, flood paths, 3D city",
-      "url": "https://environment.data.gov.uk/survey",
-      "reachable": 200
+      "url": "https://environment.data.gov.uk/survey"
     },
     {
       "id": "localPlan",
@@ -1221,8 +1184,7 @@
       "access": "open",
       "priority": 2,
       "value": "Who to take findings to, ward by ward",
-      "url": "https://candidates.democracyclub.org.uk/api/",
-      "reachable": 200
+      "url": "https://candidates.democracyclub.org.uk/api/"
     },
     {
       "id": "streetReports",
@@ -1238,8 +1200,7 @@
       "access": "open",
       "priority": 2,
       "value": "What residents complain about, where",
-      "url": "https://www.fixmystreet.com/",
-      "reachable": 200
+      "url": "https://www.fixmystreet.com/"
     },
     {
       "id": "petitions",
@@ -1255,8 +1216,7 @@
       "access": "open",
       "priority": 3,
       "value": "What Worcester cares about nationally",
-      "url": "https://petition.parliament.uk/",
-      "reachable": 200
+      "url": "https://petition.parliament.uk/"
     }
   ]
 }

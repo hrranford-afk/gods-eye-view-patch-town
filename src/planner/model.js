@@ -20,6 +20,7 @@ import { buildWalkGraph, metresBetween } from './graph.js';
 import { findCrossings, bankOf } from './river.js';
 import { attachHistory } from './history.js';
 import { attachLayers } from './layers.js';
+import { attachStats, statsFields } from './stats.js';
 
 function boxOf(geometry) {
   const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
@@ -37,12 +38,13 @@ export const HOME_ATTRIBUTES = Object.freeze(['need', 'noCar', 'over65', 'depriv
  * census (census.json), gps (gps.json), buses (buses.json), food (food.json),
  * history (history.json: new homes since 1995, Census 2011), flood
  * (flood.json: Environment Agency Flood Zones 2 and 3), planning
- * (planning.json: brownfield sites, listed buildings).
+ * (planning.json: brownfield sites, listed buildings), and stats (every
+ * stats/<id>.json: figures per area in one shape, see stats.js).
  */
 export function buildModel({
   town, census = null, gps = null, buses = null, food = null, history = null, flood = null, planning = null,
   deprivation = null, crime = null, prices = null, schools = null, collisions = null,
-  jobs = null, income = null, wards = null,
+  jobs = null, income = null, wards = null, stats = [],
 }) {
   const data = { ...town, places: [...town.places], homes: town.homes.map((h) => ({ ...h })) };
   // Official GP practices replace OpenStreetMap's, which miss surgeries and
@@ -69,6 +71,12 @@ export function buildModel({
     data.places.push({ id: `fsa/${b.name}/${b.lon}`, kind: `food:${b.kind}`, name: b.name, lon: b.lon, lat: b.lat, rating: b.rating });
   }
   for (const v of town.vacant || []) data.places.push({ ...v, kind: 'vacant' });
+  // Places from stats files (sewage overflows, rated business properties…),
+  // and per-practice figures onto the GP practices.
+  for (const s of stats) {
+    for (const p of s.places || []) data.places.push(p);
+    if (s.byPractice) for (const p of data.places) if (p.kind === 'gp' && s.byPractice[p.id.replace(/^ods\//, '')]) Object.assign(p, s.byPractice[p.id.replace(/^ods\//, '')]);
+  }
   for (const b of planning?.brownfield || []) data.places.push({ id: `brownfield/${b.reference}`, kind: 'land:brownfield', name: b.name, lon: b.lon, lat: b.lat, hectares: b.hectares, maxDwellings: b.maxDwellings, permission: b.permission });
   for (const l of planning?.listed || []) data.places.push({ id: `listed/${l.name}`, kind: 'heritage:listed', name: l.name, grade: l.grade, lon: l.lon, lat: l.lat });
   // Flood zone of a point: 3 (highest risk), 2, or 0.
@@ -83,11 +91,13 @@ export function buildModel({
   };
   if (zones.length) for (const h of data.homes) h.floodZone = floodZoneOf([h.lon, h.lat]);
   const areas = census?.areas ? census.areas.map((a) => ({ ...a })) : [];
+  let council = {};
   if (areas.length) {
     attachCensus(data, areas);
     attachNeed(areas);
     if (history) attachHistory(areas, { growth: history.growth, then: history.census2011 });
     attachLayers(areas, { deprivation, crime, prices, jobs, income, wards });
+    council = attachStats(areas, stats);
     if (zones.length) {
       const acc = new Map();
       for (const h of data.homes) {
@@ -118,6 +128,10 @@ export function buildModel({
     homes: data.homes,
     places: data.places,
     areas,
+    /** Figures only published for the whole council, by stats source. */
+    council,
+    /** What each stats field measures, its source, level and period. */
+    statsFields: statsFields(stats),
     buses: buses || null,
     hasFlood: zones.length > 0,
     floodZoneOf,

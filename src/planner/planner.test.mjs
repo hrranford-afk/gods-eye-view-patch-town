@@ -529,3 +529,26 @@ test('atlas inventory: every source still to map says how fine, how got, why, an
   assert.equal(wellbeing.status, 'missing');
   assert.equal(wellbeing.priority, 1);
 });
+
+test('stats files: figures reach areas, council and places; MSOA figures spread to LSOAs', async () => {
+  const { attachStats, spreadToLsoas, statsFields } = await import('./stats.js');
+  const areas = [{ code: 'A', name: 'Town 004A' }, { code: 'B', name: 'Town 004B' }, { code: 'C', name: 'Town 005A' }];
+  const byArea = spreadToLsoas(areas, { 'Town 004': { lifeExpectancy: 80 } });
+  assert.deepEqual(Object.keys(byArea), ['A', 'B']);
+  const stats = [{ id: 'localHealth', level: 'MSOA', period: '2019-23', fields: { lifeExpectancy: 'years' }, byArea }, { id: 'wellbeing', fields: {}, council: { anxiety: { 2023: 3.85 } } }];
+  const council = attachStats(areas, stats);
+  assert.equal(areas[1].lifeExpectancy, 80);
+  assert.equal(areas[2].lifeExpectancy, undefined);
+  assert.equal(council.wellbeing.anxiety[2023], 3.85);
+  assert.equal(statsFields(stats).lifeExpectancy.level, 'MSOA');
+});
+
+test('grid references and OS grid → longitude/latitude (Worcester Cathedral)', async () => {
+  const { gridRefToEN, osgbToLonLat, propertyUse } = await import('../../scripts/planner-sources.mjs');
+  assert.deepEqual(gridRefToEN('SO8505754428'), [385057.5, 254428.5]);
+  const [lon, lat] = osgbToLonLat(385050, 254420);
+  assert.ok(Math.abs(lon - -2.2197) < 0.002 && Math.abs(lat - 52.1888) < 0.002, `${lon},${lat}`);
+  assert.equal(propertyUse('SHOP AND PREMISES'), 'shop');
+  assert.equal(propertyUse('PUBLIC HOUSE AND PREMISES'), 'food');
+  assert.equal(propertyUse('WAREHOUSE AND PREMISES'), 'industry');
+});

@@ -1,0 +1,251 @@
+{
+  "question": "Wave 1 of the data plan is mapped (health outcomes, air, poverty, work, housing, care, commuting, cycling potential, business properties). What goes together across Worcester now, and what is surprising?",
+  "notes": "Life expectancy, admissions, obesity and fuel poverty are published per MSOA (about 5 neighbourhoods each) and spread to them, so links with them rest on ~20 independent areas, not 64. Child poverty is per ward. Air pollution is a 1 km model. The two city-centre neighbourhoods are left out (L12).",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDayHome"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "area"
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "groupBy": "area"
+      },
+      "as": "greenMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$meet",
+        "groupBy": "area"
+      },
+      "as": "meetMinutes"
+    },
+    {
+      "tool": "survey",
+      "args": {
+        "namePrefix": "Worcester ",
+        "exclude": [
+          "Worcester 007F",
+          "Worcester 011E"
+        ],
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "noCar",
+          "bornAbroad",
+          "livingAlone66",
+          "crimePer1000Day",
+          "lifeExpectancy",
+          "healthyLifeExpectancy",
+          "deathsUnder75",
+          "preventableDeaths",
+          "emergencyAdmissions",
+          "selfHarmAdmissions",
+          "alcoholAdmissions",
+          "year6Obesity",
+          "fuelPoverty",
+          "childPoverty",
+          "claimantRate",
+          "no2",
+          "pm25",
+          "carers",
+          "disabled",
+          "overcrowded",
+          "privateRent",
+          "socialRent",
+          "noQualifications",
+          "degree",
+          "populationChange",
+          "cycleGoDutch",
+          "workUnder5km",
+          "gp_depression",
+          "gp_obesity",
+          "shops",
+          "foodAndDrink"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes"
+        },
+        "explainBy": "imdScore",
+        "surprisesFor": [
+          "lifeExpectancy",
+          "healthyLifeExpectancy",
+          "selfHarmAdmissions",
+          "year6Obesity",
+          "childPoverty",
+          "no2",
+          "goodDay"
+        ],
+        "top": 40
+      },
+      "as": "survey"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "lifeExpectancy"
+      },
+      "as": "lifeExpectancy"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "healthyLifeExpectancy"
+      },
+      "as": "healthyLifeExpectancy"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "imdScore"
+      },
+      "as": "imdScore"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "no2"
+      },
+      "as": "no2"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "selfHarmAdmissions"
+      },
+      "as": "selfHarmAdmissions"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "livingAlone66"
+      },
+      "as": "livingAlone66"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$lifeExpectancy",
+        "x": {
+          "goodDay": "$goodDay",
+          "greenMinutes": "$greenMinutes",
+          "no2": "$no2"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "lifeVsPlace"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$healthyLifeExpectancy",
+        "x": {
+          "goodDay": "$goodDay",
+          "greenMinutes": "$greenMinutes",
+          "no2": "$no2"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "healthyLifeVsPlace"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$selfHarmAdmissions",
+        "x": {
+          "livingAlone66": "$livingAlone66",
+          "meetMinutes": "$meetMinutes"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "selfHarmVsConnection"
+    }
+  ]
+}

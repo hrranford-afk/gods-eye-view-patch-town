@@ -33,6 +33,15 @@ and re-run the survey after each (see "The data plan" in NEW_WORCESTER.md).
 Don't use freeAccount sources without the owner's yes; record a 403, don't
 bypass it.
 
+Most new sources are **stats files** (`public/planner/<town>/stats/<id>.json`,
+shape in `src/planner/stats.js`): figures per neighbourhood, for the whole
+council, or places. Fetch with `npm run planner -- stats worcester <id|wave1|all>`;
+each source is one function in `scripts/planner-sources.mjs`. Their fields
+are on every area (so `attribute`, `survey`, `relate` see them), their
+places join the model, and `model.statsFields` says what each field
+measures, at what level and for when. Check `level` before reading a link:
+MSOA and ward figures are shared by several neighbourhoods.
+
 On the globe the Town Planner has a **theme panel** (bottom right): each
 compass theme switches on and off, and the choice is remembered.
 
@@ -98,6 +107,7 @@ npm run planner -- jobs worcester      # workplace jobs per neighbourhood (BRES)
 npm run planner -- income worcester    # household income, FYE 2023 (needs: pip install openpyxl)
 npm run planner -- wards worcester     # electoral ward of each neighbourhood
 npm run planner -- atlas worcester     # what's mapped, by compass theme (--check probes the rest)
+npm run planner -- stats worcester wave1  # fetch a wave of free sources into stats/
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is

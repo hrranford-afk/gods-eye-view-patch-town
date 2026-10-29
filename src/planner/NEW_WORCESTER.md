@@ -74,6 +74,10 @@ _Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and
 | L12 | **Per-resident figures lie in the city centre; checked and corrected.** Per resident, crime, pubs, takeaways, corner shops and serious crashes all correlated ~0.9. Counting per resident + worker, or leaving out the two centre neighbourhoods, those links vanish: corner shops don't go with crime. What survives both checks: crime and violence go with car-less households and deprivation (r ≈ 0.7–0.8); bad health with deprivation (0.87), lower income (−0.69) and violence (0.65). The centre (Fort Royal) is still above expected per resident + worker, but shoppers and visitors aren't counted yet. | `plans/survey-centre-fair.json` |
 | L16 | **Crime "hotspots" need reading before acting.** Rainbow Hill (004B) is half shoplifting (169 of 335 crimes): a shop effect. Warndon & Elbury Park (003A) is antisocial behaviour and shoplifting by the local shops. Leopard Hill (008A, around Nine Acres Green) is two-thirds violent crime (185 of 283), four times what its deprivation predicts; police.uk pins each crime to a nearby anonymous point, so this may be one place, not a neighbourhood. | `plans/survey-centre-fair.json`, `crime.json` |
 | L17 | **Migration follows cheap homes, not the other way round.** 12.8% of Worcester residents were born abroad (4% to 34% by neighbourhood); 6% arrived 2011–2021; about 1 in 80 speak little or no English. They live where homes are cheaper (r −0.66), fewer households have cars (0.60), people are younger and walk to work. On its own, born abroad goes with crime (0.51), but once car-less households and deprivation are allowed for it adds nothing (t 0.8); the same for violence and bad health. Asylum support: 78 people in Worcester (June 2026), 0.75 per 1,000, about half England's rate (1.43); hotels falling (120 in Sep 2025, 28 now). Small-boat arrivals are national figures only: where people go after isn't published, and won't be mapped. | `plans/migration-in-the-whole.json`, `asylum.json` |
+| L18 | **Deprivation sets how long people live; dirty air takes a little more.** Healthy life expectancy runs from 55 to 73 years across Worcester's neighbourhoods (life expectancy 77 to 85). Deprivation explains most of it (r −0.83). On top of deprivation, each extra µg/m³ of nitrogen dioxide goes with about 0.4 fewer years of life (t −2.6). Being near everything (the good day) adds no years here: the most central places carry other burdens. Life expectancy is published per MSOA, so this rests on about 20 independent areas. | `plans/wave1-survey.json` |
+| L19 | **Warndon & Elbury Park keeps coming up.** Around Windermere Drive (005A): half of children in low-income families (48%, against 24% expected for its deprivation), healthy life expectancy 59 (65 expected), Year 6 obesity 31%, self-harm admissions 132 (England = 100). With L16's crime and antisocial behaviour (003A), it's the first place to look closer. Dines Green & Grove Farm is the opposite: three years longer life than its deprivation predicts, cleaner air, less child obesity. Learn from it. | `plans/wave1-survey.json` |
+| L20 | **An ageing city that is barely making children.** Worcester grew 8% from 2011 to 2024 (98,679 to 106,671); people aged 65+ grew 32%, children 0–15 fell 0.6%. Homes, GPs and buses must plan for older residents first. Anxiety in Worcester (3.85 out of 10, 2022–23) was above England's (3.24), the highest in its 12-year series; one year, small sample. | `stats/population.json`, `stats/wellbeing.json` |
+| L21 | **The Severn takes Worcester's sewage on wet days.** 13 storm overflows in and around the city spilled 234 times for 1,742 hours in 2025; Bromwich Road treatment works alone spilled 68 times for 975 hours (about 41 days) into the Severn. Swimming or rowing downstream after rain is a health question. | `stats/riverHealth.json` |
 | L13 | **Loneliness isn't about distance.** St John's (009E, around Henwick Road) and the Arboretum (007A) have a quarter of households as one person over 66 (expected ~12–13% for their deprivation), yet a meeting place is under 4 minutes' walk. What matters is whether those places suit older people. | `plans/survey.json` |
 | L14 | **Cycling follows distance to the centre, and it fell.** St John's (009C) and the Arboretum (007B), 1.1–1.5 km from the centre, cycle to work ~5.7% (above expected); Nunnery (010C), 2.1 km out and among the most deprived, 1.5%, down from 3.6% in 2011. Cycling fell in every neighbourhood looked at. | `plans/survey.json` |
 | L15 | **A good day within reach hinges on GP access** (r = −0.85 with GP minutes), and car-free households cluster where homes are cheaper (r = −0.75). | `plans/survey.json` |
@@ -112,9 +116,9 @@ That's the next tool to build.
 
 ## 3½. What's mapped now
 
-`npm run planner -- atlas worcester` lists it by compass theme: **32 of 76
-layers mapped**. The other 44 are the free-data inventory (the data plan
-below); 4 of them aren't published openly.
+`npm run planner -- atlas worcester` lists it by compass theme: **45 of 76
+layers mapped** (wave 1 done). The other 31 are the free-data inventory
+(the data plan below); 4 of them aren't published openly.
 
 | Theme | Mapped |
 |---|---|
@@ -146,13 +150,15 @@ each one and says if it's reachable from here. Rules:
 5. **Blocked stays blocked.** A 403 is recorded, not bypassed; look for the
    same data elsewhere.
 
-**Wave 1 (priority 1, open, reachable, 14 sources):** wellbeing, population
-and its change, more Census 2021, life expectancy and local health, GP
-disease registers, modelled air pollution, river health and sewage spills,
-fuel poverty, child poverty, claimant count, commuting flows, Propensity to
-Cycle, business rates (every shop), and school results. School results
-answered 403 (bot protection), so they come from Explore Education
-Statistics instead.
+**Wave 1 (done, 29 Oct 2026):** `npm run planner -- stats worcester wave1`
+fetched 12 sources into `stats/` (one shape for all, see `stats.js`):
+wellbeing, population change, more Census 2021, local health (life
+expectancy, early deaths, admissions, child obesity, fuel poverty), GP
+disease registers, modelled air pollution, sewage overflows, child poverty,
+claimants, commuting flows, Propensity to Cycle and business rates (3,703
+properties). School results moved to wave 2: the school-level file answers
+403 here and the open API is council-level only. `plans/wave1-survey.json`
+re-ran the survey with all of it (L18–L21).
 
 **Needs Harry's yes (free accounts):** EPC energy certificates (priority 1),
 DWP Stat-Xplore benefits, Landsat heat, Land Registry company ownership.

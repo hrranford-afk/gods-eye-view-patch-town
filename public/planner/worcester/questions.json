@@ -452,6 +452,58 @@
       "status": "open",
       "from": "q32",
       "unlocks": "ONS mid-year population estimates with components of change (births, deaths, internal and international migration) for the council, 2011-2025"
+    },
+    {
+      "id": "q35",
+      "question": "What is different around Windermere Drive (Warndon & Elbury Park 005A): child poverty, health, obesity, self-harm and crime all well above what its deprivation predicts?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "wave1",
+      "lonLat": [
+        -2.171,
+        52.211
+      ],
+      "unlocks": "Housing mix (social rent, overcrowding), services within reach, youth and family services, what residents report (FixMyStreet), council housing data"
+    },
+    {
+      "id": "q36",
+      "question": "Why do people in Dines Green & Grove Farm live three years longer than their deprivation predicts? What can other neighbourhoods copy?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "wave1",
+      "lonLat": [
+        -2.248,
+        52.194
+      ],
+      "unlocks": "Green space and countryside edge, air, community groups (charities register), age mix, GP practice"
+    },
+    {
+      "id": "q37",
+      "question": "Which streets would cleaner air help most? Where do the busiest roads run past homes, schools and GP surgeries?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "wave1",
+      "unlocks": "Road traffic counts and noise maps beside homes; Defra roadside model; school locations"
+    },
+    {
+      "id": "q38",
+      "question": "Worcester is ageing fast (65+ up 32% since 2011, children flat). Where will older residents live in 2035, and can they reach a GP, a bus and a meeting place without a car?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "wave1",
+      "unlocks": "Population projections by age, care homes, step-free access, bus stops near homes of over-65s"
+    },
+    {
+      "id": "q39",
+      "question": "How often is the Severn at Worcester unsafe to swim or row after rain, and where do people use it?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "wave1",
+      "lonLat": [
+        -2.223,
+        52.183
+      ],
+      "unlocks": "Storm overflow start/stop times (2025 detailed EDM), river use (rowing clubs, swimming spots), rainfall"
     }
   ]
 }

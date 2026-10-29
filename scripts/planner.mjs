@@ -606,6 +606,67 @@ async function asylumTown(id) {
   console.log(`[planner] ${run.stdout.trim()}`);
 }
 
+/**
+ * Fetch free datasets into stats/<id>.json (see scripts/planner-sources.mjs):
+ * `stats <town> <id>`, `stats <town> wave1` or `stats <town> all`.
+ */
+async function statsTown(id, which) {
+  const { SOURCES, WAVES } = await import('./planner-sources.mjs');
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const areas = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).areas.map(({ code, name }) => ({ code, name }));
+  const model = loadModel(dir);
+  const homes = model.homes.map(({ lon, lat, w, area }) => ({ lon, lat, w, area }));
+  const fingertipsText = async (p) => {
+    const res = await fetch(`${FINGERTIPS}/${p}`);
+    if (!res.ok) throw new Error(`Fingertips answered ${res.status} for ${p}`);
+    return res.text();
+  };
+  const nomis = async (dataset, params, geography = null) => {
+    const rows = [];
+    const geos = geography ? [geography] : areas.map((a) => a.code);
+    for (let i = 0; i < geos.length; i += 50) {
+      const q = new URLSearchParams({ date: 'latest', measures: '20100', ...params, geography: geos.slice(i, i + 50).join(',') });
+      const res = await fetch(`${NOMIS}/${dataset}.data.csv?${q}`);
+      if (!res.ok) throw new Error(`Nomis ${dataset} answered ${res.status}`);
+      rows.push(...parseCsv(await res.text()));
+    }
+    return rows;
+  };
+  const allCouncils = Object.fromEntries(JSON.parse(await fingertipsText('areas/by_area_type?area_type_id=501')).map((a) => [a.Name, a.Code]));
+  const councils = Object.fromEntries([...new Set(areas.map((a) => a.name.slice(0, -5)))].map((n) => [n, allCouncils[n]]).filter(([, c]) => c));
+  const msoas = {};
+  for (const code of Object.values(councils)) {
+    for (const r of await nomis('NM_2021_1', { c2021_restype_3: 0, select: 'geography_name,geography_code' }, `${code}TYPE152`)) msoas[r.GEOGRAPHY_NAME] = r.GEOGRAPHY_CODE;
+  }
+  const { spawnSync } = await import('node:child_process');
+  const ctx = {
+    town, dir, areas, homes, councils, msoas, county: town.countyCode, cached,
+    gps: model.places.filter((p) => p.kind === 'gp').map((p) => ({ code: p.id.replace(/^ods\//, ''), lon: p.lon, lat: p.lat })),
+    wards: Object.fromEntries(Object.entries(JSON.parse(readFileSync(path.join(dir, 'wards.json'), 'utf8')).byArea).map(([k, w]) => [k, w.wardCode])),
+    nomis,
+    fingertips: async (p) => JSON.parse(await fingertipsText(p)),
+    fingertipsCsv: fingertipsText,
+    sheet: (file, name, maxRows) => {
+      const run = spawnSync('python3', ['scripts/planner-sheet.py', file, String(name), ...(maxRows ? [String(maxRows)] : [])], { encoding: 'utf8', maxBuffer: 1 << 30 });
+      if (run.status !== 0) throw new Error(`planner-sheet.py failed: ${run.stderr}`);
+      return JSON.parse(run.stdout);
+    },
+  };
+  const ids = which === 'all' ? Object.keys(SOURCES) : WAVES[which] || [which];
+  mkdirSync(path.join(dir, 'stats'), { recursive: true });
+  for (const sid of ids) {
+    if (!SOURCES[sid]) throw new Error(`Unknown source "${sid}". Known: ${Object.keys(SOURCES).join(', ')}`);
+    try {
+      const out = await SOURCES[sid](ctx);
+      writeFileSync(path.join(dir, 'stats', `${sid}.json`), JSON.stringify({ id: sid, licence: 'OGL', fetchedAt: new Date().toISOString().slice(0, 10), ...out }));
+      console.log(`[planner] ${sid}: ${Object.keys(out.byArea || {}).length} neighbourhoods${out.places ? `, ${out.places.length} places` : ''}${out.council ? ', council figures' : ''} → stats/${sid}.json`);
+    } catch (e) {
+      console.log(`[planner] ${sid}: FAILED (${e.message})`);
+    }
+  }
+}
+
 /** Electoral ward of each neighbourhood (ONS LSOA → ward lookup, May 2024) → wards.json. */
 async function wardsTown(id) {
   const town = getTown(id);
@@ -632,6 +693,7 @@ export function loadModel(dir) {
     deprivation: read('deprivation.json'), crime: read('crime.json'), prices: read('prices.json'),
     schools: read('schools.json'), collisions: read('collisions.json'),
     jobs: read('jobs.json'), income: read('income.json'), wards: read('wards.json'),
+    stats: existsSync(path.join(dir, 'stats')) ? readdirSync(path.join(dir, 'stats')).filter((f) => f.endsWith('.json')).sort().map((f) => read(`stats/${f}`)) : [],
   });
 }
 
@@ -843,13 +905,14 @@ try {
   else if (command === 'jobs') await jobsTown(id);
   else if (command === 'income') await incomeTown(id);
   else if (command === 'asylum') await asylumTown(id);
+  else if (command === 'stats') await statsTown(id, process.argv[4] || 'wave1');
   else if (command === 'wards') await wardsTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'atlas') await atlasTown(id, { check: process.argv.includes('--check') });
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|asylum|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|asylum|stats|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {
