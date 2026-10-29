@@ -1,0 +1,427 @@
+{
+  "question": "What does the full map of Worcester show? Which figures go together, and which neighbourhoods are far better or worse than their deprivation would predict?",
+  "ranAt": "2026-10-29T08:57:52.833Z",
+  "results": {
+    "survey": {
+      "areas": 64,
+      "figures": [
+        "imdScore",
+        "incomeAfterHousing",
+        "badHealth",
+        "over65",
+        "livingAlone66",
+        "noCar",
+        "crimePer1000",
+        "violencePer1000",
+        "antisocialPer1000",
+        "medianPrice",
+        "priceChange",
+        "jobsPerResident",
+        "newHomesShare",
+        "carCommute2021",
+        "cycleCommute2021",
+        "walkCommute2021",
+        "floodZone3Share",
+        "goodDay",
+        "gpMinutes",
+        "greenMinutes",
+        "meetMinutes",
+        "takeawaysPer1000",
+        "cornerShopsPer1000",
+        "pubsPer1000",
+        "seriousCrashesPer1000"
+      ],
+      "links": [
+        {
+          "a": "carCommute2021",
+          "b": "walkCommute2021",
+          "r": -0.98,
+          "areas": 64
+        },
+        {
+          "a": "crimePer1000",
+          "b": "cornerShopsPer1000",
+          "r": 0.93,
+          "areas": 64
+        },
+        {
+          "a": "crimePer1000",
+          "b": "pubsPer1000",
+          "r": 0.91,
+          "areas": 64
+        },
+        {
+          "a": "violencePer1000",
+          "b": "pubsPer1000",
+          "r": 0.91,
+          "areas": 64
+        },
+        {
+          "a": "antisocialPer1000",
+          "b": "pubsPer1000",
+          "r": 0.91,
+          "areas": 64
+        },
+        {
+          "a": "violencePer1000",
+          "b": "cornerShopsPer1000",
+          "r": 0.9,
+          "areas": 64
+        },
+        {
+          "a": "cornerShopsPer1000",
+          "b": "pubsPer1000",
+          "r": 0.89,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "badHealth",
+          "r": 0.87,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "carCommute2021",
+          "r": -0.87,
+          "areas": 64
+        },
+        {
+          "a": "takeawaysPer1000",
+          "b": "pubsPer1000",
+          "r": 0.87,
+          "areas": 64
+        },
+        {
+          "a": "violencePer1000",
+          "b": "takeawaysPer1000",
+          "r": 0.86,
+          "areas": 64
+        },
+        {
+          "a": "antisocialPer1000",
+          "b": "takeawaysPer1000",
+          "r": 0.86,
+          "areas": 64
+        },
+        {
+          "a": "goodDay",
+          "b": "gpMinutes",
+          "r": -0.85,
+          "areas": 64
+        },
+        {
+          "a": "crimePer1000",
+          "b": "takeawaysPer1000",
+          "r": 0.84,
+          "areas": 64
+        },
+        {
+          "a": "antisocialPer1000",
+          "b": "cornerShopsPer1000",
+          "r": 0.83,
+          "areas": 64
+        },
+        {
+          "a": "over65",
+          "b": "livingAlone66",
+          "r": 0.81,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "walkCommute2021",
+          "r": 0.81,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "noCar",
+          "r": 0.8,
+          "areas": 64
+        },
+        {
+          "a": "takeawaysPer1000",
+          "b": "cornerShopsPer1000",
+          "r": 0.76,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "medianPrice",
+          "r": -0.75,
+          "areas": 64
+        },
+        {
+          "a": "pubsPer1000",
+          "b": "seriousCrashesPer1000",
+          "r": 0.74,
+          "areas": 64
+        },
+        {
+          "a": "imdScore",
+          "b": "incomeAfterHousing",
+          "r": -0.72,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "violencePer1000",
+          "r": 0.72,
+          "areas": 64
+        },
+        {
+          "a": "cornerShopsPer1000",
+          "b": "seriousCrashesPer1000",
+          "r": 0.72,
+          "areas": 64
+        },
+        {
+          "a": "noCar",
+          "b": "crimePer1000",
+          "r": 0.71,
+          "areas": 64
+        },
+        {
+          "a": "violencePer1000",
+          "b": "carCommute2021",
+          "r": -0.71,
+          "areas": 64
+        },
+        {
+          "a": "antisocialPer1000",
+          "b": "carCommute2021",
+          "r": -0.71,
+          "areas": 64
+        },
+        {
+          "a": "antisocialPer1000",
+          "b": "seriousCrashesPer1000",
+          "r": 0.71,
+          "areas": 64
+        },
+        {
+          "a": "incomeAfterHousing",
+          "b": "noCar",
+          "r": -0.7,
+          "areas": 64
+        },
+        {
+          "a": "badHealth",
+          "b": "noCar",
+          "r": 0.7,
+          "areas": 64
+        }
+      ],
+      "surprises": [
+        {
+          "figure": "crimePer1000",
+          "area": "E01033248",
+          "value": 1376,
+          "expected": 266,
+          "z": 5.5,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "crimePer1000",
+          "area": "E01033247",
+          "value": 1170,
+          "expected": 219.1,
+          "z": 4.8,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "jobsPerResident",
+          "area": "E01033247",
+          "value": 4.85,
+          "expected": 0.6308,
+          "z": 4.3,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "noCar",
+          "area": "E01033247",
+          "value": 0.6117,
+          "expected": 0.3133,
+          "z": 4,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "jobsPerResident",
+          "area": "E01032309",
+          "value": 4.04,
+          "expected": 0.5403,
+          "z": 3.6,
+          "name": "Worcester 010D",
+          "ward": "Nunnery"
+        },
+        {
+          "figure": "walkCommute2021",
+          "area": "E01033247",
+          "value": 0.3709,
+          "expected": 0.1895,
+          "z": 3.2,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "livingAlone66",
+          "area": "E01032322",
+          "value": 0.251,
+          "expected": 0.1217,
+          "z": 3.1,
+          "name": "Worcester 009E",
+          "ward": "St John's"
+        },
+        {
+          "figure": "medianPrice",
+          "area": "E01032335",
+          "value": 412500,
+          "expected": 292400,
+          "z": 3,
+          "name": "Worcester 003C",
+          "ward": "St Nicholas"
+        },
+        {
+          "figure": "noCar",
+          "area": "E01033248",
+          "value": 0.5879,
+          "expected": 0.3678,
+          "z": 3,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "jobsPerResident",
+          "area": "E01032336",
+          "value": 3.38,
+          "expected": 0.4935,
+          "z": 3,
+          "name": "Worcester 003D",
+          "ward": "St Nicholas"
+        },
+        {
+          "figure": "jobsPerResident",
+          "area": "E01033248",
+          "value": 3.27,
+          "expected": 0.6708,
+          "z": 2.7,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "badHealth",
+          "area": "E01032301",
+          "value": 0.07158,
+          "expected": 0.04828,
+          "z": 2.6,
+          "name": "Worcester 005A",
+          "ward": "Warndon & Elbury Park"
+        },
+        {
+          "figure": "cycleCommute2021",
+          "area": "E01032320",
+          "value": 0.057,
+          "expected": 0.03305,
+          "z": 2.6,
+          "name": "Worcester 009C",
+          "ward": "St John's"
+        },
+        {
+          "figure": "cycleCommute2021",
+          "area": "E01032307",
+          "value": 0.01532,
+          "expected": 0.03956,
+          "z": -2.6,
+          "name": "Worcester 010C",
+          "ward": "Nunnery"
+        },
+        {
+          "figure": "medianPrice",
+          "area": "E01032289",
+          "value": 390000,
+          "expected": 290600,
+          "z": 2.5,
+          "name": "Worcester 012D",
+          "ward": "Lower Wick & Pitmaston"
+        },
+        {
+          "figure": "badHealth",
+          "area": "E01032290",
+          "value": 0.05795,
+          "expected": 0.03624,
+          "z": 2.4,
+          "name": "Worcester 012E",
+          "ward": "Lower Wick & Pitmaston"
+        },
+        {
+          "figure": "livingAlone66",
+          "area": "E01032280",
+          "value": 0.2257,
+          "expected": 0.1252,
+          "z": 2.4,
+          "name": "Worcester 007A",
+          "ward": "Arboretum"
+        },
+        {
+          "figure": "cycleCommute2021",
+          "area": "E01032281",
+          "value": 0.0566,
+          "expected": 0.03415,
+          "z": 2.4,
+          "name": "Worcester 007B",
+          "ward": "Arboretum"
+        },
+        {
+          "figure": "walkCommute2021",
+          "area": "E01033249",
+          "value": 0.3134,
+          "expected": 0.176,
+          "z": 2.4,
+          "name": "Worcester 011F",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "walkCommute2021",
+          "area": "E01033248",
+          "value": 0.3359,
+          "expected": 0.2076,
+          "z": 2.3,
+          "name": "Worcester 011E",
+          "ward": "Fort Royal"
+        },
+        {
+          "figure": "medianPrice",
+          "area": "E01033247",
+          "value": 123500,
+          "expected": 214300,
+          "z": -2.2,
+          "name": "Worcester 007F",
+          "ward": "Cathedral"
+        },
+        {
+          "figure": "noCar",
+          "area": "E01032322",
+          "value": 0.391,
+          "expected": 0.2252,
+          "z": 2.2,
+          "name": "Worcester 009E",
+          "ward": "St John's"
+        },
+        {
+          "figure": "noCar",
+          "area": "E01033249",
+          "value": 0.4213,
+          "expected": 0.2728,
+          "z": 2,
+          "name": "Worcester 011F",
+          "ward": "Fort Royal"
+        }
+      ]
+    }
+  }
+}

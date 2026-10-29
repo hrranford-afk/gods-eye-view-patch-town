@@ -297,6 +297,86 @@ export function floodZone(model) {
   return model.homes.map((h) => h.floodZone ?? 0);
 }
 
+/** Which family a figure belongs to, so survey skips trivial pairs (income vs income). */
+function family(name) {
+  if (/^(imdScore|imdDecile|need|deprived)$|Dep$/.test(name)) return 'deprivation';
+  if (/^income/.test(name)) return 'income';
+  if (/Per1000$/.test(name) && /crime|violence|antisocial|burglary/.test(name)) return 'crime';
+  if (/Commute(2011|2021)$/.test(name)) return name.replace(/20(11|21)$/, '');
+  if (/^(medianPrice|priceChange)$/.test(name)) return name;
+  if (/^newHomes/.test(name)) return 'growth';
+  if (/^floodZone/.test(name)) return 'flood';
+  return name;
+}
+
+function pearson(x, y) {
+  const n = x.length;
+  const mx = x.reduce((a, b) => a + b, 0) / n;
+  const my = y.reduce((a, b) => a + b, 0) / n;
+  let s = 0;
+  let dx = 0;
+  let dy = 0;
+  for (let i = 0; i < n; i++) { s += (x[i] - mx) * (y[i] - my); dx += (x[i] - mx) ** 2; dy += (y[i] - my) ** 2; }
+  return dx && dy ? s / Math.sqrt(dx * dy) : 0;
+}
+
+/**
+ * survey: look across many per-area figures at once and report what the map
+ * shows: the strongest links between figures from different families, and
+ * the surprises, areas much better or worse on a figure than `explainBy`
+ * (deprivation by default) would predict. Surprises are where to ask next.
+ * `fields` are area figures (see `fields`); `extra` adds per-area results
+ * from earlier steps ({ label: $result }). Only areas named with
+ * `namePrefix` are used, if given.
+ */
+export function survey(model, { fields = [], extra = {}, namePrefix = null, explainBy = 'imdScore', surprisesFor = null, top = 12, minAbsR = 0.4 } = {}) {
+  const areas = model.areas.filter((a) => !namePrefix || a.name.startsWith(namePrefix));
+  const cols = {};
+  for (const f of fields) cols[f] = Object.fromEntries(areas.filter((a) => Number.isFinite(a[f])).map((a) => [a.code, a[f]]));
+  for (const [label, r] of Object.entries(extra)) cols[label] = r.value;
+  const names = Object.keys(cols);
+  const links = [];
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const [a, b] = [names[i], names[j]];
+      if (family(a) === family(b)) continue;
+      const keys = areas.map((x) => x.code).filter((k) => Number.isFinite(cols[a][k]) && Number.isFinite(cols[b][k]));
+      if (keys.length < 10) continue;
+      const r = pearson(keys.map((k) => cols[a][k]), keys.map((k) => cols[b][k]));
+      if (Math.abs(r) >= minAbsR) links.push({ a, b, r: Math.round(r * 100) / 100, areas: keys.length });
+    }
+  }
+  links.sort((x, y) => Math.abs(y.r) - Math.abs(x.r));
+  const explain = cols[explainBy] || Object.fromEntries(areas.filter((a) => Number.isFinite(a[explainBy])).map((a) => [a.code, a[explainBy]]));
+  const surprises = [];
+  for (const f of surprisesFor || names) {
+    if (f === explainBy || family(f) === family(explainBy) || !cols[f]) continue;
+    const keys = areas.map((x) => x.code).filter((k) => Number.isFinite(cols[f][k]) && Number.isFinite(explain[k]));
+    if (keys.length < 10) continue;
+    const xs = keys.map((k) => explain[k]);
+    const ys = keys.map((k) => cols[f][k]);
+    const mx = xs.reduce((p, q) => p + q, 0) / xs.length;
+    const my = ys.reduce((p, q) => p + q, 0) / ys.length;
+    const sxx = xs.reduce((p, q) => p + (q - mx) ** 2, 0);
+    const slope = sxx ? xs.reduce((p, q, i) => p + (q - mx) * (ys[i] - my), 0) / sxx : 0;
+    const resid = ys.map((y, i) => y - (my + slope * (xs[i] - mx)));
+    const sd = Math.sqrt(resid.reduce((p, q) => p + q * q, 0) / (resid.length - 2)) || 1;
+    keys.forEach((k, i) => {
+      const z = resid[i] / sd;
+      if (Math.abs(z) >= 2) surprises.push({ figure: f, area: k, value: Number(ys[i].toPrecision(4)), expected: Number((ys[i] - resid[i]).toPrecision(4)), z: Math.round(z * 10) / 10 });
+    });
+  }
+  surprises.sort((x, y) => Math.abs(y.z) - Math.abs(x.z));
+  const nameOf = new Map(model.areas.map((a) => [a.code, a.name]));
+  const wardOf = new Map(model.areas.map((a) => [a.code, a.ward]));
+  return {
+    areas: areas.length,
+    figures: names,
+    links: links.slice(0, top * 2),
+    surprises: surprises.slice(0, top * 2).map((x) => ({ ...x, name: nameOf.get(x.area), ward: wardOf.get(x.area) || null })),
+  };
+}
+
 export const TOOLS = Object.freeze({
   kinds: { fn: (m) => m.kinds(), about: 'Every kind of place in the model and how many.', args: {} },
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
@@ -309,6 +389,7 @@ export const TOOLS = Object.freeze({
   average: { fn: average, about: 'Household-weighted average of a per-area result across the town.', args: { of: 'a per-area result ($name)', namePrefix: "e.g. 'Worcester '" } },
   combine: { fn: combine, about: 'Weighted sum of results per group (a composite index).', args: { parts: '[{ of: $name, weight }]' } },
   bestSites: { fn: bestSites, about: 'Where one more place of a kind would help most.', args: { kind: 'kind', count: 'how many (3)', byNeed: 'weight by need (false)' } },
+  survey: { fn: survey, about: 'Across many area figures: strongest links between them, and areas far better or worse than deprivation predicts.', args: { fields: 'area figures', extra: '{ label: $perAreaResult }', namePrefix: "e.g. 'Worcester '", explainBy: "figure to explain by (default 'imdScore')", surprisesFor: 'figures to find surprises in (default all)', top: 'how many (12)' } },
   meets: { fn: meets, about: 'Per home: 1 if every check is within its limit (a "good day" checklist), else 0.', args: { checks: '[{ values: $travelResult, max: minutes }]' } },
   floodZone: { fn: floodZone, about: "Each home's flood zone (3, 2 or 0), as per-home values.", args: {} },
   compare: { fn: compare, about: 'Score scenarios against today, with who gains.', args: { scenarios: 'list of scenario objects (scenarios.js)' } },

@@ -331,6 +331,66 @@
         52.1705
       ],
       "unlocks": "Score scenarios on the good-day share, not just GP minutes: a GP, a meeting place, a pocket park, a frequent bus, each tested with compare + meets"
+    },
+    {
+      "id": "q25",
+      "question": "How safe is Worcester city centre once crime is measured per visitor or per job, not per resident?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "lonLat": [
+        -2.219,
+        52.1935
+      ],
+      "from": "survey",
+      "unlocks": "Jobs per neighbourhood (have) as a denominator; footfall or visitor counts (BID/council counters); crime by type and hour"
+    },
+    {
+      "id": "q26",
+      "question": "A quarter of households in St John's (009E) and the Arboretum (007A) are one person over 66, with meeting places under 4 minutes away. Do those places suit older people, and who checks in?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "lonLat": [
+        -2.238,
+        52.1905
+      ],
+      "from": "survey",
+      "unlocks": "Kinds of meeting place within reach (community centre, library, lunch club, place of worship vs pub), opening hours, step-free access; Age UK / council befriending services"
+    },
+    {
+      "id": "q27",
+      "question": "Why is health in Warndon & Elbury Park (005A) worse than its deprivation and age predict?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "lonLat": [
+        -2.19,
+        52.201
+      ],
+      "from": "survey",
+      "unlocks": "Census disability and long-term conditions (TS038), air quality near the M5 and Parsonage Way, Fingertips GP practice prevalence (QOF) for Elbury Moor"
+    },
+    {
+      "id": "q28",
+      "question": "Why do St John's and the Arboretum cycle more than expected while Nunnery cycles far less, and why did cycling fall everywhere 2011-2021?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "lonLat": [
+        -2.196,
+        52.188
+      ],
+      "from": "survey",
+      "unlocks": "Cycle network (have) along each area's route to the centre, hills (terrain), busy-road crossings, collisions involving cyclists (STATS19 casualty file), census 2021 lockdown effect"
+    },
+    {
+      "id": "q29",
+      "question": "Which of the survey's links survive once the centre's few residents and many visitors are allowed for?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "lonLat": [
+        -2.2203,
+        52.1918
+      ],
+      "from": "survey",
+      "unlocks": "Re-run the survey without the two centre neighbourhoods, or with residents + jobs as the denominator"
     }
   ]
 }

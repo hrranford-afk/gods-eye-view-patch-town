@@ -71,6 +71,10 @@ _Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and
 | L8 | **The centre has room.** ~27 of 35 mapped empty shops are in the city centre, including the former Debenhams. | `vacant.geojson` |
 | L10 | **Only 35% of households have a good day within reach** (meeting place ≤ 10 min, green space ≤ 5 min including woodland, food ≤ 10 min, GP ≤ 15 min walking or by bus). GP access is the bottleneck (48%); green space reaches 75%, meeting places and food 84%. Car-less households do better (51%), over-65s worse (30%). Need goes *with* a good day (t = 5.0): the central, poorer neighbourhoods have it; St Peters (Spetchley Road, Foxglove Road), the Warndon Villages (Collings Avenue, Bradford Place, Rye Place) and Lower Wick have none of it. | `plans/good-day.json` |
 | L11 | **Where life is closest, the river is too.** 96% of households are outside flood zones, but the best "good day" neighbourhood, St Clements by the river (Back Lane South), has 21% of homes in Flood Zone 3. New Worcester's dense, walkable centre has to live with the Severn. | `plans/good-day.json`, `flood.json` |
+| L12 | **Per-resident figures lie in the city centre.** Crime, pubs, takeaways, corner shops and serious crashes all correlate ~0.9 *per resident* because the centre (Cathedral, Fort Royal) has few residents and many visitors: Fort Royal shows 1,376 crimes per 1,000 residents vs 266 expected. Centre figures need a visitor or jobs denominator before they mean anything. | `plans/survey.json` |
+| L13 | **Loneliness isn't about distance.** St John's (009E, around Henwick Road) and the Arboretum (007A) have a quarter of households as one person over 66 (expected ~12–13% for their deprivation), yet a meeting place is under 4 minutes' walk. What matters is whether those places suit older people. | `plans/survey.json` |
+| L14 | **Cycling follows distance to the centre, and it fell.** St John's (009C) and the Arboretum (007B), 1.1–1.5 km from the centre, cycle to work ~5.7% (above expected); Nunnery (010C), 2.1 km out and among the most deprived, 1.5%, down from 3.6% in 2011. Cycling fell in every neighbourhood looked at. | `plans/survey.json` |
+| L15 | **A good day within reach hinges on GP access** (r = −0.85 with GP minutes), and car-free households cluster where homes are cheaper (r = −0.75). | `plans/survey.json` |
 | L9 | **Check the map against official lists.** OpenStreetMap missed three GP surgeries and counted hospital departments as GPs. The correction overturned three answers. | IDEAS.md correction |
 
 ## 2. Principles for New Worcester
@@ -120,6 +124,14 @@ which aren't published openly for Worcester.
 | Movement | Streets and paths, bus timetable, traffic and cycle counts 2000–2025, road collisions (5 years), cycle network (68 km of tracks, 4 km of lanes) |
 | Land | Empty shops, brownfield register (67 sites, up to 3,448 homes), listed buildings, conservation areas |
 | Voice | Questions (the question loop), scenarios |
+
+## 3¾. What the full map shows (the survey)
+
+`plans/survey.json` lines up 25 figures for Worcester's 64 city
+neighbourhoods and reports what goes together and which places are far
+better or worse than their deprivation predicts. Read every link with L12
+in mind: anything per resident is distorted in the centre. The surprises
+became questions q25–q29 below.
 
 ## 4. Open questions feeding New Worcester
 

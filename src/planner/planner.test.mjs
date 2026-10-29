@@ -473,3 +473,15 @@ test('more layers: cycle provision, pharmacies, jobs, income and wards, and grou
   const out = runPlan(model, [{ tool: 'travel', args: { to: 'shop' }, as: 's' }, { tool: 'summarise', args: { values: '$s', groupBy: 'ward' }, as: 'byWard' }]);
   assert.deepEqual(Object.keys(out.byWard.value), ['Grid Ward']);
 });
+
+test('survey: finds a planted link across families and flags the area that breaks the pattern', async () => {
+  const { survey } = await import('./tools.js');
+  const areas = Array.from({ length: 20 }, (_, i) => ({ code: `A${i}`, name: `Town ${i}`, imdScore: i, badHealth: 0.02 + i * 0.002, livingAlone66: 0.1 }));
+  areas[7].livingAlone66 = 0.4; // a loneliness hotspot nothing else predicts
+  const model = { areas };
+  const out = survey(model, { fields: ['imdScore', 'badHealth', 'livingAlone66'], surprisesFor: ['livingAlone66'] });
+  assert.equal(out.areas, 20);
+  assert.ok(out.links.some((l) => [l.a, l.b].includes('badHealth') && [l.a, l.b].includes('imdScore') && l.r > 0.99));
+  assert.equal(out.surprises[0].area, 'A7');
+  assert.ok(out.surprises[0].z > 2);
+});
