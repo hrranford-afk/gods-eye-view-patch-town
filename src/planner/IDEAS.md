@@ -136,6 +136,11 @@ most people don't walk to their GP. A finding to discuss, not a verdict.
 - **Harry:** a stronger plan: find every free source before going further; then yes to wave 1.
 - **CAIRN adds:** one stats-file shape for every per-area source (`stats.js`) and a `stats` command with a function per source (`scripts/planner-sources.mjs`), so a new dataset is one function and reaches every tool. Wave 1: 12 sources in one run. Next: wave 2, and a closer look at Warndon (q35) and what Dines Green does right (q36).
 
+## Other towns for context (29 Oct 2026)
+
+- **Harry:** once it's good, run it on other places, including ones going badly or well, to give New Worcester context. Cheltenham and Gloucester first: almost twins.
+- **CAIRN adds:** a `profile` tool and `compare` command that run one shared plan on any towns and line them up, plus fixes for everything that turned out to be Worcester-only. Abroad next on a common set: Pontevedra (car-free centre), Houten (bike-built town), Worcester, Massachusetts (car-built), Kleve (twin town).
+
 ## Next
 
 0. **GP capacity.** NHS Digital patients-registered-per-practice and GP workforce, so access means "can get an appointment", not just distance. Then score need (health, age, deprivation) against access.

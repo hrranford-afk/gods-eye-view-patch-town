@@ -108,6 +108,7 @@ npm run planner -- income worcester    # household income, FYE 2023 (needs: pip 
 npm run planner -- wards worcester     # electoral ward of each neighbourhood
 npm run planner -- atlas worcester     # what's mapped, by compass theme (--check probes the rest)
 npm run planner -- stats worcester wave1  # fetch a wave of free sources into stats/
+npm run planner -- compare worcester,gloucester,cheltenham public/planner/plans/town-profile.json  # same plan, towns side by side
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is

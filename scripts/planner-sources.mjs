@@ -256,7 +256,7 @@ export const SOURCES = {
 
   async riverHealth(ctx) {
     const zip = await ctx.cached('https://environment.data.gov.uk/api/file/download?fileDataSetId=c55e170e-3c75-49a5-8026-a961ff94c8e0&fileName=EDM_2025_Storm_Overflow_Annual_Return.zip', 'edm-2025.zip');
-    const rows = ctx.sheet(`${zip}::EDM_2025_Storm_Overflow_Annual_Return/EDM 2025 Storm Overflow Annual Return - all water and sewerage companies.xlsx`, 'Severn Trent Water');
+    const rows = ctx.sheet(`${zip}::EDM_2025_Storm_Overflow_Annual_Return/EDM 2025 Storm Overflow Annual Return - all water and sewerage companies.xlsx`, ctx.town.waterCompany);
     const h = rows.findIndex((r) => r[0] === 'Unique ID');
     const head = rows[h].map((c) => String(c || ''));
     const col = (re) => head.findIndex((c) => re.test(c));
@@ -272,7 +272,7 @@ export const SOURCES = {
     }
     const total = places.reduce((t, p) => t + p.spillHours, 0);
     return {
-      source: 'Environment Agency, Event Duration Monitoring: storm overflow annual return (Severn Trent)', level: 'outfall', period: '2025',
+      source: `Environment Agency, Event Duration Monitoring: storm overflow annual return (${ctx.town.waterCompany})`, level: 'outfall', period: '2025',
       fields: {},
       council: { overflows: places.length, spills: places.reduce((t, p) => t + p.spills, 0), spillHours: round(total, 0), severnSpillHours: round(places.filter((p) => /SEVERN/i.test(p.water || '')).reduce((t, p) => t + p.spillHours, 0), 0) },
       places,
@@ -326,7 +326,9 @@ export const SOURCES = {
   },
 
   async pct(ctx) {
-    const file = await ctx.cached('https://media.githubusercontent.com/media/npct/pct-outputs-regional-notR/master/commute/lsoa/hereford-and-worcester/z_attributes.csv', 'pct-hw-lsoa.csv');
+    const region = ctx.town.pctRegion;
+    if (!region) throw new Error(`${ctx.town.name} has no pctRegion in towns.js`);
+    const file = await ctx.cached(`https://media.githubusercontent.com/media/npct/pct-outputs-regional-notR/master/commute/lsoa/${region}/z_attributes.csv`, `pct-${region}-lsoa.csv`);
     const rows = parseCsv(readFileSync(file, 'utf8'));
     const byCode = Object.fromEntries(rows.map((r) => [r.geo_code, r]));
     const byArea = {};

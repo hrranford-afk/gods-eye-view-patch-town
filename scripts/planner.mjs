@@ -474,17 +474,38 @@ async function crimeTown(id) {
   const [s, w, n, e] = town.bbox;
   const poly = `${s},${w}:${s},${e}:${n},${e}:${n},${w}`;
   const months = (await (await fetch('https://data.police.uk/api/crimes-street-dates')).json()).slice(0, 12).map((d) => d.date);
-  const crimes = [];
+  const byMonth = {};
   for (const m of months) {
-    const res = await fetch('https://data.police.uk/api/crimes-street/all-crime', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ poly, date: m }),
-    });
+    let res;
+    // police.uk allows ~15 requests a second; on 429 wait and try again.
+    for (let wait = 2000; ; wait *= 2) {
+      res = await fetch('https://data.police.uk/api/crimes-street/all-crime', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ poly, date: m }),
+      });
+      if (res.status !== 429 || wait > 32000) break;
+      await new Promise((r) => setTimeout(r, wait));
+    }
     if (!res.ok) throw new Error(`police.uk answered ${res.status} for ${m}`);
-    crimes.push(...(await res.json()));
+    byMonth[m] = await res.json();
   }
+  // Forces sometimes stop sending data (Gloucestershire from early 2026):
+  // keep only months with at least a quarter of the busiest month's crimes,
+  // and scale them up to a year so towns compare fairly.
+  const most = Math.max(...Object.values(byMonth).map((c) => c.length));
+  const kept = months.filter((m) => byMonth[m].length >= most / 4);
+  const missing = months.filter((m) => !kept.includes(m));
+  const crimes = kept.flatMap((m) => byMonth[m]);
   const byArea = crimeByArea(crimes, areas);
-  writeFileSync(path.join(dir, 'crime.json'), JSON.stringify({ source: 'data.police.uk street-level crime (counted per neighbourhood)', months: [months.at(-1), months[0]], byArea }));
+  const scale = 12 / kept.length;
+  if (scale !== 1) {
+    for (const a of Object.values(byArea)) {
+      a.total = Math.round(a.total * scale);
+      for (const k of Object.keys(a.byCategory || {})) a.byCategory[k] = Math.round(a.byCategory[k] * scale);
+    }
+  }
+  writeFileSync(path.join(dir, 'crime.json'), JSON.stringify({ source: 'data.police.uk street-level crime (counted per neighbourhood)', months: [months.at(-1), months[0]], monthsUsed: kept.length, monthsMissing: missing, scaledToYear: scale !== 1, byArea }));
+  if (missing.length) console.log(`[planner] ${missing.length} months not supplied by the force (${missing.join(', ')}): ${kept.length} months scaled to a year`);
   console.log(`[planner] ${crimes.length} crimes, ${months.at(-1)} to ${months[0]}, counted per neighbourhood → ${dir}/crime.json`);
 }
 
@@ -604,6 +625,39 @@ async function asylumTown(id) {
   const run = spawnSync('python3', ['scripts/planner-asylum.py', xlsx, town.ladCode, population, path.join(dir, 'asylum.json')], { encoding: 'utf8' });
   if (run.status !== 0) throw new Error(`planner-asylum.py failed: ${run.stderr || run.stdout}`);
   console.log(`[planner] ${run.stdout.trim()}`);
+}
+
+/**
+ * Run one shared plan on several towns and line them up:
+ * `compare gloucester,cheltenham,worcester public/planner/plans/town-profile.json`.
+ * "{town}" in the plan becomes each town's name. Writes
+ * public/planner/compare/<plan>.json with each town's results.
+ */
+function compareTowns(ids, planFile) {
+  const towns = String(ids || '').split(',').map((t) => getTown(t.trim()));
+  if (towns.length < 2 || !planFile) throw new Error('Usage: npm run planner -- compare <town,town,...> <plan.json>');
+  const text = readFileSync(planFile, 'utf8');
+  const out = { plan: path.basename(planFile), ranAt: new Date().toISOString(), towns: {} };
+  for (const town of towns) {
+    const plan = JSON.parse(text.replaceAll('{town}', town.name));
+    out.question = plan.question;
+    const results = runPlan(loadModel(townDir(town.id)), plan.steps);
+    out.towns[town.id] = Object.fromEntries((plan.show || Object.keys(results)).map((k) => [k, results[k]]));
+    console.log(`[planner] ${town.name}: done`);
+  }
+  const dir = path.join(process.cwd(), 'public', 'planner', 'compare');
+  mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, path.basename(planFile));
+  writeFileSync(file, `${JSON.stringify(out, null, 2)}\n`);
+  const first = Object.values(out.towns)[0];
+  for (const [k, v] of Object.entries(first)) {
+    if (!v?.figures) continue;
+    console.log(`\n${k.padEnd(26)}${towns.map((t) => t.name.padStart(22)).join('')}`);
+    for (const f of Object.keys(v.figures)) {
+      console.log(`  ${f.padEnd(24)}${towns.map((t) => { const x = out.towns[t.id][k].figures[f]; return (x ? `${x.mean} (${x.min}–${x.max})` : '—').padStart(22); }).join('')}`);
+    }
+  }
+  console.log(`\n[planner] → ${file}`);
 }
 
 /**

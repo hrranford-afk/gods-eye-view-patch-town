@@ -1,0 +1,385 @@
+{
+  "town": "cheltenham",
+  "cellM": 250,
+  "homes": 58408,
+  "homesSkipped": 1,
+  "places": {
+    "shop": 149,
+    "school": 37,
+    "gp": 12,
+    "bus": 642
+  },
+  "targetsMin": {
+    "shop": 10,
+    "school": 15,
+    "gp": 15,
+    "bus": 5
+  },
+  "shareOfHomesMeetingTarget": {
+    "shop": 0.87,
+    "school": 0.85,
+    "gp": 0.38,
+    "bus": 0.87
+  },
+  "overallScore": 74,
+  "worstServedCells": [
+    {
+      "lonLat": [
+        -2.08949,
+        51.93249
+      ],
+      "homes": 617,
+      "score": 0,
+      "minutes": {
+        "shop": 24.3,
+        "school": 18.9,
+        "gp": 48.1,
+        "bus": 13.2
+      }
+    },
+    {
+      "lonLat": [
+        -2.08949,
+        51.93474
+      ],
+      "homes": 154,
+      "score": 0,
+      "minutes": {
+        "shop": 25.9,
+        "school": 20.6,
+        "gp": 49.4,
+        "bus": 14.8
+      }
+    },
+    {
+      "lonLat": [
+        -2.13313,
+        51.86736
+      ],
+      "homes": 139,
+      "score": 0,
+      "minutes": {
+        "shop": 120,
+        "school": 120,
+        "gp": 120,
+        "bus": 120
+      }
+    },
+    {
+      "lonLat": [
+        -2.12949,
+        51.86512
+      ],
+      "homes": 139,
+      "score": 0,
+      "minutes": {
+        "shop": 120,
+        "school": 120,
+        "gp": 120,
+        "bus": 120
+      }
+    },
+    {
+      "lonLat": [
+        -2.12949,
+        51.86736
+      ],
+      "homes": 92,
+      "score": 0,
+      "minutes": {
+        "shop": 120,
+        "school": 120,
+        "gp": 120,
+        "bus": 120
+      }
+    },
+    {
+      "lonLat": [
+        -2.07857,
+        51.93249
+      ],
+      "homes": 77,
+      "score": 0,
+      "minutes": {
+        "shop": 32.9,
+        "school": 26,
+        "gp": 52.7,
+        "bus": 16.6
+      }
+    },
+    {
+      "lonLat": [
+        -2.08585,
+        51.93474
+      ],
+      "homes": 77,
+      "score": 0,
+      "minutes": {
+        "shop": 26.7,
+        "school": 19.8,
+        "gp": 47.6,
+        "bus": 15.6
+      }
+    },
+    {
+      "lonLat": [
+        -2.12949,
+        51.86961
+      ],
+      "homes": 46,
+      "score": 0,
+      "minutes": {
+        "shop": 120,
+        "school": 120,
+        "gp": 120,
+        "bus": 120
+      }
+    },
+    {
+      "lonLat": [
+        -2.04948,
+        51.93025
+      ],
+      "homes": 32,
+      "score": 0,
+      "minutes": {
+        "shop": 26.9,
+        "school": 33.5,
+        "gp": 37.9,
+        "bus": 9.1
+      }
+    },
+    {
+      "lonLat": [
+        -2.13313,
+        51.86961
+      ],
+      "homes": 31,
+      "score": 0,
+      "minutes": {
+        "shop": 120,
+        "school": 120,
+        "gp": 120,
+        "bus": 120
+      }
+    }
+  ],
+  "mostSeveredCells": [
+    {
+      "lonLat": [
+        -2.11858,
+        51.90105
+      ],
+      "homes": 44,
+      "detour": 1.95
+    },
+    {
+      "lonLat": [
+        -2.09676,
+        51.87859
+      ],
+      "homes": 82,
+      "detour": 1.8
+    },
+    {
+      "lonLat": [
+        -2.06766,
+        51.91228
+      ],
+      "homes": 75,
+      "detour": 1.8
+    },
+    {
+      "lonLat": [
+        -2.11131,
+        51.91902
+      ],
+      "homes": 43,
+      "detour": 1.8
+    },
+    {
+      "lonLat": [
+        -2.04948,
+        51.88982
+      ],
+      "homes": 39,
+      "detour": 1.78
+    },
+    {
+      "lonLat": [
+        -2.06403,
+        51.91228
+      ],
+      "homes": 42,
+      "detour": 1.76
+    },
+    {
+      "lonLat": [
+        -2.08949,
+        51.87859
+      ],
+      "homes": 25,
+      "detour": 1.75
+    },
+    {
+      "lonLat": [
+        -2.05311,
+        51.89881
+      ],
+      "homes": 90,
+      "detour": 1.75
+    },
+    {
+      "lonLat": [
+        -2.09676,
+        51.87635
+      ],
+      "homes": 51,
+      "detour": 1.73
+    },
+    {
+      "lonLat": [
+        -2.09312,
+        51.9033
+      ],
+      "homes": 234,
+      "detour": 1.69
+    }
+  ],
+  "overallScoreExact": 74.23965055159127,
+  "homesAre": "Census 2021 households",
+  "suggestedSites": [
+    {
+      "kind": "shop",
+      "lonLat": [
+        -2.0889537,
+        51.9332187
+      ],
+      "homesGained": 926
+    },
+    {
+      "kind": "shop",
+      "lonLat": [
+        -2.0925629,
+        51.8737752
+      ],
+      "homesGained": 667
+    },
+    {
+      "kind": "shop",
+      "lonLat": [
+        -2.1322712,
+        51.8854861
+      ],
+      "homesGained": 528
+    },
+    {
+      "kind": "school",
+      "lonLat": [
+        -2.0685329,
+        51.8772093
+      ],
+      "homesGained": 1211
+    },
+    {
+      "kind": "school",
+      "lonLat": [
+        -2.089153,
+        51.9330019
+      ],
+      "homesGained": 926
+    },
+    {
+      "kind": "school",
+      "lonLat": [
+        -2.1045746,
+        51.8952195
+      ],
+      "homesGained": 890
+    },
+    {
+      "kind": "gp",
+      "lonLat": [
+        -2.1134242,
+        51.9026862
+      ],
+      "homesGained": 5481
+    },
+    {
+      "kind": "gp",
+      "lonLat": [
+        -2.1168479,
+        51.888754
+      ],
+      "homesGained": 4741
+    },
+    {
+      "kind": "gp",
+      "lonLat": [
+        -2.0591139,
+        51.8977726
+      ],
+      "homesGained": 4416
+    },
+    {
+      "kind": "bus",
+      "lonLat": [
+        -2.089153,
+        51.9330019
+      ],
+      "homesGained": 849
+    },
+    {
+      "kind": "bus",
+      "lonLat": [
+        -2.0405281,
+        51.9016046
+      ],
+      "homesGained": 467
+    },
+    {
+      "kind": "bus",
+      "lonLat": [
+        -2.1329966,
+        51.8673211
+      ],
+      "homesGained": 447
+    }
+  ],
+  "needWeightedGpSites": [
+    {
+      "lonLat": [
+        -2.1134242,
+        51.9026862
+      ],
+      "homesGained": 5481,
+      "needGained": 3595
+    },
+    {
+      "lonLat": [
+        -2.1168479,
+        51.888754
+      ],
+      "homesGained": 4741,
+      "needGained": 2459
+    },
+    {
+      "lonLat": [
+        -2.0604785,
+        51.9014179
+      ],
+      "homesGained": 4353,
+      "needGained": 1866
+    }
+  ],
+  "bestSingleChange": {
+    "kind": "gp",
+    "lonLat": [
+      -2.1134242,
+      51.9026862
+    ],
+    "homesGained": 5481,
+    "scoreBefore": 74.2,
+    "scoreAfter": 76.6
+  }
+}

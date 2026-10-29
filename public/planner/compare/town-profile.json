@@ -1,0 +1,1319 @@
+{
+  "plan": "town-profile.json",
+  "ranAt": "2026-10-29T11:09:56.487Z",
+  "towns": {
+    "worcester": {
+      "profile": {
+        "areas": 64,
+        "residents": 103863,
+        "figures": {
+          "imdScore": {
+            "mean": 19.1,
+            "min": 3.27,
+            "max": 81,
+            "areas": 64
+          },
+          "incomeAfterHousing": {
+            "mean": 32000,
+            "min": 23900,
+            "max": 39000,
+            "areas": 64
+          },
+          "childPoverty": {
+            "mean": 0.252,
+            "min": 0.102,
+            "max": 0.479,
+            "areas": 64
+          },
+          "claimantRate": {
+            "mean": 0.0337,
+            "min": 0.003,
+            "max": 0.097,
+            "areas": 64
+          },
+          "noQualifications": {
+            "mean": 0.176,
+            "min": 0.066,
+            "max": 0.354,
+            "areas": 64
+          },
+          "degree": {
+            "mean": 0.335,
+            "min": 0.144,
+            "max": 0.489,
+            "areas": 64
+          },
+          "lifeExpectancy": {
+            "mean": 81,
+            "min": 76.5,
+            "max": 85.1,
+            "areas": 64
+          },
+          "healthyLifeExpectancy": {
+            "mean": 65.7,
+            "min": 55.3,
+            "max": 71.6,
+            "areas": 64
+          },
+          "deathsUnder75": {
+            "mean": 101,
+            "min": 60.2,
+            "max": 180,
+            "areas": 64
+          },
+          "selfHarmAdmissions": {
+            "mean": 82.1,
+            "min": 43,
+            "max": 132,
+            "areas": 64
+          },
+          "alcoholAdmissions": {
+            "mean": 106,
+            "min": 77.4,
+            "max": 142,
+            "areas": 64
+          },
+          "year6Obesity": {
+            "mean": 22,
+            "min": 13.8,
+            "max": 31,
+            "areas": 64
+          },
+          "badHealth": {
+            "mean": 0.0479,
+            "min": 0.0196,
+            "max": 0.113,
+            "areas": 64
+          },
+          "gp_depression": {
+            "mean": 17,
+            "min": 12.4,
+            "max": 18.9,
+            "areas": 64
+          },
+          "no2": {
+            "mean": 7.48,
+            "min": 5.27,
+            "max": 9.89,
+            "areas": 64
+          },
+          "pm25": {
+            "mean": 6.44,
+            "min": 6.07,
+            "max": 6.8,
+            "areas": 64
+          },
+          "fuelPoverty": {
+            "mean": 13.9,
+            "min": 5.61,
+            "max": 19.9,
+            "areas": 64
+          },
+          "overcrowded": {
+            "mean": 0.0261,
+            "min": 0.003,
+            "max": 0.08,
+            "areas": 64
+          },
+          "privateRent": {
+            "mean": 0.206,
+            "min": 0.043,
+            "max": 0.679,
+            "areas": 64
+          },
+          "socialRent": {
+            "mean": 0.162,
+            "min": 0.006,
+            "max": 0.705,
+            "areas": 64
+          },
+          "medianPrice": {
+            "mean": 257000,
+            "min": 124000,
+            "max": 413000,
+            "areas": 64
+          },
+          "noCar": {
+            "mean": 0.198,
+            "min": 0.0241,
+            "max": 0.612,
+            "areas": 64
+          },
+          "carCommute2021": {
+            "mean": 0.761,
+            "min": 0.416,
+            "max": 0.897,
+            "areas": 64
+          },
+          "cycleCommute2021": {
+            "mean": 0.0348,
+            "min": 0.0148,
+            "max": 0.057,
+            "areas": 64
+          },
+          "walkCommute2021": {
+            "mean": 0.151,
+            "min": 0.0406,
+            "max": 0.371,
+            "areas": 64
+          },
+          "cycleGoDutch": {
+            "mean": 0.237,
+            "min": 0.175,
+            "max": 0.281,
+            "areas": 62
+          },
+          "workUnder5km": {
+            "mean": 0.36,
+            "min": 0.233,
+            "max": 0.573,
+            "areas": 64
+          },
+          "over65": {
+            "mean": 0.176,
+            "min": 0.0461,
+            "max": 0.351,
+            "areas": 64
+          },
+          "livingAlone66": {
+            "mean": 0.122,
+            "min": 0.0522,
+            "max": 0.251,
+            "areas": 64
+          },
+          "carers": {
+            "mean": 0.082,
+            "min": 0.038,
+            "max": 0.119,
+            "areas": 64
+          },
+          "disabled": {
+            "mean": 0.175,
+            "min": 0.105,
+            "max": 0.27,
+            "areas": 64
+          },
+          "bornAbroad": {
+            "mean": 0.128,
+            "min": 0.0383,
+            "max": 0.343,
+            "areas": 64
+          },
+          "crimePer1000Day": {
+            "mean": 70.1,
+            "min": 14.6,
+            "max": 323,
+            "areas": 64
+          },
+          "violencePer1000Day": {
+            "mean": 27.2,
+            "min": 4.3,
+            "max": 106,
+            "areas": 64
+          },
+          "floodZone3Share": {
+            "mean": 0.0122,
+            "min": 0,
+            "max": 0.205,
+            "areas": 64
+          },
+          "goodDay": {
+            "mean": 0.413,
+            "min": 0,
+            "max": 0.964,
+            "areas": 64
+          },
+          "gpMinutes": {
+            "mean": 14.9,
+            "min": 5.17,
+            "max": 29.4,
+            "areas": 64
+          },
+          "greenMinutes": {
+            "mean": 3.92,
+            "min": 2.06,
+            "max": 8.04,
+            "areas": 64
+          },
+          "foodMinutes": {
+            "mean": 5.75,
+            "min": 1.8,
+            "max": 13.4,
+            "areas": 64
+          }
+        }
+      },
+      "council": {
+        "businessRates": {
+          "properties": 3703,
+          "medianShopRateableValue": 10000,
+          "postcodeDistricts": [
+            "WR1",
+            "WR2",
+            "WR3",
+            "WR4",
+            "WR5"
+          ]
+        },
+        "childPoverty": {
+          "childPoverty": 0.265
+        },
+        "commuteFlows": {
+          "topDestinations": [
+            {
+              "place": "within town",
+              "share": 0.838
+            },
+            {
+              "place": "Stratford-on-Avon",
+              "share": 0.016
+            },
+            {
+              "place": "Bromsgrove",
+              "share": 0.015
+            },
+            {
+              "place": "Tewkesbury",
+              "share": 0.015
+            },
+            {
+              "place": "Birmingham",
+              "share": 0.015
+            },
+            {
+              "place": "Wyre Forest",
+              "share": 0.014
+            },
+            {
+              "place": "Herefordshire",
+              "share": 0.013
+            },
+            {
+              "place": "Redditch",
+              "share": 0.011
+            },
+            {
+              "place": "Cotswold",
+              "share": 0.009
+            },
+            {
+              "place": "Cheltenham",
+              "share": 0.008
+            },
+            {
+              "place": "Dudley",
+              "share": 0.006
+            },
+            {
+              "place": "Gloucester",
+              "share": 0.005
+            }
+          ]
+        },
+        "population": {
+          "population2011": 98679,
+          "population": 106671,
+          "year": 2024,
+          "populationChange": 0.081,
+          "childrenChange": -0.006,
+          "over65Change": 0.319
+        },
+        "riverHealth": {
+          "overflows": 13,
+          "spills": 234,
+          "spillHours": 1742,
+          "severnSpillHours": 1230
+        },
+        "wellbeing": {
+          "lifeSatisfaction": {
+            "2012": 7.51,
+            "2013": 7.03,
+            "2014": 7.5,
+            "2015": 7.65,
+            "2016": 7.52,
+            "2017": 7.75,
+            "2018": 7.62,
+            "2019": 7.64,
+            "2020": 7.57,
+            "2021": 7.16,
+            "2022": 7.62,
+            "2023": 7.5
+          },
+          "lifeSatisfactionEngland": {
+            "2012": 7.41,
+            "2013": 7.44,
+            "2014": 7.5,
+            "2015": 7.6,
+            "2016": 7.64,
+            "2017": 7.67,
+            "2018": 7.68,
+            "2019": 7.71,
+            "2020": 7.65,
+            "2021": 7.38,
+            "2022": 7.55,
+            "2023": 7.44
+          },
+          "worthwhile": {
+            "2012": 7.62,
+            "2013": 7.67,
+            "2014": 7.94,
+            "2015": 7.48,
+            "2016": 7.86,
+            "2017": 7.54,
+            "2018": 7.76,
+            "2019": 7.69,
+            "2020": 7.97,
+            "2021": 7.67,
+            "2022": 7.5,
+            "2023": 7.99
+          },
+          "worthwhileEngland": {
+            "2012": 7.66,
+            "2013": 7.69,
+            "2014": 7.74,
+            "2015": 7.82,
+            "2016": 7.83,
+            "2017": 7.86,
+            "2018": 7.88,
+            "2019": 7.88,
+            "2020": 7.86,
+            "2021": 7.71,
+            "2022": 7.78,
+            "2023": 7.73
+          },
+          "happiness": {
+            "2012": 7.47,
+            "2013": 7.48,
+            "2014": 7.43,
+            "2015": 7.28,
+            "2016": 7.12,
+            "2017": 7.42,
+            "2018": 7.48,
+            "2019": 7.14,
+            "2020": 7.58,
+            "2021": 7.51,
+            "2022": 7.44,
+            "2023": 7.5
+          },
+          "happinessEngland": {
+            "2012": 7.29,
+            "2013": 7.29,
+            "2014": 7.38,
+            "2015": 7.46,
+            "2016": 7.47,
+            "2017": 7.51,
+            "2018": 7.52,
+            "2019": 7.56,
+            "2020": 7.47,
+            "2021": 7.31,
+            "2022": 7.45,
+            "2023": 7.38
+          },
+          "anxiety": {
+            "2012": 3.27,
+            "2013": 2.77,
+            "2014": 2.13,
+            "2015": 2.78,
+            "2016": 3.15,
+            "2017": 3.31,
+            "2018": 2.62,
+            "2019": 2.97,
+            "2020": 2.85,
+            "2021": 3.11,
+            "2022": 3.07,
+            "2023": 3.85
+          },
+          "anxietyEngland": {
+            "2012": 3.14,
+            "2013": 3.04,
+            "2014": 2.93,
+            "2015": 2.86,
+            "2016": 2.87,
+            "2017": 2.91,
+            "2018": 2.9,
+            "2019": 2.87,
+            "2020": 3.04,
+            "2021": 3.31,
+            "2022": 3.13,
+            "2023": 3.24
+          }
+        }
+      }
+    },
+    "gloucester": {
+      "profile": {
+        "areas": 82,
+        "residents": 132416,
+        "figures": {
+          "imdScore": {
+            "mean": 21.5,
+            "min": 2,
+            "max": 68.7,
+            "areas": 82
+          },
+          "incomeAfterHousing": {
+            "mean": 32500,
+            "min": 26400,
+            "max": 36900,
+            "areas": 82
+          },
+          "childPoverty": {
+            "mean": 0.259,
+            "min": 0.101,
+            "max": 0.418,
+            "areas": 82
+          },
+          "claimantRate": {
+            "mean": 0.0342,
+            "min": 0.005,
+            "max": 0.101,
+            "areas": 82
+          },
+          "noQualifications": {
+            "mean": 0.182,
+            "min": 0.08,
+            "max": 0.325,
+            "areas": 82
+          },
+          "degree": {
+            "mean": 0.274,
+            "min": 0.162,
+            "max": 0.422,
+            "areas": 82
+          },
+          "lifeExpectancy": {
+            "mean": 80,
+            "min": 74.7,
+            "max": 84.9,
+            "areas": 82
+          },
+          "healthyLifeExpectancy": {
+            "mean": 64.6,
+            "min": 58.8,
+            "max": 71.3,
+            "areas": 82
+          },
+          "deathsUnder75": {
+            "mean": 118,
+            "min": 60.9,
+            "max": 195,
+            "areas": 82
+          },
+          "selfHarmAdmissions": {
+            "mean": 151,
+            "min": 62.4,
+            "max": 307,
+            "areas": 82
+          },
+          "alcoholAdmissions": {
+            "mean": 119,
+            "min": 67.4,
+            "max": 199,
+            "areas": 82
+          },
+          "year6Obesity": {
+            "mean": 24.3,
+            "min": 16.3,
+            "max": 32,
+            "areas": 82
+          },
+          "badHealth": {
+            "mean": 0.0493,
+            "min": 0.0227,
+            "max": 0.107,
+            "areas": 82
+          },
+          "gp_depression": {
+            "mean": 12.7,
+            "min": 9.25,
+            "max": 17.9,
+            "areas": 82
+          },
+          "no2": {
+            "mean": 8.59,
+            "min": 6.36,
+            "max": 10.8,
+            "areas": 82
+          },
+          "pm25": {
+            "mean": 6.57,
+            "min": 6.12,
+            "max": 6.83,
+            "areas": 82
+          },
+          "fuelPoverty": {
+            "mean": 8.75,
+            "min": 3.98,
+            "max": 15.8,
+            "areas": 82
+          },
+          "overcrowded": {
+            "mean": 0.0353,
+            "min": 0.003,
+            "max": 0.135,
+            "areas": 82
+          },
+          "privateRent": {
+            "mean": 0.21,
+            "min": 0.059,
+            "max": 0.622,
+            "areas": 82
+          },
+          "socialRent": {
+            "mean": 0.135,
+            "min": 0.003,
+            "max": 0.659,
+            "areas": 82
+          },
+          "medianPrice": {
+            "mean": 252000,
+            "min": 135000,
+            "max": 383000,
+            "areas": 82
+          },
+          "noCar": {
+            "mean": 0.197,
+            "min": 0.0443,
+            "max": 0.618,
+            "areas": 82
+          },
+          "carCommute2021": {
+            "mean": 0.769,
+            "min": 0.391,
+            "max": 0.895,
+            "areas": 82
+          },
+          "cycleCommute2021": {
+            "mean": 0.0437,
+            "min": 0.0187,
+            "max": 0.0759,
+            "areas": 82
+          },
+          "walkCommute2021": {
+            "mean": 0.118,
+            "min": 0.0321,
+            "max": 0.357,
+            "areas": 82
+          },
+          "cycleGoDutch": {
+            "mean": 0.288,
+            "min": 0.199,
+            "max": 0.35,
+            "areas": 74
+          },
+          "workUnder5km": {
+            "mean": 0.347,
+            "min": 0.188,
+            "max": 0.526,
+            "areas": 82
+          },
+          "over65": {
+            "mean": 0.167,
+            "min": 0.0234,
+            "max": 0.369,
+            "areas": 82
+          },
+          "livingAlone66": {
+            "mean": 0.114,
+            "min": 0.0126,
+            "max": 0.248,
+            "areas": 82
+          },
+          "carers": {
+            "mean": 0.0844,
+            "min": 0.034,
+            "max": 0.13,
+            "areas": 82
+          },
+          "disabled": {
+            "mean": 0.174,
+            "min": 0.107,
+            "max": 0.269,
+            "areas": 82
+          },
+          "bornAbroad": {
+            "mean": 0.144,
+            "min": 0.0404,
+            "max": 0.464,
+            "areas": 82
+          },
+          "crimePer1000Day": {
+            "mean": 74.9,
+            "min": 4.4,
+            "max": 336,
+            "areas": 82
+          },
+          "violencePer1000Day": {
+            "mean": 30,
+            "min": 0,
+            "max": 99.2,
+            "areas": 82
+          },
+          "floodZone3Share": {
+            "mean": 0.037,
+            "min": 0,
+            "max": 0.39,
+            "areas": 82
+          },
+          "goodDay": {
+            "mean": 0.363,
+            "min": 0,
+            "max": 1,
+            "areas": 82
+          },
+          "gpMinutes": {
+            "mean": 16.1,
+            "min": 5.54,
+            "max": 31.5,
+            "areas": 82
+          },
+          "greenMinutes": {
+            "mean": 3.82,
+            "min": 1.5,
+            "max": 9.33,
+            "areas": 82
+          },
+          "foodMinutes": {
+            "mean": 6.34,
+            "min": 1.66,
+            "max": 16.7,
+            "areas": 82
+          }
+        }
+      },
+      "council": {
+        "businessRates": {
+          "properties": 5379,
+          "medianShopRateableValue": 12750,
+          "postcodeDistricts": [
+            "GL1",
+            "GL2",
+            "GL3",
+            "GL4"
+          ]
+        },
+        "childPoverty": {
+          "childPoverty": 0.263
+        },
+        "commuteFlows": {
+          "topDestinations": [
+            {
+              "place": "within town",
+              "share": 0.854
+            },
+            {
+              "place": "Cheltenham",
+              "share": 0.053
+            },
+            {
+              "place": "Cotswold",
+              "share": 0.017
+            },
+            {
+              "place": "South Gloucestershire",
+              "share": 0.016
+            },
+            {
+              "place": "Herefordshire",
+              "share": 0.009
+            },
+            {
+              "place": "Bristol",
+              "share": 0.008
+            },
+            {
+              "place": "Monmouthshire",
+              "share": 0.006
+            },
+            {
+              "place": "Wychavon",
+              "share": 0.004
+            },
+            {
+              "place": "Wiltshire",
+              "share": 0.003
+            },
+            {
+              "place": "Swindon",
+              "share": 0.003
+            },
+            {
+              "place": "Malvern Hills",
+              "share": 0.002
+            },
+            {
+              "place": "Worcester",
+              "share": 0.002
+            }
+          ]
+        },
+        "population": {
+          "population2011": 121921,
+          "population": 138598,
+          "year": 2024,
+          "populationChange": 0.137,
+          "childrenChange": 0.091,
+          "over65Change": 0.287
+        },
+        "riverHealth": {
+          "overflows": 13,
+          "spills": 136,
+          "spillHours": 852,
+          "severnSpillHours": 423
+        },
+        "wellbeing": {
+          "lifeSatisfaction": {
+            "2012": 7.28,
+            "2013": 7.54,
+            "2014": 7.37,
+            "2015": 7.55,
+            "2016": 7.77,
+            "2017": 7.76,
+            "2018": 7.75,
+            "2019": 7.82,
+            "2020": 7.71,
+            "2021": 7.16,
+            "2022": 7.39,
+            "2023": 7.44
+          },
+          "lifeSatisfactionEngland": {
+            "2012": 7.41,
+            "2013": 7.44,
+            "2014": 7.5,
+            "2015": 7.6,
+            "2016": 7.64,
+            "2017": 7.67,
+            "2018": 7.68,
+            "2019": 7.71,
+            "2020": 7.65,
+            "2021": 7.38,
+            "2022": 7.55,
+            "2023": 7.44
+          },
+          "worthwhile": {
+            "2012": 7.72,
+            "2013": 7.59,
+            "2014": 7.59,
+            "2015": 7.7,
+            "2016": 7.81,
+            "2017": 7.79,
+            "2018": 7.77,
+            "2019": 7.97,
+            "2020": 7.61,
+            "2021": 7.56,
+            "2022": 7.63,
+            "2023": 7.63
+          },
+          "worthwhileEngland": {
+            "2012": 7.66,
+            "2013": 7.69,
+            "2014": 7.74,
+            "2015": 7.82,
+            "2016": 7.83,
+            "2017": 7.86,
+            "2018": 7.88,
+            "2019": 7.88,
+            "2020": 7.86,
+            "2021": 7.71,
+            "2022": 7.78,
+            "2023": 7.73
+          },
+          "happiness": {
+            "2012": 7.07,
+            "2013": 7.11,
+            "2014": 7.26,
+            "2015": 7.53,
+            "2016": 7.38,
+            "2017": 7.29,
+            "2018": 7.22,
+            "2019": 7.5,
+            "2020": 7.49,
+            "2021": 7.11,
+            "2022": 7.58,
+            "2023": 7.38
+          },
+          "happinessEngland": {
+            "2012": 7.29,
+            "2013": 7.29,
+            "2014": 7.38,
+            "2015": 7.46,
+            "2016": 7.47,
+            "2017": 7.51,
+            "2018": 7.52,
+            "2019": 7.56,
+            "2020": 7.47,
+            "2021": 7.31,
+            "2022": 7.45,
+            "2023": 7.38
+          },
+          "anxiety": {
+            "2012": 3.06,
+            "2013": 2.81,
+            "2014": 2.96,
+            "2015": 2.6,
+            "2016": 2.72,
+            "2017": 2.76,
+            "2018": 2.78,
+            "2019": 2.82,
+            "2020": 3.04,
+            "2021": 3.2,
+            "2022": 2.46,
+            "2023": 2.36
+          },
+          "anxietyEngland": {
+            "2012": 3.14,
+            "2013": 3.04,
+            "2014": 2.93,
+            "2015": 2.86,
+            "2016": 2.87,
+            "2017": 2.91,
+            "2018": 2.9,
+            "2019": 2.87,
+            "2020": 3.04,
+            "2021": 3.31,
+            "2022": 3.13,
+            "2023": 3.24
+          }
+        }
+      }
+    },
+    "cheltenham": {
+      "profile": {
+        "areas": 77,
+        "residents": 118827,
+        "figures": {
+          "imdScore": {
+            "mean": 13,
+            "min": 1.05,
+            "max": 55.3,
+            "areas": 77
+          },
+          "incomeAfterHousing": {
+            "mean": 36700,
+            "min": 29100,
+            "max": 44300,
+            "areas": 77
+          },
+          "childPoverty": {
+            "mean": 0.19,
+            "min": 0.038,
+            "max": 0.409,
+            "areas": 77
+          },
+          "claimantRate": {
+            "mean": 0.0266,
+            "min": 0.004,
+            "max": 0.072,
+            "areas": 77
+          },
+          "noQualifications": {
+            "mean": 0.136,
+            "min": 0.056,
+            "max": 0.298,
+            "areas": 77
+          },
+          "degree": {
+            "mean": 0.428,
+            "min": 0.217,
+            "max": 0.627,
+            "areas": 77
+          },
+          "lifeExpectancy": {
+            "mean": 81.6,
+            "min": 76.9,
+            "max": 84.9,
+            "areas": 77
+          },
+          "healthyLifeExpectancy": {
+            "mean": 68.1,
+            "min": 59.5,
+            "max": 75,
+            "areas": 77
+          },
+          "deathsUnder75": {
+            "mean": 95.6,
+            "min": 62,
+            "max": 151,
+            "areas": 77
+          },
+          "selfHarmAdmissions": {
+            "mean": 108,
+            "min": 48.9,
+            "max": 228,
+            "areas": 77
+          },
+          "alcoholAdmissions": {
+            "mean": 113,
+            "min": 70.8,
+            "max": 165,
+            "areas": 77
+          },
+          "year6Obesity": {
+            "mean": 16.6,
+            "min": 5.88,
+            "max": 31.4,
+            "areas": 77
+          },
+          "badHealth": {
+            "mean": 0.0403,
+            "min": 0.0106,
+            "max": 0.0913,
+            "areas": 77
+          },
+          "gp_depression": {
+            "mean": 11.3,
+            "min": 8.99,
+            "max": 20.8,
+            "areas": 77
+          },
+          "no2": {
+            "mean": 7.89,
+            "min": 5.45,
+            "max": 9.53,
+            "areas": 77
+          },
+          "pm25": {
+            "mean": 6.47,
+            "min": 6.04,
+            "max": 6.66,
+            "areas": 77
+          },
+          "fuelPoverty": {
+            "mean": 8.96,
+            "min": 6.2,
+            "max": 14.8,
+            "areas": 77
+          },
+          "overcrowded": {
+            "mean": 0.0197,
+            "min": 0,
+            "max": 0.068,
+            "areas": 77
+          },
+          "privateRent": {
+            "mean": 0.223,
+            "min": 0.059,
+            "max": 0.65,
+            "areas": 77
+          },
+          "socialRent": {
+            "mean": 0.125,
+            "min": 0.002,
+            "max": 0.57,
+            "areas": 77
+          },
+          "medianPrice": {
+            "mean": 361000,
+            "min": 166000,
+            "max": 753000,
+            "areas": 77
+          },
+          "noCar": {
+            "mean": 0.196,
+            "min": 0.0699,
+            "max": 0.456,
+            "areas": 77
+          },
+          "carCommute2021": {
+            "mean": 0.682,
+            "min": 0.45,
+            "max": 0.846,
+            "areas": 77
+          },
+          "cycleCommute2021": {
+            "mean": 0.0638,
+            "min": 0.0374,
+            "max": 0.114,
+            "areas": 77
+          },
+          "walkCommute2021": {
+            "mean": 0.191,
+            "min": 0.0753,
+            "max": 0.408,
+            "areas": 77
+          },
+          "cycleGoDutch": {
+            "mean": 0.287,
+            "min": 0.228,
+            "max": 0.354,
+            "areas": 73
+          },
+          "workUnder5km": {
+            "mean": 0.321,
+            "min": 0.202,
+            "max": 0.503,
+            "areas": 77
+          },
+          "over65": {
+            "mean": 0.193,
+            "min": 0.0555,
+            "max": 0.379,
+            "areas": 77
+          },
+          "livingAlone66": {
+            "mean": 0.138,
+            "min": 0.0433,
+            "max": 0.282,
+            "areas": 77
+          },
+          "carers": {
+            "mean": 0.0746,
+            "min": 0.041,
+            "max": 0.116,
+            "areas": 77
+          },
+          "disabled": {
+            "mean": 0.16,
+            "min": 0.093,
+            "max": 0.268,
+            "areas": 77
+          },
+          "bornAbroad": {
+            "mean": 0.146,
+            "min": 0.0642,
+            "max": 0.309,
+            "areas": 77
+          },
+          "crimePer1000Day": {
+            "mean": 65.6,
+            "min": 12.1,
+            "max": 216,
+            "areas": 77
+          },
+          "violencePer1000Day": {
+            "mean": 20.8,
+            "min": 1.6,
+            "max": 74.4,
+            "areas": 77
+          },
+          "floodZone3Share": {
+            "mean": 0.0222,
+            "min": 0,
+            "max": 0.277,
+            "areas": 77
+          },
+          "goodDay": {
+            "mean": 0.309,
+            "min": 0,
+            "max": 0.995,
+            "areas": 77
+          },
+          "gpMinutes": {
+            "mean": 18.2,
+            "min": 4.63,
+            "max": 35.9,
+            "areas": 77
+          },
+          "greenMinutes": {
+            "mean": 4.18,
+            "min": 1.67,
+            "max": 12.5,
+            "areas": 77
+          },
+          "foodMinutes": {
+            "mean": 5.91,
+            "min": 2.12,
+            "max": 13.9,
+            "areas": 77
+          }
+        }
+      },
+      "council": {
+        "businessRates": {
+          "properties": 4809,
+          "medianShopRateableValue": 14750,
+          "postcodeDistricts": [
+            "GL50",
+            "GL51",
+            "GL52",
+            "GL53"
+          ]
+        },
+        "childPoverty": {
+          "childPoverty": 0.197
+        },
+        "commuteFlows": {
+          "topDestinations": [
+            {
+              "place": "within town",
+              "share": 0.843
+            },
+            {
+              "place": "Gloucester",
+              "share": 0.053
+            },
+            {
+              "place": "Stroud",
+              "share": 0.019
+            },
+            {
+              "place": "West Oxfordshire",
+              "share": 0.011
+            },
+            {
+              "place": "Swindon",
+              "share": 0.009
+            },
+            {
+              "place": "Wychavon",
+              "share": 0.009
+            },
+            {
+              "place": "Wiltshire",
+              "share": 0.008
+            },
+            {
+              "place": "Forest of Dean",
+              "share": 0.005
+            },
+            {
+              "place": "South Gloucestershire",
+              "share": 0.004
+            },
+            {
+              "place": "Stratford-on-Avon",
+              "share": 0.004
+            },
+            {
+              "place": "Malvern Hills",
+              "share": 0.003
+            },
+            {
+              "place": "Worcester",
+              "share": 0.003
+            }
+          ]
+        },
+        "population": {
+          "population2011": 115645,
+          "population": 121739,
+          "year": 2024,
+          "populationChange": 0.053,
+          "childrenChange": 0.076,
+          "over65Change": 0.241
+        },
+        "riverHealth": {
+          "overflows": 7,
+          "spills": 87,
+          "spillHours": 644,
+          "severnSpillHours": 0
+        },
+        "wellbeing": {
+          "lifeSatisfaction": {
+            "2012": 7.74,
+            "2013": 7.64,
+            "2014": 7.31,
+            "2015": 7.46,
+            "2016": 7.81,
+            "2017": 7.34,
+            "2018": 7.73,
+            "2019": 7.61,
+            "2020": 7.78,
+            "2021": 7.54,
+            "2022": 7.58,
+            "2023": 7.41
+          },
+          "lifeSatisfactionEngland": {
+            "2012": 7.41,
+            "2013": 7.44,
+            "2014": 7.5,
+            "2015": 7.6,
+            "2016": 7.64,
+            "2017": 7.67,
+            "2018": 7.68,
+            "2019": 7.71,
+            "2020": 7.65,
+            "2021": 7.38,
+            "2022": 7.55,
+            "2023": 7.44
+          },
+          "worthwhile": {
+            "2012": 7.77,
+            "2013": 7.97,
+            "2014": 7.66,
+            "2015": 7.63,
+            "2016": 7.93,
+            "2017": 7.44,
+            "2018": 7.84,
+            "2019": 7.68,
+            "2020": 7.58,
+            "2021": 7.43,
+            "2022": 7.33,
+            "2023": 7.73
+          },
+          "worthwhileEngland": {
+            "2012": 7.66,
+            "2013": 7.69,
+            "2014": 7.74,
+            "2015": 7.82,
+            "2016": 7.83,
+            "2017": 7.86,
+            "2018": 7.88,
+            "2019": 7.88,
+            "2020": 7.86,
+            "2021": 7.71,
+            "2022": 7.78,
+            "2023": 7.73
+          },
+          "happiness": {
+            "2012": 7.47,
+            "2013": 7.3,
+            "2014": 7.57,
+            "2015": 7.35,
+            "2016": 7.48,
+            "2017": 7.17,
+            "2018": 7.41,
+            "2019": 7.23,
+            "2020": 7.61,
+            "2021": 7.32,
+            "2022": 7.27,
+            "2023": 7.73
+          },
+          "happinessEngland": {
+            "2012": 7.29,
+            "2013": 7.29,
+            "2014": 7.38,
+            "2015": 7.46,
+            "2016": 7.47,
+            "2017": 7.51,
+            "2018": 7.52,
+            "2019": 7.56,
+            "2020": 7.47,
+            "2021": 7.31,
+            "2022": 7.45,
+            "2023": 7.38
+          },
+          "anxiety": {
+            "2012": 2.94,
+            "2013": 2.95,
+            "2014": 3.09,
+            "2015": 2.8,
+            "2016": 3.23,
+            "2017": 3.13,
+            "2018": 2.77,
+            "2019": 3.03,
+            "2020": 3.18,
+            "2021": 3.38,
+            "2022": 2.72,
+            "2023": 3.17
+          },
+          "anxietyEngland": {
+            "2012": 3.14,
+            "2013": 3.04,
+            "2014": 2.93,
+            "2015": 2.86,
+            "2016": 2.87,
+            "2017": 2.91,
+            "2018": 2.9,
+            "2019": 2.87,
+            "2020": 3.04,
+            "2021": 3.31,
+            "2022": 3.13,
+            "2023": 3.24
+          }
+        }
+      }
+    }
+  },
+  "question": "Cheltenham in one line per figure: the same measures for every town, as resident-weighted means with the lowest and highest neighbourhood."
+}

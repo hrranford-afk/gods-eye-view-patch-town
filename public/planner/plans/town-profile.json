@@ -1,6 +1,6 @@
 {
   "question": "{town} in one line per figure: the same measures for every town, as resident-weighted means with the lowest and highest neighbourhood.",
-  "notes": "Only the council's own neighbourhoods ('{town} ' prefix). Health outcomes are per MSOA, child poverty per ward, air per 1 km.",
+  "notes": "Only the council's own neighbourhoods ('{town} ' prefix). Health outcomes are per MSOA, child poverty per ward, air per 1 km. Growth by age is read from the council figures (population), not averaged: one new estate can grow thirtyfold from a tiny base.",
   "steps": [
     {
       "tool": "travel",
@@ -124,9 +124,6 @@
           "cycleGoDutch",
           "workUnder5km",
           "over65",
-          "over65Change",
-          "childrenChange",
-          "populationChange",
           "livingAlone66",
           "carers",
           "disabled",

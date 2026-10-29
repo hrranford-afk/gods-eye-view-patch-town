@@ -11,7 +11,9 @@
  * town, for sources that only give an address (business rates). `county`
  * is the county as Land Registry writes it (town names repeat: Worcester
  * Park). `osmExtract` is the Geofabrik extract and `busRegion` the Bus Open
- * Data region, for the PBF and GTFS fallbacks.
+ * Data region, for the PBF and GTFS fallbacks. `pctRegion` is the Propensity
+ * to Cycle region and `waterCompany` the sewerage company's sheet name in the
+ * storm overflow return.
  */
 export const TOWNS = Object.freeze({
   worcester: Object.freeze({
@@ -27,6 +29,8 @@ export const TOWNS = Object.freeze({
     educationAuthority: 'Worcestershire',
     osmExtract: 'europe/united-kingdom/england/worcestershire',
     busRegion: 'west_midlands',
+    pctRegion: 'hereford-and-worcester',
+    waterCompany: 'Severn Trent Water',
   }),
   gloucester: Object.freeze({
     id: 'gloucester',
@@ -41,6 +45,8 @@ export const TOWNS = Object.freeze({
     postcodeDistricts: Object.freeze(['GL1', 'GL2', 'GL3', 'GL4']),
     osmExtract: 'europe/united-kingdom/england/gloucestershire',
     busRegion: 'south_west',
+    pctRegion: 'gloucestershire',
+    waterCompany: 'Severn Trent Water',
   }),
   cheltenham: Object.freeze({
     id: 'cheltenham',
@@ -55,6 +61,8 @@ export const TOWNS = Object.freeze({
     postcodeDistricts: Object.freeze(['GL50', 'GL51', 'GL52', 'GL53']),
     osmExtract: 'europe/united-kingdom/england/gloucestershire',
     busRegion: 'south_west',
+    pctRegion: 'gloucestershire',
+    waterCompany: 'Severn Trent Water',
   }),
   kidderminster: Object.freeze({
     id: 'kidderminster',

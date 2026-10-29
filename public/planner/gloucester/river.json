@@ -1,0 +1,121 @@
+{
+  "river": "River Severn",
+  "crossings": [
+    {
+      "name": "",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.25328,
+        51.86454
+      ]
+    },
+    {
+      "name": "Castle Meads Way",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.2574,
+        51.86259
+      ]
+    },
+    {
+      "name": "Maisemore Bridge",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.26771,
+        51.8886
+      ]
+    },
+    {
+      "name": "A40",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.26114,
+        51.87544
+      ]
+    },
+    {
+      "name": "A40",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.26801,
+        51.87446
+      ]
+    },
+    {
+      "name": "Westgate Street",
+      "walk": true,
+      "drive": true,
+      "lonLat": [
+        -2.25671,
+        51.86955
+      ]
+    }
+  ],
+  "walkCrossings": 6,
+  "driveCrossings": 5,
+  "banks": {
+    "west": {
+      "households": 1796,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 13
+        },
+        "school": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 15.9
+        },
+        "gp": {
+          "nearestAcrossRiver": 0.01,
+          "meanMinutes": 16.3
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 2.7
+        }
+      }
+    },
+    "east": {
+      "households": 71130,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 8.4
+        },
+        "school": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 8.9
+        },
+        "gp": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 18.5
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 3.5
+        }
+      }
+    }
+  },
+  "bestNewFootbridge": {
+    "from": [
+      -2.29132,
+      51.83588
+    ],
+    "to": [
+      -2.28973,
+      51.8358
+    ],
+    "spanM": 109,
+    "candidatesTried": 12,
+    "minutesSavedPerHousehold": 0,
+    "households": 74215,
+    "scoreBefore": 70.2,
+    "scoreAfter": 70.2
+  }
+}

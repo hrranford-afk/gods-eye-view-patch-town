@@ -78,6 +78,7 @@ _Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and
 | L19 | **Warndon & Elbury Park keeps coming up.** Around Windermere Drive (005A): half of children in low-income families (48%, against 24% expected for its deprivation), healthy life expectancy 59 (65 expected), Year 6 obesity 31%, self-harm admissions 132 (England = 100). With L16's crime and antisocial behaviour (003A), it's the first place to look closer. Dines Green & Grove Farm is the opposite: three years longer life than its deprivation predicts, cleaner air, less child obesity. Learn from it. | `plans/wave1-survey.json` |
 | L20 | **An ageing city that is barely making children.** Worcester grew 8% from 2011 to 2024 (98,679 to 106,671); people aged 65+ grew 32%, children 0–15 fell 0.6%. Homes, GPs and buses must plan for older residents first. Anxiety in Worcester (3.85 out of 10, 2022–23) was above England's (3.24), the highest in its 12-year series; one year, small sample. | `stats/population.json`, `stats/wellbeing.json` |
 | L21 | **The Severn takes Worcester's sewage on wet days.** 13 storm overflows in and around the city spilled 234 times for 1,742 hours in 2025; Bromwich Road treatment works alone spilled 68 times for 975 hours (about 41 days) into the Severn. Swimming or rowing downstream after rain is a health question. | `stats/riverHealth.json` |
+| L22 | **Beside its neighbours, Worcester is compact but tired.** Same 39 measures for Worcester, Gloucester and Cheltenham (`compare`). Worcester has the most homes with a good day within reach (41%, against 36% and 31%) and the shortest trip to a GP (15 min). But it is the only one losing children since 2011 (−0.6%, against +9% and +8%), has the most fuel poverty (14% of homes, against 9%), the most people on GP depression registers (17%, against 13% and 11%), the highest anxiety (3.85, against 2.36 and 3.17) and the most sewage spilled (1,742 hours, against 852 and 644). Cheltenham, richer (child poverty 19% against 25–26%), cycles almost twice as much (6.4% against 3.5%) and walks more; its children are the least obese (17% against 22–24%). Gloucester has the most self-harm admissions (151, England = 100; Worcester 82). Crime per resident + worker is similar in all three (66–75 per 1,000). | `public/planner/compare/town-profile.json` |
 | L13 | **Loneliness isn't about distance.** St John's (009E, around Henwick Road) and the Arboretum (007A) have a quarter of households as one person over 66 (expected ~12–13% for their deprivation), yet a meeting place is under 4 minutes' walk. What matters is whether those places suit older people. | `plans/survey.json` |
 | L14 | **Cycling follows distance to the centre, and it fell.** St John's (009C) and the Arboretum (007B), 1.1–1.5 km from the centre, cycle to work ~5.7% (above expected); Nunnery (010C), 2.1 km out and among the most deprived, 1.5%, down from 3.6% in 2011. Cycling fell in every neighbourhood looked at. | `plans/survey.json` |
 | L15 | **A good day within reach hinges on GP access** (r = −0.85 with GP minutes), and car-free households cluster where homes are cheaper (r = −0.75). | `plans/survey.json` |
@@ -165,6 +166,17 @@ DWP Stat-Xplore benefits, Landsat heat, Land Registry company ownership.
 
 **Not published:** Strava Metro (the council can apply), high street
 footfall, the local plan's site maps (PDF only), planning applications.
+
+### Other towns for context
+
+Gloucester and Cheltenham (twins, 9 miles apart) run through the same
+pipeline; `npm run planner -- compare worcester,gloucester,cheltenham
+public/planner/plans/town-profile.json` lines them up. Running them found
+five places the code still assumed Worcester (Land Registry county, school
+authority, cycling region, water company) and that Gloucestershire Police
+stopped sending crime data to police.uk in February 2026: crime now uses only
+months a force reported, scaled to a year. Next: places abroad on a common
+set of measures (see the ideas log).
 
 ## 3¾. What the full map shows (the survey)
 

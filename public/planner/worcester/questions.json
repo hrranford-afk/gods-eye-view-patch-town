@@ -504,6 +504,30 @@
         52.183
       ],
       "unlocks": "Storm overflow start/stop times (2025 detailed EDM), river use (rowing clubs, swimming spots), rainfall"
+    },
+    {
+      "id": "q40",
+      "question": "Why is fuel poverty in Worcester (14% of homes) so much higher than in Gloucester and Cheltenham (9%), at similar deprivation to Gloucester?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "compare",
+      "unlocks": "Energy certificates (EPC, needs a free account: Harry's call), house age and type (council tax bands), off-gas-grid homes"
+    },
+    {
+      "id": "q41",
+      "question": "Worcester has the most people on GP depression registers and the highest anxiety of the three towns, yet the fewest self-harm admissions. Is it more distress, or better recording and care?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "compare",
+      "unlocks": "Antidepressant prescribing per practice (NHSBSA), talking-therapy referrals, wellbeing in more years"
+    },
+    {
+      "id": "q42",
+      "question": "Why is Worcester the only one of the three losing children since 2011? Where did young families go?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "compare",
+      "unlocks": "Population by age per neighbourhood over time, new-build homes by size, school rolls, house prices against local wages"
     }
   ]
 }

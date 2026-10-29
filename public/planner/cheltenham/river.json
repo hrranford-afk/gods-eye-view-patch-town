@@ -1,0 +1,61 @@
+{
+  "river": "River Chelt",
+  "crossings": [
+    {
+      "name": "",
+      "walk": true,
+      "drive": false,
+      "lonLat": [
+        -2.12507,
+        51.9197
+      ]
+    }
+  ],
+  "walkCrossings": 1,
+  "driveCrossings": 0,
+  "banks": {
+    "west": {
+      "households": 57521,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 6.1
+        },
+        "school": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 10
+        },
+        "gp": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 20.2
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 3.2
+        }
+      }
+    },
+    "east": {
+      "households": 6,
+      "services": {
+        "shop": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 120
+        },
+        "school": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 120
+        },
+        "gp": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 120
+        },
+        "bus": {
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 120
+        }
+      }
+    }
+  },
+  "bestNewFootbridge": null
+}
