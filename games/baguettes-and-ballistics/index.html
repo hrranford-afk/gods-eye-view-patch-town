@@ -1,4 +1,4 @@
-<title>Micro Precinct</title>
+<title>Baguettes &amp; Ballistics</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@500;700&display=swap">
@@ -38,7 +38,7 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 .blue .bar i { background: var(--blue); }
 .red .bar i { background: var(--red); margin-left: auto; }
 .mid { display: grid; justify-items: center; gap: 6px; }
-.bolts { font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 0 var(--ink); font-variant-numeric: tabular-nums; }
+.cereal { font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 0 var(--ink); font-variant-numeric: tabular-nums; }
 .pips { display: flex; gap: 6px; }
 .pips span { width: 14px; height: 14px; border-radius: 50%; background: #9a8f80; border: 2px solid var(--paper); }
 .toast { font-family: var(--display); font-size: 14px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); min-height: 18px; text-align: center; }
@@ -76,6 +76,7 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 }
 .card { max-width: 560px; display: grid; gap: 14px; text-align: center; justify-items: center; }
 .card h1 { font: 44px/1 var(--display); margin: 0; color: var(--gold); text-shadow: 0 4px 0 var(--ink); text-wrap: balance; }
+.card .sub { font: 14px var(--display); color: var(--paper); opacity: 0.8; letter-spacing: 0.06em; }
 .card p { margin: 0; font-size: 18px; line-height: 1.4; max-width: 46ch; }
 .card ul { margin: 0; padding: 0; list-style: none; font-size: 16px; line-height: 1.5; display: grid; gap: 2px; }
 .card .go { font: 24px var(--display); background: var(--blue); border-color: var(--paper); padding: 16px 30px; min-width: 200px; }
@@ -85,7 +86,7 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 
 <div class="hud">
   <div class="basebar blue"><b>YOUR TOY BOX</b><div class="bar"><i id="hpBlue"></i></div></div>
-  <div class="mid"><div class="bolts" id="bolts">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
+  <div class="mid"><div class="cereal" id="cereal">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
   <div class="basebar red"><b>ENEMY TOY BOX</b><div class="bar"><i id="hpRed"></i></div></div>
 </div>
 <div class="hint" id="hint">Drag on the left to drive</div>
@@ -93,23 +94,27 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 <div class="garage" id="garage" hidden></div>
 <div class="controls">
   <div class="row">
-    <button id="bDrones">Drones<small>25</small></button>
+    <button id="bTruck">Truck<small>15</small></button>
+    <button id="bDigger">Digger<small>20</small></button>
+    <button id="bDrones">Drones<small>20</small></button>
     <button id="bUpgrade" disabled>Upgrade<small id="upCost">—</small></button>
   </div>
   <div class="row">
-    <button id="bGun">Gun<small id="gunCost">20</small></button>
-    <button id="bRocket">Rocket<small id="rocketCost">35</small></button>
+    <button id="bGun">Gun<small id="gunCost">25</small></button>
+    <button id="bRocket">Rocket<small id="rocketCost">40</small></button>
     <button class="fire" id="bFire">FIRE</button>
   </div>
 </div>
 <div class="screen" id="start">
   <div class="card">
-    <h1>MICRO PRECINCT</h1>
-    <p>Tiny cars, big war on the kitchen table. Capture the bottle caps to earn bolts. Spend bolts on turrets, drones and new vehicles. Smash the red toy box.</p>
+    <h1>BAGUETTES &amp; BALLISTICS</h1>
+    <p class="sub">Mealtime Mayhem · Level 1 · Breakfast table</p>
+    <p>Tiny cars, big war over breakfast. Diggers dig cereal out of spilled bowls, dump trucks haul it home. Spend it on turrets, cars and more trucks. Wrecks spill cereal: drive over it to scoop it up. Smash the red toy box.</p>
     <ul>
       <li><b>Drive:</b> drag anywhere on the left half (or WASD)</li>
       <li><b>Fire:</b> hold FIRE (or Space). It aims for you</li>
-      <li><b>Build:</b> Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)</li>
+      <li><b>Build:</b> Truck (T), Digger (G), Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)</li>
+      <li><b>Haul:</b> trucks unload at your toy box or any bottle cap you hold</li>
       <li><b>Swap vehicle:</b> drive home to your toy box</li>
     </ul>
     <button class="go" id="play">PLAY</button>
@@ -222,11 +227,8 @@ for (const p of patches) {
     const m = mesh(new THREE.CircleGeometry(p.r, 40), mat(0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }), p.x, 0.03, p.z);
     m.rotation.x = -Math.PI / 2; m.castShadow = false;
   } else {
-    for (let i = 0; i < 70; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * p.r;
-      const loop = mesh(new THREE.TorusGeometry(0.55, 0.28, 6, 12), mat([0xff5a5f, 0xffd166, 0x06d6a0, 0x9b5de5][i % 4]), p.x + Math.cos(a) * r, 0.3, p.z + Math.sin(a) * r);
-      loop.rotation.set(Math.PI / 2 + Math.random() * 0.5, Math.random() * 3, 0);
-    }
+    const m = mesh(new THREE.CircleGeometry(p.r, 40), mat(0xe8c89a, { transparent: true, opacity: 0.55 }), p.x, 0.03, p.z);
+    m.rotation.x = -Math.PI / 2; m.castShadow = false;
   }
 }
 const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r)?.kind;
@@ -298,6 +300,30 @@ function buildModel(kind, team, scale = 1) {
     body.rotation.z = -Math.PI / 2;
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(1.2, 0.15, 1), mat(dark), -0.6, 1.1, z, g);
     mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 10), mat(0x7cfffb, { emissive: 0x2ad1cc }), -1.7, 1.2, 0, g).rotation.z = Math.PI / 2;
+  } else if (kind === 'truck') {
+    mesh(new THREE.BoxGeometry(1.4, 1.4, 1.9), mat(c), 1.3, 1.3, 0, g);
+    mesh(new THREE.BoxGeometry(0.2, 0.6, 1.5), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), 2.05, 1.6, 0, g);
+    const bed = new THREE.Group();
+    bed.name = 'bed';
+    bed.position.set(-1.9, 1, 0);
+    g.add(bed);
+    mesh(new THREE.BoxGeometry(2.8, 0.25, 2), mat(0xffc23d), 1.4, 0, 0, bed);
+    for (const z of [-0.95, 0.95]) mesh(new THREE.BoxGeometry(2.8, 0.9, 0.12), mat(0xffc23d), 1.4, 0.45, z, bed);
+    const load = mesh(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xf2c97d), 1.4, 0.2, 0, bed);
+    load.name = 'load';
+    load.scale.set(1.3, 0.01, 0.9);
+    for (const [x, z] of [[1.4, 1], [1.4, -1], [-1.2, 1], [-1.2, -1]]) wheel(g, x, z, 0.55, 0.45);
+  } else if (kind === 'digger') {
+    for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.6), mat(0x2b2b2b), 0, 0.35, z, g);
+    mesh(new THREE.BoxGeometry(2, 1, 1.8), mat(0xffc23d), -0.2, 1.2, 0, g);
+    mesh(new THREE.BoxGeometry(1, 1, 1.2), mat(c), -0.5, 2.2, 0, g);
+    const arm = new THREE.Group();
+    arm.name = 'arm';
+    arm.position.set(0.6, 1.6, 0);
+    g.add(arm);
+    const boom = mesh(new THREE.BoxGeometry(2.4, 0.35, 0.35), mat(0xffc23d), 1.2, 0, 0, arm);
+    boom.rotation.z = -0.4;
+    mesh(new THREE.BoxGeometry(0.8, 0.7, 1.1), mat(0x55504a), 2.4, -0.7, 0, arm);
   }
   g.scale.setScalar(scale);
   scene.add(g);
@@ -343,6 +369,208 @@ function makeOutpost(x, z) {
   return { x, z, r: 4.5, owner: -1, progress: 0, cap, cloth, ring, group: g, flag };
 }
 
+// Cereal: piles from spilled bowls (dug by diggers, hauled by trucks) and
+// spills from wrecks (anyone can scoop those by driving over them).
+const PILE_SPOTS = [[-26, -36, 160], [-26, 36, 160], [26, -36, 160], [26, 36, 160], [0, 22, 300], [-48, -18, 120], [48, 18, 120]];
+const REFILL = { x: 0, z: 22, rate: 0.6 }; // the cereal box keeps getting knocked over: the middle bowl refills
+const LOOP_COLORS = [0xff5a5f, 0xffd166, 0x06d6a0, 0x9b5de5, 0xff9f1c];
+const piles = [];
+const spills = [];
+function loopsGroup(x, z, n, radius, height) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    const y = 0.3 + (1 - r / radius) * height * Math.random();
+    const loop = mesh(new THREE.TorusGeometry(0.55, 0.28, 6, 12), mat(LOOP_COLORS[i % LOOP_COLORS.length]), Math.cos(a) * r, y, Math.sin(a) * r, g);
+    loop.rotation.set(Math.PI / 2 + (Math.random() - 0.5) * 1.2, Math.random() * 3, 0);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+function makePile(x, z, amount) {
+  const p = { x, z, r: 3.5, amount, max: amount, group: loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3) };
+  piles.push(p);
+}
+function makeSpill(x, z, amount) {
+  if (amount < 1) return;
+  spills.push({ x, z, r: 2, amount, life: 45, group: loopsGroup(x, z, Math.min(14, 3 + Math.round(amount / 2)), 1.6, 0.6) });
+}
+function takeFrom(src, want) {
+  const got = Math.min(want, src.amount);
+  src.amount -= got;
+  return got;
+}
+
+const WORKERS = {
+  truck: { cost: 15, max: 6, hp: 70, r: 1.8, speed: 12, accel: 26, turn: 3.2, grip: 10, carry: 12 },
+  digger: { cost: 20, max: 4, hp: 90, r: 1.9, speed: 8, accel: 18, turn: 2.6, grip: 12 },
+};
+function spawnWorker(role, team) {
+  const w = WORKERS[role];
+  const x = team === BLUE ? -52 : 52, z = (Math.random() - 0.5) * 10;
+  const e = { kind: 'worker', role, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: w.r, hp: w.hp, maxHp: w.hp, load: 0, mesh: buildModel(role, team), think: 0 };
+  entities.push(e);
+  return e;
+}
+const workersOf = (team, role) => entities.filter((e) => e.kind === 'worker' && e.team === team && e.role === role && e.hp > 0);
+function buyWorker(role, team) {
+  if (state.over) return false;
+  const w = WORKERS[role];
+  if (workersOf(team, role).length >= w.max) { if (team === BLUE) { toast(`${w.max} ${role}s is the most`); sfx('no'); } return false; }
+  if (state.cereal[team] < w.cost) { if (team === BLUE) { toast(`Need ${w.cost} cereal`); sfx('no'); } return false; }
+  state.cereal[team] -= w.cost;
+  spawnWorker(role, team);
+  if (team === BLUE) { sfx('build'); toast(role === 'truck' ? 'Dump truck on the way' : 'Digger on the way'); }
+  return true;
+}
+// Where a team can unload: its toy box, or any bottle cap it holds.
+function nearestDrop(e) {
+  const drops = [state.bases[e.team], ...outposts.filter((o) => o.owner === e.team)];
+  return drops.reduce((b, d) => (dist2(e, d) < dist2(e, b) ? d : b));
+}
+const diggersAt = (pile, team) => workersOf(team, 'digger').filter((d) => d.pile === pile && dist2(d, pile) < (pile.r + 4) ** 2).length;
+function workerThink(w, dt) {
+  const spec = WORKERS[w.role];
+  if (w.role === 'digger') {
+    // Pick the fullest pile near home that has the fewest of our diggers, and stay with it.
+    if (!w.pile || w.pile.amount <= 0) {
+      const home = state.bases[w.team];
+      w.pile = piles.filter((p) => p.amount > 0).sort((a, b) => (dist2(a, home) + workersOf(w.team, 'digger').filter((d) => d.pile === a).length * 900) - (dist2(b, home) + workersOf(w.team, 'digger').filter((d) => d.pile === b).length * 900))[0] || null;
+    }
+    const goal = w.pile || state.bases[w.team];
+    steer(w, goal.x, goal.z, goal.r + 2.5, dt, spec, null);
+    w.digging = w.pile && dist2(w, w.pile) < (w.pile.r + 4) ** 2;
+    return;
+  }
+  // Trucks: fill up at a spill or pile, haul to the nearest drop, unload, repeat.
+  if (w.load >= spec.carry || (w.load > 0 && w.going === 'drop')) {
+    w.going = 'drop';
+    const d = nearestDrop(w);
+    steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
+    if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
+      state.cereal[w.team] += w.load;
+      if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('cap');
+      w.load = 0;
+      w.going = 'fill';
+    }
+    return;
+  }
+  w.going = 'fill';
+  w.think -= dt;
+  if (w.think <= 0 || !w.src || w.src.amount <= 0) {
+    w.think = 1;
+    const near = spills.filter((sp) => sp.amount > 0 && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
+    w.src = near || piles.filter((p) => p.amount > 0).sort((a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400))[0] || null;
+  }
+  if (!w.src) { const home = state.bases[w.team]; steer(w, home.x + (w.team === BLUE ? 10 : -10), home.z, 2, dt, spec, null); return; }
+  steer(w, w.src.x, w.src.z, w.src.r + 1.5, dt, spec, null);
+  if (dist2(w, w.src) < (w.src.r + 3) ** 2) {
+    // Spills scoop fast; piles load slowly by hand and fast with diggers working them.
+    const rate = spills.includes(w.src) ? 8 : 0.8 + 2.6 * diggersAt(w.src, w.team);
+    w.load += takeFrom(w.src, Math.min(rate * dt, spec.carry - w.load));
+    if (w.load >= spec.carry || w.src.amount <= 0) w.going = 'drop';
+  }
+}
+
+// ---------- Route finding ----------
+// A 2-unit grid over the table; cells inside (or hugging) a block are closed.
+// Rebuilt whenever blocks change (turrets come and go).
+const CELL = 2, GW = Math.ceil(W / CELL), GD = Math.ceil(D / CELL);
+const closed = new Uint8Array(GW * GD);
+let navDirty = true;
+const cellOf = (x, z) => [Math.max(0, Math.min(GW - 1, Math.floor((x + W / 2) / CELL))), Math.max(0, Math.min(GD - 1, Math.floor((z + D / 2) / CELL)))];
+const centreOf = (i, j) => [i * CELL - W / 2 + CELL / 2, j * CELL - D / 2 + CELL / 2];
+function navBuild() {
+  closed.fill(0);
+  for (const o of obstacles) {
+    const [i0, j0] = cellOf(o.x - o.w / 2 - 1.6, o.z - o.d / 2 - 1.6), [i1, j1] = cellOf(o.x + o.w / 2 + 1.6, o.z + o.d / 2 + 1.6);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) closed[j * GW + i] = 1;
+  }
+  navDirty = false;
+}
+function clearLine(ax, az, bx, bz) {
+  const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 1);
+  for (let k = 1; k < n; k++) {
+    const [i, j] = cellOf(ax + (bx - ax) * k / n, az + (bz - az) * k / n);
+    if (closed[j * GW + i]) return false;
+  }
+  return true;
+}
+function nearestOpen(i, j) {
+  for (let r = 0; r < 12; r++) for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
+    const a = i + di, b = j + dj;
+    if (a >= 0 && b >= 0 && a < GW && b < GD && !closed[b * GW + a]) return [a, b];
+  }
+  return [i, j];
+}
+// A* over the grid; returns waypoints (world x,z), smoothed to the corners that matter.
+function findPath(sx, sz, gx, gz) {
+  if (navDirty) navBuild();
+  const [si, sj] = nearestOpen(...cellOf(sx, sz)), [gi, gj] = nearestOpen(...cellOf(gx, gz));
+  const start = sj * GW + si, goal = gj * GW + gi;
+  const g = new Float32Array(GW * GD).fill(Infinity), from = new Int32Array(GW * GD).fill(-1);
+  const heap = [[0, start]];
+  g[start] = 0;
+  const push = (f, n) => { heap.push([f, n]); let k = heap.length - 1; while (k > 0) { const q = (k - 1) >> 1; if (heap[q][0] <= heap[k][0]) break; [heap[q], heap[k]] = [heap[k], heap[q]]; k = q; } };
+  const pop = () => { const top = heap[0], end = heap.pop(); if (heap.length) { heap[0] = end; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  while (heap.length) {
+    const [, n] = pop();
+    if (n === goal) break;
+    const ni = n % GW, nj = (n / GW) | 0;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      if (!di && !dj) continue;
+      const a = ni + di, b = nj + dj;
+      if (a < 0 || b < 0 || a >= GW || b >= GD || closed[b * GW + a]) continue;
+      if (di && dj && (closed[nj * GW + a] || closed[b * GW + ni])) continue; // no corner cutting
+      const m = b * GW + a, cost = g[n] + (di && dj ? 1.414 : 1);
+      if (cost < g[m]) { g[m] = cost; from[m] = n; push(cost + Math.hypot(gi - a, gj - b), m); }
+    }
+  }
+  if (from[goal] === -1 && goal !== start) return null;
+  const cells = [];
+  for (let n = goal; n !== -1; n = from[n]) cells.push(n);
+  cells.reverse();
+  const pts = cells.map((n) => centreOf(n % GW, (n / GW) | 0));
+  const out = [];
+  let a = [sx, sz];
+  for (let k = 1; k < pts.length; k++) if (!clearLine(a[0], a[1], pts[k][0], pts[k][1])) { out.push(pts[k - 1]); a = pts[k - 1]; }
+  out.push([gx, gz]);
+  return out;
+}
+
+// Drive towards a point; take a route round blocks when the way isn't clear; stop within `stop`.
+function steer(e, gx, gz, stop, dt, stats, ignore) {
+  const full = Math.hypot(gx - e.x, gz - e.z);
+  let tx = gx, tz = gz;
+  if (navDirty) navBuild();
+  if (!clearLine(e.x, e.z, gx, gz)) {
+    e.pathAge = (e.pathAge || 0) - dt;
+    if (!e.path || e.pathAge <= 0 || Math.hypot(e.pathGoal[0] - gx, e.pathGoal[1] - gz) > 4) {
+      e.path = findPath(e.x, e.z, gx, gz) || [];
+      e.pathGoal = [gx, gz];
+      e.pathAge = 1.5 + Math.random();
+    }
+    while (e.path.length > 1 && Math.hypot(e.path[0][0] - e.x, e.path[0][1] - e.z) < 2.5) e.path.shift();
+    if (e.path.length) [tx, tz] = e.path[0];
+  } else e.path = null;
+  let dx = tx - e.x, dz = tz - e.z;
+  const d = Math.hypot(dx, dz) || 1;
+  dx /= d; dz /= d;
+  for (const o of obstacles) {
+    if (ignore && o.ref === ignore) continue;
+    const cx = Math.max(o.x - o.w / 2, Math.min(e.x, o.x + o.w / 2)), cz = Math.max(o.z - o.d / 2, Math.min(e.z, o.z + o.d / 2));
+    const ox = e.x - cx, oz = e.z - cz, od = Math.hypot(ox, oz);
+    if (od < 4 && od > 0.01) {
+      const w = (4 - od) / 4 * (e.path ? 0.6 : 1.2);
+      dx += (ox / od) * w; dz += (oz / od) * w;
+    }
+  }
+  const n = Math.hypot(dx, dz) || 1;
+  drive(e, dx / n, dz / n, full > stop ? 1 : 0, dt, stats);
+  return full;
+}
+
 function spawnUnit(type, team, x, z) {
   const t = ENEMY_TYPES[type];
   const v = VEHICLES[t.model];
@@ -369,13 +597,18 @@ function reset() {
   for (const s of shots) scene.remove(s.mesh);
   for (const p of parts) scene.remove(p.mesh);
   for (const o of outposts) scene.remove(o.group);
+  for (const p of [...piles, ...spills]) scene.remove(p.group);
+  piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
-  for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].kind === 'base') obstacles.splice(i, 1);
+  for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].kind === 'base' || obstacles[i].kind === 'turret') obstacles.splice(i, 1);
+  navDirty = true;
   Object.assign(state, {
-    bolts: [30, 30], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
+    cereal: [25, 25], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of OUTPOST_SPOTS) outposts.push(makeOutpost(x, z));
+  for (const [x, z, n] of PILE_SPOTS) makePile(x, z, n);
+  for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
   setVehicle('racer');
@@ -406,6 +639,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
+  if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
 addEventListener('keyup', (e) => input.keys.delete(e.code));
 function hold(btn, on) {
@@ -418,6 +652,8 @@ tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
+tap('bTruck', () => buyWorker('truck', BLUE));
+tap('bDigger', () => buyWorker('digger', BLUE));
 
 // ---------- Sound (tiny synth, starts on the first tap) ----------
 let audio = null;
@@ -471,7 +707,7 @@ function collideObstacles(e) {
 }
 
 function collideMovers() {
-  const movers = entities.filter((e) => (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && e.hp > 0);
+  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && e.hp > 0);
   for (let i = 0; i < movers.length; i++) {
     for (let j = i + 1; j < movers.length; j++) {
       const a = movers[i], b = movers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
@@ -546,15 +782,18 @@ function hurt(e, dmg, byTeam) {
     e.alive = false; e.mesh.visible = false; state.respawn = 3; toast('Wrecked! Back in 3…');
     return;
   }
-  if (e.reward || e.kind === 'turret') state.bolts[byTeam] += e.reward || 12;
+  // Wrecks spill cereal where they fall: scoop it up (or let your trucks).
+  if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
+  if (e.kind === 'turret') makeSpill(e.x, e.z, 12);
+  if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) toast(`Lost a ${e.role}!`); }
   if (e.kind === 'base') { endGame(e.team !== BLUE); return; }
   scene.remove(e.mesh);
 }
 
 // ---------- Building ----------
 const TURRETS = {
-  gun: { name: 'Gun', cost: 20, weapon: WEAPONS.mg, hp: 140, range: 17, rate: 0.13, dmg: 6 },
-  rocket: { name: 'Rocket', cost: 35, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
+  gun: { name: 'Gun', cost: 25, weapon: WEAPONS.mg, hp: 140, range: 17, rate: 0.13, dmg: 6 },
+  rocket: { name: 'Rocket', cost: 40, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
 };
 const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
 function makeTurret(type, team, x, z) {
@@ -572,13 +811,15 @@ function makeTurret(type, team, x, z) {
   const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips };
   entities.push(tur);
   obstacles.push({ x, z, w: 3, d: 3, h: 2, kind: 'turret', ref: tur });
+  navDirty = true;
   return tur;
 }
 function canPlace(x, z, team) {
   if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
   if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way';
   const enemyBase = state.bases[1 - team];
-  if (dist2({ x, z }, enemyBase) < 22 * 22) return 'Too close to their toy box';
+  // Further than any turret can reach (rockets at level 3 reach ~33), so toy boxes fall to cars, not sniping.
+  if (dist2({ x, z }, enemyBase) < 36 * 36) return 'Too close to their toy box';
   if (entities.filter((e) => e.kind === 'turret' && e.team === team && e.hp > 0).length >= 10) return 'Turret limit reached (10)';
   return null;
 }
@@ -589,8 +830,8 @@ function build(type) {
   const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4; // drop it behind you
   const why = canPlace(x, z, BLUE);
   if (why) { toast(why); sfx('no'); return; }
-  if (state.bolts[BLUE] < cost) { toast(`Need ${cost} bolts`); sfx('no'); return; }
-  state.bolts[BLUE] -= cost;
+  if (state.cereal[BLUE] < cost) { toast(`Need ${cost} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= cost;
   makeTurret(type, BLUE, x, z);
   sfx('build'); toast(`${TURRETS[type].name} turret built`);
 }
@@ -612,15 +853,15 @@ function upgrade() {
   const t = nearOwnTurret();
   if (!t || !state.player.alive) { toast('Drive next to your turret'); sfx('no'); return; }
   const cost = upgradeCost(t);
-  if (state.bolts[BLUE] < cost) { toast(`Need ${cost} bolts`); sfx('no'); return; }
-  state.bolts[BLUE] -= cost;
+  if (state.cereal[BLUE] < cost) { toast(`Need ${cost} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= cost;
   levelUp(t);
   sfx('build'); toast(`Turret level ${t.level}`);
 }
 function drones() {
   if (state.over) return;
-  if (state.bolts[BLUE] < 25) { toast('Need 25 bolts'); sfx('no'); return; }
-  state.bolts[BLUE] -= 25;
+  if (state.cereal[BLUE] < 20) { toast('Need 20 cereal'); sfx('no'); return; }
+  state.cereal[BLUE] -= 20;
   for (let i = 0; i < 3; i++) spawnUnit('drone', BLUE, -52 + i * 2, -4 + i * 4);
   sfx('build'); toast('Drones away!');
 }
@@ -630,15 +871,15 @@ function renderGarage() {
   const p = state.player;
   $('garage').innerHTML = Object.entries(VEHICLES).map(([k, v]) => {
     const owned = state.unlocked.has(k);
-    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${v.unlock} bolts`}</small></button>`;
+    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${v.unlock} cereal`}</small></button>`;
   }).join('');
   for (const b of $('garage').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.preventDefault(); chooseVehicle(b.dataset.v); });
 }
 function chooseVehicle(k) {
   const v = VEHICLES[k];
   if (!state.unlocked.has(k)) {
-    if (state.bolts[BLUE] < v.unlock) { toast(`${v.name} costs ${v.unlock} bolts`); sfx('no'); return; }
-    state.bolts[BLUE] -= v.unlock;
+    if (state.cereal[BLUE] < v.unlock) { toast(`${v.name} costs ${v.unlock} cereal`); sfx('no'); return; }
+    state.cereal[BLUE] -= v.unlock;
     state.unlocked.add(k);
   }
   setVehicle(k);
@@ -657,7 +898,7 @@ function updateCosts() {
 
 // ---------- Enemy commander ----------
 // Earns like you. Builds before it attacks: a turret on every cap it holds,
-// then up to three around its toy box, then upgrades. Spare bolts become cars.
+// then up to three around its toy box, then upgrades. Spare cereal become cars.
 // The first minute is gentle (scouts only, slower income) so you can learn.
 const RED_HOME = [[48, -12], [48, 12], [44, 0]];
 function spotNear(x, z, team) {
@@ -670,7 +911,8 @@ function spotNear(x, z, team) {
 }
 function redTurrets() { return entities.filter((e) => e.kind === 'turret' && e.team === RED && e.hp > 0); }
 function commanderBuild(ramp) {
-  const bolts = state.bolts, mine = redTurrets();
+  if (state.time < 60) return false; // a quiet first minute
+  const cereal = state.cereal, mine = redTurrets();
   const bare = outposts.filter((o) => o.owner === RED && !mine.some((t) => dist2(t, o) < 100));
   const homeCount = mine.filter((t) => t.x > 38).length;
   const homeWanted = state.time > 45 ? Math.min(3, 1 + Math.floor(state.time / 90)) : 0;
@@ -678,16 +920,16 @@ function commanderBuild(ramp) {
   if (bare.length) spot = spotNear(bare[0].x, bare[0].z, RED);
   else if (homeCount < homeWanted) spot = spotNear(...RED_HOME[homeCount % RED_HOME.length], RED);
   if (spot) {
-    if (bolts[RED] < 30) return true; // saving up: don't spend on cars
-    bolts[RED] -= 30;
+    if (cereal[RED] < 25) return true; // saving up: don't spend on cars
+    cereal[RED] -= 25;
     const t = makeTurret(Math.random() < 0.6 ? 'gun' : 'rocket', RED, spot[0], spot[1]);
     if (ramp > 0.7) levelUp(t);
     if (dist2(t, state.player) < 40 * 40) toast('They built a turret!');
     return false;
   }
   const weak = mine.filter((t) => t.level < 3).sort((x, y) => x.level - y.level)[0];
-  if (weak && state.time > 90 && bolts[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
-    bolts[RED] -= 20 + weak.level * 15;
+  if (weak && state.time > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
+    cereal[RED] -= 20 + weak.level * 15;
     levelUp(weak);
   }
   return false;
@@ -697,13 +939,17 @@ function commander(dt) {
   if (state.aiClock > 0) return;
   state.aiClock = 1;
   const ramp = Math.min(1, state.time / 300);
+  // Economy first: enough trucks and diggers for the stage of the game.
+  const trucksWanted = Math.min(4, 1 + Math.floor(state.time / 50)), diggersWanted = Math.min(3, 1 + Math.floor(state.time / 80));
+  if (workersOf(RED, 'truck').length < trucksWanted) { buyWorker('truck', RED); return; }
+  if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
   const roll = Math.random();
   const want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
   const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
-  if (army < 8 + Math.floor(ramp * 6) && state.bolts[RED] >= price + 10) {
-    state.bolts[RED] -= price;
+  if (army < 8 + Math.floor(ramp * 6) && state.cereal[RED] >= price + 10) {
+    state.cereal[RED] -= price;
     spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
   }
 }
@@ -722,23 +968,8 @@ function unitThink(u, dt) {
   }
   const t = u.target && u.target.hp > 0 && !(u.target.kind === 'player' && !u.target.alive) ? u.target : null;
   const goal = t || u.goal || state.bases[1 - u.team];
-  let dx = goal.x - u.x, dz = goal.z - u.z;
-  const d = Math.hypot(dx, dz) || 1;
-  dx /= d; dz /= d;
-  // Steer around blocks: push away from anything close.
-  for (const o of obstacles) {
-    if (o.ref === goal) continue;
-    const cx = Math.max(o.x - o.w / 2, Math.min(u.x, o.x + o.w / 2)), cz = Math.max(o.z - o.d / 2, Math.min(u.z, o.z + o.d / 2));
-    const ox = u.x - cx, oz = u.z - cz, od = Math.hypot(ox, oz);
-    if (od < 6 && od > 0.01) {
-      const w = (6 - od) / 6;
-      dx += (ox / od) * w * 1.6 - (oz / od) * w * 0.8; dz += (oz / od) * w * 1.6 + (ox / od) * w * 0.8;
-    }
-  }
-  const n = Math.hypot(dx, dz) || 1;
   const stop = t ? Math.min(u.weapon.range * 0.7, 10) : goal.r ? goal.r * 0.5 : 1;
-  const throttle = d > stop ? 1 : 0;
-  drive(u, dx / n, dz / n, throttle, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip });
+  const d = steer(u, goal.x, goal.z, stop, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }, goal);
   u.cool -= dt;
   if (t && u.cool <= 0 && d < u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
 }
@@ -758,7 +989,8 @@ function update(dt) {
   state.time += dt;
   const p = state.player;
   // Income: one bolt a second from home, plus one per bottle cap held.
-  for (const team of [BLUE, RED]) state.bolts[team] += dt * (1 + outposts.filter((o) => o.owner === team).length) * (team === RED ? (state.time < 60 ? 0.7 : 1.1) : 1);
+  // Income is what your trucks haul home, plus a trickle so nobody is ever stuck.
+  for (const team of [BLUE, RED]) state.cereal[team] += dt * 0.25;
 
   // Player
   if (p.alive) {
@@ -790,6 +1022,7 @@ function update(dt) {
   for (const e of entities) {
     if (e.hp <= 0) continue;
     if (e.kind === 'unit') unitThink(e, dt);
+    if (e.kind === 'worker') workerThink(e, dt);
     if (e.kind === 'turret' || e.kind === 'base') {
       e.cool -= dt;
       const t = nearestEnemy(e, e.weapon.range);
@@ -834,9 +1067,9 @@ function update(dt) {
   // Remove the dead (bases stay for the end screen).
   for (let i = entities.length - 1; i >= 0; i--) {
     const e = entities[i];
-    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret')) {
+    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker')) {
       entities.splice(i, 1);
-      if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); }
+      if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); navDirty = true; }
     }
   }
 
@@ -853,16 +1086,34 @@ function update(dt) {
       o.progress = Math.max(-1, Math.min(1, o.progress + push * dt / 2.5));
       if (o.progress >= 1) o.owner = BLUE; else if (o.progress <= -1) o.owner = RED; else if (Math.sign(o.progress) !== (o.owner === BLUE ? 1 : o.owner === RED ? -1 : 0)) o.owner = -1;
       if (o.owner !== before && o.owner !== -1) {
-        state.bolts[o.owner] += 10;
-        if (o.owner === BLUE) { toast('Bottle cap captured! +10'); sfx('cap'); } else if (dist2(o, p) < 900) toast('They took a cap!');
+        state.cereal[o.owner] += 5;
+        if (o.owner === BLUE) { toast('Bottle cap captured: trucks can unload here'); sfx('cap'); } else if (dist2(o, p) < 900) toast('They took a cap!');
       }
     }
+  }
+
+  // Scoop spills by driving over them; shrink piles; old spills blow away.
+  for (let i = spills.length - 1; i >= 0; i--) {
+    const sp = spills[i];
+    sp.life -= dt;
+    if (p.alive && sp.amount > 0 && dist2(p, sp) < (sp.r + p.r) ** 2) {
+      const got = Math.round(takeFrom(sp, sp.amount));
+      state.cereal[BLUE] += got;
+      toast(`Scooped ${got} cereal`); sfx('cap');
+    }
+    if (sp.amount <= 0 || sp.life <= 0) { scene.remove(sp.group); spills.splice(i, 1); }
+  }
+  for (const pl of piles) {
+    if (pl.x === REFILL.x && pl.z === REFILL.z) pl.amount = Math.min(pl.max, pl.amount + REFILL.rate * dt);
+    const k = 0.25 + 0.75 * (pl.amount / pl.max);
+    pl.group.scale.set(k, k, k);
+    pl.group.visible = pl.amount > 0;
   }
 
   commander(dt);
 
   // HUD
-  $('bolts').textContent = `${Math.floor(state.bolts[BLUE])} bolts`;
+  $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;
   $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
   $('hpRed').style.width = `${Math.max(0, state.bases[RED].hp / state.bases[RED].maxHp) * 100}%`;
   [...$('pips').children].forEach((el, i) => { el.style.background = ['#9a8f80', '#2f7df6', '#ef4136'][outposts[i].owner + 1]; });
@@ -879,10 +1130,16 @@ const camTarget = new THREE.Vector3();
 function render(dt) {
   const time = performance.now() / 1000;
   for (const e of entities) {
-    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player')) continue;
+    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker')) continue;
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0, e.z);
     e.mesh.rotation.y = -e.heading;
+    if (e.role === 'digger') { const arm = e.mesh.getObjectByName('arm'); if (arm) arm.rotation.z = e.digging ? Math.sin(time * 4) * 0.45 : 0.2; }
+    if (e.role === 'truck') {
+      const bed = e.mesh.getObjectByName('bed');
+      bed.getObjectByName('load').scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
+      bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
+    }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
   }
   for (const o of outposts) {
@@ -922,7 +1179,7 @@ function endGame(won) {
   state.over = true;
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
-  $('endText').textContent = won ? `Their toy box is rubble. Time ${mins}:${secs}.` : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
+  $('endText').textContent = won ? `Their toy box is crumbs. Time ${mins}:${secs}.` : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
   setTimeout(() => { $('end').hidden = false; }, 1200);
 }
 function start() {
