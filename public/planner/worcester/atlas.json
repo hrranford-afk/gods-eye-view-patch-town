@@ -1,6 +1,6 @@
 {
   "town": "worcester",
-  "checkedAt": "2026-10-28T19:41:56.655Z",
+  "checkedAt": "2026-10-29T09:38:18.729Z",
   "layers": [
     {
       "id": "census",
@@ -10,7 +10,7 @@
       "licence": "OGL",
       "status": "mapped",
       "count": 78,
-      "date": "2026-10-28",
+      "date": "2026-10-29",
       "command": "census"
     },
     {
@@ -36,6 +36,28 @@
       "command": "import"
     },
     {
+      "id": "migration",
+      "theme": "people",
+      "name": "Born abroad, arrived 2011–2021, little or no English (Census 2021, LSOA)",
+      "source": "ONS / Nomis (TS004, TS015, TS029)",
+      "licence": "OGL",
+      "status": "mapped",
+      "count": 78,
+      "date": "2026-10-29",
+      "command": "census"
+    },
+    {
+      "id": "asylum",
+      "theme": "people",
+      "name": "People seeking asylum supported by the Home Office, per council per quarter since 2014 (no finer data published)",
+      "source": "Home Office Asy_D11",
+      "licence": "OGL",
+      "status": "mapped",
+      "count": null,
+      "date": "2026-10-29",
+      "command": "asylum"
+    },
+    {
       "id": "alone",
       "theme": "people",
       "name": "Households of one person aged 66+ (loneliness risk)",
@@ -43,7 +65,7 @@
       "licence": "OGL",
       "status": "mapped",
       "count": 78,
-      "date": "2026-10-28",
+      "date": "2026-10-29",
       "command": "census"
     },
     {
@@ -109,7 +131,7 @@
       "licence": "ODbL",
       "status": "mapped",
       "count": null,
-      "date": "2026-10-28",
+      "date": "2026-10-29",
       "command": "analyse"
     },
     {
@@ -263,7 +285,7 @@
       "licence": "ODbL",
       "status": "mapped",
       "count": 601,
-      "date": "2026-10-28",
+      "date": "2026-10-29",
       "command": "analyse"
     },
     {
@@ -274,7 +296,7 @@
       "licence": "ODbL",
       "status": "mapped",
       "count": 35,
-      "date": "2026-10-28",
+      "date": "2026-10-29",
       "command": "analyse"
     },
     {
@@ -306,8 +328,8 @@
       "source": "This project",
       "licence": "—",
       "status": "mapped",
-      "count": 24,
-      "date": "2026-10-28",
+      "count": 34,
+      "date": "2026-10-29",
       "command": null
     },
     {

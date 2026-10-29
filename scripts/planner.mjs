@@ -138,7 +138,8 @@ const ONS_LSOA_2021 = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest
 const NOMIS = 'https://www.nomisweb.co.uk/api/v01/dataset';
 // Census 2021 tables: households (TS041), usual residents (TS001), travel to
 // work (TS061), general health (TS037), age (TS007A), household deprivation
-// (TS011), car or van availability (TS045) and household composition (TS003).
+// (TS011), car or van availability (TS045), household composition (TS003),
+// country of birth (TS004), year of arrival (TS015) and English (TS029).
 const CENSUS_TABLES = {
   households: ['NM_2059_1', 'geography_code,obs_value'],
   residents: ['NM_2021_1', 'geography_code,c2021_restype_3_name,obs_value'],
@@ -148,6 +149,9 @@ const CENSUS_TABLES = {
   deprivation: ['NM_2031_1', 'geography_code,c2021_dep_6_name,obs_value'],
   cars: ['NM_2063_1', 'geography_code,c2021_cars_5_name,obs_value'],
   composition: ['NM_2023_1', 'geography_code,c2021_hhcomp_15_name,obs_value'],
+  birth: ['NM_2024_1', 'geography_code,c2021_cob_12_name,obs_value'],
+  arrival: ['NM_2035_1', 'geography_code,c2021_arruk_13_name,obs_value'],
+  english: ['NM_2048_1', 'geography_code,c2021_engprf_6_name,obs_value'],
 };
 
 /** Download Census 2021 neighbourhoods (LSOAs) covering a town. */
@@ -176,7 +180,7 @@ async function censusTown(id) {
   const areas = buildAreas(boundaries, tables);
   const dir = townDir(town.id);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ town: town.id, source: 'ONS Census 2021 (TS001, TS007A, TS011, TS037, TS041, TS045, TS061), LSOA 2021 boundaries', areas }));
+  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ town: town.id, source: 'ONS Census 2021 (TS001, TS003, TS004, TS007A, TS011, TS015, TS029, TS037, TS041, TS045, TS061), LSOA 2021 boundaries', areas }));
   const hh = areas.reduce((t, a) => t + a.households, 0);
   const people = areas.reduce((t, a) => t + a.residents, 0);
   console.log(`[planner] ${areas.length} neighbourhoods, ${hh} households, ${people} residents → ${dir}/census.json`);
@@ -586,6 +590,22 @@ async function incomeTown(id) {
   console.log(`[planner] ${run.stdout.trim()}`);
 }
 
+const ASYLUM_SUPPORT = 'https://assets.publishing.service.gov.uk/media/6a85c5e654bcee010d514574/support-local-authority-datasets-jun-2026.xlsx';
+
+/** People seeking asylum supported by the Home Office, per council per quarter (via scripts/planner-asylum.py) → asylum.json. */
+async function asylumTown(id) {
+  const town = getTown(id);
+  const dir = townDir(town.id);
+  const xlsx = await cached(ASYLUM_SUPPORT, 'asylum-support-la-jun2026.xlsx');
+  const res = await fetch(`${NOMIS}/NM_2021_1.data.csv?date=latest&measures=20100&c2021_restype_3=0&geography=${town.ladCode}&select=obs_value`);
+  if (!res.ok) throw new Error(`Nomis answered ${res.status}`);
+  const [{ OBS_VALUE: population }] = parseCsv(await res.text());
+  const { spawnSync } = await import('node:child_process');
+  const run = spawnSync('python3', ['scripts/planner-asylum.py', xlsx, town.ladCode, population, path.join(dir, 'asylum.json')], { encoding: 'utf8' });
+  if (run.status !== 0) throw new Error(`planner-asylum.py failed: ${run.stderr || run.stdout}`);
+  console.log(`[planner] ${run.stdout.trim()}`);
+}
+
 /** Electoral ward of each neighbourhood (ONS LSOA → ward lookup, May 2024) → wards.json. */
 async function wardsTown(id) {
   const town = getTown(id);
@@ -734,7 +754,7 @@ function analyseTown(id) {
   const planningPath = path.join(dir, 'planning.json');
   if (existsSync(planningPath)) {
     // The map layer reads land and heritage straight from planning.json.
-    log(`[planner] Land and heritage: planning.json present`);
+    console.log(`[planner] Land and heritage: planning.json present`);
   }
   writeFileSync(path.join(dir, 'vacant.geojson'), JSON.stringify(placesToGeoJson((data.vacant || []).map((v) => ({ ...v, kind: 'vacant' })))));
   writeFileSync(path.join(dir, 'sites.geojson'), JSON.stringify(sitesToGeoJson(sites)));
@@ -802,13 +822,14 @@ try {
   else if (command === 'prices') await pricesTown(id);
   else if (command === 'jobs') await jobsTown(id);
   else if (command === 'income') await incomeTown(id);
+  else if (command === 'asylum') await asylumTown(id);
   else if (command === 'wards') await wardsTown(id);
   else if (command === 'tools') listTools();
   else if (command === 'atlas') atlasTown(id);
   else if (command === 'analyse' || command === 'analyze') analyseTown(id);
   else if (command === 'towns') console.log(Object.keys(TOWNS).join('\n'));
   else {
-    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
+    console.log('Usage: npm run planner -- <fetch|import|census|gps|food|history|flood|planning|deprivation|crime|collisions|schools|prices|jobs|income|asylum|wards|analyse|scenarios|ask|tools|atlas|towns|traffic> [town|region] [file]');
     process.exitCode = command ? 1 : 0;
   }
 } catch (err) {

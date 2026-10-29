@@ -126,6 +126,11 @@ most people don't walk to their GP. A finding to discuss, not a verdict.
 - **CAIRN adds:** a daytime population (residents + jobs) on every area, `count` per daytime population, and `survey` with `exclude`, so any AI can repeat the check. Next: split crime against people from shop crime (q31).
 - Result: the corner shop / pub / takeaway / crime links (~0.9) were the centre's few residents. Surviving: crime with car-less households and deprivation; bad health with deprivation, income and violence.
 
+## Migration in the whole picture (29 Oct 2026)
+
+- **Harry:** see how immigration, including the small boats, fits with everything else, without making it the only thing.
+- **CAIRN adds:** migration counted per neighbourhood from the census (never per person), Home Office asylum support per council since 2014, and a plan that controls for car-less households and deprivation, so the link isn't read off a raw correlation. Next: what helps newcomers settle (q33) and where Worcester's growth comes from (q34).
+
 ## Next
 
 0. **GP capacity.** NHS Digital patients-registered-per-practice and GP workforce, so access means "can get an appointment", not just distance. Then score need (health, age, deprivation) against access.

@@ -57,7 +57,7 @@ function bboxOf(geometry) {
  * Build census areas from ONS boundaries (GeoJSON features with LSOA21CD /
  * LSOA21NM) and Nomis CSV rows (households, residents, travel to work).
  */
-export function buildAreas(boundaries, { households, residents, travel, health = [], age = [], deprivation = [], cars = [], composition = [] }) {
+export function buildAreas(boundaries, { households, residents, travel, health = [], age = [], deprivation = [], cars = [], composition = [], birth = [], arrival = [], english = [] }) {
   const byCode = new Map();
   for (const f of boundaries.features) {
     const code = f.properties.LSOA21CD;
@@ -108,6 +108,13 @@ export function buildAreas(boundaries, { households, residents, travel, health =
   share(cars, 'C2021_CARS_5_NAME', (n) => n === 'No cars or vans in household', (a, v) => { a.noCar = v; });
   // Households of one person aged 66+: the census's closest measure of loneliness risk.
   share(composition, 'C2021_HHCOMP_15_NAME', (n) => n === 'One-person household: Aged 66 years and over', (a, v) => { a.livingAlone66 = v; });
+  // Migration, counted per neighbourhood: born outside the UK, arrived in the
+  // last ten years (2011–2021), and residents (aged 3+) who speak English
+  // not well or not at all. The census counts everyone living here, whatever
+  // their status; it does not record legal status.
+  share(birth, 'C2021_COB_12_NAME', (n) => n === 'Europe: United Kingdom', (a, v) => { a.bornAbroad = 1 - v; });
+  share(arrival, 'C2021_ARRUK_13_NAME', (n) => /^Arrived (2011|2014|2017|2020)/.test(n), (a, v) => { a.arrivedRecently = v; });
+  share(english, 'C2021_ENGPRF_6_NAME', (n) => /Cannot speak English/.test(n), (a, v) => { a.littleEnglish = v; });
   // Age has no total row: sum the bands.
   const ages = new Map();
   for (const r of age) {

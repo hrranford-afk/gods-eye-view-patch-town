@@ -67,8 +67,8 @@
           "meanMinutes": 10.9
         },
         "school": {
-          "nearestAcrossRiver": 0.01,
-          "meanMinutes": 12.5
+          "nearestAcrossRiver": 0,
+          "meanMinutes": 12.3
         },
         "gp": {
           "nearestAcrossRiver": 0.11,
@@ -89,7 +89,7 @@
         },
         "school": {
           "nearestAcrossRiver": 0,
-          "meanMinutes": 11.8
+          "meanMinutes": 11.1
         },
         "gp": {
           "nearestAcrossRiver": 0,
@@ -115,7 +115,7 @@
     "candidatesTried": 12,
     "minutesSavedPerHousehold": 0.07,
     "households": 54241,
-    "scoreBefore": 69.3,
-    "scoreAfter": 69.3
+    "scoreBefore": 69.8,
+    "scoreAfter": 69.8
   }
 }

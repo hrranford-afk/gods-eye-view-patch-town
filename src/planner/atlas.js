@@ -30,6 +30,8 @@ export const LAYERS = Object.freeze([
   { id: 'census', theme: 'people', name: 'Households, residents, age, health, deprivation, cars (Census 2021, LSOA)', source: 'ONS / Nomis', licence: 'OGL', command: 'census', file: 'census.json' },
   { id: 'history', theme: 'people', name: 'Census 2011 beside 2021; new homes since 1995', source: 'ONS / Nomis; HM Land Registry', licence: 'OGL', command: 'history', file: 'history.json' },
   { id: 'meet', theme: 'people', name: 'Meeting places: cafés, pubs, libraries, community centres, places of worship', source: 'OpenStreetMap', licence: 'ODbL', command: 'import', kinds: ['meet:'] },
+  { id: 'migration', theme: 'people', name: 'Born abroad, arrived 2011–2021, little or no English (Census 2021, LSOA)', source: 'ONS / Nomis (TS004, TS015, TS029)', licence: 'OGL', command: 'census', file: 'census.json' },
+  { id: 'asylum', theme: 'people', name: 'People seeking asylum supported by the Home Office, per council per quarter since 2014 (no finer data published)', source: 'Home Office Asy_D11', licence: 'OGL', command: 'asylum', file: 'asylum.json' },
   { id: 'alone', theme: 'people', name: 'Households of one person aged 66+ (loneliness risk)', source: 'Census 2021 TS003', licence: 'OGL', command: 'census', file: 'census.json' },
   // Health
   { id: 'gps', theme: 'health', name: 'GP practices: list size, patient survey', source: 'Fingertips, NHS ODS, postcodes.io', licence: 'OGL', command: 'gps', file: 'gps.json' },

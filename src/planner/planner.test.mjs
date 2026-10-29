@@ -497,3 +497,18 @@ test('daytime population: per resident + worker rates, count per dayPopulation, 
   const many = Array.from({ length: 12 }, (_, i) => ({ code: `X${i}`, name: `Town ${i}`, imdScore: i, badHealth: i }));
   assert.equal(survey({ areas: many }, { fields: ['imdScore', 'badHealth'], exclude: ['Town 0', 'X1'] }).areas, 10);
 });
+
+test('census migration shares: born abroad, recent arrivals, little English', async () => {
+  const { buildAreas } = await import('./census.js');
+  const boundaries = { features: [{ properties: { LSOA21CD: 'X', LSOA21NM: 'Town 001A' }, geometry: null }] };
+  const rows = (col, pairs) => pairs.map(([n, v]) => ({ GEOGRAPHY_CODE: 'X', [col]: n, OBS_VALUE: v }));
+  const [a] = buildAreas(boundaries, {
+    households: [], residents: [], travel: [],
+    birth: rows('C2021_COB_12_NAME', [['Total: All usual residents', 100], ['Europe', 90], ['Europe: United Kingdom', 80], ['Africa', 10]]),
+    arrival: rows('C2021_ARRUK_13_NAME', [['Total: All usual residents', 100], ['Born in the UK', 80], ['Arrived 2001 to 2010', 8], ['Arrived 2014 to 2016', 7], ['Arrived 2020 to 2021', 5]]),
+    english: rows('C2021_ENGPRF_6_NAME', [['Total: All usual residents aged 3 years and over', 95], ['Main language is not English (English or Welsh in Wales): Cannot speak English well', 3], ['Main language is not English (English or Welsh in Wales): Cannot speak English', 2]]),
+  });
+  assert.ok(Math.abs(a.bornAbroad - 0.2) < 1e-9);
+  assert.ok(Math.abs(a.arrivedRecently - 0.12) < 1e-9);
+  assert.ok(Math.abs(a.littleEnglish - 5 / 95) < 1e-9);
+});

@@ -421,6 +421,37 @@
         52.199
       ],
       "unlocks": "Split crime.json by category into 'against people/homes' (violence, burglary, ASB, damage) and 'against businesses' (shoplifting); re-run the survey"
+    },
+    {
+      "id": "q32",
+      "question": "Where does immigration fit in Worcester's whole picture: health, money, crime, services, housing?",
+      "askedBy": "Harry",
+      "status": "answered",
+      "spawned": [
+        "q33",
+        "q34"
+      ],
+      "finding": "Census per neighbourhood: 12.8% born abroad, 6% arrived 2011-21. They live where homes are cheaper and fewer have cars. Raw link to crime (0.51) vanishes once car-less households and deprivation are allowed for (t 0.8); same for violence and health. Home Office asylum support: 78 people (June 2026), half England's rate per head. Small boats: national only, not mappable."
+    },
+    {
+      "id": "q33",
+      "question": "Do recent arrivals reach a GP, English classes and work as well as everyone else nearby? Where are ESOL classes, and are they walkable from Fort Royal, Arboretum and Warndon 005B?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q32",
+      "lonLat": [
+        -2.215,
+        52.189
+      ],
+      "unlocks": "ESOL class locations (college, library, community listings) as a place kind; GP registration of new arrivals isn't published per practice"
+    },
+    {
+      "id": "q34",
+      "question": "Is Worcester growing mainly from people moving in (from the UK and abroad) or from births? What does that mean for homes, schools and GP lists by 2035?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q32",
+      "unlocks": "ONS mid-year population estimates with components of change (births, deaths, internal and international migration) for the council, 2011-2025"
     }
   ]
 }

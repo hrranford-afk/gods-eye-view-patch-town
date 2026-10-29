@@ -1,0 +1,405 @@
+{
+ "source": "Home Office, Immigration System Statistics Asy_D11 (asylum seekers in receipt of support by local authority); rates per 1,000 Census 2021 residents",
+ "licence": "OGL",
+ "level": "council only: no finer data is published",
+ "council": "Worcester",
+ "ladCode": "E07000237",
+ "region": "West Midlands",
+ "population2021": 103872,
+ "quarters": [
+  {
+   "date": "31 Mar 2014",
+   "people": 4,
+   "byAccommodation": {
+    "Subsistence Only": 4
+   },
+   "per1000": 0.04,
+   "englandPer1000": 0.47,
+   "regionPer1000": 0.6
+  },
+  {
+   "date": "30 Jun 2014",
+   "people": 4,
+   "byAccommodation": {
+    "Subsistence Only": 4
+   },
+   "per1000": 0.04,
+   "englandPer1000": 0.49,
+   "regionPer1000": 0.64
+  },
+  {
+   "date": "30 Sep 2014",
+   "people": 4,
+   "byAccommodation": {
+    "Subsistence Only": 4
+   },
+   "per1000": 0.04,
+   "englandPer1000": 0.52,
+   "regionPer1000": 0.69
+  },
+  {
+   "date": "31 Dec 2014",
+   "people": 4,
+   "byAccommodation": {
+    "Subsistence Only": 4
+   },
+   "per1000": 0.04,
+   "englandPer1000": 0.55,
+   "regionPer1000": 0.74
+  },
+  {
+   "date": "31 Mar 2015",
+   "people": 4,
+   "byAccommodation": {
+    "Subsistence Only": 4
+   },
+   "per1000": 0.04,
+   "englandPer1000": 0.55,
+   "regionPer1000": 0.74
+  },
+  {
+   "date": "30 Jun 2015",
+   "people": 3,
+   "byAccommodation": {
+    "Subsistence Only": 3
+   },
+   "per1000": 0.03,
+   "englandPer1000": 0.54,
+   "regionPer1000": 0.73
+  },
+  {
+   "date": "30 Sep 2015",
+   "people": 3,
+   "byAccommodation": {
+    "Subsistence Only": 3
+   },
+   "per1000": 0.03,
+   "englandPer1000": 0.57,
+   "regionPer1000": 0.77
+  },
+  {
+   "date": "31 Dec 2015",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.6,
+   "regionPer1000": 0.85
+  },
+  {
+   "date": "31 Mar 2016",
+   "people": 3,
+   "byAccommodation": {
+    "Subsistence Only": 3
+   },
+   "per1000": 0.03,
+   "englandPer1000": 0.62,
+   "regionPer1000": 0.87
+  },
+  {
+   "date": "30 Jun 2016",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.64,
+   "regionPer1000": 0.85
+  },
+  {
+   "date": "30 Sep 2016",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.65,
+   "regionPer1000": 0.85
+  },
+  {
+   "date": "31 Dec 2016",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.68,
+   "regionPer1000": 0.88
+  },
+  {
+   "date": "30 Jun 2017",
+   "people": 1,
+   "byAccommodation": {
+    "Subsistence Only": 1
+   },
+   "per1000": 0.01,
+   "englandPer1000": 0.66,
+   "regionPer1000": 0.89
+  },
+  {
+   "date": "30 Sep 2017",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.67,
+   "regionPer1000": 0.9
+  },
+  {
+   "date": "31 Dec 2017",
+   "people": 3,
+   "byAccommodation": {
+    "Subsistence Only": 3
+   },
+   "per1000": 0.03,
+   "englandPer1000": 0.7,
+   "regionPer1000": 0.9
+  },
+  {
+   "date": "31 Mar 2018",
+   "people": 2,
+   "byAccommodation": {
+    "Subsistence Only": 2
+   },
+   "per1000": 0.02,
+   "englandPer1000": 0.71,
+   "regionPer1000": 1.02
+  },
+  {
+   "date": "30 Jun 2018",
+   "people": 1,
+   "byAccommodation": {
+    "Subsistence Only": 1
+   },
+   "per1000": 0.01,
+   "englandPer1000": 0.71,
+   "regionPer1000": 1.02
+  },
+  {
+   "date": "30 Sep 2018",
+   "people": 1,
+   "byAccommodation": {
+    "Subsistence Only": 1
+   },
+   "per1000": 0.01,
+   "englandPer1000": 0.73,
+   "regionPer1000": 1.02
+  },
+  {
+   "date": "31 Dec 2021",
+   "people": 1,
+   "byAccommodation": {
+    "Subsistence Only": 1
+   },
+   "per1000": 0.01,
+   "englandPer1000": 1.34,
+   "regionPer1000": 1.24
+  },
+  {
+   "date": "31 Mar 2022",
+   "people": 1,
+   "byAccommodation": {
+    "Subsistence Only": 1
+   },
+   "per1000": 0.01,
+   "englandPer1000": 1.35,
+   "regionPer1000": 1.18
+  },
+  {
+   "date": "30 Jun 2022",
+   "people": 2,
+   "byAccommodation": {
+    "Dispersal Accommodation": 1,
+    "Subsistence Only": 1
+   },
+   "per1000": 0.02,
+   "englandPer1000": 1.48,
+   "regionPer1000": 1.24
+  },
+  {
+   "date": "30 Sep 2022",
+   "people": 7,
+   "byAccommodation": {
+    "Dispersal Accommodation": 6,
+    "Subsistence Only": 1
+   },
+   "per1000": 0.07,
+   "englandPer1000": 1.62,
+   "regionPer1000": 1.27
+  },
+  {
+   "date": "31 Dec 2022",
+   "people": 117,
+   "byAccommodation": {
+    "Dispersal Accommodation": 10,
+    "Subsistence only": 1,
+    "Contingency Accommodation - Hotel": 106
+   },
+   "per1000": 1.13,
+   "englandPer1000": 1.75,
+   "regionPer1000": 2.08
+  },
+  {
+   "date": "31 Mar 2023",
+   "people": 126,
+   "byAccommodation": {
+    "Dispersal Accommodation": 14,
+    "Subsistence Only": 1,
+    "Contingency Accommodation - Hotel": 111
+   },
+   "per1000": 1.21,
+   "englandPer1000": 1.79,
+   "regionPer1000": 2.17
+  },
+  {
+   "date": "30 Jun 2023",
+   "people": 114,
+   "byAccommodation": {
+    "Contingency Accommodation - Hotel": 113,
+    "Subsistence Only": 1
+   },
+   "per1000": 1.1,
+   "englandPer1000": 1.87,
+   "regionPer1000": 2.25
+  },
+  {
+   "date": "30 Sep 2023",
+   "people": 124,
+   "byAccommodation": {
+    "Contingency Accommodation - Hotel": 116,
+    "Dispersal Accommodation": 3,
+    "Subsistence Only": 5
+   },
+   "per1000": 1.19,
+   "englandPer1000": 1.97,
+   "regionPer1000": 2.47
+  },
+  {
+   "date": "31 Dec 2023",
+   "people": 111,
+   "byAccommodation": {
+    "Dispersal Accommodation": 4,
+    "Contingency Accommodation - Hotel": 107
+   },
+   "per1000": 1.07,
+   "englandPer1000": 1.77,
+   "regionPer1000": 2.13
+  },
+  {
+   "date": "31 Mar 2024",
+   "people": 90,
+   "byAccommodation": {
+    "Dispersal Accommodation": 7,
+    "Contingency Accommodation - Hotel": 83
+   },
+   "per1000": 0.87,
+   "englandPer1000": 1.64,
+   "regionPer1000": 2.0
+  },
+  {
+   "date": "30 Jun 2024",
+   "people": 44,
+   "byAccommodation": {
+    "Dispersal Accommodation": 7,
+    "Contingency Accommodation - Hotel": 37
+   },
+   "per1000": 0.42,
+   "englandPer1000": 1.59,
+   "regionPer1000": 1.77
+  },
+  {
+   "date": "30 Sep 2024",
+   "people": 125,
+   "byAccommodation": {
+    "Dispersal Accommodation": 10,
+    "Contingency Accommodation - Hotel": 115
+   },
+   "per1000": 1.2,
+   "englandPer1000": 1.72,
+   "regionPer1000": 2.01
+  },
+  {
+   "date": "31 Dec 2024",
+   "people": 131,
+   "byAccommodation": {
+    "Dispersal Accommodation": 16,
+    "Contingency Accommodation - Hotel": 115
+   },
+   "per1000": 1.26,
+   "englandPer1000": 1.77,
+   "regionPer1000": 2.12
+  },
+  {
+   "date": "31 Mar 2025",
+   "people": 116,
+   "byAccommodation": {
+    "Dispersal Accommodation": 21,
+    "Contingency Accommodation - Hotel": 93,
+    "Subsistence Only": 2
+   },
+   "per1000": 1.12,
+   "englandPer1000": 1.68,
+   "regionPer1000": 2.1
+  },
+  {
+   "date": "30 Jun 2025",
+   "people": 147,
+   "byAccommodation": {
+    "Dispersal Accommodation": 30,
+    "Contingency Accommodation - Hotel": 117
+   },
+   "per1000": 1.42,
+   "englandPer1000": 1.67,
+   "regionPer1000": 2.23
+  },
+  {
+   "date": "30 Sep 2025",
+   "people": 150,
+   "byAccommodation": {
+    "Dispersal Accommodation": 30,
+    "Contingency Accommodation - Hotel": 120
+   },
+   "per1000": 1.44,
+   "englandPer1000": 1.76,
+   "regionPer1000": 2.35
+  },
+  {
+   "date": "31 Dec 2025",
+   "people": 147,
+   "byAccommodation": {
+    "Contingency Accommodation - Hotel": 111,
+    "Dispersal Accommodation": 35,
+    "Subsistence Only": 1
+   },
+   "per1000": 1.42,
+   "englandPer1000": 1.67,
+   "regionPer1000": 2.27
+  },
+  {
+   "date": "31 Mar 2026",
+   "people": 72,
+   "byAccommodation": {
+    "Contingency Accommodation - Hotel": 33,
+    "Dispersal Accommodation": 38,
+    "Subsistence Only": 1
+   },
+   "per1000": 0.69,
+   "englandPer1000": 1.51,
+   "regionPer1000": 2.01
+  },
+  {
+   "date": "30 Jun 2026",
+   "people": 78,
+   "byAccommodation": {
+    "Contingency Accommodation - Hotel": 28,
+    "Dispersal Accommodation": 47,
+    "Subsistence Only": 3
+   },
+   "per1000": 0.75,
+   "englandPer1000": 1.43,
+   "regionPer1000": 1.98
+  }
+ ]
+}

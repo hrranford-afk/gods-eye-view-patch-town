@@ -10,6 +10,7 @@
 export const TOWNS = Object.freeze({
   worcester: Object.freeze({
     id: 'worcester',
+    ladCode: 'E07000237', // Worcester City Council
     name: 'Worcester',
     bbox: Object.freeze([52.155, -2.285, 52.235, -2.155]),
     nhsPracticePrefix: 'M81',
@@ -17,6 +18,7 @@ export const TOWNS = Object.freeze({
   }),
   kidderminster: Object.freeze({
     id: 'kidderminster',
+    ladCode: 'E07000239', // Wyre Forest District Council
     name: 'Kidderminster',
     bbox: Object.freeze([52.355, -2.29, 52.415, -2.2]),
     nhsPracticePrefix: 'M81',
