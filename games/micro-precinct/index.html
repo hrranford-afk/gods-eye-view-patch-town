@@ -325,7 +325,7 @@ function makeBase(team) {
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
   pad.rotation.x = -Math.PI / 2;
-  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1500, maxHp: 1500, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 7, rate: 0.35, range: 16 }, cool: 0 };
+  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1500, maxHp: 1500, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
   obstacles.push({ x, z: 0, w: 12, d: 14, h: 7, kind: 'base' });
   entities.push(base);
   return base;
@@ -536,7 +536,8 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 
 function hurt(e, dmg, byTeam) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
-  e.hp -= dmg;
+  // Toy boxes are sturdy: a quarter damage, so a base falls to a siege, not a few scouts.
+  e.hp -= e.kind === 'base' ? dmg * 0.25 : dmg;
   if (e.hp > 0) return;
   const near = dist2(e, state.player) < 1600;
   burst(e.x, e.z, e.kind === 'base' ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : 16, e.kind === 'base' ? 22 : 11);
@@ -655,28 +656,55 @@ function updateCosts() {
 }
 
 // ---------- Enemy commander ----------
-// Earns like you, sends waves that grow over time, and guards caps it holds.
+// Earns like you. Builds before it attacks: a turret on every cap it holds,
+// then up to three around its toy box, then upgrades. Spare bolts become cars.
+// The first minute is gentle (scouts only, slower income) so you can learn.
+const RED_HOME = [[48, -12], [48, 12], [44, 0]];
+function spotNear(x, z, team) {
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, r = 6 + (i % 3);
+    const sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r;
+    if (!canPlace(sx, sz, team)) return [sx, sz];
+  }
+  return null;
+}
+function redTurrets() { return entities.filter((e) => e.kind === 'turret' && e.team === RED && e.hp > 0); }
+function commanderBuild(ramp) {
+  const bolts = state.bolts, mine = redTurrets();
+  const bare = outposts.filter((o) => o.owner === RED && !mine.some((t) => dist2(t, o) < 100));
+  const homeCount = mine.filter((t) => t.x > 38).length;
+  const homeWanted = state.time > 45 ? Math.min(3, 1 + Math.floor(state.time / 90)) : 0;
+  let spot = null;
+  if (bare.length) spot = spotNear(bare[0].x, bare[0].z, RED);
+  else if (homeCount < homeWanted) spot = spotNear(...RED_HOME[homeCount % RED_HOME.length], RED);
+  if (spot) {
+    if (bolts[RED] < 30) return true; // saving up: don't spend on cars
+    bolts[RED] -= 30;
+    const t = makeTurret(Math.random() < 0.6 ? 'gun' : 'rocket', RED, spot[0], spot[1]);
+    if (ramp > 0.7) levelUp(t);
+    if (dist2(t, state.player) < 40 * 40) toast('They built a turret!');
+    return false;
+  }
+  const weak = mine.filter((t) => t.level < 3).sort((x, y) => x.level - y.level)[0];
+  if (weak && state.time > 90 && bolts[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
+    bolts[RED] -= 20 + weak.level * 15;
+    levelUp(weak);
+  }
+  return false;
+}
 function commander(dt) {
   state.aiClock -= dt;
   if (state.aiClock > 0) return;
   state.aiClock = 1;
   const ramp = Math.min(1, state.time / 300);
-  const bolts = state.bolts;
+  if (commanderBuild(ramp)) return;
   const roll = Math.random();
-  const want = roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
+  const want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
-  if (bolts[RED] >= price + 10) {
-    bolts[RED] -= price;
+  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
+  if (army < 8 + Math.floor(ramp * 6) && state.bolts[RED] >= price + 10) {
+    state.bolts[RED] -= price;
     spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
-  }
-  const held = outposts.filter((o) => o.owner === RED && !entities.some((e) => e.kind === 'turret' && e.team === RED && e.hp > 0 && dist2(e, o) < 64));
-  if (held.length && bolts[RED] >= 40 && Math.random() < 0.3 + ramp * 0.3) {
-    const o = held[0], x = o.x + 5, z = o.z + (o.z > 0 ? -4 : 4);
-    if (!canPlace(x, z, RED)) {
-      bolts[RED] -= 30;
-      const t = makeTurret(Math.random() < 0.5 ? 'gun' : 'rocket', RED, x, z);
-      if (ramp > 0.6) levelUp(t);
-    }
   }
 }
 
@@ -730,7 +758,7 @@ function update(dt) {
   state.time += dt;
   const p = state.player;
   // Income: one bolt a second from home, plus one per bottle cap held.
-  for (const team of [BLUE, RED]) state.bolts[team] += dt * (1 + outposts.filter((o) => o.owner === team).length) * (team === RED ? 1.1 : 1);
+  for (const team of [BLUE, RED]) state.bolts[team] += dt * (1 + outposts.filter((o) => o.owner === team).length) * (team === RED ? (state.time < 60 ? 0.7 : 1.1) : 1);
 
   // Player
   if (p.alive) {
