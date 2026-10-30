@@ -1,6 +1,6 @@
 {
   "plan": "town-profile.json",
-  "ranAt": "2026-10-29T11:09:56.487Z",
+  "ranAt": "2026-10-30T07:47:48.482Z",
   "towns": {
     "worcester": {
       "profile": {
@@ -217,6 +217,66 @@
             "max": 0.205,
             "areas": 64
           },
+          "gp_antidepressantsPer1000": {
+            "mean": 132,
+            "min": 90.1,
+            "max": 187,
+            "areas": 64
+          },
+          "gp_opioidsPer1000": {
+            "mean": 27,
+            "min": 14.4,
+            "max": 35.9,
+            "areas": 64
+          },
+          "ahah": {
+            "mean": 15.3,
+            "min": 6.33,
+            "max": 42,
+            "areas": 64
+          },
+          "roadNoise55": {
+            "mean": 0.245,
+            "min": 0.039,
+            "max": 0.92,
+            "areas": 64
+          },
+          "greenspaceAccessWithin300m": {
+            "mean": 0.313,
+            "min": 0,
+            "max": 0.979,
+            "areas": 64
+          },
+          "natureReserveWithin1km": {
+            "mean": 0.761,
+            "min": 0,
+            "max": 1,
+            "areas": 64
+          },
+          "charitiesPer1000": {
+            "mean": 2.72,
+            "min": 0,
+            "max": 30.2,
+            "areas": 64
+          },
+          "foodbankWithin1km": {
+            "mean": 0.154,
+            "min": 0,
+            "max": 1,
+            "areas": 64
+          },
+          "wardTurnout": {
+            "mean": 33.8,
+            "min": 23,
+            "max": 43,
+            "areas": 64
+          },
+          "childcareProviders": {
+            "mean": 0.603,
+            "min": 0,
+            "max": 4,
+            "areas": 64
+          },
           "goodDay": {
             "mean": 0.413,
             "min": 0,
@@ -254,6 +314,24 @@
             "WR4",
             "WR5"
           ]
+        },
+        "charities": {
+          "charities": 367,
+          "incomeBands": {
+            "under10k": 123,
+            "from100kTo1m": 67,
+            "from10kTo100k": 129,
+            "over1m": 27,
+            "unknown": 21
+          },
+          "postcodeDistricts": [
+            "WR1",
+            "WR2",
+            "WR3",
+            "WR4",
+            "WR5"
+          ],
+          "note": "registered address is not where a charity works; a few large charities register at one office"
         },
         "childPoverty": {
           "childPoverty": 0.265
@@ -310,6 +388,71 @@
             }
           ]
         },
+        "elections": {
+          "councilSeats": 35,
+          "councilTurnout": 34.3,
+          "seatsLabour": 17,
+          "seatsGreen": 12,
+          "seatsLibDem": 5,
+          "seatsConservative": 1
+        },
+        "foodBanks": {
+          "foodbankLocations": 2,
+          "foodbankOrganisations": 2
+        },
+        "habitats": {
+          "lnrHectares": 100.2,
+          "sssiHectares": 6.2,
+          "lnrCount": 10,
+          "sssiCount": 2,
+          "priorityHabitatHectaresByType": {
+            "Coastal and floodplain grazing marsh": 15.3,
+            "Deciduous woodland": 312.7,
+            "Good quality semi improved grassland": 27.4,
+            "Lowland fens": 5.4,
+            "Lowland meadows": 28.1,
+            "No main habitat but additional habitats present": 59,
+            "Ponds": 0.2,
+            "Traditional orchard": 48.3
+          },
+          "note": "whole-site hectares for sites whose centre lies in the town box; habitat hectares are whole polygons touching the box"
+        },
+        "homelessness": {
+          "owedDuty": 175,
+          "owedDutyPer1000": 3.83,
+          "tempAccHouseholds": 46,
+          "tempAccPer1000": 1.01,
+          "tempAccChildren": 37,
+          "englandOwedDuty": 83850,
+          "englandOwedDutyPer1000": 3.4,
+          "englandTempAccHouseholds": 135580,
+          "englandTempAccPer1000": 5.5,
+          "englandTempAccChildren": 177530
+        },
+        "ofsted": {
+          "schools": 44,
+          "schoolsWithOldGrade": 17,
+          "schoolsGoodOrOutstandingOldGrade": 15,
+          "childcareProviders": 46,
+          "childcarePlaces": 2061,
+          "childmindersInCounty": 194,
+          "about": "oeif*: old grades 1 outstanding, 2 good, 3 requires improvement, 4 inadequate; rc*: new report card 1 urgent improvement .. 5 exceptional (from Nov 2025); concern: SM special measures, RSI requires significant improvement"
+        },
+        "osGreenspace": {
+          "accessPoints": 511,
+          "publicParkEntrances": 156,
+          "accessPointsByFunction": {
+            "Allotments Or Community Growing Spaces": 50,
+            "Public Park Or Garden": 156,
+            "Play Space": 96,
+            "Religious Grounds": 48,
+            "Other Sports Facility": 50,
+            "Playing Field": 79,
+            "Golf Course": 11,
+            "Cemetery": 13,
+            "Bowling Green": 8
+          }
+        },
         "population": {
           "population2011": 98679,
           "population": 106671,
@@ -318,11 +461,86 @@
           "childrenChange": -0.006,
           "over65Change": 0.319
         },
+        "rents": {
+          "rent": 984,
+          "rent1Bed": 716,
+          "rent2Bed": 915,
+          "rent3Bed": 1095,
+          "rent4Bed": 1551,
+          "annualChange": 6.1,
+          "regionRent": 983,
+          "regionRent1Bed": 711,
+          "regionRent2Bed": 887,
+          "regionRent3Bed": 1053,
+          "regionAnnualChange": 4.4,
+          "englandRent": 1466,
+          "englandRent1Bed": 1199,
+          "englandRent2Bed": 1341,
+          "englandRent3Bed": 1497,
+          "englandAnnualChange": 4
+        },
         "riverHealth": {
           "overflows": 13,
           "spills": 234,
           "spillHours": 1742,
           "severnSpillHours": 1230
+        },
+        "roadworks": {
+          "roadworksTotal": 979,
+          "roadworksDays": 5198,
+          "roadworksMajor": 134,
+          "roadworksStandard": 78,
+          "roadworksMinor": 557,
+          "roadworksImmediate": 210,
+          "roadworksOther": 0
+        },
+        "schoolResults": {
+          "ks2ReadingWritingMathsExpected": 63,
+          "ks2ReadingWritingMathsExpectedPrevious": 63,
+          "englandKs2ReadingWritingMathsExpected": 63,
+          "englandKs2ReadingWritingMathsExpectedPrevious": 63,
+          "ks2ReadingWritingMathsExpectedDisadvantaged": 45,
+          "ks2ReadingWritingMathsExpectedDisadvantagedPrevious": 48,
+          "englandKs2ReadingWritingMathsExpectedDisadvantaged": 48,
+          "englandKs2ReadingWritingMathsExpectedDisadvantagedPrevious": 48,
+          "ks4Attainment8": 47,
+          "ks4Attainment8Previous": 45.3,
+          "englandKs4Attainment8": 46.2,
+          "englandKs4Attainment8Previous": 46.1,
+          "ks4Attainment8Disadvantaged": 34.3,
+          "ks4Attainment8DisadvantagedPrevious": 30.9,
+          "englandKs4Attainment8Disadvantaged": 35.6,
+          "englandKs4Attainment8DisadvantagedPrevious": 34.9,
+          "ks4EnglishMathsGrade5": 47.5,
+          "ks4EnglishMathsGrade5Previous": 43.4,
+          "englandKs4EnglishMathsGrade5": 46.3,
+          "englandKs4EnglishMathsGrade5Previous": 45.5,
+          "ks4EnglishMathsGrade5Disadvantaged": 27.3,
+          "ks4EnglishMathsGrade5DisadvantagedPrevious": 20.2,
+          "englandKs4EnglishMathsGrade5Disadvantaged": 27.6,
+          "englandKs4EnglishMathsGrade5DisadvantagedPrevious": 25.8,
+          "about": "ks2*: % of Year 6 pupils meeting the expected standard in reading, writing and maths; ks4Attainment8: average Attainment 8 score per pupil; ks4EnglishMathsGrade5: % with grade 5+ in English and maths GCSE; \"Previous\" is the year before; england* is the national figure",
+          "ks2Period": "2025/26",
+          "ks2PreviousPeriod": "2024/25",
+          "ks4Period": "2025/26",
+          "ks4PreviousPeriod": "2024/25"
+        },
+        "stationUse": {
+          "stations": 2,
+          "entriesExits": 2491442,
+          "entriesExits201920": 2851620,
+          "about": "entriesExits: passengers entering plus leaving in the year; change: share compared with April 2019 to March 2020 (0 = same, -0.2 = 20% fewer)"
+        },
+        "streetReports": {
+          "fmsReportsInTown": 224,
+          "fmsTownVehicles": 191,
+          "fmsTownStreetLighting": 1,
+          "fmsTownFlyTipping": 10,
+          "fmsTownGraffiti": 3,
+          "fmsTownDogFouling": 1,
+          "fmsTownPotholes": 6,
+          "fmsTownRoadsPaths": 5,
+          "fmsTownOther": 7
         },
         "wellbeing": {
           "lifeSatisfaction": {
@@ -655,6 +873,66 @@
             "max": 0.39,
             "areas": 82
           },
+          "gp_antidepressantsPer1000": {
+            "mean": 139,
+            "min": 105,
+            "max": 196,
+            "areas": 82
+          },
+          "gp_opioidsPer1000": {
+            "mean": 30.3,
+            "min": 20.4,
+            "max": 43.5,
+            "areas": 82
+          },
+          "ahah": {
+            "mean": 18.1,
+            "min": 9.36,
+            "max": 34,
+            "areas": 82
+          },
+          "roadNoise55": {
+            "mean": 0.123,
+            "min": 0,
+            "max": 0.474,
+            "areas": 82
+          },
+          "greenspaceAccessWithin300m": {
+            "mean": 0.448,
+            "min": 0,
+            "max": 1,
+            "areas": 82
+          },
+          "natureReserveWithin1km": {
+            "mean": 0.529,
+            "min": 0,
+            "max": 1,
+            "areas": 82
+          },
+          "charitiesPer1000": {
+            "mean": 2.41,
+            "min": 0,
+            "max": 20.6,
+            "areas": 82
+          },
+          "foodbankWithin1km": {
+            "mean": 0.511,
+            "min": 0,
+            "max": 1,
+            "areas": 82
+          },
+          "wardTurnout": {
+            "mean": 28,
+            "min": 28,
+            "max": 28,
+            "areas": 4
+          },
+          "childcareProviders": {
+            "mean": 0.816,
+            "min": 0,
+            "max": 5,
+            "areas": 82
+          },
           "goodDay": {
             "mean": 0.363,
             "min": 0,
@@ -691,6 +969,23 @@
             "GL3",
             "GL4"
           ]
+        },
+        "charities": {
+          "charities": 469,
+          "incomeBands": {
+            "from10kTo100k": 168,
+            "under10k": 134,
+            "over1m": 34,
+            "from100kTo1m": 106,
+            "unknown": 27
+          },
+          "postcodeDistricts": [
+            "GL1",
+            "GL2",
+            "GL3",
+            "GL4"
+          ],
+          "note": "registered address is not where a charity works; a few large charities register at one office"
         },
         "childPoverty": {
           "childPoverty": 0.263
@@ -747,6 +1042,75 @@
             }
           ]
         },
+        "elections": {
+          "councilSeats": 39,
+          "councilTurnout": 27.8,
+          "seatsLibDem": 17,
+          "seatsConservative": 11,
+          "seatsLabour": 7,
+          "seatsIndependent": 4
+        },
+        "foodBanks": {
+          "foodbankLocations": 7,
+          "foodbankOrganisations": 1
+        },
+        "habitats": {
+          "lnrHectares": 158.6,
+          "sssiHectares": 22.6,
+          "lnrCount": 7,
+          "sssiCount": 4,
+          "priorityHabitatHectaresByType": {
+            "Coastal and floodplain grazing marsh": 1279.4,
+            "Coastal and floodplain grazing marsh,Lowland meadows": 3.7,
+            "Deciduous woodland": 722.7,
+            "Good quality semi improved grassland": 50,
+            "Lowland calcareous grassland": 19.8,
+            "Lowland meadows": 42.8,
+            "Mudflats": 2.5,
+            "No main habitat but additional habitats present": 42.9,
+            "Purple moor grass and rush pastures": 0.4,
+            "Ponds": 0,
+            "Traditional orchard": 104.3
+          },
+          "note": "whole-site hectares for sites whose centre lies in the town box; habitat hectares are whole polygons touching the box"
+        },
+        "homelessness": {
+          "owedDuty": 305,
+          "owedDutyPer1000": 5.3,
+          "tempAccHouseholds": 234,
+          "tempAccPer1000": 4.07,
+          "tempAccChildren": 246,
+          "englandOwedDuty": 83850,
+          "englandOwedDutyPer1000": 3.4,
+          "englandTempAccHouseholds": 135580,
+          "englandTempAccPer1000": 5.5,
+          "englandTempAccChildren": 177530
+        },
+        "ofsted": {
+          "schools": 62,
+          "schoolsWithOldGrade": 37,
+          "schoolsGoodOrOutstandingOldGrade": 33,
+          "childcareProviders": 89,
+          "childcarePlaces": 3615,
+          "childmindersInCounty": 227,
+          "about": "oeif*: old grades 1 outstanding, 2 good, 3 requires improvement, 4 inadequate; rc*: new report card 1 urgent improvement .. 5 exceptional (from Nov 2025); concern: SM special measures, RSI requires significant improvement"
+        },
+        "osGreenspace": {
+          "accessPoints": 925,
+          "publicParkEntrances": 325,
+          "accessPointsByFunction": {
+            "Golf Course": 32,
+            "Religious Grounds": 90,
+            "Public Park Or Garden": 325,
+            "Play Space": 157,
+            "Playing Field": 206,
+            "Allotments Or Community Growing Spaces": 28,
+            "Other Sports Facility": 59,
+            "Bowling Green": 11,
+            "Cemetery": 13,
+            "Tennis Court": 4
+          }
+        },
         "population": {
           "population2011": 121921,
           "population": 138598,
@@ -755,11 +1119,75 @@
           "childrenChange": 0.091,
           "over65Change": 0.287
         },
+        "rents": {
+          "rent": 1122,
+          "rent1Bed": 748,
+          "rent2Bed": 976,
+          "rent3Bed": 1219,
+          "rent4Bed": 1663,
+          "annualChange": 6.8,
+          "regionRent": 1251,
+          "regionRent1Bed": 833,
+          "regionRent2Bed": 1070,
+          "regionRent3Bed": 1305,
+          "regionAnnualChange": 4.2,
+          "englandRent": 1466,
+          "englandRent1Bed": 1199,
+          "englandRent2Bed": 1341,
+          "englandRent3Bed": 1497,
+          "englandAnnualChange": 4
+        },
         "riverHealth": {
           "overflows": 13,
           "spills": 136,
           "spillHours": 852,
           "severnSpillHours": 423
+        },
+        "roadworks": {
+          "roadworksTotal": 1449,
+          "roadworksDays": 7667,
+          "roadworksMajor": 128,
+          "roadworksStandard": 70,
+          "roadworksMinor": 841,
+          "roadworksImmediate": 409,
+          "roadworksOther": 1
+        },
+        "schoolResults": {
+          "ks2ReadingWritingMathsExpected": 57,
+          "ks2ReadingWritingMathsExpectedPrevious": 58,
+          "englandKs2ReadingWritingMathsExpected": 63,
+          "englandKs2ReadingWritingMathsExpectedPrevious": 63,
+          "ks2ReadingWritingMathsExpectedDisadvantaged": 37,
+          "ks2ReadingWritingMathsExpectedDisadvantagedPrevious": 38,
+          "englandKs2ReadingWritingMathsExpectedDisadvantaged": 48,
+          "englandKs2ReadingWritingMathsExpectedDisadvantagedPrevious": 48,
+          "ks4Attainment8": 47.4,
+          "ks4Attainment8Previous": 46.1,
+          "englandKs4Attainment8": 46.2,
+          "englandKs4Attainment8Previous": 46.1,
+          "ks4Attainment8Disadvantaged": 33.9,
+          "ks4Attainment8DisadvantagedPrevious": 32.6,
+          "englandKs4Attainment8Disadvantaged": 35.6,
+          "englandKs4Attainment8DisadvantagedPrevious": 34.9,
+          "ks4EnglishMathsGrade5": 48.4,
+          "ks4EnglishMathsGrade5Previous": 46.4,
+          "englandKs4EnglishMathsGrade5": 46.3,
+          "englandKs4EnglishMathsGrade5Previous": 45.5,
+          "ks4EnglishMathsGrade5Disadvantaged": 25,
+          "ks4EnglishMathsGrade5DisadvantagedPrevious": 22.5,
+          "englandKs4EnglishMathsGrade5Disadvantaged": 27.6,
+          "englandKs4EnglishMathsGrade5DisadvantagedPrevious": 25.8,
+          "about": "ks2*: % of Year 6 pupils meeting the expected standard in reading, writing and maths; ks4Attainment8: average Attainment 8 score per pupil; ks4EnglishMathsGrade5: % with grade 5+ in English and maths GCSE; \"Previous\" is the year before; england* is the national figure",
+          "ks2Period": "2025/26",
+          "ks2PreviousPeriod": "2024/25",
+          "ks4Period": "2025/26",
+          "ks4PreviousPeriod": "2024/25"
+        },
+        "stationUse": {
+          "stations": 1,
+          "entriesExits": 1763556,
+          "entriesExits201920": 1546910,
+          "about": "entriesExits: passengers entering plus leaving in the year; change: share compared with April 2019 to March 2020 (0 = same, -0.2 = 20% fewer)"
         },
         "wellbeing": {
           "lifeSatisfaction": {
@@ -1092,6 +1520,66 @@
             "max": 0.277,
             "areas": 77
           },
+          "gp_antidepressantsPer1000": {
+            "mean": 106,
+            "min": 73.8,
+            "max": 149,
+            "areas": 77
+          },
+          "gp_opioidsPer1000": {
+            "mean": 22.4,
+            "min": 13.6,
+            "max": 41,
+            "areas": 77
+          },
+          "ahah": {
+            "mean": 15.8,
+            "min": 5.42,
+            "max": 34.6,
+            "areas": 77
+          },
+          "roadNoise55": {
+            "mean": 0.159,
+            "min": 0.002,
+            "max": 0.546,
+            "areas": 77
+          },
+          "greenspaceAccessWithin300m": {
+            "mean": 0.395,
+            "min": 0,
+            "max": 1,
+            "areas": 77
+          },
+          "natureReserveWithin1km": {
+            "mean": 0.19,
+            "min": 0,
+            "max": 1,
+            "areas": 77
+          },
+          "charitiesPer1000": {
+            "mean": 2.96,
+            "min": 0,
+            "max": 21.6,
+            "areas": 77
+          },
+          "foodbankWithin1km": {
+            "mean": 0.484,
+            "min": 0,
+            "max": 1,
+            "areas": 77
+          },
+          "wardTurnout": {
+            "mean": 46.1,
+            "min": 29,
+            "max": 58.4,
+            "areas": 77
+          },
+          "childcareProviders": {
+            "mean": 1.02,
+            "min": 0,
+            "max": 5,
+            "areas": 77
+          },
           "goodDay": {
             "mean": 0.309,
             "min": 0,
@@ -1128,6 +1616,23 @@
             "GL52",
             "GL53"
           ]
+        },
+        "charities": {
+          "charities": 422,
+          "incomeBands": {
+            "from10kTo100k": 169,
+            "under10k": 130,
+            "over1m": 27,
+            "from100kTo1m": 76,
+            "unknown": 20
+          },
+          "postcodeDistricts": [
+            "GL50",
+            "GL51",
+            "GL52",
+            "GL53"
+          ],
+          "note": "registered address is not where a charity works; a few large charities register at one office"
         },
         "childPoverty": {
           "childPoverty": 0.197
@@ -1184,6 +1689,71 @@
             }
           ]
         },
+        "elections": {
+          "councilSeats": 40,
+          "councilTurnout": 46.6,
+          "seatsReform": 1,
+          "seatsLibDem": 35,
+          "seatsGreen": 3,
+          "seatsOther": 1
+        },
+        "foodBanks": {
+          "foodbankLocations": 7,
+          "foodbankOrganisations": 4
+        },
+        "habitats": {
+          "lnrHectares": 0.8,
+          "sssiHectares": 20.5,
+          "lnrCount": 1,
+          "sssiCount": 2,
+          "priorityHabitatHectaresByType": {
+            "Deciduous woodland": 355.2,
+            "Good quality semi improved grassland": 13.4,
+            "Lowland calcareous grassland": 208.5,
+            "Lowland meadows": 5.9,
+            "No main habitat but additional habitats present": 36.6,
+            "Ponds": 0,
+            "Traditional orchard": 34
+          },
+          "note": "whole-site hectares for sites whose centre lies in the town box; habitat hectares are whole polygons touching the box"
+        },
+        "homelessness": {
+          "owedDuty": 165,
+          "owedDutyPer1000": 3.02,
+          "tempAccHouseholds": 22,
+          "tempAccPer1000": 0.4,
+          "tempAccChildren": 25,
+          "englandOwedDuty": 83850,
+          "englandOwedDutyPer1000": 3.4,
+          "englandTempAccHouseholds": 135580,
+          "englandTempAccPer1000": 5.5,
+          "englandTempAccChildren": 177530
+        },
+        "ofsted": {
+          "schools": 42,
+          "schoolsWithOldGrade": 21,
+          "schoolsGoodOrOutstandingOldGrade": 20,
+          "childcareProviders": 81,
+          "childcarePlaces": 3227,
+          "childmindersInCounty": 227,
+          "about": "oeif*: old grades 1 outstanding, 2 good, 3 requires improvement, 4 inadequate; rc*: new report card 1 urgent improvement .. 5 exceptional (from Nov 2025); concern: SM special measures, RSI requires significant improvement"
+        },
+        "osGreenspace": {
+          "accessPoints": 552,
+          "publicParkEntrances": 174,
+          "accessPointsByFunction": {
+            "Golf Course": 6,
+            "Playing Field": 96,
+            "Allotments Or Community Growing Spaces": 30,
+            "Play Space": 97,
+            "Cemetery": 9,
+            "Public Park Or Garden": 174,
+            "Other Sports Facility": 66,
+            "Religious Grounds": 68,
+            "Tennis Court": 1,
+            "Bowling Green": 5
+          }
+        },
         "population": {
           "population2011": 115645,
           "population": 121739,
@@ -1192,11 +1762,75 @@
           "childrenChange": 0.076,
           "over65Change": 0.241
         },
+        "rents": {
+          "rent": 1269,
+          "rent1Bed": 875,
+          "rent2Bed": 1103,
+          "rent3Bed": 1364,
+          "rent4Bed": 1920,
+          "annualChange": 6.1,
+          "regionRent": 1251,
+          "regionRent1Bed": 833,
+          "regionRent2Bed": 1070,
+          "regionRent3Bed": 1305,
+          "regionAnnualChange": 4.2,
+          "englandRent": 1466,
+          "englandRent1Bed": 1199,
+          "englandRent2Bed": 1341,
+          "englandRent3Bed": 1497,
+          "englandAnnualChange": 4
+        },
         "riverHealth": {
           "overflows": 7,
           "spills": 87,
           "spillHours": 644,
           "severnSpillHours": 0
+        },
+        "roadworks": {
+          "roadworksTotal": 999,
+          "roadworksDays": 6200,
+          "roadworksMajor": 69,
+          "roadworksStandard": 86,
+          "roadworksMinor": 538,
+          "roadworksImmediate": 306,
+          "roadworksOther": 0
+        },
+        "schoolResults": {
+          "ks2ReadingWritingMathsExpected": 64,
+          "ks2ReadingWritingMathsExpectedPrevious": 62,
+          "englandKs2ReadingWritingMathsExpected": 63,
+          "englandKs2ReadingWritingMathsExpectedPrevious": 63,
+          "ks2ReadingWritingMathsExpectedDisadvantaged": 39,
+          "ks2ReadingWritingMathsExpectedDisadvantagedPrevious": 42,
+          "englandKs2ReadingWritingMathsExpectedDisadvantaged": 48,
+          "englandKs2ReadingWritingMathsExpectedDisadvantagedPrevious": 48,
+          "ks4Attainment8": 52,
+          "ks4Attainment8Previous": 51.7,
+          "englandKs4Attainment8": 46.2,
+          "englandKs4Attainment8Previous": 46.1,
+          "ks4Attainment8Disadvantaged": 34.1,
+          "ks4Attainment8DisadvantagedPrevious": 34.3,
+          "englandKs4Attainment8Disadvantaged": 35.6,
+          "englandKs4Attainment8DisadvantagedPrevious": 34.9,
+          "ks4EnglishMathsGrade5": 55.1,
+          "ks4EnglishMathsGrade5Previous": 54.5,
+          "englandKs4EnglishMathsGrade5": 46.3,
+          "englandKs4EnglishMathsGrade5Previous": 45.5,
+          "ks4EnglishMathsGrade5Disadvantaged": 21.5,
+          "ks4EnglishMathsGrade5DisadvantagedPrevious": 20.9,
+          "englandKs4EnglishMathsGrade5Disadvantaged": 27.6,
+          "englandKs4EnglishMathsGrade5DisadvantagedPrevious": 25.8,
+          "about": "ks2*: % of Year 6 pupils meeting the expected standard in reading, writing and maths; ks4Attainment8: average Attainment 8 score per pupil; ks4EnglishMathsGrade5: % with grade 5+ in English and maths GCSE; \"Previous\" is the year before; england* is the national figure",
+          "ks2Period": "2025/26",
+          "ks2PreviousPeriod": "2024/25",
+          "ks4Period": "2025/26",
+          "ks4PreviousPeriod": "2024/25"
+        },
+        "stationUse": {
+          "stations": 1,
+          "entriesExits": 2418292,
+          "entriesExits201920": 2590718,
+          "about": "entriesExits: passengers entering plus leaving in the year; change: share compared with April 2019 to March 2020 (0 = same, -0.2 = 20% fewer)"
         },
         "wellbeing": {
           "lifeSatisfaction": {
