@@ -130,7 +130,17 @@
           "bornAbroad",
           "crimePer1000Day",
           "violencePer1000Day",
-          "floodZone3Share"
+          "floodZone3Share",
+          "gp_antidepressantsPer1000",
+          "gp_opioidsPer1000",
+          "ahah",
+          "roadNoise55",
+          "greenspaceAccessWithin300m",
+          "natureReserveWithin1km",
+          "charitiesPer1000",
+          "foodbankWithin1km",
+          "wardTurnout",
+          "childcareProviders"
         ],
         "extra": {
           "goodDay": "$goodDay",

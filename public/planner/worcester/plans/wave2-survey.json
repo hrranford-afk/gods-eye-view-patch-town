@@ -1,0 +1,249 @@
+{
+  "question": "Wave 2 is mapped (prescribing, healthy-places index, road noise, park entrances, nature reserves, charities, food banks, elections, childcare). What goes together now, and what is surprising?",
+  "notes": "Prescribing and GP registers are per practice (each neighbourhood takes its nearest). Life expectancy is per MSOA. Turnout is per ward. Road noise is the share of homes at 55 dB Lden or more (2022 map). The two city-centre neighbourhoods are left out (L12).",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDayHome"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "area"
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "groupBy": "area"
+      },
+      "as": "greenMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$meet",
+        "groupBy": "area"
+      },
+      "as": "meetMinutes"
+    },
+    {
+      "tool": "survey",
+      "args": {
+        "namePrefix": "Worcester ",
+        "exclude": [
+          "Worcester 007F",
+          "Worcester 011E"
+        ],
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "noCar",
+          "livingAlone66",
+          "lifeExpectancy",
+          "healthyLifeExpectancy",
+          "selfHarmAdmissions",
+          "childPoverty",
+          "no2",
+          "gp_antidepressantsPer1000",
+          "gp_opioidsPer1000",
+          "ahah",
+          "roadNoise55",
+          "greenspaceAccessWithin300m",
+          "natureReserveWithin1km",
+          "charitiesPer1000",
+          "foodbankWithin1km",
+          "wardTurnout",
+          "childcareProviders",
+          "privateRent",
+          "carers"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes"
+        },
+        "explainBy": "imdScore",
+        "surprisesFor": [
+          "roadNoise55",
+          "wardTurnout",
+          "gp_antidepressantsPer1000",
+          "greenspaceAccessWithin300m",
+          "healthyLifeExpectancy"
+        ],
+        "top": 40
+      },
+      "as": "survey"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "healthyLifeExpectancy"
+      },
+      "as": "healthyLifeExpectancy"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "imdScore"
+      },
+      "as": "imdScore"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "roadNoise55"
+      },
+      "as": "roadNoise55"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "greenspaceAccessWithin300m"
+      },
+      "as": "greenspaceAccessWithin300m"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "wardTurnout"
+      },
+      "as": "wardTurnout"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "gp_antidepressantsPer1000"
+      },
+      "as": "gp_antidepressantsPer1000"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "livingAlone66"
+      },
+      "as": "livingAlone66"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "no2"
+      },
+      "as": "no2"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$healthyLifeExpectancy",
+        "x": {
+          "roadNoise55": "$roadNoise55",
+          "greenspaceAccessWithin300m": "$greenspaceAccessWithin300m",
+          "no2": "$no2"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "healthVsNoiseGreen"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$wardTurnout",
+        "x": {
+          "imdScore": "$imdScore"
+        },
+        "controls": {
+          "over65": "$over65"
+        }
+      },
+      "as": "turnoutVsDeprivation"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$gp_antidepressantsPer1000",
+        "x": {
+          "livingAlone66": "$livingAlone66",
+          "greenspaceAccessWithin300m": "$greenspaceAccessWithin300m"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "antidepressantsVsLonelinessGreen"
+    }
+  ]
+}

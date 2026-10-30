@@ -79,6 +79,9 @@ _Numbers from the plans as last re-run (29 Oct 2026 data build, official GPs and
 | L20 | **An ageing city that is barely making children.** Worcester grew 8% from 2011 to 2024 (98,679 to 106,671); people aged 65+ grew 32%, children 0–15 fell 0.6%. Homes, GPs and buses must plan for older residents first. Anxiety in Worcester (3.85 out of 10, 2022–23) was above England's (3.24), the highest in its 12-year series; one year, small sample. | `stats/population.json`, `stats/wellbeing.json` |
 | L21 | **The Severn takes Worcester's sewage on wet days.** 13 storm overflows in and around the city spilled 234 times for 1,742 hours in 2025; Bromwich Road treatment works alone spilled 68 times for 975 hours (about 41 days) into the Severn. Swimming or rowing downstream after rain is a health question. | `stats/riverHealth.json` |
 | L22 | **Beside its neighbours, Worcester is compact but tired.** Same 39 measures for Worcester, Gloucester and Cheltenham (`compare`). Worcester has the most homes with a good day within reach (41%, against 36% and 31%) and the shortest trip to a GP (15 min). But it is the only one losing children since 2011 (−0.6%, against +9% and +8%), has the most fuel poverty (14% of homes, against 9%), the most people on GP depression registers (17%, against 13% and 11%), the highest anxiety (3.85, against 2.36 and 3.17) and the most sewage spilled (1,742 hours, against 852 and 644). Cheltenham, richer (child poverty 19% against 25–26%), cycles almost twice as much (6.4% against 3.5%) and walks more; its children are the least obese (17% against 22–24%). Gloucester has the most self-harm admissions (151, England = 100; Worcester 82). Crime per resident + worker is similar in all three (66–75 per 1,000). | `public/planner/compare/town-profile.json` |
+| L23 | **The places with the most need have the least say.** At the last local elections, turnout fell with deprivation (r −0.72; with child poverty −0.90). Warndon & Elbury Park and Dines Green & Grove Farm voted at 23%, about 12 points below what their deprivation predicts. The neighbourhoods the planner keeps flagging are the ones least heard. | `plans/wave2-survey.json`, `stats/elections.json` |
+| L24 | **Cleaner air and parks at the door go with longer healthy lives.** Allowing for deprivation, each extra µg/m³ of NO2 goes with about a year less of healthy life (t −3.9), and homes within 300 m of a park entrance with more (t 2.1). Road noise does *not* show harm here: the noisiest homes are the better-off suburbs by the A449 and M5 (Claines 92% above 55 dB), so noise and health are confounded by wealth. | `plans/wave2-survey.json`, `stats/noise.json`, `stats/osGreenspace.json` |
+| L25 | **Antidepressant prescribing follows the surgery more than the street.** Items per 1,000 patients range from 90 to 187 a month across Worcester's practices; deprivation and loneliness explain little of it (R² 0.13). Practice habits, not neighbourhood need, drive most of the difference, so prescribing is a weak signal of wellbeing on its own. | `stats/prescribing.json` |
 | L13 | **Loneliness isn't about distance.** St John's (009E, around Henwick Road) and the Arboretum (007A) have a quarter of households as one person over 66 (expected ~12–13% for their deprivation), yet a meeting place is under 4 minutes' walk. What matters is whether those places suit older people. | `plans/survey.json` |
 | L14 | **Cycling follows distance to the centre, and it fell.** St John's (009C) and the Arboretum (007B), 1.1–1.5 km from the centre, cycle to work ~5.7% (above expected); Nunnery (010C), 2.1 km out and among the most deprived, 1.5%, down from 3.6% in 2011. Cycling fell in every neighbourhood looked at. | `plans/survey.json` |
 | L15 | **A good day within reach hinges on GP access** (r = −0.85 with GP minutes), and car-free households cluster where homes are cheaper (r = −0.75). | `plans/survey.json` |
@@ -117,8 +120,8 @@ That's the next tool to build.
 
 ## 3½. What's mapped now
 
-`npm run planner -- atlas worcester` lists it by compass theme: **45 of 76
-layers mapped** (wave 1 done). The other 31 are the free-data inventory
+`npm run planner -- atlas worcester` lists it by compass theme: **60 of 76
+layers mapped** (waves 1 and 2 done). The other 16 are the free-data inventory
 (the data plan below); 4 of them aren't published openly.
 
 | Theme | Mapped |
@@ -160,6 +163,14 @@ claimants, commuting flows, Propensity to Cycle and business rates (3,703
 properties). School results moved to wave 2: the school-level file answers
 403 here and the open API is council-level only. `plans/wave1-survey.json`
 re-ran the survey with all of it (L18–L21).
+
+**Wave 2 (done, 30 Oct 2026):** 15 more sources by five helper agents in
+parallel (`scripts/sources/*.mjs`, `stats <town> wave2`): prescribing,
+healthy-places index, road noise, park entrances, nature reserves,
+charities, homelessness, food banks, rents, school results, Ofsted, station
+use, elections, street reports, roadworks. Reviewed before merging; one fix
+(prescribing read a dataset that stopped in 2025). `plans/wave2-survey.json`
+(L23–L25).
 
 **Needs Harry's yes (free accounts):** EPC energy certificates (priority 1),
 DWP Stat-Xplore benefits, Landsat heat, Land Registry company ownership.
