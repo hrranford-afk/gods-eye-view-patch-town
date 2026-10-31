@@ -28,8 +28,9 @@ function matchKind(kind) {
  * to a stop + average wait + ride + walk). Returns minutes per home, aligned
  * to model.homes (capped at 120; Infinity if unreachable).
  */
-export function travel(model, { to, mode = 'walk' }) {
-  const targets = model.places.filter(matchKind(to));
+export function travel(model, { to, mode = 'walk', add = [] }) {
+  // `add`: hypothetical places [{ lon, lat, name }] counted as if they were of this kind (what-ifs).
+  const targets = [...model.places.filter(matchKind(to)), ...add.map((p) => ({ ...p, kind: 'added' }))];
   if (mode === 'busOrWalk') {
     if (!model.buses) throw new Error('travel: busOrWalk needs buses.json');
     const town = { ...model.town, places: targets.map((p) => ({ ...p, kind: 'target' })) };
@@ -445,7 +446,7 @@ export const TOOLS = Object.freeze({
   profile: { fn: profile, about: 'A whole town in one line per figure: resident-weighted mean, lowest and highest neighbourhood. For comparing towns.', args: { fields: 'area fields', extra: 'optional {label: $result} per-area results', namePrefix: "e.g. 'Gloucester ' (the council's own neighbourhoods)", exclude: 'area names or codes to leave out' } },
   spotlight: { fn: spotlight, about: 'One place (a ward, or listed neighbourhoods) against its town on every figure: value, town median, percentile; most unusual first.', args: { ward: "e.g. 'Warndon & Elbury Park'", codes: 'or a list of neighbourhood codes or names', fields: 'area fields', extra: 'optional {label: $result} per-area results', namePrefix: "the town's own neighbourhoods, e.g. 'Worcester '", exclude: 'areas to leave out of the town' } },
   council: { fn: (m) => m.council || {}, about: 'Figures published only for the whole council (wellbeing, population, sewage spills…), by source.', args: {} },
-  travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
+  travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind (optionally with hypothetical places added).', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'", add: 'optional what-if places [{ lon, lat, name }]' } },
   summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'ward', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },
   count: { fn: count, about: 'Places of a kind per group, per 1,000 households (or residents + workers).', args: { kind: 'kind or list', groupBy: "'area' (default), 'ward', 'bank', 'cell', 'town'", per: "'households' (default) or 'dayPopulation'" } },
   attribute: { fn: attribute, about: 'Any numeric figure per area (census, need, history); `minus` for a change.', args: { name: "e.g. 'need', 'noCar', 'newHomesShare', 'carCommute2021' (see fields)", minus: "optional, e.g. 'carCommute2011'" } },

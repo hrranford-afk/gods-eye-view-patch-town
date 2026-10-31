@@ -1,0 +1,524 @@
+{
+  "question": "Would a small hub (GP or health room, caf\u00e9 or meeting room, corner shop) give older residents a good day without a car? Tested at St Peter's district centre, Warndon Villages and Battenhall, one at a time and together.",
+  "notes": "A hub counts as a GP, a meeting place and a food shop. Good day: meeting place 10 min, green space 5, food 10 (walk), GP 15 (walk or bus). Hub points are approximate centres, snapped to the nearest path.",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*",
+        "add": []
+      },
+      "as": "meet_today"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ],
+        "add": []
+      },
+      "as": "food_today"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk",
+        "add": []
+      },
+      "as": "gp_today"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet_today",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food_today",
+            "max": 10
+          },
+          {
+            "values": "$gp_today",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_today"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_today",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "over65_today"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_today",
+        "groupBy": "town"
+      },
+      "as": "all_today"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_today",
+        "groupBy": "ward",
+        "weight": "over65"
+      },
+      "as": "wards_today"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*",
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          }
+        ]
+      },
+      "as": "meet_stPeters"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ],
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          }
+        ]
+      },
+      "as": "food_stPeters"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk",
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          }
+        ]
+      },
+      "as": "gp_stPeters"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet_stPeters",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food_stPeters",
+            "max": 10
+          },
+          {
+            "values": "$gp_stPeters",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_stPeters"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_stPeters",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "over65_stPeters"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_stPeters",
+        "groupBy": "town"
+      },
+      "as": "all_stPeters"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_stPeters",
+        "groupBy": "ward",
+        "weight": "over65"
+      },
+      "as": "wards_stPeters"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*",
+        "add": [
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          }
+        ]
+      },
+      "as": "meet_warndonVillages"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ],
+        "add": [
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          }
+        ]
+      },
+      "as": "food_warndonVillages"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk",
+        "add": [
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          }
+        ]
+      },
+      "as": "gp_warndonVillages"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet_warndonVillages",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food_warndonVillages",
+            "max": 10
+          },
+          {
+            "values": "$gp_warndonVillages",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_warndonVillages"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_warndonVillages",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "over65_warndonVillages"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_warndonVillages",
+        "groupBy": "town"
+      },
+      "as": "all_warndonVillages"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_warndonVillages",
+        "groupBy": "ward",
+        "weight": "over65"
+      },
+      "as": "wards_warndonVillages"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*",
+        "add": [
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "meet_battenhall"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ],
+        "add": [
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "food_battenhall"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk",
+        "add": [
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "gp_battenhall"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet_battenhall",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food_battenhall",
+            "max": 10
+          },
+          {
+            "values": "$gp_battenhall",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_battenhall"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_battenhall",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "over65_battenhall"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_battenhall",
+        "groupBy": "town"
+      },
+      "as": "all_battenhall"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_battenhall",
+        "groupBy": "ward",
+        "weight": "over65"
+      },
+      "as": "wards_battenhall"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*",
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          },
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          },
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "meet_allThree"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ],
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          },
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          },
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "food_allThree"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk",
+        "add": [
+          {
+            "lon": -2.1952,
+            "lat": 52.1688,
+            "name": "stPeters"
+          },
+          {
+            "lon": -2.1655,
+            "lat": 52.2098,
+            "name": "warndonVillages"
+          },
+          {
+            "lon": -2.205,
+            "lat": 52.179,
+            "name": "battenhall"
+          }
+        ]
+      },
+      "as": "gp_allThree"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet_allThree",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food_allThree",
+            "max": 10
+          },
+          {
+            "values": "$gp_allThree",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_allThree"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_allThree",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "over65_allThree"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_allThree",
+        "groupBy": "town"
+      },
+      "as": "all_allThree"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_allThree",
+        "groupBy": "ward",
+        "weight": "over65"
+      },
+      "as": "wards_allThree"
+    }
+  ],
+  "show": [
+    "over65_today",
+    "all_today",
+    "over65_stPeters",
+    "all_stPeters",
+    "over65_warndonVillages",
+    "all_warndonVillages",
+    "over65_battenhall",
+    "all_battenhall",
+    "over65_allThree",
+    "all_allThree",
+    "wards_today",
+    "wards_allThree"
+  ]
+}

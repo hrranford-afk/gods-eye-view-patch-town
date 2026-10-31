@@ -110,6 +110,8 @@ npm run planner -- atlas worcester     # what's mapped, by compass theme (--chec
 npm run planner -- stats worcester wave1  # fetch a wave of free sources into stats/
 npm run planner -- compare worcester,gloucester,cheltenham public/planner/plans/town-profile.json  # same plan, towns side by side
 # spotlight tool: one ward or set of neighbourhoods against its town on every figure (see plans/spotlight-warndon.json)
+# what-ifs: travel takes add: [{ lon, lat, name }] to test a new place (see plans/older-residents-hubs.json)
+# optional: true on a plan step records its error instead of stopping the plan
 npm run planner -- food worcester      # every food business (FSA register): type, hygiene rating, location
 npm run planner -- analyse worcester   # score walking access, write map files (uses census/gps/buses if present)
 npm run planner -- scenarios worcester # score every scenarios/*.json against the town as it is

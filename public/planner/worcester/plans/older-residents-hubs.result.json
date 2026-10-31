@@ -1,0 +1,194 @@
+{
+  "question": "Would a small hub (GP or health room, café or meeting room, corner shop) give older residents a good day without a car? Tested at St Peter's district centre, Warndon Villages and Battenhall, one at a time and together.",
+  "ranAt": "2026-10-31T09:10:31.417Z",
+  "results": {
+    "over65_today": {
+      "value": {
+        "worcester": 0.301
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "all_today": {
+      "value": {
+        "worcester": 0.351
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_stPeters": {
+      "value": {
+        "worcester": 0.321
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "all_stPeters": {
+      "value": {
+        "worcester": 0.377
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_warndonVillages": {
+      "value": {
+        "worcester": 0.313
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "all_warndonVillages": {
+      "value": {
+        "worcester": 0.367
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_battenhall": {
+      "value": {
+        "worcester": 0.326
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "all_battenhall": {
+      "value": {
+        "worcester": 0.373
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_allThree": {
+      "value": {
+        "worcester": 0.354
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "all_allThree": {
+      "value": {
+        "worcester": 0.412
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "wards_today": {
+      "value": {
+        "St Peter's Parish": 0,
+        "Nunnery": 0.297,
+        "Lower Wick & Pitmaston": 0.201,
+        "North Claines & Salwarpe": 0,
+        "Leopard Hill": 0.158,
+        "Battenhall": 0.097,
+        "St Nicholas": 0.028,
+        "Fort Royal": 0.666,
+        "St Clement": 0.064,
+        "St John's": 0.669,
+        "Arboretum": 0.819,
+        "Cathedral": 0.594,
+        "Claines": 0.362,
+        "Rainbow Hill": 0.843,
+        "Warndon & Elbury Park": 0.53,
+        "St Stephen": 0.389,
+        "Drakes Broughton, Norton & Whittington": 0,
+        "Dines Green & Grove Farm": 0.583,
+        "Kempsey": 0,
+        "Hallow & Holt": 0,
+        "Broadheath": 0,
+        "Alfrick, Leigh & Rushwick": 0.003,
+        "Bowbrook": 0,
+        "Powick & the Hanleys": 0
+      },
+      "households": {
+        "St Peter's Parish": 2478,
+        "Nunnery": 3477,
+        "Lower Wick & Pitmaston": 2630,
+        "North Claines & Salwarpe": 1975,
+        "Leopard Hill": 2458,
+        "Battenhall": 2262,
+        "St Nicholas": 2220,
+        "Fort Royal": 2730,
+        "St Clement": 2108,
+        "St John's": 1594,
+        "Arboretum": 3029,
+        "Cathedral": 2986,
+        "Claines": 3551,
+        "Rainbow Hill": 2434,
+        "Warndon & Elbury Park": 4961,
+        "St Stephen": 2530,
+        "Drakes Broughton, Norton & Whittington": 1599,
+        "Dines Green & Grove Farm": 3278,
+        "Kempsey": 1190,
+        "Hallow & Holt": 888,
+        "Broadheath": 633,
+        "Alfrick, Leigh & Rushwick": 1845,
+        "Bowbrook": 606,
+        "Powick & the Hanleys": 771
+      }
+    },
+    "wards_allThree": {
+      "value": {
+        "St Peter's Parish": 0.372,
+        "Nunnery": 0.297,
+        "Lower Wick & Pitmaston": 0.201,
+        "North Claines & Salwarpe": 0.004,
+        "Leopard Hill": 0.159,
+        "Battenhall": 0.501,
+        "St Nicholas": 0.464,
+        "Fort Royal": 0.72,
+        "St Clement": 0.064,
+        "St John's": 0.669,
+        "Arboretum": 0.819,
+        "Cathedral": 0.595,
+        "Claines": 0.362,
+        "Rainbow Hill": 0.843,
+        "Warndon & Elbury Park": 0.53,
+        "St Stephen": 0.389,
+        "Drakes Broughton, Norton & Whittington": 0.117,
+        "Dines Green & Grove Farm": 0.583,
+        "Kempsey": 0.004,
+        "Hallow & Holt": 0,
+        "Broadheath": 0,
+        "Alfrick, Leigh & Rushwick": 0.003,
+        "Bowbrook": 0,
+        "Powick & the Hanleys": 0
+      },
+      "households": {
+        "St Peter's Parish": 2478,
+        "Nunnery": 3477,
+        "Lower Wick & Pitmaston": 2630,
+        "North Claines & Salwarpe": 1975,
+        "Leopard Hill": 2458,
+        "Battenhall": 2262,
+        "St Nicholas": 2220,
+        "Fort Royal": 2730,
+        "St Clement": 2108,
+        "St John's": 1594,
+        "Arboretum": 3029,
+        "Cathedral": 2986,
+        "Claines": 3551,
+        "Rainbow Hill": 2434,
+        "Warndon & Elbury Park": 4961,
+        "St Stephen": 2530,
+        "Drakes Broughton, Norton & Whittington": 1599,
+        "Dines Green & Grove Farm": 3278,
+        "Kempsey": 1190,
+        "Hallow & Holt": 888,
+        "Broadheath": 633,
+        "Alfrick, Leigh & Rushwick": 1845,
+        "Bowbrook": 606,
+        "Powick & the Hanleys": 771
+      }
+    }
+  }
+}

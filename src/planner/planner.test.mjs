@@ -587,3 +587,15 @@ test('runPlan: an optional step records its error instead of stopping the plan',
   assert.equal(out.ok.value.A, 0.1);
   assert.throws(() => runPlan(model, [{ tool: 'attribute', args: { name: 'nope' } }]));
 });
+
+test('travel: a what-if place (add) shortens the trip for homes near it', async () => {
+  const { buildModel } = await import('./model.js');
+  const { travel } = await import('./tools.js');
+  const model = buildModel({ town: gridTown() });
+  const [lon, lat] = at(4, 0); // far corner from the corner shop
+  const today = travel(model, { to: 'shop' });
+  const withNew = travel(model, { to: 'shop', add: [{ lon, lat, name: 'New shop' }] });
+  const far = model.homes.findIndex((h) => h.id === 'h40');
+  assert.ok(withNew[far] < today[far] / 3, `${withNew[far]} vs ${today[far]}`);
+  assert.ok(withNew.every((m, i) => m <= today[i] + 1e-9));
+});

@@ -582,7 +582,8 @@
         -2.194,
         52.168
       ],
-      "unlocks": "Scenario: add a hub (GP + caf\u00e9 + meeting room) at St Peter's district centre or Warndon Villages and score over-65 good day; bus timetables on those estates by hour; step-free routes"
+      "unlocks": "Scenario: add a hub (GP + caf\u00e9 + meeting room) at St Peter's district centre or Warndon Villages and score over-65 good day; bus timetables on those estates by hour; step-free routes",
+      "progress": "plans/older-residents-hubs.json: three small hubs (St Peter's centre, Warndon Villages, Battenhall) take over-65 good day from 3% to 46% (St Nicholas), 10% to 50% (Battenhall), 0% to 37% (St Peter's); city-wide 30% to 35%. Still to test: a demand-responsive bus, a shop in a vacant unit, benches and crossings."
     }
   ]
 }
