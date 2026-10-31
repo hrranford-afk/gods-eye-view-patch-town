@@ -260,3 +260,22 @@ questions it raises.
 - Every new measure gets a test in `planner.test.mjs` on the made-up grid.
 - Run `npm test` before pushing (the whole app suite, ~3,400 tests).
 - Log what you added in `IDEAS.md`, and what you asked or answered in `questions.json`.
+
+## Big areas (Worcestershire scale test, 31 Oct 2026)
+
+`worcestershire` in towns.js is a scale test: the whole county as one town
+(its rectangle also takes in south Birmingham: 931 neighbourhoods, 1.5 million people).
+
+- Census (85 s), deprivation (2 s) and GPs (16 s) handled it fine. Nomis
+  sometimes answers 406 under load; census now retries.
+- The map download is the breaking point. Free public Overpass servers
+  serve a town's 18 pieces, but not a county's 98: after about 60 pieces the
+  only mirror that answers slows to 20 s for a tiny query and times out the
+  dense Worcester city tile even cut into 16; the others answer 429 (too many
+  requests). The planner now uses more pieces for big areas
+  (`overpassQueries`), splits a stuck piece (`splitQuery`), backs off longer,
+  and takes `PLANNER_OVERPASS_PARALLEL=1`. Finished pieces are kept, so a
+  rerun on another day carries on.
+- For a county, the UK or the world, use a downloaded OpenStreetMap extract
+  (`scripts/planner-pbf.py`, then `import`), not public servers. Geofabrik
+  is blocked from the cloud session; a download needs Harry's yes.
