@@ -45,7 +45,7 @@ const OVERPASS_URLS = process.env.PLANNER_OVERPASS_URL
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass.private.coffee/api/interpreter',
   ];
-const PARALLEL = 3;
+const PARALLEL = Number(process.env.PLANNER_OVERPASS_PARALLEL) || 3; // 1 for big areas: a busy mirror refuses parallel pieces
 const ATTEMPTS = 8;
 
 /** Folder holding one town's files; the app serves it at /planner/<town>/. */
