@@ -1,0 +1,134 @@
+{
+  "question": "Worcester is ageing fast. Can older residents reach a GP, food, green space and company without a car, and where is the 65+ population growing?",
+  "ranAt": "2026-10-31T09:09:27.043Z",
+  "results": {
+    "goodDayOver65": {
+      "value": {
+        "worcester": 0.301
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "goodDayAll": {
+      "value": {
+        "worcester": 0.351
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "gpMinutesOver65": {
+      "value": {
+        "worcester": 19.766
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "gpMinutesAll": {
+      "value": {
+        "worcester": 18.396
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "goodDayOver65ByWard": {
+      "value": {
+        "St Peter's Parish": 0,
+        "Nunnery": 0.297,
+        "Lower Wick & Pitmaston": 0.201,
+        "North Claines & Salwarpe": 0,
+        "Leopard Hill": 0.158,
+        "Battenhall": 0.097,
+        "St Nicholas": 0.028,
+        "Fort Royal": 0.666,
+        "St Clement": 0.064,
+        "St John's": 0.669,
+        "Arboretum": 0.819,
+        "Cathedral": 0.594,
+        "Claines": 0.362,
+        "Rainbow Hill": 0.843,
+        "Warndon & Elbury Park": 0.53,
+        "St Stephen": 0.389,
+        "Drakes Broughton, Norton & Whittington": 0,
+        "Dines Green & Grove Farm": 0.583,
+        "Kempsey": 0,
+        "Hallow & Holt": 0,
+        "Broadheath": 0,
+        "Alfrick, Leigh & Rushwick": 0.003,
+        "Bowbrook": 0,
+        "Powick & the Hanleys": 0
+      },
+      "households": {
+        "St Peter's Parish": 2478,
+        "Nunnery": 3477,
+        "Lower Wick & Pitmaston": 2630,
+        "North Claines & Salwarpe": 1975,
+        "Leopard Hill": 2458,
+        "Battenhall": 2262,
+        "St Nicholas": 2220,
+        "Fort Royal": 2730,
+        "St Clement": 2108,
+        "St John's": 1594,
+        "Arboretum": 3029,
+        "Cathedral": 2986,
+        "Claines": 3551,
+        "Rainbow Hill": 2434,
+        "Warndon & Elbury Park": 4961,
+        "St Stephen": 2530,
+        "Drakes Broughton, Norton & Whittington": 1599,
+        "Dines Green & Grove Farm": 3278,
+        "Kempsey": 1190,
+        "Hallow & Holt": 888,
+        "Broadheath": 633,
+        "Alfrick, Leigh & Rushwick": 1845,
+        "Bowbrook": 606,
+        "Powick & the Hanleys": 771
+      }
+    },
+    "fastestAgeing": [
+      {
+        "group": "E01034324",
+        "name": "Worcester 013F",
+        "value": 1.701
+      },
+      {
+        "group": "E01032337",
+        "name": "Worcester 008A",
+        "value": 1.669
+      },
+      {
+        "group": "E01032339",
+        "name": "Worcester 008C",
+        "value": 1.445
+      },
+      {
+        "group": "E01032286",
+        "name": "Worcester 012A",
+        "value": 1.41
+      },
+      {
+        "group": "E01032336",
+        "name": "Worcester 003D",
+        "value": 1.333
+      },
+      {
+        "group": "E01032335",
+        "name": "Worcester 003C",
+        "value": 1.024
+      },
+      {
+        "group": "E01034323",
+        "name": "Worcester 013E",
+        "value": 0.878
+      },
+      {
+        "group": "E01032334",
+        "name": "Worcester 003B",
+        "value": 0.829
+      }
+    ]
+  }
+}

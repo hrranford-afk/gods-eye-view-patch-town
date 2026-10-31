@@ -495,9 +495,13 @@
       "id": "q38",
       "question": "Worcester is ageing fast (65+ up 32% since 2011, children flat). Where will older residents live in 2035, and can they reach a GP, a bus and a meeting place without a car?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "wave1",
-      "unlocks": "Population projections by age, care homes, step-free access, bus stops near homes of over-65s"
+      "unlocks": "Population projections by age, care homes, step-free access, bus stops near homes of over-65s",
+      "spawned": [
+        "q46"
+      ],
+      "finding": "plans/older-residents.json: 65+ grew fastest (more than doubled since 2011) in the 1990s car suburbs: Warndon Villages (St Nicholas), Leopard Hill, St Peter's, Diglis. They have the least within reach for older people: a good day is 0% of over-65s in St Peter's, 3% St Nicholas, 6% St Clement, 10% Battenhall (city 30%). Over-65s take 20 min to a GP against 18 for all."
     },
     {
       "id": "q39",
@@ -567,6 +571,18 @@
       ],
       "unlocks": "Bus or walk minutes from each neighbourhood to the two sites (travel tool, food bank as a place kind), food bank referral numbers by postcode district if the food bank shares them, Your Local Pantry model",
       "progress": "plans/foodbank-reach.json: average 24 minutes (Gloucester 24, Cheltenham 21) because buses converge on the centre; the Warndon estate is 18 minutes; the west bank is the gap, as for GPs (L8)."
+    },
+    {
+      "id": "q46",
+      "question": "What would give older residents of St Peter's and Warndon Villages a good day without a car: a small health and community hub, a demand-responsive bus, a corner shop in a vacant unit, or benches and safer crossings on the walk? Which reaches most for least?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q38",
+      "lonLat": [
+        -2.194,
+        52.168
+      ],
+      "unlocks": "Scenario: add a hub (GP + caf\u00e9 + meeting room) at St Peter's district centre or Warndon Villages and score over-65 good day; bus timetables on those estates by hour; step-free routes"
     }
   ]
 }
