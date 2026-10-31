@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getTown, TOWNS } from '../src/planner/towns.js';
-import { mergeOverpass, overpassQueries, parseOverpass, SERVICE_KINDS } from '../src/planner/osm.js';
+import { mergeOverpass, overpassQueries, parseOverpass, SERVICE_KINDS, splitQuery } from '../src/planner/osm.js';
 import {
   analyseAccess,
   cellsToGeoJson,
@@ -79,27 +79,33 @@ async function fetchTown(id) {
   const results = new Array(queries.length);
   let next = 0;
   let done = 0;
+  // One piece: try a few times, then cut it into quarters (twice at most) when a dense tile keeps timing out.
+  const piece = async (query, attempt0, depth = 0) => {
+    if (existsSync(cachePath(query))) return JSON.parse(readFileSync(cachePath(query), 'utf8'));
+    const tries = depth < 2 ? 3 : ATTEMPTS;
+    for (let k = 0; ; k++) {
+      try {
+        const res = await askOverpass(query, attempt0 + k);
+        writeFileSync(cachePath(query), JSON.stringify(res));
+        return res;
+      } catch (err) {
+        if (k + 1 >= tries) {
+          if (depth >= 2) throw new Error(`piece failed ${tries} times: ${err.cause?.code || err.message}`);
+          console.log(`[planner]   a piece keeps failing (${err.cause?.code || err.message}); cutting it into quarters`);
+          const parts = [];
+          for (const q of splitQuery(query)) parts.push(await piece(q, attempt0, depth + 1)); // one at a time: the server is already struggling
+          return mergeOverpass(parts);
+        }
+        // Back off longer each time: a busy mirror answers 504 to pieces it serves in 16 s when quiet.
+        await new Promise((r) => setTimeout(r, 5000 * (k + 1)));
+      }
+    }
+  };
   const worker = async (w) => {
     while (next < queries.length) {
       const i = next++;
-      if (existsSync(cachePath(queries[i]))) {
-        results[i] = JSON.parse(readFileSync(cachePath(queries[i]), 'utf8'));
-        console.log(`[planner]   piece ${++done}/${queries.length} (saved earlier)`);
-        continue;
-      }
-      for (let attempt = w; ; attempt++) {
-        try {
-          results[i] = await askOverpass(queries[i], attempt);
-          writeFileSync(cachePath(queries[i]), JSON.stringify(results[i]));
-          console.log(`[planner]   piece ${++done}/${queries.length}`);
-          break;
-        } catch (err) {
-          if (attempt - w + 1 >= ATTEMPTS) throw new Error(`piece ${i + 1} failed ${ATTEMPTS} times: ${err.cause?.code || err.message}`);
-          console.log(`[planner]   piece ${i + 1}: ${err.cause?.code || err.message}, retrying elsewhere`);
-          // Back off longer each time: a busy mirror answers 504 to pieces it serves in 16 s when quiet.
-          await new Promise((r) => setTimeout(r, 5000 * (attempt - w + 1)));
-        }
-      }
+      results[i] = await piece(queries[i], w);
+      console.log(`[planner]   piece ${++done}/${queries.length}`);
     }
   };
   await Promise.all([...Array(PARALLEL).keys()].map(worker));

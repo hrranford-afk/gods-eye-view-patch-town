@@ -128,6 +128,16 @@ out center tags;`);
   return queries;
 }
 
+/** Cut one Overpass query's box into four quarters (for a dense piece a busy server keeps refusing). */
+export function splitQuery(query) {
+  const m = query.match(/\((-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)\)/);
+  if (!m) return [query];
+  const [s, w, n, e] = m.slice(1).map(Number);
+  const ms = (s + n) / 2, mw = (w + e) / 2;
+  return [[s, w, ms, mw], [s, mw, ms, e], [ms, w, n, mw], [ms, mw, n, e]]
+    .map((b) => query.split(m[0]).join(`(${b.map((x) => x.toFixed(5)).join(',')})`));
+}
+
 /** Join several Overpass responses, keeping one copy of each element. */
 export function mergeOverpass(responses) {
   const seen = new Map();

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mergeOverpass, overpassQueries, parseOverpass, roadKind } from './osm.js';
+import { mergeOverpass, overpassQueries, splitQuery, parseOverpass, roadKind } from './osm.js';
 import { buildWalkGraph, metresBetween, nearestFrom } from './graph.js';
 import { analyseAccess, cellsToGeoJson } from './access.js';
 import { getTown } from './towns.js';
@@ -598,4 +598,19 @@ test('travel: a what-if place (add) shortens the trip for homes near it', async 
   const far = model.homes.findIndex((h) => h.id === 'h40');
   assert.ok(withNew[far] < today[far] / 3, `${withNew[far]} vs ${today[far]}`);
   assert.ok(withNew.every((m, i) => m <= today[i] + 1e-9));
+});
+
+test('splitQuery cuts a piece into four quarters covering the same box', () => {
+  const q = '[out:json];(way["highway"](52.00000,-2.20000,52.10000,-2.00000);node(52.00000,-2.20000,52.10000,-2.00000););out;';
+  const parts = splitQuery(q);
+  assert.equal(parts.length, 4);
+  assert.ok(parts[0].includes('(52.00000,-2.20000,52.05000,-2.10000)'));
+  assert.ok(parts[3].includes('(52.05000,-2.10000,52.10000,-2.00000)'));
+  assert.ok(parts.every((p) => !p.includes('52.10000,-2.00000);node(52.00000,-2.20000')), 'every box in a part is replaced');
+  assert.deepEqual(splitQuery('no box'), ['no box']);
+});
+
+test('overpassQueries: towns keep 3×3 pieces, a county gets more', () => {
+  assert.equal(overpassQueries({ bbox: [52.155, -2.285, 52.235, -2.155] }).length, 18);
+  assert.ok(overpassQueries({ bbox: [51.96, -2.67, 52.46, -1.75] }).length > 18);
 });
