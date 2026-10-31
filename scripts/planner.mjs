@@ -46,7 +46,7 @@ const OVERPASS_URLS = process.env.PLANNER_OVERPASS_URL
     'https://overpass.private.coffee/api/interpreter',
   ];
 const PARALLEL = 3;
-const ATTEMPTS = 6;
+const ATTEMPTS = 8;
 
 /** Folder holding one town's files; the app serves it at /planner/<town>/. */
 export function townDir(id, root = process.cwd()) {
@@ -96,7 +96,8 @@ async function fetchTown(id) {
         } catch (err) {
           if (attempt - w + 1 >= ATTEMPTS) throw new Error(`piece ${i + 1} failed ${ATTEMPTS} times: ${err.cause?.code || err.message}`);
           console.log(`[planner]   piece ${i + 1}: ${err.cause?.code || err.message}, retrying elsewhere`);
-          await new Promise((r) => setTimeout(r, 5000));
+          // Back off longer each time: a busy mirror answers 504 to pieces it serves in 16 s when quiet.
+          await new Promise((r) => setTimeout(r, 5000 * (attempt - w + 1)));
         }
       }
     }
