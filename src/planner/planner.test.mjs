@@ -567,3 +567,14 @@ test('profile: a whole town per figure, weighted by residents, with its range', 
   assert.equal(p.figures.goodDay.mean, 0.25);
   assert.equal(runPlan(model, [{ tool: 'council', as: 'c' }]).c.wellbeing.anxiety[2023], 3);
 });
+
+test('spotlight: a ward against its town, most unusual figures first', async () => {
+  const { spotlight } = await import('./tools.js');
+  const areas = Array.from({ length: 10 }, (_, i) => ({ code: `A${i}`, name: `Town ${i}`, ward: i < 2 ? 'Low Ward' : 'Other', residents: 100, noCar: i / 10, over65: 0.2 }));
+  const s = spotlight({ areas }, { ward: 'Low Ward', fields: ['noCar', 'over65'], namePrefix: 'Town ' });
+  assert.deepEqual(s.neighbourhoods, ['Town 0', 'Town 1']);
+  assert.equal(s.figures[0].figure, 'noCar');
+  assert.equal(s.figures[0].value, 0.05);
+  assert.equal(s.figures[0].percentile, 10);
+  assert.equal(s.figures.find((f) => f.figure === 'over65').percentile, 50);
+});

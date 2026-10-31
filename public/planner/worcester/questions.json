@@ -457,13 +457,18 @@
       "id": "q35",
       "question": "What is different around Windermere Drive (Warndon & Elbury Park 005A): child poverty, health, obesity, self-harm and crime all well above what its deprivation predicts?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "wave1",
       "lonLat": [
         -2.171,
         52.211
       ],
-      "unlocks": "Housing mix (social rent, overcrowding), services within reach, youth and family services, what residents report (FixMyStreet), council housing data"
+      "unlocks": "Housing mix (social rent, overcrowding), services within reach, youth and family services, what residents report (FixMyStreet), council housing data",
+      "finding": "Spotlight (plans/spotlight-warndon.json): not a services gap. Walks to GP, shops, parks and meeting places are about average and half of workers travel under 5 km. It is poverty, housing and health: bottom 6% for income after housing and healthy life expectancy (58 vs 66), top 6% for child poverty (48%) and early deaths, 43% social rent, overcrowding double, a third without a car, 23% turnout. 003A is a better-off corner; the estate is 002A-D and 005A/B/F.",
+      "spawned": [
+        "q43",
+        "q44"
+      ]
     },
     {
       "id": "q36",
@@ -475,7 +480,8 @@
         -2.248,
         52.194
       ],
-      "unlocks": "Green space and countryside edge, air, community groups (charities register), age mix, GP practice"
+      "unlocks": "Green space and countryside edge, air, community groups (charities register), age mix, GP practice",
+      "progress": "Spotlight: cleanest air in the city (bottom 3% for NO2), fewest hazards on the healthy-places index (bottom 9%), countryside edge (every home within 1 km of a nature reserve); also fast-growing (+39% since 2011) and few charities. Fits L24; the residents' own view is missing."
     },
     {
       "id": "q37",
@@ -528,6 +534,26 @@
       "status": "open",
       "from": "compare",
       "unlocks": "Population by age per neighbourhood over time, new-build homes by size, school rolls, house prices against local wages"
+    },
+    {
+      "id": "q43",
+      "question": "What would help the Warndon estate most that a planner controls: cheaper, warmer homes; a GP or health hub with longer hours; youth and family space; better buses to jobs; or a stronger say? Which have worked elsewhere?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q35",
+      "lonLat": [
+        -2.169,
+        52.2075
+      ],
+      "unlocks": "Evidence from similar estates (e.g. Marmot places, Big Local areas), council housing stock and repairs, GP opening hours and list per GP, youth services, bus frequency to the main job sites"
+    },
+    {
+      "id": "q44",
+      "question": "Why is turnout so low where need is highest, and does it change when people are asked directly (community panels, door-step consultations)?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "q35",
+      "unlocks": "Turnout history per ward (Democracy Club), council consultation response rates by area, registration rates"
     }
   ]
 }

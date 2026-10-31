@@ -409,9 +409,41 @@ export function profile(model, { fields = [], extra = {}, namePrefix = null, exc
   return out;
 }
 
+/**
+ * spotlight: one place (a ward, or a list of neighbourhoods) against the
+ * rest of its town, on every figure given. For each: the place's
+ * resident-weighted value, the town's median, and where the place ranks as a
+ * percentile (0 = lowest neighbourhood, 100 = highest). The figures most
+ * unlike the town come first, so the story leads.
+ */
+export function spotlight(model, { ward = null, codes = null, fields = [], extra = {}, namePrefix = null, exclude = [] } = {}) {
+  const skip = new Set(exclude);
+  const town = model.areas.filter((a) => (!namePrefix || a.name.startsWith(namePrefix)) && !skip.has(a.name) && !skip.has(a.code));
+  const inPlace = (a) => (ward ? a.ward === ward : codes?.includes(a.code) || codes?.includes(a.name));
+  const place = town.filter(inPlace);
+  if (!place.length) throw new Error(`spotlight: no neighbourhoods match ${ward || codes}`);
+  const cols = Object.fromEntries(fields.map((f) => [f, Object.fromEntries(town.filter((a) => Number.isFinite(a[f])).map((a) => [a.code, a[f]]))]));
+  for (const [label, r] of Object.entries(extra)) cols[label] = r.value;
+  const sig = (v) => Number(v.toPrecision(3));
+  const figures = [];
+  for (const [f, byCode] of Object.entries(cols)) {
+    const rows = place.filter((a) => Number.isFinite(byCode[a.code]));
+    const all = town.map((a) => byCode[a.code]).filter(Number.isFinite).sort((x, y) => x - y);
+    if (!rows.length || all.length < 5) continue;
+    const w = rows.reduce((t, a) => t + (a.residents || 1), 0);
+    const value = rows.reduce((t, a) => t + byCode[a.code] * (a.residents || 1), 0) / w;
+    const below = all.filter((v) => v < value).length, equal = all.filter((v) => v === value).length;
+    const percentile = Math.round(((below + equal / 2) / all.length) * 100);
+    figures.push({ figure: f, value: sig(value), townMedian: sig(all[Math.floor(all.length / 2)]), percentile, areas: rows.length });
+  }
+  figures.sort((a, b) => Math.abs(b.percentile - 50) - Math.abs(a.percentile - 50));
+  return { place: ward || codes.join(', '), neighbourhoods: place.map((a) => a.name), residents: place.reduce((t, a) => t + (a.residents || 0), 0), figures };
+}
+
 export const TOOLS = Object.freeze({
   kinds: { fn: (m) => m.kinds(), about: 'Every kind of place in the model and how many.', args: {} },
   profile: { fn: profile, about: 'A whole town in one line per figure: resident-weighted mean, lowest and highest neighbourhood. For comparing towns.', args: { fields: 'area fields', extra: 'optional {label: $result} per-area results', namePrefix: "e.g. 'Gloucester ' (the council's own neighbourhoods)", exclude: 'area names or codes to leave out' } },
+  spotlight: { fn: spotlight, about: 'One place (a ward, or listed neighbourhoods) against its town on every figure: value, town median, percentile; most unusual first.', args: { ward: "e.g. 'Warndon & Elbury Park'", codes: 'or a list of neighbourhood codes or names', fields: 'area fields', extra: 'optional {label: $result} per-area results', namePrefix: "the town's own neighbourhoods, e.g. 'Worcester '", exclude: 'areas to leave out of the town' } },
   council: { fn: (m) => m.council || {}, about: 'Figures published only for the whole council (wellbeing, population, sewage spills…), by source.', args: {} },
   travel: { fn: travel, about: 'Minutes from every home to the nearest place of a kind.', args: { to: "kind, list of kinds, or 'food:*'", mode: "'walk' (default) or 'busOrWalk'" } },
   summarise: { fn: (m, a) => summarise(m, a.values, a), about: 'Per-home values → one number per group.', args: { values: 'a travel result ($name)', weight: "'households' (default), 'need', 'noCar', 'over65', 'deprived', 'badHealth'", groupBy: "'town' (default), 'area', 'ward', 'bank', 'cell'", stat: "'mean' (default) or 'shareWithin'", within: 'minutes, for shareWithin' } },

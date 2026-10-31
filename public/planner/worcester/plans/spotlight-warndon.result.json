@@ -1,0 +1,1324 @@
+{
+  "question": "What is different about Warndon & Elbury Park, the ward that tops so many bad lists? And what does Dines Green & Grove Farm, which beats its deprivation on health, have that Warndon doesn't?",
+  "ranAt": "2026-10-31T09:02:24.820Z",
+  "results": {
+    "warndon": {
+      "place": "Warndon & Elbury Park",
+      "neighbourhoods": [
+        "Worcester 002C",
+        "Worcester 005B",
+        "Worcester 002A",
+        "Worcester 002B",
+        "Worcester 005A",
+        "Worcester 002D",
+        "Worcester 005F",
+        "Worcester 003A"
+      ],
+      "residents": 11522,
+      "figures": [
+        {
+          "figure": "incomeAfterHousing",
+          "value": 26500,
+          "townMedian": 31200,
+          "percentile": 6,
+          "areas": 8
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 8
+        },
+        {
+          "figure": "degree",
+          "value": 0.189,
+          "townMedian": 0.348,
+          "percentile": 6,
+          "areas": 8
+        },
+        {
+          "figure": "lifeExpectancy",
+          "value": 78,
+          "townMedian": 81.1,
+          "percentile": 6,
+          "areas": 8
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 58.4,
+          "townMedian": 66.3,
+          "percentile": 6,
+          "areas": 8
+        },
+        {
+          "figure": "deathsUnder75",
+          "value": 153,
+          "townMedian": 98.2,
+          "percentile": 94,
+          "areas": 8
+        },
+        {
+          "figure": "workUnder5km",
+          "value": 0.489,
+          "townMedian": 0.341,
+          "percentile": 94,
+          "areas": 8
+        },
+        {
+          "figure": "badHealth",
+          "value": 0.0737,
+          "townMedian": 0.0455,
+          "percentile": 92,
+          "areas": 8
+        },
+        {
+          "figure": "noQualifications",
+          "value": 0.288,
+          "townMedian": 0.165,
+          "percentile": 91,
+          "areas": 8
+        },
+        {
+          "figure": "wardTurnout",
+          "value": 23,
+          "townMedian": 36,
+          "percentile": 9,
+          "areas": 8
+        },
+        {
+          "figure": "imdScore",
+          "value": 44.4,
+          "townMedian": 15.9,
+          "percentile": 88,
+          "areas": 8
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.428,
+          "townMedian": 0.109,
+          "percentile": 88,
+          "areas": 8
+        },
+        {
+          "figure": "overcrowded",
+          "value": 0.0505,
+          "townMedian": 0.022,
+          "percentile": 88,
+          "areas": 8
+        },
+        {
+          "figure": "claimantRate",
+          "value": 0.0651,
+          "townMedian": 0.029,
+          "percentile": 86,
+          "areas": 8
+        },
+        {
+          "figure": "emergencyAdmissions",
+          "value": 113,
+          "townMedian": 86.5,
+          "percentile": 84,
+          "areas": 8
+        },
+        {
+          "figure": "selfHarmAdmissions",
+          "value": 117,
+          "townMedian": 84.9,
+          "percentile": 84,
+          "areas": 8
+        },
+        {
+          "figure": "alcoholAdmissions",
+          "value": 134,
+          "townMedian": 96.7,
+          "percentile": 84,
+          "areas": 8
+        },
+        {
+          "figure": "year6Obesity",
+          "value": 30,
+          "townMedian": 21.4,
+          "percentile": 84,
+          "areas": 8
+        },
+        {
+          "figure": "disabled",
+          "value": 0.21,
+          "townMedian": 0.174,
+          "percentile": 84,
+          "areas": 8
+        },
+        {
+          "figure": "violencePer1000Day",
+          "value": 47.1,
+          "townMedian": 19.8,
+          "percentile": 83,
+          "areas": 8
+        },
+        {
+          "figure": "ownOutright",
+          "value": 0.204,
+          "townMedian": 0.319,
+          "percentile": 19,
+          "areas": 8
+        },
+        {
+          "figure": "medianPrice",
+          "value": 209000,
+          "townMedian": 255000,
+          "percentile": 19,
+          "areas": 8
+        },
+        {
+          "figure": "noCar",
+          "value": 0.32,
+          "townMedian": 0.177,
+          "percentile": 81,
+          "areas": 8
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 109,
+          "townMedian": 63.4,
+          "percentile": 81,
+          "areas": 8
+        },
+        {
+          "figure": "antisocialPer1000Day",
+          "value": 16.6,
+          "townMedian": 7.3,
+          "percentile": 81,
+          "areas": 8
+        },
+        {
+          "figure": "ahah",
+          "value": 20.9,
+          "townMedian": 14.7,
+          "percentile": 81,
+          "areas": 8
+        },
+        {
+          "figure": "charitiesPer1000",
+          "value": 0.521,
+          "townMedian": 1.4,
+          "percentile": 19,
+          "areas": 8
+        },
+        {
+          "figure": "no2",
+          "value": 8.27,
+          "townMedian": 7.69,
+          "percentile": 78,
+          "areas": 8
+        },
+        {
+          "figure": "carers",
+          "value": 0.091,
+          "townMedian": 0.081,
+          "percentile": 75,
+          "areas": 8
+        },
+        {
+          "figure": "gp_depression",
+          "value": 18.4,
+          "townMedian": 17.5,
+          "percentile": 75,
+          "areas": 8
+        },
+        {
+          "figure": "gp_antidepressantsPer1000",
+          "value": 180,
+          "townMedian": 113,
+          "percentile": 75,
+          "areas": 8
+        },
+        {
+          "figure": "gp_smoking",
+          "value": 21.2,
+          "townMedian": 15.2,
+          "percentile": 75,
+          "areas": 8
+        },
+        {
+          "figure": "roadNoise55",
+          "value": 0.146,
+          "townMedian": 0.225,
+          "percentile": 25,
+          "areas": 8
+        },
+        {
+          "figure": "cycleCommute2021",
+          "value": 0.0401,
+          "townMedian": 0.034,
+          "percentile": 73,
+          "areas": 8
+        },
+        {
+          "figure": "busStopMinutes",
+          "value": 2.56,
+          "townMedian": 3.12,
+          "percentile": 27,
+          "areas": 8
+        },
+        {
+          "figure": "bornAbroad",
+          "value": 0.137,
+          "townMedian": 0.113,
+          "percentile": 70,
+          "areas": 8
+        },
+        {
+          "figure": "greenMinutes",
+          "value": 4.33,
+          "townMedian": 3.63,
+          "percentile": 70,
+          "areas": 8
+        },
+        {
+          "figure": "gpMinutes",
+          "value": 11,
+          "townMedian": 13,
+          "percentile": 31,
+          "areas": 8
+        },
+        {
+          "figure": "foodMinutes",
+          "value": 4.57,
+          "townMedian": 5.37,
+          "percentile": 31,
+          "areas": 8
+        },
+        {
+          "figure": "natureReserveWithin1km",
+          "value": 0.862,
+          "townMedian": 1,
+          "percentile": 33,
+          "areas": 8
+        },
+        {
+          "figure": "carCommute2021",
+          "value": 0.734,
+          "townMedian": 0.773,
+          "percentile": 34,
+          "areas": 8
+        },
+        {
+          "figure": "privateRent",
+          "value": 0.144,
+          "townMedian": 0.164,
+          "percentile": 38,
+          "areas": 8
+        },
+        {
+          "figure": "foodAndDrink",
+          "value": 0.462,
+          "townMedian": 1,
+          "percentile": 38,
+          "areas": 8
+        },
+        {
+          "figure": "fuelPoverty",
+          "value": 17.4,
+          "townMedian": 13.8,
+          "percentile": 61,
+          "areas": 8
+        },
+        {
+          "figure": "gp_obesity",
+          "value": 14.7,
+          "townMedian": 14.1,
+          "percentile": 61,
+          "areas": 8
+        },
+        {
+          "figure": "walkCommute2021",
+          "value": 0.164,
+          "townMedian": 0.15,
+          "percentile": 61,
+          "areas": 8
+        },
+        {
+          "figure": "over65",
+          "value": 0.141,
+          "townMedian": 0.168,
+          "percentile": 41,
+          "areas": 8
+        },
+        {
+          "figure": "cycleGoDutch",
+          "value": 0.255,
+          "townMedian": 0.245,
+          "percentile": 58,
+          "areas": 8
+        },
+        {
+          "figure": "shops",
+          "value": 7.06,
+          "townMedian": 7,
+          "percentile": 58,
+          "areas": 8
+        },
+        {
+          "figure": "populationChange",
+          "value": 0.0557,
+          "townMedian": 0.037,
+          "percentile": 56,
+          "areas": 8
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.542,
+          "townMedian": 0.514,
+          "percentile": 56,
+          "areas": 8
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.302,
+          "townMedian": 0.256,
+          "percentile": 55,
+          "areas": 8
+        },
+        {
+          "figure": "childcareProviders",
+          "value": 0.287,
+          "townMedian": 0,
+          "percentile": 55,
+          "areas": 8
+        },
+        {
+          "figure": "meetMinutes",
+          "value": 5.46,
+          "townMedian": 5.71,
+          "percentile": 45,
+          "areas": 8
+        },
+        {
+          "figure": "livingAlone66",
+          "value": 0.116,
+          "townMedian": 0.114,
+          "percentile": 52,
+          "areas": 8
+        }
+      ]
+    },
+    "dinesGreen": {
+      "place": "Dines Green & Grove Farm",
+      "neighbourhoods": [
+        "Worcester 009A",
+        "Worcester 012A",
+        "Worcester 009D",
+        "Worcester 009B"
+      ],
+      "residents": 8210,
+      "figures": [
+        {
+          "figure": "no2",
+          "value": 5.79,
+          "townMedian": 7.69,
+          "percentile": 3,
+          "areas": 4
+        },
+        {
+          "figure": "populationChange",
+          "value": 0.389,
+          "townMedian": 0.037,
+          "percentile": 95,
+          "areas": 4
+        },
+        {
+          "figure": "ahah",
+          "value": 8.87,
+          "townMedian": 14.7,
+          "percentile": 9,
+          "areas": 4
+        },
+        {
+          "figure": "wardTurnout",
+          "value": 23,
+          "townMedian": 36,
+          "percentile": 9,
+          "areas": 4
+        },
+        {
+          "figure": "gp_obesity",
+          "value": 17.1,
+          "townMedian": 14.1,
+          "percentile": 86,
+          "areas": 4
+        },
+        {
+          "figure": "charitiesPer1000",
+          "value": 0.243,
+          "townMedian": 1.4,
+          "percentile": 17,
+          "areas": 4
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.293,
+          "townMedian": 0.109,
+          "percentile": 80,
+          "areas": 4
+        },
+        {
+          "figure": "greenMinutes",
+          "value": 2.84,
+          "townMedian": 3.63,
+          "percentile": 20,
+          "areas": 4
+        },
+        {
+          "figure": "badHealth",
+          "value": 0.0594,
+          "townMedian": 0.0455,
+          "percentile": 77,
+          "areas": 4
+        },
+        {
+          "figure": "busStopMinutes",
+          "value": 3.94,
+          "townMedian": 3.12,
+          "percentile": 77,
+          "areas": 4
+        },
+        {
+          "figure": "imdScore",
+          "value": 24.5,
+          "townMedian": 15.9,
+          "percentile": 75,
+          "areas": 4
+        },
+        {
+          "figure": "violencePer1000Day",
+          "value": 37.2,
+          "townMedian": 19.8,
+          "percentile": 75,
+          "areas": 4
+        },
+        {
+          "figure": "roadNoise55",
+          "value": 0.147,
+          "townMedian": 0.225,
+          "percentile": 25,
+          "areas": 4
+        },
+        {
+          "figure": "natureReserveWithin1km",
+          "value": 1,
+          "townMedian": 1,
+          "percentile": 75,
+          "areas": 4
+        },
+        {
+          "figure": "meetMinutes",
+          "value": 7.02,
+          "townMedian": 5.71,
+          "percentile": 75,
+          "areas": 4
+        },
+        {
+          "figure": "degree",
+          "value": 0.267,
+          "townMedian": 0.348,
+          "percentile": 27,
+          "areas": 4
+        },
+        {
+          "figure": "cycleCommute2021",
+          "value": 0.0399,
+          "townMedian": 0.034,
+          "percentile": 73,
+          "areas": 4
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.339,
+          "townMedian": 0.226,
+          "percentile": 72,
+          "areas": 4
+        },
+        {
+          "figure": "claimantRate",
+          "value": 0.0427,
+          "townMedian": 0.029,
+          "percentile": 72,
+          "areas": 4
+        },
+        {
+          "figure": "disabled",
+          "value": 0.192,
+          "townMedian": 0.174,
+          "percentile": 70,
+          "areas": 4
+        },
+        {
+          "figure": "carers",
+          "value": 0.0885,
+          "townMedian": 0.081,
+          "percentile": 70,
+          "areas": 4
+        },
+        {
+          "figure": "walkCommute2021",
+          "value": 0.116,
+          "townMedian": 0.15,
+          "percentile": 31,
+          "areas": 4
+        },
+        {
+          "figure": "antisocialPer1000Day",
+          "value": 10.4,
+          "townMedian": 7.3,
+          "percentile": 69,
+          "areas": 4
+        },
+        {
+          "figure": "noQualifications",
+          "value": 0.201,
+          "townMedian": 0.165,
+          "percentile": 67,
+          "areas": 4
+        },
+        {
+          "figure": "privateRent",
+          "value": 0.13,
+          "townMedian": 0.164,
+          "percentile": 33,
+          "areas": 4
+        },
+        {
+          "figure": "overcrowded",
+          "value": 0.0315,
+          "townMedian": 0.022,
+          "percentile": 67,
+          "areas": 4
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 80,
+          "townMedian": 63.4,
+          "percentile": 67,
+          "areas": 4
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.618,
+          "townMedian": 0.514,
+          "percentile": 67,
+          "areas": 4
+        },
+        {
+          "figure": "gpMinutes",
+          "value": 11.1,
+          "townMedian": 13,
+          "percentile": 33,
+          "areas": 4
+        },
+        {
+          "figure": "foodMinutes",
+          "value": 6.14,
+          "townMedian": 5.37,
+          "percentile": 67,
+          "areas": 4
+        },
+        {
+          "figure": "emergencyAdmissions",
+          "value": 88.4,
+          "townMedian": 86.5,
+          "percentile": 66,
+          "areas": 4
+        },
+        {
+          "figure": "gp_smoking",
+          "value": 13.3,
+          "townMedian": 15.2,
+          "percentile": 34,
+          "areas": 4
+        },
+        {
+          "figure": "cycleGoDutch",
+          "value": 0.257,
+          "townMedian": 0.245,
+          "percentile": 66,
+          "areas": 4
+        },
+        {
+          "figure": "noCar",
+          "value": 0.209,
+          "townMedian": 0.177,
+          "percentile": 64,
+          "areas": 4
+        },
+        {
+          "figure": "ownOutright",
+          "value": 0.28,
+          "townMedian": 0.319,
+          "percentile": 38,
+          "areas": 4
+        },
+        {
+          "figure": "gp_antidepressantsPer1000",
+          "value": 113,
+          "townMedian": 113,
+          "percentile": 38,
+          "areas": 4
+        },
+        {
+          "figure": "foodAndDrink",
+          "value": 0.326,
+          "townMedian": 1,
+          "percentile": 38,
+          "areas": 4
+        },
+        {
+          "figure": "incomeAfterHousing",
+          "value": 29900,
+          "townMedian": 31200,
+          "percentile": 39,
+          "areas": 4
+        },
+        {
+          "figure": "fuelPoverty",
+          "value": 16.6,
+          "townMedian": 13.8,
+          "percentile": 61,
+          "areas": 4
+        },
+        {
+          "figure": "deathsUnder75",
+          "value": 102,
+          "townMedian": 98.2,
+          "percentile": 61,
+          "areas": 4
+        },
+        {
+          "figure": "selfHarmAdmissions",
+          "value": 75.6,
+          "townMedian": 84.9,
+          "percentile": 39,
+          "areas": 4
+        },
+        {
+          "figure": "alcoholAdmissions",
+          "value": 116,
+          "townMedian": 96.7,
+          "percentile": 61,
+          "areas": 4
+        },
+        {
+          "figure": "carCommute2021",
+          "value": 0.787,
+          "townMedian": 0.773,
+          "percentile": 61,
+          "areas": 4
+        },
+        {
+          "figure": "bornAbroad",
+          "value": 0.101,
+          "townMedian": 0.113,
+          "percentile": 41,
+          "areas": 4
+        },
+        {
+          "figure": "medianPrice",
+          "value": 258000,
+          "townMedian": 255000,
+          "percentile": 58,
+          "areas": 4
+        },
+        {
+          "figure": "lifeExpectancy",
+          "value": 81.6,
+          "townMedian": 81.1,
+          "percentile": 58,
+          "areas": 4
+        },
+        {
+          "figure": "livingAlone66",
+          "value": 0.109,
+          "townMedian": 0.114,
+          "percentile": 42,
+          "areas": 4
+        },
+        {
+          "figure": "shops",
+          "value": 7.09,
+          "townMedian": 7,
+          "percentile": 58,
+          "areas": 4
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 65.1,
+          "townMedian": 66.3,
+          "percentile": 45,
+          "areas": 4
+        },
+        {
+          "figure": "gp_depression",
+          "value": 17.5,
+          "townMedian": 17.5,
+          "percentile": 45,
+          "areas": 4
+        },
+        {
+          "figure": "childcareProviders",
+          "value": 0.234,
+          "townMedian": 0,
+          "percentile": 55,
+          "areas": 4
+        },
+        {
+          "figure": "workUnder5km",
+          "value": 0.332,
+          "townMedian": 0.341,
+          "percentile": 47,
+          "areas": 4
+        },
+        {
+          "figure": "year6Obesity",
+          "value": 21,
+          "townMedian": 21.4,
+          "percentile": 48,
+          "areas": 4
+        },
+        {
+          "figure": "over65",
+          "value": 0.164,
+          "townMedian": 0.168,
+          "percentile": 50,
+          "areas": 4
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.252,
+          "townMedian": 0.256,
+          "percentile": 50,
+          "areas": 4
+        }
+      ]
+    },
+    "n002A": {
+      "place": "Worcester 002A",
+      "neighbourhoods": [
+        "Worcester 002A"
+      ],
+      "residents": 1312,
+      "figures": [
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 55.3,
+          "townMedian": 66.3,
+          "percentile": 0,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.548,
+          "townMedian": 0.109,
+          "percentile": 96,
+          "areas": 1
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "imdScore",
+          "value": 47.2,
+          "townMedian": 15.9,
+          "percentile": 91,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.318,
+          "townMedian": 0.177,
+          "percentile": 80,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 96.9,
+          "townMedian": 63.4,
+          "percentile": 76,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.135,
+          "townMedian": 0.256,
+          "percentile": 41,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.322,
+          "townMedian": 0.514,
+          "percentile": 41,
+          "areas": 1
+        }
+      ]
+    },
+    "n002B": {
+      "place": "Worcester 002B",
+      "neighbourhoods": [
+        "Worcester 002B"
+      ],
+      "residents": 1518,
+      "figures": [
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 55.3,
+          "townMedian": 66.3,
+          "percentile": 3,
+          "areas": 1
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 151,
+          "townMedian": 63.4,
+          "percentile": 91,
+          "areas": 1
+        },
+        {
+          "figure": "imdScore",
+          "value": 46.5,
+          "townMedian": 15.9,
+          "percentile": 90,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.487,
+          "townMedian": 0.109,
+          "percentile": 90,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.9,
+          "townMedian": 0.514,
+          "percentile": 88,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.338,
+          "townMedian": 0.177,
+          "percentile": 87,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.023,
+          "townMedian": 0.256,
+          "percentile": 23,
+          "areas": 1
+        }
+      ]
+    },
+    "n002C": {
+      "place": "Worcester 002C",
+      "neighbourhoods": [
+        "Worcester 002C"
+      ],
+      "residents": 1386,
+      "figures": [
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 55.3,
+          "townMedian": 66.3,
+          "percentile": 6,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.508,
+          "townMedian": 0.109,
+          "percentile": 93,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.363,
+          "townMedian": 0.177,
+          "percentile": 90,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 129,
+          "townMedian": 63.4,
+          "percentile": 90,
+          "areas": 1
+        },
+        {
+          "figure": "imdScore",
+          "value": 42.8,
+          "townMedian": 15.9,
+          "percentile": 87,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.447,
+          "townMedian": 0.256,
+          "percentile": 65,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.236,
+          "townMedian": 0.514,
+          "percentile": 38,
+          "areas": 1
+        }
+      ]
+    },
+    "n002D": {
+      "place": "Worcester 002D",
+      "neighbourhoods": [
+        "Worcester 002D"
+      ],
+      "residents": 1314,
+      "figures": [
+        {
+          "figure": "imdScore",
+          "value": 81,
+          "townMedian": 15.9,
+          "percentile": 99,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.705,
+          "townMedian": 0.109,
+          "percentile": 99,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 55.3,
+          "townMedian": 66.3,
+          "percentile": 3,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.499,
+          "townMedian": 0.177,
+          "percentile": 96,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 163,
+          "townMedian": 63.4,
+          "percentile": 95,
+          "areas": 1
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.81,
+          "townMedian": 0.256,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.533,
+          "townMedian": 0.514,
+          "percentile": 55,
+          "areas": 1
+        }
+      ]
+    },
+    "n003A": {
+      "place": "Worcester 003A",
+      "neighbourhoods": [
+        "Worcester 003A"
+      ],
+      "residents": 1183,
+      "figures": [
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 88,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 69.5,
+          "townMedian": 66.3,
+          "percentile": 83,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.693,
+          "townMedian": 0.514,
+          "percentile": 73,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 74.9,
+          "townMedian": 63.4,
+          "percentile": 65,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.205,
+          "townMedian": 0.177,
+          "percentile": 62,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.093,
+          "townMedian": 0.256,
+          "percentile": 38,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.117,
+          "townMedian": 0.109,
+          "percentile": 55,
+          "areas": 1
+        },
+        {
+          "figure": "imdScore",
+          "value": 15.9,
+          "townMedian": 15.9,
+          "percentile": 51,
+          "areas": 1
+        }
+      ]
+    },
+    "n005A": {
+      "place": "Worcester 005A",
+      "neighbourhoods": [
+        "Worcester 005A"
+      ],
+      "residents": 1411,
+      "figures": [
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 100,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.87,
+          "townMedian": 0.256,
+          "percentile": 95,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 59.2,
+          "townMedian": 66.3,
+          "percentile": 6,
+          "areas": 1
+        },
+        {
+          "figure": "imdScore",
+          "value": 19.6,
+          "townMedian": 15.9,
+          "percentile": 66,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.14,
+          "townMedian": 0.109,
+          "percentile": 65,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 43.8,
+          "townMedian": 63.4,
+          "percentile": 37,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.197,
+          "townMedian": 0.177,
+          "percentile": 59,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.561,
+          "townMedian": 0.514,
+          "percentile": 59,
+          "areas": 1
+        }
+      ]
+    },
+    "n005B": {
+      "place": "Worcester 005B",
+      "neighbourhoods": [
+        "Worcester 005B"
+      ],
+      "residents": 1410,
+      "figures": [
+        {
+          "figure": "imdScore",
+          "value": 48.1,
+          "townMedian": 15.9,
+          "percentile": 95,
+          "areas": 1
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 59.2,
+          "townMedian": 66.3,
+          "percentile": 11,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.323,
+          "townMedian": 0.109,
+          "percentile": 82,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.31,
+          "townMedian": 0.177,
+          "percentile": 79,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 77.1,
+          "townMedian": 63.4,
+          "percentile": 66,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.338,
+          "townMedian": 0.514,
+          "percentile": 45,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0.172,
+          "townMedian": 0.256,
+          "percentile": 46,
+          "areas": 1
+        }
+      ]
+    },
+    "n005F": {
+      "place": "Worcester 005F",
+      "neighbourhoods": [
+        "Worcester 005F"
+      ],
+      "residents": 1988,
+      "figures": [
+        {
+          "figure": "imdScore",
+          "value": 50.1,
+          "townMedian": 15.9,
+          "percentile": 96,
+          "areas": 1
+        },
+        {
+          "figure": "socialRent",
+          "value": 0.531,
+          "townMedian": 0.109,
+          "percentile": 95,
+          "areas": 1
+        },
+        {
+          "figure": "childPoverty",
+          "value": 0.479,
+          "townMedian": 0.226,
+          "percentile": 94,
+          "areas": 1
+        },
+        {
+          "figure": "greenspaceAccessWithin300m",
+          "value": 0,
+          "townMedian": 0.256,
+          "percentile": 10,
+          "areas": 1
+        },
+        {
+          "figure": "healthyLifeExpectancy",
+          "value": 59.2,
+          "townMedian": 66.3,
+          "percentile": 11,
+          "areas": 1
+        },
+        {
+          "figure": "crimePer1000Day",
+          "value": 124,
+          "townMedian": 63.4,
+          "percentile": 87,
+          "areas": 1
+        },
+        {
+          "figure": "noCar",
+          "value": 0.321,
+          "townMedian": 0.177,
+          "percentile": 82,
+          "areas": 1
+        },
+        {
+          "figure": "goodDay",
+          "value": 0.676,
+          "townMedian": 0.514,
+          "percentile": 70,
+          "areas": 1
+        }
+      ]
+    }
+  }
+}

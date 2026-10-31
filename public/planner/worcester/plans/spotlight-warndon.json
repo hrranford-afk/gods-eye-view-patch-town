@@ -1,0 +1,448 @@
+{
+  "question": "What is different about Warndon & Elbury Park, the ward that tops so many bad lists? And what does Dines Green & Grove Farm, which beats its deprivation on health, have that Warndon doesn't?",
+  "notes": "Percentiles rank the ward among Worcester's 64 neighbourhoods (0 lowest, 100 highest). Ward values are resident-weighted means of its neighbourhoods. MSOA and practice figures are shared by neighbouring areas.",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "bus"
+      },
+      "as": "bus"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDayHome"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "area"
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "groupBy": "area"
+      },
+      "as": "greenMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$meet",
+        "groupBy": "area"
+      },
+      "as": "meetMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$bus",
+        "groupBy": "area"
+      },
+      "as": "busStopMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$food",
+        "groupBy": "area"
+      },
+      "as": "foodMinutes"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "ward": "Warndon & Elbury Park",
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "childPoverty",
+          "claimantRate",
+          "noQualifications",
+          "degree",
+          "socialRent",
+          "privateRent",
+          "ownOutright",
+          "overcrowded",
+          "fuelPoverty",
+          "medianPrice",
+          "lifeExpectancy",
+          "healthyLifeExpectancy",
+          "deathsUnder75",
+          "emergencyAdmissions",
+          "selfHarmAdmissions",
+          "alcoholAdmissions",
+          "year6Obesity",
+          "badHealth",
+          "disabled",
+          "carers",
+          "gp_depression",
+          "gp_antidepressantsPer1000",
+          "gp_obesity",
+          "gp_smoking",
+          "noCar",
+          "carCommute2021",
+          "walkCommute2021",
+          "cycleCommute2021",
+          "cycleGoDutch",
+          "workUnder5km",
+          "over65",
+          "livingAlone66",
+          "bornAbroad",
+          "populationChange",
+          "crimePer1000Day",
+          "violencePer1000Day",
+          "antisocialPer1000Day",
+          "no2",
+          "roadNoise55",
+          "greenspaceAccessWithin300m",
+          "natureReserveWithin1km",
+          "ahah",
+          "charitiesPer1000",
+          "childcareProviders",
+          "shops",
+          "foodAndDrink",
+          "wardTurnout"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes",
+          "busStopMinutes": "$busStopMinutes",
+          "foodMinutes": "$foodMinutes"
+        }
+      },
+      "as": "warndon"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "ward": "Dines Green & Grove Farm",
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "incomeAfterHousing",
+          "childPoverty",
+          "claimantRate",
+          "noQualifications",
+          "degree",
+          "socialRent",
+          "privateRent",
+          "ownOutright",
+          "overcrowded",
+          "fuelPoverty",
+          "medianPrice",
+          "lifeExpectancy",
+          "healthyLifeExpectancy",
+          "deathsUnder75",
+          "emergencyAdmissions",
+          "selfHarmAdmissions",
+          "alcoholAdmissions",
+          "year6Obesity",
+          "badHealth",
+          "disabled",
+          "carers",
+          "gp_depression",
+          "gp_antidepressantsPer1000",
+          "gp_obesity",
+          "gp_smoking",
+          "noCar",
+          "carCommute2021",
+          "walkCommute2021",
+          "cycleCommute2021",
+          "cycleGoDutch",
+          "workUnder5km",
+          "over65",
+          "livingAlone66",
+          "bornAbroad",
+          "populationChange",
+          "crimePer1000Day",
+          "violencePer1000Day",
+          "antisocialPer1000Day",
+          "no2",
+          "roadNoise55",
+          "greenspaceAccessWithin300m",
+          "natureReserveWithin1km",
+          "ahah",
+          "charitiesPer1000",
+          "childcareProviders",
+          "shops",
+          "foodAndDrink",
+          "wardTurnout"
+        ],
+        "extra": {
+          "goodDay": "$goodDay",
+          "gpMinutes": "$gpMinutes",
+          "greenMinutes": "$greenMinutes",
+          "meetMinutes": "$meetMinutes",
+          "busStopMinutes": "$busStopMinutes",
+          "foodMinutes": "$foodMinutes"
+        }
+      },
+      "as": "dinesGreen"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 002A"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n002A"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 002B"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n002B"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 002C"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n002C"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 002D"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n002D"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 003A"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n003A"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 005A"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n005A"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 005B"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n005B"
+    },
+    {
+      "tool": "spotlight",
+      "args": {
+        "codes": [
+          "Worcester 005F"
+        ],
+        "namePrefix": "Worcester ",
+        "fields": [
+          "imdScore",
+          "childPoverty",
+          "healthyLifeExpectancy",
+          "socialRent",
+          "noCar",
+          "crimePer1000Day",
+          "greenspaceAccessWithin300m",
+          "goodDay"
+        ],
+        "extra": {
+          "goodDay": "$goodDay"
+        }
+      },
+      "as": "n005F"
+    }
+  ],
+  "show": [
+    "warndon",
+    "dinesGreen",
+    "n002A",
+    "n002B",
+    "n002C",
+    "n002D",
+    "n003A",
+    "n005A",
+    "n005B",
+    "n005F"
+  ]
+}
