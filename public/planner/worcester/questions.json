@@ -49,11 +49,11 @@
         "q16",
         "q17"
       ],
-      "finding": "Partly, without GP staff numbers (not published where we can reach it). 9 practices serve Worcester, all large (6,900\u201321,900 patients; England's typical practice ~8,800). Patients finding the wait acceptable (GP Patient Survey 2024, England 66%): Haresfield House 55%, St Martin's Gate 58%, St Johns House 59%, up to Spring Gardens 84%. Pressure by geography (residents whose nearest surgery it is, vs its registered list): Elbury Moor 31,700 vs 12,400; Spring Gardens 27,300 vs 20,100; St Johns House 19,900 vs 13,800."
+      "finding": "Partly, without GP staff numbers (not published where we can reach it). 9 practices serve Worcester, all large (6,900–21,900 patients; England's typical practice ~8,800). Patients finding the wait acceptable (GP Patient Survey 2024, England 66%): Haresfield House 55%, St Martin's Gate 58%, St Johns House 59%, up to Spring Gardens 84%. Pressure by geography (residents whose nearest surgery it is, vs its registered list): Elbury Moor 31,700 vs 12,400; Spring Gardens 27,300 vs 20,100; St Johns House 19,900 vs 13,800."
     },
     {
       "id": "q4",
-      "question": "Why is health worst around Selsey Close and Windermere Drive, when a GP is 12\u201318 min away?",
+      "question": "Why is health worst around Selsey Close and Windermere Drive, when a GP is 12–18 min away?",
       "askedBy": "CAIRN",
       "status": "open",
       "from": "q2",
@@ -576,14 +576,14 @@
       "id": "q46",
       "question": "What would give older residents of St Peter's and Warndon Villages a good day without a car: a small health and community hub, a demand-responsive bus, a corner shop in a vacant unit, or benches and safer crossings on the walk? Which reaches most for least?",
       "askedBy": "CAIRN",
-      "status": "open",
+      "status": "answered",
       "from": "q38",
       "lonLat": [
         -2.194,
         52.168
       ],
-      "unlocks": "Scenario: add a hub (GP + caf\u00e9 + meeting room) at St Peter's district centre or Warndon Villages and score over-65 good day; bus timetables on those estates by hour; step-free routes",
-      "progress": "plans/older-residents-hubs.json: three small hubs (St Peter's centre, Warndon Villages, Battenhall) take over-65 good day from 3% to 46% (St Nicholas), 10% to 50% (Battenhall), 0% to 37% (St Peter's); city-wide 30% to 35%. Still to test: a demand-responsive bus, a shop in a vacant unit, benches and crossings."
+      "unlocks": "Scenario: add a hub (GP + café + meeting room) at St Peter's district centre or Warndon Villages and score over-65 good day; bus timetables on those estates by hour; step-free routes",
+      "progress": "plans/older-residents-hubs.json: three small hubs (St Peter's centre, Warndon Villages, Battenhall) take over-65 good day from 3% to 46% (St Nicholas), 10% to 50% (Battenhall), 0% to 37% (St Peter's); city-wide 30% to 35%. Still to test: a demand-responsive bus, a shop in a vacant unit, benches and crossings. plans/older-residents-options.json (L31): shop or meeting room alone +0; GP room alone 30% to 34%; full hub 35%; a 30% slower walk (no benches or crossings) drops it to 16%; a door-to-door bus to GP and shops 61% at most."
     }
   ]
 }

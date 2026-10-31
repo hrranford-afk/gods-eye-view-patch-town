@@ -1,0 +1,62 @@
+{
+  "question": "q46: which reaches most older residents for least: a shop, a meeting room, a GP room, the full hub, a door-to-door bus, or benches and crossings?",
+  "ranAt": "2026-10-31T11:35:10.209Z",
+  "results": {
+    "over65_today": {
+      "value": {
+        "worcester": 0.301
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_shopOnly": {
+      "value": {
+        "worcester": 0.301
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_meetOnly": {
+      "value": {
+        "worcester": 0.301
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_gpOnly": {
+      "value": {
+        "worcester": 0.342
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_fullHub": {
+      "value": {
+        "worcester": 0.354
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_slowWalk": {
+      "value": {
+        "worcester": 0.16
+      },
+      "households": {
+        "worcester": 54233
+      }
+    },
+    "over65_busToGpAndShops": {
+      "value": {
+        "worcester": 0.61
+      },
+      "households": {
+        "worcester": 54233
+      }
+    }
+  }
+}
