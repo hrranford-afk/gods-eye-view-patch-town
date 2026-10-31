@@ -1,0 +1,20 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 1 });
+  const errs=[]; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + process.argv[2], { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1500);
+  await p.screenshot({ path: 'shots/1-title.png' });
+  const startBtn = await p.$('#play');
+  if (startBtn) await startBtn.click(); else await p.keyboard.press('Enter');
+  await p.waitForTimeout(2500); await p.screenshot({ path: 'shots/2-start.png' });
+  await p.keyboard.down('KeyW'); await p.waitForTimeout(2500); await p.keyboard.up('KeyW');
+  await p.keyboard.press('KeyT'); await p.keyboard.press('KeyG'); await p.keyboard.press('Digit1');
+  await p.waitForTimeout(30000); await p.screenshot({ path: 'shots/3-economy.png' });
+  await p.keyboard.down('KeyD'); await p.keyboard.down('KeyW'); await p.keyboard.down('Space');
+  await p.waitForTimeout(6000); await p.keyboard.up('KeyD'); await p.waitForTimeout(6000);
+  await p.screenshot({ path: 'shots/4-battle.png' });
+  console.log('errors', errs);
+  await b.close();
+})();

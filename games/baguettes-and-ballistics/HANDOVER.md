@@ -1,5 +1,7 @@
 # Baguettes & Ballistics: developer handover
 
+**In this pack:** `index.html` (the whole game), `README.md`, `DESIGN.md` (the plan), `HANDOVER.md` (this file), `shoot.js` (screenshot script), `shots/`. It's also on GitHub: `hrranford-afk/gods-eye-view-patch-town`, branch `game/micro-precinct`, folder `games/baguettes-and-ballistics/`.
+
 *Mealtime Mayhem*, a Micro Machines-style toy war across a kitchen, for iPad.
 This file is for the developers (human or AI) picking it up. Read this, then
 [DESIGN.md](DESIGN.md) (where it's going), then `index.html`.
@@ -32,7 +34,7 @@ and the camera follows.*
   | 3 | drones |
   | 4–9 | vehicles, at home |
 
-- **Screenshots:** made with Playwright; the recipe is in section 8.
+- **Screenshots:** `node shoot.js "$PWD/index.html"` (needs Playwright) writes `shots/`. Section 8 has the short version.
 
 ## 3. The game loop today (level 1, Breakfast table)
 
