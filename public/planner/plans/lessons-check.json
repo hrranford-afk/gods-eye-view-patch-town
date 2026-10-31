@@ -1,0 +1,171 @@
+{
+  "question": "Do Worcester's lessons hold in other towns? The same tests in each: GP distance vs health (L1), air and park access vs healthy life (L24), turnout vs deprivation (L23), crime vs car-less households (L12).",
+  "notes": "t beyond about \u00b12 is a real link at this sample size. Health outcomes are per MSOA, turnout per ward, so effective samples are smaller than the neighbourhood count. Run with: npm run planner -- compare worcester,gloucester,cheltenham public/planner/plans/lessons-check.json",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$green",
+        "groupBy": "area"
+      },
+      "as": "greenMinutes"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "healthyLifeExpectancy"
+      },
+      "as": "healthyLifeExpectancy"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "lifeExpectancy"
+      },
+      "as": "lifeExpectancy"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "imdScore"
+      },
+      "as": "imdScore"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "no2"
+      },
+      "as": "no2"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "greenspaceAccessWithin300m"
+      },
+      "as": "greenspaceAccessWithin300m"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "wardTurnout"
+      },
+      "as": "wardTurnout"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "crimePer1000Day"
+      },
+      "as": "crimePer1000Day"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "badHealth"
+      },
+      "as": "badHealth"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65"
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$badHealth",
+        "x": {
+          "gpMinutes": "$gpMinutes"
+        },
+        "controls": {
+          "imdScore": "$imdScore",
+          "over65": "$over65"
+        }
+      },
+      "as": "L1_gpDistanceVsHealth",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$healthyLifeExpectancy",
+        "x": {
+          "no2": "$no2",
+          "greenspaceAccessWithin300m": "$greenspaceAccessWithin300m"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "L24_airAndParksVsHealthyLife",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$wardTurnout",
+        "x": {
+          "imdScore": "$imdScore"
+        },
+        "controls": {
+          "over65": "$over65"
+        }
+      },
+      "as": "L23_turnoutVsDeprivation",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$crimePer1000Day",
+        "x": {
+          "noCar": "$noCar"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "L12_crimeVsNoCar",
+      "optional": true
+    }
+  ],
+  "show": [
+    "L1_gpDistanceVsHealth",
+    "L24_airAndParksVsHealthyLife",
+    "L23_turnoutVsDeprivation",
+    "L12_crimeVsNoCar"
+  ]
+}

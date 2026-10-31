@@ -1,0 +1,222 @@
+{
+  "plan": "lessons-check.json",
+  "ranAt": "2026-10-31T09:06:30.124Z",
+  "towns": {
+    "worcester": {
+      "L1_gpDistanceVsHealth": {
+        "groups": 75,
+        "r2": 0.85,
+        "predictors": {
+          "gpMinutes": {
+            "coefficient": -0.000217,
+            "t": -2.4,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.00114,
+            "t": 17.6,
+            "control": true
+          },
+          "over65": {
+            "coefficient": 0.0989,
+            "t": 7.2,
+            "control": true
+          }
+        }
+      },
+      "L24_airAndParksVsHealthyLife": {
+        "groups": 75,
+        "r2": 0.7,
+        "predictors": {
+          "no2": {
+            "coefficient": -0.603,
+            "t": -2.2,
+            "control": false
+          },
+          "greenspaceAccessWithin300m": {
+            "coefficient": 1.37,
+            "t": 1.4,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": -0.22,
+            "t": -10.4,
+            "control": true
+          }
+        }
+      },
+      "L23_turnoutVsDeprivation": {
+        "groups": 64,
+        "r2": 0.48,
+        "predictors": {
+          "imdScore": {
+            "coefficient": -0.264,
+            "t": -6.1,
+            "control": false
+          },
+          "over65": {
+            "coefficient": 7.96,
+            "t": 0.8,
+            "control": true
+          }
+        }
+      },
+      "L12_crimeVsNoCar": {
+        "groups": 78,
+        "r2": 0.69,
+        "predictors": {
+          "noCar": {
+            "coefficient": 343,
+            "t": 7.3,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.231,
+            "t": 0.6,
+            "control": true
+          }
+        }
+      }
+    },
+    "gloucester": {
+      "L1_gpDistanceVsHealth": {
+        "groups": 109,
+        "r2": 0.67,
+        "predictors": {
+          "gpMinutes": {
+            "coefficient": -0.0000808,
+            "t": -1.3,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.00102,
+            "t": 14.4,
+            "control": true
+          },
+          "over65": {
+            "coefficient": 0.0911,
+            "t": 7.2,
+            "control": true
+          }
+        }
+      },
+      "L24_airAndParksVsHealthyLife": {
+        "groups": 109,
+        "r2": 0.63,
+        "predictors": {
+          "no2": {
+            "coefficient": -0.873,
+            "t": -3.9,
+            "control": false
+          },
+          "greenspaceAccessWithin300m": {
+            "coefficient": -1.21,
+            "t": -1.7,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": -0.186,
+            "t": -10.6,
+            "control": true
+          }
+        }
+      },
+      "L23_turnoutVsDeprivation": {
+        "error": "relate: only 4 groups in common"
+      },
+      "L12_crimeVsNoCar": {
+        "groups": 111,
+        "r2": 0.58,
+        "predictors": {
+          "noCar": {
+            "coefficient": 315,
+            "t": 5.2,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.292,
+            "t": 0.6,
+            "control": true
+          }
+        }
+      }
+    },
+    "cheltenham": {
+      "L1_gpDistanceVsHealth": {
+        "groups": 84,
+        "r2": 0.71,
+        "predictors": {
+          "gpMinutes": {
+            "coefficient": -0.0000948,
+            "t": -1.3,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.00143,
+            "t": 13.9,
+            "control": true
+          },
+          "over65": {
+            "coefficient": 0.109,
+            "t": 6.1,
+            "control": true
+          }
+        }
+      },
+      "L24_airAndParksVsHealthyLife": {
+        "groups": 84,
+        "r2": 0.61,
+        "predictors": {
+          "no2": {
+            "coefficient": -0.733,
+            "t": -2,
+            "control": false
+          },
+          "greenspaceAccessWithin300m": {
+            "coefficient": 0.302,
+            "t": 0.3,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": -0.271,
+            "t": -9.7,
+            "control": true
+          }
+        }
+      },
+      "L23_turnoutVsDeprivation": {
+        "groups": 77,
+        "r2": 0.61,
+        "predictors": {
+          "imdScore": {
+            "coefficient": -0.377,
+            "t": -6.4,
+            "control": false
+          },
+          "over65": {
+            "coefficient": 33.1,
+            "t": 3.2,
+            "control": true
+          }
+        }
+      },
+      "L12_crimeVsNoCar": {
+        "groups": 85,
+        "r2": 0.54,
+        "predictors": {
+          "noCar": {
+            "coefficient": 272,
+            "t": 5.6,
+            "control": false
+          },
+          "imdScore": {
+            "coefficient": 0.457,
+            "t": 1.1,
+            "control": true
+          }
+        }
+      }
+    }
+  },
+  "question": "Do Worcester's lessons hold in other towns? The same tests in each: GP distance vs health (L1), air and park access vs healthy life (L24), turnout vs deprivation (L23), crime vs car-less households (L12)."
+}

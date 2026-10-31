@@ -1,0 +1,59 @@
+{
+  "question": "How far is each home from a food bank, walking or by bus, and does it reach the households that most need it?",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "foodbank",
+        "mode": "busOrWalk"
+      },
+      "as": "foodbank"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$foodbank",
+        "groupBy": "town"
+      },
+      "as": "town"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$foodbank",
+        "groupBy": "town",
+        "weight": "deprived"
+      },
+      "as": "townDeprived"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$foodbank",
+        "groupBy": "town",
+        "stat": "shareWithin",
+        "within": 20
+      },
+      "as": "within20"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$foodbank",
+        "groupBy": "town",
+        "stat": "shareWithin",
+        "within": 20,
+        "weight": "deprived"
+      },
+      "as": "within20Deprived"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$foodbank",
+        "groupBy": "ward"
+      },
+      "as": "byWard"
+    }
+  ]
+}

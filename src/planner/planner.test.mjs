@@ -578,3 +578,12 @@ test('spotlight: a ward against its town, most unusual figures first', async () 
   assert.equal(s.figures[0].percentile, 10);
   assert.equal(s.figures.find((f) => f.figure === 'over65').percentile, 50);
 });
+
+test('runPlan: an optional step records its error instead of stopping the plan', async () => {
+  const { runPlan } = await import('./tools.js');
+  const model = { areas: [{ code: 'A', name: 'T 1', noCar: 0.1 }] };
+  const out = runPlan(model, [{ tool: 'attribute', args: { name: 'nope' }, as: 'bad', optional: true }, { tool: 'attribute', args: { name: 'noCar' }, as: 'ok' }]);
+  assert.match(out.bad.error, /Unknown attribute/);
+  assert.equal(out.ok.value.A, 0.1);
+  assert.throws(() => runPlan(model, [{ tool: 'attribute', args: { name: 'nope' } }]));
+});

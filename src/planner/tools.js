@@ -480,7 +480,14 @@ export function runPlan(model, plan) {
   plan.forEach((step, i) => {
     const tool = TOOLS[step.tool];
     if (!tool) throw new Error(`Step ${i + 1}: unknown tool "${step.tool}". Tools: ${Object.keys(TOOLS).join(', ')}`);
-    saved[step.as || `step${i + 1}`] = tool.fn(model, resolve(step.args || {}));
+    // A step marked optional records why it couldn't run instead of stopping the plan
+    // (e.g. a figure one town doesn't have yet).
+    try {
+      saved[step.as || `step${i + 1}`] = tool.fn(model, resolve(step.args || {}));
+    } catch (e) {
+      if (!step.optional) throw e;
+      saved[step.as || `step${i + 1}`] = { error: e.message };
+    }
   });
   return saved;
 }
