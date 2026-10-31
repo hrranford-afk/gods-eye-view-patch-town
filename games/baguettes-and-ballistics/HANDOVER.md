@@ -97,6 +97,7 @@ and the camera follows.*
 
 | # | Job | Why | Done when |
 |---|---|---|---|
+| 0 | **Race-then-battle opening** (DESIGN.md, "The twist") | Harry's big idea; teaches driving first | a level starts as a 3-lap race with boxes; dropped boxes become your base when the race ends |
 | 1 | Table edge + build ghost | stops the two worst frustrations | you can't fall into the void unless the design says so; you can see where a turret will go before buying |
 | 2 | Sound pass | toys must *sound* like toys | each weapon, impact, pickup and build has its own clicky toy sound (Web Audio, generated in code); the kettle click counts down |
 | 3 | Game feel ("juice") | makes every hit satisfying | screen shake on big hits, hit-flash, cereal bursting out of wrecks, wheels kicking crumbs |

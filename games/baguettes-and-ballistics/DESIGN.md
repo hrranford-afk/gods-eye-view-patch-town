@@ -16,6 +16,28 @@ and builds.
 
 The enemy plays by the same rules: it digs, hauls, builds and upgrades.
 
+## The twist: race, then battle (Harry's idea, 31 Oct 2026)
+
+Each level starts as a race and turns into a war.
+
+1. **Race.** Laps around the table. Supply boxes lie on the track.
+   Pick one up, carry it, and drop it anywhere you like: at home, or
+   at a spot you want to hold. The box shows what it becomes (gun,
+   wall, truck, digger), so every pickup is a choice. Carrying slows
+   you a little: grab more, or race faster?
+2. **The switch.** The kettle clicks, the table shakes, and every
+   dropped box unfolds into what it holds. Your base is wherever you
+   raced it to, so every game has a different map.
+3. **Battle.** As now: cereal keeps the war going, and you break the
+   enemy toy box to win.
+
+- **Steal (CAIRN's add):** ram a car carrying a box and it drops it.
+  The race has fights in it, and grudges carry into the battle.
+- **Keep it close:** the last-place racer gets a catch-up gift (a free
+  turret or an ambush spot), so losing the race never loses the game.
+- **Why it works:** the race teaches driving before building, which
+  fixes the hard first minutes.
+
 ## Loot
 
 | Loot | Where | Builds |
