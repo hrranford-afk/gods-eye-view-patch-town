@@ -554,6 +554,18 @@
       "status": "open",
       "from": "q35",
       "unlocks": "Turnout history per ward (Democracy Club), council consultation response rates by area, registration rates"
+    },
+    {
+      "id": "q45",
+      "question": "Worcester's food help is two sites in the centre. Would a community pantry or food bank point on the Warndon estate and in Dines Green reach people who can't get into town?",
+      "askedBy": "CAIRN",
+      "status": "open",
+      "from": "L26",
+      "lonLat": [
+        -2.169,
+        52.2075
+      ],
+      "unlocks": "Bus or walk minutes from each neighbourhood to the two sites (travel tool, food bank as a place kind), food bank referral numbers by postcode district if the food bank shares them, Your Local Pantry model"
     }
   ]
 }
