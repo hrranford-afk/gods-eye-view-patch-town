@@ -821,7 +821,7 @@ function makeTurret(type, team, x, z) {
 }
 function canPlace(x, z, team) {
   if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
-  if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way';
+  if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way: build where the circle is green';
   const enemyBase = state.bases[1 - team];
   // Further than any turret can reach (rockets at level 3 reach ~33), so toy boxes fall to cars, not sniping.
   if (dist2({ x, z }, enemyBase) < 36 * 36) return 'Too close to their toy box';
@@ -1148,6 +1148,7 @@ function update(dt) {
 }
 
 const camTarget = new THREE.Vector3();
+let ghost = null;
 function render(dt) {
   const time = performance.now() / 1000;
   for (const e of entities) {
@@ -1184,7 +1185,22 @@ function render(dt) {
   const p = state.player;
   if (p) {
     const zoom = camera.aspect < 1 ? 1.5 : 1;
-    camTarget.lerp(new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35), 1 - Math.exp(-4 * dt));
+    // Keep the view on the table: near an edge the car moves off-centre instead of the camera showing the dark beyond.
+    const lead = new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35);
+    lead.x = Math.max(-W / 2 + 30, Math.min(W / 2 - 30, lead.x));
+    lead.z = Math.max(-D / 2 + 22, Math.min(D / 2 - 14, lead.z));
+    camTarget.lerp(lead, 1 - Math.exp(-4 * dt));
+    // Build ghost: where a turret would go (behind you). Green = you can build here, red = you can't.
+    if (!ghost) {
+      ghost = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.15, 24), new THREE.MeshBasicMaterial({ color: 0x3ddc84, transparent: true, opacity: 0.45, depthWrite: false }));
+      scene.add(ghost);
+    }
+    const gx = p.x - Math.cos(p.heading) * 4, gz = p.z - Math.sin(p.heading) * 4;
+    const ok = p.alive && !canPlace(gx, gz, BLUE) && state.cereal[BLUE] >= costOf('gun');
+    ghost.visible = p.alive && !state.over;
+    ghost.position.set(gx, 0.1, gz);
+    ghost.material.color.setHex(ok ? 0x3ddc84 : 0xff5a5f);
+    ghost.material.opacity = 0.3 + Math.sin(time * 5) * 0.12;
     state.shake = Math.max(0, (state.shake || 0) - dt * 2.5);
     const sh = state.shake * 0.8;
     camera.position.set(camTarget.x + (Math.random() - 0.5) * sh, 50 * zoom, camTarget.z + 34 * zoom + (Math.random() - 0.5) * sh);

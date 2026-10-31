@@ -13,8 +13,7 @@ This file is for the developers (human or AI) picking it up. Read this, then
 | ![title](shots/1-title.png) | ![economy](shots/3-economy.png) |
 
 ![off the edge](shots/4-battle.png)
-*Known bug, shown above: the player can drive off the table into the dark,
-and the camera follows.*
+*Near the table edge the camera now stays over the table. The green circle behind the car is the build ghost: green means a turret fits there and you can afford it, red means you can't.*
 
 ## 2. How to run it
 
@@ -86,8 +85,8 @@ and the camera follows.*
 
 ## 5. Known problems (fix first)
 
-1. **Edge of the table:** the player can drive off the table into the void (screenshot above). Clamp them to the table, or let them fall off and respawn at home: funnier.
-2. **Building is unclear:** pressing 1 next to the pencil gives "Something is in the way", with no hint where you *can* build. Show a ghost turret, green or red, before you place it.
+1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.
+2. ~~**Building is unclear**~~ **Fixed 31 Oct:** a build ghost (green or red circle) shows where a turret will go.
 3. **Sound:** beeps only. This is the single biggest gap in how it feels.
 4. **Hard start:** new players struggle in the first minute (Harry: "starts off really hard, but you get the knack"). It needs a gentler first two minutes, or a short tutorial.
 5. **No level select or progress saving.**
@@ -98,7 +97,7 @@ and the camera follows.*
 | # | Job | Why | Done when |
 |---|---|---|---|
 | 0 | **Race-then-battle opening** (DESIGN.md, "The twist") | Harry's big idea; teaches driving first | a level starts as a 3-lap race with boxes; dropped boxes become your base when the race ends |
-| 1 | Table edge + build ghost | stops the two worst frustrations | you can't fall into the void unless the design says so; you can see where a turret will go before buying |
+| 1 | ~~Table edge + build ghost~~ done 31 Oct | stops the two worst frustrations | you can't fall into the void unless the design says so; you can see where a turret will go before buying |
 | 2 | Sound pass | toys must *sound* like toys | each weapon, impact, pickup and build has its own clicky toy sound (Web Audio, generated in code); the kettle click counts down |
 | 3 | Game feel ("juice") | makes every hit satisfying | screen shake on big hits, hit-flash, cereal bursting out of wrecks, wheels kicking crumbs |
 | 4 | First-two-minutes tutorial | keeps new players | a new player builds a truck, a digger and a turret in the first 2 minutes without reading the text |
