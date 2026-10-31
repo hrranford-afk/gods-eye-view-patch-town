@@ -1,0 +1,231 @@
+{
+  "question": "Round two of cross-town checks: do poorer neighbourhoods report more or fewer street problems (FixMyStreet; Worcester left out, it barely uses FixMyStreet)? Does L31 (older people's good day; slower walking halves it) hold elsewhere?",
+  "notes": "Report counts are controlled for households and car-less households. L31 settings as in worcester/plans/older-residents-options.json. Run: npm run planner -- compare worcester,gloucester,cheltenham public/planner/plans/lessons-check-2.json",
+  "steps": [
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "fmsTotal"
+      },
+      "as": "fmsTotal",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "fmsFlyTipping"
+      },
+      "as": "fmsFlyTipping",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "fmsPotholes"
+      },
+      "as": "fmsPotholes",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "households"
+      },
+      "as": "households",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "imdScore"
+      },
+      "as": "imdScore",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65"
+      },
+      "as": "over65",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$fmsTotal",
+        "x": {
+          "imdScore": "$imdScore"
+        },
+        "controls": {
+          "households": "$households",
+          "noCar": "$noCar"
+        }
+      },
+      "as": "reports_fmsTotalVsDeprivation",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$fmsFlyTipping",
+        "x": {
+          "imdScore": "$imdScore"
+        },
+        "controls": {
+          "households": "$households",
+          "noCar": "$noCar"
+        }
+      },
+      "as": "reports_fmsFlyTippingVsDeprivation",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$fmsPotholes",
+        "x": {
+          "imdScore": "$imdScore"
+        },
+        "controls": {
+          "households": "$households",
+          "noCar": "$noCar"
+        }
+      },
+      "as": "reports_fmsPotholesVsDeprivation",
+      "optional": true
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_today"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_today",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "L31_over65_today"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 7.0
+          },
+          {
+            "values": "$green",
+            "max": 3.5
+          },
+          {
+            "values": "$food",
+            "max": 7.0
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "good_slowWalk"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_slowWalk",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "L31_over65_slowWalk"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          }
+        ]
+      },
+      "as": "good_busToGpAndShops"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$good_busToGpAndShops",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "L31_over65_busToGpAndShops"
+    }
+  ]
+}
