@@ -94,10 +94,13 @@ export function currentWards(ballots, on = today()) {
   const held = ballots.filter((b) => !/\.by\./.test(b.id) && b.date <= on);
   const set = held.map((b) => b.set || '').sort().pop();
   const wards = new Map();
-  for (const b of held.filter((x) => (x.set || '') === set).sort((a, b) => (a.date < b.date ? 1 : -1))) {
-    if (!wards.has(b.gss)) wards.set(b.gss, { gss: b.gss, name: b.name, seats: b.seats || 1, ballots: [] });
+  const newestFirst = (a, b) => (a.date < b.date ? 1 : -1);
+  for (const b of held.filter((x) => (x.set || '') === set).sort(newestFirst)) {
+    if (!wards.has(b.gss)) wards.set(b.gss, { gss: b.gss, name: b.name, seats: b.seats || 1, ballots: [], older: [] });
     wards.get(b.gss).ballots.push(b);
   }
+  // Same ward code on an earlier boundary set (e.g. Gloucester 2021): only a turnout fallback, never councillors.
+  for (const b of held.filter((x) => (x.set || '') !== set).sort(newestFirst)) wards.get(b.gss)?.older.push(b);
   return wards;
 }
 
@@ -154,12 +157,16 @@ async function elections(ctx) {
   for (const w of wards.values()) {
     const details = [];
     let turnout = null, filled = 0;
-    for (const b of w.ballots.slice(0, 4)) {
+    // The newest ballots often have no turnout recorded yet (Gloucester 2024), so fall back to the previous boundary set's.
+    for (const b of [...w.ballots.slice(0, 4), ...w.older.slice(0, 2)]) {
+      const isOlder = w.older.includes(b);
+      if (isOlder && turnout) break;
       const ballot = await dcGet(`${DC_CANDIDATES}/ballots/${b.id}/`, `dc-ballot-${b.id}.json`);
       const won = ballotWinners(ballot).length;
       if (!won) continue;
       const t = turnoutPct(ballot.results);
       if (turnout == null && t != null) turnout = { pct: t, year: Number(b.date.slice(0, 4)), votes: ballot.results?.num_turnout_reported ?? null, electorate: ballot.results?.total_electorate ?? null };
+      if (isOlder) continue;
       details.push({ date: b.date, ballot });
       filled += won;
       if (turnout && filled >= w.seats) break;
@@ -237,14 +244,27 @@ export function countReports(reports, bbox, areaAt) {
   return { byArea, total };
 }
 
+/** GET JSON, retrying network errors (and 429/5xx) with growing back-off; the caller already keeps the 3 s crawl delay. */
+export async function fetchJsonRetry(url, { tries = 5, delay = 3000, fetchFn = fetch, wait = sleep } = {}) {
+  for (let i = 1; ; i++) {
+    try {
+      const res = await fetchFn(url, { headers: { 'user-agent': 'town-planner-research (counts only)' } });
+      if (res.ok) return await res.json();
+      if (res.status !== 429 && res.status < 500) throw Object.assign(new Error(`FixMyStreet answered ${res.status}`), { fatal: true });
+      if (i >= tries) throw new Error(`FixMyStreet answered ${res.status}`);
+    } catch (err) {
+      if (err.fatal || i >= tries) throw err;
+    }
+    await wait(delay * 2 ** i);
+  }
+}
+
 /** Fetch one Open311 window, splitting it in two when the 1000-report cap is hit. Only category, place and time are kept. */
 async function fmsWindow(agencies, from, to, file) {
   if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
   const q = new URLSearchParams({ jurisdiction_id: 'fixmystreet', agency_responsible: agencies.join('|'), start_date: from.toISOString(), end_date: to.toISOString() });
   await sleep(3000); // FixMyStreet robots.txt: Crawl-delay 3
-  const res = await fetch(`${FMS}?${q}`, { headers: { 'user-agent': 'town-planner-research (counts only)' } });
-  if (!res.ok) throw new Error(`FixMyStreet answered ${res.status}`);
-  const rows = (await res.json()).service_requests || [];
+  const rows = (await fetchJsonRetry(`${FMS}?${q}`)).service_requests || [];
   if (rows.length >= 1000 && to - from > DAY) {
     const mid = new Date((+from + +to) / 2);
     return [...(await fmsWindow(agencies, from, mid, `${file}.a`)), ...(await fmsWindow(agencies, mid, to, `${file}.b`))];

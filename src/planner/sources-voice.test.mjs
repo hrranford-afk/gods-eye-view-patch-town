@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { areaFinder, ballotWinners, classifyReport, countReports, currentWards, latestMonths, partyKey, sittingCouncillors, summariseWorks, turnoutPct, workCategory } from '../../scripts/sources/voice.mjs';
+import { areaFinder, ballotWinners, classifyReport, countReports, currentWards, fetchJsonRetry, latestMonths, partyKey, sittingCouncillors, summariseWorks, turnoutPct, workCategory } from '../../scripts/sources/voice.mjs';
 
 test('partyKey groups parties', () => {
   assert.equal(partyKey('Labour and Co-operative Party'), 'Labour');
@@ -96,4 +96,29 @@ test('summariseWorks merges permits per work and clips days to the window', () =
   assert.equal(w1.category, 'major');
   assert.equal(w1.days, 10);
   assert.equal(w2.days, 9);
+});
+
+test('currentWards keeps same-code ballots from an older boundary set as a turnout fallback only', () => {
+  const b = (id, date, gss, set) => ({ id, date, gss, name: gss, seats: 2, set });
+  const wards = currentWards([
+    b('local.g.a.2021-05-06', '2021-05-06', 'E1', '2016-04-13'),
+    b('local.g.a.2024-05-02', '2024-05-02', 'E1', '2024-05-02'),
+    b('local.g.a.by.2022-01-01', '2022-01-01', 'E1', '2016-04-13'),
+    b('local.g.gone.2021-05-06', '2021-05-06', 'E9', '2016-04-13'),
+  ], '2026-10-29');
+  assert.deepEqual([...wards.keys()], ['E1']);
+  assert.deepEqual(wards.get('E1').ballots.map((x) => x.date), ['2024-05-02']);
+  assert.deepEqual(wards.get('E1').older.map((x) => x.date), ['2021-05-06']);
+});
+
+test('fetchJsonRetry retries network errors and 5xx, not 4xx', async () => {
+  const waits = [];
+  let n = 0;
+  const flaky = async () => { if (++n < 3) throw new TypeError('fetch failed'); return { ok: true, json: async () => ({ service_requests: [1] }) }; };
+  assert.deepEqual(await fetchJsonRetry('u', { fetchFn: flaky, wait: async (ms) => waits.push(ms), delay: 10 }), { service_requests: [1] });
+  assert.deepEqual(waits, [20, 40]);
+  const gone = async () => ({ ok: false, status: 404 });
+  await assert.rejects(fetchJsonRetry('u', { fetchFn: gone, wait: async () => {} }), /404/);
+  const down = async () => { throw new TypeError('fetch failed'); };
+  await assert.rejects(fetchJsonRetry('u', { fetchFn: down, wait: async () => {}, tries: 2 }), /fetch failed/);
 });
