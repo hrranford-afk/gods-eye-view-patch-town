@@ -75,6 +75,21 @@ export const TOWNS = Object.freeze({
     educationAuthority: 'Worcestershire',
     nhsPracticePrefix: 'M81',
   }),
+  worcestershire: Object.freeze({
+    // Scale test: the whole county (6 councils) as one "town", to see where the planner breaks.
+    id: 'worcestershire',
+    ladCode: 'E10000034', // the county, not a district: district-only sources are expected to fail
+    countyCode: 'E10000034',
+    name: 'Worcestershire',
+    bbox: Object.freeze([51.96, -2.67, 52.46, -1.75]),
+    nhsPracticePrefix: 'M81',
+    county: 'WORCESTERSHIRE',
+    educationAuthority: 'Worcestershire',
+    osmExtract: 'europe/united-kingdom/england/worcestershire',
+    busRegion: 'west_midlands',
+    pctRegion: 'hereford-and-worcester',
+    waterCompany: 'Severn Trent Water',
+  }),
 });
 
 /** Look up a town by id, throwing a readable error listing the known ids. */

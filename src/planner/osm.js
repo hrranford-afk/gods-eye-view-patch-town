@@ -92,9 +92,12 @@ export function roadKind(highway) {
  * servers will answer: the bbox is cut into `tiles`×`tiles` pieces and each
  * piece is asked for roads and for things (services + homes) separately.
  * Results overlap at tile edges; mergeOverpass removes the duplicates.
+ * Bigger areas get more pieces (about 0.01 square degrees each, never fewer
+ * than 3×3), so a county doesn't time out the servers.
  */
-export function overpassQueries(town, { tiles = 3, timeoutS = 180 } = {}) {
+export function overpassQueries(town, { tiles, timeoutS = 180 } = {}) {
   const [s, w, n, e] = town.bbox;
+  tiles ??= Math.max(3, Math.ceil(Math.sqrt(((n - s) * (e - w)) / 0.01)));
   const queries = [];
   for (let i = 0; i < tiles; i++) {
     for (let j = 0; j < tiles; j++) {

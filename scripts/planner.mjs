@@ -172,7 +172,13 @@ async function censusTown(id) {
     tables[name] = [];
     for (let i = 0; i < codes.length; i += 50) {
       const url = `${NOMIS}/${dataset}.data.csv?date=latest&measures=20100&select=${select}&geography=${codes.slice(i, i + 50).join(',')}`;
-      const res = await fetch(url);
+      let res;
+      for (let attempt = 1; ; attempt++) {
+        res = await fetch(url);
+        // Nomis sometimes answers 406 or 429 under load (seen on a 931-neighbourhood county run): wait and retry.
+        if (res.ok || attempt >= 4 || ![406, 429, 500, 502, 503, 504].includes(res.status)) break;
+        await new Promise((r) => setTimeout(r, 5000 * attempt));
+      }
       if (!res.ok) throw new Error(`Nomis ${dataset} answered ${res.status}`);
       tables[name].push(...parseCsv(await res.text()));
     }
