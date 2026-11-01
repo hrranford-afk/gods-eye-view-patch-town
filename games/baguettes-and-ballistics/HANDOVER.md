@@ -354,3 +354,23 @@ time, and shows a screenshot or short clip before and after.
   its target, hurting your cars nearby (25), with a shake. Tested: it now
   marches over, snaps turrets, reaches your toy box and dies to defence.
 
+## The Gumball Machine and battle items (level 2; Harry's ideas)
+
+- A gumball machine mid-table (`LEVELS[1].gumball`, `placeGumball` finds a
+  clear spot). Ram your side of it (from the left, at speed) to pay 10 cereal
+  and spin (`spinGumball`, `PRIZES`). 2.5 s between spins per side.
+- **Prizes:** turret level-up, 30 s toy-box shield (hits do a fifth), turbo
+  (+45% top speed), double damage, gumball armour (hits on your car halved),
+  40 cereal, a free truck, a dud (whoopee cushion), and **items**.
+- **Items, Mario Kart style** (`ITEMS`, `giveItem`, `useItem`, `itemsUpdate`):
+  carry one, use it with the Use button or Z. Butter pat and jam blob drop
+  behind you (butter spins a car out, jam nearly stops it; the dropper gets 1 s
+  to drive clear, then they catch anyone). Marble fires ahead, bounces off
+  walls and the table edge, hits the first car for 40 and spins it. Wasp homes
+  on their nearest car for 45. Sherbet fizz blasts cars within 10 away (15).
+- **The enemy plays too:** from 0:45 a car sometimes goes to ram their side
+  (`gumball.spot`), and they use items when one of their cars is within 22 of
+  you (`state.redItems`).
+- Tested: 12 spins gave a spread of prizes and items; marble did 40, butter
+  spun a car, the enemy spun the machine.
+

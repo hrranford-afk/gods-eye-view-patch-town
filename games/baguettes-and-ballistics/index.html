@@ -114,6 +114,7 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
   <div class="row">
     <button id="bDomino">Domino<small>4</small></button>
     <button id="bTrojan">Trojan<small>30</small></button>
+    <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button id="bBoat" hidden>Boat<small>30</small></button>
   </div>
   <div class="row clipsRow" id="clipsRow" hidden>
@@ -446,7 +447,8 @@ const LEVELS = [
     refill: [{ x: -14, z: -4, rate: 0.2 }, { x: 14, z: 4, rate: 0.2 }], // the case keeps spilling clips
     start: { cereal: 25, clips: 10, unlocked: ['racer'] },
     resources: ['cereal', 'clips'],
-    turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },   // paperclips a turret costs on top of cereal
+    turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
+    gumball: true, // the Gumball Machine sits mid-table   // paperclips a turret costs on top of cereal
     vehicleCosts: { tank: { c: 20, p: 15 } },
     heavyClips: 5,                 // the enemy's heavy tank costs clips too
     rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
@@ -1073,6 +1075,9 @@ function reset() {
   for (const d of dominoes) scene.remove(d.pivot);
   dominoes.length = 0;
   for (const r of state.runs || []) scene.remove(r.button);
+  if (gumball) { scene.remove(gumball.group); gumball = null; }
+  for (const t of traps) scene.remove(t.mesh); for (const m of marbles) scene.remove(m.mesh);
+  traps.length = marbles.length = 0;
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
   const L = LEVELS[curLevel];
@@ -1085,6 +1090,9 @@ function reset() {
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
+  Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
+  $('bUse').hidden = true;
+  if (L.gumball) gumball = placeGumball();
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
@@ -1117,7 +1125,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
-  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyB') buyBoat();
+  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -1136,6 +1144,7 @@ tap('bArmour', () => armour());
 tap('bMagnet', () => build('magnet'));
 tap('bDomino', () => placeDomino());
 tap('bTrojan', () => trojan());
+tap('bUse', () => useItem(BLUE, state.player));
 tap('bBoat', () => buyBoat());
 tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
@@ -1298,6 +1307,8 @@ function drive(e, dx, dz, throttle, dt, stats) {
   }
   const patch = patchAt(e.x, e.z);
   let grip = stats.grip, top = stats.speed;
+  if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'turbo') top *= 1.45; // gumball turbo
+  if (e.spin > 0) grip *= 0.15; // spun out on butter or by a marble
   if (patch === 'juice' && !stats.floats) grip *= 0.12;
   if (patch === 'cereal' && !stats.floats && !stats.rough) top *= 0.45;
   // Split velocity into forward and sideways; grip eats the sideways part (that's the drift).
@@ -1357,6 +1368,10 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
+  // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
+  if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
+  if (byTeam != null && state.buff?.[byTeam]?.kind === 'double') dmg *= 2;
+  if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'armour') dmg *= 0.5;
   // Paperclip armour on your car: each plate takes 15% off every hit (3 plates at most).
   if (e.kind === 'player' && state.plates) dmg *= 1 - 0.15 * state.plates;
   // Staples pin a car in place for a moment (a boss only flinches).
@@ -1663,6 +1678,149 @@ function trojanThink(w, dt) {
   }
 }
 
+// ---------- The Gumball Machine (level 2, Harry's idea): ram the button, pay 10 cereal, get a random prize ----------
+// Both sides can use it. It sits where the fighting is, so guarding it is its own battle. Game cereal only, never real money.
+const GUMBALL_COST = 10;
+const PRIZES = [
+  // [weight, colour, name, what it does to team t]
+  [3, 0xff4d4d, 'Turret level-up', (t) => { const tur = entities.filter((e) => e.kind === 'turret' && e.team === t && e.hp > 0 && e.level < 3).sort((a, b) => a.level - b.level)[0]; if (tur) { levelUp(tur); return 'a free turret level-up'; } state.cereal[t] += 25; return '25 cereal (no turret to level up)'; }],
+  [2, 0xff4d4d, 'Shield', (t) => { state.shield[t] = state.time + 30; return 'a shield on your toy box for 30 s'; }],
+  [3, 0x4da6ff, 'Turbo', (t) => { state.buff[t] = { kind: 'turbo', until: state.time + 30 }; return 'turbo for 30 s'; }],
+  [2, 0x4da6ff, 'Double damage', (t) => { state.buff[t] = { kind: 'double', until: state.time + 30 }; return 'double damage for 30 s'; }],
+  [2, 0x4da6ff, 'Armour', (t) => { const car = t === BLUE ? state.player : null; if (car) car.hp = car.maxHp * 1.5; state.buff[t] = { kind: 'armour', until: state.time + 30 }; return 'extra armour for 30 s'; }],
+  [3, 0xffd166, 'Cereal airdrop', (t) => { state.cereal[t] += 40; return '40 cereal'; }],
+  [2, 0xffd166, 'Free truck', (t) => { spawnWorker('truck', t); return 'a free dump truck'; }],
+  [2, 0x2b2b2b, 'Dud', () => 'a whoopee cushion. Pfffrrt.'],
+];
+let gumball = null;
+function makeGumball(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  mesh(new THREE.CylinderGeometry(2.6, 3.2, 3, 16), mat(0xd62f2f), 0, 1.5, 0, g); // red stand
+  const globe = mesh(new THREE.SphereGeometry(3.4, 20, 14), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 }), 0, 6.2, 0, g);
+  const cols = [0xff4d4d, 0x4da6ff, 0xffd166, 0x3ddc84, 0xff9ff3];
+  for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 2.4, y = 4.2 + Math.random() * 2.6; mesh(new THREE.SphereGeometry(0.55, 8, 6), mat(cols[i % cols.length]), Math.cos(a) * r, y, Math.sin(a) * r, g); }
+  mesh(new THREE.CylinderGeometry(1, 1, 0.5, 12), mat(0xd62f2f), 0, 9.6, 0, g); // lid
+  // Two buttons, one facing each side's toy box, so either team can ram it.
+  const buttons = [-1, 1].map((sx) => { const b = mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 12), mat(0xffd166, { emissive: 0x6b4a00 }), sx * 3.3, 1.6, 0, g); b.rotation.z = Math.PI / 2; return b; });
+  scene.add(g);
+  obstacles.push({ x, z, w: 6, d: 6, h: 9, kind: 'gumball' });
+  navDirty = true;
+  return { x, z, group: g, globe, buttons, cool: [0, 0], spin: 0 };
+}
+function spinGumball(t) {
+  if (state.cereal[t] < GUMBALL_COST) { if (t === BLUE) { toast(`A spin costs ${GUMBALL_COST} cereal`); sfx('no'); } return; }
+  state.cereal[t] -= GUMBALL_COST;
+  gumball.cool[t] = 2.5; gumball.spin = 1.2;
+  const total = PRIZES.reduce((s, p) => s + p[0], 0);
+  let roll = Math.random() * total, prize = PRIZES[0];
+  for (const p of PRIZES) { roll -= p[0]; if (roll <= 0) { prize = p; break; } }
+  const said = prize[3](t);
+  // The gumball rolls out of the chute towards whoever paid.
+  burst(gumball.x + (t === BLUE ? -3.5 : 3.5), gumball.z, prize[1], 10, 6, 2);
+  if (dist2(gumball, state.player) < 2500) sfx(prize[2] === 'Dud' ? 'no' : 'cap');
+  toast(t === BLUE ? `Gumball! You got ${said}` : `They spun the gumball machine: ${prize[2]}`);
+}
+function gumballUpdate(dt) {
+  if (!gumball) return;
+  gumball.cool[0] -= dt; gumball.cool[1] -= dt;
+  if (gumball.spin > 0) { gumball.spin -= dt; gumball.globe.rotation.y += dt * 9; gumball.group.position.x = gumball.x + Math.sin(state.time * 60) * 0.15 * gumball.spin; }
+  // Ram the button on your side: you (or your cars) touching the machine on your side at speed.
+  const p = state.player;
+  if (p.alive && gumball.cool[BLUE] <= 0 && Math.abs(p.z - gumball.z) < 4 && p.x < gumball.x && gumball.x - p.x < 5.8 && Math.hypot(p.vx, p.vz) > 2) spinGumball(BLUE);
+  for (const t of [BLUE, RED]) if (state.buff[t] && state.time > state.buff[t].until) { state.buff[t] = null; if (t === BLUE) toast('Gumball power-up wore off'); }
+}
+
+// ---------- Battle items from the gumball machine (Harry: "like Mario Kart") ----------
+// Some gumballs are items you CARRY (one at a time) and use with the Use button (key Z): drop one behind you, or fire one ahead.
+// Their cars win and use items too.
+const ITEMS = {
+  butter: { name: 'Butter pat', icon: '🧈', how: 'drop' },  // dropped behind: cars that hit it spin out
+  jam: { name: 'Jam blob', icon: '🍓', how: 'drop' },       // dropped behind: sticky, slows cars right down
+  marble: { name: 'Marble', icon: '🔮', how: 'fire' },      // fired ahead: bounces off walls, smashes the first car it meets
+  wasp: { name: 'Wasp', icon: '🐝', how: 'fire' },          // fired: homes in on their nearest car
+  fizz: { name: 'Sherbet fizz', icon: '💥', how: 'here' },  // goes off around you: shoves nearby cars away
+};
+// Item gumballs join the prize list (heavier weights: these are the fun ones).
+for (const [k, w] of [['butter', 3], ['jam', 2], ['marble', 3], ['wasp', 2], ['fizz', 2]]) PRIZES.push([w, 0x3ddc84, ITEMS[k].name, (t) => giveItem(t, k)]);
+const traps = []; // butter and jam on the table
+const marbles = [];
+function giveItem(t, k) {
+  if (t === BLUE) { state.item = k; $('bUse').hidden = false; $('useIcon').textContent = ITEMS[k].icon; }
+  else state.redItems.push(k);
+  return `a ${ITEMS[k].name} (${ITEMS[k].how === 'drop' ? 'Use drops it behind you' : ITEMS[k].how === 'fire' ? 'Use fires it' : 'Use sets it off'})`;
+}
+function useItem(t, car) {
+  const k = t === BLUE ? state.item : state.redItems.shift();
+  if (!k || !car) return;
+  if (t === BLUE) { state.item = null; $('bUse').hidden = true; }
+  const fx = Math.cos(car.heading ?? 0), fz = Math.sin(car.heading ?? 0);
+  if (k === 'butter' || k === 'jam') {
+    const x = car.x - fx * 4, z = car.z - fz * 4;
+    const m = mesh(k === 'butter' ? new THREE.BoxGeometry(2.4, 0.5, 2.4) : new THREE.CylinderGeometry(1.6, 1.8, 0.4, 12), mat(k === 'butter' ? 0xffe680 : 0xc2185b, { roughness: 0.2 }), x, 0.25, z, scene);
+    traps.push({ kind: k, x, z, r: 1.8, team: t, life: 40, safe: 1, mesh: m });
+    sfx('build');
+  } else if (k === 'marble') {
+    const m = mesh(new THREE.SphereGeometry(0.9, 14, 10), new THREE.MeshStandardMaterial({ color: 0x7cc7ff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 }), car.x + fx * 3, 0.9, car.z + fz * 3, scene);
+    marbles.push({ x: car.x + fx * 3, z: car.z + fz * 3, vx: fx * 34, vz: fz * 34, team: t, life: 6, mesh: m });
+    sfx('cannon');
+  } else if (k === 'wasp') {
+    const target = nearestEnemy(car, 80, t);
+    if (target) fire(car, target, { dmg: 45, rate: 1, range: 80, speed: 26, homing: true, color: 0xffd400, size: 0.6, vsBase: 0.3 });
+    sfx('missile');
+  } else if (k === 'fizz') {
+    for (const e of entities) if (e.team !== t && e.hp > 0 && (e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && dist2(e, car) < 100) {
+      const d = Math.max(1, Math.sqrt(dist2(e, car))); e.vx = (e.vx || 0) + (e.x - car.x) / d * 40; e.vz = (e.vz || 0) + (e.z - car.z) / d * 40; hurt(e, 15, t, null);
+    }
+    for (const c of [0xff9ff3, 0x7cfffb, 0xffd166]) burst(car.x, car.z, c, 12, 14, 1.5);
+    sfx('firework');
+  }
+}
+// Spin out: a car on butter loses grip and spins; on jam it's stuck nearly still.
+function itemsUpdate(dt) {
+  for (let i = traps.length - 1; i >= 0; i--) {
+    const tr = traps[i]; tr.life -= dt; tr.safe -= dt;
+    for (const e of entities) {
+      if (e.hp <= 0 || !(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive))) continue;
+      if (tr.safe > 0 && e.team === tr.team) continue; // the dropper gets a moment to drive away
+      if (dist2(e, tr) < (tr.r + (e.r || 1)) ** 2) {
+        if (tr.kind === 'butter') { e.spin = 1.2; e.vx = (e.vx || 0) * 0.5; e.vz = (e.vz || 0) * 0.5; if (e === state.player) toast('Slipped on butter!'); tr.life = 0; }
+        else { e.vx = (e.vx || 0) * Math.exp(-6 * dt); e.vz = (e.vz || 0) * Math.exp(-6 * dt); }
+      }
+    }
+    if (tr.life <= 0) { scene.remove(tr.mesh); traps.splice(i, 1); }
+  }
+  for (const e of entities) if (e.spin > 0) { e.spin -= dt; e.heading = (e.heading || 0) + dt * 14; e.vx *= 0.97; e.vz *= 0.97; }
+  for (let i = marbles.length - 1; i >= 0; i--) {
+    const m = marbles[i]; m.life -= dt;
+    m.x += m.vx * dt; m.z += m.vz * dt;
+    // Bounce off the table edge and off blocks.
+    if (Math.abs(m.x) > W / 2 - 1) { m.vx *= -1; m.x = Math.sign(m.x) * (W / 2 - 1); sfx('hit'); }
+    if (Math.abs(m.z) > D / 2 - 1) { m.vz *= -1; m.z = Math.sign(m.z) * (D / 2 - 1); sfx('hit'); }
+    for (const o of obstacles) if (Math.abs(m.x - o.x) < o.w / 2 + 0.9 && Math.abs(m.z - o.z) < o.d / 2 + 0.9) {
+      const px = o.w / 2 + 0.9 - Math.abs(m.x - o.x), pz = o.d / 2 + 0.9 - Math.abs(m.z - o.z);
+      if (px < pz) { m.vx *= -1; m.x += Math.sign(m.x - o.x) * px; } else { m.vz *= -1; m.z += Math.sign(m.z - o.z) * pz; }
+      break;
+    }
+    m.mesh.position.set(m.x, 0.9, m.z); m.mesh.rotation.x += dt * 12;
+    let hit = null;
+    for (const e of entities) if (e.team !== m.team && e.hp > 0 && e.kind !== 'base' && (e.kind !== 'player' || e.alive) && dist2(e, m) < (e.r + 0.9) ** 2) { hit = e; break; }
+    if (hit) { hurt(hit, 40, m.team, null); hit.spin = 0.8; hit.vx = (hit.vx || 0) + m.vx * 0.6; hit.vz = (hit.vz || 0) + m.vz * 0.6; burst(m.x, m.z, 0x7cc7ff, 12, 9, 1); sfx('boom'); m.life = 0; }
+    if (m.life <= 0) { scene.remove(m.mesh); marbles.splice(i, 1); }
+  }
+}
+
+// Find a clear spot near the middle for the machine (levels with gumball: true).
+function placeGumball() {
+  const spots = [[0, 0], [0, 10], [0, -10], [10, 0], [-10, 0], [0, 18], [0, -18], [8, 12], [-8, -12], [12, -8], [-12, 8]];
+  for (const [x, z] of spots) {
+    if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 6 && Math.abs(z - o.z) < o.d / 2 + 6)) continue;
+    if (dominoes.some((d) => Math.hypot(d.x - x, d.z - z) < 7) || piles.some((q) => Math.hypot(q.x - x, q.z - z) < 7) || outposts.some((o) => Math.hypot(o.x - x, o.z - z) < 8)) continue;
+    if (state.water && x > state.water.x0 - 6 && x < state.water.x1 + 6) continue;
+    return makeGumball(x, z);
+  }
+  return null;
+}
+
 // ---------- Magnet tower: pulls in loose cereal and drags enemy cars ----------
 function magnetThink(m, dt) {
   const R = m.weapon.range;
@@ -1856,6 +2014,19 @@ function commander(dt) {
 // ---------- The enemy's tricks: a domino run at your toy box, and hijacking your trucks ----------
 // From 3:00 the enemy sends a domino layer about every 2.5 minutes, and a hijacker about every 2 minutes from 2:30.
 function enemyTricks() {
+  // The Gumball Machine: now and then a car goes and rams their side of it; items get used when one of their cars is near you.
+  if (gumball) {
+    const spot = gumball.spot ||= { x: gumball.x + 6, z: gumball.z, ready: true };
+    if (state.cereal[RED] >= 40 && gumball.cool[RED] <= 0 && state.time > 45 && !entities.some((e) => e.presser === spot && e.hp > 0)) {
+      const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && !e.presser).sort((a, b) => dist2(a, spot) - dist2(b, spot))[0];
+      if (car && Math.random() < 0.02) car.presser = spot;
+    }
+    for (const e of entities) if (e.presser === spot && e.hp > 0 && dist2(e, spot) < 49) { e.presser = null; if (gumball.cool[RED] <= 0) spinGumball(RED); }
+  }
+  if (state.redItems.length && state.player.alive) {
+    const near = entities.find((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && dist2(e, state.player) < 22 * 22);
+    if (near) useItem(RED, near);
+  }
   // Their level domino run: from 1:40, send the nearest car to press the button whenever it's set up.
   const run = state.runs.find((r) => r.team === RED);
   if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
@@ -2404,6 +2575,8 @@ function update(dt) {
   enemyBoats();
   enemyTricks();
   runsUpdate(dt);
+  gumballUpdate(dt);
+  itemsUpdate(dt);
 
   // HUD
   $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;
