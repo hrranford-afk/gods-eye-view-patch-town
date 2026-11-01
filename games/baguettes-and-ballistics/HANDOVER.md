@@ -116,6 +116,23 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
 
+## Hitting a toy box without going at it (1 Nov 2026, every level)
+
+- **Domino run** (button *Domino*, key X): 4 cereal each, 40 at most. A domino
+  stands across your path, so a line you drive along falls the way you were
+  driving. Drive into the first (or anything fast does: enemy cars blunder
+  into them too). Each falling domino knocks the next if it's within 5.8 units
+  and ahead. Where the top of a domino lands on their toy box: 200 damage,
+  once per run (2 s apart). Enemies under a falling top take 60. Dominoes
+  can stand inside the no-build zone. `placeDomino`, `topple`,
+  `dominoesUpdate`, `dominoes`.
+- **Trojan truck** (button *Trojan*, key Y): 30 cereal, right next to one of
+  their dump trucks. It stays red, so neither side shoots it, gets a firework
+  in the back, and drives home; at their toy box it goes off for 260 damage
+  (50 to their cars nearby). `trojan`, `trojanThink`, `w.trojan` (skipped by
+  `nearestEnemy` and by shots).
+- Not done yet: the enemy using either trick on you.
+
 ## Paperclip upgrades (1 Nov 2026, paperclip levels only)
 
 - **Staple gun turret** (button *Staple*, key Q): 20 cereal + 8 clips. Fires

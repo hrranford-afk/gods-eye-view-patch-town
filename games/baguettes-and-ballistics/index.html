@@ -111,6 +111,10 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
 <div class="garage" id="garage" hidden></div>
 <div class="controls">
+  <div class="row">
+    <button id="bDomino">Domino<small>4</small></button>
+    <button id="bTrojan">Trojan<small>30</small></button>
+  </div>
   <div class="row clipsRow" id="clipsRow" hidden>
     <button id="bStaple">Staple<small id="stapleCost">20</small></button>
     <button id="bMagnet">Magnet<small id="magnetCost">30</small></button>
@@ -639,6 +643,7 @@ function nearestDrop(e) {
 const diggersAt = (pile, team) => workersOf(team, 'digger').filter((d) => d.pile === pile && dist2(d, pile) < (pile.r + 4) ** 2).length;
 function workerThink(w, dt) {
   const spec = WORKERS[w.role];
+  if (w.trojan) return trojanThink(w, dt);
   if (w.role === 'digger') {
     // Pick the fullest pile near home that has the fewest of our diggers, and stay with it.
     if (!w.pile || w.pile.amount <= 0) {
@@ -820,13 +825,15 @@ function reset() {
   for (const p of parts) scene.remove(p.mesh);
   for (const o of outposts) scene.remove(o.group);
   for (const p of [...piles, ...spills]) scene.remove(p.group);
+  for (const d of dominoes) scene.remove(d.pivot);
+  dominoes.length = 0;
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
   const L = LEVELS[curLevel];
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, unlocked: new Set(L.start.unlocked),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
@@ -863,6 +870,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
+  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -879,6 +887,8 @@ tap('bRocket', () => build('rocket'));
 tap('bStaple', () => build('staple'));
 tap('bArmour', () => armour());
 tap('bMagnet', () => build('magnet'));
+tap('bDomino', () => placeDomino());
+tap('bTrojan', () => trojan());
 tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
@@ -932,6 +942,8 @@ const SOUNDS = {
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, f, 0.08, i === 5 ? 0.5 : 0.13, i * 0.13)),
   lose: () => [392, 349, 311, 262].forEach((f, i) => tone('triangle', f, f * 0.97, 0.1, i === 3 ? 0.7 : 0.22, i * 0.22)),
   tick: () => tone('square', 2200, 2000, 0.05, 0.02), // kettle-click countdown
+  clack: () => { noise('bandpass', 1800 + Math.random() * 600, 1200, 0.18, 0.04, 0, 4); tone('triangle', 700 + Math.random() * 200, 500, 0.05, 0.04); }, // domino falls
+  firework: () => { noise('highpass', 6000, 2000, 0.12, 0.5); [0.1, 0.25, 0.4].forEach((d) => tone('sine', 1800 - d * 2000, 300, 0.05, 0.25, d)); },
   raid: () => [0, 0.28, 0.56].forEach((d) => { tone('sawtooth', 520, 520, 0.07, 0.13, d); tone('sawtooth', 780, 780, 0.07, 0.13, d + 0.14); }), // two-tone siren
   snap: () => { noise('highpass', 2500, 1800, 0.35, 0.05); tone('square', 260, 70, 0.3, 0.1); noise('lowpass', 900, 150, 0.3, 0.12, 0.02); }, // the stapler shuts
   roar: () => { tone('sawtooth', 110, 45, 0.25, 1.0); tone('square', 55, 38, 0.2, 1.0); noise('lowpass', 700, 100, 0.3, 0.9); },
@@ -968,7 +980,7 @@ function toast(text) { $('toast').textContent = text; toastTimer = 2.2; }
 function nearestEnemy(from, range, team = from.team) {
   let best = null, bd = range * range;
   for (const e of entities) {
-    if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+    if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.trojan) continue;
     const d = dist2(from, e) - (e.r || 0) ** 2;
     if (d < bd) { bd = d; best = e; }
   }
@@ -1184,6 +1196,104 @@ function build(type) {
   makeTurret(type, BLUE, x, z);
   sfx('build'); toast(`${TURRETS[type].name} turret built`);
 }
+// ---------- Domino run: line them up, knock the first, the last one falls on their toy box ----------
+const dominoes = [];
+const DOMINO_H = 5.5;
+function placeDomino() {
+  const p = state.player;
+  if (!p.alive || state.over) return;
+  if (dominoes.length >= 40) { toast('40 dominoes is the most'); sfx('no'); return; }
+  if (state.cereal[BLUE] < 4) { toast('Need 4 cereal'); sfx('no'); return; }
+  const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4;
+  if (Math.abs(x) > W / 2 - 2 || Math.abs(z) > D / 2 - 2 || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 0.8 && Math.abs(z - o.z) < o.d / 2 + 0.8)) { toast('No room for a domino here'); sfx('no'); return; }
+  state.cereal[BLUE] -= 4;
+  // A domino stands across your path, so a line you drive along falls the way you were driving.
+  const dx = Math.cos(p.heading), dz = Math.sin(p.heading);
+  const pivot = new THREE.Group(); pivot.position.set(x, 0, z);
+  const body = new THREE.Group(); body.rotation.y = -Math.atan2(dz, dx); pivot.add(body);
+  mesh(new THREE.BoxGeometry(0.8, DOMINO_H, 2.6), mat(0xfaf6ee), 0, DOMINO_H / 2, 0, body);
+  mesh(new THREE.BoxGeometry(0.82, 0.08, 2.2), mat(0x1c1712), 0, DOMINO_H / 2, 0, body);
+  for (const [py, pz] of [[1.2, -0.6], [1.2, 0.6], [4.3, 0], [3.7, -0.6], [4.9, 0.6]]) mesh(new THREE.BoxGeometry(0.84, 0.3, 0.3), mat(0x1c1712), 0, py, pz, body);
+  scene.add(pivot);
+  dominoes.push({ x, z, dx, dz, pivot, angle: 0, falling: false, passed: false, hit: false });
+  sfx('clack'); toast(`Domino ${dominoes.length}: drive into the first one to knock them over`);
+}
+function topple(d, dx, dz) {
+  if (d.falling) return;
+  // Fall the way it was pushed, along its own line.
+  const s = Math.sign(dx * d.dx + dz * d.dz) || 1;
+  d.fx = d.dx * s; d.fz = d.dz * s; d.falling = true;
+  if (dist2(d, state.player) < 2500) sfx('clack');
+}
+function dominoesUpdate(dt) {
+  for (const d of dominoes) {
+    if (!d.falling) {
+      // Anything driving into a standing domino knocks it over: you, or an enemy car blundering through.
+      for (const e of entities) {
+        if (!(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) || e.hp <= 0) continue;
+        const sp = Math.hypot(e.vx || 0, e.vz || 0);
+        if (sp > 2 && dist2(e, d) < (e.r + 1.2) ** 2) topple(d, e.vx, e.vz);
+      }
+      continue;
+    }
+    if (d.angle >= Math.PI / 2 - 0.05) continue;
+    d.angle = Math.min(Math.PI / 2 - 0.05, d.angle + dt * (1.5 + d.angle * 9));
+    d.pivot.setRotationFromAxisAngle(new THREE.Vector3(d.fz, 0, -d.fx).normalize(), d.angle);
+    if (!d.passed && d.angle > 0.7) {
+      d.passed = true;
+      for (const n of dominoes) {
+        if (n === d || n.falling) continue;
+        const ax = n.x - d.x, az = n.z - d.z, reach = Math.hypot(ax, az);
+        if (reach < DOMINO_H + 0.3 && ax * d.fx + az * d.fz > reach * 0.5) topple(n, d.fx, d.fz);
+      }
+    }
+    if (!d.hit && d.angle > 1.3) {
+      d.hit = true;
+      // Where the top lands: anything enemy under it gets flattened; a toy box takes a big hit.
+      const tx = d.x + d.fx * DOMINO_H, tz = d.z + d.fz * DOMINO_H;
+      const foe = state.bases[RED];
+      // One big hit per run: a pile of dominoes landing together counts once (2 s apart at most).
+      if (foe.hp > 0 && Math.hypot(tx - foe.x, tz - foe.z) < foe.r + 2.5 && state.time - (state.dominoHitAt ?? -9) > 2) {
+        state.dominoHitAt = state.time;
+        hurt(foe, 200, BLUE, { vsBase: 1 });
+        burst(tx, tz, 0xffffff, 30, 14, 4); sfx('bigBoom'); state.shake = Math.min(1.6, (state.shake || 0) + 1.2);
+        toast('TOPPLE! The domino run hit their toy box');
+      }
+      for (const e of entities) if (e.team === RED && e.hp > 0 && e.kind !== 'base' && Math.hypot(tx - e.x, tz - e.z) < 2.5) hurt(e, 60, BLUE, null);
+    }
+  }
+}
+
+// ---------- Trojan truck: hijack one of their dump trucks and send it home with a firework ----------
+function trojan() {
+  const p = state.player;
+  if (!p.alive || state.over) return;
+  const truck = workersOf(RED, 'truck').filter((w) => !w.trojan).sort((a, b) => dist2(a, p) - dist2(b, p))[0];
+  if (!truck || dist2(truck, p) > 8 * 8) { toast('Get right next to one of their dump trucks'); sfx('no'); return; }
+  if (state.cereal[BLUE] < 30) { toast('Need 30 cereal'); sfx('no'); return; }
+  state.cereal[BLUE] -= 30;
+  truck.trojan = true; truck.load = 0;
+  // Still red, so their side thinks it's one of theirs. The firework in the back is the giveaway, if they look.
+  const rocket = new THREE.Group(); rocket.name = 'firework';
+  mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6, 8), mat(0xff3fa4), 0, 0.8, 0, rocket);
+  mesh(new THREE.ConeGeometry(0.4, 0.7, 8), mat(0xffd166), 0, 1.95, 0, rocket);
+  rocket.position.set(-0.6, 1.4, 0); truck.mesh.add(rocket);
+  sfx('build'); toast('Truck hijacked! It thinks it is going home…');
+}
+function trojanThink(w, dt) {
+  const foe = state.bases[RED];
+  const d = steer(w, foe.x, foe.z, 1, dt, WORKERS.truck, foe);
+  if (Math.random() < dt * 8) burst(w.x, w.z, 0xffd166, 1, 2, 2.6); // the fuse fizzes
+  if (d < foe.r + 4) {
+    hurt(foe, 260, BLUE, { vsBase: 1 });
+    for (const e of entities) if (e.team === RED && e.hp > 0 && e.kind !== 'base' && e !== w && dist2(e, w) < 64) hurt(e, 50, BLUE, null);
+    for (const c of [0xff3fa4, 0xffd166, 0x3ddc84, 0x7cfffb, 0xffffff]) burst(w.x, w.z, c, 14, 16, 3);
+    sfx('firework'); sfx('bigBoom'); state.shake = Math.min(1.6, (state.shake || 0) + 1.2);
+    toast('BOOM! Your trojan truck went off in their toy box');
+    w.hp = 0; w.trojan = false;
+  }
+}
+
 // ---------- Magnet tower: pulls in loose cereal and drags enemy cars ----------
 function magnetThink(m, dt) {
   const R = m.weapon.range;
@@ -1547,6 +1657,7 @@ function update(dt) {
   }
   collideMovers();
   erasersUpdate(dt);
+  dominoesUpdate(dt);
   const R = state.level.rules;
   if (R.raidEvery && state.time >= state.nextRaid) { state.nextRaid += R.raidEvery; spawnRaid(); }
   if (R.boss && !state.boss && state.time >= R.boss.at) spawnBoss();
@@ -1576,7 +1687,7 @@ function update(dt) {
     if (!hit && obstacles.some((o) => o.kind !== 'turret' && o.kind !== 'base' && o.h > s.y - 0.5 && Math.abs(s.x - o.x) < o.w / 2 && Math.abs(s.z - o.z) < o.d / 2)) hit = true;
     if (!hit) {
       for (const e of entities) {
-        if (e.team === s.team || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+        if (e.team === s.team || e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.trojan) continue;
         if (dist2(s, e) < (e.r + 0.4) ** 2) { hurt(e, s.weapon.dmg, s.team, s.weapon); hit = true; break; }
       }
     }
