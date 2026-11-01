@@ -49,7 +49,7 @@ level: win, win in under 8 minutes, win without losing a truck.
 | 1 | Breakfast table | cereal | diggers, dump trucks | the middle bowl refills; spills slow you | none (learn the ropes) |
 | 2 | Pencil case | **paperclips** (from the open pencil case): armour and tanks need them | **bulldozer**: pushes erasers into walls, and cereal into hoppers | **pushable erasers**; enemy **raids** every 90 seconds | the Stapler: slow, armoured, snaps turrets shut |
 | 3 | Remote-control drawer | **batteries**: lasers and the Jet Bike need them | **laser turret**, Jet Bike | **dark drawer**: you only see what your headlights and turrets light up | the Remote Car: fast, circles and snipes |
-| 4 | The sink | (all three) | **crane**: lays bridges (spaghetti snaps, lolly sticks hold, a ruler takes a tank) | **water gap** down the middle; drips from the tap knock you sideways; hover skims across | the Rubber Duck: a floating fortress |
+| 4 | The sink **(built 1 Nov)** | cereal | **gunboats** (soap dishes) and **bottle-cap ferries**; the crane and its bridges are *not* built: one fixed ruler bridge instead | **water gap** down the middle; drips from the tap knock you sideways; hover skims across | the Rubber Duck: floats up and down the channel, lobs bubbles (800 hp) |
 | 5 | Hob and oven | (all three) | **toaster launcher**: fires a car over walls | **hob rings** heat up and cool on a cycle; the oven door drops as a ramp to a high ledge | the Toaster Tank |
 | 6 | Baguettes & Ballistics | (all three) | everything | **night**: only the fridge light; the kettle boils as a countdown to the enemy's big push | the Baguette: a long armoured train that has to be cut in pieces |
 
@@ -100,14 +100,14 @@ The campaign runs through one day in the kitchen.
 | 1 | Breakfast table | morning | cereal, diggers, trucks, caps as depots |
 | 2 | Pencil case | morning | paperclips, enemy raids |
 | 3 | Remote-control drawer | midday | batteries, lasers, Jet Bike |
-| 4 | The sink | lunch | first bridges; hover crossings |
+| 4 | The sink (built) | lunch | one ruler bridge, ferries, boats; hover crossings |
 | 5 | Hob and oven | afternoon | hot rings on a cycle, oven-door ramp, toaster launcher |
 | 6 | Baguettes & Ballistics | dinner, night | the whole worktop U; only the fridge light |
 
 ## Kitchen hazards and set pieces
 
 - **Sink:** water gap; build a bridge (spaghetti: cheap, snaps · lolly
-  sticks: sturdy · ruler: heavy, needs a crane). Hover skims across.
+  sticks: sturdy · ruler: heavy, needs a crane). Hover skims across. *Built in level 4 with one fixed ruler bridge, ferries and boats; the crane is still to do.*
 - **Hob:** rings heat and cool on a cycle; hot rings hurt.
 - **Oven:** door drops as a ramp to a high ledge with long sight lines.
 - **Toaster:** launcher over walls.

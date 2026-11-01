@@ -33,6 +33,7 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
   | 2 | rocket turret |
   | U | upgrade |
   | 3 | drones |
+  | B | gunboat (level 4 only) |
   | 4–9 | vehicles, at home |
 
 - **Screenshots:** `node shoot.js "$PWD/index.html"` (needs Playwright) writes `shots/`. Section 8 has the short version.
@@ -59,14 +60,16 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
 - Its army cap goes 3, then 5, then 8–14 as the game goes on.
 - Both sides get a free truck every 45 seconds.
 
-## 4. Code map (`index.html`, about 1,680 lines)
+## 4. Code map (`index.html`, about 2,540 lines; the line numbers below are the original ones from before levels 2 to 4, so use grep)
 
 | Lines | What |
 |---|---|
 | 1–140 | HTML, CSS, HUD (cereal and clips, boss bar), title card with level buttons, end card |
 | 145–150 | table size (150 × 96 toy units, 1 unit ≈ 1 cm), teams, colours |
 | 165–280 | building the world: `mesh`, `woodTexture`, `matTexture`, `rulerTexture`, `block`, `makeEraser`, `pencilCaseDecor` |
+| 232–260 | `tileTexture`, `waterTexture` (level 4); `sinkDecor` (~326) builds the sink: basin, water plane, ruler bridge, island, tap, drip pieces, ferries |
 | 281–383 | **`LEVELS`** (see "Level format" below) and `buildLevel` |
+| ~530 | **water helpers** (`inWaterX`, `onFerry`, `onIsland`, `bridgeLift`, `waterPush`); `ferries[]`, `sink` |
 | 384–500 | **tuning tables:** `WEAPONS` (damage, rate, range, vsBase), `VEHICLES`, `ENEMY_TYPES`; `buildModel` (every vehicle, plus the Stapler, is made from shapes) |
 | 504–600 | state, `makeBase`, `makeOutpost` (bottle caps), cereal piles (`loopsGroup`) and paperclip piles (`clipsGroup`), spills |
 | 600–680 | economy: `WORKERS`, `workerThink` (dig, haul, unload; trucks stick to one resource per trip) |
@@ -76,13 +79,14 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
 | 950–1090 | helpers, collisions (`collideObstacles` shoves erasers), `drive`, `fire`, `burst`, `hurt` (boss armour, boss death) |
 | 1090–1205 | `TURRETS`, `build`, `canPlace`, `upgrade`, `drones`, garage and costs (`vehCost`, `clipsOf`) |
 | 1205–1295 | **enemy commander** (`commanderBuild`, `commander`) and unit AI (`unitThink`, raiders) |
+| ~1950–2085 | level 4 rules: boats (`BOATS`, `launchBoat`, `buyBoat`, `boatThink`, `enemyBoats`), `ferriesUpdate`, `dripsUpdate`, `dripSplash`, `islandScoop` |
 | 1295–1370 | level 2 rules: `erasersUpdate`, `spawnRaid`, `spawnBoss`, `bossThink` |
 | 1370–1610 | main loop: `step`, `update`, camera and `render` |
 | 1610–1678 | progress and level select (`localStorage`), `endGame` (stars), `start` |
 
 ### Level format
 
-`LEVELS` is an array of 6 entries. Levels 3 to 6 are `{ name, time, soon: true }`
+`LEVELS` is an array of 6 entries. Levels 3, 5 and 6 are `{ name, time, soon: true }`
 stubs that show "coming soon". A playable entry holds:
 
 | Field | Meaning |
@@ -99,6 +103,12 @@ stubs that show "coming soon". A playable entry holds:
 | `turretClips`, `vehicleCosts`, `heavyClips` | extra paperclip costs: turrets `{ rocket: 10 }`, vehicles `{ tank: { c, p } }`, the enemy's heavy tank |
 | `rules` | `baseHp`, `raidEvery` (s), `raidSize` `[min, max]`, `boss: { at, hp, spill }` |
 | `decor` | optional function that adds look-only shapes |
+| `water` | level 4 only: `{ x0, x1, bridge: { z, w }, island: { x, z, r }, ferries: [{ color, inner, leg, start, stops: [{ x, z, wait }] }] }`; becomes `state.water` (null elsewhere) |
+| `boats` | `true` shows the Boat button and lets the enemy launch boats |
+| `outposts` | `[x, z]`, or `[x, z, y]` to lift a cap (the level 4 cap sits on the bridge) |
+| `piles` | a fifth item `'island'` marks a pile only you can scoop (trucks and diggers skip it) |
+| `tableTex` | also `'tile'` (white kitchen tiles) |
+| `rules.boss` | `{ at, hp, spill, kind, name }`: `kind: 'duck'` spawns the Rubber Duck, otherwise the Stapler; `name` is the boss bar text |
 
 `reset()` calls `buildLevel(LEVELS[curLevel])`, which throws away the old
 level's group and rebuilds blocks, erasers, patches and decor. Level 1's
@@ -115,6 +125,83 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Keep it one HTML file with no image or sound files until level 2 ships. That keeps it light on an iPad.
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
+
+## Level 4, The Sink (1 Nov 2026)
+
+![sink](shots/14-sink.png) ![boats](shots/15-sink-boats.png) ![duck](shots/16-rubber-duck.png)
+
+**Layout.** White-tile table. A channel of water, x from -13 to 13 over the
+whole depth, splits the sink; bases are still at x = ±62. Both banks have cereal
+piles (a rich one at (±24, 0) that refills at 0.35 a second), mugs, a sponge, a
+knife, a sugar cube and a dish cloth for cover, and caps at (±36, ±14). The
+fifth cap sits on the bridge itself at (0, 0).
+
+**Water rules.**
+- `state.water` is the level's `water` block (null on other levels).
+- Wheels (player, units, workers) can't enter it: `waterPush` (called at the end of
+  `collideObstacles`) shoves them out of the two blocked rectangles north and south
+  of the bridge, using a radius of 0.6 × the car's radius so they can overhang a little.
+- `navBuild` closes the water cells (0.8 margin, 3 for the fat grid), except a
+  lane 2 cells wide along the bridge, so A* routes everything over the bridge.
+- The Hover (`VEHICLES.hover.floats`) skips `waterPush`: free to cross anywhere.
+- Turrets, your dominoes, the enemy's dominoes (`planDominoRun`) and the level
+  domino runs (`buildLevelRun`'s `blocked`) all use `inWaterX`, so nothing is
+  built on water or on the bridge. On this level the automatic route puts your
+  domino button on the enemy bank (x 15.9), so you cross the bridge to press it;
+  theirs is on your bank. Both runs were tested (200 damage each).
+- The bridge is a ruler 27 long and 6 wide, a flat box 0.5 thick. Cars on it are
+  lifted by `bridgeLift` (with a short ramp) in `render`; it is not an obstacle.
+
+**Ferries** (`ferriesUpdate`, `ferries[]`). Two bottle caps (radius 4.6, 26
+ridges on the rim): north at z = -26 (red, west to east dock, 6 s a crossing,
+3 s at each dock); south at z = 26 (teal) with a stop at the island in the
+middle (3 s legs, 2 s stop). Motion is cosine-eased. Anything whose centre is on a
+ferry (player, units, workers) is carried and remembers it (`e.ferryRef`). Off a
+ferry into open water you hit an invisible rim; you can only step off onto a
+bank, the bridge or the island. AI doesn't plan with ferries and trucks use
+the bridge only.
+
+**The island** is a pink soap dish at (0, 31), radius 7, with a 260 cereal pile
+(refills 0.6 a second). Only you scoop it, by driving over it (`islandScoop`,
+7 a second); trucks and diggers skip piles flagged `island`. Get there on the
+Hover or on the south ferry during its 2 s stop. Driving off the island into
+the water bounces you back.
+
+**Boats** (button *Boat*, key B, 30 cereal, `BOAT_CAP` 3 per side). `launchBoat`,
+`buyBoat`, `boatThink`, `BOATS`.
+- Gunboat: soap dish with a small gun, 70 hp, speed 12, `boatgun` (7 damage, range 20).
+- Sponge raft (the enemy only): 160 hp, speed 6.5, `raftgun`, 24 cereal.
+- Boats are a new entity kind `'boat'`: they patrol a lane up and down the
+  channel, slow down and shoot the nearest enemy in range (boats, cars on the bank,
+  the bridge, the Duck). They are clamped to x0..x1, pushed off the island and
+  the ferries, and keep apart. Each leaves a wake (`addWake`, two strips scaled by speed).
+- `enemyBoats`: from 1:15, a new enemy boat every 26–36 s if it has the cereal
+  (40% rafts). Ground units shoot boats in range but never chase them.
+
+**Drips** (`dripsUpdate`, `dripSplash`). A tap (chrome pipe, red handle) at the
+north end. Every 8 s (±0.75) a drip is aimed at a random spot within 22 of the
+channel centre: a dark blue ring marks it for 1.2 s while a drop flies in from
+the spout. The splash (an expanding ring from a pool of 3) pushes every car,
+worker and boat within 11 by up to 34 (half that for boats) plus a small
+instant shove; `plip` sound. No damage.
+
+**The Rubber Duck** (`spawnDuck`, `duckThink`, rule `boss: { at: 240, hp: 800,
+spill: 80, kind: 'duck' }`). Built from spheres in `buildModel('duck')`, armour 2.
+It drifts along the channel at 4 a second, swaying a little, bobbing. Every
+3.4 s it lobs a `bubble` (34 damage, splash radius 5.5, speed 12) at your
+nearest turret, car, boat or truck, preferring ones near the water; the bubble
+pops where the target was. The bar says THE RUBBER DUCK (`#bossName`). On death
+it pays 80 cereal straight into your stock (it sinks, so a spill would be out of reach).
+
+**Other rules on this level.** Raids from 2:30 every 100 s (2–3 raiders over the
+bridge), base health 1500, start with 40 cereal and the Racer and Tank.
+
+**Tested in Chromium** with Playwright: Racer stopped at the bank (x -13.96), Hover crossed;
+Racer and Monster crossed the bridge; ferry carried the player 19 units across in
+6 s; island pile scooped from the ferry; boats stayed inside x -10.9..11.3 over 30 s and
+killed a dummy; drips pushed a Racer 4.2, a Tank 2.9, a Hover 6.4 and a boat; the Duck
+spawned at 4:00, killed a gun turret, took 330 damage from 3 gunboats and paid out when killed;
+both level domino runs worked; 5 minutes of AI play without page errors; levels 1 and 2 unchanged.
 
 ## Level domino runs (1 Nov 2026, Harry's idea: part of the level, switched on)
 
