@@ -153,8 +153,9 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 60, bottom: -60, near: 1, far: 200 });
 scene.add(sun);
 
+let meshParent = scene; // where mesh() puts things by default: the level's group while a level is being built
 const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.05, ...extra });
-function mesh(geo, material, x = 0, y = 0, z = 0, parent = scene) {
+function mesh(geo, material, x = 0, y = 0, z = 0, parent = meshParent) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
   m.castShadow = true;
@@ -180,7 +181,8 @@ function woodTexture() {
   t.encoding = THREE.sRGBEncoding;
   return t;
 }
-const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTexture(), roughness: 0.75 }), 0, -2, 0);
+const woodTex = woodTexture();
+const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2, 0);
 table.castShadow = false;
 
 // Obstacles: axis-aligned boxes the cars bump into (x, z centre, w, d).
@@ -210,28 +212,61 @@ function block(x, z, w, d, h, color, kind) {
   }
   return o;
 }
-// The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
-for (const s of [-1, 1]) {
-  block(s * 14, 0, 2, 26, 2, 0xf2b705, 'pencil');
-  block(s * 40, s * 8, 2, 22, 2, 0x2a9d5c, 'pencil');
-  block(s * 8, s * 36, 18, 12, 5, s > 0 ? 0x8c2f39 : 0x2b4c7e, 'book');
-  block(s * 46, -s * 32, 9, 9, 10, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug');
-  block(-s * 26, s * 2, 4, 4, 4, 0xfbfbf6, 'die');
-  block(s * 58, s * 30, 14, 8, 3, 0x6a4c93, 'book');
-}
-// Ground patches: spilled juice is slippery, cereal is slow.
-const patches = [
-  { x: 0, z: -22, r: 9, kind: 'juice' },
-  { x: 0, z: 22, r: 9, kind: 'cereal' },
+// ---------- Levels ----------
+// A level is plain data: layout (blocks, patches, caps, piles), table look, resources and rules.
+//   blocks:  [x, z, w, d, h, colour, kind]   kinds: pencil, book, mug, die, box (default)
+//   patches: { x, z, r, kind: 'juice' | 'cereal' }
+//   piles:   [x, z, amount]; refill: [{ x, z, rate }] piles that slowly fill again
+const mirrored = (list) => [-1, 1].flatMap((s) => list.map((f) => f(s)));
+const LEVELS = [
+  {
+    name: 'Breakfast table', time: 'morning', tableColor: 0xffffff,
+    blurb: 'Tiny cars, big war over breakfast. Diggers dig cereal out of spilled bowls, dump trucks haul it home. Spend it on turrets, cars and more trucks. Wrecks spill cereal: drive over it to scoop it up. Smash the red toy box.',
+    tips: [
+      '<b>Drive:</b> drag anywhere on the left half (or WASD)',
+      '<b>Fire:</b> hold FIRE (or Space). It aims for you',
+      '<b>Build:</b> Truck (T), Digger (G), Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)',
+      '<b>Haul:</b> trucks unload at your toy box or any bottle cap you hold',
+      '<b>Swap vehicle:</b> drive home to your toy box',
+    ],
+    // The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
+    blocks: mirrored([
+      (s) => [s * 14, 0, 2, 26, 2, 0xf2b705, 'pencil'],
+      (s) => [s * 40, s * 8, 2, 22, 2, 0x2a9d5c, 'pencil'],
+      (s) => [s * 8, s * 36, 18, 12, 5, s > 0 ? 0x8c2f39 : 0x2b4c7e, 'book'],
+      (s) => [s * 46, -s * 32, 9, 9, 10, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],
+      (s) => [-s * 26, s * 2, 4, 4, 4, 0xfbfbf6, 'die'],
+      (s) => [s * 58, s * 30, 14, 8, 3, 0x6a4c93, 'book'],
+    ]),
+    // Ground patches: spilled juice is slippery, cereal is slow.
+    patches: [{ x: 0, z: -22, r: 9, kind: 'juice' }, { x: 0, z: 22, r: 9, kind: 'cereal' }],
+    outposts: [[-30, -24], [-30, 24], [0, 0], [30, -24], [30, 24]], // bottle caps
+    piles: [[-26, -36, 160], [-26, 36, 160], [26, -36, 160], [26, 36, 160], [0, 22, 300], [-48, -18, 120], [48, 18, 120]],
+    refill: [{ x: 0, z: 22, rate: 0.6 }], // the cereal box keeps getting knocked over: the middle bowl refills
+    start: { cereal: 25, unlocked: ['racer', 'tank'] },
+    rules: {},
+  },
 ];
-for (const p of patches) {
-  if (p.kind === 'juice') {
-    const m = mesh(new THREE.CircleGeometry(p.r, 40), mat(0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }), p.x, 0.03, p.z);
-    m.rotation.x = -Math.PI / 2; m.castShadow = false;
-  } else {
-    const m = mesh(new THREE.CircleGeometry(p.r, 40), mat(0xe8c89a, { transparent: true, opacity: 0.55 }), p.x, 0.03, p.z);
+
+const levelRoot = new THREE.Group();
+scene.add(levelRoot);
+const patches = [];
+function buildLevel(L) {
+  // Throw away the old level's shapes, then build this one's blocks and patches into a fresh group.
+  scene.remove(levelRoot);
+  levelRoot.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  levelRoot.clear();
+  scene.add(levelRoot);
+  obstacles.length = patches.length = 0;
+  table.material.color.setHex(L.tableColor);
+  meshParent = levelRoot;
+  for (const b of L.blocks) block(...b);
+  for (const p of L.patches) {
+    patches.push(p);
+    const m = mesh(new THREE.CircleGeometry(p.r, 40), p.kind === 'juice' ? mat(0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }) : mat(0xe8c89a, { transparent: true, opacity: 0.55 }), p.x, 0.03, p.z);
     m.rotation.x = -Math.PI / 2; m.castShadow = false;
   }
+  meshParent = scene;
 }
 const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r)?.kind;
 
@@ -335,11 +370,11 @@ function buildModel(kind, team, scale = 1) {
 
 // ---------- Game state ----------
 const state = {};
+let curLevel = 0; // index into LEVELS
 const entities = [];  // everything that can be shot: player, units, turrets, bases
 const shots = [];
 const parts = [];
 const outposts = [];
-const OUTPOST_SPOTS = [[-30, -24], [-30, 24], [0, 0], [30, -24], [30, 24]];
 
 function makeBase(team) {
   const x = team === BLUE ? -62 : 62;
@@ -374,8 +409,6 @@ function makeOutpost(x, z) {
 
 // Cereal: piles from spilled bowls (dug by diggers, hauled by trucks) and
 // spills from wrecks (anyone can scoop those by driving over them).
-const PILE_SPOTS = [[-26, -36, 160], [-26, 36, 160], [26, -36, 160], [26, 36, 160], [0, 22, 300], [-48, -18, 120], [48, 18, 120]];
-const REFILL = { x: 0, z: 22, rate: 0.6 }; // the cereal box keeps getting knocked over: the middle bowl refills
 const LOOP_COLORS = [0xff5a5f, 0xffd166, 0x06d6a0, 0x9b5de5, 0xff9f1c];
 const piles = [];
 const spills = [];
@@ -391,8 +424,8 @@ function loopsGroup(x, z, n, radius, height) {
   scene.add(g);
   return g;
 }
-function makePile(x, z, amount) {
-  const p = { x, z, r: 3.5, amount, max: amount, group: loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3) };
+function makePile(x, z, amount, refill = 0) {
+  const p = { x, z, r: 3.5, amount, max: amount, refill, group: loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3) };
   piles.push(p);
 }
 function makeSpill(x, z, amount) {
@@ -603,14 +636,15 @@ function reset() {
   for (const p of [...piles, ...spills]) scene.remove(p.group);
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
-  for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].kind === 'base' || obstacles[i].kind === 'turret') obstacles.splice(i, 1);
+  const L = LEVELS[curLevel];
+  buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    cereal: [25, 25], freeTruck: [45, 45], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(['racer', 'tank']),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
-  for (const [x, z] of OUTPOST_SPOTS) outposts.push(makeOutpost(x, z));
-  for (const [x, z, n] of PILE_SPOTS) makePile(x, z, n);
+  for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
+  for (const [x, z, n] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0);
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
@@ -1183,7 +1217,7 @@ function update(dt) {
     if (sp.amount <= 0 || sp.life <= 0) { scene.remove(sp.group); spills.splice(i, 1); }
   }
   for (const pl of piles) {
-    if (pl.x === REFILL.x && pl.z === REFILL.z) pl.amount = Math.min(pl.max, pl.amount + REFILL.rate * dt);
+    if (pl.refill) pl.amount = Math.min(pl.max, pl.amount + pl.refill * dt);
     const k = 0.25 + 0.75 * (pl.amount / pl.max);
     pl.group.scale.set(k, k, k);
     pl.group.visible = pl.amount > 0;
