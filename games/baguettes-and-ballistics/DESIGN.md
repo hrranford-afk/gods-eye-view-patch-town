@@ -77,6 +77,22 @@ so guarding the machine becomes its own battle.
 **Fixed rule:** spins only ever cost game cereal. No real money, no paid
 spins, no loot boxes, ever.
 
+## The Kitchen Grand Prix (Harry's idea, 1 Nov 2026)
+
+A short battle race *between* levels, a different kind of game from the
+battles:
+
+- 2–3 laps on a little kitchen track (round the fruit bowl, over a chopping
+  board ramp, under the toast rack), with gumball item boxes on the track.
+- **It decides where you go next:** the campaign map branches; 1st picks the
+  next level, otherwise the enemy picks the one that suits them.
+- **And how you start:** 1st gets a free Monster truck and an extra dump
+  truck, 2nd gets 30 cereal, last still gets a catch-up turret.
+- **CAIRN's add:** an item still in your hand at the finish line comes with
+  you into the battle.
+- The race-at-the-start-of-a-level (dropped boxes become your base) stays as
+  the opening of the battle itself.
+
 ## Loot
 
 | Loot | Where | Builds |
