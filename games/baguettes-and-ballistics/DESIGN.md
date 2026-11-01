@@ -61,6 +61,22 @@ for fun, never for power, so a new player can still win.
 onwards, once the race code exists. The track runs around that level's hazards,
 so the race teaches the new rule before the fight.
 
+## The Gumball Machine (Harry's idea, 1 Nov 2026)
+
+A big gumball machine in the middle of a level. Ram its buttons and it
+rattles, spins and drops a gumball. 10 cereal a spin. The colour is the prize:
+
+- **Red, base:** instant turret level-up, or a shield on your toy box.
+- **Blue, car:** turbo, double damage or armour for 30 seconds.
+- **Yellow, map:** a cereal airdrop, a free truck, or a bridge.
+- **Black, dud:** a whoopee cushion.
+
+**CAIRN's add:** it sits where the fighting is, and both teams can use it,
+so guarding the machine becomes its own battle.
+
+**Fixed rule:** spins only ever cost game cereal. No real money, no paid
+spins, no loot boxes, ever.
+
 ## Loot
 
 | Loot | Where | Builds |

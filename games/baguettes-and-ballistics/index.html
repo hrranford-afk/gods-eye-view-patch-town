@@ -347,7 +347,7 @@ const LEVELS = [
     turretClips: { rocket: 10 },   // paperclips a turret costs on top of cereal
     vehicleCosts: { tank: { c: 20, p: 15 } },
     heavyClips: 5,                 // the enemy's heavy tank costs clips too
-    rules: { baseHp: 1200, raidEvery: 90, raidSize: [3, 4], boss: { at: 240, hp: 600, spill: 60 } },
+    rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
   },
   { name: 'Remote-control drawer', time: 'midday', soon: true },
   { name: 'The sink', time: 'lunch', soon: true },
@@ -814,7 +814,7 @@ function reset() {
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
