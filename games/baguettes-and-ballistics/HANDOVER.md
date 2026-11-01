@@ -336,3 +336,21 @@ await p.screenshot({ path: 'shots/3-economy.png' });
 
 Each specialist works from this file and DESIGN.md, changes one thing at a
 time, and shows a screenshot or short clip before and after.
+
+## Fixes, 1 Nov 2026 evening (Harry: "it kept crashing when the Stapler came out, and the Stapler got stuck")
+
+- **Crash, most likely memory:** every shot, every spark and every cereal loop
+  made a fresh three.js shape and colour that was never freed, so a long fight
+  (busiest at 4:00, when the boss comes) kept growing until an iPad tab gave up.
+  Now shots, sparks and cereal loops use shared shapes (`shared`, `sparkGeo`,
+  `basicMat`), dead models and spills are freed (`disposeTree`), and sparks are
+  capped when 400 are already flying. Measured over 2 minutes of heavy fighting
+  on level 2: shapes in memory stayed about 900 (before: climbed from 2,500 to
+  4,500 and kept going).
+- **Stapler stuck:** routes were allowed right along the table edge, where the
+  big boss can't fit, so it wedged against the edge at the top of the table.
+  The route grid now keeps a margin from the table edge. And if the Stapler
+  hasn't moved 3 units in 3 seconds it **stomps**: hops up to 12 units towards
+  its target, hurting your cars nearby (25), with a shake. Tested: it now
+  marches over, snaps turrets, reaches your toy box and dies to defence.
+

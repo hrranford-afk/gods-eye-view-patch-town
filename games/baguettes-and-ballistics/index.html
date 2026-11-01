@@ -178,6 +178,9 @@ scene.add(sun);
 
 let meshParent = scene; // where mesh() puts things by default: the level's group while a level is being built
 const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.05, ...extra });
+// Shapes and colours made once and shared (shots, sparks, cereal loops): fresh ones each time ran iPads out of memory.
+const SHARED = new Map();
+function shared(key, make) { let v = SHARED.get(key); if (!v) { v = make(); if (v.userData) v.userData.shared = true; SHARED.set(key, v); } return v; }
 function mesh(geo, material, x = 0, y = 0, z = 0, parent = meshParent) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
@@ -790,7 +793,7 @@ function loopsGroup(x, z, n, radius, height) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
     const y = 0.3 + (1 - r / radius) * height * Math.random();
-    const loop = mesh(new THREE.TorusGeometry(0.55, 0.28, 6, 12), mat(LOOP_COLORS[i % LOOP_COLORS.length]), Math.cos(a) * r, y, Math.sin(a) * r, g);
+    const loop = mesh(shared('loop', () => new THREE.TorusGeometry(0.55, 0.28, 6, 12)), shared(`loopMat:${i % LOOP_COLORS.length}`, () => mat(LOOP_COLORS[i % LOOP_COLORS.length])), Math.cos(a) * r, y, Math.sin(a) * r, g);
     loop.rotation.set(Math.PI / 2 + (Math.random() - 0.5) * 1.2, Math.random() * 3, 0);
   }
   g.position.set(x, 0, z);
@@ -935,6 +938,11 @@ function navBuild() {
       const [i0, j0] = cellOf(o.x - o.w / 2 - m, o.z - o.d / 2 - m), [i1, j1] = cellOf(o.x + o.w / 2 + m, o.z + o.d / 2 + m);
       for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) grid[j * GW + i] = 1;
     }
+  }
+  // Keep routes off the very edge of the table: a car can't sit closer than its own size to it.
+  for (const [grid, m] of [[closed, 1.6], [closedFat, 4.6]]) for (let i = 0; i < GW; i++) for (let j = 0; j < GD; j++) {
+    const [cx, cz] = centreOf(i, j);
+    if (Math.abs(cx) > W / 2 - m || Math.abs(cz) > D / 2 - m) grid[j * GW + i] = 1;
   }
   // Water is closed to wheels, except a lane along the bridge.
   const w = state.water;
@@ -1307,8 +1315,8 @@ function drive(e, dx, dz, throttle, dt, stats) {
 function fire(from, target, weapon, angle) {
   const spread = weapon.spread ? (Math.random() - 0.5) * weapon.spread : (Math.random() - 0.5) * 0.04;
   const a = (angle ?? angleTo(from, target)) + spread;
-  const m = new THREE.Mesh(weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5),
-    new THREE.MeshBasicMaterial({ color: weapon.color, transparent: !!weapon.life || !!weapon.bubble, opacity: weapon.life ? 0.8 : weapon.bubble ? 0.6 : 1 }));
+  const m = new THREE.Mesh(shared(`shot:${!!weapon.homing}:${weapon.size}`, () => (weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5))),
+    basicMat(weapon.color, weapon.life ? 0.8 : weapon.bubble ? 0.6 : 1));
   const y = from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : from.type === 'duck' ? 5.5 : 1.6;
   // Shots leave from the muzzle: just outside a car, or from the gun on a toy box's roof.
   const muzzle = from.kind === 'base' ? 1.5 : (from.r || 1) + 0.5;
@@ -1324,9 +1332,21 @@ function fire(from, target, weapon, angle) {
   if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
 }
 
+// Shared shapes and colours for shots and sparks, made once: making new ones for every shot ran iPads out of memory.
+const sparkGeo = () => shared('spark', () => new THREE.BoxGeometry(0.5, 0.5, 0.5));
+const basicMat = (color, opacity = 1) => shared(`basic:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity }));
+// Free what a removed model owned (models are built from fresh shapes each time), but never the shared ones.
+function disposeTree(obj) {
+  obj?.traverse?.((o) => {
+    if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose();
+    const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of ms) if (![...SHARED.values()].includes(m)) m.dispose();
+  });
+}
 function burst(x, z, color, n = 12, power = 10, y = 1.5) {
+  if (parts.length > 400) n = Math.min(n, 2); // a big fight already has plenty of sparks
   for (let i = 0; i < n; i++) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color }));
+    const m = new THREE.Mesh(sparkGeo(), basicMat(color));
     m.position.set(x, y, z);
     scene.add(m);
     const a = Math.random() * Math.PI * 2, s = Math.random() * power;
@@ -2178,6 +2198,20 @@ function bossThink(b, dt) {
   }
   const prey = b.prey && b.prey.hp > 0 ? b.prey : null, goal = prey || state.bases[BLUE];
   const d = steer(b, goal.x, goal.z, prey ? 0 : goal.r + 1, dt, BOSS_STATS, prey);
+  // Stuck check: every 3 s, has it moved at least 3 units? If not, STOMP: hop 12 units towards its target.
+  b.checkT = (b.checkT ?? 3) - dt;
+  if (b.checkT <= 0) {
+    const moved = Math.hypot(b.x - (b.lastX ?? b.x + 9), b.z - (b.lastZ ?? b.z));
+    if (moved < 3 && d > b.r + 8) {
+      const hop = Math.min(12, d - b.r - 4), ux = (goal.x - b.x) / d, uz = (goal.z - b.z) / d;
+      b.x = Math.max(-W / 2 + 6, Math.min(W / 2 - 6, b.x + ux * hop)); b.z = Math.max(-D / 2 + 6, Math.min(D / 2 - 6, b.z + uz * hop));
+      b.path = null; b.vx = b.vz = 0;
+      burst(b.x, b.z, 0xcfd3da, 16, 12, 1); sfx('cannon'); state.shake = Math.min(1.6, (state.shake || 0) + 0.8);
+      for (const e of entities) if (e.team === BLUE && e.hp > 0 && e.kind !== 'base' && dist2(e, b) < 64) hurt(e, 25, RED, null);
+      if (dist2(b, state.player) < 3600) toast('STOMP! The Stapler jumped');
+    }
+    b.lastX = b.x; b.lastZ = b.z; b.checkT = 3;
+  }
   if (prey && d < b.r + 4 && b.snapCool <= 0) {
     b.snap = 0.5; b.snapCool = 1.2;
     hurt(prey, 99999, RED);
@@ -2324,6 +2358,7 @@ function update(dt) {
     const e = entities[i];
     if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker' || e.kind === 'boss' || e.kind === 'boat')) {
       entities.splice(i, 1);
+      if (e.mesh) { scene.remove(e.mesh); disposeTree(e.mesh); } // free its shapes: long games used to run iPads out of memory
       if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); navDirty = true; }
     }
   }
@@ -2356,7 +2391,7 @@ function update(dt) {
       state.cereal[BLUE] += got;
       toast(`Scooped ${got} cereal`); sfx('crunch');
     }
-    if (sp.amount <= 0 || sp.life <= 0) { scene.remove(sp.group); spills.splice(i, 1); }
+    if (sp.amount <= 0 || sp.life <= 0) { scene.remove(sp.group); disposeTree(sp.group); spills.splice(i, 1); }
   }
   for (const pl of piles) {
     if (pl.refill) pl.amount = Math.min(pl.max, pl.amount + pl.refill * dt);
