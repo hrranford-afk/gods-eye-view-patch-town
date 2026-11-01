@@ -1623,7 +1623,7 @@ try {
 } catch (e) { /* no storage: progress lasts until the page closes */ }
 function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* ignore */ } }
 const starsOf = (i) => progress.stars[i + 1] | 0;
-const isUnlocked = (i) => i === 0 || starsOf(i - 1) > 0;
+const isUnlocked = () => true; // Harry: pick any level from the start (no locks); stars still save
 const isPlayable = (i) => isUnlocked(i) && !LEVELS[i].soon;
 const starRow = (n) => [0, 1, 2].map((k) => `<span class="${k < n ? '' : 'off'}">\u2605</span>`).join('');
 const FAST_WIN = 480; // seconds: the "under 8 minutes" star

@@ -9,7 +9,7 @@ to play on an iPad. See [DESIGN.md](DESIGN.md) for where it's going.
 - **Keyboard:** WASD or arrows, Space fire, T truck, G digger, 1 gun turret,
   2 rocket turret, U upgrade, 3 drones, 4–9 vehicles at home.
 
-**Level select.** The title card has 6 level buttons; a level unlocks when you win the one before it, stars (win, under 8 minutes, no truck lost) are saved on the device, and levels 3 to 6 say "coming soon".
+**Level select.** The title card has 6 level buttons; pick any level from the start. Stars (win, under 8 minutes, no truck lost) are saved on the device, and levels 3 to 6 say "coming soon".
 
 **Level 2, Pencil case.** Paperclips from the open pencil case pay for rockets and the Tank; shove erasers to block lanes; the enemy raids your trucks every 90 seconds; the Stapler arrives at 4:00.
 

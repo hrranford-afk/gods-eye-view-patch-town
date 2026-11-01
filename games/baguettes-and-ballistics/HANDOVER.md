@@ -105,10 +105,9 @@ level's group and rebuilds blocks, erasers, patches and decor. Level 1's
 numbers are the original ones.
 
 **Progress:** `localStorage` key `bb-progress-v1`, `{"stars":{"1":3,"2":1}}`
-(best stars per level number). A level unlocks when the one before has at
-least 1 star. To test level 2 without winning level 1, set
-`localStorage.setItem('bb-progress-v1', JSON.stringify({stars:{1:1}}))`
-before the page loads. Every read and write is in try/catch, so the game
+(best stars per level number). Every playable level is open from the start
+(Harry's call, 1 Nov): `isUnlocked` returns true. To bring locks back, make it
+`(i) => i === 0 || starsOf(i - 1) > 0`. Every read and write is in try/catch, so the game
 works without storage. Stars: 1 for a win, 1 for under 8 minutes
 (`FAST_WIN`), 1 for no truck lost (`state.trucksLost`).
 
