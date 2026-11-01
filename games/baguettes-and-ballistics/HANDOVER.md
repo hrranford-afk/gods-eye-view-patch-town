@@ -125,6 +125,12 @@ Every level now has two domino runs built in, one per side
   starts at a big push-button in the middle of the table, runs along that
   side's edge, and bends in to end 9.5 units from the *other* toy box.
 - Drive onto your button (blue) to set yours off: 200 damage when it lands.
+  **The button is stiff: it needs weight 3** (`BUTTON_WEIGHT`,
+  `PLAYER_WEIGHT`, `UNIT_WEIGHT`). Monster truck 3 on its own; Tank or Mech 2;
+  Racer 1; Jet Bike 0.5; the Hover floats (0). Your drones count 1 each and
+  pile on when you park on the button. So: fetch the Monster from the garage,
+  or bring drones. A toast says how much weight is missing. The enemy sends a
+  Monster buggy if it has one, or a crew that weighs enough together.
   Their cars press the red one: from 1:40, the nearest red car is sent
   whenever it's set up (`u.presser`).
 - Level dominoes are fixed: cars and shots don't knock them over, only the

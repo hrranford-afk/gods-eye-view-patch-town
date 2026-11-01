@@ -1281,6 +1281,12 @@ function dominoesUpdate(dt) {
 // Each side has a run that ends at the OTHER side's toy box, with its button out in the middle of the table.
 // Drive onto your button to set yours off; theirs is set off by their cars. A fallen run is set up again after 45 s.
 const RUN_STEP = 4.2;
+// The button is stiff: it needs weight 3 on it. A Monster truck alone; a Tank or Mech plus a drone; a Racer plus two drones.
+// The Hover floats, so it can't press it at all.
+const BUTTON_WEIGHT = 3;
+const PLAYER_WEIGHT = { racer: 1, jet: 0.5, hover: 0, mech: 2, tank: 2, monster: 3 };
+const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2 };
+const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
   const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5);
@@ -1325,8 +1331,15 @@ function runsUpdate(dt) {
   for (const run of state.runs) {
     if (run.ready) {
       run.cap.material.emissiveIntensity = 0.3 + Math.sin(state.time * 5) * 0.25; // glows when it's ready
-      const presser = entities.find((e) => e.team === run.team && e.hp > 0 && (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && dist2(e, run) < 3 * 3);
-      if (presser) {
+      // Your drones help: park on your button and any of your drones nearby pile on with you.
+      if (run.team === BLUE && state.player.alive && dist2(state.player, run) < 8 * 8) for (const e of entities) if (e.kind === 'unit' && e.team === BLUE && e.hp > 0 && dist2(e, run) < 22 * 22) e.presser = run;
+      const on = entities.filter((e) => e.team === run.team && e.hp > 0 && (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && dist2(e, run) < 5 * 5); // a crew crowds round it
+      const weight = on.reduce((t, e) => t + weightOf(e), 0);
+      if (on.length && weight < BUTTON_WEIGHT && on.includes(state.player) && state.time - (run.toldAt || -9) > 3) {
+        run.toldAt = state.time; sfx('no');
+        toast(state.player.vehicle === 'hover' ? 'The Hover floats: it can\'t press the button' : `Too light (${weight} of ${BUTTON_WEIGHT})! Bring a Monster truck, or your drones`);
+      }
+      if (weight >= BUTTON_WEIGHT) {
         run.ready = false; run.cap.position.y = 0.75; run.cap.material.emissiveIntensity = 0;
         topple(run.doms[0], run.path[0].dx, run.path[0].dz);
         sfx('cap'); toast(run.team === BLUE ? 'Domino run set off! Watch it go…' : 'They set off the domino run at your toy box!');
@@ -1575,8 +1588,12 @@ function enemyTricks() {
   // Their level domino run: from 1:40, send the nearest car to press the button whenever it's set up.
   const run = state.runs.find((r) => r.team === RED);
   if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
-    const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker').sort((a, b) => dist2(a, run) - dist2(b, run))[0];
-    if (car) car.presser = run;
+    // Send a Monster buggy if they have one; otherwise the nearest cars until they weigh enough together.
+    const cars = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker').sort((a, b) => dist2(a, run) - dist2(b, run));
+    const big = cars.find((e) => weightOf(e) >= BUTTON_WEIGHT);
+    let crew = big ? [big] : [], w = big ? weightOf(big) : 0;
+    for (const c of cars) { if (w >= BUTTON_WEIGHT) break; if (!crew.includes(c)) { crew.push(c); w += weightOf(c); } }
+    if (w >= BUTTON_WEIGHT) for (const c of crew) c.presser = run;
   }
   if (state.time >= state.nextLayer && state.cereal[RED] >= 40) {
     const plan = planDominoRun();

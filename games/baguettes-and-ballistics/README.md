@@ -23,4 +23,4 @@ economy, so raid its trucks.
 
 **Sneaky attacks (every level).** Domino (X): line them up to their toy box and knock the first one. Trojan (Y): next to one of their dump trucks, hijack it and it drives home with a firework. The enemy does both too: shoot their red dominoes from your side to knock the run away, and ram a hijacked truck of yours to defuse it.
 
-**Domino runs on every level.** Drive onto your blue button mid-table to set off your run at their toy box. They have one too, aimed at yours; it sets itself up again after 45 seconds.
+**Domino runs on every level.** Drive onto your blue button mid-table to set off your run at their toy box. It's stiff: it needs a Monster truck, or a lighter car plus your drones (the Hover floats and can't press it). They have one too, aimed at yours; it sets itself up again after 45 seconds.
