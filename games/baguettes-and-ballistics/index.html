@@ -114,6 +114,7 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
   <div class="row">
     <button id="bDomino">Domino<small>4</small></button>
     <button id="bTrojan">Trojan<small>30</small></button>
+    <button id="bBoat" hidden>Boat<small>30</small></button>
   </div>
   <div class="row clipsRow" id="clipsRow" hidden>
     <button id="bStaple">Staple<small id="stapleCost">20</small></button>
@@ -568,7 +569,17 @@ const WEAPONS = {
   eraser: { vsBase: 1.0, dmg: 30, rate: 3.2, range: 44, speed: 30, lob: 1.5, splash: 4, color: 0xf4a6b8, size: 0.9 },
   raid: { vsBase: 0.3, dmg: 3, rate: 0.14, range: 13, speed: 60, color: 0xffb3a7, size: 0.35 }, // a raider's pop-gun: quick, but weak
   laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
+  // Sink level: the gunboat's little gun, the sponge raft's pop-gun, and the Rubber Duck's big slow bubbles (splash on pop).
+  boatgun: { vsBase: 0.3, dmg: 7, rate: 0.34, range: 20, speed: 55, color: 0xd6efff, size: 0.4 },
+  raftgun: { vsBase: 0.3, dmg: 6, rate: 0.4, range: 18, speed: 50, color: 0xffe9a8, size: 0.4 },
+  bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
 };
+// Boats stay on water cells. The gunboat is a soap-dish speedboat; the sponge raft (the enemy's) is slower and tougher.
+const BOATS = {
+  gunboat: { name: 'Gunboat', hp: 70, speed: 12, turn: 2.6, r: 1.8, weapon: 'boatgun', cost: 30 },
+  raft: { name: 'Sponge raft', hp: 160, speed: 6.5, turn: 1.8, r: 2.3, weapon: 'raftgun', cost: 24 },
+};
+const BOAT_CAP = 3; // per side
 const VEHICLES = {
   racer: { name: 'Racer', speed: 24, accel: 46, turn: 5, grip: 7, hp: 60, r: 1.6, weapon: 'mg', unlock: 0 },
   tank: { name: 'Tank', speed: 11, accel: 22, turn: 2.4, grip: 12, hp: 220, r: 2.1, weapon: 'cannon', unlock: 0 },
@@ -587,6 +598,20 @@ const ENEMY_TYPES = {
   layer: { model: 'mech', speed: 9, hp: 120, weapon: 'mg', reward: 8 }, // lays a domino run towards your toy box
 };
 
+// A boat's wake: two pale strips streaming back from the stern, shared geometry and material, scaled with speed in render.
+let wakeGeo = null, wakeMat = null;
+function addWake(g, back) {
+  wakeGeo = wakeGeo || new THREE.PlaneGeometry(4, 0.7);
+  wakeMat = wakeMat || new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
+  const w = new THREE.Group();
+  w.name = 'wake'; w.position.set(-back, 0.12, 0);
+  for (const s of [-1, 1]) {
+    const strip = new THREE.Mesh(wakeGeo, wakeMat);
+    strip.rotation.x = -Math.PI / 2; strip.rotation.z = s * 0.28; strip.position.set(-1.8, 0, s * 0.7);
+    w.add(strip);
+  }
+  g.add(w);
+}
 function wheel(g, x, z, r = 0.8, w = 0.6) {
   const m = mesh(new THREE.CylinderGeometry(r, r, w, 12), mat(0x1c1712), x, r, z, g);
   m.rotation.x = Math.PI / 2;
@@ -661,6 +686,43 @@ function buildModel(kind, team, scale = 1) {
       mesh(new THREE.SphereGeometry(0.25, 8, 6), mat(0x1c1712), 7.6, 1.2, z, lid);
     }
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(1.6, 0.18, 0.4), mat(0x1c1712), 7.2, 1.85, z, lid).rotation.y = z * 0.4;
+  } else if (kind === 'gunboat') {
+    // A soap dish with a stripe in the team colour and a small gun on a stalk.
+    const hull = mesh(new THREE.CylinderGeometry(1, 1, 0.8, 22), mat(0xf4efe6, { roughness: 0.3 }), 0, 0.4, 0, g);
+    hull.scale.set(2.3, 1, 1.15);
+    const rim = mesh(new THREE.TorusGeometry(1, 0.1, 6, 24), mat(c), 0, 0.82, 0, g);
+    rim.rotation.x = Math.PI / 2; rim.scale.set(2.3, 1.15, 1);
+    mesh(new THREE.BoxGeometry(0.9, 0.55, 1), mat(c), -0.9, 1.2, 0, g);
+    const gun = mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.5, 10), mat(0x55504a), 0.5, 1.1, 0, g);
+    gun.name = 'turret';
+    mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.6, 6), mat(0x1c1712), 0.9, 0.1, 0, gun).rotation.z = Math.PI / 2;
+    addWake(g, 2.4);
+  } else if (kind === 'raft') {
+    // A kitchen sponge: yellow body, green scouring top, little holes, a flag in the team colour.
+    mesh(new THREE.BoxGeometry(4.4, 1.1, 3.4), mat(0xe6d44a, { roughness: 0.95 }), 0, 0.55, 0, g);
+    mesh(new THREE.BoxGeometry(4.5, 0.3, 3.5), mat(0x3e9b4f, { roughness: 0.95 }), 0, 1.2, 0, g);
+    for (const [x, z] of [[-1.4, 1.2], [0.2, -1.3], [1.5, 0.8], [-0.6, 0.1], [1.2, -0.9]]) mesh(new THREE.SphereGeometry(0.28, 6, 5), mat(0x9a8d1c), x, 0.8, z > 0 ? 1.74 : -1.74, g);
+    mesh(new THREE.BoxGeometry(0.1, 2.2, 0.1), mat(0x1c1712), -1.5, 2.4, 0.9, g);
+    mesh(new THREE.BoxGeometry(0.9, 0.6, 0.06), mat(c), -1.1, 3.1, 0.9, g);
+    const gun = mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.5, 10), mat(0x55504a), 0.6, 1.6, 0, g);
+    gun.name = 'turret';
+    mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.5, 6), mat(0x1c1712), 0.9, 0.1, 0, gun).rotation.z = Math.PI / 2;
+    addWake(g, 2.6);
+  } else if (kind === 'duck') {
+    // The Rubber Duck: yellow spheres, an orange beak, white eyes, wings and a perky tail. Forward is +x.
+    const yel = mat(0xffd91a, { roughness: 0.3 }), orange = mat(0xff8a1c, { roughness: 0.4 });
+    const body = mesh(new THREE.SphereGeometry(1, 20, 14), yel, 0, 3.2, 0, g); body.scale.set(5.2, 3.5, 4);
+    mesh(new THREE.SphereGeometry(2.6, 18, 12), yel, 4, 6.8, 0, g);
+    const beak = mesh(new THREE.SphereGeometry(1, 12, 8), orange, 6.5, 6.3, 0, g); beak.scale.set(1.9, 0.5, 1.3);
+    const beak2 = mesh(new THREE.SphereGeometry(1, 12, 8), orange, 6.3, 5.7, 0, g); beak2.scale.set(1.6, 0.35, 1.1);
+    for (const z of [-1.4, 1.4]) {
+      mesh(new THREE.SphereGeometry(0.62, 10, 8), mat(0xffffff), 5, 7.7, z, g);
+      mesh(new THREE.SphereGeometry(0.32, 8, 6), mat(0x1c1712), 5.4, 7.7, z * 1.08, g);
+      const wing = mesh(new THREE.SphereGeometry(1, 12, 8), mat(0xf2c200, { roughness: 0.3 }), -0.8, 3.6, z * 2.5, g); wing.scale.set(2.8, 1.5, 0.55); wing.rotation.z = 0.2;
+    }
+    mesh(new THREE.ConeGeometry(1.4, 2.8, 10), yel, -5.4, 4.8, 0, g).rotation.z = 0.9;
+    const ring = mesh(new THREE.TorusGeometry(5.4, 0.35, 6, 28), mat(0xffffff, { transparent: true, opacity: 0.55 }), 0, 0.5, 0, g); // ripple round the waterline
+    ring.rotation.x = Math.PI / 2; ring.scale.set(1.2, 0.95, 1); ring.castShadow = false;
   } else if (kind === 'digger') {
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.6), mat(0x2b2b2b), 0, 0.35, z, g);
     mesh(new THREE.BoxGeometry(2, 1, 1.8), mat(0xffc23d), -0.2, 1.2, 0, g);
@@ -1047,7 +1109,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
-  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan();
+  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyB') buyBoat();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -1066,6 +1128,7 @@ tap('bArmour', () => armour());
 tap('bMagnet', () => build('magnet'));
 tap('bDomino', () => placeDomino());
 tap('bTrojan', () => trojan());
+tap('bBoat', () => buyBoat());
 tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
@@ -1242,7 +1305,7 @@ function fire(from, target, weapon, angle) {
   const spread = weapon.spread ? (Math.random() - 0.5) * weapon.spread : (Math.random() - 0.5) * 0.04;
   const a = (angle ?? angleTo(from, target)) + spread;
   const m = new THREE.Mesh(weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5),
-    new THREE.MeshBasicMaterial({ color: weapon.color, transparent: !!weapon.life, opacity: weapon.life ? 0.8 : 1 }));
+    new THREE.MeshBasicMaterial({ color: weapon.color, transparent: !!weapon.life || !!weapon.bubble, opacity: weapon.life ? 0.8 : weapon.bubble ? 0.6 : 1 }));
   const y = from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : 1.6;
   // Shots leave from the muzzle: just outside a car, or from the gun on a toy box's roof.
   const muzzle = from.kind === 'base' ? 1.5 : (from.r || 1) + 0.5;
@@ -1302,6 +1365,7 @@ function hurt(e, dmg, byTeam, weapon) {
     toast(`The Stapler is jammed! ${spill} cereal spilled`);
     $('bossbar').hidden = true;
   }
+  if (e.kind === 'boat') burst(e.x, e.z, 0x9fe0ff, 14, 9, 1); // sinks in a splash
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
   if (e.kind === 'turret') makeSpill(e.x, e.z, 12);
   if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) { toast(`Lost a ${e.role}!`); if (e.role === 'truck') state.trucksLost++; } }
@@ -1685,6 +1749,8 @@ function updateCosts() {
   $('rocketCost').textContent = priceText('rocket');
   $('stapleCost').textContent = priceText('staple');
   $('clipsRow').hidden = !hasClips();
+  $('bBoat').hidden = !state.level.boats;
+  $('bBoat').querySelector('small').textContent = BOATS.gunboat.cost;
   $('magnetCost').textContent = priceText('magnet');
   $('catapultCost').textContent = priceText('catapult');
   $('armourCost').textContent = (state.plates || 0) >= 3 ? 'full' : `${armourCost()} clips`;
@@ -1859,18 +1925,77 @@ function unitThink(u, dt) {
     // Raiders go straight for the nearest truck of yours, wherever it is.
     const truck = u.raid ? workersOf(1 - u.team, 'truck').sort((a, b) => dist2(u, a) - dist2(u, b))[0] : null;
     u.target = truck || nearestEnemy(u, 15);
-    if (!u.target) {
+    if (!u.target || u.target.kind === 'boat') {
       const mine = (o) => o.owner === u.team && o.progress * (u.team === BLUE ? 1 : -1) >= 1;
       const open = outposts.filter((o) => !mine(o)).sort((a, b) => dist2(u, a) - dist2(u, b));
       u.goal = open[0] || state.bases[1 - u.team];
     }
   }
   const t = u.target && u.target.hp > 0 && !(u.target.kind === 'player' && !u.target.alive) ? u.target : null;
-  const goal = t || u.goal || state.bases[1 - u.team];
-  const stop = t ? Math.min(u.weapon.range * 0.7, 10) : goal.r ? goal.r * 0.5 : 1;
-  const d = steer(u, goal.x, goal.z, stop, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }, goal);
+  const chase = t && t.kind !== 'boat' ? t : null; // boats are shot at from the bank, never chased
+  const goal = chase || u.goal || state.bases[1 - u.team];
+  const stop = chase ? Math.min(u.weapon.range * 0.7, 10) : goal.r ? goal.r * 0.5 : 1;
+  steer(u, goal.x, goal.z, stop, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }, goal);
   u.cool -= dt;
-  if (t && u.cool <= 0 && d < u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+  if (t && u.cool <= 0 && dist2(u, t) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+}
+
+// ---------- Boats (level 4) ----------
+const boatsOf = (team) => entities.filter((e) => e.kind === 'boat' && e.team === team && e.hp > 0);
+function launchBoat(team, type) {
+  const B = BOATS[type], w = state.water, n = boatsOf(team).length;
+  const e = {
+    kind: 'boat', type, team, x: team === BLUE ? w.x0 + 4 : w.x1 - 4, z: (n % 2 ? 1 : -1) * 11 + (Math.random() - 0.5) * 4, vx: 0, vz: 0,
+    heading: Math.PI / 2 * (n % 2 ? 1 : -1), r: B.r, hp: B.hp, maxHp: B.hp, speed: B.speed, turn: B.turn, weapon: WEAPONS[B.weapon],
+    cool: 0.5, mesh: buildModel(type, team), think: 0, dir: n % 2 ? 1 : -1, lane: (Math.random() - 0.5) * 12, target: null,
+  };
+  entities.push(e);
+  return e;
+}
+function buyBoat() {
+  const p = state.player;
+  if (!state.level.boats || !p.alive || state.over) return;
+  if (boatsOf(BLUE).length >= BOAT_CAP) { toast(`${BOAT_CAP} boats is the most`); sfx('no'); return; }
+  if (state.cereal[BLUE] < BOATS.gunboat.cost) { toast(`Need ${BOATS.gunboat.cost} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= BOATS.gunboat.cost;
+  launchBoat(BLUE, 'gunboat');
+  sfx('build'); toast('Gunboat launched');
+}
+// Patrols up and down the channel in a lane, shoots what comes in range (boats, cars on the bank, the bridge), and slows to fight.
+function boatThink(b, dt) {
+  const w = state.water;
+  b.think -= dt; b.cool -= dt;
+  if (b.think <= 0) { b.think = 0.35; b.target = nearestEnemy(b, b.weapon.range); }
+  if ((b.dir > 0 && b.z > D / 2 - 9) || (b.dir < 0 && b.z < -D / 2 + 9)) { b.dir = -b.dir; b.lane = (Math.random() - 0.5) * (w.x1 - w.x0 - 8); }
+  const gx = Math.max(w.x0 + 3, Math.min(w.x1 - 3, b.lane)), want = Math.atan2(b.dir * 20, gx - b.x), diff = wrap(want - b.heading);
+  b.heading += Math.sign(diff) * Math.min(Math.abs(diff), b.turn * dt);
+  const t = b.target && b.target.hp > 0 && !(b.target.kind === 'player' && !b.target.alive) ? b.target : null;
+  const sp = b.speed * (t ? 0.55 : 1), k = 1 - Math.exp(-2 * dt);
+  b.vx += (Math.cos(b.heading) * sp - b.vx) * k; b.vz += (Math.sin(b.heading) * sp - b.vz) * k;
+  b.x += b.vx * dt; b.z += b.vz * dt;
+  // Stay on water cells: inside the channel, off the island, round the ferries, apart from each other.
+  const lo = w.x0 + b.r + 0.3, hi = w.x1 - b.r - 0.3;
+  if (b.x < lo) { b.x = lo; b.vx = Math.abs(b.vx) * 0.3; } else if (b.x > hi) { b.x = hi; b.vx = -Math.abs(b.vx) * 0.3; }
+  b.z = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, b.z));
+  const keepOut = (cx, cz, R) => { const dx = b.x - cx, dz = b.z - cz, d = Math.hypot(dx, dz); if (d < R && d > 1e-3) { b.x = cx + dx / d * R; b.z = cz + dz / d * R; } };
+  keepOut(w.island.x, w.island.z, w.island.r + b.r);
+  for (const f of ferries) keepOut(f.x, f.z, f.R + b.r - 0.5);
+  for (const o of entities) if (o !== b && o.kind === 'boat' && o.hp > 0) { const dx = b.x - o.x, dz = b.z - o.z, d = Math.hypot(dx, dz), m = b.r + o.r; if (d < m && d > 1e-3) { b.x += dx / d * (m - d) / 2; b.z += dz / d * (m - d) / 2; } }
+  const head = b.mesh.getObjectByName('turret');
+  if (t) {
+    if (head) head.rotation.y = -angleTo(b, t) + b.heading;
+    if (b.cool <= 0 && dist2(b, t) < (b.weapon.range + t.r) ** 2) { b.cool = b.weapon.rate * 1.5; fire(b, t, b.weapon); }
+  } else if (head) head.rotation.y *= Math.exp(-3 * dt);
+}
+// The enemy commander launches a gunboat or a sponge raft every half minute or so, up to three at a time.
+function enemyBoats() {
+  if (!state.level.boats || state.time < state.nextBoat) return;
+  state.nextBoat = state.time + 26 + Math.random() * 10;
+  const type = Math.random() < 0.4 ? 'raft' : 'gunboat';
+  if (boatsOf(RED).length >= BOAT_CAP || state.cereal[RED] < BOATS[type].cost + 15) return;
+  state.cereal[RED] -= BOATS[type].cost;
+  launchBoat(RED, type);
+  if (Math.abs(state.player.x) < 40) toast('An enemy boat has been launched');
 }
 
 // ---------- The sink (level 4): ferries, drips, island cereal ----------
@@ -2041,6 +2166,7 @@ function update(dt) {
     if (e.kind === 'unit') unitThink(e, dt);
     if (e.kind === 'worker') workerThink(e, dt);
     if (e.kind === 'boss') bossThink(e, dt);
+    if (e.kind === 'boat') boatThink(e, dt);
     if (e.kind === 'turret' && e.type === 'magnet') { magnetThink(e, dt); continue; }
     if (e.kind === 'turret' || e.kind === 'base') {
       e.cool -= dt;
@@ -2108,7 +2234,7 @@ function update(dt) {
   // Remove the dead (bases stay for the end screen).
   for (let i = entities.length - 1; i >= 0; i--) {
     const e = entities[i];
-    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker' || e.kind === 'boss')) {
+    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker' || e.kind === 'boss' || e.kind === 'boat')) {
       entities.splice(i, 1);
       if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); navDirty = true; }
     }
@@ -2152,6 +2278,7 @@ function update(dt) {
   }
 
   commander(dt);
+  enemyBoats();
   enemyTricks();
   runsUpdate(dt);
 
@@ -2181,11 +2308,16 @@ let ghost = null;
 function render(dt) {
   const time = performance.now() / 1000;
   for (const e of entities) {
-    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker' && e.kind !== 'boss')) continue;
+    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker' && e.kind !== 'boss' && e.kind !== 'boat')) continue;
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
-    if (e.kind === 'boss') e.lid.rotation.z = e.snap > 0 ? 0.9 * Math.max(0, 1 - e.snap * 3.5) : 0.65 + Math.sin(time * 3) * 0.15; // snaps shut, then creaks open
+    if (e.kind === 'boat') {
+      e.mesh.position.y = 0.2 + Math.sin(time * 3 + e.x) * 0.1; e.mesh.rotation.z = Math.sin(time * 2.3 + e.z) * 0.05;
+      const wake = e.mesh.getObjectByName('wake');
+      if (wake) wake.scale.set(0.2 + Math.hypot(e.vx, e.vz) / 8, 1, 1);
+    }
+    if (e.kind === 'boss' && e.lid) e.lid.rotation.z = e.snap > 0 ? 0.9 * Math.max(0, 1 - e.snap * 3.5) : 0.65 + Math.sin(time * 3) * 0.15; // snaps shut, then creaks open
     if (e.role === 'digger') { const arm = e.mesh.getObjectByName('arm'); if (arm) arm.rotation.z = e.digging ? Math.sin(time * 4) * 0.45 : 0.2; }
     if (e.role === 'truck') {
       const bed = e.mesh.getObjectByName('bed');
