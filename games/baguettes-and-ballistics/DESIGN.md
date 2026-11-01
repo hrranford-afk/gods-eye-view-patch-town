@@ -38,6 +38,29 @@ Each level starts as a race and turns into a war.
 - **Why it works:** the race teaches driving before building, which
   fixes the hard first minutes.
 
+## What each level adds (1 Nov 2026)
+
+Each level brings **one new thing to collect, one new toy, one new rule of
+the table, and a boss**, so every level plays differently. Three stars per
+level: win, win in under 8 minutes, win without losing a truck.
+
+| # | Level | New thing to collect | New toy | New rule of the table | Boss |
+|---|---|---|---|---|---|
+| 1 | Breakfast table | cereal | diggers, dump trucks | the middle bowl refills; spills slow you | none (learn the ropes) |
+| 2 | Pencil case | **paperclips** (from the open pencil case): armour and tanks need them | **bulldozer**: pushes erasers into walls, and cereal into hoppers | **pushable erasers**; enemy **raids** every 90 seconds | the Stapler: slow, armoured, snaps turrets shut |
+| 3 | Remote-control drawer | **batteries**: lasers and the Jet Bike need them | **laser turret**, Jet Bike | **dark drawer**: you only see what your headlights and turrets light up | the Remote Car: fast, circles and snipes |
+| 4 | The sink | (all three) | **crane**: lays bridges (spaghetti snaps, lolly sticks hold, a ruler takes a tank) | **water gap** down the middle; drips from the tap knock you sideways; hover skims across | the Rubber Duck: a floating fortress |
+| 5 | Hob and oven | (all three) | **toaster launcher**: fires a car over walls | **hob rings** heat up and cool on a cycle; the oven door drops as a ramp to a high ledge | the Toaster Tank |
+| 6 | Baguettes & Ballistics | (all three) | everything | **night**: only the fridge light; the kettle boils as a countdown to the enemy's big push | the Baguette: a long armoured train that has to be cut in pieces |
+
+**Between levels:** a short "day in the kitchen" card (morning, then lunch,
+then dinner) and a garage where stars unlock paint jobs and horns. Unlocks are
+for fun, never for power, so a new player can still win.
+
+**Race-then-battle** (above) is the opening of every level from level 2
+onwards, once the race code exists. The track runs around that level's hazards,
+so the race teaches the new rule before the fight.
+
 ## Loot
 
 | Loot | Where | Builds |
