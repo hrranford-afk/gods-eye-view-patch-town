@@ -40,7 +40,12 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 .blue .bar i { background: var(--blue); }
 .red .bar i { background: var(--red); margin-left: auto; }
 .mid { display: grid; justify-items: center; gap: 6px; }
+.res { display: flex; gap: 16px; align-items: baseline; }
 .cereal { font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 0 var(--ink); font-variant-numeric: tabular-nums; }
+.cereal.clips { color: #dfe3ea; }
+.bossbar { position: fixed; z-index: 2; top: calc(env(safe-area-inset-top, 0px) + 112px); left: 50%; transform: translateX(-50%); width: min(300px, 40vw); pointer-events: none; text-align: center; }
+.bossbar b { font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.bossbar .bar i { background: #c8281f; }
 .pips { display: flex; gap: 6px; }
 .pips span { width: 14px; height: 14px; border-radius: 50%; background: #9a8f80; border: 2px solid var(--paper); }
 .toast { font-family: var(--display); font-size: 14px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); min-height: 18px; text-align: center; }
@@ -98,9 +103,10 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 
 <div class="hud">
   <div class="basebar blue"><b>YOUR TOY BOX <span class="pct" id="pctBlue"></span></b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
-  <div class="mid"><div class="cereal" id="cereal">0</div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
+  <div class="mid"><div class="res"><div class="cereal" id="cereal">0</div><div class="cereal clips" id="clipsHud" hidden>0 paperclips</div></div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
   <div class="basebar red"><b>ENEMY TOY BOX <span class="pct" id="pctRed"></span></b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
 </div>
+<div class="bossbar" id="bossbar" hidden><b>THE STAPLER</b><div class="bar"><i id="bossHp"></i></div></div>
 <div class="hint" id="hint">Drag on the left to drive</div>
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
 <div class="garage" id="garage" hidden></div>
@@ -187,7 +193,32 @@ function woodTexture() {
   t.encoding = THREE.sRGBEncoding;
   return t;
 }
+// A green cutting mat with a grid, for the pencil-case level.
+function matTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3f8a64'; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i <= 1024; i += 65) { g.strokeStyle = i % 325 === 0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.22)'; g.lineWidth = i % 325 === 0 ? 3 : 1.5; g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 512); g.stroke(); }
+  for (let j = 0; j <= 512; j += 65) { g.strokeStyle = j % 325 === 0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.22)'; g.lineWidth = j % 325 === 0 ? 3 : 1.5; g.beginPath(); g.moveTo(0, j); g.lineTo(1024, j); g.stroke(); }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+// Ruler ticks, drawn once and shared by every ruler.
+function rulerTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ecc875'; g.fillRect(0, 0, 512, 64);
+  g.fillStyle = '#3b2a1c';
+  for (let i = 0; i <= 64; i++) { const x = i * 8 - (i === 64 ? 2 : 0); g.fillRect(x, 0, 2, i % 5 === 0 ? 30 : 16); }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 const woodTex = woodTexture();
+let matTex = null, rulerTex = null;
 const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2, 0);
 table.castShadow = false;
 
@@ -207,6 +238,12 @@ function block(x, z, w, d, h, color, kind) {
     tip.rotation.set(along ? 0 : Math.PI / 2, 0, along ? -Math.PI / 2 : 0);
     const rub = mesh(new THREE.CylinderGeometry(1, 1, 1.6, 12), mat(0xf28fb1), along ? x - len / 2 + 2.3 : x, 1, along ? z : z - len / 2 + 2.3);
     rub.rotation.copy(p.rotation);
+  } else if (kind === 'ruler') {
+    mesh(new THREE.BoxGeometry(w, h, d), mat(0xecc875), x, h / 2, z);
+    rulerTex = rulerTex || rulerTexture();
+    const face = mesh(new THREE.PlaneGeometry(Math.max(w, d), Math.min(w, d)), mat(0xffffff, { map: rulerTex }), x, h + 0.03, z);
+    face.rotation.set(-Math.PI / 2, 0, w > d ? 0 : Math.PI / 2);
+    face.castShadow = false;
   } else if (kind === 'mug') {
     mesh(new THREE.CylinderGeometry(w / 2, w / 2 * 0.92, h, 28, 1, true), mat(color, { side: THREE.DoubleSide }), x, h / 2, z);
     mesh(new THREE.CylinderGeometry(w / 2 - 0.5, w / 2 - 0.5, 0.4, 28), mat(0x4a2a14), x, h - 1.5, z);
@@ -218,6 +255,29 @@ function block(x, z, w, d, h, color, kind) {
   }
   return o;
 }
+// An eraser: a pushable block (a pink or white rubber with a card sleeve). Pushed by your car, it slides to a stop.
+const erasers = [];
+function makeEraser(x, z, w, d, color) {
+  const g = new THREE.Group();
+  mesh(new THREE.BoxGeometry(w, 3, d), mat(color, { roughness: 0.9 }), 0, 1.5, 0, g);
+  const along = w > d;
+  mesh(new THREE.BoxGeometry(along ? w * 0.45 : w + 0.15, 3.15, along ? d + 0.15 : d * 0.45), mat(0x2a5db0), 0, 1.5, 0, g);
+  g.position.set(x, 0, z);
+  meshParent.add(g);
+  const o = { x, z, w, d, h: 3, kind: 'eraser', vx: 0, vz: 0, nx: x, nz: z, blocked: false, group: g };
+  obstacles.push(o);
+  erasers.push(o);
+  return o;
+}
+// The case's floor, zip, label and the open lid folded away: looks only, nothing to bump into.
+function pencilCaseDecor() {
+  mesh(new THREE.BoxGeometry(42.4, 0.5, 18.4), mat(0x14606f), 0, 0.25, 0);
+  mesh(new THREE.BoxGeometry(44.4, 0.5, 2), mat(0xc9ccd2, { metalness: 0.5 }), 0, 5.15, 10).castShadow = false;
+  mesh(new THREE.BoxGeometry(44.4, 0.5, 2), mat(0xc9ccd2, { metalness: 0.5 }), 0, 5.15, -10).castShadow = false;
+  mesh(new THREE.BoxGeometry(3, 1.6, 2.4), mat(0xef4136), 21, 5.6, 10); // zip pull
+  mesh(new THREE.BoxGeometry(9, 0.2, 3), mat(0xfff8ec), -12, 5.45, 10.9).rotation.x = 0; // name tag
+}
+
 // ---------- Levels ----------
 // A level is plain data: layout (blocks, patches, caps, piles), table look, resources and rules.
 //   blocks:  [x, z, w, d, h, colour, kind]   kinds: pencil, book, mug, die, box (default)
@@ -236,6 +296,7 @@ const LEVELS = [
       '<b>Swap vehicle:</b> drive home to your toy box',
     ],
     // The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
+    erasers: [],
     blocks: mirrored([
       (s) => [s * 14, 0, 2, 26, 2, 0xf2b705, 'pencil'],
       (s) => [s * 40, s * 8, 2, 22, 2, 0x2a9d5c, 'pencil'],
@@ -249,10 +310,45 @@ const LEVELS = [
     outposts: [[-30, -24], [-30, 24], [0, 0], [30, -24], [30, 24]], // bottle caps
     piles: [[-26, -36, 160], [-26, 36, 160], [26, -36, 160], [26, 36, 160], [0, 22, 300], [-48, -18, 120], [48, 18, 120]],
     refill: [{ x: 0, z: 22, rate: 0.6 }], // the cereal box keeps getting knocked over: the middle bowl refills
-    start: { cereal: 25, unlocked: ['racer', 'tank'] },
+    start: { cereal: 25, clips: 0, unlocked: ['racer', 'tank'] },
+    resources: ['cereal'],
     rules: {},
   },
-  { name: 'Pencil case', time: 'morning', soon: true },
+  {
+    name: 'Pencil case', time: 'morning', tableColor: 0xffffff, tableTex: 'mat',
+    blurb: 'The pencil case is open and full of paperclips. Trucks haul clips like cereal, and rockets and Tanks cost them. Shove the erasers to wall off a lane. The enemy raids your trucks every 90 seconds, and at 4:00 the Stapler wakes up.',
+    tips: [
+      '<b>Drive, fire, build:</b> as in level 1 (WASD, Space, T, G, 1, 2)',
+      '<b>Paperclips:</b> dig and haul them from the pencil case. A Rocket costs 40 cereal + 10 clips, the Tank 20 + 15',
+      '<b>Erasers:</b> drive into them to shove them. Wall off a lane, or block a raid',
+      '<b>Raids:</b> every 90 seconds fast cars hunt your trucks. Turrets near the trucks help',
+      '<b>The Stapler:</b> slow, armoured, snaps turrets shut. Cannons and rockets hurt it; guns barely scratch it',
+    ],
+    blocks: [
+      // The open pencil case: long walls, and end walls with a 12-wide gap so trucks and the Stapler fit through.
+      [0, -10, 44, 1.6, 5, 0x1f8a9e, 'wall'], [0, 10, 44, 1.6, 5, 0x1f8a9e, 'wall'],
+      ...[-22, 22].flatMap((x) => [[x, -8, 1.6, 4, 5, 0x1f8a9e, 'wall'], [x, 8, 1.6, 4, 5, 0x1f8a9e, 'wall']]),
+      ...mirrored([
+        (s) => [s * 42, s * 12, 4, 32, 1.4, 0, 'ruler'],
+        (s) => [s * 18, s * 27, 28, 2, 2, s > 0 ? 0xd94f3d : 0x2f6fd0, 'pencil'],
+        (s) => [s * 30, -s * 10, 2, 18, 2, 0xf2b705, 'pencil'],
+        (s) => [s * 8, -s * 38, 10, 6, 4, 0x6ab0de, 'box'], // a pencil sharpener
+      ]),
+    ],
+    decor: pencilCaseDecor,
+    erasers: [[-24, -16, 7, 4, 0xf4a3b8], [24, 16, 7, 4, 0xf5f2ea], [-8, -34, 7, 4, 0xf5f2ea], [8, 34, 7, 4, 0xf4a3b8], [35, -24, 4, 7, 0xf4a3b8], [-35, 24, 4, 7, 0xf5f2ea]],
+    patches: [{ x: 0, z: -24, r: 7, kind: 'juice', color: 0x2a3b8f }], // spilled ink: slippery
+    outposts: [[-34, -36], [-34, 36], [0, 0], [34, -36], [34, 36]],
+    piles: [[-24, -34, 140], [-24, 34, 140], [24, -34, 140], [24, 34, 140], [-50, 24, 110], [50, -24, 110],
+      [-14, -4, 130, 'clips'], [14, 4, 130, 'clips']],
+    refill: [{ x: -14, z: -4, rate: 0.2 }, { x: 14, z: 4, rate: 0.2 }], // the case keeps spilling clips
+    start: { cereal: 25, clips: 10, unlocked: ['racer'] },
+    resources: ['cereal', 'clips'],
+    turretClips: { rocket: 10 },   // paperclips a turret costs on top of cereal
+    vehicleCosts: { tank: { c: 20, p: 15 } },
+    heavyClips: 5,                 // the enemy's heavy tank costs clips too
+    rules: { baseHp: 1200, raidEvery: 90, raidSize: [3, 4], boss: { at: 240, hp: 600, spill: 60 } },
+  },
   { name: 'Remote-control drawer', time: 'midday', soon: true },
   { name: 'The sink', time: 'lunch', soon: true },
   { name: 'Hob and oven', time: 'afternoon', soon: true },
@@ -268,15 +364,19 @@ function buildLevel(L) {
   levelRoot.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
   levelRoot.clear();
   scene.add(levelRoot);
-  obstacles.length = patches.length = 0;
+  obstacles.length = patches.length = erasers.length = 0;
   table.material.color.setHex(L.tableColor);
+  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : woodTex;
+  table.material.needsUpdate = true;
   meshParent = levelRoot;
   for (const b of L.blocks) block(...b);
+  for (const e of L.erasers) makeEraser(...e);
   for (const p of L.patches) {
     patches.push(p);
-    const m = mesh(new THREE.CircleGeometry(p.r, 40), p.kind === 'juice' ? mat(0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }) : mat(0xe8c89a, { transparent: true, opacity: 0.55 }), p.x, 0.03, p.z);
+    const m = mesh(new THREE.CircleGeometry(p.r, 40), p.kind === 'juice' ? mat(p.color || 0xff9f1c, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }) : mat(0xe8c89a, { transparent: true, opacity: 0.55 }), p.x, 0.03, p.z);
     m.rotation.x = -Math.PI / 2; m.castShadow = false;
   }
+  if (L.decor) L.decor();
   meshParent = scene;
 }
 const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r)?.kind;
@@ -289,6 +389,7 @@ const WEAPONS = {
   cannon: { vsBase: 1.5, dmg: 32, rate: 0.85, range: 19, speed: 40, splash: 3.5, color: 0x2b2b2b, size: 0.7 },
   missile: { vsBase: 1.5, dmg: 16, rate: 0.45, range: 23, speed: 34, homing: true, color: 0xffffff, size: 0.45 },
   flame: { vsBase: 0.5, dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
+  raid: { vsBase: 0.3, dmg: 3, rate: 0.14, range: 13, speed: 60, color: 0xffb3a7, size: 0.35 }, // a raider's pop-gun: quick, but weak
   laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
 };
 const VEHICLES = {
@@ -304,6 +405,7 @@ const ENEMY_TYPES = {
   buggy: { model: 'monster', speed: 13, hp: 90, weapon: 'mg', reward: 6 },
   heavy: { model: 'tank', speed: 8.5, hp: 180, weapon: 'cannon', reward: 10 },
   drone: { model: 'racer', speed: 18, hp: 40, weapon: 'mg', reward: 4 },
+  raider: { model: 'racer', speed: 26, hp: 38, weapon: 'raid', reward: 3 }, // fast: sent after your trucks
 };
 
 function wheel(g, x, z, r = 0.8, w = 0.6) {
@@ -362,6 +464,24 @@ function buildModel(kind, team, scale = 1) {
     load.name = 'load';
     load.scale.set(1.3, 0.01, 0.9);
     for (const [x, z] of [[1.4, 1], [1.4, -1], [-1.2, 1], [-1.2, -1]]) wheel(g, x, z, 0.55, 0.45);
+  } else if (kind === 'stapler') {
+    // The boss: grey base, red hinged top that snaps shut. Forward is +x; the hinge is at the back.
+    mesh(new THREE.BoxGeometry(8, 1.2, 3.6), mat(0x6b6f76), 0, 0.9, 0, g);
+    mesh(new THREE.BoxGeometry(2.6, 0.4, 2.4), mat(0x2b2b2b), 4.2, 1.7, 0, g); // the anvil
+    for (const [x, z] of [[-3, 1.4], [-3, -1.4], [3, 1.4], [3, -1.4]]) mesh(new THREE.BoxGeometry(1.4, 0.5, 0.8), mat(0x1c1712), x, 0.25, z, g);
+    mesh(new THREE.BoxGeometry(1.2, 2.4, 3.2), mat(0x4a4d53), -3.9, 1.6, 0, g); // hinge block
+    const lid = new THREE.Group();
+    lid.name = 'lid';
+    lid.position.set(-3.7, 2.6, 0);
+    g.add(lid);
+    mesh(new THREE.BoxGeometry(8.4, 1.3, 3.6), mat(0xc8281f), 4.2, 0.65, 0, lid);
+    mesh(new THREE.BoxGeometry(7.8, 0.3, 2.8), mat(0x9aa0a8, { metalness: 0.4 }), 4.4, -0.1, 0, lid);
+    mesh(new THREE.BoxGeometry(0.9, 1.5, 3.2), mat(0x4a4d53), 8.4, 0.5, 0, lid);
+    for (const z of [-0.9, 0.9]) {
+      mesh(new THREE.SphereGeometry(0.55, 10, 8), mat(0xffffff), 7.2, 1.2, z, lid);
+      mesh(new THREE.SphereGeometry(0.25, 8, 6), mat(0x1c1712), 7.6, 1.2, z, lid);
+    }
+    for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(1.6, 0.18, 0.4), mat(0x1c1712), 7.2, 1.85, z, lid).rotation.y = z * 0.4;
   } else if (kind === 'digger') {
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.6), mat(0x2b2b2b), 0, 0.35, z, g);
     mesh(new THREE.BoxGeometry(2, 1, 1.8), mat(0xffc23d), -0.2, 1.2, 0, g);
@@ -400,7 +520,8 @@ function makeBase(team) {
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
   pad.rotation.x = -Math.PI / 2;
-  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: 1200, maxHp: 1200, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
+  const baseHp = LEVELS[curLevel].rules.baseHp || 1200;
+  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
   obstacles.push({ x, z: 0, w: 12, d: 14, h: 7, kind: 'base' });
   entities.push(base);
   return base;
@@ -435,13 +556,40 @@ function loopsGroup(x, z, n, radius, height) {
   scene.add(g);
   return g;
 }
-function makePile(x, z, amount, refill = 0) {
-  const p = { x, z, r: 3.5, amount, max: amount, refill, group: loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3) };
+// Paperclips: bent silver wire (one tube along a gem-clip path, shared by every clip).
+let clipGeo = null, clipMat = null;
+function clipsGroup(x, z, n, radius, height) {
+  if (!clipGeo) {
+    const pts = [], arc = (cx, cy, r, a0, a1) => { for (let k = 0; k <= 8; k++) { const a = a0 + (a1 - a0) * k / 8; pts.push(new THREE.Vector3(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 0)); } };
+    pts.push(new THREE.Vector3(0.2, -0.55, 0), new THREE.Vector3(0.2, 0.2, 0));
+    arc(0, 0.45, 0.2, 0, Math.PI);                 // small top bend
+    pts.push(new THREE.Vector3(-0.2, -0.5, 0));
+    arc(0.2, -0.5, 0.4, Math.PI, Math.PI * 2);     // big bottom bend, going round
+    pts.push(new THREE.Vector3(0.6, 0.4, 0));
+    arc(0.35, 0.4, 0.25, 0, Math.PI);              // outer top bend
+    pts.push(new THREE.Vector3(0.1, 0.1, 0));
+    clipGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.filter((p, i) => i === 0 || p.distanceTo(pts[i - 1]) > 0.02)), 40, 0.07, 5);
+    clipMat = mat(0xdfe3ea, { metalness: 0.55, roughness: 0.3, emissive: 0x2a3038 });
+  }
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    const clip = mesh(clipGeo, clipMat, Math.cos(a) * r, 0.25 + (1 - r / radius) * height * Math.random(), Math.sin(a) * r, g);
+    clip.scale.setScalar(1.5);
+    clip.rotation.set(-Math.PI / 2 + (Math.random() - 0.5) * 0.7, (Math.random() - 0.5) * 0.7, Math.random() * Math.PI * 2);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+function makePile(x, z, amount, refill = 0, res = 'cereal') {
+  const group = res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
+  const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   piles.push(p);
 }
-function makeSpill(x, z, amount) {
+function makeSpill(x, z, amount, life = 45) {
   if (amount < 1) return;
-  spills.push({ x, z, r: 2, amount, life: 45, group: loopsGroup(x, z, Math.min(14, 3 + Math.round(amount / 2)), 1.6, 0.6) });
+  spills.push({ x, z, r: 2, amount, life, res: 'cereal', group: loopsGroup(x, z, Math.min(14, 3 + Math.round(amount / 2)), 1.6, 0.6) });
 }
 function takeFrom(src, want) {
   const got = Math.min(want, src.amount);
@@ -456,7 +604,9 @@ const WORKERS = {
 function spawnWorker(role, team) {
   const w = WORKERS[role];
   const x = team === BLUE ? -52 : 52, z = (Math.random() - 0.5) * 10;
-  const e = { kind: 'worker', role, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: w.r, hp: w.hp, maxHp: w.hp, load: 0, mesh: buildModel(role, team), think: 0 };
+  // Every third worker a team makes prefers paperclips (only matters on levels that have them).
+  const pref = state.spawned[team]++ % 3 === 2 ? 'clips' : 'cereal';
+  const e = { kind: 'worker', role, team, pref, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: w.r, hp: w.hp, maxHp: w.hp, load: 0, mesh: buildModel(role, team), think: 0 };
   entities.push(e);
   return e;
 }
@@ -483,7 +633,8 @@ function workerThink(w, dt) {
     // Pick the fullest pile near home that has the fewest of our diggers, and stay with it.
     if (!w.pile || w.pile.amount <= 0) {
       const home = state.bases[w.team];
-      w.pile = piles.filter((p) => p.amount > 0).sort((a, b) => (dist2(a, home) + workersOf(w.team, 'digger').filter((d) => d.pile === a).length * 900) - (dist2(b, home) + workersOf(w.team, 'digger').filter((d) => d.pile === b).length * 900))[0] || null;
+      const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === 'clips' && state.clips[w.team] < 60 ? 4000 : 0);
+      w.pile = piles.filter((p) => p.amount > 0).sort((a, b) => score(a) - score(b))[0] || null;
     }
     const goal = w.pile || state.bases[w.team];
     steer(w, goal.x, goal.z, goal.r + 2.5, dt, spec, null);
@@ -496,7 +647,7 @@ function workerThink(w, dt) {
     const d = nearestDrop(w);
     steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
     if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
-      state.cereal[w.team] += w.load;
+      state[w.loadRes === 'clips' ? 'clips' : 'cereal'][w.team] += w.load;
       if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('pour');
       w.load = 0;
       w.going = 'fill';
@@ -507,14 +658,19 @@ function workerThink(w, dt) {
   w.think -= dt;
   if (w.think <= 0 || !w.src || w.src.amount <= 0) {
     w.think = 1;
-    const near = spills.filter((sp) => sp.amount > 0 && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
-    w.src = near || piles.filter((p) => p.amount > 0).sort((a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400))[0] || null;
+    // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
+    const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? 'clips' : 'cereal') : null;
+    const ok = (src) => src.amount > 0 && (!want || src.res === want);
+    const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
+    const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
+    w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0).sort(byDist)[0]) || null;
   }
-  if (!w.src) { const home = state.bases[w.team]; steer(w, home.x + (w.team === BLUE ? 10 : -10), home.z, 2, dt, spec, null); return; }
+  if (!w.src) { if (w.load > 0) w.going = 'drop'; const home = state.bases[w.team]; steer(w, home.x + (w.team === BLUE ? 10 : -10), home.z, 2, dt, spec, null); return; }
   steer(w, w.src.x, w.src.z, w.src.r + 1.5, dt, spec, null);
   if (dist2(w, w.src) < (w.src.r + 3) ** 2) {
     // Spills scoop fast; piles load slowly by hand and fast with diggers working them.
     const rate = spills.includes(w.src) ? 8 : 0.8 + 2.6 * diggersAt(w.src, w.team);
+    if (w.load === 0) w.loadRes = w.src.res;
     w.load += takeFrom(w.src, Math.min(rate * dt, spec.carry - w.load));
     if (w.load >= spec.carry || w.src.amount <= 0) w.going = 'drop';
   }
@@ -525,18 +681,22 @@ function workerThink(w, dt) {
 // Rebuilt whenever blocks change (turrets come and go).
 const CELL = 2, GW = Math.ceil(W / CELL), GD = Math.ceil(D / CELL);
 const closed = new Uint8Array(GW * GD);
+const closedFat = new Uint8Array(GW * GD); // the same with a wider margin, for the big boss
 let navDirty = true;
 const cellOf = (x, z) => [Math.max(0, Math.min(GW - 1, Math.floor((x + W / 2) / CELL))), Math.max(0, Math.min(GD - 1, Math.floor((z + D / 2) / CELL)))];
 const centreOf = (i, j) => [i * CELL - W / 2 + CELL / 2, j * CELL - D / 2 + CELL / 2];
 function navBuild() {
-  closed.fill(0);
-  for (const o of obstacles) {
-    const [i0, j0] = cellOf(o.x - o.w / 2 - 1.6, o.z - o.d / 2 - 1.6), [i1, j1] = cellOf(o.x + o.w / 2 + 1.6, o.z + o.d / 2 + 1.6);
-    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) closed[j * GW + i] = 1;
+  closed.fill(0); closedFat.fill(0);
+  for (const [grid, m] of [[closed, 1.6], [closedFat, 4.9]]) {
+    for (const o of obstacles) {
+      const [i0, j0] = cellOf(o.x - o.w / 2 - m, o.z - o.d / 2 - m), [i1, j1] = cellOf(o.x + o.w / 2 + m, o.z + o.d / 2 + m);
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) grid[j * GW + i] = 1;
+    }
   }
   navDirty = false;
 }
-function clearLine(ax, az, bx, bz) {
+function clearLine(ax, az, bx, bz, grid = closed) {
+  const closed = grid;
   const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 1);
   for (let k = 1; k < n; k++) {
     const [i, j] = cellOf(ax + (bx - ax) * k / n, az + (bz - az) * k / n);
@@ -544,7 +704,8 @@ function clearLine(ax, az, bx, bz) {
   }
   return true;
 }
-function nearestOpen(i, j) {
+function nearestOpen(i, j, grid = closed) {
+  const closed = grid;
   for (let r = 0; r < 12; r++) for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
     const a = i + di, b = j + dj;
     if (a >= 0 && b >= 0 && a < GW && b < GD && !closed[b * GW + a]) return [a, b];
@@ -552,9 +713,10 @@ function nearestOpen(i, j) {
   return [i, j];
 }
 // A* over the grid; returns waypoints (world x,z), smoothed to the corners that matter.
-function findPath(sx, sz, gx, gz) {
+function findPath(sx, sz, gx, gz, grid = closed) {
+  const closed = grid;
   if (navDirty) navBuild();
-  const [si, sj] = nearestOpen(...cellOf(sx, sz)), [gi, gj] = nearestOpen(...cellOf(gx, gz));
+  const [si, sj] = nearestOpen(...cellOf(sx, sz), closed), [gi, gj] = nearestOpen(...cellOf(gx, gz), closed);
   const start = sj * GW + si, goal = gj * GW + gi;
   const g = new Float32Array(GW * GD).fill(Infinity), from = new Int32Array(GW * GD).fill(-1);
   const heap = [[0, start]];
@@ -581,7 +743,7 @@ function findPath(sx, sz, gx, gz) {
   const pts = cells.map((n) => centreOf(n % GW, (n / GW) | 0));
   const out = [];
   let a = [sx, sz];
-  for (let k = 1; k < pts.length; k++) if (!clearLine(a[0], a[1], pts[k][0], pts[k][1])) { out.push(pts[k - 1]); a = pts[k - 1]; }
+  for (let k = 1; k < pts.length; k++) if (!clearLine(a[0], a[1], pts[k][0], pts[k][1], closed)) { out.push(pts[k - 1]); a = pts[k - 1]; }
   out.push([gx, gz]);
   return out;
 }
@@ -591,10 +753,11 @@ function steer(e, gx, gz, stop, dt, stats, ignore) {
   const full = Math.hypot(gx - e.x, gz - e.z);
   let tx = gx, tz = gz;
   if (navDirty) navBuild();
-  if (!clearLine(e.x, e.z, gx, gz)) {
+  const grid = e.fat ? closedFat : closed;
+  if (!clearLine(e.x, e.z, gx, gz, grid)) {
     e.pathAge = (e.pathAge || 0) - dt;
     if (!e.path || e.pathAge <= 0 || Math.hypot(e.pathGoal[0] - gx, e.pathGoal[1] - gz) > 4) {
-      e.path = findPath(e.x, e.z, gx, gz) || [];
+      e.path = findPath(e.x, e.z, gx, gz, grid) || [];
       e.pathGoal = [gx, gz];
       e.pathAge = 1.5 + Math.random();
     }
@@ -651,14 +814,15 @@ function reset() {
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
-  for (const [x, z, n] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0);
+  for (const [x, z, n, res] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res);
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
+  $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
   $('pips').innerHTML = outposts.map(() => '<span></span>').join('');
 }
@@ -750,6 +914,10 @@ const SOUNDS = {
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, f, 0.08, i === 5 ? 0.5 : 0.13, i * 0.13)),
   lose: () => [392, 349, 311, 262].forEach((f, i) => tone('triangle', f, f * 0.97, 0.1, i === 3 ? 0.7 : 0.22, i * 0.22)),
   tick: () => tone('square', 2200, 2000, 0.05, 0.02), // kettle-click countdown
+  raid: () => [0, 0.28, 0.56].forEach((d) => { tone('sawtooth', 520, 520, 0.07, 0.13, d); tone('sawtooth', 780, 780, 0.07, 0.13, d + 0.14); }), // two-tone siren
+  snap: () => { noise('highpass', 2500, 1800, 0.35, 0.05); tone('square', 260, 70, 0.3, 0.1); noise('lowpass', 900, 150, 0.3, 0.12, 0.02); }, // the stapler shuts
+  roar: () => { tone('sawtooth', 110, 45, 0.25, 1.0); tone('square', 55, 38, 0.2, 1.0); noise('lowpass', 700, 100, 0.3, 0.9); },
+  scrape: () => noise('bandpass', 500, 300, 0.12, 0.18, 0, 2), // an eraser sliding
 };
 function sfx(kind) {
   if (!audio || muted || !SOUNDS[kind]) return;
@@ -789,6 +957,7 @@ function nearestEnemy(from, range, team = from.team) {
   return best;
 }
 
+let lastScrape = 0;
 function collideObstacles(e) {
   const half = W / 2 - e.r, halfD = D / 2 - e.r;
   if (e.x < -half) { e.x = -half; e.vx = Math.abs(e.vx) * 0.3; }
@@ -799,7 +968,16 @@ function collideObstacles(e) {
     const cx = Math.max(o.x - o.w / 2, Math.min(e.x, o.x + o.w / 2));
     const cz = Math.max(o.z - o.d / 2, Math.min(e.z, o.z + o.d / 2));
     const dx = e.x - cx, dz = e.z - cz, d = Math.hypot(dx, dz);
-    if (d < e.r && d > 1e-4) {
+    if (o.kind === 'eraser' && e.kind === 'player' && !o.blocked && d < e.r && d > 1e-4) {
+      // Shove: the eraser gives way and slides off; you lose some speed doing it.
+      const nx = dx / d, nz = dz / d, vn = e.vx * nx + e.vz * nz;
+      o.x -= nx * (e.r - d); o.z -= nz * (e.r - d);
+      if (vn < 0) {
+        o.vx = nx * vn * 0.9; o.vz = nz * vn * 0.9;
+        e.vx -= 0.4 * vn * nx; e.vz -= 0.4 * vn * nz;
+        if (state.time - lastScrape > 0.3) { sfx('scrape'); lastScrape = state.time; }
+      }
+    } else if (d < e.r && d > 1e-4) {
       const push = (e.r - d) / d;
       e.x += dx * push; e.z += dz * push;
       const nx = dx / d, nz = dz / d, vn = e.vx * nx + e.vz * nz;
@@ -811,7 +989,7 @@ function collideObstacles(e) {
 }
 
 function collideMovers() {
-  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && e.hp > 0);
+  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boss' || (e.kind === 'player' && e.alive)) && e.hp > 0);
   for (let i = 0; i < movers.length; i++) {
     for (let j = i + 1; j < movers.length; j++) {
       const a = movers[i], b = movers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
@@ -878,6 +1056,7 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 
 function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
+  if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
   // Toy boxes fall to siege weapons (cannons, rockets), not to a few scouts with guns.
   e.hp -= e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
   const near = dist2(e, state.player) < 1600;
@@ -887,13 +1066,20 @@ function hurt(e, dmg, byTeam, weapon) {
     if (e === state.bases?.[BLUE] && weapon) state.shake = Math.min(1.2, (state.shake || 0) + 0.05);
     return;
   }
-  burst(e.x, e.z, e.kind === 'base' ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : 16, e.kind === 'base' ? 22 : 11);
-  if (near || e.kind === 'base') { sfx(e.kind === 'base' ? 'bigBoom' : e.kind === 'player' ? 'wreck' : 'boom'); state.shake = Math.min(1.6, (state.shake || 0) + (e.kind === 'base' ? 1.6 : e.kind === 'unit' || e.kind === 'worker' ? 0.3 : 0.6)); }
+  const big = e.kind === 'base' || e.kind === 'boss';
+  burst(e.x, e.z, big ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : e.kind === 'boss' ? 40 : 16, big ? 22 : 11);
+  if (near || big) { sfx(big ? 'bigBoom' : e.kind === 'player' ? 'wreck' : 'boom'); state.shake = Math.min(1.6, (state.shake || 0) + (big ? 1.6 : e.kind === 'unit' || e.kind === 'worker' ? 0.3 : 0.6)); }
   if (e.kind === 'player') {
     e.alive = false; e.mesh.visible = false; state.respawn = 3; toast('Wrecked! Back in 3…');
     return;
   }
   // Wrecks spill cereal where they fall: scoop it up (or let your trucks).
+  if (e.kind === 'boss') {
+    const spill = state.level.rules.boss.spill;
+    makeSpill(e.x, e.z, spill, 90);
+    toast(`The Stapler is jammed! ${spill} cereal spilled`);
+    $('bossbar').hidden = true;
+  }
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
   if (e.kind === 'turret') makeSpill(e.x, e.z, 12);
   if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) { toast(`Lost a ${e.role}!`); if (e.role === 'truck') state.trucksLost++; } }
@@ -907,6 +1093,9 @@ const TURRETS = {
   rocket: { name: 'Rocket', cost: 40, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
 };
 const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
+// Paperclips a turret costs on this level (0 on level 1).
+const clipsOf = (type) => Math.round((state.level.turretClips?.[type] || 0) * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
+const priceText = (type) => costOf(type) + (clipsOf(type) ? ` + ${clipsOf(type)} clips` : '');
 function makeTurret(type, team, x, z) {
   const t = TURRETS[type];
   const g = new THREE.Group();
@@ -941,8 +1130,9 @@ function build(type) {
   const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4; // drop it behind you
   const why = canPlace(x, z, BLUE);
   if (why) { toast(why); sfx('no'); return; }
-  if (state.cereal[BLUE] < cost) { toast(`Need ${cost} cereal`); sfx('no'); return; }
-  state.cereal[BLUE] -= cost;
+  const clips = clipsOf(type);
+  if (state.cereal[BLUE] < cost || state.clips[BLUE] < clips) { toast(`Need ${priceText(type)}`); sfx('no'); return; }
+  state.cereal[BLUE] -= cost; state.clips[BLUE] -= clips;
   makeTurret(type, BLUE, x, z);
   sfx('build'); toast(`${TURRETS[type].name} turret built`);
 }
@@ -978,19 +1168,23 @@ function drones() {
 }
 
 // ---------- Garage ----------
+// What a vehicle costs to unlock on this level (the Tank needs paperclips on level 2).
+const vehCost = (k) => state.level.vehicleCosts?.[k] || { c: VEHICLES[k].unlock, p: 0 };
 function renderGarage() {
   const p = state.player;
   $('garage').innerHTML = Object.entries(VEHICLES).map(([k, v]) => {
     const owned = state.unlocked.has(k);
-    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${v.unlock} cereal`}</small></button>`;
+    const vc = vehCost(k);
+    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${vc.c} cereal${vc.p ? ` + ${vc.p} clips` : ''}`}</small></button>`;
   }).join('');
   for (const b of $('garage').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.preventDefault(); chooseVehicle(b.dataset.v); });
 }
 function chooseVehicle(k) {
   const v = VEHICLES[k];
   if (!state.unlocked.has(k)) {
-    if (state.cereal[BLUE] < v.unlock) { toast(`${v.name} costs ${v.unlock} cereal`); sfx('no'); return; }
-    state.cereal[BLUE] -= v.unlock;
+    const vc = vehCost(k);
+    if (state.cereal[BLUE] < vc.c || state.clips[BLUE] < vc.p) { toast(`${v.name} costs ${vc.c} cereal${vc.p ? ` + ${vc.p} clips` : ''}`); sfx('no'); return; }
+    state.cereal[BLUE] -= vc.c; state.clips[BLUE] -= vc.p;
     state.unlocked.add(k);
   }
   setVehicle(k);
@@ -1004,8 +1198,8 @@ addEventListener('keydown', (e) => {
 });
 function updateCosts() {
   if (!state.player) return;
-  $('gunCost').textContent = costOf('gun');
-  $('rocketCost').textContent = costOf('rocket');
+  $('gunCost').textContent = priceText('gun');
+  $('rocketCost').textContent = priceText('rocket');
 }
 
 // ---------- Enemy commander ----------
@@ -1033,8 +1227,12 @@ function commanderBuild(ramp) {
   else if (homeCount < homeWanted) spot = spotNear(...RED_HOME[homeCount % RED_HOME.length], RED);
   if (spot) {
     if (cereal[RED] < 25) return true; // saving up: don't spend on cars
+    let type = Math.random() < 0.6 ? 'gun' : 'rocket';
+    const need = state.level.turretClips?.[type] || 0;
+    if (need > state.clips[RED]) type = 'gun'; // no paperclips for a rocket yet
+    else state.clips[RED] -= need;
     cereal[RED] -= 25;
-    const t = makeTurret(Math.random() < 0.6 ? 'gun' : 'rocket', RED, spot[0], spot[1]);
+    const t = makeTurret(type, RED, spot[0], spot[1]);
     if (ramp > 0.7) levelUp(t);
     if (dist2(t, state.player) < 40 * 40) toast('They built a turret!');
     return false;
@@ -1057,13 +1255,16 @@ function commander(dt) {
   if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
   const roll = Math.random();
-  const want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
+  let want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
+  const heavyClips = state.level.heavyClips || 0; // the enemy's tanks cost paperclips too
+  if (want === 'heavy' && state.clips[RED] < heavyClips) want = 'buggy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
   const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
   // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
   const armyCap = state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
   if (army < armyCap && state.cereal[RED] >= price + 10) {
     state.cereal[RED] -= price;
+    if (want === 'heavy') state.clips[RED] -= heavyClips;
     spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
   }
 }
@@ -1073,7 +1274,9 @@ function unitThink(u, dt) {
   u.think -= dt;
   if (u.think <= 0) {
     u.think = 0.4 + Math.random() * 0.3;
-    u.target = nearestEnemy(u, 15);
+    // Raiders go straight for the nearest truck of yours, wherever it is.
+    const truck = u.raid ? workersOf(1 - u.team, 'truck').sort((a, b) => dist2(u, a) - dist2(u, b))[0] : null;
+    u.target = truck || nearestEnemy(u, 15);
     if (!u.target) {
       const mine = (o) => o.owner === u.team && o.progress * (u.team === BLUE ? 1 : -1) >= 1;
       const open = outposts.filter((o) => !mine(o)).sort((a, b) => dist2(u, a) - dist2(u, b));
@@ -1086,6 +1289,80 @@ function unitThink(u, dt) {
   const d = steer(u, goal.x, goal.z, stop, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }, goal);
   u.cool -= dt;
   if (t && u.cool <= 0 && d < u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+}
+
+// ---------- Erasers, raids and the boss (level 2 rules) ----------
+// Erasers slide where you shove them, stop at walls and each other, and the route grid is rebuilt as they settle.
+function erasersUpdate(dt) {
+  for (const o of erasers) {
+    o.blocked = false;
+    const moving = o.vx !== 0 || o.vz !== 0;
+    if (moving) {
+      o.x += o.vx * dt; o.z += o.vz * dt;
+      const f = Math.exp(-4 * dt);
+      o.vx *= f; o.vz *= f;
+      if (Math.hypot(o.vx, o.vz) < 0.2) o.vx = o.vz = 0;
+    }
+    // Keep on the table, and out of walls, turrets and other erasers.
+    const hx = W / 2 - o.w / 2, hz = D / 2 - o.d / 2;
+    if (o.x < -hx) { o.x = -hx; o.vx = 0; o.blocked = true; } else if (o.x > hx) { o.x = hx; o.vx = 0; o.blocked = true; }
+    if (o.z < -hz) { o.z = -hz; o.vz = 0; o.blocked = true; } else if (o.z > hz) { o.z = hz; o.vz = 0; o.blocked = true; }
+    for (const q of obstacles) {
+      if (q === o) continue;
+      const ox = (o.w + q.w) / 2 - Math.abs(o.x - q.x), oz = (o.d + q.d) / 2 - Math.abs(o.z - q.z);
+      if (ox <= 0 || oz <= 0) continue;
+      const other = q.kind === 'eraser', k = other ? 0.5 : 1;
+      if (ox < oz) { const sg = o.x < q.x ? -1 : 1; o.x += sg * ox * k; if (other) { q.x -= sg * ox * k; q.vx = o.vx * 0.6; } o.vx = 0; }
+      else { const sg = o.z < q.z ? -1 : 1; o.z += sg * oz * k; if (other) { q.z -= sg * oz * k; q.vz = o.vz * 0.6; } o.vz = 0; }
+      if (!other) o.blocked = true;
+    }
+    o.group.position.set(o.x, 0, o.z);
+    // Units route round erasers: rebuild the grid when one has moved a cell, and again when it settles.
+    const still = o.vx === 0 && o.vz === 0;
+    if (Math.hypot(o.x - o.nx, o.z - o.nz) > CELL || (still && (o.x !== o.nx || o.z !== o.nz))) { o.nx = o.x; o.nz = o.z; navDirty = true; }
+  }
+}
+function spawnRaid() {
+  const [lo, hi] = state.level.rules.raidSize;
+  const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+  for (let i = 0; i < n; i++) spawnUnit('raider', RED, 54, (i - (n - 1) / 2) * 5).raid = true;
+  toast('Raid incoming!'); sfx('raid');
+}
+const BOSS_STATS = { speed: 5, accel: 12, turn: 1.5, grip: 12 };
+function spawnBoss() {
+  const B = state.level.rules.boss;
+  const boss = {
+    kind: 'boss', team: RED, x: 56, z: 0, vx: 0, vz: 0, heading: Math.PI, r: 4.4, hp: B.hp, maxHp: B.hp, armor: 4,
+    fat: true, mesh: buildModel('stapler', RED, 1.2), think: 0, snap: 0, snapCool: 0, cool: 0, prey: null,
+    weapon: { vsBase: 0.3, dmg: 5, rate: 0.5, range: 14, speed: 40, color: 0xcfd3da, size: 0.4 },
+  };
+  boss.lid = boss.mesh.getObjectByName('lid');
+  entities.push(boss);
+  state.boss = boss;
+  $('bossbar').hidden = false;
+  toast('The Stapler is coming!'); sfx('roar');
+}
+// Heads for your nearest turret and snaps it shut on contact; with none left it chews the toy box.
+function bossThink(b, dt) {
+  b.think -= dt; b.snap = Math.max(0, b.snap - dt); b.snapCool -= dt; b.cool -= dt;
+  if (b.think <= 0) {
+    b.think = 0.5;
+    b.prey = entities.filter((e) => e.kind === 'turret' && e.team === BLUE && e.hp > 0).sort((p, q) => dist2(b, p) - dist2(b, q))[0] || null;
+  }
+  const prey = b.prey && b.prey.hp > 0 ? b.prey : null, goal = prey || state.bases[BLUE];
+  const d = steer(b, goal.x, goal.z, prey ? 0 : goal.r + 1, dt, BOSS_STATS, prey);
+  if (prey && d < b.r + 4 && b.snapCool <= 0) {
+    b.snap = 0.5; b.snapCool = 1.2;
+    hurt(prey, 99999, RED);
+    sfx('snap'); burst(prey.x, prey.z, 0xc8281f, 14, 9, 2);
+    state.shake = Math.min(1.6, (state.shake || 0) + 0.5);
+    toast('Snap! The Stapler shut a turret');
+  } else if (!prey && d < b.r + 8) {
+    hurt(goal, 30 * dt, RED, { vsBase: 1 }); // chewing the toy box
+    if (b.snap <= 0) b.snap = 0.5;
+  }
+  const t = nearestEnemy(b, b.weapon.range);
+  if (t && b.cool <= 0) { b.cool = b.weapon.rate * 1.6; fire(b, t, b.weapon); }
 }
 
 // ---------- Main loop ----------
@@ -1147,6 +1424,7 @@ function update(dt) {
     if (e.hp <= 0) continue;
     if (e.kind === 'unit') unitThink(e, dt);
     if (e.kind === 'worker') workerThink(e, dt);
+    if (e.kind === 'boss') bossThink(e, dt);
     if (e.kind === 'turret' || e.kind === 'base') {
       e.cool -= dt;
       const t = nearestEnemy(e, e.weapon.range);
@@ -1158,6 +1436,11 @@ function update(dt) {
     }
   }
   collideMovers();
+  erasersUpdate(dt);
+  const R = state.level.rules;
+  if (R.raidEvery && state.time >= state.nextRaid) { state.nextRaid += R.raidEvery; spawnRaid(); }
+  if (R.boss && !state.boss && state.time >= R.boss.at) spawnBoss();
+  if (state.boss && state.boss.hp > 0) $('bossHp').style.width = `${state.boss.hp / state.boss.maxHp * 100}%`;
 
   // Shots
   for (let i = shots.length - 1; i >= 0; i--) {
@@ -1191,7 +1474,7 @@ function update(dt) {
   // Remove the dead (bases stay for the end screen).
   for (let i = entities.length - 1; i >= 0; i--) {
     const e = entities[i];
-    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker')) {
+    if (e.hp <= 0 && (e.kind === 'unit' || e.kind === 'turret' || e.kind === 'worker' || e.kind === 'boss')) {
       entities.splice(i, 1);
       if (e.kind === 'turret') { const k = obstacles.findIndex((o) => o.ref === e); if (k >= 0) obstacles.splice(k, 1); navDirty = true; }
     }
@@ -1238,6 +1521,8 @@ function update(dt) {
 
   // HUD
   $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;
+  $('clipsHud').hidden = state.level.resources.length < 2;
+  $('clipsHud').textContent = `${Math.floor(state.clips[BLUE])} clips`;
   $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
   const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
@@ -1260,14 +1545,17 @@ let ghost = null;
 function render(dt) {
   const time = performance.now() / 1000;
   for (const e of entities) {
-    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker')) continue;
+    if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker' && e.kind !== 'boss')) continue;
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0, e.z);
     e.mesh.rotation.y = -e.heading;
+    if (e.kind === 'boss') e.lid.rotation.z = e.snap > 0 ? 0.9 * Math.max(0, 1 - e.snap * 3.5) : 0.65 + Math.sin(time * 3) * 0.15; // snaps shut, then creaks open
     if (e.role === 'digger') { const arm = e.mesh.getObjectByName('arm'); if (arm) arm.rotation.z = e.digging ? Math.sin(time * 4) * 0.45 : 0.2; }
     if (e.role === 'truck') {
       const bed = e.mesh.getObjectByName('bed');
-      bed.getObjectByName('load').scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
+      const load = bed.getObjectByName('load');
+      load.scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
+      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : 0xf2c97d);
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });

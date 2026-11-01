@@ -12,6 +12,8 @@ This file is for the developers (human or AI) picking it up. Read this, then
 |---|---|
 | ![title](shots/1-title.png) | ![economy](shots/3-economy.png) |
 
+Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-boss.png) ![erasers](shots/7-level2-erasers.png) ![select](shots/5-title-levels.png)
+
 ![off the edge](shots/4-battle.png)
 *Near the table edge the camera now stays over the table. The green circle behind the car is the build ghost: green means a turret fits there and you can afford it, red means you can't.*
 
@@ -57,26 +59,58 @@ This file is for the developers (human or AI) picking it up. Read this, then
 - Its army cap goes 3, then 5, then 8–14 as the game goes on.
 - Both sides get a free truck every 45 seconds.
 
-## 4. Code map (`index.html`, about 1,220 lines)
+## 4. Code map (`index.html`, about 1,680 lines)
 
 | Lines | What |
 |---|---|
-| 1–130 | HTML, CSS, HUD, title and end cards |
-| 133–135 | table size (150 × 96 toy units, 1 unit ≈ 1 cm), teams, colours |
-| 157–395 | building the world: `mesh`, `woodTexture`, `block`, `buildModel` (every vehicle is made from shapes), `makeBase`, `makeOutpost` (bottle caps), `makePile` |
-| 240–260 | **tuning tables:** `WEAPONS` (damage, rate, range, vsBase), `VEHICLES`, `ENEMY_TYPES` |
-| 377–378 | cereal pile spots and the refilling bowl |
-| 398–480 | economy: spills, `WORKERS`, `workerThink` (dig, haul, unload) |
-| 482–575 | route finding: A* on a 2-unit grid (`navBuild`, `findPath`), `steer` |
-| 577–660 | spawning, vehicles, `reset`, touch buttons |
-| 663–680 | `sfx` (simple beeps: needs real sound), `toast` |
-| 681–800 | movement, collisions, `fire`, `burst` (particles), `hurt` |
-| 799–870 | `TURRETS`, `build`, `canPlace`, `upgrade`, `drones` |
-| 875–910 | garage and costs |
-| 908–985 | **enemy commander** (`commanderBuild`, `commander`) and unit AI (`unitThink`) |
-| 986–1150 | main loop: `step`, `update` |
-| 1151–1200 | camera and `render` |
-| 1204–1220 | win or lose, `start` |
+| 1–140 | HTML, CSS, HUD (cereal and clips, boss bar), title card with level buttons, end card |
+| 145–150 | table size (150 × 96 toy units, 1 unit ≈ 1 cm), teams, colours |
+| 165–280 | building the world: `mesh`, `woodTexture`, `matTexture`, `rulerTexture`, `block`, `makeEraser`, `pencilCaseDecor` |
+| 281–383 | **`LEVELS`** (see "Level format" below) and `buildLevel` |
+| 384–500 | **tuning tables:** `WEAPONS` (damage, rate, range, vsBase), `VEHICLES`, `ENEMY_TYPES`; `buildModel` (every vehicle, plus the Stapler, is made from shapes) |
+| 504–600 | state, `makeBase`, `makeOutpost` (bottle caps), cereal piles (`loopsGroup`) and paperclip piles (`clipsGroup`), spills |
+| 600–680 | economy: `WORKERS`, `workerThink` (dig, haul, unload; trucks stick to one resource per trip) |
+| 680–785 | route finding: A* on a 2-unit grid (`navBuild`, `findPath`, `closedFat` for the big boss), `steer` |
+| 784–830 | spawning, vehicles, `reset` (builds the current level), touch buttons |
+| 830–950 | input, `sfx` (toy sounds in code, incl. raid siren, snap, roar, scrape) |
+| 950–1090 | helpers, collisions (`collideObstacles` shoves erasers), `drive`, `fire`, `burst`, `hurt` (boss armour, boss death) |
+| 1090–1205 | `TURRETS`, `build`, `canPlace`, `upgrade`, `drones`, garage and costs (`vehCost`, `clipsOf`) |
+| 1205–1295 | **enemy commander** (`commanderBuild`, `commander`) and unit AI (`unitThink`, raiders) |
+| 1295–1370 | level 2 rules: `erasersUpdate`, `spawnRaid`, `spawnBoss`, `bossThink` |
+| 1370–1610 | main loop: `step`, `update`, camera and `render` |
+| 1610–1678 | progress and level select (`localStorage`), `endGame` (stars), `start` |
+
+### Level format
+
+`LEVELS` is an array of 6 entries. Levels 3 to 6 are `{ name, time, soon: true }`
+stubs that show "coming soon". A playable entry holds:
+
+| Field | Meaning |
+|---|---|
+| `name`, `time`, `blurb`, `tips` | title-card text |
+| `tableColor`, `tableTex` | tint, and `'mat'` for the green cutting mat (default wood) |
+| `blocks` | `[x, z, w, d, h, colour, kind]`; kinds: `pencil`, `book`, `mug`, `die`, `ruler`, or a plain box |
+| `erasers` | `[x, z, w, d, colour]`: pushable blocks |
+| `patches` | `{ x, z, r, kind: 'juice' \| 'cereal', color? }` |
+| `outposts` | bottle-cap spots `[x, z]` |
+| `piles`, `refill` | `[x, z, amount, res?]` (`res` is `'clips'` or default cereal); `refill` is `{ x, z, rate }` for piles that fill again |
+| `start` | `{ cereal, clips, unlocked: [vehicles] }` |
+| `resources` | `['cereal']` or `['cereal', 'clips']` (clips turn on the HUD counter and truck preferences) |
+| `turretClips`, `vehicleCosts`, `heavyClips` | extra paperclip costs: turrets `{ rocket: 10 }`, vehicles `{ tank: { c, p } }`, the enemy's heavy tank |
+| `rules` | `baseHp`, `raidEvery` (s), `raidSize` `[min, max]`, `boss: { at, hp, spill }` |
+| `decor` | optional function that adds look-only shapes |
+
+`reset()` calls `buildLevel(LEVELS[curLevel])`, which throws away the old
+level's group and rebuilds blocks, erasers, patches and decor. Level 1's
+numbers are the original ones.
+
+**Progress:** `localStorage` key `bb-progress-v1`, `{"stars":{"1":3,"2":1}}`
+(best stars per level number). A level unlocks when the one before has at
+least 1 star. To test level 2 without winning level 1, set
+`localStorage.setItem('bb-progress-v1', JSON.stringify({stars:{1:1}}))`
+before the page loads. Every read and write is in try/catch, so the game
+works without storage. Stars: 1 for a win, 1 for under 8 minutes
+(`FAST_WIN`), 1 for no truck lost (`state.trucksLost`).
 
 **Rules for the code**
 - Keep it one HTML file with no image or sound files until level 2 ships. That keeps it light on an iPad.
@@ -89,7 +123,7 @@ This file is for the developers (human or AI) picking it up. Read this, then
 2. ~~**Building is unclear**~~ **Fixed 31 Oct:** a build ghost (green or red circle) shows where a turret will go.
 3. ~~**Sound**~~ **Done 1 Nov:** toy sounds made in code: a click per weapon, thumps, a cereal crunch, a pour, a build ratchet, a capture fanfare, win and lose tunes, and an engine hum that follows your speed. M mutes.
 4. **Hard start:** new players struggle in the first minute (Harry: "starts off really hard, but you get the knack"). It needs a gentler first two minutes, or a short tutorial.
-5. **No level select or progress saving.**
+5. ~~**No level select or progress saving.**~~ **Done 1 Nov:** 6 level buttons, stars, saved on the device.
 6. **Cereal is solid piles.** Harry wants loose bits you push with a bulldozer into hoppers.
 
 ## 6. What to build next, in order
@@ -102,8 +136,8 @@ This file is for the developers (human or AI) picking it up. Read this, then
 | 3 | Game feel ("juice") | makes every hit satisfying | screen shake on big hits, hit-flash, cereal bursting out of wrecks, wheels kicking crumbs |
 | 4 | First-two-minutes tutorial | keeps new players | a new player builds a truck, a digger and a turret in the first 2 minutes without reading the text |
 | 5 | Loose cereal + hoppers + bulldozer | Harry's idea; physical and fun | cereal bits can be pushed; a hopper turns pushed cereal into money |
-| 6 | Level select + saving | reason to come back | the campaign map shows 6 levels; stars saved on the device |
-| 7 | Level 2: Pencil case | second resource (paperclips) | see DESIGN.md |
+| 6 | ~~Level select + saving~~ done 1 Nov | reason to come back | the title card shows 6 levels; stars saved on the device |
+| 7 | ~~Level 2: Pencil case~~ done 1 Nov (no bulldozer yet) | second resource (paperclips) | paperclips, pushable erasers, raids every 90 s, the Stapler boss at 4:00. Balance is untested by a human: playtest it (target 8 to 12 minutes) |
 | 8 | Two players on one iPad | Micro Machines spirit | one player at each end of the screen |
 
 ## 7. Questions still open (Harry's call: taste)
