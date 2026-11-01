@@ -76,12 +76,22 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
   position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(28, 23, 18, 0.72);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.card { max-width: 560px; display: grid; gap: 14px; text-align: center; justify-items: center; }
+.card { max-width: 700px; display: grid; gap: 14px; text-align: center; justify-items: center; }
 .card h1 { font: 44px/1 var(--display); margin: 0; color: var(--gold); text-shadow: 0 4px 0 var(--ink); text-wrap: balance; }
 .card .sub { font: 14px var(--display); color: var(--paper); opacity: 0.8; letter-spacing: 0.06em; }
 .card p { margin: 0; font-size: 18px; line-height: 1.4; max-width: 46ch; }
 .card ul { margin: 0; padding: 0; list-style: none; font-size: 16px; line-height: 1.5; display: grid; gap: 2px; }
 .card .go { font: 24px var(--display); background: var(--blue); border-color: var(--paper); padding: 16px 30px; min-width: 200px; }
+.levels { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.levels button { width: 100px; min-width: 0; min-height: 76px; padding: 8px 6px; font-size: 13px; line-height: 1.15; }
+.levels button b { font: 20px var(--display); }
+.levels button.cur { border-color: var(--gold); background: rgba(255, 194, 61, 0.28); }
+.levels button.locked, .levels button.soon { opacity: 0.4; filter: grayscale(1); cursor: default; }
+.stars { font: 30px var(--display); color: var(--gold); letter-spacing: 0.1em; text-shadow: 0 2px 0 var(--ink); }
+.levels .stars { font-size: 15px; letter-spacing: 0.05em; }
+.stars .off { color: rgba(255, 248, 236, 0.28); text-shadow: none; }
+.card .two { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.card .go.alt { background: var(--glass); font-size: 18px; padding: 14px 20px; min-width: 120px; }
 @media (max-width: 700px) { .garage { max-width: calc(100vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); } .card h1 { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
@@ -110,20 +120,16 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 <div class="screen" id="start">
   <div class="card">
     <h1>BAGUETTES &amp; BALLISTICS</h1>
-    <p class="sub">Mealtime Mayhem · Level 1 · Breakfast table</p>
-    <p>Tiny cars, big war over breakfast. Diggers dig cereal out of spilled bowls, dump trucks haul it home. Spend it on turrets, cars and more trucks. Wrecks spill cereal: drive over it to scoop it up. Smash the red toy box.</p>
-    <ul>
-      <li><b>Drive:</b> drag anywhere on the left half (or WASD)</li>
-      <li><b>Fire:</b> hold FIRE (or Space). It aims for you</li>
-      <li><b>Build:</b> Truck (T), Digger (G), Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)</li>
-      <li><b>Haul:</b> trucks unload at your toy box or any bottle cap you hold</li>
-      <li><b>Swap vehicle:</b> drive home to your toy box</li>
-    </ul>
+    <div class="levels" id="levels"></div>
+    <p class="sub" id="lvlSub"></p>
+    <p id="lvlBlurb"></p>
+    <ul id="lvlTips"></ul>
     <button class="go" id="play">PLAY</button>
   </div>
 </div>
 <div class="screen" id="end" hidden>
-  <div class="card"><h1 id="endTitle">YOU WIN</h1><p id="endText"></p><button class="go" id="again">PLAY AGAIN</button></div>
+  <div class="card"><h1 id="endTitle">YOU WIN</h1><div class="stars" id="endStars"></div><p id="endText"></p>
+    <div class="two"><button class="go" id="next" hidden>NEXT LEVEL</button><button class="go alt" id="again">PLAY AGAIN</button><button class="go alt" id="menu">LEVELS</button></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -246,6 +252,11 @@ const LEVELS = [
     start: { cereal: 25, unlocked: ['racer', 'tank'] },
     rules: {},
   },
+  { name: 'Pencil case', time: 'morning', soon: true },
+  { name: 'Remote-control drawer', time: 'midday', soon: true },
+  { name: 'The sink', time: 'lunch', soon: true },
+  { name: 'Hob and oven', time: 'afternoon', soon: true },
+  { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },
 ];
 
 const levelRoot = new THREE.Group();
@@ -640,7 +651,7 @@ function reset() {
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, time: 0, over: false, shake: 0, aiClock: 0, unlocked: new Set(L.start.unlocked),
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
@@ -885,7 +896,7 @@ function hurt(e, dmg, byTeam, weapon) {
   // Wrecks spill cereal where they fall: scoop it up (or let your trucks).
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
   if (e.kind === 'turret') makeSpill(e.x, e.z, 12);
-  if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) toast(`Lost a ${e.role}!`); }
+  if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) { toast(`Lost a ${e.role}!`); if (e.role === 'truck') state.trucksLost++; } }
   if (e.kind === 'base') { endGame(e.team !== BLUE); return; }
   scene.remove(e.mesh);
 }
@@ -1314,11 +1325,54 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
+// ---------- Progress and level select ----------
+// Stars per level (by level number) live in localStorage; every read and write is wrapped so the game works without storage.
+const SAVE_KEY = 'bb-progress-v1';
+const progress = { stars: {} };
+try {
+  const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+  if (saved && typeof saved.stars === 'object') for (const k in saved.stars) progress.stars[k] = Math.max(0, Math.min(3, saved.stars[k] | 0));
+} catch (e) { /* no storage: progress lasts until the page closes */ }
+function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* ignore */ } }
+const starsOf = (i) => progress.stars[i + 1] | 0;
+const isUnlocked = (i) => i === 0 || starsOf(i - 1) > 0;
+const isPlayable = (i) => isUnlocked(i) && !LEVELS[i].soon;
+const starRow = (n) => [0, 1, 2].map((k) => `<span class="${k < n ? '' : 'off'}">\u2605</span>`).join('');
+const FAST_WIN = 480; // seconds: the "under 8 minutes" star
+function renderLevels() {
+  $('levels').innerHTML = LEVELS.map((L, i) => {
+    const cls = [i === curLevel ? 'cur' : '', !isUnlocked(i) ? 'locked' : '', L.soon ? 'soon' : ''].join(' ');
+    const note = L.soon ? 'coming soon' : !isUnlocked(i) ? 'locked' : '';
+    return `<button data-i="${i}" class="${cls}" ${isPlayable(i) ? '' : 'aria-disabled="true"'}><b>${i + 1}</b>${L.name}${note ? `<small>${note}</small>` : `<span class="stars">${starRow(starsOf(i))}</span>`}</button>`;
+  }).join('');
+  for (const b of $('levels').querySelectorAll('button')) b.addEventListener('click', () => { if (isPlayable(+b.dataset.i)) selectLevel(+b.dataset.i); });
+  const L = LEVELS[curLevel];
+  $('lvlSub').textContent = `Mealtime Mayhem \u00b7 Level ${curLevel + 1} \u00b7 ${L.name}`;
+  $('lvlBlurb').textContent = L.blurb;
+  $('lvlTips').innerHTML = L.tips.map((t) => `<li>${t}</li>`).join('');
+}
+function selectLevel(i) {
+  curLevel = i;
+  reset(); // the new level shows behind the card
+  renderLevels();
+}
+// Open on the first level you haven't won yet (or the last one you can play).
+curLevel = LEVELS.findIndex((L, i) => isPlayable(i) && !starsOf(i));
+if (curLevel < 0) curLevel = LEVELS.reduce((best, L, i) => (isPlayable(i) ? i : best), 0);
+
 function endGame(won) {
   state.over = true;
+  const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
+  if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
+  else if (won) saveProgress();
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
-  $('endText').textContent = won ? `Their toy box is crumbs. Time ${mins}:${secs}.` : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
+  $('endText').textContent = won
+    ? `Their toy box is crumbs. Time ${mins}:${secs}. ${state.time < FAST_WIN ? 'Fast win star!' : 'Win in under 8 minutes for a star.'} ${state.trucksLost === 0 ? 'No trucks lost star!' : `You lost ${state.trucksLost} truck${state.trucksLost === 1 ? '' : 's'}: win without losing one for a star.`}`
+    : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
+  $('endStars').innerHTML = won ? starRow(earned) : '';
+  const nextOk = won && LEVELS[curLevel + 1] && isPlayable(curLevel + 1);
+  $('next').hidden = !nextOk;
   setTimeout(() => { sfx(won ? 'win' : 'lose'); $('end').hidden = false; }, 1200);
 }
 function start() {
@@ -1328,6 +1382,9 @@ function start() {
 }
 $('play').addEventListener('click', start);
 $('again').addEventListener('click', start);
+$('next').addEventListener('click', () => { curLevel += 1; start(); });
+$('menu').addEventListener('click', () => { $('end').hidden = true; $('start').hidden = false; selectLevel(curLevel); });
+renderLevels();
 reset();
 requestAnimationFrame(step);
 </script>
