@@ -19,4 +19,4 @@ turrets, drones, trucks and vehicles. Wrecks spill cereal: drive over it to
 scoop it up. The middle bowl keeps refilling. The enemy runs the same
 economy, so raid its trucks.
 
-**Level 2 extras.** Staple gun turret (Q): staples pin cars in place. Paperclip armour (R, at home): up to 3 plates, each takes 15% off every hit.
+**Level 2 extras.** Staple gun turret (Q): staples pin cars in place. Paperclip armour (R, at home): up to 3 plates, each takes 15% off every hit. Magnet (F): pulls in loose cereal and drags enemy cars. Catapult (E): lobs erasers over walls at their toy box from long range.

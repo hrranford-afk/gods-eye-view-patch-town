@@ -126,7 +126,16 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
   home, 15, 25 and 35 clips. Each plate takes 15% off every hit (3 at most,
   so 55% of the damage gets through). Plates stay on when you swap cars.
   `armour()`, `armourModel()`, `state.plates`.
-- Both buttons are hidden on levels without paperclips.
+- **Magnet tower** (button *Magnet*, key F): 30 cereal + 12 clips. No gun:
+  it pulls loose cereal within about 16 units straight into your stock, and
+  drags and pulls enemy cars within 12. `magnetThink`.
+- **Rubber-band catapult** (button *Catapult*, key E): 45 cereal + 15 clips.
+  Lobs an eraser in a high arc over walls every 3.2 s, range 44, so it can hit
+  their toy box from just outside the no-build zone (36). Aims for the toy box
+  whenever it's in reach. 30 damage with full effect on boxes (about 10 a
+  second: two minutes to flatten a box alone, so the enemy must hunt it).
+  Lobbed shots: `weapon.lob`, `s.lobbed` in the shot loop.
+- The paperclip buttons sit in their own row, hidden on levels without clips.
 
 ## 5. Known problems (fix first)
 

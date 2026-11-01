@@ -111,6 +111,12 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
 <div class="garage" id="garage" hidden></div>
 <div class="controls">
+  <div class="row clipsRow" id="clipsRow" hidden>
+    <button id="bStaple">Staple<small id="stapleCost">20</small></button>
+    <button id="bMagnet">Magnet<small id="magnetCost">30</small></button>
+    <button id="bCatapult">Catapult<small id="catapultCost">45</small></button>
+    <button id="bArmour">Armour<small id="armourCost">15 clips</small></button>
+  </div>
   <div class="row">
     <button id="bTruck">Truck<small>15</small></button>
     <button id="bDigger">Digger<small>20</small></button>
@@ -120,8 +126,6 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
   <div class="row">
     <button id="bGun">Gun<small id="gunCost">25</small></button>
     <button id="bRocket">Rocket<small id="rocketCost">40</small></button>
-    <button id="bStaple" hidden>Staple<small id="stapleCost">20</small></button>
-    <button id="bArmour" hidden>Armour<small id="armourCost">15 clips</small></button>
     <button class="fire" id="bFire">FIRE</button>
   </div>
 </div>
@@ -346,7 +350,7 @@ const LEVELS = [
     refill: [{ x: -14, z: -4, rate: 0.2 }, { x: 14, z: 4, rate: 0.2 }], // the case keeps spilling clips
     start: { cereal: 25, clips: 10, unlocked: ['racer'] },
     resources: ['cereal', 'clips'],
-    turretClips: { rocket: 10, staple: 8 },   // paperclips a turret costs on top of cereal
+    turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },   // paperclips a turret costs on top of cereal
     vehicleCosts: { tank: { c: 20, p: 15 } },
     heavyClips: 5,                 // the enemy's heavy tank costs clips too
     rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
@@ -393,6 +397,8 @@ const WEAPONS = {
   flame: { vsBase: 0.5, dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
   // The staple gun pins what it hits for a moment (pin seconds; bosses shrug most of it off).
   staple: { vsBase: 0.3, dmg: 5, rate: 0.1, range: 18, speed: 80, pin: 0.7, color: 0xd9dde3, size: 0.28 },
+  // The rubber-band catapult lobs erasers over walls: slow, long, and it can knock on a toy box from outside the no-build zone.
+  eraser: { vsBase: 1.0, dmg: 30, rate: 3.2, range: 44, speed: 30, lob: 1.5, splash: 4, color: 0xf4a6b8, size: 0.9 },
   raid: { vsBase: 0.3, dmg: 3, rate: 0.14, range: 13, speed: 60, color: 0xffb3a7, size: 0.35 }, // a raider's pop-gun: quick, but weak
   laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
 };
@@ -857,6 +863,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
+  if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
@@ -871,6 +878,8 @@ tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
 tap('bStaple', () => build('staple'));
 tap('bArmour', () => armour());
+tap('bMagnet', () => build('magnet'));
+tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
 tap('bTruck', () => buyWorker('truck', BLUE));
@@ -1050,6 +1059,11 @@ function fire(from, target, weapon, angle) {
   const ox = Math.cos(a) * muzzle, oz = Math.sin(a) * muzzle;
   m.position.set(from.x + ox, y, from.z + oz);
   scene.add(m);
+  if (weapon.lob && target) {
+    // Lobbed: fly to where the target is now, in a high arc, ignoring walls; land and splash.
+    const tx = target.x + (Math.random() - 0.5) * 2, tz = target.z + (Math.random() - 0.5) * 2, T = weapon.lob;
+    shots.push({ x: from.x + ox, z: from.z + oz, y, y0: y, vx: (tx - from.x - ox) / T, vz: (tz - from.z - oz) / T, team: from.team, weapon, target: null, life: T, T, lobbed: true, mesh: m });
+  } else
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
   if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
 }
@@ -1110,6 +1124,9 @@ const TURRETS = {
   gun: { name: 'Gun', cost: 25, weapon: WEAPONS.mg, hp: 140, range: 17, rate: 0.13, dmg: 6 },
   rocket: { name: 'Rocket', cost: 40, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
   // Paperclip levels only: bursts of staples that pin cars in place.
+  // A fridge magnet on a stalk: pulls loose cereal in (it counts as hauled) and drags enemy cars nearby. No gun.
+  magnet: { name: 'Magnet', cost: 30, weapon: { range: 12, rate: 1, dmg: 0, speed: 1, color: 0, size: 0 }, hp: 160, range: 12, rate: 1, dmg: 0 },
+  catapult: { name: 'Catapult', cost: 45, weapon: WEAPONS.eraser, hp: 110, range: 44, rate: 3.2, dmg: 30 },
   staple: { name: 'Staple gun', cost: 20, weapon: WEAPONS.staple, hp: 130, range: 18, rate: 0.12, dmg: 5, burst: 4, reload: 1.6 },
 };
 const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
@@ -1126,6 +1143,14 @@ function makeTurret(type, team, x, z) {
   else if (type === 'staple') { // a little desk stapler on the turret: grey base, red arm
     mesh(new THREE.BoxGeometry(2.6, 0.35, 0.9), mat(0x9aa0a8, { metalness: 0.4 }), 0.6, 0.55, 0, head);
     mesh(new THREE.BoxGeometry(2.4, 0.45, 0.8), mat(0xc8281f), 0.7, 0.95, 0, head).rotation.z = 0.12;
+  } else if (type === 'magnet') { // horseshoe magnet: red with silver tips
+    const red = mat(0xd62f2f);
+    for (const sz of [-0.55, 0.55]) { mesh(new THREE.BoxGeometry(0.5, 1.8, 0.45), red, 0, 1.1, sz, head); mesh(new THREE.BoxGeometry(0.52, 0.4, 0.47), mat(0xd9dde3, { metalness: 0.6 }), 0, 2.1, sz, head); }
+    mesh(new THREE.BoxGeometry(0.5, 0.45, 1.55), red, 0, 0.25, 0, head);
+  } else if (type === 'catapult') { // lolly-stick arm, rubber band, a pink eraser ready in the cup
+    mesh(new THREE.BoxGeometry(3.2, 0.2, 0.5), mat(0xe8c48a), 0.2, 1.0, 0, head).rotation.z = 0.5;
+    mesh(new THREE.TorusGeometry(0.45, 0.08, 4, 10), mat(0xc79a3d), -0.6, 0.7, 0, head);
+    mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), mat(0xf4a6b8), 1.4, 1.8, 0, head);
   } else mesh(new THREE.BoxGeometry(1.4, 0.9, 1.4), mat(0xfff8ec), 0.6, 0.6, 0, head);
   const pips = new THREE.Group();
   g.add(pips);
@@ -1159,6 +1184,27 @@ function build(type) {
   makeTurret(type, BLUE, x, z);
   sfx('build'); toast(`${TURRETS[type].name} turret built`);
 }
+// ---------- Magnet tower: pulls in loose cereal and drags enemy cars ----------
+function magnetThink(m, dt) {
+  const R = m.weapon.range;
+  for (const sp of spills) {
+    if (sp.amount > 0 && dist2(sp, m) < (R + 4) ** 2) {
+      const got = Math.min(sp.amount, 8 * dt);
+      sp.amount -= got; state.cereal[m.team] += got;
+      if (Math.random() < dt * 6) burst(sp.x + (m.x - sp.x) * Math.random(), sp.z + (m.z - sp.z) * Math.random(), 0xffd166, 1, 2, 1);
+    }
+  }
+  for (const e of entities) {
+    if (e.team === m.team || e.hp <= 0 || !(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive))) continue;
+    const d = Math.hypot(e.x - m.x, e.z - m.z);
+    if (d < R && d > 2.5) {
+      const k = Math.exp(-2.5 * dt); e.vx = (e.vx || 0) * k; e.vz = (e.vz || 0) * k; // drag
+      e.x += (m.x - e.x) / d * 3 * dt; e.z += (m.z - e.z) / d * 3 * dt; // and a gentle pull
+    }
+  }
+  if (m.mesh) { const head = m.mesh.getObjectByName('turret'); if (head) head.rotation.y += dt * 0.8; }
+}
+
 // ---------- Paperclip armour: plates bolted onto your car (paperclip levels) ----------
 const hasClips = () => state.level.resources.includes('clips');
 const armourCost = () => 15 + (state.plates || 0) * 10; // 15, 25, 35 clips
@@ -1253,7 +1299,9 @@ function updateCosts() {
   $('gunCost').textContent = priceText('gun');
   $('rocketCost').textContent = priceText('rocket');
   $('stapleCost').textContent = priceText('staple');
-  $('bStaple').hidden = $('bArmour').hidden = !hasClips();
+  $('clipsRow').hidden = !hasClips();
+  $('magnetCost').textContent = priceText('magnet');
+  $('catapultCost').textContent = priceText('catapult');
   $('armourCost').textContent = (state.plates || 0) >= 3 ? 'full' : `${armourCost()} clips`;
 }
 
@@ -1480,9 +1528,12 @@ function update(dt) {
     if (e.kind === 'unit') unitThink(e, dt);
     if (e.kind === 'worker') workerThink(e, dt);
     if (e.kind === 'boss') bossThink(e, dt);
+    if (e.kind === 'turret' && e.type === 'magnet') { magnetThink(e, dt); continue; }
     if (e.kind === 'turret' || e.kind === 'base') {
       e.cool -= dt;
-      const t = nearestEnemy(e, e.weapon.range);
+      // A catapult aims for their toy box when it can reach it: that's what it's for.
+      const foeBase = state.bases[1 - e.team];
+      const t = e.type === 'catapult' && foeBase.hp > 0 && dist2(e, foeBase) < e.weapon.range ** 2 ? foeBase : nearestEnemy(e, e.weapon.range);
       if (t) {
         const head = e.mesh.getObjectByName('turret');
         if (head) head.rotation.y = -angleTo(e, t);
@@ -1511,9 +1562,17 @@ function update(dt) {
       s.vx = Math.cos(a) * s.weapon.speed; s.vz = Math.sin(a) * s.weapon.speed;
     }
     s.x += s.vx * dt; s.z += s.vz * dt;
+    if (s.lobbed) { const f = 1 - Math.max(0, s.life) / s.T; s.y = s.y0 * (1 - f) + 22 * f * (1 - f) + 0.6; s.mesh.rotation.x += dt * 9; }
     s.mesh.position.set(s.x, s.y, s.z);
-    s.mesh.rotation.z = -Math.atan2(s.vz, s.vx);
+    if (!s.lobbed) s.mesh.rotation.z = -Math.atan2(s.vz, s.vx);
     let hit = s.life <= 0;
+    if (s.lobbed && hit) {
+      // Landed: the eraser bounces off whatever it lands on.
+      for (const e of entities) if (e.team !== s.team && e.hp > 0 && dist2(s, e) < (s.weapon.splash + (e.kind === 'base' ? 5 : 0)) ** 2) hurt(e, s.weapon.dmg, s.team, s.weapon);
+      burst(s.x, s.z, 0xf4a6b8, 10, 7, 1); if (dist2(s, state.player) < 2500) { sfx('cannon'); state.shake = Math.min(1.2, (state.shake || 0) + 0.15); }
+      scene.remove(s.mesh); shots.splice(i, 1); continue;
+    }
+    if (s.lobbed) continue;
     if (!hit && obstacles.some((o) => o.kind !== 'turret' && o.kind !== 'base' && o.h > s.y - 0.5 && Math.abs(s.x - o.x) < o.w / 2 && Math.abs(s.z - o.z) < o.d / 2)) hit = true;
     if (!hit) {
       for (const e of entities) {
