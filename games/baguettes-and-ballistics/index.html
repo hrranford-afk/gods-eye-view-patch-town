@@ -829,6 +829,7 @@ function reset() {
   for (const p of [...piles, ...spills]) scene.remove(p.group);
   for (const d of dominoes) scene.remove(d.pivot);
   dominoes.length = 0;
+  for (const r of state.runs || []) scene.remove(r.button);
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
   const L = LEVELS[curLevel];
@@ -840,6 +841,7 @@ function reset() {
   });
   for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
   for (const [x, z, n, res] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res);
+  state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
@@ -1213,15 +1215,16 @@ function placeDomino() {
   sfx('clack'); toast(`Domino ${dominoes.filter((d) => d.team === BLUE).length}: drive into the first one to knock them over`);
 }
 // A domino stands across its line, so a run falls along the way it was laid. Theirs are red with white spots.
-function addDomino(x, z, dx, dz, team) {
-  const face = team === BLUE ? 0xfaf6ee : 0xb3261e, spot = team === BLUE ? 0x1c1712 : 0xfaf6ee;
+function addDomino(x, z, dx, dz, team, fixed = false) {
+  // Level runs (fixed): cream with spots in the colour of the side whose button sets them off.
+  const face = fixed ? 0xfff3d6 : team === BLUE ? 0xfaf6ee : 0xb3261e, spot = fixed ? COLORS[team] : team === BLUE ? 0x1c1712 : 0xfaf6ee;
   const pivot = new THREE.Group(); pivot.position.set(x, 0, z);
   const body = new THREE.Group(); body.rotation.y = -Math.atan2(dz, dx); pivot.add(body);
   mesh(new THREE.BoxGeometry(0.8, DOMINO_H, 2.6), mat(face), 0, DOMINO_H / 2, 0, body);
   mesh(new THREE.BoxGeometry(0.82, 0.08, 2.2), mat(spot), 0, DOMINO_H / 2, 0, body);
   for (const [py, pz] of [[1.2, -0.6], [1.2, 0.6], [4.3, 0], [3.7, -0.6], [4.9, 0.6]]) mesh(new THREE.BoxGeometry(0.84, 0.3, 0.3), mat(spot), 0, py, pz, body);
   scene.add(pivot);
-  const d = { x, z, dx, dz, team, pivot, angle: 0, falling: false, passed: false, hit: false };
+  const d = { x, z, dx, dz, team, fixed, pivot, angle: 0, falling: false, passed: false, hit: false };
   dominoes.push(d);
   return d;
 }
@@ -1239,7 +1242,7 @@ function dominoesUpdate(dt) {
       for (const e of entities) {
         if (!(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) || e.hp <= 0) continue;
         const sp = Math.hypot(e.vx || 0, e.vz || 0);
-        if (sp > 2 && dist2(e, d) < (e.r + 1.2) ** 2) topple(d, e.vx, e.vz);
+        if (!d.fixed && sp > 2 && dist2(e, d) < (e.r + 1.2) ** 2) topple(d, e.vx, e.vz);
       }
       continue;
     }
@@ -1270,6 +1273,71 @@ function dominoesUpdate(dt) {
         }
       }
       for (const e of entities) if (e.team !== d.team && e.hp > 0 && e.kind !== 'base' && Math.hypot(tx - e.x, tz - e.z) < 2.5) hurt(e, 60, d.team, null);
+    }
+  }
+}
+
+// ---------- Level domino runs: part of the table, set off by a big button ----------
+// Each side has a run that ends at the OTHER side's toy box, with its button out in the middle of the table.
+// Drive onto your button to set yours off; theirs is set off by their cars. A fallen run is set up again after 45 s.
+const RUN_STEP = 4.2;
+function buildLevelRun(team) {
+  const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
+  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5);
+  const toward = Math.sign(target.x) || 1;
+  for (const zb of [30, 24, 36, 18, 40]) for (const xm of [0, -10, 10, -20, 20]) for (const ang of [0.9, 0.7, 1.1, 0.5, 1.3]) {
+    // Path: from the button (mid-table, on this side's edge) along the edge, then bending in to land on the box.
+    const z0 = side * zb, start = { x: xm, z: z0 };
+    const endR = 9.5, ex = target.x - toward * Math.cos(ang) * endR, ez = target.z + side * Math.sin(ang) * endR; // last domino, 9.5 out from the box
+    const bend = { x: ex - toward * Math.cos(ang) * 14, z: ez + side * Math.sin(ang) * 14 };
+    const pts = [start, bend, { x: ex, z: ez }];
+    const path = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const A = pts[i], B = pts[i + 1], len = Math.hypot(B.x - A.x, B.z - A.z), ux = (B.x - A.x) / len, uz = (B.z - A.z) / len;
+      for (let t = i === 0 ? 0 : RUN_STEP; t <= len + 0.01; t += RUN_STEP) path.push({ x: A.x + ux * t, z: A.z + uz * t, dx: ux, dz: uz });
+    }
+    if (path.length < 6 || path.length > 26) continue;
+    // Turns must be gentle enough for one domino to reach the next.
+    let ok = path.every((q) => !blocked(q, 1.4));
+    for (let i = 1; ok && i < path.length; i++) {
+      const P = path[i - 1], Q = path[i], ax = Q.x - P.x, az = Q.z - P.z, r = Math.hypot(ax, az);
+      if (r > 5.6 || ax * P.dx + az * P.dz < r * 0.6) ok = false;
+    }
+    const bx = start.x - path[0].dx * 4.5, bz = start.z - path[0].dz * 4.5;
+    if (!ok || blocked({ x: bx, z: bz }, 1.5)) continue;
+    // The button: a big toy push-button in this side's colour.
+    const button = new THREE.Group(); button.position.set(bx, 0, bz);
+    mesh(new THREE.CylinderGeometry(2.4, 2.7, 0.8, 20), mat(0x2b2b2b), 0, 0.4, 0, button);
+    const cap = mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.7, 20), mat(COLORS[team], { emissive: COLORS[team], emissiveIntensity: 0.4 }), 0, 1.1, 0, button);
+    scene.add(button);
+    const run = { team, x: bx, z: bz, path, button, cap, doms: [], ready: true, resetAt: 0 };
+    standRun(run);
+    return run;
+  }
+  return null; // no room on this level: the level just has no run for this side
+}
+function standRun(run) {
+  for (const d of run.doms) { scene.remove(d.pivot); const k = dominoes.indexOf(d); if (k >= 0) dominoes.splice(k, 1); }
+  run.doms = run.path.map((q) => addDomino(q.x, q.z, q.dx, q.dz, run.team, true));
+  run.ready = true; run.resetAt = 0; run.cap.position.y = 1.1;
+}
+function runsUpdate(dt) {
+  for (const run of state.runs) {
+    if (run.ready) {
+      run.cap.material.emissiveIntensity = 0.3 + Math.sin(state.time * 5) * 0.25; // glows when it's ready
+      const presser = entities.find((e) => e.team === run.team && e.hp > 0 && (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && dist2(e, run) < 3 * 3);
+      if (presser) {
+        run.ready = false; run.cap.position.y = 0.75; run.cap.material.emissiveIntensity = 0;
+        topple(run.doms[0], run.path[0].dx, run.path[0].dz);
+        sfx('cap'); toast(run.team === BLUE ? 'Domino run set off! Watch it go…' : 'They set off the domino run at your toy box!');
+      }
+    } else if (!run.resetAt && run.doms.every((d) => d.hit || !d.falling) && run.doms.at(-1).hit) {
+      run.resetAt = state.time + 45;
+    } else if (!run.resetAt && run.doms.some((d) => d.falling) && run.doms.filter((d) => d.falling).every((d) => d.hit) && !run.doms.every((d) => d.falling)) {
+      run.resetAt = state.time + 45; // the run broke part-way (something was in the way): set it up again anyway
+    } else if (run.resetAt && state.time >= run.resetAt) {
+      standRun(run);
+      if (run.team === BLUE) toast('Your domino run is set up again');
     }
   }
 }
@@ -1504,6 +1572,12 @@ function commander(dt) {
 // ---------- The enemy's tricks: a domino run at your toy box, and hijacking your trucks ----------
 // From 3:00 the enemy sends a domino layer about every 2.5 minutes, and a hijacker about every 2 minutes from 2:30.
 function enemyTricks() {
+  // Their level domino run: from 1:40, send the nearest car to press the button whenever it's set up.
+  const run = state.runs.find((r) => r.team === RED);
+  if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
+    const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker').sort((a, b) => dist2(a, run) - dist2(b, run))[0];
+    if (car) car.presser = run;
+  }
   if (state.time >= state.nextLayer && state.cereal[RED] >= 40) {
     const plan = planDominoRun();
     if (plan) {
@@ -1581,6 +1655,12 @@ function hijackerThink(u, dt) {
 function unitThink(u, dt) {
   if (u.type === 'hijacker') return hijackerThink(u, dt);
   if (u.type === 'layer') return layerThink(u, dt);
+  if (u.presser) {
+    // Sent to press their domino button.
+    const b = u.presser;
+    if (!b.ready) u.presser = null;
+    else { steer(u, b.x, b.z, 0, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }); return; }
+  }
   u.think -= dt;
   if (u.think <= 0) {
     u.think = 0.4 + Math.random() * 0.3;
@@ -1782,7 +1862,7 @@ function update(dt) {
     }
     if (s.lobbed) continue;
     // A shot knocks over a standing domino of the other side, the way the shot was going. Shoot theirs from the box side and the run falls away from you.
-    if (!hit) for (const d of dominoes) if (!d.falling && d.team !== s.team && dist2(s, d) < 1.7 * 1.7) { topple(d, s.vx, s.vz); hit = true; break; }
+    if (!hit) for (const d of dominoes) if (!d.falling && !d.fixed && d.team !== s.team && dist2(s, d) < 1.7 * 1.7) { topple(d, s.vx, s.vz); hit = true; break; }
     if (!hit && obstacles.some((o) => o.kind !== 'turret' && o.kind !== 'base' && o.h > s.y - 0.5 && Math.abs(s.x - o.x) < o.w / 2 && Math.abs(s.z - o.z) < o.d / 2)) hit = true;
     if (!hit) {
       for (const e of entities) {
@@ -1847,6 +1927,7 @@ function update(dt) {
 
   commander(dt);
   enemyTricks();
+  runsUpdate(dt);
 
   // HUD
   $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;

@@ -116,6 +116,25 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
 
+## Level domino runs (1 Nov 2026, Harry's idea: part of the level, switched on)
+
+Every level now has two domino runs built in, one per side
+(`buildLevelRun`, `standRun`, `runsUpdate`, `state.runs`):
+
+- Each run is 13 or so cream dominoes with spots in its side's colour. It
+  starts at a big push-button in the middle of the table, runs along that
+  side's edge, and bends in to end 9.5 units from the *other* toy box.
+- Drive onto your button (blue) to set yours off: 200 damage when it lands.
+  Their cars press the red one: from 1:40, the nearest red car is sent
+  whenever it's set up (`u.presser`).
+- Level dominoes are fixed: cars and shots don't knock them over, only the
+  button (or a domino chain running into them).
+- A fallen run is set up again after 45 seconds. The button glows when ready.
+- The route is found automatically per level (tries mid-table spots and
+  angles until the whole line is clear of blocks), so new levels get runs for
+  free. Tested on levels 1 and 2: blue run 200 damage; the enemy pressed
+  theirs at 1:47 and hit for 200.
+
 ## Hitting a toy box without going at it (1 Nov 2026, every level)
 
 - **Domino run** (button *Domino*, key X): 4 cereal each, 40 at most. A domino

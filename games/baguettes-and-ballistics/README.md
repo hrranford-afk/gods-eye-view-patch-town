@@ -22,3 +22,5 @@ economy, so raid its trucks.
 **Level 2 extras.** Staple gun turret (Q): staples pin cars in place. Paperclip armour (R, at home): up to 3 plates, each takes 15% off every hit. Magnet (F): pulls in loose cereal and drags enemy cars. Catapult (E): lobs erasers over walls at their toy box from long range.
 
 **Sneaky attacks (every level).** Domino (X): line them up to their toy box and knock the first one. Trojan (Y): next to one of their dump trucks, hijack it and it drives home with a firework. The enemy does both too: shoot their red dominoes from your side to knock the run away, and ram a hijacked truck of yours to defuse it.
+
+**Domino runs on every level.** Drive onto your blue button mid-table to set off your run at their toy box. They have one too, aimed at yours; it sets itself up again after 45 seconds.
