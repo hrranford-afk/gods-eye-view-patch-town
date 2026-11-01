@@ -131,7 +131,21 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
   in the back, and drives home; at their toy box it goes off for 260 damage
   (50 to their cars nearby). `trojan`, `trojanThink`, `w.trojan` (skipped by
   `nearestEnemy` and by shots).
-- Not done yet: the enemy using either trick on you.
+- **The enemy uses both** (`enemyTricks`, from `update`):
+  - From 3:00, about every 2.5 minutes (40 cereal), a red builder (`layer`, a
+    Mech) lays a run of 5–6 red dominoes ending 9.5 units from your toy box,
+    from a side with room (`planDominoRun`), backs off and rams the first.
+    Then it joins the fight. Warning toast and siren when it sets out.
+  - From 2:30, about every 2 minutes (25 cereal), a `hijacker` (fast racer)
+    goes for your nearest truck; on contact the truck becomes a trojan and
+    drives to *your* toy box (260). **Ram your own hijacked truck to defuse
+    it.**
+  - Counterplay: shoot their builder; a shot knocks over a standing domino of
+    the other side the way it was going, so shoot their run from the toy-box
+    side and it falls away from you. Dominoes landing on any toy box hurt it,
+    yours included.
+  - Tested in Chromium: their run hit the box for 200 at 18 s after setting
+    out; a hijack at 12 s; ramming defused a trojan.
 
 ## Paperclip upgrades (1 Nov 2026, paperclip levels only)
 
