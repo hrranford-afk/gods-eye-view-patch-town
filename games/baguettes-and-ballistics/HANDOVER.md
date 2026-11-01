@@ -116,6 +116,18 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
 
+## Paperclip upgrades (1 Nov 2026, paperclip levels only)
+
+- **Staple gun turret** (button *Staple*, key Q): 20 cereal + 8 clips. Fires
+  bursts of 4 staples, then reloads; each staple pins a car in place for 0.7 s
+  (a boss for a quarter of that). `WEAPONS.staple`, `TURRETS.staple`, `pin`
+  handled in `hurt`, `drive` and `steer`.
+- **Paperclip armour** (button *Armour*, key R): bolt plates onto your car at
+  home, 15, 25 and 35 clips. Each plate takes 15% off every hit (3 at most,
+  so 55% of the damage gets through). Plates stay on when you swap cars.
+  `armour()`, `armourModel()`, `state.plates`.
+- Both buttons are hidden on levels without paperclips.
+
 ## 5. Known problems (fix first)
 
 1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.

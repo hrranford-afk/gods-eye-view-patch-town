@@ -120,6 +120,8 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
   <div class="row">
     <button id="bGun">Gun<small id="gunCost">25</small></button>
     <button id="bRocket">Rocket<small id="rocketCost">40</small></button>
+    <button id="bStaple" hidden>Staple<small id="stapleCost">20</small></button>
+    <button id="bArmour" hidden>Armour<small id="armourCost">15 clips</small></button>
     <button class="fire" id="bFire">FIRE</button>
   </div>
 </div>
@@ -344,7 +346,7 @@ const LEVELS = [
     refill: [{ x: -14, z: -4, rate: 0.2 }, { x: 14, z: 4, rate: 0.2 }], // the case keeps spilling clips
     start: { cereal: 25, clips: 10, unlocked: ['racer'] },
     resources: ['cereal', 'clips'],
-    turretClips: { rocket: 10 },   // paperclips a turret costs on top of cereal
+    turretClips: { rocket: 10, staple: 8 },   // paperclips a turret costs on top of cereal
     vehicleCosts: { tank: { c: 20, p: 15 } },
     heavyClips: 5,                 // the enemy's heavy tank costs clips too
     rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
@@ -389,6 +391,8 @@ const WEAPONS = {
   cannon: { vsBase: 1.5, dmg: 32, rate: 0.85, range: 19, speed: 40, splash: 3.5, color: 0x2b2b2b, size: 0.7 },
   missile: { vsBase: 1.5, dmg: 16, rate: 0.45, range: 23, speed: 34, homing: true, color: 0xffffff, size: 0.45 },
   flame: { vsBase: 0.5, dmg: 4, rate: 0.05, range: 8.5, speed: 26, spread: 0.35, life: 0.32, color: 0xff7b00, size: 0.6 },
+  // The staple gun pins what it hits for a moment (pin seconds; bosses shrug most of it off).
+  staple: { vsBase: 0.3, dmg: 5, rate: 0.1, range: 18, speed: 80, pin: 0.7, color: 0xd9dde3, size: 0.28 },
   raid: { vsBase: 0.3, dmg: 3, rate: 0.14, range: 13, speed: 60, color: 0xffb3a7, size: 0.35 }, // a raider's pop-gun: quick, but weak
   laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
 };
@@ -751,6 +755,7 @@ function findPath(sx, sz, gx, gz, grid = closed) {
 // Drive towards a point; take a route round blocks when the way isn't clear; stop within `stop`.
 function steer(e, gx, gz, stop, dt, stats, ignore) {
   const full = Math.hypot(gx - e.x, gz - e.z);
+  if (e.pinned > 0) { e.pinned -= dt; e.vx = (e.vx || 0) * 0.8; e.vz = (e.vz || 0) * 0.8; return full; } // stapled to the table
   let tx = gx, tz = gz;
   if (navDirty) navBuild();
   const grid = e.fat ? closedFat : closed;
@@ -798,6 +803,7 @@ function setVehicle(kind) {
   if (p.mesh) scene.remove(p.mesh);
   const v = VEHICLES[kind];
   Object.assign(p, { vehicle: kind, hp: v.hp, maxHp: v.hp, r: v.r, weapon: WEAPONS[v.weapon], mesh: buildModel(kind, BLUE) });
+  armourModel(); // plates move to your new car
   renderGarage();
   updateCosts();
 }
@@ -850,6 +856,7 @@ addEventListener('pointercancel', endStick);
 addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
+  if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
@@ -862,6 +869,8 @@ hold($('bFire'), (v) => { input.fire = v; });
 const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); });
 tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
+tap('bStaple', () => build('staple'));
+tap('bArmour', () => armour());
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
 tap('bTruck', () => buyWorker('truck', BLUE));
@@ -1006,6 +1015,7 @@ function collideMovers() {
 
 // Drive towards a direction (unit vector dx,dz) with a throttle 0..1.
 function drive(e, dx, dz, throttle, dt, stats) {
+  if (e.pinned > 0) { e.pinned -= dt; e.vx *= 0.8; e.vz *= 0.8; return; } // stapled to the table
   if (throttle > 0.05) {
     const want = Math.atan2(dz, dx), diff = wrap(want - e.heading);
     e.heading += Math.sign(diff) * Math.min(Math.abs(diff), stats.turn * dt);
@@ -1057,6 +1067,14 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
+  // Paperclip armour on your car: each plate takes 15% off every hit (3 plates at most).
+  if (e.kind === 'player' && state.plates) dmg *= 1 - 0.15 * state.plates;
+  // Staples pin a car in place for a moment (a boss only flinches).
+  if (weapon?.pin && e.kind !== 'base' && e.kind !== 'turret') {
+    const pin = e.kind === 'boss' ? weapon.pin * 0.25 : weapon.pin;
+    if (!(e.pinned > 0)) burst(e.x, e.z, 0xd9dde3, 4, 4, 1.2);
+    e.pinned = Math.max(e.pinned || 0, pin);
+  }
   // Toy boxes fall to siege weapons (cannons, rockets), not to a few scouts with guns.
   e.hp -= e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
   const near = dist2(e, state.player) < 1600;
@@ -1091,6 +1109,8 @@ function hurt(e, dmg, byTeam, weapon) {
 const TURRETS = {
   gun: { name: 'Gun', cost: 25, weapon: WEAPONS.mg, hp: 140, range: 17, rate: 0.13, dmg: 6 },
   rocket: { name: 'Rocket', cost: 40, weapon: WEAPONS.missile, hp: 120, range: 26, rate: 0.9, dmg: 22 },
+  // Paperclip levels only: bursts of staples that pin cars in place.
+  staple: { name: 'Staple gun', cost: 20, weapon: WEAPONS.staple, hp: 130, range: 18, rate: 0.12, dmg: 5, burst: 4, reload: 1.6 },
 };
 const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
 // Paperclips a turret costs on this level (0 on level 1).
@@ -1103,12 +1123,15 @@ function makeTurret(type, team, x, z) {
   const head = mesh(new THREE.BoxGeometry(1.8, 1.1, 1.6), mat(COLORS[team]), 0, 2, 0, g);
   head.name = 'turret';
   if (type === 'gun') for (const z2 of [-0.4, 0.4]) mesh(new THREE.CylinderGeometry(0.18, 0.18, 2, 6), mat(0x1c1712), 1.6, 0, z2, head).rotation.z = Math.PI / 2;
-  else mesh(new THREE.BoxGeometry(1.4, 0.9, 1.4), mat(0xfff8ec), 0.6, 0.6, 0, head);
+  else if (type === 'staple') { // a little desk stapler on the turret: grey base, red arm
+    mesh(new THREE.BoxGeometry(2.6, 0.35, 0.9), mat(0x9aa0a8, { metalness: 0.4 }), 0.6, 0.55, 0, head);
+    mesh(new THREE.BoxGeometry(2.4, 0.45, 0.8), mat(0xc8281f), 0.7, 0.95, 0, head).rotation.z = 0.12;
+  } else mesh(new THREE.BoxGeometry(1.4, 0.9, 1.4), mat(0xfff8ec), 0.6, 0.6, 0, head);
   const pips = new THREE.Group();
   g.add(pips);
   g.position.set(x, 0, z);
   scene.add(g);
-  const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips };
+  const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips, burst: t.burst || 0, reload: t.reload || 0, shotsLeft: t.burst || 0 };
   entities.push(tur);
   obstacles.push({ x, z, w: 3, d: 3, h: 2, kind: 'turret', ref: tur });
   navDirty = true;
@@ -1135,6 +1158,35 @@ function build(type) {
   state.cereal[BLUE] -= cost; state.clips[BLUE] -= clips;
   makeTurret(type, BLUE, x, z);
   sfx('build'); toast(`${TURRETS[type].name} turret built`);
+}
+// ---------- Paperclip armour: plates bolted onto your car (paperclip levels) ----------
+const hasClips = () => state.level.resources.includes('clips');
+const armourCost = () => 15 + (state.plates || 0) * 10; // 15, 25, 35 clips
+function armourModel() {
+  const p = state.player;
+  if (!p?.mesh) return;
+  const old = p.mesh.getObjectByName('plates');
+  if (old) p.mesh.remove(old);
+  if (!state.plates) return;
+  const g = new THREE.Group(); g.name = 'plates';
+  const steel = mat(0xc9ced6, { metalness: 0.6, roughness: 0.35 });
+  // Side plates first, then a bonnet plate, then a roof cage of bent paperclip wire.
+  if (state.plates >= 1) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.12), steel, -0.1, 0.9, sz * (p.r * 0.62), g);
+  if (state.plates >= 2) mesh(new THREE.BoxGeometry(0.9, 0.12, 1.5), steel, 1.1, 1.25, 0, g);
+  if (state.plates >= 3) for (const sx of [-0.6, 0.2]) mesh(new THREE.TorusGeometry(0.55, 0.06, 4, 12), steel, sx, 1.8, 0, g).rotation.y = Math.PI / 2;
+  p.mesh.add(g);
+}
+function armour() {
+  const p = state.player;
+  if (!p.alive || state.over || !hasClips()) return;
+  if ((state.plates || 0) >= 3) { toast('Fully armoured (3 plates)'); sfx('no'); return; }
+  if (dist2(p, state.bases[BLUE]) > 16 * 16) { toast('Drive home to bolt on armour'); sfx('no'); return; }
+  const cost = armourCost();
+  if (state.clips[BLUE] < cost) { toast(`Need ${cost} clips`); sfx('no'); return; }
+  state.clips[BLUE] -= cost;
+  state.plates = (state.plates || 0) + 1;
+  armourModel(); updateCosts();
+  sfx('build'); toast(`Paperclip armour ${state.plates}/3: hits do ${100 - 15 * state.plates}%`);
 }
 const upgradeCost = (t) => 20 + t.level * 15;
 function nearOwnTurret() {
@@ -1200,6 +1252,9 @@ function updateCosts() {
   if (!state.player) return;
   $('gunCost').textContent = priceText('gun');
   $('rocketCost').textContent = priceText('rocket');
+  $('stapleCost').textContent = priceText('staple');
+  $('bStaple').hidden = $('bArmour').hidden = !hasClips();
+  $('armourCost').textContent = (state.plates || 0) >= 3 ? 'full' : `${armourCost()} clips`;
 }
 
 // ---------- Enemy commander ----------
@@ -1431,7 +1486,11 @@ function update(dt) {
       if (t) {
         const head = e.mesh.getObjectByName('turret');
         if (head) head.rotation.y = -angleTo(e, t);
-        if (e.cool <= 0) { e.cool = e.weapon.rate; fire(e, t, e.weapon); }
+        if (e.cool <= 0) {
+          fire(e, t, e.weapon);
+          // Burst turrets (staple gun): a quick clatter of shots, then a reload.
+          if (e.burst) { e.shotsLeft -= 1; e.cool = e.shotsLeft > 0 ? e.weapon.rate : e.reload; if (e.shotsLeft <= 0) e.shotsLeft = e.burst; } else e.cool = e.weapon.rate;
+        }
       }
     }
   }
