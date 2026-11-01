@@ -227,8 +227,40 @@ function rulerTexture() {
   t.encoding = THREE.sRGBEncoding;
   return t;
 }
+// White kitchen tiles with grey grout, for the sink level.
+function tileTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c9d2d8'; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 32; i++) for (let j = 0; j < 22; j++) {
+    const v = 238 + Math.floor(Math.random() * 12);
+    g.fillStyle = `rgb(${v},${v + 3},${v + 4})`; g.fillRect(i * 32 + 1.5, j * 24 + 1.5, 29, 21);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+// Water ripples: wavy light lines that repeat seamlessly; the sink slides the texture along instead of moving any geometry.
+function waterTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3f9fdc'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 14; i++) {
+    const y0 = (i + 0.5) * 256 / 14, k = 1 + (i % 3), ph = i * 1.7;
+    g.strokeStyle = i % 2 ? 'rgba(255,255,255,0.30)' : 'rgba(150,215,255,0.35)'; g.lineWidth = 2 + (i % 3);
+    g.beginPath();
+    for (let x = 0; x <= 256; x += 8) { const y = y0 + Math.sin(x / 256 * Math.PI * 2 * k + ph) * 6; x ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 const woodTex = woodTexture();
-let matTex = null, rulerTex = null;
+let matTex = null, rulerTex = null, tileTex = null, waterTex = null;
 const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2, 0);
 table.castShadow = false;
 
@@ -286,6 +318,62 @@ function pencilCaseDecor() {
   mesh(new THREE.BoxGeometry(44.4, 0.5, 2), mat(0xc9ccd2, { metalness: 0.5 }), 0, 5.15, -10).castShadow = false;
   mesh(new THREE.BoxGeometry(3, 1.6, 2.4), mat(0xef4136), 21, 5.6, 10); // zip pull
   mesh(new THREE.BoxGeometry(9, 0.2, 3), mat(0xfff8ec), -12, 5.45, 10.9).rotation.x = 0; // name tag
+}
+
+// The sink: a basin of water down the middle with a ruler bridge, two bottle-cap ferries, a soap-dish island and the tap.
+// Everything that moves is a few shapes made once per level; the ripples slide a texture, nothing is rebuilt per frame.
+function sinkDecor() {
+  const Wt = LEVELS[curLevel].water, wx = (Wt.x0 + Wt.x1) / 2, ww = Wt.x1 - Wt.x0, depth = D + 8;
+  waterTex = waterTex || waterTexture();
+  waterTex.repeat.set(ww / 9, depth / 9);
+  // The basin floor, a darker blue, then the see-through water over it.
+  const floor = mesh(new THREE.PlaneGeometry(ww + 1.6, depth), mat(0x2b6e9c, { roughness: 0.4 }), wx, 0.04, 0);
+  floor.rotation.x = -Math.PI / 2; floor.castShadow = false;
+  const water = mesh(new THREE.PlaneGeometry(ww, depth), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, map: waterTex, transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.15, depthWrite: false }), wx, 0.14, 0);
+  water.rotation.x = -Math.PI / 2; water.castShadow = false;
+  sink = { water };
+  // The bridge: a ruler laid across the channel, bridge.w wide and 0.5 thick (cars are lifted onto it in render).
+  rulerTex = rulerTex || rulerTexture();
+  const br = Wt.bridge, bl = ww + 1;
+  mesh(new THREE.BoxGeometry(bl, 0.5, br.w), mat(0xecc875), wx, 0.25, br.z);
+  const face = mesh(new THREE.PlaneGeometry(bl, br.w), mat(0xffffff, { map: rulerTex }), wx, 0.52, br.z);
+  face.rotation.x = -Math.PI / 2; face.castShadow = false;
+  // The island: a pink soap dish with a rich pile of cereal on it.
+  const isl = Wt.island;
+  mesh(new THREE.CylinderGeometry(isl.r, isl.r + 0.6, 0.9, 28), mat(0xf4b6c8, { roughness: 0.35 }), isl.x, 0.45, isl.z);
+  mesh(new THREE.TorusGeometry(isl.r - 0.2, 0.3, 6, 28), mat(0xffe3ec), isl.x, 0.9, isl.z).rotation.x = Math.PI / 2;
+  // Docks: little wooden landings on each bank where a ferry stops.
+  for (const f of Wt.ferries) for (const st of f.stops) if (Math.abs(st.x) > 5) mesh(new THREE.BoxGeometry(3, 0.35, 6.4), mat(0xb98656), Math.sign(st.x) * (Wt.x1 + 1.2), 0.2, st.z);
+  // The tap: a chrome pipe at the north end of the channel with a spout hanging over the water.
+  const chrome = mat(0xdfe5ea, { metalness: 0.85, roughness: 0.2 }), tz = -D / 2 - 1.6;
+  mesh(new THREE.CylinderGeometry(1.3, 1.5, 13, 14), chrome, wx, 6.5, tz);
+  mesh(new THREE.BoxGeometry(2.4, 1.6, 8.5), chrome, wx, 12.6, tz + 3.6);
+  mesh(new THREE.CylinderGeometry(0.9, 0.7, 1.2, 12), chrome, wx, 11.6, tz + 7.2);
+  mesh(new THREE.SphereGeometry(1.1, 10, 8), mat(0xd62f2f), wx, 14, tz).castShadow = false; // the red handle
+  // A drip: one blue drop that flies from the spout to where it will land, a ring that warns where, and rings for the splash.
+  const dm = new THREE.MeshBasicMaterial({ color: 0x66c8ff });
+  sink.drop = mesh(new THREE.SphereGeometry(0.9, 10, 8), dm, wx, -5, tz + 7);
+  sink.drop.scale.set(1, 1.4, 1); sink.drop.visible = false; sink.drop.castShadow = false;
+  sink.tele = mesh(new THREE.RingGeometry(1.4, 1.9, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }), 0, 0.2, 0);
+  sink.tele.rotation.x = -Math.PI / 2; sink.tele.visible = false; sink.tele.castShadow = false;
+  sink.spout = { x: wx, y: 11, z: tz + 7.2 };
+  sink.rings = [0, 1, 2].map(() => {
+    const r = mesh(new THREE.RingGeometry(0.85, 1, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }), 0, 0.22, 0);
+    r.rotation.x = -Math.PI / 2; r.visible = false; r.castShadow = false; r.life = 0;
+    return r;
+  });
+  // The ferries: big bottle caps with a ridged rim, floating. Their stops make the route.
+  for (const fd of Wt.ferries) {
+    const g = new THREE.Group();
+    const R = 4.6;
+    mesh(new THREE.CylinderGeometry(R, R, 0.7, 36), mat(fd.color, { metalness: 0.55, roughness: 0.35 }), 0, 0.35, 0, g);
+    mesh(new THREE.CylinderGeometry(R - 0.9, R - 0.9, 0.12, 36), mat(fd.inner, { metalness: 0.4, roughness: 0.4 }), 0, 0.74, 0, g);
+    const ridge = new THREE.BoxGeometry(0.7, 0.9, 1.0), rm = mat(fd.color, { metalness: 0.6, roughness: 0.3 });
+    for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2; mesh(ridge, rm, Math.cos(a) * (R + 0.15), 0.4, Math.sin(a) * (R + 0.15), g).rotation.y = -a; }
+    g.position.set(fd.stops[fd.start].x, 0.2, fd.stops[fd.start].z);
+    levelRoot.add(g);
+    ferries.push({ g, R, stops: fd.stops, leg: fd.leg, i: fd.start, t: 0, wait: fd.stops[fd.start].wait, x: fd.stops[fd.start].x, z: fd.stops[fd.start].z });
+  }
 }
 
 // ---------- Levels ----------
@@ -360,7 +448,44 @@ const LEVELS = [
     rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
   },
   { name: 'Remote-control drawer', time: 'midday', soon: true },
-  { name: 'The sink', time: 'lunch', soon: true },
+  {
+    name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
+    blurb: 'Lunch is over and the washing-up is a battlefield. A channel of water splits the sink: wheels cannot cross it, so everything funnels over one ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 4:00 the Rubber Duck paddles in.',
+    tips: [
+      '<b>Water:</b> cars and trucks cannot drive into it. Cross on the ruler bridge, or on a bottle-cap ferry (drive on, ride, drive off)',
+      '<b>Hover:</b> skims over water. It is the only way to the rich pile of cereal on the soap-dish island, apart from the south ferry',
+      '<b>Boats:</b> Boat button or B, 30 cereal, three at most. A gunboat patrols the channel and shoots anything in range, even on the bank',
+      '<b>Drips:</b> watch for the white ring. A splash shoves cars and boats sideways',
+      '<b>The Rubber Duck:</b> slow and big, lobs bubbles that pop with splash damage. Gunboats and rockets bring it down',
+    ],
+    blocks: mirrored([
+      (s) => [s * 40, -s * 30, 8, 8, 7, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],   // coffee cups
+      (s) => [s * 22, s * 22, 12, 4, 2.5, 0xf2d24a, 'box'],                   // a sponge
+      (s) => [s * 18, -s * 12, 3, 14, 2, 0xc9ccd2, 'box'],                    // a knife laid flat
+      (s) => [s * 40, s * 4, 4, 4, 4, 0xfbfbf6, 'die'],                       // a sugar cube
+      (s) => [s * 52, s * 38, 14, 8, 3, 0x6a4c93, 'book'],                    // a folded dish cloth
+    ]),
+    erasers: [],
+    patches: [],
+    water: {
+      x0: -13, x1: 13, bridge: { z: 0, w: 6 }, island: { x: 0, z: 31, r: 7 },
+      // Bottle-cap ferries: 6 s a crossing, 3 s at each dock. The south one stops 2 s at the island on the way.
+      ferries: [
+        { color: 0xc8281f, inner: 0xe9c46a, leg: 6, start: 0, stops: [{ x: -9.5, z: -26, wait: 3 }, { x: 9.5, z: -26, wait: 3 }] },
+        { color: 0x1f8a9e, inner: 0xf4efe6, leg: 3, start: 2, stops: [{ x: -9.5, z: 26, wait: 3 }, { x: 0, z: 26, wait: 2 }, { x: 9.5, z: 26, wait: 3 }, { x: 0, z: 26, wait: 2 }] },
+      ],
+    },
+    boats: true,
+    decor: sinkDecor,
+    outposts: [[-36, -14], [-36, 14], [0, 0, 0.5], [36, -14], [36, 14]],  // the middle cap sits on the bridge
+    piles: [[-47, -24, 150], [-47, 24, 150], [-28, -38, 130], [-28, 38, 130], [-24, 0, 200],
+      [47, -24, 150], [47, 24, 150], [28, -38, 130], [28, 38, 130], [24, 0, 200],
+      [0, 35, 260, 'cereal', 'island']],
+    refill: [{ x: -24, z: 0, rate: 0.35 }, { x: 24, z: 0, rate: 0.35 }, { x: 0, z: 35, rate: 0.6 }],
+    start: { cereal: 40, clips: 0, unlocked: ['racer', 'tank'] },
+    resources: ['cereal'],
+    rules: { baseHp: 1500, raidEvery: 100, firstRaid: 150, raidSize: [2, 3], boss: { at: 240, hp: 800, spill: 80, kind: 'duck', name: 'THE RUBBER DUCK' } },
+  },
   { name: 'Hob and oven', time: 'afternoon', soon: true },
   { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },
 ];
@@ -374,9 +499,10 @@ function buildLevel(L) {
   levelRoot.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
   levelRoot.clear();
   scene.add(levelRoot);
-  obstacles.length = patches.length = erasers.length = 0;
+  obstacles.length = patches.length = erasers.length = ferries.length = 0;
+  sink = null;
   table.material.color.setHex(L.tableColor);
-  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : woodTex;
+  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : woodTex;
   table.material.needsUpdate = true;
   meshParent = levelRoot;
   for (const b of L.blocks) block(...b);
@@ -390,6 +516,43 @@ function buildLevel(L) {
   meshParent = scene;
 }
 const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < p.r * p.r)?.kind;
+
+// ---------- Water (level 4, the sink) ----------
+// A channel x0..x1 across the full depth. Wheels can't enter it except on the bridge (a ruler, bridge.w wide) or on a ferry;
+// the Hover floats over it. Boats stay inside it. state.water is null on levels without water.
+const ferries = [];
+let sink = null; // moving look-only pieces of the sink: ripple texture, drip drop, splash rings
+const inWaterX = (x, z, m = 0) => !!state.water && x > state.water.x0 - m && x < state.water.x1 + m; // anywhere across the channel, bridge included
+const onFerry = (e) => { for (const f of ferries) if (Math.hypot(e.x - f.x, e.z - f.z) < f.R) return f; return null; };
+const onIsland = (e) => { const i = state.water?.island; return !!i && Math.hypot(e.x - i.x, e.z - i.z) < i.r; };
+// Bridge deck lift: cars on the ruler sit 0.5 higher, with a short ramp at each end.
+const bridgeLift = (e) => { const w = state.water; return w && Math.abs(e.z - w.bridge.z) < w.bridge.w / 2 ? 0.5 * Math.max(0, Math.min(1, (w.x1 + 0.5 - Math.abs(e.x)) / 1.5)) : 0; };
+function waterPush(e) {
+  const w = state.water;
+  if (!w || (e.kind === 'player' && VEHICLES[e.vehicle].floats)) return;
+  if (onIsland(e)) { e.onIsl = true; return; }
+  const wasIsl = e.onIsl; e.onIsl = false;
+  if (onFerry(e)) return;
+  const m = e.r * 0.6, hw = w.bridge.w / 2;
+  // Two blocked rectangles: the water north of the bridge and the water south of it.
+  for (const [z0, z1] of [[-D / 2 - 10, w.bridge.z - hw], [w.bridge.z + hw, D / 2 + 10]]) {
+    if (e.x + m <= w.x0 || e.x - m >= w.x1 || e.z + m <= z0 || e.z - m >= z1) continue;
+    const pens = [[e.x + m - w.x0, -1, 0], [w.x1 - (e.x - m), 1, 0], [e.z + m - z0, 0, -1], [z1 - (e.z - m), 0, 1]];
+    pens.sort((a, b) => a[0] - b[0]);
+    const [pen, nx, nz] = pens[0], f = e.ferryRef || (wasIsl && { x: w.island.x, z: w.island.z, R: w.island.r + 0.2 });
+    if (f) {
+      // Leaving a ferry out over open water: the rim stops you (you can only step off where there is a bank, the bridge or the island).
+      const fx = e.x - f.x, fz = e.z - f.z, fd = Math.hypot(fx, fz) || 1, k = (f.R - 0.5) / fd;
+      e.x = f.x + fx * k; e.z = f.z + fz * k;
+      const vn = ((e.vx || 0) * fx + (e.vz || 0) * fz) / fd;
+      if (vn > 0) { e.vx -= vn * fx / fd; e.vz -= vn * fz / fd; }
+      continue;
+    }
+    e.x += nx * pen; e.z += nz * pen;
+    const vn = (e.vx || 0) * nx + (e.vz || 0) * nz;
+    if (vn < 0) { e.vx -= 1.2 * vn * nx; e.vz -= 1.2 * vn * nz; }
+  }
+}
 
 // ---------- Vehicles ----------
 // Each vehicle: top speed, acceleration, turn rate, grip (1 = rails, low = drifts), hit points, radius, weapon.
@@ -543,14 +706,14 @@ function makeBase(team) {
   return base;
 }
 
-function makeOutpost(x, z) {
+function makeOutpost(x, z, y = 0) {
   const g = new THREE.Group();
   const cap = mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.9, 24), mat(0xc9c2b6, { metalness: 0.6, roughness: 0.3 }), 0, 0.45, 0, g);
   const flag = mesh(new THREE.BoxGeometry(0.2, 4, 0.2), mat(0x1c1712), 0, 2.5, 0, g);
   const cloth = mesh(new THREE.BoxGeometry(1.8, 1.1, 0.1), mat(0xc9c2b6), 0.95, 3.9, 0, g);
   const ring = mesh(new THREE.RingGeometry(4.2, 4.6, 40), mat(0xfff8ec, { transparent: true, opacity: 0.35 }), 0, 0.06, 0, g);
   ring.rotation.x = -Math.PI / 2;
-  g.position.set(x, 0, z);
+  g.position.set(x, y, z);
   scene.add(g);
   return { x, z, r: 4.5, owner: -1, progress: 0, cap, cloth, ring, group: g, flag };
 }
@@ -602,6 +765,7 @@ function makePile(x, z, amount, refill = 0, res = 'cereal') {
   const group = res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   piles.push(p);
+  return p;
 }
 function makeSpill(x, z, amount, life = 45) {
   if (amount < 1) return;
@@ -651,7 +815,7 @@ function workerThink(w, dt) {
     if (!w.pile || w.pile.amount <= 0) {
       const home = state.bases[w.team];
       const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === 'clips' && state.clips[w.team] < 60 ? 4000 : 0);
-      w.pile = piles.filter((p) => p.amount > 0).sort((a, b) => score(a) - score(b))[0] || null;
+      w.pile = piles.filter((p) => p.amount > 0 && !p.island).sort((a, b) => score(a) - score(b))[0] || null;
     }
     const goal = w.pile || state.bases[w.team];
     steer(w, goal.x, goal.z, goal.r + 2.5, dt, spec, null);
@@ -677,10 +841,10 @@ function workerThink(w, dt) {
     w.think = 1;
     // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
     const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? 'clips' : 'cereal') : null;
-    const ok = (src) => src.amount > 0 && (!want || src.res === want);
+    const ok = (src) => src.amount > 0 && !src.island && (!want || src.res === want);
     const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
     const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
-    w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0).sort(byDist)[0]) || null;
+    w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0 && !p.island).sort(byDist)[0]) || null;
   }
   if (!w.src) { if (w.load > 0) w.going = 'drop'; const home = state.bases[w.team]; steer(w, home.x + (w.team === BLUE ? 10 : -10), home.z, 2, dt, spec, null); return; }
   steer(w, w.src.x, w.src.z, w.src.r + 1.5, dt, spec, null);
@@ -708,6 +872,15 @@ function navBuild() {
     for (const o of obstacles) {
       const [i0, j0] = cellOf(o.x - o.w / 2 - m, o.z - o.d / 2 - m), [i1, j1] = cellOf(o.x + o.w / 2 + m, o.z + o.d / 2 + m);
       for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) grid[j * GW + i] = 1;
+    }
+  }
+  // Water is closed to wheels, except a lane along the bridge.
+  const w = state.water;
+  if (w) for (const [grid, m] of [[closed, 0.8], [closedFat, 3]]) {
+    for (let i = 0; i < GW; i++) {
+      const cx = centreOf(i, 0)[0];
+      if (cx < w.x0 - m || cx > w.x1 + m) continue;
+      for (let j = 0; j < GD; j++) if (Math.abs(centreOf(0, j)[1] - w.bridge.z) > w.bridge.w / 2 - 1.2) grid[j * GW + i] = 1;
     }
   }
   navDirty = false;
@@ -836,11 +1009,11 @@ function reset() {
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, nextLayer: 180, nextHijack: 150, dominoHitAt0: -9, dominoHitAt1: -9, unlocked: new Set(L.start.unlocked),
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, nextLayer: 180, nextHijack: 150, dominoHitAt0: -9, dominoHitAt1: -9, unlocked: new Set(L.start.unlocked), water: L.water || null, nextDrip: 6, nextBoat: 75, dripT: 0,
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
-  for (const [x, z] of L.outposts) outposts.push(makeOutpost(x, z));
-  for (const [x, z, n, res] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res);
+  for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
+  for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
@@ -1020,6 +1193,7 @@ function collideObstacles(e) {
       e.x += e.r; // inside a block: nudge out
     }
   }
+  if (state.water) waterPush(e);
 }
 
 function collideMovers() {
@@ -1180,6 +1354,7 @@ function makeTurret(type, team, x, z) {
 }
 function canPlace(x, z, team) {
   if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
+  if (inWaterX(x, z, 3)) return 'No building on the water or the bridge';
   if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way: build where the circle is green';
   const enemyBase = state.bases[1 - team];
   // Further than any turret can reach (rockets at level 3 reach ~33), so toy boxes fall to cars, not sniping.
@@ -1209,7 +1384,7 @@ function placeDomino() {
   if (dominoes.filter((d) => d.team === BLUE).length >= 40) { toast('40 dominoes is the most'); sfx('no'); return; }
   if (state.cereal[BLUE] < 4) { toast('Need 4 cereal'); sfx('no'); return; }
   const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4;
-  if (Math.abs(x) > W / 2 - 2 || Math.abs(z) > D / 2 - 2 || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 0.8 && Math.abs(z - o.z) < o.d / 2 + 0.8)) { toast('No room for a domino here'); sfx('no'); return; }
+  if (Math.abs(x) > W / 2 - 2 || Math.abs(z) > D / 2 - 2 || inWaterX(x, z, 1) || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 0.8 && Math.abs(z - o.z) < o.d / 2 + 0.8)) { toast('No room for a domino here'); sfx('no'); return; }
   state.cereal[BLUE] -= 4;
   addDomino(x, z, Math.cos(p.heading), Math.sin(p.heading), BLUE);
   sfx('clack'); toast(`Domino ${dominoes.filter((d) => d.team === BLUE).length}: drive into the first one to knock them over`);
@@ -1289,7 +1464,7 @@ const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heav
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
-  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5);
+  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m);
   const toward = Math.sign(target.x) || 1;
   for (const zb of [30, 24, 36, 18, 40]) for (const xm of [0, -10, 10, -20, 20]) for (const ang of [0.9, 0.7, 1.1, 0.5, 1.3]) {
     // Path: from the button (mid-table, on this side's edge) along the edge, then bending in to land on the box.
@@ -1621,7 +1796,7 @@ function planDominoRun() {
       const r = 9.5 + (n - 1 - i) * 4.2; // the last one stands 9.5 out, so its top lands on the box
       spots.push({ x: home.x + ox * r, z: home.z + oz * r });
     }
-    const clear = spots.every((q) => Math.abs(q.x) < W / 2 - 2 && Math.abs(q.z) < D / 2 - 2 && !obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + 1 && Math.abs(q.z - o.z) < o.d / 2 + 1));
+    const clear = spots.every((q) => Math.abs(q.x) < W / 2 - 2 && !inWaterX(q.x, q.z, 1.5) && Math.abs(q.z) < D / 2 - 2 && !obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + 1 && Math.abs(q.z - o.z) < o.d / 2 + 1));
     if (clear) return { spots, dx: -ox, dz: -oz }; // falls towards your box
   }
   return null;
@@ -1696,6 +1871,39 @@ function unitThink(u, dt) {
   const d = steer(u, goal.x, goal.z, stop, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }, goal);
   u.cool -= dt;
   if (t && u.cool <= 0 && d < u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+}
+
+// ---------- The sink (level 4): ferries, drips, island cereal ----------
+// A ferry shuttles between its stops (cosine-eased), waits at each, and carries whatever stands on it.
+function ferriesUpdate(dt) {
+  for (const f of ferries) {
+    const ox = f.x, oz = f.z, cur = f.stops[f.i], nxt = f.stops[(f.i + 1) % f.stops.length];
+    if (f.wait > 0) f.wait -= dt;
+    else {
+      f.t = Math.min(1, f.t + dt / f.leg);
+      const k = (1 - Math.cos(f.t * Math.PI)) / 2;
+      f.x = cur.x + (nxt.x - cur.x) * k; f.z = cur.z + (nxt.z - cur.z) * k;
+      if (f.t >= 1) { f.i = (f.i + 1) % f.stops.length; f.t = 0; f.wait = nxt.wait; }
+    }
+    const dx = f.x - ox, dz = f.z - oz;
+    // Whoever stood on the ferry (before it moved) goes along, and remembers which ferry it is on.
+    for (const e of entities) {
+      if (!(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) || e.hp <= 0) continue;
+      if (Math.hypot(e.x - ox, e.z - oz) < f.R - 0.4) { e.x += dx; e.z += dz; e.ferryRef = f; }
+      else if (e.ferryRef === f && Math.hypot(e.x - f.x, e.z - f.z) > f.R + 0.5) e.ferryRef = null;
+    }
+  }
+}
+// Only you can scoop the rich pile out on the island (driving over it): trucks and diggers can't get there.
+function islandScoop(dt) {
+  const p = state.player;
+  if (!p.alive) return;
+  for (const pl of piles) {
+    if (!pl.island || pl.amount <= 0 || dist2(p, pl) > (pl.r + p.r + 1) ** 2) continue;
+    const got = takeFrom(pl, 7 * dt);
+    state.cereal[BLUE] += got;
+    if (state.time - (state.scoopAt || -9) > 0.5) { state.scoopAt = state.time; sfx('crunch'); toast('Scooping the island cereal'); }
+  }
 }
 
 // ---------- Erasers, raids and the boss (level 2 rules) ----------
@@ -1800,6 +2008,7 @@ function update(dt) {
     }
   }
 
+  if (state.water) { ferriesUpdate(dt); islandScoop(dt); }
   // Player
   if (p.alive) {
     let ix = input.x, iz = input.z;
@@ -1974,7 +2183,7 @@ function render(dt) {
   for (const e of entities) {
     if (!e.mesh || (e.kind !== 'unit' && e.kind !== 'player' && e.kind !== 'worker' && e.kind !== 'boss')) continue;
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
-    e.mesh.position.set(e.x, floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0, e.z);
+    e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
     if (e.kind === 'boss') e.lid.rotation.z = e.snap > 0 ? 0.9 * Math.max(0, 1 - e.snap * 3.5) : 0.65 + Math.sin(time * 3) * 0.15; // snaps shut, then creaks open
     if (e.role === 'digger') { const arm = e.mesh.getObjectByName('arm'); if (arm) arm.rotation.z = e.digging ? Math.sin(time * 4) * 0.45 : 0.2; }
@@ -1992,6 +2201,8 @@ function render(dt) {
     b.mesh.rotation.z = (1 - Math.min(1, health * 2)) * 0.12 * (b.team === BLUE ? 1 : -1);
     if (health < 0.5 && b.hp > 0 && Math.random() < dt * (health < 0.25 ? 10 : 4)) burst(b.x + (Math.random() - 0.5) * 8, b.z + (Math.random() - 0.5) * 8, health < 0.25 ? 0x3a332c : 0x8a8178, 2, 3, 7.5);
   }
+  if (sink) { waterTex.offset.x += dt * 0.012; waterTex.offset.y -= dt * 0.03; } // the ripples slide along
+  for (const f of ferries) { f.g.position.set(f.x, 0.2 + Math.sin(time * 2 + f.z) * 0.05, f.z); f.g.rotation.y += dt * 0.05; }
   for (const o of outposts) {
     o.cloth.material.color.setHex(o.owner === BLUE ? COLORS[BLUE] : o.owner === RED ? COLORS[RED] : 0xc9c2b6);
     o.ring.material.opacity = 0.25 + Math.abs(o.progress) * 0.4;
