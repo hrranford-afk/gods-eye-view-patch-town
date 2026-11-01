@@ -21,7 +21,7 @@ This file is for the developers (human or AI) picking it up. Read this, then
   with no build step and no assets. three.js r128 comes from cdnjs.
 - **Touch:** drag on the left half to drive, hold FIRE, use the build buttons
   on the right. The garage bar appears when you drive home.
-- **Keys:** WASD or arrows to drive, Space to fire.
+- **Keys:** WASD or arrows to drive, Space to fire, M for sound on or off.
 
   | Key | Does |
   |---|---|
@@ -87,7 +87,7 @@ This file is for the developers (human or AI) picking it up. Read this, then
 
 1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.
 2. ~~**Building is unclear**~~ **Fixed 31 Oct:** a build ghost (green or red circle) shows where a turret will go.
-3. **Sound:** beeps only. This is the single biggest gap in how it feels.
+3. ~~**Sound**~~ **Done 1 Nov:** toy sounds made in code: a click per weapon, thumps, a cereal crunch, a pour, a build ratchet, a capture fanfare, win and lose tunes, and an engine hum that follows your speed. M mutes.
 4. **Hard start:** new players struggle in the first minute (Harry: "starts off really hard, but you get the knack"). It needs a gentler first two minutes, or a short tutorial.
 5. **No level select or progress saving.**
 6. **Cereal is solid piles.** Harry wants loose bits you push with a bulldozer into hoppers.

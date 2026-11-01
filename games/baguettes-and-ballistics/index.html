@@ -453,7 +453,7 @@ function workerThink(w, dt) {
     steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
     if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
       state.cereal[w.team] += w.load;
-      if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('cap');
+      if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('pour');
       w.load = 0;
       w.going = 'fill';
     }
@@ -658,17 +658,73 @@ tap('bDrones', () => drones());
 tap('bTruck', () => buyWorker('truck', BLUE));
 tap('bDigger', () => buyWorker('digger', BLUE));
 
-// ---------- Sound (tiny synth, starts on the first tap) ----------
-let audio = null;
-function sfx(kind) {
-  if (!audio) return;
-  const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
-  o.connect(g); g.connect(audio.destination);
-  const set = { shoot: ['square', 520, 300, 0.03, 0.05], boom: ['sawtooth', 120, 40, 0.12, 0.35], cap: ['triangle', 440, 880, 0.08, 0.3], build: ['triangle', 300, 600, 0.08, 0.15], no: ['square', 160, 120, 0.06, 0.12] }[kind];
-  o.type = set[0]; o.frequency.setValueAtTime(set[1], t); o.frequency.exponentialRampToValueAtTime(set[2], t + set[4]);
-  g.gain.setValueAtTime(set[3], t); g.gain.exponentialRampToValueAtTime(0.0001, t + set[4]);
-  o.start(t); o.stop(t + set[4] + 0.02);
+// ---------- Sound: clicky toy sounds made in code (no files), starts on the first tap ----------
+let audio = null, master = null, noiseBuf = null, engine = null, muted = false;
+function audioInit() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume();
+    if (!master) {
+      master = audio.createGain(); master.gain.value = 0.7;
+      const comp = audio.createDynamicsCompressor(); master.connect(comp); comp.connect(audio.destination);
+      noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+  } catch (e) { audio = null; }
 }
+// One blip: wave, start and end pitch, loudness, length, optional delay.
+function tone(type, f0, f1, vol, len, at = 0) {
+  const t = audio.currentTime + at, o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + len);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + len + 0.03);
+}
+// A burst of filtered noise: crunches, booms, whooshes, hisses.
+function noise(filter, f0, f1, vol, len, at = 0, q = 1) {
+  const t = audio.currentTime + at, src = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+  src.buffer = noiseBuf; f.type = filter; f.Q.value = q;
+  f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + len);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  src.connect(f); f.connect(g); g.connect(master); src.start(t, Math.random() * 0.5); src.stop(t + len + 0.03);
+}
+const SOUNDS = {
+  mg: () => { noise('highpass', 3000, 2000, 0.12, 0.03); tone('square', 900, 500, 0.03, 0.03); }, // plastic cap-gun click
+  cannon: () => { tone('sine', 160, 45, 0.5, 0.25); noise('lowpass', 1200, 200, 0.3, 0.18); }, // toy cannon thump
+  missile: () => { noise('bandpass', 600, 3000, 0.18, 0.35, 0, 3); tone('sawtooth', 300, 900, 0.03, 0.3); }, // whoosh
+  flame: () => noise('bandpass', 1400, 900, 0.07, 0.08, 0, 0.8), // hiss
+  laser: () => tone('square', 1800, 300, 0.05, 0.09), // pew
+  hit: () => { tone('triangle', 1300 + Math.random() * 400, 900, 0.05, 0.04); }, // plink on plastic
+  boom: () => { tone('sine', 110, 35, 0.6, 0.45); noise('lowpass', 2500, 120, 0.5, 0.5); noise('highpass', 4000, 3000, 0.08, 0.06, 0.02); },
+  bigBoom: () => { tone('sine', 80, 25, 0.8, 1.1); noise('lowpass', 1800, 60, 0.7, 1.2); [0.15, 0.32, 0.5].forEach((d) => noise('lowpass', 1500, 200, 0.35, 0.3, d)); },
+  crunch: () => [0, 0.035, 0.07].forEach((d) => noise('bandpass', 2600 + Math.random() * 1500, 1500, 0.14, 0.04, d, 2)), // cereal scooped
+  pour: () => { for (let i = 0; i < 6; i++) noise('bandpass', 2000 + Math.random() * 2000, 1200, 0.06, 0.03, i * 0.04, 3); }, // truck tips its load
+  build: () => { [0, 0.06, 0.12, 0.18].forEach((d, i) => tone('square', 700 + i * 80, 650 + i * 80, 0.05, 0.03, d)); tone('triangle', 520, 1040, 0.08, 0.15, 0.24); }, // wind-up ratchet, then ding
+  cap: () => [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.09, 0.14, i * 0.08)), // little fanfare
+  no: () => { tone('square', 180, 150, 0.06, 0.09); tone('square', 140, 120, 0.06, 0.12, 0.1); }, // uh-uh
+  wreck: () => { noise('lowpass', 1800, 150, 0.4, 0.6); [0, 0.12, 0.24].forEach((d) => tone('triangle', 900 - d * 1500, 200, 0.06, 0.08, d)); }, // you got wrecked: clatter
+  respawn: () => [392, 523, 659].forEach((f, i) => tone('triangle', f, f, 0.08, 0.1, i * 0.07)),
+  win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, f, 0.08, i === 5 ? 0.5 : 0.13, i * 0.13)),
+  lose: () => [392, 349, 311, 262].forEach((f, i) => tone('triangle', f, f * 0.97, 0.1, i === 3 ? 0.7 : 0.22, i * 0.22)),
+  tick: () => tone('square', 2200, 2000, 0.05, 0.02), // kettle-click countdown
+};
+function sfx(kind) {
+  if (!audio || muted || !SOUNDS[kind]) return;
+  SOUNDS[kind]();
+}
+// Engine: a buzzy toy motor whose pitch follows your speed.
+function engineUpdate(p) {
+  if (!audio || !p) return;
+  if (!engine) {
+    const o = audio.createOscillator(), o2 = audio.createOscillator(), f = audio.createBiquadFilter(), g = audio.createGain();
+    o.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 700; g.gain.value = 0;
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(master); o.start(); o2.start();
+    engine = { o, o2, g };
+  }
+  const speed = p.alive ? Math.hypot(p.vx, p.vz) : 0, t = audio.currentTime;
+  engine.o.frequency.setTargetAtTime(55 + speed * 7, t, 0.08);
+  engine.o2.frequency.setTargetAtTime(27 + speed * 3.5, t, 0.08);
+  engine.g.gain.setTargetAtTime(muted || state.over || !p.alive ? 0 : 0.025 + Math.min(0.04, speed * 0.002), t, 0.1);
+}
+const weaponName = (w) => Object.keys(WEAPONS).find((k) => WEAPONS[k] === w) || 'mg';
 let lastShotSound = 0;
 
 // ---------- Helpers ----------
@@ -762,7 +818,7 @@ function fire(from, target, weapon, angle) {
   m.position.set(from.x + ox, y, from.z + oz);
   scene.add(m);
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
-  if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx('shoot'); lastShotSound = state.time; }
+  if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
 }
 
 function burst(x, z, color, n = 12, power = 10, y = 1.5) {
@@ -779,10 +835,15 @@ function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
   // Toy boxes fall to siege weapons (cannons, rockets), not to a few scouts with guns.
   e.hp -= e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
-  if (e.hp > 0) return;
   const near = dist2(e, state.player) < 1600;
+  if (e.hp > 0) {
+    // Feel: a plink and a spark when a shot lands near you; your own toy box shakes the screen when it's hit.
+    if (near && weapon && Math.random() < 0.5) { sfx('hit'); burst(e.x, e.z, 0xfff3b0, 3, 5, 1.6); }
+    if (e === state.bases?.[BLUE] && weapon) state.shake = Math.min(1.2, (state.shake || 0) + 0.05);
+    return;
+  }
   burst(e.x, e.z, e.kind === 'base' ? 0xffc23d : 0xff7b00, e.kind === 'base' ? 60 : 16, e.kind === 'base' ? 22 : 11);
-  if (near) { sfx('boom'); state.shake = Math.min(1.2, state.shake + (e.kind === 'unit' ? 0.25 : 0.6)); }
+  if (near || e.kind === 'base') { sfx(e.kind === 'base' ? 'bigBoom' : e.kind === 'player' ? 'wreck' : 'boom'); state.shake = Math.min(1.6, (state.shake || 0) + (e.kind === 'base' ? 1.6 : e.kind === 'unit' || e.kind === 'worker' ? 0.3 : 0.6)); }
   if (e.kind === 'player') {
     e.alive = false; e.mesh.visible = false; state.respawn = 3; toast('Wrecked! Back in 3…');
     return;
@@ -894,6 +955,7 @@ addEventListener('keydown', (e) => {
   const keys = Object.keys(VEHICLES);
   const i = ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'].indexOf(e.code);
   if (i >= 0 && !$('garage').hidden) chooseVehicle(keys[i]);
+  if (e.code === 'KeyM') { muted = !muted; toast(muted ? 'Sound off (M)' : 'Sound on (M)'); }
 });
 function updateCosts() {
   if (!state.player) return;
@@ -995,6 +1057,7 @@ function step(now) {
 function update(dt) {
   state.time += dt;
   const p = state.player;
+  engineUpdate(p);
   // Income: one bolt a second from home, plus one per bottle cap held.
   // Income is what your trucks haul home, plus a trickle so nobody is ever stuck.
   // A side with no trucks gets a free one from its factory every 45 s.
@@ -1030,7 +1093,7 @@ function update(dt) {
     state.respawn -= dt;
     if (state.respawn <= 0) {
       Object.assign(p, { alive: true, x: -52, z: 0, vx: 0, vz: 0, heading: 0, hp: p.maxHp });
-      p.mesh.visible = true;
+      p.mesh.visible = true; sfx('respawn');
     }
   }
 
@@ -1115,7 +1178,7 @@ function update(dt) {
     if (p.alive && sp.amount > 0 && dist2(p, sp) < (sp.r + p.r) ** 2) {
       const got = Math.round(takeFrom(sp, sp.amount));
       state.cereal[BLUE] += got;
-      toast(`Scooped ${got} cereal`); sfx('cap');
+      toast(`Scooped ${got} cereal`); sfx('crunch');
     }
     if (sp.amount <= 0 || sp.life <= 0) { scene.remove(sp.group); spills.splice(i, 1); }
   }
@@ -1222,10 +1285,10 @@ function endGame(won) {
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
   $('endText').textContent = won ? `Their toy box is crumbs. Time ${mins}:${secs}.` : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
-  setTimeout(() => { $('end').hidden = false; }, 1200);
+  setTimeout(() => { sfx(won ? 'win' : 'lose'); $('end').hidden = false; }, 1200);
 }
 function start() {
-  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { audio = null; }
+  audioInit();
   $('start').hidden = true; $('end').hidden = true;
   reset();
 }
