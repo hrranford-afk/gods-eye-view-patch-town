@@ -363,7 +363,7 @@ The draw-call and geometry numbers had room for 5x, but the map is already 4.0x 
 ### Checked
 
 - Baguette track: 0 bad points (block, water, edge at 2.3). Great Runs: both build (89 and 43), no dominoes inside a block or the water at 1.8 (two blocks and a mug that were on the lines were moved).
-- Levels 1 to 6 load and play 90 s with no page errors (see the final report).
+- Levels 1 to 6 each load and play 90 s of game time (`update` by hand, a render every 12 ticks) with 0 page errors; levels 1 to 5 still 150 x 96, no minimap element. After the route-search budget a 5-minute level 6 run measured `update()` 3.4 ms mean, 9.9 ms p99, calls 133 / 656 / 851, geometries 298 to 449 flat.
 
 ### Seen, not fixed
 
