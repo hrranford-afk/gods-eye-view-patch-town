@@ -136,6 +136,7 @@ button.drop[disabled] { opacity: 0.45; }
     <button id="bTrojan">Trojan<small>30</small></button>
     <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button id="bBoat" hidden>Boat<small>30</small></button>
+    <button id="bToaster" hidden>Toaster<small id="toasterCost">30</small></button>
   </div>
   <div class="row" id="darkRow" hidden>
     <button id="bFlare">Flare<small id="flareCost">8</small></button>
@@ -304,8 +305,26 @@ function waterTexture() {
   t.encoding = THREE.sRGBEncoding;
   return t;
 }
+// Black glass hob (level 5): near-black with a faint sheen, a few streaks and fine sparkle so it reads as glass.
+function hobTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 512, 512);
+  gr.addColorStop(0, '#23262d'); gr.addColorStop(0.5, '#181a20'); gr.addColorStop(1, '#22252c');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 5; i++) { // soft diagonal reflections
+    g.fillStyle = `rgba(190,205,230,${0.025 + (i % 2) * 0.015})`;
+    g.beginPath(); const x = i * 130 - 40; g.moveTo(x, 0); g.lineTo(x + 38, 0); g.lineTo(x + 38 + 260, 512); g.lineTo(x + 260, 512); g.fill();
+  }
+  for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(210,220,240,${Math.random() * 0.12})`; g.fillRect(Math.random() * 512, Math.random() * 512, 1.3, 1.3); }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1.3);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 const woodTex = woodTexture();
-let matTex = null, rulerTex = null, tileTex = null, waterTex = null, feltTex = null;
+let matTex = null, rulerTex = null, tileTex = null, waterTex = null, feltTex = null, hobTex = null;
 const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2, 0);
 table.castShadow = false;
 
@@ -334,6 +353,15 @@ function block(x, z, w, d, h, color, kind) {
   } else if (kind === 'sugar') { // a row of sugar cubes (race boxes that unfold into walls)
     const along = d > w, n = Math.max(1, Math.round((along ? d : w) / Math.min(w, d)));
     for (let k = 0; k < n; k++) mesh(new THREE.BoxGeometry(along ? w : w / n, h, along ? d / n : d), mat(color), along ? x : x - w / 2 + (k + 0.5) * w / n, h / 2, along ? z - d / 2 + (k + 0.5) * d / n : z).scale.multiplyScalar(0.97);
+  } else if (kind === 'pan') { // a frying pan or saucepan seen from above: dark steel wall and floor; the big one has a fried egg in it
+    const R = w / 2, steel = mat(color, { metalness: 0.55, roughness: 0.35, side: THREE.DoubleSide });
+    mesh(new THREE.CylinderGeometry(R, R * 0.92, h, 36, 1, true), steel, x, h / 2, z);
+    mesh(new THREE.CylinderGeometry(R * 0.92, R * 0.92, 0.3, 36), mat(0x0e0f12, { metalness: 0.3, roughness: 0.5 }), x, 0.2, z);
+    mesh(new THREE.TorusGeometry(R, 0.28, 6, 36), mat(0xc9ccd2, { metalness: 0.8, roughness: 0.25 }), x, h, z).rotation.x = Math.PI / 2;
+    if (w >= 10) {
+      const white = mesh(new THREE.SphereGeometry(3.4, 20, 8), mat(0xfdfcf6, { roughness: 0.3 }), x - 0.6, 0.45, z + 0.4); white.scale.set(1.25, 0.16, 1.05); white.castShadow = false;
+      mesh(new THREE.SphereGeometry(1.35, 14, 10), mat(0xffb81c, { roughness: 0.25 }), x - 0.3, 0.7, z + 0.2).scale.set(1, 0.7, 1);
+    }
   } else if (kind === 'mug') {
     mesh(new THREE.CylinderGeometry(w / 2, w / 2 * 0.92, h, 28, 1, true), mat(color, { side: THREE.DoubleSide }), x, h / 2, z);
     mesh(new THREE.CylinderGeometry(w / 2 - 0.5, w / 2 - 0.5, 0.4, 28), mat(0x4a2a14), x, h - 1.5, z);
@@ -635,6 +663,305 @@ function drawerDecor() {
   for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(3.5, 3, rd), wood, s * (W / 2 + 5.2), 1.5, 0);
 }
 
+// ---------- Level 5, Hob and oven: hot rings on a cycle, the oven-door ramp and ledge, the toaster launcher ----------
+// The table is a black glass hob. Four rings heat and cool on a cycle (cool, a warning glow, then red-hot) and hurt whatever sits on
+// them while hot. The oven at the back has its door down as a ramp up to a ledge: cars there are lifted in render, turrets get +30% range.
+// Everything is 2D logic; height is only a y lift in render (like the sink's bridge). Toasters pop a car over walls to a spot 30 ahead.
+const LEDGE_H = 3.2;
+let hobVis = null; // the rings' look-only shapes and shared materials, made by hobDecor
+const toasters = [];
+const TOASTER = { cost: 30, max: 3, r: 3.4, hop: 30, T: 0.95, H: 11 };
+// Height of the ground under something: 0 on the table, a ramp up the oven door, LEDGE_H on the ledge.
+function ledgeLift(e) {
+  const o = state.ledge;
+  if (!o || e.x < o.x0 || e.x > o.x1 || e.z < o.z0 - 2) return 0;
+  if (e.z <= o.z1) return LEDGE_H;
+  if (Math.abs(e.x) < o.rw && e.z < o.rz1) return LEDGE_H * (o.rz1 - e.z) / (o.rz1 - o.z1);
+  return 0;
+}
+const ringAt = (x, z, m = 0) => state.hob?.rings.find((r) => (x - r.x) ** 2 + (z - r.z) ** 2 < (r.r + m) ** 2) || null;
+// Where the long domino runs must not stand: on a ring, or in the oven and its ramp.
+const hobBlocked = (x, z, m = 0) => !!ringAt(x, z, m) || (!!state.ledge && Math.abs(x) < state.ledge.x1 + 2 + m && z < state.ledge.rz1 + m);
+function hobPhase(h) {
+  const T = h.cool + h.warn + h.hot, tt = h.t < 0 ? 0 : h.t % T; // a negative clock is a longer first cool spell
+  if (h.t < 0) return { phase: 'cool', left: h.cool - h.t };
+  if (tt < h.cool) return { phase: 'cool', left: h.cool - tt };
+  if (tt < h.cool + h.warn) return { phase: 'warn', left: h.cool + h.warn - tt };
+  return { phase: 'hot', left: T - tt };
+}
+function hobUpdate(dt) {
+  const h = state.hob;
+  h.t += dt;
+  const ph = hobPhase(h), avoid = ph.phase !== 'cool' || ph.left < h.safe; // AI keeps off the rings unless there is a safe window left
+  h.left = ph.left;
+  if (avoid !== h.avoid) { h.avoid = avoid; navDirty = true; }
+  if (ph.phase !== h.phase) {
+    h.phase = ph.phase; h.tick = 0.5;
+    if (ph.phase === 'warn') { toast('The hob rings are warming up!'); sfx('tick'); }
+    else if (ph.phase === 'hot') { toast('The rings are RED-HOT! Get off them'); sfx('sizzle'); }
+    else toast('The rings have cooled down');
+  }
+  if (ph.phase === 'hot' && (h.tick -= dt) <= 0) { h.tick += 1; hobBurn(h); }
+}
+// Once a second while hot: everything sitting on a ring takes damage. The Toaster Tank is immune; turrets only melt slowly.
+function hobBurn(h) {
+  for (const e of entities) {
+    if (e.hp <= 0 || e.air || !(e.kind === 'player' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || e.kind === 'turret')) continue;
+    if (e.kind === 'player' && !e.alive) continue;
+    if (!ringAt(e.x, e.z)) continue;
+    burst(e.x, e.z, 0xff7b2a, 5, 7, 1);
+    hurt(e, e.kind === 'turret' ? h.turretDmg : h.dmg, null);
+    if (e === state.player) { toast('Ouch! A hot ring. Drive off it'); sfx('hit'); }
+  }
+}
+// The spiral of a hob coil, white on clear, tinted by the ring's material.
+const coilTex = () => shared('coilTex', () => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 5; g.lineCap = 'round';
+  g.beginPath();
+  for (let i = 0; i <= 260; i++) { const a = i / 260 * Math.PI * 2 * 6, r = 16 + i / 260 * 104; i ? g.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r) : g.moveTo(128 + r, 128); }
+  g.stroke();
+  g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
+  return new THREE.CanvasTexture(c);
+});
+function hobDecor() {
+  const L = LEVELS[curLevel], O = L.oven;
+  const chrome = mat(0xdfe5ea, { metalness: 0.85, roughness: 0.22 });
+  const flat = (geo, material, x, y, z) => { const m = mesh(geo, material, x, y, z); m.rotation.x = -Math.PI / 2; m.castShadow = m.receiveShadow = false; return m; };
+  // A steel frame round the hob.
+  for (const s of [-1, 1]) {
+    mesh(new THREE.BoxGeometry(W + 12, 1.6, 2.2), chrome, 0, 0.8, s * (D / 2 + 3.4));
+    mesh(new THREE.BoxGeometry(2.2, 1.6, D + 12), chrome, s * (W / 2 + 3.4), 0.8, 0);
+  }
+  // The rings: a dark glass disc, a coil, a shimmer layer that only shows when hot, a rim, and a glow halo above.
+  const V = hobVis = {
+    g: 0, rings: [],
+    fill: shared('hobFill', () => new THREE.MeshBasicMaterial({ color: 0x1b1c21 })),
+    coil: shared('hobCoil', () => new THREE.MeshBasicMaterial({ map: coilTex(), transparent: true, color: 0x555860, depthWrite: false })),
+    shim: shared('hobShim', () => new THREE.MeshBasicMaterial({ map: coilTex(), transparent: true, color: 0xffb04a, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })),
+    rim: shared('hobRim', () => new THREE.MeshBasicMaterial({ color: 0x70747f })),
+    halo: shared('hobHalo', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xff5a1f, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })),
+  };
+  for (const [x, z, r] of L.hob.rings) {
+    flat(new THREE.CircleGeometry(r, 48), V.fill, x, 0.04, z);
+    flat(new THREE.CircleGeometry(r * 0.97, 48), V.coil, x, 0.05, z);
+    const shim = flat(new THREE.CircleGeometry(r * 1.02, 48), V.shim, x, 0.07, z);
+    flat(new THREE.RingGeometry(r - 0.45, r, 48), V.rim, x, 0.06, z);
+    const halo = new THREE.Sprite(V.halo); halo.position.set(x, 1.5, z); halo.scale.setScalar(r * 3.4); levelRoot.add(halo);
+    V.rings.push({ x, z, r, shim, halo });
+  }
+  // The oven: a stainless ledge floor with wire-rack bars, side walls (the solid ones are in `blocks`), a back panel with knobs, a glowing element.
+  const wallH = 7, dark = mat(0x23252b, { metalness: 0.3, roughness: 0.4 });
+  mesh(new THREE.BoxGeometry(O.x1 - O.x0, LEDGE_H, O.z1 - O.z0), mat(0x9aa1ab, { metalness: 0.7, roughness: 0.35 }), 0, LEDGE_H / 2, (O.z0 + O.z1) / 2);
+  const bar = mat(0xd5dae0, { metalness: 0.9, roughness: 0.2 });
+  for (let i = 0; i < 9; i++) mesh(new THREE.BoxGeometry(0.35, 0.3, O.z1 - O.z0 - 1), bar, O.x0 + 2.5 + i * 4.375, LEDGE_H + 0.15, (O.z0 + O.z1) / 2 - 0.2);
+  for (let i = 0; i < 4; i++) mesh(new THREE.BoxGeometry(O.x1 - O.x0 - 1, 0.3, 0.35), bar, 0, LEDGE_H + 0.3, O.z0 + 3 + i * 4);
+  for (const s of [-1, 1]) {
+    mesh(new THREE.BoxGeometry(0.3, wallH - 0.6, O.z1 - O.z0), mat(0xc4c9d1, { metalness: 0.5, roughness: 0.4 }), s * (O.x1 - 0.15), wallH / 2 + 0.2, (O.z0 + O.z1) / 2); // pale liner
+    mesh(new THREE.BoxGeometry(2.2, 0.6, O.z1 - O.z0 + 0.6), chrome, s * (O.x1 + 0.8), wallH + 0.3, (O.z0 + O.z1) / 2); // chrome trim on top
+  }
+  mesh(new THREE.BoxGeometry(O.x1 - O.x0 + 5, 15, 1.6), dark, 0, 7.5, O.z0 - 0.9);
+  mesh(new THREE.BoxGeometry(O.x1 - O.x0 + 5, 2.6, 0.5), chrome, 0, 13.4, O.z0 + 0.1);
+  for (let i = 0; i < 5; i++) {
+    const knob = mesh(new THREE.CylinderGeometry(0.9, 1, 1.1, 14), mat(0x0f1012, { metalness: 0.5 }), -12 + i * 6, 13.4, O.z0 + 0.8);
+    knob.rotation.x = Math.PI / 2;
+    mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat(0xffffff), -12 + i * 6, 14.1, O.z0 + 1.4).castShadow = false;
+  }
+  mesh(new THREE.BoxGeometry(5, 1.4, 0.2), mat(0x1c0a08, { emissive: 0xff2a14, emissiveIntensity: 0.9 }), 14, 13.4, O.z0 + 0.45).castShadow = false; // the clock
+  V.element = mesh(new THREE.BoxGeometry(O.x1 - O.x0 - 4, 0.5, 0.5), mat(0x7a2a10, { emissive: 0xff6a1a, emissiveIntensity: 0.7 }), 0, LEDGE_H + 1.4, O.z0 + 1.2);
+  V.element.castShadow = false;
+  const lamp2 = new THREE.Sprite(shared('ovenHalo', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xff8a3a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })));
+  lamp2.position.set(0, LEDGE_H + 2, O.z0 + 2); lamp2.scale.set(34, 10, 1); levelRoot.add(lamp2);
+  // The door, folded down as a ramp: black glass with a lighter window and a chrome handle at the low end.
+  const run = O.rz1 - O.z1, th = Math.atan2(LEDGE_H, run), len = Math.hypot(LEDGE_H, run);
+  const door = new THREE.Group();
+  door.position.set(0, LEDGE_H / 2 - 0.25 * Math.cos(th), (O.z1 + O.rz1) / 2 - 0.25 * Math.sin(th));
+  door.rotation.x = th;
+  mesh(new THREE.BoxGeometry(O.rw * 2, 0.5, len + 0.1), mat(0x15171c, { metalness: 0.5, roughness: 0.18 }), 0, 0, 0, door);
+  mesh(new THREE.BoxGeometry(O.rw * 2 - 3.6, 0.52, len - 2.6), mat(0x2a3646, { metalness: 0.6, roughness: 0.12 }), 0, 0.01, 0.1, door);
+  mesh(new THREE.CylinderGeometry(0.4, 0.4, O.rw * 2 - 2, 10), chrome, 0, 1.0, len / 2 - 0.6, door).rotation.z = Math.PI / 2;
+  for (const s of [-1, 1]) {
+    mesh(new THREE.BoxGeometry(0.4, 0.9, 0.4), chrome, s * (O.rw - 1.2), 0.5, len / 2 - 0.6, door);
+    mesh(new THREE.BoxGeometry(0.5, 0.7, len), chrome, s * (O.rw + 0.2), 0.4, 0, door); // side rail
+  }
+  levelRoot.add(door);
+  // Low rails keep cars on the ramp and the ledge (shots fly over them): along the ramp sides and the ledge front, either side of the door.
+  const rail = (x, z, w, d) => obstacles.push({ x, z, w, d, h: 1, kind: 'rail' });
+  for (const s of [-1, 1]) {
+    rail(s * (O.rw + 0.4), (O.z1 + O.rz1) / 2 + 0.5, 0.8, run - 1);
+    rail(s * ((O.rw + 0.8 + O.x1) / 2), O.z1 + 0.6, O.x1 - O.rw - 0.8, 1.2);
+    mesh(new THREE.BoxGeometry(O.x1 - O.rw - 1, 0.6, 0.5), chrome, s * ((O.rw + 0.8 + O.x1) / 2), LEDGE_H + 0.5, O.z1 + 0.3);
+  }
+}
+// Rings and oven shimmer, every frame (render): colour follows the phase, with an afterglow when they cool.
+const hobCols = [new THREE.Color(0x1b1c21), new THREE.Color(0xd2610f), new THREE.Color(0xff3408), new THREE.Color(0x555860), new THREE.Color(0xffc06a)];
+let hobEl = null;
+function hobDraw(dt, time) {
+  const V = hobVis, h = state.hob;
+  if (!V || !h) { if (hobEl) hobEl.style.display = 'none'; return; }
+  const ph = hobPhase(h);
+  const target = ph.phase === 'hot' ? 1 : ph.phase === 'warn' ? 0.3 + 0.2 * (0.5 + 0.5 * Math.sin(time * 9)) : 0;
+  V.g += (target - V.g) * Math.min(1, dt * (target > V.g ? 9 : 2.6));
+  const g = V.g;
+  if (g < 0.62) V.fill.color.lerpColors(hobCols[0], hobCols[1], g / 0.62); else V.fill.color.lerpColors(hobCols[1], hobCols[2], (g - 0.62) / 0.38);
+  V.coil.color.lerpColors(hobCols[3], hobCols[4], g);
+  V.shim.opacity = Math.max(0, g - 0.5) * 2 * (0.45 + 0.3 * Math.sin(time * 14));
+  V.rings.forEach((q, i) => {
+    q.shim.rotation.z = time * (i % 2 ? 0.7 : -0.7);
+    q.shim.scale.setScalar(1 + Math.sin(time * 9 + i * 2) * 0.025 * g);
+    q.halo.scale.setScalar(q.r * (3.2 + Math.sin(time * 6 + i) * 0.2 * g));
+    if (ph.phase === 'hot' && Math.random() < dt * 16 || ph.phase === 'warn' && Math.random() < dt * 3) { // heat sparks
+      const a = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * q.r * 0.9;
+      burst(q.x + Math.cos(a) * rr, q.z + Math.sin(a) * rr, ph.phase === 'hot' ? 0xffa23a : 0xffc06a, 1, 3, 0.3);
+    }
+  });
+  V.halo.opacity = g * 0.5 * (0.85 + 0.15 * Math.sin(time * 11));
+  if (V.element) V.element.material.emissiveIntensity = 0.55 + Math.sin(time * 2.1) * 0.2;
+  // A small clock for the cycle, so you can plan: top left, under your toy box bar.
+  if (!hobEl) {
+    hobEl = document.createElement('div');
+    hobEl.style.cssText = 'position:fixed;z-index:2;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 74px);pointer-events:none;font-family:var(--display);font-size:13px;letter-spacing:0.05em;text-shadow:0 2px 0 #1c1712;padding:3px 9px;border-radius:9px;background:rgba(20,20,24,0.55)';
+    document.body.appendChild(hobEl);
+  }
+  hobEl.style.display = $('start').hidden ? 'block' : 'none';
+  const secs = Math.ceil(ph.left);
+  hobEl.textContent = ph.phase === 'cool' ? `RINGS COOL · ${secs} sec` : ph.phase === 'warn' ? `RINGS WARMING · ${secs} sec` : `RINGS RED-HOT · ${secs} sec`;
+  hobEl.style.color = ph.phase === 'cool' ? '#cfd4dc' : ph.phase === 'warn' ? '#ffb347' : '#ff5a3a';
+}
+
+// ---------- The toaster launcher ----------
+// A flat chrome toaster. Drive onto it at a bit of speed and your car is popped up in an arc and lands TOASTER.hop units ahead, over walls.
+// A shadow marks the landing, and a white ring previews it when you are near a ready toaster. The enemy builds one and sends its wave over it.
+function makeToaster(team, x, z) {
+  const g = new THREE.Group();
+  const chrome = mat(0xe4e9ee, { metalness: 0.9, roughness: 0.15 });
+  mesh(new THREE.BoxGeometry(6.6, 1.3, 4.4), chrome, 0, 0.65, 0, g);
+  mesh(new THREE.BoxGeometry(6.8, 0.35, 4.6), mat(COLORS[team], { metalness: 0.4 }), 0, 0.3, 0, g); // team stripe
+  const slices = [];
+  for (const sz of [-0.9, 0.9]) {
+    mesh(new THREE.BoxGeometry(5, 0.2, 0.8), mat(0x0e0f12), 0, 1.32, sz, g);
+    slices.push(mesh(new THREE.BoxGeometry(4.4, 1.7, 0.45), mat(0xe2b36b, { roughness: 0.9 }), 0, 1.2, sz, g));
+  }
+  mesh(new THREE.BoxGeometry(0.5, 0.5, 0.9), mat(0x1c1712), 3.5, 0.9, 0, g); // the lever
+  const ring = mesh(new THREE.RingGeometry(3.9, 4.3, 32), mat(COLORS[team], { transparent: true, opacity: 0.5 }), 0, 0.06, 0, g);
+  ring.rotation.x = -Math.PI / 2; ring.castShadow = false;
+  g.position.set(x, ledgeLift({ x, z }), z);
+  scene.add(g);
+  const t = { x, z, team, g, slices, cool: 1, pop: 0 };
+  toasters.push(t);
+  return t;
+}
+function toasterSpot(x, z) {
+  if (Math.abs(x) > W / 2 - 5 || Math.abs(z) > D / 2 - 5) return 'Too close to the edge';
+  if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 4 && Math.abs(z - o.z) < o.d / 2 + 4)) return 'Something is in the way';
+  const lift = ledgeLift({ x, z });
+  if (lift > 0.01 && lift < LEDGE_H - 0.01) return 'Not on the ramp';
+  if (toasters.some((t) => Math.hypot(t.x - x, t.z - z) < 9)) return 'Too close to another toaster';
+  return null;
+}
+function buildToaster() {
+  const p = state.player;
+  if (!state.level.toaster || !p.alive || state.over) return;
+  if (toasters.filter((t) => t.team === BLUE).length >= TOASTER.max) { toast(`${TOASTER.max} toasters is the most`); sfx('no'); return; }
+  const x = p.x - Math.cos(p.heading) * 6, z = p.z - Math.sin(p.heading) * 6;
+  const why = toasterSpot(x, z);
+  if (why) { toast(why); sfx('no'); return; }
+  if (state.cereal[BLUE] < TOASTER.cost) { toast(`Need ${TOASTER.cost} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= TOASTER.cost;
+  makeToaster(BLUE, x, z);
+  sfx('build'); toast('Toaster built. Drive onto it to jump');
+}
+function launch(e, t) {
+  const a = e.heading, lim = (v, m) => Math.max(-m + 3, Math.min(m - 3, v));
+  const tx = lim(e.x + Math.cos(a) * TOASTER.hop, W / 2), tz = lim(e.z + Math.sin(a) * TOASTER.hop, D / 2);
+  e.air = { t: 0, T: TOASTER.T, sx: e.x, sz: e.z, tx, tz, l0: ledgeLift(e), l1: ledgeLift({ x: tx, z: tz }), H: TOASTER.H };
+  e.path = null; e.via = null; e.pinned = 0;
+  t.cool = 0.8; t.pop = 0.45;
+  burst(e.x, e.z, 0xe2b36b, 8, 8, 1.5);
+  sfx('boing');
+  if (e === state.player) toast('BOING!');
+}
+function airStep(e, dt) {
+  const a = e.air;
+  a.t += dt;
+  const f = Math.min(1, a.t / a.T);
+  e.x = a.sx + (a.tx - a.sx) * f; e.z = a.sz + (a.tz - a.sz) * f;
+  if (f < 1) return;
+  e.air = null;
+  e.vx = (a.tx - a.sx) / a.T * 0.3; e.vz = (a.tz - a.sz) / a.T * 0.3;
+  collideObstacles(e); // landed inside something? get nudged out
+  burst(e.x, e.z, 0xcfc6b8, 10, 8, 0.6);
+  if (e === state.player || dist2(e, state.player) < 1600) { sfx('thud'); state.shake = Math.min(1.2, (state.shake || 0) + (e === state.player ? 0.35 : 0.15)); }
+  for (const q of entities) if (q.team !== e.team && q.hp > 0 && (q.kind === 'unit' || q.kind === 'worker' || q.kind === 'player') && !q.air && dist2(q, e) < 3.6 * 3.6) hurt(q, 25, e.team); // squashed
+}
+function toastersUpdate(dt) {
+  for (let i = toasters.length - 1; i >= 0; i--) {
+    const t = toasters[i];
+    t.cool -= dt;
+    t.pop = Math.max(0, t.pop - dt);
+    const k = t.pop > 0 ? Math.sin((1 - t.pop / 0.45) * Math.PI) : 0;
+    for (const s of t.slices) s.position.y = 1.2 + k * 1.6;
+    if (t.cool > 0) continue;
+    for (const e of entities) {
+      if (e.hp <= 0 || e.air || e.team !== t.team) continue;
+      if (e.kind === 'player' ? !e.alive : !(e.kind === 'unit' && e.via === t)) continue;
+      if (dist2(e, t) < TOASTER.r * TOASTER.r && Math.hypot(e.vx || 0, e.vz || 0) > 2.5) { launch(e, t); break; }
+    }
+  }
+}
+// Landing shadows (one per car in the air), a white preview ring, and orange rings under flaming toast on its way down.
+let landMarks = null;
+function landMarksUpdate(time) {
+  if (!landMarks) {
+    const disc = new THREE.CircleGeometry(2.6, 20), ringG = new THREE.RingGeometry(2.6, 3.4, 28), toastG = new THREE.RingGeometry(3.3, 4.3, 30);
+    const dm = basicMat(0x000000, 0.5), rm = shared('markPre', () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
+    const om = shared('markToast', () => new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.8, depthWrite: false }));
+    const mk = (geo, m) => { const q = new THREE.Mesh(geo, m); q.rotation.x = -Math.PI / 2; q.visible = false; scene.add(q); return q; };
+    landMarks = { shadows: [0, 1, 2, 3, 4, 5].map(() => mk(disc, dm)), pre: mk(ringG, rm), toast: [0, 1, 2, 3, 4, 5].map(() => mk(toastG, om)) };
+  }
+  const M = landMarks;
+  let n = 0;
+  for (const e of entities) if (e.air && n < M.shadows.length && e.hp > 0) {
+    const a = e.air, q = M.shadows[n++], f = Math.min(1, a.t / a.T);
+    q.visible = true; q.position.set(a.tx, a.l1 + 0.08, a.tz); q.scale.setScalar(0.5 + 0.6 * f);
+  }
+  for (; n < M.shadows.length; n++) M.shadows[n].visible = false;
+  // Preview: near one of your ready toasters, a ring shows where you would land.
+  const p = state.player;
+  let show = false;
+  if (p && p.alive && !p.air && state.level.toaster) {
+    const t = toasters.find((q) => q.team === BLUE && q.cool <= 0 && dist2(q, p) < 14 * 14);
+    if (t) {
+      const tx = Math.max(-W / 2 + 3, Math.min(W / 2 - 3, p.x + Math.cos(p.heading) * TOASTER.hop)), tz = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, p.z + Math.sin(p.heading) * TOASTER.hop));
+      M.pre.visible = show = true; M.pre.position.set(tx, ledgeLift({ x: tx, z: tz }) + 0.1, tz); M.pre.scale.setScalar(1 + Math.sin(time * 6) * 0.08);
+    }
+  }
+  if (!show) M.pre.visible = false;
+  // Flaming toast in the air: a ring where it will land.
+  let k = 0;
+  for (const s of shots) if (s.lobbed && s.weapon.flame && k < M.toast.length) {
+    const q = M.toast[k++];
+    q.visible = true; q.position.set(s.x + s.vx * Math.max(0, s.life), 0.1, s.z + s.vz * Math.max(0, s.life)); q.scale.setScalar(0.7 + 0.5 * Math.max(0, s.life) / s.T);
+  }
+  for (; k < M.toast.length; k++) M.toast[k].visible = false;
+}
+// The rusher's waves: its cars gather at a rally point and set off together, but only while the rings are cool. The wave goes over the enemy toaster if it has one.
+function rushUpdate() {
+  const R = state.level.rules.rusher;
+  if (!R || state.time < R.first) return;
+  const held = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hold && e.hp > 0), rs = state.rush;
+  if (held.length < 3 || (held.length < rs.size && state.time - rs.last < R.gap)) return;
+  if (state.hob?.avoid) { // waiting for the rings to cool
+    if (!rs.waited) { rs.waited = true; if (held.length > 3) toast('Red is waiting for the rings to cool…'); }
+    return;
+  }
+  rs.waited = false; rs.last = state.time; rs.size = Math.min(R.max, rs.size + R.grow);
+  const pad = toasters.find((t) => t.team === RED);
+  for (const u of held) { u.hold = false; u.via = pad || null; u.viaT = 7; }
+  toast(`Red wave of ${held.length} cars is coming!`); sfx('raid');
+}
+
 // ---------- Levels ----------
 // A level is plain data: layout (blocks, patches, caps, piles), table look, resources and rules.
 //   blocks:  [x, z, w, d, h, colour, kind]   kinds: pencil, book, mug, die, box (default)
@@ -787,7 +1114,55 @@ const LEVELS = [
     resources: ['cereal'],
     rules: { baseHp: 2000, raidEvery: 100, firstRaid: 150, raidSize: [2, 3], boss: { at: 150, hp: 800, spill: 80, kind: 'duck', name: 'THE RUBBER DUCK' } },
   },
-  { name: 'Hob and oven', time: 'afternoon', soon: true },
+  {
+    name: 'Hob and oven', time: 'afternoon', tableColor: 0xffffff, tableTex: 'hob',
+    blurb: 'Dinner is cooking, and the table is a black glass hob. Its four rings heat up on a cycle: cool, then glowing orange, then red-hot. Red-hot burns anything on it. At the back, the oven door is down as a ramp to a high ledge. At 3:00 the Toaster Tank rolls out. The enemy rushes in big waves.',
+    tips: [
+      '<b>Rings:</b> cool for 10 seconds, orange for 3, red-hot for 6. Stay off them when they glow. The clock is top left',
+      '<b>Oven:</b> drive up the door ramp. The ledge has the middle cap and the clips. Turrets up there reach 30% further',
+      '<b>Toaster:</b> Toaster button or K, 30 cereal. Drive onto it to jump 30 units ahead, over walls and rings. A shadow shows where you land',
+      '<b>Clips:</b> haul them from the oven for Rockets, Staple guns, Magnets and the Catapult',
+      '<b>The rusher:</b> the enemy gathers big waves, then sends them when the rings are cool',
+      '<b>Toaster Tank:</b> lobs flaming toast. Rings cannot hurt it. Rockets and cannons hurt it most',
+    ],
+    blocks: [
+      [-20.8, -39.5, 1.6, 17, 7, 0x2e3138, 'box'], [20.8, -39.5, 1.6, 17, 7, 0x2e3138, 'box'],   // the oven's side walls
+      [0, 17, 11, 11, 2.2, 0x2a2d33, 'pan'], [0, 27.5, 2.6, 9, 1.6, 0x1c1d21, 'box'],            // a frying pan with an egg, and its handle
+      [0, -9, 8, 8, 3, 0x6f7480, 'pan'],                                                          // a saucepan
+      ...mirrored([
+        (s) => [s * 52, 16, 8, 8, 8, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],
+        (s) => [s * 52, -16, 8, 8, 8, s > 0 ? 0xd96c3f : 0xe9e4d8, 'mug'],
+        (s) => [s * 60, 36, 14, 8, 3, 0x8b3a3a, 'book'],
+        (s) => [s * 60, -36, 14, 8, 3, 0x3a5a8b, 'book'],
+        (s) => [s * 40, 9, 4, 4, 4, 0xfbfbf6, 'die'],
+        (s) => [s * 40, -9, 4, 4, 4, 0xfbfbf6, 'die'],
+        (s) => [s * 14, 38, 3.4, 3.4, 7, s > 0 ? 0xf6f6f2 : 0x2a2a2a, 'box'],                    // salt and pepper
+      ]),
+    ],
+    erasers: [],
+    patches: [],
+    decor: hobDecor,
+    hob: { rings: [[-22, -19, 9], [22, -19, 9], [-22, 19, 9], [22, 19, 9]], cool: 10, warn: 3, hot: 6, safe: 5, dmg: 12, turretDmg: 6, start: -6 },
+    oven: { x0: -20, x1: 20, z0: -48, z1: -32, rw: 8, rz1: -23.5 },
+    toaster: true,
+    outposts: [[-38, -27], [-38, 27], [0, -40, LEDGE_H], [38, -27], [38, 27]],   // the middle cap sits on the oven ledge
+    piles: [
+      ...mirrored([
+        (s) => [s * 22, 0, 170],          // between the rings: safe
+        (s) => [s * 29.5, 14.5, 150],     // on the edge of the front ring
+        (s) => [s * 29.5, -14.5, 150],    // on the edge of the back ring
+        (s) => [s * 22, 19, 200],         // dead centre of the front ring: rich, and only safe while it is cool
+        (s) => [s * 48, -34, 120],
+        (s) => [s * 48, 34, 120],
+      ]),
+      [-9, -41, 130, 'clips'], [9, -41, 130, 'clips'],                            // paperclips in the oven
+    ],
+    refill: [{ x: -22, z: 0, rate: 0.3 }, { x: 22, z: 0, rate: 0.3 }, { x: -22, z: 19, rate: 0.45 }, { x: 22, z: 19, rate: 0.45 }, { x: -9, z: -41, rate: 0.2 }, { x: 9, z: -41, rate: 0.2 }],
+    start: { cereal: 40, clips: 10, unlocked: ['racer', 'tank'] },
+    resources: ['cereal', 'clips'],
+    turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
+    rules: { baseHp: 1800, raidEvery: 100, firstRaid: 140, raidSize: [2, 3], boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }, rusher: { first: 50, size: 4, grow: 1, max: 9, gap: 70 } },
+  },
   { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },
 ];
 
@@ -801,10 +1176,10 @@ function buildLevel(L) {
   levelRoot.clear();
   scene.add(levelRoot);
   obstacles.length = patches.length = erasers.length = ferries.length = 0;
-  sink = null; torchPos = null;
+  sink = null; torchPos = null; hobVis = null;
   setLighting(!!L.dark); // the drawer is dark; every other level gets its normal light back
   table.material.color.setHex(L.tableColor);
-  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : L.tableTex === 'felt' ? (feltTex = feltTex || feltTexture()) : woodTex;
+  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : L.tableTex === 'felt' ? (feltTex = feltTex || feltTexture()) : L.tableTex === 'hob' ? (hobTex = hobTex || hobTexture()) : woodTex;
   table.material.needsUpdate = true;
   meshParent = levelRoot;
   for (const b of L.blocks) block(...b);
@@ -875,6 +1250,8 @@ const WEAPONS = {
   raftgun: { vsBase: 0.3, dmg: 6, rate: 0.4, range: 18, speed: 50, color: 0xffe9a8, size: 0.4 },
   // Drawer level: the Remote Car's sniper shot (red tracer, long and fast).
   snipe: { vsBase: 0.3, dmg: 20, rate: 1.3, range: 46, speed: 75, color: 0xff3b30, size: 0.5 },
+  // Level 5: the Toaster Tank's flaming toast, lobbed in a high arc (it lands where the target was).
+  toast: { vsBase: 1.0, dmg: 26, rate: 1.2, range: 42, speed: 20, lob: 1.5, splash: 4.5, flame: true, color: 0xff7a1a, size: 0.9 },
   bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
 };
 // Boats stay on water cells. The gunboat is a soap-dish speedboat; the sponge raft (the enemy's) is slower and tougher.
@@ -1042,6 +1419,29 @@ function buildModel(kind, team, scale = 1) {
     g.userData.blinkB = lamp(lights, 0xff3030, 0.2, 3.2, -1.0, 0.45);
     for (const z of [-0.9, 0.9]) lamp(lights, 0xfff2c0, 3.1, 1.6, z, 0.3);
     lightPool(lights, 0xff4a3a, 14, 14, 0, 0, 0.4);
+  } else if (kind === 'toaster') {
+    // The Toaster Tank: a big chrome toaster on tracks, two bread slots with flaming toast, a lever and a dial. Forward is +x.
+    const chrome = mat(0xe4e9ee, { metalness: 0.92, roughness: 0.14 }), black = mat(0x1c1712), tr = mat(0x2b2b2b, { roughness: 0.9 });
+    for (const z of [-3.9, 3.9]) {
+      mesh(new THREE.BoxGeometry(12, 1.8, 2.2), tr, 0, 0.9, z, g);
+      for (let i = 0; i < 5; i++) mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.4, 12), mat(0x9aa0a8, { metalness: 0.6 }), -4.4 + i * 2.2, 0.95, z, g).rotation.x = Math.PI / 2;
+    }
+    mesh(new THREE.BoxGeometry(10.4, 5, 7), chrome, 0, 4.3, 0, g);
+    mesh(new THREE.BoxGeometry(10.8, 0.9, 7.4), mat(COLORS[team], { metalness: 0.4 }), 0, 2.4, 0, g);        // team band
+    mesh(new THREE.BoxGeometry(9.6, 0.6, 6.2), chrome, 0, 7.0, 0, g);                                       // top plate
+    const slices = [];
+    for (const z of [-1.7, 1.7]) {
+      mesh(new THREE.BoxGeometry(7.4, 0.3, 1.2), black, 0, 7.35, z, g);
+      const sl = mesh(new THREE.BoxGeometry(6.6, 2.2, 0.75), mat(0xd69a45, { roughness: 0.9, emissive: 0xff4a00, emissiveIntensity: 0.55 }), 0, 7.6, z, g);
+      mesh(new THREE.BoxGeometry(6.8, 0.5, 0.85), mat(0x5a2c10, { roughness: 1 }), 0, 1.0, 0, sl);          // burnt crust on top
+      const fl = mesh(new THREE.ConeGeometry(0.9, 2.4, 7), basicMat(0xff8a1f, 0.9), 0, 1.9, 0, sl); fl.scale.set(1, 1, 1); fl.castShadow = false;
+      slices.push(sl);
+    }
+    g.userData.slices = slices;
+    mesh(new THREE.BoxGeometry(0.7, 0.7, 1.6), mat(0xd62f2f), 0, 5.6, 3.9, g);                              // the lever on the side
+    mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.6, 14), black, 5.3, 4.6, 0, g).rotation.z = Math.PI / 2;     // a dial on the front
+    for (const z of [-2.2, 2.2]) mesh(new THREE.SphereGeometry(0.55, 10, 8), mat(0xffe9a8, { emissive: 0xffd46b, emissiveIntensity: 0.9 }), 5.3, 3.4, z, g);
+    mesh(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), black, -6.9, 3.0, 0.9, g).rotation.z = Math.PI / 2;  // the power cord trailing behind
   } else if (kind === 'digger') {
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.6), mat(0x2b2b2b), 0, 0.35, z, g);
     mesh(new THREE.BoxGeometry(2, 1, 1.8), mat(0xffc23d), -0.2, 1.2, 0, g);
@@ -1165,12 +1565,15 @@ function makePile(x, z, amount, refill = 0, res = 'cereal') {
   const group = res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
   if (darkNow() && res === 'cereal') lightPool(group, 0xffd9a0, 12, 12, 0, 0, 0.22, 0.06); // a faint glow so the cereal can be found
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
+  if (state.ledge) group.position.y = ledgeLift({ x, z }); // piles in the oven sit on the ledge
   piles.push(p);
   return p;
 }
 function makeSpill(x, z, amount, life = 45) {
   if (amount < 1) return;
-  spills.push({ x, z, r: 2, amount, life, res: 'cereal', group: loopsGroup(x, z, Math.min(14, 3 + Math.round(amount / 2)), 1.6, 0.6) });
+  const group = loopsGroup(x, z, Math.min(14, 3 + Math.round(amount / 2)), 1.6, 0.6);
+  if (state.ledge) group.position.y = ledgeLift({ x, z });
+  spills.push({ x, z, r: 2, amount, life, res: 'cereal', group });
 }
 function takeFrom(src, want) {
   const got = Math.min(want, src.amount);
@@ -1279,6 +1682,12 @@ function navBuild() {
   for (const [grid, m] of [[closed, 1.6], [closedFat, 4.6]]) for (let i = 0; i < GW; i++) for (let j = 0; j < GD; j++) {
     const [cx, cz] = centreOf(i, j);
     if (Math.abs(cx) > W / 2 - m || Math.abs(cz) > D / 2 - m) grid[j * GW + i] = 1;
+  }
+  // Hob rings (level 5): the AI keeps off a ring that is warming, hot, or about to be (the Toaster Tank uses the fat grid, which ignores them).
+  const hb = state.hob;
+  if (hb?.avoid) for (const r of hb.rings) {
+    const [i0, j0] = cellOf(r.x - r.r - 2, r.z - r.r - 2), [i1, j1] = cellOf(r.x + r.r + 2, r.z + r.r + 2);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const [cx, cz] = centreOf(i, j); if (Math.hypot(cx - r.x, cz - r.z) < r.r + 1.2) closed[j * GW + i] = 1; }
   }
   // Water is closed to wheels, except a lane along the bridge.
   const w = state.water;
@@ -1415,6 +1824,8 @@ function reset() {
   if (gumball) { scene.remove(gumball.group); gumball = null; }
   for (const f of flares) scene.remove(f.g);
   flares.length = 0;
+  for (const t of toasters) scene.remove(t.g);
+  toasters.length = 0;
   for (const t of traps) scene.remove(t.mesh); for (const m of marbles) scene.remove(m.mesh);
   traps.length = marbles.length = 0;
   piles.length = spills.length = 0;
@@ -1426,6 +1837,8 @@ function reset() {
     level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, nextLayer: 180, nextHijack: 150, dominoHitAt0: -9, dominoHitAt1: -9, unlocked: new Set(L.start.unlocked), water: L.water || null, nextDrip: 6, nextBoat: 75, drip: null, flareReady: 0,
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
+  state.hob = L.hob ? { ...L.hob, rings: L.hob.rings.map(([x, z, r]) => ({ x, z, r })), t: L.hob.start || 0, phase: 'cool', avoid: false, tick: 0.5, left: 0 } : null; // level 5: the rings' clock
+  state.ledge = L.oven || null; state.rush = { size: L.rules.rusher?.size || 0, last: 0, waited: false };
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
@@ -1468,7 +1881,7 @@ addEventListener('keydown', (e) => {
   if (state.phase && state.phase !== 'battle') { if (e.code === 'KeyZ') dropCrate(state.player); return; } // during the race: drive, and Z drops the box you carry
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
-  if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
+  if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -1491,6 +1904,7 @@ tap('bDomino', () => placeDomino());
 tap('bTrojan', () => trojan());
 tap('bUse', () => useItem(BLUE, state.player));
 tap('bBoat', () => buyBoat());
+tap('bToaster', () => buildToaster());
 tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
@@ -1556,6 +1970,10 @@ const SOUNDS = {
   quack: () => [0, 0.2].forEach((d) => { tone('sawtooth', 520, 330, 0.12, 0.14, d); tone('square', 262, 165, 0.06, 0.14, d); }), // the Rubber Duck
   snipe: () => { tone('square', 1500, 140, 0.07, 0.16); noise('highpass', 4000, 3000, 0.08, 0.05); }, // the Remote Car's zap
   flare: () => { noise('highpass', 3000, 6500, 0.12, 0.4); tone('sawtooth', 300, 1500, 0.05, 0.45); tone('sine', 1800, 700, 0.04, 0.3, 0.3); }, // a flare whooshes up
+  boing: () => { tone('sine', 180, 640, 0.22, 0.24); tone('triangle', 360, 1100, 0.08, 0.2, 0.03); }, // the toaster springs
+  thud: () => { tone('sine', 120, 45, 0.4, 0.2); noise('lowpass', 900, 150, 0.25, 0.15); }, // landing
+  sizzle: () => { noise('highpass', 5000, 3500, 0.1, 0.6); noise('bandpass', 3000, 1800, 0.08, 0.5, 0.05, 2); }, // the rings go red-hot
+  toast: () => { tone('sine', 200, 60, 0.4, 0.25); tone('square', 900, 300, 0.05, 0.1); noise('bandpass', 1500, 600, 0.15, 0.2, 0, 2); }, // toast pops out of the slot
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
 };
 function sfx(kind) {
@@ -1631,7 +2049,7 @@ function collideObstacles(e) {
 }
 
 function collideMovers() {
-  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boss' || (e.kind === 'player' && e.alive)) && e.hp > 0);
+  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boss' || (e.kind === 'player' && e.alive)) && e.hp > 0 && !e.air);
   for (let i = 0; i < movers.length; i++) {
     for (let j = i + 1; j < movers.length; j++) {
       const a = movers[i], b = movers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
@@ -1648,6 +2066,7 @@ function collideMovers() {
 
 // Drive towards a direction (unit vector dx,dz) with a throttle 0..1.
 function drive(e, dx, dz, throttle, dt, stats) {
+  if (e.air) { airStep(e, dt); return; } // flying off a toaster
   if (e.pinned > 0) { e.pinned -= dt; e.vx *= 0.8; e.vz *= 0.8; return; } // stapled to the table
   if (throttle > 0.05) {
     const want = Math.atan2(dz, dx), diff = wrap(want - e.heading);
@@ -1679,11 +2098,17 @@ function fire(from, target, weapon, angle) {
   const a = (angle ?? angleTo(from, target)) + spread;
   const m = new THREE.Mesh(shared(`shot:${!!weapon.homing}:${weapon.size}`, () => (weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5))),
     basicMat(weapon.color, weapon.life ? 0.8 : weapon.bubble ? 0.6 : 1));
-  const y = from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : from.type === 'duck' ? 5.5 : 1.6;
+  const y = (from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : from.type === 'duck' ? 5.5 : from.type === 'toaster' ? 8.2 : 1.6) + (state.ledge ? ledgeLift(from) : 0); // up on the oven ledge you shoot from higher
   // Shots leave from the muzzle: just outside a car, or from the gun on a toy box's roof.
   const muzzle = from.kind === 'base' ? 1.5 : (from.r || 1) + 0.5;
   const ox = Math.cos(a) * muzzle, oz = Math.sin(a) * muzzle;
   m.position.set(from.x + ox, y, from.z + oz);
+  if (weapon.flame) { // flaming toast: a slice of bread with a flame on top (shared shapes)
+    m.geometry = shared('toastGeo', () => new THREE.BoxGeometry(1.7, 0.45, 1.7));
+    m.material = shared('toastMat', () => mat(0xc98a3a, { emissive: 0xff4a00, emissiveIntensity: 0.9, roughness: 0.9 }));
+    const fl = new THREE.Mesh(shared('flameGeo', () => new THREE.ConeGeometry(0.7, 1.8, 7)), basicMat(0xff8a1f, 0.9));
+    fl.position.y = 1.0; m.add(fl);
+  }
   scene.add(m);
   if (weapon.lob && target) {
     // Lobbed: fly to where the target is now, in a high arc, ignoring walls; land and splash.
@@ -1718,7 +2143,7 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 }
 
 function hurt(e, dmg, byTeam, weapon) {
-  if (e.hp <= 0 || (e.kind === 'player' && !e.alive)) return;
+  if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.air) return; // a car in the air (off a toaster) can't be hit
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
   // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
   if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
@@ -1761,12 +2186,16 @@ function hurt(e, dmg, byTeam, weapon) {
       makeSpill(e.x, e.z, spill, 90); state.clips[BLUE] += 10; // its batteries fall out
       for (const c of [0xff5a1f, 0xffc23d, 0x3d8bff]) burst(e.x, e.z, c, 12, 14, 2);
       toast(`The Remote Car crashed! ${spill} cereal spilled, and you found 10 batteries`);
+    } else if (e.type === 'toaster') {
+      makeSpill(e.x, e.z, spill, 90);
+      for (const c of [0xffc23d, 0xff7a1a, 0xd69a45]) burst(e.x, e.z, c, 12, 14, 3);
+      toast(`The Toaster Tank popped! ${spill} cereal spilled`);
     } else {
       makeSpill(e.x, e.z, spill, 90);
       toast(`The Stapler is jammed! ${spill} cereal spilled`);
     }
     $('bossbar').hidden = true;
-    bossShield(false); banner(e.type === 'duck' ? 'DUCK SUNK!' : e.type === 'rcar' ? 'REMOTE CAR CRASHED!' : 'STAPLER JAMMED!', 'Their shield is down: go and smash their toy box');
+    bossShield(false); banner(e.type === 'duck' ? 'DUCK SUNK!' : e.type === 'rcar' ? 'REMOTE CAR CRASHED!' : e.type === 'toaster' ? 'TOASTER TANK POPPED!' : 'STAPLER JAMMED!', 'Their shield is down: go and smash their toy box');
   }
   if (e.kind === 'boat') burst(e.x, e.z, 0x9fe0ff, 14, 9, 1); // sinks in a splash
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
@@ -1818,9 +2247,10 @@ function makeTurret(type, team, x, z) {
   const pips = new THREE.Group();
   g.add(pips);
   if (darkNow()) addGlow(g, team, 9, 3.2);
-  g.position.set(x, 0, z);
+  const high = !!state.ledge && ledgeLift({ x, z }) >= LEDGE_H - 0.01; // on the oven ledge: higher ground, +30% range
+  g.position.set(x, high ? LEDGE_H : 0, z);
   scene.add(g);
-  const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips, burst: t.burst || 0, reload: t.reload || 0, shotsLeft: t.burst || 0 };
+  const tur = { kind: 'turret', type, team, x, z, r: 1.8, high, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range * (high ? 1.3 : 1), rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips, burst: t.burst || 0, reload: t.reload || 0, shotsLeft: t.burst || 0 };
   entities.push(tur);
   obstacles.push({ x, z, w: 3, d: 3, h: 2, kind: 'turret', ref: tur });
   navDirty = true;
@@ -1829,6 +2259,7 @@ function makeTurret(type, team, x, z) {
 function canPlace(x, z, team) {
   if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
   if (inWaterX(x, z, 3)) return 'No building on the water or the bridge';
+  if (state.ledge) { const lift = ledgeLift({ x, z }); if (lift > 0.01 && lift < LEDGE_H - 0.01) return 'Not on the ramp'; }
   if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way: build where the circle is green';
   const enemyBase = state.bases[1 - team];
   // Further than any turret can reach (rockets at level 3 reach ~33), so toy boxes fall to cars, not sniping.
@@ -1846,8 +2277,8 @@ function build(type) {
   const clips = clipsOf(type);
   if (state.cereal[BLUE] < cost || state.clips[BLUE] < clips) { toast(`Need ${priceText(type)}`); sfx('no'); return; }
   state.cereal[BLUE] -= cost; state.clips[BLUE] -= clips;
-  makeTurret(type, BLUE, x, z);
-  sfx('build'); toast(`${TURRETS[type].name} turret built`);
+  const tur = makeTurret(type, BLUE, x, z);
+  sfx('build'); toast(tur.high ? `${TURRETS[type].name} turret built on the ledge: +30% range` : `${TURRETS[type].name} turret built`);
 }
 // ---------- Domino run: line them up, knock the first, the last one falls on their toy box ----------
 const dominoes = [];
@@ -1938,7 +2369,7 @@ const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heav
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
-  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m);
+  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m) || hobBlocked(q.x, q.z, m);
   const toward = Math.sign(target.x) || 1;
   for (const zb of [30, 24, 36, 18, 40]) for (const xm of [0, -10, 10, -20, 20, -30, 30, -38, 38]) for (const ang of [0.9, 0.7, 1.1, 0.5, 1.3]) {
     // Path: from the button (mid-table, on this side's edge) along the edge, then bending in to land on the box.
@@ -2306,6 +2737,8 @@ function updateCosts() {
   $('laserCost').textContent = priceText('laser');
   $('clipsRow').hidden = !hasClips();
   $('bBoat').hidden = !state.level.boats;
+  $('bToaster').hidden = !state.level.toaster;
+  $('toasterCost').textContent = TOASTER.cost;
   $('bBoat').querySelector('small').textContent = BOATS.gunboat.cost;
   $('magnetCost').textContent = priceText('magnet');
   $('catapultCost').textContent = priceText('catapult');
@@ -2372,11 +2805,19 @@ function commander(dt) {
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
   const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
   // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
-  const armyCap = state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
+  // The rusher (level 5) builds a bigger army, earlier, and holds it at a rally point until a wave is ready.
+  const rusher = !!state.level.rules.rusher;
+  const armyCap = rusher ? (state.time < 60 ? 6 : state.time < 120 ? 9 : 12 + Math.floor(ramp * 5)) : state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
   if (army < armyCap && state.cereal[RED] >= price + 10) {
     state.cereal[RED] -= price;
     if (want === 'heavy') state.clips[RED] -= heavyClips;
-    spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
+    const u = spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
+    if (rusher) { u.hold = true; u.rally = [42 + Math.random() * 6, (Math.random() - 0.5) * 18]; }
+  }
+  // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from.
+  if (state.level.toaster && state.time > 70 && state.cereal[RED] >= TOASTER.cost + 20 && !toasters.some((t) => t.team === RED)) {
+    const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
+    if (spot) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
   }
 }
 
@@ -2435,7 +2876,7 @@ function planDominoRun() {
       const r = 9.5 + (n - 1 - i) * 4.2; // the last one stands 9.5 out, so its top lands on the box
       spots.push({ x: home.x + ox * r, z: home.z + oz * r });
     }
-    const clear = spots.every((q) => Math.abs(q.x) < W / 2 - 2 && !inWaterX(q.x, q.z, 1.5) && Math.abs(q.z) < D / 2 - 2 && !obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + 1 && Math.abs(q.z - o.z) < o.d / 2 + 1));
+    const clear = spots.every((q) => Math.abs(q.x) < W / 2 - 2 && !inWaterX(q.x, q.z, 1.5) && !hobBlocked(q.x, q.z, 1.5) && Math.abs(q.z) < D / 2 - 2 && !obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + 1 && Math.abs(q.z - o.z) < o.d / 2 + 1));
     if (clear) return { spots, dx: -ox, dz: -oz }; // falls towards your box
   }
   return null;
@@ -2491,6 +2932,17 @@ function unitThink(u, dt) {
     const b = u.presser;
     if (!b.ready) u.presser = null;
     else { steer(u, b.x, b.z, 0, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip }); return; }
+  }
+  if (u.hold || u.via) { // level 5: waiting at the rally point for the wave, or heading for the toaster to jump off it
+    const spot = u.hold ? { x: u.rally[0], z: u.rally[1] } : u.via;
+    if (u.via && (!toasters.includes(u.via) || (u.viaT -= dt) <= 0)) u.via = null;
+    else {
+      u.cool -= dt;
+      const foe = nearestEnemy(u, u.weapon.range);
+      steer(u, spot.x, spot.z, u.hold ? 2.5 : 0, dt, { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip });
+      if (foe && u.cool <= 0) { u.cool = u.weapon.rate * 1.6; fire(u, foe, u.weapon); }
+      return;
+    }
   }
   u.think -= dt;
   if (u.think <= 0) {
@@ -2700,6 +3152,7 @@ function spawnBoss() {
   const B = state.level.rules.boss;
   if (B.kind === 'duck') return spawnDuck();
   if (B.kind === 'rcar') return spawnRcar();
+  if (B.kind === 'toaster') return spawnToaster();
   const boss = {
     kind: 'boss', team: RED, x: 56, z: 0, vx: 0, vz: 0, heading: Math.PI, r: 4.4, hp: B.hp, maxHp: B.hp, armor: 4,
     fat: true, mesh: buildModel('stapler', RED, 1.2), think: 0, snap: 0, snapCool: 0, cool: 0, prey: null,
@@ -2789,10 +3242,56 @@ function rcThink(b, dt) {
     fire(b, t, b.weapon, Math.atan2(t.z + (t.vz || 0) * k * 0.8 - b.z, t.x + (t.vx || 0) * k * 0.8 - b.x));
   }
 }
+// The Toaster Tank (level 5 boss): a chrome toaster on tracks. It trundles towards your nearest turret (or your toy box), stops about 28 units off
+// and pops flaming toast from its two bread slots in high arcs. The hob rings can't hurt it. It uses the fat route grid, so it takes the wide ways round.
+const TT_STATS = { speed: 6.5, accel: 14, turn: 1.7, grip: 12 };
+function spawnToaster() {
+  const B = state.level.rules.boss;
+  const boss = {
+    kind: 'boss', type: 'toaster', team: RED, x: 48, z: 0, vx: 0, vz: 0, heading: Math.PI, r: 4.8, hp: B.hp, maxHp: B.hp, armor: 2, fat: true,
+    mesh: buildModel('toaster', RED), think: 0, cool: 3, side: 1, pop: 0, t: 0, prey: null, goalE: null, weapon: WEAPONS.toast,
+  };
+  boss.slices = boss.mesh.userData.slices;
+  entities.push(boss);
+  state.boss = boss;
+  $('bossbar').hidden = false; $('bossName').textContent = B.name;
+  toast('The Toaster Tank is rolling out!'); sfx('roar');
+  bossShield(true); banner('THE TOASTER TANK', 'It lobs flaming toast. The hob rings cannot hurt it. Their toy box has a shield until you pop it!');
+}
+function toasterThink(b, dt) {
+  b.t += dt; b.cool -= dt; b.think -= dt; b.pop = Math.max(0, b.pop - dt);
+  const low = b.hp < b.maxHp * 0.5;
+  if (b.think <= 0) {
+    b.think = 0.5;
+    const bonus = (e) => (e.kind === 'turret' ? 500 : e.kind === 'player' ? 250 : e.kind === 'base' ? -700 : 0);
+    b.prey = entities.filter((e) => e.team === BLUE && e.hp > 0 && !e.air && (e.kind === 'turret' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'base' || (e.kind === 'player' && e.alive)) && dist2(b, e) < b.weapon.range ** 2)
+      .sort((u, v) => dist2(b, u) - bonus(u) - (dist2(b, v) - bonus(v)))[0] || null;
+    b.goalE = entities.filter((e) => e.kind === 'turret' && e.team === BLUE && e.hp > 0).sort((p, q) => dist2(b, p) - dist2(b, q))[0] || state.bases[BLUE];
+  }
+  const g = b.goalE && b.goalE.hp > 0 ? b.goalE : state.bases[BLUE];
+  const d = steer(b, g.x, g.z, 27, dt, TT_STATS, g);
+  b.checkT = (b.checkT ?? 3) - dt;
+  if (b.checkT <= 0) { // stuck? hop a little towards the goal
+    if (Math.hypot(b.x - (b.lastX ?? b.x + 9), b.z - (b.lastZ ?? b.z)) < 2 && d > 31) {
+      const hop = Math.min(8, d - 28);
+      b.x = Math.max(-W / 2 + 6, Math.min(W / 2 - 6, b.x + (g.x - b.x) / d * hop)); b.z = Math.max(-D / 2 + 6, Math.min(D / 2 - 6, b.z + (g.z - b.z) / d * hop));
+      b.path = null; b.vx = b.vz = 0; burst(b.x, b.z, 0xcfd3da, 12, 10, 1);
+    }
+    b.lastX = b.x; b.lastZ = b.z; b.checkT = 3;
+  }
+  const t = b.prey && b.prey.hp > 0 && !(b.prey.kind === 'player' && !b.prey.alive) && !b.prey.air ? b.prey : null;
+  if (t && b.cool <= 0) {
+    b.cool = b.weapon.rate * (low ? 0.7 : 1.1);
+    b.side = -b.side; b.pop = 0.45;
+    const sx = -Math.sin(b.heading) * 1.7 * b.side, sz = Math.cos(b.heading) * 1.7 * b.side; // which bread slot it fires from
+    fire({ kind: 'boss', type: 'toaster', team: RED, x: b.x + sx, z: b.z + sz, r: 1.2 }, t, b.weapon);
+  }
+}
 // Heads for your nearest turret and snaps it shut on contact; with none left it chews the toy box.
 function bossThink(b, dt) {
   if (b.type === 'duck') return duckThink(b, dt);
   if (b.type === 'rcar') return rcThink(b, dt);
+  if (b.type === 'toaster') return toasterThink(b, dt);
   b.think -= dt; b.snap = Math.max(0, b.snap - dt); b.snapCool -= dt; b.cool -= dt;
   if (b.think <= 0) {
     b.think = 0.5;
@@ -3252,6 +3751,8 @@ function update(dt) {
   }
 
   if (state.water) { ferriesUpdate(dt); islandScoop(dt); dripsUpdate(dt); }
+  if (state.hob) hobUpdate(dt);
+  if (toasters.length) toastersUpdate(dt);
   // Player
   if (p.alive) {
     let ix = input.x, iz = input.z;
@@ -3328,7 +3829,7 @@ function update(dt) {
     if (s.lobbed && hit) {
       // Landed: the eraser bounces off whatever it lands on.
       for (const e of entities) if (e.team !== s.team && e.hp > 0 && dist2(s, e) < (s.weapon.splash + (e.kind === 'base' ? 5 : 0)) ** 2) hurt(e, s.weapon.dmg, s.team, s.weapon);
-      burst(s.x, s.z, 0xf4a6b8, 10, 7, 1); if (dist2(s, state.player) < 2500) { sfx('cannon'); state.shake = Math.min(1.2, (state.shake || 0) + 0.15); }
+      burst(s.x, s.z, s.weapon.flame ? 0xff7a1a : 0xf4a6b8, s.weapon.flame ? 16 : 10, 7, 1); if (dist2(s, state.player) < 2500) { sfx('cannon'); state.shake = Math.min(1.2, (state.shake || 0) + 0.15); }
       scene.remove(s.mesh); shots.splice(i, 1); continue;
     }
     if (s.lobbed) continue;
@@ -3399,6 +3900,7 @@ function update(dt) {
   }
 
   commander(dt);
+  rushUpdate();
   enemyBoats();
   enemyTricks();
   runsUpdate(dt);
@@ -3436,6 +3938,12 @@ function render(dt) {
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
+    if (state.ledge) { // oven ramp and ledge: lift, tilt on the ramp; in the air off a toaster: an arc and a gentle nose-up
+      const a = e.air, f = a ? Math.min(1, a.t / a.T) : 0;
+      e.mesh.position.y += a ? a.l0 + (a.l1 - a.l0) * f + 4 * a.H * f * (1 - f) : ledgeLift(e);
+      e.mesh.rotation.z = a ? (0.5 - f) * 0.5 : (Math.abs(e.x) < state.ledge.rw && e.z < state.ledge.rz1 && e.z > state.ledge.z1 ? Math.atan(-LEDGE_H / (state.ledge.rz1 - state.ledge.z1) * Math.sin(e.heading)) : 0);
+    }
+    if (e.type === 'toaster') for (let k = 0; k < 2; k++) e.slices[k].position.y = 7.6 + (e.pop > 0 && (k === 0) === (e.side > 0) ? Math.sin((1 - e.pop / 0.45) * Math.PI) * 1.2 : 0);
     if (e.type === 'duck') { e.mesh.position.y = 0.7 + Math.sin(time * 2) * 0.3; e.mesh.rotation.z = Math.sin(time * 1.5) * 0.06; }
     if (e.kind === 'boat') {
       e.mesh.position.y = 0.2 + Math.sin(time * 3 + e.x) * 0.1; e.mesh.rotation.z = Math.sin(time * 2.3 + e.z) * 0.05;
@@ -3459,6 +3967,8 @@ function render(dt) {
     b.mesh.rotation.z = (1 - Math.min(1, health * 2)) * 0.12 * (b.team === BLUE ? 1 : -1);
     if (health < 0.5 && b.hp > 0 && Math.random() < dt * (health < 0.25 ? 10 : 4)) burst(b.x + (Math.random() - 0.5) * 8, b.z + (Math.random() - 0.5) * 8, health < 0.25 ? 0x3a332c : 0x8a8178, 2, 3, 7.5);
   }
+  hobDraw(dt, time);
+  landMarksUpdate(time);
   if (sink) { waterTex.offset.x += dt * 0.012; waterTex.offset.y -= dt * 0.03; } // the ripples slide along
   for (const f of ferries) { f.g.position.set(f.x, 0.2 + Math.sin(time * 2 + f.z) * 0.05, f.z); f.g.rotation.y += dt * 0.05; }
   for (const o of outposts) {
@@ -3490,7 +4000,7 @@ function render(dt) {
     const gx = p.x - Math.cos(p.heading) * 4, gz = p.z - Math.sin(p.heading) * 4;
     const ok = p.alive && !canPlace(gx, gz, BLUE) && state.cereal[BLUE] >= costOf('gun');
     ghost.visible = p.alive && !state.over && state.phase === 'battle';
-    ghost.position.set(gx, 0.1, gz);
+    ghost.position.set(gx, 0.1 + (state.ledge ? ledgeLift({ x: gx, z: gz }) : 0), gz);
     ghost.material.color.setHex(ok ? 0x3ddc84 : 0xff5a5f);
     ghost.material.opacity = (darkNow() ? 0.6 : 0.3) + Math.sin(time * 5) * 0.12; // brighter in the dark drawer
     state.shake = Math.max(0, (state.shake || 0) - dt * 2.5);
