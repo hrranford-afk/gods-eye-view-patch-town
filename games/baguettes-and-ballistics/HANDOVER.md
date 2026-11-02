@@ -34,6 +34,8 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
   | U | upgrade |
   | 3 | drones |
   | B | gunboat (level 4 only) |
+  | L | laser turret (level 3 only) |
+  | V | flare (level 3 only) |
   | 4–9 | vehicles, at home |
 
 - **Screenshots:** `node shoot.js "$PWD/index.html"` (needs Playwright) writes `shots/`. Section 8 has the short version.
@@ -86,7 +88,7 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
 
 ### Level format
 
-`LEVELS` is an array of 6 entries. Levels 3, 5 and 6 are `{ name, time, soon: true }`
+`LEVELS` is an array of 6 entries. Levels 5 and 6 are `{ name, time, soon: true }`
 stubs that show "coming soon". A playable entry holds:
 
 | Field | Meaning |
@@ -108,7 +110,11 @@ stubs that show "coming soon". A playable entry holds:
 | `outposts` | `[x, z]`, or `[x, z, y]` to lift a cap (the level 4 cap sits on the bridge) |
 | `piles` | a fifth item `'island'` marks a pile only you can scoop (trucks and diggers skip it) |
 | `tableTex` | also `'tile'` (white kitchen tiles) |
-| `rules.boss` | `{ at, hp, spill, kind, name }`: `kind: 'duck'` spawns the Rubber Duck, otherwise the Stapler; `name` is the boss bar text |
+| `rules.boss` | `{ at, hp, spill, kind, name }`: `kind: 'duck'` spawns the Rubber Duck, `'rcar'` the Remote Car, otherwise the Stapler; `name` is the boss bar text |
+| `dark` | level 3 only: `true` switches the lights down (`setLighting`), adds `darkRig`, and turns on the stealth rule. Every other level gets normal light back from `buildLevel` |
+| `second`, `resources` | the second resource's name (`'batteries'`) and list. Its counter is stored in `state.clips` on every level, whatever it is called (`secondRes()`, `secondName()`) |
+| `rules.sneaky` | `{ hijackFirst, hijackEvery, layerFirst, layerEvery }` in seconds: the sneaky enemy (earlier and more hijackers, sooner domino layer, raiders with no siren) |
+| block kinds | `remote`, `battery`, `cable`, `charger`, `torch` (in `DRAWER_KINDS`); `tableTex: 'felt'` |
 
 `reset()` calls `buildLevel(LEVELS[curLevel])`, which throws away the old
 level's group and rebuilds blocks, erasers, patches and decor. Level 1's
@@ -202,6 +208,54 @@ Racer and Monster crossed the bridge; ferry carried the player 19 units across i
 killed a dummy; drips pushed a Racer 4.2, a Tank 2.9, a Hover 6.4 and a boat; the Duck
 spawned at 4:00, killed a gun turret, took 330 damage from 3 gunboats and paid out when killed;
 both level domino runs worked; 5 minutes of AI play without page errors; levels 1 and 2 unchanged.
+
+## Level 3, Remote-control drawer (2 Nov 2026)
+
+![drawer](shots/20-drawer.png) ![flare](shots/21-drawer-flare.png) ![remote car](shots/22-remote-car.png)
+
+**The big idea: it is dark.** Everything is built on `LEVELS[2].dark`. Code lives in
+one block, "The Remote-control drawer", just before `// ---------- Levels`, plus small hooks elsewhere.
+
+**Lighting** (`setLighting(dark)`, called by `buildLevel` for every level):
+- Normal: hemisphere 0.75, sun 0.85, brown background. Drawer: hemisphere 0.26 (blue-ish), sun 0.1, near-black navy background and fog.
+- `darkRig` (made once, added to the scene only on this level) holds the **5 real lights**: your headlight (a SpotLight that follows the car), a PointLight over each toy box, one at the torch lens, and one for the newest flare. Their count never changes, so shaders compile once. No other real lights.
+- Everything else is fake: `lightPool` (a flat additive radial-gradient plane on the felt, one shared geometry, a material per colour), `lamp` (a small unlit bulb), and a few additive Sprites for halos (batteries, flare). `addHeadlights` puts two lamps and two pools on every car, truck and digger (hooked into `buildModel` through `FRONT`); `addGlow` puts a lamp and a pool on turrets and toy boxes. Cereal piles get a faint pool so you can find them.
+- The build ghost uses an unlit material, so it is visible in the dark (brighter on this level).
+
+**The stealth rule** (`darkUpdate`, called at the end of `render`). Each frame it fills reusable number arrays (`litX`, `litZ`, `litR`) with lit circles, then sets `mesh.visible` for every enemy unit and truck:
+- Yours: the car (a circle 8 ahead, radius 19), your toy box 27, turrets 15, your units 11, your trucks 8, caps you hold 10.
+- Neutral: glowing battery piles (6 to 11, scales with the pile), the torch 17, flares (30).
+- An enemy stays visible 0.45 s after it was last lit, and 0.7 s after it fires (`from.flashT`, set in `fire`; sneaky raiders and hijackers only 0.25 s).
+- Enemy turrets and their toy box are always drawn (they glow); shots and sparks are unlit, so always seen. Turrets and your auto-aim still shoot hidden enemies.
+- The Remote Car is different: its `body` group hides, its `lights` group (blinking bulbs) never does.
+
+**Layout.** Navy felt (`feltTexture`), a wooden drawer rim. Blocks: two TV remotes each side (`remote`: dark box with button bumps), four loose AA batteries (`battery`, lying flat), two cable tangles of low walls (`cable`: height 1.1, so cars can't cross but shots fly over), two charger bricks (`charger`, green light) and the torch (`torch`, lens facing the middle cap, its light is a neutral lit zone). Caps at (±34, ±30) and (0, 0). The two level domino runs and the trojan work as on other levels (tested: run 200, trojan 260).
+
+**Batteries.** Second resource, shown as "N BATTERIES" in green. Piles use `batteriesGroup` (glowing coloured cells, a pool and a halo). Four piles: two mid-table at (-15, 14) and (15, -14), 130 each, refilling 0.18 a second; two far ones, 90 each. Trucks haul them exactly like paperclips (`pref`, `secondRes()`); the worker code was generalised from `'clips'` to "the level's second resource". Start: 30 cereal, 10 batteries, Racer and Tank.
+- **Laser turret** (button *Laser*, key L): 35 cereal + 8 batteries, `TURRETS.laser`, range 23, 8 damage every 0.14 s, cyan lens model. The enemy builds them too (45% of its turrets, costs it the batteries).
+- **Jet Bike**: 20 cereal + 14 batteries (`vehicleCosts`). The garage and toasts print the resource name.
+
+**The Flare** (button *Flare*, key V, 8 cereal, 2.5 s reload; `flare`, `flaresUpdate`, `flares[]`). Lobbed 26 units ahead over 0.8 s, then it sits for 15 s: a bright ball, a halo, a big soft pool, and a lit circle of radius 30 (opens up for the first second, dims over the last 3 s). Three at once at most; the PointLight follows the newest.
+
+**The sneaky enemy** (`rules.sneaky`): first hijacker at 1:10 then every 60 s (normally 2:30 / 120 s); after 4:00 a second hijacker follows if you have two trucks or more; the domino layer from 2:10 every 110 s. Raiders arrive with only a toast, no siren. Hijackers and raiders are `sneak`, so they hide again quickly after firing.
+
+**The Remote Car** (`spawnRcar`, `rcThink`, `buildModel('rcar')`, rule `boss: { at: 180, hp: 1000, spill: 90, kind: 'rcar', name: 'THE REMOTE CAR' }`). Orange RC buggy with an aerial and blinking blue and red lights, armour 1. It follows an arc round your toy box on the table side (radius 27 to 36, changes direction every 4 to 9 s, turns round at the ends, runs away along the arc if your car comes within 17), speed 23, so it is as quick as a Racer. Every 1.3 s (0.8 s under half health) it snipes (`WEAPONS.snipe`: 20 damage, range 46, speed 75, leads the shot), turrets first, then you, then trucks. The toy box has the boss bubble shield (`bossShield`) and there is a banner and an arrow. When it crashes: 90 cereal spills and you get 10 batteries.
+
+**Tested in Chromium** with Playwright (swiftshader, about 3 frames a second, so all by calling `update(1/60)`):
+- enemies hide outside light and show in a headlight, a flare, near a battery pile; a lit unit hides again after about half a second;
+- batteries were hauled (10 to 48 in a minute with 3 trucks); a laser turret built and killed a scout; it is refused with too few batteries; the Jet Bike unlocked for 20 + 14;
+- the flare costs 8, reveals at 30 and is gone after 15 s;
+- the Remote Car spawned at 3:00, orbited, sniped a player to a wreck and a turret down, died to three lasers and the base gun, popped the shield (bubble removed, banner shown, 10 batteries paid);
+- level domino run 200 damage, trojan 260, domino placing works, the build ghost shows;
+- levels 1, 2 and 4 get their normal light back after visiting the drawer (checked after each switch);
+- 2.5 minutes of simulated play with raids, hijackers and a domino layer: no page errors, shapes in memory about 660 to 760.
+
+**Not done or open.**
+- Balance was never played by a human on an iPad: only simulated. Aim is 8 to 12 minutes.
+- The gumball machine is not on this level.
+- Enemy turrets are always drawn, not hidden.
+- The Remote Car can duck inside the turret ring when its route bends round clutter, where it takes fire from the toy box's gun.
+- Real-light count is 5, but the first frame of the level recompiles shaders (a small hitch on an iPad).
 
 ## Level domino runs (1 Nov 2026, Harry's idea: part of the level, switched on)
 
