@@ -715,7 +715,8 @@ const LEVELS = [
     resources: ['cereal', 'batteries'], second: 'batteries',
     turretClips: { laser: 8 },                                          // a laser turret costs 35 cereal + 8 batteries
     vehicleCosts: { jet: { c: 20, p: 14 } },                            // the Jet Bike needs batteries
-    rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3] },
+    // The enemy is sneaky here: hijackers come earlier and more often, dominoes sooner, and raiders creep in without a siren.
+    rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3], sneaky: { hijackFirst: 70, hijackEvery: 60, layerFirst: 130, layerEvery: 110 } },
   },
   {
     name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
@@ -1379,6 +1380,7 @@ function reset() {
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
+  if (L.rules.sneaky) { state.nextHijack = L.rules.sneaky.hijackFirst; state.nextLayer = L.rules.sneaky.layerFirst; }
   Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
   $('bUse').hidden = true;
   if (L.gumball) gumball = placeGumball();
@@ -1635,7 +1637,7 @@ function fire(from, target, weapon, angle) {
   } else
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
   if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
-  if (from.team === RED && (from.kind === 'unit' || from.kind === 'worker')) from.flashT = state.time + 0.7; // drawer level: firing gives you away
+  if (from.team === RED && (from.kind === 'unit' || from.kind === 'worker')) from.flashT = state.time + (from.sneak ? 0.25 : 0.7); // drawer level: firing gives you away (sneaky ones only for a blink)
 }
 
 // Shared shapes and colours for shots and sparks, made once: making new ones for every shot ran iPads out of memory.
@@ -2348,14 +2350,17 @@ function enemyTricks() {
   if (state.time >= state.nextLayer && state.cereal[RED] >= 40) {
     const plan = planDominoRun();
     if (plan) {
-      state.cereal[RED] -= 40; state.nextLayer = state.time + 150;
+      state.cereal[RED] -= 40; state.nextLayer = state.time + (state.level.rules.sneaky?.layerEvery || 150);
       const u = spawnUnit('layer', RED, 54, 0); u.plan = plan; u.step = 0; u.stage = 'go';
       toast('Their builder is lining up dominoes at your toy box!'); sfx('raid');
     } else state.nextLayer = state.time + 20;
   }
   if (state.time >= state.nextHijack && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').some((t) => !t.trojan)) {
-    state.cereal[RED] -= 25; state.nextHijack = state.time + 120;
-    spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20);
+    const sneaky = state.level.rules.sneaky;
+    state.cereal[RED] -= 25; state.nextHijack = state.time + (sneaky?.hijackEvery || 120);
+    spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20).sneak = !!sneaky;
+    // Sneaky enemy: after 4:00, with two trucks or more, a second hijacker follows the first.
+    if (sneaky && state.time > 240 && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').filter((t) => !t.trojan).length > 1) { state.cereal[RED] -= 25; spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20).sneak = true; }
     toast('A hijacker is after your trucks!');
   }
 }
@@ -2615,8 +2620,10 @@ function erasersUpdate(dt) {
 function spawnRaid() {
   const [lo, hi] = state.level.rules.raidSize;
   const n = lo + Math.floor(Math.random() * (hi - lo + 1));
-  for (let i = 0; i < n; i++) spawnUnit('raider', RED, 54, (i - (n - 1) / 2) * 5).raid = true;
-  toast('Raid incoming!'); sfx('raid');
+  const sneaky = !!state.level.rules.sneaky;
+  for (let i = 0; i < n; i++) { const u = spawnUnit('raider', RED, 54, (i - (n - 1) / 2) * 5); u.raid = true; u.sneak = sneaky; }
+  if (sneaky) toast('Raiders are sneaking in the dark! Guard your trucks'); // no siren: you have to listen for them
+  else { toast('Raid incoming!'); sfx('raid'); }
 }
 const BOSS_STATS = { speed: 5, accel: 12, turn: 1.5, grip: 12 };
 // A big see-through bubble over their toy box while the boss is alive.
