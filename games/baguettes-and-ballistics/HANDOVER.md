@@ -383,3 +383,15 @@ time, and shows a screenshot or short clip before and after.
   it's off-camera (`#bossArrow`, in `render`). Works for the Stapler and the
   Rubber Duck.
 
+## The Sink, round two (2 Nov 2026; Harry: "the sink wasn't big enough" and "you can't get on the ferries")
+
+- The channel is now 42 wide (x -21 to 21, was 26); the bridge is 7 wide.
+  Piles, the sponge and the knife moved out to the new banks.
+- **Ferry bug:** a ferry stopped so far out that a car pressed against the
+  bank was just outside the distance that counted as aboard, so it never
+  carried you. Ferries are now bigger (radius 5.5), dock at x ±17 so the cap
+  overlaps the bank by 1.5, wait 4 s at each bank, and carry anything on the
+  cap. Tested: drove on from the bank, rode across, drove off the far side.
+- `buildLevelRun` also tries spots further out along the banks (x ±30, ±38),
+  so the wider water still has room for both domino runs (9 dominoes each).
+
