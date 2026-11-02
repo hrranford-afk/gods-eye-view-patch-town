@@ -179,7 +179,7 @@ button.drop[disabled] { opacity: 0.45; }
 <script>
 'use strict';
 // ---------- World ----------
-const W = 150, D = 96; // the tabletop, in toy units (1 unit ≈ 1 cm)
+let W = 150, D = 96; // the tabletop, in toy units (1 unit ≈ 1 cm). Level 6 has a bigger one: setTableSize() swaps these in buildLevel; levels 1 to 5 stay 150 x 96
 const BLUE = 0, RED = 1;
 const COLORS = [0x2f7df6, 0xef4136];
 const $ = (id) => document.getElementById(id);
@@ -706,7 +706,7 @@ function hobUpdate(dt) {
 // Once a second while hot: everything sitting on a ring takes damage. The Toaster Tank is immune; turrets only melt slowly.
 function hobBurn(h) {
   for (const e of entities) {
-    if (e.hp <= 0 || e.air || !(e.kind === 'player' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || e.kind === 'turret')) continue;
+    if (e.hp <= 0 || e.air || e.fly || !(e.kind === 'player' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || e.kind === 'turret')) continue;
     if (e.kind === 'player' && !e.alive) continue;
     if (!ringAt(e.x, e.z)) continue;
     burst(e.x, e.z, 0xff7b2a, 5, 7, 1);
@@ -1199,21 +1199,75 @@ const LEVELS = [
     turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
     rules: { baseHp: 1800, raidEvery: 70, firstRaid: 90, raidSize: [2, 3], boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }, rusher: { first: 30, size: 5, grow: 1, max: 10, gap: 40 } },
   },
-  { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },
+  {
+    name: 'Baguettes & Ballistics', time: 'dinner', tableColor: 0xffffff, size: [210, 130], finale: true, camZoom: 1.75,
+    blurb: 'The finale. It is night, the kettle is on, and the worktop is a big U. Your toy box is in the sink arm, theirs on the breadboard. You have 60 seconds before the kettle clicks and the war starts.',
+    tips: [
+      '<b>Build-up:</b> a glowing ceasefire line splits the hob. Nobody crosses it or shoots over it. Gather, build, train',
+      '<b>Squadrons:</b> Bombers fly over water and walls. Boats sail the sink. Tap a squad\'s button to set Attack, Defend or Raid',
+      '<b>Battle plan:</b> in the last 10 seconds pick Left, Middle or Right. Rally your Defenders where Red will come to take less damage',
+      '<b>The bend:</b> the hob rings burn when red-hot and the cook drops pans. Paperclips are in the middle',
+    ],
+    // Bases at the tips of the arms. Index 0 is the cut-out (finaleDecor reads it): a solid block in the middle of the U.
+    bases: [[-92, -48], [92, -48]],
+    blocks: [
+      [0, -30, 90, 70, 10, 0x3b2a1e, 'box'],
+      ...mirrored([
+        (s) => [s * 83, -33, 5, 5, 9, 0xc98a3a, 'box'],                       // loaf towers by each toy box
+        (s) => [s * 104, -33, 4, 4, 9, 0xc98a3a, 'box'],
+        (s) => [s * 10, 25, 8, 8, 8, s > 0 ? 0xd96c3f : 0xe9e4d8, 'mug'],     // cover in the bend
+        (s) => [s * 10, 48, 3.4, 3.4, 7, s > 0 ? 0x2a2a2a : 0xf6f6f2, 'box'], // salt and pepper
+        (s) => [s * 70, 56, 14, 8, 3, s > 0 ? 0x8b3a3a : 0x3a5a8b, 'book'],
+        (s) => [s * 66, 12, 4, 4, 4, 0xfbfbf6, 'die'],
+        (s) => [s * 50, -52, 8, 8, 6, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],
+      ]),
+    ],
+    erasers: [],
+    patches: [{ x: 0, z: 22, r: 5, kind: 'oil' }, { x: 0, z: 52, r: 4.5, kind: 'sauce' }],
+    decor: finaleDecor,
+    // The sink: a channel down the left arm. z0 -72 runs it off the table edge; z1 -4 stops it short of the bend (water is in the arm only).
+    water: {
+      x0: -78, x1: -62, z0: -72, z1: -4, bridge: { z: -28, w: 6 },
+      ferries: [
+        { color: 0xc8281f, inner: 0xe9c46a, leg: 5, start: 0, stops: [{ x: -82, z: -12, wait: 3 }, { x: -58, z: -12, wait: 3 }] },
+        { color: 0x1f8a9e, inner: 0xf4efe6, leg: 5, start: 1, stops: [{ x: -82, z: -42, wait: 3 }, { x: -58, z: -42, wait: 3 }] },
+      ],
+    },
+    // The hob in the bend: two rings each side of the ceasefire line, same cycle as level 5.
+    hob: { rings: [[-26, 22, 8], [26, 22, 8], [-26, 50, 8], [26, 50, 8]], cool: 10, warn: 3, hot: 6, safe: 5, dmg: 12, turretDmg: 25, start: 0 },
+    cook: true,
+    outposts: [[-53, -14], [53, -14], [-78, 36], [78, 36], [0, 36]],
+    piles: [
+      ...mirrored([
+        (s) => [s * 97, -22, 150],  // beside each toy box
+        (s) => [s * 53, -36, 130],  // inner bank (on your side: over the bridge)
+        (s) => [s * 84, 32, 170],   // the bend, near your arm
+        (s) => [s * 26, 36, 150, 'clips'], // paperclips between the hob rings
+      ]),
+    ],
+    refill: [{ x: -84, z: 32, rate: 0.35 }, { x: 84, z: 32, rate: 0.35 }, { x: -26, z: 36, rate: 0.15 }, { x: 26, z: 36, rate: 0.15 }],
+    start: { cereal: 120, clips: 30, unlocked: ['racer', 'tank'] },
+    resources: ['cereal', 'clips'],
+    turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
+    rules: { baseHp: 2500 },
+  },
 ];
 
 const levelRoot = new THREE.Group();
 scene.add(levelRoot);
 const patches = [];
 function buildLevel(L) {
+  setTableSize(...(L.size || [150, 96])); // level 6 is bigger; everything else is 150 x 96 as before
   // Throw away the old level's shapes, then build this one's blocks and patches into a fresh group.
   scene.remove(levelRoot);
   levelRoot.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
   levelRoot.clear();
   scene.add(levelRoot);
   obstacles.length = patches.length = erasers.length = ferries.length = 0;
-  sink = null; torchPos = null; hobVis = null;
+  sink = null; torchPos = null; hobVis = null; finVis = null;
   setLighting(!!L.dark); // the drawer is dark; every other level gets its normal light back
+  finaleLight(!!L.finale); // level 6: warm night kitchen (undoes itself on every other level)
+  table.visible = !L.finale; // level 6 builds its own U-shaped worktop in finaleDecor
   table.material.color.setHex(L.tableColor);
   table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : L.tableTex === 'felt' ? (feltTex = feltTex || feltTexture()) : L.tableTex === 'hob' ? (hobTex = hobTex || hobTexture()) : woodTex;
   table.material.needsUpdate = true;
@@ -1239,11 +1293,11 @@ const patchAt = (x, z) => patches.find((p) => (x - p.x) ** 2 + (z - p.z) ** 2 < 
 // the Hover floats over it. Boats stay inside it. state.water is null on levels without water.
 const ferries = [];
 let sink = null; // moving look-only pieces of the sink: ripple texture, drip drop, splash rings
-const inWaterX = (x, z, m = 0) => !!state.water && x > state.water.x0 - m && x < state.water.x1 + m; // anywhere across the channel, bridge included
+const inWaterX = (x, z, m = 0) => { const w = state.water; return !!w && x > w.x0 - m && x < w.x1 + m && (w.z0 === undefined || (z > w.z0 - m && z < w.z1 + m)); }; // anywhere across the channel, bridge included (level 6's channel only runs z0..z1)
 const onFerry = (e) => { for (const f of ferries) if (Math.hypot(e.x - f.x, e.z - f.z) < f.R) return f; return null; };
 const onIsland = (e) => { const i = state.water?.island; return !!i && Math.hypot(e.x - i.x, e.z - i.z) < i.r; };
 // Bridge deck lift: cars on the ruler sit 0.5 higher, with a short ramp at each end.
-const bridgeLift = (e) => { const w = state.water; return w && Math.abs(e.z - w.bridge.z) < w.bridge.w / 2 ? 0.5 * Math.max(0, Math.min(1, (w.x1 + 0.5 - Math.abs(e.x)) / 1.5)) : 0; };
+const bridgeLift = (e) => { const w = state.water; return w && Math.abs(e.z - w.bridge.z) < w.bridge.w / 2 ? 0.5 * Math.max(0, Math.min(1, ((w.x1 - w.x0) / 2 + 0.5 - Math.abs(e.x - (w.x0 + w.x1) / 2)) / 1.5)) : 0; };
 function waterPush(e) {
   const w = state.water;
   if (!w || (e.kind === 'player' && VEHICLES[e.vehicle].floats)) return;
@@ -1252,7 +1306,7 @@ function waterPush(e) {
   if (onFerry(e)) return;
   const m = e.r * 0.6, hw = w.bridge.w / 2;
   // Two blocked rectangles: the water north of the bridge and the water south of it.
-  for (const [z0, z1] of [[-D / 2 - 10, w.bridge.z - hw], [w.bridge.z + hw, D / 2 + 10]]) {
+  for (const [z0, z1] of [[w.z0 ?? -D / 2 - 10, w.bridge.z - hw], [w.bridge.z + hw, w.z1 ?? D / 2 + 10]]) {
     if (e.x + m <= w.x0 || e.x - m >= w.x1 || e.z + m <= z0 || e.z - m >= z1) continue;
     const pens = [[e.x + m - w.x0, -1, 0], [w.x1 - (e.x - m), 1, 0], [e.z + m - z0, 0, -1], [z1 - (e.z - m), 0, 1]];
     pens.sort((a, b) => a[0] - b[0]);
@@ -1292,6 +1346,8 @@ const WEAPONS = {
   snipe: { vsBase: 0.3, dmg: 20, rate: 1.3, range: 46, speed: 75, color: 0xff3b30, size: 0.5 },
   // Level 5: the Toaster Tank's flaming toast, lobbed in a high arc (it lands where the target was).
   toast: { vsBase: 1.0, dmg: 26, rate: 1.2, range: 42, speed: 20, lob: 1.5, splash: 4.5, flame: true, color: 0xff7a1a, size: 0.9 },
+  // Level 6: the baguette bombers' crumb bomb (dropped from the air, not fired; the numbers here are read by bombDrop and bombBlast)
+  bomb: { vsBase: 0.6, dmg: 50, rate: 1.7, range: 0, speed: 1, splash: 5.5, color: 0xe8c07a, size: 0.6 },
   bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
 };
 // Boats stay on water cells. The gunboat is a soap-dish speedboat; the sponge raft (the enemy's) is slower and tougher.
@@ -1316,6 +1372,10 @@ const ENEMY_TYPES = {
   raider: { model: 'racer', speed: 26, hp: 38, weapon: 'raid', reward: 3 }, // fast: sent after your trucks
   hijacker: { model: 'racer', speed: 22, hp: 45, weapon: 'raid', reward: 5 }, // sneaks up on a truck of yours and drives it home as a trojan
   layer: { model: 'mech', speed: 9, hp: 120, weapon: 'mg', reward: 8 }, // lays a domino run towards your toy box
+  // Level 6 squadrons (sq: built from shared shapes by squadModel). Bombers fly.
+  sqtank: { model: 'tank', speed: 9.5, hp: 200, weapon: 'cannon', reward: 9, sq: true },
+  sqraider: { model: 'racer', speed: 28, hp: 42, weapon: 'raid', reward: 3, sq: true },
+  bomber: { model: 'bomber', speed: 16, hp: 80, weapon: 'bomb', reward: 5, sq: true, fly: true },
 };
 
 // A boat's wake: two pale strips streaming back from the stern, shared geometry and material, scaled with speed in render.
@@ -1509,7 +1569,7 @@ const parts = [];
 const outposts = [];
 
 function makeBase(team) {
-  const x = team === BLUE ? -62 : 62;
+  const [x, bz] = LEVELS[curLevel].bases?.[team] || [team === BLUE ? -62 : 62, 0]; // level 6 puts the toy boxes at the tips of the U
   const g = new THREE.Group();
   mesh(new THREE.BoxGeometry(12, 7, 14), mat(COLORS[team]), 0, 3.5, 0, g);
   mesh(new THREE.BoxGeometry(12.6, 1.2, 14.6), mat(0xfff8ec), 0, 7.2, 0, g);
@@ -1518,13 +1578,13 @@ function makeBase(team) {
   gun.name = 'turret';
   mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.6, 8), mat(0x1c1712), 1.4, 0, 0, gun).rotation.z = Math.PI / 2;
   if (darkNow()) addGlow(g, team, 20, 9.4);
-  g.position.set(x, 0, 0);
+  g.position.set(x, 0, bz);
   scene.add(g);
-  const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
+  const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, bz);
   pad.rotation.x = -Math.PI / 2;
   const baseHp = LEVELS[curLevel].rules.baseHp || 1200;
-  const base = { kind: 'base', team, x, z: 0, r: 7.5, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
-  obstacles.push({ x, z: 0, w: 12, d: 14, h: 7, kind: 'base' });
+  const base = { kind: 'base', team, x, z: bz, r: 7.5, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
+  obstacles.push({ x, z: bz, w: 12, d: 14, h: 7, kind: 'base' });
   entities.push(base);
   return base;
 }
@@ -1556,6 +1616,7 @@ function loopsGroup(x, z, n, radius, height) {
       ? mesh(shared('pea', () => new THREE.SphereGeometry(0.5, 8, 6)), shared(`peaMat:${i % 3}`, () => mat([0x5cb85c, 0x7ccf5a, 0x4a9e46][i % 3], { roughness: 0.35 })), Math.cos(a) * r, y, Math.sin(a) * r, g)
       : mesh(shared('loop', () => new THREE.TorusGeometry(0.55, 0.28, 6, 12)), shared(`loopMat:${i % LOOP_COLORS.length}`, () => mat(LOOP_COLORS[i % LOOP_COLORS.length])), Math.cos(a) * r, y, Math.sin(a) * r, g);
     loop.rotation.set(Math.PI / 2 + (Math.random() - 0.5) * 1.2, Math.random() * 3, 0);
+    if (state.finale) loop.castShadow = false; // big war: fewer shadow draw calls
   }
   g.position.set(x, 0, z);
   scene.add(g);
@@ -1630,7 +1691,7 @@ const WORKERS = {
 };
 function spawnWorker(role, team) {
   const w = WORKERS[role];
-  const x = team === BLUE ? -52 : 52, z = (Math.random() - 0.5) * 10;
+  const [x, z] = spawnPt(team, 10);
   // Every third worker a team makes prefers paperclips (only matters on levels that have them).
   const pref = state.spawned[team]++ % 3 === 2 ? 'clips' : 'cereal';
   const e = { kind: 'worker', role, team, pref, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: w.r, hp: w.hp, maxHp: w.hp, load: 0, mesh: buildModel(role, team), think: 0 };
@@ -1654,6 +1715,7 @@ function nearestDrop(e) {
   return drops.reduce((b, d) => (dist2(e, d) < dist2(e, b) ? d : b));
 }
 const diggersAt = (pile, team) => workersOf(team, 'digger').filter((d) => d.pile === pile && dist2(d, pile) < (pile.r + 4) ** 2).length;
+const sideOk = (p, team) => !state.finale?.ceasefire || (p.x > 0) === (team === RED); // level 6 build-up: stay on your own side of the ceasefire line
 function workerThink(w, dt) {
   const spec = WORKERS[w.role];
   if (w.trojan) return trojanThink(w, dt);
@@ -1662,7 +1724,7 @@ function workerThink(w, dt) {
     if (!w.pile || w.pile.amount <= 0 || (state.hob?.avoid && ringAt(w.pile.x, w.pile.z, -3.5))) {
       const home = state.bases[w.team];
       const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === secondRes() && state.clips[w.team] < 60 ? 4000 : 0);
-      w.pile = piles.filter((p) => p.amount > 0 && !p.island && !(state.hob?.avoid && ringAt(p.x, p.z, -3.5))).sort((a, b) => score(a) - score(b))[0] || null;
+      w.pile = piles.filter((p) => p.amount > 0 && !p.island && sideOk(p, w.team) && !(state.hob?.avoid && ringAt(p.x, p.z, -3.5))).sort((a, b) => score(a) - score(b))[0] || null;
     }
     const goal = w.pile || state.bases[w.team];
     steer(w, goal.x, goal.z, goal.r + 2.5, dt, spec, null);
@@ -1688,10 +1750,10 @@ function workerThink(w, dt) {
     w.think = 1;
     // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
     const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? secondRes() : 'cereal') : null;
-    const ok = (src) => src.amount > 0 && !src.island && (!want || src.res === want) && !(state.hob?.avoid && ringAt(src.x, src.z, -3.5)); // a pile in the middle of a ring is out of bounds while it heats
+    const ok = (src) => src.amount > 0 && !src.island && sideOk(src, w.team) && (!want || src.res === want) && !(state.hob?.avoid && ringAt(src.x, src.z, -3.5)); // a pile in the middle of a ring is out of bounds while it heats
     const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
     const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
-    w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0 && !p.island).sort(byDist)[0]) || null;
+    w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0 && !p.island && sideOk(p, w.team)).sort(byDist)[0]) || null;
   }
   if (!w.src) { if (w.load > 0) w.going = 'drop'; const home = state.bases[w.team]; steer(w, home.x + (w.team === BLUE ? 10 : -10), home.z, 2, dt, spec, null); return; }
   steer(w, w.src.x, w.src.z, w.src.r + 1.5, dt, spec, null);
@@ -1707,9 +1769,22 @@ function workerThink(w, dt) {
 // ---------- Route finding ----------
 // A 2-unit grid over the table; cells inside (or hugging) a block are closed.
 // Rebuilt whenever blocks change (turrets come and go).
-const CELL = 2, GW = Math.ceil(W / CELL), GD = Math.ceil(D / CELL);
-const closed = new Uint8Array(GW * GD);
-const closedFat = new Uint8Array(GW * GD); // the same with a wider margin, for the big boss
+const CELL = 2;
+let GW = Math.ceil(W / CELL), GD = Math.ceil(D / CELL);
+let closed = new Uint8Array(GW * GD);
+let closedFat = new Uint8Array(GW * GD); // the same with a wider margin, for the big boss
+// Per-level table size (level 6 only; every other level asks for 150 x 96, which is what W and D already are). Rebuilds the route grids and
+// stretches the sun's shadow box so the bigger table is still shadowed.
+function setTableSize(w, d) {
+  const k = Math.max(w / 150, d / 96);
+  Object.assign(sun.shadow.camera, { left: -90 * k, right: 90 * k, top: 60 * k, bottom: -60 * k, far: 200 * k });
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.position.set(-40 * k, 80 * k, 30 * k);
+  if (w === W && d === D) return;
+  W = w; D = d; GW = Math.ceil(W / CELL); GD = Math.ceil(D / CELL);
+  closed = new Uint8Array(GW * GD); closedFat = new Uint8Array(GW * GD);
+  navDirty = true;
+}
 let navDirty = true;
 const cellOf = (x, z) => [Math.max(0, Math.min(GW - 1, Math.floor((x + W / 2) / CELL))), Math.max(0, Math.min(GD - 1, Math.floor((z + D / 2) / CELL)))];
 const centreOf = (i, j) => [i * CELL - W / 2 + CELL / 2, j * CELL - D / 2 + CELL / 2];
@@ -1732,13 +1807,21 @@ function navBuild() {
     const [i0, j0] = cellOf(r.x - r.r - 2, r.z - r.r - 2), [i1, j1] = cellOf(r.x + r.r + 2, r.z + r.r + 2);
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const [cx, cz] = centreOf(i, j); if (Math.hypot(cx - r.x, cz - r.z) < r.r + 1.2) closed[j * GW + i] = 1; }
   }
+  // Level 6 build-up: the ceasefire line is closed to the route finder.
+  if (state.finale?.ceasefire) for (const [grid, m] of [[closed, 3.4], [closedFat, 6.4]]) for (let i = 0; i < GW; i++) {
+    if (Math.abs(centreOf(i, 0)[0]) < m) for (let j = 0; j < GD; j++) grid[j * GW + i] = 1;
+  }
   // Water is closed to wheels, except a lane along the bridge.
   const w = state.water;
   if (w) for (const [grid, m] of [[closed, 0.8], [closedFat, 3]]) {
     for (let i = 0; i < GW; i++) {
       const cx = centreOf(i, 0)[0];
       if (cx < w.x0 - m || cx > w.x1 + m) continue;
-      for (let j = 0; j < GD; j++) if (Math.abs(centreOf(0, j)[1] - w.bridge.z) > w.bridge.w / 2 - 1.2) grid[j * GW + i] = 1;
+      for (let j = 0; j < GD; j++) {
+        const cz = centreOf(0, j)[1];
+        if (w.z0 !== undefined && (cz < w.z0 - m || cz > w.z1 + m)) continue; // level 6: the channel stops short of the bend
+        if (Math.abs(cz - w.bridge.z) > w.bridge.w / 2 - 1.2) grid[j * GW + i] = 1;
+      }
     }
   }
   navDirty = false;
@@ -1843,11 +1926,11 @@ function steer(e, gx, gz, stop, dt, stats, ignore) {
 
 function spawnUnit(type, team, x, z) {
   const t = ENEMY_TYPES[type];
-  const v = VEHICLES[t.model];
+  const v = VEHICLES[t.model] || SQ_MODELS[t.model]; // squadron models (bomber) are not vehicles
   const u = {
-    kind: 'unit', type, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: v.r * 0.9,
+    kind: 'unit', type, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: v.r * 0.9, fly: !!t.fly,
     hp: t.hp, maxHp: t.hp, speed: t.speed, turn: v.turn, grip: v.grip, accel: v.accel, weapon: WEAPONS[t.weapon],
-    cool: Math.random() * 0.5, reward: t.reward, mesh: buildModel(t.model, team, 0.9), think: 0, goal: null,
+    cool: Math.random() * 0.5, reward: t.reward, mesh: t.sq ? squadModel(t.model, team) : buildModel(t.model, team, 0.9), think: 0, goal: null,
   };
   entities.push(u);
   return u;
@@ -1865,6 +1948,7 @@ function setVehicle(kind) {
 
 function reset() {
   cleanupRace();
+  finaleCleanup(); // level 6: bombs, marks, panels
   for (const e of entities) { if (e.mesh) { scene.remove(e.mesh); disposeTree(e.mesh); } if (e.pad) { scene.remove(e.pad); disposeTree(e.pad); } } // free old models: switching levels used to pile up shapes
   for (const s of shots) scene.remove(s.mesh);
   for (const p of parts) scene.remove(p.mesh);
@@ -1894,6 +1978,7 @@ function reset() {
   });
   state.hob = L.hob ? { ...L.hob, rings: L.hob.rings.map(([x, z, r]) => ({ x, z, r })), t: L.hob.start || 0, phase: 'cool', avoid: false, tick: 0.5, left: 0 } : null; // level 5: the rings' clock
   state.ledge = L.oven || null; state.rush = { size: L.rules.rusher?.size || 0, last: 0, waited: false };
+  state.finale = L.finale ? finaleInit() : null; // level 6: the build-up and war state (see the finale section)
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
@@ -1903,8 +1988,9 @@ function reset() {
   if (L.gumball) gumball = placeGumball();
   state.phase = 'battle';
   if (!L.race) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // a race level makes these when the battle starts
-  state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
+  state.player = { kind: 'player', team: BLUE, x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
+  if (state.finale) finaleBegin();
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
   if (L.race) startRace(L.race);
@@ -1947,6 +2033,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
+  if (state.finale) { const k = ['KeyI', 'KeyO', 'KeyP'].indexOf(e.code); if (k >= 0) pickLane(k); } // level 6: battle plan left / middle / right
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
 addEventListener('keyup', (e) => input.keys.delete(e.code));
@@ -2037,6 +2124,11 @@ const SOUNDS = {
   thud: () => { tone('sine', 120, 45, 0.4, 0.2); noise('lowpass', 900, 150, 0.25, 0.15); }, // landing
   sizzle: () => { noise('highpass', 5000, 3500, 0.1, 0.6); noise('bandpass', 3000, 1800, 0.08, 0.5, 0.05, 2); }, // the rings go red-hot
   toast: () => { tone('sine', 200, 60, 0.4, 0.25); tone('square', 900, 300, 0.05, 0.1); noise('bandpass', 1500, 600, 0.15, 0.2, 0, 2); }, // toast pops out of the slot
+  // Level 6: the kettle rises as it boils (kettleP 0..1), clicks off at war, a horn, and a bomb whistling down.
+  kettle: () => { const p = kettleP; noise('bandpass', 2200 + p * 3800, 3000 + p * 4200, 0.03 + p * 0.09, 0.5, 0, 1.4); tone('sine', 420 + p * 1500, 460 + p * 1750, 0.012 + p * 0.04, 0.55); if (p > 0.6) tone('triangle', 900 + p * 1800, 1000 + p * 1900, 0.02 * p, 0.5); },
+  kettleClick: () => { noise('highpass', 3000, 2500, 0.4, 0.04); tone('square', 900, 180, 0.2, 0.09); noise('lowpass', 800, 200, 0.3, 0.16, 0.04); },
+  horn: () => { tone('sawtooth', 196, 190, 0.2, 0.9); tone('square', 98, 95, 0.12, 0.9); tone('sawtooth', 294, 285, 0.1, 0.9); },
+  whistle: () => { tone('sine', 1500, 420, 0.05, 0.7); },
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
 };
 function sfx(kind) {
@@ -2072,8 +2164,10 @@ function toast(text) {
 
 function nearestEnemy(from, range, team = from.team) {
   let best = null, bd = range * range;
+  const cf = state.finale?.ceasefire; // level 6 build-up: nobody picks a target across the ceasefire line
   for (const e of entities) {
     if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.trojan) continue;
+    if (cf && (e.x > 0) !== (from.x > 0)) continue;
     const d = dist2(from, e) - (e.r || 0) ** 2;
     if (d < bd) { bd = d; best = e; }
   }
@@ -2110,10 +2204,11 @@ function collideObstacles(e) {
     }
   }
   if (state.water) waterPush(e);
+  if (state.finale?.ceasefire) lineClamp(e); // level 6 build-up: the ceasefire line is a wall
 }
 
 function collideMovers() {
-  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boss' || (e.kind === 'player' && e.alive)) && e.hp > 0 && !e.air);
+  const movers = entities.filter((e) => (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boss' || (e.kind === 'player' && e.alive)) && e.hp > 0 && !e.air && !e.fly);
   for (let i = 0; i < movers.length; i++) {
     for (let j = i + 1; j < movers.length; j++) {
       const a = movers[i], b = movers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
@@ -2210,6 +2305,8 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.air) return; // a car in the air (off a toaster) can't be hit
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
+  if (e.fly && weapon && !weapon.homing) dmg *= 0.5; // level 6: a flying baguette shrugs off half of any bullet; rocket turrets (homing) are the answer to bombers
+  if (state.finale?.cover && finaleCovered(e)) dmg *= 0.75; // level 6 battle plan: a defence that guessed the lane right takes 25% less there
   // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
   if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
   if (e.kind === 'base' && e.team === RED && state.boss?.hp > 0) dmg *= 0.5; // the boss's bubble shield
@@ -2323,6 +2420,7 @@ function makeTurret(type, team, x, z) {
 }
 function canPlace(x, z, team) {
   if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3) return 'Too close to the edge';
+  if (state.finale) { const why = finaleCanPlace(x, z, team); if (why) return why; }
   if (inWaterX(x, z, 3)) return 'No building on the water or the bridge';
   if (state.ledge) { const lift = ledgeLift({ x, z }); if (lift > 0.01 && lift < LEDGE_H - 0.01) return 'Not on the ramp'; }
   if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 2 && Math.abs(z - o.z) < o.d / 2 + 2)) return 'Something is in the way: build where the circle is green';
@@ -2429,16 +2527,17 @@ const COOK = { every: [18, 26], warn: 2.5, stay: 15, r: 11, dmgUnit: 160, dmgTur
 function cookPick() {
   for (let tries = 0; tries < 20; tries++) {
     let x, z;
-    if (Math.random() < 0.35) { const box = state.bases[Math.random() < 0.5 ? BLUE : RED]; x = box.x - Math.sign(box.x) * (6 + Math.random() * 6); z = box.z + (Math.random() - 0.5) * 20; }
+    if (!state.finale && Math.random() < 0.35) { const box = state.bases[Math.random() < 0.5 ? BLUE : RED]; x = box.x - Math.sign(box.x) * (6 + Math.random() * 6); z = box.z + (Math.random() - 0.5) * 20; }
     else { x = (Math.random() - 0.5) * (W - 24); z = (Math.random() - 0.5) * (D - 24); }
     if (state.ledge && ledgeLift({ x, z }) > 0) continue; // not inside the oven
+    if (state.finale && (z < 14 || ringAt(x, z, 0))) continue; // level 6: the cook works the hob in the bend
     if (obstacles.some((o) => o.kind !== 'turret' && o.kind !== 'base' && Math.abs(x - o.x) < o.w / 2 + 3 && Math.abs(z - o.z) < o.d / 2 + 3)) continue;
     return { x, z };
   }
   return null;
 }
 function cookUpdate(dt) {
-  if (!state.level.cook || state.phase === 'race') return;
+  if (!state.level.cook || state.phase === 'race' || state.finale?.stage === 'buildup') return;
   const c = state.cook ||= { next: 20, warn: null, pans: [] };
   c.next -= dt;
   if (!c.warn && c.next <= 0) {
@@ -2474,7 +2573,7 @@ function cookUpdate(dt) {
         pan.landed = true;
         // SLAM: flatten what's under it.
         for (const e of entities) {
-          if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.kind === 'boss') continue;
+          if (e.hp <= 0 || e.fly || (e.kind === 'player' && !e.alive) || e.kind === 'boss') continue;
           const reach = COOK.r + (e.kind === 'base' ? e.r * 0.6 : (e.r || 1) * 0.5);
           if (dist2(e, pan) > reach * reach) continue;
           if (e.kind === 'base') hurt(e, COOK.dmgBox, 1 - e.team, { vsBase: 1 });
@@ -2512,6 +2611,7 @@ const PLAYER_WEIGHT = { racer: 1, jet: 0.5, hover: 0, mech: 2, tank: 2, monster:
 const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2 };
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
+  if (state.level.finale) return null; // STAGE 2 HOOK: the Great Domino Run goes here (level 6 has no ordinary runs)
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
   const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m) || hobBlocked(q.x, q.z, m);
   const toward = Math.sign(target.x) || 1;
@@ -2583,6 +2683,7 @@ function runsUpdate(dt) {
 function trojan() {
   const p = state.player;
   if (!p.alive || state.over) return;
+  if (state.finale?.ceasefire) { toast('Ceasefire! No tricks until the kettle clicks'); sfx('no'); return; }
   const truck = workersOf(RED, 'truck').filter((w) => !w.trojan).sort((a, b) => dist2(a, p) - dist2(b, p))[0];
   if (!truck || dist2(truck, p) > 8 * 8) { toast('Get right next to one of their dump trucks'); sfx('no'); return; }
   if (state.cereal[BLUE] < 30) { toast('Need 30 cereal'); sfx('no'); return; }
@@ -2772,7 +2873,7 @@ function magnetThink(m, dt) {
     }
   }
   for (const e of entities) {
-    if (e.team === m.team || e.hp <= 0 || !(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive))) continue;
+    if (e.team === m.team || e.hp <= 0 || e.fly || !(e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive))) continue;
     const d = Math.hypot(e.x - m.x, e.z - m.z);
     if (d < R && d > 2.5) {
       const k = Math.exp(-2.5 * dt); e.vx = (e.vx || 0) * k; e.vz = (e.vz || 0) * k; // drag
@@ -2837,8 +2938,9 @@ function upgrade() {
 function drones() {
   if (state.over) return;
   if (state.cereal[BLUE] < 20) { toast('Need 20 cereal'); sfx('no'); return; }
+  if (state.finale && armyOf(BLUE) + 3 > ARMY_CAP) { toast(`Army full (${ARMY_CAP})`); sfx('no'); return; }
   state.cereal[BLUE] -= 20;
-  for (let i = 0; i < 3; i++) spawnUnit('drone', BLUE, -52 + i * 2, -4 + i * 4);
+  for (let i = 0; i < 3; i++) { const sp = state.finale ? spawnPt(BLUE, 8) : [-52, -4]; spawnUnit('drone', BLUE, sp[0] + i * 2, sp[1] + (state.finale ? i * 2 : i * 4)); }
   sfx('build'); toast('Drones away!');
 }
 
@@ -2903,15 +3005,21 @@ function spotNear(x, z, team) {
   return null;
 }
 function redTurrets() { return entities.filter((e) => e.kind === 'turret' && e.team === RED && e.hp > 0); }
+// The enemy's clock. Normally the game clock; on level 6 it runs ahead (60 s ahead in the build-up so the enemy builds straight away, 240 s ahead
+// in the war so it fights at full aggression even though state.time restarts at 0).
+const aiTime = () => state.time + (state.finale ? (state.finale.stage === 'buildup' ? 60 : 240) : 0);
+// Where the enemy puts turrets around its own toy box.
+const redHome = () => { const b = state.bases[RED]; return state.finale ? [[b.x - 12, b.z + 16], [b.x + 10, b.z + 16], [b.x, b.z + 24]] : RED_HOME; };
 function commanderBuild(ramp) {
-  if (state.time < 60) return false; // a quiet first minute
+  const T = aiTime();
+  if (T < 60) return false; // a quiet first minute
   const cereal = state.cereal, mine = redTurrets();
   const bare = outposts.filter((o) => o.owner === RED && !mine.some((t) => dist2(t, o) < 100));
-  const homeCount = mine.filter((t) => t.x > 38).length;
-  const homeWanted = state.time > 45 ? Math.min(3, 1 + Math.floor(state.time / 90)) : 0;
+  const homeCount = state.finale ? mine.filter((t) => dist2(t, state.bases[RED]) < 35 * 35).length : mine.filter((t) => t.x > 38).length;
+  const homeWanted = T > 45 ? Math.min(3, 1 + Math.floor(T / 90)) : 0;
   let spot = null;
   if (bare.length) spot = spotNear(bare[0].x, bare[0].z, RED);
-  else if (homeCount < homeWanted) spot = spotNear(...RED_HOME[homeCount % RED_HOME.length], RED);
+  else if (homeCount < homeWanted) spot = spotNear(...redHome()[homeCount % 3], RED);
   if (spot) {
     if (cereal[RED] < 25) return true; // saving up: don't spend on cars
     let type = Math.random() < 0.6 ? 'gun' : 'rocket';
@@ -2926,7 +3034,7 @@ function commanderBuild(ramp) {
     return false;
   }
   const weak = mine.filter((t) => t.level < 3).sort((x, y) => x.level - y.level)[0];
-  if (weak && state.time > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
+  if (weak && T > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
     cereal[RED] -= 20 + weak.level * 15;
     levelUp(weak);
   }
@@ -2936,32 +3044,33 @@ function commander(dt) {
   state.aiClock -= dt;
   if (state.aiClock > 0) return;
   state.aiClock = 1;
-  const ramp = Math.min(1, state.time / 300);
+  const T = aiTime(), ramp = Math.min(1, T / 300);
   // Economy first: enough trucks and diggers for the stage of the game.
-  const trucksWanted = Math.min(4, 1 + Math.floor(state.time / 50)), diggersWanted = Math.min(3, 1 + Math.floor(state.time / 80));
+  const trucksWanted = Math.min(4, 1 + Math.floor(T / 50)), diggersWanted = Math.min(3, 1 + Math.floor(T / 80));
   if (workersOf(RED, 'truck').length < trucksWanted) { buyWorker('truck', RED); return; }
   if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
   // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from (it saves up for it first).
-  if (state.level.toaster && state.time > 40 && !toasters.some((t) => t.team === RED)) {
+  if (state.level.toaster && T > 40 && !toasters.some((t) => t.team === RED)) {
     const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
     if (spot && state.cereal[RED] >= TOASTER.cost) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
     else if (spot && state.time < 150) return;
   }
   const roll = Math.random();
-  let want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
+  if (state.finale?.stage === 'buildup') return; // level 6: the ceasefire. Squadrons are bought by finaleEnemy; no loose cars to bump the line
+  let want = T < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
   const heavyClips = state.level.heavyClips || 0; // the enemy's tanks cost paperclips too
   if (want === 'heavy' && state.clips[RED] < heavyClips) want = 'buggy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
-  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED).length;
+  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED && !e.sq).length; // squadron members have their own budget
   // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
   // The rusher (level 5) builds a bigger army, earlier, and holds it at a rally point until a wave is ready.
   const rusher = !!state.level.rules.rusher;
-  const armyCap = rusher ? (state.time < 60 ? 6 : state.time < 120 ? 9 : 12 + Math.floor(ramp * 5)) : state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
-  if (army < armyCap && state.cereal[RED] >= price + 10) {
+  const armyCap = state.finale ? 3 + Math.floor(ramp * 3) : rusher ? (state.time < 60 ? 6 : state.time < 120 ? 9 : 12 + Math.floor(ramp * 5)) : state.time < 60 ? 3 : state.time < 120 ? 5 : 8 + Math.floor(ramp * 6);
+  if (army < armyCap && state.cereal[RED] >= price + 10 && (!state.finale || armyOf(RED) < ARMY_CAP)) {
     state.cereal[RED] -= price;
     if (want === 'heavy') state.clips[RED] -= heavyClips;
-    const u = spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
+    const u = state.finale ? spawnUnit(want, RED, ...spawnPt(RED, 12)) : spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
     if (rusher) { u.hold = true; u.rally = [42 + Math.random() * 6, (Math.random() - 0.5) * 18]; }
   }
 }
@@ -2969,6 +3078,7 @@ function commander(dt) {
 // ---------- The enemy's tricks: a domino run at your toy box, and hijacking your trucks ----------
 // From 3:00 the enemy sends a domino layer about every 2.5 minutes, and a hijacker about every 2 minutes from 2:30.
 function enemyTricks() {
+  if (state.finale?.stage === 'buildup') return; // level 6: no tricks under the ceasefire
   // The Gumball Machine: now and then a car goes and rams their side of it; items get used when one of their cars is near you.
   if (gumball) {
     const spot = gumball.spot ||= { x: gumball.x + 6, z: gumball.z, ready: true };
@@ -2996,14 +3106,14 @@ function enemyTricks() {
     const plan = planDominoRun();
     if (plan) {
       state.cereal[RED] -= 40; state.nextLayer = state.time + (state.level.rules.sneaky?.layerEvery || 150);
-      const u = spawnUnit('layer', RED, 54, 0); u.plan = plan; u.step = 0; u.stage = 'go';
+      const u = state.finale ? spawnUnit('layer', RED, ...spawnPt(RED, 6)) : spawnUnit('layer', RED, 54, 0); u.plan = plan; u.step = 0; u.stage = 'go';
       toast('Their builder is lining up dominoes at your toy box!'); sfx('raid');
     } else state.nextLayer = state.time + 20;
   }
   if (state.time >= state.nextHijack && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').some((t) => !t.trojan)) {
     const sneaky = state.level.rules.sneaky;
     state.cereal[RED] -= 25; state.nextHijack = state.time + (sneaky?.hijackEvery || 120);
-    spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20).sneak = !!sneaky;
+    (state.finale ? spawnUnit('hijacker', RED, ...spawnPt(RED, 20)) : spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20)).sneak = !!sneaky;
     // Sneaky enemy: after 4:00, with two trucks or more, a second hijacker follows the first.
     if (sneaky && state.time > 240 && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').filter((t) => !t.trojan).length > 1) { state.cereal[RED] -= 25; spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20).sneak = true; }
     toast('A hijacker is after your trucks!');
@@ -3070,6 +3180,8 @@ function hijackerThink(u, dt) {
 
 // ---------- Unit brains ----------
 function unitThink(u, dt) {
+  if (u.fly) return bomberThink(u, dt); // level 6 bombers fly: no routes, no walls
+  if (u.sq) return squadThink(u, dt); // level 6 squadron members follow their squadron's order
   if (u.type === 'hijacker') return hijackerThink(u, dt);
   if (u.type === 'layer') return layerThink(u, dt);
   if (u.presser) {
@@ -3112,12 +3224,12 @@ function unitThink(u, dt) {
 
 // ---------- Boats (level 4) ----------
 const boatsOf = (team) => entities.filter((e) => e.kind === 'boat' && e.team === team && e.hp > 0);
-function launchBoat(team, type) {
+function launchBoat(team, type, at) { // `at` {x, z}: level 6 launches its flotilla from the top of the sink
   const B = BOATS[type], w = state.water, n = boatsOf(team).length;
   const e = {
-    kind: 'boat', type, team, x: team === BLUE ? w.x0 + 4 : w.x1 - 4, z: (n % 2 ? 1 : -1) * 11 + (Math.random() - 0.5) * 4, vx: 0, vz: 0,
+    kind: 'boat', type, team, x: at ? at.x : team === BLUE ? w.x0 + 4 : w.x1 - 4, z: at ? at.z : (n % 2 ? 1 : -1) * 11 + (Math.random() - 0.5) * 4, vx: 0, vz: 0,
     heading: Math.PI / 2 * (n % 2 ? 1 : -1), r: B.r, hp: B.hp, maxHp: B.hp, speed: B.speed, turn: B.turn, weapon: WEAPONS[B.weapon],
-    cool: 0.5, mesh: buildModel(type, team), think: 0, dir: n % 2 ? 1 : -1, lane: (Math.random() - 0.5) * 12, target: null,
+    cool: 0.5, mesh: buildModel(type, team), think: 0, dir: n % 2 ? 1 : -1, lane: (w.x0 + w.x1) / 2 + (Math.random() - 0.5) * 12, target: null,
   };
   entities.push(e);
   return e;
@@ -3136,7 +3248,9 @@ function boatThink(b, dt) {
   const w = state.water;
   b.think -= dt; b.cool -= dt;
   if (b.think <= 0) { b.think = 0.35; b.target = nearestEnemy(b, b.weapon.range); }
-  if ((b.dir > 0 && b.z > D / 2 - 9) || (b.dir < 0 && b.z < -D / 2 + 9)) { b.dir = -b.dir; b.lane = (Math.random() - 0.5) * (w.x1 - w.x0 - 8); }
+  const zl = Math.max(w.z0 ?? -D / 2, -D / 2), zh = Math.min(w.z1 ?? D / 2, D / 2); // where the water runs (level 6: only part of the arm)
+  const turnLo = b.patrol ? b.patrol[0] : zl + 9, turnHi = b.patrol ? b.patrol[1] : zh - 9; // a squadron's order can narrow the patrol
+  if ((b.dir > 0 && b.z > turnHi) || (b.dir < 0 && b.z < turnLo)) { b.dir = -b.dir; b.lane = (w.x0 + w.x1) / 2 + (Math.random() - 0.5) * (w.x1 - w.x0 - 8); }
   const gx = Math.max(w.x0 + 3, Math.min(w.x1 - 3, b.lane)), want = Math.atan2(b.dir * 20, gx - b.x), diff = wrap(want - b.heading);
   b.heading += Math.sign(diff) * Math.min(Math.abs(diff), b.turn * dt);
   const t = b.target && b.target.hp > 0 && !(b.target.kind === 'player' && !b.target.alive) ? b.target : null;
@@ -3146,9 +3260,9 @@ function boatThink(b, dt) {
   // Stay on water cells: inside the channel, off the island, round the ferries, apart from each other.
   const lo = w.x0 + b.r + 0.3, hi = w.x1 - b.r - 0.3;
   if (b.x < lo) { b.x = lo; b.vx = Math.abs(b.vx) * 0.3; } else if (b.x > hi) { b.x = hi; b.vx = -Math.abs(b.vx) * 0.3; }
-  b.z = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, b.z));
+  b.z = Math.max(zl + 3, Math.min(zh - 3, b.z));
   const keepOut = (cx, cz, R) => { const dx = b.x - cx, dz = b.z - cz, d = Math.hypot(dx, dz); if (d < R && d > 1e-3) { b.x = cx + dx / d * R; b.z = cz + dz / d * R; } };
-  keepOut(w.island.x, w.island.z, w.island.r + b.r);
+  if (w.island) keepOut(w.island.x, w.island.z, w.island.r + b.r);
   for (const f of ferries) keepOut(f.x, f.z, f.R + b.r - 0.5);
   for (const o of entities) if (o !== b && o.kind === 'boat' && o.hp > 0) { const dx = b.x - o.x, dz = b.z - o.z, d = Math.hypot(dx, dz), m = b.r + o.r; if (d < m && d > 1e-3) { b.x += dx / d * (m - d) / 2; b.z += dz / d * (m - d) / 2; } }
   const head = b.mesh.getObjectByName('turret');
@@ -3192,7 +3306,7 @@ function ferriesUpdate(dt) {
 // The tap drips about every 8 s: a white ring shows where for 1.2 s while the drop flies in; the splash shoves everything near it sideways.
 const DRIP_EVERY = 8, DRIP_WARN = 1.2, DRIP_RADIUS = 11, DRIP_PUSH = 34;
 function dripsUpdate(dt) {
-  if (!sink) return;
+  if (!sink?.rings) return; // level 6's sink has no tap drips
   for (const r of sink.rings) if (r.life > 0) {
     r.life -= dt;
     const k = 1 - Math.max(0, r.life) / 0.9;
@@ -3470,6 +3584,643 @@ function bossThink(b, dt) {
   }
   const t = nearestEnemy(b, b.weapon.range);
   if (t && b.cool <= 0) { b.cool = b.weapon.rate * 1.6; fire(b, t, b.weapon); }
+}
+
+// ---------- Level 6, the finale: Baguettes & Ballistics (stage 1) ----------
+// A big worktop in a U shape at night. The middle of the U is a solid block (the cut-out, with the kettle on top). Your toy box is at the tip of
+// the left arm (the sink: water, ferries, boats), theirs at the tip of the right arm (the breadboard). The bottom bend between them is the battlefield
+// and has the hob (hot rings, the cook's pan) and the paperclips.
+//
+//   PHASE 1, the BUILD-UP (60 s): the kettle boils. A glowing ceasefire line (x = 0) splits the bend: nobody crosses it, nobody shoots across it
+//     (lineClamp, nearestEnemy, the shots loop, navBuild). Both sides gather, build and train squadrons. The enemy builds on its side where you can see it.
+//     In the last 10 s you pick a battle plan (left, middle or right lane); the enemy secretly picks too.
+//   PHASE 2, WAR: the kettle clicks, a banner reveals both plans, the line drops, state.time restarts at 0, the normal battle runs.
+//
+// Squadrons (SQUADS): bomber flights (fly, drop crumb bombs), a boat flotilla (sink), a tank column, a raider pack. Each has one order:
+// attack (their fortress, by the lane of your battle plan), defend (your rally marker) or raid (their trucks). state.finale holds all of it.
+//
+// STAGE 2 HOOKS (not built yet, see HANDOVER): the Baguette train boss, the Great Domino Run (buildLevelRun returns null on this level on purpose),
+// the fridge door at the far end of the cut-out, and the ending screen (endGame shows the ordinary win card for now). They go in
+// finaleUpdate (war branch) and startWar; state.finale.stage2 is reserved for them.
+const FIN = { build: 60, planAt: 10, gateX: 56, lanes: [11, 36, 60], coverR: 20, coverNeed: 3, half: 1.2 };
+const ARMY_CAP = 24; // units (cars, boats, bombers) per side, workers and turrets not counted
+const BOMBER = { alt: 9, turn: 2.2, every: 1.5, dmg: 50, splash: 5.5, vsTurret: 1.8, fall: 0.775 };
+const SQ_MODELS = { bomber: { r: 1.5, turn: 2.2, grip: 4, accel: 30 } };
+const SQUADS = {
+  bombers: { name: 'Bombers', n: 3, cereal: 60, clips: 15, order: 'attack' },
+  boats: { name: 'Boats', n: 2, cereal: 45, clips: 0, order: 'defend' },
+  tanks: { name: 'Tanks', n: 3, cereal: 66, clips: 12, order: 'attack' },
+  raiders: { name: 'Raiders', n: 4, cereal: 36, clips: 0, order: 'raid' },
+};
+const ORDERS = ['attack', 'defend', 'raid'];
+const LANE_WORD = ['LEFT', 'MIDDLE', 'RIGHT'], ROW_WORD = ['top', 'middle', 'bottom'];
+let finVis = null; // the look-only pieces made by finaleDecor (line, kettle, rings), and the UI elements
+let finRig = null; // the three warm point lights
+const bombs = [];
+let kettleP = 0, finUiDone = false;
+
+// ----- Table, textures, light -----
+const finTex = {};
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  return t;
+}
+function finaleTextures() {
+  finTex.granite ||= canvasTex(256, 256, (g, w, h) => { // a dark speckled worktop
+    g.fillStyle = '#5a4f47'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { const v = 60 + Math.random() * 90; g.fillStyle = `rgba(${v + 12},${v + 4},${v - 8},${0.25 + Math.random() * 0.4})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+    for (let i = 0; i < 500; i++) { g.fillStyle = `rgba(20,14,10,${Math.random() * 0.5})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  }, [8, 5]);
+  finTex.steel ||= canvasTex(256, 256, (g, w, h) => { // a brushed-steel draining board with ribs
+    g.fillStyle = '#a9b0b8'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${200 + Math.random() * 50},${205 + Math.random() * 50},${215 + Math.random() * 40},${Math.random() * 0.25})`; g.fillRect(0, Math.random() * h, w, 1); }
+    for (let i = 0; i < 7; i++) { g.fillStyle = 'rgba(40,48,58,0.35)'; g.fillRect(0, 18 + i * 36, w, 5); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(0, 23 + i * 36, w, 2); }
+  }, [2, 3]);
+  finTex.bread ||= canvasTex(256, 256, (g, w, h) => { // a wooden breadboard: planks, grain, a crumb groove round the edge
+    g.fillStyle = '#d8b077'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? 'rgba(160,110,60,0.18)' : 'rgba(255,230,180,0.12)'; g.fillRect(i * 42.7, 0, 42.7, h); g.fillStyle = 'rgba(90,55,25,0.55)'; g.fillRect(i * 42.7, 0, 1.5, h); }
+    for (let i = 0; i < 260; i++) { g.strokeStyle = `rgba(120,80,40,${Math.random() * 0.25})`; g.lineWidth = 1; const x = Math.random() * w; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + (Math.random() - 0.5) * 6, h); g.stroke(); }
+    g.strokeStyle = 'rgba(80,48,20,0.7)'; g.lineWidth = 5; g.strokeRect(8, 8, w - 16, h - 16);
+  });
+  finTex.baguette ||= canvasTex(128, 256, (g, w, h) => { // a baguette crust with diagonal slash marks (wraps round the loaf)
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#b87a36'); gr.addColorStop(0.5, '#e0a856'); gr.addColorStop(1, '#b87a36');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${130 + Math.random() * 60},${80 + Math.random() * 40},30,${Math.random() * 0.3})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    for (let k = 0; k < 4; k++) {
+      const y = 44 + k * 46;
+      g.strokeStyle = '#6e3f14'; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y + 30); g.stroke();
+      g.strokeStyle = '#f3d79a'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, y + 1); g.lineTo(w, y + 31); g.stroke();
+    }
+  });
+  finTex.line ||= canvasTex(64, 256, (g, w, h) => { // hazard chevrons for the ceasefire strip
+    g.fillStyle = '#ffb000'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2a1a00';
+    for (let y = -64; y < h + 64; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y + 32); g.lineTo(w, y + 56); g.lineTo(0, y + 24); g.fill(); }
+  }, [1, 12]);
+  finTex.sign ||= canvasTex(512, 128, (g, w, h) => {
+    g.fillStyle = 'rgba(30,18,0,0.75)'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#ffb000'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#ffd34d'; g.font = 'bold 76px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('CEASEFIRE', w / 2, h / 2 + 4);
+  });
+}
+// Night in the kitchen: dim and warm, still readable. Three warm point lights (hob, sink, breadboard) with the hemisphere and the sun make five real lights.
+function finaleLight(on) {
+  if (finRig) scene.remove(finRig);
+  sun.color.setHex(0xffffff);
+  if (!on) return;
+  hemi.color.setHex(0xffcb94); hemi.groundColor.setHex(0x2e1c12); hemi.intensity = 0.7;
+  sun.color.setHex(0xffd9a8); sun.intensity = 0.5;
+  scene.background.setHex(0x120d0a); scene.fog.color.setHex(0x120d0a); scene.fog.near = 150; scene.fog.far = 340;
+  if (!finRig) {
+    finRig = new THREE.Group();
+    const pt = (color, I, dist, x, y, z) => { const l = new THREE.PointLight(color, I, dist, 1.2); l.position.set(x, y, z); finRig.add(l); };
+    pt(0xffb56b, 0.85, 150, 0, 34, 38);   // the hob light
+    pt(0x9fd0ff, 0.6, 100, -72, 24, -22); // over the sink
+    pt(0xffc27a, 0.6, 100, 72, 24, -22);  // over the breadboard
+  }
+  scene.add(finRig);
+}
+
+// Shared little parts for models and decor (one geometry and one material per key, ever).
+const sgeo = (k, f) => shared('fg:' + k, f);
+const smat = (k, f) => shared('fm:' + k, f);
+function part(g, gk, gf, mk, mf, x, y, z, cast) {
+  const m = new THREE.Mesh(sgeo(gk, gf), smat(mk, mf));
+  m.position.set(x, y, z); m.castShadow = !!cast; g.add(m);
+  return m;
+}
+// Squadron models: few meshes, all geometry and materials shared by every unit of every squad.
+function squadModel(kind, team) {
+  const g = new THREE.Group(), col = COLORS[team], dark = team === BLUE ? 0x1b4fa8 : 0x9c1c14;
+  if (kind === 'tank') {
+    part(g, 'tkBase', () => new THREE.BoxGeometry(4.2, 0.9, 3.6), 'tkTrack', () => mat(0x2b2b2b), 0, 0.5, 0, false);
+    part(g, 'tkBody', () => new THREE.BoxGeometry(4, 1.2, 2.8), `tkBody:${team}`, () => mat(col), 0, 1.4, 0, true);
+    const tur = part(g, 'tkTur', () => new THREE.CylinderGeometry(1, 1.1, 0.8, 12), `tkTur:${team}`, () => mat(dark), 0, 2.3, 0, true);
+    tur.name = 'turret';
+    part(tur, 'tkBar', () => new THREE.CylinderGeometry(0.22, 0.22, 2.4, 6).rotateZ(Math.PI / 2), 'tkTrack', () => mat(0x2b2b2b), 1.3, 0, 0, false);
+  } else if (kind === 'racer') {
+    part(g, 'rdBase', () => new THREE.BoxGeometry(2.8, 0.5, 1.9), 'tkTrack', () => mat(0x2b2b2b), 0, 0.45, 0, false);
+    part(g, 'rdBody', () => new THREE.BoxGeometry(3.2, 0.8, 1.6), `tkBody:${team}`, () => mat(col), 0, 1.0, 0, true);
+    part(g, 'rdCab', () => new THREE.BoxGeometry(1.2, 0.6, 1.2), 'rdGlass', () => mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), -0.2, 1.6, 0, false);
+  } else if (kind === 'bomber') { // a flying baguette: slashed crust, stubby wings, a spinning propeller, a flour-sack band in the team colour
+    part(g, 'bmLoaf', () => new THREE.SphereGeometry(1, 16, 10).rotateZ(Math.PI / 2).scale(2.7, 0.85, 0.85), 'bmCrust', () => new THREE.MeshStandardMaterial({ map: finTex.baguette, roughness: 0.7 }), 0, 0, 0, true);
+    part(g, 'bmWing', () => new THREE.BoxGeometry(1.5, 0.12, 6.4), 'bmWing', () => mat(0xc98a3a), 0.2, 0.05, 0, false);
+    part(g, 'bmTail', () => new THREE.BoxGeometry(0.9, 1.2, 0.12), 'bmWing', () => mat(0xc98a3a), -2.4, 0.6, 0, false);
+    part(g, 'bmBand', () => new THREE.CylinderGeometry(0.9, 0.9, 0.7, 12).rotateZ(Math.PI / 2), `bmBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.25 }), -1.3, 0, 0, false);
+    part(g, 'bmProp', () => new THREE.BoxGeometry(0.1, 0.18, 2.6), 'tkTrack', () => mat(0x2b2b2b), 2.55, 0, 0, false).name = 'prop';
+  }
+  g.scale.setScalar(kind === 'bomber' ? 1 : 0.9);
+  scene.add(g);
+  return g;
+}
+
+// ----- The worktop -----
+function finaleDecor() {
+  finaleTextures();
+  const L = LEVELS[curLevel], Wt = L.water;
+  const V = finVis = { rally: null, lineMats: [], line: [], fade: 0 };
+  const flat = (geo, material, x, y, z, recv) => { const m = mesh(geo, material, x, y, z); m.rotation.x = -Math.PI / 2; m.castShadow = false; m.receiveShadow = !!recv; return m; };
+  const chrome = mat(0xdfe5ea, { metalness: 0.85, roughness: 0.22 });
+  // The slab, a dark speckled worktop, with a steel edge and a tiled backsplash behind the arms.
+  mesh(new THREE.BoxGeometry(W + 6, 4, D + 6), mat(0xffffff, { map: finTex.granite, roughness: 0.55 }), 0, -2, 0).castShadow = false;
+  for (const s of [-1, 1]) {
+    mesh(new THREE.BoxGeometry(W + 10, 1.6, 2.2), chrome, 0, 0.8, s * (D / 2 + 3.4)).castShadow = false;
+    mesh(new THREE.BoxGeometry(2.2, 1.6, D + 10), chrome, s * (W / 2 + 3.4), 0.8, 0).castShadow = false;
+  }
+  mesh(new THREE.BoxGeometry(W + 10, 20, 2), mat(0x4a3a2e, { roughness: 0.8 }), 0, 10, -D / 2 - 6.5).castShadow = false;
+  mesh(new THREE.BoxGeometry(W + 10, 1.2, 3), chrome, 0, 20.4, -D / 2 - 6).castShadow = false;
+  // The three zones: the sink's steel draining board, the hob's black glass, the breadboard.
+  flat(new THREE.PlaneGeometry(60, 70), mat(0xffffff, { map: finTex.steel, metalness: 0.4, roughness: 0.45 }), -75, 0.03, -30, true);
+  flat(new THREE.PlaneGeometry(90, 60), mat(0xffffff, { map: (hobTex = hobTex || hobTexture()), roughness: 0.25, metalness: 0.2 }), 0, 0.03, 35, true);
+  flat(new THREE.PlaneGeometry(60, 70), mat(0xffffff, { map: finTex.bread, roughness: 0.8 }), 75, 0.03, -30, true);
+  for (const [w, d, x, z] of [[92, 1.2, 0, 5.6], [92, 1.2, 0, 64.4], [1.2, 60, -45.6, 35], [1.2, 60, 45.6, 35]]) mesh(new THREE.BoxGeometry(w, 0.7, d), chrome, x, 0.35, z).castShadow = false;
+  // The cut-out: a solid block with a pale top, the kettle on it.
+  const C = L.blocks[0];
+  flat(new THREE.PlaneGeometry(C[2], C[3]), mat(0x9a8a7c, { map: finTex.granite, roughness: 0.5 }), C[0], C[4] + 0.04, C[1], true);
+  // Breadboard: a bread knife along the edge and crumbs.
+  mesh(new THREE.BoxGeometry(1.7, 0.2, 16), mat(0xdfe5ea, { metalness: 0.8, roughness: 0.25 }), 102.5, 0.25, -24).castShadow = false;
+  mesh(new THREE.BoxGeometry(2, 1.1, 6), mat(0x3a2414), 102.5, 0.6, -13.5).castShadow = false;
+  // The kettle.
+  const kg = new THREE.Group(), K = { x: 0, y: C[4], z: -8 };
+  kg.position.set(K.x, K.y, K.z);
+  const kchrome = mat(0xe3e8ee, { metalness: 0.7, roughness: 0.2 });
+  mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.7, 24), mat(0x1c1c20), 0, 0.35, 0, kg);
+  V.glow = mesh(new THREE.TorusGeometry(5.1, 0.28, 6, 28), new THREE.MeshBasicMaterial({ color: 0x3a0c06 }), 0, 0.8, 0, kg); V.glow.rotation.x = Math.PI / 2; V.glow.castShadow = false;
+  const body = mesh(new THREE.CylinderGeometry(3.7, 4.7, 8, 24), kchrome, 0, 4.9, 0, kg);
+  mesh(new THREE.SphereGeometry(3.7, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), kchrome, 0, 8.9, 0, kg);
+  mesh(new THREE.SphereGeometry(0.8, 10, 8), mat(0x1c1c20), 0, 12.7, 0, kg);
+  mesh(new THREE.BoxGeometry(5.5, 1.6, 1.8), kchrome, -4.6, 7.4, 0, kg).rotation.z = 0.5; // spout
+  const handle = mesh(new THREE.TorusGeometry(3.2, 0.5, 6, 16, Math.PI), mat(0x1c1c20), 4.6, 6.6, 0, kg); handle.rotation.z = -Math.PI / 2;
+  mesh(new THREE.SphereGeometry(0.55, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff4a1a }), 4.6, 2.2, 0, kg); // power lamp
+  levelRoot.add(kg);
+  V.kettle = kg; V.kettleBody = body;
+  V.steam = [0, 1, 2].map((i) => {
+    const sp = new THREE.Sprite(shared('steamMat', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xe8f1ff, transparent: true, opacity: 0, depthWrite: false, fog: false })));
+    sp.position.set(K.x - 7 - i * 1.2, K.y + 9 + i * 2.2, K.z); sp.scale.setScalar(1); levelRoot.add(sp); return sp;
+  });
+  V.kettleAt = K;
+  // STAGE 2 HOOK: the fridge door goes at the far end of the cut-out (V.fridgeAt); the Baguette train boss comes round the worktop edge.
+  V.fridgeAt = { x: 0, z: -64 };
+  // The sink: a trough of water down the middle of the left arm with a ruler bridge, two bottle-cap ferries and the tap.
+  const wx = (Wt.x0 + Wt.x1) / 2, ww = Wt.x1 - Wt.x0, z0 = -D / 2, z1 = Wt.z1, wl = z1 - z0;
+  waterTex = waterTex || waterTexture();
+  waterTex.repeat.set(ww / 9, wl / 9);
+  flat(new THREE.PlaneGeometry(ww + 1.6, wl), mat(0x2b6e9c, { roughness: 0.4 }), wx, 0.06, (z0 + z1) / 2, true);
+  const water = flat(new THREE.PlaneGeometry(ww, wl), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, map: waterTex, transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.15, depthWrite: false }), wx, 0.16, (z0 + z1) / 2);
+  sink = { water };
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.7, 0.5, wl), chrome, wx + s * (ww / 2 + 0.8), 0.3, (z0 + z1) / 2).castShadow = false;
+  mesh(new THREE.BoxGeometry(ww + 1.6, 0.5, 0.7), chrome, wx, 0.3, z1 + 0.6).castShadow = false;
+  rulerTex = rulerTex || rulerTexture();
+  mesh(new THREE.BoxGeometry(ww + 1.4, 0.5, Wt.bridge.w), mat(0xecc875), wx, 0.25, Wt.bridge.z).castShadow = false;
+  flat(new THREE.PlaneGeometry(ww + 1.4, Wt.bridge.w), mat(0xffffff, { map: rulerTex }), wx, 0.52, Wt.bridge.z);
+  mesh(new THREE.CylinderGeometry(1.1, 1.3, 11, 12), chrome, wx, 5.5, z0 - 1);
+  mesh(new THREE.BoxGeometry(2, 1.4, 7), chrome, wx, 10.6, z0 + 2.2);
+  mesh(new THREE.SphereGeometry(1, 10, 8), mat(0xd62f2f), wx, 12, z0 - 1).castShadow = false;
+  for (const fd of Wt.ferries) { // bottle caps with a ridged rim (few ridges: this level has a lot to draw)
+    const g = new THREE.Group(), R = 5.5;
+    part(g, 'fcCap', () => new THREE.CylinderGeometry(R, R, 0.7, 28), `fcCap:${fd.color}`, () => mat(fd.color, { metalness: 0.55, roughness: 0.35 }), 0, 0.35, 0, false);
+    part(g, 'fcIn', () => new THREE.CylinderGeometry(R - 0.9, R - 0.9, 0.12, 28), `fcIn:${fd.inner}`, () => mat(fd.inner, { metalness: 0.4, roughness: 0.4 }), 0, 0.74, 0, false);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; part(g, 'fcRidge', () => new THREE.BoxGeometry(0.9, 0.9, 1.4), `fcCap:${fd.color}`, () => mat(fd.color), Math.cos(a) * (R + 0.15), 0.4, Math.sin(a) * (R + 0.15), false).rotation.y = -a; }
+    g.position.set(fd.stops[fd.start].x, 0.2, fd.stops[fd.start].z);
+    levelRoot.add(g);
+    ferries.push({ g, R, stops: fd.stops, leg: fd.leg, i: fd.start, t: 0, wait: fd.stops[fd.start].wait, x: fd.stops[fd.start].x, z: fd.stops[fd.start].z });
+  }
+  // The hob rings: the same shared look as level 5 (hobDraw animates them), four rings in the bend.
+  const Vh = hobVis = {
+    g: 0, rings: [],
+    fill: shared('hobFill', () => new THREE.MeshBasicMaterial({ color: 0x1b1c21 })),
+    coil: shared('hobCoil', () => new THREE.MeshBasicMaterial({ map: coilTex(), transparent: true, color: 0x555860, depthWrite: false })),
+    shim: shared('hobShim', () => new THREE.MeshBasicMaterial({ map: coilTex(), transparent: true, color: 0xffb04a, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })),
+    rim: shared('hobRim', () => new THREE.MeshBasicMaterial({ color: 0x70747f })),
+    halo: shared('hobHalo', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xff5a1f, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })),
+  };
+  for (const [x, z, r] of L.hob.rings) {
+    flat(new THREE.CircleGeometry(r, 40), Vh.fill, x, 0.07, z);
+    flat(new THREE.CircleGeometry(r * 0.97, 40), Vh.coil, x, 0.08, z);
+    const shim = flat(new THREE.CircleGeometry(r * 1.02, 40), Vh.shim, x, 0.1, z);
+    flat(new THREE.RingGeometry(r - 0.45, r, 40), Vh.rim, x, 0.09, z);
+    const halo = new THREE.Sprite(Vh.halo); halo.position.set(x, 1.5, z); halo.scale.setScalar(r * 3.4); levelRoot.add(halo);
+    Vh.rings.push({ x, z, r, shim, halo });
+  }
+  // The ceasefire line: a glowing hazard strip on the worktop, a thin curtain of light, posts with lamps and a sign. Gone when war starts.
+  const lz = 35;
+  const strip = flat(new THREE.PlaneGeometry(3.2, 60), new THREE.MeshBasicMaterial({ map: finTex.line, transparent: true, opacity: 0.95, depthWrite: false }), 0, 0.2, lz);
+  const curtain = new THREE.Mesh(new THREE.PlaneGeometry(60, 6), new THREE.MeshBasicMaterial({ color: 0xffb000, transparent: true, opacity: 0.16, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  curtain.rotation.y = Math.PI / 2; curtain.position.set(0, 3, lz); levelRoot.add(curtain);
+  V.line.push(strip, curtain); V.lineMats.push(strip.material, curtain.material);
+  for (const pz of [8, 22, 36, 50, 62]) {
+    const post = mesh(sgeo('cfPost', () => new THREE.CylinderGeometry(0.35, 0.45, 5, 8)), smat('cfPost', () => mat(0x2a2a2e)), 0, 2.5, pz);
+    const orb = new THREE.Mesh(sgeo('cfOrb', () => new THREE.SphereGeometry(0.7, 10, 8)), smat('cfOrb', () => new THREE.MeshBasicMaterial({ color: 0xffc34d })));
+    orb.position.set(0, 5.3, pz); levelRoot.add(orb);
+    V.line.push(post, orb);
+  }
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: finTex.sign, transparent: true, depthWrite: false, fog: false }));
+  sign.position.set(0, 9, 36); sign.scale.set(20, 5, 1); levelRoot.add(sign);
+  V.line.push(sign); V.sign = sign; V.lineMats.push(sign.material);
+  V.lineStrip = strip;
+}
+
+// ----- State -----
+const phys = (team, k) => (team === BLUE ? k : 2 - k); // a lane (0 left, 1 middle, 2 right as that side's squadrons see it) -> bend row (0 top, 1 middle, 2 bottom)
+const laneZ = (team, k) => FIN.lanes[phys(team, k)];
+const gatePos = (team, row) => ({ x: team === BLUE ? -FIN.gateX : FIN.gateX, z: FIN.lanes[row] });
+const rallyOf = (team) => gatePos(team, state.finale.rally[team]);
+const squadsOf = (team) => state.finale.squads.filter((q) => q.team === team);
+const armyOf = (team) => entities.filter((e) => (e.kind === 'unit' || e.kind === 'boat') && e.team === team && e.hp > 0).length;
+const validTarget = (e) => !!e && e.hp > 0 && !(e.kind === 'player' && !e.alive) && !e.trojan;
+function finaleInit() {
+  return {
+    stage: 'buildup', ceasefire: true, left: FIN.build, squads: [], sqId: 0,
+    plan: [null, null], cover: [false, false], gate: [null, null], // the battle plan (lane 0..2 per side), who guessed right, and where the bonus applies
+    rally: [0, 1], redGuess: Math.floor(Math.random() * 3), aiT: 4, aiN: 0, kt: 0, lastTick: 99, marks: [], ui: '',
+    stage2: null, // STAGE 2 HOOK: the train boss, the Great Domino Run and the fridge door keep their state here
+  };
+}
+function lineClamp(e) {
+  if (e.fly) return;
+  const lim = FIN.half + (e.r || 1.5) * 0.5;
+  if (e.team === BLUE) { if (e.x > -lim) { e.x = -lim; if (e.vx > 0) e.vx = 0; } } else if (e.x < lim) { e.x = lim; if (e.vx < 0) e.vx = 0; }
+}
+function finaleCanPlace(x, z, team) {
+  const F = state.finale;
+  if (F.ceasefire && (x > 0) !== (team === RED)) return 'Build on your own side of the line';
+  if (F.ceasefire && Math.abs(x) < 6) return 'Too close to the ceasefire line';
+  if (ringAt(x, z, 1.5)) return 'Not on a hob ring';
+  return null;
+}
+function finaleCovered(e) {
+  const F = state.finale, g = F.gate[e.team];
+  return !!g && F.cover[e.team] && e.kind !== 'base' && dist2(e, g) < 24 * 24;
+}
+function spawnPt(team, spread = 10) {
+  if (!state.finale) return [team === BLUE ? -52 : 52, (Math.random() - 0.5) * spread];
+  const b = state.bases[team];
+  return [b.x + (Math.random() - 0.5) * spread * 1.2, b.z + 15 + Math.random() * 3];
+}
+
+// ----- Reset / start / clean-up -----
+function finaleCleanup() {
+  for (const b of bombs) scene.remove(b.mesh);
+  bombs.length = 0;
+  const F = state.finale;
+  if (F) for (const m of F.marks) { scene.remove(m.mesh); m.mesh.material.dispose(); }
+  if (state.finale?.rallyMark) { scene.remove(state.finale.rallyMark); state.finale.rallyMark.traverse((o) => { if (o.material && !o.material.userData.shared) o.material.dispose(); }); }
+  for (const id of ['finHud', 'planBox', 'squadPanel']) if ($(id)) $(id).hidden = true;
+}
+function finaleBegin() {
+  const F = state.finale;
+  finaleUI();
+  // Your rally marker: a blue ring with a flag, on the ground at the gate where Defend squads gather.
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(sgeo('rmRing', () => new THREE.RingGeometry(3.2, 4, 28).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0x4d9bff, transparent: true, opacity: 0.8, depthWrite: false }));
+  ring.position.y = 0.25; g.add(ring);
+  const pole = new THREE.Mesh(sgeo('rmPole', () => new THREE.BoxGeometry(0.25, 6, 0.25)), smat('rmPole', () => mat(0x1c1712))); pole.position.y = 3; g.add(pole);
+  const flag = new THREE.Mesh(sgeo('rmFlag', () => new THREE.BoxGeometry(2.6, 1.5, 0.12)), smat('rmFlagB', () => new THREE.MeshBasicMaterial({ color: 0x4d9bff }))); flag.position.set(1.4, 5.2, 0); g.add(flag);
+  scene.add(g); F.rallyMark = g;
+  setRally(F.rally[BLUE], true);
+  $('finHud').hidden = false; $('planBox').hidden = true; $('squadPanel').hidden = false; F.ui = '';
+  banner('BUILD-UP', 'The kettle is boiling. When it clicks, it is war. Gather, build, train squadrons');
+}
+function setRally(row, quiet) {
+  const F = state.finale, p = gatePos(BLUE, row);
+  F.rally[BLUE] = row;
+  if (F.rallyMark) F.rallyMark.position.set(p.x, 0, p.z);
+  if (!quiet) { toast(`Rally point: ${ROW_WORD[row]} gate. Defend squads wait here`); sfx('cap'); }
+  F.ui = '';
+}
+function pickLane(k) {
+  const F = state.finale;
+  if (!F || F.stage !== 'buildup' || F.left > FIN.planAt) return;
+  F.plan[BLUE] = k; F.ui = '';
+  toast(`Battle plan: ${LANE_WORD[k]} lane (${ROW_WORD[phys(BLUE, k)]})`); sfx('cap');
+}
+
+// ----- Squadrons -----
+function buySquad(team, kind, order) {
+  const F = state.finale, S = SQUADS[kind];
+  if (!F || state.over) return null;
+  if (kind === 'boats' && team === RED) return null;
+  if (armyOf(team) + S.n > ARMY_CAP) { if (team === BLUE) { toast(`Army full (${ARMY_CAP} units)`); sfx('no'); } return null; }
+  if (state.cereal[team] < S.cereal || state.clips[team] < S.clips) { if (team === BLUE) { toast(`Need ${S.cereal} cereal${S.clips ? ` + ${S.clips} clips` : ''}`); sfx('no'); } return null; }
+  state.cereal[team] -= S.cereal; state.clips[team] -= S.clips;
+  const sq = { id: ++F.sqId, team, kind, order: order || S.order, units: [], n: S.n };
+  F.squads.push(sq);
+  const w = state.water;
+  for (let i = 0; i < S.n; i++) {
+    let u;
+    if (kind === 'bombers') { const b = state.bases[team], sp = [b.x + (i - 1) * 5, b.z + 11 + i]; u = spawnUnit('bomber', team, sp[0], sp[1]); u.alt = 0; }
+    else if (kind === 'tanks') { const sp = spawnPt(team, 10); u = spawnUnit('sqtank', team, sp[0], sp[1] + i * 1.5); }
+    else if (kind === 'raiders') { const sp = spawnPt(team, 12); u = spawnUnit('sqraider', team, sp[0], sp[1] + i * 1.2); }
+    else u = launchBoat(team, 'gunboat', { x: (w.x0 + w.x1) / 2 + (i ? 3 : -3), z: -57 + i * 6 });
+    u.sq = sq; u.slot = i; sq.units.push(u);
+  }
+  F.ui = '';
+  if (team === BLUE) { sfx('build'); toast(`${S.name} ready. Order: ${sq.order}`); }
+  return sq;
+}
+function cycleOrder(id) {
+  const sq = state.finale.squads.find((q) => q.id === id && q.team === BLUE);
+  if (!sq) return;
+  sq.order = ORDERS[(ORDERS.indexOf(sq.order) + 1) % 3];
+  sq.units.forEach((u) => { u.wp = 0; });
+  state.finale.ui = '';
+  toast(`${SQUADS[sq.kind].name}: ${sq.order.toUpperCase()}${sq.order === 'attack' ? ` by the ${LANE_WORD[state.finale.plan[BLUE] ?? 1]} lane` : sq.order === 'defend' ? ' at the rally marker' : ' their trucks'}`); sfx('tick');
+}
+const attackRoute = (team) => {
+  const k = state.finale.plan[team] ?? 1, z = laneZ(team, k), gx = FIN.gateX;
+  return team === BLUE ? [{ x: -gx, z }, { x: gx, z }] : [{ x: gx, z }, { x: -gx, z }];
+};
+function stagePoint(u) { // under the ceasefire everyone waits at the rally; the enemy's attackers wait at the gate of the lane they are likely to use (a tell)
+  const F = state.finale, R = u.team === RED && u.sq.order === 'attack' ? gatePos(RED, phys(RED, F.redGuess)) : rallyOf(u.team), a = (u.slot || 0) * 2.4 + 0.5, r = 3 + ((u.slot || 0) % 3) * 2.5;
+  return { x: R.x + Math.cos(a) * r * 1.4, z: R.z + Math.sin(a) * r };
+}
+function squadThink(u, dt) {
+  const F = state.finale, sq = u.sq, team = u.team, foe = 1 - team, st = { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip };
+  u.think -= dt; u.cool -= dt;
+  const waiting = F.stage === 'buildup', R = rallyOf(team);
+  if (u.think <= 0) {
+    u.think = 0.35 + Math.random() * 0.2;
+    u.chase = !waiting && sq.order === 'raid' ? workersOf(foe, 'truck').filter((w) => !w.trojan).sort((a, b) => dist2(u, a) - dist2(u, b))[0] || null : null;
+    u.target = nearestEnemy(u, u.weapon.range + 1);
+    u.threat = !waiting && sq.order === 'defend' ? nearestEnemy({ x: R.x, z: R.z, team }, 30) : null;
+  }
+  const shoot = validTarget(u.target) ? u.target : null, chase = validTarget(u.chase) ? u.chase : null, threat = validTarget(u.threat) ? u.threat : null;
+  let goal, stop = 2;
+  if (waiting) { goal = stagePoint(u); stop = 1.2; }
+  else if (sq.order === 'raid' && chase) { goal = chase; stop = 5; }
+  else if (sq.order === 'defend') {
+    if (threat && !threat.fly && threat.kind !== 'boat') { goal = threat; stop = Math.min(u.weapon.range * 0.6, 9); }
+    else { goal = stagePoint(u); stop = 1.2; }
+  } else if (shoot && !shoot.fly && shoot.kind !== 'boat') { goal = shoot; stop = Math.min(u.weapon.range * 0.6, 10); } // fight what is in reach
+  else {
+    const route = attackRoute(team);
+    if (u.wp === undefined) u.wp = 0;
+    while (u.wp < route.length && dist2(u, route[u.wp]) < 7 * 7) u.wp++;
+    goal = u.wp < route.length ? route[u.wp] : state.bases[foe];
+    stop = u.wp < route.length ? 3 : 9;
+  }
+  steer(u, goal.x, goal.z, stop, dt, st, goal);
+  const ft = shoot || (chase && dist2(u, chase) < u.weapon.range ** 2 ? chase : null);
+  if (ft && u.cool <= 0 && dist2(u, ft) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, ft, u.weapon); }
+}
+
+// ----- Baguette bombers -----
+function bomberTarget(u) {
+  const F = state.finale, foe = 1 - u.team, order = u.sq.order, R = rallyOf(u.team);
+  const live = (e) => e.team === foe && e.hp > 0 && !e.fly && !(e.kind === 'player' && !e.alive) && !e.trojan;
+  if (order === 'raid') {
+    const tr = workersOf(foe, 'truck').filter((w) => !w.trojan).sort((a, b) => dist2(u, a) - dist2(u, b))[0];
+    if (tr) return tr;
+  }
+  if (order === 'defend') { // anything of theirs near the rally marker
+    let best = null, bd = 50 * 50;
+    for (const e of entities) if (live(e) && (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'turret' || e.kind === 'player') && dist2(e, R) < bd) { bd = dist2(e, R); best = e; }
+    return best;
+  }
+  let best = null, bd = Infinity; // attack: turrets first (bombs hit them hardest), then their toy box
+  for (const e of entities) if (live(e) && e.kind === 'turret' && e.type !== 'magnet' && dist2(e, u) < bd) { bd = dist2(e, u); best = e; }
+  return best || state.bases[foe];
+}
+function bombDrop(u) {
+  u.cool = BOMBER.every;
+  const m = new THREE.Mesh(sgeo('bombGeo', () => new THREE.SphereGeometry(0.7, 8, 6)), smat('bombMat', () => mat(0x5a3b22, { roughness: 0.8 })));
+  m.position.set(u.x, u.alt, u.z); scene.add(m);
+  bombs.push({ x: u.x, z: u.z, y: u.alt, vy: 0, vx: u.vx, vz: u.vz, team: u.team, mesh: m });
+  if (dist2(u, state.player) < 2500) sfx('whistle');
+}
+function bomberThink(u, dt) {
+  const F = state.finale, B = BOMBER, waiting = F.stage === 'buildup';
+  u.alt = Math.min(B.alt, (u.alt || 0) + dt * 6);
+  u.think -= dt; u.cool -= dt;
+  if (u.think <= 0) { u.think = 1 + Math.random() * 0.5; u.target = waiting ? null : bomberTarget(u); }
+  const t = validTarget(u.target) ? u.target : null, R = u.team === RED && u.sq.order === 'attack' && waiting ? gatePos(RED, phys(RED, F.redGuess)) : rallyOf(u.team);
+  let gx, gz;
+  if (!t) { const a = state.time * 0.7 + (u.slot || 0) * 2.1; gx = R.x + Math.cos(a) * 10; gz = R.z + Math.sin(a) * 10; } else { gx = t.x; gz = t.z; }
+  const dx = gx - u.x, dz = gz - u.z, d = Math.hypot(dx, dz), diff = wrap(Math.atan2(dz, dx) - u.heading);
+  u.heading += Math.sign(diff) * Math.min(Math.abs(diff), B.turn * dt);
+  const sp = u.speed * (d < 14 ? 0.62 : 1) * (t ? 1 : 0.7); // slows down on the run in, so it always gets over the target
+  u.vx = Math.cos(u.heading) * sp; u.vz = Math.sin(u.heading) * sp;
+  u.x = Math.max(-W / 2 + 3, Math.min(W / 2 - 3, u.x + u.vx * dt)); u.z = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, u.z + u.vz * dt));
+  if (F.ceasefire) { if (u.team === BLUE) u.x = Math.min(u.x, -2.5); else u.x = Math.max(u.x, 2.5); } // flyers keep to their side of the line too
+  if (t && u.alt >= BOMBER.alt - 0.5 && u.cool <= 0 && Math.hypot(t.x - (u.x + u.vx * B.fall), t.z - (u.z + u.vz * B.fall)) < 3.4) bombDrop(u);
+}
+function bombsUpdate(dt) {
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    const b = bombs[i];
+    b.vy -= 30 * dt; b.y += b.vy * dt; b.x += b.vx * dt; b.z += b.vz * dt;
+    b.mesh.position.set(b.x, Math.max(0.3, b.y), b.z);
+    if (b.y > 0.4) continue;
+    bombBlast(b);
+    scene.remove(b.mesh); bombs.splice(i, 1);
+  }
+}
+function bombBlast(b) {
+  const R = BOMBER.splash;
+  for (const e of entities) {
+    if (e.team === b.team || e.hp <= 0 || e.fly || e.air || (e.kind === 'player' && !e.alive)) continue;
+    const reach = R + (e.kind === 'base' ? 5 : 0), d = Math.sqrt(dist2(e, b));
+    if (d > reach) continue;
+    hurt(e, BOMBER.dmg * (1 - 0.5 * d / reach) * (e.kind === 'turret' ? BOMBER.vsTurret : 1), b.team, WEAPONS.bomb);
+  }
+  burst(b.x, b.z, 0xe8c07a, 9, 8, 0.6); burst(b.x, b.z, 0x8a5a2a, 5, 6, 0.5); burst(b.x, b.z, 0xfff3d6, 4, 5, 0.8);
+  if (dist2(b, state.player) < 2500) { sfx('boom'); state.shake = Math.min(1.2, (state.shake || 0) + 0.1); }
+}
+// A bomber in the render loop: height, a little bank on turns, spinning propeller.
+function bomberPose(e, time) {
+  e.mesh.position.y = (e.alt || 0) + Math.sin(time * 3 + e.slot) * 0.25;
+  e.mesh.rotation.x = Math.sin(time * 2 + e.slot) * 0.08;
+  const prop = e.mesh.getObjectByName('prop');
+  if (prop) prop.rotation.x = time * 40;
+}
+
+// ----- The enemy commander's squadron side -----
+const AI_QUEUE = ['bombers', 'tanks', 'raiders', 'bombers', 'tanks', 'tanks', 'bombers', 'raiders'];
+function finaleEnemy(dt) {
+  const F = state.finale;
+  F.aiT -= dt;
+  if (F.aiT > 0) return;
+  F.aiT = 1.3;
+  if (state.time < 8 && F.stage === 'buildup') return; // trucks and diggers first
+  // The next squadron in the queue it can afford (no paperclips for bombers yet? it buys raiders meanwhile).
+  for (let j = 0; j < AI_QUEUE.length; j++) {
+    const kind = AI_QUEUE[(F.aiN + j) % AI_QUEUE.length], S = SQUADS[kind];
+    if (armyOf(RED) + S.n > ARMY_CAP || state.cereal[RED] < S.cereal + 10 || state.clips[RED] < S.clips) continue;
+    const order = kind === 'raiders' ? 'raid' : (F.aiN + j) % 3 === 2 ? 'defend' : 'attack';
+    if (buySquad(RED, kind, order)) F.aiN += j + 1;
+    return;
+  }
+}
+function aiPickLane() { // secret: usually the lane its attackers were staged at; sometimes a bluff, and it avoids the gate your rally marker covers
+  const F = state.finale;
+  let k = Math.random() < 0.65 ? F.redGuess : Math.floor(Math.random() * 3);
+  if (phys(RED, k) === F.rally[BLUE] && Math.random() < 0.6) k = (k + 1 + Math.floor(Math.random() * 2)) % 3;
+  return k;
+}
+
+// ----- Phases -----
+function coverage(team) { // did `team` put a defence where the other side is attacking?
+  const F = state.finale, k = F.plan[1 - team], gate = gatePos(team, phys(1 - team, k));
+  const n = entities.filter((e) => e.team === team && e.hp > 0 && (e.kind === 'turret' || (e.sq && e.sq.order === 'defend')) && dist2(e, gate) < FIN.coverR ** 2).length;
+  F.gate[team] = gate;
+  return n >= FIN.coverNeed;
+}
+function addMark(geo, x, z, color, life, scale, y = 0.3) {
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false }));
+  m.position.set(x, y, z); m.scale.copy(scale); scene.add(m);
+  state.finale.marks.push({ mesh: m, t: life, life });
+}
+function startWar() {
+  const F = state.finale;
+  F.stage = 'war'; F.ceasefire = false; state.time = 0; navDirty = true;
+  if (F.plan[BLUE] === null) { F.plan[BLUE] = 1; toast('No battle plan picked: the MIDDLE lane'); }
+  F.plan[RED] = aiPickLane();
+  F.cover[BLUE] = F.cover[RED] = false;
+  F.cover[BLUE] = coverage(BLUE); F.cover[RED] = coverage(RED);
+  const you = F.plan[BLUE], red = F.plan[RED];
+  const words = (team, k) => `${LANE_WORD[k]} lane (${ROW_WORD[phys(team, k)]})`;
+  banner('WAR!', `You push the ${words(BLUE, you)}<br>Red pushes the ${words(RED, red)}<br>${F.cover[BLUE] ? 'Your defence is ready there: -25% damage at that gate' : 'Their lane is not covered. Move your rally marker next time'}${F.cover[RED] ? '<br>Red guessed your lane: it takes less damage there' : ''}`);
+  bannerTimer = 7;
+  sfx('kettleClick'); setTimeout(() => sfx('horn'), 120);
+  state.shake = Math.max(state.shake || 0, 1.2);
+  // Lane stripes show both pushes across the bend for a while; green rings mark a covered gate.
+  const stripe = sgeo('laneStripe', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
+  addMark(stripe, 0, laneZ(BLUE, you), 0x4d9bff, 14, new THREE.Vector3(2 * FIN.gateX, 1, 2.6), 0.28);
+  addMark(stripe, 0, laneZ(RED, red), 0xff5a4a, 14, new THREE.Vector3(2 * FIN.gateX, 1, 2.6), 0.29);
+  for (const team of [BLUE, RED]) if (F.cover[team]) addMark(sgeo('gateRing', () => new THREE.RingGeometry(18, 20, 36).rotateX(-Math.PI / 2)), F.gate[team].x, F.gate[team].z, 0x4dff9a, 14, new THREE.Vector3(1, 1, 1), 0.3);
+  $('planBox').hidden = true;
+  F.ui = '';
+  if (state.cook) state.cook.next = 25;
+  // STAGE 2 HOOK: schedule the Baguette train boss and the Great Domino Run here (F.stage2).
+}
+function finaleUpdate(dt) {
+  const F = state.finale;
+  if (F.stage === 'buildup') {
+    F.left = Math.max(0, FIN.build - state.time);
+    const prog = 1 - F.left / FIN.build;
+    F.kt -= dt;
+    if (F.kt <= 0) { F.kt = 1.1 - 0.75 * prog; kettleP = prog; sfx('kettle'); }
+    const sec = Math.ceil(F.left);
+    if (sec !== F.lastTick) {
+      F.lastTick = sec;
+      if (sec <= 5 && sec > 0) { sfx('tick'); toast(`${sec}`); }
+      if (sec === FIN.planAt) { toast('Pick your battle plan now!'); sfx('cap'); F.ui = ''; }
+    }
+    if (F.left <= 0) startWar();
+  }
+  // Squadron housekeeping: drop the dead, forget empty squadrons, set the boats' patrol from their order.
+  for (let i = F.squads.length - 1; i >= 0; i--) {
+    const q = F.squads[i];
+    const n = q.units.length;
+    q.units = q.units.filter((u) => u.hp > 0);
+    if (q.units.length !== n) F.ui = '';
+    if (!q.units.length) { F.squads.splice(i, 1); F.ui = ''; continue; }
+    if (q.kind === 'boats') for (const b of q.units) b.patrol = q.order === 'defend' ? [-58, -34] : [-32, -9];
+  }
+  bombsUpdate(dt);
+  finaleEnemy(dt);
+}
+
+// ----- Presentation: the line, the kettle, the HUD and the squadron panel -----
+function finaleUI() {
+  if (finUiDone) return;
+  finUiDone = true;
+  const css = document.createElement('style');
+  css.textContent = `
+.finHud { position: fixed; z-index: 2; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 98px); transform: translateX(-50%); text-align: center; pointer-events: none; font-family: var(--display); text-shadow: 0 2px 0 var(--ink); }
+.finHud b { font-size: 20px; letter-spacing: 0.05em; color: var(--gold); } .finHud span { font-size: 22px; margin-left: 10px; color: var(--paper); font-variant-numeric: tabular-nums; }
+.finHud small { display: block; font: 700 13px var(--body); color: var(--paper); opacity: 0.9; }
+.finHud .bar { width: 220px; margin: 3px auto 0; height: 8px; } .finHud .bar i { background: #ffb000; }
+.planBox { position: fixed; z-index: 4; left: 50%; top: 190px; transform: translateX(-50%); padding: 10px 12px; border-radius: 16px; background: var(--glass); border: 3px solid var(--gold); text-align: center; }
+.planBox b { font: 15px var(--display); color: var(--gold); display: block; margin-bottom: 8px; } .planBox .row { justify-content: center; flex-wrap: nowrap; }
+.planBox button { min-width: 104px; } .planBox button.cur { border-color: var(--gold); background: rgba(255, 194, 61, 0.35); }
+.squadPanel { position: fixed; z-index: 3; left: max(12px, env(safe-area-inset-left, 0px)); top: calc(env(safe-area-inset-top, 0px) + 112px); width: 214px; padding: 8px; border-radius: 14px; background: var(--glass); display: grid; gap: 6px; }
+.squadPanel .hd { display: flex; justify-content: space-between; align-items: baseline; font: 13px var(--display); color: var(--gold); }
+.squadPanel .buy { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.squadPanel button { min-width: 0; min-height: 36px; padding: 3px 6px; font-size: 13px; border-width: 2px; border-radius: 10px; }
+.squadPanel button small { font-size: 11px; }
+.squadPanel .sq { display: flex; justify-content: space-between; align-items: center; gap: 6px; font: 700 14px var(--body); }
+.squadPanel .sq button { min-width: 84px; font-family: var(--display); font-size: 12px; }
+.squadPanel .ord-attack { background: rgba(239, 65, 54, 0.6); } .squadPanel .ord-defend { background: rgba(47, 125, 246, 0.6); } .squadPanel .ord-raid { background: rgba(255, 150, 30, 0.65); }
+.squadPanel #sqBody { display: grid; gap: 6px; }
+.squadPanel .none { font: 12px var(--body); opacity: 0.7; }`;
+  document.head.appendChild(css);
+  const mk = (id, cls) => { const d = document.createElement('div'); d.id = id; d.className = cls; d.hidden = true; document.body.appendChild(d); return d; };
+  mk('finHud', 'finHud').innerHTML = '<b id="finTitle"></b><span id="finTime"></span><small id="finSub"></small><div class="bar"><i id="finBar"></i></div>';
+  const plan = mk('planBox', 'planBox');
+  plan.innerHTML = '<b>BATTLE PLAN: where does your main push go?</b><div class="row"><button data-lane="0">LEFT<small>top lane</small></button><button data-lane="1">MIDDLE<small>middle lane</small></button><button data-lane="2">RIGHT<small>bottom lane</small></button></div>';
+  plan.addEventListener('pointerdown', (e) => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); pickLane(+b.dataset.lane); });
+  const panel = mk('squadPanel', 'squadPanel');
+  panel.innerHTML = '<div id="sqBody"></div><button id="bPeek">Peek at Red<small>hold to look at their side</small></button>';
+  const peek = (on) => { if (state.finale) state.finale.peek = on; };
+  const pk = panel.querySelector('#bPeek');
+  pk.addEventListener('pointerdown', (e) => { e.preventDefault(); peek(true); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) pk.addEventListener(ev, () => peek(false));
+  panel.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !state.finale || state.over || b.id === 'bPeek') return;
+    e.preventDefault();
+    if (b.dataset.buy) buySquad(BLUE, b.dataset.buy);
+    else if (b.dataset.ord) cycleOrder(+b.dataset.ord);
+    else if (b.dataset.rally) setRally((state.finale.rally[BLUE] + 1) % 3);
+  });
+}
+function finaleDraw(dt, time) {
+  const F = state.finale, V = finVis;
+  if (!V || !V.kettle) return;
+  // The ceasefire strip pulses and scrolls; at war it flares and fades away.
+  if (F.ceasefire) {
+    V.lineStrip.material.map.offset.y -= dt * 0.35;
+    const p = 0.75 + 0.25 * Math.sin(time * 5);
+    V.lineMats[0].opacity = 0.95 * p; V.lineMats[1].opacity = 0.14 + 0.08 * p; V.sign.material.opacity = 0.9;
+  } else if (V.fade < 1.4) {
+    V.fade += dt;
+    const k = Math.max(0, 1 - V.fade / 1.4);
+    for (const m of V.lineMats) m.opacity = (V.fade < 0.25 ? 1 : k) * (m === V.lineMats[1] ? 0.5 : 0.95);
+    if (V.fade >= 1.4) for (const o of V.line) o.visible = false;
+  }
+  // The kettle: shakes harder and glows redder as it boils; steam puffs grow. After the click it cools.
+  const prog = F.stage === 'buildup' ? 1 - F.left / FIN.build : 0, K = V.kettleAt;
+  V.kettle.rotation.z = Math.sin(time * 40) * 0.015 * prog;
+  V.glow.material.color.setRGB(0.25 + 0.75 * prog, 0.05 + 0.2 * prog, 0.02);
+  V.steam.forEach((s, i) => {
+    const ph = (time * (0.4 + prog * 0.6) + i / 3) % 1;
+    s.material.opacity = F.stage === 'buildup' ? Math.min(0.75, prog * 1.2) * 0.55 * (1 - ph) : 0;
+    s.scale.setScalar((4 + prog * 7) * (0.5 + ph));
+    s.position.set(K.x - 7 - ph * 4, K.y + 9 + ph * 8, K.z);
+  });
+  // Rally marker pulses.
+  if (F.rallyMark) F.rallyMark.children[0].material.opacity = 0.5 + 0.3 * Math.sin(time * 4);
+  // Fading marks (lane stripes, covered gates).
+  for (let i = F.marks.length - 1; i >= 0; i--) {
+    const m = F.marks[i]; m.t -= dt;
+    m.mesh.material.opacity = Math.min(0.6, m.t / 3) * (0.7 + 0.3 * Math.sin(time * 6));
+    if (m.t <= 0) { scene.remove(m.mesh); m.mesh.material.dispose(); F.marks.splice(i, 1); }
+  }
+  // HUD
+  const secs = F.stage === 'buildup' ? Math.ceil(F.left) : Math.floor(state.time), mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, '0');
+  $('finTitle').textContent = F.stage === 'buildup' ? 'BUILD-UP' : 'WAR';
+  $('finTime').textContent = `${mm}:${ss}`;
+  $('finSub').textContent = F.stage === 'buildup' ? (F.left <= FIN.planAt ? 'The kettle is about to click. Pick your battle plan!' : 'Kettle boiling. Ceasefire: no crossing, no shooting') : '';
+  $('finBar').style.width = F.stage === 'buildup' ? `${(F.left / FIN.build) * 100}%` : '0%';
+  $('finHud').querySelector('.bar').style.visibility = F.stage === 'buildup' ? 'visible' : 'hidden';
+  const showPlan = F.stage === 'buildup' && F.left <= FIN.planAt && !state.over;
+  if ($('planBox').hidden === showPlan) $('planBox').hidden = !showPlan;
+  // Squadron panel: only rewritten when something it shows changes.
+  const mine = squadsOf(BLUE), canBuy = (k) => state.cereal[BLUE] >= SQUADS[k].cereal && state.clips[BLUE] >= SQUADS[k].clips;
+  const sig = `${armyOf(BLUE)}|${Object.keys(SQUADS).map((k) => +canBuy(k)).join('')}|${mine.map((q) => `${q.id}${q.order}${q.units.length}`).join(',')}|${F.rally[BLUE]}|${F.plan[BLUE]}|${showPlan}`;
+  if (sig !== F.ui) {
+    F.ui = sig;
+    const buy = Object.entries(SQUADS).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.name} x${S.n}<small>${S.cereal}${S.clips ? ` + ${S.clips} clips` : ''}</small></button>`).join('');
+    const rows = mine.length ? mine.map((q) => `<div class="sq"><span>${SQUADS[q.kind].name} ${q.units.length}/${q.n}</span><button data-ord="${q.id}" class="ord-${q.order}">${q.order.toUpperCase()}</button></div>`).join('') : '<div class="none">No squadrons yet. Buy one above, then tap its order.</div>';
+    $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
+    for (const b of $('planBox').querySelectorAll('button')) b.classList.toggle('cur', +b.dataset.lane === F.plan[BLUE]);
+  }
 }
 
 // ---------- Main loop ----------
@@ -3897,6 +4648,7 @@ function update(dt) {
 
   if (state.water) { ferriesUpdate(dt); islandScoop(dt); dripsUpdate(dt); }
   if (state.hob) hobUpdate(dt);
+  if (state.finale) finaleUpdate(dt);
   if (toasters.length) toastersUpdate(dt);
   // Player
   if (p.alive) {
@@ -3919,7 +4671,7 @@ function update(dt) {
   } else {
     state.respawn -= dt;
     if (state.respawn <= 0) {
-      Object.assign(p, { alive: true, x: -52, z: 0, vx: 0, vz: 0, heading: 0, hp: p.maxHp });
+      Object.assign(p, { alive: true, x: spawnPt(BLUE, 4)[0], z: spawnPt(BLUE, 4)[1], vx: 0, vz: 0, heading: 0, hp: p.maxHp });
       p.mesh.visible = true; sfx('respawn');
     }
   }
@@ -3967,6 +4719,10 @@ function update(dt) {
       s.vx = Math.cos(a) * s.weapon.speed; s.vz = Math.sin(a) * s.weapon.speed;
     }
     s.x += s.vx * dt; s.z += s.vz * dt;
+    if (state.finale?.ceasefire) { // no shooting across the ceasefire line: a shot that reaches it is gone
+      if (s.side === undefined) s.side = (s.x - s.vx * dt) > 0;
+      if ((s.x > 0) !== s.side) { scene.remove(s.mesh); shots.splice(i, 1); continue; }
+    }
     if (s.lobbed) { const f = 1 - Math.max(0, s.life) / s.T; s.y = s.y0 * (1 - f) + 22 * f * (1 - f) + 0.6; s.mesh.rotation.x += dt * 9; }
     s.mesh.position.set(s.x, s.y, s.z);
     if (!s.lobbed) s.mesh.rotation.z = -Math.atan2(s.vz, s.vx);
@@ -4011,7 +4767,7 @@ function update(dt) {
   for (const o of outposts) {
     let blue = 0, red = 0;
     for (const e of entities) {
-      if ((e.kind !== 'unit' && e.kind !== 'player') || e.hp <= 0 || (e.kind === 'player' && !e.alive)) continue;
+      if ((e.kind !== 'unit' && e.kind !== 'player') || e.hp <= 0 || e.fly || (e.kind === 'player' && !e.alive)) continue;
       if (dist2(e, o) < o.r * o.r) e.team === BLUE ? blue++ : red++;
     }
     const push = blue && !red ? 1 : red && !blue ? -1 : 0;
@@ -4084,6 +4840,7 @@ function render(dt) {
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
+    if (e.fly) bomberPose(e, time); // level 6 bombers: altitude, bank, propeller
     if (state.ledge) { // oven ramp and ledge: lift, tilt on the ramp; in the air off a toaster: an arc and a gentle nose-up
       const a = e.air, f = a ? Math.min(1, a.t / a.T) : 0;
       e.mesh.position.y += a ? a.l0 + (a.l1 - a.l0) * f + 4 * a.H * f * (1 - f) : ledgeLift(e);
@@ -4132,9 +4889,10 @@ function render(dt) {
   // Camera: high and angled, leading the way you're going. Pulls back on tall screens.
   const p = state.player;
   if (p) {
-    const zoom = camera.aspect < 1 ? 1.5 : 1;
+    const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1); // level 6 pulls the camera back to read the bigger space
     // Keep the view on the table: near an edge the car moves off-centre instead of the camera showing the dark beyond.
     const lead = new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35);
+    if (state.finale?.peek) { lead.x = 68; lead.z = 4; } // level 6: hold the Peek button to look at Red's side
     lead.x = Math.max(-W / 2 + 30, Math.min(W / 2 - 30, lead.x));
     lead.z = Math.max(-D / 2 + 22, Math.min(D / 2 - 14, lead.z));
     camTarget.lerp(lead, 1 - Math.exp(-4 * dt));
@@ -4170,6 +4928,7 @@ function render(dt) {
     }
   } else arrow.hidden = true;
   raceArrow();
+  if (state.finale) finaleDraw(dt, time);
   if (state.level?.dark) darkUpdate(dt);
   renderer.render(scene, camera);
 }
