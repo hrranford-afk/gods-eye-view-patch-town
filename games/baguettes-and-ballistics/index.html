@@ -2523,9 +2523,11 @@ function addDomino(x, z, dx, dz, team, fixed = false) {
   const face = fixed ? 0xfff3d6 : team === BLUE ? 0xfaf6ee : 0xb3261e, spot = fixed ? COLORS[team] : team === BLUE ? 0x1c1712 : 0xfaf6ee;
   const pivot = new THREE.Group(); pivot.position.set(x, 0, z);
   const body = new THREE.Group(); body.rotation.y = -Math.atan2(dz, dx); pivot.add(body);
-  mesh(new THREE.BoxGeometry(0.8, DOMINO_H, 2.6), mat(face), 0, DOMINO_H / 2, 0, body);
-  mesh(new THREE.BoxGeometry(0.82, 0.08, 2.2), mat(spot), 0, DOMINO_H / 2, 0, body);
-  for (const [py, pz] of [[1.2, -0.6], [1.2, 0.6], [4.3, 0], [3.7, -0.6], [4.9, 0.6]]) mesh(new THREE.BoxGeometry(0.84, 0.3, 0.3), mat(spot), 0, py, pz, body);
+  // (shared shapes and colours: level runs stand their dominoes again after every fall, fresh ones leaked ~1,700 geometries in 10 min on level 4)
+  const dmat = (c) => shared('dommat:' + c, () => mat(c));
+  mesh(shared('domG1', () => new THREE.BoxGeometry(0.8, DOMINO_H, 2.6)), dmat(face), 0, DOMINO_H / 2, 0, body);
+  mesh(shared('domG2', () => new THREE.BoxGeometry(0.82, 0.08, 2.2)), dmat(spot), 0, DOMINO_H / 2, 0, body);
+  for (const [py, pz] of [[1.2, -0.6], [1.2, 0.6], [4.3, 0], [3.7, -0.6], [4.9, 0.6]]) mesh(shared('domG3', () => new THREE.BoxGeometry(0.84, 0.3, 0.3)), dmat(spot), 0, py, pz, body);
   scene.add(pivot);
   const d = { x, z, dx, dz, team, fixed, pivot, angle: 0, falling: false, passed: false, hit: false };
   dominoes.push(d);
@@ -2716,7 +2718,7 @@ function makeRun(team, bx, bz, path) {
   return run;
 }
 function standRun(run) {
-  for (const d of run.doms) { scene.remove(d.pivot); const k = dominoes.indexOf(d); if (k >= 0) dominoes.splice(k, 1); }
+  for (const d of run.doms) { scene.remove(d.pivot); disposeTree(d.pivot); const k = dominoes.indexOf(d); if (k >= 0) dominoes.splice(k, 1); }
   run.doms = run.path.map((q) => (run.lite ? addDominoLite : addDomino)(q.x, q.z, q.dx, q.dz, run.team, true)); // (level 6's great runs use the one-mesh dominoes)
   run.ready = true; run.resetAt = 0; run.cap.position.y = 1.1;
 }
