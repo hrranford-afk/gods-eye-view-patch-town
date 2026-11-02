@@ -102,22 +102,34 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 .stars .off { color: rgba(255, 248, 236, 0.28); text-shadow: none; }
 .card .two { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .card .go.alt { background: var(--glass); font-size: 18px; padding: 14px 20px; min-width: 120px; }
+/* Level 1 race opening: race HUD, Drop button, arrow to the next gate. While racing, the build and fight buttons are hidden. */
+.raceHud { display: grid; justify-items: center; gap: 6px; }
+.raceHud .line { font: 15px var(--display); color: var(--gold); text-shadow: 0 2px 0 var(--ink); text-align: center; text-wrap: balance; }
+.raceHud button { pointer-events: auto; min-height: 40px; padding: 6px 14px; font-size: 14px; }
+body.racing .res, body.racing .pips { display: none; }
+body.racing .controls .row:not(.raceRow) { display: none; }
+button.drop { width: 104px; height: 104px; border-radius: 50%; font: 20px var(--display); background: rgba(255, 194, 61, 0.78); border-color: var(--paper); color: var(--ink); }
+button.drop small { color: var(--ink); }
+button.drop[disabled] { opacity: 0.45; }
+.gateArrow { position: fixed; z-index: 3; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 26px solid #ffc23d; filter: drop-shadow(0 2px 0 #1c1712); pointer-events: none; }
 @media (max-width: 700px) { .garage { max-width: calc(100vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); } .card h1 { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 
 <div class="hud">
   <div class="basebar blue"><b>YOUR TOY BOX <span class="pct" id="pctBlue"></span></b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
-  <div class="mid"><div class="res"><div class="cereal" id="cereal">0</div><div class="cereal clips" id="clipsHud" hidden>0 paperclips</div></div><div class="pips" id="pips"></div><div class="toast" id="toast"></div></div>
+  <div class="mid"><div class="res"><div class="cereal" id="cereal">0</div><div class="cereal clips" id="clipsHud" hidden>0 paperclips</div></div><div class="pips" id="pips"></div><div class="raceHud" id="raceHud" hidden><div class="line" id="raceLine"></div><button id="bSkip">Skip race</button></div><div class="toast" id="toast"></div></div>
   <div class="basebar red"><b>ENEMY TOY BOX <span class="pct" id="pctRed"></span></b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
 </div>
 <div class="banner" id="banner" hidden></div>
 <div class="bossArrow" id="bossArrow" hidden></div>
+<div class="gateArrow" id="gateArrow" hidden></div>
 <div class="bossbar" id="bossbar" hidden><b id="bossName">THE STAPLER</b><div class="bar"><i id="bossHp"></i></div></div>
 <div class="hint" id="hint">Drag on the left to drive</div>
 <div class="stick" id="stick" hidden><i id="knob"></i></div>
 <div class="garage" id="garage" hidden></div>
 <div class="controls">
+  <div class="row raceRow" id="raceRow" hidden><button class="drop" id="bDrop" disabled>Drop<small>Z</small></button></div>
   <div class="row">
     <button id="bDomino">Domino<small>4</small></button>
     <button id="bTrojan">Trojan<small>30</small></button>
@@ -298,6 +310,9 @@ function block(x, z, w, d, h, color, kind) {
     const face = mesh(new THREE.PlaneGeometry(Math.max(w, d), Math.min(w, d)), mat(0xffffff, { map: rulerTex }), x, h + 0.03, z);
     face.rotation.set(-Math.PI / 2, 0, w > d ? 0 : Math.PI / 2);
     face.castShadow = false;
+  } else if (kind === 'sugar') { // a row of sugar cubes (race boxes that unfold into walls)
+    const along = d > w, n = Math.max(1, Math.round((along ? d : w) / Math.min(w, d)));
+    for (let k = 0; k < n; k++) mesh(new THREE.BoxGeometry(along ? w : w / n, h, along ? d / n : d), mat(color), along ? x : x - w / 2 + (k + 0.5) * w / n, h / 2, along ? z - d / 2 + (k + 0.5) * d / n : z).scale.multiplyScalar(0.97);
   } else if (kind === 'mug') {
     mesh(new THREE.CylinderGeometry(w / 2, w / 2 * 0.92, h, 28, 1, true), mat(color, { side: THREE.DoubleSide }), x, h / 2, z);
     mesh(new THREE.CylinderGeometry(w / 2 - 0.5, w / 2 - 0.5, 0.4, 28), mat(0x4a2a14), x, h - 1.5, z);
@@ -397,13 +412,16 @@ const mirrored = (list) => [-1, 1].flatMap((s) => list.map((f) => f(s)));
 const LEVELS = [
   {
     name: 'Breakfast table', time: 'morning', tableColor: 0xffffff,
-    blurb: 'Tiny cars, big war over breakfast. Diggers dig cereal out of spilled bowls, dump trucks haul it home. Spend it on turrets, cars and more trucks. Wrecks spill cereal: drive over it to scoop it up. Smash the red toy box.',
+    race: { laps: 2 },
+    blurb: 'Race first, then fight. Two laps round the breakfast table against three red cars. Supply boxes sit on the track: drive over one to carry it, and drop it where you want it. When the first car finishes, every dropped box unfolds into a turret, a wall or a worker. Then it is war: dig cereal, build, and smash the red toy box.',
     tips: [
-      '<b>Drive:</b> drag anywhere on the left half (or WASD)',
-      '<b>Fire:</b> hold FIRE (or Space). It aims for you',
-      '<b>Build:</b> Truck (T), Digger (G), Gun and Rocket turrets where you stand (1, 2), Upgrade near one (U), Drones (3)',
-      '<b>Haul:</b> trucks unload at your toy box or any bottle cap you hold',
-      '<b>Swap vehicle:</b> drive home to your toy box',
+      '<b>Race:</b> drive through the glowing gates in order. Drag anywhere on the left half (or WASD)',
+      '<b>Boxes:</b> drive over one to pick it up. The picture on top shows what it becomes. You carry one, and it slows you a bit',
+      '<b>Drop:</b> press Drop (or Z) to leave a box where you want it. Keep it near home',
+      '<b>Ram:</b> hit a car that is carrying a box, hard, and the box falls off. Grab it',
+      '<b>Prizes:</b> win the race for 30 cereal. Come last for a free gun turret. Skip race goes straight to the battle',
+      '<b>Battle:</b> hold FIRE (or Space). Build Truck (T), Digger (G), Gun (1), Rocket (2), Upgrade (U), Drones (3)',
+      '<b>Haul:</b> trucks unload at your toy box or any bottle cap you hold. Swap vehicle at your toy box',
     ],
     // The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
     erasers: [],
@@ -1075,6 +1093,7 @@ function setVehicle(kind) {
 }
 
 function reset() {
+  cleanupRace();
   for (const e of entities) { if (e.mesh) scene.remove(e.mesh); if (e.pad) scene.remove(e.pad); }
   for (const s of shots) scene.remove(s.mesh);
   for (const p of parts) scene.remove(p.mesh);
@@ -1103,11 +1122,13 @@ function reset() {
   Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
   $('bUse').hidden = true;
   if (L.gumball) gumball = placeGumball();
-  for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
+  state.phase = 'battle';
+  if (!L.race) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // a race level makes these when the battle starts
   state.player = { kind: 'player', team: BLUE, x: -52, z: 0, vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
+  if (L.race) startRace(L.race);
   $('pips').innerHTML = outposts.map(() => '<span></span>').join('');
 }
 
@@ -1133,6 +1154,7 @@ addEventListener('pointerup', endStick);
 addEventListener('pointercancel', endStick);
 addEventListener('keydown', (e) => {
   input.keys.add(e.code);
+  if (state.phase && state.phase !== 'battle') { if (e.code === 'KeyZ') dropCrate(state.player); return; } // during the race: drive, and Z drops the box you carry
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
   if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
@@ -1146,7 +1168,7 @@ function hold(btn, on) {
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) btn.addEventListener(ev, () => { on(false); btn.classList.remove('on'); });
 }
 hold($('bFire'), (v) => { input.fire = v; });
-const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); });
+const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (state.phase && state.phase !== 'battle') return; fn(); });
 tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
 tap('bStaple', () => build('staple'));
@@ -1161,6 +1183,8 @@ tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
 tap('bTruck', () => buyWorker('truck', BLUE));
 tap('bDigger', () => buyWorker('digger', BLUE));
+$('bDrop').addEventListener('pointerdown', (e) => { e.preventDefault(); dropCrate(state.player); });
+$('bSkip').addEventListener('pointerdown', (e) => { e.preventDefault(); skipRace(); });
 
 // ---------- Sound: clicky toy sounds made in code (no files), starts on the first tap ----------
 let audio = null, master = null, noiseBuf = null, engine = null, muted = false;
@@ -2425,6 +2449,400 @@ function bossThink(b, dt) {
 }
 
 // ---------- Main loop ----------
+// ---------- Level 1 race opening: laps round the table, supply boxes, then the boxes unfold into your base ----------
+// The track is a closed loop (RACE_HALF, then the same turned half a circle, then rounded off). 8 gates sit on it.
+// Cars: you plus 3 red rivals (not in `entities`, so nothing shoots them and no economy or AI runs). The first car home ends the race.
+// Boxes ride on a car (15% slower), can be dropped (Drop, Z) and fall off when rammed. The switch to battle is `startBattle`.
+const RACE_HALF = [[-48, 0], [-48, -14], [-55, -12], [-62, -20], [-70, -18], [-70, -42], [-60, -39], [-50, -44.5], [-40, -39.5], [-30, -44], [-24, -38], [-28, -32], [-21, -27], [-22, -22], [-10, -18], [-7, -10], [-3, -5.5], [3, -5.5], [7, -10], [10, -18], [22, -16], [32, -12], [43, -8]];
+const RACE_GATES = [[-48, 0, 5], [-70, -30, 3.8], [-36, -42, 5.5], [0, -5.5, 5.5], [48, 0, 5], [70, 30, 3.8], [36, 42, 5.5], [0, 5.5, 5.5]]; // x, z, half width: start/finish first
+const RACE_SPOTS = [[-56, -16, 'gun'], [-70, -32, 'wall'], [-38, -41, 'truck'], [-24, -30, 'rocket'], [24, -14, 'digger'], [48, 12, 'gun'], [70, 32, 'wall'], [24, 34, 'truck']];
+const RACE_RED_DROPS = [[49, -3], [49, 10], [44, -8]]; // near their toy box, on their half
+const RACE_RED_ELSE = [[30, -9], [24, 28]]; // now and then they drop one further out
+const RACE_RIVALS = [{ name: 'Red 1', k: 0.99, lane: -1 }, { name: 'Red 2', k: 0.96, lane: 1 }, { name: 'Red 3', k: 0.93, lane: 0, bully: true }];
+const RACE_CARRY_SLOW = 0.85, RACE_RAM = 7, RACE_RESPAWN = 10, RACE_PRIZE = 30, RACE_COIN = 15;
+const CRATE_NAMES = { gun: 'Gun turret', rocket: 'Rocket turret', wall: 'Sugar wall', truck: 'Dump truck', digger: 'Digger' };
+let raceTrackData = null;
+function raceTrack() {
+  if (raceTrackData) return raceTrackData;
+  let p = [...RACE_HALF, ...RACE_HALF.map(([x, z]) => [-x, -z])];
+  for (let k = 0; k < 3; k++) { // Chaikin: cut every corner a few times so the loop is smooth to drive
+    const q = [];
+    for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); }
+    p = q;
+  }
+  const cum = [0];
+  for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; cum.push(cum[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const total = cum[p.length], n = Math.round(total / 2.5);
+  let pts = [];
+  for (let j = 0, i = 0; j < n; j++) {
+    const s = j * total / n;
+    while (cum[i + 1] < s) i++;
+    const a = p[i], b = p[(i + 1) % p.length], f = (s - cum[i]) / (cum[i + 1] - cum[i] || 1);
+    pts.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+  }
+  let k0 = 0;
+  for (let i = 1; i < n; i++) if (Math.hypot(pts[i][0] + 48, pts[i][1]) < Math.hypot(pts[k0][0] + 48, pts[k0][1])) k0 = i;
+  pts = [...pts.slice(k0), ...pts.slice(0, k0)]; // index 0 is the start line
+  const tan = pts.map((_, i) => { const a = pts[(i + n - 1) % n], b = pts[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; });
+  const nor = tan.map(([tx, tz]) => [-tz, tx]);
+  const head = tan.map(([tx, tz]) => Math.atan2(tz, tx));
+  const speedF = pts.map((_, i) => 1 - 0.3 * Math.min(1, Math.abs(wrap(head[(i + 4) % n] - head[(i + n - 4) % n])) / 1.2)); // rivals ease off in tight corners
+  return (raceTrackData = { pts, tan, nor, head, speedF, n, length: total });
+}
+const ordinal = (n) => ['1st', '2nd', '3rd', '4th'][n - 1] || `${n}th`;
+
+// --- gates: two flag posts and a bunting line; the next one glows ---
+function startTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 32;
+  const g = c.getContext('2d');
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#1c1712' : '#fff8ec'; g.fillRect(i * 8, j * 8, 8, 8); }
+  return new THREE.CanvasTexture(c);
+}
+function buildGate(R, g, i) {
+  const grp = new THREE.Group();
+  grp.position.set(g.x, 0, g.z); grp.rotation.y = -Math.atan2(g.nz, g.nx); // local x runs across the track
+  const post = shared('gate:post', () => new THREE.CylinderGeometry(0.28, 0.34, 5.2, 8)), ball = shared('gate:ball', () => new THREE.SphereGeometry(0.6, 10, 8));
+  g.ballMat = new THREE.MeshStandardMaterial({ color: 0xffc23d, emissive: 0xffc23d, emissiveIntensity: 0.1, roughness: 0.4 });
+  for (const s of [-1, 1]) {
+    mesh(post, shared('gate:postMat', () => mat(0xfff8ec)), s * g.hw, 2.6, 0, grp);
+    mesh(ball, g.ballMat, s * g.hw, 5.5, 0, grp).castShadow = false;
+  }
+  // Bunting: a sagging string with little triangle flags hanging from it.
+  const cols = [0xef4136, 0xfff8ec, 0x2f7df6, 0xffc23d].map((c) => new THREE.Color(c));
+  const NF = 9, tri = [], colr = [], line = [];
+  const at = (t) => [(t * 2 - 1) * g.hw, 4.8 - 1.1 * 4 * t * (1 - t)];
+  for (let k = 0; k <= 16; k++) { const [x, y] = at(k / 16); line.push(new THREE.Vector3(x, y, 0)); }
+  for (let k = 0; k < NF; k++) {
+    const a = at((k + 0.15) / NF), b = at((k + 0.85) / NF), c = cols[k % 4];
+    tri.push(a[0], a[1], 0, b[0], b[1], 0, (a[0] + b[0]) / 2, Math.min(a[1], b[1]) - 1.2, 0);
+    for (let v = 0; v < 3; v++) colr.push(c.r, c.g, c.b);
+  }
+  const bg = new THREE.BufferGeometry();
+  bg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+  bg.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3));
+  grp.add(new THREE.Mesh(bg, shared('gate:flagMat', () => new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }))));
+  grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), shared('gate:lineMat', () => new THREE.LineBasicMaterial({ color: 0x1c1712 }))));
+  // Ground strip: chequered on the start line, glowing gold when it's the next gate.
+  g.glow = new THREE.MeshBasicMaterial({ color: 0xffc23d, transparent: true, opacity: 0, depthWrite: false });
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(g.hw * 2, 1.8), g.glow);
+  strip.rotation.x = -Math.PI / 2; strip.position.y = 0.09; grp.add(strip);
+  if (i === 0) {
+    const chk = new THREE.Mesh(new THREE.PlaneGeometry(g.hw * 2, 1.8), shared('gate:chk', () => new THREE.MeshBasicMaterial({ map: startTexture() })));
+    chk.rotation.x = -Math.PI / 2; chk.position.y = 0.06; grp.add(chk);
+  }
+  R.group.add(grp);
+}
+
+// --- boxes ---
+const crateMat = (team) => shared(`crate:${team}`, () => mat(team === BLUE ? 0x86aef0 : team === RED ? 0xe8918a : 0xcf9d5c));
+const tapeMat = (team) => shared(`crateTape:${team}`, () => mat(team === BLUE ? 0x2f7df6 : team === RED ? 0xef4136 : 0xffc23d));
+function crateIcon(kind, g) { // a little toy of what's inside, on top of the box
+  const B = (w, h, d) => shared(`ib:${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
+  const C = (rt, rb, h, s = 10) => shared(`ic:${rt},${rb},${h},${s}`, () => new THREE.CylinderGeometry(rt, rb, h, s));
+  const col = (c) => shared(`m:${c}`, () => mat(c));
+  if (kind === 'gun') {
+    mesh(C(0.9, 1.1, 0.5), col(0x55504a), 0, 0.25, 0, g);
+    mesh(B(1.4, 0.8, 1.2), col(0x8a96a8), 0, 0.9, 0, g);
+    mesh(C(0.16, 0.16, 1.7, 6), col(0x1c1712), 1.2, 0.95, 0, g).rotation.z = Math.PI / 2;
+  } else if (kind === 'rocket') {
+    mesh(C(0.5, 0.5, 2.2), col(0xfff8ec), 0, 1.1, 0, g).rotation.z = Math.PI / 2;
+    mesh(shared('ic:nose', () => new THREE.ConeGeometry(0.5, 1, 10)), col(0xef4136), 1.6, 1.1, 0, g).rotation.z = -Math.PI / 2;
+    for (const z of [-0.6, 0.6]) mesh(B(0.7, 0.1, 0.7), col(0xef4136), -0.9, 1.1, z, g);
+    mesh(B(0.7, 0.7, 0.1), col(0xef4136), -0.9, 1.5, 0, g);
+  } else if (kind === 'wall') {
+    for (const [x, y] of [[-0.65, 0.6], [0.65, 0.6], [0, 1.8]]) mesh(B(1.2, 1.2, 1.2), col(0xfdfaf2), x, y, 0, g);
+  } else if (kind === 'truck') {
+    mesh(B(2.2, 0.8, 1.2), col(0xffc23d), -0.2, 0.8, 0, g);
+    mesh(B(0.9, 0.8, 1.2), col(0x2f7df6), 1.2, 1.0, 0, g);
+    for (const [x, z] of [[-0.9, 0.7], [-0.9, -0.7], [0.9, 0.7], [0.9, -0.7]]) mesh(C(0.32, 0.32, 0.3, 8), col(0x2b2b2b), x, 0.35, z, g).rotation.x = Math.PI / 2;
+  } else if (kind === 'digger') {
+    mesh(B(1.8, 0.7, 1.4), col(0x2b2b2b), 0, 0.4, 0, g);
+    mesh(B(1.4, 0.8, 1.2), col(0xffc23d), -0.2, 1.0, 0, g);
+    mesh(B(1.9, 0.3, 0.3), col(0xffc23d), 1.0, 1.7, 0, g).rotation.z = -0.5;
+    mesh(B(0.7, 0.6, 0.9), col(0x55504a), 1.9, 1.1, 0, g);
+  }
+}
+function makeCrate(kind, x, z, spot) {
+  const R = state.race, g = new THREE.Group();
+  const body = mesh(shared('crate:body', () => new THREE.BoxGeometry(3.8, 3.2, 3.8)), crateMat(null), 0, 1.6, 0, g);
+  const tape = mesh(shared('crate:tape', () => new THREE.BoxGeometry(4, 0.6, 4)), tapeMat(null), 0, 1.7, 0, g);
+  const icon = new THREE.Group(); icon.position.y = 3.2; g.add(icon); crateIcon(kind, icon);
+  g.position.set(x, 0, z); g.scale.setScalar(0.01);
+  scene.add(g);
+  const c = { kind, x, z, y: 0, vy: 0, fall: false, grow: 0, state: 'idle', team: null, carrier: null, spot, denied: null, deniedT: 0, mesh: g, body, tape, icon };
+  R.crates.push(c);
+  return c;
+}
+function crateTeam(c, team) { c.team = team; c.body.material = crateMat(team); c.tape.material = tapeMat(team); }
+function pickUp(car, c) {
+  const R = state.race;
+  if (c.spot >= 0) { R.spots[c.spot].crate = null; R.spots[c.spot].timer = RACE_RESPAWN; c.spot = -1; } // a new one grows back in 10 s
+  c.state = 'carried'; c.carrier = car; car.carry = c; c.fall = false; c.mesh.scale.setScalar(0.7);
+  if (car === state.player) { sfx('cap'); toast(`Got a box: ${CRATE_NAMES[c.kind]}. Drop it near home (Z)`); }
+  else { car.dropAt = Math.random() < 0.8 ? RACE_RED_DROPS[(Math.random() * RACE_RED_DROPS.length) | 0] : RACE_RED_ELSE[(Math.random() * RACE_RED_ELSE.length) | 0]; car.carryT = 0; }
+}
+function dropCrate(car) {
+  const R = state.race;
+  if (!R || state.phase !== 'race' || R.hold > 0 || !car.carry) return;
+  const c = car.carry;
+  car.carry = null; c.carrier = null; c.state = 'dropped';
+  c.x = Math.max(-W / 2 + 3, Math.min(W / 2 - 3, car.x - Math.cos(car.heading) * 3.4)); c.z = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, car.z - Math.sin(car.heading) * 3.4));
+  c.y = 2.5; c.vy = 0; c.fall = true; c.mesh.scale.setScalar(1);
+  crateTeam(c, car.team); // the box wears your team colour
+  if (car === state.player) { sfx('build'); toast(`Dropped: it becomes a ${CRATE_NAMES[c.kind].toLowerCase()} when the race ends`); }
+}
+function knockOff(victim, rammer) {
+  const c = victim.carry;
+  victim.carry = null; c.carrier = null; c.state = 'idle'; c.team = null;
+  c.body.material = crateMat(null); c.tape.material = tapeMat(null);
+  const dx = rammer.x - victim.x, dz = rammer.z - victim.z, d = Math.hypot(dx, dz) || 1;
+  c.x = victim.x + dx / d * 2.4; c.z = victim.z + dz / d * 2.4; c.y = 2.5; c.vy = 6; c.fall = true; c.mesh.scale.setScalar(1);
+  c.denied = victim; c.deniedT = 1.8; // the rammer gets first go
+  burst(c.x, c.z, 0xcf9d5c, 8, 9, 2); sfx('clack');
+  if (victim === state.player) { toast('Rammed! Your box fell off'); state.shake = Math.min(1.2, (state.shake || 0) + 0.4); }
+  else if (rammer === state.player) toast('Knocked their box off: grab it!');
+}
+
+// --- the race ---
+function startRace(cfg) {
+  const T = raceTrack(), p = state.player, N = RACE_GATES.length;
+  const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '' };
+  scene.add(R.group);
+  RACE_GATES.forEach(([x, z, hw]) => {
+    let idx = 0;
+    for (let k = 1; k < T.n; k++) if (Math.hypot(T.pts[k][0] - x, T.pts[k][1] - z) < Math.hypot(T.pts[idx][0] - x, T.pts[idx][1] - z)) idx = k;
+    R.gates.push({ idx, x: T.pts[idx][0], z: T.pts[idx][1], tx: T.tan[idx][0], tz: T.tan[idx][1], nx: T.nor[idx][0], nz: T.nor[idx][1], hw });
+  });
+  R.gates.forEach((g, i) => { const prev = R.gates[(i + N - 1) % N]; g.segLen = Math.hypot(g.x - prev.x, g.z - prev.z) || 1; buildGate(R, g, i); });
+  RACE_SPOTS.forEach(([x, z, kind], i) => { const c = makeCrate(kind, x, z, i); c.grow = 1; c.mesh.scale.setScalar(1); R.spots.push({ x, z, kind, crate: c, timer: 0 }); });
+  // The grid is the last stretch of the track, two abreast.
+  const order = [1, 0, 2, 3]; // you start in the second row, left
+  const place = (c, k) => {
+    const j = (T.n - 2 - order[k] * 2 + T.n) % T.n, lat = order[k] % 2 ? 1.8 : -1.8;
+    Object.assign(c, { x: T.pts[j][0] + T.nor[j][0] * lat, z: T.pts[j][1] + T.nor[j][1] * lat, heading: T.head[j], vx: 0, vz: 0, wp: j, carry: null, passed: 0, gs: -99, stuck: 0 });
+  };
+  place(p, 0);
+  RACE_RIVALS.forEach((cfgR, i) => {
+    const c = { kind: 'racer', team: RED, name: cfgR.name, k: cfgR.k, lane: cfgR.lane, bully: !!cfgR.bully, r: 1.6, mesh: buildModel('racer', RED), stats: { speed: 24, accel: 44, turn: 4.8, grip: 7 } };
+    place(c, i + 1); R.rivals.push(c); R.cars.push(c);
+  });
+  for (const c of R.cars) c.gs = gateSide(c, R.gates[1]);
+  state.phase = 'race';
+  document.body.classList.add('racing');
+  $('raceHud').hidden = false; $('raceRow').hidden = false; $('garage').hidden = true;
+  $('pctBlue').textContent = $('pctRed').textContent = '100%';
+}
+function cleanupRace() {
+  const R = state.race;
+  if (R) {
+    scene.remove(R.group); disposeTree(R.group);
+    for (const c of R.crates) scene.remove(c.mesh);
+    for (const c of R.rivals) { scene.remove(c.mesh); disposeTree(c.mesh); }
+    state.race = null;
+  }
+  document.body.classList.remove('racing');
+  $('raceHud').hidden = true; $('raceRow').hidden = true; $('gateArrow').hidden = true;
+}
+function gateSide(c, g) { return (c.x - g.x) * g.tx + (c.z - g.z) * g.tz; }
+function raceProg(c) {
+  const R = state.race, N = R.gates.length;
+  if (c.passed >= R.laps * N) return c.passed;
+  const g = R.gates[(c.passed + 1) % N];
+  return c.passed + Math.max(0, Math.min(0.99, 1 - Math.hypot(c.x - g.x, c.z - g.z) / g.segLen));
+}
+function gateCheck(c) {
+  const R = state.race, N = R.gates.length;
+  if (c.passed >= R.laps * N) return;
+  let g = R.gates[(c.passed + 1) % N];
+  const s = gateSide(c, g), l = (c.x - g.x) * g.nx + (c.z - g.z) * g.nz;
+  if (c.gs < 0 && s >= 0 && s < 8 && Math.abs(l) < g.hw + 1.2) {
+    c.passed++;
+    if (c === state.player) sfx('tick');
+    if (c.passed >= R.laps * N) { if (!R.winner) finishRace(c); return; }
+    g = R.gates[(c.passed + 1) % N];
+    c.gs = gateSide(c, g);
+  } else c.gs = s;
+}
+function rivalThink(c, dt, go) {
+  const R = state.race, T = R.track, n = T.n, p = state.player;
+  if (!go) { drive(c, 0, 0, 0, dt, c.stats); return; }
+  let best = c.wp, bd = 1e9;
+  for (let k = -2; k <= 10; k++) { const j = (c.wp + k + n) % n, d = (c.x - T.pts[j][0]) ** 2 + (c.z - T.pts[j][1]) ** 2; if (d < bd) { bd = d; best = j; } }
+  if (bd > 14 * 14) for (let j = 0; j < n; j++) { const d = (c.x - T.pts[j][0]) ** 2 + (c.z - T.pts[j][1]) ** 2; if (d < bd) { bd = d; best = j; } }
+  c.wp = best;
+  const la = (c.wp + 3) % n;
+  let gx = T.pts[la][0] + T.nor[la][0] * c.lane, gz = T.pts[la][1] + T.nor[la][1] * c.lane;
+  if (!c.carry) {
+    // A box close by and ahead: go and get it.
+    let bc = null, bdist = 121;
+    for (const b of R.crates) if (b.state === 'idle' && !(b.denied === c && b.deniedT > 0)) {
+      const d = (b.x - c.x) ** 2 + (b.z - c.z) ** 2;
+      if (d < bdist && (b.x - c.x) * Math.cos(c.heading) + (b.z - c.z) * Math.sin(c.heading) > 0) { bdist = d; bc = b; }
+    }
+    if (bc) { gx = bc.x; gz = bc.z; }
+    if (c.bully && p.carry && (p.x - c.x) ** 2 + (p.z - c.z) ** 2 < 18 * 18) { gx = p.x; gz = p.z; } // go and ram the player for their box
+  } else {
+    c.carryT += dt;
+    if (c.dropAt && (Math.hypot(c.x - c.dropAt[0], c.z - c.dropAt[1]) < 8 || c.carryT > 26)) dropCrate(c);
+  }
+  // A close race: a car that's behind the player speeds up a touch, one in front eases off.
+  const diff = raceProg(p) - raceProg(c), band = 1 + Math.max(-0.04, Math.min(0.08, diff * 0.025));
+  c.stats.speed = 24 * c.k * band * T.speedF[c.wp] * (c.carry ? RACE_CARRY_SLOW : 1);
+  steer(c, gx, gz, 0.3, dt, c.stats);
+  c.stuck = Math.hypot(c.vx, c.vz) < 2.5 ? c.stuck + dt : 0;
+  if (c.stuck > 1.5) { // wedged on something: lift it back onto the track
+    const j = (c.wp + 4) % n;
+    Object.assign(c, { x: T.pts[j][0], z: T.pts[j][1], vx: 0, vz: 0, heading: T.head[j], wp: j, stuck: 0, path: null });
+  }
+}
+function raceCollide() {
+  const cars = state.race.cars;
+  for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) {
+    const a = cars[i], b = cars[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = a.r + b.r;
+    if (d >= min || d < 1e-4) continue;
+    const nx = dx / d, nz = dz / d, push = (min - d) / 2;
+    a.x -= nx * push; a.z -= nz * push; b.x += nx * push; b.z += nz * push;
+    const va = a.vx * nx + a.vz * nz, vb = -(b.vx * nx + b.vz * nz), rel = va + vb; // how fast each drives into the other
+    if (rel > 0) { a.vx -= nx * rel * 0.4; a.vz -= nz * rel * 0.4; b.vx += nx * rel * 0.4; b.vz += nz * rel * 0.4; }
+    if (a.team !== b.team) { // ram: a hard hit on a car that's carrying knocks its box off
+      if (b.carry && va >= RACE_RAM) knockOff(b, a);
+      if (a.carry && vb >= RACE_RAM) knockOff(a, b);
+    }
+  }
+}
+function finishRace(winner) {
+  const R = state.race, p = state.player;
+  R.winner = winner;
+  const order = R.cars.slice().sort((a, b) => raceProg(b) - raceProg(a)), last = order[order.length - 1], place = order.indexOf(p) + 1;
+  const youWon = winner === p;
+  state.cereal[winner.team] += RACE_PRIZE;
+  R.lastTeam = last.team;
+  R.result = youWon ? `You won the race! +${RACE_PRIZE} cereal` : `${winner.name} won the race. You came ${ordinal(place)}`;
+  if (last === p) R.result += '. Last place: a free gun turret at home';
+  state.phase = 'countdown'; R.cd = 3; R.cdN = undefined;
+  sfx(youWon ? 'win' : 'respawn');
+  $('raceHud').hidden = true; $('raceRow').hidden = true;
+}
+function skipRace() {
+  if (!state.race || state.phase !== 'race') return;
+  startBattle(true);
+}
+function findDropSpot(kind, x, z, team) {
+  const offs = [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4], [4, 4], [-4, -4], [4, -4], [-4, 4], [7, 0], [-7, 0], [0, 7], [0, -7]];
+  for (const [dx, dz] of offs) {
+    const sx = x + dx, sz = z + dz;
+    if (kind === 'wall' ? !canPlace(sx, sz - 3, team) && !canPlace(sx, sz, team) && !canPlace(sx, sz + 3, team) : !canPlace(sx, sz, team)) return [sx, sz];
+  }
+  return null;
+}
+function unfoldCrate(c, tally) {
+  const carried = c.state === 'carried', team = carried ? c.carrier.team : c.team, x = carried ? c.carrier.x : c.x, z = carried ? c.carrier.z : c.z, t = tally[team];
+  burst(x, z, COLORS[team], 14, 12, 2); burst(x, z, 0xfff8ec, 8, 9, 2);
+  if (c.kind === 'truck' || c.kind === 'digger') { spawnWorker(c.kind, team); t.workers++; return; }
+  const at = findDropSpot(c.kind, x, z, team);
+  if (!at) { state.cereal[team] += RACE_COIN; t.cereal++; return; } // no room where it was left: 15 cereal instead
+  if (c.kind === 'wall') {
+    meshParent = levelRoot; block(at[0], at[1], 3, 7, 4.2, 0xfdfaf2, 'sugar'); meshParent = scene; navDirty = true; t.walls++;
+  } else { makeTurret(c.kind, team, at[0], at[1]); t.turrets++; }
+}
+function startBattle(skipped) {
+  const R = state.race, p = state.player;
+  const tally = [{ turrets: 0, walls: 0, workers: 0, cereal: 0 }, { turrets: 0, walls: 0, workers: 0, cereal: 0 }];
+  for (const c of R.crates) if (c.state === 'dropped' || c.state === 'carried') unfoldCrate(c, tally);
+  // The two starting workers each side has always had, then the prizes.
+  for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
+  if (!skipped && R.lastTeam !== undefined) {
+    const at = spotNear(R.lastTeam === BLUE ? -47 : 47, 0, R.lastTeam);
+    if (at) { makeTurret('gun', R.lastTeam, at[0], at[1]); tally[R.lastTeam].turrets++; } else state.cereal[R.lastTeam] += 25;
+  }
+  for (const c of R.rivals) burst(c.x, c.z, 0xef4136, 10, 9, 1.5);
+  p.carry = null;
+  if (skipped) Object.assign(p, { x: -52, z: 0, vx: 0, vz: 0, heading: 0 }); // the old level 1 start
+  cleanupRace();
+  state.phase = 'battle'; state.time = 0; state.shake = skipped ? 0.3 : 1.6;
+  const mine = tally[BLUE], bits = [];
+  if (mine.turrets) bits.push(`${mine.turrets} turret${mine.turrets > 1 ? 's' : ''}`);
+  if (mine.walls) bits.push(`${mine.walls} wall${mine.walls > 1 ? 's' : ''}`);
+  if (mine.workers) bits.push(`${mine.workers} worker${mine.workers > 1 ? 's' : ''}`);
+  if (mine.cereal) bits.push(`${mine.cereal * RACE_COIN} cereal (no room)`);
+  banner('FIGHT!', bits.length ? `Your boxes unfolded: ${bits.join(', ')}` : 'Dig cereal, build, and break the red toy box');
+  sfx(skipped ? 'build' : 'bigBoom');
+}
+const rgTmp = new THREE.Vector3();
+function raceArrow() { // a gold arrow at the screen edge pointing to the next gate when it's off-camera
+  const R = state.race, el = $('gateArrow');
+  if (!R || state.phase !== 'race' || R.hold > 0) { el.hidden = true; return; }
+  const g = R.gates[(state.player.passed + 1) % R.gates.length];
+  rgTmp.set(g.x, 2, g.z).project(camera);
+  const off = rgTmp.z > 1 || rgTmp.x < -0.95 || rgTmp.x > 0.95 || rgTmp.y < -0.9 || rgTmp.y > 0.9;
+  el.hidden = !off;
+  if (off) {
+    const flip = rgTmp.z > 1 ? -1 : 1, vx = rgTmp.x * flip, vy = rgTmp.y * flip, k = 0.88 / Math.max(Math.abs(vx), Math.abs(vy), 1e-3);
+    el.style.left = `${(vx * k + 1) / 2 * innerWidth - 14}px`; el.style.top = `${(1 - vy * k) / 2 * innerHeight - 13}px`;
+    el.style.transform = `rotate(${Math.atan2(vx, vy)}rad)`;
+  }
+}
+function raceUpdate(dt) {
+  const R = state.race, p = state.player, N = R.gates.length, racing = state.phase === 'race';
+  engineUpdate(p);
+  R.t += dt;
+  if (R.hold > 0) { // 3, 2, 1, GO
+    R.hold -= dt;
+    const n = Math.ceil(R.hold);
+    if (n !== R.lastN) {
+      R.lastN = n;
+      if (n > 0) { banner(String(n), 'Two laps. Drive over a box to carry it.'); sfx('tick'); } else { banner('GO!', 'Gates in order. Z drops your box.'); bannerTimer = 1.4; sfx('respawn'); }
+    }
+  }
+  const go = racing && R.hold <= 0;
+  // You
+  let ix = input.x, iz = input.z;
+  if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
+  if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
+  if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
+  if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) iz += 1;
+  const hm = Math.hypot(ix, iz);
+  drive(p, ix / (hm || 1), iz / (hm || 1), go ? Math.min(1, hm) : 0, dt, p.carry ? R.statsCarry : VEHICLES.racer);
+  for (const c of R.rivals) rivalThink(c, dt, go);
+  raceCollide();
+  if (go) {
+    for (const c of R.cars) {
+      gateCheck(c);
+      if (R.winner) break;
+      if (!c.carry) for (const b of R.crates) if (b.state === 'idle' && !(b.denied === c && b.deniedT > 0) && (b.x - c.x) ** 2 + (b.z - c.z) ** 2 < (c.r + 2.4) ** 2) { pickUp(c, b); break; }
+    }
+  }
+  // Boxes: ride, fall, grow back, spin.
+  for (const b of R.crates) {
+    if (b.state === 'carried') { b.mesh.position.set(b.carrier.x, 2.4, b.carrier.z); b.mesh.rotation.y = -b.carrier.heading; continue; }
+    if (b.fall) { b.vy -= 70 * dt; b.y += b.vy * dt; if (b.y <= 0) { b.y = 0; b.vy = 0; b.fall = false; } }
+    if (b.grow < 1) { b.grow = Math.min(1, b.grow + dt * 2.5); b.mesh.scale.setScalar(Math.max(0.01, b.grow)); }
+    if (b.deniedT > 0) b.deniedT -= dt;
+    b.mesh.position.set(b.x, b.y, b.z);
+    b.icon.rotation.y += dt * (b.state === 'idle' ? 1.8 : 0.3);
+  }
+  for (let i = 0; i < R.spots.length; i++) { const s = R.spots[i]; if (!s.crate && (s.timer -= dt) <= 0) s.crate = makeCrate(s.kind, s.x, s.z, i); }
+  for (const c of R.rivals) { c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.y = -c.heading; }
+  // The next gate glows.
+  const next = (p.passed + 1) % N;
+  R.gates.forEach((g, i) => { const on = racing && i === next && R.hold <= 0; g.glow.opacity = on ? 0.4 + Math.sin(R.t * 6) * 0.2 : 0; g.ballMat.emissiveIntensity = on ? 0.9 + Math.sin(R.t * 6) * 0.4 : 0.1; });
+  // HUD
+  if (racing) {
+    const rank = 1 + R.cars.filter((c) => c !== p && raceProg(c) > raceProg(p)).length;
+    const txt = `Lap ${Math.min(R.laps, Math.floor(p.passed / N) + 1)}/${R.laps} · ${ordinal(rank)} of ${R.cars.length} · Carrying: ${p.carry ? CRATE_NAMES[p.carry.kind] : 'nothing'}`;
+    if (txt !== R.hudText) { R.hudText = txt; $('raceLine').textContent = txt; }
+    $('bDrop').disabled = !p.carry;
+  }
+  toastTimer -= dt;
+  if (toastTimer <= 0) $('toast').textContent = '';
+  if (state.phase === 'countdown') { // BATTLE! then 3, 2, 1 kettle clicks and a shaking table, then the boxes unfold
+    R.cd -= dt; state.shake = Math.max(state.shake || 0, 0.35 + (3 - Math.max(0, R.cd)) * 0.2);
+    const n = Math.ceil(R.cd);
+    if (n !== R.cdN && n > 0) { R.cdN = n; sfx('tick'); banner('BATTLE!', `${R.result}<br>Boxes unfold in ${n}`); }
+    if (R.cd <= 0) startBattle(false);
+  }
+}
+
 let last = performance.now();
 function step(now) {
   requestAnimationFrame(step);
@@ -2436,6 +2854,7 @@ function step(now) {
 }
 
 function update(dt) {
+  if (state.phase === 'race' || state.phase === 'countdown') { raceUpdate(dt); return; }
   state.time += dt;
   const p = state.player;
   engineUpdate(p);
@@ -2687,7 +3106,7 @@ function render(dt) {
     }
     const gx = p.x - Math.cos(p.heading) * 4, gz = p.z - Math.sin(p.heading) * 4;
     const ok = p.alive && !canPlace(gx, gz, BLUE) && state.cereal[BLUE] >= costOf('gun');
-    ghost.visible = p.alive && !state.over;
+    ghost.visible = p.alive && !state.over && state.phase === 'battle';
     ghost.position.set(gx, 0.1, gz);
     ghost.material.color.setHex(ok ? 0x3ddc84 : 0xff5a5f);
     ghost.material.opacity = 0.3 + Math.sin(time * 5) * 0.12;
@@ -2711,6 +3130,7 @@ function render(dt) {
       arrow.style.transform = `rotate(${Math.atan2(v.x, v.y)}rad)`;
     }
   } else arrow.hidden = true;
+  raceArrow();
   renderer.render(scene, camera);
 }
 
