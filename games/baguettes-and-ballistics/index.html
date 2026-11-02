@@ -1205,13 +1205,14 @@ const LEVELS = [
     rules: { baseHp: 1800, raidEvery: 70, firstRaid: 90, raidSize: [2, 3], boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }, rusher: { first: 30, size: 5, grow: 1, max: 10, gap: 40 } },
   },
   {
-    name: 'Baguettes & Ballistics', time: 'dinner', tableColor: 0xffffff, size: [346, 216], finale: true, camZoom: 1.75,
+    name: 'Baguettes & Ballistics', time: 'dinner', tableColor: 0xffffff, size: [346, 216], finale: true, camZoom: 2.1,
     blurb: 'The finale. It is night, the kettle is on, and the worktop is a big U. Your toy box is in the sink arm, theirs on the breadboard. You have 60 seconds before the kettle clicks and the war starts.',
     tips: [
       '<b>Build-up:</b> a glowing ceasefire line splits the hob. Nobody crosses it or shoots over it. Gather, build, train',
       '<b>Squadrons:</b> Bombers fly over water and walls. Boats sail the sink. Tap a squad\'s button to set Attack, Defend or Raid',
       '<b>Battle plan:</b> in the last 10 seconds pick Left, Middle or Right. Rally your Defenders where Red will come to take less damage',
       '<b>The bend:</b> the hob rings burn when red-hot and the cook drops pans. Paperclips are in the middle',
+      '<b>The giant worktop:</b> four times a normal level. The minimap (top right) shows the U, the sink, both toy boxes, your squads, enemies you can see and the Baguette. Drive onto a toaster to be thrown 48 units',
       '<b>Infantry:</b> loopers grab caps, pikemen hurt cars, pea shooters float and lob, battery bots stun. They cost peas and batteries from risky piles. Infantry count half toward the army cap',
     ],
     // Bases at the tips of the arms. Index 0 is the cut-out (finaleDecor reads it): a solid block in the middle of the U.
@@ -1393,7 +1394,7 @@ const ENEMY_TYPES = {
   hijacker: { model: 'racer', speed: 22, hp: 45, weapon: 'raid', reward: 5 }, // sneaks up on a truck of yours and drives it home as a trojan
   layer: { model: 'mech', speed: 9, hp: 120, weapon: 'mg', reward: 8 }, // lays a domino run towards your toy box
   // Level 6 squadrons (sq: built from shared shapes by squadModel). Bombers fly.
-  sqtank: { model: 'tank', speed: 9.5, hp: 200, weapon: 'cannon', reward: 9, sq: true },
+  sqtank: { model: 'tank', speed: 11, hp: 200, weapon: 'cannon', reward: 9, sq: true },
   sqraider: { model: 'racer', speed: 28, hp: 42, weapon: 'raid', reward: 3, sq: true },
   bomber: { model: 'bomber', speed: 16, hp: 80, weapon: 'bomb', reward: 5, sq: true, fly: true },
   // Level 6 infantry (stage 2): everything you collected becomes an army. They count half a unit toward the cap (inf).
@@ -1884,13 +1885,18 @@ function nearestOpen(i, j, grid = closed) {
   }
   return [i, j];
 }
+let astar = null; // level 6's reusable search buffers
+let pathBudget = 2; // level 6: route searches left this tick (update() refills it)
 // A* over the grid; returns waypoints (world x,z), smoothed to the corners that matter.
 function findPath(sx, sz, gx, gz, grid = closed) {
   const closed = grid;
   if (navDirty) navBuild();
   const [si, sj] = nearestOpen(...cellOf(sx, sz), closed), [gi, gj] = nearestOpen(...cellOf(gx, gz), closed);
   const start = sj * GW + si, goal = gj * GW + gi;
-  const g = new Float32Array(GW * GD).fill(Infinity), from = new Int32Array(GW * GD).fill(-1);
+  // Level 6 (stage 3, the big grid): reuse the buffers, expand each cell once and ignore float32 rounding "improvements" (they made the search churn for ever).
+  const fin = !!state.level.finale, eps = fin ? 1e-3 : 0;
+  if (fin && (!astar || astar.n !== GW * GD)) astar = { n: GW * GD, g: new Float32Array(GW * GD), from: new Int32Array(GW * GD), done: new Uint8Array(GW * GD) };
+  const g = fin ? astar.g.fill(Infinity) : new Float32Array(GW * GD).fill(Infinity), from = fin ? astar.from.fill(-1) : new Int32Array(GW * GD).fill(-1), done = fin ? astar.done.fill(0) : null;
   const heap = [[0, start]];
   g[start] = 0;
   const push = (f, n) => { heap.push([f, n]); let k = heap.length - 1; while (k > 0) { const q = (k - 1) >> 1; if (heap[q][0] <= heap[k][0]) break; [heap[q], heap[k]] = [heap[k], heap[q]]; k = q; } };
@@ -1898,6 +1904,7 @@ function findPath(sx, sz, gx, gz, grid = closed) {
   while (heap.length) {
     const [, n] = pop();
     if (n === goal) break;
+    if (fin) { if (done[n]) continue; done[n] = 1; }
     const ni = n % GW, nj = (n / GW) | 0;
     for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
       if (!di && !dj) continue;
@@ -1905,7 +1912,7 @@ function findPath(sx, sz, gx, gz, grid = closed) {
       if (a < 0 || b < 0 || a >= GW || b >= GD || closed[b * GW + a]) continue;
       if (di && dj && (closed[nj * GW + a] || closed[b * GW + ni])) continue; // no corner cutting
       const m = b * GW + a, cost = g[n] + (di && dj ? 1.414 : 1);
-      if (cost < g[m]) { g[m] = cost; from[m] = n; push(cost + Math.hypot(gi - a, gj - b), m); }
+      if (cost < g[m] - eps) { g[m] = cost; from[m] = n; push(cost + Math.hypot(gi - a, gj - b), m); }
     }
   }
   if (from[goal] === -1 && goal !== start) return null;
@@ -1941,9 +1948,13 @@ function steer(e, gx, gz, stop, dt, stats, ignore) {
   else if (!clearLine(e.x, e.z, gx, gz, grid)) {
     e.pathAge = (e.pathAge || 0) - dt;
     if (!e.path || e.pathAge <= 0 || Math.hypot(e.pathGoal[0] - gx, e.pathGoal[1] - gz) > 4) {
-      e.path = findPath(e.x, e.z, gx, gz, grid) || [];
-      e.pathGoal = [gx, gz];
-      e.pathAge = 1.5 + Math.random();
+      if (state.level.finale && pathBudget <= 0) { e.path ||= []; e.pathGoal ||= [gx, gz]; e.pathAge = 0.02 + Math.random() * 0.05; } // level 6: only a few route searches a tick (the grid is big); ask again in a moment
+      else {
+        if (state.level.finale) pathBudget--;
+        e.path = findPath(e.x, e.z, gx, gz, grid) || [];
+        e.pathGoal = [gx, gz];
+        e.pathAge = 1.5 + Math.random();
+      }
     }
     while (e.path.length > 1 && Math.hypot(e.path[0][0] - e.x, e.path[0][1] - e.z) < 2.5) e.path.shift();
     if (e.path.length) [tx, tz] = e.path[0];
@@ -3966,7 +3977,7 @@ function finaleCleanup() {
   const F = state.finale;
   if (F) for (const m of F.marks) { scene.remove(m.mesh); m.mesh.material.dispose(); }
   if (state.finale?.rallyMark) { scene.remove(state.finale.rallyMark); state.finale.rallyMark.traverse((o) => { if (o.material && !o.material.userData.shared) o.material.dispose(); }); }
-  for (const id of ['finHud', 'planBox', 'squadPanel', 'peasHud', 'battHud', 'ending']) if ($(id)) $(id).hidden = true;
+  for (const id of ['finHud', 'planBox', 'squadPanel', 'peasHud', 'battHud', 'ending', 'miniMap']) if ($(id)) $(id).hidden = true;
 }
 function finaleBegin() {
   const F = state.finale;
@@ -4363,6 +4374,7 @@ function finaleUI() {
 .squadPanel .ord-attack { background: rgba(239, 65, 54, 0.6); } .squadPanel .ord-defend { background: rgba(47, 125, 246, 0.6); } .squadPanel .ord-raid { background: rgba(255, 150, 30, 0.65); }
 .squadPanel #sqBody { display: grid; gap: 6px; }
 .squadPanel .none { font: 12px var(--body); opacity: 0.7; }
+.miniMap { position: fixed; z-index: 2; left: auto; bottom: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 84px); width: 190px; height: 119px; border-radius: 10px; border: 3px solid rgba(255, 248, 236, 0.8); background: #1c1712; opacity: 0.94; pointer-events: none; box-shadow: 0 3px 0 rgba(28, 23, 18, 0.8); } .miniMap[hidden] { display: none; }
 #ending h1 { font-size: 38px; color: #fff3d6; text-shadow: 0 4px 0 var(--ink), 0 0 24px rgba(255, 194, 61, 0.8); } #ending[hidden] { display: none; }
 #ending .erows { display: grid; gap: 4px; width: min(440px, 90vw); padding: 10px 14px; border-radius: 16px; background: var(--glass); border: 3px solid var(--gold); }
 #ending .er { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; text-align: left; font: 700 16px var(--body); } #ending .er b { font: 18px var(--display); color: var(--gold); }
@@ -4376,6 +4388,7 @@ function finaleUI() {
   for (const [id, cls] of [['battHud', 'cereal batt'], ['peasHud', 'cereal']]) { // level 6 only: the two extra stocks sit next to cereal and clips
     const el = document.createElement('div'); el.id = id; el.className = cls; el.hidden = true; $('clipsHud').after(el);
   }
+  const mm = document.createElement('canvas'); mm.id = 'miniMap'; mm.className = 'miniMap'; mm.width = 380; mm.height = 238; mm.hidden = true; document.body.appendChild(mm); // stage 3: the minimap (level 6 only)
   const endEl = mk('ending', 'screen'); endEl.style.background = 'rgba(40, 26, 12, 0.6)'; endEl.innerHTML = '<div class="card"></div>';
   const panel = mk('squadPanel', 'squadPanel');
   panel.innerHTML = '<div id="sqBody"></div><button id="bPeek">Peek at Red<small>hold to look at their side</small></button>';
@@ -4392,6 +4405,58 @@ function finaleUI() {
     else if (b.dataset.wall) buildWall();
     else if (b.dataset.rally) setRally((state.finale.rally[BLUE] + 1) % 3);
   });
+}
+// ----- Stage 3: the minimap (a small canvas, top right, redrawn 5 times a second; the worktop itself is painted once) -----
+// Shows the U, the sink, both toy boxes, the bottle caps, your car, your squadrons, the enemies you can see (within 55 of your car or 40 of anything
+// of yours) and the Baguette. The white box is what the camera shows.
+const MINI = { every: 0.2, sight: 55, unitSight: 40 };
+function miniBack(c, w, h) {
+  const k = w / W, X = (x) => (x + W / 2) * k, Z = (z) => (z + D / 2) * k, R = (x0, z0, x1, z1) => c.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k);
+  c.fillStyle = '#120d0a'; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#6a5a4c'; R(-W / 2, -D / 2, W / 2, D / 2);                    // the worktop
+  const C = LEVELS[curLevel].blocks[0];
+  c.fillStyle = '#2a1d14'; R(C[0] - C[2] / 2, C[1] - C[3] / 2, C[0] + C[2] / 2, C[1] + C[3] / 2); // the cut-out
+  c.fillStyle = '#9aa3ad'; R(-W / 2, -D / 2, -C[2] / 2, C[1] + C[3] / 2);      // the sink arm (steel)
+  c.fillStyle = '#c99a5a'; R(C[2] / 2, -D / 2, W / 2, C[1] + C[3] / 2);        // the breadboard arm
+  c.fillStyle = '#1b1c21'; R(-C[2] / 2, C[1] + C[3] / 2, C[2] / 2, D / 2);     // the hob
+  const hb = LEVELS[curLevel].hob; c.fillStyle = '#4a4d57';
+  for (const [x, z, r] of hb.rings) { c.beginPath(); c.arc(X(x), Z(z), r * k, 0, 7); c.fill(); }
+  const wt = state.water;
+  if (wt) { c.fillStyle = '#3d94d1'; R(wt.x0, Math.max(wt.z0, -D / 2), wt.x1, wt.z1); c.fillStyle = '#ecc875'; R(wt.x0, wt.bridge.z - wt.bridge.w / 2, wt.x1, wt.bridge.z + wt.bridge.w / 2); }
+  c.strokeStyle = '#ffffff'; c.lineWidth = 1.5; c.strokeRect(1, 1, w - 2, h - 2);
+}
+function miniMapDraw(dt, on) {
+  const el = $('miniMap'), F = state.finale;
+  if (!el) return;
+  if (el.hidden === on) el.hidden = !on;
+  if (!on) return;
+  F.mmT = (F.mmT || 0) - dt;
+  if (F.mmT > 0) return;
+  F.mmT = MINI.every;
+  const c = el.getContext('2d'), w = el.width, h = el.height, k = w / W, X = (x) => (x + W / 2) * k, Z = (z) => (z + D / 2) * k;
+  const V = finVis;
+  if (!V.miniBg) { V.miniBg = document.createElement('canvas'); V.miniBg.width = w; V.miniBg.height = h; miniBack(V.miniBg.getContext('2d'), w, h); }
+  c.drawImage(V.miniBg, 0, 0);
+  const dot = (x, z, r, col) => { c.fillStyle = col; c.fillRect(X(x) - r, Z(z) - r, r * 2, r * 2); };
+  for (const o of outposts) { c.fillStyle = o.owner === BLUE ? '#4d9bff' : o.owner === RED ? '#ff5a4a' : '#fff3d6'; c.beginPath(); c.arc(X(o.x), Z(o.z), 3, 0, 7); c.fill(); }
+  const p = state.player, mine = [];
+  for (const e of entities) if (e.team === BLUE && e.hp > 0 && (e.kind === 'unit' || e.kind === 'boat' || e.kind === 'turret' || e.kind === 'base') && !(e.kind === 'turret' && e.type === 'wall')) mine.push(e);
+  const seen = (e) => (p.alive && dist2(e, p) < MINI.sight ** 2) || mine.some((m) => dist2(e, m) < MINI.unitSight ** 2);
+  for (const e of entities) {
+    if (e.hp <= 0 || e.kind === 'bag') continue;
+    if (e.kind === 'base') { dot(e.x, e.z, 7, e.team === BLUE ? '#2f7df6' : '#ef4136'); c.strokeStyle = '#fff8ec'; c.lineWidth = 2; c.strokeRect(X(e.x) - 7, Z(e.z) - 7, 14, 14); continue; }
+    if (e.team === BLUE) { if (e.kind === 'unit' || e.kind === 'boat') dot(e.x, e.z, e.sq ? 3 : 2.5, '#6fb4ff'); else if (e.kind === 'turret' && e.type !== 'wall') dot(e.x, e.z, 2, '#2f7df6'); }
+    else if ((e.kind === 'unit' || e.kind === 'boat' || e.kind === 'turret' || e.kind === 'worker') && !(e.kind === 'turret' && e.type === 'wall') && seen(e)) dot(e.x, e.z, e.kind === 'turret' ? 2 : 3, '#ff5a4a');
+  }
+  const T = F.stage2?.train;
+  if (T) for (const e of T.all) if (e.hp > 0) { dot(e.x, e.z, e === T.engine ? 6 : 4, e === T.engine ? '#ffb000' : '#c98a3a'); if (e === T.engine) { c.strokeStyle = '#1c1712'; c.lineWidth = 2; c.strokeRect(X(e.x) - 6, Z(e.z) - 6, 12, 12); } }
+  if (p.alive) { // your car: a white-ringed blue arrow
+    c.save(); c.translate(X(p.x), Z(p.z)); c.rotate(p.heading); c.fillStyle = '#2f7df6'; c.strokeStyle = '#ffffff'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(7, 0); c.lineTo(-5, 5); c.lineTo(-3, 0); c.lineTo(-5, -5); c.closePath(); c.fill(); c.stroke(); c.restore();
+  }
+  // What the camera shows: the screen's corners on the table (the far edge is taken at 85% of the way up, or the horizon would run off the map).
+  const pts = [[-1, 0.7], [1, 0.7], [1, -0.95], [-1, -0.95]].map(([sx, sy]) => { const v = new THREE.Vector3(sx, sy, 0.5).unproject(camera), d = v.sub(camera.position); const t = -camera.position.y / d.y; return [X(camera.position.x + d.x * t), Z(camera.position.z + d.z * t)]; });
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.5; c.beginPath(); pts.forEach(([x, z], i) => (i ? c.lineTo(x, z) : c.moveTo(x, z))); c.closePath(); c.stroke();
 }
 function finaleDraw(dt, time) {
   const F = state.finale, V = finVis;
@@ -4432,6 +4497,7 @@ function finaleDraw(dt, time) {
   const putHud = (id, v) => { const el = $(id); if (el._v !== v) { el._v = v; el.textContent = v; } };
   putHud('peasHud', `${Math.floor(state.peas[BLUE])} peas`); putHud('battHud', `${Math.floor(state.batts[BLUE])} batteries`);
   $('finHud').hidden = !uiOn; $('squadPanel').hidden = !uiOn;
+  miniMapDraw(dt, uiOn && !state.over);
   const secs = F.stage === 'buildup' ? Math.ceil(F.left) : Math.floor(state.time), mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, '0');
   const put = (id, v) => { const el = $(id); if (el._v !== v) { el._v = v; el.textContent = v; } }; // only touch the page when the text changes
   put('finTitle', F.stage === 'buildup' ? 'BUILD-UP' : 'WAR');
@@ -5293,6 +5359,7 @@ function step(now) {
 }
 
 function update(dt) {
+  pathBudget = 2; // level 6: at most 2 route searches a tick
   if (state.phase === 'race' || state.phase === 'countdown') { raceUpdate(dt); return; }
   state.time += dt;
   const p = state.player;

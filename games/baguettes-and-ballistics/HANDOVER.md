@@ -289,6 +289,89 @@ New `SQUADS` entries (`inf: true`; `squadWeight` = n x 0.5, and `armyOf` counts 
 - The fridge only looks bright where the camera is: the real effect is the lights (the light fan on the cut-out is faint).
 - A looper takes a cap even in the middle of a fight, on purpose.
 
+## Level 6, stage 3: the giant worktop (2 Nov 2026)
+
+![overview](shots/33-giant-overview.png) ![sink](shots/34-sink-pool.png) ![minimap](shots/35-minimap.png)
+
+Harry: the finale should be 4 to 6 times the area of a normal level. **Done at 4.0x** (see "why not 5x" below). Everything in the stage 1 and stage 2 sections above is still true except the coordinates: **every level 6 position is the old one x 1.65** (some nudged by hand). Object sizes (cars, turrets, mugs, the kettle) did not change, so the camera sees the same size of toys, just a longer way between things.
+
+### The new map
+
+| | old (stage 1) | now |
+|---|---|---|
+| Table `size` | 210 x 130 | **346 x 216** (grid 173 x 108 at `CELL` 2) |
+| Area | 21,000 (1.46x normal) | **57,568 = 4.00x** of 14,400 (74,736 minus the cut-out) |
+| Cut-out block | x +-45, z -65 to 5 | x +-74, z -108 to 8 (148 x 116, `blocks[0]`) |
+| Arms | 60 wide, 70 long | 99 wide (|x| 74 to 173), 116 long (z -108 to 8) |
+| Bend (hob) | 60 deep | 100 deep (z 8 to 108); hob glass 148 x 100 |
+| Toy boxes | (+-92, -48) | (+-155, -80) |
+| Rings | (+-26, 22/50) r 8 | (+-43, 36/82) r 11 |
+| Lanes / gates | z 11, 36, 60 / x +-56 | z **18, 58, 98** / x +-**92** (`FIN.lanes`, `FIN.gateX`); `coverR` 28 (and 32 in `finaleCovered`) |
+| Ceasefire line | z 5 to 65 | z 8 to 108, five posts, sign at (0, 58) |
+| Caps | (+-53,-14) (+-78,36) (0,36) | (+-87,-23) (+-129,59) (0,59) |
+| Piles | see `LEVELS[5].piles` | beside the boxes (+-160,-36), inner bank (+-87,-59), bend (+-139,53), clips (+-43,59), peas (+-82,76), batteries (+-13,99); amounts 100 to 190 |
+| Baguette track | 540 long | **857 long** (`BAG_VERTS`: rows z 63 and 55, arm lanes x 99/84 and -81/-94, U-turns at z -64); speed 7.5 to 10, a lap about 86 s. Checked: 0 points within 2.3 of a block, the water or the edge |
+| Great Run (yours) | 53 dominoes | **89** ((-60,103) east along z 103, north up x 131, tip at (144,-77)) |
+| Great Run (Red's) | 26 | **43** ((-108,79) west to x -150, north to z -62) |
+| Camera | `camZoom` 1.75 | **2.1** (Peek and the fridge glance still x1.2); Peek looks at (120,-4), the fridge glance at (0,-62) |
+| Fridge / kettle | z -64 / -8 | z -108 (north end of the cut-out) / -14 |
+| Fog, lights | 150-340, 3 point lights | fog 260-640; the three point lights moved out and got a bit stronger (`LIGHT_BASE.pts` 0.95/0.7/0.7) |
+| Shadow box | from `setTableSize` | the same code, now 2.3x (about 0.2 units a texel at 2048; shadows are softer than on the small levels) |
+
+Two extra blocks on each side of the bend (dice, mugs, a pepper pot) so the bigger bend is not bare. The cook picks pan spots only for z >= 24 now.
+
+### The sink: a pool in the middle of the arm
+
+`LEVELS[5].water`: `x0 -138, x1 -102` (36 wide, in the middle of the arm), `z0 -114` (off the table edge) to `z1 -7`, so there is a land lane on **each side** (35 wide on your toy box's side, 28 on the cut-out side) and the bend is open at the south end. Ruler bridge at z -48 (7 wide). Two bottle-cap ferries (`R` 7.5, leg 8 s, stops at x -142 and -98, z -22 and -78). The Baguette's lanes (x -81, -94) and the cap are on the cut-out side bank. Boats patrol z -92 to -58 (Defend) or -52 to -16 (Attack); the flotilla launches at z -95. Pea shooters float straight over it (they use `closedFlt`), wheels use the bridge or a ferry. Nothing in the water code changed: it all reads `state.water`.
+
+### The minimap (level 6 only)
+
+`miniMapDraw` in `finaleDraw`; a 380 x 238 canvas (`#miniMap`, shown at 190 x 119 CSS pixels) top right under the enemy toy box bar. The worktop is painted once into `finVis.miniBg` (`miniBack`); the rest is redrawn **5 times a second** (`MINI.every`, measured at 0.22 ms a draw). It shows: the U (steel sink arm, bread arm, dark cut-out, black hob, the four rings), the water and bridge, both toy boxes (squares), the five bottle caps by owner, your car (white-ringed blue arrow that turns), your units, boats and turrets (blue), **enemies you can see** (red; within `MINI.sight` 55 of your car or `MINI.unitSight` 40 of anything of yours, so it is not a free radar), the Baguette (orange engine square, tan carriages, always shown) and a white outline of what the camera shows. `pointer-events: none`, so it never eats a touch. On the 1180 x 820 view it sits at x 972 to 1168, y 84 to 209: clear of the Squadrons panel (x 12 to 226) and of every button (the right-hand buttons start at y about 500). Hidden on the title screen, when the game is over, and on every other level (it is created by `finaleUI`, which only runs on level 6, and `finaleCleanup` hides it).
+
+### Travel: toasters, speeds, build-up
+
+- `LEVELS[5].toaster: true` turns the Toaster button on (30 cereal, 3 at most; the ready-made ones do not count). `finaleBegin` places **two ready-made toasters per side** (blue (-88,-34) and (-112,36), red mirrored; `makeToaster(...).pre = true`): the first throws a car from the sink bank over the lane to the bend, the second across the bend. `toasterHop()` is **48** on this level (30 elsewhere). Only the player uses them; the AI's squads still drive (they could be sent through them with `u.via`, not done).
+- `sqtank` speed 9.5 to 11 (level 6 only type). The build-up stays 60 s: crossing is not slow enough to need 90 (below).
+- **Measured crossings** (war, no enemy, base to the enemy base along the lane by the bridge, about 450 units): Racer **15 s**, Tank (player) **33 s**, a Tanks squad (11 speed) **39 s** (45 s at the old 9.5), Loopers 56 s (they detour for caps). Bombers fly straight (16 speed, about 20 s). The old map took about 27 s for the same squad.
+
+### Performance (Chromium, swiftshader, `update(1/60)` by hand, real loop frozen; a render every 12 ticks so sparks age; 360 x 250 page)
+
+Same harness on both levels: both sides get 4000 cereal and stocks every second, 24 against 24 on level 6 (squads of every kind bought again and again, 7 turrets each side, the Baguette and both Great Runs on the table), level 4 with 14 cars a side kept topped up, 3 boats and 5 turrets each side; the camera parked where the fight is; 10 minutes.
+
+| | level 4 | level 6 (4.0x) |
+|---|---|---|
+| Draw calls (shadow pass included), min / mean / max | 490 / 1,021 / 1,307 | 133 / 739 / **1,103** (0.84x level 4 at the peak) |
+| `update()` ms: mean / p99 | 1.0 / 5.4 | **3.1 / 8.6** (a long find: `findPath` 6 ms worst on the whole map) |
+| Entities | 54 | 112 |
+| Geometries over 10 min | 726 to 2,473 (grows: see "seen, not fixed") | **298 to 459, flat** after minute 1 (407, 405, 396, 438, 438, 441, 441, 420, 423 every minute) |
+| Textures | 6 | 18 flat |
+
+So there is headroom, but the bigger cost is the update, not the drawing. Single `update()` spikes of 30 to 200 ms show up now and then in this sandbox in unrelated functions (`dominoesUpdate`, `tone`, a render hook): they look like GC pauses, not code (wrapping every function and timing it found no function that is slow every time).
+
+**Two real fixes the big grid forced (both level 6 only, marked in the code):**
+1. **`findPath` could churn for ever.** A cell's `g` is a `Float32Array`; a 64-bit cost compared with its 32-bit rounded copy was "better" again and again, so a long or unreachable search kept re-pushing cells (a heap of 1.1 million entries; a Raiders squad froze the page). On level 6 only the search now treats improvements under 0.001 as none, expands each cell once (`done`), and reuses its three buffers (`astar`). Paths are otherwise the same A*. Levels 1 to 5 still run the old code.
+2. **`pathBudget`:** `update()` refills it to 2; `steer` only starts a route search while it is above 0 (level 6 only). A unit that is refused keeps its old route (or drives straight) and asks again within 0.02 to 0.07 s. Without it, a whole squadron asking at once (war start) cost up to 120 ms in one tick.
+
+### Why 4.0x and not 5x
+
+The draw-call and geometry numbers had room for 5x, but the map is already 4.0x and a tank squad needs about 40 s to cross it; 5x would be about 45 s plus more empty ground, and the shadow map (2048 for a 416-wide box) is already soft. Going to 5x means re-scaling the numbers above by 1.12 (they are all in `LEVELS[5]`, `FIN`, `BAG_VERTS`, `GREAT`, the water data and a few `finaleDecor` literals; search for this section's numbers), which is a half-day of editing and re-checking the track and runs, not a tuning knob. Decision for Harry after a play on a real iPad.
+
+### Shared-code edits for stage 3 (all marked "level 6")
+
+`findPath` (above), `steer` (`pathBudget`), `update` (refills `pathBudget`), the commander's toaster line (skipped on level 6), `buildToaster` (the ready-made ones are not counted), `toasterHop()` (`launch`, the landing preview), `cookPick` (z >= 24), the camera lines in `render` (Peek and fridge glance targets), `ENEMY_TYPES.sqtank` speed. New: `miniBack`, `miniMapDraw`, the `#miniMap` element and CSS. The `canvas { position: fixed; inset: 0 }` rule in the page applies to every canvas, so `.miniMap` has to say `left: auto; bottom: auto`.
+
+### Checked
+
+- Baguette track: 0 bad points (block, water, edge at 2.3). Great Runs: both build (89 and 43), no dominoes inside a block or the water at 1.8 (two blocks and a mug that were on the lines were moved).
+- Levels 1 to 6 load and play 90 s with no page errors (see the final report).
+
+### Seen, not fixed
+
+- On level 4, in my harness (cars killed and respawned all the time), `renderer.info.memory.geometries` climbs from 726 to 2,473 in 10 minutes. Not level 6 and not caused by this stage; worth a look (dead cars' models, spills?).
+- Red's squads and units never use the toasters (only you do).
+- Red's Great Run button is at (-103, 79), on your side of the bend, as before: it is only pressed if Red's cars drive into your defence.
+- The cut-out looks bare from above (a dark slab with a kettle and a fridge); fine from the game camera, which seldom sees it.
+
 ## Level 5, Hob and oven (2 Nov 2026)
 
 ![hob](shots/23-hob.png) ![hot](shots/24-hob-hot.png) ![tank](shots/25-toaster-tank.png)
