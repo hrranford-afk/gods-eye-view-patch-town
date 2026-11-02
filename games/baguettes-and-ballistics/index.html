@@ -176,7 +176,8 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x3b2a1c);
 scene.fog = new THREE.Fog(0x3b2a1c, 90, 170);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 400);
-scene.add(new THREE.HemisphereLight(0xfff4e0, 0x5a3d26, 0.75));
+const hemi = new THREE.HemisphereLight(0xfff4e0, 0x5a3d26, 0.75);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.85);
 sun.position.set(-40, 80, 30);
 sun.castShadow = true;
@@ -253,6 +254,21 @@ function tileTexture() {
   t.encoding = THREE.sRGBEncoding;
   return t;
 }
+// Dark navy felt for the drawer lining (level 3): fine speckle so it reads as cloth, not a flat colour.
+function feltTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#243060'; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 9000; i++) {
+    const v = Math.floor(Math.random() * 40);
+    g.fillStyle = `rgba(${60 + v},${75 + v},${130 + v},0.35)`; g.fillRect(Math.random() * 512, Math.random() * 256, 1.5, 1.5);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 // Water ripples: wavy light lines that repeat seamlessly; the sink slides the texture along instead of moving any geometry.
 function waterTexture() {
   const c = document.createElement('canvas');
@@ -272,7 +288,7 @@ function waterTexture() {
   return t;
 }
 const woodTex = woodTexture();
-let matTex = null, rulerTex = null, tileTex = null, waterTex = null;
+let matTex = null, rulerTex = null, tileTex = null, waterTex = null, feltTex = null;
 const table = mesh(new THREE.BoxGeometry(W + 8, 4, D + 8), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2, 0);
 table.castShadow = false;
 
@@ -303,6 +319,8 @@ function block(x, z, w, d, h, color, kind) {
     mesh(new THREE.CylinderGeometry(w / 2 - 0.5, w / 2 - 0.5, 0.4, 28), mat(0x4a2a14), x, h - 1.5, z);
     const handle = mesh(new THREE.TorusGeometry(2.4, 0.6, 8, 16, Math.PI), mat(color), x + w / 2 + 0.2, h / 2, z);
     handle.rotation.z = -Math.PI / 2;
+  } else if (DRAWER_KINDS[kind]) {
+    DRAWER_KINDS[kind](x, z, w, d, h, color);
   } else {
     mesh(new THREE.BoxGeometry(w, h, d), mat(color), x, h / 2, z);
     if (kind === 'die') for (const [dx, dz] of [[-1, -1], [1, 1], [0, 0], [1, -1], [-1, 1]]) mesh(new THREE.SphereGeometry(0.35, 8, 6), mat(0x1c1712), x + dx * 1.1, h + 0.05, z + dz * 1.1);
@@ -388,6 +406,164 @@ function sinkDecor() {
   }
 }
 
+// ---------- The Remote-control drawer (level 3): darkness, light pools, headlights, clutter ----------
+// The scene is nearly black. A few real lights (your headlight, both toy boxes, the torch, the latest flare) plus fake
+// ones (flat additive "pools" on the felt, glowing lamps) show the way. Enemy cars and trucks are hidden unless one of
+// your lights reaches them (darkUpdate). Everything here is made from shared shapes; nothing is built per frame.
+const darkNow = () => !!LEVELS[curLevel].dark;
+const glowTex = () => shared('glowTex', () => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+});
+const poolMat = (color, op) => shared(`pool:${color}:${op}`, () => new THREE.MeshBasicMaterial({ map: glowTex(), color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+// A flat soft patch of light lying on the felt: len along x, wid along z.
+function lightPool(parent, color, len, wid, x = 0, z = 0, op = 0.5, y = 0.07) {
+  const m = new THREE.Mesh(shared('poolGeo', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), poolMat(color, op));
+  m.scale.set(len, 1, wid); m.position.set(x, y, z); parent.add(m);
+  return m;
+}
+// A small bright bulb (not lit by anything, so it glows in the dark).
+function lamp(parent, color, x, y, z, size = 0.25) {
+  const m = new THREE.Mesh(shared(`lampGeo:${size}`, () => new THREE.SphereGeometry(size, 8, 6)), basicMat(color));
+  m.position.set(x, y, z); parent.add(m);
+  return m;
+}
+// Where each model's front is (x, lamp height), so headlights sit on the nose.
+const FRONT = { racer: [1.6, 0.95], tank: [2.1, 1.2], hover: [2.0, 0.9], mech: [1.1, 2.3], monster: [1.7, 2.2], jet: [2.0, 1.2], truck: [2.1, 1.3], digger: [1.4, 1.2] };
+function addHeadlights(g, kind, team) {
+  const [fx, fy] = FRONT[kind];
+  const warm = team === BLUE ? 0xfff2c0 : 0xff9a8a;
+  for (const z of [-0.5, 0.5]) lamp(g, warm, fx, fy, z);
+  lightPool(g, team === BLUE ? 0xbcd8ff : 0xff5a4a, 18, 9, fx + 6, 0, 0.42);  // the beam on the felt
+  lightPool(g, team === BLUE ? 0x6fa4ff : 0xff5a4a, 7, 7, 0, 0, 0.35);        // a glow under the car, so it never vanishes
+}
+// A small glow on a turret or toy box.
+function addGlow(g, team, radius, y) {
+  lamp(g, team === BLUE ? 0x9fd0ff : 0xff8f80, 0, y, 0, 0.4);
+  lightPool(g, team === BLUE ? 0x6fa4ff : 0xff5a4a, radius * 2, radius * 2, 0, 0, 0.5);
+}
+
+// Lighting: normal days, or the dark drawer. setLighting is called by buildLevel for every level, so other levels always get their normal light back.
+let darkRig = null;
+function makeDarkRig() {
+  const group = new THREE.Group();
+  const spot = new THREE.SpotLight(0xfff0cf, 2.6, 62, 0.62, 0.65, 1.1);
+  group.add(spot, spot.target);
+  const point = (color, I, dist) => { const l = new THREE.PointLight(color, I, dist, 1.4); group.add(l); return l; };
+  return { group, spot, blue: point(0x6fa4ff, 1.0, 40), red: point(0xff5a4a, 1.0, 40), torch: point(0xffe9b0, 1.6, 34), flare: point(0xffb060, 0, 70) };
+}
+function setLighting(dark) {
+  hemi.color.setHex(dark ? 0x7a90e0 : 0xfff4e0); hemi.groundColor.setHex(dark ? 0x1a2248 : 0x5a3d26);
+  hemi.intensity = dark ? 0.26 : 0.75;
+  sun.intensity = dark ? 0.1 : 0.85;
+  const bg = dark ? 0x04060e : 0x3b2a1c;
+  scene.background.setHex(bg); scene.fog.color.setHex(bg);
+  scene.fog.near = dark ? 80 : 90; scene.fog.far = dark ? 150 : 170;
+  if (dark) { darkRig = darkRig || makeDarkRig(); scene.add(darkRig.group); } else if (darkRig) scene.remove(darkRig.group);
+}
+let torchPos = null; // where the torch lens is (a neutral light in the middle)
+
+// Clutter blocks for the drawer, in the same [x, z, w, d, h, colour, kind] format as the other levels.
+const RC_BUTTONS = [0xe03a3a, 0x3d86f6, 0x3ddc84, 0xe8e8ee, 0xffc23d];
+const DRAWER_KINDS = {
+  // A TV remote: long dark box, rows of coloured button bumps, a red IR eye at one end.
+  remote(x, z, w, d, h, color) {
+    mesh(new THREE.BoxGeometry(w, h, d), mat(color, { roughness: 0.45 }), x, h / 2, z);
+    const along = w > d, len = along ? w : d, wid = along ? d : w, bump = shared('rcBump', () => new THREE.BoxGeometry(1.2, 0.4, 1.2));
+    for (let i = 0, n = Math.floor((len - 6) / 2.8); i < n; i++) for (const v of [-1, 1]) {
+      const u = -len / 2 + 5 + i * 2.8, k = (i * 2 + (v > 0 ? 1 : 0)) % RC_BUTTONS.length;
+      const b = mesh(bump, shared(`rcBtn:${k}`, () => mat(RC_BUTTONS[k], { roughness: 0.4 })), x + (along ? u : v * wid * 0.22), h + 0.1, z + (along ? v * wid * 0.22 : u));
+      b.castShadow = false;
+    }
+    const eye = mesh(shared('rcEye', () => new THREE.BoxGeometry(1.2, 0.5, 1.2)), basicMat(0x7a1010), x + (along ? len / 2 - 1.2 : 0), h + 0.1, z + (along ? 0 : len / 2 - 1.2));
+    eye.castShadow = false;
+  },
+  // A loose AA battery lying flat: coloured body, dark label band, copper nub.
+  battery(x, z, w, d, h, color) {
+    const along = w > d, len = along ? w : d, r = h / 2;
+    const body = mesh(new THREE.CylinderGeometry(r, r, len - 0.9, 14), mat(color, { roughness: 0.35, metalness: 0.3, emissive: color, emissiveIntensity: 0.12 }), x, r, z);
+    const band = mesh(new THREE.CylinderGeometry(r + 0.04, r + 0.04, len * 0.45, 14), mat(0x15181c, { roughness: 0.5 }), x, r, z);
+    const nub = mesh(new THREE.CylinderGeometry(r * 0.35, r * 0.35, 0.9, 8), mat(0xc98a4a, { metalness: 0.7, roughness: 0.3 }), x + (along ? len / 2 - 0.45 : 0), r, z + (along ? 0 : len / 2 - 0.45));
+    for (const m of [body, band, nub]) if (along) m.rotation.z = Math.PI / 2; else m.rotation.x = Math.PI / 2;
+  },
+  // A bit of cable: a low wall (cars can't cross it, shots fly over it). Round tube, round ends.
+  cable(x, z, w, d, h, color) {
+    const along = w > d, len = along ? w : d, r = Math.min(w, d) / 2;
+    const tube = mesh(new THREE.CylinderGeometry(r, r, len - r, 10), mat(color, { roughness: 0.7 }), x, r, z);
+    if (along) tube.rotation.z = Math.PI / 2; else tube.rotation.x = Math.PI / 2;
+    const cap = shared(`cableCap:${r}`, () => new THREE.SphereGeometry(r, 10, 8));
+    for (const s of [-1, 1]) mesh(cap, tube.material, x + (along ? s * (len - r) / 2 : 0), r, z + (along ? 0 : s * (len - r) / 2));
+    // a pale band so the tangle reads in the dark
+    const band = mesh(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 0.5, 10), mat(0xd8d2c0), x, r, z);
+    if (along) band.rotation.z = Math.PI / 2; else band.rotation.x = Math.PI / 2;
+  },
+  // A phone charger brick: white box, two prongs on one end, a green light.
+  charger(x, z, w, d, h) {
+    mesh(new THREE.BoxGeometry(w, h, d), mat(0xf2f2ee, { roughness: 0.35 }), x, h / 2, z);
+    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(1.6, 0.35, 0.5), mat(0xc9ccd2, { metalness: 0.8, roughness: 0.25 }), x - w / 2 - 0.8, h * 0.5, z + s * 0.9);
+    mesh(new THREE.BoxGeometry(2.4, 0.2, 1), mat(0x15181c), x + w * 0.2, h + 0.05, z).castShadow = false;
+    lamp(meshParent, 0x4dff88, x + w * 0.2, h + 0.4, z - d * 0.3, 0.3);
+    lightPool(meshParent, 0x4dff88, 12, 12, x + w * 0.2, z, 0.28);
+  },
+  // The torch, left on: yellow body, a wide head, a bright lens and a beam along the felt. Its lens end is the +z end.
+  torch(x, z, w, d, h) {
+    const r = h / 2, len = d, ez = z + len / 2;
+    const body = mesh(new THREE.CylinderGeometry(r, r, len - 3, 14), mat(0xf2b705, { roughness: 0.4 }), x, r, z - 1.5);
+    body.rotation.x = Math.PI / 2;
+    const grip = mesh(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 5, 14), mat(0x22252b), x, r, z - 1.5 - 1); grip.rotation.x = Math.PI / 2;
+    const head = mesh(new THREE.CylinderGeometry(r * 1.45, r * 1.05, 3.6, 16), mat(0x2b2f36, { metalness: 0.5 }), x, r, ez - 1.8); head.rotation.x = Math.PI / 2;
+    const lens = mesh(new THREE.CylinderGeometry(r * 1.2, r * 1.2, 0.3, 16), basicMat(0xfff6d0), x, r, ez + 0.05); lens.rotation.x = Math.PI / 2; lens.castShadow = false;
+    lightPool(meshParent, 0xffe9a8, 22, 46, x, ez + 14, 0.55);   // the beam
+    lightPool(meshParent, 0xfff3c8, 14, 14, x, ez + 2, 0.5);
+    torchPos = { x, z: ez + 4 };
+  },
+};
+// The stealth rule: a list of lit circles (yours, plus neutral ones like glowing batteries and the torch). Enemy cars and trucks
+// show only inside one of them, or for a moment after they fire. Plain number arrays, reused every frame.
+const litX = [], litZ = [], litR = [], flares = [];
+let litN = 0;
+const addLit = (x, z, r) => { litX[litN] = x; litZ[litN] = z; litR[litN] = r * r; litN++; };
+const isLit = (e) => { for (let i = 0; i < litN; i++) { const dx = e.x - litX[i], dz = e.z - litZ[i]; if (dx * dx + dz * dz < litR[i]) return true; } return false; };
+function darkUpdate(dt) {
+  const rig = darkRig, p = state.player, t = state.time;
+  litN = 0;
+  if (p.alive) addLit(p.x + Math.cos(p.heading) * 8, p.z + Math.sin(p.heading) * 8, 19);
+  addLit(state.bases[BLUE].x, 0, 27);
+  for (const e of entities) {
+    if (e.team !== BLUE || e.hp <= 0) continue;
+    if (e.kind === 'turret') addLit(e.x, e.z, 15); else if (e.kind === 'unit') addLit(e.x, e.z, 11); else if (e.kind === 'worker') addLit(e.x, e.z, 8);
+  }
+  for (const o of outposts) if (o.owner === BLUE) addLit(o.x, o.z, 10);
+  for (const pl of piles) if (pl.res === 'batteries' && pl.amount > 0) addLit(pl.x, pl.z, 6 + 5 * pl.group.scale.x);
+  if (torchPos) addLit(torchPos.x, torchPos.z, 17);
+  for (const f of flares) addLit(f.x, f.z, f.R);
+  for (const e of entities) {
+    if (e.team !== RED || !e.mesh || (e.kind !== 'unit' && e.kind !== 'worker')) continue;
+    if (isLit(e)) e.seenT = t;
+    e.mesh.visible = t - (e.seenT ?? -9) < 0.45 || (e.flashT || 0) > t; // a shot's muzzle flash gives them away for a moment
+  }
+  // Real lights: the headlight, both toy boxes, the torch.
+  rig.spot.intensity = p.alive ? 2.6 : 0;
+  rig.spot.position.set(p.x, 2.6, p.z);
+  rig.spot.target.position.set(p.x + Math.cos(p.heading) * 18, 0, p.z + Math.sin(p.heading) * 18);
+  rig.blue.position.set(state.bases[BLUE].x, 11, 0);
+  rig.red.position.set(state.bases[RED].x, 11, 0);
+  rig.torch.intensity = torchPos ? 1.6 : 0;
+  if (torchPos) rig.torch.position.set(torchPos.x, 4, torchPos.z);
+}
+
+function drawerDecor() {
+  // The drawer's wooden sides (looks only: cars are kept on the table anyway) and a couple of stray bits.
+  const wood = mat(0x4a3220, { roughness: 0.8 });
+  const rw = W + 14, rd = D + 14;
+  mesh(new THREE.BoxGeometry(rw, 3, 3.5), wood, 0, 1.5, -(D / 2 + 5.2));
+  mesh(new THREE.BoxGeometry(rw, 3, 3.5), wood, 0, 1.5, D / 2 + 5.2);
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(3.5, 3, rd), wood, s * (W / 2 + 5.2), 1.5, 0);
+}
+
 // ---------- Levels ----------
 // A level is plain data: layout (blocks, patches, caps, piles), table look, resources and rules.
 //   blocks:  [x, z, w, d, h, colour, kind]   kinds: pencil, book, mug, die, box (default)
@@ -460,7 +636,33 @@ const LEVELS = [
     heavyClips: 5,                 // the enemy's heavy tank costs clips too
     rules: { baseHp: 1200, raidEvery: 90, firstRaid: 120, raidSize: [2, 3], boss: { at: 240, hp: 600, spill: 60 } },
   },
-  { name: 'Remote-control drawer', time: 'midday', soon: true },
+  {
+    name: 'Remote-control drawer', time: 'midday', tableColor: 0xffffff, tableTex: 'felt', dark: true,
+    blurb: 'You are inside the junk drawer, and the light is off. You only see what a light touches. Enemy cars hide in the dark until your headlights, a turret, a glowing battery or a flare shows them.',
+    tips: ['Drive, fire, build as before.'],
+    blocks: [
+      ...mirrored([
+        (s) => [s * 24, -s * 20, 6, 30, 2.6, 0x1b1d24, 'remote'],       // a long TV remote
+        (s) => [s * 50, s * 24, 22, 6, 2.4, 0x7d838f, 'remote'],        // a silver remote
+        (s) => [s * 38, -s * 5, 11, 3.4, 3.4, s > 0 ? 0x3ddc84 : 0xffc23d, 'battery'], // loose AA batteries
+        (s) => [s * 8, s * 38, 3.4, 11, 3.4, s > 0 ? 0xffc23d : 0x3ddc84, 'battery'],
+        (s) => [s * 37, s * 41, 8, 6, 5, 0xf2f2ee, 'charger'],          // phone charger bricks
+      ]),
+      // A tangle of cables in the middle: low walls.
+      [0, -34, 22, 1.6, 1.1, 0x101216, 'cable'], [-10, -28, 1.6, 12, 1.1, 0x101216, 'cable'], [11, -27, 1.6, 16, 1.1, 0x3a1a1a, 'cable'], [4, -20, 14, 1.6, 1.1, 0x101216, 'cable'],
+      [0, 34, 22, 1.6, 1.1, 0x101216, 'cable'], [10, 28, 1.6, 12, 1.1, 0x101216, 'cable'], [-11, 27, 1.6, 16, 1.1, 0x1a2a3a, 'cable'], [-4, 20, 14, 1.6, 1.1, 0x101216, 'cable'],
+      [0, -12, 4.4, 14, 4.4, 0, 'torch'],                              // the torch, left on, lens facing the middle cap
+    ],
+    decor: drawerDecor,
+    erasers: [],
+    patches: [],
+    outposts: [[-34, -30], [-34, 30], [0, 0], [34, -30], [34, 30]],
+    piles: [[-26, -40, 150], [-26, 40, 150], [26, -40, 150], [26, 40, 150], [-48, -10, 110], [48, 10, 110]],
+    refill: [],
+    start: { cereal: 30, clips: 0, unlocked: ['racer', 'tank'] },
+    resources: ['cereal'],
+    rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3] },
+  },
   {
     name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
     blurb: 'Lunch is over and the washing-up is a battlefield. A channel of water splits the sink: wheels cannot cross it, so everything funnels over one ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 2:30 the Rubber Duck paddles in. While it floats, their toy box is shielded.',
@@ -514,9 +716,10 @@ function buildLevel(L) {
   levelRoot.clear();
   scene.add(levelRoot);
   obstacles.length = patches.length = erasers.length = ferries.length = 0;
-  sink = null;
+  sink = null; torchPos = null;
+  setLighting(!!L.dark); // the drawer is dark; every other level gets its normal light back
   table.material.color.setHex(L.tableColor);
-  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : woodTex;
+  table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : L.tableTex === 'felt' ? (feltTex = feltTex || feltTexture()) : woodTex;
   table.material.needsUpdate = true;
   meshParent = levelRoot;
   for (const b of L.blocks) block(...b);
@@ -748,6 +951,7 @@ function buildModel(kind, team, scale = 1) {
     boom.rotation.z = -0.4;
     mesh(new THREE.BoxGeometry(0.8, 0.7, 1.1), mat(0x55504a), 2.4, -0.7, 0, arm);
   }
+  if (FRONT[kind] && darkNow()) addHeadlights(g, kind, team);
   g.scale.setScalar(scale);
   scene.add(g);
   return g;
@@ -770,6 +974,7 @@ function makeBase(team) {
   const gun = mesh(new THREE.CylinderGeometry(1, 1.2, 1.2, 12), mat(0x55504a), 0, 8.3, 0, g);
   gun.name = 'turret';
   mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.6, 8), mat(0x1c1712), 1.4, 0, 0, gun).rotation.z = Math.PI / 2;
+  if (darkNow()) addGlow(g, team, 20, 9.4);
   g.position.set(x, 0, 0);
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, 0);
@@ -838,6 +1043,7 @@ function clipsGroup(x, z, n, radius, height) {
 }
 function makePile(x, z, amount, refill = 0, res = 'cereal') {
   const group = res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
+  if (darkNow() && res === 'cereal') lightPool(group, 0xffd9a0, 12, 12, 0, 0, 0.22, 0.06); // a faint glow so the cereal can be found
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   piles.push(p);
   return p;
@@ -1353,6 +1559,7 @@ function fire(from, target, weapon, angle) {
   } else
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
   if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
+  if (from.team === RED && (from.kind === 'unit' || from.kind === 'worker')) from.flashT = state.time + 0.7; // drawer level: firing gives you away
 }
 
 // Shared shapes and colours for shots and sparks, made once: making new ones for every shot ran iPads out of memory.
@@ -1467,6 +1674,7 @@ function makeTurret(type, team, x, z) {
   } else mesh(new THREE.BoxGeometry(1.4, 0.9, 1.4), mat(0xfff8ec), 0.6, 0.6, 0, head);
   const pips = new THREE.Group();
   g.add(pips);
+  if (darkNow()) addGlow(g, team, 9, 3.2);
   g.position.set(x, 0, z);
   scene.add(g);
   const tur = { kind: 'turret', type, team, x, z, r: 1.8, level: 1, hp: t.hp, maxHp: t.hp, weapon: { ...t.weapon, range: t.range, rate: t.rate, dmg: t.dmg }, cool: 0, mesh: g, pips, burst: t.burst || 0, reload: t.reload || 0, shotsLeft: t.burst || 0 };
@@ -2690,7 +2898,7 @@ function render(dt) {
     ghost.visible = p.alive && !state.over;
     ghost.position.set(gx, 0.1, gz);
     ghost.material.color.setHex(ok ? 0x3ddc84 : 0xff5a5f);
-    ghost.material.opacity = 0.3 + Math.sin(time * 5) * 0.12;
+    ghost.material.opacity = (darkNow() ? 0.6 : 0.3) + Math.sin(time * 5) * 0.12; // brighter in the dark drawer
     state.shake = Math.max(0, (state.shake || 0) - dt * 2.5);
     const sh = state.shake * 0.8;
     camera.position.set(camTarget.x + (Math.random() - 0.5) * sh, 50 * zoom, camTarget.z + 34 * zoom + (Math.random() - 0.5) * sh);
@@ -2711,6 +2919,7 @@ function render(dt) {
       arrow.style.transform = `rotate(${Math.atan2(v.x, v.y)}rad)`;
     }
   } else arrow.hidden = true;
+  if (state.level?.dark) darkUpdate(dt);
   renderer.render(scene, camera);
 }
 
