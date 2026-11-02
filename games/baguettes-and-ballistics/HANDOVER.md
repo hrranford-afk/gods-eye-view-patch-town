@@ -718,6 +718,52 @@ reaches 25. Rivals ignore dropped boxes of yours. Dropped boxes are not solid. T
 
 **Not fixed / ideas.** Red cars ignore tokens and each other's tools (the enemy loadout is only a list). The rivals' speed bands keep it close, so the bot nearly always finishes 1st or 2nd; a human will vary. Tokens are emoji, so look slightly different per platform. Level 6 infantry is one token for four types. The card lists tools in order, not by how useful they are. No sound for tokens beyond the pickup fanfare. The race is not shown to anyone on level selection (the title card still describes the battle).
 
+## Characters and dialogue (2 Nov 2026; Harry: "a bit of beef before each race", 16-bit style)
+
+![crumb](shots/48-talk-crumb.png) ![baron](shots/49-talk-baron.png) ![rick](shots/50-talk-rick.png) ![nana](shots/51-talk-nana.png)
+![every portrait and frame](shots/52-portraits-sheet.png)
+
+Before each race the cast trade 4 or 5 lines in a 16-bit RPG talk box; after a level the Baron sulks (win) or gloats (lose). **A self-contained module:** one HTML/CSS block headed `Characters and dialogue` just before the three.js `<script>` tag (the `#talk` overlay, its CSS, a Press Start 2P font link), and one `<script>` with the same heading after the main script. Nothing is drawn in the 3D scene (0 draw calls): it is an HTML overlay with one 48 x 48 canvas.
+
+**The hook is one function:** `talkThen(levelIndex, when, cb)` with `when` = `'pre'`, `'win'` or `'lose'`. It plays the lines, then calls `cb` (Skip calls it too). With no lines it calls `cb` straight away. Three call sites, nothing else in shared code changed:
+- `start()`: `talkThen(curLevel, 'pre', lrIntro)` instead of `lrIntro()`. The race already holds still from `startRace` (`R.intro` is true until GO!), so nothing moves while they talk. If the intro card changes on another branch, keep this one call and pass whatever shows the card.
+- `endGame()`: inside the 1.2 s timeout, `talkThen(curLevel, won ? 'win' : 'lose', () => { $('end').hidden = false; })`.
+- `endGame()`, level 6 win: `talkThen(curLevel, 'win', () => finaleEnding(earned))` (the Baron's last word, then the light flicks on).
+
+**Controls.** Tap anywhere (or Space / Enter): finish the line, then next line. **SKIP** (top right of the box, or Escape) closes it and goes on. While the box is up it eats every key except M (mute), so WASD does not leak into the race. Text types at 38 letters a second (`TALK_CPS`) with short stops after `. ! ? ,` (`TALK_PAUSE`) and a blip on every other letter (`talkBlip`, using the game's own `tone()`; Baron a low sawtooth, Crumb a square, Rick a mid square, Nana a high triangle; silent when muted).
+
+**Look.** Dark navy box with a notched white pixel border and a coloured inner line in the speaker's colour, a name plate tab, a gold-framed portrait (144 px on iPad, 96 px under 600 px wide). Crumb sits on the left; the others on the right (the box flips). Dialogue text is the game's body font (Barlow Semi Condensed, bold, 31 px; 21 px on a phone): Press Start 2P was too hard to read for a dyslexic player at line length, so it is only used for the name plates, the level tag, SKIP and the arrow. Each line is 60 characters or fewer (2 lines on iPad, 3 on a phone). The portrait box pops when the speaker changes, and a line can ask for `shake` or `bob`. The face flaps its mouth while letters type (shut on spaces and pauses) and blinks every 1.8 to 4.8 s.
+
+**Cost.** Its own `requestAnimationFrame` loop runs only while the box is open. Each face is painted once into a 48 x 48 canvas and cached (`talkFaces`: 24 canvases at most, all four characters and every frame); the visible canvas is redrawn only when the frame changes. Typing all six pre-race scripts through took 27 ms of script time in total. All six levels: dialogue, Skip race, 90 s of play, 0 page errors (`all6b.js`, Playwright, 1180 x 820); also checked at 390 x 844.
+
+### The data (all in the dialogue `<script>`)
+
+- `TALK_CAST[id]`: the pixel art: `pal` (one letter per colour, `.` is see-through), `bg` (two backdrop colours), `base` (48 strings of 48 letters: mouth shut, eyes open), `frames` (patches).
+- `TALK_INFO[id]`: `name`, `color` (name plate and border line), `side` (`'left'` or `'right'`), `wave` and `pitch` (the voice), `moods`.
+- `TALK_SCRIPT[level]`: `{ pre: [...], win: [...], lose: [...] }`; a line is `[who, text, mood?, fx?]`.
+
+**Add a line:** add `['rick', 'Your text, 60 letters at most.', 'smug', 'bob']` to the right list in `TALK_SCRIPT`. `mood` must be one of that character's `moods` (otherwise it shows the normal face); `fx` is `'shake'`, `'bob'` or nothing.
+
+**Add a frame (a new mood):** a patch is `[x, y, rows]` drawn over the base; `_` keeps the base pixel, any palette letter paints. Add `grumpy: [x, y, [...]]` and `grumpyOpen: [...]` (the same face with the mouth open, used while typing) to `frames`, and `'grumpy'` to that character's `moods` in `TALK_INFO`. The easiest way to make one: copy the 48 base strings, change the face, and keep only the rows and columns that differ (replace unchanged pixels with `_`). `open` and `blink` are the plain talking and blinking frames.
+
+**Add a character:** a new `TALK_CAST` entry (palette, `bg`, 48 base rows, at least `open` and `blink` patches) and a `TALK_INFO` entry, then use its id in `TALK_SCRIPT`. Draw on a 48 x 48 grid with a dark outline letter round the shape (`k` in all four), light from the top left, and keep the face in rows 16 to 36 so it reads at 96 px.
+
+### The cast
+
+| id | Name | Look | Moods |
+|---|---|---|---|
+| `crumb` | CAPTAIN CRUMB (you, blue) | a slice of toast in a blue racing suit, blue goggles pushed up on the crust | `shocked`, `brave` |
+| `baron` | BARON VON BAGUETTE (red leader) | a tall baguette with slashes, monocle on a gold chain, handlebar moustache, red coat with gold epaulettes | `angry` (brows down, anger mark, gritted teeth), `laugh` |
+| `rick` | STICKY RICK | a jam jar with a gingham lid, shades on top, jam drips, gold tooth | `smug` (a wink and a sparkle) |
+| `nana` | NANA NUTMEG | a wooden pepper mill with a white bun (the knob), curls, big gold glasses, pearls, lilac cardigan | `cackle` (glasses flash, speed lines) |
+
+### Not done / open
+
+- The level 6 win line plays before the ending's light flick, over a frozen scene; the lose line plays over the frozen scene too (the game has stopped).
+- The script does not know how often you have beaten the Baron: his lines escalate by level, not by your record. `progress.stars` could pick a line if Harry wants that.
+- No dialogue on the title screen's level select (only when a level starts) and none between race and battle.
+- Portraits were drawn with a small Python helper in the scratchpad (shapes on a 48 x 48 grid, then turned into the strings); only the strings are in the game, so edit those.
+
 ## 5. Known problems (fix first)
 
 1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.

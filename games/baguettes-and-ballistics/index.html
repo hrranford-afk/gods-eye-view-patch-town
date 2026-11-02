@@ -218,6 +218,58 @@ button.off, .row.off { display: none !important; }
     <div class="two"><button class="go" id="next" hidden>NEXT LEVEL</button><button class="go alt" id="again">PLAY AGAIN</button><button class="go alt" id="menu">LEVELS</button></div></div>
 </div>
 
+<!-- ===================== Characters and dialogue (self-contained module: HTML, CSS, JS) =====================
+     16-bit style talk boxes with pixel-art portraits. Hooks: start() calls talkThen(level, 'pre', lrIntro);
+     endGame() calls talkThen(level, 'win' | 'lose', showCard). Everything else lives in this block and the
+     <script> headed "Characters and dialogue" after the main script. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+.talk { position: fixed; inset: 0; z-index: 7; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  background: linear-gradient(to top, rgba(10, 8, 20, 0.7), rgba(10, 8, 20, 0.3) 50%, rgba(10, 8, 20, 0.15)); touch-action: none;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 22px) max(16px, env(safe-area-inset-left, 0px)); cursor: pointer; }
+.talk .tbox { --c: #2f7df6; position: relative; width: min(920px, calc(100% - 16px)); box-sizing: border-box; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start;
+  padding: 18px 20px 18px 18px; background: #14142c; color: #fff8ec;
+  /* chunky pixel border with notched corners: white rim, dark outline, a coloured inner line */
+  box-shadow: 0 -4px 0 0 #fff8ec, 0 4px 0 0 #fff8ec, -4px 0 0 0 #fff8ec, 4px 0 0 0 #fff8ec,
+    0 -8px 0 0 #0a0814, 0 8px 0 0 #0a0814, -8px 0 0 0 #0a0814, 8px 0 0 0 #0a0814, -4px -4px 0 0 #0a0814, 4px -4px 0 0 #0a0814, -4px 4px 0 0 #0a0814, 4px 4px 0 0 #0a0814,
+    inset 0 0 0 4px var(--c), inset 0 0 0 8px #0a0814; }
+.talk .tbox.right { grid-template-columns: 1fr auto; padding: 18px 18px 18px 26px; }
+.talk .tbox.right .pframe { order: 2; }
+.talk .pframe { position: relative; width: 144px; height: 144px; margin: 4px; background: #0a0814;
+  box-shadow: 0 -4px 0 0 #ffc23d, 0 4px 0 0 #ffc23d, -4px 0 0 0 #ffc23d, 4px 0 0 0 #ffc23d, 0 0 0 4px #0a0814 inset; }
+.talk .pframe canvas { position: static; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.talk .name { position: absolute; top: -30px; left: 14px; font: 13px/1 'Press Start 2P', var(--display); color: #0a0814; background: var(--c); padding: 7px 10px 6px;
+  box-shadow: 0 -4px 0 0 #0a0814, -4px 0 0 0 #0a0814, 4px 0 0 0 #0a0814; letter-spacing: 0.04em; white-space: nowrap; }
+.talk .tbox.right .name { left: auto; right: 14px; }
+.talk .line { font: 700 31px/1.32 var(--body); letter-spacing: 0.02em; min-height: 3.96em; padding-top: 6px; text-wrap: pretty; text-shadow: 2px 2px 0 #0a0814; }
+.talk .more { position: absolute; right: 18px; bottom: 10px; font: 14px 'Press Start 2P', monospace; color: #ffc23d; animation: talkMore 0.7s steps(2) infinite; }
+.talk .tbox.right .more { right: auto; left: 22px; }
+@keyframes talkMore { 50% { transform: translateY(4px); } }
+.talk .tskip { min-height: 48px; min-width: 120px;
+  font: 13px/1 'Press Start 2P', monospace; color: #fff8ec; background: #14142c; border: 0; border-radius: 0; padding: 0 16px; cursor: pointer; display: grid; place-items: center; align-content: center; margin-right: 4px;
+  box-shadow: 0 -4px 0 0 #fff8ec, 0 4px 0 0 #fff8ec, -4px 0 0 0 #fff8ec, 4px 0 0 0 #fff8ec; }
+.talk .thead { width: min(904px, calc(100% - 16px)); display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 46px; }
+.talk .tag { font: 12px 'Press Start 2P', monospace; color: #ffc23d; text-shadow: 2px 2px 0 #0a0814; pointer-events: none; }
+@media (max-width: 600px) {
+  .talk .tbox, .talk .tbox.right { gap: 12px; padding: 14px 12px 22px 12px; }
+  .talk .pframe { width: 96px; height: 96px; }
+  .talk .line { font-size: 21px; min-height: 5.28em; }
+  .talk .name { font-size: 10px; top: -26px; }
+  .talk .tag { font-size: 9px; line-height: 1.5; }
+  .talk .thead { margin-bottom: 40px; }
+  .talk .tskip { min-width: 96px; font-size: 11px; }
+}
+</style>
+<div class="talk" id="talk" hidden>
+  <div class="thead"><div class="tag" id="talkTag"></div><button class="tskip" id="talkSkip">SKIP &#9654;&#9654;</button></div>
+  <div class="tbox" id="talkBox">
+    <div class="name" id="talkName"></div>
+    <div class="pframe" id="talkFrame"><canvas id="talkFace" width="48" height="48"></canvas></div>
+    <div class="line" id="talkLine"></div>
+    <div class="more" id="talkMore" hidden>&#9660;</div>
+  </div>
+</div>
+<!-- ===================== end of Characters and dialogue (HTML/CSS) ===================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 'use strict';
@@ -6260,7 +6312,7 @@ function endGame(won) {
   const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
   if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
   else if (won) saveProgress();
-  if (won && state.finale) return finaleEnding(earned); // level 6: the light flicks on, then the MEALTIME MAYHEM COMPLETE screen
+  if (won && state.finale) return talkThen(curLevel, 'win', () => finaleEnding(earned)); // level 6: the Baron's last word (dialogue hook), then the light flicks on and the MEALTIME MAYHEM COMPLETE screen
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
   $('endText').textContent = won
@@ -6269,13 +6321,13 @@ function endGame(won) {
   $('endStars').innerHTML = won ? starRow(earned) : '';
   const nextOk = won && LEVELS[curLevel + 1] && isPlayable(curLevel + 1);
   $('next').hidden = !nextOk;
-  setTimeout(() => { sfx(won ? 'win' : 'lose'); $('end').hidden = false; }, 1200);
+  setTimeout(() => { sfx(won ? 'win' : 'lose'); talkThen(curLevel, won ? 'win' : 'lose', () => { $('end').hidden = false; }); }, 1200); // dialogue hook: the Baron sulks or gloats, then the card
 }
 function start() {
   audioInit();
   $('start').hidden = true; $('end').hidden = true;
   reset();
-  if (state.race) lrIntro(); // every level opens with the Loadout Race
+  if (state.race) talkThen(curLevel, 'pre', lrIntro); // dialogue hook: the cast trade insults, then the Loadout Race intro card (the race holds still until GO!)
 }
 $('play').addEventListener('click', start);
 $('again').addEventListener('click', start);
@@ -6284,4 +6336,462 @@ $('menu').addEventListener('click', () => { $('end').hidden = true; $('start').h
 renderLevels();
 reset();
 requestAnimationFrame(step);
+</script>
+<script>
+// ===================== Characters and dialogue =====================
+// Before each race the cast trade a few lines; after a level the Baron sulks or gloats.
+// Self-contained: its own overlay (#talk), CSS and this script. Draws nothing in the 3D scene.
+// The only entry point is talkThen(levelIndex, 'pre' | 'win' | 'lose', callback).
+//
+// CAST: name, colour (name plate and box line), side of the box, voice (blip wave and pitch),
+// moods (extra faces a SCRIPT line can ask for), and the portrait itself:
+//   pal   one character per colour; '.' is see-through (the backdrop shows)
+//   bg    backdrop colours (top, bottom dither)
+//   base  48 strings of 48 characters: the face with the mouth shut and the eyes open
+//   frames  patches drawn over the base, each [x, y, rows] where '_' keeps the base pixel:
+//     open (mouth open), blink, and per mood: <mood> and <mood>Open.
+const TALK_CAST = {
+  crumb: {
+    pal: {"k": "#2a1a10", "c": "#8a4a1c", "C": "#b0662a", "b": "#e8b664", "h": "#f8dc98", "d": "#cf9142", "B": "#2f7df6", "N": "#1b4aa6", "w": "#ffffff", "g": "#3d4656", "G": "#8d99ab", "L": "#7fd8ff", "l": "#cdf2ff", "p": "#f28a7a", "m": "#5b1620", "r": "#e0566a", "e": "#1a1a2e", "y": "#ffc23d"},
+    bg: ["#2a4f9a", "#1d3c7c"],
+    base: [
+      '................................................',
+      '................................................',
+      '..................kkkkkkkkkkkk..................',
+      '..............kkkkCCCCCCCCCCCCkkkk..............',
+      '............kkCCCCCccccccccccccCCCkk............',
+      '..........kkCCCccchhhhhhhhhhhhcccccCkk..........',
+      '.........kCCCccgggggbbbbbbbbgggggccccCk.........',
+      '.......kkCCchgggggggggbbbbggggggggghccckk.......',
+      '......kCCChhgggLLLLLgggbbgggLLLLLgggbhccCk......',
+      '.....kCCchhgggLllLLLLggggggLllLLLLgggbbccck.....',
+      '.....kCchhbggLLlLLLLLLggggLLlLLLLLLggbbdcck.....',
+      '....kNNNNNNggLLLLLLLLLggggLLLLLLLLLggNNNNNNk....',
+      '....kBBBBBBggLLLLLLLLLggggLLLLLLLLLggBBBBBBk....',
+      '....kCchbbbgggLLLLLGLggggggLLLLLGLgggbbddcck....',
+      '...kCChhbbbbgggLLLLLgggbbgggLLLLLgggbbbdddcck...',
+      '....kccbbbbbbgggggggggbbbbgggggggggbbbbddcck....',
+      '....kCchbbbbbbbgggggbbbbbbbbgggggbbbbbdddcck....',
+      '....kCchbbbbbbbbbbbbbbbbbbbbbbbbbbbbbddddcck....',
+      '.....kccbbbbbbbcccccbbbbbbbbcccccbbbddddcck.....',
+      '.....kCccbbbdbcbbbbbbbbbbbbbbbbbbcbbdddccck.....',
+      '......kcccbbbbbbeeebbbbbbbbbbeeebbbdddccck......',
+      '.......kcchbbbbewweebbbbbbbbewweebbdddcck.......',
+      '........kccbbbbewweebbbbbbbbewweebbddcck........',
+      '........kCchbbbeeeeebbbbbbbbeeeeebbddcck........',
+      '........kCchbbbeeewebbbbbbbbeeewebbddcck........',
+      '........kCchbbbbeeebbbbbbbbbbeeebbbddcck........',
+      '........kCchbbbbbbbbbbbddbbbbbbbbbbbdcck........',
+      '........kCcpppbbbbbbbbbbcbbbbbbbbbpppcck........',
+      '.......kCChpppbbbbbbbbbbbbbbbbbbbbpppdcck.......',
+      '.......kCchbbbbbbbbkbbbbbbbbkbbbbbbbddcck.......',
+      '.......kCchbbdbbbbbbkbbbbbbkbbbbbbbbddcck.......',
+      '.......kCchbbbbbbbbbbkkkkkkbbbbbbbbbddcck.......',
+      '.......kCchbbbbbbbbbbbddddbbbbbbbbbbddcck.......',
+      '.......kCchbbbbbbbbbbbbbbbbbbbbbbbdbddcck.......',
+      '.......kCchbbbbbbbbbbbbbbbbbbbbbbbbdddcck.......',
+      '.......kCchbbbbbbbbbbbbbbbbbbbbbbbbdddcck.......',
+      '.......kCccbbbbdbbbbbbbbbbbbbbbbbbdddccck.......',
+      '.......kCcchbbbbbbbbbbbbbbbbbbbddddddccck.......',
+      '........kcccddddddddddddddddddddddddccck........',
+      '........kCccccddddddddddddddddddddccccck........',
+      '.........kcccccccccccccccccccccccccccck.........',
+      '..........kkcccccccccccccccccccccccckk..........',
+      '..........kkkBBwBBBBBBBByBBBBBBBwBBBkkk.........',
+      '........kkBBBBBwBBBBBBBByBBBBBBBwBBBBBBkk.......',
+      '......kkBBBBBBBBwBBBBBBByBBBBBBwBBBBBBBBBkk.....',
+      '.....kBBBBBBBBBBwBBBBBBByBBBBBBwBBBBBBBBBBBk....',
+      '....kBBBBBBBBBBBwBBBBBBByBBBBBBwBBBBBBBBBBBBk...',
+      '...kBBBNNBBBBBBBBwBBBBBByBBBBBwBBBBBBBBBNNBBBk..',
+    ],
+    // patches drawn over the base: [x, y, rows]; '_' keeps the base pixel
+    frames: {
+      open: [20, 30, ['_kkkkkk_', 'kwwwwwwk', 'kmmmmmmk', '_kmrrmk_', '__kkkk__']],
+      blink: [14, 20, ['__bbb__________bbb__', '_bbbbb________bbbbb_', 'kbbbbbk______kbbbbbk', '_kkkkk________kkkkk_', '_bbbbb________bbbbb_', '__bbb__________bbb__']],
+      shocked: [3, 16, ['____________ccccc________ccccc____________', '__________________________________________', '____________bkkkb________bkkkb____________', '_k_________bkwwwk________kwwwkb_________k_', 'kwk________kwwwwwk______kwwwwwk________kwk', 'kwk________kw__wwk______kw__wwk________kwk', 'kwk________kw_ewwk______kw_ewwk________kwk', '_k_________kww_wwk______kww_wwk_________k_', 'kwk________kwww_wk______kwww_wk________kwk', '_k__________kwwwk________kwwwk__________k_', '_____________kkk__________kkk_____________', '__________________________________________', '__________________________________________', '________________b___kkk__b________________', '_________________b_kmmmkb_________________', '__________________b_mmm___________________', '___________________bkkk___________________']],
+      shockedOpen: [3, 16, ['____________ccccc________ccccc____________', '__________________________________________', '____________bkkkb________bkkkb____________', '_k_________bkwwwk________kwwwkb_________k_', 'kwk________kwwwwwk______kwwwwwk________kwk', 'kwk________kw__wwk______kw__wwk________kwk', 'kwk________kw_ewwk______kw_ewwk________kwk', '_k_________kww_wwk______kww_wwk_________k_', 'kwk________kwww_wk______kwww_wk________kwk', '_k__________kwwwk________kwwwk__________k_', '_____________kkk__________kkk_____________', '__________________________________________', '__________________________________________', '________________b__kkkk__b________________', '_________________bkmmmmkb_________________', '___________________mmmm___________________', '__________________kmrrmk__________________', '___________________kkkk___________________']],
+      brave: [14, 17, ['kk________________kk', '_bkkkb________bkkkb_', 'b____k________k____b', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '______kkkkkkkk______', '_____kwkwkwkw_k_____', '_____kk______kk_____', '________bbbb________']],
+      braveOpen: [14, 17, ['kk________________kk', '_bkkkb________bkkkb_', 'b____k________k____b', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '____________________', '______kkkkkkkk______', '_____kwwwwwwwwk_____', '_____kmmmmmmmmk_____', '______kwwwwwwk______', '_______kkkkkk_______']],
+    },
+  },
+  baron: {
+    pal: {"k": "#2a160a", "c": "#c9772c", "C": "#e09a48", "d": "#94511c", "h": "#f6d08a", "H": "#fde7b8", "M": "#3b2414", "m": "#5b1620", "R": "#d8322a", "Q": "#8f1c18", "y": "#ffc23d", "Y": "#b07a12", "w": "#ffffff", "e": "#1a1010", "L": "#d9f4ff", "p": "#f06a50", "r": "#e0566a", "P": "#ff8a5c"},
+    bg: ["#7a1f1a", "#5a1410"],
+    base: [
+      '..............kdCCccccccchhhhHdddk..............',
+      '..............kdCCccccccchhhhcdddk..............',
+      '.............kdCCcccccccchhhcccdddk.............',
+      '.............kdCCccccccccddccccdddk.............',
+      '............kdCCcccccccHHHdcccccdddk............',
+      '............kdCCcccccchhHHdcccccdddk............',
+      '............kdCCccccchhhhHccccccdddk............',
+      '............kdCCccccchhhhcccccccdddk............',
+      '............kdCCccccchhhccccccccdddk............',
+      '...........kdCCccccccddccccccccccdddk...........',
+      '...........kdCCccccccccccccccccccdddk...........',
+      '...........kdCCccccHHHdccccccccccdddk...........',
+      '...........kdCCccchhHHdccccccccccdddk...........',
+      '...........kdCCcchhhhHcccccccccccdddk...........',
+      '...........kdCCcchhhhccccccccccccdddk...........',
+      '...........kdCCcchhhccccccccyyyyydddk...........',
+      '...........kdCCMMMMccccccccyLLLLLyddk...........',
+      '...........kdCMccccMccccccywwLLLLLydk...........',
+      '...........kdCkkkkkkkccccyLLLwwwLLLyk...........',
+      '...........kdCCdddddcccccyLLwwwwwLLyk...........',
+      '...........kdCCwweewcccccyLLwwewwLLyk...........',
+      '...........kdCCwweewcccccyLLwweewLLyk...........',
+      '...........kdCCkkkkkcccccyLLLwwwLLLyk...........',
+      '...........kdCCccccccccCCCyLLLLLLLydk...........',
+      '...........kdCCcccccccChCCCyLLLLLyydk...........',
+      '..........kMdCCcccccccCCCCCcyyyyydddMk..........',
+      '.........kMkdCCcccccccCCCdCccccccddykMk.........',
+      '.........kMkdCCccccccccCddcccccccdddkMk.........',
+      '..........kMdCCcMMMMMMMccMMMMMMMcddyMk..........',
+      '...........kMCMMMMMMMMMMMMMMMMMMMMdMk...........',
+      '...........kdMMMMMMMMMMMMMMMMMMMMMMdyk..........',
+      '...........kdCMMMMMMMMMMMMMMMMMMMMddk...........',
+      '...........kdCCcMMMMMMMccMMMMMMMcdddyk..........',
+      '...........kdCCcccccckcccccccccccdddk...........',
+      '...........kdCCccccccckkkkkccccccddyk...........',
+      '...........kdCCccccccccccccccccccdddk...........',
+      '...........kdCCccccccccccccccccccddyk...........',
+      '...........kdCCccccccccccccccccccdddk...........',
+      '...........kdCCccccccccccccccccccdydk...........',
+      '...........kdCCccccccccccccccccccdddk...........',
+      '...kkkkkkk.kdCCccccccccccccccccccdddk.kkkkkkk...',
+      '.kkyyyyyyykkkkQQQQQQQQQQQQQQQQQQQQkkkkyyyyyyykk.',
+      'kyyyyyyyyyyykkQQQQQQQQQQQQQQQQQQQQkkyyyyyyyyyyyk',
+      'kyyyyyyyyyyykRRRRRRRRRRRRRRRRRRRRRRRyyyyyyyyyyyk',
+      'kyyyyyyyyyyyRRRRRRRRRRRRyRRRRRRRRRRRyyyyyyyyyyyk',
+      '.kYyYyYyYyYRRRRRRRRRRRRRRRRRRRRRRRRRYRYyYyYyYkk.',
+      '..kkkkRRRRRRRRRRRRRRRRRRyRRRRRRRRRRRRRRRRRRkk...',
+      '....kRRRRQRRRRRRRRRRRRRRRRRRRRRRRRRRRRRQRRRRk...',
+    ],
+    // patches drawn over the base: [x, y, rows]; '_' keeps the base pixel
+    frames: {
+      open: [9, 24, ['_kM________________________Mk_', 'kMk________________________kMk', '______________________________', '.kM____MMMMMMM__MMMMMMM____Mk.', '_.kM_MM_______MM_______MM_Mk._', '___dM____________________Md___', '____C____________________d____', '_____Cc_______cc_______cd_____', '_______ccccckkkkkkccccc_______', '_____________mmmmk____________', '____________kmrrm_____________', '_____________kkkk_____________']],
+      blink: [14, 17, ['_____________LL_____', '_cccccc________LLL__', '_ccccc________LLLLL_', 'kkkkkkk_______LLLLL_', '_ccccc_______kkkkkkk', '_ccccc_________LLL__']],
+      angry: [13, 0, ['_________________________kk___kk__', '________________________kPPk_kPPk_', '_______________________kPPPk_kPPPk', '________________________kkPPkPPkk_', '__________________________kk_kk___', '________________________kkPPkPPkk_', '_______________________kPPPk_kPPPk', '________________________kPPk_kPPk_', '_________________________kk___kk__', '_____________________MM___________', '___________________MMMM___________', '_________________MMMM_____________', '_______________MMMM_______________', '_____________MMMM_________________', 'MM__cccc____MMM_____cc____________', 'MMM_ccc_____M_______cc____________', 'cM___c_______________c____________', 'cc_MMM________LL__________________', 'cc_____MM_________________________', '__wweewMM_______ee________________', '________________e_________________', '_________________ww_______________', '_k_____k__________________________', 'pppp______________________________', 'pppp______C_______________________', 'pppp______________________________', '_pppp____________pppppp___________', '_pppp____________pppppp___________', '__________________________________', '__________________________________', '__________________________________', '__________________________________', '_______kkkkkkkk___________________', '_______kwkwkwkw___________________', '_______kk_____k___________________']],
+      angryOpen: [9, 0, ['_____________________________kk___kk__', '____________________________kPPk_kPPk_', '___________________________kPPPk_kPPPk', '____________________________kkPPkPPkk_', '______________________________kk_kk___', '____________________________kkPPkPPkk_', '___________________________kPPPk_kPPPk', '____________________________kPPk_kPPk_', '_____________________________kk___kk__', '_________________________MM___________', '_______________________MMMM___________', '_____________________MMMM_____________', '___________________MMMM_______________', '_________________MMMM_________________', '____MM__cccc____MMM_____cc____________', '____MMM_ccc_____M_______cc____________', '____cM___c_______________c____________', '____cc_MMM________LL__________________', '____cc_____MM_________________________', '______wweewMM_______ee________________', '____________________e_________________', '_____________________ww_______________', '_____k_____k__________________________', '____pppp______________________________', '_kM_pppp______C____________Mk_________', 'kMk_pppp___________________kMk________', '_____pppp____________pppppp___________', '.kM__ppMMMMMMM__MMMMMMMppppMk.________', '_.kM_MM_______MM_______MM_Mk._________', '___dM____________________Md___________', '____C____________________d____________', '_____Cc____kkkkkkkk____cd_____________', '_______cccckwwwwwwkcccc_______________', '___________kmmmmmmk___________________', '___________kwwwwwwk___________________', '____________kkkkkk____________________']],
+      laugh: [9, 17, ['__________________LL__________', '_____Ccccccc________LLL_______', '______cckcc________LLkLL______', '______ckckc________LkLkL______', '______kccck________kLLLk______', '______ccccc_________LLL_______', '_kM_ppp____________________Mk_', 'kM__ppp_______C_____________Mk', 'kMk_____________________pppkMk', '.kM____MMMMMMM__MMMMMMM_pppMk.', '.._M_MMMMMMMMMMMMMMMMMMMM_M_..', '_.k_MMM_______MM_______MMM_k._', '___d______________________d___', '____CCc____kkkkkkkk____cdd____', '_____Cccccckmmmmmmkcccccd_____', '_______cccckmmrrmmkcccc_______', '_____________kkkkk____________', '_____________ccccc____________']],
+      laughOpen: [9, 17, ['__________________LL__________', '_____Ccccccc________LLL_______', '______cckcc________LLkLL______', '______ckckc________LkLkL______', '______kccck________kLLLk______', '______ccccc_________LLL_______', '_kM_ppp____________________Mk_', 'kM__ppp_______C_____________Mk', 'kMk_____________________pppkMk', '.kM____MMMMMMM__MMMMMMM_pppMk.', '.._M_MMMMMMMMMMMMMMMMMMMM_M_..', '_.k_MMM_______MM_______MMM_k._', '___d______________________d___', '____CCc___kkkkkkkkkk___cdd____', '_____Ccccckwwwwwwwwkccccd_____', '_______ccckmmmmmmmmkccc_______', '__________kmmmrrmmmk__________', '___________kk_____k___________']],
+    },
+  },
+  rick: {
+    pal: {"k": "#24101a", "J": "#c0183a", "j": "#ff5276", "D": "#7e0c26", "G": "#d8f2ff", "g": "#9cc6dc", "w": "#ffffff", "R": "#e03030", "W": "#f6efe6", "y": "#ffc23d", "Y": "#b07a12", "e": "#1a1020", "m": "#4a0a1c", "r": "#ff8aa0", "s": "#2a2a34", "S": "#5ad8ff", "n": "#c9a66b"},
+    bg: ["#7a2a5a", "#5a1a42"],
+    base: [
+      '................................................',
+      '................................................',
+      '................................................',
+      '................................................',
+      '................kkkkkkkkkkkkkkkk................',
+      '............kkkkWWRRRWWWRRRWWWRRkkkk............',
+      '..........kkJssssssJJssssssRRRJJJRRRkk..........',
+      '.........kRRJsSSSSsssssSSSsRRRJJJRRRJJk.........',
+      '.......kkRRRJsSwSSsJJsSwSSsRRRJJJRRRJJJkk.......',
+      '......kRRWWWRRssssRRRWssssRWWWRRRWWWRRRWWk......',
+      '......kRRWWWRRRWWWRRRWWWRRRWWWRRRWWWRRRWWk......',
+      '.....kRRRWWWRRRWWWRRRWWWRRRWWWRRRWWWRRRWWWk.....',
+      '.....kJJJRRRJJJRRRJJJRRRJJJRRRJJJRRRJJJRRRk.....',
+      '.....kJJJRRRJJJRRRJJJRRRJJJRRRJJJRRRJJJRRRk.....',
+      '......kJJyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyRRk......',
+      '......kRRYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYWWk......',
+      '.......kkRkGRGJRJJRJJRJJRJJRJJRDDRGGRkkRk.......',
+      '........kRGGWJJRJJWJJRJJWJJRJJWJJRDDWGkRk.......',
+      '.........kGJJJJJJJJJJJJJJJJJJJJJJJDJDGkk........',
+      '........kGGJJJJJJJJJJJJJJJJJJJJJJJDJDGGk........',
+      '........kGJGJJJJJJJJJJJJJJJJJJJJJJJJDDGk........',
+      '........kGJGjjJJJJJJJJjJJJJJJJJJJJJJDDGk........',
+      '........kGJGjjjJkkkJJJJJJJJJJJJJJJJjDDGk........',
+      '........kGJGjjjkjJJkJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjjJwwwJJJJJJJJJkwwwkJJDDDGk........',
+      '........kGJGjjjwwwwwJJJJJJJDDDDDDDJDDDGk........',
+      '........kGJGjjwwwewwwJJJJJJkkkkkkkJDDDGk........',
+      '........kGJGjjwwweewwJJJJJJwwweewwJDDDGk........',
+      '........kGJGjjwwweewwJJJJJJwwweewwJDDDGk........',
+      '........kGJGjjjwwwwwJJJJJJJJwwwwwJJDDDGk........',
+      '........kGJGjjjJwwwJJJJJJJJJJwwwJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJkJJJJJJJJJJJJkJJJJJDDDGk........',
+      '........kGJGjjJJkkwwwwywwwwwkkJJJJJDDDGk........',
+      '........kGJGjjJJJkkkkkkkkkkkkJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGjjJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGJJJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJGJJJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+      '........kGJJJJJJJJJJJJJJJJJJJJJJJJJDDDGk........',
+    ],
+    // patches drawn over the base: [x, y, rows]; '_' keeps the base pixel
+    frames: {
+      open: [16, 32, ['k____________k', '_kkkkkkkkkkkk_', '_w__________w_', 'kmmmmmmmmmmmmk', '_kmmmmrrrmmmk_', '__kkkkkkkkkk__']],
+      blink: [14, 24, ['__JJJ__________JJJ__', '_JJJJJ________JJJJJ_', 'JJJJJJJ______JJJJJJJ', 'JJJJJJJ______JJJJJJJ', 'kkkkkkk______kkkkkkk', '_JJJJJ________JJJJJ_', '__JJJ__________JJJ__']],
+      smug: [26, 21, ['_______________k___', '______________kyk__', '______________kykk_', '___kkk_______yyyyyk', '_JJJJJJJ______kykk_', '_JJJJJJJ______kyk__', '_kJJJJJk_______k___', '_JkkkkkJ___________', '__JJJJJ____________', '___JJJ_____________', '___________________', '___k_______________', '_kkJ_______________', 'kkJJ_______________', '_JJ________________']],
+      smugOpen: [16, 21, ['_________________________k___', '________________________kyk__', '________________________kykk_', '_____________kkk_______yyyyyk', '___________JJJJJJJ______kykk_', '___________JJJJJJJ______kyk__', '___________kJJJJJk_______k___', '___________JkkkkkJ___________', '____________JJJJJ____________', '_____________JJJ_____________', '_____________________________', '_____________k_______________', '_kkkkkkkkkkkkJ_______________', '_w___________J_______________', 'kmmmmmrrrmm_J________________', '_kkkkkkkkkk__________________']],
+    },
+  },
+  nana: {
+    pal: {"k": "#24140c", "W": "#7a4524", "V": "#5a2f16", "U": "#a8683a", "H": "#f4f1ea", "h": "#c8c2b6", "f": "#e9b48a", "F": "#cf8f62", "p": "#f07a8a", "g": "#d8a020", "L": "#e8f6ff", "e": "#1a1018", "w": "#ffffff", "m": "#5b1620", "r": "#e0566a", "c": "#a07ad8", "C": "#6d4cb0", "P": "#fff6f0", "y": "#ffc23d", "s": "#9aa4b0"},
+    bg: ["#4a6a3a", "#34502a"],
+    base: [
+      '....................kkHHHHHkk...................',
+      '...................kHHHHHHHHHk..................',
+      '...................kHHhHHHHHHk..................',
+      '..................kHHhHHHHHHHHk.................',
+      '..................kHHHHHHHHhHHk.................',
+      '..................kHHHHHHHhHHHk.................',
+      '...................kHHHHHhHHHk..................',
+      '..................kkHHwwwwwHHkk.................',
+      '............kkkkkkHHHkssssskHHHkkkkk............',
+      '..........kkVVVVUHHHHHHHHHHHHHHHVVVVkk..........',
+      '.........kVVUUHHHHHHHHHHHHHHHHHHHHHVVVk.........',
+      '........kVUUWHHHHHHHHHHHHhHHHHHHHHHHVVVk........',
+      '.......kVUUWHHHHHHHHhHHHhHHHHHHHHHHHHVVVk.......',
+      '......kVUUWHHHHHHHHhHHWHHHWHHhHHHHHHHHVVVk......',
+      '......kVUUHHHHHHhHHHHWWWWWWWHHHHHHHHHHHVVk......',
+      '.....kVUUHHHHHHhHHWWWWWWWWWWWWWHHHHHHHHHVVk.....',
+      '......kVUHHHHHHHHWWWWFFFFFFFWWWWHHHHHHhHVk......',
+      '......kVUHHHHhHHWWFFFfffffffFFFWWHHHHHHHVk......',
+      '.......kVHHHHHHWWFFfffffffffffFFWWHHHHHHk.......',
+      '.......kHHHHHHHWFfffffffffffffffFWHHHHHHHk......',
+      '.......kHHHHHhHFfhhhfffffffffhhhfFHHHHHhHk......',
+      '.......kHHHHHHHfgggggfffffffgggggfHHHHHHHk......',
+      '........kHHHHHggLLLLLggfffggLLLLLggHHHHHk.......',
+      '.......kHHHHgHgLwLLLLLgfffgLwLLLLLgHgHHHHk......',
+      '.......kHHHHHgLLLeweLLLgggLLLeweLLLgHHHhHk......',
+      '.......kHHHHhgLLLeeeLLLgfgLLLeeeLLLgHHhHHk......',
+      '........kHHhHgLLLeeeLLLgfgLLLeeeLLLgHhHHk.......',
+      '........kVHHHfgLLLLLLLgfffgLLLLLLLgfHHHk........',
+      '........kVUUFfggLLLLLggfFfggLLLLLggfFVVk........',
+      '........kVUUFfffgggggffFFfffgggggfffFVVk........',
+      '........kVUUFpppfffffffffffffffffpppFVVk........',
+      '........kVUUWpppfffffffffffffffffpppVVVk........',
+      '........kVUUWFfffffffffffffffffffffFVVVk........',
+      '........kVUUWWFfffffkffffffkffffffFWVVVk........',
+      '........kVUUWWWFfffffkkkkkkffffffFWWVVVk........',
+      '........kVUUWWWWFfffffffffffffffFWWWVVVk........',
+      '........kVUUWWWWWFFfffffffffffFFWWWWVVVk........',
+      '........kVUUWWWWWWFFFfffffffFFFWWWWWVVVk........',
+      '........kVVVVVVVVVVVVFFFFFFFVVVVVVVVVVVk........',
+      '........kVUUUUUUUUUUUUUUUUUUUUUUUUUUUUVk........',
+      '........kVUUWWWWWWPWWPWWPWWPWWPWWWWWVVVk........',
+      '........kVUUPWWPWWWWWWWWWWWWWWWWWPWWPVVk........',
+      '........kVUUWWWWWWWWWWWWWWWWWWWWWWWWVVVk........',
+      '.........kkkkcccccccccccCccccccccccckkk.........',
+      '........kkkcccccccccccPcCccccccccccccckkk.......',
+      '.......kccccccccccCCCCCCCCCCCCCcccccccccck......',
+      '......kccccccCCCCCCCCCPCCCCCCCCCCCCCcccccck.....',
+      '.....kccccCCCCCCCCCCCCCCCCCCCCCCCCCCCCCcccck....',
+    ],
+    // patches drawn over the base: [x, y, rows]; '_' keeps the base pixel
+    frames: {
+      open: [20, 32, ['k______k', '_kkkkkk_', 'kmmmmmmk', 'kmmrrmmk', '_kkkkkk_']],
+      blink: [15, 23, ['_L___________L_____', '__LLL_________LLL__', 'k_LLL_k_____k_LLL_k', '_kkkkk_______kkkkk_']],
+      cackle: [0, 13, ['__kkk______________________________________kkk__', '_kwwwk____________________________________kwwwk_', '__kkk______________________________________kkk__', '________________________________________________', '_kkk________________________________________kkk_', 'kwwwk______________________________________kwwwk', '_kkk________________________________________kkk_', '________________________________________________', '__kkk______________________________________kkk__', '_kwwwk__________wwwww_______wwwww_________kwwwk_', '__kkk__________w_www_w_____w_www_w_________kkk__', '______________wwww_Lwww___wwww_Lwww_____________', '______________wwwwLwwww___wwwwLwwww_____________', '______________wwwLwwwww___wwwLwwwww_____________', '_______________w_wwwww_____w_wwwww______________', '________________wwwww_______wwwww_______________', '________________________________________________', '________________________________________________', '________________________________________________', '___________________kkkkkkkkkk___________________', '___________________kwwwwwwwwk___________________', '___________________kmmmmmmmmk___________________', '____________________kkkkkkkk____________________']],
+      cackleOpen: [0, 13, ['__kkk______________________________________kkk__', '_kwwwk____________________________________kwwwk_', '__kkk______________________________________kkk__', '________________________________________________', '_kkk________________________________________kkk_', 'kwwwk______________________________________kwwwk', '_kkk________________________________________kkk_', '________________________________________________', '__kkk______________________________________kkk__', '_kwwwk__________wwwww_______wwwww_________kwwwk_', '__kkk__________w_www_w_____w_www_w_________kkk__', '______________wwww_Lwww___wwww_Lwww_____________', '______________wwwwLwwww___wwwwLwwww_____________', '______________wwwLwwwww___wwwLwwwww_____________', '_______________w_wwwww_____w_wwwww______________', '________________wwwww_______wwwww_______________', '________________________________________________', '________________________________________________', '________________________________________________', '__________________kkkkkkkkkkkk__________________', '__________________kwwwwwwwwwwk__________________', '__________________kmmmmmmmmmmk__________________', '__________________kmmmmrrmmmmk__________________', '___________________kmmrrrrmmk___________________', '____________________kkkkkkkk____________________']],
+    },
+  },
+};
+const TALK_INFO = {
+  crumb: { name: 'CAPTAIN CRUMB', color: '#4f9bff', side: 'left', wave: 'square', pitch: 560, moods: ['shocked', 'brave'] },
+  baron: { name: 'BARON VON BAGUETTE', color: '#ff5a4a', side: 'right', wave: 'sawtooth', pitch: 150, moods: ['angry', 'laugh'] },
+  rick: { name: 'STICKY RICK', color: '#ff6fa8', side: 'right', wave: 'square', pitch: 330, moods: ['smug'] },
+  nana: { name: 'NANA NUTMEG', color: '#c6a6ff', side: 'right', wave: 'triangle', pitch: 820, moods: ['cackle'] },
+};
+for (const id in TALK_INFO) Object.assign(TALK_CAST[id], TALK_INFO[id]);
+
+// SCRIPT[level] = { pre: [...], win: [...], lose: [...] }. A line is [who, text, mood?, fx?]:
+// mood is one of that character's moods (crumb: shocked, brave; baron: angry, laugh; rick: smug; nana: cackle),
+// fx is 'shake' (the portrait box shakes) or 'bob' (it bounces). Keep each line to 60 characters or fewer.
+const TALK_SCRIPT = [
+  { // 1 Breakfast table
+    pre: [
+      ['baron', 'Bonjour, little toast. This breakfast table is MINE.'],
+      ['crumb', 'Not today, Baron. I am buttered up and ready!', 'brave'],
+      ['rick', 'Sticky Rick, fastest jar on the table. Eat my jam!', 'smug', 'bob'],
+      ['nana', 'Out of my way, dearies! Nana has no brakes!', 'cackle', 'shake'],
+      ['crumb', 'Wait... NO brakes?!', 'shocked', 'shake'],
+    ],
+    win: [['baron', 'Hmph. Beginner\'s luck. That is all it was.', 'angry']],
+    lose: [['baron', 'Ha! Back to the bread bin, little toast!', 'laugh', 'bob']],
+  },
+  { // 2 Pencil case
+    pre: [
+      ['baron', 'You got lucky, toast. Here, the pencils obey ME.'],
+      ['rick', 'I\'ll staple your bumper to the ruler, mate!', 'smug'],
+      ['crumb', 'Sharpen up, Rick. My rubber has your name on it.', 'brave'],
+      ['nana', 'Ooh, felt-tips! I\'ll colour you all in, loves!', 'cackle', 'bob'],
+    ],
+    win: [['baron', 'My pencils! My lovely sharp pencils! Hmph!', 'angry']],
+    lose: [['baron', 'Ho ho! Rubbed out, like a spelling mistake!', 'laugh', 'bob']],
+  },
+  { // 3 Remote-control drawer
+    pre: [
+      ['nana', 'Who turned the lights off? I can\'t see my knitting!'],
+      ['rick', 'Just follow the smell of jam, Nana.', 'smug'],
+      ['baron', 'In the dark drawer, Captain, you are TOAST!', 'angry'],
+      ['crumb', 'I am toast. That is kind of my thing.'],
+      ['baron', 'SILENCE!', 'angry', 'shake'],
+    ],
+    win: [['baron', 'I wasn\'t even trying. It was too dark to try.', 'angry']],
+    lose: [['baron', 'In the dark, nobody hears you crumble! Ha!', 'laugh', 'bob']],
+  },
+  { // 4 The sink
+    pre: [
+      ['crumb', 'Water?! Toast and water do NOT mix!', 'shocked', 'shake'],
+      ['baron', 'A soggy Captain Crumb. How DELICIOUS!', 'laugh', 'bob'],
+      ['rick', 'Last one over the bridge is a wet biscuit!', 'smug'],
+      ['nana', 'Water wings on! Full steam ahead, my ducks!', 'cackle', 'bob'],
+    ],
+    win: [['baron', 'I am not crying. My crust is just... damp.', 'angry']],
+    lose: [['baron', 'Soggy toast! My favourite! Ha ha HA!', 'laugh', 'bob']],
+  },
+  { // 5 Hob and oven
+    pre: [
+      ['baron', 'Enough! The hob is red-hot, and so is my TEMPER!', 'angry', 'shake'],
+      ['rick', 'Er, Baron? Your crust is smoking a bit.'],
+      ['nana', 'Hot rings? Lovely. I\'ll warm my toes on lap two!', 'cackle'],
+      ['crumb', 'I was born in a toaster, Baron. Heat is home.', 'brave'],
+      ['baron', 'GRRR! I shall TOAST the toast!', 'angry', 'shake'],
+    ],
+    win: [['baron', 'You melted my moustache wax. This means WAR!', 'angry', 'shake']],
+    lose: [['baron', 'Well done, Captain. Well done like burnt toast!', 'laugh', 'bob']],
+  },
+  { // 6 The finale
+    pre: [
+      ['baron', 'No more games, Crumb. Tonight the WHOLE kitchen is mine!', 'angry', 'shake'],
+      ['baron', 'My bread train is ready. Choo choo, little toast!', 'laugh', 'bob'],
+      ['rick', 'Er, boss... it\'s a baguette on wheels.', 'smug'],
+      ['nana', 'Ooh, a train! I haven\'t raced one since 1953!', 'cackle', 'bob'],
+      ['crumb', 'Then let\'s finish this. Last race. Biggest war!', 'brave', 'shake'],
+    ],
+    win: [['baron', 'No... my train... my beautiful bread...', 'angry', 'shake']],
+    lose: [['baron', 'The kitchen is MINE! Bow to the Baron! Ha ha!', 'laugh', 'shake']],
+  },
+];
+const TALK_CPS = 38; // letters a second while typing
+const TALK_PAUSE = { '.': 0.22, '!': 0.22, '?': 0.22, ',': 0.1 };
+
+// Each face is drawn once into a small canvas and reused (5 to 7 per character, 48 x 48 each).
+const talkFaces = {};
+function talkFace(id, key) {
+  const k = id + ':' + key;
+  if (talkFaces[k]) return talkFaces[k];
+  const C = TALK_CAST[id], cv = document.createElement('canvas'); cv.width = cv.height = 48;
+  const g = cv.getContext('2d');
+  for (let y = 0; y < 48; y++) { // backdrop: two bands with a dithered seam, like an old RPG portrait
+    g.fillStyle = y < 22 || (y < 30 && y % 2) ? C.bg[0] : C.bg[1]; g.fillRect(0, y, 48, 1);
+  }
+  g.fillStyle = C.bg[0];
+  for (let y = 30; y < 48; y += 2) for (let x = (y / 2) % 2 ? 0 : 1; x < 48; x += 4) g.fillRect(x, y, 1, 1);
+  const put = (x0, y0, rows, keep) => {
+    for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[y].length; x++) {
+      const ch = rows[y][x];
+      if (ch === keep || ch === '.') continue;
+      g.fillStyle = C.pal[ch]; g.fillRect(x0 + x, y0 + y, 1, 1);
+    }
+  };
+  put(0, 0, C.base, '');
+  if (key !== 'base' && C.frames[key]) put(C.frames[key][0], C.frames[key][1], C.frames[key][2], '_');
+  return (talkFaces[k] = cv);
+}
+
+const TK = { open: false, lines: null, i: 0, n: 0, shown: 0, t: 0, pause: 0, cb: null, raf: 0, last: 0, blink: 2, blinkT: 0, fx: '', fxT: 0, face: '', who: '' };
+const tkEl = (id) => document.getElementById(id);
+function talkLines(level, when) {
+  const S = TALK_SCRIPT[level];
+  return (S && S[when]) || [];
+}
+// The hook: play the lines for this level and moment, then call cb (also on Skip).
+function talkThen(level, when, cb) {
+  const lines = talkLines(level, when);
+  if (TK.open) talkClose(false);
+  if (!lines.length) { if (cb) cb(); return; }
+  Object.assign(TK, { open: true, lines, i: -1, cb, last: performance.now(), blink: 1.5 + Math.random() * 2 });
+  tkEl('talkTag').textContent = when === 'pre' ? `LEVEL ${level + 1} · ${LEVELS[level] ? LEVELS[level].name.toUpperCase() : ''}` : '';
+  tkEl('talk').hidden = false;
+  talkNext();
+  cancelAnimationFrame(TK.raf); TK.raf = requestAnimationFrame(talkTick);
+}
+function talkNext() {
+  TK.i++;
+  if (TK.i >= TK.lines.length) return talkClose(true);
+  const [who, text, mood, fx] = TK.lines[TK.i], C = TALK_CAST[who];
+  const box = tkEl('talkBox');
+  box.classList.toggle('right', C.side === 'right');
+  box.style.setProperty('--c', C.color);
+  tkEl('talkName').textContent = C.name;
+  tkEl('talkLine').textContent = '';
+  tkEl('talkMore').hidden = true;
+  TK.n = text.length; TK.shown = 0; TK.t = 0; TK.pause = 0.12; TK.text = text; TK.mood = mood && C.moods.includes(mood) ? mood : '';
+  TK.fx = fx || (who !== TK.who ? 'pop' : ''); TK.fxT = 0; TK.who = who; TK.face = '';
+}
+function talkClose(run) {
+  TK.open = false; cancelAnimationFrame(TK.raf);
+  tkEl('talk').hidden = true; tkEl('talkFrame').style.transform = '';
+  const cb = TK.cb; TK.cb = null; TK.lines = null;
+  if (run && cb) cb();
+}
+function talkAdvance() {
+  if (!TK.open) return;
+  if (TK.shown < TK.n) { TK.shown = TK.n; tkEl('talkLine').textContent = TK.text; tkEl('talkMore').hidden = false; return; }
+  talkNext();
+}
+function talkBlip(who) {
+  if (typeof audio === 'undefined' || !audio || !master || (typeof muted !== 'undefined' && muted)) return;
+  const C = TALK_CAST[who], f = C.pitch * (0.92 + Math.random() * 0.16);
+  try { tone(C.wave, f, f * 0.94, C.wave === 'sawtooth' ? 0.03 : 0.04, 0.05); } catch (e) { /* sound is a bonus */ }
+}
+function talkTick(now) {
+  if (!TK.open) return;
+  TK.raf = requestAnimationFrame(talkTick);
+  const dt = Math.min(0.1, (now - TK.last) / 1000); TK.last = now;
+  const who = TK.who;
+  // type the line letter by letter, with a blip on every other letter
+  if (TK.shown < TK.n) {
+    TK.pause -= dt;
+    while (TK.pause <= 0 && TK.shown < TK.n) {
+      const ch = TK.text[TK.shown++];
+      TK.pause += 1 / TALK_CPS + (TALK_PAUSE[ch] && TK.shown < TK.n ? TALK_PAUSE[ch] : 0);
+      if (ch !== ' ' && TK.shown % 2) talkBlip(who);
+    }
+    tkEl('talkLine').textContent = TK.text.slice(0, TK.shown);
+    if (TK.shown >= TK.n) tkEl('talkMore').hidden = false;
+  }
+  // face: mouth flaps while typing (shut on spaces and pauses), random blinks
+  TK.t += dt;
+  const talking = TK.shown < TK.n && TK.text[TK.shown - 1] !== ' ' && TK.pause < 0.08 + 1 / TALK_CPS;
+  const mouth = talking && Math.floor(TK.t * 9) % 2 === 0;
+  TK.blink -= dt;
+  if (TK.blink < -0.13) TK.blink = 1.8 + Math.random() * 3;
+  let key = TK.mood ? (mouth ? TK.mood + 'Open' : TK.mood) : mouth ? 'open' : TK.blink < 0 ? 'blink' : 'base';
+  if (!TALK_CAST[who].frames[key]) key = 'base';
+  if (key !== TK.face) { TK.face = key; const cv = tkEl('talkFace').getContext('2d'); cv.drawImage(talkFace(who, key), 0, 0); }
+  // portrait box: pop in on a new speaker, shake or bob for emphasis
+  TK.fxT += dt;
+  let tr = '';
+  if (TK.fx === 'pop' && TK.fxT < 0.25) tr = `translateY(${Math.round(-10 * Math.sin((TK.fxT / 0.25) * Math.PI))}px)`;
+  else if (TK.fx === 'shake' && TK.fxT < 0.5) tr = `translate(${Math.round((Math.random() * 2 - 1) * 5)}px, ${Math.round((Math.random() * 2 - 1) * 3)}px)`;
+  else if (TK.fx === 'bob' && TK.shown < TK.n) tr = `translateY(${Math.round(-5 * Math.abs(Math.sin(TK.t * 9)))}px)`;
+  tkEl('talkFrame').style.transform = tr;
+}
+tkEl('talk').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (e.target.id !== 'talkSkip') talkAdvance(); });
+tkEl('talkSkip').addEventListener('click', (e) => { e.stopPropagation(); talkClose(true); });
+// While the talk box is up it owns the keyboard (Space or Enter: next, Escape: skip); M still mutes.
+addEventListener('keydown', (e) => {
+  if (!TK.open || e.code === 'KeyM') return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  if (e.repeat) return;
+  if (e.code === 'Space' || e.code === 'Enter') talkAdvance();
+  else if (e.code === 'Escape') talkClose(true);
+}, true);
+// ===================== end of Characters and dialogue =====================
 </script>
