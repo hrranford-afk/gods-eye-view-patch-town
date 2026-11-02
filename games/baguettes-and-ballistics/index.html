@@ -2034,7 +2034,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
-  if (state.finale) { const k = ['KeyI', 'KeyO', 'KeyP'].indexOf(e.code); if (k >= 0) pickLane(k); } // level 6: battle plan left / middle / right
+  if (state.finale) { const k = ['KeyI', 'KeyO', 'KeyP'].indexOf(e.code); if (k >= 0) pickLane(k); if (e.code === 'KeyB') buildWall(); } // level 6: battle plan left / middle / right
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
 addEventListener('keyup', (e) => input.keys.delete(e.code));
@@ -2428,7 +2428,7 @@ function canPlace(x, z, team) {
   const enemyBase = state.bases[1 - team];
   // Further than any turret can reach (rockets at level 3 reach ~33), so toy boxes fall to cars, not sniping.
   if (dist2({ x, z }, enemyBase) < 36 * 36) return 'Too close to their toy box';
-  if (entities.filter((e) => e.kind === 'turret' && e.team === team && e.hp > 0).length >= 10) return 'Turret limit reached (10)';
+  if (entities.filter((e) => e.kind === 'turret' && e.type !== 'wall' && e.team === team && e.hp > 0).length >= 10) return 'Turret limit reached (10)';
   return null;
 }
 function build(type) {
@@ -3005,7 +3005,7 @@ function spotNear(x, z, team) {
   }
   return null;
 }
-function redTurrets() { return entities.filter((e) => e.kind === 'turret' && e.team === RED && e.hp > 0); }
+function redTurrets() { return entities.filter((e) => e.kind === 'turret' && e.type !== 'wall' && e.team === RED && e.hp > 0); }
 // The enemy's clock. Normally the game clock; on level 6 it runs ahead (60 s ahead in the build-up so the enemy builds straight away, 240 s ahead
 // in the war so it fights at full aggression even though state.time restarts at 0).
 const aiTime = () => state.time + (state.finale ? (state.finale.stage === 'buildup' ? 60 : 240) : 0);
@@ -3971,6 +3971,37 @@ function squadThink(u, dt) {
   if (ft && u.cool <= 0 && dist2(u, ft) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, ft, u.weapon); }
 }
 
+// ----- Sugar walls: cheap, solid, shot at like a turret (an entity of kind 'turret', type 'wall', with no gun) -----
+const WALL = { cost: 12, hp: 260, max: 6, len: 10, thick: 2.4 };
+function makeWall(team, x, z, alongX) {
+  const g = new THREE.Group();
+  part(g, 'wlBlock', () => new THREE.BoxGeometry(WALL.len, 2.6, WALL.thick), 'wlSugar', () => mat(0xfbf8ee, { roughness: 0.9 }), 0, 1.3, 0, true);
+  for (const sx of [-1, 1]) part(g, 'wlCap', () => new THREE.BoxGeometry(1.4, 0.5, WALL.thick + 0.2), `wlCap:${team}`, () => mat(COLORS[team]), sx * 4.3, 2.85, 0, false);
+  g.rotation.y = alongX ? 0 : Math.PI / 2; g.position.set(x, 0, z); scene.add(g);
+  const w = alongX ? WALL.len : WALL.thick, d = alongX ? WALL.thick : WALL.len;
+  const e = { kind: 'turret', type: 'wall', team, x, z, r: 4, high: false, level: 3, hp: WALL.hp, maxHp: WALL.hp, weapon: { range: 0, rate: 9, dmg: 0, speed: 1, color: 0, size: 0 }, cool: 9, mesh: g, pips: new THREE.Group(), burst: 0, reload: 0, shotsLeft: 0 };
+  entities.push(e);
+  obstacles.push({ x, z, w, d, h: 2.6, kind: 'wall', ref: e });
+  navDirty = true;
+  return e;
+}
+const wallsOf = (team) => entities.filter((e) => e.kind === 'turret' && e.type === 'wall' && e.team === team && e.hp > 0).length;
+function wallSpotOk(x, z, alongX, team) { // the middle and both ends must be buildable
+  const o = alongX ? [4, 0] : [0, 4];
+  return [[0, 0], o, [-o[0], -o[1]]].every(([dx, dz]) => !canPlace(x + dx, z + dz, team));
+}
+function buildWall() {
+  const p = state.player;
+  if (!state.finale || !p.alive || state.over) return;
+  if (wallsOf(BLUE) >= WALL.max) { toast(`${WALL.max} walls is the most`); sfx('no'); return; }
+  const x = p.x - Math.cos(p.heading) * 5, z = p.z - Math.sin(p.heading) * 5, alongX = Math.abs(Math.sin(p.heading)) > Math.abs(Math.cos(p.heading)); // across your path
+  if (!wallSpotOk(x, z, alongX, BLUE)) { toast('No room for a wall there: build where the circle is green'); sfx('no'); return; }
+  if (state.cereal[BLUE] < WALL.cost) { toast(`Need ${WALL.cost} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= WALL.cost;
+  makeWall(BLUE, x, z, alongX);
+  sfx('build'); toast('Sugar wall built');
+}
+
 // ----- Baguette bombers -----
 function bomberTarget(u) {
   const F = state.finale, foe = 1 - u.team, order = u.sq.order, R = rallyOf(u.team);
@@ -3985,7 +4016,7 @@ function bomberTarget(u) {
     return best;
   }
   let best = null, bd = Infinity; // attack: turrets first (bombs hit them hardest), then their toy box
-  for (const e of entities) if (live(e) && e.kind === 'turret' && e.type !== 'magnet' && dist2(e, u) < bd) { bd = dist2(e, u); best = e; }
+  for (const e of entities) if (live(e) && e.kind === 'turret' && e.type !== 'magnet' && e.type !== 'wall' && dist2(e, u) < bd) { bd = dist2(e, u); best = e; }
   return best || state.bases[foe];
 }
 function bombDrop(u) {
@@ -4057,6 +4088,15 @@ function finaleEnemy(dt) {
     return;
   }
 }
+function enemyWalls(dt) { // a sugar wall across a lane at its gate now and then (3 at most)
+  const F = state.finale;
+  F.aiWt = (F.aiWt ?? 14) - dt;
+  if (F.aiWt > 0) return;
+  F.aiWt = 9;
+  if (wallsOf(RED) >= 3 || state.cereal[RED] < WALL.cost + 60) return;
+  const row = Math.floor(Math.random() * 3), x = 46 + Math.random() * 8, z = FIN.lanes[row] + (Math.random() - 0.5) * 6;
+  if (wallSpotOk(x, z, false, RED)) { state.cereal[RED] -= WALL.cost; makeWall(RED, x, z, false); }
+}
 function aiPickLane() { // secret: usually the lane its attackers were staged at; sometimes a bluff, and it avoids the gate your rally marker covers
   const F = state.finale;
   let k = Math.random() < 0.65 ? F.redGuess : Math.floor(Math.random() * 3);
@@ -4067,7 +4107,7 @@ function aiPickLane() { // secret: usually the lane its attackers were staged at
 // ----- Phases -----
 function coverage(team) { // did `team` put a defence where the other side is attacking?
   const F = state.finale, k = F.plan[1 - team], gate = gatePos(team, phys(1 - team, k));
-  const n = entities.filter((e) => e.team === team && e.hp > 0 && (e.kind === 'turret' || (e.sq && e.sq.order === 'defend')) && dist2(e, gate) < FIN.coverR ** 2).length;
+  const n = entities.filter((e) => e.team === team && e.hp > 0 && ((e.kind === 'turret' && e.type !== 'wall') || (e.sq && e.sq.order === 'defend')) && dist2(e, gate) < FIN.coverR ** 2).length;
   F.gate[team] = gate;
   return n >= FIN.coverNeed;
 }
@@ -4125,6 +4165,7 @@ function finaleUpdate(dt) {
   }
   bombsUpdate(dt);
   finaleEnemy(dt);
+  enemyWalls(dt);
 }
 
 // ----- Presentation: the line, the kettle, the HUD and the squadron panel -----
@@ -4168,6 +4209,7 @@ function finaleUI() {
     e.preventDefault();
     if (b.dataset.buy) buySquad(BLUE, b.dataset.buy);
     else if (b.dataset.ord) cycleOrder(+b.dataset.ord);
+    else if (b.dataset.wall) buildWall();
     else if (b.dataset.rally) setRally((state.finale.rally[BLUE] + 1) % 3);
   });
 }
@@ -4207,21 +4249,22 @@ function finaleDraw(dt, time) {
   const uiOn = $('start').hidden;
   $('finHud').hidden = !uiOn; $('squadPanel').hidden = !uiOn;
   const secs = F.stage === 'buildup' ? Math.ceil(F.left) : Math.floor(state.time), mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, '0');
-  $('finTitle').textContent = F.stage === 'buildup' ? 'BUILD-UP' : 'WAR';
-  $('finTime').textContent = `${mm}:${ss}`;
-  $('finSub').textContent = F.stage === 'buildup' ? (F.left <= FIN.planAt ? 'The kettle is about to click. Pick your battle plan!' : 'Kettle boiling. Ceasefire: no crossing, no shooting') : '';
-  $('finBar').style.width = F.stage === 'buildup' ? `${(F.left / FIN.build) * 100}%` : '0%';
-  $('finHud').querySelector('.bar').style.visibility = F.stage === 'buildup' ? 'visible' : 'hidden';
+  const put = (id, v) => { const el = $(id); if (el._v !== v) { el._v = v; el.textContent = v; } }; // only touch the page when the text changes
+  put('finTitle', F.stage === 'buildup' ? 'BUILD-UP' : 'WAR');
+  put('finTime', `${mm}:${ss}`);
+  put('finSub', F.stage === 'buildup' ? (F.left <= FIN.planAt ? 'The kettle is about to click. Pick your battle plan!' : 'Kettle boiling. Ceasefire: no crossing, no shooting') : '');
+  $('finBar').style.width = F.stage === 'buildup' ? `${Math.round((F.left / FIN.build) * 200) / 2}%` : '0%';
+  $('finBar').parentNode.style.visibility = F.stage === 'buildup' ? 'visible' : 'hidden';
   const showPlan = uiOn && F.stage === 'buildup' && F.left <= FIN.planAt && !state.over;
   if ($('planBox').hidden === showPlan) $('planBox').hidden = !showPlan;
   // Squadron panel: only rewritten when something it shows changes.
   const mine = squadsOf(BLUE), canBuy = (k) => state.cereal[BLUE] >= SQUADS[k].cereal && state.clips[BLUE] >= SQUADS[k].clips;
-  const sig = `${armyOf(BLUE)}|${Object.keys(SQUADS).map((k) => +canBuy(k)).join('')}|${mine.map((q) => `${q.id}${q.order}${q.units.length}`).join(',')}|${F.rally[BLUE]}|${F.plan[BLUE]}|${showPlan}`;
+  const sig = `${wallsOf(BLUE)}|${state.cereal[BLUE] >= WALL.cost}|${armyOf(BLUE)}|${Object.keys(SQUADS).map((k) => +canBuy(k)).join('')}|${mine.map((q) => `${q.id}${q.order}${q.units.length}`).join(',')}|${F.rally[BLUE]}|${F.plan[BLUE]}|${showPlan}`;
   if (sig !== F.ui) {
     F.ui = sig;
     const buy = Object.entries(SQUADS).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.name} x${S.n}<small>${S.cereal}${S.clips ? ` + ${S.clips} clips` : ''}</small></button>`).join('');
     const rows = mine.length ? mine.map((q) => `<div class="sq"><span>${SQUADS[q.kind].name} ${q.units.length}/${q.n}</span><button data-ord="${q.id}" class="ord-${q.order}">${q.order.toUpperCase()}</button></div>`).join('') : '<div class="none">No squadrons yet. Buy one above, then tap its order.</div>';
-    $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
+    $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-wall="1">Sugar wall ${wallsOf(BLUE)}/${WALL.max}<small>${WALL.cost}, across your path</small></button><button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
     for (const b of $('planBox').querySelectorAll('button')) b.classList.toggle('cur', +b.dataset.lane === F.plan[BLUE]);
   }
 }

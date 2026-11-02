@@ -169,7 +169,7 @@ Caps at (±53, -14), (±78, 36) and (0, 36) (on the line). Cereal piles beside e
 
 ### Squadrons
 
-Panel `#squadPanel` (left, JS-made): four buy buttons, then a row per squadron (`Tanks 3/3` and one big order button you tap to cycle **ATTACK, DEFEND, RAID**), a **Rally** button (cycles the rally marker over the top, middle and bottom gates on your side) and **Peek at Red**. Army cap `ARMY_CAP` 24 per side (cars, boats, bombers; workers and turrets not counted; drones count too). All numbers in `SQUADS` and `BOMBER`:
+Panel `#squadPanel` (left, JS-made): four buy buttons, then a row per squadron (`Tanks 3/3` and one big order button you tap to cycle **ATTACK, DEFEND, RAID**), a **Sugar wall** button (12 cereal, 6 at most, across your path; key B), a **Rally** button (cycles the rally marker over the top, middle and bottom gates on your side) and **Peek at Red**. Army cap `ARMY_CAP` 24 per side (cars, boats, bombers; workers and turrets not counted; drones count too). All numbers in `SQUADS` and `BOMBER`:
 
 | Squadron | Cost | Units | Notes |
 |---|---|---|---|
@@ -198,7 +198,7 @@ In the last 10 s (`FIN.planAt`) `#planBox` shows **LEFT / MIDDLE / RIGHT** (keys
 
 ### Shared-code edits (all small, marked "level 6" in comments)
 
-`W D GW GD closed closedFat` to `let` + `setTableSize`; `buildLevel` (size, `finaleLight`, `table.visible`, `finVis`); water: `inWaterX` (z range), `bridgeLift` (off-centre channel), `waterPush`, `navBuild` (z range), `launchBoat` (position, lane centre), `boatThink` (z range, `b.patrol`, no island), `dripsUpdate` (no tap); `makeBase` (`L.bases`); `spawnWorker`, respawn, first player spawn, `drones` and the commander's spawns use `spawnPt`; `commander`/`commanderBuild` (`aiTime`, `redHome`, `armyOf`); `nearestEnemy`, `collideObstacles`, shots loop, `hurt` (ceasefire, cover, bombers); `hobBurn`, `collideMovers`, caps, cook slam, `magnetThink` (skip `e.fly`); `cookPick`, `cookUpdate`; `canPlace`; `trojan`; `enemyTricks`; `buildLevelRun`; `unitThink`; `spawnUnit` (flyers, `squadModel`); `ENEMY_TYPES` and `WEAPONS` (`sqtank`, `sqraider`, `bomber`, `bomb`); `update`, `render` (bomber pose, camera zoom and Peek, `finaleDraw`), `reset`; `loopsGroup` (no shadows on this level); `SOUNDS` (`kettle`, `kettleClick`, `horn`, `whistle`); a keydown line for I/O/P.
+`W D GW GD closed closedFat` to `let` + `setTableSize`; `canPlace` and `redTurrets` skip walls; `buildLevel` (size, `finaleLight`, `table.visible`, `finVis`); water: `inWaterX` (z range), `bridgeLift` (off-centre channel), `waterPush`, `navBuild` (z range), `launchBoat` (position, lane centre), `boatThink` (z range, `b.patrol`, no island), `dripsUpdate` (no tap); `makeBase` (`L.bases`); `spawnWorker`, respawn, first player spawn, `drones` and the commander's spawns use `spawnPt`; `commander`/`commanderBuild` (`aiTime`, `redHome`, `armyOf`); `nearestEnemy`, `collideObstacles`, shots loop, `hurt` (ceasefire, cover, bombers); `hobBurn`, `collideMovers`, caps, cook slam, `magnetThink` (skip `e.fly`); `cookPick`, `cookUpdate`; `canPlace`; `trojan`; `enemyTricks`; `buildLevelRun`; `unitThink`; `spawnUnit` (flyers, `squadModel`); `ENEMY_TYPES` and `WEAPONS` (`sqtank`, `sqraider`, `bomber`, `bomb`); `update`, `render` (bomber pose, camera zoom and Peek, `finaleDraw`), `reset`; `loopsGroup` (no shadows on this level); `SOUNDS` (`kettle`, `kettleClick`, `horn`, `whistle`); a keydown line for I/O/P.
 
 ### STAGE 2 hooks
 
@@ -214,11 +214,13 @@ In the last 10 s (`FIN.planAt`) `#planBox` shows **LEFT / MIDDLE / RIGHT** (keys
 - Squadrons: each type bought, followed Attack (tanks seen at lane z 35 then up the red arm), Raid (two red trucks killed in 45 s) and Defend (bombers chased a scout that came 14 from the rally); boats patrolled z -41 to -7 on Attack and -62 to -22 on Defend; bombers flew over the water and the cut-out and killed a red gun turret in one pass.
 - The enemy bought a bomber squadron, tanks and turrets in the build-up (visible with Peek), and kept buying through the war.
 - Levels 1 to 5 build identically (section above) and ran 20 s with no errors.
-- Budget numbers are in the last paragraph below.
+- **Budget, full war** (cheated cereal for both sides, 24 against 24, 14 turrets, 10 minutes of war, the camera parked in the bend where the fight is): draw calls (`renderer.info.render.calls`, shadow pass included) 600 to 830 with a peak of **829**. The same method on level 4 (boats, 10 turrets, enemy at its normal pace) peaked at **1,007**, so level 6 is at 0.8x level 4, well under the 1.5x budget. Geometries stay flat: 403 to 405 from minute 2 to minute 10, and the number of geometries on the GPU that are no longer in the scene (leaked) stayed at 2 or 3 the whole time. Textures flat at 14. 5 real lights.
+- Sugar walls: built across your path, refused on rings, water, the line and the other side; the enemy builds up to 3 at its gate; a wall shot to 0 hp frees its route cell.
+- Switching from level 6 to each of levels 1 to 5 and playing 15 s gives exactly the same obstacles, caps, piles, lighting, grid and table as loading that level fresh (only the three hidden level 6 panels remain in the page).
 
 ### Not done / open
 
-- **Walls** (the design says "turrets and walls"): there is no wall button on any level except the level 1 sugar-wall crates, so none was added. A `kind: 'wall'` entity would be the way.
+- Walls are the simplest thing that works: an axis-aligned sugar block (an entity of kind `'turret'`, type `'wall'`, 260 hp, no gun, `level: 3` so it is never upgraded) that blocks cars and shots. Only the Sugar wall button and key B build them (`buildWall`, `makeWall`, `WALL`). No diagonal walls.
 - Balance is a first pass, simulated only: no human has played it on an iPad. A passive player loses; a bot that buys squads and a few rocket turrets was slowly ground down; the economy (trickle 0.7) keeps armies small (usually under 10 a side), so a full 24 a side only happens when someone is rich. Tune `SQUADS` costs and `trickle` first.
 - The enemy has no boats (its arm has no water) and never uses Defend squads cleverly: they sit at a random gate.
 - Bombers can get stuck circling a target they are not quite lined up with; the slow-down on approach makes it rare.

@@ -63,7 +63,7 @@ level: win, win in under 8 minutes, win without losing a truck.
 - **Squadrons** (one thumb, one order each): **Baguette bombers** (3 flying baguettes: over water and walls, crumb bombs with splash, strong against turrets, fragile; rocket turrets counter them), **Boat flotilla** (2 gunboats in the sink), **Tank column** (3), **Raider pack** (4, hunt trucks). Orders: **Attack** (their fortress, by your chosen lane), **Defend** (your rally marker), **Raid** (their trucks). 24 units a side at most. The enemy builds squadrons too.
 - **The battle plan (CAIRN's add):** in the last 10 s of the build-up pick Left, Middle or Right. The enemy picks in secret (its attackers wait at the gate it probably uses: a tell). Attack squadrons go by the lane; a defence that covers the enemy's lane takes 25% less damage there. Reward for reading the enemy, nothing more.
 - **Stage 2 (not built):** the Baguette train boss, the Great Domino Run, the fridge door, the ending screen. The code has hooks (`state.finale.stage2`).
-- Not built from this design: walls (there is no wall button anywhere yet).
+- **Walls:** a Sugar wall button builds a solid block across your path (12 cereal, 6 at most); the enemy builds a few at its gate.
 
 **Between levels:** a short "day in the kitchen" card (morning, then lunch,
 then dinner) and a garage where stars unlock paint jobs and horns. Unlocks are
