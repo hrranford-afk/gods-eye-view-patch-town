@@ -89,8 +89,8 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
 
 ### Level format
 
-`LEVELS` is an array of 6 entries. Level 6 is a `{ name, time, soon: true }`
-stub that shows "coming soon". A playable entry holds:
+`LEVELS` is an array of 6 entries. All six are playable (level 6 is the
+finale, stage 1; see its section below). An entry holds:
 
 | Field | Meaning |
 |---|---|
@@ -116,6 +116,7 @@ stub that shows "coming soon". A playable entry holds:
 | `second`, `resources` | the second resource's name (`'batteries'`) and list. Its counter is stored in `state.clips` on every level, whatever it is called (`secondRes()`, `secondName()`) |
 | `rules.sneaky` | `{ hijackFirst, hijackEvery, layerFirst, layerEvery }` in seconds: the sneaky enemy (earlier and more hijackers, sooner domino layer, raiders with no siren) |
 | block kinds | `remote`, `battery`, `cable`, `charger`, `torch` (in `DRAWER_KINDS`); `tableTex: 'felt'` |
+| `size`, `bases`, `finale`, `camZoom`, `trickle` | level 6 only: `size: [210, 130]` is the table (every other level is 150 x 96, see `setTableSize`), `bases: [[x, z], [x, z]]` puts the toy boxes (default is x ±62, z 0), `finale: true` turns on `state.finale` and all the build-up/war code, `camZoom` pulls the camera back, `trickle` is the free cereal a second (default 0.25). `water` also takes `z0, z1` (the channel only runs between them), so the sink can be part of an arm |
 | `hob`, `oven`, `toaster` | level 5 only: `hob: { rings: [[x, z, r]], cool, warn, hot, safe, dmg, turretDmg, start }` becomes `state.hob`; `oven: { x0, x1, z0, z1, rw, rz1 }` becomes `state.ledge`; `toaster: true` shows the Toaster button. Also `tableTex: 'hob'`, block kind `pan`, `rules.rusher: { first, size, grow, max, gap }`, `boss.kind: 'toaster'` |
 
 `reset()` calls `buildLevel(LEVELS[curLevel])`, which throws away the old
@@ -133,6 +134,96 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Keep it one HTML file with no image or sound files until level 2 ships. That keeps it light on an iPad.
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
+
+## Level 6, the finale: Baguettes & Ballistics (stage 1, 2 Nov 2026)
+
+![build-up](shots/26-finale-buildup.png) ![peek](shots/26b-finale-peek-red.png) ![war](shots/27-finale-war.png) ![bombers](shots/28-bombers.png)
+
+Harry's design: a big night worktop in a **U**; two minutes of getting ready, then war. **Stage 1 is built; stage 2 (the Baguette train boss, the Great Domino Run, the fridge door, the ending screen) is not**, but the hooks are in (see the end of this section). Data is `LEVELS[5]`; the code is one block headed "Level 6, the finale" just above `// ---------- Main loop ----------`, plus small hooks in shared code (listed below).
+
+### The table-size decision (read this first)
+
+**Per-level `W` and `D`.** `W`, `D`, `GW`, `GD`, `closed` and `closedFat` are now `let`. `buildLevel` calls `setTableSize(...(L.size || [150, 96]))` first: it swaps `W`/`D`, rebuilds the two route-grid arrays when the size changes, and scales the sun's shadow box. Why this and not "fit it in the old grid": everything already reads `W` and `D` live (edges, `collideObstacles`, camera clamps, domino bounds, cook, boats), so one assignment fixes all of it, and the grid is just two byte arrays. Scaling the level down to 150 x 96 would have made it too cramped for three zones plus a ceasefire line.
+**Levels 1 to 5 are unchanged.** They ask for 150 x 96, which is what `W`/`D` already are. Checked by building each level in the old and the new `index.html` and comparing W, D, GW, GD, the count of closed route cells (both grids), every obstacle, cap, pile and base, the lighting numbers and the shadow box after 20 s of play: identical for all five.
+The level-6 table is 210 x 130 (grid 105 x 65). Area: 27,300 minus the 90 x 70 cut-out = 21,000, which is **1.46x** the normal 14,400.
+
+### The map (x right, z towards the camera)
+
+| Part | Where | What |
+|---|---|---|
+| Cut-out | block x ±45, z -65 to 5, height 10 | the solid middle of the U (an ordinary `blocks` entry, first in the list; `finaleDecor` reads it). The **kettle** stands on top |
+| Your arm, the sink | x -105 to -45, z -65 to 5 | steel draining board; water channel x -78 to -62, z to -4 (`water.z0/z1`); ruler bridge at z -28; two bottle-cap ferries (z -12 and -42); your toy box at (-92, -48) |
+| Their arm, the breadboard | x 45 to 105, z -65 to 5 | wooden board texture, bread knife, loaf towers; their toy box at (92, -48) |
+| The bend, the hob | z 5 to 65, whole width | black glass x ±45; four rings at (±26, 22) and (±26, 50), radius 8, the level 5 cycle; paperclips at (±26, 36) between them; the cook only drops pans here |
+| Ceasefire line | x = 0, z 5 to 65 | hazard strip, amber curtain, five lamp posts, a "CEASEFIRE" sign (build-up only) |
+
+Caps at (±53, -14), (±78, 36) and (0, 36) (on the line). Cereal piles beside each toy box, on the inner bank and in the bend; the bend ones refill. Start: 120 cereal, 30 clips, Racer and Tank. Base health 2500. `trickle: 0.7`. Resources `['cereal', 'clips']`, so every paperclip toy (Staple, Magnet, Catapult, Armour, rocket costs) works. No gumball, no toaster, no boss yet, no oven, no race, no raids (`rules.raidEvery` unset: squadrons replace them), no level domino runs (`buildLevelRun` returns null on this level).
+**Night look** (`finaleLight`): hemisphere 0.7 warm, sun 0.5, three warm point lights (hob, sink, breadboard) = **5 real lights**, dark brown fog far away. Not the drawer's darkness: everything is readable. `finaleLight(false)` runs on every other level and puts the sun colour back. **Camera:** `camZoom` 1.75 on this level, plus 1.2 more while you hold Peek.
+
+### Phase 1, the build-up (60 s, `FIN.build`)
+
+`state.finale = { stage: 'buildup', ceasefire: true, left, squads, plan, cover, gate, rally, redGuess, marks, stage2 }` (`finaleInit`, made in `reset`, torn down by `finaleCleanup`). `state.phase` stays `'battle'`, so every button works; the kettle is only `state.finale.stage`.
+- **Kettle** (`finaleDecor`, `finaleDraw`): shakes, its base ring glows redder, steam puffs grow, and `SOUNDS.kettle` (called from `finaleUpdate` with `kettleP` 0 to 1) is a hiss and whistle whose pitch and loudness rise, the beats getting closer together. The top HUD (`#finHud`) counts down. The last 5 s tick; at 10 s left the battle plan box opens.
+- **The ceasefire line is a wall in four places:** `lineClamp` (called at the end of `collideObstacles`: blue stays at x <= -1.2 - r/2, red at x >= +1.2 + r/2), `nearestEnemy` (nobody picks a target on the other side, so turrets, units and boats don't even try), the shots loop (a shot that reaches x = 0 is removed; side remembered in `s.side`), and `navBuild` (cells with |x| < 3.4 closed, so routes never go over it). Bombers clamp themselves (x <= -2.5 / >= 2.5). Trucks and diggers only choose piles on their own side (`sideOk`). `canPlace` refuses building on the other side (`finaleCanPlace`) and within 6 of the line and on a hob ring (this rule is level 6 only). The Trojan is refused ("No tricks until the kettle clicks"); `enemyTricks` and the cook wait for the war.
+- **The enemy builds on its side:** the commander uses `aiTime()`: the game clock plus 60 in the build-up (so it builds turrets straight away instead of its usual quiet minute) and plus 240 in the war (full aggression: upgrades, big army, turret ring). It buys no loose cars in the build-up. `finaleEnemy` buys squadrons from `AI_QUEUE` (bombers, tanks, raiders, bombers, tanks, tanks, bombers, raiders; the first it can afford; orders mostly attack, every third defend, raiders raid). The enemy's attack squadrons wait at the gate of the lane it is likely to use (`redGuess`): that is the **tell**. **Peek at Red** (hold the button in the squadron panel) swings the camera to their arm so you can see it all.
+
+### Squadrons
+
+Panel `#squadPanel` (left, JS-made): four buy buttons, then a row per squadron (`Tanks 3/3` and one big order button you tap to cycle **ATTACK, DEFEND, RAID**), a **Rally** button (cycles the rally marker over the top, middle and bottom gates on your side) and **Peek at Red**. Army cap `ARMY_CAP` 24 per side (cars, boats, bombers; workers and turrets not counted; drones count too). All numbers in `SQUADS` and `BOMBER`:
+
+| Squadron | Cost | Units | Notes |
+|---|---|---|---|
+| Bombers | 60 cereal + 15 clips | 3 `bomber` | fly (`u.fly`), 80 hp, speed 16, radius 1.5 |
+| Boats | 45 cereal | 2 gunboats (`launchBoat` with a position) | patrol the sink |
+| Tanks | 66 cereal + 12 clips | 3 `sqtank` | 200 hp, cannon |
+| Raiders | 36 cereal | 4 `sqraider` | speed 28, pop-guns |
+
+Orders (`squadThink` for ground units, `bomberThink`, boats via `b.patrol`):
+- **Attack:** go by the lane of your battle plan (`attackRoute`: out of your gate, along the lane across the bend, into their gate, then A* to their toy box), stopping to fight anything in weapon reach (boats and flyers are shot at while moving). Under the ceasefire everyone waits (`stagePoint`).
+- **Defend:** wait at the rally marker (spread round it); anything of theirs within 30 of it is chased (ground) or bombed (bombers).
+- **Raid:** hunt their trucks anywhere (`workersOf(foe, 'truck')`), then act like Attack. Bombers raid trucks too.
+- **Boats:** Attack and Raid patrol z -32 to -9 (the south end of the channel, facing the bend); Defend patrols z -58 to -34 (round your toy box).
+
+Squadron members are `kind: 'unit'` (boats `kind: 'boat'`) with `u.sq` pointing at the squadron `{ id, team, kind, order, units, n }`. `finaleUpdate` drops dead members and empty squadrons. **Shared shapes:** `squadModel(kind, team)` builds tank, raider and bomber from `sgeo`/`smat` (one geometry and one material per key, ever, through `shared()`), 4 or 5 meshes each; only the body casts shadows. Bomber crust is one canvas texture (`finTex.baguette`) with the slash marks painted on. Model parts for the sink's ferries use the same helpers.
+
+**Bombers.** Fly at height 9 (render only; `u.alt` ramps up after take-off), ignore walls and water, turn at 2.2 rad/s, slow to 62% near the target so they always get over it, and release when the bomb's landing spot (position + velocity x 0.775 s) is within 3.4 of the target: a crumb bomb (`bombs[]`, shared sphere, gravity 30) that splashes radius 5.5 for 50, x1.8 on turrets, 0.6 on toy boxes (`bombBlast`, `WEAPONS.bomb`). Attack targets the nearest turret, then the toy box. Fragile and not flat out immune: `hurt` halves bullets that hit a flyer (`e.fly && !weapon.homing`), so **rocket turrets are the counter**. A lone gun turret is killed in one pass; a toy box's gun kills the flight in about 7 s.
+
+### The battle plan
+
+In the last 10 s (`FIN.planAt`) `#planBox` shows **LEFT / MIDDLE / RIGHT** (keys I, O, P); `pickLane` stores `F.plan[BLUE]`; nothing picked means MIDDLE. Lanes are the three rows across the bend (`FIN.lanes` z = 11, 36, 60). Left and right are as that side's squadrons see them heading for the enemy, so your LEFT is the top lane and Red's LEFT is the bottom lane (`phys`, `laneZ`). The enemy picks in `aiPickLane` at the moment of war: 65% the lane its attackers were staged at, otherwise random, and it dodges the gate where your rally marker is 60% of the time. At WAR `startWar` shows the banner with both plans and draws a blue and a red stripe across the bend for 14 s. **Covered bonus** (`coverage`, `finaleCovered`): if you have at least 3 turrets or Defend-squadron members within 20 of the gate where Red comes in, everything of yours within 24 of that gate takes 25% less damage for the rest of the game (a green ring shows it). The same rule applies to Red against your lane.
+
+### Phase 2, WAR (`startWar`)
+
+`stage = 'war'`, `ceasefire = false`, **`state.time = 0`**, `navDirty`, line fades out (1.4 s, then hidden), `sfx('kettleClick')` then a horn, shake, the banner, the cook's first pan in 25 s. The normal commander, boats, hob and cook run. Enemy squadrons keep coming as it can pay. A win or loss is the ordinary end card (stars: win, under 8 minutes of war, no truck lost).
+
+### Shared-code edits (all small, marked "level 6" in comments)
+
+`W D GW GD closed closedFat` to `let` + `setTableSize`; `buildLevel` (size, `finaleLight`, `table.visible`, `finVis`); water: `inWaterX` (z range), `bridgeLift` (off-centre channel), `waterPush`, `navBuild` (z range), `launchBoat` (position, lane centre), `boatThink` (z range, `b.patrol`, no island), `dripsUpdate` (no tap); `makeBase` (`L.bases`); `spawnWorker`, respawn, first player spawn, `drones` and the commander's spawns use `spawnPt`; `commander`/`commanderBuild` (`aiTime`, `redHome`, `armyOf`); `nearestEnemy`, `collideObstacles`, shots loop, `hurt` (ceasefire, cover, bombers); `hobBurn`, `collideMovers`, caps, cook slam, `magnetThink` (skip `e.fly`); `cookPick`, `cookUpdate`; `canPlace`; `trojan`; `enemyTricks`; `buildLevelRun`; `unitThink`; `spawnUnit` (flyers, `squadModel`); `ENEMY_TYPES` and `WEAPONS` (`sqtank`, `sqraider`, `bomber`, `bomb`); `update`, `render` (bomber pose, camera zoom and Peek, `finaleDraw`), `reset`; `loopsGroup` (no shadows on this level); `SOUNDS` (`kettle`, `kettleClick`, `horn`, `whistle`); a keydown line for I/O/P.
+
+### STAGE 2 hooks
+
+- `state.finale.stage2` (null) is reserved for the train boss, the run and the fridge. `startWar` and `finaleUpdate` both have a `STAGE 2 HOOK` comment where the boss and the Great Domino Run should be scheduled.
+- `buildLevelRun` returns null on this level on purpose (`STAGE 2 HOOK`): put the Great Domino Run there or in `startWar`.
+- `finVis.fridgeAt` is a point at the north end of the cut-out for the fridge door. The Baguette train should come round the worktop edge: the arms have 60 x 70 of room each.
+- `endGame` shows the ordinary card; the ending screen replaces it for level 6.
+
+### Tested (Chromium, Playwright, by calling `update(1/60)`)
+
+- Build-up: a car driven at the line stopped at x -2; a blue and a red scout 12 apart could not see each other (`nearestEnemy` null) and a shot between them was removed; the Trojan was refused; building was refused on the other side, within 6 of the line, on a ring and on water.
+- WAR: the banner showed both plans, `state.time` restarted at 0, line hidden after the fade, navigation reopened.
+- Squadrons: each type bought, followed Attack (tanks seen at lane z 35 then up the red arm), Raid (two red trucks killed in 45 s) and Defend (bombers chased a scout that came 14 from the rally); boats patrolled z -41 to -7 on Attack and -62 to -22 on Defend; bombers flew over the water and the cut-out and killed a red gun turret in one pass.
+- The enemy bought a bomber squadron, tanks and turrets in the build-up (visible with Peek), and kept buying through the war.
+- Levels 1 to 5 build identically (section above) and ran 20 s with no errors.
+- Budget numbers are in the last paragraph below.
+
+### Not done / open
+
+- **Walls** (the design says "turrets and walls"): there is no wall button on any level except the level 1 sugar-wall crates, so none was added. A `kind: 'wall'` entity would be the way.
+- Balance is a first pass, simulated only: no human has played it on an iPad. A passive player loses; a bot that buys squads and a few rocket turrets was slowly ground down; the economy (trickle 0.7) keeps armies small (usually under 10 a side), so a full 24 a side only happens when someone is rich. Tune `SQUADS` costs and `trickle` first.
+- The enemy has no boats (its arm has no water) and never uses Defend squads cleverly: they sit at a random gate.
+- Bombers can get stuck circling a target they are not quite lined up with; the slow-down on approach makes it rare.
+- The first frame of the level recompiles shaders (point lights): a small hitch on an iPad.
+- Left/right naming is per side (see "The battle plan"); the banner always says top/middle/bottom as well.
 
 ## Level 5, Hob and oven (2 Nov 2026)
 

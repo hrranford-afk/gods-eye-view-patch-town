@@ -1249,6 +1249,7 @@ const LEVELS = [
     start: { cereal: 120, clips: 30, unlocked: ['racer', 'tank'] },
     resources: ['cereal', 'clips'],
     turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
+    trickle: 0.7,
     rules: { baseHp: 2500 },
   },
 ];
@@ -3742,7 +3743,7 @@ function finaleDecor() {
   for (const [w, d, x, z] of [[92, 1.2, 0, 5.6], [92, 1.2, 0, 64.4], [1.2, 60, -45.6, 35], [1.2, 60, 45.6, 35]]) mesh(new THREE.BoxGeometry(w, 0.7, d), chrome, x, 0.35, z).castShadow = false;
   // The cut-out: a solid block with a pale top, the kettle on it.
   const C = L.blocks[0];
-  flat(new THREE.PlaneGeometry(C[2], C[3]), mat(0x9a8a7c, { map: finTex.granite, roughness: 0.5 }), C[0], C[4] + 0.04, C[1], true);
+  flat(new THREE.PlaneGeometry(C[2], C[3]), mat(0x9a8a7c, { map: finTex.granite, roughness: 0.9 }), C[0], C[4] + 0.04, C[1], true);
   // Breadboard: a bread knife along the edge and crumbs.
   mesh(new THREE.BoxGeometry(1.7, 0.2, 16), mat(0xdfe5ea, { metalness: 0.8, roughness: 0.25 }), 102.5, 0.25, -24).castShadow = false;
   mesh(new THREE.BoxGeometry(2, 1.1, 6), mat(0x3a2414), 102.5, 0.6, -13.5).castShadow = false;
@@ -3772,7 +3773,7 @@ function finaleDecor() {
   waterTex = waterTex || waterTexture();
   waterTex.repeat.set(ww / 9, wl / 9);
   flat(new THREE.PlaneGeometry(ww + 1.6, wl), mat(0x2b6e9c, { roughness: 0.4 }), wx, 0.06, (z0 + z1) / 2, true);
-  const water = flat(new THREE.PlaneGeometry(ww, wl), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, map: waterTex, transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.15, depthWrite: false }), wx, 0.16, (z0 + z1) / 2);
+  const water = flat(new THREE.PlaneGeometry(ww, wl), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, map: waterTex, transparent: true, opacity: 0.8, roughness: 0.45, metalness: 0.05, depthWrite: false }), wx, 0.16, (z0 + z1) / 2);
   sink = { water };
   for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.7, 0.5, wl), chrome, wx + s * (ww / 2 + 0.8), 0.3, (z0 + z1) / 2).castShadow = false;
   mesh(new THREE.BoxGeometry(ww + 1.6, 0.5, 0.7), chrome, wx, 0.3, z1 + 0.6).castShadow = false;
@@ -4202,14 +4203,16 @@ function finaleDraw(dt, time) {
     m.mesh.material.opacity = Math.min(0.6, m.t / 3) * (0.7 + 0.3 * Math.sin(time * 6));
     if (m.t <= 0) { scene.remove(m.mesh); m.mesh.material.dispose(); F.marks.splice(i, 1); }
   }
-  // HUD
+  // HUD (hidden while the title card is up)
+  const uiOn = $('start').hidden;
+  $('finHud').hidden = !uiOn; $('squadPanel').hidden = !uiOn;
   const secs = F.stage === 'buildup' ? Math.ceil(F.left) : Math.floor(state.time), mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, '0');
   $('finTitle').textContent = F.stage === 'buildup' ? 'BUILD-UP' : 'WAR';
   $('finTime').textContent = `${mm}:${ss}`;
   $('finSub').textContent = F.stage === 'buildup' ? (F.left <= FIN.planAt ? 'The kettle is about to click. Pick your battle plan!' : 'Kettle boiling. Ceasefire: no crossing, no shooting') : '';
   $('finBar').style.width = F.stage === 'buildup' ? `${(F.left / FIN.build) * 100}%` : '0%';
   $('finHud').querySelector('.bar').style.visibility = F.stage === 'buildup' ? 'visible' : 'hidden';
-  const showPlan = F.stage === 'buildup' && F.left <= FIN.planAt && !state.over;
+  const showPlan = uiOn && F.stage === 'buildup' && F.left <= FIN.planAt && !state.over;
   if ($('planBox').hidden === showPlan) $('planBox').hidden = !showPlan;
   // Squadron panel: only rewritten when something it shows changes.
   const mine = squadsOf(BLUE), canBuy = (k) => state.cereal[BLUE] >= SQUADS[k].cereal && state.clips[BLUE] >= SQUADS[k].clips;
@@ -4637,7 +4640,7 @@ function update(dt) {
   // Income is what your trucks haul home, plus a trickle so nobody is ever stuck.
   // A side with no trucks gets a free one from its factory every 45 s.
   for (const team of [BLUE, RED]) {
-    state.cereal[team] += dt * 0.25;
+    state.cereal[team] += dt * (state.level.trickle ?? 0.25); // level 6 pays a bit more: a big map needs a bigger war chest
     if (workersOf(team, 'truck').length) state.freeTruck[team] = 45;
     else if ((state.freeTruck[team] -= dt) <= 0) {
       state.freeTruck[team] = 45;
@@ -4889,10 +4892,10 @@ function render(dt) {
   // Camera: high and angled, leading the way you're going. Pulls back on tall screens.
   const p = state.player;
   if (p) {
-    const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1); // level 6 pulls the camera back to read the bigger space
+    const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1) * (state.finale?.peek ? 1.2 : 1); // level 6 pulls the camera back to read the bigger space
     // Keep the view on the table: near an edge the car moves off-centre instead of the camera showing the dark beyond.
     const lead = new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35);
-    if (state.finale?.peek) { lead.x = 68; lead.z = 4; } // level 6: hold the Peek button to look at Red's side
+    if (state.finale?.peek) { lead.x = 74; lead.z = -4; } // level 6: hold the Peek button to look at Red's side
     lead.x = Math.max(-W / 2 + 30, Math.min(W / 2 - 30, lead.x));
     lead.z = Math.max(-D / 2 + 22, Math.min(D / 2 - 14, lead.z));
     camTarget.lerp(lead, 1 - Math.exp(-4 * dt));
