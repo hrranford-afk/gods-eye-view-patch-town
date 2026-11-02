@@ -81,10 +81,12 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
 .hint { position: fixed; left: max(24px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); z-index: 2; font-weight: 700; color: rgba(255, 248, 236, 0.7); pointer-events: none; }
 
 .screen {
-  position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(28, 23, 18, 0.72);
+  /* Scrolls when the card is taller than the screen (long level text on a small screen pushed PLAY off the bottom). */
+  position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; background: rgba(28, 23, 18, 0.72);
+  overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding-top: 16px; padding-bottom: 16px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.card { max-width: 700px; display: grid; gap: 14px; text-align: center; justify-items: center; }
+.card { margin: auto 0; max-width: 700px; display: grid; gap: 14px; text-align: center; justify-items: center; }
 .card h1 { font: 44px/1 var(--display); margin: 0; color: var(--gold); text-shadow: 0 4px 0 var(--ink); text-wrap: balance; }
 .card .sub { font: 14px var(--display); color: var(--paper); opacity: 0.8; letter-spacing: 0.06em; }
 .card p { margin: 0; font-size: 18px; line-height: 1.4; max-width: 46ch; }
@@ -461,7 +463,7 @@ const LEVELS = [
   { name: 'Remote-control drawer', time: 'midday', soon: true },
   {
     name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
-    blurb: 'Lunch is over and the washing-up is a battlefield. A channel of water splits the sink: wheels cannot cross it, so everything funnels over one ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 4:00 the Rubber Duck paddles in.',
+    blurb: 'Lunch is over and the washing-up is a battlefield. A channel of water splits the sink: wheels cannot cross it, so everything funnels over one ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 2:30 the Rubber Duck paddles in. While it floats, their toy box is shielded.',
     tips: [
       '<b>Water:</b> cars and trucks cannot drive into it. Cross on the ruler bridge, or on a bottle-cap ferry (drive on, ride, drive off)',
       '<b>Hover:</b> skims over water. It is the only way to the rich pile of cereal on the soap-dish island, apart from the south ferry',
@@ -496,7 +498,7 @@ const LEVELS = [
     refill: [{ x: -31, z: 0, rate: 0.35 }, { x: 31, z: 0, rate: 0.35 }, { x: 0, z: 35, rate: 0.6 }],
     start: { cereal: 40, clips: 0, unlocked: ['racer', 'tank'] },
     resources: ['cereal'],
-    rules: { baseHp: 1500, raidEvery: 100, firstRaid: 150, raidSize: [2, 3], boss: { at: 240, hp: 800, spill: 80, kind: 'duck', name: 'THE RUBBER DUCK' } },
+    rules: { baseHp: 2000, raidEvery: 100, firstRaid: 150, raidSize: [2, 3], boss: { at: 150, hp: 800, spill: 80, kind: 'duck', name: 'THE RUBBER DUCK' } },
   },
   { name: 'Hob and oven', time: 'afternoon', soon: true },
   { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },

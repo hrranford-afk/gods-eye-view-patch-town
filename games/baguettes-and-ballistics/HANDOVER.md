@@ -394,4 +394,10 @@ time, and shows a screenshot or short clip before and after.
   cap. Tested: drove on from the bank, rode across, drove off the far side.
 - `buildLevelRun` also tries spots further out along the banks (x ±30, ±38),
   so the wider water still has room for both domino runs (9 dominoes each).
+- **Tuning after Harry won the Sink in 3:16** (before the Duck even came):
+  the Duck now arrives at 2:30 (was 4:00) and toy boxes have 2,000 (was
+  1,500). An idle-player sim still loses its box at about 2:40, so the enemy
+  isn't weak; Harry starved it by killing its trucks.
+- The title screen now scrolls when the card is taller than the screen (long
+  level text pushed PLAY off the bottom of an 800×600 screen).
 
