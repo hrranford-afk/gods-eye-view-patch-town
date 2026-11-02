@@ -574,3 +574,10 @@ time, and shows a screenshot or short clip before and after.
 - The title screen now scrolls when the card is taller than the screen (long
   level text pushed PLAY off the bottom of an 800×600 screen).
 
+## Level switching memory (2 Nov 2026)
+
+`reset` now frees the old level's models (entities, caps, piles, spills,
+dominoes, run buttons, the gumball, toasters) with `disposeTree`. Switching
+levels 10 times used to climb from about 500 to 4,000+ shapes in memory; it
+now stays at about 240–370.
+

@@ -1822,20 +1822,20 @@ function setVehicle(kind) {
 
 function reset() {
   cleanupRace();
-  for (const e of entities) { if (e.mesh) scene.remove(e.mesh); if (e.pad) scene.remove(e.pad); }
+  for (const e of entities) { if (e.mesh) { scene.remove(e.mesh); disposeTree(e.mesh); } if (e.pad) { scene.remove(e.pad); disposeTree(e.pad); } } // free old models: switching levels used to pile up shapes
   for (const s of shots) scene.remove(s.mesh);
   for (const p of parts) scene.remove(p.mesh);
-  for (const o of outposts) scene.remove(o.group);
-  for (const p of [...piles, ...spills]) scene.remove(p.group);
-  for (const d of dominoes) scene.remove(d.pivot);
+  for (const o of outposts) { scene.remove(o.group); disposeTree(o.group); }
+  for (const p of [...piles, ...spills]) { scene.remove(p.group); disposeTree(p.group); }
+  for (const d of dominoes) { scene.remove(d.pivot); disposeTree(d.pivot); }
   dominoes.length = 0;
-  for (const r of state.runs || []) scene.remove(r.button);
+  for (const r of state.runs || []) { scene.remove(r.button); disposeTree(r.button); }
   if (state.bases?.[RED]?.bubble) { scene.remove(state.bases[RED].bubble); state.bases[RED].bubble = null; }
   $('banner').hidden = true; bannerTimer = 0;
-  if (gumball) { scene.remove(gumball.group); gumball = null; }
+  if (gumball) { scene.remove(gumball.group); disposeTree(gumball.group); gumball = null; }
   for (const f of flares) scene.remove(f.g);
   flares.length = 0;
-  for (const t of toasters) scene.remove(t.g);
+  for (const t of toasters) { scene.remove(t.g); disposeTree(t.g); }
   toasters.length = 0;
   for (const t of traps) scene.remove(t.mesh); for (const m of marbles) scene.remove(m.mesh);
   traps.length = marbles.length = 0;
