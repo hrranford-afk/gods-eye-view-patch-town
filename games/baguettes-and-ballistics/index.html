@@ -178,6 +178,7 @@ button.drop[disabled] { opacity: 0.45; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
 <script>
 'use strict';
 // ---------- World ----------
@@ -186,27 +187,126 @@ const BLUE = 0, RED = 1;
 const COLORS = [0x2f7df6, 0xef4136];
 const $ = (id) => document.getElementById(id);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// ---------- Graphics: the toy look (flags first; see HANDOVER.md "Graphics: the toy look") ----------
+// Every flag can be switched off from the URL (?tilt=0&round=0&ao=0&env=0&clearcoat=0&fx=0&pr=1) or in the console (GFX.tiltShift = false).
+const GFXQ = new URLSearchParams(location.search);
+const gfxFlag = (k, d) => (GFXQ.has(k) ? GFXQ.get(k) !== '0' : d);
+const GFX = {
+  tiltShift: gfxFlag('tilt', true),   // miniature look: blurred top and bottom bands (one extra full-screen pass; the scene renders into a MSAA target)
+  round: gfxFlag('round', true),      // rounded edges on box shapes (RoundedBoxGeometry, shared and cached)
+  ao: gfxFlag('ao', true),            // dark soft blob under cars, units, turrets, props and boxes
+  env: gfxFlag('env', true),          // a tiny made-in-code studio environment map: glossy plastic highlights
+  clearcoat: gfxFlag('clearcoat', true), // MeshPhysicalMaterial clearcoat on the toy bodies (cars, units, turrets)
+  fx: gfxFlag('fx', true),            // tyre dust, smoke puffs, debris, splashes, ring shimmer
+  tiltAmount: 7,                      // blur radius at the very top and bottom (screen pixels at pixel ratio 1)
+  pixelRatio: GFXQ.has('pr') ? +GFXQ.get('pr') : Math.min(window.devicePixelRatio || 1, 1.5), // an iPad is 2: 1.5 looks the same and costs 44% fewer pixels
+};
+window.GFX = GFX;
+const renderer = new THREE.WebGLRenderer({ antialias: !GFX.tiltShift, powerPreference: 'high-performance' }); // with the tilt-shift pass the scene draws into its own MSAA target
+renderer.setPixelRatio(GFX.pixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x3b2a1c);
 scene.fog = new THREE.Fog(0x3b2a1c, 90, 170);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 400);
-const hemi = new THREE.HemisphereLight(0xfff4e0, 0x5a3d26, 0.75);
+// Warm kitchen key light (the sun, with soft shadows), a cool soft fill from the other side, and a hemisphere light for the bounce.
+const KEY_COLOR = 0xffe2bc, FILL_I = 0.32;
+const hemi = new THREE.HemisphereLight(0xfff0dc, 0x5a3d26, 0.45);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+const sun = new THREE.DirectionalLight(KEY_COLOR, 1.1);
 sun.position.set(-40, 80, 30);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.35; // rounded shapes shade themselves cleanly
 Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 60, bottom: -60, near: 1, far: 200 });
 scene.add(sun);
+const fill = new THREE.DirectionalLight(0xa9c6ff, FILL_I);
+fill.position.set(60, 40, -35);
+scene.add(fill);
+
+// A tiny studio made in code (a sky-to-brown gradient, three bright softboxes), baked once into an environment map: the glossy shine on the plastic.
+let envTex = null;
+function makeEnv() {
+  const es = new THREE.Scene();
+  const sg = new THREE.SphereGeometry(40, 24, 16), cols = [], c = new THREE.Color(), top = new THREE.Color(0.62, 0.72, 0.95), mid = new THREE.Color(1, 0.86, 0.68), bot = new THREE.Color(0.22, 0.15, 0.09);
+  for (let i = 0; i < sg.attributes.position.count; i++) { const h = sg.attributes.position.getY(i) / 40; c.copy(mid).lerp(h > 0 ? top : bot, Math.pow(Math.abs(h), h > 0 ? 0.6 : 0.5)); cols.push(c.r, c.g, c.b); }
+  sg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  es.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const box = (w, h, x, y, z, k) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.93, 0.8).multiplyScalar(k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); };
+  box(26, 16, -20, 24, 14, 5); box(18, 10, 24, 20, -16, 3); box(30, 6, 0, 34, 0, 4);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const rt = pm.fromScene(es, 0.03);
+  pm.dispose();
+  es.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  return rt.texture;
+}
+try { if (GFX.env) { envTex = makeEnv(); scene.environment = envTex; } } catch (e) { envTex = null; }
+
+// Post: the scene draws into a multisampled target, then one full-screen pass blurs the top and bottom bands (tilt-shift), with a touch of colour and a soft vignette.
+const post = { on: false, rt: null, scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mat: null };
+function gfxInitPost() {
+  if (!GFX.tiltShift) return;
+  try {
+    post.mat = new THREE.ShaderMaterial({
+      depthTest: false, depthWrite: false,
+      uniforms: { tDiffuse: { value: null }, px: { value: new THREE.Vector2(1, 1) }, amount: { value: GFX.tiltAmount }, focus: { value: 0.46 }, band: { value: 0.2 }, sat: { value: 1.12 }, vig: { value: 0.28 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `precision highp float; uniform sampler2D tDiffuse; uniform vec2 px; uniform float amount, focus, band, sat, vig; varying vec2 vUv;
+        void main(){
+          vec3 col = texture2D(tDiffuse, vUv).rgb;
+          float r = smoothstep(band, band + 0.34, abs(vUv.y - focus)) * amount;
+          if (r > 0.6) {
+            float rot = 6.2831853 * fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            vec3 acc = col; float ws = 1.0;
+            for (int i = 0; i < 12; i++) {
+              float a = float(i) * 2.3999632 + rot, rr = sqrt((float(i) + 0.5) / 12.0) * r;
+              acc += texture2D(tDiffuse, vUv + vec2(cos(a), sin(a)) * rr * px).rgb; ws += 1.0;
+            }
+            col = acc / ws;
+          }
+          float l = dot(col, vec3(0.299, 0.587, 0.114));
+          col = mix(vec3(l), col, sat);
+          vec2 q = vUv - 0.5; col *= 1.0 - vig * dot(q, q) * 2.2;
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post.mat);
+    quad.frustumCulled = false;
+    post.scene.add(quad);
+    post.on = true;
+  } catch (e) { post.on = false; }
+}
+function gfxSize() {
+  if (!post.on) return;
+  const w = Math.max(1, Math.floor(innerWidth * GFX.pixelRatio)), h = Math.max(1, Math.floor(innerHeight * GFX.pixelRatio));
+  if (post.rt) post.rt.dispose();
+  const gl2 = renderer.capabilities.isWebGL2;
+  post.rt = gl2 ? new THREE.WebGLMultisampleRenderTarget(w, h, { samples: 4 }) : new THREE.WebGLRenderTarget(w, h);
+  post.rt.texture.encoding = THREE.sRGBEncoding; // the scene's shaders write sRGB straight into it; the blur pass just copies
+  post.mat.uniforms.tDiffuse.value = post.rt.texture;
+  post.mat.uniforms.px.value.set(1 / w * GFX.pixelRatio, 1 / h * GFX.pixelRatio);
+}
+function gfxRender() {
+  if (!post.on || !post.rt) { renderer.render(scene, camera); return; }
+  renderer.setRenderTarget(post.rt);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  post.mat.uniforms.amount.value = GFX.tiltShift ? GFX.tiltAmount : 0;
+  renderer.info.autoReset = false; // keep the scene's counts: the blur pass is a second render() call
+  renderer.render(post.scene, post.cam);
+  renderer.info.autoReset = true;
+}
+gfxInitPost();
 
 let meshParent = scene; // where mesh() puts things by default: the level's group while a level is being built
-const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.05, ...extra });
+const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.46, metalness: 0, envMapIntensity: 0.25, ...extra });
+// Glossy toy plastic for bodies: clearcoat where it is cheap (few meshes), otherwise just low roughness.
+const toy = (c, extra = {}) => GFX.clearcoat ? new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.4, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.14, envMapIntensity: 0.5, ...extra }) : mat(c, { roughness: 0.3, ...extra });
 // Shapes and colours made once and shared (shots, sparks, cereal loops): fresh ones each time ran iPads out of memory.
 const SHARED = new Map();
 function shared(key, make) { let v = SHARED.get(key); if (!v) { v = make(); if (v.userData) v.userData.shared = true; SHARED.set(key, v); } return v; }
@@ -506,9 +606,11 @@ function makeDarkRig() {
   return { group, spot, blue: point(0x6fa4ff, 1.0, 40), red: point(0xff5a4a, 1.0, 40), torch: point(0xffe9b0, 1.2, 34), flare: point(0xffb060, 0, 70) };
 }
 function setLighting(dark) {
-  hemi.color.setHex(dark ? 0x7a90e0 : 0xfff4e0); hemi.groundColor.setHex(dark ? 0x1a2248 : 0x5a3d26);
-  hemi.intensity = dark ? 0.26 : 0.75;
-  sun.intensity = dark ? 0.1 : 0.85;
+  hemi.color.setHex(dark ? 0x7a90e0 : 0xfff0dc); hemi.groundColor.setHex(dark ? 0x1a2248 : 0x5a3d26);
+  hemi.intensity = dark ? 0.26 : 0.45;
+  sun.intensity = dark ? 0.1 : 1.1;
+  fill.intensity = dark ? 0 : FILL_I;
+  scene.environment = dark ? null : envTex; renderer.toneMappingExposure = dark ? 1.0 : 0.95;
   const bg = dark ? 0x04060e : 0x3b2a1c;
   scene.background.setHex(bg); scene.fog.color.setHex(bg);
   scene.fog.near = dark ? 80 : 90; scene.fog.far = dark ? 150 : 170;
@@ -3784,8 +3886,9 @@ function finaleTextures() {
 // Night in the kitchen: dim and warm, still readable. Three warm point lights (hob, sink, breadboard) with the hemisphere and the sun make five real lights.
 function finaleLight(on) {
   if (finRig) scene.remove(finRig);
-  sun.color.setHex(0xffffff);
+  sun.color.setHex(KEY_COLOR);
   if (!on) return;
+  fill.intensity = 0.14;
   hemi.color.setHex(0xffcb94); hemi.groundColor.setHex(0x2e1c12); hemi.intensity = 0.7;
   sun.color.setHex(0xffd9a8); sun.intensity = 0.5;
   scene.background.setHex(0x120d0a); scene.fog.color.setHex(0x120d0a); scene.fog.near = 260; scene.fog.far = 640; // (stage 3: the table is 346 x 216)
@@ -5953,11 +6056,12 @@ function render(dt) {
   mixArrowDraw();
   if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
   if (state.level?.dark) darkUpdate(dt);
-  renderer.render(scene, camera);
+  gfxRender();
 }
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
+  gfxSize();
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 }
