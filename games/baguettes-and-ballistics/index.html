@@ -550,6 +550,11 @@ function darkUpdate(dt) {
     if (isLit(e)) e.seenT = t;
     e.mesh.visible = t - (e.seenT ?? -9) < 0.45 || (e.flashT || 0) > t; // a shot's muzzle flash gives them away for a moment
   }
+  const B = state.boss;
+  if (B?.type === 'rcar' && B.hp > 0) { // the Remote Car: only its blinking lights show until it is lit (or fires)
+    if (isLit(B)) B.seenT = t;
+    B.body.visible = t - (B.seenT ?? -9) < 0.45 || (B.flashT || 0) > t;
+  }
   // Real lights: the headlight, both toy boxes, the torch.
   rig.spot.intensity = p.alive ? 2.6 : 0;
   rig.spot.position.set(p.x, 2.6, p.z);
@@ -716,7 +721,7 @@ const LEVELS = [
     turretClips: { laser: 8 },                                          // a laser turret costs 35 cereal + 8 batteries
     vehicleCosts: { jet: { c: 20, p: 14 } },                            // the Jet Bike needs batteries
     // The enemy is sneaky here: hijackers come earlier and more often, dominoes sooner, and raiders creep in without a siren.
-    rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3], sneaky: { hijackFirst: 70, hijackEvery: 60, layerFirst: 130, layerEvery: 110 } },
+    rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3], boss: { at: 180, hp: 1000, spill: 90, kind: 'rcar', name: 'THE REMOTE CAR' }, sneaky: { hijackFirst: 70, hijackEvery: 60, layerFirst: 130, layerEvery: 110 } },
   },
   {
     name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
@@ -843,6 +848,8 @@ const WEAPONS = {
   // Sink level: the gunboat's little gun, the sponge raft's pop-gun, and the Rubber Duck's big slow bubbles (splash on pop).
   boatgun: { vsBase: 0.3, dmg: 7, rate: 0.34, range: 20, speed: 55, color: 0xd6efff, size: 0.4 },
   raftgun: { vsBase: 0.3, dmg: 6, rate: 0.4, range: 18, speed: 50, color: 0xffe9a8, size: 0.4 },
+  // Drawer level: the Remote Car's sniper shot (red tracer, long and fast).
+  snipe: { vsBase: 0.3, dmg: 20, rate: 1.3, range: 46, speed: 75, color: 0xff3b30, size: 0.5 },
   bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
 };
 // Boats stay on water cells. The gunboat is a soap-dish speedboat; the sponge raft (the enemy's) is slower and tougher.
@@ -994,6 +1001,22 @@ function buildModel(kind, team, scale = 1) {
     mesh(new THREE.ConeGeometry(1.4, 2.8, 10), yel, -5.4, 4.8, 0, g).rotation.z = 0.9;
     const ring = mesh(new THREE.TorusGeometry(5.4, 0.35, 6, 28), mat(0xffffff, { transparent: true, opacity: 0.55 }), 0, 0.5, 0, g); // ripple round the waterline
     ring.rotation.x = Math.PI / 2; ring.scale.set(1.2, 0.95, 1); ring.castShadow = false;
+  } else if (kind === 'rcar') {
+    // The Remote Car: a fast orange toy RC buggy with big knobbly wheels, a tall aerial, and lights that blink (they stay visible in the dark
+    // even when the body is hidden). Forward is +x. 'body' is hidden outside light; 'lights' never is.
+    const body = new THREE.Group(); body.name = 'body'; g.add(body);
+    mesh(new THREE.BoxGeometry(6, 1.1, 3.2), mat(0xff5a1f, { roughness: 0.3 }), 0, 1.5, 0, body);
+    mesh(new THREE.BoxGeometry(2.4, 0.9, 2.4), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.15 }), -0.4, 2.4, 0, body);
+    mesh(new THREE.BoxGeometry(0.6, 0.2, 3.8), mat(0x1c1712), -3.1, 2.7, 0, body);           // spoiler
+    mesh(new THREE.BoxGeometry(2, 0.4, 3.4), mat(0xffc23d), 2.3, 1.95, 0, body);              // yellow bonnet stripe
+    for (const [x, z] of [[2.1, 1.9], [2.1, -1.9], [-2.1, 1.9], [-2.1, -1.9]]) wheel(body, x, z, 1.15, 0.9);
+    mesh(new THREE.CylinderGeometry(0.1, 0.1, 6, 6), mat(0xc9ccd2, { metalness: 0.6 }), -2.6, 5.4, 0.9, body); // the aerial
+    const lights = new THREE.Group(); lights.name = 'lights'; g.add(lights);
+    g.userData.tip = lamp(lights, 0xff3030, -2.6, 8.5, 0.9, 0.4);
+    g.userData.blinkA = lamp(lights, 0x3d8bff, 0.2, 3.2, 1.0, 0.45);
+    g.userData.blinkB = lamp(lights, 0xff3030, 0.2, 3.2, -1.0, 0.45);
+    for (const z of [-0.9, 0.9]) lamp(lights, 0xfff2c0, 3.1, 1.6, z, 0.3);
+    lightPool(lights, 0xff4a3a, 14, 14, 0, 0, 0.4);
   } else if (kind === 'digger') {
     for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(2.6, 0.7, 0.6), mat(0x2b2b2b), 0, 0.35, z, g);
     mesh(new THREE.BoxGeometry(2, 1, 1.8), mat(0xffc23d), -0.2, 1.2, 0, g);
@@ -1500,6 +1523,7 @@ const SOUNDS = {
   scrape: () => noise('bandpass', 500, 300, 0.12, 0.18, 0, 2), // an eraser sliding
   plip: () => { tone('sine', 1500, 480, 0.2, 0.11); tone('sine', 2400, 900, 0.07, 0.07, 0.04); noise('bandpass', 2600, 1200, 0.06, 0.09, 0.02, 2); }, // a drip lands in the sink
   quack: () => [0, 0.2].forEach((d) => { tone('sawtooth', 520, 330, 0.12, 0.14, d); tone('square', 262, 165, 0.06, 0.14, d); }), // the Rubber Duck
+  snipe: () => { tone('square', 1500, 140, 0.07, 0.16); noise('highpass', 4000, 3000, 0.08, 0.05); }, // the Remote Car's zap
   flare: () => { noise('highpass', 3000, 6500, 0.12, 0.4); tone('sawtooth', 300, 1500, 0.05, 0.45); tone('sine', 1800, 700, 0.04, 0.3, 0.3); }, // a flare whooshes up
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
 };
@@ -1637,7 +1661,7 @@ function fire(from, target, weapon, angle) {
   } else
   shots.push({ x: from.x + ox, z: from.z + oz, y, vx: Math.cos(a) * weapon.speed, vz: Math.sin(a) * weapon.speed, team: from.team, weapon, target, life: weapon.life || weapon.range / weapon.speed * 1.3, mesh: m });
   if (state.time - lastShotSound > 0.06 && dist2(from, state.player) < 900) { sfx(weaponName(weapon)); lastShotSound = state.time; }
-  if (from.team === RED && (from.kind === 'unit' || from.kind === 'worker')) from.flashT = state.time + (from.sneak ? 0.25 : 0.7); // drawer level: firing gives you away (sneaky ones only for a blink)
+  if (from.team === RED && (from.kind === 'unit' || from.kind === 'worker' || from.kind === 'boss')) from.flashT = state.time + (from.sneak ? 0.25 : 0.7); // drawer level: firing gives you away (sneaky ones only for a blink)
 }
 
 // Shared shapes and colours for shots and sparks, made once: making new ones for every shot ran iPads out of memory.
@@ -1702,12 +1726,16 @@ function hurt(e, dmg, byTeam, weapon) {
       state.cereal[BLUE] += spill;
       for (const c of LOOP_COLORS) burst(e.x, e.z, c, 6, 14, 3);
       sfx('quack'); toast(`The Rubber Duck squeaks and sinks! +${spill} cereal`);
+    } else if (e.type === 'rcar') {
+      makeSpill(e.x, e.z, spill, 90); state.clips[BLUE] += 10; // its batteries fall out
+      for (const c of [0xff5a1f, 0xffc23d, 0x3d8bff]) burst(e.x, e.z, c, 12, 14, 2);
+      toast(`The Remote Car crashed! ${spill} cereal spilled, and you found 10 batteries`);
     } else {
       makeSpill(e.x, e.z, spill, 90);
       toast(`The Stapler is jammed! ${spill} cereal spilled`);
     }
     $('bossbar').hidden = true;
-    bossShield(false); banner(e.type === 'duck' ? 'DUCK SUNK!' : 'STAPLER JAMMED!', 'Their shield is down: go and smash their toy box');
+    bossShield(false); banner(e.type === 'duck' ? 'DUCK SUNK!' : e.type === 'rcar' ? 'REMOTE CAR CRASHED!' : 'STAPLER JAMMED!', 'Their shield is down: go and smash their toy box');
   }
   if (e.kind === 'boat') burst(e.x, e.z, 0x9fe0ff, 14, 9, 1); // sinks in a splash
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
@@ -2640,6 +2668,7 @@ function bossShield(on) {
 function spawnBoss() {
   const B = state.level.rules.boss;
   if (B.kind === 'duck') return spawnDuck();
+  if (B.kind === 'rcar') return spawnRcar();
   const boss = {
     kind: 'boss', team: RED, x: 56, z: 0, vx: 0, vz: 0, heading: Math.PI, r: 4.4, hp: B.hp, maxHp: B.hp, armor: 4,
     fat: true, mesh: buildModel('stapler', RED, 1.2), think: 0, snap: 0, snapCool: 0, cool: 0, prey: null,
@@ -2687,9 +2716,52 @@ function duckThink(b, dt) {
     sfx('bubble');
   }
 }
+// The Remote Car (level 3 boss): a fast RC buggy. It circles your toy box in an arc on the table side, keeps its distance and snipes
+// (turrets first, then you, then trucks). If you get close it bolts. In the dark only its blinking lights show until something lights it.
+const RC_STATS = { speed: 23, accel: 70, turn: 4.6, grip: 8 };
+function spawnRcar() {
+  const B = state.level.rules.boss;
+  const boss = {
+    kind: 'boss', type: 'rcar', team: RED, x: 52, z: 0, vx: 0, vz: 0, heading: Math.PI, r: 2.7, hp: B.hp, maxHp: B.hp, armor: 1,
+    mesh: buildModel('rcar', RED, 1.1), think: 0, cool: 2.5, dir: 1, ang: 0, rad: 32, flipT: 6, prey: null, weapon: WEAPONS.snipe,
+  };
+  boss.body = boss.mesh.getObjectByName('body');
+  Object.assign(boss, { tip: boss.mesh.userData.tip, blinkA: boss.mesh.userData.blinkA, blinkB: boss.mesh.userData.blinkB });
+  entities.push(boss);
+  state.boss = boss;
+  $('bossbar').hidden = false; $('bossName').textContent = B.name;
+  toast('The Remote Car is out! It snipes from the dark'); sfx('raid');
+  bossShield(true); banner('THE REMOTE CAR', 'It races round your toy box and snipes. Light it up with a flare and hit it with lasers. Their toy box has a shield until it crashes!');
+}
+function rcThink(b, dt) {
+  b.cool -= dt; b.think -= dt; b.flipT -= dt;
+  const home = state.bases[BLUE], p = state.player, low = b.hp < b.maxHp * 0.5;
+  if (b.flipT <= 0) { b.dir = -b.dir; b.flipT = 4 + Math.random() * 5; b.rad = 27 + Math.random() * 9; }
+  // Follow an arc round your toy box, on the table side. It turns round at the ends of the arc, and runs the other way from your car.
+  let a = Math.atan2(b.z - home.z, b.x - home.x);
+  if (a > 1.7 && b.dir > 0 || a < -1.7 && b.dir < 0) b.dir = -b.dir;
+  if (p.alive && dist2(b, p) < 17 * 17) b.dir = (-Math.sin(a) * (p.x - b.x) + Math.cos(a) * (p.z - b.z)) > 0 ? -1 : 1;
+  a += b.dir * 0.7;
+  let gx = home.x + Math.cos(a) * b.rad, gz = home.z + Math.sin(a) * b.rad * 1.05;
+  gx = Math.max(-W / 2 + 8, Math.min(W / 2 - 8, gx)); gz = Math.max(-D / 2 + 8, Math.min(D / 2 - 8, gz));
+  steer(b, gx, gz, 0, dt, RC_STATS);
+  if (b.think <= 0) {
+    b.think = 0.4;
+    const bonus = (e) => (e.kind === 'turret' ? 500 : e.kind === 'player' ? 250 : 0);
+    b.prey = entities.filter((e) => e.team === BLUE && e.hp > 0 && (e.kind === 'turret' || e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && dist2(b, e) < b.weapon.range ** 2)
+      .sort((u, v) => dist2(b, u) - bonus(u) - (dist2(b, v) - bonus(v)))[0] || null;
+  }
+  const t = b.prey && b.prey.hp > 0 && !(b.prey.kind === 'player' && !b.prey.alive) ? b.prey : null;
+  if (t && b.cool <= 0) {
+    b.cool = b.weapon.rate * (low ? 0.6 : 1);
+    const k = Math.hypot(t.x - b.x, t.z - b.z) / b.weapon.speed; // lead the shot a little
+    fire(b, t, b.weapon, Math.atan2(t.z + (t.vz || 0) * k * 0.8 - b.z, t.x + (t.vx || 0) * k * 0.8 - b.x));
+  }
+}
 // Heads for your nearest turret and snaps it shut on contact; with none left it chews the toy box.
 function bossThink(b, dt) {
   if (b.type === 'duck') return duckThink(b, dt);
+  if (b.type === 'rcar') return rcThink(b, dt);
   b.think -= dt; b.snap = Math.max(0, b.snap - dt); b.snapCool -= dt; b.cool -= dt;
   if (b.think <= 0) {
     b.think = 0.5;
@@ -2944,6 +3016,7 @@ function render(dt) {
       const wake = e.mesh.getObjectByName('wake');
       if (wake) wake.scale.set(0.2 + Math.hypot(e.vx, e.vz) / 8, 1, 1);
     }
+    if (e.type === 'rcar') { const k = Math.sin(time * 13) > 0; e.blinkA.visible = k; e.blinkB.visible = !k; e.tip.visible = Math.sin(time * 5) > -0.3; }
     if (e.kind === 'boss' && e.lid) e.lid.rotation.z = e.snap > 0 ? 0.9 * Math.max(0, 1 - e.snap * 3.5) : 0.65 + Math.sin(time * 3) * 0.15; // snaps shut, then creaks open
     if (e.role === 'digger') { const arm = e.mesh.getObjectByName('arm'); if (arm) arm.rotation.z = e.digging ? Math.sin(time * 4) * 0.45 : 0.2; }
     if (e.role === 'truck') {
