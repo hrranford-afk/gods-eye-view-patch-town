@@ -114,13 +114,36 @@ button.drop { width: 104px; height: 104px; border-radius: 50%; font: 20px var(--
 button.drop small { color: var(--ink); }
 button.drop[disabled] { opacity: 0.45; }
 .gateArrow { position: fixed; z-index: 3; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 26px solid #ffc23d; filter: drop-shadow(0 2px 0 #1c1712); pointer-events: none; }
+/* Loadout Race: the tool slots, the intro card, the loadout card; buttons you did not win are hidden (.off) */
+button.off, .row.off { display: none !important; }
+.slots { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 40px; }
+.slots i { font-style: normal; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 22px; background: var(--glass); border: 2px solid rgba(255, 248, 236, 0.4); }
+.slots i.full { border-color: var(--gold); background: rgba(255, 194, 61, 0.28); }
+.slots i.new { animation: pop 0.5s ease-out; }
+.slots .lost { font: 13px var(--display); color: #ff8a80; text-shadow: 0 2px 0 var(--ink); margin-left: 6px; animation: fade 3.2s forwards; }
+@keyframes pop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+@keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+.chips span { display: grid; justify-items: center; gap: 2px; width: 84px; padding: 6px 4px; border-radius: 12px; background: var(--glass); font: 700 12px var(--body); }
+.chips span em { font-style: normal; font-size: 28px; }
+.card.wide { max-width: 760px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; width: min(740px, 94vw); }
+.tile { display: flex; gap: 12px; align-items: center; text-align: left; padding: 8px 12px; border-radius: 16px; background: var(--glass); border: 3px solid rgba(255, 248, 236, 0.3); min-height: 62px; }
+.tile.won { border-color: var(--blue); }
+.tile.free { border-color: var(--gold); background: rgba(255, 194, 61, 0.25); }
+.tile em { font-style: normal; font-size: 38px; width: 50px; text-align: center; flex: none; }
+.tile b { font: 17px var(--display); display: block; }
+.tile b u { text-decoration: none; font: 11px var(--display); color: var(--gold); margin-left: 6px; letter-spacing: 0.06em; }
+.tile span { font-size: 15px; line-height: 1.25; display: block; }
+.card .foe { font-size: 15px; opacity: 0.9; max-width: 60ch; }
+@media (max-width: 700px) { .tiles { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .garage { max-width: calc(100vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); } .card h1 { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 
 <div class="hud">
   <div class="basebar blue"><b>YOUR TOY BOX <span class="pct" id="pctBlue"></span></b><div class="bar"><i id="hpBlue"></i></div><small class="eco" id="ecoBlue"></small></div>
-  <div class="mid"><div class="res"><div class="cereal" id="cereal">0</div><div class="cereal clips" id="clipsHud" hidden>0 paperclips</div></div><div class="pips" id="pips"></div><div class="raceHud" id="raceHud" hidden><div class="line" id="raceLine"></div><button id="bSkip">Skip race</button></div><div class="toast" id="toast"></div></div>
+  <div class="mid"><div class="res"><div class="cereal" id="cereal">0</div><div class="cereal clips" id="clipsHud" hidden>0 paperclips</div></div><div class="pips" id="pips"></div><div class="raceHud" id="raceHud" hidden><div class="line" id="raceLine"></div><div class="slots" id="slots"></div><button id="bSkip">Skip race</button></div><div class="toast" id="toast"></div></div>
   <div class="basebar red"><b>ENEMY TOY BOX <span class="pct" id="pctRed"></span></b><div class="bar"><i id="hpRed"></i></div><small class="eco" id="ecoRed"></small></div>
 </div>
 <div class="banner" id="banner" hidden></div>
@@ -136,7 +159,6 @@ button.drop[disabled] { opacity: 0.45; }
   <div class="row">
     <button id="bDomino">Domino<small>4</small></button>
     <button id="bTrojan">Trojan<small>30</small></button>
-    <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button id="bBoat" hidden>Boat<small>30</small></button>
     <button id="bToaster" hidden>Toaster<small id="toasterCost">30</small></button>
   </div>
@@ -159,6 +181,7 @@ button.drop[disabled] { opacity: 0.45; }
   <div class="row">
     <button id="bGun">Gun<small id="gunCost">25</small></button>
     <button id="bRocket">Rocket<small id="rocketCost">40</small></button>
+    <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button class="fire" id="bFire">FIRE</button>
   </div>
 </div>
@@ -170,6 +193,24 @@ button.drop[disabled] { opacity: 0.45; }
     <p id="lvlBlurb"></p>
     <ul id="lvlTips"></ul>
     <button class="go" id="play">PLAY</button>
+  </div>
+</div>
+<div class="screen" id="lrIntro" hidden>
+  <div class="card">
+    <p class="sub" id="lrLvl"></p>
+    <h1>LOADOUT RACE</h1>
+    <p>Race the 3 red cars. Drive through a <b>token</b> to win that tool. You can carry <b>4</b>: a 5th swaps out your oldest. Only the tools you win show up in the battle. Finish high for bonus cereal.</p>
+    <div class="chips" id="lrChips"></div>
+    <div class="two"><button class="go" id="lrGo">GO!</button><button class="go alt" id="lrSkip">Skip race<small>use a ready-made loadout</small></button></div>
+  </div>
+</div>
+<div class="screen" id="lrCard" hidden>
+  <div class="card wide">
+    <h1>YOUR LOADOUT</h1>
+    <p class="sub" id="lrRes"></p>
+    <div class="tiles" id="lrTiles"></div>
+    <p class="foe" id="lrFoe"></p>
+    <button class="go" id="lrStart">START</button>
   </div>
 </div>
 <div class="screen" id="end" hidden>
@@ -460,7 +501,9 @@ function sinkDecor() {
 // The scene is nearly black. A few real lights (your headlight, both toy boxes, the torch, the latest flare) plus fake
 // ones (flat additive "pools" on the felt, glowing lamps) show the way. Enemy cars and trucks are hidden unless one of
 // your lights reaches them (darkUpdate). Everything here is made from shared shapes; nothing is built per frame.
-const darkNow = () => !!LEVELS[curLevel].dark;
+let stageL = null; // the loadout race's stand-in level while a race is on (null otherwise)
+const curL = () => stageL || LEVELS[curLevel];
+const darkNow = () => !!curL().dark;
 const glowTex = () => shared('glowTex', () => {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -1598,7 +1641,7 @@ const parts = [];
 const outposts = [];
 
 function makeBase(team) {
-  const [x, bz] = LEVELS[curLevel].bases?.[team] || [team === BLUE ? -62 : 62, 0]; // level 6 puts the toy boxes at the tips of the U
+  const [x, bz] = curL().bases?.[team] || [team === BLUE ? -62 : 62, 0]; // level 6 puts the toy boxes at the tips of the U
   const g = new THREE.Group();
   mesh(new THREE.BoxGeometry(12, 7, 14), mat(COLORS[team]), 0, 3.5, 0, g);
   mesh(new THREE.BoxGeometry(12.6, 1.2, 14.6), mat(0xfff8ec), 0, 7.2, 0, g);
@@ -1611,7 +1654,7 @@ function makeBase(team) {
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, bz);
   pad.rotation.x = -Math.PI / 2;
-  const baseHp = LEVELS[curLevel].rules.baseHp || 1200;
+  const baseHp = curL().rules.baseHp || 1200;
   const base = { kind: 'base', team, x, z: bz, r: 7.5, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
   obstacles.push({ x, z: bz, w: 12, d: 14, h: 7, kind: 'base' });
   entities.push(base);
@@ -2025,7 +2068,9 @@ function reset() {
   traps.length = marbles.length = 0;
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
-  const L = LEVELS[curLevel];
+  const L0 = LEVELS[curLevel];
+  stageL = !pendingLoad && !L0.race ? stageLevel(L0, curLevel) : null; // levels 2 to 6 start with a Loadout Race on a stand-in level
+  const L = stageL || L0;
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
@@ -2038,7 +2083,8 @@ function reset() {
   state.peas = [L.start.peas | 0, L.start.peas | 0]; state.batts = [L.start.batts | 0, L.start.batts | 0]; // level 6 extra stocks (unused elsewhere)
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
-  { const blueRun = buildLevelRun(BLUE); state.runs = [blueRun, blueRun ? buildLevelRun(RED, blueRun) : buildLevelRun(RED)].filter(Boolean); }
+  if (stageL) state.runs = [];
+  else { const blueRun = buildLevelRun(BLUE); state.runs = [blueRun, blueRun ? buildLevelRun(RED, blueRun) : buildLevelRun(RED)].filter(Boolean); }
   if (L.rules.sneaky) { state.nextHijack = L.rules.sneaky.hijackFirst; state.nextLayer = L.rules.sneaky.layerFirst; }
   Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
   $('bUse').hidden = true;
@@ -2050,6 +2096,9 @@ function reset() {
   if (state.finale) finaleBegin();
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
+  state.load = state.aiLoad = null; state.freeUp = 0;
+  if (pendingLoad) { applyLoad(pendingLoad); pendingLoad = null; }
+  applyBar();
   if (L.race) startRace(L.race);
   $('pips').innerHTML = outposts.map(() => '<span></span>').join('');
 }
@@ -2085,6 +2134,8 @@ addEventListener('pointercancel', endStick);
 addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (state.phase && state.phase !== 'battle') { if (e.code === 'KeyZ') dropCrate(state.player); return; } // during the race: drive, and Z drops the box you carry
+  const kt = KEY_TOOL[e.code];
+  if (kt && !(state.finale && e.code === 'KeyB') && !toolOn(kt)) return; // a tool you did not win has no key either
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
   if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
@@ -3005,11 +3056,12 @@ function levelUp(t) {
 function upgrade() {
   const t = nearOwnTurret();
   if (!t || !state.player.alive) { toast('Drive next to your turret'); sfx('no'); return; }
-  const cost = upgradeCost(t);
+  const free = state.freeUp > 0, cost = free ? 0 : upgradeCost(t); // 1st place in the Loadout Race wins one free Upgrade
   if (state.cereal[BLUE] < cost) { toast(`Need ${cost} cereal`); sfx('no'); return; }
   state.cereal[BLUE] -= cost;
   levelUp(t);
-  sfx('build'); toast(`Turret level ${t.level}`);
+  if (free) state.freeUp--;
+  sfx('build'); toast(`Turret level ${t.level}${free ? ' (free upgrade)' : ''}`);
 }
 function drones() {
   if (state.over) return;
@@ -3098,19 +3150,19 @@ function commanderBuild(ramp) {
   else if (homeCount < homeWanted) spot = spotNear(...redHome()[homeCount % 3], RED);
   if (spot) {
     if (cereal[RED] < 25) return true; // saving up: don't spend on cars
-    let type = Math.random() < 0.6 ? 'gun' : 'rocket';
-    if (state.level.turretClips?.laser && Math.random() < 0.45) type = 'laser'; // the drawer enemy likes lasers
+    let type = Math.random() < 0.6 || !aiHas('rocket') ? 'gun' : 'rocket';
+    if (state.level.turretClips?.laser && aiHas('laser') && Math.random() < 0.45) type = 'laser'; // the drawer enemy likes lasers
     const need = state.level.turretClips?.[type] || 0;
     if (need > state.clips[RED]) type = 'gun'; // no paperclips for a rocket yet
     else state.clips[RED] -= need;
     cereal[RED] -= 25;
     const t = makeTurret(type, RED, spot[0], spot[1]);
-    if (ramp > 0.7) levelUp(t);
+    if (ramp > 0.7 && aiHas('upgrade')) levelUp(t);
     if (dist2(t, state.player) < 40 * 40) toast('They built a turret!');
     return false;
   }
   const weak = mine.filter((t) => t.level < 3).sort((x, y) => x.level - y.level)[0];
-  if (weak && T > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
+  if (weak && aiHas('upgrade') && T > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
     cereal[RED] -= 20 + weak.level * 15;
     levelUp(weak);
   }
@@ -3127,7 +3179,7 @@ function commander(dt) {
   if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
   // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from (it saves up for it first).
-  if (state.level.toaster && !state.finale && T > 40 && !toasters.some((t) => t.team === RED)) { // (level 6 has ready-made toasters instead)
+  if (state.level.toaster && !state.finale && aiHas('toaster') && T > 40 && !toasters.some((t) => t.team === RED)) { // (level 6 has ready-made toasters instead)
     const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
     if (spot && state.cereal[RED] >= TOASTER.cost) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
     else if (spot && state.time < 150) return;
@@ -3199,7 +3251,7 @@ function enemyTricks() {
     for (const c of cars) { if (w >= BUTTON_WEIGHT) break; if (!crew.includes(c)) { crew.push(c); w += weightOf(c); } }
     if (w >= BUTTON_WEIGHT) for (const c of crew) c.presser = run;
   }
-  if (state.time >= state.nextLayer && state.cereal[RED] >= 40) {
+  if (state.time >= state.nextLayer && aiHas('domino') && state.cereal[RED] >= 40) {
     const plan = planDominoRun();
     if (plan) {
       state.cereal[RED] -= 40; state.nextLayer = state.time + (state.level.rules.sneaky?.layerEvery || 150);
@@ -3207,7 +3259,7 @@ function enemyTricks() {
       toast('Their builder is lining up dominoes at your toy box!'); sfx('raid');
     } else state.nextLayer = state.time + 20;
   }
-  if (state.time >= state.nextHijack && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').some((t) => !t.trojan)) {
+  if (state.time >= state.nextHijack && aiHas('trojan') && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').some((t) => !t.trojan)) {
     const sneaky = state.level.rules.sneaky;
     state.cereal[RED] -= 25; state.nextHijack = state.time + (sneaky?.hijackEvery || 120);
     (state.finale ? spawnUnit('hijacker', RED, ...spawnPt(RED, 20)) : spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20)).sneak = !!sneaky;
@@ -4280,7 +4332,7 @@ function finaleEnemy(dt) {
   // The next squadron in the queue it can afford (no paperclips for bombers yet? it buys raiders meanwhile).
   for (let j = 0; j < AI_QUEUE.length; j++) {
     const kind = AI_QUEUE[(F.aiN + j) % AI_QUEUE.length], S = SQUADS[kind];
-    if (armyOf(RED) + squadWeight(S) > ARMY_CAP || state.cereal[RED] < S.cereal + 10 || !hasStock(RED, S)) continue;
+    if (!aiSquadOk(kind) || armyOf(RED) + squadWeight(S) > ARMY_CAP || state.cereal[RED] < S.cereal + 10 || !hasStock(RED, S)) continue;
     const order = kind === 'raiders' ? 'raid' : kind === 'pikemen' ? 'defend' : (F.aiN + j) % 3 === 2 ? 'defend' : 'attack';
     if (buySquad(RED, kind, order)) F.aiN += j + 1;
     return;
@@ -4547,7 +4599,7 @@ function finaleDraw(dt, time) {
   const sig = `${wallsOf(BLUE)}|${state.cereal[BLUE] >= WALL.cost}|${armyOf(BLUE)}|${Object.keys(SQUADS).map((k) => +canBuy(k)).join('')}|${mine.map((q) => `${q.id}${q.order}${q.units.length}`).join(',')}|${F.rally[BLUE]}|${F.plan[BLUE]}|${showPlan}`;
   if (sig !== F.ui) {
     F.ui = sig;
-    const buy = Object.entries(SQUADS).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.short} x${S.n}<small>${costText(S)}</small></button>`).join('');
+    const buy = Object.entries(SQUADS).filter(([k]) => squadOn(k)).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.short} x${S.n}<small>${costText(S)}</small></button>`).join('');
     const rows = mine.length ? mine.map((q) => `<div class="sq"><span>${SQUADS[q.kind].short} ${q.units.length}/${q.n}</span><button data-ord="${q.id}" class="ord-${q.order}">${q.order.toUpperCase()}</button></div>`).join('') : '<div class="none">No squadrons yet. Buy one above, then tap its order.</div>';
     $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-wall="1">Sugar wall ${wallsOf(BLUE)}/${WALL.max}<small>${WALL.cost}, across your path</small></button><button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
     for (const b of $('planBox').querySelectorAll('button')) b.classList.toggle('cur', +b.dataset.lane === F.plan[BLUE]);
@@ -5254,8 +5306,9 @@ const RACE_CARRY_SLOW = 0.85, RACE_RAM = 7, RACE_RESPAWN = 10, RACE_PRIZE = 30, 
 const CRATE_NAMES = { gun: 'Gun turret', rocket: 'Rocket turret', wall: 'Sugar wall', truck: 'Dump truck', digger: 'Digger' };
 let raceTrackData = null;
 function raceTrack() {
-  if (raceTrackData) return raceTrackData;
-  let p = [...RACE_HALF, ...RACE_HALF.map(([x, z]) => [-x, -z])];
+  return raceTrackData || (raceTrackData = trackFrom([...RACE_HALF, ...RACE_HALF.map(([x, z]) => [-x, -z])], -48, 0));
+}
+function trackFrom(p, sx, sz) { // a closed loop from corner points: rounded, resampled every 2.5 units, index 0 nearest (sx, sz)
   for (let k = 0; k < 3; k++) { // Chaikin: cut every corner a few times so the loop is smooth to drive
     const q = [];
     for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); }
@@ -5272,13 +5325,13 @@ function raceTrack() {
     pts.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
   }
   let k0 = 0;
-  for (let i = 1; i < n; i++) if (Math.hypot(pts[i][0] + 48, pts[i][1]) < Math.hypot(pts[k0][0] + 48, pts[k0][1])) k0 = i;
+  for (let i = 1; i < n; i++) if (Math.hypot(pts[i][0] - sx, pts[i][1] - sz) < Math.hypot(pts[k0][0] - sx, pts[k0][1] - sz)) k0 = i;
   pts = [...pts.slice(k0), ...pts.slice(0, k0)]; // index 0 is the start line
   const tan = pts.map((_, i) => { const a = pts[(i + n - 1) % n], b = pts[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; });
   const nor = tan.map(([tx, tz]) => [-tz, tx]);
   const head = tan.map(([tx, tz]) => Math.atan2(tz, tx));
   const speedF = pts.map((_, i) => 1 - 0.3 * Math.min(1, Math.abs(wrap(head[(i + 4) % n] - head[(i + n - 4) % n])) / 1.2)); // rivals ease off in tight corners
-  return (raceTrackData = { pts, tan, nor, head, speedF, n, length: total });
+  return { pts, tan, nor, head, speedF, n, length: total };
 }
 const ordinal = (n) => ['1st', '2nd', '3rd', '4th'][n - 1] || `${n}th`;
 
@@ -5396,16 +5449,17 @@ function knockOff(victim, rammer) {
 
 // --- the race ---
 function startRace(cfg) {
-  const T = raceTrack(), p = state.player, N = RACE_GATES.length;
-  const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '' };
+  const T = cfg.track ? lrTrack(cfg.track) : raceTrack(), p = state.player, gateList = cfg.track ? lrGates(T) : RACE_GATES, N = gateList.length;
+  const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '', tokens: [], carried: [], intro: true, swap: null, slotSig: '' };
   scene.add(R.group);
-  RACE_GATES.forEach(([x, z, hw]) => {
+  gateList.forEach(([x, z, hw]) => {
     let idx = 0;
     for (let k = 1; k < T.n; k++) if (Math.hypot(T.pts[k][0] - x, T.pts[k][1] - z) < Math.hypot(T.pts[idx][0] - x, T.pts[idx][1] - z)) idx = k;
     R.gates.push({ idx, x: T.pts[idx][0], z: T.pts[idx][1], tx: T.tan[idx][0], tz: T.tan[idx][1], nx: T.nor[idx][0], nz: T.nor[idx][1], hw });
   });
   R.gates.forEach((g, i) => { const prev = R.gates[(i + N - 1) % N]; g.segLen = Math.hypot(g.x - prev.x, g.z - prev.z) || 1; buildGate(R, g, i); });
-  RACE_SPOTS.forEach(([x, z, kind], i) => { const c = makeCrate(kind, x, z, i); c.grow = 1; c.mesh.scale.setScalar(1); R.spots.push({ x, z, kind, crate: c, timer: 0 }); });
+  (cfg.track ? [] : RACE_SPOTS).forEach(([x, z, kind], i) => { const c = makeCrate(kind, x, z, i); c.grow = 1; c.mesh.scale.setScalar(1); R.spots.push({ x, z, kind, crate: c, timer: 0 }); });
+  placeTokens(R, LOADOUTS[curLevel].pool);
   // The grid is the last stretch of the track, two abreast.
   const order = [1, 0, 2, 3]; // you start in the second row, left
   const place = (c, k) => {
@@ -5420,7 +5474,7 @@ function startRace(cfg) {
   for (const c of R.cars) c.gs = gateSide(c, R.gates[1]);
   state.phase = 'race';
   document.body.classList.add('racing');
-  $('raceHud').hidden = false; $('raceRow').hidden = false; $('garage').hidden = true;
+  $('raceHud').hidden = false; $('raceRow').hidden = !R.spots.length; $('garage').hidden = true; $('slots').innerHTML = '';
   $('pctBlue').textContent = $('pctRed').textContent = '100%';
 }
 function cleanupRace() {
@@ -5432,7 +5486,7 @@ function cleanupRace() {
     state.race = null;
   }
   document.body.classList.remove('racing');
-  $('raceHud').hidden = true; $('raceRow').hidden = true; $('gateArrow').hidden = true;
+  $('raceHud').hidden = true; $('raceRow').hidden = true; $('gateArrow').hidden = true; $('lrIntro').hidden = true; $('lrCard').hidden = true;
 }
 function gateSide(c, g) { return (c.x - g.x) * g.tx + (c.z - g.z) * g.tz; }
 function raceProg(c) {
@@ -5505,18 +5559,22 @@ function finishRace(winner) {
   const R = state.race, p = state.player;
   R.winner = winner;
   const order = R.cars.slice().sort((a, b) => raceProg(b) - raceProg(a)), last = order[order.length - 1], place = order.indexOf(p) + 1;
+  const foe = order.findIndex((c) => c !== p) + 1; // where the best red car finished: that sets the enemy's loadout
   const youWon = winner === p;
-  state.cereal[winner.team] += RACE_PRIZE;
   R.lastTeam = last.team;
-  R.result = youWon ? `You won the race! +${RACE_PRIZE} cereal` : `${winner.name} won the race. You came ${ordinal(place)}`;
-  if (last === p) R.result += '. Last place: a free gun turret at home';
-  state.phase = 'countdown'; R.cd = 3; R.cdN = undefined;
+  R.result = youWon ? 'You won the race!' : `${winner.name} won the race. You came ${ordinal(place)}`;
+  if (last === p && R.spots.length) R.result += '. Last place: a free gun turret at home';
   sfx(youWon ? 'win' : 'respawn');
   $('raceHud').hidden = true; $('raceRow').hidden = true;
+  lrOpenCard(place, foe, false);
 }
 function skipRace() {
-  if (!state.race || state.phase !== 'race') return;
-  startBattle(true);
+  const R = state.race;
+  if (!R || state.phase !== 'race') return;
+  $('lrIntro').hidden = true; R.intro = false; R.skipped = true;
+  $('raceHud').hidden = true; $('raceRow').hidden = true;
+  R.result = 'Race skipped: a ready-made loadout';
+  lrOpenCard(2, 2, true);
 }
 function findDropSpot(kind, x, z, team) {
   const offs = [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4], [4, 4], [-4, -4], [4, -4], [-4, 4], [7, 0], [-7, 0], [0, 7], [0, -7]];
@@ -5575,6 +5633,7 @@ function raceArrow() { // a gold arrow at the screen edge pointing to the next g
 }
 function raceUpdate(dt) {
   const R = state.race, p = state.player, N = R.gates.length, racing = state.phase === 'race';
+  if (R.intro) return; // the Loadout Race intro card is up: nothing moves yet
   engineUpdate(p);
   R.t += dt;
   if (R.hold > 0) { // 3, 2, 1, GO
@@ -5582,7 +5641,8 @@ function raceUpdate(dt) {
     const n = Math.ceil(R.hold);
     if (n !== R.lastN) {
       R.lastN = n;
-      if (n > 0) { banner(String(n), 'Two laps. Drive over a box to carry it.'); sfx('tick'); } else { banner('GO!', 'Gates in order. Z drops your box.'); bannerTimer = 1.4; sfx('respawn'); }
+      const boxes = R.spots.length;
+      if (n > 0) { banner(String(n), boxes ? `${R.laps} laps. Drive through tokens for tools, over boxes to carry them.` : `${R.laps} laps. Drive through the tokens to win tools.`); sfx('tick'); } else { banner('GO!', boxes ? 'Gates in order. Z drops your box.' : 'Gates in order. Grab tokens on the way.'); bannerTimer = 1.4; sfx('respawn'); }
     }
   }
   const go = racing && R.hold <= 0;
@@ -5600,6 +5660,7 @@ function raceUpdate(dt) {
     for (const c of R.cars) {
       gateCheck(c);
       if (R.winner) break;
+      if (c === p) tokensUpdate(dt);
       if (!c.carry) for (const b of R.crates) if (b.state === 'idle' && !(b.denied === c && b.deniedT > 0) && (b.x - c.x) ** 2 + (b.z - c.z) ** 2 < (c.r + 2.4) ** 2) { pickUp(c, b); break; }
     }
   }
@@ -5620,8 +5681,9 @@ function raceUpdate(dt) {
   // HUD
   if (racing) {
     const rank = 1 + R.cars.filter((c) => c !== p && raceProg(c) > raceProg(p)).length;
-    const txt = `Lap ${Math.min(R.laps, Math.floor(p.passed / N) + 1)}/${R.laps} · ${ordinal(rank)} of ${R.cars.length} · Carrying: ${p.carry ? CRATE_NAMES[p.carry.kind] : 'nothing'}`;
+    const txt = `Lap ${Math.min(R.laps, Math.floor(p.passed / N) + 1)}/${R.laps} · ${ordinal(rank)} of ${R.cars.length}${R.spots.length ? ` · Carrying: ${p.carry ? CRATE_NAMES[p.carry.kind] : 'nothing'}` : ''}`;
     if (txt !== R.hudText) { R.hudText = txt; $('raceLine').textContent = txt; }
+    slotsDraw(dt);
     $('bDrop').disabled = !p.carry;
   }
   toastTimer -= dt;
@@ -5633,6 +5695,199 @@ function raceUpdate(dt) {
     if (R.cd <= 0) startBattle(false);
   }
 }
+
+// ---------- Loadout Race: a race before every level decides which tool buttons you get (built 2 Nov 2026; DESIGN.md "The Kitchen Grand Prix") ----------
+// Level 1 uses the race above as it is (boxes and all); levels 2 to 6 race on a small circuit on that level's own table (reset() builds a stand-in
+// level, `stageL`, with the level's table, colour and the scenery that is clear of the track). Tokens (one per tool the level has) float round
+// the track: drive through one to carry that tool, 4 at most (a 5th swaps out your oldest). When the first car finishes, the YOUR LOADOUT card
+// shows what you start with, and the level is then built for real (`pendingLoad`) or, on level 1, the boxes unfold. The build bar shows only
+// the always-on basics, the level's must-have and what you won (`state.load`, a Set of tool ids; null means every tool, as before).
+const TOOLS = {
+  gun: { name: 'Gun turret', icon: '🔫', col: 0x8a96a8, btn: 'bGun', key: 'Digit1', text: 'Builds a gun turret in front of you. It shoots anything close.' },
+  truck: { name: 'Dump truck', icon: '🚚', col: 0xffc23d, btn: 'bTruck', key: 'KeyT', text: 'Hauls cereal home. More trucks, more cereal.' },
+  digger: { name: 'Digger', icon: '🚜', col: 0xe8912d, btn: 'bDigger', key: 'KeyG', text: 'Scoops cereal out of the spilled bowls.' },
+  rocket: { name: 'Rocket turret', icon: '🚀', col: 0xef4136, btn: 'bRocket', key: 'Digit2', text: 'A slow turret that hits hard from far away.' },
+  drones: { name: 'Drones', icon: '🛸', col: 0x7a6cf0, btn: 'bDrones', key: 'Digit3', text: 'Three little flyers that fight for you.' },
+  upgrade: { name: 'Upgrade', icon: '⏫', col: 0x3ddc84, btn: 'bUpgrade', key: 'KeyU', text: 'Makes the turret next to you stronger.' },
+  domino: { name: 'Dominoes', icon: '🧱', col: 0xc77d3a, btn: 'bDomino', key: 'KeyX', text: 'Line them up and tip them: the last one hits their toy box.' },
+  trojan: { name: 'Trojan truck', icon: '🐴', col: 0xa05a2c, btn: 'bTrojan', key: 'KeyY', text: 'Steal an enemy truck. It drives home and goes bang.' },
+  staple: { name: 'Staple gun', icon: '📌', col: 0xd9dde3, btn: 'bStaple', key: 'KeyQ', text: 'A turret whose staples pin enemy cars in place.' },
+  magnet: { name: 'Magnet', icon: '🧲', col: 0xd23b3b, btn: 'bMagnet', key: 'KeyF', text: 'Pulls cereal in and drags enemy cars about.' },
+  catapult: { name: 'Catapult', icon: '🏹', col: 0x9b7a4a, btn: 'bCatapult', key: 'KeyE', text: 'A turret that lobs erasers a long way.' },
+  armour: { name: 'Armour', icon: '🛡', col: 0x6b8cae, btn: 'bArmour', key: 'KeyR', text: 'Steel plates for your own car. Costs paperclips.' },
+  flare: { name: 'Flare', icon: '🎇', col: 0xffd08a, btn: 'bFlare', key: 'KeyV', text: 'Lights up the dark and shows hidden enemies.' },
+  laser: { name: 'Laser turret', icon: '⚡', col: 0x4fd6e0, btn: 'bLaser', key: 'KeyL', text: 'A fast beam turret. Costs batteries.' },
+  boat: { name: 'Gunboat', icon: '⛵', col: 0x2f7df6, btn: 'bBoat', key: 'KeyB', text: 'Sails the sink and shoots. Water is no wall to it.' },
+  toaster: { name: 'Toaster launcher', icon: '🍞', col: 0xd9a05b, btn: 'bToaster', key: 'KeyK', text: 'Springs your cars over the hot hob.' },
+  sq_tanks: { name: 'Tank squad', icon: '🪖', col: 0x5b7a3a, text: 'Three tanks. Tell them: attack, defend or raid.' },
+  sq_bombers: { name: 'Bombers', icon: '✈', col: 0x6e8fb8, text: 'Fly over walls and drop crumb bombs.' },
+  sq_boats: { name: 'Boat squad', icon: '🚤', col: 0x2f7df6, text: 'Gunboats that sail the sink.' },
+  sq_raiders: { name: 'Raiders', icon: '🏎', col: 0xff9633, text: 'Fast cars that go after enemy trucks.' },
+  sq_foot: { name: 'Foot soldiers', icon: '🚶', col: 0xb98a4c, text: 'Loopers, pikemen, pea shooters and battery bots.' },
+};
+const KEY_TOOL = Object.fromEntries(Object.entries(TOOLS).filter(([, t]) => t.key).map(([id, t]) => [t.key, id]));
+const SQ_TOOL = { bombers: 'sq_bombers', boats: 'sq_boats', tanks: 'sq_tanks', raiders: 'sq_raiders', loopers: 'sq_foot', pikemen: 'sq_foot', peashooters: 'sq_foot', botsq: 'sq_foot' };
+const BASICS = ['gun', 'truck', 'digger']; // always on: a turret, and the two workers the economy needs
+// Per level: `pool` = a token each (what you can win), `must` = always on here (the level is not fair without it), `def` = the Skip race loadout, `ai` = the enemy's picks in order.
+const LOADOUTS = [
+  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan'], must: [], def: ['rocket', 'upgrade', 'drones', 'domino'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
+  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan', 'staple', 'magnet', 'catapult', 'armour'], must: [], def: ['rocket', 'upgrade', 'staple', 'catapult'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
+  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan', 'laser'], must: ['flare'], def: ['laser', 'rocket', 'upgrade', 'drones'], ai: ['laser', 'rocket', 'upgrade', 'trojan', 'domino'] },
+  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan'], must: ['boat'], def: ['rocket', 'upgrade', 'drones', 'trojan'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
+  { pool: ['rocket', 'drones', 'upgrade', 'trojan', 'staple', 'catapult', 'armour', 'toaster'], must: [], def: ['rocket', 'upgrade', 'toaster', 'drones'], ai: ['toaster', 'rocket', 'upgrade', 'trojan', 'domino'] },
+  { pool: ['sq_bombers', 'sq_boats', 'sq_raiders', 'sq_foot', 'rocket', 'drones', 'upgrade', 'toaster'], must: ['sq_tanks'], def: ['sq_bombers', 'sq_raiders', 'upgrade', 'rocket'], ai: ['sq_bombers', 'sq_raiders', 'sq_foot', 'rocket', 'upgrade'] },
+];
+const LR_MAX = 4, LR_BONUS = [40, 25, 12, 5], LR_AI_TOOLS = [4, 3, 2, 1]; // carry limit; starting cereal by finishing place; how many picks the enemy gets by its best racer's place
+// The circuits (corner points, rounded by trackFrom). The table is 150 x 96 and the toy boxes sit at x = +-62, so the tracks stay inside x +-47.
+const LR_TRACKS = [
+  null,
+  [[-34, 32], [0, 27], [34, 32], [47, 12], [32, 0], [47, -14], [34, -32], [0, -26], [-34, -32], [-47, -14], [-32, 0], [-47, 12]],
+  [[-30, 34], [30, 34], [47, 18], [47, -18], [30, -34], [-30, -34], [-47, -18], [-47, 18]],
+  [[-36, 31], [0, 35], [36, 29], [47, 8], [30, -3], [47, -18], [30, -34], [0, -28], [-36, -34], [-47, -14], [-30, 0], [-47, 16]],
+  [[-24, 34], [24, 34], [47, 22], [47, -22], [24, -34], [-24, -34], [-47, -22], [-47, 22]],
+  [[-40, 34], [40, 34], [47, 20], [22, 8], [47, -8], [47, -28], [34, -34], [-34, -34], [-47, -28], [-47, -8], [-22, 8], [-47, 20]],
+];
+const LR_LAPS = [2, 3, 3, 3, 3, 3];
+let pendingLoad = null;
+const lrTrackCache = new Map();
+const lrTrack = (ctrl) => { let t = lrTrackCache.get(ctrl); if (!t) lrTrackCache.set(ctrl, t = trackFrom(ctrl, ctrl[0][0], ctrl[0][1])); return t; };
+const lrGates = (T) => Array.from({ length: 8 }, (_, i) => { const j = Math.round(i * T.n / 8) % T.n; return [T.pts[j][0], T.pts[j][1], 5]; });
+const toolOn = (id) => !state.load || state.load.has(id);
+const aiHas = (id) => !state.aiLoad || state.aiLoad.has(id);
+const aiSquadOk = (kind) => aiHas(SQ_TOOL[kind] || 'sq_tanks');
+const squadOn = (kind) => toolOn(SQ_TOOL[kind] || 'sq_tanks');
+
+// The stand-in level for a race: the real level's table and colour, plus the blocks and puddles that are clear of the track. No economy, no enemy.
+function stageLevel(L, idx) {
+  const T = lrTrack(LR_TRACKS[idx]);
+  const clear = (x, z, w, d, m) => !T.pts.some(([px, pz]) => Math.hypot(Math.max(Math.abs(px - x) - w / 2, 0), Math.max(Math.abs(pz - z) - d / 2, 0)) < m);
+  const inside = (x, z, w, d) => Math.abs(x) + w / 2 < 72 && Math.abs(z) + d / 2 < 45 && !(Math.abs(Math.abs(x) - 62) < w / 2 + 8 && Math.abs(z) < d / 2 + 9); // on the table, not on a toy box
+  const blocks = L.blocks.filter(([x, z, w, d]) => inside(x, z, w, d) && clear(x, z, w, d, 9));
+  const patches = L.patches.filter((p) => inside(p.x, p.z, p.r * 2, p.r * 2) && clear(p.x, p.z, p.r * 2, p.r * 2, 6));
+  return {
+    ...L, blocks, erasers: [], patches, outposts: [], piles: [], refill: [], decor: null, size: null, dark: false, finale: false, water: null, hob: null, oven: null, boats: false, toaster: false,
+    gumball: null, camZoom: 1, resources: ['cereal'], bases: undefined, rules: { baseHp: 1200 }, start: { cereal: 0, clips: 0, unlocked: ['racer'] }, stage: true,
+    race: { laps: LR_LAPS[idx], track: LR_TRACKS[idx] },
+  };
+}
+
+// --- tokens: a coin on the track with the tool's picture floating over it ---
+function tokenMat(id) {
+  return shared(`tok:${id}`, () => {
+    const T = TOOLS[id], c = document.createElement('canvas'); c.width = 128; c.height = 168;
+    const g = c.getContext('2d');
+    g.fillStyle = `#${T.col.toString(16).padStart(6, '0')}`; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.fill();
+    g.lineWidth = 8; g.strokeStyle = '#fff8ec'; g.stroke();
+    g.font = '64px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(T.icon, 64, 68);
+    g.font = '700 19px sans-serif'; g.lineWidth = 5; g.strokeStyle = '#1c1712'; g.fillStyle = '#fff8ec';
+    const name = T.name.toUpperCase().replace(' TURRET', '').replace(' LAUNCHER', '');
+    g.strokeText(name, 64, 146); g.fillText(name, 64, 146);
+    return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false });
+  });
+}
+function placeTokens(R, ids) {
+  const T = R.track, n = T.n, k = ids.length;
+  ids.forEach((id, i) => {
+    let idx = Math.round((i + 0.5) * n / k + n * 0.03) % n;
+    if (R.spots.length) for (let d = 0; d < 20; d++) { // level 1: keep clear of the supply boxes
+      const j = (idx + d) % n;
+      if (RACE_SPOTS.every(([ax, az]) => Math.hypot(T.pts[j][0] - ax, T.pts[j][1] - az) > 7)) { idx = j; break; }
+    }
+    const lat = (i % 2 ? 1 : -1) * 2.6, x = T.pts[idx][0] + T.nor[idx][0] * lat, z = T.pts[idx][1] + T.nor[idx][1] * lat;
+    const g = new THREE.Group(); g.position.set(x, 0, z);
+    const base = mesh(shared('tok:base', () => new THREE.CylinderGeometry(2.4, 2.6, 0.4, 20)), shared(`tok:b${id}`, () => mat(TOOLS[id].col, { emissive: TOOLS[id].col, emissiveIntensity: 0.4 })), 0, 0.2, 0, g);
+    base.castShadow = false;
+    const face = new THREE.Mesh(shared('tok:plane', () => new THREE.PlaneGeometry(4.2, 5.5)), tokenMat(id));
+    face.rotation.x = -0.97; face.position.y = 5.2; g.add(face); // the camera looks down at about 56 degrees, so the picture leans back to face it
+    R.group.add(g);
+    R.tokens.push({ id, x, z, g, face, ph: i * 1.3 });
+  });
+}
+function tokensUpdate() {
+  const R = state.race, p = state.player;
+  for (const t of R.tokens) {
+    const held = R.carried.includes(t.id);
+    t.g.visible = !held;
+    if (held) continue;
+    t.face.position.y = 5.2 + Math.sin(R.t * 3 + t.ph) * 0.5;
+    if ((t.x - p.x) ** 2 + (t.z - p.z) ** 2 < (p.r + 2.8) ** 2) tokenPick(t);
+  }
+}
+function tokenPick(t) {
+  const R = state.race, T = TOOLS[t.id];
+  R.carried.push(t.id);
+  const dropped = R.carried.length > LR_MAX ? R.carried.shift() : null;
+  R.swap = dropped ? { id: dropped, until: R.t + 3.2 } : null;
+  burst(t.x, t.z, T.col, 10, 9, 2); sfx('cap');
+  if (dropped) { banner(`${T.icon} ${T.name}`, `Swapped out your oldest: ${TOOLS[dropped].icon} ${TOOLS[dropped].name}`); bannerTimer = 2.2; toast(`${TOOLS[dropped].name} dropped`); }
+  else toast(`Got ${T.name} (${R.carried.length}/${LR_MAX})`);
+}
+function slotsDraw() {
+  const R = state.race;
+  if (R.swap && R.t > R.swap.until) R.swap = null;
+  const sig = `${R.carried.join()}|${R.swap ? R.swap.id : ''}`;
+  if (sig === R.slotSig) return;
+  R.slotSig = sig;
+  const last = R.carried.length - 1;
+  let h = '';
+  for (let i = 0; i < LR_MAX; i++) h += R.carried[i] ? `<i class="full${i === last ? ' new' : ''}" title="${TOOLS[R.carried[i]].name}">${TOOLS[R.carried[i]].icon}</i>` : '<i></i>';
+  if (R.swap) h += `<span class="lost">${TOOLS[R.swap.id].icon} out</span>`;
+  $('slots').innerHTML = h;
+}
+
+// --- the intro card, the result card ---
+function lrIntro() {
+  const R = state.race;
+  if (!R) return;
+  R.intro = true;
+  $('lrLvl').textContent = `Level ${curLevel + 1} · ${LEVELS[curLevel].name}`;
+  $('lrChips').innerHTML = LOADOUTS[curLevel].pool.map((id) => `<span><em>${TOOLS[id].icon}</em>${TOOLS[id].name}</span>`).join('');
+  $('lrIntro').hidden = false;
+}
+function lrOpenCard(place, foe, skipped) {
+  const R = state.race, L = LOADOUTS[curLevel];
+  let picks = skipped ? L.def.slice() : R.carried.slice();
+  if (!picks.length) picks = [L.def[0]]; // never an empty bar
+  const tools = [...BASICS, ...L.must, ...picks];
+  const freeUp = place === 1 && !skipped ? 1 : 0;
+  if (freeUp && !tools.includes('upgrade')) tools.push('upgrade');
+  const ai = [...BASICS, ...L.must, ...L.ai.slice(0, LR_AI_TOOLS[foe - 1])];
+  R.load = { tools, ai, freeUp, bonus: LR_BONUS[place - 1], aiBonus: LR_BONUS[foe - 1], place };
+  state.phase = 'loadout';
+  $('banner').hidden = true; bannerTimer = 0; $('toast').textContent = '';
+  const tile = (id, cls, tag) => `<div class="tile ${cls}"><em>${TOOLS[id].icon}</em><div><b>${TOOLS[id].name}${tag ? `<u>${tag}</u>` : ''}</b><span>${TOOLS[id].text}</span></div></div>`;
+  let h = '';
+  for (const id of tools) {
+    const free = freeUp && id === 'upgrade';
+    h += tile(id, free ? 'free' : picks.includes(id) ? 'won' : '', free ? (picks.includes(id) ? 'FREE USE' : 'FREE') : [...BASICS, ...L.must].includes(id) ? 'ALWAYS' : skipped ? 'READY-MADE' : 'WON');
+  }
+  $('lrTiles').innerHTML = h;
+  $('lrRes').textContent = skipped ? `Race skipped. You start with +${R.load.bonus} cereal.` : `${place === 1 ? 'You won the race!' : `${R.result}.`} You get +${R.load.bonus} starting cereal${freeUp ? ' and a free Upgrade' : ''}.`;
+  const foeTools = ai.filter((id) => !BASICS.includes(id) && !L.must.includes(id));
+  $('lrFoe').textContent = `The enemy finished ${ordinal(foe)}: +${R.load.aiBonus} cereal and ${foeTools.length} tool${foeTools.length === 1 ? '' : 's'}: ${foeTools.map((id) => TOOLS[id].icon).join(' ') || 'none'}`;
+  $('lrCard').hidden = false;
+}
+function applyLoad(ld) {
+  state.load = new Set(ld.tools); state.aiLoad = new Set(ld.ai); state.freeUp = ld.freeUp;
+  state.cereal[BLUE] += ld.bonus; state.cereal[RED] += ld.aiBonus;
+  applyBar(); updateCosts();
+}
+function lrStartGo() {
+  const R = state.race, ld = R.load;
+  $('lrCard').hidden = true;
+  if (stageL) { pendingLoad = ld; reset(); return; } // levels 2 to 6: now build the real level with this loadout
+  applyLoad(ld); // level 1: same table, the boxes unfold
+  if (R.skipped) startBattle(true); else { state.phase = 'countdown'; R.cd = 3; R.cdN = undefined; }
+}
+// Show only the buttons you have a tool for; a row with nothing left disappears.
+function applyBar() {
+  for (const [id, T] of Object.entries(TOOLS)) if (T.btn) $(T.btn).classList.toggle('off', !toolOn(id));
+  for (const row of document.querySelectorAll('.controls > .row:not(.raceRow)')) row.classList.toggle('off', ![...row.querySelectorAll('button')].some((b) => !b.classList.contains('off')));
+  if (state.finale) state.finale.ui = '';
+}
+$('lrGo').addEventListener('click', () => { const R = state.race; if (R) { R.intro = false; $('lrIntro').hidden = true; audioInit(); } });
+$('lrSkip').addEventListener('click', () => { audioInit(); skipRace(); });
+$('lrStart').addEventListener('click', lrStartGo);
 
 let last = performance.now();
 function step(now) {
@@ -5647,6 +5902,7 @@ function step(now) {
 function update(dt) {
   pathBudget = 2; // level 6: at most 2 route searches a tick
   if (state.phase === 'race' || state.phase === 'countdown') { raceUpdate(dt); return; }
+  if (state.phase === 'loadout') return; // the YOUR LOADOUT card is up
   state.time += dt;
   const p = state.player;
   engineUpdate(p);
@@ -5844,7 +6100,7 @@ function update(dt) {
   if ($('garage').hidden === atHome) { $('garage').hidden = !atHome; if (atHome) renderGarage(); }
   const t = nearOwnTurret();
   $('bUpgrade').disabled = !t;
-  $('upCost').textContent = t ? upgradeCost(t) : '—';
+  $('upCost').textContent = t ? (state.freeUp > 0 ? 'FREE' : upgradeCost(t)) : state.freeUp > 0 ? 'free' : '—';
   toastTimer -= dt;
   if (toastTimer <= 0) $('toast').textContent = '';
 }
@@ -6019,6 +6275,7 @@ function start() {
   audioInit();
   $('start').hidden = true; $('end').hidden = true;
   reset();
+  if (state.race) lrIntro(); // every level opens with the Loadout Race
 }
 $('play').addEventListener('click', start);
 $('again').addEventListener('click', start);
