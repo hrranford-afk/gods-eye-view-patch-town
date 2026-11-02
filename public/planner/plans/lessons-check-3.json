@@ -1,0 +1,162 @@
+{
+  "question": "Does L29 travel? Are the fastest-ageing neighbourhoods also the ones with the least within reach, and are they the car suburbs (few car-less homes), in Gloucester and Cheltenham as in Worcester?",
+  "notes": "over65Change: growth in people aged 65+ since 2011 (history). goodDay: share of homes with a meeting place 10 min, green space 5, food 10 (walk) and a GP 15 (walk or bus). Run: npm run planner -- compare worcester,gloucester,cheltenham public/planner/plans/lessons-check-3.json",
+  "steps": [
+    {
+      "tool": "travel",
+      "args": {
+        "to": "meet:*"
+      },
+      "as": "meet"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "green:*"
+      },
+      "as": "green"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": [
+          "food:smallShop",
+          "food:supermarket",
+          "shop"
+        ]
+      },
+      "as": "food"
+    },
+    {
+      "tool": "travel",
+      "args": {
+        "to": "gp",
+        "mode": "busOrWalk"
+      },
+      "as": "gp"
+    },
+    {
+      "tool": "meets",
+      "args": {
+        "checks": [
+          {
+            "values": "$meet",
+            "max": 10
+          },
+          {
+            "values": "$green",
+            "max": 5
+          },
+          {
+            "values": "$food",
+            "max": 10
+          },
+          {
+            "values": "$gp",
+            "max": 15
+          }
+        ]
+      },
+      "as": "goodDayHome"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "area"
+      },
+      "as": "goodDay"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$gp",
+        "groupBy": "area"
+      },
+      "as": "gpMinutes"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "town",
+        "weight": "over65"
+      },
+      "as": "goodDayOver65"
+    },
+    {
+      "tool": "summarise",
+      "args": {
+        "values": "$goodDayHome",
+        "groupBy": "town"
+      },
+      "as": "goodDayAll"
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "over65Change"
+      },
+      "as": "over65Change",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "imdScore"
+      },
+      "as": "imdScore",
+      "optional": true
+    },
+    {
+      "tool": "attribute",
+      "args": {
+        "name": "noCar"
+      },
+      "as": "noCar",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$goodDay",
+        "x": {
+          "over65Change": "$over65Change"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "L29_goodDayVsAgeing",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$gpMinutes",
+        "x": {
+          "over65Change": "$over65Change"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "L29_gpMinutesVsAgeing",
+      "optional": true
+    },
+    {
+      "tool": "relate",
+      "args": {
+        "y": "$over65Change",
+        "x": {
+          "noCar": "$noCar"
+        },
+        "controls": {
+          "imdScore": "$imdScore"
+        }
+      },
+      "as": "L29_ageingVsCarOwnership",
+      "optional": true
+    }
+  ]
+}
