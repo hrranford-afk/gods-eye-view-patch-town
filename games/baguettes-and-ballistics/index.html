@@ -1915,8 +1915,11 @@ function reset() {
 const input = { x: 0, z: 0, fire: false, keys: new Set() };
 let stickId = null, stickX = 0, stickY = 0;
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (e.clientX > innerWidth * 0.5 || stickId !== null) return;
+  // A new touch on the left always takes the stick. (It used to be ignored while an older touch was "still down";
+  // iPad Safari sometimes never reports that older touch lifting, which froze the steering for the rest of the game.)
+  if (e.clientX > innerWidth * 0.5) return;
   stickId = e.pointerId; stickX = e.clientX; stickY = e.clientY;
+  try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) { /* not supported: fine */ }
   Object.assign($('stick').style, { left: `${stickX}px`, top: `${stickY}px` });
   $('stick').hidden = false; $('knob').style.transform = ''; $('hint').hidden = true;
 });
@@ -1929,6 +1932,11 @@ addEventListener('pointermove', (e) => {
   $('knob').style.transform = `translate(${dx}px, ${dy}px)`;
 });
 const endStick = (e) => { if (e.pointerId !== stickId) return; stickId = null; input.x = input.z = 0; $('stick').hidden = true; };
+// If the page loses focus or a touch is taken away mid-drag, let go of the stick rather than leaving it stuck.
+const dropStick = () => { stickId = null; input.x = input.z = 0; input.keys.clear(); input.fire = false; $('stick').hidden = true; };
+addEventListener('blur', dropStick);
+document.addEventListener('visibilitychange', () => { if (document.hidden) dropStick(); });
+renderer.domElement.addEventListener('lostpointercapture', endStick);
 addEventListener('pointerup', endStick);
 addEventListener('pointercancel', endStick);
 addEventListener('keydown', (e) => {

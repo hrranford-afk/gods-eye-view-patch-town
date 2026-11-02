@@ -610,3 +610,13 @@ now stays at about 240–370.
   10, 40 s apart (was 70); raids every 70 s from 1:30. Tested: a wave of 6 at
   0:44, as soon as the rings were safe.
 
+## Steering freeze fix (2 Nov 2026; Harry: "it freezes with the steering halfway through the game")
+
+The touch stick ignored any new touch while it thought an older one was
+still down. iPad Safari sometimes never reports a touch lifting (for example
+when a message appears under the finger), so the stick stayed stuck on the
+old direction for the rest of the game. Now a new touch on the left half
+always takes the stick (with pointer capture), and the stick, keys and fire
+are released on blur, tab switch and lost capture. Tested by simulating a lost
+touch: the old build stayed stuck (x 0.91), the new one follows the new finger.
+
