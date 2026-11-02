@@ -280,6 +280,85 @@ Every level now has two domino runs built in, one per side
   Lobbed shots: `weapon.lob`, `s.lobbed` in the shot loop.
 - The paperclip buttons sit in their own row, hidden on levels without clips.
 
+## Level 1 race opening (2 Nov 2026; Harry's "race, then battle" twist, level 1 only)
+
+![race](shots/18-race.png) ![unfold](shots/19-race-unfold.png)
+
+Level 1 now starts as a short race. It teaches driving before building, and the boxes you
+drop become your base. `LEVELS[0].race = { laps: 2 }` turns it on; levels 2 and 4 are untouched.
+Everything lives in one block of `index.html` headed "Level 1 race opening" (just above `step`).
+
+**Phases.** `state.phase` is `'race'` (the 3-2-1 start hold, then racing), `'countdown'`
+(BATTLE! banner and 3 kettle clicks) or `'battle'` (everything as before; every other level
+is `'battle'` from the start). `update()` hands `'race'` and `'countdown'` to `raceUpdate(dt)`
+and returns, so **no economy, enemy commander, shooting, raids, boss or tricks run during the
+race**. `reset()` calls `cleanupRace()`, then `startRace(L.race)`, and skips the usual starting
+trucks and diggers for a race level (`startBattle` spawns them). While racing, `body.racing`
+hides every build and fight button and the cereal counter; the race HUD (`#raceHud`:
+"Lap 1/2 · 2nd of 4 · Carrying: Gun turret", plus a **Skip race** button), the **Drop** button
+(`#bDrop`) and a gold arrow to the next gate (`#gateArrow`, `raceArrow`) show instead.
+Keys: WASD or arrows to drive, **Z drops** (in battle Z still uses an item). All the build keys and
+buttons are ignored until the battle starts (see the guards in the `keydown` handler and `tap`).
+
+**Track** (`RACE_HALF`, `raceTrack`). 23 corner points for half a lap, repeated turned half a circle
+(`-x, -z`), rounded with 3 passes of Chaikin smoothing and resampled every 2.5 units: 166 points, length
+about 414. Start/finish is at (-48, 0), heading north. It goes round the NW book (west lane at x -70),
+along the top, dips through the pencil gap (the "inner box" between the two pencils), then
+east lane x 48, round the SE book, and back through the south dip. Level 1's blocks are point-symmetric,
+so the track is too. **Checked against the real level:** at least 4.1 from every obstacle, at least 10.1 from every
+level-run domino, 15.6 from both run buttons (the domino runs sit in the NE and SW, so the track goes
+south of the blue run and north of the red one). The patches are soft: it grazes the juice and cereal edges
+only at the dips.
+
+**Gates** (`RACE_GATES`, `buildGate`): 8 gates, `[x, z, half width]`, snapped to the nearest track point.
+Two posts with gold balls, a bunting line (one vertex-coloured mesh), a chequered strip on the start line.
+The next gate's strip pulses gold and its balls glow. A gate counts when a car crosses its line (the
+signed distance along the track turns from negative to positive) within half-width + 1.2 sideways
+(`gateCheck`), and only in order. `c.passed` counts gates; 16 passes finish 2 laps.
+
+**Cars.** You (a Racer, `state.player`) and 3 red rivals (`R.rivals`; plain objects with `kind: 'racer'`, **not in
+`entities`**, so nothing targets them). Rivals follow the track with `steer()` and Racer stats
+(speed 24 × `k`, `k` = 0.99 / 0.96 / 0.93), easing off in tight corners (`speedF`), a lane offset of -1, 0 or 1,
+and a rubber band (up to +8% when behind you, -4% when ahead). If one sits still for 1.5 s it is lifted back onto the
+track. Red 3 is a "bully": when you carry a box and it is within 18, it rams you. Measured with a
+perfect-line autopilot: you lap in about 18 s, the rivals in about 25 s. A real player is slower than the autopilot.
+Cars bump each other in `raceCollide`.
+
+**Boxes** (`RACE_SPOTS`, `makeCrate`, `crateIcon`). 8 boxes on or beside the track: 2 gun, 2 wall,
+2 truck, 1 rocket, 1 digger. A cardboard box with a tape band and a small toy on top (gun, rocket, sugar cubes,
+truck, digger). Drive over an idle box to carry it (`pickUp`): one at a time, it rides on the roof, and your top speed
+drops 15% (`RACE_CARRY_SLOW`; measured 24 → 20.4). The spot grows a new box 10 s later (`RACE_RESPAWN`).
+**Drop** (`dropCrate`) leaves it behind you, tinted in your team colour; dropped boxes can't be picked
+up again. **Ram** (`raceCollide`, `knockOff`): hitting a car of the other team that carries a box at 7 or more
+units/s (`RACE_RAM`) knocks the box off, grey again and loose, and the rammer gets 1.8 s head start to grab it.
+Red rivals pick up any box close to the line, then drop it when within 8 of a spot near their toy box (80%)
+or a spot further out (20%); `RACE_RED_DROPS`, `RACE_RED_ELSE`.
+
+**The switch** (`finishRace`, `startBattle`, `unfoldCrate`). The first car to make 16 passes ends the race: BATTLE!
+banner with the result, three kettle clicks (`sfx('tick')`), a growing screen shake, then every dropped box and every
+box still being carried (where its car is) unfolds for its team:
+gun → `makeTurret('gun')`, rocket → `makeTurret('rocket')`, wall → a 3 × 7 sugar-cube block (`block(..., 'sugar')` into `levelRoot`, `navDirty = true`),
+truck or digger → `spawnWorker`. A turret or wall that fails `canPlace` is first nudged up to 7 units
+(`findDropSpot`, which solves boxes dropped close together); if nothing fits it pays 15 cereal (`RACE_COIN`) and
+the banner says so. Prizes: the winner's team +30 cereal (`RACE_PRIZE`); the last-place car's team gets a free
+gun turret near its home. Then the 3 rival cars are removed, the usual starting truck and digger for each side are
+spawned, **`state.time = 0`** (so raids, boss, `nextLayer`, `nextHijack`, domino runs and stars time the battle only) and the phase is `'battle'`.
+Loose and un-dropped boxes just vanish.
+
+**Skip race** (`skipRace`): `startBattle(true)`. Unfolds whatever is already dropped or carried, sends you home to
+(-52, 0) and gives no prizes. With no boxes it is exactly the old level 1 start.
+
+**Tested in Chromium** (Playwright, level 1): rivals alone finish 2 laps in about 50 s; an autopilot player
+picks up, carries and drops boxes (Z and the button), carried speed is 20.4 against 24; ramming at 22 units/s knocks a box
+off and the rammer picks it up (both ways), a slow bump does not; a crafted finish unfolded 2 turrets, 1 wall, 3 workers and
+15 cereal for blue, and gun, rocket (carried), wall, truck, digger for red, plus the last-place gift; an idle player came last
+and got the free gun; Skip with no boxes gave the old start (2 trucks and diggers, 25 cereal, 2 domino runs); 4 minutes of
+battle afterwards ran the normal economy, the enemy army and turrets, and the tricks (`nextLayer` 180, `nextHijack` 150
+at the start); levels 2 and 4 start in `'battle'` with no race UI; no page errors.
+
+**Known limits.** The ideal lap is about 18 s, short of the 25 to 35 s target (the table is small); only a casual player
+reaches 25. Rivals ignore dropped boxes of yours. Dropped boxes are not solid. There is no sound on pickup for rivals.
+
 ## 5. Known problems (fix first)
 
 1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.
@@ -293,7 +372,7 @@ Every level now has two domino runs built in, one per side
 
 | # | Job | Why | Done when |
 |---|---|---|---|
-| 0 | **Race-then-battle opening** (DESIGN.md, "The twist") | Harry's big idea; teaches driving first | a level starts as a 3-lap race with boxes; dropped boxes become your base when the race ends |
+| 0 | **Race-then-battle opening** (DESIGN.md, "The twist"): **built for level 1 (2 Nov)**, see "Level 1 race opening" | Harry's big idea; teaches driving first | level 1 starts as a 2-lap race with boxes; dropped boxes become your base. Still to do: the other levels |
 | 1 | ~~Table edge + build ghost~~ done 31 Oct | stops the two worst frustrations | you can't fall into the void unless the design says so; you can see where a turret will go before buying |
 | 2 | Sound pass | toys must *sound* like toys | each weapon, impact, pickup and build has its own clicky toy sound (Web Audio, generated in code); the kettle click counts down |
 | 3 | Game feel ("juice") | makes every hit satisfying | screen shake on big hits, hit-flash, cereal bursting out of wrecks, wheels kicking crumbs |

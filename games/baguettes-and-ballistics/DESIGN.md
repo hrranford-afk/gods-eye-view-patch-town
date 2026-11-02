@@ -18,6 +18,8 @@ The enemy plays by the same rules: it digs, hauls, builds and upgrades.
 
 ## The twist: race, then battle (Harry's idea, 31 Oct 2026)
 
+**Status: built for level 1 (2 Nov 2026).** A 2-lap race with 8 gates, 3 red rivals and 8 supply boxes; dropped and carried boxes unfold into turrets, sugar walls and workers; ramming steals; the winner gets +30 cereal and the last place a free gun turret; Skip race jumps to the battle. Details in HANDOVER.md, "Level 1 race opening". Other levels still start as battles. Not yet built: ambush spots as the catch-up gift, a 3-lap option, other levels' tracks.
+
 Each level starts as a race and turns into a war.
 
 1. **Race.** Laps around the table. Supply boxes lie on the track.

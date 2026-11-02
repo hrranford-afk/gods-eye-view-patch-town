@@ -13,6 +13,8 @@ to play on an iPad. See [DESIGN.md](DESIGN.md) for where it's going.
 
 **Level 4, The Sink.** A channel of water splits the table: wheels can't cross it except on one ruler bridge or a bottle-cap ferry, and the Hover skims over. Launch soap-dish gunboats (Boat button or B, 30 cereal, three at most); the enemy sends boats and sponge rafts too. The tap drips splash rings that shove cars and boats sideways, a rich cereal pile sits on a soap-dish island, and at 4:00 the Rubber Duck paddles in and lobs bubbles.
 
+**Level 1 starts with a race.** Two laps round the breakfast table against three red cars, through glowing gates. Supply boxes sit on the track (gun turret, rocket turret, sugar wall, dump truck, digger): drive over one to carry it (15% slower), press Drop or Z to leave it where you want it, and ram a rival to knock its box off. When the first car finishes, the table shakes, a kettle clicks 3, 2, 1, and every dropped box unfolds into what it holds, so your base is wherever you raced it to. Winner +30 cereal, last place a free gun turret. "Skip race" jumps straight to the battle.
+
 **Level 2, Pencil case.** Paperclips from the open pencil case pay for rockets and the Tank; shove erasers to block lanes; the enemy raids your trucks every 90 seconds; the Stapler arrives at 4:00.
 
 **Level 1, Breakfast table.** Diggers dig cereal out of spilled bowls, dump

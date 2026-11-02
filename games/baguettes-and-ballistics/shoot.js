@@ -8,7 +8,8 @@ const { chromium } = require('playwright');
   await p.screenshot({ path: 'shots/1-title.png' });
   const startBtn = await p.$('#play');
   if (startBtn) await startBtn.click(); else await p.keyboard.press('Enter');
-  await p.waitForTimeout(2500); await p.screenshot({ path: 'shots/2-start.png' });
+  await p.waitForTimeout(2500); await p.screenshot({ path: 'shots/2-start.png' }); // level 1 opens with a race now
+  const skip = await p.$('#bSkip'); if (skip && await skip.isVisible()) { await skip.click(); await p.waitForTimeout(500); } // skip it for the battle shots
   await p.keyboard.down('KeyW'); await p.waitForTimeout(2500); await p.keyboard.up('KeyW');
   await p.keyboard.press('KeyT'); await p.keyboard.press('KeyG'); await p.keyboard.press('Digit1');
   await p.waitForTimeout(30000); await p.screenshot({ path: 'shots/3-economy.png' });
