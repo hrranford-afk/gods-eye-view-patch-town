@@ -694,8 +694,15 @@ const LEVELS = [
   },
   {
     name: 'Remote-control drawer', time: 'midday', tableColor: 0xffffff, tableTex: 'felt', dark: true,
-    blurb: 'You are inside the junk drawer, and the light is off. You only see what a light touches. Enemy cars hide in the dark until your headlights, a turret, a glowing battery or a flare shows them.',
-    tips: ['Drive, fire, build as before.'],
+    blurb: 'You are inside the junk drawer, and the light is off. Enemy cars hide in the dark until a light touches them: your headlights, a turret, a glowing battery pile, the torch or a flare. The enemy is sneaky here. It hijacks your trucks early, and its raiders creep in with no siren. At 3:00 the Remote Car races out.',
+    tips: [
+      '<b>Drive, fire, build:</b> as before (WASD, Space, T, G, 1, 2)',
+      '<b>The dark:</b> enemy cars show only inside light. Your headlights, turrets, trucks and the toy box all give light. So do the glowing battery piles and the torch',
+      '<b>Flare:</b> Flare button or V, 8 cereal. It lights a big circle for 15 seconds and shows hidden enemies. Fire it ahead of you',
+      '<b>Batteries:</b> trucks haul them from the green glowing piles. A Laser turret (button or L) costs 35 cereal + 8 batteries. The Jet Bike costs 20 cereal + 14 batteries',
+      '<b>Sneaky enemy:</b> hijackers come early and turn your trucks into bombs. Ram a hijacked truck to defuse it. Keep a turret by your trucks',
+      '<b>The Remote Car:</b> fast, and it snipes from far away. Its lights blink even in the dark. Flare it, then hit it with lasers or chase it down',
+    ],
     blocks: [
       ...mirrored([
         (s) => [s * 24, -s * 20, 6, 30, 2.6, 0x1b1d24, 'remote'],       // a long TV remote
