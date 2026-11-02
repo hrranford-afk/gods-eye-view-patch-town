@@ -3148,6 +3148,26 @@ function commander(dt) {
 
 // ---------- The enemy's tricks: a domino run at your toy box, and hijacking your trucks ----------
 // From 3:00 the enemy sends a domino layer about every 2.5 minutes, and a hijacker about every 2 minutes from 2:30.
+// Level 6: every 70 to 110 s of war, if Red's Great Run is standing, a whole tank squad (or three raiders' worth) goes to press the button in the middle of the bend.
+function redPressGreat(run) {
+  const F = state.finale;
+  if (!run.ready || F.stage !== 'war') return;
+  if (entities.some((e) => e.presser === run && e.hp > 0)) return;
+  if (!F.pressAt) F.pressAt = state.time + 50;
+  if (state.time < F.pressAt) return;
+  // Heavy first: tank squads, then raiders, then any infantry; nearest to the button first. Enough units to weigh BUTTON_WEIGHT, plus their squad mates.
+  const rank = { tanks: 0, raiders: 1 };
+  const cand = F.squads.filter((q) => q.team === RED && q.kind !== 'bombers' && q.kind !== 'boats' && q.kind !== 'botsq')
+    .flatMap((q) => q.units.filter((u) => u.hp > 0 && !u.presser).map((u) => ({ u, q })))
+    .sort((a, b) => (rank[a.q.kind] ?? 2) - (rank[b.q.kind] ?? 2) || dist2(a.u, run) - dist2(b.u, run));
+  let w = 0; const crew = [];
+  for (const c of cand) { if (w >= BUTTON_WEIGHT) break; crew.push(c); w += weightOf(c.u); }
+  if (w < BUTTON_WEIGHT) { F.pressAt = state.time + 10; return; } // not enough bodies: look again soon
+  const sqs = new Set(crew.map((c) => c.q));
+  if (crew[0].q.kind === 'tanks') { for (const q of sqs) for (const u of q.units) if (u.hp > 0) u.presser = run; } // a whole tank squad goes
+  else { for (const c of crew) c.u.presser = run; }
+  F.pressAt = state.time + 70 + Math.random() * 40;
+}
 function enemyTricks() {
   if (state.finale?.stage === 'buildup') return; // level 6: no tricks under the ceasefire
   // The Gumball Machine: now and then a car goes and rams their side of it; items get used when one of their cars is near you.
@@ -3165,7 +3185,8 @@ function enemyTricks() {
   }
   // Their level domino run: from 1:40, send the nearest car to press the button whenever it's set up.
   const run = state.runs.find((r) => r.team === RED);
-  if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
+  if (run && state.finale) redPressGreat(run); // level 6: a heavy squad is sent to press the Great Run button now and then
+  else if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
     // Send a Monster buggy if they have one; otherwise the nearest cars until they weigh enough together.
     const cars = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker').sort((a, b) => dist2(a, run) - dist2(b, run));
     const big = cars.find((e) => weightOf(e) >= BUTTON_WEIGHT);
@@ -4775,7 +4796,7 @@ function bagCleanup() {
 // One mesh per domino (a painted texture), so 55 of them cost 55 draw calls rather than 400. They reset 90 s after falling.
 const GREAT = {
   [BLUE]: { verts: [[-60, 103], [131, 103], [131, -60], [144, -77]], radius: [0, 10, 8, 0], dmg: 500, button: 4.6 },
-  [RED]: { verts: [[-108, 79], [-150, 79], [-150, -62]], radius: [0, 13, 0], dmg: 250, button: 4.6 },
+  [RED]: { verts: [[16, 68], [-92, 68], [-100, 79], [-150, 79], [-150, -52], [-152, -71]], radius: [0, 10, 10, 13, 6, 0], dmg: 250, button: 4.6 }, // (finale gumball: button moved from (-103,79) on your side to (21,68), the middle of the bend, checked clear of blocks, rings, piles and caps; the end was moved so the last domino's top lands on the toy box: the old end at z -62 landed 14 away and did no damage)
 };
 function roundPath(verts, radii) { // a polyline with each corner replaced by an arc of its radius
   const out = [verts[0]];
