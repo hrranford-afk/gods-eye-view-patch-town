@@ -581,3 +581,18 @@ dominoes, run buttons, the gumball, toasters) with `disposeTree`. Switching
 levels 10 times used to climb from about 500 to 4,000+ shapes in memory; it
 now stays at about 240–370.
 
+## Hob round two (2 Nov 2026; Harry: "why is there cereal all over the thing? Shouldn't there be sticky spots? Somebody cooking, putting the pan down on random bases?")
+
+- **Frozen peas, not cereal:** `LEVELS[4].pileLook = 'peas'` draws piles and
+  spills as green peas, and `cerealName: 'peas'` renames the HUD counter,
+  toasts and garage prices on this level (the stock is still `state.cereal`).
+  Fewer piles: 6 pea piles (was 12), refilling a little faster.
+- **Sticky and slippery spots:** new patch kinds `sauce` (red, top speed ×0.35)
+  and `oil` (yellow, slides like juice). Tested: 8 speed in sauce against 24
+  on clean glass.
+- **The Cook** (`LEVELS[4].cook`, `COOK`, `cookPick`, `cookUpdate`): every 22–30 s
+  a shadow grows on a random spot for 2.5 s (a third of the time by a toy box,
+  either side), then a frying pan slams down: 70 to cars under it (and shoves
+  them), 140 to turrets, 120 to a toy box. It stays as a wall for 15 s, then is
+  lifted away. Never inside the oven.
+
