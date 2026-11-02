@@ -43,6 +43,7 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 .res { display: flex; gap: 16px; align-items: baseline; }
 .cereal { font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 0 var(--ink); font-variant-numeric: tabular-nums; }
 .cereal.clips { color: #dfe3ea; }
+.cereal.batt { color: #7dffb0; }
 .bossbar { position: fixed; z-index: 2; top: calc(env(safe-area-inset-top, 0px) + 112px); left: 50%; transform: translateX(-50%); width: min(300px, 40vw); pointer-events: none; text-align: center; }
 .bossbar b { font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
 .bossbar .bar i { background: #c8281f; }
@@ -123,6 +124,10 @@ button.fire.on { background: var(--red); transform: scale(0.96); }
     <button id="bTrojan">Trojan<small>30</small></button>
     <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button id="bBoat" hidden>Boat<small>30</small></button>
+  </div>
+  <div class="row" id="darkRow" hidden>
+    <button id="bFlare">Flare<small id="flareCost">8</small></button>
+    <button id="bLaser">Laser<small id="laserCost">35</small></button>
   </div>
   <div class="row clipsRow" id="clipsRow" hidden>
     <button id="bStaple">Staple<small id="stapleCost">20</small></button>
@@ -657,10 +662,13 @@ const LEVELS = [
     erasers: [],
     patches: [],
     outposts: [[-34, -30], [-34, 30], [0, 0], [34, -30], [34, 30]],
-    piles: [[-26, -40, 150], [-26, 40, 150], [26, -40, 150], [26, 40, 150], [-48, -10, 110], [48, 10, 110]],
-    refill: [],
-    start: { cereal: 30, clips: 0, unlocked: ['racer', 'tank'] },
-    resources: ['cereal'],
+    piles: [[-26, -40, 150], [-26, 40, 150], [26, -40, 150], [26, 40, 150], [-48, -10, 110], [48, 10, 110],
+      [-15, 14, 130, 'batteries'], [15, -14, 130, 'batteries'], [-44, 22, 90, 'batteries'], [44, -22, 90, 'batteries']],
+    refill: [{ x: -15, z: 14, rate: 0.18 }, { x: 15, z: -14, rate: 0.18 }],  // the glowing battery piles slowly fill again
+    start: { cereal: 30, clips: 10, unlocked: ['racer', 'tank'] },      // `clips` holds this level's second resource: batteries
+    resources: ['cereal', 'batteries'], second: 'batteries',
+    turretClips: { laser: 8 },                                          // a laser turret costs 35 cereal + 8 batteries
+    vehicleCosts: { jet: { c: 20, p: 14 } },                            // the Jet Bike needs batteries
     rules: { baseHp: 1800, raidEvery: 90, firstRaid: 100, raidSize: [2, 3] },
   },
   {
@@ -1041,8 +1049,25 @@ function clipsGroup(x, z, n, radius, height) {
   scene.add(g);
   return g;
 }
+// Batteries: AA cells lying in a heap, glowing green so they show up in the dark (they also light the felt, and reveal enemies near them).
+function batteriesGroup(x, z, n, radius, height) {
+  const g = new THREE.Group(), geo = shared('battGeo', () => new THREE.CylinderGeometry(0.5, 0.5, 3.3, 10));
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius, k = i % 3;
+    const m = mesh(geo, shared(`battMat:${k}`, () => mat([0x3ddc84, 0xffc23d, 0x4db8ff][k], { metalness: 0.3, roughness: 0.35, emissive: [0x1aa85a, 0xb98300, 0x1c78b8][k], emissiveIntensity: 0.6 })), Math.cos(a) * r, 0.5 + (1 - r / radius) * height * Math.random(), Math.sin(a) * r, g);
+    m.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI * 2, Math.PI / 2);
+  }
+  lightPool(g, 0x7dffb0, 22, 22, 0, 0, 0.55, 0.07);
+  const halo = new THREE.Sprite(shared('haloMat:green', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0x7dffb0, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })));
+  halo.scale.set(9, 9, 1); halo.position.y = 2.2; g.add(halo);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+const secondRes = () => state.level.resources[1];     // the level's second resource ('clips' or 'batteries'), stored in state.clips
+const secondName = () => state.level.second || 'clips';
 function makePile(x, z, amount, refill = 0, res = 'cereal') {
-  const group = res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
+  const group = res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
   if (darkNow() && res === 'cereal') lightPool(group, 0xffd9a0, 12, 12, 0, 0, 0.22, 0.06); // a faint glow so the cereal can be found
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   piles.push(p);
@@ -1095,7 +1120,7 @@ function workerThink(w, dt) {
     // Pick the fullest pile near home that has the fewest of our diggers, and stay with it.
     if (!w.pile || w.pile.amount <= 0) {
       const home = state.bases[w.team];
-      const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === 'clips' && state.clips[w.team] < 60 ? 4000 : 0);
+      const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === secondRes() && state.clips[w.team] < 60 ? 4000 : 0);
       w.pile = piles.filter((p) => p.amount > 0 && !p.island).sort((a, b) => score(a) - score(b))[0] || null;
     }
     const goal = w.pile || state.bases[w.team];
@@ -1109,7 +1134,7 @@ function workerThink(w, dt) {
     const d = nearestDrop(w);
     steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
     if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
-      state[w.loadRes === 'clips' ? 'clips' : 'cereal'][w.team] += w.load;
+      state[w.loadRes && w.loadRes !== 'cereal' ? 'clips' : 'cereal'][w.team] += w.load; // 'clips' holds the level's second resource
       if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('pour');
       w.load = 0;
       w.going = 'fill';
@@ -1121,7 +1146,7 @@ function workerThink(w, dt) {
   if (w.think <= 0 || !w.src || w.src.amount <= 0) {
     w.think = 1;
     // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
-    const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? 'clips' : 'cereal') : null;
+    const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? secondRes() : 'cereal') : null;
     const ok = (src) => src.amount > 0 && !src.island && (!want || src.res === want);
     const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
     const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
@@ -1341,7 +1366,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
-  if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
+  if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -1356,6 +1381,7 @@ const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.prevent
 tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
 tap('bStaple', () => build('staple'));
+tap('bLaser', () => build('laser'));
 tap('bArmour', () => armour());
 tap('bMagnet', () => build('magnet'));
 tap('bDomino', () => placeDomino());
@@ -1647,12 +1673,14 @@ const TURRETS = {
   // A fridge magnet on a stalk: pulls loose cereal in (it counts as hauled) and drags enemy cars nearby. No gun.
   magnet: { name: 'Magnet', cost: 30, weapon: { range: 12, rate: 1, dmg: 0, speed: 1, color: 0, size: 0 }, hp: 160, range: 12, rate: 1, dmg: 0 },
   catapult: { name: 'Catapult', cost: 45, weapon: WEAPONS.eraser, hp: 110, range: 44, rate: 3.2, dmg: 30 },
+  // Drawer level: a quick cyan beam gun that costs batteries.
+  laser: { name: 'Laser', cost: 35, weapon: WEAPONS.laser, hp: 130, range: 23, rate: 0.14, dmg: 8 },
   staple: { name: 'Staple gun', cost: 20, weapon: WEAPONS.staple, hp: 130, range: 18, rate: 0.12, dmg: 5, burst: 4, reload: 1.6 },
 };
 const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
 // Paperclips a turret costs on this level (0 on level 1).
 const clipsOf = (type) => Math.round((state.level.turretClips?.[type] || 0) * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
-const priceText = (type) => costOf(type) + (clipsOf(type) ? ` + ${clipsOf(type)} clips` : '');
+const priceText = (type) => costOf(type) + (clipsOf(type) ? ` + ${clipsOf(type)} ${secondName()}` : '');
 function makeTurret(type, team, x, z) {
   const t = TURRETS[type];
   const g = new THREE.Group();
@@ -1660,7 +1688,11 @@ function makeTurret(type, team, x, z) {
   const head = mesh(new THREE.BoxGeometry(1.8, 1.1, 1.6), mat(COLORS[team]), 0, 2, 0, g);
   head.name = 'turret';
   if (type === 'gun') for (const z2 of [-0.4, 0.4]) mesh(new THREE.CylinderGeometry(0.18, 0.18, 2, 6), mat(0x1c1712), 1.6, 0, z2, head).rotation.z = Math.PI / 2;
-  else if (type === 'staple') { // a little desk stapler on the turret: grey base, red arm
+  else if (type === 'laser') { // a glowing cyan lens on a short barrel, with a fin on each side
+    mesh(new THREE.CylinderGeometry(0.28, 0.4, 1.9, 8), mat(0x2b2f36, { metalness: 0.5 }), 1.2, 0, 0, head).rotation.z = Math.PI / 2;
+    lamp(head, 0x7cfffb, 2.2, 0, 0, 0.36);
+    for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(1.2, 0.8, 0.12), mat(0x7cfffb, { emissive: 0x2ad1cc, emissiveIntensity: 0.8 }), 0.2, 0.2, sz * 0.9, head);
+  } else if (type === 'staple') { // a little desk stapler on the turret: grey base, red arm
     mesh(new THREE.BoxGeometry(2.6, 0.35, 0.9), mat(0x9aa0a8, { metalness: 0.4 }), 0.6, 0.55, 0, head);
     mesh(new THREE.BoxGeometry(2.4, 0.45, 0.8), mat(0xc8281f), 0.7, 0.95, 0, head).rotation.z = 0.12;
   } else if (type === 'magnet') { // horseshoe magnet: red with silver tips
@@ -2132,7 +2164,7 @@ function renderGarage() {
   $('garage').innerHTML = Object.entries(VEHICLES).map(([k, v]) => {
     const owned = state.unlocked.has(k);
     const vc = vehCost(k);
-    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${vc.c} cereal${vc.p ? ` + ${vc.p} clips` : ''}`}</small></button>`;
+    return `<button data-v="${k}" class="${p.vehicle === k ? 'cur' : ''}">${v.name}<small>${owned ? (p.vehicle === k ? 'Driving' : 'Ready') : `${vc.c} cereal${vc.p ? ` + ${vc.p} ${secondName()}` : ''}`}</small></button>`;
   }).join('');
   for (const b of $('garage').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.preventDefault(); chooseVehicle(b.dataset.v); });
 }
@@ -2140,7 +2172,7 @@ function chooseVehicle(k) {
   const v = VEHICLES[k];
   if (!state.unlocked.has(k)) {
     const vc = vehCost(k);
-    if (state.cereal[BLUE] < vc.c || state.clips[BLUE] < vc.p) { toast(`${v.name} costs ${vc.c} cereal${vc.p ? ` + ${vc.p} clips` : ''}`); sfx('no'); return; }
+    if (state.cereal[BLUE] < vc.c || state.clips[BLUE] < vc.p) { toast(`${v.name} costs ${vc.c} cereal${vc.p ? ` + ${vc.p} ${secondName()}` : ''}`); sfx('no'); return; }
     state.cereal[BLUE] -= vc.c; state.clips[BLUE] -= vc.p;
     state.unlocked.add(k);
   }
@@ -2158,6 +2190,8 @@ function updateCosts() {
   $('gunCost').textContent = priceText('gun');
   $('rocketCost').textContent = priceText('rocket');
   $('stapleCost').textContent = priceText('staple');
+  $('darkRow').hidden = !state.level.dark;
+  $('laserCost').textContent = priceText('laser');
   $('clipsRow').hidden = !hasClips();
   $('bBoat').hidden = !state.level.boats;
   $('bBoat').querySelector('small').textContent = BOATS.gunboat.cost;
@@ -2192,6 +2226,7 @@ function commanderBuild(ramp) {
   if (spot) {
     if (cereal[RED] < 25) return true; // saving up: don't spend on cars
     let type = Math.random() < 0.6 ? 'gun' : 'rocket';
+    if (state.level.turretClips?.laser && Math.random() < 0.45) type = 'laser'; // the drawer enemy likes lasers
     const need = state.level.turretClips?.[type] || 0;
     if (need > state.clips[RED]) type = 'gun'; // no paperclips for a rocket yet
     else state.clips[RED] -= need;
@@ -2816,7 +2851,8 @@ function update(dt) {
   // HUD
   $('cereal').textContent = `${Math.floor(state.cereal[BLUE])} cereal`;
   $('clipsHud').hidden = state.level.resources.length < 2;
-  $('clipsHud').textContent = `${Math.floor(state.clips[BLUE])} clips`;
+  $('clipsHud').textContent = `${Math.floor(state.clips[BLUE])} ${secondName()}`;
+  $('clipsHud').classList.toggle('batt', secondName() === 'batteries');
   $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
   const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
@@ -2855,7 +2891,7 @@ function render(dt) {
       const bed = e.mesh.getObjectByName('bed');
       const load = bed.getObjectByName('load');
       load.scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
-      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : 0xf2c97d);
+      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : 0xf2c97d);
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
