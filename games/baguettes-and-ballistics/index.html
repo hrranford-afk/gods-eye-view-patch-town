@@ -2200,7 +2200,7 @@ function nearestEnemy(from, range, team = from.team) {
   let best = null, bd = range * range;
   const cf = state.finale?.ceasefire; // level 6 build-up: nobody picks a target across the ceasefire line
   for (const e of entities) {
-    if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.trojan) continue;
+    if (e.team === team || e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.trojan || e.locked) continue; // (a locked Baguette engine is not worth aiming at)
     if (cf && (e.x > 0) !== (from.x > 0)) continue;
     const d = dist2(from, e) - (e.r || 0) ** 2;
     if (d < bd) { bd = d; best = e; }
@@ -2338,13 +2338,14 @@ function burst(x, z, color, n = 12, power = 10, y = 1.5) {
 
 function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.air) return; // a car in the air (off a toaster) can't be hit
+  if (e.kind === 'bag') return bagHurt(e, dmg, byTeam, weapon); // level 6: the Baguette's engine and carriages
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
   if (e.fly && weapon && !weapon.homing) dmg *= 0.5; // level 6: a flying baguette shrugs off half of any bullet; rocket turrets (homing) are the answer to bombers
   if (weapon?.vsCar && (e.kind === 'player' || e.kind === 'worker' || (e.kind === 'unit' && !e.inf && !e.fly))) dmg *= weapon.vsCar; // level 6 pikemen: extra damage to cars
   if (state.finale?.cover && finaleCovered(e)) dmg *= 0.75; // level 6 battle plan: a defence that guessed the lane right takes 25% less there
   // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
   if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
-  if (e.kind === 'base' && e.team === RED && state.boss?.hp > 0) dmg *= 0.5; // the boss's bubble shield
+  if (e.kind === 'base' && e.team === RED && state.boss?.hp > 0 && !state.boss.shieldBroken) dmg *= 0.5; // the boss's bubble shield
   if (byTeam != null && state.buff?.[byTeam]?.kind === 'double') dmg *= 2;
   if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'armour') dmg *= 0.5;
   // Paperclip armour on your car: each plate takes 15% off every hit (3 plates at most).
@@ -3839,6 +3840,7 @@ function finaleDecor() {
   V.kettleAt = K;
   // STAGE 2 HOOK: the fridge door goes at the far end of the cut-out (V.fridgeAt); the Baguette train boss comes round the worktop edge.
   V.fridgeAt = { x: 0, z: -64 };
+  V.rails = bagRails(); // the Baguette's faint rails
   // The sink: a trough of water down the middle of the left arm with a ruler bridge, two bottle-cap ferries and the tap.
   const wx = (Wt.x0 + Wt.x1) / 2, ww = Wt.x1 - Wt.x0, z0 = -D / 2, z1 = Wt.z1, wl = z1 - z0;
   waterTex = waterTex || waterTexture();
@@ -3911,7 +3913,7 @@ function finaleInit() {
     stage: 'buildup', ceasefire: true, left: FIN.build, squads: [], sqId: 0,
     plan: [null, null], cover: [false, false], gate: [null, null], // the battle plan (lane 0..2 per side), who guessed right, and where the bonus applies
     rally: [0, 1], redGuess: Math.floor(Math.random() * 3), aiT: 4, aiN: 0, kt: 0, lastTick: 99, marks: [], ui: '',
-    stage2: null, // STAGE 2 HOOK: the train boss, the Great Domino Run and the fridge door keep their state here
+    stage2: { train: null, baguetteDone: false }, // stage 2: the Baguette, the Great Domino Run and the fridge door keep their state here
   };
 }
 function lineClamp(e) {
@@ -3941,6 +3943,7 @@ function finaleCleanup() {
   for (const b of bombs) scene.remove(b.mesh);
   bombs.length = 0;
   for (const q of pulseRings) q.mesh.visible = false;
+  bagCleanup(); $('bossbar').style.top = '';
   const F = state.finale;
   if (F) for (const m of F.marks) { scene.remove(m.mesh); m.mesh.material.dispose(); }
   if (state.finale?.rallyMark) { scene.remove(state.finale.rallyMark); state.finale.rallyMark.traverse((o) => { if (o.material && !o.material.userData.shared) o.material.dispose(); }); }
@@ -4306,6 +4309,8 @@ function finaleUpdate(dt) {
     if (!q.units.length) { F.squads.splice(i, 1); F.ui = ''; continue; }
     if (q.kind === 'boats') for (const b of q.units) b.patrol = q.order === 'defend' ? [-58, -34] : [-32, -9];
   }
+  if (F.stage === 'war' && !F.stage2.baguetteDone && state.time >= BAG.at) { F.stage2.baguetteDone = true; spawnBaguette(); }
+  bagUpdate(dt);
   bombsUpdate(dt);
   pulsesUpdate(dt);
   extrasUpdate(dt);
@@ -4419,6 +4424,254 @@ function finaleDraw(dt, time) {
     $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-wall="1">Sugar wall ${wallsOf(BLUE)}/${WALL.max}<small>${WALL.cost}, across your path</small></button><button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
     for (const b of $('planBox').querySelectorAll('button')) b.classList.toggle('cur', +b.dataset.lane === F.plan[BLUE]);
   }
+}
+
+// ---------- Level 6, the finale: stage 2 ----------
+// THE BAGUETTE (boss), the Great Domino Run, the fridge door and the ending. All state lives in state.finale.stage2.
+// The train runs on its own fixed track (no A*): a closed loop that outlines the U (up one lane of each arm, a U-turn, back down the other lane,
+// along the bend on two rows). It never goes over water or blocks: the lanes were chosen by hand and checked against the obstacle list.
+// Engine + 4 carriages, each an entity of kind 'bag' with its own hp and weapon. hurt() hands every hit on them to bagHurt (the engine soaks
+// everything until the carriages are gone). state.boss is a small stand-in object holding the total hp so the boss bar, arrow and shield work.
+const BAG = { speed: 7.5, engineHp: 900, carHp: 380, armor: 3, gap: 6.4, engineGap: 7.2, at: 184, crush: 90, track: null };
+const BAG_CARS = [
+  { type: 'stapler', name: 'Stapler car', hint: 'snaps shut turrets' },
+  { type: 'duck', name: 'Duck car', hint: 'bubble lobs' },
+  { type: 'remote', name: 'Remote car', hint: 'snipes' },
+  { type: 'toaster', name: 'Toaster car', hint: 'flaming toast' },
+];
+const BAG_VERTS = [[-57, 40, 4], [60, 40, 4], [60, -44, 4.5], [51, -44, 4.5], [51, 32, 4], [-49, 32, 4], [-49, -44, 4], [-57, -44, 4]]; // x, z, corner radius (all 90 degrees)
+function bagTrack() {
+  if (BAG.track) return BAG.track;
+  const dense = [], n = BAG_VERTS.length;
+  for (let i = 0; i < n; i++) {
+    const a = BAG_VERTS[(i + n - 1) % n], b = BAG_VERTS[i], c = BAG_VERTS[(i + 1) % n], r = b[2];
+    const l1 = Math.hypot(a[0] - b[0], a[1] - b[1]), l2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
+    const u1 = [(a[0] - b[0]) / l1, (a[1] - b[1]) / l1], u2 = [(c[0] - b[0]) / l2, (c[1] - b[1]) / l2];
+    const ctr = [b[0] + (u1[0] + u2[0]) * r, b[1] + (u1[1] + u2[1]) * r];
+    const a0 = Math.atan2(b[1] + u1[1] * r - ctr[1], b[0] + u1[0] * r - ctr[0]), da = wrap(Math.atan2(b[1] + u2[1] * r - ctr[1], b[0] + u2[0] * r - ctr[0]) - a0);
+    for (let k = 0; k <= 12; k++) dense.push([ctr[0] + Math.cos(a0 + da * k / 12) * r, ctr[1] + Math.sin(a0 + da * k / 12) * r]);
+  }
+  const seg = [0];
+  for (let i = 1; i <= dense.length; i++) { const p = dense[i - 1], q = dense[i % dense.length]; seg.push(seg[i - 1] + Math.hypot(q[0] - p[0], q[1] - p[1])); }
+  const len = seg[dense.length], N = Math.round(len), step = len / N, pts = [];
+  let j = 0;
+  for (let i = 0; i < N; i++) { // resample to an even spacing, so a point is just index = s / step
+    const s = i * step;
+    while (seg[j + 1] < s) j++;
+    const p = dense[j], q = dense[(j + 1) % dense.length], f = (s - seg[j]) / ((seg[j + 1] - seg[j]) || 1);
+    pts.push({ x: p[0] + (q[0] - p[0]) * f, z: p[1] + (q[1] - p[1]) * f });
+  }
+  for (let i = 0; i < N; i++) { const a = pts[(i + N - 2) % N], c = pts[(i + 2) % N]; pts[i].h = Math.atan2(c.z - a.z, c.x - a.x); }
+  let startI = 0, best = 1e9; // the train rolls out on the south row (z = 40) at x = 0, heading east
+  for (let i = 0; i < N; i++) { const d = Math.hypot(pts[i].x, pts[i].z - 40); if (d < best && Math.cos(pts[i].h) > 0.9) { best = d; startI = i; } }
+  return (BAG.track = { pts, N, len, step, startS: startI * step });
+}
+function trackAt(s, out) {
+  const T = bagTrack(), f = (((s % T.len) + T.len) % T.len) / T.step, i = Math.floor(f) % T.N, a = T.pts[i], b = T.pts[(i + 1) % T.N], k = f - Math.floor(f);
+  out.x = a.x + (b.x - a.x) * k; out.z = a.z + (b.z - a.z) * k; out.h = a.h + wrap(b.h - a.h) * k;
+  return out;
+}
+// A faint pair of rails with sleepers, one mesh (built with the worktop, lives in levelRoot).
+function bagRails() {
+  const T = bagTrack(), pos = [], idx = [];
+  const quad = (a, b, c, d) => { const o = pos.length / 3; pos.push(...a, ...b, ...c, ...d); idx.push(o, o + 1, o + 2, o, o + 2, o + 3); };
+  for (let i = 0; i < T.N; i++) {
+    const p = T.pts[i], q = T.pts[(i + 1) % T.N], nx = -Math.sin(p.h), nz = Math.cos(p.h), mx = -Math.sin(q.h), mz = Math.cos(q.h);
+    for (const off of [-1.5, 1.5]) quad([p.x + nx * (off + 0.14), 0, p.z + nz * (off + 0.14)], [p.x + nx * (off - 0.14), 0, p.z + nz * (off - 0.14)], [q.x + mx * (off - 0.14), 0, q.z + mz * (off - 0.14)], [q.x + mx * (off + 0.14), 0, q.z + mz * (off + 0.14)]);
+    if (i % 3 === 0) { const tx = Math.cos(p.h) * 0.3, tz = Math.sin(p.h) * 0.3; quad([p.x + nx * 2.1 - tx, 0, p.z + nz * 2.1 - tz], [p.x - nx * 2.1 - tx, 0, p.z - nz * 2.1 - tz], [p.x - nx * 2.1 + tx, 0, p.z - nz * 2.1 + tz], [p.x + nx * 2.1 + tx, 0, p.z + nz * 2.1 + tz]); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
+  const m = mesh(geo, new THREE.MeshBasicMaterial({ color: 0xcdb895, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }), 0, 0.09, 0);
+  m.castShadow = m.receiveShadow = false;
+  return m;
+}
+// Models: one crusty loaf on an axle chassis per car, with a different top for each weapon. All shapes shared.
+function bagModel(kind) {
+  const g = new THREE.Group(), eng = kind === 'engine', L = eng ? 7 : 5.6, Wd = eng ? 4.2 : 3.6, k = eng ? 'e' : 'c';
+  const dark = () => mat(0x23262c, { metalness: 0.4, roughness: 0.5 }), steel = () => mat(0x80858f, { metalness: 0.75, roughness: 0.3 });
+  part(g, `bgCh:${k}`, () => new THREE.BoxGeometry(L, 0.7, Wd - 0.5), 'bgDark', dark, 0, 0.95, 0, false);
+  for (const sx of [-1, 1]) part(g, `bgAx:${k}`, () => new THREE.CylinderGeometry(0.85, 0.85, Wd + 0.2, 12).rotateX(Math.PI / 2), 'bgDark', dark, sx * L * 0.3, 0.85, 0, false);
+  part(g, `bgLoaf:${k}`, () => new THREE.SphereGeometry(1, 16, 10).rotateZ(Math.PI / 2).scale(L / 2, 1.3, Wd / 2 * 0.92), 'bmCrust', () => new THREE.MeshStandardMaterial({ map: finTex.baguette, roughness: 0.7 }), 0, 2.55, 0, true);
+  for (const bx of [-0.34, 0, 0.34]) part(g, `bgBand:${k}`, () => new THREE.TorusGeometry(1, 0.1, 6, 16).rotateY(Math.PI / 2).scale(1, 1.35, Wd / 2 * 0.95), 'bgSteel', steel, bx * L, 2.55, 0, false);
+  const top = new THREE.Group(); top.position.y = 3.6; g.add(top);
+  if (eng) {
+    part(g, 'bgChim', () => new THREE.CylinderGeometry(0.7, 0.95, 2.6, 10), 'bgDark', dark, 1.6, 4.5, 0, true);
+    part(g, 'bgChimCap', () => new THREE.CylinderGeometry(1.1, 0.8, 0.5, 10), 'bgSteel', steel, 1.6, 5.9, 0, false);
+    part(g, 'bgLamp', () => new THREE.SphereGeometry(0.55, 8, 6), 'bgLampMat', () => new THREE.MeshBasicMaterial({ color: 0xfff0a0 }), 3.55, 2.7, 0, false);
+    part(g, 'bgCatch', () => new THREE.BoxGeometry(1.6, 1.0, Wd - 0.4), 'bgRedMetal', () => mat(0x9c1c14, { metalness: 0.4 }), 3.9, 1.0, 0, false).rotation.z = -0.5;
+    part(g, 'bgFlagP', () => new THREE.CylinderGeometry(0.07, 0.07, 3, 5), 'bgSteel', steel, -2.4, 4.7, 0, false);
+    part(g, 'bgFlag', () => new THREE.BoxGeometry(1.8, 1.0, 0.1), 'bgFlagMat', () => new THREE.MeshBasicMaterial({ color: COLORS[RED] }), -3.3, 5.8, 0, false);
+  } else if (kind === 'stapler') {
+    part(top, 'bgStBase', () => new THREE.BoxGeometry(L * 0.8, 0.5, Wd * 0.75), 'bgStRed', () => mat(0xc8281f), 0, 0, 0, true);
+    const lid = new THREE.Group(); lid.position.set(-L * 0.38, 0.35, 0); lid.name = 'lid'; top.add(lid);
+    part(lid, 'bgStLid', () => new THREE.BoxGeometry(L * 0.76, 0.45, Wd * 0.7), 'bgStGrey', () => mat(0x9aa0a8, { metalness: 0.5, roughness: 0.35 }), L * 0.38, 0.3, 0, true);
+  } else if (kind === 'duck') {
+    part(top, 'bgDkBody', () => new THREE.SphereGeometry(1.25, 12, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0, 0.6, 0, true);
+    part(top, 'bgDkHead', () => new THREE.SphereGeometry(0.75, 10, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0.9, 1.7, 0, true);
+    part(top, 'bgDkBeak', () => new THREE.BoxGeometry(0.9, 0.25, 0.7), 'bgOrange', () => mat(0xff8a1f), 1.7, 1.6, 0, false);
+    part(top, 'bgDkEye', () => new THREE.SphereGeometry(0.12, 6, 5), 'bgBlack', () => new THREE.MeshBasicMaterial({ color: 0x111111 }), 1.35, 1.95, 0.45, false);
+  } else if (kind === 'remote') {
+    part(top, 'bgRcBox', () => new THREE.BoxGeometry(2.4, 0.9, 1.9), 'bgRcMat', () => mat(0x1d1f24, { metalness: 0.3 }), 0, 0.2, 0, true);
+    part(top, 'bgRcAnt', () => new THREE.CylinderGeometry(0.07, 0.07, 3.2, 5), 'bgSteel', steel, -0.8, 2.0, 0.6, false);
+    part(top, 'bgRcTip', () => new THREE.SphereGeometry(0.22, 6, 5), 'bgRcTipMat', () => new THREE.MeshBasicMaterial({ color: 0xff3b30 }), -0.8, 3.7, 0.6, false);
+    part(top, 'bgRcDish', () => new THREE.CylinderGeometry(0.6, 0.2, 0.4, 8), 'bgRedMetal', () => mat(0x9c1c14, { metalness: 0.4 }), 0.7, 1.0, 0, false);
+  } else if (kind === 'toaster') {
+    part(top, 'bgTsBox', () => new THREE.BoxGeometry(3.2, 1.6, 2.4), 'bgChrome', () => mat(0xdfe5ea, { metalness: 0.85, roughness: 0.22 }), 0, 0.5, 0, true);
+    for (const sz of [-0.55, 0.55]) part(top, 'bgTsSlice', () => new THREE.BoxGeometry(0.4, 1.2, 1.3), 'bgToast', () => mat(0xd69a45, { emissive: 0x6a2a00, emissiveIntensity: 0.5 }), 0, 1.5, sz, false);
+  }
+  scene.add(g);
+  return g;
+}
+// A health bar that lies flat above each car (shared shapes and two shared colours).
+function bagBar() {
+  const g = new THREE.Group();
+  const bg = new THREE.Mesh(sgeo('bgBarGeo', () => new THREE.PlaneGeometry(1, 0.55).translate(0.5, 0, 0).rotateX(-Math.PI / 2)), smat('bgBarBg', () => new THREE.MeshBasicMaterial({ color: 0x1c1712, transparent: true, opacity: 0.75, depthWrite: false })));
+  const fg = new THREE.Mesh(sgeo('bgBarGeo', () => 0), smat('bgBarFg', () => new THREE.MeshBasicMaterial({ color: 0xff5a4a })));
+  fg.position.y = 0.05; bg.position.y = 0.02; g.add(bg, fg); g.userData.fg = fg; g.userData.bg = bg;
+  scene.add(g);
+  return g;
+}
+function bagPart(kind, name, hp, r) {
+  const e = { kind: 'bag', type: 'bag' + kind, bk: kind, name, team: RED, x: 0, z: 0, vx: 0, vz: 0, heading: 0, r, hp, maxHp: hp, armor: BAG.armor, mesh: bagModel(kind), bar: bagBar(), cool: 2 + Math.random() * 2, think: 0, prey: null, off: 0, snap: 0, hitT: 0 };
+  e.lid = e.mesh.getObjectByName('lid');
+  entities.push(e);
+  return e;
+}
+function spawnBaguette() {
+  const F = state.finale, S2 = F.stage2, tr = bagTrack();
+  const engine = bagPart('engine', 'engine', BAG.engineHp, 3.4); engine.locked = true;
+  const cars = BAG_CARS.map((c) => bagPart(c.type, c.name, BAG.carHp, 2.8));
+  const T = S2.train = { s: tr.startS, engine, cars: [...cars], all: [engine, ...cars], debris: [], told: 0, total: BAG.engineHp + BAG.carHp * 4, tmp: { x: 0, z: 0, h: 0 } };
+  engine.off = 0; cars.forEach((c, i) => { c.off = BAG.engineGap + i * BAG.gap; });
+  state.boss = { kind: 'bagtrain', x: 0, z: 40, hp: T.total, maxHp: T.total, shieldBroken: false };
+  bagPlace(T, 0);
+  $('bossbar').hidden = false; $('bossName').textContent = 'THE BAGUETTE'; $('bossHp').style.width = '100%';
+  $('bossbar').style.top = 'calc(env(safe-area-inset-top, 0px) + 160px)'; // (the war clock sits where the other bosses' bar goes)
+  toast('The Baguette is rolling out!'); sfx('roar');
+  bossShield(true); banner('THE BAGUETTE', 'Cut it apart carriage by carriage!'); bannerTimer = 6;
+}
+function bagPlace(T, dt) {
+  const tmp = T.tmp;
+  T.all.forEach((e, i) => {
+    if (!e.mesh) return;
+    if (i) { const want = BAG.engineGap + T.cars.indexOf(e) * BAG.gap; if (T.cars.includes(e)) e.off += Math.max(-14 * dt, Math.min(14 * dt, want - e.off)); }
+    trackAt(T.s - e.off, tmp);
+    e.x = tmp.x; e.z = tmp.z; e.heading = tmp.h;
+    e.mesh.position.set(e.x, 0, e.z); e.mesh.rotation.y = -tmp.h;
+  });
+}
+function bagHurt(e, dmg, byTeam, weapon) {
+  const T = state.finale?.stage2?.train;
+  if (!T || e.hp <= 0) return;
+  if (e.locked && T.cars.length) { // the crusty engine shrugs everything off until the carriages are gone
+    burst(e.x, e.z, 0xcfd3da, 2, 6, 3.4);
+    if (state.time - T.told > 7) { T.told = state.time; toast('The engine is armoured! Cut off its carriages first'); sfx('hit'); }
+    return;
+  }
+  dmg = Math.max(1, dmg - e.armor);
+  e.hp -= dmg; e.hitT = 0.12;
+  if (e.hp > 0) {
+    if (dist2(e, state.player) < 1600 && weapon && Math.random() < 0.4) { sfx('hit'); burst(e.x, e.z, 0xfff3b0, 3, 5, 3); }
+    return;
+  }
+  bagDie(T, e);
+}
+function bagDie(T, e) {
+  e.hp = 0;
+  const F = state.finale;
+  burst(e.x, e.z, 0xffc23d, 30, 20, 3); burst(e.x, e.z, 0xd69a45, 20, 14, 2); burst(e.x, e.z, 0xfff3d6, 10, 10, 4);
+  sfx('bigBoom'); state.shake = Math.min(1.8, (state.shake || 0) + 1.2);
+  // The wreck falls off the track and tumbles away; the bar goes at once.
+  scene.remove(e.bar); e.bar = null;
+  const a = e.heading + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1);
+  T.debris.push({ mesh: e.mesh, vx: Math.cos(a) * 9, vz: Math.sin(a) * 9, vy: 14, y: 0, spin: (Math.random() - 0.5) * 6, life: 2.2 });
+  e.mesh = null;
+  if (e === T.engine) {
+    state.boss.hp = 0; $('bossbar').hidden = true;
+    bossShield(false);
+    for (let i = 0; i < 6; i++) makeSpill(e.x + (Math.random() - 0.5) * 16, e.z + (Math.random() - 0.5) * 12, 55, 90); // the big spill
+    for (const c of LOOP_COLORS) burst(e.x, e.z, c, 8, 18, 3);
+    banner('THE BAGUETTE IS STALE!', 'Its shield is gone: go and smash their toy box'); bannerTimer = 6;
+    toast('The Baguette fell apart! 330 cereal spilled'); sfx('win');
+    return;
+  }
+  T.cars.splice(T.cars.indexOf(e), 1);
+  makeSpill(e.x, e.z, 40, 70);
+  if (T.cars.length) toast(`${e.name} cut off! ${T.cars.length} carriage${T.cars.length === 1 ? '' : 's'} left`);
+  else { banner('ALL CARRIAGES GONE', 'Now the engine can be hurt: finish it!'); bannerTimer = 5; sfx('cap'); T.engine.locked = false; }
+}
+function bagBreakShield(why) {
+  const B = state.boss;
+  if (!B || B.kind !== 'bagtrain' || B.shieldBroken) return;
+  B.shieldBroken = true; bossShield(false);
+  banner('SHIELD SMASHED!', why); bannerTimer = 5;
+}
+// The train each frame: roll on the track, crush what is on it, fire the carriages' weapons, animate lids, bars and falling wrecks.
+const bagWeapons = { stapler: null, duck: WEAPONS.bubble, remote: WEAPONS.snipe, toaster: WEAPONS.toast };
+const bagReach = { stapler: 8.5, duck: 44, remote: 46, toaster: 42 };
+const bagRate = { stapler: 2.2, duck: 3.4, remote: 1.6, toaster: 2.8 };
+function bagUpdate(dt) {
+  const F = state.finale, S2 = F.stage2, T = S2.train;
+  if (!T) return;
+  const tr = bagTrack(), live = T.engine.hp > 0;
+  if (live) {
+    const speed = BAG.speed * (1 + 0.1 * (4 - T.cars.length));
+    T.s = (T.s + speed * dt) % tr.len;
+    bagPlace(T, dt);
+    // The engine's cow-catcher crushes anything of yours that is on the track.
+    for (const e of entities) {
+      if (e.team !== BLUE || e.hp <= 0 || e.fly || e.air || !(e.kind === 'turret' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || (e.kind === 'player' && e.alive))) continue;
+      if (dist2(e, T.engine) < (e.r + 3.6) ** 2 && !(e.kind === 'boat')) hurt(e, BAG.crush * (e.kind === 'turret' ? 3 : 1) * dt, RED, null);
+    }
+    for (const c of T.cars) {
+      c.cool -= dt; c.think -= dt; c.snap = Math.max(0, c.snap - dt);
+      if (c.think <= 0) {
+        c.think = 0.6;
+        const reach = bagReach[c.bk], bonus = (e) => (e.kind === 'turret' ? 500 : e.kind === 'player' ? 250 : 0);
+        c.prey = entities.filter((e) => e.team === BLUE && e.hp > 0 && !e.fly && (c.bk === 'stapler' ? e.kind === 'turret' : (e.kind === 'turret' || e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || (e.kind === 'player' && e.alive))) && !e.trojan && dist2(c, e) < (reach + (e.r || 0)) ** 2)
+          .sort((p, q) => dist2(c, p) - bonus(p) - (dist2(c, q) - bonus(q)))[0] || null;
+      }
+      const t = c.prey && c.prey.hp > 0 ? c.prey : null;
+      if (t && c.cool <= 0) {
+        c.cool = bagRate[c.bk];
+        if (c.bk === 'stapler') { c.snap = 0.5; hurt(t, 99999, RED, null); sfx('snap'); burst(t.x, t.z, 0xc8281f, 14, 9, 2); state.shake = Math.min(1.6, (state.shake || 0) + 0.4); if (state.time - T.told > 3) { T.told = state.time; toast('Snap! The Stapler car shut a turret'); } }
+        else if (c.bk === 'remote') { const k = Math.hypot(t.x - c.x, t.z - c.z) / WEAPONS.snipe.speed; fire(c, t, WEAPONS.snipe, Math.atan2(t.z + (t.vz || 0) * k * 0.8 - c.z, t.x + (t.vx || 0) * k * 0.8 - c.x)); }
+        else if (c.bk === 'duck') { fire(c, t, WEAPONS.bubble); const sh = shots[shots.length - 1]; sh.life = Math.min(sh.life, Math.hypot(t.x - c.x, t.z - c.z) / WEAPONS.bubble.speed + 0.3); sfx('bubble'); }
+        else fire(c, t, WEAPONS.toast);
+      }
+      if (c.lid) c.lid.rotation.z = c.snap > 0 ? 0.9 * Math.max(0, 1 - c.snap * 3.5) : 0.6 + Math.sin(state.time * 3 + c.off) * 0.1;
+    }
+    // Total hp for the boss bar, the arrow follows the engine.
+    const B = state.boss; B.x = T.engine.x; B.z = T.engine.z; B.hp = T.engine.hp + T.cars.reduce((n, c) => n + c.hp, 0);
+    // Bars: flat above each car; the engine's is grey while it is locked.
+    for (const e of T.all) {
+      if (!e.bar || e.hp <= 0) continue;
+      const w = e === T.engine ? 5 : 3.8, f = Math.max(0, e.hp / e.maxHp);
+      e.bar.position.set(e.x - w / 2, 6.4, e.z - 3.6);
+      e.bar.userData.bg.scale.x = w; e.bar.userData.fg.scale.x = w * f;
+      e.bar.userData.fg.material = e.locked ? smat('bgBarLock', () => new THREE.MeshBasicMaterial({ color: 0x9aa0a8 })) : smat('bgBarFg', () => new THREE.MeshBasicMaterial({ color: 0xff5a4a }));
+      if (e.hitT > 0) { e.hitT -= dt; e.mesh.position.y = 0.2; } else e.mesh.position.y = 0;
+    }
+    if (Math.random() < dt * 5) burst(T.engine.x - Math.cos(T.engine.heading) * 1.6 + 1.6, T.engine.z - Math.sin(T.engine.heading) * 1.6, 0x8a8178, 1, 3, 6.4); // smoke from the chimney
+  }
+  for (let i = T.debris.length - 1; i >= 0; i--) {
+    const d = T.debris[i];
+    d.life -= dt; d.vy -= 30 * dt; d.y = Math.max(0, d.y + d.vy * dt);
+    if (d.y === 0 && d.vy < 0) { d.vy = d.vy < -6 ? -d.vy * 0.35 : 0; d.vx *= 0.8; d.vz *= 0.8; }
+    d.mesh.position.x += d.vx * dt; d.mesh.position.z += d.vz * dt; d.mesh.position.y = d.y; d.mesh.rotation.z += d.spin * dt; d.mesh.rotation.x += d.spin * 0.4 * dt;
+    if (d.life < 0.6) d.mesh.scale.setScalar(Math.max(0.01, d.life / 0.6));
+    if (d.life <= 0) { scene.remove(d.mesh); disposeTree(d.mesh); T.debris.splice(i, 1); }
+  }
+  // Dead parts leave the entity list (they are not in the generic clean-up, which frees models they no longer own).
+  for (let i = entities.length - 1; i >= 0; i--) if (entities[i].kind === 'bag' && entities[i].hp <= 0) entities.splice(i, 1);
+}
+function bagCleanup() {
+  const T = state.finale?.stage2?.train;
+  if (!T) return;
+  for (const e of T.all) { if (e.bar) scene.remove(e.bar); if (e.mesh) { scene.remove(e.mesh); disposeTree(e.mesh); } }
+  for (const d of T.debris) { scene.remove(d.mesh); disposeTree(d.mesh); }
+  T.debris.length = 0; state.finale.stage2.train = null;
 }
 
 // ---------- Main loop ----------
