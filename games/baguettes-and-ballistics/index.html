@@ -1207,6 +1207,7 @@ const LEVELS = [
       '<b>Squadrons:</b> Bombers fly over water and walls. Boats sail the sink. Tap a squad\'s button to set Attack, Defend or Raid',
       '<b>Battle plan:</b> in the last 10 seconds pick Left, Middle or Right. Rally your Defenders where Red will come to take less damage',
       '<b>The bend:</b> the hob rings burn when red-hot and the cook drops pans. Paperclips are in the middle',
+      '<b>Infantry:</b> loopers grab caps, pikemen hurt cars, pea shooters float and lob, battery bots stun. They cost peas and batteries from risky piles. Infantry count half toward the army cap',
     ],
     // Bases at the tips of the arms. Index 0 is the cut-out (finaleDecor reads it): a solid block in the middle of the U.
     bases: [[-92, -48], [92, -48]],
@@ -1243,11 +1244,13 @@ const LEVELS = [
         (s) => [s * 53, -36, 130],  // inner bank (on your side: over the bridge)
         (s) => [s * 84, 32, 170],   // the bend, near your arm
         (s) => [s * 26, 36, 150, 'clips'], // paperclips between the hob rings
+        (s) => [s * 50, 46, 100, 'peas'],  // small risky piles out on the worktop (stage 2): peas on the lanes, batteries by the ceasefire line
+        (s) => [s * 8, 60, 90, 'batteries'],
       ]),
     ],
     refill: [{ x: -84, z: 32, rate: 0.35 }, { x: 84, z: 32, rate: 0.35 }, { x: -26, z: 36, rate: 0.15 }, { x: 26, z: 36, rate: 0.15 }],
-    start: { cereal: 120, clips: 30, unlocked: ['racer', 'tank'] },
-    resources: ['cereal', 'clips'],
+    start: { cereal: 120, clips: 30, peas: 0, batts: 0, unlocked: ['racer', 'tank'] },
+    resources: ['cereal', 'clips', 'peas', 'batteries'], // peas and batteries are extra stocks on this level (state.peas, state.batts)
     turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
     trickle: 0.7,
     rules: { baseHp: 2500 },
@@ -1301,7 +1304,7 @@ const onIsland = (e) => { const i = state.water?.island; return !!i && Math.hypo
 const bridgeLift = (e) => { const w = state.water; return w && Math.abs(e.z - w.bridge.z) < w.bridge.w / 2 ? 0.5 * Math.max(0, Math.min(1, ((w.x1 - w.x0) / 2 + 0.5 - Math.abs(e.x - (w.x0 + w.x1) / 2)) / 1.5)) : 0; };
 function waterPush(e) {
   const w = state.water;
-  if (!w || (e.kind === 'player' && VEHICLES[e.vehicle].floats)) return;
+  if (!w || e.floats || (e.kind === 'player' && VEHICLES[e.vehicle].floats)) return;
   if (onIsland(e)) { e.onIsl = true; return; }
   const wasIsl = e.onIsl; e.onIsl = false;
   if (onFerry(e)) return;
@@ -1350,6 +1353,11 @@ const WEAPONS = {
   // Level 6: the baguette bombers' crumb bomb (dropped from the air, not fired; the numbers here are read by bombDrop and bombBlast)
   bomb: { vsBase: 0.6, dmg: 50, rate: 1.7, range: 0, speed: 1, splash: 5.5, color: 0xe8c07a, size: 0.6 },
   bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
+  // Level 6 infantry: loopers (weak, quick), pikemen (short reach, vsCar x2.2 on cars), pea shooters (lobbed), battery bots (no shot: the zap is botZap)
+  loopshot: { vsBase: 0.2, dmg: 2, rate: 0.2, range: 9, speed: 50, color: 0xffd34d, size: 0.25 },
+  pike: { vsBase: 0.25, dmg: 10, rate: 0.55, range: 7.5, speed: 55, vsCar: 2, color: 0xd9dde3, size: 0.3 },
+  peashot: { vsBase: 0.8, dmg: 22, rate: 0.9, range: 34, speed: 20, lob: 1.1, splash: 2.6, color: 0x7ccf4a, size: 0.6 },
+  botzap: { vsBase: 0.3, dmg: 0, rate: 9, range: 12, speed: 1, color: 0x7cfffb, size: 0.2 },
 };
 // Boats stay on water cells. The gunboat is a soap-dish speedboat; the sponge raft (the enemy's) is slower and tougher.
 const BOATS = {
@@ -1377,6 +1385,11 @@ const ENEMY_TYPES = {
   sqtank: { model: 'tank', speed: 9.5, hp: 200, weapon: 'cannon', reward: 9, sq: true },
   sqraider: { model: 'racer', speed: 28, hp: 42, weapon: 'raid', reward: 3, sq: true },
   bomber: { model: 'bomber', speed: 16, hp: 80, weapon: 'bomb', reward: 5, sq: true, fly: true },
+  // Level 6 infantry (stage 2): everything you collected becomes an army. They count half a unit toward the cap (inf).
+  looper: { model: 'looper', speed: 25, hp: 24, weapon: 'loopshot', reward: 2, sq: true, inf: true },
+  pike: { model: 'pike', speed: 6.5, hp: 130, weapon: 'pike', reward: 6, sq: true, inf: true, armor: 2 },
+  pea: { model: 'pea', speed: 9, hp: 50, weapon: 'peashot', reward: 4, sq: true, inf: true, floats: true },
+  bot: { model: 'bot', speed: 8, hp: 240, weapon: 'botzap', reward: 12, sq: true, inf: true },
 };
 
 // A boat's wake: two pale strips streaming back from the stern, shared geometry and material, scaled with speed in render.
@@ -1666,8 +1679,21 @@ function batteriesGroup(x, z, n, radius, height) {
 }
 const secondRes = () => state.level.resources[1];     // the level's second resource ('clips' or 'batteries'), stored in state.clips
 const secondName = () => state.level.second || 'clips';
+// Level 6 peas: a heap of little green balls (shared shapes).
+function peasGroup(x, z, n, radius, height) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    mesh(shared('pea', () => new THREE.SphereGeometry(0.5, 8, 6)), shared(`peaMat:${i % 3}`, () => mat([0x5cb85c, 0x7ccf5a, 0x4a9e46][i % 3], { roughness: 0.35 })), Math.cos(a) * r, 0.5 + (1 - r / radius) * height * Math.random(), Math.sin(a) * r, g).castShadow = false;
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+// Which stock a load of `res` goes into. The second resource lives in state.clips; level 6 keeps peas and batteries as stocks of their own.
+const stockOf = (res) => (!res || res === 'cereal' ? state.cereal : res === 'peas' ? state.peas : res === 'batteries' && state.finale ? state.batts : state.clips);
 function makePile(x, z, amount, refill = 0, res = 'cereal') {
-  const group = res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
+  const group = res === 'peas' ? peasGroup(x, z, Math.round(10 + amount / 6), 3, 2) : res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
   if (darkNow() && res === 'cereal') lightPool(group, 0xffd9a0, 12, 12, 0, 0, 0.22, 0.06); // a faint glow so the cereal can be found
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   if (state.ledge) group.position.y = ledgeLift({ x, z }); // piles in the oven sit on the ledge
@@ -1738,7 +1764,7 @@ function workerThink(w, dt) {
     const d = nearestDrop(w);
     steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
     if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
-      state[w.loadRes && w.loadRes !== 'cereal' ? 'clips' : 'cereal'][w.team] += w.load; // 'clips' holds the level's second resource
+      stockOf(w.loadRes)[w.team] += w.load; // the second resource ('clips') lives in state.clips; level 6 also has peas and batteries
       if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('pour');
       w.load = 0;
       w.going = 'fill';
@@ -1750,7 +1776,8 @@ function workerThink(w, dt) {
   if (w.think <= 0 || !w.src || w.src.amount <= 0) {
     w.think = 1;
     // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
-    const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? secondRes() : 'cereal') : null;
+    const extra = state.finale && w.pref === 'clips' ? ['clips', 'peas', 'batteries'].map((r) => [r, stockOf(r)[w.team]]).sort((a, b) => a[1] - b[1])[0] : null; // level 6: the third worker fetches whichever of clips, peas, batteries is lowest
+    const want = w.load > 0 ? w.loadRes : state.finale ? (extra && extra[1] < 60 ? extra[0] : 'cereal') : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? secondRes() : 'cereal') : null;
     const ok = (src) => src.amount > 0 && !src.island && sideOk(src, w.team) && (!want || src.res === want) && !(state.hob?.avoid && ringAt(src.x, src.z, -3.5)); // a pile in the middle of a ring is out of bounds while it heats
     const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
     const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
@@ -1774,6 +1801,7 @@ const CELL = 2;
 let GW = Math.ceil(W / CELL), GD = Math.ceil(D / CELL);
 let closed = new Uint8Array(GW * GD);
 let closedFat = new Uint8Array(GW * GD); // the same with a wider margin, for the big boss
+let closedFlt = new Uint8Array(GW * GD); // the same as `closed` but water is open (level 6 floating infantry)
 // Per-level table size (level 6 only; every other level asks for 150 x 96, which is what W and D already are). Rebuilds the route grids and
 // stretches the sun's shadow box so the bigger table is still shadowed.
 function setTableSize(w, d) {
@@ -1783,7 +1811,7 @@ function setTableSize(w, d) {
   sun.position.set(-40 * k, 80 * k, 30 * k);
   if (w === W && d === D) return;
   W = w; D = d; GW = Math.ceil(W / CELL); GD = Math.ceil(D / CELL);
-  closed = new Uint8Array(GW * GD); closedFat = new Uint8Array(GW * GD);
+  closed = new Uint8Array(GW * GD); closedFat = new Uint8Array(GW * GD); closedFlt = new Uint8Array(GW * GD);
   navDirty = true;
 }
 let navDirty = true;
@@ -1812,6 +1840,7 @@ function navBuild() {
   if (state.finale?.ceasefire) for (const [grid, m] of [[closed, 3.4], [closedFat, 6.4]]) for (let i = 0; i < GW; i++) {
     if (Math.abs(centreOf(i, 0)[0]) < m) for (let j = 0; j < GD; j++) grid[j * GW + i] = 1;
   }
+  closedFlt.set(closed); // (everything above, but not the water below)
   // Water is closed to wheels, except a lane along the bridge.
   const w = state.water;
   if (w) for (const [grid, m] of [[closed, 0.8], [closedFat, 3]]) {
@@ -1886,7 +1915,7 @@ function steer(e, gx, gz, stop, dt, stats, ignore) {
   if (e.pinned > 0) { e.pinned -= dt; e.vx = (e.vx || 0) * 0.8; e.vz = (e.vz || 0) * 0.8; return full; } // stapled to the table
   let tx = gx, tz = gz, direct = false;
   if (navDirty) navBuild();
-  const grid = e.fat ? closedFat : closed;
+  const grid = e.fat ? closedFat : e.floats ? closedFlt : closed; // level 6 pea shooters float: their grid has no water
   if (state.hob?.avoid && !e.fat && e.kind !== 'player') {
     // Level 5: the AI keeps off a ring that is warming or hot. If it is on one it steps off; if its goal is on one it goes to the edge instead.
     const here = ringAt(e.x, e.z), rg = here || ringAt(gx, gz, 1.5);
@@ -1933,6 +1962,7 @@ function spawnUnit(type, team, x, z) {
     hp: t.hp, maxHp: t.hp, speed: t.speed, turn: v.turn, grip: v.grip, accel: v.accel, weapon: WEAPONS[t.weapon],
     cool: Math.random() * 0.5, reward: t.reward, mesh: t.sq ? squadModel(t.model, team) : buildModel(t.model, team, 0.9), think: 0, goal: null,
   };
+  if (t.inf) { u.inf = true; u.armor = t.armor; u.floats = !!t.floats; } // level 6 infantry
   entities.push(u);
   return u;
 }
@@ -1980,6 +2010,7 @@ function reset() {
   state.hob = L.hob ? { ...L.hob, rings: L.hob.rings.map(([x, z, r]) => ({ x, z, r })), t: L.hob.start || 0, phase: 'cool', avoid: false, tick: 0.5, left: 0 } : null; // level 5: the rings' clock
   state.ledge = L.oven || null; state.rush = { size: L.rules.rusher?.size || 0, last: 0, waited: false };
   state.finale = L.finale ? finaleInit() : null; // level 6: the build-up and war state (see the finale section)
+  state.peas = [L.start.peas | 0, L.start.peas | 0]; state.batts = [L.start.batts | 0, L.start.batts | 0]; // level 6 extra stocks (unused elsewhere)
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
   state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
@@ -2130,6 +2161,8 @@ const SOUNDS = {
   kettleClick: () => { noise('highpass', 3000, 2500, 0.4, 0.04); tone('square', 900, 180, 0.2, 0.09); noise('lowpass', 800, 200, 0.3, 0.16, 0.04); },
   horn: () => { tone('sawtooth', 196, 190, 0.2, 0.9); tone('square', 98, 95, 0.12, 0.9); tone('sawtooth', 294, 285, 0.1, 0.9); },
   whistle: () => { tone('sine', 1500, 420, 0.05, 0.7); },
+  zap: () => { tone('sawtooth', 1400, 200, 0.07, 0.25); tone('square', 90, 60, 0.08, 0.2); noise('highpass', 5000, 3000, 0.08, 0.15); }, // a battery bot's pulse
+  loopshot: () => tone('triangle', 1500, 1000, 0.03, 0.03), pike: () => tone('triangle', 900, 500, 0.04, 0.05), peashot: () => tone('sine', 500, 900, 0.07, 0.1), botzap: () => {},
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
 };
 function sfx(kind) {
@@ -2307,6 +2340,7 @@ function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.air) return; // a car in the air (off a toaster) can't be hit
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
   if (e.fly && weapon && !weapon.homing) dmg *= 0.5; // level 6: a flying baguette shrugs off half of any bullet; rocket turrets (homing) are the answer to bombers
+  if (weapon?.vsCar && (e.kind === 'player' || e.kind === 'worker' || (e.kind === 'unit' && !e.inf && !e.fly))) dmg *= weapon.vsCar; // level 6 pikemen: extra damage to cars
   if (state.finale?.cover && finaleCovered(e)) dmg *= 0.75; // level 6 battle plan: a defence that guessed the lane right takes 25% less there
   // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
   if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
@@ -2609,7 +2643,7 @@ const RUN_STEP = 4.2;
 // The Hover floats, so it can't press it at all.
 const BUTTON_WEIGHT = 3;
 const PLAYER_WEIGHT = { racer: 1, jet: 0.5, hover: 0, mech: 2, tank: 2, monster: 3 };
-const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2 };
+const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2, sqtank: 2, sqraider: 1, bomber: 0, looper: 0.5, pike: 0.5, pea: 0.5, bot: 0.5 }; // level 6 infantry weigh half
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
   if (state.level.finale) return null; // STAGE 2 HOOK: the Great Domino Run goes here (level 6 has no ordinary runs)
@@ -3606,13 +3640,27 @@ function bossThink(b, dt) {
 const FIN = { build: 60, planAt: 10, gateX: 56, lanes: [11, 36, 60], coverR: 20, coverNeed: 3, half: 1.2 };
 const ARMY_CAP = 24; // units (cars, boats, bombers) per side, workers and turrets not counted
 const BOMBER = { alt: 9, turn: 2.2, every: 1.5, dmg: 50, splash: 5.5, vsTurret: 1.8, fall: 0.775 };
-const SQ_MODELS = { bomber: { r: 1.5, turn: 2.2, grip: 4, accel: 30 } };
-const SQUADS = {
-  bombers: { name: 'Bombers', n: 3, cereal: 60, clips: 15, order: 'attack' },
-  boats: { name: 'Boats', n: 2, cereal: 45, clips: 0, order: 'defend' },
-  tanks: { name: 'Tanks', n: 3, cereal: 66, clips: 12, order: 'attack' },
-  raiders: { name: 'Raiders', n: 4, cereal: 36, clips: 0, order: 'raid' },
+const SQ_MODELS = {
+  bomber: { r: 1.5, turn: 2.2, grip: 4, accel: 30 },
+  looper: { r: 1.1, turn: 7, grip: 7, accel: 50 }, pike: { r: 1.0, turn: 3.5, grip: 10, accel: 24 }, pea: { r: 1.2, turn: 4, grip: 8, accel: 30 }, bot: { r: 1.5, turn: 3, grip: 10, accel: 24 },
 };
+// `short` is the button label. Infantry (inf) count half a unit toward ARMY_CAP. Costs: cereal, plus clips, peas or batts (batteries) as the stock.
+const SQUADS = {
+  bombers: { name: 'Bombers', short: 'Bombers', n: 3, cereal: 60, clips: 15, order: 'attack' },
+  boats: { name: 'Boats', short: 'Boats', n: 2, cereal: 45, clips: 0, order: 'defend' },
+  tanks: { name: 'Tanks', short: 'Tanks', n: 3, cereal: 66, clips: 12, order: 'attack' },
+  raiders: { name: 'Raiders', short: 'Raiders', n: 4, cereal: 36, clips: 0, order: 'raid' },
+  // Infantry (stage 2). One job each: loopers grab caps and soak fire, pikemen hurt cars and hold a line, pea shooters lob over walls and float, battery bots stun.
+  loopers: { name: 'Cereal Loopers', short: 'Loopers', n: 6, cereal: 28, clips: 0, order: 'attack', inf: true, type: 'looper' },
+  pikemen: { name: 'Paperclip Pikemen', short: 'Pikemen', n: 4, cereal: 26, clips: 18, order: 'defend', inf: true, type: 'pike' },
+  peashooters: { name: 'Pea Shooters', short: 'Peas', n: 4, cereal: 26, peas: 20, order: 'attack', inf: true, type: 'pea' },
+  botsq: { name: 'Battery Bots', short: 'Bots', n: 2, cereal: 34, batts: 24, order: 'attack', inf: true, type: 'bot' },
+};
+const stockCost = (S) => [['clips', S.clips, 'clips'], ['peas', S.peas, 'peas'], ['batts', S.batts, 'batteries']].filter((c) => c[1]).map(([k, n, w]) => ({ k, n, w }));
+const hasStock = (team, S) => state.cereal[team] >= S.cereal && stockCost(S).every((c) => (c.k === 'clips' ? state.clips : c.k === 'peas' ? state.peas : state.batts)[team] >= c.n);
+const payStock = (team, S) => { state.cereal[team] -= S.cereal; for (const c of stockCost(S)) (c.k === 'clips' ? state.clips : c.k === 'peas' ? state.peas : state.batts)[team] -= c.n; };
+const costText = (S) => `${S.cereal}${stockCost(S).map((c) => ` + ${c.n} ${c.w}`).join('')}`;
+const squadWeight = (S) => S.n * (S.inf ? 0.5 : 1); // what a squadron adds to the army cap
 const ORDERS = ['attack', 'defend', 'raid'];
 const LANE_WORD = ['LEFT', 'MIDDLE', 'RIGHT'], ROW_WORD = ['top', 'middle', 'bottom'];
 let finVis = null; // the look-only pieces made by finaleDecor (line, kettle, rings), and the UI elements
@@ -3715,8 +3763,31 @@ function squadModel(kind, team) {
     part(g, 'bmTail', () => new THREE.BoxGeometry(0.9, 1.2, 0.12), 'bmWing', () => mat(0xc98a3a), -2.4, 0.6, 0, false);
     part(g, 'bmBand', () => new THREE.CylinderGeometry(0.9, 0.9, 0.7, 12).rotateZ(Math.PI / 2), `bmBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.25 }), -1.3, 0, 0, false);
     part(g, 'bmProp', () => new THREE.BoxGeometry(0.1, 0.18, 2.6), 'tkTrack', () => mat(0x2b2b2b), 2.55, 0, 0, false).name = 'prop';
+  } else if (kind === 'looper') { // a rolling cereal hoop in the team colour (the hoop spins in render)
+    const h = part(g, 'lpHoop', () => new THREE.TorusGeometry(0.78, 0.36, 8, 14), `lpHoop:${team}`, () => mat(team === BLUE ? 0x6fb4ff : 0xff7a6a, { roughness: 0.5 }), 0, 1.15, 0, true);
+    h.name = 'hoop';
+  } else if (kind === 'pike') { // a bent-wire soldier: two paperclip loops, a helmet, a long spear and a shield
+    const wire = () => mat(0xdfe3ea, { metalness: 0.7, roughness: 0.3 });
+    part(g, 'pkLoopA', () => new THREE.TorusGeometry(0.62, 0.11, 6, 16).scale(0.8, 1.8, 1), 'pkWire', wire, 0, 1.9, 0, true);
+    part(g, 'pkLoopB', () => new THREE.TorusGeometry(0.4, 0.1, 6, 14).scale(0.8, 1.7, 1), 'pkWire', wire, 0.05, 1.5, 0, false);
+    part(g, 'pkHead', () => new THREE.SphereGeometry(0.5, 10, 8), `pkHelm:${team}`, () => mat(col), 0, 3.5, 0, true);
+    part(g, 'pkSpear', () => new THREE.CylinderGeometry(0.07, 0.07, 6, 5).rotateZ(Math.PI / 2), 'pkWire', wire, 2.4, 2.1, 0.55, false);
+    part(g, 'pkTip', () => new THREE.ConeGeometry(0.22, 0.7, 6).rotateZ(-Math.PI / 2), 'pkWire', wire, 5.7, 2.1, 0.55, false);
+    part(g, 'pkShield', () => new THREE.BoxGeometry(0.2, 1.7, 1.3), `pkShield:${team}`, () => mat(dark), 0.65, 2.0, -0.7, true);
+  } else if (kind === 'pea') { // a pea in a helmet with a blowpipe
+    part(g, 'peBody', () => new THREE.SphereGeometry(1.15, 12, 9), 'peGreen', () => mat(0x6cc04a, { roughness: 0.35 }), 0, 1.3, 0, true);
+    part(g, 'peHelm', () => new THREE.SphereGeometry(0.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), `peHelm:${team}`, () => mat(col), 0, 2.0, 0, true);
+    part(g, 'pePipe', () => new THREE.CylinderGeometry(0.2, 0.2, 2.4, 6).rotateZ(Math.PI / 2 - 0.5), 'tkTrack', () => mat(0x2b2b2b), 1.4, 1.9, 0, false);
+  } else if (kind === 'bot') { // an AA battery on legs: copper body, team band, + terminal, two eyes
+    part(g, 'btBody', () => new THREE.CylinderGeometry(1.0, 1.0, 2.8, 12), 'btCopper', () => mat(0xc9741a, { metalness: 0.4, roughness: 0.4 }), 0, 2.4, 0, true);
+    part(g, 'btBand', () => new THREE.CylinderGeometry(1.04, 1.04, 0.8, 12), `btBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.3 }), 0, 2.0, 0, false);
+    part(g, 'btNub', () => new THREE.CylinderGeometry(0.38, 0.38, 0.5, 8), 'btMetal', () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 }), 0, 4.0, 0, false).name = 'nub';
+    for (const sz of [-0.45, 0.45]) {
+      part(g, 'btEye', () => new THREE.BoxGeometry(0.15, 0.5, 0.35), 'btEyeMat', () => new THREE.MeshBasicMaterial({ color: 0xffffff }), 1.0, 2.9, sz, false);
+      part(g, 'btLeg', () => new THREE.BoxGeometry(0.5, 1.2, 0.5), 'tkTrack', () => mat(0x2b2b2b), 0, 0.6, sz * 1.5, false);
+    }
   }
-  g.scale.setScalar(kind === 'bomber' ? 1 : 0.9);
+  g.scale.setScalar(kind === 'bomber' ? 1 : kind === 'looper' || kind === 'pike' || kind === 'pea' || kind === 'bot' ? 1 : 0.9);
   scene.add(g);
   return g;
 }
@@ -3833,7 +3904,7 @@ const laneZ = (team, k) => FIN.lanes[phys(team, k)];
 const gatePos = (team, row) => ({ x: team === BLUE ? -FIN.gateX : FIN.gateX, z: FIN.lanes[row] });
 const rallyOf = (team) => gatePos(team, state.finale.rally[team]);
 const squadsOf = (team) => state.finale.squads.filter((q) => q.team === team);
-const armyOf = (team) => entities.filter((e) => (e.kind === 'unit' || e.kind === 'boat') && e.team === team && e.hp > 0).length;
+const armyOf = (team) => entities.reduce((n, e) => ((e.kind === 'unit' || e.kind === 'boat') && e.team === team && e.hp > 0 ? n + (e.inf ? 0.5 : 1) : n), 0); // infantry count half
 const validTarget = (e) => !!e && e.hp > 0 && !(e.kind === 'player' && !e.alive) && !e.trojan;
 function finaleInit() {
   return {
@@ -3869,10 +3940,11 @@ function spawnPt(team, spread = 10) {
 function finaleCleanup() {
   for (const b of bombs) scene.remove(b.mesh);
   bombs.length = 0;
+  for (const q of pulseRings) q.mesh.visible = false;
   const F = state.finale;
   if (F) for (const m of F.marks) { scene.remove(m.mesh); m.mesh.material.dispose(); }
   if (state.finale?.rallyMark) { scene.remove(state.finale.rallyMark); state.finale.rallyMark.traverse((o) => { if (o.material && !o.material.userData.shared) o.material.dispose(); }); }
-  for (const id of ['finHud', 'planBox', 'squadPanel']) if ($(id)) $(id).hidden = true;
+  for (const id of ['finHud', 'planBox', 'squadPanel', 'peasHud', 'battHud']) if ($(id)) $(id).hidden = true;
 }
 function finaleBegin() {
   const F = state.finale;
@@ -3907,9 +3979,9 @@ function buySquad(team, kind, order) {
   const F = state.finale, S = SQUADS[kind];
   if (!F || state.over) return null;
   if (kind === 'boats' && team === RED) return null;
-  if (armyOf(team) + S.n > ARMY_CAP) { if (team === BLUE) { toast(`Army full (${ARMY_CAP} units)`); sfx('no'); } return null; }
-  if (state.cereal[team] < S.cereal || state.clips[team] < S.clips) { if (team === BLUE) { toast(`Need ${S.cereal} cereal${S.clips ? ` + ${S.clips} clips` : ''}`); sfx('no'); } return null; }
-  state.cereal[team] -= S.cereal; state.clips[team] -= S.clips;
+  if (armyOf(team) + squadWeight(S) > ARMY_CAP) { if (team === BLUE) { toast(`Army full (${ARMY_CAP} units)`); sfx('no'); } return null; }
+  if (!hasStock(team, S)) { if (team === BLUE) { toast(`Need ${costText(S)}`); sfx('no'); } return null; }
+  payStock(team, S);
   const sq = { id: ++F.sqId, team, kind, order: order || S.order, units: [], n: S.n };
   F.squads.push(sq);
   const w = state.water;
@@ -3918,6 +3990,7 @@ function buySquad(team, kind, order) {
     if (kind === 'bombers') { const b = state.bases[team], sp = [b.x + (i - 1) * 5, b.z + 11 + i]; u = spawnUnit('bomber', team, sp[0], sp[1]); u.alt = 0; }
     else if (kind === 'tanks') { const sp = spawnPt(team, 10); u = spawnUnit('sqtank', team, sp[0], sp[1] + i * 1.5); }
     else if (kind === 'raiders') { const sp = spawnPt(team, 12); u = spawnUnit('sqraider', team, sp[0], sp[1] + i * 1.2); }
+    else if (S.inf) { const sp = spawnPt(team, 12); u = spawnUnit(S.type, team, sp[0] + (i % 3) * 1.6 * (team === BLUE ? 1 : -1), sp[1] + i * 1.4 - S.n * 0.7); }
     else u = launchBoat(team, 'gunboat', { x: (w.x0 + w.x1) / 2 + (i ? 3 : -3), z: -57 + i * 6 });
     u.sq = sq; u.slot = i; sq.units.push(u);
   }
@@ -3941,8 +4014,14 @@ function stagePoint(u) { // under the ceasefire everyone waits at the rally; the
   const F = state.finale, R = u.team === RED && u.sq.order === 'attack' ? gatePos(RED, phys(RED, F.redGuess)) : rallyOf(u.team), a = (u.slot || 0) * 2.4 + 0.5, r = 3 + ((u.slot || 0) % 3) * 2.5;
   return { x: R.x + Math.cos(a) * r * 1.4, z: R.z + Math.sin(a) * r };
 }
+const engageDist = (u, cap) => (u.type === 'pea' ? 22 : Math.min(u.weapon.range * 0.6, cap)); // pea shooters stand off
+const lanesOpen = (team) => outposts.filter((o) => !(o.owner === team && o.progress * (team === BLUE ? 1 : -1) >= 1));
 function squadThink(u, dt) {
   const F = state.finale, sq = u.sq, team = u.team, foe = 1 - team, st = { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip };
+  if (u.presser) { // sent to help press a domino button (infantry weigh half a car)
+    if (!u.presser.ready) u.presser = null;
+    else { steer(u, u.presser.x, u.presser.z, 0, dt, st); return; }
+  }
   u.think -= dt; u.cool -= dt;
   const waiting = F.stage === 'buildup', R = rallyOf(team);
   if (u.think <= 0) {
@@ -3950,15 +4029,20 @@ function squadThink(u, dt) {
     u.chase = !waiting && sq.order === 'raid' ? workersOf(foe, 'truck').filter((w) => !w.trojan).sort((a, b) => dist2(u, a) - dist2(u, b))[0] || null : null;
     u.target = nearestEnemy(u, u.weapon.range + 1);
     u.threat = !waiting && sq.order === 'defend' ? nearestEnemy({ x: R.x, z: R.z, team }, 30) : null;
+    u.capGoal = !waiting && u.type === 'looper' && sq.order !== 'defend' ? lanesOpen(team).filter((o) => dist2(u, o) < 90 * 90).sort((a, b) => dist2(u, a) - dist2(u, b))[0] || null : null; // loopers dash for bottle caps
   }
   const shoot = validTarget(u.target) ? u.target : null, chase = validTarget(u.chase) ? u.chase : null, threat = validTarget(u.threat) ? u.threat : null;
   let goal, stop = 2;
   if (waiting) { goal = stagePoint(u); stop = 1.2; }
   else if (sq.order === 'raid' && chase) { goal = chase; stop = 5; }
   else if (sq.order === 'defend') {
-    if (threat && !threat.fly && threat.kind !== 'boat') { goal = threat; stop = Math.min(u.weapon.range * 0.6, 9); }
+    if (u.type === 'pike') { // pikemen hold a line across the gate and only fight what walks into it
+      const k = ((u.slot || 0) - (sq.n - 1) / 2) * 3.4;
+      goal = { x: R.x + (team === BLUE ? 5 : -5), z: R.z + k }; stop = 0.8;
+    } else if (threat && !threat.fly && threat.kind !== 'boat') { goal = threat; stop = engageDist(u, 9); }
     else { goal = stagePoint(u); stop = 1.2; }
-  } else if (shoot && !shoot.fly && shoot.kind !== 'boat') { goal = shoot; stop = Math.min(u.weapon.range * 0.6, 10); } // fight what is in reach
+  } else if (u.capGoal) { goal = u.capGoal; stop = 1; }
+  else if (shoot && !shoot.fly && shoot.kind !== 'boat') { goal = shoot; stop = engageDist(u, 10); } // fight what is in reach
   else {
     const route = attackRoute(team);
     if (u.wp === undefined) u.wp = 0;
@@ -3967,8 +4051,55 @@ function squadThink(u, dt) {
     stop = u.wp < route.length ? 3 : 9;
   }
   steer(u, goal.x, goal.z, stop, dt, st, goal);
+  if (u.type === 'bot') return botThink(u, dt);
   const ft = shoot || (chase && dist2(u, chase) < u.weapon.range ** 2 ? chase : null);
   if (ft && u.cool <= 0 && dist2(u, ft) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, ft, u.weapon); }
+}
+// Battery bots: every few seconds a short-range pulse stuns enemy turrets (they stop firing) and cars (pinned) for about 1.5 s.
+const BOT = { every: 4.2, r: 14, stun: 1.5, dmg: 6 };
+const pulseRings = []; // a small pool of shared-shape rings, reused for every pulse
+function botPulse(u) {
+  u.zapT = BOT.every + Math.random() * 0.8;
+  let n = 0;
+  for (const e of entities) {
+    if (e.team === u.team || e.hp <= 0 || e.fly || e.kind === 'base' || e.kind === 'bag' || (e.kind === 'player' && !e.alive) || e.trojan || dist2(u, e) > (BOT.r + (e.r || 1)) ** 2) continue;
+    if (e.kind === 'turret') { if (e.type === 'wall') continue; e.stun = BOT.stun; n++; hurt(e, BOT.dmg, u.team, null); }
+    else if (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'player') {
+      if (e.inf) continue; // cars only
+      e.pinned = Math.max(e.pinned || 0, BOT.stun); n++; hurt(e, BOT.dmg, u.team, null);
+    }
+  }
+  let ring = pulseRings.find((q) => !q.mesh.visible);
+  if (!ring) {
+    if (pulseRings.length >= 8) ring = pulseRings[0];
+    else { const m = new THREE.Mesh(sgeo('pulseRing', () => new THREE.RingGeometry(0.85, 1, 36).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0x7cfffb, transparent: true, opacity: 0.8, depthWrite: false })); scene.add(m); ring = { mesh: m, t: 0 }; pulseRings.push(ring); }
+  }
+  ring.t = 0.45; ring.mesh.visible = true; ring.mesh.position.set(u.x, 0.35, u.z);
+  if (dist2(u, state.player) < 3000) sfx('zap');
+  if (n) burst(u.x, u.z, 0xd8fffe, 6, 9, 2.4);
+}
+function botThink(u, dt) {
+  u.zapT = (u.zapT ?? 1.5) - dt;
+  if (u.zapT > 0 || state.finale.stage === 'buildup') return;
+  const any = entities.some((e) => e.team !== u.team && e.hp > 0 && !e.fly && (e.kind === 'turret' || e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && !e.inf && !e.trojan && e.type !== 'wall' && dist2(u, e) < (BOT.r - 2) ** 2);
+  if (any) botPulse(u); else u.zapT = 0.4;
+}
+function pulsesUpdate(dt) {
+  for (const q of pulseRings) {
+    if (!q.mesh.visible) continue;
+    q.t -= dt;
+    const k = 1 - Math.max(0, q.t) / 0.45;
+    q.mesh.scale.setScalar(2 + k * BOT.r); q.mesh.material.opacity = 0.8 * (1 - k);
+    if (q.t <= 0) q.mesh.visible = false;
+  }
+}
+// Infantry in the render loop: a hop in the step, loopers roll, floaters bob on water.
+function infPose(e, time) {
+  const sp = Math.min(1, Math.hypot(e.vx || 0, e.vz || 0) / (e.speed || 8));
+  if (e.type === 'looper') { e.roll = (e.roll || 0) + Math.hypot(e.vx || 0, e.vz || 0) * 0.016 / 0.78; const h = e.mesh.children[0]; if (h) h.rotation.z = -e.roll; return; }
+  e.mesh.position.y += Math.abs(Math.sin(time * (e.type === 'pike' ? 6 : 9) + (e.slot || 0))) * 0.35 * sp;
+  if (e.floats && state.water && inWaterX(e.x, e.z, -1) && Math.abs(e.z - state.water.bridge.z) > state.water.bridge.w / 2) e.mesh.position.y += 0.5 + Math.sin(time * 4 + e.x) * 0.15; // afloat on the sink
+  if (e.type === 'bot') { const nub = e.mesh.getObjectByName('nub'); if (nub) nub.rotation.y = time * 3; }
 }
 
 // ----- Sugar walls: cheap, solid, shot at like a turret (an entity of kind 'turret', type 'wall', with no gun) -----
@@ -4072,7 +4203,7 @@ function bomberPose(e, time) {
 }
 
 // ----- The enemy commander's squadron side -----
-const AI_QUEUE = ['bombers', 'tanks', 'raiders', 'bombers', 'tanks', 'tanks', 'bombers', 'raiders'];
+const AI_QUEUE = ['bombers', 'tanks', 'loopers', 'raiders', 'pikemen', 'bombers', 'tanks', 'peashooters', 'tanks', 'bombers', 'botsq', 'raiders'];
 function finaleEnemy(dt) {
   const F = state.finale;
   F.aiT -= dt;
@@ -4082,11 +4213,23 @@ function finaleEnemy(dt) {
   // The next squadron in the queue it can afford (no paperclips for bombers yet? it buys raiders meanwhile).
   for (let j = 0; j < AI_QUEUE.length; j++) {
     const kind = AI_QUEUE[(F.aiN + j) % AI_QUEUE.length], S = SQUADS[kind];
-    if (armyOf(RED) + S.n > ARMY_CAP || state.cereal[RED] < S.cereal + 10 || state.clips[RED] < S.clips) continue;
-    const order = kind === 'raiders' ? 'raid' : (F.aiN + j) % 3 === 2 ? 'defend' : 'attack';
+    if (armyOf(RED) + squadWeight(S) > ARMY_CAP || state.cereal[RED] < S.cereal + 10 || !hasStock(RED, S)) continue;
+    const order = kind === 'raiders' ? 'raid' : kind === 'pikemen' ? 'defend' : (F.aiN + j) % 3 === 2 ? 'defend' : 'attack';
     if (buySquad(RED, kind, order)) F.aiN += j + 1;
     return;
   }
+}
+// Peas and batteries: trucks fetch them like any pile, and you can scoop them yourself by sitting on the pile (they sit out on the worktop, so it is risky).
+// Red also gets a thin trickle so its infantry never wait for ever.
+function extrasUpdate(dt) {
+  const p = state.player;
+  if (p.alive) for (const pl of piles) {
+    if ((pl.res !== 'peas' && pl.res !== 'batteries') || pl.amount <= 0 || dist2(p, pl) > (pl.r + p.r + 0.5) ** 2) continue;
+    const got = takeFrom(pl, 9 * dt);
+    stockOf(pl.res)[BLUE] += got;
+    if (state.time - (state.scoopAt || -9) > 0.6) { state.scoopAt = state.time; sfx('crunch'); toast(`Scooping ${pl.res}`); }
+  }
+  state.peas[RED] += dt * 0.25; state.batts[RED] += dt * 0.12;
 }
 function enemyWalls(dt) { // a sugar wall across a lane at its gate now and then (3 at most)
   const F = state.finale;
@@ -4164,6 +4307,8 @@ function finaleUpdate(dt) {
     if (q.kind === 'boats') for (const b of q.units) b.patrol = q.order === 'defend' ? [-58, -34] : [-32, -9];
   }
   bombsUpdate(dt);
+  pulsesUpdate(dt);
+  extrasUpdate(dt);
   finaleEnemy(dt);
   enemyWalls(dt);
 }
@@ -4197,6 +4342,9 @@ function finaleUI() {
   const plan = mk('planBox', 'planBox');
   plan.innerHTML = '<b>BATTLE PLAN: where does your main push go?</b><div class="row"><button data-lane="0">LEFT<small>top lane</small></button><button data-lane="1">MIDDLE<small>middle lane</small></button><button data-lane="2">RIGHT<small>bottom lane</small></button></div>';
   plan.addEventListener('pointerdown', (e) => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); pickLane(+b.dataset.lane); });
+  for (const [id, cls] of [['battHud', 'cereal batt'], ['peasHud', 'cereal']]) { // level 6 only: the two extra stocks sit next to cereal and clips
+    const el = document.createElement('div'); el.id = id; el.className = cls; el.hidden = true; $('clipsHud').after(el);
+  }
   const panel = mk('squadPanel', 'squadPanel');
   panel.innerHTML = '<div id="sqBody"></div><button id="bPeek">Peek at Red<small>hold to look at their side</small></button>';
   const peek = (on) => { if (state.finale) state.finale.peek = on; };
@@ -4247,6 +4395,10 @@ function finaleDraw(dt, time) {
   }
   // HUD (hidden while the title card is up)
   const uiOn = $('start').hidden;
+  $('peasHud').hidden = $('battHud').hidden = false;
+  $('peasHud').style.color = '#9be564';
+  const putHud = (id, v) => { const el = $(id); if (el._v !== v) { el._v = v; el.textContent = v; } };
+  putHud('peasHud', `${Math.floor(state.peas[BLUE])} peas`); putHud('battHud', `${Math.floor(state.batts[BLUE])} batteries`);
   $('finHud').hidden = !uiOn; $('squadPanel').hidden = !uiOn;
   const secs = F.stage === 'buildup' ? Math.ceil(F.left) : Math.floor(state.time), mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, '0');
   const put = (id, v) => { const el = $(id); if (el._v !== v) { el._v = v; el.textContent = v; } }; // only touch the page when the text changes
@@ -4258,12 +4410,12 @@ function finaleDraw(dt, time) {
   const showPlan = uiOn && F.stage === 'buildup' && F.left <= FIN.planAt && !state.over;
   if ($('planBox').hidden === showPlan) $('planBox').hidden = !showPlan;
   // Squadron panel: only rewritten when something it shows changes.
-  const mine = squadsOf(BLUE), canBuy = (k) => state.cereal[BLUE] >= SQUADS[k].cereal && state.clips[BLUE] >= SQUADS[k].clips;
+  const mine = squadsOf(BLUE), canBuy = (k) => hasStock(BLUE, SQUADS[k]);
   const sig = `${wallsOf(BLUE)}|${state.cereal[BLUE] >= WALL.cost}|${armyOf(BLUE)}|${Object.keys(SQUADS).map((k) => +canBuy(k)).join('')}|${mine.map((q) => `${q.id}${q.order}${q.units.length}`).join(',')}|${F.rally[BLUE]}|${F.plan[BLUE]}|${showPlan}`;
   if (sig !== F.ui) {
     F.ui = sig;
-    const buy = Object.entries(SQUADS).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.name} x${S.n}<small>${S.cereal}${S.clips ? ` + ${S.clips} clips` : ''}</small></button>`).join('');
-    const rows = mine.length ? mine.map((q) => `<div class="sq"><span>${SQUADS[q.kind].name} ${q.units.length}/${q.n}</span><button data-ord="${q.id}" class="ord-${q.order}">${q.order.toUpperCase()}</button></div>`).join('') : '<div class="none">No squadrons yet. Buy one above, then tap its order.</div>';
+    const buy = Object.entries(SQUADS).map(([k, S]) => `<button data-buy="${k}" ${canBuy(k) ? '' : 'style="opacity:0.5"'}>${S.short} x${S.n}<small>${costText(S)}</small></button>`).join('');
+    const rows = mine.length ? mine.map((q) => `<div class="sq"><span>${SQUADS[q.kind].short} ${q.units.length}/${q.n}</span><button data-ord="${q.id}" class="ord-${q.order}">${q.order.toUpperCase()}</button></div>`).join('') : '<div class="none">No squadrons yet. Buy one above, then tap its order.</div>';
     $('sqBody').innerHTML = `<div class="hd"><span>SQUADRONS</span><span>${armyOf(BLUE)}/${ARMY_CAP}</span></div><div class="buy">${buy}</div>${rows}<button data-wall="1">Sugar wall ${wallsOf(BLUE)}/${WALL.max}<small>${WALL.cost}, across your path</small></button><button data-rally="1">Rally: ${ROW_WORD[F.rally[BLUE]]} gate<small>tap to move the marker</small></button>`;
     for (const b of $('planBox').querySelectorAll('button')) b.classList.toggle('cur', +b.dataset.lane === F.plan[BLUE]);
   }
@@ -4730,6 +4882,7 @@ function update(dt) {
     if (e.kind === 'boss') bossThink(e, dt);
     if (e.kind === 'boat') boatThink(e, dt);
     if (e.kind === 'turret' && e.type === 'magnet') { magnetThink(e, dt); continue; }
+    if (e.stun > 0) { e.stun -= dt; e.cool = Math.max(e.cool, 0.3); if (Math.random() < dt * 6) burst(e.x, e.z, 0x7cfffb, 1, 3, 3.4); continue; } // level 6: a battery bot's zap stops a turret firing
     if (e.kind === 'turret' || e.kind === 'base') {
       e.cool -= dt;
       // A catapult aims for their toy box when it can reach it: that's what it's for.
@@ -4887,6 +5040,7 @@ function render(dt) {
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
     if (e.fly) bomberPose(e, time); // level 6 bombers: altitude, bank, propeller
+    else if (e.inf) infPose(e, time); // level 6 infantry
     if (state.ledge) { // oven ramp and ledge: lift, tilt on the ramp; in the air off a toaster: an arc and a gentle nose-up
       const a = e.air, f = a ? Math.min(1, a.t / a.T) : 0;
       e.mesh.position.y += a ? a.l0 + (a.l1 - a.l0) * f + 4 * a.H * f * (1 - f) : ledgeLift(e);
@@ -4906,7 +5060,7 @@ function render(dt) {
       const bed = e.mesh.getObjectByName('bed');
       const load = bed.getObjectByName('load');
       load.scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
-      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : 0xf2c97d);
+      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : e.loadRes === 'peas' ? 0x7ccf4a : 0xf2c97d);
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
