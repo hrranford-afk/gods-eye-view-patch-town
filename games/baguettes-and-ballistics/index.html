@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Baguettes &amp; Ballistics</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1693,7 +1694,7 @@ function peasGroup(x, z, n, radius, height) {
 // Which stock a load of `res` goes into. The second resource lives in state.clips; level 6 keeps peas and batteries as stocks of their own.
 const stockOf = (res) => (!res || res === 'cereal' ? state.cereal : res === 'peas' ? state.peas : res === 'batteries' && state.finale ? state.batts : state.clips);
 function makePile(x, z, amount, refill = 0, res = 'cereal') {
-  const group = res === 'peas' ? peasGroup(x, z, Math.round(10 + amount / 6), 3, 2) : res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
+  const group = res === 'peas' ? peasGroup(x, z, Math.round(6 + amount / 12), 3, 2) : res === 'batteries' ? batteriesGroup(x, z, Math.round(6 + amount / 14), 3.4, 2) : res === 'clips' ? clipsGroup(x, z, Math.round(8 + amount / 10), 3.5, 2.5) : loopsGroup(x, z, Math.round(18 + amount / 3), 3.5, 3);
   if (darkNow() && res === 'cereal') lightPool(group, 0xffd9a0, 12, 12, 0, 0, 0.22, 0.06); // a faint glow so the cereal can be found
   const p = { x, z, r: 3.5, amount, max: amount, refill, res, group };
   if (state.ledge) group.position.y = ledgeLift({ x, z }); // piles in the oven sit on the ledge
@@ -2328,7 +2329,7 @@ function disposeTree(obj) {
   });
 }
 function burst(x, z, color, n = 12, power = 10, y = 1.5) {
-  if (parts.length > 400) n = Math.min(n, 2); // a big fight already has plenty of sparks
+  if (parts.length > (state.finale ? 150 : 400)) n = Math.min(n, 2); // a big fight already has plenty of sparks (level 6: fewer, each one is a draw call)
   for (let i = 0; i < n; i++) {
     const m = new THREE.Mesh(sparkGeo(), basicMat(color));
     m.position.set(x, y, z);
@@ -3768,28 +3769,24 @@ function squadModel(kind, team) {
     part(g, 'bmBand', () => new THREE.CylinderGeometry(0.9, 0.9, 0.7, 12).rotateZ(Math.PI / 2), `bmBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.25 }), -1.3, 0, 0, false);
     part(g, 'bmProp', () => new THREE.BoxGeometry(0.1, 0.18, 2.6), 'tkTrack', () => mat(0x2b2b2b), 2.55, 0, 0, false).name = 'prop';
   } else if (kind === 'looper') { // a rolling cereal hoop in the team colour (the hoop spins in render)
-    const h = part(g, 'lpHoop', () => new THREE.TorusGeometry(0.78, 0.36, 8, 14), `lpHoop:${team}`, () => mat(team === BLUE ? 0x6fb4ff : 0xff7a6a, { roughness: 0.5 }), 0, 1.15, 0, true);
+    const h = part(g, 'lpHoop', () => new THREE.TorusGeometry(0.78, 0.36, 8, 14), `lpHoop:${team}`, () => mat(team === BLUE ? 0x6fb4ff : 0xff7a6a, { roughness: 0.5 }), 0, 1.15, 0, false);
     h.name = 'hoop';
-  } else if (kind === 'pike') { // a bent-wire soldier: two paperclip loops, a helmet, a long spear and a shield
+  } else if (kind === 'pike') { // a bent-wire soldier: a paperclip loop, a helmet, a long spear and a shield (4 meshes)
     const wire = () => mat(0xdfe3ea, { metalness: 0.7, roughness: 0.3 });
-    part(g, 'pkLoopA', () => new THREE.TorusGeometry(0.62, 0.11, 6, 16).scale(0.8, 1.8, 1), 'pkWire', wire, 0, 1.9, 0, true);
-    part(g, 'pkLoopB', () => new THREE.TorusGeometry(0.4, 0.1, 6, 14).scale(0.8, 1.7, 1), 'pkWire', wire, 0.05, 1.5, 0, false);
-    part(g, 'pkHead', () => new THREE.SphereGeometry(0.5, 10, 8), `pkHelm:${team}`, () => mat(col), 0, 3.5, 0, true);
-    part(g, 'pkSpear', () => new THREE.CylinderGeometry(0.07, 0.07, 6, 5).rotateZ(Math.PI / 2), 'pkWire', wire, 2.4, 2.1, 0.55, false);
-    part(g, 'pkTip', () => new THREE.ConeGeometry(0.22, 0.7, 6).rotateZ(-Math.PI / 2), 'pkWire', wire, 5.7, 2.1, 0.55, false);
-    part(g, 'pkShield', () => new THREE.BoxGeometry(0.2, 1.7, 1.3), `pkShield:${team}`, () => mat(dark), 0.65, 2.0, -0.7, true);
+    part(g, 'pkLoopA', () => new THREE.TorusGeometry(0.62, 0.12, 6, 16).scale(0.8, 2.1, 1), 'pkWire', wire, 0, 1.8, 0, false);
+    part(g, 'pkHead', () => new THREE.SphereGeometry(0.5, 10, 8), `pkHelm:${team}`, () => mat(col), 0, 3.5, 0, false);
+    part(g, 'pkSpear', () => new THREE.CylinderGeometry(0.02, 0.11, 6.4, 6).rotateZ(-Math.PI / 2), 'pkWire', wire, 3.2, 2.1, 0.55, false);
+    part(g, 'pkShield', () => new THREE.BoxGeometry(0.2, 1.7, 1.3), `pkShield:${team}`, () => mat(dark), 0.65, 2.0, -0.7, false);
   } else if (kind === 'pea') { // a pea in a helmet with a blowpipe
-    part(g, 'peBody', () => new THREE.SphereGeometry(1.15, 12, 9), 'peGreen', () => mat(0x6cc04a, { roughness: 0.35 }), 0, 1.3, 0, true);
-    part(g, 'peHelm', () => new THREE.SphereGeometry(0.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), `peHelm:${team}`, () => mat(col), 0, 2.0, 0, true);
+    part(g, 'peBody', () => new THREE.SphereGeometry(1.15, 12, 9), 'peGreen', () => mat(0x6cc04a, { roughness: 0.35 }), 0, 1.3, 0, false);
+    part(g, 'peHelm', () => new THREE.SphereGeometry(0.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), `peHelm:${team}`, () => mat(col), 0, 2.0, 0, false);
     part(g, 'pePipe', () => new THREE.CylinderGeometry(0.2, 0.2, 2.4, 6).rotateZ(Math.PI / 2 - 0.5), 'tkTrack', () => mat(0x2b2b2b), 1.4, 1.9, 0, false);
-  } else if (kind === 'bot') { // an AA battery on legs: copper body, team band, + terminal, two eyes
-    part(g, 'btBody', () => new THREE.CylinderGeometry(1.0, 1.0, 2.8, 12), 'btCopper', () => mat(0xc9741a, { metalness: 0.4, roughness: 0.4 }), 0, 2.4, 0, true);
-    part(g, 'btBand', () => new THREE.CylinderGeometry(1.04, 1.04, 0.8, 12), `btBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.3 }), 0, 2.0, 0, false);
+  } else if (kind === 'bot') { // an AA battery on legs: copper body, team band, + terminal, a visor and two feet (5 meshes)
+    part(g, 'btBody', () => new THREE.CylinderGeometry(1.0, 1.0, 2.8, 12), 'btCopper', () => mat(0xc9741a, { metalness: 0.4, roughness: 0.4 }), 0, 2.4, 0, false);
+    part(g, 'btBand', () => new THREE.CylinderGeometry(1.04, 1.04, 0.8, 12), `btBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.3 }), 0, 1.9, 0, false);
     part(g, 'btNub', () => new THREE.CylinderGeometry(0.38, 0.38, 0.5, 8), 'btMetal', () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 }), 0, 4.0, 0, false).name = 'nub';
-    for (const sz of [-0.45, 0.45]) {
-      part(g, 'btEye', () => new THREE.BoxGeometry(0.15, 0.5, 0.35), 'btEyeMat', () => new THREE.MeshBasicMaterial({ color: 0xffffff }), 1.0, 2.9, sz, false);
-      part(g, 'btLeg', () => new THREE.BoxGeometry(0.5, 1.2, 0.5), 'tkTrack', () => mat(0x2b2b2b), 0, 0.6, sz * 1.5, false);
-    }
+    part(g, 'btEye', () => new THREE.BoxGeometry(0.15, 0.5, 1.1), 'btEyeMat', () => new THREE.MeshBasicMaterial({ color: 0xffffff }), 1.0, 2.9, 0, false);
+    part(g, 'btLeg', () => new THREE.BoxGeometry(0.9, 1.0, 1.9), 'tkTrack', () => mat(0x2b2b2b), 0, 0.5, 0, false);
   }
   g.scale.setScalar(kind === 'bomber' ? 1 : kind === 'looper' || kind === 'pike' || kind === 'pea' || kind === 'bot' ? 1 : 0.9);
   scene.add(g);
@@ -3951,7 +3948,7 @@ function finaleCleanup() {
   const F = state.finale;
   if (F) for (const m of F.marks) { scene.remove(m.mesh); m.mesh.material.dispose(); }
   if (state.finale?.rallyMark) { scene.remove(state.finale.rallyMark); state.finale.rallyMark.traverse((o) => { if (o.material && !o.material.userData.shared) o.material.dispose(); }); }
-  for (const id of ['finHud', 'planBox', 'squadPanel', 'peasHud', 'battHud']) if ($(id)) $(id).hidden = true;
+  for (const id of ['finHud', 'planBox', 'squadPanel', 'peasHud', 'battHud', 'ending']) if ($(id)) $(id).hidden = true;
 }
 function finaleBegin() {
   const F = state.finale;
@@ -4345,7 +4342,11 @@ function finaleUI() {
 .squadPanel .sq button { min-width: 84px; font-family: var(--display); font-size: 12px; }
 .squadPanel .ord-attack { background: rgba(239, 65, 54, 0.6); } .squadPanel .ord-defend { background: rgba(47, 125, 246, 0.6); } .squadPanel .ord-raid { background: rgba(255, 150, 30, 0.65); }
 .squadPanel #sqBody { display: grid; gap: 6px; }
-.squadPanel .none { font: 12px var(--body); opacity: 0.7; }`;
+.squadPanel .none { font: 12px var(--body); opacity: 0.7; }
+#ending h1 { font-size: 38px; color: #fff3d6; text-shadow: 0 4px 0 var(--ink), 0 0 24px rgba(255, 194, 61, 0.8); } #ending[hidden] { display: none; }
+#ending .erows { display: grid; gap: 4px; width: min(440px, 90vw); padding: 10px 14px; border-radius: 16px; background: var(--glass); border: 3px solid var(--gold); }
+#ending .er { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; text-align: left; font: 700 16px var(--body); } #ending .er b { font: 18px var(--display); color: var(--gold); }
+#ending .er .stars { font-size: 22px; } #ending .etotal { font: 30px var(--display); color: var(--gold); text-shadow: 0 3px 0 var(--ink); }`;
   document.head.appendChild(css);
   const mk = (id, cls) => { const d = document.createElement('div'); d.id = id; d.className = cls; d.hidden = true; document.body.appendChild(d); return d; };
   mk('finHud', 'finHud').innerHTML = '<b id="finTitle"></b><span id="finTime"></span><small id="finSub"></small><div class="bar"><i id="finBar"></i></div>';
@@ -4355,6 +4356,7 @@ function finaleUI() {
   for (const [id, cls] of [['battHud', 'cereal batt'], ['peasHud', 'cereal']]) { // level 6 only: the two extra stocks sit next to cereal and clips
     const el = document.createElement('div'); el.id = id; el.className = cls; el.hidden = true; $('clipsHud').after(el);
   }
+  const endEl = mk('ending', 'screen'); endEl.style.background = 'rgba(40, 26, 12, 0.6)'; endEl.innerHTML = '<div class="card"></div>';
   const panel = mk('squadPanel', 'squadPanel');
   panel.innerHTML = '<div id="sqBody"></div><button id="bPeek">Peek at Red<small>hold to look at their side</small></button>';
   const peek = (on) => { if (state.finale) state.finale.peek = on; };
@@ -4501,28 +4503,28 @@ function bagModel(kind) {
   for (const bx of [-0.34, 0, 0.34]) part(g, `bgBand:${k}`, () => new THREE.TorusGeometry(1, 0.1, 6, 16).rotateY(Math.PI / 2).scale(1, 1.35, Wd / 2 * 0.95), 'bgSteel', steel, bx * L, 2.55, 0, false);
   const top = new THREE.Group(); top.position.y = 3.6; g.add(top);
   if (eng) {
-    part(g, 'bgChim', () => new THREE.CylinderGeometry(0.7, 0.95, 2.6, 10), 'bgDark', dark, 1.6, 4.5, 0, true);
+    part(g, 'bgChim', () => new THREE.CylinderGeometry(0.7, 0.95, 2.6, 10), 'bgDark', dark, 1.6, 4.5, 0, false);
     part(g, 'bgChimCap', () => new THREE.CylinderGeometry(1.1, 0.8, 0.5, 10), 'bgSteel', steel, 1.6, 5.9, 0, false);
     part(g, 'bgLamp', () => new THREE.SphereGeometry(0.55, 8, 6), 'bgLampMat', () => new THREE.MeshBasicMaterial({ color: 0xfff0a0 }), 3.55, 2.7, 0, false);
     part(g, 'bgCatch', () => new THREE.BoxGeometry(1.6, 1.0, Wd - 0.4), 'bgRedMetal', () => mat(0x9c1c14, { metalness: 0.4 }), 3.9, 1.0, 0, false).rotation.z = -0.5;
     part(g, 'bgFlagP', () => new THREE.CylinderGeometry(0.07, 0.07, 3, 5), 'bgSteel', steel, -2.4, 4.7, 0, false);
     part(g, 'bgFlag', () => new THREE.BoxGeometry(1.8, 1.0, 0.1), 'bgFlagMat', () => new THREE.MeshBasicMaterial({ color: COLORS[RED] }), -3.3, 5.8, 0, false);
   } else if (kind === 'stapler') {
-    part(top, 'bgStBase', () => new THREE.BoxGeometry(L * 0.8, 0.5, Wd * 0.75), 'bgStRed', () => mat(0xc8281f), 0, 0, 0, true);
+    part(top, 'bgStBase', () => new THREE.BoxGeometry(L * 0.8, 0.5, Wd * 0.75), 'bgStRed', () => mat(0xc8281f), 0, 0, 0, false);
     const lid = new THREE.Group(); lid.position.set(-L * 0.38, 0.35, 0); lid.name = 'lid'; top.add(lid);
-    part(lid, 'bgStLid', () => new THREE.BoxGeometry(L * 0.76, 0.45, Wd * 0.7), 'bgStGrey', () => mat(0x9aa0a8, { metalness: 0.5, roughness: 0.35 }), L * 0.38, 0.3, 0, true);
+    part(lid, 'bgStLid', () => new THREE.BoxGeometry(L * 0.76, 0.45, Wd * 0.7), 'bgStGrey', () => mat(0x9aa0a8, { metalness: 0.5, roughness: 0.35 }), L * 0.38, 0.3, 0, false);
   } else if (kind === 'duck') {
-    part(top, 'bgDkBody', () => new THREE.SphereGeometry(1.25, 12, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0, 0.6, 0, true);
-    part(top, 'bgDkHead', () => new THREE.SphereGeometry(0.75, 10, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0.9, 1.7, 0, true);
+    part(top, 'bgDkBody', () => new THREE.SphereGeometry(1.25, 12, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0, 0.6, 0, false);
+    part(top, 'bgDkHead', () => new THREE.SphereGeometry(0.75, 10, 8), 'bgYellow', () => mat(0xffd23d, { roughness: 0.4 }), 0.9, 1.7, 0, false);
     part(top, 'bgDkBeak', () => new THREE.BoxGeometry(0.9, 0.25, 0.7), 'bgOrange', () => mat(0xff8a1f), 1.7, 1.6, 0, false);
     part(top, 'bgDkEye', () => new THREE.SphereGeometry(0.12, 6, 5), 'bgBlack', () => new THREE.MeshBasicMaterial({ color: 0x111111 }), 1.35, 1.95, 0.45, false);
   } else if (kind === 'remote') {
-    part(top, 'bgRcBox', () => new THREE.BoxGeometry(2.4, 0.9, 1.9), 'bgRcMat', () => mat(0x1d1f24, { metalness: 0.3 }), 0, 0.2, 0, true);
+    part(top, 'bgRcBox', () => new THREE.BoxGeometry(2.4, 0.9, 1.9), 'bgRcMat', () => mat(0x1d1f24, { metalness: 0.3 }), 0, 0.2, 0, false);
     part(top, 'bgRcAnt', () => new THREE.CylinderGeometry(0.07, 0.07, 3.2, 5), 'bgSteel', steel, -0.8, 2.0, 0.6, false);
     part(top, 'bgRcTip', () => new THREE.SphereGeometry(0.22, 6, 5), 'bgRcTipMat', () => new THREE.MeshBasicMaterial({ color: 0xff3b30 }), -0.8, 3.7, 0.6, false);
     part(top, 'bgRcDish', () => new THREE.CylinderGeometry(0.6, 0.2, 0.4, 8), 'bgRedMetal', () => mat(0x9c1c14, { metalness: 0.4 }), 0.7, 1.0, 0, false);
   } else if (kind === 'toaster') {
-    part(top, 'bgTsBox', () => new THREE.BoxGeometry(3.2, 1.6, 2.4), 'bgChrome', () => mat(0xdfe5ea, { metalness: 0.85, roughness: 0.22 }), 0, 0.5, 0, true);
+    part(top, 'bgTsBox', () => new THREE.BoxGeometry(3.2, 1.6, 2.4), 'bgChrome', () => mat(0xdfe5ea, { metalness: 0.85, roughness: 0.22 }), 0, 0.5, 0, false);
     for (const sz of [-0.55, 0.55]) part(top, 'bgTsSlice', () => new THREE.BoxGeometry(0.4, 1.2, 1.3), 'bgToast', () => mat(0xd69a45, { emissive: 0x6a2a00, emissiveIntensity: 0.5 }), 0, 1.5, sz, false);
   }
   scene.add(g);
@@ -4824,6 +4826,45 @@ function applyLights(k, cool, warmFlick = 0) {
   hemi.color.copy(lightCols.warmH).lerp(lightCols.coolH, cool); sun.color.copy(lightCols.warmS).lerp(lightCols.coolS, cool);
   if (warmFlick) { hemi.color.lerp(lightCols.flickH, warmFlick); sun.color.lerp(lightCols.flickS, warmFlick); }
   if (finRig) finRig.children.forEach((l, i) => { l.intensity = LIGHT_BASE.pts[i] * k; });
+}
+
+// ----- The ending -----
+// You smash their fortress on level 6: the kitchen light flicks on (bright and warm), then the "MEALTIME MAYHEM COMPLETE" screen shows your stars
+// for all six levels. update() stops once the game is over, so the timeline runs in finaleDraw (see F.ending). Losing shows the ordinary end card.
+function finaleEnding(earned) {
+  const F = state.finale;
+  F.ending = { t: 0, shown: false, earned, conf: 0 };
+  $('bossbar').hidden = true; $('bossArrow').hidden = true;
+  sfx('kettleClick');
+}
+function showEnding() {
+  const F = state.finale, el = $('ending');
+  const rows = LEVELS.map((L, i) => `<div class="er"><b>${i + 1}</b><span>${L.name}</span><span class="stars">${starRow(starsOf(i))}</span></div>`).join('');
+  const total = LEVELS.reduce((n, L, i) => n + starsOf(i), 0), max = LEVELS.length * 3;
+  el.querySelector('.card').innerHTML = `<div class="sub">Level 6 · Baguettes &amp; Ballistics</div><h1>MEALTIME MAYHEM COMPLETE</h1><p>The kitchen light is on, the toy war is over, and the worktop is yours.</p>
+    <div class="erows">${rows}</div><div class="etotal">${total} / ${max} stars</div>
+    <div class="two"><button class="go alt" id="endAgain2">PLAY AGAIN</button><button class="go alt" id="endMenu2">LEVELS</button></div>`;
+  el.querySelector('#endAgain2').addEventListener('click', start);
+  el.querySelector('#endMenu2').addEventListener('click', () => { el.hidden = true; $('start').hidden = false; selectLevel(curLevel); });
+  el.hidden = false; F.ending.shown = true;
+  sfx('win'); setTimeout(() => sfx('cap'), 700);
+}
+function endingDraw(dt, time) {
+  const F = state.finale, E = F.ending;
+  E.t += dt;
+  // Flick, flick, then on: dark, flash, dark, flash, dark, on for good.
+  const t = E.t, on = t < 0.3 ? 0 : t < 0.45 ? 1 : t < 0.65 ? 0 : t < 0.8 ? 1 : t < 0.95 ? 0 : 2;
+  const k = on === 0 ? 0.3 : on === 1 ? 1.4 : 2.3;
+  F.endK = F.endK === undefined ? 0.5 : F.endK + (k - F.endK) * (1 - Math.exp(-(on === 2 ? 5 : 40) * dt));
+  applyLights(F.endK, 0, on === 2 ? Math.min(1, (t - 0.95) * 2) : 0.4);
+  if (on === 2) {
+    const p = Math.min(1, (t - 0.95) * 1.5);
+    scene.background.setRGB(0.07 + 0.2 * p, 0.05 + 0.15 * p, 0.04 + 0.1 * p); scene.fog.color.copy(scene.background);
+    // Confetti over the table for a few seconds: shared sparks only, capped by burst().
+    E.conf -= dt;
+    if (E.conf <= 0 && t < 7) { E.conf = 0.12; const c = [0xffc23d, 0xef4136, 0x2f7df6, 0x3ddc84, 0xffffff][Math.floor(Math.random() * 5)], cx = camTarget.x + (Math.random() - 0.5) * 60, cz = camTarget.z + (Math.random() - 0.5) * 40; burst(cx, cz, c, 4, 14, 22); }
+  }
+  if (!E.shown && t > 2.8) showEnding();
 }
 
 // ---------- Main loop ----------
@@ -5534,7 +5575,7 @@ function render(dt) {
     }
   } else arrow.hidden = true;
   raceArrow();
-  if (state.finale) finaleDraw(dt, time);
+  if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
   if (state.level?.dark) darkUpdate(dt);
   renderer.render(scene, camera);
 }
@@ -5587,6 +5628,7 @@ function endGame(won) {
   const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
   if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
   else if (won) saveProgress();
+  if (won && state.finale) return finaleEnding(earned); // level 6: the light flicks on, then the MEALTIME MAYHEM COMPLETE screen
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
   $('endText').textContent = won

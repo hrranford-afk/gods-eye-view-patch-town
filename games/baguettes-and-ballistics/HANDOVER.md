@@ -139,7 +139,7 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 
 ![build-up](shots/26-finale-buildup.png) ![peek](shots/26b-finale-peek-red.png) ![war](shots/27-finale-war.png) ![bombers](shots/28-bombers.png)
 
-Harry's design: a big night worktop in a **U**; two minutes of getting ready, then war. **Stage 1 is built; stage 2 (the Baguette train boss, the Great Domino Run, the fridge door, the ending screen) is not**, but the hooks are in (see the end of this section). Data is `LEVELS[5]`; the code is one block headed "Level 6, the finale" just above `// ---------- Main loop ----------`, plus small hooks in shared code (listed below).
+Harry's design: a big night worktop in a **U**; two minutes of getting ready, then war. **Stage 1 is this section; stage 2 (infantry, the Baguette train boss, the Great Domino Run, the fridge door, the ending screen) is built too: see "Level 6, the finale (stage 2)" below.** The hooks listed at the end of this section are now filled in. Data is `LEVELS[5]`; the code is one block headed "Level 6, the finale" just above `// ---------- Main loop ----------`, plus small hooks in shared code (listed below).
 
 ### The table-size decision (read this first)
 
@@ -226,6 +226,68 @@ In the last 10 s (`FIN.planAt`) `#planBox` shows **LEFT / MIDDLE / RIGHT** (keys
 - Bombers can get stuck circling a target they are not quite lined up with; the slow-down on approach makes it rare.
 - The first frame of the level recompiles shaders (point lights): a small hitch on an iPad.
 - Left/right naming is per side (see "The battle plan"); the banner always says top/middle/bottom as well.
+
+## Level 6, the finale (stage 2, 2 Nov 2026)
+
+![infantry](shots/29-infantry.png) ![baguette](shots/30-baguette-boss.png) ![great run](shots/31-great-domino.png) ![ending](shots/32-ending.png)
+
+Stage 2 is built: infantry, THE BAGUETTE, the Great Domino Run, the fridge door and the ending. New code is in two marked places: the infantry (just after `SQUADS`, `squadThink` and its helpers), and one block headed "Level 6, the finale: stage 2" above `// ---------- Main loop ----------` (track, train, great runs, fridge, ending). `state.finale.stage2` = `{ train, baguetteDone, fridge }`.
+
+### Infantry (Harry: "everything you collected all game becomes your army")
+
+New `SQUADS` entries (`inf: true`; `squadWeight` = n x 0.5, and `armyOf` counts an `e.inf` unit as 0.5): **loopers** (Cereal Loopers, 6, 28 cereal), **pikemen** (Paperclip Pikemen, 4, 26 cereal + 18 clips), **peashooters** (Pea Shooters, 4, 26 cereal + 20 peas), **botsq** (Battery Bots, 2, 34 cereal + 24 batteries). `ENEMY_TYPES` `looper`, `pike`, `pea`, `bot` (flag `inf`; `armor`, `floats`), models in `squadModel` (shared parts, 1 to 8 meshes each), `SQ_MODELS` radii, `WEAPONS` `loopshot`, `pike`, `peashot`, `botzap`. They walk with the normal `steer` and `squadThink`. One job each:
+- **Loopers:** fast (25), 24 hp, a weak popgun. On Attack and Raid `u.capGoal` sends each to the nearest bottle cap its side does not hold, so they take caps and soak fire. The hoop rolls (`infPose`).
+- **Pikemen:** slow (6.5), 130 hp, `armor` 2, a short spear (range 7.5). `weapon.vsCar` 2: `hurt` multiplies by it against cars (you, workers, non-infantry non-flying units). On Defend they stand in a line across the rally gate (`u.slot`) and only fight what comes into it.
+- **Pea shooters:** `weapon.lob` peas (range 34, splash 2.6, 22 damage); they stand off at 22. They **float** (`u.floats`): `waterPush` skips them and `steer` uses a third route grid `closedFlt` (the same as `closed` but with the water open, copied in `navBuild` just before the water step), so they walk straight across the sink. On the water they bob (`infPose`).
+- **Battery bots:** no bullet. `botThink` and `botPulse`: every 4.2 to 5 s, if an enemy turret or car is within 12, a pulse (radius 14, drawn by one ring from the shared pool `pulseRings`, 8 at most) sets `e.stun = 1.5` on enemy turrets (the main loop skips their gun while `stun > 0` and sparks them) and `e.pinned = 1.5` on cars, workers and you (the existing staple pin). Infantry, bombers, toy boxes, sugar walls and Baguette parts are not affected. 6 damage each.
+- **Pressing buttons:** `squadThink` now honours `u.presser` like `unitThink`; `UNIT_WEIGHT` has infantry at 0.5, bombers 0, `sqtank` 2.
+
+**Peas and batteries** are extra stocks: `state.peas` and `state.batts` (arrays per team, level 6 only), `LEVELS[5].resources` = `['cereal','clips','peas','batteries']`, `start.peas` and `start.batts` 0. `stockOf(res)` maps a truck's `loadRes` to its stock (the old line wrote everything that was not cereal into `state.clips`; level 3's batteries still do). Piles: peas at (50, 46) and (-50, 46) on the lanes, batteries at (8, 60) and (-8, 60) beside the ceasefire line, small (100 and 90). The third worker of a side (`pref === 'clips'`) fetches whichever of clips, peas, batteries it has least of, and **you can scoop them yourself by sitting on the pile** (`extrasUpdate`, 9 a second): that is the risky part. Red also gets a trickle (0.25 peas and 0.12 batteries a second) so its infantry do not wait for ever. The HUD shows `peasHud` and `battHud` next to the clips on this level only (made in `finaleUI`, hidden by `finaleCleanup`). The enemy queue (`AI_QUEUE`) now includes loopers, pikemen, pea shooters and bot squadrons; its pikemen always Defend.
+
+### THE BAGUETTE (the boss)
+
+- **Track** (`BAG_VERTS`, `bagTrack`, `trackAt`): a closed loop that outlines the U, 540 long, rounded 90 degree corners (radius 4 to 4.5), resampled to 1 unit. Up the breadboard arm by the outer lane (x 60), a U-turn, down the inner lane (x 51), west along the bend (row z 32), up the sink arm by the inner lane (x -49), a U-turn, down the outer lane (x -57), east along the bend (row z 40), and round again. No crossings. Checked against the obstacle list, the water and the table edge with a 2.3 margin: 0 bad points. **No A\***: the train is placed by arclength (`T.s`). `bagRails` draws it as one mesh of two rails and sleepers (faint, in `levelRoot`, visible from the start).
+- **Parts:** `bagPart` makes an entity of **`kind: 'bag'`** for the engine (`locked`, 900 hp, r 3.4) and each carriage (380 hp, r 2.8, armor 3), in the order engine, Stapler, Duck, Remote, Toaster. `bagModel` builds them from shared shapes (chassis, 2 axles, a crusty loaf with the `finTex.baguette` texture, 3 steel bands, and a top per weapon: 9 to 13 meshes). Each has a flat hp bar (`bagBar`, two shared colours; grey while the engine is locked).
+- **hurt():** `hurt` hands any hit on a `bag` entity to `bagHurt` (one line at its top). The engine soaks hits (a spark, and a toast now and then) until `T.cars` is empty (`locked` false); `nearestEnemy` skips a locked engine so turrets do not waste shots. Armour takes 3 off each hit. A dead carriage (`bagDie`): burst, `bigBoom`, shake, a 40 cereal spill, its model flies off as a tumbling `T.debris` piece (shrinks, then is `disposeTree`d) and the others close up (their `off` eases). Last carriage: banner "ALL CARRIAGES GONE". Engine death: `bossShield(false)`, six spills of 55 (330 cereal), colour bursts, banner "THE BAGUETTE IS STALE!".
+- **state.boss** is a stand-in `{ kind: 'bagtrain', x, z, hp (total), maxHp, shieldBroken }` so the existing boss bar, arrow and shield work. `hurt`'s base shield line also checks `!state.boss.shieldBroken`. The bar reads "THE BAGUETTE" and sits 160px down (the war clock is where the other bosses' bar goes). Banner: "THE BAGUETTE" and "Cut it apart carriage by carriage!".
+- **Weapons** (`bagUpdate`; each carriage looks for a target every 0.6 s): **Stapler car** snaps shut (kills) a turret or sugar wall within 8.5, every 2.2 s, with a lid animation. **Duck car**: `WEAPONS.bubble` at range 44 (popped near the target like the Duck). **Remote car**: `WEAPONS.snipe` at 46, leading the target, turrets first. **Toaster car**: `WEAPONS.toast` lobbed at 42. The engine's cow-catcher crushes anything of yours on the track (90 a second, 270 on turrets, so a turret built on the rails does not last).
+- **Timing:** `BAG.at` 184 s of war (the fridge opens at 180). Speed 7.5, +10% for each lost carriage; a lap takes 72 s.
+- Not done: nothing blocks or is blocked by the train physically (cars drive through it).
+
+### The Great Domino Run
+
+`buildLevelRun` now returns `buildGreatRun(team)` on this level. `GREAT[team]` holds the corners, radii and damage; `greatPath` rounds the corners and drops a domino every `RUN_STEP` (4.2). **Yours** (53 dominoes, the longest in the game; the old runs were at most 26): button at (-41, 63) at the bottom-left of the hob, along the bottom edge of the bend (z 62.5) to x 79.5, north up the enemy arm (between the book and the loaf tower), and into their fortress; the tip lands 6 from its centre. **Red's** (26 dominoes, aimed at your fortress): button at (-61, 48), west to x -91 and north along the west bank. Both go through `standRun`, which makes `addDominoLite` dominoes when `run.lite`: **one mesh each** (a painted texture, shared geometry and material), so 79 dominoes are 79 meshes, not 550. Weight: `BUTTON_WEIGHT` 3, a Monster, or a car plus drones and infantry (0.5 each; the toast says so); your squads and drones near you join when you sit on the button. `runsUpdate` uses `run.reset` (90 s here, 45 elsewhere). In `dominoesUpdate` a fallen domino of a run with `d.dmg` hits for that (500, or 250 for Red's) and `d.breaks` (yours only) calls `bagBreakShield` first, so the whole 500 lands even with the Baguette alive ("SHIELD SMASHED!"). Red presses its button after 100 s of war with the commander's existing code.
+
+### The fridge door
+
+`fridgeBuild` (in `finaleDecor`) stands a fridge on the north end of the cut-out (white box, shelves, jars and a lettuce, a hinged door with a handle, magnets and a note, all fresh shapes in `levelRoot`). `fridgeUpdate` (called from `finaleUpdate`): at **180 s of war** (`FRIDGE.at`) the door swings out 1.8 rad in 2.2 s, with a banner and a creak (`fridgeOpen`); the camera glances at it for 3 s (`F.cine`, hooks in `render`); the inside glows and a faint light fan shows. For `FRIDGE.open` (20 s) the **existing lights** are scaled by 1.9 (hemisphere, sun, the three point lights) and tinted cool; then the door slams (it accelerates shut; `clunk`, shake, burst, banner "SLAM!") and the lights ease to 0.68 of their old value and stay there (hemisphere 0.48, sun 0.34): darker than before, still readable. No new lights. `applyLights(k, cool, flick)` and `LIGHT_BASE` hold the numbers (they must match `finaleLight`).
+
+### The ending
+
+`endGame` calls `finaleEnding(earned)` for a **win on level 6** (after the stars are saved). `update` stops once the game is over, so the timeline runs in `endingDraw` (called from `render`): the kitchen light flicks (dark, flash, dark, flash, dark, then on for good: lights x2.3 and warm, the background lifts, a little confetti), and at 2.8 s `showEnding` fills `#ending` (made in `finaleUI`): **MEALTIME MAYHEM COMPLETE**, six rows (level name and its stars from `starsOf`, the saved `bb-progress-v1`), the total out of 18, Play again and Levels. Losing shows the ordinary card.
+
+### Shared-code edits for stage 2 (all small, marked "level 6")
+
+`ENEMY_TYPES`, `WEAPONS`, `spawnUnit` (inf flags), `steer` (`closedFlt`), `navBuild`, `setTableSize`, `waterPush` (floaters), `hurt` (`vsCar`, the `bag` line, the shield check), the turret loop (`stun`), `nearestEnemy` (`locked`), `makePile` and `peasGroup`, `stockOf` with the truck's drop and want lines and its load colour, `reset` (stocks), `standRun`, `runsUpdate` (reset time and the toast), `dominoesUpdate` (damage, shield), `buildLevelRun` (calls `buildGreatRun`), `UNIT_WEIGHT`, the camera lines in `render` (peek or cine), the render loop (`infPose`, `endingDraw`), `endGame` (one line), `SOUNDS` (`zap`, `loopshot`, `pike`, `peashot`, `botzap`, `fridgeOpen`, `clunk`), `finaleCleanup`, `finaleInit` (`stage2`), `finaleUpdate` and `finaleDecor` (hooks). `addDomino` itself is untouched.
+
+### Tested (Chromium, Playwright, `update(1/60)` by hand with the real-time loop frozen)
+
+- **Budget** (a 24 against 24 cheat: both sides given 3000 cereal and stocks and every squad type bought again and again, 10 minutes of war, the camera in the bend where the fight is, the Baguette and both Great Runs on the table; `renderer.info.render.calls`, shadow pass included, 360 x 250 page so renders are cheap): a render every 2.5 s peaked at **1,103** over the 10 minutes; counting every spark (a render every 3 frames, 160 s) peaked at **1,287**. The same method on level 4 (3 boats, 10 turrets, 14 cars a side kept topped up) peaked at **1,196**, so level 6 is at about **1.08x level 4**. Sparks (`burst`) are capped at 150 alive on this level (400 elsewhere) because each is a draw call, infantry cast no shadows, the Baguette's tops cast none, and each pikeman is 4 meshes, each bot 5. Geometries (`renderer.info.memory.geometries`) stayed between 314 and 394 for the whole 10 minutes with no trend (the Baguette came and went at 3:00 to 5:00); textures flat at 18; 5 real lights. (Stage 1's documented 829 was measured another way; do not compare the two.)
+
+- Infantry: every squad bought (army 8 of 24 for 16 infantry); 3 pikemen hit a stationary tank for 475 in 5 s against 86 for 3 loopers; a pea shooter crossed the sink's open water in 6.6 s where a wheeled unit needed the bridge (21 s); a battery bot stunned a gun turret and pinned a tank for 1.5 s per pulse, and was shot dead after two pulses.
+- Baguette: the engine ignored a 500 hit with carriages on and lost 97 of a 100 hit after; killing the four carriages one by one took the stand-in hp from 2420 to 2040, 1660, 1280 and 900, leaving 4 debris pieces that cleaned up; the engine died, the shield popped, the spills were left and the bar hid; the Stapler car snapped a gun turret in one pass, the engine ran over another on the rails, and the Duck, Remote and Toaster cars all fired (3, 7 and 3 shots in 14 s at three tanks and two turrets).
+- Great Domino Run: 53 dominoes; a Racer alone: "too light" (stays ready); with 10 infantry it fell in 8.3 s; their fortress went 2500 to 2000 (500) and the shield broke with the Baguette alive; it stood again 90 s later. 79 dominoes in the scene (yours and Red's).
+- Fridge: closed until 180 s, open at 180 (hemisphere 0.7 to 1.33, sun 0.5 to 0.95, points x1.9), slammed at 200, then 0.48 and 0.34.
+- Ending: base destroyed, the ordinary card stays hidden, `#ending` shows at 2.8 s with 14 of 18 for saved stars of 3, 2, 3, 1, 2 and the win's 3; Play again restarts the level.
+- Levels 1 to 5 load and play 20 s with no page errors.
+
+### Not done / open
+
+- Balance is simulated only; no human has played it on an iPad. Tune `BAG.carHp`, `BAG.engineHp`, `BAG.speed`, the squad costs and `BOT`.
+- The train does not block cars and is not blocked by them. The Great Run's dominoes cannot be shot down (`fixed`); the only counter is to kill the crew on the button.
+- Red's run button sits on your side of the bend (-61, 48), so Red only presses it by sending cars into your defences; if they never come, the run never falls.
+- The fridge only looks bright where the camera is: the real effect is the lights (the light fan on the cut-out is faint).
+- A looper takes a cap even in the middle of a fight, on purpose.
 
 ## Level 5, Hob and oven (2 Nov 2026)
 
