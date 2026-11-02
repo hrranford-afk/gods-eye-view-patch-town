@@ -52,7 +52,7 @@ level: win, win in under 8 minutes, win without losing a truck.
 | 2 | Pencil case | **paperclips** (from the open pencil case): armour and tanks need them | **bulldozer**: pushes erasers into walls, and cereal into hoppers | **pushable erasers**; enemy **raids** every 90 seconds | the Stapler: slow, armoured, snaps turrets shut |
 | 3 | Remote-control drawer **(built 2 Nov)** | **batteries**: lasers and the Jet Bike need them | **laser turret**, Jet Bike, and the **Flare** (lights a big circle for 15 s) | **dark drawer**: enemy cars hide outside light (headlights, turrets, battery piles, the torch, flares); the enemy is **sneaky** (early hijackers, silent raiders) | the Remote Car: fast, circles at range and snipes (1,000 hp, 3:00) |
 | 4 | The sink **(built 1 Nov)** | cereal | **gunboats** (soap dishes) and **bottle-cap ferries**; the crane and its bridges are *not* built: one fixed ruler bridge instead | **water gap** down the middle; drips from the tap knock you sideways; hover skims across | the Rubber Duck: floats up and down the channel, lobs bubbles (800 hp) |
-| 5 | Hob and oven | (all three) | **toaster launcher**: fires a car over walls | **hob rings** heat up and cool on a cycle; the oven door drops as a ramp to a high ledge | the Toaster Tank |
+| 5 | Hob and oven **(built 2 Nov)** | cereal and **paperclips** (the clips are in the oven) | **toaster launcher**: pops a car 30 units ahead over walls and rings | **hob rings** heat and cool on a cycle (10 s cool, 3 s warning, 6 s red-hot); the oven door drops as a ramp to a ledge with +30% turret range; the enemy is a **rusher** (big early waves, held until the rings are cool) | the Toaster Tank: lobs flaming toast, immune to the rings (1,500 hp, 3:00) |
 | 6 | Baguettes & Ballistics | (all three) | everything | **night**: only the fridge light; the kettle boils as a countdown to the enemy's big push | the Baguette: a long armoured train that has to be cut in pieces |
 
 **Between levels:** a short "day in the kitchen" card (morning, then lunch,
@@ -119,15 +119,15 @@ The campaign runs through one day in the kitchen.
 | 2 | Pencil case | morning | paperclips, enemy raids |
 | 3 | Remote-control drawer (built) | midday | batteries, lasers, Jet Bike, flares, the dark |
 | 4 | The sink (built) | lunch | one ruler bridge, ferries, boats; hover crossings |
-| 5 | Hob and oven | afternoon | hot rings on a cycle, oven-door ramp, toaster launcher |
+| 5 | Hob and oven (built) | afternoon | hot rings on a cycle, oven-door ramp, toaster launcher |
 | 6 | Baguettes & Ballistics | dinner, night | the whole worktop U; only the fridge light |
 
 ## Kitchen hazards and set pieces
 
 - **Sink:** water gap; build a bridge (spaghetti: cheap, snaps · lolly
   sticks: sturdy · ruler: heavy, needs a crane). Hover skims across. *Built in level 4 with one fixed ruler bridge, ferries and boats; the crane is still to do.*
-- **Hob:** rings heat and cool on a cycle; hot rings hurt.
-- **Oven:** door drops as a ramp to a high ledge with long sight lines.
+- **Hob:** rings heat and cool on a cycle; hot rings hurt. *Built in level 5.*
+- **Oven:** door drops as a ramp to a high ledge with long sight lines. *Built in level 5.*
 - **Toaster:** launcher over walls.
 - **Kettle:** boils on a timer; steam blocks sight.
 - **Fruit bowl:** central fortress.

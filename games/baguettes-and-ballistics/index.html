@@ -835,7 +835,7 @@ function hobDraw(dt, time) {
 // A shadow marks the landing, and a white ring previews it when you are near a ready toaster. The enemy builds one and sends its wave over it.
 function makeToaster(team, x, z) {
   const g = new THREE.Group();
-  const chrome = mat(0xe4e9ee, { metalness: 0.9, roughness: 0.15 });
+  const chrome = mat(0xe9edf2, { metalness: 0.5, roughness: 0.28 });
   mesh(new THREE.BoxGeometry(6.6, 1.3, 4.4), chrome, 0, 0.65, 0, g);
   mesh(new THREE.BoxGeometry(6.8, 0.35, 4.6), mat(COLORS[team], { metalness: 0.4 }), 0, 0.3, 0, g); // team stripe
   const slices = [];
@@ -873,7 +873,7 @@ function buildToaster() {
   sfx('build'); toast('Toaster built. Drive onto it to jump');
 }
 function launch(e, t) {
-  const a = e.heading, lim = (v, m) => Math.max(-m + 3, Math.min(m - 3, v));
+  const a = e.kind === 'unit' ? angleTo(e, state.bases[1 - e.team]) : e.heading, lim = (v, m) => Math.max(-m + 3, Math.min(m - 3, v));
   const tx = lim(e.x + Math.cos(a) * TOASTER.hop, W / 2), tz = lim(e.z + Math.sin(a) * TOASTER.hop, D / 2);
   e.air = { t: 0, T: TOASTER.T, sx: e.x, sz: e.z, tx, tz, l0: ledgeLift(e), l1: ledgeLift({ x: tx, z: tz }), H: TOASTER.H };
   e.path = null; e.via = null; e.pinned = 0;
@@ -1421,7 +1421,7 @@ function buildModel(kind, team, scale = 1) {
     lightPool(lights, 0xff4a3a, 14, 14, 0, 0, 0.4);
   } else if (kind === 'toaster') {
     // The Toaster Tank: a big chrome toaster on tracks, two bread slots with flaming toast, a lever and a dial. Forward is +x.
-    const chrome = mat(0xe4e9ee, { metalness: 0.92, roughness: 0.14 }), black = mat(0x1c1712), tr = mat(0x2b2b2b, { roughness: 0.9 });
+    const chrome = mat(0xe9edf2, { metalness: 0.5, roughness: 0.28 }), black = mat(0x1c1712), tr = mat(0x2b2b2b, { roughness: 0.9 });
     for (const z of [-3.9, 3.9]) {
       mesh(new THREE.BoxGeometry(12, 1.8, 2.2), tr, 0, 0.9, z, g);
       for (let i = 0; i < 5; i++) mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.4, 12), mat(0x9aa0a8, { metalness: 0.6 }), -4.4 + i * 2.2, 0.95, z, g).rotation.x = Math.PI / 2;
@@ -1616,10 +1616,10 @@ function workerThink(w, dt) {
   if (w.trojan) return trojanThink(w, dt);
   if (w.role === 'digger') {
     // Pick the fullest pile near home that has the fewest of our diggers, and stay with it.
-    if (!w.pile || w.pile.amount <= 0) {
+    if (!w.pile || w.pile.amount <= 0 || (state.hob?.avoid && ringAt(w.pile.x, w.pile.z, -3.5))) {
       const home = state.bases[w.team];
       const score = (p) => dist2(p, home) + workersOf(w.team, 'digger').filter((d) => d.pile === p).length * 900 - (w.pref === 'clips' && p.res === secondRes() && state.clips[w.team] < 60 ? 4000 : 0);
-      w.pile = piles.filter((p) => p.amount > 0 && !p.island).sort((a, b) => score(a) - score(b))[0] || null;
+      w.pile = piles.filter((p) => p.amount > 0 && !p.island && !(state.hob?.avoid && ringAt(p.x, p.z, -3.5))).sort((a, b) => score(a) - score(b))[0] || null;
     }
     const goal = w.pile || state.bases[w.team];
     steer(w, goal.x, goal.z, goal.r + 2.5, dt, spec, null);
@@ -1645,7 +1645,7 @@ function workerThink(w, dt) {
     w.think = 1;
     // On levels with paperclips a truck sticks to one kind per trip, and some trucks prefer clips.
     const want = w.load > 0 ? w.loadRes : state.level.resources.length > 1 ? (w.pref === 'clips' && state.clips[w.team] < 60 ? secondRes() : 'cereal') : null;
-    const ok = (src) => src.amount > 0 && !src.island && (!want || src.res === want);
+    const ok = (src) => src.amount > 0 && !src.island && (!want || src.res === want) && !(state.hob?.avoid && ringAt(src.x, src.z, -3.5)); // a pile in the middle of a ring is out of bounds while it heats
     const byDist = (a, b) => (dist2(w, a) - diggersAt(a, w.team) * 400) - (dist2(w, b) - diggersAt(b, w.team) * 400);
     const near = spills.filter((sp) => ok(sp) && dist2(w, sp) < 30 * 30).sort((a, b) => dist2(w, a) - dist2(w, b))[0];
     w.src = near || piles.filter(ok).sort(byDist)[0] || (w.load > 0 ? null : piles.filter((p) => p.amount > 0 && !p.island).sort(byDist)[0]) || null;
@@ -1755,12 +1755,23 @@ function findPath(sx, sz, gx, gz, grid = closed) {
 
 // Drive towards a point; take a route round blocks when the way isn't clear; stop within `stop`.
 function steer(e, gx, gz, stop, dt, stats, ignore) {
-  const full = Math.hypot(gx - e.x, gz - e.z);
+  let full = Math.hypot(gx - e.x, gz - e.z);
   if (e.pinned > 0) { e.pinned -= dt; e.vx = (e.vx || 0) * 0.8; e.vz = (e.vz || 0) * 0.8; return full; } // stapled to the table
-  let tx = gx, tz = gz;
+  let tx = gx, tz = gz, direct = false;
   if (navDirty) navBuild();
   const grid = e.fat ? closedFat : closed;
-  if (!clearLine(e.x, e.z, gx, gz, grid)) {
+  if (state.hob?.avoid && !e.fat && e.kind !== 'player') {
+    // Level 5: the AI keeps off a ring that is warming or hot. If it is on one it steps off; if its goal is on one it goes to the edge instead.
+    const here = ringAt(e.x, e.z), rg = here || ringAt(gx, gz, 1.5);
+    if (rg) {
+      const dx = e.x - rg.x, dz = e.z - rg.z, d = Math.hypot(dx, dz) || 1;
+      gx = rg.x + dx / d * (rg.r + 2.6); gz = rg.z + dz / d * (rg.r + 2.6); tx = gx; tz = gz;
+      if (here) { direct = true; stop = 0; }
+    }
+  }
+  full = Math.hypot(gx - e.x, gz - e.z);
+  if (direct) e.path = null;
+  else if (!clearLine(e.x, e.z, gx, gz, grid)) {
     e.pathAge = (e.pathAge || 0) - dt;
     if (!e.path || e.pathAge <= 0 || Math.hypot(e.pathGoal[0] - gx, e.pathGoal[1] - gz) > 4) {
       e.path = findPath(e.x, e.z, gx, gz, grid) || [];
@@ -2798,6 +2809,12 @@ function commander(dt) {
   if (workersOf(RED, 'truck').length < trucksWanted) { buyWorker('truck', RED); return; }
   if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
+  // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from (it saves up for it first).
+  if (state.level.toaster && state.time > 40 && !toasters.some((t) => t.team === RED)) {
+    const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
+    if (spot && state.cereal[RED] >= TOASTER.cost) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
+    else if (spot && state.time < 150) return;
+  }
   const roll = Math.random();
   let want = state.time < 60 ? 'scout' : roll < 0.5 - ramp * 0.25 ? 'scout' : roll < 0.85 - ramp * 0.15 ? 'buggy' : 'heavy';
   const heavyClips = state.level.heavyClips || 0; // the enemy's tanks cost paperclips too
@@ -2813,11 +2830,6 @@ function commander(dt) {
     if (want === 'heavy') state.clips[RED] -= heavyClips;
     const u = spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
     if (rusher) { u.hold = true; u.rally = [42 + Math.random() * 6, (Math.random() - 0.5) * 18]; }
-  }
-  // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from.
-  if (state.level.toaster && state.time > 70 && state.cereal[RED] >= TOASTER.cost + 20 && !toasters.some((t) => t.team === RED)) {
-    const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
-    if (spot) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
   }
 }
 

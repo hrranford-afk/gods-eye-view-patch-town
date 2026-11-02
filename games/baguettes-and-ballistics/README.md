@@ -9,7 +9,9 @@ to play on an iPad. See [DESIGN.md](DESIGN.md) for where it's going.
 - **Keyboard:** WASD or arrows, Space fire, T truck, G digger, 1 gun turret,
   2 rocket turret, U upgrade, 3 drones, 4–9 vehicles at home.
 
-**Level select.** The title card has 6 level buttons; pick any level from the start. Stars (win, under 8 minutes, no truck lost) are saved on the device, and levels 5 and 6 say "coming soon".
+**Level select.** The title card has 6 level buttons; pick any level from the start. Stars (win, under 8 minutes, no truck lost) are saved on the device, and level 6 says "coming soon".
+
+**Level 5, Hob and oven.** The table is a black glass hob with four rings that cool for 10 seconds, glow orange for 3 and then burn red-hot for 6, hurting anything sitting on them (a clock at the top left counts it down). At the back, the oven door lies down as a ramp to a ledge: cars on it are lifted, turrets built there reach 30% further, and the middle cap and the paperclips are up there. Build a toaster launcher (Toaster button or K, 30 cereal) and drive onto it to be popped 30 units ahead over walls and rings; a shadow shows where you will land. The enemy is a rusher: it gathers big waves and sends them when the rings are cool, and at 3:00 the Toaster Tank lobs flaming toast.
 
 **Level 3, Remote-control drawer.** It is dark inside the drawer: you only see what a light touches. Enemy cars hide until your headlights, a turret, a glowing battery pile, the torch or a flare (Flare button or V, 8 cereal) shows them. Batteries pay for Laser turrets (L) and the Jet Bike; the enemy is sneaky (early hijackers, raiders with no siren); at 3:00 the Remote Car races round your toy box and snipes.
 

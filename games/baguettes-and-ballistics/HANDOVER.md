@@ -34,6 +34,7 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
   | U | upgrade |
   | 3 | drones |
   | B | gunboat (level 4 only) |
+  | K | toaster launcher (level 5 only) |
   | L | laser turret (level 3 only) |
   | V | flare (level 3 only) |
   | 4–9 | vehicles, at home |
@@ -88,8 +89,8 @@ Level 2 (Pencil case): ![level 2](shots/5-level2.png) ![boss](shots/6-level2-bos
 
 ### Level format
 
-`LEVELS` is an array of 6 entries. Levels 5 and 6 are `{ name, time, soon: true }`
-stubs that show "coming soon". A playable entry holds:
+`LEVELS` is an array of 6 entries. Level 6 is a `{ name, time, soon: true }`
+stub that shows "coming soon". A playable entry holds:
 
 | Field | Meaning |
 |---|---|
@@ -115,6 +116,7 @@ stubs that show "coming soon". A playable entry holds:
 | `second`, `resources` | the second resource's name (`'batteries'`) and list. Its counter is stored in `state.clips` on every level, whatever it is called (`secondRes()`, `secondName()`) |
 | `rules.sneaky` | `{ hijackFirst, hijackEvery, layerFirst, layerEvery }` in seconds: the sneaky enemy (earlier and more hijackers, sooner domino layer, raiders with no siren) |
 | block kinds | `remote`, `battery`, `cable`, `charger`, `torch` (in `DRAWER_KINDS`); `tableTex: 'felt'` |
+| `hob`, `oven`, `toaster` | level 5 only: `hob: { rings: [[x, z, r]], cool, warn, hot, safe, dmg, turretDmg, start }` becomes `state.hob`; `oven: { x0, x1, z0, z1, rw, rz1 }` becomes `state.ledge`; `toaster: true` shows the Toaster button. Also `tableTex: 'hob'`, block kind `pan`, `rules.rusher: { first, size, grow, max, gap }`, `boss.kind: 'toaster'` |
 
 `reset()` calls `buildLevel(LEVELS[curLevel])`, which throws away the old
 level's group and rebuilds blocks, erasers, patches and decor. Level 1's
@@ -131,6 +133,44 @@ works without storage. Stars: 1 for a win, 1 for under 8 minutes
 - Keep it one HTML file with no image or sound files until level 2 ships. That keeps it light on an iPad.
 - Tune numbers in the tables, not inside functions.
 - Test on a real iPad, not only a desktop.
+
+## Level 5, Hob and oven (2 Nov 2026)
+
+![hob](shots/23-hob.png) ![hot](shots/24-hob-hot.png) ![tank](shots/25-toaster-tank.png)
+
+**The big idea: four hot rings on a cycle, and a raised oven.** Data is `LEVELS[4]` (`hob`, `oven`, `toaster`, `rules.rusher`, `rules.boss.kind: 'toaster'`); code is in one block headed "Level 5, Hob and oven", just above `// ---------- Levels ----------`, plus small hooks.
+
+**Layout.** Black glass table (`tableTex: 'hob'`, `hobTexture`). Rings at (±22, ±19), radius 9. The oven is at the back, x ±20, z -48 to -32: solid side walls (height 7, in `blocks`), a stainless floor with wire-rack bars, a back panel with knobs, a glowing element. The door lies down as a ramp (x ±8, z -32 to -23.5) rising 3.2 (`LEDGE_H`). Low rails (height 1, so shots fly over but cars can't cross) run along the ramp sides and the ledge front (`rail` obstacles pushed in `hobDecor`). Caps at (±38, ±27) and the middle cap on the ledge at (0, -40, `LEDGE_H`); two paperclip piles in the oven at (±9, -41). Cereal piles: between the rings at (±22, 0) (safe), on the edge of each ring at (±29.5, ±14.5), dead centre of the front rings at (±22, 19) (200, refills 0.45 a second: rich, only safe while cool), and far ones at (±48, ±34). A frying pan with an egg (`block` kind `pan`, with a handle box) and a saucepan are the blocks, plus mugs, books, sugar cubes and salt and pepper. Start: 40 cereal, 10 clips, Racer and Tank; resources `cereal` + `clips`, so all the paperclip toys work. Base health 1800, raids from 2:20 every 100 s. No gumball on this level.
+
+**Rings** (`state.hob`, `hobPhase`, `hobUpdate`, `hobBurn`, `hobDraw`). The clock `h.t` starts at -6 (a longer first cool spell); the cycle is cool 10, warn 3, hot 6 (`LEVELS[4].hob`). On every phase change a toast shows (and `sizzle` when hot). While hot, once a second (first tick 0.5 s in) everything with its centre on a ring takes 12 (turrets 6): cars, units, workers, boats. The Toaster Tank (kind `boss`), bases and cars in the air are immune. The look: `hobVis` holds four shared materials (fill, coil texture, additive shimmer, halo sprite). `hobDraw` eases one heat value `V.g` (up fast, down slowly for an afterglow) and tints them: dark and grey when cool, a dim orange pulse when warming, bright red-orange with a spinning additive shimmer, a halo and heat sparks (`burst`) when hot. A clock (`hobEl`, made in JS) at the top left reads "RINGS COOL / WARMING / RED-HOT · n sec".
+
+**How the AI treats rings.** `h.avoid` is true when warm, hot, or with less than `safe` (5) seconds of cool left. While true, `navBuild` closes the ring cells (not in the fat grid, so the boss walks through), `steer` moves a goal that sits on a ring out to the ring's edge and walks anything standing on a ring off it, and diggers and trucks skip piles in the middle of a ring. Measured over 4.5 minutes: no AI unit, worker or turret was burned. `buildLevelRun` and `planDominoRun` use `hobBlocked` (rings and the oven zone), so the level runs never cross a ring.
+
+**The oven is a lift, not a layer.** `ledgeLift(e)` gives 0 on the table, a ramp from 0 to `LEDGE_H` between z -23.5 and -32 when |x| < 8, and `LEDGE_H` on the ledge. `render` adds it to every car's y and tilts a car on the ramp (the same trick as the sink's `bridgeLift`); piles and spills in the oven are lifted when made; the build ghost follows. Logic stays 2D. Turrets whose spot is on the ledge get `high: true`, mesh y 3.2 and **range x 1.3** (`makeTurret`; a toast says so when you build one); `canPlace` refuses the ramp. Shots from the ledge start higher (`fire` adds the lift).
+
+**The toaster launcher** (`TOASTER`, `toasters[]`, `makeToaster`, `buildToaster`, `launch`, `airStep`, `toastersUpdate`, `landMarksUpdate`). Button *Toaster* (`#bToaster`) or **K**, 30 cereal, 3 at most per side, placed 6 behind you (`toasterSpot`: not near blocks, not on the ramp, 9 from another). A chrome slab with two slices that pop. Drive onto it at more than 2.5 units/s (0.8 s between launches) and `launch` sets `e.air = { t, T: 0.95, sx, sz, tx, tz, l0, l1, H: 11 }`: a straight line in x and z to a spot 30 units ahead of your heading (clamped to the table). `drive` returns into `airStep` while `e.air` is set; collision, `collideMovers` and `hurt` skip a car in the air. `render` draws the arc (`4 H f (1-f)`, blending the start and end lift so a jump onto the ledge doesn't pop). On landing `collideObstacles` nudges you out of anything and cars under you take 25. A dark disc marks the landing for every car in the air, and a pulsing white ring previews it when you are within 14 of a ready toaster of yours (`landMarks`, made once).
+- **The enemy** saves up for one toaster (`commander`, spots (34, 0), (36, ±6)). When its wave is released each car gets `u.via = toaster`, drives onto it, and jumps towards your toy box.
+
+**The rusher** (`rules.rusher`, `rushUpdate`, `state.rush`). The commander's army cap is 6 (to 1:00), 9 (to 2:00), then 12+; each new car gets `u.hold` and a rally point (x 42 to 48, near their toy box) and waits there (still shooting what comes in range). `rushUpdate` releases the wave when it has `rush.size` cars (4, then +1 each wave to 9) or `gap` (70 s) has passed, but **only while `!hob.avoid`**: if the rings are not safe the toast says "Red is waiting for the rings to cool…". First wave from 0:50. Tested: wave of 6 at 1:03, right as the rings cooled.
+
+**The Toaster Tank** (`spawnToaster`, `toasterThink`, `buildModel('toaster')`, `TT_STATS`, `WEAPONS.toast`; rule `boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }`). A chrome toaster on tracks with two bread slots of flaming toast, a lever and a dial; armour 2, `fat` (takes the wide routes), r 4.8. It walks towards your nearest turret (or your toy box) and stops 27 away, then every 1.3 s (0.85 under half health) pops flaming toast from the alternate slot (`fire` with a proxy at the slot, `weapon.lob = 1.5`, so the toast flies in a high arc and lands where the target was: 26 damage, splash 4.5) at turrets first, then you, units and workers, the toy box last. An orange ring marks where each piece will land (`landMarks.toast`). Toast is a bread slice with a flame (shared shapes in `fire`). The bubble shield, banner and arrow are the same as the other bosses. On death: 120 cereal spills, banner "TOASTER TANK POPPED!".
+
+**Other small changes in shared code:** `WEAPONS.toast`; `fire` y and the flame mesh; `hurt` returns for cars in the air and has the Tank's death branch; `drive`, `collideMovers`, `navBuild`, `steer`, `makeTurret`, `canPlace`, `build`, `makePile`, `makeSpill`, `buildLevelRun`, `planDominoRun`, `commander`, `unitThink`, `workerThink`, `render`, `reset` (clears `toasters`, sets `state.hob`, `state.ledge`, `state.rush`); new sounds `boing`, `thud`, `sizzle`, `toast`.
+
+**Tested in Chromium** (Playwright, swiftshader, by calling `update(1/60)`):
+- the rings do no damage while cool or warming, 12 a second hot (3 hits in 2.5 s), nothing off a ring, turrets 6, units 12; the Tank is immune by rule;
+- a Racer driving east onto a toaster at (-30, -39.5) flew over the oven wall (apex y 12.6) and landed at x -2 on the ledge (y 3.2) 0.95 s later; the shadow and "BOING!" showed;
+- the ramp lifts: 0.57 at z -25, 3.2 on the ledge, with a pitch of 0.36 on the slope; a gun turret on the ledge has range 22.1 (17 × 1.3), mesh y 3.2; `canPlace` says "Not on the ramp";
+- the enemy wave jumped from its toaster and landed at about (3, 0);
+- the Tank spawned at 3:00, lobbed toast, died to a 5-hp hit: shield bubble gone, 120 cereal spilled, banner shown, bar hidden;
+- both level domino runs exist (11 dominoes, off the rings), mine did 200 damage; trojan works;
+- levels 1 to 4 loaded in turn with no page errors.
+
+**Not done or open.**
+- Balance was never played by a human on an iPad: only simulated. Aim is 9 to 13 minutes.
+- No gumball on this level. No sound for the toast landing beyond the existing cannon thump.
+- The enemy never uses the ledge on purpose (its turret spots come from `spotNear` and sometimes land there).
+- The rings all share one clock; a half-cycle offset between the front and back pair would be a possible twist.
 
 ## Level 4, The Sink (1 Nov 2026)
 
