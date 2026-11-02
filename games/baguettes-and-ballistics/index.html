@@ -125,6 +125,7 @@ button.drop[disabled] { opacity: 0.45; }
 </div>
 <div class="banner" id="banner" hidden></div>
 <div class="bossArrow" id="bossArrow" hidden></div>
+<div class="bossArrow" id="mixArrow" hidden style="border-bottom-color:#ff9f1c"></div>
 <div class="gateArrow" id="gateArrow" hidden></div>
 <div class="bossbar" id="bossbar" hidden><b id="bossName">THE STAPLER</b><div class="bar"><i id="bossHp"></i></div></div>
 <div class="hint" id="hint">Drag on the left to drive</div>
@@ -1213,6 +1214,7 @@ const LEVELS = [
       '<b>Battle plan:</b> in the last 10 seconds pick Left, Middle or Right. Rally your Defenders where Red will come to take less damage',
       '<b>The bend:</b> the hob rings burn when red-hot and the cook drops pans. Paperclips are in the middle',
       '<b>The giant worktop:</b> four times a normal level. The minimap (top right) shows the U, the sink, both toy boxes, your squads, enemies you can see and the Baguette. Drive onto a toaster to be thrown 48 units',
+      '<b>Gumball machine:</b> ram it from your side for 24 cereal: items, heroes (Captain Teaspoon, Salt Shaker, Nurse Duck, Egg Timer) and, very rarely, THE STAND MIXER. The enemy spins it too',
       '<b>Infantry:</b> loopers grab caps, pikemen hurt cars, pea shooters float and lob, battery bots stun. They cost peas and batteries from risky piles. Infantry count half toward the army cap',
     ],
     // Bases at the tips of the arms. Index 0 is the cut-out (finaleDecor reads it): a solid block in the middle of the U.
@@ -1248,6 +1250,7 @@ const LEVELS = [
     // The hob in the bend: two rings each side of the ceasefire line, same cycle as level 5.
     hob: { rings: [[-43, 36, 11], [43, 36, 11], [-43, 82, 11], [43, 82, 11]], cool: 10, warn: 3, hot: 6, safe: 5, dmg: 12, turretDmg: 25, start: 0 },
     cook: true,
+    gumball: { spots: [[0, 46], [0, 48], [0, 50], [0, 44]], s: 1.4 }, // finale gumball: the machine stands in the middle of the bend, on the ceasefire line
     toaster: true, // stage 3: the toaster button works here, and finaleDecor puts a few ready-made toasters along each route
     outposts: [[-87, -23], [87, -23], [-129, 59], [129, 59], [0, 59]],
     piles: [
@@ -2039,7 +2042,7 @@ function reset() {
   if (L.rules.sneaky) { state.nextHijack = L.rules.sneaky.hijackFirst; state.nextLayer = L.rules.sneaky.layerFirst; }
   Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
   $('bUse').hidden = true;
-  if (L.gumball) gumball = placeGumball();
+  if (L.gumball) gumball = placeGumball(L);
   state.phase = 'battle';
   if (!L.race) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // a race level makes these when the battle starts
   state.player = { kind: 'player', team: BLUE, x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
@@ -2207,7 +2210,7 @@ function engineUpdate(p) {
   engine.o2.frequency.setTargetAtTime(27 + speed * 3.5, t, 0.08);
   engine.g.gain.setTargetAtTime(muted || state.over || !p.alive ? 0 : 0.025 + Math.min(0.04, speed * 0.002), t, 0.1);
 }
-const weaponName = (w) => Object.keys(WEAPONS).find((k) => WEAPONS[k] === w) || 'mg';
+const weaponName = (w) => Object.keys(WEAPONS).find((k) => WEAPONS[k] === (w.base || w)) || 'mg'; // (level 6: a buffed copy has .base)
 let lastShotSound = 0;
 
 // ---------- Helpers ----------
@@ -2298,6 +2301,7 @@ function drive(e, dx, dz, throttle, dt, stats) {
   if (e.spin > 0) grip *= 0.15; // spun out on butter or by a marble
   if ((patch === 'juice' || patch === 'oil') && !stats.floats) grip *= 0.12; // juice and cooking oil: slide
   if (patch === 'sauce' && !stats.floats) top *= 0.35; // tomato sauce: sticky
+  if (saltPatches.length && !stats.floats && saltSlow(e)) top *= 0.45; // level 6: the Salt Shaker's salt slows enemy cars
   if (patch === 'cereal' && !stats.floats && !stats.rough) top *= 0.45;
   // Split velocity into forward and sideways; grip eats the sideways part (that's the drift).
   const fx = Math.cos(e.heading), fz = Math.sin(e.heading);
@@ -2805,27 +2809,28 @@ const PRIZES = [
   [2, 0x2b2b2b, 'Dud', () => 'a whoopee cushion. Pfffrrt.'],
 ];
 let gumball = null;
-function makeGumball(x, z) {
-  const g = new THREE.Group(); g.position.set(x, 0, z);
+function makeGumball(x, z, s = 1) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); // (level 6: bigger, with fewer gumballs inside)
   mesh(new THREE.CylinderGeometry(2.6, 3.2, 3, 16), mat(0xd62f2f), 0, 1.5, 0, g); // red stand
   const globe = mesh(new THREE.SphereGeometry(3.4, 20, 14), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 }), 0, 6.2, 0, g);
   const cols = [0xff4d4d, 0x4da6ff, 0xffd166, 0x3ddc84, 0xff9ff3];
-  for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 2.4, y = 4.2 + Math.random() * 2.6; mesh(new THREE.SphereGeometry(0.55, 8, 6), mat(cols[i % cols.length]), Math.cos(a) * r, y, Math.sin(a) * r, g); }
+  for (let i = 0; i < (s > 1 ? 12 : 26); i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 2.4, y = 4.2 + Math.random() * 2.6; mesh(new THREE.SphereGeometry(0.55, 8, 6), mat(cols[i % cols.length]), Math.cos(a) * r, y, Math.sin(a) * r, g); }
   mesh(new THREE.CylinderGeometry(1, 1, 0.5, 12), mat(0xd62f2f), 0, 9.6, 0, g); // lid
   // Two buttons, one facing each side's toy box, so either team can ram it.
   const buttons = [-1, 1].map((sx) => { const b = mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 12), mat(0xffd166, { emissive: 0x6b4a00 }), sx * 3.3, 1.6, 0, g); b.rotation.z = Math.PI / 2; return b; });
   scene.add(g);
-  obstacles.push({ x, z, w: 6, d: 6, h: 9, kind: 'gumball' });
+  obstacles.push({ x, z, w: 6 * s, d: 6 * s, h: 9, kind: 'gumball' });
   navDirty = true;
-  return { x, z, group: g, globe, buttons, cool: [0, 0], spin: 0 };
+  return { x, z, s, group: g, globe, buttons, cool: [0, 0], spin: 0 };
 }
 function spinGumball(t) {
-  if (state.cereal[t] < GUMBALL_COST) { if (t === BLUE) { toast(`A spin costs ${GUMBALL_COST} cereal`); sfx('no'); } return; }
-  state.cereal[t] -= GUMBALL_COST;
+  const cost = state.finale ? FIN_GUM_COST : GUMBALL_COST, pool = state.finale ? finalePrizes(t) : PRIZES; // level 6: dearer, with heroes and the Stand Mixer in the pool
+  if (state.cereal[t] < cost) { if (t === BLUE) { toast(`A spin costs ${cost} cereal`); sfx('no'); } return; }
+  state.cereal[t] -= cost;
   gumball.cool[t] = 2.5; gumball.spin = 1.2;
-  const total = PRIZES.reduce((s, p) => s + p[0], 0);
-  let roll = Math.random() * total, prize = PRIZES[0];
-  for (const p of PRIZES) { roll -= p[0]; if (roll <= 0) { prize = p; break; } }
+  const total = pool.reduce((s, p) => s + p[0], 0);
+  let roll = Math.random() * total, prize = pool[0];
+  for (const p of pool) { roll -= p[0]; if (roll <= 0) { prize = p; break; } }
   const said = prize[3](t);
   // The gumball rolls out of the chute towards whoever paid.
   burst(gumball.x + (t === BLUE ? -3.5 : 3.5), gumball.z, prize[1], 10, 6, 2);
@@ -2838,7 +2843,7 @@ function gumballUpdate(dt) {
   if (gumball.spin > 0) { gumball.spin -= dt; gumball.globe.rotation.y += dt * 9; gumball.group.position.x = gumball.x + Math.sin(state.time * 60) * 0.15 * gumball.spin; }
   // Ram the button on your side: you (or your cars) touching the machine on your side at speed.
   const p = state.player;
-  if (p.alive && gumball.cool[BLUE] <= 0 && Math.abs(p.z - gumball.z) < 4 && p.x < gumball.x && gumball.x - p.x < 5.8 && Math.hypot(p.vx, p.vz) > 2) spinGumball(BLUE);
+  if (p.alive && gumball.cool[BLUE] <= 0 && Math.abs(p.z - gumball.z) < 4 * (gumball.s || 1) && p.x < gumball.x && gumball.x - p.x < 5.8 * (gumball.s || 1) && Math.hypot(p.vx, p.vz) > 2) spinGumball(BLUE);
   for (const t of [BLUE, RED]) if (state.buff[t] && state.time > state.buff[t].until) { state.buff[t] = null; if (t === BLUE) toast('Gumball power-up wore off'); }
 }
 
@@ -2922,13 +2927,13 @@ function itemsUpdate(dt) {
 }
 
 // Find a clear spot near the middle for the machine (levels with gumball: true).
-function placeGumball() {
-  const spots = [[0, 0], [0, 10], [0, -10], [10, 0], [-10, 0], [0, 18], [0, -18], [8, 12], [-8, -12], [12, -8], [-12, 8]];
+function placeGumball(L) {
+  const spots = L?.gumball?.spots || [[0, 0], [0, 10], [0, -10], [10, 0], [-10, 0], [0, 18], [0, -18], [8, 12], [-8, -12], [12, -8], [-12, 8]];
   for (const [x, z] of spots) {
     if (obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 6 && Math.abs(z - o.z) < o.d / 2 + 6)) continue;
     if (dominoes.some((d) => Math.hypot(d.x - x, d.z - z) < 7) || piles.some((q) => Math.hypot(q.x - x, q.z - z) < 7) || outposts.some((o) => Math.hypot(o.x - x, o.z - z) < 8)) continue;
     if (state.water && x > state.water.x0 - 6 && x < state.water.x1 + 6) continue;
-    return makeGumball(x, z);
+    return makeGumball(x, z, L?.gumball?.s);
   }
   return null;
 }
@@ -3172,12 +3177,12 @@ function enemyTricks() {
   if (state.finale?.stage === 'buildup') return; // level 6: no tricks under the ceasefire
   // The Gumball Machine: now and then a car goes and rams their side of it; items get used when one of their cars is near you.
   if (gumball) {
-    const spot = gumball.spot ||= { x: gumball.x + 6, z: gumball.z, ready: true };
-    if (state.cereal[RED] >= 40 && gumball.cool[RED] <= 0 && state.time > 45 && !entities.some((e) => e.presser === spot && e.hp > 0)) {
-      const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && !e.presser).sort((a, b) => dist2(a, spot) - dist2(b, spot))[0];
+    const spot = gumball.spot ||= { x: gumball.x + 6 * (gumball.s || 1), z: gumball.z, ready: true };
+    if (state.cereal[RED] >= 40 && gumball.cool[RED] <= 0 && state.time > 45 && (!state.finale || state.time >= (gumball.redNext || 0)) && !entities.some((e) => e.presser === spot && e.hp > 0)) {
+      const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && !e.presser && !e.fly && !e.hero).sort((a, b) => dist2(a, spot) - dist2(b, spot))[0];
       if (car && Math.random() < 0.02) car.presser = spot;
     }
-    for (const e of entities) if (e.presser === spot && e.hp > 0 && dist2(e, spot) < 49) { e.presser = null; if (gumball.cool[RED] <= 0) spinGumball(RED); }
+    for (const e of entities) if (e.presser === spot && e.hp > 0 && dist2(e, spot) < 49) { e.presser = null; if (state.finale) gumball.redNext = state.time + 35 + Math.random() * 35; if (gumball.cool[RED] <= 0) spinGumball(RED); } // (level 6: the enemy spins every 35 to 70 s)
   }
   if (state.redItems.length && state.player.alive) {
     const near = entities.find((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && dist2(e, state.player) < 22 * 22);
@@ -3273,6 +3278,7 @@ function hijackerThink(u, dt) {
 // ---------- Unit brains ----------
 function unitThink(u, dt) {
   if (u.fly) return bomberThink(u, dt); // level 6 bombers fly: no routes, no walls
+  if (u.hero) return heroThink(u, dt); // level 6 gumball heroes and the Stand Mixer
   if (u.sq) return squadThink(u, dt); // level 6 squadron members follow their squadron's order
   if (u.type === 'hijacker') return hijackerThink(u, dt);
   if (u.type === 'layer') return layerThink(u, dt);
@@ -3804,6 +3810,7 @@ function part(g, gk, gf, mk, mf, x, y, z, cast) {
 // Squadron models: few meshes, all geometry and materials shared by every unit of every squad.
 function squadModel(kind, team) {
   const g = new THREE.Group(), col = COLORS[team], dark = team === BLUE ? 0x1b4fa8 : 0x9c1c14;
+  if (HERO_MODELS[kind]) { HERO_MODELS[kind](team, g, col); scene.add(g); return g; } // level 6 gumball heroes and the Stand Mixer
   if (kind === 'tank') {
     part(g, 'tkBase', () => new THREE.BoxGeometry(4.2, 0.9, 3.6), 'tkTrack', () => mat(0x2b2b2b), 0, 0.5, 0, false);
     part(g, 'tkBody', () => new THREE.BoxGeometry(4, 1.2, 2.8), `tkBody:${team}`, () => mat(col), 0, 1.4, 0, true);
@@ -3959,7 +3966,7 @@ const laneZ = (team, k) => FIN.lanes[phys(team, k)];
 const gatePos = (team, row) => ({ x: team === BLUE ? -FIN.gateX : FIN.gateX, z: FIN.lanes[row] });
 const rallyOf = (team) => gatePos(team, state.finale.rally[team]);
 const squadsOf = (team) => state.finale.squads.filter((q) => q.team === team);
-const armyOf = (team) => entities.reduce((n, e) => ((e.kind === 'unit' || e.kind === 'boat') && e.team === team && e.hp > 0 ? n + (e.inf ? 0.5 : 1) : n), 0); // infantry count half
+const armyOf = (team) => entities.reduce((n, e) => ((e.kind === 'unit' || e.kind === 'boat') && e.team === team && e.hp > 0 && !e.hero ? n + (e.inf ? 0.5 : 1) : n), 0); // infantry count half
 const validTarget = (e) => !!e && e.hp > 0 && !(e.kind === 'player' && !e.alive) && !e.trojan;
 function finaleInit() {
   return {
@@ -3995,6 +4002,8 @@ function spawnPt(team, spread = 10) {
 function finaleCleanup() {
   for (const b of bombs) scene.remove(b.mesh);
   bombs.length = 0;
+  for (const sp of saltPatches) scene.remove(sp.mesh);
+  saltPatches.length = 0; if ($('mixArrow')) $('mixArrow').hidden = true;
   for (const q of pulseRings) q.mesh.visible = false;
   bagCleanup(); $('bossbar').style.top = '';
   const F = state.finale;
@@ -4075,7 +4084,7 @@ function stagePoint(u) { // under the ceasefire everyone waits at the rally; the
 const engageDist = (u, cap) => (u.type === 'pea' ? 22 : Math.min(u.weapon.range * 0.6, cap)); // pea shooters stand off
 const lanesOpen = (team) => outposts.filter((o) => !(o.owner === team && o.progress * (team === BLUE ? 1 : -1) >= 1));
 function squadThink(u, dt) {
-  const F = state.finale, sq = u.sq, team = u.team, foe = 1 - team, st = { speed: u.speed, accel: u.speed * 2.2, turn: u.turn, grip: u.grip };
+  const F = state.finale, sq = u.sq, team = u.team, foe = 1 - team, st = { speed: u.speed * (u.boostT > state.time ? 1.4 : 1), accel: u.speed * 2.2, turn: u.turn, grip: u.grip }; // (level 6: the Egg Timer's boost)
   if (u.presser) { // sent to help press a domino button (infantry weigh half a car)
     if (!u.presser.ready) u.presser = null;
     else { steer(u, u.presser.x, u.presser.z, 0, dt, st); return; }
@@ -4111,7 +4120,7 @@ function squadThink(u, dt) {
   steer(u, goal.x, goal.z, stop, dt, st, goal);
   if (u.type === 'bot') return botThink(u, dt);
   const ft = shoot || (chase && dist2(u, chase) < u.weapon.range ** 2 ? chase : null);
-  if (ft && u.cool <= 0 && dist2(u, ft) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, ft, u.weapon); }
+  if (ft && u.cool <= 0 && dist2(u, ft) < u.weapon.range ** 2) { u.cool = u.weapon.rate * 1.6; fire(u, ft, buffW(u)); } // (level 6: +25% near Captain Teaspoon)
 }
 // Battery bots: every few seconds a short-range pulse stuns enemy turrets (they stop firing) and cars (pinned) for about 1.5 s.
 const BOT = { every: 4.2, r: 14, stun: 1.5, dmg: 6 };
@@ -4342,6 +4351,7 @@ function startWar() {
 }
 function finaleUpdate(dt) {
   const F = state.finale;
+  heroesUpdate(dt);
   if (F.stage === 'buildup') {
     F.left = Math.max(0, FIN.build - state.time);
     const prog = 1 - F.left / FIN.build;
@@ -4468,11 +4478,13 @@ function miniMapDraw(dt, on) {
   for (const e of entities) {
     if (e.hp <= 0 || e.kind === 'bag') continue;
     if (e.kind === 'base') { dot(e.x, e.z, 7, e.team === BLUE ? '#2f7df6' : '#ef4136'); c.strokeStyle = '#fff8ec'; c.lineWidth = 2; c.strokeRect(X(e.x) - 7, Z(e.z) - 7, 14, 14); continue; }
+    if (e.hero) continue; // (drawn by heroMini)
     if (e.team === BLUE) { if (e.kind === 'unit' || e.kind === 'boat') dot(e.x, e.z, e.sq ? 3 : 2.5, '#6fb4ff'); else if (e.kind === 'turret' && e.type !== 'wall') dot(e.x, e.z, 2, '#2f7df6'); }
     else if ((e.kind === 'unit' || e.kind === 'boat' || e.kind === 'turret' || e.kind === 'worker') && !(e.kind === 'turret' && e.type === 'wall') && seen(e)) dot(e.x, e.z, e.kind === 'turret' ? 2 : 3, '#ff5a4a');
   }
   const T = F.stage2?.train;
   if (T) for (const e of T.all) if (e.hp > 0) { dot(e.x, e.z, e === T.engine ? 6 : 4, e === T.engine ? '#ffb000' : '#c98a3a'); if (e === T.engine) { c.strokeStyle = '#1c1712'; c.lineWidth = 2; c.strokeRect(X(e.x) - 6, Z(e.z) - 6, 12, 12); } }
+  heroMini(c, X, Z, seen); // level 6 gumball heroes and the Stand Mixer
   if (p.alive) { // your car: a white-ringed blue arrow
     c.save(); c.translate(X(p.x), Z(p.z)); c.rotate(p.heading); c.fillStyle = '#2f7df6'; c.strokeStyle = '#ffffff'; c.lineWidth = 2;
     c.beginPath(); c.moveTo(7, 0); c.lineTo(-5, 5); c.lineTo(-3, 0); c.lineTo(-5, -5); c.closePath(); c.fill(); c.stroke(); c.restore();
@@ -4974,6 +4986,257 @@ function endingDraw(dt, time) {
     if (E.conf <= 0 && t < 7) { E.conf = 0.12; const c = [0xffc23d, 0xef4136, 0x2f7df6, 0x3ddc84, 0xffffff][Math.floor(Math.random() * 5)], cx = camTarget.x + (Math.random() - 0.5) * 60, cz = camTarget.z + (Math.random() - 0.5) * 40; burst(cx, cz, c, 4, 14, 22); }
   }
   if (!E.shown && t > 2.8) showEnding();
+}
+
+// ---------- Level 6, finale gumball (Harry's owner idea): the gumball machine in the middle of the bend, the STAND MIXER and four special team members ----------
+// The machine is level 2's (PRIZES, ITEMS, useItem, spinGumball, cereal only). On this level `finalePrizes` adds five bigger prizes:
+//   THE STAND MIXER (rare, at most ONE per match for both sides together: `F.mixerDone`), and four heroes (one alive at a time per side per type):
+//   Captain Teaspoon (fast melee, flips infantry, +25% damage to squads near him), the Salt Shaker (sniper, his shots leave salt that slows enemy cars),
+//   Nurse Duck (heals nearby friends slowly, fragile) and the Egg Timer (rings every 30 s: your squads speed up for 10 s).
+// Heroes and the mixer are `kind: 'unit'` entities with `hero` set and `sq` = HERO_SQ (so loose-car code leaves them alone). All their shapes are shared.
+const FIN_GUM_COST = 24;
+const HERO_NAMES = { captain: 'Captain Teaspoon', salt: 'The Salt Shaker', nurse: 'Nurse Duck', eggt: 'The Egg Timer', mixer: 'THE STAND MIXER' };
+const HERO_SQ = { id: -1, team: -1, kind: 'hero', order: 'attack', units: [], n: 1 };
+const MIXER = { hp: 2800, speed: 5.2, armor: 4, reach: 11, dps: 80, wallsAt: 11, baseDps: 40 };
+Object.assign(WEAPONS, {
+  spoon: { vsBase: 0.3, dmg: 30, rate: 0.5, range: 5, speed: 60, color: 0xdfe3ea, size: 0.3 },
+  saltshot: { vsBase: 0.3, dmg: 40, rate: 2.1, range: 62, speed: 85, color: 0xffffff, size: 0.45 },
+  heroNone: { vsBase: 0, dmg: 0, rate: 9, range: 0, speed: 1, color: 0xffffff, size: 0.2 },
+});
+Object.assign(ENEMY_TYPES, {
+  captain: { model: 'captain', speed: 21, hp: 300, weapon: 'spoon', reward: 14, sq: true },
+  salt: { model: 'salt', speed: 8.5, hp: 110, weapon: 'saltshot', reward: 14, sq: true },
+  nurse: { model: 'nurse', speed: 10, hp: 80, weapon: 'heroNone', reward: 14, sq: true },
+  eggt: { model: 'eggt', speed: 8, hp: 140, weapon: 'heroNone', reward: 14, sq: true },
+  mixer: { model: 'mixer', speed: MIXER.speed, hp: MIXER.hp, weapon: 'heroNone', reward: 60, sq: true },
+});
+Object.assign(SQ_MODELS, {
+  captain: { r: 1.5, turn: 6, grip: 8, accel: 70 }, salt: { r: 1.4, turn: 4, grip: 8, accel: 30 }, nurse: { r: 1.5, turn: 4, grip: 8, accel: 30 },
+  eggt: { r: 1.5, turn: 3.5, grip: 8, accel: 28 }, mixer: { r: 5.4, turn: 1.3, grip: 10, accel: 9 },
+});
+const HERO_MODELS = {
+  captain(team, g, col) { // a silver teaspoon with a cape and a little sword
+    const steel = () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 });
+    part(g, 'cpBody', () => new THREE.CylinderGeometry(0.3, 0.5, 2.6, 8), 'cpSteel', steel, 0, 1.5, 0, true);
+    part(g, 'cpBowl', () => new THREE.SphereGeometry(1, 12, 8).scale(1.1, 1.25, 0.5), 'cpSteel', steel, 0, 3.7, 0, true);
+    part(g, 'cpCape', () => new THREE.BoxGeometry(0.15, 2.2, 1.8), `cpCape:${team}`, () => mat(col), -0.5, 2.0, 0, false);
+    part(g, 'cpSword', () => new THREE.CylinderGeometry(0.08, 0.08, 3.2, 6).rotateZ(Math.PI / 2), 'cpSteel', steel, 1.8, 2.0, 0.7, false);
+    part(g, 'cpBand', () => new THREE.CylinderGeometry(0.55, 0.55, 0.5, 8), `cpCape:${team}`, () => mat(col), 0, 2.6, 0, false);
+  },
+  salt(team, g, col) { // a glass salt shaker on feet with a long sniper barrel
+    part(g, 'slBody', () => new THREE.CylinderGeometry(1.0, 1.1, 2.6, 12), 'slGlass', () => mat(0xf4f7fa, { roughness: 0.15 }), 0, 1.7, 0, true);
+    part(g, 'slCap', () => new THREE.CylinderGeometry(1.05, 1.05, 0.7, 12), 'cpSteel', () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 }), 0, 3.3, 0, false);
+    part(g, 'slBand', () => new THREE.CylinderGeometry(1.12, 1.12, 0.5, 12), `cpCape:${team}`, () => mat(col), 0, 1.0, 0, false);
+    part(g, 'slBarrel', () => new THREE.CylinderGeometry(0.18, 0.18, 4.2, 6).rotateZ(Math.PI / 2), 'tkTrack', () => mat(0x2b2b2b), 2.2, 2.4, 0, false);
+    part(g, 'slFeet', () => new THREE.BoxGeometry(1.6, 0.5, 1.6), 'tkTrack', () => mat(0x2b2b2b), 0, 0.25, 0, false);
+  },
+  nurse(team, g, col) { // a yellow duck in a nurse's cap
+    const yel = () => mat(0xffd23f, { roughness: 0.4 });
+    part(g, 'nuBody', () => new THREE.SphereGeometry(1.4, 12, 9).scale(1.1, 0.9, 0.9), 'nuYel', yel, 0, 1.5, 0, true);
+    part(g, 'nuHead', () => new THREE.SphereGeometry(0.8, 10, 8), 'nuYel', yel, 0.9, 2.9, 0, false);
+    part(g, 'nuBeak', () => new THREE.BoxGeometry(0.7, 0.25, 0.6), 'nuBeak', () => mat(0xff8a1f), 1.7, 2.8, 0, false);
+    part(g, 'nuCap', () => new THREE.BoxGeometry(0.5, 0.45, 1.1), 'nuWhite', () => mat(0xffffff), 0.85, 3.6, 0, false);
+    part(g, 'nuCrossA', () => new THREE.BoxGeometry(0.12, 0.34, 0.12), 'nuRed', () => new THREE.MeshBasicMaterial({ color: 0xe0211b }), 1.13, 3.62, 0, false);
+    part(g, 'nuCrossB', () => new THREE.BoxGeometry(0.12, 0.12, 0.34), 'nuRed', () => new THREE.MeshBasicMaterial({ color: 0xe0211b }), 1.13, 3.62, 0, false);
+    part(g, 'nuBand', () => new THREE.BoxGeometry(0.3, 0.6, 0.6), `cpCape:${team}`, () => mat(col), -1.4, 1.9, 0, false);
+  },
+  eggt(team, g, col) { // a tomato-red egg timer with a dial and a knob
+    part(g, 'etEgg', () => new THREE.SphereGeometry(1.3, 14, 10).scale(1, 1.3, 1), 'etRed', () => mat(0xe6492f, { roughness: 0.4 }), 0, 2.0, 0, true);
+    part(g, 'etDial', () => new THREE.CylinderGeometry(0.8, 0.8, 0.15, 16).rotateZ(Math.PI / 2), 'nuWhite', () => mat(0xffffff), 1.1, 2.3, 0, false);
+    part(g, 'etHand', () => new THREE.BoxGeometry(0.1, 0.9, 0.1), 'tkTrack', () => mat(0x2b2b2b), 1.25, 2.5, 0, false).name = 'hand';
+    part(g, 'etKnob', () => new THREE.SphereGeometry(0.4, 8, 6), 'cpSteel', () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 }), 0, 3.9, 0, false);
+    part(g, 'etFeet', () => new THREE.BoxGeometry(1.8, 0.4, 1.8), `cpCape:${team}`, () => mat(col), 0, 0.2, 0, false);
+  },
+  mixer(team, g, col) { // THE STAND MIXER: a huge walking kitchen mixer on four legs with a bowl and two spinning whisk arms
+    const cream = () => mat(0xefe9dc, { roughness: 0.4 }), steel = () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.25 }), dark = () => mat(0x2b2b2b);
+    for (const [x, z] of [[-3.4, -2.4], [-3.4, 2.4], [3.4, -2.4], [3.4, 2.4]]) part(g, 'mxLeg', () => new THREE.BoxGeometry(1.3, 1.8, 1.3), 'tkTrack', dark, x, 0.9, z, true);
+    part(g, 'mxBase', () => new THREE.BoxGeometry(9.4, 1.2, 6.8), 'mxCream', cream, 0, 2.2, 0, true);
+    part(g, 'mxCol', () => new THREE.BoxGeometry(2.8, 6.6, 3.4), `mxTeam:${team}`, () => mat(col), -2.6, 5.8, 0, true);
+    part(g, 'mxHead', () => new THREE.BoxGeometry(8.2, 2.8, 3.8), `mxTeam:${team}`, () => mat(col), 0.2, 9.4, 0, true);
+    part(g, 'mxNose', () => new THREE.CylinderGeometry(1.3, 1.3, 2.4, 12), 'cpSteel', steel, 3.2, 7.8, 0, false);
+    part(g, 'mxBowl', () => new THREE.SphereGeometry(3.6, 16, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 'mxBowl', () => mat(0xdfe3ea, { metalness: 0.8, roughness: 0.3, side: THREE.DoubleSide }), 3.2, 6.2, 0, false);
+    const w = new THREE.Group(); w.name = 'whisks'; w.position.set(3.2, 7.4, 0);
+    part(w, 'mxShaft', () => new THREE.CylinderGeometry(0.3, 0.3, 1.6, 6), 'cpSteel', steel, 0, 0, 0, false);
+    for (const s of [-1, 1]) {
+      part(w, 'mxArm', () => new THREE.CylinderGeometry(0.25, 0.25, 2.6, 6).rotateX(Math.PI / 2), 'cpSteel', steel, 0, -0.8, s * 1.3, false);
+      part(w, 'mxWhiskA', () => new THREE.TorusGeometry(1.0, 0.12, 6, 12), 'cpSteel', steel, 0, -2.4, s * 2.4, false);
+      part(w, 'mxWhiskB', () => new THREE.TorusGeometry(1.0, 0.12, 6, 12).rotateY(Math.PI / 2), 'cpSteel', steel, 0, -2.4, s * 2.4, false);
+    }
+    g.add(w);
+  },
+};
+function heroOf(team, type) { return entities.find((e) => e.hero === type && e.team === team && e.hp > 0); }
+// The prize list for this level: level 2's prizes, the heroes you do not already have, and (until one has appeared) the mixer at about 1 in 25.
+function finalePrizes(t) {
+  const F = state.finale, list = PRIZES.slice();
+  for (const k of ['captain', 'salt', 'nurse', 'eggt']) if (!heroOf(t, k)) list.push([2.5, 0xffd166, HERO_NAMES[k], (tm) => spawnHero(tm, k)]);
+  if (!F.mixerDone) list.push([list.reduce((s, p) => s + p[0], 0) / 24, 0xff4da6, HERO_NAMES.mixer, (tm) => spawnHero(tm, 'mixer')]);
+  return list;
+}
+function spawnHero(team, type) {
+  const F = state.finale, b = state.bases[team], big = type === 'mixer';
+  const u = spawnUnit(type, team, b.x + (team === BLUE ? 1 : -1) * (big ? 4 : 8), b.z + (big ? 24 : 17));
+  u.hero = type; u.sq = HERO_SQ; u.slot = 0; u.think = 0; u.cool = 0.5;
+  if (big) {
+    u.fat = true; u.armor = MIXER.armor; u.whisks = u.mesh.getObjectByName('whisks'); F.mixerDone = true; F.mixer = u;
+    banner(team === BLUE ? 'THE STAND MIXER!' : 'THE ENEMY HAS THE STAND MIXER!', team === BLUE ? 'A walking kitchen Leviathan. It smashes everything and marches on their toy box' : 'It will flatten your walls and march on your toy box. Bring it down!');
+    sfx('bigBoom'); state.shake = Math.min(1.6, (state.shake || 0) + 0.8);
+  } else if (team === BLUE) banner(HERO_NAMES[type].toUpperCase(), { captain: 'Fast and brave. Flips infantry; squads near him hit 25% harder', salt: 'Long-range sniper. His salt slows enemy cars', nurse: 'Heals your units nearby, slowly. Keep her safe', eggt: 'Rings every 30 s: your squads speed up for 10 s' }[type]);
+  burst(u.x, u.z, 0xffd34d, 24, 14, 3);
+  return `${HERO_NAMES[type]} joins your side`;
+}
+// Salt patches: a white disc that slows enemy cars (like the sauce patch on level 5), 6 per side at most, 14 s each.
+const saltPatches = [];
+function saltPatch(team, x, z) {
+  const mine = saltPatches.filter((s) => s.team === team);
+  if (mine.length >= 6) { const old = mine[0]; scene.remove(old.mesh); saltPatches.splice(saltPatches.indexOf(old), 1); }
+  const m = new THREE.Mesh(sgeo('saltDisc', () => new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2)), smat('saltMat', () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false })));
+  m.position.set(x, 0.17, z); m.scale.setScalar(6); scene.add(m);
+  saltPatches.push({ x, z, r: 6, team, until: state.time + 14, mesh: m });
+}
+function saltSlow(e) {
+  if (e.fly || e.inf) return false;
+  for (const s of saltPatches) if (s.team !== e.team && (e.x - s.x) ** 2 + (e.z - s.z) ** 2 < s.r * s.r) return true;
+  return false;
+}
+const buffW = (u) => (u.buffT > state.time ? (u.weapon.buff25 ||= Object.assign(Object.create(u.weapon), { dmg: u.weapon.dmg * 1.25, base: u.weapon })) : u.weapon); // Captain Teaspoon's +25%
+function heroesUpdate(dt) {
+  const F = state.finale, T = state.time;
+  for (let i = saltPatches.length - 1; i >= 0; i--) {
+    const s = saltPatches[i], left = s.until - T;
+    if (left < 2) s.mesh.scale.setScalar(Math.max(0.01, 6 * left / 2));
+    if (left <= 0) { scene.remove(s.mesh); saltPatches.splice(i, 1); }
+  }
+  if (F.mixer && F.mixer.hp <= 0 && !F.mixerGone) {
+    F.mixerGone = true; banner('THE STAND MIXER IS SCRAP', F.mixer.team === BLUE ? 'You lost your Leviathan' : 'Their Leviathan is down!'); sfx('bigBoom');
+    for (const c of [0xefe9dc, 0xdfe3ea, 0xffc23d]) burst(F.mixer.x, F.mixer.z, c, 12, 16, 4);
+  }
+}
+function heroRoute(u) {
+  const route = attackRoute(u.team);
+  if (u.wp === undefined) u.wp = 0;
+  while (u.wp < route.length && dist2(u, route[u.wp]) < 7 * 7) u.wp++;
+  return u.wp < route.length ? [route[u.wp], 3] : [state.bases[1 - u.team], 9];
+}
+function heroThink(u, dt) {
+  const F = state.finale, T = state.time, team = u.team, type = u.hero, waiting = F.stage === 'buildup';
+  const st = { speed: u.speed * (u.boostT > T ? 1.4 : 1), accel: u.speed * 2.2, turn: u.turn, grip: u.grip };
+  u.think -= dt; u.cool -= dt;
+  if (u.think <= 0) {
+    u.think = 0.3 + Math.random() * 0.15;
+    const reach = { captain: 60, salt: 62, mixer: 30, nurse: 16 }[type] || 0;
+    u.target = !waiting && reach ? nearestEnemy(u, reach) : null;
+    if (type === 'captain' && !waiting) { // he hunts infantry first
+      let bd = 55 * 55;
+      for (const e of entities) if (e.inf && e.team !== team && e.hp > 0 && dist2(u, e) < bd) { bd = dist2(u, e); u.target = e; }
+    }
+  }
+  const tg = validTarget(u.target) ? u.target : null;
+  let goal, stop = 2;
+  if (waiting) { goal = stagePoint(u); stop = 1.2; }
+  else if (type === 'captain') {
+    if (tg && !tg.fly && tg.kind !== 'boat') { goal = tg; stop = 2.5; if (u.cool <= 0 && dist2(u, tg) < (5.4 + (tg.r || 1)) ** 2) heroStrike(u, tg); }
+    else [goal, stop] = heroRoute(u);
+    u.buffTick = (u.buffTick ?? 0) - dt;
+    if (u.buffTick <= 0) { u.buffTick = 0.5; let n = 0; for (const e of entities) if (e.team === team && e.kind === 'unit' && !e.hero && e.hp > 0 && dist2(u, e) < 26 * 26) { e.buffT = T + 0.8; n++; } if (n && Math.random() < 0.3) burst(u.x, u.z, 0xffd34d, 1, 4, 3.5); }
+  } else if (type === 'salt') {
+    if (tg && !tg.fly && tg.kind !== 'boat') {
+      const d = Math.sqrt(dist2(u, tg));
+      if (d < 30) { goal = { x: u.x + (u.x - tg.x) / (d || 1) * 18, z: u.z + (u.z - tg.z) / (d || 1) * 18 }; stop = 1; }
+      else if (d > 54) { goal = tg; stop = 40; } else { goal = { x: u.x, z: u.z }; stop = 3; }
+      if (u.cool <= 0 && d < 60) {
+        u.cool = u.weapon.rate; fire(u, tg, u.weapon);
+        if (tg.kind !== 'base' && tg.kind !== 'turret' && !tg.inf) saltPatch(team, tg.x + (tg.vx || 0) * 0.5, tg.z + (tg.vz || 0) * 0.5);
+      }
+    } else [goal, stop] = heroRoute(u);
+  } else if (type === 'nurse') {
+    const foe = u.target;
+    if (foe && dist2(u, foe) < 16 * 16) { const d = Math.sqrt(dist2(u, foe)) || 1; goal = { x: u.x + (u.x - foe.x) / d * 16, z: u.z + (u.z - foe.z) / d * 16 }; stop = 1; } // she runs from trouble
+    else {
+      let ally = null, bd = 1e9;
+      for (const e of entities) if (e.team === team && e.kind === 'unit' && !e.hero && !e.fly && e.hp > 0 && dist2(u, e) < bd) { bd = dist2(u, e); ally = e; }
+      if (ally) { goal = ally; stop = 6; } else { goal = stagePoint(u); stop = 1.5; }
+    }
+    u.healT = (u.healT ?? 1) - dt;
+    if (u.healT <= 0) {
+      u.healT = 1; let n = 0;
+      for (const e of entities) if (e !== u && e.team === team && e.hp > 0 && e.hp < e.maxHp && (e.kind === 'unit' || e.kind === 'worker' || (e.kind === 'player' && e.alive)) && dist2(u, e) < 14 * 14) {
+        e.hp = Math.min(e.maxHp, e.hp + 6); if (n++ < 2) burst(e.x, e.z, 0x6be38a, 2, 3, 3);
+      }
+    }
+  } else if (type === 'eggt') {
+    goal = stagePoint(u); stop = 1.5;
+    u.ringT = (u.ringT ?? 14) - dt;
+    if (u.ringT <= 0 && !waiting) {
+      u.ringT = 30; u.ringAnim = 1.2;
+      for (const e of entities) if (e.team === team && e.kind === 'unit' && !e.hero && !e.fly && e.hp > 0) e.boostT = T + 10;
+      burst(u.x, u.z, 0xffd34d, 16, 12, 4); sfx('cap');
+      if (team === BLUE) toast('DING! The Egg Timer rang: your squads are faster for 10 s'); else if (dist2(u, state.player) < 120 * 120) toast('Their Egg Timer rang: their squads are speeding up!');
+    }
+  } else { // the Stand Mixer: marches on their toy box, smashing as it goes
+    [goal, stop] = heroRoute(u);
+    u.smashT = (u.smashT ?? 0) - dt;
+    if (u.smashT <= 0) { u.smashT = 0.2; mixerSmash(u); }
+  }
+  steer(u, goal.x, goal.z, stop, dt, st, goal);
+}
+function heroStrike(u, e) {
+  u.cool = u.weapon.rate;
+  if (e.inf) { hurt(e, 90, u.team, u.weapon); e.flipT = 0.6; e.pinned = Math.max(e.pinned || 0, 0.6); burst(e.x, e.z, 0xffffff, 8, 8, 2); if (dist2(u, state.player) < 2500) sfx('cap'); }
+  else { hurt(e, u.weapon.dmg, u.team, u.weapon); burst(e.x, e.z, 0xdfe3ea, 3, 6, 2); }
+}
+function mixerSmash(u) {
+  let hit = 0;
+  for (const e of entities) {
+    if (e.team === u.team || e.hp <= 0 || e.fly || e.air || e.trojan || e.kind === 'boat' || (e.kind === 'player' && !e.alive)) continue;
+    const d2 = dist2(u, e), rr = u.r + (e.r || 1) + MIXER.reach - 5;
+    if (e.kind === 'base') { if (d2 < (u.r + 7.5 + 9) ** 2) { hurt(e, MIXER.baseDps * 0.2, u.team, { vsBase: 1 }); hit++; } continue; }
+    if (d2 > rr * rr) continue;
+    if (e.kind === 'turret' && e.type === 'wall') hurt(e, 9999, u.team, null); // flattens sugar walls
+    else hurt(e, MIXER.dps * 0.2, u.team, null);
+    if (hit++ < 3) burst(e.x, e.z, 0xfff3d6, 2, 7, 2);
+  }
+  if (hit && dist2(u, state.player) < 3600) { state.shake = Math.min(1, (state.shake || 0) + 0.04); if (Math.random() < 0.3) sfx('crunch'); }
+}
+function heroPose(e, dt, time) {
+  const sp = Math.min(1, Math.hypot(e.vx || 0, e.vz || 0) / (e.speed || 8));
+  if (e.hero === 'mixer') {
+    if (e.whisks) e.whisks.rotation.y += dt * 7;
+    e.mesh.position.y += Math.abs(Math.sin(time * 2.2)) * 0.5 * sp; e.mesh.rotation.z = Math.sin(time * 2.2) * 0.03 * sp;
+  } else {
+    e.mesh.position.y += Math.abs(Math.sin(time * 9 + e.x)) * 0.35 * sp;
+    if (e.hero === 'eggt' && e.ringAnim > 0) { e.ringAnim -= dt; e.mesh.rotation.z = Math.sin(time * 60) * 0.2; const h = e.mesh.getObjectByName('hand'); if (h) h.rotation.z = time * 8; }
+  }
+}
+function flipPose(e, dt) {
+  e.flipT -= dt;
+  const k = 1 - Math.max(0, e.flipT) / 0.6;
+  e.mesh.position.y += Math.sin(k * Math.PI) * 7; e.mesh.rotation.z = e.flipT > 0 ? k * Math.PI * 2 : 0;
+}
+// Minimap: your heroes always, theirs when seen, and the mixer (either side) always; the mixer is a big square with a white ring.
+function heroMini(c, X, Z, seen) {
+  for (const e of entities) {
+    if (!e.hero || e.hp <= 0) continue;
+    const big = e.hero === 'mixer', mine = e.team === BLUE;
+    if (!big && !mine && !seen(e)) continue;
+    const r = big ? 7 : 4.5, x = X(e.x), z = Z(e.z);
+    c.fillStyle = mine ? '#2f7df6' : '#ef4136'; c.strokeStyle = big ? '#ffffff' : '#ffd34d'; c.lineWidth = big ? 2.5 : 2;
+    if (big) { c.fillRect(x - r, z - r, r * 2, r * 2); c.strokeRect(x - r, z - r, r * 2, r * 2); }
+    else { c.beginPath(); c.moveTo(x, z - r); c.lineTo(x + r, z); c.lineTo(x, z + r); c.lineTo(x - r, z); c.closePath(); c.fill(); c.stroke(); }
+  }
+}
+// An arrow at the screen edge pointing to the enemy's Stand Mixer (the Baguette's arrow is a different element).
+function mixArrowDraw() {
+  const arrow = $('mixArrow'), M = state.finale?.mixer;
+  if (!arrow) return;
+  if (!M || M.hp <= 0 || M.team !== RED || state.over) { arrow.hidden = true; return; }
+  const v = new THREE.Vector3(M.x, 4, M.z).project(camera), off = v.x < -0.95 || v.x > 0.95 || v.y < -0.9 || v.y > 0.9;
+  arrow.hidden = !off;
+  if (off) {
+    const k = 0.88 / Math.max(Math.abs(v.x), Math.abs(v.y)), ax = v.x * k, ay = v.y * k;
+    arrow.style.left = `${(ax + 1) / 2 * innerWidth - 14}px`; arrow.style.top = `${(1 - ay) / 2 * innerHeight - 13}px`;
+    arrow.style.transform = `rotate(${Math.atan2(v.x, v.y)}rad)`;
+  }
 }
 
 // ---------- Main loop ----------
@@ -5595,8 +5858,10 @@ function render(dt) {
     const floats = e.kind === 'player' && VEHICLES[e.vehicle].floats;
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
-    if (e.fly) bomberPose(e, time); // level 6 bombers: altitude, bank, propeller
+    if (e.hero) heroPose(e, dt, time); // level 6 gumball heroes
+    else if (e.fly) bomberPose(e, time); // level 6 bombers: altitude, bank, propeller
     else if (e.inf) infPose(e, time); // level 6 infantry
+    if (e.flipT > 0) flipPose(e, dt); // level 6: flipped by Captain Teaspoon
     if (state.ledge) { // oven ramp and ledge: lift, tilt on the ramp; in the air off a toaster: an arc and a gentle nose-up
       const a = e.air, f = a ? Math.min(1, a.t / a.T) : 0;
       e.mesh.position.y += a ? a.l0 + (a.l1 - a.l0) * f + 4 * a.H * f * (1 - f) : ledgeLift(e);
@@ -5685,6 +5950,7 @@ function render(dt) {
     }
   } else arrow.hidden = true;
   raceArrow();
+  mixArrowDraw();
   if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
   if (state.level?.dark) darkUpdate(dt);
   renderer.render(scene, camera);

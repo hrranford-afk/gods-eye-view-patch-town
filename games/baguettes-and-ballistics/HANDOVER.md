@@ -367,9 +367,9 @@ The draw-call and geometry numbers had room for 5x, but the map is already 4.0x 
 
 ### Seen, not fixed
 
-- On level 4, in my harness (cars killed and respawned all the time), `renderer.info.memory.geometries` climbs from 726 to 2,473 in 10 minutes. Not level 6 and not caused by this stage; worth a look (dead cars' models, spills?).
+- On level 4, in my harness (cars killed and respawned all the time), `renderer.info.memory.geometries` climbs from 726 to 2,473 in 10 minutes. Not level 6 and not caused by this stage. **Fixed later: see "Level 4 geometry leak" at the end.**
 - Red's squads and units never use the toasters (only you do).
-- Red's Great Run button is at (-103, 79), on your side of the bend, as before: it is only pressed if Red's cars drive into your defence.
+- (Fixed later: Red's Great Run button is now in the middle of the bend; see the end.)
 - The cut-out looks bare from above (a dark slab with a kettle and a fridge); fine from the game camera, which seldom sees it.
 
 ## Level 5, Hob and oven (2 Nov 2026)
@@ -876,3 +876,32 @@ touch: the old build stayed stuck (x 0.91), the new one follows the new finger.
 - Tested: ferry carried a car the full width; an idle player still loses to
   the enemy by about 3:00, so the enemy copes with the bigger water.
 
+## Level 4 geometry leak, Red's Great Run, and the finale gumball machine (2 Nov 2026)
+
+![gumball](shots/36-finale-gumball.png) ![mixer](shots/37-stand-mixer.png) ![heroes](shots/38-heroes.png)
+
+### Task 1: the level 4 leak (fixed)
+Cause: the level domino runs (`standRun`) rebuilt every domino with **fresh** `BoxGeometry` and `mat()` (5 meshes each) every time a run reset, and never disposed the old ones. Level 4's run is the only ordinary level run that falls often in a long fight. Found by wrapping every `THREE.*Geometry` constructor, recording the stack, and counting geometries still on the GPU by creator (`addDomino` was 270 of the growth). Fix: `addDomino` uses `shared()` shapes and colours; `standRun` also calls `disposeTree` on the old pivots. Level 4, 10 minutes, same harness as before: **geometries 351 to 454, flat** (was 726 to 2,473); draw calls 490 / 1,012 / 1,245 (min / mean / max).
+
+### Task 2: Red's Great Run
+- Button moved from (-103, 79) (your side) to **(21, 68)**, the middle of the bend; the line runs west along z 68, jogs to z 79 at x -100, then west and north up x -150 to the toy box (75 dominoes, was 43; checked clear of blocks, rings, piles, caps, water). Weight 3 still needed.
+- **Old bug found:** the old end (z -62) put the last domino's top 14 away from your toy box, which only counts within 10, so **Red's run never did damage**. The end is now (-152, -71): the run does 250 to your toy box (checked: 2500 to 2250).
+- `redPressGreat` (in `enemyTricks`, level 6 only): from 50 s of war, then every 70 to 110 s while the run is standing, Red sends a whole tank squad (else raiders, else infantry, nearest to the button first) with `u.presser`. Passive player, 4 minutes: the run fell at war 52 s and 160 s (and 21 / 133, 59 / 166 in other runs). With six level-3 turrets by the button it did not fall in 240 s (base 2500), so it can be defended.
+
+### Task 3: the finale gumball machine
+Code is one block headed "Level 6, finale gumball" just above `// ---------- Main loop ----------`.
+- `LEVELS[5].gumball = { spots, s: 1.4 }`: the machine at (0, 46), 1.4x size, ram it from your side (west). 24 cereal a spin (`FIN_GUM_COST`); the enemy sends a unit to spin every 35 to 70 s (`gumball.redNext`).
+- `finalePrizes(t)`: level 2's `PRIZES` (incl. items) + each hero you do not have (weight 2.5) + the mixer while `F.mixerDone` is false, weight = (sum of the others) / 24, i.e. **1 in 25**. Measured 0.0400. Three forced mixer rolls gave one mixer; 300 spins left at most one of each hero per side.
+- **THE STAND MIXER**: `ENEMY_TYPES.mixer` hp 2800, armour 4, speed 5.2, r 5.4, `fat` (uses `closedFat`, so it takes the land lanes, not the bridge), 16 shared meshes, two whisk arms that spin. It marches the attack route (your battle-plan lane), `mixerSmash` every 0.2 s: 80 damage a second to anything within about 12, sugar walls die at once, 40 a second to the toy box. Banner on spawn; for Red's mixer a banner and an orange edge arrow (`#mixArrow`, `mixArrowDraw`). Minimap: big square with a white ring, always shown. Measured: your mixer walked base to base in about 105 s and took the enemy toy box from 2500 to 1916 in 10 s before dying to the defence; Red's mixer destroyed an undefended toy box in 156 s.
+- **Heroes** (`heroThink`, `kind: 'unit'`, `hero` set, `sq = HERO_SQ`, not counted in `ARMY_CAP`): Captain Teaspoon (speed 21, hp 300, hunts infantry, 90 damage and a flip, `flipPose`; squads within 26 get `buffT` and fire 1.25x weapons via `buffW`), Salt Shaker (hp 110, range 62, keeps 30 to 54 away; each shot drops a `saltPatch`, 6 per side, 14 s, enemy cars at 0.45x top speed via `saltSlow` in `drive`), Nurse Duck (hp 80, heals 6 a second to units within 14, runs from enemies, follows the nearest friend), Egg Timer (hp 140, stays at the rally, rings at 14 s then every 30 s: friendly squads `boostT` = 1.4x speed for 10 s). They follow the attack route (no per-hero orders). All shapes shared.
+- Measured: captain killed 4 loopers in 4 s; salt patch slowed a tank and took it 200 to 80; nurse healed a tank 50 to 86 in 6 s; egg timer boosted a tank.
+- **Budget** (same harness as stage 3, 24 v 24 on level 6, 10 minutes; stress: every minute both sides are topped up with all four heroes and each side gets a new Stand Mixer every 20 s, so two mixers walk at once, more than a real game ever has). Run beside the stage 3 build on this machine: stage 3 calls 129 / 664 / **949**, update 3.97 ms mean, 9.8 p99, geometries 295 to 467; with the gumball block **129 / 732 / 1,234**, update 5.5 mean, 18.3 p99, geometries **352 to 516, flat** after minute 1 (textures 18). So about +285 draw calls at the peak (the machine, 10 heroes, 2 mixers, the longer Red run), still under level 4's 1,245 to 1,307.
+- Levels 1 to 6 each play 90 s with 0 page errors (`all6.js`; level 6 shows 89 and 75 dominoes for the two Great Runs).
+
+### Shared-code edits (all marked "level 6" or "finale gumball")
+`placeGumball(L)` / `makeGumball(x, z, s)` (spots and scale from the level), `spinGumball` (cost and pool), the ram test and Red's spot (scale), `enemyTricks` (gumball throttle, `!fly`, `!hero`; `redPressGreat`), `drive` (salt), `weaponName` (`.base`), `unitThink` (hero line), `squadThink` (boost, buffed weapon), `armyOf` (heroes free), `squadModel` (hero models), `render` (hero pose, flip, mixer arrow), `finaleUpdate` (`heroesUpdate`), `finaleCleanup`, `miniMapDraw` (`heroMini`), `addDomino` and `standRun` (task 1), `GREAT[RED]`. New `#mixArrow` element.
+
+### Seen, not fixed
+- Heroes follow the attack route only; no Defend or Raid for them, and no on-screen hero list (the minimap shows them). The mixer has no health bar.
+- A flipped unit that is not infantry is hit, not flipped.
+- Red's squads still do not use the toasters.
