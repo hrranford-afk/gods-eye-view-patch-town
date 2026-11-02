@@ -374,3 +374,12 @@ time, and shows a screenshot or short clip before and after.
 - Tested: 12 spins gave a spread of prizes and items; marble did 40, butter
   spun a car, the enemy spun the machine.
 
+## Bosses explain themselves (2 Nov 2026; Harry: "not sure what the duck was doing")
+
+- While a boss is alive, their toy box sits in a **bubble shield** and takes
+  half damage (`bossShield`, the check in `hurt`). Killing the boss pops it.
+- A big **banner** when a boss arrives and when it dies says exactly that
+  (`banner`), and a red **arrow** at the screen edge points to the boss when
+  it's off-camera (`#bossArrow`, in `render`). Works for the Stapler and the
+  Rubber Duck.
+
