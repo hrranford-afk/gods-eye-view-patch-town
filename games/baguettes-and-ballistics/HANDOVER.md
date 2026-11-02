@@ -713,3 +713,21 @@ always takes the stick (with pointer capture), and the stick, keys and fire
 are released on blur, tab switch and lost capture. Tested by simulating a lost
 touch: the old build stayed stuck (x 0.91), the new one follows the new finger.
 
+## The big sink (2 Nov 2026; Harry: "for level 4 it should be really big")
+
+- The basin now fills most of the table: water from x -44 to 44 (88 of 150
+  wide). Each toy box sits on its own **draining board** (x ±44 to ±75), with
+  its cereal piles, two caps, a mug and a sugar cube. Plates and knives stick
+  out of the water; the sponge island (radius 10, 320 cereal) is in the middle.
+- One long ruler bridge at z 0 (the middle cap sits on it). Ferries dock at
+  x ±40: the north one crosses the whole basin (10 s), the south one calls at
+  the island.
+- **Domino runs may cross water on this level** (`water.runsOverWater`): the
+  dominoes stand in the shallow water, buttons stay on land. Blue's run is 27
+  dominoes from its own draining board across the sink to their toy box.
+- **Red's run is now a mirror of blue's on every level** (`buildLevelRun(RED,
+  blueRun)`, `makeRun`), so both sides always get the same run. Levels 1, 2, 3
+  and 5 come out exactly as before (checked: same buttons and lengths).
+- Tested: ferry carried a car the full width; an idle player still loses to
+  the enemy by about 3:00, so the enemy copes with the bigger water.
+

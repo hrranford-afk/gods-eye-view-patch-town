@@ -1108,7 +1108,7 @@ const LEVELS = [
   },
   {
     name: 'The sink', time: 'lunch', tableColor: 0xc4cfd6, tableTex: 'tile',
-    blurb: 'Lunch is over and the washing-up is a battlefield. A channel of water splits the sink: wheels cannot cross it, so everything funnels over one ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 2:30 the Rubber Duck paddles in. While it floats, their toy box is shielded.',
+    blurb: 'Lunch is over and the washing-up is a battlefield. The sink is huge: your toy box and theirs sit on the draining boards at each end, with a big basin of water in between. Wheels can only cross on one long ruler bridge. Ride the bottle-cap ferries, skim across in a Hover, or launch gunboats. The tap drips and sends splash rings that shove you around, and at 2:30 the Rubber Duck paddles in. While it floats, their toy box is shielded.',
     tips: [
       '<b>Water:</b> cars and trucks cannot drive into it. Cross on the ruler bridge, or on a bottle-cap ferry (drive on, ride, drive off)',
       '<b>Hover:</b> skims over water. It is the only way to the rich pile of cereal on the soap-dish island, apart from the south ferry',
@@ -1116,31 +1116,34 @@ const LEVELS = [
       '<b>Drips:</b> watch for the white ring. A splash shoves cars and boats sideways',
       '<b>The Rubber Duck:</b> slow and big, lobs bubbles that pop with splash damage. Gunboats and rockets bring it down',
     ],
-    blocks: mirrored([
-      (s) => [s * 40, -s * 30, 8, 8, 7, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],   // coffee cups
-      (s) => [s * 31, s * 22, 10, 4, 2.5, 0xf2d24a, 'box'],                   // a sponge (moved out of the wider water)
-      (s) => [s * 26, -s * 14, 3, 12, 2, 0xc9ccd2, 'box'],                    // a knife laid flat (moved out of the wider water)
-      (s) => [s * 40, s * 4, 4, 4, 4, 0xfbfbf6, 'die'],                       // a sugar cube
-      (s) => [s * 52, s * 38, 14, 8, 3, 0x6a4c93, 'book'],                    // a folded dish cloth
-    ]),
+    // Harry (2 Nov): the sink should be really big. The basin now fills most of the table (88 of 150 wide);
+    // each toy box sits on its own draining board, and the water in between is where the fighting happens.
+    blocks: [
+      ...mirrored([
+        (s) => [s * 58, -38, 8, 8, 7, s > 0 ? 0xe9e4d8 : 0xd96c3f, 'mug'],    // a mug on each draining board
+        (s) => [s * 50, 40, 4, 4, 4, 0xfbfbf6, 'die'],                        // a sugar cube
+      ]),
+      [-24, -38, 9, 9, 2.2, 0xf4f1ea, 'box'], [26, 36, 9, 9, 2.2, 0xf4f1ea, 'box'], // stacks of plates sticking out of the water
+      [-26, 34, 3, 12, 1.2, 0xc9ccd2, 'box'], [24, -34, 3, 12, 1.2, 0xc9ccd2, 'box'], // knives under the water's edge
+    ],
     erasers: [],
     patches: [],
     water: {
-      x0: -21, x1: 21, bridge: { z: 0, w: 7 }, island: { x: 0, z: 31, r: 7 }, // Harry: the sink wasn't big enough (was 26 wide, now 42)
-      // Bottle-cap ferries: 6 s a crossing, 3 s at each dock. The south one stops 2 s at the island on the way.
+      x0: -44, x1: 44, bridge: { z: 0, w: 7 }, island: { x: 0, z: 28, r: 10 }, runsOverWater: true,
+      // Bottle-cap ferries: the north one crosses the whole basin; the south one calls at the sponge island halfway.
       ferries: [
-        // Stops at x ±17: the cap (radius 5.5) overlaps the bank by 1.5, so you can drive straight on and off.
-        { color: 0xc8281f, inner: 0xe9c46a, leg: 7, start: 0, stops: [{ x: -17, z: -26, wait: 4 }, { x: 17, z: -26, wait: 4 }] },
-        { color: 0x1f8a9e, inner: 0xf4efe6, leg: 3.5, start: 2, stops: [{ x: -17, z: 22, wait: 4 }, { x: 0, z: 22, wait: 2.5 }, { x: 17, z: 22, wait: 4 }, { x: 0, z: 22, wait: 2.5 }] },
+        // Stops at x ±40: the cap (radius 5.5) overlaps the draining board by 1.5, so you can drive straight on and off.
+        { color: 0xc8281f, inner: 0xe9c46a, leg: 10, start: 0, stops: [{ x: -40, z: -24, wait: 4 }, { x: 40, z: -24, wait: 4 }] },
+        { color: 0x1f8a9e, inner: 0xf4efe6, leg: 5, start: 2, stops: [{ x: -40, z: 15, wait: 4 }, { x: 0, z: 15, wait: 3 }, { x: 40, z: 15, wait: 4 }, { x: 0, z: 15, wait: 3 }] },
       ],
     },
     boats: true,
     decor: sinkDecor,
-    outposts: [[-36, -14], [-36, 14], [0, 0, 0.5], [36, -14], [36, 14]],  // the middle cap sits on the bridge
-    piles: [[-47, -24, 150], [-47, 24, 150], [-30, -38, 130], [-30, 38, 130], [-31, 0, 200],
-      [47, -24, 150], [47, 24, 150], [30, -38, 130], [30, 38, 130], [31, 0, 200],
-      [0, 35, 260, 'cereal', 'island']],
-    refill: [{ x: -31, z: 0, rate: 0.35 }, { x: 31, z: 0, rate: 0.35 }, { x: 0, z: 35, rate: 0.6 }],
+    outposts: [[-50, -10], [-50, 12], [0, 0, 0.5], [50, -10], [50, 12]],  // the middle cap sits on the long ruler bridge
+    piles: [[-52, -24, 170], [-52, 26, 170], [-70, -30, 130], [-70, 30, 130],
+      [52, -24, 170], [52, 26, 170], [70, -30, 130], [70, 30, 130],
+      [0, 30, 320, 'cereal', 'island']],
+    refill: [{ x: -52, z: -24, rate: 0.35 }, { x: 52, z: -24, rate: 0.35 }, { x: 0, z: 30, rate: 0.7 }],
     start: { cereal: 40, clips: 0, unlocked: ['racer', 'tank'] },
     resources: ['cereal'],
     rules: { baseHp: 2000, raidEvery: 100, firstRaid: 150, raidSize: [2, 3], boss: { at: 150, hp: 800, spill: 80, kind: 'duck', name: 'THE RUBBER DUCK' } },
@@ -1982,7 +1985,7 @@ function reset() {
   state.finale = L.finale ? finaleInit() : null; // level 6: the build-up and war state (see the finale section)
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
   for (const [x, z, n, res, flag] of L.piles) makePile(x, z, n, L.refill.find((r) => r.x === x && r.z === z)?.rate || 0, res).island = flag === 'island'; // island piles: only you can scoop them
-  state.runs = [buildLevelRun(BLUE), buildLevelRun(RED)].filter(Boolean);
+  { const blueRun = buildLevelRun(BLUE); state.runs = [blueRun, blueRun ? buildLevelRun(RED, blueRun) : buildLevelRun(RED)].filter(Boolean); }
   if (L.rules.sneaky) { state.nextHijack = L.rules.sneaky.hijackFirst; state.nextLayer = L.rules.sneaky.layerFirst; }
   Object.assign(state, { shield: [0, 0], buff: [null, null], item: null, redItems: [] });
   $('bUse').hidden = true;
@@ -2611,12 +2614,17 @@ const BUTTON_WEIGHT = 3;
 const PLAYER_WEIGHT = { racer: 1, jet: 0.5, hover: 0, mech: 2, tank: 2, monster: 3 };
 const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2 };
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
-function buildLevelRun(team) {
+function buildLevelRun(team, mirrorOf = null) {
   if (state.level.finale) return null; // STAGE 2 HOOK: the Great Domino Run goes here (level 6 has no ordinary runs)
+  if (mirrorOf) {
+    // Red's run is blue's turned round the middle of the table, so both sides get the same run (the tables are mirror images).
+    const path = mirrorOf.path.map((q) => ({ x: -q.x, z: -q.z, dx: -q.dx, dz: -q.dz }));
+    return makeRun(team, -mirrorOf.x, -mirrorOf.z, path);
+  }
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
-  const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m) || hobBlocked(q.x, q.z, m);
+  const blocked = (q, m, forButton = true) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || (!(forButton === false && state.water?.runsOverWater) && inWaterX(q.x, q.z, m)) || hobBlocked(q.x, q.z, m); // on the big sink, dominoes may stand in the shallow water (buttons stay on land)
   const toward = Math.sign(target.x) || 1;
-  for (const zb of [30, 24, 36, 18, 40]) for (const xm of [0, -10, 10, -20, 20, -30, 30, -38, 38]) for (const ang of [0.9, 0.7, 1.1, 0.5, 1.3]) {
+  for (const zb of [30, 24, 36, 18, 40]) for (const xm of [0, -10, 10, -20, 20, -30, 30, -38, 38, ...(state.water?.runsOverWater ? [-52, 52, -58, 58] : [])]) for (const ang of [0.9, 0.7, 1.1, 0.5, 1.3]) {
     // Path: from the button (mid-table, on this side's edge) along the edge, then bending in to land on the box.
     const z0 = side * zb, start = { x: xm, z: z0 };
     const endR = 9.5, ex = target.x - toward * Math.cos(ang) * endR, ez = target.z + side * Math.sin(ang) * endR; // last domino, 9.5 out from the box
@@ -2627,25 +2635,28 @@ function buildLevelRun(team) {
       const A = pts[i], B = pts[i + 1], len = Math.hypot(B.x - A.x, B.z - A.z), ux = (B.x - A.x) / len, uz = (B.z - A.z) / len;
       for (let t = i === 0 ? 0 : RUN_STEP; t <= len + 0.01; t += RUN_STEP) path.push({ x: A.x + ux * t, z: A.z + uz * t, dx: ux, dz: uz });
     }
-    if (path.length < 6 || path.length > 26) continue;
+    if (path.length < 6 || path.length > (state.water?.runsOverWater ? 36 : 26)) continue;
     // Turns must be gentle enough for one domino to reach the next.
-    let ok = path.every((q) => !blocked(q, 1.4));
+    let ok = path.every((q) => !blocked(q, 1.4, false));
     for (let i = 1; ok && i < path.length; i++) {
       const P = path[i - 1], Q = path[i], ax = Q.x - P.x, az = Q.z - P.z, r = Math.hypot(ax, az);
       if (r > 5.6 || ax * P.dx + az * P.dz < r * 0.6) ok = false;
     }
     const bx = start.x - path[0].dx * 4.5, bz = start.z - path[0].dz * 4.5;
     if (!ok || blocked({ x: bx, z: bz }, 1.5)) continue;
-    // The button: a big toy push-button in this side's colour.
-    const button = new THREE.Group(); button.position.set(bx, 0, bz);
-    mesh(new THREE.CylinderGeometry(2.4, 2.7, 0.8, 20), mat(0x2b2b2b), 0, 0.4, 0, button);
-    const cap = mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.7, 20), mat(COLORS[team], { emissive: COLORS[team], emissiveIntensity: 0.4 }), 0, 1.1, 0, button);
-    scene.add(button);
-    const run = { team, x: bx, z: bz, path, button, cap, doms: [], ready: true, resetAt: 0 };
-    standRun(run);
-    return run;
+    return makeRun(team, bx, bz, path);
   }
   return null; // no room on this level: the level just has no run for this side
+}
+function makeRun(team, bx, bz, path) {
+  // The button: a big toy push-button in this side's colour.
+  const button = new THREE.Group(); button.position.set(bx, 0, bz);
+  mesh(new THREE.CylinderGeometry(2.4, 2.7, 0.8, 20), mat(0x2b2b2b), 0, 0.4, 0, button);
+  const cap = mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.7, 20), mat(COLORS[team], { emissive: COLORS[team], emissiveIntensity: 0.4 }), 0, 1.1, 0, button);
+  scene.add(button);
+  const run = { team, x: bx, z: bz, path, button, cap, doms: [], ready: true, resetAt: 0 };
+  standRun(run);
+  return run;
 }
 function standRun(run) {
   for (const d of run.doms) { scene.remove(d.pivot); const k = dominoes.indexOf(d); if (k >= 0) dominoes.splice(k, 1); }
