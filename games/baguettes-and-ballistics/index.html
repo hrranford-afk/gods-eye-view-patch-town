@@ -304,13 +304,30 @@ function gfxRender() {
 gfxInitPost();
 
 let meshParent = scene; // where mesh() puts things by default: the level's group while a level is being built
-const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.46, metalness: 0, envMapIntensity: 0.25, ...extra });
+// Colours are written as the sRGB hex you'd pick in a paint program, so they are converted to linear light here: that is what keeps the team colours rich instead of washed out.
+const lin = (c) => new THREE.Color(c).convertSRGBToLinear();
+const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: lin(c), roughness: 0.46, metalness: 0, envMapIntensity: 0.25, ...extra });
 // Glossy toy plastic for bodies: clearcoat where it is cheap (few meshes), otherwise just low roughness.
-const toy = (c, extra = {}) => GFX.clearcoat ? new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.4, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.14, envMapIntensity: 0.5, ...extra }) : mat(c, { roughness: 0.3, ...extra });
+const toy = (c, extra = {}) => GFX.clearcoat ? new THREE.MeshPhysicalMaterial({ color: lin(c), roughness: 0.4, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.14, envMapIntensity: 0.5, ...extra }) : mat(c, { roughness: 0.3, ...extra });
 // Shapes and colours made once and shared (shots, sparks, cereal loops): fresh ones each time ran iPads out of memory.
 const SHARED = new Map();
 function shared(key, make) { let v = SHARED.get(key); if (!v) { v = make(); if (v.userData) v.userData.shared = true; SHARED.set(key, v); } return v; }
+// Rounded boxes: one cached geometry per size (a toy has soft edges). Falls back to a plain box if the add-on did not load or GFX.round is off.
+function rbox(w, h, d, r = Math.min(0.7, Math.min(w, h, d) * 0.22), seg = 1) {
+  r = Math.min(r, Math.min(w, h, d) / 2 - 0.001);
+  const k = (v) => Math.round(v * 100) / 100;
+  return shared(`rb:${k(w)}:${k(h)}:${k(d)}:${k(r)}:${seg}`, () => {
+    const g = GFX.round && THREE.RoundedBoxGeometry && r > 0.02 ? new THREE.RoundedBoxGeometry(w, h, d, seg, r) : new THREE.BoxGeometry(w, h, d);
+    g.userData.rb = true;
+    return g;
+  });
+}
 function mesh(geo, material, x = 0, y = 0, z = 0, parent = meshParent) {
+  // Every plain box asked for here (blocks, bases, turret heads, props) comes out with soft edges, from a cached rounded shape.
+  if (GFX.round && geo.type === 'BoxGeometry' && !geo.userData.rb && geo.parameters && !material.map && geo.parameters.widthSegments === 1) {
+    const { width: w, height: h, depth: d } = geo.parameters;
+    if (Math.min(w, h, d) >= 0.45) { if (!geo.userData.shared) geo.dispose(); geo = rbox(w, h, d); }
+  }
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
   m.castShadow = true;
@@ -318,6 +335,96 @@ function mesh(geo, material, x = 0, y = 0, z = 0, parent = meshParent) {
   parent.add(m);
   return m;
 }
+
+// Fake ambient occlusion: a soft dark blob on the table under things, one shared plane, one shared texture, one shared material.
+const aoGeo = () => shared('aoGeo', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
+const aoMat = () => shared('aoMat', () => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), color: 0x1a0e05, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+});
+function aoBlob(parent, w, d, x = 0, z = 0, y = 0.05) {
+  if (!GFX.ao) return null;
+  const m = new THREE.Mesh(aoGeo(), aoMat());
+  m.scale.set(w, 1, d); m.position.set(x, y, z); m.renderOrder = -1;
+  parent.add(m);
+  return m;
+}
+// A blob sized to whatever the model's shapes cover (call before the model is scaled or placed).
+function aoAuto(g, k = 1.3, y = 0.05) {
+  if (!GFX.ao) return;
+  const b = new THREE.Box3().setFromObject(g);
+  if (b.isEmpty()) return;
+  aoBlob(g, (b.max.x - b.min.x) * k + 0.8, (b.max.z - b.min.z) * k + 0.8, (b.max.x + b.min.x) / 2, (b.max.z + b.min.z) / 2, y);
+}
+// Blobs for fixed props: one InstancedMesh per level group, so any number of props costs one draw call.
+let aoInst = null;
+function aoStatic(x, z, w, d) {
+  if (!GFX.ao) return;
+  if (!aoInst || aoInst.parent !== meshParent) { aoInst = new THREE.InstancedMesh(aoGeo(), aoMat(), 96); aoInst.count = 0; aoInst.frustumCulled = false; aoInst.renderOrder = -1; meshParent.add(aoInst); }
+  if (aoInst.count >= 96) return;
+  aoInst.setMatrixAt(aoInst.count++, new THREE.Matrix4().makeScale(w, 1, d).setPosition(x, 0.05, z));
+  aoInst.instanceMatrix.needsUpdate = true;
+}
+
+// Baked toy models: many small shapes merged into one vertex-coloured geometry per material (plastic, rubber, metal, glow), made once per model and shared by every copy.
+// A car costs 3 draw calls instead of 10 to 15, so there is room for wheels with hubcaps, windows, spoilers and lights.
+const BAKED = new Map();
+const BK_MATS = [
+  () => toy(0xffffff, { vertexColors: true }),
+  () => mat(0xffffff, { vertexColors: true, roughness: 0.85, envMapIntensity: 0.08 }),
+  () => mat(0xffffff, { vertexColors: true, metalness: 0.85, roughness: 0.22, envMapIntensity: 1 }),
+  () => new THREE.MeshBasicMaterial({ vertexColors: true }),
+];
+function bakeGeometry(parts) {
+  let nv = 0, ni = 0;
+  for (const p of parts) { nv += p.geo.attributes.position.count; ni += p.geo.index ? p.geo.index.count : p.geo.attributes.position.count; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(ni);
+  const v = new THREE.Vector3(), n3 = new THREE.Matrix3(), c = new THREE.Color();
+  let vo = 0, io = 0;
+  for (const p of parts) {
+    const pa = p.geo.attributes.position, na = p.geo.attributes.normal, cnt = pa.count;
+    n3.getNormalMatrix(p.m); c.setHex(p.color).convertSRGBToLinear();
+    for (let i = 0; i < cnt; i++) {
+      v.fromBufferAttribute(pa, i).applyMatrix4(p.m); pos.set([v.x, v.y, v.z], (vo + i) * 3);
+      v.fromBufferAttribute(na, i).applyMatrix3(n3).normalize(); nor.set([v.x, v.y, v.z], (vo + i) * 3);
+      col.set([c.r, c.g, c.b], (vo + i) * 3);
+    }
+    if (p.geo.index) for (let i = 0; i < p.geo.index.count; i++) idx[io++] = p.geo.index.getX(i) + vo; else for (let i = 0; i < cnt; i++) idx[io++] = vo + i;
+    vo += cnt;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.shared = true;
+  return g;
+}
+// build(P): P(geometry, colour, x, y, z, bucket = 0 plastic | 1 rubber | 2 metal | 3 glow, rx, ry, rz, sx, sy, sz). Adds the baked meshes to `parent`.
+function bakeInto(parent, key, build, shadow = true) {
+  let set = BAKED.get(key);
+  if (!set) {
+    const lists = [[], [], [], []], e = new THREE.Euler(), q = new THREE.Quaternion(), pv = new THREE.Vector3(), sv = new THREE.Vector3();
+    build((geo, color, x = 0, y = 0, z = 0, bucket = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+      q.setFromEuler(e.set(rx, ry, rz));
+      lists[bucket].push({ geo, color, m: new THREE.Matrix4().compose(pv.set(x, y, z), q, sv.set(sx, sy, sz)) });
+    });
+    set = lists.map((l) => (l.length ? bakeGeometry(l) : null));
+    for (const l of lists) for (const p of l) p.geo.dispose();
+    BAKED.set(key, set);
+  }
+  set.forEach((geo, b) => {
+    if (!geo) return;
+    const m = new THREE.Mesh(geo, shared(`bkMat:${b}`, BK_MATS[b]));
+    m.castShadow = shadow && b !== 3; m.receiveShadow = true;
+    parent.add(m);
+  });
+}
+// Shape makers for the bakers: rounded box, cylinder (axis y), sphere.
+const RBg = (w, h, d, r = 0.12) => (GFX.round && THREE.RoundedBoxGeometry ? new THREE.RoundedBoxGeometry(w, h, d, 2, Math.min(r, Math.min(w, h, d) / 2 - 0.001)) : new THREE.BoxGeometry(w, h, d));
+const CYg = (rt, rb, h, n = 14) => new THREE.CylinderGeometry(rt, rb, h, n);
+const SPg = (r, a = 14, b = 10) => new THREE.SphereGeometry(r, a, b);
 
 // Wood grain, drawn once to a canvas.
 function woodTexture() {
@@ -1527,11 +1634,145 @@ function wheel(g, x, z, r = 0.8, w = 0.6) {
   const m = mesh(new THREE.CylinderGeometry(r, r, w, 12), mat(0x1c1712), x, r, z, g);
   m.rotation.x = Math.PI / 2;
 }
+// The player vehicles and the two workers, baked (see bakeInto). Forward is +x, up is +y, the table is y = 0.
+const BOAT_LIKE = { gunboat: 1, raft: 1, duck: 1 };
+const GLASS = 0x9fd3ff, RUBBER = 0x24211e, CHROME = 0xdfe4ea, WHITE = 0xfaf6ee, STEEL = 0x55504a;
+const lighten = (hex, k = 0.35) => new THREE.Color(hex).lerp(new THREE.Color(1, 1, 1), k).getHex();
+// A wheel: tyre (rubber), hubcap (chrome) poking out each side, and a small team-colour centre. Axis along z.
+function pWheel(P, x, z, r, w, cap, hub = 0xffffff) {
+  P(CYg(r, r, w, 16), RUBBER, x, r, z, 1, Math.PI / 2);
+  P(CYg(r * 0.58, r * 0.58, w + 0.08, 12), CHROME, x, r, z, 2, Math.PI / 2);
+  P(CYg(r * 0.26, r * 0.26, w + 0.16, 8), cap, x, r, z, 0, Math.PI / 2);
+}
+const TOYS = {
+  racer(g, c, dark, team) {
+    bakeInto(g, `racer:${team}`, (P) => {
+      P(RBg(3.5, 0.55, 1.6, 0.2), c, 0, 0.72, 0);                                   // chassis
+      P(RBg(1.5, 0.42, 1.45, 0.18), c, 1.0, 1.0, 0, 0, 0, 0, -0.1);                 // sloping bonnet
+      P(RBg(0.8, 0.5, 1.5, 0.2), dark, -1.35, 1.0, 0);                              // rear deck
+      P(RBg(1.15, 0.5, 1.15, 0.22), GLASS, -0.15, 1.3, 0);                          // cabin glass
+      P(RBg(0.9, 0.1, 1.0, 0.04), lighten(c), -0.2, 1.58, 0);                       // roof
+      P(RBg(2.7, 0.04, 0.3, 0.02), WHITE, 0.2, 1.22, 0, 0, 0, 0, -0.04);           // racing stripe
+      for (const z of [-0.55, 0.55]) P(RBg(0.1, 0.38, 0.1, 0.03), dark, -1.62, 1.28, z);
+      P(RBg(0.55, 0.08, 2.0, 0.04), dark, -1.62, 1.5, 0);                           // spoiler wing
+      for (const z of [-0.55, 0.55]) { P(SPg(0.16, 8, 6), 0xfff2b0, 1.72, 0.85, z, 3); P(SPg(0.12, 8, 6), 0xff3a2a, -1.78, 0.8, z, 3); }
+      P(RBg(0.3, 0.16, 1.7, 0.06), CHROME, 1.78, 0.5, 0, 2);                        // bumper
+      for (const [x, z] of [[1.15, 0.95], [1.15, -0.95], [-1.15, 0.95], [-1.15, -0.95]]) pWheel(P, x, z, 0.52, 0.42, c);
+    });
+  },
+  tank(g, c, dark, team) {
+    bakeInto(g, `tank:${team}`, (P) => {
+      for (const z of [-1.5, 1.5]) {
+        P(RBg(4.3, 0.85, 0.75, 0.3), RUBBER, 0, 0.5, z, 1);                         // track
+        for (let i = 0; i < 5; i++) P(CYg(0.34, 0.34, 0.9, 10), STEEL, -1.7 + i * 0.85, 0.5, z, 2, Math.PI / 2);
+      }
+      P(RBg(3.8, 0.85, 2.4, 0.28), c, 0, 1.1, 0);                                   // hull
+      P(RBg(1.1, 0.55, 2.3, 0.2), c, 1.9, 1.05, 0, 0, 0, 0, -0.5);                  // sloped front
+      P(RBg(0.9, 0.5, 2.2, 0.2), dark, -1.9, 1.15, 0);                              // engine deck
+      for (const z of [-1.1, 1.1]) P(RBg(0.9, 0.12, 0.3, 0.05), STEEL, -2.1, 1.65, z, 2);
+    });
+    const tur = new THREE.Group(); tur.name = 'turret'; tur.position.set(0, 2.0, 0); g.add(tur);
+    bakeInto(tur, `tankTur:${team}`, (P) => {
+      P(RBg(2.0, 0.8, 1.8, 0.35), dark, 0, 0, 0);
+      P(CYg(0.38, 0.38, 0.18, 10), CHROME, -0.4, 0.46, 0.35, 2);                    // hatch
+      P(CYg(0.2, 0.2, 2.5, 10), STEEL, 1.5, 0.05, 0, 2, 0, 0, Math.PI / 2);         // barrel
+      P(CYg(0.3, 0.3, 0.4, 10), RUBBER, 2.7, 0.05, 0, 1, 0, 0, Math.PI / 2);        // muzzle
+      P(RBg(0.45, 0.5, 1.2, 0.15), c, 0.95, 0.05, 0);                               // mantlet
+      P(CYg(0.04, 0.04, 1.6, 5), CHROME, -0.9, 1.0, -0.6, 2);                       // aerial
+    });
+  },
+  hover(g, c, dark, team) {
+    bakeInto(g, `hover:${team}`, (P) => {
+      P(CYg(1.85, 2.0, 0.6, 24), RUBBER, 0, 0.45, 0, 1, 0, 0, 0, 1.2, 1, 0.85);      // inflated skirt
+      P(CYg(1.9, 1.9, 0.12, 24), lighten(c, 0.55), 0, 0.72, 0, 0, 0, 0, 0, 1.2, 1, 0.85); // trim ring
+      P(SPg(1.3, 20, 10), c, 0, 0.78, 0, 0, 0, 0, 0, 1.4, 0.75, 0.95);               // body
+      P(SPg(0.7, 14, 10), GLASS, 0.45, 1.22, 0, 0, 0, 0, 0, 1.3, 0.85, 1.0);         // cockpit bubble
+      P(RBg(0.45, 1.1, 1.9, 0.12), dark, -1.9, 1.5, 0);                               // tail fin
+      for (const z of [-0.8, 0.8]) { P(CYg(0.5, 0.5, 0.9, 12), CHROME, -2.0, 0.9, z, 2, 0, 0, Math.PI / 2); P(CYg(0.38, 0.38, 0.12, 12), 0x333a44, -2.46, 0.9, z, 1, 0, 0, Math.PI / 2); }
+      for (const z of [-1, 1]) P(SPg(0.15, 8, 6), 0xfff2b0, 2.1, 0.7, z * 0.55, 3);
+    });
+  },
+  mech(g, c, dark, team) {
+    for (const z of [-0.7, 0.7]) {
+      const leg = new THREE.Group(); leg.name = 'leg'; leg.position.set(0, 0.9, z); g.add(leg);
+      bakeInto(leg, 'mechLeg', (P) => { P(RBg(0.62, 1.7, 0.62, 0.18), STEEL, 0, 0, 0); P(RBg(1.1, 0.3, 0.95, 0.12), RUBBER, 0.2, -0.78, 0, 1); P(CYg(0.3, 0.3, 0.72, 10), CHROME, 0, 0.2, 0, 2, Math.PI / 2); });
+    }
+    bakeInto(g, `mech:${team}`, (P) => {
+      P(RBg(2.0, 1.4, 2.2, 0.35), c, 0, 2.4, 0);                                    // torso
+      P(RBg(0.9, 0.6, 1.5, 0.22), GLASS, 0.8, 2.75, 0);                             // visor
+      P(RBg(1.3, 0.5, 1.6, 0.2), dark, -0.5, 3.25, 0);                              // back pack
+      for (const z of [-1.45, 1.45]) { P(RBg(1.0, 0.7, 0.55, 0.2), dark, 0.2, 2.3, z); P(CYg(0.2, 0.2, 1.4, 8), STEEL, 1.0, 2.3, z, 2, 0, 0, Math.PI / 2); P(CYg(0.28, 0.28, 0.2, 8), RUBBER, 1.75, 2.3, z, 1, 0, 0, Math.PI / 2); }
+      P(RBg(1.6, 0.3, 1.9, 0.1), STEEL, 0, 1.62, 0, 2);                             // hips
+      P(CYg(0.03, 0.03, 1.2, 5), CHROME, -0.9, 4.0, 0.6, 2);
+    });
+  },
+  monster(g, c, dark, team) {
+    bakeInto(g, `monster:${team}`, (P) => {
+      P(RBg(3.5, 0.9, 2.1, 0.3), c, 0, 2.3, 0);                                     // body
+      P(RBg(1.5, 0.7, 1.9, 0.25), GLASS, -0.3, 3.1, 0);                             // cab glass
+      P(RBg(1.1, 0.12, 1.7, 0.05), lighten(c), -0.35, 3.5, 0);                      // roof
+      P(RBg(1.2, 0.35, 2.0, 0.15), dark, 1.5, 2.75, 0, 0, 0, 0, -0.1);              // grille
+      P(RBg(0.5, 0.3, 2.4, 0.12), CHROME, 1.95, 1.95, 0, 2);                        // bumper
+      for (const z of [-0.7, 0.7]) P(CYg(0.09, 0.09, 1.0, 6), CHROME, -1.5, 3.4, z, 2);  // roll bar legs
+      P(CYg(0.09, 0.09, 1.7, 6), CHROME, -1.5, 3.9, 0, 2, Math.PI / 2);
+      for (const z of [-1, 1]) P(SPg(0.18, 8, 6), 0xfff2b0, 1.9, 2.45, z * 0.7, 3);
+      for (const x of [1.3, -1.3]) P(CYg(0.12, 0.12, 2.9, 6), STEEL, x, 1.1, 0, 2, Math.PI / 2);
+      for (const [x, z] of [[1.3, 1.35], [1.3, -1.35], [-1.3, 1.35], [-1.3, -1.35]]) pWheel(P, x, z, 1.1, 0.95, c);
+    });
+  },
+  jet(g, c, dark, team) {
+    bakeInto(g, `jet:${team}`, (P) => {
+      P(SPg(1, 18, 10), c, 0.1, 1.2, 0, 0, 0, 0, 0, 2.1, 0.6, 0.62);                // fuselage
+      P(SPg(0.5, 12, 8), GLASS, 0.6, 1.62, 0, 0, 0, 0, 0, 1.4, 0.7, 0.8);           // canopy
+      P(RBg(1.5, 0.12, 3.1, 0.05), dark, -0.5, 1.15, 0, 0, 0.0, 0, 0, 1, 1, 1);     // wing
+      for (const z of [-1.55, 1.55]) P(RBg(0.5, 0.25, 0.2, 0.06), lighten(c), -0.8, 1.25, z);  // wing tips
+      P(RBg(0.9, 0.8, 0.1, 0.04), dark, -1.45, 1.75, 0);                             // tail fin
+      P(CYg(0.45, 0.35, 0.5, 12), CHROME, -2.0, 1.2, 0, 2, 0, 0, Math.PI / 2);       // nozzle
+      P(CYg(0.34, 0.34, 0.1, 12), 0x7cfffb, -2.28, 1.2, 0, 3, 0, 0, Math.PI / 2);    // glow
+    });
+  },
+  truck(g, c, dark, team) {
+    bakeInto(g, `truck:${team}`, (P) => {
+      P(RBg(1.5, 1.35, 1.95, 0.3), c, 1.3, 1.25, 0);                                // cab
+      P(RBg(0.12, 0.6, 1.55, 0.05), GLASS, 2.0, 1.6, 0);                            // windscreen
+      P(RBg(0.9, 0.5, 2.0, 0.15), c, 1.3, 0.55, 0);                                 // chassis under cab
+      P(RBg(3.4, 0.3, 1.6, 0.1), STEEL, -0.9, 0.7, 0, 2);                           // chassis rail
+      P(RBg(0.3, 0.25, 1.9, 0.1), CHROME, 2.1, 0.7, 0, 2);                          // bumper
+      for (const z of [-0.6, 0.6]) P(SPg(0.14, 8, 6), 0xfff2b0, 2.08, 1.0, z, 3);
+      for (const [x, z] of [[1.4, 1], [1.4, -1], [-1.2, 1], [-1.2, -1]]) pWheel(P, x, z, 0.55, 0.45, 0xffc23d);
+    });
+    const bed = new THREE.Group(); bed.name = 'bed'; bed.position.set(-1.9, 1, 0); g.add(bed);
+    bakeInto(bed, 'truckBed', (P) => {
+      P(RBg(2.8, 0.25, 2.0, 0.08), 0xffc23d, 1.4, 0, 0);
+      for (const z of [-0.95, 0.95]) P(RBg(2.8, 0.9, 0.14, 0.05), 0xffc23d, 1.4, 0.45, z);
+      P(RBg(0.14, 0.9, 1.9, 0.05), 0xffc23d, 0.04, 0.45, 0);
+    });
+    const load = mesh(shared('truckLoad', () => new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2)), mat(0xf2c97d), 1.4, 0.2, 0, bed);
+    load.name = 'load'; load.scale.set(1.3, 0.01, 0.9);
+  },
+  digger(g, c, dark, team) {
+    bakeInto(g, `digger:${team}`, (P) => {
+      for (const z of [-0.9, 0.9]) { P(RBg(2.8, 0.75, 0.62, 0.28), RUBBER, 0, 0.4, z, 1); for (const x of [-0.9, 0, 0.9]) P(CYg(0.28, 0.28, 0.66, 8), CHROME, x, 0.4, z, 2, Math.PI / 2); }
+      P(RBg(2.1, 0.8, 1.7, 0.25), 0xffc23d, -0.2, 1.1, 0);                          // body
+      P(RBg(1.1, 0.95, 1.3, 0.25), c, -0.5, 1.95, 0);                               // cab in the team colour
+      P(RBg(0.12, 0.55, 1.0, 0.04), GLASS, 0.1, 2.0, 0);                            // cab window
+      P(CYg(0.07, 0.07, 0.7, 6), STEEL, -1.0, 2.8, 0.4, 2);                         // exhaust
+      P(SPg(0.14, 8, 6), 0xfff2b0, 1.05, 1.2, 0.5, 3); P(SPg(0.14, 8, 6), 0xfff2b0, 1.05, 1.2, -0.5, 3);
+    });
+    const arm = new THREE.Group(); arm.name = 'arm'; arm.position.set(0.6, 1.6, 0); g.add(arm);
+    bakeInto(arm, 'diggerArm', (P) => {
+      P(RBg(2.4, 0.36, 0.4, 0.12), 0xffc23d, 1.2, 0, 0, 0, 0, 0, -0.4);             // boom
+      P(RBg(0.9, 0.75, 1.15, 0.2), STEEL, 2.4, -0.7, 0, 2);                         // bucket
+      P(CYg(0.2, 0.2, 0.7, 8), CHROME, 0.05, 0, 0, 2, Math.PI / 2);                 // pivot
+    });
+  },
+};
 // Toy models out of boxes and cylinders. Forward is +x.
 function buildModel(kind, team, scale = 1) {
   const g = new THREE.Group();
   const c = COLORS[team], dark = team === BLUE ? 0x1b4fa8 : 0x9c1c14;
-  if (kind === 'racer') {
+  if (TOYS[kind]) TOYS[kind](g, c, dark, team);
+  else if (kind === 'racer') {
     mesh(new THREE.BoxGeometry(3.2, 0.8, 1.6), mat(c), 0, 0.9, 0, g);
     mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), mat(0x9fd3ff, { metalness: 0.3, roughness: 0.2 }), -0.2, 1.5, 0, g);
     mesh(new THREE.BoxGeometry(0.4, 0.15, 2.2), mat(dark), -1.5, 1.6, 0, g);
@@ -1686,6 +1927,7 @@ function buildModel(kind, team, scale = 1) {
     mesh(new THREE.BoxGeometry(0.8, 0.7, 1.1), mat(0x55504a), 2.4, -0.7, 0, arm);
   }
   if (FRONT[kind] && darkNow()) addHeadlights(g, kind, team);
+  if (!BOAT_LIKE[kind]) aoAuto(g);
   g.scale.setScalar(scale);
   scene.add(g);
   return g;
@@ -5984,7 +6226,7 @@ function render(dt) {
       const bed = e.mesh.getObjectByName('bed');
       const load = bed.getObjectByName('load');
       load.scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
-      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : e.loadRes === 'peas' ? 0x7ccf4a : 0xf2c97d);
+      if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : e.loadRes === 'peas' ? 0x7ccf4a : 0xf2c97d).convertSRGBToLinear();
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
     if (e.vehicle === 'mech') e.mesh.children.filter((c) => c.name === 'leg').forEach((leg, i) => { leg.rotation.z = Math.sin(time * 10 + i * Math.PI) * Math.min(1, Math.hypot(e.vx, e.vz) / 5) * 0.5; });
@@ -5999,7 +6241,7 @@ function render(dt) {
   if (sink) { waterTex.offset.x += dt * 0.012; waterTex.offset.y -= dt * 0.03; } // the ripples slide along
   for (const f of ferries) { f.g.position.set(f.x, 0.2 + Math.sin(time * 2 + f.z) * 0.05, f.z); f.g.rotation.y += dt * 0.05; }
   for (const o of outposts) {
-    o.cloth.material.color.setHex(o.owner === BLUE ? COLORS[BLUE] : o.owner === RED ? COLORS[RED] : 0xc9c2b6);
+    o.cloth.material.color.setHex(o.owner === BLUE ? COLORS[BLUE] : o.owner === RED ? COLORS[RED] : 0xc9c2b6).convertSRGBToLinear();
     o.ring.material.opacity = 0.25 + Math.abs(o.progress) * 0.4;
     o.cloth.position.y = 2.2 + (Math.abs(o.progress)) * 1.7;
   }
