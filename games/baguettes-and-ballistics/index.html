@@ -2546,7 +2546,8 @@ function dominoesUpdate(dt) {
         // One big hit per run: a pile of dominoes landing together counts once (2 s apart at most).
         if (box.hp > 0 && Math.hypot(tx - box.x, tz - box.z) < box.r + 2.5 && state.time - state[key] > 2) {
           state[key] = state.time;
-          hurt(box, 200, 1 - box.team, { vsBase: 1 });
+          if (d.breaks && box.team === RED) bagBreakShield('The Great Domino Run landed on their fortress!'); // level 6: it breaks the Baguette's shield first, so the full hit lands
+          hurt(box, d.dmg || 200, 1 - box.team, { vsBase: 1 });
           burst(tx, tz, 0xffffff, 30, 14, 4); sfx('bigBoom'); state.shake = Math.min(1.6, (state.shake || 0) + 1.2);
           toast(box.team === RED ? 'TOPPLE! The domino run hit their toy box' : 'TOPPLE! Their dominoes landed on your toy box');
         }
@@ -2647,7 +2648,7 @@ const PLAYER_WEIGHT = { racer: 1, jet: 0.5, hover: 0, mech: 2, tank: 2, monster:
 const UNIT_WEIGHT = { scout: 1, drone: 1, raider: 1, hijacker: 1, buggy: 3, heavy: 2, layer: 2, sqtank: 2, sqraider: 1, bomber: 0, looper: 0.5, pike: 0.5, pea: 0.5, bot: 0.5 }; // level 6 infantry weigh half
 const weightOf = (e) => (e.kind === 'player' ? PLAYER_WEIGHT[e.vehicle] ?? 1 : UNIT_WEIGHT[e.type] ?? 1);
 function buildLevelRun(team) {
-  if (state.level.finale) return null; // STAGE 2 HOOK: the Great Domino Run goes here (level 6 has no ordinary runs)
+  if (state.level.finale) return buildGreatRun(team); // level 6: the Great Domino Run (stage 2) instead of the ordinary runs
   const target = state.bases[1 - team], side = team === BLUE ? -1 : 1; // blue's run comes along one edge, red's along the other
   const blocked = (q, m) => Math.abs(q.x) > W / 2 - 3 || Math.abs(q.z) > D / 2 - 3 || obstacles.some((o) => o.kind !== 'base' && Math.abs(q.x - o.x) < o.w / 2 + m && Math.abs(q.z - o.z) < o.d / 2 + m) || state.bases.some((b) => Math.hypot(q.x - b.x, q.z - b.z) < b.r + 1.5) || inWaterX(q.x, q.z, m) || hobBlocked(q.x, q.z, m);
   const toward = Math.sign(target.x) || 1;
@@ -2684,7 +2685,7 @@ function buildLevelRun(team) {
 }
 function standRun(run) {
   for (const d of run.doms) { scene.remove(d.pivot); const k = dominoes.indexOf(d); if (k >= 0) dominoes.splice(k, 1); }
-  run.doms = run.path.map((q) => addDomino(q.x, q.z, q.dx, q.dz, run.team, true));
+  run.doms = run.path.map((q) => (run.lite ? addDominoLite : addDomino)(q.x, q.z, q.dx, q.dz, run.team, true)); // (level 6's great runs use the one-mesh dominoes)
   run.ready = true; run.resetAt = 0; run.cap.position.y = 1.1;
 }
 function runsUpdate(dt) {
@@ -2697,7 +2698,7 @@ function runsUpdate(dt) {
       const weight = on.reduce((t, e) => t + weightOf(e), 0);
       if (on.length && weight < BUTTON_WEIGHT && on.includes(state.player) && state.time - (run.toldAt || -9) > 3) {
         run.toldAt = state.time; sfx('no');
-        toast(state.player.vehicle === 'hover' ? 'The Hover floats: it can\'t press the button' : `Too light (${weight} of ${BUTTON_WEIGHT})! Bring a Monster truck, or your drones`);
+        toast(state.player.vehicle === 'hover' ? 'The Hover floats: it can\'t press the button' : `Too light (${weight} of ${BUTTON_WEIGHT})! Bring a Monster truck, or your drones${state.finale ? ' and infantry (half each)' : ''}`);
       }
       if (weight >= BUTTON_WEIGHT) {
         run.ready = false; run.cap.position.y = 0.75; run.cap.material.emissiveIntensity = 0;
@@ -2705,9 +2706,9 @@ function runsUpdate(dt) {
         sfx('cap'); toast(run.team === BLUE ? 'Domino run set off! Watch it go…' : 'They set off the domino run at your toy box!');
       }
     } else if (!run.resetAt && run.doms.every((d) => d.hit || !d.falling) && run.doms.at(-1).hit) {
-      run.resetAt = state.time + 45;
+      run.resetAt = state.time + (run.reset || 45);
     } else if (!run.resetAt && run.doms.some((d) => d.falling) && run.doms.filter((d) => d.falling).every((d) => d.hit) && !run.doms.every((d) => d.falling)) {
-      run.resetAt = state.time + 45; // the run broke part-way (something was in the way): set it up again anyway
+      run.resetAt = state.time + (run.reset || 45); // the run broke part-way (something was in the way): set it up again anyway
     } else if (run.resetAt && state.time >= run.resetAt) {
       standRun(run);
       if (run.team === BLUE) toast('Your domino run is set up again');
@@ -4672,6 +4673,75 @@ function bagCleanup() {
   for (const e of T.all) { if (e.bar) scene.remove(e.bar); if (e.mesh) { scene.remove(e.mesh); disposeTree(e.mesh); } }
   for (const d of T.debris) { scene.remove(d.mesh); disposeTree(d.mesh); }
   T.debris.length = 0; state.finale.stage2.train = null;
+}
+
+// ----- The Great Domino Run -----
+// The longest run in the game: your button is at the bottom-left of the hob; the run goes along the bottom edge of the bend, up the breadboard arm
+// and lands on their fortress for 500 and breaks the Baguette's shield (a comeback move). Red has a smaller one aimed at you (250, no shield).
+// One mesh per domino (a painted texture), so 55 of them cost 55 draw calls rather than 400. They reset 90 s after falling.
+const GREAT = {
+  [BLUE]: { verts: [[-36, 62.5], [79.5, 62.5], [79.5, -36], [83.3, -45.7]], radius: [0, 6, 5, 0], dmg: 500, button: 4.6 },
+  [RED]: { verts: [[-66, 48], [-91, 48], [-91, -38]], radius: [0, 8, 0], dmg: 250, button: 4.6 },
+};
+function roundPath(verts, radii) { // a polyline with each corner replaced by an arc of its radius
+  const out = [verts[0]];
+  for (let i = 1; i < verts.length - 1; i++) {
+    const a = verts[i - 1], b = verts[i], c = verts[i + 1], r = radii[i];
+    const l1 = Math.hypot(a[0] - b[0], a[1] - b[1]), l2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
+    const u1 = [(a[0] - b[0]) / l1, (a[1] - b[1]) / l1], u2 = [(c[0] - b[0]) / l2, (c[1] - b[1]) / l2];
+    const theta = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1])));
+    const t = r / Math.tan(theta / 2), bis = [u1[0] + u2[0], u1[1] + u2[1]], bl = Math.hypot(bis[0], bis[1]), cd = r / Math.sin(theta / 2);
+    const ctr = [b[0] + bis[0] / bl * cd, b[1] + bis[1] / bl * cd];
+    const s0 = [b[0] + u1[0] * t, b[1] + u1[1] * t], e0 = [b[0] + u2[0] * t, b[1] + u2[1] * t];
+    const a0 = Math.atan2(s0[1] - ctr[1], s0[0] - ctr[0]), da = wrap(Math.atan2(e0[1] - ctr[1], e0[0] - ctr[0]) - a0);
+    for (let k = 0; k <= 14; k++) out.push([ctr[0] + Math.cos(a0 + da * k / 14) * r, ctr[1] + Math.sin(a0 + da * k / 14) * r]);
+  }
+  out.push(verts[verts.length - 1]);
+  return out;
+}
+function greatPath(team) {
+  const G = GREAT[team], dense = roundPath(G.verts, G.radius), path = [];
+  let carry = 0, px = dense[0][0], pz = dense[0][1];
+  path.push({ x: px, z: pz });
+  for (let i = 1; i < dense.length; i++) { // walk the polyline, dropping a domino every RUN_STEP
+    let [qx, qz] = dense[i], seg = Math.hypot(qx - px, qz - pz);
+    while (carry + seg >= RUN_STEP) {
+      const f = (RUN_STEP - carry) / seg; px += (qx - px) * f; pz += (qz - pz) * f; seg = Math.hypot(qx - px, qz - pz); carry = 0;
+      path.push({ x: px, z: pz });
+    }
+    carry += seg; px = qx; pz = qz;
+  }
+  for (let i = 0; i < path.length; i++) { const a = path[i], b = path[Math.min(path.length - 1, i + 1)], c = i === path.length - 1 ? path[i - 1] : a, ref = i === path.length - 1 ? [a.x - c.x, a.z - c.z] : [b.x - a.x, b.z - a.z], l = Math.hypot(ref[0], ref[1]) || 1; a.dx = ref[0] / l; a.dz = ref[1] / l; }
+  return path;
+}
+function addDominoLite(x, z, dx, dz, team) {
+  const tex = finTex['dom' + team] ||= canvasTex(64, 128, (g, w, h) => {
+    g.fillStyle = '#fff3d6'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(80,60,30,0.5)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+    g.fillStyle = team === BLUE ? '#2f7df6' : '#ef4136'; g.fillRect(2, h / 2 - 2.5, w - 4, 5);
+    for (const [px, py] of [[16, 16], [48, 16], [32, 32], [16, 48], [48, 48], [16, 80], [48, 80], [32, 96], [16, 112], [48, 112]]) { g.beginPath(); g.arc(px, py < 64 ? py : py, 6, 0, 7); g.fill(); }
+  });
+  const pivot = new THREE.Group(); pivot.position.set(x, 0, z);
+  const m = new THREE.Mesh(sgeo('dmLiteGeo', () => new THREE.BoxGeometry(0.8, DOMINO_H, 2.6)), smat('dmLite:' + team, () => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 })));
+  m.position.y = DOMINO_H / 2; m.rotation.y = -Math.atan2(dz, dx); pivot.add(m);
+  scene.add(pivot);
+  const d = { x, z, dx, dz, team, fixed: true, pivot, angle: 0, falling: false, passed: false, hit: false, dmg: GREAT[team].dmg, breaks: team === BLUE };
+  dominoes.push(d);
+  return d;
+}
+function buildGreatRun(team) {
+  const G = GREAT[team], path = greatPath(team);
+  const bx = path[0].x - path[0].dx * G.button, bz = path[0].z - path[0].dz * G.button;
+  // The button: a big push-button in the team colour with a pulsing ring.
+  const button = new THREE.Group(); button.position.set(bx, 0, bz);
+  mesh(sgeo('gbBase', () => new THREE.CylinderGeometry(3.2, 3.6, 0.9, 24)), smat('gbBaseMat', () => mat(0x2b2b2b)), 0, 0.45, 0, button);
+  const cap = new THREE.Mesh(sgeo('gbCap', () => new THREE.CylinderGeometry(2.4, 2.4, 0.8, 24)), new THREE.MeshStandardMaterial({ color: COLORS[team], emissive: COLORS[team], emissiveIntensity: 0.4, roughness: 0.5 }));
+  cap.position.y = 1.2; button.add(cap);
+  const ring = new THREE.Mesh(sgeo('gbRing', () => new THREE.RingGeometry(5, 5.6, 32).rotateX(-Math.PI / 2)), smat(`gbRingMat:${team}`, () => new THREE.MeshBasicMaterial({ color: COLORS[team], transparent: true, opacity: 0.6, depthWrite: false })));
+  ring.position.y = 0.12; button.add(ring);
+  scene.add(button);
+  const run = { team, x: bx, z: bz, path, button, cap, doms: [], ready: true, resetAt: 0, lite: true, reset: 90, great: true };
+  standRun(run);
+  return run;
 }
 
 // ---------- Main loop ----------
