@@ -596,3 +596,17 @@ now stays at about 240–370.
   them), 140 to turrets, 120 to a toy box. It stays as a wall for 15 s, then is
   lifted away. Never inside the oven.
 
+## Hob round three (2 Nov 2026; Harry: bigger pan, more aggressive enemy, die on a hot ring, use the cooker's screen)
+
+- **Bigger pan that smashes:** radius 11 (was 6), drops from high and
+  accelerates, squashes on impact, sends out a dust ring, shakes the whole hob.
+  160 to cars (most die), 300 to turrets, 220 to a toy box. Every 18–26 s.
+- **Red-hot rings are deadly:** cars, trucks and boats on a ring when it's
+  red-hot are wrecked ("Burnt to a crisp!"). Turrets melt at 25 a second.
+- **The cooker screen** (`hobScreen`, `hobVis.screen`): a canvas display lying
+  on the hob glass in front of the oven door: SAFE / HOT IN / HOT! with a
+  big countdown, redrawn only when it changes.
+- **Angrier enemy:** first wave at 0:30 (was 0:50), waves start at 5 and grow to
+  10, 40 s apart (was 70); raids every 70 s from 1:30. Tested: a wave of 6 at
+  0:44, as soon as the rings were safe.
+

@@ -710,8 +710,10 @@ function hobBurn(h) {
     if (e.kind === 'player' && !e.alive) continue;
     if (!ringAt(e.x, e.z)) continue;
     burst(e.x, e.z, 0xff7b2a, 5, 7, 1);
-    hurt(e, e.kind === 'turret' ? h.turretDmg : h.dmg, null);
-    if (e === state.player) { toast('Ouch! A hot ring. Drive off it'); sfx('hit'); }
+    // Harry: red-hot should wreck you. Cars, trucks and boats on a hot ring burn up; turrets melt fast.
+    if (e.kind === 'turret') hurt(e, h.turretDmg, null);
+    else { burst(e.x, e.z, 0x2b2b2b, 10, 9, 1.5); hurt(e, 99999, null); }
+    if (e === state.player) { toast('Burnt to a crisp! Red-hot rings wreck you'); sfx('sizzle'); }
   }
 }
 // The spiral of a hob coil, white on clear, tinted by the ring's material.
@@ -768,7 +770,14 @@ function hobDecor() {
     knob.rotation.x = Math.PI / 2;
     mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat(0xffffff), -12 + i * 6, 14.1, O.z0 + 1.4).castShadow = false;
   }
-  mesh(new THREE.BoxGeometry(5, 1.4, 0.2), mat(0x1c0a08, { emissive: 0xff2a14, emissiveIntensity: 0.9 }), 14, 13.4, O.z0 + 0.45).castShadow = false; // the clock
+  // The cooker's screen (Harry's idea): a big display on the back panel saying what the rings will do next.
+  const scr = document.createElement('canvas'); scr.width = 512; scr.height = 160;
+  const scrTex = new THREE.CanvasTexture(scr);
+  // It lies on the hob glass just in front of the oven door, like a real hob's touch display, so the camera always sees it.
+  const sz = O.rz1 + 4.6;
+  flat(new THREE.PlaneGeometry(19, 5.8), mat(0x0b0b0d, { metalness: 0.4, roughness: 0.2 }), 0, 0.05, sz); // bezel
+  flat(new THREE.PlaneGeometry(18, 5), new THREE.MeshBasicMaterial({ map: scrTex }), 0, 0.07, sz);
+  V.screen = { canvas: scr, tex: scrTex, shown: '' };
   V.element = mesh(new THREE.BoxGeometry(O.x1 - O.x0 - 4, 0.5, 0.5), mat(0x7a2a10, { emissive: 0xff6a1a, emissiveIntensity: 0.7 }), 0, LEDGE_H + 1.4, O.z0 + 1.2);
   V.element.castShadow = false;
   const lamp2 = new THREE.Sprite(shared('ovenHalo', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xff8a3a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })));
@@ -828,6 +837,28 @@ function hobDraw(dt, time) {
   const secs = Math.ceil(ph.left);
   hobEl.textContent = ph.phase === 'cool' ? `RINGS COOL · ${secs} sec` : ph.phase === 'warn' ? `RINGS WARMING · ${secs} sec` : `RINGS RED-HOT · ${secs} sec`;
   hobEl.style.color = ph.phase === 'cool' ? '#cfd4dc' : ph.phase === 'warn' ? '#ffb347' : '#ff5a3a';
+  hobScreen(ph, secs);
+}
+// Draw the cooker screen: big words and a countdown, plus four little ring lamps. Only redrawn when it changes.
+function hobScreen(ph, secs) {
+  const S = hobVis?.screen;
+  if (!S) return;
+  const flash = ph.phase === 'hot' && Math.floor(performance.now() / 400) % 2;
+  const key = `${ph.phase}${secs}${flash}`;
+  if (S.shown === key) return;
+  S.shown = key;
+  const g = S.canvas.getContext('2d'), col = ph.phase === 'cool' ? '#5dff8a' : ph.phase === 'warn' ? '#ffb347' : '#ff3b26';
+  g.fillStyle = '#050607'; g.fillRect(0, 0, 512, 160);
+  g.fillStyle = flash ? '#3a0a06' : '#050607'; g.fillRect(6, 6, 500, 148);
+  g.fillStyle = col; g.textBaseline = 'middle';
+  g.font = 'bold 64px "Arial Black", Impact, sans-serif'; g.textAlign = 'left';
+  g.fillText(ph.phase === 'cool' ? 'SAFE' : ph.phase === 'warn' ? 'HOT IN' : 'HOT!', 24, 62);
+  g.font = 'bold 80px "Arial Black", Impact, sans-serif'; g.textAlign = 'right';
+  g.fillText(String(secs), 488, 66);
+  g.font = 'bold 26px Arial, sans-serif'; g.textAlign = 'left';
+  g.fillText(ph.phase === 'cool' ? 'cross now' : ph.phase === 'warn' ? 'get off!' : 'deadly!', 26, 128);
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(360 + i * 34, 128, 11, 0, Math.PI * 2); g.fill(); }
+  S.tex.needsUpdate = true;
 }
 
 // ---------- The toaster launcher ----------
@@ -1147,7 +1178,7 @@ const LEVELS = [
       { x: 0, z: 36, r: 4, kind: 'sauce' },
     ],
     decor: hobDecor,
-    hob: { rings: [[-22, -19, 9], [22, -19, 9], [-22, 19, 9], [22, 19, 9]], cool: 10, warn: 3, hot: 6, safe: 5, dmg: 12, turretDmg: 6, start: -6 },
+    hob: { rings: [[-22, -19, 9], [22, -19, 9], [-22, 19, 9], [22, 19, 9]], cool: 10, warn: 3, hot: 6, safe: 5, dmg: 12, turretDmg: 25, start: -6 },
     oven: { x0: -20, x1: 20, z0: -48, z1: -32, rw: 8, rz1: -23.5 },
     toaster: true,
     outposts: [[-38, -27], [-38, 27], [0, -40, LEDGE_H], [38, -27], [38, 27]],   // the middle cap sits on the oven ledge
@@ -1166,7 +1197,7 @@ const LEVELS = [
     start: { cereal: 40, clips: 10, unlocked: ['racer', 'tank'] },
     resources: ['cereal', 'clips'],
     turretClips: { rocket: 10, staple: 8, magnet: 12, catapult: 15 },
-    rules: { baseHp: 1800, raidEvery: 100, firstRaid: 140, raidSize: [2, 3], boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }, rusher: { first: 50, size: 4, grow: 1, max: 9, gap: 70 } },
+    rules: { baseHp: 1800, raidEvery: 70, firstRaid: 90, raidSize: [2, 3], boss: { at: 180, hp: 1500, spill: 120, kind: 'toaster', name: 'THE TOASTER TANK' }, rusher: { first: 30, size: 5, grow: 1, max: 10, gap: 40 } },
   },
   { name: 'Baguettes & Ballistics', time: 'dinner', soon: true },
 ];
@@ -2386,7 +2417,7 @@ function dominoesUpdate(dt) {
 // ---------- The Cook (hob level): a giant shadow, then a hot frying pan slams down on a random spot ----------
 // Every 22–30 s. Sometimes it lands by a toy box (either side). It flattens what's under it, then sits there
 // as a hot wall for 15 s before the cook lifts it away. Warned by a growing shadow for 2.5 s.
-const COOK = { every: [22, 30], warn: 2.5, stay: 15, r: 6, dmgUnit: 70, dmgTurret: 140, dmgBox: 120 };
+const COOK = { every: [18, 26], warn: 2.5, stay: 15, r: 11, dmgUnit: 160, dmgTurret: 300, dmgBox: 220 }; // big, and it hurts
 function cookPick() {
   for (let tries = 0; tries < 20; tries++) {
     let x, z;
@@ -2420,9 +2451,9 @@ function cookUpdate(dt) {
       // The pan: black, with a handle, dropping from above.
       const g = new THREE.Group();
       mesh(shared('panBody', () => new THREE.CylinderGeometry(COOK.r, COOK.r - 0.5, 1.3, 28)), shared('panMat', () => mat(0x1d1e22, { metalness: 0.5, roughness: 0.35 })), 0, 0.65, 0, g);
-      mesh(shared('panHandle', () => new THREE.BoxGeometry(9, 0.6, 1.4)), shared('panHandleMat', () => mat(0x5a3b22)), COOK.r + 4, 1.1, 0, g);
-      g.rotation.y = Math.random() * Math.PI * 2; g.position.set(w.x, 25, w.z); scene.add(g);
-      const ob = { x: w.x, z: w.z, w: COOK.r * 1.8, d: COOK.r * 1.8, h: 1.3, kind: 'pan' };
+      mesh(shared('panHandle', () => new THREE.BoxGeometry(14, 0.9, 2.2)), shared('panHandleMat', () => mat(0x5a3b22)), COOK.r + 6.5, 1.1, 0, g);
+      g.rotation.y = Math.random() * Math.PI * 2; g.position.set(w.x, 45, w.z); scene.add(g);
+      const ob = { x: w.x, z: w.z, w: COOK.r * 1.6, d: COOK.r * 1.6, h: 1.3, kind: 'pan' };
       const pan = { x: w.x, z: w.z, g, ob, t: 0, life: COOK.stay, landed: false };
       c.pans.push(pan);
     }
@@ -2430,7 +2461,7 @@ function cookUpdate(dt) {
   for (let i = c.pans.length - 1; i >= 0; i--) {
     const pan = c.pans[i]; pan.t += dt; pan.life -= dt;
     if (!pan.landed) {
-      pan.g.position.y = Math.max(0, 25 - pan.t * 100);
+      pan.g.position.y = Math.max(0, 45 - pan.t * pan.t * 400); // accelerating: a proper slam
       if (pan.g.position.y <= 0) {
         pan.landed = true;
         // SLAM: flatten what's under it.
@@ -2442,11 +2473,18 @@ function cookUpdate(dt) {
           else if (e.kind === 'turret') hurt(e, COOK.dmgTurret, 1 - e.team, null);
           else { hurt(e, COOK.dmgUnit, 1 - e.team, null); const d = Math.max(1, Math.sqrt(dist2(e, pan))); e.vx = (e.vx || 0) + (e.x - pan.x) / d * 30; e.vz = (e.vz || 0) + (e.z - pan.z) / d * 30; }
         }
-        burst(pan.x, pan.z, 0xfff3d6, 18, 14, 1); sfx('cannon');
-        if (dist2(pan, state.player) < 3600) state.shake = Math.min(1.6, (state.shake || 0) + 0.9);
+        burst(pan.x, pan.z, 0xfff3d6, 30, 22, 1); burst(pan.x, pan.z, 0x9a9a9a, 20, 16, 0.5); sfx('bigBoom'); sfx('cannon');
+        state.shake = Math.min(2, (state.shake || 0) + (dist2(pan, state.player) < 6400 ? 1.6 : 0.6)); // the whole hob shakes
+        pan.g.scale.set(1.12, 0.6, 1.12); pan.squash = 0.25;
+        // A dust ring rushing out from the impact.
+        const ring = new THREE.Mesh(shared('panRing', () => new THREE.RingGeometry(0.9, 1, 48)), new THREE.MeshBasicMaterial({ color: 0xfff3d6, transparent: true, opacity: 0.8, depthWrite: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.set(pan.x, 0.15, pan.z); scene.add(ring); pan.ring = ring;
         obstacles.push(pan.ob); navDirty = true;
+        if (dist2(pan, state.player) < 3600) toast('SMASH! The cook put a pan down');
       }
-    } else if (pan.life <= 1) pan.g.position.y = (1 - pan.life) * 25; // lifted away
+    } else if (pan.life <= 1) pan.g.position.y = (1 - pan.life) * 40; // lifted away
+    if (pan.squash > 0) { pan.squash -= dt; const k = Math.max(0, pan.squash / 0.25); pan.g.scale.set(1 + 0.12 * k, 1 - 0.4 * k, 1 + 0.12 * k); }
+    if (pan.ring) { const k = Math.min(1, (pan.t - 0.335) / 0.6); pan.ring.scale.setScalar(COOK.r + k * 14); pan.ring.material.opacity = 0.8 * (1 - k); if (k >= 1) { scene.remove(pan.ring); pan.ring.material.dispose(); pan.ring = null; } }
     if (pan.life <= 0) {
       scene.remove(pan.g);
       const k = obstacles.indexOf(pan.ob); if (k >= 0) { obstacles.splice(k, 1); navDirty = true; }
