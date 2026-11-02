@@ -2161,6 +2161,8 @@ const SOUNDS = {
   kettleClick: () => { noise('highpass', 3000, 2500, 0.4, 0.04); tone('square', 900, 180, 0.2, 0.09); noise('lowpass', 800, 200, 0.3, 0.16, 0.04); },
   horn: () => { tone('sawtooth', 196, 190, 0.2, 0.9); tone('square', 98, 95, 0.12, 0.9); tone('sawtooth', 294, 285, 0.1, 0.9); },
   whistle: () => { tone('sine', 1500, 420, 0.05, 0.7); },
+  fridgeOpen: () => { tone('sawtooth', 90, 200, 0.07, 1.4); tone('square', 60, 70, 0.05, 1.8); noise('bandpass', 400, 1200, 0.08, 1.2, 0, 3); [0.1, 0.45, 0.8].forEach((d) => tone('triangle', 1200 + d * 300, 900, 0.04, 0.2, d)); }, // a creaking, humming door
+  clunk: () => { tone('sine', 110, 28, 0.9, 0.5); noise('lowpass', 1400, 90, 0.8, 0.5); noise('highpass', 3000, 1500, 0.2, 0.08); tone('square', 70, 40, 0.3, 0.25); }, // the fridge slams
   zap: () => { tone('sawtooth', 1400, 200, 0.07, 0.25); tone('square', 90, 60, 0.08, 0.2); noise('highpass', 5000, 3000, 0.08, 0.15); }, // a battery bot's pulse
   loopshot: () => tone('triangle', 1500, 1000, 0.03, 0.03), pike: () => tone('triangle', 900, 500, 0.04, 0.05), peashot: () => tone('sine', 500, 900, 0.07, 0.1), botzap: () => {},
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
@@ -3842,6 +3844,7 @@ function finaleDecor() {
   // STAGE 2 HOOK: the fridge door goes at the far end of the cut-out (V.fridgeAt); the Baguette train boss comes round the worktop edge.
   V.fridgeAt = { x: 0, z: -64 };
   V.rails = bagRails(); // the Baguette's faint rails
+  fridgeBuild(V);
   // The sink: a trough of water down the middle of the left arm with a ruler bridge, two bottle-cap ferries and the tap.
   const wx = (Wt.x0 + Wt.x1) / 2, ww = Wt.x1 - Wt.x0, z0 = -D / 2, z1 = Wt.z1, wl = z1 - z0;
   waterTex = waterTex || waterTexture();
@@ -4312,6 +4315,7 @@ function finaleUpdate(dt) {
   }
   if (F.stage === 'war' && !F.stage2.baguetteDone && state.time >= BAG.at) { F.stage2.baguetteDone = true; spawnBaguette(); }
   bagUpdate(dt);
+  fridgeUpdate(dt);
   bombsUpdate(dt);
   pulsesUpdate(dt);
   extrasUpdate(dt);
@@ -4742,6 +4746,84 @@ function buildGreatRun(team) {
   const run = { team, x: bx, z: bz, path, button, cap, doms: [], ready: true, resetAt: 0, lite: true, reset: 90, great: true };
   standRun(run);
   return run;
+}
+
+// ----- The fridge door -----
+// A fridge stands on the far end of the cut-out. At 3:00 of war its door swings open (the interior glows, light spills across the worktop and the
+// existing lights are brightened and turned cool), 20 s later it slams (a clunk, a shake) and the scene is darker than before for good, but still readable.
+const FRIDGE = { at: 180, open: 20, swing: 2.2, ang: 1.8, dark: 0.68, bright: 1.9 };
+const LIGHT_BASE = { hemi: 0.7, sun: 0.5, pts: [0.85, 0.6, 0.6] }; // what finaleLight sets up
+const lightCols = { warmH: new THREE.Color(0xffcb94), coolH: new THREE.Color(0xe6f2ff), warmS: new THREE.Color(0xffd9a8), coolS: new THREE.Color(0xeaf4ff), flickH: new THREE.Color(0xfff1d6), flickS: new THREE.Color(0xfff4e0) };
+function fridgeBuild(V) {
+  const A = V.fridgeAt, g = new THREE.Group();
+  g.position.set(A.x, 10, A.z + 11); // stands on the cut-out, front face towards the table at z = A.z + 22
+  const white = mat(0xe9eef2, { roughness: 0.35, metalness: 0.1 }), steel = mat(0xc9d0d6, { metalness: 0.8, roughness: 0.3 });
+  const box = (w, h, d, material, x, y, z, parent = g) => { const m = mesh(new THREE.BoxGeometry(w, h, d), material, x, y, z, parent); m.castShadow = false; return m; };
+  box(30, 46, 1, white, 0, 23, -10.5);
+  for (const s of [-1, 1]) box(1.6, 46, 22, white, s * 14.2, 23, 0);
+  box(30, 1.6, 22, white, 0, 45.2, 0); box(30, 1.6, 22, white, 0, 0.8, 0);
+  const glow = mesh(new THREE.PlaneGeometry(27, 42), new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0 }), 0, 23, -9.9, g); glow.castShadow = false;
+  const glass = mat(0xbfe6ff, { transparent: true, opacity: 0.4, roughness: 0.1 });
+  for (const y of [11, 22, 33]) box(27, 0.5, 19, glass, 0, y, 0.5);
+  box(3.4, 6.5, 3.4, mat(0xf4f8ff), -8, 14.5, 1).castShadow = false; box(3.4, 1.2, 3.5, mat(0x2f7df6), -8, 17.7, 1);
+  for (const [x, c] of [[1, 0xc8281f], [5.5, 0xe9a21c], [10, 0x6a9e3f]]) mesh(new THREE.CylinderGeometry(1.7, 1.7, 4.5, 12), mat(c), x, 13.4, 3, g).castShadow = false;
+  mesh(new THREE.SphereGeometry(3.4, 12, 8), mat(0x6cc04a), -4, 25.5, 1, g).castShadow = false;
+  box(5, 3, 5, mat(0xf2c94c), 7, 24, 2); mesh(new THREE.CylinderGeometry(1.3, 1.3, 9, 10), mat(0x2f7a3a), 10, 37.5, 1, g).castShadow = false;
+  box(7, 4, 6, mat(0xd9a066), -7, 35.2, 0);
+  const door = new THREE.Group(); door.position.set(-14.5, 0, 11.2); g.add(door); // hinged on its left edge; rotation.y = -angle swings it out over the worktop
+  box(29, 44, 2.2, white, 14.5, 23, 0.6, door);
+  box(0.9, 12, 1.4, steel, 26.5, 24, 2.2, door);
+  for (const [x, y, c] of [[6, 33, 0xff5a4a], [15, 38, 0x4d9bff], [20, 30, 0xffc23d], [9, 20, 0x3ddc84]]) box(2.6, 2.6, 0.6, mat(c), x, y, 1.9, door);
+  box(7, 9, 0.2, mat(0xfff8ec), 14, 14, 1.8, door); // a note on the door
+  const spillTex = canvasTex(64, 128, (c, w, h) => { const gr = c.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(235,248,255,0.95)'); gr.addColorStop(0.6, 'rgba(235,248,255,0.25)'); gr.addColorStop(1, 'rgba(235,248,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+  // The light on the worktop: a fan from the open door (additive, look-only; the real brightening is done to the lights).
+  const geo = new THREE.BufferGeometry(), z0 = A.z + 22, z1 = z0 + 44;
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([-13, 0, z0, 13, 0, z0, 40, 0, z1, -40, 0, z1], 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); geo.setIndex([0, 1, 2, 0, 2, 3]);
+  const spill = mesh(geo, new THREE.MeshBasicMaterial({ map: spillTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }), 0, 10.12, 0);
+  spill.castShadow = spill.receiveShadow = false;
+  levelRoot.add(g);
+  V.door = door; V.fridgeGlow = glow; V.fridgeSpill = spill;
+}
+function fridgeUpdate(dt) {
+  const F = state.finale, S = F.stage2, V = finVis;
+  if (!V || !V.door) return;
+  const fr = S.fridge ||= { phase: 0, t: 0, ang: 0, lk: 1, cool: 0 };
+  if (F.stage === 'war') {
+    if (fr.phase === 0 && state.time >= FRIDGE.at) {
+      fr.phase = 1; fr.t = 0; F.cine = 3.2;
+      banner('THE FRIDGE OPENS!', `Light floods the worktop for ${FRIDGE.open} seconds`); bannerTimer = 3.5;
+      sfx('fridgeOpen');
+    } else if (fr.phase === 1 && (fr.t += dt) >= FRIDGE.open) {
+      fr.phase = 2; fr.v = 0;
+    }
+  }
+  if (fr.phase === 1) fr.ang = FRIDGE.ang * (1 - (1 - Math.min(1, fr.t / FRIDGE.swing)) ** 2);
+  else if (fr.phase === 2) { // slam: it accelerates shut
+    fr.v += 40 * dt; fr.ang = Math.max(0, fr.ang - fr.v * dt);
+    if (fr.ang <= 0) {
+      fr.phase = 3; sfx('clunk'); state.shake = Math.min(2, (state.shake || 0) + 1.6);
+      banner('SLAM!', 'The fridge shuts. The kitchen is darker now'); bannerTimer = 3.5;
+      burst(V.fridgeAt.x, V.fridgeAt.z + 20, 0xfff3d6, 24, 22, 11);
+    }
+  }
+  V.door.rotation.y = -fr.ang;
+  const open = fr.ang > 0.04;
+  V.fridgeGlow.material.opacity = open ? Math.min(1, fr.ang / 0.8) : 0;
+  V.fridgeSpill.material.opacity = open ? Math.min(0.55, fr.ang / 1.2) * (0.85 + 0.15 * Math.sin(state.time * 9)) : 0;
+  // The existing lights, brightened while it is open and dimmer than before after the slam.
+  if (!F.ending) {
+    const target = fr.phase === 1 ? FRIDGE.bright : fr.phase >= 2 ? FRIDGE.dark : 1, rate = fr.phase === 1 ? 3 : fr.phase === 2 ? 14 : 2;
+    fr.lk += (target - fr.lk) * (1 - Math.exp(-rate * dt));
+    const coolT = fr.phase === 1 ? 1 : 0; fr.cool += (coolT - fr.cool) * (1 - Math.exp(-3 * dt));
+    applyLights(fr.lk, fr.cool);
+  }
+}
+function applyLights(k, cool, warmFlick = 0) {
+  hemi.intensity = LIGHT_BASE.hemi * k; sun.intensity = LIGHT_BASE.sun * k;
+  hemi.color.copy(lightCols.warmH).lerp(lightCols.coolH, cool); sun.color.copy(lightCols.warmS).lerp(lightCols.coolS, cool);
+  if (warmFlick) { hemi.color.lerp(lightCols.flickH, warmFlick); sun.color.lerp(lightCols.flickS, warmFlick); }
+  if (finRig) finRig.children.forEach((l, i) => { l.intensity = LIGHT_BASE.pts[i] * k; });
 }
 
 // ---------- Main loop ----------
@@ -5412,10 +5494,11 @@ function render(dt) {
   // Camera: high and angled, leading the way you're going. Pulls back on tall screens.
   const p = state.player;
   if (p) {
-    const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1) * (state.finale?.peek ? 1.2 : 1); // level 6 pulls the camera back to read the bigger space
+    const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1) * (state.finale?.peek || state.finale?.cine > 0 ? 1.2 : 1); // level 6 pulls the camera back to read the bigger space
     // Keep the view on the table: near an edge the car moves off-centre instead of the camera showing the dark beyond.
     const lead = new THREE.Vector3(p.x + p.vx * 0.35, 0, p.z + p.vz * 0.35);
     if (state.finale?.peek) { lead.x = 74; lead.z = -4; } // level 6: hold the Peek button to look at Red's side
+    else if (state.finale?.cine > 0) { state.finale.cine -= dt; lead.x = 0; lead.z = -30; } // level 6: the camera glances at the fridge as its door opens
     lead.x = Math.max(-W / 2 + 30, Math.min(W / 2 - 30, lead.x));
     lead.z = Math.max(-D / 2 + 22, Math.min(D / 2 - 14, lead.z));
     camTarget.lerp(lead, 1 - Math.exp(-4 * dt));
