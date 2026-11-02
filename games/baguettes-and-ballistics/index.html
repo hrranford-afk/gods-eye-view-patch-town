@@ -419,7 +419,7 @@ const darkNow = () => !!LEVELS[curLevel].dark;
 const glowTex = () => shared('glowTex', () => {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.95, 'rgba(255,255,255,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(c);
 });
@@ -458,7 +458,7 @@ function makeDarkRig() {
   const spot = new THREE.SpotLight(0xfff0cf, 2.6, 62, 0.62, 0.65, 1.1);
   group.add(spot, spot.target);
   const point = (color, I, dist) => { const l = new THREE.PointLight(color, I, dist, 1.4); group.add(l); return l; };
-  return { group, spot, blue: point(0x6fa4ff, 1.0, 40), red: point(0xff5a4a, 1.0, 40), torch: point(0xffe9b0, 1.6, 34), flare: point(0xffb060, 0, 70) };
+  return { group, spot, blue: point(0x6fa4ff, 1.0, 40), red: point(0xff5a4a, 1.0, 40), torch: point(0xffe9b0, 1.2, 34), flare: point(0xffb060, 0, 70) };
 }
 function setLighting(dark) {
   hemi.color.setHex(dark ? 0x7a90e0 : 0xfff4e0); hemi.groundColor.setHex(dark ? 0x1a2248 : 0x5a3d26);
@@ -521,8 +521,8 @@ const DRAWER_KINDS = {
     const grip = mesh(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 5, 14), mat(0x22252b), x, r, z - 1.5 - 1); grip.rotation.x = Math.PI / 2;
     const head = mesh(new THREE.CylinderGeometry(r * 1.45, r * 1.05, 3.6, 16), mat(0x2b2f36, { metalness: 0.5 }), x, r, ez - 1.8); head.rotation.x = Math.PI / 2;
     const lens = mesh(new THREE.CylinderGeometry(r * 1.2, r * 1.2, 0.3, 16), basicMat(0xfff6d0), x, r, ez + 0.05); lens.rotation.x = Math.PI / 2; lens.castShadow = false;
-    lightPool(meshParent, 0xffe9a8, 22, 46, x, ez + 14, 0.55);   // the beam
-    lightPool(meshParent, 0xfff3c8, 14, 14, x, ez + 2, 0.5);
+    lightPool(meshParent, 0xffe9a8, 20, 40, x, ez + 12, 0.3);   // the beam
+    lightPool(meshParent, 0xfff3c8, 14, 14, x, ez + 2, 0.3);
     torchPos = { x, z: ez + 4 };
   },
 };
@@ -556,10 +556,56 @@ function darkUpdate(dt) {
   rig.spot.target.position.set(p.x + Math.cos(p.heading) * 18, 0, p.z + Math.sin(p.heading) * 18);
   rig.blue.position.set(state.bases[BLUE].x, 11, 0);
   rig.red.position.set(state.bases[RED].x, 11, 0);
-  rig.torch.intensity = torchPos ? 1.6 : 0;
+  const nf = flares[flares.length - 1];
+  rig.flare.intensity = nf ? 2.4 * Math.min(1, nf.R / FLARE_R) : 0;
+  if (nf) rig.flare.position.set(nf.x, 6 + nf.y, nf.z);
+  rig.torch.intensity = torchPos ? 1.2 : 0;
   if (torchPos) rig.torch.position.set(torchPos.x, 4, torchPos.z);
 }
 
+// ---------- The Flare (level 3): a bright ball you fire ahead; it lights a big circle for 15 s and shows hidden enemies there ----------
+const FLARE_COST = 8, FLARE_LIFE = 15, FLARE_R = 30, FLARE_FLIGHT = 0.8, FLARE_MAX = 3;
+function flare() {
+  const p = state.player;
+  if (!state.level.dark || !p.alive || state.over) return;
+  if (state.time < (state.flareReady || 0)) { toast('The flare gun is reloading'); sfx('no'); return; }
+  if (state.cereal[BLUE] < FLARE_COST) { toast(`Need ${FLARE_COST} cereal`); sfx('no'); return; }
+  state.cereal[BLUE] -= FLARE_COST; state.flareReady = state.time + 2.5;
+  const tx = Math.max(-W / 2 + 4, Math.min(W / 2 - 4, p.x + Math.cos(p.heading) * 26)), tz = Math.max(-D / 2 + 4, Math.min(D / 2 - 4, p.z + Math.sin(p.heading) * 26));
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(shared('flareGeo', () => new THREE.SphereGeometry(0.9, 12, 8)), basicMat(0xfff6cf)));
+  const halo = new THREE.Sprite(shared('haloMat:flare', () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xffc070, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })));
+  halo.scale.set(11, 11, 1); g.add(halo);
+  const pool = lightPool(g, 0xffd08a, 1, 1, 0, 0, 0.55, 0.09);
+  pool.material = shared('flarePool', () => new THREE.MeshBasicMaterial({ map: shared('flareTex', () => { // a wide, even glow: it should read as "a big lit area"
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const cx = c.getContext('2d'), gr = cx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.6)'); gr.addColorStop(0.95, 'rgba(255,255,255,0)');
+    cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }), color: 0xffc47a, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  scene.add(g);
+  flares.push({ x: p.x, z: p.z, y: 1.6, sx: p.x, sz: p.z, tx, tz, age: 0, R: 10, g, halo, pool });
+  while (flares.length > FLARE_MAX) { const old = flares.shift(); scene.remove(old.g); }
+  burst(p.x, p.z, 0xffd08a, 8, 8, 2);
+  sfx('flare'); toast('Flare away! Enemies in the light show up');
+}
+function flaresUpdate(dt) {
+  for (let i = flares.length - 1; i >= 0; i--) {
+    const f = flares[i];
+    f.age += dt;
+    if (f.age >= FLARE_LIFE) { scene.remove(f.g); flares.splice(i, 1); continue; }
+    const k = Math.min(1, f.age / FLARE_FLIGHT);
+    f.x = f.sx + (f.tx - f.sx) * k; f.z = f.sz + (f.tz - f.sz) * k;
+    f.y = k < 1 ? 1.6 + 16 * k * (1 - k) * 4 : 1.8 + Math.sin(f.age * 3) * 0.25;
+    const fade = Math.max(0, Math.min(1, (FLARE_LIFE - f.age) / 3)); // dims over the last 3 s
+    f.R = Math.max(0.1, (k < 1 ? 10 : FLARE_R * Math.min(1, 0.4 + (f.age - FLARE_FLIGHT) * 1.2)) * (0.5 + 0.5 * fade)); // opens up after landing, shrinks as it dies
+    f.g.position.set(f.x, f.y, f.z);
+    f.pool.position.y = 0.09 - f.y;
+    f.pool.scale.set(f.R * 2.1, 1, f.R * 2.1);
+    f.halo.scale.setScalar((9 + Math.sin(f.age * 17) * 0.8) * (0.4 + 0.6 * fade));
+  }
+}
 function drawerDecor() {
   // The drawer's wooden sides (looks only: cars are kept on the table anyway) and a couple of stray bits.
   const wood = mat(0x4a3220, { roughness: 0.8 });
@@ -1317,6 +1363,8 @@ function reset() {
   if (state.bases?.[RED]?.bubble) { scene.remove(state.bases[RED].bubble); state.bases[RED].bubble = null; }
   $('banner').hidden = true; bannerTimer = 0;
   if (gumball) { scene.remove(gumball.group); gumball = null; }
+  for (const f of flares) scene.remove(f.g);
+  flares.length = 0;
   for (const t of traps) scene.remove(t.mesh); for (const m of marbles) scene.remove(m.mesh);
   traps.length = marbles.length = 0;
   piles.length = spills.length = 0;
@@ -1325,7 +1373,7 @@ function reset() {
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
-    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, nextLayer: 180, nextHijack: 150, dominoHitAt0: -9, dominoHitAt1: -9, unlocked: new Set(L.start.unlocked), water: L.water || null, nextDrip: 6, nextBoat: 75, drip: null,
+    level: L, cereal: [L.start.cereal, L.start.cereal], freeTruck: [45, 45], trucksLost: 0, spawned: [0, 0], clips: [L.start.clips, L.start.clips], nextRaid: L.rules.firstRaid || L.rules.raidEvery || 0, boss: null, time: 0, over: false, shake: 0, aiClock: 0, plates: 0, nextLayer: 180, nextHijack: 150, dominoHitAt0: -9, dominoHitAt1: -9, unlocked: new Set(L.start.unlocked), water: L.water || null, nextDrip: 6, nextBoat: 75, drip: null, flareReady: 0,
     bases: [makeBase(BLUE), makeBase(RED)], respawn: 0,
   });
   for (const [x, z, y] of L.outposts) outposts.push(makeOutpost(x, z, y));
@@ -1366,7 +1414,7 @@ addEventListener('keydown', (e) => {
   input.keys.add(e.code);
   if (e.code === 'Digit1') build('gun'); if (e.code === 'Digit2') build('rocket');
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
-  if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
+  if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
   if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
@@ -1382,6 +1430,7 @@ tap('bGun', () => build('gun'));
 tap('bRocket', () => build('rocket'));
 tap('bStaple', () => build('staple'));
 tap('bLaser', () => build('laser'));
+tap('bFlare', () => flare());
 tap('bArmour', () => armour());
 tap('bMagnet', () => build('magnet'));
 tap('bDomino', () => placeDomino());
@@ -1449,6 +1498,7 @@ const SOUNDS = {
   scrape: () => noise('bandpass', 500, 300, 0.12, 0.18, 0, 2), // an eraser sliding
   plip: () => { tone('sine', 1500, 480, 0.2, 0.11); tone('sine', 2400, 900, 0.07, 0.07, 0.04); noise('bandpass', 2600, 1200, 0.06, 0.09, 0.02, 2); }, // a drip lands in the sink
   quack: () => [0, 0.2].forEach((d) => { tone('sawtooth', 520, 330, 0.12, 0.14, d); tone('square', 262, 165, 0.06, 0.14, d); }), // the Rubber Duck
+  flare: () => { noise('highpass', 3000, 6500, 0.12, 0.4); tone('sawtooth', 300, 1500, 0.05, 0.45); tone('sine', 1800, 700, 0.04, 0.3, 0.3); }, // a flare whooshes up
   bubble: () => { tone('sine', 400, 1100, 0.1, 0.18); tone('sine', 600, 1500, 0.05, 0.14, 0.05); }, // a big bubble floats out
 };
 function sfx(kind) {
@@ -2191,6 +2241,7 @@ function updateCosts() {
   $('rocketCost').textContent = priceText('rocket');
   $('stapleCost').textContent = priceText('staple');
   $('darkRow').hidden = !state.level.dark;
+  $('flareCost').textContent = FLARE_COST;
   $('laserCost').textContent = priceText('laser');
   $('clipsRow').hidden = !hasClips();
   $('bBoat').hidden = !state.level.boats;
@@ -2749,6 +2800,7 @@ function update(dt) {
   collideMovers();
   erasersUpdate(dt);
   dominoesUpdate(dt);
+  if (flares.length) flaresUpdate(dt);
   const R = state.level.rules;
   if (R.raidEvery && state.time >= state.nextRaid) { state.nextRaid += R.raidEvery; spawnRaid(); }
   if (R.boss && !state.boss && state.time >= R.boss.at) spawnBoss();
