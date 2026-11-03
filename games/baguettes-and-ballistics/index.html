@@ -6344,7 +6344,10 @@ function krScene(K, lv, R) {
   const mI = B(M, N.mwIn), mx = mI.x, mz = mI.z;
   const fadeMw = new THREE.Group(); // its walls go see-through as you drive in, so you see the glowing inside
   kBox(fadeMw, 30, 1.6, 30, 0xe4e7eb, mx - 15, 17.2, mz); kBox(fadeMw, 1.6, 18, 30, 0xe4e7eb, mx - 29.2, 9, mz);
-  kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz - 14); kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz + 14); kBox(fadeMw, 20, 11, 0.4, 0x1c1f24, mx - 17, 9.5, mz + 15.1);
+  kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz - 14); kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz + 14); kBox(fadeMw, 20, 11, 0.4, 0x1c1f24, mx - 17, 9.5, mz + 15.1); kBox(fadeMw, 6, 13, 0.5, 0x2b2f36, mx - 3.5, 9, mz + 15.2);
+  kAdd(src, new THREE.PlaneGeometry(17, 8.5), 0xffffff, mx - 17, 9.5, mz + 15.45, 0, 0, 0, kMat('mwWin', () => new THREE.MeshBasicMaterial({ color: 0xffd36a }))).userData.ns = 1; // the lit window
+  kAdd(src, new THREE.PlaneGeometry(4.5, 2), 0xffffff, mx - 3.5, 13, mz + 15.55, 0, 0, 0, kMat('clockMat', () => new THREE.MeshBasicMaterial({ map: kTex.clock() }))).userData.ns = 1;
+  for (let k = 0; k < 6; k++) kBox(src, 1.2, 1, 0.4, 0xd5d9de, mx - 4.6 + (k % 2) * 2.2, 9.5 - (k >> 1) * 1.8, mz + 15.5);
   kBox(src, 30, 1, 28, 0xffe9a0, mx - 15, 0.5, mz, 0, 0, 0, kMat('mwFloor', () => kMt(0xffe9a0, { emissive: 0xffc94a, emissiveIntensity: 0.35 })));
   kBox(src, 1, 16, 5, 0x15171b, mx + 0.4, 9, mz + 9, 0, 0, 0, kShiny()); kAdd(src, new THREE.PlaneGeometry(4, 2), 0xffffff, mx + 1, 13, mz + 9, Math.PI / 2, 0, 0, kMat('clockMat', () => new THREE.MeshBasicMaterial({ map: kTex.clock() }))).userData.ns = 1;
   K.mwGlow = kMat('mwGlow', () => kMt(0xffe9a0, { emissive: 0xffc94a, emissiveIntensity: 0.6 }));
@@ -6368,7 +6371,7 @@ function krScene(K, lv, R) {
   for (const [fg, box, key] of [[fadeRoll, [tA.x - 2, tB.x + 2, tA.z - 10, tA.z + 10], 'fadeA'], [fadeFridge, [fx0, fx1, fz - 15, fz + 15], 'fadeB'], [fadeMw, [mx - 30, mx + 4, mz - 15, mz + 15], 'fadeC']]) {
     const fm = kMat(key, () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.2, transparent: true, opacity: 1, side: THREE.DoubleSide }));
     fm.opacity = 1; fg.traverse((o) => { if (o.isMesh) o.material = fm; });
-    kMerge(fg, grp); K.fades.push({ m: fm, box });
+    kMerge(fg, grp); K.fades.push({ m: fm, box, lo: key === 'fadeC' ? 0.5 : 0.18 }); // (the microwave stays half there, so you can tell what it is)
   }
   kMerge(src, grp);
 }
@@ -6654,7 +6657,7 @@ function krCam(dt) {
   camera.lookAt(camTarget.x, K.camY, camTarget.z + 2);
   sun.position.set(camTarget.x - 40, K.camY + 80, camTarget.z + 30); sun.target.position.set(camTarget.x, K.camY, camTarget.z); sun.target.updateMatrixWorld();
   if (K.flash > 0) { K.flash = Math.max(0, K.flash - dt * 2.2); krFlashEl.style.opacity = String(Math.min(1, K.flash * 1.3)); }
-  for (const f of K.fades) { const [x0, x1, z0, z1] = f.box, inside = p.x > x0 - 4 && p.x < x1 + 4 && p.z > z0 - 2 && p.z < z1 + 6 && p.y < 8; f.m.opacity += ((inside ? 0.18 : 1) - f.m.opacity) * Math.min(1, dt * 8); f.m.depthWrite = f.m.opacity > 0.95; }
+  for (const f of K.fades) { const [x0, x1, z0, z1] = f.box, inside = p.x > x0 - 4 && p.x < x1 + 4 && p.z > z0 - 2 && p.z < z1 + 6 && p.y < 8; f.m.opacity += ((inside ? f.lo : 1) - f.m.opacity) * Math.min(1, dt * 8); f.m.depthWrite = f.m.opacity > 0.95; }
   // In the air: a shadow on whatever is below (worktop, sink water or the floor far down), and a puff trail on the long flights.
   const air = p.krAir || flying;
   if (air) {
