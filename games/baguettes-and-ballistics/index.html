@@ -5996,7 +5996,7 @@ function krCourse(lv) {
   const forkR = M.pts.length - 1;
   kS(M, 3, { dy: -1.5, hw: 3.6, edge: 1, water: 1, surf: 'sponge', name: 'sink0' });
   const waves = lv === 3 ? [-30, 60, -60, 60, -60, 60, -60, 60, -30] : [-30, 60, -60, 60, -30];
-  waves.forEach((a, i) => kT(M, a, lv === 3 ? 11 : 14, { hw: 3.6, edge: 1, water: 1, surf: 'sponge', name: `sink${i + 1}` }));
+  waves.forEach((a, i) => kT(M, a, lv === 3 ? 7.2 : 14, { hw: 3.6, edge: 1, water: 1, surf: 'sponge', name: `sink${i + 1}` }));
   kS(M, Math.max(4, M.x - 104), { hw: 3.6, edge: 1, water: 1, surf: 'sponge', name: 'sinkW' });
   kS(M, 3, { dy: 1.5, hw: 3.6, edge: 1, water: 1, surf: 'sponge', name: 'sinkOut' });
   kJ(M, 96, -13, 0, Math.PI, { name: 'sinkExit' });
@@ -6237,6 +6237,8 @@ function krScene(K, lv, R) {
     const x = sq.x, z = sq.z + sd * (sq.hw + 3);
     kCyl(src, 1.6, 2, 9, 12, 0x6b3f22, x, 4.5, z); kCyl(src, 2.2, 1.6, 3, 12, 0x6b3f22, x, 10.5, z); kCyl(src, 0.6, 0.6, 2, 8, 0xc8ccd2, x, 13, z, 0, 0, 0, kShiny());
   }
+  kCyl(src, 0.7, 0.7, sq.hw * 2 + 10, 8, 0xd9a86a, sq.x, 14.2, sq.z + 2, 0, 0, Math.PI / 2); kAdd(src, shared('kr:spoonG', () => new THREE.SphereGeometry(1.3, 10, 6)), 0xd9a86a, sq.x, 14.2, sq.z - sq.hw - 6, 0, 0, 0).scale.set(1.6, 0.6, 2.4); // a wooden spoon across the mills
+  for (let k = 0; k < 7; k++) kBox(src, 0.3, 3, 2.2, k % 2 ? 0x1c1712 : 0xfff8ec, sq.x, 12, sq.z - sq.hw + 1 + k * (sq.hw * 2 - 2) / 6); // a chequered flag strip hanging from it
   // The chopping board on the bread bin; the gap; the biscuit tin and a cookbook down.
   kSlab(src, A(M, N.board), B(M, N.board), 13, 1.4, 0xdcb27c);
   kCyl(src, 1.4, 1.4, 1.6, 12, 0x5a3d26, A(M, N.board).x + 3, 0.3, A(M, N.board).z);
@@ -6344,14 +6346,14 @@ function krScene(K, lv, R) {
   kBox(fadeMw, 30, 1.6, 30, 0xe4e7eb, mx - 15, 17.2, mz); kBox(fadeMw, 1.6, 18, 30, 0xe4e7eb, mx - 29.2, 9, mz);
   kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz - 14); kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz + 14); kBox(fadeMw, 20, 11, 0.4, 0x1c1f24, mx - 17, 9.5, mz + 15.1);
   kBox(src, 30, 1, 28, 0xffe9a0, mx - 15, 0.5, mz, 0, 0, 0, kMat('mwFloor', () => kMt(0xffe9a0, { emissive: 0xffc94a, emissiveIntensity: 0.35 })));
-  kBox(src, 1, 16, 5, 0x15171b, mx + 0.4, 9, mz + 9, 0, 0, 0, kShiny()); kBox(src, 1.2, 3, 3, 0x7dff8a, mx + 0.8, 13, mz + 9, 0, 0, 0, kMat('blueGlow2', () => new THREE.MeshBasicMaterial({ color: 0x7dff8a })));
+  kBox(src, 1, 16, 5, 0x15171b, mx + 0.4, 9, mz + 9, 0, 0, 0, kShiny()); kAdd(src, new THREE.PlaneGeometry(4, 2), 0xffffff, mx + 1, 13, mz + 9, Math.PI / 2, 0, 0, kMat('clockMat', () => new THREE.MeshBasicMaterial({ map: kTex.clock() }))).userData.ns = 1;
   K.mwGlow = kMat('mwGlow', () => kMt(0xffe9a0, { emissive: 0xffc94a, emissiveIntensity: 0.6 }));
   kBox(src, 1, 15, 21, 0xffffff, mx - 28, 9, mz, 0, 0, 0, K.mwGlow); kCyl(src, 8, 8, 0.5, 24, 0xd8f0ff, mx - 14, 1.3, mz, 0, 0, 0, kMat('glassPlate', () => kMt(0xd8f0ff, { transparent: true, opacity: 0.6 })));
   kBox(src, 24, 16, 1, 0x15171b, mx + 12, 9, mz - 15, 0, 0, 0, kShiny()); kBox(src, 18, 11, 0.4, 0x40464f, mx + 12, 9, mz - 15.6, 0, 0, 0, kShiny()); // the door, swung open (to the back)
   // The oven at the far end of the main worktop: you come out of its door at the start.
   const oA = A(M, N.ovenIn), ox = B(M, N.ovenIn).x, oz = oA.z;
   kBox(src, 40, 130, FRONT - BACK, 0xd5d9de, ox - 20, -24, (FRONT + BACK) / 2, 0, 0, 0, kShiny());
-  kBox(src, 0.8, 14, 14, 0x1b1d22, ox + 0.2, 26, oz); kBox(src, 1, 4, 10, 0xffffff, ox + 0.6, 26, oz, 0, 0, 0, kTM('clock'));
+  kBox(src, 0.8, 8, 14, 0x1b1d22, ox + 0.2, 26, oz); kAdd(src, new THREE.PlaneGeometry(10, 4), 0xffffff, ox + 0.7, 26, oz, Math.PI / 2, 0, 0, kMat('clockMat', () => new THREE.MeshBasicMaterial({ map: kTex.clock() }))).userData.ns = 1;
   K.ovGlow = kMat('ovGlow', () => kMt(0xffb070, { emissive: 0xff7a1a, emissiveIntensity: 0.7 }));
   kBox(src, 1, 12, 14, 0xffffff, ox - 9, 10, oz, 0, 0, 0, K.ovGlow);
   for (const [w, h, y, z] of [[14, 3, 16.5, oz], [14, 1.5, 3.2, oz]]) kBox(src, 2, h, w + 4, 0xd5d9de, ox + 0.2, y, z, 0, 0, 0, kShiny());
