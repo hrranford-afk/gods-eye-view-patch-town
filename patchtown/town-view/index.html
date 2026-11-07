@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PatchTown - Town View (replay)</title>
+<style>
+  :root { --ink:#1d1b16; --paper:#f4ecd8; --grass:#9fbf6a; --pass:#2e9e4f; --part:#e0a526; --fail:#d2452f; --run:#3a7bd5; --idle:#8a8a8a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#2b3a2a; color:var(--ink); font-family: ui-rounded, "Segoe UI", system-ui, sans-serif; }
+  #app { display:flex; flex-direction:column; height:100%; }
+  header { background:var(--paper); padding:10px 14px; display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; border-bottom:4px solid var(--ink); }
+  header h1 { font-size:22px; margin:0; letter-spacing:.5px; }
+  #clock { font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .pill { font-size:18px; font-weight:700; padding:4px 10px; border-radius:999px; border:2px solid var(--ink); background:#fff; }
+  .pass { background:var(--pass); color:#fff; } .part { background:var(--part); } .fail { background:var(--fail); color:#fff; } .run { background:var(--run); color:#fff; }
+  #stage { flex:1; position:relative; min-height:0; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  #panel { position:absolute; right:10px; top:10px; width:min(380px, calc(100% - 20px)); background:var(--paper); border:3px solid var(--ink); border-radius:10px; padding:12px 14px; font-size:18px; line-height:1.35; display:none; max-height:calc(100% - 20px); overflow:auto; box-shadow:4px 4px 0 var(--ink); }
+  #panel h2 { margin:0 0 6px; font-size:22px; }
+  #panel .row { margin:3px 0; }
+  #panel .t { display:flex; justify-content:space-between; gap:8px; border-top:1px dashed #b9ad8e; padding:4px 0; font-size:16px; }
+  #panel button { float:right; font-size:18px; border:2px solid var(--ink); background:#fff; border-radius:6px; }
+  footer { background:var(--paper); border-top:4px solid var(--ink); padding:8px 12px 12px; }
+  #controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px; }
+  #controls button { font-size:18px; font-weight:700; padding:6px 12px; border:2px solid var(--ink); background:#fff; border-radius:8px; }
+  #controls button.on { background:var(--ink); color:var(--paper); }
+  #timeline { position:relative; height:46px; cursor:pointer; touch-action:none; }
+  #note { font-size:14px; opacity:.75; margin-top:4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>PatchTown · Town View</h1>
+    <span id="clock">--:--</span>
+    <span class="pill" id="cJobs">0 jobs</span>
+    <span class="pill pass" id="cPass">0 passed</span>
+    <span class="pill part" id="cPart">0 partial</span>
+    <span class="pill fail" id="cFail">0 failed</span>
+    <span class="pill run" id="cRun">0 working</span>
+  </header>
+  <div id="stage">
+    <canvas id="town"></canvas>
+    <div id="panel"></div>
+  </div>
+  <footer>
+    <div id="controls">
+      <button id="play">⏸ Pause</button>
+      <button data-speed="60">1 min/s</button>
+      <button data-speed="600" class="on">10 min/s</button>
+      <button data-speed="3600">1 hour/s</button>
+      <button id="toEnd">Jump to now ⏭</button>
+    </div>
+    <canvas id="timeline"></canvas>
+    <div id="note"></div>
+  </footer>
+</div>
+
+<!-- The town's real job log, made by tools/export_jobs.py. Replaced by tools/inline_data.py. -->
+<script id="jobs-data" type="application/json">__JOBS_DATA__</script>
+
+<script>
+(() => {
+'use strict';
+// ---------- data ----------
+let DATA;
+try { DATA = JSON.parse(document.getElementById('jobs-data').textContent); }
+catch (e) { DATA = { jobs: [], machines: ['mini','radeon','dell','mill'] }; }
+const t = s => s ? Date.parse(s) / 1000 : null;
+const JOBS = DATA.jobs.map(j => ({ ...j, t0: t(j.started) ?? t(j.finished), t1: t(j.finished) }))
+                      .filter(j => j.t0 != null).sort((a,b) => a.t0 - b.t0);
+
+// Visual timings, in town seconds. Work time comes from the log; walking is for the eye only.
+const WALK = 240, TEST = 300;
+const STATUS_COL = { PASS:'#2e9e4f', PARTIAL:'#e0a526', FAILED:'#d2452f', RUNNING:'#3a7bd5' };
+const TEST_COL = { PASS:'#2e9e4f', FAIL:'#d2452f', UNTESTED:'#9a9a9a' };
+
+const tStart = JOBS.length ? JOBS[0].t0 - 600 : Date.now()/1000 - 3600;
+const tEndLog = JOBS.length ? Math.max(...JOBS.map(j => (j.t1 ?? j.t0) + 2*WALK + TEST)) : tStart + 3600;
+const tEnd = tEndLog + 300;
+
+// ---------- the map (grid units, isometric) ----------
+const PLACES = {
+  hall:   { x:6,  y:1.5, w:3, d:2, h:2.2, roof:'#b5523b', wall:'#e8d6b0', name:'Town Hall', sub:'job board' },
+  mini:   { x:0.5,y:6,   w:2, d:2, h:1.6, roof:'#5e7fa8', wall:'#dfe6ef', name:'Mini',   sub:'town hall machine', machine:'mini' },
+  radeon: { x:4,  y:6,   w:2, d:2, h:2.0, roof:'#c0392b', wall:'#f0d9d5', name:'Radeon', sub:'painter & fast talk', machine:'radeon' },
+  dell:   { x:7.5,y:6,   w:2, d:2, h:2.4, roof:'#2f6f4f', wall:'#d9ead9', name:'Dell',   sub:'big thinker', machine:'dell' },
+  mill:   { x:11, y:6,   w:2, d:2, h:1.8, roof:'#7a5a3a', wall:'#eadcc8', name:'Mill',   sub:'small models', machine:'mill' },
+  test:   { x:3,  y:11,  w:2.5, d:2, h:0.9, roof:'#555', wall:'#cfcfcf', name:'Test Yard', sub:'checks run here' },
+  archive:{ x:9,  y:11,  w:3, d:2, h:1.4, roof:'#6b5b95', wall:'#e2dcef', name:'Receipts', sub:'every job leaves one' },
+};
+const door = p => ({ x: p.x + p.w/2, y: p.y + p.d + 0.4 });
+const MACHINES = ['mini','radeon','dell','mill'];
+
+// ---------- canvas & projection ----------
+const cv = document.getElementById('town'), cx = cv.getContext('2d');
+let TW = 64, TH = 32, OX = 0, OY = 0, DPR = 1;
+function fit() {
+  DPR = window.devicePixelRatio || 1;
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * DPR; cv.height = r.height * DPR;
+  // Fit the ground diamond (-1..15 both ways, plus room for roofs and labels) to the screen.
+  // At scale 1 (TW=64): width = 16*64 = 1024, height = 16*32 + 3.5*32 (labels above roofs) = 624.
+  const s = Math.min(r.width / 1024, r.height / 624) * 0.97;
+  TW = 64 * s; TH = 32 * s;
+  // ground's left/right corners are iso(-1,15)/iso(15,-1); centre them. Top corner iso(-1,-1).
+  OX = r.width / 2;
+  const mapH = 624 * s;
+  OY = (r.height - mapH) / 2 + 3.5 * TH + TH;
+  drawTimeline();
+}
+const iso = (x, y, z = 0) => [ (x - y) * TW/2 + OX, (x + y) * TH/2 + OY - z * TH ];
+
+function poly(pts, fill, stroke = '#1d1b16') {
+  cx.beginPath(); pts.forEach(([a,b],i) => i ? cx.lineTo(a,b) : cx.moveTo(a,b)); cx.closePath();
+  cx.fillStyle = fill; cx.fill(); cx.lineWidth = Math.max(1, TW/40); cx.strokeStyle = stroke; cx.stroke();
+}
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16), r = n>>16, g = (n>>8)&255, b = n&255;
+  const m = v => Math.max(0, Math.min(255, Math.round(v * f)));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+function box(p, glow) {
+  const {x,y,w,d,h} = p;
+  const A=iso(x,y+d), B=iso(x+w,y+d), C=iso(x+w,y), Aup=iso(x,y+d,h), Bup=iso(x+w,y+d,h), Cup=iso(x+w,y,h), Dup=iso(x,y,h);
+  poly([A,B,Bup,Aup], shade(p.wall, glow ? 1.0 : 0.82));
+  poly([B,C,Cup,Bup], shade(p.wall, glow ? 0.85 : 0.68));
+  poly([Aup,Bup,Cup,Dup], glow ? p.roof : shade(p.roof, 0.75));
+  // windows on the front face: lit when busy, dark when idle
+  const n = Math.max(2, Math.round(w * 2));
+  for (let i = 0; i < n; i++) {
+    const fx = x + (i + 0.3) * w / n, fw = w / n * 0.4;
+    const q = [iso(fx, y+d, h*0.35), iso(fx+fw, y+d, h*0.35), iso(fx+fw, y+d, h*0.7), iso(fx, y+d, h*0.7)];
+    poly(q, glow ? '#ffe27a' : '#3b4252', 'rgba(0,0,0,.4)');
+  }
+}
+function label(text, x, y, z, size, bg = '#f4ecd8', fg = '#1d1b16') {
+  const [sx, sy] = iso(x, y, z);
+  cx.font = `800 ${size}px ui-rounded, system-ui, sans-serif`;
+  const w = cx.measureText(text).width + size * 0.8, h = size * 1.45;
+  cx.fillStyle = bg; cx.strokeStyle = '#1d1b16'; cx.lineWidth = 2;
+  cx.beginPath(); cx.roundRect(sx - w/2, sy - h/2, w, h, h/3); cx.fill(); cx.stroke();
+  cx.fillStyle = fg; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, sx, sy + 1);
+}
+
+// ---------- where is each job at time T? ----------
+function lerp(a, b, k) { return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }; }
+function jobState(j, T) {
+  if (T < j.t0) return null;
+  const m = PLACES[j.machine] || PLACES.dell;
+  const hall = door(PLACES.hall), mac = door(m), test = door(PLACES.test), arch = door(PLACES.archive);
+  const walkIn = j.t1 ? Math.min(WALK, (j.t1 - j.t0) * 0.15) : WALK;
+  if (T < j.t0 + walkIn) return { phase:'walking to ' + (m.name), pos: lerp(hall, mac, (T - j.t0) / walkIn) };
+  if (!j.t1 || T < j.t1) {
+    const k = j.t1 ? (T - j.t0) / (j.t1 - j.t0) : null;
+    return { phase:'working', pos: mac, working: true, k };
+  }
+  const a = j.t1, b = a + WALK, c = b + TEST, d = c + WALK;
+  if (T < b) return { phase:'to the Test Yard', pos: lerp(mac, test, (T - a) / WALK) };
+  if (T < c) return { phase:'being tested', pos: test, testing: (T - b) / TEST };
+  if (T < d) return { phase:'filing the receipt', pos: lerp(test, arch, (T - c) / WALK) };
+  return { phase:'filed', pos: arch, filed: true };
+}
+
+// ---------- draw ----------
+let T = tStart, speed = 600, playing = true, last = performance.now(), hits = [], selected = null;
+function draw() {
+  const r = cv.getBoundingClientRect();
+  cx.setTransform(DPR,0,0,DPR,0,0);
+  cx.clearRect(0,0,r.width,r.height);
+  // ground
+  poly([iso(-1,-1), iso(15,-1), iso(15,15), iso(-1,15)], '#9fbf6a', '#6f8f4a');
+  // roads: hall -> machines -> test & archive
+  cx.lineCap = 'round'; cx.strokeStyle = '#d9c9a0'; cx.lineWidth = TW * 0.35;
+  const road = (a, b) => { const [x1,y1] = iso(a.x,a.y), [x2,y2] = iso(b.x,b.y); cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x2,y2); cx.stroke(); };
+  for (const k of MACHINES) { road(door(PLACES.hall), door(PLACES[k])); road(door(PLACES[k]), door(PLACES.test)); }
+  road(door(PLACES.test), door(PLACES.archive));
+
+  // who is where right now
+  const states = [];
+  const busy = {};
+  for (const j of JOBS) {
+    const s = jobState(j, T);
+    if (!s) continue;
+    states.push([j, s]);
+    if (s.working) busy[j.machine] = (busy[j.machine] || []).concat(j);
+  }
+
+  // buildings, back to front
+  const order = Object.entries(PLACES).sort((a,b) => (a[1].x + a[1].y) - (b[1].x + b[1].y));
+  for (const [k, p] of order) {
+    const glow = p.machine ? !!busy[k] : true;
+    box(p, glow);
+    const fs = Math.max(13, TW * 0.32);
+    label(p.name, p.x + p.w/2, p.y + p.d/2, p.h + 1.0, fs);
+    if (p.machine) {
+      const b = busy[k];
+      if (b) label(`WORKING · ${b[0].model || 'model UNKNOWN'}`, p.x + p.w/2, p.y + p.d/2, p.h + 0.35, fs * 0.72, '#3a7bd5', '#fff');
+      else label('IDLE', p.x + p.w/2, p.y + p.d/2, p.h + 0.35, fs * 0.72, '#8a8a8a', '#fff');
+    }
+  }
+
+  // filed receipts stack up in the archive as little coloured crates
+  hits = [];
+  const filed = states.filter(([,s]) => s.filed);
+  filed.forEach(([j], i) => {
+    const P = PLACES.archive, col = i % 6, row = Math.floor(i / 6);
+    const x = P.x + 0.25 + col * 0.45, y = P.y + P.d + 0.9 + (row % 3) * 0.45, z = Math.floor(row / 3) * 0.3;
+    const s = 0.18;
+    poly([iso(x-s,y+s,z), iso(x+s,y+s,z), iso(x+s,y+s,z+0.35), iso(x-s,y+s,z+0.35)], STATUS_COL[j.status] || '#999');
+    poly([iso(x+s,y+s,z), iso(x+s,y-s,z), iso(x+s,y-s,z+0.35), iso(x+s,y+s,z+0.35)], shade((STATUS_COL[j.status]||'#999999'), .75));
+    poly([iso(x-s,y+s,z+0.35), iso(x+s,y+s,z+0.35), iso(x+s,y-s,z+0.35), iso(x-s,y-s,z+0.35)], shade((STATUS_COL[j.status]||'#999999'), 1.15));
+    const [sx, sy] = iso(x, y, z + 0.2); hits.push({ j, sx, sy, r: TW * 0.25 });
+  });
+
+  // walkers (residents carrying the job)
+  const moving = states.filter(([,s]) => !s.filed).sort((a,b) => (a[1].pos.x + a[1].pos.y) - (b[1].pos.x + b[1].pos.y));
+  const slot = {};
+  for (const [j, s] of moving) {
+    const key = s.working ? 'w' + j.machine : s.testing != null ? 'test' : null;
+    let off = 0; if (key) { off = slot[key] = (slot[key] ?? -1) + 1; }
+    const px = s.pos.x + off * 0.5, py = s.pos.y + 0.3;
+    const [sx, sy] = iso(px, py, 0);
+    const u = TW * 0.16;
+    // shadow, body, head
+    cx.fillStyle = 'rgba(0,0,0,.25)'; cx.beginPath(); cx.ellipse(sx, sy, u*1.2, u*0.5, 0, 0, 7); cx.fill();
+    const bob = s.working || s.testing != null ? 0 : Math.sin(T / 9) * u * 0.25;
+    cx.fillStyle = '#3a5f8f'; cx.strokeStyle = '#1d1b16'; cx.lineWidth = 2;
+    cx.beginPath(); cx.roundRect(sx - u*0.7, sy - u*3 + bob, u*1.4, u*2.2, u*0.5); cx.fill(); cx.stroke();
+    cx.fillStyle = '#f2c9a0'; cx.beginPath(); cx.arc(sx, sy - u*3.5 + bob, u*0.75, 0, 7); cx.fill(); cx.stroke();
+    // the crate they carry: blue while unfinished, status colour after
+    const crate = j.t1 && T >= j.t1 ? (STATUS_COL[j.status] || '#999') : '#3a7bd5';
+    cx.fillStyle = crate; cx.fillRect(sx + u*0.5, sy - u*2.4 + bob, u*1.3, u*1.1); cx.strokeRect(sx + u*0.5, sy - u*2.4 + bob, u*1.3, u*1.1);
+    // tag with the works order
+    const fs = Math.max(12, TW * 0.22);
+    cx.font = `800 ${fs}px ui-rounded, system-ui, sans-serif`; cx.textAlign = 'center';
+    cx.fillStyle = '#fff'; cx.strokeStyle = '#1d1b16'; cx.lineWidth = 3;
+    cx.strokeText(j.works_order, sx, sy - u*4.6 + bob); cx.fillText(j.works_order, sx, sy - u*4.6 + bob);
+    // working: progress bar from the real start and finish times
+    if (s.working && s.k != null) {
+      const bw = u * 4, bx = sx - bw/2, by = sy + u*0.6;
+      cx.fillStyle = '#fff'; cx.fillRect(bx, by, bw, u*0.6); cx.fillStyle = '#3a7bd5'; cx.fillRect(bx, by, bw * s.k, u*0.6); cx.strokeRect(bx, by, bw, u*0.6);
+    }
+    // testing: each check lights up in turn
+    if (s.testing != null) {
+      const tests = j.tests || [];
+      const shown = Math.ceil(s.testing * Math.max(1, tests.length));
+      tests.forEach((tt, i) => {
+        cx.fillStyle = i < shown ? (TEST_COL[tt.result] || '#9a9a9a') : '#e5e5e5';
+        cx.beginPath(); cx.arc(sx - (tests.length-1) * u*0.6 + i * u*1.2, sy + u*1.1, u*0.45, 0, 7); cx.fill(); cx.stroke();
+      });
+      if (!tests.length) { cx.fillStyle = '#1d1b16'; cx.font = `700 ${fs*0.8}px system-ui`; cx.fillText('tests UNKNOWN', sx, sy + u*1.6); }
+    }
+    hits.push({ j, sx, sy: sy - u*2, r: u * 3 });
+  }
+
+  // header counts (what has happened by time T)
+  const done = JOBS.filter(j => j.t1 && j.t1 <= T);
+  const c = s => done.filter(j => j.status === s).length;
+  document.getElementById('cJobs').textContent = `${JOBS.filter(j => j.t0 <= T).length} jobs`;
+  document.getElementById('cPass').textContent = `${c('PASS')} passed`;
+  document.getElementById('cPart').textContent = `${c('PARTIAL')} partial`;
+  document.getElementById('cFail').textContent = `${c('FAILED')} failed`;
+  document.getElementById('cRun').textContent = `${Object.values(busy).flat().length} working`;
+  const d = new Date(T * 1000);
+  document.getElementById('clock').textContent = d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
+  drawCursor();
+}
+
+// ---------- timeline ----------
+const tl = document.getElementById('timeline'), tx = tl.getContext('2d');
+let tlBase = null;
+function drawTimeline() {
+  const r = tl.getBoundingClientRect(); tl.width = r.width * DPR; tl.height = r.height * DPR;
+  tx.setTransform(DPR,0,0,DPR,0,0); tx.clearRect(0,0,r.width,r.height);
+  tx.fillStyle = '#fff'; tx.fillRect(0, 8, r.width, 30); tx.strokeStyle = '#1d1b16'; tx.lineWidth = 2; tx.strokeRect(0, 8, r.width, 30);
+  const X = s => (s - tStart) / (tEnd - tStart) * r.width;
+  for (const j of JOBS) {
+    tx.fillStyle = j.t1 ? (STATUS_COL[j.status] || '#999') : '#3a7bd5';
+    tx.fillRect(X(j.t0), 12, Math.max(2, X(j.t1 ?? (j.t0 + 600)) - X(j.t0)), 22);
+  }
+  // hour ticks
+  tx.fillStyle = '#1d1b16'; tx.font = '700 12px system-ui'; tx.textAlign = 'center';
+  // one label every N hours so labels never overlap (about 60 px each)
+  const stepH = Math.max(1, Math.ceil(60 / (r.width * 3600 / (tEnd - tStart))));
+  const h0 = Math.ceil(tStart / (3600 * stepH)) * 3600 * stepH;
+  for (let h = h0; h < tEnd; h += 3600 * stepH) {
+    const x = X(h); tx.fillRect(x, 34, 1.5, 6);
+    tx.fillText(new Date(h*1000).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }), x, 8 + 38);
+  }
+  tlBase = tx.getImageData(0, 0, tl.width, tl.height);
+}
+function drawCursor() {
+  if (!tlBase) return;
+  const r = tl.getBoundingClientRect();
+  tx.setTransform(1,0,0,1,0,0); tx.putImageData(tlBase, 0, 0); tx.setTransform(DPR,0,0,DPR,0,0);
+  const x = (T - tStart) / (tEnd - tStart) * r.width;
+  tx.fillStyle = '#1d1b16'; tx.fillRect(x - 2, 2, 4, 40);
+}
+function scrub(e) {
+  const r = tl.getBoundingClientRect();
+  T = tStart + Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (tEnd - tStart);
+  draw();
+}
+tl.addEventListener('pointerdown', e => { tl.setPointerCapture(e.pointerId); scrub(e); tl.onpointermove = scrub; });
+tl.addEventListener('pointerup', () => { tl.onpointermove = null; });
+
+// ---------- details panel ----------
+const panel = document.getElementById('panel');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const U = v => v == null || v === '' ? '<b>UNKNOWN</b>' : esc(v);
+function show(j) {
+  selected = j;
+  const mins = j.seconds != null ? (j.seconds / 60).toFixed(1) + ' min' : null;
+  const tests = (j.tests || []).map(tt => `<div class="t"><span>${esc(tt.name)}</span><b style="color:${TEST_COL[tt.result]||'#555'}">${esc(tt.result)}</b></div>`).join('')
+              || '<div class="row">Tests: <b>UNKNOWN</b> (the receipt only covers the latest try)</div>';
+  panel.innerHTML = `<button id="x">✕</button><h2>${esc(j.works_order)}</h2>
+    <div class="row">Status: <b style="color:${STATUS_COL[j.status]||'#555'}">${esc(j.status)}</b></div>
+    <div class="row">Who: ${U(j.worker)}</div>
+    <div class="row">Machine: ${U(j.machine)} · Model: ${U(j.model)}</div>
+    <div class="row">Time: ${U(mins)}</div>
+    <div class="row">Made: ${j.files.length ? j.files.map(f => esc(f.split('/').pop())).join(', ') : '<b>nothing</b>'}</div>
+    ${j.summary ? `<div class="row"><i>${esc(j.summary)}</i></div>` : ''}
+    ${tests}
+    <div class="row" style="font-size:14px;opacity:.7">Receipt: ${U(j.receipt)}</div>`;
+  panel.style.display = 'block';
+  document.getElementById('x').onclick = () => { panel.style.display = 'none'; selected = null; };
+}
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, bd = 1e9;
+  for (const h of hits) { const d = Math.hypot(h.sx - x, h.sy - y); if (d < h.r && d < bd) { bd = d; best = h; } }
+  if (best) show(best.j);
+});
+
+// ---------- controls ----------
+const playBtn = document.getElementById('play');
+playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶ Play'; };
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => {
+  speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach(o => o.classList.toggle('on', o === b));
+});
+document.getElementById('toEnd').onclick = () => { T = tEndLog; draw(); };
+
+// honest note on what this view does and does not cover
+const machinesUsed = new Set(JOBS.map(j => j.machine));
+const idle = MACHINES.filter(m => !machinesUsed.has(m)).map(m => PLACES[m].name);
+document.getElementById('note').textContent =
+  `Replay of the real job log (${DATA.source || 'source UNKNOWN'}), made ${DATA.made || 'UNKNOWN'}. ` +
+  `Shows works orders only; other work (renders, railway, the Mill crew) is not drawn yet. ` +
+  (idle.length ? `No works orders reached: ${idle.join(', ')}.` : '');
+
+// ---------- loop ----------
+function tick(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (playing) { T += dt * speed; if (T > tEnd) T = tStart; }
+  draw();
+  requestAnimationFrame(tick);
+}
+window.addEventListener('resize', fit);
+// test hook for the robot check
+window.__town = { jobs: JOBS, setTime: s => { T = s; draw(); }, tStart, tEnd, pause: () => { playing = false; } };
+fit(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
