@@ -279,7 +279,9 @@ const BLUE = 0, RED = 1;
 const COLORS = [0x2f7df6, 0xef4136];
 const $ = (id) => document.getElementById(id);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// AR hook: a transparent canvas is needed to see the camera feed in AR; only ask for one when WebXR exists (no change in plain Safari/desktop). The AR mode itself is the last <script> ("AR mode").
+const AR = { on: false, placed: false, sparkCap: 400 }; // AR.on is true only while an immersive-ar session is running
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: !!navigator.xr });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2158,15 +2160,16 @@ function reset() {
 // ---------- Input ----------
 const input = { x: 0, z: 0, fire: false, keys: new Set() };
 let stickId = null, stickX = 0, stickY = 0;
-renderer.domElement.addEventListener('pointerdown', (e) => {
+function stickDown(e) {
   // A new touch on the left always takes the stick. (It used to be ignored while an older touch was "still down";
   // iPad Safari sometimes never reports that older touch lifting, which froze the steering for the rest of the game.)
   if (e.clientX > innerWidth * 0.5) return;
   stickId = e.pointerId; stickX = e.clientX; stickY = e.clientY;
-  try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) { /* not supported: fine */ }
+  try { (e.currentTarget || renderer.domElement).setPointerCapture(e.pointerId); } catch (err) { /* not supported: fine */ }
   Object.assign($('stick').style, { left: `${stickX}px`, top: `${stickY}px` });
   $('stick').hidden = false; $('knob').style.transform = ''; $('hint').hidden = true;
-});
+}
+renderer.domElement.addEventListener('pointerdown', stickDown); // (AR mode adds the same handler to its own touch layer)
 addEventListener('pointermove', (e) => {
   if (e.pointerId !== stickId) return;
   let dx = e.clientX - stickX, dy = e.clientY - stickY;
@@ -2457,7 +2460,7 @@ function disposeTree(obj) {
   });
 }
 function burst(x, z, color, n = 12, power = 10, y = 1.5) {
-  if (parts.length > (state.finale ? 150 : 400)) n = Math.min(n, 2); // a big fight already has plenty of sparks (level 6: fewer, each one is a draw call)
+  if (parts.length > (AR.on ? AR.sparkCap : state.finale ? 150 : 400)) n = Math.min(n, 2); // a big fight already has plenty of sparks (level 6: fewer, each one is a draw call)
   for (let i = 0; i < n; i++) {
     const m = new THREE.Mesh(sparkGeo(), basicMat(color));
     m.position.set(x, y, z);
@@ -5703,7 +5706,7 @@ function raceUpdate(dt) {
   }
   const go = racing && R.hold <= 0;
   // You
-  let ix = input.x, iz = input.z;
+  let [ix, iz] = AR.on ? arStick() : [input.x, input.z]; // AR hook: the stick turned to the way the iPad looks
   if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
   if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
   if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
@@ -6656,7 +6659,7 @@ function krUpdate(dt) {
     if (n !== R.lastN) { R.lastN = n; if (n > 0) { banner(String(n), 'THE KITCHEN RUN: drive through tokens to win tools. Shortcuts are risky!'); sfx('tick'); } else { banner('GO!', 'Follow the tape: ramps, jumps, the toaster, the microwave...'); bannerTimer = 1.4; sfx('respawn'); } }
   }
   const go = state.phase === 'race' && R.hold <= 0;
-  let ix = input.x, iz = input.z;
+  let [ix, iz] = AR.on ? arStick() : [input.x, input.z]; // AR hook: the stick turned to the way the iPad looks
   if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
   if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
   if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
@@ -6723,12 +6726,13 @@ function krCam(dt) {
 SOUNDS.ding = () => { tone('sine', 1568, 1568, 0.16, 0.9); tone('sine', 2093, 2093, 0.08, 0.7, 0.01); };
 
 let last = performance.now();
-function step(now) {
-  requestAnimationFrame(step);
+function step(now, xrFrame) {
+  if (!AR.on) requestAnimationFrame(step); else if (!xrFrame) return; // AR hook: inside an XR session the XR animation loop calls step (with the frame); a stray rAF call ends here
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   state.dt = dt;
-  if (!state.over && $('start').hidden) update(dt);
+  if (AR.on) arFrame(xrFrame, dt); // AR hook: head pose, hit test, the world's place on the table
+  if (!state.over && $('start').hidden && !(AR.on && !AR.placed)) update(dt); // (AR: the game waits until the table is chosen)
   render(dt);
 }
 
@@ -6758,7 +6762,7 @@ function update(dt) {
   if (toasters.length) toastersUpdate(dt);
   // Player
   if (p.alive) {
-    let ix = input.x, iz = input.z;
+    let [ix, iz] = AR.on ? arStick() : [input.x, input.z]; // AR hook: the stick turned to the way the iPad looks
     if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
     if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
     if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
@@ -7043,7 +7047,7 @@ function render(dt) {
   mixArrowDraw();
   if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
   if (state.level?.dark) darkUpdate(dt);
-  renderer.render(scene, camera);
+  if (AR.on) arRender(); else renderer.render(scene, camera); // AR hook
 }
 
 function resize() {
@@ -7576,4 +7580,313 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'Escape') talkClose(true);
 }, true);
 // ===================== end of Characters and dialogue =====================
+</script>
+<script>
+// ===================== AR mode =====================
+// Put the toy war on a real table. Standard WebXR 'immersive-ar' (hit-test + dom-overlay), as given by
+//   (a) WebXRKit / the HelloXR iOS app (an ARKit -> WebXR polyfill in a WKWebView), and (b) Android Chrome.
+// Self-contained: this block, a few small hooks marked "AR hook" in the main script (step, render, the stick,
+// burst's spark cap, the renderer's alpha flag, the `AR` object), and no cost at all while AR is off.
+// How it works: the whole 3D scene is simply scaled/turned/moved onto the table (scene.position/rotation/scale), so
+// every mesh the game adds, now or later, lands on the real table. Notes for developers: see AR.md.
+const AR_SIZE = { battle: 0.7, race: 1.2 }; // metres: the long side of the board (the Kitchen Run course is a long worktop)
+const AR_Q = [ // AR quality: pixel ratio, XR framebuffer scale, sun shadow map size (0 = no shadows), spark cap
+  { name: 'High', pr: 2, fb: 1, map: 2048, sparks: 300 },
+  { name: 'Medium', pr: 1.5, fb: 0.85, map: 1024, sparks: 150 },
+  { name: 'Low', pr: 1, fb: 0.7, map: 0, sparks: 60 },
+];
+Object.assign(AR, {
+  session: null, refSpace: null, hitSource: null, starting: false,
+  k: 1, yaw: 0, q: 1, light: 1, hasHit: false, seenHit: false,
+  hit: new THREE.Vector3(), viewM: new THREE.Matrix4(), fwd: new THREE.Vector2(0, -1),
+  hidden: [], kids: [], saved: null, sig: '', s: 0.005, cx: 0, cz: 0, gtime: 0, ptrs: new Map(),
+});
+try { const raw = localStorage.getItem('bb-ar-quality'), v = +raw; if (raw !== null && v >= 0 && v < AR_Q.length) AR.q = v | 0; } catch (e) { /* no storage: fine */ }
+const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) };
+
+// ---- UI ----
+(function arUi() {
+  const css = document.createElement('style');
+  css.textContent = `
+  #arBtn { margin-top: 10px; }
+  #arBar { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); display: grid; gap: 6px; justify-items: center; pointer-events: none; max-width: 96vw; }
+  #arHint { font-weight: 700; font-size: 17px; text-align: center; padding: 8px 14px; border-radius: 12px; background: var(--glass); color: var(--paper); text-shadow: 0 1px 0 var(--ink); }
+  #arRow { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 14px; background: var(--glass); pointer-events: auto; flex-wrap: wrap; justify-content: center; }
+  #arRow button { font: 700 14px var(--body); color: var(--paper); background: rgba(255,248,236,0.16); border: 2px solid rgba(255,248,236,0.4); border-radius: 10px; min-width: 44px; min-height: 40px; padding: 4px 10px; touch-action: manipulation; }
+  #arRow input[type=range] { width: 120px; touch-action: manipulation; }
+  #arRow label { font: 700 12px var(--body); color: var(--paper); display: flex; align-items: center; gap: 6px; }
+  #arTouch { position: fixed; inset: 0; z-index: 0; touch-action: none; pointer-events: auto; }`;
+  document.head.appendChild(css);
+  const b = document.createElement('button');
+  b.className = 'go alt'; b.id = 'arBtn'; b.hidden = true; b.innerHTML = 'AR<small>put it on your table</small>';
+  $('play').after(b);
+  b.addEventListener('click', arStart);
+  // Show the button only when this browser can do immersive AR. Never throws; the normal game is untouched otherwise.
+  try { navigator.xr && navigator.xr.isSessionSupported('immersive-ar').then((ok) => { b.hidden = !ok; }).catch(() => {}); } catch (e) { /* no XR */ }
+})();
+
+function arBuildRoot() {
+  // The DOM overlay root: every HUD element goes inside it for the session (the iOS polyfill hides everything outside the root).
+  const root = document.createElement('div'); root.id = 'arRoot'; root.style.cssText = 'position:fixed;inset:0;';
+  AR.kids = [...document.body.children].filter((el) => el !== renderer.domElement && !/^(SCRIPT|STYLE|LINK)$/.test(el.tagName) && !el.classList.contains('arkit-device-wrapper'));
+  AR.kids.forEach((el) => { el._arNext = el.nextSibling; });
+  const touch = document.createElement('div'); touch.id = 'arTouch'; root.appendChild(touch);
+  AR.kids.forEach((el) => root.appendChild(el));
+  const bar = document.createElement('div'); bar.id = 'arBar';
+  bar.innerHTML = '<div id="arHint"></div><div id="arRow"><button id="arReplace">Re-place</button><button id="arLeft" aria-label="turn left">↺</button>'
+    + '<label>Size <input type="range" id="arSize" min="25" max="300" value="100"></label><button id="arRight" aria-label="turn right">↻</button><button id="arQ"></button><button id="arExit">Exit AR</button></div>';
+  root.appendChild(bar);
+  document.body.appendChild(root);
+  AR.root = root; AR.touch = touch;
+  $('arReplace').onclick = () => { AR.placed = false; AR.ptrs.clear(); arUiSync(); };
+  $('arLeft').onclick = () => { AR.yaw += Math.PI / 12; };
+  $('arRight').onclick = () => { AR.yaw -= Math.PI / 12; };
+  $('arSize').oninput = (e) => { AR.k = (+e.target.value) / 100; };
+  $('arQ').onclick = () => { AR.q = (AR.q + 1) % AR_Q.length; try { localStorage.setItem('bb-ar-quality', String(AR.q)); } catch (err) { /* fine */ } arQuality(true); arUiSync(); };
+  $('arExit').onclick = () => { try { AR.session && AR.session.end(); } catch (e) { arEnded(); } };
+  root.addEventListener('beforexrselect', (e) => e.preventDefault()); // taps on the overlay are not XR "select" events
+  // The touch layer: tap = place (before the table is chosen); pinch/twist resize and turn; afterwards the left half is the drive stick.
+  touch.addEventListener('pointerdown', (e) => {
+    if (AR.placed) return stickDown(e);
+    AR.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
+    try { touch.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+  });
+  touch.addEventListener('lostpointercapture', endStick);
+  const gone = (e) => {
+    const p = AR.ptrs.get(e.pointerId); if (!p) return;
+    AR.ptrs.delete(e.pointerId);
+    if (e.type === 'pointerup' && AR.ptrs.size === 0 && !p.multi && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 14 && performance.now() - p.t < 700) arPlace();
+  };
+  touch.addEventListener('pointerup', gone); touch.addEventListener('pointercancel', gone);
+  touch.addEventListener('pointermove', (e) => {
+    const p = AR.ptrs.get(e.pointerId); if (!p) return;
+    if (AR.ptrs.size === 2) {
+      const [a, b] = [...AR.ptrs.values()], d0 = Math.hypot(a.x - b.x, a.y - b.y), a0 = Math.atan2(b.y - a.y, b.x - a.x);
+      p.x = e.clientX; p.y = e.clientY;
+      const d1 = Math.hypot(a.x - b.x, a.y - b.y), a1 = Math.atan2(b.y - a.y, b.x - a.x);
+      if (d0 > 20) AR.k = Math.max(0.25, Math.min(3, AR.k * d1 / d0));
+      let da = a1 - a0; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+      AR.yaw -= da; a.multi = b.multi = true;
+      $('arSize').value = String(Math.round(AR.k * 100));
+    } else { p.x = e.clientX; p.y = e.clientY; }
+  });
+  // Elements the game adds to <body> later (the hob warning, the Kitchen Run flash...) must live inside the root too.
+  AR.mo = new MutationObserver((list) => { for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1 && n !== AR.root && n !== renderer.domElement && !n.classList.contains('arkit-device-wrapper') && !/^(SCRIPT|STYLE|LINK)$/.test(n.tagName)) { AR.root.appendChild(n); AR.late = (AR.late || []).concat(n); } });
+  AR.mo.observe(document.body, { childList: true });
+}
+function arUiSync() {
+  if (!AR.root) return;
+  $('arHint').hidden = AR.placed && !AR.hintT;
+  $('arHint').textContent = !AR.placed ? (AR.hasHit ? 'Tap to put the toy war here. Pinch to resize, twist to turn.' : 'Point the iPad at your table and move it slowly. Looking for a flat surface...') : (AR.hintT || '');
+  $('arReplace').hidden = !AR.placed; $('arQ').textContent = `Quality: ${AR_Q[AR.q].name}`;
+  $('arTouch').style.cursor = AR.placed ? '' : 'crosshair';
+}
+
+// ---- start / end ----
+async function arStart() {
+  if (AR.on || AR.starting) return;
+  AR.starting = true;
+  const wasStart = !$('start').hidden;
+  try {
+    arQuality(false);
+    arBuildRoot();
+    const session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'], domOverlay: { root: AR.root },
+    });
+    AR.session = session;
+    if (!session.domOverlayState) { await session.end().catch(() => {}); throw new Error('This browser has no DOM overlay, so the game controls would not show.'); }
+    session.addEventListener('end', arEnded);
+    // Enter the AR state now; the XR loop starts once the session is wired up.
+    AR.saved = { start: wasStart, near: camera.near, far: camera.far, bodyBg: document.body.style.background, htmlBg: document.documentElement.style.background, bg: renderer.getClearAlpha() };
+    document.body.style.background = 'transparent'; document.documentElement.style.background = 'transparent';
+    camera.near = 0.01; camera.far = 30; // metres, not centimetres
+    AR.on = true; AR.placed = false; AR.hasHit = false; AR.seenHit = false; AR.sig = '';
+    AR.reticle = arMakeReticle(); scene.add(AR.reticle);
+    AR.shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.ShadowMaterial({ opacity: 0.3, depthWrite: false }));
+    AR.shadowPlane.rotation.x = -Math.PI / 2; AR.shadowPlane.receiveShadow = true; scene.add(AR.shadowPlane);
+    AR.clip = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); renderer.clippingPlanes = [AR.clip]; // nothing is drawn below the real table (the kitchen's cupboards under the worktop)
+    $('start').hidden = true;
+    renderer.xr.enabled = true;
+    renderer.xr.setReferenceSpaceType('local'); // 'local' is on in every WebXR runtime; 'local-floor' needs asking for in the polyfill
+    renderer.xr.setFramebufferScaleFactor(AR_Q[AR.q].fb);
+    await renderer.xr.setSession(session);
+    AR.refSpace = renderer.xr.getReferenceSpace();
+    const viewer = await session.requestReferenceSpace('viewer');
+    AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
+    arUiSync();
+    renderer.xr.setAnimationLoop(step); // from now on the XR frame loop drives `step`
+  } catch (err) {
+    console.warn('AR could not start:', err);
+    const msg = String(err && err.message || err);
+    arEnded();
+    try { alert('AR could not start. ' + msg); } catch (e) { /* ignore */ }
+  }
+  AR.starting = false;
+}
+function arEnded() {
+  if (!AR.root && !AR.on) { return; }
+  try { AR.hitSource && AR.hitSource.cancel && AR.hitSource.cancel(); } catch (e) { /* ignore */ }
+  const wasOn = AR.on;
+  AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null;
+  try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
+  renderer.clippingPlanes = [];
+  // The world back where it was.
+  scene.position.set(0, 0, 0); scene.rotation.set(0, 0, 0); scene.scale.set(1, 1, 1); scene.updateMatrix(); scene.updateMatrixWorld(true);
+  for (const o of [AR.reticle, AR.shadowPlane]) if (o) { scene.remove(o); o.geometry.dispose(); o.material.dispose(); }
+  AR.reticle = AR.shadowPlane = null;
+  for (const o of AR.hidden) o.visible = true;
+  AR.hidden.length = 0;
+  if (AR.saved) { camera.near = AR.saved.near; camera.far = AR.saved.far; document.body.style.background = AR.saved.bodyBg; document.documentElement.style.background = AR.saved.htmlBg; }
+  camera.updateProjectionMatrix();
+  arQuality(false, true);
+  // The page back to normal.
+  if (AR.mo) { AR.mo.disconnect(); AR.mo = null; }
+  if (AR.root) {
+    const late = AR.late || [];
+    for (let i = AR.kids.length - 1; i >= 0; i--) { const el = AR.kids[i]; document.body.insertBefore(el, el._arNext && el._arNext.parentNode === document.body ? el._arNext : null); }
+    for (const el of late) document.body.appendChild(el);
+    AR.root.remove(); AR.root = AR.touch = null; AR.kids = []; AR.late = [];
+  }
+  AR.ptrs.clear();
+  if (AR.saved && AR.saved.start && !AR.started) $('start').hidden = false; // left before ever placing: back to the title card
+  AR.placed = false; AR.started = false; AR.saved = null;
+  renderer.setClearAlpha(0); sun.target.updateMatrixWorld();
+  resize();
+  if (wasOn) { last = performance.now(); requestAnimationFrame(step); } // the normal loop again
+}
+function arMakeReticle() {
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.08, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.renderOrder = 999;
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.012, 16), new THREE.MeshBasicMaterial({ color: 0xffc23d, depthTest: false, side: THREE.DoubleSide }));
+  dot.rotation.x = -Math.PI / 2; dot.renderOrder = 999;
+  g.add(ring, dot); g.matrixAutoUpdate = false; g.visible = false;
+  // one object to dispose: share the geometry/material slots on the group
+  g.geometry = { dispose() { ring.geometry.dispose(); dot.geometry.dispose(); } };
+  g.material = { dispose() { ring.material.dispose(); dot.material.dispose(); } };
+  return g;
+}
+// AR quality: pixel ratio (applied when AR starts), shadows and spark cap (live).
+function arQuality(entering, leaving) {
+  const Q = AR_Q[AR.q];
+  if (leaving) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); AR.sparkCap = 400;
+  } else {
+    if (!AR.on) renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.pr)); // (not allowed to change mid-session)
+    sun.castShadow = Q.map > 0; sun.shadow.mapSize.set(Q.map || 1024, Q.map || 1024); AR.sparkCap = Q.sparks;
+  }
+  if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+}
+
+// ---- placing ----
+function arPlace() {
+  if (!AR.hasHit || AR.placed) return;
+  AR.placed = true; AR.reticle.visible = false;
+  AR.hintT = 'Placed. Drive with the left thumb. Re-place or Size below if it is off.';
+  clearTimeout(AR.hintTimer); AR.hintTimer = setTimeout(() => { AR.hintT = ''; arUiSync(); }, 4000);
+  if (AR.saved && AR.saved.start && !AR.started) { AR.started = true; start(); } // the title card's PLAY, now that the table is chosen
+  arUiSync();
+}
+// Which part of the world is "the board" (its centre and long side), so it can be fitted to a table.
+function arFit() {
+  const R = state.race, K = R && R.kr;
+  const sig = `${curLevel}|${W}|${D}|${K ? 'k' : 'b'}|${R ? R.group.id + ':' + R.group.children.length : 0}`;
+  if (sig === AR.sig) return;
+  AR.sig = sig;
+  let x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2, size = AR_SIZE.battle;
+  if (K && K.floors && K.floors.length) {
+    x0 = z0 = 1e9; x1 = z1 = -1e9;
+    for (const f of K.floors) { x0 = Math.min(x0, f[0]); x1 = Math.max(x1, f[1]); z0 = Math.min(z0, f[2]); z1 = Math.max(z1, f[3]); }
+    size = AR_SIZE.race;
+  }
+  AR.cx = (x0 + x1) / 2; AR.cz = (z0 + z1) / 2;
+  AR.s0 = size / Math.max(x1 - x0, z1 - z0);
+  // Room items (the Kitchen Run's floor far below and the tiled wall) don't belong in a real room.
+  for (const o of AR.hidden) o.visible = true;
+  AR.hidden.length = 0;
+  // (the kitchen's static shapes are merged, so they are told apart by size: the 700-wide floor and tiled wall, and the thin window plane on the wall)
+  if (R && R.group) R.group.traverse((o) => {
+    if (!o.isMesh || !o.visible || !o.geometry) return;
+    const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox();
+    const b = g.boundingBox, w = b.max.x - b.min.x, d = b.max.z - b.min.z;
+    if (w >= 600 || (d < 1 && b.max.z <= -84 && w > 20)) { o.visible = false; AR.hidden.push(o); }
+  });
+}
+// Every XR frame, before the game updates: the head pose, the table hit, and where the world sits.
+function arFrame(frame, dt) {
+  arFit();
+  if (frame && AR.refSpace) {
+    const pose = frame.getViewerPose(AR.refSpace), view = pose && pose.views[0];
+    if (view) {
+      AR.viewM.fromArray(view.transform.matrix);
+      camera.projectionMatrix.fromArray(view.projectionMatrix); camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+    }
+    if (!AR.placed && AR.hitSource) {
+      let ok = false;
+      const res = frame.getHitTestResults(AR.hitSource);
+      if (res.length) {
+        const p = res[0].getPose(AR.refSpace);
+        if (p) { arTmp.m.fromArray(p.transform.matrix); if (arTmp.m.elements[5] > 0.7) { AR.hit.setFromMatrixPosition(arTmp.m); ok = true; AR.seenHit = true; } } // flat enough to be a table
+      }
+      if (ok !== AR.hasHit) { AR.hasHit = ok; arUiSync(); }
+    }
+    // Light estimation, where the runtime offers it (the iOS polyfill: a non-standard getGlobalLightEstimate()).
+    if (frame.getGlobalLightEstimate && performance.now() - AR.gtime > 1000) {
+      AR.gtime = performance.now();
+      try { frame.getGlobalLightEstimate().then((pr) => { const v = pr && pr.indirectIrradiance; if (v > 0) AR.light = Math.max(0.6, Math.min(1.4, v)); }).catch(() => {}); } catch (e) { /* ignore */ }
+    }
+  }
+  if (!AR.seenHit) { // no surface yet: show it a metre ahead, a bit below the iPad, so there is something to look at
+    arTmp.v.setFromMatrixPosition(AR.viewM); arTmp.v2.set(-AR.viewM.elements[8], 0, -AR.viewM.elements[10]);
+    if (arTmp.v2.lengthSq() < 1e-4) arTmp.v2.set(-AR.viewM.elements[4], 0, -AR.viewM.elements[6]);
+    arTmp.v2.normalize().multiplyScalar(1.0); AR.hit.set(arTmp.v.x + arTmp.v2.x, arTmp.v.y - 1.1, arTmp.v.z + arTmp.v2.z);
+  }
+  // The world's place: scene = T(hit) * Ry(yaw) * S(s) * T(-centre).
+  const s = AR.s0 * AR.k;
+  arTmp.v.set(AR.cx * s, 0, AR.cz * s).applyAxisAngle(arTmp.up, AR.yaw);
+  scene.scale.setScalar(s); scene.rotation.set(0, AR.yaw, 0);
+  scene.position.copy(AR.hit).sub(arTmp.v);
+  scene.updateMatrix(); scene.matrixWorld.copy(scene.matrix);
+  AR.s = s;
+  // Projection helpers used by the HUD arrows: world-to-screen through the scene's own transform.
+  camera.matrixWorldInverse.copy(AR.viewM).invert().multiply(scene.matrixWorld);
+  // The reticle lives in real metres, so it cancels the scene's transform.
+  const ret = AR.reticle;
+  if (ret) {
+    ret.visible = !AR.placed && AR.seenHit && AR.hasHit;
+    arTmp.m.copy(scene.matrixWorld).invert().multiply(new THREE.Matrix4().makeTranslation(AR.hit.x, AR.hit.y + 0.002, AR.hit.z));
+    ret.matrix.copy(arTmp.m);
+    const pulse = 1 + Math.sin(performance.now() / 220) * 0.06; ret.matrix.scale(arTmp.v.set(pulse, pulse, pulse));
+  }
+  if (AR.clip) AR.clip.constant = -(AR.hit.y - 0.02); // world y >= table - 2 cm
+  if (AR.shadowPlane) AR.shadowPlane.position.y = table.visible ? -4.05 : -0.05;
+}
+// The stick, turned so that "up" drives away from you along the table, whichever way you stand.
+function arStick() {
+  const e = AR.viewM.elements;
+  let fx = -e[8] + e[4], fz = -e[10] + e[6]; // where the camera looks plus where its top points, flattened onto the table
+  const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
+  const c = Math.cos(AR.yaw), sn = Math.sin(AR.yaw), lx = c * fx - sn * fz, lz = sn * fx + c * fz; // into the game's own axes
+  AR.fwd.x += (lx - AR.fwd.x) * 0.2; AR.fwd.y += (lz - AR.fwd.y) * 0.2;
+  const m = Math.hypot(AR.fwd.x, AR.fwd.y) || 1, gx = AR.fwd.x / m, gz = AR.fwd.y / m, ix = input.x, iz = input.z;
+  return [-iz * gx - ix * gz, -iz * gz + ix * gx];
+}
+// The one render call in AR: no sky or fog, light estimate, and the sun's shadow box in real metres.
+const arSave = new THREE.Matrix4();
+function arRender() {
+  const bg = scene.background, fog = scene.fog, hi = hemi.intensity, si = sun.intensity, sc = sun.shadow.camera;
+  const box = [sc.left, sc.right, sc.top, sc.bottom, sc.near, sc.far], s = AR.s;
+  scene.background = null; scene.fog = null;
+  hemi.intensity = hi * AR.light; sun.intensity = si * AR.light;
+  sc.left *= s; sc.right *= s; sc.top *= s; sc.bottom *= s; sc.near *= s; sc.far *= s; sc.updateProjectionMatrix();
+  arSave.copy(sun.target.matrixWorld);
+  arTmp.m.makeTranslation(sun.target.position.x, sun.target.position.y, sun.target.position.z); sun.target.matrixWorld.multiplyMatrices(scene.matrixWorld, arTmp.m);
+  renderer.render(scene, camera);
+  sun.target.matrixWorld.copy(arSave);
+  [sc.left, sc.right, sc.top, sc.bottom, sc.near, sc.far] = box; sc.updateProjectionMatrix();
+  hemi.intensity = hi; sun.intensity = si;
+  scene.background = bg; scene.fog = fog;
+}
+// ===================== end of AR mode =====================
 </script>
