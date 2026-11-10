@@ -7604,6 +7604,26 @@ Object.assign(AR, {
 try { const raw = localStorage.getItem('bb-ar-quality'), v = +raw; if (raw !== null && v >= 0 && v < AR_Q.length) AR.q = v | 0; } catch (e) { /* no storage: fine */ }
 const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) };
 
+// ---- iPad fix for AR apps built on WebXRKit (e.g. HelloXR) ----
+// WebXRKit injects its WebXR polyfill into the page, but the polyfill only switches itself on when the user agent says
+// iPhone/iPad + "Mobile/". On an iPad, app web views report a desktop Mac user agent, so the polyfill quietly does
+// nothing and there is no navigator.xr. When we can see the WebXRKit native bridge (window.webkit.messageHandlers.initAR)
+// but no navigator.xr, load our own unmodified copy of the polyfill (webxr-polyfill.js next to this page; MPL-2.0 /
+// Apache-2.0, see THIRD_PARTY.md) with an iPad user agent for the moment it starts up.
+(function arIpadFix() {
+  try {
+    const mh = window.webkit && window.webkit.messageHandlers;
+    if (navigator.xr || !mh || !mh.initAR) return;
+    const ipadUA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => ipadUA });
+    const sc = document.createElement('script');
+    sc.src = 'webxr-polyfill.js';
+    const done = () => { try { delete navigator.userAgent; } catch (e) { /* ignore */ } };
+    sc.onload = done; sc.onerror = () => { done(); const st = document.getElementById('arStatus'); if (st) st.textContent = 'AR: could not load webxr-polyfill.js'; };
+    document.head.appendChild(sc);
+  } catch (e) { /* the normal game carries on */ }
+})();
+
 // ---- UI ----
 (function arUi() {
   const css = document.createElement('style');
@@ -7705,9 +7725,19 @@ function arUiSync() {
 }
 
 // ---- start / end ----
+// On-screen AR log: HelloXR's web view cannot show alert() pop-ups, so every step and error is written on the page.
+function arLog(msg) {
+  let el = document.getElementById('arLog');
+  if (!el) { el = document.createElement('div'); el.id = 'arLog'; el.style.cssText = 'position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,0.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap'; }
+  (AR.root && AR.root.isConnected ? AR.root : document.body).appendChild(el);
+  el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
+  const st = document.getElementById('arStatus'); if (st) st.textContent = msg;
+}
 async function arStart() {
   if (AR.on || AR.starting) return;
   AR.starting = true;
+  const lg = document.getElementById('arLog'); if (lg) lg.textContent = '';
+  arLog('AR 1/5: asking for an AR session...');
   const wasStart = !$('start').hidden;
   try {
     arQuality(false);
@@ -7716,6 +7746,7 @@ async function arStart() {
       requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'], domOverlay: { root: AR.root },
     });
     AR.session = session;
+    arLog('AR 2/5: session started (overlay: ' + (session.domOverlayState ? session.domOverlayState.type : 'none') + ')');
     if (!session.domOverlayState) { await session.end().catch(() => {}); throw new Error('This browser has no DOM overlay, so the game controls would not show.'); }
     session.addEventListener('end', arEnded);
     // Enter the AR state now; the XR loop starts once the session is wired up.
@@ -7731,16 +7762,20 @@ async function arStart() {
     renderer.xr.enabled = true;
     renderer.xr.setReferenceSpaceType('local'); // 'local' is on in every WebXR runtime; 'local-floor' needs asking for in the polyfill
     renderer.xr.setFramebufferScaleFactor(AR_Q[AR.q].fb);
+    arLog('AR 3/5: connecting the 3D view...');
     await renderer.xr.setSession(session);
+    arLog('AR 4/5: 3D view connected');
     AR.refSpace = renderer.xr.getReferenceSpace();
     const viewer = await session.requestReferenceSpace('viewer');
     AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
+    arLog('AR 5/5: looking for your table. Point at it and move the iPad slowly');
     arUiSync();
     renderer.xr.setAnimationLoop(step); // from now on the XR frame loop drives `step`
   } catch (err) {
     console.warn('AR could not start:', err);
     const msg = String(err && err.message || err);
     arEnded();
+    arLog('AR could not start: ' + msg);
     try { alert('AR could not start. ' + msg); } catch (e) { /* ignore */ }
   }
   AR.starting = false;
