@@ -7622,7 +7622,29 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   $('play').after(b);
   b.addEventListener('click', arStart);
   // Show the button only when this browser can do immersive AR. Never throws; the normal game is untouched otherwise.
-  try { navigator.xr && navigator.xr.isSessionSupported('immersive-ar').then((ok) => { b.hidden = !ok; }).catch(() => {}); } catch (e) { /* no XR */ }
+  // An AR app (e.g. HelloXR / WebXRKit) may switch WebXR on a moment after the page loads, so keep checking for 15 s,
+  // and show a small status line under the buttons so a tester can see what the browser reports.
+  const st = document.createElement('div');
+  st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
+  b.after(st);
+  let tries = 0;
+  const check = () => {
+    tries++;
+    let pending = false;
+    try {
+      if (navigator.xr && navigator.xr.isSessionSupported) {
+        pending = true;
+        navigator.xr.isSessionSupported('immersive-ar').then((ok) => {
+          b.hidden = !ok;
+          if (ok) { st.textContent = 'AR ready: tap AR, then point at a table'; return; }
+          st.textContent = 'AR: this browser has WebXR but no AR';
+          if (tries < 30) setTimeout(check, 500);
+        }).catch((e) => { st.textContent = 'AR check failed: ' + (e && e.message || e); if (tries < 30) setTimeout(check, 500); });
+      }
+    } catch (e) { st.textContent = 'AR check error: ' + e.message; }
+    if (!pending) { st.textContent = tries < 30 ? 'AR: checking...' : 'AR not available here (open the game in the HelloXR app)'; if (tries < 30) setTimeout(check, 500); }
+  };
+  check();
 })();
 
 function arBuildRoot() {
