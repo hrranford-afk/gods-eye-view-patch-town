@@ -6089,7 +6089,7 @@ const kTex = {
   }),
   sky: () => kCanvas(128, 128, (g) => { const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#5aa9ef'); gr.addColorStop(1, '#cfe9ff'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); g.fillStyle = 'rgba(255,255,255,0.85)'; for (const [x, y, r] of [[30, 40, 12], [44, 36, 15], [58, 42, 11], [90, 80, 10], [102, 76, 13]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } g.fillStyle = '#5c8f4a'; g.fillRect(0, 110, 128, 18); }),
   start: () => kCanvas(512, 128, (g) => { for (let i = 0; i < 32; i++) for (let j = 0; j < 8; j++) { g.fillStyle = (i + j) % 2 ? '#1c1712' : '#fff8ec'; g.fillRect(i * 16, j * 16, 16, 16); } }),
-  word: () => kCanvas(512, 128, (g) => { g.font = '900 92px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 14; g.strokeStyle = '#1c1712'; g.strokeText('KITCHEN RUN', 256, 66); g.fillStyle = '#ffc23d'; g.fillText('KITCHEN RUN', 256, 66); }),
+  word: () => kCanvas(512, 128, (g) => { g.font = '900 62px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 10; g.strokeStyle = '#1c1712'; g.strokeText('KITCHEN RUN', 256, 66); g.fillStyle = '#ffc23d'; g.fillText('KITCHEN RUN', 256, 66); }),
   road: () => kCanvas(128, 256, (g) => {
     g.fillStyle = '#4b5059'; g.fillRect(0, 0, 128, 256);
     for (let i = 0; i < 500; i++) { const v = 60 + kRand(i) * 40 | 0; g.fillStyle = `rgba(${v},${v + 4},${v + 10},0.6)`; g.fillRect(kRand(i + 1) * 128, kRand(i + 2) * 256, 2, 2); }
