@@ -1006,3 +1006,11 @@ Code is one block headed "Level 6, finale gumball" just above `// ---------- Mai
 - Heroes follow the attack route only; no Defend or Raid for them, and no on-screen hero list (the minimap shows them). The mixer has no health bar.
 - A flipped unit that is not infantry is hit, not flipped.
 - Red's squads still do not use the toasters.
+
+## AR mode (branch game/ar-mode)
+
+Put the game on a real table with WebXR `immersive-ar`. Full write-up in [AR.md](AR.md) (how it works, what WebXRKit's polyfill supports, the real-device checklist, wrapping steps). For developers:
+- All the logic is the last `<script>` ("AR mode"). Hooks in shared code, all marked `AR hook`: the `AR` object and `alpha: !!navigator.xr` beside the renderer; `stickDown` (the pointerdown handler, now a named function); `arStick()` at the three `input.x, input.z` reads; `step` (rAF only when `AR.on`; `arFrame`; waits until placed); the last line of `render` (`arRender`); `burst`'s spark cap. With AR off the cost is one boolean per hook: level 1 after 40 s with a seeded `Math.random` gives 848 to 860 draw calls and 37,134 triangles both before and after (same numbers).
+- The whole scene is scaled onto the table (scene transform), so new meshes need nothing special. Anything real-world sized (the reticle) must cancel the scene transform (see `arFrame`). Code that projects to the screen (`.project(camera)`) works because `arFrame` bakes the scene matrix into `camera.matrixWorldInverse`. The minimap's view-trapezoid (`unproject(camera)`) is wrong in AR (cosmetic, not fixed).
+- The Kitchen Run's floor, tiled wall and window are hidden in AR by size (700-wide); if the kitchen scenery changes, check `arFit`. Do not add elements to `<body>` that must show in AR without checking: a `MutationObserver` moves them into `#arRoot`, but the iOS polyfill hides anything outside the root.
+- Bugs not fixed: minimap trapezoid (above); levels 3 (dark) and 6 (finale) ran 15 s in the AR mock with no errors but were not looked at closely; Chrome Android and real ARKit untested; no anchors (the world can drift on a long session).
