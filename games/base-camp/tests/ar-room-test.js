@@ -10,7 +10,7 @@ const OUT = path.join(ROOT, 'shots') + '/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS ' : 'FAIL ') + n + (x !== undefined ? '  ' + x : '')); };
 // the shed, in its own coordinates (metres; AR y is up, the floor is 1.2 m below the start): [name, y, cx, cz, half-width, half-depth]
-const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2, 0.15, 0.125], ['speakerB', -0.25, -0.9, -1.2, 0.15, 0.125], ['shelf', 0.2, 0.0, -2.7, 0.7, 0.13], ['can1', 0.32, -0.35, -2.7, 0.05, 0.05], ['can2', 0.32, -0.15, -2.7, 0.05, 0.05], ['can3', 0.32, 0.1, -2.7, 0.05, 0.05], ['cup', -0.17, -0.85, -1.2, 0.04, 0.04]];
+const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2, 0.15, 0.125], ['speakerB', -0.25, -0.9, -1.2, 0.15, 0.125], ['shelf', 0.2, 0.0, -2.7, 0.7, 0.13], ['can1', 0.32, -0.35, -2.7, 0.05, 0.05], ['can2', 0.32, -0.15, -2.7, 0.05, 0.05], ['can3', 0.32, 0.1, -2.7, 0.05, 0.05], ['cup', -0.17, -0.85, -1.2, 0.04, 0.04]];
 (async () => {
   const { srv, url } = await serve(); const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)' });
@@ -20,7 +20,8 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
   await p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
     const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
-    window.__native = { hits: 0, empty: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
+    window.__native = { hits: 0, empty: 0 };
+    try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
     // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
     const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y, hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
     window.__place = place;
@@ -47,8 +48,8 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
     window.webkit = { messageHandlers: {
       initAR: h((b2) => b2.callback && reply(b2.callback, 'ios-ar-device-id')),
       requestSession: h((b2) => {
-        dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: false, worldAccess: true, webXRAccess: true }); clearInterval(timer);
-        timer = setInterval(() => { cam = camNow(); window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: false }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
+        window.__sessionOpts = b2; dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: !!b2.computer_vision_data, worldAccess: true, webXRAccess: true }); clearInterval(timer);
+        timer = setInterval(() => { cam = camNow(); window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: !!window.__video, video_data: window.__video || null, video_width: 320, video_height: 240 }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
       }),
       stopAR: h((b2) => { clearInterval(timer); if (b2 && b2.callback) reply(b2.callback, {}); }),
       hitTest: h((b2) => {
@@ -64,7 +65,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
     window.__sweep = (speed) => {
       const targets = window.__place(), pick = (n) => targets.find((t) => t.n === n), look = (tx, ty, tz, off, hgt, ay, ap, dur) => { const p = [tx + off[0], ty + hgt, tz + off[1]], fx = tx - p[0], fy = ty - p[1], fz = tz - p[2], L = Math.hypot(fx, fy, fz); return { p, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
       const fl = pick('floor'), sa = pick('speakerA'), sb = pick('speakerB'), sh = pick('shelf');
-      window.__cam.path = [look(fl.cx, -1.2, fl.cz, [0, 1.4], 1.7, 0.7, 0.3, 14), look(sa.cx, sa.y, sa.cz, [0.1, 0.5], 0.55, 0.12, 0.1, 9), look(sb.cx, sb.y, sb.cz, [-0.1, 0.5], 0.6, 0.12, 0.1, 9), look(sh.cx, sh.y, sh.cz, [0, 0.6], 0.5, 0.18, 0.1, 11), look(fl.cx, -1.2, fl.cz, [0.3, -0.4], 1.8, 0.9, 0.3, 12), look(fl.cx - 0.3, -1.2, fl.cz + 0.3, [0, 1.4], 1.7, 0.9, 0.3, 8)];
+      window.__cam.path = [look(fl.cx, -1.2, fl.cz, [0, 1.3], 1.6, 0.6, 0.25, 16), look(sa.cx, sa.y, sa.cz, [0.1, 0.5], 0.55, 0.12, 0.1, 10), look(sb.cx, sb.y, sb.cz, [-0.1, 0.5], 0.6, 0.12, 0.1, 10), look(sh.cx, sh.y, sh.cz, [0, 0.6], 0.5, 0.18, 0.1, 14), look(fl.cx, -1.2, fl.cz, [0.3, -0.4], 1.7, 0.7, 0.25, 12), look(sa.cx, sa.y, sa.cz, [0.0, 0.45], 0.5, 0.1, 0.08, 7), look(sh.cx, sh.y, sh.cz, [0, 0.55], 0.45, 0.14, 0.08, 8)];
       window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = speed || 1; window.__cam.done = false;
     };
   }, SHED);
@@ -73,14 +74,16 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
   const noOverlay = () => ev(() => { const rs = navigator.xr.requestSession.bind(navigator.xr); navigator.xr.requestSession = async (m, o) => { const ss = await rs(m, o); try { Object.defineProperty(ss, 'domOverlayState', { value: undefined, configurable: true }); } catch (e) {} for (const sym of Object.getOwnPropertySymbols(ss)) { const d = ss[sym] && ss[sym].device; if (d) d._domOverlayRoot = null; } return ss; }; });
   const truthPx = (name) => ev((n) => { const S = window.__place().find((q) => q.n === n), v = new __g.THREE.Vector3(S.cx, S.y, S.cz).applyMatrix4(__g.AR.viewInv).applyMatrix4(__g.AR.projM); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, S.cx, S.y, S.cz]; }, name);
   const lookAt = (name, off, hgt) => ev(([n, off, hgt]) => { const S = window.__place().find((q) => q.n === n), p2 = [S.cx + off[0], S.y + hgt, S.cz + off[1]], fx = S.cx - p2[0], fy = S.y - p2[1], fz = S.cz - p2[2], L = Math.hypot(fx, fy, fz); window.__cam.mode = 'fixed'; window.__cam.fixed = [p2[0], p2[1], p2[2], Math.atan2(-fx / L, -fz / L), Math.asin(fy / L)]; }, [name, off, hgt]);
-  const sweep = async (tag) => { await ev(() => window.__sweep(1)); const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) { await sleep(2000); } console.log(tag + ' sweep took ' + Math.round((Date.now() - t0) / 1000) + ' s, hits ' + await ev(() => window.__native.hits + '/' + window.__native.empty)); await ev(() => { window.__cam.mode = 'fixed'; }); };
+  const sweep = async (tag) => { await ev(() => window.__sweep(0.6)); const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) { await sleep(2000); } console.log(tag + ' sweep took ' + Math.round((Date.now() - t0) / 1000) + ' s, hits ' + await ev(() => window.__native.hits + '/' + window.__native.empty)); await ev(() => { window.__cam.mode = 'fixed'; }); };
 
   // ================= session 1: map and tag =================
   await p.goto(url); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); __g.ENV.hourOverride = 12; });
   ok('AR is offered by the real polyfill', await ev(() => !document.getElementById('bAR').hidden && __g.AR.ok));
+  await ev(() => { __g.RECOG.coco.state = 'loading'; }); // the model download is tested in recog-test.js; here it would only slow the sweep
   await p.click('#bMap'); await sleep(800);
   ok('Map my room starts an AR session', await ev(() => __g.AR.on && __g.G.intent === 'map'));
+  ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.computer_vision_data)));
   await sweep('map');
   await p.click('#bDone'); await sleep(800);
   const z1 = await ev(() => __g.G.zones.map((z) => z.type + ':' + z.area.toFixed(2) + '@' + z.y.toFixed(2)));
@@ -96,6 +99,17 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
   const spots = await ev(() => __g.G.spots.filter((s) => s.src !== 'default').map((s) => s.name + ':' + s.role + ':' + s.on));
   ok('real taps tagged speakers, a can and the egg cup', t1 && t2 && t3 && t4 && spots.length >= 3, spots.join(' | '));
   await ev(() => { const a = __g.G.spots.find((s) => s.name === 'Left hi-fi'), b2 = __g.G.spots.find((s) => s.name === 'Right hi-fi'); if (a && b2) __g.addCable(a.id, b2.id); });
+  // recognition through the AR camera path: a camera picture arrives, a mocked detector says "cup" at the foot of the second can
+  await lookAt('shelf', [0, 0.9], 0.8); await sleep(1500);
+  const frame = await ev(() => { const f = __g.recogFrame(); return f && { w: f.w, h: f.h, real: f.real }; });
+  ok('the camera picture from the app is available to recognition', frame && frame.real && frame.w === 320 && frame.h === 240, JSON.stringify(frame));
+  const foot = await ev(() => { const S = window.__place().find((q) => q.n === 'can2'), v = new __g.THREE.Vector3(S.cx, 0.2, S.cz).applyMatrix4(__g.AR.viewInv).applyMatrix4(__g.AR.projM); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, S.cx, S.cz]; });
+  await ev(([fx, fy]) => { __g.RECOG.cool = 0; __g.RECOG.detector = async (fr) => [{ class: 'cup', score: 0.8, bbox: [(fx - 40) * fr.w / innerWidth, (fy - 70) * fr.h / innerHeight, 80 * fr.w / innerWidth, 70 * fr.h / innerHeight] }]; }, foot);
+  for (let i = 0; i < 4; i++) { await ev(() => __g.recogTick()); await sleep(100); }
+  const guess = await ev(() => __g.RECOG.ask && { x: __g.RECOG.ask.x, z: __g.RECOG.ask.z, name: __g.RECOG.ask.name });
+  ok('a detection in camera pixels becomes a guess at the right spot (within 8 cm)', guess && Math.hypot(guess.x - foot[2], guess.z - foot[3]) < 0.08, guess ? 'off by ' + (Math.hypot(guess.x - foot[2], guess.z - foot[3]) * 100).toFixed(1) + ' cm' : 'no guess');
+  await ev(() => { __g.RECOG.detector = null; document.getElementById('guess').hidden = true; __g.RECOG.ask = null; });
+  await lookAt('floor', [0, 1.6], 1.9); await sleep(600);
   await p.screenshot({ path: OUT + 'ar-06-tag.png' });
   await p.click('#bSaveMap'); await sleep(200);
   await ev(() => { __g.G.music = true; __g.settle('FLOOR'); __g.simulate(900, 0.5); __g.saveNow(); __g.saveMap(); });
@@ -112,7 +126,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.5, 1.5], ['speakerA', -0.45, 0.9, -1.2,
   const diaryTxt = await ev(() => document.getElementById('diary').innerText);
   ok('the away diary shows first, 9 hours', /While you were away/.test(diaryTxt) && /9\.0 h/.test(diaryTxt), diaryTxt.split('\n').length + ' lines');
   await p.screenshot({ path: OUT + 'ar-07-away.png' });
-  await p.click('#dClose'); await ev(() => window.__sweep(1)); await sweep('return');
+  await p.click('#dClose'); await sweep('return');
   await p.click('#bDone'); await sleep(800);
   const lm = await ev(() => __g.G.landmarks.map((l) => l.name));
   ok('alignment asks for two landmarks', await ev(() => __g.G.phase === 'align') && lm.length === 2, lm.join(' & '));

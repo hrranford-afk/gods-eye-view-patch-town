@@ -105,7 +105,7 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 1';
+const BUILD = 'build 2';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1283,7 +1283,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
 function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); store.set(MAP_KEY, JSON.stringify(mapToJSON())); }
 function loadMapData() { try { const d = JSON.parse(store.get(MAP_KEY) || 'null'); return d && d.kind === 'base-camp-room-map' ? d : null; } catch (e) { return null; } }
 function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
-  const player = G.spots.filter((s) => s.src !== 'default' && s.area < 0.5), pool = player.length >= 2 ? player : G.spots.filter((s) => s.area < 1.5).length >= 2 ? G.spots.filter((s) => s.area < 1.5) : G.spots;
+  const tops = G.spots.filter((s) => s.src !== 'default' && s.on === 'top' && s.area >= 0.02 && s.area < 0.5), solid = tops.length >= 2 ? tops : G.spots.filter((s) => s.src !== 'default' && s.area >= 0.02 && s.area < 0.5), player = solid.length >= 2 ? solid : G.spots.filter((s) => s.src !== 'default' && s.area < 0.5), pool = player.length >= 2 ? player : G.spots.filter((s) => s.area < 1.5).length >= 2 ? G.spots.filter((s) => s.area < 1.5) : G.spots;
   let best = null, bd = -1; for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) { const d = Math.hypot(pool[i].x - pool[j].x, pool[i].z - pool[j].z) + 0.5 * Math.abs(pool[i].y - pool[j].y); if (d > bd) { bd = d; best = [pool[i], pool[j]]; } }
   return best || pool.slice(0, 1);
 }
@@ -2264,7 +2264,7 @@ function alignStart() {
   setPhase('align'); barUi(); updateHint();
 }
 function alignTap(cx, cy) {
-  const pk = surfacePick(cx, cy); if (!pk) { toast('Tap on a scanned surface.'); return; }
+  const pk = surfacePick(cx, cy); if (!pk) { toast('I cannot see ' + (G.landmarks[G.alignTaps.length] ? 'the ' + G.landmarks[G.alignTaps.length].name : 'that') + ' in this scan yet. Press Scan more first and look at it.', 4); return; }
   G.alignTaps.push({ x: pk.px, y: pk.y, z: pk.pz }); sfx('pop');
   const lm = G.landmarks;
   if (G.alignTaps.length >= Math.min(2, lm.length)) {

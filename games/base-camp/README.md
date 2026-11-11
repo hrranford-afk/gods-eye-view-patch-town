@@ -1,55 +1,83 @@
 # Base Camp (working title)
 
-A tiny living colony that settles the **real surfaces of your room**. Scan your desk, shelf and floor, tap a surface to found a colony, then *help* the little people: they plant trees, tend farms, build huts and a well on their own, and they keep growing while you are away. A Tamagotchi, but it is a village, and it lives on your desk.
+A tiny living colony that settles the **real surfaces of your room**. Map your room once, name the speaker, the cup and the warm box, tap a surface to found a colony, then *help* the little people. They keep working while you are away (up to 24 hours), they love a tidy house, and they call you **the Giant**.
 
-One file: `index.html` (three.js r128 from cdnjs). No build step. Needs `webxr-polyfill.js` and `THIRD_PARTY.md` next to it (copied from Baguettes & Ballistics).
+One file: `index.html` (three.js r128 from cdnjs). No build step. Needs `webxr-polyfill.js` and `THIRD_PARTY.md` next to it; the council's `almanac.json`, `rooms.json`, `creatures.json` and `clip-labels.json` are optional (built-in copies are used when they are missing).
 
-## How to play
+## The flow
 
-1. **Start in AR** (HelloXR / WebXRKit app on iPad) or **Practice room** (any desktop browser, a virtual floor, desk, shelf and windowsill).
-2. **Scan.** Sweep the iPad slowly over the room. Every flat surface gets its own soft colour and a label: *Floor - plains*, *Desk - meadow*, *Shelf - cliffs*, *Sill - lookout*, *Perch - grove*. Tap **Done scanning**. (Practice: **Auto-scan**, or drag to look and W/S to walk.)
-3. **Settle.** Tap a zone. Three settlers arrive with a tent.
-4. **Nurture.** The colonists have needs (food, water, rest, happiness) and look after themselves: they plant seeds, tend trees until they grow up, harvest farms, build huts, a farm, a well, gather wood and fruit. You help:
-   - **Seeds**: tap the ground to plant one. **Water**: touch and hold. **Build**: pick a blueprint (hut, farm, well, lookout), tap where; they build it. **Cheer**: tap a colonist (they jump, hearts, happier; tap one to see how they feel).
-   - **Requests**: when a colonist is stuck they ask in a speech bubble and a card at the top right ("We need water!", "A seed please!", "Too hot. Shade, please?", "Brr! Some firewood?", "Build us a cable car!"). Press **Give** (or tap the colonist). Happiness goes up.
-5. **Expand.** When a colony is *thriving* (4+ settlers, 3 buildings, 2 grown trees, good mood) it dreams of other places. Pick **Cable car** and drag a line from your settlement to another zone. The colonists rig a cable car (6 wood), a gondola carries settlers across and a new colony starts there with that zone's specialty (floor: farmland, desk: village, shelf: orchard, sill: lookout, small perch: a lone grove).
-6. **Come back later.** Everything is saved (time-stamped) in the browser. On return: scan again, then *"Where was your colony?"* Tap the zone, slide and turn the colony to line it up with the real surface, **Lock it in**. While you were away the colony kept growing (catch-up, capped at 90 minutes).
+1. **Start** (title): *Map my room*, *Start in AR*, *Practice room*, *Continue my colony*, *Room map: export / import*.
+2. **Scan.** Sweep the iPad slowly over every surface (floor, desk, shelves, the tops of speakers and boxes). Each flat surface becomes a **zone**; small tops (a can, a cup) become **clutter**. *Done scanning*.
+3. **Name spots** (always in *Map my room*, any time from the Menu). Tap a thing: Speaker, Cup / mug, Can, Computer, Warm box, Shelf, Ledge, Monitor top, Drawers / cabinet top, Floor, Door / window, Radiator, Sofa, Rug, Plant, Worktop, Other, or type your own name ("Radeon", "kettle"). Each tag has a **role** from the council's `rooms.json`:
 
-**Time x1 / x6 / x30** speeds the colony up (for testing, or impatience). **Sound** toggles the gentle synth sounds.
+   | Tag | Role (what the colonists build) | How they get there |
+   |---|---|---|
+   | Speaker | Broadcast tower (shakes when *Music* is on, morale) | zip-line made of dental floss |
+   | Cup / mug | Water tower (fresh water) | rope ladder |
+   | Can | Tin silo (room for tin and food) | rope ladder |
+   | Computer | Town square (happy gatherings) | cable car |
+   | Warm box / Radiator | Forge and winter refuge (makes tin; warm in the cold) | hot-air balloon made from a tea bag |
+   | Shelf | Storehouse | cable car |
+   | Ledge / Monitor top | Lookout | thread-and-paperclip pulley / zip-line |
+   | Drawers, Sofa | Workshop (builds 30% faster) | rope ladder / tunnel |
+   | Floor | Farmland (one more farm, ripens faster) | rope ladder |
+   | Door / window | Solar farm (growth, fruit) | thread-and-paperclip pulley |
+   | Rug | Hideout and nursery (more settlers) | catapult (bent fork tine) |
+   | Worktop / desk | Trading post (spare food for seeds and wood) | catapult |
+
+   *Mark a cable*: tap both ends of a real cable and the colonists get a **ready-made zip line** between the two spots (it opens when the first colony has four settlers). Every spot card shows the council's words and **by <resident>**. *Save room map* keeps the map **separately from the colony** (versioned; *Export / import* copies it as JSON).
+4. **Settle.** *Found a colony* (or just tap a coloured zone). Three settlers arrive with a tent; spots on the zone become landmarks (tower, well, forge...).
+5. **Nurture.** Seeds, water, build blueprints, cheer, requests ("We need water!"), cable cars to thriving neighbours, weather, day and night: as before.
+6. **Away.** Close the app. The colony lives on the **saved map** for up to 24 hours (coarse steps, under a second). Roles matter: the forge makes tin, the tower plays music, the market trades, a thriving colony sends a party over a zip line to found a new colony.
+7. **Come back.** *Continue my colony*:
+   1. **While you were away**: a diary card (5 to 10 short lines, with the spot roles, creature quotes and the council's funny things, each credited *by <resident>*).
+   2. **Scan again** (the real room may have moved a little).
+   3. **Line up**: the game picks the two tagged spots that are furthest apart and asks *"Tap the Radeon"*, *"Tap the speaker"*. That solves turn and shift. Slide / turn buttons stay as fine tuning. *Scan more first* and *Same place (skip)* are there too.
+   4. **What changed**: the new scan is compared with the map (below).
+
+## Things move: change, drama, not failure
+
+- **SAME**: nothing to say. **MOVED**: *"Did the cup move here?"* Yes: the little town (and the colonists on it) move with it. No: it counts as gone plus new. **GONE**: the colonists flee to a neighbour and ask for help ("Refugees!"). **NEW**: an expedition request ("New land: Shelf 2! May we send an expedition?"). Things that are only partly scanned this time are *not* flagged: absence of a scan is not absence of a thing.
+
+## Tidiness: the Giant is the weather
+
+Per zone the map holds a **land grid** (2 cm cells): *clear land* (colonists build and walk), *clutter* (shown as grey towers and walls), and how often each cell has been **disturbed**.
+
+- **Tidying is a gift.** Take a can away and there is *"New land! The Shelf is clear!"*, a burst of resources and settlers moving in. **Recycling**: a can gives 3 tin (huts get *flattened-can roofs*, tin counts double for building), a box gives planks, a big thing more.
+- **Squashing.** Put something down on a building and it is flattened: *"Grizzle's workshop got squashed by a GIANT CUP!"*, rubble, a panic line from the creature, then they rebuild elsewhere.
+- **Learning.** Cells you keep using get a disturbance count. At 2 the colonists stop building there (*"Don't build by the kettle, the Giant uses it every morning"*). Cells left alone for several visits become their **richest land** (trees and farms grow 30% faster). Cluttered land is cramped (slower arrivals) but the colonies still work: small tough colonies on what is clear.
+- **The Giant**: colonists only ever *react* in their diary lines and requests, they never nag.
+
+## Practice room (no AR needed)
+
+Virtual floor, desk, shelf, sill and a speaker, plus **movable things**: three cans on the shelf, a cup and a GPU box on the desk, a box on the floor. **Map my room**, **Auto-scan**, name things, found colonies, then:
+- **Skip 8 hours**: the away sim, with the diary card.
+- **Move things**: drag cans, cup, boxes between visits (even onto a colony), then **Scan again**: new land, tin, squashing, learning.
+- Reload and **Continue**: away diary, scan, line up, changes.
+
+## Recognition: "they know what a lot of stuff is"
+
+While mapping, the camera picture is looked at about every 1.5 s (AR needs the `camera-access` feature; practice has built-in eyes that know a cup, half-know a can and have never heard of a speaker):
+- **COCO-SSD** (TensorFlow.js, about 5 MB of weights, loaded when mapping starts) finds cups, bottles, laptops, sofas, plants... The class table `COCO_ROLES` is one data object. A detection's bottom-centre becomes a ray onto the scanned surfaces, which says where the thing is.
+- **Smarter recognition (downloads ~55 MB)** (Menu): CLIP's vision model, on demand, classifies the crop around a tapped thing against label embeddings computed at build time (`clip-labels.json`), so speakers, a GPU box and cans get a guess too.
+- Sure: *"I think this is a cup! Right?"* Yes / No / Something else. Unsure or unknown: *"What is this?"* with the tag picker, and a *What are these? (N)* button that asks about the things nobody named.
+- Every answer goes into **Our library** (Menu): icon, name, role and **who taught it**. The library overrides guesses from then on and travels with the room map.
+- **Camera pictures never leave the device.** Only model files are downloaded.
 
 ## The real world drives it
 
-- **Light** (AR: ARKit's ambient light via the polyfill's `getGlobalLightEstimate`; practice: the Sun slider). Bright room = sunny day: plants grow faster, colonists get hot and thirsty and ask for shade. Dim room = slower growth, they get tired sooner.
-- **Time of day** (device clock; sunrise 7, sunset 18 by default, or the real sunrise/sunset once weather is on). At night colonists go to bed, lanterns and windows glow, **trees do not grow**.
-- **Weather** (optional, asked once with a friendly card): rain waters crops and sends colonists into their huts (rain particles); heat (over 22 C) makes them thirsty; cold (under 3 C) slows growth and makes them want firewood; wind (over 10 m/s) sways trees and pauses the cable car; cloud dims the sun. Practice mode has a Weather picker (auto, clear, cloudy, rain, hot, cold, wind) and an Hour slider.
-  - Privacy: the app rounds your location to 1 decimal (about 10 km) *before* any request and stores only that. Refuse and nothing is asked again; or pick a town (Worcester, London, ...). Weather is fetched at most every 30 minutes and cached.
-  - Source: [Open-Meteo](https://open-meteo.com) (no key). **Its free API is for non-commercial use: a paid plan or another provider is needed before the game is sold.**
-
-## Scan and zones (how "pick up areas that can be colonised" works)
-
-Runtime facts (WebXRKit / HelloXR): only viewer-space hit tests (ARKit raycasts), camera pose per frame, no anchors, no plane geometry, no meshes, no world maps. So:
-
-- Five hit-test rays per frame (centre plus four off-centre) give 3D points.
-- Points are clustered by **height** into bands (within 3 cm, bands under 4 cm apart merge); each band has its own 2 cm occupancy grid (5 m x 5 m), painted as an overlay, patchy-scan holes closed (grow/shrink 5 cm).
-- Each **connected region over 0.05 m2** is a **zone**. Zone ids survive re-scans (label voting).
-- Classification by height above the lowest zone and size: FLOOR (lowest, 1 m2+; or any zone within 15 cm of it), TABLE/desk (25 cm to 1 m up, not narrow), SILL (80 cm to 1.25 m, narrow), SHELF (higher, or narrow and high), SMALL (under 0.1 m2).
-- Each zone type has a specialty (see Expand) that steers what the colony builds and plants.
-
-## Re-placing a colony (no anchors)
-
-The runtime has no anchors or world maps, so a saved colony cannot snap back by itself. We do the simple honest thing: re-scan, tap the zone, drag and turn the colony until it lines up with the real surface, lock it in. The colony is stored in its own local frame (relative to its zone's centre and main axis), so only that one transform has to be recovered.
-
-**Our own app could do this automatically** with ARKit world maps (`ARWorldMap`, save and relocalize) or `ARAnchor`s per colony: the saved frame would be restored by ARKit and the "Where was your colony?" step would disappear.
+- **Light**, **time of day** and **weather** (optional, asked once; rounded location, Open-Meteo, non-commercial only): as in the first prototype (see HANDOVER).
 
 ## Files
 
 | File | |
 |---|---|
 | `index.html` | the whole game |
-| `almanac.json` (optional) | stories and requests; see HANDOVER.md |
+| `almanac.json`, `rooms.json`, `creatures.json` | PatchTown council data (colonists, requests, events / spots and roles / creatures); optional |
+| `clip-labels.json` | CLIP text embeddings for the label list, made by `tests/make-clip-labels.mjs`; optional (needed only for smarter recognition) |
 | `webxr-polyfill.js`, `THIRD_PARTY.md` | unmodified WebXRKit polyfill for the iPad fix, and licences |
-| `HANDOVER.md` | developer notes, the almanac format, what is cut |
+| `HANDOVER.md` | developer notes: data formats, maths, tests, what is cut |
 | `shots/` | screenshots |
-| `tests/` | Playwright scripts: `ar-harness.js` (real WebXRKit polyfill + fake iOS bridge, run with NO_OVERLAY=1; needs the HelloXR source tree path set in `HX`), `practice-test.js` |
+| `tests/` | Playwright scripts: `room-test.js` (practice room, about a minute), `ar-room-test.js` (real polyfill, about 6 minutes), `recog-test.js`, `ar-harness.js` and `practice-test.js` (first prototype), `lib.js` (server), `make-clip-labels.mjs` (build step) |
 
-Build tag: shown at the start of the status line under the title buttons ("build 1 ...").
+Build tag: shown at the start of the status line under the title buttons ("build 2 ...").

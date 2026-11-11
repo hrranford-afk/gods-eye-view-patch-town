@@ -86,13 +86,13 @@ const ok = (name, cond, extra) => { results.push(!!cond); console.log((cond ? 'P
     M.cocoLoadMs = coco.loadMs; M.cocoDetectMs = coco.ms;
     const clip = await ev(async () => {
       const k = __g.RECOG.clip; k.on = true; const t0 = performance.now(); await __g.clipLoad(); if (k.state !== 'ready') return { st: k.state, err: k.err };
-      const img = new Image(); img.crossOrigin = 'anonymous'; await new Promise((r, j) => { img.onload = r; img.onerror = () => j(new Error('image')); img.src = 'https://cdn.jsdelivr.net/gh/tensorflow/tfjs-models@master/coco-ssd/demo/image1.jpg'; });
+      const img = new Image(); img.crossOrigin = 'anonymous'; await new Promise((r, j) => { img.onload = r; img.onerror = () => j(new Error('image')); img.src = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/cats.jpg'; });
       const c = document.createElement('canvas'); c.width = 224; c.height = 224; c.getContext('2d').drawImage(img, 0, 0, 224, 224);
       let emb = await __g.clipEmbed(c); const t1 = performance.now(); emb = await __g.clipEmbed(c); const ms = performance.now() - t1; const sc = k.labels.concat(k.checks).length && __g.clipScores(emb, true);
       return { st: 'ready', loadMs: Math.round(performance.now() - t0), dtype: k.dtype, ms: Math.round(ms), top: sc.slice(0, 3).map((s) => s.label + ':' + s.p.toFixed(2)) };
     });
     console.log('CLIP', JSON.stringify(clip));
-    ok('real CLIP vision model loads on demand, and its picture of dogs matches the text embedding "a dog"', clip.st === 'ready' && /a dog/.test(clip.top[0]), JSON.stringify(clip));
+    ok('real CLIP vision model loads on demand, and a photo of two cats comes out as "a cat" (the text and vision sides belong together)', clip.st === 'ready' && /a cat/.test(clip.top[0]), JSON.stringify(clip));
     M.clipLoadMs = clip.loadMs; M.clipEmbedMs = clip.ms; M.clipDtype = clip.dtype;
   }
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 4)));

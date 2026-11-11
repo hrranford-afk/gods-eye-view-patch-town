@@ -38,6 +38,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
     __g.addSpot({ tag: 'warm', name: 'Radeon', x: pr('gpu').x, y: top(pr('gpu')), z: pr('gpu').z, area: 0.026 });
     __g.addSpot({ tag: 'cup', name: 'kettle mug', x: pr('cup').x, y: top(pr('cup')), z: pr('cup').z, area: 0.005 });
     __g.addSpot({ tag: 'can', name: 'Tin one', x: pr('can1').x, y: top(pr('can1')), z: pr('can1').z, area: 0.0034 });
+    const sill = __g.G.zones.find((z) => z.type === 'SILL'); __g.addSpot({ tag: 'door', name: 'Window', x: sill.cx, y: sill.y, z: sill.cz, area: sill.area, zid: sill.id });
     __g.addCable(__g.G.spots.find((s) => s.name === 'Radeon').id, __g.G.spots.find((s) => s.tag === 'speaker').id); __g.G.music = true;
   });
   const roles = await ev(() => __g.G.spots.filter((s) => s.src !== 'default').map((s) => s.name + ':' + s.role).join(' '));
@@ -93,7 +94,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await p.click('#dClose'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(300);
   ok('then the two-landmark alignment starts', await ev(() => __g.G.phase === 'align' && __g.G.landmarks.length === 2), await ev(() => __g.G.landmarks.map((l) => l.name).join(' & ')));
   await ev(() => __g.focusOn(0.2, 0.6, -0.4, 4.4));
-  const taps = await ev(() => __g.G.landmarks.map((l) => { const m = { Speaker: 'speaker', Radeon: 'gpu', 'Tin one': 'can1', 'kettle mug': 'cup' }[l.name], q = __g.PROPS.find((x) => x.id === m), c = Math.cos(__g.PLACE.yaw), s = Math.sin(__g.PLACE.yaw), wx = q.x * c + q.z * s + __g.PLACE.x, wz = -q.x * s + q.z * c + __g.PLACE.z, y = m === 'speaker' ? 0.55 : q.base + q.h, v = new __g.THREE.Vector3(wx, y, wz).project(__g.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; }));
+  const taps = await ev(() => __g.G.landmarks.map((l) => { const m = { Speaker: 'speaker', Radeon: 'gpu', 'Tin one': 'can1', 'kettle mug': 'cup', Window: 'sill' }[l.name], q = m === 'sill' ? { x: -1.525, z: 0.6, base: 1.0, h: 0 } : __g.PROPS.find((x) => x.id === m), c = Math.cos(__g.PLACE.yaw), s = Math.sin(__g.PLACE.yaw), wx = q.x * c + q.z * s + __g.PLACE.x, wz = -q.x * s + q.z * c + __g.PLACE.z, y = m === 'speaker' ? 0.55 : q.base + q.h, v = new __g.THREE.Vector3(wx, y, wz).project(__g.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; }));
   for (const t of taps) { await p.mouse.click(t[0] + 1, t[1] + 1); await sleep(200); }
   const al = await ev(() => ({ phi: __g.G.align.phi, tx: __g.G.align.tx, tz: __g.G.align.tz, err: __g.G.alignErr, yaw: __g.PLACE.yaw, X: __g.PLACE.x, Z: __g.PLACE.z }));
   const dphi = Math.atan2(Math.sin(al.phi + al.yaw), Math.cos(al.phi + al.yaw)), c0 = Math.cos(al.phi), s0 = Math.sin(al.phi);

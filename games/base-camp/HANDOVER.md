@@ -1,63 +1,93 @@
 # Base Camp: developer handover
 
-First prototype. Branch `game/room-colony`, folder `games/base-camp/`. One file (`index.html`, about 1,500 lines, sectioned by `// =====` banners). three.js r128 from cdnjs. Read README.md first for the player flow.
+Branch `game/room-colony`, folder `games/base-camp/`. One file (`index.html`, about 2,500 lines, sectioned by `// =====` banners). three.js r128 from cdnjs. Read README.md first for the player flow. **Systems only: the art is redesigned later (1990s TV-cartoon style), nothing here is final styling.** Never run prettier on `index.html` (long lines are deliberate).
 
 ## Sections of index.html (in order)
-1. **basics, ALMANAC, ENV, sound**: `COLONY_ALMANAC` (all story data), `ENV` (sun, clock, weather, derived flags `hot/cold/rain/dim/windy/night/grow`), `envUpdate()`, weather fetch (Open-Meteo), sfx synth.
-2. **three basics, canvas textures, SCAN**: `scanHit` (one hit-test point), `bandFor` (3 cm height bands), `closeHoles`, `extractZones` (connected regions, ids kept by voting), `classify`, `ensureDist`/`zoneClear` (distance to the zone edge), `paintBands` (overlay textures), labels.
-3. **MODELS**: toy low-poly models (`mkColonist`, `mkTree`, `mkTent`, `mkHut`, `mkWell`, `mkFarm`, `mkLookout`, `mkStation`, `mkShade`), `KINDS` table (footprint, wood cost, work seconds), sprite particles (`puff`).
-4. **COLONY**: `G` (game state), settlements (`newSettlement`, things, colonists), the utility AI (`chooseJob` scores needs and chores, `startJob`, `runJob`), `simSettlement(S, dt, E, quiet)` (growth, needs, planner, arrivals, thriving, requests), cable cars (`makeLink`, `linkStep`, `crossStep`, `arriveAt`).
-5. **visuals, save/load/re-place**: per-frame animation; `serialize`, `restoreSettlement`, `catchUp`, the replace flow (`beginReplace`, `placeGhost`, `lockGhost`).
-6. **AR mode** (copied from Baguettes & Ballistics): iPad user-agent fix, `arLog`, `arStart` (overlay fix included), `arEnded`, `arFrame` (5 hit-test rays, light estimate). **PRACTICE ROOM**: virtual room, auto-scan path, virtual hit test with the same `scanHit`.
-7. **UI, input, main loop, `window.__g`** (test hooks).
+1. **basics, ALMANAC, council data, ENV, sound.** `COLONY_ALMANAC` (defaults), `ROOMS` / `CREATURES` (built-in copies of the council files), `adoptAlmanac` (turns the council's almanac shape into ours), `ENV` (sun, clock, weather).
+2. **three basics, canvas textures, SCAN.** `scanHit` (one hit-test point; also writes `b.hit`, the sharp direct-evidence grid), height bands, `extractZones`, `classify`, `paintBands` (scan-phase overlay), labels.
+3. **LAND.** The land grid per zone (`newLand`, `landIdx`, `landEdge`, `ensureDist`/`zoneClear`), clutter measurement (`markBumps`, `measureLand`), `reconcileLand` + `changedObjects` (events), land overlay + clutter towers (`paintLand`), run-length coding.
+4. **MODELS**, `KINDS`, landmark toys per role (`mkLandmark`), rubble, particles.
+5. **COLONY.** `G`, settlements (`newSettlement`, `syncTf`), the utility AI, `simSettlement` (also `roleStep`), requests, cable cars.
+6. **ROOM MAP.** `TAGS`, `ROLES`, `TRAVEL`, zones (`newMapZone`, `setZoneFrame`), spots, landmarks on settlements, cables (`syncCables`), `mapToJSON` / `mapFromJSON`, picking real surfaces (`surfacePick`).
+7. **THE GIANT, TIDINESS AND CHANGE.** `captureScan` (scan -> map), `applyChanges` (gifts, squashing, learning, GONE, NEW), asks ("Did the cup move here?"), the report card, alignment maths (`solveAlign`, `applyAlign`, `nudgeAlign`).
+8. **AWAY.** `awaySim`, `awaySummary` (the diary), `fxOf` / `roleStep`.
+9. **visuals, save / load / return.** `serialize` (colony save v2), `prepareContinue`, `skipHours`.
+10. **AR mode** (copied from Baguettes & Ballistics, plus `camera-access` when mapping). **PRACTICE ROOM**: virtual room, movable props (`PROPS`, `placeRoom`, `injectScan`).
+11. **RECOGNITION.** `COCO_ROLES`, `RECOG`, COCO-SSD, CLIP, library, the practice room's eyes.
+12. **UI, input, main loop, `window.__g`** (test hooks).
 
-## Key design points
-- **World = AR local space in metres.** The scene is never scaled; colonists are about 2.5 cm tall. Zones are at their real height.
-- **Settlement-local frame.** Each settlement is a `THREE.Group` with transform `tf {x, z, y, yaw}`; every thing and colonist is stored in local metres. Re-placing a saved colony is just recovering `tf`. `adj` is the player's turn on top of the zone's main axis.
-- **Sim is independent of rendering.** `simSettlement` runs in 0.25 s steps live; for catch-up it runs 5 s steps with `quiet=true` (no toasts, particles, sound) and the average-day environment `CATCH`. Cap: 90 minutes.
-- Growth: tree 300 s to grow (x1.8 when tended or in rain), crops 180 s; both multiplied by `ENV.grow` (daylight x sun x cold x rain), which is 0 at night.
-- Colonists never die: needs bottom out and they slow down and get glum, which triggers requests.
-- Cable car: cost 6 wood; settlements must be `thriving`; stations are ordinary things in each settlement; the gondola is run by `linkStep`; riders are re-parented onto the gondola; new settlements start with `awaiting = true` (hidden tent) until the first settlers arrive.
-- Save key `base-camp-save-v1` (localStorage, try/catch everywhere). Autosave every 10 s and on `pagehide`.
+## Frames and the one idea that makes returning work
+World = AR local space in metres. Every map zone has a frame `(cx, cz, ang, y)`; its land grid, its settlement (`S.o` = origin in the zone's own axes, `S.adj`) and the settlement's contents are all stored **in the zone's frame**. So a returning colony needs only **one** thing: the transform from the saved room to the live room, applied to zone frames and spot positions (`applyAlign`). Settlements follow through `syncTf`. The map is saved again after a visit in the *live* frame (each visit re-anchors it), so errors do not pile up on one origin.
 
-## The almanac (future hook for the owner's LLM community)
-`COLONY_ALMANAC` in `index.html` has built-in defaults. If `almanac.json` sits next to the page (served over http/https; it is not fetched from `file:`) it is fetched at start; any of the three arrays it contains **replaces** the default array of the same name; unknown keys are ignored; a missing or broken file is ignored silently. No networking beyond this one same-origin fetch. Format:
-
-```json
-{
-  "colonists": [
-    { "name": "Pip", "personality": { "work": 1.3, "social": 0.8, "lazy": 0.6 }, "likes": ["tree", "well"] }
-  ],
-  "requests": [
-    { "id": "water", "icon": "drop", "text": "We need water!", "when": "needWater", "give": "water", "joy": 0.3, "cooldown": 240 }
-  ],
-  "events": [
-    { "id": "picnic", "text": "The colonists are having a picnic.", "hours": [12, 14], "chance": 0.5, "needs": "rain", "effect": { "joy": 0.15, "seeds": 2, "wood": 1, "food": 1 } }
-  ]
-}
+## Room map (key `base-camp-room-map-v1`, JSON, `v: 1`)
 ```
-- `colonists`: handed out in order to new settlers (names repeat with a number when the list runs out). `personality`: weights on how much they like work, company, lazing (1 = normal). `likes`: kinds of things they wander to (`tree farm well hut tent lookout station`).
-- `requests`: `when` is one of `needWater noSeeds hot cold noWood cantReach bored night` (conditions are code in `CONDS`; adding a new one is a one-liner there). `give` is one of `water seed shade wood cheer cablecar` (code in `giveRequest`). `icon` is one of `drop seed sun log flame cable heart food zzz hammer bang` (drawn in `ICONS`). `joy` is the asker's happiness reward; `cooldown` seconds before it can be asked again.
-- `events`: a small happening during `hours` ([from, to) on the 24 h clock), `chance` per window, optional `needs: "rain"`; `effect` adds to every colonist's joy, or to the settlement's seeds, wood or food.
-- Colonist data never leaves the device. Colonists' names and personalities come only from this object.
+{ v:1, kind:"base-camp-room-map", name, saved, build, nextMZ, nextSpot, nextCable, music,
+  zones:[{ id, name, type FLOOR|TABLE|SHELF|SILL|SMALL, spec, y, h, cx, cz, ang, w, d, area, color, lost,
+           land:{ cell:0.02, i0, j0, w, h,            // cells in the zone's own axes: u=(i+.5)*cell, v=(j+.5)*cell
+                  st:[v,count,...], dist:[...], calm:[...], ht:[...] } }],  // run-length: 0 off surface / 1 clear / 2 clutter; disturbance 0..15; calm visits 0..15; clutter height in cm
+  spots:[{ id, tag, name, zid, x, y, z, area, on:"top"|"obj", src:"player"|"default"|"library", who }],
+  cables:[{ id, a, b }],  landmarks:[spotId, spotId],
+  library:[{ id, key, tag, name, by, how, at, n }] }
+```
+Role, travel method and funny things are **not** stored: they come from the tag via `TAGS` + the council's `rooms.json` at runtime, so editing the council file changes the game. Import validates kind, version, sizes (refuses with a message); the colony is never in the map. Export / import is the "Room map" window (text box, download, copy, load file).
 
-## Tested here (Playwright, no real device)
-See the final report in the session; harness scripts live in the session scratchpad (`bc/ar.js` is the real-polyfill AR harness with a fake native iOS side returning a floor at y=-1.2 (3 x 3 m), a desk at y=-0.45 (1.2 x 0.6) and a shelf at y=+0.2 (0.8 x 0.25); `bc/prac.js` is the practice-room run).
+## Colony save (key `base-camp-save-v2`)
+`{ v:2, t, hour, simT, uid, nameIdx, tidy, settlements:[{ id, zid (map zone), spec, adj, o:[u,v], stock{wood food seeds water tin}, stats, things[], cols[] }], links[] }`. `things` includes landmarks (`kind:'lm'`, `role`, `spot`), rubble, stations. The prototype's v1 save is no longer read.
+
+## Spot roles (what each role does; `roleStep`, `fxOf`)
+tower: morale while Music is on (the model shakes). well: water. silo: cap + 12. storage: caps + 24. plaza / lookout: slow morale. forge: tin every 10 min (and warm refuge: cancels the cold growth penalty). solar: growth x1.2 and fruit. farm: +1 farm, ripens x1.25. workshop: builds x1.3. hideout: arrivals every 60 s instead of 100. market: 3 food -> 1 seed + 1 wood every 20 min. Zones get a **default spot** (floor -> farm, desk -> market, shelf -> storage, sill -> solar...), so a plain scan already has roles. Tin counts double towards building cost (`canPay` / `pay`); huts bought with tin get a grey roof.
+
+## Away sim (`awaySim`)
+`simSettlement` in quiet mode with `E = AWAYE` (`away: true`): coarse steps of `clamp(secs/1500, 20, 60)` seconds, at most 24 h, day/night from sunrise/sunset (no weather), jobs run with the real step (a job is two ticks). Colonies keep needs at 0.3x while asleep. Extras: council events at random hours, `autoExpand` (a thriving colony sends a party over a spot's travel method to an unsettled zone), cables marked on the map start gated (`l.gate`: four settlers). The diary (`awaySummary`) diffs before / after and picks 5 to 10 lines. Runs on the saved map **before** any scan or alignment (settlements are hidden, `placed:false`, via `G.holdPlace`).
+
+## Alignment maths
+Map -> live: `p' = R(phi) p + t`, `y' = y + dy`, `R(phi)(x, z) = (x cos phi - z sin phi, x sin phi + z cos phi)`. Two landmarks `a, b` (saved) and `a', b'` (tapped): `phi = atan2(b'-a') - atan2(b-a)`, `t = mid' - R(phi) mid`, `dy = mean of the two height differences`. Residual `err = max |R(phi) p + t - p'|` (half the length mismatch). Landmarks are the two **player-tagged** small spots that are furthest apart (`pickLandmarks`); a tap snaps to the centre of the tapped patch (`surfacePick`) so repeated taps agree. Fine tuning rotates about the landmark midpoint (`nudgeAlign`). One landmark: shift only. None: `Same place`.
+
+## Change detection (`captureScan`, `applyChanges`)
+1. Fresh scan zones are matched to map zones: big surfaces by overlap (many patches may belong to one surface; the land grid grows with `growLand`), small things by "mostly on a known thing" (`fzOnZone`) or close (15 cm). A small top over known land is an object standing there (clutter), not new land.
+2. Unmatched small map zone that was **looked at** (6+ direct hits on a *lower* band around it, almost none at its own height): MOVED if a similar unmatched fresh zone (height +-4.5 cm, area x0.55..1.8, within 1.3 m) exists, else GONE. Not looked at: untouched.
+3. Unmatched fresh zones: NEW (expedition request).
+4. Per matched zone `measureLand` -> `reconcileLand`: changes are whole objects (cells eroded by one so scan jitter makes no events, regrown by one). *Removed* needs **direct hit evidence** (`b.hit`) over the object's cells, so sparse sweeps never look like tidying. Events: removed object = gift by size (`objClass`: can < 0.022 m2, box < 0.09, else big), placed object on clear land = squash check against every thing's footprint, disturbance +1 on the cells (dilated 2), calm reset; all other cells calm +1.
+5. Learning: planner (`validSpot`) refuses cells with disturbance >= 2 (`TIDY.avoidAt`); placement prefers cells with the most calm visits; `calm >= 3` marks a thing `rich` (x1.3 growth).
+6. Spots standing on an object that disappeared: a similar object appeared nearby -> *"Did the cup move here?"*; otherwise the spot is dropped with a diary line. A moved zone takes its removal / placement events with it (not tidying or squashing).
+Thresholds all live in `TIDY` and a few literals in `captureScan`.
+
+## Recognition (phase 2)
+- **Frames**: AR session requests `camera-access` only when mapping; the polyfill puts the JPEG in the device's `_cameraImage` (`arDevice()` finds it through the session's private symbol, like the overlay fix). `recogFrame()` returns it with its size. Detection boxes are mapped to the screen by proportion (**assumes the app sends a frame that has the screen's field of view and orientation; check on a real iPad**).
+- **COCO-SSD** (`lite_mobilenet_v2`, TF.js 4.22.0, coco-ssd 2.2.3 from jsdelivr, weights from storage.googleapis.com), loaded when AR mapping starts, run about every 1.5 s while scanning or tagging. Bottom-centre of the box -> `surfacePick` -> nearest small top (`topNear`) -> candidate; two sightings (or 60% sure) -> a guess card. `COCO_ROLES` is the class table.
+- **CLIP** (opt-in): `clip-labels.json` holds normalised text embeddings (43 labels, 512 dims, "a photo of {label}", made by `tests/make-clip-labels.mjs` with `text_model` q8) plus four test-only `checks`. The game downloads only `Xenova/clip-vit-base-patch32` **vision** (q4f16 about 53 MB; falls back through q4, bnb4, q8 if a device cannot run it). Crop of the tapped thing -> embedding -> dot product x100 -> softmax; at 50% it asks "I think this is...", below that "What is this?" with the top three as hints. The toggle is remembered (`bc-clip`).
+- **Library** (`G.library`, saved in the map): keys `coco:<class>`, `clip:<label>`, `spot:<id>`. A library entry replaces the guess and naming happens without a question. Practice room: `practiceDetector` (a cup is sure, cans look like a bottle, the GPU box looks like a laptop, speaker and box are unknown).
+- Privacy: frames are only given to local models; nothing is uploaded.
+
+## The council's data
+`almanac.json` (the council's shape: colonists with free-text personality, `requests {colonist, asks_for, says}`, `events {title, when, weather, what_happens, colonist_says}`) is adapted in `adoptAlmanac`: numeric personality from the name and a few keywords, free-text likes -> building kinds, `asks_for` -> our request conditions. The council's requests come first (a request with a `who` only fires for that colonist), built-in ones are the fallback. `rooms.json` (spots with `used_for`, `gives`, `costs`, `how_they_get_there`, `funny_thing`, `by`) feeds roles, travel names, funny diary lines and the spot card. `creatures.json` (Glip, Grizzle, Fluffflur, Glimmerfluff) are the fourth to seventh... settlers (after the six almanac colonists) and every colonist gets a creature **temperament**: `says_when_it_panics` (squashing, gone things), `says_when_happy` (gifts, arrivals). "by <resident>" is shown small next to every line that uses the council's words. Missing or broken files: built-in copies. Files are fetched next to the page (not from `file:`).
+
+## Tests (Playwright; `NODE_PATH=$(npm root -g)`, chromium with swiftshader, 1180 x 820)
+- `tests/room-test.js` (practice room, injected scans, about a minute): 38 checks over map, tag, export/import, away, alignment on a room turned 30 degrees and shifted 0.5 m, tidy, recycle, squash, learn, MOVED, drag, memory, errors.
+- `tests/ar-room-test.js` (`NO_OVERLAY=1`, real WebXRKit polyfill, about 6 minutes): a fake shed (floor, two speaker tops, a shelf with three cans, an egg cup), real sweeps with the fake native hit-test, real taps, camera frames, away diary, aligning in a turned and shifted room.
+- `tests/recog-test.js` (`REAL=0` skips the downloads): practice eyes, library, "What is this?", mocked detector, real COCO-SSD and real CLIP.
+- `tests/ar-harness.js`, `tests/practice-test.js`: the first prototype's scripts (they predate the room map and are kept as examples of the harness).
+- `BC_ROOT=<copy of the folder>` lets a long run keep going while the game is edited.
 
 ## Needs a real iPad
-- Hit-test density on a real scan (ARKit planes cover whole surfaces, so it should fill faster than the fake); whether five rays per frame is too many at the real frame rate.
-- Whether shelf and sill planes are detected at all (narrow ones may not be).
-- Light estimate range (clamped 0.6 to 1.4 like Baguettes), what counts as "hot" and "dim".
-- Touch layer inside the DOM overlay (drawing the cable car line, press-and-hold watering).
-- Tracking drift over a long session (no anchors): the colony may slide off its surface; re-scan and re-place.
-- Geolocation permission prompt in the app web view (may be blocked by the host app; then the town picker is the fallback).
-- Performance: about 100 meshes per settlement; the overlay textures are 250 x 250 per band.
+- Hit-test density on a real scan: removal of a can is only believed when direct hits cover its footprint, so the player has to *look* at the cleared place. Check how it feels, and whether ARKit returns planes for can- and cup-sized tops at all (if not, clutter comes only from surfaces above a plane, and speaker tops may merge).
+- The **camera frame's mapping to the screen** (field of view, orientation, crop) and its rate; `camera-access` through HelloXR; whether the app needs a permission string.
+- Alignment accuracy with human taps (tested with exact taps here), and whether tracking drift within a session is small enough to skip re-aligning.
+- Model cost on the device: COCO-SSD per frame, CLIP per crop and its 53 MB download; q4f16 on WASM (fell back? see `RECOG.clip.dtype`); memory with TF.js + ONNX runtime loaded.
+- Touch layer inside the DOM overlay: tag picker, text field, file input, download link (may not work in the app web view; Copy / paste is the fallback).
+- Everything from the first prototype (light estimate range, geolocation prompt, overlay input).
 
-## Cut from this prototype
-Battles (artillery, turn-based), pass-the-iPad multiplayer, a ghost preview while placing blueprints, colonist-to-colonist trading by cable car (only migration), more than one colonist job at a time per building, occlusion by real objects, a real "world map" re-placement, a proper settings screen.
+## Cut
+Battles, multiplayer, trading by cable car (only migration), a ghost preview for blueprints, occlusion by real objects, anchors / ARKit world maps (the app could replace alignment with `ARWorldMap`; see the first prototype's note), per-object sizes beyond three classes, colonist pathfinding (they steer around clutter by trying a few directions), recognition for tops that are not small (a "table" is classified by the zone rule only), a settings screen, restyling.
 
 ## Known bugs / rough edges
-- Colonists can stand in each other's way (no collision between them).
-- A re-scan during play (Scan more) can split or merge zones; settled zones keep their id only if enough area overlaps.
-- Practice-room orbit uses mouse drag only (no pinch).
+- A scan only covers 5 m x 5 m around where it started (`GN`); bigger rooms need a bigger grid.
+- Colonists can stand in each other's way; they steer around clutter by local avoidance only and can get stuck in a dead end for a few seconds.
+- Two surfaces at the same height within 50 cm are treated as one (a patch of floor next to the floor).
+- A very small spot moved less than 15 cm is not reported (it is treated as the same).
+- Away colonies that got no care end up glum (requests wait for the Giant); the card shows it, nothing worse happens (colonists never die).
 - Zone classification is rule based; a stool seat or a chair may be called a Desk.
+- Practice-room orbit uses mouse drag only.
+
+## Earlier prototype notes (still true)
+Growth: tree 300 s to grow (x1.8 when tended or in rain), crops 180 s, both times `ENV.grow` (0 at night). Colonists never die. Cable car: 6 wood or 3 tin, settlements must be thriving (a map cable needs only four settlers). Light: AR ambient light clamped 0.6 to 1.4. Weather: Open-Meteo, rounded location, non-commercial licence only (see README). Colonist data never leaves the device. `almanac.json` format of the first prototype (`personality {work, social, lazy}`, `requests {id, when, give, icon}`, `events {hours, effect}`) still works.
