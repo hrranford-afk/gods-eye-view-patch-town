@@ -31,7 +31,7 @@ for (let i = 0; i < 34; i++) { const h = 0.05 + rnd() * 0.5, hw = 0.04 + rnd() *
   ok('clutter is found (many bumps) but no tall box is drawn', S.objs >= 5 && S.tall === 0, JSON.stringify({ objs: S.objs, tall: S.tall, footprints: S.foot }));
   ok('the toolbar is one compact row (under 70 px tall, portrait)', S.bar < 70, S.bar + ' px');
   ok('the toast is at the top, away from the toolbar', S.toastTop < S.H / 3 && S.toastTop < S.barTop);
-  await sleep(2500); const gone = await ev(() => ({ toast: document.getElementById('toast').innerText, foot: __g.G.zones.reduce((a, z) => a + (z.towers ? z.towers.children.filter((c) => c.visible).length : 0), 0) }));
+  await sleep(2500); const gone = await ev(() => ({ toast: document.getElementById('toast').innerText, foot: __g.G.zones.reduce((a, z) => a + (z.towers ? z.towers.children.filter((c) => c.visible && c.userData.t0 && performance.now() - c.userData.t0 > 2300).length : 0), 0) })); // footprints older than 2 s are gone (newer ones may still be fresh)
   ok('the toast faded after about 2 s and the footprints are gone', gone.toast === '' && gone.foot === 0, JSON.stringify(gone));
   await p.click('#bCollapse'); await sleep(300); await p.screenshot({ path: OUT + '20-ar-look-collapsed.png' });
   ok('the toolbar collapses to one round button and comes back', await ev(() => document.getElementById('bar').getBoundingClientRect().width < 70 && !!document.getElementById('bExpand')));

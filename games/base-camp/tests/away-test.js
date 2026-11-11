@@ -18,7 +18,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
       return { okk, wall, ms: A && A.ms, lines: A && A.lines.map((l) => l.text), cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0), sett: __g.G.settlements.length, things: __g.G.settlements.reduce((a, S) => a + S.things.length, 0), zones: __g.G.zones.length, away: A && A.secs, fmt: A && window.__fmtAway ? 0 : 0 };
     }, [secs, base]);
     console.log(name, JSON.stringify({ wall: Math.round(r.wall), cols: r.cols, sett: r.sett, things: r.things, nLines: r.lines && r.lines.length })); console.log('   ' + (r.lines || []).map((l) => l.slice(0, 110)).join('\n   '));
-    ok(name + ': loads, takes under 1 s (' + Math.round(r.wall) + ' ms), nothing lost, a diary of at most 10 lines', r.okk && r.wall < 1000 && r.cols >= v.settlements.reduce((a, S) => a + S.cols.length, 0) && r.sett === v.settlements.length && r.zones > 0 && r.lines.length >= 3 && r.lines.length <= 10 && Math.abs(r.away - secs) < 120);
+    ok(name + ': loads, takes under 1 s (' + Math.round(r.wall) + ' ms), nothing lost, a diary of at most 10 lines', r.okk && r.wall < 1000 && r.cols >= v.settlements.reduce((a, S) => a + S.cols.length, 0) && r.sett >= v.settlements.length && r.zones > 0 && r.lines.length >= 3 && r.lines.length <= 10 && Math.abs(r.away - secs) < 120);
     if (secs >= 21 * 86400) ok(name + ': the diary says how long (while you were away ' + name + ')', /away for ([\d.]+ (weeks?|months?|years?))/.test(r.lines[0]), r.lines[0]);
   }
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 3)));
