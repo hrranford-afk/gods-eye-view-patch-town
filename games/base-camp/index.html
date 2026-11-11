@@ -77,6 +77,9 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 #home{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:800 44px var(--body);color:#ffd9a8;text-shadow:0 3px 0 #7a4a22;pointer-events:none;opacity:0;transition:opacity .6s}
 #home.on{opacity:1}
 #mapInfo{font:700 13px var(--body);opacity:.85}
+#idDot{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:8px;height:8px;border-radius:50%;background:#ffd9a8;opacity:.55;animation:idp 1.6s ease-in-out infinite;pointer-events:none;z-index:3}@keyframes idp{50%{opacity:.12}}
+#nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
+#rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -91,6 +94,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button class="big" id="bPlay" disabled>Play</button>
       <button id="bMore">More...</button>
     </div>
+    <div id="rooms" hidden></div>
     <div id="tmenu" class="mrow" hidden>
       <button id="bFresh">Start a new room</button>
       <button id="bPrac" class="alt">Practice room</button>
@@ -98,12 +102,15 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button id="bMapIO">Room map: export / import</button>
       <button id="bHomes" hidden>Rooms and totems</button>
       <button id="bNew" hidden>Forget my colony</button>
+      <div id="storeInfo" class="sub" style="flex-basis:100%"></div>
     </div>
     <div id="mapInfo"></div>
     <div id="arStatus">AR: checking...</div>
   </div>
   <div id="top"><div id="hint" class="glass"></div><div id="chips"></div><div id="count"></div></div>
   <div id="home"></div>
+  <div id="idDot" hidden></div>
+  <div id="nroom" class="glass" hidden></div>
   <div id="card" class="glass" hidden></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
@@ -125,7 +132,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 6b';
+const BUILD = 'build 7';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -145,15 +152,37 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
   for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
   if (bad) STORE.status = 'corrupt'; return null;
 }
-const HOME_TOTEM = false; // OFF: the home totem / multi-room work (build 6, unfinished) is not reachable while this is false
+const MULTI_ROOM = true; // ON (build 7): several rooms, each with its own map and colony (storage keys per room), a rooms list on the title, silent room recognition by surface matching
+const HOME_TOTEM = false; // OFF: the totem photo / guardian / feature matcher (build 6, never validated) is not reachable while this is false
 const HOMES = { v: 1, cur: 'r1', rooms: [{ id: 'r1', name: 'My room', created: Date.now(), visits: 0, known: 0, post: [] }] }; // rooms: each has its own map, colony, totem and guardian (keys below)
 (function homesInit() { try { const d = JSON.parse(localStorage.getItem('bc-rooms-v1') || 'null'); if (d && d.v === 1 && Array.isArray(d.rooms) && d.rooms.length && d.rooms.every((r) => r && /^r\d+$/.test(r.id))) { HOMES.rooms = d.rooms.slice(0, 8); HOMES.cur = HOMES.rooms.some((r) => r.id === d.cur) ? d.cur : HOMES.rooms[0].id; } } catch (e) { /* one room */ } })();
 function homesSave() { try { localStorage.setItem('bc-rooms-v1', JSON.stringify(HOMES)); } catch (e) { /* no storage */ } }
 const homeInfo = (id) => HOMES.rooms.find((r) => r.id === id) || null, homeName = (id) => { const r = homeInfo(id); return r ? r.name : 'a room'; };
 const homeKeys = (id) => (id === 'r1' ? { map: 'base-camp-map-v1', save: 'base-camp-save-v2' } : { map: 'base-camp-map-v1.' + id, save: 'base-camp-save-v2.' + id }); // the first room keeps the old keys
 function homeSelect(id) { HOMES.cur = id; MAP_KEY = homeKeys(id).map; SAVE_KEY = homeKeys(id).save; homesSave(); }
-function homeCreate(name) { if (HOMES.rooms.length >= 8) return null; const n = Math.max(...HOMES.rooms.map((r) => +r.id.slice(1))) + 1, r = { id: 'r' + n, name: name || 'Room ' + (HOMES.rooms.length + 1), created: Date.now(), visits: 0, known: 0, post: [] }; HOMES.rooms.push(r); homeSelect(r.id); return r; }
+function homeCreate(name) { if (HOMES.rooms.length >= 8) return null; const n = Math.max(0, ...HOMES.rooms.map((r) => +r.id.slice(1))) + 1; let k = HOMES.rooms.length + 1; while (HOMES.rooms.some((q) => q.name === 'Room ' + k)) k++; const r = { id: 'r' + n, name: name || 'Room ' + k, created: Date.now(), visits: 0, known: 0, post: [] }; HOMES.rooms.push(r); homeSelect(r.id); return r; }
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* none */ } } };
+// ---- MIGRATION (build 7): single-room saves become rooms. The first room keeps the old storage keys, so nothing moves for it; a '-prev' backup (made by "Start a new room" or "A new room" in builds 5 / 6) becomes "Room N (earlier)" with its own keys.
+function homesMigrate() {
+  if (!MULTI_ROOM) return; let changed = false;
+  try {
+    const ls = localStorage, rd = (k) => { try { return ls.getItem(k); } catch (e) { return null; } };
+    const r1 = HOMES.rooms.find((r) => r.id === 'r1');
+    if (r1 && r1.name === 'My room') { let nm = 'Room 1'; try { const d = JSON.parse(rd(homeKeys('r1').map) || 'null'); if (d && typeof d.name === 'string' && d.name.trim() && d.name !== 'My room') nm = d.name.trim().slice(0, 24); } catch (e) { /* unreadable: keep the plain name */ } r1.name = nm; changed = true; }
+    for (const r of HOMES.rooms.slice()) {
+      const k = homeKeys(r.id), pm = rd(k.map + '-prev'), pc = rd(k.save + '-prev'); if (!pm && !pc) continue;
+      if (HOMES.rooms.length >= 8) break;
+      const n = Math.max(0, ...HOMES.rooms.map((q) => +q.id.slice(1))) + 1, id = 'r' + n, nk = homeKeys(id); let nm = 'Room ' + (HOMES.rooms.length + 1) + ' (earlier)';
+      try { const d = JSON.parse(pm || 'null'); if (d && typeof d.name === 'string' && d.name.trim() && d.name !== 'My room' && d.name !== r.name) nm = (d.name.trim().slice(0, 14) + ' (earlier)'); } catch (e) { /* plain name */ }
+      try {
+        if (pm) { ls.setItem(nk.map, pm); if (ls.getItem(nk.map) !== pm) throw new Error('copy failed'); } if (pc) { ls.setItem(nk.save, pc); if (ls.getItem(nk.save) !== pc) throw new Error('copy failed'); }
+        ls.removeItem(k.map + '-prev'); ls.removeItem(k.save + '-prev'); HOMES.rooms.push({ id, name: nm, created: Date.now(), visits: 0, known: 0, post: [] }); changed = true;
+      } catch (e) { try { ls.removeItem(nk.map); ls.removeItem(nk.save); } catch (e2) { /* none */ } break; } // no room to copy: the backup stays where it is for next time
+    }
+  } catch (e) { /* storage blocked: one room, as before */ }
+  if (changed) homesSave();
+}
+homesMigrate();
 
 // ============ ALMANAC: everything a story-teller can change lives in this one object ============
 // Defaults are built in. If almanac.json sits next to this page it is fetched and merged over them (see HANDOVER.md).
@@ -1832,6 +1861,7 @@ function restoreLinks(sv) { // saved cable cars between settlements that exist a
 function prepareContinue() {
   const md = loadMapData(), sv = loadSave(); if (!md) { toast('Nothing to continue yet.'); return false; }
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
+  if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
   for (const d of sv.settlements) restoreSettlement(d);
@@ -2406,7 +2436,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
-  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; return true;
+  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
 function liveMatch(fz) { // a map zone this scan zone is (part of) the same surface as
@@ -2485,7 +2515,7 @@ function autoSettle(force) { // the colony lands by itself on the biggest clear 
 // ---- what the player sees while this happens ----
 function autoHintText() {
   if (G.phase === 'title') return '';
-  if (G.returning && !G.locked) return RELOC.state === 'asking' ? '' : 'Looking for home\u2026 ' + Math.round((RELOC.progShown || 0) * 100) + '% \u00b7 keep looking around (' + Math.round(RELOC.scanSecs) + ' s)';
+  if (G.returning && !G.locked) return ''; // homing is silent (build 7): the numbers live in the field report only
   if (!G.settlements.length) return SCAN.zones.length ? 'Found a place to land...' : 'Look around slowly. The colonists are searching for a landing place.';
   return '';
 }
@@ -2508,6 +2538,7 @@ function autoTick(dt) {
   }
   RELOC.lastHits = SCAN.hits;
   if (G.returning && !G.locked) relocStep(dt);
+  { const on = G.returning && !G.locked && RELOC.state === 'search'; if ($('idDot').hidden === on) $('idDot').hidden = !on; }
   totemTick(dt); totemOfferTick();
   if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.1, S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
   if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
@@ -2666,17 +2697,22 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
 }
 function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
   RELOC.state = 'search'; RELOC.prog = 0; RELOC.progShown = 0; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
-  RELOC.totem = null; RELOC.ci = 0; RELOC.jobRoom = HOMES.cur; RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.curTop = RELOC.savedTop; RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
+  RELOC.totem = null; RELOC.ci = 0; RELOC.tried = {}; RELOC.rp = {}; RELOC.jobRoom = HOMES.cur; RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.curTop = RELOC.savedTop; RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
+}
+function relocAskAt() { return RELOC.cfg.askAfter > 1e8 ? 1e9 : G.finding ? Math.min(45, RELOC.cfg.askAfter) : RELOC.cfg.askAfter; }
+function relocPickRoom(ids) { // round robin until every room had two tries, then the leader (best progress) gets two of every three
+  if (ids.length < 2) return ids[0]; const t = (id) => RELOC.tried[id] || 0, least = ids.slice().sort((a, b) => t(a) - t(b))[0]; RELOC.ci++;
+  if (t(least) < 2) return least; const lead = ids.slice().sort((a, b) => (RELOC.rp[b] || 0) - (RELOC.rp[a] || 0))[0]; return (RELOC.rp[lead] || 0) >= 0.25 && RELOC.ci % 3 !== 0 ? lead : least;
 }
 function relocStep(dt) {
   if (RELOC.state !== 'search') return;
-  if (RELOC.scanSecs >= RELOC.cfg.askAfter) { RELOC.state = 'asking'; return; }
+  if (RELOC.scanSecs >= relocAskAt()) { if (!G.finding) { RELOC.state = 'asking'; return; } if (!RELOC.asked) relocAskRooms(); } // several rooms: ONE small non-blocking prompt, and the search carries on behind it
   if (!RELOC.job) {
-    if (RELOC.scanSecs < RELOC.nextTry || (!RELOC.saved.length && !RELOC.totem)) return;
+    if (RELOC.scanSecs < RELOC.nextTry || (!RELOC.saved.length && !RELOC.totem && !Object.keys(ROOMPRE).length)) return;
     const live = relocLiveLayers(); if (!live.length || live.reduce((a, l) => a + l.n, 0) < (RELOC.totem ? 60 : 150)) { RELOC.nextTry = RELOC.scanSecs + 1; return; }
     if (RELOC.totem) { RELOC.jobRoom = HOMES.cur; RELOC.job = relocTotemJob(live); } // the totem pins the position: only the yaw is searched
-    else { const ids = [HOMES.cur]; if (AUTO.t > 10 && !TOTEM.lastFound) for (const id in TOTEM.pre) ids.push(id); const id = ids[RELOC.ci++ % ids.length]; RELOC.jobRoom = id; // no totem seen for 10 s: every saved room is tried in turn
-      if (id !== HOMES.cur) { RELOC.savedTop = TOTEM.pre[id].top; RELOC.job = relocJob(live, TOTEM.pre[id].saved); } else { RELOC.savedTop = RELOC.curTop; RELOC.job = relocJob(live, RELOC.saved); } }
+    else { const ids = (RELOC.saved.length ? [HOMES.cur] : []).concat(Object.keys(ROOMPRE)), id = relocPickRoom(ids); RELOC.jobRoom = id; RELOC.tried[id] = (RELOC.tried[id] || 0) + 1; // every saved room is tried; the one that looks best gets most of the tries
+      if (id !== HOMES.cur) { RELOC.savedTop = ROOMPRE[id].top; RELOC.job = relocJob(live, ROOMPRE[id].saved); } else { RELOC.savedTop = RELOC.curTop; RELOC.job = relocJob(live, RELOC.saved); } }
     RELOC.jobT0 = performance.now(); RELOC.tries++;
   }
   const t0 = performance.now(); let r;
@@ -2694,17 +2730,20 @@ function relocWhy(res, c) { // why this attempt did not lock (the field report e
 }
 function relocConsider(res) {
   const room = RELOC.jobRoom || HOMES.cur, c = RELOC.totem ? Object.assign({}, RELOC.cfg, TOTEM.cfgT) : RELOC.cfg, why = relocWhy(res, c), ok = !!res && !why.length;
-  if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); } // a tiny hint: how close the best attempt is to the lock thresholds
+  if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); }
+  (RELOC.rp || (RELOC.rp = {}))[room] = res ? RELOC.prog : 0; // a tiny hint: how close the best attempt is to the lock thresholds
   recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak, room, mode: RELOC.totem ? 'totem' : 'surface' } : { none: true, why, room }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok, room }); if (RELOC.hist.length > 30) RELOC.hist.shift();
   const h = RELOC.hist.filter((e) => e.room === room).slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
   if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
   const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
   if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
+  if (G.finding && [HOMES.cur].concat(Object.keys(ROOMPRE)).some((id) => id !== room && (RELOC.tried[id] || 0) < 2)) return; // never lock on one room before the others were really compared
   const rival = Math.max(0, ...RELOC.hist.filter((e) => e.room !== room && e.res).slice(-6).map((e) => e.res.score)); if (rival > 0.8 * a.score && a.score > 0) { recReloc({ room, rival: Math.round(rival), score: a.score, why: ['another saved room scores nearly as well'] }); return; } // several rooms: the best score wins
   if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
   let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
+  $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
   recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, how: how || 'auto' };
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
@@ -2757,11 +2796,19 @@ function worldDrop() { // the map and colony go from the world; the fresh scan s
   G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
-function relocNewRoom() { // a new room: the old room stays where it is (also kept as a backup copy); a fresh map starts from what has been scanned
-  const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c);
-  const lib = G.library, nl = G.nextLib, nr = HOME_TOTEM ? homeCreate() : null; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room';
+function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
+  let nr = null;
+  if (MULTI_ROOM) { nr = homeCreate(); if (!nr) { toast('That is eight rooms: delete one you do not need on the title screen first.', 6); return; } }
+  else { const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c); nr = HOME_TOTEM ? homeCreate() : null; }
+  const lib = G.library, nl = G.nextLib; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room'; $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
   G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; RELOC.totem = null; TOTEM.live = null; TOTEM.offer = HOME_TOTEM && (!nr || !imgLoad('totem', HOMES.cur)); if (!nr) { store.del(MAP_KEY); store.del(SAVE_KEY); } AUTO.firstDecent = 0;
   autoSay('A new room! Keep looking around: the colonists will find a landing place.', 5); updateTitle();
+}
+function relocAskRooms() { // several rooms and none matched after ~45 s of scanning: one small prompt at the bottom, never a wall; the search keeps going behind it
+  RELOC.asked = true; recReloc({ gaveUp: true, tries: RELOC.tries, rooms: Object.keys(RELOC.rp || {}).length }); recSnap('homing failed'); const el = $('nroom'); el.hidden = false;
+  const opts = HOMES.rooms.filter((r) => roomHasData(r.id)); el.innerHTML = '<b>New room?</b><button class="alt" id="nrYes">Yes</button><button id="nrIts">It\u2019s\u2026 \u25be</button><span id="nrList" hidden>' + opts.map((r) => '<button data-room="' + r.id + '">' + esc(r.name) + '</button>').join('') + '</span><button id="nrX" aria-label="Not now">\u00d7</button>';
+  $('nrYes').onclick = () => { el.hidden = true; relocNewRoom(); }; $('nrX').onclick = () => { el.hidden = true; }; $('nrIts').onclick = () => { $('nrList').hidden = !$('nrList').hidden; };
+  for (const b of el.querySelectorAll('[data-room]')) b.onclick = () => { el.hidden = true; const id = b.dataset.room; if (id !== HOMES.cur && !homeSwitchLoad(id)) return; G.finding = false; ROOMPRE = {}; relocManual(); }; // "It's the Shed": that room loads and the older two-tap alignment takes over
 }
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
@@ -2920,19 +2967,21 @@ function* relocTotemJob(live) {
 }
 // ---- rooms ----
 function homeMapData(id) { return safeRead(homeKeys(id).map, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
-function homePrecomp() { // layers of every other saved room (for the "no totem seen" fallback), made before the current room is loaded
-  TOTEM.pre = {}; if (HOMES.rooms.length < 2) return;
-  for (const r of HOMES.rooms) { if (r.id === HOMES.cur) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) TOTEM.pre[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
-  G.zones = []; G.spots = [];
+let ROOMPRE = {}; // layers of the other saved rooms while the player's room is being recognised
+function roomHasData(id) { const k = homeKeys(id); return !!(store.get(k.map) || store.get(k.map + '-bak') || store.get(k.save)); }
+function homePrecomp() { // layers of every other saved room, made before the first room is loaded
+  ROOMPRE = {}; if (HOMES.rooms.length < 2) return;
+  for (const r of HOMES.rooms) { if (r.id === HOMES.cur || !roomHasData(r.id)) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) ROOMPRE[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
+  for (const Z of G.zones) disposeZone(Z); G.zones = []; G.spots = [];
 }
-function homePickStart() { // the room to load first: the current one, or the most recent one that has a saved map
-  if (homeMapData(HOMES.cur)) return; const r = HOMES.rooms.filter((q) => homeMapData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r) homeSelect(r.id);
+function homePickStart() { // the room that loads first while the others wait in ROOMPRE: the most recently used one that has a saved map
+  const r = HOMES.rooms.filter((q) => roomHasData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
 }
 function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
   const secs = RELOC.scanSecs; worldDrop(); homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
   G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
 }
-function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); r.name = G.mapName && G.mapName !== 'My room' ? G.mapName : r.name; homesSave(); }
+function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); }
 function homeSummary() { return HOMES.rooms.map((r) => ({ id: r.id, name: r.name, visits: r.visits, known: r.known, totem: !!imgLoad('totem', r.id), guardian: !!imgLoad('guardian', r.id), post: (r.post || []).length })); }
 function homePost(id, text) { const r = homeInfo(id); if (!r) return; r.post = (r.post || []).concat([{ at: Date.now(), text: String(text).slice(0, 80) }]).slice(-8); homesSave(); } // hook: things colonies may send each other later (only a list and a diary line for now)
 // ---- what the player sees: totem marker and guardian billboard ----
@@ -2996,19 +3045,77 @@ function resetWorld() {
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
 }
 function showTitle() {
-  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
+  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
   room.visible = false; scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
 }
+// ---- the rooms list (title) ----
+const STORE_LIMIT = 5000000, ROOM_MAX = 1400000; // characters: browsers keep about 5 million per site; one room (map + colony + their backup copies) is held under ROOM_MAX
+const ROOMS_UI = { ren: '', del: '', delT: 0 };
+const fmtKB = (n) => Math.round(n / 1000) + ' KB';
+function storeChars() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) { /* none */ } return n; }
+function roomChars(id) { const k = homeKeys(id); let n = 0; for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) n += (store.get(b + x) || '').length; return n; }
+function roomBound() { // each room is bounded; near the browser limit the backup copies of the rooms not in use go first, then the player is told
+  try {
+    const id = HOMES.cur, k = homeKeys(id);
+    if (roomChars(id) > ROOM_MAX) { store.del(k.map + '-bak'); store.del(k.save + '-bak'); if (roomChars(id) > ROOM_MAX && !STORE.bigTold) { STORE.bigTold = true; toast('This room has grown very large (' + fmtKB(roomChars(id)) + '). It still saves, but a room that big may not fit next to your others.', 7); } }
+    const t = storeChars(); if (t > STORE_LIMIT * 0.8) for (const r of HOMES.rooms) if (r.id !== id) { const q = homeKeys(r.id); store.del(q.map + '-bak'); store.del(q.save + '-bak'); }
+    if (t > STORE_LIMIT * 0.7 && !STORE.nearTold) { STORE.nearTold = true; toast('Saved rooms use ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' your browser allows. Delete a room you no longer need on the title screen.', 8); }
+  } catch (e) { /* storage blocked */ }
+}
+function agoText(ms) { const m = ms / 60000; if (m < 1) return 'just now'; if (m < 90) return Math.round(m) + ' min ago'; const h = m / 60; if (h < 36) return Math.round(h) + ' h ago'; return Math.round(h / 24) + ' days ago'; }
+function roomFacts(r) { // rooms from older builds have no numbers in the registry yet: read them once from what is saved
+  if (r.cols !== undefined && r.last) return;
+  try { const md = homeMapData(r.id); if (!md) return; const sv = safeRead(homeKeys(r.id).save, (d) => d && d.v === 2 && Array.isArray(d.settlements)); r.known = +mapKnownJSON(md).toFixed(2); r.zones = md.zones.length; r.visits = md.visits | 0; r.cols = sv ? sv.settlements.reduce((a, S) => a + (S.cols || []).length, 0) : 0; r.last = (sv && sv.t) || md.saved || Date.now(); homesSave(); } catch (e) { /* no numbers */ }
+}
+function roomsTidy() { // a room that was started and never saved anything is not a room
+  const keep = HOMES.rooms.filter((r) => roomHasData(r.id)); if (keep.length === HOMES.rooms.length) return;
+  HOMES.rooms = keep.length ? keep : [HOMES.rooms.find((r) => r.id === 'r1') || HOMES.rooms[0]];
+  if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id);
+  homesSave();
+}
+function roomDelete(id) { // deleting keeps nothing: map, colony and their backups are gone
+  const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x);
+  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id);
+  if (!HOMES.rooms.length) HOMES.rooms = [{ id: 'r1', name: 'Room 1', created: Date.now(), visits: 0, known: 0, post: [] }];
+  if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id); else homesSave();
+  G.previewLines = null; G.previewStamp = ''; ROOMS_UI.del = '';
+}
+function playRoom(want, id) { // want: 'find' (Play: the room is recognised by itself), 'room' (a row's Continue: that room only), 'new'
+  if (want === 'new') { if (!HOMES.rooms.every((r) => roomHasData(r.id))) roomsTidy(); const r = homeCreate(); if (!r) { toast('That is eight rooms: delete one you do not need first.', 6); return; } }
+  else if (want === 'room') homeSelect(id);
+  G.roomWant = want; G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice();
+}
+function roomsUi() {
+  const el = $('rooms'); if (!MULTI_ROOM) { el.hidden = true; return; }
+  const rs = HOMES.rooms.filter((r) => roomHasData(r.id)).sort((a, b) => (b.last || 0) - (a.last || 0)); el.hidden = !rs.length; if (!rs.length) return;
+  const a = document.activeElement; if (ROOMS_UI.ren && a && a.classList && a.classList.contains('rn')) return; // never wipe a name that is being typed
+  for (const r of rs) roomFacts(r);
+  el.innerHTML = rs.map((r) => {
+    const facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' \u00b7 last visit ' + agoText(Date.now() - (r.last || Date.now())) + ' \u00b7 map ' + Math.round((r.known || 0) * 100) + '%', ren = ROOMS_UI.ren === r.id, del = ROOMS_UI.del === r.id;
+    return '<div class="lib" data-id="' + r.id + '"><div>' + (ren ? '<input class="rn" maxlength="24" value="' + esc(r.name) + '" aria-label="Room name">' : '<b>' + esc(r.name) + '</b>') + '<div class="sub">' + facts + '</div></div><button data-act="go" class="alt">Continue</button><button data-act="ren">' + (ren ? 'Save' : 'Rename') + '</button><button data-act="del">' + (del ? 'Delete for good? Nothing is kept. Tap again' : 'Delete') + '</button></div>';
+  }).join('') + '<div class="mrow"><button id="rNew" data-act="new">+ New room</button></div>';
+  const inp = el.querySelector('input.rn'); if (inp) { inp.onkeydown = (e) => { if (e.key === 'Enter') roomRename(inp.closest('.lib').dataset.id, inp.value); }; }
+}
+function roomRename(id, v) { const r = homeInfo(id); ROOMS_UI.ren = ''; if (r) { r.name = String(v || '').trim().slice(0, 24) || r.name; homesSave(); if (id === HOMES.cur) G.mapName = r.name; } roomsUi(); updateTitle(); }
+$('rooms').onclick = (e) => {
+  const b = e.target.closest && e.target.closest('button[data-act]'); if (!b) return; const row = b.closest('.lib'), id = row ? row.dataset.id : '', act = b.dataset.act;
+  if (act === 'new') { playRoom('new'); return; }
+  if (act === 'go') { playRoom('room', id); return; }
+  if (act === 'ren') { if (ROOMS_UI.ren === id) roomRename(id, row.querySelector('input.rn').value); else { ROOMS_UI.ren = id; ROOMS_UI.del = ''; roomsUi(); const i = $('rooms').querySelector('input.rn'); if (i) { i.focus(); i.select(); } } return; }
+  if (act === 'del') { if (ROOMS_UI.del !== id) { ROOMS_UI.del = id; ROOMS_UI.ren = ''; clearTimeout(ROOMS_UI.delT); ROOMS_UI.delT = setTimeout(() => { ROOMS_UI.del = ''; roomsUi(); }, 5000); roomsUi(); return; } roomDelete(id); updateTitle(); }
+};
 function updateTitle() {
-  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
+  if (MULTI_ROOM && G.phase === 'title') roomsTidy();
+  const nRooms = MULTI_ROOM ? HOMES.rooms.filter((r) => roomHasData(r.id)).length : 0; if (MULTI_ROOM && nRooms && !roomHasData(HOMES.cur)) homePickStart();
+  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has || MULTI_ROOM; $('bFresh').hidden = MULTI_ROOM; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
   let info = md ? 'Saved room: ' + md.zones.length + ' places, ' + Math.round(mapKnownJSON(md) * 100) + '% known, ' + (md.visits || 0) + ' visit' + ((md.visits || 0) === 1 ? '' : 's') + (has ? ', and a colony.' : ', no colony yet.') : 'No room yet: press Play and look around.';
   if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
   else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
   else if (STORE.usedBackup) info += ' (restored from the backup copy)';
-  if (HOME_TOTEM && HOMES.rooms.length > 1) info += ' (' + HOMES.rooms.length + ' rooms; a totem tells the game which one you are in)';
-  $('mapInfo').textContent = info;
+  if (nRooms >= 2 && STORE.status === 'ok') info = nRooms + ' rooms saved. Press Play and look around: the colonists work out which room you are in.';
+  $('mapInfo').textContent = info; if (MULTI_ROOM && G.phase === 'title') { roomsUi(); const t = storeChars(), per = HOMES.rooms.filter((r) => roomHasData(r.id)).map((r) => r.name + ' ' + fmtKB(roomChars(r.id))); $('storeInfo').textContent = 'Storage: ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' used' + (per.length ? ' (' + per.join(', ') + ')' : '') + (t > STORE_LIMIT * 0.7 ? '. Nearly full: delete a room you no longer need.' : '.'); }
   const w = $('welcome');
-  if (has && G.phase === 'title') {
+  if (has && G.phase === 'title' && nRooms < 2) {
     const secs = Math.max(0, (Date.now() - sv.t) / 1000); w.hidden = false;
     w.innerHTML = '<b>Welcome back</b> - you were away ' + fmtAway(secs) + '<ul id="wLines"><li>' + (G.previewLines ? G.previewLines.map(esc).join('</li><li>') : 'The colonists are telling their stories...') + '</li></ul>';
     previewReturn();
@@ -3031,10 +3138,12 @@ function startAuto() {
   G.auto = true; G.intent = 'play'; autoReset(); document.body.classList.add('auto'); $('title').hidden = true; $('top').hidden = false; $('hint').hidden = true; $('count').textContent = '';
   if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = false; envUi(); }
   setPhase('play'); G.tool = 'look'; G.visitCounted = false;
-  TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; if (HOME_TOTEM) { homePickStart(); homePrecomp(); }
+  TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; 
+  const want = G.roomWant || 'find'; G.roomWant = 0; ROOMPRE = {}; G.finding = false; $('nroom').hidden = true;
+  if (MULTI_ROOM && G.mode !== 'practice') { if (want === 'find') { if (HOMES.rooms.filter((r) => roomHasData(r.id)).length >= 2 && G.mode === 'ar') { G.finding = true; homePickStart(); homePrecomp(); } else if (!roomHasData(HOMES.cur)) homePickStart(); } G.mapName = homeName(HOMES.cur); } // Play: all saved rooms are compared silently with what the camera sees
   const md = loadMapData();
   if (md && prepareContinue() && G.zones.length) {
-    G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('Looking for your room... keep looking around.', 6);
+    G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('');
     if (AR.on && worldMapAvailable()) worldMapLoad().then((ok) => { if (ok && !G.locked) relocLock({ phi: 0, tx: 0, tz: 0, dy: 0, score: 0, ratio: 1, M: 0, info: 0, margin: 0 }, 'worldmap'); });
   } else autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
   barUi(); updateHint(); autoCount();
@@ -3224,12 +3333,12 @@ function importMapText(txt) {
   for (const Z of G.zones) { const S = G.settlements.find((q) => q.zid === Z.id); if (S) { Z.settled = S; S.zoneRef = Z; syncTf(S); } paintLand(Z); }
   refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
 }
-$('bPlay').onclick = () => { G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice(); };
+$('bPlay').onclick = () => playRoom('find');
 $('bMore').onclick = () => { $('tmenu').hidden = !$('tmenu').hidden; };
 $('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
 $('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
-$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); };
+$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); }; // hidden: the totem screens stay unreachable
 // Start a new room: the current room's map and colony are kept as a backup (-prev), then everything starts fresh here.
 $('bFresh').onclick = () => {
   const b = $('bFresh');
@@ -3481,6 +3590,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
+  MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
   HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
