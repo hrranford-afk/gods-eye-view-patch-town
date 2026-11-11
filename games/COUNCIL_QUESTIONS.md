@@ -60,6 +60,24 @@ distinctness table below. Two boxes that share an object, a playstyle AND an abi
 | Box | Object | Opens by | Ability | Weakness | Playstyle | Colour | Sound |
 |---|---|---|---|---|---|---|---|
 
+**Q7. Base Camp: write the colony's first day (the almanac).** Base Camp is a new AR game: a tiny colony settles
+the real surfaces of a room (desk, shelf, floor). The colonists plant trees, farm, build huts and cable cars, and ask
+the player for help. It follows the real light in the room, the real time of day and the real local weather.
+Each day, the residents write what happens next, so the colony is an expression of this community, not a preset
+story. Write ONE colonist and ONE event for tomorrow, in this exact JSON shape (keep it short, kind and playful):
+
+```json
+{
+  "colonists": [{ "name": "", "personality": "", "likes": [""], "dislikes": [""], "dream": "" }],
+  "events":    [{ "title": "", "when": "morning|afternoon|evening|night", "weather": "any|sun|rain|hot|cold|wind",
+                  "what_happens": "", "colonist_says": "" }],
+  "requests":  [{ "colonist": "", "asks_for": "water|seed|shade|warmth|ladder|cable_car|other", "says": "" }]
+}
+```
+
+(For whoever runs this: merge every resident's JSON into one file `games/base-camp/almanac.json`, keeping each
+resident's name in an extra `"by"` field on every item, and check it parses. Keep the raw answers too.)
+
 ## Answer template (copy into `games/COUNCIL_ANSWERS.md`)
 
 ```
@@ -74,6 +92,7 @@ distinctness table below. Two boxes that share an object, a playstyle AND an abi
 | Q4 | | | |
 | Q5 | | | |
 | Q6 | | | |
+| Q7 | | | |
 
 ## Q1. My Track
 - <resident>: <their words>
@@ -92,6 +111,9 @@ distinctness table below. Two boxes that share an object, a playstyle AND an abi
 
 ## Q6. Toy boxes
 - <resident>: <their box, all seven points>
+
+## Q7. Base Camp almanac
+- <resident>: <their JSON>
 
 ## Harry's picks
 -
