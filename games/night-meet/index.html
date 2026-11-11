@@ -206,7 +206,7 @@ button[disabled] { opacity: 0.4; }
 const GAME = { name: 'Night Meet', build: 'build 1', key: 'night-meet-v1' }; // rename the game here (title, card, storage key)
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a, b, t) => a + (b - a) * t;
+const mixLerp = (a, b, t) => a + (b - a) * t;
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const damp = (k, dt) => 1 - Math.exp(-k * dt); // frame-rate independent easing factor
 const fmt = (n) => Math.round(n).toLocaleString('en-GB');
@@ -910,8 +910,8 @@ function poseCar(car, c, dt) {
   const rig = car.userData.rig;
   car.position.set(c.x, 0, c.z); car.rotation.set(0, -c.h, 0);
   const latA = c.u * c.r, k = rig.type.kg > 4000 ? 0.012 : 0.02 * (rig.type.cgh ? 1.4 : 1);
-  rig.roll = lerp(rig.roll || 0, clamp(-latA * k, -0.09, 0.09), damp(8, dt));
-  rig.pitch = lerp(rig.pitch || 0, clamp(-c.ax * 0.006, -0.04, 0.04), damp(6, dt));
+  rig.roll = mixLerp(rig.roll || 0, clamp(-latA * k, -0.09, 0.09), damp(8, dt));
+  rig.pitch = mixLerp(rig.pitch || 0, clamp(-c.ax * 0.006, -0.04, 0.04), damp(6, dt));
   rig.body.rotation.set(rig.roll, 0, rig.pitch);
   rig.spin += (c.u / Math.max(0.2, rig.dims.r)) * dt;
   for (const w of rig.wheels) { w.spin.rotation.z = -rig.spin * (w.side < 0 ? -1 : 1) * (w.side < 0 ? -1 : 1); w.g.rotation.y = w.front ? -c.steer : 0; }
@@ -1148,7 +1148,7 @@ function streaksUpdate(A) { // the reflection of each lamp lies on the ground be
 // ---- other dressing ----
 function fenceRun(M, x0, z0, x1, z1, h = 2.4) {
   const L = Math.hypot(x1 - x0, z1 - z0), a = Math.atan2(z1 - z0, x1 - x0), n = Math.ceil(L / 3);
-  for (let i = 0; i <= n; i++) { const t = i / n; M.add(new THREE.CylinderGeometry(0.04, 0.04, h, 6), MAT.pole, lerp(x0, x1, t), h / 2, lerp(z0, z1, t)); }
+  for (let i = 0; i <= n; i++) { const t = i / n; M.add(new THREE.CylinderGeometry(0.04, 0.04, h, 6), MAT.pole, mixLerp(x0, x1, t), h / 2, mixLerp(z0, z1, t)); }
   const g = new THREE.PlaneGeometry(L, h); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * L / 1.2, uv.getY(i) * h / 1.2);
   M.add(g, MAT.chain, (x0 + x1) / 2, h / 2, (z0 + z1) / 2, -a);
 }
@@ -1507,7 +1507,7 @@ function collide(c, A, dims) {
   let impact = 0, clear = 9;
   const m = c.P.mass, I = c.P.Iz;
   for (let i = 0; i < n; i++) {
-    const lx = lerp(dims.rear + r, dims.front - r, n === 1 ? 0.5 : i / (n - 1));
+    const lx = mixLerp(dims.rear + r, dims.front - r, n === 1 ? 0.5 : i / (n - 1));
     let px = c.x + ch * lx, pz = c.z + sh * lx;
     // gather the deepest contact for this circle
     let best = null;
@@ -1690,7 +1690,7 @@ function driveCam(dt) {
   const s = D.shake * 0.25;
   camera.lookAt(D.camT.x + (Math.random() - 0.5) * s, D.camT.y + (Math.random() - 0.5) * s, D.camT.z);
   const fov = 56 + clamp(c.speed - 10, 0, 40) * 0.22 + (D.boostT > 0 ? 8 : 0);
-  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = lerp(camera.fov, fov, damp(4, dt)); camera.updateProjectionMatrix(); }
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = mixLerp(camera.fov, fov, damp(4, dt)); camera.updateProjectionMatrix(); }
 }
 function driveHud() {
   const D = DRIVE, c = D.c, H = D.hud, set = (id, v) => { if (H[id] !== v) { H[id] = v; $(id).textContent = v; } };
@@ -1720,7 +1720,7 @@ function meetUpdate(dt) {
   if (MEET.idle > 4 && !MEET.ptrs.size) MEET.yaw += dt * 0.05; // a slow drift round while nobody touches it
   let tx = A.cam.x, tz = A.cam.z, ty = 1, dist = MEET.dist;
   if (MEET.spot) { const d = MEET.spot.car.userData.rig.dims, p = MEET.spot.car.position; tx = p.x; tz = p.z; ty = d.hgt * 0.45; }
-  MEET.tx = lerp(MEET.tx, tx, damp(3, dt)); MEET.tz = lerp(MEET.tz, tz, damp(3, dt)); MEET.ty = lerp(MEET.ty, ty, damp(3, dt));
+  MEET.tx = mixLerp(MEET.tx, tx, damp(3, dt)); MEET.tz = mixLerp(MEET.tz, tz, damp(3, dt)); MEET.ty = mixLerp(MEET.ty, ty, damp(3, dt));
   if (AR.on) return;
   const cp = Math.cos(MEET.pitch);
   camera.position.set(MEET.tx + Math.cos(MEET.yaw) * cp * dist, MEET.ty + Math.sin(MEET.pitch) * dist, MEET.tz + Math.sin(MEET.yaw) * cp * dist);
