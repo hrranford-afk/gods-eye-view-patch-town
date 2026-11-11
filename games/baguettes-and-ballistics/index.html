@@ -5503,7 +5503,9 @@ function knockOff(victim, rammer) {
 }
 
 // --- the race ---
+let driftOn = false; // Drift hook: set by the title screen's Drift button, consumed here (see "Drift mode")
 function startRace(cfg) {
+  if (driftOn) { driftOn = false; return driftStart(cfg); } // Drift hook
   if (cfg.kr) return krStart(cfg); // the Kitchen Run (every level now)
   const T = cfg.track ? lrTrack(cfg.track) : raceTrack(), p = state.player, gateList = cfg.track ? lrGates(T) : RACE_GATES, N = gateList.length;
   const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '', tokens: [], carried: [], intro: true, swap: null, slotSig: '' };
@@ -5692,6 +5694,7 @@ function raceArrow() { // a gold arrow at the screen edge pointing to the next g
 function raceUpdate(dt) {
   const R = state.race, p = state.player, N = R.gates.length, racing = state.phase === 'race';
   if (R.intro) return; // the Loadout Race intro card is up: nothing moves yet
+  if (R.drift) { driftUpdate(dt); return; } // Drift hook
   if (R.kr) { krUpdate(dt); return; }
   engineUpdate(p);
   R.t += dt;
@@ -6492,6 +6495,7 @@ function krStart(cfg) {
   $('pctBlue').textContent = $('pctRed').textContent = '100%';
 }
 function krCleanup(R) {
+  if (R.drift) driftCleanup(R); // Drift hook
   for (const c of R.rivals) scene.remove(c.mesh);
   sun.target.position.set(0, 0, 0); sun.target.updateMatrixWorld();
   if (krFlashEl) krFlashEl.style.opacity = '0';
@@ -6689,6 +6693,7 @@ function krUpdate(dt) {
 // Camera and the car's pose (from render): follows height smoothly, pulls back a little in the air, cuts after the microwave.
 const krLead = new THREE.Vector3();
 function krCam(dt) {
+  if (state.race.drift) return driftCam(dt); // Drift hook
   const R = state.race, K = R.kr, p = state.player;
   const flying = p.scr && p.scr.kind === 'fly', tele = p.scr && p.scr.kind === 'tele';
   if (p.mesh) {
@@ -7581,6 +7586,764 @@ addEventListener('keydown', (e) => {
 }, true);
 // ===================== end of Characters and dialogue =====================
 </script>
+<!-- Drift mode BEGIN -->
+<!-- ===================== Drift mode: Midnight Kitchen Drift (self-contained: HTML, CSS, JS) =====================
+     Hooks in shared code are marked "Drift hook": startRace (driftOn), raceUpdate, krCam, krCleanup. Everything else lives here. -->
+<style>
+body.drifting .hud, body.drifting #hint { display: none; }
+#drVig { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at 50% 52%, rgba(3,4,12,0) 38%, rgba(3,4,12,0.55) 78%, rgba(3,4,12,0.82) 100%); }
+#drHud { position: fixed; inset: 0; z-index: 3; pointer-events: none; font-family: var(--body); }
+.drTop { position: absolute; top: 0; left: 0; right: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.drBox { display: grid; gap: 2px; justify-items: start; text-shadow: 0 2px 0 #05060f; }
+.drBox.r { justify-items: end; }
+.drBox small { font: 700 12px var(--body); letter-spacing: 0.14em; color: #8fe9ff; }
+.drBox b { font: 28px var(--display); color: var(--paper); font-variant-numeric: tabular-nums; }
+.drBox button { pointer-events: auto; min-height: 36px; padding: 4px 12px; font-size: 13px; min-width: 0; margin-top: 4px; }
+.drScore { text-align: center; display: grid; justify-items: center; gap: 0; text-shadow: 0 3px 0 #05060f; }
+.drScore small { font: 700 12px var(--body); letter-spacing: 0.2em; color: #ff8fd8; }
+.drScore b { font: 46px/1.05 var(--display); color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px #19e6ff, 0 3px 0 #05060f; }
+#drLive { font: 22px var(--display); color: #ffe27a; min-height: 28px; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px #ff9f1c, 0 2px 0 #05060f; transition: opacity 0.15s; }
+#drTag { font: 700 14px var(--body); letter-spacing: 0.12em; color: #ff2fb4; min-height: 18px; text-shadow: 0 2px 0 #05060f; }
+#drCombo { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); text-align: center; font: clamp(34px, 7vw, 66px)/1 var(--display); white-space: nowrap;
+  color: #fff; text-shadow: 0 0 22px #19e6ff, 0 4px 0 #05060f; opacity: 0; }
+#drCombo.pop { animation: drPop 1.5s ease-out forwards; }
+#drCombo.c2 { color: #8ff3ff; } #drCombo.c3 { color: #ff7ad9; text-shadow: 0 0 24px #ff2fb4, 0 4px 0 #05060f; }
+#drCombo.c4 { color: #ffe27a; text-shadow: 0 0 28px #ff9f1c, 0 4px 0 #05060f; font-size: clamp(40px, 9vw, 84px); }
+#drCombo.bad { color: #ff6b6b; text-shadow: 0 0 22px #ff2020, 0 4px 0 #05060f; }
+@keyframes drPop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.18); } 22% { transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -78%) scale(1); } }
+#drNitro { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); width: 220px; display: grid; gap: 3px; justify-items: end; }
+#drNitro small { font: 700 12px var(--body); letter-spacing: 0.16em; color: #8fe9ff; text-shadow: 0 2px 0 #05060f; }
+#drNitro .bar { width: 100%; height: 14px; border-color: rgba(143, 233, 255, 0.55); }
+#drNitroFill { background: linear-gradient(90deg, #1a8cff, #19e6ff); width: 0%; transition: none; box-shadow: 0 0 10px #19e6ff; }
+#drNitro.full #drNitroFill { background: linear-gradient(90deg, #19e6ff, #ffffff); }
+.drCtl { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); display: flex; gap: 14px; align-items: flex-end; pointer-events: auto; }
+.drCtl button { border-radius: 50%; font: 18px var(--display); border-color: var(--paper); }
+#drBrake { width: 128px; height: 128px; background: rgba(255, 47, 180, 0.7); box-shadow: 0 0 22px rgba(255, 47, 180, 0.7); }
+#drBrake.on { background: #ff2fb4; transform: scale(0.95); }
+#drBoost { width: 92px; height: 92px; background: rgba(26, 140, 255, 0.7); box-shadow: 0 0 22px rgba(25, 230, 255, 0.6); margin-bottom: 8px; }
+#drBoost.on { background: #19e6ff; color: #05060f; transform: scale(0.95); }
+#drBoost[disabled] { opacity: 0.45; box-shadow: none; }
+.drScr { background: rgba(5, 6, 15, 0.3); justify-content: flex-end; }
+.drScr .card { margin: 0; background: linear-gradient(180deg, rgba(10, 12, 30, 0.9), rgba(5, 6, 15, 0.95)); border-radius: 22px 22px 0 0; padding: 14px 22px 16px; gap: 10px; max-width: 860px; width: min(860px, 100%); box-sizing: border-box;
+  border: 2px solid rgba(25, 230, 255, 0.45); border-bottom: 0; box-shadow: 0 0 30px rgba(25, 230, 255, 0.25); }
+.drScr.mid { justify-content: center; }
+.drScr.mid .card { border-radius: 22px; border-bottom: 2px solid rgba(25, 230, 255, 0.45); }
+.drScr h1 { font-size: 30px; color: #fff; text-shadow: 0 0 18px #19e6ff, 0 3px 0 #05060f; }
+.drScr .sub { color: #ff8fd8; }
+.drCars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.drCars button { min-height: 0; padding: 8px 6px; border-radius: 14px; text-align: center; gap: 2px; border-width: 3px; }
+.drCars button b { font: 15px var(--display); }
+.drCars button span { font-size: 12px; font-weight: 500; opacity: 0.85; line-height: 1.15; min-height: 28px; }
+.drCars button i { font-style: normal; font-size: 12px; letter-spacing: 0.08em; color: #8fe9ff; }
+.drCars button.cur { border-color: #19e6ff; background: rgba(25, 230, 255, 0.2); box-shadow: 0 0 14px rgba(25, 230, 255, 0.5); }
+.drRow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.drRow .lab { font: 700 12px var(--body); letter-spacing: 0.14em; opacity: 0.75; }
+.drSw { width: 44px; height: 44px; min-width: 0; min-height: 0; padding: 0; border-radius: 50%; border-width: 3px; }
+.drSw.cur { border-color: #fff; box-shadow: 0 0 14px currentColor; transform: scale(1.12); }
+.drModes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.drModes button { min-height: 0; padding: 8px; border-radius: 14px; gap: 2px; }
+.drModes button b { font: 16px var(--display); }
+.drModes button span { font-size: 13px; font-weight: 500; opacity: 0.85; }
+.drModes button.cur { border-color: #ff2fb4; background: rgba(255, 47, 180, 0.22); box-shadow: 0 0 14px rgba(255, 47, 180, 0.5); }
+.drScr .go { background: #ff2fb4; color: #fff; box-shadow: 0 0 22px rgba(255, 47, 180, 0.6); }
+.drBig { font: 64px/1 var(--display); color: #fff; text-shadow: 0 0 22px #19e6ff, 0 4px 0 #05060f; font-variant-numeric: tabular-nums; }
+.drStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; }
+.drStats div { display: grid; gap: 2px; padding: 8px; border-radius: 14px; background: rgba(255, 248, 236, 0.07); }
+.drStats small { font: 700 12px var(--body); letter-spacing: 0.12em; color: #8fe9ff; }
+.drStats b { font: 26px var(--display); font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .drCars { grid-template-columns: 1fr 1fr; } #drNitro { bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); width: 170px; } #drBrake { width: 108px; height: 108px; } .drScore b { font-size: 34px; } }
+</style>
+<div id="drVig" hidden></div>
+<div id="drHud" hidden>
+  <div class="drTop">
+    <div class="drBox"><small>TIME</small><b id="drTime">3:00</b><small id="drMode">FREE DRIFT</small></div>
+    <div class="drScore"><small>SCORE</small><b id="drScore">0</b><div id="drLive"></div><div id="drTag"></div></div>
+    <div class="drBox r"><small>BEST</small><b id="drBest">0</b><button id="drQuit">MENU</button></div>
+  </div>
+  <div id="drCombo"></div>
+  <div id="drNitro"><small>NITRO</small><div class="bar"><i id="drNitroFill"></i></div></div>
+  <div class="drCtl"><button id="drBoost">BOOST<small>B</small></button><button id="drBrake">DRIFT<small>SPACE</small></button></div>
+</div>
+<div class="screen drScr" id="drGarage" hidden>
+  <div class="card">
+    <p class="sub">Midnight Kitchen</p>
+    <h1>DRIFT GARAGE</h1>
+    <div class="drCars" id="drCars"></div>
+    <div class="drRow"><span class="lab">NEON</span><span id="drSwatches" class="drRow"></span></div>
+    <div class="drModes" id="drModes"></div>
+    <p id="drBestLine" style="font-size:15px;opacity:0.85"></p>
+    <div class="two"><button class="go" id="drGo">GO!</button><button class="go alt" id="drBack">BACK</button></div>
+  </div>
+</div>
+<div class="screen drScr mid" id="drEnd" hidden>
+  <div class="card">
+    <p class="sub" id="drEndMode">FREE DRIFT</p>
+    <h1 id="drEndTitle">TIME!</h1>
+    <div class="drBig" id="drEndScore">0</div>
+    <div class="stars" id="drEndStars"></div>
+    <div class="drStats"><div><small>BEST DRIFT</small><b id="drEndDrift">0</b></div><div><small>BEST COMBO</small><b id="drEndCombo">x1</b></div><div><small>PERSONAL BEST</small><b id="drEndBest">0</b></div></div>
+    <p id="drEndNote" style="font-size:16px;opacity:0.9"></p>
+    <div class="two"><button class="go" id="drAgain">RUN AGAIN</button><button class="go alt" id="drGarageBtn">GARAGE</button><button class="go alt" id="drMenu">MENU</button></div>
+  </div>
+</div>
+<script>
+'use strict';
+// ===================== Drift mode: Midnight Kitchen Drift =====================
+// A night street-drifting toy mode on the Kitchen Run's kitchen. The kitchen scene is built by krStart() (reused, so cleanup, shadows and merging all
+// come for free); Drift then drives on the kitchen FLOOR in a closed loop round the island, between the cabinets and the island and out round both
+// ends. Self-contained: its own handling (driftDrive), scoring, effects, HUD and cards. The shared code only has four small "Drift hook" lines:
+//   startRace    -> `if (driftOn) { driftOn = false; return driftStart(cfg); }`
+//   raceUpdate   -> `if (R.drift) { driftUpdate(dt); return; }`
+//   krCam        -> `if (state.race.drift) return driftCam(dt);`
+//   krCleanup    -> `if (R.drift) driftCleanup(R);`
+// Not in AR (yet): the AR button is on the title screen and Drift starts from its own button in normal view.
+const DR_FLOOR = -90, DR_KEY = 'bb-drift-v1', DR_RUN = 180, DR_SKID = 300, DR_PUFFS = 64;
+const DR_COLORS = [{ n: 'Cyan', h: 0x19e6ff }, { n: 'Pink', h: 0xff2fb4 }, { n: 'Lime', h: 0x9dff3a }, { n: 'Orange', h: 0xff8a1f }, { n: 'Violet', h: 0x9b5cff }, { n: 'Ice', h: 0xdfeaff }];
+// Handling numbers (the one place to tune): speed = top speed, accel, turn = yaw rate cap (rad/s), latG = grip-limited cornering (u/s^2),
+// grip = rear grip normally, driftGrip = rear grip with the handbrake held (lower = longer slide), hbTurn = extra yaw with the handbrake,
+// hbMin = speed to break traction, maxAng = slide angle where rear grip claws back, redirect = how much sideways speed a grip turns into forward speed,
+// mult = points multiplier (hard cars pay more), nitro = meter fill rate, smoke = puff rate, r = wall radius, len/wid/rx/rz = body size and rear wheels.
+const DRIFT_VEHICLES = {
+  racer:  { name: 'Toy Racer', blurb: 'Easy and fast. Slides like a dream.', speed: 34, accel: 58, turn: 6.0, latG: 62, grip: 8.5, driftGrip: 1.1, hbTurn: 1.3, hbMin: 10, maxAng: 1.2, redirect: 0.8, mult: 1.0, nitro: 1.2, smoke: 1.0, r: 1.6, len: 3.6, wid: 1.8, rx: -1.15, rz: 0.92, mass: 1, ease: 3, spd: 3, pay: 1 },
+  muscle: { name: 'Muscle Car', blurb: 'Heavy, loud and smoky. Big slides.', speed: 38, accel: 66, turn: 4.8, latG: 56, grip: 7.5, driftGrip: 1.0, hbTurn: 1.4, hbMin: 11, maxAng: 1.3, redirect: 0.75, mult: 1.1, nitro: 1.0, smoke: 1.8, r: 2.0, len: 4.6, wid: 2.2, rx: -1.5, rz: 1.05, mass: 1.5, ease: 2, spd: 4, pay: 2 },
+  truck:  { name: 'Toy Lorry', blurb: 'Hard to drift. Huge points.', speed: 29, accel: 36, turn: 3.3, latG: 44, grip: 10, driftGrip: 1.5, hbTurn: 1.3, hbMin: 14, maxAng: 1.05, redirect: 0.85, mult: 3.0, nitro: 0.9, smoke: 2.2, r: 2.7, len: 9, wid: 2.4, rx: -4.2, rz: 1.1, mass: 3, ease: 1, spd: 2, pay: 4 },
+  monster: { name: 'Monster Truck', blurb: 'Silly bouncy slides. Spins easily.', speed: 27, accel: 40, turn: 3.9, latG: 38, grip: 5, driftGrip: 0.8, hbTurn: 1.3, hbMin: 8, maxAng: 1.45, redirect: 0.7, mult: 1.3, nitro: 1.1, smoke: 1.3, r: 2.4, len: 4, wid: 2.4, rx: -1.35, rz: 1.5, mass: 2.2, ease: 2, spd: 2, pay: 3 },
+};
+const DR_MODES = { free: { n: 'Free drift', t: '3 minutes. Score as much as you can.' }, tandem: { n: 'Tandem', t: 'Chase the ghost car and drift close behind it.' } };
+const DR_STARS = { free: [5000, 15000, 30000], tandem: [6000, 17000, 34000] }; // score for 1, 2, 3 stars
+const DR = { hb: false, boostReq: false, bot: null, sel: { kind: 'racer', col: 0, mode: 'free' }, best: {}, pool: null, scr: null, skidGeo: null };
+// Best scores: localStorage, every read and write in try/catch.
+try { const v = JSON.parse(localStorage.getItem(DR_KEY) || 'null'); if (v && typeof v === 'object') DR.best = v; } catch (e) { /* no storage: lasts until the page closes */ }
+const drSave = () => { try { localStorage.setItem(DR_KEY, JSON.stringify(DR.best)); } catch (e) { /* ignore */ } };
+const drFmt = (n) => Math.round(n).toLocaleString('en-GB');
+const drClamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// --- the loop: a closed spline round the island (the island is x -169..58, z 51..97; the cabinets are at z 6) ---
+const DR_CTRL = [[-150, 30], [-105, 22], [-60, 34], [-15, 22], [30, 32], [72, 34], [108, 62], [122, 108], [98, 150], [44, 162], [-12, 142], [-70, 160], [-135, 154], [-196, 124], [-214, 76], [-190, 38]];
+const DR_HW = 11, DR_DS = 2;
+function drTrack() {
+  const C = DR_CTRL, m = C.length, dense = [];
+  for (let i = 0; i < m; i++) {
+    const p0 = C[(i + m - 1) % m], p1 = C[i], p2 = C[(i + 1) % m], p3 = C[(i + 2) % m];
+    for (let k = 0; k < 40; k++) {
+      const t = k / 40, t2 = t * t, t3 = t2 * t, cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      dense.push([cr(p0[0], p1[0], p2[0], p3[0]), cr(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  const cum = [0];
+  for (let i = 1; i <= dense.length; i++) { const a = dense[i - 1], b = dense[i % dense.length]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const L = cum[dense.length], n = Math.round(L / DR_DS), ds = L / n, pts = [];
+  let k = 0;
+  for (let j = 0; j < n; j++) {
+    const s = j * ds; while (cum[k + 1] < s) k++;
+    const a = dense[k], b = dense[(k + 1) % dense.length], f = (s - cum[k]) / ((cum[k + 1] - cum[k]) || 1);
+    pts.push({ x: a[0] + (b[0] - a[0]) * f, z: a[1] + (b[1] - a[1]) * f });
+  }
+  const tan = pts.map((_, i) => { const a = pts[(i + n - 1) % n], b = pts[(i + 1) % n], l = Math.hypot(b.x - a.x, b.z - a.z) || 1; return [(b.x - a.x) / l, (b.z - a.z) / l]; });
+  const nor = tan.map(([tx, tz]) => [-tz, tx]); // +lat = the driver's right (towards +z when heading +x)
+  const head = tan.map(([tx, tz]) => Math.atan2(tz, tx));
+  const turn = head.map((_, i) => wrap(head[(i + 5) % n] - head[(i - 5 + n) % n]) / (10 * ds)); // rad per unit, + = right
+  // Drift zones: the tight bends (radius under ~60), widened a little. Runs are found round the loop from a straight sample.
+  let st = 0; while (Math.abs(turn[st]) > 0.012) st++;
+  const hot = new Uint8Array(n), zones = [];
+  for (let i = 0; i < n; i++) if (Math.abs(turn[i]) > 0.016) hot[i] = 1;
+  for (let i = 0; i < n;) {
+    const a = (st + i) % n; if (!hot[a]) { i++; continue; }
+    let j = i; while (j < n && hot[(st + j) % n]) j++;
+    if (j - i >= 10) zones.push({ i0: (st + i - 3 + n) % n, len: j - i + 6, sign: Math.sign(turn[(st + ((i + j) >> 1)) % n]) });
+    i = j;
+  }
+  const zoneAt = new Int8Array(n).fill(-1);
+  zones.forEach((z, zi) => { for (let k2 = 0; k2 < z.len; k2++) zoneAt[(z.i0 + k2) % n] = zi; });
+  return { n, ds, len: L, pts, tan, nor, head, turn, zones, zoneAt, hw: DR_HW };
+}
+
+// --- shared pieces: textures drawn once, geometry and material keyed once, ever ---
+function drTex(key, w, h, draw) {
+  return shared(`dr:tex:${key}`, () => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t; });
+}
+const drPuffTex = () => drTex('puff', 64, 64, (g) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.45, 'rgba(255,255,255,0.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); });
+const drGlowTex = () => drTex('glow', 64, 64, (g) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,0.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); });
+const drChevTex = () => drTex('chev', 64, 64, (g) => { g.shadowColor = '#ff2fb4'; g.shadowBlur = 8; g.fillStyle = '#ffd6f2'; g.beginPath(); g.moveTo(8, 58); g.lineTo(32, 8); g.lineTo(56, 58); g.lineTo(43, 58); g.lineTo(32, 34); g.lineTo(21, 58); g.closePath(); g.fill(); });
+const drWordTex = () => drTex('zone', 256, 64, (g) => { g.font = '900 38px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#ff2fb4'; g.shadowBlur = 10; g.fillStyle = '#ffe3f6'; g.fillText('DRIFT ZONE x2', 128, 34); });
+const drClockTex = () => drTex('clock', 128, 48, (g) => { g.fillStyle = '#031006'; g.fillRect(0, 0, 128, 48); g.font = '700 34px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#7dff8a'; g.shadowBlur = 10; g.fillStyle = '#7dff8a'; g.fillText('12:00', 64, 26); });
+const dBox = (w, h, d) => shared(`dr:box:${w}:${h}:${d}`, () => new THREE.BoxGeometry(w, h, d));
+const dCyl = (rt, rb, h, s = 12) => shared(`dr:cyl:${rt}:${rb}:${h}:${s}`, () => new THREE.CylinderGeometry(rt, rb, h, s));
+const dWheel = (r, w) => shared(`dr:wheel:${r}:${w}`, () => { const g = new THREE.CylinderGeometry(r, r, w, 14); g.rotateX(Math.PI / 2); return g; });
+const dFlat = () => shared('dr:flat', () => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; });
+const dMat = (hex, extra = {}, key = '') => shared(`dr:mat:${hex}:${key}`, () => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.45, metalness: 0.25, ...extra }));
+const dBasic = (hex, op = 1) => shared(`dr:basic:${hex}:${op}`, () => new THREE.MeshBasicMaterial({ color: hex, transparent: op < 1, opacity: op }));
+const dAdd = (hex, op = 1, map = null, key = '') => shared(`dr:add:${hex}:${op}:${key}`, () => new THREE.MeshBasicMaterial({ color: hex, map, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+function dPart(parent, geo, material, x, y, z, cast = true) { const m = new THREE.Mesh(geo, material); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; parent.add(m); return m; }
+
+// --- the cars: built from shared boxes and wheels, forward is +x ---
+function drModel(kind, hex) {
+  const V = DRIFT_VEHICLES[kind], root = new THREE.Group(), body = new THREE.Group();
+  root.rotation.order = 'YXZ'; root.add(body);
+  const paint = dMat(hex, { emissive: hex, emissiveIntensity: 0.16 }), dark = dMat(0x12141c), glass = dMat(0x0a1424, { roughness: 0.15, metalness: 0.7, emissive: 0x16304f, emissiveIntensity: 0.4 });
+  const stripe = dBasic(0xf4f8ff), tire = dMat(0x0b0b0e, { roughness: 0.95, metalness: 0 }), tail = dBasic(0xff2a2a), head = dBasic(0xfff3cf);
+  const wheels = [], wheel = (g, r, w, x, z) => { const m = dPart(g, dWheel(r, w), tire, x, r, z); wheels.push(m); return m; };
+  const U = { body, wheels, kind, V };
+  if (kind === 'racer') {
+    dPart(body, dBox(3.6, 0.65, 1.8), paint, 0, 0.85, 0); dPart(body, dBox(1.6, 0.55, 1.4), glass, -0.25, 1.4, 0);
+    dPart(body, dBox(3.0, 0.04, 0.28), stripe, 0.2, 1.19, 0, false);
+    dPart(body, dBox(0.5, 0.12, 2.1), dark, -1.65, 1.62, 0); for (const z of [-0.6, 0.6]) dPart(body, dBox(0.12, 0.35, 0.12), dark, -1.55, 1.4, z);
+    for (const [x, z] of [[1.15, 0.92], [1.15, -0.92], [-1.15, 0.92], [-1.15, -0.92]]) wheel(body, 0.55, 0.5, x, z);
+  } else if (kind === 'muscle') {
+    dPart(body, dBox(4.6, 0.85, 2.2), paint, 0, 0.98, 0); dPart(body, dBox(1.9, 0.7, 1.8), glass, -0.7, 1.7, 0); dPart(body, dBox(1.5, 0.3, 0.9), dark, 1.35, 1.52, 0);
+    for (const z of [-0.4, 0.4]) dPart(body, dBox(4.4, 0.04, 0.22), stripe, 0, 1.42, z, false);
+    dPart(body, dBox(0.55, 0.12, 2.2), dark, -2.15, 1.75, 0); for (const z of [-0.7, 0.7]) dPart(body, dBox(0.12, 0.4, 0.12), dark, -2.05, 1.5, z);
+    for (const z of [-0.6, 0.6]) dPart(body, dCyl(0.16, 0.16, 0.7, 8), dMat(0x9aa0ac, { metalness: 0.8 }), -2.35, 0.55, z).rotation.z = Math.PI / 2;
+    for (const [x, z] of [[1.5, 1.08], [1.5, -1.08], [-1.5, 1.08], [-1.5, -1.08]]) wheel(body, 0.62, 0.62, x, z);
+  } else if (kind === 'truck') {
+    dPart(body, dBox(1.9, 1.8, 2.3), paint, 2.9, 1.7, 0); dPart(body, dBox(0.1, 0.75, 1.95), glass, 3.88, 2.15, 0); dPart(body, dBox(5.4, 0.45, 2.0), dark, -0.3, 0.8, 0);
+    dPart(body, dBox(0.2, 0.15, 1.9), head, 3.9, 1.0, 0, false);
+    const trailer = new THREE.Group(); trailer.position.set(0.4, 0, 0); body.add(trailer); U.trailer = trailer;
+    dPart(trailer, dBox(6.2, 2.4, 2.4), dMat(0xe9eef8, { roughness: 0.6 }), -3.4, 2.2, 0); dPart(trailer, dBox(6.22, 0.5, 2.42), paint, -3.4, 2.2, 0); dPart(trailer, dBox(6.3, 0.12, 2.5), dark, -3.4, 3.45, 0);
+    for (const x of [-1.9, -3.1]) for (const z of [-1.1, 1.1]) wheel(trailer, 0.6, 0.5, x, z);
+    for (const z of [-1.1, 1.1]) { wheel(body, 0.6, 0.5, 2.9, z); wheel(body, 0.6, 0.5, 1.0, z); }
+  } else { // monster
+    dPart(body, dBox(3.4, 1.1, 2.1), paint, 0, 3.0, 0); dPart(body, dBox(1.6, 0.9, 1.8), glass, -0.3, 4.0, 0); dPart(body, dBox(0.3, 0.2, 1.7), dBasic(0xfff3cf), 0.5, 4.6, 0, false);
+    dPart(body, dBox(3.0, 0.5, 1.0), dark, 0, 2.1, 0);
+    for (const [x, z] of [[1.35, 1.5], [1.35, -1.5], [-1.35, 1.5], [-1.35, -1.5]]) { wheel(body, 1.35, 1.1, x, z); dPart(body, dCyl(0.18, 0.18, 1.6, 6), dMat(0xc9ccd2, { metalness: 0.8 }), x, 2.1, z * 0.7); }
+  }
+  for (const z of [-V.wid * 0.38, V.wid * 0.38]) { // lamps
+    dPart(body, dBox(0.14, 0.2, 0.45), kind === 'truck' ? tail : tail, V.rx - 0.2 - (kind === 'truck' ? 1.6 : 0.4) * 0, kind === 'monster' ? 3.1 : kind === 'truck' ? 1.0 : 0.95, z, false);
+    if (kind !== 'truck') dPart(body, dBox(0.14, 0.2, 0.45), head, V.len / 2 - 0.02, kind === 'monster' ? 3.1 : 0.95, z, false);
+  }
+  // nitro: flame cones at the back, a pale blue streak behind
+  U.flames = [];
+  for (const z of [-V.wid * 0.25, V.wid * 0.25]) {
+    const f = dPart(body, shared('dr:flame', () => { const g = new THREE.ConeGeometry(0.4, 2.8, 8); g.rotateZ(Math.PI / 2); g.translate(-1.4, 0, 0); return g; }), dAdd(0x57b8ff, 0.95), -V.len / 2 - (kind === 'truck' ? 0 : 0.1), kind === 'monster' ? 2.3 : kind === 'truck' ? 0.9 : 0.7, z, false);
+    f.visible = false; U.flames.push(f);
+  }
+  const streak = new THREE.Mesh(dFlat(), dAdd(0x57c8ff, 0.7, drGlowTex(), 'streak')); streak.scale.set(14, 1, 1.6); streak.position.set(-V.len / 2 - 7.5, 0.3, 0); streak.visible = false; body.add(streak); U.streak = streak;
+  // glow on the floor: underglow in the neon colour, and a pool of light ahead
+  U.glow = new THREE.Mesh(dFlat(), dAdd(hex, 0.95, drGlowTex(), 'under')); U.glow.scale.set(V.len * 1.9 + 2, 1, V.wid * 2.2 + 2); U.glow.position.y = 0.12; root.add(U.glow);
+  U.pool = new THREE.Mesh(dFlat(), dAdd(0xfff0cf, 0.34, drGlowTex(), 'beam')); U.pool.scale.set(16, 1, 9); U.pool.position.set(V.len / 2 + 6.5, 0.1, 0); root.add(U.pool);
+  U.glow.renderOrder = 3; U.pool.renderOrder = 2; streak.renderOrder = 3;
+  root.scale.setScalar(kind === 'truck' ? 1.05 : kind === 'monster' ? 1.15 : 1.35);
+  root.userData.U = U;
+  return root;
+}
+
+// --- the particle pool (smoke, sparks, flames): sprites with their own materials, kept for the life of the page, reused by every run ---
+function drPoolGet() {
+  if (!DR.pool) {
+    DR.pool = [];
+    for (let i = 0; i < DR_PUFFS; i++) {
+      const m = shared(`dr:puffmat:${i}`, () => new THREE.SpriteMaterial({ map: drPuffTex(), transparent: true, depthWrite: false, opacity: 0 }));
+      const s = new THREE.Sprite(m); s.visible = false; s.renderOrder = 6; DR.pool.push({ s, life: 0, max: 1, vx: 0, vy: 0, vz: 0, g: 0, grow: 0, size: 1, op: 1, add: false });
+    }
+    DR.pi = 0;
+  }
+  return DR.pool;
+}
+function drPuff(x, y, z, o) { // o: {vx,vy,vz,life,size,grow,op,col,add,g}
+  const pool = drPoolGet(), q = pool[DR.pi = (DR.pi + 1) % pool.length]; // (a ring: the oldest puff is recycled, so the count is capped)
+  q.s.position.set(x, y, z); q.s.visible = true; q.life = q.max = o.life; q.vx = o.vx || 0; q.vy = o.vy || 0; q.vz = o.vz || 0; q.g = o.g || 0;
+  q.size = o.size; q.grow = o.grow || 0; q.op = o.op ?? 0.5; q.add = !!o.add;
+  q.s.material.color.setHex(o.col ?? 0xc9cfdc); q.s.material.blending = o.add ? THREE.AdditiveBlending : THREE.NormalBlending; q.s.scale.setScalar(o.size);
+}
+function drPuffsUpdate(dt) {
+  if (!DR.pool) return;
+  for (const q of DR.pool) {
+    if (!q.s.visible) continue;
+    q.life -= dt;
+    if (q.life <= 0) { q.s.visible = false; q.s.material.opacity = 0; continue; }
+    const f = q.life / q.max;
+    q.vy -= q.g * dt; q.s.position.x += q.vx * dt; q.s.position.y = Math.max(DR_FLOOR + 0.3, q.s.position.y + q.vy * dt); q.s.position.z += q.vz * dt;
+    q.size += q.grow * dt; q.s.scale.setScalar(q.size); q.s.material.opacity = q.op * (q.add ? f : Math.min(1, f * 1.6) * f);
+  }
+}
+const drSparks = (x, z, col, n, y = DR_FLOOR + 1.2) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, s = 8 + Math.random() * 16; drPuff(x, y, z, { vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: 4 + Math.random() * 9, g: 40, life: 0.35 + Math.random() * 0.3, size: 0.9, grow: -0.6, op: 1, col, add: true }); } };
+
+// --- skid marks: one mesh, a ring of 300 thin quads written in place ---
+function drSkidInit(G) {
+  const pos = new Float32Array(DR_SKID * 12), col = new Float32Array(DR_SKID * 12), idx = [];
+  for (let i = 0; i < DR_SKID; i++) idx.push(i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, shared('dr:skidMat', () => new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide })));
+  m.frustumCulled = false; m.renderOrder = 2; G.add(m);
+  return { g, pos, col, i: 0, last: [null, null] };
+}
+function drSkid(S, wi, x, z, rgb) {
+  const l = S.last[wi];
+  if (l && Math.hypot(x - l[0], z - l[1]) < 1.1) return;
+  if (l && Math.hypot(x - l[0], z - l[1]) < 4) {
+    const dx = x - l[0], dz = z - l[1], d = Math.hypot(dx, dz), nx = -dz / d * 0.55, nz = dx / d * 0.55, o = S.i * 12, y = DR_FLOOR + 0.07, P = S.pos, C = S.col;
+    P.set([l[0] - nx, y, l[1] - nz, l[0] + nx, y, l[1] + nz, x + nx, y, z + nz, x - nx, y, z - nz], o);
+    for (let k = 0; k < 4; k++) C.set(rgb, o + k * 3);
+    S.i = (S.i + 1) % DR_SKID; S.g.attributes.position.needsUpdate = true; S.g.attributes.color.needsUpdate = true;
+  }
+  S.last[wi] = [x, z];
+}
+
+// --- track meshes: road, lines, walls, chevrons ---
+function drRibbon(T, l0, l1, y, i0 = 0, cnt = T.n, mat) {
+  const pos = [], uv = [], idx = [], n = T.n;
+  for (let k = 0; k <= cnt; k++) {
+    const i = (i0 + k) % n, q = T.pts[i], [nx, nz] = T.nor[i], a = typeof l0 === 'function' ? l0(i) : l0, b = typeof l1 === 'function' ? l1(i) : l1, v = (i0 + k) * T.ds / 8;
+    pos.push(q.x + nx * a, y, q.z + nz * a, q.x + nx * b, y, q.z + nz * b); uv.push(0, v, 1, v);
+    if (k) { const j = 2 * k; idx.push(j - 2, j - 1, j, j - 1, j + 1, j); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m;
+}
+function drWall(T, side, y0, y1, c1, c2) { // a wall along one edge, bands of two colours
+  const pos = [], col = [], idx = [], n = T.n, off = side * (T.hw + 0.5), a = new THREE.Color(c1), b = new THREE.Color(c2);
+  for (let k = 0; k <= n; k++) {
+    const i = k % n, q = T.pts[i], [nx, nz] = T.nor[i], c = ((k / 4) | 0) % 2 ? a : b;
+    pos.push(q.x + nx * off, y0, q.z + nz * off, q.x + nx * off, y1, q.z + nz * off); col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+    if (k) { const j = 2 * k; idx.push(j - 2, j - 1, j, j - 1, j + 1, j); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, shared('dr:wallMat', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide })));
+  m.castShadow = true; m.receiveShadow = true; return m;
+}
+function drBuildTrack(T, G) {
+  const Y = DR_FLOOR, hw = T.hw;
+  const road = drRibbon(T, -hw, hw, Y + 0.04, 0, T.n, shared('dr:road', () => new THREE.MeshStandardMaterial({ color: 0x586078, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide })));
+  G.add(road);
+  for (const s of [-1, 1]) { // edge lines and walls, cyan on the left and pink on the right
+    const neon = s < 0 ? 0x19e6ff : 0xff2fb4;
+    G.add(drRibbon(T, s * (hw - 0.9), s * (hw - 0.3), Y + 0.08, 0, T.n, dBasic(0xdfe6f5, 0.75)));
+    G.add(drWall(T, s, Y, Y + 3.2, 0x2a3354, 0x1a2038));
+    G.add(drRibbon(T, s * (hw + 0.4), s * (hw + 1.7), Y + 3.25, 0, T.n, dBasic(neon)));
+    G.add(drRibbon(T, s * (hw + 0.1), s * (hw + 3.0), Y + 0.1, 0, T.n, dAdd(neon, 0.28, null, 'wallglow')));
+  }
+  // centre dashes: one geometry of short strips
+  const dp = [], di = [];
+  for (let i = 0; i < T.n; i += 4) {
+    const a = T.pts[i], b = T.pts[(i + 2) % T.n], [nx, nz] = T.nor[i], w = 0.22, base = dp.length / 3;
+    dp.push(a.x - nx * w, Y + 0.09, a.z - nz * w, a.x + nx * w, Y + 0.09, a.z + nz * w, b.x - nx * w, Y + 0.09, b.z - nz * w, b.x + nx * w, Y + 0.09, b.z + nz * w); di.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+  }
+  const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dp, 3)); dg.setIndex(di);
+  G.add(new THREE.Mesh(dg, new THREE.MeshBasicMaterial({ color: 0xc9d3ea, transparent: true, opacity: 0.5, side: THREE.DoubleSide })));
+  // drift zones: a pink wash, bright borders, chevrons down the middle and the words at the start
+  const cp = [], cu = [], ci = [];
+  T.zones.forEach((z) => {
+    G.add(drRibbon(T, -hw + 0.3, hw - 0.3, Y + 0.12, z.i0, z.len, dAdd(0xff2fb4, 0.2, null, 'zone')));
+    for (const s of [-1, 1]) G.add(drRibbon(T, s * (hw - 1.4), s * (hw - 0.9), Y + 0.13, z.i0, z.len, dAdd(0xff7ad9, 0.9, null, 'zoneline')));
+    for (let k = 2; k < z.len - 1; k += 4) {
+      const i = (z.i0 + k) % T.n, q = T.pts[i], [tx, tz] = T.tan[i], [nx, nz] = T.nor[i], L = 3.4, W = 6.2, y = Y + 0.15, base = cp.length / 3;
+      cp.push(q.x - tx * L - nx * W, y, q.z - tz * L - nz * W, q.x - tx * L + nx * W, y, q.z - tz * L + nz * W, q.x + tx * L + nx * W, y, q.z + tz * L + nz * W, q.x + tx * L - nx * W, y, q.z + tz * L - nz * W);
+      cu.push(0, 0, 1, 0, 1, 1, 0, 1); ci.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    const i = (z.i0 + 1) % T.n, q = T.pts[i], w = new THREE.Mesh(dFlat(), dAdd(0xffffff, 1, drWordTex(), 'word')); // the words, readable along the road
+    w.scale.set(22, 1, 5.5); w.position.set(q.x, Y + 0.17, q.z); w.rotation.y = -T.head[i]; G.add(w);
+  });
+  if (cp.length) {
+    const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(cu, 2)); cg.setIndex(ci);
+    const cm = new THREE.Mesh(cg, dAdd(0xffffff, 0.95, drChevTex(), 'chev')); cm.renderOrder = 2; G.add(cm);
+  }
+}
+// The night kitchen: warm light under the cabinets, a fridge with its door open, and the clock on the island.
+function drDress(G, R) {
+  const Y = DR_FLOOR;
+  // under-cabinet strip and its wash down the doors and across the floor
+  const strip = new THREE.Mesh(dBox(454, 1.2, 1.4), dBasic(0xffd9a0)); strip.position.set(-5, -3.2, 4.8); G.add(strip);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(454, 70), dAdd(0xffa24a, 0.55, drGlowTex(), 'wallwash')); wall.position.set(-5, -38, 5.1); G.add(wall);
+  const floorWash = new THREE.Mesh(dFlat(), dAdd(0xff9a3c, 0.3, drGlowTex(), 'floorwash')); floorWash.scale.set(520, 1, 70); floorWash.position.set(-5, Y + 0.05, 22); floorWash.renderOrder = 1; G.add(floorWash);
+  // the fridge, standing east of the track with its door open and the light spilling out
+  const fx = 168, fz = 40;
+  const fr = new THREE.Group(); fr.position.set(fx, Y, fz); G.add(fr);
+  dPart(fr, dBox(34, 78, 30), dMat(0xdfe5ee, { roughness: 0.5 }), 0, 39, 0); dPart(fr, dBox(1, 30, 2), dMat(0x9aa0ac, { metalness: 0.7 }), -17.4, 52, 8);
+  const lightFace = new THREE.Mesh(new THREE.PlaneGeometry(30, 70), dBasic(0xdff3ff)); lightFace.rotation.y = -Math.PI / 2; lightFace.position.set(-17.2, 39, 0); fr.add(lightFace); // the lit inside, seen through the open door
+  const spill = new THREE.Mesh(dFlat(), dAdd(0xbfe3ff, 0.55, drGlowTex(), 'fridge')); spill.scale.set(70, 1, 54); spill.position.set(fx - 40, Y + 0.07, fz); spill.renderOrder = 1; G.add(spill);
+  // the clock on the island's front (the island is x -169..58, its south face is at z ~95)
+  const clock = new THREE.Mesh(new THREE.PlaneGeometry(14, 5.2), shared('dr:clockMat', () => new THREE.MeshBasicMaterial({ map: drClockTex() }))); clock.position.set(-40, Y + 62, 95.6); G.add(clock);
+  const cg = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), dAdd(0x7dff8a, 0.3, drGlowTex(), 'clockglow')); cg.position.set(-40, Y + 62, 95.5); G.add(cg);
+  // lights
+  const L = { warm: new THREE.PointLight(0xffb15c, 0.28, 120, 1.6), neon: new THREE.PointLight(0x19e6ff, 0.5, 42, 1.6), fridge: new THREE.PointLight(0xcfe6ff, 0.45, 80, 1.6) };
+  L.fridge.position.set(fx - 30, Y + 40, fz); G.add(L.warm, L.neon, L.fridge);
+  return L;
+}
+
+// --- sounds (made in code): a screech tied to slip, a whoosh for the boost, and little fanfares for combos ---
+SOUNDS.drBoost = () => { noise('bandpass', 300, 3800, 0.3, 0.75, 0, 1.4); tone('sawtooth', 110, 520, 0.08, 0.6); tone('sine', 700, 1900, 0.05, 0.5, 0.05); };
+SOUNDS.drNice = () => [523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.07, 0.1, i * 0.06));
+SOUNDS.drGreat = () => [523, 659, 784, 1047].forEach((f, i) => tone('square', f, f, 0.05, 0.12, i * 0.06));
+SOUNDS.drKing = () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('square', f, f, 0.06, i === 5 ? 0.45 : 0.1, i * 0.07));
+SOUNDS.drCrash = () => { noise('lowpass', 1600, 120, 0.45, 0.4); tone('sine', 140, 40, 0.5, 0.25); noise('highpass', 3500, 2500, 0.1, 0.08); };
+SOUNDS.drSnap = () => { noise('highpass', 3500, 2500, 0.12, 0.06); tone('triangle', 520, 260, 0.05, 0.08); };
+SOUNDS.drLost = () => { tone('triangle', 330, 200, 0.07, 0.25); };
+function drScreech(slip, speed) { // slip 0..1: the tyre noise is a loop of filtered noise whose loudness and pitch follow the slide
+  if (!audio || !noiseBuf) return;
+  if (!DR.scr) {
+    const src = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    src.buffer = noiseBuf; src.loop = true; f.type = 'bandpass'; f.Q.value = 3.2; f.frequency.value = 2200; g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(master); src.start();
+    DR.scr = { src, f, g };
+  }
+  const t = audio.currentTime;
+  DR.scr.g.gain.setTargetAtTime(muted ? 0 : slip * 0.13, t, 0.05);
+  DR.scr.f.frequency.setTargetAtTime(1700 + slip * 1300 + speed * 18, t, 0.08);
+}
+function drScreechStop() { if (DR.scr) { try { DR.scr.g.gain.value = 0; DR.scr.src.stop(); DR.scr.src.disconnect(); } catch (e) { /* already stopped */ } DR.scr = null; } }
+
+// --- handling: arcade drift with a front and a rear grip ---
+// The stick aims the nose (like the rest of the game). Without the handbrake the car steers on its grip (yaw limited to latG / speed), so it hardly slides.
+// With the handbrake held (and enough speed) the rear grip drops to driftGrip and the nose swings faster (hbTurn): the car points one way and travels
+// another. Counter-steer by pointing the stick back towards the way you are travelling; point it into the bend to hold the angle. Let go and the
+// rear grip comes back with a snap (a short burst of extra grip), which pulls the car straight and keeps its speed.
+function driftDrive(c, ix, iz, hb, dt, mods) {
+  const V = c.dr, mag = Math.hypot(ix, iz);
+  const speed0 = Math.hypot(c.vx, c.vz), top = V.speed * (mods.boost ? 1.5 : 1) * (mods.exit ? 1.15 : 1);
+  const hbOn = hb && speed0 > V.hbMin;
+  const h0 = c.heading;
+  if (mag > 0.12) {
+    const want = Math.atan2(iz, ix), diff = wrap(want - c.heading), wl = V.turn * (0.4 + 0.6 * Math.min(1, speed0 / 12));
+    const w = hbOn ? wl * V.hbTurn : Math.min(wl, Math.max(1.3, V.latG / Math.max(speed0, 1)));
+    c.heading = wrap(c.heading + drClamp(diff * 10, -w, w) * dt);
+  }
+  c.yaw = wrap(c.heading - h0) / (dt || 1);
+  const fx = Math.cos(c.heading), fz = Math.sin(c.heading), rx = -fz, rz = fx;
+  let fwd = c.vx * fx + c.vz * fz, side = c.vx * rx + c.vz * rz;
+  const beta = Math.atan2(Math.abs(side), Math.max(fwd, 0.001));
+  if (c.hbPrev && !hbOn && beta > 0.25) { c.snap = 0.28; c.snapped = true; } // let go of a slide: the snap
+  c.hbPrev = hbOn;
+  let gT = hbOn ? V.driftGrip : V.grip;
+  if (c.snap > 0) { c.snap -= dt; gT = V.grip * 2.4; }
+  if (beta > V.maxAng) gT += (beta - V.maxAng) * 14; // too sideways: the tail claws back instead of spinning
+  c.gR += (gT - c.gR) * Math.min(1, dt * (gT < c.gR ? 25 : 8));
+  const thr = mag > 0.12 ? drClamp(mag * 1.6, 0.35, 1) : 0;
+  const diffN = mag > 0.12 ? Math.abs(wrap(Math.atan2(iz, ix) - c.heading)) : 0, facing = Math.max(0, Math.cos(diffN)) * 0.7 + 0.3;
+  const acc = V.accel * (mods.boost ? 2.2 : 1) * (mods.exit ? 1.6 : 1);
+  if (thr) { if (fwd < top) fwd = Math.min(top, fwd + acc * thr * facing * dt); } else fwd *= Math.exp(-1.2 * dt);
+  if (fwd > top) fwd -= (fwd - top) * Math.min(1, 2.5 * dt);
+  if (hbOn) fwd *= Math.exp(-0.35 * dt);
+  const k = 1 - Math.exp(-c.gR * dt), lost = side * k;
+  side -= lost;
+  fwd += Math.abs(lost) * V.redirect * (hbOn ? 0.45 : 1) * (fwd >= 0 ? 1 : -1);
+  fwd = Math.max(fwd, -6);
+  c.vx = fx * fwd + rx * side; c.vz = fz * fwd + rz * side;
+  c.x += c.vx * dt; c.z += c.vz * dt;
+  c.speed = Math.hypot(c.vx, c.vz); c.beta = Math.atan2(side, Math.max(fwd, 0.001)); c.slip = Math.abs(c.beta); c.hbOn = hbOn;
+}
+
+// Which sample of the loop is nearest (searched near where it was), and how far left or right of the middle.
+function drNear(T, c) {
+  const n = T.n; let best = c.ti | 0, bd = 1e9;
+  for (let k = -8; k <= 14; k++) { const i = (c.ti + k + n * 2) % n, q = T.pts[i], d = (c.x - q.x) ** 2 + (c.z - q.z) ** 2; if (d < bd) { bd = d; best = i; } }
+  if (bd > 900) for (let i = 0; i < n; i++) { const q = T.pts[i], d = (c.x - q.x) ** 2 + (c.z - q.z) ** 2; if (d < bd) { bd = d; best = i; } }
+  c.ti = best;
+  const q = T.pts[best], [nx, nz] = T.nor[best];
+  return (c.x - q.x) * nx + (c.z - q.z) * nz;
+}
+// The walls: push back inside, bounce, and a hard hit is a crash.
+function drWalls(c, D) {
+  const T = D.T, lat = drNear(T, c), lim = T.hw - c.dr.r * 0.75;
+  if (Math.abs(lat) <= lim) return 0;
+  const sg = Math.sign(lat), [nx, nz] = T.nor[c.ti], over = Math.abs(lat) - lim;
+  c.x -= nx * sg * over; c.z -= nz * sg * over;
+  const vn = c.vx * nx * sg + c.vz * nz * sg; // speed into the wall
+  if (vn <= 0) return 0;
+  const m = Math.sqrt(c.dr.mass || 1);
+  c.vx -= nx * sg * vn * 1.3; c.vz -= nz * sg * vn * 1.3;
+  const keep = 1 - Math.min(0.4, vn * 0.014 / m); c.vx *= keep; c.vz *= keep;
+  c.heading = wrap(c.heading + wrap(T.head[c.ti] - c.heading) * 0.12);
+  c.lastHit = vn;
+  return vn;
+}
+
+// --- scoring ---
+const DR_BASE = 60, DR_MAXCOMBO = 8; // points a second for a 45 degree slide at 20 units a second
+const drName = (m) => (m >= 8 ? 'KITCHEN KING' : m >= 6 ? 'INSANE DRIFT' : m >= 4 ? 'GREAT DRIFT' : m >= 2 ? 'NICE DRIFT' : 'DRIFT');
+function drPop(text, cls = 'c1') { const el = $('drCombo'); el.textContent = text; el.className = ''; void el.offsetWidth; el.className = `pop ${cls}`; }
+function drBank(D, c) { // a drift is over: bank it with the combo it earned
+  const d = D.d; d.active = false;
+  if (d.dur < 0.6 || d.pts < 20) { d.pts = 0; return; }
+  const mult = D.combo, gain = Math.round(d.pts * mult);
+  D.score += gain; D.bestDrift = Math.max(D.bestDrift, gain); D.bestCombo = Math.max(D.bestCombo, mult);
+  const tier = mult >= 8 ? 'c4' : mult >= 4 ? 'c3' : mult >= 2 ? 'c2' : 'c1';
+  drPop(`${drName(mult)} x${mult}`, tier);
+  D.sub = `+${drFmt(gain)}`; D.subT = 1.4;
+  sfx(mult >= 8 ? 'drKing' : mult >= 4 ? 'drGreat' : 'drNice');
+  D.combo = Math.min(DR_MAXCOMBO, D.combo + 1); D.chainT = 4.5;
+  if (d.dur >= 0.9 && d.avg >= 0.4) { D.exitT = 0.8; D.nitro = Math.min(100, D.nitro + 8); c.vx += Math.cos(c.heading) * 3; c.vz += Math.sin(c.heading) * 3; } // a good exit: a kick of speed
+  d.pts = 0;
+}
+function drCrash(D, c, vn) {
+  if (D.combo > 1 || D.d.pts > 0) drPop('CRASH!', 'bad');
+  D.combo = 1; D.chainT = 0; D.d.active = false; D.d.pts = 0; D.crashes++;
+  state.shake = Math.min(1.4, (state.shake || 0) + 0.5 + vn * 0.02);
+  sfx('drCrash'); drSparks(c.x, c.z, 0xffd36b, 12);
+}
+function drScoreStep(D, c, dt, hbWas) {
+  const T = D.T, V = c.dr, d = D.d, zone = T.zoneAt[c.ti] >= 0;
+  D.zone = zone;
+  const sliding = c.speed > 9 && c.slip > 0.24;
+  if (sliding) {
+    if (!d.active) Object.assign(d, { active: true, dur: 0, pts: 0, max: 0, sum: 0, grace: 0, avg: 0 });
+    d.grace = 0; d.dur += dt;
+    const ang = Math.min(c.slip, 1.4) / 0.785, tandem = 1 + D.tandemK;
+    d.pts += ang * (Math.min(c.speed, 42) / 20) * DR_BASE * V.mult * (zone ? 2 : 1) * tandem * dt;
+    d.max = Math.max(d.max, c.slip); d.sum += c.slip * dt; d.avg = d.sum / d.dur;
+    D.nitro = Math.min(100, D.nitro + ang * (c.speed / 20) * 9 * V.nitro * dt);
+    D.chainT = 4.5;
+  } else if (d.active) {
+    d.grace += dt;
+    if (d.grace > 0.35) drBank(D, c);
+  }
+  // the chain: no drift for a while, or standing still, and the combo goes
+  if (!sliding && D.combo > 1) { D.chainT -= dt; if (D.chainT <= 0) { D.combo = 1; drPop('COMBO LOST', 'bad'); sfx('drLost'); } }
+  if (c.speed < 4) { D.stillT += dt; if (D.stillT > 1.5 && D.combo > 1) { D.combo = 1; D.chainT = 0; drPop('COMBO LOST', 'bad'); sfx('drLost'); } } else D.stillT = 0;
+}
+
+// --- the run ---
+function driftSetCar(kind, col) {
+  const R = state.race, D = R.drift, p = state.player, V = DRIFT_VEHICLES[kind];
+  if (p.mesh) { R.group.remove(p.mesh); scene.remove(p.mesh); disposeTree(p.mesh); }
+  p.mesh = drModel(kind, DR_COLORS[col].h); R.group.add(p.mesh);
+  p.dr = V; p.drKind = kind; p.r = V.r; D.neon = DR_COLORS[col].h;
+  D.L.neon.color.setHex(D.neon);
+}
+function drPlace(D, c, i, v) {
+  const T = D.T, q = T.pts[i];
+  Object.assign(c, { x: q.x, z: q.z, y: DR_FLOOR, vx: 0, vz: 0, heading: T.head[i], ti: i, gR: c.dr.grip, snap: 0, hbPrev: false, speed: 0, slip: 0, beta: 0, yaw: 0, roll: 0, lastHit: 0, alive: true });
+}
+function driftResetRun() {
+  const R = state.race, D = R.drift, p = state.player, T = D.T;
+  Object.assign(D, { state: 'garage', hold: 3, left: DR_RUN, score: 0, bestDrift: 0, bestCombo: 1, combo: 1, chainT: 0, nitro: 0, boostT: 0, exitT: 0, stillT: 0, crashes: 0, zone: false, tandemK: 0, tandemPts: 0, sub: '', subT: 0, lastN: -1, hud: {} });
+  D.d = { active: false, dur: 0, pts: 0, max: 0, sum: 0, grace: 0, avg: 0 };
+  drPlace(D, p, 3);
+  D.skid.pos.fill(0); D.skid.g.attributes.position.needsUpdate = true; D.skid.last = [null, null, null, null];
+  if (DR.pool) for (const q of DR.pool) { q.s.visible = false; q.life = 0; }
+  if (D.ghost) { D.ghost.m.visible = DR.sel.mode === 'tandem'; D.ghost.s = T.ds * 16; D.ghost.v = 0; D.ghost.beta = 0; D.ghost.lat = 0; }
+  DR.hb = false; DR.boostReq = false; drScreech(0, 0);
+  state.shake = 0; D.camX = null; D.zoom = 1.2;
+}
+function driftGhost(D, hex) {
+  const R = state.race;
+  if (D.ghost) { R.group.remove(D.ghost.m); disposeTree(D.ghost.m); D.ghost = null; }
+  const m = drModel('racer', hex); R.group.add(m);
+  const dr = DRIFT_VEHICLES.racer;
+  D.ghost = { m, s: D.T.ds * 16, v: 0, beta: 0, lat: 0, x: 0, z: 0, heading: 0, dr, slip: 0 };
+}
+function driftGo() {
+  const R = state.race, D = R.drift;
+  DR.sel.mode = DR.sel.mode || 'free';
+  driftResetRun();
+  if (DR.sel.mode === 'tandem') driftGhost(D, DR_COLORS[DR.sel.col].h === 0xff2fb4 ? 0x19e6ff : 0xff2fb4);
+  else if (D.ghost) D.ghost.m.visible = false;
+  if (D.ghost) D.ghost.m.visible = DR.sel.mode === 'tandem';
+  D.state = 'count'; D.hold = 3.2; R.intro = false;
+  $('drGarage').hidden = true; $('drEnd').hidden = true; $('drHud').hidden = false; $('drMode').textContent = DR_MODES[DR.sel.mode].n.toUpperCase();
+  const b = DR.best[DR.sel.mode]; $('drBest').textContent = drFmt(b ? b.score : 0);
+  audioInit();
+}
+function driftBegin() { // the title button
+  audioInit(); $('start').hidden = true; $('end').hidden = true;
+  driftOn = true; reset();
+}
+function driftStart(cfg) { // (from startRace) the kitchen first, then the night loop on its floor
+  krStart(cfg);
+  const R = state.race, p = state.player;
+  for (const c of R.rivals) { scene.remove(c.mesh); disposeTree(c.mesh); }
+  R.rivals.length = 0; R.cars = [p];
+  for (const t of R.tokens) t.g.visible = false;
+  R.tokens.length = 0;
+  $('raceHud').hidden = true; $('raceRow').hidden = true; $('lrIntro').hidden = true;
+  document.body.classList.add('drifting'); $('drVig').hidden = false;
+  const T = drTrack(), G = new THREE.Group(); R.group.add(G);
+  drBuildTrack(T, G);
+  const L = drDress(G, R);
+  const D = R.drift = { T, G, L, skid: drSkidInit(G), ghost: null, d: null, neon: 0x19e6ff, camX: null, zoom: 1.2, t: 0 };
+  // night: low moon-blue light, dark blue air
+  hemi.color.setHex(0x5f78c8); hemi.groundColor.setHex(0x0c1024); hemi.intensity = 0.12;
+  sun.color.setHex(0x8fa8ff); sun.intensity = 0.12;
+  scene.background.setHex(0x060914); scene.fog.color.setHex(0x060914); scene.fog.near = 150; scene.fog.far = 340;
+  camera.fov = 45; camera.updateProjectionMatrix();
+  p.y = DR_FLOOR; p.scr = null; p.krAir = false; p.dr = DRIFT_VEHICLES[DR.sel.kind]; p.carry = null;
+  driftSetCar(DR.sel.kind, DR.sel.col);
+  driftResetRun();
+  drPoolGet().forEach((q) => R.group.add(q.s));
+  drGarageUi();
+  $('drGarage').hidden = false; $('drHud').hidden = true; $('drEnd').hidden = true;
+  R.intro = true; // held still while the garage card is up
+}
+function driftCleanup() { // (from krCleanup)
+  $('drHud').hidden = true; $('drGarage').hidden = true; $('drEnd').hidden = true;
+  document.body.classList.remove('drifting'); $('drVig').hidden = true;
+  DR.hb = false; DR.boostReq = false; drScreechStop();
+  camera.fov = 45; camera.updateProjectionMatrix(); state.shake = 0;
+}
+function driftQuit() { driftCleanup(); $('start').hidden = false; selectLevel(curLevel); }
+function driftFinish() {
+  const R = state.race, D = R.drift;
+  D.state = 'done'; R.intro = true; $('banner').hidden = true;
+  if (D.d.active) drBank(D, state.player);
+  drScreech(0, 0);
+  const mode = DR.sel.mode, prev = DR.best[mode] || { score: 0, drift: 0, combo: 1, stars: 0 };
+  const T3 = DR_STARS[mode], stars = D.score >= T3[2] ? 3 : D.score >= T3[1] ? 2 : D.score >= T3[0] ? 1 : 0, pb = D.score > prev.score;
+  DR.best[mode] = { score: Math.max(prev.score, D.score), drift: Math.max(prev.drift, D.bestDrift), combo: Math.max(prev.combo, D.bestCombo), stars: Math.max(prev.stars || 0, stars) };
+  drSave();
+  $('drEndMode').textContent = `${DR_MODES[mode].n.toUpperCase()} · ${DRIFT_VEHICLES[state.player.drKind].name.toUpperCase()}`;
+  $('drEndTitle').textContent = D.score >= T3[2] ? 'KITCHEN KING!' : D.score >= T3[0] ? 'NICE RUN' : 'TIME!';
+  $('drEndScore').textContent = drFmt(D.score);
+  $('drEndStars').innerHTML = starRow(stars);
+  $('drEndDrift').textContent = drFmt(D.bestDrift); $('drEndCombo').textContent = `x${D.bestCombo}`; $('drEndBest').textContent = drFmt(DR.best[mode].score);
+  $('drEndNote').textContent = pb ? 'New personal best!' : stars < 3 ? `${drFmt(T3[stars])} for ${stars + 1} star${stars ? 's' : ''}. Chain your drifts and use the zones.` : 'Three stars. Try the lorry!';
+  $('drHud').hidden = true; $('drEnd').hidden = false; sfx(stars ? 'win' : 'respawn');
+}
+
+function driftUpdate(dt) {
+  const R = state.race, D = R.drift, p = state.player, T = D.T;
+  D.t += dt;
+  // input: the stick (or keys) aims the nose; Space/Shift is the handbrake; B boosts
+  let ix = input.x, iz = input.z;
+  if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
+  if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
+  if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
+  if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) iz += 1;
+  let hb = DR.hb || input.keys.has('Space') || input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'), boostTap = DR.boostReq;
+  DR.boostReq = false;
+  if (DR.bot) { const b = DR.bot(p, D); ix = b.ix; iz = b.iz; hb = b.hb; boostTap = b.boost; }
+  if (D.state === 'count') {
+    D.hold -= dt;
+    const n = Math.ceil(D.hold - 0.2);
+    if (n !== D.lastN) { D.lastN = n; if (n > 0) { banner(String(n), 'Hold DRIFT and steer into the bends'); sfx('tick'); } else { banner('GO!', 'Chain your drifts. Zones pay double.'); bannerTimer = 1.3; sfx('respawn'); } }
+    if (D.hold <= 0.2) D.state = 'run';
+  }
+  const go = D.state === 'run';
+  if (go) { D.left -= dt; if (D.left <= 0) { D.left = 0; driftFinish(); return; } }
+  if (!go) { ix = iz = 0; hb = false; }
+  // nitro
+  if (boostTap && go && D.nitro >= 15 && D.boostT <= 0) { D.boostT = 0.6 + D.nitro / 100 * 1.6; D.nitro = 0; sfx('drBoost'); state.shake = Math.max(state.shake || 0, 0.5); }
+  if (D.boostT > 0) D.boostT -= dt; if (D.exitT > 0) D.exitT -= dt;
+  const wasHb = p.hbOn;
+  driftDrive(p, ix, iz, hb, dt, { boost: D.boostT > 0, exit: D.exitT > 0 });
+  if (p.snapped) { p.snapped = false; sfx('drSnap'); }
+  const hit = drWalls(p, D);
+  if (hit > 0 && go) { if (hit > 5) drCrash(D, p, hit); else if (hit > 1.5) { drSparks(p.x, p.z, 0xffe9a0, 3); state.shake = Math.max(state.shake || 0, 0.15); } }
+  p.zone = false;
+  if (go) {
+    drScoreStep(D, p, dt, wasHb);
+    // tandem: points for staying close behind the ghost, and a multiplier on the drifts while you do
+    D.tandemK = 0;
+    if (D.ghost && DR.sel.mode === 'tandem') {
+      const G = D.ghost, ahead = ((G.s / T.ds - p.ti + T.n * 1.5) % T.n) - T.n / 2; // samples the ghost is in front (negative: you passed it)
+      G.gap = ahead * T.ds; const dist = Math.hypot(G.x - p.x, G.z - p.z);
+      if (ahead > 0 && dist < 30 && p.speed > 10) { D.tandemK = drClamp(1 - (dist - 7) / 23, 0, 1); D.score += 30 * D.tandemK * dt; D.tandemPts += 30 * D.tandemK * dt; }
+    }
+  }
+  if (D.ghost && DR.sel.mode === 'tandem') drGhostStep(D, dt, go);
+  if (D.subT > 0) D.subT -= dt;
+  drEffects(D, p, dt);
+  drHud(D, p);
+  engineUpdate(p);
+}
+function drGhostStep(D, dt, go) {
+  const G = D.ghost, T = D.T, p = state.player, n = T.n, ds = T.ds;
+  const ahead = ((G.s / ds - p.ti + n * 1.5) % n) - n / 2, d = ahead * ds;
+  let v = d > 55 ? 10 : d > 36 ? 18 : d > 12 ? 28 - (d - 12) * 0.1 : d >= 0 ? 31 : 38;
+  if (!go) v = D.state === 'done' ? 0 : 0;
+  G.v += (v - G.v) * Math.min(1, dt * 2); G.s = (G.s + G.v * dt + T.len) % T.len;
+  const idx = G.s / ds, i = Math.floor(idx) % n, f = idx - Math.floor(idx), a = T.pts[i], b = T.pts[(i + 1) % n];
+  const turn = T.turn[i], tb = Math.abs(turn) > 0.014 ? drClamp(turn * 40, -0.8, 0.8) : 0;
+  G.beta += (tb - G.beta) * Math.min(1, dt * 4); G.lat += (drClamp(-turn * 130, -4, 4) - G.lat) * Math.min(1, dt * 3);
+  const [nx, nz] = T.nor[i];
+  G.x = a.x + (b.x - a.x) * f + nx * G.lat; G.z = a.z + (b.z - a.z) * f + nz * G.lat; G.heading = wrap(T.head[i] + G.beta); G.slip = Math.abs(G.beta); G.speed = G.v;
+  G.vx = Math.cos(T.head[i]) * G.v; G.vz = Math.sin(T.head[i]) * G.v;
+  // its smoke and tracks
+  if (G.slip > 0.3 && G.v > 8 && D.t - (G.smokeT || 0) > 0.05) { G.smokeT = D.t; drWheelFx(D, G, 1, 0x19e6ff, 0xc9cfdc, true); }
+  if (G.slip <= 0.3) { D.skid.last[2] = D.skid.last[3] = null; }
+}
+// Smoke and skid marks behind the rear wheels of a car (c has x, z, heading, dr). `ghost` uses skid slots 2 and 3.
+function drWheelFx(D, c, rate, neon, smokeCol, ghost) {
+  const V = c.dr, fx = Math.cos(c.heading), fz = Math.sin(c.heading), c3 = new THREE.Color(neon);
+  for (let w = 0; w < 2; w++) {
+    const z = w ? V.rz : -V.rz, wx = c.x + fx * V.rx - fz * z, wz = c.z + fz * V.rx + fx * z;
+    drPuff(wx, DR_FLOOR + 0.9, wz, { vx: -c.vx * 0.1 + (Math.random() - 0.5) * 3, vz: -c.vz * 0.1 + (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 2.5, life: 0.7 + Math.random() * 0.5, size: 2.6 * rate, grow: 5.5 * rate, op: 0.75, col: smokeCol });
+    drSkid(D.skid, w + (ghost ? 2 : 0), wx, wz, [0.01 + c3.r * 0.06, 0.01 + c3.g * 0.06, 0.02 + c3.b * 0.06]);
+  }
+}
+function drEffects(D, p, dt) {
+  const V = p.dr, U = p.mesh.userData.U, sliding = p.speed > 7 && (p.slip > 0.2 || (p.hbOn && p.slip > 0.1));
+  if (sliding) {
+    p.smokeT = (p.smokeT || 0) + dt;
+    const gap = 0.045 / V.smoke;
+    if (p.smokeT >= gap) { p.smokeT = 0; drWheelFx(D, p, 0.8 + V.smoke * 0.35, D.neon, p.drKind === 'muscle' ? 0x8f94a3 : 0xd6dbe8, false); }
+  } else { D.skid.last[0] = D.skid.last[1] = null; }
+  // sound and shake
+  drScreech(D.state === 'run' ? drClamp((p.slip - 0.15) / 0.6, 0, 1) * drClamp(p.speed / 18, 0, 1) : 0, p.speed);
+  if (D.state === 'run' && p.slip > 0.7 && p.speed > 22) state.shake = Math.max(state.shake || 0, 0.3); // a big slide shakes the screen a little
+  drPuffsUpdate(dt);
+  // look: boost flames and streak, body lean, bounce
+  const boost = D.boostT > 0;
+  for (const f of U.flames) { f.visible = boost; if (boost) f.scale.set(0.7 + Math.random() * 0.7, 0.8 + Math.random() * 0.5, 0.8 + Math.random() * 0.5); }
+  U.streak.visible = boost; if (boost) U.streak.material.opacity = 0.5 + Math.random() * 0.3;
+  p.roll += (drClamp(-p.yaw * p.speed * 0.0032, -0.22, 0.22) - p.roll) * Math.min(1, dt * 8);
+  U.glow.material.opacity = 0.8 + Math.sin(D.t * 5) * 0.12;
+  D.L.neon.position.set(p.x, DR_FLOOR + 6, p.z); D.L.neon.intensity = 0.5 + (boost ? 0.5 : 0);
+}
+function drHud(D, p) {
+  const H = D.hud, set = (id, v) => { if (H[id] !== v) { H[id] = v; $(id).textContent = v; } };
+  set('drScore', drFmt(D.score));
+  const t = Math.ceil(D.left); set('drTime', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`);
+  set('drLive', D.d.active && D.d.pts > 5 ? `+${drFmt(D.d.pts * D.combo)}  x${D.combo}` : D.subT > 0 ? D.sub : D.combo > 1 ? `COMBO x${D.combo}` : '');
+  set('drTag', D.d.active && D.zone ? 'ZONE x2' : D.tandemK > 0.05 ? `TANDEM x${(1 + D.tandemK).toFixed(1)}` : D.ghost && DR.sel.mode === 'tandem' && D.ghost.gap < -4 ? 'THE GHOST IS BEHIND YOU' : '');
+  const nw = `${Math.round(D.nitro)}%`; if (H.nit !== nw) { H.nit = nw; $('drNitroFill').style.width = nw; $('drNitro').classList.toggle('full', D.nitro >= 99); $('drBoost').disabled = D.nitro < 15; }
+}
+
+// --- the camera: above and behind, a bit further back the faster you go; the sun and lights ride along ---
+function driftCam(dt) {
+  const R = state.race, D = R.drift, p = state.player;
+  if (p.mesh) {
+    const bounce = p.drKind === 'monster' ? Math.abs(Math.sin(D.t * 9)) * 0.35 * Math.min(1, p.speed / 20) : 0;
+    p.mesh.position.set(p.x, DR_FLOOR + bounce, p.z); p.mesh.rotation.set(p.roll || 0, -p.heading, 0);
+    const U = p.mesh.userData.U;
+    if (U.trailer) { U.tr = (U.tr || 0) + (drClamp(wrap(p.heading - (U.trh ?? p.heading)), -0.7, 0.7) - (U.tr || 0)) * Math.min(1, dt * 3); U.trh = wrap(p.heading - U.tr); U.trailer.rotation.y = U.tr; } // the trailer swings out behind the cab
+  }
+  if (D.ghost) { const G = D.ghost; G.m.visible = DR.sel.mode === 'tandem'; G.m.position.set(G.x, DR_FLOOR, G.z); G.m.rotation.set(0, -G.heading, 0); }
+  const aspect = camera.aspect < 1 ? 1.4 : 1, speed = p.speed || 0;
+  const garage = D.state === 'garage', zt = (0.95 + Math.min(0.3, speed / 110) + (D.boostT > 0 ? 0.12 : 0)) * aspect;
+  D.zoom += (zt - D.zoom) * (1 - Math.exp(-2.2 * dt));
+  const lx = p.x + p.vx * 0.45, lz = p.z + p.vz * 0.45 + (garage ? 15 : 0);
+  if (D.camX === null) { camTarget.set(lx, 0, lz); D.camX = 1; } else camTarget.lerp(new THREE.Vector3(lx, 0, lz), 1 - Math.exp(-4.5 * dt));
+  state.shake = Math.max(0, (state.shake || 0) - dt * 2.5);
+  const sh = state.shake * 0.8, z = D.zoom;
+  camera.position.set(camTarget.x + (Math.random() - 0.5) * sh, DR_FLOOR + 46 * z, camTarget.z + 31 * z + (Math.random() - 0.5) * sh);
+  camera.lookAt(camTarget.x, DR_FLOOR, camTarget.z + 2);
+  const fov = 45 + (D.boostT > 0 ? 7 : 0); if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 6); camera.updateProjectionMatrix(); }
+  sun.position.set(camTarget.x - 30, DR_FLOOR + 90, camTarget.z + 25); sun.target.position.set(camTarget.x, DR_FLOOR, camTarget.z); sun.target.updateMatrixWorld();
+  D.L.warm.position.set(camTarget.x, DR_FLOOR + 55, 14);
+}
+
+// --- the cards: garage, results ---
+const drDots = (n) => '●'.repeat(n) + '<s style="text-decoration:none;opacity:0.3">' + '●'.repeat(4 - n) + '</s>';
+function drGarageUi() {
+  $('drCars').innerHTML = Object.entries(DRIFT_VEHICLES).map(([k, V]) => `<button data-k="${k}" class="${DR.sel.kind === k ? 'cur' : ''}"><b>${V.name}</b><span>${V.blurb}</span><i>EASY ${drDots(V.ease)}<br>FAST ${drDots(V.spd)}<br>PAYS ${drDots(V.pay)}</i></button>`).join('');
+  $('drSwatches').innerHTML = DR_COLORS.map((c, i) => `<button class="drSw ${DR.sel.col === i ? 'cur' : ''}" data-c="${i}" aria-label="${c.n}" style="background:#${c.h.toString(16).padStart(6, '0')};color:#${c.h.toString(16).padStart(6, '0')}"></button>`).join('');
+  $('drModes').innerHTML = Object.entries(DR_MODES).map(([k, M]) => { const b = DR.best[k]; return `<button data-m="${k}" class="${DR.sel.mode === k ? 'cur' : ''}"><b>${M.n}</b><span>${M.t}</span><span>${b ? `Best ${drFmt(b.score)} ${starRow(b.stars || 0)}` : 'No score yet'}</span></button>`; }).join('');
+  $('drBestLine').textContent = 'Hold DRIFT and steer into a bend. Chain drifts for a bigger combo. Tap BOOST to spend your nitro.';
+  for (const b of $('drCars').querySelectorAll('button')) b.addEventListener('click', () => { DR.sel.kind = b.dataset.k; driftSetCar(DR.sel.kind, DR.sel.col); driftResetRun(); drGarageUi(); });
+  for (const b of $('drSwatches').querySelectorAll('button')) b.addEventListener('click', () => { DR.sel.col = +b.dataset.c; driftSetCar(DR.sel.kind, DR.sel.col); driftResetRun(); drGarageUi(); });
+  for (const b of $('drModes').querySelectorAll('button')) b.addEventListener('click', () => { DR.sel.mode = b.dataset.m; drGarageUi(); });
+}
+function driftToGarage() { const R = state.race; driftResetRun(); R.intro = true; $('drEnd').hidden = true; $('drHud').hidden = true; drGarageUi(); $('drGarage').hidden = false; }
+$('drGo').addEventListener('click', driftGo);
+$('drBack').addEventListener('click', driftQuit);
+$('drQuit').addEventListener('click', driftQuit);
+$('drMenu').addEventListener('click', driftQuit);
+$('drAgain').addEventListener('click', driftGo);
+$('drGarageBtn').addEventListener('click', driftToGarage);
+hold($('drBrake'), (v) => { DR.hb = v; });
+$('drBoost').addEventListener('pointerdown', (e) => { e.preventDefault(); DR.boostReq = true; $('drBoost').classList.add('on'); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('drBoost').addEventListener(ev, () => $('drBoost').classList.remove('on'));
+addEventListener('keydown', (e) => { if ((e.code === 'KeyB' || e.code === 'Enter') && state.race?.drift && !e.repeat) DR.boostReq = true; });
+// The title button, next to PLAY (the AR button slots in beside them when AR exists)
+(function () {
+  const row = document.createElement('div'), play = $('play'); row.className = 'two'; play.replaceWith(row); row.append(play);
+  const b = document.createElement('button'); b.className = 'go alt'; b.id = 'driftBtn'; b.innerHTML = 'DRIFT<small>midnight kitchen</small>';
+  b.style.cssText = 'border-color:#ff2fb4;box-shadow:0 0 18px rgba(255,47,180,0.55);font-size:24px;padding:16px 30px;min-width:200px';
+  row.append(b); b.addEventListener('click', driftBegin);
+})();
+</script>
+<!-- Drift mode END -->
 <script>
 // ===================== AR mode =====================
 // Put the toy war on a real table. Standard WebXR 'immersive-ar' (hit-test + dom-overlay), as given by
