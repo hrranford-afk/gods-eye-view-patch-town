@@ -10,7 +10,7 @@ const ok = (name, cond, extra) => { results.push(!!cond); console.log((cond ? 'P
   const { srv, url } = await serve(); const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await p.goto(url); await sleep(1200);
   await ev(() => { __g.ENV.hourOverride = 12; localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); __g.RECOG.cool = 0; });
-  await p.click('#bMap'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(400);
+  await p.click('#bMore'); await p.click('#bMap'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(400);
   await ev(() => { __g.P.yaw = 0.15; __g.P.pitch = 0.9; __g.focusOn(-0.3, 0.9, -1.0, 2.9); }); await sleep(1500);
   const tick = async (n) => { for (let i = 0; i < n; i++) { await ev(() => __g.recogTick()); await sleep(80); } };
   const propTop = (id) => ev((id) => { const q = __g.PROPS.find((x) => x.id === id); return [q.x, q.base + q.h, q.z]; }, id);

@@ -25,7 +25,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   const m0 = await mem();
 
   // ---- map my room, tag spots ----
-  await p.click('#bMap'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(400);
+  await p.click('#bMore'); await p.click('#bMap'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(400);
   ok('map mode goes to tagging after the scan', await ev(() => __g.G.phase === 'tag'));
   const zs = await ev(() => __g.G.zones.map((z) => [z.type, +z.area.toFixed(2), +z.y.toFixed(2)]));
   ok('zones found: floor, desk, speaker top, sill, shelf', zs.length === 5, JSON.stringify(zs));
@@ -89,7 +89,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await p.reload(); await sleep(1200);
   await ev(() => { __g.ENV.hourOverride = 12; const s = JSON.parse(localStorage.getItem('base-camp-save-v2')); s.t -= 5 * 3600 * 1000; localStorage.setItem('base-camp-save-v2', JSON.stringify(s)); __g.placeRoom(0.5236, 0.5, -0.3); });
   ok('Continue is offered when there is a map and a colony', await ev(() => !document.getElementById('bCont').hidden));
-  await p.click('#bCont'); await sleep(500);
+  await p.click('#bMore'); await p.click('#bMap'); await sleep(500);
   ok('on return the diary comes first, before any scan', await ev(() => !document.getElementById('diary').hidden && /5\.0 h/.test(document.getElementById('diary').innerText)));
   await p.click('#dClose'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(300);
   ok('then the two-landmark alignment starts', await ev(() => __g.G.phase === 'align' && __g.G.landmarks.length === 2), await ev(() => __g.G.landmarks.map((l) => l.name).join(' & ')));

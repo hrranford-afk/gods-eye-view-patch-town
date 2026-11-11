@@ -66,6 +66,16 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 #guess{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(92vw,520px);display:grid;gap:8px;z-index:4;text-align:center}#guess .th{font-weight:800;font-size:18px;color:#ffd9a8}#guess .row2{justify-content:center}
 #rstat{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-size:12px;font-weight:700;padding:4px 10px;max-width:46vw}
 .lib{display:flex;gap:10px;align-items:center}.lib>div{flex:1}.lib button{min-height:34px;font-size:13px}.badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 14px var(--body);color:#2b1d12;flex:none}
+#welcome{text-align:left;font-size:14px;line-height:1.4;background:rgba(255,246,230,.12);border-radius:12px;padding:8px 12px;margin-bottom:10px;color:#f6e6cc}
+#welcome ul{margin:4px 0 0;padding-left:18px;font-weight:600}
+body.auto #bar{padding:4px 6px;gap:4px;background:rgba(59,42,30,.55)}
+body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
+#tmenu{justify-content:center;margin-top:10px}
+#count{display:inline-block;margin-top:4px;font:700 12px var(--body);opacity:.8;padding:2px 10px;border-radius:99px;background:var(--glass);pointer-events:none}
+#count:empty{display:none}
+#hint.fade{opacity:0;transition:opacity 1.2s}
+#home{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:800 44px var(--body);color:#ffd9a8;text-shadow:0 3px 0 #7a4a22;pointer-events:none;opacity:0;transition:opacity .6s}
+#home.on{opacity:1}
 #mapInfo{font:700 13px var(--body);opacity:.85}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
@@ -75,19 +85,23 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
   <div id="touch"></div>
   <div id="title" class="glass">
     <h1>Base Camp</h1>
-    <p>A tiny colony that settles the real surfaces of your room. Map your room once, name the speaker, the cup, the warm box, then help the little people grow. Come back later: they kept going, and they love a tidy house.</p>
+    <p>A tiny colony that settles the real surfaces of your room. Just press Play and look around: they find their own home, know the room when you come back, and love a tidy house.</p>
+    <div id="welcome" hidden></div>
     <div class="row">
-      <button class="big" id="bAR" hidden>Start in AR</button>
-      <button class="big alt" id="bPrac">Practice room</button>
-      <button class="big" id="bMap">Map my room</button>
-      <button id="bCont" hidden>Continue my colony</button>
+      <button class="big" id="bPlay" disabled>Play</button>
+      <button id="bMore">More...</button>
+    </div>
+    <div id="tmenu" class="mrow" hidden>
+      <button id="bPrac" class="alt">Practice room</button>
+      <button id="bMap">Manual: map my room</button>
       <button id="bMapIO">Room map: export / import</button>
       <button id="bNew" hidden>Forget my colony</button>
     </div>
     <div id="mapInfo"></div>
     <div id="arStatus">AR: checking...</div>
   </div>
-  <div id="top"><div id="hint" class="glass"></div><div id="chips"></div></div>
+  <div id="top"><div id="hint" class="glass"></div><div id="chips"></div><div id="count"></div></div>
+  <div id="home"></div>
   <div id="card" class="glass" hidden></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
@@ -109,11 +123,26 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 3';
+const BUILD = 'build 4';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const STORE = { status: 'ok', fails: 0, err: '', told: false };
+(function storeProbe() { try { localStorage.setItem('bc-probe', '1'); if (localStorage.getItem('bc-probe') !== '1') throw new Error('read back failed'); localStorage.removeItem('bc-probe'); } catch (e) { STORE.status = 'unavailable'; STORE.err = String(e && e.message || e); } })();
+function seededRandom(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function withSeed(seed, fn) { const r = Math.random; Math.random = seededRandom(seed); try { return fn(); } finally { Math.random = r; } } // the away simulation gives the same story on the title card and in the game
+function safeWrite(key, str) { // the previous good value is kept in a backup slot, so a bad write cannot wipe the colony
+  try {
+    const old = localStorage.getItem(key); if (old) { try { JSON.parse(old); try { localStorage.setItem(key + '-bak', old); } catch (e) { /* no room for a backup */ } } catch (e) { /* the old value was damaged: keep the older backup */ } }
+    localStorage.setItem(key, str); if (localStorage.getItem(key) !== str) throw new Error('could not read the save back'); return true;
+  } catch (e) { STORE.fails++; STORE.err = String(e && e.message || e); STORE.status = STORE.status === 'unavailable' ? 'unavailable' : 'failing'; return false; }
+}
+function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 'corrupt' if something was there but unreadable
+  let bad = false;
+  for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
+  if (bad) STORE.status = 'corrupt'; return null;
+}
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* none */ } } };
 
 // ============ ALMANAC: everything a story-teller can change lives in this one object ============
@@ -453,13 +482,13 @@ function classify() {
 function scanZone(id) { return SCAN.zones.find((z) => z.id === id); }
 function paintBands(play) {
   for (const b of SCAN.bands) {
-    b.mesh.visible = G.phase === 'scan' || G.phase === 'align';
+    b.mesh.visible = G.phase === 'scan' || G.phase === 'align' || (G.auto && G.phase !== 'title' && !(G.returning && G.locked));
     if (!b.dirty) continue; b.dirty = false;
     const d = b.data, lab = b.lab, g = b.g;
     for (let k = 0; k < g.length; k++) {
       const id = lab[k], o = k * 4;
       if (!id) { if (g[k] && !play) { d[o] = 200; d[o + 1] = 200; d[o + 2] = 200; d[o + 3] = 50; } else d[o + 3] = 0; continue; }
-      const z = scanZone(id), col = z ? z.color : 0xffffff;
+      const z = scanZone(id), col = z ? z.color : 0xffffff; if (G.auto && z && z.mz > 0 && zoneById(z.mz)) { d[o + 3] = 0; continue; }
       const i = k % GN, rim = (i > 0 && lab[k - 1] !== id) || (i < GN - 1 && lab[k + 1] !== id) || (k >= GN && lab[k - GN] !== id) || (k < g.length - GN && lab[k + GN] !== id);
       const set = false, a = play ? 70 : 120;
       d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : a;
@@ -488,7 +517,7 @@ const LC = CELL, TIDY = { avoidAt: 2, can: 0.022, box: 0.09, richAt: 3, hmin: 0.
 function setLandFrame(L, cx, cz, ang, y) { L.cx = cx; L.cz = cz; L.ang = ang; L.y = y; L.c = Math.cos(ang); L.s = Math.sin(ang); }
 function newLand(cx, cz, ang, y, u0, u1, v0, v1) {
   const i0 = Math.floor(u0 / LC), j0 = Math.floor(v0 / LC), w = Math.ceil(u1 / LC) - i0 + 1, h = Math.ceil(v1 / LC) - j0 + 1, n = w * h;
-  const L = { i0, j0, w, h, st: new Uint8Array(n), dist: new Uint8Array(n), calm: new Uint8Array(n), ht: new Uint8Array(n), seen: new Uint8Array(n), edge: null, edgeVer: -1, objs: [], ver: 0 }; // seen: a ray really landed on this bare cell
+  const L = { i0, j0, w, h, st: new Uint8Array(n), dist: new Uint8Array(n), calm: new Uint8Array(n), ht: new Uint8Array(n), seen: new Uint8Array(n), conf: new Uint8Array(n), confVisit: -1, edge: null, edgeVer: -1, objs: [], ver: 0 }; // conf: in how many visits this cell was seen; seen: a ray really landed on this bare cell
   setLandFrame(L, cx, cz, ang, y); return L;
 }
 function landFromScan(z) { // an empty land grid around a scanned zone (bounds from its cells, 10 cm margin)
@@ -580,8 +609,9 @@ function changedObjects(L, pred, minN) { // patches of cells for which pred is t
   for (let k = 0; k < n; k++) if (ero[k]) for (const d of D) { const q = k + d; if (q >= 0 && q < n && pred(q)) grown[q] = 1; }
   return landComps(L, (k) => grown[k] === 1, minN || 4);
 }
+function bumpConf(L, obs) { if (L.confVisit === G.visits) return; L.confVisit = G.visits; for (let k = 0; k < obs.length; k++) if (obs[k] && L.conf[k] < 15) L.conf[k]++; }
 function reconcileLand(L, m, first) {
-  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length;
+  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length; bumpConf(L, m.obs);
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
   const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1, 5); // an object counts as put down only where the bare cells were really seen before
@@ -1260,9 +1290,9 @@ function syncCables() { // for every marked cable with a settled end: a ready ca
 }
 // ---- saving the map ----
 function mapToJSON() {
-  return { v: MAP_V, kind: 'base-camp-room-map', name: G.mapName || 'My room', saved: Date.now(), build: BUILD, nextMZ: G.nextMZ, nextSpot: G.nextSpot, nextCable: G.nextCable, music: !!G.music,
+  return { v: MAP_V, kind: 'base-camp-room-map', name: G.mapName || 'My room', saved: Date.now(), build: BUILD, nextMZ: G.nextMZ, nextSpot: G.nextSpot, nextCable: G.nextCable, music: !!G.music, visits: G.visits || 0,
     zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost,
-      land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen) } : null }; }),
+      land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen), conf: rle(L.conf) } : null }; }),
     spots: G.spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
     cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id), library: G.library };
 }
@@ -1273,20 +1303,21 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   const zones = [];
   for (const q of d.zones) {
     if (!q || typeof q.id !== 'number' || !q.land || !(q.land.w > 0) || !(q.land.h > 0) || q.land.w * q.land.h > 600000) return 'A zone in the map is damaged.';
-    const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), seen: unrle(q.land.seen || [], n), edge: null, edgeVer: -1, objs: [], ver: 0 };
+    const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), seen: unrle(q.land.seen || [], n), conf: unrle(q.land.conf || [], n), confVisit: -1, edge: null, edgeVer: -1, objs: [], ver: 0 };
     setLandFrame(L, +q.cx, +q.cz, +q.ang, +q.y);
     const Z = { id: q.id, name: String(q.name || 'Zone'), type: ZTYPES[q.type] ? q.type : 'TABLE', spec: q.spec, y: +q.y, h: +q.h || 0, cx: +q.cx, cz: +q.cz, ang: +q.ang, w: +q.w || 0, d: +q.d || 0, area: +q.area || 0, color: q.color || ZPAL[(q.id - 1) % ZPAL.length], settled: null, land: L, label: null, core: null, lost: !!q.lost };
     L.objs = landComps(L, (k) => L.st[k] === 2, 3); Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; zones.push(Z);
   }
-  G.zones = zones; G.nextMZ = d.nextMZ || Math.max(0, ...zones.map((z) => z.id)) + 1; G.nextSpot = d.nextSpot || 1; G.nextCable = d.nextCable || 1; G.mapName = d.name || 'My room'; G.music = !!d.music;
+  G.zones = zones; G.nextMZ = d.nextMZ || Math.max(0, ...zones.map((z) => z.id)) + 1; G.nextSpot = d.nextSpot || 1; G.nextCable = d.nextCable || 1; G.mapName = d.name || 'My room'; G.music = !!d.music; G.visits = d.visits | 0;
   G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
   for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
   G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
-function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); store.set(MAP_KEY, JSON.stringify(mapToJSON())); }
-function loadMapData() { try { const d = JSON.parse(store.get(MAP_KEY) || 'null'); return d && d.kind === 'base-camp-room-map' ? d : null; } catch (e) { return null; } }
+function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) storeWarn(); }
+function loadMapData() { return safeRead(MAP_KEY, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
+function storeWarn() { if (STORE.told) return; STORE.told = true; toast('The colony could not be saved here (' + (STORE.status === 'unavailable' ? 'this browser blocks storage' : 'storage is full or blocked') + '). Use Menu, Export, to keep your room map.', 8); }
 function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
   const tops = G.spots.filter((s) => s.src !== 'default' && s.on === 'top' && s.area >= 0.02 && s.area < 0.5), solid = tops.length >= 2 ? tops : G.spots.filter((s) => s.src !== 'default' && s.area >= 0.02 && s.area < 0.5), player = solid.length >= 2 ? solid : G.spots.filter((s) => s.src !== 'default' && s.area < 0.5), pool = player.length >= 2 ? player : G.spots.filter((s) => s.area < 1.5).length >= 2 ? G.spots.filter((s) => s.area < 1.5) : G.spots;
   let best = null, bd = -1; for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) { const d = Math.hypot(pool[i].x - pool[j].x, pool[i].z - pool[j].z) + 0.5 * Math.abs(pool[i].y - pool[j].y); if (d > bd) { bd = d; best = [pool[i], pool[j]]; } }
@@ -1338,9 +1369,9 @@ function growLand(Z, fz) { // a fresh scan reached beyond the saved land of a bi
   for (let k = 0; k < b.lab.length; k += 2) if (b.lab[k] === fz.id) { const [x, zz] = gXZ(k), dx = x - L.cx, dz = zz - L.cz, i = Math.floor((dx * L.c + dz * L.s) / LC), j = Math.floor((-dx * L.s + dz * L.c) / LC); if (i - 3 < i0) i0 = i - 3; if (j - 3 < j0) j0 = j - 3; if (i + 3 > i1) i1 = i + 3; if (j + 3 > j1) j1 = j + 3; }
   if (i0 === L.i0 && j0 === L.j0 && i1 === L.i0 + L.w - 1 && j1 === L.j0 + L.h - 1) return;
   const w = i1 - i0 + 1, h = j1 - j0 + 1; if (w * h > 700000) return;
-  const mk = () => new Uint8Array(w * h), st = mk(), dist = mk(), calm = mk(), ht = mk(), seen = mk();
-  for (let j = 0; j < L.h; j++) for (let i = 0; i < L.w; i++) { const o = j * L.w + i, q = (j + L.j0 - j0) * w + (i + L.i0 - i0); st[q] = L.st[o]; dist[q] = L.dist[o]; calm[q] = L.calm[o]; ht[q] = L.ht[o]; seen[q] = L.seen[o]; }
-  Object.assign(L, { i0, j0, w, h, st, dist, calm, ht, seen, edge: null, edgeVer: -1 }); L.ver++; Z.core = null;
+  const mk = () => new Uint8Array(w * h), st = mk(), dist = mk(), calm = mk(), ht = mk(), seen = mk(), conf = mk();
+  for (let j = 0; j < L.h; j++) for (let i = 0; i < L.w; i++) { const o = j * L.w + i, q = (j + L.j0 - j0) * w + (i + L.i0 - i0); st[q] = L.st[o]; dist[q] = L.dist[o]; calm[q] = L.calm[o]; ht[q] = L.ht[o]; seen[q] = L.seen[o]; conf[q] = L.conf[o]; }
+  Object.assign(L, { i0, j0, w, h, st, dist, calm, ht, seen, conf, edge: null, edgeVer: -1 }); L.ver++; Z.core = null;
   if (Z.mesh) { world.remove(Z.mesh); Z.mesh.traverse((q) => { if (q.geometry) q.geometry.dispose(); if (q.material && q.material.map && q.material !== TOWER_MAT) { q.material.map.dispose(); q.material.dispose(); } }); Z.mesh = null; }
 }
 function coveredAt(x, zz, rad, belowY) { // did this scan really look at this place (rays landed within a few cm of it); with belowY: only rays that landed on something lower (so the place is seen empty)
@@ -1727,8 +1758,8 @@ function serialize() {
     links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
 }
-function saveNow() { if (!G.settlements.length) return; store.set(SAVE_KEY, JSON.stringify(serialize())); }
-function loadSave() { try { const d = JSON.parse(store.get(SAVE_KEY) || 'null'); return d && d.v === 2 && d.settlements && d.settlements.length ? d : null; } catch (e) { return null; } }
+function saveNow() { if (!G.settlements.length) return; if (!safeWrite(SAVE_KEY, JSON.stringify(serialize()))) storeWarn(); }
+function loadSave() { return safeRead(SAVE_KEY, (d) => d && d.v === 2 && Array.isArray(d.settlements) && d.settlements.length); } // v: the schema version; a future v3 gets a migration here
 function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
   const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
@@ -1755,8 +1786,9 @@ function prepareContinue() {
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
   for (const d of sv.settlements) restoreSettlement(d);
   restoreLinks(sv.links || []); syncCables();
-  const secs = Math.max(0, (Date.now() - sv.t) / 1000); G.awayRes = awaySim(secs, sv.hour === undefined ? 12 : sv.hour); G.aligned = false;
+  G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
+  if (G.auto) { G.pendingDiary = G.awayRes; return true; }
   showAway(G.awayRes); return true;
 }
 function skipHours(h) { // practice room: let the saved colony live through hours, as if the player had been away
@@ -1766,7 +1798,7 @@ function skipHours(h) { // practice room: let the saved colony live through hour
 function paintAll() { for (const Z of G.zones) paintLand(Z); for (const b of SCAN.bands) { b.dirty = true; } paintBands(G.phase !== 'scan'); }
 
 // ============ AR mode (the WebXRKit / HelloXR stack proven in Baguettes & Ballistics) ============
-const AR = { on: false, starting: false, session: null, refSpace: null, hitSource: null, srcs: [], viewM: new THREE.Matrix4(), viewInv: new THREE.Matrix4(), projM: new THREE.Matrix4(), projInv: new THREE.Matrix4(), light: 1, gtime: 0, saved: null, ok: false };
+const AR = { checked: false, on: false, starting: false, session: null, refSpace: null, hitSource: null, srcs: [], viewM: new THREE.Matrix4(), viewInv: new THREE.Matrix4(), projM: new THREE.Matrix4(), projInv: new THREE.Matrix4(), light: 1, gtime: 0, saved: null, ok: false };
 // iPad fix: WebXRKit's polyfill only starts when the user agent says iPad + "Mobile/", but app web views report a desktop Mac.
 // When the native bridge is there but navigator.xr is not, load our own unmodified copy (webxr-polyfill.js, see THIRD_PARTY.md) with an iPad user agent.
 (function arIpadFix() {
@@ -1787,14 +1819,16 @@ function arLog(msg) { // HelloXR's web view cannot show alert(): every step and 
   const st = $('arStatus'); if (st) st.textContent = msg;
 }
 (function arCheck() {
-  const st = $('arStatus'), b = $('bAR'); let tries = 0;
+  const st = $('arStatus'); let tries = 0;
   new MutationObserver(() => { if (!st.textContent.startsWith(BUILD)) st.textContent = BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
+  const bridge = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.initAR);
   const check = () => {
     tries++; let pending = false;
+    if (!navigator.xr && !bridge) { AR.checked = true; st.textContent = 'AR not available here. Try the practice room, or open this in the HelloXR app.'; updateTitle(); return; }
     try {
       if (navigator.xr && navigator.xr.isSessionSupported) {
         pending = true;
-        navigator.xr.isSessionSupported('immersive-ar').then((ok) => { b.hidden = !ok; AR.ok = ok; if (ok) { st.textContent = 'AR ready: tap Start in AR, then sweep your room'; updateTitle(); return; } st.textContent = 'AR: this browser has WebXR but no AR'; if (tries < 30) setTimeout(check, 500); }).catch((e) => { st.textContent = 'AR check failed: ' + (e && e.message || e); if (tries < 30) setTimeout(check, 500); });
+        navigator.xr.isSessionSupported('immersive-ar').then((ok) => { AR.ok = ok; if (ok) { AR.checked = true; st.textContent = 'AR ready: tap Play and look around'; updateTitle(); return; } st.textContent = 'AR: this browser has WebXR but no AR'; if (tries < 30) setTimeout(check, 500); else { AR.checked = true; updateTitle(); } }).catch((e) => { st.textContent = 'AR check failed: ' + (e && e.message || e); if (tries < 30) setTimeout(check, 500); });
       }
     } catch (e) { st.textContent = 'AR check error: ' + e.message; }
     if (!pending) { st.textContent = tries < 30 ? 'AR: checking...' : 'AR not available here. Try the practice room, or open this in the HelloXR app.'; if (tries < 30) setTimeout(check, 500); }
@@ -1806,7 +1840,7 @@ async function arStart(cont) {
   const lg = $('arLog'); if (lg) lg.textContent = '';
   arLog('AR 1/5: asking for an AR session...');
   try {
-    const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'].concat(G.intent === 'map' && RECOG.on ? ['camera-access'] : []), domOverlay: { root: $('ui') } });
+    const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'].concat(RECOG.on ? ['camera-access'] : []), domOverlay: { root: $('ui') } });
     AR.session = session; arLog('AR 2/5: session started (overlay: ' + (session.domOverlayState ? session.domOverlayState.type : 'none') + ')');
     if (!session.domOverlayState) { // iPad: the polyfill can start without wiring the overlay; connect it ourselves so the HUD stays visible
       let fixed = false;
@@ -1828,7 +1862,7 @@ async function arStart(cont) {
     document.body.classList.add('inar');
     arLog('AR 5/5: sweep the iPad slowly over your desk, shelf and floor');
     setTimeout(() => { const el = $('arLog'); if (el && AR.on) el.remove(); }, 4000);
-    AR.dev = null; resetWorld(); startScan(cont); if (G.intent === 'map' && RECOG.on) cocoLoad(); if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
+    AR.dev = null; resetWorld(); if (G.auto) startAuto(); else startScan(cont); if (RECOG.on) cocoLoad(); if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
     renderer.xr.setAnimationLoop(frame);
   } catch (err) {
     console.warn('AR could not start:', err); const msg = String(err && err.message || err);
@@ -1839,13 +1873,13 @@ async function arStart(cont) {
 function arEnded() {
   document.body.classList.remove('inar');
   if (!AR.on && !AR.session) return;
-  saveNow(); saveMap();
+  persist(true);
   for (const s of AR.srcs) try { s.cancel(); } catch (e) { /* ignore */ }
   AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null;
   try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
   if (AR.saved) { camera.near = AR.saved.near; camera.far = AR.saved.far; document.body.style.background = AR.saved.bodyBg; document.documentElement.style.background = AR.saved.htmlBg; AR.saved = null; }
   camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearAlpha(0);
-  resize2(); resetWorld(); G.phase = 'title'; G.mode = 'practice'; showTitle(); G.last = performance.now(); requestAnimationFrame(frame);
+  resize2(); resetWorld(); G.phase = 'title'; G.auto = false; G.mode = 'practice'; showTitle(); G.last = performance.now(); requestAnimationFrame(frame);
 }
 function resize2() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 function arFrame(frame) {
@@ -1857,12 +1891,12 @@ function arFrame(frame) {
     try { frame.getGlobalLightEstimate().then((pr) => { const v = pr && pr.indirectIrradiance; if (v > 0) AR.light = clamp(v, 0.6, 1.4); }).catch(() => {}); } catch (e) { /* ignore */ }
   }
   ENV.sun = AR.light;
-  if (G.phase === 'scan') {
+  if (G.phase === 'scan' || (G.auto && G.phase !== 'title')) {
     for (let si = 0; si < AR.srcs.length; si++) {
       const res = frame.getHitTestResults(AR.srcs[si]);
       if (!res.length) { SCAN.last[si] = null; continue; }
       const p = res[0].getPose(AR.refSpace); if (!p) continue;
-      tmpM.fromArray(p.transform.matrix); if (tmpM.elements[5] < 0.7) continue;
+      tmpM.fromArray(p.transform.matrix); if (tmpM.elements[5] < 0.7) { recNonHoriz(tmpV.setFromMatrixPosition(tmpM)); continue; }
       scanHit(tmpV.setFromMatrixPosition(tmpM), si);
     }
   }
@@ -1950,9 +1984,9 @@ const keys = {};
 addEventListener('keydown', (e) => { keys[e.code] = true; }); addEventListener('keyup', (e) => { keys[e.code] = false; });
 function practiceFrame(dt) {
   if (G.mode !== 'practice') return;
-  if (G.phase === 'scan') {
+  if (G.phase === 'scan' || (G.auto && P.mode === 'eye' && G.phase !== 'title')) {
     if (P.auto) { // sub-steps so the sweep covers the same ground at any frame rate
-      const n = Math.max(1, Math.round(dt * 90)); for (let i = 0; i < n; i++) { P.auto.t += 1 / 90 * P.auto.speed; if (P.auto.t > PVIEWS.length * PV_T) { P.auto = null; toast('Auto-scan finished. Tap Done scanning.'); break; } setEye(eyePose(P.auto.t)); practiceHits(); }
+      const n = Math.max(1, Math.round(dt * 90)); for (let i = 0; i < n; i++) { P.auto.t += 1 / 90 * P.auto.speed; if (P.auto.t > PVIEWS.length * PV_T) { if (G.auto) { P.auto.t = 0; P.auto.laps = (P.auto.laps || 0) + 1; if (G.settlements.length && (!G.returning || G.locked)) { P.auto = null; P.mode = 'orbit'; P.yaw = 0.3; P.pitch = 0.55; focusOn(-0.1, 0.8, -0.5, 3.6); break; } continue; } P.auto = null; toast('Auto-scan finished. Tap Done scanning.'); break; } setEye(eyePose(P.auto.t)); practiceHits(); }
       if (P.auto) { P.eye.pos.copy(camera.position); }
     } else {
       const e = P.eye, sp = dt * 0.9; if (keys.KeyW) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), sp); if (keys.KeyS) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), -sp);
@@ -1964,6 +1998,7 @@ function practiceFrame(dt) {
     P.pitch = clamp(P.pitch, 0.12, 1.45);
     camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
     camera.lookAt(P.target); camera.updateMatrixWorld(true);
+    if (G.auto && !SCAN.frozen && G.phase !== 'title' && G.phase !== 'align') practiceHits();
   }
 }
 const _rc = new THREE.Raycaster();
@@ -2006,7 +2041,7 @@ async function cocoLoad() {
 }
 function recogStatus() {
   const el = $('rstat'), c = RECOG.coco, k = RECOG.clip, parts = [];
-  if (RECOG.on && (G.phase === 'scan' || G.phase === 'tag')) parts.push(RECOG.detector ? 'Recognising things (practice eyes)' : c.state === 'ready' ? 'Recognising things' + (c.ms ? ' (' + Math.round(c.ms) + ' ms)' : '') : c.state === 'loading' ? 'Loading recognition...' : c.state === 'error' ? 'Recognition unavailable' : '');
+  if (RECOG.on && (G.phase === 'scan' || G.phase === 'tag' || (G.auto && c.state !== 'ready' && G.phase !== 'title'))) parts.push(RECOG.detector ? 'Recognising things (practice eyes)' : c.state === 'ready' ? 'Recognising things' + (c.ms ? ' (' + Math.round(c.ms) + ' ms)' : '') : c.state === 'loading' ? 'Loading recognition...' : c.state === 'error' ? 'Recognition unavailable' : '');
   if (k.on) parts.push(k.state === 'ready' ? 'Smarter recognition on' : k.state === 'loading' ? 'Smarter recognition: downloading ' + k.pct + '%' : k.state === 'error' ? 'Smarter recognition failed: ' + k.err : '');
   el.textContent = parts.filter(Boolean).join(' · '); el.hidden = !el.textContent;
 }
@@ -2045,12 +2080,16 @@ function recogConsider(d, fr) {
   const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
   const sx = (d.bbox[0] + d.bbox[2] / 2) / fr.w * innerWidth, sy = (d.bbox[1] + d.bbox[3]) / fr.h * innerHeight, hit = surfacePick(sx, sy); if (!hit) return;
   const top = topNear(hit) || { x: hit.x, z: hit.z, y: hit.y, area: 0.004 }; // no top scanned there: the place where its feet are
-  if (G.spots.some((s) => s.src !== 'default' && Math.hypot(s.x - top.x, s.z - top.z) < 0.07)) return; // already named
+  const named = G.spots.find((s) => s.src !== 'default' && Math.hypot(s.x - top.x, s.z - top.z) < 0.07);
+  if (named) { // seen again on a later visit: the tag grows surer; a different class at an automatic tag contradicts it, and the spot is forgotten so it is looked at again
+    if (named.src === 'auto' && named.cls) { if (named.cls === d.class) { if (!named.hitT || performance.now() - named.hitT > 20000) { named.n = (named.n || 1) + 1; named.hitT = performance.now(); AUTO.mapDirty = true; } } else if (d.score >= 0.6) { recRecog({ cls: d.class, score: +d.score.toFixed(2), action: 'contradicts ' + named.cls + ': forgotten', spot: named.id }); recSnap('recognition contradicted'); removeSpot(named); AUTO.mapDirty = true; } }
+    return;
+  }
   if (RECOG.ask && RECOG.ask.cls === d.class && Math.hypot(RECOG.ask.x - top.x, RECOG.ask.z - top.z) < 0.12) return; // this one is being asked about right now
   if (RECOG.no.some((q) => q.cls === d.class && Math.hypot(q.x - top.x, q.z - top.z) < 0.15 && performance.now() - q.t < 180000)) return;
   let c = RECOG.cand.find((q) => q.cls === d.class && Math.hypot(q.x - top.x, q.z - top.z) < 0.1 && Math.abs(q.y - top.y) < 0.06);
   if (!c) { c = { cls: d.class, tag: R.tag, name: R.name, x: top.x, y: top.y, z: top.z, area: top.area, n: 0, score: 0, lib: !!lib, t: 0 }; RECOG.cand.push(c); }
-  c.n++; c.score = Math.max(c.score, d.score); c.t = performance.now(); c.x += (top.x - c.x) * 0.3; c.z += (top.z - c.z) * 0.3;
+  if (c.n === 0) recRecog({ cls: d.class, score: +d.score.toFixed(2), tag: R.tag, spot: 'new candidate' }); c.n++; c.score = Math.max(c.score, d.score); c.t = performance.now(); c.x += (top.x - c.x) * 0.3; c.z += (top.z - c.z) * 0.3;
 }
 function recogPropose() {
   RECOG.cand = RECOG.cand.filter((c) => performance.now() - c.t < 20000);
@@ -2058,12 +2097,20 @@ function recogPropose() {
     const lib = libFind('coco:' + c.cls); // the library overrides: what the player taught is not asked again
     if (lib && c.n >= 2) { RECOG.cand.splice(RECOG.cand.indexOf(c), 1); const sp = addSpot({ tag: lib.tag, name: lib.name, x: c.x, y: c.y, z: c.z, area: c.area, src: 'library' }); lib.n++; RECOG.stats.auto++; toast('The colonists know this one from the library: ' + sp.name + '.'); saveMap(); updateHint(); continue; }
   }
+  if (G.auto) { // automatic: confident detections become spots by themselves; nothing is asked here
+    for (const c of RECOG.cand.slice()) if ((c.n >= 2 || c.score >= 0.6) && c.score >= 0.4) { RECOG.cand.splice(RECOG.cand.indexOf(c), 1); autoTag(c); }
+    return;
+  }
   if (RECOG.ask || performance.now() - RECOG.lastAsk < RECOG.cool || !$('tagpick').hidden || !$('modal').hidden) return;
   const c = RECOG.cand.filter((q) => !libFind('coco:' + q.cls) && (q.n >= 2 || q.score >= 0.6)).sort((a, b) => b.score - a.score)[0]; if (!c) return;
   RECOG.cand.splice(RECOG.cand.indexOf(c), 1); guessCard({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, score: c.score, key: 'coco:' + c.cls, src: 'COCO-SSD', cls: c.cls }); RECOG.stats.proposals++;
 }
+function autoTag(c) { // a detection that is sure enough gives the spot a name and a role without asking
+  const sp = addSpot({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, src: 'auto' }); sp.n = 1; recRecog({ cls: c.cls, score: +c.score.toFixed(2), tag: c.tag, action: 'accepted automatically', spot: sp.id }); sp.cls = c.cls; RECOG.stats.auto++; AUTO.mapDirty = true; for (const S of G.settlements) S.fx = null;
+  toast('That looks like a ' + c.name + '! The colonists make it their ' + spotRole(sp).name.toLowerCase() + '.', 4); sfx('pop'); persistSoon();
+}
 async function recogTick() {
-  if (RECOG.busy || !RECOG.on || !(G.phase === 'scan' || G.phase === 'tag') || !SCAN.bands.length) return;
+  if (RECOG.busy || !RECOG.on || !(G.phase === 'scan' || G.phase === 'tag' || (G.auto && G.phase !== 'title')) || !SCAN.bands.length) return;
   const fr = recogFrame(); if (!fr) return; RECOG.busy = true;
   try { const dets = await recogDetect(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); } catch (e) { RECOG.err = String(e && e.message || e); }
   RECOG.busy = false;
@@ -2080,6 +2127,7 @@ function libAdd(key, tag, name, by, how) {
 }
 function answerGuess(a) {
   const g = RECOG.ask; if (!g) return; RECOG.ask = null; $('guess').hidden = true; clearTimeout(RECOG.askT); RECOG.cand = RECOG.cand.filter((c) => !(c.cls === g.cls && Math.hypot(c.x - g.x, c.z - g.z) < 0.12));
+  recRecog({ cls: g.cls || g.key, score: +(g.score || 0).toFixed(2), action: 'player said ' + a }); if (a !== 'yes') recSnap('recognition wrong');
   if (a === 'yes') { addSpot({ tag: g.tag, name: g.name, x: g.x, y: g.y, z: g.z, area: g.area, src: 'player' }); libAdd(g.key, g.tag, g.name, 'you', 'confirmed the ' + g.src + ' guess'); toast('Great, a ' + g.name + '! The colonists will remember.'); sfx('pop'); }
   else if (a === 'no') { RECOG.no.push({ cls: g.cls || g.key, x: g.x, z: g.z, t: performance.now() }); toast('Okay, not a ' + g.name + '.'); }
   else { tagPickUi({ px: g.x, pz: g.z, y: g.y, comp: { area: g.area } }, null, g); }
@@ -2162,6 +2210,415 @@ function practiceDetector(fr) {
   return out;
 }
 
+// ============ FIELD RECORDER: real rooms correct our assumptions ============
+// Bounded ring buffers of what the game saw (surfaces, coverage, recognition, tags, things it could not classify, homing attempts, frame times, errors), kept on this
+// device. "Report" in the menu builds ONE JSON report (optional note, up to 6 small camera snapshots of confused moments). It is only ever downloaded or copied by the
+// player; nothing is uploaded. Unknown things also become landmarks in the game (WONDERS below: a data table the residents can extend).
+const REC_KEY = 'bc-rec-v1', REPORTS_KEY = 'bc-reports-v1', REC_V = 1;
+const REC = { t0: Date.now(), zones: [], zoneLog: [], cover: [], recog: [], tags: [], unknown: [], reloc: [], errs: [], snaps: [], nh: new Map(), nhCount: 0, fps: { n: 0, sum: 0, max: 0, slow: 0, worst: [] }, lastCover: 0, lastZones: 0, lastSnap: {}, prev: null };
+const WONDERS = { // what the colony makes of a thing it cannot classify; add a kind here (or let a resident add one) and it is used
+  high: { names: ['the Great Glittering Thing', 'the Hanging Mystery', 'the Sky Lantern', 'the Dangling Wonder'], line: 'Something hangs high above the colony, up where nobody has ever been. The colonists named it {name} and point at it whenever they are nervous.' },
+  vertical: { names: ['the Tall Slanted Thing', 'the Leaning Marvel'], line: 'The colonists found something at a funny angle. They called it {name} and agreed not to go near it.' },
+};
+function recRing(a, item, max) { a.push(item); if (a.length > max) a.shift(); }
+const recT = () => Math.round((Date.now() - REC.t0) / 100) / 10;
+(function recInit() {
+  try { const old = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (old && old.v === REC_V) REC.prev = { at: old.at, dur: old.dur, fps: old.fps, zones: (old.zones || []).slice(0, 12), reloc: (old.reloc || []).slice(-8), errs: (old.errs || []).slice(-8), unknown: (old.unknown || []).slice(-8) }; } catch (e) { /* none */ }
+  addEventListener('error', (e) => recRing(REC.errs, { t: recT(), msg: String(e.message || e).slice(0, 300), src: String(e.filename || '').split('/').pop(), line: e.lineno || 0, col: e.colno || 0 }, 30));
+  addEventListener('unhandledrejection', (e) => recRing(REC.errs, { t: recT(), msg: 'unhandled rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 300) }, 30));
+})();
+function recFrame(dt) { const F = REC.fps, ms = dt * 1000; F.n++; F.sum += ms; if (ms > F.max) F.max = ms; if (ms > 60) { F.slow++; recRing(F.worst, { t: recT(), ms: Math.round(ms) }, 10); } }
+function recNonHoriz(p) { // a hit on a plane that is not flat: counted per 30 cm cell (walls, slopes, chandeliers)
+  REC.nhCount++; const key = Math.floor(p.x / 0.3) + ',' + Math.floor(p.y / 0.3) + ',' + Math.floor(p.z / 0.3); let c = REC.nh.get(key);
+  if (!c) { if (REC.nh.size >= 300) return; c = { n: 0, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) }; REC.nh.set(key, c); } c.n++;
+}
+function recZones() { // every surface the scan has now: height, size, outline box, type guess, how densely it was hit
+  const low = SCAN.zones.reduce((m, z) => Math.min(m, z.y), 1e9); REC.zones = SCAN.zones.map((z) => ({ id: z.id, type: z.type, name: z.name, h: +(z.y - low).toFixed(2), y: +z.y.toFixed(3), area: +z.area.toFixed(3), w: +z.w.toFixed(2), d: +z.d.toFixed(2), cx: +z.cx.toFixed(2), cz: +z.cz.toFixed(2), hits: z.band ? z.band.n : 0, hitsPerM2: z.band ? Math.round(z.band.n / Math.max(0.01, z.area)) : 0 }));
+  recRing(REC.zoneLog, { t: recT(), n: REC.zones.length, area: +REC.zones.reduce((a, z) => a + z.area, 0).toFixed(2) }, 60);
+}
+function recCover() { recRing(REC.cover, { t: recT(), hits: SCAN.hits, bands: SCAN.bands.length, zones: SCAN.zones.length, mapZones: G.zones.length, nonHoriz: REC.nhCount, known: +(G.zones.length ? mapKnown() : 0).toFixed(2) }, 120); }
+function recRecog(o) { recRing(REC.recog, Object.assign({ t: recT() }, o), 80); }
+function recTag(sp) { recRing(REC.tags, { t: recT(), tag: sp.tag, name: sp.name, src: sp.src, y: +sp.y.toFixed(2), area: +(sp.area || 0).toFixed(3), on: sp.on }, 80); }
+function recReloc(o) { recRing(REC.reloc, Object.assign({ t: recT(), scanSecs: +RELOC.scanSecs.toFixed(1) }, o), 60); }
+function recUnknown(o) { recRing(REC.unknown, Object.assign({ t: recT() }, o), 40); }
+function recSnap(reason) { // a small camera picture of a confused moment (only when the app gives camera frames); kept in memory for the report
+  if (REC.snaps.length >= 6 || performance.now() - (REC.lastSnap[reason] || -1e9) < 20000) return false; const fr = recogFrame(); if (!fr || !fr.real || !fr.img) return false;
+  try { const sc = Math.min(1, 640 / Math.max(fr.w, fr.h)), c = document.createElement('canvas'); c.width = Math.max(8, Math.round(fr.w * sc)); c.height = Math.max(8, Math.round(fr.h * sc)); c.getContext('2d').drawImage(fr.img, 0, 0, c.width, c.height);
+    REC.lastSnap[reason] = performance.now(); REC.snaps.push({ reason, t: recT(), w: c.width, h: c.height, jpeg: c.toDataURL('image/jpeg', 0.6) }); return true; } catch (e) { return false; }
+}
+function recSave() { try { const o = { v: REC_V, at: Date.now(), dur: recT(), fps: REC.fps, zones: REC.zones, reloc: REC.reloc, errs: REC.errs, unknown: REC.unknown }; localStorage.setItem(REC_KEY, JSON.stringify(o)); } catch (e) { /* storage full: the recorder is optional */ } }
+// ---- things the game cannot classify become landmarks ----
+function wondersTick() {
+  if (!G.auto || G.phase === 'title' || (G.returning && !G.locked)) return;
+  const floorY = SCAN.bands.length ? SCAN.bands.reduce((m, b) => (b.cnt >= MINC ? Math.min(m, b.y) : m), 1e9) : 1e9; if (floorY > 1e8) return;
+  for (const b of SCAN.bands) {
+    if (b.cnt < 10 || b.cnt >= 400 || b.y - floorY < 1.6) continue;
+    let sx = 0, sz = 0, n = 0; for (let k = 0; k < b.g.length; k++) if (b.g[k]) { const c = gXZ(k); sx += c[0]; sz += c[1]; n++; } if (!n) continue; const x = sx / n, z = sz / n;
+    if (G.spots.some((s) => s.src === 'wonder' && Math.hypot(s.x - x, s.z - z) < 0.5 && Math.abs(s.y - b.y) < 0.4)) continue;
+    makeWonder('high', x, b.y, z, n * CELL * CELL);
+  }
+}
+function makeWonder(kind, x, y, z, area) {
+  const W = WONDERS[kind] || WONDERS.high, nm = W.names[(G.spots.filter((s) => s.src === 'wonder').length) % W.names.length], sp = addSpot({ tag: 'other', name: nm, x, y, z, area, src: 'wonder' }); sp.wonder = kind;
+  const text = W.line.replace('{name}', nm); toast(text, 6); diary(text, 'the colonists'); G.wonders = (G.wonders || []).concat(text); recUnknown({ kind, name: nm, x: +x.toFixed(2), y: +y.toFixed(2), z: +z.toFixed(2), area: +area.toFixed(3) }); recSnap('unknown object: ' + nm);
+  const S = G.settlements.find((q) => q.placed); if (S) puff('star', x, y, z, 6, { size: 0.01, vy: 0.02, life: 1.6, add: true, jit: 0.03 });
+  persistSoon(); return sp;
+}
+// ---- the report ----
+function buildReport(note) {
+  const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
+  const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
+  const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
+    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, lock: RELOC.lock || null, errors: REC.errs, previousSession: REC.prev,
+    snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
+  return JSON.stringify(R);
+}
+function reportsLoad() { try { const a = JSON.parse(localStorage.getItem(REPORTS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function reportsAdd(json, note) {
+  let list = reportsLoad(); list.push({ id: Date.now(), at: new Date().toISOString(), note: String(note || '').slice(0, 80), bytes: json.length, json }); list = list.slice(-5);
+  for (let tries = 0; tries < 6; tries++) { try { localStorage.setItem(REPORTS_KEY, JSON.stringify(list)); return list; } catch (e) { const i = list.findIndex((r) => r.json && r.json.indexOf('"jpeg"') > 0 && r.id !== list[list.length - 1].id); if (i >= 0) { try { const o = JSON.parse(list[i].json); o.snapshots = []; list[i].json = JSON.stringify(o); list[i].stripped = true; continue; } catch (e2) { /* fall through */ } } list.shift(); if (!list.length) return []; } }
+  return list;
+}
+function reportCopy(text) { // the web view may not have the clipboard API: fall back to a hidden textarea and execCommand
+  const fb = () => { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } t.remove(); return ok; };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => true, () => fb()); } catch (e) { /* use the fallback */ }
+  return Promise.resolve(fb());
+}
+function reportDownload(text, name) { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); return true; } catch (e) { return false; } }
+function reportUi(msg) {
+  const m = $('modal'); m.hidden = false; const list = reportsLoad().slice().reverse();
+  m.innerHTML = '<div class="dh">Report</div><div class="sub">' + (msg || 'Builds one file about what the game saw in your room (surfaces, recognition, homing, speed, errors) and up to 6 small camera pictures of confusing moments. It stays on this device until you download or copy it yourself.') + '</div><textarea id="repNote" rows="3" maxlength="2000" placeholder="Anything to add? (what felt wrong)"></textarea><div class="mrow"><button id="repBuild" class="big alt">Build report</button><button id="repClose">Close</button></div>'
+    + (list.length ? '<div class="sub">Last reports</div>' + list.map((r) => '<div class="lib"><div><b>' + esc(r.at.replace('T', ' ').slice(0, 16)) + '</b> ' + esc(r.note || '') + '<div class="sub">' + (r.bytes / 1024).toFixed(0) + ' KB' + (r.stripped ? ' (pictures dropped to save room)' : '') + '</div></div><button data-rdl="' + r.id + '">Download</button><button data-rcp="' + r.id + '">Copy</button></div>').join('') : '');
+  m.onclick = async (ev) => {
+    const t = ev.target.closest('button'); if (!t) return;
+    if (t.id === 'repClose') { m.hidden = true; return; }
+    if (t.id === 'repBuild') { const json = buildReport($('repNote').value); reportsAdd(json, $('repNote').value); reportUi('Report built: ' + (json.length / 1024).toFixed(0) + ' KB, ' + REC.snaps.length + ' picture' + (REC.snaps.length === 1 ? '' : 's') + '. Download it or copy it below.'); return; }
+    const r = reportsLoad().find((q) => String(q.id) === (t.dataset.rdl || t.dataset.rcp)); if (!r) return;
+    if (t.dataset.rdl) toast(reportDownload(r.json, 'base-camp-report-' + r.at.slice(0, 16).replace(/[:T]/g, '-') + '.json') ? 'Report downloaded.' : 'Download is not available here. Use Copy.');
+    else toast((await reportCopy(r.json)) ? 'Report copied.' : 'Copy is not available here. Use Download.');
+  };
+}
+// ============ AUTOMATIC PLAY: continuous scanning, auto-settle, auto-save, "it knows where it is" ============
+// Pressing Play starts one flow with no phases: hit-test samples go into SCAN all the time; every second or so the surfaces are rebuilt (cheap, throttled).
+//  - First play: map zones are created live from stable scan zones; the colony lands by itself on the largest clear area (autoSettle).
+//  - Return: the saved map waits hidden while the fresh scan grows; relocBegin() / relocStep() register the two (yaw + x/z shift + height offset) and
+//    snap the saved room into place (relocLock) with a "We're home!" moment. If nothing matches for ~60 s of scanning the player is asked once.
+//  - After a lock the usual change detection (captureScan / applyChanges) runs every minute or so on the matched map.
+const AUTO = { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' };
+function autoReset() { Object.assign(AUTO, { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; }
+function autoSay(text, secs) { // one short line that fades after a few seconds
+  const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; return; }
+  h.hidden = false; h.classList.remove('fade'); if (AUTO.said !== text) { AUTO.said = text; h.textContent = text; }
+  AUTO.hintT = secs || 5;
+}
+function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
+  if (G.auto && G.returning && !G.locked) return false;
+  if (G.phase === 'title') return false;
+  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; return true;
+}
+// ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
+function liveMatch(fz) { // a map zone this scan zone is (part of) the same surface as
+  let best = null, bf = 0;
+  for (const q of G.zones) { if (!q.land || Math.abs(q.y - fz.y) > 0.05) continue; const f = Math.max(overlapFrac(q, fz), fzOnZone(fz, q)); if (f > bf && f >= 0.25) { bf = f; best = q; } }
+  return best;
+}
+function mapKnown() { let s = 0, n = 0; for (const Z of G.zones) { const L = Z.land; if (!L) continue; for (let k = 0; k < L.st.length; k++) if (L.st[k]) { n++; s += Math.min(3, L.conf[k]) / 3; } } return n ? s / n : 0; }
+function liveGain(Z) { // the scan sees more of a known surface: new cells and newly found objects are added; nothing is ever removed or reported here
+  const L = Z.land, m = measureLand(L); let ch = 0;
+  for (let k = 0; k < L.st.length; k++) {
+    const o = m.obs[k]; if (!o) continue;
+    if (L.st[k] === 0) { L.st[k] = o; L.ht[k] = o === 2 ? m.ht[k] : 0; ch++; }
+    else if (L.st[k] === 1 && o === 2) { L.st[k] = 2; L.ht[k] = m.ht[k]; ch++; }
+    else if (L.st[k] === 2 && o === 2 && m.ht[k] > L.ht[k]) { L.ht[k] = m.ht[k]; ch++; }
+    if (L.st[k] === 1 && o === 1 && m.sharp[k]) L.seen[k] = 1;
+  }
+  bumpConf(L, m.obs); if (ch) { L.objs = landComps(L, (k) => L.st[k] === 2, 3); L.ver++; Z.core = null; AUTO.mapDirty = true; }
+  return ch;
+}
+function liveReclass(Z, fz) { // the scan learns what a surface is (a desk looks like a floor until the real floor shows up)
+  if (Z.type === fz.type && Z.h === fz.h) return;
+  const T = { FLOOR: 'floor', TABLE: 'desk', SHELF: 'shelf', SILL: 'door', SMALL: 'other' };
+  Z.h = fz.h; if (Z.type !== fz.type) { Z.type = fz.type; Z.name = fz.name; Z.spec = fz.spec; Z.dirtyName = true; for (const sp of G.spots) if (sp.zid === Z.id && sp.src === 'default') { const tg = defaultTagFor(Z); sp.tag = tg.tag; sp.role = TAGS[tg.tag].role; sp.name = tg.name; } if (Z.settled) { Z.settled.zoneName = Z.name; Z.settled.fx = null; } AUTO.mapDirty = true; }
+}
+function defaultTagFor(Z) { // a sensible default role for a spot nobody has named: by size and height
+  const T = { FLOOR: 'floor', TABLE: 'desk', SHELF: 'shelf', SILL: 'door' };
+  if (Z.type !== 'SMALL') return { tag: T[Z.type] || 'other', name: Z.name.split(' – ')[0] };
+  const below = G.zones.filter((q) => q !== Z && q.y < Z.y - 0.02).reduce((m, q) => (q.y > m ? q.y : m), -1e9), hh = below > -1e8 ? Z.y - below : Z.h || 0;
+  if (hh >= 0.25) return { tag: 'ledge', name: 'High perch' };
+  if (Z.area < 0.02) return { tag: 'can', name: 'Little top' };
+  return { tag: 'other', name: Z.name.split(' – ')[0] };
+}
+function liveSync() {
+  let made = 0;
+  for (const fz of SCAN.zones) {
+    const dA = Math.abs(fz.area - (fz.lastArea || 0)) / Math.max(0.05, fz.area); fz.lastArea = fz.area; fz.stable = dA < 0.12 ? (fz.stable || 0) + 1 : 0;
+    let Z = fz.mz > 0 ? zoneById(fz.mz) : null;
+    if (!Z) {
+      Z = liveMatch(fz);
+      if (!Z) {
+        if (fz.area < 0.08 || !(fz.stable >= 2 || fz.area >= 0.4)) continue;
+        Z = newMapZone(fz); const m = measureLand(Z.land); reconcileLand(Z.land, m, true); Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; made++; AUTO.mapDirty = true;
+      }
+      fz.mz = Z.id;
+    }
+    if (Z.land && fz.band) {
+      if (Z.area >= 0.4 || fz.area >= 0.4) growLand(Z, fz);
+      if (Z.lastCnt !== fz.band.cnt) { Z.lastCnt = fz.band.cnt; liveGain(Z); }
+      liveReclass(Z, fz); Z.area = Math.max(Z.area, fz.area);
+    }
+  }
+  if (made && !G.visitCounted) { G.visitCounted = true; G.visits = (G.visits || 0) + 1; }
+  if (made) { autoSpots(); for (const Z of G.zones) if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z); AUTO.found = G.zones.length; }
+  else for (const Z of G.zones) if (Z.land && (!Z.mesh || Z.paintVer !== Z.land.ver)) paintLand(Z);
+  return made;
+}
+function clearArea(Z) { const L = Z.land; let n = 0; for (let k = 0; k < L.st.length; k++) if (L.st[k] === 1) n++; return n * LC * LC; }
+function autoSettle(force) { // the colony lands by itself on the biggest clear area (a desk-height surface wins a close call)
+  if (G.settlements.some((S) => !S.dead) || (G.returning && !G.locked)) return false;
+  const eyeY = AR.on ? tmpV.setFromMatrixPosition(AR.viewM).y : 1.5, low = G.zones.reduce((m, z) => Math.min(m, z.y), 1e9);
+  let best = null, bs = 0, bc = 0;
+  for (const Z of G.zones) {
+    if (!Z.land || Z.lost || Z.settled) continue; const clear = clearArea(Z); if (clear < 0.08) continue;
+    const hh = Z.y - low, desk = hh > 0.45 && hh < 1.1 ? 1.25 : 1; // by clear area first; height only breaks near-ties
+    const sc = clear * desk; if (sc > bs) { bs = sc; best = Z; bc = clear; }
+  }
+  if (!best) { AUTO.firstDecent = 0; return false; }
+  if (!AUTO.firstDecent) AUTO.firstDecent = AUTO.t;
+  if (!force && AUTO.t - AUTO.firstDecent < 3 && bc < 0.25) return false; // a few seconds to look for something bigger
+  settleZone(best); return true;
+}
+// ---- what the player sees while this happens ----
+function autoHintText() {
+  if (G.phase === 'title') return '';
+  if (G.returning && !G.locked) return RELOC.state === 'asking' ? '' : 'Looking for your room... keep looking around (' + Math.round(RELOC.scanSecs) + ' s)';
+  if (!G.settlements.length) return SCAN.zones.length ? 'Found a place to land...' : 'Look around slowly. The colonists are searching for a landing place.';
+  return '';
+}
+function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n) ? '' : n + ' place' + (n > 1 ? 's' : '') + ' found'; }
+function homeMoment(text) { const el = $('home'); el.textContent = text; el.classList.add('on'); clearTimeout(AUTO.homeT); AUTO.homeT = setTimeout(() => el.classList.remove('on'), 2600); }
+// ---- the tick: runs every frame while in an automatic session ----
+function autoTick(dt) {
+  if (G.phase === 'title') return;
+  AUTO.t += dt; AUTO.scanT += dt; if (AUTO.hintT > 0) { AUTO.hintT -= dt; if (AUTO.hintT <= 0) $('hint').classList.add('fade'); }
+  const scanning = !SCAN.frozen && G.phase !== 'align';
+  if (RELOC.state === 'search' && SCAN.hits !== RELOC.lastHits) { RELOC.scanSecs += dt; }
+  if (scanning && AUTO.scanT > (AUTO.steady ? 2.2 : 0.9) && SCAN.hits !== AUTO.lastHits) {
+    AUTO.scanT = 0; AUTO.lastHits = SCAN.hits;
+    for (const b of SCAN.bands) if (b.dirty && b.cnt > 60) closeHoles(b);
+    extractZones(); markBumps();
+    if (!G.returning || RELOC.state === 'new') { liveSync(); autoSettle(false); }
+    paintBands(true); updateLabels(true); autoCount();
+    const h = autoHintText(); if (h) autoSay(h, 4); else if (!G.settlements.length && !SCAN.zones.length) autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
+    AUTO.steady = G.settlements.length > 0 && (!G.returning || G.locked) && AUTO.t > 40;
+  }
+  RELOC.lastHits = SCAN.hits;
+  if (G.returning && !G.locked) relocStep(dt);
+  // after a lock: change detection on the matched map
+  if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300) { autoCompare(); }
+  AUTO.saveT += dt; if (AUTO.saveT > 10) { AUTO.saveT = 0; persist(); }
+  RECOG.t += dt; if (RECOG.t > 2) { RECOG.t = 0; recogTick(); recogStatus(); }
+  REC.lastCover += dt; if (REC.lastCover > 5) { REC.lastCover = 0; recCover(); if (++REC.lastZones % 3 === 0) { recZones(); wondersTick(); } if (REC.lastZones % 6 === 0) recSave(); }
+  AUTO.askT = (AUTO.askT || 0) + dt; if (AUTO.askT > 6) { AUTO.askT = 0; autoAskTick(); }
+  if (RELOC.state === 'asking' && !RELOC.asked) relocAsk();
+}
+function autoCompare() { // quiet change detection on a matched map: what is new, moved, gone, tidied or squashed
+  AUTO.compareAt = AUTO.t + 60; AUTO.compareHits = SCAN.hits;
+  const rep = captureScan(); if (!rep) return;
+  G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
+  applyChanges(rep); autoSpots(); refreshSpots(); for (const Z of G.zones) if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z);
+  G.report = rep; G.asks = rep.asks.slice(); persist();
+  if (G.asks.length) askNext(); else if (rep.lines.length) showReport();
+}
+function autoAskTick() { // at most one "What is this?" per two minutes, only for things next to a colony, dismissible, never blocking
+  if (!G.auto || G.phase !== 'play' || !G.locked && G.returning) return; const now = performance.now();
+  if (now - RECOG.lastQuestion < AUTO.askGap) return;
+  if (RECOG.ask || !$('tagpick').hidden || !$('modal').hidden || !$('ask').hidden || !$('diary').hidden || !$('guess').hidden) return;
+  const near = (t) => G.settlements.some((S) => S.placed && !S.lost && Math.hypot(t.x - S.tf.x, t.z - S.tf.z) < plotR(S) + 0.3 && Math.abs(t.y - S.tf.y) < 0.8);
+  const u = unknownTops().filter((t) => near(t) && !RECOG.asked.some((q) => Math.hypot(q.x - t.x, q.z - t.z) < 0.08)); if (!u.length) return;
+  const t = u[0]; RECOG.asked.push({ x: t.x, z: t.z }); RECOG.lastQuestion = now; AUTO.questions = (AUTO.questions || 0) + 1;
+  const pk = { px: t.x, pz: t.z, y: t.y, comp: { area: t.area } };
+  tagPickUi(pk, null); G.tagTarget.auto = true; clearTimeout(AUTO.askDismiss); const tt = G.tagTarget; AUTO.askDismiss = setTimeout(() => { if (G.tagTarget === tt) $('tagpick').hidden = true; }, 25000);
+}
+AUTO.askGap = 120000;
+
+// ============ RELOCALISATION: register the fresh scan against the saved room ============
+// Surfaces are flat and gravity-aligned, so only yaw, an x/z shift and one height offset are unknown. Both the saved map and the live scan are turned into LAYERS
+// (one occupancy raster of 4 cm cells per height). 1) height offsets are proposed by pairing layer heights (the multi-height structure: floor, desk, shelf, speaker tops);
+// 2) for every yaw (2 degree steps) the boundary points of matching layers vote for the shift (a generalised Hough transform); 3) the best peaks are refined with ICP
+// on the boundary points and 4) verified on the topmost-height raster: matches, conflicts and informative matches (cells next to a real height step).
+// It only locks when the match is good, unique and stable for ~2 s. A native ARKit world map would replace all this: see worldMapHook().
+const RELOC = { state: 'off', job: null, hist: [], scanSecs: 0, lastHits: -1, saved: null, result: null, tries: 0, nextTry: 0, asked: false, acc: null,
+  cfg: { cell: 0.04, phiStepDeg: 2, range: 8, bin: 0.05, maxPts: 200, minCells: 150, minRatio: 0.8, minInfo: 30, maxMargin: 0.75, stableN: 3, stableSecs: 2, askAfter: 60, tryEvery: 1.2, hTol: 0.035 } };
+const rKey = (I, J) => (I + 4096) * 8192 + (J + 4096);
+function relocLayer(y, set, n) { // boundary points of an occupancy set
+  const C = RELOC.cfg.cell, all = [];
+  for (const key of set) { const I = Math.floor(key / 8192) - 4096, J = (key % 8192) - 4096; if (!set.has(rKey(I - 1, J)) || !set.has(rKey(I + 1, J)) || !set.has(rKey(I, J - 1)) || !set.has(rKey(I, J + 1))) all.push((I + 0.5) * C, (J + 0.5) * C); }
+  const m = RELOC.cfg.maxPts, np = all.length / 2, st = Math.max(1, Math.ceil(np / m)), pts = [];
+  for (let i = 0; i < np; i += st) pts.push(all[2 * i], all[2 * i + 1]);
+  return { y, set, n: set.size, all: Float32Array.from(all), pts: Float32Array.from(pts) };
+}
+function relocCluster(items) { // items [x, z, y] -> layers by height (gap over 2.5 cm starts a new level)
+  items.sort((a, b) => a[2] - b[2]); const groups = []; let cur = null;
+  for (const it of items) { if (!cur || it[2] - cur.mean > 0.025) { cur = { sum: 0, n: 0, mean: it[2], items: [] }; groups.push(cur); } cur.items.push(it); cur.sum += it[2]; cur.n++; cur.mean = cur.sum / cur.n; }
+  const C = RELOC.cfg.cell, out = [];
+  for (const g of groups) { const set = new Set(); for (const [x, z] of g.items) set.add(rKey(Math.floor(x / C), Math.floor(z / C))); if (set.size >= 12) out.push(relocLayer(g.mean, set)); }
+  return out;
+}
+function relocSavedLayers() { // the saved map (zones at their saved frames)
+  const items = [];
+  for (const Z of G.zones) {
+    const L = Z.land; if (!L || Z.lost) continue;
+    for (let k = 0; k < L.st.length; k++) { const s = L.st[k]; if (!s) continue; let y = Z.y; if (s === 2) { if (L.ht[k] < 3) continue; y = Z.y + L.ht[k] / 100; } const c = landXZ(L, k); items.push([c[0], c[1], y]); }
+  }
+  return relocCluster(items);
+}
+function relocLiveLayers() {
+  const items = [];
+  for (const b of SCAN.bands) { if (b.cnt < 40) continue; for (let k = 0; k < b.g.length; k++) if (b.g[k]) { const c = gXZ(k); items.push([c[0], c[1], b.y]); } }
+  return relocCluster(items);
+}
+function relocTop(layers) { // topmost height per cell, in cell lists for the verification
+  const top = new Map(), C = RELOC.cfg.cell; for (const l of layers.slice().sort((a, b) => a.y - b.y)) for (const key of l.set) top.set(key, l.y);
+  const xs = [], zs = [], hs = []; for (const [key, h] of top) { const I = Math.floor(key / 8192) - 4096, J = (key % 8192) - 4096; xs.push((I + 0.5) * C); zs.push((J + 0.5) * C); hs.push(h); }
+  const step = new Uint8Array(hs.length); // informative cells: a neighbour within 2 cells at a clearly different height
+  for (let i = 0; i < hs.length; i++) { const I = Math.floor(xs[i] / C), J = Math.floor(zs[i] / C); for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) { const h2 = top.get(rKey(I + di, J + dj)); if (h2 !== undefined && Math.abs(h2 - hs[i]) > 0.03) { step[i] = 1; break; } } }
+  return { top, xs, zs, hs, step, n: hs.length };
+}
+function relocDyCands(live, saved) {
+  const raw = []; for (const l of live) for (const s of saved) raw.push(l.y - s.y);
+  raw.sort((a, b) => a - b); const cl = []; let cur = null;
+  for (const d of raw) { if (!cur || d - cur.mean > 0.03) { cur = { sum: 0, n: 0, mean: d }; cl.push(cur); } cur.sum += d; cur.n++; cur.mean = cur.sum / cur.n; }
+  for (const c of cl) { c.score = 0; for (const l of live) { let b = 0; for (const s of saved) if (Math.abs(l.y - s.y - c.mean) < 0.03) b = Math.max(b, Math.sqrt(Math.min(l.n, s.n))); c.score += b; } c.dy = c.mean; }
+  return cl.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+function relocVerify(T, savedTop, liveTop) { // T: saved -> live. Count the live cells that agree with the saved topmost heights.
+  const C = RELOC.cfg.cell, tol = RELOC.cfg.hTol, c = Math.cos(-T.phi), s = Math.sin(-T.phi); let M = 0, X = 0, O = 0, info = 0, infoX = 0, dsum = 0;
+  const stp = Math.max(1, Math.floor(liveTop.n / 6000));
+  for (let i = 0; i < liveTop.n; i += stp) {
+    const dx = liveTop.xs[i] - T.tx, dz = liveTop.zs[i] - T.tz, px = dx * c - dz * s, pz = dx * s + dz * c, I = Math.floor(px / C), J = Math.floor(pz / C), hl = liveTop.hs[i] - T.dy;
+    let def = false, hit = false, bd = 1;
+    for (let di = -1; di <= 1 && !hit; di++) for (let dj = -1; dj <= 1; dj++) { const h = savedTop.top.get(rKey(I + di, J + dj)); if (h === undefined) continue; def = true; const d = hl - h; if (Math.abs(d) < tol) { hit = true; bd = d; break; } }
+    if (hit) { M++; dsum += bd; if (liveTop.step[i]) info++; } else if (def) { X++; if (liveTop.step[i]) infoX++; } else O++;
+  }
+  const k = stp; return { M: M * k, X: X * k, O: O * k, info: info * k, infoX: infoX * k, ratio: M / Math.max(1, M + X), score: (info - 3 * infoX) * k + 0.02 * (M - 2 * X) * k, dyFix: M ? dsum / M : 0 }; // the score rewards agreement at height steps (objects, edges of tops) far more than agreement on a flat floor
+}
+function relocIcp(T0, live, saved, dy) { // live boundary points -> nearest saved boundary points, trimmed Kabsch, a few rounds
+  const hash = new Map(), H = 0.06; const sl = saved.filter(() => true);
+  sl.forEach((s, si) => { for (let i = 0; i < s.all.length; i += 2) { const key = Math.floor(s.all[i] / H) * 100003 + Math.floor(s.all[i + 1] / H); let a = hash.get(key); if (!a) hash.set(key, a = []); a.push(si, s.all[i], s.all[i + 1]); } });
+  let a = -T0.phi, ca = Math.cos(a), sa = Math.sin(a), ux = -(ca * T0.tx - sa * T0.tz), uz = -(sa * T0.tx + ca * T0.tz);
+  const lp = []; for (const l of live) { const st = Math.max(1, Math.floor(l.all.length / 2 / 500)); for (let i = 0; i < l.all.length / 2; i += st) lp.push(l.y, l.all[2 * i], l.all[2 * i + 1]); }
+  const thrs = [0.14, 0.1, 0.09, 0.08, 0.07, 0.07, 0.06, 0.06, 0.06, 0.05, 0.05, 0.05, 0.05, 0.04, 0.04, 0.04, 0.035, 0.035, 0.03, 0.03]; let nPairs = 0;
+  for (const thr of thrs) {
+    const pairs = []; ca = Math.cos(a); sa = Math.sin(a);
+    for (let i = 0; i < lp.length; i += 3) {
+      const x = lp[i + 1], z = lp[i + 2], qx = ca * x - sa * z + ux, qz = sa * x + ca * z + uz, gi = Math.floor(qx / H), gj = Math.floor(qz / H); let bd = thr * thr, bx = 0, bz = 0, ok = false;
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const arr = hash.get((gi + di) * 100003 + gj + dj); if (!arr) continue; for (let q = 0; q < arr.length; q += 3) { if (Math.abs(lp[i] - sl[arr[q]].y - dy) > 0.035) continue; const d = (arr[q + 1] - qx) ** 2 + (arr[q + 2] - qz) ** 2; if (d < bd) { bd = d; bx = arr[q + 1]; bz = arr[q + 2]; ok = true; } } }
+      if (ok) pairs.push([x, z, bx, bz, bd]);
+    }
+    nPairs = pairs.length; if (pairs.length < 12) break;
+    pairs.sort((p, q) => p[4] - q[4]); const keep = pairs.slice(0, Math.max(10, Math.floor(pairs.length * 0.85)));
+    let pcx = 0, pcz = 0, qcx = 0, qcz = 0; for (const p of keep) { pcx += p[0]; pcz += p[1]; qcx += p[2]; qcz += p[3]; } pcx /= keep.length; pcz /= keep.length; qcx /= keep.length; qcz /= keep.length;
+    let sxx = 0, sxz = 0, szx = 0, szz = 0; for (const p of keep) { const ax = p[0] - pcx, az = p[1] - pcz, bx = p[2] - qcx, bz = p[3] - qcz; sxx += ax * bx; sxz += ax * bz; szx += az * bx; szz += az * bz; }
+    a = Math.atan2(sxz - szx, sxx + szz); ca = Math.cos(a); sa = Math.sin(a); ux = qcx - (ca * pcx - sa * pcz); uz = qcz - (sa * pcx + ca * pcz);
+  }
+  const phi = -a, cp = Math.cos(phi), sp = Math.sin(phi); return { phi, tx: -(cp * ux - sp * uz), tz: -(sp * ux + cp * uz), dy, pairs: nPairs };
+}
+function* relocJob(live, saved) { // time-sliced: yields after every yaw step
+  const cfg = RELOC.cfg, R = cfg.range, bin = cfg.bin, W = Math.ceil(2 * R / bin) + 1, inv = 1 / bin; if (!RELOC.acc || RELOC.acc.length !== W * W) RELOC.acc = new Int16Array(W * W); const acc = RELOC.acc;
+  const dys = relocDyCands(live, saved), nPhi = Math.round(360 / cfg.phiStepDeg), peaks = [];
+  for (const D of dys) {
+    const pairs = []; for (const l of live) for (const s of saved) if (Math.abs(l.y - s.y - D.dy) < 0.03) pairs.push([l.pts, s.pts]);
+    if (!pairs.length) continue;
+    for (let ia = 0; ia < nPhi; ia++) {
+      const phi = ia * cfg.phiStepDeg * Math.PI / 180, c = Math.cos(phi), s = Math.sin(phi); acc.fill(0); let best = 0, bi = -1;
+      for (const [lp, sp] of pairs) for (let i = 0; i < sp.length; i += 2) {
+        const rx = sp[i] * c - sp[i + 1] * s - 0, rz = sp[i] * s + sp[i + 1] * c;
+        for (let j = 0; j < lp.length; j += 2) { const ix = ((lp[j] - rx + R) * inv) | 0, iz = ((lp[j + 1] - rz + R) * inv) | 0; if (ix < 0 || iz < 0 || ix >= W || iz >= W) continue; const b = ix * W + iz, v = ++acc[b]; if (v > best) { best = v; bi = b; } }
+      }
+      if (best >= 10) { const ix = (bi / W) | 0, iz = bi % W; let v9 = 0; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const x2 = ix + di, z2 = iz + dj; if (x2 >= 0 && z2 >= 0 && x2 < W && z2 < W) v9 += acc[x2 * W + z2]; } peaks.push({ dy: D.dy, phi, votes: v9, tx: ix * bin - R + bin / 2, tz: iz * bin - R + bin / 2 }); }
+      yield;
+    }
+  }
+  peaks.sort((a, b) => b.votes - a.votes); const sel = [];
+  const angd = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  for (const p of peaks) { if (sel.length >= 8) break; if (sel.some((q) => Math.abs(q.dy - p.dy) < 0.04 && angd(q.phi, p.phi) < 0.14 && Math.hypot(q.tx - p.tx, q.tz - p.tz) < 0.3)) continue; sel.push(p); }
+  const savedTop = RELOC.savedTop, liveTop = relocTop(live), out = [];
+  for (const p of sel) {
+    const T = relocIcp(p, live, saved, p.dy); yield; const v = relocVerify(T, savedTop, liveTop); const T2 = Object.assign({}, T, { dy: T.dy + v.dyFix }); const v2 = relocVerify(T2, savedTop, liveTop);
+    out.push(Object.assign(T2, v2, { votes: p.votes, ratio: v2.ratio }));
+  }
+  RELOC.peaks = sel; RELOC.cands = out.map((q) => ({ phi: +(q.phi * 57.2958).toFixed(1), tx: +q.tx.toFixed(2), tz: +q.tz.toFixed(2), M: q.M, X: q.X, info: q.info, ratio: +q.ratio.toFixed(2), score: q.score, votes: q.votes }));
+  out.sort((a, b) => b.score - a.score);
+  const best = out[0]; if (!best) return null;
+  const other = out.find((q) => angd(q.phi, best.phi) > 0.14 || Math.hypot(q.tx - best.tx, q.tz - best.tz) > 0.25 || Math.abs(q.dy - best.dy) > 0.04);
+  best.margin = other && best.score > 0 ? Math.max(0, other.score) / best.score : 0; best.nLive = liveTop.n; best.layers = live.length;
+  return best;
+}
+function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
+  RELOC.state = 'search'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
+  RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved);
+}
+function relocStep(dt) {
+  if (RELOC.state !== 'search') return;
+  if (RELOC.scanSecs >= RELOC.cfg.askAfter) { RELOC.state = 'asking'; return; }
+  if (!RELOC.job) {
+    if (RELOC.scanSecs < RELOC.nextTry || !RELOC.saved.length) return;
+    const live = relocLiveLayers(); if (!live.length || live.reduce((a, l) => a + l.n, 0) < 150) { RELOC.nextTry = RELOC.scanSecs + 1; return; }
+    RELOC.job = relocJob(live, RELOC.saved); RELOC.jobT0 = performance.now(); RELOC.tries++;
+  }
+  const t0 = performance.now(); let r;
+  while (performance.now() - t0 < 7) { r = RELOC.job.next(); if (r.done) break; }
+  if (r && r.done) {
+    const res = r.value; RELOC.job = null; RELOC.nextTry = RELOC.scanSecs + RELOC.cfg.tryEvery; RELOC.lastMs = performance.now() - RELOC.jobT0; RELOC.result = res;
+    relocConsider(res);
+  }
+}
+function relocConsider(res) {
+  const c = RELOC.cfg, ok = !!res && res.M >= c.minCells && res.ratio >= c.minRatio && res.info >= c.minInfo && res.margin <= c.maxMargin;
+  recReloc(res ? { M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), info: res.info, margin: +(res.margin || 0).toFixed(2), score: res.score, layers: res.layers, ok, ms: Math.round(RELOC.lastMs || 0) } : { none: true }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok }); if (RELOC.hist.length > 12) RELOC.hist.shift();
+  const h = RELOC.hist.slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
+  if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
+  const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
+  if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
+  relocLock(a);
+}
+function relocLock(res, how) {
+  const T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; applyAlign(T); G.alignErr = null; commitAlign();
+  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, how: how || 'auto' };
+  G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
+  for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
+  setPhase('play'); barUi(); updateHint(); updateLabels(true);
+  homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
+  for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, S.tf.y + 0.05, S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
+  AUTO.compareAt = AUTO.t + 25; AUTO.compareHits = SCAN.hits; AUTO.diaryT = AUTO.t + 2.5; persist();
+  setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
+}
+function relocAsk() { // nothing matched after a minute of scanning
+  RELOC.asked = true; recReloc({ gaveUp: true, tries: RELOC.tries }); recSnap('homing failed'); const el = $('ask'); el.hidden = false;
+  el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">Is this a new room, or have things moved?</div><div style="font-weight:600">The colonists could not find their old room in what you showed them.</div><div class="mrow" style="justify-content:center"><button class="big alt" id="rmNew">A new room</button><button class="big" id="rmMoved">Things moved</button><button id="rmMore">Keep looking</button></div>';
+  $('rmNew').onclick = () => { el.hidden = true; relocNewRoom(); };
+  $('rmMoved').onclick = () => { el.hidden = true; relocManual(); };
+  $('rmMore').onclick = () => { el.hidden = true; RELOC.state = 'search'; RELOC.scanSecs = 0; RELOC.cfg.askAfter = 1e9; };
+}
+function relocManual() { // the older way: tap the two furthest-apart named things
+  RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
+}
+function relocNewRoom() { // forget the old room (it is kept as a backup) and start a fresh map from what has been scanned
+  const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c);
+  const lib = G.library, nl = G.nextLib; for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z);
+  G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null;
+  G.library = lib; G.nextLib = nl; for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0;
+  G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; refreshSpots(); store.del(MAP_KEY); store.del(SAVE_KEY); AUTO.firstDecent = 0;
+  autoSay('A new room! Keep looking around: the colonists will find a landing place.', 5); updateTitle();
+}
+// FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
+// session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
+// save the map blob next to the room map (worldMapSave) and load it before the session starts (worldMapLoad); ARKit relocalises by itself and the saved frames are valid as they are.
+// Not implemented natively here: this only detects the API and stores / returns the blob so the app side can be wired in later. Without it relocalisation is the surface matcher above.
+function worldMapAvailable() { return !!(AR.session && typeof AR.session.nonStandard_getWorldMap === 'function' && typeof AR.session.nonStandard_setWorldMap === 'function'); }
+async function worldMapSave() { if (!worldMapAvailable()) return false; try { const wm = await AR.session.nonStandard_getWorldMap(); if (wm) { store.set('base-camp-worldmap', typeof wm === 'string' ? wm : JSON.stringify(wm)); return true; } } catch (e) { /* not supported by this app version */ } return false; }
+async function worldMapLoad() { if (!worldMapAvailable()) return false; const raw = store.get('base-camp-worldmap'); if (!raw) return false; try { await AR.session.nonStandard_setWorldMap(raw); return true; } catch (e) { return false; } }
+
 // ============ UI ============
 function setPhase(p) {
   G.phase = p; const scan = p === 'scan' || p === 'align';
@@ -2173,18 +2630,58 @@ function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z);
-  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
 }
 function showTitle() {
   $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
-  room.visible = false; scene.background = null; G.phase = 'title'; updateTitle();
+  room.visible = false; scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
 }
 function updateTitle() {
-  const md = loadMapData(), has = !!loadSave() && !!md; $('bCont').hidden = !md; $('bCont').textContent = has ? 'Continue my colony' : 'Play on my saved room map'; $('bNew').hidden = !has; $('bAR').hidden = !AR.ok;
-  $('bMapIO').hidden = false; $('mapInfo').textContent = md ? 'Saved room map: ' + md.zones.length + ' surfaces, ' + md.spots.filter((s) => s.src !== 'default').length + ' named spots' + (has ? ', and a colony.' : ', no colony yet.') + ' Map my room adds to it.' : 'No room map yet.';
+  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
+  let info = md ? 'Saved room: ' + md.zones.length + ' places, ' + Math.round(mapKnownJSON(md) * 100) + '% known, ' + (md.visits || 0) + ' visit' + ((md.visits || 0) === 1 ? '' : 's') + (has ? ', and a colony.' : ', no colony yet.') : 'No room yet: press Play and look around.';
+  if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
+  else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
+  else if (STORE.usedBackup) info += ' (restored from the backup copy)';
+  $('mapInfo').textContent = info;
+  const w = $('welcome');
+  if (has && G.phase === 'title') {
+    const secs = Math.max(0, (Date.now() - sv.t) / 1000); w.hidden = false;
+    w.innerHTML = '<b>Welcome back</b> - you were away ' + fmtAway(secs) + '<ul id="wLines"><li>' + (G.previewLines ? G.previewLines.map(esc).join('</li><li>') : 'The colonists are telling their stories...') + '</li></ul>';
+    previewReturn();
+  } else w.hidden = true;
+}
+function mapKnownJSON(d) { let s = 0, n = 0; try { for (const z of d.zones) { const st = unrle(z.land.st || [], z.land.w * z.land.h), cf = unrle(z.land.conf && z.land.conf.length ? z.land.conf : [1, z.land.w * z.land.h], z.land.w * z.land.h); for (let k = 0; k < st.length; k++) if (st[k]) { n++; s += Math.min(3, cf[k]) / 3; } } } catch (e) { return 0; } return n ? s / n : 0; }
+function previewReturn() { // the away story is worked out on the title card already (same seed, so it is the very story the game will tell)
+  if (G.phase !== 'title' || AUTO.previewBusy) return; const sv = loadSave(); if (!sv) return;
+  const stamp = sv.t + ':' + Math.floor((Date.now() - sv.t) / 60000); if (G.previewStamp === stamp) return;
+  AUTO.previewBusy = true;
+  setTimeout(() => {
+    try {
+      if (G.phase !== 'title') return; resetWorld(); G.auto = true; G.previewSecs = null; const ok = prepareContinue();
+      if (ok && G.awayRes) { G.previewSecs = G.awayRes.secs; G.previewAt = Date.now(); G.previewStamp = stamp; G.previewLines = G.awayRes.lines.slice(0, 3).map((l) => l.text); }
+      G.auto = false; resetWorld(); G.phase = 'title'; const ul = $('wLines'); if (ul && G.previewLines) ul.innerHTML = '<li>' + G.previewLines.map(esc).join('</li><li>') + '</li>';
+    } catch (e) { console.warn('preview failed', e); G.auto = false; } finally { AUTO.previewBusy = false; }
+  }, 60);
+}
+function startAuto() {
+  G.auto = true; G.intent = 'play'; autoReset(); document.body.classList.add('auto'); $('title').hidden = true; $('top').hidden = false; $('hint').hidden = true; $('count').textContent = '';
+  if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = false; envUi(); }
+  setPhase('play'); G.tool = 'look'; G.visitCounted = false;
+  const md = loadMapData();
+  if (md && prepareContinue() && G.zones.length) {
+    G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('Looking for your room... keep looking around.', 6);
+    if (AR.on && worldMapAvailable()) worldMapLoad().then((ok) => { if (ok && !G.locked) relocLock({ phi: 0, tx: 0, tz: 0, dy: 0, score: 0, ratio: 1, M: 0, info: 0, margin: 0 }, 'worldmap'); });
+  } else autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
+  barUi(); updateHint(); autoCount();
+}
+function startPractice() { G.mode = 'practice'; G.auto = true; resetWorld(); G.auto = true; placeRoom(0, 0, 0); startAuto(); }
+function comeBackLater() { // practice room: leave, let time pass, and come back with the room turned and shifted: the colony has to find its home again
+  if (!persist(true)) return; const sv = loadSave(); if (sv) { sv.t -= 8 * 3600 * 1000; safeWrite(SAVE_KEY, JSON.stringify(sv)); }
+  PLACE.n = (PLACE.n || 0) + 1; const yaws = [0.5236, -0.35, 0.9, -0.6], sh = [[0.6, -0.4], [-0.5, 0.45], [0.3, 0.6], [-0.4, -0.3]], i = (PLACE.n - 1) % yaws.length;
+  resetWorld(); G.auto = true; G.previewSecs = null; placeRoom(yaws[i], sh[i][0], sh[i][1]); startAuto();
 }
 function startScan(cont) {
   setPhase('scan'); G.cont = !!cont; $('title').hidden = true; $('top').hidden = false; $('hint').hidden = false;
@@ -2200,21 +2697,23 @@ function updateHint() {
   else if (G.phase === 'tag') s = G.tagMode === 'cable' ? (G.cableFrom ? 'Now tap the other end of the cable.' : 'Mark a cable: tap one end of a real cable, then the other.') : 'Tap a thing to name it: speaker, cup, can, computer, warm box... The colonists work out what it is for.';
   else if (G.phase === 'align') { const lm = G.landmarks || []; s = G.align && G.align.done ? 'Does it line up? Slide or turn the saved room until the labels sit on the real things, then Looks right.' : lm.length ? 'Lining the saved room up with the real one. Tap the ' + (lm[G.alignTaps.length] ? lm[G.alignTaps.length].name : '') + (lm.length > 1 ? ' (' + (G.alignTaps.length + 1) + ' of ' + lm.length + ')' : '') + '.' : 'Nothing to line up on.'; }
   else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
-  h.textContent = s; h.hidden = !s;
+  if (G.auto && G.phase === 'play') { if (s) autoSay(s, 4); $('chips').innerHTML = ''; autoCount(); return; }
+  h.textContent = s; h.hidden = !s; h.classList.remove('fade');
   const ch = $('chips'); ch.innerHTML = '';
-  if (G.phase === 'scan') for (const z of SCAN.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); c.textContent = z.name + ' · ' + z.area.toFixed(2) + ' m²'; c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
-  if (G.phase === 'zones') for (const z of G.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); const t = landTidy(z.land); c.textContent = z.name + (z.settled ? ' (colony)' : ' · ' + z.area.toFixed(2) + ' m²') + (t.clutter ? ' · ' + Math.round(t.ratio * 100) + '% clear' : ''); c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
+  if (G.phase === 'scan' && !G.auto) for (const z of SCAN.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); c.textContent = z.name + ' · ' + z.area.toFixed(2) + ' m²'; c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
+  if (G.phase === 'zones' && !G.auto) for (const z of G.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); const t = landTidy(z.land); c.textContent = z.name + (z.settled ? ' (colony)' : ' · ' + z.area.toFixed(2) + ' m²') + (t.clutter ? ' · ' + Math.round(t.ratio * 100) + '% clear' : ''); c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
   if (G.phase === 'tag') for (const sp of G.spots) { if (sp.src === 'default') continue; const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + spotRole(sp).color.toString(16).padStart(6, '0'); c.textContent = sp.name + ' · ' + spotUsed(sp); c.onclick = () => tagEdit(sp); ch.appendChild(c); }
 }
 function barUi() {
   const b = $('bar'); b.hidden = false; const pr = G.mode === 'practice';
   if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (pr ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
   else if (G.phase === 'zones') b.innerHTML = '<button id="bTag">Name spots</button><button id="bRescan">Scan again</button><button id="bQuit">Back</button>';
-  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
+  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bIO">Export / import</button>${G.auto ? '<button id="bTagDone" class="big">Done</button>' : '<button id="bFound">Found a colony</button><button id="bQuit">Back</button>'}`;
   else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignMore">Scan more first</button><button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
-    b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
+    if (G.auto) b.innerHTML = G.settlements.length ? T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu">Menu</button>' : '<button id="bMenu">Menu</button>';
+    else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
   if (!m.hidden) m.innerHTML = ['hut', 'farm', 'well', 'lookout'].map((k) => `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}">${KINDS[k].name} (${KINDS[k].wood})</button>`).join('');
@@ -2233,6 +2732,8 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
   if (t.id === 'bMenu') return menuUi();
   if (t.id === 'bSkip') return skipHours(8);
+  if (t.id === 'bBack') return comeBackLater();
+  if (t.id === 'bTagDone') { setPhase('play'); G.tool = 'look'; paintAll(); barUi(); updateHint(); persistSoon(); return; }
   if (t.id === 'bTag') return gotoTag();
   if (t.id === 'bFound') { setPhase('zones'); paintAll(); updateLabels(true); barUi(); updateHint(); return; }
   if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
@@ -2261,7 +2762,7 @@ function finishScan() {
   applyChanges(rep); commitAlign();
   for (const Z of G.zones) { if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z); }
   G.report = rep; G.asks = rep.asks.slice();
-  setPhase(G.intent === 'map' ? 'tag' : G.settlements.length ? 'play' : 'zones'); if (G.intent === 'map') G.tagMode = 'spot';
+  setPhase(G.intent === 'map' && !G.auto ? 'tag' : G.settlements.length || G.auto ? 'play' : 'zones'); if (G.intent === 'map') G.tagMode = 'spot';
   paintBands(true); updateLabels(G.phase !== 'play'); barUi(); updateHint(); sfx('chime'); G.cont = false; saveMap(); saveNow();
   if (!rep.first) { if (G.asks.length) askNext(); else showReport(); }
 }
@@ -2287,7 +2788,8 @@ function alignTap(cx, cy) {
 }
 function finishAlign(skip) {
   if (skip) { G.alignErr = null; if (G.zones.length) applyAlign({ phi: 0, tx: 0, tz: 0, dy: 0, pivot: [0, 0] }); }
-  G.aligned = true; setPhase('play'); finishScan();
+  G.aligned = true; if (G.auto) { G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; AUTO.compareAt = AUTO.t + 30; AUTO.compareHits = SCAN.hits; if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; setTimeout(() => { showAway(r); $('diary').classList.add('side'); }, 600); } }
+  setPhase('play'); finishScan();
 }
 // ---- tagging spots ----
 function tagPickUi(pk, existing, guess) {
@@ -2332,11 +2834,13 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mWx">Weather</button><button id="mMap">Name spots in my room</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button>' : '') + '<button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mClose">Close</button></div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { G.music = !G.music; toast('Music ' + (G.music ? 'on: the speaker towers shake' : 'off')); }
     else if (t.id === 'mSound') SND.on = !SND.on; else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+    else if (t.id === 'mReport') reportUi(); else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
+    else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
 }
 function ioUi(msg) {
@@ -2358,11 +2862,12 @@ function importMapText(txt) {
   for (const Z of G.zones) { const S = G.settlements.find((q) => q.zid === Z.id); if (S) { Z.settled = S; S.zoneRef = Z; syncTf(S); } paintLand(Z); }
   refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
 }
-$('bAR').onclick = () => { G.intent = 'play'; arStart(false); }; $('bPrac').onclick = () => { G.intent = 'play'; G.mode = 'practice'; resetWorld(); startScan(false); };
-$('bMap').onclick = () => { G.intent = 'map'; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // with a saved map: scan again, line up, compare, and add to the map
+$('bPlay').onclick = () => { G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice(); };
+$('bMore').onclick = () => { $('tmenu').hidden = !$('tmenu').hidden; };
+$('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
+$('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
-$('bCont').onclick = () => { G.intent = 'play'; if (AR.ok) arStart(true); else { G.mode = 'practice'; resetWorld(); startScan(true); } };
-$('bNew').onclick = () => { store.del(SAVE_KEY); updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
+$('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').dataset.sure = '1'; $('bNew').textContent = 'Really forget the colony?'; return; } $('bNew').dataset.sure = ''; $('bNew').textContent = 'Forget my colony'; store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak'); G.previewLines = null; G.previewStamp = ''; updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   for (const q of G.requests) {
@@ -2508,7 +3013,7 @@ function settleZone(zone) {
   const S = newSettlement(zone); G.cur = S; G.sel = null; S.placed = true; S.group.visible = true;
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; addColonist(S, { x: Math.cos(a) * 0.07, z: Math.sin(a) * 0.07, spawn: 0.4 * i + 0.2 }); }
   setPhase('play'); G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
-  puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast('Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 4);
+  puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
   if (G.mode === 'practice') focusZone(zone);
   if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
   syncCables(); saveNow(); saveMap();
@@ -2555,12 +3060,15 @@ function lighting() {
   if (!AR.on) { scene.background = scene.background || new THREE.Color(); const gr = ENV.wx.cloud * 0.6; scene.background.setRGB(mixLerp(mixLerp(0.09, 0.84, day) * (0.5 + 0.5 * k), 0.58, gr * day), mixLerp(mixLerp(0.11, 0.9, day) * (0.5 + 0.5 * k), 0.6, gr * day), mixLerp(mixLerp(0.2, 0.95, day) * (0.6 + 0.4 * k), 0.64, gr * day)); }
 }
 let frameN = 0, uiT = 0, saveT = 0, wxT = 0;
+let _persistT = 0;
+function persistSoon() { if (_persistT) return; _persistT = setTimeout(() => { _persistT = 0; persist(); }, 1500); } // every meaningful change is saved a moment later
 function frame(time, xrFrame) {
-  const now = performance.now(); let dt = Math.min(0.1, (now - G.last) / 1000); if (!(dt >= 0)) dt = 0.016; G.last = now; G.time += dt; frameN++;
+  const now = performance.now(); let dt = Math.min(0.1, (now - G.last) / 1000); if (!(dt >= 0)) dt = 0.016; G.last = now; G.time += dt; frameN++; recFrame(dt);
   if (!AR.on) requestAnimationFrame(frame);
   if (AR.on) arFrame(xrFrame); else practiceFrame(dt);
   envUpdate(); lighting();
-  if (G.phase === 'scan') {
+  if (G.auto) autoTick(dt);
+  else if (G.phase === 'scan') {
     SCAN.t += dt;
     if (SCAN.t > 0.7) { SCAN.t = 0; for (const b of SCAN.bands) if (b.dirty && b.cnt > 60) closeHoles(b); const n = SCAN.zones.length; extractZones(); updateLabels(true); paintBands(false); if (SCAN.zones.length !== n || frameN % 5 === 0) updateHint(); }
   }
@@ -2568,17 +3076,23 @@ function frame(time, xrFrame) {
     let acc = dt * G.speed, n = 0; while (acc > 1e-4 && n++ < 60) { const s = Math.min(0.25, acc); simTick(s, false); acc -= s; }
     waterStep(dt); ambient(dt);
     wxT += dt; if (wxT > 1800) { wxT = 0; fetchWeather(false); }
-    saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); }
+    if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
-  if (G.phase === 'scan' || G.phase === 'tag') { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
+  if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
   visuals(dt, G.time); partsUpdate(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
-  for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
+  if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
+    for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
+      z.label.visible = !mapped && !z.settled && G.phase !== 'title' && (G.time - z.t0 < 3.5 || look); if (z.label.visible) { z.label.position.y = z.y + 0.05; const k = clamp(L2 / 1.2, 0.5, 2.5); z.label.scale.set(0.16 * k, 0.03 * k, 1); } } }
+  else for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && G.requests.length !== $('reqs').children.length) reqUi(); }
   renderer.render(scene, camera);
 }
-addEventListener('visibilitychange', () => { if (document.hidden) { saveNow(); saveMap(); } }); addEventListener('pagehide', () => { saveNow(); saveMap(); });
+addEventListener('visibilitychange', () => { if (document.hidden) persist(true); }); addEventListener('pagehide', () => persist(true));
 
+// every meaningful change saves itself shortly after (on top of the 10 s timer, visibility change and leaving AR)
+{ const a0 = window.addSpot; window.addSpot = function (o) { const sp = a0.apply(this, arguments); recTag(sp); return sp; }; }
+for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
   envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
@@ -2589,6 +3103,7 @@ window.__g = {
   addSpot, removeSpot, addCable, syncCables, autoSpots, pickLandmarks, spotById, spotsOn, anchorFor, syncLandmarks, landTidy, landDisturb, landCalm, objClass, measureLand,
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
+  relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
   overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
