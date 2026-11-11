@@ -1789,7 +1789,7 @@ function prepareContinue() {
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
   for (const d of sv.settlements) restoreSettlement(d);
   restoreLinks(sv.links || []); syncCables();
-  G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); G.aligned = false;
+  G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
   if (G.auto) { G.pendingDiary = G.awayRes; return true; }
   showAway(G.awayRes); return true;
@@ -2706,7 +2706,7 @@ function previewReturn() { // the away story is worked out on the title card alr
   setTimeout(() => {
     try {
       if (G.phase !== 'title') return; resetWorld(); G.auto = true; G.previewSecs = null; const ok = prepareContinue();
-      if (ok && G.awayRes) { G.previewSecs = G.awayRes.secs; G.previewAt = Date.now(); G.previewStamp = stamp; G.previewLines = G.awayRes.lines.slice(0, 3).map((l) => l.text); }
+      if (ok && G.awayRes) { G.previewSecs = G.awayRes.secs; G.previewSv = sv.t; G.previewAt = Date.now(); G.previewStamp = stamp; G.previewLines = G.awayRes.lines.slice(0, 3).map((l) => l.text); }
       G.auto = false; resetWorld(); G.phase = 'title'; const ul = $('wLines'); if (ul && G.previewLines) ul.innerHTML = '<li>' + G.previewLines.map(esc).join('</li><li>') + '</li>';
     } catch (e) { console.warn('preview failed', e); G.auto = false; } finally { AUTO.previewBusy = false; }
   }, 60);

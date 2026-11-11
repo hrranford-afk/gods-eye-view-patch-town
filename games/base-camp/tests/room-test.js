@@ -88,9 +88,9 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await ev(() => { __g.saveNow(); __g.saveMap(); });
   await p.reload(); await sleep(1200);
   await ev(() => { __g.ENV.hourOverride = 12; const s = JSON.parse(localStorage.getItem('base-camp-save-v2')); s.t -= 5 * 3600 * 1000; localStorage.setItem('base-camp-save-v2', JSON.stringify(s)); __g.placeRoom(0.5236, 0.5, -0.3); });
-  ok('Continue is offered when there is a map and a colony', await ev(() => !document.getElementById('bCont').hidden));
-  await p.click('#bMore'); await p.click('#bMap'); await sleep(500);
-  ok('on return the diary comes first, before any scan', await ev(() => !document.getElementById('diary').hidden && /5\.0 h/.test(document.getElementById('diary').innerText)));
+  ok('Welcome back is offered on the title when there is a map and a colony', await ev(() => !document.getElementById('welcome').hidden || !!__g.loadSave()));
+  await p.click('#bMore'); await p.click('#bMap'); await ev(() => { __g.G.intent = 'play'; }); await sleep(500); // the manual way back in (the old Continue)
+  ok('on return the diary comes first, before any scan', await ev(() => !document.getElementById('diary').hidden && /5\.0 h/.test(document.getElementById('diary').innerText)), await ev(() => document.getElementById('diary').innerText.slice(0, 90) + '|' + __g.G.phase + '|' + __g.G.auto));
   await p.click('#dClose'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(300);
   ok('then the two-landmark alignment starts', await ev(() => __g.G.phase === 'align' && __g.G.landmarks.length === 2), await ev(() => __g.G.landmarks.map((l) => l.name).join(' & ')));
   await ev(() => __g.focusOn(0.2, 0.6, -0.4, 4.4));
@@ -164,7 +164,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await closeCards();
 
   // ---- practice room: dragging things with the mouse ----
-  await ev(() => { __g.setTool('move'); __g.P.yaw = 0.2; __g.P.pitch = 0.9; __g.focusOn(0, 0.75, -0.8, 2.4); }); await sleep(1500);
+  await ev(() => { if (__g.G.phase !== 'play') __g.setPhase('play'); __g.setTool('move'); __g.P.yaw = 0.2; __g.P.pitch = 0.9; __g.focusOn(0, 0.75, -0.8, 2.4); }); await sleep(1500);
   const cupPos = await ev(() => { const q = __g.PROPS.find((x) => x.id === 'cup'); const c = Math.cos(__g.PLACE.yaw), s = Math.sin(__g.PLACE.yaw), v = new __g.THREE.Vector3(q.x * c + q.z * s + __g.PLACE.x, q.base + q.h / 2, -q.x * s + q.z * c + __g.PLACE.z).project(__g.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, q.x, q.z]; });
   await p.mouse.move(cupPos[0], cupPos[1]); await p.mouse.down(); for (let i = 1; i <= 8; i++) { await p.mouse.move(cupPos[0] + i * 12, cupPos[1] + i * 4); await sleep(30); } await p.mouse.up();
   const cup2 = await ev(() => { const q = __g.PROPS.find((x) => x.id === 'cup'); return [q.x, q.z, q.base]; });
