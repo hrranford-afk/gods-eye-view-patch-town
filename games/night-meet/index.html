@@ -247,7 +247,7 @@ const QUALITY = [
   { name: 'Medium', pr: 1.5, bloom: true, shadows: 1, pool: 5, map: 1024, smoke: 130, cones: true, msaa: 4 },
   { name: 'High', pr: 2, bloom: true, shadows: 2, pool: 7, map: 1024, smoke: 200, cones: true, msaa: 4 },
 ];
-const SET = { q: store.get('quality', 1), mute: store.get('mute', false), autoGas: true };
+const SET = { q: store.get('quality', 1), mute: store.get('mute', false), autoGas: matchMedia('(pointer: coarse)').matches }; // autoGas: on touch screens the gas is on unless the stick is pulled back
 if (!(SET.q >= 0 && SET.q < 3)) SET.q = 1;
 let Q = QUALITY[SET.q];
 
@@ -377,7 +377,7 @@ const ASSET = { cars: {}, props: {}, tex: {}, hdr: null };
 const ASSET_LIST = {
   hdr: 'assets/hdri/rooftop_night_1k.hdr',
   cars: { SportsCar2: 'assets/cars/q_SportsCar2.glb', SportsCar: 'assets/cars/q_SportsCar.glb', NormalCar1: 'assets/cars/q_NormalCar1.glb', NormalCar2: 'assets/cars/q_NormalCar2.glb', SUV: 'assets/cars/q_SUV.glb', Taxi: 'assets/cars/q_Taxi.glb' },
-  props: ['concrete_road_barrier_02', 'covered_car', 'security_light', 'utility_box_01', 'old_tyre', 'barrel_03', 'metal_jerrycan_green', 'mounted_fluorescent_lights', 'cardboard_box_01'],
+  props: ['concrete_road_barrier_02', 'covered_car', 'security_light', 'utility_box_01', 'old_tyre', 'barrel_03', 'metal_jerrycan_green', 'cardboard_box_01'],
   tex: { asphaltDiff: 'assets/textures/asphalt_02_diff_1k.jpg', asphaltNor: 'assets/textures/asphalt_02_nor_gl_1k.jpg', asphaltRough: 'assets/textures/asphalt_02_rough_1k.jpg' },
 };
 function loadAssets(onProgress) {
