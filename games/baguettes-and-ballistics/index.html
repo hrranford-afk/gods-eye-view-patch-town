@@ -7648,7 +7648,7 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
   b.after(st);
   let tries = 0;
-  const AR_BUILD = 'build 34';
+  const AR_BUILD = 'build 35';
   new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
     tries++;
@@ -7786,6 +7786,7 @@ async function arStart() {
     const viewer = await session.requestReferenceSpace('viewer');
     AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
     arLog('AR 5/5: looking for your table. Point at it and move the iPad slowly');
+    setTimeout(() => { const el = document.getElementById('arLog'); if (el && AR.on) el.remove(); }, 4000); // all good: clear the step list (it sits under the app's Exit AR button)
     arUiSync();
     renderer.xr.setAnimationLoop(step); // from now on the XR frame loop drives `step`
   } catch (err) {
