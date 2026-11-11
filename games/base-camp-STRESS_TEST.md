@@ -15,7 +15,7 @@ reproduce, how bad (crash / wrong / annoying / cosmetic).
 Why: on Harry's iPad the game once died completely because Safari refused something Chrome allowed (a global
 name clash with HelloXR's `lerp`). The cloud can't run WebKit; the Mac can.
 
-1. Ask Harry before installing anything new (Playwright's WebKit browser is a download).
+1. **Harry approved installing Playwright's WebKit browser on the Mac (11 Nov 2026, in the game session).** Install it with `npx playwright install webkit` (only WebKit; nothing else new).
 2. In `games/base-camp/tests/`, run each test (`auto-practice-test.js`, `auto-ar-test.js`, `scan-quality-test.js`,
    `multi-room-test.js`, `room-test.js`, `recog-test.js`) with Playwright **WebKit** as well as Chromium
    (`const { webkit } = require('playwright')` in place of `chromium`; drop the swiftshader args).
