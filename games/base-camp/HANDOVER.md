@@ -88,6 +88,7 @@ Thresholds all live in `TIDY` and a few literals in `captureScan`.
 Battles, multiplayer, trading by cable car (only migration), a ghost preview for blueprints, occlusion by real objects, anchors / ARKit world maps (the app could replace alignment with `ARWorldMap`; see the first prototype's note), per-object sizes beyond three classes, colonist pathfinding (they steer around clutter by trying a few directions), recognition for tops that are not small (a "table" is classified by the zone rule only), a settings screen, restyling.
 
 ## Known bugs / rough edges
+- With sparse real sweeps a small top can still be mis-reported: in 1 of 3 real-sweep AR runs a can-sized top that the second sweep only half covered came out as "New land! The can is clear" plus "New land spotted" (the other two runs reported nothing). `ar-room-test.js` prints the changes but does not assert on them for that reason. Likely fixes: require direct hits over most of the footprint before believing a removal, and ask "Did the can go?" instead of announcing it.
 - A scan only covers 5 m x 5 m around where it started (`GN`); bigger rooms need a bigger grid.
 - Colonists can stand in each other's way; they steer around clutter by local avoidance only and can get stuck in a dead end for a few seconds.
 - Two surfaces at the same height within 50 cm are treated as one (a patch of floor next to the floor).
