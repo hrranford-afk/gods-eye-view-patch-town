@@ -48,6 +48,17 @@ button:disabled{opacity:.4}
 #wx select{font:700 15px var(--body);padding:6px}
 #repl{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px}
 [hidden]{display:none!important}
+#ask,#diary,#modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);max-height:80vh;overflow:auto;text-align:left;display:grid;gap:10px;padding:16px 18px;background:rgba(59,42,30,.92);border-radius:16px;z-index:5}
+#ask{text-align:center}
+.dh{font-size:20px;font-weight:800;color:#ffd9a8}.sub{font-size:13px;opacity:.85;font-weight:600;line-height:1.35}
+#diary ul{margin:0;padding-left:20px;display:grid;gap:7px;font-size:15px;line-height:1.35;font-weight:600}
+.by{font-size:11px;opacity:.55;font-weight:600;white-space:nowrap}
+#tagpick{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(94vw,640px);display:grid;gap:8px;z-index:4}
+#tagpick .th{font-weight:800;font-size:16px;color:#ffd9a8}#tagpick .tags{display:flex;flex-wrap:wrap;gap:6px}#tagpick .tags button{min-height:38px;font-size:14px;padding:2px 10px}
+.row2,.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.row2 input{flex:1 1 150px;font:700 14px var(--body);padding:8px;border-radius:10px;border:2px solid #fff6e655;background:#fff6e6;color:#3b2a1e;min-height:38px}
+#modal textarea{width:100%;font:12px ui-monospace,monospace;border-radius:10px;padding:6px;background:#fff6e6;color:#3b2a1e}
+label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px var(--body);border:2px solid rgba(255,246,230,.42);border-radius:12px;padding:9px 12px;background:rgba(255,246,230,.16)}label.file input{position:absolute;inset:0;opacity:0}
+#mapInfo{font:700 13px var(--body);opacity:.85}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -56,13 +67,16 @@ button:disabled{opacity:.4}
   <div id="touch"></div>
   <div id="title" class="glass">
     <h1>Base Camp</h1>
-    <p>A tiny colony that settles the real surfaces of your room. Scan your desk, shelf and floor, pick a spot, then help the little people grow trees, farms and a village. Come back later: they keep growing.</p>
+    <p>A tiny colony that settles the real surfaces of your room. Map your room once, name the speaker, the cup, the warm box, then help the little people grow. Come back later: they kept going, and they love a tidy house.</p>
     <div class="row">
       <button class="big" id="bAR" hidden>Start in AR</button>
       <button class="big alt" id="bPrac">Practice room</button>
+      <button class="big" id="bMap">Map my room</button>
       <button id="bCont" hidden>Continue my colony</button>
+      <button id="bMapIO">Room map: export / import</button>
       <button id="bNew" hidden>Forget my colony</button>
     </div>
+    <div id="mapInfo"></div>
     <div id="arStatus">AR: checking...</div>
   </div>
   <div id="top"><div id="hint" class="glass"></div><div id="chips"></div></div>
@@ -75,6 +89,10 @@ button:disabled{opacity:.4}
   <div id="repl" class="glass" hidden></div>
   <div id="env" class="glass" hidden></div>
   <div id="wx" class="glass" hidden></div>
+  <div id="ask" hidden></div>
+  <div id="diary" hidden></div>
+  <div id="tagpick" class="glass" hidden></div>
+  <div id="modal" hidden></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -112,6 +130,7 @@ const COLONY_ALMANAC = {
     { id: 'warm', icon: 'flame', text: 'Brr! Some firewood?', when: 'cold', give: 'wood', joy: 0.3, cooldown: 300 },
     { id: 'reach', icon: 'cable', text: "We can't reach the other places. Build us a cable car!", when: 'cantReach', give: 'cablecar', joy: 0.35, cooldown: 600 },
     { id: 'cheer', icon: 'heart', text: 'Feeling a bit glum. A cheer?', when: 'bored', give: 'cheer', joy: 0.35, cooldown: 300 },
+    { id: 'room', icon: 'bang', text: 'No room to build! Could the Giant clear us a little space?', when: 'cramped', give: 'cheer', joy: 0.3, cooldown: 900 },
   ],
   // Daily events: a small happening at a given hour (or any), with an effect on the colony's mood or stock.
   events: [
@@ -121,12 +140,39 @@ const COLONY_ALMANAC = {
     { id: 'gift', text: 'A traveller left a bag of seeds.', hours: [8, 18], chance: 0.15, effect: { seeds: 2 } },
   ],
 };
-(location.protocol === 'file:' ? Promise.reject() : fetch('almanac.json')).then((r) => (r.ok ? r.json() : null)).then((j) => {
-  if (!j || typeof j !== 'object') return;
-  for (const k of ['colonists', 'requests', 'events']) if (Array.isArray(j[k]) && j[k].length) COLONY_ALMANAC[k] = j[k];
-  almanacLoaded = true;
-}).catch(() => { /* no almanac.json: the built-in one is fine */ });
-let almanacLoaded = false;
+// ---- the council's data (PatchTown's resident LLMs wrote these; their words are kept as they are) ----
+// rooms.json: what each kind of spot in a room is used for. creatures.json: who the little people are. almanac.json: names, requests, events.
+// Each file is fetched from next to the page (http/https only). A missing or broken file means the built-in copy below is used.
+const ROOMS = { spots: [{"spot": "top of speaker", "used_for": "broadcast tower", "gives": "vibration signals, music for morale, elevated view", "costs": "constant bass rattles their teeth, speakers blow dust everywhere", "how_they_get_there": "zip-line made of dental floss", "funny_thing": "they try to \"DJ\" by tapping the cone, causing accidental bass drops that knock over their own breakfast", "by": "The Town Brain"}, {"spot": "windowsill", "used_for": "solar farm", "gives": "warmth, sunlight for photosynthesis, rainwater collection", "costs": "extreme exposure to wind, curious cats, sudden temperature swings", "how_they_get_there": "pulley system using thread and a paperclip", "funny_thing": "they build tiny glasshouses that instantly fog up, and argue over who gets to \"eat\" the condensation", "by": "The Town Brain"}, {"spot": "under sofa", "used_for": "hideout and nursery", "gives": "darkness, safety, constant dust accumulation for food and building", "costs": "claustrophobia, vacuum cleaner apocalypses, lost items like coins and socks", "how_they_get_there": "rope ladder dropped from the rug edge", "funny_thing": "they mistake a lost sock for a mythical \"cloud-beast\" and try to tame it with tiny lassos", "by": "The Town Brain"}, {"spot": "radiator", "used_for": "forge and heat workshop", "gives": "reliable warmth, metal for crafting, steam for cooking", "costs": "scorching burns, loud ticking and popping, dry air", "how_they_get_there": "hot-air balloon made from a tea bag", "funny_thing": "they try to toast crumb-pies on the fins and accidentally weld a spoon to the floor", "by": "The Town Brain"}, {"spot": "worktop", "used_for": "trading post and market", "gives": "flat space, access to food scraps, high foot traffic", "costs": "grease, slippery surfaces, human interference", "how_they_get_there": "catapult launch using a bent fork tine", "funny_thing": "they try to conduct trade with sugar cubes, but one melts into a sticky black hole that swallows their ledger", "by": "The Town Brain"}, {"spot": "Shelves", "used_for": "Storage", "gives": "Extra space for storing food and resources", "costs": "Dusty", "how_they_get_there": "Cable car", "funny_thing": "A Fluffkin accidentally knocked over a shelf, sending a cloud of dust flying everywhere", "by": "The Radeon Coder"}, {"spot": "Top of a speaker", "used_for": "Lookout", "gives": "A bird's-eye view of the room", "costs": "Loud", "how_they_get_there": "Rope", "funny_thing": "A Fluffkin climbed up the speaker and accidentally turned it on, causing a loud and annoying sound", "by": "The Radeon Coder"}, {"spot": "Floor", "used_for": "Farm", "gives": "Space for growing food", "costs": "Dusty", "how_they_get_there": "Ladder", "funny_thing": "A Fluffkin accidentally stepped on a plant, causing it to wilt and droop", "by": "The Radeon Coder"}, {"spot": "Rug", "used_for": "Hideout", "gives": "A cozy place to rest and hide", "costs": "Warm but dangerous", "how_they_get_there": "Catapult", "funny_thing": "A Fluffkin accidentally launched itself into the rug, causing it to bounce around uncontrollably", "by": "The Radeon Coder"}, {"spot": "Sofa", "used_for": "Workshop", "gives": "Space for crafting and building", "costs": "Dusty", "how_they_get_there": "Tunnel", "funny_thing": "A Fluffkin accidentally fell asleep on a tool, causing it to break", "by": "The Radeon Coder"}] };
+const CREATURES = [{"name": "Glip", "made_of": "static-charged lint and a single lost earring back", "scared_of": "sudden loud noises, especially the microwave beep", "says_when_it_panics": "Static's frizzing! The air's got teeth!", "says_when_happy": "Ooh, crisp! I love the hum of the fridge!", "secretly_brilliant_at": "navigating by magnetic fields and fixing broken cable cars with spit and hope", "gross_or_silly_habit": "collects and polishes other creatures' shed fluff into tiny, useless statues", "by": "The Town Brain"}, {"name": "Grizzle", "made_of": "Dried moss and discarded bottle caps", "scared_of": "Sudden, bright lights; they make his moss brittle.", "says_when_it_panics": "’Dim it! Dim it, I say!’", "says_when_happy": "’Hmph. Adequate.’", "secretly_brilliant_at": "Calculating structural integrity of Fluffkin constructions.", "gross_or_silly_habit": "Constantly sheds moss flakes, leaving a green trail everywhere.", "by": "The Dell Surveyor"}, {"name": "Fluffflur", "made_of": "dust bunnies and fluff", "scared_of": "", "says_when_it_panics": "I'm going to eat you!", "says_when_happy": "Yay, more fluff! ", "secretly_brilliant_at": "", "gross_or_silly_habit": "", "by": "The Mill Hand"}, {"name": "Glimmerfluff", "made_of": "Shimmering dust and tiny, iridescent feathers", "scared_of": "Darkness and loud noises", "says_when_it_panics": "Giggles nervously and starts spinning in circles", "says_when_happy": "Sings a cheerful tune and twirls around", "secretly_brilliant_at": "Creating dazzling light displays and solving puzzles", "gross_or_silly_habit": "Flutters its feathers in a silly dance when excited", "by": "The Radeon Coder"}];
+const COUNCIL = { almanac: false, rooms: false, creatures: false, ready: null };
+const hash01 = (s, salt) => { let h = 2166136261 ^ (salt || 0); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10007) / 10007; };
+const LIKE_KINDS = [[/plant|tree|flower|mushroom|berr|forest|grow|garden|moss/i, 'tree'], [/gadget|build|invent|machine|work/i, 'station'], [/explor|cable|adventur|ceiling|treasure/i, 'lookout'], [/sun|light|morning|day/i, 'farm'], [/pebble|story|stories|song|bird|hum/i, 'well'], [/cozy|rest|hide|dust/i, 'hut']];
+function likesToKinds(arr) { const out = []; for (const s of arr || []) for (const [re, k] of LIKE_KINDS) if (re.test(s) && !out.includes(k)) out.push(k); return out.length ? out : ['tent']; }
+function persFromText(name, text) {
+  const t = String(text || ''), h = (n) => hash01(name, n);
+  return { work: +(0.85 + 0.35 * h(1) + (/build|invent|energetic|earnest/i.test(t) ? 0.2 : 0)).toFixed(2), social: +(0.8 + 0.6 * h(2) + (/cheerful|playful|gentle|friendly/i.test(t) ? 0.25 : 0)).toFixed(2), lazy: +(0.6 + 0.6 * h(3) + (/gentle|clumsy|dreamy/i.test(t) ? 0.25 : 0)).toFixed(2) };
+}
+const WHEN_HOURS = { morning: [6, 12], afternoon: [12, 18], evening: [18, 22], night: [22, 24] };
+const ASKS = { seed: { when: 'noSeeds', give: 'seed', icon: 'seed' }, cable_car: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, water: { when: 'needWater', give: 'water', icon: 'drop' }, shade: { when: 'hot', give: 'shade', icon: 'sun' }, wood: { when: 'noWood', give: 'wood', icon: 'log' }, cheer: { when: 'bored', give: 'cheer', icon: 'heart' } };
+function adoptAlmanac(j) { // the council's almanac has its own shape; it is turned into ours here. Old-shape files (objects with work/social/lazy) work too.
+  const A = COLONY_ALMANAC;
+  if (Array.isArray(j.colonists) && j.colonists.length) A.colonists = j.colonists.map((c) => (c && typeof c.personality === 'object' ? c : { name: c.name, persona: c.personality, personality: persFromText(c.name, c.personality), likes: likesToKinds(c.likes), likesText: c.likes, dislikes: c.dislikes, dream: c.dream, by: c.by })).filter((c) => c.name);
+  if (Array.isArray(j.requests) && j.requests.length) {
+    const made = j.requests.map((q, i) => { if (q.when) return q; const a = ASKS[q.asks_for] || ASKS.cheer; return { id: 'c' + i, icon: a.icon, text: q.says, when: a.when, give: a.give, joy: 0.3, cooldown: 300, who: q.colonist, by: q.by }; }).filter((q) => q.text);
+    for (const q of made) q.council = true;
+    A.requests = made.concat(A.requests.filter((q) => !q.council)); // the council's words first; the built-in ones are the fallback when their asker is not around
+  }
+  if (Array.isArray(j.events) && j.events.length) A.events = j.events.map((e, i) => (e.hours ? e : { id: 'e' + i, title: e.title, text: e.what_happens, say: e.colonist_says, hours: WHEN_HOURS[e.when] || [0, 24], chance: 0.5, needs: e.weather === 'rain' ? 'rain' : undefined, effect: { joy: 0.12 }, by: e.by })).filter((e) => e.text);
+  COUNCIL.almanac = true;
+}
+const loadJson = (name) => (location.protocol === 'file:' ? Promise.reject() : fetch(name)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+COUNCIL.ready = Promise.all([loadJson('almanac.json'), loadJson('rooms.json'), loadJson('creatures.json')]).then(([a, r, c]) => {
+  try { if (a && typeof a === 'object') adoptAlmanac(a); } catch (e) { /* keep built-ins */ }
+  if (r && Array.isArray(r.spots) && r.spots.length) { ROOMS.spots = r.spots; COUNCIL.rooms = true; }
+  if (c && Array.isArray(c.creatures) && c.creatures.length) { CREATURES.length = 0; CREATURES.push(...c.creatures); COUNCIL.creatures = true; }
+});
+
 
 // ============ ENVIRONMENT: light, clock, weather ============
 const ENV = {
@@ -184,7 +230,7 @@ try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat
 
 // ============ toast, sound ============
 let toastT = 0;
-function toast(msg, secs) { const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs || 3.2) * 1000); }
+function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs || 3.2) * 1000); }
 const SND = { ctx: null, on: true };
 function sfx(kind) {
   if (!SND.on) return;
@@ -393,35 +439,18 @@ function classify() {
   }
   for (const z of zs) { const T = ZTYPES[z.type]; z.name = T.base + (counts[z.type] > 1 ? ' ' + z.nth : '') + ' \u2013 ' + T.land; z.spec = T.spec; }
 }
-function zoneById(id) { return SCAN.zones.find((z) => z.id === id); }
-function ensureDist(z) {
-  if (z.dist) return z.dist;
-  const m = new Uint8Array(GN * GN); for (let k = 0; k < m.length; k++) m[k] = z.band.lab[k] === z.id ? 1 : 0;
-  z.dist = chamfer(m, 0, new Float32Array(GN * GN)); // chamfer(want 0) -> distance to the nearest non-zone cell
-  let best = -1, bs = -1e9;
-  for (let k = 0; k < m.length; k++) if (m[k]) { const c = gXZ(k), s = z.dist[k] * CELL - 0.2 * Math.hypot(c[0] - z.cx, c[1] - z.cz); if (s > bs) { bs = s; best = k; } }
-  z.core = best >= 0 ? gXZ(best) : [z.cx, z.cz];
-  return z.dist;
-}
-function zoneClear(z, x, zz) { // metres from (x, z) to the edge of the zone (negative: off it)
-  const k = gIdx(x, zz); if (k < 0 || z.band.lab[k] !== z.id) return -0.02;
-  return ensureDist(z)[k] * CELL - CELL / 2;
-}
-function zoneAtPoint(x, y, zz, tol) { // which zone holds this world point (y within tol of its surface)
-  const k = gIdx(x, zz); if (k < 0) return null;
-  for (const z of SCAN.zones) if (Math.abs(z.y - y) < (tol || 0.06) && z.band.lab[k] === z.id) return z;
-  return null;
-}
+function scanZone(id) { return SCAN.zones.find((z) => z.id === id); }
 function paintBands(play) {
   for (const b of SCAN.bands) {
+    b.mesh.visible = G.phase === 'scan' || G.phase === 'align';
     if (!b.dirty) continue; b.dirty = false;
     const d = b.data, lab = b.lab, g = b.g;
     for (let k = 0; k < g.length; k++) {
       const id = lab[k], o = k * 4;
       if (!id) { if (g[k] && !play) { d[o] = 200; d[o + 1] = 200; d[o + 2] = 200; d[o + 3] = 50; } else d[o + 3] = 0; continue; }
-      const z = zoneById(id), col = z ? z.color : 0xffffff;
+      const z = scanZone(id), col = z ? z.color : 0xffffff;
       const i = k % GN, rim = (i > 0 && lab[k - 1] !== id) || (i < GN - 1 && lab[k + 1] !== id) || (k >= GN && lab[k - GN] !== id) || (k < g.length - GN && lab[k + GN] !== id);
-      const set = z && z.settled, a = play ? (set ? 38 : 70) : 120;
+      const set = false, a = play ? 70 : 120;
       d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : a;
       if (rim) { d[o] = Math.min(255, d[o] + 40); d[o + 1] = Math.min(255, d[o + 1] + 40); d[o + 2] = Math.min(255, d[o + 2] + 40); }
     }
@@ -433,14 +462,157 @@ function labelSprite(text, color) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false })); s.scale.set(0.24, 0.045, 1); s.renderOrder = 50; return s;
 }
 function updateLabels(show) {
-  for (const z of SCAN.zones) {
-    if (!z.label || z.labelText !== z.name) {
-      if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); }
-      z.label = labelSprite(z.name, z.color); z.labelText = z.name; world.add(z.label);
-    }
-    z.label.visible = show && !z.settled; z.label.position.set(z.cx, z.y + 0.07, z.cz);
-  }
+  const scanning = G.phase === 'scan' || G.phase === 'align';
+  const lab = (z) => { if (!z.label || z.labelText !== z.name) { if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); } z.label = labelSprite(z.name, z.color); z.labelText = z.name; world.add(z.label); } };
+  for (const z of SCAN.zones) { lab(z); z.label.visible = show && scanning; z.label.position.set(z.cx, z.y + 0.07, z.cz); }
+  for (const z of G.zones) { lab(z); z.label.visible = show && !scanning && !z.settled; z.label.position.set(z.cx, z.y + 0.07, z.cz); }
 }
+
+// ============ LAND: what is clear, what is clutter, what the Giant keeps disturbing ============
+// Every zone has a LAND grid in the zone's own frame (centre cx,cz and main axis ang), 2 cm cells:
+//   st: 0 not part of the surface, 1 clear land, 2 clutter (a can, a cup, a box standing on it)   ht: clutter height in cm
+//   dist: how often the cell has been disturbed (objects put down or taken away) over all visits   calm: visits since the last disturbance
+// Clear land is where colonists build and walk; clutter are towers and walls. The grid is saved in the room map.
+const LC = CELL, TIDY = { avoidAt: 2, can: 0.022, box: 0.09, richAt: 3, hmin: 0.035 };
+function setLandFrame(L, cx, cz, ang, y) { L.cx = cx; L.cz = cz; L.ang = ang; L.y = y; L.c = Math.cos(ang); L.s = Math.sin(ang); }
+function newLand(cx, cz, ang, y, u0, u1, v0, v1) {
+  const i0 = Math.floor(u0 / LC), j0 = Math.floor(v0 / LC), w = Math.ceil(u1 / LC) - i0 + 1, h = Math.ceil(v1 / LC) - j0 + 1, n = w * h;
+  const L = { i0, j0, w, h, st: new Uint8Array(n), dist: new Uint8Array(n), calm: new Uint8Array(n), ht: new Uint8Array(n), edge: null, edgeVer: -1, objs: [], ver: 0 };
+  setLandFrame(L, cx, cz, ang, y); return L;
+}
+function landFromScan(z) { // an empty land grid around a scanned zone (bounds from its cells, 10 cm margin)
+  const b = z.band, c = Math.cos(z.ang), s = Math.sin(z.ang); let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+  for (let k = 0; k < b.lab.length; k++) if (b.lab[k] === z.id) { const [x, zz] = gXZ(k), dx = x - z.cx, dz = zz - z.cz, u = dx * c + dz * s, v = -dx * s + dz * c; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; }
+  return newLand(z.cx, z.cz, z.ang, z.y, u0 - 0.1, u1 + 0.1, v0 - 0.1, v1 + 0.1);
+}
+function landIdx(L, wx, wz) { const dx = wx - L.cx, dz = wz - L.cz, i = Math.floor((dx * L.c + dz * L.s) / LC) - L.i0, j = Math.floor((-dx * L.s + dz * L.c) / LC) - L.j0; return i < 0 || j < 0 || i >= L.w || j >= L.h ? -1 : j * L.w + i; }
+function landXZ(L, k) { const u = (k % L.w + L.i0 + 0.5) * LC, v = (((k / L.w) | 0) + L.j0 + 0.5) * LC; return [L.cx + u * L.c - v * L.s, L.cz + u * L.s + v * L.c]; }
+function landEdge(L) { // metres-in-cells to the nearest cell that is not clear land
+  if (L.edge && L.edgeVer === L.ver) return L.edge;
+  const w = L.w, h = L.h, n = w * h, st = L.st, Q = Math.SQRT2, e = L.edge && L.edge.length === n ? L.edge : (L.edge = new Float32Array(n));
+  for (let k = 0; k < n; k++) e[k] = st[k] === 1 ? 1e6 : 0;
+  const at = (i, j) => (i < 0 || j < 0 || i >= w || j >= h ? 0 : e[j * w + i]);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const k = j * w + i; if (e[k]) e[k] = Math.min(e[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + Q, at(i + 1, j - 1) + Q); }
+  for (let j = h - 1; j >= 0; j--) for (let i = w - 1; i >= 0; i--) { const k = j * w + i; if (e[k]) e[k] = Math.min(e[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + Q, at(i - 1, j + 1) + Q); }
+  L.edgeVer = L.ver; return e;
+}
+function ensureLand(z) { if (!z.land) z.land = landFromScan(z); return z.land; }
+function ensureDist(z) { // the land's edge distances, and the roomiest clear spot (z.core) for founding a colony
+  const L = ensureLand(z), e = landEdge(L);
+  if (!z.core || z.coreVer !== L.ver) {
+    let best = -1, bs = -1e9; for (let k = 0; k < e.length; k++) if (L.st[k] === 1) { const c = landXZ(L, k), s = e[k] * LC - 0.2 * Math.hypot(c[0] - z.cx, c[1] - z.cz); if (s > bs) { bs = s; best = k; } }
+    z.core = best >= 0 ? landXZ(L, best) : [z.cx, z.cz]; z.coreVer = L.ver;
+  }
+  return e;
+}
+function zoneClear(z, x, zz) { // metres from (x, z) to the nearest edge or clutter (negative: off the clear land)
+  const L = ensureLand(z), k = landIdx(L, x, zz); if (k < 0 || L.st[k] !== 1) return -0.02;
+  return landEdge(L)[k] * LC - LC / 2;
+}
+function landState(z, x, zz) { const L = z.land; if (!L) return 0; const k = landIdx(L, x, zz); return k < 0 ? 0 : L.st[k]; }
+function landDisturb(z, x, zz, r) { // the most disturbed cell near a point (the Giant keeps using this place)
+  const L = z.land; if (!L) return 0; let m = 0;
+  for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { const k = landIdx(L, x + dx, zz + dz); if (k >= 0 && L.dist[k] > m) m = L.dist[k]; }
+  return m;
+}
+function landCalm(z, x, zz) { const L = z.land; if (!L) return 0; const k = landIdx(L, x, zz); return k < 0 ? 0 : L.calm[k]; }
+// ---- small things standing on surfaces ("bumps"): small connected patches, and the tops of small objects such as a speaker ----
+const _vis = new Uint8Array(GN * GN);
+function markBumps() {
+  const stack = new Int32Array(GN * GN);
+  for (const b of SCAN.bands) {
+    if (!b.bump) b.bump = new Uint8Array(GN * GN); else b.bump.fill(0);
+    _vis.fill(0);
+    for (let s0 = 0; s0 < b.g.length; s0++) {
+      if (!b.g[s0] || _vis[s0] || b.lab[s0]) continue;
+      let sp = 0, n = 0; stack[sp++] = s0; _vis[s0] = 1; const cells = [];
+      while (sp) { const k = stack[--sp]; cells.push(k); n++; const i = k % GN, j = (k / GN) | 0; for (const q of [i > 0 ? k - 1 : -1, i < GN - 1 ? k + 1 : -1, j > 0 ? k - GN : -1, j < GN - 1 ? k + GN : -1]) if (q >= 0 && b.g[q] && !_vis[q] && !b.lab[q]) { _vis[q] = 1; stack[sp++] = q; } }
+      if (n >= 3 && n < MINC) for (const k of cells) b.bump[k] = 1;
+    }
+  }
+  for (const z of SCAN.zones) if (z.area < 0.12) for (let k = 0; k < z.band.lab.length; k++) if (z.band.lab[k] === z.id) z.band.bump[k] = 2; // a small zone is the top of an object (a speaker, a stool)
+}
+function measureLand(L) { // what the scan sees over each land cell: 0 nothing, 1 the bare surface, 2 something standing on it
+  const n = L.w * L.h, obs = new Uint8Array(n), ht = new Uint8Array(n); if (!SCAN.origin) return { obs, ht };
+  for (let k = 0; k < n; k++) {
+    const i = k % L.w + L.i0, j = ((k / L.w) | 0) + L.j0, u = (i + 0.5) * LC, v = (j + 0.5) * LC, g = gIdx(L.cx + u * L.c - v * L.s, L.cz + u * L.s + v * L.c); if (g < 0) continue;
+    let o = 0, hh = 0;
+    for (const b of SCAN.bands) {
+      const dy = b.y - L.y;
+      if (dy > -TIDY.hmin && dy < TIDY.hmin) { if (b.g[g] && o < 1) o = 1; } else if (dy > 0 && b.bump) { const m = b.bump[g]; if (m && dy < (m === 2 ? 1.3 : 0.6)) { o = 2; hh = Math.max(hh, Math.min(255, Math.round(dy * 100))); } }
+    }
+    obs[k] = o; ht[k] = hh;
+  }
+  return { obs, ht };
+}
+function landComps(L, pred, minN) { // connected patches of cells for which pred(k) is true
+  const w = L.w, h = L.h, n = w * h, vis = new Uint8Array(n), out = [], stack = new Int32Array(n);
+  for (let s0 = 0; s0 < n; s0++) {
+    if (vis[s0] || !pred(s0)) continue;
+    let sp = 0; stack[sp++] = s0; vis[s0] = 1; const cells = [];
+    while (sp) { const k = stack[--sp]; cells.push(k); const i = k % w, j = (k / w) | 0; if (i > 0 && !vis[k - 1] && pred(k - 1)) { vis[k - 1] = 1; stack[sp++] = k - 1; } if (i < w - 1 && !vis[k + 1] && pred(k + 1)) { vis[k + 1] = 1; stack[sp++] = k + 1; } if (j > 0 && !vis[k - w] && pred(k - w)) { vis[k - w] = 1; stack[sp++] = k - w; } if (j < h - 1 && !vis[k + w] && pred(k + w)) { vis[k + w] = 1; stack[sp++] = k + w; } }
+    if (cells.length < (minN || 1)) continue;
+    let i0 = 1e9, i1 = -1, j0 = 1e9, j1 = -1, hm = 0, sx = 0, sz = 0;
+    for (const k of cells) { const i = k % w, j = (k / w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; if (L.ht[k] > hm) hm = L.ht[k]; const c = landXZ(L, k); sx += c[0]; sz += c[1]; }
+    out.push({ cells, n: cells.length, area: cells.length * LC * LC, i0, i1, j0, j1, h: hm / 100, x: sx / cells.length, z: sz / cells.length });
+  }
+  return out;
+}
+function objClass(o) { return o.area < TIDY.can ? 'can' : o.area < TIDY.box ? 'box' : 'big'; }
+function landTidy(L) { let c = 0, o = 0; for (let k = 0; k < L.st.length; k++) { if (L.st[k] === 1) c++; else if (L.st[k] === 2) o++; } return { clear: c, clutter: o, ratio: c + o ? c / (c + o) : 1, area: c * LC * LC };
+}
+// A new measurement against the stored land. Works on whole objects (not single cells) so the jitter of a scan's edges makes no events.
+function reconcileLand(L, m, first) {
+  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length;
+  if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
+  const old = landComps(L, (k) => st[k] === 2, 3), keep = new Uint8Array(n), mark = new Uint8Array(n);
+  for (const o of old) { let cl = 0; for (const k of o.cells) if (m.obs[k] === 1) cl++; if (cl / o.n >= 0.6) ev.removed.push(o); else for (const k of o.cells) keep[k] = 1; }
+  const fresh = landComps(L, (k) => m.obs[k] === 2, 6);
+  for (const o of fresh) { let was = 0; for (const k of o.cells) if (st[k] === 1) was++; if (was / o.n >= 0.5) { ev.placed.push(o); o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; } }
+  for (const o of ev.removed.concat(ev.placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
+  for (let k = 0; k < n; k++) {
+    const was = st[k], ob = m.obs[k];
+    if (keep[k]) { /* an object that is still there (or not seen clearly) stays */ } else if (ob) { if (was === 0 && ob === 1) ev.gained++; st[k] = ob; L.ht[k] = ob === 2 ? m.ht[k] : 0; }
+    if (st[k] === 0) continue;
+    if (mark[k]) { if (L.dist[k] < 15) L.dist[k]++; L.calm[k] = 0; } else if (L.calm[k] < 15) L.calm[k]++;
+  }
+  L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++;
+  return ev;
+}
+// ---- drawing the land: a coloured wash with clutter greyed out, and clutter as towers ----
+const TOWER_MAT = new THREE.MeshBasicMaterial({ color: 0x9a8e86, transparent: true, opacity: 0.5, depthWrite: false });
+const TOWER_EDGE = new THREE.LineBasicMaterial({ color: 0xe8d9c6 });
+function paintLand(z) {
+  const L = z.land; if (!L) return;
+  if (!z.mesh) {
+    const tex = new THREE.DataTexture(new Uint8Array(L.w * L.h * 4), L.w, L.h, THREE.RGBAFormat); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(L.w * LC, L.h * LC).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
+    m.renderOrder = 1; m.position.set((L.i0 + L.w / 2) * LC, 0.002, (L.j0 + L.h / 2) * LC);
+    z.mesh = new THREE.Group(); z.mesh.add(m); z.mesh.userData.plane = m; z.towers = new THREE.Group(); z.mesh.add(z.towers); world.add(z.mesh);
+  }
+  const m = z.mesh.userData.plane, d = m.material.map.image.data, col = z.color, set = z.settled, w = L.w;
+  for (let k = 0; k < L.st.length; k++) {
+    const o = k * 4, s = L.st[k];
+    if (!s) { d[o + 3] = 0; continue; }
+    const rim = L.st[k - 1] === 0 || L.st[k + 1] === 0 || (k >= w && L.st[k - w] === 0) || (k + w < L.st.length && L.st[k + w] === 0);
+    if (s === 2) { d[o] = 130; d[o + 1] = 118; d[o + 2] = 110; d[o + 3] = 175; } else if (L.dist[k] >= TIDY.avoidAt) { d[o] = 255; d[o + 1] = 190; d[o + 2] = 90; d[o + 3] = 120; } else { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : (set ? 40 : 75); }
+  }
+  m.material.map.needsUpdate = true;
+  while (z.towers.children.length) { const c = z.towers.children.pop(); z.towers.remove(c); c.traverse((q) => { if (q.geometry) q.geometry.dispose(); }); }
+  for (const o of L.objs) {
+    const ww = (o.i1 - o.i0 + 1) * LC, dd = (o.j1 - o.j0 + 1) * LC, hh = Math.max(0.03, o.h), box = new THREE.BoxGeometry(ww, hh, dd), tw = new THREE.Mesh(box, TOWER_MAT);
+    tw.position.set((L.i0 + (o.i0 + o.i1 + 1) / 2) * LC, hh / 2, (L.j0 + (o.j0 + o.j1 + 1) / 2) * LC); tw.renderOrder = 4; tw.add(new THREE.LineSegments(new THREE.EdgesGeometry(box), TOWER_EDGE)); z.towers.add(tw);
+  }
+  z.paintVer = L.ver; syncZoneMesh(z);
+}
+function syncZoneMesh(z) { if (z.mesh) { z.mesh.position.set(z.cx, z.y, z.cz); z.mesh.rotation.y = -z.ang; } }
+function disposeZone(z) {
+  if (z.mesh) { world.remove(z.mesh); z.mesh.traverse((q) => { if (q.geometry) q.geometry.dispose(); if (q.material && q.material.map && q.material !== TOWER_MAT) { q.material.map.dispose(); q.material.dispose(); } }); z.mesh = null; }
+  if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); z.label = null; }
+}
+// run-length coding for the saved land (long runs of the same state are the normal case)
+function rle(a) { const o = []; let v = a[0], c = 0; for (let k = 0; k < a.length; k++) { if (a[k] === v) c++; else { o.push(v, c); v = a[k]; c = 1; } } if (a.length) o.push(v, c); return o; }
+function unrle(r, n) { const a = new Uint8Array(n); let k = 0; for (let i = 0; i + 1 < r.length; i += 2) { const c = Math.min(r[i + 1], n - k); a.fill(r[i], k, k + c); k += c; } return a; }
 
 // ============ MODELS: toy-like, low-poly, in metres ============
 const MATS = {};
@@ -547,10 +719,33 @@ function mkShade() {
   g.add(mesh(geo('shC2', () => new THREE.ConeGeometry(0.0362, 0.0142, 10, 1, true, 0, 1.0).translate(0, 0.007, 0)), M(0xfff6e6), 0, 0.046, 0));
   g.add(blob(0.04)); return g;
 }
+
+function mkRubble() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 7; i++) { const a = i * 2.4, b = mesh(geo('rub', () => new THREE.BoxGeometry(0.014, 0.006, 0.01)), M(i % 2 ? 0x9a8f86 : 0xb8a58c), Math.cos(a) * 0.016, 0.003 + (i % 3) * 0.002, Math.sin(a) * 0.016); b.rotation.set(i, a, i * 0.5); g.add(b); }
+  g.add(blob(0.03)); return g;
+}
+function mkLandmark(role) { // one small toy per role (the art is redesigned later; these only have to read at a glance)
+  const g = new THREE.Group(), col = (ROLES[role] || ROLES.camp).color, C = M(col), W = M(0xf6e9cf), D = M(0x5a4332);
+  if (role === 'tower') { g.add(mesh(geo('lmTw', () => new THREE.CylinderGeometry(0.0022, 0.004, 0.075, 6).translate(0, 0.0375, 0)), D)); for (const y of [0.05, 0.065]) { const tr = mesh(geo('lmTd', () => new THREE.TorusGeometry(0.011, 0.0013, 5, 12)), C, 0, y, 0); tr.rotation.x = Math.PI / 2; g.add(tr); } g.add(mesh(geo('lmTb', () => new THREE.SphereGeometry(0.0045, 8, 6)), M(0xffe27a, 0xffcc66), 0, 0.078, 0)); }
+  else if (role === 'well') { for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(mesh(geo('lmWl', () => new THREE.CylinderGeometry(0.0013, 0.0013, 0.05, 5).translate(0, 0.025, 0)), D, x * 0.01, 0, z * 0.01)); g.add(mesh(geo('lmWt', () => new THREE.CylinderGeometry(0.016, 0.016, 0.026, 10).translate(0, 0.063, 0)), C)); g.add(mesh(geo('lmWr', () => new THREE.ConeGeometry(0.019, 0.012, 10).translate(0, 0.082, 0)), W)); }
+  else if (role === 'silo') { g.add(mesh(geo('lmSi', () => new THREE.CylinderGeometry(0.014, 0.014, 0.05, 10).translate(0, 0.025, 0)), C)); g.add(mesh(geo('lmSd', () => new THREE.SphereGeometry(0.014, 10, 6, 0, 6.283, 0, 1.57).translate(0, 0.05, 0)), M(0xdfe5ea))); }
+  else if (role === 'plaza') { g.add(mesh(geo('lmPz', () => new THREE.CylinderGeometry(0.035, 0.035, 0.003, 14).translate(0, 0.0015, 0)), M(0xd9ccb2))); g.add(mesh(geo('lmPp', () => new THREE.CylinderGeometry(0.0012, 0.0012, 0.045, 4).translate(0, 0.0225, 0)), D)); g.add(mesh(geo('lmPf', () => new THREE.PlaneGeometry(0.014, 0.009)), new THREE.MeshStandardMaterial({ color: col, side: THREE.DoubleSide }), 0.007, 0.042, 0)); }
+  else if (role === 'forge') { g.add(mesh(geo('lmFb', () => new THREE.BoxGeometry(0.036, 0.022, 0.03).translate(0, 0.011, 0)), M(0x8a7f76))); g.add(mesh(geo('lmFg', () => new THREE.BoxGeometry(0.02, 0.004, 0.016).translate(0, 0.024, 0)), M(0xff7a2d, 0xff7a2d))); g.add(mesh(geo('lmFc', () => new THREE.CylinderGeometry(0.0035, 0.0045, 0.03, 6).translate(0, 0.037, -0.008)), M(0x6a5f58))); }
+  else if (role === 'storage') { g.add(mesh(geo('lmSt', () => new THREE.BoxGeometry(0.05, 0.026, 0.034).translate(0, 0.013, 0)), C)); const r = mesh(geo('lmSr', () => new THREE.ConeGeometry(0.036, 0.016, 4).translate(0, 0.008, 0)), W, 0, 0.026, 0); r.rotation.y = Math.PI / 4; r.scale.set(1.1, 1, 0.8); g.add(r); }
+  else if (role === 'lookout') { return mkLookout(); }
+  else if (role === 'workshop') { g.add(mesh(geo('lmKb', () => new THREE.BoxGeometry(0.046, 0.024, 0.034).translate(0, 0.012, 0)), C)); for (const x of [-0.012, 0.012]) { const t = mesh(geo('lmKs', () => new THREE.ConeGeometry(0.012, 0.012, 3).translate(0, 0.006, 0)), M(0x6a5f58), x, 0.024, 0); t.rotation.y = Math.PI / 2; g.add(t); } g.add(mesh(geo('lmKa', () => new THREE.BoxGeometry(0.012, 0.008, 0.008).translate(0, 0.004, 0)), M(0x555555), 0.03, 0, 0.012)); }
+  else if (role === 'solar') { for (const x of [-0.016, 0, 0.016]) { const p = mesh(geo('lmSp', () => new THREE.BoxGeometry(0.014, 0.0015, 0.024)), M(0x2f5fa8, 0x244a88), x, 0.014, 0); p.rotation.x = -0.5; g.add(p); g.add(mesh(geo('lmSl', () => new THREE.CylinderGeometry(0.0009, 0.0009, 0.014, 4).translate(0, 0.007, 0)), D, x, 0, 0)); } }
+  else if (role === 'hideout') { g.add(mesh(geo('lmHd', () => new THREE.SphereGeometry(0.026, 10, 6, 0, 6.283, 0, 1.57)), C)); g.add(mesh(geo('lmHo', () => new THREE.BoxGeometry(0.012, 0.014, 0.003)), M(0x2a1a10), 0, 0.007, 0.0255)); }
+  else if (role === 'market') { for (const x of [-1, 1]) g.add(mesh(geo('lmMp', () => new THREE.CylinderGeometry(0.0013, 0.0013, 0.03, 5).translate(0, 0.015, 0)), D, x * 0.018, 0, 0)); const r = mesh(geo('lmMr', () => new THREE.BoxGeometry(0.046, 0.002, 0.028)), C, 0, 0.031, 0); r.rotation.x = 0.2; g.add(r); g.add(mesh(geo('lmMt', () => new THREE.BoxGeometry(0.034, 0.012, 0.014).translate(0, 0.006, 0.004)), W)); }
+  else { return mkTent(); }
+  g.add(blob(0.035)); return g;
+}
 const KINDS = { // r: footprint radius; wood: cost; work: seconds of work; mk: model; cap: sleepers
   tent: { r: 0.036, wood: 0, work: 0, mk: mkTent, cap: 3 }, hut: { r: 0.038, wood: 5, work: 24, mk: mkHut, cap: 2, name: 'Hut' }, well: { r: 0.022, wood: 4, work: 16, mk: mkWell, name: 'Well' },
   farm: { r: 0.06, wood: 3, work: 18, mk: mkFarm, name: 'Farm' }, lookout: { r: 0.034, wood: 8, work: 36, mk: mkLookout, name: 'Lookout' }, station: { r: 0.03, wood: 0, work: 0, mk: mkStation },
   tree: { r: 0.022, wood: 0, work: 0, mk: null }, shade: { r: 0.04, wood: 0, work: 0, mk: mkShade },
+  lm: { r: 0.03, wood: 0, work: 0, mk: null, name: 'Landmark' }, rubble: { r: 0.012, wood: 0, work: 0, mk: mkRubble, name: 'Rubble' },
 };
 
 // ============ particles (sprites) ============
@@ -578,35 +773,44 @@ function partsUpdate(dt) {
 }
 
 // ============ COLONY: settlements, things, colonists ============
-const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null };
+const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null,
+  zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null };
 const CATCH = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.55 }; // what a catch-up sees: an average day
 const TREE_T = 300, FARM_T = 180; // seconds a tree takes to grow up / a crop takes to ripen (at normal growth)
 const l2w = (S, lx, lz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw); return [S.tf.x + lx * c + lz * s, S.tf.z - lx * s + lz * c]; };
 const w2l = (S, wx, wz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw), dx = wx - S.tf.x, dz = wz - S.tf.z; return [dx * c - dz * s, dx * s + dz * c]; };
 const plotR = (S) => clamp(0.15 + 0.032 * S.cols.length + 0.01 * S.things.length, 0.15, 0.75);
 const kindCount = (S, k, built) => S.things.filter((t) => t.kind === k && (built === undefined || t.built === built)).length;
-const built = (S, k) => S.things.find((t) => t.kind === k && t.built && !t.hold);
-function szone(S) { return zoneById(S.zid) || S.zoneRef; }
+const built = (S, k) => S.things.find((t) => (t.kind === k || (k === 'well' && t.kind === 'lm' && t.role === 'well')) && t.built && !t.hold);
+const canPay = (S, cost) => S.stock.wood + 2 * (S.stock.tin || 0) >= cost; // tin from flattened cans counts double
+function pay(S, cost) { const w = Math.min(S.stock.wood, cost); S.stock.wood -= w; const rest = cost - w; if (rest > 0) { S.stock.tin -= Math.ceil(rest / 2); S.stats.roofs++; return true; } return false; }
+function szone(S) { return S.zoneRef; }
+function syncTf(S) { const Z = S.zoneRef, [x, z] = zoneWorld(Z, S.o[0], S.o[1]); S.tf.x = x; S.tf.z = z; S.tf.y = Z.y; S.tf.yaw = -Z.ang + (S.adj || 0); applyTf(S); }
 function validSpot(S, lx, lz, r, o) {
   o = o || {}; const z = szone(S); if (!z) return false;
   const [wx, wz] = l2w(S, lx, lz);
   if (zoneClear(z, wx, wz) < Math.min(r, 0.03) * 0.7 + 0.008) return false;
   if (!o.free && Math.hypot(lx, lz) > plotR(S)) return false;
+  if (!o.free && landDisturb(z, wx, wz, r) >= TIDY.avoidAt) return false; // the Giant keeps using this place: build somewhere calmer
   for (const t of S.things) if (t !== o.ignore && Math.hypot(t.x - lx, t.z - lz) < t.r + r - 0.006) return false;
   return true;
 }
 function findSpot(S, r, o) {
   o = o || {}; const R = o.R || plotR(S), cx = o.cx || 0, cz = o.cz || 0;
-  for (let i = 0; i < 60; i++) { const a = rnd(0, 6.283), d = Math.sqrt(Math.random()) * R, lx = cx + Math.cos(a) * d, lz = cz + Math.sin(a) * d; if (validSpot(S, lx, lz, r, o)) return [lx, lz]; }
-  return null;
+  let best = null, bs = -1, found = 0;
+  for (let i = 0; i < 40 && found < 4; i++) {
+    const a = rnd(0, 6.283), d = Math.sqrt(Math.random()) * R, lx = cx + Math.cos(a) * d, lz = cz + Math.sin(a) * d;
+    if (validSpot(S, lx, lz, r, o)) { found++; const [wx, wz] = l2w(S, lx, lz), sc = landCalm(szone(S), wx, wz) + Math.random(); if (sc > bs) { bs = sc; best = [lx, lz]; } }
+  }
+  return best;
 }
 function addThing(S, kind, lx, lz, o) {
   o = o || {}; const K = KINDS[kind];
-  const t = { id: o.id || ++G.uid, kind, x: lx, z: lz, r: K.r, rot: o.rot !== undefined ? o.rot : rnd(0, 6.283), g: o.g || 0, built: o.built !== undefined ? o.built : true, prog: o.prog || 0, tend: 0, yield: 0, yt: 0, var: o.var || 0, workers: 0, hold: !!o.hold, life: o.life || 0, pop: 0, link: o.link, end: o.end };
+  const t = { id: o.id || ++G.uid, kind, x: lx, z: lz, r: K.r, rot: o.rot !== undefined ? o.rot : rnd(0, 6.283), g: o.g || 0, built: o.built !== undefined ? o.built : true, prog: o.prog || 0, tend: 0, yield: 0, yt: 0, var: o.var || 0, workers: 0, hold: !!o.hold, life: o.life || 0, pop: 0, link: o.link, end: o.end, role: o.role, spot: o.spot, tin: !!o.tin };
   S.things.push(t); makeThingMesh(S, t); return t;
 }
 function makeThingMesh(S, t) {
-  const m = t.kind === 'tree' ? mkTree(t.var) : KINDS[t.kind].mk(); t.mesh = m; m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
+  const m = t.kind === 'tree' ? mkTree(t.var) : t.kind === 'lm' ? mkLandmark(t.role) : KINDS[t.kind].mk(); t.mesh = m; if (t.tin && t.kind === 'hut') m.children[1].material = M(0xaab3b8); m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
   if (t.kind === 'hut' || t.kind === 'tent' || t.kind === 'lookout') { t.glow = glowSprite(0.07, 0, 0xffc870); t.glow.position.set(0, 0.025, 0.01); m.add(t.glow); }
   const K = KINDS[t.kind];
   if (K.work) { const w = Math.min(K.r * 2.2, 0.1), h = 0.05; const sc = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, w * 0.8).translate(0, h / 2, 0)), new THREE.LineBasicMaterial({ color: 0xd9a066 })); m.add(sc); t.scaf = sc; }
@@ -614,15 +818,18 @@ function makeThingMesh(S, t) {
 function removeThing(S, t) { t.dead = true; S.things.splice(S.things.indexOf(t), 1); S.group.remove(t.mesh); }
 function newSettlement(zone, o) {
   o = o || {}; ensureDist(zone);
-  const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, tf: { x: zone.core[0], z: zone.core[1], y: zone.y, yaw: -zone.ang }, stock: { wood: 8, food: 5, seeds: 3, water: 8 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: true, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0 };
-  world.add(S.group); applyTf(S); zone.settled = S; G.settlements.push(S);
+  const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, o: zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: { wood: 8, food: 5, seeds: 3, water: 8, tin: 0 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: !G.holdPlace, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0, stats: newStats(), fx: null };
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
   const tent = addThing(S, 'tent', 0, 0, { built: !o.awaiting, hold: !!o.awaiting, rot: 0.3 }); S.tent = tent; if (!o.awaiting) tent.pop = 1;
+  syncLandmarks(S);
   return S;
 }
+const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, squashed: 0, tinAcc: 0, foodAcc: 0, tradeAcc: 0, roofs: 0 });
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.y = S.tf.yaw; S.group.updateMatrixWorld(true); }
 function addColonist(S, o) {
-  o = o || {}; const A = COLONY_ALMANAC.colonists, def = A[G.nameIdx++ % A.length], rep = Math.floor((G.nameIdx - 1) / A.length);
-  const c = { id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
+  o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
+  const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
+  const c = { id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
   const a = rnd(0, 6.28), d = rnd(0.045, 0.08); c.x = o.x !== undefined ? o.x : Math.cos(a) * d; c.z = o.z !== undefined ? o.z : Math.sin(a) * d;
   c.mesh = mkColonist(c); c.mesh.position.set(c.x, 0, c.z); S.group.add(c.mesh);
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
@@ -684,10 +891,13 @@ function endJob(c) { const j = c.job; if (j && j.type === 'build' && j.th && j.p
 function stepToward(S, c, tx, tz, dt, E) {
   const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
   if (d < 0.004) { c.moving = false; return true; }
-  const sp = 0.05 * (c.needs.rest < 0.2 || c.needs.food < 0.15 ? 0.6 : 1) * (E.hot ? 0.85 : 1), st = Math.min(d, sp * dt);
-  const nx = c.x + dx / d * st, nz = c.z + dz / d * st, z = szone(S), [wx, wz] = l2w(S, nx, nz);
-  if (z && zoneClear(z, wx, wz) < 0.006 && !c.edgeOk) { c.moving = false; c.stuck = (c.stuck || 0) + 1; return 'stuck'; }
-  c.x = nx; c.z = nz; c.face = Math.atan2(dx, dz); c.moving = true; return d - st < 0.004;
+  const sp = 0.05 * (c.needs.rest < 0.2 || c.needs.food < 0.15 ? 0.6 : 1) * (E.hot ? 0.85 : 1), st = Math.min(d, sp * dt), z = szone(S), base = Math.atan2(dz, dx);
+  for (const off of [0, 0.7, -0.7, 1.4, -1.4]) { // walk around cans and cups: try the straight line, then veer off
+    const a = base + off, nx = c.x + Math.cos(a) * st, nz = c.z + Math.sin(a) * st, [wx, wz] = l2w(S, nx, nz);
+    if (z && zoneClear(z, wx, wz) < 0.006 && !c.edgeOk) continue;
+    c.x = nx; c.z = nz; c.face = Math.atan2(Math.cos(a), Math.sin(a)); c.moving = true; return off === 0 && d - st < 0.004;
+  }
+  c.moving = false; c.stuck = (c.stuck || 0) + 1; return 'stuck';
 }
 function runJob(S, c, dt, E, quiet) {
   const j = c.job; if (!j) return;
@@ -709,7 +919,7 @@ function runJob(S, c, dt, E, quiet) {
     }
     case 'build': {
       const t = j.th; if (t.built) { endJob(c); return; }
-      t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1); c.working = true;
+      t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1); c.working = true;
       if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, S.tf.y + 0.01, S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, S.tf.y + 0.012, wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
       if (!quiet && Math.random() < dt * 1.2) sfx('build');
       if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.04, wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); } }
@@ -736,7 +946,7 @@ function runJob(S, c, dt, E, quiet) {
 }
 function plantTree(S, lx, lz, quiet) {
   const v = S.spec === 'orchard' ? (Math.random() < 0.7 ? 2 : 0) : S.spec === 'grove' ? 3 : pick([0, 0, 1, 2]);
-  const t = addThing(S, 'tree', lx, lz, { var: v, g: 0.02 }); t.pop = 0.5;
+  const t = addThing(S, 'tree', lx, lz, { var: v, g: 0.02 }); t.pop = 0.5; { const [wx, wz] = l2w(S, lx, lz); t.rich = landCalm(szone(S), wx, wz) >= TIDY.richAt; }
   if (!quiet) { const [wx, wz] = l2w(S, lx, lz); puff('dust', wx, S.tf.y + 0.01, wz, 2, { size: 0.012, life: 0.7, grow: 1 }); puff('leaf', wx, S.tf.y + 0.02, wz, 2, { size: 0.007, vy: 0.02, life: 1.2 }); sfx('plant'); }
   return t;
 }
@@ -750,8 +960,8 @@ const CONDS = {
   needWater: (S) => !built(S, 'well') && S.stock.water < 2, noSeeds: (S) => S.stock.seeds < 1 && kindCount(S, 'tree') < 3,
   hot: (S) => ENV.hot && !S.things.some((t) => t.kind === 'shade'), cold: () => ENV.cold, noWood: (S) => S.stock.wood < 1 && S.cols.length >= 3 && S.things.some((t) => !t.built && !t.hold && KINDS[t.kind].work) === false && S.stock.wood < 1 && kindCount(S, 'tree', true) < 2,
   bored: (S) => S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length < 0.35,
-  cantReach: (S) => S.thriving && SCAN.zones.some((z) => !z.settled) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
-  night: () => ENV.night,
+  cantReach: (S) => S.thriving && G.zones.some((z) => !z.settled && !z.lost) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
+  night: () => ENV.night, cramped: (S) => !!S.cramped && S.stock.wood >= 5,
 };
 function requestsStep(S, quiet) {
   if (quiet) return;
@@ -759,8 +969,8 @@ function requestsStep(S, quiet) {
     const cond = CONDS[def.when]; if (!cond) continue;
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
-    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3) {
-      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id)); if (!cs.length) continue;
+    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
+      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || c.name === def.who)); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
   }
@@ -776,6 +986,7 @@ function giveRequest(r) {
   else if (g === 'shade') { const sp = findSpot(S, 0.04, { cx: c ? c.x : 0, cz: c ? c.z : 0, R: 0.12 }) || findSpot(S, 0.04); if (sp) { const t = addThing(S, 'shade', sp[0], sp[1], { life: 500 }); t.pop = 0.5; sfx('pop'); } }
   else if (g === 'cheer') { for (const q of S.cols) { q.needs.joy = Math.min(1, q.needs.joy + 0.3); q.hop = 1; } sfx('cheer'); }
   else if (g === 'cablecar') { setTool('cable'); toast('Drag a line from this settlement to another zone.', 4); return; }
+  else if (g === 'expedition') { const Zt = zoneById(r.def.zone); if (!Zt || Zt.settled) return resolveRequest(r); ensureDist(Zt); ensureDist(S.zoneRef); S.stock.wood = Math.max(S.stock.wood, CABLE_COST); const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   for (const q of S.cols) q.needs.joy = Math.min(1, q.needs.joy + (q === c ? r.def.joy : 0.08));
   if (c) { c.hop = 1; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.05, wz, 4, { size: 0.01, vy: 0.03, life: 1.4 }); }
   S.helped++; resolveRequest(r); toast('Thank you! ' + (c ? c.name : 'They') + ' is happy.');
@@ -789,11 +1000,13 @@ function simSettlement(S, dt, E, quiet) {
     if (t.life) { t.life -= dt; if (t.life <= 0) { removeThing(S, t); continue; } }
     if (t.tend > 0) t.tend -= dt;
     if (E.rain && (t.kind === 'tree' || t.kind === 'farm')) t.tend = Math.max(t.tend, 20);
-    if (t.kind === 'tree' && t.g < 1) { t.g = Math.min(1, t.g + dt / TREE_T * E.grow * (t.tend > 0 ? 1.8 : 1)); if (t.g >= 1 && !quiet) { toast('A tree has grown up!'); puff('leaf', S.tf.x, S.tf.y + 0.02, S.tf.z, 0); } }
+    const fxm = (S.fx && S.fx.solar ? 1.2 : 1) * (E.cold && S.fx && S.fx.forge ? 1.6 : 1), calmK = t.rich ? 1.3 : 1;
+    if (t.kind === 'tree' && t.g < 1) { t.g = Math.min(1, t.g + dt / TREE_T * E.grow * fxm * calmK * (t.tend > 0 ? 1.8 : 1)); if (t.g >= 1 && !quiet) { toast('A tree has grown up!'); puff('leaf', S.tf.x, S.tf.y + 0.02, S.tf.z, 0); } }
     else if (t.kind === 'tree') { t.yt += dt * E.grow; if (t.yt > 70 && t.yield < 2) { t.yield++; t.yt = 0; } }
-    else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * (t.tend > 0 ? 1.8 : 1));
+    else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * fxm * calmK * (S.fx && S.fx.farm ? 1.25 : 1) * (t.tend > 0 ? 1.8 : 1));
   }
   S.stock.water = Math.min(8, S.stock.water + dt / 90);
+  if (!S.fx) S.fx = fxOf(S); roleStep(S, dt, E, quiet);
   // colonists
   for (const c of S.cols.slice()) {
     if (c.spawn > 0) { c.spawn -= dt; continue; }
@@ -806,8 +1019,8 @@ function simSettlement(S, dt, E, quiet) {
       if (c.job && c.job.type !== 'cross') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter') endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
     }
     if (!c.job && c.cool <= 0) { const j = chooseJob(S, c, E); if (j) startJob(S, c, j, E); }
-    if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job) runJob(S, c, quiet ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
-    if (quiet && c.job && c.job.ph === 'go' && c.job.type !== 'cross') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
+    if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job) runJob(S, c, quiet && !E.away ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
+    if (quiet && !E.away && c.job && c.job.ph === 'go' && c.job.type !== 'cross') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
     if (!quiet && n.joy > 0.9 && Math.random() < dt * 0.15) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, S.tf.y + 0.04, wz, 1, { size: 0.007, add: true, life: 1 }); }
   }
   // planner: the colony decides what to build next
@@ -815,8 +1028,8 @@ function simSettlement(S, dt, E, quiet) {
   if (S.planT <= 0 && S.cols.length) {
     S.planT = 12;
     const open = S.things.filter((t) => !t.built && !t.hold && KINDS[t.kind].work).length, pop = S.cols.length;
-    const want = (k, cond) => { if (open >= 2 || !cond) return false; const K = KINDS[k]; if (S.stock.wood < K.wood) return false; const sp = findSpot(S, K.r); if (!sp) return false; S.stock.wood -= K.wood; addThing(S, k, sp[0], sp[1], { built: false, rot: Math.atan2(-sp[0], -sp[1]) }); if (!quiet) toast('The colonists plan a ' + K.name.toLowerCase() + '.'); return true; };
-    const farmsMax = (S.spec === 'farmland' ? 3 : 1) + (pop > 5 ? 1 : 0);
+    const want = (k, cond) => { if (open >= 2 || !cond) return false; const K = KINDS[k]; if (!canPay(S, K.wood)) return false; const sp = findSpot(S, K.r); if (!sp) { S.cramped = true; return false; } S.cramped = false; const tin = pay(S, K.wood); const th = addThing(S, k, sp[0], sp[1], { built: false, rot: Math.atan2(-sp[0], -sp[1]), tin }); const [wx, wz] = l2w(S, sp[0], sp[1]); th.rich = landCalm(szone(S), wx, wz) >= TIDY.richAt; if (!quiet) toast('The colonists plan a ' + K.name.toLowerCase() + '.'); return true; };
+    const farmsMax = (S.spec === 'farmland' ? 3 : 1) + (pop > 5 ? 1 : 0) + (S.fx && S.fx.farm ? 1 : 0);
     if (S.spec !== 'grove') {
       want('well', !built(S, 'well') && kindCount(S, 'well') === 0 && pop >= 2) || want('hut', housing(S) < pop + 1 && kindCount(S, 'hut') < 5) || want('farm', kindCount(S, 'farm') < farmsMax && (S.stock.food < 8 || S.spec === 'farmland')) || want('lookout', (S.spec === 'lookout' || S.spec === 'orchard') && kindCount(S, 'lookout') === 0 && pop >= 3) || want('hut', S.stock.wood > 10 && kindCount(S, 'hut') < 5);
     }
@@ -824,7 +1037,7 @@ function simSettlement(S, dt, E, quiet) {
   // arrivals: new settlers wander in when there is room, food and a good mood
   S.arrT += dt;
   const cap = S.spec === 'grove' ? 2 : 9;
-  if (S.arrT > 100 && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
+  if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
     S.arrT = 0; const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; c.mesh.userData.born = 0; if (!quiet) { toast('A new settler, ' + c.name + ', joined the colony!'); sfx('cheer'); }
   }
   // thriving
@@ -840,7 +1053,7 @@ const CABLE_COST = 6;
 function stationTop(S, t) { const [wx, wz] = l2w(S, t.x, t.z); return new THREE.Vector3(wx, S.tf.y + 0.063, wz); }
 function linkEnds(l) {
   const Sa = G.settlements.find((s) => s.id === l.a.sid), Sb = G.settlements.find((s) => s.id === l.b.sid);
-  if (!Sa || !Sb || !Sa.placed || !Sb.placed || l.a.th.dead || l.b.th.dead) return null;
+  if (!Sa || !Sb || Sa.lost || Sb.lost || l.a.th.dead || l.b.th.dead) return null;
   return [stationTop(Sa, l.a.th), stationTop(Sb, l.b.th), Sa, Sb];
 }
 function cablePoint(A, B, s, out) { const L = A.distanceTo(B), sag = clamp(L * 0.05, 0.012, 0.09); out.lerpVectors(A, B, s); out.y -= sag * 4 * s * (1 - s); return out; }
@@ -852,7 +1065,7 @@ function stationSpot(S, wx, wz) {
 function canLink(Sa, wxa, wza, zb, wxb, wzb) {
   if (!zb || zb === Sa.zoneRef || zb.id === Sa.zid) return 'Pick a different zone.';
   if (Math.hypot(wxb - wxa, wzb - wza) + Math.abs(zb.y - Sa.tf.y) < 0.25) return 'Too close for a cable car.';
-  if (Sa.stock.wood < CABLE_COST) return 'A cable car needs ' + CABLE_COST + ' wood.';
+  if (!canPay(Sa, CABLE_COST)) return 'A cable car needs ' + CABLE_COST + ' wood (or tin).';
   if (!stationSpot(Sa, wxa, wza)) return 'No room for a station there.';
   return '';
 }
@@ -860,8 +1073,8 @@ function makeLink(Sa, wxa, wza, zb, wxb, wzb) {
   const err = canLink(Sa, wxa, wza, zb, wxb, wzb); if (err) { toast(err); sfx('no'); return null; }
   let Sb = zb.settled; if (!Sb) Sb = newSettlement(zb, { awaiting: true });
   const spB = stationSpot(Sb, wxb, wzb); if (!spB) { toast('No room for a station there.'); return null; }
-  const spA = stationSpot(Sa, wxa, wza); Sa.stock.wood -= CABLE_COST;
-  const l = { id: ++G.uid, a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0 };
+  const spA = stationSpot(Sa, wxa, wza); pay(Sa, CABLE_COST);
+  const l = { id: ++G.uid, how: 'cable car', a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0 };
   l.a.th = addThing(Sa, 'station', spA[0], spA[1], { link: l.id, end: 'a' }); l.b.th = addThing(Sb, 'station', spB[0], spB[1], { link: l.id, end: 'b' });
   l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l); sfx('chime'); toast('The colonists start rigging a cable car to ' + Sb.zoneName + '.', 4);
   return l;
@@ -882,7 +1095,7 @@ function linkStep(l, dt, E, quiet) {
   if (l.xfer <= 0) {
     l.xfer = 20;
     for (const [from, to, fe] of [[Sa, Sb, 'a'], [Sb, Sa, 'b']]) {
-      const want = to.awaiting ? 2 : (from.cols.length >= to.cols.length + 3 && to.cols.length < housing(to) && !to.awaiting ? 1 : 0);
+      const want = to.awaiting ? (l.gate && from.cols.length < 4 ? 0 : 2) : (from.cols.length >= to.cols.length + 3 && to.cols.length < housing(to) && !to.awaiting ? 1 : 0);
       const going = from.cols.filter((c) => c.job && c.job.type === 'cross').length;
       if (want && !going && from.cols.length >= 2) {
         const pool = from.cols.filter((c) => !c.job || !['cross'].includes(c.job.type)).sort((a, b) => b.needs.rest - a.needs.rest).slice(0, want);
@@ -920,15 +1133,487 @@ function crossStep(S, c, dt, E) { // a colonist waiting for, or riding, the cabl
   }
 }
 
+// ============ ROOM MAP: zones, tagged spots with roles, cables; saved apart from the colony ============
+// The map is the room as the colonists know it: surfaces (zones with land grids), the spots the player named (speaker, cup, warm box...)
+// and real cables between spots. The colony save refers to map zones by id. The map is versioned (v1), saved under its own key and can be exported/imported as JSON.
+const MAP_KEY = 'base-camp-map-v1', MAP_V = 1;
+const TAGS = { // what the player can call a spot; role = what the colonists make of it; rooms = the matching words in rooms.json; travel = how they get there
+  speaker: { label: 'Speaker', role: 'tower', rooms: 'speaker', travel: 'zipline' }, cup: { label: 'Cup / mug', role: 'well', rooms: 'cup', travel: 'ladder' },
+  can: { label: 'Can', role: 'silo', rooms: 'can', travel: 'ladder' }, computer: { label: 'Computer', role: 'plaza', rooms: 'computer', travel: 'cable' },
+  warm: { label: 'Warm box', role: 'forge', rooms: 'radiator', travel: 'balloon' }, shelf: { label: 'Shelf', role: 'storage', rooms: 'shelves', travel: 'cable' },
+  ledge: { label: 'Ledge', role: 'lookout', rooms: 'ledge', travel: 'pulley' }, monitor: { label: 'Monitor top', role: 'lookout', rooms: 'monitor', travel: 'zipline' },
+  drawers: { label: 'Drawers / cabinet top', role: 'workshop', rooms: 'drawers', travel: 'ladder' }, floor: { label: 'Floor', role: 'farm', rooms: 'floor', travel: 'ladder' },
+  door: { label: 'Door / window', role: 'solar', rooms: 'windowsill', travel: 'pulley' }, radiator: { label: 'Radiator', role: 'forge', rooms: 'radiator', travel: 'balloon' },
+  sofa: { label: 'Sofa', role: 'workshop', rooms: 'sofa', travel: 'tunnel' }, rug: { label: 'Rug', role: 'hideout', rooms: 'rug', travel: 'catapult' },
+  plant: { label: 'Plant', role: 'grove', rooms: 'plant', travel: 'ladder' }, desk: { label: 'Worktop / desk', role: 'market', rooms: 'worktop', travel: 'catapult' }, other: { label: 'Other', role: 'camp', rooms: 'other', travel: 'cable' },
+};
+const ROLES = { // what each role is called, what it gives the colony (code in roleStep), its colour
+  tower: { name: 'Broadcast tower', gives: 'morale from the music', color: 0xd9483b }, well: { name: 'Water tower', gives: 'fresh water', color: 0x4aa8e8 }, silo: { name: 'Tin silo', gives: 'room for tin and food', color: 0xb9b2a6 },
+  plaza: { name: 'Town square', gives: 'happy gatherings', color: 0xf5d76e }, forge: { name: 'Forge and winter refuge', gives: 'tin, and warmth in the cold', color: 0xe8883a }, storage: { name: 'Storehouse', gives: 'room for everything', color: 0xb88655 },
+  lookout: { name: 'Lookout', gives: 'a view and good cheer', color: 0x3f8a52 }, workshop: { name: 'Workshop', gives: 'faster building', color: 0x8a5a33 }, farm: { name: 'Farmland', gives: 'one more farm, ripening faster', color: 0xf2b53a },
+  solar: { name: 'Solar farm', gives: 'sun, growth and fruit', color: 0xffd34a }, hideout: { name: 'Hideout and nursery', gives: 'more settlers, and a safe place', color: 0x6a5a7a }, grove: { name: 'Grove', gives: 'trees', color: 0x5fae4a },
+  camp: { name: 'Camp', gives: 'a place to gather', color: 0xf3e0bd }, market: { name: 'Trading post', gives: 'trade of spare food for seeds and wood', color: 0xc9552e },
+};
+const TRAVEL = { zipline: 'zip-line made of dental floss', pulley: 'pulley system using thread and a paperclip', ladder: 'rope ladder', balloon: 'hot-air balloon made from a tea bag', catapult: 'catapult launch using a bent fork tine', tunnel: 'tunnel', cable: 'cable car' };
+function roomInfo(tag) { // the council's entry for this kind of spot (first match wins; the Town Brain's come first in the file)
+  const key = ((TAGS[tag] || TAGS.other).rooms || tag).toLowerCase(), by = ROOMS.spots.filter((r) => String(r.spot).toLowerCase().includes(key));
+  return by[0] || null;
+}
+const spotRole = (sp) => ROLES[sp.role] || ROLES.camp;
+const spotUsed = (sp) => { const i = roomInfo(sp.tag); return i && i.used_for ? i.used_for : spotRole(sp).name; };
+const spotHow = (sp) => { const i = roomInfo(sp.tag); return (i && i.how_they_get_there) || TRAVEL[(TAGS[sp.tag] || TAGS.other).travel] || 'cable car'; };
+function zoneNameFor(Z) { return Z.name; }
+function zoneLocal(Z, wx, wz) { const dx = wx - Z.cx, dz = wz - Z.cz, c = Math.cos(Z.ang), s = Math.sin(Z.ang); return [dx * c + dz * s, -dx * s + dz * c]; }
+function zoneWorld(Z, u, v) { const c = Math.cos(Z.ang), s = Math.sin(Z.ang); return [Z.cx + u * c - v * s, Z.cz + u * s + v * c]; }
+function setZoneFrame(Z, cx, cz, ang, y) { Z.cx = cx; Z.cz = cz; Z.ang = ang; Z.y = y; if (Z.land) setLandFrame(Z.land, cx, cz, ang, y); syncZoneMesh(Z); if (Z.settled) syncTf(Z.settled); }
+function newMapZone(fz) { // a zone of the map from a freshly scanned zone
+  const Z = { id: G.nextMZ++, name: fz.name, type: fz.type, spec: fz.spec, y: fz.y, h: fz.h, cx: fz.cx, cz: fz.cz, ang: fz.ang, w: fz.w, d: fz.d, area: fz.area, color: fz.color, settled: null, land: null, label: null, core: null, f0: [fz.cx, fz.cz, fz.ang, fz.y] };
+  Z.land = landFromScan(fz); fz.mz = Z.id; G.zones.push(Z); return Z;
+}
+function zoneById(id) { return G.zones.find((z) => z.id === id); }
+function zoneOfPoint(x, y, zz) { // the zone a point belongs to: the highest zone below the point (within 6 cm for a surface itself, up to 60 cm for something standing on it)
+  let best = null;
+  for (const Z of G.zones) { if (!Z.land || Z.y > y + 0.06) continue; if (y - Z.y > 0.6) continue; const s = landState(Z, x, zz); if (s && (!best || Z.y > best.y)) best = Z; }
+  return best;
+}
+// ---- spots ----
+function addSpot(o) {
+  const T = TAGS[o.tag] || TAGS.other, Z = o.zid ? zoneById(o.zid) : zoneOfPoint(o.x, o.y, o.z);
+  const sp = { id: G.nextSpot++, tag: TAGS[o.tag] ? o.tag : 'other', name: (o.name || T.label).slice(0, 28), role: T.role, zid: Z ? Z.id : 0, x: o.x, y: o.y, z: o.z, area: o.area || 0, on: Z && o.y - Z.y > 0.03 ? 'obj' : 'top', src: o.src || 'player', who: o.who || '' };
+  G.spots.push(sp); sp.p0 = [sp.x, sp.y, sp.z]; refreshSpots(); return sp;
+}
+function removeSpot(sp) { G.spots.splice(G.spots.indexOf(sp), 1); G.cables = G.cables.filter((c) => c.a !== sp.id && c.b !== sp.id); for (const S of G.settlements) for (const t of S.things.slice()) if (t.spot === sp.id) removeThing(S, t); refreshSpots(); }
+function spotsOn(Z) { return G.spots.filter((s) => s.zid === Z.id); }
+function spotById(id) { return G.spots.find((s) => s.id === id); }
+function autoSpots() { // every zone gets a default spot, so there is always something to align on and a role to play
+  const T = { FLOOR: 'floor', TABLE: 'desk', SHELF: 'shelf', SILL: 'door', SMALL: 'other' };
+  for (const Z of G.zones) if (!G.spots.some((s) => s.zid === Z.id)) addSpot({ tag: T[Z.type] || 'other', name: Z.name.split(' – ')[0], x: Z.cx, y: Z.y, z: Z.cz, area: Z.area, zid: Z.id, src: 'default' });
+}
+function anchorFor(Z, sp) { // where on clear land a spot's landmark stands (a cup stands in clutter, so its tower stands beside it)
+  const L = Z.land; if (!L) return [sp.x, sp.z]; let k0 = landIdx(L, sp.x, sp.z), best = null, bd = 1e9;
+  if (k0 >= 0 && L.st[k0] === 1 && landEdge(L)[k0] * LC > 0.015) return [sp.x, sp.z];
+  const e = landEdge(L), [u, v] = zoneLocal(Z, sp.x, sp.z);
+  for (let k = 0; k < L.st.length; k += 2) if (L.st[k] === 1 && e[k] * LC > 0.02) { const c = landXZ(L, k), d = Math.hypot(c[0] - sp.x, c[1] - sp.z); if (d < bd) { bd = d; best = c; } }
+  return best || [sp.x, sp.z];
+}
+function syncLandmarks(S) { // a thing for every spot of the zone (with a role that has a building), kept in step with the map
+  const Z = S.zoneRef; if (!Z || S.awaiting) return;
+  const sps = spotsOn(Z).filter((s) => s.role !== 'farm' && s.role !== 'camp' && s.role !== 'grove');
+  for (const t of S.things.slice()) if (t.kind === 'lm' && !sps.some((s) => s.id === t.spot)) removeThing(S, t);
+  for (const sp of sps) {
+    let t = S.things.find((q) => q.kind === 'lm' && q.spot === sp.id); const [ax, az] = anchorFor(Z, sp), [lx, lz] = w2l(S, ax, az);
+    if (!t) { t = addThing(S, 'lm', lx, lz, { built: true, role: sp.role, spot: sp.id, rot: 0 }); t.pop = 0.6; } else { t.x = lx; t.z = lz; if (t.mesh) t.mesh.position.set(lx, 0, lz); }
+  }
+}
+// ---- spot marks in the 3D view ----
+const SPOTMARK = new THREE.Group(); world.add(SPOTMARK);
+function refreshSpots() {
+  while (SPOTMARK.children.length) { const c = SPOTMARK.children.pop(); SPOTMARK.remove(c); if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } if (c.geometry) c.geometry.dispose(); }
+  if (G.cables) for (const cb of G.cables) {
+    const a = spotById(cb.a), b = spotById(cb.b); if (!a || !b) continue;
+    const pts = [new THREE.Vector3(a.x, a.y + 0.05, a.z), new THREE.Vector3(b.x, b.y + 0.05, b.z)]; const lg = new THREE.BufferGeometry().setFromPoints(pts);
+    const ln = new THREE.Line(lg, new THREE.LineBasicMaterial({ color: 0xffe08a })); ln.renderOrder = 6; SPOTMARK.add(ln);
+  }
+  if (!(G.phase === 'tag' || G.phase === 'align' || G.phase === 'zones' || G.phase === 'scan')) return;
+  for (const sp of G.spots) {
+    if (sp.src === 'default' && G.phase !== 'align') continue;
+    const s = labelSprite(sp.name, spotRole(sp).color); s.scale.set(0.2, 0.0375, 1); s.position.set(sp.x, sp.y + 0.07, sp.z); s.userData.spot = sp.id; SPOTMARK.add(s);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, 0.06, 5).translate(0, 0.03, 0), new THREE.MeshBasicMaterial({ color: spotRole(sp).color })); pole.position.set(sp.x, sp.y, sp.z); SPOTMARK.add(pole);
+  }
+}
+// ---- cables between spots: ready-made zip lines ----
+function addCable(a, b) {
+  if (a === b || G.cables.some((c) => (c.a === a && c.b === b) || (c.a === b && c.b === a))) return null;
+  const cb = { id: G.nextCable++, a, b }; G.cables.push(cb); refreshSpots(); return cb;
+}
+function syncCables() { // for every marked cable with a settled end: a ready cable car between the two zones' settlements
+  for (const cb of G.cables) {
+    if (G.links.some((l) => l.cid === cb.id)) continue;
+    const A = spotById(cb.a), B = spotById(cb.b); if (!A || !B) continue; const ZA = zoneById(A.zid), ZB = zoneById(B.zid); if (!ZA || !ZB || ZA === ZB) continue;
+    let Sa = ZA.settled, Sb = ZB.settled; if (!Sa && !Sb) continue;
+    if (!Sa) { Sa = ZB.settled; Sb = null; }
+    const first = Sa === ZA.settled ? A : B, second = first === A ? B : A, Zs = zoneById(second.zid); if (Sa.awaiting) continue;
+    if (!Sb) Sb = newSettlement(Zs, { awaiting: true });
+    const [ax, az] = anchorFor(Sa.zoneRef, first), [bx, bz] = anchorFor(Sb.zoneRef, second), [alx, alz] = w2l(Sa, ax, az), [blx, blz] = w2l(Sb, bx, bz);
+    const l = { id: ++G.uid, cid: cb.id, a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 1, ready: true, gate: true, how: spotHow(second), g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
+    l.a.th = addThing(Sa, 'station', alx, alz, { link: l.id, end: 'a' }); l.b.th = addThing(Sb, 'station', blx, blz, { link: l.id, end: 'b' });
+    l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l);
+  }
+}
+// ---- saving the map ----
+function mapToJSON() {
+  return { v: MAP_V, kind: 'base-camp-room-map', name: G.mapName || 'My room', saved: Date.now(), build: BUILD, nextMZ: G.nextMZ, nextSpot: G.nextSpot, nextCable: G.nextCable, music: !!G.music,
+    zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost,
+      land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht) } : null }; }),
+    spots: G.spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
+    cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id) };
+}
+function mapFromJSON(d) { // returns an error string, or '' after loading it into G
+  if (!d || typeof d !== 'object' || d.kind !== 'base-camp-room-map') return 'This is not a Base Camp room map.';
+  if (d.v !== MAP_V) return 'This room map is version ' + d.v + '; this game reads version ' + MAP_V + '.';
+  if (!Array.isArray(d.zones) || !Array.isArray(d.spots)) return 'The room map is missing its zones or spots.';
+  const zones = [];
+  for (const q of d.zones) {
+    if (!q || typeof q.id !== 'number' || !q.land || !(q.land.w > 0) || !(q.land.h > 0) || q.land.w * q.land.h > 600000) return 'A zone in the map is damaged.';
+    const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), edge: null, edgeVer: -1, objs: [], ver: 0 };
+    setLandFrame(L, +q.cx, +q.cz, +q.ang, +q.y);
+    const Z = { id: q.id, name: String(q.name || 'Zone'), type: ZTYPES[q.type] ? q.type : 'TABLE', spec: q.spec, y: +q.y, h: +q.h || 0, cx: +q.cx, cz: +q.cz, ang: +q.ang, w: +q.w || 0, d: +q.d || 0, area: +q.area || 0, color: q.color || ZPAL[(q.id - 1) % ZPAL.length], settled: null, land: L, label: null, core: null, lost: !!q.lost };
+    L.objs = landComps(L, (k) => L.st[k] === 2, 3); Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; zones.push(Z);
+  }
+  G.zones = zones; G.nextMZ = d.nextMZ || Math.max(0, ...zones.map((z) => z.id)) + 1; G.nextSpot = d.nextSpot || 1; G.nextCable = d.nextCable || 1; G.mapName = d.name || 'My room'; G.music = !!d.music;
+  G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
+  for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
+  G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
+  return '';
+}
+function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); store.set(MAP_KEY, JSON.stringify(mapToJSON())); }
+function loadMapData() { try { const d = JSON.parse(store.get(MAP_KEY) || 'null'); return d && d.kind === 'base-camp-room-map' ? d : null; } catch (e) { return null; } }
+function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
+  const player = G.spots.filter((s) => s.src !== 'default' && s.area < 0.5), pool = player.length >= 2 ? player : G.spots.filter((s) => s.area < 1.5).length >= 2 ? G.spots.filter((s) => s.area < 1.5) : G.spots;
+  let best = null, bd = -1; for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) { const d = Math.hypot(pool[i].x - pool[j].x, pool[i].z - pool[j].z) + 0.5 * Math.abs(pool[i].y - pool[j].y); if (d > bd) { bd = d; best = [pool[i], pool[j]]; } }
+  return best || pool.slice(0, 1);
+}
+// ---- picking real surfaces (zones and small tops) for tagging and for aligning ----
+function bandComponent(b, k0) { // the connected patch of a band under a tapped cell
+  const seen = new Set([k0]), st = [k0]; let sx = 0, sz = 0, n = 0;
+  while (st.length && n < 40000) { const k = st.pop(); n++; const [x, z] = gXZ(k); sx += x; sz += z; const i = k % GN, j = (k / GN) | 0; for (const q of [i > 0 ? k - 1 : -1, i < GN - 1 ? k + 1 : -1, j > 0 ? k - GN : -1, j < GN - 1 ? k + GN : -1]) if (q >= 0 && b.g[q] && !seen.has(q)) { seen.add(q); st.push(q); } }
+  return { n, area: n * CELL * CELL, x: sx / n, z: sz / n, y: b.y };
+}
+function surfacePick(cx, cy) { // the nearest scanned surface (any band, also the tops of cans and cups) under a screen point
+  const r = rayAt(cx, cy); let best = null;
+  for (const b of SCAN.bands) {
+    if (Math.abs(r.d.y) < 1e-4) continue; const t = (b.y - r.o.y) / r.d.y; if (t <= 0 || (best && t > best.t)) continue;
+    const x = r.o.x + r.d.x * t, zz = r.o.z + r.d.z * t; let k = gIdx(x, zz); if (k < 0) continue;
+    if (!b.g[k]) { let f = -1; for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) { const q = k + dz * GN + dx; if (q >= 0 && q < b.g.length && b.g[q]) { f = q; break; } } if (f < 0) continue; k = f; }
+    best = { band: b, k, x, z: zz, y: b.y, t };
+  }
+  if (best) { const c = bandComponent(best.band, best.k); best.comp = c; best.px = c.area < 0.25 ? c.x : best.x; best.pz = c.area < 0.25 ? c.z : best.z; }
+  return best;
+}
+
+// ============ THE GIANT, TIDINESS AND CHANGE: what a new scan tells the colony ============
+// A new scan is compared with the saved map. Surfaces and spots are SAME, MOVED ("Did the cup move here?"), GONE (the colonists flee and ask for help)
+// or NEW (an expedition is requested). Inside each surface, objects that vanished are gifts (new land, tin from cans, cardboard from boxes), objects that
+// appeared on top of buildings squash them, and every disturbed cell is remembered so the colonists stop building where the Giant keeps working.
+const DIARY = { on: false, lines: [], found: [], seen: {} };
+function diary(text, by, key) { if (key) { if (DIARY.seen[key]) return; DIARY.seen[key] = 1; } DIARY.lines.push({ text, by: by || '' }); if (DIARY.lines.length > 80) DIARY.lines.shift(); }
+const GIANT_WORD = { can: ['CAN', 'TIN'], cup: ['CUP', 'MUG'], box: ['BOX', 'PARCEL'], big: ['LUMP', 'THING'] };
+function objWord(o) { const c = objClass(o); if (c === 'can') return o.h < 0.09 ? 'CUP' : 'CAN'; return GIANT_WORD[c][0]; }
+function personOf(S, seed) { return S && S.cols.length ? S.cols[Math.floor(hash01(String(seed), 7) * S.cols.length)] : null; }
+function nameNear(x, z, rad) { let b = null, bd = rad; for (const s of G.spots) { if (s.src === 'default') continue; const d = Math.hypot(s.x - x, s.z - z); if (d < bd) { bd = d; b = s; } } return b; }
+function lineOf(c, kind) { const t = c && c.temper; return t ? (kind === 'panic' ? t.says_when_it_panics : t.says_when_happy) : ''; }
+function sayQuote(c, kind) { const l = lineOf(c, kind); return l ? ' “' + String(l).replace(/^[’'‘]+|[’'‘]+$/g, '') + '”' : ''; }
+function creatureBy(c) { return c && c.temper ? c.temper.by : ''; }
+function overlapFrac(Z, fz) { // how much of a map zone's land lies on a fresh scan zone
+  const L = Z.land; let n = 0, h = 0;
+  for (let k = 0; k < L.st.length; k += 3) if (L.st[k]) { n++; const [x, zz] = landXZ(L, k), g = gIdx(x, zz); if (g >= 0 && fz.band.lab[g] === fz.id) h++; }
+  return n ? h / n : 0;
+}
+function coveredAt(x, zz, rad) { // did this scan see any surface near this point, at any height
+  for (const b of SCAN.bands) for (let dx = -rad; dx <= rad; dx += CELL * 3) for (let dz = -rad; dz <= rad; dz += CELL * 3) { const g = gIdx(x + dx, zz + dz); if (g >= 0 && b.g[g]) return true; }
+  return false;
+}
+// ---- the scan -> map step: runs when the player taps Done scanning (first time, a rescan, or after aligning on return) ----
+function captureScan() {
+  extractZones(); if (!SCAN.zones.length) return null;
+  markBumps();
+  const rep = { first: !G.zones.length, same: [], moved: [], gone: [], fresh: [], removed: [], placed: [], squashed: [], asks: [], lines: [] };
+  const claimed = new Set();
+  for (const fz of SCAN.zones) { const Z = fz.mz ? zoneById(fz.mz) : null; if (Z && !claimed.has(Z.id)) { claimed.add(Z.id); Z.fz = fz; } else fz.mz = 0; }
+  for (const fz of SCAN.zones) if (!fz.mz) {
+    let bz = null, bf = 0.2; for (const q of G.zones) { if (claimed.has(q.id) || Math.abs(q.y - fz.y) > 0.06 || !q.land) continue; const f = overlapFrac(q, fz); if (f > bf) { bf = f; bz = q; } }
+    if (bz) { claimed.add(bz.id); fz.mz = bz.id; bz.fz = fz; }
+  }
+  // fresh zones that overlap nothing on the map: moved things or new land
+  const loose = SCAN.zones.filter((fz) => !fz.mz && !G.zones.some((q) => q.land && Math.abs(q.y - fz.y) < 0.06 && overlapFrac(q, fz) > 0.3));
+  for (const fz of SCAN.zones) if (!fz.mz && !loose.includes(fz)) fz.mz = -1; // part of an unmatched map zone's area: ignore
+  const lostZ = [];
+  for (const Z of G.zones) if (!claimed.has(Z.id) && !Z.lost && Z.land) { // not seen today
+    const small = Z.area < 0.4 || Z.type === 'SMALL'; if (!small || !coveredAt(Z.cx, Z.cz, 0.12)) continue; // not scanned there today: carry on as before
+    let cand = null, cd = 1.3; for (const fz of loose) { const r = fz.area / Math.max(0.01, Z.area); if (Math.abs(fz.y - Z.y) < 0.045 && r > 0.55 && r < 1.8) { const d = Math.hypot(fz.cx - Z.cx, fz.cz - Z.cz); if (d < cd) { cd = d; cand = fz; } } }
+    if (cand) { loose.splice(loose.indexOf(cand), 1); rep.asks.push({ Z, fz: cand, kind: 'moved' }); } else lostZ.push(Z);
+  }
+  for (const fz of loose) { if (fz.mz) continue; const Z = newMapZone(fz); claimed.add(Z.id); Z.fz = fz; rep.fresh.push(Z); }
+  for (const Z of lostZ) rep.gone.push(Z);
+  // reconcile the land of every zone the scan saw
+  for (const Z of G.zones) {
+    if (!claimed.has(Z.id) || !Z.land) continue;
+    const m = measureLand(Z.land), first = rep.fresh.includes(Z) || !Z.land.st.some((v) => v);
+    const ev = reconcileLand(Z.land, m, first); Z.lost = false; Z.fz = null;
+    if (!first) { rep.same.push(Z); for (const o of ev.removed) rep.removed.push({ Z, o }); for (const o of ev.placed) rep.placed.push({ Z, o }); }
+  }
+  // spots standing on objects that went away: did the thing move?
+  for (const r of rep.removed.slice()) {
+    const sps = G.spots.filter((s) => s.zid === r.Z.id && s.on === 'obj' && r.o.cells.some((k) => { const c = landXZ(r.Z.land, k); return Math.hypot(c[0] - s.x, c[1] - s.z) < 0.05; }));
+    for (const sp of sps) {
+      const cand = rep.placed.find((p) => !p.taken && p.Z === r.Z && p.o.area / r.o.area > 0.55 && p.o.area / r.o.area < 1.8 && Math.hypot(p.o.x - r.o.x, p.o.z - r.o.z) < 1.5);
+      if (cand) { cand.taken = true; r.taken = true; rep.asks.push({ spot: sp, to: cand, rem: r, kind: 'spot' }); } else { r.spotGone = sp; }
+    }
+  }
+  return rep;
+}
+// ---- what the colony does about it ----
+function applyChanges(rep) {
+  if (!rep || rep.first) return rep;
+  const L = rep.lines;
+  const giant = (t, by) => { L.push({ text: t, by: by || '' }); };
+  for (const Z of rep.same) { const S = Z.settled; if (S && !S.awaiting) S.fx = null; }
+  // tidying: objects taken away are gifts
+  for (const r of rep.removed) {
+    if (r.taken) continue;
+    const Z = r.Z, o = r.o, cls = objClass(o), S = Z.settled || G.settlements.filter((q) => q.placed && !q.awaiting).sort((a, b) => b.cols.length - a.cols.length)[0];
+    const near = nameNear(o.x, o.z, 0.2), place = near ? near.name : Z.name.split(' – ')[0];
+    if (r.spotGone) { const w = r.spotGone.name; removeSpot(r.spotGone); giant('The ' + w + ' is gone from where the Giant kept it. The colonists tidy up its little town.'); }
+    G.tidy.cleared += o.area; G.tidy.objects++;
+    if (!S) { giant('New land! The ' + place + ' is clear!'); continue; }
+    const gift = cls === 'can' ? { tin: 3 } : cls === 'box' ? { wood: 4, seeds: 1 } : { wood: 6, seeds: 2, tin: 1 };
+    for (const k in gift) S.stock[k] = (S.stock[k] || 0) + gift[k];
+    S.stats.recycled += cls === 'can' ? 1 : 0; G.tidy.tin += gift.tin || 0;
+    const lead = personOf(S, 'tidy' + o.cells[0]);
+    giant('New land! The ' + place + ' is clear! ' + (cls === 'can' ? (lead ? lead.name + ' flattens the can into roof tiles (+3 tin).' : 'The can is flattened into roof tiles (+3 tin).') : cls === 'box' ? 'The cardboard becomes a pile of planks (+4 wood).' : 'A whole new stretch of land (+6 wood).') + sayQuote(lead, 'happy'), creatureBy(lead));
+    for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + 0.12);
+    if (S.cols.length < 9 && S.cols.length) { const n = Math.min(2, 1 + (o.area > 0.03 ? 1 : 0)); for (let i = 0; i < n && S.cols.length < 9; i++) { const c = addColonist(S, { x: rnd(-0.05, 0.05), z: rnd(0.04, 0.08) }); c.spawn = 0.3 * i; } G.tidy.settlers += n; }
+    if (S.placed && !DIARY.on) { const [wx, wz] = [o.x, o.z]; puff('star', wx, Z.y + 0.05, wz, 10, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); puff('log', wx, Z.y + 0.06, wz, 3, { size: 0.012, vy: 0.03, life: 1.2 }); }
+  }
+  // squashing: objects put down on buildings
+  for (const r of rep.placed) {
+    if (r.taken) continue;
+    const Z = r.Z, o = r.o, S = Z.settled; if (!S || S.awaiting) { G.tidy.placed++; continue; }
+    const set = new Set(o.cells), L2 = Z.land, hit = [];
+    for (const t of S.things.slice()) {
+      if (t.kind === 'station' || t.dead) continue; const [wx, wz] = l2w(S, t.x, t.z); let on = false;
+      for (const [dx, dz] of [[0, 0], [t.r * 0.7, 0], [-t.r * 0.7, 0], [0, t.r * 0.7], [0, -t.r * 0.7]]) { const k = landIdx(L2, wx + dx, wz + dz); if (k >= 0 && set.has(k)) { on = true; break; } }
+      if (on) hit.push(t);
+    }
+    const word = objWord(o); G.tidy.placed++;
+    for (const t of hit) {
+      const who = personOf(S, 'sq' + t.id), nm = t.kind === 'lm' ? (spotById(t.spot) ? spotById(t.spot).name : 'landmark') : (KINDS[t.kind].name || t.kind).toLowerCase();
+      const [wx, wz] = l2w(S, t.x, t.z); removeThing(S, t); G.tidy.squashed++; S.stats.squashed++;
+      const rub = addThing(S, 'rubble', ...w2l(S, wx, wz), { built: true, life: 400 }); rub.pop = 0;
+      for (const c of S.cols) { c.needs.joy = Math.max(0.05, c.needs.joy - 0.15); }
+      giant((who ? who.name + '’s ' : 'Our ') + nm + ' got squashed by a GIANT ' + word + '!' + sayQuote(who, 'panic') + ' They will rebuild somewhere else.', creatureBy(who));
+      if (S.placed && !DIARY.on) { puff('dust', wx, Z.y + 0.03, wz, 8, { size: 0.03, life: 1.1, grow: 2 }); sfx('no'); }
+    }
+    for (const c of S.cols) { const [wx, wz] = l2w(S, c.x, c.z), k = landIdx(L2, wx, wz); if (k >= 0 && set.has(k)) { const a = rescueCol(S, c); if (a && !hit.length) giant(c.name + ' had to jump clear of a GIANT ' + word + '!' + sayQuote(c, 'panic'), creatureBy(c)); } }
+    if (!hit.length && r.o.area > 0.004) giant('A GIANT ' + word + ' appeared on the ' + (nameNear(o.x, o.z, 0.25) ? nameNear(o.x, o.z, 0.25).name : Z.name.split(' – ')[0]) + '. Not on our land, thankfully. It is now a tower.');
+  }
+  // learning: places the Giant keeps disturbing
+  if (!rep.noLearn) for (const S of G.settlements) {
+    if (!S.placed || !S.zoneRef || !S.zoneRef.land || S.awaiting) continue; const Z = S.zoneRef, Ld = Z.land; let hot = null, hv = 0;
+    for (let k = 0; k < Ld.dist.length; k += 1) if (Ld.st[k] && Ld.dist[k] >= TIDY.avoidAt && Ld.calm[k] === 0 && Ld.dist[k] > hv) { hv = Ld.dist[k]; hot = k; }
+    if (hot !== null) { const c = landXZ(Ld, hot), nr = nameNear(c[0], c[1], 0.35), lead = personOf(S, 'av' + hot); giant('Don’t build ' + (nr ? 'by the ' + nr.name : 'there') + ' — the Giant keeps using it' + (nr ? ' every morning' : '') + '. The colonists will look for quieter land.' + sayQuote(lead, 'panic'), creatureBy(lead)); G.tidy.learned++; }
+    else if (G.zones.length) { /* nothing new learned */ }
+  }
+  // gone zones: refugees and a call for help
+  for (const Z of rep.gone) {
+    Z.lost = true; const S = Z.settled; if (!S) { giant('The ' + Z.name.split(' – ')[0] + ' has vanished from the map.'); continue; }
+    const other = G.settlements.find((q) => q !== S && !q.lost && !q.awaiting && q.placed !== false), who = personOf(S, 'gone');
+    giant('The ' + (nameNear(Z.cx, Z.cz, 0.3) ? nameNear(Z.cx, Z.cz, 0.3).name : Z.name.split(' – ')[0]) + ' is gone! ' + (who ? who.name + ' and ' : '') + 'the others flee' + (other ? ' to the ' + other.zoneName.split(' – ')[0] + ' and ask for help.' : ' and hide, waiting for it to come back.') + sayQuote(who, 'panic'), creatureBy(who));
+    S.lost = true; S.placed = false; S.group.visible = false;
+    if (other) { for (const c of S.cols.slice()) { S.cols.splice(S.cols.indexOf(c), 1); other.group.add(c.mesh); const a = rnd(0, 6.28); c.S = other; c.x = Math.cos(a) * 0.08; c.z = Math.sin(a) * 0.08; c.job = null; c.inside = false; c.needs.joy = Math.max(0.05, c.needs.joy - 0.25); other.cols.push(c); } G.requests.push({ id: ++G.uid, def: { id: 'refugees', icon: 'bang', text: 'Refugees! Their home vanished. Please help us feed them.', give: 'wood', joy: 0.3, cooldown: 600 }, sid: other.id, cid: other.cols[0] ? other.cols[0].id : 0, t: G.simT, who: other.cols[0] ? other.cols[0].name : '' }); reqUi(); }
+  }
+  // new land: expeditions
+  for (const Z of rep.fresh) {
+    const S = G.settlements.find((q) => q.placed && !q.awaiting && q.cols.length >= 2); const nm = Z.name.split(' – ')[0];
+    giant('New land spotted: a ' + nm + ' that was never on our map! ' + (S ? 'An expedition would like to go.' : 'Nobody is near enough to explore it yet.'));
+    if (S) { const who = personOf(S, 'exp' + Z.id); G.requests.push({ id: ++G.uid, def: { id: 'expedition', icon: 'cable', text: 'New land: ' + nm + '! May we send an expedition?', give: 'expedition', joy: 0.3, cooldown: 600, zone: Z.id }, sid: S.id, cid: who ? who.id : 0, t: G.simT, who: who ? who.name : '' }); reqUi(); }
+  }
+  syncAfterChange(rep);
+  return rep;
+}
+function rescueCol(S, c) { // a colonist caught under something: step to the nearest clear land
+  const Z = S.zoneRef, Ld = Z.land; let best = null, bd = 1e9;
+  for (let k = 0; k < Ld.st.length; k += 3) if (Ld.st[k] === 1) { const [wx, wz] = landXZ(Ld, k), [lx, lz] = w2l(S, wx, wz), d = Math.hypot(lx - c.x, lz - c.z); if (d < bd) { bd = d; best = [lx, lz]; } }
+  if (best) { c.x = best[0]; c.z = best[1]; c.job = null; c.needs.joy = Math.max(0.05, c.needs.joy - 0.1); return true; } return false;
+}
+function syncAfterChange(rep) {
+  for (const Z of G.zones) Z.core = null;
+  for (const S of G.settlements) { S.fx = null; if (S.zoneRef) syncLandmarks(S); }
+  for (const Z of G.zones) paintLand(Z);
+  syncCables();
+}
+// asks: "Did the cup move here?"
+function askNext() {
+  const el = $('ask'); const a = G.asks[0];
+  if (!a) { el.hidden = true; return; }
+  const nm = a.kind === 'moved' ? a.Z.name.split(' – ')[0] : a.spot.name, tag = a.kind === 'moved' ? nameNear(a.Z.cx, a.Z.cz, 0.3) : a.spot;
+  a.label = (tag ? tag.name : nm); el.hidden = false;
+  el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">Did the ' + a.label.toLowerCase() + ' move here?</div><div style="font-weight:600">The colonists found something that looks like it, ' + (a.kind === 'moved' ? Math.round(Math.hypot(a.fz.cx - a.Z.cx, a.fz.cz - a.Z.cz) * 100) + ' cm' : Math.round(Math.hypot(a.to.o.x - a.spot.x, a.to.o.z - a.spot.z) * 100) + ' cm') + ' away.</div><div style="display:flex;gap:8px;justify-content:center"><button class="big alt" id="askYes">Yes, it moved</button><button id="askNo">No, that is something else</button></div>';
+  $('askYes').onclick = () => answerAsk(true); $('askNo').onclick = () => answerAsk(false);
+}
+function answerAsk(yes) {
+  const a = G.asks.shift(); if (!a) return; const L = G.report ? G.report.lines : [];
+  if (a.kind === 'moved') {
+    const Z = a.Z, fz = a.fz, S = Z.settled;
+    if (yes) {
+      const dx = fz.cx - Z.cx, dz = fz.cz - Z.cz; for (const sp of spotsOn(Z)) { sp.x += dx; sp.z += dz; sp.y += fz.y - Z.y; }
+      setZoneFrame(Z, fz.cx, fz.cz, Z.ang, fz.y); fz.mz = Z.id; const m = measureLand(Z.land); reconcileLand(Z.land, m, false); Z.lost = false;
+      const who = personOf(S, 'mv' + Z.id); G.tidy.moved++;
+      L.push({ text: 'The ' + a.label + ' moved ' + Math.round(Math.hypot(dx, dz) * 100) + ' cm! ' + (S ? 'Everyone on it held on tight and the whole colony came along.' : 'The little town on it came too.') + sayQuote(who, 'panic'), by: creatureBy(who) });
+      if (S) for (const c of S.cols) c.needs.joy = Math.max(0.05, c.needs.joy - 0.1);
+    } else { applyChanges({ gone: [Z], fresh: [], removed: [], placed: [], same: [], lines: L, noLearn: true }); const nz = newMapZone(fz); const m = measureLand(nz.land); reconcileLand(nz.land, m, true); applyChanges({ gone: [], fresh: [nz], removed: [], placed: [], same: [], lines: L, noLearn: true }); }
+  } else {
+    const sp = a.spot;
+    if (yes) { sp.x = a.to.o.x; sp.z = a.to.o.z; sp.y = a.to.Z.y + Math.max(0.03, a.to.o.h); G.tidy.moved++; L.push({ text: 'The ' + sp.name + ' moved ' + Math.round(Math.hypot(a.to.o.x - a.rem.o.x, a.to.o.z - a.rem.o.z) * 100) + ' cm. The colonists carry its little town after it.', by: '' }); }
+    else { a.rem.taken = false; a.to.taken = false; applyChanges({ gone: [], fresh: [], removed: [Object.assign({}, a.rem, { spotGone: sp })], placed: [a.to], same: [], lines: L, noLearn: true }); }
+  }
+  syncAfterChange(); refreshSpots(); saveMap();
+  if (G.asks.length) askNext(); else { $('ask').hidden = true; showReport(); }
+}
+// ---- the "what changed" card ----
+function showReport() {
+  const rep = G.report; if (!rep) return; const el = $('diary');
+  const sm = (rep.same || []).length, parts = [];
+  if (sm) parts.push(sm + ' place' + (sm > 1 ? 's' : '') + ' the same');
+  const L = rep.lines.slice(0, 10);
+  if (!L.length) L.push({ text: 'Everything is where the colonists left it. They carry on.', by: '' });
+  el.hidden = false;
+  el.innerHTML = '<div class="dh">What the colonists noticed</div>' + (parts.length ? '<div class="dsub">' + parts.join(', ') + '</div>' : '') + '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>';
+  $('dClose').onclick = () => { el.hidden = true; G.report = null; };
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// ============ ALIGNING ON RETURN: two landmarks give yaw and shift ============
+// Map -> live: p' = R(phi) p + (tx, tz), y' = y + dy. Two points give phi (the angle between the two lines) and the shift (midpoints must meet).
+// Only the frames of zones and spots change; settlements and land live in their zone's frame, so they simply follow.
+function solveAlign(a, b, a2, b2) { // a, b: saved points {x,y,z}; a2, b2: the same two things tapped in the live scan
+  const ang = (p, q) => Math.atan2(q.z - p.z, q.x - p.x), phi = ang(a2, b2) - ang(a, b), c = Math.cos(phi), s = Math.sin(phi);
+  const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, mx2 = (a2.x + b2.x) / 2, mz2 = (a2.z + b2.z) / 2;
+  const T = { phi, tx: mx2 - (mx * c - mz * s), tz: mz2 - (mx * s + mz * c), dy: ((a2.y - a.y) + (b2.y - b.y)) / 2 };
+  const ap = alignPt(T, a), bp = alignPt(T, b);
+  T.err = Math.max(Math.hypot(ap[0] - a2.x, ap[1] - a2.z), Math.hypot(bp[0] - b2.x, bp[1] - b2.z)); T.pivot = [mx, mz];
+  T.lenSaved = Math.hypot(b.x - a.x, b.z - a.z); T.lenLive = Math.hypot(b2.x - a2.x, b2.z - a2.z);
+  return T;
+}
+function alignPt(T, p) { const c = Math.cos(T.phi), s = Math.sin(T.phi); return [p.x * c - p.z * s + T.tx, p.x * s + p.z * c + T.tz]; }
+function applyAlign(T) { // frames are always computed from the saved ones (f0, p0), so it can be changed again and again
+  G.align = T; const c = Math.cos(T.phi), s = Math.sin(T.phi);
+  for (const Z of G.zones) { const [f0x, f0z, fa, fy] = Z.f0; setZoneFrame(Z, f0x * c - f0z * s + T.tx, f0x * s + f0z * c + T.tz, fa + T.phi, fy + T.dy); }
+  for (const sp of G.spots) { const [px, py, pz] = sp.p0; sp.x = px * c - pz * s + T.tx; sp.z = px * s + pz * c + T.tz; sp.y = py + T.dy; }
+  for (const S of G.settlements) if (S.zoneRef) syncTf(S);
+  for (const Z of G.zones) syncZoneMesh(Z);
+  refreshSpots();
+}
+function nudgeAlign(dx, dz, dphi) { // fine-tune around the landmark midpoint
+  const T = Object.assign({}, G.align), c0 = Math.cos(T.phi), s0 = Math.sin(T.phi), pv = T.pivot || [0, 0];
+  const mx = pv[0] * c0 - pv[1] * s0 + T.tx + dx, mz = pv[0] * s0 + pv[1] * c0 + T.tz + dz; T.phi += dphi; const c = Math.cos(T.phi), s = Math.sin(T.phi);
+  T.tx = mx - (pv[0] * c - pv[1] * s); T.tz = mz - (pv[0] * s + pv[1] * c); applyAlign(T);
+}
+function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; G.align = null; }
+
+// ============ AWAY: the colony keeps going on the saved map (up to 24 hours, coarse steps) ============
+const AWAY_MAX = 24 * 3600;
+const AWAYE = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.5, away: true, hour: 12, daylight: 1 };
+function envForHour(E, h) { // an ordinary day: sun between sunrise and sunset, no weather
+  const day = smooth(ENV.sunrise - 0.5, ENV.sunrise + 0.5, h) * (1 - smooth(ENV.sunset - 0.5, ENV.sunset + 0.5, h));
+  E.night = day < 0.25; E.grow = day * 0.8; E.hour = h; E.daylight = day; return E;
+}
+const BUILD_KINDS = ['hut', 'farm', 'well', 'lookout'];
+function snapColony() {
+  return G.settlements.filter((S) => !S.lost).map((S) => ({ id: S.id, name: S.zoneName, names: new Set(S.cols.map((c) => c.name)), kinds: BUILD_KINDS.map((k) => S.things.filter((t) => t.kind === k && t.built).length), trees: S.things.filter((t) => t.kind === 'tree' && t.g >= 1).length, seeds: kindCount(S, 'tree'), stats: Object.assign({}, S.stats), stock: Object.assign({}, S.stock), thr: S.thriving, pop: S.cols.length }));
+}
+function fmtList(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+function awayEvents(step, h) {
+  if (Math.random() > step / 3600 / 3.5) return;
+  const act = G.settlements.filter((S) => !S.lost && S.cols.length && !S.awaiting); if (!act.length) return;
+  const evs = COLONY_ALMANAC.events.filter((e) => { const [a, b] = e.hours || [0, 24]; return h >= a && h < b && e.needs !== 'rain'; }); if (!evs.length) return;
+  const ev = pick(evs), S = pick(act), f = ev.effect || {};
+  if (f.joy) for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + f.joy); if (f.seeds) S.stock.seeds += f.seeds; if (f.wood) S.stock.wood += f.wood; if (f.food) S.stock.food += f.food;
+  diary((ev.title ? ev.title + ': ' : '') + ev.text + (ev.say ? ' “' + ev.say + '”' : ''), ev.by, 'ev' + (ev.id || ev.text));
+}
+function autoExpand() { // thriving colonies send settlers on to unsettled spots, the way the room's roles suggest
+  for (const S of G.settlements.slice()) {
+    if (S.lost || S.awaiting || !S.thriving || !canPay(S, CABLE_COST) || G.links.some((l) => (l.a.sid === S.id || l.b.sid === S.id) && !l.ready)) continue;
+    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && Z.land && Z.area > 0.04 && Z !== S.zoneRef); if (!cands.length) continue;
+    cands.sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
+    const Zt = cands[0]; ensureDist(Zt); ensureDist(S.zoneRef);
+    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
+  }
+}
+function awaySim(secs, startHour) {
+  const t0 = performance.now(), capped = secs > AWAY_MAX; secs = clamp(secs, 0, AWAY_MAX); const step = clamp(secs / 1500, 20, 60);
+  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; const before = snapColony(); let nights = 0, prev = false, steps = 0;
+  for (let t = 0; t < secs; t += step) {
+    const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
+    for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
+    for (const l of G.links) linkStep(l, step, AWAYE, true);
+    G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
+  }
+  for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
+  DIARY.on = false;
+  const lines = awaySummary(before, snapColony(), secs, nights, capped);
+  return { secs, ms: performance.now() - t0, steps, lines, nights };
+}
+function awaySummary(a, b, secs, nights, capped) {
+  const L = [], add = (text, by) => L.push({ text, by: by || '' }), find = (id) => b.find((q) => q.id === id);
+  const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
+  const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
+  add('The Giant was away for ' + fmtAway(secs) + (capped ? ' (the colonists only kept a diary of the first day)' : '') + '. ' + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  const arrived = [], built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
+  for (const q of b) {
+    const p = a.find((x) => x.id === q.id); if (!p) { arrived.push(...q.names); continue; }
+    for (const n of q.names) if (!p.names.has(n)) arrived.push(n);
+    for (let i = 0; i < 4; i++) built[i] += q.kinds[i] - p.kinds[i];
+    trees.n += q.trees - p.trees; for (const k in st) st[k] += (q.stats[k] || 0) - (p.stats[k] || 0); if (q.thr && !p.thr) startedThr++;
+  }
+  if (arrived.length) { const c = cols.find((q) => q.name === arrived[0]); add(plural(arrived.length, 'new settler') + ' moved in: ' + fmtList(arrived.slice(0, 4)) + (arrived.length > 4 ? ' and others' : '') + '.' + sayQuote(c, 'happy'), creatureBy(c)); }
+  const bl = []; ['hut', 'farm', 'well', 'lookout'].forEach((k, i) => { if (built[i] > 0) bl.push(plural(built[i], k)); });
+  if (bl.length) add('They built ' + fmtList(bl) + (bl.length ? '.' : ''));
+  if (trees.n > 0) add(plural(trees.n, 'tree') + ' grew up' + (st.food > 0 ? ' and the solar farm brought in ' + plural(st.food, 'harvest') : '') + '.');
+  for (const S of G.settlements) {
+    if (S.lost) continue; const q = find(S.id), p = a.find((x) => x.id === S.id); if (!q || !p) continue;
+    const fx = fxOf(S), who = lead('r' + S.id), name = (role) => { const sp = spotsOn(S.zoneRef).find((s) => s.role === role && s.src !== 'default') || spotsOn(S.zoneRef).find((s) => s.role === role); return sp ? sp.name : null; };
+    if (fx.forge && (q.stats.tin - p.stats.tin) > 0) add('The ' + (name('forge') || 'warm box') + ' forge made ' + plural(q.stats.tin - p.stats.tin, 'tin') + ' of metal for roofs.');
+    if (fx.tower && G.music && (q.stats.concert - p.stats.concert) > 0) add('The ' + (name('tower') || 'speaker') + ' broadcast tower played for ' + fmtAway(q.stats.concert - p.stats.concert) + '. Everyone danced; the dishes did not survive.');
+    else if (fx.tower) add('The ' + (name('tower') || 'speaker') + ' broadcast tower stood silent and watched over the room. The colonists sat on top and enjoyed the view.');
+    if (fx.market && (q.stats.trade - p.stats.trade) > 0) add('Trade at the ' + (name('market') || 'worktop') + ' market: ' + plural(q.stats.trade - p.stats.trade, 'deal') + ', mostly paid in crumbs.');
+    if (fx.hideout && q.pop > p.pop) add('The ' + (name('hideout') || 'rug') + ' nursery was busy; ' + plural(q.pop - p.pop, 'new settler') + ' there.');
+  }
+  for (const f of DIARY.found.slice(0, 2)) add((f.who ? f.who.name + '’s party' : 'A party') + ' travelled from the ' + f.from.zoneName.split(' – ')[0] + ' to the ' + (f.spot ? f.spot.name : f.to.name.split(' – ')[0]) + ' by ' + (/^(a|an|the)\b/i.test(f.how) ? f.how : 'a ' + f.how) + ' and started a new colony.', f.who ? creatureBy(f.who) : '');
+  for (const e of DIARY.lines.slice(0, 2)) L.push(e);
+  const fs = G.spots.filter((s) => roomInfo(s.tag) && roomInfo(s.tag).funny_thing && G.settlements.some((S) => S.zoneRef && S.zoneRef.id === s.zid));
+  if (fs.length) { const sp = fs[Math.floor(hash01('fun' + Math.round(secs / 600), 5) * fs.length)], info = roomInfo(sp.tag); add('At the ' + sp.name + ': ' + String(info.funny_thing).replace(/^./, (m) => m.toLowerCase()).replace(/\.$/, '') + '.', info.by); }
+  const trouble = G.settlements.find((S) => !S.lost && S.cols.length && S.stock.water < 1 && !built_(S, 'well'));
+  if (trouble) add('The ' + trouble.zoneName.split(' – ')[0] + ' colonists ran short of water and wished the Giant would come back.');
+  const dreamer = cols.find((c) => c.dream); if (dreamer && L.length < 8) add(dreamer.name + ' spent the evening thinking about a dream: ' + String(dreamer.dream).replace(/^./, (m) => m.toLowerCase()) + (/[.!]$/.test(dreamer.dream) ? '' : '.'), dreamer.by);
+  const gl = lead('panic'); if (gl && L.length < 6) add(gl.name + ' watched the door for the Giant.' + sayQuote(gl, 'happy'), creatureBy(gl));
+  while (L.length < 5) add(pick(['A quiet stretch: seeds sprouting, kettles cooling, dust settling.', 'Nothing dramatic happened. The colonists consider this a triumph.', 'The room was very large and very quiet. They liked it.']));
+  return L.slice(0, 10);
+}
+const built_ = (S, k) => built(S, k);
+function showAway(res) {
+  const el = $('diary'); el.hidden = false;
+  el.innerHTML = '<div class="dh">While you were away</div><ul>' + res.lines.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">' + (G.phase === 'play' ? 'Back to the colony' : 'Now let us find our way around the room') + '</button>';
+  $('dClose').onclick = () => { el.hidden = true; if (G.afterAway) { const f = G.afterAway; G.afterAway = null; f(); } };
+}
+function fxOf(S) { // what the room's spots give this colony
+  const fx = { n: 0 }; const Z = S.zoneRef; if (!Z) return fx;
+  for (const sp of spotsOn(Z)) { fx[sp.role] = (fx[sp.role] || 0) + 1; fx.n++; }
+  return fx;
+}
+function roleStep(S, dt, E, quiet) {
+  const fx = S.fx || (S.fx = fxOf(S)), st = S.stats; if (!fx.n) return;
+  const cap = 24 + 24 * (fx.storage || 0) + 12 * (fx.silo || 0);
+  if (fx.forge) { st.tinAcc += dt / 600 * fx.forge; while (st.tinAcc >= 1) { st.tinAcc--; S.stock.tin++; st.tin++; } }
+  if (fx.solar && E.grow > 0) { st.foodAcc += dt / 900 * fx.solar * E.grow; while (st.foodAcc >= 1) { st.foodAcc--; S.stock.food++; st.food++; } }
+  if (fx.tower && G.music) { st.concert += dt; for (const c of S.cols) c.needs.joy = Math.min(0.95, c.needs.joy + dt / 500); if (!quiet) S.shake = 1; }
+  if (fx.plaza || fx.lookout) for (const c of S.cols) c.needs.joy = Math.min(0.95, c.needs.joy + dt / 1500);
+  if (fx.well) S.stock.water = Math.min(8, S.stock.water + dt / 50);
+  if (fx.market && S.stock.food >= 8) { st.tradeAcc += dt / 1200; while (st.tradeAcc >= 1 && S.stock.food >= 8) { st.tradeAcc--; S.stock.food -= 3; S.stock.seeds++; S.stock.wood++; st.trade++; } }
+  for (const k of ['wood', 'food', 'tin']) if (S.stock[k] > cap) S.stock[k] = cap;
+}
+
 // ============ visuals: things and colonists animate ============
 function visuals(dt, time) {
   const night = ENV.night;
   M(0xffe9a8, 0xffcc66).emissiveIntensity = night ? 1.6 : 0.15;
   for (const S of G.settlements) {
     if (!S.placed) { S.group.visible = false; continue; } S.group.visible = true;
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * (G.music ? 0 : 0.7));
     for (const t of S.things) {
       const m = t.mesh, K = KINDS[t.kind];
       m.visible = !t.hold;
+      if (t.kind === 'lm' && t.role === 'tower') { if (G.music && S.fx && S.fx.tower) S.shake = 1; m.rotation.z = S.shake > 0 ? Math.sin(time * 38) * 0.07 * S.shake : 0; if (S.shake > 0 && Math.random() < dt * 4) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.085, wz, 1, { size: 0.01, vy: 0.03, life: 0.9, add: true, jit: 0.02 }); } }
       if (t.pop > 0) m.scale.setScalar(1 + Math.sin(Math.min(1, t.pop) * 3.14) * 0.22); else if (m.scale.x !== 1 && K.work === 0 || t.built) { if (t.kind !== 'tree') m.scale.set(1, 1, 1); }
       if (t.kind === 'tree') { setTreeG(m, t.g, t.yield > 0); const sw = (ENV.windy ? 0.08 : 0.025); m.rotation.z = Math.sin(time * 1.3 + t.id) * sw * smooth(0.3, 1, t.g); m.scale.setScalar(t.pop > 0 ? 1 + t.pop * 0.3 : 1); }
       else if (t.kind === 'farm') setFarmG(m, t.g);
@@ -958,7 +1643,7 @@ function visuals(dt, time) {
   for (const l of G.links) linkVisual(l, time);
 }
 function linkVisual(l, time) {
-  const ends = linkEnds(l); if (!ends) { l.group.visible = false; return; } l.group.visible = true;
+  const ends = linkEnds(l); if (!ends || !ends[2].placed || !ends[3].placed) { l.group.visible = false; return; } l.group.visible = true;
   const [A, B] = ends, key = A.toArray().map((v) => Math.round(v * 500)).join(',') + B.toArray().map((v) => Math.round(v * 500)).join(',') + Math.round(l.prog * 12);
   if (key !== l.key) {
     l.key = key; if (l.cable) { l.group.remove(l.cable); l.cable.geometry.dispose(); }
@@ -972,69 +1657,57 @@ function linkVisual(l, time) {
   l.glow.material.opacity = ENV.night ? 0.8 : 0;
 }
 
-// ============ save / load / re-place ============
-const SAVE_KEY = 'base-camp-save-v1';
+// ============ save / load / return ============
+// The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
+// so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
+const SAVE_KEY = 'base-camp-save-v2';
+const colSave = (c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.x, z: c.z, needs: c.needs });
 function serialize() {
+  const hr = new Date(); 
   return {
-    v: 1, t: Date.now(), simT: G.simT, uid: G.uid, nameIdx: G.nameIdx,
-    settlements: G.settlements.filter((S) => !S.dead).map((S) => ({ id: S.id, zoneType: S.zoneType, zoneName: S.zoneName, area: S.zoneRef ? S.zoneRef.area : 0, w: S.zoneRef ? S.zoneRef.w : 0, d: S.zoneRef ? S.zoneRef.d : 0, spec: S.spec, adj: S.adj, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, born: S.born, helped: S.helped,
-      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end })),
-      cols: S.cols.map((c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, hue: c.hue, x: c.x, z: c.z, needs: c.needs })).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map((c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, hue: c.hue, x: c.x, z: c.z, needs: c.needs }))) })),
-    links: G.links.map((l) => ({ id: l.id, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
+    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy,
+    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
+      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich })),
+      cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })),
+    links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
 }
-function saveNow() { if (!G.settlements.length && !G.pending.length) return; const d = serialize(); for (const p of G.pending) d.settlements.push(p); store.set(SAVE_KEY, JSON.stringify(d)); }
-function loadSave() { try { const d = JSON.parse(store.get(SAVE_KEY) || 'null'); return d && d.v === 1 && d.settlements && d.settlements.length ? d : null; } catch (e) { return null; } }
-function restoreSettlement(d, zone, saveT) {
-  ensureDist(zone);
-  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: d.adj || 0, tf: { x: zone.core[0], z: zone.core[1], y: zone.y, yaw: -zone.ang + (d.adj || 0) }, stock: d.stock, things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: true, thriving: d.thriving, awaiting: d.awaiting, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, saved: d, saveT };
-  world.add(S.group); applyTf(S); zone.settled = S; G.settlements.push(S);
-  for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt }); if (t.kind === 'tent') S.tent = th; }
-  for (const c of d.cols) { const q = addColonist(S, c); q.x = c.x; q.z = c.z; q.needs = c.needs; }
+function saveNow() { if (!G.settlements.length) return; store.set(SAVE_KEY, JSON.stringify(serialize())); }
+function loadSave() { try { const d = JSON.parse(store.get(SAVE_KEY) || 'null'); return d && d.v === 2 && d.settlements && d.settlements.length ? d : null; } catch (e) { return null; } }
+function restoreSettlement(d) {
+  const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
+  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
+  for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich }); if (t.kind === 'tent') S.tent = th; }
+  for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
+  if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
 }
-function catchUp(S, secs) {
-  const before = { pop: S.cols.length, trees: S.things.filter((t) => t.kind === 'tree' && t.g >= 1).length, blds: S.things.filter((t) => t.built && ['hut', 'well', 'farm', 'lookout'].includes(t.kind)).length, seeds: kindCount(S, 'tree') };
-  secs = Math.min(secs, 90 * 60);
-  for (let t = 0; t < secs; t += 5) simSettlement(S, 5, CATCH, true);
-  for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.mesh.visible = true; } for (const t of S.things) t.workers = 0;
-  return { secs, pop: S.cols.length - before.pop, trees: S.things.filter((t) => t.kind === 'tree' && t.g >= 1).length - before.trees, blds: S.things.filter((t) => t.built && ['hut', 'well', 'farm', 'lookout'].includes(t.kind)).length - before.blds, planted: kindCount(S, 'tree') - before.seeds };
-}
 function fmtAway(s) { const m = Math.round(s / 60); return m < 90 ? m + ' min' : (m / 60).toFixed(1) + ' h'; }
-function restoreLinks() { // links whose two settlements are both placed
-  const sv = G.savedLinks || [];
-  for (const L of sv.slice()) {
+function restoreLinks(sv) { // saved cable cars between settlements that exist again
+  for (const L of sv) {
     const Sa = G.settlements.find((s) => s.id === L.a.sid), Sb = G.settlements.find((s) => s.id === L.b.sid);
-    if (!Sa || !Sb) continue;
-    const ta = Sa.things.find((t) => t.id === L.a.tid), tb = Sb.things.find((t) => t.id === L.b.tid); if (!ta || !tb) { sv.splice(sv.indexOf(L), 1); continue; }
-    const l = { id: L.id, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
-    makeLinkMesh(l); G.links.push(l); sv.splice(sv.indexOf(L), 1);
+    if (!Sa || !Sb) continue; const ta = Sa.things.find((t) => t.id === L.a.tid), tb = Sb.things.find((t) => t.id === L.b.tid); if (!ta || !tb) continue;
+    const l = { id: L.id, cid: L.cid, how: L.how || 'cable car', gate: L.gate, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
+    makeLinkMesh(l); G.links.push(l);
   }
 }
-function beginReplace(save) { // after a scan: which zone did each saved colony live on?
-  G.pending = save.settlements.slice(); G.savedLinks = save.links ? save.links.slice() : []; G.uid = Math.max(G.uid, save.uid || 0); G.nameIdx = save.nameIdx || 0; G.saveT = save.t; G.simT = save.simT || 0;
-  G.placing = null; G.phase = 'replace'; replUi();
+// Continue: the saved map and colony come back, the colony lives through the time away on the map (no camera needed), then the player scans and aligns.
+function prepareContinue() {
+  const md = loadMapData(), sv = loadSave(); if (!md || !sv) { toast('Nothing to continue yet.'); return false; }
+  const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
+  for (const d of sv.settlements) restoreSettlement(d);
+  restoreLinks(sv.links || []); syncCables();
+  const secs = Math.max(0, (Date.now() - sv.t) / 1000); G.awayRes = awaySim(secs, sv.hour === undefined ? 12 : sv.hour); G.aligned = false;
+  for (const Z of G.zones) paintLand(Z);
+  showAway(G.awayRes); return true;
 }
-function suggestZone(d) {
-  const zs = SCAN.zones.filter((z) => !z.settled); let best = null, bs = 1e9;
-  for (const z of zs) { const s = (z.type === d.zoneType ? 0 : 5) + Math.abs(Math.log((z.area + 0.01) / (d.area + 0.01))); if (s < bs) { bs = s; best = z; } }
-  return best;
+function skipHours(h) { // practice room: let the saved colony live through hours, as if the player had been away
+  const hr = ENV.hour; G.afterAway = null; G.awayRes = awaySim(h * 3600, hr); if (ENV.hourOverride !== null) ENV.hourOverride = (ENV.hourOverride + h) % 24;
+  for (const S of G.settlements) S.fx = null; showAway(G.awayRes); saveNow(); return G.awayRes;
 }
-function placeGhost(d, zone) {
-  if (G.placing) { discardGhost(); }
-  const S = restoreSettlement(d, zone, G.saveT); G.placing = S; S.ghost = true; S.placed = true; replUi();
-}
-function discardGhost() { const S = G.placing; if (!S) return; world.remove(S.group); S.zoneRef.settled = null; G.settlements.splice(G.settlements.indexOf(S), 1); G.placing = null; }
-function lockGhost() {
-  const S = G.placing; if (!S) return; const d = S.saved;
-  G.pending.splice(G.pending.indexOf(d), 1); G.placing = null; S.ghost = false;
-  const away = (Date.now() - (G.saveT || Date.now())) / 1000, r = catchUp(S, away);
-  restoreLinks();
-  toast('Welcome back! Away ' + fmtAway(away) + ': ' + (r.planted > 0 ? r.planted + ' new trees, ' : '') + (r.blds > 0 ? r.blds + ' new buildings, ' : '') + (r.pop > 0 ? r.pop + ' new settlers, ' : '') + 'the colony kept growing.', 6);
-  sfx('chime');
-  if (!G.pending.length) { G.phase = 'play'; paintAll(); } replUi(); updateHint();
-}
-function paintAll() { for (const b of SCAN.bands) b.dirty = true; paintBands(G.phase === 'play' || G.phase === 'replace'); }
+function paintAll() { for (const Z of G.zones) paintLand(Z); for (const b of SCAN.bands) { b.dirty = true; } paintBands(G.phase !== 'scan'); }
 
 // ============ AR mode (the WebXRKit / HelloXR stack proven in Baguettes & Ballistics) ============
 const AR = { on: false, starting: false, session: null, refSpace: null, hitSource: null, srcs: [], viewM: new THREE.Matrix4(), viewInv: new THREE.Matrix4(), projM: new THREE.Matrix4(), projInv: new THREE.Matrix4(), light: 1, gtime: 0, saved: null, ok: false };
@@ -1151,11 +1824,9 @@ const PSURF = [ // flat tops the virtual "hit test" can find
   box(3.2, 2.6, 0.04, 0xf1e4cc, 0, 1.3, -1.62); box(0.04, 2.6, 3.2, 0xece0c8, -1.62, 1.3, 0);
   box(1.2, 0.04, 0.6, 0xc99a62, 0.1, 0.73, -0.85); for (const [x, z] of [[-0.45, -1.1], [0.65, -1.1], [-0.45, -0.6], [0.65, -0.6]]) box(0.05, 0.71, 0.05, 0x9a6a3a, x, 0.355, z);
   box(0.8, 0.03, 0.25, 0xb88655, -0.9, 1.435, -1.455); for (const x of [-1.2, -0.6]) box(0.03, 0.12, 0.2, 0x8a5a33, x, 1.36, -1.5);
-  box(0.04, 0.17, 0.12, 0xd9483b, -1.15, 1.54, -1.45); box(0.04, 0.2, 0.12, 0x4aa8e8, -1.1, 1.55, -1.45); box(0.04, 0.15, 0.12, 0xf2b53a, -1.05, 1.52, -1.45);
   box(0.15, 0.03, 1.0, 0xf6f0e4, -1.525, 0.985, 0.6); const win = box(0.02, 1.0, 1.0, 0xbfe3ff, -1.6, 1.55, 0.6); win.material = new THREE.MeshBasicMaterial({ color: 0xbfe3ff });
   for (const z of [0.1, 0.6, 1.1]) box(0.04, 1.04, 0.04, 0xf6f0e4, -1.58, 1.52, z); box(0.04, 0.04, 1.04, 0xf6f0e4, -1.58, 1.52, 0.6);
   box(0.4, 0.04, 0.4, 0x6a8fb5, 0.9, 0.45, -0.2); for (const [x, z] of [[0.75, -0.35], [1.05, -0.35], [0.75, -0.05], [1.05, -0.05]]) box(0.03, 0.43, 0.03, 0x555555, x, 0.215, z);
-  box(0.5, 0.01, 0.35, 0x8fb5a0, 0.15, 0.755, -0.85).visible = false;
   box(1.1, 0.012, 0.8, 0xd96e5e, 0.6, 0.006, 0.7);
   room.visible = false;
 })();
@@ -1165,6 +1836,26 @@ const PVIEWS = [ // auto-scan: where the virtual iPad is held, base yaw/pitch, a
   { p: [-0.1, 2.0, -0.5], yaw: 0.59, pitch: -0.5, ay: 0.4, ap: 0.25 }, { p: [-0.5, 1.7, 0.1], yaw: 1.6, pitch: -0.55, ay: 0.55, ap: 0.3 },
   { p: [-0.5, 1.9, 0.9], yaw: 1.9, pitch: -0.7, ay: 0.4, ap: 0.3 }, { p: [0.4, 2.0, 0.5], yaw: 0.1, pitch: -1.15, ay: 1.2, ap: 0.4 },
 ];
+// Things on the practice room's surfaces that can be moved around between visits (cans, a cup, boxes, a speaker, a GPU box)
+const PROP_DEF = { can: { w: 0.066, d: 0.066, h: 0.12, col: 0xb9c2c9, round: 1 }, cup: { w: 0.08, d: 0.08, h: 0.09, col: 0xf2f0e6, round: 1 }, box: { w: 0.2, d: 0.15, h: 0.12, col: 0xc9a26b }, speaker: { w: 0.3, d: 0.25, h: 0.55, col: 0x3a3a3f }, gpu: { w: 0.26, d: 0.1, h: 0.1, col: 0x232329 } };
+const PROPS = [], PLACE = { yaw: 0, x: 0, z: 0 };
+function addProp(id, kind, x, z, base) {
+  const D = PROP_DEF[kind], g = D.round ? new THREE.CylinderGeometry(D.w / 2, D.w / 2, D.h, 14) : new THREE.BoxGeometry(D.w, D.h, D.d), m = new THREE.Mesh(g, M(D.col));
+  const p = { id, kind, x, z, base, w: D.w, d: D.d, h: D.h, mesh: m }; m.userData.prop = p; room.add(m); PROPS.push(p); syncProp(p); return p;
+}
+function syncProp(p) { p.mesh.position.set(p.x, p.base + p.h / 2, p.z); }
+function removeProp(id) { const p = PROPS.find((q) => q.id === id); if (!p) return; room.remove(p.mesh); PROPS.splice(PROPS.indexOf(p), 1); }
+function movePropTo(id, x, z, base) { const p = PROPS.find((q) => q.id === id); if (!p) return null; p.x = x; p.z = z; if (base !== undefined) p.base = base; syncProp(p); return p; }
+function placeRoom(yaw, x, z) { PLACE.yaw = yaw; PLACE.x = x; PLACE.z = z; room.rotation.y = yaw; room.position.set(x, 0, z); room.updateMatrixWorld(true); }
+const toRoom = (wx, wz) => { const c = Math.cos(PLACE.yaw), s = Math.sin(PLACE.yaw), dx = wx - PLACE.x, dz = wz - PLACE.z; return [dx * c - dz * s, dx * s + dz * c]; }; 
+const fromRoom = (rx, rz) => { const c = Math.cos(PLACE.yaw), s = Math.sin(PLACE.yaw); return [rx * c + rz * s + PLACE.x, -rx * s + rz * c + PLACE.z]; };
+function allSurfs() { const out = PSURF.slice(); for (const p of PROPS) out.push({ y: p.base + p.h, x0: p.x - p.w / 2, x1: p.x + p.w / 2, z0: p.z - p.d / 2, z1: p.z + p.d / 2, prop: p }); return out; }
+function resetProps() {
+  while (PROPS.length) removeProp(PROPS[0].id);
+  addProp('can1', 'can', -1.18, -1.45, 1.45); addProp('can2', 'can', -1.0, -1.45, 1.45); addProp('can3', 'can', -0.82, -1.45, 1.45);
+  addProp('cup', 'cup', -0.05, -0.8, 0.75); addProp('gpu', 'gpu', 0.4, -0.85, 0.75); addProp('box', 'box', 0.9, 0.5, 0); addProp('speaker', 'speaker', 1.15, -0.9, 0);
+}
+resetProps();
 const PV_T = 6;
 function eyePose(t) { // the auto-scan path: smoothly between viewpoints, sweeping a little in each
   const i = Math.min(PVIEWS.length - 1, Math.floor(t / PV_T)), v = PVIEWS[i], u = (t - i * PV_T) / PV_T, w = u * 6.283 * 1.5;
@@ -1175,14 +1866,27 @@ function eyePose(t) { // the auto-scan path: smoothly between viewpoints, sweepi
 }
 function setEye(e) { camera.position.copy(e.pos); camera.rotation.set(e.pitch, e.yaw, 0, 'YXZ'); camera.updateMatrixWorld(true); }
 const _ndcs = [[0, 0], [-0.55, 0.5], [0.55, 0.5], [-0.55, -0.5], [0.55, -0.5]];
-function practiceHits() { // the virtual hit test: five rays from the virtual iPad
+function practiceHits() { // the virtual hit test: five rays from the virtual iPad, against the room's surfaces and the tops of the things standing on them
+  const surfs = allSurfs(), cs = Math.cos(PLACE.yaw), sn = Math.sin(PLACE.yaw);
   for (let si = 0; si < _ndcs.length; si++) {
     const o = tmpV.setFromMatrixPosition(camera.matrixWorld), d = tmpV2.set(_ndcs[si][0], _ndcs[si][1], 0.5).applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(camera.matrixWorld).sub(o).normalize();
+    const [ox, oz] = toRoom(o.x, o.z), dx = d.x * cs - d.z * sn, dz = d.x * sn + d.z * cs;
     let bt = 1e9, bs = null;
-    if (d.y < -0.03) for (const s of PSURF) { const t = (s.y - o.y) / d.y; if (t <= 0) continue; const x = o.x + d.x * t, z = o.z + d.z * t; if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && t < bt) { bt = t; bs = s; } }
+    if (d.y < -0.03) for (const sf of surfs) { const t = (sf.y - o.y) / d.y; if (t <= 0) continue; const x = ox + dx * t, z = oz + dz * t; if (x > sf.x0 && x < sf.x1 && z > sf.z0 && z < sf.z1 && t < bt) { bt = t; bs = sf; } }
     if (!bs) { SCAN.last[si] = null; continue; }
-    scanHit(new THREE.Vector3(o.x + d.x * bt, bs.y + (Math.random() - 0.5) * 0.006, o.z + d.z * bt), si);
+    const [wx, wz] = fromRoom(ox + dx * bt, oz + dz * bt);
+    scanHit(new THREE.Vector3(wx, bs.y + (Math.random() - 0.5) * 0.006, wz), si);
   }
+}
+// Test and demo helper: scan the whole practice room at once (no camera path). Fixed grid, small noise.
+function injectScan(step) {
+  step = step || 0.014; const cs = Math.cos(PLACE.yaw), sn = Math.sin(PLACE.yaw), surfs = allSurfs().sort((a, b) => a.y - b.y); let n = 0;
+  for (const sf of surfs) for (let x = sf.x0 + step / 2; x < sf.x1; x += step) for (let z = sf.z0 + step / 2; z < sf.z1; z += step) {
+    // hidden from above: under a higher top that covers this point, the lower surface is not seen
+    if (surfs.some((o) => o.y > sf.y + 0.03 && x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1)) continue;
+    const [wx, wz] = fromRoom(x, z); scanHit(new THREE.Vector3(wx, sf.y + (Math.random() - 0.5) * 0.004, wz), 9); n++;
+  }
+  for (const b of SCAN.bands) b.dirty = true; SCAN.last = []; return n;
 }
 const keys = {};
 addEventListener('keydown', (e) => { keys[e.code] = true; }); addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -1204,92 +1908,217 @@ function practiceFrame(dt) {
     camera.lookAt(P.target); camera.updateMatrixWorld(true);
   }
 }
+const _rc = new THREE.Raycaster();
+function propPick(cx, cy) { _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const hit = _rc.intersectObjects(PROPS.map((p) => p.mesh), false)[0]; return hit ? hit.object.userData.prop : null; }
+function moveProp(p, cx, cy) { // drag a prop along the surfaces of the room
+  _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const o = _rc.ray.origin, d = _rc.ray.direction, [ox, oz] = toRoom(o.x, o.z), cs = Math.cos(PLACE.yaw), sn = Math.sin(PLACE.yaw), dx = d.x * cs - d.z * sn, dz = d.x * sn + d.z * cs;
+  let bt = 1e9, best = null; for (const sf of PSURF) { if (d.y > -1e-4) break; const t = (sf.y - o.y) / d.y; if (t <= 0) continue; const x = ox + dx * t, z = oz + dz * t; if (x > sf.x0 && x < sf.x1 && z > sf.z0 && z < sf.z1 && t < bt) { bt = t; best = [x, z, sf.y]; } }
+  if (best) { p.x = best[0]; p.z = best[1]; p.base = best[2]; syncProp(p); }
+}
 function focusOn(x, y, z, d) { P.gTarget.set(x, y, z); P.gDist = d; }
 function focusZone(z) { focusOn(z.cx, z.y + 0.03, z.cz, clamp(0.22 + Math.max(z.w, z.d) * 0.42, 0.4, 3.2)); }
 
+const RECOG = { clip: { on: false } };
 // ============ UI ============
+function setPhase(p) {
+  G.phase = p; const scan = p === 'scan' || p === 'align';
+  for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = !(p === 'scan');
+  for (const b of SCAN.bands) b.mesh.visible = scan;
+  SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
+}
 function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
-  G.settlements = []; G.links = []; G.pending = []; G.requests = []; G.placing = null; G.cur = null; G.sel = null; G.savedLinks = [];
-  scanReset();
+  for (const z of G.zones) disposeZone(z);
+  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
+  scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
 }
 function showTitle() {
-  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
-  room.visible = false; scene.background = null; updateTitle();
+  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
+  room.visible = false; scene.background = null; G.phase = 'title'; updateTitle();
 }
-function updateTitle() { const has = !!loadSave(); $('bCont').hidden = !has; $('bNew').hidden = !has; $('bAR').hidden = !AR.ok; }
+function updateTitle() {
+  const md = loadMapData(), has = !!loadSave() && !!md; $('bCont').hidden = !has; $('bNew').hidden = !has && !md; $('bAR').hidden = !AR.ok;
+  $('bMapIO').hidden = false; $('mapInfo').textContent = md ? 'Saved room map: ' + md.zones.length + ' surfaces, ' + md.spots.filter((s) => s.src !== 'default').length + ' named spots' + (has ? ', and a colony.' : '.') : 'No room map yet.';
+}
 function startScan(cont) {
-  G.phase = 'scan'; G.cont = !!cont; $('title').hidden = true; $('top').hidden = false; $('hint').hidden = false;
+  setPhase('scan'); G.cont = !!cont; $('title').hidden = true; $('top').hidden = false; $('hint').hidden = false;
   if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = null; $('env').hidden = false; envUi(); }
+  if (cont) { if (!prepareContinue()) { G.cont = false; } }
   barUi(); updateHint();
 }
 function updateHint() {
   const h = $('hint'); let s = '';
-  if (G.phase === 'scan') s = G.mode === 'ar' ? 'Sweep the iPad slowly over your desk, shelf and floor. Each flat surface gets its own colour.' : 'Practice room: press Auto-scan (or drag to look, W/S to walk) to scan the virtual room.';
+  const pr = G.mode === 'practice';
+  if (G.phase === 'scan') s = G.intent === 'map' ? (pr ? 'Map my room: press Auto-scan, then Done scanning. Next you tag the spots.' : 'Map my room: sweep the iPad slowly over every surface: floor, desks, shelves, the tops of speakers and boxes. Then Done scanning.') : G.mode === 'ar' ? (G.cont ? 'Sweep the iPad over the same room again. Then Done scanning.' : 'Sweep the iPad slowly over your desk, shelf and floor. Each flat surface gets its own colour.') : 'Practice room: press Auto-scan (or drag to look, W/S to walk) to scan the virtual room.';
   else if (G.phase === 'zones') s = 'Tap a coloured zone to found your colony there.';
-  else if (G.phase === 'replace') s = G.placing ? 'Drag to slide the colony, turn it to line up with the real surface, then Lock it in.' : 'Where was your colony? Tap the zone it lived on.';
-  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: 'Drag from a thriving settlement to another zone.', look: '' }[G.tool];
+  else if (G.phase === 'tag') s = G.tagMode === 'cable' ? (G.cableFrom ? 'Now tap the other end of the cable.' : 'Mark a cable: tap one end of a real cable, then the other.') : 'Tap a thing to name it: speaker, cup, can, computer, warm box... The colonists work out what it is for.';
+  else if (G.phase === 'align') { const lm = G.landmarks || []; s = G.align && G.align.done ? 'Does it line up? Slide or turn the saved room until the labels sit on the real things, then Looks right.' : lm.length ? 'Lining the saved room up with the real one. Tap the ' + (lm[G.alignTaps.length] ? lm[G.alignTaps.length].name : '') + (lm.length > 1 ? ' (' + (G.alignTaps.length + 1) + ' of ' + lm.length + ')' : '') + '.' : 'Nothing to line up on.'; }
+  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
   h.textContent = s; h.hidden = !s;
   const ch = $('chips'); ch.innerHTML = '';
-  if (G.phase === 'scan' || G.phase === 'zones' || G.phase === 'replace') for (const z of SCAN.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); c.textContent = z.name + (z.settled ? ' (colony)' : ' · ' + z.area.toFixed(2) + ' m²'); c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
-  if (G.phase === 'replace' && !G.placing && G.pending.length) { const z = suggestZone(G.pending[0]); if (z) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#fff6e6'; c.textContent = 'Best guess for "' + G.pending[0].zoneName + '": ' + z.name; ch.appendChild(c); } }
+  if (G.phase === 'scan') for (const z of SCAN.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); c.textContent = z.name + ' · ' + z.area.toFixed(2) + ' m²'; c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
+  if (G.phase === 'zones') for (const z of G.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); const t = landTidy(z.land); c.textContent = z.name + (z.settled ? ' (colony)' : ' · ' + z.area.toFixed(2) + ' m²') + (t.clutter ? ' · ' + Math.round(t.ratio * 100) + '% clear' : ''); c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
+  if (G.phase === 'tag') for (const sp of G.spots) { if (sp.src === 'default') continue; const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + spotRole(sp).color.toString(16).padStart(6, '0'); c.textContent = sp.name + ' · ' + spotUsed(sp); c.onclick = () => tagEdit(sp); ch.appendChild(c); }
 }
 function barUi() {
-  const b = $('bar'); b.hidden = false;
-  if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (G.mode === 'practice' ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
-  else if (G.phase === 'zones') b.innerHTML = '<button id="bRescan">Scan more</button><button id="bQuit">Back</button>';
-  else if (G.phase === 'replace') b.hidden = true;
+  const b = $('bar'); b.hidden = false; const pr = G.mode === 'practice';
+  if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (pr ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
+  else if (G.phase === 'zones') b.innerHTML = '<button id="bTag">Name spots</button><button id="bRescan">Scan again</button><button id="bQuit">Back</button>';
+  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bMapIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
+  else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
-    b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + `<button id="bSpeed">Time x${G.speed}</button><button id="bSound">${SND.on ? 'Sound on' : 'Sound off'}</button><button id="bRescan">Scan more</button><button id="bMenu">Menu</button>`;
+    b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
   if (!m.hidden) m.innerHTML = ['hut', 'farm', 'well', 'lookout'].map((k) => `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}">${KINDS[k].name} (${KINDS[k].wood})</button>`).join('');
 }
 function setTool(t) { G.tool = t; G.cableFrom = null; clearPreview(); barUi(); updateHint(); }
+function gotoTag() { setPhase('tag'); G.tagMode = 'spot'; G.cableFrom = null; paintAll(); updateLabels(false); barUi(); updateHint(); }
 $('bar').addEventListener('click', (e) => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tool) return setTool(t.dataset.tool);
+  if (t.dataset.tagmode) { G.tagMode = t.dataset.tagmode; G.cableFrom = null; $('tagpick').hidden = true; barUi(); return updateHint(); }
+  if (t.dataset.nudge) { const [x, z, r] = t.dataset.nudge.split(',').map(Number); nudgeAlign(x * 0.01, z * 0.01, r * 0.0175 * 1); return; }
   if (t.id === 'bDone') return doneScanning();
   if (t.id === 'bAuto') { P.auto = { t: 0, speed: 1 }; return; }
-  if (t.id === 'bQuit') { saveNow(); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } return; }
-  if (t.id === 'bRescan') { SCAN.frozen = false; G.phase = 'scan'; if (G.mode === 'practice') { P.mode = 'eye'; setEye(P.eye); } paintAll(); barUi(); updateHint(); return; }
+  if (t.id === 'bQuit') { saveNow(); if (G.zones.length && G.phase !== 'scan') saveMap(); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } return; }
+  if (t.id === 'bRescan') { rescanFresh(); return; }
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
-  if (t.id === 'bSound') { SND.on = !SND.on; return barUi(); }
-  if (t.id === 'bMenu') { wxCard(); return; }
+  if (t.id === 'bMenu') return menuUi();
+  if (t.id === 'bTag') return gotoTag();
+  if (t.id === 'bFound') { setPhase('zones'); paintAll(); updateLabels(true); barUi(); updateHint(); return; }
+  if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
+  if (t.id === 'bSaveMap') { autoSpots(); saveMap(); toast('Room map saved: ' + G.zones.length + ' surfaces, ' + G.spots.filter((s) => s.src !== 'default').length + ' named spots. The colonists can use it while you are away.', 4); sfx('chime'); return; }
+  if (t.id === 'bMapIO') return ioUi();
+  if (t.id === 'bAlignSkip') return finishAlign(true);
+  if (t.id === 'bAlignOk') return finishAlign(false);
+  if (t.id === 'bAlignRe') { alignStart(); return; }
 });
+function rescanFresh() { scanReset(); SCAN.frozen = false; setPhase('scan'); G.aligned = true; $('diary').hidden = true; if (G.mode === 'practice') { P.mode = 'eye'; setEye(P.eye); } paintAll(); barUi(); updateHint(); updateLabels(false); }
 $('bmenu').addEventListener('click', (e) => { const t = e.target.closest('button'); if (t && t.dataset.build) { G.buildKind = t.dataset.build; barUi(); updateHint(); } });
+// ---- finishing a scan: the first scan makes the map; later ones are compared with it ----
 function doneScanning() {
   extractZones(); if (!SCAN.zones.length) { toast('No zones yet. Sweep a flat surface a bit longer.'); return; }
-  SCAN.frozen = true; for (const z of SCAN.zones) ensureDist(z); updateLabels(true);
+  SCAN.frozen = true;
   if (G.mode === 'practice') { P.mode = 'orbit'; P.yaw = 0.3; P.pitch = 0.55; focusOn(-0.1, 0.8, -0.5, 3.6); }
-  const save = G.cont && !G.pending.length && !G.settlements.length ? loadSave() : null;
-  if (save) { beginReplace(save); } else if (G.settlements.length) G.phase = 'play'; else G.phase = 'zones';
-  paintAll(); updateLabels(G.phase !== 'play'); barUi(); updateHint(); sfx('chime');
-  if (G.phase === 'replace') replUi();
+  if (G.cont && !G.aligned && G.zones.length) { setPhase('align'); paintBands(false); alignStart(); return; }
+  finishScan();
 }
-function replUi() {
-  const r = $('repl'); r.hidden = G.phase !== 'replace' || !G.placing;
-  if (!r.hidden) { r.innerHTML = '<button id="rL">Turn left</button><button id="rR">Turn right</button><button id="rLock" class="big">Lock it in</button><button id="rOther">Different zone</button>'; }
-  const sk = G.phase === 'replace' ? '<button id="rFresh">Start fresh instead</button>' : '';
-  if (G.phase === 'replace' && !G.placing) { $('bar').hidden = false; $('bar').innerHTML = sk; } else if (G.phase === 'replace') $('bar').hidden = true;
-  updateHint();
+function finishScan() {
+  const rep = captureScan(); if (!rep) return;
+  G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
+  if (rep.first) { autoSpots(); refreshSpots(); }
+  applyChanges(rep); commitAlign();
+  for (const Z of G.zones) { if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z); }
+  G.report = rep; G.asks = rep.asks.slice();
+  setPhase(G.settlements.length ? 'play' : (G.intent === 'map' ? 'tag' : 'zones')); if (G.intent === 'map' && !G.settlements.length) G.tagMode = 'spot';
+  paintBands(true); updateLabels(G.phase !== 'play'); barUi(); updateHint(); sfx('chime'); G.cont = false; saveMap(); saveNow();
+  if (!rep.first) { if (G.asks.length) askNext(); else showReport(); }
 }
-$('repl').addEventListener('click', (e) => {
-  const t = e.target.closest('button'); if (!t || !G.placing) return;
-  if (t.id === 'rL') { G.placing.adj += 0.15; G.placing.tf.yaw += 0.15; applyTf(G.placing); } else if (t.id === 'rR') { G.placing.adj -= 0.15; G.placing.tf.yaw -= 0.15; applyTf(G.placing); }
-  else if (t.id === 'rLock') lockGhost(); else if (t.id === 'rOther') { discardGhost(); replUi(); }
+// ---- aligning: tap the two furthest-apart named things ----
+function alignStart() {
+  G.landmarks = pickLandmarks(); G.alignTaps = []; G.align = null; if (G.zones.length) applyAlign({ phi: 0, tx: 0, tz: 0, dy: 0, pivot: [0, 0] });
+  for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = true;
+  if (!G.landmarks.length) return finishAlign(true);
+  setPhase('align'); barUi(); updateHint();
+}
+function alignTap(cx, cy) {
+  const pk = surfacePick(cx, cy); if (!pk) { toast('Tap on a scanned surface.'); return; }
+  G.alignTaps.push({ x: pk.px, y: pk.y, z: pk.pz }); sfx('pop');
+  const lm = G.landmarks;
+  if (G.alignTaps.length >= Math.min(2, lm.length)) {
+    if (lm.length >= 2) {
+      const T = solveAlign({ x: lm[0].x, y: lm[0].y, z: lm[0].z }, { x: lm[1].x, y: lm[1].y, z: lm[1].z }, G.alignTaps[0], G.alignTaps[1]);
+      T.done = true; applyAlign(T); G.align.done = true; G.alignErr = T.err;
+    } else { const a = lm[0], t = G.alignTaps[0]; applyAlign({ phi: 0, tx: t.x - a.x, tz: t.z - a.z, dy: t.y - a.y, pivot: [a.x, a.z], done: true }); G.alignErr = 0; }
+    toast('Lined up. Check the labels sit on the real things' + (G.alignErr !== null ? ' (off by ' + (G.alignErr * 100).toFixed(1) + ' cm at the landmarks)' : '') + '.', 5);
+  }
+  barUi(); updateHint();
+}
+function finishAlign(skip) {
+  if (skip) { G.alignErr = null; if (G.zones.length) applyAlign({ phi: 0, tx: 0, tz: 0, dy: 0, pivot: [0, 0] }); }
+  G.aligned = true; setPhase('play'); finishScan();
+}
+// ---- tagging spots ----
+function tagPickUi(pk, existing) {
+  const el = $('tagpick'); el.hidden = false; G.tagTarget = { pk, existing };
+  const sp = existing, info = sp ? roomInfo(sp.tag) : null;
+  el.innerHTML = (sp ? `<div class="th">${esc(sp.name)} <span class="sub">${esc(spotUsed(sp))}</span></div>` + (info ? `<div class="sub">gives: ${esc(info.gives || spotRole(sp).gives)}; costs: ${esc(info.costs || '')}; they get there by ${esc(spotHow(sp))}. <i class="by">by ${esc(info.by || '')}</i></div>` : `<div class="sub">${esc(spotRole(sp).gives)}</div>`)
+    : `<div class="th">What is this?</div><div class="sub">${pk.comp.area < 0.25 ? 'A small top, ' + Math.round(Math.sqrt(pk.comp.area) * 100) + ' cm across, ' : 'A big surface '}${pk.y.toFixed(2)} m up.</div>`)
+    + '<div class="tags">' + Object.keys(TAGS).map((k) => `<button data-tag="${k}">${esc(TAGS[k].label)}</button>`).join('') + '</div>'
+    + `<div class="row2"><input id="tagName" maxlength="28" placeholder="${sp ? 'Rename...' : 'Or a name of your own (Radeon, kettle...)'}" value="${sp ? esc(sp.name) : ''}"> ${sp ? '<button id="tagRename">Rename</button><button id="tagCable">Cable from here</button><button id="tagDel">Delete</button>' : ''}<button id="tagCancel">Close</button></div>`;
+}
+function tagEdit(sp) { tagPickUi(null, sp); }
+$('tagpick').addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return; const { pk, existing } = G.tagTarget || {};
+  const custom = ($('tagName') && $('tagName').value || '').trim();
+  if (t.dataset.tag) {
+    if (existing) { const T = TAGS[t.dataset.tag]; existing.tag = t.dataset.tag; existing.role = T.role; existing.name = (custom && custom !== existing.name ? custom : T.label); existing.src = 'player'; }
+    else if (pk) addSpot({ tag: t.dataset.tag, name: custom, x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area });
+    for (const S of G.settlements) S.fx = null; $('tagpick').hidden = true; refreshSpots(); barUi(); updateHint(); sfx('pop'); saveMap(); return;
+  }
+  if (t.id === 'tagCancel') $('tagpick').hidden = true;
+  if (t.id === 'tagRename' && existing && custom) { existing.name = custom; existing.src = 'player'; refreshSpots(); updateHint(); saveMap(); $('tagpick').hidden = true; }
+  if (t.id === 'tagDel' && existing) { removeSpot(existing); $('tagpick').hidden = true; updateHint(); saveMap(); }
+  if (t.id === 'tagCable' && existing) { G.tagMode = 'cable'; G.cableFrom = existing; $('tagpick').hidden = true; barUi(); updateHint(); toast('Tap the other end of the cable.'); }
 });
-$('bar').addEventListener('click', (e) => { if (e.target.id === 'rFresh') { discardGhost(); G.pending = []; store.del(SAVE_KEY); G.phase = 'zones'; paintAll(); updateLabels(true); barUi(); updateHint(); replUi(); } });
-$('bAR').onclick = () => arStart(false); $('bPrac').onclick = () => { G.mode = 'practice'; resetWorld(); startScan(false); };
-$('bCont').onclick = () => { if (AR.ok) arStart(true); else { G.mode = 'practice'; resetWorld(); startScan(true); } };
-$('bNew').onclick = () => { store.del(SAVE_KEY); updateTitle(); };
+function spotNear(cx, cy) { // a named spot whose marker is near the tap
+  let best = null, bd = 44;
+  for (const sp of G.spots) { const [sx, sy, ok] = toScreen(tmpV.set(sp.x, sp.y + 0.05, sp.z)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = sp; } }
+  return best;
+}
+function tagTap(cx, cy) {
+  const near = spotNear(cx, cy);
+  if (G.tagMode === 'cable') {
+    let sp = near; if (!sp) { const pk = surfacePick(cx, cy); if (!pk) return toast('Tap on a scanned surface.'); sp = addSpot({ tag: 'other', name: 'Cable post', x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area }); }
+    if (!G.cableFrom) { G.cableFrom = sp; toast('Cable starts at ' + sp.name + '. Now the other end.'); updateHint(); return; }
+    const cb = addCable(G.cableFrom.id, sp.id); toast(cb ? 'Cable marked: ' + G.cableFrom.name + ' to ' + sp.name + '. A ready-made ' + spotHow(sp) + '.' : 'That cable is already there.', 4); G.cableFrom = null; updateHint(); saveMap(); return;
+  }
+  if (near) return tagEdit(near);
+  const pk = surfacePick(cx, cy); if (!pk) { toast('Tap on a scanned surface.'); return; }
+  tagPickUi(pk, null);
+}
+// ---- the menu, and the export / import window ----
+function menuUi() {
+  const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mWx">Weather</button><button id="mMap">Name spots in my room</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button>' : '') + '<button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mClose">Close</button></div>';
+  m.onclick = (e) => {
+    const t = e.target.closest('button'); if (!t) return; m.hidden = true;
+    if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { G.music = !G.music; toast('Music ' + (G.music ? 'on: the speaker towers shake' : 'off')); }
+    else if (t.id === 'mSound') SND.on = !SND.on; else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+  };
+}
+function ioUi(msg) {
+  const m = $('modal'); m.hidden = false; const live = G.zones.length ? mapToJSON() : loadMapData(), json = live ? JSON.stringify(live) : '';
+  m.innerHTML = '<div class="dh">Room map: export / import</div><div class="sub">' + (msg || 'Export copies the map as text. Import replaces the saved map with text you paste. The colony is saved separately.') + '</div><textarea id="ioText" rows="6" spellcheck="false"></textarea><div class="mrow"><button id="ioDown">Download file</button><button id="ioCopy">Copy</button><button id="ioLoad" class="alt">Import what is pasted</button><label class="file">Load file<input type="file" id="ioFile" accept=".json,application/json"></label><button id="ioClose">Close</button></div>';
+  $('ioText').value = json;
+  $('ioDown').onclick = () => { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([$('ioText').value], { type: 'application/json' })); a.download = 'base-camp-room-map.json'; a.click(); } catch (e) { toast('Download is not available here. Use Copy.'); } };
+  $('ioCopy').onclick = () => { $('ioText').select(); try { navigator.clipboard.writeText($('ioText').value); } catch (e) { document.execCommand && document.execCommand('copy'); } toast('Copied.'); };
+  $('ioClose').onclick = () => { m.hidden = true; };
+  $('ioLoad').onclick = () => importMapText($('ioText').value);
+  $('ioFile').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('ioText').value = r.result; importMapText(r.result); }; r.readAsText(f); };
+}
+function importMapText(txt) {
+  let d; try { d = JSON.parse(txt); } catch (e) { return ioUi('That is not valid JSON.'); }
+  const keep = { zones: G.zones, spots: G.spots }; const err = mapFromJSON(d); if (err) return ioUi(err);
+  store.set(MAP_KEY, JSON.stringify(d)); for (const z of keep.zones) disposeZone(z);
+  for (const S of G.settlements) { S.zoneRef = zoneById(S.zid) || S.zoneRef; }
+  for (const Z of G.zones) { const S = G.settlements.find((q) => q.zid === Z.id); if (S) { Z.settled = S; S.zoneRef = Z; syncTf(S); } paintLand(Z); }
+  refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
+}
+$('bAR').onclick = () => { G.intent = 'play'; arStart(false); }; $('bPrac').onclick = () => { G.intent = 'play'; G.mode = 'practice'; resetWorld(); startScan(false); };
+$('bMap').onclick = () => { G.intent = 'map'; if (AR.ok) arStart(false); else { G.mode = 'practice'; resetWorld(); startScan(false); } };
+$('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
+$('bCont').onclick = () => { G.intent = 'play'; if (AR.ok) arStart(true); else { G.mode = 'practice'; resetWorld(); startScan(true); } };
+$('bNew').onclick = () => { store.del(SAVE_KEY); store.del(MAP_KEY); updateTitle(); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   for (const q of G.requests) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${q.who}</b>${q.def.text}</div><button>Give</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>Give</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
@@ -1304,16 +2133,20 @@ function selCard(c) {
   const el = $('sel'); if (!c) { el.hidden = true; return; } el.hidden = false;
   const bar = (k, col) => `<div class="bar"><span style="width:44px">${k}</span><i><u style="width:${Math.round(c.needs[k] * 100)}%;background:${col}"></u></i></div>`;
   const doing = c.inside ? 'resting' : c.job ? { build: 'building', plant: 'planting a seed', tend: 'tending', harvest: 'harvesting', gather: 'gathering', drink: 'getting a drink', eat: 'having a bite', sleep: 'sleeping', shelter: 'sheltering', chat: 'chatting', dance: 'dancing', wander: 'strolling', cross: 'off by cable car' }[c.job.type] : 'thinking';
-  el.innerHTML = `<b style="color:#ffd9a8">${c.name}</b> is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">likes: ${c.likes.join(', ') || 'everything'}</div>`;
+  el.innerHTML = `<b style="color:#ffd9a8">${esc(c.name)}</b> is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">${c.persona ? esc(c.persona) + '<br>' : ''}likes: ${c.likes.join(', ') || 'everything'}${c.dream ? '<br>dreams: ' + esc(c.dream) : ''}${c.by ? ' <i class="by">by ' + esc(c.by) + '</i>' : ''}</div>`;
 }
 function cardUi() {
   const S = G.cur || G.settlements[0], el = $('card'); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
   const sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   const env = `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky} · sun ${ENV.sun.toFixed(2)} · growth x${ENV.grow.toFixed(2)}</div>`;
-  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = env; return; }
-  const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0;
-  el.hidden = false; el.innerHTML = `<b>${S.zoneName}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds}` + env;
+  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : ''); return; }
+  const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null;
+  el.hidden = false; el.innerHTML = `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
 }
+function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
+function libUi() { const m = $('modal'); m.hidden = false; m.innerHTML = '<div class="dh">Our library</div><div class="sub">Nothing taught yet.</div><div class="mrow"><button id="libClose">Close</button></div>'; $('libClose').onclick = () => { m.hidden = true; }; }
+function smartToggle() { toast('Not available yet.'); }
+
 
 // ============ input: one touch layer for AR and practice ============
 const camTmp = { o: new THREE.Vector3(), d: new THREE.Vector3() };
@@ -1323,11 +2156,11 @@ function rayAt(cx, cy) {
 }
 function groundPick(cx, cy, onlyZone) {
   const r = rayAt(cx, cy); let best = null;
-  for (const z of SCAN.zones) {
-    if (onlyZone && z !== onlyZone) continue;
+  for (const z of G.zones) {
+    if (onlyZone && z !== onlyZone) continue; if (!z.land || z.lost) continue;
     if (Math.abs(r.d.y) < 1e-4) continue; const t = (z.y - r.o.y) / r.d.y; if (t <= 0 || (best && t > best.t)) continue;
-    const x = r.o.x + r.d.x * t, zz = r.o.z + r.d.z * t, k = gIdx(x, zz);
-    if (k >= 0 && z.band.lab[k] === z.id) best = { zone: z, x, z: zz, y: z.y, t };
+    const x = r.o.x + r.d.x * t, zz = r.o.z + r.d.z * t, k = landIdx(z.land, x, zz);
+    if (k >= 0 && z.land.st[k]) best = { zone: z, x, z: zz, y: z.y, t, st: z.land.st[k] };
   }
   return best;
 }
@@ -1359,7 +2192,7 @@ $('touch').addEventListener('pointerdown', (e) => {
     if (g && g.zone.settled) { const S = g.zone.settled; if (!S.thriving) { toast('Not ready yet: a thriving colony (4+ settlers, 3 buildings, 2 grown trees) can build a cable car.', 4); sfx('no'); } else G.cableFrom = { S, x: g.x, z: g.z }; }
     else toast('Start the line on a settled zone.');
   }
-  if (G.phase === 'replace' && G.placing) { const g = groundPick(e.clientX, e.clientY, G.placing.zoneRef); down.drag = g ? { x: g.x, z: g.z } : null; }
+  if (G.phase === 'play' && G.tool === 'move' && G.mode === 'practice') { down.prop = propPick(e.clientX, e.clientY); }
 });
 $('touch').addEventListener('pointermove', (e) => {
   if (!down.on || e.pointerId !== down.id) return;
@@ -1371,10 +2204,10 @@ $('touch').addEventListener('pointermove', (e) => {
     let B, ok = false; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z); } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], f.S.tf.y + 0.063, p[1]); }
     showPreview(A, B, ok); return;
   }
-  if (G.phase === 'replace' && G.placing && down.drag) { const g = planePick(e.clientX, e.clientY, G.placing.tf.y); if (g) { G.placing.tf.x += g[0] - down.drag.x; G.placing.tf.z += g[1] - down.drag.z; down.drag = { x: g[0], z: g[1] }; applyTf(G.placing); } return; }
+  if (down.prop) { moveProp(down.prop, e.clientX, e.clientY); return; }
   if (G.mode === 'practice' && !AR.on) {
     if (G.phase === 'scan' && !P.auto) { P.eye.yaw -= dx * 0.005; P.eye.pitch = clamp(P.eye.pitch - dy * 0.005, -1.5, 0.6); }
-    else if (G.phase !== 'scan' && (G.tool === 'look' || down.btn === 2 || G.phase !== 'play') && !down.col) { P.yaw -= dx * 0.006; P.pitch += dy * 0.005; }
+    else if (G.phase !== 'scan' && (G.tool === 'look' || down.btn === 2 || G.phase !== 'play' || (G.tool === 'move' && !down.prop)) && !down.col) { P.yaw -= dx * 0.006; P.pitch += dy * 0.005; }
   }
 });
 $('touch').addEventListener('wheel', (e) => { if (G.mode === 'practice') { P.gDist = clamp(P.gDist * (1 + Math.sign(e.deltaY) * 0.1), 0.25, 6); } }, { passive: true });
@@ -1391,6 +2224,8 @@ const endDown = (e) => {
 };
 $('touch').addEventListener('pointerup', endDown); $('touch').addEventListener('pointercancel', endDown);
 function tapAt(cx, cy) {
+  if (G.phase === 'tag') return tagTap(cx, cy);
+  if (G.phase === 'align') { if (G.align && G.align.done) return; return alignTap(cx, cy); }
   const col = colPick(cx, cy);
   if (G.phase === 'play' && col && (G.tool === 'look' || G.tool === 'cheer' || G.tool === 'seed' || G.tool === 'build')) { // tap a colonist: cheer and show how they feel
     const rq = G.requests.find((r) => r.cid === col.id);
@@ -1399,10 +2234,8 @@ function tapAt(cx, cy) {
   }
   const g = groundPick(cx, cy);
   if (G.phase === 'zones') { if (g && !g.zone.settled) settleZone(g.zone); else toast('Tap one of the coloured zones.'); return; }
-  if (G.phase === 'replace') {
-    if (!G.placing) { if (g && !g.zone.settled && G.pending.length) { placeGhost(G.pending[0], g.zone); updateLabels(true); } else toast('Tap a coloured zone.'); }
-    return;
-  }
+  if (G.phase === 'tag') return tagTap(cx, cy);
+  if (G.phase === 'align') { if (G.align && G.align.done) return; return alignTap(cx, cy); }
   if (G.phase !== 'play') return;
   if (!g) { G.sel = null; selCard(null); return; }
   const S = g.zone.settled; G.cur = S || G.cur;
@@ -1414,25 +2247,25 @@ function tapAt(cx, cy) {
     plantTree(S, lx, lz); S.helped++;
   } else if (G.tool === 'build') {
     const K = KINDS[G.buildKind];
-    if (S.stock.wood < K.wood) { sfx('no'); return toast('Needs ' + K.wood + ' wood. The trees bring some as they grow.'); }
+    if (!canPay(S, K.wood)) { sfx('no'); return toast('Needs ' + K.wood + ' wood. The trees bring some as they grow.'); }
     if (!validSpot(S, lx, lz, K.r, { free: true })) { sfx('no'); return toast('No room for that there.'); }
-    S.stock.wood -= K.wood; const t = addThing(S, G.buildKind, lx, lz, { built: false, rot: Math.atan2(-lx, -lz) }); t.pop = 0.4; sfx('plant'); S.helped++;
+    const tin = pay(S, K.wood); const t = addThing(S, G.buildKind, lx, lz, { built: false, rot: Math.atan2(-lx, -lz), tin }); t.pop = 0.4; sfx('plant'); S.helped++;
   } else if (G.tool === 'cheer') {
     let best = null, bd = 0.09; for (const c of S.cols) { const d = Math.hypot(c.x - lx, c.z - lz); if (d < bd) { bd = d; best = c; } }
     if (best) { best.needs.joy = Math.min(1, best.needs.joy + 0.3); best.hop = 1; G.sel = best; selCard(best); G.selT = 6; sfx('cheer'); puff('heart', g.x, g.y + 0.05, g.z, 3, { size: 0.01, vy: 0.03, life: 1.2 }); } else puff('star', g.x, g.y + 0.03, g.z, 4, { size: 0.008, add: true });
   } else { // look: tap a building to see what it is
     const t = S.things.find((q) => Math.hypot(q.x - lx, q.z - lz) < q.r);
-    if (t) toast({ tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)'));
+    if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
   }
 }
 function settleZone(zone) {
-  const S = newSettlement(zone); G.cur = S; G.sel = null;
+  const S = newSettlement(zone); G.cur = S; G.sel = null; S.placed = true; S.group.visible = true;
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; addColonist(S, { x: Math.cos(a) * 0.07, z: Math.sin(a) * 0.07, spawn: 0.4 * i + 0.2 }); }
-  G.phase = 'play'; G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
+  setPhase('play'); G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
   puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast('Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 4);
   if (G.mode === 'practice') focusZone(zone);
   if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
-  saveNow();
+  saveNow(); saveMap();
 }
 
 // ============ main loop ============
@@ -1482,33 +2315,34 @@ function frame(time, xrFrame) {
     SCAN.t += dt;
     if (SCAN.t > 0.7) { SCAN.t = 0; for (const b of SCAN.bands) if (b.dirty && b.cnt > 60) closeHoles(b); const n = SCAN.zones.length; extractZones(); updateLabels(true); paintBands(false); if (SCAN.zones.length !== n || frameN % 5 === 0) updateHint(); }
   }
-  if (G.phase === 'play' || G.phase === 'replace') {
+  if (G.phase === 'play') {
     let acc = dt * G.speed, n = 0; while (acc > 1e-4 && n++ < 60) { const s = Math.min(0.25, acc); simTick(s, false); acc -= s; }
     waterStep(dt); ambient(dt);
     wxT += dt; if (wxT > 1800) { wxT = 0; fetchWeather(false); }
     saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); }
-    if (G.phase === 'play' && frameN % 30 === 0) paintBands(true);
   }
   visuals(dt, G.time); partsUpdate(dt);
-  for (const z of SCAN.zones) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
+  for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && G.requests.length !== $('reqs').children.length) reqUi(); }
   renderer.render(scene, camera);
 }
-addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); }); addEventListener('pagehide', saveNow);
+addEventListener('visibilitychange', () => { if (document.hidden) { saveNow(); saveMap(); } }); addEventListener('pagehide', () => { saveNow(); saveMap(); });
 
 // ============ test and debug hooks ============
 window.__g = {
-  envUpdate,
-  G, SCAN, ENV, AR, P, COLONY_ALMANAC, KINDS, THREE, scene, renderer, camera,
+  envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { step = step || 0.5; for (let t = 0; t < sec; t += step) simTick(step, false); },
-  settle(type) { const z = SCAN.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
-  doneScanning, makeLink, canLink, zoneById, saveNow, serialize, loadSave, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist, catchUp, newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, lockGhost, placeGhost, applyWx,
+  settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
+  settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,
+  newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, applyWx, setPhase,
+  addSpot, removeSpot, addCable, syncCables, autoSpots, pickLandmarks, spotById, spotsOn, anchorFor, syncLandmarks, landTidy, landDisturb, landCalm, objClass, measureLand,
+  awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
+  injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
 // ============ start ============
 G.last = performance.now();
 showTitle(); envUpdate();
-try { const s = loadSave(); if (s) updateTitle(); } catch (e) { /* ignore */ }
 if (ENV.loc && store.get('bc-wxchoice')) fetchWeather(false);
 requestAnimationFrame(frame);
 </script>
