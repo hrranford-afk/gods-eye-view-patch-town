@@ -7801,7 +7801,7 @@ function drModel(kind, hex) {
     dPart(body, dBox(1.9, 1.8, 2.3), paint, 2.9, 1.7, 0); dPart(body, dBox(0.1, 0.75, 1.95), glass, 3.88, 2.15, 0); dPart(body, dBox(5.4, 0.45, 2.0), dark, -0.3, 0.8, 0);
     dPart(body, dBox(0.2, 0.15, 1.9), head, 3.9, 1.0, 0, false);
     const trailer = new THREE.Group(); trailer.position.set(0.4, 0, 0); body.add(trailer); U.trailer = trailer;
-    dPart(trailer, dBox(6.2, 2.4, 2.4), dMat(0xe9eef8, { roughness: 0.6 }), -3.4, 2.2, 0); dPart(trailer, dBox(6.22, 0.5, 2.42), paint, -3.4, 2.2, 0); dPart(trailer, dBox(6.3, 0.12, 2.5), dark, -3.4, 3.45, 0);
+    dPart(trailer, dBox(6.2, 2.4, 2.4), dMat(0xe9eef8, { roughness: 0.6, emissive: 0x6f7f9f, emissiveIntensity: 0.55 }, 'trailer'), -3.4, 2.2, 0); dPart(trailer, dBox(6.22, 0.5, 2.42), paint, -3.4, 2.2, 0); dPart(trailer, dBox(6.3, 0.12, 2.5), dark, -3.4, 3.45, 0);
     for (const x of [-1.9, -3.1]) for (const z of [-1.1, 1.1]) wheel(trailer, 0.6, 0.5, x, z);
     for (const z of [-1.1, 1.1]) { wheel(body, 0.6, 0.5, 2.9, z); wheel(body, 0.6, 0.5, 1.0, z); }
   } else { // monster
@@ -7946,7 +7946,7 @@ function drDress(G, R) {
   // under-cabinet strip and its wash down the doors and across the floor
   const strip = new THREE.Mesh(dBox(454, 1.2, 1.4), dBasic(0xffd9a0)); strip.position.set(-5, -3.2, 4.8); G.add(strip);
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(454, 70), dAdd(0xffa24a, 0.55, drGlowTex(), 'wallwash')); wall.position.set(-5, -38, 5.1); G.add(wall);
-  const floorWash = new THREE.Mesh(dFlat(), dAdd(0xff9a3c, 0.3, drGlowTex(), 'floorwash')); floorWash.scale.set(520, 1, 70); floorWash.position.set(-5, Y + 0.05, 22); floorWash.renderOrder = 1; G.add(floorWash);
+  const floorWash = new THREE.Mesh(dFlat(), dAdd(0xff9a3c, 0.22, drGlowTex(), 'floorwash')); floorWash.scale.set(520, 1, 70); floorWash.position.set(-5, Y + 0.05, 22); floorWash.renderOrder = 1; G.add(floorWash);
   // the fridge, standing east of the track with its door open and the light spilling out
   const fx = 168, fz = 40;
   const fr = new THREE.Group(); fr.position.set(fx, Y, fz); G.add(fr);
@@ -8175,6 +8175,7 @@ function driftQuit() { driftCleanup(); $('start').hidden = false; selectLevel(cu
 function driftFinish() {
   const R = state.race, D = R.drift;
   D.state = 'done'; R.intro = true; $('banner').hidden = true;
+  { const p = state.player; p.alive = false; engineUpdate(p); p.alive = true; } // the engine goes quiet behind the results card
   if (D.d.active) drBank(D, state.player);
   drScreech(0, 0);
   const mode = DR.sel.mode, prev = DR.best[mode] || { score: 0, drift: 0, combo: 1, stars: 0 };

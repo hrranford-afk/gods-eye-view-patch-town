@@ -1014,3 +1014,23 @@ Put the game on a real table with WebXR `immersive-ar`. Full write-up in [AR.md]
 - The whole scene is scaled onto the table (scene transform), so new meshes need nothing special. Anything real-world sized (the reticle) must cancel the scene transform (see `arFrame`). Code that projects to the screen (`.project(camera)`) works because `arFrame` bakes the scene matrix into `camera.matrixWorldInverse`. The minimap's view-trapezoid (`unproject(camera)`) is wrong in AR (cosmetic, not fixed).
 - The Kitchen Run's floor, tiled wall and window are hidden in AR by size (700-wide); if the kitchen scenery changes, check `arFit`. Do not add elements to `<body>` that must show in AR without checking: a `MutationObserver` moves them into `#arRoot`, but the iOS polyfill hides anything outside the root.
 - Bugs not fixed: minimap trapezoid (above); levels 3 (dark) and 6 (finale) ran 15 s in the AR mock with no errors but were not looked at closely; Chrome Android and real ARKit untested; no anchors (the world can drift on a long session).
+
+## Drift mode (branch game/drift)
+
+"Midnight Kitchen Drift": a night street-drifting mode. All code is one block between `<!-- Drift mode BEGIN -->` and `<!-- Drift mode END -->` (just before the AR script): CSS, HUD, garage and results cards, and the JS. Screenshots: `shots/60-drift-night.png` to `63-drift-results.png`.
+
+**Shared-code hooks** (each marked `Drift hook`): `let driftOn` + a line at the top of `startRace` (consumed: calls `driftStart`); `if (R.drift) { driftUpdate(dt); return; }` in `raceUpdate`; `if (state.race.drift) return driftCam(dt);` at the top of `krCam`; `if (R.drift) driftCleanup(R);` at the top of `krCleanup`. Normal race and battle handling is untouched; the title Drift button calls `driftBegin()` (sets `driftOn`, `reset()`).
+
+**How it is built.** `driftStart` calls `krStart` (the whole Kitchen Run kitchen, so cleanup and merging come free), removes the red cars and tokens, then darkens the lights (hemi 0.12, sun 0.12, three point lights) and builds a closed Catmull-Rom loop (`DR_CTRL`, about 820 long, 22 wide) on the kitchen FLOOR (y = -90) round the island. Walls are ribbons with neon tops; collision is distance from the centre line (`drNear`, `drWalls`). Drift zones are the tight bends (`T.zones`), marked with chevrons and double points. The camera (`driftCam`) is the Kitchen Run camera at floor height. The state lives in `state.race.drift` (`D`); `DR` holds settings, bests and the particle pool.
+
+**Handling** (`driftDrive`, numbers in `DRIFT_VEHICLES`): the stick aims the nose. Without the handbrake yaw is grip-limited (`latG / speed`) so the car hardly slides. With DRIFT held above `hbMin` speed the rear grip drops to `driftGrip` and yaw rises by `hbTurn`; beyond `maxAng` the grip claws back. Letting go gives a 0.28 s snap of 2.4x grip. Sideways speed lost to grip is partly turned into forward speed (`redirect`; a third less in a drift). Racer 34 top / grip 1.1, Muscle 38 / 1.0, Lorry 29 / 1.5 (needs 14 speed), Monster 27 / 0.8.
+
+**Scoring** (`drScoreStep`): a drift is slip over 14 degrees above speed 9. Points a second = angle/45 degrees x min(speed,42)/20 x 60 x car multiplier (1, 1.1, 3.0, 1.3) x zone (2) x tandem (1 to 2). A drift of 0.6 s or more is banked when it ends, times the combo; each bank adds 1 to the combo (max 8) and gives 4.5 s to chain the next. A wall hit over 5 units a second (crash), 4.5 s without drifting, or standing still 1.5 s drops it to 1. Nitro fills while sliding; BOOST spends it all (0.6 to 2.2 s, x1.5 top speed). A good exit gives a speed kick. Stars: free 5,000 / 15,000 / 30,000, tandem 6,000 / 17,000 / 34,000 (`DR_STARS`). Bests: `localStorage` `bb-drift-v1` in try/catch.
+
+**Effects.** Smoke and sparks: a ring of 64 sprites made once and reused. Skid marks: one mesh, a ring of 300 quads written in place. Neon underglow and a headlight pool are additive quads on each car. Sound: tyre screech (looped noise, volume and pitch follow slip), engine pitch from speed (`engineUpdate`), boost whoosh, combo jingles. Screen shake on big slides and crashes.
+
+**Tandem**: a scripted ghost racer follows the loop, drifts in the bends and waits if you fall behind; staying within 30 units behind it pays 30 points a second and multiplies your drifts.
+
+**Testing**: `DR.bot = (car, D) => ({ ix, iz, hb, boost })` replaces the input; `driftUpdate(1/60)` can be stepped by hand, so a 3-minute run takes about a second (see the scripts used: bot holds the handbrake through bends).
+
+**Not done / known:** no AR (Drift is normal view only; the loop sits on the kitchen floor, which AR hides). The first run compiles shaders when the point lights appear. Skid marks are faint on the lit road. No ghost collision.
