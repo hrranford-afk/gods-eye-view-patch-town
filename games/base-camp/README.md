@@ -1,39 +1,24 @@
 # Base Camp (working title)
 
-A tiny living colony that settles the **real surfaces of your room**. Map your room once, name the speaker, the cup and the warm box, tap a surface to found a colony, then *help* the little people. They keep working while you are away (up to 24 hours), they love a tidy house, and they call you **the Giant**.
+A tiny living colony that settles the **real surfaces of your room**. Press Play and look around: the colony lands by itself, then *help* the little people. They keep working while you are away (up to 24 hours), they love a tidy house, and they call you **the Giant**.
 
 One file: `index.html` (three.js r128 from cdnjs). No build step. Needs `webxr-polyfill.js` and `THIRD_PARTY.md` next to it; the council's `almanac.json`, `rooms.json`, `creatures.json` and `clip-labels.json` are optional (built-in copies are used when they are missing).
 
-## The flow
+## The flow (build 4: automatic)
 
-1. **Start** (title): *Map my room*, *Start in AR*, *Practice room*, *Continue my colony*, *Room map: export / import*.
-2. **Scan.** Sweep the iPad slowly over every surface (floor, desk, shelves, the tops of speakers and boxes). Each flat surface becomes a **zone**; small tops (a can, a cup) become **clutter**. *Done scanning*.
-3. **Name spots** (always in *Map my room*, any time from the Menu). Tap a thing: Speaker, Cup / mug, Can, Computer, Warm box, Shelf, Ledge, Monitor top, Drawers / cabinet top, Floor, Door / window, Radiator, Sofa, Rug, Plant, Worktop, Other, or type your own name ("Radeon", "kettle"). Each tag has a **role** from the council's `rooms.json`:
+Press **Play** (AR when the app offers it, else the practice room). That is the whole game loop; everything else happens by itself.
 
-   | Tag | Role (what the colonists build) | How they get there |
-   |---|---|---|
-   | Speaker | Broadcast tower (shakes when *Music* is on, morale) | zip-line made of dental floss |
-   | Cup / mug | Water tower (fresh water) | rope ladder |
-   | Can | Tin silo (room for tin and food) | rope ladder |
-   | Computer | Town square (happy gatherings) | cable car |
-   | Warm box / Radiator | Forge and winter refuge (makes tin; warm in the cold) | hot-air balloon made from a tea bag |
-   | Shelf | Storehouse | cable car |
-   | Ledge / Monitor top | Lookout | thread-and-paperclip pulley / zip-line |
-   | Drawers, Sofa | Workshop (builds 30% faster) | rope ladder / tunnel |
-   | Floor | Farmland (one more farm, ripens faster) | rope ladder |
-   | Door / window | Solar farm (growth, fruit) | thread-and-paperclip pulley |
-   | Rug | Hideout and nursery (more settlers) | catapult (bent fork tine) |
-   | Worktop / desk | Trading post (spare food for seeds and wood) | catapult |
+1. **Title.** One big button, *Play*, and a small *More...* menu (practice room, manual map, export / import, forget). If a colony is saved the title already says **"Welcome back - you were away 3 h 12 min"** with the first lines of the diary, before AR starts. It also tells you plainly if the browser blocks saving (and offers Export) or if a save is damaged (the backup copy is used automatically).
+2. **Scanning never stops.** There is no scan phase and no *Done scanning*. Every flat thing the iPad sees becomes a zone while you look around; zones are shown lightly (a small "6 places found" at the top edge, tiny in-world labels for a few seconds or when you look at them, one short hint line that fades). The centre of the screen stays clear.
+3. **The colony arrives by itself** on the largest clear area as soon as a decent surface (over 0.08 m2) exists, with a cheerful line. Not by type: by clear area (a desk-height surface wins a close call). More settlements come from the colony's own requests: a thriving colony asks for a cable car to the next zone and you tap **Yes** (drag-to-build is still there as an option).
+4. **Recognition runs in the background** (COCO-SSD about every 2 s when camera frames exist). Sure detections become named spots with a role automatically ("That looks like a cup! ... water tower"); the same tag seen again on later visits grows surer, a contradicting detection makes the colony forget the tag and look again. A "What is this?" question appears at most once per 2 minutes, only for things next to the colony, dismissible, never blocking. Unknown spots get a default role by height and size. Smarter recognition (CLIP, ~55 MB) stays opt-in in the Menu.
+5. **Things the game cannot classify become wonders.** A small isolated top high above everything (a chandelier) becomes a landmark with a provisional name ("the Great Glittering Thing") and a diary line. The kinds are a data table (`WONDERS`).
+6. **Autosave.** The room map and the colony save every 10 s, a moment after every meaningful change, when the page is hidden and before AR ends. Every write keeps the previous good copy in a backup slot (`-bak`); loading falls back to it.
+7. **It knows where it is.** Coming back, the saved room waits hidden while the fresh scan grows. The game registers the two automatically (surfaces are flat and gravity-aligned, so only yaw, an x/z shift and a height offset are unknown): height layers are paired, boundary points vote for the shift at every yaw (2 degree steps), the best peaks are refined (ICP) and checked, and when the match is clearly good, unique and stable for about 2 s the saved colony **snaps into place: "We're home!"**, the "while you were away" story plays (new buildings pop in, a hint points to the colony if it is off screen) and normal change detection continues on the matched map. If nothing matches after about 60 s of scanning it asks once: **"Is this a new room, or have things moved?"** (new room: a fresh map, the old one kept as a backup; moved: the older two-tap alignment).
+8. **The map gets better every visit.** Each visit is merged into the saved map (never replaced): per cell it counts in how many visits the cell was seen, new areas are added, busy-spot learning accumulates, tag confirmations count. The Menu shows "Map 72% known, 5 visits".
+9. **Field recorder.** Menu > *Report* builds one JSON report about what the game saw in your room (surfaces, recognition, homing attempts, speed, errors, unknown things, up to 6 small camera pictures of confusing moments). Download it or Copy it; the last 5 are listed. Nothing is ever uploaded by the game.
 
-   *Mark a cable*: tap both ends of a real cable and the colonists get a **ready-made zip line** between the two spots (it opens when the first colony has four settlers). Every spot card shows the council's words and **by <resident>**. *Save room map* keeps the map **separately from the colony** (versioned; *Export / import* copies it as JSON).
-4. **Settle.** *Found a colony* (or just tap a coloured zone). Three settlers arrive with a tent; spots on the zone become landmarks (tower, well, forge...).
-5. **Nurture.** Seeds, water, build blueprints, cheer, requests ("We need water!"), cable cars to thriving neighbours, weather, day and night: as before.
-6. **Away.** Close the app. The colony lives on the **saved map** for up to 24 hours (coarse steps, under a second). Roles matter: the forge makes tin, the tower plays music, the market trades, a thriving colony sends a party over a zip line to found a new colony.
-7. **Come back.** *Continue my colony*:
-   1. **While you were away**: a diary card (5 to 10 short lines, with the spot roles, creature quotes and the council's funny things, each credited *by <resident>*).
-   2. **Scan again** (the real room may have moved a little).
-   3. **Line up**: the game picks the two tagged spots that are furthest apart and asks *"Tap the Radeon"*, *"Tap the speaker"*. That solves turn and shift. Slide / turn buttons stay as fine tuning. *Scan more first* and *Same place (skip)* are there too.
-   4. **What changed**: the new scan is compared with the map (below).
+The manual tools are still in the menus: *More... > Manual: map my room* (scan, *Done scanning*, name spots, save), *Menu > Name spots*, *Line up by tapping two things*, *Scan again from scratch*, *Export / import*.
 
 ## Things move: change, drama, not failure
 
@@ -78,6 +63,6 @@ While mapping, the camera picture is looked at about every 1.5 s (AR needs the `
 | `webxr-polyfill.js`, `THIRD_PARTY.md` | unmodified WebXRKit polyfill for the iPad fix, and licences |
 | `HANDOVER.md` | developer notes: data formats, maths, tests, what is cut |
 | `shots/` | screenshots |
-| `tests/` | Playwright scripts: `room-test.js` (practice room, about a minute), `ar-room-test.js` (real polyfill, about 6 minutes), `recog-test.js`, `ar-harness.js` and `practice-test.js` (first prototype), `lib.js` (server), `make-clip-labels.mjs` (build step) |
+| `tests/` | Playwright scripts: `auto-practice-test.js` (automatic flow in the practice room), `auto-ar-test.js` + `ar-fake.js` (automatic flow with the real polyfill and a fake shed: first play, three returns, a different room, field report), `room-test.js` (manual tools, practice room), `recog-test.js`, `ar-room-test.js` (the build-3 manual AR test, kept as an example), `ar-harness.js` and `practice-test.js` (first prototype), `lib.js`, `make-clip-labels.mjs` |
 
-Build tag: shown at the start of the status line under the title buttons ("build 2 ...").
+Build tag: shown at the start of the status line under the title buttons ("build 4 ...").

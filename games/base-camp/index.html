@@ -611,10 +611,10 @@ function changedObjects(L, pred, minN) { // patches of cells for which pred is t
 }
 function bumpConf(L, obs) { if (L.confVisit === G.visits) return; L.confVisit = G.visits; for (let k = 0; k < obs.length; k++) if (obs[k] && L.conf[k] < 15) L.conf[k]++; }
 function reconcileLand(L, m, first) {
-  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length; bumpConf(L, m.obs);
+  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length, conf0 = G.auto && !first ? L.conf.slice() : null; bumpConf(L, m.obs); // automatic play: a cell only counts as evidence of a change when earlier visits saw it (removed: 1 visit, put down: 2), so a thin first map cannot invent tidying or squashing
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
-  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1, 5); // an object counts as put down only where the bare cells were really seen before
+  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1 && (!conf0 || conf0[k] >= 1), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1 && (!conf0 || conf0[k] >= 2), 5); // an object counts as put down only where the bare cells were really seen before
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
@@ -1008,7 +1008,7 @@ const CONDS = {
   needWater: (S) => !built(S, 'well') && S.stock.water < 2, noSeeds: (S) => S.stock.seeds < 1 && kindCount(S, 'tree') < 3,
   hot: (S) => ENV.hot && !S.things.some((t) => t.kind === 'shade'), cold: () => ENV.cold, noWood: (S) => S.stock.wood < 1 && S.cols.length >= 3 && S.things.some((t) => !t.built && !t.hold && KINDS[t.kind].work) === false && S.stock.wood < 1 && kindCount(S, 'tree', true) < 2,
   bored: (S) => S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length < 0.35,
-  cantReach: (S) => S.thriving && G.zones.some((z) => !z.settled && !z.lost) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
+  cantReach: (S) => (S.thriving || (G.auto && S.cols.length >= 4)) && canPay(S, CABLE_COST) && G.zones.some((z) => !z.settled && !z.lost && z.land && z.area > 0.04) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
   night: () => ENV.night, cramped: (S) => !!S.cramped && S.stock.wood >= 5,
 };
 function requestsStep(S, quiet) {
@@ -1033,7 +1033,10 @@ function giveRequest(r) {
   else if (g === 'wood') { S.stock.wood += 4; puff('log', S.tf.x, S.tf.y + 0.08, S.tf.z, 4, { size: 0.012, vy: -0.02, life: 1, spread: 0.05 }); sfx('pop'); }
   else if (g === 'shade') { const sp = findSpot(S, 0.04, { cx: c ? c.x : 0, cz: c ? c.z : 0, R: 0.12 }) || findSpot(S, 0.04); if (sp) { const t = addThing(S, 'shade', sp[0], sp[1], { life: 500 }); t.pop = 0.5; sfx('pop'); } }
   else if (g === 'cheer') { for (const q of S.cols) { q.needs.joy = Math.min(1, q.needs.joy + 0.3); q.hop = 1; } sfx('cheer'); }
-  else if (g === 'cablecar') { setTool('cable'); toast('Drag a line from this settlement to another zone.', 4); return; }
+  else if (g === 'cablecar') { // one tap: the colony picks the next zone itself (drag-to-build is still on the Cable car tool)
+    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && Z.land && Z.area > 0.04 && Z !== S.zoneRef).sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
+    const Zt = cands[0]; if (!Zt) { setTool('cable'); toast('Drag a line from this settlement to another zone.', 4); return; } ensureDist(Zt); ensureDist(S.zoneRef);
+    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   else if (g === 'expedition') { const Zt = zoneById(r.def.zone); if (!Zt || Zt.settled) return resolveRequest(r); ensureDist(Zt); ensureDist(S.zoneRef); S.stock.wood = Math.max(S.stock.wood, CABLE_COST); const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   for (const q of S.cols) q.needs.joy = Math.min(1, q.needs.joy + (q === c ? r.def.joy : 0.08));
   if (c) { c.hop = 1; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.05, wz, 4, { size: 0.01, vy: 0.03, life: 1.4 }); }
@@ -2305,7 +2308,7 @@ function reportUi(msg) {
 //    snap the saved room into place (relocLock) with a "We're home!" moment. If nothing matches for ~60 s of scanning the player is asked once.
 //  - After a lock the usual change detection (captureScan / applyChanges) runs every minute or so on the matched map.
 const AUTO = { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' };
-function autoReset() { Object.assign(AUTO, { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; }
+function autoReset() { Object.assign(AUTO, { commitAt: 0, refT: 0, t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; }
 function autoSay(text, secs) { // one short line that fades after a few seconds
   const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; return; }
   h.hidden = false; h.classList.remove('fade'); if (AUTO.said !== text) { AUTO.said = text; h.textContent = text; }
@@ -2326,7 +2329,7 @@ function mapKnown() { let s = 0, n = 0; for (const Z of G.zones) { const L = Z.l
 function liveGain(Z) { // the scan sees more of a known surface: new cells and newly found objects are added; nothing is ever removed or reported here
   const L = Z.land, m = measureLand(L); let ch = 0;
   for (let k = 0; k < L.st.length; k++) {
-    const o = m.obs[k]; if (!o) continue;
+    const o = m.obs[k]; if (!o) continue; if (L.conf[k] === 0) L.conf[k] = 1;
     if (L.st[k] === 0) { L.st[k] = o; L.ht[k] = o === 2 ? m.ht[k] : 0; ch++; }
     else if (L.st[k] === 1 && o === 2) { L.st[k] = 2; L.ht[k] = m.ht[k]; ch++; }
     else if (L.st[k] === 2 && o === 2 && m.ht[k] > L.ht[k]) { L.ht[k] = m.ht[k]; ch++; }
@@ -2413,8 +2416,10 @@ function autoTick(dt) {
   }
   RELOC.lastHits = SCAN.hits;
   if (G.returning && !G.locked) relocStep(dt);
+  if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.1, S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
+  if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
   // after a lock: change detection on the matched map
-  if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300) { autoCompare(); }
+  if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300 && !AUTO.commitAt) { if (relocGoodForCompare()) autoCompare(); else AUTO.compareAt = AUTO.t + 30; }
   AUTO.saveT += dt; if (AUTO.saveT > 10) { AUTO.saveT = 0; persist(); }
   RECOG.t += dt; if (RECOG.t > 2) { RECOG.t = 0; recogTick(); recogStatus(); }
   REC.lastCover += dt; if (REC.lastCover > 5) { REC.lastCover = 0; recCover(); if (++REC.lastZones % 3 === 0) { recZones(); wondersTick(); } if (REC.lastZones % 6 === 0) recSave(); }
@@ -2448,7 +2453,7 @@ AUTO.askGap = 120000;
 // on the boundary points and 4) verified on the topmost-height raster: matches, conflicts and informative matches (cells next to a real height step).
 // It only locks when the match is good, unique and stable for ~2 s. A native ARKit world map would replace all this: see worldMapHook().
 const RELOC = { state: 'off', job: null, hist: [], scanSecs: 0, lastHits: -1, saved: null, result: null, tries: 0, nextTry: 0, asked: false, acc: null,
-  cfg: { cell: 0.04, phiStepDeg: 2, range: 8, bin: 0.05, maxPts: 200, minCells: 150, minRatio: 0.8, minInfo: 30, maxMargin: 0.75, stableN: 3, stableSecs: 2, askAfter: 60, tryEvery: 1.2, hTol: 0.035 } };
+  cfg: { cell: 0.04, phiStepDeg: 2, range: 8, bin: 0.05, maxPts: 200, minCells: 200, minRatio: 0.8, minInfo: 60, minOverlap: 0.25, maxMargin: 0.85, stableN: 3, stableSecs: 2, askAfter: 60, tryEvery: 1.2, hTol: 0.035 } };
 const rKey = (I, J) => (I + 4096) * 8192 + (J + 4096);
 function relocLayer(y, set, n) { // boundary points of an occupancy set
   const C = RELOC.cfg.cell, all = [];
@@ -2500,13 +2505,23 @@ function relocVerify(T, savedTop, liveTop) { // T: saved -> live. Count the live
     for (let di = -1; di <= 1 && !hit; di++) for (let dj = -1; dj <= 1; dj++) { const h = savedTop.top.get(rKey(I + di, J + dj)); if (h === undefined) continue; def = true; const d = hl - h; if (Math.abs(d) < tol) { hit = true; bd = d; break; } }
     if (hit) { M++; dsum += bd; if (liveTop.step[i]) info++; } else if (def) { X++; if (liveTop.step[i]) infoX++; } else O++;
   }
-  const k = stp; return { M: M * k, X: X * k, O: O * k, info: info * k, infoX: infoX * k, ratio: M / Math.max(1, M + X), score: (info - 3 * infoX) * k + 0.02 * (M - 2 * X) * k, dyFix: M ? dsum / M : 0 }; // the score rewards agreement at height steps (objects, edges of tops) far more than agreement on a flat floor
+  const k = stp; return { M: M * k, X: X * k, O: O * k, info: info * k, infoX: infoX * k, overlap: (M + X) * k / Math.max(1, liveTop.n), ratio: M / Math.max(1, M + X), score: (info - 3 * infoX) * k + 0.02 * (M - 2 * X) * k, dyFix: M ? dsum / M : 0 }; // the score rewards agreement at height steps (objects, edges of tops) far more than agreement on a flat floor
 }
-function relocIcp(T0, live, saved, dy) { // live boundary points -> nearest saved boundary points, trimmed Kabsch, a few rounds
-  const hash = new Map(), H = 0.06; const sl = saved.filter(() => true);
-  sl.forEach((s, si) => { for (let i = 0; i < s.all.length; i += 2) { const key = Math.floor(s.all[i] / H) * 100003 + Math.floor(s.all[i + 1] / H); let a = hash.get(key); if (!a) hash.set(key, a = []); a.push(si, s.all[i], s.all[i + 1]); } });
+function relocHash(saved) { const hash = new Map(), H = 0.06; saved.forEach((s, si) => { for (let i = 0; i < s.all.length; i += 2) { const key = Math.floor(s.all[i] / H) * 100003 + Math.floor(s.all[i + 1] / H); let a = hash.get(key); if (!a) hash.set(key, a = []); a.push(si, s.all[i], s.all[i + 1]); } }); return hash; }
+function relocLivePts(live) { // boundary points for refining: the clean outlines of tops (speakers, shelves, cans) when they are spread out enough; the ragged edge of a big floor only otherwise
+  const low = live.reduce((m, l) => Math.min(m, l.y), 1e9), pts = (ls) => { const lp = []; for (const l of ls) { const st = Math.max(1, Math.floor(l.all.length / 2 / 500)); for (let i = 0; i < l.all.length / 2; i += st) lp.push(l.y, l.all[2 * i], l.all[2 * i + 1]); } return lp; };
+  const tops = pts(live.filter((l) => l.y > low + 0.08)); let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < tops.length; i += 3) { x0 = Math.min(x0, tops[i + 1]); x1 = Math.max(x1, tops[i + 1]); z0 = Math.min(z0, tops[i + 2]); z1 = Math.max(z1, tops[i + 2]); }
+  return tops.length >= 120 && Math.hypot(x1 - x0, z1 - z0) >= 0.8 ? tops : pts(live);
+}
+function relocCost(T, lp, sl, hash, dy) { // robust mean distance of the live boundary points to the saved ones (smooth, unlike the verification counts)
+  const H = 0.06, a = -T.phi, ca = Math.cos(a), sa = Math.sin(a), ux = -(ca * T.tx - sa * T.tz), uz = -(sa * T.tx + ca * T.tz); let sum = 0, n = 0;
+  for (let i = 0; i < lp.length; i += 3) { const x = lp[i + 1], z = lp[i + 2], qx = ca * x - sa * z + ux, qz = sa * x + ca * z + uz, gi = Math.floor(qx / H), gj = Math.floor(qz / H); let bd = 0.05 * 0.05; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const arr = hash.get((gi + di) * 100003 + gj + dj); if (!arr) continue; for (let q = 0; q < arr.length; q += 3) { if (Math.abs(lp[i] - sl[arr[q]].y - dy) > 0.035) continue; const d = (arr[q + 1] - qx) ** 2 + (arr[q + 2] - qz) ** 2; if (d < bd) bd = d; } } sum += Math.sqrt(bd); n++; }
+  return n ? sum / n : 1;
+}
+function relocIcp(T0, live, saved, dy, hash0) { // live boundary points -> nearest saved boundary points, trimmed Kabsch, a few rounds
+  const H = 0.06, hash = hash0 || relocHash(saved), sl = saved;
   let a = -T0.phi, ca = Math.cos(a), sa = Math.sin(a), ux = -(ca * T0.tx - sa * T0.tz), uz = -(sa * T0.tx + ca * T0.tz);
-  const lp = []; for (const l of live) { const st = Math.max(1, Math.floor(l.all.length / 2 / 500)); for (let i = 0; i < l.all.length / 2; i += st) lp.push(l.y, l.all[2 * i], l.all[2 * i + 1]); }
+  const lp = relocLivePts(live);
   const thrs = [0.14, 0.1, 0.09, 0.08, 0.07, 0.07, 0.06, 0.06, 0.06, 0.05, 0.05, 0.05, 0.05, 0.04, 0.04, 0.04, 0.035, 0.035, 0.03, 0.03]; let nPairs = 0;
   for (const thr of thrs) {
     const pairs = []; ca = Math.cos(a); sa = Math.sin(a);
@@ -2542,9 +2557,11 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
   peaks.sort((a, b) => b.votes - a.votes); const sel = [];
   const angd = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   for (const p of peaks) { if (sel.length >= 8) break; if (sel.some((q) => Math.abs(q.dy - p.dy) < 0.04 && angd(q.phi, p.phi) < 0.14 && Math.hypot(q.tx - p.tx, q.tz - p.tz) < 0.3)) continue; sel.push(p); }
-  const savedTop = RELOC.savedTop, liveTop = relocTop(live), out = [];
+  const savedTop = RELOC.savedTop, liveTop = relocTop(live), out = [], hash = relocHash(saved), lp = relocLivePts(live); let cx = 0, cz = 0; for (let i = 0; i < lp.length; i += 3) { cx += lp[i + 1]; cz += lp[i + 2]; } cx /= Math.max(1, lp.length / 3); cz /= Math.max(1, lp.length / 3);
   for (const p of sel) {
-    const T = relocIcp(p, live, saved, p.dy); yield; const v = relocVerify(T, savedTop, liveTop); const T2 = Object.assign({}, T, { dy: T.dy + v.dyFix }); const v2 = relocVerify(T2, savedTop, liveTop);
+    let T = null, bc = 1e9; // several starting yaws around the peak (the valley of a flat floor is shallow): keep the pose with the lowest boundary distance
+    for (const dd of [0, -1.2, 1.2, -2.4, 2.4]) { const dph = dd * Math.PI / 180, c0 = Math.cos(p.phi), s0 = Math.sin(p.phi), sx = c0 * (cx - p.tx) + s0 * (cz - p.tz), sz = -s0 * (cx - p.tx) + c0 * (cz - p.tz), c1 = Math.cos(p.phi + dph), s1 = Math.sin(p.phi + dph), T0 = { phi: p.phi + dph, tx: cx - (c1 * sx - s1 * sz), tz: cz - (s1 * sx + c1 * sz) }; const Ti = relocIcp(T0, live, saved, p.dy, hash), co = relocCost(Ti, lp, saved, hash, p.dy); if (co < bc) { bc = co; T = Ti; } }
+    yield; const v = relocVerify(T, savedTop, liveTop); const T2 = Object.assign({}, T, { dy: T.dy + v.dyFix }); const v2 = relocVerify(T2, savedTop, liveTop);
     out.push(Object.assign(T2, v2, { votes: p.votes, ratio: v2.ratio }));
   }
   RELOC.peaks = sel; RELOC.cands = out.map((q) => ({ phi: +(q.phi * 57.2958).toFixed(1), tx: +q.tx.toFixed(2), tz: +q.tz.toFixed(2), M: q.M, X: q.X, info: q.info, ratio: +q.ratio.toFixed(2), score: q.score, votes: q.votes }));
@@ -2556,7 +2573,7 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
 }
 function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
   RELOC.state = 'search'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
-  RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved);
+  RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
 }
 function relocStep(dt) {
   if (RELOC.state !== 'search') return;
@@ -2574,7 +2591,7 @@ function relocStep(dt) {
   }
 }
 function relocConsider(res) {
-  const c = RELOC.cfg, ok = !!res && res.M >= c.minCells && res.ratio >= c.minRatio && res.info >= c.minInfo && res.margin <= c.maxMargin;
+  const c = RELOC.cfg, ok = !!res && res.M >= c.minCells && res.ratio >= c.minRatio && res.info >= c.minInfo && res.overlap >= c.minOverlap && res.margin <= c.maxMargin && res.infoX <= res.info;
   recReloc(res ? { M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), info: res.info, margin: +(res.margin || 0).toFixed(2), score: res.score, layers: res.layers, ok, ms: Math.round(RELOC.lastMs || 0) } : { none: true }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok }); if (RELOC.hist.length > 12) RELOC.hist.shift();
   const h = RELOC.hist.slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
   if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
@@ -2583,16 +2600,44 @@ function relocConsider(res) {
   relocLock(a);
 }
 function relocLock(res, how) {
-  const T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; applyAlign(T); G.alignErr = null; commitAlign();
+  let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
   recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, how: how || 'auto' };
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
   homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
   for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, S.tf.y + 0.05, S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
-  AUTO.compareAt = AUTO.t + 25; AUTO.compareHits = SCAN.hits; AUTO.diaryT = AUTO.t + 2.5; persist();
+  AUTO.compareAt = AUTO.t + 25; AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; persist();
   setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
 }
+function relocSetScore(T, liveTops, saved) { // how many live top cells land on saved top cells of the same height (tops are clean, small outlines: they pin yaw and shift much better than a floor)
+  const C = RELOC.cfg.cell, c = Math.cos(-T.phi), s = Math.sin(-T.phi); let m = 0, o = 0;
+  for (const l of liveTops) { const comp = saved.filter((q) => Math.abs(l.y - q.y - T.dy) < 0.035); for (const key of l.set) { o++; if (!comp.length) continue; const I = Math.floor(key / 8192) - 4096, J = (key % 8192) - 4096, dx = (I + 0.5) * C - T.tx, dz = (J + 0.5) * C - T.tz, k2 = rKey(Math.floor((dx * c - dz * s) / C), Math.floor((dx * s + dz * c) / C)); for (const q of comp) if (q.set.has(k2)) { m++; break; } } }
+  return { m, o, q: o ? m / o : 0, score: m - 0.3 * (o - m) };
+}
+function relocPolish(T0, live) { // local search around a pose: yaw +-3 degrees, shift +-8 cm, then finer; maximises the overlap of the tops
+  const low = live.reduce((m, l) => Math.min(m, l.y), 1e9), tops = live.filter((l) => l.y > low + 0.08 && l.n >= 12); if (!tops.length) return { T: T0, q: -1 };
+  let cx = 0, cz = 0, n = 0; const C = RELOC.cfg.cell; for (const l of tops) for (const key of l.set) { cx += ((Math.floor(key / 8192) - 4096) + 0.5) * C; cz += (((key % 8192) - 4096) + 0.5) * C; n++; } cx /= n; cz /= n;
+  const mk = (T, dph, dx, dz) => { const c = Math.cos(dph), s = Math.sin(dph); return { phi: T.phi + dph, tx: c * (T.tx - cx) - s * (T.tz - cz) + cx + dx, tz: s * (T.tx - cx) + c * (T.tz - cz) + cz + dz, dy: T.dy, pivot: [0, 0], auto: true }; };
+  let best = T0, bs = relocSetScore(T0, tops, RELOC.saved); const r0 = bs;
+  for (const [span, step, pstep, pspan] of [[0.08, 0.02, 1, 3], [0.02, 0.005, 0.25, 0.75]]) {
+    const b0 = best; let nb = best;
+    for (let dph = -pspan; dph <= pspan + 1e-9; dph += pstep) for (let dx = -span; dx <= span + 1e-9; dx += step) for (let dz = -span; dz <= span + 1e-9; dz += step) { const T = mk(b0, dph * Math.PI / 180, dx, dz), sc = relocSetScore(T, tops, RELOC.saved); if (sc.score > bs.score) { bs = sc; nb = T; } }
+    best = nb;
+  }
+  return { T: best, q: bs.q, gain: bs.score - r0.score, o: bs.o };
+}
+function relocRefine() { // after the lock the scan keeps growing: nudge the registration (ICP from several yaws, lowest boundary distance wins, never worse than now)
+  const T0 = G.align; if (!T0 || !RELOC.saved) return false; const live = relocLiveLayers(); if (!live.length) return false;
+  const pol = relocPolish(T0, live); if (pol.q >= 0) { RELOC.lock.q = +pol.q.toFixed(2); if (pol.gain > 0) { applyAlign(pol.T); RELOC.lock.phi = pol.T.phi; RELOC.lock.tx = pol.T.tx; RELOC.lock.tz = pol.T.tz; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; return true; } return false; }
+  const saved = RELOC.saved, hash = RELOC.hash || (RELOC.hash = relocHash(saved)), lp = relocLivePts(live), dy = T0.dy; let cx = 0, cz = 0; for (let i = 0; i < lp.length; i += 3) { cx += lp[i + 1]; cz += lp[i + 2]; } cx /= Math.max(1, lp.length / 3); cz /= Math.max(1, lp.length / 3);
+  const c0 = relocCost(T0, lp, saved, hash, dy); let best = null, bc = c0;
+  for (const dd of [0, -0.8, 0.8, -1.6, 1.6, -3, 3]) { const dph = dd * Math.PI / 180, c1 = Math.cos(T0.phi), s1 = Math.sin(T0.phi), sx = c1 * (cx - T0.tx) + s1 * (cz - T0.tz), sz = -s1 * (cx - T0.tx) + c1 * (cz - T0.tz), c2 = Math.cos(T0.phi + dph), s2 = Math.sin(T0.phi + dph), Ts = { phi: T0.phi + dph, tx: cx - (c2 * sx - s2 * sz), tz: cz - (s2 * sx + c2 * sz) }; const Ti = relocIcp(Ts, live, saved, dy, hash), co = relocCost(Ti, lp, saved, hash, dy); if (co < bc * 0.98) { bc = co; best = Ti; } }
+  if (!best) return false;
+  const v = relocVerify(best, RELOC.savedTop, relocTop(live)); const T = { phi: best.phi, tx: best.tx, tz: best.tz, dy: dy + (v.M > 50 ? v.dyFix : 0), pivot: [0, 0], auto: true }; applyAlign(T);
+  if (RELOC.lock) { RELOC.lock.phi = T.phi; RELOC.lock.tx = T.tx; RELOC.lock.tz = T.tz; RELOC.lock.dy = T.dy; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; RELOC.lock.cost = +bc.toFixed(4); } return true;
+}
+function relocGoodForCompare() { const q = RELOC.lock && RELOC.lock.q; return q === undefined || q >= 0.55 || RELOC.lock.how === 'worldmap'; } // changes are only judged on a registration whose tops really overlap: a few cm of error would look like objects put down on buildings
 function relocAsk() { // nothing matched after a minute of scanning
   RELOC.asked = true; recReloc({ gaveUp: true, tries: RELOC.tries }); recSnap('homing failed'); const el = $('ask'); el.hidden = false;
   el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">Is this a new room, or have things moved?</div><div style="font-weight:600">The colonists could not find their old room in what you showed them.</div><div class="mrow" style="justify-content:center"><button class="big alt" id="rmNew">A new room</button><button class="big" id="rmMoved">Things moved</button><button id="rmMore">Keep looking</button></div>';
@@ -2871,7 +2916,7 @@ $('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').data
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   for (const q of G.requests) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>Give</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'cablecar' || q.def.give === 'expedition' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
@@ -3103,7 +3148,7 @@ window.__g = {
   addSpot, removeSpot, addCable, syncCables, autoSpots, pickLandmarks, spotById, spotsOn, anchorFor, syncLandmarks, landTidy, landDisturb, landCalm, objClass, measureLand,
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
-  relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
+  relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
   overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 

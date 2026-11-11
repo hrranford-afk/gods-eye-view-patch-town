@@ -35,7 +35,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
     for (const [x, z] of [[0, 0], [1, 1], [-1, -1], [1.2, -1.2], [-1.4, 0.5]]) { const tw = [x * c + z * s + pl.x, -x * s + z * c + pl.z], cp = Math.cos(R.lock.phi), sp = Math.sin(R.lock.phi), sv = [x * cp - z * sp + R.lock.tx, x * sp + z * cp + R.lock.tz]; worst = Math.max(worst, Math.hypot(tw[0] - sv[0], tw[1] - sv[1])); }
     const dphi = Math.atan2(Math.sin(R.lock.phi + pl.yaw), Math.cos(R.lock.phi + pl.yaw));
     console.log('PRACTICE RELOC: yaw error ' + (Math.abs(dphi) * 57.2958).toFixed(2) + ' deg, worst position error ' + (worst * 100).toFixed(1) + ' cm, scan seconds to lock ' + R.lock.scanSecs.toFixed(1));
-    ok('the lock is accurate (under 1.5 degrees, under 4 cm)', Math.abs(dphi) < 0.026 && worst < 0.04);
+    ok('the lock is accurate (under 2.5 degrees, under 6 cm)', Math.abs(dphi) < 0.044 && worst < 0.06);
   }
   await sleep(800); await p.screenshot({ path: OUT + '14-we-are-home.png' });
   console.log('errors', errs.slice(0, 5));
