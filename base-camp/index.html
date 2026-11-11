@@ -44,7 +44,7 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .req{display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
 .req b{font-size:12px;color:#a85a1e;display:block}
 .req button{min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
-#toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 130px);pointer-events:none;font-weight:800;text-align:center;max-width:90vw}
+#toast{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);pointer-events:none;font-weight:700;font-size:13px;text-align:center;max-width:80vw;z-index:6}body.inar #toast{top:calc(env(safe-area-inset-top,0px) + 168px)}#toast .glass{padding:4px 10px;border-radius:10px}
 #toast:empty{display:none}
 #env{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);font-size:12px;font-weight:700;display:grid;gap:4px;min-width:170px}
 #env select,#env input{width:100%;font:700 12px var(--body)}
@@ -70,6 +70,8 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 #welcome ul{margin:4px 0 0;padding-left:18px;font-weight:600}
 body.auto #bar{padding:4px 6px;gap:4px;background:rgba(59,42,30,.55)}
 body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
+body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto #bar button.ic{min-height:40px;min-width:40px;padding:2px 3px;flex:0 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:11px}body.auto #bar button.ic i{font-style:normal;font-size:18px}body.auto #bar button.ic small{font-size:8.5px;font-weight:700;opacity:.8;margin-top:1px}
+#bar.min{background:none;backdrop-filter:none;padding:0;left:auto;right:12px;transform:none}#bar.min button.round{width:44px;height:44px;min-height:44px;border-radius:50%;padding:0;font-size:20px}
 #tmenu{justify-content:center;margin-top:10px}
 #count{display:inline-block;margin-top:4px;font:700 12px var(--body);opacity:.8;padding:2px 10px;border-radius:99px;background:var(--glass);pointer-events:none}
 #count:empty{display:none}
@@ -77,6 +79,10 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 #home{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:800 44px var(--body);color:#ffd9a8;text-shadow:0 3px 0 #7a4a22;pointer-events:none;opacity:0;transition:opacity .6s}
 #home.on{opacity:1}
 #mapInfo{font:700 13px var(--body);opacity:.85}
+#colMark{position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,217,168,.35);box-shadow:0 0 12px 4px rgba(255,217,168,.55);display:grid;place-items:center;font-size:16px;color:#fff6e6;pointer-events:none;z-index:3}
+#idDot{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:8px;height:8px;border-radius:50%;background:#ffd9a8;opacity:.55;animation:idp 1.6s ease-in-out infinite;pointer-events:none;z-index:3}@keyframes idp{50%{opacity:.12}}
+#nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
+#rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -91,6 +97,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button class="big" id="bPlay" disabled>Play</button>
       <button id="bMore">More...</button>
     </div>
+    <div id="rooms" hidden></div>
     <div id="tmenu" class="mrow" hidden>
       <button id="bFresh">Start a new room</button>
       <button id="bPrac" class="alt">Practice room</button>
@@ -98,12 +105,16 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button id="bMapIO">Room map: export / import</button>
       <button id="bHomes" hidden>Rooms and totems</button>
       <button id="bNew" hidden>Forget my colony</button>
+      <div id="storeInfo" class="sub" style="flex-basis:100%"></div>
     </div>
     <div id="mapInfo"></div>
     <div id="arStatus">AR: checking...</div>
   </div>
   <div id="top"><div id="hint" class="glass"></div><div id="chips"></div><div id="count"></div></div>
   <div id="home"></div>
+  <div id="idDot" hidden></div>
+  <div id="colMark" hidden><span>\u27a4</span></div>
+  <div id="nroom" class="glass" hidden></div>
   <div id="card" class="glass" hidden></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
@@ -125,7 +136,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 6b';
+const BUILD = 'build 7';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -145,15 +156,37 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
   for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
   if (bad) STORE.status = 'corrupt'; return null;
 }
-const HOME_TOTEM = false; // OFF: the home totem / multi-room work (build 6, unfinished) is not reachable while this is false
+const MULTI_ROOM = true; // ON (build 7): several rooms, each with its own map and colony (storage keys per room), a rooms list on the title, silent room recognition by surface matching
+const HOME_TOTEM = false; // OFF: the totem photo / guardian / feature matcher (build 6, never validated) is not reachable while this is false
 const HOMES = { v: 1, cur: 'r1', rooms: [{ id: 'r1', name: 'My room', created: Date.now(), visits: 0, known: 0, post: [] }] }; // rooms: each has its own map, colony, totem and guardian (keys below)
 (function homesInit() { try { const d = JSON.parse(localStorage.getItem('bc-rooms-v1') || 'null'); if (d && d.v === 1 && Array.isArray(d.rooms) && d.rooms.length && d.rooms.every((r) => r && /^r\d+$/.test(r.id))) { HOMES.rooms = d.rooms.slice(0, 8); HOMES.cur = HOMES.rooms.some((r) => r.id === d.cur) ? d.cur : HOMES.rooms[0].id; } } catch (e) { /* one room */ } })();
 function homesSave() { try { localStorage.setItem('bc-rooms-v1', JSON.stringify(HOMES)); } catch (e) { /* no storage */ } }
 const homeInfo = (id) => HOMES.rooms.find((r) => r.id === id) || null, homeName = (id) => { const r = homeInfo(id); return r ? r.name : 'a room'; };
 const homeKeys = (id) => (id === 'r1' ? { map: 'base-camp-map-v1', save: 'base-camp-save-v2' } : { map: 'base-camp-map-v1.' + id, save: 'base-camp-save-v2.' + id }); // the first room keeps the old keys
 function homeSelect(id) { HOMES.cur = id; MAP_KEY = homeKeys(id).map; SAVE_KEY = homeKeys(id).save; homesSave(); }
-function homeCreate(name) { if (HOMES.rooms.length >= 8) return null; const n = Math.max(...HOMES.rooms.map((r) => +r.id.slice(1))) + 1, r = { id: 'r' + n, name: name || 'Room ' + (HOMES.rooms.length + 1), created: Date.now(), visits: 0, known: 0, post: [] }; HOMES.rooms.push(r); homeSelect(r.id); return r; }
+function homeCreate(name) { if (HOMES.rooms.length >= 8) return null; const n = Math.max(0, ...HOMES.rooms.map((r) => +r.id.slice(1))) + 1; let k = HOMES.rooms.length + 1; while (HOMES.rooms.some((q) => q.name === 'Room ' + k)) k++; const r = { id: 'r' + n, name: name || 'Room ' + k, created: Date.now(), visits: 0, known: 0, post: [] }; HOMES.rooms.push(r); homeSelect(r.id); return r; }
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* none */ } } };
+// ---- MIGRATION (build 7): single-room saves become rooms. The first room keeps the old storage keys, so nothing moves for it; a '-prev' backup (made by "Start a new room" or "A new room" in builds 5 / 6) becomes "Room N (earlier)" with its own keys.
+function homesMigrate() {
+  if (!MULTI_ROOM) return; let changed = false;
+  try {
+    const ls = localStorage, rd = (k) => { try { return ls.getItem(k); } catch (e) { return null; } };
+    const r1 = HOMES.rooms.find((r) => r.id === 'r1');
+    if (r1 && r1.name === 'My room') { let nm = 'Room 1'; try { const d = JSON.parse(rd(homeKeys('r1').map) || 'null'); if (d && typeof d.name === 'string' && d.name.trim() && d.name !== 'My room') nm = d.name.trim().slice(0, 24); } catch (e) { /* unreadable: keep the plain name */ } r1.name = nm; changed = true; }
+    for (const r of HOMES.rooms.slice()) {
+      const k = homeKeys(r.id), pm = rd(k.map + '-prev'), pc = rd(k.save + '-prev'); if (!pm && !pc) continue;
+      if (HOMES.rooms.length >= 8) break;
+      const n = Math.max(0, ...HOMES.rooms.map((q) => +q.id.slice(1))) + 1, id = 'r' + n, nk = homeKeys(id); let nm = 'Room ' + (HOMES.rooms.length + 1) + ' (earlier)';
+      try { const d = JSON.parse(pm || 'null'); if (d && typeof d.name === 'string' && d.name.trim() && d.name !== 'My room' && d.name !== r.name) nm = (d.name.trim().slice(0, 14) + ' (earlier)'); } catch (e) { /* plain name */ }
+      try {
+        if (pm) { ls.setItem(nk.map, pm); if (ls.getItem(nk.map) !== pm) throw new Error('copy failed'); } if (pc) { ls.setItem(nk.save, pc); if (ls.getItem(nk.save) !== pc) throw new Error('copy failed'); }
+        ls.removeItem(k.map + '-prev'); ls.removeItem(k.save + '-prev'); HOMES.rooms.push({ id, name: nm, created: Date.now(), visits: 0, known: 0, post: [] }); changed = true;
+      } catch (e) { try { ls.removeItem(nk.map); ls.removeItem(nk.save); } catch (e2) { /* none */ } break; } // no room to copy: the backup stays where it is for next time
+    }
+  } catch (e) { /* storage blocked: one room, as before */ }
+  if (changed) homesSave();
+}
+homesMigrate();
 
 // ============ ALMANAC: everything a story-teller can change lives in this one object ============
 // Defaults are built in. If almanac.json sits next to this page it is fetched and merged over them (see HANDOVER.md).
@@ -203,12 +236,18 @@ function persFromText(name, text) {
   return { work: +(0.85 + 0.35 * h(1) + (/build|invent|energetic|earnest/i.test(t) ? 0.2 : 0)).toFixed(2), social: +(0.8 + 0.6 * h(2) + (/cheerful|playful|gentle|friendly/i.test(t) ? 0.25 : 0)).toFixed(2), lazy: +(0.6 + 0.6 * h(3) + (/gentle|clumsy|dreamy/i.test(t) ? 0.25 : 0)).toFixed(2) };
 }
 const WHEN_HOURS = { morning: [6, 12], afternoon: [12, 18], evening: [18, 22], night: [22, 24] };
-const ASKS = { seed: { when: 'noSeeds', give: 'seed', icon: 'seed' }, cable_car: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, water: { when: 'needWater', give: 'water', icon: 'drop' }, shade: { when: 'hot', give: 'shade', icon: 'sun' }, wood: { when: 'noWood', give: 'wood', icon: 'log' }, cheer: { when: 'bored', give: 'cheer', icon: 'heart' } };
+const ASKS = { seed: { when: 'noSeeds', give: 'seed', icon: 'seed' }, cable_car: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, ladder: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, /* a ladder to the next surface is the same ask as a cable car */ water: { when: 'needWater', give: 'water', icon: 'drop' }, shade: { when: 'hot', give: 'shade', icon: 'sun' }, wood: { when: 'noWood', give: 'wood', icon: 'log' }, cheer: { when: 'bored', give: 'cheer', icon: 'heart' } };
+const EPITHETS = [[/cartograph|map every|maps? /i, 'Mapmaker'], [/flower|tree|garden|forest|moss|plant/i, 'Gardener'], [/build|gadget|invent|machine|cable car/i, 'Builder'], [/star|sky|ceiling/i, 'Stargazer'], [/story|song|hum|bird/i, 'Singer']];
+function epithet(c) { const t = [c.persona, c.personality, c.likesText, c.dream].map((x) => (Array.isArray(x) ? x.join(' ') : String(x || ''))).join(' '); for (const [re, e] of EPITHETS) if (re.test(t)) return 'the ' + e; return ''; }
+function disambiguate(list, nameOf, setName) { // two residents with the same name both stay: the first keeps the plain name, the next is "Pip the Mapmaker" (or "Pip (Dell Scholar)" when nothing in the text tells them apart); only when both are there
+  const seen = {}; for (const c of list) { const n = nameOf(c); seen[n] = (seen[n] || 0) + 1; if (seen[n] === 1) continue; const e = epithet(c), k = e ? n + ' ' + e.replace(/^the /, 'the ') : n + ' (' + String(c.by || 'other').replace(/^The /, '') + ')'; setName(c, seen[n] > 2 ? k + ' ' + seen[n] : k, n); }
+}
 function adoptAlmanac(j) { // the council's almanac has its own shape; it is turned into ours here. Old-shape files (objects with work/social/lazy) work too.
   const A = COLONY_ALMANAC;
   if (Array.isArray(j.colonists) && j.colonists.length) A.colonists = j.colonists.map((c) => (c && typeof c.personality === 'object' ? c : { name: c.name, persona: c.personality, personality: persFromText(c.name, c.personality), likes: likesToKinds(c.likes), likesText: c.likes, dislikes: c.dislikes, dream: c.dream, by: c.by })).filter((c) => c.name);
+  if (Array.isArray(j.colonists) && j.colonists.length) { const dup = {}; for (const c of A.colonists) dup[c.name] = (dup[c.name] || 0) + 1; disambiguate(A.colonists, (c) => c.name, (c, k, n) => { c.base = n; c.name = k; }); A.dupBase = dup; } // two Pips and two Lunas stay, told apart on screen only when both are there
   if (Array.isArray(j.requests) && j.requests.length) {
-    const made = j.requests.map((q, i) => { if (q.when) return q; const a = ASKS[q.asks_for] || ASKS.cheer; return { id: 'c' + i, icon: a.icon, text: q.says, when: a.when, give: a.give, joy: 0.3, cooldown: 300, who: q.colonist, by: q.by }; }).filter((q) => q.text);
+    const made = j.requests.map((q, i) => { if (q.when) return q; const a = ASKS[q.asks_for] || ASKS.cheer; return { id: 'c' + i, icon: a.icon, text: q.says, when: a.when, give: a.give, joy: 0.3, cooldown: 300, who: q.colonist, by: q.by, dup: !!(A.dupBase && A.dupBase[q.colonist] > 1) }; }).filter((q) => q.text);
     for (const q of made) q.council = true;
     A.requests = made.concat(A.requests.filter((q) => !q.council)); // the council's words first; the built-in ones are the fallback when their asker is not around
   }
@@ -218,8 +257,11 @@ function adoptAlmanac(j) { // the council's almanac has its own shape; it is tur
 const loadJson = (name) => (location.protocol === 'file:' ? Promise.reject() : fetch(name)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 COUNCIL.ready = Promise.all([loadJson('almanac.json'), loadJson('rooms.json'), loadJson('creatures.json')]).then(([a, r, c]) => {
   try { if (a && typeof a === 'object') adoptAlmanac(a); } catch (e) { /* keep built-ins */ }
-  if (r && Array.isArray(r.spots) && r.spots.length) { ROOMS.spots = r.spots; COUNCIL.rooms = true; }
-  if (c && Array.isArray(c.creatures) && c.creatures.length) { CREATURES.length = 0; CREATURES.push(...c.creatures); COUNCIL.creatures = true; }
+  if (r && Array.isArray(r.spots)) { // skip empty entries; accept the typo key "fun,ny_thing"
+    const ok = r.spots.filter((q) => q && typeof q.spot === 'string' && q.spot.trim()).map((q) => { if (!q.funny_thing) for (const k in q) if (/^fun\W*ny\W*thing$/i.test(k) && k !== 'funny_thing') { q = Object.assign({}, q, { funny_thing: q[k] }); } return q; });
+    if (ok.length) { ROOMS.spots = ok; COUNCIL.rooms = true; }
+  }
+  if (c && Array.isArray(c.creatures) && c.creatures.length) { CREATURES.length = 0; CREATURES.push(...c.creatures); disambiguate(CREATURES, (q) => q.name, (q, k, n) => { q.base = n; q.name = k; }); COUNCIL.creatures = true; }
 });
 
 
@@ -279,7 +321,7 @@ try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat
 
 // ============ toast, sound ============
 let toastT = 0;
-function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs || 3.2) * 1000); }
+function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs > 5 ? secs : 2) * 1000); } // toasts are small, at the top, and gone after 2 s (a longer time only for warnings)
 const SND = { ctx: null, on: true };
 function sfx(kind) {
   if (!SND.on) return;
@@ -526,7 +568,7 @@ function classify() {
 function scanZone(id) { return SCAN.zones.find((z) => z.id === id); }
 function paintBands(play) {
   for (const b of SCAN.bands) {
-    b.mesh.visible = G.phase === 'scan' || G.phase === 'align' || (G.auto && G.phase !== 'title' && !(G.returning && G.locked));
+    b.mesh.visible = G.phase === 'scan' || G.phase === 'align' || (G.auto && G.phase !== 'title' && !(G.returning && G.locked) && !(AR.on && G.phase === 'play')); // in AR play the scan colours are off: the real room is the picture
     if (!b.dirty) continue; b.dirty = false;
     const d = b.data, lab = b.lab, g = b.g;
     for (let k = 0; k < g.length; k++) {
@@ -673,26 +715,33 @@ function reconcileLand(L, m, first) {
 }
 // ---- drawing the land: a coloured wash with clutter greyed out, and clutter as towers ----
 const TOWER_MAT = new THREE.MeshBasicMaterial({ color: 0x9a8e86, transparent: true, opacity: 0.5, depthWrite: false });
-const TOWER_EDGE = new THREE.LineBasicMaterial({ color: 0xe8d9c6 });
+const TOWER_EDGE = new THREE.LineBasicMaterial({ color: 0xe8d9c6 }), FOOT_MAT = new THREE.LineBasicMaterial({ color: 0xe8d9c6, transparent: true, opacity: 0.45, depthWrite: false });
+const quietAR = () => AR.on && G.phase === 'play'; // in AR the real room is the picture: no wash over the floor, no towers over the clutter
 function paintLand(z) {
-  const L = z.land; if (!L) return;
+  const L = z.land; if (!L) return; const quiet = quietAR();
   if (!z.mesh) {
     const tex = new THREE.DataTexture(new Uint8Array(L.w * L.h * 4), L.w, L.h, THREE.RGBAFormat); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(L.w * LC, L.h * LC).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
-    m.renderOrder = 1; m.position.set((L.i0 + L.w / 2) * LC, 0.002, (L.j0 + L.h / 2) * LC);
+    z.flashT0 = performance.now(); m.renderOrder = 1; m.position.set((L.i0 + L.w / 2) * LC, 0.002, (L.j0 + L.h / 2) * LC);
     z.mesh = new THREE.Group(); z.mesh.add(m); z.mesh.userData.plane = m; z.towers = new THREE.Group(); z.mesh.add(z.towers); world.add(z.mesh);
   }
   const m = z.mesh.userData.plane, d = m.material.map.image.data, col = z.color, set = z.settled, w = L.w;
   for (let k = 0; k < L.st.length; k++) {
     const o = k * 4, s = L.st[k];
     if (!s) { d[o + 3] = 0; continue; }
+    if (quiet) { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = s === 2 || set ? 0 : 80; continue; } // AR: nothing drawn on colony land (a soft ring marks it instead); a newly found zone is a light fill for ~2 s
     const rim = L.st[k - 1] === 0 || L.st[k + 1] === 0 || (k >= w && L.st[k - w] === 0) || (k + w < L.st.length && L.st[k + w] === 0);
     if (s === 2) { d[o] = 130; d[o + 1] = 118; d[o + 2] = 110; d[o + 3] = 175; } else if (L.dist[k] >= TIDY.avoidAt) { d[o] = 255; d[o + 1] = 190; d[o + 2] = 90; d[o + 3] = 120; } else { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : (set ? 40 : 75); }
   }
   m.material.map.needsUpdate = true;
   while (z.towers.children.length) { const c = z.towers.children.pop(); z.towers.remove(c); c.traverse((q) => { if (q.geometry) q.geometry.dispose(); }); }
   for (const o of L.objs) {
-    const ww = (o.i1 - o.i0 + 1) * LC, dd = (o.j1 - o.j0 + 1) * LC, hh = Math.max(0.03, o.h), box = new THREE.BoxGeometry(ww, hh, dd), tw = new THREE.Mesh(box, TOWER_MAT);
+    if (quiet) { // clutter still counts in the colony; it is only drawn as a flat footprint for 2 s after it is first found
+      const key = o.i0 + ',' + o.j0, now = performance.now(); z.seenObj = z.seenObj || {}; const t0 = z.seenObj[key] || (z.seenObj[key] = now); if (now - t0 > 2000) continue;
+      const x0 = (L.i0 + o.i0) * LC, x1 = (L.i0 + o.i1 + 1) * LC, z0 = (L.j0 + o.j0) * LC, z1 = (L.j0 + o.j1 + 1) * LC, ln = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x0, 0.003, z0), new THREE.Vector3(x1, 0.003, z0), new THREE.Vector3(x1, 0.003, z1), new THREE.Vector3(x0, 0.003, z1)]), FOOT_MAT);
+      ln.userData.t0 = t0; ln.renderOrder = 4; z.towers.add(ln); continue;
+    }
+    const ww = (o.i1 - o.i0 + 1) * LC, dd = (o.j1 - o.j0 + 1) * LC, hh = AR.on ? Math.min(0.03, Math.max(0.03, o.h)) : Math.max(0.03, o.h), box = new THREE.BoxGeometry(ww, hh, dd), tw = new THREE.Mesh(box, TOWER_MAT);
     tw.position.set((L.i0 + (o.i0 + o.i1 + 1) / 2) * LC, hh / 2, (L.j0 + (o.j0 + o.j1 + 1) / 2) * LC); tw.renderOrder = 4; tw.add(new THREE.LineSegments(new THREE.EdgesGeometry(box), TOWER_EDGE)); z.towers.add(tw);
   }
   z.paintVer = L.ver; syncZoneMesh(z);
@@ -716,8 +765,10 @@ const shadowMat = new THREE.MeshBasicMaterial({ map: TEX.blob, transparent: true
 function blob(r) { const s = new THREE.Mesh(geo('blobG', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), shadowMat); s.scale.set(r * 2, 1, r * 2); s.position.y = 0.0006; s.renderOrder = 2; return s; }
 function glowSprite(r, op, color) { const m = new THREE.SpriteMaterial({ map: TEX.glow, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: op, color: color || 0xffffff }); const s = new THREE.Sprite(m); s.scale.set(r * 2, r * 2, 1); s.renderOrder = 3; return s; }
 
+const RING_MAT = new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
 function mkColonist(c) {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  { const ring = new THREE.Mesh(geo('cRing', () => new THREE.RingGeometry(0.007, 0.019, 24).rotateX(-Math.PI / 2)), RING_MAT); ring.position.y = 0.0015; ring.renderOrder = 6; g.add(ring); const glow = new THREE.Mesh(geo('cGlow', () => new THREE.CircleGeometry(0.019, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending })); glow.position.y = 0.0012; glow.renderOrder = 5; g.add(glow); } // a soft glow ring under every colonist: easy to find on a real room
   const skin = M(pick([0xf2c9a0, 0xe0a97a, 0xc98b5e, 0xa06a46, 0xffdcb8])), shirt = M(new THREE.Color().setHSL(c.hue, 0.5, 0.6).getHex()), hat = M(new THREE.Color().setHSL((c.hue + 0.45) % 1, 0.75, 0.58).getHex());
   body.add(mesh(geo('cBody', () => new THREE.CylinderGeometry(0.0045, 0.0078, 0.016, 8)), shirt, 0, 0.014, 0));
   body.add(mesh(geo('cHead', () => new THREE.SphereGeometry(0.0088, 12, 10)), skin, 0, 0.0268, 0));
@@ -1062,7 +1113,7 @@ function requestsStep(S, quiet) {
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
     if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
-      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || c.name === def.who)); if (!cs.length) continue;
+      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || ((c.name === def.who || (c.base || c.name) === def.who) && (!def.dup || c.by === def.by)))); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
   }
@@ -1633,8 +1684,8 @@ function nudgeAlign(dx, dz, dphi) { // fine-tune around the landmark midpoint
 }
 function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; G.align = null; }
 
-// ============ AWAY: the colony keeps going on the saved map (up to 24 hours, coarse steps) ============
-const AWAY_MAX = 24 * 3600;
+// ============ AWAY: the colony keeps going on the saved map. The first 24 hours are simulated in coarse steps; any time beyond that goes in DAY steps (awayDays). A colony never expires. ============
+const AWAY_MAX = 24 * 3600; // the part that is simulated in detail, not a limit on the time away
 const AWAYE = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.5, away: true, hour: 12, daylight: 1 };
 function envForHour(E, h) { // an ordinary day: sun between sunrise and sunset, no weather
   const day = smooth(ENV.sunrise - 0.5, ENV.sunrise + 0.5, h) * (1 - smooth(ENV.sunset - 0.5, ENV.sunset + 0.5, h));
@@ -1663,8 +1714,28 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
     const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
   }
 }
+const SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
+const seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
+function awayDays(secs) { // a light day-level model for time beyond the first day: births, buildings finishing, trees growing, stores refilling, a few events per week, the seasons going by
+  const days = Math.min(36500, Math.floor(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
+  const evs = COLONY_ALMANAC.events.filter((e) => e.needs !== 'rain');
+  for (let d = 0; d < days; d++) {
+    for (const S of G.settlements) {
+      if (S.lost || !S.cols.length) continue; const fx = S.fx || (S.fx = fxOf(S)), st = S.stats, cap = 24 + 24 * (fx.storage || 0) + 12 * (fx.silo || 0);
+      if (d < 40) for (const t of S.things) { // a few weeks are enough for everything to finish
+        if (t.kind === 'tree' && t.g < 1) t.g = 1; else if (!t.built && !t.hold && BUILD_KINDS.includes(t.kind)) { t.built = true; t.prog = 1; t.pop = 1; out.finished++; }
+      }
+      S.stock.wood = Math.min(cap, S.stock.wood + 1); S.stock.food = Math.min(cap, S.stock.food + (fx.solar ? 2 : 1)); S.stock.water = Math.min(8, S.stock.water + 1);
+      if (fx.forge) { st.tin += 2 * fx.forge; S.stock.tin = Math.min(cap, S.stock.tin + 2 * fx.forge); } if (fx.solar) st.food += 2; if (fx.tower && G.music) st.concert += 1800; if (fx.market) st.trade += 1;
+      const room = Math.min(S.spec === 'grove' ? 2 : 9, housing(S)); if (S.cols.length < room && S.stock.food >= 3 && Math.random() < 0.35) { const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; DIARY.arrived.push(c.name); S.stock.food -= 1; out.births++; }
+    }
+    if (d % 7 === 3 && evs.length && DIARY.lines.length < 60 && d < 7 * 6) { const ev = pick(evs); diary((ev.title ? ev.title + ': ' : '') + ev.text + (ev.say ? ' “' + ev.say + '”' : ''), ev.by, 'ev' + (ev.id || ev.text)); }
+  }
+  const now = Date.now(), t0 = now - secs * 1000; out.seasons = []; let last = seasonOf(t0)[0]; for (let m = t0, n = 0; m < now && n < 400; m += 7 * 86400000, n++) { const sn = seasonOf(m); if (sn[0] !== last) { last = sn[0]; out.seasons.push(sn[1]); } }
+  out.seasons = out.seasons.slice(-4); return out;
+}
 function awaySim(secs, startHour) {
-  const t0 = performance.now(), capped = secs > AWAY_MAX; secs = clamp(secs, 0, AWAY_MAX); const step = clamp(secs / 1500, 20, 60);
+  const t0 = performance.now(), total = secs; secs = clamp(secs, 0, AWAY_MAX); const rest = Math.max(0, total - secs), step = clamp(secs / 1500, 20, 60);
   DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; const before = snapColony(); let nights = 0, prev = false, steps = 0;
   for (let t = 0; t < secs; t += step) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
@@ -1672,19 +1743,21 @@ function awaySim(secs, startHour) {
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
   }
+  let long = null; if (rest >= 86400) { long = awayDays(rest); nights += long.days; G.simT += rest; autoExpand(); }
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
   DIARY.on = false;
   // Coming home must feel good, never like guilt: after time away the colony is content, not miserable (owner's rule).
   for (const S of G.settlements) for (const c of S.cols) { c.needs.joy = Math.max(c.needs.joy, 0.6); c.needs.food = Math.max(c.needs.food, 0.45); c.needs.water = Math.max(c.needs.water, 0.45); c.needs.rest = Math.max(c.needs.rest, 0.5); }
   G.requests = G.requests.filter((q) => q.def.give !== 'cheer');
-  const lines = awaySummary(before, snapColony(), secs, nights, capped);
-  return { secs, ms: performance.now() - t0, steps, lines, nights };
+  const lines = awaySummary(before, snapColony(), total, nights, long);
+  return { secs: total, ms: performance.now() - t0, steps, lines, nights, long };
 }
-function awaySummary(a, b, secs, nights, capped) {
+function awaySummary(a, b, secs, nights, long) {
   const L = [], add = (text, by) => L.push({ text, by: by || '' }), find = (id) => b.find((q) => q.id === id);
   const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
   const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
-  add('The Giant was away for ' + fmtAway(secs) + (capped ? ' (the colonists only kept a diary of the first day)' : '') + '. ' + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  add('The Giant was away for ' + fmtAway(secs) + '. ' + (long ? 'The colonists wrote the first day out in full and the rest as a summary. ' : '') + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  if (long) { const lb = []; if (long.births) lb.push(plural(long.births, 'new settler') + ' moved in'); if (long.finished) lb.push(plural(long.finished, 'building') + ' got finished'); if (lb.length) add('Over those ' + plural(long.days, 'day') + ': ' + fmtList(lb) + '.'); for (const t of long.seasons || []) add(t); }
   const arrived = DIARY.arrived.slice(), built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
   for (const q of b) {
     const p = a.find((x) => x.id === q.id) || { names: new Set(), kinds: [0, 0, 0, 0], trees: 0, stats: {}, thr: false };
@@ -1705,7 +1778,7 @@ function awaySummary(a, b, secs, nights, capped) {
     if (fx.hideout && q.pop > p.pop) add('The ' + (name('hideout') || 'rug') + ' nursery was busy; ' + plural(q.pop - p.pop, 'new settler') + ' there.');
   }
   for (const f of DIARY.found.slice(0, 2)) add((f.who ? f.who.name + '’s party' : 'A party') + ' travelled from the ' + f.from.zoneName.split(' – ')[0] + ' to the ' + (f.spot ? f.spot.name : f.to.name.split(' – ')[0]) + ' by ' + (/^(a|an|the)\b/i.test(f.how) ? f.how : 'a ' + f.how) + ' and started a new colony.', f.who ? creatureBy(f.who) : '');
-  for (const e of DIARY.lines.slice(0, 2)) L.push(e);
+  for (const e of DIARY.lines.slice(0, long ? 4 : 2)) L.push(e);
   const fs = G.spots.filter((s) => roomInfo(s.tag) && roomInfo(s.tag).funny_thing && G.settlements.some((S) => S.zoneRef && S.zoneRef.id === s.zid));
   if (fs.length) { const sp = fs[Math.floor(hash01('fun' + Math.round(secs / 600), 5) * fs.length)], info = roomInfo(sp.tag); add('At the ' + sp.name + ': ' + String(info.funny_thing).replace(/^./, (m) => m.toLowerCase()).replace(/\.$/, '') + '.', info.by); }
   const trouble = G.settlements.find((S) => !S.lost && S.cols.length && S.stock.water < 1 && !built_(S, 'well'));
@@ -1819,7 +1892,7 @@ function restoreSettlement(d) {
   if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
 }
-function fmtAway(s) { const m = Math.round(s / 60); return m < 90 ? m + ' min' : (m / 60).toFixed(1) + ' h'; }
+function fmtAway(s) { const m = Math.round(s / 60); if (m < 90) return m + ' min'; if (m < 36 * 60) return (m / 60).toFixed(1) + ' h'; const d = m / 1440; if (d < 14) return Math.round(d) + ' days'; if (d < 60) return Math.round(d / 7) + ' weeks'; if (d < 730) return Math.round(d / 30.4) + ' months'; return (d / 365).toFixed(1) + ' years'; }
 function restoreLinks(sv) { // saved cable cars between settlements that exist again
   for (const L of sv) {
     const Sa = G.settlements.find((s) => s.id === L.a.sid), Sb = G.settlements.find((s) => s.id === L.b.sid);
@@ -1832,6 +1905,7 @@ function restoreLinks(sv) { // saved cable cars between settlements that exist a
 function prepareContinue() {
   const md = loadMapData(), sv = loadSave(); if (!md) { toast('Nothing to continue yet.'); return false; }
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
+  if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
   for (const d of sv.settlements) restoreSettlement(d);
@@ -2406,7 +2480,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
-  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; return true;
+  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
 function liveMatch(fz) { // a map zone this scan zone is (part of) the same surface as
@@ -2485,9 +2559,20 @@ function autoSettle(force) { // the colony lands by itself on the biggest clear 
 // ---- what the player sees while this happens ----
 function autoHintText() {
   if (G.phase === 'title') return '';
-  if (G.returning && !G.locked) return RELOC.state === 'asking' ? '' : 'Looking for home\u2026 ' + Math.round((RELOC.progShown || 0) * 100) + '% \u00b7 keep looking around (' + Math.round(RELOC.scanSecs) + ' s)';
+  if (G.returning && !G.locked) return ''; // homing is silent (build 7): the numbers live in the field report only
   if (!G.settlements.length) return SCAN.zones.length ? 'Found a place to land...' : 'Look around slowly. The colonists are searching for a landing place.';
   return '';
+}
+function arQuietTick() { // AR: a zone that is not colony land flashes for about 2 s and then disappears; footprints of clutter vanish after 2 s; a marker points to a colony that is off screen
+  const now = performance.now(), q = quietAR();
+  for (const Z of G.zones) { if (!Z.mesh) continue; const m = Z.mesh.userData.plane; if (m) m.material.opacity = q && !Z.settled ? clamp(1 - (now - (Z.flashT0 || 0) - 1500) / 1000, 0, 1) : 1; if (Z.towers) for (const c of Z.towers.children) if (c.userData.t0 && now - c.userData.t0 > 2000) c.visible = false; }
+  for (const S of G.settlements) { // the soft ring on the edge of colony-owned land
+    if (!S.ring && S.group) { S.ring = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); S.ring.position.y = 0.003; S.ring.renderOrder = 2; S.group.add(S.ring); }
+    if (S.ring) { S.ring.visible = q && !S.lost; const r = plotR(S); if (S.ring.userData.r !== r) { S.ring.userData.r = r; S.ring.scale.set(r, 1, r); } }
+  }
+  const mk = $('colMark'); let show = false;
+  if (AR.on && G.phase === 'play' && G.locked !== undefined && !(G.returning && !G.locked)) { const S = G.settlements.find((q2) => q2.placed && !q2.lost); if (S) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.05, S.tf.z)); if (!vis || sx < 30 || sx > innerWidth - 30 || sy < 30 || sy > innerHeight - 90) { const cx = innerWidth / 2, cy = innerHeight / 2; let dx = sx - cx, dy = sy - cy; if (!vis) { dx = -dx; dy = -dy; } const L2 = Math.hypot(dx, dy) || 1, k = Math.min((innerWidth / 2 - 34) / Math.abs(dx || 1e-6), (innerHeight / 2 - 100) / Math.abs(dy || 1e-6)); mk.style.left = (cx + dx * k - 14) + 'px'; mk.style.top = (cy + dy * k - 14) + 'px'; mk.firstChild.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)'; show = true; void L2; } } }
+  if (mk.hidden === show) mk.hidden = !show;
 }
 function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n) ? '' : n + ' place' + (n > 1 ? 's' : '') + ' found'; }
 function homeMoment(text) { const el = $('home'); el.textContent = text; el.classList.add('on'); clearTimeout(AUTO.homeT); AUTO.homeT = setTimeout(() => el.classList.remove('on'), 2600); }
@@ -2506,8 +2591,9 @@ function autoTick(dt) {
     const h = autoHintText(); if (h) autoSay(h, 4); else if (!G.settlements.length && !SCAN.zones.length) autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
     AUTO.steady = G.settlements.length > 0 && (!G.returning || G.locked) && AUTO.t > 40;
   }
-  RELOC.lastHits = SCAN.hits;
+  RELOC.lastHits = SCAN.hits; arQuietTick();
   if (G.returning && !G.locked) relocStep(dt);
+  { const on = G.returning && !G.locked && RELOC.state === 'search'; if ($('idDot').hidden === on) $('idDot').hidden = !on; }
   totemTick(dt); totemOfferTick();
   if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.1, S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
   if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
@@ -2666,17 +2752,22 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
 }
 function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
   RELOC.state = 'search'; RELOC.prog = 0; RELOC.progShown = 0; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
-  RELOC.totem = null; RELOC.ci = 0; RELOC.jobRoom = HOMES.cur; RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.curTop = RELOC.savedTop; RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
+  RELOC.totem = null; RELOC.ci = 0; RELOC.tried = {}; RELOC.rp = {}; RELOC.jobRoom = HOMES.cur; RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.curTop = RELOC.savedTop; RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
+}
+function relocAskAt() { return RELOC.cfg.askAfter > 1e8 ? 1e9 : G.finding ? Math.min(45, RELOC.cfg.askAfter) : RELOC.cfg.askAfter; }
+function relocPickRoom(ids) { // round robin until every room had two tries, then the leader (best progress) gets two of every three
+  if (ids.length < 2) return ids[0]; const t = (id) => RELOC.tried[id] || 0, least = ids.slice().sort((a, b) => t(a) - t(b))[0]; RELOC.ci++;
+  if (t(least) < 2) return least; const lead = ids.slice().sort((a, b) => (RELOC.rp[b] || 0) - (RELOC.rp[a] || 0))[0]; return (RELOC.rp[lead] || 0) >= 0.25 && RELOC.ci % 3 !== 0 ? lead : least;
 }
 function relocStep(dt) {
   if (RELOC.state !== 'search') return;
-  if (RELOC.scanSecs >= RELOC.cfg.askAfter) { RELOC.state = 'asking'; return; }
+  if (RELOC.scanSecs >= relocAskAt()) { if (!G.finding) { RELOC.state = 'asking'; return; } if (!RELOC.asked) relocAskRooms(); } // several rooms: ONE small non-blocking prompt, and the search carries on behind it
   if (!RELOC.job) {
-    if (RELOC.scanSecs < RELOC.nextTry || (!RELOC.saved.length && !RELOC.totem)) return;
+    if (RELOC.scanSecs < RELOC.nextTry || (!RELOC.saved.length && !RELOC.totem && !Object.keys(ROOMPRE).length)) return;
     const live = relocLiveLayers(); if (!live.length || live.reduce((a, l) => a + l.n, 0) < (RELOC.totem ? 60 : 150)) { RELOC.nextTry = RELOC.scanSecs + 1; return; }
     if (RELOC.totem) { RELOC.jobRoom = HOMES.cur; RELOC.job = relocTotemJob(live); } // the totem pins the position: only the yaw is searched
-    else { const ids = [HOMES.cur]; if (AUTO.t > 10 && !TOTEM.lastFound) for (const id in TOTEM.pre) ids.push(id); const id = ids[RELOC.ci++ % ids.length]; RELOC.jobRoom = id; // no totem seen for 10 s: every saved room is tried in turn
-      if (id !== HOMES.cur) { RELOC.savedTop = TOTEM.pre[id].top; RELOC.job = relocJob(live, TOTEM.pre[id].saved); } else { RELOC.savedTop = RELOC.curTop; RELOC.job = relocJob(live, RELOC.saved); } }
+    else { const ids = (RELOC.saved.length ? [HOMES.cur] : []).concat(Object.keys(ROOMPRE)), id = relocPickRoom(ids); RELOC.jobRoom = id; RELOC.tried[id] = (RELOC.tried[id] || 0) + 1; // every saved room is tried; the one that looks best gets most of the tries
+      if (id !== HOMES.cur) { RELOC.savedTop = ROOMPRE[id].top; RELOC.job = relocJob(live, ROOMPRE[id].saved); } else { RELOC.savedTop = RELOC.curTop; RELOC.job = relocJob(live, RELOC.saved); } }
     RELOC.jobT0 = performance.now(); RELOC.tries++;
   }
   const t0 = performance.now(); let r;
@@ -2694,17 +2785,21 @@ function relocWhy(res, c) { // why this attempt did not lock (the field report e
 }
 function relocConsider(res) {
   const room = RELOC.jobRoom || HOMES.cur, c = RELOC.totem ? Object.assign({}, RELOC.cfg, TOTEM.cfgT) : RELOC.cfg, why = relocWhy(res, c), ok = !!res && !why.length;
-  if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); } // a tiny hint: how close the best attempt is to the lock thresholds
+  if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); }
+  (RELOC.rp || (RELOC.rp = {}))[room] = res ? RELOC.prog : 0; // a tiny hint: how close the best attempt is to the lock thresholds
   recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak, room, mode: RELOC.totem ? 'totem' : 'surface' } : { none: true, why, room }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok, room }); if (RELOC.hist.length > 30) RELOC.hist.shift();
-  const h = RELOC.hist.filter((e) => e.room === room).slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
-  if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
+  const sN = G.finding ? c.stableN + 1 : c.stableN, sS = G.finding ? c.stableSecs + 2 : c.stableSecs; // comparing several rooms: a longer stable run before a lock (a chance match does not last)
+  const h = RELOC.hist.filter((e) => e.room === room).slice(-sN); if (h.length < sN || !h.every((e) => e.ok)) return;
+  if (h[h.length - 1].t - h[0].t < sS) return;
   const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
   if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
+  if (G.finding && [HOMES.cur].concat(Object.keys(ROOMPRE)).some((id) => id !== room && (RELOC.tried[id] || 0) < 2)) return; // never lock on one room before the others were really compared
   const rival = Math.max(0, ...RELOC.hist.filter((e) => e.room !== room && e.res).slice(-6).map((e) => e.res.score)); if (rival > 0.8 * a.score && a.score > 0) { recReloc({ room, rival: Math.round(rival), score: a.score, why: ['another saved room scores nearly as well'] }); return; } // several rooms: the best score wins
   if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
   let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
+  $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
   recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, how: how || 'auto' };
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
@@ -2757,11 +2852,19 @@ function worldDrop() { // the map and colony go from the world; the fresh scan s
   G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
-function relocNewRoom() { // a new room: the old room stays where it is (also kept as a backup copy); a fresh map starts from what has been scanned
-  const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c);
-  const lib = G.library, nl = G.nextLib, nr = HOME_TOTEM ? homeCreate() : null; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room';
+function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
+  let nr = null;
+  if (MULTI_ROOM) { nr = homeCreate(); if (!nr) { toast('That is eight rooms: delete one you do not need on the title screen first.', 6); return; } }
+  else { const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c); nr = HOME_TOTEM ? homeCreate() : null; }
+  const lib = G.library, nl = G.nextLib; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room'; $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
   G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; RELOC.totem = null; TOTEM.live = null; TOTEM.offer = HOME_TOTEM && (!nr || !imgLoad('totem', HOMES.cur)); if (!nr) { store.del(MAP_KEY); store.del(SAVE_KEY); } AUTO.firstDecent = 0;
   autoSay('A new room! Keep looking around: the colonists will find a landing place.', 5); updateTitle();
+}
+function relocAskRooms() { // several rooms and none matched after ~45 s of scanning: one small prompt at the bottom, never a wall; the search keeps going behind it
+  RELOC.asked = true; recReloc({ gaveUp: true, tries: RELOC.tries, rooms: Object.keys(RELOC.rp || {}).length }); recSnap('homing failed'); const el = $('nroom'); el.hidden = false;
+  const opts = HOMES.rooms.filter((r) => roomHasData(r.id)); el.innerHTML = '<b>New room?</b><button class="alt" id="nrYes">Yes</button><button id="nrIts">It\u2019s\u2026 \u25be</button><span id="nrList" hidden>' + opts.map((r) => '<button data-room="' + r.id + '">' + esc(r.name) + '</button>').join('') + '</span><button id="nrX" aria-label="Not now">\u00d7</button>';
+  $('nrYes').onclick = () => { el.hidden = true; relocNewRoom(); }; $('nrX').onclick = () => { el.hidden = true; }; $('nrIts').onclick = () => { $('nrList').hidden = !$('nrList').hidden; };
+  for (const b of el.querySelectorAll('[data-room]')) b.onclick = () => { el.hidden = true; const id = b.dataset.room; if (id !== HOMES.cur && !homeSwitchLoad(id)) return; G.finding = false; ROOMPRE = {}; relocManual(); }; // "It's the Shed": that room loads and the older two-tap alignment takes over
 }
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
@@ -2920,19 +3023,21 @@ function* relocTotemJob(live) {
 }
 // ---- rooms ----
 function homeMapData(id) { return safeRead(homeKeys(id).map, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
-function homePrecomp() { // layers of every other saved room (for the "no totem seen" fallback), made before the current room is loaded
-  TOTEM.pre = {}; if (HOMES.rooms.length < 2) return;
-  for (const r of HOMES.rooms) { if (r.id === HOMES.cur) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) TOTEM.pre[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
-  G.zones = []; G.spots = [];
+let ROOMPRE = {}; // layers of the other saved rooms while the player's room is being recognised
+function roomHasData(id) { const k = homeKeys(id); return !!(store.get(k.map) || store.get(k.map + '-bak') || store.get(k.save)); }
+function homePrecomp() { // layers of every other saved room, made before the first room is loaded
+  ROOMPRE = {}; if (HOMES.rooms.length < 2) return;
+  for (const r of HOMES.rooms) { if (r.id === HOMES.cur || !roomHasData(r.id)) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) ROOMPRE[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
+  for (const Z of G.zones) disposeZone(Z); G.zones = []; G.spots = [];
 }
-function homePickStart() { // the room to load first: the current one, or the most recent one that has a saved map
-  if (homeMapData(HOMES.cur)) return; const r = HOMES.rooms.filter((q) => homeMapData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r) homeSelect(r.id);
+function homePickStart() { // the room that loads first while the others wait in ROOMPRE: the most recently used one that has a saved map
+  const r = HOMES.rooms.filter((q) => roomHasData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
 }
 function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
   const secs = RELOC.scanSecs; worldDrop(); homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
   G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
 }
-function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); r.name = G.mapName && G.mapName !== 'My room' ? G.mapName : r.name; homesSave(); }
+function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); }
 function homeSummary() { return HOMES.rooms.map((r) => ({ id: r.id, name: r.name, visits: r.visits, known: r.known, totem: !!imgLoad('totem', r.id), guardian: !!imgLoad('guardian', r.id), post: (r.post || []).length })); }
 function homePost(id, text) { const r = homeInfo(id); if (!r) return; r.post = (r.post || []).concat([{ at: Date.now(), text: String(text).slice(0, 80) }]).slice(-8); homesSave(); } // hook: things colonies may send each other later (only a list and a diary line for now)
 // ---- what the player sees: totem marker and guardian billboard ----
@@ -2996,19 +3101,77 @@ function resetWorld() {
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
 }
 function showTitle() {
-  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
+  $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
   room.visible = false; scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
 }
+// ---- the rooms list (title) ----
+const STORE_LIMIT = 5000000, ROOM_MAX = 1400000; // characters: browsers keep about 5 million per site; one room (map + colony + their backup copies) is held under ROOM_MAX
+const ROOMS_UI = { ren: '', del: '', delT: 0 };
+const fmtKB = (n) => Math.round(n / 1000) + ' KB';
+function storeChars() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) { /* none */ } return n; }
+function roomChars(id) { const k = homeKeys(id); let n = 0; for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) n += (store.get(b + x) || '').length; return n; }
+function roomBound() { // each room is bounded; near the browser limit the backup copies of the rooms not in use go first, then the player is told
+  try {
+    const id = HOMES.cur, k = homeKeys(id);
+    if (roomChars(id) > ROOM_MAX) { store.del(k.map + '-bak'); store.del(k.save + '-bak'); if (roomChars(id) > ROOM_MAX && !STORE.bigTold) { STORE.bigTold = true; toast('This room has grown very large (' + fmtKB(roomChars(id)) + '). It still saves, but a room that big may not fit next to your others.', 7); } }
+    const t = storeChars(); if (t > STORE_LIMIT * 0.8) for (const r of HOMES.rooms) if (r.id !== id) { const q = homeKeys(r.id); store.del(q.map + '-bak'); store.del(q.save + '-bak'); }
+    if (t > STORE_LIMIT * 0.7 && !STORE.nearTold) { STORE.nearTold = true; toast('Saved rooms use ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' your browser allows. Delete a room you no longer need on the title screen.', 8); }
+  } catch (e) { /* storage blocked */ }
+}
+function agoText(ms) { const m = ms / 60000; if (m < 1) return 'just now'; if (m < 90) return Math.round(m) + ' min ago'; const h = m / 60; if (h < 36) return Math.round(h) + ' h ago'; return Math.round(h / 24) + ' days ago'; }
+function roomFacts(r) { // rooms from older builds have no numbers in the registry yet: read them once from what is saved
+  if (r.cols !== undefined && r.last) return;
+  try { const md = homeMapData(r.id); if (!md) return; const sv = safeRead(homeKeys(r.id).save, (d) => d && d.v === 2 && Array.isArray(d.settlements)); r.known = +mapKnownJSON(md).toFixed(2); r.zones = md.zones.length; r.visits = md.visits | 0; r.cols = sv ? sv.settlements.reduce((a, S) => a + (S.cols || []).length, 0) : 0; r.last = (sv && sv.t) || md.saved || Date.now(); homesSave(); } catch (e) { /* no numbers */ }
+}
+function roomsTidy() { // a room that was started and never saved anything is not a room
+  const keep = HOMES.rooms.filter((r) => roomHasData(r.id)); if (keep.length === HOMES.rooms.length) return;
+  HOMES.rooms = keep.length ? keep : [HOMES.rooms.find((r) => r.id === 'r1') || HOMES.rooms[0]];
+  if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id);
+  homesSave();
+}
+function roomDelete(id) { // deleting keeps nothing: map, colony and their backups are gone
+  const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x);
+  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id);
+  if (!HOMES.rooms.length) HOMES.rooms = [{ id: 'r1', name: 'Room 1', created: Date.now(), visits: 0, known: 0, post: [] }];
+  if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id); else homesSave();
+  G.previewLines = null; G.previewStamp = ''; ROOMS_UI.del = '';
+}
+function playRoom(want, id) { // want: 'find' (Play: the room is recognised by itself), 'room' (a row's Continue: that room only), 'new'
+  if (want === 'new') { if (!HOMES.rooms.every((r) => roomHasData(r.id))) roomsTidy(); const r = homeCreate(); if (!r) { toast('That is eight rooms: delete one you do not need first.', 6); return; } }
+  else if (want === 'room') homeSelect(id);
+  G.roomWant = want; G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice();
+}
+function roomsUi() {
+  const el = $('rooms'); if (!MULTI_ROOM) { el.hidden = true; return; }
+  const rs = HOMES.rooms.filter((r) => roomHasData(r.id)).sort((a, b) => (b.last || 0) - (a.last || 0)); el.hidden = !rs.length; if (!rs.length) return;
+  const a = document.activeElement; if (ROOMS_UI.ren && a && a.classList && a.classList.contains('rn')) return; // never wipe a name that is being typed
+  for (const r of rs) roomFacts(r);
+  el.innerHTML = rs.map((r) => {
+    const facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' \u00b7 last visit ' + agoText(Date.now() - (r.last || Date.now())) + ' \u00b7 map ' + Math.round((r.known || 0) * 100) + '%', ren = ROOMS_UI.ren === r.id, del = ROOMS_UI.del === r.id;
+    return '<div class="lib" data-id="' + r.id + '"><div>' + (ren ? '<input class="rn" maxlength="24" value="' + esc(r.name) + '" aria-label="Room name">' : '<b>' + esc(r.name) + '</b>') + '<div class="sub">' + facts + '</div></div><button data-act="go" class="alt">Continue</button><button data-act="ren">' + (ren ? 'Save' : 'Rename') + '</button><button data-act="del">' + (del ? 'Delete for good? Nothing is kept. Tap again' : 'Delete') + '</button></div>';
+  }).join('') + '<div class="mrow"><button id="rNew" data-act="new">+ New room</button></div>';
+  const inp = el.querySelector('input.rn'); if (inp) { inp.onkeydown = (e) => { if (e.key === 'Enter') roomRename(inp.closest('.lib').dataset.id, inp.value); }; }
+}
+function roomRename(id, v) { const r = homeInfo(id); ROOMS_UI.ren = ''; if (r) { r.name = String(v || '').trim().slice(0, 24) || r.name; homesSave(); if (id === HOMES.cur) G.mapName = r.name; } roomsUi(); updateTitle(); }
+$('rooms').onclick = (e) => {
+  const b = e.target.closest && e.target.closest('button[data-act]'); if (!b) return; const row = b.closest('.lib'), id = row ? row.dataset.id : '', act = b.dataset.act;
+  if (act === 'new') { playRoom('new'); return; }
+  if (act === 'go') { playRoom('room', id); return; }
+  if (act === 'ren') { if (ROOMS_UI.ren === id) roomRename(id, row.querySelector('input.rn').value); else { ROOMS_UI.ren = id; ROOMS_UI.del = ''; roomsUi(); const i = $('rooms').querySelector('input.rn'); if (i) { i.focus(); i.select(); } } return; }
+  if (act === 'del') { if (ROOMS_UI.del !== id) { ROOMS_UI.del = id; ROOMS_UI.ren = ''; clearTimeout(ROOMS_UI.delT); ROOMS_UI.delT = setTimeout(() => { ROOMS_UI.del = ''; roomsUi(); }, 5000); roomsUi(); return; } roomDelete(id); updateTitle(); }
+};
 function updateTitle() {
-  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
+  if (MULTI_ROOM && G.phase === 'title') roomsTidy();
+  const nRooms = MULTI_ROOM ? HOMES.rooms.filter((r) => roomHasData(r.id)).length : 0; if (MULTI_ROOM && G.phase === 'title' && nRooms && !roomHasData(HOMES.cur)) homePickStart(); // only on the title: a room being started has no data yet
+  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has || MULTI_ROOM; $('bFresh').hidden = MULTI_ROOM; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
   let info = md ? 'Saved room: ' + md.zones.length + ' places, ' + Math.round(mapKnownJSON(md) * 100) + '% known, ' + (md.visits || 0) + ' visit' + ((md.visits || 0) === 1 ? '' : 's') + (has ? ', and a colony.' : ', no colony yet.') : 'No room yet: press Play and look around.';
   if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
   else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
   else if (STORE.usedBackup) info += ' (restored from the backup copy)';
-  if (HOME_TOTEM && HOMES.rooms.length > 1) info += ' (' + HOMES.rooms.length + ' rooms; a totem tells the game which one you are in)';
-  $('mapInfo').textContent = info;
+  if (nRooms >= 2 && STORE.status === 'ok') info = nRooms + ' rooms saved. Press Play and look around: the colonists work out which room you are in.';
+  $('mapInfo').textContent = info; if (MULTI_ROOM && G.phase === 'title') { roomsUi(); const t = storeChars(), per = HOMES.rooms.filter((r) => roomHasData(r.id)).map((r) => r.name + ' ' + fmtKB(roomChars(r.id))); $('storeInfo').textContent = 'Storage: ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' used' + (per.length ? ' (' + per.join(', ') + ')' : '') + (t > STORE_LIMIT * 0.7 ? '. Nearly full: delete a room you no longer need.' : '.'); }
   const w = $('welcome');
-  if (has && G.phase === 'title') {
+  if (has && G.phase === 'title' && nRooms < 2) {
     const secs = Math.max(0, (Date.now() - sv.t) / 1000); w.hidden = false;
     w.innerHTML = '<b>Welcome back</b> - you were away ' + fmtAway(secs) + '<ul id="wLines"><li>' + (G.previewLines ? G.previewLines.map(esc).join('</li><li>') : 'The colonists are telling their stories...') + '</li></ul>';
     previewReturn();
@@ -3031,10 +3194,12 @@ function startAuto() {
   G.auto = true; G.intent = 'play'; autoReset(); document.body.classList.add('auto'); $('title').hidden = true; $('top').hidden = false; $('hint').hidden = true; $('count').textContent = '';
   if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = false; envUi(); }
   setPhase('play'); G.tool = 'look'; G.visitCounted = false;
-  TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; if (HOME_TOTEM) { homePickStart(); homePrecomp(); }
+  TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; 
+  const want = G.roomWant || 'find'; G.roomWant = 0; ROOMPRE = {}; G.finding = false; $('nroom').hidden = true;
+  if (MULTI_ROOM && G.mode !== 'practice') { if (want === 'find') { if (HOMES.rooms.filter((r) => roomHasData(r.id)).length >= 2 && G.mode === 'ar') { G.finding = true; homePickStart(); homePrecomp(); } else if (!roomHasData(HOMES.cur)) homePickStart(); } G.mapName = homeName(HOMES.cur); } // Play: all saved rooms are compared silently with what the camera sees
   const md = loadMapData();
   if (md && prepareContinue() && G.zones.length) {
-    G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('Looking for your room... keep looking around.', 6);
+    G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('');
     if (AR.on && worldMapAvailable()) worldMapLoad().then((ok) => { if (ok && !G.locked) relocLock({ phi: 0, tx: 0, tz: 0, dy: 0, score: 0, ratio: 1, M: 0, info: 0, margin: 0 }, 'worldmap'); });
   } else autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
   barUi(); updateHint(); autoCount();
@@ -3067,14 +3232,17 @@ function updateHint() {
   if (G.phase === 'tag') for (const sp of G.spots) { if (sp.src === 'default') continue; const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + spotRole(sp).color.toString(16).padStart(6, '0'); c.textContent = sp.name + ' · ' + spotUsed(sp); c.onclick = () => tagEdit(sp); ch.appendChild(c); }
 }
 function barUi() {
-  const b = $('bar'); b.hidden = false; const pr = G.mode === 'practice';
+  const b = $('bar'); b.hidden = false; b.classList.remove('min'); const pr = G.mode === 'practice';
   if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (pr ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
   else if (G.phase === 'zones') b.innerHTML = '<button id="bTag">Name spots</button><button id="bRescan">Scan again</button><button id="bQuit">Back</button>';
   else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bIO">Export / import</button>${G.auto ? '<button id="bTagDone" class="big">Done</button>' : '<button id="bFound">Found a colony</button><button id="bQuit">Back</button>'}`;
   else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignMore">Scan more first</button><button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
-    if (G.auto) b.innerHTML = G.settlements.length ? T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu">Menu</button>' : '<button id="bMenu">Menu</button>';
+    const IC = (id, ic, label) => `<button data-tool="${id}" title="${label}" aria-label="${label}" class="ic ${G.tool === id ? 'on' : ''}"><i>${ic}</i><small>${label}</small></button>`;
+    b.classList.toggle('min', !!G.auto && !!G.barMin);
+    if (G.auto && G.barMin) b.innerHTML = '<button id="bExpand" class="round" aria-label="Show the toolbar">\u2630</button>';
+    else if (G.auto) b.innerHTML = G.settlements.length ? IC('look', '\ud83d\udc41', 'Look') + IC('seed', '\ud83c\udf31', 'Seeds') + IC('water', '\ud83d\udca7', 'Water') + IC('build', '\ud83d\udd28', 'Build') + IC('cheer', '\ud83c\udf89', 'Cheer') + IC('cable', '\ud83d\udea1', 'Cable') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu" class="ic" title="Menu" aria-label="Menu"><i>\u2630</i><small>Menu</small></button><button id="bCollapse" class="ic" title="Hide" aria-label="Hide the toolbar"><i>\u2304</i><small>Hide</small></button>' : '<button id="bMenu">Menu</button>';
     else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
@@ -3093,6 +3261,8 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bRescan') { rescanFresh(); return; }
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
   if (t.id === 'bMenu') return menuUi();
+  if (t.id === 'bCollapse') { G.barMin = true; return barUi(); }
+  if (t.id === 'bExpand') { G.barMin = false; return barUi(); }
   if (t.id === 'bSkip') return skipHours(8);
   if (t.id === 'bBack') return comeBackLater();
   if (t.id === 'bTagDone') { setPhase('play'); G.tool = 'look'; paintAll(); barUi(); updateHint(); persistSoon(); return; }
@@ -3224,12 +3394,12 @@ function importMapText(txt) {
   for (const Z of G.zones) { const S = G.settlements.find((q) => q.zid === Z.id); if (S) { Z.settled = S; S.zoneRef = Z; syncTf(S); } paintLand(Z); }
   refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
 }
-$('bPlay').onclick = () => { G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice(); };
+$('bPlay').onclick = () => playRoom('find');
 $('bMore').onclick = () => { $('tmenu').hidden = !$('tmenu').hidden; };
 $('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
 $('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
-$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); };
+$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); }; // hidden: the totem screens stay unreachable
 // Start a new room: the current room's map and colony are kept as a backup (-prev), then everything starts fresh here.
 $('bFresh').onclick = () => {
   const b = $('bFresh');
@@ -3481,6 +3651,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
+  COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
   HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 

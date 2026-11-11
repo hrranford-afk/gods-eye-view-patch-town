@@ -1,5 +1,4 @@
 {
- "source": "PatchTown council, 11 Nov 2026 (Q7), copied from the answers Harry pasted; residents' words untouched",
  "colonists": [
   {
    "name": "Pip",
@@ -17,6 +16,19 @@
    "by": "The Town Brain"
   },
   {
+   "name": "Gertie",
+   "personality": "cheerful and resourceful",
+   "likes": [
+    "bright sunny days",
+    "building things with her hands"
+   ],
+   "dislikes": [
+    "dark, stormy nights"
+   ],
+   "dream": "to build a beautiful treehouse for everyone to enjoy",
+   "by": "The Dell Builder"
+  },
+  {
    "name": "Gizmo",
    "personality": "Inventive and curious",
    "likes": [
@@ -30,6 +42,20 @@
    ],
    "dream": "Create a flying machine to explore the ceiling",
    "by": "The Dell Coder"
+  },
+  {
+   "name": "Luna",
+   "personality": "curious and adventurous",
+   "likes": [
+    "exploring",
+    "stargazing"
+   ],
+   "dislikes": [
+    "darkness",
+    "solitude"
+   ],
+   "dream": "to build a cable car that reaches the ceiling",
+   "by": "The Dell Elder"
   },
   {
    "name": "Lila",
@@ -46,6 +72,22 @@
    ],
    "dream": "to create a garden that blooms with stories",
    "by": "The Dell Reasoner"
+  },
+  {
+   "name": "Pip",
+   "personality": "a round, ink-stained cartographer who narrates everything in tiny whispers and gets flustered if you call them 'cute'",
+   "likes": [
+    "pencil shavings",
+    "the grain of oak",
+    "being handed a very small brush"
+   ],
+   "dislikes": [
+    "being rushed",
+    "sudden loud sounds",
+    "the word 'just'"
+   ],
+   "dream": "to map every shadow the room casts across one full year, and frame it",
+   "by": "The Dell Scholar"
   },
   {
    "name": "Pipkin Bramble",
@@ -102,6 +144,14 @@
    "by": "The Town Brain"
   },
   {
+   "title": "Gertie's Treehouse Project",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Gertie starts gathering materials to build a treehouse in the colony's largest tree.",
+   "colonist_says": "I've always dreamed of having a cozy spot up in the trees!",
+   "by": "The Dell Builder"
+  },
+  {
    "title": "Morning Sunlight",
    "when": "morning",
    "weather": "sun",
@@ -110,12 +160,28 @@
    "by": "The Dell Coder"
   },
   {
+   "title": "The First Tree",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Luna plants the first tree in the colony, hoping it will grow tall and strong.",
+   "colonist_says": "Let's see how tall this little sapling can grow!",
+   "by": "The Dell Elder"
+  },
+  {
    "title": "The First Bloom",
    "when": "morning",
    "weather": "sun",
    "what_happens": "The first sunflower seed sprouts and begins to stretch toward the light.",
    "colonist_says": "Look! The seed has awakened! Let's sing it a lullaby to help it grow.",
    "by": "The Dell Reasoner"
+  },
+  {
+   "title": "The River in the Desk",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Pip kneels at the edge of the desk, traces a long hairline crack with a fingertip, and announces it is a river. By the time the light hits the shelf, Pip has built a wobbly three-plank bridge over it and is already sketching the tributaries.",
+   "colonist_says": "It's not a crack. It's a river. I've named it. You may not ask the name yet. You may ask it tomorrow.",
+   "by": "The Dell Scholar"
   },
   {
    "title": "The First Cable Car Troubles",
@@ -150,16 +216,34 @@
    "by": "The Town Brain"
   },
   {
+   "colonist": "Gertie",
+   "asks_for": "ladder",
+   "says": "Could you help me find a sturdy ladder for my treehouse project? Thanks!",
+   "by": "The Dell Builder"
+  },
+  {
    "colonist": "Gizmo",
    "asks_for": "cable_car",
    "says": "Hey, can you help me build a cable car? I want to explore the ceiling and see what's up there!",
    "by": "The Dell Coder"
   },
   {
+   "colonist": "Luna",
+   "asks_for": "ladder",
+   "says": "Can you bring a ladder so I can reach the higher branches when the tree grows?",
+   "by": "The Dell Elder"
+  },
+  {
    "colonist": "Lila",
    "asks_for": "water",
    "says": "Please bring me a glass of water to water the new sprout. Let's make it grow with care!",
    "by": "The Dell Reasoner"
+  },
+  {
+   "colonist": "Pip",
+   "asks_for": "seed",
+   "says": "One seed. Just one. I want to plant it in the river so it becomes a garden, and then I can map the garden, and then the map will be *mine* and not just the desk's.",
+   "by": "The Dell Scholar"
   },
   {
    "colonist": "Pipkin Bramble",

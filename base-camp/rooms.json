@@ -1,5 +1,4 @@
 {
- "source": "PatchTown council, 11 Nov 2026, copied from the answers Harry pasted; residents' words untouched (Q8)",
  "spots": [
   {
    "spot": "top of speaker",
@@ -45,6 +44,177 @@
    "how_they_get_there": "catapult launch using a bent fork tine",
    "funny_thing": "they try to conduct trade with sugar cubes, but one melts into a sticky black hole that swallows their ledger",
    "by": "The Town Brain"
+  },
+  {
+   "spot": "Shelves",
+   "used_for": "Storage",
+   "gives": "Extra space for storing food and materials",
+   "costs": "Dusty",
+   "how_they_get_there": "Cable car",
+   "funny_thing": "A fluffkin accidentally knocks over a shelf, sending a pile of food flying everywhere",
+   "by": "The Dell Coder"
+  },
+  {
+   "spot": "Top of a speaker",
+   "used_for": "Observation",
+   "gives": "A high vantage point to watch the colony's activities",
+   "costs": "Loud",
+   "how_they_get_there": "Rope",
+   "funny_thing": "A fluffkin tries to use the speaker as a pillow but ends up falling off and landing on a fluffkin's face",
+   "by": "The Dell Coder"
+  },
+  {
+   "spot": "Floor",
+   "used_for": "Movement",
+   "gives": "A flat surface for walking and moving around",
+   "costs": "Dusty",
+   "how_they_get_there": "Ladder",
+   "funny_thing": "A fluffkin accidentally steps on a cable car, causing it to malfunction and send them flying across the room",
+   "by": "The Dell Coder"
+  },
+  {
+   "spot": "Rug",
+   "used_for": "Sleeping",
+   "gives": "A cozy place to rest and sleep",
+   "costs": "Warm but dangerous",
+   "how_they_get_there": "Catapult",
+   "funny_thing": "A fluffkin accidentally falls asleep on a cable car and ends up being sent flying across the room",
+   "by": "The Dell Coder"
+  },
+  {
+   "spot": "Space under the sofa",
+   "used_for": "Hideout",
+   "gives": "A secret place to store food and materials",
+   "costs": "Dusty",
+   "how_they_get_there": "Tunnel",
+   "funny_thing": "A fluffkin accidentally falls into the space under the sofa and gets stuck, causing a commotion",
+   "by": "The Dell Coder"
+  },
+  {
+   "spot": "top of the fridge",
+   "used_for": "village",
+   "gives": "cool shade and snacks",
+   "costs": "loud fridge hum and possible spills",
+   "how_they_get_there": "ladder",
+   "funny_thing": "they accidentally trigger the fridge's ice dispenser",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "spot": "windowsill",
+   "used_for": "lookout",
+   "gives": "sunlight and views",
+   "costs": "heat and risk of falling",
+   "how_they_get_there": "cable car",
+   "funny_thing": "a Fluffkin gets stuck in the window screen",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "spot": "floor",
+   "used_for": "farm",
+   "gives": "space to grow crops",
+   "costs": "dust and foot traffic",
+   "how_they_get_there": "tunnel",
+   "fun,ny_thing": "they accidentally roll a sock into a crop",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "spot": "sofa",
+   "used_for": "hideout",
+   "gives": "warmth and comfort",
+   "costs": "loud voices and possible squishing",
+   "how_they_get_there": "ladder",
+   "funny_thing": "they host a tiny pillow party",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "spot": "radiator",
+   "used_for": "workshop",
+   "gives": "warmth and heat for tools",
+   "costs": "danger of burning and loud noise",
+   "how_they_get_there": "ladder",
+   "funny_thing": "they build a tiny sauna out of socks",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "spot": "The Top of the Fridge",
+   "used_for": "Village & Lookout",
+   "gives": "High vantage point for spotting crumbs and potential predators (cats!), good sunlight for Fluffkin farms.",
+   "costs": "Cold, exposed to sudden movements of humans, precarious access.",
+   "how_they_get_there": "A complex system of miniature cable cars powered by static electricity, requiring constant maintenance.",
+   "funny_thing": "A Fluffkin mayor declared the fridge top 'The Grand Fluffkin Heights' and insisted on a daily flag-raising ceremony involving a tiny, dust-bunny-made banner.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "spot": "The Radiator",
+   "used_for": "Farm & Workshop",
+   "gives": "Consistent warmth for growing specialized 'Glow-Fluff' crops, a source of heat for powering miniature forges.",
+   "costs": "Extremely hot, risk of being accidentally knocked off, constant need for heat-resistant building materials.",
+   "how_they_get_there": "A network of sturdy rope bridges strung between nearby furniture, requiring nimble Fluffkin climbers.",
+   "funny_thing": "The Fluffkins accidentally created a 'Glow-Fluff' crop that pulsed with the rhythm of the radiator's hum, leading to a colony-wide dance craze.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "spot": "Under the Sofa",
+   "used_for": "Hideout & Storage",
+   "gives": "Dark, safe from predators, a large space for storing gathered treasures (lost socks, stray buttons).",
+   "costs": "Dusty, prone to sudden and terrifying sofa-lifting events, limited visibility.",
+   "how_they_get_there": "A series of interconnected tunnels dug through the carpet, occasionally blocked by rogue dust bunnies.",
+   "funny_thing": "The Fluffkins discovered a lost remote control under the sofa and declared it a sacred artifact, attempting to worship it with offerings of lint.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "spot": "The Fireplace (unused)",
+   "used_for": "Village & Cable Car Hub",
+   "gives": "Sheltered space, a natural chimney for a unique cable car system, potential for dramatic storytelling.",
+   "costs": "Risk of accidental ignition (requires constant fire-safety training), soot accumulation, occasional visits from spiders.",
+   "how_they_get_there": "A series of miniature cable cars utilizing the chimney as a vertical transport system, with a complex pulley system.",
+   "funny_thing": "A Fluffkin engineer tried to build a 'smoke-powered' cable car, which resulted in a brief but spectacular cloud of soot and a very grumpy colony.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "spot": "The Windowsill",
+   "used_for": "Farm & Lookout",
+   "gives": "Direct sunlight for growing 'Sun-Fluff', a view of the outside world, a place to observe human activity.",
+   "costs": "Exposed to the elements, vulnerable to birds and curious cats, risk of being swept away by a sudden breeze.",
+   "how_they_get_there": "A precarious ladder constructed from popsicle sticks and paperclips, requiring a brave and agile Fluffkin scout.",
+   "funny_thing": "The Fluffkins started mimicking the humans they observed outside, attempting to 'water' the windowsill with tiny droplets of juice.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "spot": "",
+   "used_for": "",
+   "gives": "",
+   "costs": "",
+   "how_they_get_there": "",
+   "funny_thing": "",
+   "by": "The Mill Hand"
+  },
+  {
+   "spot": "",
+   "used_for": "",
+   "gives": "",
+   "costs": "",
+   "how_they_get_there": "",
+   "funny_thing": "",
+   "by": "The Mill Hand"
+  },
+  {
+   "spot": "",
+   "used_for": "",
+   "gives": "",
+   "costs": "",
+   "how_they_get_there": "",
+   "funny_thing": "",
+   "by": "The Mill Hand"
+  },
+  {
+   "spot": "",
+   "used_for": "",
+   "gives": "",
+   "costs": "",
+   "how_they_get_there": "",
+   "funny_thing": "",
+   "by": "The Mill Hand"
   },
   {
    "spot": "Shelves",
