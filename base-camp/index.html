@@ -1,6 +1,49 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+// LOADER PANEL (diagnostics for the iPad): shows each loading step and every error on screen, because the HelloXR app
+// cannot show pop-ups or a console. Remove ?nodiag-free: add ?quiet to the address to hide it.
+(function () {
+  var t0 = Date.now(), lines = [], el = null;
+  function out() {
+    if (/[?&]quiet/.test(location.search)) return;
+    if (!el && document.body) {
+      el = document.createElement('div');
+      el.id = 'loaderPanel';
+      el.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:2147483647;max-width:94vw;max-height:46vh;overflow:auto;font:600 12px/1.35 -apple-system,Helvetica,sans-serif;color:#fff;background:rgba(0,0,0,.78);padding:6px 9px;border-radius:8px;white-space:pre-wrap;pointer-events:auto';
+      document.body.appendChild(el);
+    }
+    if (el) el.textContent = 'LOADER (build 1-diag)\n' + lines.join('\n');
+  }
+  window.__step = function (msg) { lines.push(((Date.now() - t0) / 1000).toFixed(1) + 's  ' + msg); out(); };
+  window.addEventListener('error', function (e) {
+    var tgt = e.target && e.target !== window ? (e.target.src || e.target.href || e.target.tagName) : '';
+    __step('ERROR ' + (tgt ? 'loading ' + tgt : (e.message + ' @ line ' + e.lineno + ':' + e.colno)));
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) { __step('PROMISE ERROR ' + (e.reason && (e.reason.message || e.reason))); });
+  __step('page started');
+  __step('user agent: ' + navigator.userAgent.slice(0, 120));
+  var mh = window.webkit && window.webkit.messageHandlers;
+  __step('AR app bridge (HelloXR): ' + (mh ? 'yes' + (mh.initAR ? ', initAR ok' : ', no initAR') : 'no'));
+  __step('navigator.xr at start: ' + (navigator.xr ? 'yes' : 'no'));
+  try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); __step('storage: ok'); } catch (e) { __step('storage: BLOCKED (' + e.message + ')'); }
+  document.addEventListener('DOMContentLoaded', function () { out(); __step('page HTML ready'); __step('3D engine (THREE): ' + (window.THREE ? 'loaded r' + THREE.REVISION : 'MISSING')); });
+  window.addEventListener('load', function () { __step('everything loaded'); });
+  var n = 0, iv = setInterval(function () {
+    n++;
+    var xr = navigator.xr;
+    if (xr && !window.__xrSeen) { window.__xrSeen = 1; __step('navigator.xr appeared'); }
+    if (xr && xr.isSessionSupported && !window.__asked) {
+      window.__asked = 1; __step('asking: is AR supported?');
+      try { xr.isSessionSupported('immersive-ar').then(function (ok) { __step('AR supported: ' + ok); }, function (e) { __step('AR check failed: ' + (e && e.message || e)); }); } catch (e) { __step('AR check threw: ' + e.message); }
+    }
+    var st = document.getElementById('arStatus');
+    if (n % 4 === 0 && st) __step('status line says: ' + st.textContent);
+    if (n >= 40) { clearInterval(iv); __step('(loader watch finished)'); }
+  }, 500);
+})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Base Camp</title>
@@ -1043,12 +1086,13 @@ const AR = { on: false, starting: false, session: null, refSpace: null, hitSourc
 (function arIpadFix() {
   try {
     const mh = window.webkit && window.webkit.messageHandlers;
-    if (navigator.xr || !mh || !mh.initAR) return;
+    if (navigator.xr || !mh || !mh.initAR) { window.__step && __step('iPad fix: not needed (' + (navigator.xr ? 'xr already there' : 'no AR app bridge') + ')'); return; }
+    window.__step && __step('iPad fix: loading our AR code copy...');
     const ipadUA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
     Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => ipadUA });
     const sc = document.createElement('script'); sc.src = 'webxr-polyfill.js';
     const done = () => { try { delete navigator.userAgent; } catch (e) { /* ignore */ } };
-    sc.onload = done; sc.onerror = () => { done(); const st = $('arStatus'); if (st) st.textContent = 'AR: could not load webxr-polyfill.js'; };
+    sc.onload = () => { done(); window.__step && __step('iPad fix: AR code loaded; navigator.xr now ' + (navigator.xr ? 'yes' : 'no')); }; sc.onerror = () => { done(); window.__step && __step('iPad fix: AR code FAILED to load'); const st = $('arStatus'); if (st) st.textContent = 'AR: could not load webxr-polyfill.js'; };
     document.head.appendChild(sc);
   } catch (e) { /* the practice room carries on */ }
 })();
@@ -1058,6 +1102,7 @@ function arLog(msg) { // HelloXR's web view cannot show alert(): every step and 
   const st = $('arStatus'); if (st) st.textContent = msg;
 }
 (function arCheck() {
+  window.__step && __step('game script reached the AR check');
   const st = $('arStatus'), b = $('bAR'); let tries = 0;
   new MutationObserver(() => { if (!st.textContent.startsWith(BUILD)) st.textContent = BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
