@@ -26,6 +26,10 @@ button:disabled{opacity:.4}
 #top{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);max-width:min(94vw,640px);text-align:center;font-weight:800;font-size:16px;pointer-events:none}
 #hint{display:inline-block;pointer-events:none}
 #hint:empty{display:none}
+/* In AR inside HelloXR, its own Exit AR button sits top-left: keep our panels clear of it and a bit smaller */
+body.inar #top{top:calc(env(safe-area-inset-top,0px) + 120px);font-size:14px;max-width:min(70vw,520px)}
+body.inar #card{top:calc(env(safe-area-inset-top,0px) + 120px)}
+body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 #chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;pointer-events:none}
 .chip{font:800 13px var(--body);padding:4px 10px;border-radius:99px;color:#2b1d12;pointer-events:auto}
 #bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:96vw;padding:8px}
@@ -105,7 +109,7 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 2';
+const BUILD = 'build 3';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1821,6 +1825,7 @@ async function arStart(cont) {
     AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
     AR.srcs = [AR.hitSource];
     if (typeof XRRay !== 'undefined') for (const [x, y] of [[-0.35, 0.28], [0.35, 0.28], [-0.35, -0.28], [0.35, -0.28]]) { try { AR.srcs.push(await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'], offsetRay: new XRRay({ x: 0, y: 0, z: 0, w: 1 }, { x, y, z: -1, w: 0 }) })); } catch (e) { /* the centre ray alone still works */ } }
+    document.body.classList.add('inar');
     arLog('AR 5/5: sweep the iPad slowly over your desk, shelf and floor');
     setTimeout(() => { const el = $('arLog'); if (el && AR.on) el.remove(); }, 4000);
     AR.dev = null; resetWorld(); startScan(cont); if (G.intent === 'map' && RECOG.on) cocoLoad(); if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
@@ -1832,6 +1837,7 @@ async function arStart(cont) {
   AR.starting = false;
 }
 function arEnded() {
+  document.body.classList.remove('inar');
   if (!AR.on && !AR.session) return;
   saveNow(); saveMap();
   for (const s of AR.srcs) try { s.cancel(); } catch (e) { /* ignore */ }
