@@ -1054,3 +1054,81 @@ The player's own race track on their real surface, drawn with a finger or built 
 **Cut / not done.** The battle is level 1's full battle on a rectangle fitted inside the scan, not a free-form map (scan outside the rectangle is unused; an L-shaped worktop gets a board on its biggest straight part). Props are level 1's layout stretched, not chosen from the real table. Red cars never leave the road (scripted, as in the Kitchen Run). No bridges: a drawn track may not cross itself. Tokens lean back for the practice camera, not towards the iPad. Auto uses rays from one middle point, so on a U-shaped worktop it only uses part of it.
 
 **Seen, not fixed.** In AR battle the garage bar sits over the AR Quality / Exit bar (as in the existing AR battle). The race HUD shows the toy-box bars during the race (as in the Kitchen Run). The scan marker stays on after scanning (it shows where the iPad points).
+
+## Toy boxes (branch game/toy-boxes)
+
+The plain home base is gone. Every base (levels 1 to 6, the finale, My Track's battle) is now a **toy box** that unfolds into a little playset when the battle starts. You pick one on the title screen; the Baron always has the Bread Bin. The single roof gun is gone: defence now comes from each box's ability and from its upgrade slots. Drift has no bases, so it is unchanged. Everything lives in one block in `index.html` headed `TOY BOXES (the home bases)` (grep `BOXES`), plus a second block `Toy boxes: sounds, thumbnails, the picker...` just above `endGame`.
+
+![picker](shots/64-box-picker.png)
+![mid-unfold](shots/65-unfold.png)
+
+### The boxes, and who designed them
+
+Designs came from PatchTown's resident council (Q6 in `games/COUNCIL_QUESTIONS.md`). Each card in the game says "Designed by ...", and so do the code comments. The owners of the Spice Rack ("Granny Paprika") and the Kettle ("Old Mr. Whistle") were not named in the brief; I made those two up, so rename them if the residents said otherwise.
+
+| Box | Designed by | Owner | Opens by (sound) | Ability | Weakness | Playstyle | Signature upgrade |
+|---|---|---|---|---|---|---|---|
+| Tea Trolley | the Town Brain | Mrs. Crumb, a frantic baker | four brass hinges snap out, tray drops, wheels pop down (click-whirr-CLONK) | **Heavy Load** (trucks carry 24 not 12, no slow-down) and **Crate Barrage** (a wall of mini-dominoes across the path, blocks cars and shots 12 s, 28 s cool-down) | **Top-Heavy**: one hit of 40+ damage after multipliers (a rocket salvo, a cannon, a domino run) tips it for 4 s: no income, no turret, no ability; then 10 s immune | helper / defender | Silver Serving Tray: a dome that reflects enemy shots |
+| Spice Rack Fortress | the Dell Elder | Granny Paprika | drawbridge drops on a spice market and garage (clink-clink-thunk) | **Chilli Cloud**: 6 s cloud (radius 15) around the box; anyone inside is blind (aim scatters about 0.65 rad each way) and swerves; 22 s cool-down | the cloud blinds your own units too | defender (area denial) | Cinnamon Boost: cars near the box get x1.3 speed (and keep it 2.5 s after leaving) |
+| Tea Kettle | the Dell Surveyor | Old Mr. Whistle | plume of steam, lid clanks back, tiered platform rises (psssh-clank) | **Boiling Point**: 7 s of x1.35 speed and x1.4 damage for all your units; 26 s recharge | milk and water (weapons with `bubble` or `wet`, and sink drips) do x2 to it | fast hit-and-run | Pressure Release Valve: a second charge |
+| Toaster Garage | CAIRN, for Captain Crumb | Captain Crumb | upper housing pops up, toast pops out, ramp folds down (pop-DING) | **Pop-Up**: launches your car (and up to 2 friends within 16) across the map using the toaster `air` code; 40 s cool-down | while cooling it glows hot and takes x1.5 damage | mobility / raider | Extra-Crispy Setting: 26 s cool-down, 4 friends |
+| Bread Bin Fortress | CAIRN, for Baron von Baguette | the Baron (always the enemy) | roll-top rolls up, four towers rise, cannon pops up (deep thunk) | **Baguette Cannon**: big slow shot (splash 3.8), x1.6 to turrets and x4 to walls | slow to turn the cannon (1.05 to 1.5 rad/s, fires only within 0.2 rad of the target) | siege | none: it gets promoted instead (see below) |
+
+### Distinctness check (the Town Brain's three rules)
+
+1. **The unfold must change movement, hitbox or interaction physics, not just looks.**
+2. **No two boxes share a primary combat role.**
+3. **No two from the same household family.**
+
+| Box | 1. What the unfold changes | 2. Primary role | 3. Family |
+|---|---|---|---|
+| Tea Trolley | hitbox 11x12 becomes 11x17.4 (wings), pickup radius 7 to 8.8 so trucks unload from further away; wheels lift the body | economy + path-blocking | Furniture |
+| Spice Rack | one solid 12x13 block becomes keep + two towers: a **gateway** cars can drive through into the garage (heals you fast) | area denial | Pantry shelving |
+| Tea Kettle | round hull shrinks (r 7 to 6.2, 10.6 to 9 wide); the steam deck gives cars near it x1.12 speed | team buff, hit-and-run | Stovetop cookware |
+| Toaster Garage | taller (4.2 to 7.6), and the front ramp becomes a **launch pad**: drive up it, toward the box, and you are fired across the map | mobility | Mains appliance |
+| Bread Bin | grows 12x13.4x5.5 to 14x15x8.5 (castle) and exposes the cannon | siege / artillery | Baker's container |
+
+Adjustments I made after the check: the Trolley and Spice Rack were both "defender" in the brief, so the Trolley is now a **helper** (economy and blocking, no area effect) and the Spice Rack owns area denial. The Trolley and Kettle are both tea things, so the Kettle's flavour is steam and water (stovetop) rather than tea service, and the family names above are what the rule is judged on. The Kettle and Toaster are both "small appliances" in everyday talk, hence Stovetop versus Mains. The Spice Rack and the Bread Bin are both pantry containers in everyday talk, hence Shelving versus the Baker's container. The Bread Bin is the enemy's box, so it never competes with the four you can pick.
+
+### Unfold recipe (every box)
+
+Panels are separate meshes under **hinge pivots** (`boxKit().hg(parent, x, y, z, axis, closed, open, delay, kind)`): rotating the pivot rotates the panel about the hinge. `kind` is `'rot'` (turn), `'pos'` (slide, see `K.anim`) or `'scale'` (roll-top). `unfoldTo(model, t)` poses every pivot with `springEase`: a damped spring (`1 - e^(-6u) cos(7.5u)`), arrives at about 20% of a panel's 0.42 s, overshoots 8%, settles. Panels start 0 to 0.2 s apart so the biggest one (tray, drawbridge, lid, ramp, roll-top) lands last. Whole unfold 0.5 s; at **0.4 s** (`CLUNK_T`) `boxesUpdate` plays the CLUNK part of the box's sound, shakes the camera (`state.shake` +0.32, +0.14 for the enemy's), bursts sparks, and flashes the box's materials white-hot for 0.45 s (the rim-light flash; `K.mats` hold each material's rest emissive in `userData.e0`). The unfold starts the first frame of the real battle, so in AR it plays when the world is placed; before that, boxes sit folded behind the title card.
+
+### How a box is built and plugs in
+
+`BOXES[id]` holds: `name, by, owner, family, role, playstyle, tint, hpMul, sound, unfoldText, unfoldPhysics, passive, ability {name, cooldown, text}, weakness, sig {name, text}`, and the two footprints `shut` / `open`: `{ r, obs: [[localX, localZ, w, d, h], ...] }` (local +x is the front; the red box is the same model turned round; `boxFoot` swaps the `obstacles`). Behaviour is in a few small functions, all keyed by id:
+
+- **Model:** `buildTrolley / buildSpice / buildKettle / buildToaster / buildBread (K, up, tier)`. Set `K.anchor = { roof: [parent, x, y, z], sticker: [parent, x, y, z, rotY, size], flag: [...], front }`, push the body materials the paint should recolour into `K.paint`, and call `K.hg/K.anim` for anything that moves. `buildBoxModel` adds the roof module, flag, sticker, armour, spikes, drawbridge plank, garage props and paint on top.
+- **Ability:** the `({ trolley: crateBarrage, ... })[id]` table in `boxUse`; return true if it fired. `boxCooldown`/`boxReady` and the HUD ring (`boxHud`) are generic; a box with `charges` (the Kettle) recharges one at a time.
+- **Weakness hook:** `boxHurtMod(base, dmg, byTeam, weapon)` is called from `hurt()` for every hit on a box (tipping, wet, hot, armour, drawbridge all live there).
+- **Other hooks:** `boxSpeed(e)` (called in `drive`), `boxReflect(shot)` (shots loop), `fire()` scatters aim when `from.blind > state.time`, `carryOf(truck, spec)`, `boxTipped(team)` (no income), `boxWetSplash(x, z)` (sink drips), `boxTrucksMax`.
+- **Per-frame:** `boxesUpdate(dt)` -> `boxLogic` (cool-downs, roof turret / drone pad / spikes / drawbridge / the Baron's cannon, the Toaster ramp) and `boxDraw` (tilt, flash, glow, steam, spin).
+
+To add a box: add an entry to `BOXES` and to `BOX_ORDER`/`PLAYER_BOXES`, write its builder, add its ability function to the `boxUse` table, add an `unfold_<id>` sound in `SOUNDS`, a `BOX_FIRE_Y` entry, a `TALK_SCRIPT.box.<id>` line, and (if it has a skin) a `SKINS` entry. Then run the distinctness table above again.
+
+### Upgrade slots (replace the roof gun)
+
+Between levels, "UPGRADES" on the box screen (title card: CHANGE / UPGRADE; end card: TOY BOX). Costs are stars to spend: tiers 1, 2, 3 of a slot cost 2, 3, 4; the Signature costs 4; each Looks item 1, once. You start with 3 and **earn (stars won + 1) for every level you win** (My Track: 1).
+
+| Slot | Options (each has 3 tiers) |
+|---|---|
+| Roof | **Turret** (starts fitted at tier 1 = the old roof gun: 14 dmg, 0.22 s, range 19; tier 2: 18.9 / 0.198 / 21; tier 3: 23.8 / 0.176 / 23), **Radar** (your new turrets hit +8% per tier; a dish spins), **Drone pad** (a free drone every 40 / 30 / 22 s, up to 2 + tier at once) |
+| Doors | **Armour** (-10% damage per tier), **Spikes** (8 x tier damage every 0.5 s to rammers), **Drawbridge** (raises when enemies are near: quarter damage for 4 / 5 / 6 s, every 24 / 20 / 16 s) |
+| Garage | **More trucks** (a free truck at the start and room for one more per tier), **Faster repair** (+20 hp/s for cars at home per tier, and the box mends 1.5 x tier hp/s) |
+| Signature | the box's own (see table) |
+| Looks | paint (6), sticker (5), flag (5), and rare skins |
+
+### Save, collection and prizes
+
+`boxSave` (key `bb-boxes-v1`, every read and write in try/catch): `{ pick, coins, skins, up: { <box>: { roof, doors, garage, sig, look, own } } }`. It is cleaned on load (`cleanUp`), carried from level to level, and survives a reload. The **COLLECTION** tab shows all five boxes (3D pictures made once into an off-screen render target by `boxThumb`, cached) and the four skins (Gold Toaster, Chrome Tea Trolley, Copper Kettle, Chilli-Red Rack). A new gumball prize, **Rare skin** (weight 1 in about 25), unlocks one you do not own yet (or pays 2 stars if you own all). The Baron says one extra pre-race line about your box: `TALK_SCRIPT.box` (added at the end of every `pre` list by `talkLines`).
+
+### Balance
+
+- **Box hp** = the level's `baseHp` x `hpMul`: Trolley 0.95, Spice Rack 1.15, Kettle 0.85, Toaster 0.85, Bread Bin 1.0. (Level 4: you 1,900 to 2,300, Baron 2,000.)
+- **Old base** = one 14-damage, 0.22 s, range-19 gun (about 64 dps). **Your starting box** = the same gun (Roof: Turret tier 1) plus the box's ability, so it fights about as well as the old base and the Roof slot is where you grow.
+- **The Baron** has no roof gun. His Baguette Cannon: damage 58 / 64 / 70 / 76, rate 1.8 / 1.7 / 1.6 / 1.5 s, range 22.5 / 24 / 25.5 / 27, turn 1.05 to 1.5 rad/s (tiers 1 to 4), splash 3.8 at half damage to everything in it, including the car it hit. About 48 to 76 dps against a car that holds still, and it one-shots a Racer, but it only fires when it has swung to within 0.2 rad, so a moving car mostly takes nothing. Tier by level index: `[1, 1, 2, 2, 3, 4]` (My Track: 2); higher tiers add towers' pennants, iron plates, gold trim, extra barrels, and he takes 5% less damage per tier above 1.
+- **Cannon vs walls:** `weapon.flatten` multiplies damage to turrets x1.6 and to sugar/wall turrets x4.
+
+### What I did not do
+
+No box-specific music; the Spice Rack's "market" and the garage cars inside it are props, not units; no multiplayer yet (the save is one box per device); no per-box difficulty tuning beyond the numbers above (I could only run the headless smoke, not play 30 minutes of each).

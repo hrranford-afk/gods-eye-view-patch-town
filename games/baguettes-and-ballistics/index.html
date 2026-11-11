@@ -152,7 +152,8 @@ button.abil.ready { box-shadow: 0 0 14px 2px rgba(255, 194, 61, 0.75); backgroun
 .bthumb.small { width: 150px; }
 .bthumb.tiny { width: 92px; border-radius: 10px; }
 .bthumb.q { display: grid; place-items: center; font: 44px var(--display); background: #3a3026; color: #6b5d4c; }
-.boxCard { max-width: 1120px; width: 100%; }
+#boxScr { background: linear-gradient(180deg, #2a2118, #1a140f); z-index: 6; }
+.card.boxCard { max-width: 1140px; width: 100%; }
 .boxTabs { display: flex; gap: 8px; }
 .boxTabs button.on { border-color: var(--gold); background: rgba(255, 194, 61, 0.28); }
 #boxBody { width: 100%; }
@@ -191,7 +192,7 @@ button.abil.ready { box-shadow: 0 0 14px 2px rgba(255, 194, 61, 0.75); backgroun
 .shelfItem.sel { border-color: var(--gold); }
 .shelfItem b { font: 13px var(--display); color: var(--gold); }
 .shelfItem small { font-size: 11px; opacity: 0.8; }
-.shelfNote { font-size: 14px; }
+.shelfNote { font-size: 14px; text-align: center; margin: 0 auto; }
 .skinsH { margin: 14px 0 0; font: 16px var(--display); color: var(--gold); }
 .lockedSkin { opacity: 0.6; }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
@@ -1989,7 +1990,7 @@ function buildKettle(K, up) { // Tea Kettle: cobalt enamel, cream lid, brass
   tiers.forEach(([r, c, y, dl]) => { const o = new THREE.Group(); o.position.set(0, 0, 0); K.g.add(o); K.anim(o, 'y', 4.9, y, dl); K.C(r, r + 0.15, 0.7, K.M(c), 0, 0, 0, o, 20); top = o;
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; K.C(0.08, 0.08, 0.5, brass, Math.cos(a) * (r - 0.2), 0.55, Math.sin(a) * (r - 0.2), o, 4); } });
   const lid = K.hg(K.g, -3.6, 6.4, 0, 'z', 0, 1.95, 0.2);              // the lid clanks back
-  const dome = mesh(new THREE.SphereGeometry(3.9, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), cream, 3.6, 0, 0, lid); dome.scale.y = 0.5;
+  const dome = mesh(new THREE.SphereGeometry(3.9, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), K.M(0xfff0d2, { side: THREE.DoubleSide }), 3.6, 0, 0, lid); dome.scale.y = 0.5;
   K.S(0.55, red, 3.6, 2.05, 0, lid);
   K.parts.steam = []; // little puffs, driven by boxesUpdate
   for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(shared('steamG', () => new THREE.SphereGeometry(1, 8, 6)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })); p.visible = false; K.g.add(p); p.userData.t = -1; K.parts.steam.push(p); }
@@ -2016,7 +2017,7 @@ function buildToaster(K, up) { // Toaster Garage: chrome, cream toast, red knob
   for (let i = 0; i < 3; i++) K.B(0.5, 0.34, 4.2, K.M(0xffc23d), 0.9 + i * 1.3, 0.02, 0, ramp);
   const lev = K.C(0.3, 0.3, 1.8, chrome, 0, 3.4, 6.35, K.g, 8); lev.rotation.x = Math.PI / 2; K.S(0.65, red, 0, 3.4, 7.3);
   K.C(0.8, 0.8, 0.3, red, 6.1, 3.3, -4.4, K.g, 14).rotation.z = Math.PI / 2;
-  K.anchor = { roof: [upper, -4.6, 3.4, 0], sticker: [K.g, 6.05, 2.1, 4.2, Math.PI / 2, 2.0], flag: [upper, -5.0, 3.4, 5.4], front: 6.1 };
+  K.anchor = { roof: [upper, -0.4, 3.45, 0], sticker: [K.g, 6.05, 2.1, 4.2, Math.PI / 2, 2.0], flag: [upper, -5.0, 3.4, 5.4], front: 6.1 };
 }
 
 function buildBread(K, up, tier) { // Bread Bin Fortress (the Baron's): crust brown, red banners, a baguette cannon. A hollow bin: the roll-top rolls up, corner towers rise, the cannon pops up on the roof.
@@ -2116,7 +2117,7 @@ function buildBoxModel(id, team, up, tier = 1) {
   if (fx.trucks) for (let i = 0; i < fx.trucks; i++) { const z = -7.6 - 0, x = -4 + i * 3.4; K.B(2.4, 0.9, 1.5, K.M(0xff9f1c), x, 0.8, z); K.B(0.9, 0.7, 1.4, K.M(0xcfe8ff), x + 1.1, 1.4, z); for (const wx of [-0.7, 0.7]) K.C(0.4, 0.4, 1.7, K.M(0x1c1712), x + wx, 0.4, z, K.g, 8).rotation.x = Math.PI / 2; }
   if (fx.repair) { K.B(2.2, 1.2, 1.4, K.M(0xe03a2a), -2, 0.6, -7.6); K.B(2.4, 0.2, 0.3, K.M(0xd9dde3), -2, 1.35, -7.6); K.B(0.2, 1.6, 0.2, K.M(0xffc23d), -1.6, 1.8, -7.6); }
   const skin = up && SKINS[up.look.skin], pc = up ? PAINTS[up.look.paint] : null, col = skin ? skin.col : pc;
-  if (col != null && id !== 'bread') for (const m of K.paint) { m.color.setHex(col); if (skin) { m.metalness = skin.metal; m.roughness = skin.metal > 0.5 ? 0.22 : 0.5; } }
+  if (col != null && id !== 'bread') for (const m of K.paint) { m.color.setHex(col); if (skin) { m.metalness = skin.metal * 0.45; m.roughness = skin.metal > 0.5 ? 0.22 : 0.5; } }
   unfoldTo(K, 0);
   return K;
 }
@@ -2224,7 +2225,7 @@ function boxLogic(b, dt) {
     if (bx.id === 'spice') for (const e of entities) if (e.team === BLUE && e.hp > 0 && (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'player') && dist2(e, b) < 17 * 17) { if (fx.sig) e.cin = time + 2.5; if (e.kind === 'player' && e.alive && dist2(e, b) < 14 * 14 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + 30 * dt); } // Cinnamon Boost; and the garage repairs twice as fast
     if (bx.id === 'toaster') { // the front ramp is a launch pad
       const p = state.player;
-      if (p.alive && !p.air && bx.cd <= 0) { const dx = (p.x - b.x) * bx.s, dz = (p.z - b.z) * bx.s; if (dx > 6.3 && dx < 11 && Math.abs(dz) < 3.4) boxUse(b); }
+      if (p.alive && !p.air && bx.cd <= 0) { const dx = (p.x - b.x) * bx.s, dz = (p.z - b.z) * bx.s; if (dx > 6.4 && dx < 9.8 && Math.abs(dz) < 3.2 && Math.hypot(p.vx, p.vz) > 4 && p.vx * bx.s < -2) boxUse(b); } // (drive UP the ramp, towards the box: standing near it does nothing)
     }
   } else if (bx.id === 'bread') { // the Baron's cannon: big, slow, and slow to turn
     const w = b.weapon, t = nearestEnemy(b, w.range);
@@ -2260,11 +2261,11 @@ function boxDraw(b, dt) {
   if (P.turret && b.team === RED) { P.turret.rotation.y = -bx.aim - Math.PI; P.turret.position.x = -bx.recoil * 0.8; }
   else if (P.turret && b.team === BLUE && !bx.open) P.turret.rotation.y = 0;
   if (P.steam) {
-    if (bx.open && Math.random() < dt * (bx.boil > 0 ? 9 : 0.8)) kettleSteam(bx, 1);
+    if (bx.open && Math.random() < dt * (bx.boil > 0 ? 7 : 0.45)) kettleSteam(bx, 1);
     for (const p of P.steam) if (p.userData.t >= 0) {
       p.userData.t += dt; const t = p.userData.t;
       if (t > 1.7) { p.visible = false; p.userData.t = -1; continue; }
-      p.position.y = 7 + t * 5; p.position.x += p.userData.vx * dt; p.scale.setScalar(0.9 + t * 1.6); p.material.opacity = 0.55 * (1 - t / 1.7);
+      p.position.y = 7 + t * 5; p.position.x += p.userData.vx * dt; p.scale.setScalar(0.5 + t * 0.9); p.material.opacity = 0.42 * (1 - t / 1.7);
     }
   }
 }
@@ -7813,12 +7814,12 @@ function boxThumb(id, up, tier = 2, w = 360, h = 270) {
   try {
     if (!thumbRig) {
       const sc = new THREE.Scene(); sc.background = new THREE.Color(0x4a3a2c);
-      sc.add(new THREE.HemisphereLight(0xfff4e0, 0x6a5038, 0.95));
-      const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(20, 45, 30); sc.add(dl);
-      const floor = new THREE.Mesh(new THREE.CircleGeometry(19, 48), new THREE.MeshStandardMaterial({ color: 0xb98656, roughness: 0.8 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.02; sc.add(floor);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(14.5, 15.5, 48), new THREE.MeshBasicMaterial({ color: COLORS[BLUE], transparent: true, opacity: 0.55 })); ring.rotation.x = -Math.PI / 2; sc.add(ring);
+      sc.add(new THREE.HemisphereLight(0xfff4e0, 0x6a5038, 0.62));
+      const dl = new THREE.DirectionalLight(0xffffff, 0.62); dl.position.set(20, 45, 30); sc.add(dl);
+      const floor = new THREE.Mesh(new THREE.CircleGeometry(24, 48), new THREE.MeshStandardMaterial({ color: 0x9a6a3c, roughness: 0.8 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.02; sc.add(floor);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(12.2, 13.2, 48), new THREE.MeshBasicMaterial({ color: COLORS[BLUE], transparent: true, opacity: 0.55 })); ring.rotation.x = -Math.PI / 2; sc.add(ring);
       const rt = new THREE.WebGLRenderTarget(w, h); rt.texture.encoding = THREE.sRGBEncoding;
-      const cam = new THREE.PerspectiveCamera(30, w / h, 1, 200); cam.position.set(34, 25, 33); cam.lookAt(1.5, 3.2, 0);
+      const cam = new THREE.PerspectiveCamera(30, w / h, 1, 200); cam.position.set(25, 17.5, 23.5); cam.lookAt(1.2, 3.3, 0);
       thumbRig = { sc, rt, cam, buf: new Uint8Array(w * h * 4), cv: document.createElement('canvas') };
       thumbRig.cv.width = w; thumbRig.cv.height = h;
     }
