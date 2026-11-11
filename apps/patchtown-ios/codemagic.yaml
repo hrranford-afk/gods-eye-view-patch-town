@@ -1,0 +1,55 @@
+# PatchTown: OPTIONAL cloud build on Codemagic (a rented Mac), for building without your own Mac.
+# Not needed if you build on your Mac (see BUILD_AND_TESTFLIGHT.md). Harry decides later.
+#
+# Codemagic reads codemagic.yaml from the REPOSITORY ROOT. To use this file, either copy it to the repo root on the
+# app/patchtown-ios branch, or point Codemagic's "Configuration file path" setting at apps/patchtown-ios/codemagic.yaml
+# if your plan offers it.
+#
+# One-time setup in Codemagic (web UI):
+#   1. Teams > Integrations > Developer Portal: add an App Store Connect API key (name it "PatchTown ASC").
+#      The .p8 key is uploaded there, never into this repo.
+#   2. Set PATCHTOWN_BUNDLE_ID below to your real bundle id (the one made in App Store Connect).
+workflows:
+  patchtown-testflight:
+    name: PatchTown to TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: apps/patchtown-ios
+    integrations:
+      app_store_connect: PatchTown ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.REPLACE_ME.patchtown
+      vars:
+        PATCHTOWN_BUNDLE_ID: com.REPLACE_ME.patchtown
+        PATCHTOWN_TEAM_ID: ""
+        # The app's "Apple ID" number: App Store Connect > PatchTown > App Information.
+        APP_STORE_APPLE_ID: "0000000000"
+      xcode: latest
+    scripts:
+      - name: Fetch the game branches and copy the games in
+        script: |
+          git fetch origin game/room-colony:refs/remotes/origin/game/room-colony \
+                           game/micro-precinct:refs/remotes/origin/game/micro-precinct \
+                           game/night-meet:refs/remotes/origin/game/night-meet
+          scripts/sync-games.sh --fetch
+      - name: Generate the Xcode project
+        script: |
+          brew install xcodegen
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          printf 'PATCHTOWN_BUNDLE_ID=%s\nPATCHTOWN_TEAM_ID=%s\nPATCHTOWN_BUILD_NUMBER=%s\n' \
+            "$PATCHTOWN_BUNDLE_ID" "$PATCHTOWN_TEAM_ID" "$((LATEST + 1))" > signing.env
+          scripts/generate.sh
+      - name: Use the signing profiles
+        script: xcode-project use-profiles --project PatchTown.xcodeproj
+      - name: Build the IPA
+        script: xcode-project build-ipa --project PatchTown.xcodeproj --scheme PatchTown
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
