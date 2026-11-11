@@ -142,7 +142,7 @@ button[disabled] { opacity: 0.4; }
 
 <div class="ui" id="meetHud" hidden>
   <div class="where"><b id="meetWhere">THE MEET</b><span id="meetSub">Drag to look around. Tap a car.</span></div>
-  <div class="btns"><button id="meetCars">CARS</button><button id="muteBtn">SOUND ON</button><button id="meetMenu">MENU</button></div>
+  <div class="btns"><button id="meetAr" hidden>AR</button><button id="meetCars">CARS</button><button id="muteBtn">SOUND ON</button><button id="meetMenu">MENU</button></div>
 </div>
 
 <div class="ui" id="inspect" hidden>
@@ -261,7 +261,12 @@ function buildComposer() {
   if (rt.samples !== undefined) rt.samples = Q.msaa;
   composer = new THREE.EffectComposer(renderer, rt);
   composer.addPass(new THREE.RenderPass(scene, camera));
-  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.75, 0.55, 0.62);
+  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.9, 0.4, 0.78); // strength, radius, threshold
+  // the two widest blur levels are switched off: in 8-bit buffers their faint tails show as square steps round bright lights
+  const tint = bloomPass.compositeMaterial.uniforms.bloomTintColors.value; tint[3].set(0, 0, 0); tint[4].set(0, 0, 0);
+  // half-float blur buffers where the GPU can render to them (no 8-bit banding in the soft glow)
+  const ex = renderer.extensions;
+  if (gl2 && (ex.has('EXT_color_buffer_float') || ex.has('EXT_color_buffer_half_float'))) for (const t of [bloomPass.renderTargetBright, ...bloomPass.renderTargetsHorizontal, ...bloomPass.renderTargetsVertical]) t.texture.type = THREE.HalfFloatType;
   composer.addPass(bloomPass);
   composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
   composer.setPixelRatio(renderer.getPixelRatio());
@@ -659,10 +664,10 @@ function physParams(T, dims) {
   const big = T.kg > 4000;
   return {
     mass: T.kg, power: T.kW * 1000 * 1.15, wb: dims.wb, wf: 0.53, cgh: T.cgh || 0.5, mu: T.grip, B: 14, C: 1.6,
-    lock: big ? 0.55 : 0.6, steerRate: big ? 2.2 : 3.6, assist: 0.6, hbGrip: big ? 0.42 : 0.5, hbDrag: 1.0,
+    lock: big ? 0.55 : 0.6, steerRate: big ? 2.2 : 3.6, assist: 0.6, hbGrip: big ? 0.62 : 0.5, hbDrag: 1.0,
     brakeF: T.kg * 9, tractionF: T.kg * 12, vmax: T.top / 3.6, vrev: 8, drag: big ? 3.2 : 0.42, roll: T.kg * 0.012,
-    Iz: T.kg * (dims.len * dims.len + dims.wid * dims.wid) / 12 * 1.1, tc: 0.7, tcSlide: big ? 1.0 : 0.95,
-    yawP: 3, assistK: T.assistK || (big ? 1.5 : T.drift >= 4 ? 4.2 : 3.4), driftAng: T.driftAng || (big ? 0.42 : 0.6), over: 1.35,
+    Iz: T.kg * (dims.len * dims.len + dims.wid * dims.wid) / 12 * 1.1, tc: 0.7, tcSlide: big ? 0.9 : 0.95,
+    yawP: 3, assistK: T.assistK || (big ? 1.1 : T.drift >= 4 ? 4.2 : 3.4), driftAng: T.driftAng || (big ? 0.38 : 0.6), over: 1.35,
   };
 }
 
@@ -1054,7 +1059,7 @@ function puddles(A, list) {
   for (const [x, z, r, ry] of list) { const g = new THREE.PlaneGeometry(r * 2, r * 1.4); g.rotateX(-Math.PI / 2); g.rotateY(ry || 0); g.translate(x, 0.018, z); parts.push(g); }
   if (!parts.length) return;
   const m = new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(parts), new THREE.MeshStandardMaterial({ color: 0x020203, roughness: 0.03, metalness: 0.2, envMap: ENV.map, envMapIntensity: 0.9, alphaMap: puddleTex(), transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
-  m.renderOrder = 1; m.receiveShadow = true; A.group.add(m);
+  m.renderOrder = 1; m.receiveShadow = true; A.group.add(m); A.puddles = m;
 }
 
 // ---- lamp poles and the light dressing around them ----
@@ -1096,7 +1101,7 @@ function lightDressing(A) {
   const coneMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, vertexColors: true, fog: false,
     uniforms: { k: { value: 0.07 } },
-    vertexShader: 'varying vec2 vUv; varying vec3 vC; varying float vF; void main(){ vUv = uv; vC = color; vec4 mv = modelViewMatrix * vec4(position,1.0); vec3 n = normalize(normalMatrix * normal); vF = abs(dot(n, normalize(-mv.xyz))); gl_Position = projectionMatrix * mv; }',
+    vertexShader: 'varying vec2 vUv; varying vec3 vC; varying float vF; void main(){ vUv = uv; vC = color; vec4 mv = modelViewMatrix * vec4(position,1.0); vec3 n = normalize(normalMatrix * normal); vF = abs(dot(n, normalize(-mv.xyz))) * smoothstep(12.0, 35.0, -mv.z); gl_Position = projectionMatrix * mv; }', // (faded out close to the eye)
     fragmentShader: 'uniform float k; varying vec2 vUv; varying vec3 vC; varying float vF; void main(){ float a = pow(vUv.y, 2.2) * pow(vF, 2.0) * k; gl_FragColor = vec4(vC * a, 1.0); }',
   });
   const cones = new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(cg), coneMat);
@@ -1160,7 +1165,7 @@ function initWorldMats() {
   MAT.container = new THREE.MeshStandardMaterial({ color: 0xffffff, map: ribTex(), vertexColors: true, roughness: 0.62, metalness: 0.35, envMapIntensity: 0.35 });
   MAT.wall = new THREE.MeshStandardMaterial({ color: 0x3e4247, map: ribTex(), roughness: 0.58, metalness: 0.45, envMapIntensity: 0.35 });
   MAT.roof = std('roof', { color: 0x1d1f23, roughness: 0.8 });
-  MAT.doorLit = basic('doorLit', { color: hdr(0xffd7a0, 1.2) });
+  MAT.doorLit = basic('doorLit', { color: hdr(0xffcf90, 0.85) });
   MAT.facadeA = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: windowsTex('A', null), emissive: 0xffffff, emissiveMap: windowsTex('AE', true), emissiveIntensity: 1.0, roughness: 0.75, metalness: 0.1, envMapIntensity: 0.25 });
   MAT.facadeB = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: windowsTex('B', null), emissive: 0xffffff, emissiveMap: windowsTex('BE', true), emissiveIntensity: 1.0, roughness: 0.75, metalness: 0.1, envMapIntensity: 0.25 });
   MAT.water = new THREE.MeshStandardMaterial({ color: 0x010205, roughness: 0.08, metalness: 0.6, envMapIntensity: 0.5 });
@@ -1268,7 +1273,7 @@ function buildTown() {
     A.colliders.push({ t: 'box', x: cx, z: cz, hx: w / 2, hz: d / 2, rot: 0 });
     // 2x2 buildings set back 3 m behind the kerb, varied heights and colours
     for (const bx of [0, 1]) for (const bz of [0, 1]) {
-      const bw = w / 2 - 3.5, bd = d / 2 - 3.5, x = x0 + 3 + bx * (w / 2 - 0.5) + bw / 2, z = z0 + 3 + bz * (d / 2 - 0.5) + bd / 2, h = rr(12, 36);
+      const bw = (w - 7) / 2, bd = (d - 7) / 2, x = x0 + 3 + bx * (bw + 1) + bw / 2, z = z0 + 3 + bz * (bd + 1) + bd / 2, h = rr(12, 36); // 3 m of pavement in front, 1 m between
       M.add(boxM(bw, h, bd, 24), rnd() < 0.5 ? MAT.facadeA : MAT.facadeB, x, h / 2, z, 0, 1, 1, 1, [0x3a3632, 0x2c2e33, 0x4a3a30, 0x30302c][(bx + bz * 2 + si) % 4]);
       M.add(boxM(bw + 0.4, 0.5, bd + 0.4, 6), MAT.roof, x, h + 0.25, z);
     }
@@ -1370,7 +1375,7 @@ function lightsUpdate(A, fx, fz, dt) {
     s.position.set(L.x, L.y, L.z); s.color.setHex(L.col); s.distance = L.range * 1.15;
     if (L.wall !== undefined) s.target.position.set(L.x + Math.cos(L.wall) * 7, 0, L.z + Math.sin(L.wall) * 7); else s.target.position.set(L.x, 0, L.z);
     s.target.updateMatrixWorld();
-    s.intensity = 1.8 * L.int * s.userData.k;
+    s.intensity = 1.35 * L.int * s.userData.k;
   }
 }
 
@@ -1435,7 +1440,7 @@ function skid(wi, x, z) {
 // the chase camera and the HUD. Scoring is adapted from Midnight Kitchen Drift (baguettes-and-ballistics).
 // =====================================================================================================================
 const RUN_T = 90, MAX_COMBO = 8;
-const STARS = { carpark: [6000, 16000, 32000], town: [6000, 16000, 32000] };
+const STARS = { carpark: [5000, 14000, 28000], town: [5000, 14000, 28000] }; // score for 1, 2, 3 stars in a 90 s run
 const DRIVE = { active: false, state: 'off', bot: null, best: store.get('best', {}) };
 let CUR = { area: null };
 function showArea(A) {
@@ -1462,6 +1467,7 @@ function driveStart(areaId, typeId, paint, neon) {
   $('drHud').hidden = false; $('drHint').hidden = false;
   $('drArea').textContent = A.name.toUpperCase(); const b = DRIVE.best[areaId]; $('drBest').textContent = fmt(b ? b.score : 0);
   DRIVE.camInit = true;
+  if (AR.on) arUiSync();
 }
 function driveReset() {
   const A = DRIVE.A, c = DRIVE.c;
@@ -1478,6 +1484,7 @@ function driveExit() { // back to the meet
   $('drHud').hidden = true; $('drEnd').hidden = true; $('banner').hidden = true; $('stick').hidden = true; stickId = null; input.x = input.y = 0;
   for (const s of getArea('carpark').spots) { s.car.visible = true; if (s.col) s.col.off = false; }
   meetEnter(true);
+  if (AR.on) arUiSync();
 }
 function banner(big, small, t = 0.9) { $('bannerBig').textContent = big; $('bannerSmall').textContent = small || ''; $('banner').hidden = false; DRIVE.bannerT = t; }
 
@@ -1713,7 +1720,7 @@ function meetUpdate(dt) {
 function inspect(s) {
   MEET.spot = s; MEET.i = getArea('carpark').spots.indexOf(s);
   const T = CAR[s.type], d = s.car.userData.rig.dims;
-  MEET.dist = clamp(d.len * 1.55 + 3, 8, 24); MEET.pitch = 0.22;
+  MEET.dist = clamp(d.len * 1.55 + 3, 8, 24); MEET.pitch = 0.16; MEET.yaw = s.h + 0.75; MEET.idle = -6; // a low front three-quarter view
   $('insName').textContent = T.name.toUpperCase(); $('insCls').textContent = T.cls; $('insBlurb').textContent = T.blurb;
   const hp = Math.round(T.kW * 1.341), stat = (lab, f, val) => `<div class="stat"><span class="lab">${lab}</span><div class="bar"><i style="width:${Math.round(clamp(f, 0.04, 1) * 100)}%"></i></div><b>${val}</b></div>`;
   $('insStats').innerHTML = stat('Power', hp / 480, hp + ' hp') + stat('Weight', Math.log(T.kg / 700) / Math.log(12000 / 700), fmt(T.kg) + ' kg') + stat('Grip', (T.grip - 0.8) / 0.4, (T.grip * 10).toFixed(1)) + stat('Drift', T.drift / 5, '●'.repeat(T.drift) + '○'.repeat(5 - T.drift)) + stat('Points', T.mult / 4, 'x' + T.mult);
@@ -1897,6 +1904,7 @@ const arTmp = { m: new THREE.Matrix4(), m2: new THREE.Matrix4(), v: new THREE.Ve
   document.head.appendChild(css);
   const b = $('arBtn'), st = $('arStatus');
   b.addEventListener('click', () => arStart());
+  $('meetAr').addEventListener('click', () => arStart());
   new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   let tries = 0;
   const check = () => {
@@ -1906,7 +1914,7 @@ const arTmp = { m: new THREE.Matrix4(), m2: new THREE.Matrix4(), v: new THREE.Ve
       if (navigator.xr && navigator.xr.isSessionSupported) {
         pending = true;
         navigator.xr.isSessionSupported('immersive-ar').then((ok) => {
-          b.hidden = !ok;
+          b.hidden = !ok; $('meetAr').hidden = !ok;
           if (ok) { st.textContent = 'AR ready: tap AR, then point at a table'; return; }
           st.textContent = 'AR: this browser has WebXR but no AR';
           if (tries < 30) setTimeout(check, 500);
@@ -2086,7 +2094,8 @@ function arMakeReticle() {
 // What is hidden in AR: the sky, the skyline, the water and the far bank; the plinth is shown instead.
 function arShowWorld(normal) {
   if (SKY) SKY.visible = normal;
-  for (const A of Object.values(AREAS)) { for (const o of A.outside) o.visible = normal; if (A.plinth) A.plinth.visible = !normal; }
+  for (const A of Object.values(AREAS)) { for (const o of A.outside) o.visible = normal; if (A.plinth) A.plinth.visible = !normal; if (A.puddles) A.puddles.material.opacity = normal ? 0.8 : 0.35; }
+  renderer.toneMappingExposure = normal ? 1.0 : 1.35; // a lit room around the diorama: a little brighter
   areaQuality();
 }
 
