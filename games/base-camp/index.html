@@ -101,6 +101,7 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
     <div id="welcome" hidden></div>
     <div class="row">
       <button class="big" id="bPlay" disabled>Play</button>
+      <button class="alt" id="bBattle">Battle!</button>
       <button id="bMore">More...</button>
     </div>
     <div id="rooms" hidden></div>
@@ -143,7 +144,7 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 8';
+const BUILD = 'build 9';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -3504,6 +3505,7 @@ function setPhase(p) {
   SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
 }
 function resetWorld() {
+  btCleanup(true);
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z);
@@ -3896,6 +3898,7 @@ function showPreview(A, B, ok) {
 const down = { on: false };
 $('touch').addEventListener('pointerdown', (e) => {
   e.preventDefault(); sfx('');
+  if (BT.on) { btPointer('down', e); return; }
   Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null, held: false });
   if (G.phase === 'play' && ['look', 'cheer', 'seed', 'build'].includes(G.tool) && e.button !== 2) down.col = colPick(e.clientX, e.clientY); // touch a colonist: a tap pokes it, holding or dragging picks it up
   try { $('touch').setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
@@ -3908,6 +3911,7 @@ $('touch').addEventListener('pointerdown', (e) => {
   if (G.phase === 'play' && G.tool === 'move' && G.mode === 'practice') { down.prop = propPick(e.clientX, e.clientY); }
 });
 $('touch').addEventListener('pointermove', (e) => {
+  if (BT.on) { btPointer('move', e); return; }
   if (!down.on || e.pointerId !== down.id) return;
   const dx = e.clientX - down.x, dy = e.clientY - down.y; if (Math.hypot(e.clientX - down.sx, e.clientY - down.sy) > 10) down.moved = true;
   down.x = e.clientX; down.y = e.clientY;
@@ -3928,6 +3932,7 @@ $('touch').addEventListener('pointermove', (e) => {
 $('touch').addEventListener('wheel', (e) => { if (G.mode === 'practice') { P.gDist = clamp(P.gDist * (1 + Math.sign(e.deltaY) * 0.1), 0.25, 6); } }, { passive: true });
 $('touch').addEventListener('contextmenu', (e) => e.preventDefault());
 const endDown = (e) => {
+  if (BT.on) { btPointer('up', e); return; }
   if (!down.on || e.pointerId !== down.id) return; down.on = false; G.water = null;
   if (down.held) { down.held = false; down.col = null; dropCol(e.type === 'pointercancel' ? undefined : e.clientX, e.clientY); return; }
   const tap = !down.moved && performance.now() - down.t < 700;
@@ -3986,6 +3991,776 @@ function settleZone(zone) {
   syncCables(); saveNow(); saveMap();
 }
 
+// ============ BATTLE (build 9): a turn-based, artillery-style toy battle on two real surfaces. Original design, placeholder rubbish-weapons and a placeholder rival. ============
+// Everything for the battle lives in this section. The rest of the game knows about it through a handful of hooks (search "BT.on" / "btPointer" / "btCleanup" / "bBattle" / "mBattle"):
+//   frame() calls battleFrame(dt) and skips the colony simulation; the pointer handlers hand every touch to btPointer(); resetWorld() calls btCleanup();
+//   the title menu and the in-game menu get a Battle! button; MILESTONES gets a 'victory' entry (below).  Nothing else is touched. See HANDOVER.md > BATTLE for the full tour.
+// How a match runs: btBegin(opts) -> two sides on two scanned zones (btArenaPick), each with a tent, a hut and a wall (cover) and four creatures from the colony (btFormation) ->
+//   turns (btBeginTurn): pick a creature, hop a little, choose a weapon, drag back to aim, release (btFire) -> the projectile flies in real metres (btAdvance/btStep/btResolve, the SAME
+//   code the Lint Lords' AI uses to try shots in its head: btFly) -> its effect (btApply: boom / knock / stick / hook) -> everything settles -> next turn (pass-the-iPad screen in 2-player).
+// Nobody dies: a hit creature is "sent home" (pops into fluff, the tent glows). Lose your tent, or run out of creatures at large = lose the match.
+// To ADD A WEAPON: one entry in BW (numbers + a `kind`), a mesh in btMkProj, the behaviour for that `kind` in btResolve (what happens at a touch) and btApply (what the touch does to the world),
+//   optionally a line in btSolve/btScore if the AI should use it. Weapons never touch the colony; the physics is deterministic (fixed 1/120 s step, seeded wind and AI errors).
+const BT_G = 4.6, BT_DT = 1 / 120, BT_UR = 0.042, BT_UH = 0.065, BT_SCALE = 2.7, BT_TURN = 30; // cartoon-floaty gravity (m/s2), physics step, creature hit radius, chest height, creature scale, turn seconds
+const BW = { // the weapons (placeholders: household rubbish). vmin..vmax: launch speed in m/s from the drag power; gs: gravity scale; wind: wind scale; r: projectile radius (m)
+  mortar: { kind: 'mortar', name: 'Bottle-cap Mortar', ic: '🧢', tip: 'Lobs a bottle cap. Small boom.', vmin: 1.4, vmax: 4.7, gs: 1, wind: 1, r: 0.016, rest: 0.42, bounces: 1, boom: { r: 0.115, kill: 0.062, kb: 1.15, sdmg: 1, sr: 0.08 }, col: 0xe8483b },
+  flick: { kind: 'flick', name: 'Elastic-band Flick', ic: '➰', tip: 'Fast and flat. Shoves hard.', vmin: 3.4, vmax: 6.4, gs: 0.22, wind: 0.5, r: 0.016, rest: 0.3, bounces: 1, kb: 1.5, sdmg: 1, col: 0xffc21a },
+  crumb: { kind: 'crumb', name: 'Sticky Crumb', ic: '🍪', tip: 'Sticks, pops, and lures them next turn.', vmin: 1.3, vmax: 4.3, gs: 1, wind: 1, r: 0.016, fuse: 0.9, boom: { r: 0.075, kill: 0, kb: 0.55, sdmg: 0, sr: 0 }, col: 0xd9a066 },
+  grapple: { kind: 'grapple', name: 'Paperclip Grapple', ic: '📎', tip: 'Hook a spot and swing there.', vmin: 1.5, vmax: 4.4, gs: 1, wind: 0.5, r: 0.014, range: 1.3, col: 0xc9d2d8 },
+  hoover: { kind: 'hoover', name: 'Call the Hoover', ic: '🧹', tip: 'Once a match. Sucks up a line (the bag holds three).', vmin: 1.4, vmax: 4.7, gs: 1, wind: 0, r: 0.001, ghost: true, super: true, col: 0xff6f91 },
+};
+const BT_ORDER = ['mortar', 'flick', 'crumb', 'grapple', 'hoover'];
+const BT_COLS = [0xe8883a, 0x2fb3b8]; // team colours
+// the colony's creatures speak in character (CHAR, FUN section); the rival has its own lines
+const LINT = {
+  team: [{ name: 'Lord Fuzzbucket', ck: 'Grizzle' }, { name: 'Baron Von Dust', ck: 'Gloop' }, { name: 'Sir Sockley', ck: 'Glip' }, { name: 'Dame Hairball', ck: 'Fluffflur' }],
+  hit: ['Fluffed!', 'My lint!', 'Unravelled!', 'Dust to dust!', 'Bagless!'], shoot: ['Take that, Giant!', 'For the sofa!', 'Lint-ning strike!'], win: ['Lint Lords rule the underside!', 'All hail the fluff!'],
+  lose: ["We'll get you next time!", 'Back under the sofa...', 'The fluff will rise again!'],
+};
+const BT_LINE_LOSE = { Glip: "Zzt... we'll get you next time!", Grizzle: 'Hmph. Next time. Adequately.', Glimmerfluff: 'Rematch! Rematch!', Gloop: "We'll get you next time! Snack first.", Fluffflur: 'Yay... next time!' };
+const BT = { on: false, mode: 'solo', level: 'easy', stage: '', stageT: 0, side: 0, sides: [], units: [], structs: [], projs: [], crumbs: [], bub: [], dots: [], rng: Math.random, seed: 1, wind: [0, 0], windMax: 1.3, turn: 0, turnT: BT_TURN, zs: [], floorY: 0, acc: 0, timeScale: 1, slowT: 0, shake: 0, rate: 0.85, sel: null, wid: 'mortar', fired: false, hops: 3, aim: null, drag: null, hoover: null, swing: null, over: null, log: [], plan: null, aiT: 0, aiMs: 0, group: null, camHold: 0, flash: 0, msgT: 0, lastEvent: 0, ids: 0, uiT: 0, paused: false, cfg: { turn: BT_TURN, hops: 3 } };
+BT.group = new THREE.Group(); BT.group.visible = false; world.add(BT.group);
+const btLog = (k, x) => { BT.log.push({ k, t: performance.now(), turn: BT.turn, x }); if (BT.log.length > 500) BT.log.shift(); };
+MILESTONES.victory = ['🏆', 'First victory', 'The colony won a battle. Nobody was hurt, only fluffed.'];
+const btRand = () => BT.rng();
+const btGauss = () => { let a = 0; for (let i = 0; i < 4; i++) a += btRand(); return (a - 2) * 1.732; };
+const btAng = (a) => { while (a > Math.PI) a -= 6.2832; while (a < -Math.PI) a += 6.2832; return a; };
+const btDist2 = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+
+// ---------- the arena: which two surfaces, where everybody stands ----------
+function btArenaPick() { // [{Z, half}, {Z, half}]: the colony's surface is the player's side; two different surfaces if there are, else one big surface cut in two
+  const zs = G.zones.filter((Z) => Z.land && !Z.lost && clearArea(Z) >= 0.07), non = zs.filter((Z) => Z.type !== 'FLOOR'), pool = non.length >= 2 ? non : zs; let best = null, bs = -1e9;
+  for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
+    const A = pool[i], B = pool[j], d = Math.hypot(A.cx - B.cx, A.cz - B.cz); if (d < 0.35 || d > 3.2) continue;
+    const s = Math.sqrt(Math.min(clearArea(A), clearArea(B))) + 0.25 * Math.min(Math.abs(A.y - B.y), 0.8) - 0.2 * Math.max(0, d - 2); if (s > bs) { bs = s; best = [A, B]; }
+  }
+  if (best) { const A = best[0].settled && !best[1].settled ? best[0] : best[1].settled && !best[0].settled ? best[1] : clearArea(best[0]) >= clearArea(best[1]) ? best[0] : best[1], B = A === best[0] ? best[1] : best[0]; return [{ Z: A, half: 0 }, { Z: B, half: 0 }]; }
+  const big = zs.slice().sort((a, b) => clearArea(b) - clearArea(a))[0]; return big && clearArea(big) >= 0.25 ? [{ Z: big, half: -1 }, { Z: big, half: 1 }] : null;
+}
+function btQuickScan() { // practice room: scan the whole room at once and turn the scan into zones (the Play flow does this over half a minute)
+  if (G.mode !== 'practice') return; P.auto = null; P.mode = 'orbit'; injectScan(0.02);
+  for (let i = 0; i < 4; i++) { for (const b of SCAN.bands) refineBand(b); extractZones(); markBumps(); liveSync(); }
+}
+function btFormation(sd, foeC, n) { // positions for the tent, the units and the cover on clear land: {tent:[x,z], units:[[x,z]..], cover:[[x,z]..]}
+  const Z = sd.Z, L = Z.land, e = landEdge(L), zc = [Z.cx, Z.cz], axU = Z.w >= Z.d ? [Math.cos(Z.ang), Math.sin(Z.ang)] : [-Math.sin(Z.ang), Math.cos(Z.ang)];
+  let dx = foeC[0] - zc[0], dz = foeC[1] - zc[1]; if (sd.half) { dx = axU[0] * -sd.half; dz = axU[1] * -sd.half; } const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+  let cells = [];
+  for (const margin of [0.05, 0.035, 0.022]) {
+    cells = []; for (let j = 0; j < L.h; j += 2) for (let i = 0; i < L.w; i += 2) { const k = j * L.w + i; if (L.st[k] !== 1 || e[k] * LC < margin) continue; const c = landXZ(L, k); if (sd.half && ((c[0] - zc[0]) * axU[0] + (c[1] - zc[1]) * axU[1]) * sd.half < 0.03) continue; cells.push({ x: c[0], z: c[1], t: (c[0] - zc[0]) * dx + (c[1] - zc[1]) * dz, e: e[k] * LC }); }
+    if (cells.length >= 20) break;
+  }
+  if (!cells.length) return null;
+  const tmin = Math.min(...cells.map((c) => c.t)), tmax = Math.max(...cells.map((c) => c.t)), placed = [], R = { tent: 0.115, unit: 0.065, hut: 0.09, wall: 0.085 };
+  const put = (kind, score, sc) => { // best cell for this object that keeps its distance from the others (the distances shrink until it fits)
+    for (let f = 1; f > 0.3; f -= 0.12) { let bc = null, bv = -1e9; for (const c of cells) { let ok = true, md = 1e9; for (const p of placed) { const d = Math.hypot(c.x - p.x, c.z - p.z), need = (R[kind] + R[p.kind]) * 0.5 * f * (sc || 1); if (d < need) { ok = false; break; } md = Math.min(md, d); } if (!ok) continue; const v = score(c, md); if (v > bv) { bv = v; bc = c; } } if (bc) { const o = { kind, x: bc.x, z: bc.z }; placed.push(o); return o; } }
+    return null;
+  };
+  const tent = put('tent', (c) => -c.t * 2 + c.e * 3), units = [];
+  for (let i = 0; i < n; i++) { const u = put('unit', (c, md) => Math.min(md, 0.22) * 6 - Math.abs(c.t - (tmin + tmax) * 0.5) * 0.8 + c.e); if (u) units.push(u); }
+  const hut = put('hut', (c) => c.t * 2.2 + c.e * 2, 0.9), wall = put('wall', (c) => c.t * 2.2 + c.e * 2, 0.9);
+  return tent ? { tent, units, hut, wall, dir: [dx, dz] } : null;
+}
+function btBlob(r, op) { const m = new THREE.Mesh(geo('btDisc', () => new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: op || 0.28, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); m.scale.setScalar(r); m.renderOrder = 3; return m; }
+function btMkWall(col) {
+  const g = new THREE.Group(); for (let i = 0; i < 4; i++) g.add(mesh(geo('btStick', () => new THREE.BoxGeometry(0.028, 0.078, 0.022).translate(0, 0.039, 0)), M(i % 2 ? 0xe9c27a : 0xd9a45a), -0.045 + i * 0.03, 0, 0));
+  for (const y of [0.02, 0.055]) g.add(mesh(geo('btTie', () => new THREE.BoxGeometry(0.13, 0.012, 0.01)), M(col), 0, y, 0.014)); g.add(blob(0.07)); return g;
+}
+function btMkStruct(kind, side, x, z, y, rot) {
+  const sd = BT.sides[side]; let g, hx, hz, h, hp;
+  if (kind === 'tent') { g = mkTent(); g.scale.setScalar(2.7); hx = 0.075; hz = 0.075; h = 0.11; hp = 4; const fl = g.children.find((c) => c.geometry && c.geometry.type === 'PlaneGeometry'); if (fl) fl.material = new THREE.MeshStandardMaterial({ color: sd.col, side: THREE.DoubleSide }); }
+  else if (kind === 'hut') { g = mkHut(); g.scale.setScalar(1.9); hx = 0.05; hz = 0.046; h = 0.095; hp = 3; }
+  else if (kind === 'wall') { g = btMkWall(sd.col); g.scale.setScalar(1.25); hx = 0.082; hz = 0.018; h = 0.098; hp = 3; }
+  else { g = mkRubble(); g.scale.setScalar(1.9); hx = 0.04; hz = 0.034; h = 0.02; hp = 99; }
+  const s = { id: ++BT.ids, kind, side, x, z, y, rot, hx, hz, h, hp, hpMax: hp, mesh: g, dead: false, shake: 0, pop: 0 };
+  g.position.set(x, y, z); g.rotation.y = rot; BT.group.add(g); BT.structs.push(s); return s;
+}
+function btMkUnit(side, spec, x, z, y) {
+  const c = { hue: spec.hue, name: spec.name, ck: spec.ck, temper: { base: spec.ck } }; const m = mkColonist(c); m.scale.setScalar(BT_SCALE);
+  const ring = new THREE.Mesh(geo('btRing', () => new THREE.RingGeometry(0.036, 0.05, 28).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: BT_COLS[side], transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide })); ring.position.y = 0.003; ring.renderOrder = 4; ring.scale.setScalar(1.3 / BT_SCALE); m.add(ring);
+  if (spec.lint) { const cr = new THREE.Group(); const band = mesh(geo('btCrown', () => new THREE.CylinderGeometry(0.0075, 0.0068, 0.004, 8)), M(0xffd34a, 0x6a5010), 0, 0.0476, 0); cr.add(band); for (let i = 0; i < 5; i++) { const a = i * 1.2566; cr.add(mesh(geo('btCrownP', () => new THREE.ConeGeometry(0.0018, 0.005, 4)), M(0xffd34a, 0x6a5010), Math.cos(a) * 0.0068, 0.0524, Math.sin(a) * 0.0068)); } m.children[0].add(cr); }
+  const u = { id: ++BT.ids, side, name: spec.name, ck: spec.ck, hue: spec.hue, lint: !!spec.lint, x, y, z, y0: y, vx: 0, vy: 0, vz: 0, st: 'stand', face: 0, mesh: m, ring, fall: false, weee: false, anim: null, pop: null, dance: 0, sc: 0, selOff: 0, sq: 0, tilt: 0, lastSay: 0, shots: 0 };
+  m.position.set(x, y, z); m.scale.setScalar(0.001); BT.group.add(m); BT.units.push(u); return u;
+}
+function btRoster(side) { // four creatures: the colony's own for the player, the Lint Lords for the rival; 2-player gets the cousins
+  const out = [], used = new Set();
+  if (side === 0) {
+    for (const S of G.settlements) for (const c of S.cols) { if (out.length >= 4) break; const ck = charKey(c); if (used.has(ck) && out.length < 3) continue; used.add(ck); out.push({ name: c.name, ck, hue: c.hue }); }
+    for (const ck of CHAR_KEYS) { if (out.length >= 4) break; if (!used.has(ck)) { used.add(ck); out.push({ name: ck, ck, hue: hash01(ck, 5) }); } }
+  } else if (BT.mode === 'solo') for (const l of LINT.team) out.push({ name: l.name, ck: l.ck, hue: 0.74 + hash01(l.name, 3) * 0.06, lint: true });
+  else for (const ck of ['Glip', 'Grizzle', 'Gloop', 'Fluffflur']) out.push({ name: 'Cousin ' + ck, ck, hue: (hash01(ck, 5) + 0.5) % 1 });
+  return out.slice(0, 4);
+}
+function btTeamName(i) { return i === 0 ? (BT.mode === 'duo' ? 'Player 1' : 'The Colony') : BT.mode === 'duo' ? 'Player 2' : 'The Lint Lords'; }
+function btEdgeStrips(sd) { // a team-coloured rim round the arena surface, so it reads clearly over a real room
+  const Z = sd.Z; if (sd.half) return; const g = new THREE.Group(), w = Z.w, d = Z.d, t = 0.012, col = new THREE.MeshBasicMaterial({ color: BT_COLS[sd.i], transparent: true, opacity: 0.85, depthWrite: false });
+  for (const [sw, sh, ox, oz] of [[w, t, 0, d / 2], [w, t, 0, -d / 2], [t, d, w / 2, 0], [t, d, -w / 2, 0]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh).rotateX(-Math.PI / 2), col); m.position.set(ox, 0.003, oz); m.renderOrder = 3; g.add(m); }
+  g.position.set(Z.cx, Z.y, Z.cz); g.rotation.y = -Z.ang; BT.group.add(g); sd.rim = g;
+}
+
+// ---------- physics: real metres, fixed step, no randomness. The scanned zones are the ground (clutter cells are solid blocks), the virtual floor catches the rest ----------
+function btCell(x, y, z) { // the solid at a point: {top, cl, y0} or null (zones are 5 cm slabs; clutter cells are blocks up to their measured height)
+  let best = null;
+  for (const q of BT.zs) { const L = q.L, k = landIdx(L, x, z); if (k < 0) continue; const st = L.st[k]; if (!st) continue; const top = q.y + (st === 2 ? Math.max(L.ht[k], 3) / 100 : 0); if (y <= top && y >= q.y - 0.05 && (!best || top > best.top)) best = { top, cl: st === 2, y0: q.y }; }
+  if (!best && y <= BT.floorY) best = { top: BT.floorY, cl: false, y0: BT.floorY, floor: true };
+  return best;
+}
+function btSurf(x, z, yRef) { // the highest top at (x, z) that is no more than a step (3 cm) above yRef: where a creature can stand; -1e9 = nothing (a fall)
+  let best = -1e9;
+  for (const q of BT.zs) { const L = q.L, k = landIdx(L, x, z); if (k < 0) continue; const st = L.st[k]; if (!st) continue; const top = q.y + (st === 2 ? Math.max(L.ht[k], 3) / 100 : 0); if (top <= yRef + 0.03 && top > best) best = top; }
+  if (best < -1e8 && BT.floorY <= yRef + 0.03) best = BT.floorY; return best;
+}
+function btLocal(s, x, z) { const dx = x - s.x, dz = z - s.z, c = Math.cos(s.rot), sn = Math.sin(s.rot); return [dx * c - dz * sn, dx * sn + dz * c]; }
+function btBoxHit(s, x, y, z, r) { const [lx, lz] = btLocal(s, x, z); return Math.abs(lx) < s.hx + r && Math.abs(lz) < s.hz + r && y > s.y - r && y < s.y + s.h + r; }
+function btBlocked(x, z, y, pad) { for (const s of BT.structs) { if (s.dead || s.kind === 'rubble') continue; const [lx, lz] = btLocal(s, x, z); if (Math.abs(lx) < s.hx + pad && Math.abs(lz) < s.hz + pad && y < s.y + s.h - 0.01) return s; } return null; }
+function btNewProj(wid, x, y, z, vx, vy, vz, owner) { return { wid, x, y, z, vx, vy, vz, t: 0, bn: 0, owner, mesh: null }; }
+function btStep(pr, dt) { // one small step; null while flying, else the touch {k:'unit'|'struct'|'ground'|'lost', x, y, z, n, u, s}
+  const w = BW[pr.wid]; pr.vx += BT.wind[0] * w.wind * dt; pr.vz += BT.wind[1] * w.wind * dt; pr.vy -= BT_G * w.gs * dt;
+  const ox = pr.x, oy = pr.y, oz = pr.z, nx = ox + pr.vx * dt, ny = oy + pr.vy * dt, nz = oz + pr.vz * dt, r = w.r; pr.t += dt;
+  if (!w.ghost) {
+    for (const u of BT.units) { if (u.st === 'home' || u.st === 'sucked' || u.st === 'popping' || u.st === 'swing') continue; if (u === pr.owner && pr.t < 0.3) continue; const dx = nx - u.x, dy = ny - (u.y + BT_UH), dz = nz - u.z, rr = BT_UR + r; if (dx * dx + dy * dy + dz * dz < rr * rr) return { k: 'unit', u, x: nx, y: ny, z: nz, n: [dx, dy, dz] }; }
+    for (const s of BT.structs) {
+      if (s.dead || !btBoxHit(s, nx, ny, nz, r)) continue;
+      const [lx, lz] = btLocal(s, ox, oz), px = s.hx + r - Math.abs(lx), pz = s.hz + r - Math.abs(lz), py = s.y + s.h + r - oy, c = Math.cos(s.rot), sn = Math.sin(s.rot); let n;
+      if (py < 0.02 || (py < px && py < pz && oy > s.y + s.h * 0.5)) n = [0, 1, 0]; else if (px < pz) { const sg = lx >= 0 ? 1 : -1; n = [sg * c, 0, -sg * sn]; } else { const sg = lz >= 0 ? 1 : -1; n = [sg * sn, 0, sg * c]; }
+      return { k: 'struct', s, x: ox, y: oy, z: oz, n };
+    }
+  }
+  const c = btCell(nx, ny, nz);
+  if (c) {
+    let n, px = ox, py = oy, pz = oz;
+    if (oy >= c.top - 0.004) { n = [0, 1, 0]; const f = clamp((oy - c.top) / Math.max(1e-6, oy - ny), 0, 1); px = ox + (nx - ox) * f; pz = oz + (nz - oz) * f; py = c.top + 0.002; }
+    else { const sx = btCell(nx, ny, oz), sz = btCell(ox, ny, nz); if (sx && !sz) n = [pr.vx > 0 ? -1 : 1, 0, 0]; else if (sz && !sx) n = [0, 0, pr.vz > 0 ? -1 : 1]; else if (oy < c.y0) n = [0, -1, 0]; else n = Math.abs(pr.vx) > Math.abs(pr.vz) ? [pr.vx > 0 ? -1 : 1, 0, 0] : [0, 0, pr.vz > 0 ? -1 : 1]; }
+    return { k: 'ground', x: px, y: py, z: pz, n, floor: !!c.floor };
+  }
+  if (ny < BT.floorY - 0.6 || Math.abs(nx) > 30 || Math.abs(nz) > 30) return { k: 'lost', x: nx, y: ny, z: nz };
+  pr.x = nx; pr.y = ny; pr.z = nz; return null;
+}
+function btAdvance(pr, dt) { const sp = Math.hypot(pr.vx, pr.vy, pr.vz), ns = Math.max(1, Math.ceil(sp * dt / 0.018)); for (let i = 0; i < ns; i++) { const ev = btStep(pr, dt / ns); if (ev) return ev; } return null; }
+function btBounce(pr, ev, rest) { // reflect off the touched face and carry on from just outside it
+  const n = ev.n, vn = pr.vx * n[0] + pr.vy * n[1] + pr.vz * n[2]; if (vn < 0) { pr.vx -= (1 + rest) * vn * n[0]; pr.vy -= (1 + rest) * vn * n[1]; pr.vz -= (1 + rest) * vn * n[2]; }
+  const tf = 0.82; const vn2 = pr.vx * n[0] + pr.vy * n[1] + pr.vz * n[2]; pr.vx = (pr.vx - vn2 * n[0]) * tf + vn2 * n[0]; pr.vz = (pr.vz - vn2 * n[2]) * tf + vn2 * n[2];
+  pr.x = ev.x + n[0] * 0.003; pr.y = ev.y + n[1] * 0.003; pr.z = ev.z + n[2] * 0.003;
+}
+function btResolve(pr, ev) { // what a touch means for this weapon: {end:false, bounced} to carry on, or {end:true, what, at, unit, struct, n}
+  const w = BW[pr.wid], at = [ev.x, ev.y, ev.z], n = ev.n || [0, 1, 0];
+  if (ev.k === 'lost') return { end: true, what: 'lost', at };
+  if (w.kind === 'mortar') { if (ev.k === 'unit' || ev.k === 'struct') return { end: true, what: 'boom', at, unit: ev.u, struct: ev.s }; pr.bn++; if (pr.bn > w.bounces || Math.hypot(pr.vx, pr.vy, pr.vz) < 0.5) return { end: true, what: 'boom', at }; btBounce(pr, ev, w.rest); return { end: false, bounced: true, at }; }
+  if (w.kind === 'flick') { if (ev.k === 'unit') return { end: true, what: 'knock', at, unit: ev.u }; if (ev.k === 'struct') return { end: true, what: 'bonk', at, struct: ev.s }; pr.bn++; if (pr.bn > w.bounces) return { end: true, what: 'drop', at }; btBounce(pr, ev, w.rest); return { end: false, bounced: true, at }; }
+  if (w.kind === 'crumb') return { end: true, what: 'stick', at, unit: ev.u, struct: ev.s, n };
+  if (w.kind === 'grapple') return { end: true, what: 'hook', at, n, unit: ev.u, struct: ev.s };
+  return { end: true, what: 'ground', at, n }; // hoover's phantom: where it comes down
+}
+function btFly(pr, maxT, path) { // run a shot to its end without touching the world (the AI's imagination, the preview, the tests): {what, at, unit, struct, t}
+  maxT = maxT || 8; for (let i = 0, n = Math.round(maxT / BT_DT); i < n; i++) { const ev = btAdvance(pr, BT_DT); if (path && i % 6 === 0) path.push([pr.x, pr.y, pr.z]); if (ev) { const o = btResolve(pr, ev); if (o.end) { o.t = pr.t; return o; } } }
+  return { end: true, what: 'time', at: [pr.x, pr.y, pr.z], t: pr.t };
+}
+function btMuzzle(u, vel) { const sp = Math.hypot(vel[0], vel[1], vel[2]) || 1; return [u.x + vel[0] / sp * 0.045, u.y + 0.06 + vel[1] / sp * 0.045, u.z + vel[2] / sp * 0.045]; }
+function btSim(u, wid, vel) { const m = btMuzzle(u, vel); return btFly(btNewProj(wid, m[0], m[1], m[2], vel[0], vel[1], vel[2], u), 7); }
+function btEdgeAhead(x, z, y, dx, dz, maxd) { // how far a creature at (x, z) can slide along (dx, dz) before the ground ends (maxd if it never does)
+  for (let d = 0.04; d <= maxd; d += 0.04) { const t = btSurf(x + dx * d, z + dz * d, y); if (t < y - 0.03) return d; if (btBlocked(x + dx * d, z + dz * d, y, 0.02)) return maxd + 1; } return maxd + 1;
+}
+
+// ---------- starting and leaving a battle ----------
+function btUsableZones() { return G.zones.filter((Z) => Z.land && !Z.lost && clearArea(Z) >= 0.07).length; }
+function btBegin(o) { // o: { mode:'solo'|'duo', level:'easy'|'normal', seed, cfg:{turn,hops} }. Practice room from the title, or the real room (AR) from the menu.
+  o = o || {}; if (BT.on) btCleanup(true);
+  if (G.phase === 'title' && !AR.on) startPractice();
+  if (G.mode === 'practice' && btUsableZones() < 2) btQuickScan();
+  const pick2 = btArenaPick(); if (!pick2) { toast('Look around a little more first: the battle needs two surfaces.', 4); return false; }
+  if (!mainSettlement() && G.mode === 'practice' && !pick2[0].Z.settled) { settleZone(pick2[0].Z); $('toast').innerHTML = ''; } // the practice colony lands on the player's surface, so there is a colony to fight for
+  BT.mode = o.mode === 'duo' ? 'duo' : 'solo'; BT.level = o.level === 'normal' ? 'normal' : 'easy'; BT.seed = o.seed || ((Date.now() & 0xfffff) + 1); BT.rng = seededRandom(BT.seed); BT.cfg = Object.assign({ turn: BT_TURN, hops: 3 }, o.cfg || {});
+  BT.zs = G.zones.filter((Z) => Z.land && !Z.lost).map((Z) => ({ Z, L: Z.land, y: Z.y })); const fl = BT.zs.filter((q) => q.Z.type === 'FLOOR'); BT.floorY = fl.length ? Math.min(...fl.map((q) => q.y)) : Math.min(...BT.zs.map((q) => q.y)) - 0.5;
+  BT.sides = [0, 1].map((i) => ({ i, Z: pick2[i].Z, half: pick2[i].half, col: BT_COLS[i], name: btTeamName(i), ai: BT.mode === 'solo' && i === 1, tent: null, home: 0, shown: 0, hoover: true, pulse: 0, shots: 0, lbl: null, glow: null, rim: null }));
+  const F = [0, 1].map((i) => btFormation(BT.sides[i], [BT.sides[1 - i].Z.cx, BT.sides[1 - i].Z.cz], 4)); if (!F[0] || !F[1]) { toast('There is not enough clear room on those surfaces for a battle.', 4); return false; }
+  btClearWorld(); BT.units = []; BT.structs = []; BT.projs = []; BT.crumbs = []; BT.log = []; BT.over = null; BT.hoover = null; BT.swing = null; BT.turn = 0; BT.side = 0; BT.fired = false; BT.slowT = 0; BT.timeScale = 1; BT.shake = 0; BT.paused = false; BT.ids = 0;
+  BT.wind = [btGauss() * 0.5, btGauss() * 0.5]; BT.windMax = ENV.wx.real ? clamp(ENV.wx.wind / 8, 0.5, 2) : 1.3; BT.wid = 'mortar'; BT.camHold = 0;
+  for (let i = 0; i < 2; i++) {
+    const sd = BT.sides[i], f = F[i], Z = sd.Z, rot = Math.atan2(f.dir[0], f.dir[1]);
+    sd.tent = btMkStruct('tent', i, f.tent.x, f.tent.z, Z.y, rot); sd.dir = f.dir;
+    if (f.hut) btMkStruct('hut', i, f.hut.x, f.hut.z, Z.y, rot + (btRand() - 0.5) * 0.4); if (f.wall) btMkStruct('wall', i, f.wall.x, f.wall.z, Z.y, rot);
+    const ro = btRoster(i); f.units.forEach((p, k) => { const u = btMkUnit(i, ro[k % ro.length], p.x, p.z, Z.y); u.face = Math.atan2(f.dir[0], f.dir[1]); u.appear = 0.5 + k * 0.28 + i * 0.12; });
+    sd.glow = glowSprite(0.07, 0.2, BT_COLS[i]); sd.glow.position.set(0, 0.06, 0); sd.tent.mesh.add(sd.glow);
+    sd.lbl = mkSaySprite(); sd.lbl.visible = false; BT.group.add(sd.lbl); btEdgeStrips(sd); sd.i = i;
+  }
+  const lo = $('btHud'); if (!lo) btBuildUi();
+  G.sel = null; selCard(null); FUN.hold = null; document.body.classList.add('battle'); $('btHud').hidden = false; BT.group.visible = true; BT.on = true; BT.stage = 'intro'; BT.stageT = 0;
+  if (!AR.on) { P.auto = null; P.mode = 'orbit'; BT.camHold = 0; btCamSnap(); }
+  btMsg(BT.sides[0].name + '  vs  ' + BT.sides[1].name, 2.6, BT.mode === 'duo' ? 'Pass the iPad between turns' : 'Drag back from a creature to fire!');
+  bsfx('ding'); btUi(true); btLog('begin', { mode: BT.mode, zones: BT.sides.map((s) => s.Z.name) }); return true;
+}
+function btClearWorld() { // remove everything the last battle added
+  for (const ch of BT.group.children.slice()) { BT.group.remove(ch); ch.traverse((o) => { if (o.geometry && !Object.values(GEO).includes(o.geometry) && o.geometry.dispose) o.geometry.dispose(); }); }
+  BT.bub = []; BT.dots = []; BT.fx = []; BT.marker = null; BT.laneMesh = null;
+}
+function btCleanup(keepUi) { // leave the battle: the colony comes back exactly as it was
+  if (!BT.on && !BT.group.children.length) return; BT.on = false; BT.stage = ''; btClearWorld(); BT.units = []; BT.structs = []; BT.projs = []; BT.crumbs = []; BT.hoover = null; BT.swing = null; BT.group.visible = false; BT.slowT = 0; BT.timeScale = 1;
+  document.body.classList.remove('battle'); const h = $('btHud'); if (h) { h.hidden = true; for (const id of ['btPass', 'btEnd']) { const e = $(id); if (e) e.hidden = true; } }
+  if (!AR.on) { renderer.domElement.style.transform = ''; } for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = true; for (const S of G.settlements) if (S.placed && !S.lost) S.group.visible = true;
+  if (!keepUi && G.phase === 'play') { barUi(); updateHint(); }
+}
+function btLeave(toTitle) { const was = BT.on; btCleanup(); if (!was) return; if (toTitle) { persist(true); if (AR.on) { try { AR.session.end(); } catch (e) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } } else if (!AR.on && G.settlements.length) { const S = G.settlements[0]; focusOn(S.tf.x, S.tf.y + 0.03, S.tf.z, 0.9); P.pitch = 0.55; } }
+
+// ---------- turns ----------
+function btAlive(side) { return BT.units.filter((u) => u.side === side && u.st !== 'home'); }
+function btStanding(side) { return BT.units.filter((u) => u.side === side && u.st === 'stand'); }
+function btMsg(a, secs, b) { const m = $('btMsg'); if (!m) return; m.innerHTML = esc(a) + (b ? '<small>' + esc(b) + '</small>' : ''); m.className = 'on'; BT.msgT = secs || 1.6; }
+function btBeginTurn() {
+  if (btCheckEnd()) return; const sd = BT.sides[BT.side]; BT.turn++; BT.fired = false; BT.hops = BT.cfg.hops; BT.turnT = BT.cfg.turn; BT.aim = null; BT.plan = null; BT.drag = null; BT.aiT = 0; BT.stageT = 0; BT.lastEvent = 0;
+  if (BT.wid === 'hoover' && !sd.hoover) BT.wid = 'mortar';
+  BT.wind = [clamp(BT.wind[0] + btGauss() * 0.3, -BT.windMax, BT.windMax), clamp(BT.wind[1] + btGauss() * 0.3, -BT.windMax, BT.windMax)];
+  const st = btStanding(BT.side); if (!st.length) { btEndTurn(); return; }
+  const prev = sd.last && st.includes(sd.last) ? st[(st.indexOf(sd.last) + 1) % st.length] : st[0]; BT.sel = null; btSelect(prev, true);
+  BT.stage = 'aim'; if (btLureRun()) BT.stage = 'lure';
+  btMsg(sd.ai ? sd.name + ' are plotting...' : (BT.mode === 'duo' ? sd.name : 'Your turn'), 1.5, sd.ai ? '' : 'Pick a creature, choose a weapon, drag back to fire'); bsfx('ding'); btLog('turn', BT.side); btUi(true);
+}
+function btEndTurn() {
+  if (btCheckEnd()) return; BT.sides[BT.side].last = BT.sel; BT.side = 1 - BT.side; BT.sel = null; BT.aim = null; btDots(null);
+  if (BT.mode === 'duo') { BT.stage = 'pass'; const e = $('btPass'); e.querySelector('b').textContent = 'Pass to ' + BT.sides[BT.side].name; e.hidden = false; btUi(true); } else { BT.stage = 'next'; BT.stageT = 0; btUi(true); }
+}
+function btSelect(u, silent) {
+  if (!u || u.st !== 'stand' || (BT.fired && !silent)) return; BT.sel = u; u.anim = { k: 'hop', t: 0, dur: 0.3, x0: u.x, z0: u.z, x1: u.x, z1: u.z, hgt: 0.05 };
+  if (!silent) { sfx('squeak', charOf({ ck: u.ck }).pitch); } btBubble(u, u.name, 1.8, 'name'); btUi(true);
+}
+function btHop(u, dir) { // a little hop along the screen's left / right, if the ground is there
+  if (!u || u.st !== 'stand' || BT.fired || BT.hops <= 0 || u.anim) return false; const R = btCamR(), nx = u.x + R[0] * dir * 0.055, nz = u.z + R[1] * dir * 0.055, top = btSurf(nx, nz, u.y);
+  const near = BT.units.some((q) => q !== u && q.st !== 'home' && q.st !== 'popping' && Math.hypot(q.x - nx, q.z - nz) < 0.05);
+  if (top < u.y - 0.03 || top > u.y + 0.025 || btBlocked(nx, nz, u.y, 0.03) || near) { u.anim = { k: 'bonk', t: 0, dur: 0.3 }; bsfx('bounce', 0.7); return false; }
+  BT.hops--; u.anim = { k: 'hop', t: 0, dur: 0.28, x0: u.x, z0: u.z, x1: nx, z1: nz, hgt: 0.04, y1: top }; sfx('boing', charOf({ ck: u.ck }).pitch * 1.2); btLog('hop', u.name); btUi(true); return true;
+}
+function btCamR() { const e = AR.on ? AR.viewM.elements : camera.matrixWorld.elements, l = Math.hypot(e[0], e[2]) || 1; return [e[0] / l, e[2] / l]; }
+
+// ---------- firing and what a shot does ----------
+function btMkProj(wid) {
+  const w = BW[wid], g = new THREE.Group();
+  if (wid === 'mortar') { g.add(mesh(geo('btCap', () => new THREE.CylinderGeometry(0.02, 0.022, 0.009, 14)), M(0xe8483b, 0x401010))); g.add(mesh(geo('btCapR', () => new THREE.TorusGeometry(0.021, 0.0035, 5, 16).rotateX(Math.PI / 2)), M(0xffd9a8), 0, -0.002, 0)); }
+  else if (wid === 'flick') { g.add(mesh(geo('btBand', () => new THREE.TorusGeometry(0.022, 0.0055, 6, 16)), M(0xffc21a, 0x604000))); }
+  else if (wid === 'crumb') { const b = mesh(geo('btCr', () => new THREE.IcosahedronGeometry(0.02, 0)), M(0xd9a066, 0x302010)); g.add(b); for (let i = 0; i < 4; i++) g.add(mesh(geo('btCrC', () => new THREE.BoxGeometry(0.006, 0.005, 0.006)), M(0x5a3420), Math.cos(i * 1.7) * 0.016, 0.011, Math.sin(i * 1.7) * 0.016)); }
+  else if (wid === 'grapple') { g.add(mesh(geo('btClip', () => new THREE.TorusGeometry(0.018, 0.0032, 5, 14)), M(0xdfe5ea, 0x303840))); g.add(mesh(geo('btClip2', () => new THREE.TorusGeometry(0.011, 0.0032, 5, 14)), M(0xdfe5ea, 0x303840), 0.012, 0, 0)); }
+  g.add(glowSprite(0.07, 0.5, w.col)); const sh = btBlob(0.03, 0.4); sh.userData.shadow = true; g.userData.sh = sh; BT.group.add(sh); BT.group.add(g); return g;
+}
+function btFire(u, wid, vel) {
+  if (!BT.on || BT.fired || !u || u.st !== 'stand') return false; const w = BW[wid], sd = BT.sides[u.side]; if (!w || (w.super && !sd.hoover)) return false;
+  BT.fired = true; BT.stage = 'fly'; BT.stageT = 0; BT.lastEvent = 0; BT.aim = null; btDots(null); u.shots++; sd.shots++; sd.last = u; u.face = Math.atan2(vel[0], vel[2]); u.anim = { k: 'shoot', t: 0, dur: 0.4 };
+  const K = charOf({ ck: u.ck }); sfx('squeak', K.pitch); btLog('fire', { wid, u: u.name, vel: vel.map((v) => +v.toFixed(2)) });
+  if (w.kind === 'hoover') { sd.hoover = false; const out = btSim(u, 'hoover', vel); btHooverStart(u, out.at); btUi(true); return true; }
+  const m = btMuzzle(u, vel), pr = btNewProj(wid, m[0], m[1], m[2], vel[0], vel[1], vel[2], u); pr.mesh = btMkProj(wid); pr.tr = 0; pr.mesh.position.set(m[0], m[1], m[2]); BT.projs.push(pr);
+  bsfx(wid === 'flick' ? 'twang' : wid === 'grapple' ? 'clip' : 'launch'); if (u.lint && btRand() < 0.5) btBubble(u, pick(LINT.shoot), 1.6); btUi(true); return true;
+}
+function btTick(h) { // one fixed physics step for everything that flies or slides
+  for (const pr of BT.projs.slice()) {
+    const ev = btAdvance(pr, h); pr.tr += h;
+    if (ev) { const o = btResolve(pr, ev); if (o.bounced) { bsfx('bounce'); puff('dust', o.at[0], o.at[1] + 0.01, o.at[2], 3, { size: 0.03, vy: 0.04, life: 0.4, grow: 1 }); } if (o.end) { BT.projs.splice(BT.projs.indexOf(pr), 1); btApply(pr, o); } }
+    if (pr.t > 9 && BT.projs.includes(pr)) { BT.projs.splice(BT.projs.indexOf(pr), 1); btApply(pr, { end: true, what: 'lost', at: [pr.x, pr.y, pr.z] }); }
+  }
+  for (const u of BT.units) btUnitTick(u, h);
+}
+function btApply(pr, out) {
+  const w = BW[pr.wid], at = out.at, o = pr.owner; BT.lastEvent = BT.stageT; const keep = out.what === 'stick' || out.what === 'hook';
+  if (!keep) btDropProj(pr);
+  if (out.what === 'boom') btBoom(at, w.boom, o, true);
+  else if (out.what === 'knock') { const u = out.unit, l = Math.hypot(pr.vx, pr.vz) || 1; btShove(u, pr.vx / l, pr.vz / l, w.kb, 1.0); btStars(u); sfx('boing', 1.3); bsfx('bounce', 1.4); btSay(u, btHitLine(u), 1.6); BT.slowT = Math.max(BT.slowT, 0.7); BT.shake = Math.max(BT.shake, 0.012); btLog('knock', u.name); }
+  else if (out.what === 'bonk') { btDamage(out.struct, w.sdmg || 1, at); const l = Math.hypot(pr.vx, pr.vz) || 1; puff('bang', at[0], at[1] + 0.03, at[2], 1, { size: 0.08, vy: 0.05, life: 0.5, add: true }); }
+  else if (out.what === 'drop') { puff('dust', at[0], at[1] + 0.01, at[2], 4, { size: 0.03, vy: 0.03, life: 0.5, grow: 1 }); }
+  else if (out.what === 'stick') btStickCrumb(pr, out);
+  else if (out.what === 'hook') btGrappleStart(pr, out);
+  else if (out.what === 'lost') { puff('dust', at[0], Math.max(at[1], BT.floorY + 0.02), at[2], 4, { size: 0.04, life: 0.6 }); btLog('lost', pr.wid); }
+  if (['boom', 'knock', 'bonk', 'drop', 'lost'].includes(out.what) && o && o.st === 'stand' && !BT.hitThisTurn && btRand() < 0.5 && !out.unit) { const K = charOf({ ck: o.ck }); btBubble(o, o.lint ? pick(LINT.shoot) : pick(K.idle), 1.8); }
+}
+function btDropProj(pr) { if (pr.mesh) { if (pr.mesh.userData.sh) BT.group.remove(pr.mesh.userData.sh); BT.group.remove(pr.mesh); pr.mesh = null; } }
+function btHitLine(u) { return u.lint ? pick(LINT.hit) : pick(charOf({ ck: u.ck }).poke); }
+function btSay(u, text, secs) { btBubble(u, text, secs || 1.8); }
+function btBoxDist(s, p) { const [lx, lz] = btLocal(s, p[0], p[2]), dx = Math.max(Math.abs(lx) - s.hx, 0), dz = Math.max(Math.abs(lz) - s.hz, 0), dy = Math.max(s.y - p[1], 0, p[1] - (s.y + s.h)); return Math.hypot(dx, dy, dz); }
+function btBoom(at, B, owner, big) {
+  bsfx(big ? 'boom' : 'splat'); let hits = 0; const sz = big ? 1 : 0.7;
+  puff('bang', at[0], at[1] + 0.02, at[2], 1, { size: 0.2 * sz, vy: 0.03, life: 0.45, add: true, grow: 0.8, color: 0xffc060 }); puff('glow', at[0], at[1] + 0.02, at[2], 1, { size: 0.3 * sz, vy: 0, life: 0.5, add: true, grow: 0.6, color: 0xffa040 });
+  for (let i = 0; i < 14; i++) { const a = rnd(0, 6.283), sp = rnd(0.2, 0.7) * sz; puff(i % 3 ? 'fluff' : 'dust', at[0], at[1] + 0.02, at[2], 1, { size: rnd(0.04, 0.08) * sz, vx: Math.cos(a) * sp, vy: rnd(0.1, 0.5), vz: Math.sin(a) * sp, jit: 0, g: -0.5, life: 0.9, grow: 0.8, color: i % 4 === 0 ? 0xffe9a8 : 0xfff6e6 }); }
+  BT.shake = Math.max(BT.shake, big ? 0.02 : 0.006); BT.flash = Math.max(BT.flash, big ? 0.18 : 0.05);
+  for (const u of BT.units) {
+    if (u.st === 'home' || u.st === 'popping' || u.st === 'sucked' || u.st === 'swing') continue; const dx = u.x - at[0], dy = u.y + BT_UH - at[1], dz = u.z - at[2], d = Math.hypot(dx, dy, dz);
+    if (d < B.kill) { btHit(u, at, owner); hits++; } else if (d < B.r) { const l = Math.hypot(dx, dz) || 1, k = 1 - d / B.r, ang = btRand() * 6.283; btShove(u, l > 0.01 ? dx / l : Math.cos(ang), l > 0.01 ? dz / l : Math.sin(ang), B.kb * (0.35 + k), 0.6 + k * 0.8); btSay(u, pick(['Whoa!', 'Eep!', 'Oof!', 'Hey!']), 1.2); }
+  }
+  for (const s of BT.structs) { if (s.dead || s.kind === 'rubble' || !B.sdmg) continue; if (btBoxDist(s, at) < B.sr) btDamage(s, B.sdmg, at); }
+  if (hits) { BT.slowT = Math.max(BT.slowT, 1.0); if (owner && owner.st === 'stand') { const foe = BT.units.find((q) => q.side !== owner.side && q.st === 'popping'); if (foe) btBubble(owner, owner.lint ? pick(LINT.shoot) : pick(charOf({ ck: owner.ck }).cheer), 2.0); else btBubble(owner, 'Oops!', 1.6); } BT.hitThisTurn = true; }
+  btLog('boom', { at: at.map((v) => +v.toFixed(2)), hits });
+}
+function btShove(u, dx, dz, mag, up) { if (u.st === 'popping' || u.st === 'home' || u.st === 'sucked') return; u.vx = dx * mag; u.vz = dz * mag; u.vy = up; if (u.st !== 'air') u.y0 = u.y; u.st = 'air'; u.anim = null; u.weee = false; }
+function btStars(u) { puff('star', u.x, u.y + 0.12, u.z, 6, { size: 0.03, vy: 0.2, life: 0.8, add: true, color: 0xfff6b0, jit: 0.08, g: -0.3 }); }
+function btHit(u, from, shooter) { // direct hit: a comic reaction, slow-mo, then pop into fluff and off home
+  if (u.st === 'popping' || u.st === 'home') return; u.st = 'popping'; u.pop = { t: 0, dur: 0.38 }; u.vx = u.vy = u.vz = 0; u.anim = null; btSay(u, btHitLine(u), 1.8); sfx('squeak', charOf({ ck: u.ck }).pitch * 1.4); btStars(u); btLog('hit', u.name); if (BT.sel === u) BT.sel = null;
+  if (shooter && shooter.side === u.side && shooter !== u) btLog('friendly', u.name);
+}
+function btPop(u, how) { // sent home: fluff everywhere, a little comet flies to the tent, the tent glows brighter
+  if (u.st === 'home') return; u.st = 'home'; u.mesh.visible = false; const sd = BT.sides[u.side]; sd.home++; BT.lastEvent = BT.stageT; if (BT.sel === u) BT.sel = null;
+  const col = new THREE.Color().setHSL(u.hue, 0.5, 0.75).getHex();
+  for (let i = 0; i < 18; i++) { const a = rnd(0, 6.283), sp = rnd(0.1, 0.5); puff(i % 2 ? 'fluff' : 'conf', u.x, u.y + 0.06, u.z, 1, { size: rnd(0.04, 0.09), vx: Math.cos(a) * sp, vy: rnd(0.1, 0.6), vz: Math.sin(a) * sp, jit: 0, g: -0.45, life: 1.1, grow: 0.5, color: i % 3 === 0 ? col : 0xfff6e6 }); }
+  puff('bang', u.x, u.y + 0.08, u.z, 1, { size: 0.16, vy: 0.04, life: 0.35, add: true, color: 0xffffff }); sfx('pop'); bsfx('fluff', charOf({ ck: u.ck }).pitch);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex('fluff'), transparent: true, depthTest: false, depthWrite: false, color: col })); sp.renderOrder = 21; sp.scale.set(0.09, 0.09, 1); BT.group.add(sp);
+  BT.fx.push({ sp, t: 0, dur: 0.95, a: [u.x, u.y + 0.08, u.z], b: [sd.tent.x, sd.tent.y + 0.12, sd.tent.z], side: u.side }); btLog('home', { u: u.name, how, side: u.side });
+}
+function btDamage(s, dmg, at) {
+  if (s.dead || s.kind === 'rubble') return; s.hp -= dmg; s.shake = 1; sfx('thud', 0.9); puff('dust', s.x, s.y + s.h * 0.5, s.z, 6, { size: 0.05, vy: 0.08, life: 0.7, grow: 1.2, jit: 0.05 }); for (let i = 0; i < 4; i++) puff('rain', s.x + rnd(-0.04, 0.04), s.y + s.h, s.z + rnd(-0.04, 0.04), 1, { size: 0.01, tall: 4, vy: 0.2, g: -1.2, life: 0.6, color: 0xd9a066 }); btLog('damage', { kind: s.kind, hp: s.hp });
+  if (s.hp <= 0) btCrumble(s);
+}
+function btCrumble(s) {
+  s.dead = true; BT.group.remove(s.mesh); BT.slowT = Math.max(BT.slowT, 1.1); BT.shake = Math.max(BT.shake, 0.018); bsfx('boom', 0.8); BT.lastEvent = BT.stageT; btLog('crumble', s.kind);
+  for (let i = 0; i < 16; i++) { const a = rnd(0, 6.283), sp = rnd(0.2, 0.6); puff(i % 2 ? 'dust' : 'fluff', s.x, s.y + s.h * 0.5, s.z, 1, { size: rnd(0.05, 0.1), vx: Math.cos(a) * sp, vy: rnd(0.1, 0.5), vz: Math.sin(a) * sp, jit: 0, g: -0.5, life: 1.1, grow: 0.8, color: i % 3 === 0 ? BT_COLS[s.side] : 0xcdb89a }); }
+  if (s.kind === 'tent') { const sd = BT.sides[s.side]; sd.tentDown = true; } else { const r = btMkStruct('rubble', s.side, s.x, s.z, s.y, s.rot); r.mesh.scale.setScalar(0.01); r.pop = 0.001; }
+}
+function btStickCrumb(pr, out) {
+  const o = pr.owner, victim = 1 - o.side; for (const c of BT.crumbs.filter((q) => q.victim === victim)) { BT.group.remove(c.mesh); if (c.mesh.userData.sh) BT.group.remove(c.mesh.userData.sh); BT.crumbs.splice(BT.crumbs.indexOf(c), 1); }
+  const cr = { x: out.at[0], y: out.at[1], z: out.at[2], ref: out.unit || null, off: out.unit ? [out.at[0] - out.unit.x, out.at[1] - out.unit.y, out.at[2] - out.unit.z] : null, victim, t: 0, fuse: BW.crumb.fuse, mesh: pr.mesh, popped: false, owner: o };
+  if (cr.mesh.userData.sh) { BT.group.remove(cr.mesh.userData.sh); cr.mesh.userData.sh = null; } BT.crumbs.push(cr); bsfx('splat'); puff('dust', cr.x, cr.y + 0.01, cr.z, 4, { size: 0.03, life: 0.5, grow: 1 }); btLog('stick', out.unit ? out.unit.name : 'surface');
+}
+function btCrumbTick(dt) {
+  for (const cr of BT.crumbs.slice()) {
+    if (cr.ref && cr.ref.st !== 'home') { cr.x = cr.ref.x + cr.off[0]; cr.y = cr.ref.y + cr.off[1]; cr.z = cr.ref.z + cr.off[2]; } cr.mesh.position.set(cr.x, cr.y, cr.z);
+    if (!cr.popped) { cr.t += dt; cr.mesh.scale.setScalar(1 + Math.sin(cr.t * 24) * 0.12 * (cr.t / cr.fuse)); if (cr.t >= cr.fuse) { cr.popped = true; btBoom([cr.x, cr.y, cr.z], BW.crumb.boom, cr.owner, false); BT.lastEvent = BT.stageT; if (cr.ref) { cr.ref = null; cr.y = btSurf(cr.x, cr.z, cr.y + 0.05); if (cr.y < -1e8) cr.y = BT.floorY; cr.off = null; } cr.mesh.scale.setScalar(0.8); } }
+    cr.mesh.rotation.y += dt * 0.5;
+  }
+}
+function btLureRun() { // at the start of a side's turn: its creatures near a sticky crumb waddle over to it
+  let any = false; for (const cr of BT.crumbs.filter((q) => q.victim === BT.side && q.popped && !q.eat)) {
+    cr.eat = true; for (const u of btStanding(BT.side)) {
+      const dx = cr.x - u.x, dz = cr.z - u.z, d = Math.hypot(dx, dz); if (d < 0.05 || d > 0.7 || Math.abs(cr.y - u.y) > 0.12) continue; const ux = dx / d, uz = dz / d; let reach = 0;
+      for (let s = 0.02; s <= Math.min(0.32, d - 0.03); s += 0.02) { const x = u.x + ux * s, z = u.z + uz * s, top = btSurf(x, z, u.y); if (top < u.y - 0.03 || top > u.y + 0.025 || btBlocked(x, z, u.y, 0.03)) break; reach = s; }
+      if (reach > 0.03) { u.anim = { k: 'walk', t: 0, dur: 0.5 + reach * 3, x0: u.x, z0: u.z, x1: u.x + ux * reach, z1: u.z + uz * reach }; u.face = Math.atan2(ux, uz); any = true; cr.eater = cr.eater || u; btBubble(u, pick(charOf({ ck: u.ck }).idle), 1.4); }
+    }
+    cr.eatT = any ? 1.5 : 0.2;
+  }
+  return any || BT.crumbs.some((q) => q.victim === BT.side && q.eat);
+}
+
+// ---------- creatures on the move: shoved, sliding, falling ----------
+function btUnitTick(u, h) {
+  if (u.st === 'air') {
+    u.vy -= BT_G * (u.weee ? 0.5 : 1) * h; const nx = u.x + u.vx * h, ny = u.y + u.vy * h, nz = u.z + u.vz * h;
+    if (btBlocked(nx, nz, ny, 0.02)) { u.vx *= -0.25; u.vz *= -0.25; } else { u.x = nx; u.z = nz; } u.y = ny;
+    if (u.vy < 0) {
+      const c = btCell(u.x, u.y, u.z);
+      if (c && u.y <= c.top + 0.002) {
+        const drop = u.y0 - c.top;
+        if (drop > 0.12) { u.y = c.top; btPop(u, 'fall'); return; }
+        u.y = c.top; u.y0 = c.top; const sp = Math.hypot(u.vx, u.vz); u.vy = 0; if (sp > 0.12) { u.st = 'slide'; u.vx *= 0.6; u.vz *= 0.6; } else { u.st = 'stand'; u.vx = u.vz = 0; } u.sq = 0.5; sfx('thud', 1.6); puff('dust', u.x, u.y + 0.01, u.z, 3, { size: 0.03, life: 0.4, grow: 1 });
+      }
+    }
+    if (!u.weee && u.vy < -1.6 && u.y0 - u.y > 0.1) { u.weee = true; btBubble(u, 'Weeeeeeeee!', 3.2); bsfx('weee'); BT.slowT = Math.max(BT.slowT, 1.4); btLog('weee', u.name); }
+    if (u.y < BT.floorY - 0.5) btPop(u, 'fall');
+  } else if (u.st === 'slide') {
+    const sp = Math.hypot(u.vx, u.vz); if (sp < 0.06) { u.st = 'stand'; u.vx = u.vz = 0; return; }
+    const nx = u.x + u.vx * h, nz = u.z + u.vz * h; if (btBlocked(nx, nz, u.y, 0.025)) { u.vx = u.vz = 0; u.st = 'stand'; return; }
+    const top = btSurf(nx, nz, u.y); if (top < u.y - 0.03) { u.x = nx; u.z = nz; u.st = 'air'; u.y0 = u.y; return; } if (top > u.y + 0.025) { u.vx = u.vz = 0; u.st = 'stand'; return; }
+    u.x = nx; u.z = nz; u.y = top; u.y0 = top; const f = Math.max(0, 1 - 5 * h); u.vx *= f; u.vz *= f;
+  }
+}
+
+// ---------- the Paperclip Grapple: hook a spot and swing there ----------
+function btStandNear(x, z, yRef, who) { // a spot to stand near (x, z): {x, z, y} or null
+  for (const r of [0, 0.05, 0.09, 0.13]) for (let k = 0; k < (r ? 8 : 1); k++) {
+    const a = k * 0.785, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, top = btSurf(px, pz, yRef + 0.03);
+    if (top < yRef - 0.1 || top > yRef + 0.06 || btBlocked(px, pz, top, 0.035) || BT.units.some((q) => q !== who && q.st !== 'home' && q.st !== 'popping' && Math.hypot(q.x - px, q.z - pz) < 0.06)) continue;
+    const ed = btSurf(px + 0.03, pz, top), ee = btSurf(px - 0.03, pz, top); if (ed < top - 0.03 && ee < top - 0.03) continue; return { x: px, z: pz, y: top };
+  } return null;
+}
+function btGrappleStart(pr, out) {
+  const u = pr.owner, w = BW.grapple, at = out.at; let tgt = null, why = '';
+  const d = Math.hypot(at[0] - u.x, at[2] - u.z);
+  if (d > w.range) why = 'Too far!'; else { tgt = btStandNear(at[0] + (out.n ? out.n[0] * 0.04 : 0), at[2] + (out.n ? out.n[2] * 0.04 : 0), at[1] - (out.n && out.n[1] < 0.5 ? 0.02 : 0), u); if (!tgt) why = 'Nowhere to land!'; else if (tgt.y < u.y - 0.12) { tgt = null; why = 'Not down there!'; } }
+  if (!tgt) { btDropProj(pr); btBubble(u, why, 1.6); bsfx('no'); sfx('no'); btLog('hookfail', why); return; }
+  const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0.1, 0)]), new THREE.LineBasicMaterial({ color: 0xdfe5ea })); rope.renderOrder = 8; rope.frustumCulled = false; BT.group.add(rope);
+  pr.mesh.position.set(at[0], at[1], at[2]); if (pr.mesh.userData.sh) pr.mesh.userData.sh.visible = false;
+  u.st = 'swing'; u.vx = u.vy = u.vz = 0; u.anim = null; BT.swing = { u, pr, rope, t: 0, dur: 0.6 + d * 0.5, from: [u.x, u.y, u.z], to: [tgt.x, tgt.y, tgt.z], hook: at.slice(), hgt: 0.08 + d * 0.18 }; bsfx('swing'); btBubble(u, pick(charOf({ ck: u.ck }).lift), 1.8); btLog('hook', { u: u.name, d: +d.toFixed(2) });
+}
+function btSwingTick(dt) {
+  const S = BT.swing; if (!S) return; S.t += dt; const k = clamp(S.t / S.dur, 0, 1), e = k * k * (3 - 2 * k), u = S.u;
+  u.x = S.from[0] + (S.to[0] - S.from[0]) * e; u.z = S.from[2] + (S.to[2] - S.from[2]) * e; u.y = S.from[1] + (S.to[1] - S.from[1]) * e + Math.sin(k * Math.PI) * S.hgt; u.sq = 0; u.tilt = Math.sin(k * 6.283) * 0.4;
+  const a = S.rope.geometry.attributes.position; a.setXYZ(0, S.hook[0], S.hook[1], S.hook[2]); a.setXYZ(1, u.x, u.y + 0.08, u.z); a.needsUpdate = true;
+  if (k >= 1) { u.st = 'stand'; u.y = S.to[1]; u.y0 = S.to[1]; u.tilt = 0; u.anim = { k: 'bonk', t: 0, dur: 0.25 }; BT.group.remove(S.rope); S.rope.geometry.dispose(); btDropProj(S.pr); BT.swing = null; BT.lastEvent = BT.stageT; puff('dust', u.x, u.y + 0.01, u.z, 4, { size: 0.03, life: 0.5, grow: 1 }); sfx('thud', 1.3); }
+}
+
+// ---------- the super weapon: Call the Hoover ----------
+function btLaneAt(at) { // the lane the Hoover sweeps: along the long side of the surface it came down on, across the screen
+  let Z = null; for (const q of BT.zs) { if (q.Z.type === 'FLOOR' && BT.sides.every((s) => s.Z !== q.Z)) { const k = landIdx(q.L, at[0], at[2]); if (k >= 0 && q.L.st[k] && Math.abs(q.y - at[1]) < 0.1 && !Z) Z = q.Z; continue; } const k = landIdx(q.L, at[0], at[2]); if (k >= 0 && q.L.st[k] && Math.abs(q.y - at[1]) < 0.12) { Z = q.Z; if (BT.sides.some((s) => s.Z === q.Z)) break; } }
+  if (!Z) { let bd = 1e9; for (const s of BT.sides) { const d = Math.hypot(s.Z.cx - at[0], s.Z.cz - at[2]); if (d < bd) { bd = d; Z = s.Z; } } }
+  let ax = Z.w >= Z.d ? [Math.cos(Z.ang), Math.sin(Z.ang)] : [-Math.sin(Z.ang), Math.cos(Z.ang)]; const R = btCamR(); if (ax[0] * R[0] + ax[1] * R[1] < 0) ax = [-ax[0], -ax[1]];
+  const len = clamp(Math.max(Z.w, Z.d) + 0.25, 0.9, 1.7), cx = at[0], cz = at[2], y = Z.type === 'FLOOR' ? Z.y : Z.y;
+  return { x0: cx - ax[0] * len / 2, z0: cz - ax[1] * len / 2, dx: ax[0], dz: ax[1], len, w: 0.17, y, Z };
+}
+function btMkHoover() {
+  const g = new THREE.Group(), red = M(0xe0443a, 0x300808), dark = M(0x2a2a30), cream = M(0xfff6e6);
+  g.add(mesh(geo('hvBody', () => new THREE.CylinderGeometry(0.075, 0.085, 0.09, 14).rotateZ(Math.PI / 2)), red, 0, 0.085, -0.07));
+  g.add(mesh(geo('hvDome', () => new THREE.SphereGeometry(0.075, 12, 8, 0, 6.283, 0, 1.57)), red, 0, 0.12, -0.07));
+  for (const s of [-1, 1]) { const wh = mesh(geo('hvWheel', () => new THREE.CylinderGeometry(0.035, 0.035, 0.02, 12).rotateZ(Math.PI / 2)), dark, s * 0.09, 0.035, -0.06); g.add(wh); const hub = mesh(geo('hvHub', () => new THREE.CylinderGeometry(0.016, 0.016, 0.022, 8).rotateZ(Math.PI / 2)), cream, s * 0.09, 0.035, -0.06); g.add(hub); }
+  g.add(mesh(geo('hvStripe', () => new THREE.BoxGeometry(0.19, 0.012, 0.1)), cream, 0, 0.13, -0.07));
+  for (const s of [-1, 1]) { g.add(mesh(geo('hvEye', () => new THREE.SphereGeometry(0.017, 10, 8)), cream, s * 0.032, 0.115, -0.005)); g.add(mesh(geo('hvPupil', () => new THREE.SphereGeometry(0.008, 8, 6)), dark, s * 0.032, 0.115, 0.012)); }
+  g.add(mesh(geo('hvHose', () => new THREE.TorusGeometry(0.05, 0.011, 6, 14, Math.PI).rotateX(Math.PI / 2)), dark, 0, 0.06, 0.03));
+  g.add(mesh(geo('hvNozzle', () => new THREE.BoxGeometry(0.2, 0.02, 0.07)), M(0xc9d2d8), 0, 0.012, 0.1)); g.add(mesh(geo('hvNozzleB', () => new THREE.BoxGeometry(0.205, 0.008, 0.012)), dark, 0, 0.004, 0.135));
+  g.add(glowSprite(0.2, 0.18, 0xffd0d8)); return g;
+}
+function btHooverStart(u, at) {
+  const lane = btLaneAt(at), m = btMkHoover(); m.position.set(lane.x0, lane.y, lane.z0); m.rotation.y = Math.atan2(lane.dx, lane.dz); m.scale.setScalar(0.01); BT.group.add(m);
+  BT.hoover = { u, lane, mesh: m, t: 0, speed: lane.len / 3.2, sucked: 0, sfxT: 0 }; BT.slowT = Math.max(BT.slowT, 0.6); bsfx('hoover'); btBubble(u, 'Call the Hoover!', 2.0); btLog('hoover', { lane: [lane.x0, lane.z0].map((v) => +v.toFixed(2)), len: lane.len });
+  btMsg('VROOOOM!', 1.6, 'The Hoover is coming through');
+}
+function btHooverTick(dt) {
+  const H = BT.hoover; if (!H) return; H.t += dt; const L = H.lane, s = H.t * H.speed, m = H.mesh, grow = smooth(0, 0.35, H.t) * (1 - smooth(L.len / H.speed + 0.1, L.len / H.speed + 0.6, H.t));
+  const px = L.x0 + L.dx * Math.min(s, L.len + 0.05), pz = L.z0 + L.dz * Math.min(s, L.len + 0.05);
+  let y = L.y; const lift = BT.structs.find((q) => !q.dead && q.kind !== 'rubble' && Math.abs(btLocal(q, px, pz)[0]) < q.hx + 0.1 && Math.abs(btLocal(q, px, pz)[1]) < q.hz + 0.1); if (lift) y = Math.max(y, lift.y + lift.h + 0.01);
+  H.y = H.y === undefined ? y : H.y + (y - H.y) * Math.min(1, dt * 10); m.position.set(px, H.y, pz); m.scale.setScalar(Math.max(0.01, grow)); m.rotation.z = Math.sin(H.t * 22) * 0.025; m.position.y += Math.abs(Math.sin(H.t * 18)) * 0.004; m.rotation.x = Math.sin(H.t * 9) * 0.02;
+  H.sfxT -= dt; if (H.sfxT <= 0) { H.sfxT = 0.9; bsfx('hoover'); }
+  if (Math.random() < dt * 40) puff('dust', px + L.dx * 0.12 + rnd(-0.08, 0.08), H.y + 0.03, pz + L.dz * 0.12 + rnd(-0.08, 0.08), 1, { size: 0.04, vx: -L.dx * 0.3, vz: -L.dz * 0.3, vy: 0.05, life: 0.35, jit: 0.02, color: 0xd9ccb2 });
+  const head = Math.min(s + 0.07, L.len + 0.05);
+  for (const u of BT.units) {
+    if (u.st === 'home' || u.st === 'sucked' || u.st === 'popping' || u.st === 'swing') continue; const rx = u.x - L.x0, rz = u.z - L.z0, a = rx * L.dx + rz * L.dz, p = rx * -L.dz + rz * L.dx;
+    if (H.sucked >= 3) { if (!H.full) { H.full = true; btBubble(H.u, 'Bag full!', 1.8); puff('fluff', H.mesh.position.x, H.mesh.position.y + 0.15, H.mesh.position.z, 6, { size: 0.06, vy: 0.2, life: 0.9, grow: 0.6 }); sfx('thud', 0.8); } continue; }
+    if (a > -0.05 && a < head && Math.abs(p) < L.w / 2 + 0.03 && Math.abs(u.y - L.y) < 0.2) { u.st = 'sucked'; u.suck = { t: 0, dur: 0.5, x0: u.x, y0: u.y, z0: u.z }; u.anim = null; u.vx = u.vy = u.vz = 0; btBubble(u, pick(charOf({ ck: u.ck }).lift), 1.6); H.sucked++; BT.slowT = Math.max(BT.slowT, 0.8); BT.lastEvent = BT.stageT; btLog('suck', u.name); sfx('boing', 1.5); }
+  }
+  for (const q of BT.structs) { if (q.dead || q.kind !== 'rubble') continue; const rx = q.x - L.x0, rz = q.z - L.z0, a = rx * L.dx + rz * L.dz, p = rx * -L.dz + rz * L.dx; if (a > -0.05 && a < head && Math.abs(p) < L.w / 2 + 0.05) { q.dead = true; q.clear = 0; H.cleared = (H.cleared | 0) + 1; btLog('cleared', 'rubble'); BT.lastEvent = BT.stageT; } }
+  for (const c of BT.crumbs.slice()) { const rx = c.x - L.x0, rz = c.z - L.z0, a = rx * L.dx + rz * L.dz, p = rx * -L.dz + rz * L.dx; if (a > -0.05 && a < head && Math.abs(p) < L.w / 2 + 0.05) { BT.group.remove(c.mesh); BT.crumbs.splice(BT.crumbs.indexOf(c), 1); } }
+  if (H.t * H.speed > L.len + 0.15 && grow < 0.02) { BT.group.remove(m); BT.hoover = null; btLog('hoover-done', { sucked: H.sucked }); BT.lastEvent = BT.stageT; }
+}
+function btSuckTick(u, dt) {
+  const S = u.suck, H = BT.hoover; S.t += dt; const k = clamp(S.t / S.dur, 0, 1), L = H ? H.lane : null, nx = H ? H.mesh.position.x + L.dx * 0.1 : S.x0, nz = H ? H.mesh.position.z + L.dz * 0.1 : S.z0, ny = (H ? H.mesh.position.y : S.y0) + 0.03;
+  const e = k * k; u.x = S.x0 + (nx - S.x0) * e; u.z = S.z0 + (nz - S.z0) * e; u.y = S.y0 + (ny - S.y0) * e + Math.sin(k * 3.14) * 0.05; u.spin = (u.spin || 0) + dt * 20;
+  if (k >= 1) { u.st = 'stand'; btPop(u, 'hoover'); }
+}
+
+// ---------- the end of the match ----------
+function btCheckEnd() {
+  if (BT.over) return true; const lost = BT.sides.map((sd) => sd.tent.dead || btAlive(sd.i).length === 0);
+  if (lost[0] && lost[1]) { btFinish(-1); return true; } if (lost[0]) { btFinish(1); return true; } if (lost[1]) { btFinish(0); return true; }
+  if (BT.turn >= 80) { const sc = BT.sides.map((sd) => btAlive(sd.i).length * 2 + sd.tent.hp); btFinish(sc[0] === sc[1] ? -1 : sc[0] > sc[1] ? 0 : 1); return true; }
+  return false;
+}
+function btFinish(winner) {
+  BT.over = { winner, t: 0, shown: false }; BT.stage = 'over'; BT.stageT = 0; BT.slowT = 1.6; BT.sel = null; BT.aim = null; btDots(null); btLog('over', winner);
+  for (const u of BT.units) { if (u.st === 'home') continue; if (winner >= 0 && u.side === winner) { u.dance = 1; } else if (winner >= 0) { u.dance = -1; } }
+  if (winner >= 0) { const W = BT.sides[winner], Ls = BT.sides[1 - winner]; for (const u of BT.units) if (u.st !== 'home') { if (u.side === winner) { if (btRand() < 0.6) btBubble(u, u.lint ? pick(LINT.win) : pick(charOf({ ck: u.ck }).dance), 3.4); } else btBubble(u, u.lint ? pick(LINT.lose) : BT_LINE_LOSE[u.ck] || "We'll get you next time!", 3.6); }
+    const left = BT.units.filter((u) => u.side === 1 - winner && u.st !== 'home'); if (!left.length) { const t = Ls.tent; btBubble({ x: t.x, y: t.y + 0.05, z: t.z }, BT.sides[1 - winner].ai ? pick(LINT.lose) : "We'll get you next time!", 3.6); }
+  }
+  btReward(winner); setTimeout(() => { if (BT.over) bsfx(winner >= 0 && BT.sides[winner].ai ? 'sad' : 'fanfare'); }, 400);
+}
+function btReward(winner) {
+  const human = winner >= 0 && !BT.sides[winner].ai; BT.over.reward = null; if (!human) return;
+  const S = mainSettlement() || G.settlements[0]; let txt = '';
+  if (S) { S.stock.wood += 6; S.stock.tin = (S.stock.tin || 0) + 2; txt = '+6 wood, +2 tin for the colony'; }
+  const first = !FUN.album.some((e) => e.id === 'victory'); if (first) { FUN.album.push({ id: 'victory', at: Date.now() }); funLog('milestone', 'victory'); txt += (txt ? ' · ' : '') + 'Colony album: First victory'; }
+  FUN.n.battle = (FUN.n.battle | 0) + 1; BT.over.reward = txt; if (G.auto && typeof persistSoon === 'function') persistSoon();
+}
+
+// ---------- the Lint Lords' brain: try shots in its head with the same physics, take a decent one, then get it slightly wrong ----------
+// easy: error about 5.5 degrees / 9% power, and 40% of the time takes the 2nd or 3rd best idea. normal: 2.5 degrees / 5%, always the best idea.
+function btSolve(wid, m, T) { // candidate launch velocities from muzzle m to target point T = [x, y, z]; each angle is refined three times to allow for the wind
+  const w = BW[wid], out = [], g = BT_G * w.gs, dy = T[1] - m[1];
+  for (const th0 of (w.kind === 'flick' ? [0] : [0.62, 0.85, 1.08, 1.3])) {
+    let tx = T[0], tz = T[2], res = null;
+    for (let it = 0; it < 3; it++) {
+      const dx = tx - m[0], dz = tz - m[2], d = Math.hypot(dx, dz); if (d < 0.06) { res = null; break; } const hx = dx / d, hz = dz / d; let th, v;
+      if (w.kind === 'flick') { v = w.vmax * 0.96; const a = g * d * d / (2 * v * v), disc = d * d - 4 * a * (dy + a); if (disc < 0) { res = null; break; } th = Math.atan((d - Math.sqrt(disc)) / (2 * a)); }
+      else { th = th0; const c0 = Math.cos(th), den = 2 * c0 * c0 * (d * Math.tan(th) - dy); if (den < 0.01) { res = null; break; } v = Math.sqrt(g * d * d / den); if (v > w.vmax) { res = null; break; } v = Math.max(v, w.vmin); }
+      const c = Math.cos(th); res = { vel: [v * c * hx, v * Math.sin(th), v * c * hz], th, v }; const tt = d / (v * c); tx = T[0] - BT.wind[0] * w.wind * tt * tt * 0.5; tz = T[2] - BT.wind[1] * w.wind * tt * tt * 0.5;
+    }
+    if (res) out.push(res);
+  }
+  return out;
+}
+function btScoreShot(side, o, wid, pr) { // how good would this shot be? positive = good for `side`
+  const w = BW[wid], at = o.at, foe = BT.sides[1 - side]; let s = 0;
+  if (o.what === 'boom') {
+    const B = w.boom;
+    for (const u of BT.units) { if (u.st === 'home' || u.st === 'popping') continue; const d = Math.hypot(at[0] - u.x, at[1] - (u.y + BT_UH), at[2] - u.z), mine = u.side === side;
+      if (d < B.kill) s += mine ? -12 : 10; else if (d < B.r) { const dx = u.x - at[0], dz = u.z - at[2], l = Math.hypot(dx, dz) || 1, ed = btEdgeAhead(u.x, u.z, u.y, dx / l, dz / l, 0.45); s += mine ? (ed < 0.45 ? -8 : -1.5) : (ed < 0.45 ? 8 : 2); } }
+    for (const q of BT.structs) { if (q.dead || q.kind === 'rubble' || btBoxDist(q, at) >= B.sr) continue; const mine = q.side === side; if (q.kind === 'tent') s += mine ? -14 : (q.hp <= 1 ? 40 : 7); else s += mine ? -1 : 1; }
+  } else if (o.what === 'knock') {
+    const u = o.unit, l = Math.hypot(pr.vx, pr.vz) || 1, ed = btEdgeAhead(u.x, u.z, u.y, pr.vx / l, pr.vz / l, 0.7); s += u.side === side ? -9 : (ed < 0.7 ? 12 : 2.5);
+  } else if (o.what === 'bonk') { const q = o.struct; s += q.side === side ? -3 : (q.kind === 'tent' ? (q.hp <= 1 ? 40 : 6) : 1.2); }
+  return s;
+}
+function btHooverScore(side) { // the lane through the centre of the other side's creatures, along its surface: foes minus friends
+  const foes = BT.units.filter((u) => u.side !== side && u.st === 'stand'); if (!foes.length) return null; const cx = foes.reduce((a, u) => a + u.x, 0) / foes.length, cz = foes.reduce((a, u) => a + u.z, 0) / foes.length, y = foes[0].y, lane = btLaneAt([cx, y, cz]);
+  let f = 0, mine = 0; for (const u of BT.units) { if (u.st !== 'stand') continue; const rx = u.x - lane.x0, rz = u.z - lane.z0, a = rx * lane.dx + rz * lane.dz, p = rx * -lane.dz + rz * lane.dx; if (a > -0.05 && a < lane.len && Math.abs(p) < lane.w / 2 + 0.03 && Math.abs(u.y - lane.y) < 0.2) { if (u.side === side) mine++; else f++; } }
+  return { f, mine, at: [cx, y, cz] };
+}
+function btAiPlan(side) {
+  const t0 = performance.now(), sd = BT.sides[side], mine = btStanding(side), foes = BT.units.filter((u) => u.side !== side && u.st !== 'home' && u.st !== 'popping' && u.st !== 'sucked'), tent = BT.sides[1 - side].tent, cands = [];
+  const shooters = mine.slice().sort(() => btRand() - 0.5).slice(0, 3);
+  const targets = foes.map((u) => ({ p: [u.x, u.y + BT_UH, u.z] })); if (!tent.dead) targets.push({ p: [tent.x, tent.y + tent.h * 0.45, tent.z], tent: true }, { p: [tent.x, tent.y + tent.h * 0.45, tent.z], tent: true });
+  for (const u of shooters) for (const T of targets) for (const wid of ['mortar', 'flick']) {
+    const m = btMuzzle(u, [0, 0.3, 0]); for (const c of btSolve(wid, [u.x, u.y + 0.06, u.z], T.p)) {
+      const pr = btNewProj(wid, m[0], m[1], m[2], c.vel[0], c.vel[1], c.vel[2], u), mu = btMuzzle(u, c.vel); pr.x = mu[0]; pr.y = mu[1]; pr.z = mu[2]; const o = btFly(pr, 6), sc = btScoreShot(side, o, wid, pr) - Math.hypot(o.at[0] - T.p[0], o.at[2] - T.p[2]) * 1.5 + btRand() * 1.4;
+      cands.push({ u, wid, vel: c.vel, th: c.th, v: c.v, score: sc, what: o.what });
+    }
+  }
+  cands.sort((a, b) => b.score - a.score); const easy = BT.level === 'easy'; let pickC = cands[0];
+  if (easy && cands.length > 2 && btRand() < 0.4) pickC = cands[1 + Math.floor(btRand() * 2)];
+  let plan = pickC ? { u: pickC.u, wid: pickC.wid, vel: pickC.vel.slice(), score: pickC.score, n: cands.length } : null;
+  if (plan) { // the slip: aim a little off and a little too hard or soft
+    const eY = (easy ? 0.095 : 0.045) * btGauss(), eP = 1 + (easy ? 0.09 : 0.045) * btGauss(), eE = (easy ? 0.04 : 0.02) * btGauss(); let [vx, vy, vz] = plan.vel; const hs = Math.hypot(vx, vz), sp = Math.hypot(vx, vy, vz), th = Math.atan2(vy, hs) + eE, ha = Math.atan2(vx, vz) + eY, s2 = sp * eP;
+    plan.vel = [s2 * Math.cos(th) * Math.sin(ha), s2 * Math.sin(th), s2 * Math.cos(th) * Math.cos(ha)]; const w = BW[plan.wid]; const q = Math.hypot(...plan.vel); if (q > w.vmax) { const f = w.vmax / q; plan.vel = plan.vel.map((v) => v * f); }
+  }
+  const hv = sd.hoover ? btHooverScore(side) : null; // the super weapon: when a line of them is in the way and none of ours
+  if (hv && hv.mine === 0 && (hv.f >= 2 || (hv.f >= 1 && BT.turn >= 7)) && btRand() < (easy ? 0.6 : 0.85)) { const u = pickC ? pickC.u : mine[0]; plan = { u, wid: 'hoover', at: hv.at, vel: null, score: 99, hv }; }
+  if (!plan && mine[0]) plan = { u: mine[0], wid: 'mortar', vel: [0.3, 2, 0.3], score: 0, n: 0 };
+  BT.aiMs = performance.now() - t0; btLog('ai', { ms: +BT.aiMs.toFixed(1), n: plan && plan.n, wid: plan && plan.wid }); return plan;
+}
+function btAiRun() { // execute the plan: the hoover is dropped on the lane through the foes' centre
+  const p = BT.plan; if (!p) { btEndTurn(); return; } if (BT.sel !== p.u) btSelect(p.u, true);
+  if (p.wid === 'hoover') { const sd = BT.sides[BT.side]; BT.wid = 'hoover'; BT.fired = true; BT.stage = 'fly'; BT.stageT = 0; sd.hoover = false; p.u.face = Math.atan2(p.hv ? 1 : 0, 0); p.u.anim = { k: 'shoot', t: 0, dur: 0.4 }; btLog('fire', { wid: 'hoover', u: p.u.name, ai: true }); btHooverStart(p.u, p.at); BT.aim = null; btUi(true); return; }
+  BT.wid = p.wid; btFire(p.u, p.wid, p.vel);
+}
+
+// ---------- aiming: drag back from the creature (a slingshot), release to fire ----------
+const btPxK = () => clamp(Math.min(innerWidth, innerHeight) / 820, 0.75, 1.5);
+function btScreen(u) { const p = toScreen(tmpV.set(u.x, u.y + 0.06, u.z)); return [p[0], p[1], p[2]]; }
+function btFoeDir(u) { const fo = BT.units.filter((q) => q.side !== u.side && q.st !== 'home'); if (!fo.length) return [Math.sin(u.face), Math.cos(u.face)]; let x = 0, z = 0; for (const q of fo) { x += q.x; z += q.z; } x = x / fo.length - u.x; z = z / fo.length - u.z; const l = Math.hypot(x, z) || 1; return [x / l, z / l]; }
+function btAimCalc(u, dx, dy, wid) { // the finger moved (dx, dy) px from where it went down; the shot goes the opposite way (screen right = camera right, screen up = up)
+  const w = BW[wid], len = Math.hypot(dx, dy), pxMax = clamp(0.2 * Math.min(innerWidth, innerHeight), 110, 200), power = clamp((len - 12) / (pxMax - 12), 0, 1), R = btCamR(), T = btFoeDir(u);
+  let sg = -dx >= 0 ? 1 : -1; if (Math.abs(dx) < 5) sg = (T[0] * R[0] + T[1] * R[1]) >= 0 ? 1 : -1; let hx = R[0] * sg, hz = R[1] * sg;
+  const a0 = Math.atan2(hx, hz), at = Math.atan2(T[0], T[1]), da = btAng(at - a0); if (Math.abs(da) < 1.3) { const a1 = a0 + da * 0.6; hx = Math.sin(a1); hz = Math.cos(a1); } // aim assist: the heading leans 60% toward the other side
+  const th = clamp(Math.atan2(dy, Math.max(Math.abs(dx), 1)), -0.2, 1.4), v = w.vmin + power * (w.vmax - w.vmin);
+  return { len, power, theta: th, v, hx, hz, vel: [v * Math.cos(th) * hx, v * Math.sin(th), v * Math.cos(th) * hz], wid };
+}
+function btDots(pts) { // the dotted arc: the first part of the flight only
+  if (!BT.dotTex) { BT.dotTex = cv(32, 32, (x) => { x.fillStyle = '#3b2a1e'; x.beginPath(); x.arc(16, 16, 14, 0, 7); x.fill(); x.fillStyle = '#fffdf6'; x.beginPath(); x.arc(16, 16, 10, 0, 7); x.fill(); }); }
+  while (BT.dots.length < 14) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: BT.dotTex, transparent: true, depthTest: false, depthWrite: false })); sp.renderOrder = 20; sp.visible = false; BT.group.add(sp); BT.dots.push(sp); }
+  BT.dots.forEach((sp, i) => { if (!pts || i >= pts.length) { sp.visible = false; return; } sp.visible = true; sp.position.set(pts[i][0], pts[i][1], pts[i][2]); const s = 0.02 - i * 0.0009; sp.scale.set(s, s, 1); sp.material.opacity = 1 - i * 0.045; });
+}
+function btPreview(u, aim) { // dots for the first ~0.5 s of the real flight; the hoover also shows its lane
+  const m = btMuzzle(u, aim.vel), pr = btNewProj(aim.wid, m[0], m[1], m[2], aim.vel[0], aim.vel[1], aim.vel[2], u), pts = [];
+  for (let i = 0; i < 11; i++) { for (let k = 0; k < 5; k++) { const ev = btAdvance(pr, BT_DT); if (ev) { i = 99; break; } } if (i < 99) pts.push([pr.x, pr.y, pr.z]); }
+  btDots(pts.slice(0, 11));
+  if (aim.wid === 'hoover') { const out = btSim(u, 'hoover', aim.vel), lane = btLaneAt(out.at); if (!BT.laneMesh) { BT.laneMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff6f91, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide })); BT.laneMesh.renderOrder = 5; BT.group.add(BT.laneMesh); } const L = BT.laneMesh; L.visible = true; L.scale.set(lane.w, 1, lane.len); L.position.set(lane.x0 + lane.dx * lane.len / 2, lane.y + 0.004, lane.z0 + lane.dz * lane.len / 2); L.rotation.y = Math.atan2(lane.dx, lane.dz); }
+  else if (BT.laneMesh) BT.laneMesh.visible = false;
+}
+function btPointer(kind, e) {
+  if (!BT.on) return false; let d = BT.drag;
+  if (kind === 'down') {
+    BT.drag = d = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false, mode: 'cam', t: performance.now() };
+    if (BT.stage === 'aim' && !BT.sides[BT.side].ai && !BT.fired) {
+      let best = null, bd = 1e9; for (const u of btStanding(BT.side)) { const [sx, sy, ok] = btScreen(u); if (!ok) continue; const dd = Math.hypot(sx - e.clientX, sy - e.clientY); if (dd < bd) { bd = dd; best = u; } }
+      if (best && bd < 95 * btPxK()) { if (best !== BT.sel) btSelect(best); d.mode = 'aim'; d.u = BT.sel; }
+    }
+    try { $('touch').setPointerCapture(e.pointerId); } catch (er) { /* fine */ } return true;
+  }
+  if (!d || e.pointerId !== d.id) return true;
+  if (kind === 'move') {
+    const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY; if (Math.hypot(d.x - d.sx, d.y - d.sy) > 8) d.moved = true;
+    if (d.mode === 'aim' && d.moved && BT.stage === 'aim' && !BT.fired && d.u && d.u.st === 'stand') { const a = btAimCalc(d.u, d.x - d.sx, d.y - d.sy, BT.wid); BT.aim = a; btPreview(d.u, a); btAimInfo(a); }
+    else if (d.mode === 'cam' && !AR.on) { P.yaw -= dx * 0.006; P.pitch = clamp(P.pitch + dy * 0.005, 0.12, 1.45); BT.camHold = 6; }
+    return true;
+  }
+  if (kind === 'up') {
+    BT.drag = null; const a = BT.aim; BT.aim = null; btAimInfo(null);
+    if (d.mode === 'aim' && d.u) {
+      if (d.moved && a && a.power >= 0.12 && BT.stage === 'aim' && !BT.fired && d.u.st === 'stand') { btFire(d.u, BT.wid, a.vel); }
+      else { btDots(null); if (BT.laneMesh) BT.laneMesh.visible = false; if (!d.moved && d.u.st === 'stand') { d.u.anim = { k: 'hop', t: 0, dur: 0.3, x0: d.u.x, z0: d.u.z, x1: d.u.x, z1: d.u.z, hgt: 0.05 }; btBubble(d.u, pick(charOf({ ck: d.u.ck }).poke), 1.6); sfx('squeak', charOf({ ck: d.u.ck }).pitch); } }
+    }
+    if (BT.laneMesh && !BT.fired) BT.laneMesh.visible = false; return true;
+  }
+  return true;
+}
+function btAimInfo(a) { const el = $('btAimInfo'); if (!el) return; if (!a) { el.hidden = true; return; } el.hidden = false; el.textContent = BW[a.wid].name + '   Power ' + Math.round(a.power * 100) + '%   Angle ' + Math.round(a.theta * 57.3) + '°'; }
+
+// ---------- speech bubbles that follow a creature (and survive its pop) ----------
+function btBubble(u, text, secs, kind) {
+  let b = BT.bub.find((q) => !q.on); if (!b) { b = { sp: mkSaySprite(), on: false }; BT.group.add(b.sp); BT.bub.push(b); }
+  for (const q of BT.bub) if (q.on && q.u === u && q.kind === (kind || 'say')) q.on = false;
+  const e = sayTex(text, kind || 'say'); b.sp.material.map = e.t; b.sp.material.needsUpdate = true; Object.assign(b, { on: true, u, t: 0, dur: secs || 2, a: e.a, kind: kind || 'say' }); b.sp.visible = true; u.talk = Math.max(u.talk || 0, kind === 'name' ? 0 : 1.2);
+  if (!kind) btLog('say', text);
+}
+function btBubbles(dt, eye) {
+  let n = 0; for (const b of BT.bub) {
+    if (!b.on) continue; b.t += dt; if (b.t >= b.dur || !b.u) { b.on = false; b.sp.visible = false; continue; } const u = b.u, d = Math.hypot(u.x - eye.x, u.y - eye.y, u.z - eye.z), nm = b.kind === 'name', h = clamp(d * (nm ? 0.03 : 0.052), nm ? 0.025 : 0.05, nm ? 0.07 : 0.16), pop = Math.min(1, b.t * 7), k = pop < 1 ? 1 + Math.sin(pop * 3.14) * 0.2 : 1, fade = Math.min(1, (b.dur - b.t) / 0.25), hh = h * k * (0.4 + 0.6 * pop);
+    b.sp.material.opacity = fade; b.sp.scale.set(hh * b.a, hh, 1); b.sp.position.set(u.x, u.y + (nm ? 0.18 : 0.165) + hh * 0.5 + (nm ? 0 : 0.0), u.z); if (!nm && ++n > 3) { b.sp.visible = false; }
+  }
+}
+function btFireworks(x, y, z) {
+  for (let k = 0; k < 3; k++) setTimeout(() => { if (!BT.on) return; const bx = x + rnd(-0.25, 0.25), by = y + rnd(0.25, 0.4), bz = z + rnd(-0.12, 0.12); sfx('firework'); for (let i = 0; i < 26; i++) { const a = rnd(0, 6.283), el = rnd(-0.6, 1.2), sp = rnd(0.2, 0.45); puff('conf', bx, by, bz, 1, { size: 0.025, vx: Math.cos(a) * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: Math.sin(a) * Math.cos(el) * sp, jit: 0, spread: 0.01, g: -0.5, life: 1.8, color: CONF[i % CONF.length] }); } puff('spark', bx, by, bz, 1, { size: 0.12, life: 0.4, add: true, color: 0xffe9a8, vy: 0 }); }, k * 380);
+}
+
+// ---------- the camera (practice room only: in AR the player walks) ----------
+function btCenter(side) { const us = BT.units.filter((u) => u.side === side && u.st !== 'home'); if (!us.length) { const t = BT.sides[side].tent; return [t.x, t.y, t.z]; } return [us.reduce((a, u) => a + u.x, 0) / us.length, us.reduce((a, u) => a + u.y, 0) / us.length, us.reduce((a, u) => a + u.z, 0) / us.length]; }
+function btCamSnap() { btCamera(1, true); }
+function btCamera(dt, snap) {
+  if (AR.on || !BT.sides.length) return; const A = [BT.sides[0].tent.x, BT.sides[0].tent.y, BT.sides[0].tent.z], B = [BT.sides[1].tent.x, BT.sides[1].tent.y, BT.sides[1].tent.z]; let ax = B[0] - A[0], az = B[2] - A[2]; const al = Math.hypot(ax, az) || 1; ax /= al; az /= al;
+  const y1 = Math.atan2(-az, ax), y2 = Math.atan2(az, -ax), yaw = Math.cos(y1) > Math.cos(y2) ? y1 : y2; // camera right = the line between the two sides, camera on the room side
+  let tx = (A[0] + B[0]) / 2, ty = (A[1] + B[1]) / 2, tz = (A[2] + B[2]) / 2; const pr = BT.projs[0];
+  if (BT.stage === 'aim' && BT.sel && !BT.over) { tx = tx * 0.85 + BT.sel.x * 0.15; tz = tz * 0.85 + BT.sel.z * 0.15; ty = ty * 0.85 + BT.sel.y * 0.15; }
+  if (pr && Math.abs(pr.x - tx) < 2.5 && Math.abs(pr.z - tz) < 2.5) { tx = tx * 0.4 + pr.x * 0.6; tz = tz * 0.4 + pr.z * 0.6; ty = ty * 0.5 + pr.y * 0.5; }
+  const sep = Math.hypot(B[0] - A[0], B[2] - A[2]), asp = innerWidth / innerHeight, tanH = Math.tan(0.4363) * Math.min(asp, 1.8), need = (sep / 2 + 0.5) / tanH, needV = (Math.abs(B[1] - A[1]) / 2 + 0.45) / Math.tan(0.4363);
+  P.gTarget.set(tx, ty + 0.06, tz); P.gDist = clamp(Math.max(need, needV, 1.3) * 1.0, 1.3, 4); const k = snap ? 1 : Math.min(1, dt * 2.2);
+  if (BT.camHold > 0) { BT.camHold -= dt; if (snap) { P.yaw = yaw; P.pitch = 0.4; } } else { P.yaw += btAng(yaw - P.yaw) * k; P.pitch += (0.4 - P.pitch) * k; }
+  if (snap) { P.target.copy(P.gTarget); P.dist = P.gDist; }
+}
+
+// ---------- the HUD ----------
+function btBuildUi() {
+  const st = document.createElement('style'); st.textContent = `
+#btHud{position:absolute;inset:0;pointer-events:none;z-index:3}#btHud>*{pointer-events:auto}#btHud #btMsg,#btHud #btFlash,#btHud #btWind,#btHud #btAimInfo{pointer-events:none}
+body.battle #bar,body.battle #bmenu,body.battle #card,body.battle #sel,body.battle #reqs,body.battle #top,body.battle #env,body.battle #nroom,body.battle #rstat,body.battle #wx,body.battle #idDot,body.battle #colMark,body.battle #count,body.battle #ask,body.battle #tagpick,body.battle #guess{display:none!important}
+#btTop{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);display:flex;gap:12px;align-items:center;padding:5px 12px;font:800 13px var(--body);white-space:nowrap}
+body.inar #btTop{left:56%;top:calc(env(safe-area-inset-top,0px) + 8px);font-size:12px;gap:8px;padding:4px 8px}
+.btSide{display:flex;flex-direction:column;align-items:center;min-width:96px;line-height:1.25}.btSide b{color:#ffd9a8}.btSide i{font-style:normal;letter-spacing:1px}.btSide.me b{text-decoration:underline}
+#btMid{text-align:center;min-width:70px}#btWho{display:block;color:#ffd9a8;font-size:12px}#btClock{font-size:22px}#btClock.low{color:#ff8a6a}
+#btWind{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 62px);padding:3px 12px;font:800 13px var(--body);display:flex;gap:8px;align-items:center}
+body.inar #btWind{left:56%;top:calc(env(safe-area-inset-top,0px) + 54px)}#btWArrow{display:inline-block;font-size:22px;transition:transform .3s;color:#9ee0ff}
+#btBar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:4px;padding:4px 6px;max-width:98vw;align-items:center}
+#btBar button{min-height:48px;min-width:46px;padding:2px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10.5px;line-height:1.05;flex:0 1 auto}#btBar button i{font-style:normal;font-size:21px}
+#btBar button.on{background:var(--acc);border-color:#ffd9a8;color:#fff}#btBar .sep{width:2px;align-self:stretch;background:#fff6e633;margin:0 2px}#btBar .wait{padding:8px 14px;font-weight:800;font-size:14px}
+#btLeave{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 8px);min-width:40px;min-height:40px;padding:0;border-radius:50%;font-size:16px}body.inar #btLeave{top:calc(env(safe-area-inset-top,0px) + 52px)}
+#btMsg{position:absolute;left:50%;top:24%;transform:translate(-50%,0) scale(.8);opacity:0;font:800 32px var(--body);color:#fff6e6;text-shadow:0 3px 0 #7a4a22,0 0 14px rgba(0,0,0,.5);text-align:center;transition:opacity .25s,transform .25s;max-width:92vw;white-space:normal}
+#btMsg.on{opacity:1;transform:translate(-50%,0) scale(1)}#btMsg small{display:block;font-size:14px;color:#ffd9a8;text-shadow:0 1px 3px #000;margin-top:4px}body.inar #btMsg{top:30%;font-size:24px}
+#btAimInfo{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);padding:3px 12px;border-radius:99px;background:var(--glass);font:800 13px var(--body)}
+#btPass,#btEnd{position:absolute;inset:0;background:rgba(40,28,20,.95);display:grid;place-items:center;z-index:9;text-align:center}#btPass .card,#btEnd .card{display:grid;gap:12px;justify-items:center;padding:24px;max-width:min(92vw,440px)}#btPass b,#btEnd b{font-size:30px;color:#ffd9a8}
+#btEnd{background:rgba(40,28,20,.58)}#btEnd .card{background:rgba(59,42,30,.9);border-radius:18px}#btEnd .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#btFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+@media (max-width:560px){#btTop{font-size:11px;gap:6px}.btSide{min-width:70px}}`; document.head.appendChild(st);
+  const h = document.createElement('div'); h.id = 'btHud'; h.hidden = true;
+  h.innerHTML = '<div id="btTop" class="glass"><div id="btS0" class="btSide"></div><div id="btMid"><span id="btWho"></span><span id="btClock"></span></div><div id="btS1" class="btSide"></div></div>'
+    + '<div id="btWind" class="glass"><span>Wind</span><span id="btWArrow">➤</span><span id="btWTxt"></span></div><div id="btMsg"></div><div id="btAimInfo" hidden></div><div id="btBar" class="glass"></div>'
+    + '<button id="btLeave" class="glass" aria-label="Leave the battle">✕</button>'
+    + '<div id="btPass" hidden><div class="card"><b>Pass to Player 2</b><span class="sub">Hand the iPad over, then tap.</span><button class="big" id="btReady">Ready!</button></div></div><div id="btEnd" hidden></div><div id="btFlash"></div>';
+  $('ui').appendChild(h);
+  $('btBar').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b || !BT.on) return; const human = BT.stage === 'aim' && !BT.sides[BT.side].ai && !BT.fired; if (!human) return;
+    if (b.dataset.w) { const sd = BT.sides[BT.side]; if (b.dataset.w === 'hoover' && !sd.hoover) { sfx('no'); return; } BT.wid = b.dataset.w; sfx('squeak', 1.6); btUi(true); toast(BW[BT.wid].name + ': ' + BW[BT.wid].tip, 2); }
+    else if (b.dataset.hop) btHop(BT.sel, +b.dataset.hop); else if (b.id === 'btSkip') { btBubble(BT.sel, pick(['Snack break!', 'Pass!', 'Hmm.']), 1.4); btEndTurn(); }
+  });
+  $('btReady').onclick = () => { $('btPass').hidden = true; sfx('cheer'); BT.stage = 'next'; BT.stageT = 0.4; };
+  $('btLeave').onclick = () => { if (!BT.on) return; const m = $('modal'); m.hidden = false; m.innerHTML = '<div class="dh">Leave the battle?</div><div class="mrow"><button id="btLv1" class="alt">Keep fighting</button><button id="btLv2">Leave</button></div>'; m.onclick = (ev) => { const t = ev.target.closest('button'); if (!t) return; m.hidden = true; if (t.id === 'btLv2') btLeave(false); }; };
+}
+function btPips(sd) { const t = sd.tent, hearts = '♥'.repeat(Math.max(0, t.hp)) + '♡'.repeat(Math.max(0, t.hpMax - Math.max(0, t.hp))), al = BT.units.filter((u) => u.side === sd.i); return '<b>' + esc(sd.name) + '</b><i>⛺ ' + hearts + '</i><i>' + al.map((u) => (u.st === 'home' ? '○' : '●')).join(' ') + ' <span style="opacity:.7">home ' + sd.home + '/' + al.length + '</span></i>'; }
+function btUi(force) {
+  const h = $('btHud'); if (!h || !BT.on) return; const sd = BT.sides[BT.side]; if (!sd) return;
+  for (let i = 0; i < 2; i++) { const el = $('btS' + i), html = btPips(BT.sides[i]); if (force || el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; } el.classList.toggle('me', BT.side === i && BT.stage !== 'over'); }
+  $('btWho').textContent = BT.over ? 'Battle over' : sd.ai ? sd.name + ' thinking...' : (BT.sel ? BT.sel.name : sd.name); const c = $('btClock'), left = BT.stage === 'aim' && !sd.ai ? Math.ceil(BT.turnT) : ''; c.textContent = BT.over ? '★' : left === '' ? '…' : left + 's'; c.classList.toggle('low', left !== '' && left <= 5);
+  const R = btCamR(), wr = BT.wind[0] * R[0] + BT.wind[1] * R[1], wf = BT.wind[0] * R[1] - BT.wind[1] * R[0]; // wind along the screen's right and away from you
+  const mag = Math.hypot(BT.wind[0], BT.wind[1]); $('btWArrow').style.transform = 'rotate(' + Math.round(Math.atan2(-wf, wr) * 57.3) + 'deg) scale(' + (0.7 + mag / BT.windMax * 0.7).toFixed(2) + ')'; $('btWTxt').textContent = Math.round(mag / BT.windMax * 5);
+  const bar = $('btBar'); const human = !sd.ai && BT.stage === 'aim' && !BT.fired, key = [BT.stage, BT.side, BT.wid, BT.fired, sd.hoover, BT.hops, BT.over ? 1 : 0].join('|');
+  if (force || bar.dataset.k !== key) {
+    bar.dataset.k = key; bar.hidden = !!BT.over || BT.stage === 'pass';
+    if (human) bar.innerHTML = '<button data-hop="-1" title="Hop left" aria-label="Hop left"><i>◀</i>hop</button><button data-hop="1" title="Hop right" aria-label="Hop right"><i>▶</i>hop ' + BT.hops + '</button><span class="sep"></span>'
+      + BT_ORDER.map((id) => { const w = BW[id], off = id === 'hoover' && !sd.hoover; return '<button data-w="' + id + '" class="' + (BT.wid === id ? 'on' : '') + '"' + (off ? ' disabled' : '') + ' title="' + esc(w.name) + '"><i>' + w.ic + '</i>' + esc(w.name.replace('Bottle-cap ', '').replace('Elastic-band ', '').replace('Paperclip ', '').replace('Sticky ', '').replace('Call the ', '')) + '</button>'; }).join('') + '<span class="sep"></span><button id="btSkip"><i>⏭</i>skip</button>';
+    else bar.innerHTML = '<span class="wait">' + (sd.ai && BT.stage !== 'over' ? sd.name + ' are plotting...' : BT.stage === 'fly' ? 'Watch!' : '...') + '</span>';
+  }
+}
+function btEndUi() {
+  const o = BT.over, e = $('btEnd'), w = o.winner, nm = w >= 0 ? BT.sides[w].name : 'Nobody', ai = w >= 0 && BT.sides[w].ai;
+  e.hidden = false; e.innerHTML = '<div class="card"><b>' + (w < 0 ? 'A draw!' : ai ? nm + ' win this one' : nm + ' win!') + '</b><span class="sub">' + (w < 0 ? 'Both tents fell. Biscuits for everyone.' : ai ? 'They dance. You say "we\'ll get you next time".' : 'Hooray! A very fluffy victory.') + '</span>' + (o.reward ? '<span class="sub">🏆 ' + esc(o.reward) + '</span>' : '') + '<div class="row"><button class="big alt" id="btAgain">Rematch</button><button id="btBack">Back to the colony</button><button id="btTitle">Menu</button></div></div>';
+  $('btAgain').onclick = () => { const m = BT.mode, l = BT.level; e.hidden = true; btBegin({ mode: m, level: l }); }; $('btBack').onclick = () => { e.hidden = true; btLeave(false); }; $('btTitle').onclick = () => { e.hidden = true; btLeave(true); };
+}
+function btChooser() {
+  const m = $('modal'); m.hidden = false; const usable = G.phase !== 'title' && G.mode !== 'practice' ? btUsableZones() : 9;
+  m.innerHTML = '<div class="dh">Battle!</div><div class="sub">The little people have a toy battle on two surfaces of your room. Nobody gets hurt: a hit creature is only sent home as a puff of fluff. Drag back from a creature to fire.' + (usable < 2 ? ' <b>Scan a little more first: two surfaces are needed.</b>' : '') + '</div>'
+    + '<div class="mrow"><button id="btA" class="big alt">vs The Lint Lords (easy)</button><button id="btB">vs The Lint Lords (normal)</button><button id="btC">2 players: pass the iPad</button><button id="btX">Not now</button></div>';
+  m.onclick = (ev) => { const t = ev.target.closest('button'); if (!t) return; m.hidden = true; if (t.id === 'btA') btBegin({ mode: 'solo', level: 'easy' }); else if (t.id === 'btB') btBegin({ mode: 'solo', level: 'normal' }); else if (t.id === 'btC') btBegin({ mode: 'duo' }); };
+}
+
+// ---------- sounds (synthesised, like the rest of the game) ----------
+function bsfx(kind, p) {
+  const c = audioCtx(); if (!c) return; p = p || 1;
+  try {
+    const t = c.currentTime, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
+    if (kind === 'launch') { tone(240 * p, 0.16, 'triangle', 0.07, 90); sNoise(c, t, 0.06, 900, 'lowpass', 0.05); }
+    else if (kind === 'twang') { tone(720 * p, 0.24, 'sawtooth', 0.03, 170); tone(1500, 0.07, 'square', 0.01, 500); }
+    else if (kind === 'boom') { sNoise(c, t, 0.4, 480, 'lowpass', 0.13); tone(120 * p, 0.32, 'sine', 0.13, 38); sNoise(c, t, 0.12, 2600, 'highpass', 0.04); }
+    else if (kind === 'bounce') tone(430 * p, 0.07, 'triangle', 0.05, 250);
+    else if (kind === 'weee') { tone(1150, 1.9, 'sine', 0.05, 230); tone(1160, 1.9, 'triangle', 0.025, 240, 0.03); for (let i = 0; i < 8; i++) tone(900 - i * 70, 0.12, 'sine', 0.012, 880 - i * 70, i * 0.22); }
+    else if (kind === 'hoover') { sNoise(c, t, 1.1, 300, 'bandpass', 0.07); tone(92, 1.1, 'sawtooth', 0.03, 168); tone(184, 1.1, 'square', 0.008, 330); }
+    else if (kind === 'ding') { tone(880, 0.15, 'sine', 0.05); tone(1320, 0.28, 'sine', 0.04, 0, 0.1); }
+    else if (kind === 'tick') tone(1500, 0.03, 'square', 0.02);
+    else if (kind === 'sad') { [392, 349, 311, 262].forEach((f, i) => tone(f, 0.32, 'sawtooth', 0.03, f * 0.95, i * 0.3)); }
+    else if (kind === 'splat') { sNoise(c, t, 0.14, 700, 'bandpass', 0.08); tone(300, 0.1, 'sine', 0.05, 150); }
+    else if (kind === 'clip') tone(2200, 0.12, 'sine', 0.04, 1600);
+    else if (kind === 'swing') tone(300, 0.55, 'sine', 0.04, 640);
+    else if (kind === 'fluff') { sNoise(c, t, 0.22, 1800, 'highpass', 0.04); tone(700 * p, 0.12, 'triangle', 0.05, 1200 * p); tone(900 * p, 0.1, 'sine', 0.03, 1500 * p, 0.08); }
+    else if (kind === 'no') tone(200, 0.15, 'sine', 0.05, 150);
+  } catch (e) { /* sound is optional */ }
+}
+
+// ---------- animation of everything in the arena ----------
+function btAnimUnit(u, dt, rdt) {
+  const m = u.mesh, U = m.userData; if (u.st === 'home') return;
+  if (u.appear > 0) { u.appear -= rdt; if (u.appear > 0) { m.visible = false; return; } m.visible = true; u.sc = 0.01; sfx('pop'); puff('star', u.x, u.y + 0.08, u.z, 5, { size: 0.03, vy: 0.2, life: 0.7, add: true, color: BT_COLS[u.side], jit: 0.08, g: -0.2 }); }
+  u.sc = Math.min(1, u.sc + rdt * 3.5); const eb = (k) => 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2), sc = BT_SCALE * eb(u.sc);
+  let ox = 0, oy = 0, oz = 0, legs = 0, arms = 0, tilt = u.tilt || 0, ps = 1, sqx = 1, sqy = 1; const t = G.time, A = u.anim;
+  if (A) {
+    A.t += dt; const k = clamp(A.t / A.dur, 0, 1);
+    if (A.k === 'hop') { ox = (A.x1 - A.x0) * k + (A.x0 - u.x); oz = (A.z1 - A.z0) * k + (A.z0 - u.z); if (A.x1 !== A.x0 || A.z1 !== A.z0) { oy = Math.sin(k * Math.PI) * A.hgt; legs = Math.sin(k * 12) * 0.7; } else oy = Math.sin(k * Math.PI) * A.hgt; sqy = 1 + Math.sin(k * Math.PI) * 0.1; if (k >= 1) { if (A.y1 !== undefined) { u.y = A.y1; u.y0 = A.y1; } u.x = A.x1; u.z = A.z1; u.anim = null; u.sq = 0.35; } }
+    else if (A.k === 'walk') { ox = (A.x1 - A.x0) * k + (A.x0 - u.x); oz = (A.z1 - A.z0) * k + (A.z0 - u.z); oy = Math.abs(Math.sin(A.t * 15)) * 0.012; legs = Math.sin(A.t * 15) * 0.9; if (k >= 1) { u.x = A.x1; u.z = A.z1; u.anim = null; } }
+    else if (A.k === 'shoot') { sqy = 1 - Math.sin(k * Math.PI) * 0.22; sqx = 1 + Math.sin(k * Math.PI) * 0.15; arms = 1; if (k >= 1) u.anim = null; }
+    else if (A.k === 'bonk') { tilt += Math.sin(A.t * 38) * 0.25 * (1 - k); if (k >= 1) u.anim = null; }
+  }
+  const sel = BT.sel === u && BT.stage === 'aim' && !BT.over; u.selOff += ((sel ? 1 : 0) - u.selOff) * Math.min(1, rdt * 8);
+  const fx = Math.sin(u.face), fz = Math.cos(u.face); ox += fx * 0.03 * u.selOff; oz += fz * 0.03 * u.selOff; if (sel && !A) oy += Math.abs(Math.sin(t * 5)) * 0.012;
+  if (u.sq > 0) { u.sq = Math.max(0, u.sq - rdt * 3); sqy *= 1 - 0.3 * u.sq; sqx *= 1 + 0.2 * u.sq; }
+  if (u.st === 'popping') { const P2 = u.pop; P2.t += dt; const k = clamp(P2.t / P2.dur, 0, 1); ps = 1 + Math.sin(k * 3.14 * 3) * 0.2 * k + k * 0.35; tilt += Math.sin(P2.t * 40) * 0.2; arms = 1; if (k >= 1) { btPop(u, 'hit'); return; } }
+  if (u.st === 'air') { legs = Math.sin(t * 20) * 0.9; arms = 1; tilt += Math.sin(t * 6) * 0.15; if (u.weee) { u.spin = (u.spin || 0) + rdt * 6; } } else if (u.st === 'slide') legs = Math.sin(t * 18) * 0.5;
+  if (u.st === 'sucked') { const k = clamp(u.suck.t / u.suck.dur, 0, 1); ps = 1 - 0.65 * k; tilt += u.spin; arms = 1; }
+  if (u.dance > 0 && u.st !== 'home') { oy += Math.abs(Math.sin(t * 7 + u.id)) * 0.07; arms = 1; legs = Math.sin(t * 14 + u.id) * 0.8; u.spin = (u.spin || 0) + rdt * 4; if (Math.random() < rdt * 1.5) puff('conf', u.x, u.y + 0.12, u.z, 1, { size: 0.02, vy: 0.3, vx: rnd(-0.15, 0.15), g: -0.5, life: 1.4, color: pick(CONF), jit: 0.1 }); }
+  else if (u.dance < 0) { tilt += 0.35; oy += 0; sqy *= 0.92; }
+  m.position.set(u.x + ox, u.y + oy, u.z + oz); m.scale.set(sc * sqx * ps, sc * sqy * ps, sc * sqx * ps);
+  const want = u.face + (u.dance > 0 ? (u.spin || 0) : u.st === 'air' && u.weee ? (u.spin || 0) : 0); m.rotation.y += btAng(want - m.rotation.y) * Math.min(1, rdt * 10); m.rotation.z = tilt * 0.6; m.rotation.x = u.dance < 0 ? 0.25 : 0;
+  if (U.legs) { U.legs[0].rotation.x = legs; U.legs[1].rotation.x = -legs; } if (U.arms) { const a = arms ? 2.4 + Math.sin(t * 16) * 0.4 : 0; U.arms[0].rotation.z = -a; U.arms[1].rotation.z = a; }
+  if (u.talk > 0) { u.talk -= rdt; faceMouth(U, Math.sin(t * 22) > 0); } else faceMouth(U, u.st === 'popping' || u.st === 'air');
+  u.ring.visible = u.st !== 'sucked'; if (u.ring) u.ring.material.opacity = sel ? 1 : 0.7;
+}
+function btAnimWorld(dt, rdt, eye) {
+  for (const u of BT.units) btAnimUnit(u, dt, rdt); for (const u of BT.units) if (u.st === 'sucked') btSuckTick(u, dt);
+  for (const s of BT.structs) {
+    if (s.kind === 'rubble') { if (s.dead) { s.clear = (s.clear || 0) + rdt * 4; s.mesh.scale.setScalar(Math.max(0.001, 1.9 * (1 - s.clear))); if (s.clear >= 1) { BT.group.remove(s.mesh); BT.structs.splice(BT.structs.indexOf(s), 1); puff('dust', s.x, s.y + 0.02, s.z, 4, { size: 0.04, life: 0.5, grow: 1 }); } } else if (s.pop < 1) { s.pop = Math.min(1, s.pop + rdt * 3); s.mesh.scale.setScalar(1.9 * s.pop); } continue; }
+    if (s.dead) continue; const b = s.kind === 'tent' ? 2.7 : s.kind === 'hut' ? 1.9 : 1, f = 0.62 + 0.38 * s.hp / s.hpMax; s.shake = Math.max(0, s.shake - rdt * 2.5); s.mesh.scale.set(b, b * f, b); s.mesh.rotation.z = Math.sin(G.time * 45) * 0.05 * s.shake; s.mesh.position.set(s.x, s.y, s.z);
+  }
+  for (const sd of BT.sides) {
+    sd.pulse = Math.max(0, sd.pulse - rdt * 1.4); const k = sd.shown / 4; sd.glow.material.opacity = (0.16 + 0.5 * k + sd.pulse * 0.4) * (sd.tent.dead ? 0.3 : 1) * (0.9 + 0.1 * Math.sin(G.time * 3)); const gs = (0.07 + 0.05 * k + sd.pulse * 0.03); sd.glow.scale.set(gs * 2, gs * 2, 1);
+    if (sd.shown > 0 && !sd.tent.dead) { if (sd.lblN !== sd.shown) { sd.lblN = sd.shown; const e = sayTex('Home ' + sd.shown + '/4', 'name'); sd.lbl.material.map = e.t; sd.lbl.material.needsUpdate = true; sd.lblA = e.a; } const d = Math.hypot(sd.tent.x - eye.x, sd.tent.y - eye.y, sd.tent.z - eye.z), h = clamp(d * 0.03, 0.025, 0.07); sd.lbl.visible = true; sd.lbl.scale.set(h * sd.lblA, h, 1); sd.lbl.position.set(sd.tent.x, sd.tent.y + 0.2, sd.tent.z); } else sd.lbl.visible = false;
+  }
+  for (const f of BT.fx.slice()) { f.t += rdt; const k = clamp(f.t / f.dur, 0, 1); f.sp.position.set(f.a[0] + (f.b[0] - f.a[0]) * k, f.a[1] + (f.b[1] - f.a[1]) * k + Math.sin(k * Math.PI) * 0.22, f.a[2] + (f.b[2] - f.a[2]) * k); f.sp.scale.setScalar(0.09 * (1 - k * 0.5) + Math.sin(k * 20) * 0.01); if (Math.random() < rdt * 25) puff('star', f.sp.position.x, f.sp.position.y, f.sp.position.z, 1, { size: 0.025, life: 0.5, add: true, color: 0xfff6e6, vy: 0 });
+    if (k >= 1) { BT.group.remove(f.sp); BT.fx.splice(BT.fx.indexOf(f), 1); const sd = BT.sides[f.side]; sd.shown++; sd.pulse = 1; sfx('chime'); puff('glow', sd.tent.x, sd.tent.y + 0.1, sd.tent.z, 1, { size: 0.3, life: 0.6, add: true, color: BT_COLS[f.side], vy: 0 }); btUi(true); } }
+  for (const pr of BT.projs) {
+    if (!pr.mesh) continue; pr.mesh.position.set(pr.x, pr.y, pr.z); pr.mesh.rotation.x += rdt * 12; pr.mesh.rotation.z += rdt * 7; const sh = pr.mesh.userData.sh;
+    if (sh) { const top = btSurf(pr.x, pr.z, pr.y + 0.01); if (top < -1e8) sh.visible = false; else { sh.visible = true; sh.position.set(pr.x, top + 0.003, pr.z); sh.scale.setScalar(clamp(0.03 / (1 + (pr.y - top) * 1.5), 0.012, 0.03)); } }
+  }
+  const hint = BT.sel && BT.stage === 'aim' && !BT.over && !BT.fired;
+  if (!BT.marker) { BT.marker = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 4).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: 0xffffff })); BT.marker.renderOrder = 19; BT.group.add(BT.marker); }
+  BT.marker.visible = !!hint && BT.sel.st === 'stand'; if (BT.marker.visible) { const u = BT.sel; BT.marker.material.color.setHex(BT_COLS[u.side]); BT.marker.position.set(u.x, u.y + 0.2 + Math.sin(G.time * 5) * 0.012, u.z); BT.marker.rotation.y += rdt * 3; }
+  if (BT.stage === 'aim' && BT.sides[BT.side] && !BT.sides[BT.side].ai && BT.sel && BT.sel.st === 'stand' && !BT.fired && BT.aim === null && BT.dots.length && BT.dots[0].visible && !BT.drag) btDots(null);
+}
+
+// ---------- the frame ----------
+function battleFrame(dt) {
+  for (const S of G.settlements) S.group.visible = false; for (const l of G.links) l.group.visible = false; for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = false; if (Z.label) Z.label.visible = false; } for (const b of SCAN.bands) b.mesh.visible = false; SPOTMARK.visible = false; if (TOTEM.group) TOTEM.group.visible = false;
+  const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position;
+  BT.slowT = Math.max(0, BT.slowT - dt); BT.timeScale += ((BT.slowT > 0 ? 0.28 : 1) - BT.timeScale) * Math.min(1, dt * 7); const sdt = dt * BT.timeScale * BT.rate;
+  if (BT.stage !== 'pass') { BT.acc += sdt; let n = 0; while (BT.acc >= BT_DT && n++ < 40) { BT.acc -= BT_DT; btTick(BT_DT); } if (BT.acc > BT_DT * 40) BT.acc = 0; btCrumbTick(sdt); btSwingTick(sdt); btHooverTick(sdt); }
+  btAnimWorld(BT.stage === 'pass' ? 0 : sdt, dt, eye); btBubbles(dt, eye);
+  BT.stageT += dt; if (BT.msgT > 0) { BT.msgT -= dt; if (BT.msgT <= 0) $('btMsg').className = ''; }
+  const sd = BT.sides[BT.side];
+  if (BT.stage === 'intro') { if (BT.stageT > 2.5) btBeginTurn(); }
+  else if (BT.stage === 'next') { if (BT.stageT > 0.55 && !btBusy()) btBeginTurn(); }
+  else if (BT.stage === 'lure') {
+    let left = 0; for (const cr of BT.crumbs.slice()) { if (!cr.eat || cr.victim !== BT.side) continue; cr.eatT -= dt; if (cr.eatT <= 0) { BT.group.remove(cr.mesh); BT.crumbs.splice(BT.crumbs.indexOf(cr), 1); const u = cr.eater || btStanding(BT.side)[0]; sfx('nom'); puff('crumbs', cr.x, cr.y + 0.03, cr.z, 4, { size: 0.04, vy: 0.1, life: 0.8 }); if (u) btBubble(u, pick(charOf({ ck: u.ck }).feast), 1.6); btLog('lured', u && u.name); } else left++; }
+    if (!left) { BT.stage = 'aim'; BT.turnT = BT.cfg.turn; BT.stageT = 0; }
+  }
+  else if (BT.stage === 'aim') {
+    if (sd.ai) { BT.aiT += dt; const ad = BT.cfg.aiDelay === undefined ? 0.95 : BT.cfg.aiDelay; if (!BT.plan && BT.aiT > ad * 0.25) BT.plan = btAiPlan(BT.side); if (BT.plan && BT.aiT > ad && !BT.fired) { btAiRun(); } }
+    else if (!BT.drag || BT.drag.mode !== 'aim') { const before = Math.ceil(BT.turnT); BT.turnT -= dt; if (BT.turnT <= 5 && Math.ceil(BT.turnT) !== before && BT.turnT > 0) bsfx('tick'); if (BT.turnT <= 0) { if (BT.sel) btBubble(BT.sel, "Time's up!", 1.4); btLog('timeup', BT.side); BT.drag = null; BT.aim = null; btDots(null); btEndTurn(); } }
+  }
+  else if (BT.stage === 'fly') { if (BT.stageT > 0.5 && !btBusy() && BT.stageT - BT.lastEvent > 0.75) btEndTurn(); else if (BT.stageT > 22) { for (const u of BT.units) if (u.st === 'air' || u.st === 'slide') u.st = 'stand'; btEndTurn(); } }
+  else if (BT.stage === 'over') {
+    if (BT.stageT > 0.8 && BT.over.winner >= 0 && !BT.over.fw) { BT.over.fw = true; const t = BT.sides[BT.over.winner].tent; btFireworks(t.x, t.y + 0.1, t.z); btFireworks(btCenter(BT.over.winner)[0], t.y, btCenter(BT.over.winner)[2]); }
+    if (BT.stageT > 2.2 && !BT.over.shown) { BT.over.shown = true; btEndUi(); }
+  }
+  if (!AR.on) { btCamera(dt, false); if (BT.shake > 0.0005) { camera.position.x += rnd(-1, 1) * BT.shake; camera.position.y += rnd(-1, 1) * BT.shake; camera.position.z += rnd(-1, 1) * BT.shake; camera.updateMatrixWorld(true); } }
+  BT.shake *= Math.pow(0.002, dt); BT.flash = Math.max(0, (BT.flash || 0) - dt * 1.6); const fl = $('btFlash'); if (fl) fl.style.opacity = BT.flash > 0.01 ? BT.flash.toFixed(2) : '0';
+  BT.uiT -= dt; if (BT.uiT <= 0) { BT.uiT = 0.25; btUi(false); }
+}
+function btBusy() { return BT.projs.length > 0 || !!BT.hoover || !!BT.swing || BT.fx.length > 0 || BT.units.some((u) => u.st === 'air' || u.st === 'slide' || u.st === 'popping' || u.st === 'sucked' || u.st === 'swing' || (u.anim && u.anim.k === 'walk') || u.appear > 0) || BT.crumbs.some((c) => !c.popped); }
+
+// ---------- wiring: the title, the in-game menu, and the test hooks ----------
+$('bBattle').onclick = () => { btChooser(); };
+{ const menu0 = menuUi; menuUi = function () { menu0(); const m = $('modal'), row = m.querySelector('.mrow'); if (row && !m.querySelector('#mBattle')) { const b = document.createElement('button'); b.id = 'mBattle'; b.className = 'alt'; b.textContent = 'Battle!'; b.onclick = () => { setTimeout(btChooser, 0); }; row.insertBefore(b, row.firstChild); } }; }
+const BT_HOOKS = { BT, BW, LINT, btBegin, btCleanup, btLeave, btFire, btHop, btSelect, btSolve, btSim, btFly, btStep, btAdvance, btNewProj, btAiPlan, btAimCalc, btArenaPick, btQuickScan, btEndTurn, btBeginTurn, btCheckEnd, btFinish, btBoom, btPop, btHit, btDamage, btShove, btSurf, btCell, btStanding, btAlive, btPointer, btScreen, btChooser, btLaneAt, btHooverScore, btEdgeAhead, btScoreShot, bsfx, btUi, btMuzzle, btBusy, btCamera, btFormation, battleFrame, btAiRun, btBubble, btHooverStart, btLureRun, btCenter, btStickCrumb, btMkUnit, btMkStruct, btReward };
+
 // ============ main loop ============
 function waterStep(dt) {
   const w = G.water; if (!w || G.phase !== 'play') return; const S = w.zone.settled; if (!S) return;
@@ -4034,12 +4809,12 @@ function frame(time, xrFrame) {
   if (!AR.on) requestAnimationFrame(frame);
   if (AR.on) arFrame(xrFrame); else practiceFrame(dt);
   envUpdate(); lighting();
-  if (G.auto) autoTick(dt);
-  else if (G.phase === 'scan') {
+  if (G.auto && !BT.on) autoTick(dt);
+  else if (G.phase === 'scan' && !BT.on) {
     SCAN.t += dt;
     if (SCAN.t > 0.7) { SCAN.t = 0; for (const b of SCAN.bands) refineBand(b); const n = SCAN.zones.length; extractZones(); updateLabels(true); paintBands(false); if (SCAN.zones.length !== n || frameN % 5 === 0) updateHint(); }
   }
-  if (G.phase === 'play') {
+  if (G.phase === 'play' && !BT.on) {
     let acc = dt * G.speed, n = 0; while (acc > 1e-4 && n++ < 60) { const s = Math.min(0.25, acc); simTick(s, false); acc -= s; }
     waterStep(dt); ambient(dt);
     wxT += dt; if (wxT > 1800) { wxT = 0; fetchWeather(false); }
@@ -4053,6 +4828,7 @@ function frame(time, xrFrame) {
       z.label.visible = !mapped && !z.settled && G.phase !== 'title' && (G.time - z.t0 < 3.5 || look); if (z.label.visible) { z.label.position.y = z.y + 0.05; const k = clamp(L2 / 1.2, 0.5, 2.5); z.label.scale.set(0.16 * k, 0.03 * k, 1); } } }
   else for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
+  if (BT.on) battleFrame(dt);
   renderer.render(scene, camera);
 }
 addEventListener('visibilitychange', () => { if (document.hidden) persist(true); }); addEventListener('pagehide', () => persist(true));
@@ -4074,6 +4850,8 @@ window.__g = {
   COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, FUN, CHAR, MILESTONES, pokeCol, pickUp, holdMove, dropCol, dropCrumb, partyToggle, celebrate, festivalStart, festivalEnd, rainbowAt, pipRiver, funUnlocked, albumUi, sayLine, charKey, SND, COL_S, mainSettlement, funReturn, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
   HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
+
+Object.assign(window.__g, BT_HOOKS);
 
 // ============ start ============
 G.last = performance.now();
