@@ -6,7 +6,24 @@ Paths are from the repo root. The app lives in `apps/patchtown-ios/`.
 
 ---
 
-## Step 1. Join the Apple Developer Program (Harry)
+## Start here: the free way (Harry's choice, 11 Nov 2026)
+
+Harry decided to **pay later**. Until then, build PatchTown for **his own iPad only**, free:
+
+1. Do Step 2 (install Xcode and XcodeGen).
+2. In Xcode: Settings → Accounts → **+** → add your normal Apple ID. Xcode makes a free "Personal Team".
+3. In `signing.env`: set `TEAM_ID` to that Personal Team's id (Xcode shows it under the account), and set
+   `BUNDLE_ID` to something unique, for example `com.harryranford.patchtown`.
+4. Do Steps 4 and 5 below (generate, then run on the iPad). On the iPad: Settings → Privacy & Security →
+   **Developer Mode** on, then trust the developer under Settings → General → VPN & Device Management.
+5. **Limits of the free way:** the app stops opening after **7 days**; just run it from Xcode again (saves are kept).
+   No TestFlight, no other people's devices, at most 3 apps at once.
+
+When Harry pays, carry on from Step 1 below. Nothing else changes.
+
+---
+
+## Step 1. Join the Apple Developer Program (Harry, later)
 
 **This is the slow step. Start it first.**
 
