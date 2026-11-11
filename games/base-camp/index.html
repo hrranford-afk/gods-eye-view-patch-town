@@ -59,6 +59,9 @@ button:disabled{opacity:.4}
 .row2,.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.row2 input{flex:1 1 150px;font:700 14px var(--body);padding:8px;border-radius:10px;border:2px solid #fff6e655;background:#fff6e6;color:#3b2a1e;min-height:38px}
 #modal textarea{width:100%;font:12px ui-monospace,monospace;border-radius:10px;padding:6px;background:#fff6e6;color:#3b2a1e}
 label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px var(--body);border:2px solid rgba(255,246,230,.42);border-radius:12px;padding:9px 12px;background:rgba(255,246,230,.16)}label.file input{position:absolute;inset:0;opacity:0}
+#guess{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(92vw,520px);display:grid;gap:8px;z-index:4;text-align:center}#guess .th{font-weight:800;font-size:18px;color:#ffd9a8}#guess .row2{justify-content:center}
+#rstat{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-size:12px;font-weight:700;padding:4px 10px;max-width:46vw}
+.lib{display:flex;gap:10px;align-items:center}.lib>div{flex:1}.lib button{min-height:34px;font-size:13px}.badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 14px var(--body);color:#2b1d12;flex:none}
 #mapInfo{font:700 13px var(--body);opacity:.85}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
@@ -93,6 +96,8 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
   <div id="ask" hidden></div>
   <div id="diary" hidden></div>
   <div id="tagpick" class="glass" hidden></div>
+  <div id="guess" class="glass" hidden></div>
+  <div id="rstat" class="glass" hidden></div>
   <div id="modal" hidden></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -782,7 +787,7 @@ function partsUpdate(dt) {
 
 // ============ COLONY: settlements, things, colonists ============
 const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null,
-  zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null };
+  zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null, library: [], nextLib: 1 };
 const CATCH = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.55 }; // what a catch-up sees: an average day
 const TREE_T = 300, FARM_T = 180; // seconds a tree takes to grow up / a crop takes to ripen (at normal growth)
 const l2w = (S, lx, lz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw); return [S.tf.x + lx * c + lz * s, S.tf.z - lx * s + lz * c]; };
@@ -1254,7 +1259,7 @@ function mapToJSON() {
     zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost,
       land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht) } : null }; }),
     spots: G.spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
-    cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id) };
+    cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id), library: G.library };
 }
 function mapFromJSON(d) { // returns an error string, or '' after loading it into G
   if (!d || typeof d !== 'object' || d.kind !== 'base-camp-room-map') return 'This is not a Base Camp room map.';
@@ -1272,6 +1277,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
   for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
   G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
+  G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
 function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); store.set(MAP_KEY, JSON.stringify(mapToJSON())); }
@@ -1794,7 +1800,7 @@ async function arStart(cont) {
   const lg = $('arLog'); if (lg) lg.textContent = '';
   arLog('AR 1/5: asking for an AR session...');
   try {
-    const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'], domOverlay: { root: $('ui') } });
+    const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'light-estimation'].concat(G.intent === 'map' && RECOG.on ? ['camera-access'] : []), domOverlay: { root: $('ui') } });
     AR.session = session; arLog('AR 2/5: session started (overlay: ' + (session.domOverlayState ? session.domOverlayState.type : 'none') + ')');
     if (!session.domOverlayState) { // iPad: the polyfill can start without wiring the overlay; connect it ourselves so the HUD stays visible
       let fixed = false;
@@ -1815,7 +1821,7 @@ async function arStart(cont) {
     if (typeof XRRay !== 'undefined') for (const [x, y] of [[-0.35, 0.28], [0.35, 0.28], [-0.35, -0.28], [0.35, -0.28]]) { try { AR.srcs.push(await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'], offsetRay: new XRRay({ x: 0, y: 0, z: 0, w: 1 }, { x, y, z: -1, w: 0 }) })); } catch (e) { /* the centre ray alone still works */ } }
     arLog('AR 5/5: sweep the iPad slowly over your desk, shelf and floor');
     setTimeout(() => { const el = $('arLog'); if (el && AR.on) el.remove(); }, 4000);
-    resetWorld(); startScan(cont);
+    AR.dev = null; resetWorld(); startScan(cont); if (G.intent === 'map' && RECOG.on) cocoLoad(); if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
     renderer.xr.setAnimationLoop(frame);
   } catch (err) {
     console.warn('AR could not start:', err); const msg = String(err && err.message || err);
@@ -1962,7 +1968,191 @@ function moveProp(p, cx, cy) { // drag a prop along the surfaces of the room
 function focusOn(x, y, z, d) { P.gTarget.set(x, y, z); P.gDist = d; }
 function focusZone(z) { focusOn(z.cx, z.y + 0.03, z.cz, clamp(0.22 + Math.max(z.w, z.d) * 0.42, 0.4, 3.2)); }
 
-const RECOG = { clip: { on: false } };
+// ============ RECOGNITION: "they know what a lot of stuff is", and ask when unsure ============
+// Camera pictures never leave the device: the models are downloaded, the pictures are only looked at here.
+//  1. COCO-SSD (TensorFlow.js, about 5 MB of weights) looks at the camera picture every ~1.5 s while the player is mapping. A detection's bottom-centre is
+//     a ray onto the scanned surfaces, which says where the thing stands; class -> role is the COCO_ROLES table below.
+//  2. Optional "smarter recognition": CLIP (transformers.js, vision model q4f16, about 53 MB, downloaded on demand) classifies the crop around a tapped thing
+//     against label embeddings that were computed at build time (clip-labels.json), so things COCO does not know (speakers, a GPU box, cans) get a guess too.
+//  3. Sure enough: "I think this is a cup! Right?" (Yes / No / Something else). Not sure: "What is this?" with the tag picker.
+//  4. Every answer goes into the room's LIBRARY (saved with the room map). The library overrides guesses from then on.
+const TF_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js', COCO_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
+const CLIP_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5/dist/transformers.min.js', CLIP_MODEL = 'Xenova/clip-vit-base-patch32', CLIP_DTYPES = ['q4f16', 'q4', 'bnb4', 'q8'];
+const COCO_ROLES = { // COCO-SSD class -> what it means in a room (tag = the spot tag it becomes). One table: add a class here and the game knows it.
+  cup: { tag: 'cup', name: 'cup' }, 'wine glass': { tag: 'cup', name: 'glass' }, bowl: { tag: 'cup', name: 'bowl' }, vase: { tag: 'cup', name: 'vase' }, bottle: { tag: 'can', name: 'bottle' },
+  tv: { tag: 'monitor', name: 'screen' }, laptop: { tag: 'computer', name: 'laptop' }, keyboard: { tag: 'computer', name: 'keyboard' }, mouse: { tag: 'computer', name: 'mouse' },
+  couch: { tag: 'sofa', name: 'sofa' }, chair: { tag: 'sofa', name: 'chair' }, bed: { tag: 'sofa', name: 'bed' }, 'potted plant': { tag: 'plant', name: 'plant' }, 'dining table': { tag: 'desk', name: 'table' },
+  microwave: { tag: 'warm', name: 'warm box' }, oven: { tag: 'warm', name: 'oven' }, toaster: { tag: 'warm', name: 'toaster' }, refrigerator: { tag: 'drawers', name: 'fridge' }, sink: { tag: 'other', name: 'sink' },
+  book: { tag: 'other', name: 'book' }, clock: { tag: 'other', name: 'clock' }, 'cell phone': { tag: 'other', name: 'phone' }, suitcase: { tag: 'drawers', name: 'case' }, backpack: { tag: 'other', name: 'bag' },
+};
+const RECOG = {
+  on: true, detector: null, busy: false, t: 0, cand: [], ask: null, no: [], lastAsk: -1e9, cool: 6000, err: '', stats: { frames: 0, dets: 0, proposals: 0, auto: 0 },
+  coco: { state: 'off', model: null, ms: 0, runs: 0, loadMs: 0, err: '' },
+  clip: { on: false, state: 'off', T: null, proc: null, model: null, labels: null, checks: null, ms: 0, runs: 0, dtype: '', loadMs: 0, pct: 0, err: '' },
+};
+const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+async function cocoLoad() {
+  const c = RECOG.coco; if (c.state === 'ready' || c.state === 'loading') return; c.state = 'loading'; const t0 = performance.now(); recogStatus();
+  try { await loadScript(TF_URL); await loadScript(COCO_URL); c.model = await cocoSsd.load({ base: 'lite_mobilenet_v2' }); c.state = 'ready'; c.loadMs = performance.now() - t0; } catch (e) { c.state = 'error'; c.err = String(e && e.message || e); }
+  recogStatus();
+}
+function recogStatus() {
+  const el = $('rstat'), c = RECOG.coco, k = RECOG.clip, parts = [];
+  if (RECOG.on && (G.phase === 'scan' || G.phase === 'tag')) parts.push(RECOG.detector ? 'Recognising things (practice eyes)' : c.state === 'ready' ? 'Recognising things' + (c.ms ? ' (' + Math.round(c.ms) + ' ms)' : '') : c.state === 'loading' ? 'Loading recognition...' : c.state === 'error' ? 'Recognition unavailable' : '');
+  if (k.on) parts.push(k.state === 'ready' ? 'Smarter recognition on' : k.state === 'loading' ? 'Smarter recognition: downloading ' + k.pct + '%' : k.state === 'error' ? 'Smarter recognition failed: ' + k.err : '');
+  el.textContent = parts.filter(Boolean).join(' · '); el.hidden = !el.textContent;
+}
+// ---- the camera picture ----
+function arDevice() { if (AR.dev) return AR.dev; try { for (const sym of Object.getOwnPropertySymbols(AR.session)) { const d = AR.session[sym] && AR.session[sym].device; if (d && d._cameraImage) { AR.dev = d; return d; } } } catch (e) { /* none */ } return null; }
+function recogFrame() { // { img, w, h } the newest camera picture (AR), or the practice view (a practice detector does not need pixels)
+  if (AR.on) { const d = arDevice(), im = d && d._cameraImage; return d && d._videoDataReady && im && im.naturalWidth ? { img: im, w: im.naturalWidth, h: im.naturalHeight, real: true } : null; }
+  return { img: null, w: innerWidth, h: innerHeight, real: false };
+}
+function cropFrame(fr, box, pad) { // box: [x0, y0, x1, y1] in screen pixels -> a canvas with that part of the camera picture (or of the 3D view in practice)
+  const sx = fr.w / innerWidth, sy = fr.h / innerHeight; let [x0, y0, x1, y1] = box; const px = (x1 - x0) * pad + 12, py = (y1 - y0) * pad + 12; x0 = clamp(x0 - px, 0, innerWidth - 8); y0 = clamp(y0 - py, 0, innerHeight - 8); x1 = clamp(x1 + px, x0 + 8, innerWidth); y1 = clamp(y1 + py, y0 + 8, innerHeight);
+  const cvs = document.createElement('canvas'); cvs.width = Math.max(32, Math.round((x1 - x0) * sx)); cvs.height = Math.max(32, Math.round((y1 - y0) * sy)); const g = cvs.getContext('2d');
+  if (fr.img) g.drawImage(fr.img, x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy, 0, 0, cvs.width, cvs.height);
+  else { renderer.render(scene, camera); g.drawImage(renderer.domElement, x0 * renderer.domElement.width / innerWidth, y0 * renderer.domElement.height / innerHeight, (x1 - x0) * renderer.domElement.width / innerWidth, (y1 - y0) * renderer.domElement.height / innerHeight, 0, 0, cvs.width, cvs.height); }
+  return cvs;
+}
+// ---- detections -> things in the room ----
+async function recogDetect(fr) {
+  if (RECOG.detector) return RECOG.detector(fr);
+  if (G.mode === 'practice') return practiceDetector(fr);
+  const c = RECOG.coco; if (c.state !== 'ready' || !fr.img) return [];
+  const t0 = performance.now(), out = await c.model.detect(fr.img, 12, 0.3); c.ms = performance.now() - t0; c.runs++;
+  return out.map((o) => ({ class: o.class, score: o.score, bbox: o.bbox }));
+}
+function libFind(key) { return G.library.find((e) => e.key === key); }
+function topNear(hit) { // the top of a small thing standing where a detection's feet are: a bump or a small zone a few cm to 50 cm above the surface, close to the hit
+  let best = null, bd = 0.12;
+  for (const b of SCAN.bands) {
+    const dy = b.y - hit.y; if (dy < 0.03 || dy > 0.5 || !b.bump) continue;
+    for (let dx = -0.1; dx <= 0.1; dx += 0.02) for (let dz = -0.1; dz <= 0.1; dz += 0.02) { const k = gIdx(hit.x + dx, hit.z + dz); if (k >= 0 && b.g[k] && b.bump[k]) { const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = { b, k }; } } }
+  }
+  if (!best) return null; const c = bandComponent(best.b, best.k); return { x: c.x, z: c.z, y: best.b.y, area: c.area };
+}
+function recogConsider(d, fr) {
+  const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
+  const sx = (d.bbox[0] + d.bbox[2] / 2) / fr.w * innerWidth, sy = (d.bbox[1] + d.bbox[3]) / fr.h * innerHeight, hit = surfacePick(sx, sy); if (!hit) return;
+  const top = topNear(hit) || { x: hit.px, z: hit.pz, y: hit.y, area: hit.comp.area };
+  if (G.spots.some((s) => s.src !== 'default' && Math.hypot(s.x - top.x, s.z - top.z) < 0.07)) return; // already named
+  if (RECOG.ask && RECOG.ask.cls === d.class && Math.hypot(RECOG.ask.x - top.x, RECOG.ask.z - top.z) < 0.12) return; // this one is being asked about right now
+  if (RECOG.no.some((q) => q.cls === d.class && Math.hypot(q.x - top.x, q.z - top.z) < 0.15 && performance.now() - q.t < 180000)) return;
+  let c = RECOG.cand.find((q) => q.cls === d.class && Math.hypot(q.x - top.x, q.z - top.z) < 0.1 && Math.abs(q.y - top.y) < 0.06);
+  if (!c) { c = { cls: d.class, tag: R.tag, name: R.name, x: top.x, y: top.y, z: top.z, area: top.area, n: 0, score: 0, lib: !!lib, t: 0 }; RECOG.cand.push(c); }
+  c.n++; c.score = Math.max(c.score, d.score); c.t = performance.now(); c.x += (top.x - c.x) * 0.3; c.z += (top.z - c.z) * 0.3;
+}
+function recogPropose() {
+  RECOG.cand = RECOG.cand.filter((c) => performance.now() - c.t < 20000);
+  for (const c of RECOG.cand.slice()) {
+    const lib = libFind('coco:' + c.cls); // the library overrides: what the player taught is not asked again
+    if (lib && c.n >= 2) { RECOG.cand.splice(RECOG.cand.indexOf(c), 1); const sp = addSpot({ tag: lib.tag, name: lib.name, x: c.x, y: c.y, z: c.z, area: c.area, src: 'library' }); lib.n++; RECOG.stats.auto++; toast('The colonists know this one from the library: ' + sp.name + '.'); saveMap(); updateHint(); continue; }
+  }
+  if (RECOG.ask || performance.now() - RECOG.lastAsk < RECOG.cool || !$('tagpick').hidden || !$('modal').hidden) return;
+  const c = RECOG.cand.filter((q) => !libFind('coco:' + q.cls) && (q.n >= 2 || q.score >= 0.6)).sort((a, b) => b.score - a.score)[0]; if (!c) return;
+  RECOG.cand.splice(RECOG.cand.indexOf(c), 1); guessCard({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, score: c.score, key: 'coco:' + c.cls, src: 'COCO-SSD', cls: c.cls }); RECOG.stats.proposals++;
+}
+async function recogTick() {
+  if (RECOG.busy || !RECOG.on || !(G.phase === 'scan' || G.phase === 'tag') || !SCAN.bands.length) return;
+  const fr = recogFrame(); if (!fr) return; RECOG.busy = true;
+  try { const dets = await recogDetect(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); } catch (e) { RECOG.err = String(e && e.message || e); }
+  RECOG.busy = false;
+}
+// ---- asking: "I think this is a cup! Right?" and "What is this?" ----
+function guessCard(g) {
+  RECOG.ask = g; RECOG.lastAsk = performance.now(); const el = $('guess'); el.hidden = false;
+  el.innerHTML = '<div class="th">I think this is ' + (/^[aeiou]/i.test(g.name) ? 'an ' : 'a ') + esc(g.name) + '! Right?</div><div class="sub">' + esc(g.src) + ' guess, ' + Math.round(g.score * 100) + '% sure. Camera pictures stay on this device.</div><div class="row2"><button class="big alt" id="gYes">Yes</button><button id="gNo">No</button><button id="gElse">Something else</button></div>';
+  $('gYes').onclick = () => answerGuess('yes'); $('gNo').onclick = () => answerGuess('no'); $('gElse').onclick = () => answerGuess('else');
+  clearTimeout(RECOG.askT); RECOG.askT = setTimeout(() => { if (RECOG.ask === g) { RECOG.ask = null; $('guess').hidden = true; } }, 20000);
+}
+function libAdd(key, tag, name, by, how) {
+  let e = libFind(key); if (e) { Object.assign(e, { tag, name, by, how }); e.n++; } else { e = { id: ++G.nextLib, key, tag, name, by, how, at: Date.now(), n: 1 }; G.library.push(e); } return e;
+}
+function answerGuess(a) {
+  const g = RECOG.ask; if (!g) return; RECOG.ask = null; $('guess').hidden = true; clearTimeout(RECOG.askT); RECOG.cand = RECOG.cand.filter((c) => !(c.cls === g.cls && Math.hypot(c.x - g.x, c.z - g.z) < 0.12));
+  if (a === 'yes') { addSpot({ tag: g.tag, name: g.name, x: g.x, y: g.y, z: g.z, area: g.area, src: 'player' }); libAdd(g.key, g.tag, g.name, 'you', 'confirmed the ' + g.src + ' guess'); toast('Great, a ' + g.name + '! The colonists will remember.'); sfx('pop'); }
+  else if (a === 'no') { RECOG.no.push({ cls: g.cls || g.key, x: g.x, z: g.z, t: performance.now() }); toast('Okay, not a ' + g.name + '.'); }
+  else { tagPickUi({ px: g.x, pz: g.z, y: g.y, comp: { area: g.area } }, null, g); }
+  saveMap(); barUi(); updateHint();
+}
+function unknownTops() { // small tops (speakers, boxes, cans) that nobody has named yet
+  const out = [];
+  for (const Z of G.zones) if (Z.type === 'SMALL' && !G.spots.some((s) => s.zid === Z.id && s.src !== 'default')) out.push({ x: Z.cx, y: Z.y, z: Z.cz, area: Z.area, zone: Z });
+  for (const Z of G.zones) if (Z.land) for (const o of Z.land.objs) if (o.area > 0.002 && !G.spots.some((s) => s.src !== 'default' && Math.hypot(s.x - o.x, s.z - o.z) < 0.1)) out.push({ x: o.x, y: Z.y + Math.max(0.03, o.h), z: o.z, area: o.area });
+  return out;
+}
+function askUnknown() { // "What is this?": one thing at a time, nearest the camera first
+  const u = unknownTops(); if (!u.length) return toast('Everything small is already named.');
+  const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; u.sort((a, b) => Math.hypot(a.x - eye.x, a.z - eye.z) - Math.hypot(b.x - eye.x, b.z - eye.z));
+  const t = u[0]; if (G.mode === 'practice') focusOn(t.x, t.y, t.z, 1.2);
+  const pk = { px: t.x, pz: t.z, y: t.y, comp: { area: t.area } };
+  if (RECOG.clip.state === 'ready') clipGuess(pk).then((g) => { if (g && g.p >= 0.5) guessCard(g); else tagPickUi(pk, null, g ? { hint: g.top } : null); }); else tagPickUi(pk, null);
+}
+// ---- CLIP: the smarter eyes (opt-in download) ----
+function smartToggle() {
+  const k = RECOG.clip;
+  if (k.on) { k.on = false; store.set('bc-clip', '0'); recogStatus(); return toast('Smarter recognition off.'); }
+  if (k.state === 'ready') { k.on = true; store.set('bc-clip', '1'); recogStatus(); return toast('Smarter recognition on.'); }
+  const m = $('modal'); m.hidden = false;
+  m.innerHTML = '<div class="dh">Smarter recognition</div><div class="sub">Downloads a small image model once (about 55 MB, kept by the browser). With it the colonists can also guess things the basic eyes do not know: speakers, a GPU box, cans. Pictures from the camera are looked at on this device and never sent anywhere.</div><div class="mrow"><button class="big alt" id="smGo">Download and turn on</button><button id="smNo">Not now</button></div>';
+  $('smNo').onclick = () => { m.hidden = true; }; $('smGo').onclick = () => { m.hidden = true; k.on = true; store.set('bc-clip', '1'); clipLoad(); };
+}
+async function clipLoad() {
+  const k = RECOG.clip; if (k.state === 'ready' || k.state === 'loading') return; k.state = 'loading'; k.pct = 0; k.err = ''; const t0 = performance.now(); recogStatus();
+  try {
+    const lj = await fetch('clip-labels.json').then((r) => { if (!r.ok) throw new Error('clip-labels.json is missing'); return r.json(); }); k.labels = lj.labels; k.checks = lj.checks || []; k.scale = lj.scale || 100;
+    const T = await import(CLIP_URL); T.env.allowLocalModels = false; k.T = T;
+    k.proc = await T.AutoProcessor.from_pretrained(CLIP_MODEL);
+    let last = null;
+    for (const dtype of CLIP_DTYPES) { // the smallest model first; if this device cannot run it, the next one
+      try { k.model = await T.CLIPVisionModelWithProjection.from_pretrained(CLIP_MODEL, { dtype, progress_callback: (p) => { if (p.status === 'progress' && /vision/.test(p.file || '')) { k.pct = Math.round(p.progress || 0); recogStatus(); } } }); k.dtype = dtype; await clipEmbed(Object.assign(document.createElement('canvas'), { width: 32, height: 32 })); break; } catch (e) { last = e; k.model = null; }
+    }
+    if (!k.model) throw last || new Error('no model could run');
+    k.state = 'ready'; k.loadMs = performance.now() - t0;
+  } catch (e) { k.state = 'error'; k.err = String(e && e.message || e).slice(0, 80); k.on = false; }
+  recogStatus();
+}
+async function clipEmbed(cvs) {
+  const k = RECOG.clip, img = await k.T.RawImage.fromCanvas(cvs), inputs = await k.proc(img), { image_embeds } = await k.model(inputs), v = Array.from(image_embeds.data), n = Math.hypot(...v) || 1;
+  return v.map((x) => x / n);
+}
+function clipScores(emb, extra) { // softmax over the label list (and the build-time checks, if asked)
+  const k = RECOG.clip, L = k.labels.concat(extra ? k.checks : []), z = L.map((l) => { let s = 0; for (let i = 0; i < emb.length; i++) s += emb[i] * l.emb[i]; return s * k.scale; }), m = Math.max(...z), e = z.map((x) => Math.exp(x - m)), t = e.reduce((a, b) => a + b, 0);
+  return L.map((l, i) => ({ label: l.label, tag: l.tag, name: l.name, p: e[i] / t })).sort((a, b) => b.p - a.p);
+}
+async function clipClassify(cvs) { const t0 = performance.now(), emb = await clipEmbed(cvs), sc = clipScores(emb); RECOG.clip.ms = performance.now() - t0; RECOG.clip.runs++; return sc; }
+function screenBoxOf(pk) { // the screen rectangle around a tapped thing: its top, and its foot on the surface below
+  const half = Math.max(0.03, Math.sqrt(pk.comp.area) / 2 + 0.01), Z = zoneOfPoint(pk.px, pk.y - 0.02, pk.pz), base = Z && Z.y < pk.y - 0.02 ? Z.y : pk.y - 0.1; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const yy of [pk.y, base]) for (const [dx, dz] of [[-half, -half], [half, -half], [-half, half], [half, half]]) { const [sx, sy] = toScreen(tmpV.set(pk.px + dx, yy, pk.pz + dz)); x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+  return [x0, y0, x1, y1];
+}
+async function clipGuess(pk) { // what is the thing at this spot? { name, tag, p, top: [3 best] } or null
+  const k = RECOG.clip; if (k.state !== 'ready') return null; const fr = recogFrame(); if (!fr) return null;
+  let sc = await clipClassify(cropFrame(fr, screenBoxOf(pk), 0.3)); const top = sc.slice(0, 3);
+  const lib = sc.find((s) => libFind('clip:' + s.label) && s.p > 0.2); // what the player already taught about this kind of look wins
+  if (lib) { const e = libFind('clip:' + lib.label); return { tag: e.tag, name: e.name, p: 1, top, lib: true, x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area, score: 1, key: 'clip:' + lib.label, src: 'library' }; }
+  const best = sc[0]; return { tag: best.tag, name: best.name, p: best.p, top, x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area, score: best.p, key: 'clip:' + best.label, src: 'CLIP' };
+}
+// ---- our library ----
+function libUi() {
+  const m = $('modal'); m.hidden = false;
+  const rows = G.library.map((e) => { const R = ROLES[(TAGS[e.tag] || TAGS.other).role] || ROLES.camp, col = '#' + R.color.toString(16).padStart(6, '0'); return `<div class="lib"><span class="badge" style="background:${col}">${esc((e.name || '?').slice(0, 2).toUpperCase())}</span><div><b>${esc(e.name)}</b><div class="sub">${esc(R.name)} · taught by ${esc(e.by === 'you' ? 'you, the Giant' : e.by)} (${esc(e.how)}${e.n > 1 ? ', seen ' + e.n + ' times' : ''})</div></div><button data-forget="${e.id}">Forget</button></div>`; }).join('');
+  m.innerHTML = '<div class="dh">Our library</div><div class="sub">What the colonists have learned about the things in this room. It overrides their guesses, and it travels with the room map.</div>' + (rows || '<div class="sub">Nothing taught yet. Name a thing and they will remember it.</div>') + '<div class="mrow"><button id="libClose">Close</button></div>';
+  m.onclick = (ev) => { const t = ev.target.closest('button'); if (!t) return; if (t.id === 'libClose') m.hidden = true; else if (t.dataset.forget) { G.library = G.library.filter((e) => e.id !== +t.dataset.forget); saveMap(); libUi(); } };
+}
+// the practice room's eyes: it knows a cup, half-knows a can (a bottle, unsure), and has never heard of a speaker or a GPU box, so the game has to ask
+function practiceDetector(fr) {
+  const out = []; if (G.mode !== 'practice') return out;
+  for (const p of PROPS) {
+    const cls = { cup: ['cup', 0.86], can: ['bottle', 0.52], gpu: ['laptop', 0.31] }[p.kind]; if (!cls) continue;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, vis = true; room.updateMatrixWorld(true);
+    for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) { const v = new THREE.Vector3(p.x + sx * p.w / 2, p.base + sy * p.h, p.z + sz * p.d / 2).applyMatrix4(room.matrixWorld), [px, py, ok] = toScreen(v); if (!ok) vis = false; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+    if (vis && x1 > 0 && x0 < innerWidth && y1 > 0 && y0 < innerHeight) out.push({ class: cls[0], score: cls[1], bbox: [x0, y0, x1 - x0, y1 - y0] });
+  }
+  return out;
+}
+
 // ============ UI ============
 function setPhase(p) {
   G.phase = p; const scan = p === 'scan' || p === 'align';
@@ -1974,7 +2164,7 @@ function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z);
-  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
@@ -2011,8 +2201,8 @@ function barUi() {
   const b = $('bar'); b.hidden = false; const pr = G.mode === 'practice';
   if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (pr ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
   else if (G.phase === 'zones') b.innerHTML = '<button id="bTag">Name spots</button><button id="bRescan">Scan again</button><button id="bQuit">Back</button>';
-  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bMapIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
-  else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
+  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bMapIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
+  else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignMore">Scan more first</button><button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
     b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
@@ -2039,6 +2229,8 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
   if (t.id === 'bSaveMap') { autoSpots(); saveMap(); toast('Room map saved: ' + G.zones.length + ' surfaces, ' + G.spots.filter((s) => s.src !== 'default').length + ' named spots. The colonists can use it while you are away.', 4); sfx('chime'); return; }
   if (t.id === 'bMapIO') return ioUi();
+  if (t.id === 'bAsk') return askUnknown();
+  if (t.id === 'bAlignMore') { SCAN.frozen = false; setPhase('scan'); G.cont = true; barUi(); updateHint(); toast('Scan the things you need to tap, then Done scanning.'); return; }
   if (t.id === 'bAlignSkip') return finishAlign(true);
   if (t.id === 'bAlignOk') return finishAlign(false);
   if (t.id === 'bAlignRe') { alignStart(); return; }
@@ -2089,11 +2281,11 @@ function finishAlign(skip) {
   G.aligned = true; setPhase('play'); finishScan();
 }
 // ---- tagging spots ----
-function tagPickUi(pk, existing) {
-  const el = $('tagpick'); el.hidden = false; G.tagTarget = { pk, existing };
+function tagPickUi(pk, existing, guess) {
+  const el = $('tagpick'); el.hidden = false; G.tagTarget = { pk, existing, guess };
   const sp = existing, info = sp ? roomInfo(sp.tag) : null;
   el.innerHTML = (sp ? `<div class="th">${esc(sp.name)} <span class="sub">${esc(spotUsed(sp))}</span></div>` + (info ? `<div class="sub">gives: ${esc(info.gives || spotRole(sp).gives)}; costs: ${esc(info.costs || '')}; they get there by ${esc(spotHow(sp))}. <i class="by">by ${esc(info.by || '')}</i></div>` : `<div class="sub">${esc(spotRole(sp).gives)}</div>`)
-    : `<div class="th">What is this?</div><div class="sub">${pk.comp.area < 0.25 ? 'A small top, ' + Math.round(Math.sqrt(pk.comp.area) * 100) + ' cm across, ' : 'A big surface '}${pk.y.toFixed(2)} m up.</div>`)
+    : `<div class="th">What is this?</div><div class="sub">${pk.comp.area < 0.25 ? 'A small top, ' + Math.round(Math.sqrt(pk.comp.area) * 100) + ' cm across, ' : 'A big surface '}${pk.y.toFixed(2)} m up.${guess && guess.hint ? ' Maybe: ' + guess.hint.map((h) => esc(h.name)).join(', ') + '.' : ''}${guess && guess.cls ? ' The basic eyes saw a "' + esc(guess.cls) + '".' : ''}</div>`)
     + '<div class="tags">' + Object.keys(TAGS).map((k) => `<button data-tag="${k}">${esc(TAGS[k].label)}</button>`).join('') + '</div>'
     + `<div class="row2"><input id="tagName" maxlength="28" placeholder="${sp ? 'Rename...' : 'Or a name of your own (Radeon, kettle...)'}" value="${sp ? esc(sp.name) : ''}"> ${sp ? '<button id="tagRename">Rename</button><button id="tagCable">Cable from here</button><button id="tagDel">Delete</button>' : ''}<button id="tagCancel">Close</button></div>`;
 }
@@ -2103,7 +2295,7 @@ $('tagpick').addEventListener('click', (e) => {
   const custom = ($('tagName') && $('tagName').value || '').trim();
   if (t.dataset.tag) {
     if (existing) { const T = TAGS[t.dataset.tag]; existing.tag = t.dataset.tag; existing.role = T.role; existing.name = (custom && custom !== existing.name ? custom : T.label); existing.src = 'player'; }
-    else if (pk) addSpot({ tag: t.dataset.tag, name: custom, x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area });
+    else if (pk) { const gs = G.tagTarget.guess, sp2 = addSpot({ tag: t.dataset.tag, name: custom, x: pk.px, y: pk.y, z: pk.pz, area: pk.comp.area }); libAdd(gs && gs.key ? gs.key : 'spot:' + sp2.id, t.dataset.tag, sp2.name, 'you', gs && gs.key ? 'taught: the ' + (gs.src || 'guess') + ' was wrong' : 'named it'); }
     for (const S of G.settlements) S.fx = null; $('tagpick').hidden = true; refreshSpots(); barUi(); updateHint(); sfx('pop'); saveMap(); return;
   }
   if (t.id === 'tagCancel') $('tagpick').hidden = true;
@@ -2125,6 +2317,7 @@ function tagTap(cx, cy) {
   }
   if (near) return tagEdit(near);
   const pk = surfacePick(cx, cy); if (!pk) { toast('Tap on a scanned surface.'); return; }
+  if (RECOG.clip.on && RECOG.clip.state === 'ready') { toast('Looking...', 1.5); clipGuess(pk).then((g) => { if (g && g.lib) { addSpot({ tag: g.tag, name: g.name, x: g.x, y: g.y, z: g.z, area: g.area, src: 'library' }); toast('From the library: ' + g.name + '.'); } else if (g && g.p >= 0.5) guessCard(g); else tagPickUi(pk, null, g ? { hint: g.top } : null); }).catch(() => tagPickUi(pk, null)); return; }
   tagPickUi(pk, null);
 }
 // ---- the menu, and the export / import window ----
@@ -2189,8 +2382,6 @@ function cardUi() {
   el.hidden = false; el.innerHTML = `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
 }
 function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
-function libUi() { const m = $('modal'); m.hidden = false; m.innerHTML = '<div class="dh">Our library</div><div class="sub">Nothing taught yet.</div><div class="mrow"><button id="libClose">Close</button></div>'; $('libClose').onclick = () => { m.hidden = true; }; }
-function smartToggle() { toast('Not available yet.'); }
 
 
 // ============ input: one touch layer for AR and practice ============
@@ -2366,6 +2557,7 @@ function frame(time, xrFrame) {
     wxT += dt; if (wxT > 1800) { wxT = 0; fetchWeather(false); }
     saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); }
   }
+  if (G.phase === 'scan' || G.phase === 'tag') { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
   visuals(dt, G.time); partsUpdate(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
@@ -2383,6 +2575,7 @@ window.__g = {
   newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, applyWx, setPhase,
   addSpot, removeSpot, addCable, syncCables, autoSpots, pickLandmarks, spotById, spotsOn, anchorFor, syncLandmarks, landTidy, landDisturb, landCalm, objClass, measureLand,
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
+  RECOG, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 

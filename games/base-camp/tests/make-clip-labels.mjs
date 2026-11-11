@@ -18,14 +18,17 @@ const LABELS = [
   ['a potted plant', 'plant', 'plant'], ['a flower pot', 'plant', 'plant'],
   ['a cardboard box', 'other', 'cardboard box'], ['a book', 'other', 'book'], ['a reel of cable', 'other', 'cable reel'], ['a workbench', 'desk', 'workbench'], ['a table', 'desk', 'table'], ['a desk', 'desk', 'desk'],
 ];
+// extra entries only used by the tests (a real photo of a dog must come out as "a dog", which proves the text and vision sides belong together)
+const CHECKS = ['a dog', 'a cat', 'a person', 'a car'];
 const tok = await AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
 const model = await CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', { dtype: 'q8' });
-const inputs = tok(LABELS.map((l) => 'a photo of ' + l[0]), { padding: true, truncation: true });
+const inputs = tok(LABELS.map((l) => 'a photo of ' + l[0]).concat(CHECKS.map((c) => 'a photo of ' + c)), { padding: true, truncation: true });
 const { text_embeds } = await model(inputs);
 const d = text_embeds.dims[1], out = { model: 'Xenova/clip-vit-base-patch32', dim: d, scale: 100, prompt: 'a photo of {label}', labels: [] };
 for (let i = 0; i < LABELS.length; i++) {
   const v = Array.from(text_embeds.data.slice(i * d, (i + 1) * d)), n = Math.hypot(...v);
   out.labels.push({ label: LABELS[i][0], tag: LABELS[i][1], name: LABELS[i][2], emb: v.map((x) => +(x / n).toFixed(4)) });
 }
+out.checks = CHECKS.map((c, i) => { const j = LABELS.length + i, v = Array.from(text_embeds.data.slice(j * d, (j + 1) * d)), n = Math.hypot(...v); return { label: c, emb: v.map((x) => +(x / n).toFixed(4)) }; });
 fs.writeFileSync(process.argv[2] || 'clip-labels.json', JSON.stringify(out));
 console.log('wrote', LABELS.length, 'labels,', d, 'dims');
