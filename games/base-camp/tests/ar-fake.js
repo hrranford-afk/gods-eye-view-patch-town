@@ -4,7 +4,7 @@ module.exports = function install(p, SHED) {
   return p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
     const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
-    window.__native = { hits: 0, empty: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
+    window.__native = { hits: 0, empty: 0, calls: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
     try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested
     // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
     const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y, hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
@@ -38,9 +38,16 @@ module.exports = function install(p, SHED) {
       stopAR: h((b2) => { clearInterval(timer); if (b2 && b2.callback) reply(b2.callback, {}); }),
       hitTest: h((b2) => {
         const nx = b2.x * 2 - 1, ny = 1 - b2.y * 2, dc = [nx * asp / f, ny / f, -1], m = cam, d = [m[0] * dc[0] + m[4] * dc[1] + m[8] * dc[2], m[1] * dc[0] + m[5] * dc[1] + m[9] * dc[2], m[2] * dc[0] + m[6] * dc[1] + m[10] * dc[2]];
-        const out = []; let bt = 1e9, bh = null;
-        if (d[1] < -1e-3) for (const S of place()) { const t = (S.y - m[13]) / d[1]; if (t <= 0 || t >= bt) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { bt = t; bh = [hx, S.y, hz]; } }
-        if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, bh[0], bh[1] + (Math.random() - 0.5) * 0.006, bh[2], 1] });
+        // real surfaces answer with their plane uuid; a ray that misses every real surface falls back to an ESTIMATED plane (no uuid), like WebXRKit's native performHitTest:
+        // the estimate extends a surface by EXT metres beyond its real edge (spill into thin air) and is a little noisier
+        const out = []; let bt = 1e9, bh = null, bu = null, et = 1e9, eh = null; const EXT = window.__native.ext === undefined ? 0.35 : window.__native.ext, est = window.__native.estimated !== false;
+        if (d[1] < -1e-3) for (const S of place()) { const t = (S.y - m[13]) / d[1]; if (t <= 0) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c;
+          if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { if (t < bt) { bt = t; bh = [hx, S.y, hz]; bu = 'plane-' + S.n; } }
+          else if (est && S.n !== 'chandelier' && Math.abs(lx) < S.hw + EXT && Math.abs(lz) < S.hd + EXT && t < et) { et = t; eh = [hx, S.y, hz]; } }
+        const nz = () => (Math.random() - 0.5);
+        if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, bh[0], bh[1] + nz() * 0.006, bh[2], 1], uuid: bu });
+        else if (eh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, eh[0] + nz() * 0.03, eh[1] + nz() * 0.03, eh[2] + nz() * 0.03, 1] });
+        window.__native[bu ? 'anch' : eh ? 'est' : 'miss'] = (window.__native[bu ? 'anch' : eh ? 'est' : 'miss'] || 0) + 1;
         window.__native[out.length ? 'hits' : 'empty']++; reply(b2.callback, out);
       }),
       onUpdate: h(), removeAnchors: h(), setUIOptions: h(),

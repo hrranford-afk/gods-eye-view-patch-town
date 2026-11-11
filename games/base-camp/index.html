@@ -28,7 +28,7 @@ button:disabled{opacity:.4}
 #hint:empty{display:none}
 /* In AR inside HelloXR, its own Exit AR button sits top-left: keep our panels clear of it and a bit smaller */
 body.inar #top{top:calc(env(safe-area-inset-top,0px) + 120px);font-size:14px;max-width:min(70vw,520px)}
-body.inar #card{top:calc(env(safe-area-inset-top,0px) + 120px)}
+body.inar #card{left:auto;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);font-size:11px;font-weight:700;line-height:1.2;min-width:0;padding:2px 8px;border-radius:9px;opacity:.85;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
 body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 #chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;pointer-events:none}
 .chip{font:800 13px var(--body);padding:4px 10px;border-radius:99px;color:#2b1d12;pointer-events:auto}
@@ -123,7 +123,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 5';
+const BUILD = 'build 6';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -325,12 +325,13 @@ function bubbleTex(name) { const k = 'b_' + name; return TEX[k] || (TEX[k] = cv(
 
 // ============ SCAN: heights -> bands -> grids -> zones ============
 const CELL = 0.02, GN = 250, SPAN = GN * CELL, MINC = 125; // 2 cm cells, 5 m x 5 m grids, a zone needs 0.05 m2
-const SCAN = { origin: null, bands: [], zones: [], nextZone: 1, last: [], frozen: false, t: 0, hits: 0 };
+const SCAN = { origin: null, bands: [], zones: [], nextZone: 1, last: [], frozen: false, t: 0, hits: 0, weak: 0, fr: 0, uids: new Map() }; // hits = trusted hits; weak = estimated-plane guesses (no uuid)
+const CLOSE_R = 1.5; // closing radius in cells: gaps up to 3 cells (6 cm) fill, a 15 cm gap between two things never does
 const ZPAL = [0xffb36b, 0x8fd16f, 0x7fc4e8, 0xf2a2c7, 0xf5d76e, 0xb79bf0, 0x6fd6c0, 0xf08a6a];
 function scanReset() {
   for (const b of SCAN.bands) { world.remove(b.mesh); b.mesh.geometry.dispose(); b.tex.dispose(); b.mesh.material.dispose(); }
   for (const z of SCAN.zones) if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); }
-  SCAN.origin = null; SCAN.bands = []; SCAN.zones = []; SCAN.nextZone = 1; SCAN.last = []; SCAN.frozen = false; SCAN.hits = 0;
+  SCAN.origin = null; SCAN.bands = []; SCAN.zones = []; SCAN.nextZone = 1; SCAN.last = []; SCAN.frozen = false; SCAN.hits = 0; SCAN.weak = 0; SCAN.uids = new Map();
 }
 const gIdx = (x, z) => { const i = Math.floor((x - SCAN.origin.x + SPAN / 2) / CELL), j = Math.floor((z - SCAN.origin.z + SPAN / 2) / CELL); return i < 0 || j < 0 || i >= GN || j >= GN ? -1 : j * GN + i; };
 const gXZ = (k) => [(k % GN + 0.5) * CELL - SPAN / 2 + SCAN.origin.x, (Math.floor(k / GN) + 0.5) * CELL - SPAN / 2 + SCAN.origin.z];
@@ -339,7 +340,8 @@ function newBand(y) {
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(SPAN, SPAN).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
   mesh.position.set(SCAN.origin.x, y + 0.002, SCAN.origin.z); mesh.renderOrder = 1; world.add(mesh);
-  const b = { y, n: 0, g: new Uint8Array(GN * GN), hit: new Uint8Array(GN * GN), lab: new Int16Array(GN * GN), data, tex, mesh, dirty: true, cnt: 0 };
+  const N2 = GN * GN, b = { y, n: 0, g: new Uint8Array(N2), hit: new Uint8Array(N2), lab: new Int16Array(N2), data, tex, mesh, dirty: true, cnt: 0,
+    kn: new Uint8Array(N2), na: new Uint8Array(N2), ne: new Uint8Array(N2), frA: new Uint16Array(N2), frE: new Uint16Array(N2), uu: new Uint8Array(N2), ev: false }; // evidence per cell: na = trusted hits (distinct frames), ne = estimated hits, kn = confident (known), uu = plane anchor id
   SCAN.bands.push(b); return b;
 }
 function bandFor(y) {
@@ -354,6 +356,7 @@ function bandFor(y) {
   }
   return newBand(y);
 }
+function nearBand(y) { let best = null, bd = 1e9; for (const b of SCAN.bands) { const d = Math.abs(b.y - y); if (d < bd) { bd = d; best = b; } } return best && bd < 0.035 ? best : null; }
 function paintDisc(b, x, z, r) {
   const i0 = Math.max(0, Math.floor((x - r - SCAN.origin.x + SPAN / 2) / CELL)), i1 = Math.min(GN - 1, Math.floor((x + r - SCAN.origin.x + SPAN / 2) / CELL));
   const j0 = Math.max(0, Math.floor((z - r - SCAN.origin.z + SPAN / 2) / CELL)), j1 = Math.min(GN - 1, Math.floor((z + r - SCAN.origin.z + SPAN / 2) / CELL));
@@ -362,18 +365,43 @@ function paintDisc(b, x, z, r) {
     if (!b.g[k] && (c[0] - x) ** 2 + (c[1] - z) ** 2 <= r * r) { b.g[k] = 1; b.cnt++; b.dirty = true; }
   }
 }
-// One hit-test result: a world point (metres, AR 'local' space). src = which ray (consecutive hits of one ray fill the strip between).
-function scanHit(p, src) {
-  if (SCAN.frozen) return;
-  if (!SCAN.origin) SCAN.origin = { x: p.x, z: p.z };
-  const b = bandFor(p.y); if (!b) return;
-  b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++;
-  b.mesh.position.y = b.y + 0.002;
-  paintDisc(b, p.x, p.z, 0.03);
-  { const k = gIdx(p.x, p.z); if (k >= 0) { const h = b.hit; h[k] = 1; if (k % GN > 0) h[k - 1] = 1; if (k % GN < GN - 1) h[k + 1] = 1; if (k >= GN) h[k - GN] = 1; if (k < h.length - GN) h[k + GN] = 1; } } // direct evidence: a ray really landed here (the painted disc above is blurrier)
+// One hit-test result: a world point (metres, AR 'local' space). src = which ray (consecutive hits of one ray fill the strip between; -1 = no strip).
+// kind: 2 = certain (practice room, counts as two hits at once), 1 = trusted (a real plane anchor, or a WebXR hit), 0 = weak (ARKit's estimated plane: no uuid).
+// A cell becomes KNOWN (kn, then g after despeckling) only after 2 trusted hits on different frames, or 1 trusted + 1 weak. Weak hits never create bands, cells or heights.
+function evBlock(b, k, kind, uid) { // one hit (this frame) on cell k and its 8 neighbours
+  const i = k % GN, j = (k / GN) | 0, f = (SCAN.fr % 65535) + 1;
+  for (let dj = -1; dj <= 1; dj++) { const jj = j + dj; if (jj < 0 || jj >= GN) continue; for (let di = -1; di <= 1; di++) {
+    const ii = i + di; if (ii < 0 || ii >= GN) continue; const q = jj * GN + ii;
+    if (kind > 0) { if (b.frA[q] !== f) { b.frA[q] = f; b.na[q] = Math.min(250, b.na[q] + (kind >= 2 ? 2 : 1)); if (uid && di === 0 && dj === 0) b.uu[q] = uid; } }
+    else if (b.frE[q] !== f) { b.frE[q] = f; b.ne[q] = Math.min(250, b.ne[q] + 1); }
+    if (!b.kn[q] && (b.na[q] >= 2 || (b.na[q] >= 1 && b.na[q] + b.ne[q] >= 2))) { b.kn[q] = 1; b.cnt++; b.ev = true; b.dirty = true; }
+  } }
+}
+function scanHit(p, src, kind, uid) {
+  if (SCAN.frozen) return; if (kind === undefined) kind = 2;
+  if (!SCAN.origin) { if (!kind) return; SCAN.origin = { x: p.x, z: p.z }; }
+  const b = kind ? bandFor(p.y) : nearBand(p.y); if (!b) { if (!kind) SCAN.weak++; return; }
+  if (kind) { b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++; b.mesh.position.y = b.y + 0.002; } else SCAN.weak++;
+  const k = gIdx(p.x, p.z); if (k < 0) return;
+  evBlock(b, k, kind, uid);
+  if (!kind) return;
+  { const h = b.hit; h[k] = 1; if (k % GN > 0) h[k - 1] = 1; if (k % GN < GN - 1) h[k + 1] = 1; if (k >= GN) h[k - GN] = 1; if (k < h.length - GN) h[k + GN] = 1; } // direct evidence: a ray really landed here
+  if (src < 0) return;
   const l = SCAN.last[src];
-  if (l && l.b === b) { const d = Math.hypot(p.x - l.x, p.z - l.z); if (d > 0.04 && d < 0.14) for (let t = 0.04; t < d; t += 0.04) paintDisc(b, l.x + (p.x - l.x) * t / d, l.z + (p.z - l.z) * t / d, 0.025); }
+  if (l && l.b === b) { const d = Math.hypot(p.x - l.x, p.z - l.z); if (d > 0.04 && d < 0.14) for (let t = 0.04; t < d; t += 0.04) { const q = gIdx(l.x + (p.x - l.x) * t / d, l.z + (p.z - l.z) * t / d); if (q >= 0) evBlock(b, q, 1, 0); } }
   SCAN.last[src] = { b, x: p.x, z: p.z };
+}
+// Confident cells -> the outline mask g: known cells with fewer than 2 known neighbours are dropped (despeckle), then real gaps close (closeHoles).
+function refineBand(b) {
+  if (!b.ev) return; b.ev = false;
+  const kn = b.kn, g = b.g; let c = 0;
+  for (let k = 0; k < kn.length; k++) {
+    if (!kn[k]) { g[k] = 0; continue; }
+    const i = k % GN, j = (k / GN) | 0; let nb = 0;
+    for (let dj = -1; dj <= 1; dj++) { const jj = j + dj; if (jj < 0 || jj >= GN) continue; for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const ii = i + di; if (ii >= 0 && ii < GN && kn[jj * GN + ii]) nb++; } }
+    if (nb >= 2) { g[k] = 1; c++; } else g[k] = 0;
+  }
+  b.cnt = c; b.dirty = true; if (c > 60) closeHoles(b);
 }
 function chamfer(mask, want, out) { // distance (cells) from each cell to the nearest cell equal to `want`
   const n = GN, Q = Math.SQRT2;
@@ -384,8 +412,8 @@ function chamfer(mask, want, out) { // distance (cells) from each cell to the ne
   return out;
 }
 const _tmpD = new Float32Array(GN * GN), _tmpG = new Uint8Array(GN * GN);
-function closeHoles(b) { // morphological closing (grow 2.5 cells, shrink 2.5): patchy scans fill, the outer edge stays
-  const R = 2.5, g = b.g;
+function closeHoles(b) { // morphological closing (grow CLOSE_R cells, shrink): patchy scans fill, the outer edge stays
+  const R = CLOSE_R, g = b.g;
   chamfer(g, 1, _tmpD); for (let k = 0; k < g.length; k++) _tmpG[k] = _tmpD[k] <= R ? 1 : 0;
   chamfer(_tmpG, 0, _tmpD); let add = 0;
   for (let k = 0; k < g.length; k++) if (!g[k] && _tmpD[k] > R) { g[k] = 1; add++; }
@@ -396,8 +424,8 @@ function mergeBands() { // bands closer than 4 cm are one surface
     const a = SCAN.bands[i], b = SCAN.bands[j];
     if (Math.abs(a.y - b.y) < 0.04) {
       a.y = (a.y * a.n + b.y * b.n) / (a.n + b.n); a.n += b.n;
-      for (let k = 0; k < a.g.length; k++) { if (b.g[k] && !a.g[k]) { a.g[k] = 1; a.cnt++; } if (b.hit[k]) a.hit[k] = 1; }
-      a.dirty = true; a.mesh.position.y = a.y + 0.002;
+      for (let k = 0; k < a.g.length; k++) { if (b.g[k] && !a.g[k]) { a.g[k] = 1; a.cnt++; } if (b.hit[k]) a.hit[k] = 1; if (b.kn[k]) { a.kn[k] = 1; } a.na[k] = Math.min(250, a.na[k] + b.na[k]); a.ne[k] = Math.min(250, a.ne[k] + b.ne[k]); if (!a.uu[k]) a.uu[k] = b.uu[k]; }
+      a.ev = true; a.dirty = true; a.mesh.position.y = a.y + 0.002;
       SCAN.bands.splice(j, 1); world.remove(b.mesh); b.mesh.geometry.dispose(); b.tex.dispose(); b.mesh.material.dispose();
       for (const z of SCAN.zones.slice()) if (z.band === b) SCAN.zones.splice(SCAN.zones.indexOf(z), 1);
       return mergeBands();
@@ -405,13 +433,13 @@ function mergeBands() { // bands closer than 4 cm are one surface
   }
 }
 // Connected regions of each band become zones; ids stay the same across re-scans by voting on the old labels.
-const _stack = new Int32Array(GN * GN), _newLab = new Int16Array(GN * GN);
+const _stack = new Int32Array(GN * GN), _newLab = new Int16Array(GN * GN), DX8 = [1, -1, 1, -1, 1, -1, 0, 0], DZ8 = [1, -1, -1, 1, 0, 0, 1, -1];
 function extractZones() {
   if (!SCAN.origin) return;
   mergeBands();
   const all = [];
   for (const b of SCAN.bands) {
-    if (b.cnt < MINC) continue;
+    refineBand(b); if (b.cnt < MINC) continue;
     _newLab.fill(0); let nc = 0; const comps = [];
     for (let s = 0; s < b.g.length; s++) {
       if (!b.g[s] || _newLab[s]) continue;
@@ -425,6 +453,12 @@ function extractZones() {
         if (i < GN - 1 && b.g[k + 1] && !_newLab[k + 1]) { _newLab[k + 1] = nc; _stack[sp++] = k + 1; }
         if (j > 0 && b.g[k - GN] && !_newLab[k - GN]) { _newLab[k - GN] = nc; _stack[sp++] = k - GN; }
         if (j < GN - 1 && b.g[k + GN] && !_newLab[k + GN]) { _newLab[k + GN] = nc; _stack[sp++] = k + GN; }
+        for (let n8 = 0; n8 < 8; n8++) { // diagonals; and a single empty cell does not split a surface (a gap of 2 cm or less), unless two different plane anchors meet there
+          const dx = DX8[n8], dz = DZ8[n8], i2 = i + dx, j2 = j + dz; if (i2 < 0 || j2 < 0 || i2 >= GN || j2 >= GN) continue;
+          const q = j2 * GN + i2; if (b.g[q] && !_newLab[q]) { _newLab[q] = nc; _stack[sp++] = q; continue; }
+          if (n8 < 4) continue; const i3 = i + dx * 2, j3 = j + dz * 2; if (i3 < 0 || j3 < 0 || i3 >= GN || j3 >= GN) continue; const r2 = j3 * GN + i3;
+          if (b.g[r2] && !_newLab[r2] && !b.g[q] && !(b.uu[k] && b.uu[r2] && b.uu[k] !== b.uu[r2])) { _newLab[r2] = nc; _stack[sp++] = r2; }
+        }
       }
       comps.push({ n: nc, cnt, votes, sx, sz, sxx, szz, sxz });
     }
@@ -1819,6 +1853,44 @@ const AR = { checked: false, on: false, starting: false, session: null, refSpace
     document.head.appendChild(sc);
   } catch (e) { /* the practice room carries on */ }
 })();
+// ---- DIRECT RAYCASTS (HelloXR / ARKit): the polyfill runs ONE native hit test per hit-test source per frame and drops the plane uuid. WebXRKit's native side raycasts against
+// existing plane geometry and, on a miss, falls back to ESTIMATED planes (guesses beyond real edges). We call the polyfill's ARKit wrapper ourselves: a rotating subset of a dense
+// screen grid every frame, and the 'uuid' tells real plane anchors (trusted) from estimates (weak). Without the wrapper (Chrome / Android WebXR) the XR hit-test sources are used.
+const DIRECT = { on: false, w: null, m: null, type: 32, cols: 9, rows: 7, perFrame: 9, maxPend: 12, i: 0, pend: 0, sent: 0, got: 0, anch: 0, est: 0, none: 0, err: 0, lat: 0, hps: 0, win: 0, winT: 0, chk: 'off', chkOk: 0, chkBad: 0, chkWait: null, chkT: 0, chkLog: [], off: /[?&]direct=0/.test(location.search) };
+function directInit(session) {
+  Object.assign(DIRECT, { on: false, w: null, m: null, pend: 0, sent: 0, got: 0, anch: 0, est: 0, none: 0, err: 0, lat: 0, hps: 0, win: 0, winT: performance.now(), chk: 'off', chkOk: 0, chkBad: 0, chkWait: null, chkT: 0, chkLog: [], gen: (DIRECT.gen || 0) + 1 });
+  if (DIRECT.off) return false;
+  try { for (const sym of Object.getOwnPropertySymbols(session)) { const dev = session[sym] && session[sym].device, w = dev && dev._arKitWrapper; if (w && typeof w.hitTest === 'function') { DIRECT.w = w; DIRECT.type = (w.constructor && w.constructor.HIT_TEST_TYPE_EXISTING_PLANE_USING_GEOMETRY) || 32; break; } } } catch (e) { /* the XR hit-test sources stay */ }
+  DIRECT.on = !!DIRECT.w; DIRECT.chk = DIRECT.on ? 'checking' : 'off'; return DIRECT.on;
+}
+function directSend(x, y, tag) {
+  const D = DIRECT, gen = D.gen, t = performance.now(); D.pend++; D.sent++; let pr;
+  try { pr = D.w.hitTest(x, y, D.type); } catch (e) { D.pend--; D.err++; return; }
+  pr.then((hits) => { if (gen !== D.gen) return; D.pend--; D.lat = D.lat ? D.lat * 0.9 + (performance.now() - t) * 0.1 : performance.now() - t; directHit(hits, tag); }, () => { if (gen === D.gen) { D.pend--; D.err++; } });
+}
+function directHit(hits, tag) {
+  const D = DIRECT, h = hits && hits[0], w = h && h.world_transform, m = D.m; if (!w || !m) { if (!tag) D.none++; return; }
+  const v = tmpV2.set(m[0] * w[12] + m[4] * w[13] + m[8] * w[14] + m[12], m[1] * w[12] + m[5] * w[13] + m[9] * w[14] + m[13], m[2] * w[12] + m[6] * w[13] + m[10] * w[14] + m[14]), upY = m[1] * w[4] + m[5] * w[5] + m[9] * w[6];
+  if (tag === 'chk') { if (D.chkWait) { const s = D.chkWait; D.chkWait = null; const d = Math.hypot(v.x - s.x, v.y - s.y, v.z - s.z); D.chkLog.push(+d.toFixed(3)); if (D.chkLog.length > 12) D.chkLog.shift(); if (d < 0.3) D.chkOk++; else D.chkBad++; if (D.chkOk >= 3) { D.chk = 'ok'; directCheckDone(true); } else if (D.chkBad >= 3) { D.chk = 'bad'; D.on = false; directCheckDone(false); } } return; }
+  D.got++; D.win++; const anch = !!h.uuid; if (anch) D.anch++; else D.est++;
+  if (upY < 0.7) { recNonHoriz(v); return; }
+  let uid = 0; if (anch) { uid = SCAN.uids.get(h.uuid); if (!uid) { uid = Math.min(255, SCAN.uids.size + 1); SCAN.uids.set(h.uuid, uid); } }
+  scanHit(v, -1, anch ? 1 : 0, uid);
+}
+function directCheckDone(good) { // the one-time frame check is over: direct hits agree with the XR hit-test source (good) or not (fall back to the sources)
+  arLog('AR: direct raycasts ' + (good ? 'on (agree with the hit-test source)' : 'off (frames do not agree, using the hit-test sources)'));
+  if (good) { for (const sc of AR.srcs) try { sc.cancel(); } catch (e) { /* ignore */ } AR.srcs = []; AR.hitSource = null; }
+}
+function directFrame(frame) { // once per XR frame: grid points go out, capped by what is still in flight
+  const D = DIRECT; D.m = AR.refSpace && AR.refSpace._inverseBaseMatrix; if (!D.m || D.m.length !== 16) { D.on = false; D.chk = 'nomatrix'; return; }
+  const now = performance.now(); if (now - D.winT >= 1000) { D.hps = D.win * 1000 / (now - D.winT); D.win = 0; D.winT = now; }
+  const n = Math.min(D.perFrame, D.maxPend - D.pend), N = D.cols * D.rows;
+  for (let q = 0; q < n; q++) { D.i = (D.i + 25) % N; const c = D.i % D.cols, r = (D.i / D.cols) | 0, x = 0.05 + 0.9 * (c + (Math.random() - 0.5) * 0.7) / (D.cols - 1), y = 0.05 + 0.9 * (r + (Math.random() - 0.5) * 0.7) / (D.rows - 1); directSend(Math.min(0.97, Math.max(0.03, x)), Math.min(0.97, Math.max(0.03, y))); }
+  if (D.chk === 'checking' && AR.hitSource && !D.chkWait && now - D.chkT > 300) { // compare with the XR hit-test source's centre ray (the same ARKit ray)
+    const res = frame.getHitTestResults(AR.hitSource), p = res.length && res[0].getPose(AR.refSpace);
+    if (p) { D.chkT = now; D.chkWait = { x: p.transform.position.x, y: p.transform.position.y, z: p.transform.position.z }; directSend(0.5, 0.5, 'chk'); }
+  }
+}
 function arLog(msg) { // HelloXR's web view cannot show alert(): every step and error is written on the page
   let el = $('arLog'); if (!el) { el = document.createElement('div'); el.id = 'arLog'; }
   $('ui').appendChild(el); el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
@@ -1865,6 +1937,7 @@ async function arStart(cont) {
     AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
     AR.srcs = [AR.hitSource];
     if (typeof XRRay !== 'undefined') for (const [x, y] of [[-0.35, 0.28], [0.35, 0.28], [-0.35, -0.28], [0.35, -0.28]]) { try { AR.srcs.push(await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'], offsetRay: new XRRay({ x: 0, y: 0, z: 0, w: 1 }, { x, y, z: -1, w: 0 }) })); } catch (e) { /* the centre ray alone still works */ } }
+    directInit(session); if (DIRECT.on) arLog('AR: direct raycasts (' + DIRECT.cols + 'x' + DIRECT.rows + ' grid) with plane quality');
     document.body.classList.add('inar');
     arLog('AR 5/5: sweep the iPad slowly over your desk, shelf and floor');
     setTimeout(() => { const el = $('arLog'); if (el && AR.on) el.remove(); }, 4000);
@@ -1881,7 +1954,7 @@ function arEnded() {
   if (!AR.on && !AR.session) return;
   persist(true);
   for (const s of AR.srcs) try { s.cancel(); } catch (e) { /* ignore */ }
-  AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null;
+  AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null; DIRECT.on = false; DIRECT.gen++;
   try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
   if (AR.saved) { camera.near = AR.saved.near; camera.far = AR.saved.far; document.body.style.background = AR.saved.bodyBg; document.documentElement.style.background = AR.saved.htmlBg; AR.saved = null; }
   camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearAlpha(0);
@@ -1898,12 +1971,15 @@ function arFrame(frame) {
   }
   ENV.sun = AR.light;
   if (G.phase === 'scan' || (G.auto && G.phase !== 'title')) {
+    SCAN.fr++;
+    if (DIRECT.on) directFrame(frame);
+    if (DIRECT.on && DIRECT.chk !== 'bad') return; // trusted direct hits feed the scan; the hit-test sources would bring the estimated-plane guesses back
     for (let si = 0; si < AR.srcs.length; si++) {
       const res = frame.getHitTestResults(AR.srcs[si]);
       if (!res.length) { SCAN.last[si] = null; continue; }
       const p = res[0].getPose(AR.refSpace); if (!p) continue;
       tmpM.fromArray(p.transform.matrix); if (tmpM.elements[5] < 0.7) { recNonHoriz(tmpV.setFromMatrixPosition(tmpM)); continue; }
-      scanHit(tmpV.setFromMatrixPosition(tmpM), si);
+      scanHit(tmpV.setFromMatrixPosition(tmpM), si, 1);
     }
   }
 }
@@ -2242,7 +2318,7 @@ function recZones() { // every surface the scan has now: height, size, outline b
   const low = SCAN.zones.reduce((m, z) => Math.min(m, z.y), 1e9); REC.zones = SCAN.zones.map((z) => ({ id: z.id, type: z.type, name: z.name, h: +(z.y - low).toFixed(2), y: +z.y.toFixed(3), area: +z.area.toFixed(3), w: +z.w.toFixed(2), d: +z.d.toFixed(2), cx: +z.cx.toFixed(2), cz: +z.cz.toFixed(2), hits: z.band ? z.band.n : 0, hitsPerM2: z.band ? Math.round(z.band.n / Math.max(0.01, z.area)) : 0 }));
   recRing(REC.zoneLog, { t: recT(), n: REC.zones.length, area: +REC.zones.reduce((a, z) => a + z.area, 0).toFixed(2) }, 60);
 }
-function recCover() { recRing(REC.cover, { t: recT(), hits: SCAN.hits, bands: SCAN.bands.length, zones: SCAN.zones.length, mapZones: G.zones.length, nonHoriz: REC.nhCount, known: +(G.zones.length ? mapKnown() : 0).toFixed(2) }, 120); }
+function recCover() { recRing(REC.cover, { t: recT(), hits: SCAN.hits, bands: SCAN.bands.length, zones: SCAN.zones.length, mapZones: G.zones.length, nonHoriz: REC.nhCount, weak: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, lat: Math.round(DIRECT.lat), pend: DIRECT.pend, chk: DIRECT.chk } : 0, known: +(G.zones.length ? mapKnown() : 0).toFixed(2) }, 120); }
 function recRecog(o) { recRing(REC.recog, Object.assign({ t: recT() }, o), 80); }
 function recTag(sp) { recRing(REC.tags, { t: recT(), tag: sp.tag, name: sp.name, src: sp.src, y: +sp.y.toFixed(2), area: +(sp.area || 0).toFixed(3), on: sp.on }, 80); }
 function recReloc(o) { recRing(REC.reloc, Object.assign({ t: recT(), scanSecs: +RELOC.scanSecs.toFixed(1) }, o), 60); }
@@ -2396,7 +2472,7 @@ function autoSettle(force) { // the colony lands by itself on the biggest clear 
 // ---- what the player sees while this happens ----
 function autoHintText() {
   if (G.phase === 'title') return '';
-  if (G.returning && !G.locked) return RELOC.state === 'asking' ? '' : 'Looking for your room... keep looking around (' + Math.round(RELOC.scanSecs) + ' s)';
+  if (G.returning && !G.locked) return RELOC.state === 'asking' ? '' : 'Looking for home\u2026 ' + Math.round((RELOC.progShown || 0) * 100) + '% \u00b7 keep looking around (' + Math.round(RELOC.scanSecs) + ' s)';
   if (!G.settlements.length) return SCAN.zones.length ? 'Found a place to land...' : 'Look around slowly. The colonists are searching for a landing place.';
   return '';
 }
@@ -2410,7 +2486,7 @@ function autoTick(dt) {
   if (RELOC.state === 'search' && SCAN.hits !== RELOC.lastHits) { RELOC.scanSecs += dt; }
   if (scanning && AUTO.scanT > (AUTO.steady ? 2.2 : 0.9) && SCAN.hits !== AUTO.lastHits) {
     AUTO.scanT = 0; AUTO.lastHits = SCAN.hits;
-    for (const b of SCAN.bands) if (b.dirty && b.cnt > 60) closeHoles(b);
+    for (const b of SCAN.bands) refineBand(b);
     extractZones(); markBumps();
     if (!G.returning || RELOC.state === 'new') { liveSync(); autoSettle(false); }
     paintBands(true); updateLabels(true); autoCount();
@@ -2571,11 +2647,11 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
   out.sort((a, b) => b.score - a.score);
   const best = out[0]; if (!best) return null;
   const other = out.find((q) => angd(q.phi, best.phi) > 0.14 || Math.hypot(q.tx - best.tx, q.tz - best.tz) > 0.25 || Math.abs(q.dy - best.dy) > 0.04);
-  best.margin = other && best.score > 0 ? Math.max(0, other.score) / best.score : 0; best.nLive = liveTop.n; best.layers = live.length;
+  best.second = other ? other.score : 0; best.margin = other && best.score > 0 ? Math.max(0, other.score) / best.score : 0; best.nLive = liveTop.n; best.layers = live.length;
   return best;
 }
 function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
-  RELOC.state = 'search'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
+  RELOC.state = 'search'; RELOC.prog = 0; RELOC.progShown = 0; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
   RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
 }
 function relocStep(dt) {
@@ -2593,9 +2669,16 @@ function relocStep(dt) {
     relocConsider(res);
   }
 }
+function relocWhy(res, c) { // why this attempt did not lock (the field report explains itself)
+  if (!res) return ['no candidate'];
+  const w = []; if (res.M < c.minCells) w.push('matched cells ' + res.M + ' < ' + c.minCells); if (res.ratio < c.minRatio) w.push('ratio ' + res.ratio.toFixed(2) + ' < ' + c.minRatio); if (res.info < c.minInfo) w.push('informative ' + res.info + ' < ' + c.minInfo);
+  if (res.overlap < c.minOverlap) w.push('overlap ' + res.overlap.toFixed(2) + ' < ' + c.minOverlap); if (res.margin > c.maxMargin) w.push('runner-up too close ' + res.margin.toFixed(2) + ' > ' + c.maxMargin); if (res.infoX > res.info) w.push('more informative conflicts than matches');
+  return w;
+}
 function relocConsider(res) {
-  const c = RELOC.cfg, ok = !!res && res.M >= c.minCells && res.ratio >= c.minRatio && res.info >= c.minInfo && res.overlap >= c.minOverlap && res.margin <= c.maxMargin && res.infoX <= res.info;
-  recReloc(res ? { M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), info: res.info, margin: +(res.margin || 0).toFixed(2), score: res.score, layers: res.layers, ok, ms: Math.round(RELOC.lastMs || 0) } : { none: true }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok }); if (RELOC.hist.length > 12) RELOC.hist.shift();
+  const c = RELOC.cfg, why = relocWhy(res, c), ok = !!res && !why.length;
+  if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); } // a tiny hint: how close the best attempt is to the lock thresholds
+  recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak } : { none: true, why }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok }); if (RELOC.hist.length > 12) RELOC.hist.shift();
   const h = RELOC.hist.slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
   if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
   const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
@@ -2942,6 +3025,7 @@ function cardUi() {
   const S = G.cur || G.settlements[0], el = $('card'); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
   const sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   const env = `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky} · sun ${ENV.sun.toFixed(2)} · growth x${ENV.grow.toFixed(2)}</div>`;
+  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; el.textContent = (S && G.phase === 'play' ? S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one; return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
   if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : ''); return; }
   const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null;
   el.hidden = false; el.innerHTML = `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
@@ -3120,7 +3204,7 @@ function frame(time, xrFrame) {
   if (G.auto) autoTick(dt);
   else if (G.phase === 'scan') {
     SCAN.t += dt;
-    if (SCAN.t > 0.7) { SCAN.t = 0; for (const b of SCAN.bands) if (b.dirty && b.cnt > 60) closeHoles(b); const n = SCAN.zones.length; extractZones(); updateLabels(true); paintBands(false); if (SCAN.zones.length !== n || frameN % 5 === 0) updateHint(); }
+    if (SCAN.t > 0.7) { SCAN.t = 0; for (const b of SCAN.bands) refineBand(b); const n = SCAN.zones.length; extractZones(); updateLabels(true); paintBands(false); if (SCAN.zones.length !== n || frameN % 5 === 0) updateHint(); }
   }
   if (G.phase === 'play') {
     let acc = dt * G.speed, n = 0; while (acc > 1e-4 && n++ < 60) { const s = Math.min(0.25, acc); simTick(s, false); acc -= s; }
@@ -3154,7 +3238,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
-  overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
+  BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
 // ============ start ============
