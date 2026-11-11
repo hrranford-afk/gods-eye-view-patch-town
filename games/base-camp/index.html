@@ -301,7 +301,7 @@ function newBand(y) {
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(SPAN, SPAN).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
   mesh.position.set(SCAN.origin.x, y + 0.002, SCAN.origin.z); mesh.renderOrder = 1; world.add(mesh);
-  const b = { y, n: 0, g: new Uint8Array(GN * GN), lab: new Int16Array(GN * GN), data, tex, mesh, dirty: true, cnt: 0 };
+  const b = { y, n: 0, g: new Uint8Array(GN * GN), hit: new Uint8Array(GN * GN), lab: new Int16Array(GN * GN), data, tex, mesh, dirty: true, cnt: 0 };
   SCAN.bands.push(b); return b;
 }
 function bandFor(y) {
@@ -332,6 +332,7 @@ function scanHit(p, src) {
   b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++;
   b.mesh.position.y = b.y + 0.002;
   paintDisc(b, p.x, p.z, 0.03);
+  { const k = gIdx(p.x, p.z); if (k >= 0) { const h = b.hit; h[k] = 1; if (k % GN > 0) h[k - 1] = 1; if (k % GN < GN - 1) h[k + 1] = 1; if (k >= GN) h[k - GN] = 1; if (k < h.length - GN) h[k + GN] = 1; } } // direct evidence: a ray really landed here (the painted disc above is blurrier)
   const l = SCAN.last[src];
   if (l && l.b === b) { const d = Math.hypot(p.x - l.x, p.z - l.z); if (d > 0.04 && d < 0.14) for (let t = 0.04; t < d; t += 0.04) paintDisc(b, l.x + (p.x - l.x) * t / d, l.z + (p.z - l.z) * t / d, 0.025); }
   SCAN.last[src] = { b, x: p.x, z: p.z };
@@ -357,7 +358,7 @@ function mergeBands() { // bands closer than 4 cm are one surface
     const a = SCAN.bands[i], b = SCAN.bands[j];
     if (Math.abs(a.y - b.y) < 0.04) {
       a.y = (a.y * a.n + b.y * b.n) / (a.n + b.n); a.n += b.n;
-      for (let k = 0; k < a.g.length; k++) if (b.g[k] && !a.g[k]) { a.g[k] = 1; a.cnt++; }
+      for (let k = 0; k < a.g.length; k++) { if (b.g[k] && !a.g[k]) { a.g[k] = 1; a.cnt++; } if (b.hit[k]) a.hit[k] = 1; }
       a.dirty = true; a.mesh.position.y = a.y + 0.002;
       SCAN.bands.splice(j, 1); world.remove(b.mesh); b.mesh.geometry.dispose(); b.tex.dispose(); b.mesh.material.dispose();
       for (const z of SCAN.zones.slice()) if (z.band === b) SCAN.zones.splice(SCAN.zones.indexOf(z), 1);
@@ -534,17 +535,17 @@ function markBumps() {
   for (const z of SCAN.zones) if (z.area < 0.12) for (let k = 0; k < z.band.lab.length; k++) if (z.band.lab[k] === z.id) z.band.bump[k] = 2; // a small zone is the top of an object (a speaker, a stool)
 }
 function measureLand(L) { // what the scan sees over each land cell: 0 nothing, 1 the bare surface, 2 something standing on it
-  const n = L.w * L.h, obs = new Uint8Array(n), ht = new Uint8Array(n); if (!SCAN.origin) return { obs, ht };
+  const n = L.w * L.h, obs = new Uint8Array(n), ht = new Uint8Array(n), sharp = new Uint8Array(n); if (!SCAN.origin) return { obs, ht, sharp };
   for (let k = 0; k < n; k++) {
     const i = k % L.w + L.i0, j = ((k / L.w) | 0) + L.j0, u = (i + 0.5) * LC, v = (j + 0.5) * LC, g = gIdx(L.cx + u * L.c - v * L.s, L.cz + u * L.s + v * L.c); if (g < 0) continue;
     let o = 0, hh = 0;
     for (const b of SCAN.bands) {
       const dy = b.y - L.y;
-      if (dy > -TIDY.hmin && dy < TIDY.hmin) { if (b.g[g] && o < 1) o = 1; } else if (dy > 0 && b.bump) { const m = b.bump[g]; if (m && dy < (m === 2 ? 1.3 : 0.6)) { o = 2; hh = Math.max(hh, Math.min(255, Math.round(dy * 100))); } }
+      if (dy > -TIDY.hmin && dy < TIDY.hmin) { if (b.g[g] && o < 1) o = 1; if (b.hit[g]) sharp[k] = 1; } else if (dy > 0 && b.bump) { const m = b.bump[g]; if (m && dy < (m === 2 ? 1.3 : 0.6)) { o = 2; hh = Math.max(hh, Math.min(255, Math.round(dy * 100))); } }
     }
-    obs[k] = o; ht[k] = hh;
+    obs[k] = o; ht[k] = hh; if (o === 2) sharp[k] = 0;
   }
-  return { obs, ht };
+  return { obs, ht, sharp };
 }
 function landComps(L, pred, minN) { // connected patches of cells for which pred(k) is true
   const w = L.w, h = L.h, n = w * h, vis = new Uint8Array(n), out = [], stack = new Int32Array(n);
@@ -574,7 +575,7 @@ function reconcileLand(L, m, first) {
   const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length;
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
-  const removed = changedObjects(L, (k) => st[k] === 2 && obs[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2, 5);
+  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2, 5);
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
@@ -1316,9 +1317,28 @@ function overlapFrac(Z, fz) { // how much of a map zone's land lies on a fresh s
   for (let k = 0; k < L.st.length; k += 3) if (L.st[k]) { n++; const [x, zz] = landXZ(L, k), g = gIdx(x, zz); if (g >= 0 && fz.band.lab[g] === fz.id) h++; }
   return n ? h / n : 0;
 }
-function coveredAt(x, zz, rad) { // did this scan see any surface near this point, at any height
-  for (const b of SCAN.bands) for (let dx = -rad; dx <= rad; dx += CELL * 3) for (let dz = -rad; dz <= rad; dz += CELL * 3) { const g = gIdx(x + dx, zz + dz); if (g >= 0 && b.g[g]) return true; }
+function fzOnZone(fz, Z) { // how much of a fresh scan zone lies on a map zone's land (a part of a known thing)
+  const L = Z.land, b = fz.band; let n = 0, h = 0;
+  for (let k = 0; k < b.lab.length; k += 3) if (b.lab[k] === fz.id) { n++; const c = gXZ(k), q = landIdx(L, c[0], c[1]); if (q >= 0 && L.st[q]) h++; }
+  return n ? h / n : 0;
+}
+function growLand(Z, fz) { // a fresh scan reached beyond the saved land of a big surface: make the grid bigger (old cells keep their place and history)
+  const L = Z.land, b = fz.band; let i0 = L.i0, j0 = L.j0, i1 = L.i0 + L.w - 1, j1 = L.j0 + L.h - 1;
+  for (let k = 0; k < b.lab.length; k += 2) if (b.lab[k] === fz.id) { const [x, zz] = gXZ(k), dx = x - L.cx, dz = zz - L.cz, i = Math.floor((dx * L.c + dz * L.s) / LC), j = Math.floor((-dx * L.s + dz * L.c) / LC); if (i - 3 < i0) i0 = i - 3; if (j - 3 < j0) j0 = j - 3; if (i + 3 > i1) i1 = i + 3; if (j + 3 > j1) j1 = j + 3; }
+  if (i0 === L.i0 && j0 === L.j0 && i1 === L.i0 + L.w - 1 && j1 === L.j0 + L.h - 1) return;
+  const w = i1 - i0 + 1, h = j1 - j0 + 1; if (w * h > 700000) return;
+  const mk = () => new Uint8Array(w * h), st = mk(), dist = mk(), calm = mk(), ht = mk();
+  for (let j = 0; j < L.h; j++) for (let i = 0; i < L.w; i++) { const o = j * L.w + i, q = (j + L.j0 - j0) * w + (i + L.i0 - i0); st[q] = L.st[o]; dist[q] = L.dist[o]; calm[q] = L.calm[o]; ht[q] = L.ht[o]; }
+  Object.assign(L, { i0, j0, w, h, st, dist, calm, ht, edge: null, edgeVer: -1 }); L.ver++; Z.core = null;
+  if (Z.mesh) { world.remove(Z.mesh); Z.mesh.traverse((q) => { if (q.geometry) q.geometry.dispose(); if (q.material && q.material.map && q.material !== TOWER_MAT) { q.material.map.dispose(); q.material.dispose(); } }); Z.mesh = null; }
+}
+function coveredAt(x, zz, rad, belowY) { // did this scan really look at this place (rays landed within a few cm of it); with belowY: only rays that landed on something lower (so the place is seen empty)
+  let n = 0;
+  for (const b of SCAN.bands) { if (belowY !== undefined && b.y > belowY - 0.05) continue; for (let dx = -rad; dx <= rad; dx += CELL * 2) for (let dz = -rad; dz <= rad; dz += CELL * 2) { const g = gIdx(x + dx, zz + dz); if (g >= 0 && b.hit[g] && ++n >= 6) return true; } }
   return false;
+}
+function hitsNear(x, zz, rad, y, tol) { // rays that landed on a band at this height near the point
+  let n = 0; for (const b of SCAN.bands) { if (Math.abs(b.y - y) > tol) continue; for (let dx = -rad; dx <= rad; dx += CELL * 2) for (let dz = -rad; dz <= rad; dz += CELL * 2) { const g = gIdx(x + dx, zz + dz); if (g >= 0 && b.hit[g]) n++; } } return n;
 }
 // ---- the scan -> map step: runs when the player taps Done scanning (first time, a rescan, or after aligning on return) ----
 function captureScan() {
@@ -1328,19 +1348,25 @@ function captureScan() {
   const claimed = new Set();
   for (const fz of SCAN.zones) { const Z = fz.mz ? zoneById(fz.mz) : null; if (Z && !claimed.has(Z.id)) { claimed.add(Z.id); Z.fz = fz; } else fz.mz = 0; }
   for (const fz of SCAN.zones) if (!fz.mz) {
-    let bz = null, bf = 0.2; for (const q of G.zones) { // a small thing (a speaker top) must also be close; a big surface only has to overlap (the scan may cover part of it)
-      if (claimed.has(q.id) || Math.abs(q.y - fz.y) > 0.06 || !q.land) continue; const small = q.area < 0.4 || fz.area < 0.4; if (small && Math.hypot(q.cx - fz.cx, q.cz - fz.cz) > 0.15) continue;
-      const f = overlapFrac(q, fz); if (f > bf) { bf = f; bz = q; } }
-    if (bz) { claimed.add(bz.id); fz.mz = bz.id; bz.fz = fz; }
+    let bz = null, bf = 0; // a small thing must be mostly on a known thing, or close to it; a big surface only has to overlap (the scan may cover part of it, and several patches may belong to one surface)
+    for (const q of G.zones) {
+      if (Math.abs(q.y - fz.y) > 0.06 || !q.land) continue; const big = q.area >= 0.4 && fz.area >= 0.4; if (claimed.has(q.id) && !big) continue;
+      const f1 = overlapFrac(q, fz), f2 = fzOnZone(fz, q); let sc = 0;
+      if (big) sc = Math.max(f1, f2) >= 0.2 ? Math.max(f1, f2) : 0; else if (f2 >= 0.6 || (f1 >= 0.4 && Math.hypot(q.cx - fz.cx, q.cz - fz.cz) <= 0.15)) sc = Math.max(f1, f2);
+      if (sc > bf) { bf = sc; bz = q; }
+    }
+    if (bz) { claimed.add(bz.id); fz.mz = bz.id; bz.fz = fz; if (bz.area >= 0.4) growLand(bz, fz); }
   }
   // fresh zones that overlap nothing on the map: moved things or new land
   const overHeld = (fz) => !rep.first && fz.area < 0.12 && G.zones.some((q) => q.land && fz.y > q.y + TIDY.hmin && fz.y < q.y + 1.3 && landState(q, fz.cx, fz.cz) !== 0); // a small top over known land is an object standing there, not new land
-  const loose = SCAN.zones.filter((fz) => !fz.mz && !overHeld(fz) && !G.zones.some((q) => q.land && Math.abs(q.y - fz.y) < 0.06 && overlapFrac(q, fz) > 0.3));
+  const nearBig = (fz) => { const Z = G.zones.find((q) => q.land && q.area >= 0.4 && Math.abs(q.y - fz.y) < 0.05 && (() => { const [u, v] = zoneLocal(q, fz.cx, fz.cz), L = q.land, du = Math.max(L.i0 * LC - u, u - (L.i0 + L.w) * LC, 0), dv = Math.max(L.j0 * LC - v, v - (L.j0 + L.h) * LC, 0); return Math.hypot(du, dv) < 0.5; })()); return Z || null; };
+  for (const fz of SCAN.zones) if (!fz.mz && fz.area >= 0.4) { const Z = nearBig(fz); if (Z) { fz.mz = Z.id; claimed.add(Z.id); growLand(Z, fz); } } // a patch of the same level right next to a big surface is part of it
+  const loose = SCAN.zones.filter((fz) => !fz.mz && !overHeld(fz) && !G.zones.some((q) => q.land && Math.abs(q.y - fz.y) < 0.06 && Math.max(overlapFrac(q, fz), fzOnZone(fz, q)) > 0.3));
   const spare = SCAN.zones.filter((fz) => !fz.mz); // everything the map does not explain yet (also objects standing on known land: a moved speaker looks like one)
   for (const fz of SCAN.zones) if (!fz.mz && !loose.includes(fz)) fz.mz = -1; // part of an unmatched map zone's area, or an object standing on known land: not new land
   const lostZ = [];
   for (const Z of G.zones) if (!claimed.has(Z.id) && !Z.lost && Z.land) { // not seen today
-    const small = Z.area < 0.4 || Z.type === 'SMALL'; if (!small || !coveredAt(Z.cx, Z.cz, 0.12)) continue; // not scanned there today: carry on as before
+    const small = Z.area < 0.4 || Z.type === 'SMALL'; if (!small || !coveredAt(Z.cx, Z.cz, 0.12, Z.y) || hitsNear(Z.cx, Z.cz, 0.12, Z.y, 0.05) > 1) continue; // not really looked at today, or something is still up there: carry on as before
     let cand = null, cd = 1.3; for (const fz of spare) { if (fz.mz > 0 || fz.moved) continue; const r = fz.area / Math.max(0.01, Z.area); if (Math.abs(fz.y - Z.y) < 0.045 && r > 0.55 && r < 1.8) { const d = Math.hypot(fz.cx - Z.cx, fz.cz - Z.cz); if (d < cd) { cd = d; cand = fz; } } }
     if (cand) { cand.moved = true; if (loose.includes(cand)) loose.splice(loose.indexOf(cand), 1); rep.asks.push({ Z, fz: cand, kind: 'moved' }); } else lostZ.push(Z);
   }

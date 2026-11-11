@@ -1,6 +1,6 @@
 // Shared test helpers: a tiny static server for games/base-camp (so the council JSON files really load), and a Playwright launcher.
 const http = require('http'), fs = require('fs'), path = require('path');
-const ROOT = path.join(__dirname, '..');
+const ROOT = process.env.BC_ROOT || path.join(__dirname, '..'); // BC_ROOT: serve a copy of the game folder (lets a long run keep going while the game is edited)
 const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript' };
 function serve(port) {
   const srv = http.createServer((req, res) => {
