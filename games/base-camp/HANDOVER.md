@@ -1,6 +1,6 @@
 # Base Camp: developer handover
 
-Branch `game/room-colony`, folder `games/base-camp/`. One file (`index.html`, about 2,500 lines, sectioned by `// =====` banners). three.js r128 from cdnjs. Read README.md first for the player flow. **Systems only: the art is redesigned later (1990s TV-cartoon style), nothing here is final styling.** Never run prettier on `index.html` (long lines are deliberate).
+Branch `game/room-colony`, folder `games/base-camp/`. One file (`index.html`, about 2,600 lines, sectioned by `// =====` banners). three.js r128 from cdnjs. Read README.md first for the player flow. **Systems only: the art is redesigned later (1990s TV-cartoon style), nothing here is final styling.** Never run prettier on `index.html` (long lines are deliberate).
 
 ## Sections of index.html (in order)
 1. **basics, ALMANAC, council data, ENV, sound.** `COLONY_ALMANAC` (defaults), `ROOMS` / `CREATURES` (built-in copies of the council files), `adoptAlmanac` (turns the council's almanac shape into ours), `ENV` (sun, clock, weather).

@@ -484,7 +484,7 @@ const LC = CELL, TIDY = { avoidAt: 2, can: 0.022, box: 0.09, richAt: 3, hmin: 0.
 function setLandFrame(L, cx, cz, ang, y) { L.cx = cx; L.cz = cz; L.ang = ang; L.y = y; L.c = Math.cos(ang); L.s = Math.sin(ang); }
 function newLand(cx, cz, ang, y, u0, u1, v0, v1) {
   const i0 = Math.floor(u0 / LC), j0 = Math.floor(v0 / LC), w = Math.ceil(u1 / LC) - i0 + 1, h = Math.ceil(v1 / LC) - j0 + 1, n = w * h;
-  const L = { i0, j0, w, h, st: new Uint8Array(n), dist: new Uint8Array(n), calm: new Uint8Array(n), ht: new Uint8Array(n), edge: null, edgeVer: -1, objs: [], ver: 0 };
+  const L = { i0, j0, w, h, st: new Uint8Array(n), dist: new Uint8Array(n), calm: new Uint8Array(n), ht: new Uint8Array(n), seen: new Uint8Array(n), edge: null, edgeVer: -1, objs: [], ver: 0 }; // seen: a ray really landed on this bare cell
   setLandFrame(L, cx, cz, ang, y); return L;
 }
 function landFromScan(z) { // an empty land grid around a scanned zone (bounds from its cells, 10 cm margin)
@@ -578,13 +578,14 @@ function changedObjects(L, pred, minN) { // patches of cells for which pred is t
 }
 function reconcileLand(L, m, first) {
   const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length;
-  if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
+  if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
-  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2, 5);
+  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1, 5); // an object counts as put down only where the bare cells were really seen before
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
   for (let k = 0; k < n; k++) {
+    if (st[k] === 1 && obs[k] === 1 && m.sharp[k]) L.seen[k] = 1;
     if (st[k] === 0) { if (obs[k]) { st[k] = obs[k]; L.ht[k] = obs[k] === 2 ? m.ht[k] : 0; ev.gained++; } else continue; }
     else if (st[k] === 2 && obs[k] === 2 && m.ht[k] > L.ht[k]) L.ht[k] = m.ht[k];
     if (mark[k]) { if (L.dist[k] < 15) L.dist[k]++; L.calm[k] = 0; } else if (L.calm[k] < 15) L.calm[k]++;
@@ -1257,7 +1258,7 @@ function syncCables() { // for every marked cable with a settled end: a ready ca
 function mapToJSON() {
   return { v: MAP_V, kind: 'base-camp-room-map', name: G.mapName || 'My room', saved: Date.now(), build: BUILD, nextMZ: G.nextMZ, nextSpot: G.nextSpot, nextCable: G.nextCable, music: !!G.music,
     zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost,
-      land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht) } : null }; }),
+      land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen) } : null }; }),
     spots: G.spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
     cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id), library: G.library };
 }
@@ -1268,7 +1269,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   const zones = [];
   for (const q of d.zones) {
     if (!q || typeof q.id !== 'number' || !q.land || !(q.land.w > 0) || !(q.land.h > 0) || q.land.w * q.land.h > 600000) return 'A zone in the map is damaged.';
-    const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), edge: null, edgeVer: -1, objs: [], ver: 0 };
+    const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), seen: unrle(q.land.seen || [], n), edge: null, edgeVer: -1, objs: [], ver: 0 };
     setLandFrame(L, +q.cx, +q.cz, +q.ang, +q.y);
     const Z = { id: q.id, name: String(q.name || 'Zone'), type: ZTYPES[q.type] ? q.type : 'TABLE', spec: q.spec, y: +q.y, h: +q.h || 0, cx: +q.cx, cz: +q.cz, ang: +q.ang, w: +q.w || 0, d: +q.d || 0, area: +q.area || 0, color: q.color || ZPAL[(q.id - 1) % ZPAL.length], settled: null, land: L, label: null, core: null, lost: !!q.lost };
     L.objs = landComps(L, (k) => L.st[k] === 2, 3); Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; zones.push(Z);
@@ -1333,9 +1334,9 @@ function growLand(Z, fz) { // a fresh scan reached beyond the saved land of a bi
   for (let k = 0; k < b.lab.length; k += 2) if (b.lab[k] === fz.id) { const [x, zz] = gXZ(k), dx = x - L.cx, dz = zz - L.cz, i = Math.floor((dx * L.c + dz * L.s) / LC), j = Math.floor((-dx * L.s + dz * L.c) / LC); if (i - 3 < i0) i0 = i - 3; if (j - 3 < j0) j0 = j - 3; if (i + 3 > i1) i1 = i + 3; if (j + 3 > j1) j1 = j + 3; }
   if (i0 === L.i0 && j0 === L.j0 && i1 === L.i0 + L.w - 1 && j1 === L.j0 + L.h - 1) return;
   const w = i1 - i0 + 1, h = j1 - j0 + 1; if (w * h > 700000) return;
-  const mk = () => new Uint8Array(w * h), st = mk(), dist = mk(), calm = mk(), ht = mk();
-  for (let j = 0; j < L.h; j++) for (let i = 0; i < L.w; i++) { const o = j * L.w + i, q = (j + L.j0 - j0) * w + (i + L.i0 - i0); st[q] = L.st[o]; dist[q] = L.dist[o]; calm[q] = L.calm[o]; ht[q] = L.ht[o]; }
-  Object.assign(L, { i0, j0, w, h, st, dist, calm, ht, edge: null, edgeVer: -1 }); L.ver++; Z.core = null;
+  const mk = () => new Uint8Array(w * h), st = mk(), dist = mk(), calm = mk(), ht = mk(), seen = mk();
+  for (let j = 0; j < L.h; j++) for (let i = 0; i < L.w; i++) { const o = j * L.w + i, q = (j + L.j0 - j0) * w + (i + L.i0 - i0); st[q] = L.st[o]; dist[q] = L.dist[o]; calm[q] = L.calm[o]; ht[q] = L.ht[o]; seen[q] = L.seen[o]; }
+  Object.assign(L, { i0, j0, w, h, st, dist, calm, ht, seen, edge: null, edgeVer: -1 }); L.ver++; Z.core = null;
   if (Z.mesh) { world.remove(Z.mesh); Z.mesh.traverse((q) => { if (q.geometry) q.geometry.dispose(); if (q.material && q.material.map && q.material !== TOWER_MAT) { q.material.map.dispose(); q.material.dispose(); } }); Z.mesh = null; }
 }
 function coveredAt(x, zz, rad, belowY) { // did this scan really look at this place (rays landed within a few cm of it); with belowY: only rays that landed on something lower (so the place is seen empty)
@@ -1744,8 +1745,9 @@ function restoreLinks(sv) { // saved cable cars between settlements that exist a
 }
 // Continue: the saved map and colony come back, the colony lives through the time away on the map (no camera needed), then the player scans and aligns.
 function prepareContinue() {
-  const md = loadMapData(), sv = loadSave(); if (!md || !sv) { toast('Nothing to continue yet.'); return false; }
+  const md = loadMapData(), sv = loadSave(); if (!md) { toast('Nothing to continue yet.'); return false; }
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
+  G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
   for (const d of sv.settlements) restoreSettlement(d);
   restoreLinks(sv.links || []); syncCables();
@@ -1831,7 +1833,7 @@ async function arStart(cont) {
 }
 function arEnded() {
   if (!AR.on && !AR.session) return;
-  saveNow();
+  saveNow(); saveMap();
   for (const s of AR.srcs) try { s.cancel(); } catch (e) { /* ignore */ }
   AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null;
   try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
@@ -2030,7 +2032,8 @@ function topNear(hit) { // the top of a small thing standing where a detection's
     const dy = b.y - hit.y; if (dy < 0.03 || dy > 0.5 || !b.bump) continue;
     for (let dx = -0.1; dx <= 0.1; dx += 0.02) for (let dz = -0.1; dz <= 0.1; dz += 0.02) { const k = gIdx(hit.x + dx, hit.z + dz); if (k >= 0 && b.g[k] && b.bump[k]) { const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = { b, k }; } } }
   }
-  if (!best) return null; const c = bandComponent(best.b, best.k); return { x: c.x, z: c.z, y: best.b.y, area: c.area };
+  if (!best) return null; const c = bandComponent(best.b, best.k), g = gXZ(best.k); // several things merged into one patch: use the place the ray found, not the middle of the lot
+  return c.area > 0.02 ? { x: g[0], z: g[1], y: best.b.y, area: Math.min(c.area, 0.01) } : { x: c.x, z: c.z, y: best.b.y, area: c.area };
 }
 function recogConsider(d, fr) {
   const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
@@ -2174,8 +2177,8 @@ function showTitle() {
   room.visible = false; scene.background = null; G.phase = 'title'; updateTitle();
 }
 function updateTitle() {
-  const md = loadMapData(), has = !!loadSave() && !!md; $('bCont').hidden = !has; $('bNew').hidden = !has && !md; $('bAR').hidden = !AR.ok;
-  $('bMapIO').hidden = false; $('mapInfo').textContent = md ? 'Saved room map: ' + md.zones.length + ' surfaces, ' + md.spots.filter((s) => s.src !== 'default').length + ' named spots' + (has ? ', and a colony.' : '.') : 'No room map yet.';
+  const md = loadMapData(), has = !!loadSave() && !!md; $('bCont').hidden = !md; $('bCont').textContent = has ? 'Continue my colony' : 'Play on my saved room map'; $('bNew').hidden = !has; $('bAR').hidden = !AR.ok;
+  $('bMapIO').hidden = false; $('mapInfo').textContent = md ? 'Saved room map: ' + md.zones.length + ' surfaces, ' + md.spots.filter((s) => s.src !== 'default').length + ' named spots' + (has ? ', and a colony.' : ', no colony yet.') + ' Map my room adds to it.' : 'No room map yet.';
 }
 function startScan(cont) {
   setPhase('scan'); G.cont = !!cont; $('title').hidden = true; $('top').hidden = false; $('hint').hidden = false;
@@ -2201,7 +2204,7 @@ function barUi() {
   const b = $('bar'); b.hidden = false; const pr = G.mode === 'practice';
   if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (pr ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
   else if (G.phase === 'zones') b.innerHTML = '<button id="bTag">Name spots</button><button id="bRescan">Scan again</button><button id="bQuit">Back</button>';
-  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bMapIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
+  else if (G.phase === 'tag') b.innerHTML = `<button data-tagmode="spot" class="${G.tagMode === 'spot' ? 'on' : ''}">Name a spot</button><button data-tagmode="cable" class="${G.tagMode === 'cable' ? 'on' : ''}">Mark a cable</button><button id="bMusic" class="${G.music ? 'on' : ''}">Music ${G.music ? 'on' : 'off'}</button><button id="bAsk">What are these? (${unknownTops().length})</button><button id="bSaveMap" class="big alt">Save room map</button><button id="bIO">Export / import</button><button id="bFound">Found a colony</button><button id="bQuit">Back</button>`;
   else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignMore">Scan more first</button><button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
@@ -2228,7 +2231,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bFound') { setPhase('zones'); paintAll(); updateLabels(true); barUi(); updateHint(); return; }
   if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
   if (t.id === 'bSaveMap') { autoSpots(); saveMap(); toast('Room map saved: ' + G.zones.length + ' surfaces, ' + G.spots.filter((s) => s.src !== 'default').length + ' named spots. The colonists can use it while you are away.', 4); sfx('chime'); return; }
-  if (t.id === 'bMapIO') return ioUi();
+  if (t.id === 'bIO') return ioUi();
   if (t.id === 'bAsk') return askUnknown();
   if (t.id === 'bAlignMore') { SCAN.frozen = false; setPhase('scan'); G.cont = true; barUi(); updateHint(); toast('Scan the things you need to tap, then Done scanning.'); return; }
   if (t.id === 'bAlignSkip') return finishAlign(true);
@@ -2252,7 +2255,7 @@ function finishScan() {
   applyChanges(rep); commitAlign();
   for (const Z of G.zones) { if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z); }
   G.report = rep; G.asks = rep.asks.slice();
-  setPhase(G.settlements.length ? 'play' : (G.intent === 'map' ? 'tag' : 'zones')); if (G.intent === 'map' && !G.settlements.length) G.tagMode = 'spot';
+  setPhase(G.intent === 'map' ? 'tag' : G.settlements.length ? 'play' : 'zones'); if (G.intent === 'map') G.tagMode = 'spot';
   paintBands(true); updateLabels(G.phase !== 'play'); barUi(); updateHint(); sfx('chime'); G.cont = false; saveMap(); saveNow();
   if (!rep.first) { if (G.asks.length) askNext(); else showReport(); }
 }
@@ -2332,12 +2335,13 @@ function menuUi() {
 }
 function ioUi(msg) {
   const m = $('modal'); m.hidden = false; const live = G.zones.length ? mapToJSON() : loadMapData(), json = live ? JSON.stringify(live) : '';
-  m.innerHTML = '<div class="dh">Room map: export / import</div><div class="sub">' + (msg || 'Export copies the map as text. Import replaces the saved map with text you paste. The colony is saved separately.') + '</div><textarea id="ioText" rows="6" spellcheck="false"></textarea><div class="mrow"><button id="ioDown">Download file</button><button id="ioCopy">Copy</button><button id="ioLoad" class="alt">Import what is pasted</button><label class="file">Load file<input type="file" id="ioFile" accept=".json,application/json"></label><button id="ioClose">Close</button></div>';
+  m.innerHTML = '<div class="dh">Room map: export / import</div><div class="sub">' + (msg || 'Export copies the map as text. Import replaces the saved map with text you paste. The colony is saved separately.') + '</div><textarea id="ioText" rows="6" spellcheck="false"></textarea><div class="mrow"><button id="ioDown">Download file</button><button id="ioCopy">Copy</button><button id="ioLoad" class="alt">Import what is pasted</button><button id="ioForget">Forget the saved map</button><label class="file">Load file<input type="file" id="ioFile" accept=".json,application/json"></label><button id="ioClose">Close</button></div>';
   $('ioText').value = json;
   $('ioDown').onclick = () => { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([$('ioText').value], { type: 'application/json' })); a.download = 'base-camp-room-map.json'; a.click(); } catch (e) { toast('Download is not available here. Use Copy.'); } };
   $('ioCopy').onclick = () => { $('ioText').select(); try { navigator.clipboard.writeText($('ioText').value); } catch (e) { document.execCommand && document.execCommand('copy'); } toast('Copied.'); };
   $('ioClose').onclick = () => { m.hidden = true; };
   $('ioLoad').onclick = () => importMapText($('ioText').value);
+  $('ioForget').onclick = () => { store.del(MAP_KEY); updateTitle(); ioUi('The saved room map is forgotten (the colony save is kept, but it needs a map to come back to).'); };
   $('ioFile').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('ioText').value = r.result; importMapText(r.result); }; r.readAsText(f); };
 }
 function importMapText(txt) {
@@ -2349,10 +2353,10 @@ function importMapText(txt) {
   refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
 }
 $('bAR').onclick = () => { G.intent = 'play'; arStart(false); }; $('bPrac').onclick = () => { G.intent = 'play'; G.mode = 'practice'; resetWorld(); startScan(false); };
-$('bMap').onclick = () => { G.intent = 'map'; if (AR.ok) arStart(false); else { G.mode = 'practice'; resetWorld(); startScan(false); } };
+$('bMap').onclick = () => { G.intent = 'map'; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // with a saved map: scan again, line up, compare, and add to the map
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
 $('bCont').onclick = () => { G.intent = 'play'; if (AR.ok) arStart(true); else { G.mode = 'practice'; resetWorld(); startScan(true); } };
-$('bNew').onclick = () => { store.del(SAVE_KEY); store.del(MAP_KEY); updateTitle(); };
+$('bNew').onclick = () => { store.del(SAVE_KEY); updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   for (const q of G.requests) {
@@ -2528,7 +2532,10 @@ function eventsStep() {
     const [h0, h1] = ev.hours || [0, 24]; if (ENV.hour < h0 || ENV.hour >= h1) continue; if (ev.needs === 'rain' && !ENV.rain) continue;
     if (Math.random() > (ev.chance || 0.2) / ((h1 - h0) * 6)) continue; // checked ten times an hour of game clock
     const S = pick(act), f = ev.effect || {}; if (f.joy) for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + f.joy); if (f.seeds) S.stock.seeds += f.seeds; if (f.wood) S.stock.wood += f.wood; if (f.food) S.stock.food += f.food;
-    toast(ev.text, 4); sfx('cheer');
+    toast((ev.title ? '<b>' + esc(ev.title) + '</b> ' : '') + esc(ev.text) + (ev.say ? ' \u201c' + esc(ev.say) + '\u201d' : '') + (ev.by ? ' <i class="by">by ' + esc(ev.by) + '</i>' : ''), 6); sfx('cheer');
+  }
+  if (Math.random() < 0.12) { // now and then something funny happens at one of the named spots (the council's words)
+    const sp = G.spots.filter((q) => roomInfo(q.tag) && roomInfo(q.tag).funny_thing && q.src !== 'default' && act.some((S) => S.zoneRef && S.zoneRef.id === q.zid)); if (sp.length) { const q = pick(sp), i = roomInfo(q.tag); toast('At the ' + esc(q.name) + ': ' + esc(String(i.funny_thing).replace(/^./, (m) => m.toLowerCase())) + ' <i class="by">by ' + esc(i.by || '') + '</i>', 7); }
   }
 }
 function simTick(dt, quiet) {
@@ -2575,7 +2582,7 @@ window.__g = {
   newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, applyWx, setPhase,
   addSpot, removeSpot, addCable, syncCables, autoSpots, pickLandmarks, spotById, spotsOn, anchorFor, syncLandmarks, landTidy, landDisturb, landCalm, objClass, measureLand,
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
-  RECOG, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
+  RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 

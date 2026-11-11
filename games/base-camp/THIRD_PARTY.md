@@ -9,3 +9,10 @@
 
 The full licence texts are in the headers of `webxr-polyfill.js`. The game only loads it inside an AR app on iPad
 (see the "iPad fix" comment in `index.html`). The rest of the game is our own code.
+
+## Loaded at run time from CDNs (not shipped in this folder)
+
+- three.js r128 (MIT), from cdnjs.
+- TensorFlow.js 4.22.0 and the COCO-SSD model package 2.2.3 (Apache License 2.0), from jsdelivr; the COCO-SSD weights (`ssdlite_mobilenet_v2`, trained on COCO, CC BY 4.0 labels) from storage.googleapis.com. Loaded when AR mapping starts.
+- transformers.js 3.7.5 (Apache License 2.0) from jsdelivr, and the ONNX export `Xenova/clip-vit-base-patch32` of OpenAI's CLIP (MIT) from huggingface.co: only the vision model, about 53 MB, only after the player turns on "Smarter recognition". `clip-labels.json` (in this folder) holds CLIP text embeddings of our own label list, made once with `tests/make-clip-labels.mjs`.
+- Camera pictures are never uploaded: the models run on the device.

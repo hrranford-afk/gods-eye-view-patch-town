@@ -20,8 +20,8 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   await p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
     const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
-    window.__native = { hits: 0, empty: 0 };
-    try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
+    window.__native = { hits: 0, empty: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
+    try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested
     // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
     const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y, hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
     window.__place = place;
@@ -83,7 +83,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   await ev(() => { __g.RECOG.coco.state = 'loading'; }); // the model download is tested in recog-test.js; here it would only slow the sweep
   await p.click('#bMap'); await sleep(800);
   ok('Map my room starts an AR session', await ev(() => __g.AR.on && __g.G.intent === 'map'));
-  ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.computer_vision_data)));
+  ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.options && window.__sessionOpts.options.computer_vision_data)), await ev(() => JSON.stringify(window.__sessionOpts || null)));
   await sweep('map');
   await p.click('#bDone'); await sleep(800);
   const z1 = await ev(() => __g.G.zones.map((z) => z.type + ':' + z.area.toFixed(2) + '@' + z.y.toFixed(2)));
