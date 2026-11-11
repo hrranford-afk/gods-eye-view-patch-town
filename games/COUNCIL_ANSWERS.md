@@ -1,0 +1,261 @@
+# Council answers: Baguettes & Ballistics and Base Camp, 11 Nov 2026 17:42 UTC
+
+Run by CAIRN from the PatchTown session (the town was reachable from there). Residents' words are not tidied.
+WHO SPOKE: the Town Brain (35B, Radeon), 11 tiny trained experts (Mill; their sparks were sorted by the Dell's 27B), and the residents (one seat at a time on the Dell, one on the Mill).
+Three Radeon residents are resting by design and cannot answer - they are counted as broken, honestly.
+'Offices asked' = seats reached SO FAR out of 13 residents - the Dell answers one resident at a time, so this file is updated as they come in.
+NOTE: Q1-Q4 were asked EARLIER in the morning as ONE question with a shorter description of the game and a 90-word cap, before this pack arrived. Q5 was asked at the end of the toy-box question.
+
+## Count
+| Question | Offices asked | Real answers | Empty / off-topic / broken | Also |
+|---|---|---|---|---|
+| Q1 | 12 | 5 | 7 (3 resting seats) | Brain: yes; experts: 88 sparks |
+| Q2 | 12 | 5 | 7 (3 resting seats) | Brain: yes; experts: 88 sparks |
+| Q3 | 12 | 5 | 7 (3 resting seats) | Brain: yes; experts: 88 sparks |
+| Q4 | 12 | 5 | 7 (3 resting seats) | Brain: yes; experts: 88 sparks |
+| Q5 | 12 | 6 | 6 (3 resting seats) | Brain: yes |
+| Q6 | 12 | 6 | 6 (3 resting seats) | Brain: yes; experts: 66 sparks |
+| Q7 | 12 | 8 | 4 (3 resting seats) | Brain: yes |
+| Q8 | 9 | 5 | 4 (3 resting seats) | Brain: yes |
+| Q9 | 9 | 5 | 4 (3 resting seats) | Brain: yes; experts: 44 sparks |
+
+## Q1-Q4. My Track, Drift, AR, the cast (asked together)
+
+### The Town Brain
+
+**1. MY TRACK**
+Home-made tracks are fun because they turn familiar objects into surprises. A salt shaker becomes a turbo ramp; a coffee mug turns into a hairpin. The joy is the "wait, that actually works?" moment.
+The AUTO button should randomly assemble a drivable circuit from nearby kitchen items, then throw one impossible twist: a milk spill that acts as ice, or a ruler that snaps into a jump.
+BUILD steps:
+1. Tag all static kitchen meshes as "track pieces" with bounds and friction values.
+2. Pick a random start node on the table edge.
+3. Run a greedy path algorithm that hops to adjacent unvisited pieces, keeping curvature under 45 degrees per segment.
+4. Place 3 random "surprise" modifiers (slip, boost, bounce) on valid segments.
+5. Run a simple raycast sweep along the path to catch overlaps; shrink or skip colliding pieces.
+6. Animate a camera flyby and play a "assembling" sound.
+
+**2. DRIFT**
+Touch drifting needs forgiveness and tactile feedback. Three rules:
+1. Grip falls: `grip = base_grip × (1 − 0.65 × steer_input)`. Max steer cuts grip to 35%, but releasing throttle instantly restores 70% grip so players can chain slides without getting stuck.
+2. Thumb steers: one thumb. Drag left/right to set target yaw. The car interpolates to that angle. Release the thumb to cut throttle and lock the slide for 0.4 seconds, making the drift predictable.
+3. Reward: completing a drift over 1.5 seconds triggers a "toast flash" (screen vignette pulses gold), plays a low engine rev, and grants a +20% speed burst for 1.2 seconds. The reward must feel like a physical catch.
+
+**3. AR**
+AR should use the iPad’s LiDAR/table detection to let cars drive around real-world objects. On a flat screen, a mug is just a drawn obstacle. In AR, the car actually bumps into the real ceramic, slides off its curved surface, and the player must physically tilt the iPad to keep the car from falling off the real table edge. The kitchen becomes a living track where gravity, real lighting, and physical tilt matter.
+
+**4. THE CAST**
+In a drift battle, Baron von Baguette initiates a "crust slide": his dense, dry mass lets him hold a wide, slow arc that clips opponents. He drops butter slicks behind him to punish pursuers. When he hits the apex, he triggers "toast ignition" – a burst of dry heat that temporarily increases his grip by 40% while shrinking opponents’ tires. He doesn’t drift fast; he drifts heavy.
+
+**FIRST BUILD**
+I would build the MY TRACK AUTO button first. It unlocks the game’s core loop with zero new assets needed. A robot play-tester would prove it works by running 10,000 auto-generated tracks and measuring: (1) drivability pass rate (cars complete the loop without getting stuck >3 times), and (2) drift attempts per minute. If the auto-track pushes drift attempts above 4.2 per minute, the surprise modifiers are working. If drivability drops below 85%, the path algorithm is too greedy. Tune until both cross the fun threshold.
+
+### Residents (each answered all four in one go, 90-word cap)
+- The Dell Builder: (DONE) y Track",
+  "answer": "Fun: Use kitchen items like cups for tunnels, spoons for jumps. AUTO button creates a surprise loop-the-loop with a fork and spoon ramp."
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+- The Dell Coder: Build track with kitchen items. Auto button adds surprise obstacles.
+- The Dell Elder: Use kitchen items like spoons and bottle caps as track obstacles. AUTO button could randomly rearrange the track or add unexpected elements like a 'gravity flip' to surprise the player.
+- The Dell Quick Builder: (WAITING) 
+- The Dell Reasoner: MY TRACK: Use spatula as ramp, ladle as barrier. AUTO button adds random obstacles like a rolling egg or sudden oil spill. DRIFT: Slick the screen with a finger to create friction, making turns feel weightless. AR: Project virtual tanks into real kitchen, letting them shoot through cabinets or dodge real dishes. THE CAST: Baron von Baguette would spin his mustache, shout in German, and launch baguettes as projectiles. Build MY TRACK first for creative chaos.
+- The Dell Scholar: (WAITING) 
+- The Dell Surveyor: 1. Track: Use cookie cutters for jumps, cereal boxes for tunnels. Auto button: Launches a rogue rolling pin attack! 2. Drift: Haptic feedback mimicking tire grip loss; swipe to initiate, tap for a quick spin. 3. AR: Giant gingerbread men appear, Baron von Baguette rides a toaster oven. 4. Baron: Performs a dramatic, flour-bombing drift. I'd build the AR mode first – kitchen chaos is inherently delightful.
+- The Mill Hand: (DONE) ects in AR for unique gameplay, like hidden treasures or obstacles." }
+
+{ "title": "THE CAST",
+  "answer":
+    "Baron von Baguette would outmaneuver players by using his tanks' stealth and agility."
+}
+- The Radeon Clerk: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+- The Radeon Coder: Build track with kitchen items; AUTO button adds surprise obstacles.
+- The Radeon Runner: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+- The Radeon Senior: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+
+### Experts on Q1 My Track (22 of 22 sparks kept, sorted)
+- (expert spark, sorted by the 27B) The Musician: When the player taps the AUTO button, the track generates itself by playing a musical note that corresponds to the first piece of kitchenware used, turning the construction into a sonic event.  [its words: "The track had played the note on its own, the first note on which the auto had been pressed."]
+- (expert spark, sorted by the 27B) The Swarmkeeper: The toy car's wheels are not static but can morph into a 'little wheel, the diameter of a finger' to grip different kitchen surfaces, allowing it to climb vertical objects like salt shakers.  [its words: "A sort of little wheel, the diameter of a finger, was formed at the base of the wing."]
+- (expert spark, sorted by the 27B) The Choreographer: The track layout is determined by a 'gentle wave of water' that visually ripples across the table, pushing loose items into a new, surprising configuration before the race starts.  [its words: "A gentle wave of water appears, followed by a tap of a faucet."]
+- (expert spark, sorted by the 27B) The Sonero: The car's speed and handling change dynamically based on the 'level of modulation,' where the engine sound shifts between a bell, piano, or violin to indicate the current grip level.  [its words: "faded into a single note, which sounded like a low-pitched bell, or a piano, or a violin, depending on the level of modulation that was in effect."]
+- (expert spark, sorted by the 27B) The Fabulist: The track can extend 'right over the back of the kitchen door,' allowing the car to drive off the table and onto the floor, creating a vertical drop that the player must navigate with one thumb.  [its words: "as far as the top of the fireplace, and ran right over the back of the kitchen door."]
+
+### Experts on Q2 Drift (20 of 22 sparks kept, sorted)
+- (expert spark, sorted by the 27B) The Synthesist: When the car drifts, it leaves a trail of 'milk' that visually and audibly swaps with the sound of the car falling, creating a surreal sensory feedback loop.  [its words: "The car was the sound of the milk falling. The milk was the sound of the car falling."]
+- (expert spark, sorted by the 27B) The Fabulist: The toy car's wheels rattle with a 'violin string' sound as it slides, and the car appears to have no wheels at all, moving only by this strange vibration.  [its words: "the wheels rattled like a violin string. It was a very strange and strange thing that the car had no wheels at all, and could only move by it"]
+- (expert spark, sorted by the 27B) The Animalist: A giant, soft, pliable hand appears from the top of the screen to gently push the car around corners, acting as a one-thumb steering aid.  [its words: "a heavy hand on my shoulder, but it was only a soft, pliable, round thing that had not yet been shaped."]
+- (expert spark, sorted by the 27B) The Sonero: The drift sound is a distinctive 'Cuban reggae' percussion and bass mix that distinguishes the perfect slide from a normal turn.  [its words: "the sound of the perfect drift is a distinctive style in Cuban reggae"]
+- (expert spark, sorted by the 27B) The Composer: The car is pushed along by an invisible bicycle rider, creating a rhythmic, mechanical 'push' sensation that the player controls with one thumb.  [its words: "it was being pushed along by someone on a bicycle."]
+
+### Experts on Q3 AR (21 of 22 sparks kept, sorted)
+- (expert spark, sorted by the 27B) The Sonero: In AR mode, the player places a toy car on a real kitchen counter, and the game renders a 'cameraman' character who physically pushes the car to direct its movements.  [its words: "they had their own car, which the cameraman used to direct their movements"]
+- (expert spark, sorted by the 27B) The Choreographer: When a toy car crashes in AR, a 'wave of light' emerges from the real kitchen tap, creating a visual ripple effect that interacts with the physical surface.  [its words: "A wave of light emerges from the tap"]
+- (expert spark, sorted by the 27B) The Fabulist: The villain's army is housed inside a real kettle; when the player taps the kettle, 'fairy creatures' emerge to play a grand game, with the kettle appearing 'very full of gold'.  [its words: "fairy creatures came in to the kettle and played a grand game"]
+- (expert spark, sorted by the 27B) The Naturalist: In the DRIFT mode, the toy soldiers are 'driven back by the fire' of a real stove, forcing the player to slide the car around the heat source to avoid being pushed back.  [its words: "were soon driven back by the fire"]
+- (expert spark, sorted by the 27B) The Synthesist: The AR track builder uses a '6000-karat... copper alloy kettle' as a central obstacle, where the player must navigate the car around its 'cast iron kettle handle' and '25-piece gourd foot'.  [its words: "6000-karat, 13-gauge, 500-millimeter copper alloy kettle"]
+
+### Experts on Q4 the Baron (21 of 22 sparks kept, not sorted yet)
+
+## Q5 and Q6. Open question, and toy boxes
+
+### The Town Brain (its own box, three more, the distinctness rule, how it unfolds, and Q5 at the end)
+
+A.
+1. **Object/Owner:** A collapsible vintage Tea Trolley. Owned by Mrs. Crumb, a frantic baker fleeing Baron von Baguette's flour storms.
+2. **Unfold:** Four brass hinges snap outward, the top tray drops with gravity, and wheels pop down. The clunk is the tray locking.
+3. **Ability:** **Heavy Load.** Carries double cereal without speed penalty; can drop "Crate Barrage" (mini-dominoes) to block paths.
+4. **Weakness:** **Top-Heavy.** Sudden turns risk tipping; if tipped, you lose control until you right yourself.
+5. **Playstyle:** **Helper/Defender.** Protects the convoy, hoards resources, and drops obstacles to slow enemies.
+6. **Upgrade:** **The Silver Serving Tray.** Turns the top shelf into a shield that deflects incoming projectiles back at attackers.
+7. **Sound:** *Click-whirr-CLONK.*
+
+B.
+*   **Pop-up Laundry Basket:** Ability: Bulky Bounce (knocks cars off course). Weakness: Snags on dominoes. Playstyle: Tank/Rusher.
+*   **Collapsible Salad Spinner:** Ability: Centrifugal Spray (sprays water to slow enemies). Weakness: Spins Out (loses control after ability). Playstyle: Sneaky/Evasion.
+*   **Fold-out Spice Rack:** Ability: Pepper Cloud (blinds vision, causes swerving). Weakness: Shelf Break (one hit destroys ability for a round). Playstyle: Trap/Support.
+
+C.
+1. **Physics Divergence:** The unfold must alter movement, hitbox, or interaction physics, not just visuals.
+2. **Role Collision:** No two boxes can share the same primary combat role (e.g., two pure tanks).
+3. **Object Family:** Boxes cannot share the same household category (e.g., two rolling carts, two collapsible baskets).
+
+D.
+1. **Hierarchy:** Model panels as separate meshes grouped by joint. Set pivot points via `Object3D` hierarchy so rotation happens at the hinge, not the mesh center.
+2. **Spring Animation:** Interpolate rotation angles using a spring easing with high stiffness (0.8) and slight overshoot for a snap-and-settle feel.
+3. **Timing:** Unfold duration is 0.5s. Trigger the "clunk" sound at 0.4s, just before the final panel locks.
+4. **Camera Jolt:** On the sound trigger, apply a micro-shake to the camera rig to sell the weight of the clunk.
+5. **Lighting:** Flash a rim light on the box edges at the peak of the animation to highlight the mechanism.
+
+E.
+Watching your real cereal bowl turn into a gumball machine that spits gold coins onto your iPad screen.
+
+### Residents (their box, seven points, then Q5 as the last line)
+- The Dell Builder: {"title": "The Spice Rack Fortress", "answer": {"1. Object and Owner": "A vintage spice rack belonging to Grandma. It's filled with colorful spice jars that have been collected over the years.", "2. Opening Mechanism": "When activated, the spice rack unfolds into a sprawling fortress with multiple levels and hidden compartments. The spice jars transform into turrets and barriers.", "3. Special Ability": "The spice rack can deploy 'Spice Clouds' that temporarily blind and confuse enemy cars, making them harder to control.", "4. Weakness": "The spice rack is vulnerable to water-based attacks. If an enemy car splashes water on it, the spice clouds dissipate and the turrets malfunction.", "5. Playstyle": "Defensive and strategic. Players can use the multiple levels to set up ambushes and traps, while the spice clouds provide cover for sneaky maneuvers.", "6. Upgrade": "The 'Turbo Spice Blaster' upgrade allows the spice rack to fire powerful spice projectiles that can knock back enemy cars and cause temporary slowdowns.", "7. Opening Sound": "A whimsical 'ting-ting-ting' sound, like a tiny bell chiming, followed by a satisfying 'clunk' as the spice jars click into place."}, "one_thing_to_show": "The sheer creativity and charm of the spice rack transforming into a fortress would make me want to show this game to a friend."}
+- The Dell Coder: {'1': "A chef's knife, owned by a professional chef.", '2': "It opens with a satisfying 'clang' as it pivots open, revealing a hidden compartment.", '3': 'It can slice through enemies with a sharp attack.', '4': "It's delicate and can be broken easily.", '5': "It's a sneaky attacker, using its sharp edges to take out opponents from a distance.", '6': "A special, enchanted chef's knife that can cook food to heal allies.", '7': "The 'clang' sound of it opening.", '8': 'It adds a touch of culinary magic to the game, making it a fun and unique experience.'}
+- The Dell Elder: 1. The Spice Rack Fortress is a vintage spice rack owned by the chef. 2. It unfolds like a medieval drawbridge, revealing a tiny kitchen with a spice market and a car garage. 3. Its special ability is to release a cloud of pepper or chili powder, blinding enemies temporarily. 4. Its weakness is that the pepper cloud can also affect allies if they're too close. 5. It plays as a defender, protecting the home base with its pepper clouds and a tiny spice-powered shield. 6. An upgrade could be a cinnamon-powered speed boost for the cars. 7. The sound it makes when opening is a soft 'clink' of spices rattling together. The one thing that would make me want to show this game to a friend is the satisfying 'clink' of the spice rack opening, revealing the tiny, intricate world inside.
+- The Dell Quick Builder: (WAITING) 
+- The Dell Reasoner: The Gumball Gambit is a vintage gumball machine owned by the Baron von Baguette. It clunks open with a satisfying 'clunk-click' as the lever is pulled, revealing a rotating glass dome with a hidden compartment. Its special ability is to summon a gumball storm, launching sticky orbs that slow enemies and grant temporary invincibility. However, its weakness is that it can't be used while the machine is refilling. It plays as a sneaky, defensive unit, using gumballs to disrupt opponents. An upgrade would be a 'Gumball Grenade' that explodes on impact. When it opens, it emits a soft 'ding-ding' sound, echoing through the kitchen. The one thing that would make me show the game to a friend is the thrill of watching their toy box get stuck in the gumball machine's trap.
+- The Dell Scholar: (WAITING) 
+- The Dell Surveyor: {"1": {"object": "Tea Kettle", "owner": "Mrs. Higgins (the baker)"}, "2": {"open": "A plume of steam erupts, revealing a tiered platform"}, "3": {"ability": "'Boiling Point' - briefly increases car speed and damage"}, "4": {"weakness": "Vulnerable to water-based attacks (e.g., cereal milk)"}, "5": {"playstyle": "Fast - excels at hit-and-run tactics"}, "6": {"upgrade": "'Pressure Release Valve' - allows for a second 'Boiling Point' use"}, "7": {"sound": "Hissing steam and a clanking lid"}}, {"8": {"object": "Rolling Pin", "owner": "Chef Pierre"}, "9": {"open": "Spring-loaded, revealing a miniature bakery"}, "10": {"ability": "'Flour Bomb' - slows down enemies"}, "11": {"weakness": "Easily knocked over"}, "12": {"playstyle": "Defender"}, "13": {"upgrade": "'Dough Shield'"}, "14": {"sound": "A satisfying *thwack*"}}, {"15": {"object": "Cookie Jar", "owner": "Little Timmy"}, "16": {"open": "A gingerbread man pops out, revealing a tiered interior"}, "17": {"ability": "'Sweet Surprise' - chance to instantly repair a car"}, "18": {"weakness": "Fragile - easily broken"}, "19": {"playstyle": "Helper"}, "20": {"upgrade": "'Honeycomb Reinforcement'"}, "21": {"sound": "A cheerful 'ding!'"}}, {"22": {"object": "Spice Rack", "owner": "Old Man Fitzwilliam"}, "23": {"open": "Spices cascade down, revealing hidden compartments"}, "24": {"ability": "'Spice Cloud' - obscures vision"}, "25": {"weakness": "Slow deployment"}, "26": {"playstyle": "Sneaky"}, "27": {"upgrade": "'Pepper Shot'"}, "28": {"sound": "Rustling spices and a click"}}, {"29": {"object": "Colander", "owner": "Esmeralda, the inventor"}, "30": {"open": "Water streams out, revealing a complex gear system"}, "31": {"ability": "'Drain Rush' - pulls enemies closer"}, "32": {"weakness": "Requires water source"}, "33": {"playstyle": "Attacker"}, "34": {"upgrade": "'Hydro-Jet'"}, "35": {"sound": "Gurgling water and whirring gears"}}, {"36": {"object": "Bread Loaf Pan", "owner": "Baron von Baguette (ironically)"}, "37": {"open": "A miniature baguette pops up, revealing a fortified base"}, "38": {"ability": "'Crust Shield' - increased defense"}, "39": {"weakness": "Slow movement"}, "40": {"playstyle": "Defender"}, "41": {"upgrade": "'Rising Dough'"}, "42": {"sound": "A hollow *thump*"}}, {"43": {"object": "Mixing Bowl", "owner": "Penelope, the student"}, "44": {"open": "A whisk spins, revealing a rotating platform"}, "45": {"ability": "'Whirlwind' - random car swap"}, "46": {"weakness": "Unpredictable"}, "47": {"playstyle": "Helper"}, "48": {"upgrade": "'Stabilizer'"}, "49": {"sound": "Whirring and a *clink*"}}} The AR kitchen battles are genuinely hilarious to watch.
+- The Mill Hand: (DONE) y the gentle creak of old wood."
+  },
+  "sound": "A vintage wooden spoon opens, revealing an intricate miniature kitchen setup with a soft clunk and gentle creaks",
+  "show_to_friend": "I want to show this game because it's not just about toy cars racing; it's also about collecting and customizing your own playset. Each box is like a mini-world that can be upgraded, making every session unique."
+}
+- The Radeon Clerk: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+- The Radeon Coder: 1. Everyday kitchen object: Chef's knife. Owner: Chef.
+2. Opens by sliding off a hinge, revealing a hidden compartment.
+3. Special ability: Can slice through enemy defenses quickly.
+4. Weakness: Heavy and slow to move.
+5. Plays as a defender, providing cover and support.
+6. Upgrade: Add a small, sharp blade for extra damage.
+7. Sound: 'Clang!' when opening.
+8. Show to a friend: The Chef's Knife Box adds a strategic edge with its quick and powerful attacks.
+- The Radeon Runner: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+- The Radeon Senior: (ERROR) ERROR URLError: <urlopen error [Errno 61] Connection refused>
+
+### Experts on toy boxes: the object and the clunk open (22 of 22 kept)
+- (expert spark, sorted by the 27B) Junglist: The player's base is a tin that, when opened, releases a 'scream' of 'I'm in' to activate its defense mode.  [its words: "the 'scream' of 'I'm in' - the first thing to sound in the whole system was the sound of a 'scream' when the machine was switched on."]
+- (expert spark, sorted by the 27B) Naturalist: The base is a small box that automatically re-opens the moment the lid is closed, creating a perpetual motion trap for enemies.  [its words: "it would open again; and if you closed it and left the lid on, it would re-open at the same moment and again."]
+- (expert spark, sorted by the 27B) Choreographer: The base is a tin that summons a fluffy white cloud to gather seeds and sprout a defensive garden wall.  [its words: "A fluffy white cloud hovered just beyond. It drifted toward the tin, gathering all the seeds. A little sprout emerged, tiny and green, and began to climb."]
+- (expert spark, sorted by the 27B) Choreographer: The base is a toolbox that creaks open to reveal a mouse whose paw scratches the wood and flickers with an ember to light the path.  [its words: "The toolbox creaked open. A mouse's paw scratched the wood, its whiskers twitching. The toolbox flickered with an ember, a sma"]
+- (expert spark, sorted by the 27B) Animalist: The base is a tin that, when opened, fills the room with a cloud of dust and stuff to obscure enemy vision.  [its words: "the wooden doors opened wide, and the room filled with a cloud of dust and stuff."]
+
+### Experts on toy boxes: ability and weakness (22 of 22 kept)
+- (expert spark, sorted by the 27B) The Fabulist: The teapot base clunks open to release a rising black cloud that floods the surrounding tiles with a vast puddle, slowing enemy cars.  [its words: "a black cloud would rise up like a shipwrecked ship, and the water would rush into it, making a vast puddle"]
+- (expert spark, sorted by the 27B) The Choreographer: Tapping the bottom of the teapot base repeatedly releases bubbles that act as temporary shields or movement boosters for your cars.  [its words: "A tap on the teapot's bottom releases a bubble. Tap again."]
+- (expert spark, sorted by the 27B) The Swarmkeeper: The base is sealed with a cork that must be broken to open, but doing so empties your stored resources and throws them away as a penalty.  [its words: "If the cork is broken, the teapot can be opened at the cost of being emptied and the contents thrown away"]
+- (expert spark, sorted by the 27B) The Choreographer: A tiny worm hops inside the base and can be tapped to move to a hidden spot, revealing a secret treasure or trap.  [its words: "A tiny worm hopped inside it, its tiny body a treasure. A gentle tap moves the worm to a hidden spot."]
+- (expert spark, sorted by the 27B) The Naturalist: When the base is emptied, a light appears at the bottom that cannot be put away and must be lifted and cast away to clear the area.  [its words: "when it was emptied, a light was to be seen at the bottom, which could not, as we have said, be put away. It could only be lifted and cast away"]
+
+### Experts on toy boxes: collector details, upgrades, sound (20 of 22 kept)
+
+(Distinctness table: to be filled when at least 6 residents' boxes are in - the Town Brain will be asked to check them against its own rule.)
+
+## Q7. Base Camp almanac
+
+Merged file: almanac.json - 9 colonists, 9 events, 9 requests, every item has "by". It parses.
+NAME CLASH (not renamed - Harry or the residents decide): luna, pip
+
+- The Town Brain: {"colonists": [{"name": "Pip", "personality": "Curious and earnest, with a knack for finding beauty in ordinary surfaces.", "likes": ["polished pebbles", "morning light", "humming while working"], "dislikes": ["dust bunnies", "sudden shadows"], "dream": "To weave a glowing root-network that connects every corner of the desk."}], "events": [{"title": "First Roots", "when": "morning", "weather": "sun", "what_happens": "Pip and the other colonists carefully anchor a tiny seedling to the desk's edge. Sunlight catches the dew on its leaves, making them shimmer like glass as they settle into place.", "colonist_says": "Look! It's drinking the light already. It knows we're here."}], "requests": [{"colonist": "Pip", "asks_for": "seed", "says": "The soil near the shelf edge is a bit tired. Could you sprinkle a little extra seed there? I promise it'll grow tall enough to wave at your coffee mug."}]}
+- The Dell Builder: {"colonists": [{"name": "Gertie", "personality": "cheerful and resourceful", "likes": ["bright sunny days", "building things with her hands"], "dislikes": ["dark, stormy nights"], "dream": "to build a beautiful treehouse for everyone to enjoy"}], "events": [{"title": "Gertie's Treehouse Project", "when": "morning", "weather": "sun", "what_happens": "Gertie starts gathering materials to build a treehouse in the colony's largest tree.", "colonist_says": "I've always dreamed of having a cozy spot up in the trees!"}], "requests": [{"colonist": "Gertie", "asks_for": "ladder", "says": "Could you help me find a sturdy ladder for my treehouse project? Thanks!"}]}
+- The Dell Coder: {"colonists": [{"name": "Gizmo", "personality": "Inventive and curious", "likes": ["new gadgets", "exploring", "building"], "dislikes": ["mess", "waiting"], "dream": "Create a flying machine to explore the ceiling"}], "events": [{"title": "Morning Sunlight", "when": "morning", "weather": "sun", "what_happens": "The morning sun shines brightly through the window, casting a warm glow over the colony.", "colonist_says": "Good morning! The sun is shining, perfect for a new day of work and play."}], "requests": [{"colonist": "Gizmo", "asks_for": "cable_car", "says": "Hey, can you help me build a cable car? I want to explore the ceiling and see what's up there!"}]}
+- The Dell Elder: {"colonists": [{"name": "Luna", "personality": "curious and adventurous", "likes": ["exploring", "stargazing"], "dislikes": ["darkness", "solitude"], "dream": "to build a cable car that reaches the ceiling"}], "events": [{"title": "The First Tree", "when": "morning", "weather": "sun", "what_happens": "Luna plants the first tree in the colony, hoping it will grow tall and strong.", "colonist_says": "Let's see how tall this little sapling can grow!"}], "requests": [{"colonist": "Luna", "asks_for": "ladder", "says": "Can you bring a ladder so I can reach the higher branches when the tree grows?"}]}
+- The Dell Quick Builder: (WAITING)
+- The Dell Reasoner: {"colonists": [{"name": "Lila", "personality": "curious and cheerful", "likes": ["growing plants", "exploring", "telling stories"], "dislikes": ["loud noises", "messy spaces", "unanswered questions"], "dream": "to create a garden that blooms with stories"}], "events": [{"title": "The First Bloom", "when": "morning", "weather": "sun", "what_happens": "The first sunflower seed sprouts and begins to stretch toward the light.", "colonist_says": "Look! The seed has awakened! Let's sing it a lullaby to help it grow."}], "requests": [{"colonist": "Lila", "asks_for": "water", "says": "Please bring me a glass of water to water the new sprout. Let's make it grow with care!"}]}
+- The Dell Scholar: {"colonists": [{"name": "Pip", "personality": "a round, ink-stained cartographer who narrates everything in tiny whispers and gets flustered if you call them 'cute'", "likes": ["pencil shavings", "the grain of oak", "being handed a very small brush"], "dislikes": ["being rushed", "sudden loud sounds", "the word 'just'"], "dream": "to map every shadow the room casts across one full year, and frame it"}], "events": [{"title": "The River in the Desk", "when": "morning", "weather": "sun", "what_happens": "Pip kneels at the edge of the desk, traces a long hairline crack with a fingertip, and announces it is a river. By the time the light hits the shelf, Pip has built a wobbly three-plank bridge over it and is already sketching the tributaries.", "colonist_says": "It's not a crack. It's a river. I've named it. You may not ask the name yet. You may ask it tomorrow."}], "requests": [{"colonist": "Pip", "asks_for": "seed", "says": "One seed. Just one. I want to plant it in the river so it becomes a garden, and then I can map the garden, and then the map will be *mine* and not just the desk's."}]}
+- The Dell Surveyor: {"colonists": [{"name": "Pipkin Bramble", "personality": "Curious, gentle, a little clumsy", "likes": ["Mushrooms", "Shiny pebbles", "Birdsong"], "dislikes": ["Sudden noises", "Being rushed", "Dust"], "dream": "To discover a new type of berry that glows in the dark."}], "events": [{"title": "The First Cable Car Troubles", "when": "afternoon", "weather": "wind", "what_happens": "The first cable car, built between the desk and the bookshelf, swayed dramatically in a sudden gust of wind. It almost tipped! Luckily, Barnaby the Builder managed to stabilize it with some clever rope work.", "colonist_says": "Oh dear! That was a bit scary! But Barnaby is so clever!"}], "requests": [{"colonist": "Pipkin Bramble", "asks_for": "shade", "says": "Could you perhaps move that lamp a little? The sun is quite strong today, and I'm trying to examine this interesting moss I found!"}]}
+- The Mill Hand: {"colonists": [{"name": "Luna", "personality": "curious and adventurous, always eager to explore new things.", "likes": ["trees", "flowers"], "dislikes": ["cold weather"], "dream": "to discover hidden treasures in the forest."}], "events": [{"title": "The First Day", "when": "morning", "weather": "sun", "what_happens": "Luna wakes up to a bright, sunny morning. She stretches and starts her day by planting seeds in the garden.", "colonist_says": "Good morning! The sun is shining so brightly today. I can't wait to see what new flowers will grow from my seed."}], "requests": [{"colonist": "Luna", "asks_for": "water", "says": "I need some water for the plants in the garden. The sun is so strong today, they'll dry out quickly if I don't take care of them!"}]}
+- The Radeon Clerk: (ERROR)
+- The Radeon Coder: {"colonists": [{"name": "Sunny", "personality": "playful and energetic", "likes": ["growing plants", "cable cars", "sunny days"], "dislikes": ["rainy days", "cold nights"], "dream": "to have a big, beautiful garden with lots of flowers"}], "events": [{"title": "Planting Day", "when": "morning", "weather": "sun", "what_happens": "Sunny and the other colonists are planting seeds in the garden. They're enjoying the warm sun and the fresh air.", "colonist_says": "It's a great day to start planting! Let's make our garden beautiful!"}], "requests": [{"colonist": "Sunny", "asks_for": "shade", "says": "Hey, could you help me find a spot for my new plant? I want it to have some shade to grow better."}]}
+- The Radeon Runner: (ERROR)
+- The Radeon Senior: (ERROR)
+
+## Q8. Base Camp: living in a real room
+
+Merged file: rooms.json - 29 spots, each with "by".
+
+- The Town Brain: [{"spot": "top of speaker", "used_for": "broadcast tower", "gives": "vibration signals, music for morale, elevated view", "costs": "constant bass rattles their teeth, speakers blow dust everywhere", "how_they_get_there": "zip-line made of dental floss", "funny_thing": "they try to \"DJ\" by tapping the cone, causing accidental bass drops that knock over their own breakfast"}, {"spot": "windowsill", "used_for": "solar farm", "gives": "warmth, sunlight for photosynthesis, rainwater collection", "costs": "extreme exposure to wind, curious cats, sudden temperature swings", "how_they_get_there": "pulley system using thread and a paperclip", "funny_thing": "they build tiny glasshouses that instantly fog up, and argue over who gets to \"eat\" the condensation"}, {"spot": "under sofa", "used_for": "hideout and nursery", "gives": "darkness, safety, constant dust accumulation for food and building", "costs": "claustrophobia, vacuum cleaner apocalypses, lost items like coins and socks", "how_they_get_there": "rope ladder dropped from the rug edge", "funny_thing": "they mistake a lost sock for a mythical \"cloud-beast\" and try to tame it with tiny lassos"}, {"spot": "radiator", "used_for": "forge and heat workshop", "gives": "reliable warmth, metal for crafting, steam for cooking", "costs": "scorching burns, loud ticking and popping, dry air", "how_they_get_there": "hot-air balloon made from a tea bag", "funny_thing": "they try to toast crumb-pies on the fins and accidentally weld a spoon to the floor"}, {"spot": "worktop", "used_for": "trading post and market", "gives": "flat space, access to food scraps, high foot traffic", "costs": "grease, slippery surfaces, human interference", "how_they_get_there": "catapult launch using a bent fork tine", "funny_thing": "they try to conduct trade with sugar cubes, but one melts into a sticky black hole that swallows their ledger"}]
+- The Dell Coder: {"spots": [{"spot": "Shelves", "used_for": "Storage", "gives": "Extra space for storing food and materials", "costs": "Dusty", "how_they_get_there": "Cable car", "funny_thing": "A fluffkin accidentally knocks over a shelf, sending a pile of food flying everywhere"}, {"spot": "Top of a speaker", "used_for": "Observation", "gives": "A high vantage point to watch the colony's activities", "costs": "Loud", "how_they_get_there": "Rope", "funny_thing": "A fluffkin tries to use the speaker as a pillow but ends up falling off and landing on a fluffkin's face"}, {"spot": "Floor", "used_for": "Movement", "gives": "A flat surface for walking and moving around", "costs": "Dusty", "how_they_get_there": "Ladder", "funny_thing": "A fluffkin accidentally steps on a cable car, causing it to malfunction and send them flying across the room"}, {"spot": "Rug", "used_for": "Sleeping", "gives": "A cozy place to rest and sleep", "costs": "Warm but dangerous", "how_they_get_there": "Catapult", "funny_thing": "A fluffkin accidentally falls asleep on a cable car and ends up being sent flying across the room"}, {"spot": "Space under the sofa", "used_for": "Hideout", "gives": "A secret place to store food and materials", "costs": "Dusty", "how_they_get_there": "Tunnel", "funny_thing": "A fluffkin accidentally falls into the space under the sofa and gets stuck, causing a commotion"}]}
+- The Dell Elder: (WAITING)
+- The Dell Reasoner: {"spots": [{"spot": "top of the fridge", "used_for": "village", "gives": "cool shade and snacks", "costs": "loud fridge hum and possible spills", "how_they_get_there": "ladder", "funny_thing": "they accidentally trigger the fridge's ice dispenser"}, {"spot": "windowsill", "used_for": "lookout", "gives": "sunlight and views", "costs": "heat and risk of falling", "how_they_get_there": "cable car", "funny_thing": "a Fluffkin gets stuck in the window screen"}, {"spot": "floor", "used_for": "farm", "gives": "space to grow crops", "costs": "dust and foot traffic", "how_they_get_there": "tunnel", "fun,ny_thing": "they accidentally roll a sock into a crop"}, {"spot": "sofa", "used_for": "hideout", "gives": "warmth and comfort", "costs": "loud voices and possible squishing", "how_they_get_there": "ladder", "funny_thing": "they host a tiny pillow party"}, {"spot": "radiator", "used_for": "workshop", "gives": "warmth and heat for tools", "costs": "danger of burning and loud noise", "how_they_get_there": "ladder", "funny_thing": "they build a tiny sauna out of socks"}]}
+- The Dell Surveyor: {"spots": [{"spot": "The Top of the Fridge", "used_for": "Village & Lookout", "gives": "High vantage point for spotting crumbs and potential predators (cats!), good sunlight for Fluffkin farms.", "costs": "Cold, exposed to sudden movements of humans, precarious access.", "how_they_get_there": "A complex system of miniature cable cars powered by static electricity, requiring constant maintenance.", "funny_thing": "A Fluffkin mayor declared the fridge top 'The Grand Fluffkin Heights' and insisted on a daily flag-raising ceremony involving a tiny, dust-bunny-made banner."}, {"spot": "The Radiator", "used_for": "Farm & Workshop", "gives": "Consistent warmth for growing specialized 'Glow-Fluff' crops, a source of heat for powering miniature forges.", "costs": "Extremely hot, risk of being accidentally knocked off, constant need for heat-resistant building materials.", "how_they_get_there": "A network of sturdy rope bridges strung between nearby furniture, requiring nimble Fluffkin climbers.", "funny_thing": "The Fluffkins accidentally created a 'Glow-Fluff' crop that pulsed with the rhythm of the radiator's hum, leading to a colony-wide dance craze."}, {"spot": "Under the Sofa", "used_for": "Hideout & Storage", "gives": "Dark, safe from predators, a large space for storing gathered treasures (lost socks, stray buttons).", "costs": "Dusty, prone to sudden and terrifying sofa-lifting events, limited visibility.", "how_they_get_there": "A series of interconnected tunnels dug through the carpet, occasionally blocked by rogue dust bunnies.", "funny_thing": "The Fluffkins discovered a lost remote control under the sofa and declared it a sacred artifact, attempting to worship it with offerings of lint."}, {"spot": "The Fireplace (unused)", "used_for": "Village & Cable Car Hub", "gives": "Sheltered space, a natural chimney for a unique cable car system, potential for dramatic storytelling.", "costs": "Risk of accidental ignition (requires constant fire-safety training), soot accumulation, occasional visits from spiders.", "how_they_get_there": "A series of miniature cable cars utilizing the chimney as a vertical transport system, with a complex pulley system.", "funny_thing": "A Fluffkin engineer tried to build a 'smoke-powered' cable car, which resulted in a brief but spectacular cloud of soot and a very grumpy colony."}, {"spot": "The Windowsill", "used_for": "Farm & Lookout", "gives": "Direct sunlight for growing 'Sun-Fluff', a view of the outside world, a place to observe human activity.", "costs": "Exposed to the elements, vulnerable to birds and curious cats, risk of being swept away by a sudden breeze.", "how_they_get_there": "A precarious ladder constructed from popsicle sticks and paperclips, requiring a brave and agile Fluffkin scout.", "funny_thing": "The Fluffkins started mimicking the humans they observed outside, attempting to 'water' the windowsill with tiny droplets of juice."}]}
+- The Mill Hand: {"spots": [{"spot": "", "used_for": "", "gives": "", "costs": "", "how_they_get_there": "", "funny_thing": ""}, {"spot": "", "used_for": "", "gives": "", "costs": "", "how_they_get_there": "", "funny_thing": ""}, {"spot": "", "used_for": "", "gives": "", "costs": "", "how_they_get_there": "", "funny_thing": ""}, {"spot": "", "used_for": "", "gives": "", "costs": "", "how_they_get_there": "", "funny_thing": ""}]}
+- The Radeon Clerk: (ERROR)
+- The Radeon Coder: {"spots": [{"spot": "Shelves", "used_for": "Storage", "gives": "Extra space for storing food and resources", "costs": "Dusty", "how_they_get_there": "Cable car", "funny_thing": "A Fluffkin accidentally knocked over a shelf, sending a cloud of dust flying everywhere"}, {"spot": "Top of a speaker", "used_for": "Lookout", "gives": "A bird's-eye view of the room", "costs": "Loud", "how_they_get_there": "Rope", "funny_thing": "A Fluffkin climbed up the speaker and accidentally turned it on, causing a loud and annoying sound"}, {"spot": "Floor", "used_for": "Farm", "gives": "Space for growing food", "costs": "Dusty", "how_they_get_there": "Ladder", "funny_thing": "A Fluffkin accidentally stepped on a plant, causing it to wilt and droop"}, {"spot": "Rug", "used_for": "Hideout", "gives": "A cozy place to rest and hide", "costs": "Warm but dangerous", "how_they_get_there": "Catapult", "funny_thing": "A Fluffkin accidentally launched itself into the rug, causing it to bounce around uncontrollably"}, {"spot": "Sofa", "used_for": "Workshop", "gives": "Space for crafting and building", "costs": "Dusty", "how_they_get_there": "Tunnel", "funny_thing": "A Fluffkin accidentally fell asleep on a tool, causing it to break"}]}
+- The Radeon Runner: (ERROR)
+- The Radeon Senior: (ERROR)
+
+## Q9. Base Camp: invent a creature
+
+Merged file: creatures.json - 6 creatures, each with "by".
+No two creatures share both a personality and a fear.
+Brain's rule for too-alike creatures: Two creatures are too alike if they share the same base material, fear the same household hazard, and use identical movement mechanics.
+
+- The Town Brain: {"name": "Glip", "made_of": "static-charged lint and a single lost earring back", "personality_five_words": ["timid", "obsessive", "clumsy", "fiercely", "loyal"], "gross_or_silly_habit": "collects and polishes other creatures' shed fluff into tiny, useless statues", "scared_of": "sudden loud noises, especially the microwave beep", "says_when_it_panics": "Static's frizzing! The air's got teeth!", "says_when_happy": "Ooh, crisp! I love the hum of the fridge!", "secretly_brilliant_at": "navigating by magnetic fields and fixing broken cable cars with spit and hope"}
+- The Dell Coder: {"name": "Glimmerfluff", "made_of": "Shimmering dust and tiny, glittery feathers", "personality_five_words": ["Sparkly", "Mischievous", "Curious", "Giggly", "Friendly"], "gross_or_silly_habit": "Flutters around in a cloud of glittery dust", "scared_of": "Darkness and loud noises", "says_when_it_panics": "Giggles nervously and tries to fly away", "says_when_happy": "Shines brightly and dances around", "secretly_brilliant_at": "Creating beautiful, intricate patterns with its glittery feathers"}
+- The Dell Elder: (WAITING)
+- The Dell Reasoner: {"name": "Gloop", "made_of": "old socks and static", "personality_five_words": ["grumpy", "nosy", "snack-hungry", "confused", "nosy"], "gross_or_silly_habit": "collects lint balls and makes them into a nest", "scared_of": "vacuum cleaners", "says_when_it_panics": "Nooo! My lint nest!", "says_when_happy": "Yum yum! Snack time!", "secretly_brilliant_at": "finding hidden snack crumbs"}
+- The Dell Surveyor: {"name": "Grizzle", "made_of": "Dried moss and discarded bottle caps", "personality_five_words": ["Grumpy", "Protective", "Stoic", "Practical", "Loyal"], "gross_or_silly_habit": "Constantly sheds moss flakes, leaving a green trail everywhere.", "scared_of": "Sudden, bright lights; they make his moss brittle.", "says_when_it_panics": "’Dim it! Dim it, I say!’", "says_when_happy": "’Hmph. Adequate.’", "secretly_brilliant_at": "Calculating structural integrity of Fluffkin constructions."}
+- The Mill Hand: {"name": "Fluffflur", "made_of": "dust bunnies and fluff", "personality_five_words": ["lovable", "curious", "naive", "greedy for attention", "eager to explore"], "gross_or_silly_habit": "", "scared_of": "", "says_when_it_panics": "I'm going to eat you!", "says_when_happy": "Yay, more fluff! ", "secretly_brilliant_at": ""}
+- The Radeon Clerk: (ERROR)
+- The Radeon Coder: {"name": "Glimmerfluff", "made_of": "Shimmering dust and tiny, iridescent feathers", "personality_five_words": ["Sparkly", "Mischievous", "Curious", "Giggly", "Adventurous"], "gross_or_silly_habit": "Flutters its feathers in a silly dance when excited", "scared_of": "Darkness and loud noises", "says_when_it_panics": "Giggles nervously and starts spinning in circles", "says_when_happy": "Sings a cheerful tune and twirls around", "secretly_brilliant_at": "Creating dazzling light displays and solving puzzles"}
+- The Radeon Runner: (ERROR)
+- The Radeon Senior: (ERROR)
+
+### Experts on creatures: what it is made of, its gross or silly habit (21 of 22 kept, sorted)
+- (expert spark, sorted by the 27B) Fabulist: A tiny creature made of 'glass and a little fur' is trapped in the corner of a window frame, too small to go out but unable to come in, constantly trying to escape its own body.  [its words: "glass and a little fur. She could not go out; for she was too small, but she could not come in: it was a pity."]
+- (expert spark, sorted by the 27B) Wargamer: A large, green, four-legged, three-eyed Fluffkin covered in 'little, green, round pebbles' scales that clink like jewelry when it runs across the carpet.  [its words: "large, green, four-legged, three-eyed creature... covered in small, green scales... like little, green, round pebbles"]
+- (expert spark, sorted by the 27B) Wargamer: A creature that refuses to eat its bread until it has meticulously counted and swallowed exactly one hundred and twenty grains of corn, sitting on the kitchen counter with a serious face.  [its words: "He would not get a chance to eat his bread until he had just eaten a hundred and twenty grains of corn."]
+- (expert spark, sorted by the 27B) Swarmkeeper: A Fluffkin with a 'long, sharp nose' and a 'thick tail' that looks like a thumb-sized worm, which it uses to point accusingly at dust bunnies it has eaten.  [its words: "a little worm, the size of the thumb, with a thick tail and a long, sharp nose"]
+- (expert spark, sorted by the 27B) Animalist: A creature that never goes to the toilet properly, but instead leaves its head out in the open air to wash off dirt, shouting 'I’m going to the toilet, Fluff' before doing nothing.  [its words: "he never went to the toilet, but left his head out in the open air... when he wanted to go to the bathroom he would say: ‘I’m going to the toilet, Fluff"]
+
+### Experts on creatures: what it is scared of, what it shouts, its secret talent (21 of 22 kept, sorted)
+- (expert spark, sorted by the 27B) The Synthesist: A Fluffkin with the body of a bear, head of a lion, and tail of an elephant who is secretly brilliant at making noise with a motor.  [its words: "He was a creature called a "marmot". He was the first to make noise with a motor. He was so big and powerful, he had the body of a bear, the head of a lion, and the tail of an elephant."]
+- (expert spark, sorted by the 27B) The Animalist: A creature who pounces with sledgehammer-strength and is secretly brilliant at being the master of the pack, despite being scared of learning the lesson.  [its words: "pouncing. He always carried himself with a kind of sledgehammer-strength, and at first, when he had not learned the lesson, he was the master of the pack."]
+- (expert spark, sorted by the 27B) The Junglist: A Fluffkin who is secretly brilliant at incorporating jazz, soul, and funk into dance music, shouting when it gets too loud and fast.  [its words: "It was his idea to incorporate jazz, soul and funk into his dance music. His first dance album, Dance for a Night, was released in 1999 and was a huge success."]
+- (expert spark, sorted by the 27B) The Choreographer: A creature who is secretly brilliant at tapping various objects like fish, mice, and keyboards in a rhythmic pattern, shouting when it fails to escape with its prey.  [its words: "swimming. Tap the fish. Tap the mouse. Tap the ball. Tap the keyboard. Tap the key. Tap the fish."]
+- (expert spark, sorted by the 27B) The Swarmkeeper: A Fluffkin who is secretly brilliant at hiding from all the outside world, shouting when it is discovered, and is scared of being seen by humans.  [its words: "It must be hidden, or it can be discovered; it must be hidden from all the out"]
+
+## Harry's picks
+-

@@ -1,5 +1,4 @@
 {
- "source": "PatchTown council, 11 Nov 2026, copied from the answers Harry pasted; residents' words untouched (Q9)",
  "creatures": [
   {
    "name": "Glip",
@@ -17,6 +16,40 @@
    "says_when_happy": "Ooh, crisp! I love the hum of the fridge!",
    "secretly_brilliant_at": "navigating by magnetic fields and fixing broken cable cars with spit and hope",
    "by": "The Town Brain"
+  },
+  {
+   "name": "Glimmerfluff",
+   "made_of": "Shimmering dust and tiny, glittery feathers",
+   "personality_five_words": [
+    "Sparkly",
+    "Mischievous",
+    "Curious",
+    "Giggly",
+    "Friendly"
+   ],
+   "gross_or_silly_habit": "Flutters around in a cloud of glittery dust",
+   "scared_of": "Darkness and loud noises",
+   "says_when_it_panics": "Giggles nervously and tries to fly away",
+   "says_when_happy": "Shines brightly and dances around",
+   "secretly_brilliant_at": "Creating beautiful, intricate patterns with its glittery feathers",
+   "by": "The Dell Coder"
+  },
+  {
+   "name": "Gloop",
+   "made_of": "old socks and static",
+   "personality_five_words": [
+    "grumpy",
+    "nosy",
+    "snack-hungry",
+    "confused",
+    "nosy"
+   ],
+   "gross_or_silly_habit": "collects lint balls and makes them into a nest",
+   "scared_of": "vacuum cleaners",
+   "says_when_it_panics": "Nooo! My lint nest!",
+   "says_when_happy": "Yum yum! Snack time!",
+   "secretly_brilliant_at": "finding hidden snack crumbs",
+   "by": "The Dell Reasoner"
   },
   {
    "name": "Grizzle",
