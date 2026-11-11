@@ -42,6 +42,24 @@ and one weakness.
 
 **Q5. Open.** What one thing would make you want to show this game to a friend?
 
+**Q6. Toy boxes (the big one).** Each player picks a toy box at the start. It is their home base, it unfolds into a
+little playset (like the old fold-out toy-car carry cases), it goes with them through the whole game and gets
+upgraded, and in multiplayer everyone brings their own. It should feel like a collector's item.
+Invent ONE toy box. Give:
+- what everyday kitchen or household object it is, and who owns it;
+- how it opens or unfolds (the moment it clunks open is the showpiece);
+- its special ability in battle;
+- its weakness (every box must have one);
+- how it plays differently (attacker, defender, helper, sneaky, fast...);
+- one upgrade you would save up for;
+- the sound it makes when it opens.
+
+(For whoever runs this: ask each resident for their own box, then check them against each other with the
+distinctness table below. Two boxes that share an object, a playstyle AND an ability are the same box: ask again.)
+
+| Box | Object | Opens by | Ability | Weakness | Playstyle | Colour | Sound |
+|---|---|---|---|---|---|---|---|
+
 ## Answer template (copy into `games/COUNCIL_ANSWERS.md`)
 
 ```
@@ -55,6 +73,7 @@ and one weakness.
 | Q3 | | | |
 | Q4 | | | |
 | Q5 | | | |
+| Q6 | | | |
 
 ## Q1. My Track
 - <resident>: <their words>
@@ -70,6 +89,9 @@ and one weakness.
 
 ## Q5. Open
 - <resident>: <their words>
+
+## Q6. Toy boxes
+- <resident>: <their box, all seven points>
 
 ## Harry's picks
 -
