@@ -611,10 +611,10 @@ function changedObjects(L, pred, minN) { // patches of cells for which pred is t
 }
 function bumpConf(L, obs) { if (L.confVisit === G.visits) return; L.confVisit = G.visits; for (let k = 0; k < obs.length; k++) if (obs[k] && L.conf[k] < 15) L.conf[k]++; }
 function reconcileLand(L, m, first) {
-  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length, conf0 = G.auto && !first ? L.conf.slice() : null; bumpConf(L, m.obs); // automatic play: a cell only counts as evidence of a change when earlier visits saw it (removed: 1 visit, put down: 2), so a thin first map cannot invent tidying or squashing
+  const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length, conf0 = G.auto && !first ? L.conf.slice() : null; bumpConf(L, m.obs); // automatic play: a cell only counts as evidence of a change when earlier visits saw it (two earlier visits must have seen it, so events start on the third visit), so a thin first map cannot invent tidying or squashing
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
-  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1 && (!conf0 || conf0[k] >= 1), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1 && (!conf0 || conf0[k] >= 2), 5); // an object counts as put down only where the bare cells were really seen before
+  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1 && (!conf0 || conf0[k] >= 2), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1 && (!conf0 || conf0[k] >= 2), 5); // an object counts as put down only where the bare cells were really seen before
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
@@ -2435,14 +2435,14 @@ function autoCompare() { // quiet change detection on a matched map: what is new
   if (G.asks.length) askNext(); else if (rep.lines.length) showReport();
 }
 function autoAskTick() { // at most one "What is this?" per two minutes, only for things next to a colony, dismissible, never blocking
-  if (!G.auto || G.phase !== 'play' || !G.locked && G.returning) return; const now = performance.now();
+  if (!G.auto || G.phase !== 'play' || !G.locked && G.returning || AUTO.t < 60) return; const now = performance.now();
   if (now - RECOG.lastQuestion < AUTO.askGap) return;
   if (RECOG.ask || !$('tagpick').hidden || !$('modal').hidden || !$('ask').hidden || !$('diary').hidden || !$('guess').hidden) return;
   const near = (t) => G.settlements.some((S) => S.placed && !S.lost && Math.hypot(t.x - S.tf.x, t.z - S.tf.z) < plotR(S) + 0.3 && Math.abs(t.y - S.tf.y) < 0.8);
   const u = unknownTops().filter((t) => near(t) && !RECOG.asked.some((q) => Math.hypot(q.x - t.x, q.z - t.z) < 0.08)); if (!u.length) return;
   const t = u[0]; RECOG.asked.push({ x: t.x, z: t.z }); RECOG.lastQuestion = now; AUTO.questions = (AUTO.questions || 0) + 1;
   const pk = { px: t.x, pz: t.z, y: t.y, comp: { area: t.area } };
-  tagPickUi(pk, null); G.tagTarget.auto = true; clearTimeout(AUTO.askDismiss); const tt = G.tagTarget; AUTO.askDismiss = setTimeout(() => { if (G.tagTarget === tt) $('tagpick').hidden = true; }, 25000);
+  tagPickUi(pk, null, null, true); G.tagTarget.auto = true; clearTimeout(AUTO.askDismiss); const tt = G.tagTarget; AUTO.askDismiss = setTimeout(() => { if (G.tagTarget === tt) $('tagpick').hidden = true; }, 25000);
 }
 AUTO.askGap = 120000;
 
@@ -2605,7 +2605,7 @@ function relocLock(res, how) {
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
-  homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
+  autoSay(''); homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
   for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, S.tf.y + 0.05, S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
   AUTO.compareAt = AUTO.t + 25; AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; persist();
   setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
@@ -2837,13 +2837,13 @@ function finishAlign(skip) {
   setPhase('play'); finishScan();
 }
 // ---- tagging spots ----
-function tagPickUi(pk, existing, guess) {
+function tagPickUi(pk, existing, guess, compact) {
   const el = $('tagpick'); el.hidden = false; G.tagTarget = { pk, existing, guess };
   const sp = existing, info = sp ? roomInfo(sp.tag) : null;
   el.innerHTML = (sp ? `<div class="th">${esc(sp.name)} <span class="sub">${esc(spotUsed(sp))}</span></div>` + (info ? `<div class="sub">gives: ${esc(info.gives || spotRole(sp).gives)}; costs: ${esc(info.costs || '')}; they get there by ${esc(spotHow(sp))}. <i class="by">by ${esc(info.by || '')}</i></div>` : `<div class="sub">${esc(spotRole(sp).gives)}</div>`)
     : `<div class="th">What is this?</div><div class="sub">${pk.comp.area < 0.25 ? 'A small top, ' + Math.round(Math.sqrt(pk.comp.area) * 100) + ' cm across, ' : 'A big surface '}${pk.y.toFixed(2)} m up.${guess && guess.hint ? ' Maybe: ' + guess.hint.map((h) => esc(h.name)).join(', ') + '.' : ''}${guess && guess.cls ? ' The basic eyes saw a "' + esc(guess.cls) + '".' : ''}</div>`)
-    + '<div class="tags">' + Object.keys(TAGS).map((k) => `<button data-tag="${k}">${esc(TAGS[k].label)}</button>`).join('') + '</div>'
-    + `<div class="row2"><input id="tagName" maxlength="28" placeholder="${sp ? 'Rename...' : 'Or a name of your own (Radeon, kettle...)'}" value="${sp ? esc(sp.name) : ''}"> ${sp ? '<button id="tagRename">Rename</button><button id="tagCable">Cable from here</button><button id="tagDel">Delete</button>' : ''}<button id="tagCancel">Close</button></div>`;
+    + '<div class="tags">' + Object.keys(TAGS).slice(0, compact ? 7 : 99).map((k) => `<button data-tag="${k}">${esc(TAGS[k].label)}</button>`).join('') + (compact ? '<button id="tagCancel">Not now</button>' : '') + '</div>'
+    + (compact ? '' : `<div class="row2"><input id="tagName" maxlength="28" placeholder="${sp ? 'Rename...' : 'Or a name of your own (Radeon, kettle...)'}" value="${sp ? esc(sp.name) : ''}"> ${sp ? '<button id="tagRename">Rename</button><button id="tagCable">Cable from here</button><button id="tagDel">Delete</button>' : ''}<button id="tagCancel">Close</button></div>`);
 }
 function tagEdit(sp) { tagPickUi(null, sp); }
 $('tagpick').addEventListener('click', (e) => {
