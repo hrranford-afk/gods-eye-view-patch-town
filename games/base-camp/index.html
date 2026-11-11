@@ -92,6 +92,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button id="bMore">More...</button>
     </div>
     <div id="tmenu" class="mrow" hidden>
+      <button id="bFresh">Start a new room</button>
       <button id="bPrac" class="alt">Practice room</button>
       <button id="bMap">Manual: map my room</button>
       <button id="bMapIO">Room map: export / import</button>
@@ -124,7 +125,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 6';
+const BUILD = 'build 6b';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -3229,6 +3230,17 @@ $('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
 $('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
 $('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); };
+// Start a new room: the current room's map and colony are kept as a backup (-prev), then everything starts fresh here.
+$('bFresh').onclick = () => {
+  const b = $('bFresh');
+  if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again: new room (the old one is kept as a backup)'; return; }
+  b.dataset.sure = ''; b.textContent = 'Start a new room';
+  const m = store.get(MAP_KEY), c = store.get(SAVE_KEY);
+  if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c);
+  store.del(MAP_KEY); store.del(MAP_KEY + '-bak'); store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak');
+  G.previewLines = null; G.previewStamp = ''; updateTitle();
+  toast('New room! Tap Play and look around: the colony will settle here.');
+};
 $('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').dataset.sure = '1'; $('bNew').textContent = 'Really forget the colony?'; return; } $('bNew').dataset.sure = ''; $('bNew').textContent = 'Forget my colony'; store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak'); G.previewLines = null; G.previewStamp = ''; updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
