@@ -126,8 +126,8 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   ok('...after ~60 s of scanning it asks "new room or things moved?" once', D.state === 'asking' && /new room, or have things moved/i.test(D.ask) && D.secs >= 59 && D.secs < 75, 'asked after ' + D.secs.toFixed(1) + ' scan seconds ' + JSON.stringify({ r: D.returning, ar: D.arOn, hits: D.hits, a: D.auto, st: D.state }));
   await p.screenshot({ path: OUT + '16-new-room-question.png' });
   await p.click('#rmNew'); await sleep(1500);
-  const NR = await ev(() => ({ backup: !!localStorage.getItem('base-camp-map-v1-prev'), zones: __g.G.zones.length, returning: __g.G.returning }));
-  ok('"A new room" keeps the old map as a backup and starts a fresh map', NR.backup && !NR.returning);
+  const NR = await ev(() => ({ backup: !!localStorage.getItem('base-camp-map-v1-prev') || (__g.HOMES.rooms.length === 2 && !!localStorage.getItem('base-camp-map-v1')), zones: __g.G.zones.length, returning: __g.G.returning }));
+  ok('"A new room" keeps the old map (build 7: as its own room, untouched) and starts a fresh map', NR.backup && !NR.returning);
   const tN = await waitFor(() => __g.G.settlements.length > 0, 150000);
   ok('...and a new colony settles in the new room by itself', tN > 0);
 
