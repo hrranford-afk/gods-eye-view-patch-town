@@ -14,7 +14,7 @@
       el.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:2147483647;max-width:94vw;max-height:46vh;overflow:auto;font:600 12px/1.35 -apple-system,Helvetica,sans-serif;color:#fff;background:rgba(0,0,0,.78);padding:6px 9px;border-radius:8px;white-space:pre-wrap;pointer-events:auto';
       document.body.appendChild(el);
     }
-    if (el) el.textContent = 'LOADER (build 1-diag)\n' + lines.join('\n');
+    if (el) el.textContent = 'LOADER (build 1-diag2)\n' + lines.join('\n');
   }
   window.__step = function (msg) { lines.push(((Date.now() - t0) / 1000).toFixed(1) + 's  ' + msg); out(); };
   window.addEventListener('error', function (e) {
@@ -120,6 +120,14 @@ button:disabled{opacity:.4}
   <div id="wx" class="glass" hidden></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () { // PROBE: try the 3D drawing setup on its own and catch the real error (pop-up errors are hidden in AR apps)
+  function t(name, f) { try { var r = f(); __step('probe ' + name + ': ok' + (r ? ' (' + r + ')' : '')); } catch (e) { __step('probe ' + name + ' THREW: ' + (e && e.message) + ' | ' + String(e && e.stack || '').split('\n').slice(0, 3).join(' / ')); } }
+  t('webgl2', function () { var c = document.createElement('canvas'); return !!c.getContext('webgl2', { alpha: true, antialias: true }); });
+  t('webgl1', function () { var c = document.createElement('canvas'); return !!c.getContext('webgl', { alpha: true, antialias: true }); });
+  t('THREE renderer', function () { var r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); var ok = !!r.getContext(); r.dispose(); return ok; });
+})();
+</script>
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
@@ -244,6 +252,7 @@ function sfx(kind) {
 }
 
 // ============ three.js basics ============
+window.__step && __step('main script: reached line 247');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -414,6 +423,7 @@ function extractZones() {
   SCAN.zones = fresh; classify();
   SCAN.zones.sort((a, b) => a.id - b.id);
 }
+window.__step && __step('main script: reached line 417');
 const ZTYPES = { FLOOR: { base: 'Floor', land: 'plains', spec: 'farmland', hint: 'farms' }, TABLE: { base: 'Desk', land: 'meadow', spec: 'village', hint: 'a village' }, SHELF: { base: 'Shelf', land: 'cliffs', spec: 'orchard', hint: 'an orchard' }, SILL: { base: 'Sill', land: 'lookout', spec: 'lookout', hint: 'a lookout' }, SMALL: { base: 'Perch', land: 'grove', spec: 'grove', hint: 'a lone tree' } };
 // FLOOR: the lowest zone, if it is big (1 m2) or something like a rug (within 15 cm, 0.3 m2). SMALL: under 0.1 m2.
 // TABLE: 25 cm to 1 m above the floor, not narrow. SILL: 80 cm to 1.25 m up and narrow. SHELF: higher, or narrow and high. Anything else big enough is a desk.
@@ -540,6 +550,7 @@ function mkTent() {
   g.add(mesh(geo('flag', () => new THREE.PlaneGeometry(0.011, 0.007)), new THREE.MeshStandardMaterial({ color: 0xd9483b, side: THREE.DoubleSide }), 0.0055, 0.062, 0));
   g.add(blob(0.04)); return g;
 }
+window.__step && __step('main script: reached line 543');
 function mkHut() {
   const g = new THREE.Group();
   g.add(mesh(geo('hutW', () => new THREE.BoxGeometry(0.052, 0.034, 0.044).translate(0, 0.017, 0)), M(0xf6e9cf)));
@@ -662,6 +673,7 @@ function newSettlement(zone, o) {
   const tent = addThing(S, 'tent', 0, 0, { built: !o.awaiting, hold: !!o.awaiting, rot: 0.3 }); S.tent = tent; if (!o.awaiting) tent.pop = 1;
   return S;
 }
+window.__step && __step('main script: reached line 665');
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.y = S.tf.yaw; S.group.updateMatrixWorld(true); }
 function addColonist(S, o) {
   o = o || {}; const A = COLONY_ALMANAC.colonists, def = A[G.nameIdx++ % A.length], rep = Math.floor((G.nameIdx - 1) / A.length);
@@ -783,6 +795,7 @@ function plantTree(S, lx, lz, quiet) {
   if (!quiet) { const [wx, wz] = l2w(S, lx, lz); puff('dust', wx, S.tf.y + 0.01, wz, 2, { size: 0.012, life: 0.7, grow: 1 }); puff('leaf', wx, S.tf.y + 0.02, wz, 2, { size: 0.007, vy: 0.02, life: 1.2 }); sfx('plant'); }
   return t;
 }
+window.__step && __step('main script: reached line 786');
 function bubbleFor(S, c) {
   const rq = G.requests.find((r) => r.cid === c.id); if (rq) return rq.def.icon;
   const n = c.needs; if (n.water < 0.25) return 'drop'; if (n.food < 0.25) return 'food'; if (n.rest < 0.2) return 'zzz';
@@ -909,6 +922,7 @@ function makeLink(Sa, wxa, wza, zb, wxb, wzb) {
   l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l); sfx('chime'); toast('The colonists start rigging a cable car to ' + Sb.zoneName + '.', 4);
   return l;
 }
+window.__step && __step('main script: reached line 912');
 function makeLinkMesh(l) {
   const g = new THREE.Group(); g.userData = {};
   const cab = new THREE.Group(); cab.add(mesh(geo('cabB', () => new THREE.BoxGeometry(0.022, 0.016, 0.016)), M(0xd9483b), 0, -0.024, 0)); cab.add(mesh(geo('cabW', () => new THREE.BoxGeometry(0.0232, 0.006, 0.0172)), M(0xfff6e6), 0, -0.0145, 0));
@@ -1036,6 +1050,7 @@ function restoreSettlement(d, zone, saveT) {
   for (const c of d.cols) { const q = addColonist(S, c); q.x = c.x; q.z = c.z; q.needs = c.needs; }
   return S;
 }
+window.__step && __step('main script: reached line 1039');
 function catchUp(S, secs) {
   const before = { pop: S.cols.length, trees: S.things.filter((t) => t.kind === 'tree' && t.g >= 1).length, blds: S.things.filter((t) => t.built && ['hut', 'well', 'farm', 'lookout'].includes(t.kind)).length, seeds: kindCount(S, 'tree') };
   secs = Math.min(secs, 90 * 60);
@@ -1161,6 +1176,7 @@ function arEnded() {
   camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearAlpha(0);
   resize2(); resetWorld(); G.phase = 'title'; G.mode = 'practice'; showTitle(); G.last = performance.now(); requestAnimationFrame(frame);
 }
+window.__step && __step('main script: reached line 1164');
 function resize2() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 function arFrame(frame) {
   if (!frame || !AR.refSpace) return;
@@ -1281,6 +1297,7 @@ function updateHint() {
   if (G.phase === 'scan' || G.phase === 'zones' || G.phase === 'replace') for (const z of SCAN.zones) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#' + z.color.toString(16).padStart(6, '0'); c.textContent = z.name + (z.settled ? ' (colony)' : ' · ' + z.area.toFixed(2) + ' m²'); c.onclick = () => { if (G.mode === 'practice') focusZone(z); }; ch.appendChild(c); }
   if (G.phase === 'replace' && !G.placing && G.pending.length) { const z = suggestZone(G.pending[0]); if (z) { const c = document.createElement('span'); c.className = 'chip'; c.style.background = '#fff6e6'; c.textContent = 'Best guess for "' + G.pending[0].zoneName + '": ' + z.name; ch.appendChild(c); } }
 }
+window.__step && __step('main script: reached line 1284');
 function barUi() {
   const b = $('bar'); b.hidden = false;
   if (G.phase === 'scan') b.innerHTML = '<button id="bDone" class="big">Done scanning</button>' + (G.mode === 'practice' ? '<button id="bAuto" class="big alt">Auto-scan</button>' : '') + '<button id="bQuit">Back</button>';
@@ -1424,6 +1441,7 @@ $('touch').addEventListener('pointermove', (e) => {
 });
 $('touch').addEventListener('wheel', (e) => { if (G.mode === 'practice') { P.gDist = clamp(P.gDist * (1 + Math.sign(e.deltaY) * 0.1), 0.25, 6); } }, { passive: true });
 $('touch').addEventListener('contextmenu', (e) => e.preventDefault());
+window.__step && __step('main script: reached line 1427');
 const endDown = (e) => {
   if (!down.on || e.pointerId !== down.id) return; down.on = false; G.water = null;
   const tap = !down.moved && performance.now() - down.t < 700;
