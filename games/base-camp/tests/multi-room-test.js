@@ -57,7 +57,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   // ===================== (a) map the shed, then a new room and map the kitchen =====================
   await p.goto(url); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await boot(SHED, { yaw: 0, x: 0, z: 0 });
-  ok('AR ready; build 7; a fresh start has no rooms list', await ev(() => !document.getElementById('bPlay').disabled && __g.BUILD === 'build 7' && document.getElementById('rooms').hidden && __g.MULTI_ROOM === true && __g.HOMES.rooms.length === 1));
+  ok('AR ready; build 7 or later; a fresh start has no rooms list', await ev(() => !document.getElementById('bPlay').disabled && /^build ([7-9]|\d\d)/.test(__g.BUILD) && document.getElementById('rooms').hidden && __g.MULTI_ROOM === true && __g.HOMES.rooms.length === 1));
   ok('the main button just says Play (no "find my room")', await ev(() => document.getElementById('bPlay').textContent.trim() === 'Play'));
   const m0 = await mem();
   await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2', 'chandelier'], 1.0);
