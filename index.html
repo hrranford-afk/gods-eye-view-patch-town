@@ -7648,7 +7648,7 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
   b.after(st);
   let tries = 0;
-  const AR_BUILD = 'build 33';
+  const AR_BUILD = 'build 34';
   new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
     tries++;
@@ -7749,7 +7749,22 @@ async function arStart() {
     });
     AR.session = session;
     arLog('AR 2/5: session started (overlay: ' + (session.domOverlayState ? session.domOverlayState.type : 'none') + ')');
-    if (!session.domOverlayState) { await session.end().catch(() => {}); throw new Error('This browser has no DOM overlay, so the game controls would not show.'); }
+    if (!session.domOverlayState) {
+      // On iPad the WebXRKit polyfill can start the session without wiring up the DOM overlay. Its device object (kept
+      // under a symbol on the session) has setDomOverlayRoot: call it ourselves so the HUD stays visible over the camera.
+      let fixed = false;
+      try {
+        for (const sym of Object.getOwnPropertySymbols(session)) {
+          const dev = session[sym] && session[sym].device;
+          if (dev && typeof dev.setDomOverlayRoot === 'function') {
+            dev.setDomOverlayRoot(AR.root);
+            if (typeof dev.setActiveXRSession === 'function') dev.setActiveXRSession(session);
+            fixed = true; break;
+          }
+        }
+      } catch (e) { /* carry on: the controls may still show */ }
+      arLog('AR 2b/5: overlay ' + (fixed ? 'connected by the game' : 'not available; carrying on'));
+    }
     session.addEventListener('end', arEnded);
     // Enter the AR state now; the XR loop starts once the session is wired up.
     AR.saved = { start: wasStart, near: camera.near, far: camera.far, bodyBg: document.body.style.background, htmlBg: document.documentElement.style.background, bg: renderer.getClearAlpha() };
