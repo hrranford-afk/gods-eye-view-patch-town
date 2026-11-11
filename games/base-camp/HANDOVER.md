@@ -69,6 +69,13 @@ Thresholds all live in `TIDY` and a few literals in `captureScan`.
 - `tests/ar-harness.js`, `tests/practice-test.js`: the first prototype's scripts (they predate the room map and are kept as examples of the harness).
 - `BC_ROOT=<copy of the folder>` lets a long run keep going while the game is edited.
 
+### Numbers from the last runs (sandbox Chromium with software GL, so an iPad will differ)
+- Away sim, 3 colonies of 3 to 9: 8 h about 240 ms (1,440 steps), 24 h about 150 to 350 ms (about 1,500 steps).
+- Alignment, exact taps in the practice room (room turned 30 degrees, shifted 0.5 m): yaw error 0.05 to 0.09 degrees, worst position error across the room 0.55 cm. Real WebXRKit sweeps and real taps in the fake shed: yaw error 1.2 to 1.4 degrees, worst position error 3.4 to 3.6 cm, residual at the landmarks 1.1 to 1.6 cm (the taps snap to patch centres that a sparse sweep only half covers).
+- Real sweeps: about 130 s per sweep, 4,500 to 5,000 hit rays answered, the floor in patches, both speaker tops and the shelf found; no false events after aligning.
+- Recognition: practice detector tick about 1 ms; real COCO-SSD load 3.3 to 4.7 s, detect 1.9 to 2.3 s on a 600 x 399 photo (software GL; Metal on an iPad should be much faster); real CLIP vision q4f16 load 8.7 to 15 s (about 53 MB), 450 to 556 ms per crop on the WASM backend; a photo of two cats comes out as "a cat" (46%).
+- Memory over repeated scans: flat (geometries 114, textures 17, heap 10 MB before and after five more scans). 0 page errors in every run.
+
 ## Needs a real iPad
 - Hit-test density on a real scan: removal of a can is only believed when direct hits cover its footprint, so the player has to *look* at the cleared place. Check how it feels, and whether ARKit returns planes for can- and cup-sized tops at all (if not, clutter comes only from surfaces above a plane, and speaker tops may merge).
 - The **camera frame's mapping to the screen** (field of view, orientation, crop) and its rate; `camera-access` through HelloXR; whether the app needs a permission string.

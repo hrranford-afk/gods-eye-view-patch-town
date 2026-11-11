@@ -2038,7 +2038,7 @@ function topNear(hit) { // the top of a small thing standing where a detection's
 function recogConsider(d, fr) {
   const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
   const sx = (d.bbox[0] + d.bbox[2] / 2) / fr.w * innerWidth, sy = (d.bbox[1] + d.bbox[3]) / fr.h * innerHeight, hit = surfacePick(sx, sy); if (!hit) return;
-  const top = topNear(hit) || { x: hit.px, z: hit.pz, y: hit.y, area: hit.comp.area };
+  const top = topNear(hit) || { x: hit.x, z: hit.z, y: hit.y, area: 0.004 }; // no top scanned there: the place where its feet are
   if (G.spots.some((s) => s.src !== 'default' && Math.hypot(s.x - top.x, s.z - top.z) < 0.07)) return; // already named
   if (RECOG.ask && RECOG.ask.cls === d.class && Math.hypot(RECOG.ask.x - top.x, RECOG.ask.z - top.z) < 0.12) return; // this one is being asked about right now
   if (RECOG.no.some((q) => q.cls === d.class && Math.hypot(q.x - top.x, q.z - top.z) < 0.15 && performance.now() - q.t < 180000)) return;
