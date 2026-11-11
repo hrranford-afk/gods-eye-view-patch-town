@@ -8011,7 +8011,7 @@ Object.assign(MT, { want: false, ar: false, phase: '', strokes: [], cur: null, c
 // ---------- the surface: an occupancy grid of "known flat table" at one height ----------
 const SURF = { g: new Uint8Array(MT_N * MT_N), n: 0, ver: 0, origin: null, ys: [], yMed: 0, gridY: 0, source: '', dist: null, distVer: -1 };
 function surfReset(source) {
-  SURF.g.fill(0); SURF.n = 0; SURF.ver++; SURF.origin = null; SURF.ys = []; SURF.yMed = 0; SURF.gridY = 0; SURF.source = source;
+  SURF.g.fill(0); SURF.n = 0; SURF.ver++; SURF.origin = null; SURF.last = []; SURF.ys = []; SURF.yMed = 0; SURF.gridY = 0; SURF.source = source;
 }
 const surfIdx = (x, z) => { const i = Math.floor((x + MT_GRID / 2) / MT_CELL), j = Math.floor((z + MT_GRID / 2) / MT_CELL); return i < 0 || j < 0 || i >= MT_N || j >= MT_N ? -1 : j * MT_N + i; };
 const surfXZ = (k) => [(k % MT_N + 0.5) * MT_CELL - MT_GRID / 2, (Math.floor(k / MT_N) + 0.5) * MT_CELL - MT_GRID / 2];
@@ -8038,26 +8038,36 @@ function surfFillPoly(poly) {
   }
 }
 // AR: one hit-test result (a world point in metres, AR 'local' space). Returns true if it was used.
-function surfHit(p) {
+function surfHit(p, src) { // (src: which ray; consecutive hits of one ray paint the strip between them)
   if (!SURF.origin) { SURF.origin = p.clone(); SURF.yMed = SURF.gridY = p.y; }
   const ys = SURF.ys; ys.push(p.y); if (ys.length > 240) ys.shift();
   if (ys.length % 8 === 0 || ys.length < 8) { const s = ys.slice().sort((a, b) => a - b); SURF.yMed = s[s.length >> 1]; } // a robust height: the median
   if (Math.abs(SURF.yMed - SURF.gridY) > 0.04) { SURF.g.fill(0); SURF.n = 0; SURF.ver++; SURF.gridY = SURF.yMed; } // the height moved (the first hits were the floor): start the map again
   if (ys.length > 12 && Math.abs(p.y - SURF.yMed) > 0.03) return false; // another surface (the floor, a box on the table)
-  surfPaint((p.x - SURF.origin.x) / MT_S, (p.z - SURF.origin.z) / MT_S, 6); // 3 cm round each hit (more would spill past the table's edge)
+  const x = (p.x - SURF.origin.x) / MT_S, z = (p.z - SURF.origin.z) / MT_S, last = src !== undefined && SURF.last && SURF.last[src];
+  surfPaint(x, z, 6); // 3 cm round each hit (more would spill past the table's edge)
+  if (last) { const d = Math.hypot(x - last[0], z - last[1]); if (d > 4 && d < 24) for (let t = 4; t < d; t += 4) surfPaint(last[0] + (x - last[0]) * t / d, last[1] + (z - last[1]) * t / d, 5); } // a sweep: the plane runs on between two hits up to 12 cm apart
+  if (src !== undefined) (SURF.last || (SURF.last = []))[src] = [x, z];
   return true;
 }
-// Small gaps between hits (a cell or two the rays missed) count as table: an unknown cell with 6 or more known neighbours is filled.
+// Gaps between hits (strips the rays missed, up to about 4 cm across) count as table: a morphological closing of the grid
+// (grow the known area by 2.5 cells, then shrink it back by 2.5), so holes fill but the outer edge does not move out.
+function mtChamfer(src, want, out) { // distance in cells from each cell to the nearest cell whose value is `want`
+  const n = MT_N, Q = Math.SQRT2;
+  for (let k = 0; k < n * n; k++) out[k] = src[k] === want ? 0 : 1e6;
+  const at = (i, j) => (i < 0 || j < 0 || i >= n || j >= n ? (want ? 1e6 : 0) : out[j * n + i]); // (outside the grid counts as unknown)
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = j * n + i; if (out[k]) out[k] = Math.min(out[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + Q, at(i + 1, j - 1) + Q); }
+  for (let j = n - 1; j >= 0; j--) for (let i = n - 1; i >= 0; i--) { const k = j * n + i; if (out[k]) out[k] = Math.min(out[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + Q, at(i - 1, j + 1) + Q); }
+  return out;
+}
 function surfCloseHoles() {
-  const n = MT_N, g = SURF.g, add = [];
-  for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) {
-    const k = j * n + i;
-    if (g[k]) continue;
-    const c = g[k - 1] + g[k + 1] + g[k - n] + g[k + n] + g[k - n - 1] + g[k - n + 1] + g[k + n - 1] + g[k + n + 1];
-    if (c >= 6) add.push(k);
-  }
-  for (const k of add) g[k] = 1;
-  if (add.length) { SURF.n += add.length; SURF.ver++; }
+  const n = MT_N, g = SURF.g, R = 2.5, tmp = SURF.tmpD || (SURF.tmpD = new Float32Array(n * n)), grown = SURF.tmpG || (SURF.tmpG = new Uint8Array(n * n));
+  mtChamfer(g, 1, tmp);
+  for (let k = 0; k < n * n; k++) grown[k] = tmp[k] <= R ? 1 : 0;
+  mtChamfer(grown, 0, tmp);
+  let add = 0;
+  for (let k = 0; k < n * n; k++) if (!g[k] && tmp[k] > R) { g[k] = 1; add++; }
+  if (add) { SURF.n += add; SURF.ver++; }
 }
 // Distance (in cells) from each known cell to the nearest unknown one (two-pass chamfer), cached until the grid changes.
 function surfDist() {
@@ -8409,16 +8419,18 @@ function mtSweep(dt) {
 const mtV = new THREE.Vector3();
 function mtArFrame(frame) {
   if (frame && AR.refSpace && (MT.phase === 'scan' || MT.phase === 'draw' || MT.phase === 'auto')) {
-    for (const src of [AR.hitSource, ...(AR.mtSources || [])]) {
+    const srcs = [AR.hitSource, ...(AR.mtSources || [])];
+    for (let si = 0; si < srcs.length; si++) {
+      const src = srcs[si];
       if (!src) continue;
       const res = frame.getHitTestResults(src);
-      if (!res.length) continue;
+      if (!res.length) { if (SURF.last) SURF.last[si] = null; continue; } // a miss breaks the strip (off the table's edge)
       const pose = res[0].getPose(AR.refSpace);
       if (!pose) continue;
       arTmp.m.fromArray(pose.transform.matrix);
       if (arTmp.m.elements[5] < 0.7) continue; // not flat
       mtV.setFromMatrixPosition(arTmp.m);
-      if (surfHit(mtV) && src === AR.hitSource && MT.marker) { MT.marker.visible = true; MT.marker.position.set((mtV.x - SURF.origin.x) / MT_S, 0.2, (mtV.z - SURF.origin.z) / MT_S); }
+      if (surfHit(mtV, si) && src === AR.hitSource && MT.marker) { MT.marker.visible = true; MT.marker.position.set((mtV.x - SURF.origin.x) / MT_S, 0.2, (mtV.z - SURF.origin.z) / MT_S); }
     }
   }
   const o = SURF.origin, F = MT.phase === 'battle' && MT.fit;
