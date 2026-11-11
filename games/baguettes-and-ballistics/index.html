@@ -8419,7 +8419,7 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
   b.after(st);
   let tries = 0;
-  const AR_BUILD = 'build 36';
+  const AR_BUILD = 'build 37';
   new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
     tries++;
@@ -8888,8 +8888,9 @@ function mtRoll(pts) { // start the loop in the middle of its straightest stretc
 function mtCheck(pts, raw) {
   const n = pts.length, bad = new Uint8Array(n), need = MT_HW + MT_KERB - 0.5, W2 = (2 * (MT_HW + MT_KERB) + 0.5) ** 2, gap = Math.ceil(40 / MT_STEP);
   let off = 0, close = 0, tight = 0;
-  for (let i = 0; i < n; i++) if (surfClear(pts[i][0], pts[i][1]) < need) { bad[i] = 1; off++; }
-  if (raw) for (const q of raw) if (surfClear(q[0], q[1]) < 0) { // the finger went off the table: the bit of track nearest it is marked, even if smoothing pulled it back on
+  const need2 = raw ? -MT_CELL * 1.5 : need; // drawn by hand: the centre line on (or within ~3 cm of) the scan is enough. Real scans of rugs and wood are patchy.
+  for (let i = 0; i < n; i++) if (surfClear(pts[i][0], pts[i][1]) < need2) { bad[i] = 1; off++; }
+  if (raw) for (const q of raw) if (surfClear(q[0], q[1]) < -MT_CELL * 3) { // the finger went off the table: the bit of track nearest it is marked, even if smoothing pulled it back on
     for (let i = 0; i < n; i++) if ((pts[i][0] - q[0]) ** 2 + (pts[i][1] - q[1]) ** 2 < 625 && !bad[i]) { bad[i] = 1; off++; }
   }
   for (let i = 0; i < n; i++) if (mtRadius(pts, i, 6) < MT_RMIN * 0.75) { bad[i] = 3; tight++; } // a kink smoothing could not open up
@@ -8898,7 +8899,7 @@ function mtCheck(pts, raw) {
     if ((pts[i][0] - pts[j][0]) ** 2 + (pts[i][1] - pts[j][1]) ** 2 < W2) { bad[i] = bad[j] = 2; close++; }
   }
   const len = n * MT_STEP;
-  return { bad, off, close, tight, len, ok: !off && !close && !tight && len >= MT_LMIN };
+  return { bad, off, close, tight, len, ok: off <= n * 0.25 && !close && !tight && len >= MT_LMIN }; // up to a quarter red (off the scan) is allowed: the race just warns
 }
 function mtRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 // AUTO: a closed loop inside the scanned area. Shrink the known area by the road's half width and a margin, take the
@@ -9115,7 +9116,7 @@ function mtCleanup() { /* the road, gates, tokens and blob are in R.group (dispo
 // Off the road (past the kerb) for a moment, or off the table: back on the track a little way behind.
 function mtOffRoad(c, dt) {
   if (c.scr) return;
-  const P = c.kp, i = c.wp, q = P.pts[i], [nx, nz] = P.nor[i], lat = Math.abs((c.x - q.x) * nx + (c.z - q.z) * nz), offTable = surfClear(c.x, c.z) < -1;
+  const P = c.kp, i = c.wp, q = P.pts[i], [nx, nz] = P.nor[i], lat = Math.abs((c.x - q.x) * nx + (c.z - q.z) * nz), offTable = surfClear(c.x, c.z) < -MT_CELL * 4; // ~8 cm past the scan: gaps in a patchy scan don't reset you
   if (lat > MT_HW + MT_KERB + 0.6 || offTable) {
     c.offT = (c.offT || 0) + dt;
     const k = Math.exp(-2.5 * dt); c.vx *= k; c.vz *= k;
@@ -9268,15 +9269,17 @@ function mtRecompose() {
   if (!raw.length) { MT.msg = 'Drag a finger on the table to draw your track. Lift to stop; it joins up into a loop.'; mtUi(); return; }
   if (raw.length < 6 || mtLen(raw, true) < 80) { MT.msg = 'Keep going: draw a bigger loop.'; mtLine(raw); mtUi(); return; }
   const f = raw[0], l = raw[raw.length - 1], joined = Math.hypot(l[0] - f[0], l[1] - f[1]) > 25;
+  surfCloseHoles();
   const sm = mtSmooth(raw), pts = mtRoll(sm.pts), chk = mtCheck(pts, raw);
   MT.cand = { pts, chk };
   MT.prev = mtRoadMesh(pts, chk.bad, null); MT.group.add(MT.prev);
-  if (chk.off) MT.msg = "That bit's off the table! (red) Undo, or draw inside the painted area.";
+  if (chk.off > pts.length * 0.25) MT.msg = "Too much is off the table (red). Undo, or draw inside the painted area.";
+  else if (chk.off && !chk.close && !chk.tight && chk.len >= MT_LMIN) MT.msg = `Track ready, ${(chk.len * MT_S).toFixed(1)} m. A bit is outside the scan (red): sweep over it, or just tap Race!`;
   else if (chk.tight) MT.msg = 'That bend is too sharp to drive (red). Undo and draw it rounder.';
   else if (chk.close) MT.msg = 'Two bits of track are too close (orange): the roads would overlap. Undo and spread them out.';
   else if (chk.len < MT_LMIN) MT.msg = "That's a tiny track: draw a bigger loop.";
   else MT.msg = `Track ready: ${(chk.len * MT_S).toFixed(1)} m${sm.smoothed ? ', tight bends smoothed' : ''}${joined ? ', ends joined up' : ''}. Tap Race!`;
-  if (chk.off) sfx('thud');
+  if (chk.off > pts.length * 0.25) sfx('thud');
   mtUi();
 }
 function mtAutoGo() {
