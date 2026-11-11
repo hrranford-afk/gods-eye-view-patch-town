@@ -52,3 +52,18 @@ Folder: `games/cairn/` on `game/cairn`. Only a draft `index.html` and a mock pic
 **Sound:** soft wind, crunching footsteps, a gentle chime on arrival. No pushy music.
 
 **Tech:** one HTML file, works on iPad by touch, no downloaded assets.
+
+## Newer games and files (added 11 Nov 2026)
+
+| What | Where |
+|---|---|
+| **Base Camp** (AR colony on your real room's surfaces) | branch `game/room-colony`, folder `games/base-camp/` (README.md, HANDOVER.md) |
+| Base Camp picture prompts (90s cartoon look) | `games/base-camp-STYLE_PROMPTS.md` on `game/micro-precinct` |
+| Base Camp council data (almanac, rooms, creatures) | `games/base-camp/*.json` on `game/micro-precinct` and `game/room-colony` |
+| **Night Meet** (realistic night drift and car meet) | branch `game/night-meet`, folder `games/night-meet/` |
+| Captain Crumb's Big Adventure (story outline) | `games/captain-crumb/STORY.md` on `game/micro-precinct` |
+| Council questions, round 1 and round 2 | `games/COUNCIL_QUESTIONS.md`, `games/COUNCIL_ROUND2_BASE_CAMP.md` on `game/micro-precinct` |
+| Baguettes & Ballistics (now with toy boxes, Drift, My Track, AR) | branch `game/micro-precinct`, folder `games/baguettes-and-ballistics/` |
+
+Contributing pictures: make them from the prompt files, and add them to a `games/<game>/refs/` folder (or send them to Claude
+in chat). They are style targets: the games draw everything in code.
