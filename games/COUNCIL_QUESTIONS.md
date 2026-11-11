@@ -78,6 +78,25 @@ story. Write ONE colonist and ONE event for tomorrow, in this exact JSON shape (
 (For whoever runs this: merge every resident's JSON into one file `games/base-camp/almanac.json`, keeping each
 resident's name in an extra `"by"` field on every item, and check it parses. Keep the raw answers too.)
 
+**Q8. Base Camp: living in a real room.** Imagine a real lounge and a real kitchen: shelves, the top of a speaker,
+the floor, the rug, the sofa, a fireplace, a windowsill, a radiator, a worktop, the top of the fridge, the space under
+the sofa. A tiny colony moves in. For FIVE of those spots, say:
+- what the colony uses it for (farm, village, lookout, workshop, hideout...);
+- what that spot gives them and what it costs them (warm but dangerous, sunny but exposed, loud, dusty...);
+- how they get there from the others (cable car, rope, catapult, tunnel, ladder...);
+- one funny thing that happens there.
+
+**Q9. Base Camp: invent a creature.** The colony are tiny weird creatures who live in the corners of a house
+(working idea: the "Fluffkins", made of dust bunnies and fluff). The style is a 1990s TV cartoon: big personalities,
+a bit gross, a bit stupid, very lovable. Invent ONE creature:
+- name, and what it is made of;
+- personality in five words;
+- a gross or silly habit;
+- what it is scared of (the Hoover? the cat? the fire?);
+- what it says when it panics, and what it says when it's happy;
+- one thing it is secretly brilliant at.
+(For whoever runs this: two creatures with the same personality and the same fear are the same creature: ask again.)
+
 ## Answer template (copy into `games/COUNCIL_ANSWERS.md`)
 
 ```
@@ -93,6 +112,8 @@ resident's name in an extra `"by"` field on every item, and check it parses. Kee
 | Q5 | | | |
 | Q6 | | | |
 | Q7 | | | |
+| Q8 | | | |
+| Q9 | | | |
 
 ## Q1. My Track
 - <resident>: <their words>
@@ -114,6 +135,12 @@ resident's name in an extra `"by"` field on every item, and check it parses. Kee
 
 ## Q7. Base Camp almanac
 - <resident>: <their JSON>
+
+## Q8. Living in a real room
+- <resident>: <their five spots>
+
+## Q9. A creature
+- <resident>: <their creature, all six points>
 
 ## Harry's picks
 -
