@@ -123,7 +123,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 4';
+const BUILD = 'build 5';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1630,6 +1630,9 @@ function awaySim(secs, startHour) {
   }
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
   DIARY.on = false;
+  // Coming home must feel good, never like guilt: after time away the colony is content, not miserable (owner's rule).
+  for (const S of G.settlements) for (const c of S.cols) { c.needs.joy = Math.max(c.needs.joy, 0.6); c.needs.food = Math.max(c.needs.food, 0.45); c.needs.water = Math.max(c.needs.water, 0.45); c.needs.rest = Math.max(c.needs.rest, 0.5); }
+  G.requests = G.requests.filter((q) => q.def.give !== 'cheer');
   const lines = awaySummary(before, snapColony(), secs, nights, capped);
   return { secs, ms: performance.now() - t0, steps, lines, nights };
 }
@@ -2915,11 +2918,13 @@ $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').query
 $('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').dataset.sure = '1'; $('bNew').textContent = 'Really forget the colony?'; return; } $('bNew').dataset.sure = ''; $('bNew').textContent = 'Forget my colony'; store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak'); G.previewLines = null; G.previewStamp = ''; updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
-  for (const q of G.requests) {
+  const MAXR = 2; // at most two requests on screen: the room is the game, not a to-do list
+  for (const q of G.requests.slice(0, MAXR)) {
     const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'cablecar' || q.def.give === 'expedition' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
+  if (G.requests.length > MAXR) { const m = document.createElement('div'); m.className = 'req more'; m.textContent = '+' + (G.requests.length - MAXR) + ' more'; m.style.cssText = 'font-size:12px;opacity:.75;justify-content:flex-end;padding:2px 8px'; r.appendChild(m); }
 }
 function envUi() {
   const e = $('env');
@@ -3130,7 +3135,7 @@ function frame(time, xrFrame) {
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
       z.label.visible = !mapped && !z.settled && G.phase !== 'title' && (G.time - z.t0 < 3.5 || look); if (z.label.visible) { z.label.position.y = z.y + 0.05; const k = clamp(L2 / 1.2, 0.5, 2.5); z.label.scale.set(0.16 * k, 0.03 * k, 1); } } }
   else for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
-  uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && G.requests.length !== $('reqs').children.length) reqUi(); }
+  uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
   renderer.render(scene, camera);
 }
 addEventListener('visibilitychange', () => { if (document.hidden) persist(true); }); addEventListener('pagehide', () => persist(true));
