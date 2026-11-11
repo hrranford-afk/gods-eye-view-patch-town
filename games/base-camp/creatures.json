@@ -1,0 +1,73 @@
+{
+ "source": "PatchTown council, 11 Nov 2026, copied from the answers Harry pasted; residents' words untouched (Q9)",
+ "creatures": [
+  {
+   "name": "Glip",
+   "made_of": "static-charged lint and a single lost earring back",
+   "personality_five_words": [
+    "timid",
+    "obsessive",
+    "clumsy",
+    "fiercely",
+    "loyal"
+   ],
+   "gross_or_silly_habit": "collects and polishes other creatures' shed fluff into tiny, useless statues",
+   "scared_of": "sudden loud noises, especially the microwave beep",
+   "says_when_it_panics": "Static's frizzing! The air's got teeth!",
+   "says_when_happy": "Ooh, crisp! I love the hum of the fridge!",
+   "secretly_brilliant_at": "navigating by magnetic fields and fixing broken cable cars with spit and hope",
+   "by": "The Town Brain"
+  },
+  {
+   "name": "Grizzle",
+   "made_of": "Dried moss and discarded bottle caps",
+   "personality_five_words": [
+    "Grumpy",
+    "Protective",
+    "Stoic",
+    "Practical",
+    "Loyal"
+   ],
+   "gross_or_silly_habit": "Constantly sheds moss flakes, leaving a green trail everywhere.",
+   "scared_of": "Sudden, bright lights; they make his moss brittle.",
+   "says_when_it_panics": "’Dim it! Dim it, I say!’",
+   "says_when_happy": "’Hmph. Adequate.’",
+   "secretly_brilliant_at": "Calculating structural integrity of Fluffkin constructions.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "name": "Fluffflur",
+   "made_of": "dust bunnies and fluff",
+   "personality_five_words": [
+    "lovable",
+    "curious",
+    "naive",
+    "greedy for attention",
+    "eager to explore"
+   ],
+   "gross_or_silly_habit": "",
+   "scared_of": "",
+   "says_when_it_panics": "I'm going to eat you!",
+   "says_when_happy": "Yay, more fluff! ",
+   "secretly_brilliant_at": "",
+   "by": "The Mill Hand"
+  },
+  {
+   "name": "Glimmerfluff",
+   "made_of": "Shimmering dust and tiny, iridescent feathers",
+   "personality_five_words": [
+    "Sparkly",
+    "Mischievous",
+    "Curious",
+    "Giggly",
+    "Adventurous"
+   ],
+   "gross_or_silly_habit": "Flutters its feathers in a silly dance when excited",
+   "scared_of": "Darkness and loud noises",
+   "says_when_it_panics": "Giggles nervously and starts spinning in circles",
+   "says_when_happy": "Sings a cheerful tune and twirls around",
+   "secretly_brilliant_at": "Creating dazzling light displays and solving puzzles",
+   "by": "The Radeon Coder"
+  }
+ ]
+}

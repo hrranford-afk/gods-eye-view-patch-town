@@ -1,0 +1,95 @@
+{
+ "source": "PatchTown council, 11 Nov 2026, copied from the answers Harry pasted; residents' words untouched (Q8)",
+ "spots": [
+  {
+   "spot": "top of speaker",
+   "used_for": "broadcast tower",
+   "gives": "vibration signals, music for morale, elevated view",
+   "costs": "constant bass rattles their teeth, speakers blow dust everywhere",
+   "how_they_get_there": "zip-line made of dental floss",
+   "funny_thing": "they try to \"DJ\" by tapping the cone, causing accidental bass drops that knock over their own breakfast",
+   "by": "The Town Brain"
+  },
+  {
+   "spot": "windowsill",
+   "used_for": "solar farm",
+   "gives": "warmth, sunlight for photosynthesis, rainwater collection",
+   "costs": "extreme exposure to wind, curious cats, sudden temperature swings",
+   "how_they_get_there": "pulley system using thread and a paperclip",
+   "funny_thing": "they build tiny glasshouses that instantly fog up, and argue over who gets to \"eat\" the condensation",
+   "by": "The Town Brain"
+  },
+  {
+   "spot": "under sofa",
+   "used_for": "hideout and nursery",
+   "gives": "darkness, safety, constant dust accumulation for food and building",
+   "costs": "claustrophobia, vacuum cleaner apocalypses, lost items like coins and socks",
+   "how_they_get_there": "rope ladder dropped from the rug edge",
+   "funny_thing": "they mistake a lost sock for a mythical \"cloud-beast\" and try to tame it with tiny lassos",
+   "by": "The Town Brain"
+  },
+  {
+   "spot": "radiator",
+   "used_for": "forge and heat workshop",
+   "gives": "reliable warmth, metal for crafting, steam for cooking",
+   "costs": "scorching burns, loud ticking and popping, dry air",
+   "how_they_get_there": "hot-air balloon made from a tea bag",
+   "funny_thing": "they try to toast crumb-pies on the fins and accidentally weld a spoon to the floor",
+   "by": "The Town Brain"
+  },
+  {
+   "spot": "worktop",
+   "used_for": "trading post and market",
+   "gives": "flat space, access to food scraps, high foot traffic",
+   "costs": "grease, slippery surfaces, human interference",
+   "how_they_get_there": "catapult launch using a bent fork tine",
+   "funny_thing": "they try to conduct trade with sugar cubes, but one melts into a sticky black hole that swallows their ledger",
+   "by": "The Town Brain"
+  },
+  {
+   "spot": "Shelves",
+   "used_for": "Storage",
+   "gives": "Extra space for storing food and resources",
+   "costs": "Dusty",
+   "how_they_get_there": "Cable car",
+   "funny_thing": "A Fluffkin accidentally knocked over a shelf, sending a cloud of dust flying everywhere",
+   "by": "The Radeon Coder"
+  },
+  {
+   "spot": "Top of a speaker",
+   "used_for": "Lookout",
+   "gives": "A bird's-eye view of the room",
+   "costs": "Loud",
+   "how_they_get_there": "Rope",
+   "funny_thing": "A Fluffkin climbed up the speaker and accidentally turned it on, causing a loud and annoying sound",
+   "by": "The Radeon Coder"
+  },
+  {
+   "spot": "Floor",
+   "used_for": "Farm",
+   "gives": "Space for growing food",
+   "costs": "Dusty",
+   "how_they_get_there": "Ladder",
+   "funny_thing": "A Fluffkin accidentally stepped on a plant, causing it to wilt and droop",
+   "by": "The Radeon Coder"
+  },
+  {
+   "spot": "Rug",
+   "used_for": "Hideout",
+   "gives": "A cozy place to rest and hide",
+   "costs": "Warm but dangerous",
+   "how_they_get_there": "Catapult",
+   "funny_thing": "A Fluffkin accidentally launched itself into the rug, causing it to bounce around uncontrollably",
+   "by": "The Radeon Coder"
+  },
+  {
+   "spot": "Sofa",
+   "used_for": "Workshop",
+   "gives": "Space for crafting and building",
+   "costs": "Dusty",
+   "how_they_get_there": "Tunnel",
+   "funny_thing": "A Fluffkin accidentally fell asleep on a tool, causing it to break",
+   "by": "The Radeon Coder"
+  }
+ ]
+}
