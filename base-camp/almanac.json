@@ -1,0 +1,183 @@
+{
+ "source": "PatchTown council, 11 Nov 2026 (Q7), copied from the answers Harry pasted; residents' words untouched",
+ "colonists": [
+  {
+   "name": "Pip",
+   "personality": "Curious and earnest, with a knack for finding beauty in ordinary surfaces.",
+   "likes": [
+    "polished pebbles",
+    "morning light",
+    "humming while working"
+   ],
+   "dislikes": [
+    "dust bunnies",
+    "sudden shadows"
+   ],
+   "dream": "To weave a glowing root-network that connects every corner of the desk.",
+   "by": "The Town Brain"
+  },
+  {
+   "name": "Gizmo",
+   "personality": "Inventive and curious",
+   "likes": [
+    "new gadgets",
+    "exploring",
+    "building"
+   ],
+   "dislikes": [
+    "mess",
+    "waiting"
+   ],
+   "dream": "Create a flying machine to explore the ceiling",
+   "by": "The Dell Coder"
+  },
+  {
+   "name": "Lila",
+   "personality": "curious and cheerful",
+   "likes": [
+    "growing plants",
+    "exploring",
+    "telling stories"
+   ],
+   "dislikes": [
+    "loud noises",
+    "messy spaces",
+    "unanswered questions"
+   ],
+   "dream": "to create a garden that blooms with stories",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "name": "Pipkin Bramble",
+   "personality": "Curious, gentle, a little clumsy",
+   "likes": [
+    "Mushrooms",
+    "Shiny pebbles",
+    "Birdsong"
+   ],
+   "dislikes": [
+    "Sudden noises",
+    "Being rushed",
+    "Dust"
+   ],
+   "dream": "To discover a new type of berry that glows in the dark.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "name": "Luna",
+   "personality": "curious and adventurous, always eager to explore new things.",
+   "likes": [
+    "trees",
+    "flowers"
+   ],
+   "dislikes": [
+    "cold weather"
+   ],
+   "dream": "to discover hidden treasures in the forest.",
+   "by": "The Mill Hand"
+  },
+  {
+   "name": "Sunny",
+   "personality": "playful and energetic",
+   "likes": [
+    "growing plants",
+    "cable cars",
+    "sunny days"
+   ],
+   "dislikes": [
+    "rainy days",
+    "cold nights"
+   ],
+   "dream": "to have a big, beautiful garden with lots of flowers",
+   "by": "The Radeon Coder"
+  }
+ ],
+ "events": [
+  {
+   "title": "First Roots",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Pip and the other colonists carefully anchor a tiny seedling to the desk's edge. Sunlight catches the dew on its leaves, making them shimmer like glass as they settle into place.",
+   "colonist_says": "Look! It's drinking the light already. It knows we're here.",
+   "by": "The Town Brain"
+  },
+  {
+   "title": "Morning Sunlight",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "The morning sun shines brightly through the window, casting a warm glow over the colony.",
+   "colonist_says": "Good morning! The sun is shining, perfect for a new day of work and play.",
+   "by": "The Dell Coder"
+  },
+  {
+   "title": "The First Bloom",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "The first sunflower seed sprouts and begins to stretch toward the light.",
+   "colonist_says": "Look! The seed has awakened! Let's sing it a lullaby to help it grow.",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "title": "The First Cable Car Troubles",
+   "when": "afternoon",
+   "weather": "wind",
+   "what_happens": "The first cable car, built between the desk and the bookshelf, swayed dramatically in a sudden gust of wind. It almost tipped! Luckily, Barnaby the Builder managed to stabilize it with some clever rope work.",
+   "colonist_says": "Oh dear! That was a bit scary! But Barnaby is so clever!",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "title": "The First Day",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Luna wakes up to a bright, sunny morning. She stretches and starts her day by planting seeds in the garden.",
+   "colonist_says": "Good morning! The sun is shining so brightly today. I can't wait to see what new flowers will grow from my seed.",
+   "by": "The Mill Hand"
+  },
+  {
+   "title": "Planting Day",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Sunny and the other colonists are planting seeds in the garden. They're enjoying the warm sun and the fresh air.",
+   "colonist_says": "It's a great day to start planting! Let's make our garden beautiful!",
+   "by": "The Radeon Coder"
+  }
+ ],
+ "requests": [
+  {
+   "colonist": "Pip",
+   "asks_for": "seed",
+   "says": "The soil near the shelf edge is a bit tired. Could you sprinkle a little extra seed there? I promise it'll grow tall enough to wave at your coffee mug.",
+   "by": "The Town Brain"
+  },
+  {
+   "colonist": "Gizmo",
+   "asks_for": "cable_car",
+   "says": "Hey, can you help me build a cable car? I want to explore the ceiling and see what's up there!",
+   "by": "The Dell Coder"
+  },
+  {
+   "colonist": "Lila",
+   "asks_for": "water",
+   "says": "Please bring me a glass of water to water the new sprout. Let's make it grow with care!",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "colonist": "Pipkin Bramble",
+   "asks_for": "shade",
+   "says": "Could you perhaps move that lamp a little? The sun is quite strong today, and I'm trying to examine this interesting moss I found!",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "colonist": "Luna",
+   "asks_for": "water",
+   "says": "I need some water for the plants in the garden. The sun is so strong today, they'll dry out quickly if I don't take care of them!",
+   "by": "The Mill Hand"
+  },
+  {
+   "colonist": "Sunny",
+   "asks_for": "shade",
+   "says": "Hey, could you help me find a spot for my new plant? I want it to have some shade to grow better.",
+   "by": "The Radeon Coder"
+  }
+ ]
+}
