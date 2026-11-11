@@ -1,4 +1,4 @@
-// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) OUT=<outdir> NO_OVERLAY=1 node games/night-meet/tests/ar.js
+// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) OUT=<outdir> NO_OVERLAY=1 node games/night-meet/tests/ar.cjs
 // Night Meet in AR (adapted from the My Track harness mtar.js) with HelloXR's real WebXR polyfill and a fake native iOS side (extends real.js).
 // The fake ARKit: a table plane at y = -0.9 m, x -0.6..0.6, z -1.1..-0.5 (1.2 m x 0.6 m); hit tests outside it are empty.
 // The camera sweeps over it while scanning, then holds still for drawing. Run with NO_OVERLAY=1 to match the owner's iPad.

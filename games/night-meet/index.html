@@ -261,7 +261,7 @@ function buildComposer() {
   if (rt.samples !== undefined) rt.samples = Q.msaa;
   composer = new THREE.EffectComposer(renderer, rt);
   composer.addPass(new THREE.RenderPass(scene, camera));
-  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.9, 0.4, 0.78); // strength, radius, threshold
+  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.9, 0.4, 0.84); // strength, radius, threshold
   // the two widest blur levels are switched off: in 8-bit buffers their faint tails show as square steps round bright lights
   const tint = bloomPass.compositeMaterial.uniforms.bloomTintColors.value; tint[3].set(0, 0, 0); tint[4].set(0, 0, 0);
   // half-float blur buffers where the GPU can render to them (no 8-bit banding in the soft glow)
@@ -362,8 +362,8 @@ function initMaterials() {
   basic('tail', { color: hdr(0xff1a12, 3.2) });
   basic('tailDim', { color: hdr(0xff1a12, 1.3) });
   basic('amberLamp', { color: hdr(0xff8a1e, 2.5) });
-  basic('sodium', { color: hdr(0xffa950, 6) });
-  basic('white', { color: hdr(0xf4f8ff, 4) });
+  basic('sodium', { color: hdr(0xffa950, 2.2) });
+  basic('white', { color: hdr(0xf4f8ff, 2) });
   basic('black', { color: 0x000000 });
 }
 function setEnv(map) { // the HDRI as reflections on every standard material (scene.environment would also light, too brightly at night)
@@ -1081,12 +1081,24 @@ function wallLamp(A, x, y, z, a, col = 0xd8e6ff, range = 22, int = 1.1) { // a P
   const lens = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), MAT.white); lens.position.set(x + Math.cos(a) * 0.35, y - 0.25, z + Math.sin(a) * 0.35); A.group.add(lens);
   A.lamps.push({ x: x + Math.cos(a) * 0.6, y: y - 0.3, z: z + Math.sin(a) * 0.6, col, range, int, wall: a });
 }
+// Glow sprites drawn as points with a round falloff worked out in the shader (a texture-based one left faint squares).
+// size is in metres; uniforms.px is half the drawing buffer height (set each frame in render()).
+const HALO_MATS = [];
+function haloMat(size) {
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, vertexColors: true, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, fog: false,
+    uniforms: { size: { value: size }, px: { value: 400 } },
+    vertexShader: 'uniform float size, px; varying vec3 vC; void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * px * projectionMatrix[1][1] / -mv.z; gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'varying vec3 vC; void main(){ float d = length(gl_PointCoord * 2.0 - 1.0); float a = pow(max(0.0, 1.0 - d), 2.2); gl_FragColor = vec4(vC * a, 1.0); }',
+  });
+  HALO_MATS.push(m); return m;
+}
 function lightDressing(A) {
   // halos round every lamp head (one draw call)
   const pos = [], col = [];
-  for (const L of A.lamps) { pos.push(L.x, L.y - 0.05, L.z); const c = new THREE.Color(L.col).multiplyScalar(2.2 * L.int); col.push(c.r, c.g, c.b); }
+  for (const L of A.lamps) { pos.push(L.x, L.y - 0.05, L.z); const c = new THREE.Color(L.col).multiplyScalar(1.3 * L.int); col.push(c.r, c.g, c.b); }
   const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  const halos = new THREE.Points(hg, new THREE.PointsMaterial({ size: 2.6, map: softTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const halos = new THREE.Points(hg, haloMat(1.7));
   halos.renderOrder = 5; A.group.add(halos);
   // light cones (one merged mesh, Medium and High)
   const cg = [];
@@ -1720,7 +1732,7 @@ function meetUpdate(dt) {
 function inspect(s) {
   MEET.spot = s; MEET.i = getArea('carpark').spots.indexOf(s);
   const T = CAR[s.type], d = s.car.userData.rig.dims;
-  MEET.dist = clamp(d.len * 1.55 + 3, 8, 24); MEET.pitch = 0.16; MEET.yaw = s.h + 0.75; MEET.idle = -6; // a low front three-quarter view
+  MEET.dist = clamp(d.len * 1.2 + 2.5, 6.5, 20); MEET.pitch = 0.17; MEET.yaw = s.h + 0.75; MEET.idle = -6; // a low front three-quarter view
   $('insName').textContent = T.name.toUpperCase(); $('insCls').textContent = T.cls; $('insBlurb').textContent = T.blurb;
   const hp = Math.round(T.kW * 1.341), stat = (lab, f, val) => `<div class="stat"><span class="lab">${lab}</span><div class="bar"><i style="width:${Math.round(clamp(f, 0.04, 1) * 100)}%"></i></div><b>${val}</b></div>`;
   $('insStats').innerHTML = stat('Power', hp / 480, hp + ' hp') + stat('Weight', Math.log(T.kg / 700) / Math.log(12000 / 700), fmt(T.kg) + ' kg') + stat('Grip', (T.grip - 0.8) / 0.4, (T.grip * 10).toFixed(1)) + stat('Drift', T.drift / 5, '●'.repeat(T.drift) + '○'.repeat(5 - T.drift)) + stat('Points', T.mult / 4, 'x' + T.mult);
@@ -1792,8 +1804,10 @@ function update(dt) {
 }
 function render() {
   if (AR.on) { arRender(); return; }
+  const px = renderer.getDrawingBufferSize(_dbs).y / 2; for (const m of HALO_MATS) m.uniforms.px.value = px;
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
+const _dbs = new THREE.Vector2();
 function step(t, frame) {
   const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
   PERF.frame = PERF.frame * 0.95 + (now - last) * 0.05; last = now;
@@ -2168,9 +2182,10 @@ function arRender() {
   const fog = scene.fog, hi = hemi.intensity, mi = moon.intensity, s = AR.s, saved = [];
   scene.fog = null; scene.background = null;
   hemi.intensity = hi * AR.light * 1.6; moon.intensity = mi * AR.light * 2; // a little brighter than night: a room is lit
-  scene.traverse((o) => { if (o.isLight && o.distance) { saved.push([o, o.distance]); o.distance *= s; } else if (o.isPoints && o.material.size) { saved.push([o, o.material.size, 1]); o.material.size *= s; } });
+  scene.traverse((o) => { if (o.isLight && o.distance) { saved.push([o, o.distance]); o.distance *= s; } else if (o.isPoints && o.material.size) { saved.push([o, o.material.size, 1]); o.material.size *= s; } else if (o.isPoints && o.material.uniforms && o.material.uniforms.size) { saved.push([o, o.material.uniforms.size.value, 2]); o.material.uniforms.size.value *= s; } });
+  { const px = renderer.getDrawingBufferSize(_dbs).y / 2; for (const m of HALO_MATS) m.uniforms.px.value = px; }
   renderer.render(scene, camera);
-  for (const [o, v, pts] of saved) if (pts) o.material.size = v; else o.distance = v;
+  for (const [o, v, pts] of saved) if (pts === 2) o.material.uniforms.size.value = v; else if (pts) o.material.size = v; else o.distance = v;
   hemi.intensity = hi; moon.intensity = mi; scene.fog = fog;
 }
 // ===================== end of AR mode =====================

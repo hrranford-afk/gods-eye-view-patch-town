@@ -1,4 +1,4 @@
-// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) node games/night-meet/tests/test.js <outdir>
+// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) node games/night-meet/tests/test.cjs <outdir>
 // Night Meet tests: page errors, meet loads, pick a car by tapping it, 60 s drift run (bot holding the handbrake),
 // memory over 3 runs, frame time per quality level.
 const { chromium } = require('playwright');
@@ -33,8 +33,8 @@ const OUT = process.argv[2] || 'out';
   await p.screenshot({ path: OUT + '/t-run.png' });
   // memory over 3 runs (each: start, 20 s with the bot, finish card, back to the meet)
   const mem = [];
-  for (let r = 0; r < 3; r++) {
-    await p.evaluate((r) => { NM.driveStart(r === 1 ? 'town' : 'carpark', ['kaze', 'bus', 'lorry'][r], 0xff0000, 0x22d3ff); NM.DRIVE.bot = NM.botDriver(); }, r);
+  for (let r = 0; r < 4; r++) { // run 0 warms up (the town and the bus's wheel sizes are built once); runs 1 to 3 must match
+    await p.evaluate((r) => { NM.driveStart(r % 2 ? 'town' : 'carpark', r ? 'bus' : 'lorry', 0xff0000, 0x22d3ff); NM.driveExit(); NM.driveStart(r % 2 ? 'carpark' : 'town', 'bus', 0xff0000, 0x22d3ff); NM.DRIVE.bot = NM.botDriver(); }, r);
     for (let s = 0; s < 20; s += 2) await p.evaluate(() => { for (let i = 0; i < 120; i++) update(1 / 60); });
     await p.evaluate(() => { NM.DRIVE.left = 0.01; update(1 / 60); render(); NM.driveExit(); update(1 / 60); render(); });
     mem.push(await p.evaluate(() => ({ geo: NM.renderer.info.memory.geometries, tex: NM.renderer.info.memory.textures, kids: NM.scene.children.length, progs: NM.renderer.info.programs.length, heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1e6).toFixed(1) : null })));
@@ -47,7 +47,7 @@ const OUT = process.argv[2] || 'out';
     perf[['Low', 'Medium', 'High'][q]] = await p.evaluate((q) => {
       NM.SET.q = q; NM.applyQuality(); const gl = NM.renderer.getContext(); update(1 / 60); render(); gl.finish();
       const px = new Uint8Array(4); const T = []; for (let i = 0; i < 8; i++) { const t = performance.now(); update(1 / 60); render(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); T.push(performance.now() - t); }
-      T.sort((a, b) => a - b); const i = NM.renderer.info.render; return { ms: +T[4].toFixed(1), calls: i.calls, tris: i.triangles };
+      T.sort((a, b) => a - b); const I = NM.renderer.info; I.autoReset = false; I.reset(); update(1 / 60); render(); const r = { ms: +T[4].toFixed(1), calls: I.render.calls, tris: I.render.triangles }; I.autoReset = true; return r;
     }, q);
   }
   console.log('frame time (swiftshader, 1180x820)', JSON.stringify(perf));

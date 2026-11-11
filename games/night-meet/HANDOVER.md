@@ -34,15 +34,33 @@ the bus and lorry have a weak assist and a small angle, which is what makes them
 Tests used while tuning: steady drift at full stick holds about 37 degrees at about 100 km/h (Kaze); releasing the
 stick straightens it; lifting off decays the slide; flicking without the handbrake starts a slide.
 
-## Tests (scripts are in the session scratchpad, not in the repo)
+## Tests (games/night-meet/tests/, run instructions on line 1 of each)
 Playwright + SwiftShader, viewport 1180x820, served with `npx http-server` (GLB/glTF loading needs http):
-- `test.js`: no page errors; the meet loads (13 parked cars, 11 types); a real mouse tap on a parked car opens its
+- `tests/test.cjs`: no page errors; the meet loads (13 parked cars, 11 types); a real mouse tap on a parked car opens its
   card; a 60 s run with the bot holding the handbrake; memory over 3 runs; frame time per quality.
-- `ar.js`: the real HelloXR/WebXRKit polyfill with a fake native ARKit side (adapted from mtar.js), `NO_OVERLAY=1`:
+- `tests/ar.cjs`: the real HelloXR/WebXRKit polyfill with a fake native ARKit side (adapted from mtar.js), `NO_OVERLAY=1`:
   AR button appears, session starts (overlay connected by the game), hit test, tap to place, tap a car through the AR
   camera, drive, exit; twice.
-- `shots.js`: the screenshots in `shots/`.
+- `tests/shots.cjs`: the screenshots in `shots/`.
+
+## Last test results (SwiftShader, so no iPad timings)
+- No page or console errors in any test. Load to title: about 3 to 4 s from a local server.
+- Meet: 13 parked cars of 11 types; a mouse tap on a parked car opens its card (Ridge X).
+- 60 s run, bot holding the handbrake (Ridge X): 1,927 points, best combo x4, 1 crash, max angle 59 deg, no NaN.
+  The lap bot without the handbrake (Kaze R4, 60 s) slides about 40 % of the time.
+- Memory: after a warm-up run, three start/drive/finish/back-to-meet cycles leave 274 geometries, 92 textures,
+  221 scene children every time.
+- Draw calls / triangles (car park, driving): Low 218 / 74k, Medium 241 / 79k (+1 shadowed lamp), High 248 / 91k.
+  CPU frame time under SwiftShader (software GL, 1180x820): Low 850 ms, Medium 1,140 ms, High 1,360 ms; only the
+  ratios mean anything. Use `?perf` on the iPad for real numbers.
+- AR (real polyfill, fake ARKit, NO_OVERLAY=1): two enter/exit cycles; session starts with the overlay connected
+  by the game, hit test found, tap places (long side 1 m, scale 0.0067), tapping a car through the AR camera opens
+  its card, driving starts, exit restores the scene (same geometry/texture counts both times).
 
 ## Known gaps / next steps
-See the end of README.md's sections and the final report: real-device AR and iPad frame rates are untested here;
-the Quaternius cars are low-poly (good silhouettes, faceted surfaces); no other cars drive; one game mode.
+- Real-device AR and iPad frame rates are untested here. Check Medium is the right default; AR forces Low.
+- The Quaternius cars are low-poly (good silhouettes, faceted panels): the first thing to upgrade. `makeCar` is the
+  one place to swap in better models. The code-built cars (Brute V8, Mochi Kei, Haul 2500) are simple shapes.
+- No traffic and no other drivers (the Midnight Kitchen tandem ghost was not brought over); one game mode.
+- The town's buildings are boxes with a window texture; no traffic lights or street furniture yet.
+- The test bot is crude (it crashes a lot in the town); it only exists for tests.

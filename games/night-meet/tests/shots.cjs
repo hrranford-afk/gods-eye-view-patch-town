@@ -1,4 +1,4 @@
-// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) node games/night-meet/tests/shots.js <outdir>
+// Run from the repo root with the game served on port 8124: npx http-server games/night-meet -p 8124 -c-1, then NODE_PATH=$(npm root -g) node games/night-meet/tests/shots.cjs <outdir>
 // screenshots: meet, inspect, drift car park, town, smoke+bloom. Usage: node shots.js outdir [quality]
 const { chromium } = require('playwright');
 const OUT = process.argv[2], QL = +(process.argv[3] || 2);
