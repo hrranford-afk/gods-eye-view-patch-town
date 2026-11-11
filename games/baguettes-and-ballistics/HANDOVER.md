@@ -1132,3 +1132,10 @@ Between levels, "UPGRADES" on the box screen (title card: CHANGE / UPGRADE; end 
 ### What I did not do
 
 No box-specific music; the Spice Rack's "market" and the garage cars inside it are props, not units; no multiplayer yet (the save is one box per device); no per-box difficulty tuning beyond the numbers above (I could only run the headless smoke, not play 30 minutes of each).
+
+### Tested (headless Chromium, swiftshader, 1180 x 820)
+
+- All six levels, 90 s each of the normal game: 0 page errors. `krtalk`, `driftcheck` (Drift, no bases), `mt/practice.js` (My Track: scan, draw, race, battle, repeat) and `hxr/mtar.js` with `NO_OVERLAY=1` (My Track in AR) all clean.
+- Per box on level 4 with a frozen loop: unfold opens and both boxes' footprints swap; Trolley tips on a 200-damage hit (4 s, no income, 10 s immunity), Crate Barrage makes 7 blocking tiles, a reflected shot turns round, trucks carry 24; Spice cloud blinds a car 8 units away; Kettle takes x2 from a bubble, has 2 charges with the signature, speed x1.51 (boil x deck), damage x1.4; Toaster Pop-Up launches the car about 70 units and starts a 26 s glow (x1.5 damage taken); the Baron's cannon fires 12 shots in 10 s at a car 18 units off.
+- Save: pick, upgrades and stars survive a reload and a level change; the end card adds "+N stars for your toy box"; the Baron's extra line is the last pre-race line. Memory: 12 rebuilds with abilities used plus every box in turn leave geometries (47), textures (14), scene children (27) and obstacles flat.
+- Screenshots: `shots/64` to `shots/72`. `show.js`-style frozen frames were used for the mid-unfold shot (65) and the close-ups.
