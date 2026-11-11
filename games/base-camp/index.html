@@ -95,6 +95,7 @@ body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
       <button id="bPrac" class="alt">Practice room</button>
       <button id="bMap">Manual: map my room</button>
       <button id="bMapIO">Room map: export / import</button>
+      <button id="bHomes" hidden>Rooms and totems</button>
       <button id="bNew" hidden>Forget my colony</button>
     </div>
     <div id="mapInfo"></div>
@@ -143,6 +144,14 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
   for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
   if (bad) STORE.status = 'corrupt'; return null;
 }
+const HOME_TOTEM = false; // OFF: the home totem / multi-room work (build 6, unfinished) is not reachable while this is false
+const HOMES = { v: 1, cur: 'r1', rooms: [{ id: 'r1', name: 'My room', created: Date.now(), visits: 0, known: 0, post: [] }] }; // rooms: each has its own map, colony, totem and guardian (keys below)
+(function homesInit() { try { const d = JSON.parse(localStorage.getItem('bc-rooms-v1') || 'null'); if (d && d.v === 1 && Array.isArray(d.rooms) && d.rooms.length && d.rooms.every((r) => r && /^r\d+$/.test(r.id))) { HOMES.rooms = d.rooms.slice(0, 8); HOMES.cur = HOMES.rooms.some((r) => r.id === d.cur) ? d.cur : HOMES.rooms[0].id; } } catch (e) { /* one room */ } })();
+function homesSave() { try { localStorage.setItem('bc-rooms-v1', JSON.stringify(HOMES)); } catch (e) { /* no storage */ } }
+const homeInfo = (id) => HOMES.rooms.find((r) => r.id === id) || null, homeName = (id) => { const r = homeInfo(id); return r ? r.name : 'a room'; };
+const homeKeys = (id) => (id === 'r1' ? { map: 'base-camp-map-v1', save: 'base-camp-save-v2' } : { map: 'base-camp-map-v1.' + id, save: 'base-camp-save-v2.' + id }); // the first room keeps the old keys
+function homeSelect(id) { HOMES.cur = id; MAP_KEY = homeKeys(id).map; SAVE_KEY = homeKeys(id).save; homesSave(); }
+function homeCreate(name) { if (HOMES.rooms.length >= 8) return null; const n = Math.max(...HOMES.rooms.map((r) => +r.id.slice(1))) + 1, r = { id: 'r' + n, name: name || 'Room ' + (HOMES.rooms.length + 1), created: Date.now(), visits: 0, known: 0, post: [] }; HOMES.rooms.push(r); homeSelect(r.id); return r; }
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* none */ } } };
 
 // ============ ALMANAC: everything a story-teller can change lives in this one object ============
@@ -643,7 +652,7 @@ function changedObjects(L, pred, minN) { // patches of cells for which pred is t
   for (let k = 0; k < n; k++) if (ero[k]) for (const d of D) { const q = k + d; if (q >= 0 && q < n && pred(q)) grown[q] = 1; }
   return landComps(L, (k) => grown[k] === 1, minN || 4);
 }
-function bumpConf(L, obs) { if (L.confVisit === G.visits) return; L.confVisit = G.visits; for (let k = 0; k < obs.length; k++) if (obs[k] && L.conf[k] < 15) L.conf[k]++; }
+function bumpConf(L, obs) { if (L.confVisit === G.visits) return; L.confVisit = G.visits; const inc = RELOC.lock && RELOC.lock.how === 'totem' ? 2 : 1; for (let k = 0; k < obs.length; k++) if (obs[k] && L.conf[k] < 15) L.conf[k] = Math.min(15, L.conf[k] + inc); } // a visit that was locked by the totem counts double: the room learns faster
 function reconcileLand(L, m, first) {
   const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length, conf0 = G.auto && !first ? L.conf.slice() : null; bumpConf(L, m.obs); // automatic play: a cell only counts as evidence of a change when earlier visits saw it (two earlier visits must have seen it, so events start on the third visit), so a thin first map cannot invent tidying or squashing
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
@@ -1221,7 +1230,7 @@ function crossStep(S, c, dt, E) { // a colonist waiting for, or riding, the cabl
 // ============ ROOM MAP: zones, tagged spots with roles, cables; saved apart from the colony ============
 // The map is the room as the colonists know it: surfaces (zones with land grids), the spots the player named (speaker, cup, warm box...)
 // and real cables between spots. The colony save refers to map zones by id. The map is versioned (v1), saved under its own key and can be exported/imported as JSON.
-const MAP_KEY = 'base-camp-map-v1', MAP_V = 1;
+let MAP_KEY = homeKeys(HOMES.cur).map; const MAP_V = 1;
 const TAGS = { // what the player can call a spot; role = what the colonists make of it; rooms = the matching words in rooms.json; travel = how they get there
   speaker: { label: 'Speaker', role: 'tower', rooms: 'speaker', travel: 'zipline' }, cup: { label: 'Cup / mug', role: 'well', rooms: 'cup', travel: 'ladder' },
   can: { label: 'Can', role: 'silo', rooms: 'can', travel: 'ladder' }, computer: { label: 'Computer', role: 'plaza', rooms: 'computer', travel: 'cable' },
@@ -1352,7 +1361,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
-function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) storeWarn(); }
+function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); homeStats(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) storeWarn(); }
 function loadMapData() { return safeRead(MAP_KEY, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
 function storeWarn() { if (STORE.told) return; STORE.told = true; toast('The colony could not be saved here (' + (STORE.status === 'unavailable' ? 'this browser blocks storage' : 'storage is full or blocked') + '). Use Menu, Export, to keep your room map.', 8); }
 function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
@@ -1786,7 +1795,7 @@ function linkVisual(l, time) {
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
-const SAVE_KEY = 'base-camp-save-v2';
+let SAVE_KEY = homeKeys(HOMES.cur).save;
 const colSave = (c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.x, z: c.z, needs: c.needs });
 function serialize() {
   const hr = new Date(); 
@@ -2351,7 +2360,7 @@ function buildReport(note) {
   const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
   const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
   const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
-    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, lock: RELOC.lock || null, errors: REC.errs, previousSession: REC.prev,
+    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, errors: REC.errs, previousSession: REC.prev,
     snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
   return JSON.stringify(R);
 }
@@ -2458,16 +2467,19 @@ function clearArea(Z) { const L = Z.land; let n = 0; for (let k = 0; k < L.st.le
 function autoSettle(force) { // the colony lands by itself on the biggest clear area (a desk-height surface wins a close call)
   if (G.settlements.some((S) => !S.dead) || (G.returning && !G.locked)) return false;
   const eyeY = AR.on ? tmpV.setFromMatrixPosition(AR.viewM).y : 1.5, low = G.zones.reduce((m, z) => Math.min(m, z.y), 1e9);
-  let best = null, bs = 0, bc = 0;
+  let best = null, bs = 0, bc = 0; const tl = !HOME_TOTEM ? null : TOTEM.live && TOTEM.liveRoom === HOMES.cur ? TOTEM.live : totemSpot(), tz = tl ? zoneOfPoint(tl.x, tl.y, tl.z) : null; // the totem is the colony's shrine: its surface wins
+  if (!force && !tl && imgLoad('totem', HOMES.cur) && AUTO.t < 14) return false; // a room with a totem photo: a few seconds to see the totem first
+  if (!force && tl && !tz && AUTO.t < 30) return false; // the totem is known but its surface is not mapped yet
   for (const Z of G.zones) {
-    if (!Z.land || Z.lost || Z.settled) continue; const clear = clearArea(Z); if (clear < 0.08) continue;
+    if (!Z.land || Z.lost || Z.settled) continue; const clear = clearArea(Z); if (clear < 0.08 && !(Z === tz && clear >= 0.04)) continue;
     const hh = Z.y - low, desk = hh > 0.45 && hh < 1.1 ? 1.25 : 1; // by clear area first; height only breaks near-ties
-    const sc = clear * desk; if (sc > bs) { bs = sc; best = Z; bc = clear; }
+    const sc = clear * desk * (Z === tz ? 100 : 1); if (sc > bs) { bs = sc; best = Z; bc = clear; }
   }
   if (!best) { AUTO.firstDecent = 0; return false; }
   if (!AUTO.firstDecent) AUTO.firstDecent = AUTO.t;
-  if (!force && AUTO.t - AUTO.firstDecent < 3 && bc < 0.25) return false; // a few seconds to look for something bigger
-  settleZone(best); return true;
+  if (!force && AUTO.t - AUTO.firstDecent < 3 && bc < 0.25 && best !== tz) return false; // a few seconds to look for something bigger
+  settleZone(best); const S0 = best.settled; if (S0 && best === tz && tl) { const [lu, lv] = zoneLocal(best, tl.x, tl.z), d = Math.hypot(lu - S0.o[0], lv - S0.o[1]), k = d > 1e-3 ? Math.min(1, 0.1 / d) : 0; S0.o = [lu + (S0.o[0] - lu) * k, lv + (S0.o[1] - lv) * k]; syncTf(S0); toast('The colonists built their town square right next to your Totem.', 4); }
+  return true;
 }
 // ---- what the player sees while this happens ----
 function autoHintText() {
@@ -2495,6 +2507,7 @@ function autoTick(dt) {
   }
   RELOC.lastHits = SCAN.hits;
   if (G.returning && !G.locked) relocStep(dt);
+  totemTick(dt); totemOfferTick();
   if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.1, S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
   if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
   // after a lock: change detection on the matched map
@@ -2652,20 +2665,23 @@ function* relocJob(live, saved) { // time-sliced: yields after every yaw step
 }
 function relocBegin() { // a saved map is loaded (frames as saved); search for it in the fresh scan
   RELOC.state = 'search'; RELOC.prog = 0; RELOC.progShown = 0; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.tries = 0; RELOC.nextTry = 1.5; RELOC.asked = false; RELOC.result = null; RELOC.t0 = performance.now();
-  RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
+  RELOC.totem = null; RELOC.ci = 0; RELOC.jobRoom = HOMES.cur; RELOC.saved = relocSavedLayers(); RELOC.savedTop = relocTop(RELOC.saved); RELOC.curTop = RELOC.savedTop; RELOC.hash = relocHash(RELOC.saved); RELOC.lock = null;
 }
 function relocStep(dt) {
   if (RELOC.state !== 'search') return;
   if (RELOC.scanSecs >= RELOC.cfg.askAfter) { RELOC.state = 'asking'; return; }
   if (!RELOC.job) {
-    if (RELOC.scanSecs < RELOC.nextTry || !RELOC.saved.length) return;
-    const live = relocLiveLayers(); if (!live.length || live.reduce((a, l) => a + l.n, 0) < 150) { RELOC.nextTry = RELOC.scanSecs + 1; return; }
-    RELOC.job = relocJob(live, RELOC.saved); RELOC.jobT0 = performance.now(); RELOC.tries++;
+    if (RELOC.scanSecs < RELOC.nextTry || (!RELOC.saved.length && !RELOC.totem)) return;
+    const live = relocLiveLayers(); if (!live.length || live.reduce((a, l) => a + l.n, 0) < (RELOC.totem ? 60 : 150)) { RELOC.nextTry = RELOC.scanSecs + 1; return; }
+    if (RELOC.totem) { RELOC.jobRoom = HOMES.cur; RELOC.job = relocTotemJob(live); } // the totem pins the position: only the yaw is searched
+    else { const ids = [HOMES.cur]; if (AUTO.t > 10 && !TOTEM.lastFound) for (const id in TOTEM.pre) ids.push(id); const id = ids[RELOC.ci++ % ids.length]; RELOC.jobRoom = id; // no totem seen for 10 s: every saved room is tried in turn
+      if (id !== HOMES.cur) { RELOC.savedTop = TOTEM.pre[id].top; RELOC.job = relocJob(live, TOTEM.pre[id].saved); } else { RELOC.savedTop = RELOC.curTop; RELOC.job = relocJob(live, RELOC.saved); } }
+    RELOC.jobT0 = performance.now(); RELOC.tries++;
   }
   const t0 = performance.now(); let r;
   while (performance.now() - t0 < 7) { r = RELOC.job.next(); if (r.done) break; }
   if (r && r.done) {
-    const res = r.value; RELOC.job = null; RELOC.nextTry = RELOC.scanSecs + RELOC.cfg.tryEvery; RELOC.lastMs = performance.now() - RELOC.jobT0; RELOC.result = res;
+    const res = r.value; RELOC.job = null; RELOC.savedTop = RELOC.curTop; RELOC.nextTry = RELOC.scanSecs + (RELOC.totem ? TOTEM.cfgT.tryEvery : RELOC.cfg.tryEvery); RELOC.lastMs = performance.now() - RELOC.jobT0; RELOC.result = res;
     relocConsider(res);
   }
 }
@@ -2676,14 +2692,15 @@ function relocWhy(res, c) { // why this attempt did not lock (the field report e
   return w;
 }
 function relocConsider(res) {
-  const c = RELOC.cfg, why = relocWhy(res, c), ok = !!res && !why.length;
+  const room = RELOC.jobRoom || HOMES.cur, c = RELOC.totem ? Object.assign({}, RELOC.cfg, TOTEM.cfgT) : RELOC.cfg, why = relocWhy(res, c), ok = !!res && !why.length;
   if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); } // a tiny hint: how close the best attempt is to the lock thresholds
-  recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak } : { none: true, why }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok }); if (RELOC.hist.length > 12) RELOC.hist.shift();
-  const h = RELOC.hist.slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
+  recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak, room, mode: RELOC.totem ? 'totem' : 'surface' } : { none: true, why, room }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok, room }); if (RELOC.hist.length > 30) RELOC.hist.shift();
+  const h = RELOC.hist.filter((e) => e.room === room).slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
   if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
   const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
   if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
-  relocLock(a);
+  const rival = Math.max(0, ...RELOC.hist.filter((e) => e.room !== room && e.res).slice(-6).map((e) => e.res.score)); if (rival > 0.8 * a.score && a.score > 0) { recReloc({ room, rival: Math.round(rival), score: a.score, why: ['another saved room scores nearly as well'] }); return; } // several rooms: the best score wins
+  if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
   let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
@@ -2693,7 +2710,7 @@ function relocLock(res, how) {
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
   autoSay(''); homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
   for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, S.tf.y + 0.05, S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
-  AUTO.compareAt = AUTO.t + 25; AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; persist();
+  AUTO.compareAt = AUTO.t + (how === 'totem' ? 10 : 25); AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; TOTEM.watchUntil = AUTO.t + 60; totemCommit(); persist();
   setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
 }
 function relocSetScore(T, liveTops, saved) { // how many live top cells land on saved top cells of the same height (tops are clean, small outlines: they pin yaw and shift much better than a floor)
@@ -2734,12 +2751,15 @@ function relocAsk() { // nothing matched after a minute of scanning
 function relocManual() { // the older way: tap the two furthest-apart named things
   RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
 }
-function relocNewRoom() { // forget the old room (it is kept as a backup) and start a fresh map from what has been scanned
+function worldDrop() { // the map and colony go from the world; the fresh scan stays
+  for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z);
+  G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
+  for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
+}
+function relocNewRoom() { // a new room: the old room stays where it is (also kept as a backup copy); a fresh map starts from what has been scanned
   const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c);
-  const lib = G.library, nl = G.nextLib; for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z);
-  G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null;
-  G.library = lib; G.nextLib = nl; for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0;
-  G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; refreshSpots(); store.del(MAP_KEY); store.del(SAVE_KEY); AUTO.firstDecent = 0;
+  const lib = G.library, nl = G.nextLib, nr = HOME_TOTEM ? homeCreate() : null; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room';
+  G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; RELOC.totem = null; TOTEM.live = null; TOTEM.offer = HOME_TOTEM && (!nr || !imgLoad('totem', HOMES.cur)); if (!nr) { store.del(MAP_KEY); store.del(SAVE_KEY); } AUTO.firstDecent = 0;
   autoSay('A new room! Keep looking around: the colonists will find a landing place.', 5); updateTitle();
 }
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
@@ -2749,6 +2769,214 @@ function relocNewRoom() { // forget the old room (it is kept as a backup) and st
 function worldMapAvailable() { return !!(AR.session && typeof AR.session.nonStandard_getWorldMap === 'function' && typeof AR.session.nonStandard_setWorldMap === 'function'); }
 async function worldMapSave() { if (!worldMapAvailable()) return false; try { const wm = await AR.session.nonStandard_getWorldMap(); if (wm) { store.set('base-camp-worldmap', typeof wm === 'string' ? wm : JSON.stringify(wm)); return true; } } catch (e) { /* not supported by this app version */ } return false; }
 async function worldMapLoad() { if (!worldMapAvailable()) return false; const raw = store.get('base-camp-worldmap'); if (!raw) return false; try { await AR.session.nonStandard_setWorldMap(raw); return true; } catch (e) { return false; } }
+
+// ============ HOME TOTEM, GUARDIAN AND ROOMS: a real object tells the game which room this is (and where) ============
+// Every room has its own map, colony and (optionally) a TOTEM: a photo of one real thing in that room (a beer mat, a poster, a can seen front-on). On Play the camera frames are searched
+// for every saved totem with a small in-house feature matcher (FAST corners + rotated BRIEF + ratio test + RANSAC homography, FEAT below; no libraries, ~1 attempt per second, only while it is
+// needed). The totem found decides the room (that room's map + colony load) and fixes the home position: the surface matcher then only has to solve the YAW (relocTotemJob).
+// Photos stay on this device (localStorage keys bc-totem-<room>, bc-guardian-<room>); nothing is bundled or uploaded. Without a totem the automatic surface matcher works as before
+// (and, when 10 s pass without a totem, over every saved room: the best score that passes the lock thresholds wins).
+const TOTEM = { tpl: {}, pre: {}, live: null, liveRoom: null, nextAt: 0, busy: false, sightings: 0, lastFound: 0, lastMs: 0, vis: null, group: null, offer: false, frameHook: null, stats: { tries: 0, found: 0, falseHits: 0, ms: 0 }, cfgT: { minCells: 50, minRatio: 0.7, minInfo: 10, minOverlap: 0.06, maxMargin: 0.9, stableN: 2, stableSecs: 0.4, tryEvery: 0.5 } };
+REC.totem = [];
+function recTotem(o) { recRing(REC.totem, Object.assign({ t: recT() }, o), 60); }
+// ---- stored photos ----
+const imgKey = (kind, id) => 'bc-' + kind + '-' + id;
+function imgLoad(kind, id) { try { const r = JSON.parse(localStorage.getItem(imgKey(kind, id)) || 'null'); return r && r.v === 1 && typeof r.jpeg === 'string' && r.jpeg.length < 400000 ? r : null; } catch (e) { return null; } }
+function imgSave(kind, id, rec) { try { const s = JSON.stringify(rec), k = imgKey(kind, id); localStorage.setItem(k, s); return localStorage.getItem(k) === s; } catch (e) { return false; } }
+function imgDel(kind, id) { try { localStorage.removeItem(imgKey(kind, id)); } catch (e) { /* none */ } }
+function imgFromSource(src, maxSide, thumbSide) { // an Image / canvas / data URL -> { v, jpeg, thumb, w, h, at } (small: the photo never needs to be big)
+  return new Promise((res, rej) => {
+    const go = (im) => { try {
+      const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw || !ih) return rej(new Error('empty picture'));
+      const draw = (side, q, type) => { const s = Math.min(1, side / Math.max(iw, ih)), c = document.createElement('canvas'); c.width = Math.max(8, Math.round(iw * s)); c.height = Math.max(8, Math.round(ih * s)); const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height); return { url: c.toDataURL(type || 'image/jpeg', q), w: c.width, h: c.height }; };
+      const big = draw(maxSide, 0.78), th = draw(thumbSide || 64, 0.7); res({ v: 1, jpeg: big.url, thumb: th.url, w: big.w, h: big.h, at: Date.now() }); } catch (e) { rej(e); } };
+    if (typeof src === 'string') { const im = new Image(); im.onload = () => go(im); im.onerror = () => rej(new Error('picture could not be read')); im.src = src; } else go(src);
+  });
+}
+function imgFromFile(file, maxSide, thumbSide) { return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => imgFromSource(fr.result, maxSide, thumbSide).then(res, rej); fr.onerror = () => rej(new Error('file could not be read')); fr.readAsDataURL(file); }); }
+// ---- the matcher ----
+const FEAT = {
+  pat: null, circ: [[0, -3], [1, -3], [2, -2], [3, -1], [3, 0], [3, 1], [2, 2], [1, 3], [0, 3], [-1, 3], [-2, 2], [-3, 1], [-3, 0], [-3, -1], [-2, -2], [-1, -3]], BORD: 20,
+  init() { if (this.pat) return; const r = seededRandom(20240611), g = () => { let s = 0; for (let i = 0; i < 4; i++) s += r(); return Math.max(-12, Math.min(12, Math.round((s - 2) * 7))); }; this.pat = new Int8Array(1024); for (let i = 0; i < 1024; i++) this.pat[i] = g(); },
+  gray(src, sw, sh, maxW) { const s = Math.min(1, maxW / sw), w = Math.max(32, Math.round(sw * s)), h = Math.max(32, Math.round(sh * s)); if (!this.cv) { this.cv = document.createElement('canvas'); this.cx = this.cv.getContext('2d', { willReadFrequently: true }); } this.cv.width = w; this.cv.height = h; this.cx.drawImage(src, 0, 0, w, h);
+    const px = this.cx.getImageData(0, 0, w, h).data, d = new Uint8Array(w * h); for (let i = 0, j = 0; i < d.length; i++, j += 4) d[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return { d, w, h }; },
+  resize(g, nw, nh) { const o = new Uint8Array(nw * nh), sx = g.w / nw, sy = g.h / nh; for (let y = 0; y < nh; y++) { const fy = Math.min(g.h - 1.001, y * sy), y0 = fy | 0, ay = fy - y0; for (let x = 0; x < nw; x++) { const fx = Math.min(g.w - 1.001, x * sx), x0 = fx | 0, ax = fx - x0, i = y0 * g.w + x0; o[y * nw + x] = (g.d[i] * (1 - ax) + g.d[i + 1] * ax) * (1 - ay) + (g.d[i + g.w] * (1 - ax) + g.d[i + g.w + 1] * ax) * ay; } } return { d: o, w: nw, h: nh }; },
+  blur(g) { const o = new Uint8Array(g.d.length), w = g.w, h = g.h, d = g.d; for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; o[i] = (d[i - w - 1] + d[i - w] + d[i - w + 1] + d[i - 1] + d[i] + d[i + 1] + d[i + w - 1] + d[i + w] + d[i + w + 1]) / 9; } return o; },
+  corners(g, thr, maxN) { const w = g.w, h = g.h, d = g.d, B = this.BORD, off = this.circ.map(([x, y]) => y * w + x), sc = new Int16Array(w * h), pts = [];
+    for (let y = B; y < h - B; y++) for (let x = B; x < w - B; x++) {
+      const i = y * w + x, p = d[i], hi = p + thr, lo = p - thr; let nb = 0, nd = 0; for (const q of [0, 4, 8, 12]) { const v = d[i + off[q]]; if (v > hi) nb++; else if (v < lo) nd++; } if (nb < 3 && nd < 3) continue;
+      let run = 0, best = 0, s = 0, kind = 0; for (let t = 0; t < 25; t++) { const v = d[i + off[t & 15]]; const b = v > hi ? 1 : v < lo ? -1 : 0; if (b !== 0 && b === kind) { run++; s += Math.abs(v - p); } else { kind = b; run = b ? 1 : 0; s = b ? Math.abs(v - p) : 0; } if (run > best) best = run; if (run >= 9) { sc[i] = Math.min(32000, s + 1); break; } }
+    }
+    for (let y = B; y < h - B; y++) for (let x = B; x < w - B; x++) { const i = y * w + x, s = sc[i]; if (!s) continue; if (s >= sc[i - 1] && s >= sc[i + 1] && s >= sc[i - w] && s >= sc[i + w] && s >= sc[i - w - 1] && s >= sc[i + w + 1] && s >= sc[i - w + 1] && s >= sc[i + w - 1]) pts.push([x, y, s]); }
+    pts.sort((a, b) => b[2] - a[2]); return pts.slice(0, maxN); },
+  describe(g, pts, scaleBack, lvl, out) { const bl = this.blur(g), w = g.w, P = this.pat;
+    for (const [x, y] of pts) { let m10 = 0, m01 = 0; for (let dy = -15; dy <= 15; dy++) { const hw = Math.floor(Math.sqrt(225 - dy * dy)); for (let dx = -hw; dx <= hw; dx++) { const v = g.d[(y + dy) * w + x + dx]; m10 += dx * v; m01 += dy * v; } }
+      const a = Math.atan2(m01, m10), c = Math.cos(a), s = Math.sin(a), ds = new Int32Array(8);
+      const samp = (px, py) => { const fx = Math.floor(px), fy = Math.floor(py), ax = px - fx, ay = py - fy, i = fy * w + fx; return (bl[i] * (1 - ax) + bl[i + 1] * ax) * (1 - ay) + (bl[i + w] * (1 - ax) + bl[i + w + 1] * ax) * ay; }; // bilinear: rotated sample points do not snap to pixels
+      for (let k = 0; k < 256; k++) { const x1 = P[k * 4], y1 = P[k * 4 + 1], x2 = P[k * 4 + 2], y2 = P[k * 4 + 3]; if (samp(x + x1 * c - y1 * s, y + x1 * s + y1 * c) < samp(x + x2 * c - y2 * s, y + x2 * s + y2 * c)) ds[k >> 5] |= 1 << (k & 31); }
+      out.x.push(x * scaleBack); out.y.push(y * scaleBack); out.l.push(lvl); for (let q = 0; q < 8; q++) out.d.push(ds[q]); } },
+  extract(gray, levels, perLevel, thr) { this.init(); const out = { x: [], y: [], l: [], d: [] }; let sc = 1, g = gray;
+    for (let l = 0; l < levels; l++) { if (l) { sc *= 0.75; g = this.resize(gray, Math.round(gray.w * sc), Math.round(gray.h * sc)); } if (g.w < 80 || g.h < 80) break; this.describe(g, this.corners(g, thr || 18, perLevel), 1 / sc, l, out); }
+    return { n: out.x.length, x: Float32Array.from(out.x), y: Float32Array.from(out.y), d: Int32Array.from(out.d), w: gray.w, h: gray.h }; },
+  pc(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; },
+  match(tp, fr) { const pairs = [], td = tp.d, fd = fr.d, pc = this.pc;
+    for (let i = 0; i < fr.n; i++) { let b1 = 999, b2 = 999, bj = -1; const i8 = i * 8; for (let j = 0; j < tp.n; j++) { const j8 = j * 8; let h = pc(fd[i8] ^ td[j8]) + pc(fd[i8 + 1] ^ td[j8 + 1]) + pc(fd[i8 + 2] ^ td[j8 + 2]) + pc(fd[i8 + 3] ^ td[j8 + 3]); if (h > b2) continue; h += pc(fd[i8 + 4] ^ td[j8 + 4]) + pc(fd[i8 + 5] ^ td[j8 + 5]) + pc(fd[i8 + 6] ^ td[j8 + 6]) + pc(fd[i8 + 7] ^ td[j8 + 7]); if (h < b1) { b2 = b1; b1 = h; bj = j; } else if (h < b2) b2 = h; }
+      if (bj >= 0 && b1 <= 80 && b1 < 0.85 * b2) pairs.push([bj, i, b1]); }
+    return pairs; },
+  homog(P, Q) { // 4 pairs -> 3x3 (h33 = 1), or null
+    const A = []; for (let i = 0; i < 4; i++) { const [x, y] = P[i], [u, v] = Q[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]); A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]); }
+    for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; if (Math.abs(A[p][c]) < 1e-9) return null; [A[c], A[p]] = [A[p], A[c]]; for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]; } }
+    return [A[0][8] / A[0][0], A[1][8] / A[1][1], A[2][8] / A[2][2], A[3][8] / A[3][3], A[4][8] / A[4][4], A[5][8] / A[5][5], A[6][8] / A[6][6], A[7][8] / A[7][7], 1]; },
+  apply(H, x, y) { const w = H[6] * x + H[7] * y + 1; return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]; },
+  solve(A, n) { // Gaussian elimination on an n x (n+1) system
+    for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; if (Math.abs(A[p][c]) < 1e-12) return null; [A[c], A[p]] = [A[p], A[c]]; for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k]; } }
+    return A.map((row, i) => row[n] / row[i]); },
+  fitAff(P, Q) { // least squares affine map (6 numbers): stable for the outline of a roughly front-on totem
+    const A = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], B = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+    for (let i = 0; i < P.length; i++) { const r = [P[i][0], P[i][1], 1]; for (let a = 0; a < 3; a++) { for (let c = 0; c < 3; c++) { A[a][c] += r[a] * r[c]; B[a][c] += r[a] * r[c]; } A[a][3] += r[a] * Q[i][0]; B[a][3] += r[a] * Q[i][1]; } }
+    const hx = this.solve(A, 3), hy = this.solve(B, 3); return hx && hy ? [hx[0], hx[1], hx[2], hy[0], hy[1], hy[2], 0, 0, 1] : null; },
+  fit(P, Q) { // least squares homography (h33 = 1) over many pairs, via the normal equations
+    const N = Array.from({ length: 8 }, () => new Array(9).fill(0)); for (let i = 0; i < P.length; i++) { const [x, y] = P[i], [u, v] = Q[i]; for (const [row, b] of [[[x, y, 1, 0, 0, 0, -u * x, -u * y], u], [[0, 0, 0, x, y, 1, -v * x, -v * y], v]]) for (let a = 0; a < 8; a++) { for (let c = 0; c < 8; c++) N[a][c] += row[a] * row[c]; N[a][8] += row[a] * b; } }
+    const h = this.solve(N, 8); return h ? h.concat([1]) : null; },
+  find(tp, fr, opt) { // template tp, frame features fr -> { found, inl, matches, quad, H } (RANSAC over the ratio-tested matches; coordinates are centred and scaled first)
+    opt = opt || {}; const pairs = this.match(tp, fr), out = { found: false, inl: 0, matches: pairs.length, quad: null };
+    if (pairs.length < 10) return out; const ts = Math.max(tp.w, tp.h) / 2, fs = Math.max(fr.w, fr.h) / 2, tcx = tp.w / 2, tcy = tp.h / 2, fcx = fr.w / 2, fcy = fr.h / 2, thr = (opt.thr || 5) / fs;
+    const TP = pairs.map((pr) => [(tp.x[pr[0]] - tcx) / ts, (tp.y[pr[0]] - tcy) / ts]), FQ = pairs.map((pr) => [(fr.x[pr[1]] - fcx) / fs, (fr.y[pr[1]] - fcy) / fs]);
+    const rnd2 = seededRandom(7 + pairs.length), inl = (H) => { const r = []; for (let k = 0; k < pairs.length; k++) { const [u, v] = this.apply(H, TP[k][0], TP[k][1]); if (Math.hypot(u - FQ[k][0], v - FQ[k][1]) < thr) r.push(k); } return r; };
+    let bestIn = [], bestH = null;
+    for (let it = 0; it < 300; it++) { const idx = []; while (idx.length < 4) { const k = (rnd2() * pairs.length) | 0; if (!idx.includes(k)) idx.push(k); }
+      const H = this.homog(idx.map((k) => TP[k]), idx.map((k) => FQ[k])); if (!H) continue; const r = inl(H); if (r.length > bestIn.length) { bestIn = r; bestH = H; } }
+    for (let round = 0; round < 3 && bestIn.length >= 8; round++) { const H2 = this.fit(bestIn.map((k) => TP[k]), bestIn.map((k) => FQ[k])); if (!H2) break; const r2 = inl(H2); if (r2.length >= bestIn.length) { bestIn = r2; bestH = H2; } else break; } // refit on all inliers: the outline is extrapolated, so it needs a good fit
+    out.inl = bestIn.length; if (!bestH || out.inl < (opt.minInl || 15) || out.inl < 0.2 * pairs.length) return out;
+    // guided matching: with the pose in hand every template corner looks for its partner near where the pose puts it (no ratio test). A true totem is supported by dozens of them; a chance pose by a few.
+    const P2 = [], Q2 = []; for (let j = 0; j < tp.n; j++) { const [u, v] = this.apply(bestH, (tp.x[j] - tcx) / ts, (tp.y[j] - tcy) / ts); let bd = 999, bi = -1; for (let i = 0; i < fr.n; i++) { const dx = (fr.x[i] - fcx) / fs - u, dy = (fr.y[i] - fcy) / fs - v; if (dx * dx + dy * dy > 2.25 * thr * thr) continue; let h = 0; for (let q = 0; q < 8; q++) h += this.pc(fr.d[i * 8 + q] ^ tp.d[j * 8 + q]); if (h < bd) { bd = h; bi = i; } } if (bi >= 0 && bd <= 90) { P2.push([(tp.x[j] - tcx) / ts, (tp.y[j] - tcy) / ts]); Q2.push([(fr.x[bi] - fcx) / fs, (fr.y[bi] - fcy) / fs]); } }
+    out.support = P2.length; if (P2.length < (opt.minSupport || 25)) return out;
+    const Hn = bestH, Ha = this.fitAff(P2, Q2), W = tp.w, Hh = tp.h, fa = fr.w * fr.h;
+    const quadOf = (H) => { if (!H) return null; const quad = [[0, 0], [W, 0], [W, Hh], [0, Hh]].map(([x, y]) => { const [u, v] = this.apply(H, (x - tcx) / ts, (y - tcy) / ts); return [u * fs + fcx, v * fs + fcy]; }); // outline of the totem in the frame
+      let area = 0; for (let i = 0; i < 4; i++) { const a = quad[i], b = quad[(i + 1) % 4]; area += a[0] * b[1] - b[0] * a[1]; } area = Math.abs(area) / 2;
+      let cross = 0, sgn = 0; for (let i = 0; i < 4; i++) { const a = quad[i], b = quad[(i + 1) % 4], c = quad[(i + 2) % 4], z = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]); if (z !== 0) { if (!sgn) sgn = Math.sign(z); else if (Math.sign(z) !== sgn) cross++; } }
+      return cross || area < fa * 0.004 || area > fa * 0.85 || !quad.every(([x, y]) => x > -fr.w && x < 2 * fr.w && y > -fr.h && y < 2 * fr.h) ? null : quad; };
+    const quad = quadOf(Hn) || quadOf(Ha); if (!quad) return out; // not a plausible outline
+    out.found = true; out.quad = quad; return out; },
+};
+function totemTemplate(id) { // features of a room's totem photo (made once; null until the picture is decoded)
+  const rec = imgLoad('totem', id); if (!rec) { delete TOTEM.tpl[id]; return null; }
+  const t = TOTEM.tpl[id]; if (t && t.at === rec.at) return t.ready ? t : null; TOTEM.tpl[id] = { at: rec.at, ready: false };
+  const im = new Image(); im.onload = () => { try { const g = FEAT.gray(im, im.naturalWidth, im.naturalHeight, 256), f = FEAT.extract(g, 5, 200, 12); f.at = rec.at; f.ready = true; f.thumb = rec.thumb; TOTEM.tpl[id] = f; recTotem({ room: id, template: true, kps: f.n, w: g.w, h: g.h }); } catch (e) { TOTEM.tpl[id] = { at: rec.at, ready: false, bad: true }; } }; im.src = rec.jpeg; return null;
+}
+const totemIds = () => HOMES.rooms.filter((r) => imgLoad('totem', r.id)).map((r) => r.id);
+function totemFrame() { if (TOTEM.frameHook) return TOTEM.frameHook(); const fr = recogFrame(); return fr && fr.real && fr.img ? fr : null; }
+function totemSpot() { return G.spots.find((s) => s.src === 'totem') || null; }
+function totemWanted() { // do we still need to look? (hunting on the way home; the first time in a room that has a totem photo but no totem place yet; a short while after a lock to notice a moved totem)
+  if (!AR.on || !G.auto || G.phase === 'title') return null;
+  if (G.returning && !G.locked) return totemIds();
+  const cur = HOMES.cur; if (!imgLoad('totem', cur)) return null;
+  if (!totemSpot() && !(TOTEM.live && TOTEM.liveRoom === cur)) return [cur];
+  if (G.locked && AUTO.t < (TOTEM.watchUntil || 0)) return [cur]; return null;
+}
+function totemTick(dt) {
+  if (!HOME_TOTEM) return;
+  if (TOTEM.live && TOTEM.liveRoom === HOMES.cur && !totemSpot() && !(G.returning && !G.locked)) totemCommit();
+  if (TOTEM.busy || AUTO.t < TOTEM.nextAt) return; const ids = totemWanted(); if (!ids || !ids.length) return; TOTEM.nextAt = AUTO.t + (G.returning && !G.locked ? 1 : 3);
+  const fr = totemFrame(); if (!fr) return; let found = null;
+  const t0 = performance.now(); let gray = null, feats = null, tried = [];
+  for (const id of ids) { const tp = totemTemplate(id); if (!tp) continue; if (!feats) { try { gray = FEAT.gray(fr.img, fr.w, fr.h, 320); feats = FEAT.extract(gray, 3, 300, 12); } catch (e) { return; } }
+    const r = FEAT.find(tp, feats); tried.push(id); recTotem({ room: id, inl: r.inl, matches: r.matches, found: r.found, kps: feats.n, ms: Math.round(performance.now() - t0) }); TOTEM.stats.tries++; if (r.found && (!found || r.inl > found.r.inl)) found = { id, r, gray }; }
+  TOTEM.lastMs = performance.now() - t0; TOTEM.stats.ms += TOTEM.lastMs; if (!found) return;
+  TOTEM.stats.found++; const q = found.r.quad, bot = q.slice().sort((a, b) => b[1] - a[1]).slice(0, 2), fx = clamp((bot[0][0] + bot[1][0]) / 2 / gray.w, 0.02, 0.98), fy = clamp((bot[0][1] + bot[1][1]) / 2 / gray.h - 0.01, 0.02, 0.98);
+  TOTEM.busy = true; totemRaycast(fx, fy).then((p) => { TOTEM.busy = false; if (p) totemSighting(found.id, p, found.r); else recTotem({ room: found.id, note: 'no surface under the totem' }); }, () => { TOTEM.busy = false; });
+}
+function totemRaycast(fx, fy) { // the 3D point under a screen position (fractions): ARKit raycast when the polyfill wrapper is there, else the scanned surfaces
+  if (DIRECT.w && DIRECT.m) { return DIRECT.w.hitTest(fx, fy, DIRECT.type).then((hits) => { const h = hits && hits[0], w = h && h.world_transform, m = DIRECT.m; return w && m ? new THREE.Vector3(m[0] * w[12] + m[4] * w[13] + m[8] * w[14] + m[12], m[1] * w[12] + m[5] * w[13] + m[9] * w[14] + m[13], m[2] * w[12] + m[6] * w[13] + m[10] * w[14] + m[14]) : null; }); }
+  const sp = surfacePick(fx * innerWidth, fy * innerHeight); return Promise.resolve(sp ? new THREE.Vector3(sp.x, sp.y, sp.z) : null);
+}
+function totemSighting(id, p, r) {
+  const L = TOTEM.live; if (L && TOTEM.liveRoom === id && Math.hypot(L.x - p.x, L.z - p.z) < 0.15) { const n = Math.min(L.n, 4); L.x = (L.x * n + p.x) / (n + 1); L.y = (L.y * n + p.y) / (n + 1); L.z = (L.z * n + p.z) / (n + 1); L.n++; } else TOTEM.live = { x: p.x, y: p.y, z: p.z, n: 1 };
+  TOTEM.liveRoom = id; TOTEM.sightings++; TOTEM.lastFound = AUTO.t; recTotem({ room: id, sighting: TOTEM.sightings, inl: r.inl, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) });
+  if (G.returning && !G.locked) { // on the way home: the totem names the room, and fixes the position
+    if (id !== HOMES.cur) { if (!homeSwitchLoad(id)) return; autoSay('This is ' + homeName(id) + '! Looking for home…', 5); }
+    const sp = totemSpot(); if (sp && !RELOC.totem) { RELOC.totem = { Pl: TOTEM.live, Ps: sp.p0, t: AUTO.t }; RELOC.nextTry = 0; RELOC.hist = []; RELOC.job = null; recTotem({ room: id, homing: 'yaw only around the totem' }); }
+    if (RELOC.totem) { RELOC.totem.Pl = TOTEM.live; }
+  } else totemCommit();
+}
+function totemP0(L) { const A = G.align; if (!A) return [L.x, L.y, L.z]; const c = Math.cos(A.phi), sn = Math.sin(A.phi), dx = L.x - A.tx, dz = L.z - A.tz; return [dx * c + dz * sn, L.y - A.dy, -dx * sn + dz * c]; } // a spot made while the lock is still being refined keeps its saved-frame position
+function totemCommit() {
+  if (!HOME_TOTEM) return; // the live scan frame is the map frame now: remember where the totem is, make it the colony's shrine, notice if it was carried elsewhere
+  const L = TOTEM.live; if (!L) return; const sp = totemSpot();
+  if (!sp) { if (G.returning && !G.locked) return; { const ns = addSpot({ tag: 'other', name: 'The Totem', x: L.x, y: L.y, z: L.z, area: 0.005, src: 'totem' }); ns.p0 = totemP0(L); } TOTEM.watchUntil = AUTO.t + 60; AUTO.mapDirty = true; persistSoon(); diary('The colonists found the Totem and made it the heart of the colony.', 'the colonists', 'totem-' + HOMES.cur); return; }
+  const d = Math.hypot(sp.x - L.x, sp.z - L.z); if (d < 0.25 || L.n < 2 || !G.locked && G.returning) return;
+  sp.x = L.x; sp.y = L.y; sp.z = L.z; sp.p0 = totemP0(L); const Z = zoneOfPoint(L.x, L.y, L.z); let followed = 0;
+  if (Z) for (const S of G.settlements) if (S.zoneRef === Z && !S.dead) { S.o = zoneLocal(Z, L.x + 0.1, L.z); syncTf(S); followed++; }
+  const text = followed ? 'Someone carried the Totem ' + Math.round(d * 100) + ' cm away, and the whole colony packed up and followed it!' : 'The Totem was moved ' + Math.round(d * 100) + ' cm. The colonists look after it, and wonder if they should follow.';
+  diary(text, 'the colonists'); toast(text, 5); TOTEM.moved = (TOTEM.moved || 0) + 1; recTotem({ room: HOMES.cur, moved: Math.round(d * 100) + ' cm', followed }); AUTO.mapDirty = true; persistSoon();
+}
+// ---- yaw-only homing: the totem pins the position, only the turn is unknown ----
+function* relocTotemJob(live) {
+  const tt = RELOC.totem, Pl = tt.Pl, Ps = tt.Ps, dy = Pl.y - Ps[1], liveTop = relocTop(live), savedTop = RELOC.savedTop, out = [];
+  for (let a = 0; a < 360; a += 2) { const phi = a * Math.PI / 180, c = Math.cos(phi), s = Math.sin(phi), T = { phi, tx: Pl.x - (c * Ps[0] - s * Ps[2]), tz: Pl.z - (s * Ps[0] + c * Ps[2]), dy }; const v = relocVerify(T, savedTop, liveTop); out.push(Object.assign(T, v)); if (a % 12 === 0) yield; }
+  out.sort((p, q) => q.score - p.score); const best = out[0], angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q))), other = out.find((q) => angd(q.phi, best.phi) > 0.21);
+  best.second = other ? other.score : 0; best.margin = other && best.score > 0 ? Math.max(0, other.score) / best.score : 0; best.nLive = liveTop.n; best.layers = live.length; best.votes = 0; return best;
+}
+// ---- rooms ----
+function homeMapData(id) { return safeRead(homeKeys(id).map, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
+function homePrecomp() { // layers of every other saved room (for the "no totem seen" fallback), made before the current room is loaded
+  TOTEM.pre = {}; if (HOMES.rooms.length < 2) return;
+  for (const r of HOMES.rooms) { if (r.id === HOMES.cur) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) TOTEM.pre[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
+  G.zones = []; G.spots = [];
+}
+function homePickStart() { // the room to load first: the current one, or the most recent one that has a saved map
+  if (homeMapData(HOMES.cur)) return; const r = HOMES.rooms.filter((q) => homeMapData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r) homeSelect(r.id);
+}
+function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
+  const secs = RELOC.scanSecs; worldDrop(); homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
+  G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
+}
+function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); r.name = G.mapName && G.mapName !== 'My room' ? G.mapName : r.name; homesSave(); }
+function homeSummary() { return HOMES.rooms.map((r) => ({ id: r.id, name: r.name, visits: r.visits, known: r.known, totem: !!imgLoad('totem', r.id), guardian: !!imgLoad('guardian', r.id), post: (r.post || []).length })); }
+function homePost(id, text) { const r = homeInfo(id); if (!r) return; r.post = (r.post || []).concat([{ at: Date.now(), text: String(text).slice(0, 80) }]).slice(-8); homesSave(); } // hook: things colonies may send each other later (only a list and a diary line for now)
+// ---- what the player sees: totem marker and guardian billboard ----
+function totemVisuals(dt) {
+  if (!HOME_TOTEM) return;
+  const sp = totemSpot(), show = !!sp && G.phase === 'play' && !(G.returning && !G.locked);
+  if (!show) { if (TOTEM.group) TOTEM.group.visible = false; return; }
+  const tr = imgLoad('totem', HOMES.cur), gr = imgLoad('guardian', HOMES.cur), key = (tr ? tr.at : 0) + ':' + (gr ? gr.at : 0) + ':' + HOMES.cur;
+  if (!TOTEM.group) { TOTEM.group = new THREE.Group(); world.add(TOTEM.group); }
+  if (!TOTEM.vis || TOTEM.vis.key !== key) {
+    if (TOTEM.vis) for (const o of TOTEM.vis.objs) { TOTEM.group.remove(o); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } if (o.geometry) o.geometry.dispose(); }
+    const objs = []; const tex = (url) => { const t = new THREE.Texture(); const im = new Image(); im.onload = () => { t.image = im; t.needsUpdate = true; }; im.src = url; return t; };
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.04, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0.8, depthWrite: false })); ring.position.y = 0.003; objs.push(ring);
+    if (tr) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(tr.thumb), transparent: true, depthTest: false })); s.scale.set(0.04, 0.04 * (tr.h / tr.w || 1), 1); s.position.y = 0.07; s.renderOrder = 40; s.userData.kind = 'totem'; objs.push(s); }
+    if (gr) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.036, 0.008, 24), new THREE.MeshLambertMaterial({ color: 0xe9d9b8 })); pl.position.set(0.085, 0.004, 0); objs.push(pl);
+      const card = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.06 * (gr.h / gr.w || 1)), new THREE.MeshBasicMaterial({ map: tex(gr.jpeg), transparent: true, alphaTest: 0.05, side: THREE.DoubleSide })); card.position.set(0.085, 0.008 + 0.03 * (gr.h / gr.w || 1), 0); card.userData.kind = 'guardian'; objs.push(card); }
+    for (const o of objs) TOTEM.group.add(o); TOTEM.vis = { key, objs };
+  }
+  TOTEM.group.visible = true; TOTEM.group.position.set(sp.x, sp.y, sp.z);
+  const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, bob = (G.time % 7) < 1.1 ? Math.abs(Math.sin((G.time % 7) * 5.7)) * 0.008 : 0;
+  for (const o of TOTEM.vis.objs) if (o.userData.kind === 'guardian') { o.rotation.y = Math.atan2(eye.x - (sp.x + 0.085), eye.z - sp.z); o.position.y = o.userData.y0 === undefined ? (o.userData.y0 = o.position.y) + bob : o.userData.y0 + bob; }
+}
+// ---- menus ----
+function totemUi(msg, kind) {
+  kind = kind || 'totem'; const id = HOMES.cur, rec = imgLoad(kind, id), T = kind === 'totem', m = $('modal'); m.hidden = false;
+  const intro = T ? 'Photograph one real thing that always stays in this room: the colonists use it to know which room this is, and the game then finds home in seconds. <b>Flat things work best</b> (a beer mat, a poster, a book cover, a framed picture). A can or bottle works when you face its label straight on. Hold the camera still and fill the picture with it.' : 'Pick a picture of your own character. It stands next to the Totem on a little round plinth and bobs now and then. It never leaves this device and is not part of the game files.';
+  m.innerHTML = '<div class="dh">' + (T ? 'My totem' : 'My guardian') + ' <span class="sub">(' + esc(homeName(id)) + ')</span></div><div class="sub">' + (msg || intro) + '</div>' + (rec ? '<div style="text-align:center"><img id="tImg" src="' + rec.thumb + '" style="height:80px;border-radius:10px;border:2px solid #ffd9a8"> <div class="sub">saved on this device, ' + Math.round(JSON.stringify(rec).length / 1024) + ' KB</div></div>' : '')
+    + '<div class="mrow"><button id="tShotB" class="big alt">' + (T ? 'Take a photo' : 'Choose a picture') + '</button>' + (T ? '<button id="tPickB">Pick a photo</button>' : '') + (rec ? '<button id="tDel">Remove</button>' : '') + '<button id="tClose">Close</button></div>'
+    + '<input id="tShot" type="file" accept="image/*"' + (T ? ' capture="environment"' : '') + ' hidden><input id="tPick" type="file" accept="image/*" hidden>';
+  const take = async (ev) => { const f = ev.target.files && ev.target.files[0]; if (!f) return; try { const r = await imgFromFile(f, T ? 320 : 256, 64); if (!imgSave(kind, id, r)) { totemUi('Could not save the picture here (storage is full or blocked).', kind); return; } delete TOTEM.tpl[id]; TOTEM.live = null; TOTEM.vis = null; if (T) totemTemplate(id); totemUi(T ? 'Saved! The colonists will look for it whenever you play.' : 'Saved! Your guardian will stand next to the Totem.', kind); } catch (e) { totemUi('That picture could not be read: ' + (e && e.message || e), kind); } };
+  $('tShot').onchange = take; $('tPick').onchange = take; $('tShotB').onclick = () => $('tShot').click(); if (T) $('tPickB').onclick = () => $('tPick').click();
+  if (rec) $('tDel').onclick = () => { imgDel(kind, id); delete TOTEM.tpl[id]; TOTEM.vis = null; totemUi('Removed.', kind); }; $('tClose').onclick = () => { m.hidden = true; };
+}
+function homesUi(msg) {
+  const m = $('modal'); m.hidden = false; const rows = HOMES.rooms.map((r) => { const t = imgLoad('totem', r.id), g = imgLoad('guardian', r.id); return '<div class="lib">' + (t ? '<img src="' + t.thumb + '" style="height:44px;border-radius:8px;margin-right:8px">' : '<div style="width:44px;height:44px;margin-right:8px;border-radius:8px;background:rgba(255,246,230,.12)"></div>') + '<div style="flex:1"><b>' + esc(r.name) + '</b>' + (r.id === HOMES.cur ? ' (this room)' : '') + '<div class="sub">' + (r.visits || 0) + ' visit' + (r.visits === 1 ? '' : 's') + ' · ' + Math.round((r.known || 0) * 100) + '% mapped · ' + (t ? 'has a totem' : 'no totem yet') + (g ? ' · guardian' : '') + ((r.post || []).length ? ' · ' + r.post.length + ' letter(s) waiting' : '') + '</div></div></div>'; }).join('');
+  m.innerHTML = '<div class="dh">Rooms</div><div class="sub">' + (msg || 'Each room has its own map, colony and totem. Show the game a totem and it knows which room you are in.') + '</div>' + rows + '<div class="sub">Name this room</div><div class="mrow"><input id="hName" maxlength="24" value="' + esc(homeName(HOMES.cur)) + '" style="font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit"><button id="hSave">Save name</button></div><div class="mrow"><button id="hTotem">My totem</button><button id="hGuard">My guardian</button><button id="hClose">Close</button></div>';
+  $('hSave').onclick = () => { const r = homeInfo(HOMES.cur); r.name = $('hName').value.trim().slice(0, 24) || r.name; G.mapName = r.name; homesSave(); persistSoon(); homesUi('Saved.'); };
+  $('hTotem').onclick = () => totemUi(); $('hGuard').onclick = () => totemUi('', 'guardian'); $('hClose').onclick = () => { m.hidden = true; };
+}
+function totemOfferTick() {
+  if (!HOME_TOTEM) return; // a newly seen room that has no totem yet: one gentle offer
+  if (!TOTEM.offer || !G.settlements.length || G.phase !== 'play' || !$('ask').hidden || !$('modal').hidden) return; TOTEM.offer = false;
+  const el = $('ask'); el.hidden = false; el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">New room!</div><div style="font-weight:600">Want to give it a totem? One real thing the colonists can recognise, so they always find this room again.</div><div class="mrow" style="justify-content:center"><button class="big alt" id="toYes">Photograph one</button><button id="toNo">Not now</button></div>';
+  $('toYes').onclick = () => { el.hidden = true; totemUi(); }; $('toNo').onclick = () => { el.hidden = true; };
+}
 
 // ============ UI ============
 function setPhase(p) {
@@ -2776,6 +3004,7 @@ function updateTitle() {
   if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
   else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
   else if (STORE.usedBackup) info += ' (restored from the backup copy)';
+  if (HOME_TOTEM && HOMES.rooms.length > 1) info += ' (' + HOMES.rooms.length + ' rooms; a totem tells the game which one you are in)';
   $('mapInfo').textContent = info;
   const w = $('welcome');
   if (has && G.phase === 'title') {
@@ -2801,6 +3030,7 @@ function startAuto() {
   G.auto = true; G.intent = 'play'; autoReset(); document.body.classList.add('auto'); $('title').hidden = true; $('top').hidden = false; $('hint').hidden = true; $('count').textContent = '';
   if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = false; envUi(); }
   setPhase('play'); G.tool = 'look'; G.visitCounted = false;
+  TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; if (HOME_TOTEM) { homePickStart(); homePrecomp(); }
   const md = loadMapData();
   if (md && prepareContinue() && G.zones.length) {
     G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('Looking for your room... keep looking around.', 6);
@@ -2970,7 +3200,7 @@ function menuUi() {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { G.music = !G.music; toast('Music ' + (G.music ? 'on: the speaker towers shake' : 'off')); }
     else if (t.id === 'mSound') SND.on = !SND.on; else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
-    else if (t.id === 'mReport') reportUi(); else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
+    else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
 }
@@ -2998,6 +3228,7 @@ $('bMore').onclick = () => { $('tmenu').hidden = !$('tmenu').hidden; };
 $('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
 $('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
+$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); };
 $('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').dataset.sure = '1'; $('bNew').textContent = 'Really forget the colony?'; return; } $('bNew').dataset.sure = ''; $('bNew').textContent = 'Forget my colony'; store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak'); G.previewLines = null; G.previewStamp = ''; updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
@@ -3213,7 +3444,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  visuals(dt, G.time); partsUpdate(dt);
+  visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -3238,7 +3469,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
-  BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
+  HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
 // ============ start ============
