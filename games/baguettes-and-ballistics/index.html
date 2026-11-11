@@ -7648,6 +7648,8 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
   b.after(st);
   let tries = 0;
+  const AR_BUILD = 'build 33';
+  new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
     tries++;
     let pending = false;
