@@ -115,11 +115,13 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); await finishSession();
 
   // ===================== (e) a third, unknown room =====================
+  if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, JSON.stringify(await ev(() => Object.assign({}, localStorage))));
   const shedBeforeE = await ev(() => ({ m: localStorage.getItem('base-camp-map-v1'), s: localStorage.getItem('base-camp-save-v2') }));
   await boot(THIRD, { yaw: 0.3, x: 0.2, z: -0.2 });
   await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
   const spyE = []; const tE = await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 200000, 500, spyE);
   const E = await ev(() => ({ locked: __g.G.locked, secs: __g.RELOC.scanSecs, txt: document.getElementById('nroom').innerText, ask: !document.getElementById('ask').hidden, modal: !document.getElementById('modal').hidden, state: __g.RELOC.state, nroomH: document.getElementById('nroom').getBoundingClientRect().height, bar: __g.G.phase }));
+  if (E.locked) console.log('FALSE LOCK DEBUG', JSON.stringify(await ev(() => ({ cur: __g.HOMES.cur, lock: __g.RELOC.lock, tried: __g.RELOC.tried, rp: __g.RELOC.rp, hist: __g.RELOC.hist.slice(-9).map((h) => ({ room: h.room, ok: h.ok, t: +h.t.toFixed(1), M: h.res && h.res.M, X: h.res && h.res.X, ratio: h.res && +h.res.ratio.toFixed(2), info: h.res && h.res.info, infoX: h.res && h.res.infoX, ov: h.res && +(h.res.overlap || 0).toFixed(2), margin: h.res && +(h.res.margin || 0).toFixed(2), score: h.res && Math.round(h.res.score) })) }))));
   ok('(e) unknown room: no false lock', !E.locked);
   ok('(e) after ~45 s of scanning ONE small prompt "New room?" (not a modal wall; the other prompts stay hidden)', tE > 0 && /New room\?/.test(E.txt) && /Yes/.test(E.txt) && /It.s/.test(E.txt) && E.secs >= 44 && E.secs < 60 && !E.ask && !E.modal && E.state === 'search' && E.nroomH < 120, JSON.stringify({ secs: +E.secs.toFixed(1), h: E.nroomH, txt: E.txt }));
   await p.screenshot({ path: OUT + '19-new-room-prompt.png' });

@@ -236,12 +236,18 @@ function persFromText(name, text) {
   return { work: +(0.85 + 0.35 * h(1) + (/build|invent|energetic|earnest/i.test(t) ? 0.2 : 0)).toFixed(2), social: +(0.8 + 0.6 * h(2) + (/cheerful|playful|gentle|friendly/i.test(t) ? 0.25 : 0)).toFixed(2), lazy: +(0.6 + 0.6 * h(3) + (/gentle|clumsy|dreamy/i.test(t) ? 0.25 : 0)).toFixed(2) };
 }
 const WHEN_HOURS = { morning: [6, 12], afternoon: [12, 18], evening: [18, 22], night: [22, 24] };
-const ASKS = { seed: { when: 'noSeeds', give: 'seed', icon: 'seed' }, cable_car: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, water: { when: 'needWater', give: 'water', icon: 'drop' }, shade: { when: 'hot', give: 'shade', icon: 'sun' }, wood: { when: 'noWood', give: 'wood', icon: 'log' }, cheer: { when: 'bored', give: 'cheer', icon: 'heart' } };
+const ASKS = { seed: { when: 'noSeeds', give: 'seed', icon: 'seed' }, cable_car: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, ladder: { when: 'cantReach', give: 'cablecar', icon: 'cable' }, /* a ladder to the next surface is the same ask as a cable car */ water: { when: 'needWater', give: 'water', icon: 'drop' }, shade: { when: 'hot', give: 'shade', icon: 'sun' }, wood: { when: 'noWood', give: 'wood', icon: 'log' }, cheer: { when: 'bored', give: 'cheer', icon: 'heart' } };
+const EPITHETS = [[/cartograph|map every|maps? /i, 'Mapmaker'], [/flower|tree|garden|forest|moss|plant/i, 'Gardener'], [/build|gadget|invent|machine|cable car/i, 'Builder'], [/star|sky|ceiling/i, 'Stargazer'], [/story|song|hum|bird/i, 'Singer']];
+function epithet(c) { const t = [c.persona, c.personality, c.likesText, c.dream].map((x) => (Array.isArray(x) ? x.join(' ') : String(x || ''))).join(' '); for (const [re, e] of EPITHETS) if (re.test(t)) return 'the ' + e; return ''; }
+function disambiguate(list, nameOf, setName) { // two residents with the same name both stay: the first keeps the plain name, the next is "Pip the Mapmaker" (or "Pip (Dell Scholar)" when nothing in the text tells them apart); only when both are there
+  const seen = {}; for (const c of list) { const n = nameOf(c); seen[n] = (seen[n] || 0) + 1; if (seen[n] === 1) continue; const e = epithet(c), k = e ? n + ' ' + e.replace(/^the /, 'the ') : n + ' (' + String(c.by || 'other').replace(/^The /, '') + ')'; setName(c, seen[n] > 2 ? k + ' ' + seen[n] : k, n); }
+}
 function adoptAlmanac(j) { // the council's almanac has its own shape; it is turned into ours here. Old-shape files (objects with work/social/lazy) work too.
   const A = COLONY_ALMANAC;
   if (Array.isArray(j.colonists) && j.colonists.length) A.colonists = j.colonists.map((c) => (c && typeof c.personality === 'object' ? c : { name: c.name, persona: c.personality, personality: persFromText(c.name, c.personality), likes: likesToKinds(c.likes), likesText: c.likes, dislikes: c.dislikes, dream: c.dream, by: c.by })).filter((c) => c.name);
+  if (Array.isArray(j.colonists) && j.colonists.length) { const dup = {}; for (const c of A.colonists) dup[c.name] = (dup[c.name] || 0) + 1; disambiguate(A.colonists, (c) => c.name, (c, k, n) => { c.base = n; c.name = k; }); A.dupBase = dup; } // two Pips and two Lunas stay, told apart on screen only when both are there
   if (Array.isArray(j.requests) && j.requests.length) {
-    const made = j.requests.map((q, i) => { if (q.when) return q; const a = ASKS[q.asks_for] || ASKS.cheer; return { id: 'c' + i, icon: a.icon, text: q.says, when: a.when, give: a.give, joy: 0.3, cooldown: 300, who: q.colonist, by: q.by }; }).filter((q) => q.text);
+    const made = j.requests.map((q, i) => { if (q.when) return q; const a = ASKS[q.asks_for] || ASKS.cheer; return { id: 'c' + i, icon: a.icon, text: q.says, when: a.when, give: a.give, joy: 0.3, cooldown: 300, who: q.colonist, by: q.by, dup: !!(A.dupBase && A.dupBase[q.colonist] > 1) }; }).filter((q) => q.text);
     for (const q of made) q.council = true;
     A.requests = made.concat(A.requests.filter((q) => !q.council)); // the council's words first; the built-in ones are the fallback when their asker is not around
   }
@@ -251,8 +257,11 @@ function adoptAlmanac(j) { // the council's almanac has its own shape; it is tur
 const loadJson = (name) => (location.protocol === 'file:' ? Promise.reject() : fetch(name)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 COUNCIL.ready = Promise.all([loadJson('almanac.json'), loadJson('rooms.json'), loadJson('creatures.json')]).then(([a, r, c]) => {
   try { if (a && typeof a === 'object') adoptAlmanac(a); } catch (e) { /* keep built-ins */ }
-  if (r && Array.isArray(r.spots) && r.spots.length) { ROOMS.spots = r.spots; COUNCIL.rooms = true; }
-  if (c && Array.isArray(c.creatures) && c.creatures.length) { CREATURES.length = 0; CREATURES.push(...c.creatures); COUNCIL.creatures = true; }
+  if (r && Array.isArray(r.spots)) { // skip empty entries; accept the typo key "fun,ny_thing"
+    const ok = r.spots.filter((q) => q && typeof q.spot === 'string' && q.spot.trim()).map((q) => { if (!q.funny_thing) for (const k in q) if (/^fun\W*ny\W*thing$/i.test(k) && k !== 'funny_thing') { q = Object.assign({}, q, { funny_thing: q[k] }); } return q; });
+    if (ok.length) { ROOMS.spots = ok; COUNCIL.rooms = true; }
+  }
+  if (c && Array.isArray(c.creatures) && c.creatures.length) { CREATURES.length = 0; CREATURES.push(...c.creatures); disambiguate(CREATURES, (q) => q.name, (q, k, n) => { q.base = n; q.name = k; }); COUNCIL.creatures = true; }
 });
 
 
@@ -1104,7 +1113,7 @@ function requestsStep(S, quiet) {
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
     if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
-      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || c.name === def.who)); if (!cs.length) continue;
+      const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || ((c.name === def.who || (c.base || c.name) === def.who) && (!def.dup || c.by === def.by)))); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
   }
@@ -1675,8 +1684,8 @@ function nudgeAlign(dx, dz, dphi) { // fine-tune around the landmark midpoint
 }
 function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; G.align = null; }
 
-// ============ AWAY: the colony keeps going on the saved map (up to 24 hours, coarse steps) ============
-const AWAY_MAX = 24 * 3600;
+// ============ AWAY: the colony keeps going on the saved map. The first 24 hours are simulated in coarse steps; any time beyond that goes in DAY steps (awayDays). A colony never expires. ============
+const AWAY_MAX = 24 * 3600; // the part that is simulated in detail, not a limit on the time away
 const AWAYE = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.5, away: true, hour: 12, daylight: 1 };
 function envForHour(E, h) { // an ordinary day: sun between sunrise and sunset, no weather
   const day = smooth(ENV.sunrise - 0.5, ENV.sunrise + 0.5, h) * (1 - smooth(ENV.sunset - 0.5, ENV.sunset + 0.5, h));
@@ -1705,8 +1714,28 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
     const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
   }
 }
+const SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
+const seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
+function awayDays(secs) { // a light day-level model for time beyond the first day: births, buildings finishing, trees growing, stores refilling, a few events per week, the seasons going by
+  const days = Math.min(36500, Math.floor(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
+  const evs = COLONY_ALMANAC.events.filter((e) => e.needs !== 'rain');
+  for (let d = 0; d < days; d++) {
+    for (const S of G.settlements) {
+      if (S.lost || !S.cols.length) continue; const fx = S.fx || (S.fx = fxOf(S)), st = S.stats, cap = 24 + 24 * (fx.storage || 0) + 12 * (fx.silo || 0);
+      if (d < 40) for (const t of S.things) { // a few weeks are enough for everything to finish
+        if (t.kind === 'tree' && t.g < 1) t.g = 1; else if (!t.built && !t.hold && BUILD_KINDS.includes(t.kind)) { t.built = true; t.prog = 1; t.pop = 1; out.finished++; }
+      }
+      S.stock.wood = Math.min(cap, S.stock.wood + 1); S.stock.food = Math.min(cap, S.stock.food + (fx.solar ? 2 : 1)); S.stock.water = Math.min(8, S.stock.water + 1);
+      if (fx.forge) { st.tin += 2 * fx.forge; S.stock.tin = Math.min(cap, S.stock.tin + 2 * fx.forge); } if (fx.solar) st.food += 2; if (fx.tower && G.music) st.concert += 1800; if (fx.market) st.trade += 1;
+      const room = Math.min(S.spec === 'grove' ? 2 : 9, housing(S)); if (S.cols.length < room && S.stock.food >= 3 && Math.random() < 0.35) { const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; DIARY.arrived.push(c.name); S.stock.food -= 1; out.births++; }
+    }
+    if (d % 7 === 3 && evs.length && DIARY.lines.length < 60 && d < 7 * 6) { const ev = pick(evs); diary((ev.title ? ev.title + ': ' : '') + ev.text + (ev.say ? ' “' + ev.say + '”' : ''), ev.by, 'ev' + (ev.id || ev.text)); }
+  }
+  const now = Date.now(), t0 = now - secs * 1000; out.seasons = []; let last = seasonOf(t0)[0]; for (let m = t0, n = 0; m < now && n < 400; m += 7 * 86400000, n++) { const sn = seasonOf(m); if (sn[0] !== last) { last = sn[0]; out.seasons.push(sn[1]); } }
+  out.seasons = out.seasons.slice(-4); return out;
+}
 function awaySim(secs, startHour) {
-  const t0 = performance.now(), capped = secs > AWAY_MAX; secs = clamp(secs, 0, AWAY_MAX); const step = clamp(secs / 1500, 20, 60);
+  const t0 = performance.now(), total = secs; secs = clamp(secs, 0, AWAY_MAX); const rest = Math.max(0, total - secs), step = clamp(secs / 1500, 20, 60);
   DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; const before = snapColony(); let nights = 0, prev = false, steps = 0;
   for (let t = 0; t < secs; t += step) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
@@ -1714,19 +1743,21 @@ function awaySim(secs, startHour) {
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
   }
+  let long = null; if (rest >= 86400) { long = awayDays(rest); nights += long.days; G.simT += rest; autoExpand(); }
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
   DIARY.on = false;
   // Coming home must feel good, never like guilt: after time away the colony is content, not miserable (owner's rule).
   for (const S of G.settlements) for (const c of S.cols) { c.needs.joy = Math.max(c.needs.joy, 0.6); c.needs.food = Math.max(c.needs.food, 0.45); c.needs.water = Math.max(c.needs.water, 0.45); c.needs.rest = Math.max(c.needs.rest, 0.5); }
   G.requests = G.requests.filter((q) => q.def.give !== 'cheer');
-  const lines = awaySummary(before, snapColony(), secs, nights, capped);
-  return { secs, ms: performance.now() - t0, steps, lines, nights };
+  const lines = awaySummary(before, snapColony(), total, nights, long);
+  return { secs: total, ms: performance.now() - t0, steps, lines, nights, long };
 }
-function awaySummary(a, b, secs, nights, capped) {
+function awaySummary(a, b, secs, nights, long) {
   const L = [], add = (text, by) => L.push({ text, by: by || '' }), find = (id) => b.find((q) => q.id === id);
   const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
   const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
-  add('The Giant was away for ' + fmtAway(secs) + (capped ? ' (the colonists only kept a diary of the first day)' : '') + '. ' + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  add('The Giant was away for ' + fmtAway(secs) + '. ' + (long ? 'The colonists wrote the first day out in full and the rest as a summary. ' : '') + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  if (long) { const lb = []; if (long.births) lb.push(plural(long.births, 'new settler') + ' moved in'); if (long.finished) lb.push(plural(long.finished, 'building') + ' got finished'); if (lb.length) add('Over those ' + plural(long.days, 'day') + ': ' + fmtList(lb) + '.'); for (const t of long.seasons || []) add(t); }
   const arrived = DIARY.arrived.slice(), built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
   for (const q of b) {
     const p = a.find((x) => x.id === q.id) || { names: new Set(), kinds: [0, 0, 0, 0], trees: 0, stats: {}, thr: false };
@@ -1747,7 +1778,7 @@ function awaySummary(a, b, secs, nights, capped) {
     if (fx.hideout && q.pop > p.pop) add('The ' + (name('hideout') || 'rug') + ' nursery was busy; ' + plural(q.pop - p.pop, 'new settler') + ' there.');
   }
   for (const f of DIARY.found.slice(0, 2)) add((f.who ? f.who.name + '’s party' : 'A party') + ' travelled from the ' + f.from.zoneName.split(' – ')[0] + ' to the ' + (f.spot ? f.spot.name : f.to.name.split(' – ')[0]) + ' by ' + (/^(a|an|the)\b/i.test(f.how) ? f.how : 'a ' + f.how) + ' and started a new colony.', f.who ? creatureBy(f.who) : '');
-  for (const e of DIARY.lines.slice(0, 2)) L.push(e);
+  for (const e of DIARY.lines.slice(0, long ? 4 : 2)) L.push(e);
   const fs = G.spots.filter((s) => roomInfo(s.tag) && roomInfo(s.tag).funny_thing && G.settlements.some((S) => S.zoneRef && S.zoneRef.id === s.zid));
   if (fs.length) { const sp = fs[Math.floor(hash01('fun' + Math.round(secs / 600), 5) * fs.length)], info = roomInfo(sp.tag); add('At the ' + sp.name + ': ' + String(info.funny_thing).replace(/^./, (m) => m.toLowerCase()).replace(/\.$/, '') + '.', info.by); }
   const trouble = G.settlements.find((S) => !S.lost && S.cols.length && S.stock.water < 1 && !built_(S, 'well'));
@@ -1861,7 +1892,7 @@ function restoreSettlement(d) {
   if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
 }
-function fmtAway(s) { const m = Math.round(s / 60); return m < 90 ? m + ' min' : (m / 60).toFixed(1) + ' h'; }
+function fmtAway(s) { const m = Math.round(s / 60); if (m < 90) return m + ' min'; if (m < 36 * 60) return (m / 60).toFixed(1) + ' h'; const d = m / 1440; if (d < 14) return Math.round(d) + ' days'; if (d < 60) return Math.round(d / 7) + ' weeks'; if (d < 730) return Math.round(d / 30.4) + ' months'; return (d / 365).toFixed(1) + ' years'; }
 function restoreLinks(sv) { // saved cable cars between settlements that exist again
   for (const L of sv) {
     const Sa = G.settlements.find((s) => s.id === L.a.sid), Sb = G.settlements.find((s) => s.id === L.b.sid);
@@ -2757,8 +2788,9 @@ function relocConsider(res) {
   if (res) { RELOC.prog = Math.max(0, Math.min(1, Math.min(res.M / c.minCells, res.ratio / c.minRatio, res.info / c.minInfo, (res.overlap || 0) / c.minOverlap, res.margin > c.maxMargin ? 0.85 : 1))); RELOC.progShown = Math.max(RELOC.progShown || 0, Math.min(0.95, RELOC.prog)); }
   (RELOC.rp || (RELOC.rp = {}))[room] = res ? RELOC.prog : 0; // a tiny hint: how close the best attempt is to the lock thresholds
   recReloc(res ? { score: res.score, second: res.second || 0, M: res.M, X: res.X, ratio: +res.ratio.toFixed(2), overlap: +(res.overlap || 0).toFixed(2), info: res.info, infoX: res.infoX, margin: +(res.margin || 0).toFixed(2), yawDeg: +(res.phi * 57.2958).toFixed(1), tx: +res.tx.toFixed(2), tz: +res.tz.toFixed(2), dy: +res.dy.toFixed(3), layers: res.layers, liveCells: res.nLive, ok, why, ms: Math.round(RELOC.lastMs || 0), trusted: SCAN.hits, weak: SCAN.weak, room, mode: RELOC.totem ? 'totem' : 'surface' } : { none: true, why, room }); RELOC.hist.push({ t: RELOC.scanSecs, res, ok, room }); if (RELOC.hist.length > 30) RELOC.hist.shift();
-  const h = RELOC.hist.filter((e) => e.room === room).slice(-c.stableN); if (h.length < c.stableN || !h.every((e) => e.ok)) return;
-  if (h[h.length - 1].t - h[0].t < c.stableSecs) return;
+  const sN = G.finding ? c.stableN + 1 : c.stableN, sS = G.finding ? c.stableSecs + 2 : c.stableSecs; // comparing several rooms: a longer stable run before a lock (a chance match does not last)
+  const h = RELOC.hist.filter((e) => e.room === room).slice(-sN); if (h.length < sN || !h.every((e) => e.ok)) return;
+  if (h[h.length - 1].t - h[0].t < sS) return;
   const a = h[h.length - 1].res, angd = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
   if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
   if (G.finding && [HOMES.cur].concat(Object.keys(ROOMPRE)).some((id) => id !== room && (RELOC.tried[id] || 0) < 2)) return; // never lock on one room before the others were really compared
@@ -3619,7 +3651,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
-  toast, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
+  COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
   HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 

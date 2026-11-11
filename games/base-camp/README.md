@@ -1,6 +1,6 @@
 # Base Camp (working title)
 
-A tiny living colony that settles the **real surfaces of your room**. Press Play and look around: the colony lands by itself, then *help* the little people. They keep working while you are away (up to 24 hours), they love a tidy house, and they call you **the Giant**.
+A tiny living colony that settles the **real surfaces of your room**. Press Play and look around: the colony lands by itself, then *help* the little people. They keep working while you are away, however long (the first day in detail, the rest day by day; a colony never expires), they love a tidy house, and they call you **the Giant**.
 
 One file: `index.html` (three.js r128 from cdnjs). No build step. Needs `webxr-polyfill.js` and `THIRD_PARTY.md` next to it; the council's `almanac.json`, `rooms.json`, `creatures.json` and `clip-labels.json` are optional (built-in copies are used when they are missing).
 
