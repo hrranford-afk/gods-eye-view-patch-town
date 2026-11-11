@@ -561,19 +561,25 @@ function landComps(L, pred, minN) { // connected patches of cells for which pred
 function objClass(o) { return o.area < TIDY.can ? 'can' : o.area < TIDY.box ? 'box' : 'big'; }
 function landTidy(L) { let c = 0, o = 0; for (let k = 0; k < L.st.length; k++) { if (L.st[k] === 1) c++; else if (L.st[k] === 2) o++; } return { clear: c, clutter: o, ratio: c + o ? c / (c + o) : 1, area: c * LC * LC };
 }
-// A new measurement against the stored land. Works on whole objects (not single cells) so the jitter of a scan's edges makes no events.
+// A new measurement against the stored land. Only whole objects make events: cells that changed are eroded by one cell first, so the thin ring that
+// the jitter of a scan's edges leaves around a standing can is ignored, and objects that touch other objects still count one by one.
+function changedObjects(L, pred, minN) { // patches of cells for which pred is true, at least 2 cells thick; each grown back by one cell
+  const w = L.w, h = L.h, n = w * h, ero = new Uint8Array(n), grown = new Uint8Array(n), D = [0, -1, 1, -w, w, -w - 1, -w + 1, w - 1, w + 1];
+  for (let k = w + 1; k < n - w - 1; k++) { if (!pred(k)) continue; const i = k % w; if (i === 0 || i === w - 1) continue; if (pred(k - 1) && pred(k + 1) && pred(k - w) && pred(k + w) && pred(k - w - 1) && pred(k - w + 1) && pred(k + w - 1) && pred(k + w + 1)) ero[k] = 1; }
+  for (let k = 0; k < n; k++) if (ero[k]) for (const d of D) { const q = k + d; if (q >= 0 && q < n && pred(q)) grown[q] = 1; }
+  return landComps(L, (k) => grown[k] === 1, minN || 4);
+}
 function reconcileLand(L, m, first) {
   const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length;
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
-  const old = landComps(L, (k) => st[k] === 2, 3), keep = new Uint8Array(n), mark = new Uint8Array(n);
-  for (const o of old) { let cl = 0; for (const k of o.cells) if (m.obs[k] === 1) cl++; if (cl / o.n >= 0.6) ev.removed.push(o); else for (const k of o.cells) keep[k] = 1; }
-  const fresh = landComps(L, (k) => m.obs[k] === 2, 6);
-  for (const o of fresh) { let was = 0; for (const k of o.cells) if (st[k] === 1) was++; if (was / o.n >= 0.5) { ev.placed.push(o); o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; } }
-  for (const o of ev.removed.concat(ev.placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
+  const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
+  const removed = changedObjects(L, (k) => st[k] === 2 && obs[k] === 1, 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2, 5);
+  for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
+  for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
+  for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
   for (let k = 0; k < n; k++) {
-    const was = st[k], ob = m.obs[k];
-    if (keep[k]) { /* an object that is still there (or not seen clearly) stays */ } else if (ob) { if (was === 0 && ob === 1) ev.gained++; st[k] = ob; L.ht[k] = ob === 2 ? m.ht[k] : 0; }
-    if (st[k] === 0) continue;
+    if (st[k] === 0) { if (obs[k]) { st[k] = obs[k]; L.ht[k] = obs[k] === 2 ? m.ht[k] : 0; ev.gained++; } else continue; }
+    else if (st[k] === 2 && obs[k] === 2 && m.ht[k] > L.ht[k]) L.ht[k] = m.ht[k];
     if (mark[k]) { if (L.dist[k] < 15) L.dist[k]++; L.calm[k] = 0; } else if (L.calm[k] < 15) L.calm[k]++;
   }
   L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++;
@@ -1038,7 +1044,7 @@ function simSettlement(S, dt, E, quiet) {
   S.arrT += dt;
   const cap = S.spec === 'grove' ? 2 : 9;
   if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
-    S.arrT = 0; const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; c.mesh.userData.born = 0; if (!quiet) { toast('A new settler, ' + c.name + ', joined the colony!'); sfx('cheer'); }
+    S.arrT = 0; const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; if (DIARY.on) DIARY.arrived.push(c.name); c.mesh.userData.born = 0; if (!quiet) { toast('A new settler, ' + c.name + ', joined the colony!'); sfx('cheer'); }
   }
   // thriving
   if (!S.thriving) {
@@ -1224,7 +1230,7 @@ function refreshSpots() {
 // ---- cables between spots: ready-made zip lines ----
 function addCable(a, b) {
   if (a === b || G.cables.some((c) => (c.a === a && c.b === b) || (c.a === b && c.b === a))) return null;
-  const cb = { id: G.nextCable++, a, b }; G.cables.push(cb); refreshSpots(); return cb;
+  const cb = { id: G.nextCable++, a, b }; G.cables.push(cb); refreshSpots(); syncCables(); return cb;
 }
 function syncCables() { // for every marked cable with a settled end: a ready cable car between the two zones' settlements
   for (const cb of G.cables) {
@@ -1295,7 +1301,7 @@ function surfacePick(cx, cy) { // the nearest scanned surface (any band, also th
 // A new scan is compared with the saved map. Surfaces and spots are SAME, MOVED ("Did the cup move here?"), GONE (the colonists flee and ask for help)
 // or NEW (an expedition is requested). Inside each surface, objects that vanished are gifts (new land, tin from cans, cardboard from boxes), objects that
 // appeared on top of buildings squash them, and every disturbed cell is remembered so the colonists stop building where the Giant keeps working.
-const DIARY = { on: false, lines: [], found: [], seen: {} };
+const DIARY = { on: false, lines: [], found: [], seen: {}, arrived: [] };
 function diary(text, by, key) { if (key) { if (DIARY.seen[key]) return; DIARY.seen[key] = 1; } DIARY.lines.push({ text, by: by || '' }); if (DIARY.lines.length > 80) DIARY.lines.shift(); }
 const GIANT_WORD = { can: ['CAN', 'TIN'], cup: ['CUP', 'MUG'], box: ['BOX', 'PARCEL'], big: ['LUMP', 'THING'] };
 function objWord(o) { const c = objClass(o); if (c === 'can') return o.h < 0.09 ? 'CUP' : 'CAN'; return GIANT_WORD[c][0]; }
@@ -1325,7 +1331,8 @@ function captureScan() {
     if (bz) { claimed.add(bz.id); fz.mz = bz.id; bz.fz = fz; }
   }
   // fresh zones that overlap nothing on the map: moved things or new land
-  const loose = SCAN.zones.filter((fz) => !fz.mz && !G.zones.some((q) => q.land && Math.abs(q.y - fz.y) < 0.06 && overlapFrac(q, fz) > 0.3));
+  const overHeld = (fz) => !rep.first && fz.area < 0.12 && G.zones.some((q) => q.land && fz.y > q.y + TIDY.hmin && fz.y < q.y + 1.3 && landState(q, fz.cx, fz.cz) !== 0); // a small top over known land is an object standing there, not new land
+  const loose = SCAN.zones.filter((fz) => !fz.mz && !overHeld(fz) && !G.zones.some((q) => q.land && Math.abs(q.y - fz.y) < 0.06 && overlapFrac(q, fz) > 0.3));
   for (const fz of SCAN.zones) if (!fz.mz && !loose.includes(fz)) fz.mz = -1; // part of an unmatched map zone's area: ignore
   const lostZ = [];
   for (const Z of G.zones) if (!claimed.has(Z.id) && !Z.lost && Z.land) { // not seen today
@@ -1387,7 +1394,7 @@ function applyChanges(rep) {
     }
     const word = objWord(o); G.tidy.placed++;
     for (const t of hit) {
-      const who = personOf(S, 'sq' + t.id), nm = t.kind === 'lm' ? (spotById(t.spot) ? spotById(t.spot).name : 'landmark') : (KINDS[t.kind].name || t.kind).toLowerCase();
+      const who = personOf(S, 'sq' + t.id), sq = t.kind === 'lm' ? spotById(t.spot) : null, nm = t.kind === 'lm' ? (sq && sq.src !== 'default' ? sq.name : (ROLES[t.role] || ROLES.camp).name.toLowerCase()) : (KINDS[t.kind].name || t.kind).toLowerCase();
       const [wx, wz] = l2w(S, t.x, t.z); removeThing(S, t); G.tidy.squashed++; S.stats.squashed++;
       const rub = addThing(S, 'rubble', ...w2l(S, wx, wz), { built: true, life: 400 }); rub.pop = 0;
       for (const c of S.cols) { c.needs.joy = Math.max(0.05, c.needs.joy - 0.15); }
@@ -1532,7 +1539,7 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
 }
 function awaySim(secs, startHour) {
   const t0 = performance.now(), capped = secs > AWAY_MAX; secs = clamp(secs, 0, AWAY_MAX); const step = clamp(secs / 1500, 20, 60);
-  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; const before = snapColony(); let nights = 0, prev = false, steps = 0;
+  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; const before = snapColony(); let nights = 0, prev = false, steps = 0;
   for (let t = 0; t < secs; t += step) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
@@ -1549,10 +1556,9 @@ function awaySummary(a, b, secs, nights, capped) {
   const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
   const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
   add('The Giant was away for ' + fmtAway(secs) + (capped ? ' (the colonists only kept a diary of the first day)' : '') + '. ' + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
-  const arrived = [], built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
+  const arrived = DIARY.arrived.slice(), built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
   for (const q of b) {
-    const p = a.find((x) => x.id === q.id); if (!p) { arrived.push(...q.names); continue; }
-    for (const n of q.names) if (!p.names.has(n)) arrived.push(n);
+    const p = a.find((x) => x.id === q.id) || { names: new Set(), kinds: [0, 0, 0, 0], trees: 0, stats: {}, thr: false };
     for (let i = 0; i < 4; i++) built[i] += q.kinds[i] - p.kinds[i];
     trees.n += q.trees - p.trees; for (const k in st) st[k] += (q.stats[k] || 0) - (p.stats[k] || 0); if (q.thr && !p.thr) startedThr++;
   }
@@ -1601,6 +1607,7 @@ function roleStep(S, dt, E, quiet) {
   if (fx.well) S.stock.water = Math.min(8, S.stock.water + dt / 50);
   if (fx.market && S.stock.food >= 8) { st.tradeAcc += dt / 1200; while (st.tradeAcc >= 1 && S.stock.food >= 8) { st.tradeAcc--; S.stock.food -= 3; S.stock.seeds++; S.stock.wood++; st.trade++; } }
   for (const k of ['wood', 'food', 'tin']) if (S.stock[k] > cap) S.stock[k] = cap;
+  if (S.stock.seeds > 12) S.stock.seeds = 12;
 }
 
 // ============ visuals: things and colonists animate ============
@@ -1971,7 +1978,7 @@ function barUi() {
   else if (G.phase === 'align') b.innerHTML = G.align && G.align.done ? '<button data-nudge="-1,0,0">←</button><button data-nudge="1,0,0">→</button><button data-nudge="0,-1,0">↑</button><button data-nudge="0,1,0">↓</button><button data-nudge="0,0,-1">Turn left</button><button data-nudge="0,0,1">Turn right</button><button id="bAlignOk" class="big">Looks right</button><button id="bAlignRe">Tap again</button>' : '<button id="bAlignSkip">Same place (skip)</button><button id="bQuit">Back</button>';
   else if (G.phase === 'play') {
     const T = (id, label) => `<button data-tool="${id}" class="${G.tool === id ? 'on' : ''}">${label}</button>`;
-    b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
+    b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
   if (!m.hidden) m.innerHTML = ['hut', 'farm', 'well', 'lookout'].map((k) => `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}">${KINDS[k].name} (${KINDS[k].wood})</button>`).join('');
@@ -1989,6 +1996,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bRescan') { rescanFresh(); return; }
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
   if (t.id === 'bMenu') return menuUi();
+  if (t.id === 'bSkip') return skipHours(8);
   if (t.id === 'bTag') return gotoTag();
   if (t.id === 'bFound') { setPhase('zones'); paintAll(); updateLabels(true); barUi(); updateHint(); return; }
   if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
@@ -2265,7 +2273,7 @@ function settleZone(zone) {
   puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast('Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 4);
   if (G.mode === 'practice') focusZone(zone);
   if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
-  saveNow(); saveMap();
+  syncCables(); saveNow(); saveMap();
 }
 
 // ============ main loop ============
