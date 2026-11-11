@@ -4189,7 +4189,7 @@ function btBegin(o) { // o: { mode:'solo'|'duo', level:'easy'|'normal', seed, cf
   const lo = $('btHud'); if (!lo) btBuildUi();
   G.sel = null; selCard(null); FUN.hold = null; document.body.classList.add('battle'); $('btHud').hidden = false; BT.group.visible = true; BT.on = true; BT.stage = 'intro'; BT.stageT = 0;
   if (!AR.on) { P.auto = null; P.mode = 'orbit'; BT.camHold = 0; btCamSnap(); }
-  btMsg(BT.sides[0].name + '  vs  ' + BT.sides[1].name, 2.6, BT.mode === 'duo' ? 'Pass the iPad between turns' : 'Drag back from a creature to fire!');
+  btMsg(BT.sides[0].name + '  vs  ' + BT.sides[1].name, 2.6, BT.mode === 'duo' ? 'Pass the iPad between turns' : 'The Lint Lords have crept out from under the sofa. Drag back from a creature to fire!');
   bsfx('ding'); btUi(true); btLog('begin', { mode: BT.mode, zones: BT.sides.map((s) => s.Z.name) }); return true;
 }
 function btClearWorld() { // remove everything the last battle added
