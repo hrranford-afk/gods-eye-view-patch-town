@@ -83,6 +83,11 @@ body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto
 #idDot{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:8px;height:8px;border-radius:50%;background:#ffd9a8;opacity:.55;animation:idp 1.6s ease-in-out infinite;pointer-events:none;z-index:3}@keyframes idp{50%{opacity:.12}}
 #nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
 #rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
+#banner{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;z-index:7;font:800 18px var(--body);color:#3b2a1e;background:linear-gradient(#fffaf0,#ffe1b0);border:3px solid #e8883a;border-radius:22px;padding:5px 18px 6px;box-shadow:0 3px 0 #a85a1e;white-space:nowrap;text-align:center;transition:transform .35s cubic-bezier(.3,1.6,.5,1),opacity .3s}
+#banner.on{opacity:1;transform:translateX(-50%) scale(1)}#banner small{display:block;font-size:11px;font-weight:700;opacity:.72}
+body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
+.alb{display:flex;gap:10px;align-items:center;background:rgba(255,246,230,.1);border-radius:12px;padding:6px 10px}.alb .ai{font-size:26px}.alb>div{flex:1}.alb .ad{font-size:11px;opacity:.7;white-space:nowrap}
+#bmenu{flex-wrap:wrap;justify-content:center;max-width:96vw}body.auto #bmenu{gap:4px;padding:5px}body.auto #bmenu button{min-height:34px;font-size:13px;padding:2px 9px}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -119,6 +124,7 @@ body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
   <div id="toast"></div>
+  <div id="banner"></div>
   <div id="bmenu" class="glass" hidden></div>
   <div id="bar" class="glass" hidden></div>
   <div id="repl" class="glass" hidden></div>
@@ -136,7 +142,7 @@ body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 7b';
+const BUILD = 'build 8';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -322,18 +328,32 @@ try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat
 // ============ toast, sound ============
 let toastT = 0;
 function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs > 5 ? secs : 2) * 1000); } // toasts are small, at the top, and gone after 2 s (a longer time only for warnings)
-const SND = { ctx: null, on: true };
-function sfx(kind) {
-  if (!SND.on) return;
+const SND = { ctx: null, on: true, nb: null };
+try { SND.on = localStorage.getItem('bc-sound') !== '0'; } catch (e) { /* storage blocked: sound on */ }
+function audioCtx() { if (!SND.on) return null; try { if (!SND.ctx) SND.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; } }
+function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.05); }
+function sNoise(c, t, d, freq, ft, v) { if (!SND.nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), q = b.getChannelData(0); for (let i = 0; i < q.length; i++) q[i] = Math.random() * 2 - 1; SND.nb = b; } const n = c.createBufferSource(); n.buffer = SND.nb; const f = c.createBiquadFilter(); f.type = ft || 'bandpass'; f.frequency.value = freq || 2000; const g = c.createGain(); g.gain.setValueAtTime(v || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); g.connect(c.destination); n.start(t, Math.random() * 0.5); n.stop(t + d + 0.02); }
+function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no files); p: the creature's voice pitch
+  const c = audioCtx(); if (!c || !kind) return;
   try {
-    if (!SND.ctx) SND.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const c = SND.ctx; if (c.state === 'suspended') c.resume();
-    const t = c.currentTime, tone = (f, d, type, v, f2) => { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.05); };
+    const t = c.currentTime, p = pitch || 1, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
     if (kind === 'plant') tone(330, 0.18, 'sine', 0.07, 520); else if (kind === 'pop') tone(520, 0.12, 'triangle', 0.06, 880);
-    else if (kind === 'build') tone(180, 0.09, 'square', 0.025, 120); else if (kind === 'cheer') { tone(523, 0.15, 'triangle', 0.06); setTimeout(() => tone(784, 0.2, 'triangle', 0.06), 110); }
-    else if (kind === 'chime') { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.5, 'sine', 0.05), i * 130)); }
-    else if (kind === 'water') { const n = c.createBufferSource(), b = c.createBuffer(1, c.sampleRate * 0.15, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); n.buffer = b; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400; const g = c.createGain(); g.gain.value = 0.05; n.connect(f); f.connect(g); g.connect(c.destination); n.start(t); }
+    else if (kind === 'build' || kind === 'hammer') { sNoise(c, t, 0.035, 2600, 'bandpass', 0.05); tone(420, 0.05, 'square', 0.012, 300); } // a little hammer knock
+    else if (kind === 'cheer') { tone(523, 0.15, 'triangle', 0.06); tone(784, 0.2, 'triangle', 0.06, 0, 0.11); tone(659 * 1.5, 0.08, 'sine', 0.025, 0, 0.05); }
+    else if (kind === 'chime') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, 0, i * 0.13)); }
+    else if (kind === 'water') sNoise(c, t, 0.15, 2400, 'bandpass', 0.05);
     else if (kind === 'ask') tone(700, 0.12, 'sine', 0.05, 900); else if (kind === 'no') tone(200, 0.15, 'sine', 0.05, 150);
+    else if (kind === 'squeak') { tone(900 * p, 0.07, 'sine', 0.05, 1500 * p); tone(1200 * p, 0.06, 'sine', 0.04, 1700 * p, 0.08); }
+    else if (kind === 'giggle') { for (let i = 0; i < 5; i++) tone((i % 2 ? 1250 : 1050) * p * (1 + i * 0.04), 0.05, 'triangle', 0.035, (i % 2 ? 1100 : 1300) * p, i * 0.065); }
+    else if (kind === 'grumble') { tone(160 * p, 0.28, 'sawtooth', 0.018, 105 * p); tone(120 * p, 0.22, 'triangle', 0.04, 90 * p, 0.05); }
+    else if (kind === 'zap') { sNoise(c, t, 0.05, 5200, 'highpass', 0.025); tone(1800 * p, 0.05, 'square', 0.008, 600 * p, 0.02); }
+    else if (kind === 'boing') tone(260 * p, 0.24, 'sine', 0.06, 720 * p);
+    else if (kind === 'whistle') tone(1500 * p, 0.32, 'sine', 0.025, 520 * p);
+    else if (kind === 'thud') { tone(150 * p, 0.14, 'sine', 0.08, 55); sNoise(c, t, 0.06, 420, 'lowpass', 0.05); }
+    else if (kind === 'nom') { tone(520 * p, 0.06, 'triangle', 0.035, 420 * p); tone(470 * p, 0.06, 'triangle', 0.035, 380 * p, 0.09); }
+    else if (kind === 'tada') { tone(659, 0.1, 'triangle', 0.045); tone(988, 0.26, 'triangle', 0.045, 0, 0.1); }
+    else if (kind === 'fanfare') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.045, 0, i * 0.09)); [523, 659, 784].forEach((f) => tone(f, 0.55, 'triangle', 0.025, 0, 0.42)); }
+    else if (kind === 'firework') { sNoise(c, t, 0.45, 1100, 'lowpass', 0.07); sNoise(c, t + 0.05, 0.3, 4200, 'highpass', 0.02); }
   } catch (e) { /* sound is optional */ }
 }
 
@@ -371,6 +391,12 @@ const ICONS = {
   leaf: (x) => { x.fillStyle = '#7bb661'; x.beginPath(); x.ellipse(32, 32, 22, 11, -0.6, 0, 7); x.fill(); },
   dust: (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 30); g.addColorStop(0, 'rgba(230,205,165,.9)'); g.addColorStop(1, 'rgba(230,205,165,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); },
   rain: (x) => { const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(210,235,255,0)'); g.addColorStop(1, 'rgba(210,235,255,1)'); x.fillStyle = g; x.fillRect(24, 0, 16, 64); },
+  conf: (x) => { x.fillStyle = '#fff'; x.fillRect(18, 24, 28, 16); }, // confetti: white so the tint gives the colour
+  fluff: (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 30); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.6, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); },
+  note: (x) => { x.fillStyle = '#fff'; x.font = 'bold 48px sans-serif'; x.textAlign = 'center'; x.fillText('\u266a', 32, 50); },
+  spark: (x) => { x.fillStyle = '#fff'; x.beginPath(); x.moveTo(36, 4); x.lineTo(18, 34); x.lineTo(30, 34); x.lineTo(24, 60); x.lineTo(46, 26); x.lineTo(33, 26); x.closePath(); x.fill(); },
+  crumbs: (x) => { x.fillStyle = '#d9a066'; for (const [a, b, r] of [[22, 30, 9], [40, 26, 7], [34, 42, 8]]) { x.beginPath(); x.arc(a, b, r, 0, 7); x.fill(); } },
+  book: (x) => { x.fillStyle = '#d9483b'; x.fillRect(12, 16, 19, 32); x.fillStyle = '#4a8fd9'; x.fillRect(33, 16, 19, 32); x.fillStyle = '#fff6e6'; x.fillRect(29, 14, 6, 36); },
 };
 function iconTex(name) { return TEX[name] || (TEX[name] = cv(64, 64, (x) => (ICONS[name] || ICONS.bang)(x))); }
 function bubbleTex(name) { const k = 'b_' + name; return TEX[k] || (TEX[k] = cv(80, 80, (x) => { x.fillStyle = '#fff6e6'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 4; x.beginPath(); x.arc(40, 34, 28, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(30, 58); x.lineTo(40, 76); x.lineTo(46, 56); x.fillStyle = '#fff6e6'; x.fill(); x.save(); x.translate(8, 2); x.scale(0.75, 0.75); (ICONS[name] || ICONS.bang)(x); x.restore(); })); }
@@ -731,7 +757,7 @@ function paintLand(z) {
     if (!s) { d[o + 3] = 0; continue; }
     if (quiet) { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = s === 2 || set ? 0 : 80; continue; } // AR: nothing drawn on colony land (a soft ring marks it instead); a newly found zone is a light fill for ~2 s
     const rim = L.st[k - 1] === 0 || L.st[k + 1] === 0 || (k >= w && L.st[k - w] === 0) || (k + w < L.st.length && L.st[k + w] === 0);
-    if (s === 2) { d[o] = 130; d[o + 1] = 118; d[o + 2] = 110; d[o + 3] = 175; } else if (L.dist[k] >= TIDY.avoidAt) { d[o] = 255; d[o + 1] = 190; d[o + 2] = 90; d[o + 3] = 120; } else { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : (set ? 40 : 75); }
+    if (s === 2) { d[o] = 130; d[o + 1] = 118; d[o + 2] = 110; d[o + 3] = 175; } else if (L.dist[k] >= TIDY.avoidAt) { d[o] = 255; d[o + 1] = 190; d[o + 2] = 90; d[o + 3] = 120; } else { d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? (set && G.phase === 'play' ? 80 : 235) : (set ? 30 : 75); } // colony land in play: a soft wash, the colony is the picture
   }
   m.material.map.needsUpdate = true;
   while (z.towers.children.length) { const c = z.towers.children.pop(); z.towers.remove(c); c.traverse((q) => { if (q.geometry) q.geometry.dispose(); }); }
@@ -774,14 +800,23 @@ function mkColonist(c) {
   body.add(mesh(geo('cHead', () => new THREE.SphereGeometry(0.0088, 12, 10)), skin, 0, 0.0268, 0));
   const hatM = mesh(geo('cHat', () => new THREE.ConeGeometry(0.0098, 0.0115, 10)), hat, 0, 0.0365, 0); hatM.rotation.z = 0.12; body.add(hatM);
   body.add(mesh(geo('cPom', () => new THREE.SphereGeometry(0.0027, 8, 6)), M(0xfff6e6), 0.0016, 0.0432, 0));
-  for (const s of [-1, 1]) body.add(mesh(geo('cEye', () => new THREE.SphereGeometry(0.0012, 6, 5)), M(0x2a1a10), s * 0.0036, 0.0272, 0.0079));
+  const eyes = []; for (const s of [-1, 1]) { const e = mesh(geo('cEye', () => new THREE.SphereGeometry(0.0017, 8, 6)), M(0x2a1a10), s * 0.0036, 0.0282, 0.0077); e.add(mesh(geo('cEyeH', () => new THREE.SphereGeometry(0.0006, 5, 4)), M(0xffffff, 0xffffff), 0.0004, 0.0006, 0.0013)); body.add(e); eyes.push(e); }
+  const smile = mesh(geo('cSmile', () => new THREE.TorusGeometry(0.0021, 0.00055, 4, 10, Math.PI).rotateZ(Math.PI)), M(0x5a2a1a), 0, 0.0238, 0.0083); body.add(smile);
+  const mouthO = mesh(geo('cMouthO', () => new THREE.SphereGeometry(0.0017, 8, 6)), M(0x5a2a1a), 0, 0.0228, 0.0079); mouthO.scale.set(1, 1.2, 0.5); mouthO.visible = false; body.add(mouthO);
   const legs = [], arms = [];
   for (const s of [-1, 1]) {
     const lp = new THREE.Group(); lp.position.set(s * 0.0034, 0.0062, 0); lp.add(mesh(geo('cLeg', () => new THREE.CylinderGeometry(0.0018, 0.0018, 0.0062, 6)), M(0x5a4332), 0, -0.0031, 0)); body.add(lp); legs.push(lp);
     const ap = new THREE.Group(); ap.position.set(s * 0.0072, 0.0205, 0); ap.add(mesh(geo('cArm', () => new THREE.CylinderGeometry(0.0016, 0.0016, 0.0085, 6)), shirt, 0, -0.0042, 0)); body.add(ap); arms.push(ap);
   }
   g.add(blob(0.011)); const glow = glowSprite(0.03, 0.34); glow.position.y = 0.016; g.add(glow);
-  g.scale.setScalar(0.85); g.userData = { body, legs, arms, glow };
+  const U = { body, legs, arms, glow, eyes, smile, mouthO }, ck = charKey(c); // a look per temperament (the council's creatures): you can tell them apart at a glance
+  if (ck === 'Glip') { U.hair = new THREE.Group(); U.hair.position.y = 0.0315; for (let i = 0; i < 7; i++) { const a = -1.3 + i * 0.43, sp = mesh(geo('cSpike', () => new THREE.ConeGeometry(0.0013, 0.0075, 4).translate(0, 0.0037, 0)), M(0xffe14a, 0x6a5a10)); sp.position.set(Math.sin(a) * 0.0082, 0, Math.cos(a) * -0.002); sp.rotation.z = -a * 0.9; U.hair.add(sp); } body.add(U.hair); }
+  else if (ck === 'Grizzle') { const b = mesh(geo('cBeard', () => new THREE.SphereGeometry(0.0062, 8, 6)), M(0x6f9a3a), 0, 0.0205, 0.0062); b.scale.set(1.1, 0.75, 0.55); body.add(b); for (const s of [-1, 1]) { const br = mesh(geo('cBrow', () => new THREE.BoxGeometry(0.0034, 0.0009, 0.001)), M(0x2a1a10), s * 0.0036, 0.031, 0.0084); br.rotation.z = s * 0.45; body.add(br); } for (let i = 0; i < 3; i++) { const mo = mesh(geo('cMoss', () => new THREE.SphereGeometry(0.0022, 6, 4)), M(0x7fb34a), (i - 1) * 0.004, 0.037 + (i % 2) * 0.002, -0.004); mo.scale.y = 0.5; body.add(mo); } }
+  else if (ck === 'Glimmerfluff') { U.wings = []; for (const s of [-1, 1]) { const wp = new THREE.Group(); wp.position.set(s * 0.003, 0.019, -0.005); const w = mesh(geo('cWing', () => new THREE.SphereGeometry(0.0058, 8, 6)), M(0xffc2ec, 0x6a3a60), s * 0.0045, 0.002, -0.001); w.scale.set(1, 0.55, 0.22); w.rotation.z = s * 0.5; wp.add(w); body.add(wp); U.wings.push(wp); } const gl = glowSprite(0.022, 0.25, 0xffb3e6); gl.position.y = 0.03; body.add(gl); }
+  else if (ck === 'Gloop') { for (let i = 0; i < 3; i++) body.add(mesh(geo('cSock' + i, () => new THREE.TorusGeometry(0.0062 - i * 0.0004, 0.0011, 5, 12).rotateX(Math.PI / 2)), M(i % 2 ? 0xfff6e6 : 0x4a8fd9), 0, 0.0185 - i * 0.0024, 0)); U.lint = mesh(geo('cLint', () => new THREE.IcosahedronGeometry(0.0034, 0)), M(0xd8cfc0), 0, -0.0085, 0.002); arms[1].add(U.lint); }
+  else if (ck === 'Fluffflur') { body.add(mesh(geo('cTail', () => new THREE.IcosahedronGeometry(0.0042, 1)), M(0xfff6e6), 0, 0.009, -0.0075)); for (const s of [-1, 1]) { const t = mesh(geo('cTuft', () => new THREE.ConeGeometry(0.002, 0.006, 5).translate(0, 0.003, 0)), M(0xe8d8c0), s * 0.0068, 0.032, 0); t.rotation.z = -s * 0.7; body.add(t); } }
+  { const fl = new THREE.Group(); fl.add(mesh(geo('cFlagP', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.024, 4).translate(0, 0.012, 0)), M(0x5a4332))); const fc = mesh(geo('cFlagC', () => new THREE.PlaneGeometry(0.008, 0.005)), new THREE.MeshStandardMaterial({ color: CONF[Math.floor(c.hue * 6) % 6], side: THREE.DoubleSide }), 0.004, 0.021, 0); fl.add(fc); fl.position.y = -0.008; fl.rotation.x = Math.PI; fl.visible = false; arms[1].add(fl); U.flag = fl; }
+  g.scale.setScalar(COL_S); g.userData = U;
   return g;
 }
 // trees: one group, growth g 0..1 shows seed -> sprout -> sapling -> tree
@@ -889,7 +924,12 @@ const KINDS = { // r: footprint radius; wood: cost; work: seconds of work; mk: m
   farm: { r: 0.06, wood: 3, work: 18, mk: mkFarm, name: 'Farm' }, lookout: { r: 0.034, wood: 8, work: 36, mk: mkLookout, name: 'Lookout' }, station: { r: 0.03, wood: 0, work: 0, mk: mkStation },
   tree: { r: 0.022, wood: 0, work: 0, mk: null }, shade: { r: 0.04, wood: 0, work: 0, mk: mkShade },
   lm: { r: 0.03, wood: 0, work: 0, mk: null, name: 'Landmark' }, rubble: { r: 0.012, wood: 0, work: 0, mk: mkRubble, name: 'Rubble' },
+  // build 8: things to build as the colony grows (see the FUN section for who thought of them)
+  lantern: { r: 0.012, wood: 2, work: 6, mk: () => mkLantern(), name: 'Berry lantern', by: 'The Town Brain', ic: '\ud83c\udfee' }, nook: { r: 0.03, wood: 6, work: 18, mk: () => mkNook(), name: 'Reading nook', by: 'The Dell Coder', ic: '\ud83d\udcda' },
+  stage: { r: 0.042, wood: 7, work: 24, mk: () => mkStage(), name: 'Festival stage', by: 'The Dell Reasoner', ic: '\ud83c\udfaa' }, treehouse: { r: 0.036, wood: 8, work: 28, mk: () => mkTreehouse(), cap: 2, name: "Gertie's treehouse", by: 'The Dell Builder', ic: '\ud83c\udf33' },
+  pebble: { r: 0.012, wood: 0, work: 0, mk: () => mkPebble(), name: 'Polished pebble' }, bridge: { r: 0.03, wood: 0, work: 0, mk: () => mkBridge(), name: "Pip's bridge" },
 };
+const HOMES_K = ['hut', 'tent', 'treehouse'], BOUNCY = new Set(['hut', 'tent', 'lookout', 'well', 'nook', 'stage', 'treehouse', 'lantern', 'lm', 'station']);
 
 // ============ particles (sprites) ============
 const PARTS = []; const PGROUP = new THREE.Group(); world.add(PGROUP);
@@ -897,7 +937,7 @@ function puff(kind, wx, wy, wz, n, o) {
   o = o || {};
   for (let i = 0; i < (n || 1); i++) {
     let p = PARTS.find((q) => !q.on);
-    if (!p) { if (PARTS.length >= 160) return; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); sp.renderOrder = 9; PGROUP.add(sp); p = { sp, on: false }; PARTS.push(p); }
+    if (!p) { if (PARTS.length >= 240) return; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); sp.renderOrder = 9; PGROUP.add(sp); p = { sp, on: false }; PARTS.push(p); }
     p.on = true; p.life = p.max = (o.life || 1) * rnd(0.7, 1.2); p.sp.visible = true;
     p.sp.material.map = iconTex(kind); p.sp.material.color.set(o.color || 0xffffff); p.sp.material.blending = o.add ? THREE.AdditiveBlending : THREE.NormalBlending; p.sp.material.needsUpdate = true;
     p.s = (o.size || 0.008) * rnd(0.8, 1.2); p.sp.scale.set(p.s, p.s * (o.tall || 1), 1);
@@ -978,7 +1018,7 @@ function addColonist(S, o) {
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
   S.cols.push(c); return c;
 }
-function homeOf(S, c) { const hs = S.things.filter((t) => t.built && !t.hold && (t.kind === 'hut' || t.kind === 'tent')); if (!hs.length) return null; hs.sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z)); return hs[0]; }
+function homeOf(S, c) { const hs = S.things.filter((t) => t.built && !t.hold && HOMES_K.includes(t.kind)); if (!hs.length) return null; hs.sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z)); return hs[0]; }
 const housing = (S) => S.things.reduce((n, t) => n + (t.built && !t.hold ? KINDS[t.kind].cap || 0 : 0), 0);
 const treeCap = (S) => (S.spec === 'grove' ? 5 : Math.min(18, 6 + 2 * S.cols.length));
 function approach(S, t, c) { // a spot next to a thing, on the colonist's side
@@ -1004,6 +1044,7 @@ function chooseJob(S, c, E) {
   }
   if (S.stock.seeds > 0 && kindCount(S, 'tree') < treeCap(S)) { const sp = findSpot(S, 0.026); if (sp) add(2.6 * P.work, { type: 'plant', spot: sp }); }
   if (S.cols.length > 1) add(1.2 * P.social, { type: 'chat' });
+  { const nook = S.things.find((t) => t.kind === 'nook' && t.built && !t.hold); if (nook) add(1.3 * P.lazy, { type: 'read', th: nook }); } // the reading nook (The Dell Coder / The Radeon Coder)
   if (n.joy > 0.8) add(0.8, { type: 'dance' });
   let w = null; const likes = c.likes.length ? S.things.filter((t) => c.likes.includes(t.kind) && !t.hold) : [];
   if (likes.length && Math.random() < 0.4) w = pick(likes);
@@ -1026,7 +1067,7 @@ function startJob(S, c, j, E) {
     j.dur = rnd(1.5, 4);
   } else {
     const [ax, az] = approach(S, j.th, c); j.tx = ax; j.tz = az;
-    j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9 }[j.type] || 2;
+    j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9, read: 5 }[j.type] || 2;
     if (j.type === 'build') j.th.workers++;
   }
 }
@@ -1034,7 +1075,7 @@ function endJob(c) { const j = c.job; if (j && j.type === 'build' && j.th && j.p
 function stepToward(S, c, tx, tz, dt, E) {
   const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
   if (d < 0.004) { c.moving = false; return true; }
-  const sp = 0.05 * (c.needs.rest < 0.2 || c.needs.food < 0.15 ? 0.6 : 1) * (E.hot ? 0.85 : 1), st = Math.min(d, sp * dt), z = szone(S), base = Math.atan2(dz, dx);
+  const sp = 0.05 * (c.needs.rest < 0.2 || c.needs.food < 0.15 ? 0.6 : 1) * (E.hot ? 0.85 : 1) * (c.rushUntil > G.time && !E.away ? 1.9 : 1), st = Math.min(d, sp * dt), z = szone(S), base = Math.atan2(dz, dx);
   for (const off of [0, 0.7, -0.7, 1.4, -1.4]) { // walk around cans and cups: try the straight line, then veer off
     const a = base + off, nx = c.x + Math.cos(a) * st, nz = c.z + Math.sin(a) * st, [wx, wz] = l2w(S, nx, nz);
     if (z && zoneClear(z, wx, wz) < 0.006 && !c.edgeOk) continue;
@@ -1064,13 +1105,16 @@ function runJob(S, c, dt, E, quiet) {
       const t = j.th; if (t.built) { endJob(c); return; }
       t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1); c.working = true;
       if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, S.tf.y + 0.01, S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, S.tf.y + 0.012, wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
-      if (!quiet && Math.random() < dt * 1.2) sfx('build');
-      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.04, wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); } }
+      if (!quiet && Math.random() < dt * 1.6) sfx('hammer');
+      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.04, wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
       return;
     }
     case 'chat': if (j.t > j.dur) { n.joy = Math.min(1, n.joy + 0.08); j.with.needs.joy = Math.min(1, j.with.needs.joy + 0.08); if (!quiet) puff('heart', S.tf.x, S.tf.y + 0.05, S.tf.z, 0); if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.05, wz, 2, { size: 0.01, life: 1.4 }); } endJob(c); } return;
     case 'dance': c.dancing = true; if (j.t > j.dur) { c.dancing = false; if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, S.tf.y + 0.04, wz, 3, { size: 0.008, add: true }); } endJob(c); } return;
     case 'wander': if (j.t > j.dur) endJob(c); return;
+    case 'crumb': crumbJob(S, c, j, dt, quiet); return;
+    case 'mosh': moshStep(S, c, j, dt); return;
+    case 'parade': paradeStep(S, c, j, dt, E); return;
     case 'cross': return;
     default: break;
   }
@@ -1078,10 +1122,11 @@ function runJob(S, c, dt, E, quiet) {
   const t = j.th; c.working = false;
   switch (j.type) {
     case 'drink': if (t && t.kind === 'well') n.water = Math.min(1, n.water + 0.7); else if (S.stock.water > 0) { S.stock.water--; n.water = Math.min(1, n.water + 0.6); } break;
+    case 'read': n.joy = Math.min(1, n.joy + 0.12); n.rest = Math.min(1, n.rest + 0.05); break;
     case 'eat': if (S.stock.food > 0) { S.stock.food--; n.food = Math.min(1, n.food + 0.6); n.joy = Math.min(1, n.joy + 0.05); } break;
     case 'tend': if (!t.dead) { t.tend = 60; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('drop', wx, S.tf.y + 0.03, wz, 4, { size: 0.007, vy: 0.02, g: -0.08, life: 0.9, jit: 0.015 }); sfx('water'); } } break;
     case 'plant': if (validSpot(S, j.spot[0], j.spot[1], 0.026) && S.stock.seeds > 0) { S.stock.seeds--; plantTree(S, j.spot[0], j.spot[1], quiet); } break;
-    case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, S.tf.y + 0.04, wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
+    case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; FUN.n.harvest = (FUN.n.harvest | 0) + 1; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, S.tf.y + 0.04, wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
     case 'gather': if (!t.dead && t.yield > 0) { t.yield--; if (t.var === 2 || t.var === 3) S.stock.food += 1; else S.stock.wood += 1; if (Math.random() < 0.4) S.stock.seeds++; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(t.var >= 2 ? 'food' : 'log', wx, S.tf.y + 0.05, wz, 1, { size: 0.011, vy: 0.03, life: 1.1 }); } } break;
     default: break;
   }
@@ -1096,7 +1141,7 @@ function plantTree(S, lx, lz, quiet) {
 function bubbleFor(S, c) {
   const rq = G.requests.find((r) => r.cid === c.id); if (rq) return rq.def.icon;
   const n = c.needs; if (n.water < 0.25) return 'drop'; if (n.food < 0.25) return 'food'; if (n.rest < 0.2) return 'zzz';
-  if (c.job && c.job.type === 'build') return 'hammer';
+  if (c.job && c.job.type === 'read' && c.job.ph === 'do') return 'book';
   return '';
 }
 const CONDS = {
@@ -1159,6 +1204,7 @@ function simSettlement(S, dt, E, quiet) {
   // colonists
   for (const c of S.cols.slice()) {
     if (c.spawn > 0) { c.spawn -= dt; continue; }
+    if (c.held || c.fall) { c.moving = false; continue; } // in the Giant's hand, or falling from it
     const n = c.needs, sleeping = c.inside;
     const hush = sleeping ? 0.3 : 1; n.water = Math.max(0, n.water - dt / 1300 * hush * (E.hot ? 1.8 : 1)); n.food = Math.max(0, n.food - dt / 1500 * hush); // asleep, the little people hardly get hungry if (!sleeping) n.rest = Math.max(0, n.rest - dt / 1800 * (E.dim ? 1.4 : 1));
     const avg = (n.food + n.water + n.rest) / 3; n.joy = clamp(n.joy + (avg > 0.6 ? dt / 900 : -dt / 500), 0.05, 1);
@@ -1266,7 +1312,7 @@ function linkStep(l, dt, E, quiet) {
   }
 }
 function arriveAt(c, S, th, quiet) {
-  c.S = S; c.x = th.x; c.z = th.z + 0.03; c.riding = null; c.job = null; c.cool = 0.5; S.cols.push(c); S.group.add(c.mesh); c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.set(0, 0, 0); c.mesh.scale.setScalar(0.85); c.mesh.visible = true; c.needs.joy = Math.min(1, c.needs.joy + 0.15);
+  c.S = S; c.x = th.x; c.z = th.z + 0.03; c.riding = null; c.job = null; c.cool = 0.5; S.cols.push(c); S.group.add(c.mesh); c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.set(0, 0, 0); c.mesh.scale.setScalar(COL_S); c.mesh.visible = true; c.needs.joy = Math.min(1, c.needs.joy + 0.15); if (!quiet) { FUN.n.ride = (FUN.n.ride | 0) + 1; funLog('ride'); c.hop = 1; c.cheerT = 1.2; sayLine(c, 'Wheee! Made it!', 2.2); }
   if (S.awaiting) { S.awaiting = false; S.tent.hold = false; S.tent.built = true; S.tent.pop = 1; S.fx = null; syncLandmarks(S); if (!quiet) { toast('Settlers arrived at ' + S.zoneName + '! A new colony begins.', 5); sfx('cheer'); } }
 }
 function crossStep(S, c, dt, E) { // a colonist waiting for, or riding, the cable car
@@ -1726,7 +1772,7 @@ function awayDays(secs) { // a light day-level model for time beyond the first d
     for (const S of G.settlements) {
       if (S.lost || !S.cols.length) continue; const fx = S.fx || (S.fx = fxOf(S)), st = S.stats, cap = 24 + 24 * (fx.storage || 0) + 12 * (fx.silo || 0);
       if (d < 40) for (const t of S.things) { // a few weeks are enough for everything to finish
-        if (t.kind === 'tree' && t.g < 1) t.g = 1; else if (!t.built && !t.hold && BUILD_KINDS.includes(t.kind)) { t.built = true; t.prog = 1; t.pop = 1; out.finished++; }
+        if (t.kind === 'tree' && t.g < 1) t.g = 1; else if (!t.built && !t.hold && KINDS[t.kind] && KINDS[t.kind].work) { t.built = true; t.prog = 1; t.pop = 1; out.finished++; }
       }
       S.stock.wood = Math.min(cap, S.stock.wood + 1); S.stock.food = Math.min(cap, S.stock.food + (fx.solar ? 2 : 1)); S.stock.water = Math.min(8, S.stock.water + 1);
       if (fx.forge) { st.tin += 2 * fx.forge; S.stock.tin = Math.min(cap, S.stock.tin + 2 * fx.forge); } if (fx.solar) st.food += 2; if (fx.tower && G.music) st.concert += 1800; if (fx.market) st.trade += 1;
@@ -1817,7 +1863,7 @@ function roleStep(S, dt, E, quiet) {
 
 // ============ visuals: things and colonists animate ============
 function visuals(dt, time) {
-  const night = ENV.night;
+  const night = ENV.night, eye = funEye();
   M(0xffe9a8, 0xffcc66).emissiveIntensity = night ? 1.6 : 0.15;
   for (const S of G.settlements) {
     if (!S.placed) { S.group.visible = false; continue; } S.group.visible = true;
@@ -1831,26 +1877,11 @@ function visuals(dt, time) {
       else if (t.kind === 'farm') setFarmG(m, t.g);
       if (K.work && !t.built) { m.scale.set(1, Math.max(0.05, t.prog), 1); m.visible = t.prog > 0.03; if (t.scaf) { t.scaf.visible = true; t.scaf.scale.set(1, 1 / Math.max(0.05, t.prog), 1); } }
       else if (t.scaf) t.scaf.visible = false;
-      if (t.glow) t.glow.material.opacity = t.built && night ? 0.85 + Math.sin(time * 3 + t.id) * 0.08 : 0;
+      if (t.glow) t.glow.material.opacity = t.built && night ? (0.85 + Math.sin(time * 3 + t.id) * 0.08) * FUN.berry : 0;
+      if (t.kind === 'lantern' && m.userData.glow) m.userData.glow.material.opacity = t.built ? (night ? 0.95 : 0.4) * FUN.berry * (0.9 + 0.1 * Math.sin(time * 3 + t.id)) : 0; // berry-lights, dim for a moment after time away
+      if (FUN.pulse > 0.01 && t.built && !t.hold && BOUNCY.has(t.kind)) { const k = 1 + 0.09 * FUN.pulse; m.scale.set(m.scale.x / Math.sqrt(k), m.scale.x * k, m.scale.z / Math.sqrt(k)); } // the huts bounce like drums
     }
-    for (const c of S.cols) {
-      const U = c.mesh.userData, m = c.mesh;
-      c.born += dt; const sc = 0.85 * Math.min(1, c.born * 2.5) * (1 + 0.12 * Math.sin(Math.min(1, c.born * 2.5) * 3.14));
-      m.visible = c.spawn <= 0 && !c.inside; m.scale.setScalar(Math.max(0.001, sc));
-      let hop = 0; if (c.hop > 0) { c.hop = Math.max(0, c.hop - dt * 1.6); hop = Math.sin(c.hop * 3.14) * 0.016; }
-      if (c.dancing) hop = Math.abs(Math.sin(time * 8 + c.id)) * 0.007;
-      m.position.set(c.x, hop, c.z);
-      let d = c.face - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 8);
-      if (c.moving) { c.anim += dt * 11; const sw = Math.sin(c.anim) * 0.7; U.legs[0].rotation.x = sw; U.legs[1].rotation.x = -sw; U.arms[0].rotation.x = -sw * 0.8; U.arms[1].rotation.x = sw * 0.8; U.body.position.y = Math.abs(Math.sin(c.anim)) * 0.0012; }
-      else if (c.working) { c.anim += dt * 9; U.arms[0].rotation.x = -1.3 + Math.sin(c.anim) * 0.6; U.arms[1].rotation.x = -1.3 - Math.sin(c.anim) * 0.6; U.legs[0].rotation.x = U.legs[1].rotation.x = 0; U.body.position.y = 0; }
-      else { U.legs[0].rotation.x *= 0.8; U.legs[1].rotation.x *= 0.8; U.arms[0].rotation.x *= 0.8; U.arms[1].rotation.x *= 0.8; U.body.position.y = 0; if (c.dancing) { U.arms[0].rotation.z = 2.2; U.arms[1].rotation.z = -2.2; U.body.rotation.z = Math.sin(time * 8) * 0.2; } }
-      if (!c.dancing) { U.arms[0].rotation.z = 0.15; U.arms[1].rotation.z = -0.15; U.body.rotation.z = 0; }
-      U.glow.material.opacity = (night ? 0.55 : 0.3) + (c.needs.joy > 0.8 ? 0.15 : 0);
-      const ic = c.inside ? '' : bubbleFor(S, c);
-      if (ic !== c.bubName) { c.bubName = ic; if (ic) c.bub.material.map = bubbleTex(ic); c.bub.material.needsUpdate = true; }
-      c.bub.visible = !!ic && m.visible; c.bub.position.y = 0.054 / 0.85 + Math.sin(time * 4 + c.id) * 0.002;
-      c.bub.scale.setScalar(0.028 / 0.85);
-    }
+    for (const c of S.cols) colVisual(S, c, dt, time, night, eye);
   }
   for (const l of G.links) linkVisual(l, time);
 }
@@ -1869,6 +1900,383 @@ function linkVisual(l, time) {
   l.glow.material.opacity = ENV.night ? 0.8 : 0;
 }
 
+// ============ FUN (build 8): little people with character, a Giant who can play with them, milestones, the council's magic moments ============
+// Where the ideas come from (PatchTown's council, games/COUNCIL_ANSWERS.md and COUNCIL_ANSWERS_ROUND2.md on game/micro-precinct):
+//  - creature lines and habits: creatures.json (Glip: The Town Brain; Grizzle: The Dell Surveyor; Glimmerfluff: The Dell Coder and The Radeon Coder;
+//    Gloop: The Dell Reasoner; Fluffflur: The Mill Hand). Their own words are used for the speech bubbles ("Hmph. Adequate.", "Static's frizzing!").
+//  - the music mosh pit that bounces the huts like drums, the rainbow after the rain, the pebble "we kept your spot warm" and the dimmed berry-lights
+//    while the Giant is away: The Town Brain (R1, R4). The festival with tiny stalls and a parade: The Dell Reasoner (R3).
+//  - the reading nook / library: The Dell Coder and The Radeon Coder (R1, R3); Gertie's treehouse: The Dell Builder (Q7); Pip's river and bridge:
+//    The Dell Scholar (Q7, "It's not a crack. It's a river."); berry lanterns: The Town Brain (R4 berry-lights) and The Dell Surveyor (a berry that glows).
+const COL_S = 1.25; // colonists are drawn at this scale (was 0.85): readable at arm's length in AR
+const FUN = { album: [], days: [], unl: [], n: {}, queue: [], party: false, partyAt: 0, beatPh: 0, pulse: 0, hold: null, bubbles: 0, rainT: 0, rainbow: null, fest: null, berry: 1, checkT: 0, chatT: 6, bannerT: 0, mus: null, pebbleNew: null, sawNight: false, pokes: [], log: [], pit: null };
+function funLog(k, x) { FUN.log.push({ k, t: performance.now(), x }); if (FUN.log.length > 400) FUN.log.shift(); }
+function funReset() { musicStop(); if (FUN.rainbow) rainbowEnd(); if (FUN.fest) festivalEnd(true); Object.assign(FUN, { album: [], days: [], unl: [], n: {}, queue: [], party: false, hold: null, rainT: 0, berry: 1, pebbleNew: null, sawNight: false, pokes: [], pit: null, bannerT: 0 }); const b = $('banner'); if (b) b.className = ''; }
+function funSave() { return { album: FUN.album.slice(0, 60), days: FUN.days.slice(-60), unl: FUN.unl.slice(), n: { harvest: FUN.n.harvest | 0, ride: FUN.n.ride | 0, feast: FUN.n.feast | 0, giant: FUN.n.giant | 0 } }; }
+function funLoad(f) { if (!f || typeof f !== 'object') return; FUN.album = Array.isArray(f.album) ? f.album.filter((e) => e && typeof e.id === 'string') : []; FUN.days = Array.isArray(f.days) ? f.days.slice(-60) : []; FUN.unl = Array.isArray(f.unl) ? f.unl.slice() : []; FUN.n = Object.assign({}, f.n || {}); }
+// ---- who they are: one temperament per colonist (the council's creatures), seen in how they move, fidget and talk ----
+const CHAR = {
+  Glip: { by: 'The Town Brain', react: 'panic', pitch: 1.35, fidget: 'spark', poke: ["Static's frizzing!", 'Eep! Zzt!', "The air's got teeth!"], lift: ['Put me DOWN!', 'Too high! Zzt!'], drop: ['...Ooh, crisp.', 'Static settled.'], feast: ['Ooh, crisp!'], done: ['Spit and hope!'], cheer: ['Ooh, crisp!'], dance: ['Zzt-zzt-zzt!'], idle: ['Ooh, crisp!', 'Hmm. Magnets.', 'Love that hum!'] },
+  Grizzle: { by: 'The Dell Surveyor', react: 'grump', pitch: 0.7, fidget: 'moss', poke: ['Dim it, I say!', 'Hmph.', 'Do you mind?'], lift: ['Unhand me!', 'Not load-bearing!'], drop: ['Hmph. Adequate.'], feast: ['Hmph. Adequate.'], done: ['Structurally sound.'], cheer: ['Hmph. Adequate.'], dance: ['I do not dance.'], idle: ['Hmph.', 'Adequate.', 'Shoddy joinery.'] },
+  Glimmerfluff: { by: 'The Dell Coder', react: 'giggle', pitch: 1.6, fidget: 'twirl', poke: ['Hee hee hee!', 'Tickles!', 'Again! Again!'], lift: ['Wheee!', 'I can fly!'], drop: ['Again!'], feast: ['Sparkly snack!'], done: ['Ta-daaa!'], cheer: ['Sparkle!'], dance: ['Twirl! Twirl!'], idle: ['La la la!', 'Sparkle!', 'Hee hee!'] },
+  Gloop: { by: 'The Dell Reasoner', react: 'grump', pitch: 0.9, fidget: 'lint', poke: ['Nooo! My lint nest!', 'Oi! Nosy!'], lift: ['My lint!', 'Snacks first!'], drop: ['Where was I?'], feast: ['Yum yum! Snack time!'], done: ['Snack break?'], cheer: ['Yum yum!'], dance: ['Wobble wobble!'], idle: ['Snack?', 'Lint! Mine!', 'Whatcha doing?'] },
+  Fluffflur: { by: 'The Mill Hand', react: 'giggle', pitch: 1.2, fidget: 'roll', poke: ["I'm going to eat you!", 'Hee! Fluff!'], lift: ['Wheee! Fluff!'], drop: ['Yay! Again!'], feast: ['Yay, more fluff!'], done: ['Yay!'], cheer: ['Yay, more fluff!'], dance: ['Fluff party!'], idle: ['Yay, more fluff!', 'Fluff?', 'Hello, Giant!'] },
+};
+const CHAR_KEYS = Object.keys(CHAR);
+function charKey(c) { if (c.ck) return c.ck; const n = c.temper ? String(c.temper.base || c.temper.name || '') : ''; c.ck = CHAR_KEYS.find((q) => n.startsWith(q)) || CHAR_KEYS[Math.floor(hash01(c.name || 'x', 33) * CHAR_KEYS.length)]; return c.ck; }
+const charOf = (c) => CHAR[charKey(c)];
+// ---- speech bubbles (comic style, two or three words) and name tags: sprites that keep the same size on screen at any distance ----
+const SAY_TEX = new Map();
+function sayTex(text, kind) {
+  const key = kind + '|' + text; let e = SAY_TEX.get(key); if (e) return e;
+  const cvs = document.createElement('canvas'), x = cvs.getContext('2d'), nm = kind === 'name', font = (nm ? '800 26px ' : '800 30px ') + '"Chalkboard SE","Comic Sans MS","Marker Felt","Trebuchet MS",sans-serif';
+  x.font = font; const tw = Math.ceil(x.measureText(text).width), W = Math.max(nm ? 70 : 96, tw + (nm ? 30 : 44)), H = nm ? 42 : 80; cvs.width = W; cvs.height = H; x.font = font;
+  const rr = (x0, y0, x1, y1, r) => { x.beginPath(); x.moveTo(x0 + r, y0); x.arcTo(x1, y0, x1, y1, r); x.arcTo(x1, y1, x0, y1, r); x.arcTo(x0, y1, x0, y0, r); x.arcTo(x0, y0, x1, y0, r); x.closePath(); };
+  if (nm) { rr(2, 2, W - 2, H - 2, 18); x.fillStyle = 'rgba(59,42,30,.88)'; x.fill(); x.lineWidth = 2; x.strokeStyle = '#ffd9a8'; x.stroke(); x.fillStyle = '#ffd9a8'; }
+  else { const bh = H - 20; rr(4, 4, W - 4, bh, 24); x.fillStyle = '#fffdf6'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#2b1d12'; x.stroke(); x.beginPath(); x.moveTo(W / 2 - 12, bh - 2); x.lineTo(W / 2 - 6, H - 3); x.lineTo(W / 2 + 10, bh - 2); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#fffdf6'; x.fillRect(W / 2 - 10, bh - 6, 19, 6); x.fillStyle = '#2b1d12'; }
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, W / 2, nm ? H / 2 + 1 : (H - 20) / 2 + 3);
+  const t = new THREE.CanvasTexture(cvs); t.minFilter = THREE.LinearFilter; e = { t, a: W / H }; SAY_TEX.set(key, e);
+  if (SAY_TEX.size > 90) { const k0 = SAY_TEX.keys().next().value; SAY_TEX.get(k0).t.dispose(); SAY_TEX.delete(k0); }
+  return e;
+}
+function mkSaySprite() { const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false })); s.renderOrder = 22; s.visible = false; return s; }
+function sayLine(c, text, secs, force) { // force: a reaction to the Giant always shows; idle chatter only when at most one other bubble is up
+  if (!c || !c.mesh || !text || c.inside) return false;
+  if (!force && (FUN.bubbles >= 2 || c.sayT > 0)) return false;
+  if (!c.sayS) { c.sayS = mkSaySprite(); c.mesh.add(c.sayS); }
+  const e = sayTex(text, 'say'); c.sayS.material.map = e.t; c.sayS.material.needsUpdate = true; c.sayA = e.a; c.sayT = secs || 2.4; c.sayPop = 0; c.sayText = text; FUN.bubbles++; funLog('say', text); return true;
+}
+function nameTag(c, secs) {
+  if (!c || !c.mesh) return; if (!c.tagS) { c.tagS = mkSaySprite(); c.mesh.add(c.tagS); }
+  const k = charKey(c), txt = c.name + (c.name.startsWith(k) ? '' : ' · a ' + k), e = sayTex(txt, 'name'); c.tagS.material.map = e.t; c.tagS.material.needsUpdate = true; c.tagA = e.a; c.tagT = secs || 3; c.tagPop = 0;
+}
+// ---- the Giant's hands: poke, pick up and drop, crumbs ----
+function pokeCol(c) {
+  const S = c.S, K = charOf(c), now = G.time; FUN.n.poke = (FUN.n.poke | 0) + 1; funLog('poke', c.name);
+  FUN.pokes = FUN.pokes.filter((t) => now - t < 4); FUN.pokes.push(now); const many = FUN.pokes.length >= 3;
+  c.hop = 1; c.hopBig = 1.7; c.squash = 1; c.react = { k: K.react, t: 1.4 }; c.needs.joy = Math.min(1, c.needs.joy + 0.1);
+  sfx('squeak', K.pitch); setTimeout(() => sfx(K.react === 'giggle' ? 'giggle' : K.react === 'grump' ? 'grumble' : 'zap', K.pitch), 140);
+  sayLine(c, many ? (K.react === 'giggle' ? 'Again! Again!' : 'Stop poking!') : pick(K.poke), 2.2, true); nameTag(c, 3.5);
+  const [wx, wz] = l2w(S, c.x, c.z), y = S.tf.y + 0.075;
+  if (K.react === 'panic') { // Glip: scurry off in a little panic, sparks flying
+    if (c.job && c.job.type !== 'cross') endJob(c); const a = rnd(0, 6.283); c.job = { type: 'wander', ph: 'go', t: 0, tx: c.x + Math.cos(a) * 0.055, tz: c.z + Math.sin(a) * 0.055, dur: 0.8 }; c.rushUntil = G.time + 1.6;
+    puff('spark', wx, y, wz, 5, { size: 0.009, vy: 0.04, life: 0.7, add: true, jit: 0.05, color: 0xffe14a });
+  } else if (K.react === 'giggle') { c.fid = { k: 'twirl', t: 0, dur: 0.9 }; puff('heart', wx, y, wz, 3, { size: 0.01, vy: 0.035, life: 1.2, jit: 0.02 }); }
+  else { c.fid = { k: 'fold', t: 0, dur: 2.6 }; puff('bang', wx, y + 0.01, wz, 1, { size: 0.012, vy: 0.02, life: 0.7 }); }
+  for (const q of S.cols) if (q !== c && !q.inside && Math.hypot(q.x - c.x, q.z - c.z) < 0.14) q.lookAt = { x: c.x, z: c.z, t: 1.6 }; // the neighbours turn to stare
+}
+function pickUp(c, cx, cy) {
+  if (!c || c.inside || c.riding || c.held || !c.S || !c.S.placed) return false;
+  const S = c.S, K = charOf(c); if (c.job && c.job.type !== 'cross') endJob(c); else if (c.job) endJob(c);
+  c.held = true; c.moving = false; c.working = false; c.dancing = false; const [wx, wz] = l2w(S, c.x, c.z); FUN.hold = { c, ox: c.x, oz: c.z, wx, wy: S.tf.y + 0.06, wz };
+  sayLine(c, pick(K.lift), 2.6, true); nameTag(c, 3); sfx('boing', K.pitch); FUN.n.lift = (FUN.n.lift | 0) + 1; funLog('lift', c.name);
+  if (cx !== undefined) holdMove(cx, cy); return true;
+}
+function holdMove(cx, cy) {
+  const H = FUN.hold; if (!H) return; const g = groundPick(cx, cy);
+  if (g) { H.wx = g.x; H.wy = g.y + 0.06; H.wz = g.z; } else { const p = planePick(cx, cy, H.c.S.tf.y); if (p && Math.hypot(p[0] - H.c.S.tf.x, p[1] - H.c.S.tf.z) < 2) { H.wx = p[0]; H.wz = p[1]; H.wy = H.c.S.tf.y + 0.06; } }
+}
+function moveColonist(c, from, to) { const i = from.cols.indexOf(c); if (i >= 0) from.cols.splice(i, 1); to.cols.push(c); c.S = to; to.group.add(c.mesh); G.requests = G.requests.filter((r) => r.cid !== c.id); }
+function dropCol(cx, cy) {
+  const H = FUN.hold; if (!H) return; FUN.hold = null; const c = H.c, K = charOf(c); c.held = false;
+  const g = cx === undefined ? null : groundPick(cx, cy), dest = g && g.zone.settled && g.zone.settled.placed && !g.zone.settled.awaiting ? g.zone.settled : null;
+  if (dest) { if (dest !== c.S) moveColonist(c, c.S, dest); const [lx, lz] = w2l(dest, g.x, g.z); c.x = lx; c.z = lz; c.fall = { y: Math.max(0.03, H.wy - dest.tf.y), v: 0 }; }
+  else { c.x = H.ox; c.z = H.oz; c.fall = { y: 0.06, v: 0 }; c.landSay = 'Not my home!'; } // dropped somewhere nobody lives: they plop back where they were
+  c.cool = 1.4; c.job = null; FUN.n.drop = (FUN.n.drop | 0) + 1; funLog('drop', c.name); sfx('whistle', K.pitch * 1.4);
+}
+function mkCrumb() {
+  const g = new THREE.Group(), b = mesh(geo('crumb', () => new THREE.IcosahedronGeometry(0.0085, 0)), M(0xd9a066)); b.scale.set(1, 0.55, 0.9); g.add(b);
+  for (let i = 0; i < 4; i++) { const a = i * 1.7; g.add(mesh(geo('chip', () => new THREE.BoxGeometry(0.0024, 0.0018, 0.0024)), M(0x5a3420), Math.cos(a) * 0.0045, 0.0042, Math.sin(a) * 0.0045)); }
+  g.add(blob(0.012)); return g;
+}
+function dropCrumb(S, lx, lz) {
+  S.crumbs = S.crumbs || []; if (S.crumbs.length >= 2) { sfx('no'); toast('They are still busy with the last crumbs!'); return null; }
+  const m = mkCrumb(), cr = { x: lx, z: lz, y: 0.11, v: 0, bites: 6, mesh: m, landed: false, t: 0 }; m.position.set(lx, cr.y, lz); S.group.add(m); S.crumbs.push(cr);
+  sfx('whistle'); FUN.n.crumb = (FUN.n.crumb | 0) + 1; funLog('crumb'); return cr;
+}
+function crumbStep(S, cr, dt) {
+  cr.t += dt;
+  if (!cr.landed) { cr.v -= 2.4 * dt; cr.y += cr.v * dt; cr.mesh.rotation.y += dt * 7; if (cr.y <= 0.0035) { cr.y = 0.0035; cr.landed = true; cr.t = 0; sfx('thud', 1.7); const [wx, wz] = l2w(S, cr.x, cr.z); puff('dust', wx, S.tf.y + 0.006, wz, 3, { size: 0.012, vy: 0.008, life: 0.6, grow: 1.4, jit: 0.02 }); crumbCall(S, cr); } cr.mesh.position.y = cr.y; return; }
+  cr.mesh.scale.setScalar(Math.max(0.15, 0.35 + 0.65 * cr.bites / 6));
+  if (cr.bites <= 0) feastDone(S, cr); else if (cr.t > 30) crumbGone(S, cr);
+}
+function crumbGone(S, cr) { cr.gone = true; S.group.remove(cr.mesh); S.crumbs.splice(S.crumbs.indexOf(cr), 1); for (const c of S.cols) if (c.job && c.job.cr === cr) endJob(c); }
+function crumbCall(S, cr) { // everyone near rushes over: the first one shouts
+  const cs = S.cols.filter((c) => !c.inside && !c.held && !c.fall && c.spawn <= 0 && !(c.job && (c.job.type === 'cross' || c.job.type === 'crumb'))).sort((a, b) => Math.hypot(a.x - cr.x, a.z - cr.z) - Math.hypot(b.x - cr.x, b.z - cr.z)).slice(0, 4);
+  cs.forEach((c, i) => { endJob(c); const a = i * 1.57 + rnd(-0.3, 0.3), r = 0.017; c.job = { type: 'crumb', ph: 'go', t: 0, tx: cr.x + Math.cos(a) * r, tz: cr.z + Math.sin(a) * r, dur: 1e9, cr }; c.rushUntil = G.time + 8; c.cool = 0; c.hop = 0.6; if (i === 0) sayLine(c, 'Crumb!!', 1.6, true); });
+}
+function feastDone(S, cr) {
+  const eaters = S.cols.filter((c) => c.job && c.job.cr === cr); crumbGone(S, cr);
+  eaters.forEach((c, i) => { c.needs.food = Math.min(1, c.needs.food + 0.35); c.needs.joy = Math.min(1, c.needs.joy + 0.2); c.hop = 1; c.cheerT = 1.4; if (i === 0) sayLine(c, pick(charOf(c).feast), 2.4, true); const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.07, wz, 2, { size: 0.01, vy: 0.03, life: 1.2 }); });
+  sfx('cheer'); FUN.n.feast = (FUN.n.feast | 0) + 1; funLog('feast', eaters.length);
+}
+function crumbJob(S, c, j, dt, quiet) { // at the crumb: nibble, nibble
+  const cr = j.cr; if (!cr || cr.gone) { endJob(c); return; } c.face = Math.atan2(cr.x - c.x, cr.z - c.z); c.nibble = true;
+  j.nb = (j.nb || 0) + dt; if (j.nb > 0.6 && cr.landed) { j.nb = 0; cr.bites--; if (!quiet) { const [wx, wz] = l2w(S, cr.x, cr.z); puff('crumbs', wx, S.tf.y + 0.01, wz, 1, { size: 0.005, vy: 0.02, g: -0.1, life: 0.5, jit: 0.02 }); if (Math.random() < 0.6) sfx('nom', charOf(c).pitch); } }
+}
+// ---- music: the council's mosh pit (The Town Brain, R4: "they form a tiny mosh pit that bounces the huts like drums") ----
+function partyToggle(on) {
+  FUN.party = on === undefined ? !FUN.party : !!on; G.music = FUN.party; barUi();
+  if (FUN.party) {
+    FUN.partyAt = G.time; FUN.pit = null; musicStart(); funLog('party');
+    for (const S of G.settlements) if (S.placed && !S.awaiting) { const st = S.things.find((t) => t.kind === 'stage' && t.built); S.pit = st ? [st.x, st.z] : (findSpot(S, 0.05, { R: plotR(S) * 0.5 }) || [0.07, 0.02]); let first = true;
+      for (const c of S.cols) { if (c.inside || c.held || c.fall || (c.job && c.job.type === 'cross')) continue; endJob(c); c.job = moshJob(S); c.cool = 0; if (first && sayLine(c, pick(charOf(c).dance), 2.2, true)) first = false; } }
+  } else { musicStop(); for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'mosh') { endJob(c); c.dancing = false; } }
+}
+function moshJob(S) { const p = S.pit || [0, 0], a = rnd(0, 6.283), r = rnd(0.012, 0.04); return { type: 'mosh', ph: 'go', t: 0, tx: p[0] + Math.cos(a) * r, tz: p[1] + Math.sin(a) * r, dur: 1e9 }; }
+function moshStep(S, c, j, dt) { if (!FUN.party) { endJob(c); c.dancing = false; return; } c.dancing = true; j.t += 0; if (Math.random() < dt * 0.07) { const n = moshJob(S); j.tx = n.tx; j.tz = n.tz; j.ph = 'go'; c.dancing = false; } } // now and then they shove to a new place in the pit
+const MUS = { bass: [110, 110, 146.83, 130.81], mel: [0, -1, 2, -1, 4, 3, 2, -1, 1, -1, 2, 4, 3, -1, -1, -1, 0, -1, 2, -1, 4, 5, 4, -1, 3, -1, 2, -1, 1, -1, 0, -1], scale: [523.25, 587.33, 659.25, 783.99, 880, 1046.5], step: 0.17 };
+function musicStart() { if (FUN.mus) return; const c = audioCtx(); if (!c) return; FUN.mus = { step: 0, next: c.currentTime + 0.06 }; FUN.mus.iv = setInterval(musicPump, 50); }
+function musicStop() { if (FUN.mus) { clearInterval(FUN.mus.iv); FUN.mus = null; } }
+function musicPump() {
+  const c = SND.ctx, m = FUN.mus; if (!m || !c || !SND.on) { musicStop(); return; }
+  try { while (m.next < c.currentTime + 0.16) { const s = m.step % 16, bar = Math.floor(m.step / 16) % 4, t = m.next, n = MUS.mel[m.step % 32];
+    if (s % 4 === 0) sTone(c, t, MUS.bass[bar], 0.32, 'triangle', 0.08); if (s % 2 === 1) sNoise(c, t, 0.03, 7000, 'highpass', 0.012); if (s === 4 || s === 12) sNoise(c, t, 0.09, 1600, 'bandpass', 0.035);
+    if (n >= 0) sTone(c, t, MUS.scale[n], 0.15, 'triangle', 0.032); m.next += MUS.step; m.step++; } } catch (e) { musicStop(); }
+}
+// ---- milestones: a small celebration and an entry in the Colony album (never a chore list: nothing is shown before it happens) ----
+const MILESTONES = { // id: [icon, title, line, by]
+  land: ['⛺', 'We landed!', 'The colony found its first home.'], feast: ['🍪', 'First crumb feast', 'The Giant dropped a crumb. Nobody shared nicely.'],
+  hut: ['🏠', 'First hut', 'A roof of their own.'], giant: ['🔨', 'The Giant built something', 'From scavenged wood and tin.'],
+  harvest: ['🌾', 'First harvest', 'The farm gave its first crop.'], tree: ['🌳', 'First tree grown', 'A seed became a tree.'],
+  river: ['🌉', "Pip's river", "It's not a crack. It's a river.", 'The Dell Scholar'], party: ['🎵', 'First dance party', 'A tiny mosh pit. The huts bounced like drums.', 'The Town Brain'],
+  pop5: ['👪', 'Five colonists', 'Getting busy around here.'], pop10: ['🎉', 'Ten colonists', 'A proper little town.'],
+  ride: ['🚡', 'First cable car ride', 'Somebody went somewhere new.'], night: ['🌙', 'First night survived', 'Lights out, everyone home.'],
+  rainbow: ['🌈', 'First rainbow', 'The rain stopped and the sky said sorry.', 'The Town Brain'], back: ['🪨', 'First visit back', 'A polished pebble: we kept your spot warm.', 'The Town Brain'],
+  festival: ['🎪', 'First festival', 'Tiny stalls and a parade.', 'The Dell Reasoner'], week: ['📅', 'A week of visits', 'Seven different days with the Giant.'],
+};
+function celebrate(id, S) {
+  if (!MILESTONES[id] || FUN.album.some((e) => e.id === id)) return false;
+  FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
+}
+function showCelebration(q) {
+  const d = MILESTONES[q.id], b = $('banner'); b.innerHTML = d[0] + ' ' + esc(d[1]) + ' ' + d[0] + '<small>' + esc(d[2]) + (d[3] ? ' · by ' + esc(d[3]) : '') + '</small>'; b.className = 'on'; FUN.bannerT = 3.4; funLog('celebrate', q.id);
+  const S = q.S && q.S.placed ? q.S : mainSettlement(); sfx('fanfare'); if (!S) return;
+  fireworks(S); let first = true;
+  for (const c of S.cols) { if (c.inside || c.held) continue; c.hop = 1; c.hopBig = 1.2; c.cheerT = 1.6; if (first && sayLine(c, pick(charOf(c).cheer), 2.4, true)) first = false; }
+}
+function mainSettlement() { return (G.cur && G.cur.placed && !G.cur.awaiting ? G.cur : null) || G.settlements.find((S) => S.placed && !S.awaiting && !S.lost) || null; }
+const CONF = [0xff6f91, 0xffc93d, 0x7fd36a, 0x5ab4ff, 0xc77dff, 0xff9a3d, 0xfff6e6];
+function fireworks(S) { // confetti and fluff, three little bursts over the colony
+  for (let k = 0; k < 3; k++) setTimeout(() => {
+    if (!S.group.parent || !S.placed) return; const bx = S.tf.x + rnd(-0.1, 0.1), by = S.tf.y + rnd(0.15, 0.22), bz = S.tf.z + rnd(-0.1, 0.1);
+    puff('spark', bx, S.tf.y + 0.03, bz, 1, { size: 0.01, vy: (by - S.tf.y) / 0.42, life: 0.42, jit: 0, spread: 0, add: true, color: 0xffe9a8, fade: false });
+    setTimeout(() => { if (!S.group.parent) return; sfx('firework'); for (let i = 0; i < 22; i++) { const a = rnd(0, 6.283), e = rnd(-0.6, 1.2), sp = rnd(0.07, 0.14); puff('conf', bx, by, bz, 1, { size: 0.007, vx: Math.cos(a) * Math.cos(e) * sp, vy: Math.sin(e) * sp, vz: Math.sin(a) * Math.cos(e) * sp, jit: 0, spread: 0.004, g: -0.22, life: 1.5, color: CONF[i % CONF.length] }); }
+      for (let i = 0; i < 6; i++) { const a = rnd(0, 6.283); puff('fluff', bx, by, bz, 1, { size: 0.008, vx: Math.cos(a) * 0.06, vy: rnd(0, 0.04), vz: Math.sin(a) * 0.06, jit: 0, g: -0.05, life: 1.4, grow: 0.3, color: CONF[i % CONF.length] }); } }, 420);
+  }, k * 420);
+}
+function funUnlocked(k, S) {
+  S = S || mainSettlement(); if (!S) return false; const pop = S.cols.length, hut = S.things.some((t) => t.kind === 'hut' && t.built), tree = S.things.some((t) => t.kind === 'tree' && t.g >= 1);
+  return k === 'nook' ? pop >= 4 || hut : k === 'stage' ? pop >= 5 || S.thriving : k === 'treehouse' ? tree : true;
+}
+const UNLOCK_HINT = { nook: 'with 4 colonists or a hut', stage: 'with 5 colonists', treehouse: 'when a tree has grown' };
+const FUN_BUILDS = ['lantern', 'nook', 'stage', 'treehouse'];
+function funCheck() { // twice a second in play: milestones, unlocks, the council's moments, a little idle chatter
+  const S = mainSettlement(); if (!S) return; const all = G.settlements.filter((q) => q.placed && !q.lost);
+  const has = (k, f) => all.some((q) => q.things.some((t) => t.kind === k && (f ? f(t) : t.built && !t.hold)));
+  const pop = all.reduce((a, q) => a + q.cols.length, 0) + G.links.reduce((a, l) => a + l.g.riders.length, 0);
+  celebrate('land', S);
+  if (has('hut')) celebrate('hut'); if (FUN.n.harvest) celebrate('harvest'); if (has('tree', (t) => t.g >= 1)) celebrate('tree'); if (FUN.n.feast) celebrate('feast'); if (FUN.n.giant) celebrate('giant');
+  if (pop >= 5) celebrate('pop5'); if (pop >= 10) celebrate('pop10'); if (FUN.n.ride) celebrate('ride'); if (FUN.n.night) celebrate('night');
+  if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4) celebrate('party');
+  const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); if (!FUN.days.includes(day)) { FUN.days.push(day); if (FUN.days.length > 60) FUN.days.shift(); } if (FUN.days.length >= 7) celebrate('week');
+  for (const k of FUN_BUILDS) if (!FUN.unl.includes(k) && funUnlocked(k, S)) { FUN.unl.push(k); if (k !== 'lantern') { toast('New to build: ' + KINDS[k].ic + ' ' + KINDS[k].name + ' <i class="by">by ' + esc(KINDS[k].by) + '</i>', 4); sfx('tada'); funLog('unlock', k); if (G.tool === 'build') barUi(); } }
+  // the council's moments
+  if (!FUN.fest && !FUN.party && !ENV.night && !ENV.rain) for (const q of all) { if (q.awaiting) continue; const stage = q.things.some((t) => t.kind === 'stage' && t.built); if ((q.thriving || stage) && q.cols.length >= 4) { if (!q.festNext) q.festNext = G.time + (stage ? 8 : 20); else if (G.time > q.festNext) { festivalStart(q); break; } } }
+  for (const q of all) if (!q.awaiting && q.t > 90 && !q.riverTried && !q.things.some((t) => t.kind === 'bridge')) { const pip = q.cols.find((c) => /^Pip\b/.test(c.name) && !c.inside && !c.held && !c.fall && c.spawn <= 0); if (pip) pipRiver(q, pip); }
+  if (FUN.pebbleNew && FUN.pebbleNew.S.placed) { const P0 = FUN.pebbleNew; P0.t = (P0.t || 0) + 0.5; if (P0.t >= 2.5) { FUN.pebbleNew = null; pebbleHello(P0.S, P0.th); } }
+  FUN.chatT -= 0.5; if (FUN.chatT <= 0) { FUN.chatT = rnd(9, 16); const cs = all.flatMap((q) => q.cols.filter((c) => !c.inside && !c.held && c.spawn <= 0 && !G.requests.some((r) => r.cid === c.id))); if (cs.length && !FUN.fest) { const c = pick(cs); sayLine(c, pick(FUN.party ? charOf(c).dance : charOf(c).idle), 2.2); } }
+}
+// ---- the rainbow after the rain (The Town Brain, R1) ----
+function rainbowAt(S) {
+  if (FUN.rainbow || !S) return null; const g = new THREE.Group(), R = clamp(plotR(S) * 1.15, 0.16, 0.55), cols = [0xff5a5a, 0xffa94a, 0xffe45a, 0x7fd36a, 0x5ab4ff, 0x7a6cff];
+  cols.forEach((col, i) => { const m = new THREE.Mesh(new THREE.TorusGeometry(R - i * R * 0.04, R * 0.021, 4, 48, Math.PI), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthWrite: false })); m.renderOrder = 4; g.add(m); });
+  g.position.set(S.tf.x, S.tf.y - 0.01, S.tf.z); world.add(g); FUN.rainbow = { g, t: 0, life: 24, S }; funLog('rainbow');
+  sfx('chime'); toast('A rainbow over ' + esc(S.zoneName.split(' – ')[0]) + '! <i class="by">by The Town Brain</i>', 4); celebrate('rainbow', S);
+  let first = true; for (const c of S.cols) { if (c.inside || c.held) continue; c.hop = 1; c.cheerT = 1.5; if (first && sayLine(c, 'A rainbow!', 2.4, true)) first = false; }
+  return FUN.rainbow;
+}
+function rainbowEnd() { const R = FUN.rainbow; if (!R) return; world.remove(R.g); R.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); FUN.rainbow = null; }
+function rainbowStep(dt, eye) { const R = FUN.rainbow; if (!R) return; R.t += dt; const a = Math.min(1, R.t / 2) * Math.min(1, Math.max(0, (R.life - R.t) / 3)); for (const m of R.g.children) m.material.opacity = 0.62 * a; R.g.rotation.y = Math.atan2(eye.x - R.g.position.x, eye.z - R.g.position.z); R.g.visible = R.S.placed; if (R.t > R.life) rainbowEnd(); }
+// ---- the pebble: "we kept your spot warm" and berry-lights dimmed while the Giant was away (The Town Brain, R4) ----
+function mkPebble() { const g = new THREE.Group(), p = mesh(geo('pebble', () => new THREE.SphereGeometry(0.009, 14, 10)), new THREE.MeshStandardMaterial({ color: 0x9fb6cc, roughness: 0.18, metalness: 0.15 }), 0, 0.004, 0); p.scale.set(1.2, 0.55, 0.9); g.add(p); const hl = glowSprite(0.012, 0.35, 0xdff0ff); hl.position.y = 0.008; g.add(hl); g.add(blob(0.012)); return g; }
+function funReturn(secs, res) { // after time away: a pebble at the edge, the colonists huddled, the berry-lights dim for a moment
+  const S = G.settlements.find((q) => !q.lost && !q.awaiting && q.cols.length); if (!S || !res) return;
+  if (secs >= 3 * 3600) {
+    const old = S.things.filter((t) => t.kind === 'pebble'); while (old.length >= 5) removeThing(S, old.shift());
+    let sp = null; for (let i = 0; i < 24 && !sp; i++) { const a = rnd(0, 6.283), R = plotR(S) * rnd(0.8, 1.0); if (validSpot(S, Math.cos(a) * R, Math.sin(a) * R, 0.012, { free: true })) sp = [Math.cos(a) * R, Math.sin(a) * R]; }
+    sp = sp || findSpot(S, 0.012, { free: true }); if (sp) { const th = addThing(S, 'pebble', sp[0], sp[1], { rot: rnd(0, 6.283) }); th.pop = 1; FUN.pebbleNew = { S, th, t: 0 }; }
+    FUN.berry = 0.12; S.cols.forEach((c, i) => { const a = i * 2.4; c.x = Math.cos(a) * 0.03 + 0.045; c.z = Math.sin(a) * 0.03; c.huddle = 6; });
+    res.lines.splice(1, 0, { text: 'They dimmed their berry-lights, huddled together and left a polished pebble at the edge: “we kept your spot warm.”', by: 'The Town Brain' });
+  }
+  if (res.nights > 0) FUN.n.night = 1;
+  if (secs >= 6 * 3600 && S.thriving) res.lines.splice(2, 0, { text: 'There was a festival: tiny stalls, bunting and a parade around the tent.', by: 'The Dell Reasoner' });
+  if (res.lines.length > 10) res.lines.length = 10;
+}
+function pebbleHello(S, th) {
+  if (!th || th.dead) return; const [wx, wz] = l2w(S, th.x, th.z); puff('star', wx, S.tf.y + 0.03, wz, 6, { size: 0.008, vy: 0.03, life: 1.2, add: true, jit: 0.02, color: 0xdff0ff });
+  const c = S.cols.filter((q) => !q.inside && !q.held).sort((a, b) => Math.hypot(a.x - th.x, a.z - th.z) - Math.hypot(b.x - th.x, b.z - th.z))[0];
+  if (c) { sayLine(c, 'Kept your spot warm!', 3, true); c.hop = 1; } toast('A polished pebble at the edge: “we kept your spot warm.” <i class="by">by The Town Brain</i>', 5); funLog('pebble');
+}
+// ---- the festival: stalls, bunting and a parade (The Dell Reasoner, R3) ----
+function mkStall(col) {
+  const g = new THREE.Group(), D = M(0x8a5a33); for (const x of [-1, 1]) g.add(mesh(geo('stP', () => new THREE.CylinderGeometry(0.0009, 0.0009, 0.03, 4).translate(0, 0.015, 0)), D, x * 0.011, 0, 0));
+  g.add(mesh(geo('stC', () => new THREE.BoxGeometry(0.026, 0.011, 0.012).translate(0, 0.0055, 0.002)), M(0xf6e9cf)));
+  for (let i = 0; i < 4; i++) { const s = mesh(geo('stA', () => new THREE.BoxGeometry(0.0068, 0.0016, 0.018)), M(i % 2 ? 0xfff6e6 : col), -0.0102 + i * 0.0068, 0.031, 0.002); s.rotation.x = 0.25; g.add(s); }
+  for (let i = 0; i < 3; i++) g.add(mesh(geo('stF', () => new THREE.SphereGeometry(0.0022, 6, 5)), M(CONF[(i + 2) % 6]), -0.007 + i * 0.007, 0.0128, 0.003));
+  g.add(blob(0.02)); return g;
+}
+function festivalStart(S) {
+  if (FUN.fest || !S || !S.placed) return false;
+  const st = S.things.find((t) => t.kind === 'stage' && t.built), c0 = st ? [st.x, st.z] : (findSpot(S, 0.05, { R: plotR(S) * 0.45 }) || [0.06, 0.03]), g = new THREE.Group(), R = 0.088;
+  for (let i = 0; i < 3; i++) { const a = i * 2.094 + 0.5, s = mkStall(CONF[i * 2]); s.position.set(c0[0] + Math.cos(a) * R, 0, c0[1] + Math.sin(a) * R); s.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); g.add(s); }
+  const pts = []; for (let i = 0; i <= 36; i++) { const a = i / 36 * 6.283; pts.push(new THREE.Vector3(c0[0] + Math.cos(a) * R * 0.62, 0.034 + Math.abs(Math.sin(a * 3)) * -0.006, c0[1] + Math.sin(a) * R * 0.62)); }
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x5a4332 })));
+  for (let i = 0; i < 18; i++) { const p = pts[i * 2], f = mesh(geo('bunt', () => new THREE.ConeGeometry(0.0032, 0.007, 3).rotateX(Math.PI)), M(CONF[i % 6]), p.x, p.y - 0.004, p.z); g.add(f); }
+  S.group.add(g); FUN.fest = { S, t: 0, dur: 45, c: c0, g }; funLog('festival');
+  const cs = S.cols.filter((c) => !c.inside && !c.held && !c.fall && !(c.job && c.job.type === 'cross')); cs.forEach((c, i) => { endJob(c); c.job = { type: 'parade', ph: 'do', t: 0, ang: i / Math.max(1, cs.length) * 6.283, dur: 1e9 }; c.cool = 0; });
+  if (cs[0]) sayLine(cs[0], 'Festival!', 2.4, true); musicStart(); sfx('fanfare');
+  toast('A festival! Tiny stalls, bunting and a parade. <i class="by">by The Dell Reasoner</i>', 5); celebrate('festival', S); return true;
+}
+function paradeStep(S, c, j, dt, E) { const F = FUN.fest; if (!F || F.S !== S) { endJob(c); return; } j.ang += dt * 0.55; const tx = F.c[0] + Math.cos(j.ang) * 0.055, tz = F.c[1] + Math.sin(j.ang) * 0.055; stepToward(S, c, tx, tz, dt * 1.2, E); c.parading = true; }
+function festivalEnd(silent) { const F = FUN.fest; if (!F) return; FUN.fest = null; F.S.group.remove(F.g); F.g.traverse((o) => { if (o.type === 'Line') { o.geometry.dispose(); o.material.dispose(); } }); F.S.festNext = G.time + 600; for (const c of F.S.cols) if (c.job && c.job.type === 'parade') { endJob(c); c.parading = false; } if (!FUN.party) musicStop(); if (!silent) sfx('cheer'); }
+// ---- Pip names a crack a river and builds a tiny bridge (The Dell Scholar, Q7) ----
+function mkBridge() {
+  const g = new THREE.Group(), river = mesh(geo('river', () => new THREE.PlaneGeometry(0.17, 0.016, 8, 1).rotateX(-Math.PI / 2)), new THREE.MeshStandardMaterial({ color: 0x5ab4ff, emissive: 0x2a6fb0, emissiveIntensity: 0.35, roughness: 0.2, transparent: true, opacity: 0.85 }), 0, 0.0012, 0); g.add(river);
+  for (const [x, y] of [[-0.0075, 0.0038], [0, 0.0052], [0.0075, 0.0038]]) g.add(mesh(geo('plank', () => new THREE.BoxGeometry(0.0068, 0.0018, 0.03)), M(0xb88655), x, y, 0));
+  for (const z of [-1, 1]) { const r = mesh(geo('rail', () => new THREE.BoxGeometry(0.024, 0.0012, 0.0012)), M(0x8a5a33), 0, 0.009, z * 0.0145); g.add(r); for (const x of [-0.011, 0.011]) g.add(mesh(geo('railP', () => new THREE.CylinderGeometry(0.0006, 0.0006, 0.007, 4).translate(0, 0.0035, 0)), M(0x8a5a33), x, 0.003, z * 0.0145)); }
+  g.userData.river = river; return g;
+}
+function pipRiver(S, pip) {
+  S.riverTried = true; let sp = null; for (let i = 0; i < 20 && !sp; i++) sp = findSpot(S, 0.045, { R: plotR(S) * 0.85 }); if (!sp) return false;
+  const th = addThing(S, 'bridge', sp[0], sp[1], { rot: Math.atan2(sp[1], -sp[0]) }); th.pop = 1; endJob(pip); const [ax, az] = approach(S, th, pip); pip.job = { type: 'wander', ph: 'go', t: 0, tx: ax, tz: az, dur: 3 };
+  setTimeout(() => { if (pip.S === S) { sayLine(pip, "It's a river.", 3, true); nameTag(pip, 3); } }, 900);
+  toast(esc(pip.name) + ': “It’s not a crack. It’s a river. I’ve named it. You may ask the name tomorrow.” <i class="by">by The Dell Scholar</i>', 6); sfx('plant'); celebrate('river', S); funLog('river'); return true;
+}
+// ---- new things to build: berry lanterns, a reading nook, a festival stage, Gertie's treehouse ----
+function mkLantern() {
+  const g = new THREE.Group(), D = M(0x5a4332); g.add(mesh(geo('lnP', () => new THREE.CylinderGeometry(0.0011, 0.0014, 0.05, 5).translate(0, 0.025, 0)), D)); g.add(mesh(geo('lnA', () => new THREE.BoxGeometry(0.012, 0.0014, 0.0014)), D, 0.005, 0.049, 0));
+  const berry = mesh(geo('lnB', () => new THREE.SphereGeometry(0.0042, 10, 8)), M(0xff5d7a, 0xff3355), 0.0105, 0.042, 0); g.add(berry); const gl = glowSprite(0.03, 0.4, 0xff9aa8); gl.position.set(0.0105, 0.042, 0); g.add(gl);
+  g.add(mesh(geo('lnL', () => new THREE.SphereGeometry(0.003, 6, 4)), M(0x7bb661), 0.0105, 0.047, 0)); g.add(blob(0.012)); g.userData.glow = gl; return g;
+}
+function mkNook() {
+  const g = new THREE.Group(); g.add(mesh(geo('nkR', () => new THREE.CylinderGeometry(0.03, 0.03, 0.0012, 16).translate(0, 0.0006, 0)), M(0xd96e5e)));
+  g.add(mesh(geo('nkS', () => new THREE.BoxGeometry(0.036, 0.04, 0.011).translate(0, 0.02, 0)), M(0x9a6a3a), 0, 0, -0.017));
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) g.add(mesh(geo('nkB' + (i % 3), () => new THREE.BoxGeometry(0.0042, 0.012 + (i % 3) * 0.002, 0.008)), M(CONF[(i + r * 2) % 6]), -0.0125 + i * 0.005, 0.0085 + r * 0.018 + (i % 3) * 0.001, -0.015));
+  const cu = mesh(geo('nkC', () => new THREE.SphereGeometry(0.009, 10, 6)), M(0xffc93d), 0.008, 0.004, 0.006); cu.scale.set(1, 0.45, 1); g.add(cu);
+  g.add(mesh(geo('nkL', () => new THREE.SphereGeometry(0.0035, 8, 6)), M(0xffe9a8, 0xffcc66), -0.016, 0.044, -0.017)); g.add(blob(0.03)); return g;
+}
+function mkStage() {
+  const g = new THREE.Group(); g.add(mesh(geo('sgP', () => new THREE.BoxGeometry(0.07, 0.008, 0.05).translate(0, 0.004, 0)), M(0xb88655)));
+  g.add(mesh(geo('sgW', () => new THREE.BoxGeometry(0.07, 0.045, 0.004).translate(0, 0.0305, 0)), M(0x7a4a22), 0, 0, -0.023));
+  for (const x of [-1, 1]) { const cu = mesh(geo('sgC', () => new THREE.BoxGeometry(0.014, 0.044, 0.003).translate(0, 0.03, 0)), M(0xd9483b), x * 0.028, 0, -0.019); g.add(cu); g.add(mesh(geo('sgL', () => new THREE.SphereGeometry(0.0032, 8, 6)), M(0xffe9a8, 0xffcc66), x * 0.03, 0.057, -0.02)); }
+  for (let i = 0; i < 7; i++) g.add(mesh(geo('bunt', () => new THREE.ConeGeometry(0.0032, 0.007, 3).rotateX(Math.PI)), M(CONF[i % 6]), -0.03 + i * 0.01, 0.05, -0.019));
+  g.add(blob(0.045)); return g;
+}
+function mkTreehouse() {
+  const g = new THREE.Group(); g.add(mesh(geo('thT', () => new THREE.CylinderGeometry(0.005, 0.008, 0.07, 7).translate(0, 0.035, 0)), M(0x6b4a2e)));
+  g.add(mesh(geo('thF', () => new THREE.BoxGeometry(0.044, 0.003, 0.036).translate(0, 0.0015, 0)), M(0xb88655), 0, 0.048, 0));
+  g.add(mesh(geo('thH', () => new THREE.BoxGeometry(0.026, 0.02, 0.022).translate(0, 0.01, 0)), M(0xf6e9cf), 0.004, 0.051, 0)); const r = mesh(geo('thR', () => new THREE.ConeGeometry(0.022, 0.014, 4).translate(0, 0.007, 0)), M(0x3f8a52), 0.004, 0.071, 0); r.rotation.y = Math.PI / 4; g.add(r);
+  g.add(mesh(geo('thW', () => new THREE.BoxGeometry(0.006, 0.006, 0.002)), M(0xffe9a8, 0xffcc66), 0.004, 0.062, 0.0115));
+  for (const [x, y, z, s] of [[-0.018, 0.08, -0.008, 1], [0.02, 0.083, -0.01, 0.8], [-0.004, 0.09, -0.016, 0.9]]) { const b = mesh(geo('thL', () => new THREE.IcosahedronGeometry(0.016, 1)), M(0x6cb84a), x, y, z); b.scale.setScalar(s); g.add(b); }
+  for (let i = 0; i < 5; i++) g.add(mesh(geo('thRg', () => new THREE.BoxGeometry(0.008, 0.0012, 0.0012)), M(0xd9a066), -0.012, 0.008 + i * 0.009, 0.016));
+  g.add(blob(0.04)); return g;
+}
+// ---- the frame: hands, bubbles, crumbs, rain, berry-lights, celebrations ----
+function funEye() { return AR.on ? FUN_EYE.setFromMatrixPosition(AR.viewM) : FUN_EYE.copy(camera.position); }
+const FUN_EYE = new THREE.Vector3();
+function funFrame(dt) {
+  const eye = funEye(); rainbowStep(dt, eye);
+  if (FUN.bannerT > 0) { FUN.bannerT -= dt; if (FUN.bannerT <= 0) $('banner').className = ''; }
+  if (G.phase !== 'play') return;
+  if (FUN.party) { const ph0 = FUN.beatPh; FUN.beatPh = ((G.time - FUN.partyAt) / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5); if (FUN.beatPh < ph0 && Math.random() < 0.5) { const S = mainSettlement(); if (S && S.pit) { const [wx, wz] = l2w(S, S.pit[0], S.pit[1]); puff('note', wx + rnd(-0.04, 0.04), S.tf.y + 0.07, wz + rnd(-0.04, 0.04), 1, { size: 0.011, vy: 0.035, life: 1.3, jit: 0.01, color: pick(CONF) }); } } if (G.time - FUN.partyAt > 60) { partyToggle(false); toast('Phew! What a party.'); } }
+  else if (FUN.fest) { FUN.beatPh = (G.time / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5) * 0.6; } else FUN.pulse = 0;
+  if (typeof down !== 'undefined' && down.on && down.col && !down.held && !FUN.hold && performance.now() - down.t > 380) { if (pickUp(down.col, down.x, down.y)) down.held = true; } // touch and hold a colonist: pick it up
+  if (FUN.berry < 1 && G.settlements.some((S) => S.placed)) FUN.berry = Math.min(1, FUN.berry + dt * 0.12);
+  if (ENV.night) FUN.sawNight = true; else if (FUN.sawNight) { FUN.sawNight = false; FUN.n.night = 1; }
+  if (ENV.rain) FUN.rainT += dt; else { if (FUN.rainT > 2) rainbowAt(mainSettlement()); FUN.rainT = 0; }
+  if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), F.S.tf.y + 0.06, wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
+  for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
+  let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
+  if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement()) showCelebration(FUN.queue.shift());
+  FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
+}
+// ---- how a colonist looks this frame: squash-and-stretch hops, fidgets in character, bubbles that stay readable ----
+function colVisual(S, c, dt, time, night, eye) {
+  const U = c.mesh.userData, m = c.mesh, K = charOf(c), B = U.body;
+  c.born += dt; const grow = Math.min(1, c.born * 2.5), sc = COL_S * grow * (1 + 0.12 * Math.sin(grow * 3.14));
+  m.visible = c.spawn <= 0 && !c.inside; m.scale.setScalar(Math.max(0.001, sc));
+  let y = 0, sx = 1, sy = 1, rx = 0, ry = 0, rz = 0, mouthO = false;
+  if (c.hop > 0) { c.hop = Math.max(0, c.hop - dt * 1.7); y = Math.sin(c.hop * 3.14) * 0.014 * (c.hopBig || 1); if (c.hop === 0) { c.hopBig = 1; c.squash = Math.max(c.squash || 0, 0.7); } }
+  if (c.held) { // in the Giant's hand: wriggle and kick
+    const H = FUN.hold; if (H && H.c === c) { const [lx, lz] = w2l(S, H.wx, H.wz), k = Math.min(1, dt * 14); c.x += (lx - c.x) * k; c.z += (lz - c.z) * k; m.position.set(c.x, m.position.y + (H.wy - S.tf.y - m.position.y) * k, c.z); }
+    c.anim += dt * 26; const w = Math.sin(c.anim); U.legs[0].rotation.x = w; U.legs[1].rotation.x = -w; U.arms[0].rotation.x = -2.4 + w * 0.6; U.arms[1].rotation.x = -2.4 - w * 0.6; U.arms[0].rotation.z = 0.5; U.arms[1].rotation.z = -0.5; B.rotation.set(0, 0, w * 0.25); B.position.y = 0; B.scale.set(0.92, 1.12, 0.92); mouthO = true; faceMouth(U, true); colBubbles(S, c, dt, eye, sc); return;
+  }
+  if (c.fall) { c.fall.v -= 2.6 * dt; c.fall.y += c.fall.v * dt; if (c.fall.y <= 0) { c.fall = null; c.squash = 1; c.landT = 0.45; const [wx, wz] = l2w(S, c.x, c.z); puff('dust', wx, S.tf.y + 0.006, wz, 3, { size: 0.014, vy: 0.008, life: 0.6, grow: 1.5, jit: 0.025 }); sfx('thud', 1.1); } else y += c.fall.y; mouthO = true; }
+  if (c.landT > 0) { c.landT -= dt; if (c.landT <= 0) { sayLine(c, c.landSay || pick(K.drop), 2.2, true); c.landSay = ''; c.shrug = 1.1; } }
+  if (c.squash > 0) { c.squash = Math.max(0, c.squash - dt * 3.5); const s = c.squash * Math.cos((1 - c.squash) * 9); sy *= 1 - 0.32 * s; sx *= 1 + 0.22 * s; }
+  if (c.moving) { // a hopping walk: stretch in the air, squash on landing
+    c.anim += dt * (c.rushUntil > G.time ? 17 : 12.5); const ph = (c.anim % Math.PI) / Math.PI, lift = Math.sin(ph * Math.PI); y += lift * 0.0065; sy *= 0.86 + 0.24 * lift; sx *= 1.07 - 0.1 * lift;
+    const sw = Math.sin(c.anim) * 0.6; U.legs[0].rotation.x = sw; U.legs[1].rotation.x = -sw; U.arms[0].rotation.x = -sw * 0.8; U.arms[1].rotation.x = sw * 0.8; rx = 0.08;
+    if (c.parading) { U.arms[1].rotation.x = -2.6; }
+  } else if (c.nibble && c.job && c.job.type === 'crumb') { c.anim += dt * 14; U.arms[0].rotation.x = U.arms[1].rotation.x = -1.6 + Math.sin(c.anim) * 0.3; rx = 0.35 + Math.sin(c.anim) * 0.08; sy *= 1 + Math.sin(c.anim * 2) * 0.04; }
+  else if (c.working && c.job && c.job.type === 'read') { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.3; rx = 0.2; }
+  else if (c.working) { c.anim += dt * 11; U.arms[0].rotation.x = -1.6 + Math.sin(c.anim) * 1.1; U.arms[1].rotation.x = -0.4; sy *= 1 + Math.sin(c.anim) * 0.035; U.legs[0].rotation.x = U.legs[1].rotation.x = 0; }
+  else { U.legs[0].rotation.x *= 0.8; U.legs[1].rotation.x *= 0.8; U.arms[0].rotation.x *= 0.8; U.arms[1].rotation.x *= 0.8; }
+  if (c.dancing) { const ph = FUN.party || FUN.fest ? FUN.beatPh : (time * 1.3 + c.id * 0.37) % 1, b = Math.abs(Math.sin(ph * Math.PI)); y += b * 0.011; sy *= 0.85 + 0.25 * b; sx *= 1.08 - 0.1 * b; U.arms[0].rotation.z = 2.3 + Math.sin(time * 9 + c.id) * 0.4; U.arms[1].rotation.z = -2.3 + Math.sin(time * 9 + c.id + 1) * 0.4; rz = Math.sin(time * 6 + c.id) * 0.22; mouthO = true; }
+  else if (c.cheerT > 0) { c.cheerT -= dt; U.arms[0].rotation.z = 2.5; U.arms[1].rotation.z = -2.5; mouthO = true; }
+  else if (c.shrug > 0) { c.shrug -= dt; const k = Math.sin(Math.min(1, c.shrug) * 3.14); U.arms[0].rotation.z = 0.15 + k * 1.1; U.arms[1].rotation.z = -0.15 - k * 1.1; U.arms[0].rotation.x = U.arms[1].rotation.x = -0.3 * k; y += k * 0.002; }
+  else { U.arms[0].rotation.z = 0.15; U.arms[1].rotation.z = -0.15; }
+  // fidgets in character when idle (Glip's static sparks, Grizzle's moss and folded arms, Glimmerfluff's twirl, Gloop's lint, Fluffflur's roll)
+  const idle = !c.moving && !c.working && !c.dancing && !c.fall && c.spawn <= 0 && !c.inside;
+  if (!c.fid && idle && !c.held) { c.fidT = (c.fidT === undefined ? rnd(1, 6) : c.fidT) - dt; if (c.fidT <= 0) { c.fidT = rnd(4, 9); c.fid = { k: K.fidget === 'moss' ? (Math.random() < 0.5 ? 'fold' : 'moss') : K.fidget, t: 0, dur: { spark: 1.2, moss: 2.4, fold: 3.2, twirl: 0.9, lint: 1.6, roll: 0.8 }[K.fidget] || 1.5 }; } }
+  if (c.fid) {
+    const F = c.fid; F.t += dt; const u = F.t / F.dur, [wx, wz] = l2w(S, c.x, c.z), top = S.tf.y + 0.06;
+    if (F.k === 'spark') { if (U.hair) U.hair.scale.setScalar(1 + Math.abs(Math.sin(F.t * 30)) * 0.35); if (Math.random() < dt * 9) puff('spark', wx, top, wz, 1, { size: 0.006, vy: 0.03, life: 0.45, add: true, jit: 0.04, color: 0xffe14a }); sy *= 1.05; mouthO = true; }
+    else if (F.k === 'moss') { if (Math.random() < dt * 5) puff('leaf', wx, S.tf.y + 0.03, wz, 1, { size: 0.0045, vy: -0.004, g: -0.02, life: 1.3, jit: 0.012, color: 0x7fb34a }); B.rotation.y = Math.sin(F.t * 5) * 0.25; }
+    else if (F.k === 'fold') { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.35; U.arms[0].rotation.z = -0.95; U.arms[1].rotation.z = 0.95; ry = Math.sin(F.t * 1.3) * 0.25; }
+    else if (F.k === 'twirl') { ry = u * 6.283; y += Math.sin(u * 3.14) * 0.006; if (Math.random() < dt * 10) puff('star', wx, S.tf.y + 0.04, wz, 1, { size: 0.006, vy: 0.02, life: 0.7, add: true, jit: 0.03, color: 0xffb3e6 }); if (U.wings) for (const w of U.wings) w.rotation.y = Math.sin(F.t * 40) * 0.6; }
+    else if (F.k === 'lint') { sy *= 1 - 0.18 * Math.sin(u * 3.14); rx = 0.5 * Math.sin(u * 3.14); if (u > 0.5 && !F.got) { F.got = 1; c.lint = Math.min(12, (c.lint || 0) + 1); puff('fluff', wx, S.tf.y + 0.006, wz, 2, { size: 0.008, vy: 0.012, life: 0.6, jit: 0.01 }); } }
+    else if (F.k === 'roll') { rx = u * 6.283; y += Math.sin(u * 3.14) * 0.008; }
+    if (F.t >= F.dur || c.moving) { c.fid = null; if (U.hair) U.hair.scale.setScalar(1); B.rotation.y = 0; }
+  }
+  if (U.lint) U.lint.scale.setScalar(0.5 + Math.min(1.2, (c.lint || 0) * 0.1));
+  if (U.wings && !(c.fid && c.fid.k === 'twirl')) for (const w of U.wings) w.rotation.y = Math.sin(time * 3 + c.id) * 0.15 + (c.dancing ? Math.sin(time * 30) * 0.5 : 0);
+  if (U.flag) U.flag.visible = !!c.parading && c.job && c.job.type === 'parade'; if (!(c.job && c.job.type === 'parade')) c.parading = false; if (!(c.job && c.job.type === 'crumb')) c.nibble = false;
+  if (c.react && c.react.t > 0) { c.react.t -= dt; if (c.react.k === 'panic') { mouthO = true; rz += Math.sin(time * 40) * 0.12; } else if (c.react.k === 'giggle') { mouthO = true; sy *= 1 + Math.sin(time * 30) * 0.05; } }
+  if (c.lookAt && c.lookAt.t > 0) { c.lookAt.t -= dt; if (!c.moving) c.face = Math.atan2(c.lookAt.x - c.x, c.lookAt.z - c.z); }
+  if (c.huddle > 0) c.huddle -= dt;
+  m.position.set(c.x, 0, c.z); B.position.y = y; B.scale.set(sx, sy, sx); B.rotation.x = rx; B.rotation.z = rz; if (!(c.fid && c.fid.k === 'moss')) B.rotation.y = ry;
+  let d = c.face - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 8);
+  U.blinkT = (U.blinkT || rnd(2, 5)) - dt; const blink = U.blinkT < 0.12; if (U.blinkT <= 0) U.blinkT = rnd(2.5, 5.5); for (const e of U.eyes) e.scale.y = blink ? 0.15 : 1;
+  faceMouth(U, mouthO || (c.sayT > 0 && Math.sin(time * 22) > 0));
+  U.glow.material.opacity = (night ? 0.55 : 0.3) + (c.needs.joy > 0.8 ? 0.15 : 0);
+  colBubbles(S, c, dt, eye, sc);
+}
+function faceMouth(U, open) { if (U.smile) { U.smile.visible = !open; U.mouthO.visible = !!open; } }
+function colBubbles(S, c, dt, eye, sc) {
+  const m = c.mesh, sayOn = c.sayT > 0 && m.visible, tagOn = c.tagT > 0 && m.visible;
+  const ic = c.inside || sayOn ? '' : bubbleFor(S, c);
+  if (ic !== c.bubName) { c.bubName = ic; if (ic) c.bub.material.map = bubbleTex(ic); c.bub.material.needsUpdate = true; }
+  c.bub.visible = !!ic && m.visible && !c.held; c.bub.position.y = 0.054 / 0.85 + Math.sin(G.time * 4 + c.id) * 0.002; c.bub.scale.setScalar(0.028 / 0.85);
+  if (!sayOn && !tagOn) { if (c.sayS) c.sayS.visible = false; if (c.tagS) c.tagS.visible = false; if (c.sayT > 0) c.sayT -= dt; if (c.tagT > 0) c.tagT -= dt; return; }
+  const [wx, wz] = l2w(S, c.x, c.z), dist = Math.hypot(wx - eye.x, S.tf.y + 0.05 - eye.y, wz - eye.z), h = clamp(dist * 0.042, 0.016, 0.12), s = Math.max(0.001, sc), top = 0.062 + (c.held ? 0.01 : 0);
+  let yy = top;
+  if (tagOn) { c.tagT -= dt; c.tagPop = Math.min(1, (c.tagPop || 0) + dt * 7); const th = h * 0.62 * c.tagPop; c.tagS.visible = true; c.tagS.scale.set(th * c.tagA / s, th / s, 1); c.tagS.position.set(0, top + th * 0.55 / s, 0); yy = top + th * 1.15 / s; } else if (c.tagS) c.tagS.visible = false;
+  if (sayOn) { c.sayT -= dt; c.sayPop = Math.min(1, (c.sayPop || 0) + dt * 6); const p = c.sayPop, k = p < 1 ? 1 + Math.sin(p * 3.14) * 0.25 : 1, fade = Math.min(1, c.sayT / 0.25), bh = h * k * (0.4 + 0.6 * p); c.sayS.visible = true; c.sayS.material.opacity = fade; c.sayS.scale.set(bh * c.sayA / s, bh / s, 1); c.sayS.position.set(0, yy + bh * 0.5 / s, 0); } else if (c.sayS) c.sayS.visible = false;
+}
+function funDone(S, c, t) { // a little cheer when they finish something
+  const K = charOf(c); c.hop = 1; c.cheerT = 1.2; sayLine(c, pick(K.done), 2.2); sfx('tada');
+  for (const q of S.cols) if (q !== c && !q.inside && Math.hypot(q.x - t.x, q.z - t.z) < 0.15) { q.hop = 0.8; q.cheerT = 1; }
+  if (t.giant) { FUN.n.giant = (FUN.n.giant | 0) + 1; funLog('giantBuilt', t.kind); }
+}
+function albumUi() {
+  const m = $('modal'); m.hidden = false; const A = FUN.album, fd = (ms) => { const d = new Date(ms); return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); };
+  const left = Object.keys(MILESTONES).length - A.length;
+  m.innerHTML = '<div class="dh">Colony album</div><div class="sub">' + (A.length ? 'Little moments worth keeping.' : 'Nothing yet: it fills up as the colony grows.') + '</div>' + A.map((e) => { const d = MILESTONES[e.id]; return d ? '<div class="alb"><span class="ai">' + d[0] + '</span><div><b>' + esc(d[1]) + '</b><div class="sub">' + esc(d[2]) + (d[3] ? ' <i class="by">by ' + esc(d[3]) + '</i>' : '') + '</div></div><span class="ad">' + fd(e.at) + '</span></div>' : ''; }).join('') + (left ? '<div class="sub" style="text-align:center">' + '✧ '.repeat(Math.min(left, 12)) + '<br>' + left + ' more moment' + (left === 1 ? '' : 's') + ' to find</div>' : '<div class="sub">Every moment found. What a colony.</div>') + '<button id="aClose">Close</button>';
+  m.onclick = (e) => { if (e.target.closest && e.target.closest('#aClose')) m.hidden = true; };
+}
+
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
@@ -1877,7 +2285,7 @@ const colSave = (c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, 
 function serialize() {
   const hr = new Date(); 
   return {
-    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy,
+    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })),
@@ -1910,16 +2318,16 @@ function prepareContinue() {
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
-  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy);
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun);
   for (const d of sv.settlements) restoreSettlement(d);
   restoreLinks(sv.links || []); syncCables();
-  G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); G.aligned = false;
+  G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); funReturn(secs, G.awayRes); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
   if (G.auto) { G.pendingDiary = G.awayRes; return true; }
   showAway(G.awayRes); return true;
 }
 function skipHours(h) { // practice room: let the saved colony live through hours, as if the player had been away
-  const hr = ENV.hour; G.afterAway = null; G.awayRes = awaySim(h * 3600, hr); if (ENV.hourOverride !== null) ENV.hourOverride = (ENV.hourOverride + h) % 24;
+  const hr = ENV.hour; G.afterAway = null; G.awayRes = awaySim(h * 3600, hr); funReturn(h * 3600, G.awayRes); if (ENV.hourOverride !== null) ENV.hourOverride = (ENV.hourOverride + h) % 24;
   for (const S of G.settlements) S.fx = null; showAway(G.awayRes); saveNow(); return G.awayRes;
 }
 function paintAll() { for (const Z of G.zones) paintLand(Z); for (const b of SCAN.bands) { b.dirty = true; } paintBands(G.phase !== 'scan'); }
@@ -3102,6 +3510,7 @@ function resetWorld() {
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
+  funReset();
 }
 function showTitle() {
   $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
@@ -3208,8 +3617,8 @@ function startAuto() {
   barUi(); updateHint(); autoCount();
 }
 function startPractice() { G.mode = 'practice'; G.auto = true; resetWorld(); G.auto = true; placeRoom(0, 0, 0); startAuto(); }
-function comeBackLater() { // practice room: leave, let time pass, and come back with the room turned and shifted: the colony has to find its home again
-  if (!persist(true)) return; const sv = loadSave(); if (sv) { sv.t -= 8 * 3600 * 1000; safeWrite(SAVE_KEY, JSON.stringify(sv)); }
+function comeBackLater(hours) { // practice room: leave, let time pass (8 h unless told), and come back with the room turned and shifted: the colony has to find its home again
+  if (!persist(true)) return; const sv = loadSave(); if (sv) { sv.t -= (hours || 8) * 3600 * 1000; safeWrite(SAVE_KEY, JSON.stringify(sv)); }
   PLACE.n = (PLACE.n || 0) + 1; const yaws = [0.5236, -0.35, 0.9, -0.6], sh = [[0.6, -0.4], [-0.5, 0.45], [0.3, 0.6], [-0.4, -0.3]], i = (PLACE.n - 1) % yaws.length;
   resetWorld(); G.auto = true; G.previewSecs = null; placeRoom(yaws[i], sh[i][0], sh[i][1]); startAuto();
 }
@@ -3245,11 +3654,11 @@ function barUi() {
     const IC = (id, ic, label) => `<button data-tool="${id}" title="${label}" aria-label="${label}" class="ic ${G.tool === id ? 'on' : ''}"><i>${ic}</i><small>${label}</small></button>`;
     b.classList.toggle('min', !!G.auto && !!G.barMin);
     if (G.auto && G.barMin) b.innerHTML = '<button id="bExpand" class="round" aria-label="Show the toolbar">\u2630</button>';
-    else if (G.auto) b.innerHTML = G.settlements.length ? IC('look', '\ud83d\udc41', 'Look') + IC('seed', '\ud83c\udf31', 'Seeds') + IC('water', '\ud83d\udca7', 'Water') + IC('build', '\ud83d\udd28', 'Build') + IC('cheer', '\ud83c\udf89', 'Cheer') + IC('cable', '\ud83d\udea1', 'Cable') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu" class="ic" title="Menu" aria-label="Menu"><i>\u2630</i><small>Menu</small></button><button id="bCollapse" class="ic" title="Hide" aria-label="Hide the toolbar"><i>\u2304</i><small>Hide</small></button>' : '<button id="bMenu">Menu</button>';
-    else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
+    else if (G.auto) b.innerHTML = G.settlements.length ? IC('look', '\ud83d\udc41', 'Look') + IC('seed', '\ud83c\udf31', 'Seeds') + IC('water', '\ud83d\udca7', 'Water') + IC('build', '\ud83d\udd28', 'Build') + `<button id="bParty" title="Music" aria-label="Music" class="ic ${FUN.party ? 'on' : ''}"><i>\ud83c\udfb5</i><small>Music</small></button>` + IC('cable', '\ud83d\udea1', 'Cable') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu" class="ic" title="Menu" aria-label="Menu"><i>\u2630</i><small>Menu</small></button><button id="bCollapse" class="ic" title="Hide" aria-label="Hide the toolbar"><i>\u2304</i><small>Hide</small></button>' : '<button id="bMenu">Menu</button>';
+    else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + `<button id="bParty" class="${FUN.party ? 'on' : ''}">Music</button>` + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
-  if (!m.hidden) m.innerHTML = ['hut', 'farm', 'well', 'lookout'].map((k) => `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}">${KINDS[k].name} (${KINDS[k].wood})</button>`).join('');
+  if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
 }
 function setTool(t) { G.tool = t; G.cableFrom = null; clearPreview(); barUi(); updateHint(); }
 function gotoTag() { setPhase('tag'); G.tagMode = 'spot'; G.cableFrom = null; paintAll(); updateLabels(false); barUi(); updateHint(); }
@@ -3272,6 +3681,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bTag') return gotoTag();
   if (t.id === 'bFound') { setPhase('zones'); paintAll(); updateLabels(true); barUi(); updateHint(); return; }
   if (t.id === 'bMusic') { G.music = !G.music; barUi(); return; }
+  if (t.id === 'bParty') { partyToggle(); return; }
   if (t.id === 'bSaveMap') { autoSpots(); saveMap(); toast('Room map saved: ' + G.zones.length + ' surfaces, ' + G.spots.filter((s) => s.src !== 'default').length + ' named spots. The colonists can use it while you are away.', 4); sfx('chime'); return; }
   if (t.id === 'bIO') return ioUi();
   if (t.id === 'bAsk') return askUnknown();
@@ -3281,7 +3691,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bAlignRe') { alignStart(); return; }
 });
 function rescanFresh() { scanReset(); SCAN.frozen = false; setPhase('scan'); G.aligned = true; $('diary').hidden = true; if (G.mode === 'practice') { P.mode = 'eye'; setEye(P.eye); } paintAll(); barUi(); updateHint(); updateLabels(false); }
-$('bmenu').addEventListener('click', (e) => { const t = e.target.closest('button'); if (t && t.dataset.build) { G.buildKind = t.dataset.build; barUi(); updateHint(); } });
+$('bmenu').addEventListener('click', (e) => { const t = e.target.closest('button'); if (t && t.dataset.build) { if (t.dataset.lock) { sfx('no'); toast(KINDS[t.dataset.build].name + ': unlocks ' + UNLOCK_HINT[t.dataset.build] + '.'); return; } G.buildKind = t.dataset.build; barUi(); updateHint(); } });
 // ---- finishing a scan: the first scan makes the map; later ones are compared with it ----
 function doneScanning() {
   extractZones(); if (!SCAN.zones.length) { toast('No zones yet. Sweep a flat surface a bit longer.'); return; }
@@ -3369,11 +3779,11 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
-    if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { G.music = !G.music; toast('Music ' + (G.music ? 'on: the speaker towers shake' : 'off')); }
-    else if (t.id === 'mSound') SND.on = !SND.on; else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+    if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
+    else if (t.id === 'mSound') { SND.on = !SND.on; store.set('bc-sound', SND.on ? '1' : '0'); if (!SND.on) musicStop(); else if (FUN.party || FUN.fest) musicStart(); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
     else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
@@ -3471,8 +3881,8 @@ function toScreen(v) {
   return [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight, p.z < 1];
 }
 function colPick(cx, cy, maxd) {
-  let best = null, bd = maxd || 36;
-  for (const S of G.settlements) { if (!S.placed || S.ghost) continue; for (const c of S.cols) { if (c.inside || c.spawn > 0) continue; const [wx, wz] = l2w(S, c.x, c.z); const [sx, sy, ok] = toScreen(tmpV.set(wx, S.tf.y + 0.016, wz)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; } } }
+  let best = null, bd = maxd || 46;
+  for (const S of G.settlements) { if (!S.placed || S.ghost) continue; for (const c of S.cols) { if (c.inside || c.spawn > 0) continue; const [wx, wz] = l2w(S, c.x, c.z); const [sx, sy, ok] = toScreen(tmpV.set(wx, S.tf.y + 0.026, wz)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; } } }
   return best;
 }
 let preview = null;
@@ -3485,7 +3895,8 @@ function showPreview(A, B, ok) {
 const down = { on: false };
 $('touch').addEventListener('pointerdown', (e) => {
   e.preventDefault(); sfx('');
-  Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null });
+  Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null, held: false });
+  if (G.phase === 'play' && ['look', 'cheer', 'seed', 'build'].includes(G.tool) && e.button !== 2) down.col = colPick(e.clientX, e.clientY); // touch a colonist: a tap pokes it, holding or dragging picks it up
   try { $('touch').setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; }
   if (G.phase === 'play' && G.tool === 'cable') {
@@ -3499,6 +3910,8 @@ $('touch').addEventListener('pointermove', (e) => {
   if (!down.on || e.pointerId !== down.id) return;
   const dx = e.clientX - down.x, dy = e.clientY - down.y; if (Math.hypot(e.clientX - down.sx, e.clientY - down.sy) > 10) down.moved = true;
   down.x = e.clientX; down.y = e.clientY;
+  if (down.col && !down.held && down.moved && !FUN.hold) { if (pickUp(down.col, e.clientX, e.clientY)) down.held = true; }
+  if (down.held) { holdMove(e.clientX, e.clientY); return; }
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; return; }
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY), A = new THREE.Vector3(f.x, f.S.tf.y + 0.063, f.z);
@@ -3515,6 +3928,7 @@ $('touch').addEventListener('wheel', (e) => { if (G.mode === 'practice') { P.gDi
 $('touch').addEventListener('contextmenu', (e) => e.preventDefault());
 const endDown = (e) => {
   if (!down.on || e.pointerId !== down.id) return; down.on = false; G.water = null;
+  if (down.held) { down.held = false; down.col = null; dropCol(e.type === 'pointercancel' ? undefined : e.clientX, e.clientY); return; }
   const tap = !down.moved && performance.now() - down.t < 700;
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY); G.cableFrom = null; clearPreview();
@@ -3531,7 +3945,7 @@ function tapAt(cx, cy) {
   if (G.phase === 'play' && col && (G.tool === 'look' || G.tool === 'cheer' || G.tool === 'seed' || G.tool === 'build')) { // tap a colonist: cheer and show how they feel
     const rq = G.requests.find((r) => r.cid === col.id);
     if (rq) return giveRequest(rq);
-    col.needs.joy = Math.min(1, col.needs.joy + 0.12); col.hop = 1; G.sel = col; G.cur = col.S; selCard(col); G.selT = 6; const [wx, wz] = l2w(col.S, col.x, col.z); puff('heart', wx, col.S.tf.y + 0.05, wz, 3, { size: 0.01, vy: 0.03, life: 1.2 }); sfx('cheer'); return;
+    pokeCol(col); G.sel = col; G.cur = col.S; selCard(col); G.selT = 6; return; // a poke: they squeak, jump and react in character
   }
   const g = groundPick(cx, cy);
   if (G.phase === 'zones') { if (g && !g.zone.settled) settleZone(g.zone); else toast('Tap one of the coloured zones.'); return; }
@@ -3540,7 +3954,7 @@ function tapAt(cx, cy) {
   if (G.phase !== 'play') return;
   if (!g) { G.sel = null; selCard(null); return; }
   const S = g.zone.settled; G.cur = S || G.cur;
-  if (!S) { toast('Nobody lives here yet. When your colony is thriving, a cable car can reach ' + g.zone.name + '.', 4); return; }
+  if (!S || S.awaiting) { toast('Nobody lives here yet. When your colony is thriving, a cable car can reach ' + g.zone.name + '.', 4); return; }
   const [lx, lz] = w2l(S, g.x, g.z);
   if (G.tool === 'seed') {
     if (kindCount(S, 'tree') >= treeCap(S) + 4) return toast('That is plenty of trees for now.');
@@ -3548,15 +3962,17 @@ function tapAt(cx, cy) {
     plantTree(S, lx, lz); S.helped++;
   } else if (G.tool === 'build') {
     const K = KINDS[G.buildKind];
+    if (FUN_BUILDS.includes(G.buildKind) && !funUnlocked(G.buildKind, S)) { sfx('no'); return toast(K.name + ': unlocks ' + UNLOCK_HINT[G.buildKind] + '.'); }
     if (!canPay(S, K.wood)) { sfx('no'); return toast('Needs ' + K.wood + ' wood (you have ' + S.stock.wood + '). The colonists scavenge about 1 every few seconds; trees and tidying bring more.'); }
     if (!validSpot(S, lx, lz, K.r, { free: true })) { sfx('no'); return toast('No room for that there.'); }
-    const tin = pay(S, K.wood); const t = addThing(S, G.buildKind, lx, lz, { built: false, rot: Math.atan2(-lx, -lz), tin }); t.pop = 0.4; sfx('plant'); S.helped++;
+    const tin = pay(S, K.wood); const t = addThing(S, G.buildKind, lx, lz, { built: false, rot: Math.atan2(-lx, -lz), tin }); t.pop = 0.4; t.giant = true; sfx('plant'); S.helped++; FUN.n.placed = (FUN.n.placed | 0) + 1; funLog('build', G.buildKind);
   } else if (G.tool === 'cheer') {
     let best = null, bd = 0.09; for (const c of S.cols) { const d = Math.hypot(c.x - lx, c.z - lz); if (d < bd) { bd = d; best = c; } }
     if (best) { best.needs.joy = Math.min(1, best.needs.joy + 0.3); best.hop = 1; G.sel = best; selCard(best); G.selT = 6; sfx('cheer'); puff('heart', g.x, g.y + 0.05, g.z, 3, { size: 0.01, vy: 0.03, life: 1.2 }); } else puff('star', g.x, g.y + 0.03, g.z, 4, { size: 0.008, add: true });
   } else { // look: tap a building to see what it is
     const t = S.things.find((q) => Math.hypot(q.x - lx, q.z - lz) < q.r);
-    if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
+    if (!t) { dropCrumb(S, lx, lz); return; } // tap the ground: the Giant drops a crumb and everybody rushes over
+    if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { lantern: 'A berry lantern <i class="by">by The Town Brain</i>', nook: 'The reading nook <i class="by">by The Dell Coder</i>', stage: 'The festival stage <i class="by">by The Dell Reasoner</i>', treehouse: 'Gertie\'s treehouse: “I\'ve always dreamed of having a cozy spot up in the trees!” <i class="by">by The Dell Builder</i>', pebble: 'A polished pebble: “we kept your spot warm.” <i class="by">by The Town Brain</i>', bridge: 'Pip\'s bridge over the river. Pip will tell you its name tomorrow. <i class="by">by The Dell Scholar</i>', tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
   }
 }
 function settleZone(zone) {
@@ -3629,7 +4045,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
+  funFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -3654,7 +4070,7 @@ window.__g = {
   awaySim, skipHours, prepareContinue, solveAlign, applyAlign, nudgeAlign, commitAlign, alignStart, alignTap, finishAlign, rescanFresh, answerAsk, askNext, showReport, tagTap, surfacePick, gotoTag, menuUi, ioUi, libUi, rle, unrle, fxOf,
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
-  COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
+  COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, FUN, CHAR, MILESTONES, pokeCol, pickUp, holdMove, dropCol, dropCrumb, partyToggle, celebrate, festivalStart, festivalEnd, rainbowAt, pipRiver, funUnlocked, albumUi, sayLine, charKey, SND, COL_S, mainSettlement, funReturn, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
   HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
