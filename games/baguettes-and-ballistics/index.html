@@ -280,7 +280,8 @@ const COLORS = [0x2f7df6, 0xef4136];
 const $ = (id) => document.getElementById(id);
 
 // AR hook: a transparent canvas is needed to see the camera feed in AR; only ask for one when WebXR exists (no change in plain Safari/desktop). The AR mode itself is the last <script> ("AR mode").
-const AR = { on: false, placed: false, sparkCap: 400 }; // AR.on is true only while an immersive-ar session is running
+const AR = { on: false, placed: false, sparkCap: 400 };
+const MT = { on: false }; // My Track hook: true while the player's own track (drawn or auto-built on a scanned surface) is being made, raced or fought on. The code is the <script> "My Track" after AR mode // AR.on is true only while an immersive-ar session is running
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: !!navigator.xr });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
@@ -556,7 +557,7 @@ function sinkDecor() {
 // ones (flat additive "pools" on the felt, glowing lamps) show the way. Enemy cars and trucks are hidden unless one of
 // your lights reaches them (darkUpdate). Everything here is made from shared shapes; nothing is built per frame.
 let stageL = null; // the loadout race's stand-in level while a race is on (null otherwise)
-const curL = () => stageL || LEVELS[curLevel];
+const curL = () => stageL || (MT.on && MT.level) || LEVELS[curLevel]; // (My Track hook: its battle level)
 const darkNow = () => !!curL().dark;
 const glowTex = () => shared('glowTex', () => {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -1383,7 +1384,7 @@ function buildLevel(L) {
   sink = null; torchPos = null; hobVis = null; finVis = null;
   setLighting(!!L.dark); // the drawer is dark; every other level gets its normal light back
   finaleLight(!!L.finale); // level 6: warm night kitchen (undoes itself on every other level)
-  table.visible = !L.finale; // level 6 builds its own U-shaped worktop in finaleDecor
+  table.visible = !L.finale && !L.mt; // level 6 builds its own U-shaped worktop in finaleDecor; My Track plays on the real (or practice) surface
   table.material.color.setHex(L.tableColor);
   table.material.map = L.tableTex === 'mat' ? (matTex = matTex || matTexture()) : L.tableTex === 'tile' ? (tileTex = tileTex || tileTexture()) : L.tableTex === 'felt' ? (feltTex = feltTex || feltTexture()) : L.tableTex === 'hob' ? (hobTex = hobTex || hobTexture()) : woodTex;
   table.material.needsUpdate = true;
@@ -2122,7 +2123,7 @@ function reset() {
   traps.length = marbles.length = 0;
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
-  const L0 = LEVELS[curLevel];
+  const L0 = MT.on ? mtLevel() : LEVELS[curLevel]; // My Track hook: the battle level fitted to the scanned surface
   stageL = !pendingLoad ? stageLevel(L0, curLevel) : null; // every level starts with the Kitchen Run (the Loadout Race) on a stand-in level
   const L = stageL || L0;
   buildLevel(L); // clears the obstacles and builds this level's blocks
@@ -4100,7 +4101,7 @@ function finaleCovered(e) {
   return !!g && F.cover[e.team] && e.kind !== 'base' && dist2(e, g) < 32 * 32;
 }
 function spawnPt(team, spread = 10) {
-  if (!state.finale) return [team === BLUE ? -52 : 52, (Math.random() - 0.5) * spread];
+  if (!state.finale) return [(team === BLUE ? -1 : 1) * (curL().mtSpawn || 52), (Math.random() - 0.5) * spread]; // (My Track hook: mtSpawn on a wider board)
   const b = state.bases[team];
   return [b.x + (Math.random() - 0.5) * spread * 1.2, b.z + 15 + Math.random() * 3];
 }
@@ -5504,6 +5505,7 @@ function knockOff(victim, rammer) {
 
 // --- the race ---
 function startRace(cfg) {
+  if (cfg.mt) return mtStart(cfg); // My Track hook
   if (cfg.kr) return krStart(cfg); // the Kitchen Run (every level now)
   const T = cfg.track ? lrTrack(cfg.track) : raceTrack(), p = state.player, gateList = cfg.track ? lrGates(T) : RACE_GATES, N = gateList.length;
   const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '', tokens: [], carried: [], intro: true, swap: null, slotSig: '' };
@@ -5540,6 +5542,7 @@ function cleanupRace() {
     for (const c of R.crates) scene.remove(c.mesh);
     for (const c of R.rivals) { scene.remove(c.mesh); disposeTree(c.mesh); }
     if (R.kr) krCleanup(R);
+    if (R.mt) mtCleanup(R); // My Track hook
     state.race = null;
   }
   document.body.classList.remove('racing');
@@ -5692,6 +5695,7 @@ function raceArrow() { // a gold arrow at the screen edge pointing to the next g
 function raceUpdate(dt) {
   const R = state.race, p = state.player, N = R.gates.length, racing = state.phase === 'race';
   if (R.intro) return; // the Loadout Race intro card is up: nothing moves yet
+  if (R.mt) { mtRaceUpdate(dt); return; } // My Track hook
   if (R.kr) { krUpdate(dt); return; }
   engineUpdate(p);
   R.t += dt;
@@ -5821,7 +5825,8 @@ function stageLevel(L) {
   return {
     ...L, blocks: [], erasers: [], patches: [], outposts: [], piles: [], refill: [], decor: null, size: [520, 400], dark: false, finale: false, water: null, hob: null, oven: null, boats: false, toaster: false, // (the size only keeps the car from being clamped to a table)
     gumball: null, camZoom: 1, resources: ['cereal'], bases: undefined, rules: { baseHp: 1200 }, start: { cereal: 0, clips: 0, unlocked: ['racer'] }, stage: true,
-    race: { laps: 1, kr: true },
+    race: L.mt ? { mt: true } : { laps: 1, kr: true }, // My Track hook: the race on the player's own track
+    ...(L.mt ? { size: [MT_GRID, MT_GRID] } : {}),
   };
 }
 
@@ -6738,6 +6743,7 @@ function step(now, xrFrame) {
 
 function update(dt) {
   pathBudget = 2; // level 6: at most 2 route searches a tick
+  if (state.phase === 'mt') { mtUpdate(dt); return; } // My Track hook: scanning / drawing
   if (state.phase === 'race' || state.phase === 'countdown') { raceUpdate(dt); return; }
   if (state.phase === 'loadout') return; // the YOUR LOADOUT card is up
   state.time += dt;
@@ -7002,7 +7008,7 @@ function render(dt) {
   }
   // Camera: high and angled, leading the way you're going. Pulls back on tall screens.
   const p = state.player;
-  if (p && state.race?.kr) krCam(dt); // the Kitchen Run has its own camera (height, flights, the microwave cut)
+  if (p && MT.on && mtCam(dt)) { /* My Track hook: top-down view while scanning and drawing */ } else if (p && state.race?.kr) krCam(dt); // the Kitchen Run has its own camera (height, flights, the microwave cut)
   else if (p) {
     const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1) * (state.finale?.peek || state.finale?.cine > 0 ? 1.2 : 1); // level 6 pulls the camera back to read the bigger space
     // Keep the view on the table: near an edge the car moves off-centre instead of the camera showing the dark beyond.
@@ -7096,7 +7102,7 @@ if (curLevel < 0) curLevel = LEVELS.reduce((best, L, i) => (isPlayable(i) ? i : 
 function endGame(won) {
   state.over = true;
   const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
-  if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
+  if (MT.on) { /* My Track hook: no level stars */ } else if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
   else if (won) saveProgress();
   if (won && state.finale) return talkThen(curLevel, 'win', () => finaleEnding(earned)); // level 6: the Baron's last word (dialogue hook), then the light flicks on and the MEALTIME MAYHEM COMPLETE screen
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
@@ -7105,11 +7111,12 @@ function endGame(won) {
     ? `Their toy box is crumbs. Time ${mins}:${secs}. ${state.time < FAST_WIN ? 'Fast win star!' : 'Win in under 8 minutes for a star.'} ${state.trucksLost === 0 ? 'No trucks lost star!' : `You lost ${state.trucksLost} truck${state.trucksLost === 1 ? '' : 's'}: win without losing one for a star.`}`
     : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
   $('endStars').innerHTML = won ? starRow(earned) : '';
-  const nextOk = won && LEVELS[curLevel + 1] && isPlayable(curLevel + 1);
+  const nextOk = won && !MT.on && LEVELS[curLevel + 1] && isPlayable(curLevel + 1); // (My Track hook)
   $('next').hidden = !nextOk;
   setTimeout(() => { sfx(won ? 'win' : 'lose'); talkThen(curLevel, won ? 'win' : 'lose', () => { $('end').hidden = false; }); }, 1200); // dialogue hook: the Baron sulks or gloats, then the card
 }
 function start() {
+  if (MT.on) return mtAgain(); // My Track hook: Play again races the same track
   audioInit();
   $('start').hidden = true; $('end').hidden = true;
   reset();
@@ -7118,7 +7125,7 @@ function start() {
 $('play').addEventListener('click', start);
 $('again').addEventListener('click', start);
 $('next').addEventListener('click', () => { curLevel += 1; start(); });
-$('menu').addEventListener('click', () => { $('end').hidden = true; $('start').hidden = false; selectLevel(curLevel); });
+$('menu').addEventListener('click', () => { $('end').hidden = true; if (MT.on) return mtExit(); $('start').hidden = false; selectLevel(curLevel); }); // (My Track hook)
 renderLevels();
 reset();
 requestAnimationFrame(step);
@@ -7640,7 +7647,7 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   const b = document.createElement('button');
   b.className = 'go alt'; b.id = 'arBtn'; b.hidden = true; b.innerHTML = 'AR<small>put it on your table</small>';
   $('play').after(b);
-  b.addEventListener('click', arStart);
+  b.addEventListener('click', () => { const c = $('arChoose'); if (c) c.hidden = !c.hidden; else arStart(); }); // My Track: AR asks which race first (the chooser is made by the My Track block)
   // Show the button only when this browser can do immersive AR. Never throws; the normal game is untouched otherwise.
   // An AR app (e.g. HelloXR / WebXRKit) may switch WebXR on a moment after the page loads, so keep checking for 15 s,
   // and show a small status line under the buttons so a tester can see what the browser reports.
@@ -7648,7 +7655,7 @@ const arTmp = { m: new THREE.Matrix4(), v: new THREE.Vector3(), v2: new THREE.Ve
   st.id = 'arStatus'; st.style.cssText = 'margin-top:6px;font:600 13px var(--body);opacity:0.75;text-align:center';
   b.after(st);
   let tries = 0;
-  const AR_BUILD = 'build 35';
+  const AR_BUILD = 'build 36';
   new MutationObserver(() => { if (!st.textContent.startsWith(AR_BUILD)) st.textContent = AR_BUILD + ' · ' + st.textContent; }).observe(st, { childList: true, characterData: true, subtree: true });
   const check = () => {
     tries++;
@@ -7722,7 +7729,8 @@ function arUiSync() {
   if (!AR.root) return;
   $('arHint').hidden = AR.placed && !AR.hintT;
   $('arHint').textContent = !AR.placed ? (AR.hasHit ? 'Tap to put the toy war here. Pinch to resize, twist to turn.' : 'Point the iPad at your table and move it slowly. Looking for a flat surface...') : (AR.hintT || '');
-  $('arReplace').hidden = !AR.placed; $('arQ').textContent = `Quality: ${AR_Q[AR.q].name}`;
+  $('arReplace').hidden = !AR.placed || MT.on; $('arQ').textContent = `Quality: ${AR_Q[AR.q].name}`;
+  for (const id of ['arLeft', 'arRight']) $(id).hidden = MT.on; $('arSize').parentNode.hidden = MT.on; // My Track: real scale, the surface sets the place
   $('arTouch').style.cursor = AR.placed ? '' : 'crosshair';
 }
 
@@ -7785,10 +7793,12 @@ async function arStart() {
     AR.refSpace = renderer.xr.getReferenceSpace();
     const viewer = await session.requestReferenceSpace('viewer');
     AR.hitSource = await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'] });
+    if (MT.want) await mtArSources(session, viewer); // My Track: a few more hit-test rays (off-centre), so scanning the table is quicker
     arLog('AR 5/5: looking for your table. Point at it and move the iPad slowly');
     setTimeout(() => { const el = document.getElementById('arLog'); if (el && AR.on) el.remove(); }, 4000); // all good: clear the step list (it sits under the app's Exit AR button)
     arUiSync();
     renderer.xr.setAnimationLoop(step); // from now on the XR frame loop drives `step`
+    if (MT.want) { MT.want = false; AR.placed = true; AR.started = true; mtBegin(true); arUiSync(); } // My Track: no placing; scan the table instead
   } catch (err) {
     console.warn('AR could not start:', err);
     const msg = String(err && err.message || err);
@@ -7802,6 +7812,8 @@ function arEnded() {
   if (!AR.root && !AR.on) { return; }
   try { AR.hitSource && AR.hitSource.cancel && AR.hitSource.cancel(); } catch (e) { /* ignore */ }
   const wasOn = AR.on;
+  for (const src of AR.mtSources || []) try { src.cancel(); } catch (e) { /* ignore */ }
+  AR.mtSources = [];
   AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null;
   try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
   renderer.clippingPlanes = [];
@@ -7828,6 +7840,8 @@ function arEnded() {
   renderer.setClearAlpha(0); sun.target.updateMatrixWorld();
   resize();
   if (wasOn) { last = performance.now(); requestAnimationFrame(step); } // the normal loop again
+  MT.want = false;
+  if (MT.on) mtExit(); // My Track: back to the title card
 }
 function arMakeReticle() {
   const g = new THREE.Group();
@@ -7865,6 +7879,7 @@ function arPlace() {
 }
 // Which part of the world is "the board" (its centre and long side), so it can be fitted to a table.
 function arFit() {
+  if (MT.on) return; // My Track places the world itself (mtArFrame)
   const R = state.race, K = R && R.kr;
   const sig = `${curLevel}|${W}|${D}|${K ? 'k' : 'b'}|${R ? R.group.id + ':' + R.group.children.length : 0}`;
   if (sig === AR.sig) return;
@@ -7917,6 +7932,7 @@ function arFrame(frame, dt) {
     if (arTmp.v2.lengthSq() < 1e-4) arTmp.v2.set(-AR.viewM.elements[4], 0, -AR.viewM.elements[6]);
     arTmp.v2.normalize().multiplyScalar(1.0); AR.hit.set(arTmp.v.x + arTmp.v2.x, arTmp.v.y - 1.1, arTmp.v.z + arTmp.v2.z);
   }
+  if (MT.on) mtArFrame(frame); // My Track: collect surface hits; the world sits on the scanned surface at real scale
   // The world's place: scene = T(hit) * Ry(yaw) * S(s) * T(-centre).
   const s = AR.s0 * AR.k;
   arTmp.v.set(AR.cx * s, 0, AR.cz * s).applyAxisAngle(arTmp.up, AR.yaw);
@@ -7964,4 +7980,671 @@ function arRender() {
   scene.background = bg; scene.fog = fog;
 }
 // ===================== end of AR mode =====================
+</script>
+<script>
+// ===================== My Track =====================
+// The player's own race track on their REAL surface (AR), or on a plain practice table (no AR: desktop, tests).
+// Owner: "we don't use preloaded tracks. We use the image for inspiration, and then we draw a map on the existing image."
+// Flow: title AR -> "My Track" (or the title's "My Track (practice)") -> SCAN (sweep the iPad over the table; the scanned
+// area is painted on the table) -> DRAW (finger on the table) or AUTO (the app builds a loop inside the scanned area;
+// "Another one" re-rolls) -> Race! (the Kitchen Run race engine on the drawn line: laps, gates, boost pads, tokens,
+// 3 rivals) -> the YOUR LOADOUT card -> a battle on a board fitted inside the scanned area.
+// What the AR runtime gives (WebXRKit / HelloXR, read from its polyfill): the camera pose each frame and hit tests from
+// `viewer`-space rays, answered by ARKit raycasts against the planes it found. No plane outlines, no meshes, no anchors.
+// So the surface is learnt from hits: `SURF` below is an occupancy grid (2 cm cells) at one height (a robust median of
+// the hit heights). Anything that can say "this bit of the world is flat table at height y" can fill it: `surfHit` (AR
+// hits, now), `surfFillPoly` (a polygon: real plane outlines from our own app later; the practice table now).
+// Units: game units, 1 unit = 5 mm on a real surface (MT_S). The race is laid out in the surface's own frame (x, z from
+// the first hit, axes of the AR 'local' space); the battle board is a rectangle fitted inside the scan (MT.fit).
+// Hooks in the main script are marked "My Track hook"; in the AR block they say "My Track".
+const MT_S = 0.005; // metres per game unit on a real surface: the road (2 x MT_HW + kerbs) is about 6.9 cm wide
+const MT_CELL = 4, MT_N = 250, MT_GRID = MT_N * MT_CELL; // the occupancy grid: 4-unit (2 cm) cells, 250 x 250 (5 m x 5 m) round the first hit
+const MT_HW = 5.5, MT_KERB = 1.4, MT_Y = 0.6; // road half width, kerb width, height of the road's top (a thin toy-track slab)
+const MT_RMIN = 10; // the tightest bend a track keeps (units); tighter bits of a drawing are smoothed out
+const MT_STEP = KR.STEP; // centre-line point spacing (the Kitchen Run engine's)
+const MT_TARGET = 0.6 / (MT_S * MT_S); // area that counts as "100 % scanned": 0.6 m² (a 1.2 m x 0.5 m table), in units²
+const MT_LMIN = 160, MT_LMAX = 1000; // track length limits (units): 0.8 m to 5 m
+const MT_PRACTICE = [240, 130]; // the practice table (1.2 m x 0.65 m)
+const MT_LEAD = 24; // centre-line points before the start line (the grid stands on them)
+Object.assign(MT, { want: false, ar: false, phase: '', strokes: [], cur: null, cand: null, loop: null, level: null, fit: null, prevLevel: null, seed: 1, group: null, prev: null, line: null, paintT: 0, uiT: 0, paintVer: -1, sweep: 0, introHtml: '' });
+
+// ---------- the surface: an occupancy grid of "known flat table" at one height ----------
+const SURF = { g: new Uint8Array(MT_N * MT_N), n: 0, ver: 0, origin: null, ys: [], yMed: 0, gridY: 0, source: '', dist: null, distVer: -1 };
+function surfReset(source) {
+  SURF.g.fill(0); SURF.n = 0; SURF.ver++; SURF.origin = null; SURF.ys = []; SURF.yMed = 0; SURF.gridY = 0; SURF.source = source;
+}
+const surfIdx = (x, z) => { const i = Math.floor((x + MT_GRID / 2) / MT_CELL), j = Math.floor((z + MT_GRID / 2) / MT_CELL); return i < 0 || j < 0 || i >= MT_N || j >= MT_N ? -1 : j * MT_N + i; };
+const surfXZ = (k) => [(k % MT_N + 0.5) * MT_CELL - MT_GRID / 2, (Math.floor(k / MT_N) + 0.5) * MT_CELL - MT_GRID / 2];
+const surfKnown = (x, z) => { const k = surfIdx(x, z); return k >= 0 && SURF.g[k] === 1; };
+function surfPaint(x, z, r) { // mark the cells within r units of (x, z) as known table
+  const i0 = Math.max(0, Math.floor((x - r + MT_GRID / 2) / MT_CELL)), i1 = Math.min(MT_N - 1, Math.floor((x + r + MT_GRID / 2) / MT_CELL));
+  const j0 = Math.max(0, Math.floor((z - r + MT_GRID / 2) / MT_CELL)), j1 = Math.min(MT_N - 1, Math.floor((z + r + MT_GRID / 2) / MT_CELL));
+  let got = 0;
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const k = j * MT_N + i, [cx, cz] = surfXZ(k);
+    if (!SURF.g[k] && (cx - x) ** 2 + (cz - z) ** 2 <= r * r) { SURF.g[k] = 1; got++; }
+  }
+  if (got) { SURF.n += got; SURF.ver++; }
+}
+// A flat area given as a polygon [[x, z], ...] in game units: the practice table now; real ARKit plane outlines later (our own app).
+function surfFillPoly(poly) {
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (const [x, z] of poly) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  for (let z = z0; z <= z1; z += MT_CELL / 2) for (let x = x0; x <= x1; x += MT_CELL / 2) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside; }
+    const k = inside ? surfIdx(x, z) : -1;
+    if (k >= 0 && !SURF.g[k]) { SURF.g[k] = 1; SURF.n++; SURF.ver++; }
+  }
+}
+// AR: one hit-test result (a world point in metres, AR 'local' space). Returns true if it was used.
+function surfHit(p) {
+  if (!SURF.origin) { SURF.origin = p.clone(); SURF.yMed = SURF.gridY = p.y; }
+  const ys = SURF.ys; ys.push(p.y); if (ys.length > 240) ys.shift();
+  if (ys.length % 8 === 0 || ys.length < 8) { const s = ys.slice().sort((a, b) => a - b); SURF.yMed = s[s.length >> 1]; } // a robust height: the median
+  if (Math.abs(SURF.yMed - SURF.gridY) > 0.04) { SURF.g.fill(0); SURF.n = 0; SURF.ver++; SURF.gridY = SURF.yMed; } // the height moved (the first hits were the floor): start the map again
+  if (ys.length > 12 && Math.abs(p.y - SURF.yMed) > 0.03) return false; // another surface (the floor, a box on the table)
+  surfPaint((p.x - SURF.origin.x) / MT_S, (p.z - SURF.origin.z) / MT_S, 6); // 3 cm round each hit (more would spill past the table's edge)
+  return true;
+}
+// Small gaps between hits (a cell or two the rays missed) count as table: an unknown cell with 6 or more known neighbours is filled.
+function surfCloseHoles() {
+  const n = MT_N, g = SURF.g, add = [];
+  for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) {
+    const k = j * n + i;
+    if (g[k]) continue;
+    const c = g[k - 1] + g[k + 1] + g[k - n] + g[k + n] + g[k - n - 1] + g[k - n + 1] + g[k + n - 1] + g[k + n + 1];
+    if (c >= 6) add.push(k);
+  }
+  for (const k of add) g[k] = 1;
+  if (add.length) { SURF.n += add.length; SURF.ver++; }
+}
+// Distance (in cells) from each known cell to the nearest unknown one (two-pass chamfer), cached until the grid changes.
+function surfDist() {
+  if (SURF.dist && SURF.distVer === SURF.ver) return SURF.dist;
+  const n = MT_N, g = SURF.g, d = SURF.dist || new Float32Array(n * n), Q = Math.SQRT2;
+  for (let k = 0; k < n * n; k++) d[k] = g[k] ? 1e6 : 0;
+  const at = (i, j) => (i < 0 || j < 0 || i >= n || j >= n ? 0 : d[j * n + i]);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = j * n + i; if (d[k]) d[k] = Math.min(d[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + Q, at(i + 1, j - 1) + Q); }
+  for (let j = n - 1; j >= 0; j--) for (let i = n - 1; i >= 0; i--) { const k = j * n + i; if (d[k]) d[k] = Math.min(d[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + Q, at(i - 1, j + 1) + Q); }
+  SURF.dist = d; SURF.distVer = SURF.ver;
+  return d;
+}
+const surfClear = (x, z) => { const k = surfIdx(x, z); return k < 0 ? -MT_CELL : (surfDist()[k] - 0.5) * MT_CELL; }; // units from (x, z) to the edge of the known table (negative: off it)
+const surfPct = () => Math.min(100, Math.round(SURF.n * MT_CELL * MT_CELL / MT_TARGET * 100));
+
+// ---------- loops: resample, smooth, check, auto-build ----------
+function mtResample(p, step) { // a closed polyline -> evenly spaced points
+  const n = p.length, cum = [0];
+  for (let i = 0; i < n; i++) { const a = p[i], b = p[(i + 1) % n]; cum.push(cum[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const L = cum[n], m = Math.max(8, Math.round(L / step)), out = [];
+  for (let j = 0, i = 0; j < m; j++) {
+    const s = j * L / m; while (i < n - 1 && cum[i + 1] < s) i++;
+    const a = p[i], b = p[(i + 1) % n], f = (s - cum[i]) / ((cum[i + 1] - cum[i]) || 1);
+    out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+  }
+  return out;
+}
+const mtLen = (p, open) => { let L = 0; for (let i = 0; i < p.length - (open ? 1 : 0); i++) { const b = p[(i + 1) % p.length]; L += Math.hypot(b[0] - p[i][0], b[1] - p[i][1]); } return L; };
+function mtRadius(p, i, k) { // the radius of the circle through the points k either side of i
+  const n = p.length, a = p[(i - k + n) % n], b = p[i], c = p[(i + k) % n];
+  const cr = Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  return cr < 1e-9 ? 1e9 : Math.hypot(b[0] - a[0], b[1] - a[1]) * Math.hypot(c[0] - b[0], c[1] - b[1]) * Math.hypot(a[0] - c[0], a[1] - c[1]) / (2 * cr);
+}
+function mtSmooth(raw) { // a closed loop with every bend opened up to MT_RMIN (local smoothing where it is too tight), spaced MT_STEP
+  let p = mtResample(raw, 3), it = 0;
+  for (let k = 0; k < 2; k++) p = p.map((q, i) => { const a = p[(i - 1 + p.length) % p.length], b = p[(i + 1) % p.length]; return [q[0] * 0.5 + (a[0] + b[0]) * 0.25, q[1] * 0.5 + (a[1] + b[1]) * 0.25]; }); // hand wobble
+  for (; it < 400; it++) {
+    const n = p.length, tight = new Uint8Array(n);
+    let any = false;
+    for (let i = 0; i < n; i++) if (mtRadius(p, i, 2) < MT_RMIN) { any = true; for (let d = -4; d <= 4; d++) tight[(i + d + n) % n] = 1; }
+    if (!any) break;
+    p = p.map((q, i) => { if (!tight[i]) return q; const a = p[(i - 1 + n) % n], b = p[(i + 1) % n]; return [q[0] * 0.5 + (a[0] + b[0]) * 0.25, q[1] * 0.5 + (a[1] + b[1]) * 0.25]; });
+    if (it % 10 === 9) p = mtResample(p, 3);
+  }
+  return { pts: mtResample(p, MT_STEP), smoothed: it > 0 };
+}
+function mtRoll(pts) { // start the loop in the middle of its straightest stretch (the start line and the grid)
+  const n = pts.length, h = pts.map((q, i) => Math.atan2(pts[(i + 1) % n][1] - q[1], pts[(i + 1) % n][0] - q[0]));
+  let best = 0, bv = 1e9;
+  for (let i = 0; i < n; i += 2) { let v = 0; for (let k = -14; k < 14; k++) v += Math.abs(wrap(h[(i + k + 1 + n) % n] - h[(i + k + n) % n])); if (v < bv) { bv = v; best = i; } }
+  return [...pts.slice(best), ...pts.slice(0, best)];
+}
+// Is a loop raceable? Off the known table, or two parts of the road overlapping (red in the preview), or too short.
+function mtCheck(pts, raw) {
+  const n = pts.length, bad = new Uint8Array(n), need = MT_HW + MT_KERB - 0.5, W2 = (2 * (MT_HW + MT_KERB) + 0.5) ** 2, gap = Math.ceil(40 / MT_STEP);
+  let off = 0, close = 0, tight = 0;
+  for (let i = 0; i < n; i++) if (surfClear(pts[i][0], pts[i][1]) < need) { bad[i] = 1; off++; }
+  if (raw) for (const q of raw) if (surfClear(q[0], q[1]) < 0) { // the finger went off the table: the bit of track nearest it is marked, even if smoothing pulled it back on
+    for (let i = 0; i < n; i++) if ((pts[i][0] - q[0]) ** 2 + (pts[i][1] - q[1]) ** 2 < 625 && !bad[i]) { bad[i] = 1; off++; }
+  }
+  for (let i = 0; i < n; i++) if (mtRadius(pts, i, 6) < MT_RMIN * 0.75) { bad[i] = 3; tight++; } // a kink smoothing could not open up
+  for (let i = 0; i < n; i += 2) for (let j = i + gap; j < n; j += 2) {
+    if (n - (j - i) < gap) continue;
+    if ((pts[i][0] - pts[j][0]) ** 2 + (pts[i][1] - pts[j][1]) ** 2 < W2) { bad[i] = bad[j] = 2; close++; }
+  }
+  const len = n * MT_STEP;
+  return { bad, off, close, tight, len, ok: !off && !close && !tight && len >= MT_LMIN };
+}
+function mtRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// AUTO: a closed loop inside the scanned area. Shrink the known area by the road's half width and a margin, take the
+// biggest piece, go round it from its middle (the point furthest from any edge) at the distance each ray can reach,
+// add a couple of random wiggles that only pull the line inwards (so it stays inside), cap the length, smooth, check.
+function mtAuto(seed) {
+  const d = surfDist(), n = MT_N, need = MT_HW + MT_KERB + 3, lab = new Int32Array(n * n), q = new Int32Array(n * n);
+  const ok = (k) => (d[k] - 0.5) * MT_CELL >= need;
+  let best = 0, bestN = 0, L = 0;
+  for (let k = 0; k < n * n; k++) {
+    if (!ok(k) || lab[k]) continue;
+    L++; let h = 0, t = 0; q[t++] = k; lab[k] = L;
+    while (h < t) {
+      const c = q[h++], i = c % n;
+      for (const nb of [i > 0 ? c - 1 : -1, i < n - 1 ? c + 1 : -1, c - n, c + n]) if (nb >= 0 && nb < n * n && !lab[nb] && ok(nb)) { lab[nb] = L; q[t++] = nb; }
+    }
+    if (t > bestN) { bestN = t; best = L; }
+  }
+  if (bestN < 12) return null;
+  let c0 = -1, cd = -1;
+  for (let k = 0; k < n * n; k++) if (lab[k] === best && d[k] > cd) { cd = d[k]; c0 = k; }
+  const [cx, cz] = surfXZ(c0), inside = (x, z) => { const k = surfIdx(x, z); return k >= 0 && lab[k] === best; };
+  const A = 90, rmax = [];
+  for (let a = 0; a < A; a++) { const th = a / A * Math.PI * 2, ux = Math.cos(th), uz = Math.sin(th); let r = 0; while (r < MT_GRID && inside(cx + ux * (r + 1), cz + uz * (r + 1))) r += 1; rmax.push(r); }
+  const rm = rmax.map((_, a) => { let m = 1e9; for (let k = -3; k <= 3; k++) m = Math.min(m, rmax[(a + k + A) % A]); return m; });
+  const rnd = mtRng(seed);
+  let A1 = 0.1 + rnd() * 0.24, A2 = rnd() * 0.14;
+  const k1 = 2 + Math.floor(rnd() * 3), k2 = k1 + 1 + Math.floor(rnd() * 3), p1 = rnd() * 6.28, p2 = rnd() * 6.28, rev = rnd() < 0.5;
+  let shrink = 1;
+  for (let tr = 0; tr < 10; tr++) {
+    let pts = [];
+    for (let a = 0; a < A; a++) {
+      const th = a / A * Math.PI * 2, r = rm[a] * 0.97 * shrink * (1 - A1 * (0.5 + 0.5 * Math.sin(k1 * th + p1)) - A2 * (0.5 + 0.5 * Math.sin(k2 * th + p2)));
+      pts.push([cx + Math.cos(th) * r, cz + Math.sin(th) * r]);
+    }
+    if (rev) pts.reverse();
+    const len = mtLen(pts);
+    if (len > MT_LMAX) pts = pts.map(([x, z]) => [cx + (x - cx) * MT_LMAX / len, cz + (z - cz) * MT_LMAX / len]);
+    const sm = mtRoll(mtSmooth(pts).pts), chk = mtCheck(sm);
+    if (chk.ok) return { pts: sm, chk };
+    if (chk.len < MT_LMIN) return null;
+    A1 *= 0.6; A2 *= 0.6; if (tr > 4) shrink *= 0.94;
+  }
+  return null;
+}
+function mtPads(pts) { // two boost strips, on the straightest bits away from the start
+  const n = pts.length, pads = new Uint8Array(n);
+  for (const [f0, f1] of [[0.3, 0.45], [0.68, 0.85]]) {
+    let best = Math.round(n * f0), bv = 1e9;
+    for (let i = Math.round(n * f0); i < Math.round(n * f1); i++) { const r = Math.min(mtRadius(pts, i, 4), mtRadius(pts, i, 8)); if (-r < bv) { bv = -r; best = i; } }
+    for (let d = -4; d <= 4; d++) pads[(best + d + n) % n] = 1;
+  }
+  return pads;
+}
+
+// ---------- the road: one merged mesh (slab, kerbs, centre line, start chequer, boost strips) ----------
+function mtRoadGeo(pts, bad, pads) {
+  const n = pts.length, P = [], N = [], C = [];
+  const col = (h) => new THREE.Color(h).convertSRGBToLinear();
+  const cRoad = col(0x45484f), cBad = col(0xd23a2c), cClose = col(0xe07a1f), cKr = col(0xe63c2e), cKw = col(0xf6f1e6), cWall = col(0x2a2c31), cDash = col(0xf4eed8), cP1 = col(0xffc21c), cP2 = col(0xff6a1a), cC1 = col(0x1c1712), cC2 = col(0xfff8ec);
+  const tri = (a, b, c, cl, nx, ny, nz) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    if ((uy * vz - uz * vy) * nx + (uz * vx - ux * vz) * ny + (ux * vy - uy * vx) * nz < 0) [b, c] = [c, b]; // wind it to face (nx, ny, nz)
+    for (const v of [a, b, c]) { P.push(v[0], v[1], v[2]); N.push(nx, ny, nz); C.push(cl.r, cl.g, cl.b); }
+  };
+  const quad = (a, b, c, d, cl, nx = 0, ny = 1, nz = 0) => { tri(a, b, c, cl, nx, ny, nz); tri(a, c, d, cl, nx, ny, nz); };
+  const nor = pts.map((_, i) => { const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [-(b[1] - a[1]) / l, (b[0] - a[0]) / l]; });
+  const at = (i, lat, y) => { const k = ((i % n) + n) % n; return [pts[k][0] + nor[k][0] * lat, y, pts[k][1] + nor[k][1] * lat]; };
+  const W = MT_HW, K = MT_HW + MT_KERB, Y = MT_Y, YK = MT_Y + 0.12;
+  for (let i = 0; i < n; i++) {
+    const j = i + 1, s = i * MT_STEP, nl = nor[i];
+    quad(at(i, -W, Y), at(j, -W, Y), at(j, W, Y), at(i, W, Y), bad && bad[i] ? (bad[i] === 2 ? cClose : cBad) : cRoad); // red: off the table or too sharp; orange: overlaps another bit
+    const kc = Math.floor(s / 3) % 2 ? cKr : cKw;
+    quad(at(i, W, YK), at(j, W, YK), at(j, K, YK), at(i, K, YK), kc);
+    quad(at(i, -K, YK), at(j, -K, YK), at(j, -W, YK), at(i, -W, YK), kc);
+    quad(at(i, K, YK), at(j, K, YK), at(j, K, 0), at(i, K, 0), cWall, nl[0], 0, nl[1]);
+    quad(at(i, -K, YK), at(j, -K, YK), at(j, -K, 0), at(i, -K, 0), cWall, -nl[0], 0, -nl[1]);
+    if (pads && pads[i]) quad(at(i, -W + 0.5, Y + 0.04), at(j, -W + 0.5, Y + 0.04), at(j, W - 0.5, Y + 0.04), at(i, W - 0.5, Y + 0.04), i % 2 ? cP1 : cP2);
+    else if (Math.floor(s / 2.5) % 2 === 0) quad(at(i, -0.3, Y + 0.03), at(j, -0.3, Y + 0.03), at(j, 0.3, Y + 0.03), at(i, 0.3, Y + 0.03), cDash);
+  }
+  const sq = 2 * W / 6; // the start line: two rows of black and white squares across the road at point 0
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 6; c++) { const l0 = -W + c * sq, l1 = l0 + sq, i0 = r - 1; quad(at(i0, l0, Y + 0.05), at(i0 + 1, l0, Y + 0.05), at(i0 + 1, l1, Y + 0.05), at(i0, l1, Y + 0.05), (r + c) % 2 ? cC1 : cC2); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  return g;
+}
+const mtRoadMat = () => shared('mt:road', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }));
+function mtRoadMesh(pts, bad, pads) { const m = new THREE.Mesh(mtRoadGeo(pts, bad, pads), mtRoadMat()); m.receiveShadow = true; m.castShadow = false; return m; }
+
+// ---------- the surface group: practice table, scan paint, marker, track preview, the line being drawn ----------
+function mtGroup() {
+  if (MT.group) return MT.group;
+  const G = MT.group = new THREE.Group();
+  if (!MT.ar) { // the practice table: a plain wooden top 1.2 m x 0.65 m, its top at y = 0
+    const [w, d] = MT_PRACTICE, t = mesh(new THREE.BoxGeometry(w, 5, d), mat(0xffffff, { map: woodTex, roughness: 0.75 }), 0, -2.5, 0, G);
+    t.castShadow = false;
+  }
+  const cv = MT.cv = document.createElement('canvas'); cv.width = cv.height = MT_N;
+  MT.tex = new THREE.CanvasTexture(cv); MT.tex.minFilter = MT.tex.magFilter = THREE.LinearFilter; MT.tex.generateMipmaps = false;
+  MT.overlay = new THREE.Mesh(new THREE.PlaneGeometry(MT_GRID, MT_GRID).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: MT.tex, transparent: true, depthWrite: false, fog: false }));
+  MT.overlay.position.y = 0.08; MT.overlay.renderOrder = 1; G.add(MT.overlay);
+  MT.marker = new THREE.Mesh(new THREE.RingGeometry(7, 9, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, fog: false }));
+  MT.marker.position.y = 0.2; MT.marker.visible = false; MT.marker.renderOrder = 2; G.add(MT.marker);
+  scene.add(G);
+  MT.paintVer = -1;
+  return G;
+}
+function mtPaint() { // the scanned area, painted soft blue on the table, with a brighter rim
+  const g = MT.cv.getContext('2d'), img = MT.img || (MT.img = g.createImageData(MT_N, MT_N)), d = img.data, G = SURF.g, n = MT_N;
+  for (let k = 0; k < n * n; k++) {
+    const o = k * 4;
+    if (!G[k]) { d[o + 3] = 0; continue; }
+    const i = k % n, edge = !(i > 0 && G[k - 1] && i < n - 1 && G[k + 1] && k >= n && G[k - n] && k < n * n - n && G[k + n]);
+    d[o] = edge ? 150 : 40; d[o + 1] = edge ? 225 : 150; d[o + 2] = 255; d[o + 3] = edge ? 235 : 120;
+  }
+  g.putImageData(img, 0, 0); MT.tex.needsUpdate = true; MT.paintVer = SURF.ver;
+}
+function mtClearPreview() { if (MT.prev) { MT.group.remove(MT.prev); MT.prev.geometry.dispose(); MT.prev = null; } }
+function mtLine(pts) { // the line under the finger while drawing: a bright ribbon
+  if (MT.line) { MT.group.remove(MT.line); MT.line.geometry.dispose(); MT.line = null; }
+  if (!pts || pts.length < 2) return;
+  const P = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / l * 1.3, nz = (b[0] - a[0]) / l * 1.3, y = MT_Y + 0.4;
+    P.push(a[0] - nx, y, a[1] - nz, a[0] + nx, y, a[1] + nz, b[0] + nx, y, b[1] + nz, a[0] - nx, y, a[1] - nz, b[0] + nx, y, b[1] + nz, b[0] - nx, y, b[1] - nz);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  MT.line = new THREE.Mesh(g, shared('mt:line', () => new THREE.MeshBasicMaterial({ color: 0xffd23d, side: THREE.DoubleSide, fog: false })));
+  MT.line.renderOrder = 3; MT.group.add(MT.line);
+}
+
+// ---------- the flow ----------
+function mtBegin(ar) {
+  try { audioInit(); } catch (e) { /* no sound yet: fine */ }
+  if (MT.group) { scene.remove(MT.group); disposeTree(MT.group); MT.tex?.dispose(); MT.group = null; }
+  Object.assign(MT, { on: true, ar, phase: 'scan', strokes: [], cur: null, cand: null, loop: null, level: null, fit: null, sweep: 0, seed: (Math.random() * 1e6) | 0, prev: null, line: null });
+  if (MT.prevLevel === null) MT.prevLevel = curLevel;
+  curLevel = 0; // My Track uses level 1's tools and rules
+  surfReset(ar ? 'ar-hits' : 'practice');
+  $('start').hidden = true; $('end').hidden = true;
+  mtGroup();
+  reset(); // a stand-in level; startRace -> mtStart, which (no track yet) opens the scan
+  document.body.classList.add('mtrack');
+  $('mtBar').hidden = false;
+  mtUi(true);
+}
+function mtLook() { // a calm room, far fog (the top-down practice camera is high)
+  scene.background.setHex(0x6f6253); scene.fog.color.setHex(0x6f6253); scene.fog.near = 320; scene.fog.far = 900;
+  table.visible = false;
+  for (const b of state.bases || []) { if (b.mesh) b.mesh.visible = false; if (b.pad) b.pad.visible = false; }
+  obstacles.length = 0;
+  if (MT.group) { MT.group.matrixAutoUpdate = true; MT.group.position.set(0, 0, 0); MT.group.rotation.set(0, 0, 0); MT.group.scale.set(1, 1, 1); }
+}
+// The race (startRace hook). Without a track yet it is the scan / draw screen (phase 'mt').
+function mtStart() {
+  const p = state.player;
+  mtLook();
+  if (!MT.loop) {
+    state.race = null; state.phase = 'mt';
+    if (p.mesh) p.mesh.visible = false;
+    Object.assign(sun.shadow.camera, { left: -150, right: 150, top: 100, bottom: -100, far: 300 }); sun.shadow.camera.updateProjectionMatrix();
+    sun.position.set(-60, 120, 45); sun.target.position.set(0, 0, 0); sun.target.updateMatrixWorld();
+    $('raceHud').hidden = true;
+    return;
+  }
+  MT.phase = 'race';
+  MT.overlay.visible = false; MT.marker.visible = false;
+  const loop = MT.loop, n = loop.length, Lp = n * MT_STEP, laps = Math.max(2, Math.min(5, Math.round(1500 / Lp))), pads = mtPads(loop);
+  // The centre line, unrolled lap after lap (so the Kitchen Run engine's "distance along the course" counts laps by itself).
+  const M = { pts: [], segs: [], named: {} }, total = MT_LEAD + laps * n + Math.round(n * 0.5) + 12;
+  for (let k = 0; k < total; k++) { const i = (((k - MT_LEAD) % n) + n) % n, q = loop[i]; M.pts.push({ x: q[0], y: MT_Y, z: q[1], hw: 60, edge: false, solid: true, scr: null, v: 0, kick: 0, kmin: 0, boost: !!pads[i], water: false, dark: false, hob: false, surf: 'tape', seg: 0 }); }
+  kDone(M);
+  const K = { main: M, br: [], startI: MT_LEAD, fin: M.cum[MT_LEAD + laps * n], loopLen: M.cum[MT_LEAD + n] - M.cum[MT_LEAD], laps, n, gates: [], fades: [], basin: [0, 0, 0, 0], floors: [[-1e5, 1e5, -1e5, 1e5]], rings: [], hotOn: false, camY: MT_Y, zoom: 1, snap: true, flash: 0, spots: [] };
+  const R = state.race = { laps: 1, track: null, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, hudText: '', tokens: [], carried: [], intro: true, swap: null, slotSig: '', kr: K, mt: true, lap: 0 };
+  scene.add(R.group);
+  R.group.add(mtRoadMesh(loop, null, pads));
+  K.blob = new THREE.Mesh(shared('mt:blobGeo', () => new THREE.CircleGeometry(2.2, 20).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }));
+  K.blob.visible = false; R.group.add(K.blob);
+  // Gates: the start/finish and 3 to 5 checkpoints spread round the lap (the next one glows).
+  const nCP = Math.max(3, Math.min(5, Math.round(Lp / 170)));
+  for (let k = 0; k <= nCP; k++) {
+    const i = Math.round(k * n / (nCP + 1)) % n, M0 = MT_LEAD + i, g = { f: i / n, x: M.pts[M0].x, z: M.pts[M0].z, nx: M.nor[M0][0], nz: M.nor[M0][1], hw: MT_HW + MT_KERB + 0.4 };
+    buildGate(R, g, k); R.group.children[R.group.children.length - 1].position.y = MT_Y + 0.12;
+    K.gates.push(g);
+  }
+  // Tokens for level 1's tools, spread round the lap, alternating sides.
+  LOADOUTS[0].pool.forEach((id, i, all) => {
+    const j = MT_LEAD + Math.round((i + 0.55) * n / all.length) % n, lat = (i % 2 ? 1 : -1) * 2.6, x = M.pts[j].x + M.nor[j][0] * lat, z = M.pts[j].z + M.nor[j][1] * lat, y = MT_Y;
+    const g = new THREE.Group(); g.position.set(x, y, z);
+    mesh(shared('tok:base', () => new THREE.CylinderGeometry(2.4, 2.6, 0.4, 20)), shared(`tok:b${id}`, () => mat(TOOLS[id].col, { emissive: TOOLS[id].col, emissiveIntensity: 0.4 })), 0, 0.3, 0, g).castShadow = false;
+    const face = new THREE.Mesh(shared('tok:plane', () => new THREE.PlaneGeometry(4.2, 5.5)), tokenMat(id));
+    face.rotation.x = -0.97; face.position.y = 5.2; g.add(face);
+    R.group.add(g);
+    R.tokens.push({ id, x, y, z, g, face, ph: i * 1.3 });
+  });
+  // The grid: two abreast behind the start line.
+  const order = [1, 0, 2, 3];
+  const place = (c, k) => {
+    const i = Math.max(1, K.startI - 3 - (order[k] >> 1) * 4), lat = order[k] % 2 ? 2.6 : -2.6, q = M.pts[i];
+    Object.assign(c, { x: q.x + M.nor[i][0] * lat, z: q.z + M.nor[i][1] * lat, y: q.y, vy: 0, heading: M.head[i], vx: 0, vz: 0, kp: M, wp: i, krAir: false, scr: null, prog: M.cum[i], good: [M, i], goodY: q.y, wob: 0, boostT: 0, spinT: 0, sog: 0, s: M.cum[i], si: i, lat, carry: null, passed: 0, offT: 0 });
+  };
+  place(p, 0);
+  if (p.mesh) p.mesh.visible = true;
+  KR_RIVALS.forEach((cr, i) => { const c = { kind: 'racer', team: RED, name: cr.name, k: cr.k, lane: cr.lane, r: 1.6, mesh: buildModel('racer', RED), stats: { speed: 24, accel: 44, turn: 4.8, grip: 7 } }; place(c, i + 1); scene.add(c.mesh); R.rivals.push(c); R.cars.push(c); });
+  Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 60, bottom: -60, far: 220 }); sun.shadow.camera.updateProjectionMatrix(); // krCam moves the sun with the camera
+  state.phase = 'race';
+  document.body.classList.add('racing');
+  $('raceHud').hidden = false; $('raceRow').hidden = true; $('garage').hidden = true; $('slots').innerHTML = '';
+  $('pctBlue').textContent = $('pctRed').textContent = '100%';
+}
+function mtCleanup() { /* the road, gates, tokens and blob are in R.group (disposed by cleanupRace); krCleanup put the cars and the sun back */ }
+// Off the road (past the kerb) for a moment, or off the table: back on the track a little way behind.
+function mtOffRoad(c, dt) {
+  if (c.scr) return;
+  const P = c.kp, i = c.wp, q = P.pts[i], [nx, nz] = P.nor[i], lat = Math.abs((c.x - q.x) * nx + (c.z - q.z) * nz), offTable = surfClear(c.x, c.z) < -1;
+  if (lat > MT_HW + MT_KERB + 0.6 || offTable) {
+    c.offT = (c.offT || 0) + dt;
+    const k = Math.exp(-2.5 * dt); c.vx *= k; c.vz *= k;
+    if (offTable || c.offT > 0.7) { c.offT = 0; krRespawn(c, false); toast(offTable ? 'Off the table! Back on the track' : 'Off the track! Back you go'); }
+  } else c.offT = 0;
+}
+function mtRaceUpdate(dt) {
+  const R = state.race, K = R.kr, p = state.player;
+  engineUpdate(p);
+  R.t += dt;
+  if (R.hold > 0) {
+    R.hold -= dt;
+    const n = Math.ceil(R.hold);
+    if (n !== R.lastN) { R.lastN = n; if (n > 0) { banner(String(n), `MY TRACK: ${K.laps} laps. Drive through tokens to win tools. Stay on the road!`); sfx('tick'); } else { banner('GO!', 'Gates glow in order. Orange strips are boosts.'); bannerTimer = 1.4; sfx('respawn'); } }
+  }
+  const go = state.phase === 'race' && R.hold <= 0;
+  let [ix, iz] = AR.on ? arStick() : [input.x, input.z]; // the stick turned to the way the iPad looks (AR)
+  if (input.keys.has('KeyA') || input.keys.has('ArrowLeft')) ix -= 1;
+  if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) ix += 1;
+  if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) iz -= 1;
+  if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) iz += 1;
+  krCar(p, dt, go, ix, iz);
+  if (go) mtOffRoad(p, dt);
+  for (const c of R.rivals) krRival(c, dt, go);
+  krCollide();
+  const s0 = K.main.cum[K.startI], lapOf = (c) => (c.prog - s0) / K.loopLen, pl = Math.max(0, lapOf(p)), lap = Math.max(1, Math.min(K.laps, Math.floor(pl) + 1));
+  if (go && lap !== R.lap) { if (R.lap) { banner(lap === K.laps ? 'FINAL LAP!' : `LAP ${lap}`, `${lap} of ${K.laps}`); bannerTimer = 1.3; sfx('tick'); } R.lap = lap; }
+  const fr = pl - Math.floor(pl);
+  let next = K.gates.findIndex((g) => g.f > fr + 0.004); if (next < 0) next = 0;
+  K.gates.forEach((g, i) => { const on = go && i === next; g.glow.opacity = on ? 0.4 + Math.sin(R.t * 6) * 0.2 : 0; g.ballMat.emissiveIntensity = on ? 0.9 + Math.sin(R.t * 6) * 0.4 : 0.1; });
+  if (go) {
+    tokensUpdate(dt);
+    for (const c of R.cars) if (c.prog >= K.fin && !R.winner) { finishRace(c); break; }
+  }
+  if (state.phase === 'race') {
+    const rank = 1 + R.cars.filter((c) => c !== p && c.prog > p.prog).length;
+    const txt = `My Track · Lap ${lap}/${K.laps} · ${ordinal(rank)} of ${R.cars.length}`;
+    if (txt !== R.hudText) { R.hudText = txt; $('raceLine').textContent = txt; }
+    slotsDraw(dt);
+  }
+  toastTimer -= dt;
+  if (toastTimer <= 0) $('toast').textContent = '';
+}
+// Scanning and drawing (phase 'mt'): paint the scan a few times a second, keep the buttons right.
+function mtUpdate(dt) {
+  if (!MT.ar) mtSweep(dt);
+  if ((MT.paintT -= dt) <= 0 && SURF.ver !== MT.paintVer) { surfCloseHoles(); mtPaint(); MT.paintT = 0.25; }
+  if ((MT.uiT -= dt) <= 0) { MT.uiT = 0.25; mtUi(); }
+  if (MT.marker.visible) { const k = 1 + Math.sin(performance.now() / 200) * 0.08; MT.marker.scale.set(k, 1, k); }
+  toastTimer -= dt;
+  if (toastTimer <= 0) $('toast').textContent = '';
+}
+// Practice: a pretend iPad sweeps the practice table row by row (about 6 s), hitting only the table, like ARKit would.
+function mtSweep(dt) {
+  const [w, d] = MT_PRACTICE, rows = 5, rowT = 1.25, t = MT.sweep += dt, r = Math.floor(t / rowT);
+  if (r >= rows) { MT.marker.visible = false; return; }
+  const f = (t % rowT) / rowT, x = (r % 2 ? 1 - f : f) * (w - 30) - (w - 30) / 2, z = -d / 2 + 15 + r * (d - 30) / (rows - 1);
+  MT.marker.visible = true; MT.marker.position.set(x, 0.2, z);
+  for (let k = 0; k < 10; k++) {
+    const hx = x + (Math.random() - 0.5) * 64, hz = z + (Math.random() - 0.5) * 44;
+    if (Math.abs(hx) < w / 2 && Math.abs(hz) < d / 2) surfPaint(hx, hz, 6);
+  }
+}
+// AR, every frame (from arFrame): collect hits while scanning/drawing; put the world on the surface at real scale.
+const mtV = new THREE.Vector3();
+function mtArFrame(frame) {
+  if (frame && AR.refSpace && (MT.phase === 'scan' || MT.phase === 'draw' || MT.phase === 'auto')) {
+    for (const src of [AR.hitSource, ...(AR.mtSources || [])]) {
+      if (!src) continue;
+      const res = frame.getHitTestResults(src);
+      if (!res.length) continue;
+      const pose = res[0].getPose(AR.refSpace);
+      if (!pose) continue;
+      arTmp.m.fromArray(pose.transform.matrix);
+      if (arTmp.m.elements[5] < 0.7) continue; // not flat
+      mtV.setFromMatrixPosition(arTmp.m);
+      if (surfHit(mtV) && src === AR.hitSource && MT.marker) { MT.marker.visible = true; MT.marker.position.set((mtV.x - SURF.origin.x) / MT_S, 0.2, (mtV.z - SURF.origin.z) / MT_S); }
+    }
+  }
+  const o = SURF.origin, F = MT.phase === 'battle' && MT.fit;
+  AR.k = 1; AR.cx = AR.cz = 0; AR.yaw = F ? -F.phi : 0; AR.s0 = MT_S * (F ? F.k : 1);
+  if (o) AR.hit.set(o.x + (F ? F.cx * MT_S : 0), SURF.yMed, o.z + (F ? F.cz * MT_S : 0)); // (no surface yet: arFrame's "a metre ahead")
+}
+// A few more hit-test rays besides the screen centre (WebXR offsetRay; the WebXRKit polyfill turns each into one ARKit raycast).
+async function mtArSources(session, viewer) {
+  AR.mtSources = [];
+  if (typeof XRRay === 'undefined') return;
+  for (const [x, y] of [[-0.35, 0.28], [0.35, 0.28], [-0.35, -0.28], [0.35, -0.28]]) {
+    try { AR.mtSources.push(await session.requestHitTestSource({ space: viewer, entityTypes: ['plane'], offsetRay: new XRRay({ x: 0, y: 0, z: 0, w: 1 }, { x, y, z: -1, w: 0 }) })); } catch (e) { /* the centre ray alone still works */ }
+  }
+}
+// The camera while scanning and drawing (no AR): straight down at the practice table. Returns false when the race or battle camera should run.
+function mtCam() {
+  if (MT.phase === 'race' || MT.phase === 'battle') return false;
+  if (AR.on) return true;
+  const fit = Math.max(MT_PRACTICE[0] * 1.08 / (2 * Math.tan(22.5 * Math.PI / 180) * camera.aspect), MT_PRACTICE[1] * 1.25 / (2 * Math.tan(22.5 * Math.PI / 180)));
+  camera.position.set(0, fit, fit * 0.18); camera.lookAt(0, 0, 4);
+  if (ghost) ghost.visible = false;
+  return true;
+}
+// Where a screen point lands on the surface: a ray from the camera, cut with the plane of the table (game units).
+const mtRT = { o: new THREE.Vector3(), d: new THREE.Vector3(), m: new THREE.Matrix4() };
+function mtRay(cx, cy) {
+  const T = mtRT, C = AR.on ? AR.viewM : camera.matrixWorld;
+  T.o.setFromMatrixPosition(C);
+  T.d.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1, 0.5).applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(C).sub(T.o).normalize();
+  const py = AR.on ? SURF.yMed : 0;
+  if (Math.abs(T.d.y) < 1e-4) return null;
+  const t = (py - T.o.y) / T.d.y;
+  if (t <= 0) return null;
+  T.o.addScaledVector(T.d, t);
+  if (AR.on) T.o.applyMatrix4(T.m.copy(scene.matrixWorld).invert()); // metres -> game units
+  return [T.o.x, T.o.z];
+}
+// Drawing: the finger on the table. (Capture listeners on window, so the drive stick never sees these touches.)
+const mtDrawTarget = (e) => MT.on && MT.phase === 'draw' && (e.target === renderer.domElement || e.target.id === 'arTouch');
+addEventListener('pointerdown', (e) => {
+  if (!mtDrawTarget(e)) return;
+  e.stopPropagation(); e.preventDefault();
+  const q = mtRay(e.clientX, e.clientY);
+  MT.cur = { id: e.pointerId, pts: q ? [q] : [] };
+  try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+}, true);
+addEventListener('pointermove', (e) => {
+  const s = MT.cur;
+  if (!s || e.pointerId !== s.id) return;
+  e.stopPropagation();
+  const q = mtRay(e.clientX, e.clientY);
+  if (!q) return;
+  const l = s.pts[s.pts.length - 1];
+  if (l && Math.hypot(q[0] - l[0], q[1] - l[1]) < 2) return;
+  s.pts.push(q);
+  mtLine(s.pts);
+  const f = (MT.strokes[0] || s.pts)[0]; // came back round to the start: the loop closes itself
+  if (s.pts.length > 30 && mtLen([...MT.strokes.flat(), ...s.pts], true) > 150 && Math.hypot(q[0] - f[0], q[1] - f[1]) < 14) { mtStrokeEnd(); toast('Loop closed!'); }
+}, true);
+const mtUp = (e) => { if (MT.cur && e.pointerId === MT.cur.id) { e.stopPropagation(); mtStrokeEnd(); } };
+addEventListener('pointerup', mtUp, true); addEventListener('pointercancel', mtUp, true);
+function mtStrokeEnd() {
+  const s = MT.cur; MT.cur = null; mtLine(null);
+  if (!s || s.pts.length < 3) return;
+  MT.strokes.push(s.pts);
+  mtRecompose();
+}
+function mtRecompose() {
+  mtClearPreview(); MT.cand = null;
+  const raw = MT.strokes.flat();
+  if (!raw.length) { MT.msg = 'Drag a finger on the table to draw your track. Lift to stop; it joins up into a loop.'; mtUi(); return; }
+  if (raw.length < 6 || mtLen(raw, true) < 80) { MT.msg = 'Keep going: draw a bigger loop.'; mtLine(raw); mtUi(); return; }
+  const f = raw[0], l = raw[raw.length - 1], joined = Math.hypot(l[0] - f[0], l[1] - f[1]) > 25;
+  const sm = mtSmooth(raw), pts = mtRoll(sm.pts), chk = mtCheck(pts, raw);
+  MT.cand = { pts, chk };
+  MT.prev = mtRoadMesh(pts, chk.bad, null); MT.group.add(MT.prev);
+  if (chk.off) MT.msg = "That bit's off the table! (red) Undo, or draw inside the painted area.";
+  else if (chk.tight) MT.msg = 'That bend is too sharp to drive (red). Undo and draw it rounder.';
+  else if (chk.close) MT.msg = 'Two bits of track are too close (orange): the roads would overlap. Undo and spread them out.';
+  else if (chk.len < MT_LMIN) MT.msg = "That's a tiny track: draw a bigger loop.";
+  else MT.msg = `Track ready: ${(chk.len * MT_S).toFixed(1)} m${sm.smoothed ? ', tight bends smoothed' : ''}${joined ? ', ends joined up' : ''}. Tap Race!`;
+  if (chk.off) sfx('thud');
+  mtUi();
+}
+function mtAutoGo() {
+  MT.phase = 'auto'; MT.strokes = []; mtLine(null); mtClearPreview();
+  MT.seed = (MT.seed * 7 + 13) % 1000003;
+  const r = mtAuto(MT.seed);
+  MT.cand = r;
+  if (r) { MT.prev = mtRoadMesh(r.pts, null, mtPads(r.pts)); MT.group.add(MT.prev); MT.msg = `Auto track: ${(r.chk.len * MT_S).toFixed(1)} m. Race! or Another one.`; sfx('cap'); }
+  else MT.msg = 'Not enough flat table for a track yet. Scan a bit more (keep sweeping), then try again.';
+  mtUi();
+}
+// Race! The track is fixed, the battle board is fitted, and the race is built (a stand-in level) with the usual GO / Skip card.
+function mtGo() {
+  const c = MT.cand;
+  if (!c || !c.chk.ok) return;
+  MT.loop = c.pts; MT.cur = null; mtLine(null); mtClearPreview();
+  MT.fit = mtFitBoard(); MT.level = mtBattleLevel(MT.fit);
+  $('mtBar').hidden = true; document.body.classList.remove('mtrack');
+  reset();
+  mtIntro();
+}
+function mtAgain() { // the end card's PLAY AGAIN: the same track again
+  $('end').hidden = true; pendingLoad = null; MT.phase = 'race';
+  reset();
+  mtIntro();
+}
+function mtIntro() {
+  lrIntro();
+  const K = state.race && state.race.kr, p = $('lrIntro').querySelector('p:not(.sub)');
+  if (!MT.introHtml) MT.introHtml = p.innerHTML;
+  $('lrLvl').textContent = MT.ar ? 'My Track · on your table' : 'My Track · practice table';
+  p.innerHTML = `<b>Your own track</b>: ${K ? K.laps : 3} laps against the 3 red cars. Stay on the road (off it, or off the table, and you are put back behind). Drive through a <b>token</b> to win that tool; you carry <b>4</b>. Then the battle, on the same table.`;
+}
+function mtExit() {
+  if (!MT.on) return;
+  MT.on = false; MT.phase = ''; MT.want = false; MT.cur = null;
+  cleanupRace();
+  if (MT.group) { scene.remove(MT.group); disposeTree(MT.group); MT.tex?.dispose(); MT.group = MT.prev = MT.line = null; }
+  $('mtBar').hidden = true; document.body.classList.remove('mtrack');
+  if (MT.introHtml) $('lrIntro').querySelector('p:not(.sub)').innerHTML = MT.introHtml;
+  if (MT.prevLevel !== null) { curLevel = MT.prevLevel; MT.prevLevel = null; }
+  MT.level = MT.loop = MT.fit = MT.cand = null;
+  $('end').hidden = true; $('lrCard').hidden = true; $('banner').hidden = true;
+  $('start').hidden = false;
+  selectLevel(curLevel); // the normal game behind the title card again
+  if (AR.on) try { AR.session.end(); } catch (e) { /* ignore */ }
+}
+
+// ---------- the battle on the same surface ----------
+// The board is a rectangle fitted inside the scan: its long axis along the scan's main direction (PCA), as big as fits
+// (150 x 96 to 300 x 190 units at real scale; a smaller table shrinks the board instead, k < 1). The toy boxes sit at its
+// two ends (blue at the end nearer the player in AR). Everything else is level 1's layout stretched to the board.
+function mtFitBoard() {
+  const d = surfDist(), n = MT_N;
+  let sx = 0, sz = 0, c = 0;
+  for (let k = 0; k < n * n; k++) if (d[k] >= 1.5) { const [x, z] = surfXZ(k); sx += x; sz += z; c++; }
+  if (!c) return { phi: 0, cx: 0, cz: 0, W: 150, D: 96, k: 0.5 };
+  const mx = sx / c, mz = sz / c;
+  let xx = 0, zz = 0, xz = 0;
+  for (let k = 0; k < n * n; k++) if (d[k] >= 1.5) { const [x, z] = surfXZ(k); xx += (x - mx) ** 2; zz += (z - mz) ** 2; xz += (x - mx) * (z - mz); }
+  let phi = 0.5 * Math.atan2(2 * xz, xx - zz);
+  if (MT.ar && SURF.origin) { // blue at the end nearer the iPad
+    const ex = (AR.viewM.elements[12] - SURF.origin.x) / MT_S - mx, ez = (AR.viewM.elements[14] - SURF.origin.z) / MT_S - mz;
+    if (ex * Math.cos(phi) + ez * Math.sin(phi) > 0) phi += Math.PI;
+  }
+  const ux = Math.cos(phi), uz = Math.sin(phi), vx = -uz, vz = ux;
+  const known = (s, t) => surfKnown(mx + ux * s + vx * t, mz + uz * s + vz * t);
+  const line = (n, f) => { let miss = 0; for (let i = 0; i <= n; i++) if (!f(i)) miss++; return miss <= Math.max(1, n * 0.3); }; // a new edge may miss some cells (scan gaps); past the real edge it misses them all
+  const growA = (a, b) => [-1, 1].every((sg) => line(Math.ceil(2 * b / 3), (i) => known(sg * a, -b + i * 3)));
+  const growB = (a, b) => [-1, 1].every((sg) => line(Math.ceil(2 * a / 3), (i) => known(-a + i * 3, sg * b)));
+  let a = 6, b = 6, grow = true;
+  while (grow) { grow = false; if (a < 200 && growA(a + 3, b)) { a += 3; grow = true; } if (b < a && b < 120 && growB(a, b + 3)) { b += 3; grow = true; } }
+  const Wf = 2 * a - 8, Df = 2 * b - 8, W = Math.round(Math.max(150, Math.min(300, Wf))), D = Math.round(Math.max(96, Math.min(190, Df, W * 0.8)));
+  return { phi, cx: mx, cz: mz, W, D, k: Math.max(0.3, Math.min(1, Wf / W, Df / D)) };
+}
+function mtLevel() { return MT.level || { ...LEVELS[0], name: 'My Track', mt: true, decor: null }; } // (reset hook) the level to build: the battle board once the track is fixed
+function mtBattleLevel(F) {
+  const B = LEVELS[0], kx = F.W / 150, kz = F.D / 96, sx = (v) => v * kx, sz = (v) => v * kz;
+  return {
+    ...B, name: 'My Track', mt: true, size: [F.W, F.D], bases: [[-(F.W / 2 - 13), 0], [F.W / 2 - 13, 0]], mtSpawn: F.W / 2 - 23,
+    blocks: B.blocks.map(([x, z, ...r]) => [sx(x), sz(z), ...r]), patches: B.patches.map((p) => ({ ...p, x: sx(p.x), z: sz(p.z) })),
+    outposts: B.outposts.map(([x, z]) => [sx(x), sz(z)]), piles: B.piles.map(([x, z, a]) => [sx(x), sz(z), a]), refill: B.refill.map((r) => ({ ...r, x: sx(r.x), z: sz(r.z) })),
+    camZoom: Math.max(1, Math.min(1.5, F.W / 170)), decor: mtBoardDecor,
+  };
+}
+function mtBoardDecor() { // (buildLevel, battle only) masking tape round the board so its edge shows on the real table
+  MT.phase = 'battle';
+  const t = 2.4, m = shared('mt:tape', () => mat(0xf0e2b8, { roughness: 0.9 }));
+  for (const [x, z, w, d] of [[0, -D / 2 - t / 2, W + 2 * t, t], [0, D / 2 + t / 2, W + 2 * t, t], [-W / 2 - t / 2, 0, t, D], [W / 2 + t / 2, 0, t, D]]) mesh(new THREE.BoxGeometry(w, 0.2, d), m, x, 0.1, z).castShadow = false;
+  scene.fog.near = 260; scene.fog.far = 700;
+  if (MT.group) { // the surface (practice table, scan paint) sits under the board: its frame is the board's frame turned back
+    const F = MT.fit, M4 = new THREE.Matrix4().compose(new THREE.Vector3(F.cx, 0, F.cz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -F.phi), new THREE.Vector3(F.k, F.k, F.k));
+    MT.group.matrixAutoUpdate = false; MT.group.matrix.copy(M4).invert(); MT.group.matrixWorldNeedsUpdate = true;
+    MT.overlay.visible = false; MT.marker.visible = false;
+  }
+}
+
+// ---------- UI ----------
+function mtUi(force) {
+  if (!MT.on || state.phase !== 'mt') return;
+  const pct = surfPct(), ready = pct >= 25, ph = MT.phase;
+  let msg;
+  if (ph === 'scan') {
+    msg = MT.ar && !SURF.origin ? 'Point the iPad at your table and sweep it slowly over the top. Looking for the surface...'
+      : `Scanned ${pct} %${pct < 35 ? ' — sweep the iPad slowly over the table' : pct < 80 ? ' — sweep a bit more.' : ' — great!'}${ready ? ' Draw a track, or tap Auto.' : ''}`;
+  } else msg = MT.msg + (MT.ar && pct < 100 ? ` (scanned ${pct} %)` : '');
+  if (force || msg !== MT.uiMsg) { MT.uiMsg = msg; $('mtMsg').textContent = msg; }
+  $('mtDraw').disabled = !ready; $('mtAuto').disabled = !ready;
+  $('mtDraw').classList.toggle('on', ph === 'draw');
+  $('mtAuto').innerHTML = ph === 'auto' && MT.cand ? '🎲 Another one' : '🎲 Auto';
+  $('mtUndo').hidden = $('mtClear').hidden = ph !== 'draw';
+  $('mtUndo').disabled = $('mtClear').disabled = !MT.strokes.length;
+  $('mtRace').disabled = !(MT.cand && MT.cand.chk.ok);
+}
+(function mtUiInit() {
+  const css = document.createElement('style');
+  css.textContent = `
+  #mtBar { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 10px); display: grid; gap: 6px; justify-items: center; max-width: 96vw; pointer-events: none; }
+  #mtMsg { font-weight: 700; font-size: 17px; text-align: center; padding: 8px 14px; border-radius: 12px; background: var(--glass); color: var(--paper); text-shadow: 0 1px 0 var(--ink); max-width: 640px; }
+  #mtRow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 6px 8px; border-radius: 14px; background: var(--glass); pointer-events: auto; }
+  #mtRow button { font: 700 16px var(--body); color: var(--paper); background: rgba(255,248,236,0.16); border: 2px solid rgba(255,248,236,0.4); border-radius: 10px; min-width: 52px; min-height: 44px; padding: 4px 12px; touch-action: manipulation; }
+  #mtRow button.on { background: var(--blue); border-color: var(--paper); }
+  #mtRow button#mtRace { background: #2fa85a; border-color: var(--paper); font-size: 18px; }
+  #mtRow button:disabled { opacity: 0.4; }
+  body.mtrack .hud, body.mtrack .controls, body.mtrack #hint { display: none !important; }
+  #arChoose { margin-top: 8px; }`;
+  document.head.appendChild(css);
+  const bar = document.createElement('div'); bar.id = 'mtBar'; bar.hidden = true;
+  bar.innerHTML = '<div id="mtMsg"></div><div id="mtRow"><button id="mtDraw">✏️ Draw</button><button id="mtAuto">🎲 Auto</button><button id="mtUndo">Undo</button><button id="mtClear">Clear</button><button id="mtRace">Race!</button><button id="mtExit">Exit</button></div>';
+  document.body.appendChild(bar);
+  const pr = document.createElement('button'); pr.className = 'go alt'; pr.id = 'mtPractice'; pr.innerHTML = 'My Track<small>practice: draw your own track</small>';
+  $('play').after(pr);
+  const ch = document.createElement('div'); ch.id = 'arChoose'; ch.className = 'two'; ch.hidden = true;
+  ch.innerHTML = '<button class="go alt" id="arKr">Kitchen Run<small>the toy kitchen on your table</small></button><button class="go alt" id="arMt">My Track<small>draw a track on your real table</small></button>';
+  $('arBtn').after(ch);
+  pr.addEventListener('click', () => mtBegin(false));
+  $('arKr').addEventListener('click', () => { ch.hidden = true; arStart(); });
+  $('arMt').addEventListener('click', () => { ch.hidden = true; MT.want = true; arStart(); });
+  $('mtDraw').addEventListener('click', () => { MT.phase = 'draw'; MT.cand = null; mtClearPreview(); MT.strokes = []; MT.msg = 'Drag a finger on the table to draw your track. Lift to stop; it joins up into a loop.'; mtUi(); });
+  $('mtAuto').addEventListener('click', mtAutoGo);
+  $('mtUndo').addEventListener('click', () => { MT.strokes.pop(); mtRecompose(); });
+  $('mtClear').addEventListener('click', () => { MT.strokes = []; mtLine(null); mtRecompose(); });
+  $('mtRace').addEventListener('click', mtGo);
+  $('mtExit').addEventListener('click', mtExit);
+})();
+// ===================== end of My Track =====================
 </script>
