@@ -138,6 +138,62 @@ button.off, .row.off { display: none !important; }
 .card .foe { font-size: 15px; opacity: 0.9; max-width: 60ch; }
 @media (max-width: 700px) { .tiles { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .garage { max-width: calc(100vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); } .card h1 { font-size: 34px; } }
+/* Toy boxes: ability button, title row, picker / upgrades / collection screen */
+button.abil { position: relative; overflow: hidden; --p: 0; min-width: 104px; min-height: 64px; border-color: var(--gold); background: rgba(255, 194, 61, 0.22); }
+button.abil::before { content: ''; position: absolute; inset: 0; background: conic-gradient(rgba(10, 8, 20, 0.7) calc(var(--p) * 1%), transparent 0); pointer-events: none; }
+button.abil b, button.abil small { position: relative; z-index: 1; }
+button.abil b { font: 13px var(--display); }
+button.abil.ready { box-shadow: 0 0 14px 2px rgba(255, 194, 61, 0.75); background: rgba(255, 194, 61, 0.4); }
+.myBox { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; border-radius: 16px; background: var(--glass); text-align: left; flex-wrap: wrap; justify-content: center; }
+.myBox b { display: block; font: 20px var(--display); color: var(--gold); }
+.myBox small { display: block; opacity: 0.85; font-size: 14px; }
+.myBox .sub { font-size: 11px; }
+.bthumb { display: block; width: 100%; max-width: 340px; aspect-ratio: 4 / 3; border-radius: 12px; object-fit: cover; }
+.bthumb.small { width: 150px; }
+.bthumb.tiny { width: 92px; border-radius: 10px; }
+.bthumb.q { display: grid; place-items: center; font: 44px var(--display); background: #3a3026; color: #6b5d4c; }
+.boxCard { max-width: 1120px; width: 100%; }
+.boxTabs { display: flex; gap: 8px; }
+.boxTabs button.on { border-color: var(--gold); background: rgba(255, 194, 61, 0.28); }
+#boxBody { width: 100%; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.bcard { display: grid; gap: 6px; align-content: start; text-align: left; padding: 10px; border-radius: 16px; background: var(--glass); border: 3px solid transparent; cursor: pointer; }
+.bcard.sel { border-color: var(--gold); background: rgba(255, 194, 61, 0.14); }
+.bcard.enemy { opacity: 0.8; }
+.bcard h3 { margin: 4px 0 0; font: 18px var(--display); color: var(--gold); }
+.by { font-size: 12px; color: #ffd98a; font-style: italic; }
+.bcard dl { margin: 0; font-size: 13px; line-height: 1.3; }
+.bcard dt { font: 11px var(--display); color: #9fd0ff; margin-top: 5px; letter-spacing: 0.05em; }
+.bcard dd { margin: 0; }
+.bpick { background: var(--blue); border-color: var(--paper); font: 14px var(--display); margin-top: 6px; }
+.bpick.off { background: transparent; border-style: dashed; font-size: 12px; }
+.upHead { display: flex; gap: 14px; align-items: center; text-align: left; margin-bottom: 8px; }
+.upHead h3 { margin: 0; font: 22px var(--display); color: var(--gold); }
+.upHead p { margin: 4px 0 0; font-size: 14px; }
+.slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; text-align: left; }
+.slot { padding: 10px; border-radius: 14px; background: var(--glass); display: grid; gap: 6px; align-content: start; }
+.slot h4 { margin: 0; font: 15px var(--display); color: var(--gold); }
+.slot h4 small, .skinsH small { font: 12px var(--body); color: var(--paper); opacity: 0.75; }
+.slot p { margin: 0; font-size: 13px; }
+.kinds { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.kinds span { font: 11px var(--display); opacity: 0.7; min-width: 52px; }
+.kinds button { min-height: 40px; min-width: 0; padding: 6px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.kinds button.on { border-color: var(--gold); background: rgba(255, 194, 61, 0.3); }
+.kinds button.locked { opacity: 0.7; border-style: dashed; }
+.kinds button i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--paper); display: inline-block; }
+.tier { display: flex; align-items: center; gap: 10px; }
+.tier span { color: var(--gold); letter-spacing: 0.15em; }
+.tier em { font: 12px var(--display); color: #8de08d; }
+.tier button { min-height: 40px; font-size: 14px; background: var(--blue); }
+.looks { grid-column: 1 / -1; }
+.shelf { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.shelfItem { display: grid; gap: 3px; justify-items: center; padding: 8px; border-radius: 14px; background: var(--glass); width: 176px; border: 3px solid transparent; }
+.shelfItem.sel { border-color: var(--gold); }
+.shelfItem b { font: 13px var(--display); color: var(--gold); }
+.shelfItem small { font-size: 11px; opacity: 0.8; }
+.shelfNote { font-size: 14px; }
+.skinsH { margin: 14px 0 0; font: 16px var(--display); color: var(--gold); }
+.lockedSkin { opacity: 0.6; }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 
@@ -181,6 +237,7 @@ button.off, .row.off { display: none !important; }
   <div class="row">
     <button id="bGun">Gun<small id="gunCost">25</small></button>
     <button id="bRocket">Rocket<small id="rocketCost">40</small></button>
+    <button id="bAbility" class="abil" hidden><b id="abilName">Ability</b><small id="abilSub"></small></button>
     <button id="bUse" hidden>Use<small id="useIcon"></small></button>
     <button class="fire" id="bFire">FIRE</button>
   </div>
@@ -192,6 +249,7 @@ button.off, .row.off { display: none !important; }
     <p class="sub" id="lvlSub"></p>
     <p id="lvlBlurb"></p>
     <ul id="lvlTips"></ul>
+    <div class="myBox" id="myBox"></div>
     <button class="go" id="play">PLAY</button>
   </div>
 </div>
@@ -215,7 +273,16 @@ button.off, .row.off { display: none !important; }
 </div>
 <div class="screen" id="end" hidden>
   <div class="card"><h1 id="endTitle">YOU WIN</h1><div class="stars" id="endStars"></div><p id="endText"></p>
-    <div class="two"><button class="go" id="next" hidden>NEXT LEVEL</button><button class="go alt" id="again">PLAY AGAIN</button><button class="go alt" id="menu">LEVELS</button></div></div>
+    <div class="two"><button class="go" id="next" hidden>NEXT LEVEL</button><button class="go alt" id="again">PLAY AGAIN</button><button class="go alt" id="menu">LEVELS</button><button class="go alt" id="endBoxes">TOY BOX</button></div></div>
+</div>
+<div class="screen" id="boxScr" hidden>
+  <div class="card wide boxCard">
+    <h1>TOY BOXES</h1>
+    <div class="boxTabs" id="boxTabs"><button data-tab="pick">PICK</button><button data-tab="up">UPGRADES</button><button data-tab="shelf">COLLECTION</button></div>
+    <p class="sub" id="boxCoins"></p>
+    <div id="boxBody"></div>
+    <button class="go" id="boxDone">DONE</button>
+  </div>
 </div>
 
 <!-- ===================== Characters and dialogue (self-contained module: HTML, CSS, JS) =====================
@@ -1457,14 +1524,15 @@ const WEAPONS = {
   raid: { vsBase: 0.3, dmg: 3, rate: 0.14, range: 13, speed: 60, color: 0xffb3a7, size: 0.35 }, // a raider's pop-gun: quick, but weak
   laser: { vsBase: 0.5, dmg: 9, rate: 0.11, range: 17, speed: 110, color: 0x7cfffb, size: 0.3 },
   // Sink level: the gunboat's little gun, the sponge raft's pop-gun, and the Rubber Duck's big slow bubbles (splash on pop).
-  boatgun: { vsBase: 0.3, dmg: 7, rate: 0.34, range: 20, speed: 55, color: 0xd6efff, size: 0.4 },
-  raftgun: { vsBase: 0.3, dmg: 6, rate: 0.4, range: 18, speed: 50, color: 0xffe9a8, size: 0.4 },
+  boatgun: { wet: true, vsBase: 0.3, dmg: 7, rate: 0.34, range: 20, speed: 55, color: 0xd6efff, size: 0.4 },
+  raftgun: { wet: true, vsBase: 0.3, dmg: 6, rate: 0.4, range: 18, speed: 50, color: 0xffe9a8, size: 0.4 },
   // Drawer level: the Remote Car's sniper shot (red tracer, long and fast).
   snipe: { vsBase: 0.3, dmg: 20, rate: 1.3, range: 46, speed: 75, color: 0xff3b30, size: 0.5 },
   // Level 5: the Toaster Tank's flaming toast, lobbed in a high arc (it lands where the target was).
   toast: { vsBase: 1.0, dmg: 26, rate: 1.2, range: 42, speed: 20, lob: 1.5, splash: 4.5, flame: true, color: 0xff7a1a, size: 0.9 },
   // Level 6: the baguette bombers' crumb bomb (dropped from the air, not fired; the numbers here are read by bombDrop and bombBlast)
   bomb: { vsBase: 0.6, dmg: 50, rate: 1.7, range: 0, speed: 1, splash: 5.5, color: 0xe8c07a, size: 0.6 },
+  baguette: { vsBase: 1.0, flatten: 1, dmg: 58, rate: 1.8, range: 22.5, speed: 30, splash: 3.8, color: 0xe8c07a, size: 1.0 }, // the Bread Bin's cannon: big, slow, flattens walls
   bubble: { vsBase: 0.3, dmg: 34, rate: 3, range: 58, speed: 12, splash: 5.5, bubble: true, color: 0xaee8ff, size: 1.5 },
   // Level 6 infantry: loopers (weak, quick), pikemen (short reach, vsCar x2.2 on cars), pea shooters (lobbed), battery bots (no shot: the zap is botZap)
   loopshot: { vsBase: 0.2, dmg: 2, rate: 0.2, range: 9, speed: 50, color: 0xffd34d, size: 0.25 },
@@ -1695,26 +1763,637 @@ const shots = [];
 const parts = [];
 const outposts = [];
 
+// ---------- TOY BOXES (the home bases) ----------
+// Every base is a collectible, upgradable toy box that UNFOLDS into a little playset when the battle starts.
+// Designs come from PatchTown's resident council (Q6): Tea Trolley by the Town Brain, Spice Rack Fortress by the Dell Elder,
+// Tea Kettle by the Dell Surveyor, Toaster Garage (Captain Crumb's) and Bread Bin Fortress (Baron von Baguette's) by CAIRN.
+// BOXES below is the plug-in table: model builder, unfold, ability, weakness hook, stats, upgrade slots. HANDOVER.md > "Toy boxes" explains how to add one.
+// Models face +x (towards the middle of the table); the red box is the same model turned round. Panels sit on hinge pivots (Object3D),
+// so an unfold is just "rotate (or slide) each pivot with a spring". See buildBoxModel / unfoldTo.
+const BOX_ORDER = ['trolley', 'spice', 'kettle', 'toaster', 'bread'];
+const PLAYER_BOXES = ['trolley', 'spice', 'kettle', 'toaster']; // the Bread Bin is the Baron's: you fight it on every level
+const UNFOLD_T = 0.5, CLUNK_T = 0.4; // seconds: the whole unfold, and the moment the CLUNK lands (shake + flash)
+// Damped spring 0 -> 1 with a little overshoot (about 8%): snap, then settle. u is 0..1 of a panel's own time.
+const springEase = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - Math.exp(-6 * u) * Math.cos(7.5 * u)); // arrives at about 0.2 of a panel's time, overshoots 8%, settles
+const SLOT_COST = [0, 2, 3, 4]; // stars to buy tier 1, 2, 3 of a slot (tier 0 is "not fitted")
+const PAINTS = [null, 0xff6fa5, 0xffc23d, 0x9b5de5, 0x2ec4b6, 0xf2f2f2]; // Looks: paint (null = the box's own colour)
+const PAINT_NAMES = ['Original', 'Bubblegum', 'Custard', 'Grape', 'Mint', 'Snow'];
+const STICKERS = ['None', 'Star', 'Heart', 'Bolt', 'Smiley'];
+const FLAGS = ['Team', 'Gold', 'Pink', 'Checkers', 'Rainbow'];
+// Rare skins: a gumball prize can unlock one. They live in the Looks slot, free to wear once owned.
+const SKINS = {
+  goldToaster: { box: 'toaster', name: 'Gold Toaster', col: 0xffcf3a, metal: 0.9 },
+  chromeTrolley: { box: 'trolley', name: 'Chrome Trolley', col: 0xe6ebef, metal: 0.95 },
+  copperKettle: { box: 'kettle', name: 'Copper Kettle', col: 0xc8723a, metal: 0.8 },
+  chilliRack: { box: 'spice', name: 'Chilli-Red Rack', col: 0xd4301f, metal: 0.1 },
+};
+
+// ----- Saved box choice, upgrades, stars to spend and skins (localStorage, every read and write in try/catch) -----
+const BOX_KEY = 'bb-boxes-v1';
+const defaultUp = () => ({ roof: { k: 'turret', t: 1 }, doors: { k: 'armour', t: 0 }, garage: { k: 'trucks', t: 0 }, sig: 0, look: { paint: 0, sticker: 0, flag: 0, skin: '' }, own: { p: [0], s: [0], f: [0] } });
+const SLOT_KINDS = { roof: ['turret', 'radar', 'drone'], doors: ['armour', 'spikes', 'bridge'], garage: ['trucks', 'repair'] };
+const boxSave = { pick: 'trolley', coins: 3, skins: [], up: {} };
+function cleanUp(u) {
+  const d = defaultUp(), n = (v, lo, hi, dflt) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v | 0)) : dflt);
+  if (!u || typeof u !== 'object') return d;
+  for (const s of ['roof', 'doors', 'garage']) if (u[s] && SLOT_KINDS[s].includes(u[s].k)) d[s] = { k: u[s].k, t: n(u[s].t, s === 'roof' ? 1 : 0, 3, d[s].t) };
+  d.sig = n(u.sig, 0, 1, 0);
+  if (u.look) d.look = { paint: n(u.look.paint, 0, PAINTS.length - 1, 0), sticker: n(u.look.sticker, 0, STICKERS.length - 1, 0), flag: n(u.look.flag, 0, FLAGS.length - 1, 0), skin: SKINS[u.look.skin] ? u.look.skin : '' };
+  if (u.own) for (const [k, len] of [['p', PAINTS.length], ['s', STICKERS.length], ['f', FLAGS.length]]) if (Array.isArray(u.own[k])) d.own[k] = [...new Set([0, ...u.own[k].map((v) => n(v, 0, len - 1, 0))])];
+  return d;
+}
+try {
+  const s = JSON.parse(localStorage.getItem(BOX_KEY) || 'null');
+  if (s && typeof s === 'object') {
+    if (PLAYER_BOXES.includes(s.pick)) boxSave.pick = s.pick;
+    if (Number.isFinite(+s.coins)) boxSave.coins = Math.max(0, Math.min(999, +s.coins | 0));
+    if (Array.isArray(s.skins)) boxSave.skins = s.skins.filter((k) => SKINS[k]);
+    for (const id of PLAYER_BOXES) boxSave.up[id] = cleanUp(s.up && s.up[id]);
+  }
+} catch (e) { /* no storage: the choice lasts until the page closes */ }
+for (const id of PLAYER_BOXES) boxSave.up[id] = cleanUp(boxSave.up[id]);
+function saveBoxes() { try { localStorage.setItem(BOX_KEY, JSON.stringify(boxSave)); } catch (e) { /* ignore */ } }
+// What a fitted set of upgrades means in play (read by the hooks below).
+function boxFxOf(up) {
+  const at = (s, k) => (up[s].k === k ? up[s].t : 0);
+  return { tur: at('roof', 'turret'), radar: at('roof', 'radar'), pad: at('roof', 'drone'), armour: at('doors', 'armour'), spikes: at('doors', 'spikes'), bridge: at('doors', 'bridge'), trucks: at('garage', 'trucks'), repair: at('garage', 'repair'), sig: up.sig };
+}
+
+// ----- The five boxes -----
+const BOXES = {
+  trolley: {
+    name: 'Tea Trolley', by: 'the Town Brain', owner: 'Mrs. Crumb, a frantic baker', family: 'Furniture', role: 'Economy + path-blocking', playstyle: 'Helper / defender',
+    tint: 0x6fd1b0, hpMul: 0.95, sound: 'click-whirr-CLONK',
+    unfoldText: 'Four brass hinges snap outward, the top tray drops and the wheels pop down. The clunk is the tray locking.',
+    unfoldPhysics: 'Wings widen the hitbox; trucks can unload from further away.',
+    passive: { name: 'Heavy Load', text: 'Your trucks carry double cereal, with no speed penalty.' },
+    ability: { name: 'Crate Barrage', cooldown: 28, text: 'Drops a wall of mini-dominoes across the path to their box. They block cars and shots for 12 seconds.' },
+    weakness: { name: 'Top-Heavy', text: 'A big hit (rocket, cannon, a domino run) tips it for 4 seconds: no income, defences off.' },
+    sig: { name: 'Silver Serving Tray', text: 'The top shelf becomes a shield that reflects enemy shots back at them.' },
+    shut: { r: 7, obs: [[0, 0, 11, 12, 5]] }, open: { r: 8.8, obs: [[0, 0, 11, 17.4, 5]] },
+  },
+  spice: {
+    name: 'Spice Rack Fortress', by: 'the Dell Elder', owner: 'Granny Paprika, the pantry queen', family: 'Pantry shelving', role: 'Area denial', playstyle: 'Defender',
+    tint: 0x9a5a32, hpMul: 1.15, sound: 'clink-clink-thunk',
+    unfoldText: 'A medieval drawbridge drops to reveal a tiny spice market and a car garage. Soft clinks of spice jars.',
+    unfoldPhysics: 'The solid front opens into a gateway: cars can drive in to the garage and are repaired fast.',
+    passive: { name: 'Garage', text: 'Cars repair twice as fast inside the gateway.' },
+    ability: { name: 'Chilli Cloud', cooldown: 22, text: 'A pepper cloud around the box for 6 seconds. Anyone inside is blinded: aim scatters and cars swerve.' },
+    weakness: { name: 'Stings Everyone', text: 'The cloud blinds YOUR units too if they are close to the box.' },
+    sig: { name: 'Cinnamon Boost', text: 'Your cars leaving the garage get a burst of speed.' },
+    shut: { r: 7.5, obs: [[0, 0, 12.4, 13.4, 9]] }, open: { r: 7.5, obs: [[-3.3, 0, 5.4, 13.4, 9], [2.75, 5.4, 6.7, 3.6, 8], [2.75, -5.4, 6.7, 3.6, 8]] },
+  },
+  kettle: {
+    name: 'Tea Kettle', by: 'the Dell Surveyor', owner: 'Old Mr. Whistle, who watches the hob', family: 'Stovetop cookware', role: 'Buff / hit-and-run', playstyle: 'Fast hit-and-run',
+    tint: 0x3b6fd8, hpMul: 0.85, sound: 'psssh-clank',
+    unfoldText: 'A plume of steam, the lid flips back and a tiered platform rises. Hissing steam and a clanking lid.',
+    unfoldPhysics: 'The round hull shrinks as the lid opens, and the steam deck speeds up cars near the box.',
+    passive: { name: 'Steam Deck', text: 'Your cars move a little faster near the box.' },
+    ability: { name: 'Boiling Point', cooldown: 26, text: 'A 7 second burst: all your units are faster and hit harder.' },
+    weakness: { name: 'Cold Water', text: 'Milk and water attacks (the sink\'s bubbles, boat guns, drips) hurt it twice as much.' },
+    sig: { name: 'Pressure Release Valve', text: 'A second Boiling Point charge.' },
+    shut: { r: 7, obs: [[0, 0, 10.6, 10.6, 7]] }, open: { r: 6.2, obs: [[0, 0, 9, 9, 8]] },
+  },
+  toaster: {
+    name: 'Toaster Garage', by: 'CAIRN, for Captain Crumb', owner: 'Captain Crumb, ace toast pilot', family: 'Mains appliance', role: 'Mobility / raider', playstyle: 'Mobility / raider',
+    tint: 0xcfd5db, hpMul: 0.85, sound: 'pop-DING',
+    unfoldText: 'The upper housing pops up into a garage with launch slots and a ramp. A bright "pop-DING".',
+    unfoldPhysics: 'The front ramp becomes a launch pad: drive onto it and you are fired across the map.',
+    passive: { name: 'Launch Ramp', text: 'Drive up the front ramp to fire your car at their box.' },
+    ability: { name: 'Pop-Up', cooldown: 40, text: 'Launches your car, and friends beside the box, across the map like toast.' },
+    weakness: { name: 'Long Cool-down', text: 'After a launch it glows hot and takes 50% more damage until it cools.' },
+    sig: { name: 'Extra-Crispy Setting', text: 'Shorter cool-down and two more cars per launch.' },
+    shut: { r: 7, obs: [[0, 0, 12, 13.4, 4.2]] }, open: { r: 7.5, obs: [[0, 0, 12, 13.4, 7.6]] },
+  },
+  bread: {
+    name: 'Bread Bin Fortress', by: 'CAIRN, for Baron von Baguette', owner: 'Baron von Baguette (the enemy)', family: 'Baker\'s container', role: 'Siege / artillery', playstyle: 'Siege',
+    tint: 0xc98f4e, hpMul: 1, sound: 'thunk',
+    unfoldText: 'The roll-top door slides up into a castle. A deep "thunk".',
+    unfoldPhysics: 'The castle is bigger and taller than the closed bin.',
+    passive: { name: 'Climbs the Ranks', text: 'The Baron\'s box gets stronger level by level.' },
+    ability: { name: 'Baguette Cannon', cooldown: 0, text: 'A big slow shot that flattens walls and turrets. It turns slowly: stay moving.' },
+    weakness: { name: 'Slow to Turn', text: 'The cannon swings round slowly, so fast cars slip past.' },
+    sig: { name: '', text: '' },
+    shut: { r: 7.5, obs: [[0, 0, 12, 13.4, 5.5]] }, open: { r: 8.5, obs: [[0, 0, 14, 15, 8.5]] },
+  },
+};
+
+// ----- Model kit: shapes on hinge pivots -----
+function boxKit() {
+  const K = { g: new THREE.Group(), H: [], mats: [], paint: [], glow: [], parts: {}, anchor: {}, steam: null };
+  K.M = (c, ex = {}) => { if (ex.metalness > 0.4) ex = { ...ex, metalness: ex.metalness * 0.45 }; const m = mat(c, ex); // (no environment map here, so full metal would look dark grey)
+    m.userData.e0 = [m.emissive.getHex(), m.emissiveIntensity]; K.mats.push(m); return m; };
+  K.B = (w, h, d, m, x, y, z, p = K.g) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z, p);
+  K.C = (rt, rb, h, m, x, y, z, p = K.g, seg = 16) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m, x, y, z, p);
+  K.S = (r, m, x, y, z, p = K.g) => mesh(new THREE.SphereGeometry(r, 14, 10), m, x, y, z, p);
+  // A pivot at (x,y,z) under p. It turns about `axis` from `closed` to `open` (kind 'rot'), slides along it (kind 'pos') or squashes along it (kind 'scale', a roll-top), `delay` s after the start.
+  K.hg = (p, x, y, z, axis, closed, open, delay = 0, kind = 'rot') => {
+    const o = new THREE.Group(); o.position.set(x, y, z); p.add(o);
+    K.H.push({ o, axis, closed, open, delay, kind, base: kind === 'pos' ? o.position[axis] : 0 });
+    if (kind === 'rot') o.rotation[axis] = closed; else if (kind === 'scale') o.scale[axis] = closed; else o.position[axis] += closed;
+    return o;
+  };
+  K.anim = (o, axis, closed, open, delay = 0) => { // an existing group that slides
+    K.H.push({ o, axis, closed, open, delay, kind: 'pos', base: o.position[axis] }); o.position[axis] += closed; return o;
+  };
+  return K;
+}
+// Poses every pivot for time t seconds into the unfold (0 = shut). Each panel takes 0.42 s of its own, offset by its delay.
+function unfoldTo(model, t) {
+  for (const h of model.H) {
+    const v = h.closed + (h.open - h.closed) * springEase((t - h.delay) / 0.42);
+    if (h.kind === 'rot') h.o.rotation[h.axis] = v; else if (h.kind === 'scale') h.o.scale[h.axis] = Math.max(0.02, v); else h.o.position[h.axis] = h.base + v;
+  }
+}
+
+function buildTrolley(K, up) { // Tea Trolley: mint, cream and brass
+  const teal = K.M(0x6fd1b0), cream = K.M(0xfff0d2), brass = K.M(0xd9a441, { metalness: 0.7, roughness: 0.35 }), dark = K.M(0x3d3a36), silver = K.M(0xe9eef2, { metalness: 0.6, roughness: 0.28 });
+  K.paint.push(teal);
+  const body = new THREE.Group(); K.g.add(body); K.anim(body, 'y', 0, 1.5, 0.04); // the whole trolley rises as the wheels pop down
+  K.B(10, 4.6, 11, teal, 0, 2.3, 0, body);
+  K.B(10.4, 0.6, 11.4, cream, 0, 1.3, 0, body);
+  K.B(10.4, 0.45, 11.4, cream, 0, 4.7, 0, body);
+  K.B(0.25, 2.2, 6.4, dark, 5.05, 2.9, 0, body);                       // the drawer front
+  const bar = K.C(0.28, 0.28, 6.8, brass, 5.35, 4.1, 0, body, 8); bar.rotation.x = Math.PI / 2;
+  for (const z of [-3.1, 3.1]) K.B(0.3, 0.3, 0.7, brass, 5.2, 4.1, z, body);
+  for (const sz of [-1, 1]) { // side wings: hang down shut, swing flat open
+    const w = K.hg(body, 0, 4.3, sz * 5.5, 'x', sz * Math.PI / 2, 0, sz > 0 ? 0 : 0.04);
+    K.B(9.4, 0.3, 3.4, cream, 0, 0, sz * 1.7, w); K.B(8.8, 0.35, 0.3, brass, 0, 0.3, sz * 3.3, w);
+    const cup = K.C(0.7, 0.5, 0.8, silver, 1.5 * sz, 0.5, sz * 1.7, w, 10); cup.name = 'cup';
+    const hinge = K.C(0.34, 0.34, 9.6, brass, 0, 0, 0, w, 8); hinge.rotation.z = Math.PI / 2;
+  }
+  const fr = K.hg(body, 5.2, 3.3, 0, 'z', -Math.PI / 2, 0, 0.08);       // front shelf
+  K.B(3.4, 0.3, 9.4, cream, 1.7, 0, 0, fr); K.B(0.3, 0.7, 9.4, brass, 3.4, 0.4, 0, fr);
+  const cake = K.C(0.9, 0.9, 0.7, K.M(0xf4a6b8), 1.9, 0.5, 2.2, fr, 12); K.S(0.3, K.M(0xd62f2f), 1.9, 1.0, 2.2, fr);
+  const hd = K.hg(body, -5.2, 3.8, 0, 'z', Math.PI / 2, -0.45, 0.12);   // push handle
+  for (const z of [-4.5, 4.5]) K.B(3.6, 0.3, 0.3, brass, -1.8, 0, z, hd);
+  K.B(0.34, 0.34, 9.3, brass, -3.6, 0, 0, hd);
+  const tray = K.hg(body, -4.8, 4.95, 0, 'z', 1.4, 0, 0.2);              // the top tray drops flat last: CLONK
+  K.B(9.6, 0.35, 10.4, silver, 4.8, 0.2, 0, tray);
+  for (const [w, d, x, z] of [[9.6, 0.3, 4.8, 5.1], [9.6, 0.3, 4.8, -5.1], [0.3, 10.4, 9.5, 0], [0.3, 10.4, 0.1, 0]]) K.B(w, 0.6, d, brass, x, 0.5, z, tray);
+  const pot = K.S(1.25, cream, 6.2, 1.65, -1.6, tray); K.C(0.35, 0.5, 0.35, brass, 6.2, 3.1, -1.6, tray, 8); K.S(0.2, brass, 6.2, 3.35, -1.6, tray);
+  const sp = K.C(0.18, 0.35, 1.4, cream, 7.5, 2.1, -1.6, tray, 8); sp.rotation.z = -0.9;
+  for (const z of [1.4, 3.0]) { K.C(0.55, 0.4, 0.7, cream, 6.0, 0.7, z, tray, 10); }
+  if (up && up.sig) { // Silver Serving Tray: a clear silver dome over the top shelf that turns shots back
+    const dome = mesh(new THREE.SphereGeometry(6.3, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), K.M(0xe8eef2, { metalness: 0.95, roughness: 0.12, transparent: true, opacity: 0.32, side: THREE.DoubleSide }), 0, 5.1, 0, body);
+    dome.scale.y = 0.62; dome.castShadow = false; K.parts.dome = dome;
+  }
+  for (const [x, z] of [[-3.8, -5], [-3.8, 5], [3.8, -5], [3.8, 5]]) { // wheels pop down
+    const wp = new THREE.Group(); wp.position.set(x, 0, z); K.g.add(wp); K.anim(wp, 'y', 0.45, 1.5, 0.06);
+    const wh = K.C(1.5, 1.5, 0.9, dark, 0, 0, 0, wp, 16); wh.rotation.x = Math.PI / 2; const hub = K.C(0.6, 0.6, 1.0, brass, 0, 0, 0, wp, 10); hub.rotation.x = Math.PI / 2;
+  }
+  K.anchor = { roof: [body, -2.9, 5.35, 0], sticker: [body, 5.2, 2.6, -1.0, Math.PI / 2, 1.7], flag: [body, -4.7, 4.9, 4.8], armour: [body, 0, 0, 0], front: 5.4 };
+}
+
+function buildSpice(K, up) { // Spice Rack Fortress: wood, stone and chilli red
+  const wood = K.M(0x9a5a32), dwood = K.M(0x6b3d20), stone = K.M(0xbdb3a0), red = K.M(0xc4402f), cream = K.M(0xfff0d2), dark = K.M(0x2c2622);
+  K.paint.push(wood);
+  K.B(12.4, 0.5, 13.4, stone, 0, 0.25, 0);
+  K.B(5.4, 8.6, 13, wood, -3.3, 4.8, 0); K.B(5.9, 0.6, 13.5, dwood, -3.3, 9.4, 0);
+  const jc = [0xd4301f, 0xf2b705, 0xe8751a, 0x4a9e46, 0x7a4a2a, 0xf4e8c8], jg = new THREE.CylinderGeometry(0.5, 0.5, 1.3, 10), cg = new THREE.CylinderGeometry(0.55, 0.55, 0.3, 10);
+  const jm = jc.map((c) => K.M(c)), capM = K.M(0xb0a99a, { metalness: 0.5 });
+  for (const [y, k] of [[4.5, 0], [6.4, 2], [8.2, 4]]) {
+    K.B(0.5, 0.22, 11.6, dwood, -0.75, y - 0.7, 0);
+    for (let i = 0; i < 6; i++) { mesh(jg, jm[(i + k) % 6], -1.0, y, -4.6 + i * 1.84, K.g); mesh(cg, capM, -1.0, y + 0.8, -4.6 + i * 1.84, K.g); }
+  }
+  K.B(0.3, 3.4, 7, dark, -0.55, 1.9, 0);                              // garage mouth
+  K.B(1.8, 0.7, 3, K.M(0xffc23d), 0.6, 1.0, 0); K.B(1.0, 0.6, 2.2, K.M(0xcfe8ff), 0.8, 1.6, 0); for (const [x, z] of [[0.0, -1.5], [0.0, 1.5], [1.2, -1.5], [1.2, 1.5]]) K.C(0.45, 0.45, 0.4, dark, x, 0.55, z, K.g, 8).rotation.x = Math.PI / 2;
+  const door = K.hg(K.g, -0.35, 3.6, 0, 'z', 0, 1.45, 0.06);          // roller door flips up into an awning
+  K.B(0.25, 3.4, 7, dwood, 0, -1.7, 0, door);
+  for (const sz of [-1, 1]) { // side walls and the two towers
+    K.B(3.4, 5, 0.9, stone, 1.05, 2.5, sz * 5.5); const t = K.C(1.8, 1.9, 8.4, stone, 4.4, 4.6, sz * 5.4, K.g, 14);
+    K.C(0.1, 2.4, 2.7, red, 4.4, 9.9, sz * 5.4, K.g, 14); K.B(0.5, 0.9, 0.2, dark, 4.4 + 1.5, 6, sz * 5.4 + 0.0);
+  }
+  const bridge = K.hg(K.g, 6.1, 0.5, 0, 'z', 0, -Math.PI / 2, 0.2); K.parts.bridge = bridge;  // the drawbridge
+  K.B(0.5, 7.4, 7.2, dwood, 0, 3.7, 0, bridge);
+  for (let i = 0; i < 4; i++) K.B(0.62, 0.32, 7.4, dark, 0, 1.0 + i * 1.8, 0, bridge);
+  const stall = K.B(2.4, 1.1, 2.4, wood, 2.0, 0.9, 3.5); const sc = [0xd4301f, 0xf2b705, 0x4a9e46];
+  sc.forEach((c, i) => K.C(0.01, 0.6, 0.9, K.M(c), 1.3 + i * 0.7, 1.9, 3.5, K.g, 10));
+  const aw = K.hg(K.g, 0.7, 3.4, 3.5, 'z', 1.45, -0.32, 0.12);        // market awning
+  for (let i = 0; i < 4; i++) K.B(3.0, 0.14, 0.62, i % 2 ? cream : red, 1.5, 0, -1.1 + i * 0.62, aw);
+  K.anchor = { roof: [K.g, -3.3, 9.7, 0], sticker: [bridge, 0.3, 3.7, 0, Math.PI / 2, 2.6], flag: [K.g, 4.4, 11.2, -5.4], front: 6.5 };
+}
+
+function buildKettle(K, up) { // Tea Kettle: cobalt enamel, cream lid, brass
+  const blue = K.M(0x3b6fd8, { roughness: 0.3 }), cream = K.M(0xfff0d2), brass = K.M(0xd9a441, { metalness: 0.7, roughness: 0.35 }), red = K.M(0xe05a3a), dark = K.M(0x2d3340);
+  K.paint.push(blue);
+  K.C(5.4, 5.6, 0.5, dark, 0, 0.25, 0, K.g, 24);
+  K.C(3.9, 5.2, 6.2, blue, 0, 3.4, 0, K.g, 24);
+  const band = K.C(5.0, 5.0, 0.7, cream, 0, 1.2, 0, K.g, 24);
+  const rim = mesh(new THREE.TorusGeometry(3.9, 0.3, 6, 24), brass, 0, 6.5, 0, K.g); rim.rotation.x = Math.PI / 2;
+  const sp = K.C(0.9, 1.7, 4.2, blue, 5.4, 5.0, 0, K.g, 12); sp.rotation.z = -1.0; const tip = K.C(0.55, 0.9, 0.8, brass, 7.0, 6.9, 0, K.g, 10); tip.rotation.z = -1.0;
+  const hdl = mesh(new THREE.TorusGeometry(2.4, 0.45, 8, 18), red, -4.9, 4.2, 0, K.g); hdl.scale.x = 0.7;
+  // platform tiers rise out of the body (hidden inside it while shut)
+  const tiers = [[3.5, 0xfff0d2, 6.65, 0.06], [2.7, 0xffc23d, 7.5, 0.11], [1.9, 0xe05a3a, 8.35, 0.16]];
+  let top = null;
+  tiers.forEach(([r, c, y, dl]) => { const o = new THREE.Group(); o.position.set(0, 0, 0); K.g.add(o); K.anim(o, 'y', 4.9, y, dl); K.C(r, r + 0.15, 0.7, K.M(c), 0, 0, 0, o, 20); top = o;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; K.C(0.08, 0.08, 0.5, brass, Math.cos(a) * (r - 0.2), 0.55, Math.sin(a) * (r - 0.2), o, 4); } });
+  const lid = K.hg(K.g, -3.6, 6.4, 0, 'z', 0, 1.95, 0.2);              // the lid clanks back
+  const dome = mesh(new THREE.SphereGeometry(3.9, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), cream, 3.6, 0, 0, lid); dome.scale.y = 0.5;
+  K.S(0.55, red, 3.6, 2.05, 0, lid);
+  K.parts.steam = []; // little puffs, driven by boxesUpdate
+  for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(shared('steamG', () => new THREE.SphereGeometry(1, 8, 6)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })); p.visible = false; K.g.add(p); p.userData.t = -1; K.parts.steam.push(p); }
+  K.anchor = { roof: [top, 0, 0.35, 0], sticker: [K.g, 3.1, 3.2, 2.9, Math.atan2(3.1, 2.9)], flag: [K.g, -3.2, 6.3, 3.4], front: 5.6 };
+}
+
+function buildToaster(K, up) { // Toaster Garage: chrome, cream toast, red knob
+  const chrome = K.M(0xdfe5ea, { metalness: 0.6, roughness: 0.3 }), chrome2 = K.M(0xf1f4f6, { metalness: 0.6, roughness: 0.28 }), dark = K.M(0x1a1512), red = K.M(0xe03a2a), toast = K.M(0xd69a45), cream = K.M(0xf6dfaa);
+  const heat = K.M(0xff7a1a, { emissive: 0xff5a00, emissiveIntensity: 0.25 }); K.glow.push(heat);
+  K.paint.push(chrome, chrome2);
+  K.B(12, 4.2, 13, chrome, 0, 2.1, 0); K.B(12.1, 0.7, 13.1, red, 0, 0.7, 0); // a red stripe
+  K.B(0.2, 0.5, 2.0, dark, 6.05, 2.6, 0); // vent slit
+  const upper = new THREE.Group(); upper.position.set(0, 4.2, 0); K.g.add(upper); K.anim(upper, 'y', -3.0, 0, 0.02); // pops up out of the lower housing
+  K.B(11.4, 3.4, 12.4, chrome2, 0, 1.7, 0, upper);
+  for (const z of [-3.2, 3.2]) { K.B(8.8, 0.12, 2.3, dark, 0, 3.42, z, upper); K.B(7.4, 0.06, 0.25, heat, 0, 3.5, z, upper);
+    const sl = new THREE.Group(); sl.position.set(0, 3.4, z); upper.add(sl); K.anim(sl, 'y', -3.8, 0.4, 0.12 + (z > 0 ? 0.06 : 0));
+    K.B(7.4, 3.6, 1.0, toast, 0, 1.8, 0, sl); K.B(6.9, 3.3, 1.06, cream, 0, 1.75, 0, sl); }
+  K.B(0.2, 2.8, 8.6, dark, 5.75, 1.7, 0, upper);                       // garage cavity behind the door
+  for (const z of [-2.4, 2.4]) K.B(0.12, 0.5, 0.5, K.M(0xffe08a, { emissive: 0xffc23d, emissiveIntensity: 0.6 }), 5.85, 0.9, z, upper); // headlights in the dark
+  const door = K.hg(upper, 5.9, 3.2, 0, 'z', 0, 1.5, 0.1);
+  K.B(0.25, 3.0, 9, chrome, 0, -1.5, 0, door);
+  const ramp = K.hg(K.g, 6.0, 0.35, 0, 'z', Math.PI / 2, 0, 0.2);      // launch ramp folds down
+  K.B(4.6, 0.3, 6.4, K.M(0x4a4640), 2.3, 0, 0, ramp);
+  for (let i = 0; i < 3; i++) K.B(0.5, 0.34, 4.2, K.M(0xffc23d), 0.9 + i * 1.3, 0.02, 0, ramp);
+  const lev = K.C(0.3, 0.3, 1.8, chrome, 0, 3.4, 6.35, K.g, 8); lev.rotation.x = Math.PI / 2; K.S(0.65, red, 0, 3.4, 7.3);
+  K.C(0.8, 0.8, 0.3, red, 6.1, 3.3, -4.4, K.g, 14).rotation.z = Math.PI / 2;
+  K.anchor = { roof: [upper, -4.6, 3.4, 0], sticker: [K.g, 6.05, 2.1, 4.2, Math.PI / 2, 2.0], flag: [upper, -5.0, 3.4, 5.4], front: 6.1 };
+}
+
+function buildBread(K, up, tier) { // Bread Bin Fortress (the Baron's): crust brown, red banners, a baguette cannon. A hollow bin: the roll-top rolls up, corner towers rise, the cannon pops up on the roof.
+  const crust = K.M(0xc98f4e), dcrust = K.M(0x8a5a2b), red = K.M(0xb3261e), dark = K.M(0x2b221b), gold = K.M(0xe8b830, { metalness: 0.6, roughness: 0.3 }), grey = K.M(0x8e949c, { metalness: 0.6 });
+  K.paint.push(crust);
+  K.B(12.4, 0.5, 13.8, dcrust, 0, 0.25, 0);
+  K.B(0.6, 5.2, 13.4, crust, -5.7, 2.9, 0); for (const sz of [-1, 1]) K.B(12, 5.2, 0.6, crust, 0, 2.9, sz * 6.4);
+  K.B(12.6, 0.5, 14, dcrust, 0, 5.7, 0);
+  K.B(11, 0.1, 12.2, dark, 0, 0.55, 0);                                  // the dark inside
+  for (let i = 0; i < 3; i++) { const bg = K.C(0.7, 0.7, 9.5, crust, -3.6 + (i % 2) * 1.3, 1.1 + Math.floor(i / 2) * 1.35, 0, K.g, 8); bg.rotation.x = Math.PI / 2; for (let k = 0; k < 3; k++) K.B(0.15, 0.1, 0.9, dcrust, bg.position.x + 0.1, bg.position.y + 0.7, -3 + k * 3); }
+  K.B(0.2, 0.7, 4.4, gold, 6.45, 5.7, 0);                               // brass plaque on the lip
+  const drum = K.C(0.55, 0.55, 11.6, dcrust, 6.2, 5.2, 0, K.g, 10); drum.rotation.x = Math.PI / 2;
+  const door = K.hg(K.g, 6.25, 5.15, 0, 'y', 1, 0.07, 0.2, 'scale'); // the roll-top rolls up into the drum
+  for (let i = 0; i < 8; i++) K.B(0.4, 0.58, 11.2, i % 2 ? crust : dcrust, 0, -0.35 - i * 0.6, 0, door);
+  for (const sz of [-1, 1]) { const m = K.C(0.01, 0.45, 2.0, dark, 0.35, -3.4, sz * 1.2, door, 8); m.rotation.x = sz * 1.35; m.rotation.z = -1.5; } // the Baron's moustache
+  for (const [x, z, d] of [[-4.6, -5.6, 0.0], [-4.6, 5.6, 0.05], [4.6, -5.6, 0.1], [4.6, 5.6, 0.15]]) { // corner towers rise
+    const t = new THREE.Group(); t.position.set(x, 5.9, z); K.g.add(t); K.anim(t, 'y', -6, 0, d);
+    K.C(1.5, 1.7, 5.2, crust, 0, 2.6, 0, t, 12); K.C(1.8, 1.8, 0.5, dcrust, 0, 5.3, 0, t, 12);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; K.B(0.7, 0.7, 0.7, dcrust, Math.cos(a) * 1.5, 5.9, Math.sin(a) * 1.5, t); }
+    if (tier >= 2) { K.C(0.06, 0.06, 2.4, dark, 0, 7.2, 0, t, 5); K.B(1.4, 0.8, 0.1, red, 0.8, 7.9, 0, t); }
+  }
+  const cannon = new THREE.Group(); cannon.position.set(0, 5.95, 0); K.g.add(cannon); K.anim(cannon, 'y', -2.6, 0.2, 0.1);
+  const sw = new THREE.Group(); cannon.add(sw); K.parts.turret = sw;
+  K.C(1.7, 2.0, 1.2, dcrust, 0, 0.6, 0, cannon, 14);
+  const sc = 1 + 0.08 * (tier - 1);
+  const barrel = K.C(0.95 * sc, 1.15 * sc, 6.2, crust, 3.0, 1.5, 0, sw, 12); barrel.rotation.z = Math.PI / 2;
+  for (let i = 0; i < 4; i++) K.B(0.25, 0.5, 1.9 * sc, dcrust, 1.3 + i * 1.2, 2.45, 0, sw).rotation.y = 0.5; // baguette scoring
+  const ring = K.C(1.2 * sc, 1.2 * sc, 0.4, red, 6.0, 1.5, 0, sw, 12); ring.rotation.z = Math.PI / 2;
+  if (tier >= 3) K.B(12.8, 0.3, 14.2, gold, 0, 6.0, 0); // gold trim: the Baron has been promoted
+  if (tier >= 2) for (const sz of [-1, 1]) K.B(0.4, 2.6, 2.6, grey, 6.15, 2.4, sz * 5.2);  // iron plates
+  if (tier >= 4) for (const sz of [-1, 1]) { const b2 = K.C(0.45, 0.55, 3.2, crust, 2.2, 1.0, sz * 2.0, sw, 10); b2.rotation.z = Math.PI / 2; }
+  K.anchor = { sticker: [K.g, 6.1, 2.4, -4.5, Math.PI / 2], flag: [K.g, -5.2, 6.0, 0], front: 6.4 };
+}
+
+// ----- Common parts: roof module, flag, sticker, doors, garage, paint -----
+function stickerMesh(kind, m) {
+  const geo = shared(`stk:${kind}`, () => {
+    const sh = new THREE.Shape();
+    if (kind === 1) for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.45 : 1; sh[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r - 0.1); }
+    else if (kind === 2) { sh.moveTo(0, -0.9); sh.bezierCurveTo(-1.3, 0.1, -0.9, 1, 0, 0.45); sh.bezierCurveTo(0.9, 1, 1.3, 0.1, 0, -0.9); }
+    else if (kind === 3) [[0.3, 1], [-0.7, -0.1], [-0.05, -0.1], [-0.35, -1], [0.75, 0.2], [0.1, 0.2]].forEach(([x, y], i) => sh[i ? 'lineTo' : 'moveTo'](x, y));
+    else sh.absarc(0, 0, 0.95, 0, Math.PI * 2, false);
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.18, bevelEnabled: false });
+  });
+  const g = new THREE.Group();
+  mesh(geo, m, 0, 0, 0, g);
+  if (kind === 4) { // smiley: eyes and a smile
+    const k = shared('stkDark', () => mat(0x1c1712));
+    for (const x of [-0.35, 0.35]) mesh(shared('stkEye', () => new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8)), k, x, 0.3, 0.2, g).rotation.x = Math.PI / 2;
+    const sm = mesh(shared('stkSmile', () => new THREE.TorusGeometry(0.5, 0.07, 5, 12, Math.PI)), k, 0, -0.05, 0.2, g); sm.rotation.z = Math.PI;
+  }
+  return g;
+}
+function flagCloth(K, style, team, parent, x, y, z) { // style: 0 team colour, 1 gold, 2 pink, 3 checkers, 4 rainbow
+  const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+  K.C(0.12, 0.12, 3.2, K.M(0x1c1712), 0, 1.6, 0, g, 6);
+  const f = new THREE.Group(); f.position.set(0.1, 2.5, 0); g.add(f);
+  if (style === 3) { for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) K.B(0.6, 0.6, 0.1, K.M((i + j) % 2 ? 0x1c1712 : 0xfaf6ee), 0.35 + i * 0.6, 0.3 - j * 0.6, 0, f); }
+  else if (style === 4) { [0xe03a2a, 0xff9f1c, 0xffd166, 0x3ddc84, 0x2f7df6].forEach((c, i) => K.B(2.4, 0.26, 0.1, K.M(c), 1.2, 0.5 - i * 0.26, 0, f)); }
+  else K.B(2.4, 1.3, 0.1, K.M(style === 1 ? 0xffc23d : style === 2 ? 0xff6fa5 : COLORS[team]), 1.2, 0, 0, f);
+  K.parts.flag = f;
+}
+function buildBoxModel(id, team, up, tier = 1) {
+  const K = boxKit();
+  ({ trolley: buildTrolley, spice: buildSpice, kettle: buildKettle, toaster: buildToaster, bread: buildBread })[id](K, up, tier);
+  const A = K.anchor, fx = up ? boxFxOf(up) : {};
+  if (up && A.roof) { // the roof slot: replaces the old roof gun
+    const [rp, rx, ry, rz] = A.roof, g = new THREE.Group(); g.position.set(rx, ry, rz); rp.add(g); K.parts.roof = g;
+    const dk = K.M(0x55504a), acc = K.M(COLORS[team]), silver = K.M(0xdfe5ea, { metalness: 0.7, roughness: 0.3 });
+    const r = up.roof;
+    if (r.k === 'turret') {
+      K.C(1.2, 1.4, 0.9, dk, 0, 0.45, 0, g, 12);
+      const head = K.B(1.7, 1.0, 1.7, acc, 0, 1.4, 0, g); K.parts.turret = head;
+      for (const z of r.t === 1 ? [0] : r.t === 2 ? [-0.4, 0.4] : [-0.6, 0, 0.6]) K.C(0.2, 0.2, 2.4, dk, 1.6, 0, z, head, 8).rotation.z = Math.PI / 2;
+      for (let i = 0; i < r.t; i++) K.C(1.3, 1.3, 0.12, K.M(0xffc23d), 0, 0.2 + i * 0.22, 0, g, 12);
+    } else if (r.k === 'radar') {
+      K.C(0.18, 0.25, 2.2, dk, 0, 1.1, 0, g, 8); K.C(1.0, 1.2, 0.4, dk, 0, 0.2, 0, g, 12);
+      const sp = new THREE.Group(); sp.position.y = 2.2; g.add(sp); K.parts.radar = sp;
+      const dish = mesh(new THREE.SphereGeometry(1.1 + 0.25 * r.t, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), silver, 0, 0.3, 0, sp); dish.rotation.x = -1.1;
+      K.C(0.05, 0.05, 1.2, dk, 0, 0.5, 0.0, sp, 4); K.S(0.2, K.M(0xe03a2a), 0, 0.6, 0.7, sp);
+    } else {
+      K.C(1.9, 1.9, 0.3, dk, 0, 0.15, 0, g, 18); K.C(1.4, 1.4, 0.34, K.M(0xffc23d), 0, 0.17, 0, g, 18); K.B(0.25, 0.04, 1.1, dk, 0, 0.38, 0, g); K.B(1.1, 0.04, 0.25, dk, 0, 0.38, 0, g);
+      const dr = new THREE.Group(); dr.position.y = 1.4; g.add(dr); K.parts.drone = dr; K.S(0.45, acc, 0, 0, 0, dr);
+      for (const [x, z] of [[-0.8, -0.8], [0.8, 0.8], [-0.8, 0.8], [0.8, -0.8]]) { K.C(0.45, 0.45, 0.05, silver, x, 0.1, z, dr, 8); K.B(0.07, 0.07, 1.1, dk, x / 2, 0, z / 2, dr).rotation.y = Math.atan2(x, z); }
+    }
+  }
+  // flag on a pole (team colour, or the flag you chose)
+  const fp = A.flag; flagCloth(K, up ? up.look.flag : 0, team, fp[0], fp[1], fp[2], fp[3]);
+  if (up && up.look.sticker && A.sticker) {
+    const [sp, sx, sy, sz, ry, size] = A.sticker, s = stickerMesh(up.look.sticker, K.M([0, 0xffc23d, 0xff4d6d, 0x7cfffb, 0xffd84a][up.look.sticker]));
+    s.position.set(sx, sy, sz); s.rotation.y = ry; s.scale.setScalar(size || 2.2); sp.add(s);
+  }
+  const front = A.front || 6;
+  if (fx.armour) { const grey = K.M(0x8e949c, { metalness: 0.6, roughness: 0.4 }); for (let i = 0; i < fx.armour * 2; i++) { const z = (i % 2 ? 1 : -1) * (3.2 + Math.floor(i / 2) * 1.3); K.B(0.35, 2.4, 1.1, grey, front + 0.1, 2.3, z); K.S(0.14, K.M(0xd9dde3), front + 0.3, 3.0, z); } }
+  if (fx.spikes) { const sg = shared('spikeG', () => new THREE.ConeGeometry(0.4, 1.5, 6)), sm = K.M(0xc9ced4, { metalness: 0.8, roughness: 0.3 }); for (let i = 0; i < fx.spikes * 3; i++) { const z = -4.8 + i * (9.6 / (fx.spikes * 3 - 1 || 1)); const c = mesh(sg, sm, front + 0.7, 0.8, z, K.g); c.rotation.z = -Math.PI / 2; } }
+  if (fx.bridge) { const pv = new THREE.Group(); pv.position.set(front + 0.3, 0.3, 0); K.g.add(pv); K.B(0.3, 3.4, 5.4, K.M(0x9a6b3f), 0, 1.7, 0, pv); K.B(0.34, 0.3, 5.4, K.M(0x4b2f18), 0, 2.5, 0, pv); pv.rotation.z = -1.45; K.parts.plank = pv; }
+  if (fx.trucks) for (let i = 0; i < fx.trucks; i++) { const z = -7.6 - 0, x = -4 + i * 3.4; K.B(2.4, 0.9, 1.5, K.M(0xff9f1c), x, 0.8, z); K.B(0.9, 0.7, 1.4, K.M(0xcfe8ff), x + 1.1, 1.4, z); for (const wx of [-0.7, 0.7]) K.C(0.4, 0.4, 1.7, K.M(0x1c1712), x + wx, 0.4, z, K.g, 8).rotation.x = Math.PI / 2; }
+  if (fx.repair) { K.B(2.2, 1.2, 1.4, K.M(0xe03a2a), -2, 0.6, -7.6); K.B(2.4, 0.2, 0.3, K.M(0xd9dde3), -2, 1.35, -7.6); K.B(0.2, 1.6, 0.2, K.M(0xffc23d), -1.6, 1.8, -7.6); }
+  const skin = up && SKINS[up.look.skin], pc = up ? PAINTS[up.look.paint] : null, col = skin ? skin.col : pc;
+  if (col != null && id !== 'bread') for (const m of K.paint) { m.color.setHex(col); if (skin) { m.metalness = skin.metal; m.roughness = skin.metal > 0.5 ? 0.22 : 0.5; } }
+  unfoldTo(K, 0);
+  return K;
+}
+const breadTier = () => (MT.on ? 2 : [1, 1, 2, 2, 3, 4][curLevel] || 1);
+
+// ----- The box in the game: one `box` record per base (b.box), stats, footprint, unfold and the per-frame logic -----
+const BOX_FIRE_Y = { trolley: 7.4, spice: 11.2, kettle: 9.3, toaster: 8.2, bread: 8.0 };
+const boxFx = { clouds: [], crates: [] }; // chilli clouds and crate walls in play
+function boxFxClear() {
+  for (const c of [...boxFx.clouds, ...boxFx.crates]) { scene.remove(c.mesh); disposeTree(c.mesh); }
+  boxFx.clouds.length = boxFx.crates.length = 0;
+}
 function makeBase(team) {
   const [x, bz] = curL().bases?.[team] || [team === BLUE ? -62 : 62, 0]; // level 6 puts the toy boxes at the tips of the U
-  const g = new THREE.Group();
-  mesh(new THREE.BoxGeometry(12, 7, 14), mat(COLORS[team]), 0, 3.5, 0, g);
-  mesh(new THREE.BoxGeometry(12.6, 1.2, 14.6), mat(0xfff8ec), 0, 7.2, 0, g);
-  mesh(new THREE.BoxGeometry(0.3, 4, 6), mat(0x1c1712), team === BLUE ? 6.1 : -6.1, 2, 0, g);
-  const gun = mesh(new THREE.CylinderGeometry(1, 1.2, 1.2, 12), mat(0x55504a), 0, 8.3, 0, g);
-  gun.name = 'turret';
-  mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.6, 8), mat(0x1c1712), 1.4, 0, 0, gun).rotation.z = Math.PI / 2;
+  const id = team === BLUE ? boxSave.pick : 'bread', def = BOXES[id], up = team === BLUE ? boxSave.up[id] : null, tier = team === BLUE ? 0 : breadTier();
+  if (team === BLUE) boxFxClear();
+  const model = buildBoxModel(id, team, up, tier || 1);
+  const g = new THREE.Group(); g.add(model.g); model.g.rotation.y = team === BLUE ? 0 : Math.PI;
   if (darkNow()) addGlow(g, team, 20, 9.4);
   g.position.set(x, 0, bz);
   scene.add(g);
   const pad = mesh(new THREE.RingGeometry(9, 10, 40), mat(COLORS[team], { transparent: true, opacity: 0.5 }), x, 0.05, bz);
   pad.rotation.x = -Math.PI / 2;
-  const baseHp = curL().rules.baseHp || 1200;
-  const base = { kind: 'base', team, x, z: bz, r: 7.5, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon: { ...WEAPONS.mg, dmg: 14, rate: 0.22, range: 19 }, cool: 0 };
-  obstacles.push({ x, z: bz, w: 12, d: 14, h: 7, kind: 'base' });
+  const baseHp = Math.round((curL().rules.baseHp || 1200) * def.hpMul), fx = up ? boxFxOf(up) : {};
+  let weapon = null;
+  if (team === RED) weapon = { ...WEAPONS.baguette, dmg: 52 + 6 * tier, rate: 1.9 - 0.1 * tier, range: 21 + 1.5 * tier }; // the Baron's cannon gets stronger as the campaign goes
+  else if (fx.tur) weapon = { ...WEAPONS.mg, dmg: 14 * (1 + 0.35 * (fx.tur - 1)), rate: 0.22 * (1 - 0.1 * (fx.tur - 1)), range: 19 + 2 * (fx.tur - 1) }; // tier 1 = the old roof gun
+  const box = { id, def, up, fx, tier, model, s: team === BLUE ? 1 : -1, started: false, sounded: false, t: team === RED ? -0.3 : 0, open: false, clunked: false, flash: 0, tip: 0, tipImmune: 0, tipA: 0, cd: 0, charges: null, maxCh: 0, boil: 0, bridgeT: 0, bridgeCd: 10, droneCd: 15, spikeT: 0, aim: team === RED ? Math.PI : 0, turn: 0.9 + 0.15 * tier, recoil: 0, obs: [] };
+  if (id === 'kettle') box.maxCh = box.charges = fx.sig ? 2 : 1;
+  const base = { kind: 'base', team, x, z: bz, r: def.shut.r, hp: baseHp, maxHp: baseHp, mesh: g, pad, weapon, cool: 0, box, fireY: BOX_FIRE_Y[id] };
+  boxFoot(base, false);
   entities.push(base);
   return base;
 }
+// The hitbox: shut or unfolded (local coordinates, +x is the front; the red box is turned round).
+function boxFoot(b, open) {
+  const bx = b.box, spec = open ? bx.def.open : bx.def.shut;
+  for (const o of bx.obs) { const i = obstacles.indexOf(o); if (i >= 0) obstacles.splice(i, 1); }
+  bx.obs = spec.obs.map(([lx, lz, w, d, h]) => ({ x: b.x + lx * bx.s, z: b.z + lz * bx.s, w, d, h, kind: 'base' }));
+  obstacles.push(...bx.obs); b.r = spec.r; navDirty = true;
+}
+const boxCooldown = (bx) => { const A = bx.def.ability; return bx.id === 'toaster' && bx.fx.sig ? 26 : A.cooldown; };
+const boxReady = (bx) => bx.open && bx.tip <= 0 && (bx.charges != null ? bx.charges > 0 : bx.cd <= 0);
+const boxTipped = (team) => !!(state.bases?.[team]?.box && state.bases[team].box.tip > 0);
+
+function boxesUpdate(dt) {
+  if (!state.bases) return;
+  for (const b of state.bases) {
+    const bx = b.box;
+    if (!bx || b.hp <= 0) continue;
+    if (!bx.started && state.phase === 'battle') bx.started = true;
+    if (bx.started && !bx.open) { // the unfold: 0.5 s of springy hinges, the CLUNK at 0.4 s
+      bx.t += dt;
+      if (bx.t > 0) {
+        if (!bx.sounded) { bx.sounded = true; if (dist2(b, state.player) < 4900 || b.team === BLUE) sfx(`unfold_${bx.id}`); }
+        unfoldTo(bx.model, bx.t);
+        if (bx.t >= CLUNK_T && !bx.clunked) {
+          bx.clunked = true; bx.flash = 0.45;
+          state.shake = Math.min(1.2, (state.shake || 0) + (b.team === BLUE ? 0.32 : 0.14)); // a micro camera shake
+          burst(b.x, b.z, 0xfff3b0, 16, 12, 5);
+          if (bx.id === 'kettle') kettleSteam(bx, 9);
+        }
+        if (bx.t >= UNFOLD_T) { unfoldTo(bx.model, 1); bx.open = true; boxFoot(b, true); }
+      }
+    }
+    if (bx.open) boxLogic(b, dt);
+    boxDraw(b, dt);
+  }
+  boxFxUpdate(dt);
+}
+function boxLogic(b, dt) {
+  const bx = b.box, fx = bx.fx, team = b.team, time = state.time;
+  if (bx.tip > 0) { // the Tea Trolley is on its side: nothing works
+    bx.tip -= dt;
+    if (bx.tip <= 0) { bx.tipImmune = 10; sfx('unfold_trolley'); state.shake = Math.min(1.2, (state.shake || 0) + 0.3); burst(b.x, b.z, 0xfff3b0, 14, 10, 4); toast('The Tea Trolley is back on its wheels'); }
+    return;
+  }
+  bx.tipImmune = Math.max(0, bx.tipImmune - dt);
+  if (bx.charges != null) { if (bx.charges < bx.maxCh) { bx.cd -= dt; if (bx.cd <= 0) { bx.charges++; bx.cd = bx.charges < bx.maxCh ? boxCooldown(bx) : 0; } } } else if (bx.cd > 0) bx.cd = Math.max(0, bx.cd - dt);
+  if (bx.boil > 0) bx.boil -= dt;
+  if (fx.repair && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + fx.repair * 1.5 * dt); // Garage: faster repair mends the box too
+  const head = bx.model.parts.turret;
+  if (team === BLUE) {
+    if (fx.tur) { // Roof: turret
+      b.cool -= dt;
+      const t = nearestEnemy(b, b.weapon.range);
+      if (t) { if (head) head.rotation.y = -angleTo(b, t); if (b.cool <= 0) { fire(b, t, b.weapon); b.cool = b.weapon.rate; } }
+    }
+    if (fx.pad) { // Roof: drone pad launches a drone now and then (never more than 2 + tier at once)
+      bx.droneCd -= dt;
+      if (bx.droneCd <= 0) {
+        bx.droneCd = [0, 40, 30, 22][fx.pad];
+        const mine = entities.filter((e) => e.kind === 'unit' && e.team === BLUE && e.type === 'drone' && e.hp > 0).length;
+        if (mine < 2 + fx.pad && !(state.finale && armyOf(BLUE) + 1 > ARMY_CAP)) { spawnUnit('drone', BLUE, b.x + 9 * bx.s, b.z + (Math.random() - 0.5) * 6); burst(b.x, b.z, 0xfff3b0, 8, 8, 8); }
+      }
+    }
+    if (fx.spikes) { // Doors: spikes hurt anything that rams the box
+      bx.spikeT -= dt;
+      if (bx.spikeT <= 0) { bx.spikeT = 0.5; for (const e of entities) if (e.team !== team && e.hp > 0 && !e.air && !e.fly && (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'player') && !(e.kind === 'player' && !e.alive) && dist2(e, b) < (b.r + e.r + 3.2) ** 2) hurt(e, 8 * fx.spikes, team, null); }
+    }
+    if (fx.bridge) { // Doors: the drawbridge raises now and then, when someone is close
+      if (bx.bridgeT > 0) bx.bridgeT -= dt;
+      else { bx.bridgeCd -= dt; if (bx.bridgeCd <= 0 && nearestEnemy(b, 30)) { bx.bridgeCd = [0, 24, 20, 16][fx.bridge]; bx.bridgeT = 3 + fx.bridge; sfx('hit'); } }
+    }
+    if (bx.id === 'spice') for (const e of entities) if (e.team === BLUE && e.hp > 0 && (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'player') && dist2(e, b) < 17 * 17) { if (fx.sig) e.cin = time + 2.5; if (e.kind === 'player' && e.alive && dist2(e, b) < 14 * 14 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + 30 * dt); } // Cinnamon Boost; and the garage repairs twice as fast
+    if (bx.id === 'toaster') { // the front ramp is a launch pad
+      const p = state.player;
+      if (p.alive && !p.air && bx.cd <= 0) { const dx = (p.x - b.x) * bx.s, dz = (p.z - b.z) * bx.s; if (dx > 6.3 && dx < 11 && Math.abs(dz) < 3.4) boxUse(b); }
+    }
+  } else if (bx.id === 'bread') { // the Baron's cannon: big, slow, and slow to turn
+    const w = b.weapon, t = nearestEnemy(b, w.range);
+    b.cool -= dt; bx.recoil = Math.max(0, bx.recoil - dt * 3);
+    if (t) {
+      const want = angleTo(b, t), diff = wrap(want - bx.aim);
+      bx.aim += Math.sign(diff) * Math.min(Math.abs(diff), bx.turn * dt);
+      if (Math.abs(wrap(want - bx.aim)) < 0.2 && b.cool <= 0) { b.cool = w.rate; fire(b, t, w, bx.aim); bx.recoil = 1; burst(b.x + Math.cos(bx.aim) * 6.5, b.z + Math.sin(bx.aim) * 6.5, 0xffe9b0, 8, 8, 8); state.shake = Math.min(1.2, (state.shake || 0) + (dist2(b, state.player) < 1600 ? 0.15 : 0)); }
+    }
+  }
+}
+function boxDraw(b, dt) {
+  const bx = b.box, M = bx.model, time = state.time, health = b.hp / b.maxHp;
+  bx.tipA += ((bx.tip > 0 ? 0.62 : 0) - bx.tipA) * Math.min(1, dt * (bx.tip > 0 ? 10 : 7));
+  b.mesh.rotation.z = ((1 - Math.min(1, health * 2)) * 0.12 + bx.tipA) * bx.s;
+  b.mesh.position.y = bx.tip > 0 ? Math.sin(time * 20) * 0.12 : 0;
+  if (bx.flash > 0) { // rim-light flash at the peak of the unfold
+    bx.flash -= dt; const k = Math.max(0, bx.flash / 0.45);
+    for (const m of M.mats) { m.emissive.setHex(0xfff3d0); m.emissiveIntensity = (m.userData.e0[0] ? m.userData.e0[1] : 0) + 0.55 * k; }
+    b.pad.material.opacity = 0.5 + 0.5 * k;
+    if (bx.flash <= 0) for (const m of M.mats) { m.emissive.setHex(m.userData.e0[0]); m.emissiveIntensity = m.userData.e0[1]; }
+  } else if (bx.id === 'toaster') { // a launched toaster glows hot while it cools
+    const hot = bx.cd > 0 ? Math.min(1, 0.4 + bx.cd / 14) : 0;
+    for (const m of M.glow) { m.emissive.setHex(0xff5a00); m.emissiveIntensity = 0.25 + hot * (1.2 + Math.sin(time * 9) * 0.25); }
+    for (const m of M.paint) { m.emissive.setHex(hot ? 0xff3300 : 0); m.emissiveIntensity = hot * (0.35 + Math.sin(time * 9) * 0.08); }
+  }
+  const P = M.parts;
+  if (P.flag) P.flag.rotation.y = Math.sin(time * 3 + b.team) * 0.25;
+  if (P.radar) P.radar.rotation.y += dt * 2.4;
+  if (P.drone) P.drone.position.y = 1.4 + Math.sin(time * 3) * 0.2;
+  if (P.dome) P.dome.visible = bx.tip <= 0 && bx.open;
+  if (P.plank) P.plank.rotation.z += ((bx.bridgeT > 0 ? 0 : -1.45) - P.plank.rotation.z) * Math.min(1, dt * 9);
+  if (P.turret && b.team === RED) { P.turret.rotation.y = -bx.aim - Math.PI; P.turret.position.x = -bx.recoil * 0.8; }
+  else if (P.turret && b.team === BLUE && !bx.open) P.turret.rotation.y = 0;
+  if (P.steam) {
+    if (bx.open && Math.random() < dt * (bx.boil > 0 ? 9 : 0.8)) kettleSteam(bx, 1);
+    for (const p of P.steam) if (p.userData.t >= 0) {
+      p.userData.t += dt; const t = p.userData.t;
+      if (t > 1.7) { p.visible = false; p.userData.t = -1; continue; }
+      p.position.y = 7 + t * 5; p.position.x += p.userData.vx * dt; p.scale.setScalar(0.9 + t * 1.6); p.material.opacity = 0.55 * (1 - t / 1.7);
+    }
+  }
+}
+function kettleSteam(bx, n) {
+  for (const p of bx.model.parts.steam) { if (!n) break; if (p.userData.t >= 0) continue; n--; p.userData.t = 0; p.userData.vx = (Math.random() - 0.3) * 2; p.visible = true; p.position.set((Math.random() - 0.5) * 3, 7, (Math.random() - 0.5) * 3); }
+}
+
+// ----- Abilities (the ABILITY button / key C) -----
+function boxUse(b) { // returns true if the ability fired
+  const bx = b.box, A = bx.def.ability;
+  if (!boxReady(bx) || b.team !== BLUE) return false;
+  const ok = ({ trolley: crateBarrage, spice: chilliCloud, kettle: boilingPoint, toaster: popUp })[bx.id](b);
+  if (!ok) return false;
+  if (bx.charges != null) { bx.charges--; if (bx.cd <= 0) bx.cd = boxCooldown(bx); } else bx.cd = boxCooldown(bx);
+  return true;
+}
+function useAbility() {
+  const b = state.bases?.[BLUE];
+  if (!b?.box || state.over || state.phase !== 'battle' || !state.player.alive) return;
+  const bx = b.box;
+  if (!bx.open) return;
+  if (bx.tip > 0) { toast('The box is tipped over!'); sfx('no'); return; }
+  if (!boxReady(bx)) { toast(`${bx.def.ability.name} is recharging`); sfx('no'); return; }
+  boxUse(b);
+}
+function crateBarrage(b) { // Tea Trolley: a wall of mini-dominoes across the path to their box. It blocks cars and shots for 12 s.
+  const foe = state.bases[1 - b.team], a = angleTo(b, foe), nx = -Math.sin(a), nz = Math.cos(a);
+  const px = b.x + Math.cos(a) * 16, pz = b.z + Math.sin(a) * 16;
+  let n = 0;
+  for (let i = -3; i <= 3; i++) {
+    const x = px + nx * i * 3.5, z = pz + nz * i * 3.5;
+    if (Math.abs(x) > W / 2 - 3 || Math.abs(z) > D / 2 - 3 || inWaterX(x, z, 1) || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 1.2 && Math.abs(z - o.z) < o.d / 2 + 1.2)) continue;
+    const m = new THREE.Group(); m.position.set(x, 14, z); m.rotation.y = -a;
+    mesh(shared('mdomG', () => new THREE.BoxGeometry(1.0, 3.6, 3.2)), shared('mdomM', () => mat(0xfff3d6)), 0, 1.8, 0, m);
+    for (const py of [1.0, 2.6]) mesh(shared('mdomP', () => new THREE.BoxGeometry(1.06, 0.5, 0.5)), shared('mdomPM', () => mat(0x1c1712)), 0, py, 0, m);
+    scene.add(m);
+    const ob = { x, z, w: Math.abs(Math.cos(a)) * 1.2 + Math.abs(Math.sin(a)) * 3.4, d: Math.abs(Math.sin(a)) * 1.2 + Math.abs(Math.cos(a)) * 3.4, h: 3.6, kind: 'crate' };
+    obstacles.push(ob); boxFx.crates.push({ mesh: m, obs: ob, t: 12, fall: 0.35, x, z }); n++;
+  }
+  if (!n) { toast('No room for crates here'); sfx('no'); return false; }
+  navDirty = true; sfx('clack'); sfx('thud'); toast('CRATE BARRAGE! A wall of dominoes for 12 seconds');
+  return true;
+}
+function chilliCloud(b) { // Spice Rack: a pepper cloud around the box. It blinds EVERYONE inside, your units too.
+  const m = new THREE.Mesh(shared('cloudG', () => new THREE.SphereGeometry(1, 18, 10)), new THREE.MeshBasicMaterial({ color: 0xe0471f, transparent: true, opacity: 0.2, depthWrite: false }));
+  m.scale.set(15, 7, 15); m.position.set(b.x, 2, b.z); scene.add(m);
+  boxFx.clouds.push({ mesh: m, x: b.x, z: b.z, r: 15, t: 6, max: 6 });
+  burst(b.x, b.z, 0xd4301f, 30, 14, 4); sfx('unfold_spice'); toast('CHILLI CLOUD! Everyone inside is blinded, even you');
+  return true;
+}
+function boilingPoint(b) { // Tea Kettle: faster cars that hit harder, for 7 s
+  b.box.boil = 7; kettleSteam(b.box, 9); burst(b.x, b.z, 0xffffff, 24, 14, 8); sfx('steam');
+  toast('BOILING POINT! Faster, harder-hitting units for 7 s'); return true;
+}
+function popUp(b) { // Toaster Garage: fire your car (and friends beside the box) across the map like toast. Then it glows hot while it cools.
+  const bx = b.box, p = state.player, riders = [];
+  if (p.alive && !p.air) riders.push(p);
+  const max = 2 + (bx.fx.sig ? 2 : 0);
+  for (const e of entities) if (riders.length < max + 1 && e.kind === 'unit' && e.team === BLUE && e.hp > 0 && !e.air && !e.fly && dist2(e, b) < 16 * 16) riders.push(e);
+  if (!riders.length) return false;
+  const foe = state.bases[1 - b.team], lim = (v, m) => Math.max(-m + 3, Math.min(m - 3, v));
+  for (const e of riders) {
+    const a = angleTo(e, foe), d = Math.max(16, Math.min(state.finale ? 80 : 62, Math.hypot(foe.x - e.x, foe.z - e.z) - 28)), tx = lim(e.x + Math.cos(a) * d, W / 2), tz = lim(e.z + Math.sin(a) * d, D / 2);
+    e.air = { t: 0, T: 0.95 + d / 80, sx: e.x, sz: e.z, tx, tz, l0: ledgeLift(e), l1: ledgeLift({ x: tx, z: tz }), H: TOASTER.H + 3 };
+    e.path = null; e.via = null; e.pinned = 0; burst(e.x, e.z, 0xe2b36b, 8, 8, 1.5);
+  }
+  sfx('boing'); sfx('toast'); toast(riders.length > 1 ? `POP-UP! ${riders.length} cars launched` : 'POP-UP! BOING!');
+  return true;
+}
+function boxFxUpdate(dt) {
+  for (let i = boxFx.clouds.length - 1; i >= 0; i--) {
+    const c = boxFx.clouds[i]; c.t -= dt;
+    const f = Math.min(1, c.t / 1, (c.max - c.t) / 0.4);
+    c.mesh.material.opacity = 0.2 * Math.max(0, f) * (0.8 + 0.2 * Math.sin(state.time * 8)); c.mesh.scale.set(c.r * (1 + 0.04 * Math.sin(state.time * 5)), 7, c.r);
+    if (Math.random() < dt * 14) burst(c.x + (Math.random() - 0.5) * c.r, c.z + (Math.random() - 0.5) * c.r, Math.random() < 0.5 ? 0xd4301f : 0xf2b705, 1, 2.5, 1 + Math.random() * 5);
+    for (const e of entities) {
+      if (e.hp <= 0 || e.air || !(e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || (e.kind === 'player' && e.alive)) || dist2(e, c) > c.r * c.r) continue;
+      e.blind = state.time + 0.5; // fire() scatters the aim of anyone blind
+      const k = e.kind === 'player' ? 0.5 : 1;
+      e.vx = (e.vx || 0) + (Math.random() - 0.5) * 120 * dt * k; e.vz = (e.vz || 0) + (Math.random() - 0.5) * 120 * dt * k; // and cars swerve
+    }
+    if (c.t <= 0) { scene.remove(c.mesh); disposeTree(c.mesh); boxFx.clouds.splice(i, 1); }
+  }
+  let dirty = false;
+  for (let i = boxFx.crates.length - 1; i >= 0; i--) {
+    const c = boxFx.crates[i]; c.t -= dt;
+    if (c.fall > 0) { c.fall -= dt; c.mesh.position.y = Math.max(0, 14 * (c.fall / 0.35) ** 2); if (c.fall <= 0) { burst(c.x, c.z, 0xcfc6b8, 6, 6, 0.6); if (dist2(c, state.player) < 2500) sfx('clack'); } }
+    if (c.t < 1) c.mesh.scale.y = Math.max(0.05, c.t);
+    if (c.t <= 0) { scene.remove(c.mesh); disposeTree(c.mesh); const k = obstacles.indexOf(c.obs); if (k >= 0) obstacles.splice(k, 1); boxFx.crates.splice(i, 1); dirty = true; }
+  }
+  if (dirty) navDirty = true;
+}
+
+// ----- Hooks the rest of the game calls -----
+const isWet = (w) => !!(w && (w.bubble || w.wet));
+function boxHurtMod(b, dmg, byTeam, weapon) { // every weakness and defence that changes a hit on a box
+  const bx = b.box, fx = bx.fx;
+  if (bx.id === 'bread') dmg *= 1 - 0.05 * (bx.tier - 1);
+  if (fx.armour) dmg *= 1 - 0.1 * fx.armour;
+  if (bx.bridgeT > 0) dmg *= 0.25;
+  if (bx.id === 'kettle' && isWet(weapon)) dmg *= 2;             // Cold Water
+  if (bx.id === 'toaster' && bx.cd > 0) dmg *= 1.5;               // hot target while it cools
+  if (bx.id === 'trolley' && bx.open && bx.tip <= 0 && bx.tipImmune <= 0 && dmg * (weapon?.vsBase ?? 0.3) >= 40) { // Top-Heavy
+    bx.tip = 4; sfx('thud'); state.shake = Math.min(1.6, (state.shake || 0) + 0.6);
+    toast('The Tea Trolley TIPPED OVER! No income, defences off'); burst(b.x, b.z, 0xdfe5ea, 14, 10, 4);
+  }
+  return dmg;
+}
+function boxWetSplash(x, z) { // a sink drip lands: the Kettle does not like it
+  for (const b of state.bases || []) if (b.box?.id === 'kettle' && b.hp > 0 && dist2(b, { x, z }) < 9 * 9) hurt(b, 60, 1 - b.team, { vsBase: 1, wet: true });
+}
+function boxSpeed(e) {
+  if (e.team !== BLUE) return 1;
+  const b = state.bases?.[BLUE], bx = b?.box;
+  if (!bx || !bx.open) return 1;
+  let k = 1;
+  if (bx.id === 'kettle') { if (bx.boil > 0) k *= 1.35; if (dist2(e, b) < 15 * 15) k *= 1.12; }
+  if (bx.id === 'spice' && bx.fx.sig && e.cin > state.time) k *= 1.3;
+  return k;
+}
+function boxReflect(s) { // Silver Serving Tray: shots that reach the shield turn round
+  const b = state.bases?.[BLUE], bx = b?.box;
+  if (!bx || bx.id !== 'trolley' || !bx.fx.sig || !bx.open || bx.tip > 0 || s.team === BLUE || s.lobbed || s.y > 14) return;
+  if (dist2(s, b) > 9.6 * 9.6) return;
+  s.team = BLUE; s.vx = -s.vx; s.vz = -s.vz; s.target = null; s.life = Math.max(s.life, 0.7);
+  burst(s.x, s.z, 0xe8eef2, 6, 8, s.y); sfx('hit');
+}
+const carryOf = (w, spec) => spec.carry * (w.team === BLUE && state.bases?.[BLUE]?.box?.id === 'trolley' ? 2 : 1); // Heavy Load: double cereal, no slow-down
+const boxTrucksMax = (team, base) => base + (team === BLUE ? state.bases?.[BLUE]?.box?.fx.trucks || 0 : 0);
 
 function makeOutpost(x, z, y = 0) {
   const g = new THREE.Group();
@@ -1842,7 +2521,7 @@ const workersOf = (team, role) => entities.filter((e) => e.kind === 'worker' && 
 function buyWorker(role, team) {
   if (state.over) return false;
   const w = WORKERS[role];
-  if (workersOf(team, role).length >= w.max) { if (team === BLUE) { toast(`${w.max} ${role}s is the most`); sfx('no'); } return false; }
+  if (workersOf(team, role).length >= boxTrucksMax(team, w.max)) { if (team === BLUE) { toast(`${boxTrucksMax(team, w.max)} ${role}s is the most`); sfx('no'); } return false; }
   if (state.cereal[team] < w.cost) { if (team === BLUE) { toast(`Need ${w.cost} cereal`); sfx('no'); } return false; }
   state.cereal[team] -= w.cost;
   spawnWorker(role, team);
@@ -1872,11 +2551,12 @@ function workerThink(w, dt) {
     return;
   }
   // Trucks: fill up at a spill or pile, haul to the nearest drop, unload, repeat.
-  if (w.load >= spec.carry || (w.load > 0 && w.going === 'drop')) {
+  if (w.load >= carryOf(w, spec) || (w.load > 0 && w.going === 'drop')) {
     w.going = 'drop';
     const d = nearestDrop(w);
     steer(w, d.x, d.z, (d.r || 4) + 2, dt, spec, d.kind === 'base' ? null : undefined);
     if (dist2(w, d) < ((d.r || 4) + 4) ** 2) {
+      if (d.kind === 'base' && d.box?.tip > 0) return; // a tipped Tea Trolley takes no deliveries
       stockOf(w.loadRes)[w.team] += w.load; // the second resource ('clips') lives in state.clips; level 6 also has peas and batteries
       if (w.team === BLUE && dist2(w, state.player) < 1600) sfx('pour');
       w.load = 0;
@@ -1902,8 +2582,8 @@ function workerThink(w, dt) {
     // Spills scoop fast; piles load slowly by hand and fast with diggers working them.
     const rate = spills.includes(w.src) ? 8 : 0.8 + 2.6 * diggersAt(w.src, w.team);
     if (w.load === 0) w.loadRes = w.src.res;
-    w.load += takeFrom(w.src, Math.min(rate * dt, spec.carry - w.load));
-    if (w.load >= spec.carry || w.src.amount <= 0) w.going = 'drop';
+    w.load += takeFrom(w.src, Math.min(rate * dt, carryOf(w, spec) - w.load));
+    if (w.load >= carryOf(w, spec) || w.src.amount <= 0) w.going = 'drop';
   }
 }
 
@@ -2145,7 +2825,7 @@ function reset() {
   $('bUse').hidden = true;
   if (L.gumball) gumball = placeGumball(L);
   state.phase = 'battle';
-  if (!stageL) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // not during the race (the real level is built after it)
+  if (!stageL) { for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } for (let i = 0; i < (state.bases[BLUE].box.fx.trucks || 0); i++) spawnWorker('truck', BLUE); } // (Garage: more trucks = free ones to start) // not during the race (the real level is built after it)
   state.player = { kind: 'player', team: BLUE, x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
   if (state.finale) finaleBegin();
@@ -2196,7 +2876,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
   if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
-  if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
+  if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones(); if (e.code === 'KeyC') useAbility();
   if (state.finale) { const k = ['KeyI', 'KeyO', 'KeyP'].indexOf(e.code); if (k >= 0) pickLane(k); if (e.code === 'KeyB') buildWall(); } // level 6: battle plan left / middle / right
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
@@ -2217,6 +2897,7 @@ tap('bMagnet', () => build('magnet'));
 tap('bDomino', () => placeDomino());
 tap('bTrojan', () => trojan());
 tap('bUse', () => useItem(BLUE, state.player));
+tap('bAbility', () => useAbility());
 tap('bBoat', () => buyBoat());
 tap('bToaster', () => buildToaster());
 tap('bCatapult', () => build('catapult'));
@@ -2405,6 +3086,7 @@ function drive(e, dx, dz, throttle, dt, stats) {
   const patch = patchAt(e.x, e.z);
   let grip = stats.grip, top = stats.speed;
   if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'turbo') top *= 1.45; // gumball turbo
+  top *= boxSpeed(e); // toy box effects: Boiling Point, steam deck, Cinnamon Boost
   if (e.spin > 0) grip *= 0.15; // spun out on butter or by a marble
   if ((patch === 'juice' || patch === 'oil') && !stats.floats) grip *= 0.12; // juice and cooking oil: slide
   if (patch === 'sauce' && !stats.floats) top *= 0.35; // tomato sauce: sticky
@@ -2423,13 +3105,13 @@ function drive(e, dx, dz, throttle, dt, stats) {
 }
 
 function fire(from, target, weapon, angle) {
-  const spread = weapon.spread ? (Math.random() - 0.5) * weapon.spread : (Math.random() - 0.5) * 0.04;
+  const spread = (weapon.spread ? (Math.random() - 0.5) * weapon.spread : (Math.random() - 0.5) * 0.04) + (from.blind > state.time ? (Math.random() - 0.5) * 1.3 : 0); // (a chilli cloud scatters the aim)
   const a = (angle ?? angleTo(from, target)) + spread;
   const m = new THREE.Mesh(shared(`shot:${!!weapon.homing}:${weapon.size}`, () => (weapon.homing ? new THREE.ConeGeometry(weapon.size, weapon.size * 3, 6) : new THREE.SphereGeometry(weapon.size, 6, 5))),
     basicMat(weapon.color, weapon.life ? 0.8 : weapon.bubble ? 0.6 : 1));
-  const y = (from.kind === 'base' ? 8.3 : from.kind === 'turret' ? 3.2 : from.type === 'duck' ? 5.5 : from.type === 'toaster' ? 8.2 : 1.6) + (state.ledge ? ledgeLift(from) : 0); // up on the oven ledge you shoot from higher
+  const y = (from.kind === 'base' ? (from.fireY || 8.3) : from.kind === 'turret' ? 3.2 : from.type === 'duck' ? 5.5 : from.type === 'toaster' ? 8.2 : 1.6) + (state.ledge ? ledgeLift(from) : 0); // up on the oven ledge you shoot from higher
   // Shots leave from the muzzle: just outside a car, or from the gun on a toy box's roof.
-  const muzzle = from.kind === 'base' ? 1.5 : (from.r || 1) + 0.5;
+  const muzzle = from.kind === 'base' ? (from.box?.id === 'bread' ? 6 : 1.5) : (from.r || 1) + 0.5;
   const ox = Math.cos(a) * muzzle, oz = Math.sin(a) * muzzle;
   m.position.set(from.x + ox, y, from.z + oz);
   if (weapon.flame) { // flaming toast: a slice of bread with a flame on top (shared shapes)
@@ -2481,6 +3163,9 @@ function hurt(e, dmg, byTeam, weapon) {
   // Gumball power-ups: a shielded toy box takes a fifth; double damage doubles; gumball armour halves hits on your car.
   if (e.kind === 'base' && state.shield?.[e.team] > state.time) dmg *= 0.2;
   if (e.kind === 'base' && e.team === RED && state.boss?.hp > 0 && !state.boss.shieldBroken) dmg *= 0.5; // the boss's bubble shield
+  if (e.kind === 'base' && e.box) dmg = boxHurtMod(e, dmg, byTeam, weapon); // toy box weaknesses and defences
+  if (byTeam === BLUE && state.bases?.[BLUE]?.box?.boil > 0) dmg *= 1.4; // Tea Kettle: Boiling Point
+  if (weapon?.flatten && e.kind === 'turret') dmg *= e.type === 'wall' ? 4 : 1.6; // the Baguette Cannon flattens walls
   if (byTeam != null && state.buff?.[byTeam]?.kind === 'double') dmg *= 2;
   if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'armour') dmg *= 0.5;
   // Paperclip armour on your car: each plate takes 15% off every hit (3 plates at most).
@@ -3539,6 +4224,7 @@ function dripSplash(x, z) {
   const ring = sink.rings.find((r) => r.life <= 0) || sink.rings[0];
   ring.position.set(x, 0.22, z); ring.life = 0.9; ring.visible = true; ring.scale.setScalar(1);
   burst(x, z, 0x9fe0ff, 10, 8, 0.8);
+  boxWetSplash(x, z); // the Tea Kettle box hates a drip
   for (const e of entities) {
     if (e.hp <= 0 || !(e.kind === 'unit' || e.kind === 'worker' || e.kind === 'boat' || (e.kind === 'player' && e.alive))) continue;
     const dx = e.x - x, dz = e.z - z, d = Math.hypot(dx, dz);
@@ -6758,7 +7444,7 @@ function update(dt) {
   // Income is what your trucks haul home, plus a trickle so nobody is ever stuck.
   // A side with no trucks gets a free one from its factory every 45 s.
   for (const team of [BLUE, RED]) {
-    state.cereal[team] += dt * (state.level.trickle ?? 0.25); // level 6 pays a bit more: a big map needs a bigger war chest
+    if (!boxTipped(team)) state.cereal[team] += dt * (state.level.trickle ?? 0.25); // level 6 pays a bit more: a big map needs a bigger war chest
     if (workersOf(team, 'truck').length) state.freeTruck[team] = 45;
     else if ((state.freeTruck[team] -= dt) <= 0) {
       state.freeTruck[team] = 45;
@@ -6788,7 +7474,7 @@ function update(dt) {
       fire(p, target, p.weapon, aim);
       p.cool = p.weapon.rate;
     }
-    if (dist2(p, state.bases[BLUE]) < 14 * 14 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 30 * dt); // repairs at home
+    if (dist2(p, state.bases[BLUE]) < 14 * 14 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + (30 + 20 * (state.bases[BLUE].box?.fx.repair || 0)) * dt); // repairs at home (Garage: faster repair)
   } else {
     state.respawn -= dt;
     if (state.respawn <= 0) {
@@ -6797,7 +7483,8 @@ function update(dt) {
     }
   }
 
-  // Units, turrets, bases
+  boxesUpdate(dt); // toy boxes: unfold, roof turret, the Baron's cannon, abilities
+  // Units, turrets
   for (const e of entities) {
     if (e.hp <= 0) continue;
     if (e.kind === 'unit') unitThink(e, dt);
@@ -6806,7 +7493,7 @@ function update(dt) {
     if (e.kind === 'boat') boatThink(e, dt);
     if (e.kind === 'turret' && e.type === 'magnet') { magnetThink(e, dt); continue; }
     if (e.stun > 0) { e.stun -= dt; e.cool = Math.max(e.cool, 0.3); if (Math.random() < dt * 6) burst(e.x, e.z, 0x7cfffb, 1, 3, 3.4); continue; } // level 6: a battery bot's zap stops a turret firing
-    if (e.kind === 'turret' || e.kind === 'base') {
+    if (e.kind === 'turret') {
       e.cool -= dt;
       // A catapult aims for their toy box when it can reach it: that's what it's for.
       const foeBase = state.bases[1 - e.team];
@@ -6841,6 +7528,7 @@ function update(dt) {
       s.vx = Math.cos(a) * s.weapon.speed; s.vz = Math.sin(a) * s.weapon.speed;
     }
     s.x += s.vx * dt; s.z += s.vz * dt;
+    boxReflect(s);
     if (state.finale?.ceasefire) { // no shooting across the ceasefire line: a shot that reaches it is gone
       if (s.side === undefined) s.side = (s.x - s.vx * dt) > 0;
       if ((s.x > 0) !== s.side) { scene.remove(s.mesh); shots.splice(i, 1); continue; }
@@ -6936,6 +7624,7 @@ function update(dt) {
   $('clipsHud').hidden = state.level.resources.length < 2;
   $('clipsHud').textContent = `${Math.floor(state.clips[BLUE])} ${secondName()}`;
   $('clipsHud').classList.toggle('batt', secondName() === 'batteries');
+  boxHud(); // the ABILITY button
   $('hpBlue').style.width = `${Math.max(0, state.bases[BLUE].hp / state.bases[BLUE].maxHp) * 100}%`;
   const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
@@ -6984,7 +7673,7 @@ function render(dt) {
     if (e.role === 'truck') {
       const bed = e.mesh.getObjectByName('bed');
       const load = bed.getObjectByName('load');
-      load.scale.y = Math.max(0.01, e.load / WORKERS.truck.carry) * 0.9;
+      load.scale.y = Math.max(0.01, e.load / carryOf(e, WORKERS.truck)) * 0.9;
       if (e.load > 0) load.material.color.setHex(e.loadRes === 'clips' ? 0xdfe3ea : e.loadRes === 'batteries' ? 0x3ddc84 : e.loadRes === 'peas' ? 0x7ccf4a : 0xf2c97d);
       bed.rotation.z = e.going === 'drop' && e.load === 0 ? 0.5 : 0;
     }
@@ -6992,7 +7681,6 @@ function render(dt) {
   }
   for (const b of state.bases || []) {
     const health = b.hp / b.maxHp;
-    b.mesh.rotation.z = (1 - Math.min(1, health * 2)) * 0.12 * (b.team === BLUE ? 1 : -1);
     if (health < 0.5 && b.hp > 0 && Math.random() < dt * (health < 0.25 ? 10 : 4)) burst(b.x + (Math.random() - 0.5) * 8, b.z + (Math.random() - 0.5) * 8, health < 0.25 ? 0x3a332c : 0x8a8178, 2, 3, 7.5);
   }
   hobDraw(dt, time);
@@ -7104,17 +7792,184 @@ function selectLevel(i) {
 curLevel = LEVELS.findIndex((L, i) => isPlayable(i) && !starsOf(i));
 if (curLevel < 0) curLevel = LEVELS.reduce((best, L, i) => (isPlayable(i) ? i : best), 0);
 
+// ---------- Toy boxes: sounds, thumbnails, the picker / upgrade / collection screen, stars ----------
+// Unfold sounds are "<click-whirr> then the CLUNK at 0.4 s" (see BOXES[..].sound for the sound each is going for).
+Object.assign(SOUNDS, {
+  unfold_trolley: () => { [0, 0.06, 0.12, 0.18].forEach((d) => tone('square', 1900, 1500, 0.035, 0.02, d)); noise('bandpass', 600, 2600, 0.09, 0.3, 0.06, 2); tone('sawtooth', 180, 560, 0.04, 0.3, 0.06); tone('sine', 120, 30, 0.8, 0.4, 0.4); noise('lowpass', 1400, 90, 0.6, 0.32, 0.4); tone('triangle', 1100, 700, 0.06, 0.12, 0.4); },
+  unfold_spice: () => { [0, 0.09, 0.17, 0.26, 0.33].forEach((d, i) => tone('triangle', 2200 + (i % 3) * 330, 1900, 0.05, 0.1, d)); noise('bandpass', 900, 500, 0.06, 0.3, 0.1, 2); tone('sine', 140, 50, 0.5, 0.3, 0.4); noise('lowpass', 900, 150, 0.4, 0.25, 0.4); },
+  unfold_kettle: () => { noise('highpass', 5000, 7000, 0.1, 0.45, 0, 1); noise('bandpass', 2400, 3600, 0.06, 0.4, 0.05, 2); tone('square', 520, 190, 0.1, 0.12, 0.4); noise('bandpass', 1800, 700, 0.25, 0.2, 0.4, 3); tone('sine', 110, 40, 0.4, 0.25, 0.4); },
+  unfold_toaster: () => { tone('sine', 140, 520, 0.2, 0.2, 0); noise('bandpass', 700, 2200, 0.07, 0.3, 0.1, 2); tone('sine', 110, 40, 0.45, 0.2, 0.38); tone('triangle', 2093, 2093, 0.13, 0.55, 0.4); tone('triangle', 2637, 2637, 0.06, 0.4, 0.42); },
+  unfold_bread: () => { noise('lowpass', 500, 300, 0.12, 0.38, 0, 2); tone('sawtooth', 70, 90, 0.05, 0.35); tone('sine', 85, 24, 0.95, 0.5, 0.4); noise('lowpass', 1000, 80, 0.7, 0.4, 0.4); },
+  steam: () => { noise('highpass', 4500, 7500, 0.14, 0.7); tone('sine', 900, 1400, 0.03, 0.5); },
+  baguette: () => { tone('sine', 140, 40, 0.55, 0.3); noise('lowpass', 1200, 150, 0.3, 0.2); },
+});
+// A little 3D picture of a box (unfolded) drawn once into an off-screen target. Returns a data URL, or '' if this device cannot.
+const thumbCache = new Map();
+let thumbRig = null;
+function boxThumb(id, up, tier = 2, w = 360, h = 270) {
+  const key = `${id}:${tier}:${up ? JSON.stringify([up.roof, up.doors, up.garage, up.sig, up.look]) : ''}`;
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  let url = '';
+  try {
+    if (!thumbRig) {
+      const sc = new THREE.Scene(); sc.background = new THREE.Color(0x4a3a2c);
+      sc.add(new THREE.HemisphereLight(0xfff4e0, 0x6a5038, 0.95));
+      const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(20, 45, 30); sc.add(dl);
+      const floor = new THREE.Mesh(new THREE.CircleGeometry(19, 48), new THREE.MeshStandardMaterial({ color: 0xb98656, roughness: 0.8 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.02; sc.add(floor);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(14.5, 15.5, 48), new THREE.MeshBasicMaterial({ color: COLORS[BLUE], transparent: true, opacity: 0.55 })); ring.rotation.x = -Math.PI / 2; sc.add(ring);
+      const rt = new THREE.WebGLRenderTarget(w, h); rt.texture.encoding = THREE.sRGBEncoding;
+      const cam = new THREE.PerspectiveCamera(30, w / h, 1, 200); cam.position.set(34, 25, 33); cam.lookAt(1.5, 3.2, 0);
+      thumbRig = { sc, rt, cam, buf: new Uint8Array(w * h * 4), cv: document.createElement('canvas') };
+      thumbRig.cv.width = w; thumbRig.cv.height = h;
+    }
+    const R = thumbRig, model = buildBoxModel(id, BLUE, up, tier);
+    unfoldTo(model, 1); R.sc.add(model.g);
+    const prev = renderer.getRenderTarget(), xr = renderer.xr.enabled; renderer.xr.enabled = false;
+    renderer.setRenderTarget(R.rt); renderer.render(R.sc, R.cam); renderer.readRenderTargetPixels(R.rt, 0, 0, w, h, R.buf);
+    renderer.setRenderTarget(prev); renderer.xr.enabled = xr;
+    R.sc.remove(model.g); disposeTree(model.g);
+    const c = R.cv.getContext('2d'), im = c.createImageData(w, h);
+    for (let y = 0; y < h; y++) im.data.set(R.buf.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);
+    c.putImageData(im, 0, 0); url = R.cv.toDataURL('image/png');
+  } catch (e) { url = ''; }
+  thumbCache.set(key, url);
+  return url;
+}
+// ----- Stars to spend -----
+function boxAward(n) { boxSave.coins = Math.min(999, boxSave.coins + n); saveBoxes(); }
+function boxSkinPrize() { // a gumball can hold a rare skin
+  const left = Object.keys(SKINS).filter((k) => !boxSave.skins.includes(k));
+  if (!left.length) { boxAward(2); return 'a shiny coin: +2 box stars'; }
+  const k = left[(Math.random() * left.length) | 0]; boxSave.skins.push(k); saveBoxes();
+  return `a RARE SKIN: ${SKINS[k].name}! Wear it in Toy Box > Looks`;
+}
+PRIZES.push([1, 0xffd700, 'Rare skin', (t) => (t === BLUE ? boxSkinPrize() : 'a gold wrapper')]);
+
+// ----- The screen: PICK / UPGRADES / COLLECTION -----
+let boxTab = 'pick', boxFrom = null;
+const pips = (t, n = 3) => '●'.repeat(t) + '○'.repeat(n - t);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function boxImg(id, up, tier, cls = '') {
+  const u = boxThumb(id, up, tier);
+  return u ? `<img class="bthumb ${cls}" alt="${esc(BOXES[id].name)}" src="${u}">` : `<div class="bthumb ${cls}" style="background:#${BOXES[id].tint.toString(16).padStart(6, '0')}"></div>`;
+}
+function boxCard(id, picked) {
+  const d = BOXES[id], enemy = id === 'bread';
+  return `<div class="bcard ${picked ? 'sel' : ''} ${enemy ? 'enemy' : ''}" data-box="${id}">
+    ${boxImg(id, enemy ? null : boxSave.up[id], enemy ? 3 : 2)}
+    <h3>${esc(d.name)}</h3><div class="by">Designed by ${esc(d.by)}</div>
+    <dl><dt>Owner</dt><dd>${esc(d.owner)}</dd>
+    <dt>Ability</dt><dd><b>${esc(d.ability.name)}</b>: ${esc(d.ability.text)}</dd>
+    <dt>Weakness</dt><dd><b>${esc(d.weakness.name)}</b>: ${esc(d.weakness.text)}</dd>
+    <dt>Playstyle</dt><dd>${esc(d.playstyle)}</dd>
+    <dt>Unfolds</dt><dd>${esc(d.unfoldText)}</dd>
+    ${enemy ? '' : `<dt>Upgrade</dt><dd><b>${esc(d.sig.name)}</b>: ${esc(d.sig.text)}</dd>`}</dl>
+    ${enemy ? '<div class="bpick off">THE BARON\'S BOX: you fight it on every level</div>' : `<button class="bpick" data-pick="${id}">${picked ? 'YOUR BOX' : 'PICK THIS BOX'}</button>`}</div>`;
+}
+const SLOT_INFO = {
+  roof: { title: 'Roof', note: 'replaces the old roof gun', kinds: { turret: ['Turret', 'A gun on the roof. Tier 1 is the old roof gun; more tiers hit harder and reach further.'], radar: ['Radar', 'Your new turrets hit 8% harder per tier, and a dish spins on the roof.'], drone: ['Drone pad', 'Launches a free drone now and then (up to 2 + tier at once).'] } },
+  doors: { title: 'Doors', note: 'armour, spikes or a drawbridge', kinds: { armour: ['Armour', 'Hits on the box do 10% less per tier.'], spikes: ['Spikes', 'Anything that rams the box gets stabbed.'], bridge: ['Drawbridge', 'Raises when enemies are close: the box takes a quarter damage for a few seconds.'] } },
+  garage: { title: 'Garage', note: 'more trucks or faster repair', kinds: { trucks: ['More trucks', 'A free truck at the start per tier, and room for one more truck per tier.'], repair: ['Faster repair', 'Cars repair faster at home, and the box mends itself.'] } },
+};
+function boxUpgradeHtml() {
+  const id = boxSave.pick, d = BOXES[id], up = boxSave.up[id], c = boxSave.coins;
+  let h = `<div class="upHead">${boxImg(id, up, 2, 'small')}<div><h3>${esc(d.name)}</h3><div class="by">Designed by ${esc(d.by)}</div><p>Spend stars between levels. You earn stars for every level you win.</p></div></div><div class="slots">`;
+  for (const [s, info] of Object.entries(SLOT_INFO)) {
+    const cur = up[s], next = cur.t + 1;
+    h += `<div class="slot"><h4>${info.title} <small>${info.note}</small></h4><div class="kinds">` +
+      Object.entries(info.kinds).map(([k, [nm]]) => `<button data-kind="${s}:${k}" class="${cur.k === k ? 'on' : ''}">${nm}</button>`).join('') + `</div>` +
+      `<p>${esc(info.kinds[cur.k][1])}</p><div class="tier"><span>${pips(cur.t)}</span>` +
+      (next > 3 ? '<em>MAX</em>' : `<button data-buy="${s}" ${c >= SLOT_COST[next] ? '' : 'disabled'}>${cur.t ? 'UPGRADE' : 'FIT'} ★${SLOT_COST[next]}</button>`) + `</div></div>`;
+  }
+  h += `<div class="slot sig"><h4>Signature <small>${esc(d.name)} only</small></h4><p><b>${esc(d.sig.name)}</b>: ${esc(d.sig.text)}</p><div class="tier"><span>${pips(up.sig, 1)}</span>` +
+    (up.sig ? '<em>OWNED</em>' : `<button data-buy="sig" ${c >= 4 ? '' : 'disabled'}>BUY ★ 4</button>`) + `</div></div>`;
+  const L = up.look, own = up.own;
+  const opt = (kind, list, cur, ownedList) => list.map((n, i) => `<button data-look="${kind}:${i}" class="${cur === i ? 'on' : ''} ${ownedList.includes(i) ? '' : 'locked'}">${kind === 'p' ? `<i style="background:${PAINTS[i] == null ? '#' + d.tint.toString(16).padStart(6, '0') : '#' + PAINTS[i].toString(16).padStart(6, '0')}"></i>` : ''}${n}${ownedList.includes(i) ? '' : ' ★1'}</button>`).join('');
+  h += `<div class="slot looks"><h4>Looks <small>paint, stickers, flags and skins</small></h4>` +
+    `<div class="kinds"><span>Paint</span>${opt('p', PAINT_NAMES, L.paint, own.p)}</div>` +
+    `<div class="kinds"><span>Sticker</span>${opt('s', STICKERS, L.sticker, own.s)}</div>` +
+    `<div class="kinds"><span>Flag</span>${opt('f', FLAGS, L.flag, own.f)}</div>` +
+    `<div class="kinds"><span>Skin</span><button data-skin="" class="${L.skin === '' ? 'on' : ''}">None</button>` + Object.entries(SKINS).filter(([, s]) => s.box === id).map(([k, s]) => (boxSave.skins.includes(k) ? `<button data-skin="${k}" class="${L.skin === k ? 'on' : ''}">${s.name}</button>` : `<button disabled>${s.name} (win it from a gumball)</button>`)).join('') + `</div></div></div>`;
+  return h;
+}
+function boxShelfHtml() {
+  let h = `<p class="shelfNote">Five toy boxes. Four are yours to pick; the Bread Bin is the Baron's.</p><div class="shelf">`;
+  for (const id of BOX_ORDER) { const d = BOXES[id]; h += `<div class="shelfItem ${id === boxSave.pick ? 'sel' : ''}">${boxImg(id, id === 'bread' ? null : boxSave.up[id], 3, 'small')}<b>${esc(d.name)}</b><small>${esc(d.owner)}</small><small>Designed by ${esc(d.by)}</small></div>`; }
+  h += `</div><h4 class="skinsH">Skins <small>${boxSave.skins.length} of ${Object.keys(SKINS).length}. A rare gumball can hold one.</small></h4><div class="shelf skins">`;
+  for (const [k, s] of Object.entries(SKINS)) {
+    const own = boxSave.skins.includes(k);
+    const up = { ...cleanUp(null), look: { paint: 0, sticker: 0, flag: 0, skin: k } };
+    h += `<div class="shelfItem skin ${own ? '' : 'lockedSkin'}">${own ? boxImg(s.box, up, 2, 'small') : '<div class="bthumb small q">?</div>'}<b>${own ? esc(s.name) : '???'}</b><small>${own ? 'Wear it in Looks' : 'Rare gumball prize'}</small></div>`;
+  }
+  return h + '</div>';
+}
+function renderBoxScr() {
+  $('boxCoins').textContent = `★ ${boxSave.coins} to spend`;
+  for (const b of document.querySelectorAll('#boxTabs button')) b.classList.toggle('on', b.dataset.tab === boxTab);
+  $('boxBody').innerHTML = boxTab === 'pick' ? `<div class="cards">${PLAYER_BOXES.map((id) => boxCard(id, id === boxSave.pick)).join('')}${boxCard('bread', false)}</div>` : boxTab === 'up' ? boxUpgradeHtml() : boxShelfHtml();
+  renderMyBox();
+}
+function openBoxes(tab = 'pick') { boxTab = tab; boxFrom = !$('end').hidden ? 'end' : 'start'; $('boxScr').hidden = false; renderBoxScr(); $('boxScr').scrollTop = 0; }
+function closeBoxes() {
+  $('boxScr').hidden = true;
+  if (!$('start').hidden) reset(); // the new box shows behind the title card
+}
+function renderMyBox() {
+  const id = boxSave.pick, d = BOXES[id];
+  $('myBox').innerHTML = `${boxImg(id, boxSave.up[id], 2, 'tiny')}<div><span class="sub">YOUR TOY BOX</span><b>${esc(d.name)}</b><small>${esc(d.ability.name)} · ${esc(d.playstyle)} · ★ ${boxSave.coins}</small></div><button class="go alt" id="openBoxes">CHANGE / UPGRADE</button>`;
+  $('openBoxes').onclick = () => openBoxes('pick');
+}
+$('boxBody').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-pick],[data-kind],[data-buy],[data-look],[data-skin],.bcard');
+  if (!t) return;
+  const id = boxSave.pick, up = boxSave.up[id];
+  if (t.dataset.pick) { boxSave.pick = t.dataset.pick; sfx('cap'); }
+  else if (t.dataset.kind) { const [s, k] = t.dataset.kind.split(':'); up[s].k = k; }
+  else if (t.dataset.buy) {
+    const s = t.dataset.buy, cost = s === 'sig' ? 4 : SLOT_COST[up[s].t + 1];
+    if (boxSave.coins < cost || (s !== 'sig' && up[s].t >= 3) || (s === 'sig' && up.sig)) { sfx('no'); return; }
+    boxSave.coins -= cost; if (s === 'sig') up.sig = 1; else up[s].t++;
+    sfx('build');
+  } else if (t.dataset.look) {
+    const [k, i] = t.dataset.look.split(':'), idx = +i, lst = up.own[k], field = { p: 'paint', s: 'sticker', f: 'flag' }[k];
+    if (!lst.includes(idx)) { if (boxSave.coins < 1) { sfx('no'); return; } boxSave.coins--; lst.push(idx); sfx('build'); }
+    up.look[field] = idx;
+  } else if (t.dataset.skin !== undefined) up.look.skin = t.dataset.skin;
+  else if (t.dataset.box && PLAYER_BOXES.includes(t.dataset.box)) { boxSave.pick = t.dataset.box; }
+  else return;
+  saveBoxes(); renderBoxScr();
+});
+for (const b of document.querySelectorAll('#boxTabs button')) b.addEventListener('click', () => { boxTab = b.dataset.tab; renderBoxScr(); $('boxScr').scrollTop = 0; });
+$('boxDone').addEventListener('click', closeBoxes);
+$('endBoxes').addEventListener('click', () => openBoxes('up'));
+renderMyBox();
+// ----- The ABILITY button on the HUD (cool-down ring) -----
+function boxHud() {
+  const b = state.bases?.[BLUE], bx = b?.box, btn = $('bAbility'), show = !!bx && state.phase === 'battle' && !stageL;
+  if (btn.hidden === show) btn.hidden = !show;
+  if (!show) return;
+  if (btn.dataset.id !== bx.id) { btn.dataset.id = bx.id; $('abilName').textContent = bx.def.ability.name; $('pctBlue').previousSibling.textContent = `${bx.def.name.toUpperCase()} `; }
+  const ready = boxReady(bx), cdMax = boxCooldown(bx), frac = bx.tip > 0 || !bx.open ? 1 : bx.charges != null ? (bx.charges >= bx.maxCh ? 0 : bx.cd / cdMax) : bx.cd / cdMax;
+  const p = Math.round(Math.max(0, Math.min(1, frac)) * 100);
+  if (btn.dataset.p !== String(p)) { btn.dataset.p = p; btn.style.setProperty('--p', p); }
+  btn.classList.toggle('ready', ready);
+  const sub = bx.tip > 0 ? 'TIPPED!' : !bx.open ? '...' : bx.charges != null ? `${bx.charges}/${bx.maxCh} ready${bx.charges < bx.maxCh ? ` · ${Math.ceil(bx.cd)}s` : ''}` : ready ? 'READY · C' : `${Math.ceil(bx.cd)}s`;
+  if (btn.dataset.sub !== sub) { btn.dataset.sub = sub; $('abilSub').textContent = sub; }
+}
+
 function endGame(won) {
   state.over = true;
   const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
   if (MT.on) { /* My Track hook: no level stars */ } else if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
   else if (won) saveProgress();
+  const boxGain = won ? (MT.on ? 1 : earned + 1) : 0; if (boxGain) boxAward(boxGain); // stars to spend on the toy box
   if (won && state.finale) return talkThen(curLevel, 'win', () => finaleEnding(earned)); // level 6: the Baron's last word (dialogue hook), then the light flicks on and the MEALTIME MAYHEM COMPLETE screen
   $('endTitle').textContent = won ? 'YOU WIN' : 'TOY BOX LOST';
   const mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
   $('endText').textContent = won
     ? `Their toy box is crumbs. Time ${mins}:${secs}. ${state.time < FAST_WIN ? 'Fast win star!' : 'Win in under 8 minutes for a star.'} ${state.trucksLost === 0 ? 'No trucks lost star!' : `You lost ${state.trucksLost} truck${state.trucksLost === 1 ? '' : 's'}: win without losing one for a star.`}`
     : `They flattened your toy box after ${mins}:${secs}. Build turrets on the caps you hold and try again.`;
+  if (boxGain && !(won && state.finale)) $('endText').textContent += ` +${boxGain} \u2605 for your toy box (${boxSave.coins} to spend).`;
   $('endStars').innerHTML = won ? starRow(earned) : '';
   const nextOk = won && !MT.on && LEVELS[curLevel + 1] && isPlayable(curLevel + 1); // (My Track hook)
   $('next').hidden = !nextOk;
@@ -7475,6 +8330,13 @@ const TALK_SCRIPT = [
     lose: [['baron', 'The kitchen is MINE! Bow to the Baron! Ha ha!', 'laugh', 'shake']],
   },
 ];
+// Toy boxes: one extra line at the end of every pre-race talk, about the box the player picked (60 characters or fewer).
+TALK_SCRIPT.box = {
+  trolley: ['baron', 'A tea trolley? One good shove and you will tip over!', 'laugh', 'bob'],
+  spice: ['baron', 'Spices? Bah! I shall sneeze you flat, little toast.', 'angry'],
+  kettle: ['baron', 'A kettle? I shall pour cold MILK on your steam!', 'laugh'],
+  toaster: ['baron', 'A toaster! Pop up all you like. I am the crusty one.', 'angry', 'shake'],
+};
 const TALK_CPS = 38; // letters a second while typing
 const TALK_PAUSE = { '.': 0.22, '!': 0.22, '?': 0.22, ',': 0.1 };
 
@@ -7505,8 +8367,9 @@ function talkFace(id, key) {
 const TK = { open: false, lines: null, i: 0, n: 0, shown: 0, t: 0, pause: 0, cb: null, raf: 0, last: 0, blink: 2, blinkT: 0, fx: '', fxT: 0, face: '', who: '' };
 const tkEl = (id) => document.getElementById(id);
 function talkLines(level, when) {
-  const S = TALK_SCRIPT[level];
-  return (S && S[when]) || [];
+  const S = TALK_SCRIPT[level], lines = (S && S[when]) || [];
+  const bl = when === 'pre' && lines.length && TALK_SCRIPT.box && TALK_SCRIPT.box[boxSave.pick]; // toy boxes: the Baron has a word about the box you picked
+  return bl ? lines.concat([bl]) : lines;
 }
 // The hook: play the lines for this level and moment, then call cb (also on Skip).
 function talkThen(level, when, cb) {
