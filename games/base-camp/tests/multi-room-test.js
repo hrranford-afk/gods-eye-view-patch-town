@@ -115,6 +115,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); await finishSession();
 
   // ===================== (e) a third, unknown room =====================
+  const shedBeforeE = await ev(() => ({ m: localStorage.getItem('base-camp-map-v1'), s: localStorage.getItem('base-camp-save-v2') }));
   await boot(THIRD, { yaw: 0.3, x: 0.2, z: -0.2 });
   await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
   const spyE = []; const tE = await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 200000, 500, spyE);
@@ -134,11 +135,12 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 200000, 500);
   await p.click('#nrYes'); await sleep(1200);
   const Y = await ev(() => ({ cur: __g.HOMES.cur, name: __g.G.mapName, n: __g.HOMES.rooms.length, hidden: document.getElementById('nroom').hidden, returning: __g.G.returning }));
-  ok('(e) "Yes" creates Room 3 and the old rooms stay as they are', Y.name === 'Room 3' && Y.n === 3 && Y.hidden && !Y.returning, JSON.stringify(Y));
+  ok('(e) "Yes" creates Room 3 and the old rooms stay as they are', Y.cur === 'r3' && Y.name === 'Room 3' && Y.n === 3 && Y.hidden && !Y.returning, JSON.stringify(Y));
   const tY = await waitFor(() => __g.G.settlements.length > 0, 240000);
   ok('(e) the colony auto-settles in Room 3', tY > 0);
   await mapPasses(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1); await finishSession();
-  ok('(e) the Shed save is untouched by all of that', await ev(() => localStorage.getItem('base-camp-save-v2')) !== null);
+  const shedAfterE = await ev(() => ({ m: localStorage.getItem('base-camp-map-v1'), s: localStorage.getItem('base-camp-save-v2'), r3: !!localStorage.getItem('base-camp-map-v1.r3') }));
+  ok('(e) the Shed map and colony are byte-for-byte untouched; Room 3 has its own keys', shedAfterE.m === shedBeforeE.m && shedAfterE.s === shedBeforeE.s && shedAfterE.r3);
 
   // ===================== (f) migration from single-room saves =====================
   const snap = await ev(() => { const o = {}; for (const id of ['r1', 'r2', 'r3']) { const k = __g.HOMES.rooms.find((r) => r.id === id); o[id] = { map: localStorage.getItem(id === 'r1' ? 'base-camp-map-v1' : 'base-camp-map-v1.' + id), save: localStorage.getItem(id === 'r1' ? 'base-camp-save-v2' : 'base-camp-save-v2.' + id) }; } return o; });
