@@ -107,7 +107,7 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
 const BUILD = 'build 2';
 const $ = (id) => document.getElementById(id);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* none */ } } };
@@ -1914,7 +1914,7 @@ function eyePose(t) { // the auto-scan path: smoothly between viewpoints, sweepi
   const k = Math.min(1, u * 6) * Math.min(1, (1 - u) * 0 + 1); // quick ease into each viewpoint
   const prev = PVIEWS[Math.max(0, i - 1)], f = smooth(0, 0.18, u);
   const pos = new THREE.Vector3(...prev.p).lerp(new THREE.Vector3(...v.p), f);
-  return { pos, yaw: lerp(prev.yaw, v.yaw, f) + Math.sin(w) * v.ay * f, pitch: lerp(prev.pitch, v.pitch, f) + Math.sin(w * 2.3 + 1) * v.ap * f };
+  return { pos, yaw: mixLerp(prev.yaw, v.yaw, f) + Math.sin(w) * v.ay * f, pitch: mixLerp(prev.pitch, v.pitch, f) + Math.sin(w * 2.3 + 1) * v.ap * f };
 }
 function setEye(e) { camera.position.copy(e.pos); camera.rotation.set(e.pitch, e.yaw, 0, 'YXZ'); camera.updateMatrixWorld(true); }
 const _ndcs = [[0, 0], [-0.55, 0.5], [0.55, 0.5], [-0.55, -0.5], [0.55, -0.5]];
@@ -2546,7 +2546,7 @@ function simTick(dt, quiet) {
 function lighting() {
   const day = ENV.daylight, k = ENV.sun * (1 - ENV.wx.cloud * 0.28);
   hemi.intensity = 0.95 * (0.28 + 0.72 * day) * k; sunL.intensity = 0.85 * day * k; sunL.color.setHex(day > 0.6 ? 0xffe2b8 : 0xffb070);
-  if (!AR.on) { scene.background = scene.background || new THREE.Color(); const gr = ENV.wx.cloud * 0.6; scene.background.setRGB(lerp(lerp(0.09, 0.84, day) * (0.5 + 0.5 * k), 0.58, gr * day), lerp(lerp(0.11, 0.9, day) * (0.5 + 0.5 * k), 0.6, gr * day), lerp(lerp(0.2, 0.95, day) * (0.6 + 0.4 * k), 0.64, gr * day)); }
+  if (!AR.on) { scene.background = scene.background || new THREE.Color(); const gr = ENV.wx.cloud * 0.6; scene.background.setRGB(mixLerp(mixLerp(0.09, 0.84, day) * (0.5 + 0.5 * k), 0.58, gr * day), mixLerp(mixLerp(0.11, 0.9, day) * (0.5 + 0.5 * k), 0.6, gr * day), mixLerp(mixLerp(0.2, 0.95, day) * (0.6 + 0.4 * k), 0.64, gr * day)); }
 }
 let frameN = 0, uiT = 0, saveT = 0, wxT = 0;
 function frame(time, xrFrame) {
