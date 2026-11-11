@@ -50,5 +50,6 @@ The runtime has no anchors or world maps, so a saved colony cannot snap back by 
 | `webxr-polyfill.js`, `THIRD_PARTY.md` | unmodified WebXRKit polyfill for the iPad fix, and licences |
 | `HANDOVER.md` | developer notes, the almanac format, what is cut |
 | `shots/` | screenshots |
+| `tests/` | Playwright scripts: `ar-harness.js` (real WebXRKit polyfill + fake iOS bridge, run with NO_OVERLAY=1; needs the HelloXR source tree path set in `HX`), `practice-test.js` |
 
 Build tag: shown at the start of the status line under the title buttons ("build 1 ...").

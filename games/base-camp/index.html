@@ -8,7 +8,7 @@
 :root{--paper:#fff6e6;--ink:#3b2a1e;--glass:rgba(59,42,30,.74);--acc:#e8883a;--leaf:#7bb661;--sky:#cfe3f2;--body:ui-rounded,"Nunito","Trebuchet MS",system-ui,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#e9dcc4,#cdb89a);font-family:var(--body);color:var(--paper);user-select:none;-webkit-user-select:none}
-canvas{display:block;position:fixed;inset:0}
+body>canvas{display:block;position:fixed;inset:0}
 #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
 #ui>*{pointer-events:auto}
 #touch{position:absolute;inset:0;touch-action:none;z-index:0}
@@ -233,7 +233,7 @@ const ICONS = {
   star: (x) => { x.fillStyle = '#fff6b0'; x.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 8 : 24, a = i * Math.PI / 5 - Math.PI / 2; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.fill(); },
   leaf: (x) => { x.fillStyle = '#7bb661'; x.beginPath(); x.ellipse(32, 32, 22, 11, -0.6, 0, 7); x.fill(); },
   dust: (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 30); g.addColorStop(0, 'rgba(230,205,165,.9)'); g.addColorStop(1, 'rgba(230,205,165,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); },
-  rain: (x) => { x.fillStyle = '#bfe0ff'; x.fillRect(29, 6, 6, 52); },
+  rain: (x) => { const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(210,235,255,0)'); g.addColorStop(1, 'rgba(210,235,255,1)'); x.fillStyle = g; x.fillRect(24, 0, 16, 64); },
 };
 function iconTex(name) { return TEX[name] || (TEX[name] = cv(64, 64, (x) => (ICONS[name] || ICONS.bang)(x))); }
 function bubbleTex(name) { const k = 'b_' + name; return TEX[k] || (TEX[k] = cv(80, 80, (x) => { x.fillStyle = '#fff6e6'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 4; x.beginPath(); x.arc(40, 34, 28, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(30, 58); x.lineTo(40, 76); x.lineTo(46, 56); x.fillStyle = '#fff6e6'; x.fill(); x.save(); x.translate(8, 2); x.scale(0.75, 0.75); (ICONS[name] || ICONS.bang)(x); x.restore(); })); }
@@ -421,7 +421,7 @@ function paintBands(play) {
       if (!id) { if (g[k] && !play) { d[o] = 200; d[o + 1] = 200; d[o + 2] = 200; d[o + 3] = 50; } else d[o + 3] = 0; continue; }
       const z = zoneById(id), col = z ? z.color : 0xffffff;
       const i = k % GN, rim = (i > 0 && lab[k - 1] !== id) || (i < GN - 1 && lab[k + 1] !== id) || (k >= GN && lab[k - GN] !== id) || (k < g.length - GN && lab[k + GN] !== id);
-      const set = z && z.settled, a = play ? (set ? 38 : 100) : 120;
+      const set = z && z.settled, a = play ? (set ? 38 : 70) : 120;
       d[o] = (col >> 16) & 255; d[o + 1] = (col >> 8) & 255; d[o + 2] = col & 255; d[o + 3] = rim ? 235 : a;
       if (rim) { d[o] = Math.min(255, d[o] + 40); d[o + 1] = Math.min(255, d[o + 1] + 40); d[o + 2] = Math.min(255, d[o + 2] + 40); }
     }
@@ -759,7 +759,7 @@ function requestsStep(S, quiet) {
     const cond = CONDS[def.when]; if (!cond) continue;
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
-    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 2) {
+    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3) {
       const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id)); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
@@ -869,8 +869,8 @@ function makeLink(Sa, wxa, wza, zb, wxb, wzb) {
 function makeLinkMesh(l) {
   const g = new THREE.Group(); g.userData = {};
   const cab = new THREE.Group(); cab.add(mesh(geo('cabB', () => new THREE.BoxGeometry(0.022, 0.016, 0.016)), M(0xd9483b), 0, -0.024, 0)); cab.add(mesh(geo('cabW', () => new THREE.BoxGeometry(0.0232, 0.006, 0.0172)), M(0xfff6e6), 0, -0.0145, 0));
-  const rf = mesh(geo('cabR', () => new THREE.ConeGeometry(0.016, 0.01, 4).translate(0, 0.005, 0)), M(0x8a5a33), 0, -0.016, 0); rf.rotation.y = Math.PI / 4; cab.add(rf); cab.add(mesh(geo('cabH', () => new THREE.CylinderGeometry(0.0006, 0.0006, 0.012, 4)), M(0x333333), 0, -0.006, 0)); cab.add(glowSprite(0.03, 0.0, 0xffc870));
-  g.add(cab); l.cab = cab; l.group = g; l.cable = null; world.add(g);
+  const rf = mesh(geo('cabR', () => new THREE.ConeGeometry(0.016, 0.01, 4).translate(0, 0.005, 0)), M(0x8a5a33), 0, -0.016, 0); rf.rotation.y = Math.PI / 4; cab.add(rf); cab.add(mesh(geo('cabH', () => new THREE.CylinderGeometry(0.0006, 0.0006, 0.012, 4)), M(0x333333), 0, -0.006, 0)); l.glow = glowSprite(0.03, 0.0, 0xffc870); cab.add(l.glow);
+  cab.scale.setScalar(1.7); g.add(cab); l.cab = cab; l.group = g; l.cable = null; world.add(g);
 }
 function linkStep(l, dt, E, quiet) {
   const ends = linkEnds(l); if (!ends) return;
@@ -964,12 +964,12 @@ function linkVisual(l, time) {
     l.key = key; if (l.cable) { l.group.remove(l.cable); l.cable.geometry.dispose(); }
     const pts = [], p = new THREE.Vector3(), top = Math.max(0.04, l.prog);
     for (let i = 0; i <= 24; i++) pts.push(cablePoint(A, B, i / 24 * (l.ready ? 1 : top), new THREE.Vector3()));
-    l.cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.0012, 5), M(l.ready ? 0x4a3a2c : 0xd9a066)); l.group.add(l.cable);
+    l.cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.0019, 5), M(l.ready ? 0x4a3a2c : 0xd9a066)); l.group.add(l.cable);
   }
   l.cab.visible = l.ready;
   const g = l.g, p = cablePoint(A, B, g.s, tmpV); l.cab.position.copy(p);
   const sway = (ENV.windy ? 0.25 : 0.05) * Math.sin(time * (ENV.windy ? 3 : 1.5)); l.cab.rotation.z = sway * (g.state === 'run' ? 1 : 0.4); l.cab.rotation.y = Math.atan2(B.x - A.x, B.z - A.z) + Math.PI / 2;
-  l.cab.children[l.cab.children.length - 1].material.opacity = ENV.night ? 0.8 : 0;
+  l.glow.material.opacity = ENV.night ? 0.8 : 0;
 }
 
 // ============ save / load / re-place ============
@@ -1448,7 +1448,7 @@ function waterStep(dt) {
 function ambient(dt) {
   for (const S of G.settlements) {
     if (!S.placed || S.ghost) continue;
-    if (ENV.rain && Math.random() < dt * 40) { const a = rnd(0, 6.28), d = rnd(0, 0.22); puff('rain', S.tf.x + Math.cos(a) * d, S.tf.y + 0.25, S.tf.z + Math.sin(a) * d, 1, { size: 0.0025, tall: 8, vy: -0.7, life: 0.36, jit: 0, spread: 0 }); }
+    if (ENV.rain) for (let q = Math.round(dt * 90 + Math.random() - 0.5); q > 0; q--) { const a = rnd(0, 6.28), d = rnd(0, 0.25); puff('rain', S.tf.x + Math.cos(a) * d, S.tf.y + 0.22, S.tf.z + Math.sin(a) * d, 1, { size: 0.0045, tall: 9, vy: -0.8, life: 0.27, jit: 0, spread: 0, color: 0xcfe8ff }); }
     if (!ENV.night && Math.random() < dt * 0.5) { const tr = S.things.filter((t) => t.kind === 'tree' && t.g >= 1); if (tr.length) { const t = pick(tr), [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, S.tf.y + 0.06, wz, 1, { size: 0.006, vy: -0.006, vx: 0.01, life: 3, color: 0x8fd16f, spread: 0.02 }); } }
     if (ENV.night && Math.random() < dt * 0.6) puff('star', S.tf.x + rnd(-0.12, 0.12), S.tf.y + rnd(0.02, 0.08), S.tf.z + rnd(-0.12, 0.12), 1, { size: 0.004, add: true, life: 2, color: 0xfff0a0, vy: 0.004, jit: 0.006 });
   }
@@ -1468,9 +1468,9 @@ function simTick(dt, quiet) {
   G.simT += dt; G.evT += dt; if (G.evT > 360 / 10 * 1) { G.evT = 0; if (!quiet) eventsStep(); }
 }
 function lighting() {
-  const day = ENV.daylight, k = ENV.sun * (1 - ENV.wx.cloud * 0.12);
+  const day = ENV.daylight, k = ENV.sun * (1 - ENV.wx.cloud * 0.28);
   hemi.intensity = 0.95 * (0.28 + 0.72 * day) * k; sunL.intensity = 0.85 * day * k; sunL.color.setHex(day > 0.6 ? 0xffe2b8 : 0xffb070);
-  if (!AR.on) { scene.background = scene.background || new THREE.Color(); scene.background.setRGB(lerp(0.09, 0.84, day) * (0.5 + 0.5 * k), lerp(0.11, 0.9, day) * (0.5 + 0.5 * k), lerp(0.2, 0.95, day) * (0.6 + 0.4 * k)); }
+  if (!AR.on) { scene.background = scene.background || new THREE.Color(); const gr = ENV.wx.cloud * 0.6; scene.background.setRGB(lerp(lerp(0.09, 0.84, day) * (0.5 + 0.5 * k), 0.58, gr * day), lerp(lerp(0.11, 0.9, day) * (0.5 + 0.5 * k), 0.6, gr * day), lerp(lerp(0.2, 0.95, day) * (0.6 + 0.4 * k), 0.64, gr * day)); }
 }
 let frameN = 0, uiT = 0, saveT = 0, wxT = 0;
 function frame(time, xrFrame) {
@@ -1490,7 +1490,7 @@ function frame(time, xrFrame) {
     if (G.phase === 'play' && frameN % 30 === 0) paintBands(true);
   }
   visuals(dt, G.time); partsUpdate(dt);
-  for (const z of SCAN.zones) if (z.label && z.label.visible) z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004;
+  for (const z of SCAN.zones) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && G.requests.length !== $('reqs').children.length) reqUi(); }
   renderer.render(scene, camera);
 }
@@ -1498,6 +1498,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
 
 // ============ test and debug hooks ============
 window.__g = {
+  envUpdate,
   G, SCAN, ENV, AR, P, COLONY_ALMANAC, KINDS, THREE, scene, renderer, camera,
   simulate(sec, step) { step = step || 0.5; for (let t = 0; t < sec; t += step) simTick(step, false); },
   settle(type) { const z = SCAN.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
