@@ -43,6 +43,12 @@ Harry's rule: bad water is never deadly, but it is funny and it can hold back gr
 like, what it does to plants and to creatures (funny, never cruel, and how it slows things down), and how the creatures get it back
 to the colony. Then: one way to make bad water good.
 
+**M9. The ceiling (Harry's question, by Harry).** The iPad can now see the ceiling. Harry: "that doesn't look like it's
+really designed to be up there… maybe points to run cable cars through, or whatever we haven't invented yet." For now the
+ceiling holds only hooks that cable cars swoop through, lanterns and one sock lookout nest. Invent two more things that
+belong ON a ceiling for thumb-sized creatures (not a normal camp turned upside down). What does each do, how do they get
+it up there, and what funny thing goes wrong?
+
 ## Who to ask (adjust to what is free; ask Harry before any new install or download)
 - The Town Brain: all eight, plus "what would you build first, and how would a robot tester prove it is fun?"
 - The quick residents and, if free, the Dell residents: all eight, one seat at a time.
