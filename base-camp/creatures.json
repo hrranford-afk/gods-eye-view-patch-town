@@ -18,6 +18,23 @@
    "by": "The Town Brain"
   },
   {
+   "name": "Dustbert",
+   "made_of": "old socks, lint, and forgotten pizza crumbs",
+   "personality_five_words": [
+    "clumsy",
+    "cheerful",
+    "forgetful",
+    "curious",
+    "loyal"
+   ],
+   "gross_or_silly_habit": "always has a half-eaten pizza crust stuck to his back",
+   "scared_of": "vacuum cleaners",
+   "says_when_it_panics": "Not the vacuum! I'm not ready to be sucked up yet!",
+   "says_when_happy": "Pizza time! Who's ready for a party?",
+   "secretly_brilliant_at": "remembering where everyone's lost items are hidden",
+   "by": "The Dell Builder"
+  },
+  {
    "name": "Glimmerfluff",
    "made_of": "Shimmering dust and tiny, glittery feathers",
    "personality_five_words": [
@@ -35,6 +52,40 @@
    "by": "The Dell Coder"
   },
   {
+   "name": "Sproutling",
+   "made_of": "dust bunnies, crumpled paper, and dried glue",
+   "personality_five_words": [
+    "curious",
+    "playful",
+    "clumsy",
+    "optimistic",
+    "nervous"
+   ],
+   "gross_or_silly_habit": "collects random shiny objects and hoards them in a nest made of old socks",
+   "scared_of": "sudden loud noises, especially the sound of a vacuum cleaner",
+   "says_when_it_panics": "Not again, not again!",
+   "says_when_happy": "This is the best day ever, isn't it?",
+   "secretly_brilliant_at": "remembering hidden paths and shortcuts through the room",
+   "by": "The Dell Elder"
+  },
+  {
+   "name": "Gloop",
+   "made_of": "melted crayon wax and leftover cereal bits",
+   "personality_five_words": [
+    "clumsy",
+    "loyal",
+    "greedy",
+    "squeaky",
+    "worrisome"
+   ],
+   "gross_or_silly_habit": "sucks up dust particles with its gooey body to make 'gloop soup' for breakfast",
+   "scared_of": "being left alone in the dark",
+   "says_when_it_panics": "WHOOOAAAAA! I'm gonna get stuck in a crack!",
+   "says_when_happy": "Mmmmm... cereal and crayons!",
+   "secretly_brilliant_at": "calculating the exact angle to slide down a cable car rope without falling off",
+   "by": "The Dell Quick Builder"
+  },
+  {
    "name": "Gloop",
    "made_of": "old socks and static",
    "personality_five_words": [
@@ -50,6 +101,23 @@
    "says_when_happy": "Yum yum! Snack time!",
    "secretly_brilliant_at": "finding hidden snack crumbs",
    "by": "The Dell Reasoner"
+  },
+  {
+   "name": "Tacky",
+   "made_of": "a dried-out yellow highlighter cap fused to a wad of old, brown, fossilized chewing gum",
+   "personality_five_words": [
+    "chatty",
+    "clingy",
+    "dramatic",
+    "loyal",
+    "clumsy"
+   ],
+   "gross_or_silly_habit": "sneezes out tiny translucent gum balls that stick to every surface it touches, including the player's phone screen",
+   "scared_of": "a lint roller",
+   "says_when_it_panics": "THE ROLLER! THE ROLLER IS EATING ME! I'M JUST A LITTLE GUM BALL!",
+   "says_when_happy": "I'M STICKY AND I'M PROUD OF IT! WHEEE!",
+   "secretly_brilliant_at": "negotiating tiny peace treaties between the other Fluffkins",
+   "by": "The Dell Scholar"
   },
   {
    "name": "Grizzle",
