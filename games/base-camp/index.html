@@ -99,6 +99,14 @@ body.inar #banner{font-size:14px;padding:3px 14px 4px}body.inar #reqs{top:calc(e
 /* build 12: the toolbar must fit at any width down to 390 px: it wraps to rows, and in AR the buttons shrink a little (still 44 px high) */
 body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-width:44px;font-size:13px;padding:2px 8px}body.inar #bar button.ic{min-width:40px;padding:2px 3px}body.inar #bar button.big{font-size:15px;padding:4px 14px}
 @media (max-width:520px){#bar button{font-size:12px;padding:2px 6px}#bar{gap:4px}}body.auto #bmenu{gap:4px;padding:5px}body.auto #bmenu button{min-height:34px;font-size:13px;padding:2px 9px}
+#gstrip{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 34px);font-size:13px;font-weight:700;padding:2px 8px;border-radius:9px;max-width:80vw;white-space:nowrap;pointer-events:none}
+#card .goal{margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,246,230,.22)}#card .goal .strip{font-size:17px;line-height:1.35;letter-spacing:1px}#card .gg{white-space:nowrap}#card .dim,#gstrip .dim{opacity:.38}#card .gsub{font-size:11px;opacity:.78;font-weight:600;line-height:1.3}
+#card .resrow{margin:3px 0}.res{display:inline-flex;align-items:center;gap:3px;margin-right:9px}.res i{font-style:normal;font-size:15px}.res u{display:inline-block;width:34px;height:7px;border-radius:4px;background:rgba(255,246,230,.25);text-decoration:none;overflow:hidden}.res u em{display:block;height:100%;border-radius:4px;background:#8fd16f}
+#card .face{font-size:20px;vertical-align:-2px}#card .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}#card .cbtn{pointer-events:auto;min-height:30px;min-width:0;font-size:12px;padding:1px 8px;border-radius:10px;margin-top:4px}#card .chips .cbtn{margin-top:0}
+#ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
+#ccamView{width:100%;height:118px}#ccam .cinfo{background:rgba(59,42,30,.88);padding:3px 8px 4px;font-size:12px;font-weight:700;line-height:1.25}#ccam .cinfo span{font-size:16px}#ccam .cinfo b{color:#ffd9a8}#ccam .cx{position:absolute;right:4px;top:3px;width:22px;height:22px;border-radius:50%;background:rgba(59,42,30,.72);text-align:center;font-size:12px;line-height:22px}
+body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
+.doors{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.doors .door{min-height:48px;padding:0;font-size:20px;border-radius:10px;background:rgba(255,246,230,.14)}.doors .door.ready{background:var(--acc);border-color:#ffd9a8;box-shadow:0 0 10px #ffc040}.doors .door.open{background:rgba(143,209,111,.35)}.doors .door.locked{opacity:.45}.doors .door span{font-size:15px}.doors .door b{font-size:17px;color:#fff}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -133,7 +141,9 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
   <div id="idDot" hidden></div>
   <div id="colMark" hidden><span>&#10148;</span></div>
   <div id="nroom" class="glass" hidden></div>
+  <div id="gstrip" class="glass" hidden></div>
   <div id="card" class="glass" hidden></div>
+  <div id="ccam" hidden><div id="ccamView"></div><div class="cinfo"><span id="ccamMood"></span> <b id="ccamName"></b><div id="ccamDoing"></div></div><div class="cx">✕</div></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
   <div id="msgs"><div id="toast"></div><div id="banner"></div><div id="repc" class="glass" hidden></div><div id="rstat" class="glass" hidden></div></div>
@@ -153,7 +163,7 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 13';
+const BUILD = 'build 14';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -289,10 +299,11 @@ const ENV = {
   hour: 12, sunrise: 7, sunset: 18, daylight: 1, night: false,
   wx: { temp: 15, rain: 0, cloud: 0.1, wind: 3, code: 0, real: false }, wxPick: 'auto', loc: null,
   hot: false, cold: false, rain: 0, dim: false, windy: false, grow: 1,
+  dateOverride: null, season: 'autumn', seasonKey: '', _sk: 0, /* build 14: the season comes from the device date; dateOverride ('2026-12-01') is for the practice room and tests */
 };
 function envUpdate() {
   const d = new Date(), h = ENV.hourOverride !== null ? ENV.hourOverride : d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
-  ENV.hour = h;
+  ENV.hour = h; { const sd = seaDate(), k = sd.y * 10000 + sd.m * 100 + sd.d; if (k !== ENV._sk) { ENV._sk = k; ENV.season = seasonIdOf(sd.m, sd.d); ENV.seasonKey = ENV.season + '-' + seasonYear(ENV.season, sd); } }
   ENV.daylight = smooth(ENV.sunrise - 0.5, ENV.sunrise + 0.5, h) * (1 - smooth(ENV.sunset - 0.5, ENV.sunset + 0.5, h));
   ENV.night = ENV.daylight < 0.25;
   const w = ENV.wx, sunEff = ENV.sun * (1 - w.cloud * 0.3);
@@ -976,6 +987,7 @@ function partsUpdate(dt) {
 const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], hooks: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null,
   zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null, library: [], nextLib: 1 };
 const CATCH = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.55 }; // what a catch-up sees: an average day
+const HUT_MAX = 8, POP_MAX = 12; /* build 14: the old limits (5 huts, 9 settlers) stopped a colony dead after half an hour */
 const TREE_T = 300, FARM_T = 180; // seconds a tree takes to grow up / a crop takes to ripen (at normal growth)
 /* A hanging camp (S.tf.flip, on a ceiling zone) is its group turned PI about X: local z runs the other way in the world, and local 'up' points down. l2w / w2l carry that sign; SY(S, d) is the world height d metres above the camp's own ground. */
 const l2w = (S, lx, lz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw); return [S.tf.x + lx * c + lz * s, S.tf.z + (S.tf.flip ? -1 : 1) * (-lx * s + lz * c)]; };
@@ -1008,11 +1020,11 @@ function findSpot(S, r, o) {
 }
 function addThing(S, kind, lx, lz, o) {
   o = o || {}; const K = KINDS[kind];
-  const t = { id: o.id || ++G.uid, kind, x: lx, z: lz, r: K.r, rot: o.rot !== undefined ? o.rot : rnd(0, 6.283), g: o.g || 0, built: o.built !== undefined ? o.built : true, prog: o.prog || 0, tend: 0, yield: 0, yt: 0, var: o.var || 0, workers: 0, hold: !!o.hold, life: o.life || 0, pop: 0, link: o.link, end: o.end, role: o.role, spot: o.spot, tin: !!o.tin };
+  const t = { id: o.id || ++G.uid, kind, x: lx, z: lz, r: K.r, rot: o.rot !== undefined ? o.rot : rnd(0, 6.283), g: o.g || 0, built: o.built !== undefined ? o.built : true, prog: o.prog || 0, tend: 0, yield: 0, yt: 0, var: o.var || 0, workers: 0, hold: !!o.hold, life: o.life || 0, pop: 0, link: o.link, end: o.end, role: o.role, spot: o.spot, tin: !!o.tin, sea: o.sea || (DECOR[kind] ? decorKey(kind) : undefined), gift: !!o.gift, door: o.door || 0 };
   S.things.push(t); makeThingMesh(S, t); return t;
 }
 function makeThingMesh(S, t) {
-  const m = t.kind === 'tree' ? mkTree(t.var) : t.kind === 'lm' ? mkLandmark(t.role) : KINDS[t.kind].mk(); t.mesh = m; if (t.tin && t.kind === 'hut') m.children[1].material = M(0xaab3b8); m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
+  const m = t.kind === 'tree' ? mkTree(t.var) : t.kind === 'visitor' ? DECOR_MK.visitor(t.var) : t.kind === 'lm' ? mkLandmark(t.role) : KINDS[t.kind].mk(); t.mesh = m; if (t.tin && t.kind === 'hut') m.children[1].material = M(0xaab3b8); m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
   if (t.kind === 'hut' || t.kind === 'tent' || t.kind === 'lookout') { t.glow = glowSprite(0.07, 0, 0xffc870); t.glow.position.set(0, 0.025, 0.01); m.add(t.glow); }
   const K = KINDS[t.kind];
   if (K.work) { const w = Math.min(K.r * 2.2, 0.1), h = 0.05; const sc = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, w * 0.8).translate(0, h / 2, 0)), new THREE.LineBasicMaterial({ color: 0xd9a066 })); m.add(sc); t.scaf = sc; }
@@ -1044,6 +1056,8 @@ function approach(S, t, c) { // a spot next to a thing, on the colonist's side
   let dx = c.x - t.x, dz = c.z - t.z; const d = Math.hypot(dx, dz) || 1; const off = t.r * 0.8 + 0.006;
   return [t.x + dx / d * off, t.z + dz / d * off];
 }
+const PRE_JOBS = ['chat', 'wander', 'dance', 'read', 'tend', 'gather', 'plant', 'harvest'];
+const GO_MAX = 40, GO_JOBS = ['drink', 'eat', 'tend', 'harvest', 'gather', 'plant', 'chat', 'wander', 'dance', 'read', 'build'];
 function chooseJob(S, c, E) {
   const n = c.needs, P = c.pers, home = homeOf(S, c), cand = [], add = (w, j) => { if (w > 0) cand.push([w, j]); };
   if (E.rain && home) return { type: 'shelter', th: home };
@@ -1064,6 +1078,7 @@ function chooseJob(S, c, E) {
   if (S.stock.seeds > 0 && kindCount(S, 'tree') < treeCap(S)) { const sp = findSpot(S, 0.026); if (sp) add(2.6 * P.work, { type: 'plant', spot: sp }); }
   if (S.cols.length > 1) add(1.2 * P.social, { type: 'chat' });
   { const nook = S.things.find((t) => t.kind === 'nook' && t.built && !t.hold); if (nook) add(1.3 * P.lazy, { type: 'read', th: nook }); } // the reading nook (The Dell Coder / The Radeon Coder)
+  { const lp = S.things.filter((t) => t.kind === 'leafpile' && t.built && !t.hold); if (lp.length) add(1.6, { type: 'leap', th: pick(lp) }); } /* build 14: jump in the leaves */
   if (n.joy > 0.8) add(0.8, { type: 'dance' });
   let w = null; const likes = c.likes.length ? S.things.filter((t) => c.likes.includes(t.kind) && !t.hold) : [];
   if (likes.length && Math.random() < 0.4) w = pick(likes);
@@ -1086,7 +1101,7 @@ function startJob(S, c, j, E) {
     j.dur = rnd(1.5, 4);
   } else {
     const [ax, az] = approach(S, j.th, c); j.tx = ax; j.tz = az;
-    j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9, read: 5 }[j.type] || 2;
+    j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9, read: 5, leap: 2.6 }[j.type] || 2;
     if (j.type === 'build') j.th.workers++;
   }
 }
@@ -1106,6 +1121,7 @@ function runJob(S, c, dt, E, quiet) {
   const j = c.job; if (!j) return;
   if ((j.th && j.th.dead) || (j.type === 'chat' && !S.cols.includes(j.with))) { endJob(c); return; }
   if (j.ph === 'go') {
+    j.gt = (j.gt || 0) + dt; if (j.gt > GO_MAX && GO_JOBS.includes(j.type)) { if (j.th && j.type !== 'build') j.th.badT = (j.th.badT || 0) + 1; endJob(c); return; } /* build 14: a walk that never arrives (a target on the edge, a loop around clutter) used to starve the whole colony */
     const r = stepToward(S, c, j.tx, j.tz, dt, E);
     if (r === 'stuck') { if (c.stuck > 3) { c.x *= 0.9; c.z *= 0.9; c.stuck = 0; } endJob(c); return; }
     if (r === true || (j.type === 'cross' && false)) { j.ph = 'do'; j.t = 0; c.moving = false; if ((j.type === 'sleep' || j.type === 'shelter') && j.th) { c.inside = true; c.mesh.visible = false; c.x = j.th.x; c.z = j.th.z; } }
@@ -1122,7 +1138,7 @@ function runJob(S, c, dt, E, quiet) {
     }
     case 'build': {
       const t = j.th; if (t.built) { endJob(c); return; }
-      t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1); c.working = true;
+      t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1) * (careOn() && !E.away ? 1.25 : 1); c.working = true;
       if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, SY(S, 0.01), S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, SY(S, 0.012), wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
       if (!quiet && Math.random() < dt * 1.6) sfx('hammer');
       if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
@@ -1141,6 +1157,7 @@ function runJob(S, c, dt, E, quiet) {
   const t = j.th; c.working = false;
   switch (j.type) {
     case 'drink': if (t && t.kind === 'well') n.water = Math.min(1, n.water + 0.7); else if (S.stock.water > 0) { S.stock.water--; n.water = Math.min(1, n.water + 0.6); } break;
+    case 'leap': n.joy = Math.min(1, n.joy + 0.15); if (t && !t.dead) { t.squash = 1; c.hop = 1; c.hopBig = 1.5; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, SY(S, 0.03), wz, 7, { size: 0.007, vy: 0.04, life: 1.3, jit: 0.02, color: pick([0xe08a2b, 0xc2452d, 0xd9b13b]), g: -0.05 }); sayLine(c, pick(['Wheee!', 'Crunch!', 'Again!']), 1.8); sfx('pop'); } } break;
     case 'read': n.joy = Math.min(1, n.joy + 0.12); n.rest = Math.min(1, n.rest + 0.05); break;
     case 'eat': if (S.stock.food > 0) { S.stock.food--; n.food = Math.min(1, n.food + 0.6); n.joy = Math.min(1, n.joy + 0.05); } break;
     case 'tend': if (!t.dead) { t.tend = 60; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('drop', wx, SY(S, 0.03), wz, 4, { size: 0.007, vy: 0.02, g: -0.08, life: 0.9, jit: 0.015 }); sfx('water'); } } break;
@@ -1185,6 +1202,7 @@ function requestsStep(S, quiet) {
 }
 function resolveRequest(r, silent) { const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1); reqUi(); } // stale button: never remove someone else's request (PatchTown stress test, 12 Nov)
 function giveRequest(r) {
+  care();
   if (G.requests.indexOf(r) < 0) { reqUi(); return; } // already timed out or answered: no double reward
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
   const g = r.def.give, c = S.cols.find((q) => q.id === r.cid) || S.cols[0];
@@ -1227,13 +1245,15 @@ function simSettlement(S, dt, E, quiet) {
     if (c.spawn > 0) { c.spawn -= dt; continue; }
     if (c.held || c.fall) { c.moving = false; continue; } // in the Giant's hand, or falling from it
     const n = c.needs, sleeping = c.inside;
-    const hush = sleeping ? 0.3 : 1; n.water = Math.max(0, n.water - dt / 1300 * hush * (E.hot ? 1.8 : 1)); n.food = Math.max(0, n.food - dt / 1500 * hush); // asleep, the little people hardly get hungry if (!sleeping) n.rest = Math.max(0, n.rest - dt / 1800 * (E.dim ? 1.4 : 1));
+    const hush = sleeping ? 0.3 : 1; n.water = Math.max(0, n.water - dt / 1300 * hush * (E.hot ? 1.8 : 1)); n.food = Math.max(0, n.food - dt / 1500 * hush); /* asleep, the little people hardly get hungry */ if (!sleeping) n.rest = Math.max(0, n.rest - dt / 1800 * (E.dim ? 1.4 : 1));
+    if (S.decN) n.joy = Math.min(0.95, n.joy + dt * Math.min(S.decN, 6) / 3000); /* build 14: decorations cheer people up a little */
     const avg = (n.food + n.water + n.rest) / 3; n.joy = clamp(n.joy + (avg > 0.6 ? dt / 900 : -dt / 500), 0.05, 1);
     if (E.cold && !quiet && !sleeping) n.joy = Math.max(0.05, n.joy - dt / 3000);
     c.cool -= dt;
     if (!quiet) { // interruptions: night falls, rain starts
       if (c.job && c.job.type !== 'cross') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter') endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
     }
+    if (c.job && PRE_JOBS.includes(c.job.type) && ((n.food < 0.12 && S.stock.food > 0) || (n.water < 0.12 && (S.stock.water > 0 || built(S, 'well'))))) endJob(c); /* build 14: hungry or thirsty beats chatting and wandering */
     if (!c.job && c.cool <= 0) { const j = chooseJob(S, c, E); if (j) startJob(S, c, j, E); }
     if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job) runJob(S, c, quiet && !E.away ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
     if (quiet && !E.away && c.job && c.job.ph === 'go' && c.job.type !== 'cross') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
@@ -1243,17 +1263,17 @@ function simSettlement(S, dt, E, quiet) {
   S.planT -= dt;
   if (S.planT <= 0 && S.cols.length) {
     S.planT = 12;
-    const open = S.things.filter((t) => !t.built && !t.hold && KINDS[t.kind].work).length, pop = S.cols.length;
+    const open = S.things.filter((t) => !t.built && !t.hold && KINDS[t.kind].work && !DECOR[t.kind]).length, pop = S.cols.length;
     const want = (k, cond) => { if (open >= 2 || !cond) return false; const K = KINDS[k]; if (!canPay(S, K.wood)) return false; const sp = findSpot(S, K.r); if (!sp) { S.cramped = true; return false; } S.cramped = false; const tin = pay(S, K.wood); const th = addThing(S, k, sp[0], sp[1], { built: false, rot: Math.atan2(-sp[0], -sp[1]), tin }); const [wx, wz] = l2w(S, sp[0], sp[1]); th.rich = landCalm(szone(S), wx, wz) >= TIDY.richAt; if (!quiet) toast('The colonists plan a ' + K.name.toLowerCase() + '.'); return true; };
     const farmsMax = (S.spec === 'farmland' ? 3 : 1) + (pop > 5 ? 1 : 0) + (S.fx && S.fx.farm ? 1 : 0);
     if (S.spec !== 'grove') {
-      want('well', !built(S, 'well') && kindCount(S, 'well') === 0 && pop >= 2) || want('hut', housing(S) < pop + 1 && kindCount(S, 'hut') < 5) || want('farm', kindCount(S, 'farm') < farmsMax && (S.stock.food < 8 || S.spec === 'farmland')) || want('lookout', (S.spec === 'lookout' || S.spec === 'orchard') && kindCount(S, 'lookout') === 0 && pop >= 3) || want('hut', S.stock.wood > 10 && kindCount(S, 'hut') < 5);
+      want('well', !built(S, 'well') && kindCount(S, 'well') === 0 && pop >= 2) || want('hut', housing(S) < pop + 1 && kindCount(S, 'hut') < HUT_MAX) || want('farm', kindCount(S, 'farm') < farmsMax && (S.stock.food < 8 || S.spec === 'farmland')) || want('lookout', (S.spec === 'lookout' || S.spec === 'orchard') && kindCount(S, 'lookout') === 0 && pop >= 3) || want('hut', S.stock.wood > 10 && kindCount(S, 'hut') < HUT_MAX);
     }
   }
   // arrivals: new settlers wander in when there is room, food and a good mood
   S.arrT += dt;
-  const cap = S.spec === 'grove' ? 2 : 9;
-  if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
+  const cap = S.spec === 'grove' ? 2 : POP_MAX;
+  if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) * (careOn() ? 0.7 : 1.4) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
     S.arrT = 0; const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; if (DIARY.on) DIARY.arrived.push(c.name); c.mesh.userData.born = 0; if (!quiet) { toast('A new settler, ' + c.name + ', joined the colony!'); sfx('cheer'); }
   }
   // thriving
@@ -1913,8 +1933,8 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
     const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1], hookFor(S, Zt.core[0], Zt.core[1])); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
   }
 }
-const SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
-const seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
+const DIARY_SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
+const seasonOf = (ms) => DIARY_SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
 function awayDays(secs) { // a light day-level model for time beyond the first day: births, buildings finishing, trees growing, stores refilling, a few events per week, the seasons going by
   const days = Math.min(36500, Math.round(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
   const evs = COLONY_ALMANAC.events.filter((e) => e.needs !== 'rain');
@@ -1941,7 +1961,7 @@ function awaySim(secs, startHour) {
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     for (const h of G.hooks) hookStep(h, step, true);
-    G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
+    G.simT += step; awayEvents(step, h); seaSim(step, true); if (steps % 40 === 0) autoExpand();
   }
   let long = null; if (rest > 0) { long = awayDays(rest); nights += long.days; G.simT += rest; if (!long.days) long = null; autoExpand(); } // part days count too (review 12 Nov): 30 h away is 24 h in full plus one day step
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
@@ -2031,6 +2051,7 @@ function visuals(dt, time) {
       else if (t.scaf) t.scaf.visible = false;
       if (t.glow) t.glow.material.opacity = t.built && night ? (0.85 + Math.sin(time * 3 + t.id) * 0.08) * FUN.berry : 0;
       if (t.kind === 'lantern' && m.userData.glow) m.userData.glow.material.opacity = t.built ? (night ? 0.95 : 0.4) * FUN.berry * (0.9 + 0.1 * Math.sin(time * 3 + t.id)) : 0; // berry-lights, dim for a moment after time away
+      if (DECOR[t.kind]) decorAnim(S, t, m, time, dt);
       if (FUN.pulse > 0.01 && t.built && !t.hold && BOUNCY.has(t.kind)) { const k = 1 + 0.09 * FUN.pulse; m.scale.set(m.scale.x / Math.sqrt(k), m.scale.x * k, m.scale.z / Math.sqrt(k)); } // the huts bounce like drums
     }
     for (const c of S.cols) colVisual(S, c, dt, time, night, eye);
@@ -2074,7 +2095,7 @@ const FUN = { album: [], days: [], unl: [], n: {}, queue: [], party: false, part
 function funLog(k, x) { FUN.log.push({ k, t: performance.now(), x }); if (FUN.log.length > 400) FUN.log.shift(); }
 function funReset() { musicStop(); if (FUN.rainbow) rainbowEnd(); if (FUN.fest) festivalEnd(true); Object.assign(FUN, { album: [], days: [], unl: [], n: {}, queue: [], party: false, hold: null, rainT: 0, berry: 1, pebbleNew: null, sawNight: false, pokes: [], pit: null, bannerT: 0 }); const b = $('banner'); if (b) b.className = ''; }
 function funSave() { return { album: FUN.album.slice(0, 60), days: FUN.days.slice(-60), unl: FUN.unl.slice(), n: { harvest: FUN.n.harvest | 0, ride: FUN.n.ride | 0, feast: FUN.n.feast | 0, giant: FUN.n.giant | 0 } }; }
-function funLoad(f) { if (!f || typeof f !== 'object') return; FUN.album = Array.isArray(f.album) ? f.album.filter((e) => e && typeof e.id === 'string') : []; FUN.days = Array.isArray(f.days) ? f.days.slice(-60) : []; FUN.unl = Array.isArray(f.unl) ? f.unl.slice() : []; FUN.n = Object.assign({}, f.n || {}); }
+function funLoad(f) { if (!f || typeof f !== 'object') return; FUN.album = Array.isArray(f.album) ? f.album.filter((e) => e && typeof e.id === 'string') : []; FUN.days = Array.isArray(f.days) ? f.days.slice(-60) : []; FUN.unl = Array.isArray(f.unl) ? f.unl.slice() : []; FUN.n = Object.assign({}, f.n || {}); for (const e of FUN.album) if (/^sea-/.test(e.id)) seaMile(e.id.slice(4)); }
 // ---- who they are: one temperament per colonist (the council's creatures), seen in how they move, fidget and talk ----
 const CHAR = {
   Glip: { by: 'The Town Brain', react: 'panic', pitch: 1.35, fidget: 'spark', poke: ["Static's frizzing!", 'Eep! Zzt!', "The air's got teeth!"], lift: ['Put me DOWN!', 'Too high! Zzt!'], drop: ['...Ooh, crisp.', 'Static settled.'], feast: ['Ooh, crisp!'], done: ['Spit and hope!'], cheer: ['Ooh, crisp!'], dance: ['Zzt-zzt-zzt!'], idle: ['Ooh, crisp!', 'Hmm. Magnets.', 'Love that hum!'] },
@@ -2440,6 +2461,410 @@ function albumUi() {
   m.onclick = (e) => { if (e.target.closest && e.target.closest('#aClose')) m.hidden = true; };
 }
 
+// ============ SEASONS (build 14): the real date gives every room a goal. The seasons idea is Harry's. ============
+// Everything a story-teller can add lives in the tables SEASONS, DECOR and ADVENT: one entry is one new thing. Every entry we invented has by: 'CAIRN (placeholder)'.
+const SEA_CREDIT = 'Harry', PHB = 'CAIRN (placeholder)';
+const SEASONS = [ // from / to: [month, day] inclusive (UK). goal.items: what to decorate; goal.special: the decoration unlocked by finishing. events: funny moments (need: a built decoration of that kind).
+  { id: 'autumn', name: 'Autumn', icon: '🍂', from: [9, 1], to: [11, 28], by: PHB,
+    goal: { title: 'Get the room ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'supper', n: 1 }, { k: 'plantern', n: 5 }, { k: 'calendar', n: 1 }], special: 'scarecrow' },
+    events: [{ id: 'au1', need: 'leafpile', act: 'jump', title: 'Leaf leap!', text: 'Somebody jumped in the leaf pile and was not seen again for a minute.', say: 'Whoooosh!', by: PHB },
+      { id: 'au2', need: 'plantern', act: 'wobble', title: 'Wobbly lantern', text: 'A paper lantern swung so hard it nearly told everybody its secret.', say: 'It knows things.', by: PHB },
+      { id: 'au3', need: 'supper', act: 'cheer', title: 'Supper bell', text: 'The harvest supper smelled so good that the pea got nervous.', say: 'Is it us?', by: PHB }] },
+  { id: 'advent', name: 'Advent & Christmas', icon: '🎄', from: [11, 29], to: [12, 26], by: PHB,
+    goal: { title: 'Get the room cosy for the festive season', items: [{ k: 'calendar', n: 1 }, { k: 'pinetree', n: 1 }, { k: 'chain', n: 2 }, { k: 'stocking', n: 3 }], special: 'star' },
+    events: [{ id: 'ad1', need: 'pinetree', act: 'cheer', title: 'Tiny tree', text: 'The pine-cone tree dropped one needle. Everybody gave it a cuddle.', say: 'Brave tree.', by: PHB },
+      { id: 'ad2', need: 'chain', act: 'wobble', title: 'Chain gang', text: 'The paper chain got itself into a knot and then into a bow.', say: 'Ta-da?', by: PHB },
+      { id: 'ad3', need: 'stocking', act: 'hop', title: 'Stocking surprise', text: 'Something in a stocking wriggled. It was only a button. Probably.', say: 'Shh!', by: PHB }] },
+  { id: 'newyear', name: 'New Year', icon: '✨', from: [12, 27], to: [1, 6], by: PHB,
+    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' },
+    events: [{ id: 'ny1', need: 'plantern', act: 'wobble', title: 'Countdown', text: 'The lanterns counted down from ten and got to seven.', say: 'Close enough!', by: PHB },
+      { id: 'ny2', need: 'supper', act: 'cheer', title: 'Midnight crumbs', text: 'Everybody stayed up for one more crumb.', say: 'Just one.', by: PHB }] },
+  { id: 'winter', name: 'Winter', icon: '❄️', from: [1, 7], to: [2, 29], by: PHB,
+    goal: { title: 'Make the room snug for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 2 }], special: 'igloo' },
+    events: [{ id: 'wi1', need: 'snowman', act: 'cheer', title: 'Fluff snowman', text: 'The fluff snowman sneezed. It is now slightly smaller.', say: 'Bless you.', by: PHB },
+      { id: 'wi2', need: 'sledge', act: 'hop', title: 'Sledge run', text: 'Three creatures rode the lolly-stick sledge down a very small hill.', say: 'Faster!', by: PHB }] },
+  { id: 'spring', name: 'Spring', icon: '🌼', from: [3, 1], to: [5, 31], by: PHB,
+    goal: { title: 'Get the room ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'supper', n: 1 }], special: 'kite' },
+    events: [{ id: 'sp1', need: 'daisy', act: 'cheer', title: 'Daisy crown', text: 'Somebody wore a daisy crown and was crowned Mayor of Nothing in Particular.', say: 'I accept.', by: PHB },
+      { id: 'sp2', need: 'supper', act: 'cheer', title: 'Picnic', text: 'A picnic on a jar lid. The crumb loaf was shared fairly, nearly.', say: 'Mine!', by: PHB }] },
+  { id: 'summer', name: 'Summer', icon: '☀️', from: [6, 1], to: [8, 31], by: PHB,
+    goal: { title: 'Get the room ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 3 }, { k: 'supper', n: 1 }], special: 'paddle' },
+    events: [{ id: 'su1', need: 'plantern', act: 'wobble', title: 'Firefly impression', text: 'The lanterns did their best firefly impression. The fireflies were not offended.', say: 'Blink blink.', by: PHB },
+      { id: 'su2', need: 'daisy', act: 'cheer', title: 'Lazy afternoon', text: 'Everybody lay on the warm shelf and agreed it was the best shelf.', say: 'Ahhh.', by: PHB }] },
+];
+const SEA_DEMO = [['autumn', '10-15'], ['advent', '12-10'], ['newyear', '01-02'], ['winter', '02-01'], ['spring', '04-15'], ['summer', '07-15']]; /* the practice sky's Date picker */
+const SEA_BY = {}; for (const q of SEASONS) SEA_BY[q.id] = q;
+const SEA_DAY = 86400000;
+function seaDate() { /* the date the game believes in: the override if set, else the device */
+  if (ENV.dateOverride) { const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(ENV.dateOverride)); if (m) return { y: +m[1], m: +m[2], d: +m[3] }; }
+  const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+}
+function seasonIdOf(m, d) {
+  const v = m * 100 + d;
+  for (const q of SEASONS) { const f = q.from[0] * 100 + q.from[1], t = q.to[0] * 100 + q.to[1]; if (f <= t ? v >= f && v <= t : v >= f || v <= t) return q.id; }
+  return 'autumn';
+}
+function seasonYear(id, sd) { return (id === 'newyear' && sd.m <= 1) ? sd.y - 1 : sd.y; }
+const seaToday = () => { const d = seaDate(); return Date.UTC(d.y, d.m - 1, d.d); };
+/* ---- the advent calendar: 24 matchbox doors, door n opens from 1 December (n December); the calendar stands from 29 November ---- */
+const adventYear = () => { const d = seaDate(); return d.m >= 9 ? d.y : d.y - 1; };
+function advInfo() {
+  const y = adventYear(), today = seaToday(), stand = Date.UTC(y, 10, 29), door1 = Date.UTC(y, 11, 1);
+  return { y, standing: today >= stand, daysToStand: Math.max(0, Math.round((stand - today) / SEA_DAY)), daysToDoor1: Math.max(0, Math.round((door1 - today) / SEA_DAY)), today };
+}
+const ADVENT = [ // 24 gifts. kind: decor (a little extra decoration), visitor (a creature drops in for a while), event (something funny), story (a line from the almanac). All placeholders until the town's residents fill them.
+  { n: 1, kind: 'story', icon: '📖', title: 'First door', text: 'The first matchbox creaked open. Inside: a very small note that said "Hello, December."', by: PHB },
+  { n: 2, kind: 'decor', icon: '🧦', title: 'A spare stocking', give: 'stocking', text: 'Someone found a stocking in the sofa. It has been washed. Mostly.', by: PHB },
+  { n: 3, kind: 'event', icon: '🎉', title: 'Tiny parade', text: 'A button rolled out and the whole colony followed it in a parade.', joy: 0.2, act: 'cheer', by: PHB },
+  { n: 4, kind: 'visitor', icon: '🐌', title: 'A lint snail drops by', give: 0, text: 'A snail made of lint is visiting. It is very slow and very polite.', by: PHB },
+  { n: 5, kind: 'story', icon: '📜', title: 'Almanac line', text: 'The almanac says: on the fifth day the dust bunnies held a meeting. Nobody knows what about.', by: PHB },
+  { n: 6, kind: 'decor', icon: '🎊', title: 'A bit of paper chain', give: 'chain', text: 'A paper chain, slightly chewed, arrived in the post.', by: PHB },
+  { n: 7, kind: 'event', icon: '🕯️', title: 'Power cut', text: 'The lights went out for a moment. A creature said "boo". It was a creature.', joy: 0.1, act: 'hop', by: PHB },
+  { n: 8, kind: 'visitor', icon: '🦋', title: 'A paper moth', give: 1, text: 'A moth folded from a sweet wrapper flutters round the lanterns.', by: PHB },
+  { n: 9, kind: 'story', icon: '📖', title: 'A rumour', text: 'Rumour has it the Giant\'s slippers are warm. Nobody has dared to check.', by: PHB },
+  { n: 10, kind: 'decor', icon: '🏮', title: 'A glowing lantern', give: 'plantern', text: 'A sweet-wrapper lantern, still warm from the Giant\'s pocket.', by: PHB },
+  { n: 11, kind: 'event', icon: '⛄', title: 'Snow day', text: 'Fluff fell from the sky (someone shook a cushion). Everyone made fluff angels.', joy: 0.2, act: 'cheer', by: PHB },
+  { n: 12, kind: 'visitor', icon: '🐞', title: 'A button beetle', give: 2, text: 'A button beetle shuffles in. It has four holes and no opinions.', by: PHB },
+  { n: 13, kind: 'story', icon: '📜', title: 'Almanac line', text: 'The almanac says: a crumb shared is two crumbs, if you are good at sums.', by: PHB },
+  { n: 14, kind: 'decor', icon: '🧦', title: 'Another stocking', give: 'stocking', text: 'The stocking has a twin. They are now best friends.', by: PHB },
+  { n: 15, kind: 'event', icon: '🎶', title: 'Carol practice', text: 'Everyone sang the same song in a different key. It was loud and lovely.', joy: 0.25, act: 'cheer', by: PHB },
+  { n: 16, kind: 'visitor', icon: '🐛', title: 'A sock worm', give: 3, text: 'A worm made from one sock wriggles past, looking for its pair.', by: PHB },
+  { n: 17, kind: 'story', icon: '📖', title: 'A secret', text: 'The smallest creature admits it was never scared of the dark, only of the sock drawer.', by: PHB },
+  { n: 18, kind: 'decor', icon: '🎊', title: 'More paper chain', give: 'chain', text: 'The paper chain grew by one loop overnight. Nobody saw a thing.', by: PHB },
+  { n: 19, kind: 'event', icon: '🍪', title: 'Crumb surprise', text: 'A crumb the size of a hut fell off the table. Nobody has stopped smiling.', joy: 0.2, act: 'hop', by: PHB },
+  { n: 20, kind: 'visitor', icon: '🦔', title: 'A bobbin hedgehog', give: 4, text: 'A hedgehog made of cotton bobbins rolls in and says it is just passing.', by: PHB },
+  { n: 21, kind: 'story', icon: '📜', title: 'Almanac line', text: 'The almanac says: the longest night is only a very long nap with the lights off.', by: PHB },
+  { n: 22, kind: 'decor', icon: '🏮', title: 'A second lantern', give: 'plantern', text: 'A second lantern, which is jealous of the first and glows a bit harder.', by: PHB },
+  { n: 23, kind: 'event', icon: '🎁', title: 'Wrapping', text: 'Everyone wrapped a present for someone else. Nobody guessed what was in theirs.', joy: 0.25, act: 'cheer', by: PHB },
+  { n: 24, kind: 'event', icon: '⭐', title: 'The last door', text: 'The last matchbox held a tiny star. Everyone said it was the best one, and meant it.', joy: 0.4, act: 'cheer', by: PHB },
+];
+/* ---- the decorations: low-poly shapes now, real art comes later from the town. far: needs a second surface (so a cable car). own: 'advent' = belongs to the advent year, not to the season it was built in ---- */
+const DECOR = {
+  leafpile: { name: 'Leaf pile', ic: '🍂', r: 0.026, wood: 2, work: 7, by: PHB },
+  supper: { name: 'Harvest supper table', ic: '🥧', r: 0.03, wood: 3, work: 12, far: true, by: PHB },
+  plantern: { name: 'Paper lantern', ic: '🏮', r: 0.012, wood: 1, work: 5, by: PHB },
+  calendar: { name: 'Advent calendar', ic: '📅', r: 0.034, wood: 4, work: 14, far: true, own: 'advent', by: PHB },
+  pinetree: { name: 'Pine-cone tree', ic: '🎄', r: 0.018, wood: 3, work: 9, by: PHB },
+  chain: { name: 'Paper chain', ic: '🎊', r: 0.03, wood: 2, work: 7, by: PHB },
+  stocking: { name: 'Stocking', ic: '🧦', r: 0.02, wood: 1, work: 5, by: PHB },
+  snowman: { name: 'Fluff snowman', ic: '⛄', r: 0.016, wood: 2, work: 8, by: PHB },
+  sledge: { name: 'Lolly-stick sledge', ic: '🛷', r: 0.022, wood: 2, work: 8, by: PHB },
+  daisy: { name: 'Daisy crown', ic: '🌼', r: 0.02, wood: 1, work: 5, by: PHB },
+  scarecrow: { name: 'Scarecrow', ic: '🎃', r: 0.02, wood: 3, work: 10, special: true, by: PHB },
+  star: { name: 'Foil star', ic: '⭐', r: 0.016, wood: 3, work: 10, special: true, by: PHB },
+  sparkle: { name: 'Sparkle fountain', ic: '✨', r: 0.02, wood: 3, work: 10, special: true, by: PHB },
+  igloo: { name: 'Fluff igloo', ic: '🧊', r: 0.028, wood: 3, work: 12, special: true, by: PHB },
+  kite: { name: 'Kite on a stick', ic: '🪁', r: 0.016, wood: 3, work: 10, special: true, by: PHB },
+  paddle: { name: 'Bottle-lid paddling pool', ic: '🦆', r: 0.026, wood: 3, work: 10, special: true, by: PHB },
+  visitor: { name: 'Visitor', ic: '🐾', r: 0.01, wood: 0, work: 0, hidden: true, by: PHB },
+};
+const decorKey = (k) => (DECOR[k] && DECOR[k].own === 'advent' ? 'advent-' + adventYear() : ENV.seasonKey);
+/* ---- the models: a few primitives each, in metres (a colonist is about 5 cm tall) ---- */
+const DKM = {};
+const dm2 = (col, em) => { const k = col + '_' + (em || 0); return DKM[k] || (DKM[k] = new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, flatShading: true, side: THREE.DoubleSide, emissive: em || 0, emissiveIntensity: em ? 0.8 : 0 })); };
+const DGEO = (k, f) => geo('d_' + k, f);
+function dAdd(g, k, f, col, x, y, z, em, sx, sy, sz) { const o = mesh(DGEO(k, f), M(col, em), x, y, z); if (sx) o.scale.set(sx, sy === undefined ? sx : sy, sz === undefined ? sx : sz); g.add(o); return o; }
+const DPAL = [0xd96e5e, 0xe8a23a, 0x7fb35a, 0x5aa0d9, 0xb58ad9, 0xe0c25a];
+const DECOR_MK = {
+  leafpile() {
+    const g = new THREE.Group(), pile = new THREE.Group(); g.add(pile); const cols = [0xe08a2b, 0xc2452d, 0xd9b13b, 0x9c5a1e, 0xb8381f];
+    dAdd(pile, 'lpH', () => new THREE.SphereGeometry(0.022, 10, 6), 0xc8761f, 0, 0.002, 0, 0, 1, 0.42, 1);
+    for (let i = 0; i < 16; i++) { const a = i * 2.4, d = 0.005 + (i % 5) * 0.0036, l = dAdd(pile, 'lpL', () => new THREE.BoxGeometry(0.012, 0.0008, 0.008), cols[i % 5], Math.cos(a) * d, 0.0065 + (i % 4) * 0.0019, Math.sin(a) * d); l.rotation.set(0.3 * Math.sin(i), a, 0.25 * Math.cos(i * 1.7)); }
+    const dent = dAdd(pile, 'lpD', () => new THREE.SphereGeometry(0.0065, 8, 5), 0x7a3f12, 0.004, 0.0108, 0.002, 0, 1, 0.35, 1); g.userData.pile = pile; g.userData.dent = dent; g.add(blob(0.026)); return g;
+  },
+  supper() {
+    const g = new THREE.Group(); dAdd(g, 'suLid', () => new THREE.CylinderGeometry(0.026, 0.026, 0.0025, 16), 0xc9a227, 0, 0.0165, 0);
+    for (let i = 0; i < 3; i++) { const a = i * 2.094 + 0.5; dAdd(g, 'suLeg', () => new THREE.CylinderGeometry(0.0012, 0.0012, 0.016, 5).translate(0, 0.008, 0), 0xd9b27a, Math.cos(a) * 0.018, 0, Math.sin(a) * 0.018); }
+    dAdd(g, 'suPlate', () => new THREE.CylinderGeometry(0.0095, 0.0085, 0.0012, 12), 0xfff6e6, -0.007, 0.0187, 0.002);
+    dAdd(g, 'suLoaf', () => new THREE.SphereGeometry(0.0075, 8, 6), 0xc88a45, -0.007, 0.0215, 0.002, 0, 1.4, 0.7, 1);
+    dAdd(g, 'suPea', () => new THREE.SphereGeometry(0.0035, 8, 6), 0x7fd36a, 0.011, 0.0208, 0.008);
+    dAdd(g, 'suGrape', () => new THREE.SphereGeometry(0.0045, 8, 5, 0, 6.283, 0, 1.57), 0x8a4fb0, 0.012, 0.0178, -0.007);
+    for (const s of [-1, 1]) dAdd(g, 'suCup', () => new THREE.CylinderGeometry(0.0022, 0.0016, 0.004, 6), 0x5aa0d9, 0.016 * s, 0.0197, s * -0.014);
+    const gl = glowSprite(0.045, 0.28, 0xffc870); gl.position.y = 0.03; g.add(gl); g.add(blob(0.03)); return g;
+  },
+  plantern() {
+    const g = new THREE.Group(); dAdd(g, 'plP', () => new THREE.CylinderGeometry(0.0011, 0.0014, 0.05, 5).translate(0, 0.025, 0), 0xd9b27a, 0, 0, 0);
+    dAdd(g, 'plA', () => new THREE.BoxGeometry(0.014, 0.0012, 0.0012), 0xd9b27a, 0.006, 0.049, 0);
+    const head = new THREE.Group(); head.position.set(0.0115, 0.0485, 0); g.add(head);
+    dAdd(head, 'plS', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.005, 4).translate(0, -0.0025, 0), 0x5a4332, 0, 0, 0);
+    dAdd(head, 'plB', () => new THREE.SphereGeometry(0.0058, 9, 7), 0xffa24a, 0, -0.0105, 0, 0xff8a1f, 1, 1.18, 1);
+    dAdd(head, 'plR', () => new THREE.TorusGeometry(0.0058, 0.0007, 4, 12).rotateX(Math.PI / 2), 0xd6602a, 0, -0.0105, 0);
+    dAdd(head, 'plT', () => new THREE.ConeGeometry(0.0022, 0.0022, 6), 0xd6602a, 0, -0.0034, 0);
+    const gl = glowSprite(0.035, 0.5, 0xffa860); gl.position.set(0, -0.0105, 0); head.add(gl); g.userData.head = head; g.userData.glow = gl; g.add(blob(0.012)); return g;
+  },
+  calendar() {
+    const g = new THREE.Group(), doors = [];
+    dAdd(g, 'caBase', () => new THREE.BoxGeometry(0.056, 0.003, 0.022), 0x7a5a38, 0, 0.0015, 0); dAdd(g, 'caBack', () => new THREE.BoxGeometry(0.054, 0.062, 0.004), 0x8a6a44, 0, 0.034, -0.007);
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) {
+      const n = r * 4 + c + 1, x = (c - 1.5) * 0.0125, y = 0.0105 + r * 0.0097; dAdd(g, 'caBox', () => new THREE.BoxGeometry(0.0118, 0.0092, 0.0125), DPAL[(r + c) % 6], x, y, 0);
+      const hinge = new THREE.Group(); hinge.position.set(x - 0.0042, y, 0.0066); const door = mesh(DGEO('caDoor', () => new THREE.BoxGeometry(0.0084, 0.0066, 0.0007).translate(0.0042, 0, 0)), new THREE.MeshStandardMaterial({ color: 0xfff0cf, roughness: 0.8, flatShading: true, emissive: 0x000000 }), 0, 0, 0); hinge.add(door);
+      dAdd(hinge, 'caKnob', () => new THREE.SphereGeometry(0.0007, 5, 4), 0x5a4332, 0.0066, 0, 0.0007); g.add(hinge); doors[n] = { hinge, door }; }
+    dAdd(g, 'caRoof', () => new THREE.ConeGeometry(0.04, 0.014, 4).rotateY(Math.PI / 4), 0xd9483b, 0, 0.073, -0.007, 0, 1, 1, 0.45);
+    const gl = glowSprite(0.07, 0, 0xffe0a0); gl.position.set(0, 0.034, 0.012); g.add(gl); g.userData.doors = doors; g.userData.glow = gl; g.add(blob(0.034)); return g;
+  },
+  pinetree() {
+    const g = new THREE.Group(); dAdd(g, 'ptCap', () => new THREE.CylinderGeometry(0.0125, 0.011, 0.004, 10), 0xaab4be, 0, 0.002, 0);
+    for (let i = 0; i < 4; i++) dAdd(g, 'ptC' + i, () => new THREE.ConeGeometry(0.0125 - i * 0.0027, 0.0125, 7).translate(0, 0.00625, 0), i % 2 ? 0x6f5a3a : 0x4f7f3a, 0, 0.0045 + i * 0.0082, 0);
+    for (let i = 0; i < 9; i++) { const a = i * 2.4, h = 0.008 + i * 0.0032, d = 0.0105 - i * 0.0009; dAdd(g, 'ptSq', () => new THREE.SphereGeometry(0.0013, 5, 4), CONF[i % 6], Math.cos(a) * d, h, Math.sin(a) * d, CONF[i % 6]); }
+    const star = dAdd(g, 'ptSt', () => new THREE.OctahedronGeometry(0.0036, 0), 0xffd84a, 0, 0.0445, 0, 0xffc840, 1, 1, 0.45); const gl = glowSprite(0.04, 0.5, 0xffe9a8); gl.position.y = 0.0445; g.add(gl); g.userData.star = star; g.add(blob(0.016)); return g;
+  },
+  chain() {
+    const g = new THREE.Group(); for (const s of [-1, 1]) dAdd(g, 'chP', () => new THREE.CylinderGeometry(0.0011, 0.0013, 0.034, 5).translate(0, 0.017, 0), 0xd9b27a, s * 0.0265, 0, 0);
+    for (let i = 0; i < 11; i++) { const u = i / 10 * 2 - 1, x = u * 0.0245, y = 0.031 - 0.012 * (1 - u * u), l = dAdd(g, 'chL', () => new THREE.TorusGeometry(0.0034, 0.0011, 4, 10), CONF[i % 6], x, y, 0); l.rotation.y = i % 2 ? Math.PI / 2 : 0; l.rotation.z = -u * 0.5; }
+    g.add(blob(0.03)); return g;
+  },
+  stocking() {
+    const g = new THREE.Group(); dAdd(g, 'stB', () => new THREE.BoxGeometry(0.026, 0.002, 0.012), 0x7a5a38, 0, 0.001, 0); dAdd(g, 'stU', () => new THREE.BoxGeometry(0.002, 0.04, 0.002).translate(0, 0.02, 0), 0xd9b27a, -0.011, 0, 0); dAdd(g, 'stA', () => new THREE.BoxGeometry(0.024, 0.0018, 0.0018), 0xd9b27a, 0.001, 0.04, 0);
+    dAdd(g, 'stTh', () => new THREE.CylinderGeometry(0.0003, 0.0003, 0.008, 4).translate(0, -0.004, 0), 0x5a4332, 0.009, 0.0395, 0);
+    dAdd(g, 'stL', () => new THREE.BoxGeometry(0.0062, 0.0155, 0.0045), 0xd9483b, 0.009, 0.0285, 0); dAdd(g, 'stF', () => new THREE.BoxGeometry(0.0105, 0.0058, 0.0045), 0xd9483b, 0.0112, 0.0205, 0);
+    dAdd(g, 'stC', () => new THREE.BoxGeometry(0.0074, 0.0032, 0.0052), 0xfff6e6, 0.009, 0.0372, 0); dAdd(g, 'stS', () => new THREE.BoxGeometry(0.0066, 0.0012, 0.0048), 0x4f9a52, 0.009, 0.0278, 0); g.add(blob(0.02)); return g;
+  },
+  snowman() {
+    const g = new THREE.Group(); dAdd(g, 'smA', () => new THREE.IcosahedronGeometry(0.009, 1), 0xffffff, 0, 0.009, 0); dAdd(g, 'smB', () => new THREE.IcosahedronGeometry(0.0068, 1), 0xffffff, 0, 0.0225, 0); const head = dAdd(g, 'smC', () => new THREE.IcosahedronGeometry(0.0049, 1), 0xffffff, 0, 0.0325, 0);
+    dAdd(g, 'smN', () => new THREE.ConeGeometry(0.0009, 0.004, 5).rotateX(Math.PI / 2), 0xe8883a, 0, 0.0325, 0.0058); for (const s of [-1, 1]) dAdd(g, 'smE', () => new THREE.SphereGeometry(0.0006, 4, 3), 0x2a1a10, s * 0.0017, 0.0343, 0.0044);
+    dAdd(g, 'smS', () => new THREE.TorusGeometry(0.0046, 0.0012, 4, 10).rotateX(Math.PI / 2), 0xd9483b, 0, 0.0268, 0); dAdd(g, 'smBt', () => new THREE.SphereGeometry(0.0005, 4, 3), 0x2a1a10, 0, 0.0235, 0.0066); g.userData.head = head; g.add(blob(0.016)); return g;
+  },
+  sledge() {
+    const g = new THREE.Group(); for (const s of [-1, 1]) { dAdd(g, 'slR', () => new THREE.BoxGeometry(0.032, 0.0016, 0.0018), 0x9aa4ad, 0, 0.001, s * 0.0065); dAdd(g, 'slC', () => new THREE.TorusGeometry(0.0035, 0.0009, 4, 8, Math.PI * 0.8), 0x9aa4ad, 0.0165, 0.0045, s * 0.0065).rotation.z = 0.5; dAdd(g, 'slLg', () => new THREE.CylinderGeometry(0.0008, 0.0008, 0.0035, 4), 0x9aa4ad, 0.01 * s, 0.0027, s * 0.0065); }
+    for (let i = -1; i <= 1; i++) dAdd(g, 'slD', () => new THREE.BoxGeometry(0.03, 0.0014, 0.0038), 0xd9b27a, 0, 0.0045, i * 0.0042);
+    dAdd(g, 'slCord', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.012, 4).rotateZ(Math.PI / 2), 0xd9483b, 0.023, 0.0055, 0); g.add(blob(0.022)); return g;
+  },
+  daisy() {
+    const g = new THREE.Group(), ring = new THREE.Group(); ring.rotation.x = -0.18; ring.position.y = 0.004; g.add(ring); dAdd(ring, 'dyR', () => new THREE.TorusGeometry(0.0125, 0.0008, 4, 20).rotateX(Math.PI / 2), 0x7bb661, 0, 0, 0);
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, x = Math.cos(a) * 0.0125, z = Math.sin(a) * 0.0125; dAdd(ring, 'dyP', () => new THREE.CylinderGeometry(0.0036, 0.0036, 0.0006, 8), 0xffffff, x, 0.0007, z); dAdd(ring, 'dyC', () => new THREE.SphereGeometry(0.0013, 6, 4), 0xffcc2a, x, 0.0016, z); }
+    g.add(blob(0.02)); return g;
+  },
+  scarecrow() {
+    const g = new THREE.Group(); dAdd(g, 'scP', () => new THREE.CylinderGeometry(0.0012, 0.0014, 0.06, 5).translate(0, 0.03, 0), 0xd9b27a, 0, 0, 0); dAdd(g, 'scA', () => new THREE.BoxGeometry(0.04, 0.0022, 0.0022), 0xd9b27a, 0, 0.04, 0);
+    dAdd(g, 'scB', () => new THREE.ConeGeometry(0.0085, 0.024, 7).translate(0, 0.012, 0), 0x7a5a38, 0, 0.026, 0, 0, 1, 1, 0.7); dAdd(g, 'scH', () => new THREE.SphereGeometry(0.0065, 8, 6), 0xe0c080, 0, 0.0535, 0);
+    dAdd(g, 'scHat', () => new THREE.ConeGeometry(0.0072, 0.01, 7), 0x6a3a22, 0, 0.0645, 0); dAdd(g, 'scBr', () => new THREE.CylinderGeometry(0.0095, 0.0095, 0.0012, 10), 0x6a3a22, 0, 0.0595, 0);
+    for (const s of [-1, 1]) { dAdd(g, 'scS', () => new THREE.ConeGeometry(0.0022, 0.007, 5), 0xe8c24a, s * 0.0205, 0.04, 0).rotation.z = -s * 1.57; dAdd(g, 'scEy', () => new THREE.SphereGeometry(0.0007, 4, 3), 0x2a1a10, s * 0.0024, 0.0545, 0.0058); }
+    g.add(blob(0.02)); return g;
+  },
+  star() {
+    const g = new THREE.Group(); dAdd(g, 'srP', () => new THREE.CylinderGeometry(0.0011, 0.0014, 0.05, 5).translate(0, 0.025, 0), 0xd9b27a, 0, 0, 0);
+    const star = dAdd(g, 'srS', () => new THREE.OctahedronGeometry(0.0085, 0), 0xffd84a, 0, 0.058, 0, 0xffc840, 1, 1, 0.4); const gl = glowSprite(0.07, 0.6, 0xffe9a8); gl.position.y = 0.058; g.add(gl); g.userData.star = star; g.userData.glow = gl; g.add(blob(0.016)); return g;
+  },
+  sparkle() {
+    const g = new THREE.Group(); dAdd(g, 'spB', () => new THREE.CylinderGeometry(0.006, 0.008, 0.012, 8), 0x8a6a44, 0, 0.006, 0); const ring = new THREE.Group(); ring.position.y = 0.025; g.add(ring);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; dAdd(ring, 'spS', () => new THREE.OctahedronGeometry(0.0022, 0), CONF[i % 6], Math.cos(a) * 0.012, Math.sin(i * 1.3) * 0.008, Math.sin(a) * 0.012, CONF[i % 6]); }
+    const gl = glowSprite(0.05, 0.5, 0xffe9a8); gl.position.y = 0.025; g.add(gl); g.userData.ring = ring; g.userData.glow = gl; g.add(blob(0.02)); return g;
+  },
+  igloo() {
+    const g = new THREE.Group(); dAdd(g, 'igD', () => new THREE.SphereGeometry(0.022, 12, 7, 0, 6.283, 0, 1.5708), 0xe8f1f8, 0, 0, 0);
+    dAdd(g, 'igH', () => new THREE.SphereGeometry(0.006, 7, 5, 0, 6.283, 0, 1.5708), 0x3a4a5a, 0, 0.0005, 0.0205, 0, 1, 1.1, 0.5); for (let i = 0; i < 3; i++) dAdd(g, 'igR', () => new THREE.TorusGeometry(0.021 - i * 0.004, 0.0004, 3, 16).rotateX(Math.PI / 2), 0xbcd0de, 0, 0.004 + i * 0.0068, 0); g.add(blob(0.028)); return g;
+  },
+  kite() {
+    const g = new THREE.Group(); dAdd(g, 'kiP', () => new THREE.CylinderGeometry(0.0011, 0.0014, 0.05, 5).translate(0, 0.025, 0), 0xd9b27a, 0, 0, 0);
+    const k = new THREE.Group(); k.position.set(0.01, 0.052, 0); g.add(k); const sail = mesh(DGEO('kiS', () => new THREE.CircleGeometry(0.0115, 4)), dm2(0xe8483b), 0, 0, 0); sail.rotation.z = Math.PI / 2; k.add(sail); const sail2 = mesh(DGEO('kiS2', () => new THREE.CircleGeometry(0.0115, 4)), dm2(0xffd84a), 0, 0, 0.0004); sail2.rotation.z = Math.PI / 2; sail2.scale.set(0.5, 0.5, 1); k.add(sail2);
+    for (let i = 0; i < 4; i++) dAdd(k, 'kiT', () => new THREE.OctahedronGeometry(0.0022, 0), CONF[(i + 1) % 6], 0.0005 * i, -0.014 - i * 0.0062, 0.0004 * i);
+    g.userData.kite = k; g.add(blob(0.016)); return g;
+  },
+  paddle() {
+    const g = new THREE.Group(); dAdd(g, 'pdR', () => new THREE.TorusGeometry(0.0225, 0.0032, 6, 20).rotateX(Math.PI / 2), 0xd94a3b, 0, 0.0032, 0); dAdd(g, 'pdW', () => new THREE.CylinderGeometry(0.0215, 0.0215, 0.0036, 16), 0x6fc4f0, 0, 0.0018, 0, 0x2a7ab0);
+    const duck = new THREE.Group(); duck.position.set(0.004, 0.0065, 0); g.add(duck); dAdd(duck, 'pdB', () => new THREE.SphereGeometry(0.0055, 8, 6), 0xffd84a, 0, 0.001, 0, 0, 1.2, 0.85, 0.9); dAdd(duck, 'pdH', () => new THREE.SphereGeometry(0.0035, 7, 5), 0xffd84a, 0.0045, 0.0055, 0); dAdd(duck, 'pdK', () => new THREE.ConeGeometry(0.0013, 0.003, 5).rotateZ(-Math.PI / 2), 0xe8883a, 0.0085, 0.0052, 0);
+    g.userData.duck = duck; g.add(blob(0.026)); return g;
+  },
+  visitor(v) {
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body); v = v || 0;
+    if (v === 0) { dAdd(body, 'v0a', () => new THREE.SphereGeometry(0.006, 8, 6), 0xe9e4da, 0, 0.004, 0, 0, 1.8, 0.55, 0.8); dAdd(body, 'v0b', () => new THREE.TorusGeometry(0.0055, 0.0023, 5, 10), 0xc8a97a, -0.002, 0.01, 0); }
+    else if (v === 1) { for (const s of [-1, 1]) dAdd(body, 'v1w', () => new THREE.PlaneGeometry(0.009, 0.006), 0xd9a8ff, 0, 0.013, s * 0.004).rotation.set(-1.0 * s, 0, 0); dAdd(body, 'v1b', () => new THREE.CylinderGeometry(0.0009, 0.0009, 0.007, 4).rotateZ(Math.PI / 2), 0x5a4332, 0, 0.0125, 0); }
+    else if (v === 2) { dAdd(body, 'v2a', () => new THREE.CylinderGeometry(0.0055, 0.0055, 0.0018, 12), 0x4aa8a0, 0, 0.003, 0); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) dAdd(body, 'v2h', () => new THREE.CylinderGeometry(0.0007, 0.0007, 0.0006, 5), 0x1a3a38, x * 0.0016, 0.0042, z * 0.0016); dAdd(body, 'v2l', () => new THREE.SphereGeometry(0.0016, 5, 4), 0x2a1a10, 0.006, 0.003, 0); }
+    else if (v === 3) { for (let i = 0; i < 5; i++) dAdd(body, 'v3s', () => new THREE.SphereGeometry(0.0038, 7, 5), i % 2 ? 0xfff6e6 : 0x4a8fd9, -0.008 + i * 0.004, 0.0036, 0); }
+    else { dAdd(body, 'v4a', () => new THREE.SphereGeometry(0.0062, 8, 6), 0xe0d2b0, 0, 0.006, 0, 0, 1.2, 0.9, 1); for (let i = 0; i < 9; i++) dAdd(body, 'v4s', () => new THREE.ConeGeometry(0.0009, 0.004, 4), 0xb59a6a, -0.002 + Math.cos(i * 1.3) * 0.003, 0.0095 + Math.sin(i * 1.7) * 0.0012, Math.sin(i * 2.4) * 0.0045); }
+    g.userData.body = body; g.add(blob(0.011)); return g;
+  },
+};
+for (const k of Object.keys(DECOR)) { const D = DECOR[k]; KINDS[k] = { r: D.r, wood: D.wood, work: D.work, mk: () => DECOR_MK[k](), name: D.name, by: D.by, ic: D.ic }; }
+/* ---- state (saved in the colony save as `seas`, so every room has its own) ---- */
+const SEA = { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
+function seaReset() { Object.assign(SEA, { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
+const seaSave = () => ({ done: SEA.done, adv: SEA.adv, unl: SEA.unl, packed: SEA.packed });
+function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.done = d.done || {}; SEA.adv = d.adv || {}; SEA.unl = d.unl || {}; SEA.packed = d.packed || ''; }
+/* "played": the Giant did something in the last ten simulated minutes. A colony left alone still grows, a played one grows faster. */
+const careOn = () => (G.careT || 0) > G.simT;
+function care() { G.careT = G.simT + 600; }
+function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, q.name + ' is ready!', q.goal.title.replace(/^Get the room (ready )?/, 'The room is ') + '. Done!', SEA_CREDIT]; return id; }
+/* ---- progress: how many of each decoration are built (and planned) for this season ---- */
+function seaCount(k) { let b = 0, p = 0; const key = decorKey(k); for (const S of G.settlements) { if (S.lost) continue; for (const t of S.things) if (t.kind === k && !t.gift && t.sea === key && !t.dead) { if (t.built && !t.hold) b++; else p++; } } return { b, p }; }
+function seaProgress() {
+  const sd = SEA_BY[ENV.season], items = sd.goal.items.map((it) => Object.assign({ k: it.k, n: it.n }, seaCount(it.k)));
+  return { sd, items, done: items.every((i) => i.b >= i.n), got: items.reduce((a, i) => a + Math.min(i.b, i.n), 0), all: items.reduce((a, i) => a + i.n, 0) };
+}
+function seaStripHtml(P) {
+  return P.items.map((it) => { const ic = DECOR[it.k].ic; let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? ic : i < it.b + it.p ? '<span class="dim">' + ic + '</span>' : '▫️'; return '<span class="gg">' + s + '</span>'; }).join(' ') + (P.done ? ' ✔️' : '');
+}
+const seaStripText = (P) => P.items.map((it) => { let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? DECOR[it.k].ic : '▫️'; return s; }).join(' ');
+function seaBuildList() { const sd = SEA_BY[ENV.season], l = sd.goal.items.map((i) => i.k); if (SEA.unl[ENV.seasonKey]) l.push(SEA.unl[ENV.seasonKey]); return l; }
+function decorRefresh() { for (const S of G.settlements) S.decN = S.things.filter((t) => t.built && !t.hold && DECOR[t.kind] && t.kind !== 'visitor').length; }
+function seaPlace(kind, built, S, o) { /* one decoration on a settlement (the main one by default): free and finished (a gift, a special), or planned */
+  S = S || mainSettlement(); if (!S || !KINDS[kind]) return null; const K = KINDS[kind];
+  const sp = findSpot(S, K.r, { R: plotR(S) * 1.1 }) || findSpot(S, K.r, { free: true, R: plotR(S) * 1.6 }); if (!sp) return null;
+  const t = addThing(S, kind, sp[0], sp[1], Object.assign({ built, rot: rnd(0, 6.283) }, o || {})); t.pop = built ? 1 : 0.4;
+  if (built) { const [wx, wz] = l2w(S, sp[0], sp[1]); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.1, add: true, jit: 0.02 }); } decorRefresh(); return t;
+}
+/* ---- the colony decorates by itself ---- */
+function decorTick(quiet) {
+  decorRefresh(); SEA.needFar = false; const P = seaProgress(); if (P.done) return false;
+  const open = G.settlements.reduce((a, S) => a + S.things.filter((t) => !t.built && !t.hold && DECOR[t.kind] && !t.gift).length, 0); if (open >= (careOn() ? 3 : 2)) return false;
+  const main = mainSettlement();
+  for (const it of P.items) {
+    if (it.b + it.p >= it.n) continue; const K = DECOR[it.k]; let cands = G.settlements.filter((S) => S.placed && !S.ghost && !S.lost && !S.awaiting && S.cols.length >= 2);
+    if (K.far) { /* a harvest table or a calendar wants a second surface: it has to be reached by cable car */
+      const others = cands.filter((S) => S !== main && G.links.some((l) => l.ready && (l.a.sid === S.id || l.b.sid === S.id))); if (!others.length) { SEA.needFar = true; continue; } cands = others; }
+    cands.sort((a, b) => a.decN - b.decN);
+    for (const S of cands) {
+      if (!canPay(S, K.wood)) continue; const sp = findSpot(S, KINDS[it.k].r); if (!sp) continue;
+      const tin = pay(S, K.wood), t = addThing(S, it.k, sp[0], sp[1], { built: false, rot: Math.atan2(-sp[0], -sp[1]), tin }); t.pop = 0.4;
+      if (!quiet) toast('The colonists plan a ' + K.name.toLowerCase() + '.'); return true;
+    }
+  }
+  return false;
+}
+function seaSim(dt, quiet) {
+  SEA.placeT -= dt; if (SEA.placeT <= 0) { SEA.placeT = careOn() ? 14 : 40; if (G.settlements.length) decorTick(quiet); }
+  SEA.expT += dt; if (SEA.expT > 60) { SEA.expT = 0; if (G.settlements.length && (SEA.needFar || G.settlements.some((S) => S.thriving && S.t > 900 && !S.lost && !S.awaiting))) autoExpand(); }
+}
+function packAway(first) { /* a new season: last season's decorations go back in the box (the calendar stays through Advent and New Year) */
+  const ok = new Set([ENV.seasonKey]); if (['autumn', 'advent', 'newyear'].includes(ENV.season)) ok.add('advent-' + adventYear()); let n = 0;
+  for (const S of G.settlements) for (const t of S.things.slice()) if (DECOR[t.kind] && t.sea && !ok.has(t.sea)) { const [wx, wz] = l2w(S, t.x, t.z); if (!first) puff('dust', wx, SY(S, 0.02), wz, 3, { size: 0.012, life: 0.8, grow: 1 }); removeThing(S, t); n++; }
+  if (n && !first) toast('The colony packed last season’s decorations back into the box.', 4); decorRefresh();
+}
+function seaComplete(P) {
+  const key = ENV.seasonKey; SEA.done[key] = true; const id = seaMile(key), S0 = mainSettlement(); celebrate(id, S0);
+  for (const S of G.settlements) { if (S.lost) continue; for (const c of S.cols) { c.needs.joy = Math.min(1, c.needs.joy + 0.35); c.hop = 1; } }
+  const sp = P.sd.goal.special; SEA.unl[key] = sp; const t = seaPlace(sp, true, S0, {}); funLog('season', key);
+  toast('Unlocked: ' + DECOR[sp].ic + ' ' + DECOR[sp].name + ' <i class="by">by ' + esc(DECOR[sp].by) + '</i>', 5); sfx('tada'); if (G.tool === 'build') barUi(); persistSoon();
+  return t;
+}
+function seaCheck() {
+  if (G.phase !== 'play' || !G.settlements.length || BT.on) return;
+  if (SEA.packed !== ENV.seasonKey) { const first = !SEA.packed; SEA.packed = ENV.seasonKey; packAway(first); }
+  const P = seaProgress(); if (P.done && !SEA.done[ENV.seasonKey]) seaComplete(P);
+}
+/* ---- funny moments ---- */
+function seaEvent() {
+  const sd = SEA_BY[ENV.season]; if (!sd || BT.on) return; const act = G.settlements.filter((S) => S.placed && !S.ghost && !S.lost && S.cols.length); if (!act.length) return;
+  const has = (S, k) => S.things.find((t) => t.kind === k && t.built && !t.hold), ok = sd.events.filter((e) => !e.need || act.some((S) => has(S, e.need))); if (!ok.length) return;
+  const ev = pick(ok), S = pick(act.filter((q) => !ev.need || has(q, ev.need))), t = ev.need ? has(S, ev.need) : null, cs = S.cols.filter((c) => !c.inside && !c.held && c.spawn <= 0), c = cs.length ? pick(cs) : null;
+  if (ev.act === 'jump' && c && t) { const [wx, wz] = l2w(S, t.x, t.z); c.hop = 1; c.hopBig = 1.8; t.squash = 1; puff('leaf', wx, SY(S, 0.03), wz, 9, { size: 0.007, vy: 0.05, life: 1.4, jit: 0.025, color: pick([0xe08a2b, 0xc2452d, 0xd9b13b]), g: -0.06 }); }
+  else if (ev.act === 'wobble' && t) t.wob = 1.6; else if (ev.act === 'hop') for (const q of cs) q.hop = 1; else for (const q of cs) { q.hop = 1; q.cheerT = 1.4; }
+  for (const q of S.cols) q.needs.joy = Math.min(1, q.needs.joy + 0.08); if (c && ev.say) sayLine(c, ev.say, 2.6, true);
+  toast('<b>' + esc(ev.title) + '</b> ' + esc(ev.text) + (ev.say ? ' “' + esc(ev.say) + '”' : '') + ' <i class="by">by ' + esc(ev.by) + '</i>', 6); sfx('cheer'); funLog('seaevent', ev.id);
+}
+/* ---- the advent calendar ---- */
+const advList = () => SEA.adv[adventYear()] || (SEA.adv[adventYear()] = []);
+const advCalendars = () => G.settlements.flatMap((S) => S.things.filter((t) => t.kind === 'calendar' && t.built && !t.hold && !t.dead));
+function advState(n) { if (advList().includes(n)) return 'open'; return advInfo().today >= Date.UTC(adventYear(), 11, n) ? 'ready' : 'locked'; }
+const advCanOpen = (n) => advCalendars().length > 0 && advState(n) === 'ready';
+function advOpen(n) {
+  if (!advCanOpen(n)) { sfx('no'); return false; } advList().push(n); SEA.q.push(n); sfx('chime'); funLog('advent', String(n)); persistSoon(); if (!$('modal').hidden && $('modal').dataset.cal) calUi(); return true;
+}
+function advGive(n) {
+  const e = ADVENT[n - 1]; if (!e) return; const S = G.settlements.find((q) => q.things.some((t) => t.kind === 'calendar' && t.built)) || mainSettlement() || G.settlements[0];
+  if (!S) return; let extra = '';
+  if (e.kind === 'decor') { const t = seaPlace(e.give, true, S, { gift: true }); if (!t) extra = ' (no room, so it went on the Giant’s list)'; }
+  else if (e.kind === 'visitor') seaPlace('visitor', true, S, { gift: true, var: e.give, life: 260 });
+  else if (e.kind === 'event') { for (const c of S.cols) { c.needs.joy = Math.min(1, c.needs.joy + (e.joy || 0.1)); if (!c.inside) { c.hop = 1; c.cheerT = 1.4; } } if ((e.joy || 0) >= 0.3) fireworks(S); }
+  toast(e.icon + ' <b>Door ' + n + ': ' + esc(e.title) + '</b> ' + esc(e.text) + extra + ' <i class="by">by ' + esc(e.by) + '</i>', 7); sfx('cheer');
+}
+function seaFrame(dt) {
+  if (G.phase !== 'play') return; SEA.chkT -= dt; if (SEA.chkT <= 0) { SEA.chkT = 1; seaCheck(); }
+  SEA.qT -= dt; if (SEA.qT <= 0 && SEA.q.length) { SEA.qT = 2.6; advGive(SEA.q.shift()); }
+}
+/* ---- the advent window and the goal block ---- */
+function calUi() {
+  const m = $('modal'); m.hidden = false; m.dataset.cal = '1'; const info = advInfo(), have = advCalendars().length > 0, list = advList();
+  let head; if (!have) head = 'No calendar yet: the colony is making one.'; else if (!info.standing) head = 'The calendar is ready! It opens in ' + info.daysToStand + (info.daysToStand === 1 ? ' day.' : ' days.'); else if (info.daysToDoor1 > 0) head = 'The first door opens in ' + info.daysToDoor1 + (info.daysToDoor1 === 1 ? ' day.' : ' days.'); else head = 'One door a day. Missed a day? Those doors wait for you.';
+  let grid = ''; for (let n = 1; n <= 24; n++) { const st = advState(n), e = ADVENT[n - 1]; grid += `<button class="door ${st}" data-door="${n}" ${st === 'ready' && have ? '' : 'disabled'} aria-label="Door ${n} ${st}">${st === 'open' ? e.icon : st === 'ready' ? '<b>' + n + '</b>' : '<span>' + n + '</span>'}</button>`; }
+  const last = list.length ? ADVENT[list[list.length - 1] - 1] : null;
+  m.innerHTML = `<div class="dh">📅 Advent calendar</div><div class="sub">${esc(head)}</div><div class="doors">${grid}</div>` + (last ? `<div class="sub" style="margin-top:8px">${last.icon} ${esc(last.title)}: ${esc(last.text)} <i class="by">by ${esc(last.by)}</i></div>` : '') + '<button id="calClose">Close</button>';
+  m.onclick = (e) => { const d = e.target.closest && e.target.closest('[data-door]'); if (d && !d.disabled) { advOpen(+d.dataset.door); return; } if (e.target.closest && e.target.closest('#calClose')) { m.hidden = true; delete m.dataset.cal; m.onclick = null; } };
+}
+const seaFace = (m) => (m >= 0.8 ? '😄' : m >= 0.6 ? '🙂' : m >= 0.4 ? '😐' : m >= 0.2 ? '🙁' : '😢');
+function goalHtml() {
+  const P = seaProgress(), info = advInfo(), cal = P.items.find((i) => i.k === 'calendar'); let extra = '';
+  if (cal && ENV.season === 'autumn') extra = '<div class="gsub">' + (cal.b >= 1 ? 'Calendar ready: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' until it opens' : 'it opens today') : 'Calendar: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' to get it ready' : 'get it ready')) + '</div>';
+  const calBtn = advCalendars().length ? '<button class="cbtn" data-cal="1">📅 Advent calendar</button>' : '';
+  const unl = SEA.unl[ENV.seasonKey] ? '<div class="gsub">Unlocked: ' + DECOR[SEA.unl[ENV.seasonKey]].ic + ' ' + esc(DECOR[SEA.unl[ENV.seasonKey]].name) + '</div>' : '';
+  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.sd.goal.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}<div class="gsub">Seasons: an idea by ${SEA_CREDIT}</div></div>`;
+}
+/* ---- per-frame life of the decorations (called from visuals) ---- */
+function decorAnim(S, t, m, time, dt) {
+  const U = m.userData; if (!t.built) return;
+  if (t.wob > 0) t.wob = Math.max(0, t.wob - dt);
+  if (t.squash > 0) t.squash = Math.max(0, t.squash - dt * 1.2);
+  switch (t.kind) {
+    case 'plantern': if (U.head) U.head.rotation.z = Math.sin(time * 2.2 + t.id) * 0.1 + (t.wob > 0 ? Math.sin(time * 14) * 0.55 * Math.min(1, t.wob) : 0); if (U.glow) U.glow.material.opacity = (ENV.night ? 0.9 : 0.5) * (0.9 + 0.1 * Math.sin(time * 3 + t.id)); break;
+    case 'leafpile': if (U.pile) { const s = t.squash || 0; U.pile.scale.set(1 + 0.2 * s, 1 - 0.3 * s * Math.abs(Math.sin(time * 18)), 1 + 0.2 * s); } if (U.dent) U.dent.visible = (t.squash || 0) > 0 || true; break;
+    case 'snowman': if (U.head) U.head.rotation.z = Math.sin(time * 1.1 + t.id) * 0.12; break;
+    case 'pinetree': case 'star': if (U.star) U.star.rotation.y = time * 1.6; if (U.glow) U.glow.material.opacity = 0.45 + 0.15 * Math.sin(time * 3); break;
+    case 'sparkle': if (U.ring) { U.ring.rotation.y = time * 2.2; U.ring.rotation.z = Math.sin(time * 1.3) * 0.2; } break;
+    case 'kite': if (U.kite) { U.kite.rotation.z = Math.sin(time * 1.7 + t.id) * 0.25; U.kite.position.y = 0.052 + Math.sin(time * 2.1) * 0.002; } break;
+    case 'paddle': if (U.duck) { U.duck.position.x = Math.sin(time * 0.8 + t.id) * 0.01; U.duck.position.z = Math.cos(time * 0.7 + t.id) * 0.008; U.duck.rotation.y = time * 0.8; } break;
+    case 'chain': m.rotation.z = t.wob > 0 ? Math.sin(time * 12) * 0.08 * Math.min(1, t.wob) : 0; break;
+    case 'visitor': { const a = time * 0.35 + t.id * 1.7, R = 0.055 + (t.id % 3) * 0.012; m.position.x = t.x + Math.cos(a) * R * 0.5; m.position.z = t.z + Math.sin(a) * R * 0.5; m.rotation.y = -a + Math.PI; if (U.body) { U.body.position.y = Math.abs(Math.sin(time * 4 + t.id)) * 0.0015; U.body.rotation.z = Math.sin(time * 6 + t.id) * 0.1; } break; }
+    case 'calendar': calAnim(t, m, time); break;
+    default: break;
+  }
+}
+function calAnim(t, m, time) {
+  const doors = m.userData.doors; if (!doors) return; const open = advList(), today = advInfo().today;
+  for (let n = 1; n <= 24; n++) {
+    const d = doors[n]; if (!d) continue; const isOpen = open.includes(n), ready = !isOpen && today >= Date.UTC(adventYear(), 11, n), target = isOpen ? -1.9 : 0;
+    d.hinge.rotation.y += (target - d.hinge.rotation.y) * 0.12; d.door.material.emissive.setHex(ready ? 0xffc040 : isOpen ? 0x201000 : 0x000000); d.door.material.emissiveIntensity = ready ? 0.4 + 0.4 * Math.sin(time * 4 + n) : 0.2;
+  }
+  if (m.userData.glow) m.userData.glow.material.opacity = open.length ? 0.25 + 0.1 * Math.sin(time * 2) : 0;
+}
+/* ---- what a creature is doing, in words (card, creature cam) ---- */
+function doingText(c) {
+  if (c.inside) return 'having a rest indoors'; const j = c.job; if (!j) return 'having a think'; const nm = (j.th && KINDS[j.th.kind] && KINDS[j.th.kind].name ? KINDS[j.th.kind].name : 'something').toLowerCase();
+  switch (j.type) {
+    case 'build': return j.th && j.th.kind === 'plantern' && j.ph === 'go' ? 'carrying a lantern' : j.ph === 'go' ? 'carrying wood to the ' + nm : 'building the ' + nm;
+    case 'leap': return 'jumping in the leaves'; case 'plant': return 'planting a seed'; case 'tend': return 'watering'; case 'harvest': return 'picking crops'; case 'gather': return 'gathering wood';
+    case 'drink': return 'getting a drink'; case 'eat': return 'having a bite'; case 'sleep': return 'sleeping'; case 'shelter': return 'sheltering from the rain'; case 'chat': return 'chatting'; case 'dance': return 'dancing';
+    case 'wander': return 'strolling about'; case 'read': return 'reading a book'; case 'cross': return 'off by cable car'; case 'crumb': return 'rushing to a crumb'; case 'mosh': return 'in the mosh pit'; case 'parade': return 'marching in the parade';
+    default: return 'busy';
+  }
+}
+const colMood = (c) => seaFace(c.needs.joy);
+/* ---- the creature cam: a small picture-in-picture view that follows one creature. A second viewport of the same renderer (so it works in AR, where the main camera is the device), drawn only while it is open ---- */
+const CCAM = { on: false, c: null, cam: new THREE.PerspectiveCamera(40, 1, 0.004, 40), pos: new THREE.Vector3(), look: new THREE.Vector3(), tgt: new THREE.Vector3(), fw: new THREE.Vector3(), snap: true, rendered: 0, bg: new THREE.Color(0xcfe3f2), t: 0 };
+function camOpen(c) {
+  if (!c || !c.mesh || c.dead) return; CCAM.on = true; CCAM.c = c; CCAM.snap = true; $('ccam').hidden = false; document.body.classList.add('ccam-on'); ccamText(); sfx('pop');
+}
+function camClose() { CCAM.on = false; CCAM.c = null; const el = $('ccam'); if (el) el.hidden = true; document.body.classList.remove('ccam-on'); }
+function ccamText() {
+  const c = CCAM.c; if (!c) return; if (!c.S || !c.S.cols.includes(c)) { camClose(); return; }
+  $('ccamName').textContent = c.name; $('ccamMood').textContent = colMood(c); $('ccamDoing').textContent = doingText(c);
+}
+function ccamRender(probe) {
+  const c = CCAM.c; if (!CCAM.on || !c || !c.mesh || !c.S || !c.S.placed) return null; const r = $('ccamView').getBoundingClientRect(); if (r.width < 20 || r.height < 20) return null;
+  const m = c.mesh, S = c.S; m.updateWorldMatrix(true, false); m.getWorldPosition(CCAM.look); const up = S.tf.flip ? -1 : 1; CCAM.look.y += 0.022 * up;
+  m.getWorldDirection(CCAM.fw); CCAM.fw.y = 0; if (CCAM.fw.lengthSq() < 1e-6) CCAM.fw.set(0, 0, 1); CCAM.fw.normalize(); const ca = Math.cos(0.6), sa = Math.sin(0.6);
+  CCAM.tgt.set(CCAM.fw.x * ca + CCAM.fw.z * sa, 0, -CCAM.fw.x * sa + CCAM.fw.z * ca).multiplyScalar(0.062).add(CCAM.look); CCAM.tgt.y += 0.012 * up;
+  if (CCAM.snap) { CCAM.pos.copy(CCAM.tgt); CCAM.snap = false; } else CCAM.pos.lerp(CCAM.tgt, 0.18);
+  const cam = CCAM.cam; cam.aspect = r.width / r.height; cam.up.set(0, up, 0); cam.position.copy(CCAM.pos); cam.lookAt(CCAM.look); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+  const x = r.left, y = innerHeight - r.bottom, bg0 = scene.background; scene.background = bg0 && bg0.isColor ? bg0 : CCAM.bg;
+  renderer.setScissorTest(true); renderer.setViewport(x, y, r.width, r.height); renderer.setScissor(x, y, r.width, r.height); renderer.render(scene, cam);
+  let stat = null;
+  if (probe) { /* test only: read a grid of pixels inside the inset right after drawing it, before the buffer is shown */
+    const gl = renderer.getContext(), pr = renderer.getPixelRatio(), seen = new Set(), px = new Uint8Array(4); let n = 0;
+    for (let i = 1; i < 7; i++) for (let j = 1; j < 7; j++) { gl.readPixels(Math.round((x + r.width * i / 7) * pr), Math.round((y + r.height * j / 7) * pr), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); seen.add((px[0] >> 3) + ',' + (px[1] >> 3) + ',' + (px[2] >> 3)); if (px[3] > 0) n++; }
+    stat = { colours: seen.size, opaque: n };
+  }
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight); scene.background = bg0; CCAM.rendered++; return stat;
+}
+$('ccam').addEventListener('click', () => camClose());
+/* ---- the card: a room, a mood face, a few icons and the season goal. The numbers are behind "Details". ---- */
+const capOf = (S) => { const fx = S.fx || (S.fx = fxOf(S)); return 24 + 24 * (fx.storage || 0) + 12 * (fx.silo || 0); };
+const resHtml = (ic, v, cap, title) => `<span class="res" title="${title}"><i>${ic}</i><u><em style="width:${Math.round(clamp(v / cap, 0, 1) * 100)}%"></em></u></span>`;
+function envLine(full) {
+  const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60), sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
+  return `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky}${full ? ' · sun ' + ENV.sun.toFixed(2) + ' · growth x' + ENV.grow.toFixed(2) : ''}</div>`;
+}
+function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
+
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
@@ -2448,9 +2873,9 @@ const colSave = (c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, 
 function serialize() {
   const hr = new Date(); 
   return {
-    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
+    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
-      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich })),
+      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0 })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
     hooks: hooksSave(),
     links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
@@ -2462,7 +2887,7 @@ function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
   const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
   world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
-  for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich }); if (t.kind === 'tent') S.tent = th; }
+  for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich, sea: t.sea || th.sea, gift: !!t.gift }); if (t.kind === 'tent') S.tent = th; }
   for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
   if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
@@ -2482,7 +2907,7 @@ function prepareContinue() {
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
-  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun);
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
   hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables();
   for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
@@ -3692,7 +4117,7 @@ function setPhase(p) {
   SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
 }
 function resetWorld() {
-  btCleanup(true); G.ceilCd = 0;
+  btCleanup(true); G.ceilCd = 0; seaReset(); camClose(); G.careT = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z); hooksDrop();
@@ -3877,7 +4302,7 @@ function barUi() {
   } else b.hidden = true;
   if (G.phase === 'play' && G.tool === 'cable' && hooksBuilt().length && !b.hidden && !(G.auto && G.barMin)) b.insertAdjacentHTML('beforeend', `<button id="bVia" title="via the ceiling hook" aria-label="via the ceiling hook" class="ic ${G.cableVia === false ? '' : 'on'}"><i>\ud83d\udd14</i><small>Via hook</small></button>`);
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
-  if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
+  if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).concat(seaBuildList()).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
 }
 function setTool(t) { G.tool = t; G.cableFrom = null; clearPreview(); barUi(); updateHint(); }
 function gotoTag() { setPhase('tag'); G.tagMode = 'spot'; G.cableFrom = null; paintAll(); updateLabels(false); barUi(); updateHint(); }
@@ -4058,27 +4483,36 @@ function reqUi() {
 function envUi() {
   const e = $('env');
   e.innerHTML = `<div>Practice sky</div><label>Sun <input id="eSun" type="range" min="0.5" max="1.5" step="0.05" value="${ENV.sun}"></label><label>Hour <input id="eHour" type="range" min="0" max="24" step="0.25" value="${ENV.hourOverride === null ? 12 : ENV.hourOverride}"></label>`
-    + `<label>Weather <select id="eWx">${['auto', ...Object.keys(WX_PRESETS)].map((k) => `<option ${ENV.wxPick === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>`;
-  $('eSun').oninput = (ev) => { ENV.sun = +ev.target.value; }; $('eHour').oninput = (ev) => { ENV.hourOverride = +ev.target.value; }; $('eWx').onchange = (ev) => setWxPick(ev.target.value);
+    + `<label>Date <select id="eDate"><option value="">today</option>${SEA_DEMO.map(([id, md]) => { const v = new Date().getFullYear() + '-' + md; return `<option value="${v}"${ENV.dateOverride === v ? ' selected' : ''}>${SEA_BY[id].name}</option>`; }).join('')}</select></label>` + `<label>Weather <select id="eWx">${['auto', ...Object.keys(WX_PRESETS)].map((k) => `<option ${ENV.wxPick === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>`;
+  $('eSun').oninput = (ev) => { ENV.sun = +ev.target.value; }; $('eHour').oninput = (ev) => { ENV.hourOverride = +ev.target.value; }; $('eWx').onchange = (ev) => setWxPick(ev.target.value); $('eDate').onchange = (ev) => { ENV.dateOverride = ev.target.value || null; ENV._sk = 0; envUpdate(); cardUi(); };
 }
 function selCard(c) {
   const el = $('sel'); if (!c) { el.hidden = true; return; } el.hidden = false;
   const bar = (k, col) => `<div class="bar"><span style="width:44px">${k}</span><i><u style="width:${Math.round(c.needs[k] * 100)}%;background:${col}"></u></i></div>`;
-  const doing = c.inside ? 'resting' : c.job ? { build: 'building', plant: 'planting a seed', tend: 'tending', harvest: 'harvesting', gather: 'gathering', drink: 'getting a drink', eat: 'having a bite', sleep: 'sleeping', shelter: 'sheltering', chat: 'chatting', dance: 'dancing', wander: 'strolling', cross: 'off by cable car' }[c.job.type] : 'thinking';
+  const doing = doingText(c);
   el.innerHTML = `<b style="color:#ffd9a8">${esc(c.name)}</b> is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">${c.persona ? esc(c.persona) + '<br>' : ''}likes: ${c.likes.join(', ') || 'everything'}${c.dream ? '<br>dreams: ' + esc(c.dream) : ''}${c.by ? ' <i class="by">by ' + esc(c.by) + '</i>' : ''}</div>`;
 }
 function totemThumb() { const u = MULTI_ROOM && G.phase === 'play' ? totemUrl(HOMES.cur) : ''; return u ? '<img class="cth" src="' + u + '" alt="" title="' + esc(homeName(HOMES.cur)) + '">' : ''; }
-$('card').onclick = (e) => { if (e.target.classList && e.target.classList.contains('cth')) toast(esc(homeName(HOMES.cur)), 2.5); };
+$('card').onclick = (e) => {
+  const t = e.target; if (t.classList && t.classList.contains('cth')) { toast(esc(homeName(HOMES.cur)), 2.5); return; }
+  const b = t.closest && t.closest('button'); if (!b) return;
+  if (b.dataset.more) { G.cardMore = !G.cardMore; $('card')._h = ''; cardUi(); } else if (b.dataset.cal) calUi(); else if (b.dataset.cam) { const c = G.settlements.flatMap((q) => q.cols).find((q) => q.id === +b.dataset.cam); if (c) { camOpen(c); G.sel = c; selCard(c); G.selT = 6; } }
+};
 function cardSet(el, html) { if (el._h !== html) { el._h = html; el.innerHTML = html; } } /* the info card is rebuilt every 0.4 s: only touch the page when the text changed (a tap on the room thumbnail kept missing a replaced element) */
 const roomTag = () => (MULTI_ROOM && HOMES.rooms.length > 1 ? homeName(HOMES.cur) + ' \u00b7 ' : ''); /* build 12: with several rooms the card says which room this is */
 function cardUi() {
-  const S = G.cur || G.settlements[0], el = $('card'); const th = totemThumb(); el.classList.toggle('inline', !!AR.on); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
-  const sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
-  const env = `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky} · sun ${ENV.sun.toFixed(2)} · growth x${ENV.grow.toFixed(2)}</div>`;
-  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + esc((S && G.phase === 'play' ? roomTag() + S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one)); return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
-  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
-  const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null;
-  el.hidden = false; cardSet(el, th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine());
+  const S = G.cur || G.settlements[0], el = $('card'), gs = $('gstrip'); const th = totemThumb(); el.classList.toggle('inline', !!AR.on); if (CCAM.on) ccamText(); gs.hidden = true;
+  if (AR.on) { /* in AR the card is one tiny line in the top corner, the season goal a second one under it (details are in the Menu) */
+    const play = S && G.phase === 'play', mood = play && S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0;
+    el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + esc(play ? roomTag() + S.zoneName.split(' \u2013 ')[0] + ' ' : '') + (play ? seaFace(mood) : esc(Math.round(ENV.wx.temp) + '\u00b0C')));
+    if (play) { const P = seaProgress(); gs.hidden = false; cardSet(gs, P.sd.icon + ' ' + seaStripHtml(P)); } return;
+  }
+  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + envLine(false) + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
+  const mood = S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null, cap = capOf(S);
+  const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>';
+  let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
+  if (G.cardMore) html += `<div class="det" style="margin-top:4px">settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
+  el.hidden = false; cardSet(el, html);
 }
 function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
 
@@ -4167,13 +4601,14 @@ const endDown = (e) => {
 };
 $('touch').addEventListener('pointerup', endDown); $('touch').addEventListener('pointercancel', endDown);
 function tapAt(cx, cy) {
+  if (G.phase === 'play') care();
   if (G.phase === 'tag') return tagTap(cx, cy);
   if (G.phase === 'align') { if (G.align && G.align.done) return; return alignTap(cx, cy); }
   const col = colPick(cx, cy);
   if (G.phase === 'play' && col && (G.tool === 'look' || G.tool === 'cheer' || G.tool === 'seed' || G.tool === 'build')) { // tap a colonist: cheer and show how they feel
     const rq = G.requests.find((r) => r.cid === col.id);
     if (rq) return giveRequest(rq);
-    pokeCol(col); G.sel = col; G.cur = col.S; selCard(col); G.selT = 6; return; // a poke: they squeak, jump and react in character
+    pokeCol(col); G.sel = col; G.cur = col.S; selCard(col); G.selT = 6; camOpen(col); care(); return; // a poke: they squeak, jump and react in character
   }
   const g = groundPick(cx, cy);
   if (G.phase === 'zones') { if (g && !g.zone.settled) settleZone(g.zone); else toast('Tap one of the coloured zones.'); return; }
@@ -4190,6 +4625,7 @@ function tapAt(cx, cy) {
     plantTree(S, lx, lz); S.helped++;
   } else if (G.tool === 'build') {
     const K = KINDS[G.buildKind];
+    if (DECOR[G.buildKind] && !seaBuildList().includes(G.buildKind)) { sfx('no'); return toast(K.name + ' is for another season.'); }
     if (FUN_BUILDS.includes(G.buildKind) && !funUnlocked(G.buildKind, S)) { sfx('no'); return toast(K.name + ': unlocks ' + UNLOCK_HINT[G.buildKind] + '.'); }
     if (!canPay(S, K.wood)) { sfx('no'); return toast('Needs ' + K.wood + ' wood (you have ' + S.stock.wood + '). The colonists scavenge about 1 every few seconds; trees and tidying bring more.'); }
     if (!validSpot(S, lx, lz, K.r, { free: true })) { sfx('no'); return toast('No room for that there.'); }
@@ -4200,6 +4636,8 @@ function tapAt(cx, cy) {
   } else { // look: tap a building to see what it is
     const t = S.things.find((q) => Math.hypot(q.x - lx, q.z - lz) < q.r);
     if (!t) { dropCrumb(S, lx, lz); return; } // tap the ground: the Giant drops a crumb and everybody rushes over
+    if (t.kind === 'calendar' && t.built) { calUi(); return; }
+    if (DECOR[t.kind]) { toast(DECOR[t.kind].ic + ' ' + DECOR[t.kind].name + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ' <i class="by">by ' + esc(DECOR[t.kind].by) + '</i>'); return; }
     if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { lantern: 'A berry lantern <i class="by">by The Town Brain</i>', nook: 'The reading nook <i class="by">by The Dell Coder</i>', stage: 'The festival stage <i class="by">by The Dell Reasoner</i>', treehouse: 'Gertie\'s treehouse: “I\'ve always dreamed of having a cozy spot up in the trees!” <i class="by">by The Dell Builder</i>', pebble: 'A polished pebble: “we kept your spot warm.” <i class="by">by The Town Brain</i>', bridge: 'Pip\'s bridge over the river. Pip will tell you its name tomorrow. <i class="by">by The Dell Scholar</i>', tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
   }
 }
@@ -5199,7 +5637,7 @@ const BT_HOOKS = { BT, BW, LINT, RIVALS, RIVAL_ORDER, COUNCIL_CREDITS, BT_KO, BT
 
 // ============ main loop ============
 function waterStep(dt) {
-  const w = G.water; if (!w || G.phase !== 'play') return; const S = w.zone.settled; if (!S) return;
+  const w = G.water; if (!w || G.phase !== 'play') return; const S = w.zone.settled; if (!S) return; care();
   G.waterT = (G.waterT || 0) - dt;
   puff('drop', w.x, w.y + 0.07, w.z, 1, { size: 0.006, vy: -0.05, g: -0.3, life: 0.35, jit: 0.006, spread: 0.01 });
   if (G.waterT <= 0) { G.waterT = 0.3; sfx('water'); }
@@ -5223,6 +5661,7 @@ function eventsStep() {
     const S = pick(act), f = ev.effect || {}; if (f.joy) for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + f.joy); if (f.seeds) S.stock.seeds += f.seeds; if (f.wood) S.stock.wood += f.wood; if (f.food) S.stock.food += f.food;
     toast((ev.title ? '<b>' + esc(ev.title) + '</b> ' : '') + esc(ev.text) + (ev.say ? ' \u201c' + esc(ev.say) + '\u201d' : '') + (ev.by ? ' <i class="by">by ' + esc(ev.by) + '</i>' : ''), 6); sfx('cheer');
   }
+  if (Math.random() < 0.2) seaEvent();
   if (Math.random() < 0.12) { // now and then something funny happens at one of the named spots (the council's words)
     const sp = G.spots.filter((q) => roomInfo(q.tag) && roomInfo(q.tag).funny_thing && q.src !== 'default' && act.some((S) => S.zoneRef && S.zoneRef.id === q.zid)); if (sp.length) { const q = pick(sp), i = roomInfo(q.tag); toast('At the ' + esc(q.name) + ': ' + esc(String(i.funny_thing).replace(/^./, (m) => m.toLowerCase())) + ' <i class="by">by ' + esc(i.by || '') + '</i>', 7); }
   }
@@ -5232,6 +5671,7 @@ function simTick(dt, quiet) {
   for (const l of G.links) linkStep(l, dt, ENV, quiet);
   for (const h of G.hooks) hookStep(h, dt, quiet);
   G.simT += dt; G.evT += dt; if (G.evT > 360 / 10 * 1) { G.evT = 0; if (!quiet) eventsStep(); }
+  seaSim(dt, quiet);
 }
 function lighting() {
   const day = ENV.daylight, k = ENV.sun * (1 - ENV.wx.cloud * 0.28);
@@ -5258,7 +5698,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  funFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
+  funFrame(dt); seaFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -5267,6 +5707,7 @@ function frame(time, xrFrame) {
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
   if (BT.on) battleFrame(dt);
   renderer.render(scene, camera);
+  if (CCAM.on && !BT.on) ccamRender(); /* the creature cam: a second small viewport, only while open */
 }
 addEventListener('visibilitychange', () => { if (document.hidden) persist(true); }); addEventListener('pagehide', () => persist(true));
 
@@ -5276,7 +5717,10 @@ for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChang
 // ============ test and debug hooks ============
 window.__g = {
   barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
-  simulate(sec, step) { step = step || 0.5; for (let t = 0; t < sec; t += step) simTick(step, false); },
+  simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
+    step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
+    if (dev) { ENV.hourOverride = null; envUpdate(); } },
+  care, seaPlace, seaProgress, seaStripText, seaCheck, seaComplete, seaSim, decorTick, seaEvent, advInfo, advState, advCanOpen, advOpen, advGive, advList, calUi, camOpen, camClose, ccamRender, ccamText, doingText, goalHtml, cardUi, SEA, SEASONS, DECOR, ADVENT, CCAM, seaDate, seasonIdOf, addThing, mainSettlement, careOn, packAway, seaBuildList, seaFace, advCalendars,
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,
   newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, applyWx, setPhase,
