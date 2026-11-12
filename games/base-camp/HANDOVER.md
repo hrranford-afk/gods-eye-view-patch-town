@@ -202,3 +202,4 @@ A strong code read of save, away, rooms and economy (the local models had timed 
 Also: requests whose settlement is lost or gone now clear. Earlier the same day, the PatchTown stress test found `resolveRequest` removing the wrong request (fixed).
 Not fixed (cosmetic): a hand-edited save without `t`, and the seasons list after more than 7.7 years away.
 The proof scripts were kept outside the repo.
+**Lesson (12 Nov):** in this file's long one-line functions, never put a `//` comment in the middle of a line. It silently swallows the rest of the line. That happened to `persist`'s `return true`, and "Come back later" stopped working until auto-practice-test caught it. Use `/* … */` mid-line.

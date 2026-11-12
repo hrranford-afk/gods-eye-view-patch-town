@@ -2895,7 +2895,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
-  if (saveMap()) saveNow(); AUTO.mapDirty = false; // never write a colony whose map did not save: it could not be placed on reload (review 12 Nov) if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
+  if (saveMap()) saveNow(); /* never write a colony whose map did not save: it could not be placed on reload (review 12 Nov) */ AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
 function liveMatch(fz) { // a map zone this scan zone is (part of) the same surface as
