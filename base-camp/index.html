@@ -1164,7 +1164,7 @@ function requestsStep(S, quiet) {
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
   }
-  for (const r of G.requests.slice()) if (r.sid === S.id && G.simT - r.t > 420) resolveRequest(r, true);
+  for (const r of G.requests.slice()) if ((r.sid === S.id && G.simT - r.t > 420) || !G.settlements.some((q) => q.id === r.sid && !q.lost)) resolveRequest(r, true);
 }
 function resolveRequest(r, silent) { const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1); reqUi(); } // stale button: never remove someone else's request (PatchTown stress test, 12 Nov)
 function giveRequest(r) {
@@ -1465,7 +1465,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
-function saveMap() { if (!G.zones.length) return; G.mapSaved = Date.now(); homeStats(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) storeWarn(); }
+function saveMap() { if (!G.zones.length) return true; G.mapSaved = Date.now(); homeStats(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) { storeWarn(); return false; } return true; }
 function loadMapData() { return safeRead(MAP_KEY, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
 function storeWarn() { if (STORE.told) return; STORE.told = true; toast('The colony could not be saved here (' + (STORE.status === 'unavailable' ? 'this browser blocks storage' : 'storage is full or blocked') + '). Use Menu, Export, to keep your room map.', 8); }
 function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
@@ -1769,7 +1769,7 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
 const SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
 const seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
 function awayDays(secs) { // a light day-level model for time beyond the first day: births, buildings finishing, trees growing, stores refilling, a few events per week, the seasons going by
-  const days = Math.min(36500, Math.floor(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
+  const days = Math.min(36500, Math.round(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
   const evs = COLONY_ALMANAC.events.filter((e) => e.needs !== 'rain');
   for (let d = 0; d < days; d++) {
     for (const S of G.settlements) {
@@ -1795,7 +1795,7 @@ function awaySim(secs, startHour) {
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
   }
-  let long = null; if (rest >= 86400) { long = awayDays(rest); nights += long.days; G.simT += rest; autoExpand(); }
+  let long = null; if (rest > 0) { long = awayDays(rest); nights += long.days; G.simT += rest; if (!long.days) long = null; autoExpand(); } // part days count too (review 12 Nov): 30 h away is 24 h in full plus one day step
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
   DIARY.on = false;
   // Coming home must feel good, never like guilt: after time away the colony is content, not miserable (owner's rule).
@@ -2291,7 +2291,7 @@ function serialize() {
     v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich })),
-      cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })),
+      cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
     links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
 }
@@ -2322,7 +2322,7 @@ function prepareContinue() {
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun);
-  for (const d of sv.settlements) restoreSettlement(d);
+  G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
   restoreLinks(sv.links || []); syncCables();
   G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); funReturn(secs, G.awayRes); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
@@ -2895,7 +2895,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
-  if (G.zones.length) saveMap(); saveNow(); AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
+  if (saveMap()) saveNow(); /* never write a colony whose map did not save: it could not be placed on reload (review 12 Nov) */ AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
 function liveMatch(fz) { // a map zone this scan zone is (part of) the same surface as
@@ -3265,14 +3265,14 @@ function relocManual() { // the older way: tap the two furthest-apart named thin
 }
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
   for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z);
-  G.settlements = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
 function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
   let nr = null;
   if (MULTI_ROOM) { nr = homeCreate(); if (!nr) { toast('That is eight rooms: delete one you do not need on the title screen first.', 6); return; } }
   else { const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c); nr = HOME_TOTEM ? homeCreate() : null; }
-  const lib = G.library, nl = G.nextLib; worldDrop(); G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room'; $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
+  const lib = G.library, nl = G.nextLib; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room'; $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
   G.returning = false; G.locked = false; G.visits = 0; G.visitCounted = false; RELOC.state = 'new'; RELOC.totem = null; TOTEM.live = null; TOTEM.offer = HOME_TOTEM && (!nr || !imgLoad('totem', HOMES.cur)); if (!nr) { store.del(MAP_KEY); store.del(SAVE_KEY); } AUTO.firstDecent = 0;
   autoSay('A new room! Keep looking around: the colonists will find a landing place.', 5); updateTitle();
 }
@@ -3450,7 +3450,7 @@ function homePickStart() { // the room that loads first while the others wait in
   const r = HOMES.rooms.filter((q) => roomHasData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
 }
 function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
-  const secs = RELOC.scanSecs; worldDrop(); homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
+  const secs = RELOC.scanSecs; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
   G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
 }
 function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); }
@@ -3512,7 +3512,7 @@ function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z);
-  G.settlements = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
@@ -3802,7 +3802,7 @@ function ioUi(msg) {
   $('ioCopy').onclick = () => { $('ioText').select(); try { navigator.clipboard.writeText($('ioText').value); } catch (e) { document.execCommand && document.execCommand('copy'); } toast('Copied.'); };
   $('ioClose').onclick = () => { m.hidden = true; };
   $('ioLoad').onclick = () => importMapText($('ioText').value);
-  $('ioForget').onclick = () => { store.del(MAP_KEY); updateTitle(); ioUi('The saved room map is forgotten (the colony save is kept, but it needs a map to come back to).'); };
+  $('ioForget').onclick = () => { store.del(MAP_KEY); store.del(MAP_KEY + '-bak'); updateTitle(); ioUi('The saved room map is forgotten (the colony save is kept, but it needs a map to come back to).'); };
   $('ioFile').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('ioText').value = r.result; importMapText(r.result); }; r.readAsText(f); };
 }
 function importMapText(txt) {
@@ -3991,7 +3991,7 @@ function settleZone(zone) {
   puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
   if (G.mode === 'practice') focusZone(zone);
   if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
-  syncCables(); saveNow(); saveMap();
+  syncCables(); persist(true);
 }
 
 // ============ BATTLE (build 9): a turn-based, artillery-style toy battle on two real surfaces. Original design, placeholder rubbish-weapons and a placeholder rival. ============
@@ -4227,7 +4227,7 @@ function btBegin(o) { // o: { mode:'solo'|'duo', level:'easy'|'normal'|'perfect'
   if (G.phase === 'title' && !AR.on) startPractice();
   if (G.mode === 'practice' && btUsableZones() < 2) btQuickScan();
   const pick2 = btArenaPick(); if (!pick2) { toast('Look around a little more first: the battle needs two surfaces.', 4); return false; }
-  if (!mainSettlement() && G.mode === 'practice' && !pick2[0].Z.settled) { settleZone(pick2[0].Z); $('toast').innerHTML = ''; } // the practice colony lands on the player's surface, so there is a colony to fight for
+  if (!G.settlements.length && G.mode === 'practice' && !pick2[0].Z.settled) { settleZone(pick2[0].Z); $('toast').innerHTML = ''; } // the practice colony lands on the player's surface, so there is a colony to fight for
   BT.k = 1; { const ar = pick2.map((s) => clearArea(s.Z) / (s.half ? 2 : 1)); BT.k = clamp(Math.sqrt(Math.min(...ar) / 0.17), 0.45, 1); BT.ur = BT_UR * BT.k; BT.uh = BT_UH * BT.k; }
   BT.mode = o.mode === 'duo' ? 'duo' : 'solo'; BT.level = o.level === 'normal' ? 'normal' : o.level === 'perfect' ? 'perfect' : 'easy'; BT.seed = o.seed || ((Date.now() & 0xfffff) + 1); BT.rng = seededRandom(BT.seed); BT.cfg = Object.assign({ turn: BT_TURN, hops: 3, maxTurns: 30, hp: 2, tentHp: 6 }, o.cfg || {});
   BT.rv = RIVALS[o.rival] || RIVALS[btRivalPref()] || LINT; BT_COLS[1] = BT.mode === 'duo' ? 0x2fb3b8 : BT.rv.col;
