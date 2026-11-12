@@ -37,10 +37,15 @@ small "wow" tells them there is much more to make later?
 
 **M7. Too much?** These games can turn into busywork. Name one rule that keeps making things fun and calm, not a chore.
 
+**M8. Water (Harry's idea, by Harry).** Crops need water, and a home has many sources: the toilet, the sinks, the bath, a fish
+tank, and more. Each source gives a different amount and quality of water: some is great for plants, some is bad for the creatures.
+Remember that nobody dies in Base Camp. For three water sources: what the water is like, what it does to plants and to creatures
+(funny, never cruel), and how the creatures get it back to the colony. Then: one way to make bad water good.
+
 ## Who to ask (adjust to what is free; ask Harry before any new install or download)
-- The Town Brain: all seven, plus "what would you build first, and how would a robot tester prove it is fun?"
-- The quick residents and, if free, the Dell residents: all seven, one seat at a time.
+- The Town Brain: all eight, plus "what would you build first, and how would a robot tester prove it is fun?"
+- The quick residents and, if free, the Dell residents: all eight, one seat at a time.
 - The Mill's tiny experts: spark sessions on (1) machines and contraptions made from household things, (2) funny accidents with
-  belts, chutes and pulleys, (3) what different rooms of a house smell, sound and feel like to something tiny.
+  belts, chutes and pulleys, (3) what different rooms of a house smell, sound and feel like to something tiny, (4) water from odd places in a home.
 
 Results: `games/COUNCIL_ANSWERS_ROUND4.md`. Push to game/micro-precinct, or send it to the game session in one paste.
