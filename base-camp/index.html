@@ -32,7 +32,7 @@ body.inar #card{left:auto;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px)
 body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 #chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;pointer-events:none}
 .chip{font:800 13px var(--body);padding:4px 10px;border-radius:99px;color:#2b1d12;pointer-events:auto}
-#bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:96vw;padding:8px}
+#bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 16px);padding:8px}
 #bmenu{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 82px);display:flex;gap:8px;padding:8px}
 #card{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 8px);font-size:14px;font-weight:700;line-height:1.5;min-width:170px;pointer-events:none}
 #card b{color:#ffd9a8}
@@ -44,13 +44,13 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .req{display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
 .req b{font-size:12px;color:#a85a1e;display:block}
 .req button{min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
-#toast{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);pointer-events:none;font-weight:700;font-size:13px;text-align:center;max-width:80vw;z-index:6}body.inar #toast{top:calc(env(safe-area-inset-top,0px) + 168px)}#toast .glass{padding:4px 10px;border-radius:10px}
+#toast{font-weight:700;font-size:13px;text-align:center;max-width:100%}#toast .glass{padding:4px 10px;border-radius:10px}
 #toast:empty{display:none}
 #env{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);font-size:12px;font-weight:700;display:grid;gap:4px;min-width:170px}
 #env select,#env input{width:100%;font:700 12px var(--body)}
 #wx{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 120px);width:min(70vw,320px);font-size:14px;text-align:center;font-weight:700;display:grid;gap:10px}
 #wx select{font:700 15px var(--body);padding:6px}
-#repl{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px}
+#repl{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 16px);padding:8px}
 [hidden]{display:none!important}
 #ask,#diary,#modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);max-height:80vh;overflow:auto;text-align:left;display:grid;gap:10px;padding:16px 18px;background:rgba(59,42,30,.92);border-radius:16px;z-index:5}
 #ask{text-align:center}
@@ -64,13 +64,19 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 #modal textarea{width:100%;font:12px ui-monospace,monospace;border-radius:10px;padding:6px;background:#fff6e6;color:#3b2a1e}
 label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px var(--body);border:2px solid rgba(255,246,230,.42);border-radius:12px;padding:9px 12px;background:rgba(255,246,230,.16)}label.file input{position:absolute;inset:0;opacity:0}
 #guess{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(92vw,520px);display:grid;gap:8px;z-index:4;text-align:center}#guess .th{font-weight:800;font-size:18px;color:#ffd9a8}#guess .row2{justify-content:center}
-#rstat{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-size:12px;font-weight:700;padding:4px 10px;max-width:46vw}
+/* build 12: toast, milestone banner, compact report and recognition status share ONE column, so they stack with a gap and can never overlap */
+#msgs{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);display:flex;flex-direction:column;align-items:center;gap:6px;width:max-content;max-width:min(92vw,520px);z-index:6;pointer-events:none}
+body.inar #msgs{top:calc(env(safe-area-inset-top,0px) + 168px)}
+#msgs>*{pointer-events:none}#msgs>#repc{pointer-events:auto}
+#rstat{font-size:12px;font-weight:700;padding:3px 10px;max-width:100%;text-align:center}
+#repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
+body.inar #diary.side{left:8px;top:calc(env(safe-area-inset-top,0px) + 170px);width:min(88vw,380px);max-height:46vh;padding:10px 12px;font-size:13px}body.inar #diary.side ul{font-size:13px;gap:5px}body.inar #diary.side .dh{font-size:16px}body.inar #diary.side button.big{min-height:38px;font-size:14px;padding:4px 14px}
 .lib{display:flex;gap:10px;align-items:center}.lib>div{flex:1}.lib button{min-height:34px;font-size:13px}.badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 14px var(--body);color:#2b1d12;flex:none}
 #welcome{text-align:left;font-size:14px;line-height:1.4;background:rgba(255,246,230,.12);border-radius:12px;padding:8px 12px;margin-bottom:10px;color:#f6e6cc}
 #welcome ul{margin:4px 0 0;padding-left:18px;font-weight:600}
 body.auto #bar{padding:4px 6px;gap:4px;background:rgba(59,42,30,.55)}
 body.auto #bar button{min-height:36px;font-size:13px;padding:2px 8px}
-body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto #bar button.ic{min-height:40px;min-width:40px;padding:2px 3px;flex:0 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:11px}body.auto #bar button.ic i{font-style:normal;font-size:18px}body.auto #bar button.ic small{font-size:8.5px;font-weight:700;opacity:.8;margin-top:1px}
+body.auto #bar{flex-wrap:wrap;gap:2px;padding:3px 4px;max-width:calc(100vw - 8px)}body.auto #bar button.ic{min-height:40px;min-width:40px;padding:2px 3px;flex:0 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:11px}body.auto #bar button.ic i{font-style:normal;font-size:18px}body.auto #bar button.ic small{font-size:8.5px;font-weight:700;opacity:.8;margin-top:1px}
 #bar.min{background:none;backdrop-filter:none;padding:0;left:auto;right:12px;transform:none}#bar.min button.round{width:44px;height:44px;min-height:44px;border-radius:50%;padding:0;font-size:20px}
 #tmenu{justify-content:center;margin-top:10px}
 #count{display:inline-block;margin-top:4px;font:700 12px var(--body);opacity:.8;padding:2px 10px;border-radius:99px;background:var(--glass);pointer-events:none}
@@ -84,12 +90,15 @@ body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto
 #nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
 #rooms .rcard{display:flex;min-height:120px;background:rgba(255,246,230,.14);border-radius:16px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,246,230,.22)}#rooms .rcard:active{background:rgba(255,246,230,.26)}#rooms .rph{flex:0 0 38%;max-width:200px;min-width:120px;object-fit:cover;display:block;background:#2b1d12}#rooms .rbody{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}#rooms .rbody b{font-size:17px}#rooms .rgo{font:800 13px var(--body);opacity:.9}#rooms .rbtn{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}#rooms .rbtn button,#rooms .tslot button{min-height:34px;font-size:12px;padding:4px 10px}#rooms .tslot{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}#rooms .tnote{font-size:10px;opacity:.7;flex-basis:100%}#card img.cth{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #ffd9a8;pointer-events:auto;vertical-align:middle;margin-right:8px}#card:not(.inline) img.cth{float:left}
 #rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
-#banner{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;z-index:7;font:800 18px var(--body);color:#3b2a1e;background:linear-gradient(#fffaf0,#ffe1b0);border:3px solid #e8883a;border-radius:22px;padding:5px 18px 6px;box-shadow:0 3px 0 #a85a1e;white-space:nowrap;text-align:center;transition:transform .35s cubic-bezier(.3,1.6,.5,1),opacity .3s}
+#banner{display:none;font:800 18px var(--body);color:#3b2a1e;background:linear-gradient(#fffaf0,#ffe1b0);border:3px solid #e8883a;border-radius:22px;padding:5px 18px 6px;box-shadow:0 3px 0 #a85a1e;text-align:center;max-width:100%}@keyframes bpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 body.auto #sel{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
-#banner.on{opacity:1;transform:translateX(-50%) scale(1)}#banner small{display:block;font-size:11px;font-weight:700;opacity:.72}
-body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
+#banner.on{display:block;animation:bpop .35s cubic-bezier(.3,1.6,.5,1)}#banner small{display:block;font-size:11px;font-weight:700;opacity:.72}
+body.inar #banner{font-size:14px;padding:3px 14px 4px}body.inar #reqs{top:calc(env(safe-area-inset-top,0px) + 36px)}
 .alb{display:flex;gap:10px;align-items:center;background:rgba(255,246,230,.1);border-radius:12px;padding:6px 10px}.alb .ai{font-size:26px}.alb>div{flex:1}.alb .ad{font-size:11px;opacity:.7;white-space:nowrap}
-#bmenu{flex-wrap:wrap;justify-content:center;max-width:96vw}body.auto #bmenu{gap:4px;padding:5px}body.auto #bmenu button{min-height:34px;font-size:13px;padding:2px 9px}
+#bmenu{flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 16px)}
+/* build 12: the toolbar must fit at any width down to 390 px: it wraps to rows, and in AR the buttons shrink a little (still 44 px high) */
+body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-width:44px;font-size:13px;padding:2px 8px}body.inar #bar button.ic{min-width:40px;padding:2px 3px}body.inar #bar button.big{font-size:15px;padding:4px 14px}
+@media (max-width:520px){#bar button{font-size:12px;padding:2px 6px}#bar{gap:4px}}body.auto #bmenu{gap:4px;padding:5px}body.auto #bmenu button{min-height:34px;font-size:13px;padding:2px 9px}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
 </head>
@@ -122,13 +131,12 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
   <div id="top"><div id="hint" class="glass"></div><div id="chips"></div><div id="count"></div></div>
   <div id="home"></div>
   <div id="idDot" hidden></div>
-  <div id="colMark" hidden><span>\u27a4</span></div>
+  <div id="colMark" hidden><span>&#10148;</span></div>
   <div id="nroom" class="glass" hidden></div>
   <div id="card" class="glass" hidden></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
-  <div id="toast"></div>
-  <div id="banner"></div>
+  <div id="msgs"><div id="toast"></div><div id="banner"></div><div id="repc" class="glass" hidden></div><div id="rstat" class="glass" hidden></div></div>
   <div id="bmenu" class="glass" hidden></div>
   <div id="bar" class="glass" hidden></div>
   <div id="repl" class="glass" hidden></div>
@@ -138,7 +146,6 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
   <div id="diary" hidden></div>
   <div id="tagpick" class="glass" hidden></div>
   <div id="guess" class="glass" hidden></div>
-  <div id="rstat" class="glass" hidden></div>
   <div id="modal" hidden></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -146,7 +153,7 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 11';
+const BUILD = 'build 12';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -423,7 +430,7 @@ function newBand(y) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(SPAN, SPAN).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
   mesh.position.set(SCAN.origin.x, y + 0.002, SCAN.origin.z); mesh.renderOrder = 1; world.add(mesh);
   const N2 = GN * GN, b = { y, n: 0, g: new Uint8Array(N2), hit: new Uint8Array(N2), lab: new Int16Array(N2), data, tex, mesh, dirty: true, cnt: 0,
-    kn: new Uint8Array(N2), na: new Uint8Array(N2), ne: new Uint8Array(N2), frA: new Uint16Array(N2), frE: new Uint16Array(N2), uu: new Uint8Array(N2), ev: false }; // evidence per cell: na = trusted hits (distinct frames), ne = estimated hits, kn = confident (known), uu = plane anchor id
+    kn: new Uint8Array(N2), na: new Uint8Array(N2), ne: new Uint8Array(N2), frA: new Uint16Array(N2), frE: new Uint16Array(N2), uu: new Uint8Array(N2), ev: false, nh: 0, nb: 0 }; // evidence per cell: na = trusted hits (distinct frames), ne = estimated hits, kn = confident (known), uu = plane anchor id
   SCAN.bands.push(b); return b;
 }
 function bandFor(y) {
@@ -459,11 +466,11 @@ function evBlock(b, k, kind, uid) { // one hit (this frame) on cell k and its 8 
     if (!b.kn[q] && (b.na[q] >= 2 || (b.na[q] >= 1 && b.na[q] + b.ne[q] >= 2))) { b.kn[q] = 1; b.cnt++; b.ev = true; b.dirty = true; }
   } }
 }
-function scanHit(p, src, kind, uid) {
+function scanHit(p, src, kind, uid, below) { /* below: this hit was made from underneath (the surface is above the eye, or its normal faces down): the ceiling signal */
   if (SCAN.frozen) return; if (kind === undefined) kind = 2;
   if (!SCAN.origin) { if (!kind) return; SCAN.origin = { x: p.x, z: p.z }; }
   const b = kind ? bandFor(p.y) : nearBand(p.y); if (!b) { if (!kind) SCAN.weak++; return; }
-  if (kind) { b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++; b.mesh.position.y = b.y + 0.002; } else SCAN.weak++;
+  if (kind) { b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++; b.nh++; if (below) b.nb++; b.mesh.position.y = b.y + 0.002; } else SCAN.weak++;
   const k = gIdx(p.x, p.z); if (k < 0) return;
   evBlock(b, k, kind, uid);
   if (!kind) return;
@@ -505,7 +512,7 @@ function mergeBands() { // bands closer than 4 cm are one surface
   for (let i = 0; i < SCAN.bands.length; i++) for (let j = i + 1; j < SCAN.bands.length; j++) {
     const a = SCAN.bands[i], b = SCAN.bands[j];
     if (Math.abs(a.y - b.y) < 0.04) {
-      a.y = (a.y * a.n + b.y * b.n) / (a.n + b.n); a.n += b.n;
+      a.y = (a.y * a.n + b.y * b.n) / (a.n + b.n); a.n += b.n; a.nh += b.nh; a.nb += b.nb;
       for (let k = 0; k < a.g.length; k++) { if (b.g[k] && !a.g[k]) { a.g[k] = 1; a.cnt++; } if (b.hit[k]) a.hit[k] = 1; if (b.kn[k]) { a.kn[k] = 1; } a.na[k] = Math.min(250, a.na[k] + b.na[k]); a.ne[k] = Math.min(250, a.ne[k] + b.ne[k]); if (!a.uu[k]) a.uu[k] = b.uu[k]; }
       a.ev = true; a.dirty = true; a.mesh.position.y = a.y + 0.002;
       SCAN.bands.splice(j, 1); world.remove(b.mesh); b.mesh.geometry.dispose(); b.tex.dispose(); b.mesh.material.dispose();
@@ -573,19 +580,23 @@ function extractZones() {
   SCAN.zones = fresh; classify();
   SCAN.zones.sort((a, b) => a.id - b.id);
 }
-const ZTYPES = { FLOOR: { base: 'Floor', land: 'plains', spec: 'farmland', hint: 'farms' }, TABLE: { base: 'Desk', land: 'meadow', spec: 'village', hint: 'a village' }, SHELF: { base: 'Shelf', land: 'cliffs', spec: 'orchard', hint: 'an orchard' }, SILL: { base: 'Sill', land: 'lookout', spec: 'lookout', hint: 'a lookout' }, SMALL: { base: 'Perch', land: 'grove', spec: 'grove', hint: 'a lone tree' } };
+const CEIL_ABOVE = 0.3, CEIL_MINH = 1.5; /* build 12: a hit more than 0.3 m above the device (or on a down-facing plane) is a ceiling hit; a ceiling zone is at least 1.5 m above the lowest non-ceiling zone */
+const ZTYPES = { CEIL: { base: 'Ceiling', land: 'hanging', spec: 'hanging', hint: 'a hanging camp' }, FLOOR: { base: 'Floor', land: 'plains', spec: 'farmland', hint: 'farms' }, TABLE: { base: 'Desk', land: 'meadow', spec: 'village', hint: 'a village' }, SHELF: { base: 'Shelf', land: 'cliffs', spec: 'orchard', hint: 'an orchard' }, SILL: { base: 'Sill', land: 'lookout', spec: 'lookout', hint: 'a lookout' }, SMALL: { base: 'Perch', land: 'grove', spec: 'grove', hint: 'a lone tree' } };
 // FLOOR: the lowest zone, if it is big (1 m2) or something like a rug (within 15 cm, 0.3 m2). SMALL: under 0.1 m2.
 // TABLE: 25 cm to 1 m above the floor, not narrow. SILL: 80 cm to 1.25 m up and narrow. SHELF: higher, or narrow and high. Anything else big enough is a desk.
 function classify() {
   const zs = SCAN.zones; if (!zs.length) return;
-  const low = zs.reduce((m, z) => (z.y < m.y ? z : m), zs[0]);
+  const cand = (z) => z.band && z.band.nh >= 12 && z.band.nb / z.band.nh >= 0.5, grounded = zs.filter((z) => !cand(z)), ref = grounded.length ? grounded.reduce((m, z) => (z.y < m.y ? z : m), grounded[0]) : null;
+  for (const z of zs) z.ceil = !!(cand(z) && (!ref || z.y - ref.y >= CEIL_MINH)); /* the ceiling signal: mostly hit from underneath (see scanHit), and clearly above the floor when a floor is known */
+  const nc = zs.filter((z) => !z.ceil), low = (nc.length ? nc : zs).reduce((m, z) => (z.y < m.y ? z : m), (nc.length ? nc : zs)[0]);
   for (const z of zs) z.h = z.y - low.y;
-  const levelArea = zs.filter((z) => z.h < 0.15).reduce((a, z) => a + z.area, 0), anyAbove = zs.some((z) => z.h >= 0.25);
+  const levelArea = nc.filter((z) => z.h < 0.15).reduce((a, z) => a + z.area, 0), anyAbove = nc.some((z) => z.h >= 0.25);
   const floorReal = levelArea >= 1.0 || (anyAbove && levelArea >= 0.3);
   const counts = {};
   for (const z of zs) {
     const h = z.h; let t;
-    if (z.area < 0.1) t = 'SMALL';
+    if (z.ceil) t = 'CEIL';
+    else if (z.area < 0.1) t = 'SMALL';
     else if (h < 0.15) t = floorReal ? 'FLOOR' : z.area >= 0.3 ? 'TABLE' : 'SMALL';
     else if (h >= 0.25 && h < 1.0 && z.width >= 0.3) t = 'TABLE';
     else if (h >= 0.8 && h < 1.25 && z.width < 0.3) t = 'SILL';
@@ -620,8 +631,8 @@ function labelSprite(text, color) {
 function updateLabels(show) {
   const scanning = G.phase === 'scan' || G.phase === 'align';
   const lab = (z) => { if (!z.label || z.labelText !== z.name) { if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); } z.label = labelSprite(z.name, z.color); z.labelText = z.name; world.add(z.label); } };
-  for (const z of SCAN.zones) { lab(z); z.label.visible = show && scanning; z.label.position.set(z.cx, z.y + 0.07, z.cz); }
-  for (const z of G.zones) { lab(z); z.label.visible = show && !scanning && !z.settled; z.label.position.set(z.cx, z.y + 0.07, z.cz); }
+  for (const z of SCAN.zones) { lab(z); z.label.visible = show && scanning; z.label.position.set(z.cx, z.y + (z.ceil ? -0.07 : 0.07), z.cz); }
+  for (const z of G.zones) { lab(z); z.label.visible = show && !scanning && !z.settled; z.label.position.set(z.cx, z.y + (z.ceil ? -0.07 : 0.07), z.cz); }
 }
 
 // ============ LAND: what is clear, what is clutter, what the Giant keeps disturbing ============
@@ -776,7 +787,7 @@ function paintLand(z) {
   }
   z.paintVer = L.ver; syncZoneMesh(z);
 }
-function syncZoneMesh(z) { if (z.mesh) { z.mesh.position.set(z.cx, z.y, z.cz); z.mesh.rotation.y = -z.ang; } }
+function syncZoneMesh(z) { if (z.mesh) { z.mesh.position.set(z.cx, z.y, z.cz); z.mesh.rotation.y = -z.ang; z.mesh.scale.y = z.ceil ? -1 : 1; /* a ceiling's land paint and clutter hang down */ } }
 function disposeZone(z) {
   if (z.mesh) { world.remove(z.mesh); z.mesh.traverse((q) => { if (q.geometry) q.geometry.dispose(); if (q.material && q.material.map && q.material !== TOWER_MAT) { q.material.map.dispose(); q.material.dispose(); } }); z.mesh = null; }
   if (z.label) { world.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); z.label = null; }
@@ -937,6 +948,7 @@ const HOMES_K = ['hut', 'tent', 'treehouse'], BOUNCY = new Set(['hut', 'tent', '
 
 // ============ particles (sprites) ============
 const PARTS = []; const PGROUP = new THREE.Group(); world.add(PGROUP);
+function hangingAt(x, y, z) { for (const S of G.settlements) if (S.tf.flip && y <= S.tf.y + 0.002 && y > S.tf.y - 0.7 && Math.hypot(x - S.tf.x, z - S.tf.z) < 1.2) return true; return false; }
 function puff(kind, wx, wy, wz, n, o) {
   o = o || {};
   for (let i = 0; i < (n || 1); i++) {
@@ -946,7 +958,7 @@ function puff(kind, wx, wy, wz, n, o) {
     p.sp.material.map = iconTex(kind); p.sp.material.color.set(o.color || 0xffffff); p.sp.material.blending = o.add ? THREE.AdditiveBlending : THREE.NormalBlending; p.sp.material.needsUpdate = true;
     p.s = (o.size || 0.008) * rnd(0.8, 1.2); p.sp.scale.set(p.s, p.s * (o.tall || 1), 1);
     p.sp.position.set(wx + rnd(-1, 1) * (o.spread || 0.008), wy, wz + rnd(-1, 1) * (o.spread || 0.008));
-    p.v = new THREE.Vector3((o.vx || 0) + rnd(-1, 1) * (o.jit || 0.01), (o.vy === undefined ? 0.02 : o.vy) + rnd(0, 0.008), (o.vz || 0) + rnd(-1, 1) * (o.jit || 0.01)); p.g = o.g || 0; p.fade = o.fade !== false; p.grow = o.grow || 0;
+    p.v = new THREE.Vector3((o.vx || 0) + rnd(-1, 1) * (o.jit || 0.01), (o.vy === undefined ? 0.02 : o.vy) + rnd(0, 0.008), (o.vz || 0) + rnd(-1, 1) * (o.jit || 0.01)); if (hangingAt(wx, wy, wz)) p.v.y *= -1; /* under a ceiling camp 'up' is down */ p.g = o.g || 0; p.fade = o.fade !== false; p.grow = o.grow || 0;
   }
 }
 function partsUpdate(dt) {
@@ -964,15 +976,17 @@ const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], lin
   zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null, library: [], nextLib: 1 };
 const CATCH = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.55 }; // what a catch-up sees: an average day
 const TREE_T = 300, FARM_T = 180; // seconds a tree takes to grow up / a crop takes to ripen (at normal growth)
-const l2w = (S, lx, lz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw); return [S.tf.x + lx * c + lz * s, S.tf.z - lx * s + lz * c]; };
-const w2l = (S, wx, wz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw), dx = wx - S.tf.x, dz = wz - S.tf.z; return [dx * c - dz * s, dx * s + dz * c]; };
+/* A hanging camp (S.tf.flip, on a ceiling zone) is its group turned PI about X: local z runs the other way in the world, and local 'up' points down. l2w / w2l carry that sign; SY(S, d) is the world height d metres above the camp's own ground. */
+const l2w = (S, lx, lz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw); return [S.tf.x + lx * c + lz * s, S.tf.z + (S.tf.flip ? -1 : 1) * (-lx * s + lz * c)]; };
+const SY = (S, d) => S.tf.y + (S.tf.flip ? -d : d);
+const w2l = (S, wx, wz) => { const c = Math.cos(S.tf.yaw), s = Math.sin(S.tf.yaw), dx = wx - S.tf.x, dz = (wz - S.tf.z) * (S.tf.flip ? -1 : 1); return [dx * c - dz * s, dx * s + dz * c]; };
 const plotR = (S) => clamp(0.15 + 0.032 * S.cols.length + 0.01 * S.things.length, 0.15, 0.75);
 const kindCount = (S, k, built) => S.things.filter((t) => t.kind === k && (built === undefined || t.built === built)).length;
 const built = (S, k) => S.things.find((t) => (t.kind === k || (k === 'well' && t.kind === 'lm' && t.role === 'well')) && t.built && !t.hold);
 const canPay = (S, cost) => S.stock.wood + 2 * (S.stock.tin || 0) >= cost; // tin from flattened cans counts double
 function pay(S, cost) { const w = Math.min(S.stock.wood, cost); S.stock.wood -= w; const rest = cost - w; if (rest > 0) { S.stock.tin -= Math.ceil(rest / 2); S.stats.roofs++; return true; } return false; }
 function szone(S) { return S.zoneRef; }
-function syncTf(S) { const Z = S.zoneRef, [x, z] = zoneWorld(Z, S.o[0], S.o[1]); S.tf.x = x; S.tf.z = z; S.tf.y = Z.y; S.tf.yaw = -Z.ang + (S.adj || 0); applyTf(S); }
+function syncTf(S) { const Z = S.zoneRef, [x, z] = zoneWorld(Z, S.o[0], S.o[1]); S.tf.x = x; S.tf.z = z; S.tf.y = Z.y; S.tf.flip = !!Z.ceil; S.tf.yaw = -Z.ang + (S.adj || 0); applyTf(S); }
 function validSpot(S, lx, lz, r, o) {
   o = o || {}; const z = szone(S); if (!z) return false;
   const [wx, wz] = l2w(S, lx, lz);
@@ -1006,13 +1020,23 @@ function removeThing(S, t) { t.dead = true; S.things.splice(S.things.indexOf(t),
 function newSettlement(zone, o) {
   o = o || {}; ensureDist(zone);
   const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, o: zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: { wood: 14, food: 5, seeds: 4, water: 8, tin: 0 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: !G.holdPlace, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0, stats: newStats(), fx: null };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); if (zone.ceil) hangDecor(S);
   const tent = addThing(S, 'tent', 0, 0, { built: !o.awaiting, hold: !!o.awaiting, rot: 0.3 }); S.tent = tent; if (!o.awaiting) tent.pop = 1;
   syncLandmarks(S);
   return S;
 }
+/* The upside-down camp's special touch: lanterns on strings. The group is turned PI about X, so local +y is down in the room: a string is a thin box from the boards (y 0) to y = len, with a lantern at the bottom. */
+function hangDecor(S) {
+  const g = new THREE.Group(); S.hang = g;
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.05 + 0.4, r = 0.11 + (i % 3) * 0.035, len = 0.045 + (i % 2) * 0.03 + (i % 3) * 0.008, pv = new THREE.Group(); pv.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    const st = mesh(geo('hangStr', () => new THREE.BoxGeometry(0.0008, 1, 0.0008)), M(0x4a3a2a), 0, len / 2, 0); st.scale.y = len; pv.add(st);
+    pv.add(mesh(geo('hangLan', () => new THREE.SphereGeometry(0.0075, 8, 6)), M(0xffd27a, 0xffb040), 0, len + 0.006, 0)); const gl = glowSprite(0.034, 0.85, 0xffc870); gl.position.set(0, len + 0.006, 0); pv.add(gl); pv.userData.ph = i * 1.7; g.add(pv);
+  }
+  S.group.add(g);
+}
 const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, squashed: 0, tinAcc: 0, foodAcc: 0, tradeAcc: 0, roofs: 0 });
-function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.y = S.tf.yaw; S.group.updateMatrixWorld(true); }
+function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.set(S.tf.flip ? Math.PI : 0, S.tf.yaw, 0); S.group.updateMatrixWorld(true); } /* Euler XYZ = Rx * Ry: the yaw is applied first, then the half turn about X hangs the camp from its surface */
 function addColonist(S, o) {
   o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
   const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
@@ -1100,7 +1124,7 @@ function runJob(S, c, dt, E, quiet) {
   switch (j.type) {
     case 'sleep': case 'shelter': {
       const rate = j.th.kind === 'hut' ? 1 / 70 : 1 / 100; n.rest = Math.min(1, n.rest + dt * rate);
-      if (!quiet && Math.random() < dt * 0.6) puff('zzz', S.tf.x, S.tf.y + 0.07, S.tf.z, 1, { size: 0.01, vy: 0.012, life: 1.6, jit: 0.002, spread: 0.002 });
+      if (!quiet && Math.random() < dt * 0.6) puff('zzz', S.tf.x, SY(S, 0.07), S.tf.z, 1, { size: 0.01, vy: 0.012, life: 1.6, jit: 0.002, spread: 0.002 });
       const wake = j.type === 'sleep' ? (!E.night && n.rest > 0.85 && !E.rain) : (!E.rain && !E.night);
       if (wake) endJob(c);
       return;
@@ -1108,13 +1132,13 @@ function runJob(S, c, dt, E, quiet) {
     case 'build': {
       const t = j.th; if (t.built) { endJob(c); return; }
       t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1); c.working = true;
-      if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, S.tf.y + 0.01, S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, S.tf.y + 0.012, wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
+      if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, SY(S, 0.01), S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, SY(S, 0.012), wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
       if (!quiet && Math.random() < dt * 1.6) sfx('hammer');
-      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.04, wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
+      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
       return;
     }
-    case 'chat': if (j.t > j.dur) { n.joy = Math.min(1, n.joy + 0.08); j.with.needs.joy = Math.min(1, j.with.needs.joy + 0.08); if (!quiet) puff('heart', S.tf.x, S.tf.y + 0.05, S.tf.z, 0); if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.05, wz, 2, { size: 0.01, life: 1.4 }); } endJob(c); } return;
-    case 'dance': c.dancing = true; if (j.t > j.dur) { c.dancing = false; if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, S.tf.y + 0.04, wz, 3, { size: 0.008, add: true }); } endJob(c); } return;
+    case 'chat': if (j.t > j.dur) { n.joy = Math.min(1, n.joy + 0.08); j.with.needs.joy = Math.min(1, j.with.needs.joy + 0.08); if (!quiet) puff('heart', S.tf.x, SY(S, 0.05), S.tf.z, 0); if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.01, life: 1.4 }); } endJob(c); } return;
+    case 'dance': c.dancing = true; if (j.t > j.dur) { c.dancing = false; if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, SY(S, 0.04), wz, 3, { size: 0.008, add: true }); } endJob(c); } return;
     case 'wander': if (j.t > j.dur) endJob(c); return;
     case 'crumb': crumbJob(S, c, j, dt, quiet); return;
     case 'mosh': moshStep(S, c, j, dt); return;
@@ -1128,10 +1152,10 @@ function runJob(S, c, dt, E, quiet) {
     case 'drink': if (t && t.kind === 'well') n.water = Math.min(1, n.water + 0.7); else if (S.stock.water > 0) { S.stock.water--; n.water = Math.min(1, n.water + 0.6); } break;
     case 'read': n.joy = Math.min(1, n.joy + 0.12); n.rest = Math.min(1, n.rest + 0.05); break;
     case 'eat': if (S.stock.food > 0) { S.stock.food--; n.food = Math.min(1, n.food + 0.6); n.joy = Math.min(1, n.joy + 0.05); } break;
-    case 'tend': if (!t.dead) { t.tend = 60; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('drop', wx, S.tf.y + 0.03, wz, 4, { size: 0.007, vy: 0.02, g: -0.08, life: 0.9, jit: 0.015 }); sfx('water'); } } break;
+    case 'tend': if (!t.dead) { t.tend = 60; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('drop', wx, SY(S, 0.03), wz, 4, { size: 0.007, vy: 0.02, g: -0.08, life: 0.9, jit: 0.015 }); sfx('water'); } } break;
     case 'plant': if (validSpot(S, j.spot[0], j.spot[1], 0.026) && S.stock.seeds > 0) { S.stock.seeds--; plantTree(S, j.spot[0], j.spot[1], quiet); } break;
-    case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; FUN.n.harvest = (FUN.n.harvest | 0) + 1; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, S.tf.y + 0.04, wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
-    case 'gather': if (!t.dead && t.yield > 0) { t.yield--; if (t.var === 2 || t.var === 3) S.stock.food += 1; else S.stock.wood += 1; if (Math.random() < 0.4) S.stock.seeds++; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(t.var >= 2 ? 'food' : 'log', wx, S.tf.y + 0.05, wz, 1, { size: 0.011, vy: 0.03, life: 1.1 }); } } break;
+    case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; FUN.n.harvest = (FUN.n.harvest | 0) + 1; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, SY(S, 0.04), wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
+    case 'gather': if (!t.dead && t.yield > 0) { t.yield--; if (t.var === 2 || t.var === 3) S.stock.food += 1; else S.stock.wood += 1; if (Math.random() < 0.4) S.stock.seeds++; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(t.var >= 2 ? 'food' : 'log', wx, SY(S, 0.05), wz, 1, { size: 0.011, vy: 0.03, life: 1.1 }); } } break;
     default: break;
   }
   endJob(c);
@@ -1139,7 +1163,7 @@ function runJob(S, c, dt, E, quiet) {
 function plantTree(S, lx, lz, quiet) {
   const v = S.spec === 'orchard' ? (Math.random() < 0.7 ? 2 : 0) : S.spec === 'grove' ? 3 : pick([0, 0, 1, 2]);
   const t = addThing(S, 'tree', lx, lz, { var: v, g: 0.02 }); t.pop = 0.5; { const [wx, wz] = l2w(S, lx, lz); t.rich = landCalm(szone(S), wx, wz) >= TIDY.richAt; }
-  if (!quiet) { const [wx, wz] = l2w(S, lx, lz); puff('dust', wx, S.tf.y + 0.01, wz, 2, { size: 0.012, life: 0.7, grow: 1 }); puff('leaf', wx, S.tf.y + 0.02, wz, 2, { size: 0.007, vy: 0.02, life: 1.2 }); sfx('plant'); }
+  if (!quiet) { const [wx, wz] = l2w(S, lx, lz); puff('dust', wx, SY(S, 0.01), wz, 2, { size: 0.012, life: 0.7, grow: 1 }); puff('leaf', wx, SY(S, 0.02), wz, 2, { size: 0.007, vy: 0.02, life: 1.2 }); sfx('plant'); }
   return t;
 }
 function bubbleFor(S, c) {
@@ -1152,7 +1176,7 @@ const CONDS = {
   needWater: (S) => !built(S, 'well') && S.stock.water < 2, noSeeds: (S) => S.stock.seeds < 1 && kindCount(S, 'tree') < 3,
   hot: (S) => ENV.hot && !S.things.some((t) => t.kind === 'shade'), cold: () => ENV.cold, noWood: (S) => S.stock.wood < 1 && S.cols.length >= 3 && S.things.some((t) => !t.built && !t.hold && KINDS[t.kind].work) === false && S.stock.wood < 1 && kindCount(S, 'tree', true) < 2,
   bored: (S) => S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length < 0.35,
-  cantReach: (S) => (S.thriving || (G.auto && S.cols.length >= 4)) && canPay(S, CABLE_COST) && G.zones.some((z) => !z.settled && !z.lost && z.land && z.area > 0.04) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
+  cantReach: (S) => (S.thriving || (G.auto && S.cols.length >= 4)) && canPay(S, CABLE_COST) && G.zones.some((z) => !z.settled && !z.lost && !z.ceil && z.land && z.area > 0.04) && !G.links.some((l) => l.a.sid === S.id || l.b.sid === S.id),
   night: () => ENV.night, cramped: (S) => !!S.cramped && S.stock.wood >= 5,
 };
 function requestsStep(S, quiet) {
@@ -1173,18 +1197,18 @@ function giveRequest(r) {
   if (G.requests.indexOf(r) < 0) { reqUi(); return; } // already timed out or answered: no double reward
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
   const g = r.def.give, c = S.cols.find((q) => q.id === r.cid) || S.cols[0];
-  if (g === 'water') { S.stock.water = Math.min(12, S.stock.water + 6); for (const q of S.cols) q.needs.water = Math.min(1, q.needs.water + 0.4); for (const t of S.things) if (t.kind === 'tree' || t.kind === 'farm') t.tend = 60; puff('drop', S.tf.x, S.tf.y + 0.1, S.tf.z, 8, { size: 0.008, vy: -0.03, life: 1, spread: 0.06 }); sfx('water'); }
-  else if (g === 'seed') { S.stock.seeds += 3; puff('seed', S.tf.x, S.tf.y + 0.08, S.tf.z, 5, { size: 0.01, vy: -0.02, life: 1, spread: 0.05 }); sfx('plant'); }
-  else if (g === 'wood') { S.stock.wood += 4; puff('log', S.tf.x, S.tf.y + 0.08, S.tf.z, 4, { size: 0.012, vy: -0.02, life: 1, spread: 0.05 }); sfx('pop'); }
+  if (g === 'water') { S.stock.water = Math.min(12, S.stock.water + 6); for (const q of S.cols) q.needs.water = Math.min(1, q.needs.water + 0.4); for (const t of S.things) if (t.kind === 'tree' || t.kind === 'farm') t.tend = 60; puff('drop', S.tf.x, SY(S, 0.1), S.tf.z, 8, { size: 0.008, vy: -0.03, life: 1, spread: 0.06 }); sfx('water'); }
+  else if (g === 'seed') { S.stock.seeds += 3; puff('seed', S.tf.x, SY(S, 0.08), S.tf.z, 5, { size: 0.01, vy: -0.02, life: 1, spread: 0.05 }); sfx('plant'); }
+  else if (g === 'wood') { S.stock.wood += 4; puff('log', S.tf.x, SY(S, 0.08), S.tf.z, 4, { size: 0.012, vy: -0.02, life: 1, spread: 0.05 }); sfx('pop'); }
   else if (g === 'shade') { const sp = findSpot(S, 0.04, { cx: c ? c.x : 0, cz: c ? c.z : 0, R: 0.12 }) || findSpot(S, 0.04); if (sp) { const t = addThing(S, 'shade', sp[0], sp[1], { life: 500 }); t.pop = 0.5; sfx('pop'); } }
   else if (g === 'cheer') { for (const q of S.cols) { q.needs.joy = Math.min(1, q.needs.joy + 0.3); q.hop = 1; } sfx('cheer'); }
   else if (g === 'cablecar') { // one tap: the colony picks the next zone itself (drag-to-build is still on the Cable car tool)
-    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && Z.land && Z.area > 0.04 && Z !== S.zoneRef).sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
+    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && !Z.ceil && Z.land && Z.area > 0.04 && Z !== S.zoneRef).sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
     const Zt = cands[0]; if (!Zt) { setTool('cable'); toast('Drag a line from this settlement to another zone.', 4); return; } ensureDist(Zt); ensureDist(S.zoneRef);
     const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   else if (g === 'expedition') { const Zt = zoneById(r.def.zone); if (!Zt || Zt.settled) return resolveRequest(r); ensureDist(Zt); ensureDist(S.zoneRef); S.stock.wood = Math.max(S.stock.wood, CABLE_COST); const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   for (const q of S.cols) q.needs.joy = Math.min(1, q.needs.joy + (q === c ? r.def.joy : 0.08));
-  if (c) { c.hop = 1; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.05, wz, 4, { size: 0.01, vy: 0.03, life: 1.4 }); }
+  if (c) { c.hop = 1; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 4, { size: 0.01, vy: 0.03, life: 1.4 }); }
   S.helped++; resolveRequest(r); toast('Thank you! ' + (c ? c.name : 'They') + ' is happy.');
 }
 // ---- the simulation of one settlement for dt seconds (also used, with big steps, for catch-up) ----
@@ -1200,7 +1224,7 @@ function simSettlement(S, dt, E, quiet) {
     if (t.tend > 0) t.tend -= dt;
     if (E.rain && (t.kind === 'tree' || t.kind === 'farm')) t.tend = Math.max(t.tend, 20);
     const fxm = (S.fx && S.fx.solar ? 1.2 : 1) * (E.cold && S.fx && S.fx.forge ? 1.6 : 1), calmK = t.rich ? 1.3 : 1;
-    if (t.kind === 'tree' && t.g < 1) { t.g = Math.min(1, t.g + dt / TREE_T * E.grow * fxm * calmK * (t.tend > 0 ? 1.8 : 1)); if (t.g >= 1 && !quiet) { toast('A tree has grown up!'); puff('leaf', S.tf.x, S.tf.y + 0.02, S.tf.z, 0); } }
+    if (t.kind === 'tree' && t.g < 1) { t.g = Math.min(1, t.g + dt / TREE_T * E.grow * fxm * calmK * (t.tend > 0 ? 1.8 : 1)); if (t.g >= 1 && !quiet) { toast('A tree has grown up!'); puff('leaf', S.tf.x, SY(S, 0.02), S.tf.z, 0); } }
     else if (t.kind === 'tree') { t.yt += dt * E.grow; if (t.yt > 70 && t.yield < 2) { t.yield++; t.yt = 0; } }
     else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * fxm * calmK * (S.fx && S.fx.farm ? 1.25 : 1) * (t.tend > 0 ? 1.8 : 1));
   }
@@ -1221,7 +1245,7 @@ function simSettlement(S, dt, E, quiet) {
     if (!c.job && c.cool <= 0) { const j = chooseJob(S, c, E); if (j) startJob(S, c, j, E); }
     if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job) runJob(S, c, quiet && !E.away ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
     if (quiet && !E.away && c.job && c.job.ph === 'go' && c.job.type !== 'cross') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
-    if (!quiet && n.joy > 0.9 && Math.random() < dt * 0.15) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, S.tf.y + 0.04, wz, 1, { size: 0.007, add: true, life: 1 }); }
+    if (!quiet && n.joy > 0.9 && Math.random() < dt * 0.15) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, SY(S, 0.04), wz, 1, { size: 0.007, add: true, life: 1 }); }
   }
   // planner: the colony decides what to build next
   S.planT -= dt;
@@ -1250,7 +1274,7 @@ function simSettlement(S, dt, E, quiet) {
 }
 // ---- cable cars ----
 const CABLE_COST = 6;
-function stationTop(S, t) { const [wx, wz] = l2w(S, t.x, t.z); return new THREE.Vector3(wx, S.tf.y + 0.063, wz); }
+function stationTop(S, t) { const [wx, wz] = l2w(S, t.x, t.z); return new THREE.Vector3(wx, SY(S, 0.063), wz); }
 function linkEnds(l) {
   const Sa = G.settlements.find((s) => s.id === l.a.sid), Sb = G.settlements.find((s) => s.id === l.b.sid);
   if (!Sa || !Sb || Sa.lost || Sb.lost || l.a.th.dead || l.b.th.dead) return null;
@@ -1262,8 +1286,11 @@ function stationSpot(S, wx, wz) {
   for (let R = 0; R <= 0.3; R += 0.02) for (let i = 0; i < (R ? 14 : 1); i++) { const a = i * 0.45, x = lx + Math.cos(a) * R, z = lz + Math.sin(a) * R; if (validSpot(S, x, z, 0.03, { free: true })) return [x, z]; }
   return null;
 }
+/* build 12: the hanging base. A ceiling is only reached once a cable car already runs (ceilTick offers it as an expedition; the Cable car tool needs the same). */
+const ceilOK = () => G.links.some((l) => l.ready);
 function canLink(Sa, wxa, wza, zb, wxb, wzb) {
   if (!zb || zb === Sa.zoneRef || zb.id === Sa.zid) return 'Pick a different zone.';
+  if (zb.ceil && !ceilOK()) return 'The ceiling is too high for now: build a cable car first.';
   if (Math.hypot(wxb - wxa, wzb - wza) + Math.abs(zb.y - Sa.tf.y) < 0.25) return 'Too close for a cable car.';
   if (!canPay(Sa, CABLE_COST)) return 'A cable car needs ' + CABLE_COST + ' wood (or tin).';
   if (!stationSpot(Sa, wxa, wza)) return 'No room for a station there.';
@@ -1367,7 +1394,7 @@ function zoneLocal(Z, wx, wz) { const dx = wx - Z.cx, dz = wz - Z.cz, c = Math.c
 function zoneWorld(Z, u, v) { const c = Math.cos(Z.ang), s = Math.sin(Z.ang); return [Z.cx + u * c - v * s, Z.cz + u * s + v * c]; }
 function setZoneFrame(Z, cx, cz, ang, y) { Z.cx = cx; Z.cz = cz; Z.ang = ang; Z.y = y; if (Z.land) setLandFrame(Z.land, cx, cz, ang, y); syncZoneMesh(Z); if (Z.settled) syncTf(Z.settled); }
 function newMapZone(fz) { // a zone of the map from a freshly scanned zone
-  const Z = { id: G.nextMZ++, name: fz.name, type: fz.type, spec: fz.spec, y: fz.y, h: fz.h, cx: fz.cx, cz: fz.cz, ang: fz.ang, w: fz.w, d: fz.d, area: fz.area, color: fz.color, settled: null, land: null, label: null, core: null, f0: [fz.cx, fz.cz, fz.ang, fz.y] };
+  const Z = { id: G.nextMZ++, name: fz.name, type: fz.type, spec: fz.spec, y: fz.y, h: fz.h, cx: fz.cx, cz: fz.cz, ang: fz.ang, w: fz.w, d: fz.d, area: fz.area, color: fz.color, ceil: !!fz.ceil, settled: null, land: null, label: null, core: null, f0: [fz.cx, fz.cz, fz.ang, fz.y] };
   Z.land = landFromScan(fz); fz.mz = Z.id; G.zones.push(Z); return Z;
 }
 function zoneById(id) { return G.zones.find((z) => z.id === id); }
@@ -1443,7 +1470,7 @@ function syncCables() { // for every marked cable with a settled end: a ready ca
 // ---- saving the map ----
 function mapToJSON() {
   return { v: MAP_V, kind: 'base-camp-room-map', name: G.mapName || 'My room', saved: Date.now(), build: BUILD, nextMZ: G.nextMZ, nextSpot: G.nextSpot, nextCable: G.nextCable, music: !!G.music, visits: G.visits || 0,
-    zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost,
+    zones: G.zones.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost, ceil: !!Z.ceil,
       land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen), conf: rle(L.conf) } : null }; }),
     spots: G.spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
     cables: G.cables.map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().map((s) => s.id), library: G.library };
@@ -1457,7 +1484,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
     if (!q || typeof q.id !== 'number' || !q.land || !(q.land.w > 0) || !(q.land.h > 0) || q.land.w * q.land.h > 600000) return 'A zone in the map is damaged.';
     const n = q.land.w * q.land.h, L = { i0: q.land.i0 | 0, j0: q.land.j0 | 0, w: q.land.w | 0, h: q.land.h | 0, st: unrle(q.land.st || [], n), dist: unrle(q.land.dist || [], n), calm: unrle(q.land.calm || [], n), ht: unrle(q.land.ht || [], n), seen: unrle(q.land.seen || [], n), conf: unrle(q.land.conf || [], n), confVisit: -1, edge: null, edgeVer: -1, objs: [], ver: 0 };
     setLandFrame(L, +q.cx, +q.cz, +q.ang, +q.y);
-    const Z = { id: q.id, name: String(q.name || 'Zone'), type: ZTYPES[q.type] ? q.type : 'TABLE', spec: q.spec, y: +q.y, h: +q.h || 0, cx: +q.cx, cz: +q.cz, ang: +q.ang, w: +q.w || 0, d: +q.d || 0, area: +q.area || 0, color: q.color || ZPAL[(q.id - 1) % ZPAL.length], settled: null, land: L, label: null, core: null, lost: !!q.lost };
+    const Z = { id: q.id, name: String(q.name || 'Zone'), type: ZTYPES[q.type] ? q.type : 'TABLE', spec: q.spec, y: +q.y, h: +q.h || 0, cx: +q.cx, cz: +q.cz, ang: +q.ang, w: +q.w || 0, d: +q.d || 0, area: +q.area || 0, color: q.color || ZPAL[(q.id - 1) % ZPAL.length], ceil: !!q.ceil || q.type === 'CEIL', settled: null, land: L, label: null, core: null, lost: !!q.lost };
     L.objs = landComps(L, (k) => L.st[k] === 2, 3); Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; zones.push(Z);
   }
   G.zones = zones; G.nextMZ = d.nextMZ || Math.max(0, ...zones.map((z) => z.id)) + 1; G.nextSpot = d.nextSpot || 1; G.nextCable = d.nextCable || 1; G.mapName = d.name || 'My room'; G.music = !!d.music; G.visits = d.visits | 0;
@@ -1651,6 +1678,7 @@ function applyChanges(rep) {
   }
   // new land: expeditions
   for (const Z of rep.fresh) {
+    if (Z.ceil) continue; /* a new ceiling is reached through ceilTick, not an ordinary expedition */
     const S = G.settlements.find((q) => q.placed && !q.awaiting && q.cols.length >= 2); const nm = Z.name.split(' – ')[0];
     giant('New land spotted: a ' + nm + ' that was never on our map! ' + (S ? 'An expedition would like to go.' : 'Nobody is near enough to explore it yet.'));
     if (S) { const who = personOf(S, 'exp' + Z.id); G.requests.push({ id: ++G.uid, def: { id: 'expedition', icon: 'cable', text: 'New land: ' + nm + '! May we send an expedition?', give: 'expedition', joy: 0.3, cooldown: 600, zone: Z.id }, sid: S.id, cid: who ? who.id : 0, t: G.simT, who: who ? who.name : '' }); reqUi(); }
@@ -1699,12 +1727,20 @@ function answerAsk(yes) {
   if (G.asks.length) askNext(); else { $('ask').hidden = true; showReport(); }
 }
 // ---- the "what changed" card ----
+function reportCompact(L) { /* at most 2 short lines, small text, "More" opens the full list; gone after about 6 s */
+  const c = $('repc'), short = (t) => { t = String(t); return t.length > 60 ? t.slice(0, 57).replace(/\s+\S*$/, '') + '\u2026' : t; }, full = L.slice();
+  c.hidden = false; c.innerHTML = '<div class="rt">What the colonists noticed</div>' + L.slice(0, 2).map((l) => '<div class="rl">' + esc(short(l.text)) + '</div>').join('') + '<div class="rb"><button id="repMore">More</button><button id="repX" aria-label="Close">\u00d7</button></div>';
+  clearTimeout(c._t); const hide = () => { c.hidden = true; c.innerHTML = ''; }; c._t = setTimeout(() => { hide(); G.report = null; }, 6000);
+  $('repX').onclick = () => { clearTimeout(c._t); hide(); G.report = null; };
+  $('repMore').onclick = () => { clearTimeout(c._t); hide(); const el = $('diary'); el.hidden = false; el.classList.add('side'); el.innerHTML = '<div class="dh">What the colonists noticed</div><ul>' + full.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>'; $('dClose').onclick = () => { el.hidden = true; G.report = null; }; };
+}
 function showReport() {
   const rep = G.report; if (!rep) return; const el = $('diary');
   const sm = (rep.same || []).length, parts = [];
   if (sm) parts.push(sm + ' place' + (sm > 1 ? 's' : '') + ' the same');
   const L = rep.lines.slice(0, 10);
   if (!L.length) L.push({ text: 'Everything is where the colonists left it. They carry on.', by: '' });
+  if (AR.on || innerWidth < 760) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
   el.hidden = false; el.classList.add('side');
   el.innerHTML = '<div class="dh">What the colonists noticed</div>' + (parts.length ? '<div class="dsub">' + parts.join(', ') + '</div>' : '') + '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>';
   $('dClose').onclick = () => { el.hidden = true; G.report = null; };
@@ -1762,7 +1798,7 @@ function awayEvents(step, h) {
 function autoExpand() { // thriving colonies send settlers on to unsettled spots, the way the room's roles suggest
   for (const S of G.settlements.slice()) {
     if (S.lost || S.awaiting || !S.thriving || !canPay(S, CABLE_COST) || G.links.some((l) => (l.a.sid === S.id || l.b.sid === S.id) && !l.ready)) continue;
-    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && Z.land && Z.area > 0.04 && Z !== S.zoneRef); if (!cands.length) continue;
+    const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && !Z.ceil && Z.land && Z.area > 0.04 && Z !== S.zoneRef); if (!cands.length) continue; /* ceilings are never reached by the automatic expansion (see ceilTick) */
     cands.sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
     const Zt = cands[0]; ensureDist(Zt); ensureDist(S.zoneRef);
     const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
@@ -1876,7 +1912,7 @@ function visuals(dt, time) {
     for (const t of S.things) {
       const m = t.mesh, K = KINDS[t.kind];
       m.visible = !t.hold;
-      if (t.kind === 'lm' && t.role === 'tower') { if (G.music && S.fx && S.fx.tower) S.shake = 1; m.rotation.z = S.shake > 0 ? Math.sin(time * 38) * 0.07 * S.shake : 0; if (S.shake > 0 && Math.random() < dt * 4) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, S.tf.y + 0.085, wz, 1, { size: 0.01, vy: 0.03, life: 0.9, add: true, jit: 0.02 }); } }
+      if (t.kind === 'lm' && t.role === 'tower') { if (G.music && S.fx && S.fx.tower) S.shake = 1; m.rotation.z = S.shake > 0 ? Math.sin(time * 38) * 0.07 * S.shake : 0; if (S.shake > 0 && Math.random() < dt * 4) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.085), wz, 1, { size: 0.01, vy: 0.03, life: 0.9, add: true, jit: 0.02 }); } }
       if (t.pop > 0) m.scale.setScalar(1 + Math.sin(Math.min(1, t.pop) * 3.14) * 0.22); else if (m.scale.x !== 1 && K.work === 0 || t.built) { if (t.kind !== 'tree') m.scale.set(1, 1, 1); }
       if (t.kind === 'tree') { setTreeG(m, t.g, t.yield > 0); const sw = (ENV.windy ? 0.08 : 0.025); m.rotation.z = Math.sin(time * 1.3 + t.id) * sw * smooth(0.3, 1, t.g); m.scale.setScalar(t.pop > 0 ? 1 + t.pop * 0.3 : 1); }
       else if (t.kind === 'farm') setFarmG(m, t.g);
@@ -1962,7 +1998,7 @@ function pokeCol(c) {
   c.hop = 1; c.hopBig = 1.7; c.squash = 1; c.react = { k: K.react, t: 1.4 }; c.needs.joy = Math.min(1, c.needs.joy + 0.1);
   sfx('squeak', K.pitch); setTimeout(() => sfx(K.react === 'giggle' ? 'giggle' : K.react === 'grump' ? 'grumble' : 'zap', K.pitch), 140);
   sayLine(c, many ? (K.react === 'giggle' ? 'Again! Again!' : 'Stop poking!') : pick(K.poke), 2.2, true); nameTag(c, 3.5);
-  const [wx, wz] = l2w(S, c.x, c.z), y = S.tf.y + 0.075;
+  const [wx, wz] = l2w(S, c.x, c.z), y = SY(S, 0.075);
   if (K.react === 'panic') { // Glip: scurry off in a little panic, sparks flying
     if (c.job && c.job.type !== 'cross') endJob(c); const a = rnd(0, 6.283); c.job = { type: 'wander', ph: 'go', t: 0, tx: c.x + Math.cos(a) * 0.055, tz: c.z + Math.sin(a) * 0.055, dur: 0.8 }; c.rushUntil = G.time + 1.6;
     puff('spark', wx, y, wz, 5, { size: 0.009, vy: 0.04, life: 0.7, add: true, jit: 0.05, color: 0xffe14a });
@@ -1973,13 +2009,13 @@ function pokeCol(c) {
 function pickUp(c, cx, cy) {
   if (!c || c.inside || c.riding || c.held || !c.S || !c.S.placed) return false;
   const S = c.S, K = charOf(c); if (c.job && c.job.type !== 'cross') endJob(c); else if (c.job) endJob(c);
-  c.held = true; c.moving = false; c.working = false; c.dancing = false; const [wx, wz] = l2w(S, c.x, c.z); FUN.hold = { c, ox: c.x, oz: c.z, wx, wy: S.tf.y + 0.06, wz };
+  c.held = true; c.moving = false; c.working = false; c.dancing = false; const [wx, wz] = l2w(S, c.x, c.z); FUN.hold = { c, ox: c.x, oz: c.z, wx, wy: SY(S, 0.06), wz };
   sayLine(c, pick(K.lift), 2.6, true); nameTag(c, 3); sfx('boing', K.pitch); FUN.n.lift = (FUN.n.lift | 0) + 1; funLog('lift', c.name);
   if (cx !== undefined) holdMove(cx, cy); return true;
 }
 function holdMove(cx, cy) {
   const H = FUN.hold; if (!H) return; const g = groundPick(cx, cy);
-  if (g) { H.wx = g.x; H.wy = g.y + 0.06; H.wz = g.z; } else { const p = planePick(cx, cy, H.c.S.tf.y); if (p && Math.hypot(p[0] - H.c.S.tf.x, p[1] - H.c.S.tf.z) < 2) { H.wx = p[0]; H.wz = p[1]; H.wy = H.c.S.tf.y + 0.06; } }
+  if (g) { H.wx = g.x; H.wy = g.y + 0.06; H.wz = g.z; } else { const p = planePick(cx, cy, H.c.S.tf.y); if (p && Math.hypot(p[0] - H.c.S.tf.x, p[1] - H.c.S.tf.z) < 2) { H.wx = p[0]; H.wz = p[1]; H.wy = SY(H.c.S, 0.06); } }
 }
 function moveColonist(c, from, to) { const i = from.cols.indexOf(c); if (i >= 0) from.cols.splice(i, 1); to.cols.push(c); c.S = to; to.group.add(c.mesh); G.requests = G.requests.filter((r) => r.cid !== c.id); }
 function dropCol(cx, cy) {
@@ -2001,7 +2037,7 @@ function dropCrumb(S, lx, lz) {
 }
 function crumbStep(S, cr, dt) {
   cr.t += dt;
-  if (!cr.landed) { cr.v -= 2.4 * dt; cr.y += cr.v * dt; cr.mesh.rotation.y += dt * 7; if (cr.y <= 0.0035) { cr.y = 0.0035; cr.landed = true; cr.t = 0; sfx('thud', 1.7); const [wx, wz] = l2w(S, cr.x, cr.z); puff('dust', wx, S.tf.y + 0.006, wz, 3, { size: 0.012, vy: 0.008, life: 0.6, grow: 1.4, jit: 0.02 }); crumbCall(S, cr); } cr.mesh.position.y = cr.y; return; }
+  if (!cr.landed) { cr.v -= 2.4 * dt; cr.y += cr.v * dt; cr.mesh.rotation.y += dt * 7; if (cr.y <= 0.0035) { cr.y = 0.0035; cr.landed = true; cr.t = 0; sfx('thud', 1.7); const [wx, wz] = l2w(S, cr.x, cr.z); puff('dust', wx, SY(S, 0.006), wz, 3, { size: 0.012, vy: 0.008, life: 0.6, grow: 1.4, jit: 0.02 }); crumbCall(S, cr); } cr.mesh.position.y = cr.y; return; }
   cr.mesh.scale.setScalar(Math.max(0.15, 0.35 + 0.65 * cr.bites / 6));
   if (cr.bites <= 0) feastDone(S, cr); else if (cr.t > 30) crumbGone(S, cr);
 }
@@ -2012,12 +2048,12 @@ function crumbCall(S, cr) { // everyone near rushes over: the first one shouts
 }
 function feastDone(S, cr) {
   const eaters = S.cols.filter((c) => c.job && c.job.cr === cr); crumbGone(S, cr);
-  eaters.forEach((c, i) => { c.needs.food = Math.min(1, c.needs.food + 0.35); c.needs.joy = Math.min(1, c.needs.joy + 0.2); c.hop = 1; c.cheerT = 1.4; if (i === 0) sayLine(c, pick(charOf(c).feast), 2.4, true); const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, S.tf.y + 0.07, wz, 2, { size: 0.01, vy: 0.03, life: 1.2 }); });
+  eaters.forEach((c, i) => { c.needs.food = Math.min(1, c.needs.food + 0.35); c.needs.joy = Math.min(1, c.needs.joy + 0.2); c.hop = 1; c.cheerT = 1.4; if (i === 0) sayLine(c, pick(charOf(c).feast), 2.4, true); const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.07), wz, 2, { size: 0.01, vy: 0.03, life: 1.2 }); });
   sfx('cheer'); FUN.n.feast = (FUN.n.feast | 0) + 1; funLog('feast', eaters.length);
 }
 function crumbJob(S, c, j, dt, quiet) { // at the crumb: nibble, nibble
   const cr = j.cr; if (!cr || cr.gone) { endJob(c); return; } c.face = Math.atan2(cr.x - c.x, cr.z - c.z); c.nibble = true;
-  j.nb = (j.nb || 0) + dt; if (j.nb > 0.6 && cr.landed) { j.nb = 0; cr.bites--; if (!quiet) { const [wx, wz] = l2w(S, cr.x, cr.z); puff('crumbs', wx, S.tf.y + 0.01, wz, 1, { size: 0.005, vy: 0.02, g: -0.1, life: 0.5, jit: 0.02 }); if (Math.random() < 0.6) sfx('nom', charOf(c).pitch); } }
+  j.nb = (j.nb || 0) + dt; if (j.nb > 0.6 && cr.landed) { j.nb = 0; cr.bites--; if (!quiet) { const [wx, wz] = l2w(S, cr.x, cr.z); puff('crumbs', wx, SY(S, 0.01), wz, 1, { size: 0.005, vy: 0.02, g: -0.1, life: 0.5, jit: 0.02 }); if (Math.random() < 0.6) sfx('nom', charOf(c).pitch); } }
 }
 // ---- music: the council's mosh pit (The Town Brain, R4: "they form a tiny mosh pit that bounces the huts like drums") ----
 function partyToggle(on) {
@@ -2048,6 +2084,7 @@ const MILESTONES = { // id: [icon, title, line, by]
   pop5: ['👪', 'Five colonists', 'Getting busy around here.'], pop10: ['🎉', 'Ten colonists', 'A proper little town.'],
   ride: ['🚡', 'First cable car ride', 'Somebody went somewhere new.'], night: ['🌙', 'First night survived', 'Lights out, everyone home.'],
   rainbow: ['🌈', 'First rainbow', 'The rain stopped and the sky said sorry.', 'The Town Brain'], back: ['🪨', 'First visit back', 'A polished pebble: we kept your spot warm.', 'The Town Brain'],
+  hang: ['🦇', 'Upside-down camp', 'Hanging from the ceiling, lanterns and all.'],
   festival: ['🎪', 'First festival', 'Tiny stalls and a parade.', 'The Dell Reasoner'], week: ['📅', 'A week of visits', 'Seven different days with the Giant.'],
 };
 function celebrate(id, S) {
@@ -2064,8 +2101,8 @@ function mainSettlement() { return (G.cur && G.cur.placed && !G.cur.awaiting ? G
 const CONF = [0xff6f91, 0xffc93d, 0x7fd36a, 0x5ab4ff, 0xc77dff, 0xff9a3d, 0xfff6e6];
 function fireworks(S) { // confetti and fluff, three little bursts over the colony
   for (let k = 0; k < 3; k++) setTimeout(() => {
-    if (!S.group.parent || !S.placed) return; const bx = S.tf.x + rnd(-0.1, 0.1), by = S.tf.y + rnd(0.15, 0.22), bz = S.tf.z + rnd(-0.1, 0.1);
-    puff('spark', bx, S.tf.y + 0.03, bz, 1, { size: 0.01, vy: (by - S.tf.y) / 0.42, life: 0.42, jit: 0, spread: 0, add: true, color: 0xffe9a8, fade: false });
+    if (!S.group.parent || !S.placed) return; const bx = S.tf.x + rnd(-0.1, 0.1), by = SY(S, rnd(0.15, 0.22)), bz = S.tf.z + rnd(-0.1, 0.1);
+    puff('spark', bx, SY(S, 0.03), bz, 1, { size: 0.01, vy: Math.abs(by - S.tf.y) / 0.42, life: 0.42, jit: 0, spread: 0, add: true, color: 0xffe9a8, fade: false });
     setTimeout(() => { if (!S.group.parent) return; sfx('firework'); for (let i = 0; i < 22; i++) { const a = rnd(0, 6.283), e = rnd(-0.6, 1.2), sp = rnd(0.07, 0.14); puff('conf', bx, by, bz, 1, { size: 0.007, vx: Math.cos(a) * Math.cos(e) * sp, vy: Math.sin(e) * sp, vz: Math.sin(a) * Math.cos(e) * sp, jit: 0, spread: 0.004, g: -0.22, life: 1.5, color: CONF[i % CONF.length] }); }
       for (let i = 0; i < 6; i++) { const a = rnd(0, 6.283); puff('fluff', bx, by, bz, 1, { size: 0.008, vx: Math.cos(a) * 0.06, vy: rnd(0, 0.04), vz: Math.sin(a) * 0.06, jit: 0, g: -0.05, life: 1.4, grow: 0.3, color: CONF[i % CONF.length] }); } }, 420);
   }, k * 420);
@@ -2082,6 +2119,7 @@ function funCheck() { // twice a second in play: milestones, unlocks, the counci
   const pop = all.reduce((a, q) => a + q.cols.length, 0) + G.links.reduce((a, l) => a + l.g.riders.length, 0);
   celebrate('land', S);
   if (has('hut')) celebrate('hut'); if (FUN.n.harvest) celebrate('harvest'); if (has('tree', (t) => t.g >= 1)) celebrate('tree'); if (FUN.n.feast) celebrate('feast'); if (FUN.n.giant) celebrate('giant');
+  { const hg = all.find((q) => q.tf.flip && !q.awaiting && q.cols.length); if (hg) celebrate('hang', hg); } /* build 12: the first settlers up on a ceiling */
   if (pop >= 5) celebrate('pop5'); if (pop >= 10) celebrate('pop10'); if (FUN.n.ride) celebrate('ride'); if (FUN.n.night) celebrate('night');
   if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4) celebrate('party');
   const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); if (!FUN.days.includes(day)) { FUN.days.push(day); if (FUN.days.length > 60) FUN.days.shift(); } if (FUN.days.length >= 7) celebrate('week');
@@ -2119,7 +2157,7 @@ function funReturn(secs, res) { // after time away: a pebble at the edge, the co
   if (res.lines.length > 10) res.lines.length = 10;
 }
 function pebbleHello(S, th) {
-  if (!th || th.dead) return; const [wx, wz] = l2w(S, th.x, th.z); puff('star', wx, S.tf.y + 0.03, wz, 6, { size: 0.008, vy: 0.03, life: 1.2, add: true, jit: 0.02, color: 0xdff0ff });
+  if (!th || th.dead) return; const [wx, wz] = l2w(S, th.x, th.z); puff('star', wx, SY(S, 0.03), wz, 6, { size: 0.008, vy: 0.03, life: 1.2, add: true, jit: 0.02, color: 0xdff0ff });
   const c = S.cols.filter((q) => !q.inside && !q.held).sort((a, b) => Math.hypot(a.x - th.x, a.z - th.z) - Math.hypot(b.x - th.x, b.z - th.z))[0];
   if (c) { sayLine(c, 'Kept your spot warm!', 3, true); c.hop = 1; } toast('A polished pebble at the edge: “we kept your spot warm.” <i class="by">by The Town Brain</i>', 5); funLog('pebble');
 }
@@ -2194,13 +2232,13 @@ function funFrame(dt) {
   const eye = funEye(); rainbowStep(dt, eye);
   if (FUN.bannerT > 0) { FUN.bannerT -= dt; if (FUN.bannerT <= 0) $('banner').className = ''; }
   if (G.phase !== 'play') return;
-  if (FUN.party) { const ph0 = FUN.beatPh; FUN.beatPh = ((G.time - FUN.partyAt) / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5); if (FUN.beatPh < ph0) { const S = mainSettlement(); if (S && S.pit) { const [wx, wz] = l2w(S, S.pit[0], S.pit[1]); puff('note', wx + rnd(-0.05, 0.05), S.tf.y + 0.075, wz + rnd(-0.05, 0.05), 1, { size: 0.016, vy: 0.04, life: 1.4, jit: 0.015, color: pick(CONF) }); } } if (G.time - FUN.partyAt > 60) { partyToggle(false); toast('Phew! What a party.'); } }
+  if (FUN.party) { const ph0 = FUN.beatPh; FUN.beatPh = ((G.time - FUN.partyAt) / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5); if (FUN.beatPh < ph0) { const S = mainSettlement(); if (S && S.pit) { const [wx, wz] = l2w(S, S.pit[0], S.pit[1]); puff('note', wx + rnd(-0.05, 0.05), SY(S, 0.075), wz + rnd(-0.05, 0.05), 1, { size: 0.016, vy: 0.04, life: 1.4, jit: 0.015, color: pick(CONF) }); } } if (G.time - FUN.partyAt > 60) { partyToggle(false); toast('Phew! What a party.'); } }
   else if (FUN.fest) { FUN.beatPh = (G.time / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5) * 0.6; } else FUN.pulse = 0;
   if (typeof down !== 'undefined' && down.on && down.col && !down.held && !FUN.hold && performance.now() - down.t > 380) { if (pickUp(down.col, down.x, down.y)) down.held = true; } // touch and hold a colonist: pick it up
   if (FUN.berry < 1 && G.settlements.some((S) => S.placed)) FUN.berry = Math.min(1, FUN.berry + dt * 0.12);
   if (ENV.night) FUN.sawNight = true; else if (FUN.sawNight) { FUN.sawNight = false; FUN.n.night = 1; }
   if (ENV.rain) FUN.rainT += dt; else { if (FUN.rainT > 2) rainbowAt(mainSettlement()); FUN.rainT = 0; }
-  if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), F.S.tf.y + 0.06, wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
+  if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), SY(F.S, 0.06), wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
   if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement()) showCelebration(FUN.queue.shift());
@@ -2217,7 +2255,7 @@ function colVisual(S, c, dt, time, night, eye) {
     const H = FUN.hold; if (H && H.c === c) { const [lx, lz] = w2l(S, H.wx, H.wz), k = Math.min(1, dt * 14); c.x += (lx - c.x) * k; c.z += (lz - c.z) * k; m.position.set(c.x, m.position.y + (H.wy - S.tf.y - m.position.y) * k, c.z); }
     c.anim += dt * 26; const w = Math.sin(c.anim); U.legs[0].rotation.x = w; U.legs[1].rotation.x = -w; U.arms[0].rotation.x = -2.4 + w * 0.6; U.arms[1].rotation.x = -2.4 - w * 0.6; U.arms[0].rotation.z = 0.5; U.arms[1].rotation.z = -0.5; B.rotation.set(0, 0, w * 0.25); B.position.y = 0; B.scale.set(0.92, 1.12, 0.92); mouthO = true; faceMouth(U, true); colBubbles(S, c, dt, eye, sc); return;
   }
-  if (c.fall) { c.fall.v -= 2.6 * dt; c.fall.y += c.fall.v * dt; if (c.fall.y <= 0) { c.fall = null; c.squash = 1; c.landT = 0.45; const [wx, wz] = l2w(S, c.x, c.z); puff('dust', wx, S.tf.y + 0.006, wz, 3, { size: 0.014, vy: 0.008, life: 0.6, grow: 1.5, jit: 0.025 }); sfx('thud', 1.1); } else y += c.fall.y; mouthO = true; }
+  if (c.fall) { c.fall.v -= 2.6 * dt; c.fall.y += c.fall.v * dt; if (c.fall.y <= 0) { c.fall = null; c.squash = 1; c.landT = 0.45; const [wx, wz] = l2w(S, c.x, c.z); puff('dust', wx, SY(S, 0.006), wz, 3, { size: 0.014, vy: 0.008, life: 0.6, grow: 1.5, jit: 0.025 }); sfx('thud', 1.1); } else y += c.fall.y; mouthO = true; }
   if (c.landT > 0) { c.landT -= dt; if (c.landT <= 0) { sayLine(c, c.landSay || pick(K.drop), 2.2, true); c.landSay = ''; c.shrug = 1.1; } }
   if (c.squash > 0) { c.squash = Math.max(0, c.squash - dt * 3.5); const s = c.squash * Math.cos((1 - c.squash) * 9); sy *= 1 - 0.32 * s; sx *= 1 + 0.22 * s; }
   if (c.moving) { // a hopping walk: stretch in the air, squash on landing
@@ -2236,12 +2274,12 @@ function colVisual(S, c, dt, time, night, eye) {
   const idle = !c.moving && !c.working && !c.dancing && !c.fall && c.spawn <= 0 && !c.inside;
   if (!c.fid && idle && !c.held) { c.fidT = (c.fidT === undefined ? rnd(1, 6) : c.fidT) - dt; if (c.fidT <= 0) { c.fidT = rnd(4, 9); c.fid = { k: K.fidget === 'moss' ? (Math.random() < 0.5 ? 'fold' : 'moss') : K.fidget, t: 0, dur: { spark: 1.2, moss: 2.4, fold: 3.2, twirl: 0.9, lint: 1.6, roll: 0.8 }[K.fidget] || 1.5 }; } }
   if (c.fid) {
-    const F = c.fid; F.t += dt; const u = F.t / F.dur, [wx, wz] = l2w(S, c.x, c.z), top = S.tf.y + 0.06;
+    const F = c.fid; F.t += dt; const u = F.t / F.dur, [wx, wz] = l2w(S, c.x, c.z), top = SY(S, 0.06);
     if (F.k === 'spark') { if (U.hair) U.hair.scale.setScalar(1 + Math.abs(Math.sin(F.t * 30)) * 0.35); if (Math.random() < dt * 9) puff('spark', wx, top, wz, 1, { size: 0.006, vy: 0.03, life: 0.45, add: true, jit: 0.04, color: 0xffe14a }); sy *= 1.05; mouthO = true; }
-    else if (F.k === 'moss') { if (Math.random() < dt * 5) puff('leaf', wx, S.tf.y + 0.03, wz, 1, { size: 0.0045, vy: -0.004, g: -0.02, life: 1.3, jit: 0.012, color: 0x7fb34a }); B.rotation.y = Math.sin(F.t * 5) * 0.25; }
+    else if (F.k === 'moss') { if (Math.random() < dt * 5) puff('leaf', wx, SY(S, 0.03), wz, 1, { size: 0.0045, vy: -0.004, g: -0.02, life: 1.3, jit: 0.012, color: 0x7fb34a }); B.rotation.y = Math.sin(F.t * 5) * 0.25; }
     else if (F.k === 'fold') { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.35; U.arms[0].rotation.z = -0.95; U.arms[1].rotation.z = 0.95; ry = Math.sin(F.t * 1.3) * 0.25; }
-    else if (F.k === 'twirl') { ry = u * 6.283; y += Math.sin(u * 3.14) * 0.006; if (Math.random() < dt * 10) puff('star', wx, S.tf.y + 0.04, wz, 1, { size: 0.006, vy: 0.02, life: 0.7, add: true, jit: 0.03, color: 0xffb3e6 }); if (U.wings) for (const w of U.wings) w.rotation.y = Math.sin(F.t * 40) * 0.6; }
-    else if (F.k === 'lint') { sy *= 1 - 0.18 * Math.sin(u * 3.14); rx = 0.5 * Math.sin(u * 3.14); if (u > 0.5 && !F.got) { F.got = 1; c.lint = Math.min(12, (c.lint || 0) + 1); puff('fluff', wx, S.tf.y + 0.006, wz, 2, { size: 0.008, vy: 0.012, life: 0.6, jit: 0.01 }); } }
+    else if (F.k === 'twirl') { ry = u * 6.283; y += Math.sin(u * 3.14) * 0.006; if (Math.random() < dt * 10) puff('star', wx, SY(S, 0.04), wz, 1, { size: 0.006, vy: 0.02, life: 0.7, add: true, jit: 0.03, color: 0xffb3e6 }); if (U.wings) for (const w of U.wings) w.rotation.y = Math.sin(F.t * 40) * 0.6; }
+    else if (F.k === 'lint') { sy *= 1 - 0.18 * Math.sin(u * 3.14); rx = 0.5 * Math.sin(u * 3.14); if (u > 0.5 && !F.got) { F.got = 1; c.lint = Math.min(12, (c.lint || 0) + 1); puff('fluff', wx, SY(S, 0.006), wz, 2, { size: 0.008, vy: 0.012, life: 0.6, jit: 0.01 }); } }
     else if (F.k === 'roll') { rx = u * 6.283; y += Math.sin(u * 3.14) * 0.008; }
     if (F.t >= F.dur || c.moving) { c.fid = null; if (U.hair) U.hair.scale.setScalar(1); B.rotation.y = 0; }
   }
@@ -2265,7 +2303,7 @@ function colBubbles(S, c, dt, eye, sc) {
   if (ic !== c.bubName) { c.bubName = ic; if (ic) c.bub.material.map = bubbleTex(ic); c.bub.material.needsUpdate = true; }
   c.bub.visible = !!ic && m.visible && !c.held; c.bub.position.y = 0.054 / 0.85 + Math.sin(G.time * 4 + c.id) * 0.002; c.bub.scale.setScalar(0.028 / 0.85);
   if (!sayOn && !tagOn) { if (c.sayS) c.sayS.visible = false; if (c.tagS) c.tagS.visible = false; if (c.sayT > 0) c.sayT -= dt; if (c.tagT > 0) c.tagT -= dt; return; }
-  const [wx, wz] = l2w(S, c.x, c.z), dist = Math.hypot(wx - eye.x, S.tf.y + 0.05 - eye.y, wz - eye.z), h = clamp(dist * 0.042, 0.016, 0.12), s = Math.max(0.001, sc), top = 0.062 + (c.held ? 0.01 : 0);
+  const [wx, wz] = l2w(S, c.x, c.z), dist = Math.hypot(wx - eye.x, SY(S, 0.05) - eye.y, wz - eye.z), h = clamp(dist * 0.042, 0.016, 0.12), s = Math.max(0.001, sc), top = 0.062 + (c.held ? 0.01 : 0);
   let yy = top;
   if (tagOn) { c.tagT -= dt; c.tagPop = Math.min(1, (c.tagPop || 0) + dt * 7); const th = h * 0.62 * c.tagPop; c.tagS.visible = true; c.tagS.scale.set(th * c.tagA / s, th / s, 1); c.tagS.position.set(0, top + th * 0.55 / s, 0); yy = top + th * 1.15 / s; } else if (c.tagS) c.tagS.visible = false;
   if (sayOn) { c.sayT -= dt; c.sayPop = Math.min(1, (c.sayPop || 0) + dt * 6); const p = c.sayPop, k = p < 1 ? 1 + Math.sin(p * 3.14) * 0.25 : 1, fade = Math.min(1, c.sayT / 0.25), bh = h * k * (0.4 + 0.6 * p); c.sayS.visible = true; c.sayS.material.opacity = fade; c.sayS.scale.set(bh * c.sayA / s, bh / s, 1); c.sayS.position.set(0, yy + bh * 0.5 / s, 0); } else if (c.sayS) c.sayS.visible = false;
@@ -2302,7 +2340,7 @@ function loadSave() { return safeRead(SAVE_KEY, (d) => d && d.v === 2 && Array.i
 function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
   const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); if (zone.ceil) hangDecor(S);
   for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich }); if (t.kind === 'tent') S.tent = th; }
   for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
   if (S.lost) { S.placed = false; S.group.visible = false; }
@@ -2373,9 +2411,10 @@ function directHit(hits, tag) {
   const v = tmpV2.set(m[0] * w[12] + m[4] * w[13] + m[8] * w[14] + m[12], m[1] * w[12] + m[5] * w[13] + m[9] * w[14] + m[13], m[2] * w[12] + m[6] * w[13] + m[10] * w[14] + m[14]), upY = m[1] * w[4] + m[5] * w[5] + m[9] * w[6];
   if (tag === 'chk') { if (D.chkWait) { const s = D.chkWait; D.chkWait = null; const d = Math.hypot(v.x - s.x, v.y - s.y, v.z - s.z); D.chkLog.push(+d.toFixed(3)); if (D.chkLog.length > 12) D.chkLog.shift(); if (d < 0.3) D.chkOk++; else D.chkBad++; if (D.chkOk >= 3) { D.chk = 'ok'; directCheckDone(true); } else if (D.chkBad >= 3) { D.chk = 'bad'; D.on = false; directCheckDone(false); } } return; }
   D.got++; D.win++; const anch = !!h.uuid; if (anch) D.anch++; else D.est++;
-  if (upY < 0.7) { recNonHoriz(v); return; }
+  const eyeY = AR.on ? AR.viewM.elements[13] : 1e9, down = upY < -0.7, below = down || v.y > eyeY + CEIL_ABOVE; /* ceiling signal: the plane faces down, or the hit is clearly above the device */
+  if (upY < 0.7 && !down) { recNonHoriz(v); return; }
   let uid = 0; if (anch) { uid = SCAN.uids.get(h.uuid); if (!uid) { uid = Math.min(255, SCAN.uids.size + 1); SCAN.uids.set(h.uuid, uid); } }
-  scanHit(v, -1, anch ? 1 : 0, uid);
+  scanHit(v, -1, anch ? 1 : 0, uid, below);
 }
 function directCheckDone(good) { // the one-time frame check is over: direct hits agree with the XR hit-test source (good) or not (fall back to the sources)
   arLog('AR: direct raycasts ' + (good ? 'on (agree with the hit-test source)' : 'off (frames do not agree, using the hit-test sources)'));
@@ -2479,8 +2518,8 @@ function arFrame(frame) {
       const res = frame.getHitTestResults(AR.srcs[si]);
       if (!res.length) { SCAN.last[si] = null; continue; }
       const p = res[0].getPose(AR.refSpace); if (!p) continue;
-      tmpM.fromArray(p.transform.matrix); if (tmpM.elements[5] < 0.7) { recNonHoriz(tmpV.setFromMatrixPosition(tmpM)); continue; }
-      scanHit(tmpV.setFromMatrixPosition(tmpM), si, 1);
+      tmpM.fromArray(p.transform.matrix); const dn = tmpM.elements[5] < -0.7; if (tmpM.elements[5] < 0.7 && !dn) { recNonHoriz(tmpV.setFromMatrixPosition(tmpM)); continue; }
+      scanHit(tmpV.setFromMatrixPosition(tmpM), si, 1, 0, dn || tmpM.elements[13] > AR.viewM.elements[13] + CEIL_ABOVE);
     }
   }
 }
@@ -2626,7 +2665,13 @@ function recogStatus() {
   const el = $('rstat'), c = RECOG.coco, k = RECOG.clip, parts = [];
   if (RECOG.on && (G.phase === 'scan' || G.phase === 'tag' || (G.auto && c.state !== 'ready' && G.phase !== 'title'))) parts.push(RECOG.detector ? 'Recognising things (practice eyes)' : c.state === 'ready' ? 'Recognising things' + (c.ms ? ' (' + Math.round(c.ms) + ' ms)' : '') : c.state === 'loading' ? 'Loading recognition...' : c.state === 'error' ? 'Recognition unavailable' : '');
   if (k.on) parts.push(k.state === 'ready' ? 'Smarter recognition on' : k.state === 'loading' ? 'Smarter recognition: downloading ' + k.pct + '%' : k.state === 'error' ? 'Smarter recognition failed: ' + k.err : '');
-  el.textContent = parts.filter(Boolean).join(' · '); el.hidden = !el.textContent;
+  let txt = parts.filter(Boolean).join(' · ');
+  if (G.auto && txt) { /* build 12: in the Play flow the status is short and brief: one short line, shown for 4 s when it changes (a download percentage only updates it) */
+    const key = txt.replace(/\d+( ms|%)?/g, '').replace(/\(\s*\)/g, ''); txt = txt.replace('Recognising things (practice eyes)', 'Recognising things').replace(/ \(\d+ ms\)/, '').replace('Smarter recognition on', 'smarter eyes on').replace('Smarter recognition: downloading', 'Smarter eyes:').replace('Loading recognition...', 'Loading eyes...');
+    if (RECOG.statKey !== key) { RECOG.statKey = key; el.hidden = false; clearTimeout(RECOG.statT); RECOG.statT = setTimeout(() => { el.hidden = true; }, 4000); }
+    if (!el.hidden) el.textContent = txt; return;
+  }
+  RECOG.statKey = ''; el.textContent = txt; el.hidden = !el.textContent;
 }
 // ---- the camera picture ----
 function arDevice() { if (AR.dev) return AR.dev; try { for (const sym of Object.getOwnPropertySymbols(AR.session)) { const d = AR.session[sym] && AR.session[sym].device; if (d && d._cameraImage) { AR.dev = d; return d; } } } catch (e) { /* none */ } return null; }
@@ -2919,9 +2964,13 @@ function liveGain(Z) { // the scan sees more of a known surface: new cells and n
   return ch;
 }
 function liveReclass(Z, fz) { // the scan learns what a surface is (a desk looks like a floor until the real floor shows up)
-  if (Z.type === fz.type && Z.h === fz.h) return;
+  if (Z.settled && fz.ceil && !Z.ceil && fz.band && fz.band.nh >= 40 && fz.band.nb / fz.band.nh >= 0.7) { /* an older save (or an early guess) put a colony on a ceiling: it hangs from it now */
+    Z.ceil = true; Z.type = 'CEIL'; Z.name = fz.name; Z.spec = fz.spec; Z.h = fz.h; Z.dirtyName = true; const S = Z.settled; S.zoneName = Z.name; S.zoneType = 'CEIL'; syncTf(S); if (!S.hang) hangDecor(S); syncZoneMesh(Z); AUTO.mapDirty = true; toast('The colony was on the roof boards: it hangs from them now.', 4); return;
+  }
+  if (Z.settled && (Z.ceil || fz.ceil)) return; /* a settled camp keeps what its surface is */
+  if (Z.type === fz.type && Z.h === fz.h && !!Z.ceil === !!fz.ceil) return;
   const T = { FLOOR: 'floor', TABLE: 'desk', SHELF: 'shelf', SILL: 'door', SMALL: 'other' };
-  Z.h = fz.h; if (Z.type !== fz.type) { Z.type = fz.type; Z.name = fz.name; Z.spec = fz.spec; Z.dirtyName = true; for (const sp of G.spots) if (sp.zid === Z.id && sp.src === 'default') { const tg = defaultTagFor(Z); sp.tag = tg.tag; sp.role = TAGS[tg.tag].role; sp.name = tg.name; } if (Z.settled) { Z.settled.zoneName = Z.name; Z.settled.fx = null; } AUTO.mapDirty = true; }
+  Z.h = fz.h; if (!Z.settled) Z.ceil = !!fz.ceil; /* a settled zone keeps what it is; an unsettled one follows the scan */ if (Z.type !== fz.type) { Z.type = fz.type; Z.name = fz.name; Z.spec = fz.spec; Z.dirtyName = true; for (const sp of G.spots) if (sp.zid === Z.id && sp.src === 'default') { const tg = defaultTagFor(Z); sp.tag = tg.tag; sp.role = TAGS[tg.tag].role; sp.name = tg.name; } if (Z.settled) { Z.settled.zoneName = Z.name; Z.settled.fx = null; } AUTO.mapDirty = true; }
 }
 function defaultTagFor(Z) { // a sensible default role for a spot nobody has named: by size and height
   const T = { FLOOR: 'floor', TABLE: 'desk', SHELF: 'shelf', SILL: 'door' };
@@ -2963,7 +3012,7 @@ function autoSettle(force) { // the colony lands by itself on the biggest clear 
   if (!force && !tl && imgLoad('totem', HOMES.cur) && AUTO.t < 14) return false; // a room with a totem photo: a few seconds to see the totem first
   if (!force && tl && !tz && AUTO.t < 30) return false; // the totem is known but its surface is not mapped yet
   for (const Z of G.zones) {
-    if (!Z.land || Z.lost || Z.settled) continue; const clear = clearArea(Z); if (clear < 0.08 && !(Z === tz && clear >= 0.04)) continue;
+    if (!Z.land || Z.lost || Z.settled || Z.ceil) continue; const clear = clearArea(Z); if (clear < 0.08 && !(Z === tz && clear >= 0.04)) continue;
     const hh = Z.y - low, desk = hh > 0.45 && hh < 1.1 ? 1.25 : 1; // by clear area first; height only breaks near-ties
     const sc = clear * desk * (Z === tz ? 100 : 1); if (sc > bs) { bs = sc; best = Z; bc = clear; }
   }
@@ -2988,7 +3037,7 @@ function arQuietTick() { // AR: a zone that is not colony land flashes for about
     if (S.ring) { S.ring.visible = q && !S.lost; const r = plotR(S); if (S.ring.userData.r !== r) { S.ring.userData.r = r; S.ring.scale.set(r, 1, r); } }
   }
   const mk = $('colMark'); let show = false;
-  if (AR.on && G.phase === 'play' && G.locked !== undefined && !(G.returning && !G.locked)) { const S = G.settlements.find((q2) => q2.placed && !q2.lost); if (S) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.05, S.tf.z)); if (!vis || sx < 30 || sx > innerWidth - 30 || sy < 30 || sy > innerHeight - 90) { const cx = innerWidth / 2, cy = innerHeight / 2; let dx = sx - cx, dy = sy - cy; if (!vis) { dx = -dx; dy = -dy; } const L2 = Math.hypot(dx, dy) || 1, k = Math.min((innerWidth / 2 - 34) / Math.abs(dx || 1e-6), (innerHeight / 2 - 100) / Math.abs(dy || 1e-6)); mk.style.left = (cx + dx * k - 14) + 'px'; mk.style.top = (cy + dy * k - 14) + 'px'; mk.firstChild.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)'; show = true; void L2; } } }
+  if (AR.on && G.phase === 'play' && G.locked !== undefined && !(G.returning && !G.locked)) { const S = G.settlements.find((q2) => q2.placed && !q2.lost); if (S) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, SY(S, 0.05), S.tf.z)); if (!vis || sx < 30 || sx > innerWidth - 30 || sy < 30 || sy > innerHeight - 90) { const cx = innerWidth / 2, cy = innerHeight / 2; let dx = sx - cx, dy = sy - cy; if (!vis) { dx = -dx; dy = -dy; } const L2 = Math.hypot(dx, dy) || 1, k = Math.min((innerWidth / 2 - 34) / Math.abs(dx || 1e-6), (innerHeight / 2 - 100) / Math.abs(dy || 1e-6)); mk.style.left = (cx + dx * k - 14) + 'px'; mk.style.top = (cy + dy * k - 14) + 'px'; mk.firstChild.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)'; show = true; void L2; } } }
   if (mk.hidden === show) mk.hidden = !show;
 }
 function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n) ? '' : n + ' place' + (n > 1 ? 's' : '') + ' found'; }
@@ -3012,14 +3061,14 @@ function autoTick(dt) {
   if (G.returning && !G.locked) relocStep(dt);
   { const on = G.returning && !G.locked && RELOC.state === 'search'; if ($('idDot').hidden === on) $('idDot').hidden = !on; }
   totemTick(dt); totemOfferTick();
-  if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, S.tf.y + 0.1, S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
+  if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, SY(S, 0.1), S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
   if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
   // after a lock: change detection on the matched map
   if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300 && !AUTO.commitAt) { if (relocGoodForCompare()) autoCompare(); else AUTO.compareAt = AUTO.t + 30; }
   AUTO.saveT += dt; if (AUTO.saveT > 10) { AUTO.saveT = 0; persist(); }
   RECOG.t += dt; if (RECOG.t > 2) { RECOG.t = 0; recogTick(); recogStatus(); }
   REC.lastCover += dt; if (REC.lastCover > 5) { REC.lastCover = 0; recCover(); if (++REC.lastZones % 3 === 0) { recZones(); wondersTick(); } if (REC.lastZones % 6 === 0) recSave(); }
-  AUTO.askT = (AUTO.askT || 0) + dt; if (AUTO.askT > 6) { AUTO.askT = 0; autoAskTick(); }
+  AUTO.askT = (AUTO.askT || 0) + dt; if (AUTO.askT > 6) { AUTO.askT = 0; autoAskTick(); ceilTick(); }
   if (RELOC.state === 'asking' && !RELOC.asked) relocAsk();
 }
 function autoCompare() { // quiet change detection on a matched map: what is new, moved, gone, tidied or squashed
@@ -3029,6 +3078,15 @@ function autoCompare() { // quiet change detection on a matched map: what is new
   applyChanges(rep); autoSpots(); refreshSpots(); for (const Z of G.zones) if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z);
   G.report = rep; G.asks = rep.asks.slice(); persist();
   if (G.asks.length) askNext(); else if (rep.lines.length) showReport();
+}
+/* Harry's idea (build 12): with a colony and one working cable car, somebody asks to try a ceiling. 'Yes!' sends the usual expedition (a cable car), and the camp hangs upside down. */
+function ceilTick() {
+  if (G.phase !== 'play' || (typeof BT !== 'undefined' && BT.on) || (G.returning && !G.locked) || G.simT < (G.ceilCd || 0)) return;
+  if (G.requests.some((r) => r.def.id === 'ceiling') || !ceilOK()) return;
+  const Zt = G.zones.find((Z) => Z.ceil && !Z.settled && !Z.lost && Z.land && Z.area >= 0.12 && clearArea(Z) >= 0.06); if (!Zt) return;
+  const S = G.settlements.find((q) => q.placed && !q.awaiting && !q.lost && !q.tf.flip && q.cols.length >= 2 && !G.links.some((l) => !l.ready && (l.a.sid === q.id || l.b.sid === q.id))); if (!S) return;
+  const who = personOf(S, 'ceil' + Zt.id); G.ceilCd = G.simT + 300;
+  G.requests.push({ id: ++G.uid, def: { id: 'ceiling', icon: 'cable', text: (who ? who.name : 'Somebody') + ' wants to try the ceiling!', give: 'expedition', joy: 0.3, cooldown: 600, zone: Zt.id }, sid: S.id, cid: who ? who.id : 0, t: G.simT, who: who ? who.name : '' }); sfx('ask'); reqUi();
 }
 function autoAskTick() { // at most one "What is this?" per two minutes, only for things next to a colony, dismissible, never blocking
   if (!G.auto || G.phase !== 'play' || !G.locked && G.returning || AUTO.t < 60) return; const now = performance.now();
@@ -3223,7 +3281,7 @@ function relocLock(res, how) {
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
   autoSay(''); homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
-  for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, S.tf.y + 0.05, S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
+  for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, SY(S, 0.05), S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
   AUTO.compareAt = AUTO.t + (how === 'totem' ? 10 : 25); AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; TOTEM.watchUntil = AUTO.t + 60; totemCommit(); persist();
   setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
 }
@@ -3510,7 +3568,7 @@ function setPhase(p) {
   SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
 }
 function resetWorld() {
-  btCleanup(true);
+  btCleanup(true); G.ceilCd = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z);
@@ -3885,14 +3943,16 @@ function selCard(c) {
 }
 function totemThumb() { const u = MULTI_ROOM && G.phase === 'play' ? totemUrl(HOMES.cur) : ''; return u ? '<img class="cth" src="' + u + '" alt="" title="' + esc(homeName(HOMES.cur)) + '">' : ''; }
 $('card').onclick = (e) => { if (e.target.classList && e.target.classList.contains('cth')) toast(esc(homeName(HOMES.cur)), 2.5); };
+function cardSet(el, html) { if (el._h !== html) { el._h = html; el.innerHTML = html; } } /* the info card is rebuilt every 0.4 s: only touch the page when the text changed (a tap on the room thumbnail kept missing a replaced element) */
+const roomTag = () => (MULTI_ROOM && HOMES.rooms.length > 1 ? homeName(HOMES.cur) + ' \u00b7 ' : ''); /* build 12: with several rooms the card says which room this is */
 function cardUi() {
   const S = G.cur || G.settlements[0], el = $('card'); const th = totemThumb(); el.classList.toggle('inline', !!AR.on); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
   const sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   const env = `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky} · sun ${ENV.sun.toFixed(2)} · growth x${ENV.grow.toFixed(2)}</div>`;
-  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = th + esc((S && G.phase === 'play' ? S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one); return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
-  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = th + env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : ''); return; }
+  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + esc((S && G.phase === 'play' ? roomTag() + S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one)); return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
+  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
   const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null;
-  el.hidden = false; el.innerHTML = th + `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
+  el.hidden = false; cardSet(el, th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine());
 }
 function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
 
@@ -3920,7 +3980,7 @@ function toScreen(v) {
 }
 function colPick(cx, cy, maxd) {
   let best = null, bd = maxd || 46;
-  for (const S of G.settlements) { if (!S.placed || S.ghost) continue; for (const c of S.cols) { if (c.inside || c.spawn > 0) continue; const [wx, wz] = l2w(S, c.x, c.z); const [sx, sy, ok] = toScreen(tmpV.set(wx, S.tf.y + 0.026, wz)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; } } }
+  for (const S of G.settlements) { if (!S.placed || S.ghost) continue; for (const c of S.cols) { if (c.inside || c.spawn > 0) continue; const [wx, wz] = l2w(S, c.x, c.z); const [sx, sy, ok] = toScreen(tmpV.set(wx, SY(S, 0.026), wz)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; } } }
   return best;
 }
 let preview = null;
@@ -3954,8 +4014,8 @@ $('touch').addEventListener('pointermove', (e) => {
   if (down.held) { holdMove(e.clientX, e.clientY); return; }
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; return; }
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
-    const f = G.cableFrom, g = groundPick(e.clientX, e.clientY), A = new THREE.Vector3(f.x, f.S.tf.y + 0.063, f.z);
-    let B, ok = false; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z); } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], f.S.tf.y + 0.063, p[1]); }
+    const f = G.cableFrom, g = groundPick(e.clientX, e.clientY), A = new THREE.Vector3(f.x, SY(f.S, 0.063), f.z);
+    let B, ok = false; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z); } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], SY(f.S, 0.063), p[1]); }
     showPreview(A, B, ok); return;
   }
   if (down.prop) { moveProp(down.prop, e.clientX, e.clientY); return; }
@@ -4017,10 +4077,11 @@ function tapAt(cx, cy) {
   }
 }
 function settleZone(zone) {
+  if (zone.ceil && !(ceilOK() && G.settlements.length)) { toast('The ceiling can wait: land somewhere you can stand first.', 4); return; }
   const S = newSettlement(zone); G.cur = S; G.sel = null; S.placed = true; S.group.visible = true;
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; addColonist(S, { x: Math.cos(a) * 0.07, z: Math.sin(a) * 0.07, spawn: 0.4 * i + 0.2 }); }
   setPhase('play'); G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
-  puff('star', zone.core[0], zone.y + 0.04, zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
+  puff('star', zone.core[0], zone.y + (zone.ceil ? -0.04 : 0.04), zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
   if (G.mode === 'practice') focusZone(zone);
   if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
   syncCables(); persist(true);
@@ -4091,7 +4152,7 @@ const btDist2 = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 // ---------- the arena: which two surfaces, where everybody stands ----------
 const btFloorLike = (Z) => Z.type === 'FLOOR' || Z.area > 1.2; // the room's floor (a battle prefers desks, shelves and speaker tops)
 function btArenaPick() { // [{Z, half}, {Z, half}]: the colony's surface is the player's side; two different surfaces if there are, else one big surface cut in two
-  const zs = G.zones.filter((Z) => Z.land && !Z.lost && clearArea(Z) >= 0.04), non = zs.filter((Z) => !btFloorLike(Z)), pool = non.length >= 2 ? non : zs; let best = null, bs = -1e9;
+  const zs = G.zones.filter((Z) => Z.land && !Z.lost && !Z.ceil && clearArea(Z) >= 0.04), non = zs.filter((Z) => !btFloorLike(Z)), pool = non.length >= 2 ? non : zs; let best = null, bs = -1e9;
   for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
     const A = pool[i], B = pool[j], d = Math.hypot(A.cx - B.cx, A.cz - B.cz); if (d < 0.35 || d > 3.2) continue;
     const s = Math.sqrt(Math.min(clearArea(A), clearArea(B))) + 0.25 * Math.min(Math.abs(A.y - B.y), 0.8) - 0.2 * Math.max(0, d - 2); if (s > bs) { bs = s; best = [A, B]; }
@@ -4246,7 +4307,7 @@ function btEdgeAhead(x, z, y, dx, dz, maxd) { // how far a creature at (x, z) ca
 }
 
 // ---------- starting and leaving a battle ----------
-function btUsableZones() { return G.zones.filter((Z) => Z.land && !Z.lost && clearArea(Z) >= 0.04).length; }
+function btUsableZones() { return G.zones.filter((Z) => Z.land && !Z.lost && !Z.ceil && clearArea(Z) >= 0.04).length; }
 const BT_RE_SPEAKER = /speaker/i, BT_RE_RUG = /\b(rug|carpet|sofa|couch|cushion|mat)\b/i;
 function btZoneHas(Z, tag, re) { return !!Z && (G.spots.some((s) => s.zid === Z.id && s.tag === tag) || re.test(Z.name || '')); } // the game knows a zone is a speaker or a rug from a spot the player (or the scan) named, or from its name
 const btRivalPref = () => { const k = store.get('bc-rival'); return RIVALS[k] ? k : 'lint'; };
@@ -4263,7 +4324,7 @@ function btBegin(o) { // o: { mode:'solo'|'duo', level:'easy'|'normal'|'perfect'
   BT.k = 1; { const ar = pick2.map((s) => clearArea(s.Z) / (s.half ? 2 : 1)); BT.k = clamp(Math.sqrt(Math.min(...ar) / 0.17), 0.45, 1); BT.ur = BT_UR * BT.k; BT.uh = BT_UH * BT.k; }
   BT.mode = o.mode === 'duo' ? 'duo' : 'solo'; BT.level = o.level === 'normal' ? 'normal' : o.level === 'perfect' ? 'perfect' : 'easy'; BT.seed = o.seed || ((Date.now() & 0xfffff) + 1); BT.rng = seededRandom(BT.seed); BT.cfg = Object.assign({ turn: BT_TURN, hops: 3, maxTurns: 30, hp: 2, tentHp: 6 }, o.cfg || {});
   BT.rv = RIVALS[o.rival] || RIVALS[btRivalPref()] || LINT; BT_COLS[1] = BT.mode === 'duo' ? 0x2fb3b8 : BT.rv.col;
-  BT.zs = G.zones.filter((Z) => Z.land && !Z.lost).map((Z) => ({ Z, L: Z.land, y: Z.y, soft: btZoneHas(Z, 'rug', BT_RE_RUG) })); const fl = BT.zs.filter((q) => btFloorLike(q.Z)); BT.floorY = fl.length ? Math.min(...fl.map((q) => q.y)) : Math.min(...BT.zs.map((q) => q.y)) - 0.5;
+  BT.zs = G.zones.filter((Z) => Z.land && !Z.lost && !Z.ceil).map((Z) => ({ Z, L: Z.land, y: Z.y, soft: btZoneHas(Z, 'rug', BT_RE_RUG) })); const fl = BT.zs.filter((q) => btFloorLike(q.Z)); BT.floorY = fl.length ? Math.min(...fl.map((q) => q.y)) : Math.min(...BT.zs.map((q) => q.y)) - 0.5;
   BT.sides = [0, 1].map((i) => ({ i, Z: pick2[i].Z, half: pick2[i].half, col: BT_COLS[i], name: btTeamName(i), ai: BT.mode === 'solo' && i === 1, tent: null, home: 0, shown: 0, hoover: false, dust: 0, wobble: false, pulse: 0, shots: 0, lbl: null, glow: null, rim: null }));
   const F = [0, 1].map((i) => btFormation(BT.sides[i], [BT.sides[1 - i].Z.cx, BT.sides[1 - i].Z.cz], 4)); if (!F[0] || !F[1]) { toast('There is not enough clear room on those surfaces for a battle.', 4); return false; }
   btClearWorld(); BT.units = []; BT.structs = []; BT.projs = []; BT.bridges = []; BT.log = []; BT.over = null; BT.hoover = null; BT.swing = null; BT.turn = 0; BT.side = 0; BT.fired = false; BT.slowT = 0; BT.timeScale = 1; BT.shake = 0; BT.paused = false; BT.ids = 0;
@@ -4293,7 +4354,7 @@ function btCleanup(keepUi) { // leave the battle: the colony comes back exactly 
   if (!AR.on) { renderer.domElement.style.transform = ''; } for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = true; for (const S of G.settlements) if (S.placed && !S.lost) S.group.visible = true;
   if (!keepUi && G.phase === 'play') { barUi(); updateHint(); }
 }
-function btLeave(toTitle) { const was = BT.on; btCleanup(); if (!was) return; if (toTitle) { persist(true); if (AR.on) { try { AR.session.end(); } catch (e) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } } else if (!AR.on && G.settlements.length) { const S = G.settlements[0]; focusOn(S.tf.x, S.tf.y + 0.03, S.tf.z, 0.9); P.pitch = 0.55; } }
+function btLeave(toTitle) { const was = BT.on; btCleanup(); if (!was) return; if (toTitle) { persist(true); if (AR.on) { try { AR.session.end(); } catch (e) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } } else if (!AR.on && G.settlements.length) { const S = G.settlements[0]; focusOn(S.tf.x, SY(S, 0.03), S.tf.z, 0.9); P.pitch = 0.55; } }
 
 // ---------- turns ----------
 function btAlive(side) { return BT.units.filter((u) => u.side === side && u.st !== 'home'); }
@@ -5022,9 +5083,10 @@ function waterStep(dt) {
 function ambient(dt) {
   for (const S of G.settlements) {
     if (!S.placed || S.ghost) continue;
-    if (ENV.rain) for (let q = Math.round(dt * 90 + Math.random() - 0.5); q > 0; q--) { const a = rnd(0, 6.28), d = rnd(0, 0.25); puff('rain', S.tf.x + Math.cos(a) * d, S.tf.y + 0.22, S.tf.z + Math.sin(a) * d, 1, { size: 0.0045, tall: 9, vy: -0.8, life: 0.27, jit: 0, spread: 0, color: 0xcfe8ff }); }
-    if (!ENV.night && Math.random() < dt * 0.5) { const tr = S.things.filter((t) => t.kind === 'tree' && t.g >= 1); if (tr.length) { const t = pick(tr), [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, S.tf.y + 0.06, wz, 1, { size: 0.006, vy: -0.006, vx: 0.01, life: 3, color: 0x8fd16f, spread: 0.02 }); } }
-    if (ENV.night && Math.random() < dt * 0.6) puff('star', S.tf.x + rnd(-0.12, 0.12), S.tf.y + rnd(0.02, 0.08), S.tf.z + rnd(-0.12, 0.12), 1, { size: 0.004, add: true, life: 2, color: 0xfff0a0, vy: 0.004, jit: 0.006 });
+    if (S.hang) for (const pv of S.hang.children) pv.rotation.z = Math.sin(performance.now() / 900 + pv.userData.ph) * 0.07; /* the lanterns sway a little */
+    if (ENV.rain && !S.tf.flip) for (let q = Math.round(dt * 90 + Math.random() - 0.5); q > 0; q--) { const a = rnd(0, 6.28), d = rnd(0, 0.25); puff('rain', S.tf.x + Math.cos(a) * d, SY(S, 0.22), S.tf.z + Math.sin(a) * d, 1, { size: 0.0045, tall: 9, vy: -0.8, life: 0.27, jit: 0, spread: 0, color: 0xcfe8ff }); }
+    if (!ENV.night && Math.random() < dt * 0.5) { const tr = S.things.filter((t) => t.kind === 'tree' && t.g >= 1); if (tr.length) { const t = pick(tr), [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, SY(S, 0.06), wz, 1, { size: 0.006, vy: -0.006, vx: 0.01, life: 3, color: 0x8fd16f, spread: 0.02 }); } }
+    if (ENV.night && Math.random() < dt * 0.6) puff('star', S.tf.x + rnd(-0.12, 0.12), SY(S, rnd(0.02, 0.08)), S.tf.z + rnd(-0.12, 0.12), 1, { size: 0.004, add: true, life: 2, color: 0xfff0a0, vy: 0.004, jit: 0.006 });
   }
 }
 function eventsStep() {
@@ -5086,7 +5148,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
-  envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
+  barUi, recogStatus, ceilTick, ceilOK, hangDecor, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { step = step || 0.5; for (let t = 0; t < sec; t += step) simTick(step, false); },
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,
