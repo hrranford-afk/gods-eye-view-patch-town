@@ -30,3 +30,9 @@ These facts come from the git history (91 commits) and the game session's transc
 4. HANDOVER.md was written as the game was built (now 142 KB), so every new builder started from the facts.
 5. Everyday objects as the world: a kitchen, a sink, a hob. They are readable at a glance and funny.
 6. Problems were measured, not guessed: memory leaks, crossing times, frame costs.
+
+## ChatGPT's part (checked against every chat and commit, 12 Nov)
+- **2 Nov:** Harry offered to make ChatGPT pictures. The prompts written that evening were for the Cairn mountain game, not this one, and no pictures came back into this session.
+- **3 Nov:** credits ran out. START_HERE.md was written so Harry could carry on with ChatGPT. GitHub shows no commits from 3 to 10 Nov, so nothing from ChatGPT was added to the files.
+- **10 Nov:** Harry had tried an AR version with ChatGPT and offered to send it. It was never sent. The AR mode in the game was built by a Sonnet builder.
+- **What can't be seen from here:** any ideas Harry worked out with ChatGPT and then passed on in his own words. Those are logged as Harry's ideas.
