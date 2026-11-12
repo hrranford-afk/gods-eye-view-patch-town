@@ -82,6 +82,7 @@ body.auto #bar{flex-wrap:nowrap;gap:2px;padding:3px 4px;max-width:98vw}body.auto
 #colMark{position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,217,168,.35);box-shadow:0 0 12px 4px rgba(255,217,168,.55);display:grid;place-items:center;font-size:16px;color:#fff6e6;pointer-events:none;z-index:3}
 #idDot{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:8px;height:8px;border-radius:50%;background:#ffd9a8;opacity:.55;animation:idp 1.6s ease-in-out infinite;pointer-events:none;z-index:3}@keyframes idp{50%{opacity:.12}}
 #nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
+#rooms .rcard{display:flex;min-height:120px;background:rgba(255,246,230,.14);border-radius:16px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,246,230,.22)}#rooms .rcard:active{background:rgba(255,246,230,.26)}#rooms .rph{flex:0 0 38%;max-width:200px;min-width:120px;object-fit:cover;display:block;background:#2b1d12}#rooms .rbody{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}#rooms .rbody b{font-size:17px}#rooms .rgo{font:800 13px var(--body);opacity:.9}#rooms .rbtn{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}#rooms .rbtn button,#rooms .tslot button{min-height:34px;font-size:12px;padding:4px 10px}#rooms .tslot{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}#rooms .tnote{font-size:10px;opacity:.7;flex-basis:100%}#card img.cth{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #ffd9a8;pointer-events:auto;vertical-align:middle;margin-right:8px}#card:not(.inline) img.cth{float:left}
 #rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
 #banner{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;z-index:7;font:800 18px var(--body);color:#3b2a1e;background:linear-gradient(#fffaf0,#ffe1b0);border:3px solid #e8883a;border-radius:22px;padding:5px 18px 6px;box-shadow:0 3px 0 #a85a1e;white-space:nowrap;text-align:center;transition:transform .35s cubic-bezier(.3,1.6,.5,1),opacity .3s}
 body.auto #sel{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
@@ -105,6 +106,7 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
       <button id="bMore">More...</button>
     </div>
     <div id="rooms" hidden></div>
+    <input type="file" id="totemIn" accept="image/*" capture="environment" hidden><input type="file" id="totemLib" accept="image/*" hidden>
     <div id="tmenu" class="mrow" hidden>
       <button id="bFresh">Start a new room</button>
       <button id="bPrac" class="alt">Practice room</button>
@@ -144,7 +146,7 @@ body.inar #banner{top:calc(env(safe-area-inset-top,0px) + 232px);font-size:15px}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 10';
+const BUILD = 'build 11';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -3527,7 +3529,7 @@ const STORE_LIMIT = 5000000, ROOM_MAX = 1400000; // characters: browsers keep ab
 const ROOMS_UI = { ren: '', del: '', delT: 0 };
 const fmtKB = (n) => Math.round(n / 1000) + ' KB';
 function storeChars() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) { /* none */ } return n; }
-function roomChars(id) { const k = homeKeys(id); let n = 0; for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) n += (store.get(b + x) || '').length; return n; }
+function roomChars(id) { const k = homeKeys(id); let n = totemChars(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) n += (store.get(b + x) || '').length; return n; }
 function roomBound() { // each room is bounded; near the browser limit the backup copies of the rooms not in use go first, then the player is told
   try {
     const id = HOMES.cur, k = homeKeys(id);
@@ -3543,13 +3545,14 @@ function roomFacts(r) { // rooms from older builds have no numbers in the regist
 }
 function roomsTidy() { // a room that was started and never saved anything is not a room
   const keep = HOMES.rooms.filter((r) => roomHasData(r.id)); if (keep.length === HOMES.rooms.length) return;
+  for (const r of HOMES.rooms) if (!keep.includes(r)) totemDel(r.id);
   HOMES.rooms = keep.length ? keep : [HOMES.rooms.find((r) => r.id === 'r1') || HOMES.rooms[0]];
   if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id);
   homesSave();
 }
 function roomDelete(id) { // deleting keeps nothing: map, colony and their backups are gone
   const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x);
-  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id);
+  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id); totemDel(id);
   if (!HOMES.rooms.length) HOMES.rooms = [{ id: 'r1', name: 'Room 1', created: Date.now(), visits: 0, known: 0, post: [] }];
   if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id); else homesSave();
   G.previewLines = null; G.previewStamp = ''; ROOMS_UI.del = '';
@@ -3559,20 +3562,47 @@ function playRoom(want, id) { // want: 'find' (Play: the room is recognised by i
   else if (want === 'room') homeSelect(id);
   G.roomWant = want; G.intent = 'play'; G.auto = true; if (AR.ok) arStart(true); else startPractice();
 }
+// ---- room totem photos (build 11): the player's own photo of a spot in the room; tapping it enters that room. Kept on this device only (localStorage via imgSave), never sent anywhere, not in map export ----
+const TOTPH = { url: {}, busy: false, target: '' };
+const TOTPH_MAX = 320;
+function totemUrl(id) { if (!(id in TOTPH.url)) { const r = imgLoad('totem', id); TOTPH.url[id] = r && /^data:image\/jpeg;base64,/.test(r.jpeg) ? r.jpeg : ''; } return TOTPH.url[id]; }
+function totemChars(id) { try { return (localStorage.getItem(imgKey('totem', id)) || '').length; } catch (e) { return 0; } }
+function totemDel(id) { imgDel('totem', id); delete TOTPH.url[id]; }
+function totemScale(file) { /* resolves to a JPEG data URL, long side at most TOTPH_MAX */
+  return new Promise((res, rej) => {
+    const fr = new FileReader(); fr.onerror = () => rej(new Error('read')); fr.onload = () => {
+      const im = new Image(); im.onerror = () => rej(new Error('decode')); im.onload = () => {
+        const k = Math.min(1, TOTPH_MAX / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k)), c = document.createElement('canvas'); c.width = w; c.height = h;
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h); res({ jpeg: c.toDataURL('image/jpeg', 0.8), w, h });
+      }; im.src = fr.result;
+    }; fr.readAsDataURL(file);
+  });
+}
+async function totemPicked(inp) {
+  const f = inp.files && inp.files[0], id = TOTPH.target; inp.value = ''; if (!f || !id || !homeInfo(id)) return;
+  try { const o = await totemScale(f); if (!imgSave('totem', id, { v: 1, jpeg: o.jpeg, w: o.w, h: o.h, at: Date.now() })) { toast('The photo did not fit in storage. Try again or delete a room.', 6); return; } delete TOTPH.url[id]; roomsUi(); }
+  catch (e) { toast('That photo could not be read. Try another.', 5); }
+}
+$('totemIn').onchange = () => totemPicked($('totemIn')); $('totemLib').onchange = () => totemPicked($('totemLib'));
 function roomsUi() {
   const el = $('rooms'); if (!MULTI_ROOM) { el.hidden = true; return; }
   const rs = HOMES.rooms.filter((r) => roomHasData(r.id)).sort((a, b) => (b.last || 0) - (a.last || 0)); el.hidden = !rs.length; if (!rs.length) return;
   const a = document.activeElement; if (ROOMS_UI.ren && a && a.classList && a.classList.contains('rn')) return; // never wipe a name that is being typed
   for (const r of rs) roomFacts(r);
   el.innerHTML = rs.map((r) => {
-    const facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' \u00b7 last visit ' + agoText(Date.now() - (r.last || Date.now())) + ' \u00b7 map ' + Math.round((r.known || 0) * 100) + '%', ren = ROOMS_UI.ren === r.id, del = ROOMS_UI.del === r.id;
-    return '<div class="lib" data-id="' + r.id + '"><div>' + (ren ? '<input class="rn" maxlength="24" value="' + esc(r.name) + '" aria-label="Room name">' : '<b>' + esc(r.name) + '</b>') + '<div class="sub">' + facts + '</div></div><button data-act="go" class="alt">Continue</button><button data-act="ren">' + (ren ? 'Save' : 'Rename') + '</button><button data-act="del">' + (del ? 'Delete for good? Nothing is kept. Tap again' : 'Delete') + '</button></div>';
+    const facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' · last visit ' + agoText(Date.now() - (r.last || Date.now())) + ' · map ' + Math.round((r.known || 0) * 100) + '%', ren = ROOMS_UI.ren === r.id, del = ROOMS_UI.del === r.id, ph = totemUrl(r.id);
+    const nameEl = ren ? '<input class="rn" maxlength="24" value="' + esc(r.name) + '" aria-label="Room name">' : '<b>' + esc(r.name) + '</b>';
+    const bRen = '<button data-act="ren">' + (ren ? 'Save' : 'Rename') + '</button>', bDel = '<button data-act="del">' + (del ? 'Delete for good? Nothing is kept. Tap again' : 'Delete') + '</button>';
+    if (ph) return '<div class="rcard" data-id="' + r.id + '" role="button" aria-label="Enter ' + esc(r.name) + '"><img class="rph" src="' + ph + '" alt="Totem photo of ' + esc(r.name) + '"><div class="rbody">' + nameEl + '<div class="sub">' + facts + '</div><div class="rgo">Tap the photo to go in</div><div class="rbtn"><button data-act="go" class="alt">Continue</button>' + bRen + bDel + '<button data-act="tcam">Change photo</button><button data-act="tdel">Remove photo</button></div><div class="tnote">Stays on this iPad.</div></div></div>';
+    return '<div class="lib" data-id="' + r.id + '"><div>' + nameEl + '<div class="sub">' + facts + '</div></div><button data-act="go" class="alt">Continue</button>' + bRen + bDel + '<div class="tslot"><button data-act="tcam">📷 Add totem photo</button><button data-act="tlib">From library</button><span class="tnote">Stays on this iPad.</span></div></div>';
   }).join('') + '<div class="mrow"><button id="rNew" data-act="new">+ New room</button></div>';
-  const inp = el.querySelector('input.rn'); if (inp) { inp.onkeydown = (e) => { if (e.key === 'Enter') roomRename(inp.closest('.lib').dataset.id, inp.value); }; }
+  const inp = el.querySelector('input.rn'); if (inp) { inp.onkeydown = (e) => { if (e.key === 'Enter') roomRename(inp.closest('.lib,.rcard').dataset.id, inp.value); }; }
 }
 function roomRename(id, v) { const r = homeInfo(id); ROOMS_UI.ren = ''; if (r) { r.name = String(v || '').trim().slice(0, 24) || r.name; homesSave(); if (id === HOMES.cur) G.mapName = r.name; } roomsUi(); updateTitle(); }
 $('rooms').onclick = (e) => {
-  const b = e.target.closest && e.target.closest('button[data-act]'); if (!b) return; const row = b.closest('.lib'), id = row ? row.dataset.id : '', act = b.dataset.act;
+  const b = e.target.closest && e.target.closest('button[data-act]'); if (!b) { const cd = e.target.closest && e.target.closest('.rcard'); if (cd && !e.target.closest('input')) playRoom('room', cd.dataset.id); return; } const row = b.closest('.lib,.rcard'), id = row ? row.dataset.id : '', act = b.dataset.act;
+  if (act === 'tcam' || act === 'tlib') { TOTPH.target = id; ROOMS_UI.del = ''; $(act === 'tcam' ? 'totemIn' : 'totemLib').click(); return; }
+  if (act === 'tdel') { totemDel(id); roomsUi(); return; }
   if (act === 'new') { playRoom('new'); return; }
   if (act === 'go') { playRoom('room', id); return; }
   if (act === 'ren') { if (ROOMS_UI.ren === id) roomRename(id, row.querySelector('input.rn').value); else { ROOMS_UI.ren = id; ROOMS_UI.del = ''; roomsUi(); const i = $('rooms').querySelector('input.rn'); if (i) { i.focus(); i.select(); } } return; }
@@ -3853,14 +3883,16 @@ function selCard(c) {
   const doing = c.inside ? 'resting' : c.job ? { build: 'building', plant: 'planting a seed', tend: 'tending', harvest: 'harvesting', gather: 'gathering', drink: 'getting a drink', eat: 'having a bite', sleep: 'sleeping', shelter: 'sheltering', chat: 'chatting', dance: 'dancing', wander: 'strolling', cross: 'off by cable car' }[c.job.type] : 'thinking';
   el.innerHTML = `<b style="color:#ffd9a8">${esc(c.name)}</b> is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">${c.persona ? esc(c.persona) + '<br>' : ''}likes: ${c.likes.join(', ') || 'everything'}${c.dream ? '<br>dreams: ' + esc(c.dream) : ''}${c.by ? ' <i class="by">by ' + esc(c.by) + '</i>' : ''}</div>`;
 }
+function totemThumb() { const u = MULTI_ROOM && G.phase === 'play' ? totemUrl(HOMES.cur) : ''; return u ? '<img class="cth" src="' + u + '" alt="" title="' + esc(homeName(HOMES.cur)) + '">' : ''; }
+$('card').onclick = (e) => { if (e.target.classList && e.target.classList.contains('cth')) toast(esc(homeName(HOMES.cur)), 2.5); };
 function cardUi() {
-  const S = G.cur || G.settlements[0], el = $('card'); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
+  const S = G.cur || G.settlements[0], el = $('card'); const th = totemThumb(); el.classList.toggle('inline', !!AR.on); const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60);
   const sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   const env = `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky} · sun ${ENV.sun.toFixed(2)} · growth x${ENV.grow.toFixed(2)}</div>`;
-  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; el.textContent = (S && G.phase === 'play' ? S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one; return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
-  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : ''); return; }
+  if (AR.on) { const one = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' · ' + Math.round(ENV.wx.temp) + '°C'; el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = th + esc((S && G.phase === 'play' ? S.zoneName.split(' – ')[0] + ' · ' + S.cols.length + ' settlers · ' : '') + one); return; } // in AR the card is one tiny line in the top corner (details are in the Menu)
+  if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; el.innerHTML = th + env + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : ''); return; }
   const mood = S.cols.length ? Math.round(S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length * 100) : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null;
-  el.hidden = false; el.innerHTML = `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
+  el.hidden = false; el.innerHTML = th + `<b>${esc(S.zoneName)}</b>${S.thriving ? ' ★ thriving' : ''}<br>settlers ${S.cols.length} · mood ${mood}%<br>wood ${S.stock.wood} · food ${S.stock.food} · seeds ${S.stock.seeds} · tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m²)` : '') + env + roomTidyLine();
 }
 function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
 
@@ -5064,7 +5096,7 @@ window.__g = {
   RECOG, recogFrame, arDevice, libAdd, libFind, guessCard, answerGuess, recogTick, recogConsider, recogPropose, cocoLoad, clipLoad, clipClassify, clipGuess, clipScores, clipEmbed, unknownTops, askUnknown, cropFrame, practiceDetector, smartToggle, COCO_ROLES, TF_URL,
   relocPolish, relocSetScore, relocRefine, relocVerify, relocTop, relocIcp, AUTO, RELOC, STORE, REC, WONDERS, recSnap, recZones, wondersTick, makeWonder, buildReport, reportsLoad, reportCopy, reportDownload, reportUi, recNonHoriz, autoTick, liveSync, autoSettle, relocBegin, relocLock, relocStep, relocSavedLayers, relocLiveLayers, relocJob, persist, safeRead, safeWrite, startAuto, startPractice, comeBackLater, autoAskTick, autoTag, mapKnown, worldMapAvailable, previewReturn, withSeed, autoCompare, relocNewRoom, relocManual, autoCount,
   COUNCIL, COLONY_ALMANAC, ROOMS, CREATURES, awayDays, fmtAway, toast, FUN, CHAR, MILESTONES, pokeCol, pickUp, holdMove, dropCol, dropCrumb, partyToggle, celebrate, festivalStart, festivalEnd, rainbowAt, pipRiver, funUnlocked, albumUi, sayLine, charKey, SND, COL_S, mainSettlement, funReturn, MULTI_ROOM, ROOMPRE: () => ROOMPRE, roomHasData, roomsUi, roomRename, roomDelete, playRoom, roomChars, storeChars, roomBound, homesMigrate, homePickStart, relocAskRooms, ROOMS_UI,
-  HOMES, TOTEM, FEAT, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
+  HOMES, TOTEM, FEAT, homesSave, totemUrl, totemDel, TOTPH, roomChars, storeChars, roomsUi, playRoom, homeSelect, homeCreate, homeStats, homeSwitchLoad, homePrecomp, imgSave, imgLoad, imgFromSource, totemTick, totemTemplate, totemUi, homesUi, totemSpot, totemCommit, totemVisuals, relocTotemJob, worldDrop, BUILD, CELL, DIRECT, gXZ, refineBand, overlapFrac, coveredAt, scanZone, injectScan, placeRoom, movePropTo, removeProp, addProp, resetProps, scanReset, markBumps, toScreen, scanHit,
 };
 
 Object.assign(window.__g, BT_HOOKS);
