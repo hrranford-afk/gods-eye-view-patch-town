@@ -2684,7 +2684,7 @@ function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.d
 /* "played": the Giant did something in the last ten simulated minutes. A colony left alone still grows, a played one grows faster. */
 const careOn = () => (G.careT || 0) > G.simT;
 function care() { G.careT = G.simT + 600; }
-function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, q.name + ' is ready!', q.goal.title.replace(/^Get the room (ready )?/, 'The room is ') + '. Done!', SEA_CREDIT]; return id; }
+function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, q.name + ' is ready!', 'Every decoration is up. The room is looking lovely.', SEA_CREDIT]; return id; }
 /* ---- progress: how many of each decoration are built (and planned) for this season ---- */
 function seaCount(k) { let b = 0, p = 0; const key = decorKey(k); for (const S of G.settlements) { if (S.lost) continue; for (const t of S.things) if (t.kind === k && !t.gift && t.sea === key && !t.dead) { if (t.built && !t.hold) b++; else p++; } } return { b, p }; }
 function seaProgress() {
@@ -2723,7 +2723,7 @@ function decorTick(quiet) {
 }
 function seaSim(dt, quiet) {
   SEA.placeT -= dt; if (SEA.placeT <= 0) { SEA.placeT = careOn() ? 14 : 40; if (G.settlements.length) decorTick(quiet); }
-  SEA.expT += dt; if (SEA.expT > 60) { SEA.expT = 0; if (G.settlements.length && (SEA.needFar || G.settlements.some((S) => S.thriving && S.t > 900 && !S.lost && !S.awaiting))) autoExpand(); }
+  SEA.expT += dt; if (SEA.expT > 60) { SEA.expT = 0; if (G.settlements.length && G.settlements.length < 1 + Math.floor(G.simT / 6000) && !G.settlements.some((S) => S.awaiting) && (SEA.needFar || G.settlements.some((S) => S.thriving && S.t > 1500 && !S.lost && !S.awaiting))) autoExpand(); } /* one new surface about every 75 minutes at most */
 }
 function packAway(first) { /* a new season: last season's decorations go back in the box (the calendar stays through Advent and New Year) */
   const ok = new Set([ENV.seasonKey]); if (['autumn', 'advent', 'newyear'].includes(ENV.season)) ok.add('advent-' + adventYear()); let n = 0;
@@ -5720,7 +5720,7 @@ window.__g = {
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
-  care, seaPlace, seaProgress, seaStripText, seaCheck, seaComplete, seaSim, decorTick, seaEvent, advInfo, advState, advCanOpen, advOpen, advGive, advList, calUi, camOpen, camClose, ccamRender, ccamText, doingText, goalHtml, cardUi, SEA, SEASONS, DECOR, ADVENT, CCAM, seaDate, seasonIdOf, addThing, mainSettlement, careOn, packAway, seaBuildList, seaFace, advCalendars,
+  seaLoad, seaReset, care, seaPlace, seaProgress, seaStripText, seaCheck, seaComplete, seaSim, decorTick, seaEvent, advInfo, advState, advCanOpen, advOpen, advGive, advList, calUi, camOpen, camClose, ccamRender, ccamText, doingText, goalHtml, cardUi, SEA, SEASONS, DECOR, ADVENT, CCAM, seaDate, seasonIdOf, addThing, mainSettlement, careOn, packAway, seaBuildList, seaFace, advCalendars,
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,
   newSettlement, tapAt, groundPick, colPick, requestsStep, startScan, resetWorld, setWxPick, fetchWeather, wxCard, setLoc, applyWx, setPhase,
