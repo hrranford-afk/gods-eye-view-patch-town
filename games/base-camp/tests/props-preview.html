@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Base Camp baked props</title>
+<style>html,body{margin:0;background:#6b4a2b;overflow:hidden}canvas{display:block}</style></head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../models/props.js"></script>
+<script>
+(function () {
+  var W = 1400, H = 800;
+  var r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.setSize(W, H); document.body.appendChild(r.domElement);
+  var scene = new THREE.Scene(); scene.background = new THREE.Color(0x4a3320);
+  // desk-wood background: striped canvas texture
+  var c = document.createElement('canvas'); c.width = 512; c.height = 512; var x = c.getContext('2d');
+  x.fillStyle = '#8a5a30'; x.fillRect(0, 0, 512, 512);
+  for (var i = 0; i < 90; i++) { x.fillStyle = 'rgba(' + (i % 2 ? '60,30,10' : '190,130,70') + ',' + (0.08 + Math.random() * 0.12) + ')'; x.fillRect(0, Math.random() * 512, 512, 1 + Math.random() * 5); }
+  var tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4, 2);
+  var desk = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshBasicMaterial({ map: tex }));
+  desk.rotation.x = -Math.PI / 2; scene.add(desk);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x886644, 0.7));
+  var dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(-3, 6, 4); scene.add(dl);
+  var names = Object.keys(BC_PROPS), cols = 5, gx = 2.9, gz = 3.1, rows = Math.ceil(names.length / cols);
+  names.forEach(function (n, i) {
+    var a = BC_PROPS[n].h, hh = Math.min(1.7, 1.5 / Math.max(a.w, a.d)), g = bcPropMesh(n, { height: hh });
+    var cx = (i % cols - (cols - 1) / 2) * gx, cz = (Math.floor(i / cols) - (rows - 1) / 2) * gz;
+    g.position.set(cx, 0, cz); scene.add(g);
+    var l = document.createElement('canvas'); l.width = 256; l.height = 48; var lx = l.getContext('2d');
+    lx.fillStyle = 'rgba(0,0,0,.55)'; lx.fillRect(0, 0, 256, 48); lx.fillStyle = '#fff'; lx.font = '24px sans-serif'; lx.textAlign = 'center';
+    lx.fillText(n + ' ' + BC_PROPS[n].h.tris + 't', 128, 32);
+    var sp = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.34), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(l), transparent: true }));
+    sp.position.set(cx, 0.02, cz + 1.05); sp.rotation.x = -Math.PI / 2 + 0.55; scene.add(sp);
+  });
+  var cam = new THREE.PerspectiveCamera(46, W / H, 0.1, 100);
+  cam.position.set(0, 9, 9.5); cam.lookAt(0, 0.4, 0.3);
+  r.render(scene, cam); window.BC_PREVIEW_DONE = true;
+})();
+</script></body></html>
