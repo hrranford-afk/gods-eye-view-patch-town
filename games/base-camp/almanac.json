@@ -58,6 +58,22 @@
    "by": "The Dell Elder"
   },
   {
+   "name": "Pip the Packet",
+   "personality": "enthusiastic and slightly anxious about everything",
+   "likes": [
+    "new seeds",
+    "helping others",
+    "watching the sun move"
+   ],
+   "dislikes": [
+    "being left alone",
+    "rain on planting days",
+    "not having enough space"
+   ],
+   "dream": "to grow the biggest, most beautiful tree that will shelter all of PatchTown",
+   "by": "The Dell Quick Builder"
+  },
+  {
    "name": "Lila",
    "personality": "curious and cheerful",
    "likes": [
@@ -132,6 +148,86 @@
    ],
    "dream": "to have a big, beautiful garden with lots of flowers",
    "by": "The Radeon Coder"
+  },
+  {
+   "name": "Tumblewick",
+   "personality": "curious and meticulously tidy, though easily distracted by shiny objects",
+   "likes": [
+    "smooth pebbles",
+    "twisted thread",
+    "quiet corners"
+   ],
+   "dislikes": [
+    "sudden drafts",
+    "spilled ink"
+   ],
+   "dream": "to weave a perfect mosaic from fallen leaves and button caps",
+   "by": "The Town Brain",
+   "day": "2026-11-12"
+  },
+  {
+   "name": "Zap",
+   "personality": "curious and energetic",
+   "likes": [
+    "exploring",
+    "shiny objects",
+    "playful games"
+   ],
+   "dislikes": [
+    "darkness",
+    "rain"
+   ],
+   "dream": "to fly through the air like a bird",
+   "by": "The Dell Coder",
+   "day": "2026-11-12"
+  },
+  {
+   "name": "Snicker",
+   "personality": "playful and curious",
+   "likes": [
+    "exploring",
+    "solving puzzles"
+   ],
+   "dislikes": [
+    "loud noises",
+    "being ignored"
+   ],
+   "dream": "to find the hidden garden",
+   "by": "The Dell Reasoner",
+   "day": "2026-11-12"
+  },
+  {
+   "name": "Fizzwick",
+   "personality": "Curious and bubbly",
+   "likes": [
+    "sparkling things",
+    "small tunnels",
+    "listening to music"
+   ],
+   "dislikes": [
+    "stillness",
+    "dark corners",
+    "being ignored"
+   ],
+   "dream": "To build a giant, shimmering disco ball for the colony.",
+   "by": "The Dell Surveyor",
+   "day": "2026-11-12"
+  },
+  {
+   "name": "Zap",
+   "personality": "Quick-witted and energetic, Zap loves to explore and find new ways to improve the colony. They enjoy bright, sunny days and are always up for a challenge.",
+   "likes": [
+    "exploring",
+    "sunny days",
+    "new inventions"
+   ],
+   "dislikes": [
+    "rainy days",
+    "boring tasks"
+   ],
+   "dream": "To build a flying machine that can take the colony to new places.",
+   "by": "The Radeon Coder",
+   "day": "2026-11-12"
   }
  ],
  "events": [
@@ -166,6 +262,14 @@
    "what_happens": "Luna plants the first tree in the colony, hoping it will grow tall and strong.",
    "colonist_says": "Let's see how tall this little sapling can grow!",
    "by": "The Dell Elder"
+  },
+  {
+   "title": "Morning Planting",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "Pip the Packet woke up early and started planting seeds in the dirt near the window. The sun was shining bright and warm, making everything feel good.",
+   "colonist_says": "Good morning! I've planted some new seeds today - they're so tiny but they'll grow into big, strong trees! Can you help me water them?",
+   "by": "The Dell Quick Builder"
   },
   {
    "title": "The First Bloom",
@@ -206,6 +310,51 @@
    "what_happens": "Sunny and the other colonists are planting seeds in the garden. They're enjoying the warm sun and the fresh air.",
    "colonist_says": "It's a great day to start planting! Let's make our garden beautiful!",
    "by": "The Radeon Coder"
+  },
+  {
+   "title": "The Glass River",
+   "when": "evening",
+   "weather": "cold",
+   "what_happens": "A thin layer of frost forms across the desk edge, turning it into a shimmering, slippery bridge to a dropped crumb on the other side.",
+   "colonist_says": "It looks like a frozen river! But our toes won't grip the ice at all.",
+   "by": "The Town Brain",
+   "day": "2026-11-12"
+  },
+  {
+   "title": "Zap's Flying Adventure",
+   "when": "afternoon",
+   "weather": "any",
+   "what_happens": "Zap decides to explore the room by floating through the air, using his curiosity to discover new things.",
+   "colonist_says": "Look out, everyone! I'm flying around! It's like a game of tag in the sky!",
+   "by": "The Dell Coder",
+   "day": "2026-11-12"
+  },
+  {
+   "title": "The Puzzle of the Hidden Garden",
+   "when": "afternoon",
+   "weather": "sun",
+   "what_happens": "Snicker discovers a mysterious puzzle that leads to a hidden garden, but needs the Giant's help to solve it.",
+   "colonist_says": "The Giant, the puzzle is whispering secrets about the hidden garden!",
+   "by": "The Dell Reasoner",
+   "day": "2026-11-12"
+  },
+  {
+   "title": "The Great Berry Bloom",
+   "when": "morning",
+   "weather": "sun",
+   "what_happens": "A patch of Glowberries, previously dormant, suddenly bursts into bloom, covering a section of the desk in vibrant light.",
+   "colonist_says": "Ooh! Shiny! Let's dance!",
+   "by": "The Dell Surveyor",
+   "day": "2026-11-12"
+  },
+  {
+   "title": "Zap's Solar Panel Experiment",
+   "when": "afternoon",
+   "weather": "sun",
+   "what_happens": "Zap sets up a small solar panel on the window sill and starts experimenting with different ways to harness the sun's energy. The colony watches with interest as Zap tries to create a new source of power for the colony.",
+   "colonist_says": "Let's see how much energy we can get from the sun! Maybe we can power our cable cars with it someday.",
+   "by": "The Radeon Coder",
+   "day": "2026-11-12"
   }
  ],
  "requests": [
@@ -232,6 +381,12 @@
    "asks_for": "ladder",
    "says": "Can you bring a ladder so I can reach the higher branches when the tree grows?",
    "by": "The Dell Elder"
+  },
+  {
+   "colonist": "Pip the Packet",
+   "asks_for": "water",
+   "says": "Oh please, can we have some water? My little seedlings are so thirsty and I want to make sure they grow up strong!",
+   "by": "The Dell Quick Builder"
   },
   {
    "colonist": "Lila",
@@ -262,6 +417,41 @@
    "asks_for": "shade",
    "says": "Hey, could you help me find a spot for my new plant? I want it to have some shade to grow better.",
    "by": "The Radeon Coder"
+  },
+  {
+   "colonist": "Tumblewick",
+   "asks_for": "ladder",
+   "says": "Giant, could you lean that ruler against the sill? We need a bridge to cross the glass stream safely.",
+   "by": "The Town Brain",
+   "day": "2026-11-12"
+  },
+  {
+   "colonist": "Zap",
+   "asks_for": "cable_car",
+   "says": "Can you build me a cable car? I want to see the whole room from up high!",
+   "by": "The Dell Coder",
+   "day": "2026-11-12"
+  },
+  {
+   "colonist": "Snicker",
+   "asks_for": "ladder",
+   "says": "I need a ladder to reach the highest branch where the puzzle is hidden!",
+   "by": "The Dell Reasoner",
+   "day": "2026-11-12"
+  },
+  {
+   "colonist": "Fizzwick",
+   "asks_for": "shade",
+   "says": "Giant, could you please cast a little shadow over the Glowberries? They're getting a bit *too* bright!",
+   "by": "The Dell Surveyor",
+   "day": "2026-11-12"
+  },
+  {
+   "colonist": "Zap",
+   "asks_for": "shade",
+   "says": "Hey Giant, could you help me find a spot with some shade? I'm working on my solar panel experiment and need a bit of protection from the sun.",
+   "by": "The Radeon Coder",
+   "day": "2026-11-12"
   }
  ]
 }
