@@ -39,8 +39,9 @@ small "wow" tells them there is much more to make later?
 
 **M8. Water (Harry's idea, by Harry).** Crops need water, and a home has many sources: the toilet, the sinks, the bath, a fish
 tank, and more. Each source gives a different amount and quality of water: some is great for plants, some is bad for the creatures.
-Remember that nobody dies in Base Camp. For three water sources: what the water is like, what it does to plants and to creatures
-(funny, never cruel), and how the creatures get it back to the colony. Then: one way to make bad water good.
+Harry's rule: bad water is never deadly, but it is funny and it can hold back growth. For three water sources: what the water is
+like, what it does to plants and to creatures (funny, never cruel, and how it slows things down), and how the creatures get it back
+to the colony. Then: one way to make bad water good.
 
 ## Who to ask (adjust to what is free; ask Harry before any new install or download)
 - The Town Brain: all eight, plus "what would you build first, and how would a robot tester prove it is fun?"
