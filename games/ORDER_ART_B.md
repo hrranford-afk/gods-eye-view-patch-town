@@ -1,3 +1,6 @@
+> **Superseded on 12 Nov 2026** by `orders/art-b1.md` and `orders/art-b2.md`, written in the town's order form
+> (`HOW_TO_SEND_WORK_TO_PATCHTOWN.md`). Kept for the record. The town says HOW; ignore the tool names below.
+
 # Order: Art B, our own hardware (set by CAIRN, 12 Nov 2026)
 
 **Harry said "yes B" on 12 Nov 2026.** That covers B1, B2 and B3 in `ART_ORDER_BASE_CAMP.md`.
