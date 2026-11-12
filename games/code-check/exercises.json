@@ -1,0 +1,634 @@
+[
+ {
+  "id": "e01",
+  "level": 1,
+  "snippet": "const LC = 0.02; // metres per cell\nfunction landIdx(L, wx, wz) {\n  const dx = wx - L.cx, dz = wz - L.cz;\n  const i = Math.floor((dx * L.c + dz * L.s) / LC) - L.i0;\n  const j = Math.floor((-dx * L.s + dz * L.c) / LC) - L.j0;\n  return i < 0 || j < 0 || i >= L.w || j >= L.h ? -1 : j * L.w + i;\n}\nfunction landState(z, x, zz) {\n  const L = z.land;\n  if (!L) return 0;\n  const k = landIdx(L, x, zz);\n  return k < 0 ? 0 : L.st[k];\n}\nfunction landCalm(z, x, zz) {\n  const L = z.land;\n  if (!L) return 0;\n  const k = landIdx(L, x, zz);\n  return k < 0 ? 0 : L.calm[k];\n}\nfunction mkLand(w, h) {\n  return { cx: 0, cz: 0, c: 1, s: 0, i0: 0, j0: 0, w, h, st: new Uint8Array(w * h).fill(1), calm: new Float32Array(w * h) };\n}",
+  "context": "A land grid covers a zone in square cells of LC metres. landIdx turns a world point into a cell number, or -1 if the point is off the grid. L.st holds one state per cell.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "landIdx can return -1, which looks like it could be used as an array index, but both callers test k < 0 first; the bounds test (i >= L.w) is correct for zero-based cells."
+ },
+ {
+  "id": "e02",
+  "level": 2,
+  "snippet": "function rle(a) {\n  const o = [];\n  let v = a[0], c = 0;\n  for (let k = 0; k < a.length; k++) {\n    if (a[k] === v) c++;\n    else { o.push(v, c); v = a[k]; c = 1; }\n  }\n  if (a.length) o.push(v, c);\n  return o;\n}\nfunction unrle(r, n) {\n  const a = new Uint8Array(n);\n  let k = 0;\n  for (let i = 0; i + 1 < r.length; i += 2) {\n    const c = Math.min(r[i + 1], n - k);\n    a.fill(r[i], k, k + c);\n    k += c;\n  }\n  return a;\n}\nfunction savedLand(L) {\n  return { w: L.w, h: L.h, st: rle(Array.from(L.st)) };\n}\nfunction loadedLand(d) {\n  return { w: d.w, h: d.h, st: unrle(d.st, d.w * d.h) };\n}",
+  "context": "Run-length coding for a grid of small numbers, used when saving land cells. rle makes a flat list of [value, count, value, count, ...]. unrle(r, n) rebuilds an array of n cells.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "rle reads a[0] before the loop, which looks undefined for an empty array, but with no elements the loop does not run and the final push is guarded by a.length. unrle clamps each run with Math.min(r[i + 1], n - k), so a run cannot write past the end."
+ },
+ {
+  "id": "e03",
+  "level": 2,
+  "snippet": "const S = {\n  stock: { food: 7, wood: 3 },\n  cols: [\n    { name: 'Pip', needs: { food: 0.2 } },\n    { name: 'Dot', needs: { food: 0.4 } },\n    { name: 'Moss', needs: { food: 0.1 } },\n    { name: 'Fen', needs: { food: 0.9 } },\n  ],\n};\n\nfunction feedAll(S) {\n  const hungry = S.cols.filter((c) => c.needs.food < 0.5);\n  if (!hungry.length) return 0;\n  const each = Math.floor(S.stock.food / hungry.length);\n  for (const c of hungry) {\n    c.needs.food = Math.min(1, c.needs.food + each * 0.25);\n  }\n  S.stock.food = 0;\n  return each * hungry.length;\n}\nfunction pantryText(S) {\n  return S.stock.food + ' food, ' + S.stock.wood + ' wood';\n}\nfunction mealTime(S) {\n  const given = feedAll(S);\n  return given ? 'Supper! ' + given + ' portions.' : 'Nobody was hungry.';\n}",
+  "context": "When the settlement has food in store, it is shared out in whole units between the colonists who are hungry (food need below 0.5). Each unit given raises that colonist's food need by 0.25. The function returns how many units were given out.",
+  "answer": {
+   "bug": true,
+   "function": "feedAll",
+   "line_hint": "S.stock.food = 0;",
+   "what": "The store is set to zero, but Math.floor only gave out each * hungry.length units, so the remainder is destroyed. With 7 food and 3 hungry colonists, 6 are given and 1 vanishes; with fewer food than hungry colonists all of it is lost and nobody is fed",
+   "trigger": "S.stock.food = 7 with three hungry colonists (each = 2, one unit lost)",
+   "severity": "wrong",
+   "fix": "S.stock.food -= each * hungry.length;",
+   "fixed_snippet": "const S = {\n  stock: { food: 7, wood: 3 },\n  cols: [\n    { name: 'Pip', needs: { food: 0.2 } },\n    { name: 'Dot', needs: { food: 0.4 } },\n    { name: 'Moss', needs: { food: 0.1 } },\n    { name: 'Fen', needs: { food: 0.9 } },\n  ],\n};\n\nfunction feedAll(S) {\n  const hungry = S.cols.filter((c) => c.needs.food < 0.5);\n  if (!hungry.length) return 0;\n  const each = Math.floor(S.stock.food / hungry.length);\n  for (const c of hungry) {\n    c.needs.food = Math.min(1, c.needs.food + each * 0.25);\n  }\n  S.stock.food -= each * hungry.length;\n  return each * hungry.length;\n}\nfunction pantryText(S) {\n  return S.stock.food + ' food, ' + S.stock.wood + ' wood';\n}\nfunction mealTime(S) {\n  const given = feedAll(S);\n  return given ? 'Supper! ' + given + ' portions.' : 'Nobody was hungry.';\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e04",
+  "level": 2,
+  "snippet": "const disk = {};      // stand-in for localStorage\nconst G = { zones: [], settlements: [] };\n\nfunction safeWrite(key, str) {\n  disk[key] = str;\n  return true;\n}\nfunction mapToJSON() {\n  return { kind: 'room-map', zones: G.zones.map((z) => ({ id: z.id, name: z.name })) };\n}\nfunction serialize() {\n  return { v: 2, settlements: G.settlements.map((S) => ({ id: S.id, zid: S.zid })) };\n}\nfunction saveMap() {\n  if (!G.zones.length) return true;\n  return safeWrite('map', JSON.stringify(mapToJSON()));\n}\nfunction saveNow() {\n  return safeWrite('save', JSON.stringify(serialize()));\n}\nfunction persistSoon() {\n  saveMap();\n  saveNow();\n}\nfunction loadSave() {\n  return disk.save ? JSON.parse(disk.save) : null;\n}",
+  "context": "saveMap writes the room map and saveNow writes the colony into browser storage. Both are called from a timer, including on the title screen before a saved colony has been loaded into memory (when G.settlements is still empty).",
+  "answer": {
+   "bug": true,
+   "function": "saveNow",
+   "line_hint": "function saveNow() {",
+   "what": "saveMap has an empty-state guard but saveNow does not, so when the timer fires before the saved colony is loaded, saveNow writes an empty settlement list over the real save",
+   "trigger": "Title screen with a saved colony on disk: G.settlements is empty, the timer calls persistSoon, and the stored colony is replaced by {\"settlements\":[]}",
+   "severity": "lose-data",
+   "fix": "if (!G.settlements.length) return true; at the top of saveNow",
+   "fixed_snippet": "const disk = {};      // stand-in for localStorage\nconst G = { zones: [], settlements: [] };\n\nfunction safeWrite(key, str) {\n  disk[key] = str;\n  return true;\n}\nfunction mapToJSON() {\n  return { kind: 'room-map', zones: G.zones.map((z) => ({ id: z.id, name: z.name })) };\n}\nfunction serialize() {\n  return { v: 2, settlements: G.settlements.map((S) => ({ id: S.id, zid: S.zid })) };\n}\nfunction saveMap() {\n  if (!G.zones.length) return true;\n  return safeWrite('map', JSON.stringify(mapToJSON()));\n}\nfunction saveNow() {\n  if (!G.settlements.length) return true;\n  return safeWrite('save', JSON.stringify(serialize()));\n}\nfunction persistSoon() {\n  saveMap();\n  saveNow();\n}\nfunction loadSave() {\n  return disk.save ? JSON.parse(disk.save) : null;\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e05",
+  "level": 2,
+  "snippet": "const mem = {};\nconst store = {\n  get(k) { return k in mem ? mem[k] : null; },\n  set(k, v) { mem[k] = String(v); },\n};\nconst G = { muted: false, vol: 0.6 };\n\nfunction savePrefs() {\n  store.set('bc-muted', G.muted ? 1 : 0);\n  store.set('bc-vol', G.vol);\n}\nfunction loadPrefs() {\n  G.muted = !!store.get('bc-muted');\n  const v = store.get('bc-vol');\n  G.vol = v === null ? 0.6 : Math.min(1, Math.max(0, parseFloat(v)));\n}\nfunction setMuted(m) {\n  G.muted = m;\n  savePrefs();\n}\nfunction effectiveVolume() {\n  return G.muted ? 0 : G.vol;\n}\nfunction restart() {\n  G.muted = false; G.vol = 0.6;\n  loadPrefs();\n}",
+  "context": "Sound settings are kept in the browser's localStorage, which only stores strings. savePrefs runs when the player changes a setting; loadPrefs runs at start-up.",
+  "answer": {
+   "bug": true,
+   "function": "loadPrefs",
+   "line_hint": "G.muted = !!store.get('bc-muted');",
+   "what": "localStorage returns the string \"0\" for an unmuted game, and \"0\" is truthy, so !!\"0\" is true: after any reload the game is muted even though the player unmuted it",
+   "trigger": "Unmute (setMuted(false)), then reload: loadPrefs sets G.muted = true",
+   "severity": "wrong",
+   "fix": "G.muted = store.get('bc-muted') === '1';",
+   "fixed_snippet": "const mem = {};\nconst store = {\n  get(k) { return k in mem ? mem[k] : null; },\n  set(k, v) { mem[k] = String(v); },\n};\nconst G = { muted: false, vol: 0.6 };\n\nfunction savePrefs() {\n  store.set('bc-muted', G.muted ? 1 : 0);\n  store.set('bc-vol', G.vol);\n}\nfunction loadPrefs() {\n  G.muted = store.get('bc-muted') === '1';\n  const v = store.get('bc-vol');\n  G.vol = v === null ? 0.6 : Math.min(1, Math.max(0, parseFloat(v)));\n}\nfunction setMuted(m) {\n  G.muted = m;\n  savePrefs();\n}\nfunction effectiveVolume() {\n  return G.muted ? 0 : G.vol;\n}\nfunction restart() {\n  G.muted = false; G.vol = 0.6;\n  loadPrefs();\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e06",
+  "level": 3,
+  "snippet": "const STORE = { fails: 0, told: false };\nconst ls = { data: {}, cap: 120, setItem(k, v) { // stand-in for localStorage: small quota\n  const used = Object.keys(this.data).filter((q) => q !== k).reduce((a, q) => a + this.data[q].length, 0);\n  if (used + v.length > this.cap) throw new Error('QuotaExceededError');\n  this.data[k] = v;\n} };\nconst G = { phase: 'play', zones: [], settlements: [] };\n\nfunction safeWrite(key, str) {\n  try { ls.setItem(key, str); return true; } catch (e) { STORE.fails++; return false; }\n}\nfunction storeWarn() { STORE.told = true; }\nfunction saveMap() {\n  if (!G.zones.length) return;\n  if (!safeWrite('map', JSON.stringify(G.zones))) storeWarn();\n}\nfunction saveNow() {\n  if (!G.settlements.length) return;\n  if (!safeWrite('save', JSON.stringify(G.settlements))) storeWarn();\n}\nfunction persist(force) {\n  if (G.phase === 'title') return false;\n  if (G.zones.length) saveMap();\n  saveNow();\n  return true;\n}",
+  "context": "Saves the room map and the colony into the browser's storage. persist() is called by a timer after every change. If the map is missing when the page reloads, the colony cannot be placed in the room.",
+  "answer": {
+   "bug": true,
+   "function": "persist",
+   "function_also": [
+    "saveMap"
+   ],
+   "line_hint": "if (G.zones.length) saveMap(); saveNow();",
+   "what": "The colony is saved even when the map write failed, because saveMap does not report failure. The colony then exists on disk without a map, so it cannot be placed after a reload and the settlement is lost",
+   "trigger": "Storage nearly full: the large map write throws a quota error but the small colony write fits",
+   "severity": "lose-data",
+   "fix": "Make saveMap return true/false and write the colony only if the map saved: if (saveMap()) saveNow();",
+   "fixed_snippet": "const STORE = { fails: 0, told: false };\nconst ls = { data: {}, cap: 120, setItem(k, v) { // stand-in for localStorage: small quota\n  const used = Object.keys(this.data).filter((q) => q !== k).reduce((a, q) => a + this.data[q].length, 0);\n  if (used + v.length > this.cap) throw new Error('QuotaExceededError');\n  this.data[k] = v;\n} };\nconst G = { phase: 'play', zones: [], settlements: [] };\n\nfunction safeWrite(key, str) {\n  try { ls.setItem(key, str); return true; } catch (e) { STORE.fails++; return false; }\n}\nfunction storeWarn() { STORE.told = true; }\nfunction saveMap() {\n  if (!G.zones.length) return true;\n  if (!safeWrite('map', JSON.stringify(G.zones))) { storeWarn(); return false; }\n  return true;\n}\nfunction saveNow() {\n  if (!G.settlements.length) return;\n  if (!safeWrite('save', JSON.stringify(G.settlements))) storeWarn();\n}\nfunction persist(force) {\n  if (G.phase === 'title') return false;\n  if (saveMap()) saveNow();\n  return true;\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e07",
+  "level": 1,
+  "snippet": "const LC = 0.02;\n\nfunction landTidy(L) {\n  let c = 0, o = 0;\n  for (let k = 0; k < L.st.length; k++) {\n    if (L.st[k] === 1) c++;\n    else if (L.st[k] === 2) o++;\n  }\n  return {\n    clear: c,\n    clutter: o,\n    ratio: c + o ? c / (c + o) : 1,\n    area: c * LC * LC,\n  };\n}\nfunction tidyWord(t) {\n  if (t.ratio > 0.9) return 'spotless';\n  if (t.ratio > 0.6) return 'tidy';\n  return 'cluttered';\n}\nfunction roomReport(zones) {\n  return zones.filter((z) => z.land).map((z) => tidyWord(landTidy(z.land)));\n}",
+  "context": "Summarises a land grid: how many cells are clear floor (state 1) and how many have something standing on them (state 2), as a ratio of clear to used cells. LC is the cell size in metres.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "\"Divide by zero\": c / (c + o) would be 0/0 on an empty grid, but the ternary tests c + o first and gives a ratio of 1 for a grid with no clear or clutter cells."
+ },
+ {
+  "id": "e08",
+  "level": 2,
+  "snippet": "function fmtAway(s) {\n  const m = Math.round(s / 60);\n  if (m < 90) return m + ' min';\n  if (m < 36 * 60) return (m / 60).toFixed(1) + ' h';\n  const d = m / 1440;\n  if (d < 14) return Math.round(d) + ' days';\n  if (d < 60) return Math.round(d / 7) + ' weeks';\n  if (d < 730) return Math.round(d / 30.4) + ' months';\n  return (d / 365).toFixed(1) + ' years';\n}\nconst plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');\nfunction welcome(secs) {\n  return 'The Giant was away for ' + fmtAway(secs) + '.';\n}\nfunction nightsText(n) {\n  return n ? plural(n, 'night') + ' passed.' : 'It stayed light the whole time.';\n}",
+  "context": "Turns a number of seconds away into a short phrase for the welcome-back card: minutes up to 90, then hours, then days, weeks, months and years.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "The unit boundaries (m < 90, 36 * 60, d < 14, d < 60, d < 730) look like possible off-by-one slips, but every range hands over to the next unit at a sensible size and rounding never produces \"1 days\" or \"0 weeks\"."
+ },
+ {
+  "id": "e09",
+  "level": 2,
+  "snippet": "const STORE = { status: 'ok', usedBackup: false };\nconst mem = new Map();\nconst get = (k) => (mem.has(k) ? mem.get(k) : null);\n\nfunction safeRead(key, ok) {\n  let bad = false;\n  for (const k of [key, key + '-bak']) {\n    const raw = get(k);\n    if (!raw) continue;\n    try {\n      const d = JSON.parse(raw);\n      if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; }\n      bad = true;\n    } catch (e) { bad = true; }\n  }\n  if (bad) STORE.status = 'corrupt';\n  return null;\n}\nconst loadSave = () => safeRead('save', (d) => d && d.v === 2 && Array.isArray(d.settlements));\nconst loadMapData = () => safeRead('map', (d) => d && Array.isArray(d.zones));\nfunction put(k, v) { mem.set(k, v); }",
+  "context": "Reads one save slot from storage: the main slot first, then its \"-bak\" copy. ok(d) tells whether a parsed value looks like the right kind of save. Returns the data or null. get(k) returns a string or null.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "JSON.parse on a null or garbage value looks risky, but null is skipped by \"if (!raw) continue\" and garbage is caught by the try; ok(d) is only called with a parsed value, and the check d && ... is inside the caller's own test."
+ },
+ {
+  "id": "e10",
+  "level": 1,
+  "snippet": "const DIARY = { on: false, lines: [], seen: {} };\n\nfunction diaryReset() {\n  DIARY.on = true;\n  DIARY.lines = [];\n  DIARY.seen = {};\n}\nfunction diary(text, by, key) {\n  if (key) {\n    if (DIARY.seen[key]) return;\n    DIARY.seen[key] = 1;\n  }\n  DIARY.lines.push({ text, by: by || '' });\n  if (DIARY.lines.length > 80) DIARY.lines.shift();\n}\nfunction diaryText() {\n  return DIARY.lines.map((l) => (l.by ? l.by + ': ' : '') + l.text).join('\\n');\n}\nfunction awayEvents(hours) {\n  for (let h = 0; h < hours; h++) {\n    if (h % 5 === 0) diary('The tent flapped.', 'Pip', 'tent' + (h % 15));\n    diary('Hour ' + h + ' passed.', '');\n  }\n}",
+  "context": "The diary collects short lines about what the colonists did while the player was away. A line with a key is added only once per away story. Only the last 80 lines are ever shown.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "The diary list looks like it grows forever, but diary() drops the oldest line once it holds more than 80; DIARY.seen only remembers event keys and is emptied by diaryReset at the start of each away story."
+ },
+ {
+  "id": "e11",
+  "level": 3,
+  "snippet": "function seededRandom(seed) {\n  let a = (seed >>> 0) || 1;\n  return () => {\n    a = (a + 0x6D2B79F5) >>> 0;\n    let t = a;\n    t = Math.imul(t ^ (t >>> 15), t | 1);\n    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);\n    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;\n  };\n}\nfunction withSeed(seed, fn) {\n  const r = Math.random;\n  Math.random = seededRandom(seed);\n  try { return fn(); } finally { Math.random = r; }\n}\nfunction previewAway(sv) {\n  return withSeed(sv.t, () => [Math.random(), Math.random(), Math.random()]);\n}\nfunction playAway(sv) {\n  return withSeed(sv.t, () => [Math.random(), Math.random(), Math.random()]);\n}",
+  "context": "The away simulation must give the same story every time for the same save, so it runs with a seeded random generator in place of Math.random for the duration of one call. seededRandom(seed) returns a function giving numbers in [0, 1).",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "withSeed replaces Math.random globally, which looks like it could leak if fn throws, but the restore is in a finally block. The seed || 1 stops a zero seed from sticking at zero."
+ },
+ {
+  "id": "e12",
+  "level": 3,
+  "snippet": "function zoneLocal(Z, wx, wz) {\n  const dx = wx - Z.cx, dz = wz - Z.cz;\n  const c = Math.cos(Z.ang), s = Math.sin(Z.ang);\n  return [dx * c + dz * s, -dx * s + dz * c];\n}\nfunction zoneWorld(Z, u, v) {\n  const c = Math.cos(Z.ang), s = Math.sin(Z.ang);\n  return [Z.cx + u * c - v * s, Z.cz + u * s + v * c];\n}\nfunction setZoneFrame(Z, cx, cz, ang) {\n  Z.cx = cx; Z.cz = cz; Z.ang = ang;\n  if (Z.settled) syncTf(Z.settled);\n}\nfunction syncTf(S) {\n  const [x, z] = zoneWorld(S.zoneRef, S.o[0], S.o[1]);\n  S.tf = { x, z };\n}\nfunction settle(Z, wx, wz) {\n  const S = { zoneRef: Z, o: zoneLocal(Z, wx, wz), tf: null };\n  Z.settled = S;\n  syncTf(S);\n  return S;\n}",
+  "context": "A zone sits on the table at (cx, cz), turned by angle ang. zoneLocal converts a world point to the zone's own (u, v) coordinates, and zoneWorld converts back. These are used to keep a settlement fixed to its zone.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "zoneLocal and zoneWorld use sin and cos with different signs, which looks like a swapped sign bug, but they are exact inverses: converting a point to local and back returns the same point."
+ },
+ {
+  "id": "e13",
+  "level": 2,
+  "snippet": "const MAP_KEY = 'base-camp-map-v1';\nconst mem = new Map(); // stand-in for localStorage\nconst store = {\n  get(k) { return mem.has(k) ? mem.get(k) : null; },\n  set(k, v) { mem.set(k, String(v)); },\n  del(k) { mem.delete(k); },\n};\nfunction safeWrite(key, str) {\n  const old = store.get(key);\n  if (old) store.set(key + '-bak', old);\n  store.set(key, str);\n  return true;\n}\nfunction safeRead(key, ok) { // main slot first, then the backup\n  for (const k of [key, key + '-bak']) {\n    const raw = store.get(k);\n    if (!raw) continue;\n    try { const d = JSON.parse(raw); if (ok(d)) return d; } catch (e) { /* try the next slot */ }\n  }\n  return null;\n}\nconst loadMapData = () => safeRead(MAP_KEY, (d) => d && Array.isArray(d.zones));\nfunction updateTitle() { /* redraws the title card */ }\nfunction forgetSavedMap() {\n  store.del(MAP_KEY);\n  updateTitle();\n}",
+  "context": "Each save slot keeps the previous good value in a \"-bak\" slot, and safeRead falls back to it when the main slot is missing or damaged. The Menu has a \"Forget the saved map\" button, after which the game should have no saved map.",
+  "answer": {
+   "bug": true,
+   "function": "forgetSavedMap",
+   "line_hint": "store.del(MAP_KEY);",
+   "what": "Only the main slot is deleted; the \"-bak\" copy remains, and safeRead falls back to it, so the \"forgotten\" map comes straight back on the next load",
+   "trigger": "Save the map at least twice (so a backup exists), press Forget the saved map, then load: loadMapData still returns the old map",
+   "severity": "wrong",
+   "fix": "Also delete MAP_KEY + \"-bak\": store.del(MAP_KEY + '-bak');",
+   "fixed_snippet": "const MAP_KEY = 'base-camp-map-v1';\nconst mem = new Map(); // stand-in for localStorage\nconst store = {\n  get(k) { return mem.has(k) ? mem.get(k) : null; },\n  set(k, v) { mem.set(k, String(v)); },\n  del(k) { mem.delete(k); },\n};\nfunction safeWrite(key, str) {\n  const old = store.get(key);\n  if (old) store.set(key + '-bak', old);\n  store.set(key, str);\n  return true;\n}\nfunction safeRead(key, ok) { // main slot first, then the backup\n  for (const k of [key, key + '-bak']) {\n    const raw = store.get(k);\n    if (!raw) continue;\n    try { const d = JSON.parse(raw); if (ok(d)) return d; } catch (e) { /* try the next slot */ }\n  }\n  return null;\n}\nconst loadMapData = () => safeRead(MAP_KEY, (d) => d && Array.isArray(d.zones));\nfunction updateTitle() { /* redraws the title card */ }\nfunction forgetSavedMap() {\n  store.del(MAP_KEY); store.del(MAP_KEY + '-bak');\n  updateTitle();\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e14",
+  "level": 3,
+  "snippet": "const disk = {};\nconst G = { visits: 4, cur: 'r1' };\nconst HOMES = { cur: 'r1', rooms: [{ id: 'r1', name: 'My room', visits: 4 }] };\n\nfunction homesSave() {\n  disk.rooms = JSON.stringify(HOMES);\n}\nfunction saveNow() {\n  disk.save = JSON.stringify({ v: 2, visits: G.visits });\n}\nfunction homeInfo(id) {\n  return HOMES.rooms.find((r) => r.id === id) || null;\n}\nfunction homeStats() {\n  const r = homeInfo(HOMES.cur);\n  if (!r) return;\n  r.visits = G.visits;\n  r.last = 1;\n  homesSave();\n}\nfunction endVisit() {\n  saveNow();\n  G.visits++;\n  homeStats();\n}\nfunction titleText() {\n  return HOMES.rooms.map((r) => r.name + ': ' + r.visits + ' visits').join('; ');\n}",
+  "context": "At the end of a visit the game saves the colony (which stores the visit count) and updates the rooms list (which also shows the visit count). After a reload both numbers should agree.",
+  "answer": {
+   "bug": true,
+   "function": "endVisit",
+   "line_hint": "saveNow(); G.visits++; homeStats();",
+   "what": "The colony is saved before the visit counter is incremented, but the rooms list is written after, so the two stores disagree by one: the save says 4 visits and the rooms list says 5",
+   "trigger": "Any call to endVisit",
+   "severity": "wrong",
+   "fix": "Increment G.visits first, then call saveNow() and homeStats()",
+   "fixed_snippet": "const disk = {};\nconst G = { visits: 4, cur: 'r1' };\nconst HOMES = { cur: 'r1', rooms: [{ id: 'r1', name: 'My room', visits: 4 }] };\n\nfunction homesSave() {\n  disk.rooms = JSON.stringify(HOMES);\n}\nfunction saveNow() {\n  disk.save = JSON.stringify({ v: 2, visits: G.visits });\n}\nfunction homeInfo(id) {\n  return HOMES.rooms.find((r) => r.id === id) || null;\n}\nfunction homeStats() {\n  const r = homeInfo(HOMES.cur);\n  if (!r) return;\n  r.visits = G.visits;\n  r.last = 1;\n  homesSave();\n}\nfunction endVisit() {\n  G.visits++;\n  saveNow();\n  homeStats();\n}\nfunction titleText() {\n  return HOMES.rooms.map((r) => r.name + ': ' + r.visits + ' visits').join('; ');\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e15",
+  "level": 2,
+  "snippet": "function endJob(c) {\n  c.job = null;\n  c.cool = 0.4;\n}\nfunction startJob(c, type, dur) {\n  c.job = { type, dur, t: 0 };\n}\nfunction runJob(c, dt) {\n  const j = c.job;\n  if (!j) return;\n  j.t = Math.min(j.dur, j.t + dt);\n  if (j.t > j.dur) endJob(c);\n}\nfunction chooseJob(c) {\n  if (c.job || c.cool > 0) return;\n  startJob(c, 'read', 5);\n}\nfunction frame(c, dt) {\n  c.cool = Math.max(0, (c.cool || 0) - dt);\n  chooseJob(c);\n  runJob(c, dt);\n}",
+  "context": "A colonist's job has a duration j.dur in seconds and an elapsed time j.t. runJob is called every frame with the frame time dt; when the job is done, endJob clears c.job so the colonist can choose a new one.",
+  "answer": {
+   "bug": true,
+   "function": "runJob",
+   "line_hint": "if (j.t > j.dur) endJob(c);",
+   "what": "j.t is clamped to j.dur with Math.min, so it can never be strictly greater than j.dur; endJob is never called and the colonist is stuck on the job forever",
+   "trigger": "Any job: after dur seconds j.t equals dur and the > test stays false",
+   "severity": "stuck",
+   "fix": "if (j.t >= j.dur) endJob(c);",
+   "fixed_snippet": "function endJob(c) {\n  c.job = null;\n  c.cool = 0.4;\n}\nfunction startJob(c, type, dur) {\n  c.job = { type, dur, t: 0 };\n}\nfunction runJob(c, dt) {\n  const j = c.job;\n  if (!j) return;\n  j.t = Math.min(j.dur, j.t + dt);\n  if (j.t >= j.dur) endJob(c);\n}\nfunction chooseJob(c) {\n  if (c.job || c.cool > 0) return;\n  startJob(c, 'read', 5);\n}\nfunction frame(c, dt) {\n  c.cool = Math.max(0, (c.cool || 0) - dt);\n  chooseJob(c);\n  runJob(c, dt);\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e16",
+  "level": 3,
+  "snippet": "const G = { mode: 'practice', holdPlace: false, settlements: [] };\n\nfunction mainSettlement() {\n  return G.settlements.find((S) => S.placed && !S.awaiting && !S.lost) || null;\n}\nfunction restoreSaved(n) { // Continue: colonies come back, held until the map is lined up\n  G.holdPlace = true;\n  for (let i = 1; i <= n; i++) {\n    G.settlements.push({ id: i, placed: !G.holdPlace, awaiting: false, lost: false });\n  }\n}\nfunction settleZone(zone) {\n  zone.settled = true;\n  G.settlements.push({ id: G.settlements.length + 1, placed: true, awaiting: false, lost: false });\n}\nfunction btArenaPick() { return [{ Z: { id: 7, settled: false } }, { Z: { id: 8, settled: false } }]; }\n\nfunction btBegin(o) {\n  const pick2 = btArenaPick();\n  if (!pick2) return false;\n  if (!mainSettlement() && G.mode === 'practice' && !pick2[0].Z.settled) {\n    settleZone(pick2[0].Z); // the practice colony lands on the player's surface\n  }\n  return true;\n}",
+  "context": "Battle! can be started from the title screen. A saved colony that is being continued is restored but held (placed = false) until the map is lined up with the real room. The battle needs a colony to fight for: if the player has none, it founds one on the first arena surface. mainSettlement() returns the first settlement that is placed, not awaiting and not lost.",
+  "answer": {
+   "bug": true,
+   "function": "btBegin",
+   "line_hint": "if (!mainSettlement() && G.mode === 'practice'",
+   "what": "mainSettlement() is null for a restored colony that is still held (placed = false), so the check thinks the player has no colony and founds a second, stray settlement, and the battle reward goes to it",
+   "trigger": "Title screen with a saved colony, tap Battle! before the map is lined up",
+   "severity": "wrong",
+   "fix": "Test whether any settlement exists: if (!G.settlements.length && ...)",
+   "fixed_snippet": "const G = { mode: 'practice', holdPlace: false, settlements: [] };\n\nfunction mainSettlement() {\n  return G.settlements.find((S) => S.placed && !S.awaiting && !S.lost) || null;\n}\nfunction restoreSaved(n) { // Continue: colonies come back, held until the map is lined up\n  G.holdPlace = true;\n  for (let i = 1; i <= n; i++) {\n    G.settlements.push({ id: i, placed: !G.holdPlace, awaiting: false, lost: false });\n  }\n}\nfunction settleZone(zone) {\n  zone.settled = true;\n  G.settlements.push({ id: G.settlements.length + 1, placed: true, awaiting: false, lost: false });\n}\nfunction btArenaPick() { return [{ Z: { id: 7, settled: false } }, { Z: { id: 8, settled: false } }]; }\n\nfunction btBegin(o) {\n  const pick2 = btArenaPick();\n  if (!pick2) return false;\n  if (!G.settlements.length && G.mode === 'practice' && !pick2[0].Z.settled) {\n    settleZone(pick2[0].Z); // the practice colony lands on the player's surface\n  }\n  return true;\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e17",
+  "level": 2,
+  "snippet": "const clamp = (v, a, b) => Math.max(a, Math.min(b, v));\n\nfunction restoreColonist(d) {\n  const c = { id: d.id, name: d.name, x: d.x || 0, z: d.z || 0 };\n  c.needs = d.needs;\n  return c;\n}\nfunction step(c, dt) {\n  const n = c.needs;\n  n.water = Math.max(0, n.water - dt / 1300);\n  n.food = Math.max(0, n.food - dt / 1500);\n  const avg = (n.food + n.water + n.rest) / 3;\n  n.joy = clamp(n.joy + (avg > 0.6 ? dt / 900 : -dt / 500), 0.05, 1);\n}\nfunction mood(c) {\n  const j = c.needs.joy;\n  return j > 0.7 ? 'happy' : j > 0.35 ? 'fine' : 'low';\n}\nconst oldSave = { id: 1, name: 'Pip', x: 0.1, z: 0.2, needs: { water: 0.9, food: 0.8, rest: 0.7 } };",
+  "context": "Colonists are restored from an older save file. Saves from early builds have needs for water, food and rest only; the joy need was added later. Needs are numbers from 0 to 1. step is called every frame for each colonist.",
+  "answer": {
+   "bug": true,
+   "function": "restoreColonist",
+   "function_also": [
+    "step"
+   ],
+   "line_hint": "c.needs = d.needs;",
+   "what": "A save without a joy need leaves c.needs.joy undefined; step computes undefined + number = NaN and clamp(NaN) stays NaN, so the colonist's joy and mood are permanently broken (mood always returns \"low\")",
+   "trigger": "Restoring oldSave (no joy field) and running step once",
+   "severity": "wrong",
+   "fix": "c.needs = Object.assign({ water: 1, food: 1, rest: 1, joy: 0.6 }, d.needs);",
+   "fixed_snippet": "const clamp = (v, a, b) => Math.max(a, Math.min(b, v));\n\nfunction restoreColonist(d) {\n  const c = { id: d.id, name: d.name, x: d.x || 0, z: d.z || 0 };\n  c.needs = Object.assign({ water: 1, food: 1, rest: 1, joy: 0.6 }, d.needs);\n  return c;\n}\nfunction step(c, dt) {\n  const n = c.needs;\n  n.water = Math.max(0, n.water - dt / 1300);\n  n.food = Math.max(0, n.food - dt / 1500);\n  const avg = (n.food + n.water + n.rest) / 3;\n  n.joy = clamp(n.joy + (avg > 0.6 ? dt / 900 : -dt / 500), 0.05, 1);\n}\nfunction mood(c) {\n  const j = c.needs.joy;\n  return j > 0.7 ? 'happy' : j > 0.35 ? 'fine' : 'low';\n}\nconst oldSave = { id: 1, name: 'Pip', x: 0.1, z: 0.2, needs: { water: 0.9, food: 0.8, rest: 0.7 } };"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e18",
+  "level": 2,
+  "snippet": "const HOMES_K = ['tent', 'hut'];\n\nfunction homeOf(S, c) {\n  const hs = S.things.filter((t) => t.built && !t.hold && HOMES_K.includes(t.kind));\n  if (!hs.length) return null;\n  hs.sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z));\n  return hs[0];\n}\nfunction goHome(S, c) {\n  const h = homeOf(S, c);\n  if (!h) return false;\n  c.job = { type: 'sleep', th: h };\n  return true;\n}\nfunction housing(S) {\n  return S.things.filter((t) => t.built && HOMES_K.includes(t.kind)).length * 3;\n}\nconst S = { things: [\n  { kind: 'farm', built: true, x: 0, z: 0 },\n  { kind: 'hut', built: true, x: 0.5, z: 0.5 },\n  { kind: 'tent', built: true, x: 0.1, z: 0.1 },\n  { kind: 'hut', built: false, x: 0.11, z: 0.11 },\n] };",
+  "context": "Finds the home (hut or tent) nearest to a colonist, among the buildings that are finished and not on hold. S.things is the settlement's list of buildings and must keep its order, because saves refer to it by position.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "hs.sort looks like it reorders S.things in place, but hs is a new array made by filter; and hs[0] looks undefined for an empty list, but the function returns null first if there are none."
+ },
+ {
+  "id": "e19",
+  "level": 3,
+  "snippet": "const G = { zones: [], nextMZ: 1 };\nconst AREA_CACHE = new Map(); // zone id -> clear area in square metres\nconst CELL = 0.0004;\n\nfunction clearArea(Z) {\n  if (AREA_CACHE.has(Z.id)) return AREA_CACHE.get(Z.id);\n  let n = 0;\n  for (const c of Z.cells) if (c === 1) n++;\n  const a = n * CELL;\n  AREA_CACHE.set(Z.id, a);\n  return a;\n}\nfunction worldDrop() {\n  G.zones = [];\n  G.nextMZ = 1;\n}\nfunction loadRoom(room) {\n  worldDrop();\n  for (const z of room.zones) G.zones.push({ id: G.nextMZ++, cells: z.cells.slice() });\n}\nfunction roomArea() {\n  return G.zones.reduce((a, Z) => a + clearArea(Z), 0);\n}\nfunction canSettle(Z) {\n  return clearArea(Z) > 0.08;\n}",
+  "context": "clearArea measures how much clear floor a zone has; it is slow, so the answer is cached by zone id. Each room has its own map. When the player switches rooms, the old zones are dropped and the new room's zones are numbered again from 1.",
+  "answer": {
+   "bug": true,
+   "function": "worldDrop",
+   "function_also": [
+    "clearArea",
+    "loadRoom"
+   ],
+   "line_hint": "AREA_CACHE is never cleared",
+   "what": "The cache is keyed by zone id but zone ids restart at 1 in every room and the cache is not cleared in worldDrop, so after switching rooms clearArea returns the previous room's cached areas for zones with the same id",
+   "trigger": "Load room A, call roomArea(), load room B (whose zones have different cells), call roomArea(): the result is still room A's",
+   "severity": "wrong",
+   "fix": "Call AREA_CACHE.clear() in worldDrop (or key the cache by room and zone)",
+   "fixed_snippet": "const G = { zones: [], nextMZ: 1 };\nconst AREA_CACHE = new Map(); // zone id -> clear area in square metres\nconst CELL = 0.0004;\n\nfunction clearArea(Z) {\n  if (AREA_CACHE.has(Z.id)) return AREA_CACHE.get(Z.id);\n  let n = 0;\n  for (const c of Z.cells) if (c === 1) n++;\n  const a = n * CELL;\n  AREA_CACHE.set(Z.id, a);\n  return a;\n}\nfunction worldDrop() {\n  AREA_CACHE.clear();\n  G.zones = [];\n  G.nextMZ = 1;\n}\nfunction loadRoom(room) {\n  worldDrop();\n  for (const z of room.zones) G.zones.push({ id: G.nextMZ++, cells: z.cells.slice() });\n}\nfunction roomArea() {\n  return G.zones.reduce((a, Z) => a + clearArea(Z), 0);\n}\nfunction canSettle(Z) {\n  return clearArea(Z) > 0.08;\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e20",
+  "level": 3,
+  "snippet": "const STORE = { status: 'ok', fails: 0, err: '' };\n\nfunction safeWrite(key, str) {\n  try {\n    const old = localStorage.getItem(key);\n    if (old) {\n      try {\n        JSON.parse(old);\n        try { localStorage.setItem(key + '-bak', old); } catch (e) { /* no room for a backup */ }\n      } catch (e) { /* the old value was damaged: keep the older backup */ }\n    }\n    localStorage.setItem(key, str);\n    if (localStorage.getItem(key) !== str) throw new Error('could not read the save back');\n    return true;\n  } catch (e) {\n    STORE.fails++;\n    STORE.err = String(e && e.message || e);\n    STORE.status = STORE.status === 'unavailable' ? 'unavailable' : 'failing';\n    return false;\n  }\n}\nfunction saveSlot(key, obj) {\n  if (!safeWrite(key, JSON.stringify(obj))) return false;\n  return true;\n}",
+  "context": "Writes one save slot into the browser's localStorage, keeping the previous good value in a \"-bak\" slot. Returns true only if the new value can be read back. localStorage is the browser's own global.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "localStorage.setItem can throw when the store is full, but every call is inside try/catch; the backup write has its own nested try so a failed backup cannot stop the main write; a damaged old value is not copied to the backup."
+ },
+ {
+  "id": "e21",
+  "level": 1,
+  "snippet": "const G = { cur: null, settlements: [] };\n\nfunction mainSettlement() {\n  return (G.cur && G.cur.placed && !G.cur.awaiting ? G.cur : null)\n    || G.settlements.find((S) => S.placed && !S.awaiting && !S.lost)\n    || null;\n}\nfunction focusMain() {\n  const S = mainSettlement();\n  if (!S) return 'nothing to look at';\n  return 'looking at ' + S.name;\n}\nfunction colonistTotal() {\n  return G.settlements.reduce((a, S) => a + (S.lost ? 0 : S.cols.length), 0);\n}\nfunction addDemo(name, o) {\n  const S = Object.assign({ name, cols: [], placed: true, awaiting: false, lost: false }, o);\n  G.settlements.push(S);\n  return S;\n}",
+  "context": "Returns the settlement the player is looking at (G.cur, which the game clears when its settlement is lost) if it is placed and not waiting for settlers; otherwise the first settlement that is placed, not waiting and not lost; otherwise null.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "G.cur might be null and S.placed might be read on undefined, but G.cur is tested before use and the find() falls through to null; the callers also check for null."
+ },
+ {
+  "id": "e22",
+  "level": 1,
+  "snippet": "const NEEDS0 = { water: 1, food: 1, rest: 1, joy: 0.6 };\nconst G = { uid: 0 };\n\nfunction addColonist(S, o) {\n  const c = {\n    id: ++G.uid,\n    name: o.name,\n    x: o.x || 0,\n    z: o.z || 0,\n    needs: Object.assign({}, NEEDS0, o.needs),\n    job: null,\n  };\n  S.cols.push(c);\n  return c;\n}\nfunction eat(c) {\n  c.needs.food = Math.min(1, c.needs.food + 0.4);\n}\nfunction drain(c, dt) {\n  c.needs.food = Math.max(0, c.needs.food - dt / 1500);\n}\nconst S = { cols: [] };",
+  "context": "Every new colonist starts with the same default needs (all from 0 to 1); loaded colonists bring their own saved needs. Each colonist's needs then change on their own as time passes.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "NEEDS0 is a shared default object, which looks like colonists would share and mutate it, but every colonist gets a fresh copy with Object.assign({}, NEEDS0, ...), and the saved needs only override fields."
+ },
+ {
+  "id": "e23",
+  "level": 2,
+  "snippet": "const G = { simT: 0, requests: [], settlements: [{ id: 1, stock: { water: 2 } }] };\nfunction reqUi() { /* redraws the buttons from G.requests */ }\n\nfunction requestsStep(S) {\n  for (const r of G.requests.slice()) {\n    if (r.sid === S.id && G.simT - r.t > 420) resolveRequest(r, true);\n  }\n}\nfunction resolveRequest(r, silent) {\n  const i = G.requests.indexOf(r);\n  if (i >= 0) G.requests.splice(i, 1);\n  reqUi();\n}\nfunction giveRequest(r) { // the player taps the button\n  if (G.requests.indexOf(r) < 0) { reqUi(); return; } // already timed out or answered\n  const S = G.settlements.find((s) => s.id === r.sid);\n  if (!S) return resolveRequest(r);\n  if (r.def.give === 'water') S.stock.water += 6;\n  resolveRequest(r);\n}\nfunction addRequest(S, give, who) {\n  G.requests.push({ sid: S.id, def: { give }, t: G.simT, who });\n}",
+  "context": "Speech-bubble requests (\"water, please\") sit in G.requests. A request fades after 420 seconds; the player can also tap its button, which may still be on screen after the request has gone. reqUi() redraws the buttons.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "indexOf can return -1 for a request that is already gone, but both resolveRequest and giveRequest check for that before using the index, so nothing wrong is removed and there is no double reward."
+ },
+ {
+  "id": "e24",
+  "level": 2,
+  "snippet": "const clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst NEEDS0 = { water: 1, food: 1, rest: 1, joy: 0.6 };\n\nfunction num(v, dflt) {\n  return Number.isFinite(v) ? v : dflt;\n}\nfunction restoreColonist(d) {\n  const c = { id: d.id, name: String(d.name || 'Someone'), x: num(d.x, 0), z: num(d.z, 0) };\n  const sv = d.needs || {};\n  c.needs = {};\n  for (const k of Object.keys(NEEDS0)) c.needs[k] = clamp(num(sv[k], NEEDS0[k]), 0, 1);\n  return c;\n}\nfunction step(c, dt) {\n  const n = c.needs;\n  n.water = Math.max(0, n.water - dt / 1300);\n  n.food = Math.max(0, n.food - dt / 1500);\n  const avg = (n.food + n.water + n.rest) / 3;\n  n.joy = clamp(n.joy + (avg > 0.6 ? dt / 900 : -dt / 500), 0.05, 1);\n}\nfunction mood(c) {\n  const j = c.needs.joy;\n  return j > 0.7 ? 'happy' : j > 0.35 ? 'fine' : 'low';\n}",
+  "context": "Colonists are restored from a save file. Saves from early builds have needs for water, food and rest only; joy was added later. Needs are numbers from 0 to 1. A hand-edited save may hold nonsense values.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "An older save may lack the joy need, which looks like it would give NaN, but restoreColonist fills in defaults and checks every number with Number.isFinite before using it."
+ },
+ {
+  "id": "e25",
+  "level": 2,
+  "snippet": "function nameNear(spots, x, z, rad) {\n  let best = null, bd = rad;\n  for (const s of spots) {\n    if (s.src === 'default') continue;\n    const d = Math.hypot(s.x - x, s.z - x);\n    if (d < bd) { bd = d; best = s; }\n  }\n  return best;\n}\nfunction labelAt(spots, x, z) {\n  const s = nameNear(spots, x, z, 0.12);\n  return s ? s.name : 'somewhere';\n}\nfunction countNamed(spots) {\n  return spots.filter((s) => s.src !== 'default').length;\n}\nconst spots = [\n  { name: 'The Cup', x: 0.2, z: 0.5, src: 'taught' },\n  { name: 'Desk edge', x: 0.9, z: 0.1, src: 'taught' },\n  { name: 'Table', x: 0, z: 0, src: 'default' },\n];",
+  "context": "Finds the named spot closest to a point (x, z) on the table, as long as it is within rad metres. Spots are objects with x and z in metres. Returns the spot or null.",
+  "answer": {
+   "bug": true,
+   "function": "nameNear",
+   "line_hint": "Math.hypot(s.x - x, s.z - x)",
+   "what": "Copy-paste slip: the z distance is computed against x instead of z (s.z - x), so the distance is wrong whenever x and z differ",
+   "trigger": "nameNear(spots, 0.2, 0.5, 0.12) should find The Cup (distance 0) but computes a distance of 0.3 and returns null",
+   "severity": "wrong",
+   "fix": "Math.hypot(s.x - x, s.z - z)",
+   "fixed_snippet": "function nameNear(spots, x, z, rad) {\n  let best = null, bd = rad;\n  for (const s of spots) {\n    if (s.src === 'default') continue;\n    const d = Math.hypot(s.x - x, s.z - z);\n    if (d < bd) { bd = d; best = s; }\n  }\n  return best;\n}\nfunction labelAt(spots, x, z) {\n  const s = nameNear(spots, x, z, 0.12);\n  return s ? s.name : 'somewhere';\n}\nfunction countNamed(spots) {\n  return spots.filter((s) => s.src !== 'default').length;\n}\nconst spots = [\n  { name: 'The Cup', x: 0.2, z: 0.5, src: 'taught' },\n  { name: 'Desk edge', x: 0.9, z: 0.1, src: 'taught' },\n  { name: 'Table', x: 0, z: 0, src: 'default' },\n];"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e26",
+  "level": 2,
+  "snippet": "const AWAY_MAX = 24 * 3600; // the part that is simulated in detail\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst G = { simT: 0, births: 0 };\n\nfunction awayDays(secs) {\n  const days = Math.min(36500, Math.floor(secs / 86400));\n  const out = { days, births: 0 };\n  if (days < 1) return out;\n  for (let d = 0; d < days; d++) if (d % 3 === 0) out.births++;\n  return out;\n}\nfunction awaySim(secs) {\n  const total = secs;\n  secs = clamp(secs, 0, AWAY_MAX);\n  const rest = Math.max(0, total - secs);\n  const step = 60;\n  for (let t = 0; t < secs; t += step) G.simT += step;\n  let long = null;\n  if (rest >= 86400) {\n    long = awayDays(rest);\n    G.simT += rest;\n  }\n  if (long) G.births += long.births;\n  return { secs: total, long };\n}",
+  "context": "The player comes back after being away for secs seconds. The first 24 hours are simulated in detail; any time beyond that is passed to awayDays, a cheap day-level model. The game clock G.simT must end up advanced by the whole time away.",
+  "answer": {
+   "bug": true,
+   "function": "awaySim",
+   "function_also": [
+    "awayDays"
+   ],
+   "line_hint": "if (rest >= 86400) {",
+   "what": "Time away beyond the first 24 hours is thrown away unless it is at least a whole day: with 42 hours away, rest is 18 hours, the >= 86400 test fails, and the game clock and day model skip it. awayDays also floors, so a part day counts as zero",
+   "trigger": "Player is away for any time over 24 hours that is not a whole number of extra days, such as 42 hours",
+   "severity": "wrong",
+   "fix": "Use if (rest > 0) and round the days in awayDays (Math.round(secs / 86400)); advance G.simT by rest in either case",
+   "fixed_snippet": "const AWAY_MAX = 24 * 3600; // the part that is simulated in detail\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst G = { simT: 0, births: 0 };\n\nfunction awayDays(secs) {\n  const days = Math.min(36500, Math.round(secs / 86400));\n  const out = { days, births: 0 };\n  if (days < 1) return out;\n  for (let d = 0; d < days; d++) if (d % 3 === 0) out.births++;\n  return out;\n}\nfunction awaySim(secs) {\n  const total = secs;\n  secs = clamp(secs, 0, AWAY_MAX);\n  const rest = Math.max(0, total - secs);\n  const step = 60;\n  for (let t = 0; t < secs; t += step) G.simT += step;\n  let long = null;\n  if (rest > 0) {\n    long = awayDays(rest);\n    G.simT += rest;\n  }\n  if (long) G.births += long.births;\n  return { secs: total, long };\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e27",
+  "level": 2,
+  "snippet": "const G = { simT: 0, uid: 0, requests: [], settlements: [{ id: 1, lost: false, stock: { water: 2 } }] };\nfunction reqUi() { /* redraws the buttons from G.requests */ }\n\nfunction addRequest(S, def, who) {\n  G.requests.push({ id: ++G.uid, def, sid: S.id, t: G.simT, who });\n  reqUi();\n}\nfunction requestsStep(S) {\n  // too old: it fades away\n  for (const r of G.requests.slice()) {\n    if (r.sid === S.id && G.simT - r.t > 420) resolveRequest(r, true);\n  }\n}\nfunction resolveRequest(r, silent) {\n  G.requests.splice(G.requests.indexOf(r), 1);\n  reqUi();\n}\nfunction giveRequest(r) { // the player taps the button\n  const S = G.settlements.find((s) => s.id === r.sid);\n  if (!S) return resolveRequest(r);\n  if (r.def.give === 'water') S.stock.water += 6;\n  resolveRequest(r);\n}",
+  "context": "Little speech-bubble buttons ask the player for help (\"water, please\"). A request fades away after 420 seconds; the player can also tap its button to answer it. reqUi() redraws the buttons from G.requests.",
+  "answer": {
+   "bug": true,
+   "function": "resolveRequest",
+   "function_also": [
+    "giveRequest"
+   ],
+   "line_hint": "G.requests.splice(G.requests.indexOf(r), 1)",
+   "what": "indexOf returns -1 when the request is already gone (timed out while its button was still on screen), and splice(-1, 1) then removes the last request in the list, which is a different one",
+   "trigger": "A request times out and is removed, then the player taps its stale button: giveRequest calls resolveRequest(r) with r no longer in G.requests",
+   "severity": "wrong",
+   "fix": "const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1);",
+   "fixed_snippet": "const G = { simT: 0, uid: 0, requests: [], settlements: [{ id: 1, lost: false, stock: { water: 2 } }] };\nfunction reqUi() { /* redraws the buttons from G.requests */ }\n\nfunction addRequest(S, def, who) {\n  G.requests.push({ id: ++G.uid, def, sid: S.id, t: G.simT, who });\n  reqUi();\n}\nfunction requestsStep(S) {\n  // too old: it fades away\n  for (const r of G.requests.slice()) {\n    if (r.sid === S.id && G.simT - r.t > 420) resolveRequest(r, true);\n  }\n}\nfunction resolveRequest(r, silent) {\n  const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1);\n  reqUi();\n}\nfunction giveRequest(r) { // the player taps the button\n  const S = G.settlements.find((s) => s.id === r.sid);\n  if (!S) return resolveRequest(r);\n  if (r.def.give === 'water') S.stock.water += 6;\n  resolveRequest(r);\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e28",
+  "level": 3,
+  "snippet": "const FUN = { musicT: 0, notes: 0 };\nconst G = { music: false };\n\nfunction playNote() {\n  FUN.notes++;\n}\nfunction musicStart() {\n  FUN.musicT = setInterval(playNote, 400);\n}\nfunction musicStop() {\n  if (FUN.musicT) clearInterval(FUN.musicT);\n  FUN.musicT = 0;\n}\nfunction toggleMusic(on) {\n  G.music = on;\n  if (on) musicStart();\n  else musicStop();\n  return G.music;\n}\nfunction festivalStart() {\n  toggleMusic(true);\n}\nfunction festivalEnd(keepMusic) {\n  if (!keepMusic) toggleMusic(false);\n}",
+  "context": "Music is a repeating timer that plays one note every 400 ms. toggleMusic(on) is called by the Music menu button and also by the festival, so it can be called with true when music is already on.",
+  "answer": {
+   "bug": true,
+   "function": "musicStart",
+   "function_also": [
+    "toggleMusic"
+   ],
+   "line_hint": "FUN.musicT = setInterval(playNote, 400);",
+   "what": "musicStart does not clear an existing timer first. A second start overwrites FUN.musicT, so the first interval can never be cleared; musicStop stops only one and the music keeps playing (and doubles up) after being switched off",
+   "trigger": "toggleMusic(true) while music is already on (menu button then festivalStart), then toggleMusic(false)",
+   "severity": "wrong",
+   "fix": "Call musicStop() at the start of musicStart()",
+   "fixed_snippet": "const FUN = { musicT: 0, notes: 0 };\nconst G = { music: false };\n\nfunction playNote() {\n  FUN.notes++;\n}\nfunction musicStart() {\n  musicStop();\n  FUN.musicT = setInterval(playNote, 400);\n}\nfunction musicStop() {\n  if (FUN.musicT) clearInterval(FUN.musicT);\n  FUN.musicT = 0;\n}\nfunction toggleMusic(on) {\n  G.music = on;\n  if (on) musicStart();\n  else musicStop();\n  return G.music;\n}\nfunction festivalStart() {\n  toggleMusic(true);\n}\nfunction festivalEnd(keepMusic) {\n  if (!keepMusic) toggleMusic(false);\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e29",
+  "level": 2,
+  "snippet": "const SEASONS = [\n  ['winter', 'Winter: frost on the window.'],\n  ['spring', 'Spring: the seedlings noticed the light.'],\n  ['summer', 'Summer: warm shelves, sleepy colonists.'],\n  ['autumn', 'Autumn: the light turned low and gold.'],\n];\nconst seasonOf = (ms) => SEASONS[Math.floor((new Date(ms).getMonth() % 12) / 3)];\n\nfunction seasonsBetween(t0, now) { // one line each time the season changes, checked weekly\n  const out = [];\n  let last = seasonOf(t0)[0];\n  for (let m = t0, n = 0; m < now && n < 400; m += 7 * 86400000, n++) {\n    const sn = seasonOf(m);\n    if (sn[0] !== last) { last = sn[0]; out.push(sn[1]); }\n  }\n  return out.slice(-4);\n}\nfunction seasonLabel(ms) {\n  return seasonOf(ms)[0].toUpperCase();\n}",
+  "context": "Picks the season line for the \"time away\" story from a timestamp in milliseconds. Winter is December to February, spring March to May, summer June to August, autumn September to November (northern hemisphere).",
+  "answer": {
+   "bug": true,
+   "function": "seasonOf",
+   "line_hint": "getMonth() % 12) / 3",
+   "what": "getMonth() is 0-based (January = 0), so the quarter boundaries are shifted by one month: December falls in the last (autumn) bucket and March, June, September land one season too early",
+   "trigger": "Any date in December, March, June or September, for example 15 December gives autumn",
+   "severity": "cosmetic",
+   "fix": "SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]",
+   "fixed_snippet": "const SEASONS = [\n  ['winter', 'Winter: frost on the window.'],\n  ['spring', 'Spring: the seedlings noticed the light.'],\n  ['summer', 'Summer: warm shelves, sleepy colonists.'],\n  ['autumn', 'Autumn: the light turned low and gold.'],\n];\nconst seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)];\n\nfunction seasonsBetween(t0, now) { // one line each time the season changes, checked weekly\n  const out = [];\n  let last = seasonOf(t0)[0];\n  for (let m = t0, n = 0; m < now && n < 400; m += 7 * 86400000, n++) {\n    const sn = seasonOf(m);\n    if (sn[0] !== last) { last = sn[0]; out.push(sn[1]); }\n  }\n  return out.slice(-4);\n}\nfunction seasonLabel(ms) {\n  return seasonOf(ms)[0].toUpperCase();\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e30",
+  "level": 1,
+  "snippet": "const calls = [];\nfunction switchRoom(id) {\n  calls.push(id);\n  return id;\n}\nfunction buildRoomList(rooms, el) {\n  const buttons = [];\n  for (var i = 0; i < rooms.length; i++) {\n    const b = el.add(rooms[i].name + ' (' + rooms[i].visits + ' visits)');\n    b.onclick = () => switchRoom(rooms[i].id);\n    buttons.push(b);\n  }\n  return buttons;\n}\nfunction makeEl() {\n  return { add(label) { return { label, onclick: null }; } };\n}\nconst rooms = [\n  { id: 'r1', name: 'My room', visits: 4 },\n  { id: 'r2', name: 'Kitchen', visits: 1 },\n  { id: 'r3', name: 'Garage', visits: 0 },\n];",
+  "context": "The title screen lists the saved rooms, one button each. Tapping a button switches to that room. el.add(label) creates a button and returns it.",
+  "answer": {
+   "bug": true,
+   "function": "buildRoomList",
+   "line_hint": "for (var i = 0;",
+   "what": "The click handler closes over the function-scoped var i, which equals rooms.length after the loop, so every button calls rooms[3].id and throws a TypeError (undefined.id)",
+   "trigger": "Tap any room button after the list is built",
+   "severity": "crash",
+   "fix": "for (let i = 0; ...) so each handler gets its own i",
+   "fixed_snippet": "const calls = [];\nfunction switchRoom(id) {\n  calls.push(id);\n  return id;\n}\nfunction buildRoomList(rooms, el) {\n  const buttons = [];\n  for (let i = 0; i < rooms.length; i++) {\n    const b = el.add(rooms[i].name + ' (' + rooms[i].visits + ' visits)');\n    b.onclick = () => switchRoom(rooms[i].id);\n    buttons.push(b);\n  }\n  return buttons;\n}\nfunction makeEl() {\n  return { add(label) { return { label, onclick: null }; } };\n}\nconst rooms = [\n  { id: 'r1', name: 'My room', visits: 4 },\n  { id: 'r2', name: 'Kitchen', visits: 1 },\n  { id: 'r3', name: 'Garage', visits: 0 },\n];"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e31",
+  "level": 3,
+  "snippet": "const G = { cur: null, zones: [], mapName: '' };\n\nasync function loadRoomMap(id) {\n  const map = await fetchMap(id);\n  G.zones = map.zones;\n  G.mapName = map.name;\n  render();\n}\nfunction pickRoom(id) {\n  G.cur = id;\n  G.mapName = 'Loading...';\n  loadRoomMap(id);\n}\nfunction render() {\n  return G.mapName + ' (' + G.zones.length + ' zones)';\n}\nfunction roomLabel(id) {\n  return id === G.cur ? '> ' + id : id;\n}\nfunction titleButtons(ids) {\n  return ids.map(roomLabel).join(' ');\n}",
+  "context": "Tapping a room name on the title screen loads that room's map. Loading is asynchronous (fetchMap can take a second on a phone). If the player taps two rooms quickly, the screen should end up showing the room tapped last.",
+  "answer": {
+   "bug": true,
+   "function": "loadRoomMap",
+   "function_also": [
+    "pickRoom"
+   ],
+   "line_hint": "const map = await fetchMap(id);",
+   "what": "Race: replies can arrive out of order. If room A is tapped, then room B, and A's slow fetch finishes last, A's map overwrites B's while G.cur is B",
+   "trigger": "pickRoom(\"A\") then pickRoom(\"B\") when A's fetch takes longer than B's",
+   "severity": "wrong",
+   "fix": "After the await, return if (G.cur !== id); (or use a request counter token)",
+   "fixed_snippet": "const G = { cur: null, zones: [], mapName: '' };\n\nasync function loadRoomMap(id) {\n  const map = await fetchMap(id);\n  if (G.cur !== id) return;\n  G.zones = map.zones;\n  G.mapName = map.name;\n  render();\n}\nfunction pickRoom(id) {\n  G.cur = id;\n  G.mapName = 'Loading...';\n  loadRoomMap(id);\n}\nfunction render() {\n  return G.mapName + ' (' + G.zones.length + ' zones)';\n}\nfunction roomLabel(id) {\n  return id === G.cur ? '> ' + id : id;\n}\nfunction titleButtons(ids) {\n  return ids.map(roomLabel).join(' ');\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e32",
+  "level": 3,
+  "snippet": "const G = { zones: [], settlements: [] };\nconst zoneById = (id) => G.zones.find((z) => z.id === id);\n\nfunction restoreSettlement(d) {\n  const zone = zoneById(d.zid);\n  if (!zone) return null;\n  const S = { id: d.id, zid: zone.id, zoneRef: zone, cols: d.cols.slice(), dead: false };\n  zone.settled = S;\n  G.settlements.push(S);\n  return S;\n}\nfunction prepareContinue(md, sv) {\n  G.zones = md.zones.map((z) => Object.assign({}, z));\n  G.settlements = [];\n  for (const d of sv.settlements) restoreSettlement(d);\n  return true;\n}\nfunction serialize() {\n  return {\n    v: 2,\n    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({\n      id: S.id, zid: S.zid, cols: S.cols,\n    })),\n  };\n}",
+  "context": "Continue: the saved map is loaded first, then each saved settlement is put back on its zone. serialize() builds the next save from whatever settlements are alive in memory. restoreSettlement returns null if the settlement's zone is not in the loaded map.",
+  "answer": {
+   "bug": true,
+   "function": "prepareContinue",
+   "function_also": [
+    "restoreSettlement",
+    "serialize"
+   ],
+   "line_hint": "for (const d of sv.settlements) restoreSettlement(d);",
+   "what": "A saved settlement whose zone is missing from the loaded map is skipped (restoreSettlement returns null and the result is ignored). It is then absent from memory, so the next serialize() writes a save without it and the settlement is permanently lost",
+   "trigger": "The saved map lacks a zone that a saved settlement points at (for example the map write failed earlier), then the game loads and saves again",
+   "severity": "lose-data",
+   "fix": "Keep unrestorable saved settlements in G.orphans (if (!restoreSettlement(d)) G.orphans.push(d)) and append G.orphans to the settlements array in serialize()",
+   "fixed_snippet": "const G = { zones: [], settlements: [] };\nconst zoneById = (id) => G.zones.find((z) => z.id === id);\n\nfunction restoreSettlement(d) {\n  const zone = zoneById(d.zid);\n  if (!zone) return null;\n  const S = { id: d.id, zid: zone.id, zoneRef: zone, cols: d.cols.slice(), dead: false };\n  zone.settled = S;\n  G.settlements.push(S);\n  return S;\n}\nfunction prepareContinue(md, sv) {\n  G.zones = md.zones.map((z) => Object.assign({}, z));\n  G.settlements = [];\n  G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d);\n  return true;\n}\nfunction serialize() {\n  return {\n    v: 2,\n    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({\n      id: S.id, zid: S.zid, cols: S.cols,\n    })).concat(G.orphans || []),\n  };\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e33",
+  "level": 1,
+  "snippet": "const LIKES_MAX = 6;\n\nfunction addLike(c, kind) {\n  if (c.likes.indexOf(kind)) return false;\n  if (c.likes.length >= LIKES_MAX) c.likes.shift();\n  c.likes.push(kind);\n  return true;\n}\nfunction likesText(c) {\n  if (!c.likes.length) return 'nothing yet';\n  return c.likes.join(', ');\n}\nfunction learnFromChat(a, b) {\n  for (const k of b.likes) {\n    if (Math.random() < 0.3) addLike(a, k);\n  }\n}\nfunction likesKind(c, kind) {\n  return c.likes.includes(kind);\n}\nconst demo = { name: 'Pip', likes: ['farm', 'well'] };",
+  "context": "Each colonist has a list of liked things (c.likes, an array of strings). addLike adds a kind to that list unless it is already there, so the list holds each kind at most once.",
+  "answer": {
+   "bug": true,
+   "function": "addLike",
+   "line_hint": "if (c.likes.indexOf(kind)) return false;",
+   "what": "indexOf returns -1 (truthy) when the kind is absent and 0 (falsy) when it is first, so new kinds are never added and the first existing kind is added again as a duplicate",
+   "trigger": "addLike(c, \"tree\") on likes [\"farm\",\"well\"] returns false and adds nothing; addLike(c, \"farm\") adds a second \"farm\"",
+   "severity": "wrong",
+   "fix": "if (c.likes.includes(kind)) return false;",
+   "fixed_snippet": "const LIKES_MAX = 6;\n\nfunction addLike(c, kind) {\n  if (c.likes.indexOf(kind) >= 0) return false;\n  if (c.likes.length >= LIKES_MAX) c.likes.shift();\n  c.likes.push(kind);\n  return true;\n}\nfunction likesText(c) {\n  if (!c.likes.length) return 'nothing yet';\n  return c.likes.join(', ');\n}\nfunction learnFromChat(a, b) {\n  for (const k of b.likes) {\n    if (Math.random() < 0.3) addLike(a, k);\n  }\n}\nfunction likesKind(c, kind) {\n  return c.likes.includes(kind);\n}\nconst demo = { name: 'Pip', likes: ['farm', 'well'] };"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e34",
+  "level": 2,
+  "snippet": "const FUN = { musicT: 0, notes: 0 };\nconst G = { music: false };\n\nfunction playNote() {\n  FUN.notes++;\n}\nfunction musicStop() {\n  if (FUN.musicT) clearInterval(FUN.musicT);\n  FUN.musicT = 0;\n}\nfunction musicStart() {\n  musicStop();\n  FUN.musicT = setInterval(playNote, 400);\n}\nfunction toggleMusic(on) {\n  G.music = on;\n  if (on) musicStart();\n  else musicStop();\n  return G.music;\n}\nfunction festivalStart() {\n  toggleMusic(true);\n}\nfunction festivalEnd(keepMusic) {\n  if (!keepMusic) toggleMusic(false);\n}",
+  "context": "Music is a repeating timer that plays one note every 400 ms. toggleMusic(on) is called by the Music menu button and also by the festival, so it can be called with true when music is already on.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "toggleMusic(true) can be called while music is already playing, which looks like it would stack timers, but musicStart stops any running timer first, so there is only ever one interval and musicStop clears it."
+ },
+ {
+  "id": "e35",
+  "level": 2,
+  "snippet": "const G = { simT: 0, history: [], uid: 0 };\n\nfunction note(text, kind) {\n  G.history.push({ id: ++G.uid, t: Math.round(G.simT), text, kind: kind || 'ev' });\n}\nfunction onBirth(c) { note(c.name + ' was born', 'birth'); }\nfunction onTreeGrown() { note('A tree has grown up', 'tree'); }\nfunction onVisitor(name) { note(name + ' came to visit', 'visit'); }\n\nfunction serialize() {\n  return { v: 2, t: G.simT, uid: G.uid, history: G.history };\n}\nfunction storyPage() {\n  return G.history.slice(-20).map((h) => h.text).join('\\n');\n}\nfunction loadSave(sv) {\n  G.simT = sv.t || 0;\n  G.uid = sv.uid || 0;\n  G.history = Array.isArray(sv.history) ? sv.history : [];\n}\nfunction tick(dt) {\n  G.simT += dt;\n  if (Math.round(G.simT) % 60 === 0) onTreeGrown();\n}",
+  "context": "The game keeps a short history of what happened (G.history), which is written into every save so that the \"Story so far\" page can show it. note() is called for each event, including many small events every minute while the game runs.",
+  "answer": {
+   "bug": true,
+   "function": "note",
+   "line_hint": "G.history.push(",
+   "what": "The history array only ever grows and is saved whole on every save, so the save gets bigger forever until the browser storage quota is hit; the story page only ever shows the last 20 entries",
+   "trigger": "Leave the game running for days or call note many times: G.history keeps every entry",
+   "severity": "wrong",
+   "fix": "Cap the list: if (G.history.length > 60) G.history.shift(); after the push",
+   "fixed_snippet": "const G = { simT: 0, history: [], uid: 0 };\n\nfunction note(text, kind) {\n  G.history.push({ id: ++G.uid, t: Math.round(G.simT), text, kind: kind || 'ev' });\n  if (G.history.length > 60) G.history.shift();\n}\nfunction onBirth(c) { note(c.name + ' was born', 'birth'); }\nfunction onTreeGrown() { note('A tree has grown up', 'tree'); }\nfunction onVisitor(name) { note(name + ' came to visit', 'visit'); }\n\nfunction serialize() {\n  return { v: 2, t: G.simT, uid: G.uid, history: G.history };\n}\nfunction storyPage() {\n  return G.history.slice(-20).map((h) => h.text).join('\\n');\n}\nfunction loadSave(sv) {\n  G.simT = sv.t || 0;\n  G.uid = sv.uid || 0;\n  G.history = Array.isArray(sv.history) ? sv.history : [];\n}\nfunction tick(dt) {\n  G.simT += dt;\n  if (Math.round(G.simT) % 60 === 0) onTreeGrown();\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e36",
+  "level": 1,
+  "snippet": "const S = { cols: [\n  { name: 'Pip', needs: { food: 0.8, water: 0.9, rest: 0.7 } },\n  { name: 'Dot', needs: { food: 0.3, water: 0.6, rest: 0.9 } },\n] };\n\nfunction lowestNeed(S) {\n  let worst = null, wv = 1;\n  for (let i = 0; i <= S.cols.length; i++) {\n    const n = S.cols[i].needs;\n    const v = Math.min(n.food, n.water, n.rest);\n    if (v < wv) { wv = v; worst = S.cols[i]; }\n  }\n  return worst;\n}\nfunction needIcon(c) {\n  const n = c.needs;\n  if (n.water < 0.25) return 'drop';\n  if (n.food < 0.25) return 'food';\n  if (n.rest < 0.2) return 'zzz';\n  return '';\n}\nfunction bubbleTick(S) {\n  const c = lowestNeed(S);\n  return c ? c.name + ' ' + needIcon(c) : '';\n}",
+  "context": "Finds the colonist with the lowest of food, water and rest, so a speech bubble can show what they need. S.cols is the list of colonists in one settlement.",
+  "answer": {
+   "bug": true,
+   "function": "lowestNeed",
+   "line_hint": "i <= S.cols.length",
+   "what": "Loop runs one step too far: at i === S.cols.length, S.cols[i] is undefined and reading .needs throws a TypeError",
+   "trigger": "Any settlement with at least one colonist: the last iteration reads S.cols[S.cols.length].needs",
+   "severity": "crash",
+   "fix": "for (let i = 0; i < S.cols.length; i++)",
+   "fixed_snippet": "const S = { cols: [\n  { name: 'Pip', needs: { food: 0.8, water: 0.9, rest: 0.7 } },\n  { name: 'Dot', needs: { food: 0.3, water: 0.6, rest: 0.9 } },\n] };\n\nfunction lowestNeed(S) {\n  let worst = null, wv = 1;\n  for (let i = 0; i < S.cols.length; i++) {\n    const n = S.cols[i].needs;\n    const v = Math.min(n.food, n.water, n.rest);\n    if (v < wv) { wv = v; worst = S.cols[i]; }\n  }\n  return worst;\n}\nfunction needIcon(c) {\n  const n = c.needs;\n  if (n.water < 0.25) return 'drop';\n  if (n.food < 0.25) return 'food';\n  if (n.rest < 0.2) return 'zzz';\n  return '';\n}\nfunction bubbleTick(S) {\n  const c = lowestNeed(S);\n  return c ? c.name + ' ' + needIcon(c) : '';\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e37",
+  "level": 2,
+  "snippet": "const turn = { order: [3, 5, 8, 12] };\n\nfunction moveToFront(list, id) {\n  list.unshift(list.splice(list.indexOf(id), 1)[0]);\n  return list;\n}\nfunction onPortraitTap(id) {\n  moveToFront(turn.order, id);\n  redrawStrip();\n}\nfunction redrawStrip() {\n  const bar = turn.order.map((id) => '[' + id + ']').join('');\n  return bar;\n}\nfunction colonistLeaves(id) {\n  const i = turn.order.indexOf(id);\n  if (i >= 0) turn.order.splice(i, 1);\n  redrawStrip();\n}\nfunction nextUp() {\n  return turn.order.length ? turn.order[0] : null;\n}",
+  "context": "The turn order is a list of colonist ids. When the player taps a colonist's portrait, that colonist is moved to the front of the list. The id comes from the tap and may belong to someone who has just left the settlement.",
+  "answer": {
+   "bug": true,
+   "function": "moveToFront",
+   "line_hint": "list.splice(list.indexOf(id), 1)",
+   "what": "If id is not in the list, indexOf returns -1 and splice(-1, 1) removes the last element, which is then moved to the front, so the wrong colonist jumps the queue and the order changes",
+   "trigger": "moveToFront(order, 99) with 99 not in [3, 5, 8, 12] moves 12 to the front",
+   "severity": "wrong",
+   "fix": "const i = list.indexOf(id); if (i < 0) return list; list.unshift(list.splice(i, 1)[0]);",
+   "fixed_snippet": "const turn = { order: [3, 5, 8, 12] };\n\nfunction moveToFront(list, id) {\n  const i = list.indexOf(id); if (i < 0) return list;\n  list.unshift(list.splice(i, 1)[0]);\n  return list;\n}\nfunction onPortraitTap(id) {\n  moveToFront(turn.order, id);\n  redrawStrip();\n}\nfunction redrawStrip() {\n  const bar = turn.order.map((id) => '[' + id + ']').join('');\n  return bar;\n}\nfunction colonistLeaves(id) {\n  const i = turn.order.indexOf(id);\n  if (i >= 0) turn.order.splice(i, 1);\n  redrawStrip();\n}\nfunction nextUp() {\n  return turn.order.length ? turn.order[0] : null;\n}"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e38",
+  "level": 1,
+  "snippet": "const SEASONS = [\n  ['winter', 'Winter: frost on the window.'],\n  ['spring', 'Spring: the seedlings noticed the light.'],\n  ['summer', 'Summer: warm shelves, sleepy colonists.'],\n  ['autumn', 'Autumn: the light turned low and gold.'],\n];\n// Dec-Feb winter, Mar-May spring, ...\nconst seasonOf = (ms) => SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)];\n\nfunction seasonLabel(ms) {\n  return seasonOf(ms)[0].toUpperCase();\n}\nfunction seasonsBetween(t0, now) {\n  const out = [];\n  let last = seasonOf(t0)[0];\n  for (let m = t0, n = 0; m < now && n < 400; m += 7 * 86400000, n++) {\n    const sn = seasonOf(m);\n    if (sn[0] !== last) { last = sn[0]; out.push(sn[1]); }\n  }\n  return out.slice(-4);\n}",
+  "context": "Picks the season line for a timestamp in milliseconds. Winter is December to February, spring March to May, summer June to August, autumn September to November (northern hemisphere).",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "getMonth() is 0-based, which looks like an off-by-one, but the + 1 and the % 12 shift the buckets so that December, January and February are winter, March to May spring, and so on."
+ },
+ {
+  "id": "e39",
+  "level": 3,
+  "snippet": "const FUN = { album: [], days: [], unl: [] };\nconst G = {\n  settlements: [], zones: [], requests: [], library: [], nextLib: 1, mapName: 'My room',\n  tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0 },\n};\nconst ROOMS = [{ id: 'r1', name: 'My room' }];\n\nfunction funReset() {\n  FUN.album = []; FUN.days = []; FUN.unl = [];\n}\nfunction homeCreate() {\n  if (ROOMS.length >= 8) return null;\n  const r = { id: 'r' + (ROOMS.length + 1), name: 'Room ' + (ROOMS.length + 1) };\n  ROOMS.push(r);\n  return r;\n}\nfunction worldDrop() { // the map and colony go from memory\n  G.settlements = []; G.zones = []; G.requests = [];\n}\nfunction relocNewRoom() {\n  const nr = homeCreate();\n  if (!nr) return;\n  const lib = G.library, nl = G.nextLib;\n  worldDrop();\n  G.library = lib; G.nextLib = nl;\n  G.mapName = nr.name;\n}",
+  "context": "The player starts a new room. The old room's map and colony are dropped from memory, but names the player taught the game carry over. FUN.album holds the colony photo album and visit days; G.tidy counts how much the player has tidied. Both belong to one room's colony. funReset() empties the album.",
+  "answer": {
+   "bug": true,
+   "function": "relocNewRoom",
+   "line_hint": "worldDrop();",
+   "what": "The new room inherits the old room's album, visit days and tidy statistics because only the map and colony are dropped; funReset() is never called and G.tidy is not reset",
+   "trigger": "Player has some album entries and tidy counts, then starts a new room: the new empty colony shows and later saves the old room's album and stats",
+   "severity": "wrong",
+   "fix": "Call funReset() and reset G.tidy to zeros alongside worldDrop() in relocNewRoom (and in the room-switch path)",
+   "fixed_snippet": "const FUN = { album: [], days: [], unl: [] };\nconst G = {\n  settlements: [], zones: [], requests: [], library: [], nextLib: 1, mapName: 'My room',\n  tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0 },\n};\nconst ROOMS = [{ id: 'r1', name: 'My room' }];\n\nfunction funReset() {\n  FUN.album = []; FUN.days = []; FUN.unl = [];\n}\nfunction homeCreate() {\n  if (ROOMS.length >= 8) return null;\n  const r = { id: 'r' + (ROOMS.length + 1), name: 'Room ' + (ROOMS.length + 1) };\n  ROOMS.push(r);\n  return r;\n}\nfunction worldDrop() { // the map and colony go from memory\n  G.settlements = []; G.zones = []; G.requests = [];\n}\nfunction relocNewRoom() {\n  const nr = homeCreate();\n  if (!nr) return;\n  const lib = G.library, nl = G.nextLib;\n  worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0 };\n  G.library = lib; G.nextLib = nl;\n  G.mapName = nr.name;\n}"
+  },
+  "source": "real"
+ },
+ {
+  "id": "e40",
+  "level": 3,
+  "snippet": "const TREE_T = 600;\nconst toasts = [];\n\nfunction stepTree(t, dt, E, quiet) {\n  if (t.pop > 0) t.pop = Math.max(0, t.pop - dt * 1.6);\n  if (t.tend > 0) t.tend -= dt;\n  if (t.kind !== 'tree') return;\n  if (t.g < 1) {\n    t.g = Math.min(1, t.g + dt / TREE_T * E.grow * (t.tend > 0 ? 1.8 : 1));\n    if (t.g >= 1 && !quiet) toasts.push('A tree has grown up!');\n  } else {\n    t.yt += dt * E.grow;\n    if (t.yt > 70 && t.yield < 2) { t.yield++; t.yt = 0; }\n  }\n}\nfunction pickFruit(t) {\n  if (t.yield < 1) return false;\n  t.yield--;\n  return true;\n}\nfunction mkTree() {\n  return { kind: 'tree', g: 0, yield: 0, yt: 0, tend: 0, pop: 0 };\n}",
+  "context": "A tree grows from g = 0 to g = 1 over TREE_T seconds (faster when tended). When it is fully grown it announces itself once, and then it starts to make fruit: yield goes up by 1 every 70 seconds of growing weather, to a maximum of 2.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "The growth test t.g >= 1 compares a float, which looks like it could miss or repeat, but t.g is capped with Math.min(1, ...) so it reaches exactly 1, and the whole block only runs while t.g < 1, so the toast fires once."
+ },
+ {
+  "id": "e41",
+  "level": 1,
+  "snippet": "const NEEDS0 = { water: 1, food: 1, rest: 1, joy: 0.6 };\nconst G = { uid: 0 };\n\nfunction addColonist(S, o) {\n  const c = {\n    id: ++G.uid,\n    name: o.name,\n    x: o.x || 0,\n    z: o.z || 0,\n    needs: NEEDS0,\n    job: null,\n  };\n  S.cols.push(c);\n  return c;\n}\nfunction hungry(c) {\n  return c.needs.food < 0.25;\n}\nfunction eat(c) {\n  c.needs.food = Math.min(1, c.needs.food + 0.4);\n}\nfunction drain(c, dt) {\n  c.needs.food = Math.max(0, c.needs.food - dt / 1500);\n}\nconst S = { cols: [] };",
+  "context": "Every new colonist starts with the same default needs (all from 0 to 1) and then each colonist's needs go up and down on their own as time passes.",
+  "answer": {
+   "bug": true,
+   "function": "addColonist",
+   "line_hint": "needs: NEEDS0,",
+   "what": "Every colonist gets a reference to the same NEEDS0 object instead of a copy, so changing one colonist's needs changes everyone's (and the default itself)",
+   "trigger": "Add two colonists, drain one: both are hungry",
+   "severity": "wrong",
+   "fix": "needs: Object.assign({}, NEEDS0),",
+   "fixed_snippet": "const NEEDS0 = { water: 1, food: 1, rest: 1, joy: 0.6 };\nconst G = { uid: 0 };\n\nfunction addColonist(S, o) {\n  const c = {\n    id: ++G.uid,\n    name: o.name,\n    x: o.x || 0,\n    z: o.z || 0,\n    needs: Object.assign({}, NEEDS0),\n    job: null,\n  };\n  S.cols.push(c);\n  return c;\n}\nfunction hungry(c) {\n  return c.needs.food < 0.25;\n}\nfunction eat(c) {\n  c.needs.food = Math.min(1, c.needs.food + 0.4);\n}\nfunction drain(c, dt) {\n  c.needs.food = Math.max(0, c.needs.food - dt / 1500);\n}\nconst S = { cols: [] };"
+  },
+  "source": "planted"
+ },
+ {
+  "id": "e42",
+  "level": 3,
+  "snippet": "const G = { cur: null, zones: [], mapName: '', loadSeq: 0 };\n\nasync function loadRoomMap(id) {\n  const seq = ++G.loadSeq;\n  const map = await fetchMap(id);\n  if (seq !== G.loadSeq) return; // a newer tap has taken over\n  G.zones = map.zones;\n  G.mapName = map.name;\n  render();\n}\nfunction pickRoom(id) {\n  G.cur = id;\n  G.mapName = 'Loading...';\n  return loadRoomMap(id);\n}\nfunction render() {\n  return G.mapName + ' (' + G.zones.length + ' zones)';\n}\nfunction roomLabel(id) {\n  return id === G.cur ? '> ' + id : id;\n}",
+  "context": "Tapping a room name on the title screen loads that room's map. Loading is asynchronous (fetchMap can take a second on a phone). If the player taps two rooms quickly, the screen should show the room tapped last.",
+  "answer": {
+   "bug": false
+  },
+  "source": "clean",
+  "trap": "Two quick taps start two overlapping loads, which looks like a race, but after the await the function checks that this load is still the latest one (a token), so a late reply is ignored."
+ }
+]
