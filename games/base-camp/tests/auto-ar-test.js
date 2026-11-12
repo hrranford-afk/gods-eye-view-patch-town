@@ -61,8 +61,9 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   ok('COCO (mocked) tagged a thing automatically, no question', tT > 0, await ev(() => JSON.stringify(__g.G.spots.filter((s) => s.src === 'auto').map((s) => s.name + ':' + s.role))));
   await ev(() => { __g.RECOG.detector = null; });
   // question rate limit
-  const q = await ev(() => { __g.AUTO.questions = 0; __g.RECOG.lastQuestion = -1e9; __g.RECOG.asked = []; const S = __g.G.settlements[0]; const mk = (dx) => ({ x: S.tf.x + dx, y: S.tf.y + 0.05, z: S.tf.z, area: 0.01 }); window.unknownTops = () => [mk(0.1), mk(-0.1)]; document.getElementById('tagpick').hidden = true; const r = [];
+  const q = await ev(() => { __g.AUTO.questions = 0; __g.RECOG.lastQuestion = -1e9; __g.RECOG.asked = []; const S = __g.G.settlements[0]; const mk = (dx) => ({ x: S.tf.x + dx, y: S.tf.y + 0.05, z: S.tf.z, area: 0.01 }); window.unknownTops = () => [mk(0.1), mk(-0.1)]; document.getElementById('tagpick').hidden = true; const r = []; __g.AUTO.colonySince = __g.AUTO.t - 3; __g.autoAskTick(); window.__gateQ = __g.AUTO.questions; __g.AUTO.colonySince = __g.AUTO.t - 20; // build 10: no question while the colony is under 15 s old
     for (let i = 0; i < 4; i++) { __g.autoAskTick(); r.push(__g.AUTO.questions); document.getElementById('tagpick').hidden = true; } return r; });
+  ok('no "What is this?" in the first 15 s after the colony landed', await ev(() => window.__gateQ === 0));
   ok('at most one "What is this?" per 2 minutes (4 tries in a row asked once)', q[3] === 1 && q[0] === 1, JSON.stringify(q));
   await ev(() => { __g.RECOG.lastQuestion = performance.now() - 121000; __g.autoAskTick(); }); ok('...and the next one is allowed after 2 minutes', await ev(() => __g.AUTO.questions === 2));
   await ev(() => { document.getElementById('tagpick').hidden = true; });
