@@ -71,3 +71,8 @@ in chat). They are style targets: the games draw everything in code.
 ## Harry's rule for pastes (12 Nov 2026)
 Whatever Harry has to copy, give it as ONE copy-and-paste block per destination: everything for the town chat goes
 in a single block, never split across several boxes.
+
+## Parked for later (Harry, 12 Nov 2026)
+- **The arcade ("Toy Cupboard"):** a 3D front page where every game is a toy box on a shelf, with a looping preview
+  and "N playing now" counts (counted, never tracked; a server needs Harry's yes). Later: other makers' games, itch.io,
+  then Poki and CrazyGames. AR on iPhone and iPad needs a native app one day. Harry: "let's work on that format later".
