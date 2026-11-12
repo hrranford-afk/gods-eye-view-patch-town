@@ -46,6 +46,51 @@
    "by": "The Town Brain"
   },
   {
+   "spot": "Top of the speaker",
+   "used_for": "Village center",
+   "gives": "Great acoustics for Fluffkins' parties",
+   "costs": "Loud and vibrations during music playback",
+   "how_they_get_there": "Rope ladder from the floor",
+   "funny_thing": "Fluffkins use the speaker as a karaoke stage, but their singing makes the dust bunnies sneeze uncontrollably",
+   "by": "The Dell Builder"
+  },
+  {
+   "spot": "Under the sofa",
+   "used_for": "Hideout",
+   "gives": "Protection from predators and a cozy atmosphere",
+   "costs": "Dark and cramped space",
+   "how_they_get_there": "Tunnel from the floor",
+   "funny_thing": "Fluffkins play hide and seek, but they always forget where they hid and end up lost under the sofa",
+   "by": "The Dell Builder"
+  },
+  {
+   "spot": "Windowsill",
+   "used_for": "Farm",
+   "gives": "Sunlight for growing plants",
+   "costs": "Exposed to birds and drafts",
+   "how_they_get_there": "Cable car from the top of the fridge",
+   "funny_thing": "Fluffkins try to grow 'cloud plants' by watering them with their own fluff, but it just makes them fluffier",
+   "by": "The Dell Builder"
+  },
+  {
+   "spot": "Top of the fridge",
+   "used_for": "Lookout",
+   "gives": "High vantage point to spot danger",
+   "costs": "Warm and humid environment",
+   "how_they_get_there": "Ladder from the floor",
+   "funny_thing": "Fluffkins use a magnifying glass to watch TV from the top of the fridge, but they always miss the remote",
+   "by": "The Dell Builder"
+  },
+  {
+   "spot": "Fireplace",
+   "used_for": "Workshop",
+   "gives": "Warmth for crafting",
+   "costs": "Risk of fire and smoke",
+   "how_they_get_there": "Catapult from the floor",
+   "funny_thing": "Fluffkins try to make 'fire-resistant' fluff by throwing it into the fireplace, but it just makes the room smell like a campfire",
+   "by": "The Dell Builder"
+  },
+  {
    "spot": "Shelves",
    "used_for": "Storage",
    "gives": "Extra space for storing food and materials",
@@ -89,6 +134,96 @@
    "how_they_get_there": "Tunnel",
    "funny_thing": "A fluffkin accidentally falls into the space under the sofa and gets stuck, causing a commotion",
    "by": "The Dell Coder"
+  },
+  {
+   "spot": "top of a speaker",
+   "used_for": "village",
+   "gives": "loud music for dancing",
+   "costs": "deafening noise during bass drops",
+   "how_they_get_there": "cable car",
+   "funny_thing": "Fluffkins have impromptu rave parties that scare the house cat",
+   "by": "The Dell Elder"
+  },
+  {
+   "spot": "windowsill",
+   "used_for": "farm",
+   "gives": "sunlight for growing crops",
+   "costs": "exposed to birds and rain",
+   "how_they_get_there": "rope swing",
+   "funny_thing": "Fluffkins use sunbeams as slides, but often crash into potted plants",
+   "by": "The Dell Elder"
+  },
+  {
+   "spot": "under the sofa",
+   "used_for": "hideout",
+   "gives": "safety from predators",
+   "costs": "dark and dusty",
+   "how_they_get_there": "tunnel",
+   "funny_thing": "Fluffkins play hide-and-seek, but no one ever finds the seeker",
+   "by": "The Dell Elder"
+  },
+  {
+   "spot": "radiator",
+   "used_for": "workshop",
+   "gives": "warmth for crafting",
+   "costs": "risk of getting squished if the radiator is turned on",
+   "how_they_get_there": "ladder",
+   "funny_thing": "Fluffkins build tiny radiator hats to stay warm, but they keep falling off",
+   "by": "The Dell Elder"
+  },
+  {
+   "spot": "fireplace",
+   "used_for": "lookout",
+   "gives": "warmth and a view of the room",
+   "costs": "danger of getting burned if the fire is lit",
+   "how_they_get_there": "cable car",
+   "funny_thing": "Fluffkins roast marshmallows on tiny sticks, but they always burn them",
+   "by": "The Dell Elder"
+  },
+  {
+   "spot": "windowsill",
+   "used_for": "farm",
+   "gives": "sunlight and fresh air",
+   "costs": "windy and cold, dangerous from falling",
+   "how_they_get_there": "cable car with a safety harness",
+   "funny_thing": "they accidentally grow a mustache from eating too much sunflower seeds",
+   "by": "The Dell Quick Builder"
+  },
+  {
+   "spot": "under the sofa",
+   "used_for": "hideout",
+   "gives": "warm and cozy, perfect for napping",
+   "costs": "dusty and loud from the TV",
+   "how_they_get_there": "tunnel through the cushions",
+   "funny_thing": "they get stuck in a sock and have to be rescued by a tiny vacuum cleaner",
+   "by": "The Dell Quick Builder"
+  },
+  {
+   "spot": "top of the fridge",
+   "used_for": "workshop",
+   "gives": "high vantage point, great for planning",
+   "costs": "hot and smelly, very slippery",
+   "how_they_get_there": "ladder made from a broken toothbrush",
+   "funny_thing": "they accidentally build a nest out of the fridge's own food items",
+   "by": "The Dell Quick Builder"
+  },
+  {
+   "spot": "rug",
+   "used_for": "village square",
+   "gives": "space for meetings and celebrations",
+   "costs": "very dusty, hard to clean",
+   "how_they_get_there": "rope swing from the couch",
+   "funny_thing": "they get tangled in the rug's fringes and have to be untangled by a tiny pair of scissors",
+   "by": "The Dell Quick Builder"
+  },
+  {
+   "spot": "fireplace",
+   "used_for": "farm",
+   "gives": "warmth and heat for cooking",
+   "costs": "very hot, dangerous from sparks",
+   "how_they_get_there": "catapult from the hearth",
+   "funny_thing": "they accidentally grow a flame on their heads and have to be put out with a tiny fire extinguisher",
+   "by": "The Dell Quick Builder"
   },
   {
    "spot": "top of the fridge",

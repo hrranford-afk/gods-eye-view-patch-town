@@ -1166,8 +1166,9 @@ function requestsStep(S, quiet) {
   }
   for (const r of G.requests.slice()) if (r.sid === S.id && G.simT - r.t > 420) resolveRequest(r, true);
 }
-function resolveRequest(r, silent) { G.requests.splice(G.requests.indexOf(r), 1); reqUi(); }
+function resolveRequest(r, silent) { const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1); reqUi(); } // stale button: never remove someone else's request (PatchTown stress test, 12 Nov)
 function giveRequest(r) {
+  if (G.requests.indexOf(r) < 0) { reqUi(); return; } // already timed out or answered: no double reward
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
   const g = r.def.give, c = S.cols.find((q) => q.id === r.cid) || S.cols[0];
   if (g === 'water') { S.stock.water = Math.min(12, S.stock.water + 6); for (const q of S.cols) q.needs.water = Math.min(1, q.needs.water + 0.4); for (const t of S.things) if (t.kind === 'tree' || t.kind === 'farm') t.tend = 60; puff('drop', S.tf.x, S.tf.y + 0.1, S.tf.z, 8, { size: 0.008, vy: -0.03, life: 1, spread: 0.06 }); sfx('water'); }
