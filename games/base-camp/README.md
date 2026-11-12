@@ -82,6 +82,11 @@ While mapping, the camera picture is looked at about every 1.5 s (AR needs the `
 ## Room totem photos
 Each saved room can have a totem photo: the player's own picture of a spot in that room (say, a pencil case on the shed shelf). In the rooms list on the title, tap "Add totem photo" (camera or photo library on an iPad). The photo is scaled to at most 320 px and kept on the device only. Rooms with a photo show as big cards, and tapping the photo goes straight into that room, so only that room has to be recognised. In the room a small round thumbnail sits in the top-left info card. It is not image recognition, and the photo is never uploaded or included in map export. Deleting the room deletes its photo.
 
+## Ceilings and the hanging base (build 12)
+The scan can see the underside of a roof or ceiling as a flat surface. Base Camp now knows that it is a ceiling (hit from below, clearly above the device) and never lands the colony there, never expands there by itself, never uses it for the battle. Once a colony has a working cable car, somebody asks "Glip wants to try the ceiling!"; Yes sends an expedition and the new camp hangs upside down from the boards: huts like bird boxes, trees and colonists hanging below, lanterns on strings, and the milestone "Upside-down camp".
+
+In AR the messages are calm: toasts, milestone banners, the recognition status and the "What the colonists noticed" report share one column (never on top of each other); the report is two short lines with a "More" button and hides after about 6 s. The bottom toolbar wraps and fits at any width down to 390 px. With several rooms the card says which room you are in ("Shed · Desk").
+
 ## Files
 
 | File | |
@@ -92,6 +97,6 @@ Each saved room can have a totem photo: the player's own picture of a spot in th
 | `webxr-polyfill.js`, `THIRD_PARTY.md` | unmodified WebXRKit polyfill for the iPad fix, and licences |
 | `HANDOVER.md` | developer notes: data formats, maths, tests, what is cut |
 | `shots/` | screenshots |
-| `tests/` | Playwright scripts: `auto-practice-test.js` (automatic flow in the practice room), `auto-ar-test.js` + `ar-fake.js` (automatic flow with the real polyfill and a fake shed: first play, three returns, a different room, field report), `room-test.js` (manual tools, practice room), `recog-test.js`, `ar-room-test.js` (the build-3 manual AR test, kept as an example), `ar-harness.js` and `practice-test.js` (first prototype), `lib.js`, `make-clip-labels.mjs` |
+| `tests/` | Playwright scripts: `auto-practice-test.js` (automatic flow in the practice room), `auto-ar-test.js` + `ar-fake.js` (automatic flow with the real polyfill and a fake shed: first play, three returns, a different room, field report), `ceiling-test.js` (ceilings, the hanging base, layout at 390 and 1120 px), `room-test.js` (manual tools, practice room), `recog-test.js`, `ar-room-test.js` (the build-3 manual AR test, kept as an example), `ar-harness.js` and `practice-test.js` (first prototype), `lib.js`, `make-clip-labels.mjs` |
 
 Build tag: shown at the start of the status line under the title buttons ("build 9 ...").

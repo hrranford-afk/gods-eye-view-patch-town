@@ -44,8 +44,10 @@ module.exports = function install(p, SHED) {
         if (d[1] < -1e-3) for (const S of place()) { const t = (S.y - m[13]) / d[1]; if (t <= 0) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c;
           if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { if (t < bt) { bt = t; bh = [hx, S.y, hz]; bu = 'plane-' + S.n; } }
           else if (est && S.n !== 'chandelier' && Math.abs(lx) < S.hw + EXT && Math.abs(lz) < S.hd + EXT && t < et) { et = t; eh = [hx, S.y, hz]; } }
-        const nz = () => (Math.random() - 0.5);
-        if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, bh[0], bh[1] + nz() * 0.006, bh[2], 1], uuid: bu });
+        /* build 12: a ceiling plane (a SHED entry named ceil...) answers rays that look UP at it. Its normal is plain +Y like ARKit's horizontal anchors, unless window.__native.ceilNormal is set (then it faces down: Y axis -1). */
+        let up = false; if (d[1] > 1e-3) for (const S of place()) { if (!/^ceil/.test(S.n)) continue; const t = (S.y - m[13]) / d[1]; if (t <= 0 || t >= bt) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { bt = t; bh = [hx, S.y, hz]; bu = 'plane-' + S.n; up = true; } }
+        const nz = () => (Math.random() - 0.5), cn = up && window.__native.ceilNormal ? -1 : 1;
+        if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, cn, 0, 0, 0, 0, cn, 0, bh[0], bh[1] + nz() * 0.006, bh[2], 1], uuid: bu });
         else if (eh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, eh[0] + nz() * 0.03, eh[1] + nz() * 0.03, eh[2] + nz() * 0.03, 1] });
         window.__native[bu ? 'anch' : eh ? 'est' : 'miss'] = (window.__native[bu ? 'anch' : eh ? 'est' : 'miss'] || 0) + 1;
         window.__native[out.length ? 'hits' : 'empty']++; reply(b2.callback, out);
