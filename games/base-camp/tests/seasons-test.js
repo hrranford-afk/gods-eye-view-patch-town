@@ -77,7 +77,8 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('pacing: 2.5 h alone is not a stall (mood up, settlers and huts kept growing)', pace[9000].mood >= 0.4 && pace[9000].pop >= pace[1800].pop && pace[9000].huts >= pace[1800].huts);
   ok('pacing: the colony has decorated or spread by itself', pace[9000].decor >= 2 || pace[9000].settlements >= 2);
   // phone card shot
-  await p.setViewportSize({ width: 390, height: 844 }); await ev(() => { __g.ENV.dateOverride = '2026-10-15'; __g.ENV._sk = 0; __g.envUpdate(); __g.G.cardMore = false; }); await sleep(1200);
+  await p.setViewportSize({ width: 390, height: 844 }); await ev(() => { __g.ENV.dateOverride = '2026-10-15'; __g.ENV._sk = 0; __g.envUpdate(); __g.G.cardMore = false; }); await ev(() => { document.getElementById('ask').hidden = true; document.getElementById('toast').innerHTML = ''; document.getElementById('banner').className = ''; document.getElementById('banner').style.display = 'none'; }); await sleep(1500);
+  await ev(() => { for (const i of ['toast', 'ask', 'guess', 'tagpick']) { const e = document.getElementById(i); if (e) { e.hidden = true; if (i === 'toast') e.innerHTML = ''; } } });
   await p.screenshot({ path: OUT + '47-card-simple.png' });
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 3)));
   console.log(res.filter(Boolean).length + '/' + res.length + ' passed'); await b.close(); srv.close(); process.exit(res.every(Boolean) ? 0 : 1);

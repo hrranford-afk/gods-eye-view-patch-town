@@ -1273,7 +1273,7 @@ function simSettlement(S, dt, E, quiet) {
   // arrivals: new settlers wander in when there is room, food and a good mood
   S.arrT += dt;
   const cap = S.spec === 'grove' ? 2 : POP_MAX;
-  if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) * (careOn() ? 0.7 : 1.4) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
+  if (S.arrT > (S.fx && S.fx.hideout ? 60 : 100) * (1.6 - 0.8 * landTidy(szone(S).land).ratio) * (careOn() ? 0.9 : 3.2) && S.cols.length < cap && S.cols.length < housing(S) && S.stock.food >= 3 && S.cols.length && S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length > 0.5) {
     S.arrT = 0; const c = addColonist(S, { x: rnd(-0.06, 0.06), z: rnd(0.06, 0.1) }); c.spawn = 0.1; if (DIARY.on) DIARY.arrived.push(c.name); c.mesh.userData.born = 0; if (!quiet) { toast('A new settler, ' + c.name + ', joined the colony!'); sfx('cheer'); }
   }
   // thriving
@@ -2723,7 +2723,7 @@ function decorTick(quiet) {
 }
 function seaSim(dt, quiet) {
   SEA.placeT -= dt; if (SEA.placeT <= 0) { SEA.placeT = careOn() ? 14 : 40; if (G.settlements.length) decorTick(quiet); }
-  SEA.expT += dt; if (SEA.expT > 60) { SEA.expT = 0; if (G.settlements.length && G.settlements.length < 1 + Math.floor(G.simT / 6000) && !G.settlements.some((S) => S.awaiting) && (SEA.needFar || G.settlements.some((S) => S.thriving && S.t > 1500 && !S.lost && !S.awaiting))) autoExpand(); } /* one new surface about every 75 minutes at most */
+  SEA.expT += dt; if (SEA.expT > 60) { SEA.expT = 0; if (G.settlements.length && G.settlements.length < 1 + Math.floor(G.simT / (careOn() ? 3000 : 7500)) && !G.settlements.some((S) => S.awaiting) && (SEA.needFar || G.settlements.some((S) => S.thriving && S.t > 1500 && !S.lost && !S.awaiting))) autoExpand(); } /* one new surface about every 75 minutes at most */
 }
 function packAway(first) { /* a new season: last season's decorations go back in the box (the calendar stays through Advent and New Year) */
   const ok = new Set([ENV.seasonKey]); if (['autumn', 'advent', 'newyear'].includes(ENV.season)) ok.add('advent-' + adventYear()); let n = 0;
@@ -2778,7 +2778,7 @@ function calUi() {
   let head; if (!have) head = 'No calendar yet: the colony is making one.'; else if (!info.standing) head = 'The calendar is ready! It opens in ' + info.daysToStand + (info.daysToStand === 1 ? ' day.' : ' days.'); else if (info.daysToDoor1 > 0) head = 'The first door opens in ' + info.daysToDoor1 + (info.daysToDoor1 === 1 ? ' day.' : ' days.'); else head = 'One door a day. Missed a day? Those doors wait for you.';
   let grid = ''; for (let n = 1; n <= 24; n++) { const st = advState(n), e = ADVENT[n - 1]; grid += `<button class="door ${st}" data-door="${n}" ${st === 'ready' && have ? '' : 'disabled'} aria-label="Door ${n} ${st}">${st === 'open' ? e.icon : st === 'ready' ? '<b>' + n + '</b>' : '<span>' + n + '</span>'}</button>`; }
   const last = list.length ? ADVENT[list[list.length - 1] - 1] : null;
-  m.innerHTML = `<div class="dh">📅 Advent calendar</div><div class="sub">${esc(head)}</div><div class="doors">${grid}</div>` + (last ? `<div class="sub" style="margin-top:8px">${last.icon} ${esc(last.title)}: ${esc(last.text)} <i class="by">by ${esc(last.by)}</i></div>` : '') + '<button id="calClose">Close</button>';
+  m.innerHTML = `<div class="dh">📅 Advent calendar</div><div class="sub">${esc(head)} <i class="by">Seasons: an idea by ${SEA_CREDIT}</i></div><div class="doors">${grid}</div>` + (last ? `<div class="sub" style="margin-top:8px">${last.icon} ${esc(last.title)}: ${esc(last.text)} <i class="by">by ${esc(last.by)}</i></div>` : '') + '<button id="calClose">Close</button>';
   m.onclick = (e) => { const d = e.target.closest && e.target.closest('[data-door]'); if (d && !d.disabled) { advOpen(+d.dataset.door); return; } if (e.target.closest && e.target.closest('#calClose')) { m.hidden = true; delete m.dataset.cal; m.onclick = null; } };
 }
 const seaFace = (m) => (m >= 0.8 ? '😄' : m >= 0.6 ? '🙂' : m >= 0.4 ? '😐' : m >= 0.2 ? '🙁' : '😢');
@@ -2787,7 +2787,7 @@ function goalHtml() {
   if (cal && ENV.season === 'autumn') extra = '<div class="gsub">' + (cal.b >= 1 ? 'Calendar ready: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' until it opens' : 'it opens today') : 'Calendar: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' to get it ready' : 'get it ready')) + '</div>';
   const calBtn = advCalendars().length ? '<button class="cbtn" data-cal="1">📅 Advent calendar</button>' : '';
   const unl = SEA.unl[ENV.seasonKey] ? '<div class="gsub">Unlocked: ' + DECOR[SEA.unl[ENV.seasonKey]].ic + ' ' + esc(DECOR[SEA.unl[ENV.seasonKey]].name) + '</div>' : '';
-  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.sd.goal.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}<div class="gsub">Seasons: an idea by ${SEA_CREDIT}</div></div>`;
+  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.sd.goal.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
 }
 /* ---- per-frame life of the decorations (called from visuals) ---- */
 function decorAnim(S, t, m, time, dt) {
@@ -2863,7 +2863,7 @@ function envLine(full) {
   const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60), sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   return `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky}${full ? ' · sun ' + ENV.sun.toFixed(2) + ' · growth x' + ENV.grow.toFixed(2) : ''}</div>`;
 }
-function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
+function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
 
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
@@ -4511,7 +4511,7 @@ function cardUi() {
   const mood = S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null, cap = capOf(S);
   const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>';
   let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
-  if (G.cardMore) html += `<div class="det" style="margin-top:4px">settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
+  if (G.cardMore) html += `<div class="det" style="margin-top:4px">Seasons: an idea by ${SEA_CREDIT}<br>settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
   el.hidden = false; cardSet(el, html);
 }
 function roomTidyLine() { const T = G.tidy; return T.objects || T.squashed ? `<div style="opacity:.8;font-size:12px">tidied ${T.objects} · recycled ${T.tin} tin · squashed ${T.squashed}</div>` : ''; }
