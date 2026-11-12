@@ -203,3 +203,12 @@ Also: requests whose settlement is lost or gone now clear. Earlier the same day,
 Not fixed (cosmetic): a hand-edited save without `t`, and the seasons list after more than 7.7 years away.
 The proof scripts were kept outside the repo.
 **Lesson (12 Nov):** in this file's long one-line functions, never put a `//` comment in the middle of a line. It silently swallows the rest of the line. That happened to `persist`'s `return true`, and "Come back later" stopped working until auto-practice-test caught it. Use `/* … */` mid-line.
+
+## Build 11 notes: room totem photos
+- **What**: a per-room photo the player chooses; on the title it makes the room a card and tapping it enters that room. It is a picture for the person, NOT image recognition: `HOME_TOTEM` stays false and the old matcher is untouched.
+- **Code** (all near `roomsUi`): `totemUrl(id)` (cached read of `imgLoad('totem', id)`), `totemScale` (FileReader -> Image -> canvas, long side <= `TOTPH_MAX` 320, JPEG 0.8, white background), `totemPicked`, `totemDel`, `totemChars`, `totemThumb` (for `cardUi`). Two hidden file inputs on the title: `#totemIn` (`capture="environment"`) and `#totemLib` (library, no capture). Storage key `bc-totem-<roomId>` holds `{v:1, jpeg:<data URL>, w, h, at}` (about 10 to 40 KB).
+- **Cards**: rooms with a photo render as `.rcard` (min 120 px tall, photo left, buttons right); the click handler on `#rooms` enters the room (`playRoom('room', id)`) when a card is tapped anywhere that is not a button or the name input. Rooms without one keep the `.lib` row plus an "Add totem photo" / "From library" slot.
+- **In the room**: `cardUi` prepends a 44 px round `img.cth` of `HOMES.cur`'s photo (AR one-line card too); tapping it toasts the room name. The card is `pointer-events:none` except that image.
+- **Entering by photo** is the existing `playRoom('room', id)`: `G.finding` stays false, only that room's map is loaded and compared, and the old two-tap fallback is unchanged (multi-room-test covers it).
+- **Storage**: `roomChars` includes the photo; `roomDelete` and `roomsTidy` delete the photo of a removed room. The photo is not part of `mapToJSON` / export, and nothing is fetched or uploaded.
+- **Test**: `tests/totem-photo-test.js` (generated canvas pattern only; no photo is committed). Rough edges: the in-room card shows the zone name, not the room name (the thumbnail's tap shows the room name); a photo of the wrong room is not detected (it is the player's choice); "Change photo" uses the camera input, "From library" is only on rows with no photo yet.

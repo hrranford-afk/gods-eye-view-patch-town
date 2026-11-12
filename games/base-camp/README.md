@@ -79,6 +79,9 @@ While mapping, the camera picture is looked at about every 1.5 s (AR needs the `
 
 - **Light**, **time of day** and **weather** (optional, asked once; rounded location, Open-Meteo, non-commercial only): as in the first prototype (see HANDOVER).
 
+## Room totem photos
+Each saved room can have a totem photo: the player's own picture of a spot in that room (say, a pencil case on the shed shelf). In the rooms list on the title, tap "Add totem photo" (camera or photo library on an iPad). The photo is scaled to at most 320 px and kept on the device only. Rooms with a photo show as big cards, and tapping the photo goes straight into that room, so only that room has to be recognised. In the room a small round thumbnail sits in the top-left info card. It is not image recognition, and the photo is never uploaded or included in map export. Deleting the room deletes its photo.
+
 ## Files
 
 | File | |
