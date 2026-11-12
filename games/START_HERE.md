@@ -67,3 +67,7 @@ Folder: `games/cairn/` on `game/cairn`. Only a draft `index.html` and a mock pic
 
 Contributing pictures: make them from the prompt files, and add them to a `games/<game>/refs/` folder (or send them to Claude
 in chat). They are style targets: the games draw everything in code.
+
+## Harry's rule for pastes (12 Nov 2026)
+Whatever Harry has to copy, give it as ONE copy-and-paste block per destination: everything for the town chat goes
+in a single block, never split across several boxes.
