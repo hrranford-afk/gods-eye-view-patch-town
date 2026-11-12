@@ -159,11 +159,12 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
   <div id="modal" hidden></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="models/props.js"></script>
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 14';
+const BUILD = 'build 15';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -865,6 +866,25 @@ function setTreeG(g, k, fruit) {
   const tr = Math.max(0.001, smooth(0.25, 0.75, t)); U.trunk.scale.y = tr; U.trunk.visible = t > 0.22; U.can.position.y = 0.045 * tr;
   U.can.scale.setScalar(Math.max(0.001, smooth(0.3, 1, t))); U.can.visible = t > 0.3; U.fruit.visible = !!fruit && t >= 1;
 }
+/* ---- build 15: free CC0 props (models/props.js: Kenney + Quaternius, baked into vertex-coloured geometry). Every maker below asks bcOK(name) first: when the file did not load (or BCP.off is set) the old shapes are built, so the game works either way.
+   Geometry and materials are built once and shared: one toon material for all props, one ink material per colour, derived geometries (the lying matchbox) cached in GEO. ---- */
+const BCP = { off: false, toon: null, grad: null, inks: {} };
+const bcOK = (n) => !BCP.off && !!(window.BC_PROPS && window.bcPropGeometry && window.BC_PROPS[n]);
+function bcToon() { if (BCP.toon) return BCP.toon; BCP.grad = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.LuminanceFormat); BCP.grad.minFilter = BCP.grad.magFilter = THREE.NearestFilter; BCP.grad.generateMipmaps = false; BCP.grad.needsUpdate = true; return (BCP.toon = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: BCP.grad, side: THREE.DoubleSide })); }
+function bcInkMat(col) { return BCP.inks[col] || (BCP.inks[col] = new THREE.MeshBasicMaterial({ color: col, side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 })); }
+/* a prop's geometry made to sit on the ground: centred on x/z, base at y 0 (fn may turn / stretch a clone first) */
+function bcGeo(key, name, fn) { return geo('bp_' + key, () => { const g = window.bcPropGeometry(name).clone(); if (fn) fn(g); g.computeBoundingBox(); const b = g.boundingBox; g.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2); g.computeBoundingBox(); g.computeBoundingSphere(); return g; }); }
+const BC_DERIVED = { /* a matchbox on its side, with a wider, deeper base so it reads as a hut and not a plank */
+  matchLying: ['matchboxHut', (g) => { g.rotateZ(Math.PI / 2); g.scale(1, 1, 2.3); }],
+};
+/* bcProp(key, height, {ink: width or false, sx, sy, sz}): one mesh (+ one ink mesh), the shared material. key is a prop name or a BC_DERIVED key. */
+function bcProp(key, H, o) {
+  o = o || {}; const d = BC_DERIVED[key], name = d ? d[0] : key, g = bcGeo(key, name, d && d[1]), hh = g.boundingBox.max.y, s = H / hh, grp = new THREE.Group();
+  const m = new THREE.Mesh(g, bcToon()); grp.add(m);
+  const w = o.ink === undefined ? window.BC_PROPS[name].h.ink : o.ink;
+  if (w) { const k = 1 + w, ink = new THREE.Mesh(g, bcInkMat(o.inkColor || 0x1a1410)); ink.scale.set(k, k, k); ink.position.y = hh * 0.5 * (1 - k); ink.renderOrder = -1; grp.add(ink); }
+  grp.scale.set(s * (o.sx || 1), s * (o.sy || 1), s * (o.sz || 1)); grp.userData.bcp = key; return grp;
+}
 function mkTent() {
   const g = new THREE.Group();
   g.add(mesh(geo('tent', () => new THREE.ConeGeometry(0.034, 0.046, 6).translate(0, 0.023, 0)), M(0xf3e0bd)));
@@ -874,7 +894,14 @@ function mkTent() {
   g.add(mesh(geo('flag', () => new THREE.PlaneGeometry(0.011, 0.007)), new THREE.MeshStandardMaterial({ color: 0xd9483b, side: THREE.DoubleSide }), 0.0055, 0.062, 0));
   g.add(blob(0.04)); return g;
 }
-function mkHut() {
+function mkHut(t) { /* build 15: a matchbox on its side (or, for a roof bought with tin, a can) from the props; the old cottage when the props are missing */
+  if (!bcOK('matchboxHut')) return mkHutOld();
+  const g = new THREE.Group(), can = !!(t && t.tin && bcOK('canHut'));
+  if (can) g.add(bcProp(t.id % 2 ? 'canHutOpen' : 'canHut', 0.05));
+  else { g.add(bcProp('matchLying', 0.038, { ink: 0.035 })); g.add(mesh(geo('bpDoor', () => new THREE.BoxGeometry(0.011, 0.02, 0.002)), M(0x2a1a10), 0.012, 0.01, 0.0142)); }
+  g.add(blob(0.044)); g.userData = { bcp: 1 }; return g;
+}
+function mkHutOld() {
   const g = new THREE.Group();
   g.add(mesh(geo('hutW', () => new THREE.BoxGeometry(0.052, 0.034, 0.044).translate(0, 0.017, 0)), M(0xf6e9cf)));
   const roof = mesh(geo('hutR', () => new THREE.ConeGeometry(0.046, 0.026, 4).translate(0, 0.013, 0)), M(0xc9552e), 0, 0.034, 0); roof.rotation.y = Math.PI / 4; roof.scale.set(1.05, 1, 0.9); g.add(roof);
@@ -884,6 +911,7 @@ function mkHut() {
   g.add(blob(0.042)); g.userData = { win }; return g;
 }
 function mkWell() {
+  if (bcOK('well')) { const g = new THREE.Group(); g.add(bcProp('well', 0.06, { ink: 0.012 })); g.add(blob(0.024)); g.userData = { bcp: 1 }; return g; }
   const g = new THREE.Group();
   g.add(mesh(geo('wellR', () => new THREE.CylinderGeometry(0.014, 0.016, 0.014, 10, 1, true).translate(0, 0.007, 0)), new THREE.MeshStandardMaterial({ color: 0xb9b2a6, flatShading: true, side: THREE.DoubleSide, roughness: 1 })));
   g.add(mesh(geo('wellW', () => new THREE.CircleGeometry(0.0135, 10).rotateX(-Math.PI / 2)), M(0x4aa8e8), 0, 0.011, 0));
@@ -891,7 +919,18 @@ function mkWell() {
   const r = mesh(geo('wellT', () => new THREE.ConeGeometry(0.02, 0.012, 4).translate(0, 0.006, 0)), M(0xc9552e), 0, 0.04, 0); r.rotation.y = Math.PI / 4; g.add(r);
   g.add(blob(0.022)); return g;
 }
-function mkFarm() {
+const BC_CROPS = [['corn', 0.03], ['carrot', 0.024], ['pumpkin', 0.014], ['mushrooms', 0.017], ['corn', 0.028], ['mushroom', 0.017]]; /* [prop, height]: no ink on crops (many small meshes, and the carrot's leaf took a black fleck) */
+let bcFarmN = 0;
+function mkFarm() { /* build 15: 3 rows of 5 prop crops (no more than the old 24 two-piece crops cost), each farm starts its rows on a different crop */
+  if (!bcOK('carrot')) return mkFarmOld();
+  const g = new THREE.Group(), crops = [], n = bcFarmN++; g.add(mesh(geo('soil', () => new THREE.BoxGeometry(0.11, 0.003, 0.082).translate(0, 0.0015, 0)), M(0x7a5230)));
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) {
+    const k = r === 2 ? ((n + i) % 2 ? 3 : 2) : (n + r * 2) % 2 ? r : 1 - r, C = BC_CROPS[r === 2 ? k : (k + n) % 2 ? 1 : 0] || BC_CROPS[0];
+    const c = new THREE.Group(); c.position.set(-0.04 + i * 0.02, 0.003, -0.026 + r * 0.026); c.rotation.y = (i * 2.4 + r * 1.3 + n) % 6.283; c.add(bcProp(C[0], C[1], { ink: false })); g.add(c); crops.push(c);
+  }
+  g.userData = { crops, bcp: 1 }; return g;
+}
+function mkFarmOld() {
   const g = new THREE.Group(), crops = [];
   g.add(mesh(geo('soil', () => new THREE.BoxGeometry(0.11, 0.003, 0.082).translate(0, 0.0015, 0)), M(0x7a5230)));
   for (let r = 0; r < 4; r++) for (let i = 0; i < 6; i++) {
@@ -901,8 +940,15 @@ function mkFarm() {
   }
   g.userData = { crops }; return g;
 }
-function setFarmG(g, k) { for (const c of g.userData.crops) { c.scale.setScalar(Math.max(0.05, smooth(0, 0.8, k))); c.userData.head.visible = k >= 0.98; } }
-function mkLookout() {
+function setFarmG(g, k) { for (const c of g.userData.crops) { c.scale.setScalar(Math.max(0.05, smooth(0, 0.8, k))); if (c.userData.head) c.userData.head.visible = k >= 0.98; } }
+function mkLookout() { /* build 15: the props' scaffold frame with a deck and the green roof on top */
+  if (!bcOK('lookoutFrame')) return mkLookoutOld();
+  const g = new THREE.Group(); g.add(bcProp('lookoutFrame', 0.056, { sx: 0.7, sz: 0.7 }));
+  g.add(mesh(geo('lkF', () => new THREE.BoxGeometry(0.034, 0.003, 0.034)), M(0xb88655), 0, 0.056, 0));
+  const r = mesh(geo('lkR', () => new THREE.ConeGeometry(0.03, 0.02, 4).translate(0, 0.01, 0)), M(0x3f8a52), 0, 0.076, 0); r.rotation.y = Math.PI / 4; g.add(r);
+  g.add(blob(0.03)); g.userData = { bcp: 1 }; return g;
+}
+function mkLookoutOld() {
   const g = new THREE.Group();
   for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = mesh(geo('lkP', () => new THREE.CylinderGeometry(0.0016, 0.0022, 0.06, 5)), M(0x8a5a33), x * 0.0105, 0.03, z * 0.0105); p.rotation.set(z * 0.05, 0, -x * 0.05); g.add(p); }
   g.add(mesh(geo('lkF', () => new THREE.BoxGeometry(0.034, 0.003, 0.034)), M(0xb88655), 0, 0.058, 0));
@@ -932,17 +978,19 @@ function mkRubble() {
 }
 function mkLandmark(role) { // one small toy per role (the art is redesigned later; these only have to read at a glance)
   const g = new THREE.Group(), col = (ROLES[role] || ROLES.camp).color, C = M(col), W = M(0xf6e9cf), D = M(0x5a4332);
+  if (role === 'well' && bcOK('well')) { g.add(bcProp('well', 0.07, { ink: 0.012 })); g.add(blob(0.026)); return g; }
+  if (role === 'silo' && bcOK('peanutJar')) { g.add(bcProp('peanutJar', 0.046)); g.add(blob(0.028)); return g; } /* build 15: the silo is a jar of peanuts */
   if (role === 'tower') { g.add(mesh(geo('lmTw', () => new THREE.CylinderGeometry(0.0022, 0.004, 0.075, 6).translate(0, 0.0375, 0)), D)); for (const y of [0.05, 0.065]) { const tr = mesh(geo('lmTd', () => new THREE.TorusGeometry(0.011, 0.0013, 5, 12)), C, 0, y, 0); tr.rotation.x = Math.PI / 2; g.add(tr); } g.add(mesh(geo('lmTb', () => new THREE.SphereGeometry(0.0045, 8, 6)), M(0xffe27a, 0xffcc66), 0, 0.078, 0)); }
   else if (role === 'well') { for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(mesh(geo('lmWl', () => new THREE.CylinderGeometry(0.0013, 0.0013, 0.05, 5).translate(0, 0.025, 0)), D, x * 0.01, 0, z * 0.01)); g.add(mesh(geo('lmWt', () => new THREE.CylinderGeometry(0.016, 0.016, 0.026, 10).translate(0, 0.063, 0)), C)); g.add(mesh(geo('lmWr', () => new THREE.ConeGeometry(0.019, 0.012, 10).translate(0, 0.082, 0)), W)); }
   else if (role === 'silo') { g.add(mesh(geo('lmSi', () => new THREE.CylinderGeometry(0.014, 0.014, 0.05, 10).translate(0, 0.025, 0)), C)); g.add(mesh(geo('lmSd', () => new THREE.SphereGeometry(0.014, 10, 6, 0, 6.283, 0, 1.57).translate(0, 0.05, 0)), M(0xdfe5ea))); }
-  else if (role === 'plaza') { g.add(mesh(geo('lmPz', () => new THREE.CylinderGeometry(0.035, 0.035, 0.003, 14).translate(0, 0.0015, 0)), M(0xd9ccb2))); g.add(mesh(geo('lmPp', () => new THREE.CylinderGeometry(0.0012, 0.0012, 0.045, 4).translate(0, 0.0225, 0)), D)); g.add(mesh(geo('lmPf', () => new THREE.PlaneGeometry(0.014, 0.009)), new THREE.MeshStandardMaterial({ color: col, side: THREE.DoubleSide }), 0.007, 0.042, 0)); }
+  else if (role === 'plaza') { g.add(mesh(geo('lmPz', () => new THREE.CylinderGeometry(0.035, 0.035, 0.003, 14).translate(0, 0.0015, 0)), M(0xd9ccb2))); g.add(mesh(geo('lmPp', () => new THREE.CylinderGeometry(0.0012, 0.0012, 0.045, 4).translate(0, 0.0225, 0)), D)); g.add(mesh(geo('lmPf', () => new THREE.PlaneGeometry(0.014, 0.009)), new THREE.MeshStandardMaterial({ color: col, side: THREE.DoubleSide }), 0.007, 0.042, 0)); if (bcOK('match')) for (let i = 0; i < 4; i++) { const a = i * 1.5708 + 0.8, mt = bcProp('match', 0.034, { ink: false }); mt.position.set(Math.cos(a) * 0.03, 0.002, Math.sin(a) * 0.03); mt.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); g.add(mt); } }
   else if (role === 'forge') { g.add(mesh(geo('lmFb', () => new THREE.BoxGeometry(0.036, 0.022, 0.03).translate(0, 0.011, 0)), M(0x8a7f76))); g.add(mesh(geo('lmFg', () => new THREE.BoxGeometry(0.02, 0.004, 0.016).translate(0, 0.024, 0)), M(0xff7a2d, 0xff7a2d))); g.add(mesh(geo('lmFc', () => new THREE.CylinderGeometry(0.0035, 0.0045, 0.03, 6).translate(0, 0.037, -0.008)), M(0x6a5f58))); }
   else if (role === 'storage') { g.add(mesh(geo('lmSt', () => new THREE.BoxGeometry(0.05, 0.026, 0.034).translate(0, 0.013, 0)), C)); const r = mesh(geo('lmSr', () => new THREE.ConeGeometry(0.036, 0.016, 4).translate(0, 0.008, 0)), W, 0, 0.026, 0); r.rotation.y = Math.PI / 4; r.scale.set(1.1, 1, 0.8); g.add(r); }
   else if (role === 'lookout') { return mkLookout(); }
   else if (role === 'workshop') { g.add(mesh(geo('lmKb', () => new THREE.BoxGeometry(0.046, 0.024, 0.034).translate(0, 0.012, 0)), C)); for (const x of [-0.012, 0.012]) { const t = mesh(geo('lmKs', () => new THREE.ConeGeometry(0.012, 0.012, 3).translate(0, 0.006, 0)), M(0x6a5f58), x, 0.024, 0); t.rotation.y = Math.PI / 2; g.add(t); } g.add(mesh(geo('lmKa', () => new THREE.BoxGeometry(0.012, 0.008, 0.008).translate(0, 0.004, 0)), M(0x555555), 0.03, 0, 0.012)); }
   else if (role === 'solar') { for (const x of [-0.016, 0, 0.016]) { const p = mesh(geo('lmSp', () => new THREE.BoxGeometry(0.014, 0.0015, 0.024)), M(0x2f5fa8, 0x244a88), x, 0.014, 0); p.rotation.x = -0.5; g.add(p); g.add(mesh(geo('lmSl', () => new THREE.CylinderGeometry(0.0009, 0.0009, 0.014, 4).translate(0, 0.007, 0)), D, x, 0, 0)); } }
   else if (role === 'hideout') { g.add(mesh(geo('lmHd', () => new THREE.SphereGeometry(0.026, 10, 6, 0, 6.283, 0, 1.57)), C)); g.add(mesh(geo('lmHo', () => new THREE.BoxGeometry(0.012, 0.014, 0.003)), M(0x2a1a10), 0, 0.007, 0.0255)); }
-  else if (role === 'market') { for (const x of [-1, 1]) g.add(mesh(geo('lmMp', () => new THREE.CylinderGeometry(0.0013, 0.0013, 0.03, 5).translate(0, 0.015, 0)), D, x * 0.018, 0, 0)); const r = mesh(geo('lmMr', () => new THREE.BoxGeometry(0.046, 0.002, 0.028)), C, 0, 0.031, 0); r.rotation.x = 0.2; g.add(r); g.add(mesh(geo('lmMt', () => new THREE.BoxGeometry(0.034, 0.012, 0.014).translate(0, 0.006, 0.004)), W)); }
+  else if (role === 'market') { for (const x of [-1, 1]) g.add(mesh(geo('lmMp', () => new THREE.CylinderGeometry(0.0013, 0.0013, 0.03, 5).translate(0, 0.015, 0)), D, x * 0.018, 0, 0)); const r = mesh(geo('lmMr', () => new THREE.BoxGeometry(0.046, 0.002, 0.028)), C, 0, 0.031, 0); r.rotation.x = 0.2; g.add(r); g.add(mesh(geo('lmMt', () => new THREE.BoxGeometry(0.034, 0.012, 0.014).translate(0, 0.006, 0.004)), W)); if (bcOK('honeyJar')) for (const [n, x, h] of [['honeyJar', -0.009, 0.013], ['peanutJar', 0.009, 0.012]]) { const j = bcProp(n, h); j.position.set(x, 0.012, 0.004); g.add(j); } }
   else { return mkTent(); }
   g.add(blob(0.035)); return g;
 }
@@ -1024,10 +1072,13 @@ function addThing(S, kind, lx, lz, o) {
   S.things.push(t); makeThingMesh(S, t); return t;
 }
 function makeThingMesh(S, t) {
-  const m = t.kind === 'tree' ? mkTree(t.var) : t.kind === 'visitor' ? DECOR_MK.visitor(t.var) : t.kind === 'lm' ? mkLandmark(t.role) : KINDS[t.kind].mk(); t.mesh = m; if (t.tin && t.kind === 'hut') m.children[1].material = M(0xaab3b8); m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
+  const m = t.kind === 'tree' ? mkTree(t.var) : t.kind === 'visitor' ? DECOR_MK.visitor(t.var) : t.kind === 'lm' ? mkLandmark(t.role) : KINDS[t.kind].mk(t); t.mesh = m; if (t.tin && t.kind === 'hut' && !m.userData.bcp) m.children[1].material = M(0xaab3b8); m.position.set(t.x, 0, t.z); m.rotation.y = t.rot; S.group.add(m);
   if (t.kind === 'hut' || t.kind === 'tent' || t.kind === 'lookout') { t.glow = glowSprite(0.07, 0, 0xffc870); t.glow.position.set(0, 0.025, 0.01); m.add(t.glow); }
   const K = KINDS[t.kind];
   if (K.work) { const w = Math.min(K.r * 2.2, 0.1), h = 0.05; const sc = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, w * 0.8).translate(0, h / 2, 0)), new THREE.LineBasicMaterial({ color: 0xd9a066 })); m.add(sc); t.scaf = sc; }
+}
+function bcRebuild() { /* rebuild every thing's model (the props switched on or off): tests and the before / after picture */
+  for (const S of G.settlements) for (const t of S.things) { S.group.remove(t.mesh); makeThingMesh(S, t); }
 }
 function removeThing(S, t) { t.dead = true; S.things.splice(S.things.indexOf(t), 1); S.group.remove(t.mesh); }
 function newSettlement(zone, o) {
@@ -2577,8 +2628,9 @@ const DECOR_MK = {
     for (let i = 0; i < 3; i++) { const a = i * 2.094 + 0.5; dAdd(g, 'suLeg', () => new THREE.CylinderGeometry(0.0012, 0.0012, 0.016, 5).translate(0, 0.008, 0), 0xd9b27a, Math.cos(a) * 0.018, 0, Math.sin(a) * 0.018); }
     dAdd(g, 'suPlate', () => new THREE.CylinderGeometry(0.0095, 0.0085, 0.0012, 12), 0xfff6e6, -0.007, 0.0187, 0.002);
     dAdd(g, 'suLoaf', () => new THREE.SphereGeometry(0.0075, 8, 6), 0xc88a45, -0.007, 0.0215, 0.002, 0, 1.4, 0.7, 1);
-    dAdd(g, 'suPea', () => new THREE.SphereGeometry(0.0035, 8, 6), 0x7fd36a, 0.011, 0.0208, 0.008);
-    dAdd(g, 'suGrape', () => new THREE.SphereGeometry(0.0045, 8, 5, 0, 6.283, 0, 1.57), 0x8a4fb0, 0.012, 0.0178, -0.007);
+    if (bcOK('pumpkin') && bcOK('corn')) { const pk = bcProp('pumpkin', 0.0075, { ink: false }), cn = bcProp('corn', 0.011, { ink: false }); pk.position.set(0.011, 0.0178, 0.008); cn.position.set(0.012, 0.0178, -0.007); cn.rotation.y = 0.6; g.add(pk, cn); } /* build 15: the harvest supper has a pumpkin and a cob */
+    else { dAdd(g, 'suPea', () => new THREE.SphereGeometry(0.0035, 8, 6), 0x7fd36a, 0.011, 0.0208, 0.008);
+    dAdd(g, 'suGrape', () => new THREE.SphereGeometry(0.0045, 8, 5, 0, 6.283, 0, 1.57), 0x8a4fb0, 0.012, 0.0178, -0.007); }
     for (const s of [-1, 1]) dAdd(g, 'suCup', () => new THREE.CylinderGeometry(0.0022, 0.0016, 0.004, 6), 0x5aa0d9, 0.016 * s, 0.0197, s * -0.014);
     const gl = glowSprite(0.045, 0.28, 0xffc870); gl.position.y = 0.03; g.add(gl); g.add(blob(0.03)); return g;
   },
@@ -4424,7 +4476,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
@@ -5716,7 +5768,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
-  barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
+  DECOR_MK, BCP, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
