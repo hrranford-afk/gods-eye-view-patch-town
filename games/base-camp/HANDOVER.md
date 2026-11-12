@@ -189,3 +189,16 @@ Everything is in one clearly bannered section; the rest of the game knows about 
 - **(b) "What is this?" too early: real, fixed.** It was gated at 60 s of scanning and needed a colony, but not that the colony had settled. `autoAskTick` now waits 15 s after the colony was first seen placed (`AUTO.colonySince`).
 - **(c) Phantom zones from weak hits: not real.** Weak (estimated, no uuid) hits never create bands, cells or heights (`scanHit`, `evBlock`); a cell is known only with 2 trusted hits or 1 trusted + 1 weak, so at least one trusted hit is always needed, land cells come from known cells, and `autoSettle` refuses under 0.08 m2 of clear land. Left as is.
 - **(d) "New room?" false positives early: not real.** The ask needs `RELOC.scanSecs` of 60 s (45 s with several rooms), and `scanSecs` only counts while new hits arrive (a stationary player does not count). It is one non-blocking prompt. Left as is.
+
+## Review fixes, 12 Nov (after build 10)
+
+A strong code read of save, away, rooms and economy (the local models had timed out there) found five real bugs. Each was proven in Chromium, then fixed and re-proven:
+1. **Full store:** the map write failed but the colony write succeeded, so a settlement was lost on reload. Now `saveMap` returns ok, and `persist` writes the colony only after the map saved. As a safety net, settlements whose zone is missing are kept in `G.orphans` and written back in `serialize`.
+2. **Battle! from the title with a saved colony** founded a stray settlement, and the reward went to it. `btBegin` now checks `G.settlements.length`, and `settleZone` saves through `persist(true)` (the returning guard).
+3. **Time away past 24 h** was lost unless it was a whole day. Now `rest > 0`, and days are rounded.
+4. **A new or switched room** inherited the old room's album and tidy stats. `relocNewRoom` and `homeSwitchLoad` now call `funReset()` and reset `G.tidy`.
+5. **"Forget the saved map"** left the `-bak` copy, so the map came back. The backup is deleted too.
+
+Also: requests whose settlement is lost or gone now clear. Earlier the same day, the PatchTown stress test found `resolveRequest` removing the wrong request (fixed).
+Not fixed (cosmetic): a hand-edited save without `t`, and the seasons list after more than 7.7 years away.
+The proof scripts were kept outside the repo.
