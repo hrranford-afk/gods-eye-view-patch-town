@@ -153,7 +153,7 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 12';
+const BUILD = 'build 13';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -359,6 +359,7 @@ function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no
     else if (kind === 'grumble') { tone(160 * p, 0.28, 'sawtooth', 0.018, 105 * p); tone(120 * p, 0.22, 'triangle', 0.04, 90 * p, 0.05); }
     else if (kind === 'zap') { sNoise(c, t, 0.05, 5200, 'highpass', 0.025); tone(1800 * p, 0.05, 'square', 0.008, 600 * p, 0.02); }
     else if (kind === 'boing') tone(260 * p, 0.24, 'sine', 0.06, 720 * p);
+    else if (kind === 'ding') { tone(1568, 0.9, 'sine', 0.05); tone(2349, 0.5, 'sine', 0.022, 0, 0.01); }
     else if (kind === 'whistle') tone(1500 * p, 0.32, 'sine', 0.025, 520 * p);
     else if (kind === 'thud') { tone(150 * p, 0.14, 'sine', 0.08, 55); sNoise(c, t, 0.06, 420, 'lowpass', 0.05); }
     else if (kind === 'nom') { tone(520 * p, 0.06, 'triangle', 0.035, 420 * p); tone(470 * p, 0.06, 'triangle', 0.035, 380 * p, 0.09); }
@@ -972,7 +973,7 @@ function partsUpdate(dt) {
 }
 
 // ============ COLONY: settlements, things, colonists ============
-const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null,
+const G = { phase: 'title', mode: 'practice', tool: 'look', settlements: [], links: [], hooks: [], uid: 0, nameIdx: 0, speed: 1, sel: null, requests: [], pending: [], simT: 0, buildKind: 'hut', time: 0, away: null, evT: 0, cableFrom: null, drag: null,
   zones: [], spots: [], cables: [], nextMZ: 1, nextSpot: 1, nextCable: 1, mapName: 'My room', music: false, asks: [], report: null, align: null, holdPlace: false, tidy: { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }, intent: 'play', afterAway: null, library: [], nextLib: 1 };
 const CATCH = { night: false, rain: 0, hot: false, cold: false, dim: false, windy: false, grow: 0.55 }; // what a catch-up sees: an average day
 const TREE_T = 300, FARM_T = 180; // seconds a tree takes to grow up / a crop takes to ripen (at normal growth)
@@ -986,7 +987,7 @@ const built = (S, k) => S.things.find((t) => (t.kind === k || (k === 'well' && t
 const canPay = (S, cost) => S.stock.wood + 2 * (S.stock.tin || 0) >= cost; // tin from flattened cans counts double
 function pay(S, cost) { const w = Math.min(S.stock.wood, cost); S.stock.wood -= w; const rest = cost - w; if (rest > 0) { S.stock.tin -= Math.ceil(rest / 2); S.stats.roofs++; return true; } return false; }
 function szone(S) { return S.zoneRef; }
-function syncTf(S) { const Z = S.zoneRef, [x, z] = zoneWorld(Z, S.o[0], S.o[1]); S.tf.x = x; S.tf.z = z; S.tf.y = Z.y; S.tf.flip = !!Z.ceil; S.tf.yaw = -Z.ang + (S.adj || 0); applyTf(S); }
+function syncTf(S) { const Z = S.zoneRef, [x, z] = zoneWorld(Z, S.o[0], S.o[1]); S.tf.x = x; S.tf.z = z; S.tf.y = Z.y; S.tf.flip = false; /* build 13: nobody lives upside down any more */ S.tf.yaw = -Z.ang + (S.adj || 0); applyTf(S); }
 function validSpot(S, lx, lz, r, o) {
   o = o || {}; const z = szone(S); if (!z) return false;
   const [wx, wz] = l2w(S, lx, lz);
@@ -1020,20 +1021,10 @@ function removeThing(S, t) { t.dead = true; S.things.splice(S.things.indexOf(t),
 function newSettlement(zone, o) {
   o = o || {}; ensureDist(zone);
   const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, o: zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: { wood: 14, food: 5, seeds: 4, water: 8, tin: 0 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: !G.holdPlace, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0, stats: newStats(), fx: null };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); if (zone.ceil) hangDecor(S);
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
   const tent = addThing(S, 'tent', 0, 0, { built: !o.awaiting, hold: !!o.awaiting, rot: 0.3 }); S.tent = tent; if (!o.awaiting) tent.pop = 1;
   syncLandmarks(S);
   return S;
-}
-/* The upside-down camp's special touch: lanterns on strings. The group is turned PI about X, so local +y is down in the room: a string is a thin box from the boards (y 0) to y = len, with a lantern at the bottom. */
-function hangDecor(S) {
-  const g = new THREE.Group(); S.hang = g;
-  for (let i = 0; i < 6; i++) {
-    const a = i * 1.05 + 0.4, r = 0.11 + (i % 3) * 0.035, len = 0.045 + (i % 2) * 0.03 + (i % 3) * 0.008, pv = new THREE.Group(); pv.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-    const st = mesh(geo('hangStr', () => new THREE.BoxGeometry(0.0008, 1, 0.0008)), M(0x4a3a2a), 0, len / 2, 0); st.scale.y = len; pv.add(st);
-    pv.add(mesh(geo('hangLan', () => new THREE.SphereGeometry(0.0075, 8, 6)), M(0xffd27a, 0xffb040), 0, len + 0.006, 0)); const gl = glowSprite(0.034, 0.85, 0xffc870); gl.position.set(0, len + 0.006, 0); pv.add(gl); pv.userData.ph = i * 1.7; g.add(pv);
-  }
-  S.group.add(g);
 }
 const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, squashed: 0, tinAcc: 0, foodAcc: 0, tradeAcc: 0, roofs: 0 });
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.set(S.tf.flip ? Math.PI : 0, S.tf.yaw, 0); S.group.updateMatrixWorld(true); } /* Euler XYZ = Rx * Ry: the yaw is applied first, then the half turn about X hangs the camp from its surface */
@@ -1205,7 +1196,8 @@ function giveRequest(r) {
   else if (g === 'cablecar') { // one tap: the colony picks the next zone itself (drag-to-build is still on the Cable car tool)
     const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && !Z.ceil && Z.land && Z.area > 0.04 && Z !== S.zoneRef).sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
     const Zt = cands[0]; if (!Zt) { setTool('cable'); toast('Drag a line from this settlement to another zone.', 4); return; } ensureDist(Zt); ensureDist(S.zoneRef);
-    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
+    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1], hookFor(S, Zt.core[0], Zt.core[1])); if (!l) return; S.helped++; resolveRequest(r); return; }
+  else if (g === 'ceilthing') { const T = CEIL_THINGS[r.def.key], Zt = zoneById(r.def.zone); if (!T || !Zt || !T.when()) return resolveRequest(r); T.make(Zt, S); S.helped++; resolveRequest(r); return; }
   else if (g === 'expedition') { const Zt = zoneById(r.def.zone); if (!Zt || Zt.settled) return resolveRequest(r); ensureDist(Zt); ensureDist(S.zoneRef); S.stock.wood = Math.max(S.stock.wood, CABLE_COST); const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (!l) return; S.helped++; resolveRequest(r); return; }
   for (const q of S.cols) q.needs.joy = Math.min(1, q.needs.joy + (q === c ? r.def.joy : 0.08));
   if (c) { c.hop = 1; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 4, { size: 0.01, vy: 0.03, life: 1.4 }); }
@@ -1281,6 +1273,118 @@ function linkEnds(l) {
   return [stationTop(Sa, l.a.th), stationTop(Sb, l.b.th), Sa, Sb];
 }
 function cablePoint(A, B, s, out) { const L = A.distanceTo(B), sag = clamp(L * 0.05, 0.012, 0.09); out.lerpVectors(A, B, s); out.y -= sag * 4 * s * (1 - s); return out; }
+/* ---- build 13: the ceiling is RIGGING, not a place to live. Hooks (a cup hook, a pulley wheel, a knotted rope, a bell) hang under a ceiling zone; a cable car can run up to a hook and down the far side
+   (l.via = hook id). Anything else that hangs up there is one entry in CEIL_THINGS (the residents' council can add more later: a text, an icon, when it is offered, where it goes and what it does). ---- */
+const HOOK_SCALE = 2.4, HOOK_DROP = 0.115 * HOOK_SCALE, hkV = new THREE.Vector3();
+const hookOn = (Z) => G.hooks.some((h) => h.zid === Z.id);
+const hooksBuilt = () => G.hooks.filter((h) => h.built);
+const CEIL_THINGS = {
+  hook: { icon: 'cable', text: (n) => n + ' wants to hang a hook up there!', when: () => G.zones.some((Z) => Z.ceil && !Z.lost && !hookOn(Z)), zone: () => G.zones.find((Z) => Z.ceil && !Z.lost && !hookOn(Z)), make: (Z, S) => addHook(Z, S) },
+  nest: { icon: 'cable', text: (n) => n + ' wants to hang a sock nest from the hook!', when: () => hooksBuilt().length > 0 && !G.hooks.some((h) => h.nest), zone: () => { const h = hooksBuilt().find((q) => !q.nest); return h && zoneById(h.zid); }, make: (Z, S) => addNest(Z, S) },
+};
+function hookPos(h, out) { const Z = zoneById(h.zid); if (!Z) return null; const [x, z] = zoneWorld(Z, h.o[0], h.o[1]); return out.set(x, Z.y - HOOK_DROP, z); }
+function nearestCamp(x, z, any) { let best = null, bd = 1e9; for (const q of G.settlements) { if ((!any && !q.placed) || q.lost || q.awaiting || (q.zoneRef && q.zoneRef.ceil)) continue; const d = Math.hypot(q.tf.x - x, q.tf.z - z); if (d < bd) { bd = d; best = q; } } return best; }
+function addHook(Z, S, o) { /* o.built: placed at once (a hook left behind by an old hanging camp, or loaded) */
+  o = o || {}; let u = 0, v = 0;
+  if (o.o) { u = o.o[0]; v = o.o[1]; } else { const cs = G.settlements.filter((q) => q.placed && !q.lost && !q.awaiting && !(q.zoneRef && q.zoneRef.ceil)); let x = 0, z = 0; for (const q of cs) { x += q.tf.x; z += q.tf.z; } if (cs.length) { x /= cs.length; z /= cs.length; } else { x = Z.cx; z = Z.cz; } [u, v] = zoneLocal(Z, x, z); const mu = Math.max(0, (Z.w || 0) / 2 - 0.1), mv = Math.max(0, (Z.d || 0) / 2 - 0.1); u = clamp(u, -mu, mu); v = clamp(v, -mv, mv); }
+  const h = { id: o.id || ++G.uid, zid: Z.id, o: [u, v], nest: !!o.nest, sid: o.sid || 0, built: !!o.built, prog: o.built ? 1 : 0, from: S ? S.id : 0, ding: 0, spin: 0, pop: o.built ? 1 : 0, group: null, balloon: null };
+  if (h.id > G.uid) G.uid = h.id; G.hooks.push(h); if (!o.built) { toast('A tea-bag balloon floats up with the end of a rope.', 4); sfx('pop'); }
+  return h;
+}
+function addNest(Z, S) {
+  const h = hooksBuilt().find((q) => !q.nest && q.zid === Z.id) || hooksBuilt().find((q) => !q.nest); if (!h) return null; const P = hookPos(h, hkV); h.nest = true; const C = P && nearestCamp(P.x, P.z); h.sid = C ? C.id : (S ? S.id : 0); h.pop2 = 0;
+  const T = G.settlements.find((q) => q.id === h.sid); if (T) T.fx = null; toast('The sock nest is hung up! A new lookout, with a very good view.', 4); sfx('chime'); return h;
+}
+function hookStep(h, dt, quiet) {
+  if (!h.built) { h.prog = Math.min(1, h.prog + dt / 7); if (h.prog >= 1) { h.built = true; h.pop = quiet ? 1 : 0; if (!quiet) { const P = hookPos(h, hkV); toast('The hook is up! Cable cars can swoop through it now.', 5); sfx('chime'); if (P) puff('star', P.x, P.y, P.z, 12, { size: 0.01, vy: -0.01, life: 1.4, add: true, jit: 0.03, color: 0xffe9a8 }); } } }
+}
+function hookPass(h, l, quiet) { /* a cabin goes over the pulley: the bell dings, a cheer */
+  h.ding = 1; h.spin = 14; h.passes = (h.passes | 0) + 1; l.swoops = (l.swoops | 0) + 1; if (quiet) return; const P = hookPos(h, hkV);
+  sfx('ding'); if (P) puff('star', P.x, P.y - 0.02, P.z, 8, { size: 0.008, vy: -0.01, life: 1, add: true, jit: 0.02, color: 0xfff0a0 });
+  for (const c of l.g.riders) sayLine(c, 'Wheee!', 2.2);
+}
+function linkHook(l) { if (!l.via) return null; const h = G.hooks.find((q) => q.id === l.via); return h && h.built && zoneById(h.zid) ? h : null; }
+function linkPos(l, A, B, u, out) { /* the straight sagging cable, or the two legs of a hooked line (up to the pulley, down the other side) */
+  const h = linkHook(l); if (!h) return cablePoint(A, B, u, out);
+  const H = hookPos(h, hkV), l1 = A.distanceTo(H), l2 = H.distanceTo(B), hh = l1 / Math.max(0.01, l1 + l2);
+  const leg = (P, Q, t) => { const L = P.distanceTo(Q), sag = clamp(L * 0.02, 0.006, 0.04); out.lerpVectors(P, Q, clamp(t, 0, 1)); out.y -= sag * 4 * t * (1 - t); return out; };
+  return u <= hh ? leg(A, H.clone(), hh > 0 ? u / hh : 0) : leg(H.clone(), B, (u - hh) / Math.max(0.001, 1 - hh));
+}
+function hookFor(Sa, wx, wz) { /* the built hook that makes the shortest trip for a line from camp Sa to a point; 0 when there is none */
+  let best = 0, bd = 1e9; for (const h of hooksBuilt()) { const P = hookPos(h, hkV); if (!P) continue; const d = Math.hypot(P.x - Sa.tf.x, P.z - Sa.tf.z) + Math.hypot(P.x - wx, P.z - wz); if (d < bd) { bd = d; best = h.id; } } return best;
+}
+function mkHookMesh(h) {
+  const g = new THREE.Group(), brass = M(0xb88a3e), rope = M(0xcaa468), dark = M(0x3b3128), box = (w, hh, d, m, x, y, z) => mesh(geo('hk' + w + hh + d, () => new THREE.BoxGeometry(w, hh, d)), m, x, y, z), cyl = (r, hh, m, x, y, z, k) => mesh(geo('hc' + r + hh, () => new THREE.CylinderGeometry(r, r, hh, 12)), m, x, y, z);
+  g.add(cyl(0.017, 0.003, brass, 0, -0.0015, 0)); /* ceiling plate */
+  const ring = mesh(geo('hkRing', () => new THREE.TorusGeometry(0.0085, 0.0018, 6, 14)), brass, 0, -0.0115, 0); g.add(ring); /* the cup hook */
+  const r1 = cyl(0.0016, 0.07, rope, 0, -0.058, 0); g.add(r1); /* rope down to the pulley */
+  g.add(mesh(geo('hkKn', () => new THREE.SphereGeometry(0.0035, 8, 6)), rope, 0, -0.04, 0));
+  const blk = new THREE.Group(); blk.position.set(0, -0.115, 0); g.add(blk);
+  for (const sz of [-1, 1]) { blk.add(box(0.0035, 0.034, 0.0032, brass, -0.0155, 0, sz * 0.0072)); blk.add(box(0.0035, 0.034, 0.0032, brass, 0.0155, 0, sz * 0.0072)); blk.add(box(0.034, 0.0035, 0.0032, brass, 0, 0.0165, sz * 0.0072)); blk.add(box(0.034, 0.0035, 0.0032, brass, 0, -0.0165, sz * 0.0072)); } /* two open brass frames, so the wheel shows */ blk.add(box(0.004, 0.004, 0.02, dark, 0, 0.0185, 0));
+  const wheel = new THREE.Group(); const wm = mesh(geo('hkWheel', () => new THREE.CylinderGeometry(0.0125, 0.0125, 0.008, 16).rotateX(Math.PI / 2)), M(0xe6c06a), 0, 0, 0); wheel.add(wm);
+  for (let i = 0; i < 4; i++) { const sp = box(0.024, 0.0018, 0.0095, dark, 0, 0, 0); sp.rotation.z = i * Math.PI / 4; wheel.add(sp); } /* spokes: you can see it spin */
+  wheel.add(mesh(geo('hkHub', () => new THREE.CylinderGeometry(0.003, 0.003, 0.014, 8).rotateX(Math.PI / 2)), dark, 0, 0, 0)); blk.add(wheel);
+  const tail = new THREE.Group(); tail.position.set(0, -0.0185, 0); blk.add(tail); /* knotted rope tail with a bell at its end */
+  tail.add(cyl(0.0016, 0.1, rope, 0, -0.05, 0)); for (let i = 1; i <= 4; i++) tail.add(mesh(geo('hkKn', () => new THREE.SphereGeometry(0.0035, 8, 6)), rope, 0, -0.02 * i, 0));
+  const bell = new THREE.Group(); bell.position.set(0, -0.1, 0); bell.add(mesh(geo('hkBell', () => new THREE.SphereGeometry(0.009, 12, 8, 0, 6.283, 0, 2.2).translate(0, -0.006, 0)), M(0xf0c040, 0x3a2800), 0, 0, 0)); bell.add(mesh(geo('hkClap', () => new THREE.SphereGeometry(0.0025, 6, 5)), dark, 0, -0.013, 0)); tail.add(bell);
+  const lans = []; /* the swaying lanterns now hang from the hook ropes */
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2.1 + 0.6, r = 0.026 + 0.004 * i, len = 0.05 + 0.014 * i, pv = new THREE.Group(); pv.position.set(Math.cos(a) * r, -0.098, Math.sin(a) * r);
+    const st = mesh(geo('hangStr', () => new THREE.BoxGeometry(0.0008, 1, 0.0008)), M(0x4a3a2a), 0, -len / 2, 0); st.scale.y = len; pv.add(st);
+    pv.add(mesh(geo('hangLan', () => new THREE.SphereGeometry(0.0075, 8, 6)), M(0xffd27a, 0xffb040), 0, -len - 0.006, 0)); const gl = glowSprite(0.026, 0.5, 0xffc870); gl.position.set(0, -len - 0.006, 0); pv.add(gl); pv.userData.ph = i * 1.9; g.add(pv); lans.push(pv);
+  }
+  g.userData = { wheel, bell, lans, blk }; g.scale.setScalar(0.01); world.add(g); return g;
+}
+function mkNestMesh() { /* a knitted sock lookout nest, hung by a string from the pulley block */
+  const g = new THREE.Group(); g.position.set(0.05, -0.1, 0.0);
+  const st = mesh(geo('hangStr', () => new THREE.BoxGeometry(0.0008, 1, 0.0008)), M(0x4a3a2a), 0, 0.02, 0); st.scale.y = 0.05; g.add(st);
+  const col = [M(0xd9483b), M(0xfff6e6)]; for (let i = 0; i < 5; i++) g.add(mesh(geo('nestLeg', () => new THREE.CylinderGeometry(0.0125, 0.0115, 0.0085, 12)), col[i % 2], 0, -0.004 - i * 0.0085, 0));
+  const foot = mesh(geo('nestFoot', () => new THREE.SphereGeometry(0.0125, 12, 8)), col[1], 0.006, -0.047, 0); foot.scale.set(1.35, 0.9, 1); g.add(foot);
+  const toe = mesh(geo('nestToe', () => new THREE.SphereGeometry(0.0075, 8, 6)), col[0], 0.0185, -0.048, 0); g.add(toe);
+  g.add(mesh(geo('nestCuff', () => new THREE.TorusGeometry(0.0125, 0.0028, 6, 14).rotateX(Math.PI / 2)), M(0xe8d8b0), 0, 0.0, 0));
+  const eyeW = M(0xffffff), eyeB = M(0x222222); for (const sx of [-1, 1]) { const e = mesh(geo('nestEye', () => new THREE.SphereGeometry(0.0034, 8, 6)), eyeW, sx * 0.005, 0.0095, 0.0085); g.add(e); g.add(mesh(geo('nestPup', () => new THREE.SphereGeometry(0.0018, 6, 5)), eyeB, sx * 0.005, 0.0095, 0.011)); } /* a lookout peeking over the cuff */
+  g.add(mesh(geo('nestHead', () => new THREE.SphereGeometry(0.0085, 10, 8, 0, 6.283, 0, 1.2)), M(0xf3c98b), 0, 0.001, 0));
+  return g;
+}
+function mkBalloon() { /* a tiny tea-bag hot-air balloon: a paper tea bag with a tag, a basket and a warm glow */
+  const g = new THREE.Group(); const bag = mesh(geo('tbBag', () => new THREE.BoxGeometry(0.03, 0.04, 0.012)), M(0xf3ead2), 0, 0.036, 0); g.add(bag);
+  const top = mesh(geo('tbTop', () => new THREE.BoxGeometry(0.032, 0.004, 0.0135)), M(0xb9a77a), 0, 0.057, 0); g.add(top);
+  const tag = mesh(geo('tbTag', () => new THREE.BoxGeometry(0.012, 0.014, 0.0015)), M(0xd9483b), 0.018, 0.064, 0); tag.rotation.z = -0.4; g.add(tag);
+  g.add(mesh(geo('tbStr', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.02, 4)), M(0x555555), 0.01, 0.064, 0));
+  for (const sx of [-1, 1]) g.add(mesh(geo('tbRope', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.022, 4)), M(0x4a3a2a), sx * 0.007, 0.0085, 0));
+  g.add(mesh(geo('tbBask', () => new THREE.BoxGeometry(0.012, 0.007, 0.01)), M(0x8a5a33), 0, -0.004, 0)); const gl = glowSprite(0.05, 0.9, 0xffb050); gl.position.set(0, 0.012, 0); g.add(gl); return g;
+}
+function hookVisual(h, dt, time) {
+  const Z = zoneById(h.zid), P = Z && hookPos(h, hkV);
+  if (!P) { if (h.group) h.group.visible = false; if (h.balloon) h.balloon.visible = false; return; }
+  const sx = P.x, sz = P.z, cy = Z.y;
+  if (!h.built) {
+    if (h.group) h.group.visible = false; if (!h.balloon) { h.balloon = mkBalloon(); world.add(h.balloon); h.rope = mesh(geo('tbRL', () => new THREE.BoxGeometry(0.0016, 1, 0.0016)), M(0xcaa468), 0, 0, 0); world.add(h.rope); }
+    const S0 = G.settlements.find((q) => q.id === h.from) || nearestCamp(sx, sz), x0 = S0 ? S0.tf.x : sx, z0 = S0 ? S0.tf.z : sz, y0 = S0 ? S0.tf.y + 0.12 : cy - 1, e = h.prog * h.prog * (3 - 2 * h.prog);
+    const bx = x0 + (sx - x0) * e + Math.sin(time * 1.3 + h.id) * 0.02 * (1 - e), bz = z0 + (sz - z0) * e + Math.cos(time * 1.1) * 0.02 * (1 - e), by = y0 + (cy - 0.05 - y0) * e;
+    h.balloon.visible = true; h.balloon.position.set(bx, by, bz); h.balloon.rotation.z = Math.sin(time * 1.7) * 0.08; h.balloon.rotation.y = time * 0.5;
+    const dy = by - (S0 ? S0.tf.y + 0.02 : by - 1); h.rope.visible = true; h.rope.scale.y = Math.max(0.001, dy); h.rope.position.set(x0 + (bx - x0) / 2, (S0 ? S0.tf.y + 0.02 : by - 1) + dy / 2, z0 + (bz - z0) / 2);
+    h.rope.rotation.set(0, 0, 0); h.rope.lookAt(bx, by, bz); h.rope.rotateX(Math.PI / 2); return;
+  }
+  if (h.balloon) { world.remove(h.balloon); world.remove(h.rope); h.balloon = h.rope = null; }
+  if (!h.group) h.group = mkHookMesh(h); const g = h.group, U = g.userData; g.visible = true; g.position.set(sx, cy, sz);
+  h.pop = Math.min(1, h.pop + dt * 1.6); const k = h.pop, sc = HOOK_SCALE * (k < 1 ? Math.max(0.05, 1 + 1.7 * Math.pow(k - 1, 3) + 0.7 * Math.pow(k - 1, 2)) : 1); g.scale.setScalar(sc);
+  h.ding = Math.max(0, h.ding - dt * 0.8); h.spin = Math.max(0, h.spin - dt * 5); U.wheel.rotation.z -= h.spin * dt; U.bell.rotation.z = Math.sin(time * 18) * 0.5 * h.ding * h.ding + Math.sin(time * 1.2) * 0.04; { const lk = G.links.find((q) => q.via === h.id), en = lk && linkEnds(lk); if (en) h.head = -Math.atan2(en[1].z - en[0].z, en[1].x - en[0].x); U.blk.rotation.y = (h.head || 0) + Math.sin(time * 0.7 + h.id) * 0.05; } /* the wheel turns to face along the line that runs over it */
+  for (const pv of U.lans) { pv.rotation.z = Math.sin(time * 1.1 + pv.userData.ph) * 0.09; pv.rotation.x = Math.cos(time * 0.9 + pv.userData.ph) * 0.05; }
+  if (h.nest && !U.nest) { U.nest = mkNestMesh(); g.add(U.nest); } if (U.nest) { U.nest.rotation.z = Math.sin(time * 0.9) * 0.1; }
+}
+function hooksDrop() { for (const h of G.hooks) { if (h.group) world.remove(h.group); if (h.balloon) world.remove(h.balloon); if (h.rope) world.remove(h.rope); } G.hooks = []; }
+function hooksSave() { return G.hooks.map((h) => ({ id: h.id, zid: h.zid, o: h.o, nest: !!h.nest, sid: h.sid, built: !!h.built, from: h.from })); }
+function hooksRestore(sv) { for (const d of sv || []) { const Z = zoneById(d.zid); if (!Z || !Z.ceil) continue; addHook(Z, null, { id: d.id, o: d.o, nest: d.nest, sid: d.sid, built: !!d.built }); const h = G.hooks[G.hooks.length - 1]; h.from = d.from; if (!d.built) { h.prog = 0.5; } } }
+function ceilEvac(S, quiet) { /* build 13: nobody lives on a ceiling. The settlers come down by cable car to the nearest camp; their buildings go; a hook stays. */
+  const Z = S.zoneRef, [hx, hz] = zoneWorld(Z, S.o[0], S.o[1]), home = nearestCamp(hx, hz, true);
+  for (const l of G.links.slice()) if (l.a.sid === S.id || l.b.sid === S.id) { for (const c of l.g.riders.splice(0)) { if (home) arriveAt(c, home, home.tent || { x: 0, z: 0 }, true); } world.remove(l.group); G.links.splice(G.links.indexOf(l), 1); }
+  if (home) for (const c of S.cols.slice()) { S.cols.splice(S.cols.indexOf(c), 1); if (c.mesh && c.mesh.parent) c.mesh.parent.remove(c.mesh); arriveAt(c, home, home.tent || { x: 0, z: 0 }, true); c.x += rnd(-0.03, 0.03); c.z += rnd(-0.03, 0.03); }
+  for (const r of G.requests.slice()) if (r.sid === S.id) resolveRequest(r, true);
+  world.remove(S.group); const i = G.settlements.indexOf(S); if (i >= 0) G.settlements.splice(i, 1); Z.settled = null; S.dead = true; if (G.cur === S) G.cur = null; if (G.sel && G.sel.S === S) G.sel = null;
+  if (!hookOn(Z)) addHook(Z, null, { built: true, o: zoneLocal(Z, hx, hz) });
+  if (!quiet) toast('The ceiling crew came down for tea.', 5); return home;
+}
 function stationSpot(S, wx, wz) {
   const [lx, lz] = w2l(S, wx, wz);
   for (let R = 0; R <= 0.3; R += 0.02) for (let i = 0; i < (R ? 14 : 1); i++) { const a = i * 0.45, x = lx + Math.cos(a) * R, z = lz + Math.sin(a) * R; if (validSpot(S, x, z, 0.03, { free: true })) return [x, z]; }
@@ -1288,22 +1392,23 @@ function stationSpot(S, wx, wz) {
 }
 /* build 12: the hanging base. A ceiling is only reached once a cable car already runs (ceilTick offers it as an expedition; the Cable car tool needs the same). */
 const ceilOK = () => G.links.some((l) => l.ready);
-function canLink(Sa, wxa, wza, zb, wxb, wzb) {
+function canLink(Sa, wxa, wza, zb, wxb, wzb, via) {
   if (!zb || zb === Sa.zoneRef || zb.id === Sa.zid) return 'Pick a different zone.';
-  if (zb.ceil && !ceilOK()) return 'The ceiling is too high for now: build a cable car first.';
-  if (Math.hypot(wxb - wxa, wzb - wza) + Math.abs(zb.y - Sa.tf.y) < 0.25) return 'Too close for a cable car.';
+  if (zb.ceil) return 'The ceiling is for hooks and lanterns, not for houses.';
+  if (!via && Math.hypot(wxb - wxa, wzb - wza) + Math.abs(zb.y - Sa.tf.y) < 0.25) return 'Too close for a cable car.'; /* a line over a ceiling hook may join camps that are close together */
   if (!canPay(Sa, CABLE_COST)) return 'A cable car needs ' + CABLE_COST + ' wood (or tin).';
   if (!stationSpot(Sa, wxa, wza)) return 'No room for a station there.';
   return '';
 }
-function makeLink(Sa, wxa, wza, zb, wxb, wzb) {
-  const err = canLink(Sa, wxa, wza, zb, wxb, wzb); if (err) { toast(err); sfx('no'); return null; }
+function makeLink(Sa, wxa, wza, zb, wxb, wzb, via) {
+  const hk = via && G.hooks.find((h) => h.id === via && h.built); via = hk ? hk.id : 0;
+  const err = canLink(Sa, wxa, wza, zb, wxb, wzb, via); if (err) { toast(err); sfx('no'); return null; }
   let Sb = zb.settled; if (!Sb) Sb = newSettlement(zb, { awaiting: true });
   const spB = stationSpot(Sb, wxb, wzb); if (!spB) { toast('No room for a station there.'); return null; }
   const spA = stationSpot(Sa, wxa, wza); pay(Sa, CABLE_COST);
-  const l = { id: ++G.uid, how: 'cable car', a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0 };
+  const l = { id: ++G.uid, how: 'cable car', a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, via: via || 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0 };
   l.a.th = addThing(Sa, 'station', spA[0], spA[1], { link: l.id, end: 'a' }); l.b.th = addThing(Sb, 'station', spB[0], spB[1], { link: l.id, end: 'b' });
-  l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l); sfx('chime'); toast('The colonists start rigging a cable car to ' + Sb.zoneName + '.', 4);
+  l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l); sfx('chime'); toast('The colonists start rigging a cable car to ' + Sb.zoneName + (via ? ', over the ceiling hook' : '') + '.', 4);
   return l;
 }
 function makeLinkMesh(l) {
@@ -1335,7 +1440,11 @@ function linkStep(l, dt, E, quiet) {
     if (g.timer <= 0) { if (E.windy) { g.timer = 5; } else if (g.riders.length || Math.random() < 0.5 || quiet) { g.state = 'run'; g.dir = g.end === 'a' ? 1 : -1; } else g.timer = 4; }
   }
   if (g.state === 'run') {
-    const spd = 0.08 / Math.max(L, 0.2) * (quiet ? 8 : 1); g.s += g.dir * spd * dt;
+    const hk = linkHook(l); let spd = 0.08 / Math.max(L, 0.2), hh = 0, s0 = g.s;
+    if (hk) { const H = hookPos(hk, hkV), l1 = A.distanceTo(H), l2 = H.distanceTo(B), tot = Math.max(0.01, l1 + l2), Td = Math.max(L, 0.2) / 0.08; hh = l1 / tot; /* a hooked trip takes 70% of the straight trip: slow climb, quick swoop down the far side */ spd = (l1 / 0.8 + l2 / 1.6) / (0.7 * Td) * (((g.dir > 0) === (g.s < hh)) ? 0.8 : 1.6) / tot; }
+    spd *= quiet ? 8 : 1; g.s += g.dir * spd * dt;
+    if (hk && (s0 - hh) * (g.s - hh) <= 0 && s0 !== hh) hookPass(hk, l, quiet);
+    else if (hk && !quiet && ((g.dir > 0) !== (g.s < hh)) && Math.random() < dt * 4) puff('star', l.cab.position.x, l.cab.position.y - 0.01, l.cab.position.z, 1, { size: 0.006, vy: 0.01, life: 0.6, add: true, jit: 0.004, color: 0xfff0a0 });
     if (g.s >= 1 || g.s <= 0) {
       g.s = clamp(g.s, 0, 1); g.end = g.dir > 0 ? 'b' : 'a'; g.state = 'dock'; g.timer = 6;
       const dest = g.end === 'a' ? Sa : Sb, th = g.end === 'a' ? l.a.th : l.b.th;
@@ -1801,7 +1910,7 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
     const cands = G.zones.filter((Z) => !Z.settled && !Z.lost && !Z.ceil && Z.land && Z.area > 0.04 && Z !== S.zoneRef); if (!cands.length) continue; /* ceilings are never reached by the automatic expansion (see ceilTick) */
     cands.sort((a, b) => (G.spots.some((s) => s.zid === b.id && s.src !== 'default') ? 1 : 0) - (G.spots.some((s) => s.zid === a.id && s.src !== 'default') ? 1 : 0) || Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz));
     const Zt = cands[0]; ensureDist(Zt); ensureDist(S.zoneRef);
-    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
+    const l = makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1], hookFor(S, Zt.core[0], Zt.core[1])); if (l) { const sp = G.spots.find((s) => s.zid === Zt.id && s.src !== 'default') || G.spots.find((s) => s.zid === Zt.id); l.how = sp ? spotHow(sp) : TRAVEL.cable; DIARY.found.push({ from: S, to: Zt, how: l.how, spot: sp, who: personOf(S, 'x' + Zt.id) }); }
   }
 }
 const SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
@@ -1831,6 +1940,7 @@ function awaySim(secs, startHour) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
     for (const l of G.links) linkStep(l, step, AWAYE, true);
+    for (const h of G.hooks) hookStep(h, step, true);
     G.simT += step; awayEvents(step, h); if (steps % 40 === 0) autoExpand();
   }
   let long = null; if (rest > 0) { long = awayDays(rest); nights += long.days; G.simT += rest; if (!long.days) long = null; autoExpand(); } // part days count too (review 12 Nov): 30 h away is 24 h in full plus one day step
@@ -1887,6 +1997,7 @@ function showAway(res) {
 function fxOf(S) { // what the room's spots give this colony
   const fx = { n: 0 }; const Z = S.zoneRef; if (!Z) return fx;
   for (const sp of spotsOn(Z)) { fx[sp.role] = (fx[sp.role] || 0) + 1; fx.n++; }
+  if (G.hooks.some((h) => h.nest && h.sid === S.id)) { fx.lookout = (fx.lookout || 0) + 1; fx.n++; } /* the sock nest up on the ceiling hook is a lookout */
   return fx;
 }
 function roleStep(S, dt, E, quiet) {
@@ -1924,20 +2035,29 @@ function visuals(dt, time) {
     }
     for (const c of S.cols) colVisual(S, c, dt, time, night, eye);
   }
+  for (const h of G.hooks) hookVisual(h, dt, time);
   for (const l of G.links) linkVisual(l, time);
 }
 function linkVisual(l, time) {
   const ends = linkEnds(l); if (!ends || !ends[2].placed || !ends[3].placed) { l.group.visible = false; return; } l.group.visible = true;
-  const [A, B] = ends, key = A.toArray().map((v) => Math.round(v * 500)).join(',') + B.toArray().map((v) => Math.round(v * 500)).join(',') + Math.round(l.prog * 12);
+  const [A, B] = ends, hk = linkHook(l), H = hk ? hookPos(hk, hkV) : null, key = A.toArray().map((v) => Math.round(v * 500)).join(',') + B.toArray().map((v) => Math.round(v * 500)).join(',') + Math.round(l.prog * 12) + (H ? 'h' + H.toArray().map((v) => Math.round(v * 500)).join(',') : '');
   if (key !== l.key) {
     l.key = key; if (l.cable) { l.group.remove(l.cable); l.cable.geometry.dispose(); }
-    const pts = [], p = new THREE.Vector3(), top = Math.max(0.04, l.prog);
-    for (let i = 0; i <= 24; i++) pts.push(cablePoint(A, B, i / 24 * (l.ready ? 1 : top), new THREE.Vector3()));
-    l.cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.0019, 5), M(l.ready ? 0x4a3a2c : 0xd9a066)); l.group.add(l.cable);
+    const pts = [], top = Math.max(0.04, l.prog) * (l.ready ? 1 : 1), hh = H ? A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B)) : 0, us = [];
+    if (H) { for (let i = 0; i <= 20; i++) us.push(hh * i / 20); for (let i = 1; i <= 20; i++) us.push(hh + (1 - hh) * i / 20); } else for (let i = 0; i <= 24; i++) us.push(i / 24);
+    for (const u of us) { const uu = l.ready ? u : u * top; pts.push(linkPos(l, A, B, uu, new THREE.Vector3())); }
+    l.cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), H ? 120 : 40, H ? 0.0027 : 0.0019, 5), M(l.ready ? 0x4a3a2c : 0xd9a066)); l.group.add(l.cable);
   }
   l.cab.visible = l.ready;
-  const g = l.g, p = cablePoint(A, B, g.s, tmpV); l.cab.position.copy(p);
+  const g = l.g, p = linkPos(l, A, B, g.s, tmpV); l.cab.position.copy(p);
   const sway = (ENV.windy ? 0.25 : 0.05) * Math.sin(time * (ENV.windy ? 3 : 1.5)); l.cab.rotation.z = sway * (g.state === 'run' ? 1 : 0.4); l.cab.rotation.y = Math.atan2(B.x - A.x, B.z - A.z) + Math.PI / 2;
+  if (H) { /* along a hooked line the cabin faces the way it travels and tilts with the slope (nose down on the swoop) */
+    const hh = A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B)), dir = g.state === 'run' ? g.dir : (l.cdir || 1); l.cdir = dir;
+    const q = linkPos(l, A, B, clamp(g.s + dir * 0.02, 0, 1), tmpV2), dx = q.x - p.x, dy = q.y - p.y, dz = q.z - p.z, hz = Math.hypot(dx, dz);
+    if (hz > 0.002) l.cab.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; /* a near-vertical leg keeps the last facing */
+    const down = (dir > 0) !== (g.s < hh), pitch = clamp(-Math.atan2(dy, Math.max(hz, 0.02)) * 0.55, -0.7, 0.7);
+    l.cab.rotation.z = (g.state === 'run' ? pitch : 0) + sway * 0.6 + (g.state === 'run' && down ? 0.12 + 0.05 * Math.sin(time * 9) : 0);
+  }
   l.glow.material.opacity = ENV.night ? 0.8 : 0;
 }
 
@@ -2084,7 +2204,7 @@ const MILESTONES = { // id: [icon, title, line, by]
   pop5: ['👪', 'Five colonists', 'Getting busy around here.'], pop10: ['🎉', 'Ten colonists', 'A proper little town.'],
   ride: ['🚡', 'First cable car ride', 'Somebody went somewhere new.'], night: ['🌙', 'First night survived', 'Lights out, everyone home.'],
   rainbow: ['🌈', 'First rainbow', 'The rain stopped and the sky said sorry.', 'The Town Brain'], back: ['🪨', 'First visit back', 'A polished pebble: we kept your spot warm.', 'The Town Brain'],
-  hang: ['🦇', 'Upside-down camp', 'Hanging from the ceiling, lanterns and all.'],
+  hang: ['🦇', 'Upside-down camp', 'Hanging from the ceiling, lanterns and all.'], hook: ['🦇', 'First ceiling hook', 'A rope, a bell and a zip line up in the rafters.'],
   festival: ['🎪', 'First festival', 'Tiny stalls and a parade.', 'The Dell Reasoner'], week: ['📅', 'A week of visits', 'Seven different days with the Giant.'],
 };
 function celebrate(id, S) {
@@ -2119,7 +2239,7 @@ function funCheck() { // twice a second in play: milestones, unlocks, the counci
   const pop = all.reduce((a, q) => a + q.cols.length, 0) + G.links.reduce((a, l) => a + l.g.riders.length, 0);
   celebrate('land', S);
   if (has('hut')) celebrate('hut'); if (FUN.n.harvest) celebrate('harvest'); if (has('tree', (t) => t.g >= 1)) celebrate('tree'); if (FUN.n.feast) celebrate('feast'); if (FUN.n.giant) celebrate('giant');
-  { const hg = all.find((q) => q.tf.flip && !q.awaiting && q.cols.length); if (hg) celebrate('hang', hg); } /* build 12: the first settlers up on a ceiling */
+  if (hooksBuilt().length) celebrate('hook', S); /* build 13: the first hook up on a ceiling ('hang', the build 12 upside-down camp, is only kept for old albums) */
   if (pop >= 5) celebrate('pop5'); if (pop >= 10) celebrate('pop10'); if (FUN.n.ride) celebrate('ride'); if (FUN.n.night) celebrate('night');
   if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4) celebrate('party');
   const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); if (!FUN.days.includes(day)) { FUN.days.push(day); if (FUN.days.length > 60) FUN.days.shift(); } if (FUN.days.length >= 7) celebrate('week');
@@ -2332,7 +2452,8 @@ function serialize() {
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
-    links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
+    hooks: hooksSave(),
+    links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
 }
 function saveNow() { if (!G.settlements.length) return; if (!safeWrite(SAVE_KEY, JSON.stringify(serialize()))) storeWarn(); }
@@ -2340,7 +2461,7 @@ function loadSave() { return safeRead(SAVE_KEY, (d) => d && d.v === 2 && Array.i
 function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
   const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); if (zone.ceil) hangDecor(S);
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
   for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich }); if (t.kind === 'tent') S.tent = th; }
   for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
   if (S.lost) { S.placed = false; S.group.visible = false; }
@@ -2351,7 +2472,7 @@ function restoreLinks(sv) { // saved cable cars between settlements that exist a
   for (const L of sv) {
     const Sa = G.settlements.find((s) => s.id === L.a.sid), Sb = G.settlements.find((s) => s.id === L.b.sid);
     if (!Sa || !Sb) continue; const ta = Sa.things.find((t) => t.id === L.a.tid), tb = Sb.things.find((t) => t.id === L.b.tid); if (!ta || !tb) continue;
-    const l = { id: L.id, cid: L.cid, how: L.how || 'cable car', gate: L.gate, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
+    const l = { id: L.id, cid: L.cid, how: L.how || 'cable car', gate: L.gate, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, via: (L.via && G.hooks.some((h) => h.id === L.via)) ? L.via : 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
     makeLinkMesh(l); G.links.push(l);
   }
 }
@@ -2363,7 +2484,8 @@ function prepareContinue() {
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
-  restoreLinks(sv.links || []); syncCables();
+  hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables();
+  for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
   G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); funReturn(secs, G.awayRes); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
   if (G.auto) { G.pendingDiary = G.awayRes; return true; }
@@ -2964,8 +3086,9 @@ function liveGain(Z) { // the scan sees more of a known surface: new cells and n
   return ch;
 }
 function liveReclass(Z, fz) { // the scan learns what a surface is (a desk looks like a floor until the real floor shows up)
-  if (Z.settled && fz.ceil && !Z.ceil && fz.band && fz.band.nh >= 40 && fz.band.nb / fz.band.nh >= 0.7) { /* an older save (or an early guess) put a colony on a ceiling: it hangs from it now */
-    Z.ceil = true; Z.type = 'CEIL'; Z.name = fz.name; Z.spec = fz.spec; Z.h = fz.h; Z.dirtyName = true; const S = Z.settled; S.zoneName = Z.name; S.zoneType = 'CEIL'; syncTf(S); if (!S.hang) hangDecor(S); syncZoneMesh(Z); AUTO.mapDirty = true; toast('The colony was on the roof boards: it hangs from them now.', 4); return;
+  if (Z.settled && fz.ceil && !Z.ceil && fz.band && fz.band.nh >= 40 && fz.band.nb / fz.band.nh >= 0.7) { /* an older save (or an early guess) put a colony on a ceiling: build 13 brings the settlers down to the nearest other camp and leaves a hook (with no other camp to go to, the colony stays where it is) */
+    const S = Z.settled; Z.ceil = true; if (!nearestCamp(S.tf.x, S.tf.z, true)) { Z.ceil = false; return; }
+    Z.type = 'CEIL'; Z.name = fz.name; Z.spec = fz.spec; Z.h = fz.h; Z.dirtyName = true; syncZoneMesh(Z); AUTO.mapDirty = true; ceilEvac(S, false); return;
   }
   if (Z.settled && (Z.ceil || fz.ceil)) return; /* a settled camp keeps what its surface is */
   if (Z.type === fz.type && Z.h === fz.h && !!Z.ceil === !!fz.ceil) return;
@@ -3079,14 +3202,15 @@ function autoCompare() { // quiet change detection on a matched map: what is new
   G.report = rep; G.asks = rep.asks.slice(); persist();
   if (G.asks.length) askNext(); else if (rep.lines.length) showReport();
 }
-/* Harry's idea (build 12): with a colony and one working cable car, somebody asks to try a ceiling. 'Yes!' sends the usual expedition (a cable car), and the camp hangs upside down. */
+/* build 13: with a colony and one working cable car, somebody asks to hang something up on the ceiling (a hook first, then a sock nest; see CEIL_THINGS). Nothing lives up there. */
 function ceilTick() {
   if (G.phase !== 'play' || (typeof BT !== 'undefined' && BT.on) || (G.returning && !G.locked) || G.simT < (G.ceilCd || 0)) return;
   if (G.requests.some((r) => r.def.id === 'ceiling') || !ceilOK()) return;
-  const Zt = G.zones.find((Z) => Z.ceil && !Z.settled && !Z.lost && Z.land && Z.area >= 0.12 && clearArea(Z) >= 0.06); if (!Zt) return;
-  const S = G.settlements.find((q) => q.placed && !q.awaiting && !q.lost && !q.tf.flip && q.cols.length >= 2 && !G.links.some((l) => !l.ready && (l.a.sid === q.id || l.b.sid === q.id))); if (!S) return;
-  const who = personOf(S, 'ceil' + Zt.id); G.ceilCd = G.simT + 300;
-  G.requests.push({ id: ++G.uid, def: { id: 'ceiling', icon: 'cable', text: (who ? who.name : 'Somebody') + ' wants to try the ceiling!', give: 'expedition', joy: 0.3, cooldown: 600, zone: Zt.id }, sid: S.id, cid: who ? who.id : 0, t: G.simT, who: who ? who.name : '' }); sfx('ask'); reqUi();
+  const S = G.settlements.find((q) => q.placed && !q.awaiting && !q.lost && q.cols.length >= 2 && !(q.zoneRef && q.zoneRef.ceil)); if (!S) return;
+  for (const key of Object.keys(CEIL_THINGS)) {
+    const T = CEIL_THINGS[key]; if (!T.when()) continue; const Zt = T.zone(); if (!Zt) continue; const who = personOf(S, 'ceil' + key); G.ceilCd = G.simT + 300;
+    G.requests.push({ id: ++G.uid, def: { id: 'ceiling', key, icon: T.icon, text: T.text(who ? who.name : 'Somebody'), give: 'ceilthing', joy: 0.3, cooldown: 600, zone: Zt.id }, sid: S.id, cid: who ? who.id : 0, t: G.simT, who: who ? who.name : '' }); sfx('ask'); reqUi(); return;
+  }
 }
 function autoAskTick() { // at most one "What is this?" per two minutes, only for things next to a colony, dismissible, never blocking
   if (!G.auto || G.phase !== 'play' || !G.locked && G.returning || AUTO.t < 60) return; const now = performance.now();
@@ -3324,7 +3448,7 @@ function relocManual() { // the older way: tap the two furthest-apart named thin
   RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
 }
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
-  for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z);
+  for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop();
   G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
@@ -3571,7 +3695,7 @@ function resetWorld() {
   btCleanup(true); G.ceilCd = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
-  for (const z of G.zones) disposeZone(z);
+  for (const z of G.zones) disposeZone(z); hooksDrop();
   G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
@@ -3729,7 +3853,7 @@ function updateHint() {
   else if (G.phase === 'zones') s = 'Tap a coloured zone to found your colony there.';
   else if (G.phase === 'tag') s = G.tagMode === 'cable' ? (G.cableFrom ? 'Now tap the other end of the cable.' : 'Mark a cable: tap one end of a real cable, then the other.') : 'Tap a thing to name it: speaker, cup, can, computer, warm box... The colonists work out what it is for.';
   else if (G.phase === 'align') { const lm = G.landmarks || []; s = G.align && G.align.done ? 'Does it line up? Slide or turn the saved room until the labels sit on the real things, then Looks right.' : lm.length ? 'Lining the saved room up with the real one. Tap the ' + (lm[G.alignTaps.length] ? lm[G.alignTaps.length].name : '') + (lm.length > 1 ? ' (' + (G.alignTaps.length + 1) + ' of ' + lm.length + ')' : '') + '.' : 'Nothing to line up on.'; }
-  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
+  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: hooksBuilt().length ? 'Drag from a camp to another zone. Cable cars run via the ceiling hook (switch it on the toolbar).' : 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
   if (G.auto && G.phase === 'play') { if (s) autoSay(s, 4); $('chips').innerHTML = ''; autoCount(); return; }
   h.textContent = s; h.hidden = !s; h.classList.remove('fade');
   const ch = $('chips'); ch.innerHTML = '';
@@ -3751,6 +3875,7 @@ function barUi() {
     else if (G.auto) b.innerHTML = G.settlements.length ? IC('look', '\ud83d\udc41', 'Look') + IC('seed', '\ud83c\udf31', 'Seeds') + IC('water', '\ud83d\udca7', 'Water') + IC('build', '\ud83d\udd28', 'Build') + `<button id="bParty" title="Music" aria-label="Music" class="ic ${FUN.party ? 'on' : ''}"><i>\ud83c\udfb5</i><small>Music</small></button>` + IC('cable', '\ud83d\udea1', 'Cable') + (pr ? T('move', 'Move things') + '<button id="bBack" class="alt">Come back later</button>' : '') + '<button id="bMenu" class="ic" title="Menu" aria-label="Menu"><i>\u2630</i><small>Menu</small></button><button id="bCollapse" class="ic" title="Hide" aria-label="Hide the toolbar"><i>\u2304</i><small>Hide</small></button>' : '<button id="bMenu">Menu</button>';
     else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + `<button id="bParty" class="${FUN.party ? 'on' : ''}">Music</button>` + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
+  if (G.phase === 'play' && G.tool === 'cable' && hooksBuilt().length && !b.hidden && !(G.auto && G.barMin)) b.insertAdjacentHTML('beforeend', `<button id="bVia" title="via the ceiling hook" aria-label="via the ceiling hook" class="ic ${G.cableVia === false ? '' : 'on'}"><i>\ud83d\udd14</i><small>Via hook</small></button>`);
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
   if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
 }
@@ -3766,6 +3891,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bQuit') { saveNow(); if (G.zones.length && G.phase !== 'scan') saveMap(); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } return; }
   if (t.id === 'bRescan') { rescanFresh(); return; }
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
+  if (t.id === 'bVia') { G.cableVia = G.cableVia === false; barUi(); return toast(G.cableVia === false ? 'Cable cars go straight.' : 'Cable cars go via the ceiling hook.', 3); }
   if (t.id === 'bMenu') return menuUi();
   if (t.id === 'bCollapse') { G.barMin = true; return barUi(); }
   if (t.id === 'bExpand') { G.barMin = false; return barUi(); }
@@ -3923,7 +4049,7 @@ function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   const MAXR = 2; // at most two requests on screen: the room is the game, not a to-do list
   for (const q of G.requests.slice(0, MAXR)) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'cablecar' || q.def.give === 'expedition' ? 'Yes!' : 'Give'}</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
@@ -3985,8 +4111,9 @@ function colPick(cx, cy, maxd) {
 }
 let preview = null;
 function clearPreview() { if (preview) { world.remove(preview); preview.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); preview = null; } }
-function showPreview(A, B, ok) {
-  clearPreview(); const pts = []; for (let i = 0; i <= 20; i++) pts.push(cablePoint(A, B, i / 20, new THREE.Vector3()));
+const viaPick = (S, g) => (G.cableVia === false || !g || !g.zone || g.zone === S.zoneRef || g.zone.ceil) ? 0 : hookFor(S, g.x, g.z); /* the Cable car tool: via the ceiling hook when one is up and the switch is on */
+function showPreview(A, B, ok, H) {
+  clearPreview(); const pts = []; if (H) { for (let i = 0; i <= 12; i++) pts.push(A.clone().lerp(H, i / 12)); for (let i = 1; i <= 12; i++) pts.push(H.clone().lerp(B, i / 12)); } else for (let i = 0; i <= 20; i++) pts.push(cablePoint(A, B, i / 20, new THREE.Vector3()));
   preview = new THREE.Group(); preview.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 30, 0.0016, 5), new THREE.MeshBasicMaterial({ color: ok ? 0x6fd16f : 0xe8483b, transparent: true, opacity: 0.8 })));
   const e = new THREE.Mesh(new THREE.RingGeometry(0.02, 0.028, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: ok ? 0x6fd16f : 0xe8483b, depthTest: false })); e.position.set(B.x, B.y - 0.06, B.z); preview.add(e); world.add(preview);
 }
@@ -4015,8 +4142,8 @@ $('touch').addEventListener('pointermove', (e) => {
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; return; }
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY), A = new THREE.Vector3(f.x, SY(f.S, 0.063), f.z);
-    let B, ok = false; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z); } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], SY(f.S, 0.063), p[1]); }
-    showPreview(A, B, ok); return;
+    let B, ok = false, hp = null; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z, viaPick(f.S, g)); hp = ok && viaPick(f.S, g) ? hookPos(G.hooks.find((q) => q.id === viaPick(f.S, g)), new THREE.Vector3()) : null; } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], SY(f.S, 0.063), p[1]); }
+    showPreview(A, B, ok, hp); return;
   }
   if (down.prop) { moveProp(down.prop, e.clientX, e.clientY); return; }
   if (G.mode === 'practice' && !AR.on) {
@@ -4033,7 +4160,7 @@ const endDown = (e) => {
   const tap = !down.moved && performance.now() - down.t < 700;
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY); G.cableFrom = null; clearPreview();
-    if (g) { const l = makeLink(f.S, f.x, f.z, g.zone, g.x, g.z); if (l) setTool('look'); } else toast('Drop the line onto another zone.');
+    if (g) { const l = makeLink(f.S, f.x, f.z, g.zone, g.x, g.z, viaPick(f.S, g)); if (l) setTool('look'); } else toast('Drop the line onto another zone.');
     return;
   }
   if (tap) tapAt(e.clientX, e.clientY);
@@ -4077,7 +4204,7 @@ function tapAt(cx, cy) {
   }
 }
 function settleZone(zone) {
-  if (zone.ceil && !(ceilOK() && G.settlements.length)) { toast('The ceiling can wait: land somewhere you can stand first.', 4); return; }
+  if (zone.ceil) { toast('Nobody lives on the ceiling: it is for hooks and lanterns.', 4); return; }
   const S = newSettlement(zone); G.cur = S; G.sel = null; S.placed = true; S.group.visible = true;
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; addColonist(S, { x: Math.cos(a) * 0.07, z: Math.sin(a) * 0.07, spawn: 0.4 * i + 0.2 }); }
   setPhase('play'); G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
@@ -5083,7 +5210,6 @@ function waterStep(dt) {
 function ambient(dt) {
   for (const S of G.settlements) {
     if (!S.placed || S.ghost) continue;
-    if (S.hang) for (const pv of S.hang.children) pv.rotation.z = Math.sin(performance.now() / 900 + pv.userData.ph) * 0.07; /* the lanterns sway a little */
     if (ENV.rain && !S.tf.flip) for (let q = Math.round(dt * 90 + Math.random() - 0.5); q > 0; q--) { const a = rnd(0, 6.28), d = rnd(0, 0.25); puff('rain', S.tf.x + Math.cos(a) * d, SY(S, 0.22), S.tf.z + Math.sin(a) * d, 1, { size: 0.0045, tall: 9, vy: -0.8, life: 0.27, jit: 0, spread: 0, color: 0xcfe8ff }); }
     if (!ENV.night && Math.random() < dt * 0.5) { const tr = S.things.filter((t) => t.kind === 'tree' && t.g >= 1); if (tr.length) { const t = pick(tr), [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, SY(S, 0.06), wz, 1, { size: 0.006, vy: -0.006, vx: 0.01, life: 3, color: 0x8fd16f, spread: 0.02 }); } }
     if (ENV.night && Math.random() < dt * 0.6) puff('star', S.tf.x + rnd(-0.12, 0.12), SY(S, rnd(0.02, 0.08)), S.tf.z + rnd(-0.12, 0.12), 1, { size: 0.004, add: true, life: 2, color: 0xfff0a0, vy: 0.004, jit: 0.006 });
@@ -5104,6 +5230,7 @@ function eventsStep() {
 function simTick(dt, quiet) {
   for (const S of G.settlements) if (S.placed && !S.ghost) simSettlement(S, dt, ENV, quiet);
   for (const l of G.links) linkStep(l, dt, ENV, quiet);
+  for (const h of G.hooks) hookStep(h, dt, quiet);
   G.simT += dt; G.evT += dt; if (G.evT > 360 / 10 * 1) { G.evT = 0; if (!quiet) eventsStep(); }
 }
 function lighting() {
@@ -5148,7 +5275,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
-  barUi, recogStatus, ceilTick, ceilOK, hangDecor, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
+  barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { step = step || 0.5; for (let t = 0; t < sec; t += step) simTick(step, false); },
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,

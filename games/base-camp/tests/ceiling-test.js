@@ -1,10 +1,12 @@
-// Base Camp build 12: CEILINGS and the hanging base, in AR with the REAL WebXRKit polyfill and a fake native side (ar-fake.js). The fake shed has a ceiling plane
+// Base Camp build 13: CEILINGS are rigging (hooks, via-hook cable cars, a sock nest); nobody lives up there. Built on the build 12 ceiling detection, in AR with the REAL WebXRKit polyfill and a fake native side (ar-fake.js). The fake shed has a ceiling plane
 // ('ceilBoards', 1.6 m above the start, only rays that look UP hit it) and a chandelier top that is hit from ABOVE (it must not be taken for a ceiling).
 //  A. three trials with different seeds and sweep orders (ceiling first, floor first, a down-facing ceiling normal): the ceiling is found as `ceil`, the first landing is never on it
-//  B. an expedition offered ("<name> wants to try the ceiling!") only after a cable car works; accepting founds an upside-down camp: the group's world up vector points down,
-//     huts and colonists hang below the boards, lanterns, milestone "Upside-down camp"; autoExpand never takes the ceiling by itself
+//  B. ceiling hooks: no camp on a ceiling (autoExpand, settleZone, the Cable car tool all refuse it); "<name> wants to hang a hook up there!" only after a cable car works; "Yes!" sends a tea-bag balloon,
+//     the hook appears under the ceiling above the camps; a via-hook cable car carries goods about 30% faster than a straight one; the Cable car tool's "via the ceiling hook" switch; the sock lookout nest;
+//     milestone "First ceiling hook"; screenshots 42 and 43
 //  C. layout at 390 x 844 and 1120 x 2000 (portrait, body.inar): toolbar fully on screen (both toolbars), compact report under 30% of the height, toast / banner / report / status do not overlap
-//  D. save and reload keep `ceil` (and the camp hangs again); an old map without `ceil` loads; a colony saved on a ceiling by an older build is hung up when the scan sees the boards
+//  D. save and reload keep `ceil`, the hook, the nest and the via-hook line; an old map without `ceil` loads; a build 12 save with a hanging camp comes down safely (settlers to the nearest camp, a kind toast,
+//     the camp's buildings and cable car removed, a hook left behind, nothing upside down); a colony on boards that the scan then sees as a ceiling comes down too (or stays if it is alone)
 //  E. 0 page errors
 // Run (about 8 minutes):  NO_OVERLAY=1 NODE_PATH=$(npm root -g) node games/base-camp/tests/ceiling-test.js
 const fs = require('fs'), path = require('path');
@@ -49,8 +51,8 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
     if (ti < TRIALS.length - 1) await ev(() => { __g.AR.session.end(); });
   }
 
-  // ===================== B. the hanging base (continues in the last trial's session) =====================
-  const S0 = await ev(() => { const S = __g.G.settlements[0]; S.thriving = true; S.stock.wood = 40; return S.id; });
+  // ===================== B. ceiling hooks (continues in the last trial's session) =====================
+  const S0 = await ev(() => { const S = __g.G.settlements[0]; S.thriving = true; S.stock.wood = 60; return S.id; });
   await ev(() => { __g.ceilTick(); });
   ok('no ceiling request while there is no cable car yet', await ev(() => !__g.G.requests.some((r) => r.def.id === 'ceiling')));
   await waitFor(() => __g.G.zones.filter((z) => !z.ceil).length >= 3, 120000);
@@ -58,31 +60,91 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   let nlinks = await ev(() => __g.G.links.length);
   if (!nlinks) await ev(() => { const S = __g.G.settlements[0], Zt = __g.G.zones.find((z) => !z.ceil && !z.settled && z.land && z.area > 0.04); __g.ensureDist(Zt); __g.ensureDist(S.zoneRef); __g.makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); });
   await ev(() => { __g.simulate(40, 0.5); });
-  const aE = await ev(() => ({ links: __g.G.links.map((l) => l.ready), toCeil: __g.G.settlements.some((S) => S.zoneRef.ceil), ceilZone: __g.G.zones.some((z) => z.ceil && !z.settled) }));
-  ok('autoExpand made a cable car but never took the ceiling by itself', aE.links.length >= 1 && aE.links.every((x) => x) && !aE.toCeil && aE.ceilZone, JSON.stringify(aE));
-  await ev(() => { __g.G.settlements[0].stock.wood = 40; __g.ceilTick(); });
-  const rq = await ev(() => { const r = __g.G.requests.find((q) => q.def.id === 'ceiling'); return r && { text: r.def.text, give: r.def.give }; });
-  ok('with a working cable car, somebody asks to try the ceiling', !!rq && /wants to try the ceiling/.test(rq.text), JSON.stringify(rq));
+  const aE = await ev(() => ({ links: __g.G.links.map((l) => l.ready), toCeil: __g.G.settlements.some((S) => S.zoneRef.ceil), ceilZone: __g.G.zones.some((z) => z.ceil && !z.settled), flip: __g.G.settlements.some((S) => S.tf.flip) }));
+  ok('no camp on a ceiling: autoExpand made a cable car but never took the ceiling, nothing is upside down', aE.links.length >= 1 && aE.links.every((x) => x) && !aE.toCeil && aE.ceilZone && !aE.flip, JSON.stringify(aE));
+  ok('a camp cannot be founded on the ceiling by hand either (settleZone just says no)', await ev(() => { const z = __g.G.zones.find((q) => q.ceil), n = __g.G.settlements.length; __g.settleZone(z); return __g.G.settlements.length === n && !z.settled; }));
+  ok('the Cable car tool refuses a ceiling end ("hooks and lanterns, not houses")', await ev(() => { const S = __g.G.settlements[0], z = __g.G.zones.find((q) => q.ceil); return /hooks and lanterns/.test(__g.canLink(S, S.tf.x, S.tf.z, z, z.cx, z.cz)); }));
+  await ev(() => { __g.G.settlements[0].stock.wood = 60; __g.ceilTick(); });
+  const rq = await ev(() => { const r = __g.G.requests.find((q) => q.def.id === 'ceiling'); return r && { text: r.def.text, give: r.def.give, key: r.def.key }; });
+  ok('with a working cable car, somebody asks "<name> wants to hang a hook up there!"', !!rq && /^\S.* wants to hang a hook up there!$/.test(rq.text) && rq.key === 'hook', JSON.stringify(rq));
+  ok('the old "wants to try the ceiling" camp offer is gone (nothing else is on offer yet)', await ev(() => !__g.G.requests.some((r) => /try the ceiling/.test(r.def.text)) && __g.G.requests.filter((r) => r.def.id === 'ceiling').length === 1));
   await ev(() => { const r = __g.G.requests.find((q) => q.def.id === 'ceiling'); __g.giveRequest(r); });
-  const mk = await ev(() => ({ n: __g.G.settlements.length, last: (() => { const S = __g.G.settlements.find((q) => q.zoneRef.ceil); return S && { awaiting: S.awaiting, flip: S.tf.flip }; })() }));
-  ok('"Yes!" starts a cable car to the ceiling (a camp waiting up there)', !!mk.last && mk.last.flip === true, JSON.stringify(mk));
-  await ev(() => { __g.simulate(240, 0.5); });
-  const H = await ev(() => {
-    const S = __g.G.settlements.find((q) => q.zoneRef.ceil); if (!S) return null; const V = __g.THREE, up = new V.Vector3(0, 1, 0).transformDirection(S.group.matrixWorld), zy = S.zoneRef.y;
-    const hut = S.things.find((t) => t.kind === 'tent' || t.kind === 'hut'), hp = hut && hut.mesh.localToWorld(new V.Vector3(0, 0.02, 0)), col = S.cols.find((c) => !c.inside), cp = col && col.mesh.localToWorld(new V.Vector3(0, 0.02, 0)); /* a point 2 cm above each one's own ground */
-    const [wx, wz] = __g.l2w(S, 0.05, 0.03), [bx, bz] = __g.w2l(S, wx, wz);
-    return { awaiting: S.awaiting, cols: S.cols.length, upY: +up.y.toFixed(3), name: S.zoneName, zy, hutDy: hp ? +(hp.y - zy).toFixed(3) : null, colDy: cp ? +(cp.y - zy).toFixed(3) : null, lanterns: S.hang ? S.hang.children.length : 0, roundTrip: Math.hypot(bx - 0.05, bz - 0.03) < 1e-6, album: __g.FUN.album.some((e) => e.id === 'hang'), ceilYtf: S.tf.y === zy, links: __g.G.links.length };
+  const hk0 = await ev(() => ({ n: __g.G.hooks.length, built: __g.G.hooks[0] && __g.G.hooks[0].built, reqLeft: __g.G.requests.some((r) => r.def.id === 'ceiling'), camps: __g.G.settlements.length }));
+  ok('"Yes!" sends up a tea-bag balloon (hook not hung yet) and the request is answered', hk0.n === 1 && hk0.built === false && !hk0.reqLeft, JSON.stringify(hk0));
+  await sleep(1200);
+  await ev(() => { __g.simulate(12, 0.5); });
+  const HK = await ev(() => {
+    const h = __g.G.hooks[0], Z = __g.zoneById(h.zid), P = __g.hookPos(h, new __g.THREE.Vector3()), camps = __g.G.settlements.filter((q) => q.placed);
+    const cx = camps.reduce((a, q) => a + q.tf.x, 0) / camps.length, cz = camps.reduce((a, q) => a + q.tf.z, 0) / camps.length, mx = Math.max(...camps.map((q) => q.tf.y));
+    return { built: h.built, ceil: !!Z.ceil, dy: +(Z.y - P.y).toFixed(3), above: +(P.y - mx).toFixed(2), off: +Math.hypot(P.x - cx, P.z - cz).toFixed(2), grp: !!h.group && h.group.visible };
   });
-  ok('an upside-down camp stands on the boards with settlers', !!H && !H.awaiting && H.cols >= 1, JSON.stringify(H));
-  ok('it renders hanging: the group\'s world up vector points down', !!H && H.upY < -0.99, 'up.y = ' + (H && H.upY));
-  ok('huts and colonists hang BELOW the boards', !!H && H.hutDy < 0 && (H.colDy === null || H.colDy < 0), '2 cm above their own ground is ' + (H && H.hutDy) + ' m (hut) and ' + (H && H.colDy) + ' m (colonist) relative to the boards');
-  ok('lanterns hang on strings (the special touch); local <-> world maths agree upside down', !!H && H.lanterns >= 5 && H.roundTrip);
-  await sleep(800);
-  ok('milestone "Upside-down camp" is in the album, with a celebration queued or shown', await ev(() => __g.FUN.album.some((e) => e.id === 'hang') && (__g.FUN.log.some((l) => l.k === 'celebrate' && l.x === 'hang') || __g.FUN.queue.some((q) => q.id === 'hang'))));
-  /* a screenshot from below: the camera stands under the camp, looking up at it */
-  await ev(() => { const S = __g.G.settlements.find((q) => q.zoneRef.ceil), q = [S.tf.x + 0.12, S.tf.y - 0.34, S.tf.z + 0.55], fx = S.tf.x - q[0], fy = S.tf.y - 0.05 - q[1], fz = S.tf.z - q[2], L = Math.hypot(fx, fy, fz); window.__cam.fixed = [q[0], q[1], q[2], Math.atan2(-fx / L, -fz / L), Math.asin(fy / L)]; window.__cam.mode = 'fixed'; document.documentElement.style.background = 'linear-gradient(#6f6a62,#4b463f)'; });
-  await ev(() => { __g.simulate(60, 0.5); }); await sleep(2500); await ev(() => { __g.FUN.queue.length = 0; document.getElementById('banner').className = ''; document.getElementById('toast').innerHTML = ''; }); await sleep(400);
-  await p.screenshot({ path: OUT + '39-hanging-camp.png' });
+  ok('the hook is placed under the ceiling, above the room\'s camps', HK.built && HK.ceil && HK.dy > 0.05 && HK.dy < 0.4 && HK.above > 0.5 && HK.off < 1.0, JSON.stringify(HK));
+  await sleep(1500);
+  ok('the hook has a mesh (plate, rope, pulley wheel, bell, 3 lanterns) that hangs from the ceiling zone', await ev(() => { const g = __g.G.hooks[0].group; return !!g && g.visible && g.userData.lans.length === 3 && !!g.userData.wheel && !!g.userData.bell; }));
+  ok('milestone "First ceiling hook" is in the album, ', await ev(() => { const e = __g.FUN.album.find((q) => q.id === 'hook'); return !!e && !__g.FUN.album.some((q) => q.id === 'hang'); }));
+
+  /* a cable car via the hook: same two camps, goods (a colonist) ride it, and it is quicker than a straight line */
+  const V = await ev(() => {
+    const G = __g.G, Sa = G.settlements.find((q) => q.placed && !q.zoneRef.ceil), Sb = G.settlements.find((q) => q.placed && q !== Sa && !q.zoneRef.ceil); if (!Sb) return { err: 'one camp only' };
+    Sa.stock.wood = 60; __g.ensureDist(Sb.zoneRef); __g.ensureDist(Sa.zoneRef); const hid = __g.hookFor(Sa, Sb.zoneRef.core[0], Sb.zoneRef.core[1]);
+    const l = __g.makeLink(Sa, Sa.zoneRef.core[0], Sa.zoneRef.core[1], Sb.zoneRef, Sb.zoneRef.core[0], Sb.zoneRef.core[1], hid); if (!l) return { err: 'no link', hid };
+    __g.simulate(30, 0.5); return { id: l.id, via: l.via, hid, ready: l.ready, tool: null };
+  });
+  ok('a via-hook cable car is built between two camps on different surfaces and gets ready', !!V && !V.err && V.via === V.hid && V.hid > 0 && V.ready, JSON.stringify(V));
+  const TR = await ev((vid) => {
+    const G = __g.G, l = G.links.find((q) => q.id === vid), [A, B, Sa, Sb] = __g.linkEnds(l), run = (via) => {
+      l.via = via; const c = __g.addColonist(Sa, { x: 0, z: 0.03 }); Sa.cols.splice(Sa.cols.indexOf(c), 1); c.riding = l; c.job = null; l.cab.add(c.mesh); l.g.riders = [c]; Object.assign(l.g, { s: 0, dir: 1, state: 'run', end: 'a', timer: 9 });
+      let t = 0, ding = 0; const h = G.hooks.find((q) => q.id === vid2), d0 = h.passes | 0; while (l.g.state === 'run' && t < 2000) { __g.linkStep(l, 0.05, __g.ENV, true); t += 0.05; } return { t: +t.toFixed(1), arrived: Sb.cols.includes(c), pass: (h.passes | 0) - d0, c };
+    };
+    const vid2 = l.via, hv = run(vid2), dr = run(0); l.via = vid2; const hid = vid2;
+    const hh = G.hooks.find((q) => q.id === hid), H = __g.hookPos(hh, new __g.THREE.Vector3());
+    return { tHook: hv.t, tDirect: dr.t, ratio: +(hv.t / dr.t).toFixed(2), arrivedHook: hv.arrived, arrivedDirect: dr.arrived, passes: hv.pass, hy: +H.y.toFixed(2), ay: +A.y.toFixed(2), by: +B.y.toFixed(2) };
+  }, V.id);
+  ok('goods carried on the hooked line arrive, and the trip takes about 30% less time than the straight one', TR.arrivedHook && TR.arrivedDirect && TR.ratio > 0.62 && TR.ratio < 0.78, JSON.stringify(TR));
+  ok('the hooked line goes up to the hook and the bell dings once per trip (a V: the hook is far above both stations)', TR.passes === 1 && TR.hy > TR.ay + 0.4 && TR.hy > TR.by + 0.4, JSON.stringify(TR));
+  /* the swoop: nose down on the downhill leg */
+  const SW = await ev((vid) => {
+    const G = __g.G, l = G.links.find((q) => q.id === vid), [A, B] = __g.linkEnds(l), h = G.hooks.find((q) => q.id === l.via), H = __g.hookPos(h, new __g.THREE.Vector3()), hh = A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B));
+    l.g.state = 'run'; l.g.dir = 1; l.g.s = hh + (1 - hh) * 0.5; l.g.timer = 9; return { hh: +hh.toFixed(2) };
+  }, V.id);
+  await sleep(500);
+  const tilt = await ev((vid) => { const l = __g.G.links.find((q) => q.id === vid); return { z: +l.cab.rotation.z.toFixed(2), s: +l.g.s.toFixed(2) }; }, V.id);
+  ok('mid-swoop the cabin tilts with the line', Math.abs(tilt.z) > 0.15, JSON.stringify(tilt));
+  ok('a camp linked through a hook counts as linked (ceilOK, the link is in G.links with via)', await ev(() => __g.ceilOK() && __g.G.links.some((l) => l.via && l.ready)));
+  const AUTO = await ev(() => { const G = __g.G, Sa = G.settlements.find((q) => q.placed && !q.zoneRef.ceil); return { hook: __g.hookFor(Sa, Sa.tf.x + 0.3, Sa.tf.z + 0.3) }; });
+  ok('the cheap automatic cable car prefers a hook when one is up (hookFor picks it)', AUTO.hook > 0, JSON.stringify(AUTO));
+  /* the Cable car tool offers "via the ceiling hook" */
+  await ev(() => { __g.setTool('cable'); }); await sleep(300);
+  const bv = await ev(() => { const b = document.getElementById('bVia'); return b && { label: b.getAttribute('aria-label'), on: b.classList.contains('on') }; });
+  ok('the Cable car tool shows a "via the ceiling hook" switch, on by default', !!bv && bv.label === 'via the ceiling hook' && bv.on, JSON.stringify(bv));
+  await ev(() => { document.getElementById('bVia').click(); }); await sleep(200);
+  ok('the switch can be turned off (cable cars go straight) and on again', await ev(() => { const off = __g.G.cableVia === false && !document.getElementById('bVia').classList.contains('on'); document.getElementById('bVia').click(); return off && __g.G.cableVia !== false; }));
+  await ev(() => { __g.setTool('look'); });
+
+  /* the sock lookout nest */
+  await ev(() => { __g.G.ceilCd = 0; __g.ceilTick(); });
+  const rq2 = await ev(() => { const r = __g.G.requests.find((q) => q.def.id === 'ceiling'); return r && { text: r.def.text, key: r.def.key }; });
+  ok('next somebody asks to hang a sock nest from the hook', !!rq2 && /sock nest/.test(rq2.text) && rq2.key === 'nest', JSON.stringify(rq2));
+  const fx0 = await ev(() => __g.G.settlements.map((q) => __g.fxOf(q).lookout | 0).reduce((a, b2) => a + b2, 0));
+  await ev(() => { __g.giveRequest(__g.G.requests.find((q) => q.def.id === 'ceiling')); }); await sleep(1500);
+  const NS = await ev(() => { const h = __g.G.hooks[0], C = __g.G.settlements.find((q) => q.id === h.sid); return { nest: h.nest, mesh: !!(h.group && h.group.userData.nest), lookout: C ? __g.fxOf(C).lookout | 0 : -1, total: __g.G.settlements.map((q) => __g.fxOf(q).lookout | 0).reduce((a, b2) => a + b2, 0) }; });
+  ok('the sock nest hangs from the hook and acts as a lookout for the camp below', NS.nest && NS.mesh && NS.lookout >= 1 && NS.total === fx0 + 1, JSON.stringify(NS) + ' before ' + fx0);
+  await ev(() => { __g.G.ceilCd = 0; __g.ceilTick(); });
+  ok('nothing more is offered (one hook, one nest)', await ev(() => !__g.G.requests.some((r) => r.def.id === 'ceiling')));
+  ok('CEIL_THINGS is a table: hook and nest, each with text, icon, when, zone and make', await ev(() => Object.keys(__g.CEIL_THINGS).join() === 'hook,nest' && Object.values(__g.CEIL_THINGS).every((t) => typeof t.text === 'function' && t.icon && typeof t.when === 'function' && typeof t.zone === 'function' && typeof t.make === 'function')));
+
+  /* screenshot 42: a hook, a V-shaped line and a cabin mid-swoop; 43: the same from below, close to the hook */
+  const SH = async (name, mode) => {
+    const put = () => ev((mode) => {
+      const G = __g.G, l = G.links.find((q) => q.via), [A, B] = __g.linkEnds(l), h = G.hooks.find((q) => q.id === l.via), H = __g.hookPos(h, new __g.THREE.Vector3());
+      const hh = A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B)); l.g.state = 'run'; l.g.dir = 1; l.g.timer = 9; l.g.s = hh + (1 - hh) * (mode === 'below' ? 0.1 : 0.14);
+      const ab = Math.atan2(B.z - A.z, B.x - A.x), side = ab + Math.PI / 2, d = mode === 'below' ? 1.7 : 2.7, q = mode === 'below' ? [H.x + Math.cos(side) * d * 0.45 + Math.cos(ab) * 0.25, H.y - 1.05, H.z + Math.sin(side) * d * 0.45 + Math.sin(ab) * 0.25] : [H.x + Math.cos(side) * d, H.y - 0.55, H.z + Math.sin(side) * d];
+      const tx = H.x, ty = H.y - (mode === 'below' ? 0.1 : 0.62), tz = H.z, fx = tx - q[0], fy = ty - q[1], fz = tz - q[2], L = Math.hypot(fx, fy, fz); window.__cam.fixed = [q[0], q[1], q[2], Math.atan2(-fx / L, -fz / L), Math.asin(fy / L)]; window.__cam.mode = 'fixed'; document.documentElement.style.background = 'linear-gradient(#6f6a62,#4b463f)';
+    }, mode);
+    await put(); await ev(() => { __g.FUN.queue.length = 0; const m = document.getElementById('msgs'); if (m) m.style.display = 'none'; const hn = document.getElementById('hint'); if (hn) hn.hidden = true; }); await sleep(500); await put(); await sleep(100); await p.screenshot({ path: OUT + name });
+    await ev(() => { const m = document.getElementById('msgs'); if (m) m.style.display = ''; });
+  };
+  await SH('42-ceiling-hook.png', 'side'); await SH('43-ceiling-hook-below.png', 'below');
 
   // ===================== C. layout: messages and the toolbar at phone and at iPad-portrait sizes =====================
   const stuff = () => ev(() => {
@@ -124,21 +186,45 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   await p.setViewportSize({ width: 1180, height: 820 }); await sleep(500);
 
   // ===================== D. save, reload; old saves =====================
-  const sv = await ev(() => { __g.persist(true); const ceilZ = __g.G.zones.filter((z) => z.ceil).map((z) => z.id); return { ceilZ, map: !!localStorage.getItem('base-camp-map-v1'), save: !!localStorage.getItem('base-camp-save-v2') }; });
-  ok('the map and colony are saved', sv.map && sv.save && sv.ceilZ.length >= 1, JSON.stringify(sv));
+  const sv = await ev(() => { __g.persist(true); const ceilZ = __g.G.zones.filter((z) => z.ceil).map((z) => z.id); return { ceilZ, map: !!localStorage.getItem('base-camp-map-v1'), save: !!localStorage.getItem('base-camp-save-v2'), hooks: __g.G.hooks.length, via: __g.G.links.filter((l) => l.via).length }; });
+  ok('the map and colony are saved (with the hook and the via-hook line)', sv.map && sv.save && sv.ceilZ.length >= 1 && sv.hooks === 1 && sv.via === 1, JSON.stringify(sv));
   const mapTxt = await ev(() => localStorage.getItem('base-camp-map-v1')); ok('the saved map carries "ceil":true on the boards', /"ceil":true/.test(mapTxt));
+  const saveTxt = await ev(() => localStorage.getItem('base-camp-save-v2'));
   await ev(() => { __g.AR.session.end(); }); await sleep(1500); await p.reload(); await sleep(2500);
-  const L = await ev(() => { const okc = __g.prepareContinue(); const S = __g.G.settlements.find((q) => q.zoneRef.ceil), V = __g.THREE; return { okc, zones: __g.G.zones.filter((z) => z.ceil).length, flip: S && S.tf.flip, upY: S && +new V.Vector3(0, 1, 0).transformDirection(S.group.matrixWorld).y.toFixed(3), lanterns: S && S.hang ? S.hang.children.length : 0, n: __g.G.settlements.length, links: __g.G.links.length }; });
-  ok('after reload the ceiling zone is still ceil and the camp hangs again', L.okc && L.zones >= 1 && L.flip === true && L.upY < -0.99 && L.lanterns >= 5, JSON.stringify(L));
+  const L = await ev(() => { const okc = __g.prepareContinue(); const h = __g.G.hooks[0]; return { okc, zones: __g.G.zones.filter((z) => z.ceil).length, hooks: __g.G.hooks.length, built: h && h.built, nest: h && h.nest, sid: h && h.sid, onCeil: __g.G.settlements.filter((q) => q.zoneRef.ceil || q.tf.flip).length, via: __g.G.links.filter((l) => l.via === (h && h.id)).length, links: __g.G.links.length, n: __g.G.settlements.length }; });
+  ok('after reload the ceiling is still ceil, the hook, its sock nest and the via-hook line are back, no camp on the ceiling', L.okc && L.zones >= 1 && L.hooks === 1 && L.built && L.nest && L.sid > 0 && L.onCeil === 0 && L.via === 1, JSON.stringify(L));
   /* an OLD save (before build 12) has no ceil fields at all */
   const OLD = await ev((mapTxt) => { const d = JSON.parse(mapTxt); for (const z of d.zones) { delete z.ceil; if (z.type === 'CEIL') z.type = 'SHELF'; } d.build = 'build 11'; __g.resetWorld(); const err = __g.mapFromJSON(d); return { err, zones: __g.G.zones.length, ceil: __g.G.zones.filter((z) => z.ceil).length }; }, mapTxt);
   ok('an older map without ceil loads fine (no ceilings, no errors)', OLD.err === '' && OLD.zones >= 3 && OLD.ceil === 0, JSON.stringify(OLD));
-  const FIX = await ev(() => { /* a colony that an older build put on the boards: the scan sees the boards from below and hangs it */
-    const Z = __g.G.zones.find((z) => z.type === 'SHELF' && z.y > 1); if (!Z) return { err: 'no boards zone' }; const S = __g.newSettlement(Z); S.placed = true; const before = S.tf.flip;
-    __g.liveReclass(Z, { ceil: true, type: 'CEIL', name: 'Ceiling – hanging', spec: 'hanging', h: 2.8, band: { nh: 400, nb: 380 } });
-    return { before: !!before, after: S.tf.flip, hang: !!S.hang, up: +new __g.THREE.Vector3(0, 1, 0).transformDirection(S.group.matrixWorld).y.toFixed(2) };
+  /* a BUILD 12 save with a hanging camp: its settlers come down by cable car to the nearest camp, the huts go, a hook stays, nothing is upside down */
+  const OLD12 = await ev(([mapTxt, saveTxt]) => {
+    __g.resetWorld(); __g.mapFromJSON(JSON.parse(mapTxt)); const d = JSON.parse(saveTxt); const Z = __g.G.zones.find((z) => z.ceil); if (!Z) return { err: 'no ceiling zone' };
+    d.hooks = []; d.links = d.links.filter((l) => !l.via); const homeIds = d.settlements.map((q) => q.id); const baseCols = d.settlements.reduce((a, q) => a + q.cols.length, 0);
+    const hang = JSON.parse(JSON.stringify(d.settlements[0])); hang.id = 9001; hang.zid = Z.id; hang.o = [0, 0]; hang.awaiting = false; hang.lost = false; hang.things = hang.things.filter((t) => t.kind !== 'station').map((t, i) => Object.assign(t, { id: 9100 + i })); hang.cols = d.settlements.flatMap((q) => q.cols).slice(0, 3).map((c, i) => Object.assign(JSON.parse(JSON.stringify(c)), { id: 9200 + i }));
+    const hut = JSON.parse(JSON.stringify(hang.things.find((t) => t.kind === 'tent') || hang.things[0])); hut.id = 9150; hut.kind = 'hut'; hut.x = 0.06; hut.z = 0.02; hut.built = true; hut.prog = 1; hang.things.push(hut);
+    hang.things.push({ id: 9160, kind: 'station', x: 0.1, z: 0.1, built: true, prog: 1, link: 9300, end: 'b' });
+    const home = d.settlements[0]; const st = (home.things.find((t) => t.kind === 'station') || { id: 7777 }); d.links.push({ id: 9300, how: 'cable car', a: { sid: home.id, tid: st.id }, b: { sid: 9001, tid: 9160 }, prog: 1, ready: true });
+    d.settlements.push(hang); localStorage.setItem('base-camp-save-v2', JSON.stringify(d)); return { homeIds, baseCols, hangCols: hang.cols.length, ceilZ: Z.id };
+  }, [mapTxt, saveTxt]);
+  ok('an old save with a hanging camp is built for the test', !OLD12.err && OLD12.hangCols === 3, JSON.stringify(OLD12));
+  await ev(() => { document.getElementById('toast').innerHTML = ''; __g.resetWorld(); });
+  const CAME = await ev(() => {
+    let err = ''; try { const okc = __g.prepareContinue(); if (!okc) err = 'prepareContinue false'; } catch (e) { err = String(e && e.stack || e).slice(0, 300); }
+    const G = __g.G, cols = G.settlements.reduce((a, q) => a + q.cols.length, 0) + G.links.reduce((a, l) => a + l.g.riders.length, 0), Z = G.zones.find((z) => z.ceil);
+    return { err, n: G.settlements.length, onCeil: G.settlements.filter((q) => q.zoneRef.ceil).length, flip: G.settlements.filter((q) => q.tf.flip || Math.abs(q.group.rotation.x) > 0.01).length, cols, hook: !!(Z && G.hooks.some((h) => h.zid === Z.id && h.built)), badLink: G.links.filter((l) => l.a.sid === 9001 || l.b.sid === 9001).length, hut: G.settlements.some((q) => q.id === 9001), toast: document.getElementById('toast').innerText };
   });
-  ok('a colony an older build left standing on the boards is hung up once the scan sees them from below', FIX.before === false && FIX.after === true && FIX.hang && FIX.up < -0.99, JSON.stringify(FIX));
+  ok('the old hanging camp loads without errors: settlers come down to the nearest camp (none lost), the camp is gone, its cable car is gone, a hook is left in its place', CAME.err === '' && CAME.onCeil === 0 && CAME.flip === 0 && !CAME.hut && CAME.badLink === 0 && CAME.hook && CAME.cols === OLD12.baseCols + 3, JSON.stringify(CAME) + ' base ' + OLD12.baseCols);
+  ok('a kind toast says so: "The ceiling crew came down for tea"', /ceiling crew came down for tea/.test(CAME.toast), CAME.toast);
+  /* the scan finally recognises boards that an older build colonised (liveReclass): with a second camp they come down, with only one camp they stay put */
+  const FIX = await ev(() => {
+    const G = __g.G; __g.resetWorld(); const d = JSON.parse(localStorage.getItem('base-camp-map-v1')); for (const z of d.zones) { delete z.ceil; if (z.type === 'CEIL') z.type = 'SHELF'; } __g.mapFromJSON(d);
+    const Z = G.zones.find((z) => z.type === 'SHELF' && z.y > 1), F = Z && G.zones.find((z) => z !== Z && z.land && z.y < Z.y - 1); if (!Z || !F) return { err: 'no zones' };
+    const fz = { ceil: true, type: 'CEIL', name: 'Ceiling – hanging', spec: 'hanging', h: 2.8, band: { nh: 400, nb: 380 } };
+    const S = __g.newSettlement(Z); S.placed = true; __g.addColonist(S, { x: 0, z: 0.03 }); __g.liveReclass(Z, fz); const alone = { still: Z.settled === S, ceil: !!Z.ceil, flip: S.tf.flip };
+    const H = __g.newSettlement(F); H.placed = true; const n0 = H.cols.length; __g.liveReclass(Z, fz);
+    return { alone, gone: !Z.settled && !G.settlements.includes(S), ceil: !!Z.ceil, moved: H.cols.length - n0, hook: G.hooks.length, flip: G.settlements.filter((q) => q.tf.flip).length };
+  });
+  ok('a colony on boards that the scan then sees as a ceiling stays if it is alone, and comes down (leaving a hook) if there is another camp', !FIX.err && FIX.alone.still && !FIX.alone.ceil && !FIX.alone.flip && FIX.gone && FIX.ceil && FIX.moved === 1 && FIX.hook === 1 && FIX.flip === 0, JSON.stringify(FIX));
 
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 5)));
   console.log('\n' + res.filter(Boolean).length + '/' + res.length + ' passed'); await b.close(); srv.close(); process.exit(res.every(Boolean) ? 0 : 1);
