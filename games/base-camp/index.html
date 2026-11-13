@@ -882,7 +882,7 @@ function scout16Mat(kind) {
 /* ---- build 17: the real articulated GLB mouse (assets/basecamp_mouse_scout_ANIMATED.glb, five clips: Idle Walk Wave LookAround Hop), made with ChatGPT and sent by Harry ---- */
 /* This is not a sprite or picture. Named GLB pivots have five original keyframed animations. */
 /* Fully optional: if CDNs, local asset loading or GLTFLoader fail, Build 16 mouse continues working. */
-const SCOUT17 = { waiting: [], started: false, template: null, clips: [], status: 'idle' };
+const SCOUT17 = { ink: true, waiting: [], started: false, template: null, clips: [], status: 'idle' };
 function scout17Attach(group) {
   if (SCOUT17.template) scout17Upgrade(group);
   else if (SCOUT17.status === 'idle' || SCOUT17.status === 'loading') SCOUT17.waiting.push(group);
@@ -896,6 +896,7 @@ function scout17Upgrade(g) {
     model.name = 'BaseCamp_AnimatedScout'; model.userData.glb = 1;
     if (SCOUT17.foot === undefined) { const bb = new THREE.Box3().setFromObject(SCOUT17.template); SCOUT17.foot = isFinite(bb.min.y) ? bb.min.y : 0; }
     model.position.y = -SCOUT17.foot * 0.01; /* stand the soles on the ground, whatever the file's origin is */
+    if (SCOUT17.ink) model.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && /Warm_sand_fur|stitched_coat|Ivory_muzzle/.test(o.name + ' ' + (o.material && o.material.name || ''))) { o.geometry.computeBoundingBox(); const h = o.geometry.boundingBox.getSize(new THREE.Vector3()); inked(o, 0.035 * Math.max(h.x, h.y, h.z)); } }); /* build 19: a thin ink hull on the big fur and coat pieces only (a few draw calls), so the soft mouse sits with the inked creatures */
     const mixer = new THREE.AnimationMixer(model), actions = {};
     for (const clip of SCOUT17.clips) actions[clip.name] = mixer.clipAction(clip);
     /* only now (nothing threw) does the procedural mouse give way; its shapes are shared, so nothing to dispose */
