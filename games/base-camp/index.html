@@ -44,6 +44,7 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .req{display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
 .req b{font-size:12px;color:#a85a1e;display:block}
 .req button{min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
+@media (orientation:portrait),(max-width:560px){#reqs{max-width:min(94vw,420px)}.req{flex-wrap:wrap}.req>div{flex:1 1 0;min-width:9em}.req button{flex:1 0 100%}} /* build 19: narrow screens stack the button under the text */
 #toast{font-weight:700;font-size:13px;text-align:center;max-width:100%}#toast .glass{padding:4px 10px;border-radius:10px}
 #toast:empty{display:none}
 #env{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);font-size:12px;font-weight:700;display:grid;gap:4px;min-width:170px}
@@ -67,9 +68,10 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 /* build 12: toast, milestone banner, compact report and recognition status share ONE column, so they stack with a gap and can never overlap */
 #msgs{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);display:flex;flex-direction:column;align-items:center;gap:6px;width:max-content;max-width:min(92vw,520px);z-index:6;pointer-events:none}
 body.inar #msgs{top:calc(env(safe-area-inset-top,0px) + 168px)}
+@media (orientation:portrait) and (min-width:561px){body:not(.inar) #msgs{top:calc(env(safe-area-inset-top,0px) + 262px)}} /* build 19: in portrait the toast and the report sit under the info card, not over it */
 #msgs>*{pointer-events:none}#msgs>#repc{pointer-events:auto}
 #rstat{font-size:12px;font-weight:700;padding:3px 10px;max-width:100%;text-align:center}
-#repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
+#repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rm{opacity:.8;font-weight:700}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
 body.inar #diary.side{left:8px;top:calc(env(safe-area-inset-top,0px) + 170px);width:min(88vw,380px);max-height:46vh;padding:10px 12px;font-size:13px}body.inar #diary.side ul{font-size:13px;gap:5px}body.inar #diary.side .dh{font-size:16px}body.inar #diary.side button.big{min-height:38px;font-size:14px;padding:4px 14px}
 .lib{display:flex;gap:10px;align-items:center}.lib>div{flex:1}.lib button{min-height:34px;font-size:13px}.badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 14px var(--body);color:#2b1d12;flex:none}
 #welcome{text-align:left;font-size:14px;line-height:1.4;background:rgba(255,246,230,.12);border-radius:12px;padding:8px 12px;margin-bottom:10px;color:#f6e6cc}
@@ -601,6 +603,7 @@ const CEIL_ABOVE = 0.3, CEIL_MINH = 1.5; /* build 12: a hit more than 0.3 m abov
 const ZTYPES = { CEIL: { base: 'Ceiling', land: 'hanging', spec: 'hanging', hint: 'a hanging camp' }, FLOOR: { base: 'Floor', land: 'plains', spec: 'farmland', hint: 'farms' }, TABLE: { base: 'Desk', land: 'meadow', spec: 'village', hint: 'a village' }, SHELF: { base: 'Shelf', land: 'cliffs', spec: 'orchard', hint: 'an orchard' }, SILL: { base: 'Sill', land: 'lookout', spec: 'lookout', hint: 'a lookout' }, SMALL: { base: 'Perch', land: 'grove', spec: 'grove', hint: 'a lone tree' } };
 // FLOOR: the lowest zone, if it is big (1 m2) or something like a rug (within 15 cm, 0.3 m2). SMALL: under 0.1 m2.
 // TABLE: 25 cm to 1 m above the floor, not narrow. SILL: 80 cm to 1.25 m up and narrow. SHELF: higher, or narrow and high. Anything else big enough is a desk.
+const PLACE_ADJ = ['Sunny', 'Mossy', 'Cosy', 'Breezy', 'Crumbly', 'Quiet', 'Golden', 'Snug']; /* build 19: two perches are "Sunny Perch" and "Mossy Perch", never "Perch 2" */
 function classify() {
   const zs = SCAN.zones; if (!zs.length) return;
   const cand = (z) => z.band && z.band.nh >= 12 && z.band.nb / z.band.nh >= 0.5, grounded = zs.filter((z) => !cand(z)), ref = grounded.length ? grounded.reduce((m, z) => (z.y < m.y ? z : m), grounded[0]) : null;
@@ -621,7 +624,7 @@ function classify() {
     else t = 'TABLE';
     z.type = t; counts[t] = (counts[t] || 0) + 1; z.nth = counts[t];
   }
-  for (const z of zs) { const T = ZTYPES[z.type]; z.name = T.base + (counts[z.type] > 1 ? ' ' + z.nth : '') + ' \u2013 ' + T.land; z.spec = T.spec; }
+  for (const z of zs) { const T = ZTYPES[z.type]; z.name = (counts[z.type] > 1 ? PLACE_ADJ[(z.nth - 1) % PLACE_ADJ.length] + (z.nth > PLACE_ADJ.length ? ' ' + Math.ceil(z.nth / PLACE_ADJ.length) : '') + ' ' : '') + T.base + ' \u2013 ' + T.land; z.spec = T.spec; }
 }
 function scanZone(id) { return SCAN.zones.find((z) => z.id === id); }
 function paintBands(play) {
@@ -882,7 +885,7 @@ function scout16Mat(kind) {
 /* ---- build 17: the real articulated GLB mouse (assets/basecamp_mouse_scout_ANIMATED.glb, five clips: Idle Walk Wave LookAround Hop), made with ChatGPT and sent by Harry ---- */
 /* This is not a sprite or picture. Named GLB pivots have five original keyframed animations. */
 /* Fully optional: if CDNs, local asset loading or GLTFLoader fail, Build 16 mouse continues working. */
-const SCOUT17 = { waiting: [], started: false, template: null, clips: [], status: 'idle' };
+const SCOUT17 = { ink: false, waiting: [], started: false, template: null, clips: [], status: 'idle' };
 function scout17Attach(group) {
   if (SCOUT17.template) scout17Upgrade(group);
   else if (SCOUT17.status === 'idle' || SCOUT17.status === 'loading') SCOUT17.waiting.push(group);
@@ -896,6 +899,7 @@ function scout17Upgrade(g) {
     model.name = 'BaseCamp_AnimatedScout'; model.userData.glb = 1;
     if (SCOUT17.foot === undefined) { const bb = new THREE.Box3().setFromObject(SCOUT17.template); SCOUT17.foot = isFinite(bb.min.y) ? bb.min.y : 0; }
     model.position.y = -SCOUT17.foot * 0.01; /* stand the soles on the ground, whatever the file's origin is */
+    if (SCOUT17.ink) model.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && /Warm_sand_fur|stitched_coat|Ivory_muzzle/.test(o.name + ' ' + (o.material && o.material.name || ''))) { o.geometry.computeBoundingBox(); const h = o.geometry.boundingBox.getSize(new THREE.Vector3()); inked(o, 0.035 * Math.max(h.x, h.y, h.z)); } }); /* build 19: a thin ink hull on the big fur and coat pieces only (a few draw calls), so the soft mouse sits with the inked creatures */
     const mixer = new THREE.AnimationMixer(model), actions = {};
     for (const clip of SCOUT17.clips) actions[clip.name] = mixer.clipAction(clip);
     /* only now (nothing threw) does the procedural mouse give way; its shapes are shared, so nothing to dispose */
@@ -1457,10 +1461,11 @@ function newSettlement(zone, o) {
 }
 const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, squashed: 0, tinAcc: 0, foodAcc: 0, tradeAcc: 0, roofs: 0 });
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.set(S.tf.flip ? Math.PI : 0, S.tf.yaw, 0); S.group.updateMatrixWorld(true); } /* Euler XYZ = Rx * Ry: the yaw is applied first, then the half turn about X hangs the camp from its surface */
+function uniqName(nm) { /* build 19: no two creatures in one room share a name (the almanac and the creature list both have a Pip, a Luna, a Zap) */ const taken = (q) => G.settlements.some((T) => T.cols.some((c) => c.name === q)); let q = nm, n = 1; const base = nm.replace(/ \d+$/, ''); while (taken(q) && n < 99) { n++; q = base + ' ' + n; } return q; }
 function addColonist(S, o) {
   o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
   const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
-  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
+  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || uniqName(def.name + (rep ? ' ' + (rep + 1) : '')), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
   const a = rnd(0, 6.28), d = rnd(0.045, 0.08); c.x = o.x !== undefined ? o.x : Math.cos(a) * d; c.z = o.z !== undefined ? o.z : Math.sin(a) * d;
   c.mesh = mkColonist(c); c.mesh.position.set(c.x, 0, c.z); S.group.add(c.mesh);
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
@@ -2277,9 +2282,9 @@ function answerAsk(yes) {
   if (G.asks.length) askNext(); else { $('ask').hidden = true; showReport(); }
 }
 // ---- the "what changed" card ----
-function reportCompact(L) { /* at most 2 short lines, small text, "More" opens the full list; gone after about 6 s */
+function reportCompact(L) { /* 1 short line plus "and N more", small text, "More" opens the full list; gone after about 6 s */
   const c = $('repc'), short = (t) => { t = String(t); return t.length > 60 ? t.slice(0, 57).replace(/\s+\S*$/, '') + '\u2026' : t; }, full = L.slice();
-  c.hidden = false; c.innerHTML = '<div class="rt">What the colonists noticed</div>' + L.slice(0, 2).map((l) => '<div class="rl">' + esc(short(l.text)) + '</div>').join('') + '<div class="rb"><button id="repMore">More</button><button id="repX" aria-label="Close">\u00d7</button></div>';
+  c.hidden = false; c.innerHTML = '<div class="rt">What the colonists noticed</div>' + L.slice(0, 1).map((l) => '<div class="rl">' + esc(short(l.text)) + '</div>').join('') + (L.length > 1 ? '<div class="rl rm">and ' + (L.length - 1) + ' more</div>' : '') + '<div class="rb"><button id="repMore">More</button><button id="repX" aria-label="Close">\u00d7</button></div>';
   clearTimeout(c._t); const hide = () => { c.hidden = true; c.innerHTML = ''; }; c._t = setTimeout(() => { hide(); G.report = null; }, 6000);
   $('repX').onclick = () => { clearTimeout(c._t); hide(); G.report = null; };
   $('repMore').onclick = () => { clearTimeout(c._t); hide(); const el = $('diary'); el.hidden = false; el.classList.add('side'); el.innerHTML = '<div class="dh">What the colonists noticed</div><ul>' + full.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>'; $('dClose').onclick = () => { el.hidden = true; G.report = null; }; };
@@ -2290,7 +2295,7 @@ function showReport() {
   if (sm) parts.push(sm + ' place' + (sm > 1 ? 's' : '') + ' the same');
   const L = rep.lines.slice(0, 10);
   if (!L.length) L.push({ text: 'Everything is where the colonists left it. They carry on.', by: '' });
-  if (AR.on || innerWidth < 760) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
+  if (AR.on || innerWidth < 760 || innerHeight > innerWidth) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
   el.hidden = false; el.classList.add('side');
   el.innerHTML = '<div class="dh">What the colonists noticed</div>' + (parts.length ? '<div class="dsub">' + parts.join(', ') + '</div>' : '') + '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>';
   $('dClose').onclick = () => { el.hidden = true; G.report = null; };
@@ -2546,9 +2551,15 @@ function sayTex(text, kind) {
   return e;
 }
 function mkSaySprite() { const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false })); s.renderOrder = 22; s.visible = false; return s; }
+const SAY_R = 0.3; /* metres, the bubble-free radius around a speaking creature */
 function sayLine(c, text, secs, force) { // force: a reaction to the Giant always shows; idle chatter only when at most one other bubble is up
   if (!c || !c.mesh || !text || c.inside) return false;
   if (!force && (FUN.bubbles >= 2 || c.sayT > 0)) return false;
+  { /* build 19: one bubble at a time within SAY_R metres; a forced one (a poke, a lift) clears its neighbours instead; and a global cap of 4 */
+    const [ax, az] = l2w(c.S, c.x, c.z), near = []; let live = 0;
+    for (const S of G.settlements) for (const q of S.cols) if (q !== c && q.sayT > 0) { live++; const [bx, bz] = l2w(S, q.x, q.z); if (S === c.S ? Math.hypot(q.x - c.x, q.z - c.z) < SAY_R : Math.hypot(bx - ax, bz - az) < SAY_R) near.push(q); }
+    if (!force && near.length) return false; if (force) for (const q of near) { q.sayT = 0; live--; } if (live >= 4) return false;
+  }
   if (!c.sayS) { c.sayS = mkSaySprite(); c.mesh.add(c.sayS); }
   const e = sayTex(text, 'say'); c.sayS.material.map = e.t; c.sayS.material.needsUpdate = true; c.sayA = e.a; c.sayT = secs || 2.4; c.sayPop = 0; c.sayText = text; FUN.bubbles++; funLog('say', text); return true;
 }
@@ -2654,7 +2665,7 @@ const MILESTONES = { // id: [icon, title, line, by]
 };
 function celebrate(id, S) {
   if (!MILESTONES[id] || FUN.album.some((e) => e.id === id)) return false;
-  FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
+  FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S, gt: G.time, st: G.simT }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
 }
 function showCelebration(q) {
   const d = MILESTONES[q.id], b = $('banner'); b.innerHTML = d[0] + ' ' + esc(d[1]) + ' ' + d[0] + '<small>' + esc(d[2]) + (d[3] ? ' · by ' + esc(d[3]) : '') + '</small>'; b.className = 'on'; FUN.bannerT = 3.4; funLog('celebrate', q.id);
@@ -2806,6 +2817,7 @@ function funFrame(dt) {
   if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), SY(F.S, 0.06), wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
+  FUN.queue = FUN.queue.filter((q) => q.gt === undefined || (G.time - q.gt < 20 && G.simT - q.st < 120)); /* build 19: a banner that waited more than about 20 s (real, or 2 sim minutes) is dropped, the album still has it */
   if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement()) showCelebration(FUN.queue.shift());
   FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
 }
@@ -2901,29 +2913,29 @@ function albumUi() {
 const SEA_CREDIT = 'Harry', PHB = 'CAIRN (placeholder)';
 const SEASONS = [ // from / to: [month, day] inclusive (UK). goal.items: what to decorate; goal.special: the decoration unlocked by finishing. events: funny moments (need: a built decoration of that kind).
   { id: 'autumn', name: 'Autumn', icon: '🍂', from: [9, 1], to: [11, 28], by: PHB,
-    goal: { title: 'Get the room ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'supper', n: 1 }, { k: 'plantern', n: 5 }, { k: 'calendar', n: 1 }], special: 'scarecrow' },
+    goal: { title: 'Get the room ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'supper', n: 1 }, { k: 'plantern', n: 5 }, { k: 'calendar', n: 1 }], special: 'scarecrow' }, goal2: { title: 'Prepare for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 7 }] },
     events: [{ id: 'au1', need: 'leafpile', act: 'jump', title: 'Leaf leap!', text: 'Somebody jumped in the leaf pile and was not seen again for a minute.', say: 'Whoooosh!', by: PHB },
       { id: 'au2', need: 'plantern', act: 'wobble', title: 'Wobbly lantern', text: 'A paper lantern swung so hard it nearly told everybody its secret.', say: 'It knows things.', by: PHB },
       { id: 'au3', need: 'supper', act: 'cheer', title: 'Supper bell', text: 'The harvest supper smelled so good that the pea got nervous.', say: 'Is it us?', by: PHB }] },
   { id: 'advent', name: 'Advent & Christmas', icon: '🎄', from: [11, 29], to: [12, 26], by: PHB,
-    goal: { title: 'Get the room cosy for the festive season', items: [{ k: 'calendar', n: 1 }, { k: 'pinetree', n: 1 }, { k: 'chain', n: 2 }, { k: 'stocking', n: 3 }], special: 'star' },
+    goal: { title: 'Get the room cosy for the festive season', items: [{ k: 'calendar', n: 1 }, { k: 'pinetree', n: 1 }, { k: 'chain', n: 2 }, { k: 'stocking', n: 3 }], special: 'star' }, goal2: { title: 'Get ready for the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 4 }, { k: 'stocking', n: 5 }] },
     events: [{ id: 'ad1', need: 'pinetree', act: 'cheer', title: 'Tiny tree', text: 'The pine-cone tree dropped one needle. Everybody gave it a cuddle.', say: 'Brave tree.', by: PHB },
       { id: 'ad2', need: 'chain', act: 'wobble', title: 'Chain gang', text: 'The paper chain got itself into a knot and then into a bow.', say: 'Ta-da?', by: PHB },
       { id: 'ad3', need: 'stocking', act: 'hop', title: 'Stocking surprise', text: 'Something in a stocking wriggled. It was only a button. Probably.', say: 'Shh!', by: PHB }] },
   { id: 'newyear', name: 'New Year', icon: '✨', from: [12, 27], to: [1, 6], by: PHB,
-    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' },
+    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' }, goal2: { title: 'Get ready for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 6 }] },
     events: [{ id: 'ny1', need: 'plantern', act: 'wobble', title: 'Countdown', text: 'The lanterns counted down from ten and got to seven.', say: 'Close enough!', by: PHB },
       { id: 'ny2', need: 'supper', act: 'cheer', title: 'Midnight crumbs', text: 'Everybody stayed up for one more crumb.', say: 'Just one.', by: PHB }] },
   { id: 'winter', name: 'Winter', icon: '❄️', from: [1, 7], to: [2, 29], by: PHB,
-    goal: { title: 'Make the room snug for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 2 }], special: 'igloo' },
+    goal: { title: 'Make the room snug for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 2 }], special: 'igloo' }, goal2: { title: 'Get ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'plantern', n: 4 }] },
     events: [{ id: 'wi1', need: 'snowman', act: 'cheer', title: 'Fluff snowman', text: 'The fluff snowman sneezed. It is now slightly smaller.', say: 'Bless you.', by: PHB },
       { id: 'wi2', need: 'sledge', act: 'hop', title: 'Sledge run', text: 'Three creatures rode the lolly-stick sledge down a very small hill.', say: 'Faster!', by: PHB }] },
   { id: 'spring', name: 'Spring', icon: '🌼', from: [3, 1], to: [5, 31], by: PHB,
-    goal: { title: 'Get the room ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'supper', n: 1 }], special: 'kite' },
+    goal: { title: 'Get the room ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'supper', n: 1 }], special: 'kite' }, goal2: { title: 'Get ready for summer', items: [{ k: 'daisy', n: 5 }, { k: 'plantern', n: 3 }] },
     events: [{ id: 'sp1', need: 'daisy', act: 'cheer', title: 'Daisy crown', text: 'Somebody wore a daisy crown and was crowned Mayor of Nothing in Particular.', say: 'I accept.', by: PHB },
       { id: 'sp2', need: 'supper', act: 'cheer', title: 'Picnic', text: 'A picnic on a jar lid. The crumb loaf was shared fairly, nearly.', say: 'Mine!', by: PHB }] },
   { id: 'summer', name: 'Summer', icon: '☀️', from: [6, 1], to: [8, 31], by: PHB,
-    goal: { title: 'Get the room ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 3 }, { k: 'supper', n: 1 }], special: 'paddle' },
+    goal: { title: 'Get the room ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 3 }, { k: 'supper', n: 1 }], special: 'paddle' }, goal2: { title: 'Get ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'plantern', n: 5 }] },
     events: [{ id: 'su1', need: 'plantern', act: 'wobble', title: 'Firefly impression', text: 'The lanterns did their best firefly impression. The fireflies were not offended.', say: 'Blink blink.', by: PHB },
       { id: 'su2', need: 'daisy', act: 'cheer', title: 'Lazy afternoon', text: 'Everybody lay on the warm shelf and agreed it was the best shelf.', say: 'Ahhh.', by: PHB }] },
 ];
@@ -3124,25 +3136,29 @@ function decorMake(k) {
 }
 for (const k of Object.keys(DECOR)) { const D = DECOR[k]; KINDS[k] = { r: D.r, wood: D.wood, work: D.work, mk: () => decorMake(k), name: D.name, by: D.by, ic: D.ic }; }
 /* ---- state (saved in the colony save as `seas`, so every room has its own) ---- */
-const SEA = { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
-function seaReset() { Object.assign(SEA, { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
-const seaSave = () => ({ done: SEA.done, adv: SEA.adv, unl: SEA.unl, packed: SEA.packed });
-function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.done = d.done || {}; SEA.adv = d.adv || {}; SEA.unl = d.unl || {}; SEA.packed = d.packed || ''; }
+const SEA = { st: {}, done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
+function seaReset() { Object.assign(SEA, { st: {}, done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
+const seaSave = () => ({ st: SEA.st, done: SEA.done, adv: SEA.adv, unl: SEA.unl, packed: SEA.packed });
+function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.done = d.done || {}; SEA.st = d.st || {}; for (const k of Object.keys(SEA.st)) for (let n = 1; n <= (SEA.st[k] | 0); n++) seaMileF(k, n); SEA.adv = d.adv || {}; SEA.unl = d.unl || {}; SEA.packed = d.packed || ''; }
 /* "played": the Giant did something in the last ten simulated minutes. A colony left alone still grows, a played one grows faster. */
 const careOn = () => (G.careT || 0) > G.simT;
 function care() { G.careT = G.simT + 600; }
 function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, q.name + ' is ready!', 'Every decoration is up. The room is looking lovely.', SEA_CREDIT]; return id; }
 /* ---- progress: how many of each decoration are built (and planned) for this season ---- */
 function seaCount(k) { let b = 0, p = 0; const key = decorKey(k); for (const S of G.settlements) { if (S.lost) continue; for (const t of S.things) if (t.kind === k && !t.gift && t.sea === key && !t.dead) { if (t.built && !t.hold) b++; else p++; } } return { b, p }; }
+function seaGoal(sd) { /* build 19: the goal in force. Once the season goal is done a follow-on starts at once (goal2: "Prepare for winter"), then endless "keep it lovely" rounds with two more of each */
+  if (!SEA.done[ENV.seasonKey]) return Object.assign({ stage: 0 }, sd.goal); const s = SEA.st[ENV.seasonKey] | 0, g2 = sd.goal2 || sd.goal;
+  return { stage: s + 1, title: s === 0 ? g2.title : 'Keep the room lovely', items: g2.items.map((i) => ({ k: i.k, n: i.n + (s ? 2 * s : 0) })) };
+}
 function seaProgress() {
-  const sd = SEA_BY[ENV.season], items = sd.goal.items.map((it) => Object.assign({ k: it.k, n: it.n }, seaCount(it.k)));
-  return { sd, items, done: items.every((i) => i.b >= i.n), got: items.reduce((a, i) => a + Math.min(i.b, i.n), 0), all: items.reduce((a, i) => a + i.n, 0) };
+  const sd = SEA_BY[ENV.season], gl = seaGoal(sd), items = gl.items.map((it) => Object.assign({ k: it.k, n: it.n }, seaCount(it.k)));
+  return { sd, gl, stage: gl.stage, items, done: items.every((i) => i.b >= i.n), got: items.reduce((a, i) => a + Math.min(i.b, i.n), 0), all: items.reduce((a, i) => a + i.n, 0) };
 }
 function seaStripHtml(P) {
   return P.items.map((it) => { const ic = DECOR[it.k].ic; let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? ic : i < it.b + it.p ? '<span class="dim">' + ic + '</span>' : '▫️'; return '<span class="gg">' + s + '</span>'; }).join(' ') + (P.done ? ' ✔️' : '');
 }
 const seaStripText = (P) => P.items.map((it) => { let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? DECOR[it.k].ic : '▫️'; return s; }).join(' ');
-function seaBuildList() { const sd = SEA_BY[ENV.season], l = sd.goal.items.map((i) => i.k); if (SEA.unl[ENV.seasonKey]) l.push(SEA.unl[ENV.seasonKey]); return l; }
+function seaBuildList() { const sd = SEA_BY[ENV.season], l = seaGoal(sd).items.map((i) => i.k); if (SEA.done[ENV.seasonKey]) for (const i of sd.goal.items) if (!l.includes(i.k)) l.push(i.k); if (SEA.unl[ENV.seasonKey]) l.push(SEA.unl[ENV.seasonKey]); return l; }
 function decorRefresh() { for (const S of G.settlements) S.decN = S.things.filter((t) => t.built && !t.hold && DECOR[t.kind] && t.kind !== 'visitor').length; }
 function seaPlace(kind, built, S, o) { /* one decoration on a settlement (the main one by default): free and finished (a gift, a special), or planned */
   S = S || mainSettlement(); if (!S || !KINDS[kind]) return null; const K = KINDS[kind];
@@ -3187,7 +3203,12 @@ function seaComplete(P) {
 function seaCheck() {
   if (G.phase !== 'play' || !G.settlements.length || BT.on) return;
   if (SEA.packed !== ENV.seasonKey) { const first = !SEA.packed; SEA.packed = ENV.seasonKey; packAway(first); }
-  const P = seaProgress(); if (P.done && !SEA.done[ENV.seasonKey]) seaComplete(P);
+  const P = seaProgress(); if (P.done) { if (!SEA.done[ENV.seasonKey]) seaComplete(P); else seaFollow(P); }
+}
+function seaMileF(key, n) { const id = 'sea-' + key + '+' + n, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, 'Another goal done!', 'The colonists finished the next list and are already planning the one after.', SEA_CREDIT]; return id; }
+function seaFollow(P) { /* a follow-on goal is finished: a small celebration, and the next one starts at once */
+  const key = ENV.seasonKey, n = (SEA.st[key] | 0) + 1, id = seaMileF(key, n); SEA.st[key] = n;
+  celebrate(id, mainSettlement()); for (const S of G.settlements) { if (S.lost) continue; for (const c of S.cols) { c.needs.joy = Math.min(1, c.needs.joy + 0.2); c.hop = 1; } } funLog('season', id); persistSoon(); if (G.tool === 'build') barUi();
 }
 /* ---- funny moments ---- */
 function seaEvent() {
@@ -3234,7 +3255,7 @@ function goalHtml() {
   if (cal && ENV.season === 'autumn') extra = '<div class="gsub">' + (cal.b >= 1 ? 'Calendar ready: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' until it opens' : 'it opens today') : 'Calendar: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' to get it ready' : 'get it ready')) + '</div>';
   const calBtn = advCalendars().length ? '<button class="cbtn" data-cal="1">📅 Advent calendar</button>' : '';
   const unl = SEA.unl[ENV.seasonKey] ? '<div class="gsub">Unlocked: ' + DECOR[SEA.unl[ENV.seasonKey]].ic + ' ' + esc(DECOR[SEA.unl[ENV.seasonKey]].name) + '</div>' : '';
-  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.sd.goal.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
+  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.gl.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
 }
 /* ---- per-frame life of the decorations (called from visuals) ---- */
 function decorAnim(S, t, m, time, dt) {
@@ -3311,7 +3332,7 @@ function envLine(full) {
   const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60), sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   return `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky}${full ? ' · sun ' + ENV.sun.toFixed(2) + ' · growth x' + ENV.grow.toFixed(2) : ''}</div>`;
 }
-function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
+function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(/^\S+ \d+$/.test(c.name) ? c.name : c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
 
 /* ============ WATERWORKS (build 18): straws bring water home, buckets take the waste to the toilet, a mouse leads the way. The idea is Harry's. ============
    The network is built from the room map's own spots: a spot called sink / toilet / plant / vase / cup is a water source or a waste drop (waterKind). Nothing is stored apart from G.net:
