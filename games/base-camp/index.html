@@ -169,7 +169,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 19';
+const BUILD = 'build 19 + sound';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -356,17 +356,77 @@ try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat
 // ============ toast, sound ============
 let toastT = 0;
 function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs > 5 ? secs : 2) * 1000); } // toasts are small, at the top, and gone after 2 s (a longer time only for warnings)
-const SND = { ctx: null, on: true, nb: null }, sfxExtra = {}; /* build 18: sounds added by later sections (ploop, trumpet) */
-try { SND.on = localStorage.getItem('bc-sound') !== '0'; } catch (e) { /* storage blocked: sound on */ }
-function audioCtx() { if (!SND.on) return null; try { if (!SND.ctx) SND.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; } }
-function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.05); }
-function sNoise(c, t, d, freq, ft, v) { if (!SND.nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), q = b.getChannelData(0); for (let i = 0; i < q.length; i++) q[i] = Math.random() * 2 - 1; SND.nb = b; } const n = c.createBufferSource(); n.buffer = SND.nb; const f = c.createBiquadFilter(); f.type = ft || 'bandpass'; f.frequency.value = freq || 2000; const g = c.createGain(); g.gain.setValueAtTime(v || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); g.connect(c.destination); n.start(t, Math.random() * 0.5); n.stop(t + d + 0.02); }
-function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no files); p: the creature's voice pitch
-  const c = audioCtx(); if (!c || !kind) return;
+/* ============ SOUND (build 19 + sound): everything is synthesised here with Web Audio. No files, no libraries. ============
+   The mix: each sound -> its own pan and distance gain (creature sounds) -> the sfx, music or ambience bus -> master (the volume slider) -> a soft compressor -> speakers.
+   Nothing makes a sound before the first tap or key (the iOS rule, and kinder): the first gesture creates and resumes the AudioContext.
+   A rate limiter keeps 40 settlers from stacking one sound (at most SND.RATE.max of a kind per 100 ms), and repeats get a little pitch jitter. */
+const SND = { ctx: null, on: true, nb: null, armed: false, bus: null, dest: null, jit: 1, vol: 0.8, ambOn: true, recent: {}, last: {}, live: 0, stat: { played: 0, dropped: 0 }, RATE: { max: 3, win: 100 } }, sfxExtra = {}; /* build 18: sounds added by later sections (ploop, trumpet) */
+try { SND.on = localStorage.getItem('bc-sound') !== '0'; const v = parseFloat(localStorage.getItem('bc-volume')); if (v >= 0 && v <= 1) SND.vol = v; SND.ambOn = localStorage.getItem('bc-amb') !== '0'; } catch (e) { /* storage blocked: sound on */ }
+/* every sound kind and what it is for: the sound board and HANDOVER.md list these */
+SND.KINDS = {
+  plant: 'a seed goes in, a tree is planted', pop: 'something small appears or is given', hammer: 'a creature hammering at a build', cheer: 'a happy little cheer',
+  chime: 'something is ready (a cable car, a straw line, a hook)', water: 'a splash of water is given', ask: 'a creature asks for something', no: 'that does not work (gentle)',
+  squeak: 'a creature is poked', giggle: 'a ticklish creature giggles', grumble: 'a grumpy creature grumbles', zap: 'a static creature crackles',
+  boing: 'a creature is picked up', ding: 'a bright ding', whistle: 'a crumb drops from the Giant', thud: 'a soft landing', nom: 'a creature nibbles a crumb',
+  tada: 'found it!', fanfare: 'a milestone banner', firework: 'a confetti burst', ploop: 'the bucket tips into the compost: ploop', trumpet: 'the tiny bucket-line trumpet',
+  flow: 'water starts to run through a straw', sprinkle: 'a straw sprinkles a farm', gondola: 'the bucket gondola sets off', dock: 'the bucket gondola arrives',
+  twinkle: 'a season decoration goes up', pack: 'last season’s decorations go back in the box', patter: 'the mouse scout’s little footsteps',
+  setoff: 'the scout sets off on an expedition', home: 'the scout comes home', cablereq: 'a creature asks for a cable car', season: 'a new season begins',
+  rainstart: 'it starts to rain', sunny: 'the rain stops', windy: 'the wind gets up', hutdone: 'a hut is finished', built: 'any other build is finished', founded: 'a new camp is founded',
+};
+SND.BKINDS = { launch: 'a shot leaves', twang: 'a rubber band', boom: 'a big hit', bounce: 'a bounce', weee: 'a long fall', hoover: 'the hoover', tick: 'a timer tick', sad: 'a lost battle', splat: 'a small hit', clip: 'a paper clip', swing: 'a rope swing', fluff: 'a sock hit', clink: 'confetti', jazz: 'a paper-clip chord', sneeze: 'a dusty sneeze', rip: 'tape', plank: 'a plank bridge', ding: 'battle ding', no: 'battle no', chime: 'battle chime', hammer: 'battle hammer' };
+SND.DUCK = { fanfare: 1, cheer: 1, trumpet: 1, tada: 1, hutdone: 1, founded: 1, season: 1 };
+function SND_arm() { /* the first gesture: from now on sound may play; also resumes a suspended (or iOS "interrupted") context on any later tap */
+  SND.armed = true; const c = audioCtx(); if (!c) return;
+  try { if (!SND.unlocked) { SND.unlocked = true; const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.onended = () => { try { s.disconnect(); } catch (e) { /* fine */ } }; s.start(0); } } catch (e) { /* fine */ }
+}
+for (const ev of ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown']) addEventListener(ev, SND_arm, { capture: true, passive: true });
+function SND_busMake(c) {
+  let out = c.destination;
+  try { const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.25; comp.connect(c.destination); out = comp; } catch (e) { /* no compressor: straight out */ }
+  const master = c.createGain(); master.gain.value = SND.vol; master.connect(out);
+  const mk = (v) => { const g = c.createGain(); g.gain.value = v; g.connect(master); return g; };
+  SND.bus = { out, master, sfx: mk(1), music: mk(0.85), amb: mk(0.5) };
+}
+function audioCtx() {
+  if (!SND.on || !SND.armed) return null;
+  try { if (!SND.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; SND.ctx = new AC(); SND_busMake(SND.ctx); } if (SND.ctx.state !== 'running' && SND.ctx.state !== 'closed') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; }
+}
+function SND_setVol(v) { SND.vol = clamp(+v || 0, 0, 1); try { localStorage.setItem('bc-volume', String(Math.round(SND.vol * 100) / 100)); } catch (e) { /* no storage */ } if (SND.bus && SND.ctx) SND.bus.master.gain.setTargetAtTime(SND.vol, SND.ctx.currentTime, 0.03); }
+function SND_setOn(on) { SND.on = !!on; try { localStorage.setItem('bc-sound', SND.on ? '1' : '0'); } catch (e) { /* no storage */ } if (!SND.on) { musicStop(); SND_ambStop(); if (SND.ctx && SND.ctx.state === 'running') SND.ctx.suspend(); } else if (FUN.party || FUN.fest) musicStart(); }
+function SND_out(c) { return SND.dest || (SND.bus ? SND.bus.sfx : c.destination); }
+function SND_end(src, a, b) { SND.live++; src.onended = () => { SND.live--; try { src.disconnect(); a.disconnect(); if (b) b.disconnect(); } catch (e) { /* fine */ } }; }
+function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(), j = SND.jit; o.type = type || 'sine'; o.frequency.setValueAtTime(f * j, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2 * j, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(SND_out(c)); SND_end(o, g); o.start(t); o.stop(t + d + 0.05); }
+function SND_noiseBuf(c) { if (!SND.nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), q = b.getChannelData(0); for (let i = 0; i < q.length; i++) q[i] = Math.random() * 2 - 1; SND.nb = b; } return SND.nb; }
+function sNoise(c, t, d, freq, ft, v) { const n = c.createBufferSource(); n.buffer = SND_noiseBuf(c); const f = c.createBiquadFilter(); f.type = ft || 'bandpass'; f.frequency.value = freq || 2000; const g = c.createGain(); g.gain.setValueAtTime(v || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); g.connect(SND_out(c)); SND_end(n, f, g); n.start(t, Math.random() * 0.5); n.stop(t + d + 0.02); }
+function SND_gate(kind) { /* the rate limiter: at most RATE.max of one kind per RATE.win ms; a repeat soon after gets a little pitch jitter */
+  const now = performance.now(), r = (SND.recent[kind] || []).filter((x) => now - x < SND.RATE.win);
+  if (r.length >= SND.RATE.max) { SND.recent[kind] = r; SND.stat.dropped++; return false; }
+  r.push(now); SND.recent[kind] = r; SND.jit = SND.last[kind] && now - SND.last[kind] < 700 ? 1 + (Math.random() - 0.5) * 0.09 : 1; SND.last[kind] = now; SND.stat.played++; return true;
+}
+function SND_where(pos) { /* a world position -> [pan -1..1, gain 0..1]: screen x gives the pan; far away or off screen is quieter */
   try {
+    const v = (SND.v || (SND.v = new THREE.Vector3())).set(pos.x, pos.y, pos.z), eye = AR.on ? (SND.v2 || (SND.v2 = new THREE.Vector3())).setFromMatrixPosition(AR.viewM) : camera.position, d = eye.distanceTo(v);
+    const r = toScreen(v), on = r[2] && r[0] > -30 && r[0] < innerWidth + 30 && r[1] > -30 && r[1] < innerHeight + 30;
+    return [clamp(r[0] / innerWidth * 2 - 1, -1, 1) * (r[2] ? 0.75 : 0), clamp(0.5 / Math.max(0.05, d), 0.15, 1) * (on ? 1 : 0.3)];
+  } catch (e) { return [0, 1]; }
+}
+function SND_spot(c, pan, gain, bus) { /* one short-lived pan + gain pair in front of a bus; it unplugs itself a few seconds later */
+  const g = c.createGain(); g.gain.value = gain; g.connect(bus); let head = g;
+  if (c.createStereoPanner) { try { const p = c.createStereoPanner(); p.pan.value = pan; p.connect(g); head = p; } catch (e) { /* no panner: centred */ } }
+  setTimeout(() => { try { head.disconnect(); g.disconnect(); } catch (e) { /* fine */ } }, 5000); return head;
+}
+function SND_colPos(c) { try { return c && c.mesh ? c.mesh.getWorldPosition(SND.cp || (SND.cp = new THREE.Vector3())) : null; } catch (e) { return null; } }
+function SND_duck() { const b = SND.bus, c = SND.ctx; if (!b || !c) return; const t = c.currentTime; b.music.gain.cancelScheduledValues(t); b.music.gain.setTargetAtTime(0.42, t, 0.04); b.music.gain.setTargetAtTime(0.85, t + 1.1, 0.35); }
+function sfx(kind, pitch, pos) { /* soft synth sounds made on the spot; p: the creature's voice pitch; pos (optional): where it happens, for pan and distance */
+  const c = audioCtx(); if (!c || !kind) return;
+  if (!SND_gate(kind)) return;
+  let g = 1, pan = 0; if (pos) { [pan, g] = SND_where(pos); if (g < 0.06) return; }
+  try {
+    SND.dest = pos ? SND_spot(c, pan, g, SND.bus ? SND.bus.sfx : c.destination) : null;
     const t = c.currentTime, p = pitch || 1, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
     if (kind === 'plant') tone(330, 0.18, 'sine', 0.07, 520); else if (kind === 'pop') tone(520, 0.12, 'triangle', 0.06, 880);
-    else if (kind === 'build' || kind === 'hammer') { sNoise(c, t, 0.035, 2600, 'bandpass', 0.05); tone(420, 0.05, 'square', 0.012, 300); } // a little hammer knock
+    else if (kind === 'build' || kind === 'hammer') { sNoise(c, t, 0.035, 2600, 'bandpass', 0.05); tone(420, 0.05, 'square', 0.012, 300); } /* a little hammer knock */
     else if (kind === 'cheer') { tone(523, 0.15, 'triangle', 0.06); tone(784, 0.2, 'triangle', 0.06, 0, 0.11); tone(659 * 1.5, 0.08, 'sine', 0.025, 0, 0.05); }
     else if (kind === 'chime') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, 0, i * 0.13)); }
     else if (kind === 'water') sNoise(c, t, 0.15, 2400, 'bandpass', 0.05);
@@ -383,8 +443,27 @@ function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no
     else if (kind === 'tada') { tone(659, 0.1, 'triangle', 0.045); tone(988, 0.26, 'triangle', 0.045, 0, 0.1); }
     else if (kind === 'fanfare') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.045, 0, i * 0.09)); [523, 659, 784].forEach((f) => tone(f, 0.55, 'triangle', 0.025, 0, 0.42)); }
     else if (kind === 'firework') { sNoise(c, t, 0.45, 1100, 'lowpass', 0.07); sNoise(c, t + 0.05, 0.3, 4200, 'highpass', 0.02); }
+    /* ---- build 19 + sound: the events that were silent, or had a sound that did not fit ---- */
+    else if (kind === 'flow') { [300, 360, 430].forEach((f, i) => tone(f, 0.09, 'sine', 0.045, f * 1.7, i * 0.11)); sNoise(c, t + 0.05, 0.4, 1800, 'bandpass', 0.015); } /* glug, glug, glug: the straw fills */
+    else if (kind === 'sprinkle') { sNoise(c, t, 0.16, 5200, 'highpass', 0.014); sNoise(c, t + 0.21, 0.12, 6000, 'highpass', 0.01); tone(2100, 0.03, 'sine', 0.008, 0, 0.1); } /* tsss-tss */
+    else if (kind === 'gondola') { tone(520, 0.14, 'triangle', 0.028, 610); tone(610, 0.14, 'triangle', 0.024, 520, 0.16); tone(1320, 0.3, 'sine', 0.018, 0, 0.32); } /* creaky pulley, then a little bell */
+    else if (kind === 'dock') { tone(240, 0.09, 'triangle', 0.05, 180); sNoise(c, t, 0.05, 900, 'lowpass', 0.03); tone(990, 0.3, 'sine', 0.018, 0, 0.09); } /* clonk, ding: home */
+    else if (kind === 'twinkle') { for (let i = 0; i < 6; i++) tone(2093 * (1 + 0.04 * (i % 3)), 0.12, 'sine', 0.014, 0, i * 0.05); tone(2637, 0.45, 'sine', 0.018, 0, 0.3); } /* sleigh-bell shimmer */
+    else if (kind === 'pack') { tone(180, 0.12, 'sine', 0.05, 110); sNoise(c, t + 0.03, 0.2, 2500, 'bandpass', 0.016); } /* a box lid, a rustle of paper */
+    else if (kind === 'patter') { tone(1400 * p, 0.025, 'triangle', 0.012, 1100 * p); } /* tip */
+    else if (kind === 'setoff') { tone(600 * p, 0.08, 'sine', 0.04, 1000 * p); tone(1000 * p, 0.1, 'sine', 0.035, 1400 * p, 0.1); tone(2600, 0.05, 'sine', 0.01, 0, 0.22); tone(2900, 0.05, 'sine', 0.01, 0, 0.28); } /* "hup!" and a backpack jingle */
+    else if (kind === 'home') { tone(784, 0.12, 'triangle', 0.035); tone(1047, 0.24, 'triangle', 0.035, 0, 0.12); for (let i = 0; i < 3; i++) tone(1500, 0.02, 'triangle', 0.01, 1200, 0.3 + i * 0.08); } /* we're back! */
+    else if (kind === 'cablereq') { [0, 0.22].forEach((dl) => { tone(1175, 0.35, 'sine', 0.035, 0, dl); tone(1568, 0.2, 'sine', 0.012, 0, dl); }); } /* a tram bell: ding ding */
+    else if (kind === 'season') { [784, 988, 1175, 1568, 1175].forEach((f, i) => { tone(f, 0.45, 'sine', 0.028, 0, i * 0.16); tone(f * 2, 0.15, 'sine', 0.007, 0, i * 0.16); }); } /* a music-box phrase */
+    else if (kind === 'rainstart') { for (let i = 0; i < 8; i++) tone(1800 + Math.random() * 1400, 0.03, 'sine', 0.016, 1000 + Math.random() * 400, i * 0.07 + Math.random() * 0.04); sNoise(c, t, 0.9, 1800, 'lowpass', 0.01); } /* pitter-patter */
+    else if (kind === 'sunny') { tone(523, 0.5, 'sine', 0.022, 1047); tone(659, 0.5, 'sine', 0.018, 1319, 0.08); tone(1568, 0.6, 'sine', 0.013, 0, 0.35); } /* the sun comes out */
+    else if (kind === 'windy') { sNoise(c, t, 0.9, 700, 'bandpass', 0.028); tone(300, 0.9, 'sine', 0.005, 520); } /* whoosh */
+    else if (kind === 'hutdone') { tone(330, 0.06, 'triangle', 0.045, 250); tone(330, 0.06, 'triangle', 0.045, 250, 0.14); [392, 494, 587].forEach((f) => tone(f, 0.6, 'sine', 0.022, 0, 0.32)); } /* knock knock, home sweet home */
+    else if (kind === 'built') { tone(420, 0.05, 'triangle', 0.035, 320); tone(470, 0.05, 'triangle', 0.035, 360, 0.09); tone(1175, 0.35, 'sine', 0.025, 0, 0.2); } /* tok tok ding */
+    else if (kind === 'founded') { sNoise(c, t, 0.25, 1200, 'bandpass', 0.025); [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.032, 0, 0.12 + i * 0.09)); } /* a tent flaps open, and up we go */
     else if (sfxExtra[kind]) sfxExtra[kind](c, t, tone);
-  } catch (e) { /* sound is optional */ }
+    if (SND.DUCK[kind]) SND_duck();
+  } catch (e) { /* sound is optional */ } finally { SND.dest = null; SND.jit = 1; }
 }
 
 // ============ three.js basics ============
@@ -2649,9 +2728,10 @@ function musicStart() { if (FUN.mus) return; const c = audioCtx(); if (!c) retur
 function musicStop() { if (FUN.mus) { clearInterval(FUN.mus.iv); FUN.mus = null; } }
 function musicPump() {
   const c = SND.ctx, m = FUN.mus; if (!m || !c || !SND.on) { musicStop(); return; }
+  SND.dest = SND.bus ? SND.bus.music : null; /* build 19 + sound: the music has its own bus, ducked under a fanfare */
   try { while (m.next < c.currentTime + 0.16) { const s = m.step % 16, bar = Math.floor(m.step / 16) % 4, t = m.next, n = MUS.mel[m.step % 32];
     if (s % 4 === 0) sTone(c, t, MUS.bass[bar], 0.32, 'triangle', 0.08); if (s % 2 === 1) sNoise(c, t, 0.03, 7000, 'highpass', 0.012); if (s === 4 || s === 12) sNoise(c, t, 0.09, 1600, 'bandpass', 0.035);
-    if (n >= 0) sTone(c, t, MUS.scale[n], 0.15, 'triangle', 0.032); m.next += MUS.step; m.step++; } } catch (e) { musicStop(); }
+    if (n >= 0) sTone(c, t, MUS.scale[n], 0.15, 'triangle', 0.032); m.next += MUS.step; m.step++; } } catch (e) { musicStop(); } finally { SND.dest = null; }
 }
 // ---- milestones: a small celebration and an entry in the Colony album (never a chore list: nothing is shown before it happens) ----
 const MILESTONES = { // id: [icon, title, line, by]
@@ -5242,11 +5322,11 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
-    else if (t.id === 'mSound') { SND.on = !SND.on; store.set('bc-sound', SND.on ? '1' : '0'); if (!SND.on) musicStop(); else if (FUN.party || FUN.fest) musicStart(); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+    else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
     else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
@@ -6338,7 +6418,8 @@ function btChooser() {
 
 // ---------- sounds (synthesised, like the rest of the game) ----------
 function bsfx(kind, p) {
-  const c = audioCtx(); if (!c) return; p = p || 1;
+  if (!SND.BKINDS[kind]) { sfx(kind, p); return; } /* build 19 + sound: kinds the battle does not have (the victory 'fanfare') use the colony's; before, they were silent */
+  const c = audioCtx(); if (!c) return; p = p || 1; if (!SND_gate('b-' + kind)) return;
   try {
     const t = c.currentTime, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
     if (kind === 'launch') { tone(240 * p, 0.16, 'triangle', 0.07, 90); sNoise(c, t, 0.06, 900, 'lowpass', 0.05); }
