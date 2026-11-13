@@ -909,7 +909,7 @@ function scout17Tick(c, dt) {
   /* game logic stays the source of truth for movement, celebration and jobs */
   const next = c.held || c.hop > 0.12 || c.fall ? 'Hop' :
     c.moving ? 'Walk' : c.cheerT > 0.1 || c.dancing ? 'Wave' :
-    c.job && c.job.type === 'read' ? 'LookAround' : 'Idle';
+    c.job && (c.job.type === 'read' || (c.job.type === 'expedition' && c.job.ph === 'look')) ? 'LookAround' : 'Idle';
   if (next !== C.name) {
     const old = C.actions[C.name]; if (old) old.fadeOut(0.15);
     const action = C.actions[next];
@@ -1473,7 +1473,7 @@ function approach(S, t, c) { // a spot next to a thing, on the colonist's side
   return [t.x + dx / d * off, t.z + dz / d * off];
 }
 const PRE_JOBS = ['chat', 'wander', 'dance', 'read', 'tend', 'gather', 'plant', 'harvest'];
-const GO_MAX = 40, GO_JOBS = ['drink', 'eat', 'tend', 'harvest', 'gather', 'plant', 'chat', 'wander', 'dance', 'read', 'build'];
+const GO_MAX = 40, GO_JOBS = ['fix', 'drink', 'eat', 'tend', 'harvest', 'gather', 'plant', 'chat', 'wander', 'dance', 'read', 'build'];
 function chooseJob(S, c, E) {
   const n = c.needs, P = c.pers, home = homeOf(S, c), cand = [], add = (w, j) => { if (w > 0) cand.push([w, j]); };
   if (E.rain && home) return { type: 'shelter', th: home };
@@ -1491,6 +1491,7 @@ function chooseJob(S, c, E) {
     else if (t.kind === 'tree' && t.yield > 0) add(3 * P.work, { type: 'gather', th: t });
     else if ((t.kind === 'tree' || t.kind === 'farm') && t.built && t.g < 1 && t.tend < 10) add(2.2 * P.work, { type: 'tend', th: t });
   }
+  for (const r of netBreaksOf(S)) { const th = netFixTarget(S, r); if (th) add(9 * P.work, { type: 'fix', th, run: r }); } /* build 18: a kinked straw or a stuck bucket */
   if (S.stock.seeds > 0 && kindCount(S, 'tree') < treeCap(S)) { const sp = findSpot(S, 0.026); if (sp) add(2.6 * P.work, { type: 'plant', spot: sp }); }
   if (S.cols.length > 1) add(1.2 * P.social, { type: 'chat' });
   { const nook = S.things.find((t) => t.kind === 'nook' && t.built && !t.hold); if (nook) add(1.3 * P.lazy, { type: 'read', th: nook }); } // the reading nook (The Dell Coder / The Radeon Coder)
@@ -1519,9 +1520,10 @@ function startJob(S, c, j, E) {
     const [ax, az] = approach(S, j.th, c); j.tx = ax; j.tz = az;
     j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9, read: 5, leap: 2.6 }[j.type] || 2;
     if (j.type === 'build') j.th.workers++;
+    if (j.type === 'fix') { j.dur = 3.2; if (j.run) j.run.fixer = c; }
   }
 }
-function endJob(c) { const j = c.job; if (j && j.type === 'build' && j.th && j.ph !== undefined && !j.th.dead) j.th.workers = Math.max(0, j.th.workers - 1); if (j && c.inside) { c.inside = false; c.mesh.visible = true; } c.job = null; c.cool = 0.4; }
+function endJob(c) { const j = c.job; if (j && j.type === 'fix' && j.run && j.run.fixer === c) j.run.fixer = null; if (j && j.type === 'expedition') { c.yOff = 0; c.working = false; } if (j && j.type === 'build' && j.th && j.ph !== undefined && !j.th.dead) j.th.workers = Math.max(0, j.th.workers - 1); if (j && c.inside) { c.inside = false; c.mesh.visible = true; } c.job = null; c.cool = 0.4; }
 function stepToward(S, c, tx, tz, dt, E) {
   const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
   if (d < 0.004) { c.moving = false; return true; }
@@ -1580,6 +1582,7 @@ function runJob(S, c, dt, E, quiet) {
     case 'plant': if (validSpot(S, j.spot[0], j.spot[1], 0.026) && S.stock.seeds > 0) { S.stock.seeds--; plantTree(S, j.spot[0], j.spot[1], quiet); } break;
     case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; FUN.n.harvest = (FUN.n.harvest | 0) + 1; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, SY(S, 0.04), wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
     case 'gather': if (!t.dead && t.yield > 0) { t.yield--; if (t.var === 2 || t.var === 3) S.stock.food += 1; else S.stock.wood += 1; if (Math.random() < 0.4) S.stock.seeds++; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(t.var >= 2 ? 'food' : 'log', wx, SY(S, 0.05), wz, 1, { size: 0.011, vy: 0.03, life: 1.1 }); } } break;
+    case 'fix': netFixDone(S, c, j.run); break;
     default: break;
   }
   endJob(c);
@@ -1649,12 +1652,13 @@ function simSettlement(S, dt, E, quiet) {
     if (t.life) { t.life -= dt; if (t.life <= 0) { removeThing(S, t); continue; } }
     if (t.tend > 0) t.tend -= dt;
     if (E.rain && (t.kind === 'tree' || t.kind === 'farm')) t.tend = Math.max(t.tend, 20);
+    if (t.piped) t.tend = Math.max(t.tend, 20); /* build 18: a farm under a sprinkler never dries out */
     const fxm = (S.fx && S.fx.solar ? 1.2 : 1) * (E.cold && S.fx && S.fx.forge ? 1.6 : 1), calmK = t.rich ? 1.3 : 1;
     if (t.kind === 'tree' && t.g < 1) { t.g = Math.min(1, t.g + dt / TREE_T * E.grow * fxm * calmK * (t.tend > 0 ? 1.8 : 1)); if (t.g >= 1 && !quiet) { toast('A tree has grown up!'); puff('leaf', S.tf.x, SY(S, 0.02), S.tf.z, 0); } }
     else if (t.kind === 'tree') { t.yt += dt * E.grow; if (t.yt > 70 && t.yield < 2) { t.yield++; t.yt = 0; } }
-    else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * fxm * calmK * (S.fx && S.fx.farm ? 1.25 : 1) * (t.tend > 0 ? 1.8 : 1));
+    else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * fxm * calmK * (S.fx && S.fx.farm ? 1.25 : 1) * (t.tend > 0 ? 1.8 : 1) * compostK(S));
   }
-  S.stock.water = Math.min(8, S.stock.water + dt / 90);
+  S.stock.water = Math.min(8, S.stock.water + dt / 90); if (S.pipeOn) S.stock.water = Math.min(12, S.stock.water + dt / 8); /* build 18: a straw from the sink refills the water store */
   if (!S.fx) S.fx = fxOf(S); roleStep(S, dt, E, quiet);
   // colonists
   for (const c of S.cols.slice()) {
@@ -1667,12 +1671,12 @@ function simSettlement(S, dt, E, quiet) {
     if (E.cold && !quiet && !sleeping) n.joy = Math.max(0.05, n.joy - dt / 3000);
     c.cool -= dt;
     if (!quiet) { // interruptions: night falls, rain starts
-      if (c.job && c.job.type !== 'cross') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter') endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
+      if (c.job && c.job.type !== 'cross' && c.job.type !== 'expedition') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter') endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
     }
     if (c.job && PRE_JOBS.includes(c.job.type) && ((n.food < 0.12 && S.stock.food > 0) || (n.water < 0.12 && (S.stock.water > 0 || built(S, 'well'))))) endJob(c); /* build 14: hungry or thirsty beats chatting and wandering */
     if (!c.job && c.cool <= 0) { const j = chooseJob(S, c, E); if (j) startJob(S, c, j, E); }
-    if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job) runJob(S, c, quiet && !E.away ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
-    if (quiet && !E.away && c.job && c.job.ph === 'go' && c.job.type !== 'cross') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
+    if (c.job && c.job.type === 'cross') crossStep(S, c, dt, E); else if (c.job && c.job.type === 'expedition') expedStep(S, c, dt, E, quiet); else if (c.job) runJob(S, c, quiet && !E.away ? Math.min(dt, 0.5) : dt, E, quiet); else { c.moving = false; c.working = false; }
+    if (quiet && !E.away && c.job && c.job.ph === 'go' && c.job.type !== 'cross' && c.job.type !== 'expedition') { /* big steps: walk the whole way in one go */ for (let i = 0; i < 6 && c.job && c.job.ph === 'go'; i++) runJob(S, c, 1, E, quiet); }
     if (!quiet && n.joy > 0.9 && Math.random() < dt * 0.15) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, SY(S, 0.04), wz, 1, { size: 0.007, add: true, life: 1 }); }
   }
   // planner: the colony decides what to build next
@@ -2377,6 +2381,7 @@ function awaySim(secs, startHour) {
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     for (const h of G.hooks) hookStep(h, step, true);
+    netStep(step, true);
     G.simT += step; awayEvents(step, h); seaSim(step, true); if (steps % 40 === 0) autoExpand();
   }
   let long = null; if (rest > 0) { long = awayDays(rest); nights += long.days; G.simT += rest; if (!long.days) long = null; autoExpand(); } // part days count too (review 12 Nov): 30 h away is 24 h in full plus one day step
@@ -2474,6 +2479,7 @@ function visuals(dt, time) {
   }
   for (const h of G.hooks) hookVisual(h, dt, time);
   for (const l of G.links) linkVisual(l, time);
+  netVisual(dt, time);
 }
 function linkVisual(l, time) {
   const ends = linkEnds(l); if (!ends || !ends[2].placed || !ends[3].placed) { l.group.visible = false; return; } l.group.visible = true;
@@ -2806,7 +2812,7 @@ function funFrame(dt) {
 function colVisual(S, c, dt, time, night, eye) {
   const U = c.mesh.userData, m = c.mesh, K = charOf(c), B = U.body;
   c.born += dt; const grow = Math.min(1, c.born * 2.5), sc = COL_S * grow * (1 + 0.12 * Math.sin(grow * 3.14));
-  scout17Tick(c, dt);
+  scout17Tick(c, dt); if (c.yOff && !(c.job && c.job.type === 'expedition')) c.yOff = 0;
   m.visible = c.spawn <= 0 && !c.inside; m.scale.setScalar(Math.max(0.001, sc));
   let y = 0, sx = 1, sy = 1, rx = 0, ry = 0, rz = 0, mouthO = false;
   if (c.hop > 0) { c.hop = Math.max(0, c.hop - dt * 1.7); y = Math.sin(c.hop * 3.14) * 0.014 * (c.hopBig || 1); if (c.hop === 0) { c.hopBig = 1; c.squash = Math.max(c.squash || 0, 0.7); } }
@@ -2822,9 +2828,11 @@ function colVisual(S, c, dt, time, night, eye) {
     const sw = Math.sin(c.anim) * 0.6; U.legs[0].rotation.x = sw; U.legs[1].rotation.x = -sw; U.arms[0].rotation.x = -sw * 0.8; U.arms[1].rotation.x = sw * 0.8; rx = 0.08;
     if (c.parading) { U.arms[1].rotation.x = -2.6; }
   } else if (c.nibble && c.job && c.job.type === 'crumb') { c.anim += dt * 14; U.arms[0].rotation.x = U.arms[1].rotation.x = -1.6 + Math.sin(c.anim) * 0.3; rx = 0.35 + Math.sin(c.anim) * 0.08; sy *= 1 + Math.sin(c.anim * 2) * 0.04; }
-  else if (c.working && c.job && c.job.type === 'read') { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.3; rx = 0.2; }
+  else if (c.working && c.job && (c.job.type === 'read' || c.job.type === 'expedition')) { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.3; rx = 0.2; }
+  else if (c.working && c.job && c.job.type === 'fix') { c.anim += dt * 14; U.arms[0].rotation.x = -2.4 + Math.sin(c.anim) * 0.5; U.arms[1].rotation.x = -2.4 - Math.sin(c.anim) * 0.5; rz = Math.sin(c.anim * 0.5) * 0.12; if (c.job.run && c.job.run.k === 'waste') y += 0.016 + Math.sin(c.anim) * 0.002; }
   else if (c.working) { c.anim += dt * 11; U.arms[0].rotation.x = -1.6 + Math.sin(c.anim) * 1.1; U.arms[1].rotation.x = -0.4; sy *= 1 + Math.sin(c.anim) * 0.035; U.legs[0].rotation.x = U.legs[1].rotation.x = 0; }
   else { U.legs[0].rotation.x *= 0.8; U.legs[1].rotation.x *= 0.8; U.arms[0].rotation.x *= 0.8; U.arms[1].rotation.x *= 0.8; }
+  if (c.noseT > 0) { c.noseT -= dt; U.arms[0].rotation.x = -2.5; U.arms[0].rotation.z = 0.55; U.arms[1].rotation.z = -0.15; rx = -0.12; sx *= 0.97; } /* build 18: holding the nose while a bucket goes by */
   if (c.dancing) { const ph = FUN.party || FUN.fest ? FUN.beatPh : (time * 1.3 + c.id * 0.37) % 1, b = Math.abs(Math.sin(ph * Math.PI)); y += b * 0.011; sy *= 0.85 + 0.25 * b; sx *= 1.08 - 0.1 * b; U.arms[0].rotation.z = 2.3 + Math.sin(time * 9 + c.id) * 0.4; U.arms[1].rotation.z = -2.3 + Math.sin(time * 9 + c.id + 1) * 0.4; rz = Math.sin(time * 6 + c.id) * 0.22; mouthO = true; }
   else if (c.cheerT > 0) { c.cheerT -= dt; U.arms[0].rotation.z = 2.5; U.arms[1].rotation.z = -2.5; mouthO = true; }
   else if (c.shrug > 0) { c.shrug -= dt; const k = Math.sin(Math.min(1, c.shrug) * 3.14); U.arms[0].rotation.z = 0.15 + k * 1.1; U.arms[1].rotation.z = -0.15 - k * 1.1; U.arms[0].rotation.x = U.arms[1].rotation.x = -0.3 * k; y += k * 0.002; }
@@ -2856,7 +2864,7 @@ function colVisual(S, c, dt, time, night, eye) {
   if (c.react && c.react.t > 0) { c.react.t -= dt; if (c.react.k === 'panic') { mouthO = true; rz += Math.sin(time * 40) * 0.12; } else if (c.react.k === 'giggle') { mouthO = true; sy *= 1 + Math.sin(time * 30) * 0.05; } }
   if (c.lookAt && c.lookAt.t > 0) { c.lookAt.t -= dt; if (!c.moving) c.face = Math.atan2(c.lookAt.x - c.x, c.lookAt.z - c.z); }
   if (c.huddle > 0) c.huddle -= dt;
-  m.position.set(c.x, 0, c.z); B.position.y = y; B.scale.set(sx, sy, sx); B.rotation.x = rx; B.rotation.z = rz; if (!(c.fid && c.fid.k === 'moss')) B.rotation.y = ry;
+  m.position.set(c.x, c.yOff || 0, c.z); B.position.y = y; B.scale.set(sx, sy, sx); B.rotation.x = rx; B.rotation.z = rz; if (!(c.fid && c.fid.k === 'moss')) B.rotation.y = ry;
   let d = c.face - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 8);
   U.blinkT = (U.blinkT || rnd(2, 5)) - dt; const blink = U.blinkT < 0.12; if (U.blinkT <= 0) U.blinkT = rnd(2.5, 5.5); for (const e of U.eyes) e.scale.y = blink ? 0.15 : 1;
   faceMouth(U, mouthO || (c.sayT > 0 && Math.sin(time * 22) > 0));
@@ -3635,15 +3643,15 @@ sfxExtra.trumpet = (c, t, tone) => { [[392, 0.09, 0], [392, 0.09, 0.11], [523, 0
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
 let SAVE_KEY = homeKeys(HOMES.cur).save;
-const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.x, z: c.z, needs: c.needs });
+const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.job && c.job.type === 'expedition' ? c.job.hx : c.x, z: c.job && c.job.type === 'expedition' ? c.job.hz : c.z, needs: c.needs }); /* build 18: a scout on an expedition is saved at home */
 function serialize() {
   const hr = new Date(); 
   return {
     v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
-    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats,
+    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats, comp: +(S.compost || 0).toFixed(3), waste: +(S.waste === undefined ? 0.6 : S.waste).toFixed(3),
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0 })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
-    hooks: hooksSave(),
+    hooks: hooksSave(), net: netSave(), /* build 18: the water network; older saves have none */
     links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
 }
@@ -3651,7 +3659,7 @@ function saveNow() { if (!G.settlements.length) return; if (!safeWrite(SAVE_KEY,
 function loadSave() { return safeRead(SAVE_KEY, (d) => d && d.v === 2 && Array.isArray(d.settlements) && d.settlements.length); } // v: the schema version; a future v3 gets a migration here
 function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
-  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null };
+  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null, compost: +d.comp || 0, waste: d.waste === undefined ? 0.6 : +d.waste || 0 };
   world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
   for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich, sea: t.sea || th.sea, gift: !!t.gift }); if (t.kind === 'tent') S.tent = th; }
   for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
@@ -3675,7 +3683,7 @@ function prepareContinue() {
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
   G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
-  hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables();
+  hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables(); netRestore(sv.net);
   for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
   G.awayUid0 = G.uid; const secs = G.previewSecs !== undefined && G.previewSecs !== null && G.previewSv === sv.t && Date.now() - G.previewAt < 120000 ? G.previewSecs : Math.floor(Math.max(0, (Date.now() - sv.t) / 1000) / 60) * 60; G.awayRes = withSeed(sv.t, () => awaySim(secs, sv.hour === undefined ? 12 : sv.hour)); funReturn(secs, G.awayRes); G.aligned = false;
   for (const Z of G.zones) paintLand(Z);
@@ -3960,7 +3968,7 @@ const COCO_ROLES = { // COCO-SSD class -> what it means in a room (tag = the spo
   cup: { tag: 'cup', name: 'cup' }, 'wine glass': { tag: 'cup', name: 'glass' }, bowl: { tag: 'cup', name: 'bowl' }, vase: { tag: 'cup', name: 'vase' }, bottle: { tag: 'can', name: 'bottle' },
   tv: { tag: 'monitor', name: 'screen' }, laptop: { tag: 'computer', name: 'laptop' }, keyboard: { tag: 'computer', name: 'keyboard' }, mouse: { tag: 'computer', name: 'mouse' },
   couch: { tag: 'sofa', name: 'sofa' }, chair: { tag: 'sofa', name: 'chair' }, bed: { tag: 'sofa', name: 'bed' }, 'potted plant': { tag: 'plant', name: 'plant' }, 'dining table': { tag: 'desk', name: 'table' },
-  microwave: { tag: 'warm', name: 'warm box' }, oven: { tag: 'warm', name: 'oven' }, toaster: { tag: 'warm', name: 'toaster' }, refrigerator: { tag: 'drawers', name: 'fridge' }, sink: { tag: 'other', name: 'sink' },
+  toilet: { tag: 'other', name: 'toilet' }, microwave: { tag: 'warm', name: 'warm box' }, oven: { tag: 'warm', name: 'oven' }, toaster: { tag: 'warm', name: 'toaster' }, refrigerator: { tag: 'drawers', name: 'fridge' }, sink: { tag: 'other', name: 'sink' },
   book: { tag: 'other', name: 'book' }, clock: { tag: 'other', name: 'clock' }, 'cell phone': { tag: 'other', name: 'phone' }, suitcase: { tag: 'drawers', name: 'case' }, backpack: { tag: 'other', name: 'bag' },
 };
 const RECOG = {
@@ -4639,7 +4647,7 @@ function relocManual() { // the older way: tap the two furthest-apart named thin
   RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
 }
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
-  for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop();
+  for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
   G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
@@ -4886,7 +4894,7 @@ function resetWorld() {
   btCleanup(true); G.ceilCd = 0; seaReset(); camClose(); G.careT = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
-  for (const z of G.zones) disposeZone(z); hooksDrop();
+  for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
   G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
@@ -5190,7 +5198,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
@@ -5376,6 +5384,7 @@ function tapAt(cx, cy) {
     if (rq) return giveRequest(rq);
     pokeCol(col); G.sel = col; G.cur = col.S; selCard(col); G.selT = 6; camOpen(col); care(); return; // a poke: they squeak, jump and react in character
   }
+  if (netTap(cx, cy)) return; /* build 18: unkink a straw, free a bucket, or ask what a source is */
   const g = groundPick(cx, cy);
   if (G.phase === 'zones') { if (g && !g.zone.settled) settleZone(g.zone); else toast('Tap one of the coloured zones.'); return; }
   if (G.phase === 'tag') return tagTap(cx, cy);
@@ -6366,7 +6375,7 @@ function btAnimWorld(dt, rdt, eye) {
 // ---------- the frame ----------
 function battleFrame(dt) {
   if (FUN.queue.length) FUN.queue.length = 0; if (FUN.bannerT > 0) { FUN.bannerT = 0; $('banner').className = ''; } // no colony celebrations in the middle of a battle
-  for (const S of G.settlements) S.group.visible = false; for (const l of G.links) l.group.visible = false; for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = false; if (Z.label) Z.label.visible = false; } for (const b of SCAN.bands) b.mesh.visible = false; SPOTMARK.visible = false; if (TOTEM.group) TOTEM.group.visible = false;
+  for (const S of G.settlements) S.group.visible = false; for (const l of G.links) l.group.visible = false; netHide(); for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = false; if (Z.label) Z.label.visible = false; } for (const b of SCAN.bands) b.mesh.visible = false; SPOTMARK.visible = false; if (TOTEM.group) TOTEM.group.visible = false;
   const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position;
   BT.slowT = Math.max(0, BT.slowT - dt); BT.timeScale += ((BT.slowT > 0 ? 0.28 : 1) - BT.timeScale) * Math.min(1, dt * 7); const sdt = dt * BT.timeScale * BT.rate;
   if (BT.stage !== 'pass') { BT.acc += sdt; let n = 0; while (BT.acc >= BT_DT && n++ < 40) { BT.acc -= BT_DT; btTick(BT_DT); } if (BT.acc > BT_DT * 40) BT.acc = 0; btSwingTick(sdt); btHooverTick(sdt); }
@@ -6436,6 +6445,7 @@ function simTick(dt, quiet) {
   for (const S of G.settlements) if (S.placed && !S.ghost) simSettlement(S, dt, ENV, quiet);
   for (const l of G.links) linkStep(l, dt, ENV, quiet);
   for (const h of G.hooks) hookStep(h, dt, quiet);
+  netStep(dt, quiet);
   G.simT += dt; G.evT += dt; if (G.evT > 360 / 10 * 1) { G.evT = 0; if (!quiet) eventsStep(); }
   seaSim(dt, quiet);
 }
