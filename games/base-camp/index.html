@@ -1622,11 +1622,10 @@ const CONDS = {
 function requestsStep(S, quiet) {
   if (quiet) return;
   for (const def of COLONY_ALMANAC.requests) {
-    if (F10.on && (!F10.reqDone || f10CardUp())) break; /* first10: one voice at a time, and the scout's seeds come first */
     const cond = CONDS[def.when]; if (!cond) continue;
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
-    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
+    if (on && !act && !(F10.on && (!F10.reqDone || f10CardUp())) /* first10: one voice at a time, and the scout's seeds come first */ && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
       const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || ((c.name === def.who || (c.base || c.name) === def.who) && (!def.dup || c.by === def.by)))); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
