@@ -8,6 +8,20 @@ have not come back yet. When they do, they go in word for word with their "by" c
 - A well or water tower per camp, a water store, and the Water tool (hold to water).
 - Nothing comes from the real room yet, and there is no waste.
 
+**Harry's clarification, 13 Nov:** "putting like pipes in, cable cars and stuff that take the waste to the toilet,
+bring fresh water from the sinks to water their crops and things." So the heart of build 18 is a **network**: lines the
+player lays between the colony and the real sink and toilet, with things visibly moving along them.
+
+## The network (the main part)
+- **The sink and toilet become endpoints**, like zones. You drag a line from a camp to them, the same gesture as a cable car.
+- **Water pipes, sink to farms:** drinking-straw pipes. Water droplets visibly travel along them. A pipe ends in a sprinkler
+  over the farm, so crops on a piped farm never go dry. A tank (bottle cap) at the camp end stores spare water.
+- **Waste cable cars, camp to toilet:** small buckets ride the existing cable car system (also via ceiling hooks) from each
+  camp's loo hut to the real toilet. They tip in at the far end with a flush and a cheer. The empties come back.
+- **One network map:** in Look mode, pipes glow blue and waste lines glow brown, so you can see the whole system at a glance.
+- **Breaks and fixes, funny not fiddly:** a kinked straw, or a bucket stuck at a hook. Creatures go out and fix it themselves.
+  The player can speed that up with a tap.
+
 ## Build 18: Waterworks (after the mouse, build 17)
 1. **Real water sources.** The AR scan already recognises a sink, toilet, potted plant, cup, bottle and vase.
    Each becomes a water source with its own quality:
