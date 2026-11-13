@@ -97,8 +97,10 @@ in a single block, never split across several boxes.
 - Vigil 3D test at `vigil-3d/`.
 
 **Branches to combine for Friday's milestone** ("pipes, fixes and Christmas live together"):
-1. `game/room-colony`: build 18 waterworks. A builder was fixing three regressions as the session ended: auto-ar
-   "What is this?" never fires; fun's mosh pit, celebrate and rainbow. Read its last commits.
+1. `game/room-colony`: build 18 waterworks. **Resolved 13 Nov, 17:50:** the three "regressions" were test timing on a
+   loaded machine, not game bugs. Build 17 behaves the same, and the game code is unchanged. The tests now wait on game
+   time (475e8da, e1d1ca8, deae6da). The style budget was raised from 1.15 to 1.20 for the deliberate new content (toy sink
+   and toilet, loo huts). To cut draw calls later, merge the sink and toilet boxes.
 2. `game/bc-merge20`: build 18 plus decor.js, merged and tested (8208b3b, d74fd3d). Merge room-colony's fixes into it.
 3. `game/bc-fixes19`: the build 19 fixes (67a7052). Merge it last.
    - Check: shot 58 shows two "Pip" chips in one camp, and the request card is not in the picture.
@@ -107,8 +109,7 @@ in a single block, never split across several boxes.
 5. Deploy `index.html` plus `models/props.js`, `models/decor.js` and `assets/` to gh-pages `base-camp/`. The Artifact
    cannot hold the .glb, so publish without it.
 
-**Known flake to look at:** water-test "a piped farm never dries out" fails about 1 run in 3, probably when a random kink
-makes `netStep` skip the `piped` flag.
+**Fixed:** water-test's "a piped farm" flake (deae6da). Still flaky under load: fun's "pick up, carry and drop".
 
 **Waiting on Harry:**
 - paste the town orders (webkit-1, seasons-1, art-b2, waterworks-1, experts-1, measure-1);
