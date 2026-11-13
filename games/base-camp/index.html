@@ -3267,9 +3267,9 @@ function ccamText() {
 }
 function ccamRender(probe) {
   const c = CCAM.c; if (!CCAM.on || !c || !c.mesh || !c.S || !c.S.placed) return null; const r = $('ccamView').getBoundingClientRect(); if (r.width < 20 || r.height < 20) return null;
-  const m = c.mesh, S = c.S; m.updateWorldMatrix(true, false); m.getWorldPosition(CCAM.look); const up = S.tf.flip ? -1 : 1; CCAM.look.y += 0.022 * up;
+  const m = c.mesh, S = c.S; m.updateWorldMatrix(true, false); m.getWorldPosition(CCAM.look); const up = S.tf.flip ? -1 : 1, ck = c.scout ? 1.7 : 1; /* build 17: the scout mouse is about 1.7x a creature's height, so the cam steps back */ CCAM.look.y += 0.022 * ck * up;
   m.getWorldDirection(CCAM.fw); CCAM.fw.y = 0; if (CCAM.fw.lengthSq() < 1e-6) CCAM.fw.set(0, 0, 1); CCAM.fw.normalize(); const ca = Math.cos(0.6), sa = Math.sin(0.6);
-  CCAM.tgt.set(CCAM.fw.x * ca + CCAM.fw.z * sa, 0, -CCAM.fw.x * sa + CCAM.fw.z * ca).multiplyScalar(0.062).add(CCAM.look); CCAM.tgt.y += 0.012 * up;
+  CCAM.tgt.set(CCAM.fw.x * ca + CCAM.fw.z * sa, 0, -CCAM.fw.x * sa + CCAM.fw.z * ca).multiplyScalar(0.062 * ck).add(CCAM.look); CCAM.tgt.y += 0.012 * ck * up;
   if (CCAM.snap) { CCAM.pos.copy(CCAM.tgt); CCAM.snap = false; } else CCAM.pos.lerp(CCAM.tgt, 0.18);
   const cam = CCAM.cam; cam.aspect = r.width / r.height; cam.up.set(0, up, 0); cam.position.copy(CCAM.pos); cam.lookAt(CCAM.look); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
   const x = r.left, y = innerHeight - r.bottom, bg0 = scene.background; scene.background = bg0 && bg0.isColor ? bg0 : CCAM.bg;
