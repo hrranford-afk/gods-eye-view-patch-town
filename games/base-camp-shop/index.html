@@ -6793,7 +6793,7 @@ function shopDirScript() {
   shopArrive(0, false);
   const go = (t, who, tasks) => shAt(t, () => shopCmd(who, tasks));
   /* 3.2 to 9: decorating fast (crate -> the four decorations), D heads for the gem */
-  go(3.3, a, [...SHJ.decorate(a, 'star'), ...SHJ.polish(a, 5.6)]); go(3.5, b, [...SHJ.decorate(b, 'chain'), ...SHJ.wrap(b, 5.0), { k: 'go', x: S.wrapBox[0] - 0.055, z: S.wrapBox[1] }, { k: 'fn', f: () => { SH.giftTop.visible = true; shopPop(SH.giftTop, 0.85); } }, { k: 'do', a: 'cheer', d: 99 }]); go(3.8, c, [...SHJ.decorate(c, 'stocking'), ...SHJ.hang(c, 5.4), { k: 'do', a: 'clap', d: 99 }]); go(4.8, e, [...SHJ.decorate(e, 'mini'), { k: 'do', a: 'clap', d: 0.7 }, { k: 'go', x: 0.0, z: 0.09 }, { k: 'face', x: 0.1, z: 0.04 }, { k: 'do', a: 'shrug', d: 1.2 }, { k: 'do', a: 'clap', d: 99 }]);
+  go(3.3, a, [...SHJ.decorate(a, 'star'), ...SHJ.polish(a, 5.6)]); go(3.5, b, [...SHJ.decorate(b, 'chain'), ...SHJ.wrap(b, 5.0), { k: 'go', x: S.wrapBox[0] - 0.055, z: S.wrapBox[1] }, { k: 'fn', f: () => { SH.giftTop.visible = true; shopPop(SH.giftTop, 0.85); } }, { k: 'do', a: 'cheer', d: 99 }]); go(3.8, c, [...SHJ.decorate(c, 'stocking'), ...SHJ.hang(c, 5.4), { k: 'do', a: 'clap', d: 99 }]); go(4.8, e, [...SHJ.decorate(e, 'mini'), { k: 'do', a: 'clap', d: 0.7 }, { k: 'go', x: 0.3, z: 0.02 }, { k: 'face', x: 0.1, z: 0.04 }, { k: 'do', a: 'shrug', d: 1.2 }, { k: 'do', a: 'clap', d: 99 }]);
   go(5.0, d, [{ k: 'go', x: S.gaze[0] - 0.02, z: S.gaze[1] + 0.03 }, { k: 'do', a: 'wave', d: 0.5 }, ...SHJ.gaze(d, 15)]);
   /* 8 to 16: polish, wrap, hang and gaze run on from the decorating (each creature's tasks are one chain) */
   shAt(15.8, () => { SH.ring.userData.shine = 1; });
