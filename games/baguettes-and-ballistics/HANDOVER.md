@@ -1139,3 +1139,25 @@ No box-specific music; the Spice Rack's "market" and the garage cars inside it a
 - Per box on level 4 with a frozen loop: unfold opens and both boxes' footprints swap; Trolley tips on a 200-damage hit (4 s, no income, 10 s immunity), Crate Barrage makes 7 blocking tiles, a reflected shot turns round, trucks carry 24; Spice cloud blinds a car 8 units away; Kettle takes x2 from a bubble, has 2 charges with the signature, speed x1.51 (boil x deck), damage x1.4; Toaster Pop-Up launches the car about 70 units and starts a 26 s glow (x1.5 damage taken); the Baron's cannon fires 12 shots in 10 s at a car 18 units off.
 - Save: pick, upgrades and stars survive a reload and a level change; the end card adds "+N stars for your toy box"; the Baron's extra line is the last pre-race line. Memory: 12 rebuilds with abilities used plus every box in turn leave geometries (47), textures (14), scene children (27) and obstacles flat.
 - Screenshots: `shots/64` to `shots/72`. `show.js`-style frozen frames were used for the mid-unfold shot (65) and the close-ups.
+
+## Graphics: the toy look (merged into the current game, 13 Nov 2026)
+
+One pass that makes the table look like a photographed miniature. Everything sits behind the `GFX` object near the top of `index.html` (search `Graphics: the toy look`); each flag can be switched off in the URL (`?tilt=0&round=0&ao=0&env=0&clearcoat=0&fx=0&pr=1&auto=0`) or in the console (`GFX.tiltShift = false`).
+
+| Flag | What it does | Cost |
+|---|---|---|
+| `tilt` (`GFX.tiltShift`) | The scene draws into a 4x multisampled target, then one full-screen pass blurs the top and bottom bands, adds a touch of saturation and a soft vignette. The sharp band follows the player's own car on screen (`gfxFocus`, smoothed, clamped to 22 to 78% of the height), so the car is never blurred. Off in AR and My Track. | one extra pass; the biggest cost |
+| `round` | Plain boxes in `mesh()` and the baked models become cached `RoundedBoxGeometry` shapes (`rbox`, `RBg`). | none at run time |
+| `ao` | A soft dark blob under cars, units, turrets and props (`aoBlob`, `aoAuto`, `aoStatic`: props share one InstancedMesh per level). | 1 draw call per level plus one per moving thing |
+| `env` | A studio made in code (gradient dome and three softboxes) baked once with PMREM: glossy plastic highlights. | once at start |
+| `clearcoat` | `toy()` makes MeshPhysicalMaterial with a clearcoat for bodies. | a little shader cost |
+| `fx` | Tyre dust, smoke puffs, debris, splashes, ring shimmer (`puff`, `fxEntity`). Capped by `puffCap()`. | small |
+| `pr` | Pixel ratio, default min(device, 1.5) (an iPad's 2 costs 44% more pixels for no visible gain). | pixels |
+
+Also on, always: ACES tone mapping with sRGB output (colours are written as paint-program hex and converted with `lin()`), a warm key light with soft shadows, a cool fill light, and baked vertex-coloured toy vehicles (`bakeInto`: a car is 3 draw calls) and domino faces with painted pips.
+
+**Frame-time watchdog** (`gfxWatch`, `GFX.auto`, `GFX.budgetMs` = 24). After a 3 s calm-down, if the smoothed frame time stays over 24 ms for 2.5 s, stage 1 drops the tilt-shift pass and its target; if it is still slow, stage 2 turns off particles and drops the pixel ratio to 1. It never switches back on. A `gfxdowngrade` event is dispatched. Use `?auto=0` when measuring.
+
+**Measured** (headless Chromium, SwiftShader, 1180 x 820, level 1 battle, 8 s of frames, `?auto=0`; SwiftShader is a CPU renderer, so only the ratios mean anything): see the table in BUILD_LOG.md. Screenshots: `shots/gfx-before-after-1.png` to `-3.png` (left half old game, right half new).
+
+Rough edges: the 4x multisample target and the blur are heavy on a software renderer; on an iPad they are one extra full-screen pass. Not checked on real iPad hardware.
