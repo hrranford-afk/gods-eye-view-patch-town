@@ -115,7 +115,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 #shopmsg{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 14px);font:800 15px var(--body);color:#fff6e6;text-align:center;max-width:min(92vw,460px);z-index:4}
 #cd{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translateX(-50%);font:900 58px var(--body);color:#fff6e6;text-shadow:0 3px 0 #7a4a22,0 0 16px rgba(0,0,0,.35);pointer-events:none;z-index:9}
 #shopRow{margin-top:10px}
-body.take #ui>*:not(#cd){visibility:hidden !important}body.take #arLog{display:none}
+body.shop #env,body.shop #wx{display:none !important}body.take #ui>*:not(#cd){visibility:hidden !important}body.take #arLog{display:none}
 </style>
 </head>
 <body>
@@ -6547,7 +6547,7 @@ const SHL = { /* the stage, in metres, stage-local: x right, z towards the viewe
 const SH_ACT = [{ name: 'Spark', ck: 'Glip', hue: 0.14 }, { name: 'Moss', ck: 'Grizzle', hue: 0.33 }, { name: 'Fluff', ck: 'Fluffflur', hue: 0.55 }, { name: 'Twirl', ck: 'Glimmerfluff', hue: 0.88 }, { name: 'Lint', ck: 'Gloop', hue: 0.62 }];
 const SH_CAM = [ /* the director's camera (stage-local): time, eye x y z, look x y z */
   [0, -0.2, 0.26, 0.62, -0.17, 0.1, 0.0], [2.8, -0.3, 0.15, 0.36, -0.2, 0.07, 0.03], [6, -0.12, 0.2, 0.5, -0.1, 0.04, -0.02], [10, 0.05, 0.22, 0.55, 0.08, 0.04, 0.0], [14, 0.14, 0.15, 0.4, 0.15, 0.04, -0.01],
-  [19, 0.1, 0.12, 0.3, 0.1, 0.05, -0.03], [21, 0.15, 0.075, 0.2, 0.15, 0.052, -0.055], [24, 0.12, 0.09, 0.24, 0.14, 0.055, -0.04], [27, 0.078, 0.12, 0.42, 0.078, 0.075, -0.03], [30.1, 0.078, 0.115, 0.5, 0.078, 0.075, -0.03]];
+  [19, 0.1, 0.12, 0.3, 0.1, 0.05, -0.03], [21, 0.11, 0.085, 0.21, 0.11, 0.052, -0.05], [24, 0.1, 0.1, 0.27, 0.12, 0.058, -0.04], [27, 0.078, 0.12, 0.42, 0.078, 0.075, -0.03], [30.1, 0.078, 0.115, 0.5, 0.078, 0.075, -0.03]];
 const SH = { on: false, ar: false, placed: false, want: 0, ready: false, K: null, root: null, stage: null, room: null, ringG: null, actors: [], cabs: [], ev: [], time: 0, acc: 0, wall: 0, manual: false, rng: null, mode: 'play', auto: false, occ: {}, items: {}, pops: [], dir: null, find: null, hearts: [], cam: { yaw: 0.12, pitch: 0.5, dist: 0.9, view: 'stage', ty: 0.05 }, hit: null, scale: 1, log: [], rec: [] };
 function shR() { return SH.rng(); }
 function shLog(n) { SH.log.push({ t: +SH.time.toFixed(2), n }); }
@@ -6581,7 +6581,7 @@ function shopInit() {
     SH.itemScale = { star: 1.5, chain: 1.35, stocking: 1.5, mini: 1.25 }; SH.itemSpot = { star: SHL.spots.star, chain: SHL.spots.chain, stocking: SHL.spots.stocking, mini: SHL.spots.mini };
     for (const k of ['star', 'chain', 'stocking', 'mini']) { S.add(SH.items[k]); }
     SH.confetti = K.confetti(180); S.add(SH.confetti);
-    SH.heart = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex('heart'), transparent: true, depthTest: false, opacity: 0 })); SH.heart.renderOrder = 12; SH.heart.scale.setScalar(0.001); S.add(SH.heart);
+    SH.heart = new THREE.Sprite(new THREE.SpriteMaterial({ map: cv(192, 192, (x) => { const path = () => { x.beginPath(); x.moveTo(96, 170); x.bezierCurveTo(10, 112, 14, 28, 96, 62); x.bezierCurveTo(178, 28, 182, 112, 96, 170); x.closePath(); }; path(); x.fillStyle = '#ff5c8a'; x.fill(); x.lineWidth = 9; x.strokeStyle = '#7a1838'; x.lineJoin = 'round'; x.stroke(); x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.ellipse(58, 66, 15, 9, -0.7, 0, 7); x.fill(); }), transparent: true, depthTest: false, opacity: 0 })); SH.heart.renderOrder = 12; SH.heart.scale.setScalar(0.001); S.add(SH.heart);
     SH.hint = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0, color: 0xfff0b0 })); SH.hint.scale.setScalar(0.04); SH.hint.renderOrder = 11; S.add(SH.hint);
     /* the five creatures: made once with a fixed random stream, so every take has the same faces */
     SH_ACT.forEach((d, i) => {
@@ -6857,7 +6857,7 @@ function shopFindTap(cx, cy) {
 function shopEnter(ar) {
   if (!SHOP) return; if (!shopInit()) { if (G.phase === 'title') showTitle(); return; }
   if (!ar) { G.mode = 'shop'; resetWorld(); } else { resetWorld(); }
-  SH.on = true; SH.ar = !!ar; SH.placed = !ar; SH.find = null; SH.dir = null; G.auto = false; G.phase = 'shop'; G.intent = 'play'; document.body.classList.remove('auto'); document.body.classList.remove('take');
+  SH.on = true; document.body.classList.add('shop'); SH.ar = !!ar; SH.placed = !ar; SH.find = null; SH.dir = null; G.auto = false; G.phase = 'shop'; G.intent = 'play'; document.body.classList.remove('auto'); document.body.classList.remove('take');
   for (const id of ['title', 'top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot', 'ccam', 'gstrip', 'wx']) { const el = $(id); if (el) el.hidden = true; }
   SH.root.visible = true; SH.room.visible = !ar; scene.background = scene.background || new THREE.Color(); SH.keepHour = ENV.hourOverride; ENV.hourOverride = 15; envUpdate();
   if (!ar) { SH.stage.position.copy(SH.stagePos); SH.stage.rotation.set(0, 0, 0); SH.stage.scale.setScalar(1); SH.cam.view = 'stage'; SH.cam.yaw = 0.12; SH.cam.pitch = innerWidth < innerHeight ? 0.85 : 0.42; SH.cam.zoom = innerWidth < innerHeight ? 0.9 : 0.74; SH.cam.focus = null; SH.cam.dist = SH.cam.gDist = 1.0; SH.cam.tgt = SH.stagePos.clone().add(new THREE.Vector3(0, 0.05, 0)); SH.cam.gt = SH.cam.tgt.clone(); }
@@ -6870,7 +6870,7 @@ function shopPlaceAr() {
   shopReset('play'); shopArrive(0.4, false); SH.auto = true; shSfx('pop'); shopUi(); return true;
 }
 function shopLeave() {
-  if (!SH.on) return; if (SH.dir && SH.dir.saveRand) Math.random = SH.dir.saveRand; SH.on = false; SH.dir = null; SH.find = null; document.body.classList.remove('take'); SH.root.visible = false; if (SH.reticle) SH.reticle.visible = false; ENV.hourOverride = SH.keepHour === undefined ? null : SH.keepHour; envUpdate();
+  if (!SH.on) return; if (SH.dir && SH.dir.saveRand) Math.random = SH.dir.saveRand; SH.on = false; SH.dir = null; SH.find = null; document.body.classList.remove('take'); document.body.classList.remove('shop'); SH.root.visible = false; if (SH.reticle) SH.reticle.visible = false; ENV.hourOverride = SH.keepHour === undefined ? null : SH.keepHour; envUpdate();
   for (const id of ['shopbar', 'shopfind', 'shopmsg', 'cd']) { const el = $(id); if (el) el.hidden = true; } const ev3 = $('env'); if (ev3) ev3.style.display = '';
 }
 function shopExit() { const ar = SH.ar; shopLeave(); if (ar && AR.on) { try { AR.session && AR.session.end(); } catch (e) { arEnded(); } return; } G.mode = 'practice'; resetWorld(); G.phase = 'title'; showTitle(); }
@@ -6879,11 +6879,11 @@ function shopExit() { const ar = SH.ar; shopLeave(); if (ar && AR.on) { try { AR
 function shopCamera(dt) {
   if (AR.on) return; const asp = innerWidth / innerHeight, f = asp < 1.1 ? clamp(1.05 / asp, 1, 1.7) : 1, C = SH.cam; SH.stage.updateWorldMatrix(true, false);
   if (SH.dir && SH.dir.on) {
-    const o = shopDirCam(SH.time, SH.dirCamBuf || (SH.dirCamBuf = [0, 0, 0, 0, 0, 0])), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + (o[1] - ly) * f, lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return;
+    const o = shopDirCam(SH.time, SH.dirCamBuf || (SH.dirCamBuf = [0, 0, 0, 0, 0, 0])), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + Math.max((o[1] - ly) * f, f > 1 ? 0.42 * Math.hypot((o[0] - lx) * f, (o[2] - lz) * f) : 0), lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return;
   }
   if (SH.dir) { const o = shopDirCam(0, [0, 0, 0, 0, 0, 0]), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + (o[1] - ly) * f, lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return; }
   const k = Math.min(1, dt * 4), shopView = C.view === 'shop';
-  const gt = shopView ? tmpV.set(0, 1.25, -0.35) : C.focus ? SH.stage.localToWorld(new THREE.Vector3(C.focus[0], C.focus[1], C.focus[2])) : SH.stagePos.clone().add(tmpV2.set(0, 0.05, 0.0)), gd = shopView ? 3.6 * (asp < 1.1 ? 1.4 : 1) : 0.9 * (asp < 1.1 ? 1.25 : 1);
+  const gt = shopView ? tmpV.set(0, 1.25, -0.35) : C.focus ? SH.stage.localToWorld(new THREE.Vector3(C.focus[0], C.focus[1], C.focus[2])) : SH.stagePos.clone().add(tmpV2.set(0, 0.05, 0.0)), gd = shopView ? 3.6 * (asp < 1.1 ? 1.4 : 1) : 0.9 * (asp < 1.1 ? 1.4 : 1);
   C.gt = C.gt || gt.clone(); C.gt.copy(gt); C.tgt = C.tgt || gt.clone(); C.tgt.lerp(C.gt, k); if (C.snap) { C.tgt.copy(C.gt); C.dist = gd * (C.zoom || 1); C.snap = false; } C.gDist = gd * (C.zoom || 1); C.dist += (C.gDist - C.dist) * k; C.pitch = clamp(C.pitch, 0.1, 1.42);
   const cp = Math.cos(C.pitch); camera.position.set(C.tgt.x + Math.sin(C.yaw) * cp * C.dist, C.tgt.y + Math.sin(C.pitch) * C.dist, C.tgt.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.tgt); camera.updateMatrixWorld(true);
 }
@@ -6900,11 +6900,11 @@ function shopArFrame(xrFrame) {
 /* ---- the frame: fixed steps for the story, then the camera ---- */
 function shopFrame(dt, xrFrame) {
   if (!SH.on) return;
-  const now = performance.now(); let w = (now - (SH.wall || now)) / 1000; SH.wall = now; w = clamp(w, 0, 0.5);
+  const now = performance.now(); let w = (now - (SH.wall || now)) / 1000; SH.wall = now; w = clamp(w, 0, 1.0);
   if (AR.on) { if (!SH.placed) { shopArFrame(xrFrame); return; } else if (xrFrame && AR.refSpace) { const pose = xrFrame.getViewerPose(AR.refSpace), view = pose && pose.views[0]; if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); } } }
   const D = SH.dir;
   if (D && D.phase === 'count') { const el = (now - D.cd0) / 1000, n = Math.ceil(SH_COUNT - el); if (el >= SH_COUNT) { shopDirBegin(); } else { const c = $('cd'); if (c.textContent !== String(n)) { c.textContent = String(n); shSfx('ding'); } c.style.opacity = String(0.55 + 0.45 * (1 - (el % 1))); } }
-  if (!SH.manual && !(SH.dir && SH.dir.phase === 'count')) { SH.acc += w; let n = 0; while (SH.acc >= SH_H && n++ < 40) { shopStep(SH_H); SH.acc -= SH_H; } if (n >= 40) SH.acc = 0; }
+  if (!SH.manual && !(SH.dir && SH.dir.phase === 'count')) { SH.acc += w; let n = 0; while (SH.acc >= SH_H && n++ < 70) { shopStep(SH_H); SH.acc -= SH_H; } if (n >= 70) SH.acc = 0; }
   shopCamera(dt); shopLive(dt);
 }
 function shopStep(h) {
