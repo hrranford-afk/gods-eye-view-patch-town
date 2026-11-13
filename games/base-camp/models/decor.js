@@ -400,7 +400,7 @@
   }
   function igloo() {
     var g = new T.Group(), A = asset('igloo', function () {
-      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xd2e3f2, 0xbcd3e8, 0xaac6e0, 0xc6dbed], i, j;
+      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xc8dcee, 0xb2cbe4, 0xa0bddb, 0xbdd4e9], i, j;
       p.push(sph(0x9db6cf, Rd * 0.965, 0, 0, 0, { half: 1, w: 14, h: 8, ink: 1 }));
       p.push(cyl(0xcfe0ef, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
       rows.forEach(function (rw, ri) {
@@ -416,7 +416,7 @@
       for (i = 0; i < 5; i++) p.push(tcone(0xd7ecf8, 0.0004, 0.0032 + (i % 2) * 0.0014, (i - 2) * 0.0024, 0.0058 - Math.abs(i - 2) * 0.0003, 0.0262, { w: 4, rz: PI }));
       return p;
     }, 0.0005);
-    g.add(meshOf(A));
+    g.add(meshOf(A, glowMat(0x46586c, 0.75))); /* a little self-light so cotton snow stays snowy at dusk */
     var dg = glow(0.016, 0.5, 0xffb060); dg.position.set(0, 0.003, 0.0235); g.add(dg); g.userData.glow = dg; var p0 = ph();
     g.userData.tick = function (t) { dg.material.opacity = 0.42 + 0.14 * Math.sin(t * 3 + p0) + 0.06 * Math.sin(t * 7.3 + p0); };
     return finish(g, 0.028);
