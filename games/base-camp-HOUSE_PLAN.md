@@ -37,3 +37,33 @@ Build 18 (waterworks), then build 19 (the fix list), then build 20 (the house pl
   switched on only if it is right at least 9 times out of 10.
 - **Backup if real objects match badly.** Printable totem stickers: original bold patterns, easy for a camera to tell
   apart.
+
+## Places, and a practice property (Harry, 13 Nov)
+Harry: "build like a basic 3D house with the totems there so you can test it before I have a go. Really work on the
+interface of like having different locations ... when I'm home or when it's my mum and dad's ... I've got sheds up both of
+those ... the whole property, the garden, the sheds ... there's almost no limit to the size ... It's just got to be
+constructed in a way."
+
+- **The structure: Place, then Area, then Room, then Surface.**
+  - Place: "Home", "Mum & Dad's".
+  - Area: the house, the garden, the shed.
+  - Room: the kitchen, the hall.
+  - Surface: the floor, the worktop, a shelf.
+  - Every room is its own small AR map, so there is no size limit. A property is a map of links, through doorways,
+    garden paths and totems.
+- **Which place am I at?**
+  - First, the player picks it, so nothing needs location.
+  - Optional later: rough location chooses it automatically. It stays on the iPad, like the weather choice already does.
+  - Totems then say which room.
+- **Real limits to plan for.**
+  - Storage: the browser holds about 5 MB per site, and one room is held under 1.4 M characters. Move the maps to
+    IndexedDB (hundreds of MB) before properties grow.
+  - Outdoors, AR loses its place in open lawns. Garden areas use totems at fixed spots (the shed door, the gate, a pot).
+- **The practice property (a prototype first, built separately from the game).**
+  - A 3D house with a kitchen, hall, living room and bedroom, a garden with a path, and a shed.
+  - Totems sit in each room and by each doorway.
+  - A walking camera moves between them. Recognising a totem is simulated (the camera sees it, then that room loads).
+  - The Places screen lists "Home" and "Mum & Dad's", each with its areas and rooms.
+  - Robots can walk it to test the switching, and Harry can try the interface before using his real home.
+  - Prototype: `games/base-camp-proto/places/` (branch game/micro-precinct), live at `base-camp/places/`.
+  - It merges into the game as build 20.
