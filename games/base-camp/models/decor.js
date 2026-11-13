@@ -12,7 +12,7 @@
   var INK = 0x1a1410;
   /* ---- palette ---- */
   var RED = 0xe0402f, DRED = 0xa82a22, GRN = 0x2f9e4f, LGRN = 0x4fc06a, DGRN = 0x247a3c, GOLD = 0xffc82e, BLU = 0x3f86dd, PNK = 0xff6f91, PUR = 0x9a62d6, ORG = 0xf08a24,
-    CRM = 0xfff3dc, WHT = 0xffffff, WOOD = 0xe2b878, DWOOD = 0xa9763e, BRN = 0x7a4b28, DK = 0x2a1a10, SIL = 0xc4ccd4, TEAL = 0x39b0a4, YEL = 0xffe14a;
+    CRM = 0xfff3dc, WHT = 0xffffff, WOOD = 0xd09a5a, DWOOD = 0x92602e, BRN = 0x7a4b28, DK = 0x2a1a10, SIL = 0xc4ccd4, TEAL = 0x39b0a4, YEL = 0xffe14a;
   var FOIL = [RED, GOLD, GRN, BLU, PNK, PUR, ORG];
 
   function rng(seed) { var s = seed >>> 0; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -27,7 +27,18 @@
   function oct(c, r, x, y, z, o) { return P(new T.OctahedronGeometry(r, 0), c, x, y, z, o); }
   function ico(c, r, x, y, z, o) { return P(new T.IcosahedronGeometry(r, (o && o.d) || 0), c, x, y, z, o); }
   function tcone(c, r, h, x, y, z, o) { o = o || {}; var g = new T.ConeGeometry(r, h, o.w || 5); g.translate(0, h / 2, 0); return P(g, c, x, y, z, o); }
-  function star(c, R, r, d, x, y, z, o) { return P(starGeo(R, r, d, (o && o.n) || 5), c, x, y, z, o); }
+  function shade(c, k) { var r = ((c >> 16) & 255) * k, g = ((c >> 8) & 255) * k, b = (c & 255) * k; return (Math.min(255, r | 0) << 16) | (Math.min(255, g | 0) << 8) | Math.min(255, b | 0); }
+  /* a two-tone foil star (alternate facets light and dark, like folded foil) plus, when ink is asked for, one whole-star outline part that is not drawn itself */
+  function star(c, R, r, d, x, y, z, o) {
+    o = o || {}; var n = o.n || 5, h = starHalves(R, r, d, n), no = { rx: o.rx, ry: o.ry, rz: o.rz, sx: o.sx, sy: o.sy, sz: o.sz }, out = [P(h[0], c, x, y, z, no), P(h[1], shade(c, 0.6), x, y, z, no)];
+    if (o.ink) { var f = P(starGeo(R, r, d, n), c, x, y, z, o); f.inkOnly = true; out.push(f); } return out;
+  }
+  function starHalves(R, r, d, n) {
+    var key = 'sh' + [R, r, d, n].join('_'); if (SH[key]) return SH[key];
+    var pts = [], i, pa = [[], []], p, q; for (i = 0; i < n * 2; i++) { var a = PI / 2 + i * PI / n, rad = i % 2 ? r : R; pts.push([Math.cos(a) * rad, Math.sin(a) * rad]); }
+    for (i = 0; i < n * 2; i++) { p = pts[i]; q = pts[(i + 1) % (n * 2)]; pa[i % 2].push(p[0], p[1], 0, q[0], q[1], 0, 0, 0, d, q[0], q[1], 0, p[0], p[1], 0, 0, 0, -d); }
+    return (SH[key] = pa.map(function (pos) { var g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g; }));
+  }
   /* a faceted foil star: a flat outline with a raised middle on both sides (flat shaded, so it glints like crumpled foil) */
   function starGeo(R, r, d, n) {
     var key = 'star' + [R, r, d, n].join('_'); if (SH[key]) return SH[key];
@@ -44,10 +55,10 @@
   }
   function prism(c, w, h, d, x, y, z, o) { return P(prismGeo(w, h, d), c, x, y, z, o); }
   /* a flat kite: four triangles around a raised middle */
-  function kiteGeo(w, h, d, split) {
+  function kiteGeo(w, h, d, split, q) {
     var top = [0, h * (1 - split), 0], bot = [0, -h * split, 0], l = [-w / 2, 0, 0], r = [w / 2, 0, 0], mid = [0, 0, d], pos = [];
     function tri(u, v, k) { pos.push.apply(pos, u.concat(v, k)); }
-    tri(top, l, mid); tri(l, bot, mid); tri(bot, r, mid); tri(r, top, mid);
+    if (q === 0) tri(top, l, mid); else if (q === 1) tri(l, bot, mid); else if (q === 2) tri(bot, r, mid); else if (q === 3) tri(r, top, mid); else { tri(top, l, mid); tri(l, bot, mid); tri(bot, r, mid); tri(r, top, mid); }
     var g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
   }
 
@@ -71,9 +82,10 @@
     if (!any) return null; var g3 = new T.BufferGeometry(); g3.setAttribute('position', new T.Float32BufferAttribute(out, 3)); g3.computeBoundingSphere(); return g3;
   }
   /* an asset = merged body geometry + ink geometry, built the first time and then shared by every copy */
+  function flat(a) { var o = []; (function f(x) { if (Array.isArray(x)) x.forEach(f); else if (x) o.push(x); })(a); return o; }
   function asset(key, build, inkT) {
-    var A = ASSETS[key]; if (A) return A; var parts = build();
-    return (ASSETS[key] = { g: bcMerge('dc_' + key, parts), ink: inkGeo(parts, inkT || 0.0005) });
+    var A = ASSETS[key]; if (A) return A; var parts = flat(build());
+    return (ASSETS[key] = { g: bcMerge('dc_' + key, parts.filter(function (p) { return !p.inkOnly; })), ink: inkGeo(parts, inkT || 0.0005) });
   }
   function bodyMat() { return BCP.toon; }
   function glowMat(em, k) { var m = BCP.toon.clone(); m.emissive = new T.Color(em); m.emissiveIntensity = k === undefined ? 0.8 : k; return m; }
@@ -240,14 +252,14 @@
     var g = new T.Group(), tiers = [[0.0045, 9, 0.0095, 0.0050, 0.0075], [0.0120, 8, 0.0085, 0.0043, 0.0064], [0.0192, 7, 0.0075, 0.0037, 0.0052], [0.0258, 6, 0.0064, 0.0031, 0.0040], [0.0312, 5, 0.0052, 0.0027, 0.0028], [0.0358, 4, 0.0040, 0.0022, 0.0014]];
     function R(y) { var u = (y - 0.005) / 0.0405; return 0.0112 * (1 - Math.max(0, Math.min(1, u))) + 0.0022; }
     var A = asset('pine', function () {
-      var p = [cyl(BRN, 0.0022, 0.0034, 0.043, 0, 0.0245, 0, { w: 6 })], i, j, gc = [GRN, LGRN, DGRN];
+      var p = [cyl(BRN, 0.0022, 0.0034, 0.037, 0, 0.0215, 0, { w: 6 })], i, j, gc = [GRN, LGRN, DGRN];
       p.push(cyl(0xb8c0c8, 0.0124, 0.0134, 0.0036, 0, 0.0018, 0, { w: 14, ink: 1 }), cyl(RED, 0.0128, 0.0128, 0.0009, 0, 0.0023, 0, { w: 14 }), cyl(0x9aa4ae, 0.0112, 0.0112, 0.0004, 0, 0.0037, 0, { w: 14 }));
       for (i = 0; i < 14; i++) p.push(box(0x9aa4ae, 0.0016, 0.0034, 0.0009, Math.cos(i / 14 * TAU) * 0.0136, 0.0018, Math.sin(i / 14 * TAU) * 0.0136, { ry: -i / 14 * TAU }));
       tiers.forEach(function (tr, ti) {
         for (j = 0; j < tr[1]; j++) {
           var a = j / tr[1] * TAU + ti * 0.55;
-          p.push(tcone(gc[(j + ti) % 3], tr[3], tr[2], Math.cos(a) * tr[4] * 0.3, tr[0], Math.sin(a) * tr[4] * 0.3, { w: 5, rz: -(PI / 2 + 0.32), ry: -a, ink: 0.0004 }));
-          if (j % 2 === 0) p.push(sph(WHT, 0.0009, Math.cos(a) * (tr[4] * 0.3 + tr[2] * 0.93), tr[0] - tr[2] * 0.3, Math.sin(a) * (tr[4] * 0.3 + tr[2] * 0.93), { w: 4, h: 3 }));
+          p.push(tcone(gc[(j + ti) % 3], tr[3] * 1.2, tr[2] * 1.1, Math.cos(a) * tr[4] * 0.3, tr[0], Math.sin(a) * tr[4] * 0.3, { w: 5, rz: -(PI / 2 + 0.32), ry: -a, ink: 0.0004 }));
+          if (j % 3 === 0) p.push(sph(WHT, 0.0008, Math.cos(a) * (tr[4] * 0.3 + tr[2] * 0.93), tr[0] - tr[2] * 0.3, Math.sin(a) * (tr[4] * 0.3 + tr[2] * 0.93), { w: 4, h: 3 }));
         }
       });
       p.push(tcone(GRN, 0.0026, 0.007, 0, 0.0398, 0, { w: 5, ink: 0.0004 }));
@@ -281,9 +293,8 @@
       var p = [], i, N = 15, cols = [RED, GOLD, GRN, BLU, PNK, PUR, ORG];
       [-1, 1].forEach(function (s) { p.push(cyl(WOOD, 0.0011, 0.0011, 0.0345, s * HX, 0.01725, 0, { w: 5 }), sph(GOLD, 0.0019, s * HX, 0.0352, 0, { w: 6, h: 5, ink: 0.0003 }), cyl(0xc79a62, 0.0045, 0.0048, 0.0022, s * HX, 0.0011, 0, { w: 8, ink: 0.0004 })); });
       for (i = 0; i < N; i++) {
-        var u = i / (N - 1) * 2 - 1, x = u * (HX - 0.002), y = HY - 0.0135 * (1 - u * u) - HY, dydx = 0.027 * u / (HX - 0.002) / 2 * (HX - 0.002) / (HX - 0.002), ang = Math.atan2(0.027 * u, 1 * (HX - 0.002) * 2 / 1) * 0.5;
+        var u = i / (N - 1) * 2 - 1, x = u * (HX - 0.002), y = HY - 0.0135 * (1 - u * u);
         var tang = Math.atan2(2 * 0.0135 * u / (HX - 0.002), 1), col = cols[i % 7], alt = i % 2;
-        var o = { w: 10, open: true, sx: 1.55, sy: 1, sz: 1, ry: 0, rz: tang };
         var loop = cyl(col, 0.0026, 0.0026, 0.0038, x, y, 0, { w: 10, open: true, rx: PI / 2, rz: tang, sx: 1.5, sz: 1 });
         if (alt) { loop = cyl(col, 0.0026, 0.0026, 0.0038, x, y, 0, { w: 10, open: true, rz: tang, sx: 1.5, sz: 1 }); loop.rx = 0; loop.ry = 0; }
         p.push(loop);
@@ -338,7 +349,7 @@
       p.push(tor(RED, 0.0049, 0.0014, 0, 0.0292, 0, { w: 12, h: 5, ink: 0.0003 }), tor(WHT, 0.0050, 0.00135, 0, 0.0283, 0, { w: 12, h: 5, arc: PI * 1.0, rz: 0 }), tor(RED, 0.0049, 0.0013, 0, 0.0275, 0, { w: 12, h: 5 }));
       p.push(box(RED, 0.0024, 0.0092, 0.0011, 0.0033, 0.0236, 0.0063, { rz: 0.1, ink: 0.0003 }), box(WHT, 0.0025, 0.0011, 0.0012, 0.0034, 0.0225, 0.0063, { rz: 0.1 }), box(WHT, 0.0025, 0.0011, 0.0012, 0.0036, 0.0205, 0.0063, { rz: 0.1 }));
       [[RED, 0.0243, 0.0069], [BLU, 0.0222, 0.0072], [GOLD, 0.0201, 0.0069]].forEach(function (q) { p.push(sph(q[0], 0.00085, 0, q[1], q[2], { w: 5, h: 4 }), sph(WHT, 0.0003, 0.0002, q[1] + 0.0002, q[2] + 0.0007, { w: 3, h: 2 })); });
-      [-1, 1].forEach(function (s) { p.push(cyl(DWOOD, 0.00055, 0.0004, 0.0105, s * 0.0102, 0.0262, 0, { w: 4, rz: s * 1.0, ink: 0.0002 }), cyl(DWOOD, 0.0003, 0.0003, 0.0032, s * 0.0152, 0.0301, 0, { w: 3, rz: s * 0.2 }), cyl(DWOOD, 0.0003, 0.0003, 0.0030, s * 0.0147, 0.0287, 0, { w: 3, rz: s * 1.6 }), sph(RED, 0.0014, s * 0.0088, 0.0245, 0, { w: 5, h: 4, ink: 0.0002 })); });
+      [-1, 1].forEach(function (s) { p.push(cyl(DWOOD, 0.00055, 0.0004, 0.0105, s * 0.0112, 0.0273, 0, { w: 4, rz: -s * 1.0, ink: 0.0002 }), cyl(DWOOD, 0.0003, 0.0003, 0.0028, s * 0.0166, 0.0322, 0, { w: 3, rz: -s * 0.35 }), cyl(DWOOD, 0.0003, 0.0003, 0.0026, s * 0.0170, 0.0300, 0, { w: 3, rz: -s * 1.6 })); });
       for (i = 0; i < 3; i++) p.push(sph(0xcfdbe6, 0.0016, Math.cos(i * 2.1) * 0.0107, 0.0014, Math.sin(i * 2.1) * 0.0107, { sy: 0.5, w: 5, h: 3 }));
       return p;
     }, 0.0005);
@@ -387,7 +398,7 @@
   }
   function igloo() {
     var g = new T.Group(), A = asset('igloo', function () {
-      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [WHT, 0xeaf4fb, 0xdcecf7, 0xf4f9fd], i, j;
+      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xf4f9fd, 0xd6e8f6, 0xc4dcf0, 0xe6f1fa], i, j;
       p.push(sph(0xcfe0ee, Rd * 0.965, 0, 0, 0, { sy: 1, w: 14, h: 8, ink: 1 }));
       p.push(cyl(0xf4f9fd, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
       rows.forEach(function (rw, ri) {
@@ -465,9 +476,8 @@
       return p;
     }, 0.0004);
     g.add(meshOf(A));
-    var S = asset('bigstar', function () { return [star(GOLD, 0.0105, 0.0043, 0.0034, 0, 0, 0, { ink: 0.0005 })]; }), sm = new T.Mesh(S.g, glowMat(0x9a6c10, 1));
+    var S = asset('bigstar', function () { return [star(GOLD, 0.0105, 0.0043, 0.0042, 0, 0, 0, { ink: 0.0005 })]; }), sm = new T.Mesh(S.g, glowMat(0x7a5208, 0.5));
     var ik = new T.Mesh(S.ink, inkMat()); ik.renderOrder = -1; sm.add(ik); at(sm, 0, 0.0585, 0); g.add(sm);
-    var inner = asset('starin', function () { return [star(0xfff4c0, 0.0052, 0.0022, 0.0042, 0, 0, 0, {})]; }), im = new T.Mesh(inner.g, glowMat(0xffe6a0, 1)); im.position.z = 0; sm.add(im); im.scale.set(1, 1, 1.2);
     var gl = glow(0.07, 0.6, 0xffe9a8); gl.position.y = 0.0585; g.add(gl);
     var sp = [sparkSprite(0.0042), sparkSprite(0.0036), sparkSprite(0.003)]; sp.forEach(function (s) { s.position.y = 0.0585; g.add(s); });
     g.userData.star = sm; g.userData.glow = gl; var p0 = ph();
@@ -490,7 +500,7 @@
     var ring = new T.Group(); ring.position.y = 0.032; g.add(ring);
     var RS = asset('sparkring', function () { var p = [], i; for (i = 0; i < 7; i++) { var a = i / 7 * TAU; p.push(star(FOIL[i], 0.0027, 0.0012, 0.0012, Math.cos(a) * 0.0125, Math.sin(i * 1.3) * 0.006, Math.sin(a) * 0.0125, { ry: -a, rz: i })); } return p; }, 0.0002);
     ring.add(new T.Mesh(RS.g, glowMat(0x806020, 1)));
-    var N = 26, fx = points(N, 0.0036, 0xffe7a0), pos = fx.userData.pos, col = fx.geometry.attributes.color, cc = new T.Color(), seeds = [], r = rng(3), i; for (i = 0; i < N; i++) { seeds.push([r() * TAU, 0.006 + r() * 0.009, r(), 0.22 + r() * 0.14]); cc.setHex(FOIL[i % 7]).lerp(new T.Color(0xffffff), 0.4); col.setXYZ(i, cc.r, cc.g, cc.b); }
+    var N = 30, fx = points(N, 0.0062, 0xffe7a0), pos = fx.userData.pos, col = fx.geometry.attributes.color, cc = new T.Color(), seeds = [], r = rng(3), i; for (i = 0; i < N; i++) { seeds.push([r() * TAU, 0.006 + r() * 0.009, r(), 0.22 + r() * 0.14]); cc.setHex(FOIL[i % 7]).lerp(new T.Color(0xffffff), 0.4); col.setXYZ(i, cc.r, cc.g, cc.b); }
     g.add(fx);
     var gl = glow(0.05, 0.5, 0xffe9a8); gl.position.y = 0.03; g.add(gl); g.userData.ring = ring; g.userData.glow = gl; var p0 = ph();
     g.userData.tick = function (t) {
@@ -511,8 +521,8 @@
     var Ks = asset('kitesail', function () {
       var p = [], w = 0.0135, h = 0.0165, sp = 0.4;
       var cols = [RED, GOLD, BLU, GRN];
-      p.push(P(kiteGeo(w, h, 0.0016, sp), RED, 0, 0, 0, {}));
-      p.push(P(kiteGeo(w * 0.5, h * 0.5, 0.0017, sp), GOLD, 0, 0, 0.0001, {}), P(kiteGeo(w * 0.22, h * 0.22, 0.0018, sp), WHT, 0, 0, 0.0002, {}));
+      [RED, GOLD, RED, GOLD].forEach(function (c, q) { p.push(P(kiteGeo(w, h, 0.0016, sp, q), c, 0, 0, 0, {})); });
+      p.push(cyl(DK, 0.0002, 0.0002, 0.0104, -0.005, -0.0053, 0.0004, { w: 3, rz: 1.2 }));
       p.push(box(DWOOD, 0.0004, h * 1.0, 0.0004, 0, h * (1 - sp) / 2 - h * sp / 2, 0.0009), box(DWOOD, w, 0.0004, 0.0004, 0, 0, 0.0016));
       return p;
     }, 0.0004);
@@ -530,7 +540,7 @@
     var g = new T.Group(), A = asset('paddle', function () {
       var p = [], i;
       p.push(cyl(0xd94a3b, 0.0238, 0.0214, 0.0058, 0, 0.0029, 0, { w: 22, open: true }), tor(0xd94a3b, 0.0226, 0.0030, 0, 0.0057, 0, { w: 22, h: 6, ink: 1 }), tor(0xb83428, 0.0206, 0.0012, 0, 0.0026, 0, { w: 22, h: 4 }));
-      for (i = 0; i < 20; i++) { var a = i / 20 * TAU; p.push(box(0xb83428, 0.0016, 0.0058, 0.0013, Math.cos(a) * 0.0237, 0.0030, Math.sin(a) * 0.0237, { ry: -a })); }
+      for (i = 0; i < 20; i++) { var a = i / 20 * TAU; p.push(box(0xb83428, 0.0016, 0.0044, 0.0013, Math.cos(a) * 0.0236, 0.0036, Math.sin(a) * 0.0236, { ry: -a })); }
       p.push(cyl(0x5cc0ee, 0.0205, 0.0205, 0.0036, 0, 0.0030, 0, { w: 22 }), cyl(0xa8e6fa, 0.0170, 0.0170, 0.0003, 0, 0.0049, 0, { w: 22 }));
       p.push(tor(WHT, 0.0140, 0.0004, 0, 0.0052, 0, { w: 14, arc: 1.4, rz: 0 }), tor(WHT, 0.0105, 0.0003, 0, 0.0052, 0, { w: 12, arc: 1.0 }));
       var bx = -0.0112, bz = 0.0078; p.push(sph(YEL, 0.0034, bx, 0.0078, bz, { w: 8, h: 6, ink: 0.0003 }), tor(RED, 0.0034, 0.0004, bx, 0.0078, bz, { w: 8 }), tor(WHT, 0.0034, 0.0004, bx, 0.0078, bz, { w: 8, rx: 1, ry: 0.6, up: 0 }));
