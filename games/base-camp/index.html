@@ -3311,7 +3311,7 @@ function envLine(full) {
   const hh = Math.floor(ENV.hour), mm = Math.floor((ENV.hour % 1) * 60), sky = (ENV.night ? 'night' : ENV.rain ? 'rain' : ENV.hot ? 'hot' : ENV.cold ? 'cold' : ENV.windy ? 'windy' : ENV.dim ? 'dim' : 'fine') + ' · ' + Math.round(ENV.wx.temp) + '°C';
   return `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky}${full ? ' · sun ' + ENV.sun.toFixed(2) + ' · growth x' + ENV.grow.toFixed(2) : ''}</div>`;
 }
-function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
+function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(/^\S+ \d+$/.test(c.name) ? c.name : c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
 
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
