@@ -4106,6 +4106,7 @@ function orbitCam(dt) {
   camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
   camera.lookAt(P.target); camera.updateMatrixWorld(true);
 }
+function f10EyeDo(fn) { setEye(eyePose(P.auto.t)); try { fn(); } finally { orbitCam(0); } }
 const F10_CAM_D = 0.36; /* the camp (tent and creatures, about 0.15 m) fills about a third of the screen height: measured at 820 x 1180 */
 function f10Cam(S) { /* first10: on landing the camera flies to the camp, from the side it was already looking from */
   const at = f10FireAt(S), [cx, cz] = l2w(S, at[0] * 0.45, at[1] * 0.45), cy = S.tf.y + 0.02, cp = camera.position /* aim between the tent and the campfire */, d = Math.max(0.3, Math.hypot(cp.x - cx, cp.y - cy, cp.z - cz));
@@ -4230,6 +4231,10 @@ function autoTag(c) { // a detection that is sure enough gives the spot a name a
 async function recogTick() {
   if (RECOG.busy || !RECOG.on || !(G.phase === 'scan' || G.phase === 'tag' || (G.auto && G.phase !== 'title')) || !SCAN.bands.length) return;
   const fr = recogFrame(); if (!fr) return; RECOG.busy = true;
+  if (!AR.on && G.mode === 'practice' && P.campCam && P.auto && !RECOG.detector) { /* first10: the screen shows the camp while the sweep maps the room; the detector looks through the sweep's eye, as before */
+    try { f10EyeDo(() => { const dets = practiceDetector(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); }); } catch (e) { RECOG.err = String(e && e.message || e); }
+    RECOG.busy = false; return;
+  }
   try { const dets = await recogDetect(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); } catch (e) { RECOG.err = String(e && e.message || e); }
   RECOG.busy = false;
 }
