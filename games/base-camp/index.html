@@ -2899,29 +2899,29 @@ function albumUi() {
 const SEA_CREDIT = 'Harry', PHB = 'CAIRN (placeholder)';
 const SEASONS = [ // from / to: [month, day] inclusive (UK). goal.items: what to decorate; goal.special: the decoration unlocked by finishing. events: funny moments (need: a built decoration of that kind).
   { id: 'autumn', name: 'Autumn', icon: '🍂', from: [9, 1], to: [11, 28], by: PHB,
-    goal: { title: 'Get the room ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'supper', n: 1 }, { k: 'plantern', n: 5 }, { k: 'calendar', n: 1 }], special: 'scarecrow' },
+    goal: { title: 'Get the room ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'supper', n: 1 }, { k: 'plantern', n: 5 }, { k: 'calendar', n: 1 }], special: 'scarecrow' }, goal2: { title: 'Prepare for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 7 }] },
     events: [{ id: 'au1', need: 'leafpile', act: 'jump', title: 'Leaf leap!', text: 'Somebody jumped in the leaf pile and was not seen again for a minute.', say: 'Whoooosh!', by: PHB },
       { id: 'au2', need: 'plantern', act: 'wobble', title: 'Wobbly lantern', text: 'A paper lantern swung so hard it nearly told everybody its secret.', say: 'It knows things.', by: PHB },
       { id: 'au3', need: 'supper', act: 'cheer', title: 'Supper bell', text: 'The harvest supper smelled so good that the pea got nervous.', say: 'Is it us?', by: PHB }] },
   { id: 'advent', name: 'Advent & Christmas', icon: '🎄', from: [11, 29], to: [12, 26], by: PHB,
-    goal: { title: 'Get the room cosy for the festive season', items: [{ k: 'calendar', n: 1 }, { k: 'pinetree', n: 1 }, { k: 'chain', n: 2 }, { k: 'stocking', n: 3 }], special: 'star' },
+    goal: { title: 'Get the room cosy for the festive season', items: [{ k: 'calendar', n: 1 }, { k: 'pinetree', n: 1 }, { k: 'chain', n: 2 }, { k: 'stocking', n: 3 }], special: 'star' }, goal2: { title: 'Get ready for the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 4 }, { k: 'stocking', n: 5 }] },
     events: [{ id: 'ad1', need: 'pinetree', act: 'cheer', title: 'Tiny tree', text: 'The pine-cone tree dropped one needle. Everybody gave it a cuddle.', say: 'Brave tree.', by: PHB },
       { id: 'ad2', need: 'chain', act: 'wobble', title: 'Chain gang', text: 'The paper chain got itself into a knot and then into a bow.', say: 'Ta-da?', by: PHB },
       { id: 'ad3', need: 'stocking', act: 'hop', title: 'Stocking surprise', text: 'Something in a stocking wriggled. It was only a button. Probably.', say: 'Shh!', by: PHB }] },
   { id: 'newyear', name: 'New Year', icon: '✨', from: [12, 27], to: [1, 6], by: PHB,
-    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' },
+    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' }, goal2: { title: 'Get ready for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 6 }] },
     events: [{ id: 'ny1', need: 'plantern', act: 'wobble', title: 'Countdown', text: 'The lanterns counted down from ten and got to seven.', say: 'Close enough!', by: PHB },
       { id: 'ny2', need: 'supper', act: 'cheer', title: 'Midnight crumbs', text: 'Everybody stayed up for one more crumb.', say: 'Just one.', by: PHB }] },
   { id: 'winter', name: 'Winter', icon: '❄️', from: [1, 7], to: [2, 29], by: PHB,
-    goal: { title: 'Make the room snug for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 2 }], special: 'igloo' },
+    goal: { title: 'Make the room snug for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 2 }], special: 'igloo' }, goal2: { title: 'Get ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'plantern', n: 4 }] },
     events: [{ id: 'wi1', need: 'snowman', act: 'cheer', title: 'Fluff snowman', text: 'The fluff snowman sneezed. It is now slightly smaller.', say: 'Bless you.', by: PHB },
       { id: 'wi2', need: 'sledge', act: 'hop', title: 'Sledge run', text: 'Three creatures rode the lolly-stick sledge down a very small hill.', say: 'Faster!', by: PHB }] },
   { id: 'spring', name: 'Spring', icon: '🌼', from: [3, 1], to: [5, 31], by: PHB,
-    goal: { title: 'Get the room ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'supper', n: 1 }], special: 'kite' },
+    goal: { title: 'Get the room ready for spring', items: [{ k: 'daisy', n: 3 }, { k: 'chain', n: 2 }, { k: 'supper', n: 1 }], special: 'kite' }, goal2: { title: 'Get ready for summer', items: [{ k: 'daisy', n: 5 }, { k: 'plantern', n: 3 }] },
     events: [{ id: 'sp1', need: 'daisy', act: 'cheer', title: 'Daisy crown', text: 'Somebody wore a daisy crown and was crowned Mayor of Nothing in Particular.', say: 'I accept.', by: PHB },
       { id: 'sp2', need: 'supper', act: 'cheer', title: 'Picnic', text: 'A picnic on a jar lid. The crumb loaf was shared fairly, nearly.', say: 'Mine!', by: PHB }] },
   { id: 'summer', name: 'Summer', icon: '☀️', from: [6, 1], to: [8, 31], by: PHB,
-    goal: { title: 'Get the room ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 3 }, { k: 'supper', n: 1 }], special: 'paddle' },
+    goal: { title: 'Get the room ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 3 }, { k: 'supper', n: 1 }], special: 'paddle' }, goal2: { title: 'Get ready for autumn', items: [{ k: 'leafpile', n: 3 }, { k: 'plantern', n: 5 }] },
     events: [{ id: 'su1', need: 'plantern', act: 'wobble', title: 'Firefly impression', text: 'The lanterns did their best firefly impression. The fireflies were not offended.', say: 'Blink blink.', by: PHB },
       { id: 'su2', need: 'daisy', act: 'cheer', title: 'Lazy afternoon', text: 'Everybody lay on the warm shelf and agreed it was the best shelf.', say: 'Ahhh.', by: PHB }] },
 ];
@@ -3112,25 +3112,29 @@ const DECOR_MK = {
 };
 for (const k of Object.keys(DECOR)) { const D = DECOR[k]; KINDS[k] = { r: D.r, wood: D.wood, work: D.work, mk: () => DECOR_MK[k](), name: D.name, by: D.by, ic: D.ic }; }
 /* ---- state (saved in the colony save as `seas`, so every room has its own) ---- */
-const SEA = { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
-function seaReset() { Object.assign(SEA, { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
-const seaSave = () => ({ done: SEA.done, adv: SEA.adv, unl: SEA.unl, packed: SEA.packed });
-function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.done = d.done || {}; SEA.adv = d.adv || {}; SEA.unl = d.unl || {}; SEA.packed = d.packed || ''; }
+const SEA = { st: {}, done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
+function seaReset() { Object.assign(SEA, { st: {}, done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
+const seaSave = () => ({ st: SEA.st, done: SEA.done, adv: SEA.adv, unl: SEA.unl, packed: SEA.packed });
+function seaLoad(d) { seaReset(); if (!d || typeof d !== 'object') return; SEA.done = d.done || {}; SEA.st = d.st || {}; for (const k of Object.keys(SEA.st)) for (let n = 1; n <= (SEA.st[k] | 0); n++) seaMileF(k, n); SEA.adv = d.adv || {}; SEA.unl = d.unl || {}; SEA.packed = d.packed || ''; }
 /* "played": the Giant did something in the last ten simulated minutes. A colony left alone still grows, a played one grows faster. */
 const careOn = () => (G.careT || 0) > G.simT;
 function care() { G.careT = G.simT + 600; }
 function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, q.name + ' is ready!', 'Every decoration is up. The room is looking lovely.', SEA_CREDIT]; return id; }
 /* ---- progress: how many of each decoration are built (and planned) for this season ---- */
 function seaCount(k) { let b = 0, p = 0; const key = decorKey(k); for (const S of G.settlements) { if (S.lost) continue; for (const t of S.things) if (t.kind === k && !t.gift && t.sea === key && !t.dead) { if (t.built && !t.hold) b++; else p++; } } return { b, p }; }
+function seaGoal(sd) { /* build 19: the goal in force. Once the season goal is done a follow-on starts at once (goal2: "Prepare for winter"), then endless "keep it lovely" rounds with two more of each */
+  if (!SEA.done[ENV.seasonKey]) return Object.assign({ stage: 0 }, sd.goal); const s = SEA.st[ENV.seasonKey] | 0, g2 = sd.goal2 || sd.goal;
+  return { stage: s + 1, title: s === 0 ? g2.title : 'Keep the room lovely', items: g2.items.map((i) => ({ k: i.k, n: i.n + (s ? 2 * s : 0) })) };
+}
 function seaProgress() {
-  const sd = SEA_BY[ENV.season], items = sd.goal.items.map((it) => Object.assign({ k: it.k, n: it.n }, seaCount(it.k)));
-  return { sd, items, done: items.every((i) => i.b >= i.n), got: items.reduce((a, i) => a + Math.min(i.b, i.n), 0), all: items.reduce((a, i) => a + i.n, 0) };
+  const sd = SEA_BY[ENV.season], gl = seaGoal(sd), items = gl.items.map((it) => Object.assign({ k: it.k, n: it.n }, seaCount(it.k)));
+  return { sd, gl, stage: gl.stage, items, done: items.every((i) => i.b >= i.n), got: items.reduce((a, i) => a + Math.min(i.b, i.n), 0), all: items.reduce((a, i) => a + i.n, 0) };
 }
 function seaStripHtml(P) {
   return P.items.map((it) => { const ic = DECOR[it.k].ic; let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? ic : i < it.b + it.p ? '<span class="dim">' + ic + '</span>' : '▫️'; return '<span class="gg">' + s + '</span>'; }).join(' ') + (P.done ? ' ✔️' : '');
 }
 const seaStripText = (P) => P.items.map((it) => { let s = ''; for (let i = 0; i < it.n; i++) s += i < it.b ? DECOR[it.k].ic : '▫️'; return s; }).join(' ');
-function seaBuildList() { const sd = SEA_BY[ENV.season], l = sd.goal.items.map((i) => i.k); if (SEA.unl[ENV.seasonKey]) l.push(SEA.unl[ENV.seasonKey]); return l; }
+function seaBuildList() { const sd = SEA_BY[ENV.season], l = seaGoal(sd).items.map((i) => i.k); if (SEA.done[ENV.seasonKey]) for (const i of sd.goal.items) if (!l.includes(i.k)) l.push(i.k); if (SEA.unl[ENV.seasonKey]) l.push(SEA.unl[ENV.seasonKey]); return l; }
 function decorRefresh() { for (const S of G.settlements) S.decN = S.things.filter((t) => t.built && !t.hold && DECOR[t.kind] && t.kind !== 'visitor').length; }
 function seaPlace(kind, built, S, o) { /* one decoration on a settlement (the main one by default): free and finished (a gift, a special), or planned */
   S = S || mainSettlement(); if (!S || !KINDS[kind]) return null; const K = KINDS[kind];
@@ -3175,7 +3179,12 @@ function seaComplete(P) {
 function seaCheck() {
   if (G.phase !== 'play' || !G.settlements.length || BT.on) return;
   if (SEA.packed !== ENV.seasonKey) { const first = !SEA.packed; SEA.packed = ENV.seasonKey; packAway(first); }
-  const P = seaProgress(); if (P.done && !SEA.done[ENV.seasonKey]) seaComplete(P);
+  const P = seaProgress(); if (P.done) { if (!SEA.done[ENV.seasonKey]) seaComplete(P); else seaFollow(P); }
+}
+function seaMileF(key, n) { const id = 'sea-' + key + '+' + n, q = SEA_BY[key.replace(/-\d+$/, '')]; if (q && !MILESTONES[id]) MILESTONES[id] = [q.icon, 'Another goal done!', 'The colonists finished the next list and are already planning the one after.', SEA_CREDIT]; return id; }
+function seaFollow(P) { /* a follow-on goal is finished: a small celebration, and the next one starts at once */
+  const key = ENV.seasonKey, n = (SEA.st[key] | 0) + 1, id = seaMileF(key, n); SEA.st[key] = n;
+  celebrate(id, mainSettlement()); for (const S of G.settlements) { if (S.lost) continue; for (const c of S.cols) { c.needs.joy = Math.min(1, c.needs.joy + 0.2); c.hop = 1; } } funLog('season', id); persistSoon(); if (G.tool === 'build') barUi();
 }
 /* ---- funny moments ---- */
 function seaEvent() {
@@ -3222,7 +3231,7 @@ function goalHtml() {
   if (cal && ENV.season === 'autumn') extra = '<div class="gsub">' + (cal.b >= 1 ? 'Calendar ready: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' until it opens' : 'it opens today') : 'Calendar: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' to get it ready' : 'get it ready')) + '</div>';
   const calBtn = advCalendars().length ? '<button class="cbtn" data-cal="1">📅 Advent calendar</button>' : '';
   const unl = SEA.unl[ENV.seasonKey] ? '<div class="gsub">Unlocked: ' + DECOR[SEA.unl[ENV.seasonKey]].ic + ' ' + esc(DECOR[SEA.unl[ENV.seasonKey]].name) + '</div>' : '';
-  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.sd.goal.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
+  return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.gl.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
 }
 /* ---- per-frame life of the decorations (called from visuals) ---- */
 function decorAnim(S, t, m, time, dt) {
