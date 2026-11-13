@@ -1455,10 +1455,11 @@ function newSettlement(zone, o) {
 }
 const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, squashed: 0, tinAcc: 0, foodAcc: 0, tradeAcc: 0, roofs: 0 });
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.set(S.tf.flip ? Math.PI : 0, S.tf.yaw, 0); S.group.updateMatrixWorld(true); } /* Euler XYZ = Rx * Ry: the yaw is applied first, then the half turn about X hangs the camp from its surface */
+function uniqName(nm) { /* build 19: no two creatures in one room share a name (the almanac and the creature list both have a Pip, a Luna, a Zap) */ const taken = (q) => G.settlements.some((T) => T.cols.some((c) => c.name === q)); let q = nm, n = 1; const base = nm.replace(/ \d+$/, ''); while (taken(q) && n < 99) { n++; q = base + ' ' + n; } return q; }
 function addColonist(S, o) {
   o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
   const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
-  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
+  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || uniqName(def.name + (rep ? ' ' + (rep + 1) : '')), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
   const a = rnd(0, 6.28), d = rnd(0.045, 0.08); c.x = o.x !== undefined ? o.x : Math.cos(a) * d; c.z = o.z !== undefined ? o.z : Math.sin(a) * d;
   c.mesh = mkColonist(c); c.mesh.position.set(c.x, 0, c.z); S.group.add(c.mesh);
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
@@ -2538,9 +2539,15 @@ function sayTex(text, kind) {
   return e;
 }
 function mkSaySprite() { const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false })); s.renderOrder = 22; s.visible = false; return s; }
+const SAY_R = 0.3; /* metres, the bubble-free radius around a speaking creature */
 function sayLine(c, text, secs, force) { // force: a reaction to the Giant always shows; idle chatter only when at most one other bubble is up
   if (!c || !c.mesh || !text || c.inside) return false;
   if (!force && (FUN.bubbles >= 2 || c.sayT > 0)) return false;
+  { /* build 19: one bubble at a time within SAY_R metres; a forced one (a poke, a lift) clears its neighbours instead; and a global cap of 4 */
+    const [ax, az] = l2w(c.S, c.x, c.z), near = []; let live = 0;
+    for (const S of G.settlements) for (const q of S.cols) if (q !== c && q.sayT > 0) { live++; const [bx, bz] = l2w(S, q.x, q.z); if (S === c.S ? Math.hypot(q.x - c.x, q.z - c.z) < SAY_R : Math.hypot(bx - ax, bz - az) < SAY_R) near.push(q); }
+    if (!force && near.length) return false; if (force) for (const q of near) { q.sayT = 0; live--; } if (live >= 4) return false;
+  }
   if (!c.sayS) { c.sayS = mkSaySprite(); c.mesh.add(c.sayS); }
   const e = sayTex(text, 'say'); c.sayS.material.map = e.t; c.sayS.material.needsUpdate = true; c.sayA = e.a; c.sayT = secs || 2.4; c.sayPop = 0; c.sayText = text; FUN.bubbles++; funLog('say', text); return true;
 }
@@ -2646,7 +2653,7 @@ const MILESTONES = { // id: [icon, title, line, by]
 };
 function celebrate(id, S) {
   if (!MILESTONES[id] || FUN.album.some((e) => e.id === id)) return false;
-  FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
+  FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S, gt: G.time, st: G.simT }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
 }
 function showCelebration(q) {
   const d = MILESTONES[q.id], b = $('banner'); b.innerHTML = d[0] + ' ' + esc(d[1]) + ' ' + d[0] + '<small>' + esc(d[2]) + (d[3] ? ' · by ' + esc(d[3]) : '') + '</small>'; b.className = 'on'; FUN.bannerT = 3.4; funLog('celebrate', q.id);
@@ -2798,6 +2805,7 @@ function funFrame(dt) {
   if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), SY(F.S, 0.06), wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
+  FUN.queue = FUN.queue.filter((q) => q.gt === undefined || (G.time - q.gt < 20 && G.simT - q.st < 120)); /* build 19: a banner that waited more than about 20 s (real, or 2 sim minutes) is dropped, the album still has it */
   if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement()) showCelebration(FUN.queue.shift());
   FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
 }
