@@ -155,4 +155,4 @@ bring to the game."
 - Known test failers carried into build 19: room, totem, ar-room, practice (older suites). Four suites (ceiling, fun, battle, multi-room) failed under load and passed on rerun.
 - 22:40 First-10 play-through done (games/base-camp-first10/, shots checked). At night a new player sees a dark room, a tiny tent and three popups at once; nobody asks for anything in 10 min.
 - 22:45 Fix builder started on game/bc-first10 (from build 19): campfire instead of bedtime in the first session, camera to camp, seed request at ~40 s, one popup at a time, a question at minute 9. Must merge with game/bc-sound before deploy (sound builder doesn't touch these areas).
-- 23:30 Sound pass done on game/bc-sound (all 9 suites pass, Safari + iPad checks pass, sound board shot checked, no // comments). Waiting for first-10 fixes, then merge both and deploy.
+- 22:57 Sound pass done on game/bc-sound (all 9 suites pass, Safari + iPad checks pass, sound board shot checked, no // comments). Waiting for first-10 fixes, then merge both and deploy.
