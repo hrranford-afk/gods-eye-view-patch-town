@@ -54,7 +54,7 @@ const WRAP = () => {
   for (let i = 0; i < 32; i++) {
     const r = await ev((i) => { const g = __g; g.SND.ambOn = true; g.ENV.hourOverride = 12 + i * 0.25; if (i % 8 === 2) g.setWxPick('rain'); if (i % 8 === 6) g.setWxPick('clear'); g.envUpdate && g.envUpdate();
       const n0 = __au.total; g.simulate(900, 3); for (let k = 0; k < 8; k++) { g.SND_AMB.modT = 0; g.SND_ambTick(0.25); } return { live: g.SND.live, made: __au.total - n0, lv: g.SND_AMB.lv, loops: Object.keys(g.SND_AMB.loops) }; }, i);
-    peak = Math.max(peak, r.live); made += r.made; if (i % 8 === 0 || i === 31) console.log('  hour ' + (12 + i * 0.25).toFixed(2) + ' live ' + r.live + ' loops ' + r.loops.join('+') + ' levels ' + JSON.stringify(Object.fromEntries(Object.entries(r.lv).map(([k, v]) => [k, +v.toFixed(2)]))));
+    peak = Math.max(peak, r.live); made += r.made; if (i % 4 === 0 || i === 31) console.log('  hour ' + (12 + i * 0.25).toFixed(2) + ' live ' + r.live + ' loops ' + r.loops.join('+') + ' levels ' + JSON.stringify(Object.fromEntries(Object.entries(r.lv).map(([k, v]) => [k, +v.toFixed(2)]))));
     await sleep(250);
   }
   await ev(() => { __g.SND.ambOn = false; __g.setWxPick('clear'); }); for (let i = 0; i < 20; i++) { await ev(() => { __g.SND_AMB.modT = 0; __g.SND_ambTick(0.25); }); await sleep(250); }
