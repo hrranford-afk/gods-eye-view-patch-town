@@ -59,13 +59,13 @@ const T = {}; let T0 = 0; const mark = (k) => { if (T[k] === undefined) { T[k] =
     await sleep(150); const placed = await logHas('build', s0); if (!placed) console.log('  not placed: ' + JSON.stringify(await ev(() => ({ toast: document.getElementById('toast').innerText, tool: __g.G.tool, kind: __g.G.buildKind, wood: __g.G.settlements[0].stock.wood }))) + ' at ' + JSON.stringify(g)); if (placed) mark('the player built something (placed a lantern)');
     ok('something built within 3 minutes (pace target)', placed && T['the player built something (placed a lantern)'] < 180, T['the player built something (placed a lantern)'] + ' s');
     await p.click('button[data-tool="look"]');
-    for (let i = 0; i < 80; i++) { await sleep(500); if (await ev(() => __g.FUN.log.some((l) => l.k === 'celebrate' && l.x === 'giant'))) break; }
+    for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.FUN.log.some((l) => l.k === 'celebrate' && l.x === 'giant'))) break; } /* game time runs slower than wall time on a busy machine (dt is capped per frame), so wait up to 2 minutes */
     await sleep(700); await p.screenshot({ path: OUT + '22-celebration.png' });
     const cel = await ev(() => ({ banner: document.getElementById('banner').className, text: document.getElementById('banner').innerText, lanterns: __g.G.settlements[0].things.filter((t) => t.kind === 'lantern' && t.built).length }));
     if (cel.lanterns) mark('lantern finished'); ok('the colonists finish it and the colony celebrates (banner, confetti, a cheer)', cel.lanterns > 0 && cel.banner === 'on', JSON.stringify(cel));
   }
   // 6. music: they dance (the council's mosh pit) and the huts bounce
-  { await p.click('#bParty'); mark('music on'); await sleep(5000); await focus(0.5, 0.55); await sleep(900);
+  { await p.click('#bParty'); mark('music on'); await sleep(5000); for (let i = 0; i < 40 && !(await ev(() => { const S = __g.G.settlements[0]; return S.cols.filter((c) => c.dancing).length >= Math.max(1, S.cols.length - 2); })); i++) await sleep(500); /* they must first walk to the pit: slow frames stretch that */ await focus(0.5, 0.55); await sleep(900);
     const r = await ev(() => { const S = __g.G.settlements[0]; return { party: __g.FUN.party, dancing: S.cols.filter((c) => c.dancing).length, cols: S.cols.length, pulse: +__g.FUN.pulse.toFixed(2), mus: !!__g.FUN.mus || !__g.SND.ctx }; });
     await p.screenshot({ path: OUT + '23-music.png' });
     ok('music: most of them dance in a mosh pit, the huts bounce', r.party && r.dancing >= Math.max(1, r.cols - 2), JSON.stringify(r)); if (r.dancing) mark('dance');
@@ -77,7 +77,7 @@ const T = {}; let T0 = 0; const mark = (k) => { if (T[k] === undefined) { T[k] =
     ok('the Colony album lists the milestones with a date', a.n >= 3 && a.rows === a.n && !!a.date, JSON.stringify(a)); mark('album opened');
     await p.click('#aClose'); await sleep(200); }
   // 8. rain, then sun: a rainbow arcs over the colony (The Town Brain)
-  { await ev(() => { __g.setWxPick('rain'); }); await sleep(4500); await ev(() => { __g.setWxPick('clear'); }); await sleep(2600); await focus(0.95, 0.32); await sleep(1500);
+  { await ev(() => { __g.setWxPick('rain'); }); await sleep(4500); for (let i = 0; i < 60 && !(await ev(() => __g.FUN.rainT > 2.6)); i++) await sleep(500); /* the rainbow needs 2 s of GAME time of rain, and slow frames are capped at 0.1 s each */ await ev(() => { __g.setWxPick('clear'); }); await sleep(2600); await focus(0.95, 0.32); await sleep(1500);
     const r = await ev(() => ({ rainbow: !!__g.FUN.rainbow, album: __g.FUN.album.some((e) => e.id === 'rainbow') })); await p.screenshot({ path: OUT + '24-rainbow.png' });
     ok('after the rain stops, a rainbow arcs over the colony', r.rainbow && r.album, JSON.stringify(r)); if (r.rainbow) mark('rainbow'); }
   // 9. let the colony live a while (time x6 for about a minute: ~6 more minutes of colony time) and see what the council's moments do
