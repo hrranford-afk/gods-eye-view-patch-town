@@ -69,7 +69,7 @@ const clean = (p) => p.evaluate(() => { for (const id of ['banner', 'toast']) { 
   const d1 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 9)));
   const moved = Math.hypot(d1[0] - d0[0], d1[1] - d0[1], d1[2] - d0[2]);
   ok('droplets visibly travel along the straw', moved > 0.01, moved.toFixed(3) + ' m in 0.7 s');
-  const wet = await ev(() => { const S = __g.mainSettlement(), f = __g.pipeFarm(S, __g.G.net.pipes[0]), c0 = S.stock.water; S.stock.water = 1; f.tend = 0; __run(40); return { piped: !!f.piped, tend: f.tend, water: S.stock.water, on: S.pipeOn, nearest: !!f }; });
+  const wet = await ev(() => { const S = __g.mainSettlement(), f = __g.pipeFarm(S, __g.G.net.pipes[0]), c0 = S.stock.water, bk = __g.G.net.brkT; const P0 = __g.G.net.pipes[0]; if (P0.kink) __g.netFix(P0, 'self'); /* a random breakdown (every 80 to 140 s) must not land in this 40 s check */ __g.G.net.brkT = 1e9; S.stock.water = 1; f.tend = 0; __run(40); __g.G.net.brkT = Math.min(bk, 100); const f2 = __g.pipeFarm(S, __g.G.net.pipes[0]) || f; /* a nearer farm may have been finished during the 40 s: the sprinkler follows the nearest built one */ return { piped: !!f2.piped, tend: Math.max(f.tend, f2.tend), water: S.stock.water, on: S.pipeOn, nearest: !!f }; });
   ok('a piped farm never dries out (tend stays up) and the camp water store refills', wet.piped && wet.tend >= 15 && wet.water > 3.5 && wet.on, JSON.stringify(wet));
   const strawMile = await ev(() => __g.FUN.album.some((e) => e.id === 'straw'));
   ok('the first straw is a milestone', strawMile);
