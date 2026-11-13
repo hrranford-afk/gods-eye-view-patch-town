@@ -3404,7 +3404,7 @@ function mkPipeRun(S, o) {
   p.tank = inked(new THREE.Mesh(tankGeo(q), bcToon()), 0.0007); g.add(p.tank);
   p.spr = inked(new THREE.Mesh(sprinklerGeo(), bcToon()), 0.0006); g.add(p.spr);
   const N = 14, pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3)); p.nd = N;
-  p.drops = new THREE.Points(pg, new THREE.PointsMaterial({ map: TEX.bead, color: WQ[q], size: 0.011, sizeAttenuation: true, transparent: true, alphaTest: 0.4, depthWrite: false })); p.drops.frustumCulled = false; p.drops.renderOrder = 4; g.add(p.drops);
+  p.drops = new THREE.Points(pg, new THREE.PointsMaterial({ map: TEX.bead, color: WQ[q], size: 0.014, sizeAttenuation: true, transparent: true, alphaTest: 0.4, depthWrite: false })); p.drops.frustumCulled = false; p.drops.renderOrder = 4; g.add(p.drops);
   p.knot = inked(new THREE.Mesh(geo('knotG', () => new THREE.SphereGeometry(0.0048, 8, 6).scale(1.5, 0.9, 1.5)), M(0xfffaf0)), 0.0008); p.knot.visible = false; g.add(p.knot);
   p.bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); p.bang.scale.set(0.022, 0.022, 1); p.bang.renderOrder = 20; p.bang.visible = false; g.add(p.bang);
   G.net.pipes.push(p); return p;
@@ -3420,7 +3420,7 @@ function pipeBuild(S, p) { /* the geometry of one straw, rebuilt only when an en
   const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
   p.pts = pts; p.cum = cum; p.len = Math.max(0.1, cum[cum.length - 1]); p.N = Nz;
   const use = p.ready ? pts : pts.slice(0, Math.max(3, Math.ceil(pts.length * Math.max(0.05, p.prog)))); dropMeshes(p);
-  const crv = new THREE.CatmullRomCurve3(use), R = 0.0026, tg = new THREE.TubeGeometry(crv, 64, R, 5, false), uv = tg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * p.len * 75);
+  const crv = new THREE.CatmullRomCurve3(use), R = 0.003, tg = new THREE.TubeGeometry(crv, 64, R, 5, false), uv = tg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * p.len * 75);
   p.tube = new THREE.Mesh(tg, strawMat(p.q)); p.group.add(p.tube);
   p.ink = new THREE.Mesh(new THREE.TubeGeometry(crv, 64, R + 0.0007, 5, false), bcInkMat(BCP.ink)); p.ink.userData.ink = 1; p.ink.renderOrder = -1; p.group.add(p.ink);
   p.glow = new THREE.Mesh(new THREE.TubeGeometry(crv, 48, R * 3.2, 5, false), glowMat(0x4ab4ff)); p.glow.renderOrder = 5; p.group.add(p.glow);
@@ -4160,7 +4160,7 @@ function practiceDetector(fr) {
   for (const p of PROPS) {
     const cls = { cup: ['cup', 0.86], can: ['bottle', 0.52], gpu: ['laptop', 0.31], sink: ['sink', 0.88], toilet: ['toilet', 0.88] }[p.kind]; if (!cls) continue;
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, vis = true; room.updateMatrixWorld(true);
-    for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) { const v = new THREE.Vector3(p.x + sx * p.w / 2, p.base + sy * p.h, p.z + sz * p.d / 2).applyMatrix4(room.matrixWorld), [px, py, ok] = toScreen(v); if (!ok) vis = false; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+    for (const sx of [-1, 1]) for (const sy of (p.kind === 'sink' || p.kind === 'toilet' ? [1] : [0, 1])) for (const sz of [-1, 1]) { /* the toy sink and toilet are seen by their tops, so the feet ray lands on the top surface (a real COCO box would put it there too) */ const v = new THREE.Vector3(p.x + sx * p.w / 2, p.base + sy * p.h, p.z + sz * p.d / 2).applyMatrix4(room.matrixWorld), [px, py, ok] = toScreen(v); if (!ok) vis = false; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
     if (vis && x1 > 0 && x0 < innerWidth && y1 > 0 && y0 < innerHeight) out.push({ class: cls[0], score: cls[1], bbox: [x0, y0, x1 - x0, y1 - y0] });
   }
   return out;

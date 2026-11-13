@@ -23,6 +23,7 @@ const paired = (p) => p.evaluate(() => {
   const was = add.map((o) => o.visible), r = G.renderer, i = r.info; i.reset(); r.render(G.scene, G.camera); const all = i.render.calls; for (const o of add) o.visible = false; i.reset(); r.render(G.scene, G.camera); const base = i.render.calls; add.forEach((o, k) => { o.visible = was[k]; }); return { all, base };
 });
 const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t) => (t.kind === 'hut' || t.kind === 'farm') && t.built), S = __g.G.settlements.slice().sort((a, b) => hs(b).length - hs(a).length)[0], L = hs(S); let cx = 0, cz = 0; for (const t of L) { cx += t.x; cz += t.z; } cx /= Math.max(1, L.length); cz /= Math.max(1, L.length); const w = S.group.localToWorld(new __g.THREE.Vector3(cx, 0, cz)); __g.P.mode = 'orbit'; __g.P.yaw = o.yaw; __g.P.pitch = o.pitch; __g.focusOn(w.x + o.dx, w.y + 0.03, w.z + o.dz, o.d); }, o);
+const clean = (p) => p.evaluate(() => { for (const id of ['banner', 'toast']) { const e = document.getElementById(id); if (e) { e.className = ''; e.innerHTML = ''; } } __g.FUN.queue.length = 0; });
 (async () => {
   const { srv, url } = await serve(); const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await boot(p, url, null);
@@ -46,7 +47,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   await ev(() => { window.__rec = { phases: [], toast: '', name: '', walked: false }; window.__expFn = () => { const R = window.__rec, N = __g.G.net, S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job, ph = j && j.type === 'expedition' ? j.ph : ''; if (ph && R.phases[R.phases.length - 1] !== ph) R.phases.push(ph); if (ph === 'go' && c.moving) R.walked = true; const t = document.getElementById('toast').textContent; if (/found the/.test(t)) { R.toast = t; R.name = c.name; } return false; }; });
   for (let round = 0; round < 8; round++) {
     const r = await ev(() => { let lookAt = false; __run(240, () => { window.__expFn(); const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job; if (j && j.type === 'expedition' && j.ph === 'look' && !window.__shot && __g.waterKind(__g.spotById(j.sp)) === 'sink') { window.__shot = true; lookAt = true; return true; } return Object.keys(__g.G.net.found).length >= 2 && !(j && j.type === 'expedition'); }, 0.25); return { lookAt, found: Object.keys(__g.G.net.found).length }; });
-    if (r.lookAt && !ex.shot) { ex.shot = true; await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), w = S.group.localToWorld(new __g.THREE.Vector3(c.x, c.yOff || 0, c.z)); __g.P.mode = 'orbit'; __g.P.yaw = 0.5; __g.P.pitch = 0.3; __g.focusOn(w.x, w.y + 0.02, w.z, 0.42); }); await sleep(2200); await p.screenshot({ path: OUT + '57-scout-expedition.png' }); continue; }
+    if (r.lookAt && !ex.shot) { ex.shot = true; await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), w = S.group.localToWorld(new __g.THREE.Vector3(c.x, c.yOff || 0, c.z)); __g.P.mode = 'orbit'; __g.P.yaw = 0.5; __g.P.pitch = 0.3; __g.focusOn(w.x, w.y + 0.02, w.z, 0.42); }); await sleep(2200); await clean(p); await sleep(300); await p.screenshot({ path: OUT + '57-scout-expedition.png' }); continue; }
     if (r.found >= 2) break;
   }
   Object.assign(ex, await ev(() => window.__rec));
@@ -79,7 +80,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   await ev(() => { window.__seen = []; window.__shot56 = false; });
   for (let round = 0; round < 6; round++) {
     const r = await ev(() => { let want = false; __run(300, () => { const N = __g.G.net, ln = N.lines[0]; if (window.__seen[window.__seen.length - 1] !== ln.st) window.__seen.push(ln.st); if (ln.st === 'run' && ln.s > 0.4 && !window.__shot56) { window.__shot56 = true; want = true; return true; } return N.st.returns >= 1 && N.st.tips >= 1; }, 0.25); const N = __g.G.net; return { want, done: N.st.returns >= 1 && N.st.tips >= 1 }; });
-    if (r.want && !shot56) { shot56 = true; await ev(() => { const ln = __g.G.net.lines[0]; __g.P.mode = 'orbit'; __g.P.yaw = 0.45; __g.P.pitch = 0.32; __g.focusOn(ln.cab.position.x, ln.cab.position.y - 0.01, ln.cab.position.z, 0.55); }); await sleep(2200); await p.screenshot({ path: OUT + '56-flush-run.png' }); continue; }
+    if (r.want && !shot56) { shot56 = true; await ev(() => { const ln = __g.G.net.lines[0]; __g.P.mode = 'orbit'; __g.P.yaw = 0.45; __g.P.pitch = 0.32; __g.focusOn(ln.cab.position.x, ln.cab.position.y - 0.01, ln.cab.position.z, 0.55); }); await sleep(2200); await clean(p); await sleep(300); await p.screenshot({ path: OUT + '56-flush-run.png' }); continue; }
     if (r.done) break;
   }
   seenSt.push(...(await ev(() => window.__seen)));
@@ -98,6 +99,8 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   });
   ok('compost makes the farms grow faster (about 1.6 times with a full heap)', gr.out.c1 > gr.out.c0 * 1.4 && gr.k1 > gr.k0, JSON.stringify(gr));
   /* ---------- E. breakdowns that mend themselves ---------- */
+  const wake = () => ev(() => { for (const c of __g.mainSettlement().cols) { c.needs.rest = 1; c.needs.food = 1; c.needs.water = 1; if (c.inside || (c.job && ['sleep', 'shelter'].includes(c.job.type))) { c.job = null; c.inside = false; c.mesh.visible = true; } c.cool = 0; } });
+  await wake();
   const k = await ev(() => { const S = __g.mainSettlement(), p = __g.netBreak('pipe'); if (!p) return { none: 1 }; const f = S.things.find((t) => t.kind === 'farm' && t.built); f.tend = 0; S.pipeOn = false; return { kinked: p.kink, anyBroken: __g.netAnyBroken(), ku: p.ku }; });
   ok('a kinked straw happens: the droplets stop and pile up before the kink', k.kinked && k.anyBroken && k.ku > 0.8, JSON.stringify(k));
   await sleep(500); const kd0 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 6))); await sleep(600); const kd1 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 6)));
@@ -108,7 +111,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   console.log('  kink fixed after ' + fixRes.t + ' s by ' + JSON.stringify(fixLog.log));
   ok('a creature walks over and unkinks it, within a game minute', fixRes.t >= 0 && fixRes.t <= 70 && fixLog.seen && !fixLog.kink && fixLog.log.length >= 1 && fixLog.log[fixLog.log.length - 1] !== 'self', JSON.stringify([fixRes.t, fixLog]) + (fixLog.seen ? '' : ' ' + JSON.stringify(await ev(() => __g.mainSettlement().cols.map((c) => [c.name, c.job && c.job.type, c.inside, c.cool])))));
   /* a stuck bucket: wait for a bucket on the move, then it sticks, a creature climbs and wiggles it */
-  await ev(() => { const S = __g.mainSettlement(); S.waste = 3; });
+  await wake(); await ev(() => { const S = __g.mainSettlement(); S.waste = 3; });
   const stuckT = await ev(() => __run(120, () => { const l = __g.G.net.lines[0]; return l.st === 'run' && l.s > 0.15; }, 0.5));
   const st1 = await ev(() => { const l = __g.netBreak('line'); window.__fixSeen = false; return { st: l && l.st, any: __g.netAnyBroken() }; });
   ok('a bucket sticks on its line (it stops and swings)', stuckT >= 0 && st1.st === 'stuck' && st1.any, JSON.stringify([stuckT, st1]));
@@ -190,8 +193,8 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   const aud = await ev2(() => { const G = __g, grad = G.BCP.grad, inks = new Set(Object.values(G.BCP.inks)); const o = { toon: 0, ink: 0, exc: 0, bad: [] }; const vis = (m) => { for (let q = m; q; q = q.parent) if (!q.visible) return false; return true; }; for (const run of G.G.net.pipes.concat(G.G.net.lines)) run.group.traverse((m) => { if (!m.isMesh || !vis(m)) return; const mt = m.material; if (mt.isMeshToonMaterial && mt.gradientMap === grad) o.toon++; else if (inks.has(mt)) o.ink++; else if (mt.isMeshBasicMaterial && mt.transparent) o.exc++; else o.bad.push(mt.type + ' ' + m.geometry.type); }); return o; });
   ok('every visible mesh of the network is toon, ink or a soft overlay', aud.bad.length === 0 && aud.toon > 3 && aud.ink > 3, JSON.stringify(aud));
   /* screenshot 55: straws from the sink to the farms, droplets visible */
-  await ev2(() => { const g = __g, G = g.G; g.setTool('look'); for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'expedition') { c.job = null; c.yOff = 0; c.moving = false; } G.net.exp = null; if (G.net.rope) G.net.rope.visible = false; const p0 = G.net.pipes[0], A = g.ptAt(p0, 0.0, new g.THREE.Vector3()), T = g.ptAt(p0, 0.95, new g.THREE.Vector3()), N = p0.N; g.P.mode = 'orbit'; g.P.yaw = 0.2; g.P.pitch = 0.34; g.focusOn((N.x * 2 + T.x + A.x * 0.4) / 3.4, (N.y + T.y) / 2 + 0.06, (N.z * 2 + T.z + A.z * 0.4) / 3.4, 0.78); });
-  await sleep(2600); await p2.screenshot({ path: OUT + '55-waterworks.png' });
+  await ev2(() => { const g = __g, G = g.G; g.setTool('look'); for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'expedition') { c.job = null; c.yOff = 0; c.moving = false; } G.net.exp = null; if (G.net.rope) G.net.rope.visible = false; const p0 = G.net.pipes[0], A = g.ptAt(p0, 0.0, new g.THREE.Vector3()), T = g.ptAt(p0, 0.95, new g.THREE.Vector3()), N = p0.N, S = G.settlements.find((q) => q.id === p0.sid); const cx = (A.x + N.x) / 2, cz = (A.z + N.z) / 2; let dx = N.x - A.x, dz = N.z - A.z; const dl = Math.hypot(dx, dz) || 1; let px = -dz / dl, pz = dx / dl; if (px * (S.tf.x - cx) + pz * (S.tf.z - cz) < 0) { px = -px; pz = -pz; } g.P.mode = 'orbit'; g.P.yaw = Math.atan2(px, pz); g.P.pitch = 0.36; g.focusOn(cx, (A.y + N.y) / 2 - 0.08, cz, Math.max(0.9, A.distanceTo(N) * 1.5)); });
+  await sleep(2600); await clean(p2); await sleep(300); await p2.screenshot({ path: OUT + '55-waterworks.png' });
   ok('0 page errors (grown colony)', L.errs.length === 0, JSON.stringify(L.errs.slice(0, 3)));
   await L.b.close();
   console.log(res.filter(Boolean).length + '/' + res.length + ' passed'); srv.close(); process.exit(res.every(Boolean) ? 0 : 1);
