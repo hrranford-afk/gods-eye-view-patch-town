@@ -45,7 +45,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   /* 5. ink hull */
   await sleep(1500);
   const ink = await ev(() => { let hulls = 0, scouts = 0; for (const S of __g.G.settlements) for (const c of S.cols) if (c.scout && c.mesh.userData.scout17) { scouts++; c.mesh.userData.scout17.model.traverse((o) => { if (o.userData && o.userData.ink) hulls++; }); } return { scouts, hulls, status: __g.SCOUT17.status }; });
-  ok('the GLB scout wears a thin ink hull (a few meshes only)', ink.scouts >= 1 && ink.hulls >= ink.scouts && ink.hulls <= ink.scouts * 14, JSON.stringify(ink));
+  ok('the scout ink hull stays OFF (measured +5% draw calls whole room, +12% close-up, +19% triangles: over the 5% budget); the GLB scout still loads', ink.scouts >= 1 && ink.hulls === 0 && ink.status === 'loaded', JSON.stringify(ink));
   /* 6. portrait card */
   const calm = () => ev(() => { __g.FUN.queue.length = 0; __g.FUN.bannerT = 0; document.getElementById('banner').className = ''; });
   await calm();

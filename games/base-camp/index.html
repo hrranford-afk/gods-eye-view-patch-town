@@ -883,7 +883,7 @@ function scout16Mat(kind) {
 /* ---- build 17: the real articulated GLB mouse (assets/basecamp_mouse_scout_ANIMATED.glb, five clips: Idle Walk Wave LookAround Hop), made with ChatGPT and sent by Harry ---- */
 /* This is not a sprite or picture. Named GLB pivots have five original keyframed animations. */
 /* Fully optional: if CDNs, local asset loading or GLTFLoader fail, Build 16 mouse continues working. */
-const SCOUT17 = { ink: true, waiting: [], started: false, template: null, clips: [], status: 'idle' };
+const SCOUT17 = { ink: false, waiting: [], started: false, template: null, clips: [], status: 'idle' };
 function scout17Attach(group) {
   if (SCOUT17.template) scout17Upgrade(group);
   else if (SCOUT17.status === 'idle' || SCOUT17.status === 'loading') SCOUT17.waiting.push(group);
