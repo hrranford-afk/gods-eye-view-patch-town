@@ -691,6 +691,107 @@ at the start); levels 2 and 4 start in `'battle'` with no race UI; no page error
 **Known limits.** The ideal lap is about 18 s, short of the 25 to 35 s target (the table is small); only a casual player
 reaches 25. Rivals ignore dropped boxes of yours. Dropped boxes are not solid. There is no sound on pickup for rivals.
 
+## Loadout Race (2 Nov 2026; Harry's "Kitchen Grand Prix", built small)
+
+![race](shots/39-loadout-race.png) ![card](shots/40-loadout-card.png) ![bar](shots/41-slim-buttons.png)
+
+**Why.** An independent review scored the game 66/100 with clarity worst: 13+ build buttons and a Squadrons panel on every level. Now a short race before each level decides which tool buttons you get, and the YOUR LOADOUT card explains each one once, in plain words. All code is one block headed "Loadout Race" just above `step`, plus the hooks listed below.
+
+**Flow.** `start()` (PLAY, Play again, Next level) calls `reset()` then `lrIntro()`. `reset()` now builds a **stand-in level for every level, level 1 included** (`stageL = stageLevel(L)`): no blocks, patches, outposts, piles, runs, water, hob or finale, and `size: [520, 400]` (only so `collideObstacles` does not clamp the car to a 150 x 96 table). It sets `race: { laps: 1, kr: true }`, and `startRace` hands that to `krStart` (THE KITCHEN RUN, below). The intro card (`#lrIntro`: GO!, Skip race) holds the race still (`R.intro`). The first car home calls `finishRace`, which works out the places (`raceProg` returns `c.prog` on the Kitchen Run) and calls `lrOpenCard(place, foePlace, skipped)`. The card's START calls `lrStartGo`, which sets `pendingLoad` and calls `reset()` again: the race is thrown away (`cleanupRace` → `krCleanup`, `disposeTree(R.group)`) and the real level is built with the loadout. **Level 1's box race is retired** (its boxes unfolded onto the race table, which no longer is the battle table); its code (`RACE_*`, crates, `startBattle`, the countdown) and the old circuits (`LR_TRACKS`, `lrTrack`, `lrGates`) are still in the file, unused.
+
+### THE KITCHEN RUN (2 Nov 2026; Harry: "the racetrack looks a bit rubbish... we've made it so basic")
+
+![ramp](shots/42-run-ramp.png) ![shelf](shots/43-run-shelf.png) ![toaster](shots/44-run-toaster.png) ![microwave](shots/45-run-microwave.png) ![sink](shots/46-run-sink.png) ![overview](shots/47-run-overview.png)
+
+One lap of an obstacle course through a whole toy kitchen, built in its own space (x -232..222, z -86..~100; floor at y -90) when the race starts and disposed before the level is built. All code is one block headed "The Kitchen Run", just after the Loadout Race block.
+
+**The route, in order** (main line ~1,090 units, of which ~250 is scripted flight/teleport):
+1. Start/finish in front of the **oven**, between two pepper mills with a wooden-spoon gantry; tinfoil boost.
+2. **Chopping board** ramp up onto the **bread bin** (y 10, edges), kick and **jump the gap** to the **biscuit tin** (y 7), down a cookbook.
+3. Fork A: the main line loops round breakfast (a plate with egg and toast) and through the **kitchen-roll tube** (it goes see-through when you are inside); **shortcut 1, the cutlery drawer**: down a wooden spoon into the open drawer, along a divider 3.6 wide (tinfoil on it), up a spoon. ~20 units shorter plus a boost; falling into the trays is a respawn.
+4. Fork B: two **cereal-box ramps** (CRUNCHY LOOPS art) with a stack of cookbooks between, up to the **window sill** (y 32), a swerve round the pot plant; **shortcut 2, the whisk spring**: a red pad off to the right fires you straight up onto the sill (saves ~2 s).
+5. Along the sill above the kitchen, round the **tea caddy**, down the **baking-tray slide** (rims: no falling off).
+6. Fork C, the **sink**: the main line weaves over **floating sponges** (squashy: 15% slower; edges over water); **shortcut 3, the ruler** straight across, narrow. Falling in = splash, respawn a bit back, soggy (28% slower) for 2.2 s.
+7. Up the **butter knife** onto the **toaster**: TOASTER LAUNCH, a scripted 100-unit arc (one barrel roll, a puff trail) over the gap between the worktop and the island.
+8. Island: the **hob slalom** round the rings (the hot one flickers: 1.6 s on, 1 s off; touching it while on spins you and halves your speed), tinfoil, **spatula** kick over the **cake**, under the **mini fridge** on legs (cold blue light, the fridge goes see-through), into the **microwave** (it goes see-through and glows): flash, ding, and you roll out of the **oven door** 140 units away, at the finish straight.
+
+**Per level:** the worktop colour, the cupboard doors and a few props (L1 bowls of loops, juice, mug; L2 pencils and rubbers; L3 remotes and batteries; L4 rubber duck, washing-up liquid, bubbles; L5 frying pan and saucepan; L6 baguettes and cheese). Route changes: **level 4** has a longer, tighter sponge crossing (9 arcs instead of 5); **level 5** a longer hob with two hot rings. Tokens: the level's pool spread over 12 token spots in course order (bread-bin top, drawer divider, inside the tube, cereal ramp, sill x2, slide, the ruler, the sponges, by the hot ring, after the cake, under the fridge), so risky lines and shortcuts carry tools.
+
+**How it is built.** The course is data: a turtle (`kTurtle`, `kS` straight, `kT` arc, `kJ` Hermite join) lays points 1.25 apart; each point has `y`, `hw` (half width), `edge` (can fall off; otherwise soft rails), `solid` (false over gaps), `scr` ('fly' toaster/whisk, 'tele' microwave, with speed `v`), `kick` (jump), `boost`, `water`, `hob`, `surf` (look). `kDone` adds tangents, normals, `cum` (distance in x/z) and `speedF`. Shortcuts are branches (`kBranch`, `.from`/`.to` main indices; progress on a branch maps linearly onto the main line, `krMainS`). `krScene` builds the room, the road (`kRibbon`: a play-mat road texture with yellow dashes on worktop, sill and bread bin; red/white kerbs on bends; the object's own surface elsewhere) and every prop **from the segments**, so props always sit under the road. Shapes use one vertex-colour material (`kVC`) and are baked by `kMerge` into one mesh per material per 90-unit cell; the roll, fridge and microwave bake into their own fading materials (`K.fades`). Course colours are picked in sRGB (`kMt`, and `convertSRGBToLinear` in `kMerge`), so the kitchen is richer than the pastel battle tables. Textures (worktop, tiles, floor, cereal art, foil, road, kerb, sky, START, clock...) are canvases made once and kept in `shared()`.
+
+**Physics** (`krCar`, `krNear`, `krRespawn`): `drive()` steers in x/z as everywhere; `krNear` finds the nearest point on the car's own path (window -4..+10, plus the start of a branch near its fork or the main line near a branch's end; switching lines needs a clear lead). On the deck the car rides the interpolated height; off the side of a non-edge road it is pushed back (rails); off an edge, over a gap, or over a lip (ground drops > 1.3) it flies with gravity 50 and lands when it meets the deck. Kicks set vy and a minimum forward speed (bread bin 13 / 22, spatula 24 / 27) so a straight run always clears. Falling 5.5 below the last good height respawns 7 points back on a safe point, slow, with a 0.9 s wobble. Scripted rides (`c.scr`) carry the car along the path at the points' speed and release it at the end with its old speed.
+
+**Rivals** (`krRival`): scripted along the main line only (no shortcuts, never fall), `s += 24 * k * band * speedF * (boost 1.3, sponge 0.85)`, `k` 0.84 / 0.815 / 0.79, rubber band +13% when behind you, -8% when ahead (0.0016 per unit of gap). They take every jump, flight (the arc is in the path heights) and teleport (hidden inside). `krCollide` bumps you off them (same height only).
+
+**Camera** (`krCam`, called from `render` instead of the battle camera): follows the road height (`K.camY`), holds it while you are in the air or flying, so the car rises towards you and the drop shows; pulls back up to 1.3x when high or flying; keeps an airborne car centred (`- 0.8 * height` in z); cuts after the microwave (`K.snap`) with a white flash (`#krFlash`-style div, `krFlashEl`). It also moves the sun and its shadow box with the camera (restored by the next `setTableSize`). A shadow blob sits under the car in the air, on the worktop, the sink water or the floor far below.
+
+**Shared-code edits** (small, marked "Kitchen Run"): `stageLevel` rewritten; `reset` builds the stand-in for every level and starts the race only on it, starting workers only off it; `startRace` → `krStart` when `cfg.kr`; `cleanupRace` → `krCleanup`; `raceProg`, `raceUpdate` (→ `krUpdate`), `raceArrow` (hidden); `tokensUpdate` checks height; `render` calls `krCam` for the race; intro card text; `SOUNDS.ding` added from the block.
+
+**Test numbers (finish, 2 Nov 2026).** A scripted bot that steers at the path 7 points ahead (main line, no shortcuts, picks up all tokens) finishes in 40.2 s on levels 1 to 4 and 6 and 41.1 s on level 5 (hob), 0 falls; a person should take 45 to 60 s. Idle-player rivals: Red 1 finishes at 54 to 56 s, Red 2 about 2 s later, Red 3 later still, all through the toaster flight and the microwave teleport (rubber band +13% when you are behind). Falling off an edge respawns after about 0.45 s, 7 to 9 units back (20 edge points sampled). Memory over 4 race to level cycles: geometries 44 in the race, 161 in the level, textures 12, flat each time (the course is disposed). All six levels play 90 s after Skip race with 0 page errors. The floor sign 'KITCHEN RUN' was clipped by its canvas (92 px font); now 62 px.
+
+**Tokens.** One per tool in `LOADOUTS[level].pool`, alternating sides of the racing line (+-2.6), `tokensUpdate` (player only; the red cars ignore them). Drive through one and it joins `R.carried`; a 5th pops the oldest (`R.swap`, banner, a red "out" chip in the slot strip `#slots`; that tool's token reappears on the track). A token is hidden while you hold its tool. The picture is a coin plus the emoji, drawn once per tool in a canvas (`tokenMat`, kept in `shared()`), on a flat plane tilted to face the fixed camera.
+
+**Tools and levels.** `TOOLS` (name, emoji, colour, button id, key, one-line text) and `LOADOUTS` (per level: `pool`, `must`, `def` for Skip race, `ai`). Always on (`BASICS`): Gun turret, Dump truck, Digger (the economy needs both workers). Must-haves: level 3 Flare (you cannot see without it), level 4 Gunboat (water splits the map), level 6 Tank squad. Pools: L1 Rocket, Drones, Upgrade, Dominoes, Trojan; L2 those plus Staple, Magnet, Catapult, Armour; L3 Rocket, Drones, Upgrade, Dominoes, Trojan, Laser; L4 as L1; L5 Rocket, Drones, Upgrade, Trojan, Staple, Catapult, Armour, Toaster; L6 Bombers, Boat squad, Raiders, Foot soldiers, Rocket, Drones, Upgrade, Toaster.
+**Default (Skip race) loadouts:** L1 Rocket, Upgrade, Drones, Dominoes; L2 Rocket, Upgrade, Staple, Catapult; L3 Laser, Rocket, Upgrade, Drones (+Flare); L4 Rocket, Upgrade, Drones, Trojan (+Boat); L5 Rocket, Upgrade, Toaster, Drones; L6 Bombers, Raiders, Upgrade, Rocket (+Tank squad). Skip counts as 2nd place for both sides (+25 cereal each, 3 enemy picks, no free Upgrade).
+
+**Level 6.** The Squadrons panel stays, but its buy buttons show only the squads whose tokens you hold (`SQ_TOOL`, `squadOn`): Tank squad always; Bombers, Boat squad, Raiders, and Foot soldiers (all four infantry types) from tokens. Sugar wall, Rally and Peek stay always. Squads are the whole level 6 war, but Tanks alone are a fair start and the enemy is limited the same way; that is why only the three extra squad types are won.
+
+**Rewards.** `LR_BONUS = [40, 25, 12, 5]` starting cereal by your place. 1st also gets `state.freeUp = 1`: the next Upgrade costs nothing (the Upgrade button shows FREE) and the Upgrade button is shown even if you did not pick it. The old +30 level 1 winner prize is gone (the bonus replaces it); level 1's last-place gun turret stays. **The enemy:** its best car's place picks how many of `LOADOUTS[i].ai` it gets (`LR_AI_TOOLS = [4, 3, 2, 1]`) and its cereal bonus. `aiHas(id)` gates what the commander builds: Rocket turrets (else guns), Laser, level-ups, Toaster launcher, the domino layer (Dominoes), the hijacker (Trojan) and on level 6 which squads it buys (`aiSquadOk`). `state.aiLoad` is null (no limit) outside a loadout game.
+
+**The bar.** Every tool button has a `TOOLS[id].btn`; `applyBar()` toggles `.off` (display none) on those you do not have and hides a row with nothing left. `state.load` is a Set of tool ids (null = everything, the old behaviour, for tests that call `reset()` after a loadout). Keys for tools you do not have do nothing (`KEY_TOOL` guard at the top of the battle keydown; B still builds walls on level 6). The Use (gumball item) button moved to the Fire row. Buttons visible (before, after with 4 picks and 1st place): L1 8, 8; L2 12, 8 to 9; L3 10, 8 to 9; L4 9, 8 to 9; L5 13, 8 to 9; L6 13 plus an 8-squad panel, 7 to 8 plus a panel of 1 to 5.
+
+**Shared-code edits.** `raceTrack` split into `trackFrom`; `startRace` takes `cfg.track` and builds tokens; `finishRace` and `skipRace` rewritten; `cleanupRace` also hides the two cards; `raceUpdate` waits while the intro is up and draws the slots; `update` returns in phase 'loadout'; `reset` builds the stand-in level, sets `state.load`/`aiLoad`/`freeUp` and calls `applyBar`; `darkNow`, `makeBase` read `curL()` instead of `LEVELS[curLevel]`; `upgrade` and `updateCosts` know the free Upgrade; `start` shows the intro; the finale squad panel filters its buy list; AI gates in `commanderBuild`, `commander`, `enemyTricks`, `finaleEnemy`. `shoot.js` now clicks `#lrSkip` and `#lrStart`.
+
+**Tests (Playwright, swiftshader, 1180 x 820).** A scripted bot that steers through tokens won on all six levels (36 to 44 s), got the loadout card and the bar showed only the won tools; Skip race then 90 s of play on every level had 0 page errors; over three cycles of all six levels (intro, Skip race, card, START, 6 s of battle, switch) geometries stayed at 171 and scene children at 100; textures rose by 2 per cycle, which the code before this change also does (17, 19, 21 on the old file), so it is an old leak (some level decor texture), not the race.
+
+**Not fixed / ideas.** Red cars ignore tokens and each other's tools (the enemy loadout is only a list). The rivals' speed bands keep it close, so the bot nearly always finishes 1st or 2nd; a human will vary. Tokens are emoji, so look slightly different per platform. Level 6 infantry is one token for four types. The card lists tools in order, not by how useful they are. No sound for tokens beyond the pickup fanfare. The race is not shown to anyone on level selection (the title card still describes the battle).
+
+## Characters and dialogue (2 Nov 2026; Harry: "a bit of beef before each race", 16-bit style)
+
+![crumb](shots/48-talk-crumb.png) ![baron](shots/49-talk-baron.png) ![rick](shots/50-talk-rick.png) ![nana](shots/51-talk-nana.png)
+![every portrait and frame](shots/52-portraits-sheet.png)
+
+Before each race the cast trade 4 or 5 lines in a 16-bit RPG talk box; after a level the Baron sulks (win) or gloats (lose). **A self-contained module:** one HTML/CSS block headed `Characters and dialogue` just before the three.js `<script>` tag (the `#talk` overlay, its CSS, a Press Start 2P font link), and one `<script>` with the same heading after the main script. Nothing is drawn in the 3D scene (0 draw calls): it is an HTML overlay with one 48 x 48 canvas.
+
+**The hook is one function:** `talkThen(levelIndex, when, cb)` with `when` = `'pre'`, `'win'` or `'lose'`. It plays the lines, then calls `cb` (Skip calls it too). With no lines it calls `cb` straight away. Three call sites, nothing else in shared code changed:
+- `start()`: `talkThen(curLevel, 'pre', lrIntro)` instead of `lrIntro()`. The race already holds still from `startRace` (`R.intro` is true until GO!), so nothing moves while they talk. If the intro card changes on another branch, keep this one call and pass whatever shows the card.
+- `endGame()`: inside the 1.2 s timeout, `talkThen(curLevel, won ? 'win' : 'lose', () => { $('end').hidden = false; })`.
+- `endGame()`, level 6 win: `talkThen(curLevel, 'win', () => finaleEnding(earned))` (the Baron's last word, then the light flicks on).
+
+**Controls.** Tap anywhere (or Space / Enter): finish the line, then next line. **SKIP** (top right of the box, or Escape) closes it and goes on. While the box is up it eats every key except M (mute), so WASD does not leak into the race. Text types at 38 letters a second (`TALK_CPS`) with short stops after `. ! ? ,` (`TALK_PAUSE`) and a blip on every other letter (`talkBlip`, using the game's own `tone()`; Baron a low sawtooth, Crumb a square, Rick a mid square, Nana a high triangle; silent when muted).
+
+**Look.** Dark navy box with a notched white pixel border and a coloured inner line in the speaker's colour, a name plate tab, a gold-framed portrait (144 px on iPad, 96 px under 600 px wide). Crumb sits on the left; the others on the right (the box flips). Dialogue text is the game's body font (Barlow Semi Condensed, bold, 31 px; 21 px on a phone): Press Start 2P was too hard to read for a dyslexic player at line length, so it is only used for the name plates, the level tag, SKIP and the arrow. Each line is 60 characters or fewer (2 lines on iPad, 3 on a phone). The portrait box pops when the speaker changes, and a line can ask for `shake` or `bob`. The face flaps its mouth while letters type (shut on spaces and pauses) and blinks every 1.8 to 4.8 s.
+
+**Cost.** Its own `requestAnimationFrame` loop runs only while the box is open. Each face is painted once into a 48 x 48 canvas and cached (`talkFaces`: 24 canvases at most, all four characters and every frame); the visible canvas is redrawn only when the frame changes. Typing all six pre-race scripts through took 27 ms of script time in total. All six levels: dialogue, Skip race, 90 s of play, 0 page errors (`all6b.js`, Playwright, 1180 x 820); also checked at 390 x 844.
+
+### The data (all in the dialogue `<script>`)
+
+- `TALK_CAST[id]`: the pixel art: `pal` (one letter per colour, `.` is see-through), `bg` (two backdrop colours), `base` (48 strings of 48 letters: mouth shut, eyes open), `frames` (patches).
+- `TALK_INFO[id]`: `name`, `color` (name plate and border line), `side` (`'left'` or `'right'`), `wave` and `pitch` (the voice), `moods`.
+- `TALK_SCRIPT[level]`: `{ pre: [...], win: [...], lose: [...] }`; a line is `[who, text, mood?, fx?]`.
+
+**Add a line:** add `['rick', 'Your text, 60 letters at most.', 'smug', 'bob']` to the right list in `TALK_SCRIPT`. `mood` must be one of that character's `moods` (otherwise it shows the normal face); `fx` is `'shake'`, `'bob'` or nothing.
+
+**Add a frame (a new mood):** a patch is `[x, y, rows]` drawn over the base; `_` keeps the base pixel, any palette letter paints. Add `grumpy: [x, y, [...]]` and `grumpyOpen: [...]` (the same face with the mouth open, used while typing) to `frames`, and `'grumpy'` to that character's `moods` in `TALK_INFO`. The easiest way to make one: copy the 48 base strings, change the face, and keep only the rows and columns that differ (replace unchanged pixels with `_`). `open` and `blink` are the plain talking and blinking frames.
+
+**Add a character:** a new `TALK_CAST` entry (palette, `bg`, 48 base rows, at least `open` and `blink` patches) and a `TALK_INFO` entry, then use its id in `TALK_SCRIPT`. Draw on a 48 x 48 grid with a dark outline letter round the shape (`k` in all four), light from the top left, and keep the face in rows 16 to 36 so it reads at 96 px.
+
+### The cast
+
+| id | Name | Look | Moods |
+|---|---|---|---|
+| `crumb` | CAPTAIN CRUMB (you, blue) | a slice of toast in a blue racing suit, blue goggles pushed up on the crust | `shocked`, `brave` |
+| `baron` | BARON VON BAGUETTE (red leader) | a tall baguette with slashes, monocle on a gold chain, handlebar moustache, red coat with gold epaulettes | `angry` (brows down, anger mark, gritted teeth), `laugh` |
+| `rick` | STICKY RICK | a jam jar with a gingham lid, shades on top, jam drips, gold tooth | `smug` (a wink and a sparkle) |
+| `nana` | NANA NUTMEG | a wooden pepper mill with a white bun (the knob), curls, big gold glasses, pearls, lilac cardigan | `cackle` (glasses flash, speed lines) |
+
+### Not done / open
+
+- The level 6 win line plays before the ending's light flick, over a frozen scene; the lose line plays over the frozen scene too (the game has stopped).
+- The script does not know how often you have beaten the Baron: his lines escalate by level, not by your record. `progress.stars` could pick a line if Harry wants that.
+- No dialogue on the title screen's level select (only when a level starts) and none between race and battle.
+- Portraits were drawn with a small Python helper in the scratchpad (shapes on a 48 x 48 grid, then turned into the strings); only the strings are in the game, so edit those.
+
 ## 5. Known problems (fix first)
 
 1. ~~**Edge of the table**~~ **Fixed 31 Oct:** the car was always kept on the table; the camera showed the dark beyond. It now stays over the table.
@@ -704,7 +805,7 @@ reaches 25. Rivals ignore dropped boxes of yours. Dropped boxes are not solid. T
 
 | # | Job | Why | Done when |
 |---|---|---|---|
-| 0 | **Race-then-battle opening** (DESIGN.md, "The twist"): **built for level 1 (2 Nov)**, see "Level 1 race opening" | Harry's big idea; teaches driving first | level 1 starts as a 2-lap race with boxes; dropped boxes become your base. Still to do: the other levels |
+| 0 | **Race-then-battle opening** (DESIGN.md, "The twist"): **built for level 1 (2 Nov)**, see "Level 1 race opening"; levels 2 to 6 open with the **Loadout Race** instead (see "Loadout Race"), a tools race, not a box race | Harry's big idea; teaches driving first | level 1 starts as a 2-lap race with boxes; dropped boxes become your base. Other levels: not a box race (see Loadout Race) |
 | 1 | ~~Table edge + build ghost~~ done 31 Oct | stops the two worst frustrations | you can't fall into the void unless the design says so; you can see where a turret will go before buying |
 | 2 | Sound pass | toys must *sound* like toys | each weapon, impact, pickup and build has its own clicky toy sound (Web Audio, generated in code); the kettle click counts down |
 | 3 | Game feel ("juice") | makes every hit satisfying | screen shake on big hits, hit-flash, cereal bursting out of wrecks, wheels kicking crumbs |
@@ -905,3 +1006,136 @@ Code is one block headed "Level 6, finale gumball" just above `// ---------- Mai
 - Heroes follow the attack route only; no Defend or Raid for them, and no on-screen hero list (the minimap shows them). The mixer has no health bar.
 - A flipped unit that is not infantry is hit, not flipped.
 - Red's squads still do not use the toasters.
+
+## AR mode (branch game/ar-mode)
+
+Put the game on a real table with WebXR `immersive-ar`. Full write-up in [AR.md](AR.md) (how it works, what WebXRKit's polyfill supports, the real-device checklist, wrapping steps). For developers:
+- All the logic is the last `<script>` ("AR mode"). Hooks in shared code, all marked `AR hook`: the `AR` object and `alpha: !!navigator.xr` beside the renderer; `stickDown` (the pointerdown handler, now a named function); `arStick()` at the three `input.x, input.z` reads; `step` (rAF only when `AR.on`; `arFrame`; waits until placed); the last line of `render` (`arRender`); `burst`'s spark cap. With AR off the cost is one boolean per hook: level 1 after 40 s with a seeded `Math.random` gives 848 to 860 draw calls and 37,134 triangles both before and after (same numbers).
+- The whole scene is scaled onto the table (scene transform), so new meshes need nothing special. Anything real-world sized (the reticle) must cancel the scene transform (see `arFrame`). Code that projects to the screen (`.project(camera)`) works because `arFrame` bakes the scene matrix into `camera.matrixWorldInverse`. The minimap's view-trapezoid (`unproject(camera)`) is wrong in AR (cosmetic, not fixed).
+- The Kitchen Run's floor, tiled wall and window are hidden in AR by size (700-wide); if the kitchen scenery changes, check `arFit`. Do not add elements to `<body>` that must show in AR without checking: a `MutationObserver` moves them into `#arRoot`, but the iOS polyfill hides anything outside the root.
+- Bugs not fixed: minimap trapezoid (above); levels 3 (dark) and 6 (finale) ran 15 s in the AR mock with no errors but were not looked at closely; Chrome Android and real ARKit untested; no anchors (the world can drift on a long session).
+
+## Drift mode (branch game/drift)
+
+"Midnight Kitchen Drift": a night street-drifting mode. All code is one block between `<!-- Drift mode BEGIN -->` and `<!-- Drift mode END -->` (just before the AR script): CSS, HUD, garage and results cards, and the JS. Screenshots: `shots/60-drift-night.png` to `63-drift-results.png`.
+
+**Shared-code hooks** (each marked `Drift hook`): `let driftOn` + a line at the top of `startRace` (consumed: calls `driftStart`); `if (R.drift) { driftUpdate(dt); return; }` in `raceUpdate`; `if (state.race.drift) return driftCam(dt);` at the top of `krCam`; `if (R.drift) driftCleanup(R);` at the top of `krCleanup`. Normal race and battle handling is untouched; the title Drift button calls `driftBegin()` (sets `driftOn`, `reset()`).
+
+**How it is built.** `driftStart` calls `krStart` (the whole Kitchen Run kitchen, so cleanup and merging come free), removes the red cars and tokens, then darkens the lights (hemi 0.12, sun 0.12, three point lights) and builds a closed Catmull-Rom loop (`DR_CTRL`, about 820 long, 22 wide) on the kitchen FLOOR (y = -90) round the island. Walls are ribbons with neon tops; collision is distance from the centre line (`drNear`, `drWalls`). Drift zones are the tight bends (`T.zones`), marked with chevrons and double points. The camera (`driftCam`) is the Kitchen Run camera at floor height. The state lives in `state.race.drift` (`D`); `DR` holds settings, bests and the particle pool.
+
+**Handling** (`driftDrive`, numbers in `DRIFT_VEHICLES`): the stick aims the nose. Without the handbrake yaw is grip-limited (`latG / speed`) so the car hardly slides. With DRIFT held above `hbMin` speed the rear grip drops to `driftGrip` and yaw rises by `hbTurn`; beyond `maxAng` the grip claws back. Letting go gives a 0.28 s snap of 2.4x grip. Sideways speed lost to grip is partly turned into forward speed (`redirect`; a third less in a drift). Racer 34 top / grip 1.1, Muscle 38 / 1.0, Lorry 29 / 1.5 (needs 14 speed), Monster 27 / 0.8.
+
+**Scoring** (`drScoreStep`): a drift is slip over 14 degrees above speed 9. Points a second = angle/45 degrees x min(speed,42)/20 x 60 x car multiplier (1, 1.1, 3.0, 1.3) x zone (2) x tandem (1 to 2). A drift of 0.6 s or more is banked when it ends, times the combo; each bank adds 1 to the combo (max 8) and gives 4.5 s to chain the next. A wall hit over 5 units a second (crash), 4.5 s without drifting, or standing still 1.5 s drops it to 1. Nitro fills while sliding; BOOST spends it all (0.6 to 2.2 s, x1.5 top speed). A good exit gives a speed kick. Stars: free 5,000 / 15,000 / 30,000, tandem 6,000 / 17,000 / 34,000 (`DR_STARS`). Bests: `localStorage` `bb-drift-v1` in try/catch.
+
+**Effects.** Smoke and sparks: a ring of 64 sprites made once and reused. Skid marks: one mesh, a ring of 300 quads written in place. Neon underglow and a headlight pool are additive quads on each car. Sound: tyre screech (looped noise, volume and pitch follow slip), engine pitch from speed (`engineUpdate`), boost whoosh, combo jingles. Screen shake on big slides and crashes.
+
+**Tandem**: a scripted ghost racer follows the loop, drifts in the bends and waits if you fall behind; staying within 30 units behind it pays 30 points a second and multiplies your drifts.
+
+**Testing**: `DR.bot = (car, D) => ({ ix, iz, hb, boost })` replaces the input; `driftUpdate(1/60)` can be stepped by hand, so a 3-minute run takes about a second (see the scripts used: bot holds the handbrake through bends).
+
+**Not done / known:** no AR (Drift is normal view only; the loop sits on the kitchen floor, which AR hides). The first run compiles shaders when the point lights appear. Skid marks are faint on the lit road. No ghost collision.
+## My Track (branch game/draw-track, build 36)
+
+The player's own race track on their real surface, drawn with a finger or built by **Auto**, then a battle on the same table. Player guide, design and the real-device checklist: [AR.md, "My Track"](AR.md#my-track-your-own-race-track-on-your-real-table-build-36). Also playable without AR: **My Track** under PLAY (a practice table seen from above; mouse or finger drawing).
+
+**Flow.** `mtBegin(ar)` (title button, or AR → chooser → My Track: `arStart` then `mtBegin(true)` with `AR.placed` set, no placing step) → `reset()` builds a stand-in level from `mtLevel()`; `stageLevel` gives it `race: { mt: true }`; `startRace` → `mtStart`, which with no track yet sets `state.phase = 'mt'` (scan/draw/auto screen, `mtUpdate`, top-down `mtCam`) → Race! (`mtGo`) fixes `MT.loop`, fits the battle board (`MT.fit`, `MT.level`), `reset()` again → `mtStart` builds the race (`R.kr` = a Kitchen-Run-style course, `R.mt` = true) → the usual `lrIntro` card (text swapped by `mtIntro`) → `finishRace` → YOUR LOADOUT → `lrStartGo` → `reset()` builds `MT.level` (the battle; `mtBoardDecor` sets `MT.phase = 'battle'` and turns the surface group under the board). End card PLAY AGAIN → `mtAgain` (same track); LEVELS or Exit → `mtExit` (title card, normal level, `curLevel` restored; ends the AR session if one is running). My Track uses level 1's tools and rules (`curLevel = 0` while on) and saves no stars.
+
+**Shared-code edits (all marked "My Track hook").** Main script: `const MT` beside `AR`; `curL()` returns `MT.level` while My Track is on; `reset` picks `mtLevel()`; `stageLevel` (race cfg and a 1000 x 1000 size); `startRace` → `mtStart`; `cleanupRace` → `mtCleanup`; `raceUpdate` → `mtRaceUpdate`; `update` → `mtUpdate` in phase 'mt'; `render` → `mtCam` first; `buildLevel` hides the wooden `table` for `L.mt`; `spawnPt` uses `mtSpawn`; `endGame` (no stars, no Next level); `start` → `mtAgain`; the LEVELS button → `mtExit`. AR block: build tag 36; the AR button opens the Kitchen Run / My Track chooser; `arStart` adds the extra hit-test rays and starts My Track; `arEnded` cancels them and calls `mtExit`; `arFit` steps aside; `arFrame` calls `mtArFrame`; `arUiSync` hides Re-place, turn and Size in My Track.
+
+**Memory.** Road, gates, tokens and blob live in `R.group` (disposed by `cleanupRace`); the surface group (`MT.group`: practice table, scan paint canvas texture, marker, preview road, live line) is disposed on every `mtBegin`/`mtExit`; the preview road and live line are disposed on every rebuild.
+
+**Tested (no real device; Chromium + swiftshader, Playwright; scripts in the session scratchpad).**
+- `hxr/mtar.js`: HelloXR's real `webxr-polyfill.js`, fake native iOS bridge, `NO_OVERLAY=1` (as on the owner's iPad). Fake ARKit: a 1.2 m x 0.6 m table at y = -0.9 m, hit tests empty outside it, answered from the screen point the polyfill sends (so the 4 extra `offsetRay` sources are exercised). Camera sweeps rows over the table for 36 s (the harness renders only ~5 XR frames a second, so 1,400 hits; a real iPad gets ~150 a second), then holds still. Run 1: Auto → 2.3 m loop, centre line at least 5.4 cm inside the table's edge (road half width with kerb 3.45 cm), height 0.900 m, scene scale 0.005; race 30 s: rivals at 1.00 to 1.08 laps; Skip → battle board 226 x 100 units (1.13 m x 0.5 m) fitted on the table, toy boxes at its ends at real x = ±0.5 m. Exit AR, enter again. Run 2: a loop drawn with synthetic touch events on `#arTouch` → 2.1 m, 11 cm inside the edge; race 30 s: rivals at 1.09 to 1.17 laps (4-lap race); battle 220 x 100. 0 page errors, 0 console errors.
+- Note: the old `hxr/real.js` fake bridge never answered `stopAR`, so the polyfill thought it was still running and a second AR session got no frames. That was the harness, not the game (fixed in `mtar.js`; with it, Kitchen Run and My Track both re-enter fine).
+- `mt/practice.js`: practice mode twice: scan (6 s pretend sweep), Auto, Another one, Race!, GO, 30 s (rivals 0.9 to 1.1 laps), let Red win, card, START, 40 s battle (226 x 124 board), Exit; then Draw in two mouse strokes (2.2 m, OK), a stroke off the end of the table (red, "That bit's off the table!", Race! off), Undo, redraw, race, battle. 0 page errors.
+- `mt/mem.js`: five practice runs (auto, draw alternately) through race, battle and exit: geometries at the title 44, 46, 46, 46, 46; textures 11; scene children 27 each time.
+- Regression: `all6b.js` (all six levels, Skip race, 90 s) and `krtalk.js`: 0 errors, same numbers as before.
+
+**Cut / not done.** The battle is level 1's full battle on a rectangle fitted inside the scan, not a free-form map (scan outside the rectangle is unused; an L-shaped worktop gets a board on its biggest straight part). Props are level 1's layout stretched, not chosen from the real table. Red cars never leave the road (scripted, as in the Kitchen Run). No bridges: a drawn track may not cross itself. Tokens lean back for the practice camera, not towards the iPad. Auto uses rays from one middle point, so on a U-shaped worktop it only uses part of it.
+
+**Seen, not fixed.** In AR battle the garage bar sits over the AR Quality / Exit bar (as in the existing AR battle). The race HUD shows the toy-box bars during the race (as in the Kitchen Run). The scan marker stays on after scanning (it shows where the iPad points).
+
+## Toy boxes (branch game/toy-boxes)
+
+The plain home base is gone. Every base (levels 1 to 6, the finale, My Track's battle) is now a **toy box** that unfolds into a little playset when the battle starts. You pick one on the title screen; the Baron always has the Bread Bin. The single roof gun is gone: defence now comes from each box's ability and from its upgrade slots. Drift has no bases, so it is unchanged. Everything lives in one block in `index.html` headed `TOY BOXES (the home bases)` (grep `BOXES`), plus a second block `Toy boxes: sounds, thumbnails, the picker...` just above `endGame`.
+
+![picker](shots/64-box-picker.png)
+![mid-unfold](shots/65-unfold.png)
+
+### The boxes, and who designed them
+
+Designs came from PatchTown's resident council (Q6 in `games/COUNCIL_QUESTIONS.md`). Each card in the game says "Designed by ...", and so do the code comments. The owners of the Spice Rack ("Granny Paprika") and the Kettle ("Old Mr. Whistle") were not named in the brief; I made those two up, so rename them if the residents said otherwise.
+
+| Box | Designed by | Owner | Opens by (sound) | Ability | Weakness | Playstyle | Signature upgrade |
+|---|---|---|---|---|---|---|---|
+| Tea Trolley | the Town Brain | Mrs. Crumb, a frantic baker | four brass hinges snap out, tray drops, wheels pop down (click-whirr-CLONK) | **Heavy Load** (trucks carry 24 not 12, no slow-down) and **Crate Barrage** (a wall of mini-dominoes across the path, blocks cars and shots 12 s, 28 s cool-down) | **Top-Heavy**: one hit of 40+ damage after multipliers (a rocket salvo, a cannon, a domino run) tips it for 4 s: no income, no turret, no ability; then 10 s immune | helper / defender | Silver Serving Tray: a dome that reflects enemy shots |
+| Spice Rack Fortress | the Dell Elder | Granny Paprika | drawbridge drops on a spice market and garage (clink-clink-thunk) | **Chilli Cloud**: 6 s cloud (radius 15) around the box; anyone inside is blind (aim scatters about 0.65 rad each way) and swerves; 22 s cool-down | the cloud blinds your own units too | defender (area denial) | Cinnamon Boost: cars near the box get x1.3 speed (and keep it 2.5 s after leaving) |
+| Tea Kettle | the Dell Surveyor | Old Mr. Whistle | plume of steam, lid clanks back, tiered platform rises (psssh-clank) | **Boiling Point**: 7 s of x1.35 speed and x1.4 damage for all your units; 26 s recharge | milk and water (weapons with `bubble` or `wet`, and sink drips) do x2 to it | fast hit-and-run | Pressure Release Valve: a second charge |
+| Toaster Garage | CAIRN, for Captain Crumb | Captain Crumb | upper housing pops up, toast pops out, ramp folds down (pop-DING) | **Pop-Up**: launches your car (and up to 2 friends within 16) across the map using the toaster `air` code; 40 s cool-down | while cooling it glows hot and takes x1.5 damage | mobility / raider | Extra-Crispy Setting: 26 s cool-down, 4 friends |
+| Bread Bin Fortress | CAIRN, for Baron von Baguette | the Baron (always the enemy) | roll-top rolls up, four towers rise, cannon pops up (deep thunk) | **Baguette Cannon**: big slow shot (splash 3.8), x1.6 to turrets and x4 to walls | slow to turn the cannon (1.05 to 1.5 rad/s, fires only within 0.2 rad of the target) | siege | none: it gets promoted instead (see below) |
+
+### Distinctness check (the Town Brain's three rules)
+
+1. **The unfold must change movement, hitbox or interaction physics, not just looks.**
+2. **No two boxes share a primary combat role.**
+3. **No two from the same household family.**
+
+| Box | 1. What the unfold changes | 2. Primary role | 3. Family |
+|---|---|---|---|
+| Tea Trolley | hitbox 11x12 becomes 11x17.4 (wings), pickup radius 7 to 8.8 so trucks unload from further away; wheels lift the body | economy + path-blocking | Furniture |
+| Spice Rack | one solid 12x13 block becomes keep + two towers: a **gateway** cars can drive through into the garage (heals you fast) | area denial | Pantry shelving |
+| Tea Kettle | round hull shrinks (r 7 to 6.2, 10.6 to 9 wide); the steam deck gives cars near it x1.12 speed | team buff, hit-and-run | Stovetop cookware |
+| Toaster Garage | taller (4.2 to 7.6), and the front ramp becomes a **launch pad**: drive up it, toward the box, and you are fired across the map | mobility | Mains appliance |
+| Bread Bin | grows 12x13.4x5.5 to 14x15x8.5 (castle) and exposes the cannon | siege / artillery | Baker's container |
+
+Adjustments I made after the check: the Trolley and Spice Rack were both "defender" in the brief, so the Trolley is now a **helper** (economy and blocking, no area effect) and the Spice Rack owns area denial. The Trolley and Kettle are both tea things, so the Kettle's flavour is steam and water (stovetop) rather than tea service, and the family names above are what the rule is judged on. The Kettle and Toaster are both "small appliances" in everyday talk, hence Stovetop versus Mains. The Spice Rack and the Bread Bin are both pantry containers in everyday talk, hence Shelving versus the Baker's container. The Bread Bin is the enemy's box, so it never competes with the four you can pick.
+
+### Unfold recipe (every box)
+
+Panels are separate meshes under **hinge pivots** (`boxKit().hg(parent, x, y, z, axis, closed, open, delay, kind)`): rotating the pivot rotates the panel about the hinge. `kind` is `'rot'` (turn), `'pos'` (slide, see `K.anim`) or `'scale'` (roll-top). `unfoldTo(model, t)` poses every pivot with `springEase`: a damped spring (`1 - e^(-6u) cos(7.5u)`), arrives at about 20% of a panel's 0.42 s, overshoots 8%, settles. Panels start 0 to 0.2 s apart so the biggest one (tray, drawbridge, lid, ramp, roll-top) lands last. Whole unfold 0.5 s; at **0.4 s** (`CLUNK_T`) `boxesUpdate` plays the CLUNK part of the box's sound, shakes the camera (`state.shake` +0.32, +0.14 for the enemy's), bursts sparks, and flashes the box's materials white-hot for 0.45 s (the rim-light flash; `K.mats` hold each material's rest emissive in `userData.e0`). The unfold starts the first frame of the real battle, so in AR it plays when the world is placed; before that, boxes sit folded behind the title card.
+
+### How a box is built and plugs in
+
+`BOXES[id]` holds: `name, by, owner, family, role, playstyle, tint, hpMul, sound, unfoldText, unfoldPhysics, passive, ability {name, cooldown, text}, weakness, sig {name, text}`, and the two footprints `shut` / `open`: `{ r, obs: [[localX, localZ, w, d, h], ...] }` (local +x is the front; the red box is the same model turned round; `boxFoot` swaps the `obstacles`). Behaviour is in a few small functions, all keyed by id:
+
+- **Model:** `buildTrolley / buildSpice / buildKettle / buildToaster / buildBread (K, up, tier)`. Set `K.anchor = { roof: [parent, x, y, z], sticker: [parent, x, y, z, rotY, size], flag: [...], front }`, push the body materials the paint should recolour into `K.paint`, and call `K.hg/K.anim` for anything that moves. `buildBoxModel` adds the roof module, flag, sticker, armour, spikes, drawbridge plank, garage props and paint on top.
+- **Ability:** the `({ trolley: crateBarrage, ... })[id]` table in `boxUse`; return true if it fired. `boxCooldown`/`boxReady` and the HUD ring (`boxHud`) are generic; a box with `charges` (the Kettle) recharges one at a time.
+- **Weakness hook:** `boxHurtMod(base, dmg, byTeam, weapon)` is called from `hurt()` for every hit on a box (tipping, wet, hot, armour, drawbridge all live there).
+- **Other hooks:** `boxSpeed(e)` (called in `drive`), `boxReflect(shot)` (shots loop), `fire()` scatters aim when `from.blind > state.time`, `carryOf(truck, spec)`, `boxTipped(team)` (no income), `boxWetSplash(x, z)` (sink drips), `boxTrucksMax`.
+- **Per-frame:** `boxesUpdate(dt)` -> `boxLogic` (cool-downs, roof turret / drone pad / spikes / drawbridge / the Baron's cannon, the Toaster ramp) and `boxDraw` (tilt, flash, glow, steam, spin).
+
+To add a box: add an entry to `BOXES` and to `BOX_ORDER`/`PLAYER_BOXES`, write its builder, add its ability function to the `boxUse` table, add an `unfold_<id>` sound in `SOUNDS`, a `BOX_FIRE_Y` entry, a `TALK_SCRIPT.box.<id>` line, and (if it has a skin) a `SKINS` entry. Then run the distinctness table above again.
+
+### Upgrade slots (replace the roof gun)
+
+Between levels, "UPGRADES" on the box screen (title card: CHANGE / UPGRADE; end card: TOY BOX). Costs are stars to spend: tiers 1, 2, 3 of a slot cost 2, 3, 4; the Signature costs 4; each Looks item 1, once. You start with 3 and **earn (stars won + 1) for every level you win** (My Track: 1).
+
+| Slot | Options (each has 3 tiers) |
+|---|---|
+| Roof | **Turret** (starts fitted at tier 1 = the old roof gun: 14 dmg, 0.22 s, range 19; tier 2: 18.9 / 0.198 / 21; tier 3: 23.8 / 0.176 / 23), **Radar** (your new turrets hit +8% per tier; a dish spins), **Drone pad** (a free drone every 40 / 30 / 22 s, up to 2 + tier at once) |
+| Doors | **Armour** (-10% damage per tier), **Spikes** (8 x tier damage every 0.5 s to rammers), **Drawbridge** (raises when enemies are near: quarter damage for 4 / 5 / 6 s, every 24 / 20 / 16 s) |
+| Garage | **More trucks** (a free truck at the start and room for one more per tier), **Faster repair** (+20 hp/s for cars at home per tier, and the box mends 1.5 x tier hp/s) |
+| Signature | the box's own (see table) |
+| Looks | paint (6), sticker (5), flag (5), and rare skins |
+
+### Save, collection and prizes
+
+`boxSave` (key `bb-boxes-v1`, every read and write in try/catch): `{ pick, coins, skins, up: { <box>: { roof, doors, garage, sig, look, own } } }`. It is cleaned on load (`cleanUp`), carried from level to level, and survives a reload. The **COLLECTION** tab shows all five boxes (3D pictures made once into an off-screen render target by `boxThumb`, cached) and the four skins (Gold Toaster, Chrome Tea Trolley, Copper Kettle, Chilli-Red Rack). A new gumball prize, **Rare skin** (weight 1 in about 25), unlocks one you do not own yet (or pays 2 stars if you own all). The Baron says one extra pre-race line about your box: `TALK_SCRIPT.box` (added at the end of every `pre` list by `talkLines`).
+
+### Balance
+
+- **Box hp** = the level's `baseHp` x `hpMul`: Trolley 0.95, Spice Rack 1.15, Kettle 0.85, Toaster 0.85, Bread Bin 1.0. (Level 4: you 1,900 to 2,300, Baron 2,000.)
+- **Old base** = one 14-damage, 0.22 s, range-19 gun (about 64 dps). **Your starting box** = the same gun (Roof: Turret tier 1) plus the box's ability, so it fights about as well as the old base and the Roof slot is where you grow.
+- **The Baron** has no roof gun. His Baguette Cannon: damage 58 / 64 / 70 / 76, rate 1.8 / 1.7 / 1.6 / 1.5 s, range 22.5 / 24 / 25.5 / 27, turn 1.05 to 1.5 rad/s (tiers 1 to 4), splash 3.8 at half damage to everything in it, including the car it hit. About 48 to 76 dps against a car that holds still, and it one-shots a Racer, but it only fires when it has swung to within 0.2 rad, so a moving car mostly takes nothing. Tier by level index: `[1, 1, 2, 2, 3, 4]` (My Track: 2); higher tiers add towers' pennants, iron plates, gold trim, extra barrels, and he takes 5% less damage per tier above 1.
+- **Cannon vs walls:** `weapon.flatten` multiplies damage to turrets x1.6 and to sugar/wall turrets x4.
+
+### What I did not do
+
+No box-specific music; the Spice Rack's "market" and the garage cars inside it are props, not units; no multiplayer yet (the save is one box per device); no per-box difficulty tuning beyond the numbers above (I could only run the headless smoke, not play 30 minutes of each).
+
+### Tested (headless Chromium, swiftshader, 1180 x 820)
+
+- All six levels, 90 s each of the normal game: 0 page errors. `krtalk`, `driftcheck` (Drift, no bases), `mt/practice.js` (My Track: scan, draw, race, battle, repeat) and `hxr/mtar.js` with `NO_OVERLAY=1` (My Track in AR) all clean.
+- Per box on level 4 with a frozen loop: unfold opens and both boxes' footprints swap; Trolley tips on a 200-damage hit (4 s, no income, 10 s immunity), Crate Barrage makes 7 blocking tiles, a reflected shot turns round, trucks carry 24; Spice cloud blinds a car 8 units away; Kettle takes x2 from a bubble, has 2 charges with the signature, speed x1.51 (boil x deck), damage x1.4; Toaster Pop-Up launches the car about 70 units and starts a 26 s glow (x1.5 damage taken); the Baron's cannon fires 12 shots in 10 s at a car 18 units off.
+- Save: pick, upgrades and stars survive a reload and a level change; the end card adds "+N stars for your toy box"; the Baron's extra line is the last pre-race line. Memory: 12 rebuilds with abilities used plus every box in turn leave geometries (47), textures (14), scene children (27) and obstacles flat.
+- Screenshots: `shots/64` to `shots/72`. `show.js`-style frozen frames were used for the mid-unfold shot (65) and the close-ups.

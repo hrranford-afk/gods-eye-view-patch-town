@@ -18,7 +18,7 @@ The enemy plays by the same rules: it digs, hauls, builds and upgrades.
 
 ## The twist: race, then battle (Harry's idea, 31 Oct 2026)
 
-**Status: built for level 1 (2 Nov 2026).** A 2-lap race with 8 gates, 3 red rivals and 8 supply boxes; dropped and carried boxes unfold into turrets, sugar walls and workers; ramming steals; the winner gets +30 cereal and the last place a free gun turret; Skip race jumps to the battle. Details in HANDOVER.md, "Level 1 race opening". Other levels still start as battles. Not yet built: ambush spots as the catch-up gift, a 3-lap option, other levels' tracks.
+**Status: built for level 1 (2 Nov 2026).** A 2-lap race with 8 gates, 3 red rivals and 8 supply boxes; dropped and carried boxes unfold into turrets, sugar walls and workers; ramming steals; the winner gets +30 cereal and the last place a free gun turret; Skip race jumps to the battle. Details in HANDOVER.md, "Level 1 race opening". Levels 2 to 6 now open with the Loadout Race (a short circuit and tool tokens, not box-carrying); level 1 keeps this race and adds the tokens. Not yet built: ambush spots as the catch-up gift, a 3-lap option, other levels' tracks.
 
 Each level starts as a race and turns into a war.
 
@@ -95,6 +95,8 @@ so guarding the machine becomes its own battle.
 spins, no loot boxes, ever.
 
 ## The Kitchen Grand Prix (Harry's idea, 1 Nov 2026)
+
+**Status: built, in a smaller form, as the Loadout Race (2 Nov 2026).** Before every level you race 3 red cars round a small circuit on that level's table; tokens round the track are the tool buttons, you carry 4 at most, and finishing position sets starting cereal (1st also a free Upgrade) and the enemy's own limited loadout. Only the tools you win get buttons in the battle. Not built from the original idea below: laps with item boxes, the campaign map branching, the carried-item bonus. Details in HANDOVER.md, "Loadout Race".
 
 A short battle race *between* levels, a different kind of game from the
 battles:
