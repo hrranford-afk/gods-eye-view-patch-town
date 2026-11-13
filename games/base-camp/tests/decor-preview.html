@@ -1,0 +1,83 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Base Camp season decorations preview</title>
+<style>
+html,body{margin:0;background:#fbeedd;font:14px/1.3 system-ui,sans-serif;color:#4a2a18}
+#bar{position:fixed;top:0;left:0;right:0;padding:8px 12px;background:#fbeedddd;z-index:5;display:flex;gap:8px;align-items:center}
+#bar button{font:inherit;padding:5px 12px;border:2px solid #7a4b28;background:#fff;border-radius:8px;cursor:pointer}
+#bar button.on{background:#7a4b28;color:#fff}
+#wrap{position:relative}canvas{display:block}
+.lab{position:absolute;text-align:center;font-weight:600;font-size:13px;pointer-events:none;transform:translateX(-50%)}
+.lab small{display:block;font-weight:400;color:#8a6a58}
+.row{position:absolute;left:6px;font-weight:700;color:#a8452a;transform:rotate(-90deg);transform-origin:left top}
+iframe{position:absolute;left:-9999px;width:800px;height:600px;border:0}
+</style></head>
+<body>
+<div id="bar"><b>Season decorations</b>
+ <button data-v="new" class="on">new (decor.js)</button><button data-v="old">old (plain)</button><button data-v="both">old above, new below</button>
+ <span id="stat">loading the game...</span></div>
+<div id="wrap"></div>
+<iframe id="game" src="../index.html"></iframe>
+<script>
+/* The preview borrows THREE, the shared toon material and the plain makers from the game itself (loaded hidden in the iframe), so old and new are drawn exactly as the game draws them. Query: ?view=new|old|both, ?sheet=1 (no bar, 8 columns, still pose), ?item=pinetree (one big), ?t=2.5 (time) */
+var Q = new URLSearchParams(location.search), view = Q.get('view') || (Q.get('sheet') ? 'both' : 'new'), SHEET = !!Q.get('sheet'), ONE = Q.get('item');
+var KEYS = ['leafpile', 'supper', 'plantern', 'scarecrow', 'calendar', 'pinetree', 'chain', 'stocking', 'star', 'snowman', 'sledge', 'igloo', 'sparkle', 'daisy', 'kite', 'paddle'];
+var NAMES = { leafpile: 'Leaf pile', supper: 'Harvest supper table', plantern: 'Paper lantern', calendar: 'Advent calendar', pinetree: 'Pine-cone tree', chain: 'Paper chain', stocking: 'Stocking', snowman: 'Fluff snowman', sledge: 'Lolly-stick sledge', daisy: 'Daisy crown', scarecrow: 'Scarecrow', star: 'Foil star', sparkle: 'Sparkle fountain', igloo: 'Fluff igloo', kite: 'Kite on a stick', paddle: 'Bottle-lid paddling pool' };
+if (SHEET) document.getElementById('bar').style.display = 'none';
+var fr = document.getElementById('game'), wait = setInterval(function () {
+  var w = fr.contentWindow; if (w && w.__g && w.__g.decorMake && w.THREE) { clearInterval(wait); setTimeout(function () { w.requestAnimationFrame = function () { return 0; }; /* stop the hidden game's own loop: only the preview draws */ go(w); }, 400); }
+}, 200);
+function go(w) {
+  var G = w.__g, T = w.THREE, cols = +(Q.get('cols') || (ONE ? 1 : SHEET ? 8 : 5)), CELL = +(Q.get('cell') || 0), W = SHEET ? (CELL ? CELL * cols : 1640) : (ONE ? 900 : 1320);
+  var wrap = document.getElementById('wrap'), keys = ONE ? [ONE] : Q.get('keys') ? Q.get('keys').split(',') : KEYS, rows = Math.ceil(keys.length / cols), cell = ONE ? 700 : CELL || (SHEET ? 205 : 262), labH = 34;
+  var bands = (view === 'both' || (!SHEET && !ONE)) ? 2 : 1, H = (ONE ? 700 + labH : rows * (cell * bands + labH)) + (SHEET ? 8 : 56);
+  var r = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(W, H); r.setClearColor(0xfbeedd, 1); r.autoClear = false; wrap.appendChild(r.domElement);
+  var sc = new T.Scene(); sc.add(new T.HemisphereLight(0xfff0d8, 0x8a7a66, 0.95)); var sun = new T.DirectionalLight(0xffe2b8, 0.85); sun.position.set(-0.4, 1, 0.6); sc.add(sun);
+  var cam = new T.PerspectiveCamera(30, 1, 0.01, 2);
+  var items = [], stat = document.getElementById('stat');
+  var OFF = SHEET ? 8 : 56;
+  function lay(which) {
+    items.forEach(function (it) { sc.remove(it.o); }); items = []; Array.prototype.slice.call(wrap.querySelectorAll('.lab,.tag')).forEach(function (e) { e.remove(); });
+    var bandsL = which === 'both' ? ['old', 'new'] : [which], cw = W / cols;
+    keys.forEach(function (k, i) {
+      var cx = i % cols, cy = Math.floor(i / cols), top = ONE ? OFF : OFF + cy * (cell * bandsL.length + labH);
+      bandsL.forEach(function (b, bi) {
+        var o = b === 'old' ? G.DECOR_MK[k]() : G.decorMake(k); sc.add(o); o.visible = false;
+        items.push({ o: o, k: k, b: b, x: cx * cw, y: top + bi * cell, w: cw, h: ONE ? 700 : cell, id: items.length });
+        if (bandsL.length === 2 || ONE) { var tg = document.createElement('div'); tg.className = 'tag lab'; tg.style.cssText = 'font-weight:400;font-size:11px;color:#a8452a;transform:none;left:' + (cx * cw + 6) + 'px;top:' + (top + bi * cell + 2) + 'px'; tg.textContent = b === 'old' ? 'old' : 'new'; wrap.appendChild(tg); }
+      });
+      var L = document.createElement('div'); L.className = 'lab'; L.style.left = (cx * cw + cw / 2) + 'px'; L.style.top = (top + (ONE ? 700 : cell * bandsL.length) + 2) + 'px'; L.textContent = NAMES[k]; wrap.appendChild(L);
+    });
+  }
+  var USER = function (it, t, dt) {
+    var o = it.o, U = o.userData; if (it.b === 'old') { animOld(it, t); return; }
+    if (U.tick) U.tick(t, dt);
+    if ((it.k === 'pinetree' || it.k === 'star') && U.star) { U.star.rotation.y = t * 1.6; }
+    if (U.ring && it.k === 'sparkle') { U.ring.rotation.y = t * 2.2; U.ring.rotation.z = Math.sin(t * 1.3) * 0.2; }
+    if (U.kite) { U.kite.rotation.z = Math.sin(t * 1.7) * 0.25; U.kite.position.y = 0.0525 + Math.sin(t * 2.1) * 0.002; }
+    if (U.duck) { U.duck.position.x = Math.sin(t * 0.8) * 0.01; U.duck.position.z = Math.cos(t * 0.7) * 0.008; U.duck.rotation.y = t * 0.8; }
+    if (U.head && it.k === 'snowman') U.head.rotation.z = Math.sin(t * 1.1) * 0.12; if (U.head && it.k === 'plantern') U.head.rotation.z = Math.sin(t * 2.2) * 0.1;
+    if (U.doors) U.doors.forEach(function (d, n) { if (!d) return; var open = n <= 5, ready = n === 6; d.hinge.rotation.y = open ? -1.9 : 0; d.door.material.emissive.setHex(ready ? 0xffc040 : 0); d.door.material.emissiveIntensity = ready ? 0.5 + 0.3 * Math.sin(t * 4) : 0.2; });
+    if (U.glow && (it.k === 'calendar')) U.glow.material.opacity = 0.3;
+  };
+  function animOld(it, t) {
+    var U = it.o.userData;
+    if ((it.k === 'pinetree' || it.k === 'star') && U.star) U.star.rotation.y = t * 1.6; if (U.ring) U.ring.rotation.y = t * 2.2; if (U.kite) U.kite.rotation.z = Math.sin(t * 1.7) * 0.25; if (U.doors) U.doors.forEach(function (d, n) { if (d && n <= 5) d.hinge.rotation.y = -1.9; });
+  }
+  lay(view);
+  document.querySelectorAll('#bar button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === view); b.onclick = function () { view = b.dataset.v; document.querySelectorAll('#bar button').forEach(function (c) { c.classList.toggle('on', c === b); }); lay(view); }; });
+  var t0 = performance.now(), last = t0, fixedT = Q.get('t') !== null ? +Q.get('t') : null, frames = 0;
+  function frame(now) {
+    var t = fixedT !== null ? fixedT : (now - t0) / 1000, dt = Math.min(0.1, (now - last) / 1000); last = now;
+    r.setScissorTest(false); r.clear(); r.setScissorTest(true);
+    items.forEach(function (it) {
+      items.forEach(function (j) { j.o.visible = j === it; }); USER(it, t, dt); var turn = SHEET || fixedT !== null ? 0.9 + it.id * 0 : t * 0.5; it.o.rotation.y = fixedT !== null && Q.get('turn') === null ? 0.7 : (Q.get('turn') !== null ? +Q.get('turn') : turn);
+      var fy = it.y; r.setViewport(it.x, H - fy - it.h, it.w, it.h); r.setScissor(it.x, H - fy - it.h, it.w, it.h);
+      var d = +(Q.get('dist') || (ONE ? 0.19 : 0.235)), el = 0.55; cam.aspect = it.w / it.h; var ty = ONE ? 0.03 : 0.034;
+      cam.position.set(0, ty + Math.sin(el) * d, Math.cos(el) * d); cam.lookAt(0, ty, 0); cam.updateProjectionMatrix(); r.render(sc, cam);
+    });
+    frames++; window.__previewFrames = frames; if (fixedT === null || frames < 3) requestAnimationFrame(frame);
+  }
+  stat.textContent = 'decor.js ' + (w.BC_DECOR_MK ? 'loaded' : 'MISSING') + '; ' + keys.length + ' decorations'; window.__previewReady = true; requestAnimationFrame(frame);
+}
+</script></body></html>
