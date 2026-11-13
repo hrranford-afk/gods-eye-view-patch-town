@@ -20,6 +20,9 @@ Press **Play** (AR when the app offers it, else the practice room). That is the 
 
 The manual tools are still in the menus: *More... > Manual: map my room* (scan, *Done scanning*, name spots, save), *Menu > Name spots*, *Line up by tapping two things*, *Scan again from scratch*, *Export / import*.
 
+## Waterworks (build 18, an idea by Harry)
+A real sink, a real toilet (or the toy ones in the practice room) become part of the colony. The Backpack Scout goes on an **expedition** to find each one ("Pip found the sink!"); only then can a line be laid to it. In the **Cable** tool a new button picks what to lay: cable cars, **drinking-straw pipes** (camp to the sink, a plant, a vase or a cup: blue droplets run along the straw into a sprinkler over the nearest farm, so it never dries out and the camp's water store refills) or a **bucket line** (camp to the toilet: thimble buckets ride out, tip in with a "ploop" and a tiny trumpet fanfare, and the empty bucket rides back; the waste feeds a compost heap that makes the farms grow faster). Every camp gets a tiny loo hut. Now and then a straw kinks or a bucket sticks; the creatures mend it themselves within about a minute, or one tap speeds it up. **Look** shows pipes glowing blue and waste lines glowing brown. Plant pots and vases give green water (burps and bubbles), cups give tea (zoomies); bad water is funny and never deadly. All the new wording is a placeholder by CAIRN until the town's answers arrive (`WW` in `index.html`). Test: `tests/water-test.js`.
+
 ## Playing with them (build 8: the fun pass)
 The colony is meant to be played with, not managed. Everything below credits the PatchTown council resident whose idea it was (code comments in the FUN section of `index.html`, and "by ..." in the game).
 
