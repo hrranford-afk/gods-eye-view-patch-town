@@ -6,7 +6,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS ' : 'FAIL ') + n + (x !== undefined ? '  ' + x : '')); };
 const FIX = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'style-colony.json'), 'utf8'));
 const B15 = { room: 1260, close: 730 }; /* build 15 on this same fixture colony (style-compare.js, B15=copy of build 15; runs gave 1241 to 1277 and 704 to 760, so the mean): draw calls, whole-room orbit and close orbit */
-const BUDGET = 1.15;
+const BUDGET = 1.2; /* build 18: was 1.15. Build 17 measures 1382 here (1.10 of build 15), build 18 1450 to 1476 (1.15 to 1.17): the toy sink and toilet in the practice room, a loo hut per camp and a few more trees, all new on purpose. A close-up is still 0.75 of build 15. */
 async function startPractice(p, url, store) {
   const ev = (f, a) => p.evaluate(f, a);
   await p.addInitScript(() => { let s = 4242; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
