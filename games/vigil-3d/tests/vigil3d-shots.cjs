@@ -28,22 +28,27 @@ const SEED = +(process.argv[2] || 20260113);
     for (const w of s.units.filter(u => u.side === "w" && !u.drone && u.hp > 0 && !u.out)) {
       await page.evaluate(id => __v.select(id), w.id);
       const st = await page.evaluate(() => __v.state());
-      if (st.targets.length) { found = { w: w.id, t: st.targets[0] }; break; }
+      const near = id => { const a = st.units.find(u => u.id === w.id), b = st.units.find(u => u.id === id); return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)); };
+      const close = st.targets.find(id => near(id) <= 6);
+      if (close) { found = { w: w.id, t: close }; break; }
       let best = null, bd = 1e9;
       for (const [x, y] of st.reach) { const d = Math.hypot(x - 20, y - 1); if (d < bd) { bd = d; best = [x, y]; } }
       if (best) await page.evaluate(([x, y]) => __v.moveTo(x, y), best);
       const st2 = await page.evaluate(() => __v.state());
-      if (st2.targets.length) { found = { w: w.id, t: st2.targets[0] }; break; }
+      const close2 = st2.targets.find(id => { const a = st2.units.find(u => u.id === w.id), b = st2.units.find(u => u.id === id); return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= 6; });
+      if (close2) { found = { w: w.id, t: close2 }; break; }
     }
     if (!found) await page.evaluate(() => __v.endTurn());
   }
   if (found) {
     const pos = await page.evaluate(({ w, t }) => { const s = __v.state(), a = s.units.find(u => u.id === w), b = s.units.find(u => u.id === t); return { a, b }; }, found);
-    await page.evaluate(({ a, b }) => { __v.fast(1); __v.camera({ az: 0.5, pol: 0.8, dist: 12, tx: (a.x + b.x) / 2 - 10.5, tz: (a.y + b.y) / 2 - 10.5 }); }, pos);
+    const slow = +(process.env.SHOT_SLOW || 12);
+    await page.evaluate(({ a, b, slow }) => { __v.fast(slow); __v.camera({ az: 0.5, pol: 0.82, dist: 9 + Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) * 1.3, tx: (a.x + b.x) / 2 - 10.5, tz: (a.y + b.y) / 2 - 10.5 }); }, { ...pos, slow });
     await page.waitForTimeout(1200);
     await page.evaluate(({ w, t }) => { __v.select(w); __v.attack(t); }, found);
-    await page.waitForTimeout(+(process.env.SHOT_MS || 700));
-    await page.screenshot({ path: path.join(ROOT, "shots", "v3-attack.png") });
+    const times = (process.env.SHOT_MS || "11500").split(",").map(Number);
+    let prev = 0;
+    for (const ms of times) { await page.waitForTimeout(ms - prev); prev = ms; await page.screenshot({ path: path.join(ROOT, "shots", times.length > 1 ? "v3-attack-" + ms + ".png" : "v3-attack.png") }); }
   } else console.log("no shot found");
   console.log(errs.length ? "ERRORS " + errs.join("\n") : "no page errors");
   await browser.close();

@@ -45,7 +45,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .atk svg{font-size:16px}
 #toast{display:none}
 
-#dice{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);display:flex;gap:8px;z-index:6;pointer-events:none}
+#dice{position:fixed;left:50%;top:38%;transform:translate(-50%,-100%);display:flex;gap:8px;z-index:6;pointer-events:none}
 .die{width:46px;height:46px;border-radius:10px;background:#efe6d0;border:3px solid #1a1410;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px;gap:1px;animation:tumble .45s ease-out;box-shadow:0 4px 12px rgba(0,0,0,.5)}
 .die i{border-radius:50%;background:transparent}
 .die i.on{background:#1a1410}
@@ -386,9 +386,11 @@ function missPoint(tpos, from) { const d = tpos.clone().sub(from).setY(0).normal
 
 /* ---- attacks you can see: a glowing shot, a lunge, a flash ---- */
 function shoot(from, to, col, size, arc) {
-  const g = glow(col, size, 2); const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.16, 10, 8), new THREE.MeshBasicMaterial({ color: C(col) }));
-  scene.add(g, core); const d = from.distanceTo(to), dur = Math.max(0.12, d / 16);
-  return anim(dur, k => { const p = from.clone().lerp(to, k); p.y += Math.sin(Math.PI * k) * arc; g.position.copy(p); core.position.copy(p); if (vr() < 0.7) particle(col, size * 0.5, 1.5, p, new THREE.Vector3(0, 0.1, 0), 0.25, 0); }).then(() => scene.remove(g, core));
+  size *= 1.6;
+  const g = glow(col, size, 2); const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const streak = new THREE.Mesh(new THREE.BoxGeometry(size * 0.12, size * 0.12, size * 1.6), new THREE.MeshBasicMaterial({ color: C(col) }));
+  scene.add(g, core, streak); const d = from.distanceTo(to), dur = Math.max(0.15, d / 14);
+  return anim(dur, k => { const p = from.clone().lerp(to, k); p.y += Math.sin(Math.PI * k) * arc; g.position.copy(p); core.position.copy(p); streak.position.copy(p); streak.lookAt(to.x, to.y + Math.cos(Math.PI * k) * arc * 0.3, to.z); streak.translateZ(-size * 0.6); if (vr() < 0.7) particle(col, size * 0.5, 1.5, p, new THREE.Vector3(0, 0.1, 0), 0.25, 0); }).then(() => scene.remove(g, core, streak));
 }
 async function volley(a, t, hits, info) {
   const w = info.w, tp = t.mesh.position.clone().setY(0.55), from = a.mesh.position.clone().setY(0.6);
@@ -809,7 +811,7 @@ function attackInfo(a, t) {
 async function rollDice(n, need, at, show = true) {
   const vals = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6));
   if (!SPEED.v || !show) return vals;
-  await showDice(vals, need);
+  await showDice(vals, need, at);
   return vals;
 }
 let kills = 0;
@@ -1381,8 +1383,9 @@ const speakLearned = () => {};
 /* ================= 3D port: dice, camera, touch, screens =================
    Everything below here is new. It only draws the game and turns taps into the same calls the 2D game makes. */
 const DICE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-async function showDice(vals, need) {
+async function showDice(vals, need, at) {
   const box = $("dice"); box.innerHTML = "";
+  if (at) { const s = screenOf(at.clone().setY(1.7)); box.style.left = Math.max(80, Math.min(innerWidth - 80, s.x)) + "px"; box.style.top = Math.max(110, s.y) + "px"; }
   for (const v of vals) { const d = document.createElement("div"); d.className = "die " + (v >= need ? "hit" : "miss"); for (let i = 0; i < 9; i++) { const p = document.createElement("i"); if (DICE_PIPS[v].includes(i)) p.className = "on"; d.appendChild(p); } box.appendChild(d); }
   await wait(900);
   box.innerHTML = "";
@@ -1392,7 +1395,7 @@ async function showDice(vals, need) {
 const cam = { az: 0.38, pol: 0.92, dist: 26, tx: 0, tz: 0, gx: 0, gz: 0, gd: null, off: 0 };
 const camClampT = () => { cam.gx = Math.max(-W / 2, Math.min(W / 2, cam.gx)); cam.gz = Math.max(-H / 2, Math.min(H / 2, cam.gz)); };
 function focusOn(p, instant) {
-  cam.gx = p.x; cam.gz = p.z; camClampT();
+  cam.gx = p.x * 0.72; cam.gz = p.z * 0.72; camClampT();   /* lean a little toward the middle of the board */
   if (instant) { cam.tx = cam.gx; cam.tz = cam.gz; }
 }
 function fitDist() { const a = innerWidth / innerHeight; return Math.max(15, Math.min(60, 15 / (2 * Math.tan(19 * Math.PI / 180) * Math.min(a, 1.45)) + 4)); }
