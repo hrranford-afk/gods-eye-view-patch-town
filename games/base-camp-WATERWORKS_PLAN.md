@@ -45,3 +45,8 @@ player lays between the colony and the real sink and toilet, with things visibly
 ## Rules
 Bad water is funny, never deadly. Nobody dies. No real brands. The save stays backward-compatible.
 The robots test the pacing, so water helps growth and is never a chore.
+
+## Harry's taste call (13 Nov 2026): "Cheekier, go with B"
+Every flush run gets a tiny trumpet fanfare. The creatures hold their noses, and a bucket that has tipped in gets a cheeky
+little "ploop". It stays silly and cartoonish, and it is still kind: no close-ups, nothing gross on screen, and no jokes at
+any creature's expense.
