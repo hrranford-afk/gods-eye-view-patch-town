@@ -18,3 +18,11 @@
    creatures were all away. Check it.
 What worked and must stay: a cable car from the floor up to a real table; camps on high shelves with cars running down;
 the glowing scan outline on a real desk; the colony on a real kitchen floor at the right scale.
+
+## Status 13 Nov, 17:00 (CAIRN)
+- Done on `game/bc-fixes19`: items 1 to 4, 6, 7 and 8.
+- Item 5 (scout ink) is built but left OFF, because of its cost.
+- Item 9 was not found in the current code. The HUD in Harry's screenshot was builds 12 and 13.
+- **Correction:** the builder's 8-hour runs gave 40 settlers in 4 camps for build 17 too. CAIRN's "2 camps of 12" was from
+  CAIRN's own run, which stepped the simulation differently. So the drop is NOT confirmed. Follow-on goals were added anyway.
+- **To check before release:** shot 58 shows two "Pip" chips in one camp, and the request card is not in the picture.

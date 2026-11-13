@@ -23,4 +23,9 @@ Harry, 13 Nov: about half of the Max plan goes to building the games, and half t
 | 12 Nov | Build 15: props wired in | 217,080 | live |
 | 13 Nov | Build 16: one look | 241,672 | live |
 | 13 Nov | Build 17: mouse port (cut off by restart; finished by CAIRN) | lost with the restart | live |
-| 13 Nov | Build 18 waterworks; places prototype; build 19 fixes; Christmas decor; B&B graphics | pending | running |
+| 13 Nov | Build 18 waterworks (cut off by the 14:49 restart; tests by CAIRN) | lost with the restart | built, 3 bugs found, not live |
+| 13 Nov | Places prototype (resume) | 89,729 | live |
+| 13 Nov | Christmas decorations (restart; then from scratch) | 293,934 | done, merge pending |
+| 13 Nov | B&B graphics pass (resume) | 137,493 | test link |
+| 13 Nov | Build 19 fixes (resume) | 199,124 | done; 2 claims to check (duplicate Pip chip still in shot 58; the card is not visible in shot 58) |
+| 13 Nov | Restarts | 2 (about 10:40 and 14:49) | |
