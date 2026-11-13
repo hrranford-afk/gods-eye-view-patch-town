@@ -147,3 +147,9 @@ bring to the game."
 - At most 2 builders at a time, so the machine stays fast and tests stay honest.
 
 **Wake-ups:** `send_later` every 2 hours; builder reports also wake the session.
+
+### Overnight log (UTC = UK time in November)
+- 21:55 Build 19 checked (card shot, unique chips, Safari + iPad checks pass) and LIVE at base-camp/. Build 17 backup at base-camp/b17/ (checked live). Artifact YHt8… updated (v18, no .glb).
+- 22:05 Sound pass builder started on game/bc-sound (from build 19). Synth only, sound board at ?soundboard=1. Not deployed until checked.
+- 22:05 First-10-minutes play-through started; it writes games/base-camp-first10/ on this branch. Design proposal only.
+- Known test failers carried into build 19: room, totem, ar-room, practice (older suites). Four suites (ceiling, fun, battle, multi-room) failed under load and passed on rerun.
