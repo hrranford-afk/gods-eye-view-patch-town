@@ -1540,6 +1540,7 @@ addEventListener("keydown", e => {
 let last = nowS();
 function frame() {
   const t = nowS(), dt = Math.min(0.05, t - last); last = t;
+  if (!SPEED.v) { requestAnimationFrame(frame); return; }   /* robot mode: no drawing, so tests run fast */
   for (let i = anims.length - 1; i >= 0; i--) { const a = anims[i], k = Math.min(1, (t - a.t0) / a.dur); a.fn(k); if (k >= 1) { anims.splice(i, 1); a.res(); } }
   /* camera */
   cam.tx += (cam.gx - cam.tx) * Math.min(1, dt * 5); cam.tz += (cam.gz - cam.tz) * Math.min(1, dt * 5);
@@ -1594,7 +1595,8 @@ window.__v = {
   info(aid, tid) { const a = byId(aid), t = byId(tid); return a && t ? infoPlain(attackInfo(a, t)) : null; },
   reach(id) { const u = byId(id); if (!u) return null; return [...reach(u, u.mv).dist.keys()].sort((a, b) => a - b); },
   newGame(s) { $("end").hidden = true; newBattle(loadout, droneSel, s); return seed; },
-  fast(on) { SPEED.v = on ? 0 : 1; return SPEED.v; },
+  fast(on) { SPEED.v = typeof on === "number" ? on : on ? 0 : 1; return SPEED.v; },
+  tileXY(x, y) { const p = wpos(x, y, 0.3).project(camera); return { x: (p.x * 0.5 + 0.5) * innerWidth, y: (-p.y * 0.5 + 0.5) * innerHeight }; },
   camera(o) { Object.assign(cam, o); cam.gd = null; if (o.tx != null) cam.gx = o.tx; if (o.tz != null) cam.gz = o.tz; return { ...cam }; },
   W, H, key,
 };
