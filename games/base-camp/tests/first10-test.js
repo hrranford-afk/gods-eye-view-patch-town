@@ -16,7 +16,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   const cards = () => ev(() => {
     const vis = (id) => { const e = document.getElementById(id); return !!e && !e.hidden && getComputedStyle(e).display !== 'none'; };
     const L = []; if (vis('wx')) L.push('weather'); for (const q of document.querySelectorAll('#reqs .req:not(.more)')) L.push('request'); if (document.getElementById('banner').className === 'on') L.push('banner');
-    if (vis('ccam')) L.push('creature cam'); for (const id of ['ask', 'guess', 'modal', 'diary', 'tagpick']) if (vis(id)) L.push(id); return L;
+    for (const id of ['ask', 'guess', 'modal', 'diary', 'tagpick']) if (vis(id)) L.push(id); return L;
   });
   let maxCards = 0, worst = [], landedAt = 0, reqAt = 0, glow = false, framed = null, doneAt = 0, wxBefore = false, shot67 = false;
   while (T() < 62) {
@@ -37,7 +37,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
     }
     if (st.req && !reqAt) { reqAt = T(); glow = await ev(() => !!document.querySelector('#bar [data-tool="seed"].f10glow')); }
     if (reqAt && !shot67 && T() - reqAt > 1.2) { shot67 = true; await p.screenshot({ path: OUT + '67-first10-seed-request.png' }); await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout) || S.cols[0]; __g.camOpen(c); }); await sleep(500);
-      ok('the Pip cam steps aside while a card is up', await ev(() => getComputedStyle(document.getElementById('ccam')).display === 'none' && document.body.classList.contains('card-up')));
+      ok('the Pip cam moves below the card while a card is up', await ev(() => { const a = document.getElementById('ccam').getBoundingClientRect(), r = document.querySelector('#reqs .req').getBoundingClientRect(); return document.body.classList.contains('card-up') && a.top >= r.bottom && a.height > 20; }));
       await p.click('#reqs .req button'); await sleep(400);
       ok('the request button picks the Seeds tool', await ev(() => __g.G.tool === 'seed'));
       const tp = await ev(() => { const S = __g.mainSettlement(); return __g.toScreen(new __g.THREE.Vector3(S.tf.x, S.tf.y + 0.01, S.tf.z)); }); /* right on the tent: normally "No room there" */

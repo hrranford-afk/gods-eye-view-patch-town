@@ -108,7 +108,6 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 #ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
 #ccamView{width:100%;height:118px}#ccam .cinfo{background:rgba(59,42,30,.88);padding:3px 8px 4px;font-size:12px;font-weight:700;line-height:1.25}#ccam .cinfo span{font-size:16px}#ccam .cinfo b{color:#ffd9a8}#ccam .cx{position:absolute;right:4px;top:3px;width:22px;height:22px;border-radius:50%;background:rgba(59,42,30,.72);text-align:center;font-size:12px;line-height:22px}
 body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
-body.card-up #ccam{display:none} /* first10: a card is up, the creature cam steps aside */
 #bar button.f10glow{animation:f10g .9s ease-in-out infinite alternate;border-color:#ffd24a}@keyframes f10g{from{box-shadow:0 0 0 1px #ffd24a66}to{box-shadow:0 0 12px 4px #ffd24a}}
 .doors{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.doors .door{min-height:48px;padding:0;font-size:20px;border-radius:10px;background:rgba(255,246,230,.14)}.doors .door.ready{background:var(--acc);border-color:#ffd9a8;box-shadow:0 0 10px #ffc040}.doors .door.open{background:rgba(143,209,111,.35)}.doors .door.locked{opacity:.45}.doors .door span{font-size:15px}.doors .door b{font-size:17px;color:#fff}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
@@ -2805,6 +2804,12 @@ function f10Fireside(S, c, j, dt, quiet) {
   if (j.t > j.dur) endJob(c);
 }
 function f10CardUp() { const w = $('wx'), r = $('reqs'); return (!!w && !w.hidden) || (!!r && !!r.querySelector('.req:not(.more)')); }
+function f10CamDodge() { /* first10: while a card is up, the creature cam moves down below it (it keeps rendering) */
+  const up = f10CardUp(), cc = $('ccam'); document.body.classList.toggle('card-up', up); if (!cc) return;
+  if (!up || cc.hidden) { if (cc.style.top) cc.style.top = ''; return; }
+  let bot = 0; for (const e of [$('wx'), ...document.querySelectorAll('#reqs .req')]) if (e && !e.hidden && e.offsetParent !== null) bot = Math.max(bot, e.getBoundingClientRect().bottom);
+  const top = Math.round(bot + 10) + 'px'; if (cc.style.top !== top) cc.style.top = top;
+}
 function f10Bar() { /* the glowing buttons: Seeds while the seed request waits, Come back later once the question is asked */
   const b = $('bar'); if (!b) return; const sd = b.querySelector('[data-tool="seed"]'), bk = b.querySelector('#bBack');
   if (sd) sd.classList.toggle('f10glow', !!F10.req && !F10.reqDone && G.tool !== 'seed'); if (bk) bk.classList.toggle('f10glow', !!F10.q && !F10.ans);
@@ -2838,7 +2843,7 @@ function f10Answer() { /* the next visit: the diary answers the question */
   return { text: nm + ' kept the promise: in the night ' + (c ? 'they' : 'it') + ' climbed to the ' + F10.q.name + ' and found what glittered: ' + F10_FIND[Math.floor(hash01(F10.q.name, 7) * F10_FIND.length)] + '. It sits by the campfire now.', by: '' };
 }
 function f10Frame(dt) {
-  document.body.classList.toggle('card-up', f10CardUp()); /* the Pip cam never sits over a card */
+  f10CamDodge(); /* the Pip cam never sits over a card */
   const S = mainSettlement(); for (const T of G.settlements) if (T.f10fire || (F10.on && T === S)) f10FireFrame(T, dt, F10.on && ENV.night && T.placed && T === S);
   f10Light(S, F10.on && ENV.night && !!S); if (!F10.on || G.phase !== 'play') F10.last = 0; if (!F10.on || G.phase !== 'play' || !S || (G.returning && !G.locked) || BT.on) return;
   const now = performance.now(), rdt = F10.last ? Math.min(1, (now - F10.last) / 1000) : dt; F10.last = now; /* real seconds: a slow frame rate must not stretch the first minute */
