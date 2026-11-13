@@ -85,3 +85,34 @@ in a single block, never split across several boxes.
   - Before Harry stops: send the town tonight's orders.
 - **Start each day in a fresh session,** from this file, HANDOVER.md and `base-camp-ROADMAP.html`. A fresh session is cheaper per message and has a sharper memory.
 - The list of days is in `base-camp-ROADMAP.html` (the "Daily milestones" section).
+
+## Where Base Camp stands at the end of 13 Nov (for the next session, Friday 14 Nov)
+**Live:**
+- Base Camp build 17 (the mouse, plus the Safari fix) at `base-camp/`.
+- Places prototype at `base-camp/places/`.
+- B&B graphics test at `bnb-toy/`.
+- Vigil 3D test at `vigil-3d/`.
+
+**Branches to combine for Friday's milestone** ("pipes, fixes and Christmas live together"):
+1. `game/room-colony`: build 18 waterworks. A builder was fixing three regressions as the session ended: auto-ar
+   "What is this?" never fires; fun's mosh pit, celebrate and rainbow. Read its last commits.
+2. `game/bc-merge20`: build 18 plus decor.js, merged and tested (8208b3b, d74fd3d). Merge room-colony's fixes into it.
+3. `game/bc-fixes19`: the build 19 fixes (67a7052). Merge it last.
+   - Check: shot 58 shows two "Pip" chips in one camp, and the request card is not in the picture.
+   - Re-check the portrait card on an 820×1180 screen yourself.
+4. Then run every suite one at a time, plus `noxr.js` and `diagclash2.js`.
+5. Deploy `index.html` plus `models/props.js`, `models/decor.js` and `assets/` to gh-pages `base-camp/`. The Artifact
+   cannot hold the .glb, so publish without it.
+
+**Known flake to look at:** water-test "a piped farm never dries out" fails about 1 run in 3, probably when a random kink
+makes `netStep` skip the `piped` flag.
+
+**Waiting on Harry:**
+- paste the town orders (webkit-1, seasons-1, art-b2, waterworks-1, experts-1, measure-1);
+- yes or no to the GitHub tools;
+- the Remote Control bridge (security call);
+- taste calls: totems as real things or stickers; whether Places feels right; B&B's new look; Vigil 3D's look;
+  one family look or separate looks;
+- the jewellery-shop "shop mode" (money: favour or paid).
+
+**The town lost the Mini from 12:25 on 13 Nov.**
