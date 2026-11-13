@@ -600,6 +600,7 @@ const CEIL_ABOVE = 0.3, CEIL_MINH = 1.5; /* build 12: a hit more than 0.3 m abov
 const ZTYPES = { CEIL: { base: 'Ceiling', land: 'hanging', spec: 'hanging', hint: 'a hanging camp' }, FLOOR: { base: 'Floor', land: 'plains', spec: 'farmland', hint: 'farms' }, TABLE: { base: 'Desk', land: 'meadow', spec: 'village', hint: 'a village' }, SHELF: { base: 'Shelf', land: 'cliffs', spec: 'orchard', hint: 'an orchard' }, SILL: { base: 'Sill', land: 'lookout', spec: 'lookout', hint: 'a lookout' }, SMALL: { base: 'Perch', land: 'grove', spec: 'grove', hint: 'a lone tree' } };
 // FLOOR: the lowest zone, if it is big (1 m2) or something like a rug (within 15 cm, 0.3 m2). SMALL: under 0.1 m2.
 // TABLE: 25 cm to 1 m above the floor, not narrow. SILL: 80 cm to 1.25 m up and narrow. SHELF: higher, or narrow and high. Anything else big enough is a desk.
+const PLACE_ADJ = ['Sunny', 'Mossy', 'Cosy', 'Breezy', 'Crumbly', 'Quiet', 'Golden', 'Snug']; /* build 19: two perches are "Sunny Perch" and "Mossy Perch", never "Perch 2" */
 function classify() {
   const zs = SCAN.zones; if (!zs.length) return;
   const cand = (z) => z.band && z.band.nh >= 12 && z.band.nb / z.band.nh >= 0.5, grounded = zs.filter((z) => !cand(z)), ref = grounded.length ? grounded.reduce((m, z) => (z.y < m.y ? z : m), grounded[0]) : null;
@@ -620,7 +621,7 @@ function classify() {
     else t = 'TABLE';
     z.type = t; counts[t] = (counts[t] || 0) + 1; z.nth = counts[t];
   }
-  for (const z of zs) { const T = ZTYPES[z.type]; z.name = T.base + (counts[z.type] > 1 ? ' ' + z.nth : '') + ' \u2013 ' + T.land; z.spec = T.spec; }
+  for (const z of zs) { const T = ZTYPES[z.type]; z.name = (counts[z.type] > 1 ? PLACE_ADJ[(z.nth - 1) % PLACE_ADJ.length] + (z.nth > PLACE_ADJ.length ? ' ' + Math.ceil(z.nth / PLACE_ADJ.length) : '') + ' ' : '') + T.base + ' \u2013 ' + T.land; z.spec = T.spec; }
 }
 function scanZone(id) { return SCAN.zones.find((z) => z.id === id); }
 function paintBands(play) {

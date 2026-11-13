@@ -68,7 +68,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   console.log('colonies before away:', cols0);
   const lm = await ev(() => __g.G.settlements.map((S) => S.things.filter((t) => t.kind === 'lm').map((t) => t.role).join('+')).join(' | '));
   ok('landmarks stand on the settled zones (forge, well, tower...)', /forge/.test(lm) && /tower/.test(lm), lm);
-  ok('the ready-made cable carried settlers to the speaker (no player action)', await ev(() => { const S = __g.G.settlements.find((q) => q.zoneName.startsWith('Perch')); return !!S && S.cols.length > 0 && !S.awaiting; }));
+  ok('the ready-made cable carried settlers to the speaker (no player action)', await ev(() => { const S = __g.G.settlements.find((q) => q.zoneName.includes('Perch')); return !!S && S.cols.length > 0 && !S.awaiting; }));
   ok('the marked cable became a ready-made link', await ev(() => (__g.syncCables(), __g.G.links.some((l) => l.ready && l.cid))));
   const a8 = await ev(() => { const r = __g.awaySim(8 * 3600, 12); return { ms: r.ms, steps: r.steps, n: r.lines.length, lines: r.lines.map((l) => l.text) }; });
   const a24 = await ev(() => { const r = __g.awaySim(24 * 3600, 6); return { ms: r.ms, steps: r.steps, n: r.lines.length }; });
@@ -151,7 +151,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
 
   // ---- MOVED: the speaker moves 30 cm ----
   await ev(() => { const q = __g.PROPS.find((x) => x.id === 'speaker'); __g.movePropTo('speaker', q.x - 0.3, q.z, 0); });
-  const popBefore = await ev(() => __g.G.settlements.find((S) => S.zoneName.startsWith('Perch')).cols.length);
+  const popBefore = await ev(() => __g.G.settlements.find((S) => S.zoneName.includes('Perch')).cols.length);
   await rescan();
   const ask = await ev(() => ({ n: __g.G.asks.length, vis: !document.getElementById('ask').hidden, text: document.getElementById('ask').innerText }));
   ok('the speaker moved 30 cm: "Did the ... move here?"', ask.n >= 1 && ask.vis && /move here/.test(ask.text), ask.text.split('\n')[0]);
@@ -159,7 +159,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   const zx0 = await ev(() => __g.G.zones.find((z) => z.type === 'SMALL').cx);
   await p.click('#askYes'); await sleep(300);
   const zx1 = await ev(() => __g.G.zones.find((z) => z.type === 'SMALL').cx);
-  ok('answering yes moves the whole colony with the speaker', Math.abs(zx1 - zx0) > 0.2 && await ev(() => __g.G.settlements.find((S) => S.zoneName.startsWith('Perch')).cols.length) === popBefore, 'moved ' + Math.round(Math.abs(zx1 - zx0) * 100) + ' cm');
+  ok('answering yes moves the whole colony with the speaker', Math.abs(zx1 - zx0) > 0.2 && await ev(() => __g.G.settlements.find((S) => S.zoneName.includes('Perch')).cols.length) === popBefore, 'moved ' + Math.round(Math.abs(zx1 - zx0) * 100) + ' cm');
   ok('moving the speaker does not count as tidying or squashing', (await ev(() => __g.G.report.lines.filter((l) => /New land|squashed/.test(l.text)).length)) === 0);
   await closeCards();
 
