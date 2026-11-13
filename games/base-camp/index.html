@@ -2762,7 +2762,7 @@ const F10_LEN = 900, F10_REQ = 32, F10_WX = 180, F10_Q = 540;
 const F10_SEED = { id: 'f10seeds', icon: 'seed', text: 'My seeds spilled! Tap Seeds, then tap the ground by the tent.', give: 'f10seed', f10: 1 };
 const F10_BACK = { id: 'f10back', icon: 'bang', text: '', give: 'f10back', f10: 1 };
 const F10_FIND = ['a lost button, shiny as a moon', 'a sequin that flashes like a lighthouse', 'a marble full of tiny clouds', 'a bottle cap with a star on it'];
-function f10Reset() { Object.assign(F10, { on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false }); }
+function f10Reset() { Object.assign(F10, { last: 0, on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false }); }
 function f10Save() { return { on: F10.on ? 1 : 0, t: Math.round(F10.t), done: F10.reqDone ? 1 : 0, wx: F10.wx ? 1 : 0, q: F10.q, ans: F10.ans ? 1 : 0 }; }
 function f10Load(d) { /* an old save has no record: the first session is over for it */
   f10Reset(); if (!d || typeof d !== 'object') return;
@@ -2841,8 +2841,9 @@ function f10Answer() { /* the next visit: the diary answers the question */
 function f10Frame(dt) {
   document.body.classList.toggle('card-up', f10CardUp()); /* the Pip cam never sits over a card */
   const S = mainSettlement(); for (const T of G.settlements) if (T.f10fire || (F10.on && T === S)) f10FireFrame(T, dt, F10.on && ENV.night && T.placed && T === S);
-  f10Light(S, F10.on && ENV.night && !!S); if (!F10.on || G.phase !== 'play' || !S || (G.returning && !G.locked) || BT.on) return;
-  F10.t += dt; if (F10.t >= F10_LEN) { F10.on = false; f10FireFrame(S, dt, false); f10Light(S, false); persistSoon(); return; }
+  f10Light(S, F10.on && ENV.night && !!S); if (!F10.on || G.phase !== 'play') F10.last = 0; if (!F10.on || G.phase !== 'play' || !S || (G.returning && !G.locked) || BT.on) return;
+  const now = performance.now(), rdt = F10.last ? Math.min(1, (now - F10.last) / 1000) : dt; F10.last = now; /* real seconds: a slow frame rate must not stretch the first minute */
+  F10.t += rdt; if (F10.t >= F10_LEN) { F10.on = false; f10FireFrame(S, dt, false); f10Light(S, false); persistSoon(); return; }
   const quiet = FUN.bannerT <= 0 && !f10CardUp();
   if (!F10.req && F10.t >= F10_REQ && (quiet || F10.t > F10_REQ + 12)) f10Ask(S);
   if (!F10.wx && !store.get('bc-wxchoice') && ((F10.reqDone && F10.t - F10.reqDoneT > 8 && quiet) || F10.t >= F10_WX)) { if (quiet || F10.t >= F10_WX + 30) { F10.wx = true; wxCard(); } }
@@ -4101,9 +4102,9 @@ function orbitCam(dt) {
   camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
   camera.lookAt(P.target); camera.updateMatrixWorld(true);
 }
-const F10_CAM_D = 0.55; /* camp about 0.17 m across, 50 degree view: about a third of the screen height */
+const F10_CAM_D = 0.36; /* the camp (tent and creatures, about 0.15 m) fills about a third of the screen height: measured at 820 x 1180 */
 function f10Cam(S) { /* first10: on landing the camera flies to the camp, from the side it was already looking from */
-  const cx = S.tf.x, cy = S.tf.y + 0.02, cz = S.tf.z, cp = camera.position, d = Math.max(0.3, Math.hypot(cp.x - cx, cp.y - cy, cp.z - cz));
+  const at = f10FireAt(S), [cx, cz] = l2w(S, at[0] * 0.45, at[1] * 0.45), cy = S.tf.y + 0.02, cp = camera.position /* aim between the tent and the campfire */, d = Math.max(0.3, Math.hypot(cp.x - cx, cp.y - cy, cp.z - cz));
   P.campCam = true; P.yaw = Math.atan2(cp.x - cx, cp.z - cz); P.pitch = clamp(Math.asin(clamp((cp.y - cy) / d, -1, 1)), 0.3, 1.3); P.pitchGoal = 0.62;
   P.target.set(cx, cy, cz); P.dist = d; focusOn(cx, cy, cz, F10_CAM_D);
 }
