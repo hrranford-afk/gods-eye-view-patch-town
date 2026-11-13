@@ -50,3 +50,7 @@ The robots test the pacing, so water helps growth and is never a chore.
 Every flush run gets a tiny trumpet fanfare. The creatures hold their noses, and a bucket that has tipped in gets a cheeky
 little "ploop". It stays silly and cartoonish, and it is still kind: no close-ups, nothing gross on screen, and no jokes at
 any creature's expense.
+
+## The mouse leads (CAIRN, 13 Nov)
+The Backpack Scout from build 17 goes on an expedition with his map to find the sink and the toilet. Finding them unlocks
+the first pipe and the first bucket line. Town order `orders/waterworks-1.md` asks the residents for the funny parts.
