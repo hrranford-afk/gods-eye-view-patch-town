@@ -166,7 +166,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 17';
+const BUILD = 'build 18';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -353,7 +353,7 @@ try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat
 // ============ toast, sound ============
 let toastT = 0;
 function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs > 5 ? secs : 2) * 1000); } // toasts are small, at the top, and gone after 2 s (a longer time only for warnings)
-const SND = { ctx: null, on: true, nb: null };
+const SND = { ctx: null, on: true, nb: null }, sfxExtra = {}; /* build 18: sounds added by later sections (ploop, trumpet) */
 try { SND.on = localStorage.getItem('bc-sound') !== '0'; } catch (e) { /* storage blocked: sound on */ }
 function audioCtx() { if (!SND.on) return null; try { if (!SND.ctx) SND.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; } }
 function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.05); }
@@ -380,6 +380,7 @@ function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no
     else if (kind === 'tada') { tone(659, 0.1, 'triangle', 0.045); tone(988, 0.26, 'triangle', 0.045, 0, 0.1); }
     else if (kind === 'fanfare') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.045, 0, i * 0.09)); [523, 659, 784].forEach((f) => tone(f, 0.55, 'triangle', 0.025, 0, 0.42)); }
     else if (kind === 'firework') { sNoise(c, t, 0.45, 1100, 'lowpass', 0.07); sNoise(c, t + 0.05, 0.3, 4200, 'highpass', 0.02); }
+    else if (sfxExtra[kind]) sfxExtra[kind](c, t, tone);
   } catch (e) { /* sound is optional */ }
 }
 
@@ -3291,6 +3292,344 @@ function envLine(full) {
   return `<div style="opacity:.8;font-size:12px">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${sky}${full ? ' · sun ' + ENV.sun.toFixed(2) + ' · growth x' + ENV.grow.toFixed(2) : ''}</div>`;
 }
 function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 0).slice(0, innerWidth < 500 ? 3 : 5); return cs.length ? '<div class="chips">' + cs.map((c) => `<button class="cbtn" data-cam="${c.id}" title="Watch ${esc(c.name)}">🎥 ${esc(c.name.split(' ')[0])}</button>`).join('') + '</div>' : ''; }
+
+/* ============ WATERWORKS (build 18): straws bring water home, buckets take the waste to the toilet, a mouse leads the way. The idea is Harry's. ============
+   The network is built from the room map's own spots: a spot called sink / toilet / plant / vase / cup is a water source or a waste drop (waterKind). Nothing is stored apart from G.net:
+   found (which sinks and toilets the scout has found), pipes (straws, water in) and lines (bucket lines, waste out). The cable car code is reused for the lines (linkPos, hookFor, hookPass, via a ceiling hook).
+   Every new player-facing text is in WW, each with by: 'CAIRN (placeholder)', so the town's answers (order waterworks-1) can replace them. Bad water is funny, never deadly. ============ */
+const WW_BY = 'CAIRN (placeholder)';
+const WW = { /* t: a text, a function of its argument, or a list to pick from */
+  foundSink: { by: WW_BY, t: (n) => n + ' found the sink!' },
+  foundToilet: { by: WW_BY, t: (n) => n + ' found the toilet! Everybody is very polite about it.' },
+  pipeStart: { by: WW_BY, t: (w) => 'The colonists start threading a straw to the ' + w + '.' },
+  pipeReady: { by: WW_BY, t: () => 'Water! A straw brings it all the way home.' },
+  lineStart: { by: WW_BY, t: () => 'The colonists hang a bucket line to the toilet.' },
+  lineReady: { by: WW_BY, t: () => 'The bucket line is ready. Off it goes!' },
+  tip: { by: WW_BY, t: () => 'Ploop! Toot toot! The bucket tipped in.' },
+  kink: { by: WW_BY, t: () => 'Oh dear, a kink in the straw! The drops have stopped.' },
+  stuck: { by: WW_BY, t: () => 'A bucket is stuck and swinging about. Somebody will climb up.' },
+  fixed: { by: WW_BY, t: () => 'All flowing again.' },
+  tapfix: { by: WW_BY, t: () => 'One tap from the Giant, and it is sorted.' },
+  notFound: { by: WW_BY, t: (w) => 'Nobody has found the ' + w + ' yet. The scout is looking!' },
+  needWood: { by: WW_BY, t: (n) => 'That needs ' + n + ' wood.' },
+  wrongKind: { by: WW_BY, t: (w) => w === 'toilet' ? 'A straw is for water. The toilet takes buckets.' : 'Buckets go to the toilet. Pick a toilet.' },
+  dup: { by: WW_BY, t: () => 'That one is already joined up.' },
+  hintPipe: { by: WW_BY, t: () => 'Drag from your camp to the sink (or a plant, vase or cup). A straw brings the water.' },
+  hintWaste: { by: WW_BY, t: () => 'Drag from your camp to the toilet. Buckets ride the line.' },
+  nose: { by: WW_BY, t: ['Phew!', 'Nose pegs on!', 'Bye-bye, bucket!', 'Hold your breath!'] },
+  cheer: { by: WW_BY, t: ['Hooray for the loo!', 'Ploop! Hooray!', 'Toot toot!', 'Well done, bucket!'] },
+  unkink: { by: WW_BY, t: ['Unkinked it!', 'Good as new!', 'Straw straightened!'] },
+  climb: { by: WW_BY, t: ['Up I go!', 'Wiggle, wiggle...', 'Got it!'] },
+  burp: { by: WW_BY, t: ['Blub!', 'Burp! Green bubbles!', 'Fizz!'] },
+  hyper: { by: WW_BY, t: ['Zoom!', 'Tea-riffic!', 'Whee, tea!'] },
+  sniff: { by: WW_BY, t: ['Pheew! A bucket line would be nice.', 'Somebody take that bucket away!'] },
+};
+const wwText = (k, a) => { const e = WW[k]; return typeof e.t === 'function' ? e.t(a) : Array.isArray(e.t) ? pick(e.t) : e.t; };
+const wwToast = (k, a, secs) => toast(esc(wwText(k, a)) + ' <i class="by">by ' + WW_BY + '</i>', secs || 4);
+const WSRC = { /* what a spot can be: q = the water quality; lead = the scout has to find it before a line can be laid */
+  sink: { name: 'sink', q: 'fresh', col: 0x4aa8e8, lead: true, tag: 'fresh water' }, toilet: { name: 'toilet', q: 'waste', col: 0x9a6a3a, lead: true, tag: 'waste only' },
+  pot: { name: 'plant pot', q: 'green', col: 0x7fd36a, tag: 'green water' }, vase: { name: 'vase', q: 'green', col: 0x7fd36a, tag: 'green water' }, cup: { name: 'cup', q: 'tea', col: 0xd9a066, tag: 'tea' },
+};
+const WQ = { fresh: 0x4aa8e8, green: 0x7fd36a, tea: 0xd9a066 }, WQ_HEX = { fresh: '4aa8e8', green: '7fd36a', tea: 'd9a066' };
+const PIPE_COST = 4, LINE_COST = 5;
+function waterKind(sp) { /* what a spot is for the water network: sink, toilet, pot, vase, cup or '' */
+  if (!sp || sp.src === 'default') return '';
+  const s = ((sp.cls || '') + ' ' + (sp.name || '')).toLowerCase();
+  if (/toilet|loo\b/.test(s)) return 'toilet'; if (/\bsink\b|basin/.test(s)) return 'sink'; if (/vase/.test(s)) return 'vase'; if (/plant|\bpot\b/.test(s)) return 'pot'; if (/\bcup\b|mug|wine glass|\bglass\b/.test(s)) return 'cup';
+  return '';
+}
+function netNew() { return { found: {}, pipes: [], lines: [], exp: null, nid: 1, t: 0, xt: 0, brkT: 70, log: [], marks: {}, st: { tips: 0, fanfares: 0, returns: 0, breaks: 0, kinks: 0, sticks: 0, fixes: 0, expeds: 0 } }; }
+G.net = netNew();
+const netLog = (k, o) => { const L = G.net.log; L.push(Object.assign({ k, t: G.simT }, o || {})); if (L.length > 80) L.shift(); };
+const srcOpen = (sp) => { const k = waterKind(sp); return !!k && (!WSRC[k].lead || !!G.net.found[sp.id]); };
+const srcTop = (sp, out) => out.set(sp.x, sp.y + 0.018, sp.z);
+const campOK = (S) => !!S && S.placed && !S.lost && !S.awaiting && !S.ghost && !!S.zoneRef;
+const netCamps = () => G.settlements.filter(campOK);
+const looOf = (S) => S.things.find((t) => t.kind === 'loo' && !t.dead);
+const campById = (id) => G.settlements.find((s) => s.id === id);
+function netModes() { const m = ['car']; let pi = false, wa = false; for (const sp of G.spots) { const k = waterKind(sp); if (!k || !srcOpen(sp)) continue; if (k === 'toilet') wa = true; else pi = true; } if (pi) m.push('pipe'); if (wa) m.push('waste'); return m; }
+const netMode = () => { const m = G.lineKind || 'car'; return m !== 'car' && netModes().includes(m) ? m : 'car'; };
+/* ---- the models: a bottle-cap tank, a sprinkler, a loo hut, a compost heap, a thimble bucket. All toon + ink, a few merged shapes each ---- */
+const wwOnce = (key, f) => GEO['mg_' + key] || bcMerge(key, f());
+const cylG = (a, b, h, n) => new THREE.CylinderGeometry(a, b, h, n || 12);
+function tankGeo(q) { return wwOnce('tank_' + q, () => [{ g: cylG(0.0108, 0.0108, 0.0015, 14), c: 0xb83a30, y: 0.0008 }, { g: cylG(0.0094, 0.0104, 0.0065, 14), c: 0xd9483b, y: 0.0033 }, { g: cylG(0.0078, 0.0078, 0.0012, 14), c: WQ[q], y: 0.0066 }, { g: cylG(0.0022, 0.0022, 0.0105, 6), c: 0xf2f0e6, y: 0.0112 }]); }
+function sprinklerGeo() { return wwOnce('sprk', () => [{ g: cylG(0.0014, 0.0014, 0.052, 6), c: 0x9aa3a8, y: 0.026 }, { g: cylG(0.0045, 0.0045, 0.0025, 8), c: 0x7d8589, y: 0.0013 }, { g: new THREE.ConeGeometry(0.0075, 0.009, 8), c: 0xe6c06a, y: 0.0555, rx: Math.PI }, { g: new THREE.BoxGeometry(0.018, 0.0016, 0.0016), c: 0x9aa3a8, y: 0.0605 }]); }
+function looGeo() { return wwOnce('loo', () => [{ g: new THREE.BoxGeometry(0.02, 0.026, 0.018), c: 0xd9b27c, y: 0.013 }, { g: new THREE.ConeGeometry(0.0158, 0.012, 4), c: 0xc9552e, y: 0.032, ry: Math.PI / 4 }, { g: new THREE.BoxGeometry(0.009, 0.017, 0.0014), c: 0x6b4423, y: 0.0095, z: 0.0092 },
+  { g: new THREE.BoxGeometry(0.0044, 0.0044, 0.0014), c: 0xffe08a, y: 0.0205, z: 0.0092 }, { g: cylG(0.0008, 0.0008, 0.0085, 5), c: 0x7d8589, y: 0.0395 }, { g: new THREE.SphereGeometry(0.0022, 8, 6), c: 0xe6c06a, y: 0.0442 }]); }
+function heapGeo() { return wwOnce('heap', () => [{ g: new THREE.SphereGeometry(0.0115, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c: 0x5a3b22, sy: 0.62 }, { g: new THREE.SphereGeometry(0.0024, 6, 5), c: 0x6fbf4a, x: 0.004, y: 0.0068, z: 0.002 }, { g: new THREE.SphereGeometry(0.002, 6, 5), c: 0xd9483b, x: -0.004, y: 0.006, z: -0.002 }, { g: new THREE.SphereGeometry(0.0018, 6, 5), c: 0xf2c94c, x: 0.0005, y: 0.0072, z: -0.004 }]); }
+function bucketGeo() { return wwOnce('bucket', () => [{ g: cylG(0.0009, 0.0009, 0.0075, 5), c: 0x7d8589, y: -0.0037 }, { g: cylG(0.0092, 0.0066, 0.0125, 12), c: 0xc9ced3, y: -0.0135 }, { g: new THREE.TorusGeometry(0.0092, 0.0008, 5, 12), c: 0xaab1b8, y: -0.0075, rx: Math.PI / 2 },
+  { g: new THREE.SphereGeometry(0.0009, 5, 4), c: 0x8d959c, x: 0.0045, y: -0.0125, z: 0.0065 }, { g: new THREE.SphereGeometry(0.0009, 5, 4), c: 0x8d959c, x: -0.0045, y: -0.0125, z: -0.0065 }]); }
+function mkLoo() {
+  const g = new THREE.Group(); g.add(inked(new THREE.Mesh(looGeo(), bcToon()), 0.0011)); g.add(blob(0.03));
+  const heap = inked(new THREE.Mesh(heapGeo(), bcToon()), 0.0008); heap.position.set(0.0205, 0, -0.002); heap.visible = false; g.add(heap); g.userData.heap = heap; return g;
+}
+KINDS.loo = { r: 0.022, wood: 0, work: 0, mk: () => mkLoo(), name: 'Loo hut', by: WW_BY };
+TEX.bead = cv(64, 64, (x) => { x.fillStyle = '#1a1410'; x.beginPath(); x.arc(32, 32, 29, 0, 7); x.fill(); x.fillStyle = '#ffffff'; x.beginPath(); x.arc(32, 32, 23, 0, 7); x.fill(); x.fillStyle = 'rgba(150,150,150,1)'; x.beginPath(); x.arc(37, 38, 12, 0, 7); x.fill(); x.fillStyle = '#ffffff'; x.beginPath(); x.arc(37, 38, 9, 0, 7); x.fill(); });
+const PSTRIPE = {};
+function strawMat(q) {
+  if (PSTRIPE[q]) return PSTRIPE[q];
+  const tx = cv(64, 16, (x, w, h) => { x.fillStyle = '#fffaf0'; x.fillRect(0, 0, w, h); x.fillStyle = '#' + WQ_HEX[q]; for (let i = -2; i < 8; i++) { x.beginPath(); x.moveTo(i * 12, 0); x.lineTo(i * 12 + 6, 0); x.lineTo(i * 12 - 2, h); x.lineTo(i * 12 - 8, h); x.fill(); } });
+  tx.wrapS = tx.wrapT = THREE.RepeatWrapping; return (PSTRIPE[q] = new THREE.MeshToonMaterial({ map: tx, gradientMap: bcGrad() }));
+}
+const netGroup = () => { const g = new THREE.Group(); world.add(g); return g; };
+const GLOWM = {};
+const glowMat = (col) => GLOWM[col] || (GLOWM[col] = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }));
+function dropMeshes(run) { for (const k of ['tube', 'ink', 'glow']) if (run[k]) { run.group.remove(run[k]); run[k].geometry.dispose(); run[k] = null; } }
+function netDrop(run) { /* a straw or line goes away (its camp or its source is gone) */
+  dropMeshes(run); if (run.cable) { run.group.remove(run.cable); run.cable.geometry.dispose(); run.cable = null; } world.remove(run.group);
+  const N = G.net; const i = N.pipes.indexOf(run); if (i >= 0) N.pipes.splice(i, 1); const j = N.lines.indexOf(run); if (j >= 0) N.lines.splice(j, 1);
+}
+function netReset() {
+  const N = G.net; for (const r of N.pipes.concat(N.lines)) { dropMeshes(r); if (r.cable) { r.group.remove(r.cable); r.cable.geometry.dispose(); } world.remove(r.group); }
+  for (const id in N.marks) { const m = N.marks[id]; world.remove(m); if (m.material.map) m.material.map.dispose(); m.material.dispose(); }
+  if (N.rope) world.remove(N.rope);
+  G.net = netNew();
+}
+/* ---- pipes (straws) ---- */
+function tankPos(S, p, out) { const [wx, wz] = l2w(S, p.tl[0], p.tl[1]); return out.set(wx, SY(S, 0), wz); }
+function pipeFarm(S, p) { let best = null, bd = 1e9; for (const t of S.things) if (t.kind === 'farm' && t.built && !t.hold && !t.dead) { const d = Math.hypot(t.x - p.tl[0], t.z - p.tl[1]); if (d < bd) { bd = d; best = t; } } return best; }
+function mkPipeRun(S, o) {
+  const sp = spotById(o.src), k = sp ? waterKind(sp) : 'sink', q = (WSRC[k] || WSRC.sink).q;
+  const p = { id: o.id || G.net.nid++, k: 'water', sid: S.id, src: o.src, tl: o.tl, q, prog: o.prog || 0, ready: !!o.ready, kink: false, ku: 0.9, fixT: 0, fixer: null, flow: rnd(0, 1), key: '', sprayT: 0, qT: rnd(8, 20), pts: null, cum: null, len: 1 };
+  if (p.id >= G.net.nid) G.net.nid = p.id + 1;
+  const g = netGroup(); p.group = g;
+  p.tank = inked(new THREE.Mesh(tankGeo(q), bcToon()), 0.0007); g.add(p.tank);
+  p.spr = inked(new THREE.Mesh(sprinklerGeo(), bcToon()), 0.0006); g.add(p.spr);
+  const N = 14, pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3)); p.nd = N;
+  p.drops = new THREE.Points(pg, new THREE.PointsMaterial({ map: TEX.bead, color: WQ[q], size: 0.011, sizeAttenuation: true, transparent: true, alphaTest: 0.4, depthWrite: false })); p.drops.frustumCulled = false; p.drops.renderOrder = 4; g.add(p.drops);
+  p.knot = inked(new THREE.Mesh(geo('knotG', () => new THREE.SphereGeometry(0.0048, 8, 6).scale(1.5, 0.9, 1.5)), M(0xfffaf0)), 0.0008); p.knot.visible = false; g.add(p.knot);
+  p.bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); p.bang.scale.set(0.022, 0.022, 1); p.bang.renderOrder = 20; p.bang.visible = false; g.add(p.bang);
+  G.net.pipes.push(p); return p;
+}
+function pipeBuild(S, p) { /* the geometry of one straw, rebuilt only when an end moves */
+  const sp = spotById(p.src); if (!sp) return false; const A = srcTop(sp, new THREE.Vector3()), T = tankPos(S, p, new THREE.Vector3()), f = pipeFarm(S, p), Nz = new THREE.Vector3();
+  T.y = SY(S, 0.0165); if (f) { const [wx, wz] = l2w(S, f.x, f.z); Nz.set(wx, SY(S, 0.0585), wz); } else { const [wx, wz] = l2w(S, p.tl[0] + 0.03, p.tl[1]); Nz.set(wx, SY(S, 0.05), wz); }
+  const key = [A, T, Nz].map((v) => v.toArray().map((x) => Math.round(x * 400)).join(',')).join('|') + '|' + Math.round(p.prog * 14) + (f ? 'f' : '');
+  if (key === p.key) return true; p.key = key;
+  const L = A.distanceTo(T), sag = clamp(L * 0.13, 0.02, 0.16), pts = [];
+  for (let i = 0; i <= 36; i++) { const s = i / 36, q = new THREE.Vector3().lerpVectors(A, T, s); q.y -= sag * 4 * s * (1 - s); pts.push(q); }
+  for (let i = 1; i <= 10; i++) { const s = i / 10, q = new THREE.Vector3().lerpVectors(T, Nz, s); q.y += 0.018 * Math.sin(Math.PI * s); pts.push(q); }
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  p.pts = pts; p.cum = cum; p.len = Math.max(0.1, cum[cum.length - 1]); p.N = Nz;
+  const use = p.ready ? pts : pts.slice(0, Math.max(3, Math.ceil(pts.length * Math.max(0.05, p.prog)))); dropMeshes(p);
+  const crv = new THREE.CatmullRomCurve3(use), R = 0.0026, tg = new THREE.TubeGeometry(crv, 64, R, 5, false), uv = tg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * p.len * 75);
+  p.tube = new THREE.Mesh(tg, strawMat(p.q)); p.group.add(p.tube);
+  p.ink = new THREE.Mesh(new THREE.TubeGeometry(crv, 64, R + 0.0007, 5, false), bcInkMat(BCP.ink)); p.ink.userData.ink = 1; p.ink.renderOrder = -1; p.group.add(p.ink);
+  p.glow = new THREE.Mesh(new THREE.TubeGeometry(crv, 48, R * 3.2, 5, false), glowMat(0x4ab4ff)); p.glow.renderOrder = 5; p.group.add(p.glow);
+  p.tank.position.set(T.x, SY(S, 0), T.z); p.spr.position.set(Nz.x, SY(S, 0), Nz.z); p.spr.scale.y = Math.max(0.5, (Nz.y - SY(S, 0)) / 0.0605);
+  return true;
+}
+function ptAt(run, u, out) { const c = run.cum, n = c.length, d = clamp(u, 0, 1) * run.len; let i = 1; while (i < n - 1 && c[i] < d) i++; const span = (c[i] - c[i - 1]) || 1e-6; return out.lerpVectors(run.pts[i - 1], run.pts[i], clamp((d - c[i - 1]) / span, 0, 1)); }
+function pipeVisual(p, dt, time) {
+  const S = campById(p.sid); if (!S || !S.placed || S.lost || !spotById(p.src)) { p.group.visible = false; return; } p.group.visible = true;
+  if (!pipeBuild(S, p)) { p.group.visible = false; return; }
+  const look = G.tool === 'look' && G.phase === 'play'; p.glow.visible = look; if (look) p.glow.material.opacity = 0.3 + 0.12 * Math.sin(time * 3);
+  const pos = p.drops.geometry.attributes.position, N = p.nd, v = tmpV; p.drops.visible = p.ready;
+  if (p.ready) {
+    if (!p.kink) p.flow = (p.flow + dt * 0.16 / p.len) % 1;
+    for (let i = 0; i < N; i++) { let u = (p.flow + i / N) % 1; if (p.kink) u = Math.min(u, p.ku - 0.012 - (i % 7) * 0.011); ptAt(p, u, v); pos.setXYZ(i, v.x, v.y + 0.0046 + 0.0012 * Math.sin(time * 6 + i * 1.7), v.z); }
+    pos.needsUpdate = true;
+  }
+  p.knot.visible = p.kink; p.bang.visible = p.kink;
+  if (p.kink) { ptAt(p, p.ku, v); p.knot.position.copy(v); p.bang.position.set(v.x, v.y + 0.026 + 0.003 * Math.sin(time * 5), v.z); p.knotAt = p.knot.position; }
+  if (p.ready && !p.kink && p.N) { p.sprayT -= dt; if (p.sprayT <= 0) { p.sprayT = 0.4; if (p.q === 'fresh') puff('drop', p.N.x, p.N.y - 0.004, p.N.z, 1, { size: 0.0055, vx: rnd(-0.012, 0.012), vz: rnd(-0.012, 0.012), vy: -0.01, g: -0.2, life: 0.5, jit: 0.012, spread: 0.004 }); else puff('drop', p.N.x, p.N.y - 0.004, p.N.z, 1, { size: 0.0055, vy: -0.01, g: -0.2, life: 0.5, jit: 0.012, spread: 0.004, color: WQ[p.q] }); } }
+}
+/* ---- lines (bucket cable cars to the toilet) ---- */
+function mkLineRun(S, o) {
+  const ln = { id: o.id || G.net.nid++, k: 'waste', sid: S.id, src: o.src, via: (o.via && G.hooks.some((h) => h.id === o.via)) ? o.via : 0, prog: o.prog || 0, ready: !!o.ready, st: 'dock', dir: 1, s: 0, tm: 2.5, tp: 0, load: false, stuck: false, stuckU: 0, fixT: 0, fixer: null, key: '', cdir: 1, g: { riders: [] }, swoops: 0, f1: false, f2: false };
+  if (ln.id >= G.net.nid) G.net.nid = ln.id + 1;
+  const g = netGroup(); ln.group = g; ln.cable = null;
+  const cab = new THREE.Group(); cab.scale.setScalar(1.9); ln.piv = new THREE.Group(); cab.add(ln.piv);
+  ln.bucket = inked(new THREE.Mesh(bucketGeo(), bcToon()), 0.0006); ln.piv.add(ln.bucket);
+  ln.bundle = new THREE.Mesh(geo('bundleG', () => new THREE.SphereGeometry(0.0062, 8, 6).scale(1, 0.8, 1)), M(0x9a7448)); ln.bundle.position.set(0, -0.0112, 0); ln.piv.add(ln.bundle);
+  ln.lid = new THREE.Mesh(geo('lidG', () => new THREE.CylinderGeometry(0.0006, 0.0006, 0.004, 4)), M(0x6fbf4a)); ln.lid.position.set(0, -0.0058, 0); ln.piv.add(ln.lid);
+  g.add(cab); ln.cab = cab; ln.ploop = labelSprite('Ploop!', 0x9a6a3a); ln.ploop.scale.set(0.07, 0.0131, 1); ln.ploop.visible = false; g.add(ln.ploop);
+  ln.bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); ln.bang.scale.set(0.022, 0.022, 1); ln.bang.renderOrder = 20; ln.bang.visible = false; g.add(ln.bang);
+  G.net.lines.push(ln); return ln;
+}
+function lineEnds(S, ln) { const loo = looOf(S), sp = spotById(ln.src); if (!loo || !sp) return null; const [wx, wz] = l2w(S, loo.x, loo.z), A = new THREE.Vector3(wx, SY(S, 0.0442), wz), B = srcTop(sp, new THREE.Vector3()); B.y += 0.004; return [A, B]; }
+function lineVisual(ln, dt, time) {
+  const S = campById(ln.sid), ends = S && S.placed && !S.lost ? lineEnds(S, ln) : null; if (!ends) { ln.group.visible = false; return; } ln.group.visible = true;
+  const [A, B] = ends, hk = linkHook(ln), H = hk ? hookPos(hk, hkV) : null, key = A.toArray().map((v) => Math.round(v * 500)).join(',') + B.toArray().map((v) => Math.round(v * 500)).join(',') + Math.round(ln.prog * 12) + (H ? 'h' + H.toArray().map((v) => Math.round(v * 500)).join(',') : '');
+  if (key !== ln.key) {
+    ln.key = key; if (ln.cable) { ln.group.remove(ln.cable); ln.cable.geometry.dispose(); } if (ln.glow) { ln.group.remove(ln.glow); ln.glow.geometry.dispose(); }
+    const pts = [], hh = H ? A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B)) : 0, us = [], top = Math.max(0.04, ln.prog);
+    if (H) { for (let i = 0; i <= 20; i++) us.push(hh * i / 20); for (let i = 1; i <= 20; i++) us.push(hh + (1 - hh) * i / 20); } else for (let i = 0; i <= 24; i++) us.push(i / 24);
+    for (const u of us) pts.push(linkPos(ln, A, B, ln.ready ? u : u * top, new THREE.Vector3()));
+    const crv = new THREE.CatmullRomCurve3(pts); ln.cable = new THREE.Mesh(new THREE.TubeGeometry(crv, H ? 120 : 40, H ? 0.0027 : 0.0019, 5), M(ln.ready ? 0x4a3a2c : 0xd9a066)); ln.group.add(ln.cable);
+    ln.glow = new THREE.Mesh(new THREE.TubeGeometry(crv, H ? 80 : 32, 0.0075, 5), glowMat(0xb87a3a)); ln.glow.renderOrder = 5; ln.group.add(ln.glow);
+  }
+  const look = G.tool === 'look' && G.phase === 'play'; ln.glow.visible = look; if (look) ln.glow.material.opacity = 0.3 + 0.12 * Math.sin(time * 3);
+  ln.cab.visible = ln.ready; const p = linkPos(ln, A, B, ln.s, tmpV); ln.cab.position.copy(p);
+  const moving = ln.st === 'run' || ln.st === 'back', sway = (ENV.windy ? 0.25 : 0.05) * Math.sin(time * (ENV.windy ? 3 : 1.5));
+  ln.cab.rotation.y = Math.atan2(B.x - A.x, B.z - A.z) + Math.PI / 2;
+  if (H) { const hh = A.distanceTo(H) / (A.distanceTo(H) + H.distanceTo(B)), dir = moving ? ln.dir : ln.cdir; ln.cdir = dir; const q = linkPos(ln, A, B, clamp(ln.s + dir * 0.02, 0, 1), tmpV2), dx = q.x - p.x, dz = q.z - p.z; if (Math.hypot(dx, dz) > 0.002) ln.cab.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; void hh; }
+  let tilt = sway * (moving ? 1 : 0.4); if (ln.st === 'stuck') tilt = Math.sin(time * 9) * 0.35;
+  if (ln.st === 'tip') tilt = 1.95 * smooth(0.25, 0.95, ln.tp) * (1 - 0.92 * smooth(1.7, 2.4, ln.tp));
+  ln.piv.rotation.z = tilt; ln.bundle.visible = ln.load && !(ln.st === 'tip' && ln.tp > 0.9); ln.lid.visible = ln.bundle.visible;
+  ln.ploop.visible = ln.st === 'tip' && ln.tp > 0.9 && ln.tp < 2.4; if (ln.ploop.visible) { ln.ploop.position.set(B.x, B.y + 0.035 + 0.02 * (ln.tp - 0.9), B.z); ln.ploop.material.opacity = 1 - smooth(1.9, 2.4, ln.tp); }
+  ln.bang.visible = ln.st === 'stuck'; if (ln.bang.visible) ln.bang.position.set(p.x, p.y + 0.03 + 0.003 * Math.sin(time * 5), p.z);
+}
+function lineStep(S, ln, dt, quiet) {
+  if (!ln.ready) { ln.prog = Math.min(1, ln.prog + dt / 8); if (ln.prog >= 1) { ln.ready = true; ln.tm = 2; if (!quiet) { wwToast('lineReady'); sfx('chime'); } } return; }
+  const loo = looOf(S); if (!loo) return;
+  if (quiet) { /* away: every full load is simply delivered */ const n = Math.floor(S.waste || 0); if (n > 0) { S.waste -= n; for (let i = 0; i < n; i++) { G.net.st.tips++; S.compost = Math.min(1, (S.compost || 0) + 0.3); } } ln.st = 'dock'; ln.s = 0; ln.load = false; ln.stuck = false; return; }
+  const ends = lineEnds(S, ln); if (!ends) return; const [A, B] = ends, L = Math.max(0.2, A.distanceTo(B));
+  if (ln.st === 'dock') { ln.load = false; ln.tm -= dt; if (ln.tm <= 0) { if ((S.waste || 0) >= 1) { S.waste -= 1; ln.load = true; ln.st = 'run'; ln.dir = 1; ln.s = 0; lineSend(S, ln); } else ln.tm = 1.5; } return; }
+  if (ln.st === 'stuck') { ln.fixT -= dt; if (ln.fixT <= 0) netFix(ln, 'self'); return; }
+  if (ln.st === 'tip') {
+    ln.tp += dt;
+    if (ln.tp >= 0.9 && !ln.f1) { ln.f1 = true; sfx('ploop'); netLog('ploop', { sid: S.id, line: ln.id }); puff('drop', B.x, B.y, B.z, 5, { size: 0.007, vy: 0.03, g: -0.2, life: 0.8, jit: 0.02, color: 0xb98a55 }); }
+    if (ln.tp >= 1.5 && !ln.f2) { ln.f2 = true; lineFanfare(S, ln, B); }
+    if (ln.tp >= 2.4) { ln.st = 'back'; ln.dir = -1; ln.load = false; }
+    return;
+  }
+  const hk = linkHook(ln); let spd = 0.1 / L, hh = 0, s0 = ln.s;
+  if (hk) { const H = hookPos(hk, hkV), l1 = A.distanceTo(H), l2 = H.distanceTo(B), tot = Math.max(0.01, l1 + l2), Td = L / 0.1; hh = l1 / tot; spd = (l1 / 0.8 + l2 / 1.6) / (0.7 * Td) * (((ln.dir > 0) === (ln.s < hh)) ? 0.8 : 1.6) / tot; }
+  ln.s += ln.dir * spd * dt;
+  if (hk && (s0 - hh) * (ln.s - hh) <= 0 && s0 !== hh) hookPass(hk, ln, false);
+  if (ln.dir > 0 && ln.s >= 1) { ln.s = 1; ln.st = 'tip'; ln.tp = 0; ln.f1 = ln.f2 = false; }
+  else if (ln.dir < 0 && ln.s <= 0) { ln.s = 0; ln.st = 'dock'; ln.tm = 3; ln.load = false; G.net.st.returns++; netLog('return', { sid: S.id, line: ln.id }); }
+}
+function lineSend(S, ln) { /* a full bucket leaves the loo hut: two nearby creatures hold their noses (the joke is the bucket's, never a creature's) */
+  netLog('send', { sid: S.id, line: ln.id }); sfx('pop'); const loo = looOf(S); if (!loo) return; let n = 0;
+  for (const c of S.cols) { if (n >= 2) break; if (c.inside || c.held || c.spawn > 0 || Math.hypot(c.x - loo.x, c.z - loo.z) > 0.2) continue; c.noseT = 2.2; sayLine(c, wwText('nose'), 2.2); n++; }
+}
+function lineFanfare(S, ln, B) { /* the bucket has tipped in: a tiny trumpet fanfare, a cheer, compost */
+  const N = G.net; N.st.tips++; N.st.fanfares++; S.compost = Math.min(1, (S.compost || 0) + 0.35); for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + 0.04);
+  netLog('tip', { sid: S.id, line: ln.id }); netLog('fanfare', { sid: S.id, line: ln.id }); sfx('trumpet');
+  puff('note', B.x, B.y + 0.02, B.z, 4, { size: 0.012, vy: 0.03, life: 1.4, jit: 0.02, add: false, color: 0xf2c94c }); puff('star', B.x, B.y + 0.02, B.z, 6, { size: 0.009, vy: 0.03, life: 1.2, add: true, jit: 0.03 });
+  let n = 0; for (const c of S.cols) { if (c.inside || c.held || c.spawn > 0) continue; c.hop = 1; c.cheerT = 1.5; if (n++ < 2) sayLine(c, wwText('cheer'), 2.2); }
+  if (N.st.tips <= 2) wwToast('tip', 0, 4); if (N.st.tips === 1) celebrate('flush', S);
+}
+/* ---- breakdowns: funny, not fiddly. A creature fixes it (about a game minute at the latest), or a tap from the Giant does ---- */
+const netBroken = (r) => (r.k === 'water' ? r.kink : r.st === 'stuck');
+const netAnyBroken = () => G.net.pipes.some(netBroken) || G.net.lines.some(netBroken);
+function netBreak(kind) { /* kind: 'pipe', 'line' or nothing (either). Returns the run that broke, or null */
+  const N = G.net;
+  if (kind !== 'line') { const p = N.pipes.find((q) => q.ready && !q.kink && campOK(campById(q.sid))); if (p) { p.kink = true; p.ku = rnd(0.82, 0.93); p.fixT = rnd(55, 70); N.st.breaks++; N.st.kinks++; netLog('kink', { sid: p.sid, pipe: p.id }); wwToast('kink', 0, 4); sfx('no'); return p; } }
+  if (kind !== 'pipe') { const l = N.lines.find((q) => q.ready && (q.st === 'run' || q.st === 'back') && campOK(campById(q.sid))); if (l) { l.st = 'stuck'; l.fixT = rnd(55, 70); N.st.breaks++; N.st.sticks++; netLog('stuck', { sid: l.sid, line: l.id }); wwToast('stuck', 0, 4); sfx('no'); return l; } }
+  return null;
+}
+function netFix(run, by) {
+  if (!netBroken(run)) return false; const N = G.net, S = campById(run.sid);
+  if (run.k === 'water') { run.kink = false; } else { run.st = run.dir > 0 ? 'run' : 'back'; }
+  run.fixer = null; N.st.fixes++; netLog('fix', { sid: run.sid, run: run.id, by: by && by.name ? by.name : by });
+  if (S && S.placed) { const P = run.k === 'water' ? ptAt(run, run.ku, new THREE.Vector3()) : new THREE.Vector3().copy(run.cab.position); puff('star', P.x, P.y, P.z, 7, { size: 0.009, vy: 0.03, life: 1, add: true, jit: 0.03 }); sfx('pop'); }
+  return true;
+}
+function netFixDone(S, c, run) { if (!run || !netBroken(run)) return; netFix(run, c); sayLine(c, wwText(run.k === 'water' ? 'unkink' : 'climb'), 2.2, true); c.hop = 1; c.cheerT = 1; }
+function netBreaksOf(S) { return G.net.pipes.concat(G.net.lines).filter((r) => r.sid === S.id && netBroken(r) && (!r.fixer || r.fixer.S !== S || !r.fixer.job)); }
+function netFixTarget(S, r) { if (r.k === 'water') return { x: r.tl[0], z: r.tl[1], r: 0.008 }; const loo = looOf(S); return loo ? { x: loo.x, z: loo.z, r: 0.014 } : null; }
+function netTap(cx, cy) { /* a tap on a kinked straw or a stuck bucket fixes it at once; a tap on a found source says what it is */
+  if (G.phase !== 'play') return false;
+  for (const r of G.net.pipes.concat(G.net.lines)) {
+    if (!netBroken(r)) continue; const P = r.k === 'water' ? ptAt(r, r.ku, tmpV) : tmpV.copy(r.cab.position), [sx, sy, ok] = toScreen(P); if (ok && Math.hypot(sx - cx, sy - cy) < 52) { netFix(r, 'tap'); wwToast('tapfix', 0, 3); return true; }
+  }
+  if (G.tool === 'look') for (const sp of G.spots) { const k = waterKind(sp); if (!k || !srcOpen(sp)) continue; const [sx, sy, ok] = toScreen(srcTop(sp, tmpV)); if (ok && Math.hypot(sx - cx, sy - cy) < 40) { toast('The ' + WSRC[k].name + ': ' + WSRC[k].tag + (k === 'toilet' ? '. The creatures hold their noses, but the compost heap loves it.' : k === 'sink' ? '. Good for creatures and crops.' : k === 'cup' ? '. Creatures get hyper for a minute!' : '. Plants love it; creatures burp bubbles.') + ' <i class="by">by ' + WW_BY + '</i>', 4); return true; } }
+  return false;
+}
+/* ---- laying a straw or a bucket line (the same drag as a cable car) ---- */
+function srcPick(cx, cy, mode) { let best = null, bd = 64; for (const sp of G.spots) { const k = waterKind(sp); if (!k) continue; if (mode === 'pipe' ? k === 'toilet' : k !== 'toilet') continue; const [sx, sy, ok] = toScreen(srcTop(sp, tmpV)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = sp; } } return best; }
+function netCanLay(mode, S, sp) {
+  const k = waterKind(sp); if (!k) return 'Pick a sink, toilet, plant, vase or cup.';
+  if (mode === 'pipe' ? k === 'toilet' : k !== 'toilet') return wwText('wrongKind', k);
+  if (!srcOpen(sp)) return wwText('notFound', WSRC[k].name);
+  if ((mode === 'pipe' ? G.net.pipes : G.net.lines).some((r) => r.sid === S.id && r.src === sp.id)) return wwText('dup');
+  if (!canPay(S, mode === 'pipe' ? PIPE_COST : LINE_COST)) return wwText('needWood', mode === 'pipe' ? PIPE_COST : LINE_COST);
+  return '';
+}
+function netLay(mode, S, fx, fz, sp) {
+  const err = netCanLay(mode, S, sp); if (err) { toast(esc(err) + (/found|Nobody/.test(err) ? ' <i class="by">by ' + WW_BY + '</i>' : '')); sfx('no'); return null; }
+  pay(S, mode === 'pipe' ? PIPE_COST : LINE_COST);
+  if (mode === 'pipe') { const [lx, lz] = w2l(S, fx, fz); const p = mkPipeRun(S, { src: sp.id, tl: [lx, lz] }); sfx('chime'); wwToast('pipeStart', WSRC[waterKind(sp)].name, 4); netLog('lay', { sid: S.id, pipe: p.id }); return p; }
+  if (!looOf(S)) netLoo(S, true, true);
+  const via = G.cableVia === false ? 0 : hookFor(S, sp.x, sp.z), ln = mkLineRun(S, { src: sp.id, via }); sfx('chime'); wwToast('lineStart', 0, 4); netLog('lay', { sid: S.id, line: ln.id }); return ln;
+}
+function netLoo(S, quiet, force) { /* each camp gets a tiny loo hut once it has a few settlers */
+  if (kindCount(S, 'loo') || (!force && (S.cols.length < 3 || S.t < 25))) return null; const sp = findSpot(S, 0.026); if (!sp) return null;
+  const t = addThing(S, 'loo', sp[0], sp[1], { built: true, rot: Math.atan2(-sp[0], -sp[1]) }); t.pop = 0.6; if (!quiet) { const [wx, wz] = l2w(S, sp[0], sp[1]); puff('star', wx, SY(S, 0.03), wz, 5, { size: 0.008, add: true, jit: 0.02 }); } return t;
+}
+/* ---- the scout leads: an expedition to a newly found sink or toilet, a walk there, a look around, a cheer ---- */
+const expFree = (c) => !c.held && !c.fall && !c.inside && c.spawn <= 0 && (!c.job || PRE_JOBS.includes(c.job.type));
+function netExpedTick(dt, quiet) {
+  const N = G.net, un = G.spots.filter((sp) => { const k = waterKind(sp); return k && WSRC[k].lead && !N.found[sp.id]; });
+  if (!un.length) { N.exp = null; return; }
+  if (N.exp) { const e = N.exp; if (!e.c || !e.c.job || e.c.job.type !== 'expedition' || !spotById(e.sp)) N.exp = null; else return; }
+  const camps = netCamps().filter((S) => S.cols.length && S.t > 20); if (!camps.length) return;
+  if (quiet) { for (const sp of un) N.found[sp.id] = true; return; }
+  N.xt += dt; if (N.xt < 4 || ENV.night) return;
+  let best = null, bd = 1e9; for (const sp of un) for (const S of camps) { const d = Math.hypot(S.tf.x - sp.x, S.tf.z - sp.z); if (d < bd) { bd = d; best = { sp, S }; } } if (!best) return;
+  const S = best.S, scouts = camps.reduce((a, q) => a.concat(q.cols.filter((c) => c.scout && expFree(c))), []);
+  let c = scouts.find((q) => q.S === S) || scouts.sort((a, b) => Math.hypot(a.S.tf.x - best.sp.x, a.S.tf.z - best.sp.z) - Math.hypot(b.S.tf.x - best.sp.x, b.S.tf.z - best.sp.z))[0];
+  if (!c && !camps.some((q) => q.cols.some((m) => m.scout))) c = S.cols.find(expFree);
+  if (!c) return; netExpStart(c, best.sp);
+}
+function netExpStart(c, sp) {
+  const N = G.net; endJob(c); const home = { x: c.x, z: c.z }; c.job = { type: 'expedition', ph: 'go', t: 0, sp: sp.id, hx: home.x, hz: home.z, dur: 1e9, wait: 0 }; c.cool = 0; c.moving = false; N.exp = { c, sp: sp.id }; N.st.expeds++; netLog('exped', { sid: c.S.id, sp: sp.id, who: c.name });
+  const k = waterKind(sp); sayLine(c, 'Off to find the ' + WSRC[k].name + '!', 2.4); sfx('squeak', 1.3);
+}
+function expedStep(S, c, dt, E, quiet) {
+  const j = c.job, sp = spotById(j.sp), N = G.net; if (!sp || !campOK(S)) { c.yOff = 0; endJob(c); return; }
+  const k = waterKind(sp), [tx, tz] = w2l(S, sp.x, sp.z), h = Math.max(0, sp.y - S.tf.y), done = () => { N.found[sp.id] = true; netLog('found', { sp: sp.id, who: c.name, kind: k }); N.st.found = (N.st.found | 0) + 1; };
+  if (quiet) { done(); c.yOff = 0; c.moving = false; endJob(c); c.x = j.hx; c.z = j.hz; return; }
+  const walk = (px, pz, sp2) => { const dx = px - c.x, dz = pz - c.z, d = Math.hypot(dx, dz); if (d < 0.004) { c.moving = false; return true; } const st = Math.min(d, sp2 * dt); c.x += dx / d * st; c.z += dz / d * st; c.face = Math.atan2(dx, dz); c.moving = true; return false; };
+  if (j.ph === 'go') { c.working = false; if (walk(tx, tz - 0.0, 0.11)) { j.ph = h > 0.02 ? 'climb' : 'look'; j.t = 0; c.moving = false; if (j.ph === 'climb') ropeShow(S, sp, true); } }
+  else if (j.ph === 'climb') { c.moving = true; c.yOff = Math.min(h, (c.yOff || 0) + dt * 0.16); c.hop = 0; if (c.yOff >= h) { j.ph = 'look'; j.t = 0; c.moving = false; } }
+  else if (j.ph === 'look') { j.t += dt; c.working = true; c.moving = false; if (j.t > 3.2) { j.ph = 'cheer'; j.t = 0; c.working = false; done(); c.cheerT = 1.8; c.hop = 1; c.hopBig = 1.4; const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, sp.y + 0.03, wz, 8, { size: 0.01, vy: 0.03, life: 1.3, add: true, jit: 0.03 }); sfx('tada'); sayLine(c, 'Found it!', 2.2, true); toast(esc(wwText(k === 'toilet' ? 'foundToilet' : 'foundSink', c.name)) + ' <i class="by">by ' + WW_BY + '</i>', 4); } }
+  else if (j.ph === 'cheer') { j.t += dt; if (j.t > 1.8) { j.ph = h > 0.02 ? 'down' : 'back'; j.t = 0; } }
+  else if (j.ph === 'down') { c.moving = true; c.yOff = Math.max(0, (c.yOff || 0) - dt * 0.2); if (c.yOff <= 0) { j.ph = 'back'; ropeShow(S, sp, false); } }
+  else if (j.ph === 'back') { if (walk(j.hx, j.hz, 0.12)) { c.yOff = 0; endJob(c); c.cool = 3; N.exp = null; } }
+}
+function ropeShow(S, sp, on) { /* a thread the scout climbs: one thin line from the camp's floor to the top of the source */
+  const N = G.net; if (!on) { if (N.rope) N.rope.visible = false; return; }
+  if (!N.rope) { N.rope = new THREE.Mesh(geo('ropeG', () => new THREE.CylinderGeometry(0.0006, 0.0006, 1, 4).translate(0, 0.5, 0)), M(0xcaa468)); world.add(N.rope); }
+  N.rope.position.set(sp.x, S.tf.y, sp.z); N.rope.scale.y = Math.max(0.01, sp.y - S.tf.y); N.rope.visible = true;
+}
+/* ---- the whole network, one step (the sim, the away sim and the tests all call this) ---- */
+function netStep(dt, quiet) {
+  const N = G.net; N.t += dt;
+  for (const S of G.settlements) { S.pipeOn = false; for (const t of S.things) if (t.kind === 'farm') t.piped = false; if (campOK(S)) { if (S.waste === undefined) S.waste = 0.6; if (S.compost === undefined) S.compost = 0; S.waste = Math.min(3, S.waste + dt * S.cols.length * 0.008); S.compost = Math.max(0, S.compost - dt / 400); netLoo(S, quiet); } }
+  for (const p of N.pipes.slice()) {
+    const S = campById(p.sid); if (!S || S.lost || !spotById(p.src)) { netDrop(p); continue; }
+    if (!p.ready) { p.prog = Math.min(1, p.prog + dt / 6); if (p.prog >= 1) { p.ready = true; if (!quiet) { wwToast('pipeReady', 0, 4); sfx('chime'); celebrate('straw', S); } } continue; }
+    if (p.kink) { p.fixT -= dt; if (p.fixT <= 0) netFix(p, 'self'); continue; }
+    S.pipeOn = true; const f = pipeFarm(S, p); if (f) f.piped = true;
+    p.qT -= dt; if (p.qT <= 0 && !quiet) { p.qT = rnd(18, 34); const c = pick(S.cols.filter((q) => !q.inside && !q.held && q.spawn <= 0) || [null]);
+      if (c && p.q === 'green') { sayLine(c, wwText('burp'), 2.2); const [wx, wz] = l2w(S, c.x, c.z); puff('drop', wx, SY(S, 0.045), wz, 4, { size: 0.006, vy: 0.025, life: 1, jit: 0.015, color: 0x9be37a }); sfx('pop'); }
+      else if (c && p.q === 'tea') { c.rushUntil = G.time + 25; sayLine(c, wwText('hyper'), 2.2); c.hop = 1; } }
+  }
+  for (const ln of N.lines.slice()) { const S = campById(ln.sid); if (!S || S.lost || !spotById(ln.src)) { netDrop(ln); continue; } lineStep(S, ln, dt, quiet); }
+  if (!quiet) for (const S of netCamps()) { /* no bucket line yet and a lot of waste: a polite nudge, nothing more */ if ((S.waste || 0) >= 2 && looOf(S) && !N.lines.some((l) => l.sid === S.id) && Math.random() < dt / 90) { const c = S.cols.find((q) => !q.inside && q.spawn <= 0 && !q.held); if (c && netModes().includes('waste')) { c.noseT = 2.2; sayLine(c, wwText('sniff'), 2.6); } } }
+  netExpedTick(dt, quiet);
+  N.brkT -= dt; if (N.brkT <= 0) { N.brkT = rnd(80, 140); if (!quiet && !netAnyBroken() && Math.random() < 0.6) netBreak(); }
+}
+const compostK = (S) => 1 + 0.6 * Math.min(1, S.compost || 0);
+/* ---- drawing (every frame) ---- */
+function netVisual(dt, time) {
+  const N = G.net, look = G.tool === 'look' && G.phase === 'play';
+  for (const p of N.pipes) pipeVisual(p, dt, time);
+  for (const ln of N.lines) lineVisual(ln, dt, time);
+  for (const S of G.settlements) { const loo = looOf(S); if (loo && loo.mesh && loo.mesh.userData.heap) { const hp = loo.mesh.userData.heap, c = S.compost || 0; hp.visible = c > 0.03; if (hp.visible) hp.scale.setScalar(0.55 + 0.7 * Math.min(1, c)); } }
+  for (const sp of G.spots) { const k = waterKind(sp), open = k && srcOpen(sp); let m = N.marks[sp.id];
+    if (open && !m) { m = N.marks[sp.id] = labelSprite(WSRC[k].name + ' · ' + WSRC[k].tag, WSRC[k].col); m.scale.set(0.15, 0.028, 1); world.add(m); }
+    if (m) { m.visible = !!open && look; m.position.set(sp.x, sp.y + 0.075 + 0.004 * Math.sin(time * 2 + sp.id), sp.z); } }
+  for (const id in N.marks) if (!spotById(+id)) { const m = N.marks[id]; world.remove(m); delete N.marks[id]; }
+}
+function netHide() { const N = G.net; for (const r of N.pipes.concat(N.lines)) r.group.visible = false; for (const id in N.marks) N.marks[id].visible = false; if (N.rope) N.rope.visible = false; }
+/* ---- save: found sources, straws, lines. Compost and waste ride in the settlement save. ---- */
+function netSave() { const N = G.net; return { found: Object.keys(N.found).map(Number), pipes: N.pipes.map((p) => ({ id: p.id, sid: p.sid, src: p.src, tl: p.tl, prog: +p.prog.toFixed(3), ready: p.ready })), lines: N.lines.map((l) => ({ id: l.id, sid: l.sid, src: l.src, via: l.via || 0, prog: +l.prog.toFixed(3), ready: l.ready })), st: N.st }; }
+function netRestore(d) {
+  netReset(); if (!d || typeof d !== 'object') return; const N = G.net;
+  for (const id of Array.isArray(d.found) ? d.found : []) if (spotById(id)) N.found[id] = true;
+  for (const q of Array.isArray(d.pipes) ? d.pipes : []) { const S = campById(q.sid); if (S && spotById(q.src) && Array.isArray(q.tl) && q.tl.length === 2) mkPipeRun(S, q); }
+  for (const q of Array.isArray(d.lines) ? d.lines : []) { const S = campById(q.sid); if (S && spotById(q.src)) mkLineRun(S, q); }
+  if (d.st) Object.assign(N.st, d.st);
+}
+MILESTONES.straw = ['🚰', 'First straw', 'Water, all the way home.', 'Harry, words by ' + WW_BY];
+MILESTONES.flush = ['🎺', 'First flush run', 'Ploop! Toot toot! The bucket made it.', 'Harry, words by ' + WW_BY];
+sfxExtra.ploop = (c, t, tone) => { tone(420, 0.1, 'sine', 0.07, 130); tone(260, 0.16, 'sine', 0.05, 90, 0.08); sNoise(c, t + 0.02, 0.05, 900, 'lowpass', 0.03); };
+sfxExtra.trumpet = (c, t, tone) => { [[392, 0.09, 0], [392, 0.09, 0.11], [523, 0.09, 0.22], [659, 0.3, 0.33]].forEach(([f, d, dl]) => { tone(f, d, 'sawtooth', 0.02, 0, dl); tone(f * 2, d, 'square', 0.005, 0, dl); }); tone(784, 0.42, 'sawtooth', 0.015, 0, 0.46); };
 
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
