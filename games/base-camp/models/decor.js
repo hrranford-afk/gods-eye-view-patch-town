@@ -19,7 +19,7 @@
 
   /* ---- part makers: a part is {g, c, x, y, z, rx, ry, rz, sx, sy, sz, ink}; ink (1 or a number in metres) puts it in the outline mesh; inkOnly is not needed ---- */
   function P(g, c, x, y, z, o) { o = o || {}; return { g: g, c: c, x: x || 0, y: y || 0, z: z || 0, rx: o.rx, ry: o.ry, rz: o.rz, sx: o.sx, sy: o.sy, sz: o.sz, ink: o.ink }; }
-  function sph(c, r, x, y, z, o) { o = o || {}; return P(new T.SphereGeometry(r, o.w || 8, o.h || 6), c, x, y, z, o); }
+  function sph(c, r, x, y, z, o) { o = o || {}; return P(o.half ? new T.SphereGeometry(r, o.w || 8, o.h || 6, 0, TAU, 0, PI / 2) : new T.SphereGeometry(r, o.w || 8, o.h || 6), c, x, y, z, o); }
   function box(c, w, h, d, x, y, z, o) { return P(new T.BoxGeometry(w, h, d), c, x, y, z, o); }
   function cyl(c, rt, rb, h, x, y, z, o) { o = o || {}; return P(new T.CylinderGeometry(rt, rb, h, o.w || 8, 1, !!o.open), c, x, y, z, o); }
   function cone(c, r, h, x, y, z, o) { return cyl(c, 0, r, h, x, y, z, o); }
@@ -120,13 +120,13 @@
     var m = new T.PointsMaterial({ size: size, map: tex('spark'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, vertexColors: true, sizeAttenuation: true });
     var p = new T.Points(g, m); p.frustumCulled = false; p.renderOrder = 4; p.userData.pos = pos; p.userData.n = n; return p;
   }
-  function finish(g, r) { g.add(blob(r)); return g; }
+  function finish(g, r) { g.add(blob(r)); g.userData.bcDecor = 1; return g; }
   function ph() { return Math.random() * TAU; }
 
   /* ==================== AUTUMN ==================== */
   function leafBits(seed) {
     var R = rng(seed), cols = [0xd9442b, 0xee8a24, 0xf3c231, 0xa8581b, 0xc0381f, 0xb6a52c, 0xe05a1c], parts = [], i;
-    parts.push(sph(0xa8601f, 0.0215, 0, 0.0014, 0, { sy: 0.42, w: 12, h: 6, ink: 1 }));
+    parts.push(sph(0xa8601f, 0.0215, 0, 0.0004, 0, { sy: 0.5, half: 1, w: 12, h: 6, ink: 1 }));
     for (i = 0; i < 80; i++) {
       var a = R() * TAU, d = Math.sqrt(R()) * 0.0205, hh = 0.0105 * (1 - (d / 0.0225) * (d / 0.0225)), x = Math.cos(a) * d, z = Math.sin(a) * d;
       parts.push(sph(cols[(R() * 7) | 0], 0.0042 + R() * 0.0012, x, 0.0024 + hh * (0.65 + R() * 0.45), z, { sy: 0.13, sz: 0.55, sx: 1, ry: R() * TAU, rx: (R() - 0.5) * 0.55, rz: (R() - 0.5) * 0.55, w: 6, h: 3 }));
@@ -198,7 +198,9 @@
     }, 0.0004);
     var hm = meshOf(B, glowMat(0xff7a20, 0.55)); head.add(hm);
     var gl = glow(0.035, 0.5, 0xffa860); gl.position.set(0, -0.0117, 0); head.add(gl);
-    g.userData.head = head; g.userData.glow = gl; return finish(g, 0.012);
+    g.userData.head = head; g.userData.glow = gl; var p0 = ph();
+    g.userData.tick = function (t) { hm.material.emissiveIntensity = 0.5 + 0.12 * Math.sin(t * 3 + p0) + 0.05 * Math.sin(t * 8.7 + p0); };
+    return finish(g, 0.012);
   }
   /* ==================== ADVENT ==================== */
   var DOORCOL = [0xe0503f, 0xf09a30, 0x5dae4e, 0x4a90d9, 0xa67ad6, 0xe8c840];
@@ -233,7 +235,7 @@
         var x = (c - 1.5) * W, y = 0.0095 + r * H + 0.001, col = DOORCOL[(r + c * 2) % 6];
         p.push(box(col, 0.0118, 0.0092, 0.0124, x, y, 0), box(0x3a2418, 0.0094, 0.0072, 0.0002, x, y, 0.0063), sph(GOLD, 0.0015, x, y - 0.0004, 0.0059, { w: 5, h: 4 }), box(DK, 0.0118, 0.0014, 0.0124, x, y - 0.0039, 0), box(0xfff3dc, 0.0114, 0.0006, 0.002, x, y + 0.0046, 0.0052));
       }
-      p.push(prism(0xd9483b, 0.067, 0.0165, 0.0285, 0, 0.0665, -0.0012, { ink: 1 }), prism(WHT, 0.0293, 0.0072, 0.0295, 0, 0.0752, -0.0012), sph(WHT, 0.0026, -0.0215, 0.0687, 0.0128, { w: 6, h: 4 }), sph(WHT, 0.0026, 0.0185, 0.0675, 0.0128, { w: 6, h: 4 }));
+      p.push(prism(0xd9483b, 0.067, 0.0165, 0.0285, 0, 0.0665, -0.0012, { ink: 1 }), prism(WHT, 0.0293, 0.0072, 0.0295, 0, 0.0752, -0.0012));
       for (c = 0; c < 4; c++) p.push(sph(FOIL[c + 1], 0.0013, (c - 1.5) * 0.0125, 0.0645, 0.0132, { w: 5, h: 4 }));
       return p;
     }, 0.0005);
@@ -390,7 +392,7 @@
       p.push(box(RED, 0.0062, 0.0046, 0.0052, -0.0065, 0.0089, 0.0004, { ry: 0.25, ink: 0.0003 }), box(GOLD, 0.0008, 0.0048, 0.0054, -0.0065, 0.0089, 0.0004, { ry: 0.25 }), box(GOLD, 0.0064, 0.0048, 0.0008, -0.0065, 0.0089, 0.0004, { ry: 0.25 }), sph(GOLD, 0.0012, -0.0065, 0.0117, 0.0004, { w: 5, h: 4 }), sph(GOLD, 0.0009, -0.0057, 0.0118, 0.0004, { w: 4, h: 3 }));
       p.push(cyl(BLU, 0.0034, 0.0034, 0.0013, 0.0058, 0.0071, 0.0006, { w: 9, ink: 0.0003 }), sph(WHT, 0.0012, 0.0058, 0.0083, 0.0006, { w: 5, h: 4 }));
       var cx = 0.0178, cz = 0, ang = 0;
-      for (i = 0; i < 12; i++) { ang += 0.18 * Math.sin(i * 0.9 + 0.5) + 0.04; cx += Math.cos(ang) * 0.0018; cz += Math.sin(ang) * 0.0018; p.push(sph(i % 2 ? WHT : RED, 0.0005, cx, 0.0014 + (i < 2 ? (2 - i) * 0.0014 : 0), cz, { w: 4, h: 3 })); }
+      for (i = 0; i < 8; i++) { ang += 0.18 * Math.sin(i * 0.9 + 0.5) + 0.04; cx += Math.cos(ang) * 0.0016; cz += Math.sin(ang) * 0.0016; p.push(sph(i % 2 ? WHT : RED, 0.0005, cx, 0.0014 + (i < 2 ? (2 - i) * 0.0014 : 0), cz, { w: 4, h: 3 })); }
       p.push(tor(RED, 0.0016, 0.0005, cx + 0.0016, 0.0009, cz, { w: 8 }));
       return p;
     }, 0.0004);
@@ -398,9 +400,9 @@
   }
   function igloo() {
     var g = new T.Group(), A = asset('igloo', function () {
-      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xf4f9fd, 0xd6e8f6, 0xc4dcf0, 0xe6f1fa], i, j;
-      p.push(sph(0xcfe0ee, Rd * 0.965, 0, 0, 0, { sy: 1, w: 14, h: 8, ink: 1 }));
-      p.push(cyl(0xf4f9fd, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
+      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xb6cde2, 0x9fbad4, 0x8eacca, 0xaac3dc], i, j;
+      p.push(sph(0x7f9bb8, Rd * 0.965, 0, 0, 0, { half: 1, w: 14, h: 8, ink: 1 }));
+      p.push(cyl(0xb9cfe2, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
       rows.forEach(function (rw, ri) {
         var e = rw[0], n = rw[1], ry = Rd * Math.cos(e), yy = Rd * Math.sin(e) * 0.99;
         for (j = 0; j < n; j++) {
@@ -443,14 +445,14 @@
   function scarecrow() {
     var g = new T.Group(), A = asset('scare', function () {
       var p = [], i;
-      p.push(sph(0x6b4a2a, 0.0075, 0, 0.0005, 0, { sy: 0.4, w: 8, h: 4, ink: 1 }), sph(0x9aa0a8, 0.0016, 0.006, 0.0014, 0.003, { w: 4, h: 3 }), sph(0x9aa0a8, 0.0012, -0.006, 0.0011, -0.004, { w: 4, h: 3 }));
+      p.push(sph(0x6b4a2a, 0.0075, 0, 0, 0, { sy: 0.4, half: 1, w: 8, h: 4, ink: 1 }), sph(0x9aa0a8, 0.0016, 0.006, 0.0014, 0.003, { w: 4, h: 3 }), sph(0x9aa0a8, 0.0012, -0.006, 0.0011, -0.004, { w: 4, h: 3 }));
       p.push(cyl(DWOOD, 0.0012, 0.0015, 0.062, 0, 0.031, 0, { w: 5 }), box(DWOOD, 0.043, 0.0022, 0.0022, 0, 0.0405, 0, { ink: 0.0003 }));
-      p.push(cone(0xc9964f, 0.0092, 0.0245, 0, 0.0135, 0, { w: 8, sz: 0.75, ink: 1 }), P(new T.CylinderGeometry(0.0094, 0.0094, 0.0016, 8), 0xa8743a, 0, 0.0158, 0, { sz: 0.75 }));
+      p.push(cone(0xb07c3c, 0.0092, 0.0245, 0, 0.0135, 0, { w: 8, sz: 0.75, ink: 1 }), P(new T.CylinderGeometry(0.0094, 0.0094, 0.0016, 8), 0x8a5c2a, 0, 0.0158, 0, { sz: 0.75 }));
       p.push(box(0x5a8fd9, 0.0058, 0.0052, 0.0006, -0.0028, 0.0285, 0.0069, { rz: 0.1 }), box(0xd9483b, 0.0045, 0.0045, 0.0006, 0.0034, 0.0205, 0.0073, { rz: -0.1 }), box(0xffe9b0, 0.0035, 0.0003, 0.0007, -0.0028, 0.0285, 0.0071, { rz: 0.1 }));
-      p.push(sph(0xe8cf9a, 0.0068, 0, 0.0535, 0, { w: 9, h: 7, ink: 1 }), sph(0x2a6fb5, 0.0011, -0.0025, 0.0545, 0.0061, { sy: 1, sz: 0.5, w: 5, h: 4 }), sph(0xd9483b, 0.0011, 0.0025, 0.0545, 0.0061, { sz: 0.5, w: 5, h: 4 }), sph(DK, 0.0003, -0.0025, 0.0545, 0.0067, { w: 3, h: 3 }), sph(DK, 0.0003, 0.0025, 0.0545, 0.0067, { w: 3, h: 3 }));
+      p.push(sph(0xd9a86a, 0.0068, 0, 0.0535, 0, { w: 9, h: 7, ink: 1 }), sph(0x2a6fb5, 0.0011, -0.0025, 0.0545, 0.0061, { sy: 1, sz: 0.5, w: 5, h: 4 }), sph(0xd9483b, 0.0011, 0.0025, 0.0545, 0.0061, { sz: 0.5, w: 5, h: 4 }), sph(DK, 0.0003, -0.0025, 0.0545, 0.0067, { w: 3, h: 3 }), sph(DK, 0.0003, 0.0025, 0.0545, 0.0067, { w: 3, h: 3 }));
       p.push(sph(0xd0705a, 0.0007, 0, 0.0525, 0.0067, { w: 4, h: 3 }));
       for (i = -2; i <= 2; i++) p.push(sph(DK, 0.00028, i * 0.0011, 0.0498 + Math.abs(i) * 0.0003, 0.0063, { w: 3, h: 2 }));
-      p.push(cyl(0xe6c05a, 0.0108, 0.0108, 0.0012, 0, 0.0582, 0, { w: 12, ink: 0.0004 }), cyl(0xe6c05a, 0.0059, 0.0066, 0.0066, 0, 0.0620, 0, { w: 10, ink: 0.0004 }), tor(0xb8381f, 0.0063, 0.0009, 0, 0.0598, 0, { w: 10 }), sph(0xd9483b, 0.0016, 0.0063, 0.0600, 0, { w: 4, h: 3 }));
+      p.push(cyl(0xd6a23c, 0.0108, 0.0108, 0.0012, 0, 0.0582, 0, { w: 12, ink: 0.0004 }), cyl(0xd6a23c, 0.0059, 0.0066, 0.0066, 0, 0.0620, 0, { w: 10, ink: 0.0004 }), tor(0xb8381f, 0.0063, 0.0009, 0, 0.0598, 0, { w: 10 }), sph(0xd9483b, 0.0016, 0.0063, 0.0600, 0, { w: 4, h: 3 }));
       for (i = 0; i < 9; i++) { var a = i / 9 * TAU; p.push(cone(0xf0c84a, 0.0004, 0.005, Math.cos(a) * 0.011, 0.0576, Math.sin(a) * 0.011, { w: 3, rz: -Math.cos(a) * 1.2, rx: Math.sin(a) * 1.2 })); }
       [-1, 1].forEach(function (s) {
         for (i = 0; i < 4; i++) p.push(cone(0xf0c84a, 0.0004, 0.0075, s * 0.0222, 0.0405 + (i - 1.5) * 0.0009, (i - 1.5) * 0.0012, { w: 3, rz: -s * 1.5 }));
@@ -540,7 +542,7 @@
     var g = new T.Group(), A = asset('paddle', function () {
       var p = [], i;
       p.push(cyl(0xd94a3b, 0.0238, 0.0214, 0.0058, 0, 0.0029, 0, { w: 22, open: true }), tor(0xd94a3b, 0.0226, 0.0030, 0, 0.0057, 0, { w: 22, h: 6, ink: 1 }), tor(0xb83428, 0.0206, 0.0012, 0, 0.0026, 0, { w: 22, h: 4 }));
-      for (i = 0; i < 20; i++) { var a = i / 20 * TAU; p.push(box(0xb83428, 0.0016, 0.0044, 0.0013, Math.cos(a) * 0.0236, 0.0036, Math.sin(a) * 0.0236, { ry: -a })); }
+      for (i = 0; i < 20; i++) { var a = i / 20 * TAU; p.push(sph(0xb83428, 0.0011, Math.cos(a) * 0.0229, 0.0058, Math.sin(a) * 0.0229, { w: 4, h: 3 })); }
       p.push(cyl(0x5cc0ee, 0.0205, 0.0205, 0.0036, 0, 0.0030, 0, { w: 22 }), cyl(0xa8e6fa, 0.0170, 0.0170, 0.0003, 0, 0.0049, 0, { w: 22 }));
       p.push(tor(WHT, 0.0140, 0.0004, 0, 0.0052, 0, { w: 14, arc: 1.4, rz: 0 }), tor(WHT, 0.0105, 0.0003, 0, 0.0052, 0, { w: 12, arc: 1.0 }));
       var bx = -0.0112, bz = 0.0078; p.push(sph(YEL, 0.0034, bx, 0.0078, bz, { w: 8, h: 6, ink: 0.0003 }), tor(RED, 0.0034, 0.0004, bx, 0.0078, bz, { w: 8 }), tor(WHT, 0.0034, 0.0004, bx, 0.0078, bz, { w: 8, rx: 1, ry: 0.6, up: 0 }));
