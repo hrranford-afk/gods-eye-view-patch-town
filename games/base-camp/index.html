@@ -4061,6 +4061,7 @@ function recogPropose() {
   RECOG.cand.splice(RECOG.cand.indexOf(c), 1); guessCard({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, score: c.score, key: 'coco:' + c.cls, src: 'COCO-SSD', cls: c.cls }); RECOG.stats.proposals++;
 }
 function autoTag(c) { // a detection that is sure enough gives the spot a name and a role without asking
+  { const wk = waterKind({ name: c.name, cls: c.cls, src: 'auto' }); if ((wk === 'sink' || wk === 'toilet') && G.spots.some((s) => waterKind(s) === wk && Math.hypot(s.x - c.x, s.z - c.z) < 0.32)) return; } /* build 18: one spot per sink or toilet, however many bumps the scan saw in it */
   const sp = addSpot({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, src: 'auto' }); sp.n = 1; recRecog({ cls: c.cls, score: +c.score.toFixed(2), tag: c.tag, action: 'accepted automatically', spot: sp.id }); sp.cls = c.cls; RECOG.stats.auto++; AUTO.mapDirty = true; for (const S of G.settlements) S.fx = null;
   toast('That looks like a ' + c.name + '! The colonists make it their ' + spotRole(sp).name.toLowerCase() + '.', 4); sfx('pop'); persistSoon();
 }
