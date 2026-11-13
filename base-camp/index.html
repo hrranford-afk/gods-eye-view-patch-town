@@ -3078,7 +3078,7 @@ function arLog(msg) { // HelloXR's web view cannot show alert(): every step and 
     } catch (e) { st.textContent = 'AR check error: ' + e.message; }
     if (!pending) { st.textContent = tries < 30 ? 'AR: checking...' : 'AR not available here. Try the practice room, or open this in the HelloXR app.'; if (tries < 30) setTimeout(check, 500); }
   };
-  check();
+  setTimeout(check, 0); /* hotfix: Safari has no navigator.xr, so check() reached updateTitle() and TOTPH too early. Fix found by the town. */
 })();
 async function arStart(cont) {
   if (AR.on || AR.starting) return; AR.starting = true;
