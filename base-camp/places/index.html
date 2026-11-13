@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Base Camp: Places</title>
+<style>
+/* Base Camp Places prototype. Warm cream and brown, big round buttons, plain short words. */
+:root{--paper:#fff6e6;--card:#fffaf0;--ink:#3b2a1e;--brown:#5a3d2b;--acc:#e8883a;--acc2:#f6b25c;--leaf:#7bb661;--sky:#cfe3f2;--mint:#16a37f;--body:ui-rounded,"Nunito","Trebuchet MS",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:var(--body);overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;letter-spacing:.015em}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+#app{position:fixed;inset:0}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:radial-gradient(circle at 20% 0,#fffdf6 0,var(--paper) 60%)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:8px 22px;border:4px solid var(--ink);border-radius:999px;background:var(--card);font-weight:800;font-size:22px;box-shadow:0 5px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.pri{background:var(--acc)}
+.btn svg{width:30px;height:30px;flex:none}
+.lock{display:inline-flex;align-items:center;gap:8px;font-size:18px;font-weight:700;color:var(--brown);background:#f3e3c4;border:3px solid #d9c196;border-radius:999px;padding:6px 14px;white-space:nowrap}
+.lock svg{width:20px;height:20px}
+
+/* Places list */
+#sPlaces header{padding:34px 34px 6px}
+#sPlaces h1{margin:0;font-size:54px;line-height:1.05}
+#sPlaces .sub{font-size:25px;margin-top:6px;color:var(--brown);font-weight:700}
+#cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:26px;padding:22px 34px 14px;overflow:auto;flex:1;align-content:start}
+.pcard{position:relative;text-align:left;border:4px solid var(--ink);border-radius:30px;background:var(--card);box-shadow:0 7px 0 var(--ink);padding:0;overflow:hidden;display:flex;flex-direction:column;transition:transform .08s,box-shadow .08s}
+.pcard:active{transform:translateY(5px);box-shadow:0 2px 0 var(--ink)}
+.pcard .thumb{height:230px;background:linear-gradient(#e6f1da,#d7e8c6);border-bottom:4px solid var(--ink);display:flex;align-items:center;justify-content:center;padding:14px}
+.pcard .thumb svg{width:100%;height:100%}
+.pcard .txt{padding:14px 20px 18px;display:flex;align-items:center;gap:14px}
+.pcard .dot{width:46px;height:46px;border-radius:50%;border:4px solid var(--ink);flex:none}
+.pcard .nm{font-size:36px;font-weight:900;line-height:1.1}
+.pcard .meta{font-size:21px;color:var(--brown);font-weight:700;margin-top:2px}
+.pcard .go{margin-left:auto;width:54px;height:54px;border-radius:50%;background:var(--acc);border:4px solid var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.pcard .go svg{width:28px;height:28px}
+.pcard.new{border-style:dashed;box-shadow:none;background:transparent;align-items:center;justify-content:center;min-height:330px;gap:14px;font-size:34px;font-weight:900;color:var(--brown)}
+.pcard.new .plus{width:92px;height:92px;border-radius:50%;background:var(--acc);border:4px solid var(--ink);display:flex;align-items:center;justify-content:center}
+.pcard.new .plus svg{width:50px;height:50px}
+#sPlaces footer{padding:10px 34px 24px;display:flex;justify-content:center}
+
+/* Place screen */
+.bar{display:flex;align-items:center;gap:14px;padding:16px 16px 10px;flex-wrap:wrap}
+#back{padding-left:14px}
+#crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.crumb{min-height:56px;padding:6px 18px;border:3px solid var(--ink);border-radius:999px;background:var(--card);font-size:23px;font-weight:800;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumb.cur{background:var(--acc2)}
+.sep{font-size:30px;font-weight:900;color:var(--brown);margin:0 -1px}
+#stage{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:0 16px}
+@media (min-aspect-ratio:5/4){#stage{flex-direction:row}}
+#view3d{position:relative;flex:1.2 1 0;min-height:0;min-width:0;border:4px solid var(--ink);border-radius:28px;overflow:hidden;background:#eaf2de;box-shadow:0 5px 0 var(--ink)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#mapWrap{flex:1 1 0;min-height:0;min-width:0;border:4px solid var(--ink);border-radius:28px;background:var(--card);box-shadow:0 5px 0 var(--ink);display:flex;flex-direction:column;padding:8px 10px 8px}
+#stage.bigmap #mapWrap{flex:2.1}
+#stage.big3d #view3d{flex:2.1}
+.mh{display:flex;align-items:center;gap:10px;padding:0 4px}
+.mh h2{margin:0;font-size:24px;font-weight:900;flex:1;white-space:nowrap}
+.mh .lock{font-size:16px;padding:4px 12px}
+.mh .btn{min-height:48px;font-size:18px;padding:4px 16px;box-shadow:0 4px 0 var(--ink);border-width:3px}
+#map{flex:1;min-height:0;width:100%}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;padding:0 6px;font-size:17px;font-weight:700;color:var(--brown)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:16px;height:16px;border-radius:50%;border:3px solid var(--ink)}
+#banner{position:absolute;top:12px;left:12px;right:12px;z-index:5;background:var(--card);border:4px solid var(--ink);border-radius:24px;box-shadow:0 5px 0 var(--ink);padding:12px 16px;pointer-events:none;transition:opacity .35s,transform .35s}
+#banner.hide{opacity:0;transform:translateY(-14px)}
+#banner .bt{display:flex;align-items:center;gap:14px}
+#banner .sw{width:50px;height:50px;border-radius:50%;border:4px solid var(--ink);flex:none;box-shadow:0 0 0 6px rgba(255,214,102,.55)}
+#bl1{font-size:27px;font-weight:900;line-height:1.1}
+#bl2{font-size:23px;font-weight:700;color:var(--brown);margin-top:2px}
+#banner .bl{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:20px;font-weight:800}
+#banner .pb{flex:1;height:18px;border:3px solid var(--ink);border-radius:99px;overflow:hidden;background:#f3e3c4}
+#bfill{display:block;height:100%;width:0;background:linear-gradient(90deg,#4cf0c0,#16a37f)}
+#youChip{position:absolute;left:12px;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;background:rgba(255,250,240,.94);border:3px solid var(--ink);border-radius:999px;padding:8px 16px;font-size:20px;font-weight:800;pointer-events:none}
+#youChip b{color:var(--mint)}
+#toast{position:fixed;left:50%;bottom:150px;transform:translate(-50%,20px);background:var(--ink);color:#fff6e6;padding:14px 26px;border-radius:999px;font-size:22px;font-weight:800;opacity:0;pointer-events:none;transition:.3s;z-index:60;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#actions{display:flex;gap:12px;padding:14px 16px 16px}
+#actions .btn{flex:1;min-height:84px;border-radius:30px;flex-direction:column;gap:2px;font-size:20px;line-height:1.15;text-align:center;padding:8px 10px}
+#actions .btn svg{width:32px;height:32px}
+
+/* Sheet */
+#sheet{position:fixed;inset:0;z-index:50;background:rgba(59,42,30,.5);display:flex;align-items:flex-end;justify-content:center}
+#sheet .panel{width:100%;max-width:760px;background:var(--paper);border:4px solid var(--ink);border-bottom:0;border-radius:34px 34px 0 0;padding:26px 26px calc(26px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+#sheet h3{margin:0 0 4px;font-size:34px}
+#sheet p{margin:0 0 14px;font-size:22px;color:var(--brown);font-weight:700}
+#sheet .row{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0 18px}
+.chip{min-height:64px;padding:8px 20px;border:4px solid var(--ink);border-radius:999px;background:var(--card);font-size:23px;font-weight:800;display:inline-flex;align-items:center;gap:10px}
+.chip.on{background:var(--acc2);box-shadow:0 0 0 4px var(--acc)}
+.chip .sw{width:26px;height:26px;border-radius:50%;border:3px solid var(--ink)}
+#sheet input{width:100%;min-height:68px;font:inherit;font-size:28px;font-weight:800;padding:8px 20px;border:4px solid var(--ink);border-radius:22px;background:#fff;color:var(--ink);-webkit-user-select:text;user-select:text}
+#sheet .btns{display:flex;gap:14px;margin-top:8px}
+#sheet .btns .btn{flex:1}
+.hint{font-size:20px;color:var(--brown);font-weight:700;background:#f3e3c4;border-radius:18px;padding:10px 16px;margin-bottom:6px}
+
+/* Map svg */
+.room .fill{fill:#fffaf0;stroke:#3b2a1e;stroke-width:.09}
+.room.out .fill{fill:#eaf4d8}
+.room .glow{fill:#ffb24a;opacity:0;filter:url(#blur)}
+.room.visited .fill{fill:#fff3d6}
+.room.out.visited .fill{fill:#dcefc0}
+.room.loaded .fill{fill:#d9fff0;stroke:#12a07c;stroke-width:.17}
+.room:not(.visited):not(.loaded) .fill{stroke-dasharray:.28 .16}
+.room.sel .fill{stroke:#e8883a;stroke-width:.17}
+svg text{letter-spacing:0;font-family:var(--body)}
+.rname{font-weight:900;fill:#3b2a1e;pointer-events:none;paint-order:stroke;stroke:#fffaf0;stroke-width:.14;stroke-linejoin:round}
+.alabel rect{fill:#5a3d2b;stroke:#3b2a1e;stroke-width:.06}
+.alabel text{fill:#fff6e6;font-weight:900;pointer-events:none}
+.ablock{fill:rgba(123,182,97,.16);stroke:#5a3d2b;stroke-width:.07;stroke-dasharray:.35 .2}
+.ablock.house{fill:rgba(232,136,58,.14)}
+.hit{fill:none;stroke:transparent;stroke-width:1.1;stroke-linecap:round}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="sPlaces" class="screen">
+    <header>
+      <h1>Places</h1>
+      <div class="sub">Where are you today?</div>
+    </header>
+    <div id="cards"></div>
+    <footer><span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="savedtxt">Saved on this iPad only</span></span></footer>
+  </section>
+
+  <section id="sPlace" class="screen" hidden>
+    <div class="bar">
+      <button id="back" class="btn" aria-label="Back up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span id="backLbl">Places</span></button>
+      <nav id="crumbs" aria-label="Where you are"></nav>
+      
+    </div>
+    <div id="stage">
+      <div id="view3d">
+        <canvas id="gl"></canvas>
+        <div id="banner" class="hide">
+          <div class="bt"><span class="sw" id="bsw"></span><div><div id="bl1"></div><div id="bl2"></div></div></div>
+          <div class="bl"><span class="pb"><i id="bfill"></i></span><span id="bstate"></span></div>
+        </div>
+        <div id="youChip"></div>
+      </div>
+      <div id="mapWrap">
+        <div class="mh"><h2 id="mapTitle">House map</h2><span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="savedtxt">Saved on this iPad only</span></span><button id="sizeBtn" class="btn">Bigger map</button></div>
+        <svg id="map" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="legend"><span><i style="background:#e8883a"></i>You</span><span><i style="background:#ffb24a;border-radius:4px"></i>Busy room</span><span><i style="background:#e85d4a"></i>Totem</span><span><i style="background:#3f7fd8;border-radius:4px"></i>Door</span><span><i style="background:#d9fff0;border-color:#12a07c"></i>Map loaded</span></div>
+      </div>
+    </div>
+    <div id="actions">
+      <button class="btn pri" id="aRoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg>Add a room</button>
+      <button class="btn pri" id="aTotem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>Add a totem here</button>
+      <button class="btn pri" id="aLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></svg>Link through this door</button>
+    </div>
+  </section>
+
+  <div id="sheet" hidden><div class="panel" id="sheetBody"></div></div>
+  <div id="toast"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ===== Data: Place > Area > Room > Surface. Rooms hold totems and camps; links join rooms (doorways, gates, paths). ===== */
+const TOT = { mug: ['striped mug', 0xe85d4a], top: ['spinning top', 0x3f8fd8], cone: ['pine cone', 0x8a5a34], lantern: ['lantern', 0xf2b632], pot: ['plant pot', 0xd9733f], wheel: ['pinwheel', 0x7bb661], duck: ['wooden duck', 0xe9c46a], acorn: ['acorn', 0xb07a3c], teapot: ['blue teapot', 0x4f8fd0], bell: ['brass bell', 0xd9a43a] };
+const TAGS = [['red', 0xe0503e], ['blue', 0x3f7fd8], ['green', 0x5aa84a], ['yellow', 0xf0c030], ['purple', 0x8e5bc9], ['pink', 0xee7aa8], ['teal', 0x2fb3a8], ['orange', 0xe8883a]];
+const FLOOR = { kitchen: 0xf0dfb8, hall: 0xd9b98c, living: 0xd2a977, bedroom: 0xe7c7d0, path: 0x9ccf7a, lawn: 0x8fc46c, shed: 0xb98d5b, bath: 0xbfe0e6, desk: 0xd9c4a0, other: 0xe6d6b4 };
+const css = (c) => '#' + c.toString(16).padStart(6, '0');
+const places = [];
+const S = { screen: 'places', placeId: null, level: 1, areaId: null, roomId: null, here: null, loaded: null, visited: new Set(), lastSeen: null, lastRoute: [], phase: 'idle', big: '', store: 'memory', walking: false, uid: 1 };
+
+function tot(pid, rid, kind, dx, dz, y, n) { return { id: pid + ':' + rid + ':' + kind + (n || ''), kind, dx, dz, y: y || 0 }; }
+function room(id, name, style, x, z, w, d, totems, camps, outdoor) { return { id, name, style, x, z, w, d, outdoor: !!outdoor, totems, camps: camps || [] }; }
+function link(pid, a, b, x, z, kind, tagIdx) { const id = a + '-' + b; return { id, a, b, kind, pa: [x, z], pb: [x, z], tag: { id: pid + ':door:' + id, c: tagIdx } }; }
+
+function seedPlaces() {
+  const kx = (w) => w / 2 - 0.45;
+  const home = {
+    id: 'home', name: 'Home', hue: '#e8883a', entry: 'hall', areas: [
+      { id: 'house', name: 'House', rooms: [
+        room('kitchen', 'Kitchen', 'kitchen', -6, -4, 3, 3, [tot('home', 'kitchen', 'mug', kx(3) - 0.05, -1.1, 0.68)], [{ dx: -0.7, dz: 0.6 }]),
+        room('living', 'Living room', 'living', -3, -4, 3, 3, [tot('home', 'living', 'cone', -0.1, 0.4, 0.34)], [{ dx: 0.2, dz: 0.95 }, { dx: -0.9, dz: 0.2 }]),
+        room('hall', 'Hall', 'hall', -6, -1, 3, 3, [tot('home', 'hall', 'top', -0.95, -0.95, 0.5)]),
+        room('bedroom', 'Bedroom', 'bedroom', -3, -1, 3, 3, [tot('home', 'bedroom', 'lantern', 1.2, -1.2, 0.45)])] },
+      { id: 'garden', name: 'Garden', rooms: [
+        room('path', 'Path', 'path', -6, 2, 5, 5, [tot('home', 'path', 'pot', -1.9, -1.9, 0)], [], true),
+        room('lawn', 'Lawn', 'lawn', -1, 2, 4, 5, [tot('home', 'lawn', 'wheel', 0.4, 1.2, 0)], [{ dx: -0.9, dz: -1.5 }], true)] },
+      { id: 'shed', name: 'Shed', rooms: [
+        room('workshop', 'Workshop', 'shed', 3, 2, 4, 4, [tot('home', 'workshop', 'duck', -0.3, -1.4, 0.86)], [{ dx: 1.0, dz: 1.1 }])] }],
+    links: [link('home', 'kitchen', 'hall', -4.5, -1, 'door', 0), link('home', 'kitchen', 'living', -3, -2.5, 'door', 1), link('home', 'hall', 'bedroom', -3, 0.5, 'door', 2),
+      link('home', 'living', 'bedroom', -1.5, -1, 'door', 3), link('home', 'hall', 'path', -4.5, 2, 'front', 4), link('home', 'path', 'lawn', -1, 4.5, 'gate', 5), link('home', 'lawn', 'workshop', 3, 3.5, 'shed', 6)]
+  };
+  const mum = {
+    id: 'mumdad', name: "Mum & Dad's", hue: '#4f8fd0', entry: 'porch', areas: [
+      { id: 'house', name: 'House', rooms: [
+        room('kitchen', 'Kitchen', 'kitchen', -5, -3, 4, 3, [tot('mumdad', 'kitchen', 'teapot', kx(4) - 0.05, -1.1, 0.68)], [{ dx: -1.0, dz: 0.7 }]),
+        room('lounge', 'Lounge', 'living', -1, -3, 4, 3, [tot('mumdad', 'lounge', 'acorn', -0.1, 0.4, 0.34)], [{ dx: -1.2, dz: 0.8 }]),
+        room('porch', 'Porch', 'hall', -5, 0, 4, 3, [tot('mumdad', 'porch', 'bell', -1.45, -0.95, 0.5)])] },
+      { id: 'garden', name: 'Garden', rooms: [room('yard', 'Back yard', 'lawn', -1, 0, 6, 3, [tot('mumdad', 'yard', 'wheel', 0.6, 0.6, 0)], [{ dx: 1.6, dz: -0.6 }], true)] },
+      { id: 'shed', name: 'Shed', rooms: [room('shed', 'Shed', 'shed', 5, 0, 3, 3, [tot('mumdad', 'shed', 'lantern', -0.2, -1.1, 0.86)], [{ dx: 0.7, dz: 0.6 }])] }],
+    links: [link('mumdad', 'kitchen', 'lounge', -1, -1.5, 'door', 2), link('mumdad', 'kitchen', 'porch', -3.5, 0, 'door', 0), link('mumdad', 'porch', 'yard', -1, 1.5, 'back', 1), link('mumdad', 'yard', 'shed', 5, 1.5, 'shed', 3)]
+  };
+  return [home, mum];
+}
+
+/* helpers over the data */
+const allRooms = (p) => p.areas.reduce((a, ar) => a.concat(ar.rooms), []);
+function meta(p, rid) { for (const a of p.areas) for (const r of a.rooms) if (r.id === rid) return { room: r, area: a }; return null; }
+const rcx = (r) => r.x + r.w / 2, rcz = (r) => r.z + r.d / 2;
+function bounds(rs) { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; rs.forEach((r) => { a = Math.min(a, r.x); b = Math.min(b, r.z); c = Math.max(c, r.x + r.w); d = Math.max(d, r.z + r.d); }); return { minx: a, minz: b, maxx: c, maxz: d }; }
+const P = () => places.find((p) => p.id === S.placeId);
+const tagName = (l) => TAGS[l.tag.c % TAGS.length][0] + ' door tag';
+const kindWord = { door: 'door', front: 'front door', gate: 'gate', shed: 'shed door', back: 'back door', link: 'link' };
+const pathOf = (p, rid) => { const m = meta(p, rid); return m ? [p.id, m.area.id, rid].join('/') : null; };
+function roomAt(p, x, z) { const rs = allRooms(p); for (const r of rs) if (x >= r.x - 0.03 && x <= r.x + r.w + 0.03 && z >= r.z - 0.03 && z <= r.z + r.d + 0.03) return r.id; return null; }
+function totemWorld(r, t) { return [rcx(r) + t.dx, rcz(r) + t.dz]; }
+/* where the door tag stands: inside room A, beside the door */
+function tagSpot(p, l) {
+  const r = meta(p, l.a).room, x = l.pa[0], z = l.pa[1], vert = Number.isInteger(x);
+  const sx = Math.sign(rcx(r) - x) || 1, sz = Math.sign(rcz(r) - z) || 1;
+  let tx, tz;
+  if (vert) { tx = x + sx * 0.45; tz = z + 0.8; if (tz > r.z + r.d - 0.4) tz = z - 0.8; } else { tz = z + sz * 0.45; tx = x + 0.8; if (tx > r.x + r.w - 0.4) tx = x - 0.8; }
+  return [tx, tz];
+}
+
+/* ===== Storage: IndexedDB first, localStorage as the fallback ===== */
+function idbOpen() { return new Promise((res, rej) => { try { const q = indexedDB.open('bc-places', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); q.onblocked = () => rej(new Error('blocked')); } catch (e) { rej(e); } }); }
+async function idbGet() { const db = await idbOpen(); return new Promise((res, rej) => { const r = db.transaction('kv').objectStore('kv').get('places'); r.onsuccess = () => { db.close(); res(r.result); }; r.onerror = () => rej(r.error); }); }
+async function idbPut(v) { const db = await idbOpen(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, 'places'); t.oncomplete = () => { db.close(); res(); }; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); }
+async function loadStore() {
+  let d = null;
+  try { d = await idbGet(); if (d) S.store = 'indexeddb'; } catch (e) { /* fall back below */ }
+  if (!d) { try { const s = localStorage.getItem('bc-places'); if (s) { d = JSON.parse(s); S.store = 'localstorage'; } } catch (e) { /* none */ } }
+  places.length = 0;
+  if (d && d.v === 1 && Array.isArray(d.places) && d.places.length) d.places.forEach((p) => places.push(p)); else seedPlaces().forEach((p) => places.push(p));
+}
+let saveT = 0;
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    const data = { v: 1, places: JSON.parse(JSON.stringify(places)) };
+    try { await idbPut(data); S.store = 'indexeddb'; return; } catch (e) { /* try localStorage */ }
+    try { localStorage.setItem('bc-places', JSON.stringify(data)); S.store = 'localstorage'; } catch (e) { S.store = 'memory'; }
+  }, 60);
+}
+async function saveNow() {
+  clearTimeout(saveT);
+  const data = { v: 1, places: JSON.parse(JSON.stringify(places)) };
+  try { await idbPut(data); S.store = 'indexeddb'; return; } catch (e) { /* fall back */ }
+  try { localStorage.setItem('bc-places', JSON.stringify(data)); S.store = 'localstorage'; } catch (e) { S.store = 'memory'; }
+}
+</script>
+<script>
+/* ===== 3D: toon materials with an inverted-hull ink outline, made from simple primitives ===== */
+const INK = 0x3b2a1e;
+let renderer, scene, cam, placeGroup, RI = {}, LI = {}, glows = [], spinners = [], bursts = [], travellers = [], CUR = null, me = null, W = null, time = 0;
+const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+const MATS = {}, GC = {};
+let GRAD = null;
+function grad() { if (GRAD) return GRAD; const t = new THREE.DataTexture(new Uint8Array([120, 195, 255]), 3, 1, THREE.LuminanceFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return (GRAD = t); }
+function tm(c, em) { const k = c + '_' + (em || 0); return MATS[k] || (MATS[k] = new THREE.MeshToonMaterial({ color: c, gradientMap: grad(), emissive: em || 0, emissiveIntensity: em ? 0.9 : 0 })); }
+const inkMat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+const noRay = () => {};
+function addInk(m) {
+  const g = m.geometry; if (!g.boundingBox) g.computeBoundingBox();
+  const s = new THREE.Vector3(); g.boundingBox.getSize(s);
+  const t = Math.min(0.026, Math.max(0.009, Math.min(s.x, s.y, s.z) * 0.6));
+  const h = new THREE.Mesh(g, inkMat); h.scale.set((s.x + 2 * t) / Math.max(s.x, 0.001), (s.y + 2 * t) / Math.max(s.y, 0.001), (s.z + 2 * t) / Math.max(s.z, 0.001)); h.raycast = noRay; m.add(h);
+}
+function fin(parent, m, o) { o = o || {}; if (!o.ni) addInk(m); if (o.ry) m.rotation.y = o.ry; if (o.rx) m.rotation.x = o.rx; if (o.rz) m.rotation.z = o.rz; parent.add(m); if (o.s && CUR) CUR.surfs.push(m); return m; }
+function B(p, w, h, d, col, x, y, z, o) { const k = 'b' + w + '_' + h + '_' + d; const g = GC[k] || (GC[k] = new THREE.BoxGeometry(w, h, d)); const m = new THREE.Mesh(g, tm(col, o && o.em)); m.position.set(x, y + h / 2, z); return fin(p, m, o); }
+function C(p, rt, rb, h, col, x, y, z, seg, o) { const k = 'c' + rt + '_' + rb + '_' + h + '_' + seg; const g = GC[k] || (GC[k] = new THREE.CylinderGeometry(rt, rb, h, seg || 16)); const m = new THREE.Mesh(g, tm(col, o && o.em)); m.position.set(x, y + h / 2, z); return fin(p, m, o); }
+function Sp(p, r, col, x, y, z, sx, sy, sz, o) { const k = 's' + r; const g = GC[k] || (GC[k] = new THREE.SphereGeometry(r, 16, 12)); const m = new THREE.Mesh(g, tm(col, o && o.em)); m.position.set(x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1); return fin(p, m, o); }
+function Co(p, r, h, col, x, y, z, seg, o) { const k = 'k' + r + '_' + h + '_' + seg; const g = GC[k] || (GC[k] = new THREE.ConeGeometry(r, h, seg || 12)); const m = new THREE.Mesh(g, tm(col, o && o.em)); m.position.set(x, y + h / 2, z); return fin(p, m, o); }
+function To(p, r, tube, col, x, y, z, arc, o) { const g = new THREE.TorusGeometry(r, tube, 8, 16, arc || Math.PI * 2); const m = new THREE.Mesh(g, tm(col, o && o.em)); m.position.set(x, y, z); return fin(p, m, o); }
+let glowTexC = null;
+function glowTex() { if (glowTexC) return glowTexC; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 4, 64, 64, 62); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.55, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return (glowTexC = new THREE.CanvasTexture(c)); }
+function addGlow(g, r, col, y) {
+  const disc = new THREE.Mesh(new THREE.PlaneGeometry(r * 2.8, r * 2.8), new THREE.MeshBasicMaterial({ map: glowTex(), color: col, transparent: true, depthWrite: false, opacity: 0.8 }));
+  disc.rotation.x = -Math.PI / 2; disc.position.y = y + 0.012; disc.raycast = noRay; disc.renderOrder = 8; g.add(disc);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.86, r, 44), new THREE.MeshBasicMaterial({ color: 0xf0a020, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = y + 0.02; ring.raycast = noRay; ring.renderOrder = 9; g.add(ring);
+  glows.push({ disc, ring, ph: Math.random() * 6 });
+}
+function burstAt(x, y, z, col) { const m = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.38, 44), new THREE.MeshBasicMaterial({ color: col || 0x4cf0c0, transparent: true, opacity: 1, side: THREE.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, y + 0.05, z); m.raycast = noRay; m.renderOrder = 10; scene.add(m); bursts.push({ m, t: 0 }); }
+
+/* totems: original little objects */
+function mkTotem(kind) {
+  const g = new THREE.Group();
+  if (kind === 'mug') { C(g, 0.15, 0.15, 0.3, 0xfdf6e8, 0, 0, 0, 20); [0.06, 0.15, 0.24].forEach((y) => C(g, 0.156, 0.156, 0.045, 0xe85d4a, 0, y, 0, 20, { ni: 1 })); C(g, 0.125, 0.125, 0.012, 0x6b4630, 0, 0.296, 0, 20, { ni: 1 }); To(g, 0.085, 0.03, 0xfdf6e8, 0.17, 0.16, 0); }
+  else if (kind === 'top') { const s = new THREE.Group(); const c = Co(s, 0.2, 0.26, 0xf2b632, 0, 0, 0, 20); c.rotation.x = Math.PI; Co(s, 0.2, 0.14, 0x3f8fd8, 0, 0.26, 0, 20); C(s, 0.205, 0.205, 0.05, 0xe85d4a, 0, 0.24, 0, 20); C(s, 0.03, 0.03, 0.18, 0xb07a3c, 0, 0.38, 0, 8); g.add(s); spinners.push({ o: s, sp: 5 }); }
+  else if (kind === 'cone') { [[0.17, 0.1, 0x8a5a34, 0], [0.19, 0.17, 0x9b6a40, 0.07], [0.17, 0.2, 0x8a5a34, 0.15], [0.12, 0.17, 0x9b6a40, 0.24], [0.06, 0.07, 0x8a5a34, 0.32]].forEach((a) => Sp(g, a[0], a[2], 0, a[3] + a[0] * 0.5, 0, 1, 0.8 + a[1], 1)); C(g, 0.025, 0.025, 0.08, 0x5a3d2b, 0, 0.36, 0, 8); }
+  else if (kind === 'lantern') { B(g, 0.22, 0.04, 0.22, 0x3b2a1e, 0, 0, 0); C(g, 0.1, 0.1, 0.24, 0xfff0a8, 0, 0.04, 0, 12, { em: 0xffc94d }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((p) => B(g, 0.025, 0.26, 0.025, 0x3b2a1e, p[0] * 0.105, 0.04, p[1] * 0.105, { ni: 1 })); Co(g, 0.17, 0.12, 0x3b2a1e, 0, 0.3, 0, 4, { ry: Math.PI / 4 }); To(g, 0.08, 0.016, 0x3b2a1e, 0, 0.46, 0, Math.PI, { ni: 1 }); }
+  else if (kind === 'pot') { C(g, 0.22, 0.16, 0.28, 0xd9733f, 0, 0, 0, 18); C(g, 0.25, 0.25, 0.07, 0xe58a54, 0, 0.26, 0, 18); C(g, 0.22, 0.22, 0.04, 0x5a3d2b, 0, 0.3, 0, 18, { ni: 1 }); C(g, 0.226, 0.17, 0.05, 0xfff0d8, 0, 0.1, 0, 18, { ni: 1 }); C(g, 0.025, 0.025, 0.22, 0x4d8f3c, 0, 0.32, 0, 6, { ni: 1 }); Sp(g, 0.13, 0x6fb352, -0.09, 0.56, 0, 1, 0.8, 1); Sp(g, 0.13, 0x6fb352, 0.1, 0.5, 0.03, 1, 0.8, 1); Sp(g, 0.09, 0xee7aa8, 0, 0.66, 0); }
+  else if (kind === 'wheel') { C(g, 0.025, 0.025, 0.5, 0xb07a3c, 0, 0, 0, 8, { ni: 1 }); const s = new THREE.Group(); s.position.y = 0.55; [0x3f8fd8, 0xe85d4a, 0xf2b632, 0x7bb661].forEach((c, i) => { const v = B(s, 0.24, 0.2, 0.03, c, 0.12, -0.1, 0.02, { ni: 1 }); const h = new THREE.Group(); h.rotation.z = i * Math.PI / 2; s.remove(v); h.add(v); s.add(h); }); Sp(s, 0.045, 0x3b2a1e, 0, 0, 0.05); g.add(s); spinners.push({ o: s, sp: 2.2, axis: 'z' }); }
+  else if (kind === 'duck') { Sp(g, 0.18, 0xe9c46a, 0, 0.16, 0, 1.2, 0.85, 0.9); Sp(g, 0.11, 0xe9c46a, 0.16, 0.34, 0); Co(g, 0.045, 0.1, 0xe8883a, 0.27, 0.3, 0, 8, { rz: -Math.PI / 2 }); Sp(g, 0.02, 0x3b2a1e, 0.22, 0.38, 0.07, 1, 1, 1, { ni: 1 }); Sp(g, 0.02, 0x3b2a1e, 0.22, 0.38, -0.07, 1, 1, 1, { ni: 1 }); Sp(g, 0.09, 0xd4a64a, -0.03, 0.18, 0.15, 1.3, 0.6, 0.4); Sp(g, 0.09, 0xd4a64a, -0.03, 0.18, -0.15, 1.3, 0.6, 0.4); }
+  else if (kind === 'acorn') { Sp(g, 0.14, 0xc08840, 0, 0.14, 0, 1, 1.15, 1); Sp(g, 0.155, 0x7a5232, 0, 0.27, 0, 1, 0.6, 1); C(g, 0.02, 0.02, 0.1, 0x5a3d2b, 0, 0.34, 0, 6, { ni: 1 }); }
+  else if (kind === 'teapot') { Sp(g, 0.19, 0x4f8fd0, 0, 0.19, 0, 1, 0.85, 1); Sp(g, 0.1, 0xfdf6e8, 0, 0.36, 0, 1, 0.5, 1); Sp(g, 0.03, 0xfdf6e8, 0, 0.42, 0); C(g, 0.025, 0.045, 0.2, 0x4f8fd0, 0.22, 0.14, 0, 8, { rz: -0.8 }); To(g, 0.1, 0.03, 0x4f8fd0, -0.2, 0.2, 0, Math.PI * 1.5, { rz: Math.PI * 0.75 }); C(g, 0.2, 0.2, 0.03, 0xfdf6e8, 0, 0.12, 0, 20, { ni: 1 }); }
+  else if (kind === 'bell') { C(g, 0.07, 0.19, 0.3, 0xd9a43a, 0, 0.04, 0, 18); C(g, 0.2, 0.2, 0.04, 0xb88628, 0, 0.04, 0, 18); Sp(g, 0.045, 0x3b2a1e, 0, 0.06, 0); To(g, 0.05, 0.018, 0xb88628, 0, 0.38, 0, Math.PI * 2, { ni: 1 }); }
+  return g;
+}
+function mkTag(col) {
+  const g = new THREE.Group();
+  C(g, 0.03, 0.035, 0.55, 0x8a5a34, 0, 0, 0, 8, { ni: 1 });
+  const d = C(g, 0.23, 0.23, 0.07, col, 0, 0.5, 0, 24); d.rotation.x = Math.PI / 2;
+  const w = C(g, 0.15, 0.15, 0.02, 0xfff6e6, 0, 0.5, 0.045, 24, { ni: 1 }); w.rotation.x = Math.PI / 2;
+  B(g, 0.1, 0.17, 0.02, col, 0, 0.415, 0.06, { ni: 1 }); Sp(g, 0.014, 0xfff6e6, 0.025, 0.5, 0.075, 1, 1, 1, { ni: 1 });
+  return g;
+}
+function mkTent() {
+  const g = new THREE.Group(); const t = Co(g, 0.3, 0.34, 0xe8883a, 0, 0, 0, 4, { ry: Math.PI / 4 }); B(g, 0.1, 0.17, 0.02, 0x3b2a1e, 0, 0, 0.19, { ni: 1 }).rotation.y = 0;
+  C(g, 0.012, 0.012, 0.3, 0x3b2a1e, 0.25, 0, 0.1, 6, { ni: 1 }); B(g, 0.14, 0.09, 0.015, 0x7bb661, 0.32, 0.22, 0.1, { ni: 1 }); Sp(g, 0.07, 0x5a3d2b, -0.3, 0.05, 0.15, 1.4, 0.6, 1); return g;
+}
+function mkCreature(col) {
+  const g = new THREE.Group(); Sp(g, 0.15, col, 0, 0.18, 0, 1, 0.95, 1); Co(g, 0.05, 0.1, col, -0.09, 0.3, 0, 6); Co(g, 0.05, 0.1, col, 0.09, 0.3, 0, 6);
+  Sp(g, 0.04, 0xffffff, -0.055, 0.22, 0.125, 1, 1, 1, { ni: 1 }); Sp(g, 0.04, 0xffffff, 0.055, 0.22, 0.125, 1, 1, 1, { ni: 1 }); Sp(g, 0.02, INK, -0.055, 0.22, 0.158, 1, 1, 1, { ni: 1 }); Sp(g, 0.02, INK, 0.055, 0.22, 0.158, 1, 1, 1, { ni: 1 });
+  Sp(g, 0.05, 0x3b2a1e, -0.07, 0.03, 0.04, 1, 0.6, 1.3, { ni: 1 }); Sp(g, 0.05, 0x3b2a1e, 0.07, 0.03, 0.04, 1, 0.6, 1.3, { ni: 1 }); return g;
+}
+function textSprite(txt) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 112; const x = c.getContext('2d'); x.fillStyle = '#fff6e6'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 10; x.beginPath(); x.moveTo(30, 6); x.arcTo(250, 6, 250, 100, 40); x.arcTo(250, 100, 6, 100, 40); x.arcTo(6, 100, 6, 6, 40); x.arcTo(6, 6, 250, 6, 40); x.closePath(); x.fill(); x.stroke();
+  x.fillStyle = '#3b2a1e'; x.font = '800 62px ui-rounded,Trebuchet MS,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 128, 56);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false })); s.scale.set(0.9, 0.4, 1); s.renderOrder = 20; s.raycast = noRay; return s;
+}
+
+/* furniture for each room style; local coordinates, origin at the room centre */
+const FURN = {
+  kitchen(g, w, d) {
+    const z0 = -d / 2 + 0.42, x0 = -w / 2 + 0.95, x1 = w / 2 - 0.15, len = x1 - x0, cx = (x0 + x1) / 2;
+    B(g, len, 0.62, 0.7, 0xc98f5a, cx, 0, z0); B(g, len + 0.04, 0.06, 0.74, 0xf6efe0, cx, 0.62, z0, { s: 1 });
+    for (let i = 1; i < 4; i++) B(g, 0.03, 0.46, 0.02, 0x7a5232, x0 + len * i / 4, 0.08, z0 + 0.36, { ni: 1 });
+    B(g, 0.72, 0.03, 0.46, 0x8fb9c9, x0 + 0.55, 0.68, z0, { ni: 1 }); B(g, 0.6, 0.02, 0.34, 0x6f98a8, x0 + 0.55, 0.7, z0, { ni: 1 }); C(g, 0.025, 0.025, 0.22, 0xb9c4c9, x0 + 0.55, 0.68, z0 - 0.2, 10, { ni: 1 }); B(g, 0.03, 0.03, 0.14, 0xb9c4c9, x0 + 0.55, 0.88, z0 - 0.13, { ni: 1 });
+    B(g, 0.5, 0.02, 0.4, 0x3b2a1e, x1 - 1.05, 0.68, z0, { ni: 1 }); [[-0.12, -0.09], [0.12, -0.09], [-0.12, 0.09], [0.12, 0.09]].forEach((p) => C(g, 0.07, 0.07, 0.015, 0x888888, x1 - 1.05 + p[0], 0.7, z0 + p[1], 12, { ni: 1 }));
+    B(g, 0.7, 1.2, 0.7, 0xdfe9ee, -w / 2 + 0.48, 0, -d / 2 + 0.48); B(g, 0.04, 0.4, 0.04, 0x8aa0aa, -w / 2 + 0.84, 0.55, -d / 2 + 0.84, { ni: 1 });
+    C(g, 0.4, 0.4, 0.05, 0xb07a3c, -0.5, 0.62, 0.4, 22, { s: 1 }); C(g, 0.05, 0.05, 0.62, 0x7a5232, -0.5, 0, 0.4, 8, { ni: 1 }); C(g, 0.16, 0.16, 0.06, 0xe85d4a, 0.1, 0.38, 0.75, 14); C(g, 0.16, 0.16, 0.06, 0x3f8fd8, -1.0, 0.38, 0.7, 14); C(g, 0.03, 0.03, 0.38, 0x7a5232, 0.1, 0, 0.75, 6, { ni: 1 }); C(g, 0.03, 0.03, 0.38, 0x7a5232, -1.0, 0, 0.7, 6, { ni: 1 });
+  },
+  hall(g, w, d) {
+    B(g, 1.6, 0.025, 1.0, 0xd9604a, 0, 0, 0.15, { s: 1 }); B(g, 1.6, 0.03, 0.09, 0xfff0d8, 0, 0, 0.0, { ni: 1 }); B(g, 1.6, 0.03, 0.09, 0xfff0d8, 0, 0, 0.3, { ni: 1 });
+    B(g, 0.36, 0.3, 0.9, 0xa8744a, -w / 2 + 0.3, 0, 0.35, { s: 1 }); B(g, 0.2, 0.1, 0.14, 0x3f8fd8, -w / 2 + 0.3, 0.3, 0.1); B(g, 0.2, 0.1, 0.14, 0xe85d4a, -w / 2 + 0.3, 0.3, 0.5);
+    B(g, 0.06, 0.14, 1.0, 0x7a5232, -w / 2 + 0.05, 1.1, 0.35); [[0.05, 0x3fa89b], [0.35, 0xe8883a], [0.65, 0x8e5bc9]].forEach((a) => B(g, 0.07, 0.5, 0.18, a[1], -w / 2 + 0.12, 0.58, a[0] - 0.05));
+    B(g, 0.5, 0.5, 0.5, 0xb07a3c, -w / 2 + 0.55, 0, -d / 2 + 0.55, { s: 1 }); B(g, 0.46, 0.05, 0.02, 0x7a5232, -w / 2 + 0.55, 0.3, -d / 2 + 0.81, { ni: 1 });
+    C(g, 0.17, 0.14, 0.45, 0x6f98a8, w / 2 - 0.4, 0, d / 2 - 0.4, 14); C(g, 0.015, 0.015, 0.4, 0x3b2a1e, w / 2 - 0.4, 0.45, d / 2 - 0.4, 6, { ni: 1 });
+  },
+  living(g, w, d) {
+    B(g, 1.9, 1.1, 0.04, 0x6b4630, 0.2, 0, -d / 2 + 0.06); B(g, 0.05, 1.1, 0.32, 0xa8744a, -0.77, 0, -d / 2 + 0.2); B(g, 0.05, 1.1, 0.32, 0xa8744a, 1.17, 0, -d / 2 + 0.2);
+    [0.02, 0.38, 0.74, 1.08].forEach((y) => B(g, 1.9, 0.04, 0.32, 0xa8744a, 0.2, y, -d / 2 + 0.2, { s: 1 }));
+    const bc = [0xe85d4a, 0x3f8fd8, 0xf2b632, 0x5aa84a, 0x8e5bc9, 0xee7aa8];
+    [0.06, 0.42, 0.78].forEach((y, r) => { for (let i = 0; i < 9; i++) { if (r === 1 && i > 5) continue; B(g, 0.08, 0.2 + ((i * 7 + r) % 3) * 0.04, 0.2, bc[(i + r * 2) % 6], -0.65 + i * 0.185, y, -d / 2 + 0.2, { ni: 1 }); } });
+    B(g, 0.85, 0.36, 1.75, 0x3fa89b, w / 2 - 0.55, 0, 0.1, { s: 1 }); B(g, 0.2, 0.8, 1.75, 0x2f8f83, w / 2 - 0.17, 0, 0.1); B(g, 0.85, 0.58, 0.18, 0x2f8f83, w / 2 - 0.55, 0, -0.78); B(g, 0.85, 0.58, 0.18, 0x2f8f83, w / 2 - 0.55, 0, 0.98);
+    B(g, 0.45, 0.12, 0.6, 0x5fc4b5, w / 2 - 0.6, 0.36, -0.2, { ni: 1 }); B(g, 0.45, 0.12, 0.6, 0x5fc4b5, w / 2 - 0.6, 0.36, 0.5, { ni: 1 });
+    B(g, 1.9, 0.02, 1.4, 0xe0b25a, -0.1, 0, 0.4, { s: 1 }); B(g, 0.95, 0.05, 0.6, 0xb07a3c, -0.1, 0.29, 0.4, { s: 1 });
+    [[-0.5, 0.15], [0.3, 0.15], [-0.5, 0.65], [0.3, 0.65]].forEach((p) => B(g, 0.06, 0.29, 0.06, 0x7a5232, p[0], 0, p[1], { ni: 1 }));
+    C(g, 0.17, 0.13, 0.25, 0xd9733f, -w / 2 + 0.35, 0, d / 2 - 0.35, 14); Sp(g, 0.24, 0x5aa84a, -w / 2 + 0.35, 0.5, d / 2 - 0.35, 1, 1.1, 1);
+  },
+  bedroom(g, w, d) {
+    B(g, 1.0, 0.3, 1.9, 0xa8744a, w / 2 - 0.62, 0, 0.2); B(g, 0.1, 0.8, 1.9, 0x8a5a34, w / 2 - 0.1, 0, 0.2); B(g, 0.92, 0.14, 1.8, 0xfff6e6, w / 2 - 0.6, 0.3, 0.2, { s: 1 });
+    B(g, 0.4, 0.1, 0.5, 0xee7aa8, w / 2 - 0.55, 0.44, -0.5, { ni: 1 }); B(g, 0.9, 0.12, 1.1, 0x3f8fd8, w / 2 - 0.6, 0.44, 0.55); B(g, 0.9, 0.125, 0.14, 0xf2b632, w / 2 - 0.6, 0.44, 0.35, { ni: 1 });
+    B(g, 0.4, 0.45, 0.4, 0xb07a3c, w / 2 - 0.3, 0, -d / 2 + 0.3, { s: 1 }); B(g, 0.36, 0.04, 0.02, 0x7a5232, w / 2 - 0.3, 0.25, -d / 2 + 0.51, { ni: 1 });
+    B(g, 0.7, 1.3, 0.5, 0xb07a3c, -w / 2 + 0.5, 0, d / 2 - 0.35); B(g, 0.02, 1.1, 0.02, 0x7a5232, -w / 2 + 0.5, 0.1, d / 2 - 0.09, { ni: 1 }); B(g, 0.1, 0.04, 0.03, 0xd9a43a, -w / 2 + 0.42, 0.7, d / 2 - 0.08, { ni: 1 });
+    C(g, 0.6, 0.6, 0.02, 0x8e5bc9, -0.4, 0, 0.1, 28, { s: 1 }); C(g, 0.4, 0.4, 0.025, 0xb892e0, -0.4, 0.02, 0.1, 28, { ni: 1 });
+  },
+  path(g, w, d) {
+    [[-1, -2.2], [-1.05, -1.5], [-0.95, -0.8], [-0.6, -0.2], [0, 0.1], [0.7, 0.1], [1.4, 0.05], [2.1, 0]].forEach((p, i) => { const s = C(g, 0.3, 0.3, 0.05, 0xc9c1b0, p[0], 0, p[1], 10, { s: i === 0 }); s.scale.set(1, 1, 0.8); });
+    B(g, 1.3, 0.1, 0.5, 0x7a5232, -1.0, 0, 1.6, { s: 1 }); [[-1.5, 0xe85d4a], [-1.2, 0xf2b632], [-0.9, 0xee7aa8], [-0.6, 0x8e5bc9]].forEach((a) => { C(g, 0.015, 0.015, 0.22, 0x4d8f3c, a[0], 0.1, 1.6, 6, { ni: 1 }); Sp(g, 0.075, a[1], a[0], 0.34, 1.6); });
+    C(g, 0.1, 0.12, 0.7, 0x7a5232, 1.5, 0, 1.5, 10); Sp(g, 0.5, 0x5aa84a, 1.5, 1.1, 1.5, 1, 0.9, 1); Sp(g, 0.34, 0x6fb352, 1.75, 1.45, 1.4);
+    Sp(g, 0.38, 0x4d8f3c, -2.1, 0.3, 2.0, 1, 0.8, 1); Sp(g, 0.3, 0x5aa84a, -1.65, 0.24, 2.2, 1, 0.8, 1);
+  },
+  lawn(g, w, d) {
+    C(g, 0.1, 0.12, 0.7, 0x7a5232, -w / 2 + 0.8, 0, -d / 2 + 0.75, 10); Sp(g, 0.52, 0x5aa84a, -w / 2 + 0.8, 1.1, -d / 2 + 0.75, 1, 0.9, 1); Sp(g, 0.34, 0x6fb352, -w / 2 + 1.05, 1.45, -d / 2 + 0.65);
+    B(g, w - 1.4, 0.08, 0.42, 0x7a5232, 0.2, 0, d / 2 - 0.42, { s: 1 }); for (let i = 0; i < 5; i++) { const x = -w / 2 + 1.1 + i * ((w - 2.0) / 4), c = [0xe85d4a, 0xf2b632, 0xee7aa8, 0x8e5bc9, 0xffffff][i]; C(g, 0.014, 0.014, 0.2, 0x4d8f3c, x, 0.08, d / 2 - 0.42, 6, { ni: 1 }); Sp(g, 0.07, c, x, 0.32, d / 2 - 0.42); }
+    B(g, 0.9, 0.07, 0.3, 0xa8744a, 0.4, 0.28, -d / 2 + 0.45, { s: 1 }); B(g, 0.06, 0.28, 0.26, 0x7a5232, 0.0, 0, -d / 2 + 0.45, { ni: 1 }); B(g, 0.06, 0.28, 0.26, 0x7a5232, 0.8, 0, -d / 2 + 0.45, { ni: 1 });
+    B(g, 0.9, 0.02, 0.9, 0xc9c1b0, 0.4, 0, 0.2, { s: 1 });
+  },
+  shed(g, w, d) {
+    const bx = 0, bz = -d / 2 + 0.45, bl = w - 0.9;
+    B(g, bl, 0.8, 0.7, 0xa8744a, bx, 0, bz); B(g, bl + 0.04, 0.06, 0.74, 0xc9a06a, bx, 0.8, bz, { s: 1 }); B(g, 0.16, 0.14, 0.3, 0x6f98a8, bx + bl / 2 - 0.2, 0.86, bz + 0.1); B(g, 0.03, 0.2, 0.03, 0x3b2a1e, bx + bl / 2 - 0.2, 1.0, bz + 0.1, { ni: 1 });
+    B(g, bl - 0.2, 0.5, 0.04, 0xd9c4a0, bx, 0.85 + 0.3, -d / 2 + 0.07, { ni: 1 }); [[-0.5, 0xe85d4a], [-0.1, 0x3f8fd8], [0.3, 0xf2b632]].forEach((a) => { if (Math.abs(a[0]) < bl / 2) B(g, 0.05, 0.3, 0.03, a[1], bx + a[0], 1.2, -d / 2 + 0.1, { ni: 1 }); });
+    const sx = w / 2 - 0.3;
+    B(g, 0.05, 1.45, 0.05, 0x7a5232, sx, 0, -d / 2 + 1.35 + 0.8, { ni: 1 }); [0.5, 0.95, 1.35].forEach((y) => B(g, 0.32, 0.05, Math.min(1.3, d - 1.6), 0xc9a06a, sx, y, 0.15, { s: 1 }));
+    [0.55, 1.0, 1.4].forEach((y, i) => { for (let k = 0; k < 3; k++) { const c = [0x6f98a8, 0xe85d4a, 0xf2b632, 0x5aa84a][(i + k) % 4]; C(g, 0.07, 0.07, 0.17, c, sx, y + 0.05, -0.2 + k * 0.4, 10); } });
+    B(g, 0.4, 0.4, 0.4, 0xb07a3c, -w / 2 + 0.45, 0, d / 2 - 0.45); B(g, 0.38, 0.05, 0.02, 0x7a5232, -w / 2 + 0.45, 0.2, d / 2 - 0.24, { ni: 1 }); C(g, 0.22, 0.22, 0.45, 0x8a5a34, -w / 2 + 0.95, 0, d / 2 - 0.45, 14);
+    const rf = 1.7; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((p) => B(g, 0.1, rf, 0.1, 0x7a5232, p[0] * (w / 2 - 0.05), 0, p[1] * (d / 2 - 0.05), { ni: 1 }));
+    B(g, w, 0.13, 0.15, 0x7a5232, 0, rf - 0.1, 0); B(g, 0.12, 0.12, d, 0x7a5232, -w / 2 + 0.05, rf - 0.1, 0, { ni: 1 }); B(g, 0.12, 0.12, d, 0x7a5232, w / 2 - 0.05, rf - 0.1, 0, { ni: 1 });
+    C(g, 0.012, 0.012, 0.38, 0xb8a47a, 0.55, rf - 0.5, 0, 6, { ni: 1 }); To(g, 0.07, 0.018, 0xd9a43a, 0.55, rf - 0.5, 0, Math.PI * 1.55, { rz: Math.PI * 0.2 });
+  },
+  bath(g, w, d) { B(g, 1.5, 0.45, 0.75, 0xf4f8fa, 0, 0, -d / 2 + 0.5); B(g, 1.3, 0.02, 0.55, 0xbfe0e6, 0, 0.45, -d / 2 + 0.5, { s: 1, ni: 1 }); C(g, 0.17, 0.17, 0.3, 0xf4f8fa, w / 2 - 0.4, 0, d / 2 - 0.4, 14); },
+  desk(g, w, d) { B(g, 1.3, 0.05, 0.6, 0xb07a3c, 0, 0.7, -d / 2 + 0.45, { s: 1 }); B(g, 0.06, 0.7, 0.5, 0x7a5232, -0.6, 0, -d / 2 + 0.45, { ni: 1 }); B(g, 0.06, 0.7, 0.5, 0x7a5232, 0.6, 0, -d / 2 + 0.45, { ni: 1 }); B(g, 0.4, 0.05, 0.4, 0x3f8fd8, 0, 0.4, -d / 2 + 1.0); B(g, 0.04, 0.4, 0.04, 0x7a5232, 0, 0, -d / 2 + 1.0, { ni: 1 }); },
+  other(g, w, d) { B(g, 0.5, 0.5, 0.5, 0xb07a3c, -w / 2 + 0.5, 0, -d / 2 + 0.5, { s: 1 }); C(g, 0.18, 0.18, 0.3, 0x5fc4b5, w / 2 - 0.5, 0, d / 2 - 0.5, 14); }
+};
+
+/* build the whole property */
+const WALL_COL = { shed: 0xc89a64 };
+function buildPlace(p) {
+  if (placeGroup) scene.remove(placeGroup);
+  placeGroup = new THREE.Group(); RI = {}; LI = {}; glows.length = 0; spinners.length = 0; travellers.length = 0;
+  const rooms = allRooms(p), bb = bounds(rooms), cxb = (bb.minx + bb.maxx) / 2, czb = (bb.minz + bb.maxz) / 2;
+  CUR = null;
+  B(placeGroup, bb.maxx - bb.minx + 1.8, 0.3, bb.maxz - bb.minz + 1.8, 0x9b7650, cxb, -0.4, czb);
+  p.areas.forEach((a) => a.rooms.forEach((r) => {
+    const g = new THREE.Group(); g.position.set(rcx(r), 0, rcz(r)); g.userData.roomId = r.id; placeGroup.add(g);
+    const ri = RI[r.id] = { g, r, surfs: [], mode: 'off', vis: 0, u: 0, veil: 0.34, tot: {}, camps: [] }; CUR = ri;
+    B(g, r.w, 0.1, r.d, FLOOR[r.outdoor ? (r.style === 'path' ? 'path' : 'lawn') : r.style] || FLOOR.other, 0, -0.1, 0, { s: 1 });
+    if (r.style === 'path') { for (let i = 0; i < 6; i++) B(g, 0.14, 0.02, 0.14, 0x7fb860, -r.w / 2 + 0.4 + i * 0.8, 0, r.d / 2 - 0.3 - (i % 2) * 0.2, { ni: 1 }); }
+    (FURN[r.style] || FURN.other)(g, r.w, r.d);
+    r.totems.forEach((t) => addTotem(g, ri, r, t));
+    r.camps.forEach((c) => { const m = mkTent(); m.position.set(c.dx, 0, c.dz); m.rotation.y = (c.dx * 3) % 1; g.add(m); ri.camps.push(m); });
+    /* surfaces light up with a scan outline */
+    ri.surfs = ri.surfs.map((m) => {
+      const sm = new THREE.MeshBasicMaterial({ color: 0x62f5cf, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      const shell = new THREE.Mesh(m.geometry, sm); shell.raycast = noRay; shell.renderOrder = 6; m.add(shell);
+      const em = new THREE.LineBasicMaterial({ color: 0x0fcf9a, transparent: true, opacity: 0 }); const ed = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), em); ed.raycast = noRay; ed.renderOrder = 7; ed.scale.set(1.012, 1.012, 1.012); m.add(ed);
+      const wp = new THREE.Vector3(); m.getWorldPosition(wp); return { m, sm, em, rel: Math.max(0, Math.min(1, (m.position.x + r.w / 2) / r.w)) };
+    });
+    const veil = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), new THREE.MeshBasicMaterial({ color: 0xfff6e6, transparent: true, opacity: 0.3, depthWrite: false })); veil.rotation.x = -Math.PI / 2; veil.position.y = 1.5; veil.raycast = noRay; veil.renderOrder = 4; g.add(veil); ri.veilM = veil;
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(r.d, 1.6), new THREE.MeshBasicMaterial({ color: 0x4cf0c0, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false })); sc.rotation.y = Math.PI / 2; sc.position.y = 0.8; sc.visible = false; sc.raycast = noRay; sc.renderOrder = 7; g.add(sc); ri.scanM = sc;
+  }));
+  CUR = null;
+  buildWalls(p); buildLinks(p);
+  /* travellers walk the doorway links */
+  const n = Math.min(6, p.links.length);
+  for (let i = 0; i < n; i++) { const col = [0x7bb661, 0xee7aa8, 0x3f8fd8, 0xf2b632, 0x8e5bc9, 0x2fb3a8][i % 6]; const m = mkCreature(col); placeGroup.add(m); const tv = { m, i, pts: [], k: 0, speed: 0.8 + (i % 3) * 0.15, room: null, d: 0, total: 1, pts: [] }; const l0 = p.links[i % p.links.length]; startTrav(p, tv, l0, i % 2 ? l0.b : l0.a); tv.d = Math.random() * tv.total * 0.9; travellers.push(tv); }
+  scene.add(placeGroup);
+}
+function addTotem(g, ri, r, t) {
+  const o = mkTotem(t.kind); o.position.set(t.dx, t.y || 0, t.dz); o.scale.setScalar(1.25); g.add(o); addGlow(o, 0.34, 0xffc94d, 0.0); ri.tot[t.id] = o;
+  const pick = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.9, 8), new THREE.MeshBasicMaterial({ visible: false })); pick.position.y = 0.4; o.add(pick);
+}
+function buildWalls(p) {
+  const cells = new Map();
+  const add = (o, c, i, ind, tall, col) => { const k = o + '|' + c + '|' + i; let e = cells.get(k); if (!e) cells.set(k, e = { o, c, i, wall: false, tall: false, col: 0xb8814f, gap: false }); if (ind) { e.wall = true; e.col = col; if (tall) e.tall = true; } };
+  p.areas.forEach((a) => a.rooms.forEach((r) => {
+    const ind = !r.outdoor, col = WALL_COL[a.id] || 0xf4e4c1;
+    for (let i = 0; i < r.w; i++) { add('h', r.z, r.x + i, ind, true, col); add('h', r.z + r.d, r.x + i, ind, false, col); }
+    for (let i = 0; i < r.d; i++) { add('v', r.x, r.z + i, ind, true, col); add('v', r.x + r.w, r.z + i, ind, true, col); }
+  }));
+  const gapAt = [];
+  p.links.forEach((l) => [l.pa, l.pb].forEach((pt, side) => { if (side && l.pa[0] === l.pb[0] && l.pa[1] === l.pb[1]) return; const vert = Number.isInteger(pt[0]); const k = vert ? 'v|' + pt[0] + '|' + Math.floor(pt[1]) : 'h|' + pt[1] + '|' + Math.floor(pt[0]); const e = cells.get(k); if (e) { e.gap = true; gapAt.push({ e, l, side }); } }));
+  const arr = [...cells.values()].filter((e) => !e.gap).sort((a, b) => (a.o + a.c).localeCompare(b.o + b.c) || a.i - b.i);
+  const runs = []; arr.forEach((e) => { const t = runs[runs.length - 1]; if (t && t.o === e.o && t.c === e.c && t.wall === e.wall && t.tall === e.tall && t.col === e.col && t.i1 === e.i) t.i1 = e.i + 1; else runs.push({ o: e.o, c: e.c, wall: e.wall, tall: e.tall, col: e.col, i0: e.i, i1: e.i + 1 }); });
+  runs.forEach((r) => { const len = r.i1 - r.i0, h = r.wall ? (r.tall ? 1.15 : 0.32) : 0.3, t = r.wall ? 0.13 : 0.07, mid = r.i0 + len / 2; if (r.o === 'h') B(placeGroup, len, h, t, r.col, mid, 0, r.c); else B(placeGroup, t, h, len, r.col, r.c, 0, mid); });
+  gapAt.forEach((ga) => {
+    const e = ga.e, l = ga.l, tall = e.tall && e.wall, post = tall ? 1.1 : (e.wall ? 0.45 : 0.5), pc = e.wall ? 0x7a5232 : 0xb8814f;
+    const rm = meta(p, ga.side ? l.b : l.a).room;
+    if (e.o === 'h') { B(placeGroup, 0.12, post, 0.16, pc, e.i + 0.06, 0, e.c); B(placeGroup, 0.12, post, 0.16, pc, e.i + 0.94, 0, e.c); if (tall) B(placeGroup, 1, 0.1, 0.14, pc, e.i + 0.5, 1.05, e.c, { ni: 1 }); }
+    else { B(placeGroup, 0.16, post, 0.12, pc, e.c, 0, e.i + 0.06); B(placeGroup, 0.16, post, 0.12, pc, e.c, 0, e.i + 0.94); if (tall) B(placeGroup, 0.14, 0.1, 1, pc, e.c, 1.05, e.i + 0.5, { ni: 1 }); }
+    if (ga.side === 0) {
+      const hg = new THREE.Group(), tagc = TAGS[l.tag.c % TAGS.length][1], leafc = l.kind === 'gate' ? 0xc9a06a : (l.kind === 'shed' ? 0xa8744a : (l.kind === 'front' || l.kind === 'back' ? tagc : 0xd9a43a)), lh = l.kind === 'gate' ? 0.42 : 0.9;
+      if (e.o === 'h') { hg.position.set(e.i + 0.1, 0, e.c); B(hg, 0.8, lh, 0.05, leafc, 0.4, 0, 0); hg.rotation.y = (rcz(rm) < e.c ? 1 : -1) * 1.2; }
+      else { hg.position.set(e.c, 0, e.i + 0.1); B(hg, 0.05, lh, 0.8, leafc, 0, 0, 0.4); hg.rotation.y = (rcx(rm) > e.c ? 1 : -1) * 1.2; }
+      placeGroup.add(hg);
+      B(placeGroup, e.o === 'h' ? 0.9 : 0.5, 0.02, e.o === 'h' ? 0.5 : 0.9, 0xe0c9a0, e.o === 'h' ? e.i + 0.5 : e.c, 0, e.o === 'h' ? e.c : e.i + 0.5, { ni: 1 });
+    }
+  });
+}
+function buildLinks(p) {
+  p.links.forEach((l) => {
+    const ra = meta(p, l.a).room, col = TAGS[l.tag.c % TAGS.length][1], spot = tagSpot(p, l);
+    const g = new THREE.Group(); g.position.set(spot[0], 0, spot[1]); g.userData.linkId = l.id;
+    const tg = mkTag(col); tg.rotation.y = Math.atan2(rcx(ra) - spot[0], rcz(ra) - spot[1]); tg.scale.setScalar(1.15); g.add(tg); addGlow(g, 0.3, 0xffc94d, 0);
+    const pick = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.9, 8), new THREE.MeshBasicMaterial({ visible: false })); pick.position.y = 0.4; g.add(pick);
+    placeGroup.add(g); LI[l.id] = { g, l, spot };
+    const dist = Math.hypot(l.pa[0] - l.pb[0], l.pa[1] - l.pb[1]);
+    if (dist > 1.2) { const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; pts.push(new THREE.Vector3(l.pa[0] + (l.pb[0] - l.pa[0]) * t, 0.5 + Math.sin(t * Math.PI) * 1.4, l.pa[1] + (l.pb[1] - l.pa[1]) * t)); } const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: col, dashSize: 0.2, gapSize: 0.14 })); ln.computeLineDistances(); ln.raycast = noRay; placeGroup.add(ln); }
+  });
+}
+function linkPts(p, l, from) { const a = meta(p, l.a).room, b = meta(p, l.b).room; return from === l.a ? [[rcx(a), rcz(a)], l.pa, l.pb, [rcx(b), rcz(b)]] : [[rcx(b), rcz(b)], l.pb, l.pa, [rcx(a), rcz(a)]]; }
+function startTrav(p, tv, l, fromId) { tv.l = l; tv.pts = linkPts(p, l, fromId); tv.room = fromId === l.a ? l.b : l.a; tv.d = 0; tv.total = 0; for (let i = 0; i < 3; i++) tv.total += Math.hypot(tv.pts[i + 1][0] - tv.pts[i][0], tv.pts[i + 1][1] - tv.pts[i][1]); }
+function stepTrav(tv, dt) {
+  const p = P(); if (!p || !tv.pts.length) return;
+  tv.d += tv.speed * dt;
+  if (tv.d >= tv.total) { const opts = p.links.filter((l) => l.a === tv.room || l.b === tv.room); if (!opts.length) return; startTrav(p, tv, opts[Math.floor(Math.random() * opts.length)], tv.room); }
+  let d = tv.d, i = 0;
+  while (i < 2) { const sl = Math.hypot(tv.pts[i + 1][0] - tv.pts[i][0], tv.pts[i + 1][1] - tv.pts[i][1]); if (d <= sl) break; d -= sl; i++; }
+  const a = tv.pts[i], b = tv.pts[i + 1], sl = Math.max(0.01, Math.hypot(b[0] - a[0], b[1] - a[1])), t = Math.min(1, d / sl);
+  tv.x = a[0] + (b[0] - a[0]) * t; tv.z = a[1] + (b[1] - a[1]) * t;
+  tv.m.position.set(tv.x, Math.abs(Math.sin(time * 8 + tv.i)) * 0.07, tv.z); tv.m.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]);
+}
+
+/* ===== the camera "you" ===== */
+function buildMe() {
+  const g = new THREE.Group(); C(g, 0.17, 0.22, 0.5, 0xe8883a, 0, 0.08, 0, 16); Sp(g, 0.19, 0xf5cfa0, 0, 0.82, 0); Sp(g, 0.2, 0x5a3d2b, 0, 0.88, -0.03, 1, 0.7, 1); B(g, 0.34, 0.26, 0.04, 0x3b2a1e, 0, 0.5, 0.26); B(g, 0.28, 0.2, 0.01, 0x9fe8ff, 0, 0.53, 0.285, { ni: 1, em: 0x2a7f99 });
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.7, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0x4cf0c0, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false })); cone.rotation.x = -Math.PI / 2; cone.position.set(0, 0.55, 0.3 + 0.85); cone.raycast = noRay; g.add(cone);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.38, 28), new THREE.MeshBasicMaterial({ color: 0xe8883a, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; ring.raycast = noRay; g.add(ring);
+  const lab = textSprite('You'); lab.position.y = 1.5; g.add(lab); g.userData.noPick = true;
+  return g;
+}
+</script>
+<script>
+/* ===== Map (SVG): areas as blocks, rooms inside, doorways as links, busy rooms glow, travellers on the links ===== */
+const $ = (i) => document.getElementById(i);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let mapEls = { tv: [], you: null, glow: {} };
+const ovl = (a, b) => a.x < b.x + b.w - 0.01 && b.x < a.x + a.w - 0.01 && a.z < b.z + b.d - 0.01 && b.z < a.z + a.d - 0.01;
+function areaLabels(p) {
+  const rs = allRooms(p), out = [];
+  p.areas.forEach((a) => {
+    const b = bounds(a.rooms), w = Math.max(2.3, a.name.length * 0.44 + 1.0), h = 0.8;
+    const cands = [{ x: b.minx + 0.05, z: b.minz - h - 0.1 }, { x: b.minx + 0.05, z: b.maxz + 0.1 }, { x: b.maxx - w - 0.05, z: b.minz - h - 0.1 }, { x: b.maxx - w - 0.05, z: b.maxz + 0.1 }];
+    let pick = cands.find((c) => { const q = { x: c.x, z: c.z, w, d: h }; return !rs.some((r) => ovl(q, r)) && !out.some((o) => ovl(q, o)); }) || cands[0];
+    out.push({ x: pick.x, z: pick.z, w, d: h, a });
+  });
+  return out;
+}
+function busyOf(p, r) { let n = r.camps.length * 1.2; travellers.forEach((tv) => { if (tv.x !== undefined && tv.x >= r.x && tv.x <= r.x + r.w && tv.z >= r.z && tv.z <= r.z + r.d) n += 0.9; }); return n; }
+function mapSVG(p, mini) {
+  const rs = allRooms(p), labs = mini ? [] : areaLabels(p); let b = bounds(rs); labs.forEach((l) => { b.minx = Math.min(b.minx, l.x); b.minz = Math.min(b.minz, l.z); b.maxx = Math.max(b.maxx, l.x + l.w); b.maxz = Math.max(b.maxz, l.z + l.d); });
+  const pad = mini ? 0.5 : 0.7, vx = b.minx - pad, vz = b.minz - pad, vw = b.maxx - b.minx + 2 * pad, vh = b.maxz - b.minz + 2 * pad;
+  let s = '<defs><filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="0.22"/></filter></defs>';
+  p.areas.forEach((a) => { const q = bounds(a.rooms); s += '<g data-area="' + a.id + '"><rect class="ablock ' + (a.id === 'house' ? 'house' : '') + '" x="' + (q.minx - 0.14) + '" y="' + (q.minz - 0.14) + '" width="' + (q.maxx - q.minx + 0.28) + '" height="' + (q.maxz - q.minz + 0.28) + '" rx="0.45"/></g>'; });
+  rs.forEach((r) => {
+    s += '<g class="room' + (r.outdoor ? ' out' : '') + '" data-room="' + r.id + '"><rect class="glow" data-g="' + r.id + '" x="' + (r.x - 0.05) + '" y="' + (r.z - 0.05) + '" width="' + (r.w + 0.1) + '" height="' + (r.d + 0.1) + '" rx="0.4"/><rect class="fill" x="' + (r.x + 0.07) + '" y="' + (r.z + 0.07) + '" width="' + (r.w - 0.14) + '" height="' + (r.d - 0.14) + '" rx="0.33"/>';
+    s += '</g>';
+  });
+  p.links.forEach((l) => {
+    const a = meta(p, l.a).room, bb = meta(p, l.b).room, c = css(TAGS[l.tag.c % TAGS.length][1]);
+    s += '<g data-link="' + l.id + '">';
+    if (!mini) s += '<path d="M' + rcx(a) + ' ' + rcz(a) + 'L' + l.pa[0] + ' ' + l.pa[1] + 'L' + l.pb[0] + ' ' + l.pb[1] + 'L' + rcx(bb) + ' ' + rcz(bb) + '" fill="none" stroke="#3b2a1e" stroke-opacity=".38" stroke-width=".07" stroke-dasharray=".2 .2"/>';
+    [l.pa, l.pb].forEach((pt, i) => { if (i && l.pa[0] === l.pb[0] && l.pa[1] === l.pb[1]) return; const v = Number.isInteger(pt[0]); s += '<rect x="' + (pt[0] - (v ? 0.14 : 0.45)) + '" y="' + (pt[1] - (v ? 0.45 : 0.14)) + '" width="' + (v ? 0.28 : 0.9) + '" height="' + (v ? 0.9 : 0.28) + '" rx="0.14" fill="' + c + '" stroke="#3b2a1e" stroke-width="' + (mini ? 0.1 : 0.07) + '"/>'; });
+    if (!mini) s += '<path class="hit" d="M' + l.pa[0] + ' ' + l.pa[1] + 'L' + l.pb[0] + ' ' + l.pb[1] + '" /><circle class="hit" cx="' + l.pa[0] + '" cy="' + l.pa[1] + '" r=".55" style="fill:transparent;stroke:none"/>';
+    s += '</g>';
+  });
+  rs.forEach((r) => {
+    if (!mini) { const fs = Math.min(0.52, (r.w - 0.6) / (Math.max(5, r.name.length) * 0.56)); s += '<text class="rname" x="' + (r.x + 0.3) + '" y="' + (r.z + 0.3 + fs) + '" font-size="' + fs.toFixed(2) + '">' + esc(r.name) + '</text>'; }
+    r.camps.forEach((cp) => { const x = rcx(r) + cp.dx, y = rcz(r) + cp.dz; s += '<polygon points="' + (x - 0.24) + ',' + (y + 0.18) + ' ' + x + ',' + (y - 0.24) + ' ' + (x + 0.24) + ',' + (y + 0.18) + '" fill="#e8883a" stroke="#3b2a1e" stroke-width="' + (mini ? 0.1 : 0.06) + '" stroke-linejoin="round" pointer-events="none"/>'; });
+    r.totems.forEach((t) => { const w = totemWorld(r, t); s += '<circle cx="' + w[0] + '" cy="' + w[1] + '" r="' + (mini ? 0.2 : 0.17) + '" fill="' + css(TOT[t.kind][1]) + '" stroke="#3b2a1e" stroke-width="' + (mini ? 0.1 : 0.06) + '" pointer-events="none"/>'; });
+  });
+  if (!mini) {
+    labs.forEach((l) => { s += '<g class="alabel" data-area="' + l.a.id + '"><rect x="' + l.x + '" y="' + l.z + '" width="' + l.w + '" height="' + l.d + '" rx="0.4"/><text x="' + (l.x + 0.35) + '" y="' + (l.z + 0.56) + '" font-size="0.46">' + esc(l.a.name) + '</text></g>'; });
+    travellers.forEach((tv, i) => { s += '<circle class="tv" data-i="' + i + '" r="0.17" fill="' + ['#7bb661', '#ee7aa8', '#3f8fd8', '#f2b632', '#8e5bc9', '#2fb3a8'][i % 6] + '" stroke="#3b2a1e" stroke-width="0.06" cx="-99" cy="-99" pointer-events="none"/>'; });
+    s += '<g id="you" pointer-events="none"><polygon points="-0.55,1.1 0.55,1.1 0,0.1" fill="#4cf0c0" fill-opacity=".35"/><circle r=".3" fill="#e8883a" stroke="#3b2a1e" stroke-width=".08"/><polygon points="0,0.62 -0.2,0.28 0.2,0.28" fill="#3b2a1e"/></g>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vx + ' ' + vz + ' ' + vw + ' ' + vh + '" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">' + s + '</svg>';
+}
+function renderMap(p) {
+  const el = $('map'); el.outerHTML = '<svg id="map" preserveAspectRatio="xMidYMid meet"></svg>'; const m = $('map');
+  const tmp = document.createElement('div'); tmp.innerHTML = mapSVG(p, false); const src = tmp.firstChild; m.setAttribute('viewBox', src.getAttribute('viewBox')); m.innerHTML = src.innerHTML;
+  mapEls = { tv: [...m.querySelectorAll('.tv')], you: m.querySelector('#you'), glow: {} }; m.querySelectorAll('[data-g]').forEach((g) => { mapEls.glow[g.dataset.g] = g; });
+  $('mapTitle').textContent = p.name + ' map'; updateMapStates();
+  m.addEventListener('pointerup', (e) => {
+    const t = e.target.closest('[data-link]'); if (t) { goDoor(t.dataset.link); return; }
+    const a = e.target.closest('.alabel'); if (a) { goTo([p.id, a.dataset.area]); return; }
+    const r = e.target.closest('[data-room]'); if (r) { const mm = meta(p, r.dataset.room); goTo([p.id, mm.area.id, mm.room.id]); return; }
+    const b = e.target.closest('[data-area]'); if (b) goTo([p.id, b.dataset.area]);
+  });
+}
+function updateMapStates() {
+  document.querySelectorAll('#map .room').forEach((g) => { const id = g.dataset.room; g.classList.toggle('loaded', S.loaded === id); g.classList.toggle('visited', S.visited.has(id)); g.classList.toggle('sel', S.level === 3 && S.roomId === id); });
+}
+function syncMap(raw) {
+  const p = P(); if (!p) return;
+  travellers.forEach((tv, i) => { const c = mapEls.tv[i]; if (c && tv.x !== undefined) { c.setAttribute('cx', tv.x.toFixed(2)); c.setAttribute('cy', tv.z.toFixed(2)); } });
+  if (mapEls.you && me) mapEls.you.setAttribute('transform', 'translate(' + me.pos.x.toFixed(2) + ' ' + me.pos.z.toFixed(2) + ') rotate(' + (-me.yaw * 180 / Math.PI).toFixed(1) + ')');
+  allRooms(p).forEach((r) => { const g = mapEls.glow[r.id]; if (g) { const b = busyOf(p, r), v = b > 0 ? Math.min(0.85, 0.22 + 0.22 * b) : 0; const cur = +g.style.opacity || 0; g.style.opacity = (cur + (v - cur) * Math.min(1, raw * 5)).toFixed(3); } });
+}
+
+/* ===== Camera "you", walking along the doorway links, and recognising totems ===== */
+const PITCH = 1.0; const camV = { x: 0, z: 0, d: 20, tx: 0, tz: 0, td: 20 }; const PH = { name: 'idle', t: 0 };
+function frameRect(b, instant) {
+  const m = 0.9, top = S.level === 3 ? 1.5 : 0.7, w = b.maxx - b.minx + 2 * m, d = b.maxz - b.minz + 2 * m + top, t = Math.tan(cam.fov * Math.PI / 360);
+  camV.td = Math.max(6, (d * Math.sin(PITCH) + 1.4 * Math.cos(PITCH)) / (2 * t), w / (2 * t * cam.aspect)) * 1.04; camV.tx = (b.minx + b.maxx) / 2; camV.tz = (b.minz + b.maxz) / 2 + 0.25 - top / 2;
+  if (instant) { camV.x = camV.tx; camV.z = camV.tz; camV.d = camV.td; }
+}
+function frameScope(instant) {
+  const p = P(); if (!p || !cam) return;
+  if (S.level === 1) frameRect(bounds(allRooms(p)), instant);
+  else if (S.level === 2) frameRect(bounds(p.areas.find((a) => a.id === S.areaId).rooms), instant);
+  else { const r = meta(p, S.roomId).room; frameRect({ minx: r.x - 0.7, minz: r.z - 0.7, maxx: r.x + r.w + 0.7, maxz: r.z + r.d + 0.7 }, instant); }
+}
+function bfs(p, from, to) {
+  if (from === to) return { rooms: [from], links: [] };
+  const prev = { [from]: null }, q = [from];
+  while (q.length) { const c = q.shift(); for (const l of p.links) { const o = l.a === c ? l.b : (l.b === c ? l.a : null); if (o && !(o in prev)) { prev[o] = { c, l }; if (o === to) { const rooms = [to], links = []; let k = to; while (prev[k]) { links.unshift(prev[k].l); k = prev[k].c; rooms.unshift(k); } return { rooms, links }; } q.push(o); } } }
+  return null;
+}
+function standFor(r, tx, tz) { let dx = rcx(r) - tx, dz = rcz(r) - tz, L = Math.hypot(dx, dz); if (L < 0.01) { dx = 0; dz = 1; L = 1; } return [Math.max(r.x + 0.45, Math.min(r.x + r.w - 0.45, tx + dx / L * 1.2)), Math.max(r.z + 0.45, Math.min(r.z + r.d - 0.45, tz + dz / L * 1.2))]; }
+function infoPos(p, info) { if (info.kind === 'door') return LI[info.l.id].spot; const r = meta(p, info.rid).room; return totemWorld(r, info.t); }
+function walkTo(info) {
+  const p = P();
+  return new Promise((res) => {
+    if (W) { W.res({ ok: false, cancelled: true }); W = null; }
+    const rid = info.rid, r = meta(p, rid).room, from = S.here && meta(p, S.here) ? S.here : p.entry, route = bfs(p, from, rid);
+    const tp = infoPos(p, info), sp = standFor(r, tp[0], tp[1]), pts = [];
+    if (route) { let cur = from; route.links.forEach((l) => { pts.push(cur === l.a ? l.pa : l.pb, cur === l.a ? l.pb : l.pa); cur = cur === l.a ? l.b : l.a; }); S.lastRoute = route.rooms.slice(); }
+    else { S.lastRoute = [from, rid]; me.pos.set(rcx(r), 0, rcz(r)); toast('No door there yet. Jumped across.'); }
+    pts.push(sp);
+    W = { pts, i: 0, stage: 'go', t: 0, res, info, face: Math.atan2(tp[0] - sp[0], tp[1] - sp[1]), speed: 2.6 }; S.walking = true;
+    if (route && route.rooms.length > 1) frameRect(bounds(route.rooms.map((id) => meta(p, id).room))); else frameScope();
+  });
+}
+function stepWalk(dt) {
+  if (!W) return;
+  if (W.stage === 'go') {
+    let rem = W.speed * dt, guard = 0;
+    while (rem > 0 && W.i < W.pts.length && guard++ < 50) {
+      const q = W.pts[W.i], dx = q[0] - me.pos.x, dz = q[1] - me.pos.z, dist = Math.hypot(dx, dz);
+      if (dist < 1e-4) { W.i++; continue; }
+      const step = Math.min(rem, dist); me.pos.x += dx / dist * step; me.pos.z += dz / dist * step; rem -= step; me.want = Math.atan2(dx, dz); if (step >= dist - 1e-6) W.i++;
+    }
+    if (W.i >= W.pts.length) { W.stage = 'look'; W.t = 0; me.want = W.face; }
+  } else {
+    W.t += dt; me.want = W.face;
+    if (W.t > 0.55) { const w = W; W = null; S.walking = false; me.yaw = w.face; recognise(w.info); w.res({ ok: true, loaded: pathOf(P(), S.loaded), route: S.lastRoute.slice(), seen: S.lastSeen }); }
+  }
+}
+function recognise(info) {
+  const p = P(), rid = info.rid, m = meta(p, rid), r = m.room; let name, col, line2, id;
+  if (info.kind === 'door') { const l = info.l, ra = meta(p, l.a).room, rb = meta(p, l.b).room; name = tagName(l); col = TAGS[l.tag.c % TAGS.length][1]; line2 = 'This ' + (kindWord[l.kind] || 'door') + ' joins the ' + ra.name + ' and the ' + rb.name; id = l.tag.id; }
+  else { name = TOT[info.t.kind][0]; col = TOT[info.t.kind][1]; line2 = 'This is the ' + r.name; id = info.t.id; }
+  if (S.loaded && RI[S.loaded] && S.loaded !== rid) RI[S.loaded].mode = 'off';
+  S.loaded = rid; S.here = rid; S.visited.add(rid); if (S.level >= 2) S.areaId = m.area.id; if (S.level === 3) S.roomId = rid;
+  const ri = RI[rid]; ri.mode = 'pending'; ri.u = 0;
+  S.lastSeen = { id, kind: info.kind, name, room: pathOf(p, rid), roomId: rid, link: info.kind === 'door' ? info.l.id : null, text: 'Seen the ' + name + ', this is the ' + r.name };
+  PH.name = 'seen'; S.phase = 'seen'; PH.t = 0;
+  $('bsw').style.background = css(col); $('bl1').textContent = 'Seen the ' + name; $('bl2').textContent = line2; $('bstate').textContent = 'Reading the totem'; $('bfill').style.width = '0%'; $('banner').classList.remove('hide');
+  const pos = infoPos(p, info); burstAt(pos[0], info.kind === 'door' ? 0 : (info.t.y || 0), pos[1], 0x4cf0c0);
+  renderCrumbs(); updateMapStates();
+}
+function phaseTick(dt) {
+  const p = P(); if (!p || !S.loaded || !RI[S.loaded]) return; const ri = RI[S.loaded], rn = meta(p, S.loaded).room.name;
+  if (PH.name === 'seen') { PH.t += dt; if (PH.t > 1.1) { PH.name = 'loading'; S.phase = 'loading'; ri.mode = 'scan'; ri.u = 0; ri.vis = 1; $('bstate').textContent = 'Loading the ' + rn + ' map'; } }
+  else if (PH.name === 'loading') { $('bfill').style.width = Math.round(Math.min(1, ri.u / 1.15) * 100) + '%'; if (ri.mode !== 'scan') { PH.name = 'ready'; S.phase = 'ready'; PH.t = 0; $('bfill').style.width = '100%'; $('bstate').textContent = 'The ' + rn + ' map is ready'; } }
+  else if (PH.name === 'ready') { PH.t += dt; if (PH.t > 1.6) { PH.name = 'idle'; S.phase = 'idle'; $('banner').classList.add('hide'); } }
+}
+
+/* ===== Per-frame update ===== */
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+function tick(dt, raw) {
+  time += raw; stepWalk(dt);
+  if (me) { let da = (me.want === undefined ? me.yaw : me.want) - me.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); me.yaw += da * Math.min(1, 9 * Math.max(dt, raw * 0.5)); me.mesh.position.set(me.pos.x, W && W.stage === 'go' ? Math.abs(Math.sin(time * 9)) * 0.05 : 0, me.pos.z); me.mesh.rotation.y = me.yaw; const rid = roomAt(P(), me.pos.x, me.pos.z); if (rid) S.here = rid; }
+  travellers.forEach((tv) => stepTrav(tv, dt));
+  const p = P();
+  Object.keys(RI).forEach((id) => {
+    const ri = RI[id], r = ri.r; ri.vis += ((ri.mode === 'off' || ri.mode === 'pending' ? 0 : 1) - ri.vis) * Math.min(1, raw * 6);
+    if (ri.mode === 'scan') { ri.u += dt / 1.5; if (ri.u >= 1.25) ri.mode = 'on'; }
+    const sc = ri.mode === 'scan'; ri.scanM.visible = sc && ri.u < 1.12; if (sc) ri.scanM.position.x = -r.w / 2 + Math.min(1, ri.u / 1.1) * r.w;
+    ri.surfs.forEach((s) => { let sh, ed; if (sc) { const i = clamp01((ri.u * 1.1 - s.rel) * 5); sh = i > 0 ? 0.12 + 0.5 * (1 - i) : 0; ed = i; } else { sh = (0.1 + 0.05 * Math.sin(time * 2 + s.rel * 6)) * ri.vis; ed = 0.9 * ri.vis; } s.sm.opacity = sh; s.em.opacity = ed; });
+    const vt = S.loaded === id ? 0 : (S.visited.has(id) ? 0.08 : 0.28); ri.veilM.material.opacity += (vt - ri.veilM.material.opacity) * Math.min(1, raw * 5);
+  });
+  glows.forEach((g) => { const k = 1 + 0.09 * Math.sin(time * 3 + g.ph); g.ring.scale.set(k, k, k); g.disc.material.opacity = 0.55 + 0.25 * Math.sin(time * 3 + g.ph); });
+  spinners.forEach((s) => { s.o.rotation[s.axis || 'y'] += s.sp * dt; });
+  for (let i = bursts.length - 1; i >= 0; i--) { const b = bursts[i]; b.t += raw; const k = 1 + b.t * 5; b.m.scale.set(k, k, k); b.m.material.opacity = Math.max(0, 1 - b.t / 0.9); if (b.t > 0.9) { scene.remove(b.m); bursts.splice(i, 1); } }
+  const e = 1 - Math.exp(-raw * 4); camV.x += (camV.tx - camV.x) * e; camV.z += (camV.tz - camV.z) * e; camV.d += (camV.td - camV.d) * e;
+  cam.position.set(camV.x, camV.d * Math.sin(PITCH), camV.z + camV.d * Math.cos(PITCH)); cam.lookAt(camV.x, 0.3, camV.z);
+  phaseTick(dt); syncMap(raw); chipSync();
+}
+let chipTxt = '';
+function chipSync() {
+  const p = P(); if (!p) return; const hr = S.here && meta(p, S.here) ? meta(p, S.here).room.name : ''; const st = W ? 'Walking' : (S.phase === 'loading' || S.phase === 'seen' ? 'Loading' : (S.loaded && RI[S.loaded] && RI[S.loaded].mode === 'on' ? 'Map ready' : ''));
+  const t = 'In the ' + hr + (st ? ' | ' + st : ''); if (t !== chipTxt) { chipTxt = t; $('youChip').innerHTML = 'In the <span>' + esc(hr) + '</span>' + (st ? ' <b>' + st + (st === 'Map ready' ? ' &#10003;' : '') + '</b>' : ''); }
+}
+let lastT = 0;
+function loop(t) { requestAnimationFrame(loop); const raw = Math.min(0.1, (t - lastT) / 1000 || 0); lastT = t; if (S.screen !== 'place' || !renderer) return; const sp = Math.max(0.1, +(window.__p && window.__p.speed) || 1); tick(raw * sp, raw); renderer.render(scene, cam); }
+
+/* ===== Screens, breadcrumbs, going up ===== */
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 2400); }
+function counts(p) { const rs = allRooms(p); return { areas: p.areas.length, rooms: rs.length, camps: rs.reduce((n, r) => n + r.camps.length, 0) }; }
+function renderCards() {
+  const c = $('cards'); c.innerHTML = '';
+  places.forEach((p) => { const n = counts(p); const b = document.createElement('button'); b.className = 'pcard'; b.dataset.place = p.id; b.innerHTML = '<div class="thumb">' + mapSVG(p, true) + '</div><div class="txt"><span class="dot" style="background:' + p.hue + '"></span><div><div class="nm">' + esc(p.name) + '</div><div class="meta">' + n.areas + ' areas, ' + n.rooms + ' rooms, ' + n.camps + ' camps</div></div><span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="#3b2a1e" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div>'; b.addEventListener('click', () => openPlace(p.id)); c.appendChild(b); });
+  const nw = document.createElement('button'); nw.className = 'pcard new'; nw.id = 'newPlace'; nw.innerHTML = '<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="#3b2a1e" stroke-width="3.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New place'; nw.addEventListener('click', sheetPlace); c.appendChild(nw);
+}
+function showPlaces() {
+  if (W) { W.res({ ok: false, cancelled: true }); W = null; } S.walking = false; S.screen = 'places'; S.placeId = null; closeSheet();
+  $('sPlace').hidden = true; $('sPlaces').hidden = false; renderCards(); document.querySelectorAll('.savedtxt').forEach((e) => { e.parentNode.title = 'Stored: ' + S.store; });
+}
+function openPlace(id) {
+  const p = places.find((x) => x.id === id); if (!p) return false;
+  if (W) { W.res({ ok: false, cancelled: true }); W = null; } S.walking = false;
+  S.placeId = id; S.visited = new Set(); S.lastSeen = null; S.lastRoute = []; S.level = 1; S.areaId = null; S.roomId = null; PH.name = 'idle'; S.phase = 'idle';
+  $('sPlaces').hidden = true; $('sPlace').hidden = false; S.screen = 'place'; resize();
+  buildPlace(p); const er = (meta(p, p.entry) || { room: allRooms(p)[0] }).room; me.pos.set(rcx(er), 0, rcz(er) + 0.5); me.yaw = 0; me.want = 0;
+  S.here = er.id; S.loaded = er.id; S.visited.add(er.id); RI[er.id].mode = 'on'; RI[er.id].vis = 1; $('banner').classList.add('hide');
+  renderMap(p); renderCrumbs(); frameScope(true); chipTxt = ''; return true;
+}
+function currentCrumbs() {
+  const p = P(); if (!p) return []; const c = [{ label: p.name, path: [p.id] }];
+  if (S.level >= 2 && S.areaId) { const a = p.areas.find((x) => x.id === S.areaId); if (a) c.push({ label: a.name, path: [p.id, a.id] }); }
+  if (S.level === 3 && S.roomId) { const m = meta(p, S.roomId); if (m) c.push({ label: m.room.name, path: [p.id, m.area.id, m.room.id] }); }
+  return c;
+}
+function renderCrumbs() {
+  const p = P(); if (!p) return; const cs = currentCrumbs(), n = $('crumbs'); n.innerHTML = '';
+  cs.forEach((c, i) => { if (i) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; s.setAttribute('aria-hidden', 'true'); n.appendChild(s); } const b = document.createElement('button'); b.className = 'crumb' + (i === cs.length - 1 ? ' cur' : ''); b.textContent = c.label; b.dataset.path = c.path.join('/'); b.addEventListener('click', () => { if (i === cs.length - 1) return; if (c.path.length === 1) setLevel(1); else goTo(c.path); }); n.appendChild(b); });
+  $('backLbl').textContent = cs.length > 1 ? cs[cs.length - 2].label : 'Places';
+}
+function setLevel(level, areaId, roomId) { S.level = level; S.areaId = areaId || null; S.roomId = roomId || null; frameScope(); renderCrumbs(); updateMapStates(); }
+function back() {
+  if (S.screen !== 'place') return; if (W) { W.res({ ok: false, cancelled: true }); W = null; S.walking = false; }
+  if (S.level === 3) setLevel(2, S.areaId); else if (S.level === 2) setLevel(1); else showPlaces();
+}
+function resize() { const v = $('view3d'); if (!renderer || !v.clientWidth) return; renderer.setSize(v.clientWidth, v.clientHeight, false); cam.aspect = v.clientWidth / v.clientHeight; cam.updateProjectionMatrix(); frameScope(); }
+
+/* ===== Robot hook and walking API ===== */
+function walkRoom(rid, info) { const p = P(); const r = meta(p, rid).room; if (!info) info = r.totems.length ? { kind: 'room', rid, t: r.totems[0] } : null; if (!info) { info = { kind: 'room', rid, t: { id: 'none', kind: 'acorn', dx: 0, dz: 0, y: 0 } }; } return walkTo(info); }
+async function goTo(path) {
+  path = Array.isArray(path) ? path.slice() : String(path || '').split(/[\/>]/).map((s) => s.trim()).filter(Boolean);
+  if (!path.length || path[0] === 'places') { showPlaces(); return { ok: true, screen: 'places' }; }
+  if (!places.some((p) => p.id === path[0])) return { ok: false, error: 'no such place' };
+  if (S.screen !== 'place' || S.placeId !== path[0]) openPlace(path[0]);
+  const p = P();
+  if (path.length === 1) { if (W) { W.res({ ok: false, cancelled: true }); W = null; S.walking = false; } setLevel(1); return { ok: true, level: 1 }; }
+  const a = p.areas.find((x) => x.id === path[1]); if (!a) return { ok: false, error: 'no such area' };
+  if (path.length === 2) { const er = a.rooms.find((r) => r.id === p.entry) || a.rooms[0]; setLevel(2, a.id); return walkRoom(er.id); }
+  const r = a.rooms.find((x) => x.id === path[2]); if (!r) return { ok: false, error: 'no such room' };
+  setLevel(3, a.id, r.id); return walkRoom(r.id);
+}
+async function goDoor(linkId) {
+  const p = P(); const l = p && p.links.find((x) => x.id === linkId); if (!l) return { ok: false, error: 'no such door' };
+  setLevel(3, meta(p, l.a).area.id, l.a); return walkTo({ kind: 'door', rid: l.a, l });
+}
+function seen(id) {
+  let f = null;
+  places.forEach((p) => { allRooms(p).forEach((r) => r.totems.forEach((t) => { if (t.id === id) f = { p, r, t }; })); p.links.forEach((l) => { if (l.tag.id === id) f = { p, l }; }); });
+  if (!f) return { ok: false, error: 'no such totem' };
+  if (S.screen !== 'place' || S.placeId !== f.p.id) openPlace(f.p.id);
+  if (W) { W.res({ ok: false, cancelled: true }); W = null; } S.walking = false;
+  const rid = f.l ? f.l.a : f.r.id, m = meta(f.p, rid); setLevel(3, m.area.id, rid);
+  const info = f.l ? { kind: 'door', rid, l: f.l } : { kind: 'room', rid, t: f.t }, tp = infoPos(f.p, info), sp = standFor(m.room, tp[0], tp[1]);
+  me.pos.set(sp[0], 0, sp[1]); me.yaw = Math.atan2(tp[0] - sp[0], tp[1] - sp[1]); me.want = me.yaw; S.lastRoute = [rid]; recognise(info);
+  return { ok: true, loaded: pathOf(f.p, S.loaded), kind: info.kind, text: S.lastSeen.text, link: S.lastSeen.link };
+}
+function state() {
+  const p = P(), ri = p && S.loaded ? RI[S.loaded] : null;
+  return { screen: S.screen, place: S.placeId, level: S.level, area: S.areaId, room: S.roomId, here: S.here, loadedRoom: S.loaded, loaded: p && S.loaded ? pathOf(p, S.loaded) : null, mapReady: !!(ri && ri.mode === 'on'), phase: S.phase, walking: !!W, crumbs: currentCrumbs().map((c) => c.label), crumbsDom: [...document.querySelectorAll('#crumbs .crumb')].map((e) => e.textContent), lastSeen: S.lastSeen, route: S.lastRoute.slice(), store: S.store, travellers: travellers.length, visited: [...S.visited], size: S.big, sheet: !$('sheet').hidden };
+}
+window.__p = { places, speed: 1, goTo, goDoor, seen, state, openPlace, showPlaces, back, save: saveNow, ready: null };
+</script>
+<script>
+/* ===== Actions (mocked but real in the data): Add a room, Add a totem here, Link through this door, New place ===== */
+function openSheet(h) { $('sheetBody').innerHTML = h; $('sheet').hidden = false; }
+function closeSheet() { $('sheet').hidden = true; }
+const uidStr = () => Date.now().toString(36) + (S.uid++);
+function curArea(p) { if (S.level >= 2 && S.areaId) return p.areas.find((a) => a.id === S.areaId); const m = S.here && meta(p, S.here); return m ? m.area : p.areas[0]; }
+function afterEdit() {
+  const p = P(); save(); const keep = S.loaded; buildPlace(p); if (keep && RI[keep]) { RI[keep].mode = 'on'; RI[keep].vis = 1; }
+  renderMap(p); renderCrumbs(); frameScope(); chipTxt = '';
+}
+function chipsHTML(items, sel, attr) { return items.map((it, i) => '<button class="chip' + (i === sel ? ' on' : '') + '" data-' + attr + '="' + i + '">' + (it.sw ? '<span class="sw" style="background:' + it.sw + '"></span>' : '') + esc(it.label) + '</button>').join(''); }
+function wireChips(attr, cb) { document.querySelectorAll('#sheetBody [data-' + attr + ']').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('#sheetBody [data-' + attr + ']').forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(+b.dataset[attr]); })); }
+
+const RTYPES = [{ label: 'Kitchen', style: 'kitchen' }, { label: 'Bedroom', style: 'bedroom' }, { label: 'Bathroom', style: 'bath' }, { label: 'Study', style: 'desk' }, { label: 'Hall', style: 'hall' }, { label: 'Other', style: 'other' }];
+function sheetRoom() {
+  const p = P(); if (!p) return; const ar = curArea(p); let sel = 0, touched = false;
+  openSheet('<h3>Add a room</h3><p>It goes in the ' + esc(ar.name) + '. It gets a door and a totem.</p><input id="fName" maxlength="22" value="Kitchen" aria-label="Room name"><div class="row" id="rtypes">' + chipsHTML(RTYPES, 0, 'rt') + '</div><div class="hint">Next, stand in it and show the totem to the iPad.</div><div class="btns"><button class="btn" id="shNo">Not now</button><button class="btn pri" id="shYes">Add room</button></div>');
+  $('fName').addEventListener('input', () => { touched = true; });
+  wireChips('rt', (i) => { sel = i; if (!touched) $('fName').value = RTYPES[i].label; });
+  $('shNo').onclick = closeSheet; $('shYes').onclick = () => { const nm = $('fName').value.trim() || RTYPES[sel].label; closeSheet(); addRoom(ar, nm, RTYPES[sel].style); };
+}
+function sharedEdge(a, b) {
+  if (a.x + a.w === b.x || b.x + b.w === a.x) { const lo = Math.max(a.z, b.z), hi = Math.min(a.z + a.d, b.z + b.d); if (hi - lo >= 1) return { vert: true, c: a.x + a.w === b.x ? b.x : a.x, lo, hi }; }
+  if (a.z + a.d === b.z || b.z + b.d === a.z) { const lo = Math.max(a.x, b.x), hi = Math.min(a.x + a.w, b.x + b.w); if (hi - lo >= 1) return { vert: false, c: a.z + a.d === b.z ? b.z : a.z, lo, hi }; }
+  return null;
+}
+function freeCell(p, lo, hi, vert, c) { const used = []; p.links.forEach((l) => [l.pa, l.pb].forEach((pt) => { used.push(pt[0] + ',' + pt[1]); })); const mid = (lo + hi) / 2; const cells = []; for (let i = Math.floor(lo); i < hi; i++) cells.push(i); cells.sort((x, y) => Math.abs(x + 0.5 - mid) - Math.abs(y + 0.5 - mid)); for (const i of cells) { const pt = vert ? [c, i + 0.5] : [i + 0.5, c]; if (!used.includes(pt.join(','))) return pt; } return null; }
+function newLink(p, a, b, kind) {
+  const ra = meta(p, a).room, rb = meta(p, b).room, id = a + '-' + b; if (p.links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return null;
+  let pa, pb; const se = sharedEdge(ra, rb);
+  if (se) { pa = pb = freeCell(p, se.lo, se.hi, se.vert, se.c); }
+  if (!pa) { const side = (r, o) => { const dx = rcx(o) - rcx(r), dz = rcz(o) - rcz(r); if (Math.abs(dx) / (r.w + o.w) > Math.abs(dz) / (r.d + o.d)) return freeCell(p, r.z + 0.001, r.z + r.d, true, dx > 0 ? r.x + r.w : r.x); return freeCell(p, r.x + 0.001, r.x + r.w, false, dz > 0 ? r.z + r.d : r.z); }; pa = side(ra, rb); pb = side(rb, ra); kind = 'link'; }
+  if (!pa || !pb) return null;
+  const used = p.links.map((l) => l.tag.c); let c = 0; while (used.includes(c) && c < TAGS.length - 1) c++; if (used.length >= TAGS.length) c = used.length % TAGS.length;
+  const l = { id, a, b, kind: kind || (ra.outdoor || rb.outdoor ? 'gate' : 'door'), pa, pb, tag: { id: p.id + ':door:' + id, c } }; p.links.push(l); return l;
+}
+function addRoom(ar, name, style) {
+  const p = P(), w = 3, d = 3, rs = allRooms(p), cands = [];
+  ar.rooms.forEach((r) => { cands.push([r.x + r.w, r.z], [r.x - w, r.z], [r.x, r.z - d], [r.x, r.z + r.d], [r.x + r.w, r.z + 3], [r.x - w, r.z + 3]); });
+  const bb = bounds(ar.rooms), cx = (bb.minx + bb.maxx) / 2, cz = (bb.minz + bb.maxz) / 2;
+  const fits = cands.filter((c) => !rs.some((r) => ovl({ x: c[0], z: c[1], w, d }, r))).sort((a, b) => Math.hypot(a[0] + 1.5 - cx, a[1] + 1.5 - cz) - Math.hypot(b[0] + 1.5 - cx, b[1] + 1.5 - cz));
+  const all = bounds(rs), pos = fits[0] || [all.maxx, all.minz];
+  let id = 'r' + uidStr().slice(-5); const t = tot(p.id, id, 'acorn', 0, 0.9, 0, '-' + uidStr().slice(-4)); t.dx = -0.9; t.dz = -0.9;
+  const nr = room(id, name, style, pos[0], pos[1], w, d, [t], []); ar.rooms.push(nr);
+  const nb = rs.find((r) => sharedEdge(r, nr)); let lk = null; if (nb) lk = newLink(p, nb.id, nr.id, nb.outdoor ? 'gate' : 'door'); else { const near = rs.slice().sort((a, b) => Math.hypot(rcx(a) - rcx(nr), rcz(a) - rcz(nr)) - Math.hypot(rcx(b) - rcx(nr), rcz(b) - rcz(nr)))[0]; if (near) lk = newLink(p, near.id, nr.id, 'link'); }
+  afterEdit(); toast('Added ' + name + (lk ? ' and a door' : '')); return nr;
+}
+function sheetTotem() {
+  const p = P(); if (!p) return; const m = meta(p, S.here); const keys = Object.keys(TOT), items = keys.map((k) => ({ label: TOT[k][0], sw: css(TOT[k][1]) })); let sel = 0;
+  openSheet('<h3>Add a totem here</h3><p>In the ' + esc(m.room.name) + '. Pick a small thing that stays put.</p><div class="row">' + chipsHTML(items, 0, 'tk') + '</div><div class="hint">Pretend photo. The photo stays on this iPad.</div><div class="btns"><button class="btn" id="shNo">Not now</button><button class="btn pri" id="shYes">Add totem</button></div>');
+  wireChips('tk', (i) => { sel = i; }); $('shNo').onclick = closeSheet; $('shYes').onclick = () => { closeSheet(); addTotemTo(m.room, keys[sel]); };
+}
+function addTotemTo(r, kind) {
+  const p = P(), ax = r.w / 2 - 0.55, az = r.d / 2 - 0.55; const spots = [[ax, az], [-ax, az], [ax, -az], [-ax, -az], [0, az], [ax, 0]];
+  const spot = spots.find((s) => r.totems.every((t) => Math.hypot(t.dx - s[0], t.dz - s[1]) > 1.0)) || spots[0];
+  const t = tot(p.id, r.id, kind, spot[0], spot[1], 0, '-' + uidStr().slice(-4)); r.totems.push(t); afterEdit(); toast('Added the ' + TOT[kind][0] + ' in the ' + r.name);
+}
+function sheetLink() {
+  const p = P(); if (!p) return; const m = meta(p, S.here); const others = allRooms(p).filter((r) => r.id !== m.room.id); let sel = 0;
+  const items = others.map((r) => ({ label: r.name + (meta(p, r.id).area.id !== m.area.id ? ' (' + meta(p, r.id).area.name + ')' : '') }));
+  if (!others.length) { openSheet('<h3>Link through this door</h3><p>Add a second room first.</p><div class="btns"><button class="btn pri" id="shNo">OK</button></div>'); $('shNo').onclick = closeSheet; return; }
+  openSheet('<h3>Link through this door</h3><p>From the ' + esc(m.room.name) + '. Where does it go?</p><div class="row">' + chipsHTML(items, 0, 'lk') + '</div><div class="hint">The door gets a new tag. Show it to the iPad from both sides.</div><div class="btns"><button class="btn" id="shNo">Not now</button><button class="btn pri" id="shYes">Link</button></div>');
+  wireChips('lk', (i) => { sel = i; }); $('shNo').onclick = closeSheet; $('shYes').onclick = () => { closeSheet(); const o = others[sel], l = newLink(p, m.room.id, o.id); if (!l) { toast('Already linked'); return; } afterEdit(); toast('Linked the ' + m.room.name + ' and the ' + o.name); };
+}
+const HUES = [{ label: 'Orange', sw: '#e8883a' }, { label: 'Blue', sw: '#4f8fd0' }, { label: 'Green', sw: '#7bb661' }, { label: 'Pink', sw: '#ee7aa8' }];
+function sheetPlace() {
+  let sel = 2; openSheet('<h3>New place</h3><p>Give it a name. You can add rooms after.</p><input id="fName" maxlength="22" value="My place" aria-label="Place name"><div class="row">' + chipsHTML(HUES, 2, 'hu') + '</div><div class="btns"><button class="btn" id="shNo">Not now</button><button class="btn pri" id="shYes">Make place</button></div>');
+  wireChips('hu', (i) => { sel = i; }); $('shNo').onclick = closeSheet;
+  $('shYes').onclick = () => { const nm = $('fName').value.trim() || 'My place', id = 'p' + uidStr().slice(-6); closeSheet(); const r = room('room1', 'Room 1', 'hall', 0, 0, 3, 3, [tot(id, 'room1', 'cone', -0.9, -0.9, 0)], []); places.push({ id, name: nm, hue: HUES[sel].sw, entry: 'room1', areas: [{ id: 'house', name: 'House', rooms: [r] }], links: [] }); save(); renderCards(); openPlace(id); toast('Made ' + nm); };
+}
+
+/* ===== Start up ===== */
+function init3D() {
+  renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9f1dc); cam = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.62)); const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-6, 14, 9); scene.add(dl);
+  me = { pos: new THREE.Vector3(), yaw: 0, want: 0, mesh: buildMe() }; scene.add(me.mesh);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe($('view3d')); window.addEventListener('resize', resize);
+  let dn = null; const cv = $('gl');
+  cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+  cv.addEventListener('pointerup', (e) => {
+    if (!dn || Math.hypot(e.clientX - dn.x, e.clientY - dn.y) > 12 || !placeGroup) { dn = null; return; } dn = null;
+    const r = cv.getBoundingClientRect(); mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(mouse, cam);
+    const hits = raycaster.intersectObjects(placeGroup.children, true), p = P();
+    for (const h of hits) { let o = h.object; while (o) { if (o.userData.linkId) { goDoor(o.userData.linkId); return; } if (o.userData.roomId) { const mm = meta(p, o.userData.roomId); goTo([p.id, mm.area.id, mm.room.id]); return; } o = o.parent; } }
+  });
+}
+$('back').addEventListener('click', back);
+$('aRoom').addEventListener('click', sheetRoom); $('aTotem').addEventListener('click', sheetTotem); $('aLink').addEventListener('click', sheetLink);
+$('sheet').addEventListener('pointerdown', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+$('sizeBtn').addEventListener('click', () => { const st = $('stage'); S.big = S.big ? '' : 'bigmap'; st.className = S.big; $('sizeBtn').textContent = S.big ? 'Bigger 3D' : 'Bigger map'; if (S.big) { } setTimeout(resize, 30); });
+window.__p.ready = (async () => { await loadStore(); init3D(); renderCards(); showPlaces(); requestAnimationFrame(loop); return true; })();
+</script>
+</body>
+</html>
