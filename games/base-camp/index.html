@@ -160,6 +160,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="models/props.js"></script>
+<script src="models/decor.js"></script> <!-- build 18: the season decorations (BC_DECOR_MK). Optional: without it the plain DECOR_MK shapes are built -->
 <!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
 <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
 <script>
@@ -3102,7 +3103,17 @@ const DECOR_MK = {
     g.userData.body = body; g.add(blob(0.011)); return g;
   },
 };
-for (const k of Object.keys(DECOR)) { const D = DECOR[k]; KINDS[k] = { r: D.r, wood: D.wood, work: D.work, mk: () => DECOR_MK[k](), name: D.name, by: D.by, ic: D.ic }; }
+/* build 18: models/decor.js (window.BC_DECOR_MK) makes the pretty decorations; any decoration it lacks, or that throws, or BCP.decorOff, gets the plain maker above. A maker may set userData.tick(time, dt), called from decorAnim. */
+let decorInit = 0; /* 0 = not yet, 1 = ready, 2 = init failed */
+function decorMake(k) {
+  const N = window.BC_DECOR_MK;
+  if (N && !BCP.decorOff && typeof N[k] === 'function') {
+    try { if (!decorInit) { decorInit = 1; if (N.init) N.init({ THREE, BCP, inked, bcMerge, M }); } } catch (e) { decorInit = 2; console.warn('decor.js init failed, plain decorations', e && e.message); }
+    if (decorInit === 1) { try { const g = N[k](); if (g && g.isObject3D) return g; } catch (e) { console.warn('decor.js: ' + k + ' failed, the plain one is used', e && e.message); } }
+  }
+  return DECOR_MK[k]();
+}
+for (const k of Object.keys(DECOR)) { const D = DECOR[k]; KINDS[k] = { r: D.r, wood: D.wood, work: D.work, mk: () => decorMake(k), name: D.name, by: D.by, ic: D.ic }; }
 /* ---- state (saved in the colony save as `seas`, so every room has its own) ---- */
 const SEA = { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 };
 function seaReset() { Object.assign(SEA, { done: {}, adv: {}, unl: {}, q: [], packed: '', placeT: 8, expT: 0, needFar: false, qT: 0, chkT: 0 }); }
@@ -3219,6 +3230,7 @@ function goalHtml() {
 /* ---- per-frame life of the decorations (called from visuals) ---- */
 function decorAnim(S, t, m, time, dt) {
   const U = m.userData; if (!t.built) return;
+  if (U.tick) { try { U.tick(time, dt); } catch (e) { U.tick = null; } } /* build 18: decor.js life */
   if (t.wob > 0) t.wob = Math.max(0, t.wob - dt);
   if (t.squash > 0) t.squash = Math.max(0, t.squash - dt * 1.2);
   switch (t.kind) {
@@ -6143,7 +6155,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
-  SCOUT17, scout17Load, scout17Tick, DECOR_MK, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
+  SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
