@@ -190,11 +190,11 @@
   function nkPt(u) { return { x: (u * 2 - 1) * (NK_HALF - 0.003), y: NK_Y - NK_SAG * (1 - Math.pow(u * 2 - 1, 2)) }; }
   function necklace() {
     var g = new T.Group();
-    var S = asset('nkstand', function () {
-      var p = [cyl(GOLD, 0.011, 0.012, 0.004, 0, 0.002, 0, { w: 12, ink: 0.0004 }), cyl(NAVY, 0.004, 0.0075, 0.045, 0, 0.0265, 0, { w: 10, ink: 0.0005 }), sph(NAVY, 0.0105, 0, 0.0515, 0, { w: 10, h: 6, sy: 0.55, sx: 1.25, ink: 0.0005 }), cyl(NAVY, 0.0052, 0.0052, 0.011, 0, 0.0625, 0, { w: 9 }), sph(NAVY, 0.0075, 0, 0.0675, 0, { w: 10, h: 7, ink: 0.0005 }), sph(GOLD, 0.0019, 0, 0.0765, 0, { w: 6, h: 5 })];
+    var S = asset('nkstands', function () {
+      var p = []; [-1, 1].forEach(function (sd) { var x = sd * NK_HALF; p.push(cyl(GOLD, 0.011, 0.012, 0.004, x, 0.002, 0, { w: 12, ink: 0.0004 }), cyl(NAVY, 0.004, 0.0075, 0.045, x, 0.0265, 0, { w: 10, ink: 0.0005 }), sph(NAVY, 0.0105, x, 0.0515, 0, { w: 10, h: 6, sy: 0.55, sx: 1.25, ink: 0.0005 }), cyl(NAVY, 0.0052, 0.0052, 0.011, x, 0.0625, 0, { w: 9 }), sph(NAVY, 0.0075, x, 0.0675, 0, { w: 10, h: 7, ink: 0.0005 }), sph(GOLD, 0.0019, x, 0.0765, 0, { w: 6, h: 5 })); });
       return p;
     }, 0.0004);
-    [-1, 1].forEach(function (s) { var m = meshOf(S); m.position.x = s * NK_HALF; m.rotation.y = s * 0.3; g.add(m); });
+    g.add(meshOf(S));
     var cols = [WHT, WHT, GOLD, WHT, WHT, RED, WHT, WHT, GOLD, WHT, WHT, GRN, WHT];
     var B = asset('nkbeads', function () {
       var p = [], i; for (i = 0; i < NK_N; i++) { var q = nkPt(i / (NK_N - 1)); p.push(sph(cols[i % cols.length], i % 4 === 2 ? 0.0027 : 0.0023, q.x, q.y, 0, { w: 6, h: 4 })); } return p;

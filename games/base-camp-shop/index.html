@@ -6550,6 +6550,7 @@ const SH_CAM = [ /* the director's camera (stage-local): time, eye x y z, look x
   [19, 0.1, 0.12, 0.3, 0.1, 0.05, -0.03], [21, 0.15, 0.075, 0.2, 0.15, 0.052, -0.055], [24, 0.12, 0.09, 0.24, 0.14, 0.055, -0.04], [27, 0.078, 0.12, 0.42, 0.078, 0.075, -0.03], [30.1, 0.078, 0.115, 0.5, 0.078, 0.075, -0.03]];
 const SH = { on: false, ar: false, placed: false, want: 0, ready: false, K: null, root: null, stage: null, room: null, ringG: null, actors: [], cabs: [], ev: [], time: 0, acc: 0, wall: 0, manual: false, rng: null, mode: 'play', auto: false, occ: {}, items: {}, pops: [], dir: null, find: null, hearts: [], cam: { yaw: 0.12, pitch: 0.5, dist: 0.9, view: 'stage', ty: 0.05 }, hit: null, scale: 1, log: [], rec: [] };
 function shR() { return SH.rng(); }
+function shLog(n) { SH.log.push({ t: +SH.time.toFixed(2), n }); }
 function shRange(a, b) { return a + shR() * (b - a); }
 function shSw(x, y, z) { SH.stage.updateWorldMatrix(true, false); return SH.stage.localToWorld(new THREE.Vector3(x, y, z)); }
 function shPuff(kind, x, y, z, n, o) { const r = Math.random; Math.random = SH.rng; try { const w = shSw(x, y, z); puff(kind, w.x, w.y, w.z, n, o); } finally { Math.random = r; } }
@@ -6598,7 +6599,7 @@ function shopInit() {
 
 /* ---- the scene's start state (also the director's take 0) ---- */
 function shopReset(kind) {
-  const fy = SHL.fy; SH.time = 0; SH.acc = 0; SH.ev = []; SH.occ = {}; SH.pops = []; SH.rng = seededRandom(SH_SEED); SH.auto = false; SH.mode = kind === 'find' ? 'find' : 'play'; SH.hearts = [];
+  const fy = SHL.fy; SH.time = 0; SH.acc = 0; SH.ev = []; SH.occ = {}; SH.pops = []; SH.rng = seededRandom(SH_SEED); SH.auto = false; SH.mode = kind === 'find' ? 'find' : 'play'; SH.hearts = []; SH.log = [];
   SH.confetti.userData.clear(); SH.heart.material.opacity = 0; SH.hint.material.opacity = 0; SH.plaque.userData.setGlow(0);
   SH.ring.position.copy(SH.ringHome); SH.ring.rotation.set(0, 0, 0); SH.ring.scale.setScalar(1); SH.ring.userData.shine = 0; SH.ring.userData.held = null; SH.gem.userData.face.visible = false; SH.gem.userData.gazer = null;
   const director = kind === 'director', full = kind === 'find' || !director;
@@ -6730,8 +6731,8 @@ function shopProps(h) {
 function shopPop(o, s) { o.userData.pop = 0.5; o.userData.popS = s || o.scale.x || 1; if (!SH.pops.includes(o)) SH.pops.push(o); }
 function shopGrab(a, o, s) { a.carry.add(o); o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.scale.setScalar((s || 1) * 0.7); o.visible = true; a.carrying = o; }
 function shopDrop(a, o, x, z, s) { SH.stage.add(o); o.position.set(x, SHL.fy, z); o.rotation.set(0, 0, 0); o.scale.setScalar(s || 1); o.visible = true; a.carrying = null; shopPop(o, s || 1); shPuff('star', x, SHL.fy + 0.03, z, 5, { size: 0.008, add: true, vy: 0.03, jit: 0.02 }); shSfx('pop'); }
-function shopHeart(x, z) { const q = SH.heart.userData; q.t = 0; q.x = x; q.z = z; SH.heart.material.opacity = 1; shPuff('heart', x, SHL.fy + 0.08, z, 9, { size: 0.012, vy: 0.04, life: 1.6, jit: 0.03 }); shSfx('chime'); }
-function shopConfetti(cx, cz, n, spread) { SH.confetti.userData.burst(SH.rng, cx, SHL.fy + 0.3, cz, spread || 0.5, n || 70, false); }
+function shopHeart(x, z) { shLog('heart'); const q = SH.heart.userData; q.t = 0; q.x = x; q.z = z; SH.heart.material.opacity = 1; shPuff('heart', x, SHL.fy + 0.08, z, 9, { size: 0.012, vy: 0.04, life: 1.6, jit: 0.03 }); shSfx('chime'); }
+function shopConfetti(cx, cz, n, spread) { shLog('confetti'); SH.confetti.userData.burst(SH.rng, cx, SHL.fy + 0.3, cz, spread || 0.5, n || 70, false); }
 
 /* ---- the jobs (each returns tasks for one creature) ---- */
 const SHJ = {
@@ -6753,34 +6754,35 @@ function shopAuto(a) {
   const tot = list.reduce((s, q) => s + q[1], 0); let x = r * tot, pick2 = list[0][0]; for (const q of list) { x -= q[1]; if (x <= 0) { pick2 = q[0]; break; } }
   let plan; if (pick2 === 'polish') plan = SHJ.polish(a, shRange(5, 7.5)); else if (pick2 === 'wrap') plan = SHJ.wrap(a, shRange(5, 7)); else if (pick2 === 'hang') plan = SHJ.hang(a, shRange(5, 6.5)); else if (pick2 === 'gaze') plan = SHJ.gaze(a, shRange(6, 9));
   else if (pick2 === 'decorate') plan = SHJ.swap(a, ['star', 'chain', 'stocking', 'mini'][Math.floor(shR() * 4)]); else { const o = SH.actors.filter((q) => q !== a); plan = SHJ.chat(a, o[Math.floor(shR() * o.length)]); }
-  plan.push({ k: 'do', a: 'idle', d: shRange(0.4, 1.6) }); a.tasks = plan; a.cur = null; a.jobName = pick2;
+  plan.push({ k: 'do', a: 'idle', d: shRange(0.4, 1.6) }); a.tasks = plan; a.cur = null; a.jobName = pick2; if (pick2 === 'polish' || pick2 === 'wrap' || pick2 === 'hang' || pick2 === 'gaze') SH.occ[pick2] = a;
 }
 
 /* ---- the proposal: one creature walks to another, kneels, holds up the giant ring. A heart pops, the other jumps for joy, confetti, everybody cheers. ---- */
 function shopPropose(t0, who) {
+  const lead0 = (who && who.lead) || 0;
   const A = SH.actors[0], D = SH.actors[3], Bq = SH.actors[1], C = SH.actors[2], E = SH.actors[4], K = SHL.kneel, ring = SH.ring, G0 = SHL.gaze;
   who = who || {}; const ev = [];
-  const at = (t, f) => shAt(t0 + t, f);
+  const at = (t, f) => shAt(t0 + lead0 + t, f);
   /* A takes the ring off the tray, nervous, with a push from the friends */
-  shAt(t0, () => { shopCmd(A, [{ k: 'go', x: SHL.polish[0], z: SHL.polish[1] }, { k: 'face', x: ring.position.x, z: ring.position.z }, { k: 'do', a: 'idle', d: 0.25 },
-    { k: 'fn', f: () => { ring.userData.held = A; A.hold = 1; A.ringTarget = 0; A.carrying = null; shSfx('chime'); } }, { k: 'do', a: 'idle', d: 0.5 },
+  shAt(t0, () => { if (Math.hypot(D.x - G0[0], D.z - G0[1]) > 0.02 || D.anim !== 'gaze') shopCmd(D, [...SHJ.gaze(D, 99)]); shopCmd(A, [{ k: 'go', x: SHL.polish[0], z: SHL.polish[1] }, { k: 'face', x: ring.position.x, z: ring.position.z }, { k: 'do', a: 'idle', d: 0.25 },
+    { k: 'fn', f: () => { ring.userData.held = A; A.hold = 1; A.ringTarget = 0; A.carrying = null; shSfx('chime'); shLog('ring'); } }, { k: 'do', a: 'idle', d: 0.5 },
     { k: 'go', x: 0.068, z: 0.0, spd: 0.07 }, { k: 'do', a: 'nervous', d: 1.3, s: () => { shPuff('drop', A.x, SHL.fy + 0.065, A.z, 2, { size: 0.007, vy: -0.01, life: 0.7 }); shSfx('squeak', 1.5); } },
-    { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'push', d: 0.55, s: () => { shSfx('boing'); } }, { k: 'go', x: K[0], z: K[1], spd: 0.09 }, { k: 'face', x: G0[0], z: G0[1] }, { k: 'fn', f: () => { A.ringTarget = 1; } }, { k: 'do', a: 'kneel', d: 99, s: () => { A.shaky = true; } }]); });
+    { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'push', d: 0.55, s: () => { shSfx('boing'); } }, { k: 'go', x: K[0], z: K[1], spd: 0.09 }, { k: 'face', x: G0[0], z: G0[1] }, { k: 'fn', f: () => { A.ringTarget = 1; shLog('kneel'); } }, { k: 'do', a: 'kneel', d: 99, s: () => { A.shaky = true; } }]); });
   at(1.6, () => { for (const [f, off] of [[Bq, [0.058, -0.04]], [C, [0.034, -0.016]]]) shopCmd(f, [{ k: 'go', x: off[0], z: off[1] }, { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'push', d: 0.6 }, { k: 'do', a: 'clap', d: 3 }]); });
   at(1.0, () => { shopCmd(E, [{ k: 'go', x: 0.245, z: -0.02 }, { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'nervous', d: 2.8 }]); });
-  at(4.4, () => { shopCmd(D, [{ k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'gasp', d: 1.4, s: () => { SH.gem.userData.gazer = null; shSfx('squeak', 1.7); shPuff('star', D.x, SHL.fy + 0.07, D.z, 4, { size: 0.008, add: true, vy: 0.03 }); } }]); A.shaky = false; });
+  at(4.4, () => { shopCmd(D, [{ k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'gasp', d: 1.4, s: () => { shLog('gasp'); SH.gem.userData.gazer = null; shSfx('squeak', 1.7); shPuff('star', D.x, SHL.fy + 0.07, D.z, 4, { size: 0.008, add: true, vy: 0.03 }); } }]); A.shaky = false; });
   at(5.6, () => { shopHeart(D.x, D.z); shopCmd(D, [{ k: 'do', a: 'nod', d: 1.1 }]); shSfx('giggle', 1.5); });
-  at(6.7, () => { shopCmd(D, [{ k: 'do', a: 'joy', d: 2.3, s: () => { shSfx('cheer'); } }]); shopConfetti(0.14, -0.03, 90, 0.5); shSfx('fanfare');
-    shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 1; } }, { k: 'do', a: 'joy', d: 2.2, s: () => { A.shaky = false; } }]); for (const f of [Bq, C]) shopCmd(f, [{ k: 'do', a: 'cheer', d: 3 }]); shopCmd(E, [{ k: 'do', a: 'sob', d: 3, s: () => { shPuff('drop', E.x, SHL.fy + 0.06, E.z, 3, { size: 0.007, vy: -0.01, life: 0.8 }); } }]); });
+  at(6.7, () => { shopCmd(D, [{ k: 'do', a: 'joy', d: 2.3, s: () => { shLog('joy'); shSfx('cheer'); } }]); shopConfetti(0.14, -0.03, 90, 0.5); shSfx('fanfare');
+    shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 1; } }, { k: 'do', a: 'joy', d: 2.2, s: () => { A.shaky = false; } }]); for (const f of [Bq, C]) shopCmd(f, [{ k: 'do', a: 'cheer', d: 3, s: () => { shLog('cheer'); } }]); shopCmd(E, [{ k: 'do', a: 'sob', d: 3, s: () => { shPuff('drop', E.x, SHL.fy + 0.06, E.z, 3, { size: 0.007, vy: -0.01, life: 0.8 }); } }]); });
   at(8.7, () => { shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 0; A.hold = 0; ring.userData.held = D; D.hold = 1; D.ringK = 1; D.ringTarget = 1; shSfx('chime'); } }, { k: 'do', a: 'cheer', d: 2 }]); shopCmd(D, [{ k: 'do', a: 'cheer', d: 2 }]); });
-  return 9.2;
+  return 9.2 + lead0;
 }
 
 /* ---- the director: one scripted, seeded, 30 second take ---- */
-function shopDirStart() {
+function shopDirStart(o) {
   if (!SH.ready || SH.dir) return false; if (SH.find) shopFindStop();
   SH.dir = { on: false, pre: SH_COUNT, t: 0, wall0: performance.now(), done: false, log: [], rec: [] }; document.body.classList.add('take'); shopUi(); $('cd').hidden = false; shopHideUi(true);
-  SH.dir.saveRand = Math.random; SH.dir.phase = 'count'; SH.dir.cd0 = performance.now(); SH.dir.last = -1; shopReset('director'); shopFace0(); SH.dir.armed = true; return true;
+  SH.dir.saveRand = Math.random; SH.dir.phase = 'count'; SH.dir.cd0 = performance.now(); SH.dir.last = -1; shopReset('director'); shopArrive(0, false); shopStep(SH_H); shopFace0(); SH.dir.armed = true; if (o && o.skip) shopDirBegin(); return true;
 }
 function shopFace0() { SH.cam.view = 'stage'; }
 function shopDirBegin() {
@@ -6800,7 +6802,7 @@ function shopDirScript() {
   /* 25.6: the line-up in front of the plaque; the plaque glows; sparkles; a second burst of confetti */
   const pl = SHL.lineup;
   shAt(25.4, () => { [a, b, c, d, e].forEach((q, i) => { const L = pl[[1, 0, 3, 2, 4][i]]; shopCmd(q, [{ k: 'go', x: L[0], z: L[1], spd: 0.15 }, { k: 'face', x: L[0], z: L[1] + 1 }, { k: 'do', a: 'cheer', d: 20 }]); }); });
-  shAt(25.9, () => { SH.plaque.userData.sparkle = 99; shSfx('tada'); });
+  shAt(25.9, () => { SH.plaque.userData.sparkle = 99; shLog('finale'); shSfx('tada'); });
   for (let i = 0; i <= 12; i++) shAt(26.1 + i * 0.1, () => { SH.plaque.userData.setGlow(shEase(i / 12)); });
   shAt(26.8, () => { shopConfetti(0.078, 0.0, 80, 0.45); shSfx('cheer'); });
   shAt(28.4, () => { shopConfetti(0.078, 0.0, 50, 0.4); shSfx('fanfare'); });
@@ -6858,7 +6860,7 @@ function shopEnter(ar) {
   SH.on = true; SH.ar = !!ar; SH.placed = !ar; SH.find = null; SH.dir = null; G.auto = false; G.phase = 'shop'; G.intent = 'play'; document.body.classList.remove('auto'); document.body.classList.remove('take');
   for (const id of ['title', 'top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot', 'ccam', 'gstrip', 'wx']) { const el = $(id); if (el) el.hidden = true; }
   SH.root.visible = true; SH.room.visible = !ar; scene.background = scene.background || new THREE.Color(); SH.keepHour = ENV.hourOverride; ENV.hourOverride = 15; envUpdate();
-  if (!ar) { SH.stage.position.copy(SH.stagePos); SH.stage.rotation.set(0, 0, 0); SH.stage.scale.setScalar(1); SH.cam.view = 'stage'; SH.cam.yaw = 0.12; SH.cam.pitch = 0.5; SH.cam.gYaw = 0.12; SH.cam.gPitch = 0.5; SH.cam.dist = SH.cam.gDist = 1.0; SH.cam.tgt = SH.stagePos.clone().add(new THREE.Vector3(0, 0.05, 0)); SH.cam.gt = SH.cam.tgt.clone(); }
+  if (!ar) { SH.stage.position.copy(SH.stagePos); SH.stage.rotation.set(0, 0, 0); SH.stage.scale.setScalar(1); SH.cam.view = 'stage'; SH.cam.yaw = 0.12; SH.cam.pitch = innerWidth < innerHeight ? 0.85 : 0.42; SH.cam.zoom = innerWidth < innerHeight ? 0.9 : 0.74; SH.cam.focus = null; SH.cam.dist = SH.cam.gDist = 1.0; SH.cam.tgt = SH.stagePos.clone().add(new THREE.Vector3(0, 0.05, 0)); SH.cam.gt = SH.cam.tgt.clone(); }
   else { SH.stage.visible = false; SH.reticle = SH.reticle || (() => { const r = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.085, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe08a, depthTest: false, transparent: true, opacity: 0.9 })); r.renderOrder = 20; scene.add(r); return r; })(); SH.reticle.visible = true; }
   shopReset('play'); if (!ar) { shopArrive(0.3, false); SH.auto = true; }
   shopUi(); updateTitle();
@@ -6869,20 +6871,20 @@ function shopPlaceAr() {
 }
 function shopLeave() {
   if (!SH.on) return; if (SH.dir && SH.dir.saveRand) Math.random = SH.dir.saveRand; SH.on = false; SH.dir = null; SH.find = null; document.body.classList.remove('take'); SH.root.visible = false; if (SH.reticle) SH.reticle.visible = false; ENV.hourOverride = SH.keepHour === undefined ? null : SH.keepHour; envUpdate();
-  for (const id of ['shopbar', 'shopfind', 'shopmsg', 'cd']) { const el = $(id); if (el) el.hidden = true; }
+  for (const id of ['shopbar', 'shopfind', 'shopmsg', 'cd']) { const el = $(id); if (el) el.hidden = true; } const ev3 = $('env'); if (ev3) ev3.style.display = '';
 }
 function shopExit() { const ar = SH.ar; shopLeave(); if (ar && AR.on) { try { AR.session && AR.session.end(); } catch (e) { arEnded(); } return; } G.mode = 'practice'; resetWorld(); G.phase = 'title'; showTitle(); }
 
 /* ---- the camera (practice shop): orbit by hand, or the director's path. In AR the device is the camera. ---- */
 function shopCamera(dt) {
-  if (AR.on) return; const asp = innerWidth / innerHeight, f = clamp(1.3 / asp, 1, 2.1), C = SH.cam; SH.stage.updateWorldMatrix(true, false);
+  if (AR.on) return; const asp = innerWidth / innerHeight, f = asp < 1.1 ? clamp(1.05 / asp, 1, 1.7) : 1, C = SH.cam; SH.stage.updateWorldMatrix(true, false);
   if (SH.dir && SH.dir.on) {
     const o = shopDirCam(SH.time, SH.dirCamBuf || (SH.dirCamBuf = [0, 0, 0, 0, 0, 0])), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + (o[1] - ly) * f, lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return;
   }
   if (SH.dir) { const o = shopDirCam(0, [0, 0, 0, 0, 0, 0]), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + (o[1] - ly) * f, lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return; }
   const k = Math.min(1, dt * 4), shopView = C.view === 'shop';
-  const gt = shopView ? tmpV.set(0, 1.25, -0.35) : SH.stagePos.clone().add(tmpV2.set(0, 0.05, 0.0)), gd = shopView ? 3.6 : 0.9 * f;
-  C.gt = C.gt || gt.clone(); C.gt.copy(gt); C.tgt = C.tgt || gt.clone(); C.tgt.lerp(C.gt, k); C.gDist = gd * (C.zoom || 1); C.dist += (C.gDist - C.dist) * k; C.pitch = clamp(C.pitch, 0.1, 1.42);
+  const gt = shopView ? tmpV.set(0, 1.25, -0.35) : C.focus ? SH.stage.localToWorld(new THREE.Vector3(C.focus[0], C.focus[1], C.focus[2])) : SH.stagePos.clone().add(tmpV2.set(0, 0.05, 0.0)), gd = shopView ? 3.6 * (asp < 1.1 ? 1.4 : 1) : 0.9 * (asp < 1.1 ? 1.25 : 1);
+  C.gt = C.gt || gt.clone(); C.gt.copy(gt); C.tgt = C.tgt || gt.clone(); C.tgt.lerp(C.gt, k); if (C.snap) { C.tgt.copy(C.gt); C.dist = gd * (C.zoom || 1); C.snap = false; } C.gDist = gd * (C.zoom || 1); C.dist += (C.gDist - C.dist) * k; C.pitch = clamp(C.pitch, 0.1, 1.42);
   const cp = Math.cos(C.pitch); camera.position.set(C.tgt.x + Math.sin(C.yaw) * cp * C.dist, C.tgt.y + Math.sin(C.pitch) * C.dist, C.tgt.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.tgt); camera.updateMatrixWorld(true);
 }
 
@@ -6914,7 +6916,7 @@ function shopStep(h) {
   if (SH.items.tree.userData.lit) SH.items.tree.userData.lit = 1;
 }
 function shopLight() { hemi.intensity *= 0.62; sunL.intensity *= 0.52; }
-function shopLive(dt) { if (SH.room && SH.room.visible && SH.room.userData.tick) SH.room.userData.tick(SH.time); }
+function shopLive(dt) { const ev2 = $('env'); if (ev2) { ev2.hidden = true; ev2.style.display = 'none'; } if (SH.room && SH.room.visible && SH.room.userData.tick) SH.room.userData.tick(SH.time); }
 
 /* ---- taps: poke a creature, tap things, find them ---- */
 function shopTap(cx, cy) {
@@ -6933,10 +6935,15 @@ function shopUi() {
   if (!SH.on) return;
   if (SH.find) { bar.innerHTML = '<button id="sbBack" class="">Back</button>'; fb.innerHTML = '<span>Find them! <b id="fcount">' + SH.find.found + ' / 5</b></span>'; $('sbBack').onclick = () => { shopFindStop(); shopReset('play'); shopArrive(0.2, true); SH.auto = true; shopUi(); }; fb.hidden = false; bar.hidden = false; return; }
   bar.innerHTML = '<button id="sbDir" class="go">🎬 Film it</button><button id="sbProp">💍 Proposal</button><button id="sbFind">🔍 Find them</button>' + (SH.ar ? '<button id="sbMove">Move</button><button id="sbSmall">Size</button>' : '<button id="sbView">👀 View</button>') + '<button id="sbExit">Exit</button>';
-  $('sbDir').onclick = () => { shopDirStart(); }; $('sbProp').onclick = () => { if (SH.mode === 'play' && !SH.dir) { SH.ev = SH.ev.filter((q) => q.keep); SH.auto = false; for (const a of SH.actors) { if (a.ride) continue; } shopPropose(SH.time + 0.2); setTimeout(() => { SH.auto = true; }, 14000); } };
+  $('sbDir').onclick = () => { shopDirStart(); }; $('sbProp').onclick = () => { shopProposeNow(); };
   $('sbFind').onclick = () => { shopFindStart(); }; $('sbExit').onclick = () => { shopExit(); };
   if (SH.ar) { $('sbMove').onclick = () => { SH.placed = false; SH.stage.visible = false; if (SH.reticle) SH.reticle.visible = true; shopUi(); }; $('sbSmall').onclick = () => { SH.scale = SH.scale > 0.85 ? 0.7 : SH.scale < 0.8 ? 1.15 : 1; SH.stage.scale.setScalar(SH.scale); }; }
   else $('sbView').onclick = () => { SH.cam.view = SH.cam.view === 'shop' ? 'stage' : 'shop'; };
+}
+function shopProposeNow() {
+  if (SH.mode !== 'play' || SH.dir || SH.proposing || SH.actors.some((a) => a.ride)) return false; SH.proposing = true; SH.auto = false; const A0 = SH.actors[0], D0 = SH.actors[3], lead = Math.max(Math.hypot(A0.x - SHL.polish[0], A0.z - SHL.polish[1]), Math.hypot(D0.x - SHL.gaze[0], D0.z - SHL.gaze[1])) / 0.13 + 0.5, t0 = SH.time + 0.2, end = shopPropose(t0, { lead });
+  shAt(t0 + end + 1.5, () => { const D = SH.actors[3]; if (SH.ring.userData.held) { SH.ring.userData.held.hold = 0; SH.ring.userData.held = null; } SH.ring.position.copy(SH.ringHome); SH.ring.rotation.set(0, 0, 0); shopPop(SH.ring, 1); SH.ring.userData.shine = 0.6; for (const a of SH.actors) { a.ringTarget = 0; a.ringK = 0; a.shaky = false; } SH.proposing = false; SH.auto = true; });
+  return true;
 }
 function shopFindUi() { const c = $('fcount'); if (c && SH.find) c.textContent = SH.find.found + ' / 5'; }
 
@@ -6949,7 +6956,7 @@ if (SHOP) {
   let holdT = 0; document.addEventListener('pointerdown', () => { clearTimeout(holdT); if (SH.dir) holdT = setTimeout(() => { if (SH.dir) shopDirCancel(); }, 2000); }, true); document.addEventListener('pointerup', () => clearTimeout(holdT), true);
   setInterval(() => { const b = $('bShopAR'); if (b) b.disabled = !AR.ok; if (SH.find) shopFindUi(); }, 500);
 } else { for (const id of ['shopRow', 'bShopP']) { const el = $(id); if (el) el.hidden = true; } }
-const SHOP_HOOKS = { shopLight, SH, SHL, SH_ACT, SHJ, shopEnter, shopLeave, shopExit, shopStep, shopReset, shopArrive, shopPropose, shopDirStart, shopDirBegin, shopDirCancel, shopFindStart, shopFindStop, shopFindReset, shopFound, shopFindTap, shopTap, shopCmd, shopAuto, shopInit, shopUi, shopPlaceAr, shopDirCam, SH_CAM, SH_TAKE, SH_HIDE, shSw, shopCamera };
+const SHOP_HOOKS = { shopDirScript, shopProposeNow, shopLight, SH, SHL, SH_ACT, SHJ, shopEnter, shopLeave, shopExit, shopStep, shopReset, shopArrive, shopPropose, shopDirStart, shopDirBegin, shopDirCancel, shopFindStart, shopFindStop, shopFindReset, shopFound, shopFindTap, shopTap, shopCmd, shopAuto, shopInit, shopUi, shopPlaceAr, shopDirCam, SH_CAM, SH_TAKE, SH_HIDE, shSw, shopCamera };
 
 // ============ test and debug hooks ============
 window.__g = {
