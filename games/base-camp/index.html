@@ -3435,7 +3435,7 @@ function pipeVisual(p, dt, time) {
   const pos = p.drops.geometry.attributes.position, N = p.nd, v = tmpV; p.drops.visible = p.ready;
   if (p.ready) {
     if (!p.kink) p.flow = (p.flow + dt * 0.16 / p.len) % 1;
-    for (let i = 0; i < N; i++) { let u = (p.flow + i / N) % 1; if (p.kink) u = Math.min(u, p.ku - 0.012 - (i % 7) * 0.011); ptAt(p, u, v); pos.setXYZ(i, v.x, v.y + 0.0046 + 0.0012 * Math.sin(time * 6 + i * 1.7), v.z); }
+    for (let i = 0; i < N; i++) { let u = (p.flow + i / N) % 1; if (p.kink) u = Math.min(u, p.ku - 0.012 - (i % 7) * 0.011); ptAt(p, u, v); pos.setXYZ(i, v.x, v.y + 0.0046 + (p.kink ? 0 : 0.0012 * Math.sin(time * 6 + i * 1.7)), v.z); }
     pos.needsUpdate = true;
   }
   p.knot.visible = p.kink; p.bang.visible = p.kink;
@@ -4035,7 +4035,7 @@ function recogConsider(d, fr) {
   const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
   const sx = (d.bbox[0] + d.bbox[2] / 2) / fr.w * innerWidth, sy = (d.bbox[1] + d.bbox[3]) / fr.h * innerHeight, hit = surfacePick(sx, sy); if (!hit) return;
   const top = topNear(hit) || { x: hit.x, z: hit.z, y: hit.y, area: 0.004 }; // no top scanned there: the place where its feet are
-  const wk = waterKind({ name: R.name, cls: d.class, src: 'auto' }), named = G.spots.find((s) => s.src !== 'default' && (Math.hypot(s.x - top.x, s.z - top.z) < 0.07 || (wk && (wk === 'sink' || wk === 'toilet') && waterKind(s) === wk && Math.hypot(s.x - top.x, s.z - top.z) < 0.32))); /* build 18: one sink and one toilet per corner of the room, however many bumps the scan sees in them */
+  const wk = waterKind({ name: R.name, cls: d.class, src: 'auto' }), named = G.spots.find((s) => s.src !== 'default' && (Math.hypot(s.x - top.x, s.z - top.z) < 0.07 || (wk && (wk === 'sink' || wk === 'toilet') && waterKind(s) === wk && Math.hypot(s.x - top.x, s.z - top.z) < 0.6))); /* build 18: one sink and one toilet per corner of the room, however many bumps the scan sees in them */
   if (named) { // seen again on a later visit: the tag grows surer; a different class at an automatic tag contradicts it, and the spot is forgotten so it is looked at again
     if (named.src === 'auto' && named.cls) { if (named.cls === d.class) { if (!named.hitT || performance.now() - named.hitT > 20000) { named.n = (named.n || 1) + 1; named.hitT = performance.now(); AUTO.mapDirty = true; } } else if (d.score >= 0.6) { recRecog({ cls: d.class, score: +d.score.toFixed(2), action: 'contradicts ' + named.cls + ': forgotten', spot: named.id }); recSnap('recognition contradicted'); removeSpot(named); AUTO.mapDirty = true; } }
     return;
@@ -4061,7 +4061,7 @@ function recogPropose() {
   RECOG.cand.splice(RECOG.cand.indexOf(c), 1); guessCard({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, score: c.score, key: 'coco:' + c.cls, src: 'COCO-SSD', cls: c.cls }); RECOG.stats.proposals++;
 }
 function autoTag(c) { // a detection that is sure enough gives the spot a name and a role without asking
-  { const wk = waterKind({ name: c.name, cls: c.cls, src: 'auto' }); if ((wk === 'sink' || wk === 'toilet') && G.spots.some((s) => waterKind(s) === wk && Math.hypot(s.x - c.x, s.z - c.z) < 0.32)) return; } /* build 18: one spot per sink or toilet, however many bumps the scan saw in it */
+  { const wk = waterKind({ name: c.name, cls: c.cls, src: 'auto' }); if ((wk === 'sink' || wk === 'toilet') && G.spots.some((s) => waterKind(s) === wk && Math.hypot(s.x - c.x, s.z - c.z) < 0.6)) return; } /* build 18: one spot per sink or toilet, however many bumps the scan saw in it */
   const sp = addSpot({ tag: c.tag, name: c.name, x: c.x, y: c.y, z: c.z, area: c.area, src: 'auto' }); sp.n = 1; recRecog({ cls: c.cls, score: +c.score.toFixed(2), tag: c.tag, action: 'accepted automatically', spot: sp.id }); sp.cls = c.cls; RECOG.stats.auto++; AUTO.mapDirty = true; for (const S of G.settlements) S.fx = null;
   toast('That looks like a ' + c.name + '! The colonists make it their ' + spotRole(sp).name.toLowerCase() + '.', 4); sfx('pop'); persistSoon();
 }
@@ -6508,7 +6508,7 @@ window.__g = {
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
-  WW, WSRC, waterKind, netNew, netStep, netSave, netRestore, netReset, netModes, netMode, netLay, netCanLay, netBreak, netFix, netTap, netLoo, netBroken, netAnyBroken, netExpStart, srcOpen, srcTop, srcPick, mkPipeRun, mkLineRun, looOf, pipeFarm, compostK, ptAt, campOK, expedStep, netVisual, PIPE_COST, LINE_COST, mkLoo, tankGeo, bucketGeo,
+  hooksDrop, linkHook, WW, WSRC, waterKind, netNew, netStep, netSave, netRestore, netReset, netModes, netMode, netLay, netCanLay, netBreak, netFix, netTap, netLoo, netBroken, netAnyBroken, netExpStart, srcOpen, srcTop, srcPick, mkPipeRun, mkLineRun, looOf, pipeFarm, compostK, ptAt, campOK, expedStep, netVisual, PIPE_COST, LINE_COST, mkLoo, tankGeo, bucketGeo,
   seaLoad, seaReset, care, seaPlace, seaProgress, seaStripText, seaCheck, seaComplete, seaSim, decorTick, seaEvent, advInfo, advState, advCanOpen, advOpen, advGive, advList, calUi, camOpen, camClose, ccamRender, ccamText, doingText, goalHtml, cardUi, SEA, SEASONS, DECOR, ADVENT, CCAM, seaDate, seasonIdOf, addThing, mainSettlement, careOn, packAway, seaBuildList, seaFace, advCalendars,
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,

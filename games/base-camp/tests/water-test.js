@@ -6,7 +6,7 @@ const { serve, launch, ROOT } = require('./lib.js'); const fs = require('fs'), p
 const OUT = path.join(ROOT, 'shots') + '/'; const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS ' : 'FAIL ') + n + (x !== undefined ? '  ' + x : '')); };
 const FIX = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'style-colony.json'), 'utf8')), OLD17 = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'build17-save.json'), 'utf8'));
-const B17 = { room: 1393, close: 597 }; /* build 17 on the same fixture colony (tests/style-test.js way of measuring, run on a copy of build 17) */
+const B17 = { room: 1363, close: 620 }; /* build 17 on the same fixture colony, measured the style-test.js way on a copy of build 17: 1393 / 597 (style-test), 1346 / 623 and 1350 / 639 (three runs, so about +-3% noise); the mean is used */
 const stamp = (st) => { const o = {}; for (const k in st) { let v = st[k]; try { const j = JSON.parse(v), n = Date.now(); if (k === 'base-camp-save-v2') j.t = n; if (k === 'base-camp-map-v1') j.saved = n; if (k === 'bc-rooms-v1') j.rooms.forEach((r) => { r.last = n; }); v = JSON.stringify(j); } catch (e) { /* as is */ } o[k] = v; } return o; };
 async function boot(p, url, store) {
   const ev = (f, a) => p.evaluate(f, a);
@@ -30,7 +30,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   ok('qualities: sink fresh, plant pot and vase green, cup tea, toilet waste only', await ev(() => __g.WSRC.sink.q === 'fresh' && __g.WSRC.pot.q === 'green' && __g.WSRC.vase.q === 'green' && __g.WSRC.cup.q === 'tea' && __g.WSRC.toilet.q === 'waste'));
   for (let i = 0; i < 60 && !(await ev(() => __g.G.spots.some((s) => __g.waterKind(s) === 'sink') && __g.G.spots.some((s) => __g.waterKind(s) === 'toilet'))); i++) await sleep(500);
   const seen = await ev(() => ({ sinks: __g.G.spots.filter((s) => __g.waterKind(s) === 'sink').length, toilets: __g.G.spots.filter((s) => __g.waterKind(s) === 'toilet').length }));
-  ok('the scan recognises the toy sink and toilet as spots (one each)', seen.sinks === 1 && seen.toilets === 1, JSON.stringify(seen));
+  ok('the scan recognises the toy sink and toilet as spots (one each)', seen.sinks === 1 && seen.toilets === 1, JSON.stringify(seen) + JSON.stringify(await ev(() => __g.G.spots.filter((s) => __g.waterKind(s)).map((s) => [s.name, +s.x.toFixed(2), +s.y.toFixed(2), +s.z.toFixed(2)]))));
   await ev(() => { const g = __g; for (const [id, kind] of [['sink', 'sink'], ['toilet', 'toilet']]) if (!g.G.spots.some((s) => g.waterKind(s) === kind)) { const q = g.PROPS.find((x) => x.id === id), [wx, wz] = g.PLACE ? [q.x, q.z] : [0, 0]; g.addSpot({ tag: 'other', name: kind, x: wx, y: q.base + q.h, z: wz, area: 0.02, src: 'auto' }); } });
   const S0 = await ev(() => { const S = __g.mainSettlement(); S.t = Math.max(S.t, 30); S.stock.wood = 40; __g.G.net.found = {}; __g.G.net.exp = null; __g.G.net.xt = 0; __g.G.speed = 0; return { cols: S.cols.length, scouts: S.cols.filter((c) => c.scout).length, loo: !!__g.looOf(S) }; });
   ok('the colony is up with one scout; each camp has a loo hut', S0.cols >= 3 && S0.scouts === 1 && S0.loo, JSON.stringify(S0));
@@ -38,12 +38,13 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   ok('before the scout finds the sink no straw can be laid: "Nobody has found the sink yet"', /Nobody has found the sink/.test(refuse.err) && !refuse.lay && refuse.n === 0 && refuse.modes === 'car', JSON.stringify(refuse));
   /* the expedition: walk, climb, look around, cheer; the toast says who found it; step the sim and watch the scout */
   const ex = { phases: [], toast: '', shot: false, name: '', walked: false };
-  for (let i = 0; i < 400; i++) {
-    const r = await ev(() => { __g.simulate(0.5, 0.5); const N = __g.G.net, S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job; return { ph: j && j.type === 'expedition' ? j.ph : '', moving: c && c.moving, found: Object.keys(N.found).length, toast: document.getElementById('toast').textContent, name: c && c.name, yOff: c && c.yOff, exps: N.st.expeds }; });
-    if (r.ph && ex.phases[ex.phases.length - 1] !== r.ph) ex.phases.push(r.ph); if (r.ph === 'go' && r.moving) ex.walked = true; if (/found the/.test(r.toast)) { ex.toast = r.toast; ex.name = r.name; }
-    if (r.ph === 'look' && !ex.shot) { ex.shot = true; await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), sp = __g.spotById(c.job.sp), w = S.group.localToWorld(new __g.THREE.Vector3(c.x, c.yOff || 0, c.z)); __g.P.mode = 'orbit'; __g.P.yaw = 0.5; __g.P.pitch = 0.3; __g.focusOn(w.x, w.y + 0.02, w.z, 0.42); }); await sleep(2200); await p.screenshot({ path: OUT + '57-scout-expedition.png' }); }
+  await ev(() => { window.__rec = { phases: [], toast: '', name: '', walked: false }; window.__expFn = () => { const R = window.__rec, N = __g.G.net, S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job, ph = j && j.type === 'expedition' ? j.ph : ''; if (ph && R.phases[R.phases.length - 1] !== ph) R.phases.push(ph); if (ph === 'go' && c.moving) R.walked = true; const t = document.getElementById('toast').textContent; if (/found the/.test(t)) { R.toast = t; R.name = c.name; } return false; }; });
+  for (let round = 0; round < 8; round++) {
+    const r = await ev(() => { let lookAt = false; __run(240, () => { window.__expFn(); const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job; if (j && j.type === 'expedition' && j.ph === 'look' && !window.__shot) { window.__shot = true; lookAt = true; return true; } return Object.keys(__g.G.net.found).length >= 2 && !(j && j.type === 'expedition'); }, 0.25); return { lookAt, found: Object.keys(__g.G.net.found).length }; });
+    if (r.lookAt && !ex.shot) { ex.shot = true; await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), w = S.group.localToWorld(new __g.THREE.Vector3(c.x, c.yOff || 0, c.z)); __g.P.mode = 'orbit'; __g.P.yaw = 0.5; __g.P.pitch = 0.3; __g.focusOn(w.x, w.y + 0.02, w.z, 0.42); }); await sleep(2200); await p.screenshot({ path: OUT + '57-scout-expedition.png' }); continue; }
     if (r.found >= 2) break;
   }
+  Object.assign(ex, await ev(() => window.__rec));
   console.log('  expedition phases ' + ex.phases.join(' > ') + ', toast "' + ex.toast.replace(/\s+/g, ' ').slice(0, 90) + '"');
   ok('the scout goes on an expedition: walk there, climb, LookAround, cheer, and walks back', ex.walked && ex.phases.includes('look') && ex.phases.includes('cheer') && ex.phases.includes('back'), ex.phases.join());
   ok('the toast says who found it ("Pip found the sink!") and is tagged as a placeholder', /found the (sink|toilet)/.test(ex.toast) && ex.toast.includes(ex.name) && /CAIRN \(placeholder\)/.test(ex.toast), ex.toast.slice(0, 120));
@@ -70,12 +71,13 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   const lnS = await ev(() => { const S = __g.mainSettlement(), sp = __g.G.spots.find((s) => __g.waterKind(s) === 'toilet'), [wx, wz] = __g.l2w(S, 0.0, 0.1); S.waste = 2; S.compost = 0; window.__sfxLog.length = 0; const ln = __g.netLay('waste', S, wx, wz, sp); return { made: !!ln, kind: ln && ln.k, loo: !!__g.looOf(S), refusedWater: __g.netCanLay('pipe', S, sp) }; });
   ok('a bucket line is laid from the loo hut to the toilet; a straw to the toilet is refused', lnS.made && lnS.kind === 'waste' && lnS.loo && /toilet takes buckets/.test(lnS.refusedWater), JSON.stringify(lnS));
   const seenSt = []; let shot56 = false;
-  for (let i = 0; i < 700; i++) {
-    const r = await ev(() => { __g.simulate(0.5, 0.5); const ln = __g.G.net.lines[0], N = __g.G.net; return { st: ln.st, s: ln.s, load: ln.load, tips: N.st.tips, returns: N.st.returns, fan: N.st.fanfares }; });
-    if (seenSt[seenSt.length - 1] !== r.st) seenSt.push(r.st);
-    if (r.st === 'run' && r.s > 0.4 && !shot56) { shot56 = true; await ev(() => { const ln = __g.G.net.lines[0]; const S = __g.mainSettlement(); __g.P.mode = 'orbit'; __g.P.yaw = 0.45; __g.P.pitch = 0.32; __g.focusOn(ln.cab.position.x, ln.cab.position.y - 0.01, ln.cab.position.z, 0.55); }); await sleep(2200); await p.screenshot({ path: OUT + '56-flush-run.png' }); }
-    if (r.returns >= 1 && r.tips >= 1) break;
+  await ev(() => { window.__seen = []; window.__shot56 = false; });
+  for (let round = 0; round < 6; round++) {
+    const r = await ev(() => { let want = false; __run(300, () => { const N = __g.G.net, ln = N.lines[0]; if (window.__seen[window.__seen.length - 1] !== ln.st) window.__seen.push(ln.st); if (ln.st === 'run' && ln.s > 0.4 && !window.__shot56) { window.__shot56 = true; want = true; return true; } return N.st.returns >= 1 && N.st.tips >= 1; }, 0.25); const N = __g.G.net; return { want, done: N.st.returns >= 1 && N.st.tips >= 1 }; });
+    if (r.want && !shot56) { shot56 = true; await ev(() => { const ln = __g.G.net.lines[0]; __g.P.mode = 'orbit'; __g.P.yaw = 0.45; __g.P.pitch = 0.32; __g.focusOn(ln.cab.position.x, ln.cab.position.y - 0.01, ln.cab.position.z, 0.55); }); await sleep(2200); await p.screenshot({ path: OUT + '56-flush-run.png' }); continue; }
+    if (r.done) break;
   }
+  seenSt.push(...(await ev(() => window.__seen)));
   const cyc = await ev(() => { const ln = __g.G.net.lines[0], N = __g.G.net, S = __g.mainSettlement(), L = N.log.map((e) => e.k); return { states: ln.st, tips: N.st.tips, fan: N.st.fanfares, ret: N.st.returns, log: L.filter((k, i) => L.indexOf(k) === i).join(), sfx: window.__sfxLog.filter((k) => k === 'ploop' || k === 'trumpet').join(), comp: S.compost, load: ln.load }; });
   console.log('  bucket states ' + seenSt.join(' > ') + ' | ' + JSON.stringify(cyc));
   ok('a bucket rides out, tips in at the toilet, and the empty bucket rides back to the loo hut', seenSt.includes('run') && seenSt.includes('tip') && seenSt.includes('back') && cyc.tips >= 1 && cyc.ret >= 1 && cyc.states === 'dock' && !cyc.load, seenSt.join());
@@ -114,6 +116,17 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   ok('a tap from the Giant fixes it at once', tapR.was && !tapR.now && tapR.by.k === 'fix' && tapR.by.by === 'tap', JSON.stringify(tapR));
   const selfT = await ev(() => { __g.mainSettlement().cols.forEach((c) => { c.inside = true; }); const p = __g.G.net.pipes[0]; __g.netBreak('pipe'); const t = __run(90, () => !p.kink, 0.5); __g.mainSettlement().cols.forEach((c) => { c.inside = false; }); return t; });
   ok('with every creature asleep a break still mends itself within about a minute', selfT >= 0 && selfT <= 75, String(selfT));
+  /* a bucket line can run via a ceiling hook, like a cable car (a pretend ceiling with a hook is added for this) */
+  const viaR = await ev(() => {
+    const g = __g, G = g.G, S = g.mainSettlement(), ln = G.net.lines[0], log = G.net.log.filter((e) => e.line === ln.id), s0 = log.find((e) => e.k === 'send'), r0 = log.find((e) => e.k === 'return' && e.t > s0.t), straight = r0.t - s0.t - 2.4;
+    const Z = { id: 900, name: 'Pretend ceiling', type: 'CEIL', spec: '', ceil: true, y: 2.4, h: 0, cx: S.tf.x, cz: S.tf.z, ang: 0, w: 1.2, d: 1.2, area: 1.4, color: 0xffffff, land: null, settled: null, label: null, core: null };
+    G.zones.push(Z); const h = g.addHook(Z, S, { built: true, o: [0, 0] }); ln.via = h.id; ln.key = ''; ln.st = 'dock'; ln.s = 0; ln.tm = 0; ln.load = false; S.waste = 3; const ret0 = G.net.st.returns, t0 = G.simT;
+    const t = __run(300, () => G.net.st.returns > ret0, 0.25); const log2 = G.net.log.filter((e) => e.line === ln.id && e.t >= t0), s1 = log2.find((e) => e.k === 'send'), r1 = log2.find((e) => e.k === 'return');
+    const hooked = s1 && r1 ? r1.t - s1.t - 2.4 : -1, passes = h.passes | 0, built = !!linkHookOK(ln);
+    function linkHookOK(l) { return g.linkHook(l); }
+    ln.via = 0; ln.key = ''; g.hooksDrop(); G.zones.splice(G.zones.indexOf(Z), 1); return { straight: +straight.toFixed(1), hooked: +hooked.toFixed(1), ratio: +(hooked / straight).toFixed(2), passes, built, t };
+  });
+  ok('a bucket line can run via a ceiling hook: the bell rings and the trip takes about 0.7 of the straight trip', viaR.passes >= 2 && viaR.built && viaR.ratio > 0.5 && viaR.ratio < 0.9, JSON.stringify(viaR));
   /* ---------- F. look mode: blue pipes, brown lines ---------- */
   const look = await ev(() => { __g.setTool('look'); __g.netVisual(0.016, 1); const p = __g.G.net.pipes[0], ln = __g.G.net.lines[0], on = [p.glow.visible, ln.glow.visible, p.glow.material.color.getHex(), ln.glow.material.color.getHex()]; __g.setTool('seed'); __g.netVisual(0.016, 1); return { on, off: [p.glow.visible, ln.glow.visible] }; });
   ok('Look mode: pipes glow blue, waste lines glow brown (and not in other tools)', look.on[0] && look.on[1] && look.on[2] === 0x4ab4ff && look.on[3] === 0xb87a3a && !look.off[0] && !look.off[1], JSON.stringify(look));
@@ -128,6 +141,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   const live = await ev(() => { __g.G.holdPlace = false; for (const S of __g.G.settlements) S.placed = true; __g.G.phase = 'play'; __run(60); const N = __g.G.net; return { pipeOn: __g.G.settlements.some((S) => S.pipeOn), tips: N.st.tips }; });
   ok('the restored network keeps running', live.pipeOn);
   /* an old build 17 save (made by the real build 17) loads: no network yet, no errors, loo huts appear */
+  await ev(() => { window.persist = () => {}; }); /* the page saves itself when it unloads: not this time */
   await p.evaluate((st) => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); for (const k in st) localStorage.setItem(k, st[k]); }, stamp(OLD17)); await p.reload(); await sleep(2500);
   const old = await ev(() => { let err = ''; let okc = false; try { okc = __g.prepareContinue(); } catch (e) { err = String(e && e.stack || e).slice(0, 200); } const N = __g.G.net; return { okc, err, camps: __g.G.settlements.length, pipes: N.pipes.length, lines: N.lines.length, found: Object.keys(N.found).length, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0), waste: __g.G.settlements[0] && __g.G.settlements[0].waste }; });
   ok('a build 17 save (no network fields) loads, with the defaults', old.okc && !old.err && old.camps >= 1 && old.pipes === 0 && old.lines === 0 && old.found === 0 && old.cols >= 3, JSON.stringify(old));
