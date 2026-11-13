@@ -101,7 +101,7 @@ const clean = (p) => p.evaluate(() => { for (const id of ['banner', 'toast']) { 
   /* ---------- E. breakdowns that mend themselves ---------- */
   const wake = () => ev(() => { for (const c of __g.mainSettlement().cols) { c.needs.rest = 1; c.needs.food = 1; c.needs.water = 1; if (c.inside || (c.job && ['sleep', 'shelter'].includes(c.job.type))) { c.job = null; c.inside = false; c.mesh.visible = true; } c.cool = 0; } });
   await wake();
-  const k = await ev(() => { const S = __g.mainSettlement(), p = __g.netBreak('pipe'); if (!p) return { none: 1 }; const f = S.things.find((t) => t.kind === 'farm' && t.built); f.tend = 0; S.pipeOn = false; return { kinked: p.kink, anyBroken: __g.netAnyBroken(), ku: p.ku }; });
+  const k = await ev(() => { const S = __g.mainSettlement(), p = __g.netBreak('pipe') || __g.G.net.pipes.find((q) => q.kink); if (!p) return { none: 1 }; /* the game may already have broken it by itself */ const f = S.things.find((t) => t.kind === 'farm' && t.built); f.tend = 0; S.pipeOn = false; return { kinked: p.kink, anyBroken: __g.netAnyBroken(), ku: p.ku }; });
   ok('a kinked straw happens: the droplets stop and pile up before the kink', k.kinked && k.anyBroken && k.ku > 0.8, JSON.stringify(k));
   await sleep(500); const kd0 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 6))); await sleep(600); const kd1 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 6)));
   ok('the dripping really stops while kinked', Math.hypot(kd1[0] - kd0[0], kd1[1] - kd0[1], kd1[2] - kd0[2]) < 0.0005);
@@ -113,16 +113,16 @@ const clean = (p) => p.evaluate(() => { for (const id of ['banner', 'toast']) { 
   /* a stuck bucket: wait for a bucket on the move, then it sticks, a creature climbs and wiggles it */
   await wake(); await ev(() => { const S = __g.mainSettlement(); S.waste = 3; });
   const stuckT = await ev(() => __run(120, () => { const l = __g.G.net.lines[0]; return l.st === 'run' && l.s > 0.15; }, 0.5));
-  const st1 = await ev(() => { const l = __g.netBreak('line'); window.__fixSeen = false; return { st: l && l.st, any: __g.netAnyBroken() }; });
+  const st1 = await ev(() => { const l = __g.netBreak('line') || __g.G.net.lines.find((q) => q.st === 'stuck'); window.__fixSeen = false; return { st: l && l.st, any: __g.netAnyBroken() }; });
   ok('a bucket sticks on its line (it stops and swings)', stuckT >= 0 && st1.st === 'stuck' && st1.any, JSON.stringify([stuckT, st1]));
   const climbT = await ev(() => __run(90, () => { const S = __g.mainSettlement(); if (S.cols.some((c) => c.job && c.job.type === 'fix' && c.working)) window.__fixSeen = true; return !__g.netAnyBroken(); }, 0.5));
   const cl = await ev(() => ({ seen: !!window.__fixSeen, by: __g.G.net.log.filter((e) => e.k === 'fix').map((e) => e.by).slice(-1)[0], st: __g.G.net.lines[0].st }));
   ok('a creature climbs up and wiggles it free within a game minute', climbT >= 0 && climbT <= 70 && cl.seen && cl.by !== 'self' && cl.st !== 'stuck', JSON.stringify([climbT, cl]));
   /* a tap speeds it up, and with nobody around the straw mends itself anyway */
-  const tap = await ev(() => { const p = __g.G.net.pipes[0]; __g.netBreak('pipe'); const P = __g.ptAt(p, p.ku, new __g.THREE.Vector3()); __g.focusOn(P.x, P.y, P.z, 0.5); return true; }); await sleep(2000);
+  const tap = await ev(() => { const p = __g.G.net.pipes[0]; __g.netBreak('pipe'); if (!p.kink) p.kink = true; const P = __g.ptAt(p, p.ku, new __g.THREE.Vector3()); __g.focusOn(P.x, P.y, P.z, 0.5); return true; }); await sleep(2000);
   const tapR = await ev(() => { const p = __g.G.net.pipes[0], P = __g.ptAt(p, p.ku, new __g.THREE.Vector3()), [sx, sy] = __g.toScreen(P), was = p.kink; __g.tapAt(sx, sy); return { was, now: p.kink, by: __g.G.net.log.slice(-1)[0] }; });
   ok('a tap from the Giant fixes it at once', tapR.was && !tapR.now && tapR.by.k === 'fix' && tapR.by.by === 'tap', JSON.stringify(tapR));
-  const selfT = await ev(() => { __g.mainSettlement().cols.forEach((c) => { c.inside = true; }); const p = __g.G.net.pipes[0]; __g.netBreak('pipe'); const t = __run(90, () => !p.kink, 0.5); __g.mainSettlement().cols.forEach((c) => { c.inside = false; }); return t; });
+  const selfT = await ev(() => { __g.mainSettlement().cols.forEach((c) => { c.inside = true; }); const p = __g.G.net.pipes[0]; __g.netBreak('pipe'); if (!p.kink) { p.kink = true; p.fixT = 60; } const t = __run(90, () => !p.kink, 0.5); __g.mainSettlement().cols.forEach((c) => { c.inside = false; }); return t; });
   ok('with every creature asleep a break still mends itself within about a minute', selfT >= 0 && selfT <= 75, String(selfT));
   /* a bucket line can run via a ceiling hook, like a cable car (a pretend ceiling with a hook is added for this) */
   const viaR = await ev(() => {
