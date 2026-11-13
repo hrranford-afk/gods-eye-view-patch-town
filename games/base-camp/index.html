@@ -3872,10 +3872,15 @@ const PVIEWS = [ // auto-scan: where the virtual iPad is held, base yaw/pitch, a
   { p: [-0.5, 1.9, 0.9], yaw: 1.9, pitch: -0.7, ay: 0.4, ap: 0.3 }, { p: [0.4, 2.0, 0.5], yaw: 0.1, pitch: -1.15, ay: 1.2, ap: 0.4 },
 ];
 // Things on the practice room's surfaces that can be moved around between visits (cans, a cup, boxes, a speaker, a GPU box)
-const PROP_DEF = { can: { w: 0.066, d: 0.066, h: 0.12, col: 0xb9c2c9, round: 1 }, cup: { w: 0.08, d: 0.08, h: 0.09, col: 0xf2f0e6, round: 1 }, box: { w: 0.2, d: 0.15, h: 0.12, col: 0xc9a26b }, speaker: { w: 0.3, d: 0.25, h: 0.55, col: 0x3a3a3f }, gpu: { w: 0.26, d: 0.1, h: 0.1, col: 0x232329 } };
+const PROP_DEF = { can: { w: 0.066, d: 0.066, h: 0.12, col: 0xb9c2c9, round: 1 }, cup: { w: 0.08, d: 0.08, h: 0.09, col: 0xf2f0e6, round: 1 }, box: { w: 0.2, d: 0.15, h: 0.12, col: 0xc9a26b }, speaker: { w: 0.3, d: 0.25, h: 0.55, col: 0x3a3a3f }, gpu: { w: 0.26, d: 0.1, h: 0.1, col: 0x232329 },
+  /* build 18: a toy sink and a toy toilet for the water network (so it works without AR): the practice room's eyes know both */
+  sink: { w: 0.2, d: 0.13, h: 0.1, col: 0xe9eef2, deco(m, D) { const kid = (w, h, d, c, x, y, z) => { const o = mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); m.add(o); return o; }; kid(0.15, 0.004, 0.09, 0x9fcaf0, 0, D.h / 2 + 0.0005, 0.005); const tap = mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 8), M(0xc9ced3), 0, D.h / 2 + 0.025, -D.d / 2 + 0.014); m.add(tap); kid(0.008, 0.008, 0.04, 0xc9ced3, 0, D.h / 2 + 0.05, -D.d / 2 + 0.033); kid(0.02, 0.012, 0.02, 0x4aa8e8, 0.05, D.h / 2 + 0.006, -D.d / 2 + 0.014); } },
+  toilet: { w: 0.16, d: 0.22, h: 0.16, col: 0xf4f6f8, deco(m, D) { const kid = (w, h, d, c, x, y, z) => { const o = mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); m.add(o); return o; }; kid(0.12, 0.004, 0.12, 0x8fb8d9, 0, D.h / 2 + 0.0005, 0.03); kid(0.15, 0.2, 0.05, 0xf4f6f8, 0, D.h / 2 + 0.1 - 0.0, -D.d / 2 + 0.03); kid(0.03, 0.012, 0.012, 0xc9ced3, 0.05, D.h / 2 + 0.206, -D.d / 2 + 0.03); } },
+};
 const PROPS = [], PLACE = { yaw: 0, x: 0, z: 0 };
 function addProp(id, kind, x, z, base) {
   const D = PROP_DEF[kind], g = D.round ? new THREE.CylinderGeometry(D.w / 2, D.w / 2, D.h, 14) : new THREE.BoxGeometry(D.w, D.h, D.d), m = new THREE.Mesh(g, M(D.col));
+  if (D.deco) D.deco(m, D);
   const p = { id, kind, x, z, base, w: D.w, d: D.d, h: D.h, mesh: m }; m.userData.prop = p; room.add(m); PROPS.push(p); syncProp(p); return p;
 }
 function syncProp(p) { p.mesh.position.set(p.x, p.base + p.h / 2, p.z); }
@@ -3889,6 +3894,7 @@ function resetProps() {
   while (PROPS.length) removeProp(PROPS[0].id);
   addProp('can1', 'can', -1.18, -1.45, 1.45); addProp('can2', 'can', -1.0, -1.45, 1.45); addProp('can3', 'can', -0.82, -1.45, 1.45);
   addProp('cup', 'cup', -0.05, -0.8, 0.75); addProp('gpu', 'gpu', 0.4, -0.85, 0.75); addProp('box', 'box', 0.9, 0.5, 0); addProp('speaker', 'speaker', 1.15, -0.9, 0);
+  addProp('sink', 'sink', -0.32, -0.72, 0.75); addProp('toilet', 'toilet', -0.8, 0.05, 0); /* build 18 */
 }
 resetProps();
 const PV_T = 6;
@@ -4029,7 +4035,7 @@ function recogConsider(d, fr) {
   const lib = libFind('coco:' + d.class), R = lib ? { tag: lib.tag, name: lib.name } : COCO_ROLES[d.class]; if (!R || d.score < 0.3) return; RECOG.stats.dets++;
   const sx = (d.bbox[0] + d.bbox[2] / 2) / fr.w * innerWidth, sy = (d.bbox[1] + d.bbox[3]) / fr.h * innerHeight, hit = surfacePick(sx, sy); if (!hit) return;
   const top = topNear(hit) || { x: hit.x, z: hit.z, y: hit.y, area: 0.004 }; // no top scanned there: the place where its feet are
-  const named = G.spots.find((s) => s.src !== 'default' && Math.hypot(s.x - top.x, s.z - top.z) < 0.07);
+  const wk = waterKind({ name: R.name, cls: d.class, src: 'auto' }), named = G.spots.find((s) => s.src !== 'default' && (Math.hypot(s.x - top.x, s.z - top.z) < 0.07 || (wk && (wk === 'sink' || wk === 'toilet') && waterKind(s) === wk && Math.hypot(s.x - top.x, s.z - top.z) < 0.32))); /* build 18: one sink and one toilet per corner of the room, however many bumps the scan sees in them */
   if (named) { // seen again on a later visit: the tag grows surer; a different class at an automatic tag contradicts it, and the spot is forgotten so it is looked at again
     if (named.src === 'auto' && named.cls) { if (named.cls === d.class) { if (!named.hitT || performance.now() - named.hitT > 20000) { named.n = (named.n || 1) + 1; named.hitT = performance.now(); AUTO.mapDirty = true; } } else if (d.score >= 0.6) { recRecog({ cls: d.class, score: +d.score.toFixed(2), action: 'contradicts ' + named.cls + ': forgotten', spot: named.id }); recSnap('recognition contradicted'); removeSpot(named); AUTO.mapDirty = true; } }
     return;
@@ -4151,7 +4157,7 @@ function libUi() {
 function practiceDetector(fr) {
   const out = []; if (G.mode !== 'practice') return out;
   for (const p of PROPS) {
-    const cls = { cup: ['cup', 0.86], can: ['bottle', 0.52], gpu: ['laptop', 0.31] }[p.kind]; if (!cls) continue;
+    const cls = { cup: ['cup', 0.86], can: ['bottle', 0.52], gpu: ['laptop', 0.31], sink: ['sink', 0.88], toilet: ['toilet', 0.88] }[p.kind]; if (!cls) continue;
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, vis = true; room.updateMatrixWorld(true);
     for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) { const v = new THREE.Vector3(p.x + sx * p.w / 2, p.base + sy * p.h, p.z + sz * p.d / 2).applyMatrix4(room.matrixWorld), [px, py, ok] = toScreen(v); if (!ok) vis = false; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
     if (vis && x1 > 0 && x0 < innerWidth && y1 > 0 && y0 < innerHeight) out.push({ class: cls[0], score: cls[1], bbox: [x0, y0, x1 - x0, y1 - y0] });
@@ -5052,7 +5058,7 @@ function updateHint() {
   else if (G.phase === 'zones') s = 'Tap a coloured zone to found your colony there.';
   else if (G.phase === 'tag') s = G.tagMode === 'cable' ? (G.cableFrom ? 'Now tap the other end of the cable.' : 'Mark a cable: tap one end of a real cable, then the other.') : 'Tap a thing to name it: speaker, cup, can, computer, warm box... The colonists work out what it is for.';
   else if (G.phase === 'align') { const lm = G.landmarks || []; s = G.align && G.align.done ? 'Does it line up? Slide or turn the saved room until the labels sit on the real things, then Looks right.' : lm.length ? 'Lining the saved room up with the real one. Tap the ' + (lm[G.alignTaps.length] ? lm[G.alignTaps.length].name : '') + (lm.length > 1 ? ' (' + (G.alignTaps.length + 1) + ' of ' + lm.length + ')' : '') + '.' : 'Nothing to line up on.'; }
-  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: hooksBuilt().length ? 'Drag from a camp to another zone. Cable cars run via the ceiling hook (switch it on the toolbar).' : 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
+  else if (G.phase === 'play') s = { seed: 'Tap the ground to drop a seed.', water: 'Touch and hold to water plants and colonists.', build: 'Tap to place a ' + (KINDS[G.buildKind].name || '').toLowerCase() + ' blueprint (' + KINDS[G.buildKind].wood + ' wood). The colonists build it.', cheer: 'Tap a colonist to cheer them up.', cable: netMode() === 'pipe' ? wwText('hintPipe') : netMode() === 'waste' ? wwText('hintWaste') : hooksBuilt().length ? 'Drag from a camp to another zone. Cable cars run via the ceiling hook (switch it on the toolbar).' : 'Drag from a thriving settlement to another zone.', move: 'Drag the cans, cup and boxes around the room, then Scan again to see what the colonists make of it.', look: '' }[G.tool];
   if (G.auto && G.phase === 'play') { if (s) autoSay(s, 4); $('chips').innerHTML = ''; autoCount(); return; }
   h.textContent = s; h.hidden = !s; h.classList.remove('fade');
   const ch = $('chips'); ch.innerHTML = '';
@@ -5075,6 +5081,7 @@ function barUi() {
     else b.innerHTML = T('look', 'Look') + T('seed', 'Seeds') + T('water', 'Water') + T('build', 'Build') + T('cheer', 'Cheer') + `<button id="bParty" class="${FUN.party ? 'on' : ''}">Music</button>` + T('cable', 'Cable car') + (pr ? T('move', 'Move things') + '<button id="bSkip" class="alt">Skip 8 hours</button>' : '') + `<button id="bSpeed">Time x${G.speed}</button><button id="bRescan">Scan again</button><button id="bMenu">Menu</button>`;
   } else b.hidden = true;
   if (G.phase === 'play' && G.tool === 'cable' && hooksBuilt().length && !b.hidden && !(G.auto && G.barMin)) b.insertAdjacentHTML('beforeend', `<button id="bVia" title="via the ceiling hook" aria-label="via the ceiling hook" class="ic ${G.cableVia === false ? '' : 'on'}"><i>\ud83d\udd14</i><small>Via hook</small></button>`);
+  if (G.phase === 'play' && G.tool === 'cable' && netModes().length > 1 && !b.hidden && !(G.auto && G.barMin)) { const nm = netMode(); b.insertAdjacentHTML('beforeend', `<button id="bLine" title="what to lay: cable car, water straw or bucket line" aria-label="what to lay" class="ic on"><i>${nm === 'pipe' ? '\ud83d\udeb0' : nm === 'waste' ? '\ud83d\udebd' : '\ud83d\udea1'}</i><small>${nm === 'pipe' ? 'Straw' : nm === 'waste' ? 'Buckets' : 'Cars'}</small></button>`); }
   const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
   if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).concat(seaBuildList()).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
 }
@@ -5090,6 +5097,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bQuit') { saveNow(); if (G.zones.length && G.phase !== 'scan') saveMap(); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } return; }
   if (t.id === 'bRescan') { rescanFresh(); return; }
   if (t.id === 'bSpeed') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; return barUi(); }
+  if (t.id === 'bLine') { const ms = netModes(), i = ms.indexOf(netMode()); G.lineKind = ms[(i + 1) % ms.length]; G.cableFrom = null; clearPreview(); barUi(); updateHint(); return toast(G.lineKind === 'pipe' ? 'Straws: drag from a camp to the sink.' : G.lineKind === 'waste' ? 'Bucket line: drag from a camp to the toilet.' : 'Cable cars again.', 3); }
   if (t.id === 'bVia') { G.cableVia = G.cableVia === false; barUi(); return toast(G.cableVia === false ? 'Cable cars go straight.' : 'Cable cars go via the ceiling hook.', 3); }
   if (t.id === 'bMenu') return menuUi();
   if (t.id === 'bCollapse') { G.barMin = true; return barUi(); }
@@ -5335,7 +5343,8 @@ $('touch').addEventListener('pointerdown', (e) => {
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; }
   if (G.phase === 'play' && G.tool === 'cable') {
     const g = groundPick(e.clientX, e.clientY);
-    if (g && g.zone.settled) { const S = g.zone.settled; if (!S.thriving) { toast('Not ready yet: a thriving colony (4+ settlers, 3 buildings, 2 grown trees) can build a cable car.', 4); sfx('no'); } else G.cableFrom = { S, x: g.x, z: g.z }; }
+    if (g && g.zone.settled && netMode() !== 'car') { if (campOK(g.zone.settled)) G.cableFrom = { S: g.zone.settled, x: g.x, z: g.z }; }
+    else if (g && g.zone.settled) { const S = g.zone.settled; if (!S.thriving) { toast('Not ready yet: a thriving colony (4+ settlers, 3 buildings, 2 grown trees) can build a cable car.', 4); sfx('no'); } else G.cableFrom = { S, x: g.x, z: g.z }; }
     else toast('Start the line on a settled zone.');
   }
   if (G.phase === 'play' && G.tool === 'move' && G.mode === 'practice') { down.prop = propPick(e.clientX, e.clientY); }
@@ -5350,6 +5359,7 @@ $('touch').addEventListener('pointermove', (e) => {
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; return; }
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY), A = new THREE.Vector3(f.x, SY(f.S, 0.063), f.z);
+    if (netMode() !== 'car') { const sp = srcPick(e.clientX, e.clientY, netMode()), B = sp ? srcTop(sp, new THREE.Vector3()) : (() => { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; return new THREE.Vector3(p[0], SY(f.S, 0.03), p[1]); })(); A.y = SY(f.S, 0.02); showPreview(A, B, !!sp && !netCanLay(netMode(), f.S, sp)); return; }
     let B, ok = false, hp = null; if (g) { B = new THREE.Vector3(g.x, g.y + 0.063, g.z); ok = !canLink(f.S, f.x, f.z, g.zone, g.x, g.z, viaPick(f.S, g)); hp = ok && viaPick(f.S, g) ? hookPos(G.hooks.find((q) => q.id === viaPick(f.S, g)), new THREE.Vector3()) : null; } else { const p = planePick(e.clientX, e.clientY, f.S.tf.y) || [f.x, f.z]; B = new THREE.Vector3(p[0], SY(f.S, 0.063), p[1]); }
     showPreview(A, B, ok, hp); return;
   }
@@ -5368,6 +5378,7 @@ const endDown = (e) => {
   const tap = !down.moved && performance.now() - down.t < 700;
   if (G.phase === 'play' && G.tool === 'cable' && G.cableFrom) {
     const f = G.cableFrom, g = groundPick(e.clientX, e.clientY); G.cableFrom = null; clearPreview();
+    if (netMode() !== 'car') { const sp = srcPick(e.clientX, e.clientY, netMode()); if (sp) { if (netLay(netMode(), f.S, f.x, f.z, sp)) setTool('look'); } else toast(netMode() === 'pipe' ? 'Drop the straw onto the sink, a plant, a vase or a cup.' : 'Drop the bucket line onto the toilet.'); return; }
     if (g) { const l = makeLink(f.S, f.x, f.z, g.zone, g.x, g.z, viaPick(f.S, g)); if (l) setTool('look'); } else toast('Drop the line onto another zone.');
     return;
   }
@@ -6496,6 +6507,7 @@ window.__g = {
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
+  toScreen, WW, WSRC, waterKind, netNew, netStep, netSave, netRestore, netReset, netModes, netMode, netLay, netCanLay, netBreak, netFix, netTap, netLoo, netBroken, netAnyBroken, netExpStart, srcOpen, srcTop, srcPick, mkPipeRun, mkLineRun, looOf, pipeFarm, compostK, ptAt, campOK, expedStep, netVisual, PIPE_COST, LINE_COST, mkLoo, tankGeo, bucketGeo,
   seaLoad, seaReset, care, seaPlace, seaProgress, seaStripText, seaCheck, seaComplete, seaSim, decorTick, seaEvent, advInfo, advState, advCanOpen, advOpen, advGive, advList, calUi, camOpen, camClose, ccamRender, ccamText, doingText, goalHtml, cardUi, SEA, SEASONS, DECOR, ADVENT, CCAM, seaDate, seasonIdOf, addThing, mainSettlement, careOn, packAway, seaBuildList, seaFace, advCalendars,
   settle(type) { const z = G.zones.find((q) => q.type === type && !q.settled); if (z) settleZone(z); return z && z.id; },
   settleZone, doneScanning, finishScan, captureScan, applyChanges, makeLink, canLink, zoneById, saveNow, saveMap, serialize, mapToJSON, mapFromJSON, loadSave, loadMapData, importMapText, setTool, giveRequest, plantTree, focusZone, focusOn, updateLabels, paintAll, extractZones, ensureDist,
