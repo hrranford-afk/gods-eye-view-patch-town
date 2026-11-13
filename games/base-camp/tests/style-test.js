@@ -24,7 +24,7 @@ const AUDIT = () => {
   const vis = (m) => { for (let q = m; q; q = q.parent) if (!q.visible) return false; return true; };
   const isToon = (mt) => mt.isMeshToonMaterial && mt.gradientMap === grad;
   /* listed exceptions: soft overlays that must stay flat and see-through (shadow blobs, glow discs, selection rings, zone paint, ghost boxes), and the room itself (floor, window) */
-  const exc = (m, mt) => (mt.isMeshBasicMaterial && mt.transparent) || m.userData.room || (G.room && (() => { for (let q = m; q; q = q.parent) if (q === G.room) return true; return false; })());
+  const exc = (m, mt) => (mt.isMeshBasicMaterial && mt.transparent) || m.userData.room || (() => { for (let q = m; q; q = q.parent) if (q.userData && q.userData.glb) return true; return false; })() /* build 17: the GLB scout mouse keeps its own materials */ || (G.room && (() => { for (let q = m; q; q = q.parent) if (q === G.room) return true; return false; })());
   window.__audit = (root) => { const o = { toon: 0, ink: 0, exc: 0, bad: [] }; root.traverse((m) => { if (!m.isMesh || !vis(m)) return; const mt = m.material; if (isToon(mt)) o.toon++; else if (inks.has(mt)) o.ink++; else if (exc(m, mt)) o.exc++; else o.bad.push(mt.type + ' ' + m.geometry.type); }); return o; };
   return true;
 };
@@ -32,7 +32,7 @@ const AUDIT = () => {
   const { srv, url } = await serve();
   const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await startPractice(p, url, FIX); await ev(AUDIT);
-  ok('build 16', await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 16'")));
+  ok('build 17', await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 17'")));
   ok('the fixture colony loaded (huts, farms, trees, colonists)', await ev(() => { const k = {}; for (const S of __g.G.settlements) for (const t of S.things) k[t.kind] = (k[t.kind] || 0) + 1; return (k.hut || 0) >= 4 && (k.farm || 0) >= 2 && (k.tree || 0) >= 10 && __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) >= 6; }));
   await ev(() => { __g.G.settlements.forEach((S) => { S.cols.forEach((c) => { c.mesh.visible = true; }); }); });
   // ---------- 1. every visible mesh in the real scene ----------
