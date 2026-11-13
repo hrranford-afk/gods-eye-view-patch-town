@@ -120,3 +120,30 @@ in a single block, never split across several boxes.
 - the jewellery-shop "shop mode" (money: favour or paid).
 
 **The town lost the Mini from 12:25 on 13 Nov.**
+
+## Overnight 13–14 Nov: Harry asked CAIRN to run Base Camp on its own for 12 hours (about 20:20 to 08:30 UK)
+Harry: "You happy to run autonomously and manage Basecamp for the next 12 hours? It'll be interesting to see what you
+bring to the game."
+
+**The plan, in order:**
+1. **Build 19 release** (builder on `game/bc-build19`): merge waterworks + decor + the build 19 fixes, fix the duplicate
+   "Pip" names properly, run every suite, then CAIRN checks it and deploys.
+   - **Before deploying,** keep build 17 reachable at `base-camp/b17/` as a fallback.
+2. **Shop edition** (builder on `game/shop-edition`): check it, then deploy to the test link `base-camp-shop/`.
+3. **Sound pass** (after build 19 is live; game sounds made in-house with WebAudio, no download): every action gets a sound
+   (ploop, squeak, tink, footsteps, fanfare).
+4. **If time and budget allow:** the first 10 minutes as a story (the Scout lands, unrolls his map, finds the first spot).
+5. **Morning report about 08:00 UK:** one message with links, numbered pictures sent one at a time, and an honest hit or
+   miss for each item.
+
+**Limits overnight** (Harry's standing rules):
+- no downloads or installs;
+- no money;
+- no deleting;
+- nothing sent to the shop or to anyone else;
+- nothing personal;
+- no new repositories;
+- no changes to the town.
+- At most 2 builders at a time, so the machine stays fast and tests stay honest.
+
+**Wake-ups:** `send_later` every 2 hours; builder reports also wake the session.
