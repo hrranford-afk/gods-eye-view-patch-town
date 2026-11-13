@@ -1,0 +1,1617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Vigil 3D</title>
+<style>
+:root{
+  --bg:#12101c; --panel:rgba(18,20,38,.9); --line:rgba(255,255,255,.14);
+  --ink:#f4f1ea; --dim:#a9a6b8;
+  --you:#3d8bff; --youd:#1f4fa8; --foe:#ff7a2e; --foed:#9a3a0e;
+  --gold:#ffd24a; --ok:#58e08c; --bad:#ff4d4d;
+  --gut:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:600 16px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.f{fill:currentColor;stroke:none}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+button:focus{outline:none}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+#top{position:fixed;left:0;right:0;top:0;padding:max(10px,env(safe-area-inset-top)) max(var(--gut),env(safe-area-inset-right)) 0 max(var(--gut),env(safe-area-inset-left));display:flex;align-items:flex-start;gap:10px;pointer-events:none;z-index:5}
+.chip{pointer-events:auto;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:24px;background:var(--panel);border:2px solid var(--line);font-size:22px;font-weight:800;backdrop-filter:blur(6px)}
+.chip svg{font-size:26px}
+.chip.hive{color:#ffb98a}
+.chip.pad{color:var(--gold)}
+#topL,#topR{display:flex;gap:8px;flex:1;align-items:center}
+#topR{justify-content:flex-end}
+#banner{pointer-events:none;display:flex;align-items:center;gap:12px;min-height:56px;padding:0 26px;border-radius:30px;font-size:28px;font-weight:900;letter-spacing:.02em;background:var(--you);border:3px solid #fff;color:#fff;box-shadow:0 6px 22px rgba(0,0,0,.45);transition:background .25s,transform .25s}
+#banner svg{font-size:32px}
+#banner.foe{background:var(--foe)}
+#banner.drn{background:#7b6cf0}
+#banner.pulse{animation:pulse .7s ease-out}
+@keyframes pulse{0%{transform:scale(.8);opacity:.2}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+
+#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.pop{position:absolute;transform:translate(-50%,-50%);font-size:26px;font-weight:900;color:#fff;text-shadow:0 2px 0 #000,0 0 8px #000;animation:rise 1.4s ease-out forwards;white-space:nowrap}
+.pop.dmg{color:#ff6b5a}.pop.heal{color:var(--ok)}.pop.miss{color:#cfd3e6;font-size:20px}.pop.hive{color:#ffb98a;font-size:20px}
+@keyframes rise{0%{opacity:0;margin-top:10px}15%{opacity:1}100%{opacity:0;margin-top:-46px}}
+.pct{position:absolute;transform:translate(-50%,-50%);font-size:15px;font-weight:900;color:#c6fff3;text-shadow:0 1px 0 #000,0 0 6px #000}
+.atk{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;padding:3px 9px 3px 6px;border-radius:14px;background:rgba(150,20,20,.92);border:2px solid #ffb0a0;font-size:16px;font-weight:900;color:#fff;white-space:nowrap}
+.atk svg{font-size:16px}
+#toast{display:none}
+
+#dice{position:fixed;left:50%;top:38%;transform:translate(-50%,-100%);display:flex;gap:8px;z-index:6;pointer-events:none}
+.die{width:46px;height:46px;border-radius:10px;background:#efe6d0;border:3px solid #1a1410;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px;gap:1px;animation:tumble .45s ease-out;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.die i{border-radius:50%;background:transparent}
+.die i.on{background:#1a1410}
+.die.hit{background:#ffe27a;border-color:#7a4a00;box-shadow:0 0 18px #ffb300}
+.die.miss{opacity:.55}
+@keyframes tumble{0%{transform:translateY(-70px) rotate(-200deg);opacity:0}100%{transform:none;opacity:1}}
+
+#dock{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px max(var(--gut),env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(var(--gut),env(safe-area-inset-left));display:flex;gap:12px;align-items:stretch;background:linear-gradient(0deg,rgba(10,9,20,.92),rgba(10,9,20,.55) 80%,transparent)}
+#squad{display:flex;gap:8px;flex:1;min-width:0;overflow-x:auto;padding:4px 2px;scrollbar-width:none}
+#squad::-webkit-scrollbar{display:none}
+.unit{flex:none;position:relative;width:78px;min-height:92px;border-radius:16px;background:var(--panel);border:3px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px 4px}
+.unit.sel{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,210,74,.35),0 0 18px rgba(255,210,74,.5);transform:translateY(-4px)}
+.unit.gone{opacity:.35}
+.unit.drone{width:66px;border-style:dashed}
+.unit .k{position:absolute;left:6px;top:3px;font-size:13px;color:var(--dim);font-weight:800}
+.unit .ic{font-size:34px;color:#cfe3ff}
+.unit.drone .ic{color:#c9c2ff}
+.unit .ord{position:absolute;right:3px;top:3px;min-width:30px;height:26px;border-radius:13px;background:#2a2d4a;font-size:13px;font-weight:900;color:#fff;padding:0 6px}
+.hp{display:flex;gap:3px}
+.hp i{width:11px;height:11px;border-radius:50%;background:var(--ok);border:1.5px solid #0a2a14}
+.hp i.e{background:#2a2d3c;border-color:#555a70}
+.ap{display:flex;gap:4px}
+.ap i{width:14px;height:6px;border-radius:3px;background:var(--gold)}
+.ap i.e{background:#3a3d52}
+.st{position:absolute;right:5px;bottom:4px;font-size:18px}
+#acts{display:flex;gap:10px;align-items:stretch}
+.btn{min-width:68px;min-height:68px;border-radius:20px;background:#2b3050;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:34px;color:#fff;position:relative}
+.btn:disabled{opacity:.3}
+.btn.on{background:#3b6dff;border-color:#fff}
+.btn.end{min-width:120px;background:var(--you);border-color:#fff;font-size:22px;font-weight:900;padding:0 18px}
+.btn.end svg{font-size:36px}
+.btn.end:disabled{background:#33385a}
+.btn.heal{color:var(--ok)}
+.btn.ext{color:var(--gold)}
+.btn small{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:11px;font-weight:800;color:var(--dim);letter-spacing:.04em}
+.btn .tag{position:absolute;top:-8px;right:-4px;font-size:14px;background:#0008;border-radius:10px;padding:1px 6px}
+
+#help{position:fixed;left:50%;transform:translateX(-50%);z-index:4;pointer-events:none;display:flex;gap:14px;padding:8px 18px;border-radius:26px;background:var(--panel);border:2px solid var(--line);font-size:26px;color:#fff;transition:opacity .4s}
+#help svg{font-size:30px}
+
+#end{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:rgba(8,6,16,.78);backdrop-filter:blur(4px)}
+#end[hidden]{display:none}
+.card{background:#1b1d36;border:3px solid #fff;border-radius:28px;padding:28px 34px;text-align:center;max-width:min(92vw,460px)}
+.card h1{margin:0 0 14px;font-size:40px;font-weight:900}
+.card .row{display:flex;gap:22px;justify-content:center;margin:12px 0 22px;font-size:30px;font-weight:900}
+.card .row span{display:flex;align-items:center;gap:8px}
+.card .row svg{font-size:34px}
+.card .go{min-width:200px;min-height:76px;border-radius:38px;background:var(--you);border:3px solid #fff;color:#fff;font-size:30px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.card .go svg{font-size:38px}
+
+@media (max-aspect-ratio:1/1){
+  #dock{flex-direction:column;gap:6px}
+  #acts{justify-content:space-between}
+  .btn{flex:1;min-width:0}
+  .btn.end{flex:2}
+  #banner{font-size:24px;padding:0 20px;min-height:52px}
+  #topL,#topR{flex:none}
+  #top{flex-wrap:wrap;justify-content:center}
+  #banner{order:-1;width:100%;justify-content:center}
+}
+@media (max-height:560px){
+  .unit{min-height:76px;width:66px}.unit .ic{font-size:26px}
+  .btn{min-height:58px;min-width:58px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 5l7 7-7 7M13 5l7 7-7 7"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3.2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V5M5 11l7-7 7 7"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M5 21c0-5 3-8 7-8s7 3 7 8"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="5" ry="6.5"/><path d="M9 7l-2-3M15 7l2-3M7 11H3M17 11h4M7 16l-3 2M17 16l3 2"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h12l-3 4 3 4H6"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></symbol>
+    <symbol id="i-skull" viewBox="0 0 24 24"><path d="M5 11a7 7 0 1 1 14 0v3l-2 1v3H7v-3l-2-1z"/><circle cx="9.5" cy="11" r="1.3"/><circle cx="14.5" cy="11" r="1.3"/></symbol>
+    <symbol id="i-aim" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M5 10l7-6 7 6M5 19l7-6 7 6"/></symbol>
+    <symbol id="i-cannon" viewBox="0 0 24 24"><rect x="3" y="9" width="14" height="6" rx="2"/><circle cx="18" cy="12" r="3.5"/></symbol>
+    <symbol id="i-rifle" viewBox="0 0 24 24"><path d="M2 13h16l4-2v4h-4l-2 2H9l-1-3"/></symbol>
+    <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="7" cy="14" r="4"/><circle cx="17" cy="14" r="4"/><path d="M11 13h2M7 10V6h10v4"/></symbol>
+    <symbol id="i-turret" viewBox="0 0 24 24"><path d="M5 20l3-9h8l3 9zM9 11V6h8"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/></symbol>
+    <symbol id="i-brick" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 12h18M9 6v6M15 12v6"/></symbol>
+    <symbol id="i-hold" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></symbol>
+  </defs>
+</svg>
+<canvas id="gl"></canvas>
+<div id="labels"></div>
+<div id="dice"></div>
+<div id="toast"></div>
+<div id="top">
+  <div id="topL">
+    <div class="chip" title="Round"><svg class="i"><use href="#i-flag"/></svg><b id="roundN">1</b></div>
+    <div class="chip pad" title="Out"><svg class="i"><use href="#i-up"/></svg><b id="extN">0/6</b></div>
+  </div>
+  <div id="banner"><svg class="i"><use href="#i-person"/></svg><span id="bannerT">Your turn</span></div>
+  <div id="topR">
+    <div class="chip hive" title="The hive reads you"><svg class="i"><use href="#i-bug"/></svg><b id="hiveN">…</b></div>
+    <button class="chip" id="homeBtn" aria-label="Whole board"><svg class="i"><use href="#i-home"/></svg></button>
+  </div>
+</div>
+<div id="dock">
+  <div id="squad"></div>
+  <div id="acts">
+    <button class="btn" id="owBtn" aria-label="Watch"><svg class="i"><use href="#i-eye"/></svg><small>WATCH</small></button>
+    <button class="btn heal" id="healBtn" aria-label="Heal" hidden><svg class="i"><use href="#i-plus"/></svg><small>HEAL</small></button>
+    <button class="btn ext" id="extBtn" aria-label="Extract" hidden><svg class="i"><use href="#i-up"/></svg><small>OUT</small></button>
+    <button class="btn end" id="endBtn" aria-label="End turn"><svg class="i"><use href="#i-next"/></svg><span>END</span></button>
+  </div>
+</div>
+<div id="end" hidden>
+  <div class="card">
+    <h1 id="eTitle">Done</h1>
+    <div class="row"><span><svg class="i"><use href="#i-up"/></svg><b id="eExt">0</b></span><span><svg class="i"><use href="#i-skull"/></svg><b id="eKills">0</b></span><span><svg class="i"><use href="#i-flag"/></svg><b id="eRounds">0</b></span></div>
+    <button class="go" id="again"><svg class="i"><use href="#i-replay"/></svg>AGAIN</button>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+
+(() => {
+"use strict";
+/* ================= Vigil 3D =================
+   The rules and turn logic in the middle of this file are copied from games/vigil/index.html,
+   unchanged except for the places marked "3D port". Only the picture and the touch controls are new.
+   Math.random is used ONLY by the rules (dice, spawns, tie-breaks), in the same order as the 2D game.
+   Anything cosmetic uses vr(), a separate little generator, so a seeded Math.random replays the same game. */
+const W = 22, H = 22;
+const $ = id => document.getElementById(id);
+const C = c => new THREE.Color(c);
+let _cs = 12345;
+const vr = (a = 0, b = 1) => { _cs = (_cs * 1664525 + 1013904223) >>> 0; return a + (_cs / 4294967296) * (b - a); };
+const rand = vr;
+const noop = () => {};
+const sfx = new Proxy({}, { get: () => noop });
+const tone = noop, noise = noop;
+const SVG = (id, cls = "") => `<svg class="i ${cls}"><use href="#${id}"/></svg>`;
+
+/* ---- renderer, scene, camera ---- */
+const TOUCH = matchMedia("(pointer: coarse)").matches;
+const cv = $("gl");
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = C("#2a2018");
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 220);
+const GRAD = (() => { const t = new THREE.DataTexture(new Uint8Array([120, 190, 245]), 3, 1, THREE.LuminanceFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
+const toon = (col, o = {}) => new THREE.MeshToonMaterial(Object.assign({ color: C(col), gradientMap: GRAD }, o));
+scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x7a6350, 0.5));
+const sun = new THREE.DirectionalLight(0xfff0d8, 0.55);
+sun.position.set(-9, 18, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -15; sun.shadow.camera.right = 15; sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15; sun.shadow.camera.near = 4; sun.shadow.camera.far = 50; sun.shadow.bias = -0.0006;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x9fb8ff, 0.3); fill.position.set(10, 7, -12); scene.add(fill);
+
+/* ---- ink outline (inverted hull) ---- */
+const INK = 0x120d1c;
+const inkN = new THREE.ShaderMaterial({ side: THREE.BackSide, uniforms: { thick: { value: 0.024 } },
+  vertexShader: "uniform float thick; void main(){ vec3 p = position + normalize(normal) * thick; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }",
+  fragmentShader: "void main(){ gl_FragColor = vec4(0.07, 0.05, 0.11, 1.0); }" });
+const inkB = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+function addInk(parent, m, t = 0.024) {
+  const g = m.geometry, box = g.type === "BoxGeometry";
+  const h = new THREE.Mesh(g, box ? inkB : inkN);
+  h.position.copy(m.position); h.rotation.copy(m.rotation); h.scale.copy(m.scale);
+  if (box) { const p = g.parameters; h.scale.set(m.scale.x * (p.width + 2 * t) / p.width, m.scale.y * (p.height + 2 * t) / p.height, m.scale.z * (p.depth + 2 * t) / p.depth); }
+  h.userData.hull = true; parent.add(h); return h;
+}
+
+/* ---- the table and the board ---- */
+const GY = 0.08;   /* the standing level of every unit */
+const table = new THREE.Mesh(new THREE.PlaneGeometry(120, 120).rotateX(-Math.PI / 2), toon("#5a4636"));
+table.position.y = -0.62; table.receiveShadow = true; scene.add(table);
+const tableTex = (() => {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 512; const x = c.getContext("2d");
+  x.fillStyle = "#6a5240"; x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 90; i++) { x.fillStyle = `rgba(${vr() < 0.5 ? "30,18,10" : "150,115,80"},${vr(0.05, 0.14)})`; x.fillRect(0, vr(0, 512), 512, vr(2, 9)); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(8, 8); return t;
+})();
+table.material.map = tableTex;
+const frameMat = toon("#7a5232");
+const tframe = new THREE.Mesh(new THREE.BoxGeometry(W + 1.2, 0.5, H + 1.2), frameMat); tframe.position.y = -0.4; tframe.castShadow = tframe.receiveShadow = true; scene.add(tframe); addInk(scene, tframe, 0.03);
+const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 0.1, 0.2, H + 0.1), toon("#241c34")); slab.position.y = -0.08; slab.receiveShadow = true; scene.add(slab);
+
+
+/* ---- the city as a diorama: instanced tiles, with a little height ---- */
+let cityKinds = [], cityGroup = null, tileTop = new Float32Array(W * H);
+const tileInst = {};   /* name -> { mesh, tiles:[k], base:[Color] } */
+const BOXG = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+const FOGC = C("#161426");
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
+function instBox(name, list, mat, hull) {
+  /* list: [{k, x, y, z, sx, sy, sz, ry, col}] */
+  const mesh = new THREE.InstancedMesh(BOXG, mat, Math.max(1, list.length)); mesh.count = list.length;
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  const inst = { mesh, tiles: list.map(o => o.k), base: list.map(o => C(o.col)) };
+  list.forEach((o, i) => {
+    _q.setFromEuler(_e.set(0, o.ry || 0, 0)); _m4.compose(_v.set(o.x, o.y, o.z), _q, _s.set(o.sx, o.sy, o.sz)); mesh.setMatrixAt(i, _m4);
+    mesh.setColorAt(i, inst.base[i]);
+  });
+  mesh.instanceMatrix.needsUpdate = true; cityGroup.add(mesh); tileInst[name] = inst;
+  if (hull) {
+    const h = new THREE.InstancedMesh(BOXG, inkB, Math.max(1, list.length)); h.count = list.length; const t = 0.03;
+    list.forEach((o, i) => { _q.setFromEuler(_e.set(0, o.ry || 0, 0)); _m4.compose(_v.set(o.x, o.y - t, o.z), _q, _s.set(o.sx + 2 * t, o.sy + 2 * t, o.sz + 2 * t)); h.setMatrixAt(i, _m4); });
+    h.instanceMatrix.needsUpdate = true; cityGroup.add(h);
+  }
+}
+const instMat = () => toon("#ffffff");
+const floorTone = { street: ["#d1bd92", "#c6b184"], inner: ["#a99a86", "#9d8e7a"], plaza: ["#b9bfc4", "#aab1b8"], crater: ["#a58f6e", "#9a8564"], rubble: ["#b8a27e", "#ad9873"], pad: ["#f0c64e", "#e6ba3c"], nest: ["#2a1a2e", "#2a1a2e"] };
+const ROOFS = ["#c85a3e", "#4f7fae", "#d6a640", "#6e9a66", "#8c6aa8"];
+const WALLS = ["#9aa6b8", "#b9a48c", "#8f9aa0", "#a8957f"];
+let beam = null;
+function buildCity() {
+  if (cityGroup) { scene.remove(cityGroup); cityGroup.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); }
+  cityGroup = new THREE.Group(); scene.add(cityGroup);
+  const R = mulberry(seed * 13 + 5), kindAt = new Array(W * H).fill(null);
+  for (const kd of cityKinds) for (let y = kd.y0; y <= kd.y1; y++) for (let x = kd.x0; x <= kd.x1; x++) kindAt[key(x, y)] = kd;
+  const floors = [], walls = [], roofs = [], mounds = [], pits = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const k = key(x, y), t = T(x, y), kd = kindAt[k], wx = x - (W - 1) / 2, wz = y - (H - 1) / 2, chk = (x + y) & 1;
+    let tone = floorTone.street, top = GY;
+    if (kd && kd.k === "building") { tone = floorTone.inner; top = GY + 0.02; }
+    else if (kd && kd.k === "plaza") { tone = floorTone.plaza; top = GY + 0.05; }
+    else if (kd && kd.k === "crater") { tone = floorTone.crater; top = GY - 0.04; }
+    else if (kd && kd.k === "rubble") { tone = floorTone.rubble; top = GY + 0.01; }
+    if (inExt(x, y)) { tone = floorTone.pad; top = GY + 0.04; }
+    if (t === TUN) { tone = floorTone.nest; top = GY - 0.05; }
+    tileTop[k] = top;
+    floors.push({ k, x: wx, y: 0, z: wz, sx: 0.95, sy: top, sz: 0.95, col: tone[chk] });
+    if (t === WALL) {
+      const hh = 0.85 + R() * 0.75, col = WALLS[Math.floor(R() * WALLS.length)];
+      walls.push({ k, x: wx, y: top - 0.02, z: wz, sx: 0.9, sy: hh, sz: 0.9, col });
+      roofs.push({ k, x: wx, y: top + hh - 0.02, z: wz, sx: 1.02, sy: 0.12, sz: 1.02, col: ROOFS[Math.floor(R() * ROOFS.length)] });
+      tileTop[k] = top + hh + 0.1;
+    } else if (t === LOW) {
+      mounds.push({ k, x: wx + R() * 0.06 - 0.03, y: top, z: wz + R() * 0.06 - 0.03, sx: 0.72, sy: 0.14 + R() * 0.05, sz: 0.62, ry: R() * 1.2 - 0.6, col: "#8e7d58" });
+      tileTop[k] = top + 0.16;
+    } else if (t === TUN) pits.push({ x: wx, z: wz });
+  }
+  instBox("floor", floors, instMat(), false);
+  instBox("wall", walls, instMat(), true);
+  instBox("roof", roofs, instMat(), true);
+  instBox("mound", mounds, instMat(), true);
+  for (const p of pits) {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.46, 0.1, 18), new THREE.MeshBasicMaterial({ color: C("#ff7a2e") })); ring.position.set(p.x, GY - 0.02, p.z); cityGroup.add(ring);
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 18), new THREE.MeshBasicMaterial({ color: C("#0a0610") })); hole.position.set(p.x, GY - 0.01, p.z); cityGroup.add(hole);
+  }
+  /* the landing pad: a beam of light over the gold squares */
+  beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.5, 7, 24, 1, true), new THREE.MeshBasicMaterial({ color: C("#ffd24a"), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.set(W - 2 - (W - 1) / 2 - 0.0, 3.5, 1 - (H - 1) / 2); cityGroup.add(beam);
+  fogDirty = true;
+}
+let fogDirty = true;
+const fogData = { cur: new Float32Array(W * H), target: new Float32Array(W * H) };
+const fogCur = fogData.cur, fogTarget = fogData.target;
+function paintFog() {
+  const c = new THREE.Color();
+  for (const name in tileInst) {
+    const inst = tileInst[name], m = inst.mesh;
+    for (let i = 0; i < inst.tiles.length; i++) { const f = fogCur[inst.tiles[i]]; c.copy(inst.base[i]).lerp(FOGC, (1 - f) * 0.78); m.setColorAt(i, c); }
+    m.instanceColor.needsUpdate = true;
+  }
+}
+
+/* ---- glowing tile markers ---- */
+const tileTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 4, 32, 32, 36); g.addColorStop(0, "rgba(255,255,255,.28)"); g.addColorStop(1, "rgba(255,255,255,.62)");
+  x.fillStyle = g; x.fillRect(3, 3, 58, 58); x.strokeStyle = "rgba(255,255,255,1)"; x.lineWidth = 5; x.strokeRect(4, 4, 56, 56);
+  return new THREE.CanvasTexture(c);
+})();
+const overlays = [];
+const ovGeo = new THREE.PlaneGeometry(0.94, 0.94).rotateX(-Math.PI / 2);
+for (let i = 0; i < W * H; i++) {
+  const m = new THREE.Mesh(ovGeo, new THREE.MeshBasicMaterial({ map: tileTex, color: C("#fff"), transparent: true, opacity: 0, depthWrite: false }));
+  m.position.set((i % W) - (W - 1) / 2, 0.2, Math.floor(i / W) - (H - 1) / 2); m.visible = false; m.renderOrder = 2; m.userData.ph = vr(0, 6); scene.add(overlays.push(m) && m);
+}
+function ov(k, col, op) {
+  const o = overlays[k]; o.material.color.set(col); o.userData.op = Math.min(1, op * 1.5); o.material.opacity = op; o.visible = op > 0;
+  o.position.y = Math.max(0.12, tileTop[k] > 1 ? GY + 0.04 : tileTop[k] + 0.03);
+}
+const pickPlane = new THREE.Mesh(new THREE.PlaneGeometry(W + 6, H + 6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ visible: false })); pickPlane.position.y = 0.12; scene.add(pickPlane);
+const ringGeo = new THREE.RingGeometry(0.36, 0.46, 40).rotateX(-Math.PI / 2);
+const selRing = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: C("#ffe27a"), transparent: true, depthWrite: false })); selRing.visible = false; selRing.renderOrder = 3; scene.add(selRing);
+const tgtRing = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: C("#ff4d4d"), transparent: true, depthWrite: false })); tgtRing.visible = false; tgtRing.renderOrder = 3; scene.add(tgtRing);
+const losLine = { visible: false, geometry: { setFromPoints: noop }, computeLineDistances: noop };
+
+/* ---- little helpers the copied rules call ---- */
+const glowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.35, "rgba(255,255,255,.45)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+function glow(col, size, k = 1) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: C(col).multiplyScalar(k), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); s.scale.setScalar(size); return s; }
+const SPEED = { v: 1 };
+let speedMul = 1;
+const nowS = () => performance.now() / 1000;
+const anims = [];
+function anim(dur, fn) {
+  if (!SPEED.v) { fn(1); return Promise.resolve(); }
+  return new Promise(res => anims.push({ t0: nowS(), dur: dur * SPEED.v / speedMul, fn, res }));
+}
+const wait = ms => SPEED.v ? new Promise(r => setTimeout(r, ms * SPEED.v / speedMul)) : Promise.resolve();
+const ease = k => 1 - Math.pow(1 - k, 3);
+const _p = new THREE.Vector3();
+function screenOf(v) { _p.copy(v).project(camera); return { x: (_p.x * 0.5 + 0.5) * innerWidth, y: (-_p.y * 0.5 + 0.5) * innerHeight }; }
+function pop(text, at, cls = "") {
+  if (!SPEED.v) return;
+  const d = document.createElement("div"); d.className = "pop " + cls; d.textContent = text;
+  const s = screenOf(at); d.style.left = s.x + "px"; d.style.top = s.y + "px"; $("labels").appendChild(d); setTimeout(() => d.remove(), 1500);
+}
+const toast = noop;
+const wpos = (x, y, h = 0) => new THREE.Vector3(x - (W - 1) / 2, h, y - (H - 1) / 2);
+const fx = [];
+function particle(col, size, k, at, v, life, grav = 7) { const s = glow(col, size, k); s.position.copy(at); scene.add(s); fx.push({ s, v, life, grav, t0: nowS() }); }
+function sparks(at, col, n, speed = 2.2, life = 0.45, up = 2) { if (!SPEED.v) return; for (let i = 0; i < n; i++) { const a = vr(0, 6.28), v = vr(0.4, 1) * speed; particle(col, vr(0.08, 0.16), 2.2, at, new THREE.Vector3(Math.cos(a) * v, vr(0.5, 1) * up, Math.sin(a) * v), life * vr(0.7, 1.2)); } }
+const smoke = noop, debris = noop, decal = noop, splash = (at, col = "#4fe0c4", n = 14) => sparks(at, col, Math.min(n, 8), 1.6, 0.5, 2);
+function flash(at, col, peak = 3, life = 0.18) { if (!SPEED.v) return; const s = glow(col, 0.9 + peak * 0.18, 1.6); s.position.copy(at); scene.add(s); anim(life * 1.4, k => { s.material.opacity = 1 - k; s.scale.setScalar((0.9 + peak * 0.18) * (1 + k * 0.6)); }).then(() => scene.remove(s)); }
+function ringWave(at, col) { if (!SPEED.v) return; const r = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.3, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: C(col), transparent: true, depthWrite: false })); r.position.copy(at).setY(0.15); scene.add(r); anim(0.5, k => { r.scale.setScalar(1 + k * 4.5); r.material.opacity = 1 - k; }).then(() => scene.remove(r)); }
+let shakeT = 0;
+const grade = { uniforms: { uHurt: { value: 0 } } };
+const decals = [], builtMeshes = [];
+let cine = null;
+const cineOn = async () => {}, cineOff = noop;
+const ripple = noop, clearRipples = noop, startHum = noop, updateHum = noop, playMarch = noop, drawMini = noop, saveGame = noop, clearSave = noop;
+const sporeMat = new THREE.MeshBasicMaterial({ color: C("#5ff0d0") });
+function hitFlash(u) {
+  const mats = u.mesh.userData.mats || []; if (!mats.length) return;
+  for (const m of mats) if (!m.userData.e0) m.userData.e0 = m.emissive.clone();
+  anim(0.28, k => { const v = 1 - k; for (const m of mats) m.emissive.copy(m.userData.e0).addScalar(v); });
+}
+function impactHit(t, from) { if (!SPEED.v) return; hitFlash(t); const at = t.mesh.position.clone().setY(0.55); sparks(at, "#fff2b0", 10, 1.8, 0.4); flash(at, "#ffffff", 3, 0.16); }
+function impactMiss(at) { sparks(at, "#cfd3e6", 4, 1.2, 0.3, 1); }
+function missPoint(tpos, from) { const d = tpos.clone().sub(from).setY(0).normalize(), side = new THREE.Vector3(-d.z, 0, d.x); return tpos.clone().addScaledVector(side, (vr() < 0.5 ? -1 : 1) * vr(0.4, 0.8)).addScaledVector(d, vr(-0.2, 0.7)).setY(0.1); }
+
+/* ---- attacks you can see: a glowing shot, a lunge, a flash ---- */
+function shoot(from, to, col, size, arc) {
+  size *= 1.6;
+  const g = glow(col, size, 2); const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const streak = new THREE.Mesh(new THREE.BoxGeometry(size * 0.12, size * 0.12, size * 1.6), new THREE.MeshBasicMaterial({ color: C(col) }));
+  scene.add(g, core, streak); const d = from.distanceTo(to), dur = Math.max(0.15, d / 14);
+  return anim(dur, k => { const p = from.clone().lerp(to, k); p.y += Math.sin(Math.PI * k) * arc; g.position.copy(p); core.position.copy(p); streak.position.copy(p); streak.lookAt(to.x, to.y + Math.cos(Math.PI * k) * arc * 0.3, to.z); streak.translateZ(-size * 0.6); if (vr() < 0.7) particle(col, size * 0.5, 1.5, p, new THREE.Vector3(0, 0.1, 0), 0.25, 0); }).then(() => scene.remove(g, core, streak));
+}
+async function volley(a, t, hits, info) {
+  const w = info.w, tp = t.mesh.position.clone().setY(0.55), from = a.mesh.position.clone().setY(0.6);
+  from.addScaledVector(tp.clone().sub(from).setY(0).normalize(), 0.4);
+  const col = a.side === "b" ? "#c8ff5a" : w.overheat ? "#7fb8ff" : (w.dmg || 1) >= 3 ? "#b8ffb0" : "#ffe08a", size = w.heavy ? 0.55 : 0.4, arc = a.side === "b" ? 0.7 : 0.1;
+  flash(from, col, 2.5, 0.12);
+  await Promise.all(hits.map((hit, i) => wait(i * 110).then(async () => {
+    const to = hit ? tp.clone().add(new THREE.Vector3(vr(-0.08, 0.08), vr(-0.1, 0.1), vr(-0.08, 0.08))) : missPoint(t.mesh.position, from);
+    await shoot(from, to, col, size, arc);
+    if (hit) impactHit(t, from); else impactMiss(to);
+  })));
+}
+async function meleeVisual(a, t, hits, info) {
+  const from = a.mesh.position.clone(), tp = t.mesh.position.clone(), dir = tp.clone().sub(from).setY(0).normalize();
+  const to = from.clone().lerp(tp, 0.5);
+  await anim(0.14, k => { a.mesh.position.lerpVectors(from, to, ease(k)); });
+  for (let i = 0; i < hits.length; i++) {
+    ringWave(tp.clone().setY(0.4), a.side === "w" ? "#9fd8ff" : "#ffb070");
+    await wait(90);
+    if (hits[i]) impactHit(t, from);
+  }
+  await anim(0.18, k => { a.mesh.position.lerpVectors(to, from, ease(k)); });
+}
+async function lobGrenade(a, t) {
+  const from = a.mesh.position.clone().setY(0.6), to = t.mesh.position.clone().setY(0.2);
+  await shoot(from, to, "#ffd04a", 0.5, 2.2);
+  flash(to, "#ffb050", 8, 0.35); ringWave(to, "#ffb050"); sparks(to.clone().setY(0.3), "#ffb050", 14, 2.4, 0.5, 2.5); shakeT = 0.3;
+  await wait(150);
+}
+async function flameBurst(a, targets) {
+  const from = a.mesh.position.clone().setY(0.5);
+  await Promise.all(targets.map(u => shoot(from, u.mesh.position.clone().setY(0.4), "#ff8a2a", 0.7, 0.2)));
+  for (const u of targets) { flash(u.mesh.position.clone().setY(0.4), "#ff8a2a", 4, 0.3); sparks(u.mesh.position.clone().setY(0.3), "#ff8a2a", 8, 1.6, 0.5); }
+  await wait(250);
+}
+
+
+/* ---- miniatures: toon-shaded primitives with an ink outline ---- */
+const WARM = { main: "#3d8bff", dark: "#1f4fa8", light: "#bcd9ff", trim: "#ffe27a" };
+const FOE = { main: "#ff7a2e", dark: "#9a3a0e", light: "#ffc08a", glow: "#fff06a" };
+function newRoot() {
+  const root = new THREE.Group(), body = new THREE.Group(); body.position.y = 0.07; body.scale.setScalar(1.2); root.add(body);
+  root.userData = { body, mats: [], hover: 0.5 };
+  return { root, body };
+}
+function mat(root, col, o) { const m = toon(col, o); root.userData.mats.push(m); return m; }
+function part(root, parent, geo, col, x, y, z, o = {}) {
+  const m = new THREE.Mesh(geo, o.mat || mat(root, col, o.m));
+  m.position.set(x, y, z); if (o.s) m.scale.set(o.s[0], o.s[1], o.s[2]); if (o.r) m.rotation.set(o.r[0], o.r[1], o.r[2]);
+  m.castShadow = true; parent.add(m); if (o.ink !== false) addInk(parent, m, o.t || 0.022); return m;
+}
+const G = {
+  cyl: (a, b, h, s = 14) => new THREE.CylinderGeometry(a, b, h, s), sph: (r, s = 16) => new THREE.SphereGeometry(r, s, 12),
+  box: (w, h, d) => new THREE.BoxGeometry(w, h, d), cone: (r, h, s = 10) => new THREE.ConeGeometry(r, h, s),
+};
+function baseFor(root, r, col, ring) {
+  r *= 1.15; const b = new THREE.Mesh(G.cyl(r, r + 0.03, 0.07, 24), mat(root, col)); b.position.y = 0.045; b.castShadow = b.receiveShadow = true; root.add(b); addInk(root, b, 0.02);
+  const rg = new THREE.Mesh(new THREE.TorusGeometry(r - 0.02, 0.03, 6, 28).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: C(ring) })); rg.position.y = 0.09; root.add(rg);
+}
+function gunLook(id) {
+  const L = { pistol: [0.22, 0.05], ppistol: [0.24, 0.06], rifle: [0.5, 0.06], carbine: [0.38, 0.05], shotgun: [0.4, 0.08], plasma: [0.46, 0.09], flamer: [0.42, 0.11], sniper: [0.72, 0.045], cannon: [0.55, 0.15], grenade: [0.46, 0.13] };
+  return L[id] || [0.3, 0.06];
+}
+function makeWarden(kind, gunId, meleeId) {
+  const { root, body } = newRoot(), P = WARM, big = kind === "gunner" ? 1.2 : kind === "scout" ? 0.86 : 1;
+  baseFor(root, 0.34, P.dark, P.trim);
+  part(root, body, G.cyl(0.15 * big, 0.2 * big, 0.38), P.main, 0, 0.26, 0, {});
+  part(root, body, G.sph(0.14), kind === "medic" ? "#ffffff" : P.light, 0, 0.55, 0, {});
+  part(root, body, G.box(0.18, 0.05, 0.08), "#ffd24a", 0, 0.56, 0.12, { m: { emissive: new THREE.Color(0x553300) } });
+  part(root, body, G.box(0.22, 0.22, 0.1), P.dark, 0, 0.3, -0.18 * big, {});
+  const [len, th] = gunLook(gunId);
+  const gun = part(root, body, G.box(th, th, len), "#2c2f3a", 0.19 * big, 0.32, 0.12 + len / 2 - 0.1, {});
+  part(root, body, G.sph(0.07), P.light, 0.17 * big, 0.36, 0.0, {});
+  if (kind === "sergeant") { part(root, body, G.cone(0.07, 0.2), "#ffd24a", 0, 0.76, 0, {}); part(root, body, G.box(0.38, 0.06, 0.1), "#ffd24a", 0, 0.42, 0.12, {}); }
+  if (kind === "gunner") { part(root, body, G.box(0.46, 0.1, 0.3), P.dark, 0, 0.44, 0, {}); }
+  if (kind === "scout") { part(root, body, G.cyl(0.015, 0.015, 0.32, 5), "#ffffff", -0.1, 0.78, -0.08, {}); part(root, body, G.sph(0.04), "#ff5a5a", -0.1, 0.95, -0.08, { ink: false }); }
+  if (kind === "medic") { part(root, body, G.box(0.22, 0.07, 0.04), "#e83a3a", 0, 0.34, 0.2, {}); part(root, body, G.box(0.07, 0.22, 0.04), "#e83a3a", 0, 0.34, 0.2, {}); }
+  if (kind === "trooper") { part(root, body, G.box(0.3, 0.05, 0.22), "#ffe27a", 0, 0.42, 0, {}); }
+  root.userData.id = "warden";
+  return root;
+}
+function makeBrood(kind) {
+  const { root, body } = newRoot(), P = FOE;
+  const sz = { swarm: 0.26, spitter: 0.3, brute: 0.42, leaper: 0.26, bloater: 0.4, burrower: 0.3, listener: 0.28, mother: 0.7 }[kind] || 0.3;
+  baseFor(root, Math.max(0.3, sz), P.dark, kind === "bloater" ? "#c8ff4a" : "#ffb050");
+  const eye = (x, y, z) => part(root, body, G.sph(0.045), P.glow, x, y, z, { ink: false, mat: new THREE.MeshBasicMaterial({ color: C(P.glow) }) });
+  if (kind === "swarm") {
+    part(root, body, G.sph(sz), P.main, 0, 0.2, 0, { s: [1, 0.7, 1.25] });
+    for (const sx of [-1, 1]) for (const sz2 of [-0.15, 0.15]) part(root, body, G.cone(0.05, 0.2, 6), P.dark, sx * 0.17, 0.3, sz2, { r: [0, 0, -sx * 0.7] });
+    eye(-0.08, 0.26, 0.28); eye(0.08, 0.26, 0.28);
+  } else if (kind === "spitter") {
+    part(root, body, G.sph(sz), P.main, 0, 0.26, 0.04, { s: [0.9, 0.95, 1.1] });
+    const sac = part(root, body, G.sph(0.22), "#9bff6a", 0, 0.5, -0.12, { m: { emissive: new THREE.Color(0x225510) } }); root.userData.sac = sac;
+    part(root, body, G.cyl(0.04, 0.07, 0.24, 8), P.dark, 0, 0.26, 0.3, { r: [1.2, 0, 0] });
+    eye(-0.09, 0.34, 0.27); eye(0.09, 0.34, 0.27);
+  } else if (kind === "brute") {
+    part(root, body, G.sph(sz), P.main, 0, 0.42, 0, { s: [1.15, 1.05, 1.1] });
+    part(root, body, G.sph(0.2), P.dark, 0, 0.6, 0.3, {});
+    for (const sx of [-1, 1]) { part(root, body, G.cone(0.07, 0.34, 8), "#f4e8c8", sx * 0.2, 0.86, 0.3, { r: [0, 0, -sx * 0.5] }); part(root, body, G.cyl(0.1, 0.12, 0.34, 8), P.dark, sx * 0.4, 0.26, 0.06, {}); }
+    eye(-0.09, 0.64, 0.46); eye(0.09, 0.64, 0.46);
+  } else if (kind === "leaper") {
+    part(root, body, G.sph(sz), P.main, 0, 0.36, 0, { s: [0.7, 0.7, 1.4] });
+    for (const sx of [-1, 1]) part(root, body, G.cyl(0.035, 0.05, 0.5, 6), P.dark, sx * 0.18, 0.2, -0.12, { r: [0.5, 0, sx * 0.5] });
+    part(root, body, G.cone(0.08, 0.3, 6), P.light, 0, 0.42, 0.34, { r: [Math.PI / 2, 0, 0] });
+    eye(-0.07, 0.44, 0.3); eye(0.07, 0.44, 0.3);
+  } else if (kind === "bloater") {
+    part(root, body, G.sph(sz), "#a8d84a", 0, 0.5, 0, { m: { emissive: new THREE.Color(0x2a4a10), transparent: true, opacity: 0.92 } });
+    part(root, body, G.sph(0.16), "#e8ff7a", 0, 0.52, 0.1, { ink: false, m: { emissive: new THREE.Color(0x667a20) } });
+    for (const sx of [-1, 1]) part(root, body, G.cyl(0.06, 0.08, 0.18, 6), P.dark, sx * 0.18, 0.1, 0, {});
+  } else if (kind === "burrower") {
+    part(root, body, G.sph(0.22), P.main, 0, 0.26, 0.2, { s: [1, 0.9, 1.3] }); part(root, body, G.sph(0.19), P.dark, 0, 0.22, -0.12, { s: [1, 0.8, 1.2] });
+    part(root, body, G.cone(0.1, 0.3, 8), "#f4e8c8", 0, 0.3, 0.46, { r: [Math.PI / 2, 0, 0] }); eye(-0.08, 0.34, 0.38); eye(0.08, 0.34, 0.38);
+    const mound = new THREE.Mesh(G.cone(0.32, 0.22, 10), mat(root, "#7a5a3c")); mound.position.y = 0.16; mound.visible = false; root.add(mound); addInk(root, mound, 0.02); root.userData.mound = mound;
+  } else if (kind === "listener") {
+    part(root, body, G.sph(sz), "#9a7cff", 0, 0.34, 0, { s: [0.8, 1.2, 0.8], m: { transparent: true, opacity: 0.8 } }); part(root, body, G.cone(0.1, 0.24, 6), "#c9b8ff", 0, 0.78, 0, {});
+  } else if (kind === "mother") {
+    part(root, body, G.sph(sz), P.main, 0, 0.5, -0.1, { s: [1.1, 0.85, 1.4] }); part(root, body, G.sph(0.34), P.dark, 0, 0.75, 0.5, {});
+    for (let i = 0; i < 5; i++) part(root, body, G.cone(0.07, 0.4, 6), "#ff5ab4", (i - 2) * 0.14, 1.12, 0.45, { r: [0, 0, (i - 2) * 0.22] });
+    part(root, body, G.sph(0.24), "#ff9ad0", 0, 0.9, -0.5, { m: { emissive: new THREE.Color(0x6a1040) } }); eye(-0.14, 0.82, 0.8); eye(0.14, 0.82, 0.8);
+  }
+  if (!root.userData.mound) { const mound = new THREE.Object3D(); mound.visible = false; root.add(mound); root.userData.mound = mound; }
+  root.userData.id = kind;
+  return root;
+}
+function makeDrone(kind) {
+  const { root, body } = newRoot(), P = WARM;
+  root.userData.hover = 0.5; body.position.y = 0.5;
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(0.22, 18).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })); pad.position.y = 0.1; root.add(pad); root.userData.pad = pad;
+  part(root, body, G.sph(0.2), kind === "lark" ? "#e9fff0" : "#9ab0ff", 0, 0, 0, { s: [1, 0.75, 1] });
+  part(root, body, G.sph(0.07), kind === "lark" ? "#58e08c" : "#ffd24a", 0, 0.02, 0.18, { ink: false, mat: new THREE.MeshBasicMaterial({ color: C(kind === "lark" ? "#58e08c" : "#ffd24a") }) });
+  const rotor = new THREE.Group(); rotor.position.y = 0.2; body.add(rotor);
+  for (let i = 0; i < 2; i++) { const bl = new THREE.Mesh(G.box(0.5, 0.015, 0.06), mat(root, "#cfd8ee")); bl.rotation.y = i * Math.PI / 2; rotor.add(bl); }
+  root.userData.rotor = rotor;
+  if (kind === "sentry") part(root, body, G.box(0.07, 0.07, 0.34), "#2c2f3a", 0, -0.06, 0.2, {});
+  if (kind === "mason") part(root, body, G.box(0.22, 0.12, 0.22), "#ffb347", 0, -0.16, 0, {});
+  if (kind === "lark") { part(root, body, G.box(0.2, 0.05, 0.05), "#e83a3a", 0, 0.1, 0.12, { ink: false }); part(root, body, G.box(0.05, 0.2, 0.05), "#e83a3a", 0, 0.1, 0.12, { ink: false }); }
+  const legs = new THREE.Group(); legs.visible = false; body.add(legs);
+  for (const a of [0.8, 2.4, 4.0, 5.5]) { const l = new THREE.Mesh(G.cyl(0.02, 0.03, 0.5, 5), mat(root, "#2c2f3a")); l.position.set(Math.cos(a) * 0.18, -0.25, Math.sin(a) * 0.18); l.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4); legs.add(l); }
+  root.userData.legs = legs;
+  const bed = new THREE.Mesh(G.box(0.3, 0.04, 0.7), mat(root, "#e8e2cf")); bed.position.y = -0.3; bed.visible = false; body.add(bed); root.userData.bed = bed;
+  const edge = new THREE.Mesh(G.box(0.34, 0.02, 0.74), new THREE.MeshBasicMaterial({ color: C("#58e08c") })); edge.position.y = -0.31; edge.visible = false; body.add(edge); root.userData.edge = edge;
+  root.userData.id = kind;
+  return root;
+}
+const barricadeMat = toon("#6a7488");
+function buildBarricade(x, y, face, instant) {
+  grid[y][x] = LOW; (st.built ||= []).push([x, y, face]);
+  const g = new THREE.Group(); g.position.copy(wpos(x, y)); g.rotation.y = face; scene.add(g); builtMeshes.push(g);
+  const plate = new THREE.Mesh(G.box(0.86, 0.46, 0.12), barricadeMat); plate.position.y = GY + 0.23; plate.castShadow = true; g.add(plate); addInk(g, plate, 0.025);
+  for (const sx of [-0.45, 0.45]) { const post = new THREE.Mesh(G.box(0.09, 0.52, 0.2), barricadeMat); post.position.set(sx, GY + 0.26, 0); g.add(post); addInk(g, post, 0.02); }
+  const strip = new THREE.Mesh(G.box(0.84, 0.04, 0.13), new THREE.MeshBasicMaterial({ color: C("#ffd24a") })); strip.position.set(0, GY + 0.47, 0); g.add(strip);
+  if (!instant && SPEED.v) { g.scale.y = 0.01; anim(0.5, k => g.scale.y = Math.max(0.01, ease(k))); sparks(wpos(x, y, 0.3), "#ffb347", 12, 1.6, 0.5); }
+}
+
+/* ---- small health pips over each miniature ---- */
+function hpSprite() {
+  const c = document.createElement("canvas"); c.width = 160; c.height = 40;
+  const t = new THREE.CanvasTexture(c), s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  s.scale.set(1.0, 0.25, 1); s.renderOrder = 10; s.userData.c = c; s.userData.t = t; s.userData.last = ""; return s;
+}
+function drawHp(s, u) {
+  const key2 = u.hp + "/" + u.maxhp + (u.ow ? "w" : ""); if (s.userData.last === key2) return; s.userData.last = key2;
+  const c = s.userData.c, x = c.getContext("2d"); x.clearRect(0, 0, 160, 40);
+  const n = u.maxhp, sz = Math.min(18, 150 / n - 3), tot = n * (sz + 3), x0 = 80 - tot / 2;
+  for (let i = 0; i < n; i++) {
+    x.beginPath(); x.arc(x0 + i * (sz + 3) + sz / 2, 20, sz / 2, 0, 7); x.fillStyle = i < u.hp ? (u.side === "w" ? "#58e08c" : "#ff8a3a") : "#2a2d3c"; x.fill(); x.lineWidth = 3; x.strokeStyle = "#0b0b14"; x.stroke();
+  }
+  if (u.ow) { x.fillStyle = "#ffe27a"; x.beginPath(); x.arc(150, 20, 7, 0, 7); x.fill(); x.stroke(); }
+  s.userData.t.needsUpdate = true;
+}
+
+
+/* ================= RULES: copied from games/vigil/index.html ================= */
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const FLOOR = 0, WALL = 1, LOW = 2, TUN = 4;
+let grid = [], TUNNELS = [], seed = 1;
+const START = { x: 2, y: H - 3 }, EXT = { x: W - 2, y: 1 };
+const inExt = (x, y) => x >= W - 3 && y <= 2;
+const T = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? WALL : grid[y][x];
+const key = (x, y) => y * W + x;
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const blocksSight = t => t === WALL;
+const passable = (x, y) => T(x, y) !== WALL;
+function genCity(s) {
+  const R = mulberry(s), g = [...Array(H)].map(() => new Array(W).fill(FLOOR)), kinds = [];
+  const cuts = n => { const out = []; let p = 1; while (p < n - 2) { const len = 4 + Math.floor(R() * 3); const end = Math.min(n - 2, p + len - 1); if (end - p >= 2) out.push([p, end]); p = end + 1 + (R() < 0.5 ? 1 : 2); } return out; };
+  const cx = cuts(W), cy = cuts(H);
+  for (const [x0, x1] of cx) for (const [y0, y1] of cy) {
+    const r = R(), bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (r < 0.55) {
+      kinds.push({ x0, x1, y0, y1, k: "building" });
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x === x0 || x === x1 || y === y0 || y === y1) g[y][x] = R() < 0.24 ? (R() < 0.4 ? LOW : FLOOR) : WALL;
+      const per = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if ((x === x0 || x === x1) !== (y === y0 || y === y1)) per.push([x, y]);
+      for (let i = 0; i < 2; i++) { const [x, y] = per[Math.floor(R() * per.length)]; g[y][x] = FLOOR; }
+      if (bw >= 5 && R() < 0.6) { const mx = x0 + 2 + Math.floor(R() * (bw - 4)); for (let y = y0 + 1; y < y1; y++) g[y][mx] = WALL; g[y0 + 1 + Math.floor(R() * (bh - 2))][mx] = FLOOR; }
+      for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) if (g[y][x] === FLOOR && R() < 0.1) g[y][x] = LOW;
+    } else if (r < 0.75) {
+      kinds.push({ x0, x1, y0, y1, k: "plaza" });
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (R() < 0.16) g[y][x] = LOW;
+      if (R() < 0.6) g[Math.floor((y0 + y1) / 2)][Math.floor((x0 + x1) / 2)] = WALL;
+    } else if (r < 0.88) {
+      kinds.push({ x0, x1, y0, y1, k: "crater" });
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, rad = Math.min(bw, bh) / 2 - 0.3;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const d = Math.hypot(x - mx, y - my); if (Math.abs(d - rad) < 0.6 && R() < 0.75) g[y][x] = LOW; }
+    } else {
+      kinds.push({ x0, x1, y0, y1, k: "rubble" });
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const q = R(); if (q < 0.12) g[y][x] = WALL; else if (q < 0.28) g[y][x] = LOW; }
+    }
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === FLOOR && R() < 0.035) g[y][x] = LOW;
+  for (let y = H - 5; y < H; y++) for (let x = 0; x < 5; x++) g[y][x] = FLOOR;
+  for (let y = 0; y < 4; y++) for (let x = W - 4; x < W; x++) g[y][x] = FLOOR;
+  /* connect every open square to the start */
+  for (let guard = 0; guard < 200; guard++) {
+    const seen = new Uint8Array(W * H), q = [key(START.x, START.y)]; seen[q[0]] = 1;
+    while (q.length) { const c = q.pop(), x = c % W, y = Math.floor(c / W); for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + ox, ny = y + oy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const k = key(nx, ny); if (!seen[k] && g[ny][nx] !== WALL) { seen[k] = 1; q.push(k); } } }
+    let fixed = false;
+    outer: for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (g[y][x] !== WALL) continue;
+      let a = false, b = false;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + ox, ny = y + oy; if (nx < 0 || ny < 0 || nx >= W || ny >= H || g[ny][nx] === WALL) continue; if (seen[key(nx, ny)]) a = true; else b = true; }
+      if (a && b) { g[y][x] = FLOOR; fixed = true; break outer; }
+    }
+    if (!fixed) break;
+  }
+  /* nests, spread out and away from the start */
+  const nests = [];
+  for (let tries = 0; tries < 2000 && nests.length < 6; tries++) {
+    const x = Math.floor(R() * W), y = Math.floor(R() * H);
+    if (g[y][x] !== FLOOR || cheb({ x, y }, START) < 9 || inExt(x, y) || cheb({ x, y }, EXT) < 3) continue;
+    if (nests.some(n => cheb(n, { x, y }) < 5)) continue;
+    nests.push({ x, y }); g[y][x] = TUN;
+  }
+  return { g, nests, kinds };
+}
+const WEAPONS = {
+  pistol:  { name: "Pistol", dice: 2, hit: 3, range: 5, tag: "Light sidearm." },
+  ppistol: { name: "Plasma pistol", dice: 1, hit: 3, range: 5, dmg: 2, overheat: true, tag: "2 damage a hit. A roll of 1 burns the user." },
+  rifle:   { name: "Rifle", dice: 3, hit: 3, range: 7, tag: "Steady all-rounder." },
+  shotgun: { name: "Shotgun", dice: 4, hit: 3, range: 4, close: true, tag: "Short range. An extra die within 2 squares." },
+  plasma:  { name: "Plasma gun", dice: 2, hit: 3, range: 7, dmg: 2, overheat: true, tag: "2 damage a hit. Each 1 rolled burns the user." },
+  flamer:  { name: "Flamer", dice: 3, hit: 3, range: 3, ignoreCover: true, sweep: true, tag: "Ignores cover. Also burns every creature next to the target." },
+  carbine: { name: "Carbine", dice: 2, hit: 3, range: 7, tag: "Light and quick." },
+  sniper:  { name: "Sniper rifle", dice: 1, hit: 2, range: 13, dmg: 3, ignoreCover: true, heavy: true, tag: "One huge shot. Ignores cover. Worse after moving." },
+  cannon:  { name: "Heavy cannon", dice: 5, hit: 4, range: 8, heavy: true, tag: "Five dice. Worse after moving." },
+  grenade: { name: "Grenade launcher", dice: 2, hit: 4, range: 7, blast: true, indirect: true, tag: "Hits all 9 squares around the target, your soldiers too. Lobs over walls at anything your squad can see." },
+  sword:   { name: "Power sword", dice: 4, hit: 3, melee: true, tag: "Fast, sure strikes." },
+  hammer:  { name: "Thunder hammer", dice: 3, hit: 4, dmg: 3, melee: true, tag: "3 damage a hit. Crushes Brutes." },
+  bayonet: { name: "Bayonet", dice: 2, hit: 4, melee: true },
+  knife:   { name: "Knife", dice: 2, hit: 4, melee: true },
+  fists:   { name: "Fists", dice: 1, hit: 4, melee: true },
+  sentrygun: { name: "Sentry gun", dice: 2, hit: 4, range: 7 },
+  turret:  { name: "Sentry turret", dice: 3, hit: 3, range: 8 },
+};
+const WCOL = { pistol: "#cfc6b0", ppistol: "#6fb0ff", rifle: "#efe6d0", carbine: "#a9b98a", shotgun: "#e8553f", plasma: "#6fb0ff", flamer: "#ff8a2a", sniper: "#8fe07a", cannon: "#b4bfd2", grenade: "#ffd04a", sword: "#9fd8ff", hammer: "#ffcf6a", mason: "#ffb347", sentry: "#ff6a5a", lark: "#9fe39a", fists: "#cfc6b0", bayonet: "#cfc6b0", knife: "#cfc6b0" };
+const LOADOUT = {
+  sergeant: { gun: ["pistol", "ppistol"], melee: ["sword", "hammer"] },
+  gunner: { gun: ["cannon", "grenade", "flamer"] },
+  trooper: { gun: ["rifle", "shotgun", "plasma", "flamer"] },
+  scout: { gun: ["carbine", "sniper"] },
+  medic: { gun: ["pistol", "shotgun"] },
+};
+const KINDS = {
+  sergeant: { side: "w", name: "Sergeant Vane", hp: 5, mv: 4, armour: 2, sight: 8, gun: "pistol", melee: "sword" },
+  gunner:   { side: "w", name: "Gunner Hale", hp: 4, mv: 3, armour: 2, sight: 8, gun: "cannon", melee: "fists" },
+  trooper:  { side: "w", name: "Trooper", hp: 4, mv: 4, armour: 2, sight: 8, gun: "rifle", melee: "bayonet" },
+  scout:    { side: "w", name: "Scout Wren", hp: 3, mv: 6, armour: 1, sight: 11, gun: "carbine", melee: "knife" },
+  medic:    { side: "w", name: "Medic Sola", hp: 4, mv: 4, armour: 2, sight: 8, gun: "pistol", melee: "fists", heals: true },
+  mason:    { side: "w", drone: true, name: "Mason", hp: 3, mv: 5, armour: 1, sight: 5, gun: null, melee: null, charges: 3 },
+  sentry:   { side: "w", drone: true, name: "Sentry", hp: 3, mv: 4, armour: 2, sight: 7, gun: "sentrygun", melee: null },
+  lark:     { side: "w", drone: true, name: "Lark", hp: 4, mv: 6, armour: 2, sight: 5, gun: null, melee: null },
+  swarm:    { side: "b", name: "Swarmling", hp: 1, mv: 4, armour: 0, melee: { dice: 2, hit: 4 } },
+  spitter:  { side: "b", name: "Spitter", hp: 2, mv: 3, armour: 0, gun: { dice: 2, hit: 4, range: 5 }, melee: { dice: 1, hit: 5 } },
+  brute:    { side: "b", name: "Brute", hp: 5, mv: 3, armour: 1, melee: { dice: 4, hit: 3 } },
+  leaper:   { side: "b", name: "Leaper", hp: 2, mv: 5, armour: 0, melee: { dice: 3, hit: 4 } },
+  bloater:  { side: "b", name: "Bloater", hp: 3, mv: 2, armour: 0, melee: null },
+  burrower: { side: "b", name: "Burrower", hp: 3, mv: 6, armour: 1, melee: { dice: 3, hit: 4 } },
+  listener: { side: "b", name: "Listener", hp: 3, mv: 3, armour: 1, melee: { dice: 3, hit: 4 } },
+  mother:   { side: "b", name: "Brood Mother", hp: 12, mv: 2, armour: 2, melee: { dice: 4, hit: 3, dmg: 2 } },
+};
+const DRONES = {
+  mason: { role: "Builder drone", desc: "Flies to your most exposed soldier and builds a barricade between them and the swarm. Carries 3 barricades." },
+  sentry: { role: "Gun drone", desc: "Follows the squad and fires every turn. Digs in as a turret that is always on overwatch." },
+  lark: { role: "Medic drone", desc: "Heals 1 a turn. If a Warden falls, it turns into a stretcher and carries them to the landing pad." },
+};
+const SQUAD = [["sergeant"], ["gunner"], ["trooper", "Trooper Rusk"], ["trooper", "Trooper Ilse"], ["scout"], ["medic"]];
+const MAXB = 20;
+const FEATS = [
+  { id: "stay", name: "Holding still", pos: "You often leave soldiers where they are.", neg: "You rarely stand still." },
+  { id: "cover", name: "Seeking cover", pos: "You always reach for cover.", neg: "You ignore cover." },
+  { id: "forward", name: "Pushing forward", pos: "You push hard toward the landing pad.", neg: "You hang back instead of advancing." },
+  { id: "far", name: "Keeping distance", pos: "You keep away from the swarm.", neg: "You close in on the swarm." },
+  { id: "move", name: "Moving far", pos: "You make long moves.", neg: "You make short, careful moves." },
+  { id: "bunch", name: "Bunching up", pos: "You keep your soldiers together.", neg: "You spread your soldiers out." },
+  { id: "lead", name: "Running ahead", pos: "One soldier always runs ahead of the rest.", neg: "Nobody leads; you advance as a line." },
+  { id: "open", name: "Standing in sight", pos: "You stand where creatures can see you.", neg: "You hide from sight lines." },
+];
+const PRIOR = [0.3, 0.5, 0.6, 0.2, 0, 0.2, -0.1, -0.2];
+const SAVE = "vigil3d.v1";
+let mem = null;
+try { mem = JSON.parse(localStorage.getItem(SAVE) || "null"); } catch (_) {}
+function freshMem() { return { w: PRIOR.slice(), first: { swarm: 0, spitter: 0, brute: 0 }, owTurns: 0, turns: 0, battles: 0, areaKills: 0, said: {} }; }
+if (!mem || !Array.isArray(mem.w) || mem.w.length !== FEATS.length) mem = freshMem();
+const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(mem)); } catch (_) {} };
+const loadout = SQUAD.map(([k]) => ({ gun: KINDS[k].gun, melee: KINDS[k].melee }));
+const droneSel = ["sentry", "lark"];
+let units = [], uid = 0, st = { phase: "title" }, busy = false, sel = null;
+const unitAt = (x, y) => units.find(u => u.hp > 0 && !u.out && u.x === x && u.y === y);
+const wardens = () => units.filter(u => u.side === "w" && !u.drone && u.hp > 0 && !u.out);
+const drones = () => units.filter(u => u.drone && u.hp > 0);
+const friends = () => units.filter(u => u.side === "w" && u.hp > 0 && !u.out);
+const brood = () => units.filter(u => u.side === "b" && u.hp > 0);
+let vis = new Uint8Array(W * H), explored = new Uint8Array(W * H);
+function spawnUnit(kind, x, y, name, load) {
+  const k = KINDS[kind];
+  const gunId = k.side === "w" ? (load?.gun || k.gun) : null, meleeId = k.side === "w" && !k.drone ? (load?.melee || k.melee) : null;
+  const u = { id: ++uid, kind, side: k.side, name: name || k.name, x, y, hp: k.hp, maxhp: k.hp, mv: k.mv, armour: k.armour, sight: k.sight || 0,
+    gun: gunId ? WEAPONS[gunId] : k.gun, melee: meleeId ? WEAPONS[meleeId] : k.melee, gunId, meleeId, heals: !!k.heals, ap: 2, moved: false, attacked: false, healed: false, ow: false,
+    drone: !!k.drone, charges: k.charges || 0, order: "auto" };
+  u.mesh = k.drone ? makeDrone(kind) : k.side === "w" ? makeWarden(kind, gunId, meleeId) : makeBrood(kind);
+  u.mesh.position.copy(wpos(x, y)); u.mesh.rotation.y = k.side === "w" ? Math.PI : 0; u.mesh.userData.phase = vr(0, 6);
+  scene.add(u.mesh); units.push(u); return u;
+}
+function faceTo(u, x, y) { u.mesh.userData.face = Math.atan2(x - u.x, y - u.y); }
+const seen = (x, y) => vis[key(x, y)] === 1;
+
+function sight(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, n = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 3);
+  for (let i = 1; i < n; i++) {
+    const fx = a.x + dx * i / n, fy = a.y + dy * i / n, cx = Math.round(fx), cy = Math.round(fy);
+    if ((cx === a.x && cy === a.y) || (cx === b.x && cy === b.y)) continue;
+    if (blocksSight(T(cx, cy))) return false;
+    if (Math.abs(fx - cx) > 0.45 && Math.abs(fy - cy) > 0.45) { const ox = cx + Math.sign(fx - cx), oy = cy + Math.sign(fy - cy); if (blocksSight(T(ox, cy)) && blocksSight(T(cx, oy))) return false; }
+  }
+  return true;
+}
+function updateVision() {
+  vis = new Uint8Array(W * H);
+  for (const w of friends()) {
+    const r = w.sight;
+    for (let y = Math.max(0, w.y - r); y <= Math.min(H - 1, w.y + r); y++) for (let x = Math.max(0, w.x - r); x <= Math.min(W - 1, w.x + r); x++) {
+      const k = key(x, y); if (vis[k]) continue;
+      if (Math.hypot(x - w.x, y - w.y) > r + 0.5) continue;
+      if (sight(w, { x, y }) || (T(x, y) === WALL && nearSeen(w, x, y))) vis[k] = 1;
+    }
+  }
+  for (let i = 0; i < W * H; i++) { if (vis[i]) explored[i] = 1; fogTarget[i] = vis[i] ? 1 : explored[i] ? 0.42 : 0; }
+  for (const b of units) if (b.side === "b" && b.hp > 0) b.mesh.visible = seen(b.x, b.y) && !b.lurk;
+  drawMini();
+}
+function nearSeen(w, x, y) { for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + ox, ny = y + oy; if (passable(nx, ny) && Math.hypot(nx - w.x, ny - w.y) <= w.sight && sight(w, { x: nx, y: ny })) return true; } return false; }
+function inCover(target, from) {
+  if (cheb(target, from) <= 1) return false;
+  const sx = Math.sign(from.x - target.x), sy = Math.sign(from.y - target.y);
+  for (const [ox, oy] of [[sx, 0], [0, sy], [sx, sy]]) { if (!ox && !oy) continue; const t = T(target.x + ox, target.y + oy); if (t === LOW || t === WALL) return true; }
+  return false;
+}
+function hasCoverNear(x, y) { for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { if (!ox && !oy) continue; const t = T(x + ox, y + oy); if (t === LOW || t === WALL) return true; } return false; }
+function reach(u, maxCost, opts = {}) {
+  const dist = new Map(), prev = new Map(), start = key(u.x, u.y);
+  dist.set(start, 0); const open = [start];
+  while (open.length) {
+    let bi = 0; for (let i = 1; i < open.length; i++) if (dist.get(open[i]) < dist.get(open[bi])) bi = i;
+    const cur = open.splice(bi, 1)[0], cx = cur % W, cy = Math.floor(cur / W), cd = dist.get(cur);
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (!ox && !oy) continue; const nx = cx + ox, ny = cy + oy; if (nx < 0 || ny < 0 || nx >= W || ny >= H || (!passable(nx, ny) && !opts.over)) continue;
+      if (ox && oy && !opts.over && (!passable(cx + ox, cy) || !passable(cx, cy + oy))) continue;
+      const o = unitAt(nx, ny); if (o && o !== u && !opts.under && !(opts.through && o.side === u.side)) continue;
+      const nd = cd + (T(nx, ny) === LOW && !opts.over ? 2 : 1); if (nd > maxCost) continue;
+      const k = key(nx, ny); if (!dist.has(k) || nd < dist.get(k)) { dist.set(k, nd); prev.set(k, cur); open.push(k); }
+    }
+  }
+  if (opts.through || opts.under) for (const k of [...dist.keys()]) { const o = unitAt(k % W, Math.floor(k / W)); if (o && o !== u) dist.delete(k); }
+  if (opts.over) for (const k of [...dist.keys()]) if (!passable(k % W, Math.floor(k / W))) dist.delete(k);
+  return { dist, prev };
+}
+function pathTo(r, x, y) { const out = []; let k = key(x, y); while (r.prev.has(k)) { out.unshift({ x: k % W, y: Math.floor(k / W) }); k = r.prev.get(k); } return out; }
+let extDist = new Int16Array(W * H);
+function buildExtDist() {
+  extDist.fill(999); const q = []; for (let y = 0; y < 3; y++) for (let x = W - 3; x < W; x++) if (passable(x, y)) { extDist[key(x, y)] = 0; q.push(key(x, y)); }
+  while (q.length) { const c = q.shift(), x = c % W, y = Math.floor(c / W); for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const nx = x + ox, ny = y + oy; if (nx < 0 || ny < 0 || nx >= W || ny >= H || !passable(nx, ny)) continue; const k = key(nx, ny); if (extDist[k] > extDist[c] + 1) { extDist[k] = extDist[c] + 1; q.push(k); } } }
+}
+const comb = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+const atLeast = (n, p, k) => { let s = 0; for (let i = k; i <= n; i++) s += comb(n, i) * Math.pow(p, i) * Math.pow(1 - p, n - i); return s; };
+function infoFor(a, t, w, isMelee) {
+  if (!w || t.burrowed || t.lurk) return null;
+  const d = cheb(a, t);
+  if (isMelee && d > 1) return null;
+  if (!isMelee) {
+    if (d > w.range) return null;
+    if (w.indirect ? (a.side === "w" && !seen(t.x, t.y)) : !sight(a, t)) return null;
+    if (w.blast && d <= 1) return null;
+  }
+  if (a.side === "w" && !seen(t.x, t.y)) return null;
+  let need = w.hit + t.armour; const mods = [];
+  if (t.armour) mods.push(`armour +${t.armour}`);
+  if (!isMelee && w.ignoreCover) mods.push("ignores cover");
+  else if (!isMelee && inCover(t, a)) { need++; mods.push("cover +1"); }
+  if (!isMelee && w.heavy && a.moved) { need++; mods.push("moved +1"); }
+  if (a.owShot) { need++; mods.push("snap shot +1"); }
+  need = Math.max(2, need);
+  let dice = w.dice; if (!isMelee && w.close && d <= 2) { dice++; mods.push("close range +1 die"); }
+  const dmg = w.dmg || 1, p = need > 6 ? 0 : (7 - need) / 6;
+  const info = { melee: isMelee, w, need, p, dice, dmg, exp: dice * p * dmg, kill: atLeast(dice, p, Math.ceil(t.hp / dmg)), mods };
+  if (w.overheat) info.burn = 1 - Math.pow(5 / 6, dice);
+  if (w.blast) info.splash = units.filter(u => u !== t && u.hp > 0 && !u.out && cheb(u, t) <= 1);
+  if (w.sweep) info.splash = units.filter(u => u !== t && u.hp > 0 && !u.out && u.side !== a.side && cheb(u, t) <= 1 && (a.side !== "w" || seen(u.x, u.y)));
+  return info;
+}
+function attackInfo(a, t) {
+  if (cheb(a, t) <= 1) {
+    const m = infoFor(a, t, a.melee, true), g = a.gun && !a.gun.heavy && !a.gun.blast ? infoFor(a, t, a.gun, false) : null;
+    if (m && g) return g.exp + g.kill > m.exp + m.kill ? g : m;
+    return m || g;
+  }
+  return infoFor(a, t, a.gun, false);
+}
+async function rollDice(n, need, at, show = true) {
+  const vals = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6));
+  if (!SPEED.v || !show) return vals;
+  await showDice(vals, need, at);
+  return vals;
+}
+let kills = 0;
+const visibleU = u => u.side === "w" || seen(u.x, u.y);
+async function attack(a, t) {
+  const info = attackInfo(a, t); if (!info) return 0;
+  const show = !!SPEED.v && (visibleU(a) || visibleU(t)), w = info.w, k0 = kills;
+  faceTo(a, t.x, t.y); faceTo(t, a.x, a.y);
+  if (show) await cineOn(a, t);
+  const areaRoll = (u, dmg) => {
+    if (u.hp <= 0) return null;
+    const need = Math.max(2, w.hit + u.armour), vis = show && visibleU(u);
+    return rollDice(info.dice, need, u.mesh.position, vis).then(vals => { const h = vals.filter(v => v >= need).length; return h ? damage(u, h * dmg, vis) : null; });
+  };
+  if (w.blast) {
+    if (show) await lobGrenade(a, t);
+    await Promise.all([t, ...info.splash].map((u, i) => wait(i * 120).then(() => areaRoll(u, info.dmg))));
+  } else if (w.sweep) {
+    if (show) await flameBurst(a, [t, ...info.splash]);
+    await Promise.all([t, ...info.splash].map((u, i) => wait(i * 120).then(() => areaRoll(u, 1))));
+  } else {
+    let extra = 0;
+    if (a.side === "b" && (st.hiveDice || 0) > 0) { st.hiveDice--; extra = 1; if (show) pop("+1 living die", a.mesh.position.clone().setY(1.2), "hive"); hivePanel(); updateHum(); }
+    const vals = await rollDice(info.dice + extra, info.need, t.mesh.position, show);
+    const hits = vals.map(v => v >= info.need), nh = hits.filter(Boolean).length;
+    if (show) { if (info.melee) await meleeVisual(a, t, hits, info); else await volley(a, t, hits, info); }
+    if (nh) await damage(t, nh * info.dmg, show); else if (show) pop("Miss", t.mesh.position.clone().setY(1), "miss");
+    const ones = w.overheat ? vals.filter(v => v === 1).length : 0;
+    if (ones && a.hp > 0) {
+      if (show) { const at = a.mesh.position.clone().setY(0.5); pop("Overheat!", a.mesh.position.clone().setY(1.3), "dmg"); sparks(at, "#7fb0ff", 16, 1.6, 0.5); flash(at, "#7fb0ff", 4, 0.3); smoke(at, 2, 0.15, "#6a7a90"); }
+      await damage(a, ones, show);
+    }
+  }
+  if (a.side === "w" && (w.blast || w.sweep)) { mem.areaKills = (mem.areaKills || 0) + (kills - k0); persist(); }
+  if (show) cineOff();
+  return 1;
+}
+async function damage(t, n, show = true) {
+  t.hp -= n;
+  if (show) { sfx.hit(); pop(`−${n}`, t.mesh.position.clone().setY(1.0), "dmg"); }
+  if (t.side === "w") grade.uniforms.uHurt.value = 0.8;
+  if (t.hp <= 0 && t.drone) {
+    const m = t.mesh, at = m.position.clone().setY(0.45);
+    if (show) { sfx.boom(); sparks(at, "#ffb050", 18, 2.2, 0.5); flash(at, "#ffb050", 4, 0.25); smoke(at, 3, 0.2); debris(at, 5); decal("scorch", m.position, 0.8); }
+    scene.remove(m);
+    if (t.carrying) dropBody(t);
+    toast(`${t.name} has been destroyed.`, "drone");
+    renderSquad(); updateVision(); return;
+  }
+  if (t.hp <= 0) {
+    if (t.side === "b") kills++;
+    t.ow = false;
+    const m = t.mesh, body = m.userData.body, at = m.position.clone().setY(0.3);
+    if (show) {
+      sfx.die(); await wait(70);
+      if (t.side === "b") {
+        sparks(at, "#4fe0c4", 22, 2.4, 0.6, 2.5); sparks(at, "#1f6e60", 10, 1.6, 0.7, 1.6); decal("ichor", m.position, t.kind === "brute" ? 1.4 : 0.9); sfx.splat();
+        await anim(t.kind === "mother" ? 0.7 : 0.25, k => body.scale.set(1 + k * 0.45, Math.max(0.05, 1 - k), 1 + k * 0.45));
+        scene.remove(m);
+      } else {
+        decal("blood", m.position, 0.7);
+        if (m.userData.badge) m.userData.badge.visible = false; if (m.userData.badge2) m.userData.badge2.visible = false;
+        const side = vr() < 0.5 ? -1 : 1;
+        await anim(0.6, k => { const e = k < 0.8 ? ease(k / 0.8) : 1 - Math.sin((k - 0.8) / 0.2 * Math.PI) * 0.06; body.rotation.x = -1.35 * e; body.rotation.z = side * 0.25 * e; body.position.y = 0.07 + 0.08 * e; });
+        smoke(m.position.clone().setY(0.1), 2, 0.2, "#9a8c78");
+      }
+    } else if (t.side === "w") { body.rotation.x = -1.35; body.position.y = 0.15; if (m.userData.badge) m.userData.badge.visible = false; if (m.userData.badge2) m.userData.badge2.visible = false; }
+    else scene.remove(m);
+    if (t.kind === "mother") { st.reeling = true; toast("The Brood Mother is dead! The swarm will reel for a turn.", true); if (show) { shakeT = 0.6; flash(at, "#ff5ab4", 8, 0.5); sparks(at, "#ff5ab4", 30, 3, 0.8, 3); } }
+    if (t.kind === "bloater") await burst(t);
+    if (t === sel) select(null);
+    if (t.side === "w") { toast(`${t.name} has fallen.`, true); const lk = drones().find(d => d.kind === "lark" && !d.carrying); if (lk) toast(`${lk.name}: on my way to ${short(t)}.`, "drone"); updateVision(); }
+    renderSquad();
+  }
+}
+const short = u => u.name.split(" ").pop();
+const exposure = (x, y) => brood().filter(b => !b.lurk && cheb(b, { x, y }) <= 6 && sight(b, { x, y })).length;
+const threatsOn = s => brood().filter(b => !b.lurk && cheb(b, s) <= 8 && sight(b, s) && !inCover(s, b));
+const followTarget = d => d.order.startsWith("follow:") ? wardens().find(w => w.id === +d.order.slice(7)) || null : null;
+function squadAnchor() { const ws = wardens(); if (!ws.length) return null; const cx = ws.reduce((a, w) => a + w.x, 0) / ws.length, cy = ws.reduce((a, w) => a + w.y, 0) / ws.length; return ws.reduce((a, w) => Math.hypot(w.x - cx, w.y - cy) < Math.hypot(a.x - cx, a.y - cy) ? w : a); }
+function say(d, text, quiet) { if (quiet && d.lastSaid === quiet) return; d.lastSaid = quiet || text; toast(`${d.name}: ${text}`, "drone"); }
+function bestTile(d, score) { const r = reach(d, d.mv); let best = { x: d.x, y: d.y }, bs = score(d.x, d.y); for (const k of r.dist.keys()) { const x = k % W, y = (k / W) | 0, v = score(x, y); if (v > bs) { bs = v; best = { x, y }; } } return best; }
+async function droneMove(d, tile) {
+  if (tile.x === d.x && tile.y === d.y) return;
+  const r = reach(d, d.mv); if (!r.dist.has(key(tile.x, tile.y))) return;
+  for (const s of pathTo(r, tile.x, tile.y)) {
+    faceTo(d, s.x, s.y); const from = d.mesh.position.clone(), to = wpos(s.x, s.y); d.x = s.x; d.y = s.y;
+    if (SPEED.v) await anim(0.11, k => d.mesh.position.lerpVectors(from, to, k)); else d.mesh.position.copy(to);
+  }
+  updateVision();
+}
+async function followMove(d, lead) {
+  if (d.order === "hold") return;
+  const a = lead || squadAnchor(); if (!a) return;
+  const t = bestTile(d, (x, y) => -Math.abs(cheb({ x, y }, a) - 1.5) * 2 - exposure(x, y) * 0.8 - (extDist[key(x, y)] < extDist[key(a.x, a.y)] ? 0.6 : 0));
+  await droneMove(d, t);
+}
+async function masonAct(d) {
+  const lead = followTarget(d), cands = lead ? [lead] : wardens();
+  let tgt = null, th = [];
+  if (d.charges > 0 && d.order !== "hold") for (const s of cands) { const t2 = threatsOn(s); if (t2.length > th.length) { th = t2; tgt = s; } }
+  if (tgt) {
+    let spot = null, bs = 0;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (!ox && !oy) continue; const x = tgt.x + ox, y = tgt.y + oy;
+      if (T(x, y) !== FLOOR || unitAt(x, y) || inExt(x, y)) continue;
+      const v = th.filter(b => (ox === 0 || ox === Math.sign(b.x - tgt.x)) && (oy === 0 || oy === Math.sign(b.y - tgt.y))).length;
+      if (v > bs) { bs = v; spot = { x, y }; }
+    }
+    if (spot) {
+      await droneMove(d, bestTile(d, (x, y) => (x === spot.x && y === spot.y) ? -99 : -cheb({ x, y }, spot) * 3 - exposure(x, y) * 0.5));
+      if (cheb(d, spot) <= 1) {
+        faceTo(d, spot.x, spot.y);
+        buildBarricade(spot.x, spot.y, Math.atan2(spot.x - tgt.x, spot.y - tgt.y)); d.charges--; sfx.build();
+        say(d, `building cover for ${short(tgt)}. ${th.length} creature${th.length > 1 ? "s" : ""} could see ${short(tgt)}.`);
+        return;
+      }
+      say(d, `heading over to cover ${short(tgt)}.`, "go" + tgt.id); return;
+    }
+  }
+  await followMove(d, lead);
+  if (d.charges <= 0 && !d.saidEmpty) { d.saidEmpty = true; say(d, "out of barricades. Staying with the squad."); }
+}
+function setDeployed(d, on) { d.deployed = on; d.gun = WEAPONS[on ? "turret" : "sentrygun"]; d.mesh.userData.legs.visible = on; d.mesh.userData.hover = on ? 0.36 : 0.5; if (SPEED.v) sfx.build(); }
+async function sentryAct(d) {
+  const lead = followTarget(d), anchor = lead || squadAnchor();
+  const inView = (here) => brood().filter(b => seen(b.x, b.y) && cheb(b, here) <= 8 && sight(here, b)).length;
+  if (d.order === "hold") { if (!d.deployed) { setDeployed(d, true); say(d, "digging in as a turret."); } }
+  else {
+    if (d.deployed && anchor && cheb(d, anchor) > 4) { setDeployed(d, false); say(d, "packing up to keep up with the squad."); }
+    if (!d.deployed && anchor) await droneMove(d, bestTile(d, (x, y) => inView({ x, y }) * 2 - Math.max(0, cheb({ x, y }, anchor) - 2) * 3 - (hasCoverNear(x, y) ? 0 : 1)));
+    if (!d.deployed && d.order === "auto" && inView(d)) { setDeployed(d, true); say(d, `creatures in view. Turret up, ${inView(d)} target${inView(d) > 1 ? "s" : ""} in my sights.`); }
+  }
+  let best = null, bv = -1; for (const b of brood()) { const i = attackInfo(d, b); if (i && i.kill + i.exp * 0.3 > bv) { bv = i.kill + i.exp * 0.3; best = b; } }
+  if (best) { const k0 = kills; await attack(d, best); mem.sentryKills = (mem.sentryKills || 0) + (kills - k0); persist(); }
+  d.ow = !!d.deployed && d.hp > 0;
+}
+function pickUp(d, f) {
+  d.carrying = f; f.carried = true; d.mv = 5;
+  d.mesh.userData.bed.visible = true; d.mesh.userData.edge.visible = true; d.mesh.userData.hover = 0.78;
+  if (SPEED.v) { sfx.heal(); flash(d.mesh.position.clone().setY(0.5), "#9fe39a", 3, 0.3); sparks(d.mesh.position.clone().setY(0.5), "#9fe39a", 12, 1.2, 0.5); }
+}
+function dropBody(d) { const f = d.carrying; if (!f) return; f.carried = false; f.x = d.x; f.y = d.y; f.mesh.position.copy(wpos(d.x, d.y)); d.carrying = null; }
+async function rescue(d) {
+  const f = d.carrying; f.rescued = true; f.carried = false; st.extracted++; d.carrying = null; d.mv = KINDS.lark.mv;
+  d.mesh.userData.bed.visible = false; d.mesh.userData.edge.visible = false; d.mesh.userData.hover = 0.5;
+  mem.rescues = (mem.rescues || 0) + 1; persist();
+  sfx.lift(); toast(`${f.name} is aboard the gunship. ${d.name} brought them home.`, "drone");
+  const m = f.mesh, from = m.position.clone();
+  if (SPEED.v) await anim(1.2, k => { m.position.y = from.y + ease(k) * 6; });
+  scene.remove(m); renderSquad(); hud();
+}
+async function larkAct(d) {
+  if (d.carrying) {
+    await droneMove(d, bestTile(d, (x, y) => -extDist[key(x, y)] - exposure(x, y) * 0.3));
+    if (inExt(d.x, d.y)) await rescue(d); else say(d, `carrying ${short(d.carrying)} to the landing pad.`, "carry");
+    return;
+  }
+  const fallen = units.filter(u => u.side === "w" && !u.drone && u.hp <= 0 && !u.rescued && !u.carried);
+  if (fallen.length && d.order !== "hold") {
+    const f = fallen.reduce((a, b) => cheb(a, d) <= cheb(b, d) ? a : b);
+    await droneMove(d, bestTile(d, (x, y) => -cheb({ x, y }, f) * 3 - exposure(x, y) * 0.3));
+    if (cheb(d, f) <= 1) { pickUp(d, f); say(d, `I have ${short(f)}. Stretcher out, heading for the pad.`); }
+    else say(d, `on my way to ${short(f)}.`, "fetch" + f.id);
+    return;
+  }
+  const lead = followTarget(d), hurt = wardens().filter(w => w.hp < w.maxhp).sort((a, b) => a.hp / a.maxhp - b.hp / b.maxhp)[0];
+  if (hurt && !lead && d.order !== "hold") await droneMove(d, bestTile(d, (x, y) => -Math.abs(cheb({ x, y }, hurt) - 1) * 3 - exposure(x, y) * 0.8));
+  else await followMove(d, lead);
+  const near = wardens().filter(w => cheb(w, d) <= 1 && w.hp < w.maxhp).sort((a, b) => a.hp - b.hp)[0];
+  if (near) { near.hp++; if (SPEED.v) { sfx.heal(); pop("+1", near.mesh.position.clone().setY(1.1), "heal"); } say(d, `patched up ${short(near)}.`, "heal"); renderSquad(); }
+}
+async function droneTurn() {
+  for (const d of drones()) {
+    if (d.hp <= 0) continue;
+    if (SPEED.v && !cine) focusOn(d.mesh.position);
+    if (d.kind === "mason") await masonAct(d); else if (d.kind === "sentry") await sentryAct(d); else await larkAct(d);
+    await wait(250);
+  }
+  updateVision(); renderSquad();
+}
+function orderLabel(d) {
+  if (d.order === "hold") return d.kind === "sentry" ? "Dig in" : "Hold";
+  const f = followTarget(d); if (f) return `Follow ${short(f)}`;
+  return "Auto";
+}
+function cycleOrder(d) {
+  const opts = ["auto", ...wardens().map(w => "follow:" + w.id), "hold"];
+  d.order = opts[(opts.indexOf(d.order) + 1) % opts.length];
+  if (d.kind === "sentry" && d.order !== "hold" && d.deployed && d.order !== "auto") setDeployed(d, false);
+  renderSquad();
+}
+function squadMeanProgress() { const ws = wardens(); return ws.length ? ws.reduce((s, w) => s + extDist[key(w.x, w.y)], 0) / ws.length : 0; }
+function featuresFor(u, x, y, mp) {
+  const b = brood(), here = { x, y };
+  let nd = 9; for (const e of b) nd = Math.min(nd, cheb(e, here));
+  let allies = 0; for (const w of wardens()) if (w !== u && cheb(w, here) <= 1) allies++;
+  let exposed = 0; for (const e of b) if (cheb(e, here) <= 6 && sight(e, here)) exposed++;
+  const d0 = extDist[key(u.x, u.y)], d1 = extDist[key(x, y)];
+  return [
+    x === u.x && y === u.y ? 1 : 0,
+    hasCoverNear(x, y) ? 1 : 0,
+    Math.max(-1, Math.min(1, (d0 - d1) / u.mv)),
+    Math.min(nd, 6) / 6,
+    cheb(u, here) / u.mv,
+    Math.min(allies, 2) / 2,
+    Math.max(-1, Math.min(1, (mp - d1) / 6)),
+    Math.min(exposed, 3) / 3,
+  ];
+}
+function predictWarden(u, mp) {
+  const r = reach(u, u.mv * 2, { through: true });
+  const cands = []; for (const k of r.dist.keys()) cands.push({ x: k % W, y: Math.floor(k / W), k });
+  const fs = cands.map(c => featuresFor(u, c.x, c.y, mp));
+  const sc = fs.map(f => f.reduce((s, v, i) => s + v * mem.w[i], 0) * 2.2);
+  const mx = Math.max(...sc), ex = sc.map(s => Math.exp(s - mx)), Z = ex.reduce((a, b) => a + b, 0);
+  return { id: u.id, cands, fs, p: ex.map(e => e / Z) };
+}
+const predictAll = () => { const mp = squadMeanProgress(); return wardens().map(u => predictWarden(u, mp)); };
+function learnFrom(pred) {
+  const LR = 0.12, u = units.find(v => v.id === pred.id);
+  if (!u || u.hp <= 0 || u.out) return null;
+  const i = pred.cands.findIndex(c => c.x === u.x && c.y === u.y); if (i < 0) return null;
+  const top = pred.p.indexOf(Math.max(...pred.p));
+  for (let j = 0; j < FEATS.length; j++) {
+    let ef = 0; for (let c = 0; c < pred.cands.length; c++) ef += pred.p[c] * pred.fs[c][j];
+    mem.w[j] = Math.max(-4, Math.min(4, mem.w[j] + LR * (pred.fs[i][j] - ef)));
+  }
+  return { hit: top === i, chance: 1 / pred.cands.length };
+}
+function clearBoard() {
+  for (const u of units) scene.remove(u.mesh); units = []; kills = 0;
+  for (const b of builtMeshes) scene.remove(b); builtMeshes.length = 0;
+  for (const d of decals) scene.remove(d); decals.length = 0; cine = null;
+  st.sporeTiles = []; clearForecast();
+}
+function setupCity(s) {
+  seed = s; const c = genCity(seed); grid = c.g; TUNNELS = c.nests; cityKinds = c.kinds;
+  buildCity(); buildExtDist();
+  explored = new Uint8Array(W * H); fogCur.fill(0);
+}
+function newBattle(load = loadout, dsel = droneSel, forced) {
+  clearBoard();
+  setupCity(forced != null ? forced : Math.floor(Math.random() * 1e9));
+  const spots = [[1, H - 2], [2, H - 2], [3, H - 2], [1, H - 3], [2, H - 3], [3, H - 3]];
+  SQUAD.forEach(([k, n], i) => spawnUnit(k, spots[i][0], spots[i][1], n, load[i]));
+  st = { phase: "player", round: 1, preds: null, reads: [], chances: [], plan: "", sporeHits: 0, sporeCount: 0, extracted: 0, sporeTiles: [], built: [], hiveDice: 0, turnMoves: [] };
+  clearRipples();
+  for (const [i, k] of (dsel || []).entries()) { const p = freeNear({ x: 4, y: H - 2 - i }); if (p) spawnUnit(k, p.x, p.y); }
+  /* the first creatures are already out there in the dark */
+  for (const n of TUNNELS) { const s = freeNear(n); if (s) spawnUnit(Math.random() < 0.2 ? "spitter" : "swarm", s.x, s.y); }
+  updateVision();
+  st.preds = predictAll();
+  focusOn(wpos(5, H - 6), true);
+  startPlayerTurn();
+}
+function startPlayerTurn() {
+  startHum(); updateHum();
+  st.phase = "player"; st.firstThisTurn = false;
+  for (const u of wardens()) { u.ap = 2; u.moved = false; u.attacked = false; u.healed = false; u.ow = false; }
+  saveGame();
+  hud(); renderSquad(); select(wardens()[0], true); sfx.turn();
+}
+async function endPlayerTurn() {
+  if (busy || st.phase !== "player") return;
+  busy = true; select(null); clearOverlays();
+  mem.turns++; if (wardens().some(u => u.ow)) mem.owTurns++;
+  let guessed = 0;
+  for (const pr of st.preds || []) { const r = learnFrom(pr); if (r) { st.reads.push(r.hit ? 1 : 0); st.chances.push(r.chance); if (r.hit) { guessed++; feedHiveDice(units.find(v => v.id === pr.id)); } } }
+  updateHum(guessed >= 2);
+  persist(); hivePanel(); speakLearned();
+  await wakeListeners();
+  if (checkEnd()) { busy = false; return; }
+  if (drones().length) { st.phase = "drones"; hud(); await droneTurn(); if (checkEnd()) { busy = false; return; } }
+  st.phase = "hive"; hud();
+  await hiveTurn();
+  if (st.phase === "over") { busy = false; return; }
+  if (checkEnd()) { busy = false; return; }
+  st.round++;
+  st.preds = predictAll();
+  await planSpores();
+  { const tileP = new Map(); for (const pr of st.preds) pr.cands.forEach((c, i) => tileP.set(c.k, 1 - (1 - (tileP.get(c.k) || 0)) * (1 - pr.p[i]))); placeListeners([...tileP.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)); }
+  updateHum();
+  busy = false;
+  startPlayerTurn();
+}
+function checkEnd() {
+  if (wardens().length) return false;
+  endBattle(st.extracted > 0); return true;
+}
+async function hiveTurn() {
+  sfx.hive(); clearRipples(); playMarch(); st.turnMoves = [];
+  await landSpores();
+  if (!wardens().length) return;
+  if (st.reeling) { st.reeling = false; toast("The swarm reels from the Brood Mother's death. It does nothing this turn."); await wait(800); return; }
+  hiveSpawn();
+  for (const m of brood().filter(b => b.kind === "mother")) birth(m);
+  await wait(350);
+  const bait = mem.turns >= 2 && mem.owTurns / mem.turns >= 0.35;
+  for (const l of brood().filter(b => b.lurk)) { l.lurkAge = (l.lurkAge || 0) + 1; if (l.lurkAge > 2) { scene.remove(l.mesh); l.hp = 0; } }
+  const active = brood().filter(b => !b.lurk && cheb(b, nearestW(b)) <= 13);
+  active.sort((a, b) => bait ? (a.kind === "swarm" ? -1 : 0) - (b.kind === "swarm" ? -1 : 0) : cheb(a, nearestW(a)) - cheb(b, nearestW(b)));
+  for (const b of active) { if (b.hp <= 0) continue; if (!wardens().length) break; await broodAct(b); }
+}
+const nearestW = b => { let best = null, bd = 99; for (const w of friends()) { const d = cheb(b, w); if (d < bd) { bd = d; best = w; } } return best || { x: START.x, y: START.y }; };
+const COMPASS = ["east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"];
+function compass(from, to) { const a = Math.atan2(to.y - from.y, to.x - from.x); return COMPASS[(Math.round(a / (Math.PI / 4)) + 8) % 8]; }
+function hiveSpawn() {
+  const room = MAXB - brood().length; if (room <= 0) return;
+  const n = Math.min(room, 1 + Math.floor(st.round * 0.55));
+  /* where does it expect the squad to be? the likeliest square for each soldier */
+  const pts = (st.preds || []).map(pr => pr.cands[pr.p.indexOf(Math.max(...pr.p))]).filter(Boolean);
+  const cen = pts.length ? { x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length } : { x: START.x, y: START.y };
+  const cenD = extDist[key(Math.round(cen.x), Math.round(cen.y))];
+  const scored = TUNNELS.map(t => {
+    const d = Math.hypot(t.x - cen.x, t.y - cen.y), ahead = extDist[key(t.x, t.y)] < cenD;
+    return { t, s: -Math.abs(d - 6) + (ahead ? 3 : 0) + (seen(t.x, t.y) ? -6 : 0) + Math.random() };
+  }).sort((a, b) => b.s - a.s);
+  if (!scored.length) return;
+  const main = scored[0].t;
+  st.plan = `It expects your squad around the <b>${districtName(cen)}</b>. It is gathering at a nest to your <b>${compass(cen, main)}</b>, out of sight.`;
+  hivePanel();
+  for (let i = 0; i < n; i++) {
+    const t = i < Math.ceil(n * 0.65) ? main : (scored[1 + (i % 2)] || scored[0]).t;
+    const s = freeNear(t); if (!s) continue;
+    const r = Math.random(), R = st.round;
+    const kind = R >= 4 && r < 0.08 ? "burrower" : R >= 3 && r < 0.17 ? "bloater" : R >= 3 && r < 0.27 ? "brute" : R >= 2 && r < 0.41 ? "leaper" : R >= 2 && r < 0.56 ? "spitter" : "swarm";
+    const u = spawnUnit(kind, s.x, s.y); u.mesh.visible = seen(s.x, s.y);
+    if (kind === "burrower") { u.burrowed = true; u.mesh.userData.body.visible = false; u.mesh.userData.mound.visible = true; u.mesh.children.forEach(c => { if (c !== u.mesh.userData.body && c !== u.mesh.userData.mound) c.visible = false; }); }
+    if (SPEED.v && u.mesh.visible) { const m = u.mesh; m.position.y = -0.6; anim(0.6, k => m.position.y = -0.6 + ease(k) * 0.6); }
+  }
+  if (st.round >= 5 && !st.motherSpawned) {
+    const s2 = freeNear(main);
+    if (s2) { st.motherSpawned = true; const m = spawnUnit("mother", s2.x, s2.y); m.mesh.visible = seen(s2.x, s2.y); if (SPEED.v) { sfx.boom(); shakeT = 0.5; toast(`The Brood Mother has woken, to your ${compass(cen, main)}. She births a new Swarmling every turn. Kill her and the swarm will reel.`); } }
+  }
+  else if (SPEED.v) { sfx.skitter(true); toast(`Something stirs to the ${compass(cen, main)}.`); }
+}
+function districtName(p) {
+  const v = p.y < H / 3 ? "north" : p.y > 2 * H / 3 ? "south" : "", h = p.x < W / 3 ? "west" : p.x > 2 * W / 3 ? "east" : "";
+  return v || h ? `${v}${v && h ? "-" : ""}${h} streets` : "city centre";
+}
+function freeNear(t) {
+  for (let r = 0; r < 4; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
+    const x = t.x + ox, y = t.y + oy; if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
+    if (x >= 0 && y >= 0 && x < W && y < H && passable(x, y) && !unitAt(x, y) && !inExt(x, y)) return { x, y };
+  }
+  return null;
+}
+async function broodAct(b) {
+  const tot = Object.values(mem.first).reduce((a, c) => a + c, 0);
+  const hideSpitters = b.kind === "spitter" && tot >= 3 && mem.first.spitter / tot >= 0.4;
+  const respectOw = mem.turns >= 2 && mem.owTurns / mem.turns >= 0.35 && b.kind !== "swarm";
+  const spread = (mem.areaKills || 0) >= 4;
+  if (b.kind === "burrower" && !b.burrowed && !friends().some(f => cheb(f, b) <= 1)) await burrow(b, true);
+  const r = reach(b, b.mv, { over: b.kind === "leaper" || !!b.burrowed, under: !!b.burrowed });
+  const ws = friends().filter(w => cheb(w, b) <= 14);
+  if (!ws.length) return;
+  let bestTile = { x: b.x, y: b.y }, bestScore = -1e9;
+  for (const k of r.dist.keys()) {
+    const x = k % W, y = Math.floor(k / W), here = { x, y };
+    let s = -1e9;
+    for (const w of ws) {
+      const d = cheb(here, w); let v;
+      if (b.gun && !hideSpitters) {
+        const can = d <= b.gun.range && sight(here, w);
+        v = can ? 10 - (inCover(w, here) ? 3 : 0) + (w.hp <= 2 ? 2 : 0) - (d <= 1 ? 4 : 0) + (hasCoverNear(x, y) ? 1 : 0) : -d;
+      } else if (hideSpitters) {
+        const spotted = ws.some(o => sight(o, here) && cheb(o, here) <= o.sight);
+        v = (spotted ? -6 : 4) - Math.abs(d - 5) * 0.5;
+      } else {
+        v = d <= 1 ? 12 + (w.hp <= 2 ? 3 : 0) + (hasCoverNear(w.x, w.y) ? 0 : 1) : -d * 1.5 - (r.dist.get(k) || 0) * 0.1;
+        /* block the road to the landing pad: prefer squares a little closer to the pad than the soldier */
+        if (d > 1) v += Math.max(0, 3 - Math.abs(extDist[key(w.x, w.y)] - extDist[k] - 2)) * 0.25;
+        v += hunt(w);
+      }
+      if (v > s) s = v;
+    }
+    if (respectOw) for (const o of ws) if (o.ow && sight(o, here) && cheb(o, here) <= (o.gun?.range || 0)) s -= 3;
+    if (spread) for (const o of brood()) if (o !== b && cheb(o, here) <= 1) s -= 1.2;
+    s += Math.random() * 0.3;
+    if (s > bestScore) { bestScore = s; bestTile = here; }
+  }
+  const path = pathTo(r, bestTile.x, bestTile.y);
+  for (const step of path) {
+    faceTo(b, step.x, step.y);
+    const from = b.mesh.position.clone(); b.x = step.x; b.y = step.y; const to = wpos(step.x, step.y);
+    const show = seen(step.x, step.y) || b.mesh.visible;
+    b.mesh.visible = seen(step.x, step.y);
+    const hop = b.kind === "leaper" ? (T(step.x, step.y) === WALL ? 1.4 : 0.45) : b.burrowed ? 0 : b.kind === "mother" ? 0.03 : 0.08;
+    if (show && SPEED.v) {
+      if (b.burrowed) { sfx.dig(); if (Math.random() < 0.7) smoke(to.clone().setY(0.1), 1, 0.15, "#6a5a48"); } else if (b.kind === "swarm") sfx.skitter(); else if (b.kind === "leaper") sfx.leap(); else sfx.step();
+      await anim(b.kind === "swarm" ? 0.09 : b.kind === "leaper" ? 0.14 : b.kind === "mother" ? 0.3 : 0.16, k => { b.mesh.position.lerpVectors(from, to, k); b.mesh.position.y = Math.sin(Math.PI * k) * hop; });
+    }
+    else b.mesh.position.copy(to);
+    if (!show && step === path[path.length - 1]) ripple(b);
+    await overwatchCheck(b);
+    if (b.hp <= 0) return;
+  }
+  if (b.burrowed && friends().some(f => cheb(f, b) <= 1)) await burrow(b, false);
+  if (b.kind === "bloater" && friends().some(f => cheb(f, b) <= 1)) { await burst(b); return; }
+  if (b.burrowed) return;
+  let target = null, bestKill = -1;
+  for (const w of friends()) { const info = attackInfo(b, w); if (info && info.exp + info.kill + hunt(w) > bestKill) { bestKill = info.exp + info.kill + hunt(w); target = w; } }
+  if (target && !(hideSpitters && !attackInfo(b, target).melee)) { b.mesh.visible = seen(b.x, b.y) || cheb(b, target) <= 1; await attack(b, target); }
+}
+async function burrow(b, down) {
+  b.burrowed = down;
+  const m = b.mesh, vis = SPEED.v && seen(b.x, b.y);
+  if (vis) { sfx.dig(); smoke(m.position.clone().setY(0.15), 3, 0.3, "#6a5a48"); debris(m.position.clone().setY(0.1), 5); }
+  if (!down && vis) { toast("A Burrower bursts out of the ground!"); shakeT = 0.2; }
+  if (vis) await anim(0.3, k => { m.userData.body.position.y = 0.07 - (down ? k : 1 - k) * 0.7; });
+  m.userData.body.visible = !down; m.userData.body.position.y = 0.07; m.userData.mound.visible = down;
+  m.children.forEach(c => { if (c !== m.userData.body && c !== m.userData.mound) c.visible = !down; });
+}
+async function burst(b) {
+  if (b.popped) return; b.popped = true;
+  const at = b.mesh.position.clone().setY(0.35), show = !!SPEED.v && seen(b.x, b.y);
+  if (show) { sfx.boom(); sfx.splat(); sparks(at, "#c8ff4a", 30, 2.6, 0.7, 2.6); flash(at, "#b8ff5a", 6, 0.35); ringWave(wpos(b.x, b.y), "#b8ff5a"); decal("ichor", b.mesh.position, 2.6); smoke(at, 4, 0.6, "#8aa060"); shakeT = 0.3; pop("Acid burst!", at.clone().setY(1.2), "hive"); }
+  b.hp = Math.min(b.hp, 0); scene.remove(b.mesh);
+  const victims = units.filter(u => u !== b && u.hp > 0 && !u.out && !u.burrowed && cheb(u, b) <= 1);
+  await Promise.all(victims.map((u, i) => wait(i * 100).then(async () => {
+    const need = Math.max(2, 3 + u.armour), vis = show && visibleU(u), vals = await rollDice(2, need, u.mesh.position, vis);
+    const h = vals.filter(v => v >= need).length; if (h) await damage(u, h, vis);
+  })));
+}
+function birth(mother) {
+  let n = 0;
+  for (let i = 0; i < 1 && brood().length < MAXB + 4; i++) { const p = freeNear(mother); if (!p || cheb(p, mother) > 2) break; const u = spawnUnit("swarm", p.x, p.y); u.mesh.visible = seen(p.x, p.y); n++; if (SPEED.v && u.mesh.visible) { const m = u.mesh; m.scale.setScalar(0.2); anim(0.5, k => m.scale.setScalar(0.2 + 0.8 * ease(k))); splash(m.position.clone().setY(0.3), "#ff5ab4", 10); } }
+  if (n && SPEED.v && seen(mother.x, mother.y)) { sfx.hive(); pop(`+${n} Swarmlings`, mother.mesh.position.clone().setY(1.8), "hive"); }
+}
+function placeListeners(ranked) {
+  if (st.round < 2 || st.round < (st.nextListener || 0)) return;
+  const want = 1, have = brood().filter(b => b.lurk).length;
+  for (const [k] of ranked) {
+    if (brood().filter(b => b.lurk).length >= want || brood().length >= MAXB + 2) break;
+    const tx = k % W, ty = Math.floor(k / W), spots = [];
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const x = tx + ox, y = ty + oy; if ((ox || oy) && x >= 0 && y >= 0 && x < W && y < H && passable(x, y) && !unitAt(x, y) && !inExt(x, y) && !friends().some(f => cheb(f, { x, y }) <= 1)) spots.push({ x, y }); }
+    if (!spots.length) continue;
+    const p = spots.sort((a, b) => seen(a.x, a.y) - seen(b.x, b.y))[0];
+    const l = spawnUnit("listener", p.x, p.y); l.lurk = true; l.lurkAge = 0; l.mesh.visible = false;
+    if (have === 0 && !st.saidListener) { st.saidListener = true; toast("Something has gone quiet. It is waiting where it expects one of your soldiers to stop."); }
+  }
+}
+async function wakeListeners() {
+  for (const l of brood().filter(b => b.lurk)) {
+    const prey = wardens().filter(w => cheb(w, l) <= 1); if (!prey.length) continue;
+    l.lurk = false; l.mesh.visible = true; l.mv = KINDS.listener.mv;
+    if (SPEED.v) { sfx.hive(); flash(l.mesh.position.clone().setY(0.5), "#c9b8ff", 4, 0.3); sparks(l.mesh.position.clone().setY(0.4), "#c9b8ff", 14, 1.6, 0.5); const m = l.mesh; m.scale.setScalar(0.3); anim(0.35, k => m.scale.setScalar(0.3 + 0.7 * ease(k))); }
+    toast(`A Listener was waiting right where it expected ${short(prey[0])} to stop. It strikes once, then it is gone.`);
+    mem.listenerHits = (mem.listenerHits || 0) + 1;
+    await attack(l, prey[0]);
+    /* one strike, then it sinks back into the dark */
+    if (l.hp > 0) { if (SPEED.v && seen(l.x, l.y)) { smoke(l.mesh.position.clone().setY(0.2), 3, 0.3, "#5a5070"); await anim(0.4, k => l.mesh.scale.setScalar(Math.max(0.01, 1 - k))); } scene.remove(l.mesh); l.hp = 0; }
+    st.nextListener = st.round + 3;
+  }
+}
+function feedHiveDice(u) {
+  st.hiveDice = Math.min(6, (st.hiveDice || 0) + 1);
+  if (SPEED.v && u) { pop("Predicted", u.mesh.position.clone().setY(1.25), "hive"); tone(880 + st.hiveDice * 60, 0.25, "sine", 0.04); }
+  if (!st.saidDice) { st.saidDice = true; toast("Each time the Hive guesses exactly where a soldier stops, a die comes to life for the swarm."); }
+}
+const hunt = w => (w.kind === "lark" && w.carrying ? 2 + (mem.rescues ? 2 : 0) : 0) + (w.kind === "sentry" && (mem.sentryKills || 0) >= 3 ? 3 : 0) - (w.drone ? 1 : 0);
+async function overwatchCheck(b) {
+  if (!seen(b.x, b.y) || b.burrowed) return;
+  for (const w of friends()) {
+    if (!w.ow || b.hp <= 0) continue;
+    if (cheb(w, b) <= w.gun.range && sight(w, b)) {
+      w.ow = false; w.owShot = true; renderSquad();
+      pop("Overwatch!", w.mesh.position.clone().setY(1.2));
+      await attack(w, b); w.owShot = false;
+    }
+  }
+}
+async function planSpores() {
+  const spitters = brood().filter(b => b.kind === "spitter" && cheb(b, nearestW(b)) <= 12);
+  if (!spitters.length || !st.preds?.length) { st.sporeTiles = []; return; }
+  const tileP = new Map();
+  for (const pr of st.preds) pr.cands.forEach((c, i) => tileP.set(c.k, 1 - (1 - (tileP.get(c.k) || 0)) * (1 - pr.p[i])));
+  const ranked = [...tileP.entries()].sort((a, b) => b[1] - a[1]);
+  st.sporeTiles = ranked.slice(0, spitters.length).map(([k, p]) => ({ x: k % W, y: Math.floor(k / W), p }));
+  st.sporeTop = ranked.slice(0, 8);
+  if (!SPEED.v) return;
+  sfx.launch();
+  await Promise.all(spitters.map(async s => {
+    if (!s.mesh.visible) return;
+    const from = s.mesh.position.clone().setY(0.6), m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), sporeMat); scene.add(m); m.add(glow("#4fe0c4", 0.6, 1.4));
+    await anim(0.6, k => { m.position.copy(from); m.position.y += k * 7; });
+    scene.remove(m);
+  }));
+  toast(`${spitters.length > 1 ? `${spitters.length} spores are` : "A spore is"} in the air. They land where it expects your soldiers to stand.`);
+}
+async function landSpores() {
+  const tiles = st.sporeTiles || []; st.sporeTiles = [];
+  if (!tiles.length) return;
+  showForecast(st.sporeTop || []);
+  for (const t of tiles) {
+    const to = wpos(t.x, t.y, 0.1);
+    if (SPEED.v) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), sporeMat); scene.add(m); m.add(glow("#4fe0c4", 0.8, 1.5));
+      await anim(0.45, k => { m.position.copy(to); m.position.y = 8 * (1 - k * k) + 0.1; });
+      scene.remove(m); sfx.spore(); splash(to); flash(to, "#4fe0c4", 3, 0.25); decal("ichor", to, 0.8); smoke(to, 2, 0.2, "#6a8a80");
+    }
+    st.sporeCount++;
+    const victim = unitAt(t.x, t.y);
+    if (victim && victim.side === "w") {
+      st.sporeHits++;
+      pop(`Predicted · ${Math.round(t.p * 100)}%`, to.clone().setY(1.5), "hive");
+      const need = 2 + victim.armour, vals = await rollDice(2, need, victim.mesh.position);
+      const hits = vals.filter(v => v >= need).length;
+      if (hits) await damage(victim, hits); else pop("Shrugged off", victim.mesh.position.clone().setY(1), "miss");
+    } else if (victim) { pop("Hit its own", to.clone().setY(1.2), "hive"); await damage(victim, 1, seen(t.x, t.y)); }
+    else pop("Empty", to.clone().setY(0.9), "miss");
+    if (!wardens().length) return;
+  }
+  await wait(600); clearForecast();
+}
+async function clickTile(tile) {
+  if (busy || st.phase !== "player" || !tile) return;
+  const u = unitAt(tile.x, tile.y);
+  if (u && u.side === "w") { if (!u.drone) select(u); return; }
+  if (!sel || sel.ap < 1) return;
+  if (u && u.side === "b" && seen(u.x, u.y) && !u.lurk) {
+    if (sel.attacked) return;
+    const info = attackInfo(sel, u); if (!info) return;
+    busy = true; clearOverlays();
+    if (!st.firstThisTurn) { st.firstThisTurn = true; mem.first[u.kind] = (mem.first[u.kind] || 0) + 1; }
+    sel.ap--; sel.attacked = true; renderSquad();
+    await attack(sel, u);
+    busy = false; updateVision(); select(sel && sel.hp > 0 ? sel : wardens()[0]); autoAdvance();
+    return;
+  }
+  if (!reachCache || !reachCache.dist.has(key(tile.x, tile.y))) return;
+  busy = true; clearOverlays();
+  const path = pathTo(reachCache, tile.x, tile.y), m = sel;
+  for (const s of path) {
+    faceTo(m, s.x, s.y); const from = m.mesh.position.clone(), to = wpos(s.x, s.y); (st.turnMoves ||= []).push((s.x - m.x + 1) + (s.y - m.y + 1) * 3 - ((s.y - m.y + 1) * 3 + (s.x - m.x + 1) > 4 ? 1 : 0)); m.x = s.x; m.y = s.y; if (SPEED.v) sfx.step();
+    await anim(0.15, k => { m.mesh.position.lerpVectors(from, to, k); m.mesh.position.y = Math.sin(Math.PI * k) * 0.1; });
+    updateVision();
+  }
+  m.ap--; m.moved = true; busy = false; focusOn(m.mesh.position); select(m); autoAdvance();
+}
+function autoAdvance() {
+  if (sel && sel.ap > 0) return;
+  const next = wardens().find(u => u.ap > 0);
+  if (next) select(next, true); else { select(null); $("endBtn").focus(); }
+}
+function overwatch() {
+  if (busy || st.phase !== "player" || !sel || sel.ap < 1 || sel.attacked) return;
+  sel.ow = true; sel.ap = 0; pop("Overwatch", sel.mesh.position.clone().setY(1.2)); sfx.turn(); select(sel); autoAdvance();
+}
+function healTarget(m) { let best = null; for (const w of wardens()) if (cheb(w, m) <= 1 && w.hp < w.maxhp && (!best || w.hp / w.maxhp < best.hp / best.maxhp)) best = w; return best; }
+function heal() {
+  if (busy || st.phase !== "player" || !sel?.heals || sel.ap < 1 || sel.healed) return;
+  const t = healTarget(sel); if (!t) return;
+  const n = Math.min(2, t.maxhp - t.hp); t.hp += n; sel.ap--; sel.healed = true;
+  sfx.heal(); pop(`+${n}`, t.mesh.position.clone().setY(1.1), "heal"); select(sel); autoAdvance();
+}
+async function extract() {
+  if (busy || st.phase !== "player" || !sel || sel.ap < 1 || !inExt(sel.x, sel.y)) return;
+  busy = true; const u = sel; u.out = true; u.ap = 0; st.extracted++; select(null);
+  sfx.lift(); toast(`${u.name} is aboard the gunship.`, true);
+  const m = u.mesh, from = m.position.clone();
+  await anim(1.2, k => { m.position.y = from.y + ease(k) * 6; });
+  scene.remove(m); busy = false; updateVision(); renderSquad();
+  if (!checkEnd()) autoAdvance();
+}
+const speakLearned = () => {};
+
+/* ================= 3D port: dice, camera, touch, screens =================
+   Everything below here is new. It only draws the game and turns taps into the same calls the 2D game makes. */
+const DICE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+async function showDice(vals, need, at) {
+  const box = $("dice"); box.innerHTML = "";
+  if (at) { const s = screenOf(at.clone().setY(1.7)); box.style.left = Math.max(80, Math.min(innerWidth - 80, s.x)) + "px"; box.style.top = Math.max(110, s.y) + "px"; }
+  for (const v of vals) { const d = document.createElement("div"); d.className = "die " + (v >= need ? "hit" : "miss"); for (let i = 0; i < 9; i++) { const p = document.createElement("i"); if (DICE_PIPS[v].includes(i)) p.className = "on"; d.appendChild(p); } box.appendChild(d); }
+  await wait(900);
+  box.innerHTML = "";
+}
+
+/* ---- camera: drag to turn, pinch or wheel to zoom, two fingers to slide ---- */
+const cam = { az: 0.38, pol: 0.92, dist: 26, tx: 0, tz: 0, gx: 0, gz: 0, gd: null, off: 0 };
+const camClampT = () => { cam.gx = Math.max(-W / 2, Math.min(W / 2, cam.gx)); cam.gz = Math.max(-H / 2, Math.min(H / 2, cam.gz)); };
+function focusOn(p, instant) {
+  cam.gx = p.x * 0.72; cam.gz = p.z * 0.72; camClampT();   /* lean a little toward the middle of the board */
+  if (instant) { cam.tx = cam.gx; cam.tz = cam.gz; }
+}
+function fitDist() { const a = innerWidth / innerHeight; return Math.max(15, Math.min(60, (a > 1 ? 15 : 11.5) / (2 * Math.tan(19 * Math.PI / 180) * Math.min(a, 1.45)) + 3)); }
+function wholeBoard() { cam.gx = 0; cam.gz = 0; cam.gd = Math.min(70, 25 / (2 * Math.tan(19 * Math.PI / 180) * Math.min(innerWidth / innerHeight, 1.5)) + 4); }
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
+  const dockH = $("dock").offsetHeight, topH = $("top").offsetHeight, shift = (dockH - topH) / 2;
+  camera.setViewOffset(w, h, 0, shift, w, h); camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); addEventListener("orientationchange", () => setTimeout(resize, 200));
+const ptrs = new Map(); let gest = null;
+function pinchInfo() { const a = [...ptrs.values()]; const dx = a[0].x - a[1].x, dy = a[0].y - a[1].y; return { span: Math.hypot(dx, dy), cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2, ang: Math.atan2(dy, dx) }; }
+function panBy(dx, dy) {
+  const k = cam.dist * 0.0017, rx = Math.cos(cam.az), rz = -Math.sin(cam.az), bx = Math.sin(cam.az), bz = Math.cos(cam.az);
+  cam.gx -= rx * dx * k + bx * dy * k; cam.gz -= rz * dx * k + bz * dy * k; camClampT(); cam.tx = cam.gx; cam.tz = cam.gz;
+}
+cv.addEventListener("contextmenu", e => e.preventDefault());
+cv.addEventListener("pointerdown", e => {
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) gest = { t: performance.now(), moved: 0, multi: false, btn: e.button, pan: e.button === 2 || e.shiftKey };
+  else { gest.multi = true; gest.pi = pinchInfo(); gest.d0 = cam.dist; gest.a0 = cam.az; }
+  cam.gd = null;
+});
+cv.addEventListener("pointermove", e => {
+  const p = ptrs.get(e.pointerId); if (!p || !gest) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size === 1) {
+    gest.moved += Math.abs(dx) + Math.abs(dy);
+    if (gest.moved > 9 || gest.multi) {
+      if (gest.pan) panBy(dx, dy); else { cam.az -= dx * 0.0065; cam.pol = Math.max(0.28, Math.min(1.32, cam.pol - dy * 0.0055)); }
+    }
+  } else if (ptrs.size === 2) {
+    const n = pinchInfo(); gest.moved += 20;
+    cam.dist = Math.max(9, Math.min(70, gest.d0 * gest.pi.span / Math.max(30, n.span)));
+    panBy(n.cx - gest.pi.cx, n.cy - gest.pi.cy); gest.pi.cx = n.cx; gest.pi.cy = n.cy;
+    let da = n.ang - gest.pi.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); cam.az = gest.a0 - da;
+  }
+});
+function endPtr(e, cancel) {
+  const had = ptrs.size; ptrs.delete(e.pointerId);
+  if (!gest) return;
+  if (had === 1 && !cancel && !gest.multi && gest.moved < 10 && performance.now() - gest.t < 700 && e.button === 0) tap(e.clientX, e.clientY);
+  if (!ptrs.size) gest = null;
+}
+cv.addEventListener("pointerup", e => endPtr(e, false)); cv.addEventListener("pointercancel", e => endPtr(e, true));
+cv.addEventListener("wheel", e => { e.preventDefault(); cam.dist = Math.max(9, Math.min(70, cam.dist * Math.exp(e.deltaY * 0.0011))); cam.gd = null; }, { passive: false });
+$("homeBtn").onclick = () => { cam.gd = null; wholeBoard(); };
+
+/* ---- tapping: find the unit or tile under the finger, then do what the 2D click does ---- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function tileAt(cx, cy) {
+  ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+  const roots = units.filter(u => u.mesh.visible && u.hp > 0 && !u.out).map(u => u.mesh), hit = ray.intersectObjects(roots, true).filter(h => !h.object.isSprite)[0];
+  if (hit) { let o = hit.object; while (o && !units.some(u => u.mesh === o)) o = o.parent; const u = units.find(v => v.mesh === o); if (u) return { x: u.x, y: u.y }; }
+  const h = ray.intersectObject(pickPlane)[0]; if (!h) return null;
+  const x = Math.round(h.point.x + (W - 1) / 2), y = Math.round(h.point.z + (H - 1) / 2);
+  return x >= 0 && y >= 0 && x < W && y < H ? { x, y } : null;
+}
+function tap(cx, cy) { const t = tileAt(cx, cy); if (t) clickTile(t); }
+
+/* ---- overlays, selection, labels ---- */
+let reachCache = null;
+const atkEls = [], pctEls = [];
+function clearOverlays() {
+  for (let k = 0; k < overlays.length; k++) if (!pctEls.some(e => e.k === k)) ov(k, "#fff", 0);
+  tgtRing.visible = false; for (const e of atkEls) e.d.remove(); atkEls.length = 0;
+}
+const baseOv = k => { const x = k % W, y = Math.floor(k / W); ov(k, inExt(x, y) ? "#ffd24a" : "#46c8ff", 0.5); };
+function select(u, focus) {
+  sel = u; reachCache = null; clearOverlays();
+  if (u && st.phase === "player") {
+    selRing.visible = true;
+    if (u.ap > 0) { reachCache = reach(u, u.mv); for (const k of reachCache.dist.keys()) if (k !== key(u.x, u.y)) baseOv(k); }
+    if (!u.attacked && u.ap > 0) for (const b of brood()) {
+      const info = attackInfo(u, b); if (!info) continue;
+      ov(key(b.x, b.y), "#ff3a3a", 0.75);
+      const d = document.createElement("div"); d.className = "atk"; d.innerHTML = SVG("i-aim") + Math.round(info.kill * 100) + "%"; $("labels").appendChild(d); atkEls.push({ d, u: b });
+    }
+    if (focus) focusOn(u.mesh.position);
+  } else selRing.visible = false;
+  renderSquad();
+}
+function showForecast(top) {
+  clearForecast();
+  for (const [k, p] of top) { ov(k, "#4fe0c4", 0.12 + p * 0.5); const d = document.createElement("div"); d.className = "pct"; d.textContent = Math.round(p * 100) + "%"; $("labels").appendChild(d); pctEls.push({ d, k }); }
+}
+function clearForecast() { for (const e of pctEls) { e.d.remove(); ov(e.k, "#fff", 0); } pctEls.length = 0; }
+
+/* ---- the screens ---- */
+const ICON = { sergeant: "i-chev", gunner: "i-cannon", trooper: "i-rifle", scout: "i-scope", medic: "i-plus", sentry: "i-turret", lark: "i-heart", mason: "i-brick" };
+function hud() {
+  const ph = st.phase, b = $("banner");
+  const kind = ph === "hive" ? "foe" : ph === "drones" ? "drn" : "you";
+  const txt = ph === "hive" ? "Enemy turn" : ph === "drones" ? "Drones" : "Your turn", ic = ph === "hive" ? "i-bug" : ph === "drones" ? "i-gear" : "i-person";
+  if (b.dataset.k !== kind + txt) { b.dataset.k = kind + txt; b.className = kind === "foe" ? "foe" : kind === "drn" ? "drn" : ""; $("bannerT").textContent = txt; b.querySelector("use").setAttribute("href", "#" + ic); void b.offsetWidth; b.classList.add("pulse"); }
+  $("roundN").textContent = st.round || 1; $("extN").textContent = (st.extracted || 0) + "/6";
+  const can = ph === "player" && !busy && sel;
+  $("endBtn").disabled = ph !== "player" || busy;
+  $("owBtn").disabled = !(can && sel.ap > 0 && !sel.attacked && sel.gun); $("owBtn").classList.toggle("on", !!sel?.ow);
+  $("healBtn").hidden = !(sel?.heals); $("healBtn").disabled = !(can && sel.ap > 0 && !sel.healed && healTarget(sel));
+  $("extBtn").hidden = !(sel && inExt(sel.x, sel.y)); $("extBtn").disabled = !(can && sel.ap > 0);
+}
+function renderSquad() {
+  const box = $("squad"); box.innerHTML = "";
+  const pips = u => `<span class="hp">${Array.from({ length: u.maxhp }, (_, i) => `<i class="${i < u.hp ? "" : "e"}"></i>`).join("")}</span>`;
+  units.filter(u => u.side === "w" && !u.drone).forEach((u, i) => {
+    const gone = u.hp <= 0 || u.out;
+    const b = document.createElement("button"); b.type = "button"; b.className = "unit" + (u === sel ? " sel" : "") + (gone ? " gone" : ""); b.setAttribute("aria-label", u.name);
+    b.innerHTML = `<span class="k">${i + 1}</span><span class="ic">${SVG(ICON[u.kind])}</span>` + (gone ? `<span class="st">${u.out || u.rescued ? SVG("i-up") : SVG("i-skull")}</span>` : pips(u) + `<span class="ap">${[0, 1].map(j => `<i class="${j < u.ap ? "" : "e"}"></i>`).join("")}</span>`) + (u.ow && !gone ? `<span class="st">${SVG("i-eye")}</span>` : "");
+    b.onclick = () => { if (!gone && st.phase === "player" && !busy) select(u, true); };
+    box.appendChild(b);
+  });
+  for (const d of units.filter(u => u.drone)) {
+    const gone = d.hp <= 0, c = document.createElement("div"); c.className = "unit drone" + (gone ? " gone" : "");
+    c.innerHTML = `<span class="ic">${SVG(ICON[d.kind])}</span>` + (gone ? `<span class="st">${SVG("i-skull")}</span>` : pips(d) + `<button class="ord" type="button" aria-label="Order">${d.order === "hold" ? SVG("i-hold") : d.order === "auto" ? SVG("i-auto") : "&rarr;" + (followTarget(d) ? wardens().indexOf(followTarget(d)) + 1 : "")}</button>`);
+    const ob = c.querySelector(".ord"); if (ob) ob.onclick = e => { e.stopPropagation(); if (!busy) cycleOrder(d); };
+    box.appendChild(c);
+  }
+  hud();
+}
+function hivePanel() {
+  const r = st.reads || [];
+  $("hiveN").textContent = (r.length >= 3 ? Math.round(r.reduce((a, b) => a + b, 0) / r.length * 100) + "%" : "…") + ((st.hiveDice || 0) ? " " + "◆".repeat(st.hiveDice) : "");
+}
+async function endBattle(won) {
+  st.phase = "over"; busy = false; clearOverlays(); select(null); hud();
+  mem.battles++; persist();
+  await wait(900);
+  $("eTitle").textContent = st.extracted === 6 ? "All home!" : won ? "Lift off!" : "Squad lost";
+  $("eExt").textContent = st.extracted + "/6"; $("eKills").textContent = kills; $("eRounds").textContent = st.round;
+  $("end").hidden = false;
+}
+$("again").onclick = () => { $("end").hidden = true; newBattle(); };
+$("owBtn").onclick = () => overwatch(); $("healBtn").onclick = () => heal(); $("extBtn").onclick = () => extract(); $("endBtn").onclick = () => endPlayerTurn();
+addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (st.phase !== "player" || busy) return;
+  if (/^Digit[1-6]$/.test(e.code)) { const u = units.filter(v => v.side === "w" && !v.drone)[+e.code.slice(5) - 1]; if (u && u.hp > 0 && !u.out) select(u, true); }
+  else if (e.code === "KeyO") overwatch(); else if (e.code === "KeyH") heal(); else if (e.code === "KeyX") extract();
+  else if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); endPlayerTurn(); } else if (e.code === "Escape") select(null);
+});
+
+/* ---- the frame loop ---- */
+let last = nowS();
+function frame() {
+  const t = nowS(), dt = Math.min(0.05, t - last); last = t;
+  if (!SPEED.v) { requestAnimationFrame(frame); return; }   /* robot mode: no drawing, so tests run fast */
+  for (let i = anims.length - 1; i >= 0; i--) { const a = anims[i], k = Math.min(1, (t - a.t0) / a.dur); a.fn(k); if (k >= 1) { anims.splice(i, 1); a.res(); } }
+  /* camera */
+  cam.tx += (cam.gx - cam.tx) * Math.min(1, dt * 5); cam.tz += (cam.gz - cam.tz) * Math.min(1, dt * 5);
+  if (cam.gd) { cam.dist += (cam.gd - cam.dist) * Math.min(1, dt * 4); if (Math.abs(cam.gd - cam.dist) < 0.05) cam.gd = null; }
+  const sp = Math.sin(cam.pol), sk = shakeT > 0 ? (shakeT = Math.max(0, shakeT - dt)) * 0.15 : 0;
+  camera.position.set(cam.tx + cam.dist * sp * Math.sin(cam.az) + vr(-sk, sk), cam.dist * Math.cos(cam.pol) + vr(-sk, sk), cam.tz + cam.dist * sp * Math.cos(cam.az));
+  camera.lookAt(cam.tx, 0.2, cam.tz);
+  /* fog of war tints the tiles */
+  let changed = false;
+  for (let i = 0; i < W * H; i++) { const d = fogTarget[i] - fogCur[i]; if (d) { fogCur[i] = Math.abs(d) > 0.004 ? fogCur[i] + d * Math.min(1, dt * 6) : fogTarget[i]; changed = true; } }
+  if (changed || fogDirty) { paintFog(); fogDirty = false; }
+  for (const u of units) {
+    const m = u.mesh, ph = (m.userData.phase || 0) + t, body = m.userData.body;
+    if (u.hp > 0 && !u.out) {
+      const want = m.userData.face ?? (u.side === "w" ? Math.PI : 0);
+      let d = want - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 10);
+      if (u.drone) { body.position.y = m.userData.hover + (u.deployed ? 0 : Math.sin(ph * 2.2) * 0.04); m.userData.rotor.rotation.y += dt * (u.deployed ? 2 : 14); if (u.carrying) { const f = u.carrying.mesh; f.position.set(m.position.x, body.position.y - 0.26, m.position.z); f.rotation.y = m.rotation.y; } }
+      else if (u.side === "b") body.scale.y = 1.2 * (1 + Math.sin(ph * (u.kind === "swarm" ? 6 : 2.5)) * 0.04);
+      else body.scale.y = 1.2 * (1 + Math.sin(ph * 1.6) * 0.015);
+    }
+    if (!m.userData.hp) { m.userData.hp = hpSprite(); m.userData.hp.position.y = u.drone ? 1.2 : u.kind === "mother" ? 1.9 : u.kind === "brute" ? 1.3 : 1.12; m.add(m.userData.hp); }
+    m.userData.hp.visible = u.hp > 0 && !u.out && !u.carried && !(u.lurk) && !u.burrowed; if (m.userData.hp.visible) drawHp(m.userData.hp, u);
+  }
+  if (sel && sel.hp > 0) { selRing.position.copy(sel.mesh.position).setY(0.14); selRing.material.opacity = 0.7 + Math.sin(t * 5) * 0.3; }
+  for (let k = 0; k < overlays.length; k++) { const o = overlays[k]; if (o.visible) o.material.opacity = o.userData.op * (0.82 + 0.18 * Math.sin(t * 3.2 + o.userData.ph)); }
+  for (let i = fx.length - 1; i >= 0; i--) { const q = fx[i], a = (t - q.t0) / (SPEED.v || 1); q.v.y -= q.grav * dt; q.s.position.addScaledVector(q.v, dt); q.s.material.opacity = Math.max(0, 1 - a / q.life); if (a > q.life) { scene.remove(q.s); fx.splice(i, 1); } }
+  for (const e of atkEls) { if (e.u.hp <= 0) { e.d.style.display = "none"; continue; } const s = screenOf(e.u.mesh.position.clone().setY(1.25)); e.d.style.left = s.x + "px"; e.d.style.top = s.y + "px"; }
+  for (const e of pctEls) { const s = screenOf(overlays[e.k].position); e.d.style.left = s.x + "px"; e.d.style.top = s.y + "px"; }
+  if (beam) { beam.material.opacity = 0.18 + Math.sin(t * 1.6) * 0.05; beam.rotation.y = t * 0.2; }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* ---- the hook for robots ---- */
+const plain = u => ({ id: u.id, kind: u.kind, name: u.name, side: u.side, x: u.x, y: u.y, hp: u.hp, maxhp: u.maxhp, mv: u.mv, ap: u.ap, moved: !!u.moved, attacked: !!u.attacked, ow: !!u.ow, drone: !!u.drone, out: !!u.out, rescued: !!u.rescued, burrowed: !!u.burrowed, lurk: !!u.lurk, seen: seen(u.x, u.y), gun: u.gunId || null, melee: u.meleeId || null, charges: u.charges, order: u.order, deployed: !!u.deployed, carrying: u.carrying ? u.carrying.id : null });
+const infoPlain = i => i && { melee: i.melee, need: i.need, dice: i.dice, dmg: i.dmg, p: i.p, exp: i.exp, kill: i.kill, burn: i.burn || 0, splash: (i.splash || []).map(s => s.id) };
+const byId = id => units.find(u => u.id === id);
+window.__v = {
+  state() {
+    return { phase: st.phase, round: st.round, extracted: st.extracted || 0, kills, busy, seed, sel: sel ? sel.id : null, hiveDice: st.hiveDice || 0, reeling: !!st.reeling,
+      units: units.map(plain), grid: grid.map(r => r.join("")),
+      reach: sel && reachCache ? [...reachCache.dist.keys()].filter(k => k !== key(sel.x, sel.y)).sort((a, b) => a - b).map(k => [k % W, Math.floor(k / W)]) : [],
+      targets: sel ? brood().filter(b => attackInfo(sel, b)).map(b => b.id) : [] };
+  },
+  select(id) { const u = byId(id); if (!u || u.side !== "w" || u.drone || u.hp <= 0 || u.out || st.phase !== "player" || busy) return false; select(u); return true; },
+  async moveTo(x, y) { const u = sel; if (!u) return false; const a = [u.x, u.y, u.ap]; await clickTile({ x, y }); return u.x !== a[0] || u.y !== a[1] || u.ap !== a[2]; },
+  async attack(id) { const u = sel, t = byId(id); if (!u || !t) return false; const a = u.ap; await clickTile({ x: t.x, y: t.y }); return u.ap !== a; },
+  async endTurn() { await endPlayerTurn(); return st.phase; },
+  async overwatch() { const u = sel; if (!u) return false; const a = u.ap; overwatch(); return u.ap !== a; },
+  async heal() { const u = sel; if (!u) return false; const a = u.ap; heal(); return u.ap !== a; },
+  async extract() { const u = sel; if (!u) return false; const a = u.ap; await extract(); return u.out || u.ap !== a; },
+  info(aid, tid) { const a = byId(aid), t = byId(tid); return a && t ? infoPlain(attackInfo(a, t)) : null; },
+  reach(id) { const u = byId(id); if (!u) return null; return [...reach(u, u.mv).dist.keys()].sort((a, b) => a - b); },
+  newGame(s) { $("end").hidden = true; newBattle(loadout, droneSel, s); return seed; },
+  fast(on) { SPEED.v = typeof on === "number" ? on : on ? 0 : 1; return SPEED.v; },
+  tileXY(x, y) { const p = wpos(x, y, 0.3).project(camera); return { x: (p.x * 0.5 + 0.5) * innerWidth, y: (-p.y * 0.5 + 0.5) * innerHeight }; },
+  camera(o) { Object.assign(cam, o); cam.gd = null; if (o.tx != null) cam.gx = o.tx; if (o.tz != null) cam.gz = o.tz; return { ...cam }; },
+  stats() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }; },
+  W, H, key,
+};
+
+/* ---- start ---- */
+resize(); cam.dist = fitDist();
+const urlP = new URLSearchParams(location.search);
+if (urlP.get("fast")) SPEED.v = 0;
+newBattle(loadout, droneSel, urlP.get("seed") ? +urlP.get("seed") : undefined);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
