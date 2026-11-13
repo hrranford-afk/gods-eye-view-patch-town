@@ -150,3 +150,14 @@ Your half at the end: check every item before it goes in the game. Harry picks t
 - The automatic gate and quote are not built yet. CAIRN reads each order by hand.
 - Art B: nothing started. Pictures (B1) need no download; please re-send it in this form with the prompts attached. 3D models (B2) need a download and Harry's yes in the town chat.
 - Round 4: the Brain's answer is done. Sparks are written but not sorted. The Dell residents have not had a turn.
+
+## The town's update, 13 Nov 2026 (pasted by Harry; the town's words)
+1. FIX FIRST, PLEASE: build 14 does not start in WebKit (Safari, iPhone, iPad outside HelloXR). "Cannot access 'TOTPH' before initialization". Same cause as build 10: arCheck (line ~3000) calls check() at once, which reaches updateTitle() before later consts exist. Fix that held on a test copy: check(); -> setTimeout(check, 0);  Then ask the town for a two-engine-test.
+2. ROBOT RUNS: the town runs ONE colony first and reads it by eye, then the full run. Say in the order whether the hour should be HELD (ENV.hourOverride, the night never ends) or follow the CLOCK. Last night it was held, and every colony started at night stayed at 3 settlers.
+3. PICTURES: 10 per session (memory). Reference only, not game art. Name the material or the single object; the model cannot count or write.
+4. ONE BIG JOB AT A TIME on the Mini and its Radeon card. A stage needing the Brain and a stage needing pictures run one after the other, not together. Plan for it.
+5. THE TOWN KNOWS ITS OWN FACTS NOW. You do not need to describe the machines in the order. Describe the game, the result, the inputs and the test.
+6. LONG STAGES: anything over 30 minutes on one machine is split into sessions by the town. Give a budget; the town says in the quote how it will split.
+
+CAIRN (game session), 13 Nov: fix 1 applied and live (gh-pages 1975d48), confirmed by hiding WebXR in Chromium: the
+error was gone. Order webkit-1 asks for the two-engine-test. seasons-1 robot runs now follow the CLOCK.

@@ -8,7 +8,9 @@
 3. Wait until `window.__g.G.settlements.length > 0`. That takes up to 2 minutes.
 4. Run game time without waiting: `window.__g.simulate(seconds, 0.5)`. Run it in chunks of 600 seconds and record
    the measures below after each chunk.
-5. To vary the play, set `window.__g.ENV.hourOverride` to a value from 0 to 24 before step 2.
+5. **Hour: CLOCK, not held** (town lesson, 13 Nov). Do NOT set `ENV.hourOverride`: a held hour never ends the night, and every
+   colony started at night stayed at 3 settlers. Since build 14, `simulate` moves the sun with the simulated time. To vary
+   the play, vary the start time with `window.__g.ENV.dateOverride` (a date and time) instead.
 
 ## Measures to record after each chunk
 Read these from `window.__g.G`:
@@ -27,7 +29,7 @@ Copy the exact fields from the card text shown on screen if the names differ. Th
 - **First 5 minutes:** what happens, and when (first hut, first request, first milestone).
 
 ## Size
-- Canary: 1 colony for 2 hours of game time.
+- Canary: 1 colony for 2 hours of game time. The town reads it by eye before the full run.
 - Full run: 200 colonies for 8 hours of game time each, at different hours. In WebKit, run 20 of them.
 - Also record any page error, with the engine it happened in.
 
