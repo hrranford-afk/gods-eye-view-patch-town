@@ -83,7 +83,7 @@ const uiVisible = (p) => p.evaluate(() => [...document.querySelectorAll('#ui > *
     const J = await ev(() => {
       const S = __g.SH, A = S.actors, J = __g.SHJ, st = (n) => { for (let i = 0; i < 60 * n; i++) __g.shopStep(1 / 60); }, out = {}, tray = S.ringHome;
       /* polish: the polisher rubs, the ring shines and sparkles */
-      S.ring.userData.shine = 0; A[0].tasks = J.polish(A[0], 3); let sparks = 0, rub = 0, shine0 = 0; for (let i = 0; i < 60 * 6; i++) { __g.shopStep(1 / 60); if (A[0].anim === 'polish') { rub = Math.max(rub, Math.abs(A[0].U.arms[0].rotation.x + 1.55)); } if (PARTS.some((p) => p.on && p.sp.material.blending === 2)) sparks++; } out.polish = { shine: S.ring.userData.shine, rub: +rub.toFixed(2), sparks, occFree: !S.occ.polish };
+      S.ring.userData.shine = 0; A[0].tasks = J.polish(A[0], 3); let sparks = 0, rub = 0, shine0 = 0; for (let i = 0; i < 60 * 12; i++) { __g.shopStep(1 / 60); if (A[0].anim === 'polish') { rub = Math.max(rub, Math.abs(A[0].U.arms[0].rotation.x + 1.55)); } if (PARTS.some((p) => p.on && p.sp.material.blending === 2)) sparks++; } out.polish = { shine: S.ring.userData.shine, rub: +rub.toFixed(2), sparks, occFree: !S.occ.polish };
       /* wrap: ribbon and bow come on, a pop at the end */
       const w = S.wrap; A[1].tasks = J.wrap(A[1], 3); let seen = []; for (let i = 0; i < 60 * 8; i++) { __g.shopStep(1 / 60); if (i % 30 === 0) seen.push(w.children.filter((o) => o.visible).length); } out.wrap = { seen: [Math.min(...seen), seen[seen.length - 1]], bowScale: +w.children[w.children.length - 1].scale.x.toFixed(2), arms: A[1].anim };
       /* hang: the necklace reveals while the creature walks along it */
@@ -183,10 +183,10 @@ const uiVisible = (p) => p.evaluate(() => [...document.querySelectorAll('#ui > *
   if (want('shots')) {
     const setView = (f) => ev(f);
     /* s1: the whole practice shop (landscape) */
-    await ev(() => { const S = __g.SH; S.manual = false; __g.shopReset('play'); __g.shopArrive(0, true); S.manual = true; for (let i = 0; i < 60 * 14; i++) __g.shopStep(1 / 60); S.cam.view = 'shop'; S.cam.yaw = -0.3; S.cam.pitch = 0.36; S.cam.zoom = 0.5; S.cam.snap = true; S.manual = false; }); await sleep(1500); await p.screenshot({ path: OUT + 's1-shop.png' });
+    await ev(() => { const S = __g.SH; S.manual = false; __g.shopReset('play'); __g.shopArrive(0, true); S.manual = true; for (let i = 0; i < 60 * 14; i++) __g.shopStep(1 / 60); S.cam.view = 'shop'; S.cam.yaw = 0.08; S.cam.pitch = 0.5; S.cam.zoom = 1.0; S.cam.snap = true; S.manual = false; }); await sleep(1500); await p.screenshot({ path: OUT + 's1-shop.png' });
     /* s2: polishing the ring (landscape, close) */
     await ev(() => { const S = __g.SH; S.manual = true; __g.shopReset('director'); __g.shopArrive(0, true); S.dir = { on: true, rec: [], log: [], t: 0 }; __g.shopDirScript(); S.dir = null; document.body.classList.add('take'); });
-    await ev(() => { const S = __g.SH; while (S.time < 12.4) __g.shopStep(1 / 60); const C = S.cam; C.view = 'stage'; C.focus = [0.065, 0.045, 0.03]; C.yaw = 0.05; C.pitch = 0.2; C.zoom = 0.3; C.snap = true; S.manual = false; S.acc = 0; }); await sleep(120);
+    await ev(() => { const S = __g.SH; while (S.time < 12.4) __g.shopStep(1 / 60); const C = S.cam; C.view = 'stage'; C.focus = [0.125, 0.045, 0.03]; C.yaw = -0.55; C.pitch = 0.24; C.zoom = 0.3; C.snap = true; S.manual = false; S.acc = 0; }); await sleep(120);
     await ev(() => { __g.SH.manual = true; }); await sleep(900); await p.screenshot({ path: OUT + 's2-polish.png' });
     await ev(() => { document.body.classList.remove('take'); __g.SH.cam.focus = null; });
     await p.close(); await L.ctx.close();

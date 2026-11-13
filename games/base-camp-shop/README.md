@@ -54,7 +54,7 @@ The pieces are separate on purpose:
 - `models/shop-props.js`: the jewellery props and the practice shop.
 - `models/props.js`, `models/decor.js`, `models/cc0/`, `assets/`: copied unchanged from `games/base-camp`.
 - `tests/shop-test.cjs`: the test (below). `tests/ar-fake.js`: copied from the main game's tests.
-- `shots/`: `s1-shop.png` (the practice shop), `s2-polish.png`, `s3-proposal.png` (iPad portrait), `s4-finale.png` (portrait), `s5-find.png` (portrait), `ar-placed.png`.
+- `shots/`: `s1-shop.png` (the practice shop, landscape), `s2-polish.png` (landscape), `s3-proposal.png`, `s4-finale.png` and `s5-find.png` (all three in iPad portrait, 820 x 1180), `ar-placed.png` (the AR scene placed on the fake counter, no camera picture in the fake).
 
 ## Test
 

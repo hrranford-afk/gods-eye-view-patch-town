@@ -115,7 +115,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 #shopmsg{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 14px);font:800 15px var(--body);color:#fff6e6;text-align:center;max-width:min(92vw,460px);z-index:4}
 #cd{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translateX(-50%);font:900 58px var(--body);color:#fff6e6;text-shadow:0 3px 0 #7a4a22,0 0 16px rgba(0,0,0,.35);pointer-events:none;z-index:9}
 #shopRow{margin-top:10px}
-body.shop #env,body.shop #wx{display:none !important}body.take #ui>*:not(#cd){visibility:hidden !important}body.take #arLog{display:none}
+body.shop #env,body.shop #wx,body.shop #card,body.shop #gstrip,body.shop #ccam,body.shop #reqs,body.shop #sel,body.shop #top{display:none !important}body.take #ui>*:not(#cd){visibility:hidden !important}body.take #arLog{display:none}
 </style>
 </head>
 <body>
@@ -6539,9 +6539,9 @@ const SHOP = true;
 const SH_H = 1 / 60, SH_SEED = 20251224, SH_TAKE = 30, SH_COUNT = 3;
 const SHL = { /* the stage, in metres, stage-local: x right, z towards the viewer, y up from the counter. fy = the top of the velvet runner. */
   fy: 0.0042, poleA: [-0.375, -0.10], poleAH: 0.30, poleB: [-0.105, 0.0], poleBH: 0.056, crate: [-0.30, -0.075], tree: [-0.085, -0.095], plaque: [0.075, -0.125], gem: [0.215, -0.07], shelf: [0.325, -0.075],
-  tray: [0.085, 0.03], necklace: [-0.27, 0.10], wrapBox: [0.255, 0.082], wrapStand: [0.255, 0.05], polish: [0.036, 0.03], gaze: [0.178, -0.06], kneel: [0.118, -0.052],
+  tray: [0.085, 0.03], necklace: [-0.27, 0.10], wrapBox: [0.255, 0.082], wrapStand: [0.255, 0.05], polish: [0.166, 0.036], gaze: [0.178, -0.06], kneel: [0.118, -0.052],
   spots: { star: [-0.02, -0.05], chain: [-0.215, -0.05], stocking: [-0.05, 0.07], mini: [-0.12, 0.035] }, landing: [[-0.225, 0.052], [-0.185, 0.078], [-0.15, 0.05], [-0.255, 0.05], [-0.2, 0.03]],
-  lineup: [[0.0, 0.065], [0.05, 0.055], [0.1, 0.055], [0.15, 0.065], [0.205, 0.06]],
+  lineup: [[0.0, 0.1], [0.05, 0.095], [0.1, 0.095], [0.15, 0.1], [0.205, 0.098]],
   cable: [[-0.375, 0.3062, -0.10], [-0.31, 0.17, -0.07], [-0.25, 0.092, -0.04], [-0.195, 0.0655, -0.015], [-0.14, 0.0615, 0.0], [-0.105, 0.0615, 0.0]], park: 0.9,
 };
 const SH_ACT = [{ name: 'Spark', ck: 'Glip', hue: 0.14 }, { name: 'Moss', ck: 'Grizzle', hue: 0.33 }, { name: 'Fluff', ck: 'Fluffflur', hue: 0.55 }, { name: 'Twirl', ck: 'Glimmerfluff', hue: 0.88 }, { name: 'Lint', ck: 'Gloop', hue: 0.62 }];
@@ -6600,7 +6600,7 @@ function shopInit() {
 /* ---- the scene's start state (also the director's take 0) ---- */
 function shopReset(kind) {
   const fy = SHL.fy; SH.time = 0; SH.acc = 0; SH.ev = []; SH.occ = {}; SH.pops = []; SH.rng = seededRandom(SH_SEED); SH.auto = false; SH.mode = kind === 'find' ? 'find' : 'play'; SH.hearts = []; SH.log = [];
-  SH.confetti.userData.clear(); SH.heart.material.opacity = 0; SH.hint.material.opacity = 0; SH.plaque.userData.setGlow(0);
+  SH.confetti.userData.clear(); SH.plaque.userData.sparkle = 0; SH.heart.material.opacity = 0; SH.hint.material.opacity = 0; SH.plaque.userData.setGlow(0);
   SH.ring.position.copy(SH.ringHome); SH.ring.rotation.set(0, 0, 0); SH.ring.scale.setScalar(1); SH.ring.userData.shine = 0; SH.ring.userData.held = null; SH.gem.userData.face.visible = false; SH.gem.userData.gazer = null;
   const director = kind === 'director', full = kind === 'find' || !director;
   SH.neck.userData.reveal(director ? 0 : 1); SH.neck.visible = true; SH.wrap.userData.wrap(director ? 0 : 1); SH.giftTop.visible = !director && kind !== 'find' ? true : false; SH.gifts[1].visible = !director;
@@ -6736,7 +6736,7 @@ function shopConfetti(cx, cz, n, spread) { shLog('confetti'); SH.confetti.userDa
 
 /* ---- the jobs (each returns tasks for one creature) ---- */
 const SHJ = {
-  polish(a, d) { const sp = SHL.polish; return [{ k: 'go', x: sp[0], z: sp[1] }, { k: 'face', x: SH.ring.position.x, z: SH.ring.position.z }, { k: 'do', a: 'polish', d, s: () => { SH.occ.polish = a; }, on: (q, u) => { SH.ring.userData.shine = Math.min(1, u * 1.3); if (Math.floor(SH.time * 3) !== a.lastSp) { a.lastSp = Math.floor(SH.time * 3); const R = SH.ring.position, g = SH.ring.userData.gem.position; shPuff('spark', R.x + shRange(-0.012, 0.012), R.y + 0.02 + shRange(0, 0.012), R.z + 0.006, 1, { size: 0.009, add: true, vy: 0.012, life: 0.7, jit: 0.004, spread: 0.002 }); } },
+  polish(a, d) { const sp = SHL.polish; return [{ k: 'go', x: sp[0], z: sp[1] }, { k: 'face', x: SH.ring.position.x, z: SH.ring.position.z }, { k: 'do', a: 'polish', d, s: () => { SH.occ.polish = a; }, on: (q, u) => { SH.ring.userData.shine = Math.min(1, u * 1.3); if (Math.floor(SH.time * 6) !== a.lastSp) { a.lastSp = Math.floor(SH.time * 6); const R = SH.ring.position, ang = shR() * 6.283; shPuff(shR() < 0.5 ? 'spark' : 'star', R.x + Math.cos(ang) * 0.03, R.y + Math.sin(ang) * 0.03, R.z + 0.008, 1, { size: 0.012, add: true, vy: 0.012, life: 0.7, jit: 0.004, spread: 0.002 }); } },
     e: () => { const R = SH.ring.position; shPuff('star', R.x, R.y + 0.03, R.z + 0.006, 8, { size: 0.01, add: true, vy: 0.035, jit: 0.025, life: 1.1 }); shSfx('chime'); delete SH.occ.polish; } }]; },
   wrap(a, d) { const st = SHL.wrapStand, w = SH.wrap; return [{ k: 'go', x: st[0], z: st[1] }, { k: 'face', x: st[0], z: st[1] + 1 }, { k: 'do', a: 'wrap', d, s: () => { SH.occ.wrap = a; a.wrapDone = false; w.userData.wrap(0); }, on: (q, u) => { w.userData.wrap(Math.min(1, u * 1.06)); if (u > 0.9 && !q.wrapDone) { q.wrapDone = true; shopPop(w, 1); shPuff('star', SHL.wrapBox[0], SHL.fy + 0.045, SHL.wrapBox[1], 8, { size: 0.01, add: true, vy: 0.03, jit: 0.02 }); shSfx('tada'); } else if (u < 0.9 && Math.floor(u * 9) !== q.lastW) { q.lastW = Math.floor(u * 9); shSfx('squeak', 1.4); } }, e: () => { a.wrapDone = false; delete SH.occ.wrap; } }]; },
   hang(a, d) { const N = SH.neck, x0 = SHL.necklace[0] - N.userData.half + 0.012, x1 = SHL.necklace[0] + N.userData.half - 0.012, z = SHL.necklace[1] - 0.026; return [{ k: 'go', x: x0, z }, { k: 'face', x: x0, z: z + 1 }, { k: 'fn', f: () => { SH.occ.hang = a; N.userData.reveal(0); } },
@@ -6770,12 +6770,12 @@ function shopPropose(t0, who) {
     { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'push', d: 0.55, s: () => { shSfx('boing'); } }, { k: 'go', x: K[0], z: K[1], spd: 0.09 }, { k: 'face', x: G0[0], z: G0[1] }, { k: 'fn', f: () => { A.ringTarget = 1; shLog('kneel'); } }, { k: 'do', a: 'kneel', d: 99, s: () => { A.shaky = true; } }]); });
   at(1.6, () => { for (const [f, off] of [[Bq, [0.058, -0.04]], [C, [0.034, -0.016]]]) shopCmd(f, [{ k: 'go', x: off[0], z: off[1] }, { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'push', d: 0.6 }, { k: 'do', a: 'clap', d: 3 }]); });
   at(1.0, () => { shopCmd(E, [{ k: 'go', x: 0.245, z: -0.02 }, { k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'nervous', d: 2.8 }]); });
-  at(4.4, () => { shopCmd(D, [{ k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'gasp', d: 1.4, s: () => { shLog('gasp'); SH.gem.userData.gazer = null; shSfx('squeak', 1.7); shPuff('star', D.x, SHL.fy + 0.07, D.z, 4, { size: 0.008, add: true, vy: 0.03 }); } }]); A.shaky = false; });
-  at(5.6, () => { shopHeart(D.x, D.z); shopCmd(D, [{ k: 'do', a: 'nod', d: 1.1 }]); shSfx('giggle', 1.5); });
-  at(6.7, () => { shopCmd(D, [{ k: 'do', a: 'joy', d: 2.3, s: () => { shLog('joy'); shSfx('cheer'); } }]); shopConfetti(0.14, -0.03, 90, 0.5); shSfx('fanfare');
+  at(5.5, () => { shopCmd(D, [{ k: 'face', x: K[0], z: K[1] }, { k: 'do', a: 'gasp', d: 1.4, s: () => { shLog('gasp'); SH.gem.userData.gazer = null; shSfx('squeak', 1.7); shPuff('star', D.x, SHL.fy + 0.07, D.z, 4, { size: 0.008, add: true, vy: 0.03 }); } }]); A.shaky = false; });
+  at(6.7, () => { shopHeart(D.x, D.z); shopCmd(D, [{ k: 'do', a: 'nod', d: 1.1 }]); shSfx('giggle', 1.5); });
+  at(7.8, () => { shopCmd(D, [{ k: 'do', a: 'joy', d: 2.3, s: () => { shLog('joy'); shSfx('cheer'); } }]); shopConfetti(0.14, -0.03, 90, 0.5); shSfx('fanfare');
     shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 1; } }, { k: 'do', a: 'joy', d: 2.2, s: () => { A.shaky = false; } }]); for (const f of [Bq, C]) shopCmd(f, [{ k: 'do', a: 'cheer', d: 3, s: () => { shLog('cheer'); } }]); shopCmd(E, [{ k: 'do', a: 'sob', d: 3, s: () => { shPuff('drop', E.x, SHL.fy + 0.06, E.z, 3, { size: 0.007, vy: -0.01, life: 0.8 }); } }]); });
-  at(8.7, () => { shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 0; A.hold = 0; ring.userData.held = D; D.hold = 1; D.ringK = 1; D.ringTarget = 1; shSfx('chime'); } }, { k: 'do', a: 'cheer', d: 2 }]); shopCmd(D, [{ k: 'do', a: 'cheer', d: 2 }]); });
-  return 9.2 + lead0;
+  at(9.6, () => { shopCmd(A, [{ k: 'fn', f: () => { A.ringTarget = 0; A.hold = 0; ring.userData.held = D; D.hold = 1; D.ringK = 1; D.ringTarget = 1; shSfx('chime'); } }, { k: 'do', a: 'cheer', d: 2 }]); shopCmd(D, [{ k: 'do', a: 'cheer', d: 2 }]); });
+  return 10.1 + lead0;
 }
 
 /* ---- the director: one scripted, seeded, 30 second take ---- */
@@ -6793,12 +6793,12 @@ function shopDirScript() {
   shopArrive(0, false);
   const go = (t, who, tasks) => shAt(t, () => shopCmd(who, tasks));
   /* 3.2 to 9: decorating fast (crate -> the four decorations), D heads for the gem */
-  go(3.3, a, [...SHJ.decorate(a, 'star'), ...SHJ.polish(a, 6.4)]); go(3.5, b, [...SHJ.decorate(b, 'chain'), ...SHJ.wrap(b, 5.0), { k: 'go', x: S.wrapBox[0] - 0.055, z: S.wrapBox[1] }, { k: 'fn', f: () => { SH.giftTop.visible = true; shopPop(SH.giftTop, 0.85); } }, { k: 'do', a: 'cheer', d: 99 }]); go(3.8, c, [...SHJ.decorate(c, 'stocking'), ...SHJ.hang(c, 5.4), { k: 'do', a: 'clap', d: 99 }]); go(4.8, e, [...SHJ.decorate(e, 'mini'), { k: 'do', a: 'clap', d: 0.7 }, { k: 'go', x: 0.0, z: 0.09 }, { k: 'face', x: 0.1, z: 0.04 }, { k: 'do', a: 'shrug', d: 1.2 }, { k: 'do', a: 'clap', d: 99 }]);
+  go(3.3, a, [...SHJ.decorate(a, 'star'), ...SHJ.polish(a, 5.6)]); go(3.5, b, [...SHJ.decorate(b, 'chain'), ...SHJ.wrap(b, 5.0), { k: 'go', x: S.wrapBox[0] - 0.055, z: S.wrapBox[1] }, { k: 'fn', f: () => { SH.giftTop.visible = true; shopPop(SH.giftTop, 0.85); } }, { k: 'do', a: 'cheer', d: 99 }]); go(3.8, c, [...SHJ.decorate(c, 'stocking'), ...SHJ.hang(c, 5.4), { k: 'do', a: 'clap', d: 99 }]); go(4.8, e, [...SHJ.decorate(e, 'mini'), { k: 'do', a: 'clap', d: 0.7 }, { k: 'go', x: 0.0, z: 0.09 }, { k: 'face', x: 0.1, z: 0.04 }, { k: 'do', a: 'shrug', d: 1.2 }, { k: 'do', a: 'clap', d: 99 }]);
   go(5.0, d, [{ k: 'go', x: S.gaze[0] - 0.02, z: S.gaze[1] + 0.03 }, { k: 'do', a: 'wave', d: 0.5 }, ...SHJ.gaze(d, 15)]);
   /* 8 to 16: polish, wrap, hang and gaze run on from the decorating (each creature's tasks are one chain) */
   shAt(15.8, () => { SH.ring.userData.shine = 1; });
   /* 17.2: the proposal */
-  const endP = shopPropose(16.0, {});
+  const endP = shopPropose(15.2, {});
   /* 25.6: the line-up in front of the plaque; the plaque glows; sparkles; a second burst of confetti */
   const pl = SHL.lineup;
   shAt(25.4, () => { [a, b, c, d, e].forEach((q, i) => { const L = pl[[1, 0, 3, 2, 4][i]]; shopCmd(q, [{ k: 'go', x: L[0], z: L[1], spd: 0.15 }, { k: 'face', x: L[0], z: L[1] + 1 }, { k: 'do', a: 'cheer', d: 20 }]); }); });
@@ -6860,7 +6860,7 @@ function shopEnter(ar) {
   SH.on = true; document.body.classList.add('shop'); SH.ar = !!ar; SH.placed = !ar; SH.find = null; SH.dir = null; G.auto = false; G.phase = 'shop'; G.intent = 'play'; document.body.classList.remove('auto'); document.body.classList.remove('take');
   for (const id of ['title', 'top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot', 'ccam', 'gstrip', 'wx']) { const el = $(id); if (el) el.hidden = true; }
   SH.root.visible = true; SH.room.visible = !ar; scene.background = scene.background || new THREE.Color(); SH.keepHour = ENV.hourOverride; ENV.hourOverride = 15; envUpdate();
-  if (!ar) { SH.stage.position.copy(SH.stagePos); SH.stage.rotation.set(0, 0, 0); SH.stage.scale.setScalar(1); SH.cam.view = 'stage'; SH.cam.yaw = 0.12; SH.cam.pitch = innerWidth < innerHeight ? 0.85 : 0.42; SH.cam.zoom = innerWidth < innerHeight ? 0.9 : 0.74; SH.cam.focus = null; SH.cam.dist = SH.cam.gDist = 1.0; SH.cam.tgt = SH.stagePos.clone().add(new THREE.Vector3(0, 0.05, 0)); SH.cam.gt = SH.cam.tgt.clone(); }
+  if (!ar) { SH.stage.position.copy(SH.stagePos); SH.stage.rotation.set(0, 0, 0); SH.stage.scale.setScalar(1); SH.cam.view = 'stage'; SH.cam.yaw = 0.12; SH.cam.pitch = innerWidth < innerHeight ? 0.85 : 0.42; SH.cam.zoom = innerWidth < innerHeight ? 1.08 : 0.74; SH.cam.focus = null; SH.cam.dist = SH.cam.gDist = 1.0; SH.cam.tgt = SH.stagePos.clone().add(new THREE.Vector3(0, 0.05, 0)); SH.cam.gt = SH.cam.tgt.clone(); }
   else { SH.stage.visible = false; SH.reticle = SH.reticle || (() => { const r = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.085, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe08a, depthTest: false, transparent: true, opacity: 0.9 })); r.renderOrder = 20; scene.add(r); return r; })(); SH.reticle.visible = true; }
   shopReset('play'); if (!ar) { shopArrive(0.3, false); SH.auto = true; }
   shopUi(); updateTitle();
@@ -6879,7 +6879,7 @@ function shopExit() { const ar = SH.ar; shopLeave(); if (ar && AR.on) { try { AR
 function shopCamera(dt) {
   if (AR.on) return; const asp = innerWidth / innerHeight, f = asp < 1.1 ? clamp(1.05 / asp, 1, 1.7) : 1, C = SH.cam; SH.stage.updateWorldMatrix(true, false);
   if (SH.dir && SH.dir.on) {
-    const o = shopDirCam(SH.time, SH.dirCamBuf || (SH.dirCamBuf = [0, 0, 0, 0, 0, 0])), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + Math.max((o[1] - ly) * f, f > 1 ? 0.42 * Math.hypot((o[0] - lx) * f, (o[2] - lz) * f) : 0), lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return;
+    const o = shopDirCam(SH.time, SH.dirCamBuf || (SH.dirCamBuf = [0, 0, 0, 0, 0, 0])), lx = o[3], ly = o[4], lz = o[5], ff = f > 1 ? 1 + (f - 1) * (1 - 0.65 * shEase((SH.time - 24) / 3)) : 1; tmpV.set(lx + (o[0] - lx) * ff, ly + Math.max((o[1] - ly) * ff, ff > 1 ? 0.55 * Math.hypot((o[0] - lx) * ff, (o[2] - lz) * ff) : 0), lz + (o[2] - lz) * ff); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return;
   }
   if (SH.dir) { const o = shopDirCam(0, [0, 0, 0, 0, 0, 0]), lx = o[3], ly = o[4], lz = o[5]; tmpV.set(lx + (o[0] - lx) * f, ly + (o[1] - ly) * f, lz + (o[2] - lz) * f); camera.position.copy(SH.stage.localToWorld(tmpV)); tmpV2.set(lx, ly, lz); camera.lookAt(SH.stage.localToWorld(tmpV2)); camera.updateMatrixWorld(true); return; }
   const k = Math.min(1, dt * 4), shopView = C.view === 'shop';
