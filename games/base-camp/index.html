@@ -44,6 +44,7 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .req{display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
 .req b{font-size:12px;color:#a85a1e;display:block}
 .req button{min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
+@media (orientation:portrait),(max-width:560px){#reqs{max-width:min(94vw,420px)}.req{flex-wrap:wrap}.req>div{flex:1 1 0;min-width:9em}.req button{flex:1 0 100%}} /* build 19: narrow screens stack the button under the text */
 #toast{font-weight:700;font-size:13px;text-align:center;max-width:100%}#toast .glass{padding:4px 10px;border-radius:10px}
 #toast:empty{display:none}
 #env{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);font-size:12px;font-weight:700;display:grid;gap:4px;min-width:170px}
@@ -69,7 +70,7 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 body.inar #msgs{top:calc(env(safe-area-inset-top,0px) + 168px)}
 #msgs>*{pointer-events:none}#msgs>#repc{pointer-events:auto}
 #rstat{font-size:12px;font-weight:700;padding:3px 10px;max-width:100%;text-align:center}
-#repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
+#repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rm{opacity:.8;font-weight:700}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
 body.inar #diary.side{left:8px;top:calc(env(safe-area-inset-top,0px) + 170px);width:min(88vw,380px);max-height:46vh;padding:10px 12px;font-size:13px}body.inar #diary.side ul{font-size:13px;gap:5px}body.inar #diary.side .dh{font-size:16px}body.inar #diary.side button.big{min-height:38px;font-size:14px;padding:4px 14px}
 .lib{display:flex;gap:10px;align-items:center}.lib>div{flex:1}.lib button{min-height:34px;font-size:13px}.badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 14px var(--body);color:#2b1d12;flex:none}
 #welcome{text-align:left;font-size:14px;line-height:1.4;background:rgba(255,246,230,.12);border-radius:12px;padding:8px 12px;margin-bottom:10px;color:#f6e6cc}
@@ -2272,9 +2273,9 @@ function answerAsk(yes) {
   if (G.asks.length) askNext(); else { $('ask').hidden = true; showReport(); }
 }
 // ---- the "what changed" card ----
-function reportCompact(L) { /* at most 2 short lines, small text, "More" opens the full list; gone after about 6 s */
+function reportCompact(L) { /* 1 short line plus "and N more", small text, "More" opens the full list; gone after about 6 s */
   const c = $('repc'), short = (t) => { t = String(t); return t.length > 60 ? t.slice(0, 57).replace(/\s+\S*$/, '') + '\u2026' : t; }, full = L.slice();
-  c.hidden = false; c.innerHTML = '<div class="rt">What the colonists noticed</div>' + L.slice(0, 2).map((l) => '<div class="rl">' + esc(short(l.text)) + '</div>').join('') + '<div class="rb"><button id="repMore">More</button><button id="repX" aria-label="Close">\u00d7</button></div>';
+  c.hidden = false; c.innerHTML = '<div class="rt">What the colonists noticed</div>' + L.slice(0, 1).map((l) => '<div class="rl">' + esc(short(l.text)) + '</div>').join('') + (L.length > 1 ? '<div class="rl rm">and ' + (L.length - 1) + ' more</div>' : '') + '<div class="rb"><button id="repMore">More</button><button id="repX" aria-label="Close">\u00d7</button></div>';
   clearTimeout(c._t); const hide = () => { c.hidden = true; c.innerHTML = ''; }; c._t = setTimeout(() => { hide(); G.report = null; }, 6000);
   $('repX').onclick = () => { clearTimeout(c._t); hide(); G.report = null; };
   $('repMore').onclick = () => { clearTimeout(c._t); hide(); const el = $('diary'); el.hidden = false; el.classList.add('side'); el.innerHTML = '<div class="dh">What the colonists noticed</div><ul>' + full.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>'; $('dClose').onclick = () => { el.hidden = true; G.report = null; }; };
@@ -2285,7 +2286,7 @@ function showReport() {
   if (sm) parts.push(sm + ' place' + (sm > 1 ? 's' : '') + ' the same');
   const L = rep.lines.slice(0, 10);
   if (!L.length) L.push({ text: 'Everything is where the colonists left it. They carry on.', by: '' });
-  if (AR.on || innerWidth < 760) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
+  if (AR.on || innerWidth < 760 || innerHeight > innerWidth) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
   el.hidden = false; el.classList.add('side');
   el.innerHTML = '<div class="dh">What the colonists noticed</div>' + (parts.length ? '<div class="dsub">' + parts.join(', ') + '</div>' : '') + '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>';
   $('dClose').onclick = () => { el.hidden = true; G.report = null; };
