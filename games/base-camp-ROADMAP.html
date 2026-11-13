@@ -1,0 +1,176 @@
+<title>Base Camp Roadmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* layout: one column; today's Gantt band, then checklist, then weeks ahead as a stepped track */
+:root{
+  --bg:#f6f3ee; --panel:#fffdf9; --fg:#2a2420; --mute:#7a6d63; --line:#e3dbd1;
+  --red:#c8452d; --teal:#2f7f86; --gold:#d99a2b; --done:#3f8f4f; --run:#d99a2b; --wait:#8a7fb8; --bad:#c8452d;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1b1815; --panel:#24201c; --fg:#efe7dd; --mute:#a99b8e; --line:#3a332d;
+  --red:#e36a50; --teal:#5fb3ba; --gold:#e8b14e; --done:#6cc07c; --run:#e8b14e; --wait:#a99ee0; --bad:#e36a50; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1b1815; --panel:#24201c; --fg:#efe7dd; --mute:#a99b8e; --line:#3a332d;
+  --red:#e36a50; --teal:#5fb3ba; --gold:#e8b14e; --done:#6cc07c; --run:#e8b14e; --wait:#a99ee0; --bad:#e36a50; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:28px}
+h1{font:700 32px/1.1 var(--display);margin:0;text-wrap:balance}
+h2{font:700 21px/1.2 var(--display);margin:0 0 10px}
+.sub{color:var(--mute);margin:4px 0 0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.key{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--mute);margin-bottom:12px}
+.key span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:3px;display:inline-block}
+.gscroll{overflow-x:auto}
+.gantt{min-width:720px;display:grid;grid-template-columns:200px 1fr;row-gap:6px;font-size:13px}
+.hours{position:relative;height:20px;color:var(--mute);font-variant-numeric:tabular-nums}
+.hours span{position:absolute;transform:translateX(-50%);font-size:11px}
+.lbl{padding-right:10px;align-self:center;min-width:0}
+.track{position:relative;height:22px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 10%);border-radius:4px}
+.bar{position:absolute;top:3px;bottom:3px;border-radius:5px}
+.bar.done{background:var(--done)} .bar.run{background:var(--run)}
+.dot{position:absolute;top:2px;width:4px;bottom:2px;background:var(--bad);border-radius:2px}
+.now{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--red)}
+.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.list h3{font:700 15px var(--display);margin:0 0 6px;letter-spacing:.02em}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+li{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:start}
+.t{font:700 13px var(--display);text-align:center;border-radius:5px;line-height:20px}
+.t.d{background:var(--done);color:var(--panel)} .t.r{background:var(--run);color:var(--panel)} .t.w{background:var(--wait);color:var(--panel)}
+.weeks{display:grid;gap:12px}
+.wk{display:grid;grid-template-columns:150px 1fr;gap:14px;border-top:1px solid var(--line);padding-top:12px}
+.wk:first-child{border-top:0;padding-top:0}
+.when{font:700 15px var(--display);color:var(--teal)}
+.when small{display:block;font:400 12px var(--body);color:var(--mute)}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute);margin-left:6px}
+.road{min-width:1000px;display:grid;grid-template-columns:190px 1fr;row-gap:7px;font-size:12.5px}
+.rtrack{position:relative;min-height:26px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px calc(100%/6));border-radius:4px}
+.rb{position:absolute;top:2px;bottom:2px;border-radius:5px;color:var(--panel);font-size:11px;font-weight:600;line-height:22px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb.c{background:var(--teal)} .rb.h{background:var(--gold)} .rb.p{background:var(--wait)}
+.ms{position:absolute;top:4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--red);border:2px solid var(--panel)}
+.msl{position:absolute;top:-2px;font-size:11px;font-weight:700;color:var(--red);white-space:nowrap;transform:translateX(-50%)}
+.rl{align-self:center;font-weight:600;min-width:0}
+.rl small{display:block;font-weight:400;color:var(--mute);font-size:11px}
+@media (max-width:560px){.wk{grid-template-columns:1fr;gap:4px}}
+</style>
+<div class="wrap">
+<header>
+<h1>Base Camp: today and what's next</h1>
+<p class="sub">Thursday 13 Nov 2026 · UK times · made by CAIRN at 15:05</p>
+</header>
+
+<section>
+<h2>Today, hour by hour</h2>
+<div class="key"><span><i class="sw" style="background:var(--done)"></i>Done</span><span><i class="sw" style="background:var(--run)"></i>Being built now</span><span><i class="sw" style="background:var(--bad);width:4px"></i>Computer restart</span><span><i class="sw" style="background:var(--red);width:2px"></i>Now (15:05)</span></div>
+<div class="gscroll"><div class="gantt" id="g"></div></div>
+</section>
+
+<section>
+<h2>Checklist</h2>
+<div class="list">
+<div><h3>Live today</h3><ul>
+<li><span class="t d">✓</span><span>Matchbox and tin-can huts kept (your call)</span></li>
+<li><span class="t d">✓</span><span>Build 16: one look, with ink outlines everywhere</span></li>
+<li><span class="t d">✓</span><span>Build 17: ChatGPT's Backpack Scout mouse</span></li>
+<li><span class="t d">✓</span><span>Safari and iPhone fixed (the town found it)</span></li>
+<li><span class="t d">✓</span><span>Practice property and Places screen</span></li>
+</ul></div>
+<div><h3>Plans and papers</h3><ul>
+<li><span class="t d">✓</span><span>Waterworks plan, cheeky humour (B)</span></li>
+<li><span class="t d">✓</span><span>House plan: linked rooms, totems, Places</span></li>
+<li><span class="t d">✓</span><span>Build 19 fix list from your screenshots</span></li>
+<li><span class="t d">✓</span><span>My review: 7 out of 10</span></li>
+<li><span class="t d">✓</span><span>4 town orders and the zip</span></li>
+<li><span class="t d">✓</span><span>Budget ledger</span></li>
+</ul></div>
+<div><h3>Running now</h3><ul>
+<li><span class="t r">●</span><span>Build 18: pipes and bucket cars (testing)</span></li>
+<li><span class="t r">●</span><span>Build 19: card, panel, bubbles, slump</span></li>
+<li><span class="t r">●</span><span>Christmas decorations, done properly</span></li>
+<li><span class="t r">●</span><span>Baguettes &amp; Ballistics graphics</span></li>
+</ul></div>
+<div><h3>Waiting on you</h3><ul>
+<li><span class="t w">?</span><span>Paste the 4 orders to the town</span></li>
+<li><span class="t w">?</span><span>Yes or no to the GitHub tools</span></li>
+<li><span class="t w">?</span><span>Totems: real things or stickers</span></li>
+<li><span class="t w">?</span><span>Does Places feel right?</span></li>
+</ul></div>
+</div>
+</section>
+
+<section>
+<h2>The road to award-winning <span class="pill">CAIRN's proposal, dates can move</span></h2>
+<p class="sub" style="margin:0 0 12px">Ten tracks running side by side, from now to a finished 1.0 in spring 2027. ★ marks the moments players will remember and talk about.</p>
+<div class="key"><span><i class="sw" style="background:var(--teal)"></i>Cloud (CAIRN and builders)</span><span><i class="sw" style="background:var(--gold)"></i>Your hardware (the town)</span><span><i class="sw" style="background:var(--wait)"></i>Players and you</span><span><i class="sw" style="background:var(--red);width:10px;border-radius:50%"></i>Milestone</span></div>
+<div class="gscroll"><div class="road" id="road"></div></div>
+<div class="list" style="margin-top:18px">
+<div><h3>What wins awards</h3><ul>
+<li><span class="t d">1</span><span><b>A world-first idea.</b> A tiny colony that lives in your real home, follows the real date and weather, and travels from room to room.</span></li>
+<li><span class="t d">2</span><span><b>Polish and charm.</b> One art style, real sound, faces with feelings, nothing broken.</span></li>
+<li><span class="t d">3</span><span><b>Feeling.</b> You come home and they have been busy, and they made you an advent door.</span></li>
+<li><span class="t d">4</span><span><b>Made for everyone.</b> Little reading needed, icons and voice, big buttons. Built by a dyslexic designer for players like him.</span></li>
+<li><span class="t d">5</span><span><b>A story behind it.</b> One person, an AI team in the cloud and a town of AIs in his house.</span></li>
+</ul></div>
+<div><h3>★ Signature moments to build</h3><ul>
+<li><span class="t r">★</span><span>The Scout unrolls his map and leads the first expedition to your sink</span></li>
+<li><span class="t r">★</span><span>Creatures hide behind your real sofa and peek out (real-object hiding)</span></li>
+<li><span class="t r">★</span><span>The first drop of water runs down the straw and the crops perk up</span></li>
+<li><span class="t r">★</span><span>A traveller from the kitchen turns up in the shed with news</span></li>
+<li><span class="t r">★</span><span>It's raining outside, so they put up tiny umbrellas</span></li>
+<li><span class="t r">★</span><span>Christmas morning: they've decorated your whole house</span></li>
+<li><span class="t r">★</span><span>Visit Matt's house and your colony sends a scout to say hello</span></li>
+</ul></div>
+</div>
+</section>
+
+<section>
+<h2>Coming weeks <span class="pill">as far as decided</span></h2>
+<div class="weeks">
+<div class="wk"><div class="when">Tonight<small>your Mac, free</small></div><div>The town runs your orders: 200 robot players, 60 Christmas pictures, its own trained model, waterworks ideas, the Safari check.</div></div>
+<div class="wk"><div class="when">Week of 16 Nov<small>new fresh session</small></div><div>Put the town's words and pictures in, with their names. Build 20, <b>The House</b>: rooms joined by doors, travellers, the mouse leading expeditions, climbing lines up walls, and a totem check on your iPad. GitHub tools if you say yes: smarter paths, a smaller mouse file, tiny sounds.</div></div>
+<div class="wk"><div class="when">Sun 29 Nov<small>Advent starts</small></div><div>The advent calendar opens, one door a day. Christmas decorations and the residents' 24 door stories go live.</div></div>
+<div class="wk"><div class="when">December</div><div>Winter goal: lag the pipes with socks so they don't freeze. Real Radeon art replaces my placeholders. The first 10 minutes become a story, and the slump after each goal is fixed for good.</div></div>
+<div class="wk"><div class="when">Later<small>parked</small></div><div>Whole property and gardens, with bigger storage for maps. Vigil in 3D and AR. The arcade (Toy Cupboard). A real iPhone and iPad app. A newer 3D engine.</div></div>
+</div>
+</section>
+</div>
+<script>
+const S=7,E=17,rows=[
+["Huts taste call",7.3,7.5,"done"],
+["Build 16: one look",7.3,8.75,"done"],
+["ChatGPT mouse checked",7.5,7.75,"done"],
+["Waterworks plan",7.7,8.1,"done"],
+["Build 17: the mouse",8.75,12.27,"done"],
+["Safari fix (town's find)",10.8,10.9,"done"],
+["Town orders, zip, decor sheet",10.9,11.5,"done"],
+["Build 18: waterworks",12.3,16.5,"run"],
+["My play and review",12.3,12.7,"done"],
+["House, totems, Places plans",13,13.6,"done"],
+["Places prototype",13.6,15,"done"],
+["Build 19 fixes",13.8,16.75,"run"],
+["Christmas decorations",13.8,17,"run"],
+["B&B graphics pass",13.8,16.75,"run"]],R=[10.67,14.82],NOW=15.08;
+/* road: months from mid Nov 2026 (0) to mid May 2027 (6) */
+const RD=[
+["Milestones","",[],[[1.5,"Christmas alpha"],[2.6,"Friends test"],[4,"Beta"],[5.6,"1.0"]]],
+["Core game","first 10 min, goals, pacing",[[0,1,"c","Slump fix, goal chain"],[1,2.3,"c","First 10 minutes as a story"],[2.3,4,"c","Coming-home moments"],[4,5.6,"c","Balance from player data"]]],
+["House and AR","rooms, totems, walls",[[0,1.3,"c","The House: linked rooms, totems"],[1.3,2.6,"c","Wall climbs, gardens, big map storage"],[2.6,4,"c","Hide behind real objects, real light"]]],
+["Characters","the Scout, faces, story",[[0,1.2,"h","Residents write the advent doors"],[1.2,3,"c","Faces with feelings, named heroes"],[3,5,"h","Town's Colonist model writes their chatter"]]],
+["Art","one style",[[0,1.5,"h","Radeon: textures, decor pictures"],[1.5,3.5,"h","Radeon: 3D models from pictures"],[3.5,5,"c","Final art pass"]]],
+["Sound and music","",[[0.8,2,"c","Tiny sounds for everything"],[2,3.5,"c","Music that follows the colony"],[3.5,4.5,"c","Sound in AR space"]]],
+["Systems","water, trade, weather",[[0,0.6,"c","Waterworks"],[0.6,2,"c","Trade between rooms"],[2,3.5,"c","Real weather in play"],[3.5,4.5,"c","Crafting from things it recognises"]]],
+["For everyone","reading-light, voice",[[1,2.5,"c","Icon-first screens, voice lines"],[2.5,3.5,"p","Test with dyslexic players"]]],
+["Quality","speed, tests, saves",[[0,1.5,"c","Tests on every build"],[1.5,3,"c","Old iPads fast, newer 3D engine"],[3,4.5,"c","No crashes, safe saves"]]],
+["Robot players","200 a night",[[0,6,"h","The town plays it every night and reports where it drags"]]],
+["Real app","iPhone and iPad",[[2.5,4,"c","App prototype with full AR"],[4,5.6,"p","TestFlight, then App Store"]]],
+["Players and awards","",[[2.6,3.5,"p","Friends' homes: Matt, Mum & Dad's"],[4,5.6,"p","Beta players"],[5,6,"p","Trailer, awards entries"]]]];
+const MON=["Nov","Dec","Jan","Feb","Mar","Apr","May"],rp=m=>(m/6*100)+'%',road=document.getElementById('road');
+let rh='<div></div><div class="hours">';MON.forEach((m,i)=>rh+=`<span style="left:${rp(i)}">${m}</span>`);road.innerHTML=rh+'</div>';
+for(const[n,sub,bars,ms]of RD){let t=`<div class="rl">${n}${sub?`<small>${sub}</small>`:''}</div><div class="rtrack">`;for(const[a,b,k,txt]of bars)t+=`<i class="rb ${k}" style="left:${rp(a)};width:calc(${rp(b)} - ${rp(a)} - 3px)" title="${txt}">${txt}</i>`;for(const[m,txt]of(ms||[]))t+=`<i class="ms" style="left:${rp(m)}" title="${txt}"></i><span class="msl" style="left:${rp(m)};top:18px">${txt}</span>`;road.insertAdjacentHTML('beforeend',t+'</div>');}
+road.querySelector('.rtrack').style.minHeight='40px';
+const g=document.getElementById('g'),pc=h=>((h-S)/(E-S)*100)+'%';
+let hh='<div></div><div class="hours">';for(let h=S;h<=E;h++)hh+=`<span style="left:${pc(h)}">${String(h).padStart(2,'0')}:00</span>`;g.innerHTML=hh+'</div>';
+for(const[n,a,b,s]of rows){let t=`<div class="lbl">${n}</div><div class="track"><i class="bar ${s}" style="left:${pc(a)};width:calc(${pc(b)} - ${pc(a)})"></i>`;for(const r of R)t+=`<i class="dot" style="left:${pc(r)}"></i>`;g.insertAdjacentHTML('beforeend',t+`<i class="now" style="left:${pc(NOW)}"></i></div>`);}
+</script>
