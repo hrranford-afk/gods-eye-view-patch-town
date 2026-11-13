@@ -24,3 +24,16 @@ potentially? Because bear in mind they're going to kind of be going around the w
 
 ## Order
 Build 18 (waterworks), then build 19 (the fix list), then build 20 (the house plus wall routes).
+
+## Totems (Harry, 13 Nov: "surely a few totems will help, don't you think?") Yes.
+- **What exists.** Build 12 has a totem photo per room (taken on the iPad, kept on the iPad only). The matcher that
+  recognises the room from it is switched OFF (`HOME_TOTEM = false`), because it was never checked against real photos.
+- **Room totems.** Point the iPad at the room's totem, and that room's map loads at once and lines up. This fixes
+  "which room am I in?" and the drift after walking between rooms.
+- **Doorway totems.** One by each door joins two rooms on the house map: "this door leads from the kitchen to the hall".
+  Travellers use it, and the creatures build a little gate there.
+- **Check it first, on the iPad.** A "totem check" mode counts right, wrong and unsure matches on Harry's own totems,
+  and reports only the numbers. The photos never leave the iPad and never go into a model or onto GitHub. The matcher is
+  switched on only if it is right at least 9 times out of 10.
+- **Backup if real objects match badly.** Printable totem stickers: original bold patterns, easy for a camera to tell
+  apart.
