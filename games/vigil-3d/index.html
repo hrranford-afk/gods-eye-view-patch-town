@@ -1398,7 +1398,7 @@ function focusOn(p, instant) {
   cam.gx = p.x * 0.72; cam.gz = p.z * 0.72; camClampT();   /* lean a little toward the middle of the board */
   if (instant) { cam.tx = cam.gx; cam.tz = cam.gz; }
 }
-function fitDist() { const a = innerWidth / innerHeight; return Math.max(15, Math.min(60, 15 / (2 * Math.tan(19 * Math.PI / 180) * Math.min(a, 1.45)) + 4)); }
+function fitDist() { const a = innerWidth / innerHeight; return Math.max(15, Math.min(60, (a > 1 ? 15 : 11.5) / (2 * Math.tan(19 * Math.PI / 180) * Math.min(a, 1.45)) + 3)); }
 function wholeBoard() { cam.gx = 0; cam.gz = 0; cam.gd = Math.min(70, 25 / (2 * Math.tan(19 * Math.PI / 180) * Math.min(innerWidth / innerHeight, 1.5)) + 4); }
 function resize() {
   const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
@@ -1601,6 +1601,7 @@ window.__v = {
   fast(on) { SPEED.v = typeof on === "number" ? on : on ? 0 : 1; return SPEED.v; },
   tileXY(x, y) { const p = wpos(x, y, 0.3).project(camera); return { x: (p.x * 0.5 + 0.5) * innerWidth, y: (-p.y * 0.5 + 0.5) * innerHeight }; },
   camera(o) { Object.assign(cam, o); cam.gd = null; if (o.tx != null) cam.gx = o.tx; if (o.tz != null) cam.gz = o.tz; return { ...cam }; },
+  stats() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }; },
   W, H, key,
 };
 

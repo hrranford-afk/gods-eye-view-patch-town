@@ -91,7 +91,7 @@ const g2 = {
   heal: p => p.evaluate(() => { __vigil.heal(); return true; }),
   ext: p => p.evaluate(async () => { await __vigil.extract(); return true; }),
   end: p => p.evaluate(() => __vigil.endPlayerTurn()),
-  info: (p, ai, ti) => p.evaluate(([ai, ti]) => { const V = __vigil, i = V.attackInfo(V.units[ai], V.units[ti]); return i && { melee: i.melee, need: i.need, dice: i.dice, dmg: i.dmg, p: i.p, exp: i.exp, kill: i.kill, burn: i.burn || 0, splash: (i.splash || []).map(s => V.units.indexOf(s)) }; }, [ai, ti]),
+  info: (p, ai, ti) => p.evaluate(([ai, ti]) => { const V = __vigil, i = V.units[ai] && V.units[ti] && V.attackInfo(V.units[ai], V.units[ti]); return i && { melee: i.melee, need: i.need, dice: i.dice, dmg: i.dmg, p: i.p, exp: i.exp, kill: i.kill, burn: i.burn || 0, splash: (i.splash || []).map(s => V.units.indexOf(s)) }; }, [ai, ti]),
   grid: (p, seed) => p.evaluate(seed => __vigil.genCity(seed).g.map(r => r.join("")), seed),
 };
 
@@ -250,16 +250,17 @@ async function playTurns(page, _kind, turns, par) {
   const cmp = async (what) => {
     if (!P2) return;
     const a = await snap3d(page), b = await snap2d(P2); log.stateChecks++;
-    if (!same(a, b) && log.stateBad.length < 4) log.stateBad.push({ at: what, diff: firstDiff(a, b) });
+    if (!same(a, b)) { log.stop = true; if (log.stateBad.length < 4) log.stateBad.push({ at: what, diff: firstDiff(a, b) }); }
   };
   for (let t = 0; t < turns; t++) {
-    if (process.env.DEBUG) console.log("   turn", t, new Date().toISOString().slice(14, 23));
+    if (log.stop) break;
+    if (process.env.DEBUG) console.log("   turn", t);
     let s = await page.evaluate(() => __v.state());
     if (s.phase !== "player") break;
     const wIdx = s.units.map((u, i) => [u, i]).filter(([u]) => u.side === "w" && !u.drone && u.hp > 0 && !u.out);
     for (const [w, wi] of wIdx) {
       s = await page.evaluate(() => __v.state());
-      if (s.phase !== "player") break;
+      if (s.phase !== "player" || log.stop) break;
       const me = s.units[wi]; if (me.hp <= 0 || me.out) continue;
       if (process.env.DEBUG) console.log("     unit", wi, me.kind);
       await page.evaluate(id => __v.select(id), me.id); if (P2) await g2.select(P2, wi);
@@ -267,6 +268,7 @@ async function playTurns(page, _kind, turns, par) {
       if (P2) {
         const r2 = await g2.reach(P2, wi), r3 = await page.evaluate(id => __v.reach(id), me.id); log.reachChecks++;
         if (JSON.stringify(r2) !== JSON.stringify(r3) && log.reachBad.length < 3) log.reachBad.push({ turn: t, unit: wi, only3d: r3.filter(k => !r2.includes(k)).slice(0, 5), only2d: r2.filter(k => !r3.includes(k)).slice(0, 5) });
+        if (log.stop) break;
         for (const [ti, tu] of s.units.map((u, i) => [i, u])) {
           if (tu.side !== "b") continue;
           const i3 = await page.evaluate(([a, b]) => __v.info(a, b), [me.id, tu.id]), i2 = await g2.info(P2, wi, ti); log.infoChecks++;
