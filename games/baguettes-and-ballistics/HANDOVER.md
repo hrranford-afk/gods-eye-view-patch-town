@@ -1158,6 +1158,16 @@ Also on, always: ACES tone mapping with sRGB output (colours are written as pain
 
 **Frame-time watchdog** (`gfxWatch`, `GFX.auto`, `GFX.budgetMs` = 24). After a 3 s calm-down, if the smoothed frame time stays over 24 ms for 2.5 s, stage 1 drops the tilt-shift pass and its target; if it is still slow, stage 2 turns off particles and drops the pixel ratio to 1. It never switches back on. A `gfxdowngrade` event is dispatched. Use `?auto=0` when measuring.
 
-**Measured** (headless Chromium, SwiftShader, 1180 x 820, level 1 battle, 8 s of frames, `?auto=0`; SwiftShader is a CPU renderer, so only the ratios mean anything): see the table in BUILD_LOG.md. Screenshots: `shots/gfx-before-after-1.png` to `-3.png` (left half old game, right half new).
+**Measured** (headless Chromium, SwiftShader, 1180 x 820, level 1 battle, 8 s of frames, `?auto=0`; SwiftShader is a CPU renderer, so only the ratios mean anything): 
+
+| Scene (battle, 8 s) | old game | graphics on | graphics off (all flags 0, pr=1) |
+|---|---|---|---|
+| Level 1 Breakfast table | 2.16 fps | 1.32 | 1.84 |
+| Level 3 Remote drawer | 1.36 | 1.08 | 1.35 |
+| Level 5 Hob | 1.35 | 0.94 | 1.68 |
+
+So graphics on cost about 20 to 45% of the frame rate on a CPU renderer (the machine was shared, so the numbers wobble by about 15%). The watchdog frame filter was fixed on 13 Nov: runs of long frames now count, so it also fires on very slow devices (under SwiftShader it reached stage 2 within 60 s).
+
+ Screenshots: `shots/gfx-before-after-1.png` to `-3.png` (left half old game, right half new).
 
 Rough edges: the 4x multisample target and the blur are heavy on a software renderer; on an iPad they are one extra full-screen pass. Not checked on real iPad hardware.

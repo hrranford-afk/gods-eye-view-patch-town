@@ -470,7 +470,10 @@ const gfxV = new THREE.Vector3();
 /* Frame-time watchdog: a slow average first drops the tilt-shift pass (and its multisampled target), then the particle effects and the extra pixels. It never turns them back on. */
 const gfxPerf = { ema: 16, over: 0, stage: 0, calm: 3 };
 function gfxWatch(rawMs) {
-  if (!GFX.auto || rawMs > 250 || document.hidden) return; /* a hitch (tab switch, level load) says nothing about speed */
+  if (!GFX.auto || document.hidden || rawMs <= 0) return;
+  /* one long frame (tab switch, level load) says nothing about speed; three in a row is a slow device, so it counts (capped at 400 ms) */
+  gfxPerf.slowRun = rawMs > 250 ? (gfxPerf.slowRun || 0) + 1 : 0;
+  if (rawMs > 250) { if (gfxPerf.slowRun < 3) return; rawMs = Math.min(rawMs, 400); }
   gfxPerf.ema += (rawMs - gfxPerf.ema) * 0.05;
   if (gfxPerf.calm > 0) { gfxPerf.calm -= rawMs / 1000; return; } /* ignore the first seconds: shaders are still compiling */
   gfxPerf.over = gfxPerf.ema > GFX.budgetMs ? gfxPerf.over + rawMs / 1000 : 0;

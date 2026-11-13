@@ -36,3 +36,6 @@ These facts come from the git history (91 commits) and the game session's transc
 - **3 Nov:** credits ran out. START_HERE.md was written so Harry could carry on with ChatGPT. GitHub shows no commits from 3 to 10 Nov, so nothing from ChatGPT was added to the files.
 - **10 Nov:** Harry had tried an AR version with ChatGPT and offered to send it. It was never sent. The AR mode in the game was built by a Sonnet builder.
 - **What can't be seen from here:** any ideas Harry worked out with ChatGPT and then passed on in his own words. Those are logged as Harry's ideas.
+
+## Graphics pass (13 Nov)
+- Toy graphics (tilt-shift that follows your car, rounded boxes, soft blob shadows, studio shine, dust and smoke, auto-downgrade watchdog) merged into the current game with every feature kept. All behind `GFX` flags. See HANDOVER.md, "Graphics: the toy look".
