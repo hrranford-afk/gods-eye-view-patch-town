@@ -89,7 +89,7 @@ in a single block, never split across several boxes.
 - **Start each day in a fresh session,** from this file, HANDOVER.md and `base-camp-ROADMAP.html`. A fresh session is cheaper per message and has a sharper memory.
 - The list of days is in `base-camp-ROADMAP.html` (the "Daily milestones" section).
 
-## Where Base Camp stands at the end of 13 Nov (for the next session, Friday 14 Nov)
+## Where Base Camp stands at the end of 13 Nov (for the next session, Saturday 14 Nov)
 **Live:**
 - Base Camp build 17 (the mouse, plus the Safari fix) at `base-camp/`.
 - Places prototype at `base-camp/places/`.
