@@ -3621,7 +3621,7 @@ function netVisual(dt, time) {
   for (const S of G.settlements) { const loo = looOf(S); if (loo && loo.mesh && loo.mesh.userData.heap) { const hp = loo.mesh.userData.heap, c = S.compost || 0; hp.visible = c > 0.03; if (hp.visible) hp.scale.setScalar(0.55 + 0.7 * Math.min(1, c)); } }
   for (const sp of G.spots) { const k = waterKind(sp), open = k && srcOpen(sp); let m = N.marks[sp.id];
     if (open && !m) { m = N.marks[sp.id] = labelSprite(WSRC[k].name + ' · ' + WSRC[k].tag, WSRC[k].col); m.scale.set(0.15, 0.028, 1); world.add(m); }
-    if (m) { m.visible = !!open && look; m.position.set(sp.x, sp.y + 0.075 + 0.004 * Math.sin(time * 2 + sp.id), sp.z); } }
+    if (m) { m.visible = !!open && look; m.position.set(sp.x, sp.y + 0.075 + 0.004 * Math.sin(time * 2 + sp.id), sp.z); const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, k = clamp(eye.distanceTo(m.position) / 1.2, 0.3, 3); m.scale.set(0.15 * k, 0.028 * k, 1); } }
   for (const id in N.marks) if (!spotById(+id)) { const m = N.marks[id]; world.remove(m); delete N.marks[id]; }
 }
 function netHide() { const N = G.net; for (const r of N.pipes.concat(N.lines)) r.group.visible = false; for (const id in N.marks) N.marks[id].visible = false; if (N.rope) N.rope.visible = false; }

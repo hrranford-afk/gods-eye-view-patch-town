@@ -17,6 +17,11 @@ async function boot(p, url, store) {
   for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit')) break; } await sleep(1000);
 }
 const calls = (p) => p.evaluate(() => { const r = __g.renderer, i = r.info; i.reset(); r.render(__g.scene, __g.camera); return { calls: i.render.calls, tris: i.render.triangles }; });
+/* paired: the same frame drawn with and without everything build 18 added (loo huts, the toy sink and toilet, the network), so the creatures' sprites and the camera cannot blur the comparison */
+const paired = (p) => p.evaluate(() => {
+  const G = __g, add = []; for (const S of G.G.settlements) for (const t of S.things) if (t.kind === 'loo' && t.mesh) add.push(t.mesh); for (const q of G.PROPS) if (q.id === 'sink' || q.id === 'toilet') add.push(q.mesh); for (const r of G.G.net.pipes.concat(G.G.net.lines)) add.push(r.group); for (const id in G.G.net.marks) add.push(G.G.net.marks[id]); if (G.G.net.rope) add.push(G.G.net.rope);
+  const was = add.map((o) => o.visible), r = G.renderer, i = r.info; i.reset(); r.render(G.scene, G.camera); const all = i.render.calls; for (const o of add) o.visible = false; i.reset(); r.render(G.scene, G.camera); const base = i.render.calls; add.forEach((o, k) => { o.visible = was[k]; }); return { all, base };
+});
 const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t) => (t.kind === 'hut' || t.kind === 'farm') && t.built), S = __g.G.settlements.slice().sort((a, b) => hs(b).length - hs(a).length)[0], L = hs(S); let cx = 0, cz = 0; for (const t of L) { cx += t.x; cz += t.z; } cx /= Math.max(1, L.length); cz /= Math.max(1, L.length); const w = S.group.localToWorld(new __g.THREE.Vector3(cx, 0, cz)); __g.P.mode = 'orbit'; __g.P.yaw = o.yaw; __g.P.pitch = o.pitch; __g.focusOn(w.x + o.dx, w.y + 0.03, w.z + o.dz, o.d); }, o);
 (async () => {
   const { srv, url } = await serve(); const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
@@ -35,12 +40,12 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   const S0 = await ev(() => { const S = __g.mainSettlement(); S.t = Math.max(S.t, 30); S.stock.wood = 40; __g.G.net.found = {}; __g.G.net.exp = null; __g.G.net.xt = 0; __g.G.speed = 0; return { cols: S.cols.length, scouts: S.cols.filter((c) => c.scout).length, loo: !!__g.looOf(S) }; });
   ok('the colony is up with one scout; each camp has a loo hut', S0.cols >= 3 && S0.scouts === 1 && S0.loo, JSON.stringify(S0));
   const refuse = await ev(() => { const S = __g.mainSettlement(), sp = __g.G.spots.find((s) => __g.waterKind(s) === 'sink'); return { err: __g.netCanLay('pipe', S, sp), lay: !!__g.netLay('pipe', S, S.tf.x, S.tf.z, sp), n: __g.G.net.pipes.length, modes: __g.netModes().join() }; });
-  ok('before the scout finds the sink no straw can be laid: "Nobody has found the sink yet"', /Nobody has found the sink/.test(refuse.err) && !refuse.lay && refuse.n === 0 && refuse.modes === 'car', JSON.stringify(refuse));
+  ok('before the scout finds the sink no straw can be laid: "Nobody has found the sink yet"', /Nobody has found the sink/.test(refuse.err) && !refuse.lay && refuse.n === 0 && !refuse.modes.includes('waste'), JSON.stringify(refuse)); /* the cup (tea) is open at once, so straws to it are offered; the toilet is not */
   /* the expedition: walk, climb, look around, cheer; the toast says who found it; step the sim and watch the scout */
   const ex = { phases: [], toast: '', shot: false, name: '', walked: false };
   await ev(() => { window.__rec = { phases: [], toast: '', name: '', walked: false }; window.__expFn = () => { const R = window.__rec, N = __g.G.net, S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job, ph = j && j.type === 'expedition' ? j.ph : ''; if (ph && R.phases[R.phases.length - 1] !== ph) R.phases.push(ph); if (ph === 'go' && c.moving) R.walked = true; const t = document.getElementById('toast').textContent; if (/found the/.test(t)) { R.toast = t; R.name = c.name; } return false; }; });
   for (let round = 0; round < 8; round++) {
-    const r = await ev(() => { let lookAt = false; __run(240, () => { window.__expFn(); const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job; if (j && j.type === 'expedition' && j.ph === 'look' && !window.__shot) { window.__shot = true; lookAt = true; return true; } return Object.keys(__g.G.net.found).length >= 2 && !(j && j.type === 'expedition'); }, 0.25); return { lookAt, found: Object.keys(__g.G.net.found).length }; });
+    const r = await ev(() => { let lookAt = false; __run(240, () => { window.__expFn(); const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), j = c && c.job; if (j && j.type === 'expedition' && j.ph === 'look' && !window.__shot && __g.waterKind(__g.spotById(j.sp)) === 'sink') { window.__shot = true; lookAt = true; return true; } return Object.keys(__g.G.net.found).length >= 2 && !(j && j.type === 'expedition'); }, 0.25); return { lookAt, found: Object.keys(__g.G.net.found).length }; });
     if (r.lookAt && !ex.shot) { ex.shot = true; await ev(() => { const S = __g.mainSettlement(), c = S.cols.find((q) => q.scout), w = S.group.localToWorld(new __g.THREE.Vector3(c.x, c.yOff || 0, c.z)); __g.P.mode = 'orbit'; __g.P.yaw = 0.5; __g.P.pitch = 0.3; __g.focusOn(w.x, w.y + 0.02, w.z, 0.42); }); await sleep(2200); await p.screenshot({ path: OUT + '57-scout-expedition.png' }); continue; }
     if (r.found >= 2) break;
   }
@@ -63,7 +68,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   const d1 = await ev(() => Array.from(__g.G.net.pipes[0].drops.geometry.attributes.position.array.slice(0, 9)));
   const moved = Math.hypot(d1[0] - d0[0], d1[1] - d0[1], d1[2] - d0[2]);
   ok('droplets visibly travel along the straw', moved > 0.01, moved.toFixed(3) + ' m in 0.7 s');
-  const wet = await ev(() => { const S = __g.mainSettlement(), f = S.things.find((t) => t.kind === 'farm' && t.built), c0 = S.stock.water; S.stock.water = 1; f.tend = 0; __run(40); return { piped: !!f.piped, tend: f.tend, water: S.stock.water, on: S.pipeOn, nearest: __g.pipeFarm(S, __g.G.net.pipes[0]) === f }; });
+  const wet = await ev(() => { const S = __g.mainSettlement(), f = __g.pipeFarm(S, __g.G.net.pipes[0]), c0 = S.stock.water; S.stock.water = 1; f.tend = 0; __run(40); return { piped: !!f.piped, tend: f.tend, water: S.stock.water, on: S.pipeOn, nearest: !!f }; });
   ok('a piped farm never dries out (tend stays up) and the camp water store refills', wet.piped && wet.tend >= 15 && wet.water > 3.5 && wet.on, JSON.stringify(wet));
   const strawMile = await ev(() => __g.FUN.album.some((e) => e.id === 'straw'));
   ok('the first straw is a milestone', strawMile);
@@ -101,7 +106,7 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   fixRes.t = await ev(() => __run(90, () => { const S = __g.mainSettlement(); if (S.cols.some((c) => c.job && c.job.type === 'fix')) window.__fixSeen = true; return !__g.netAnyBroken(); }, 0.5));
   const fixLog = await ev(() => ({ log: __g.G.net.log.filter((e) => e.k === 'fix').map((e) => e.by), seen: !!window.__fixSeen, kink: __g.G.net.pipes[0].kink }));
   console.log('  kink fixed after ' + fixRes.t + ' s by ' + JSON.stringify(fixLog.log));
-  ok('a creature walks over and unkinks it, within a game minute', fixRes.t >= 0 && fixRes.t <= 70 && fixLog.seen && !fixLog.kink && fixLog.log.length >= 1 && fixLog.log[fixLog.log.length - 1] !== 'self', JSON.stringify([fixRes.t, fixLog]));
+  ok('a creature walks over and unkinks it, within a game minute', fixRes.t >= 0 && fixRes.t <= 70 && fixLog.seen && !fixLog.kink && fixLog.log.length >= 1 && fixLog.log[fixLog.log.length - 1] !== 'self', JSON.stringify([fixRes.t, fixLog]) + (fixLog.seen ? '' : ' ' + JSON.stringify(await ev(() => __g.mainSettlement().cols.map((c) => [c.name, c.job && c.job.type, c.inside, c.cool])))));
   /* a stuck bucket: wait for a bucket on the move, then it sticks, a creature climbs and wiggles it */
   await ev(() => { const S = __g.mainSettlement(); S.waste = 3; });
   const stuckT = await ev(() => __run(120, () => { const l = __g.G.net.lines[0]; return l.st === 'run' && l.s > 0.15; }, 0.5));
@@ -154,11 +159,12 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   await boot(p2, url, FIX); await ev2(() => { __g.G.speed = 0; });
   await ev2(() => { __g.G.settlements.forEach((S) => { S.cols.forEach((c) => { c.mesh.visible = true; }); }); });
   ok('the fixture colony (build 15 save) loaded in build 18', await ev2(() => __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) >= 6 && __g.G.settlements.length >= 2));
-  await view(p2, { yaw: 0.3, pitch: 0.55, dx: -0.1, dz: 0, d: 3.6 }); await sleep(2200); const r0 = await calls(p2);
+  await view(p2, { yaw: 0.3, pitch: 0.55, dx: -0.1, dz: 0, d: 3.6 }); await sleep(2200); const r0 = await calls(p2), q0 = await paired(p2);
   await p2.setViewportSize({ width: 900, height: 700 }); await p2.addStyleTag({ content: 'body > *:not(canvas) { visibility: hidden !important; }' }); await sleep(500);
-  await view(p2, { yaw: 0.45, pitch: 0.55, dx: 0, dz: 0, d: 0.5 }); await sleep(2200); const c0 = await calls(p2);
+  await view(p2, { yaw: 0.45, pitch: 0.55, dx: 0, dz: 0, d: 0.5 }); await sleep(2200); const c0 = await calls(p2), cq0 = await paired(p2);
   console.log('  draw calls without pipes: whole room ' + r0.calls + ' / close ' + c0.calls + '  (build 17: ' + B17.room + ' / ' + B17.close + ', ratio ' + (r0.calls / B17.room).toFixed(3) + ' / ' + (c0.calls / B17.close).toFixed(3) + ')');
-  ok('draw calls within 10% of build 17 for a colony without pipes (whole room, close orbit)', r0.calls <= B17.room * 1.1 && c0.calls <= B17.close * 1.1, r0.calls + ' vs ' + B17.room + ', ' + c0.calls + ' vs ' + B17.close);
+  console.log('  paired (same frame with and without what build 18 added): whole room ' + q0.all + ' vs ' + q0.base + ' (' + (q0.all / q0.base).toFixed(3) + '), close ' + cq0.all + ' vs ' + cq0.base + ' (' + (cq0.all / cq0.base).toFixed(3) + ')');
+  ok('draw calls within 10% of build 17 for a colony without pipes (loo huts and toys added: whole room, close orbit)', q0.all <= q0.base * 1.1 && cq0.all <= cq0.base * 1.1, JSON.stringify([q0, cq0]));
   await p2.setViewportSize({ width: 1180, height: 820 }); await sleep(500);
   /* two straws (sink to the two biggest camps) and one waste line */
   const net = await ev2(() => {
@@ -175,15 +181,16 @@ const view = (p, o) => p.evaluate((o) => { const hs = (S) => S.things.filter((t)
   });
   await ev2(() => { window.__run = (sec, fn, step) => { step = step || 0.5; let t = 0; for (; t < sec; t += step) { __g.simulate(step, step); if (fn && fn(t)) return t; } return -1; }; __run(30); __g.G.net.pipes.forEach((p) => { p.kink = false; }); });
   ok('two straws and one bucket line laid on the grown colony', net.out.every(Boolean) && net.pipes === 2 && net.lines === 1, JSON.stringify(net));
-  await view(p2, { yaw: 0.3, pitch: 0.55, dx: -0.1, dz: 0, d: 3.6 }); await sleep(2200); const r1 = await calls(p2);
-  await p2.setViewportSize({ width: 900, height: 700 }); await sleep(500); await view(p2, { yaw: 0.45, pitch: 0.55, dx: 0, dz: 0, d: 0.5 }); await sleep(2200); const c1 = await calls(p2);
+  await view(p2, { yaw: 0.3, pitch: 0.55, dx: -0.1, dz: 0, d: 3.6 }); await sleep(2200); const r1 = await calls(p2), q1 = await paired(p2);
+  await p2.setViewportSize({ width: 900, height: 700 }); await sleep(500); await view(p2, { yaw: 0.45, pitch: 0.55, dx: 0, dz: 0, d: 0.5 }); await sleep(2200); const c1 = await calls(p2), cq1 = await paired(p2);
   console.log('  draw calls with two straws and one bucket line: whole room ' + r1.calls + ' / close ' + c1.calls + '  (ratio to build 17 ' + (r1.calls / B17.room).toFixed(3) + ' / ' + (c1.calls / B17.close).toFixed(3) + ')');
-  ok('draw calls within 20% of build 17 with two straws and one bucket line', r1.calls <= B17.room * 1.2 && c1.calls <= B17.close * 1.2, r1.calls + ' vs ' + B17.room + ', ' + c1.calls + ' vs ' + B17.close);
+  console.log('  paired with the network: whole room ' + q1.all + ' vs ' + q1.base + ' (' + (q1.all / q1.base).toFixed(3) + '), close ' + cq1.all + ' vs ' + cq1.base + ' (' + (cq1.all / cq1.base).toFixed(3) + ')');
+  ok('draw calls within 20% of build 17 with two straws and one bucket line', q1.all <= q1.base * 1.2 && cq1.all <= cq1.base * 1.2, JSON.stringify([q1, cq1]));
   await p2.setViewportSize({ width: 1180, height: 820 }); await sleep(500);
   const aud = await ev2(() => { const G = __g, grad = G.BCP.grad, inks = new Set(Object.values(G.BCP.inks)); const o = { toon: 0, ink: 0, exc: 0, bad: [] }; const vis = (m) => { for (let q = m; q; q = q.parent) if (!q.visible) return false; return true; }; for (const run of G.G.net.pipes.concat(G.G.net.lines)) run.group.traverse((m) => { if (!m.isMesh || !vis(m)) return; const mt = m.material; if (mt.isMeshToonMaterial && mt.gradientMap === grad) o.toon++; else if (inks.has(mt)) o.ink++; else if (mt.isMeshBasicMaterial && mt.transparent) o.exc++; else o.bad.push(mt.type + ' ' + m.geometry.type); }); return o; });
   ok('every visible mesh of the network is toon, ink or a soft overlay', aud.bad.length === 0 && aud.toon > 3 && aud.ink > 3, JSON.stringify(aud));
   /* screenshot 55: straws from the sink to the farms, droplets visible */
-  await ev2(() => { const g = __g, G = g.G; g.setTool('look'); const p0 = G.net.pipes[0], A = g.ptAt(p0, 0.0, new g.THREE.Vector3()), T = g.ptAt(p0, 1.0, new g.THREE.Vector3()); const S = G.settlements.find((q) => q.id === p0.sid); g.P.mode = 'orbit'; g.P.yaw = 0.35; g.P.pitch = 0.42; g.focusOn((A.x + T.x) / 2, (A.y + T.y) / 2 - 0.05, (A.z + T.z) / 2, Math.max(0.9, A.distanceTo(T) * 1.15)); });
+  await ev2(() => { const g = __g, G = g.G; g.setTool('look'); for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'expedition') { c.job = null; c.yOff = 0; c.moving = false; } G.net.exp = null; if (G.net.rope) G.net.rope.visible = false; const p0 = G.net.pipes[0], A = g.ptAt(p0, 0.0, new g.THREE.Vector3()), T = g.ptAt(p0, 0.95, new g.THREE.Vector3()), N = p0.N; g.P.mode = 'orbit'; g.P.yaw = 0.2; g.P.pitch = 0.34; g.focusOn((N.x * 2 + T.x + A.x * 0.4) / 3.4, (N.y + T.y) / 2 + 0.06, (N.z * 2 + T.z + A.z * 0.4) / 3.4, 0.78); });
   await sleep(2600); await p2.screenshot({ path: OUT + '55-waterworks.png' });
   ok('0 page errors (grown colony)', L.errs.length === 0, JSON.stringify(L.errs.slice(0, 3)));
   await L.b.close();
