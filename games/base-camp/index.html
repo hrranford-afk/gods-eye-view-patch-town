@@ -68,6 +68,7 @@ label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px 
 /* build 12: toast, milestone banner, compact report and recognition status share ONE column, so they stack with a gap and can never overlap */
 #msgs{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);display:flex;flex-direction:column;align-items:center;gap:6px;width:max-content;max-width:min(92vw,520px);z-index:6;pointer-events:none}
 body.inar #msgs{top:calc(env(safe-area-inset-top,0px) + 168px)}
+@media (orientation:portrait) and (min-width:561px){body:not(.inar) #msgs{top:calc(env(safe-area-inset-top,0px) + 262px)}} /* build 19: in portrait the toast and the report sit under the info card, not over it */
 #msgs>*{pointer-events:none}#msgs>#repc{pointer-events:auto}
 #rstat{font-size:12px;font-weight:700;padding:3px 10px;max-width:100%;text-align:center}
 #repc{width:min(86vw,340px);font-size:12px;line-height:1.3;padding:6px 10px;text-align:left;font-weight:600}#repc .rt{font-size:11px;font-weight:800;color:#ffd9a8;margin-bottom:2px}#repc .rl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#repc .rm{opacity:.8;font-weight:700}#repc .rb{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}#repc button{min-height:34px;min-width:44px;font-size:12px;padding:2px 12px}
