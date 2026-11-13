@@ -61,6 +61,8 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   ok('COCO (mocked) tagged a thing automatically, no question', tT > 0, await ev(() => JSON.stringify(__g.G.spots.filter((s) => s.src === 'auto').map((s) => s.name + ':' + s.role))));
   await ev(() => { __g.RECOG.detector = null; });
   // question rate limit
+  /* the game asks nothing in its first 60 s of play (AUTO.t is frame time, so it lags wall time on a slow machine): wait until that is over, the rate-limit checks below are about the 2-minute gap */
+  await waitFor(() => __g.AUTO.t >= 61, 120000, 1000);
   const q = await ev(() => { __g.AUTO.questions = 0; __g.RECOG.lastQuestion = -1e9; __g.RECOG.asked = []; const S = __g.G.settlements[0]; const mk = (dx) => ({ x: S.tf.x + dx, y: S.tf.y + 0.05, z: S.tf.z, area: 0.01 }); window.unknownTops = () => [mk(0.1), mk(-0.1)]; document.getElementById('tagpick').hidden = true; const r = []; __g.AUTO.colonySince = __g.AUTO.t - 3; __g.autoAskTick(); window.__gateQ = __g.AUTO.questions; __g.AUTO.colonySince = __g.AUTO.t - 20; // build 10: no question while the colony is under 15 s old
     for (let i = 0; i < 4; i++) { __g.autoAskTick(); r.push(__g.AUTO.questions); document.getElementById('tagpick').hidden = true; } return r; });
   ok('no "What is this?" in the first 15 s after the colony landed', await ev(() => window.__gateQ === 0));
