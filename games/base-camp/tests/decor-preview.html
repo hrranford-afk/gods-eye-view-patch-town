@@ -73,7 +73,7 @@ function go(w) {
     items.forEach(function (it) {
       items.forEach(function (j) { j.o.visible = j === it; }); USER(it, t, dt); var turn = SHEET || fixedT !== null ? 0.9 + it.id * 0 : t * 0.5; it.o.rotation.y = fixedT !== null && Q.get('turn') === null ? 0.7 : (Q.get('turn') !== null ? +Q.get('turn') : turn);
       var fy = it.y; r.setViewport(it.x, H - fy - it.h, it.w, it.h); r.setScissor(it.x, H - fy - it.h, it.w, it.h);
-      var d = +(Q.get('dist') || (ONE ? 0.19 : 0.235)), el = 0.55; cam.aspect = it.w / it.h; var ty = ONE ? 0.03 : 0.034;
+      var d = +(Q.get('dist') || (ONE ? 0.19 : 0.235)), el = 0.55; cam.aspect = it.w / it.h; var ty = +(Q.get('ty') || (ONE ? 0.03 : 0.034));
       cam.position.set(0, ty + Math.sin(el) * d, Math.cos(el) * d); cam.lookAt(0, ty, 0); cam.updateProjectionMatrix(); r.render(sc, cam);
     });
     frames++; window.__previewFrames = frames; if (fixedT === null || frames < 3) requestAnimationFrame(frame);

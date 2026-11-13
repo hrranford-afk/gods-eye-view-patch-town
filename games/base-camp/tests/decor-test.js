@@ -60,9 +60,10 @@ const probe = (keys) => keys.map((k) => {
     L.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)); const hs = S.things.filter((t) => t.kind === 'hut' && t.built); let cx = 0, cz = 0; for (const h of hs) { cx += h.x; cz += h.z; } cx /= Math.max(1, hs.length); cz /= Math.max(1, hs.length);
     L.slice(0, 11).forEach((t, i) => { t.x = cx - 0.17 + (i % 6) * 0.065; t.z = cz + 0.06 + Math.floor(i / 6) * 0.07; t.rot = 0.4; if (t.mesh) { t.mesh.position.set(t.x, 0, t.z); t.mesh.rotation.y = t.rot; } });
     L.slice(11).forEach((t) => { t.x = cx - 0.3; t.z = cz + 0.5; if (t.mesh) t.mesh.position.set(t.x, 0, t.z); });
-    const w = S.group.localToWorld(new __g.THREE.Vector3(cx - 0.05, 0, cz + 0.095)); __g.P.mode = 'orbit'; __g.P.yaw = 0.2; __g.P.pitch = 0.62; __g.focusOn(w.x, w.y, w.z, 0.3);
+    for (const t of S.things) { if (t.kind === 'tree' || t.kind === 'farm' || t.kind === 'well') { const d = Math.hypot(t.x - (cx - 0.05), t.z - (cz + 0.095)); if (d < 0.3) { t.x += 4; if (t.mesh) t.mesh.position.x = t.x; } } } /* only for the picture: clear the patch */
+    const w = S.group.localToWorld(new __g.THREE.Vector3(cx - 0.05, 0, cz + 0.095)); __g.P.mode = 'orbit'; __g.P.yaw = 0.1; __g.P.pitch = 0.6; __g.focusOn(w.x, w.y, w.z, 0.27);
   });
-  await p.addStyleTag({ content: HIDE_UI }); await sleep(3500); await p.screenshot({ path: OUT + '62-christmas-colony.png' });
+  await p.addStyleTag({ content: HIDE_UI }); await sleep(3500); await p.screenshot({ path: OUT + '62-christmas-colony.png' }); if (process.env.ONLY_SHOT) { await b.close(); srv.close(); process.exit(0); }
   await sleep(3000);
   const calls = await ev(() => { const r = __g.renderer, i = r.info; i.reset(); r.render(__g.scene, __g.camera); return { calls: i.render.calls, tris: i.render.triangles }; });
   console.log('  December colony draw calls ' + calls.calls + ', triangles ' + calls.tris);

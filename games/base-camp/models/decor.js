@@ -400,9 +400,9 @@
   }
   function igloo() {
     var g = new T.Group(), A = asset('igloo', function () {
-      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xb6cde2, 0x9fbad4, 0x8eacca, 0xaac3dc], i, j;
-      p.push(sph(0x7f9bb8, Rd * 0.965, 0, 0, 0, { half: 1, w: 14, h: 8, ink: 1 }));
-      p.push(cyl(0xb9cfe2, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
+      var p = [], Rd = 0.0215, rows = [[0.16, 17], [0.45, 13], [0.76, 9], [1.08, 5], [1.4, 1]], tints = [0xd2e3f2, 0xbcd3e8, 0xaac6e0, 0xc6dbed], i, j;
+      p.push(sph(0x9db6cf, Rd * 0.965, 0, 0, 0, { half: 1, w: 14, h: 8, ink: 1 }));
+      p.push(cyl(0xcfe0ef, 0.0268, 0.0268, 0.0008, 0, 0.0004, 0.0008, { w: 18 }));
       rows.forEach(function (rw, ri) {
         var e = rw[0], n = rw[1], ry = Rd * Math.cos(e), yy = Rd * Math.sin(e) * 0.99;
         for (j = 0; j < n; j++) {
@@ -411,7 +411,7 @@
           p.push(sph(tints[(j + ri) % 4], 1, Math.cos(a) * ry, yy, Math.sin(a) * ry, { w: 6, h: 4, sx: Math.max(0.0038, bw), sy: 0.0034, sz: 0.0048, ry: -(a + PI / 2), rx: 0, rz: 0 }));
         }
       });
-      for (i = 0; i < 9; i++) { var th = i / 8 * PI, ca = Math.cos(th) * 0.0062, sa = Math.sin(th) * 0.0062; p.push(sph(tints[i % 4], 0.0033, ca, sa, 0.0214, { sz: 1.1, w: 6, h: 4 }), sph(tints[(i + 1) % 4], 0.0033, ca * 1.05, sa * 1.05, 0.0245, { sz: 1.1, w: 6, h: 4 }));  }
+      for (i = 0; i < 9; i++) { var th = i / 8 * PI, ca = Math.cos(th) * 0.0062, sa = Math.sin(th) * 0.0062; p.push(sph(tints[i % 4], 0.0033, ca, Math.max(0.0033, sa), 0.0214, { sz: 1.1, w: 6, h: 4 }), sph(tints[(i + 1) % 4], 0.0033, ca * 1.05, Math.max(0.0033, sa * 1.05), 0.0245, { sz: 1.1, w: 6, h: 4 }));  }
       p.push(P(new T.CircleGeometry(0.0054, 12, 0, PI), 0x25344a, 0, 0.0004, 0.0264, {}), P(new T.CircleGeometry(0.0054, 12, 0, PI), 0x3a4f6e, 0, 0.0004, 0.0236, {}));
       for (i = 0; i < 5; i++) p.push(tcone(0xd7ecf8, 0.0004, 0.0032 + (i % 2) * 0.0014, (i - 2) * 0.0024, 0.0058 - Math.abs(i - 2) * 0.0003, 0.0262, { w: 4, rz: PI }));
       return p;
