@@ -160,11 +160,13 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="models/props.js"></script>
+<!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
+<script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 16';
+const BUILD = 'build 17';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -825,7 +827,341 @@ function glowSprite(r, op, color) { const m = new THREE.SpriteMaterial({ map: TE
 
 const CINK = 0.00055; /* the creatures' ink outline: thin, so the faces stay readable */
 const RING_MAT = new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+
+/* A tiny reproducible colour atlas: generated locally, cached across all scouts, */
+/* never downloaded. Felt fibres / woven pack / parchment have no heavy image assets. */
+const SCOUT16_TEX = {};
+function scout16Texture(kind) {
+  if (SCOUT16_TEX[kind]) return SCOUT16_TEX[kind];
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = kind === 'felt' ? '#f1e3d3' : kind === 'pack' ? '#d8c1a0' : '#f9e3b5';
+  ctx.fillRect(0, 0, 128, 128);
+  let seed = kind === 'felt' ? 126934 : kind === 'pack' ? 3804 : 6403;
+  function rand() { seed = (Math.imul(seed, 1664525) + 1013904223) | 0; return (seed >>> 0) / 4294967296; }
+  if (kind === 'felt') {
+    for (let i = 0; i < 2400; i++) {
+      const x = rand() * 128, y = rand() * 128, len = 0.7 + rand() * 3.6;
+      ctx.strokeStyle = rand() < 0.36 ? 'rgba(112,85,68,.14)' : 'rgba(255,255,246,.30)';
+      ctx.lineWidth = .38 + rand() * .7;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x + (rand()-.5)*len,y + (rand()-.5)*len); ctx.stroke();
+    }
+  } else if (kind === 'pack') {
+    for (let i = -128; i < 256; i += 5) {
+      ctx.strokeStyle = 'rgba(83,52,37,.13)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+128,128); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i,128); ctx.lineTo(i+128,0); ctx.stroke();
+    }
+    for (let i=0; i<250; i++) { ctx.fillStyle = rand()<.5 ? 'rgba(255,244,210,.10)' : 'rgba(67,36,16,.07)'; ctx.fillRect(rand()*128,rand()*128,1.7,1.7); }
+  } else {
+    ctx.strokeStyle = 'rgba(99,69,42,.68)'; ctx.lineWidth = 2.1; ctx.lineJoin = 'round';
+    ctx.beginPath();ctx.moveTo(18,90);ctx.lineTo(47,32);ctx.lineTo(83,75);ctx.lineTo(108,23);ctx.stroke();
+    ctx.strokeStyle = 'rgba(113,67,35,.5)';ctx.lineWidth=1.2;
+    for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(17+i*15,13+(i%3)*9);ctx.lineTo(23+i*15,19+(i%2)*7);ctx.stroke();}
+    ctx.fillStyle='#af6e39'; ctx.fillRect(17,98,48,2);
+    ctx.fillStyle='#a85740';ctx.beginPath();ctx.arc(91,100,4,0,7);ctx.fill();
+    ctx.strokeStyle='#c08b62';ctx.lineWidth=3;ctx.strokeRect(6,6,116,116);
+  }
+  const tx = new THREE.CanvasTexture(canvas); tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+  tx.anisotropy = 2; tx.needsUpdate = true;
+  SCOUT16_TEX[kind] = tx; return tx;
+}
+const SCOUT16_MAT = {}, SCOUT_X = {};
+function scoutMat(k, f) { return SCOUT_X[k] || (SCOUT_X[k] = f()); }
+const WHISK_MAT = new THREE.LineBasicMaterial({ color: 0x7e5a4d, transparent: true, opacity: 0.84 });
+function scout16Mat(kind) {
+  if (SCOUT16_MAT[kind]) return SCOUT16_MAT[kind];
+  const c = kind === 'felt' ? 0xcfa685 : kind === 'cream' ? 0xffefdb : 0xa46d48;
+  const t = scout16Texture(kind === 'cream' ? 'felt' : kind === 'felt' ? 'felt' : 'pack');
+  return (SCOUT16_MAT[kind] = new THREE.MeshToonMaterial({ color: c, map: t, gradientMap: bcGrad() }));
+}
+
+
+/* ---- build 17: the real articulated GLB mouse (assets/basecamp_mouse_scout_ANIMATED.glb, five clips: Idle Walk Wave LookAround Hop), made with ChatGPT and sent by Harry ---- */
+/* This is not a sprite or picture. Named GLB pivots have five original keyframed animations. */
+/* Fully optional: if CDNs, local asset loading or GLTFLoader fail, Build 16 mouse continues working. */
+const SCOUT17 = { waiting: [], started: false, template: null, clips: [], status: 'idle' };
+function scout17Attach(group) {
+  if (SCOUT17.template) scout17Upgrade(group);
+  else if (SCOUT17.status === 'idle' || SCOUT17.status === 'loading') SCOUT17.waiting.push(group);
+}
+function scout17Upgrade(g) {
+  const U = g.userData;
+  if (!U || !U.body || U.scout17 || !SCOUT17.template) return;
+  try {
+    const model = SCOUT17.template.clone(true);
+    model.scale.setScalar(0.01); /* GLB centimetres => Three.js metres; feet at ground y=0 */
+    model.name = 'BaseCamp_AnimatedScout'; model.userData.glb = 1;
+    if (SCOUT17.foot === undefined) { const bb = new THREE.Box3().setFromObject(SCOUT17.template); SCOUT17.foot = isFinite(bb.min.y) ? bb.min.y : 0; }
+    model.position.y = -SCOUT17.foot * 0.01; /* stand the soles on the ground, whatever the file's origin is */
+    const mixer = new THREE.AnimationMixer(model), actions = {};
+    for (const clip of SCOUT17.clips) actions[clip.name] = mixer.clipAction(clip);
+    /* only now (nothing threw) does the procedural mouse give way; its shapes are shared, so nothing to dispose */
+    for (const child of Array.from(U.body.children)) U.body.remove(child);
+    U.body.add(model);
+    U.scout17 = { model, mixer, actions, name: null };
+  } catch (e) { console.warn('[Base Camp Scout] could not attach the GLB mouse, keeping the procedural one:', e); }
+}
+function scout17Tick(c, dt) {
+  if (!c.scout || !c.mesh || !c.mesh.userData.scout17) return;
+  const C = c.mesh.userData.scout17;
+  /* game logic stays the source of truth for movement, celebration and jobs */
+  const next = c.held || c.hop > 0.12 || c.fall ? 'Hop' :
+    c.moving ? 'Walk' : c.cheerT > 0.1 || c.dancing ? 'Wave' :
+    c.job && c.job.type === 'read' ? 'LookAround' : 'Idle';
+  if (next !== C.name) {
+    const old = C.actions[C.name]; if (old) old.fadeOut(0.15);
+    const action = C.actions[next];
+    if (action) { action.reset().fadeIn(0.15).play(); C.name = next; }
+  }
+  C.mixer.update(Math.min(dt, 0.05));
+}
+function scout17Load() {
+  if (SCOUT17.started) return;
+  if (!THREE.GLTFLoader) { /* the loader tag is async: wait for it (at most about 12 s), then give up for good */
+    if (window.__gltfBad || (SCOUT17.tries = (SCOUT17.tries || 0) + 1) > 40) { SCOUT17.started = true; SCOUT17.status = 'no-loader'; SCOUT17.waiting.length = 0; }
+    else setTimeout(scout17Load, 300);
+    return;
+  }
+  SCOUT17.started = true;
+  SCOUT17.status = 'loading';
+  try {
+    new THREE.GLTFLoader().load('assets/basecamp_mouse_scout_ANIMATED.glb',
+      (gltf) => {
+        if (!gltf.scene || !gltf.animations || gltf.animations.length < 5) { SCOUT17.status = 'invalid-model'; SCOUT17.waiting.length = 0; return; }
+        SCOUT17.template = gltf.scene;
+        SCOUT17.clips = gltf.animations;
+        SCOUT17.status = 'loaded';
+        for (const g of SCOUT17.waiting) scout17Upgrade(g);
+        SCOUT17.waiting.length = 0;
+      }, undefined, (err) => {
+        SCOUT17.status = 'fallback'; SCOUT17.waiting.length = 0;
+        console.warn('[Base Camp Scout] GLB unavailable, keeping the procedural mouse:', err);
+      });
+  } catch (e) { SCOUT17.status = 'fallback'; SCOUT17.waiting.length = 0; console.warn('[Base Camp Scout] loader failed:', e); }
+}
+
+/* ---- BUILD 16: HANDCRAFTED STOP-MOTION BACKPACK MOUSE (ACTUAL 3D RESIDENT) ---- */
+/* Sculpted entirely from low-cost shared Three.js geometries. Real scale: about 4.8 cm. */
+/* Every settlement's first settler is the scout; all the standard behaviour (work, */
+/* walking, touch, cable cars, away simulation, saving) is inherited, not re-written. */
+function mkMouseScout(c) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const fur = scout16Mat('felt'), light = scout16Mat('cream'), dark = M(0x57382b), pink = M(0xe68c96), inner = M(0xf4aeb0),
+        packMat = M(0x7d5435), packFlap = M(0x98663a), straps = M(0x4b3428), brass = M(0xd9ae5d, 0x543612), scarf = M(0x7d9970);
+  const ring = new THREE.Mesh(geo('cRing', () => new THREE.RingGeometry(0.007, 0.019, 24).rotateX(-Math.PI / 2)), RING_MAT);
+  ring.position.y = 0.0015; ring.renderOrder = 6; g.add(ring);
+  const floorGlow = new THREE.Mesh(geo('cGlow', () => new THREE.CircleGeometry(0.019, 24).rotateX(-Math.PI / 2)),
+    new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending }));
+  floorGlow.position.y = 0.0012; floorGlow.renderOrder = 5; g.add(floorGlow);
+  const torso = inked(mesh(geo('smTorso', () => new THREE.SphereGeometry(0.009, 12, 10)), fur, 0, 0.015, -0.001), CINK);
+  torso.scale.set(1.0, 1.15, 0.88); body.add(torso);
+  const tummy = mesh(geo('smTummy', () => new THREE.SphereGeometry(0.006, 10, 8)), light, 0, 0.015, 0.0053);
+  tummy.scale.set(0.96, 1.3, 0.4); body.add(tummy);
+  const head = inked(mesh(geo('sm16Head', () => new THREE.SphereGeometry(0.0102, 24, 18)), fur, 0, 0.0286, 0.0018), CINK);
+  head.scale.set(1.02, 0.98, 0.95); body.add(head);
+  const ears = [];
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Group(); ear.position.set(side * 0.0091, 0.0377, 0.0006); ear.rotation.z = -side * 0.2;
+    const outer = mesh(geo('smEar', () => new THREE.SphereGeometry(0.007, 16, 12)), fur);
+    outer.scale.set(0.9, 1.10, 0.38); ear.add(outer);
+    const inset = mesh(geo('smEarIn', () => new THREE.SphereGeometry(0.0057, 14, 10)), inner, 0, 0, 0.0028);
+    inset.scale.set(0.82, 1.0, 0.22); ear.add(inset);
+    const rim = mesh(geo('sm16EarRim', () => new THREE.TorusGeometry(0.0049, 0.00038, 5, 22)), M(0xe5b3a4), 0, 0, 0.00355);
+    rim.scale.set(0.95, 1.10, 1); ear.add(rim);
+    body.add(ear); ears.push(ear);
+  }
+  const eyes = [];
+  for (const side of [-1, 1]) {
+    const muzzle = mesh(geo('smMuzzle', () => new THREE.SphereGeometry(0.0041, 10, 8)), light, side * 0.0029, 0.0231, 0.0094);
+    muzzle.scale.set(1, 0.6, 0.66); body.add(muzzle);
+    /* Small pearly eye-socket + glassy pupil: expressive even in the iPad close-up. */
+    const socket = mesh(geo('sm15Socket', () => new THREE.SphereGeometry(0.0037, 12, 10)), light, side * 0.0043, 0.0301, 0.0095);
+    socket.scale.set(1, 1.07, 0.45); body.add(socket);
+    const eye = mesh(geo('sm15Eye', () => new THREE.SphereGeometry(0.00325, 14, 12)),
+      M(0x22180e), side * 0.0043, 0.0300, 0.0110);
+    eye.add(mesh(geo('sm15Shine', () => new THREE.SphereGeometry(0.00095, 8, 6)), M(0xffffff, 0xffffff), -0.00055, 0.0009, 0.00245));
+    body.add(eye); eyes.push(eye);
+  }
+  const nose = mesh(geo('smNose', () => new THREE.SphereGeometry(0.0022, 10, 8)), pink, 0, 0.0245, 0.0134);
+  nose.scale.set(1, 0.7, 0.7); body.add(nose);
+  const smile = mesh(geo('smSmile', () => new THREE.TorusGeometry(0.0016, 0.00038, 4, 10, Math.PI).rotateZ(Math.PI)), dark, 0, 0.0213, 0.0122);
+  body.add(smile);
+  const mouthO = mesh(geo('smMouthO', () => new THREE.SphereGeometry(0.0017, 8, 6)), dark, 0, 0.021, 0.0122);
+  mouthO.visible = false; body.add(mouthO);
+  /* Three tidy whisker curves; no texture files, bones, imports or shader dependencies. */
+  for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
+    body.add(new THREE.Line(geo('smWhisk' + side + i, () => new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(side * 0.0033, 0.0232 + i * 0.0008, 0.013),
+      new THREE.Vector3(side * 0.007, 0.0225 + (i - 1) * 0.0018, 0.014), new THREE.Vector3(side * 0.011, 0.0230 + (i - 1) * 0.0027, 0.012)])), WHISK_MAT));
+  }
+  /* Paw pivots match mkColonist's animation contract. */
+  const arms = [], legs = [];
+  for (const side of [-1, 1]) {
+    const lp = new THREE.Group(); lp.position.set(side * 0.0045, 0.0067, 0);
+    const foot = mesh(geo('smFoot', () => new THREE.SphereGeometry(0.0031, 9, 6)), fur, 0, -0.0035, 0.003);
+    foot.scale.set(0.8, 0.65, 1.4); lp.add(foot); body.add(lp); legs.push(lp);
+    const ap = new THREE.Group(); ap.position.set(side * 0.0079, 0.0194, 0.002);
+    const sleeve = mesh(geo('smSleeve', () => new THREE.SphereGeometry(0.0035, 8, 7)), scarf, side * 0.0004, -0.003, 0);
+    sleeve.scale.set(0.75, 1.35, 0.83); ap.add(sleeve);
+    ap.add(mesh(geo('smPaw', () => new THREE.SphereGeometry(0.0025, 8, 6)), light, side * 0.0006, -0.007, 0.001));
+    body.add(ap); arms.push(ap);
+  }
+  const collar = mesh(geo('smCollar', () => new THREE.TorusGeometry(0.0061, 0.0018, 6, 12).rotateX(Math.PI / 2)), scarf, 0, 0.021, 0);
+  body.add(collar);
+  /* Readable backpack: main canvas bag, flap, clasp, side pocket and rolled paper map. */
+  const pack = new THREE.Group(); pack.position.set(0, 0.0185, -0.008);
+  const bag = mesh(geo('smBag', () => new THREE.BoxGeometry(0.013, 0.015, 0.008)), packMat, 0, 0, -0.003);
+  pack.add(bag);
+  pack.add(mesh(geo('smBagFlap', () => new THREE.BoxGeometry(0.0138, 0.005, 0.0095)), packFlap, 0, 0.0055, -0.003));
+  pack.add(mesh(geo('smBuckle', () => new THREE.BoxGeometry(0.003, 0.0022, 0.0008)), brass, 0, 0.0028, -0.0082));
+  pack.add(mesh(geo('smPocket', () => new THREE.BoxGeometry(0.0053, 0.0058, 0.003)), packFlap, -0.0034, -0.004, -0.008));
+  /* External map roll mounted on the right side of the pack. */
+  const roll = mesh(geo('smMap', () => new THREE.CylinderGeometry(0.0024, 0.0024, 0.017, 8)), M(0xe9d9ad), 0.0090, 0.0005, -0.003);
+  pack.add(roll);
+  for (const y of [-0.004, 0.005]) pack.add(mesh(geo('smMapBand', () => new THREE.TorusGeometry(0.0025, 0.0006, 5, 10).rotateX(Math.PI / 2)), straps, 0.0090, y, -0.003));
+  /* Chest straps are exposed at the sides, visibly joining the backpack to the body. */
+  for (const side of [-1, 1]) {
+    const strap = mesh(geo('smStrap', () => new THREE.BoxGeometry(0.0014, 0.013, 0.002)), straps, side * 0.0074, 0.002, 0.006);
+    strap.rotation.z = side * 0.27; pack.add(strap);
+  }
+  body.add(pack);
+  const tail = new THREE.Group(); tail.position.set(0, 0.009, -0.009);
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.006, -0.004, -0.008),
+    new THREE.Vector3(0.012, 0.002, -0.014), new THREE.Vector3(0.013, 0.009, -0.017)]);
+  tail.add(mesh(geo('smTail', () => new THREE.TubeGeometry(tailCurve, 11, 0.0014, 5, false)), pink)); body.add(tail);
+  for (const i of [-1, 0, 1]) {
+    const tuft = mesh(geo('smTuft', () => new THREE.ConeGeometry(0.0013, 0.004, 5)), light, i * 0.0025, 0.0399 - Math.abs(i) * 0.0015, -0.003);
+    tuft.rotation.z = -i * 0.24; body.add(tuft);
+  }
+  g.add(blob(0.011)); const glow = glowSprite(0.03, 0.34); glow.position.y = 0.016; g.add(glow);
+  /* BUILD 15: hand-crafted toy-film details. All geometry is tiny and shared via geo(). */
+  /* The real room remains the scenery; this is a 3-D resident, never a billboard. */
+  const felt = M(0xe6c29c), blush = M(0xe9a6a2), stitch = M(0xeacb8e);
+  const copper = M(0xb78048), leather = M(0x553a2e), glass = scoutMat('glass', () => new THREE.MeshToonMaterial({ color: 0x8cc4d5, gradientMap: bcGrad(), transparent: true, opacity: 0.78, emissive: 0x13252c, emissiveIntensity: 0.4 }));
+  /* Soft cheek bulges and a few felt flecks read as a sculpted face, without fur particles. */
+  for (const side of [-1, 1]) {
+    const cheek = mesh(geo('sm15Cheek', () => new THREE.SphereGeometry(0.0039, 12, 10)), light,
+      side * 0.0061, 0.0246, 0.0073); cheek.scale.set(0.85, 0.6, 0.8); body.add(cheek);
+    const spot = mesh(geo('sm15Blush', () => new THREE.SphereGeometry(0.00145, 8, 6)), blush,
+      side * 0.0073, 0.0245, 0.0100); spot.scale.set(1.1, 0.55, 0.25); body.add(spot);
+    /* Raised eyebrows turn the original toy expression into a readable animated-film face. */
+    const brow = mesh(geo('sm15Brow', () => new THREE.BoxGeometry(0.0048, 0.00065, 0.00055)), fur,
+      side * 0.0041, 0.0347, 0.01025); brow.rotation.z = side * -0.15; body.add(brow);
+    for (let j = 0; j < 3; j++) {
+      const dot = mesh(geo('sm15Dot', () => new THREE.SphereGeometry(0.00032, 5, 4)), dark,
+        side * (0.0038 + j * 0.001), 0.0244 + (j - 1) * 0.0007, 0.0122 - j * 0.0004);
+      body.add(dot);
+    }
+  }
+  /* A soft cap of short sculpted tufts around the brow: much cheaper than hair strands. */
+  for (let j = 0; j < 9; j++) {
+    const a = (j / 8) * Math.PI;
+    const curl = mesh(geo('sm15Fleck', () => new THREE.ConeGeometry(0.00115, 0.0032, 5)),
+      j % 3 ? fur : felt, Math.cos(a) * 0.0085, 0.0363 + Math.sin(a) * 0.0028, -0.0020);
+    curl.rotation.z = Math.cos(a) * -0.6; body.add(curl);
+  }
+  /* Brass-rimmed travelling goggles actually project from the forehead, with glass lenses. */
+  const goggles = new THREE.Group(); goggles.position.set(0, 0.0368, 0.0046);
+  goggles.rotation.x = -0.28; body.add(goggles);
+  for (const side of [-1, 1]) {
+    const frame = mesh(geo('sm15GoggleRim', () => new THREE.TorusGeometry(0.00365, 0.00072, 6, 16)), copper,
+      side * 0.0041, 0, 0); goggles.add(frame);
+    const lens = mesh(geo('sm15Lens', () => new THREE.CircleGeometry(0.0031, 16)), glass,
+      side * 0.0041, 0, 0.00043); goggles.add(lens);
+    const sparkle = mesh(geo('sm15LensGlint', () => new THREE.SphereGeometry(0.0006, 6, 5)), M(0xfffae8),
+      side * 0.0041 - 0.001, 0.0012, 0.00063); goggles.add(sparkle);
+  }
+  for (const side of [-1, 1]) {
+    const belt = mesh(geo('sm15GoggleStrap', () => new THREE.BoxGeometry(0.0045, 0.0012, 0.0012)), leather,
+      side * 0.0100, -0.0005, -0.0015); belt.rotation.z = side * 0.22; goggles.add(belt);
+  }
+  /* Scarf has layers, an embroidered fold, and a trailing soft strip that moves while walking. */
+  const scarfEnd = new THREE.Group(); scarfEnd.position.set(-0.0060, 0.0210, -0.0010); body.add(scarfEnd);
+  const cloth = mesh(geo('sm15Scarf', () => new THREE.BoxGeometry(0.0058, 0.014, 0.0018)), M(0xc75d4e),
+    -0.002, -0.0045, -0.005); cloth.rotation.z = -0.45; scarfEnd.add(cloth);
+  for (let k = 0; k < 4; k++) scarfEnd.add(mesh(geo('sm15Fringe', () => new THREE.CylinderGeometry(0.00034, 0.00034, 0.003, 4)),
+    stitch, -0.0065 + k * 0.0014, -0.0116 + k * 0.001, -0.005));
+  /* Sewn backpack panels and pockets, contrasting corner patches and metal buckles. */
+  const outerBag = mesh(geo('sm15BagLeather', () => new THREE.BoxGeometry(0.0136, 0.0145, 0.0017)),
+    scout16Mat('pack'), 0, -0.0004, -0.0072); pack.add(outerBag);
+  for (const side of [-1, 1]) for (let k = 0; k < 5; k++) {
+    const seam = mesh(geo('sm15Stitch', () => new THREE.BoxGeometry(0.00115, 0.00036, 0.0004)), stitch,
+      side * 0.0056, -0.004 + k * 0.0023, -0.00825); seam.rotation.z = side * 0.35; pack.add(seam);
+  }
+  pack.add(mesh(geo('sm15FrontPatch', () => new THREE.BoxGeometry(0.0058, 0.004, 0.00065)), leather, 0, -0.004, -0.0085));
+  pack.add(mesh(geo('sm15FrontClasp', () => new THREE.BoxGeometry(0.0028, 0.0027, 0.0007)), brass, 0, 0.0021, -0.00885));
+  for (const side of [-1, 1]) {
+    const loop = mesh(geo('sm15BagLoop', () => new THREE.TorusGeometry(0.0018, 0.00035, 5, 10)), brass,
+      side * 0.0057, 0.0046, -0.009); pack.add(loop);
+  }
+  /* A visible rolled map and compass give the pack a reason to exist in the gameplay. */
+  const mapTip = mesh(geo('sm15ScrollTip', () => new THREE.CylinderGeometry(0.0026, 0.0026, 0.0006, 10)), M(0xf4dfb6),
+    0.009, 0.0092, -0.003); pack.add(mapTip);
+  const compass = mesh(geo('sm15Compass', () => new THREE.CylinderGeometry(0.0030, 0.0030, 0.001, 12)), brass,
+    -0.009, -0.004, -0.004); compass.rotation.x = Math.PI / 2; pack.add(compass);
+  compass.add(mesh(geo('sm15CompassFace', () => new THREE.CircleGeometry(0.00235, 12)),
+    M(0xf8e9c2), 0, 0.0007, 0));
+  /* Miniature travel lantern attached to the backpack, visible when the scout turns. */
+  const lantern = new THREE.Group(); lantern.position.set(-0.0115, -0.0048, -0.0030); pack.add(lantern);
+  lantern.add(mesh(geo('sm15Lantern', () => new THREE.SphereGeometry(0.0022, 10, 8)),
+    M(0xffdd86, 0xf4a72e), 0, 0, 0));
+  lantern.add(mesh(geo('sm15LanternCap', () => new THREE.CylinderGeometry(0.0022, 0.0022, 0.0008, 8)), brass,
+    0, 0.0024, 0));
+  lantern.add(mesh(geo('sm15LanternBase', () => new THREE.CylinderGeometry(0.0020, 0.0020, 0.0007, 8)), brass,
+    0, -0.0025, 0));
+  /* BUILD 16: readable 'sculpted felt' silhouette. Very few short clumps, */
+  /* no thousands of costly transparent fur cards; loops use cached geometry. */
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const a = -0.70 + i * 0.24;
+      const wispy = mesh(geo('sm16CheekFuzz' + i, () => new THREE.ConeGeometry(0.00155, 0.0048, 5)),
+        i % 3 === 0 ? light : fur, side * (0.0087 + Math.cos(a) * .0013),
+        0.0275 - i * .0011, 0.0046 + Math.sin(a) * .0016);
+      wispy.rotation.z = side * (-0.8 + i*.17); body.add(wispy);
+    }
+    /* Little suede boot sole and a bright seam: visible when he hops. */
+    const boot = mesh(geo('sm16Boot', () => new THREE.SphereGeometry(0.0031, 10, 8)), M(0x644936),
+      side*.0045, 0.0021, 0.0028); boot.scale.set(.87,.38,1.42); body.add(boot);
+    const lace = mesh(geo('sm16BootLace', () => new THREE.BoxGeometry(0.0015,0.0006,0.003)), M(0xe9c990),
+      side*.0045,0.0042,0.0053);body.add(lace);
+  }
+  /* Brushed-cloth tunic, antique button and a compass insignia on the bag. */
+  const tunic = mesh(geo('sm16Tunic', () => new THREE.SphereGeometry(0.0089, 16, 12)),
+    M(0x76836a), 0, 0.0138, -0.0019); tunic.scale.set(1.0,.78,.81); body.add(tunic);
+  /* Keep the cream belly visible in front of the tunic. */
+  tunic.position.z = -0.0034;
+  const button = mesh(geo('sm16Button', () => new THREE.SphereGeometry(.0012,8,6)), brass,
+    0,0.0183,.0070);body.add(button);
+  const bagMedallion = mesh(geo('sm16BagMedallion', () => new THREE.CircleGeometry(.0028,16)),
+    M(0xd5b57c),0,.0000,-.00895); pack.add(bagMedallion);
+  const needle = mesh(geo('sm16Needle', () => new THREE.BoxGeometry(.00065,.0034,.00026)),
+    M(0x6b4031),0,0,-.00925);needle.rotation.z = -.5;pack.add(needle);
+  /* A genuine mapped parchment, clipped to the paw. The old job animation moves */
+  /* the same arm automatically; maps are light, opaque and batched as one plane. */
+  const fieldMap = new THREE.Group(); fieldMap.position.set(-.0007,-.007,.0055);
+  fieldMap.rotation.set(-.16,.16,-.12); arms[0].add(fieldMap);
+  const paper = mesh(geo('sm16Parchment', () => new THREE.PlaneGeometry(.0086,.0099)),
+    scoutMat('paper', () => new THREE.MeshToonMaterial({ map: scout16Texture('map'), color: 0xffffff, gradientMap: bcGrad(), side: THREE.DoubleSide })),0,.0024,.0001);
+  fieldMap.add(paper);
+  /* The patchwork strap is tied at two points; make it clearly visible in silhouette. */
+  for (const side of [-1,1]) {
+    const strapFront = mesh(geo('sm16StrapFront', () => new THREE.CylinderGeometry(.00065,.00065,.012,6)),
+      M(0x5b3c2d),side*.006, .017,-.001);
+    strapFront.rotation.z = side*.20;body.add(strapFront);
+  }
+
+  /* No real shadow-casting lights per character: cheaper and safer for mobile devices. */
+
+  const U = { body, arms, legs, glow, eyes, smile, mouthO, ears, pack, nose, tail, scarfEnd, goggles, lantern, fieldMap };
+  /* Same parade flag interface as normal colonists. */
+  const flag = new THREE.Group(); flag.add(mesh(geo('cFlagP', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.024, 4).translate(0, 0.012, 0)), M(0x5a4332)));
+  flag.add(mesh(geo('smFlag', () => new THREE.PlaneGeometry(0.008, 0.005)), MD(0xf1b769), 0.004, 0.021, 0));
+  flag.position.y = -0.008; flag.rotation.x = Math.PI; flag.visible = false; arms[1].add(flag); U.flag = flag;
+  g.scale.setScalar(COL_S); g.userData = U; scout17Attach(g); return g;
+}
 function mkColonist(c) {
+  if (c.scout) { try { return mkMouseScout(c); } catch (e) { console.warn('[Base Camp Scout] procedural mouse failed, using a normal creature:', e); c.scout = false; } }
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   { const ring = new THREE.Mesh(geo('cRing', () => new THREE.RingGeometry(0.007, 0.019, 24).rotateX(-Math.PI / 2)), RING_MAT); ring.position.y = 0.0015; ring.renderOrder = 6; g.add(ring); const glow = new THREE.Mesh(geo('cGlow', () => new THREE.CircleGeometry(0.019, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending })); glow.position.y = 0.0012; glow.renderOrder = 5; g.add(glow); } // a soft glow ring under every colonist: easy to find on a real room
   const skin = M(pick([0xf2c9a0, 0xe0a97a, 0xc98b5e, 0xa06a46, 0xffdcb8])), shirt = M(new THREE.Color().setHSL(c.hue, 0.5, 0.6).getHex()), hat = M(new THREE.Color().setHSL((c.hue + 0.45) % 1, 0.75, 0.58).getHex());
@@ -1122,7 +1458,7 @@ function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rota
 function addColonist(S, o) {
   o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
   const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
-  const c = { id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
+  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name || def.name + (rep ? ' ' + (rep + 1) : ''), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
   const a = rnd(0, 6.28), d = rnd(0.045, 0.08); c.x = o.x !== undefined ? o.x : Math.cos(a) * d; c.z = o.z !== undefined ? o.z : Math.sin(a) * d;
   c.mesh = mkColonist(c); c.mesh.position.set(c.x, 0, c.z); S.group.add(c.mesh);
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
@@ -1529,7 +1865,7 @@ function linkStep(l, dt, E, quiet) {
       const want = to.awaiting ? (l.gate && from.cols.length < 4 ? 0 : 2) : (from.cols.length >= to.cols.length + 3 && to.cols.length < housing(to) && !to.awaiting ? 1 : 0);
       const going = from.cols.filter((c) => c.job && c.job.type === 'cross').length;
       if (want && !going && from.cols.length >= 2) {
-        const pool = from.cols.filter((c) => !c.job || !['cross'].includes(c.job.type)).sort((a, b) => b.needs.rest - a.needs.rest).slice(0, want);
+        const pool = from.cols.filter((c) => (!c.job || !['cross'].includes(c.job.type)) && !(c.scout && to.cols.some((q) => q.scout))).sort((a, b) => b.needs.rest - a.needs.rest).slice(0, want);
         for (const c of pool) { endJob(c); const th = fe === 'a' ? l.a.th : l.b.th; c.job = { type: 'cross', ph: 'go', t: 0, link: l, from: fe, tx: th.x, tz: th.z + 0.03, dur: 1e9, waited: 0 }; }
       }
     }
@@ -2182,9 +2518,10 @@ const CHAR = {
   Glimmerfluff: { by: 'The Dell Coder', react: 'giggle', pitch: 1.6, fidget: 'twirl', poke: ['Hee hee hee!', 'Tickles!', 'Again! Again!'], lift: ['Wheee!', 'I can fly!'], drop: ['Again!'], feast: ['Sparkly snack!'], done: ['Ta-daaa!'], cheer: ['Sparkle!'], dance: ['Twirl! Twirl!'], idle: ['La la la!', 'Sparkle!', 'Hee hee!'] },
   Gloop: { by: 'The Dell Reasoner', react: 'grump', pitch: 0.9, fidget: 'lint', poke: ['Nooo! My lint nest!', 'Oi! Nosy!'], lift: ['My lint!', 'Snacks first!'], drop: ['Where was I?'], feast: ['Yum yum! Snack time!'], done: ['Snack break?'], cheer: ['Yum yum!'], dance: ['Wobble wobble!'], idle: ['Snack?', 'Lint! Mine!', 'Whatcha doing?'] },
   Fluffflur: { by: 'The Mill Hand', react: 'giggle', pitch: 1.2, fidget: 'roll', poke: ["I'm going to eat you!", 'Hee! Fluff!'], lift: ['Wheee! Fluff!'], drop: ['Yay! Again!'], feast: ['Yay, more fluff!'], done: ['Yay!'], cheer: ['Yay, more fluff!'], dance: ['Fluff party!'], idle: ['Yay, more fluff!', 'Fluff?', 'Hello, Giant!'] },
+  Scout: { by: 'Backpack Scout mouse, made with ChatGPT, sent by Harry', react: 'giggle', pitch: 1.3, fidget: 'sniff', poke: ['Squeak! Supplies safe!', 'My map! My map!', 'Hello, Giant!'], lift: ['Mind the map!', 'Careful, please!'], drop: ['Pack intact!', 'Home again!'], feast: ['A tasty crumb!'], done: ['Trail cleared!'], cheer: ['Found it!'], dance: ['Tiny paws, big plans!'], idle: ['Where next?', 'Sniff sniff.', 'Adventure awaits!'] },
 };
-const CHAR_KEYS = Object.keys(CHAR);
-function charKey(c) { if (c.ck) return c.ck; const n = c.temper ? String(c.temper.base || c.temper.name || '') : ''; c.ck = CHAR_KEYS.find((q) => n.startsWith(q)) || CHAR_KEYS[Math.floor(hash01(c.name || 'x', 33) * CHAR_KEYS.length)]; return c.ck; }
+const CHAR_KEYS = Object.keys(CHAR).filter((k) => k !== 'Scout'); /* the mouse scout is placed on purpose (the first colonist of a camp), never rolled */
+function charKey(c) { if (c.scout) return 'Scout'; if (c.ck) return c.ck; const n = c.temper ? String(c.temper.base || c.temper.name || '') : ''; c.ck = CHAR_KEYS.find((q) => n.startsWith(q)) || CHAR_KEYS[Math.floor(hash01(c.name || 'x', 33) * CHAR_KEYS.length)]; return c.ck; }
 const charOf = (c) => CHAR[charKey(c)];
 // ---- speech bubbles (comic style, two or three words) and name tags: sprites that keep the same size on screen at any distance ----
 const SAY_TEX = new Map();
@@ -2209,7 +2546,7 @@ function sayLine(c, text, secs, force) { // force: a reaction to the Giant alway
 }
 function nameTag(c, secs) {
   if (!c || !c.mesh) return; if (!c.tagS) { c.tagS = mkSaySprite(); c.mesh.add(c.tagS); }
-  const k = charKey(c), txt = c.name + (c.name.startsWith(k) ? '' : ' · a ' + k), e = sayTex(txt, 'name'); c.tagS.material.map = e.t; c.tagS.material.needsUpdate = true; c.tagA = e.a; c.tagT = secs || 3; c.tagPop = 0;
+  const k = charKey(c), txt = c.name + (c.scout ? ' · backpack scout' : c.name.startsWith(k) ? '' : ' · a ' + k), e = sayTex(txt, 'name'); c.tagS.material.map = e.t; c.tagS.material.needsUpdate = true; c.tagA = e.a; c.tagT = secs || 3; c.tagPop = 0;
 }
 // ---- the Giant's hands: poke, pick up and drop, crumbs ----
 function pokeCol(c) {
@@ -2468,6 +2805,7 @@ function funFrame(dt) {
 function colVisual(S, c, dt, time, night, eye) {
   const U = c.mesh.userData, m = c.mesh, K = charOf(c), B = U.body;
   c.born += dt; const grow = Math.min(1, c.born * 2.5), sc = COL_S * grow * (1 + 0.12 * Math.sin(grow * 3.14));
+  scout17Tick(c, dt);
   m.visible = c.spawn <= 0 && !c.inside; m.scale.setScalar(Math.max(0.001, sc));
   let y = 0, sx = 1, sy = 1, rx = 0, ry = 0, rz = 0, mouthO = false;
   if (c.hop > 0) { c.hop = Math.max(0, c.hop - dt * 1.7); y = Math.sin(c.hop * 3.14) * 0.014 * (c.hopBig || 1); if (c.hop === 0) { c.hopBig = 1; c.squash = Math.max(c.squash || 0, 0.7); } }
@@ -2492,7 +2830,7 @@ function colVisual(S, c, dt, time, night, eye) {
   else { U.arms[0].rotation.z = 0.15; U.arms[1].rotation.z = -0.15; }
   // fidgets in character when idle (Glip's static sparks, Grizzle's moss and folded arms, Glimmerfluff's twirl, Gloop's lint, Fluffflur's roll)
   const idle = !c.moving && !c.working && !c.dancing && !c.fall && c.spawn <= 0 && !c.inside;
-  if (!c.fid && idle && !c.held) { c.fidT = (c.fidT === undefined ? rnd(1, 6) : c.fidT) - dt; if (c.fidT <= 0) { c.fidT = rnd(4, 9); c.fid = { k: K.fidget === 'moss' ? (Math.random() < 0.5 ? 'fold' : 'moss') : K.fidget, t: 0, dur: { spark: 1.2, moss: 2.4, fold: 3.2, twirl: 0.9, lint: 1.6, roll: 0.8 }[K.fidget] || 1.5 }; } }
+  if (!c.fid && idle && !c.held) { c.fidT = (c.fidT === undefined ? rnd(1, 6) : c.fidT) - dt; if (c.fidT <= 0) { c.fidT = rnd(4, 9); c.fid = { k: K.fidget === 'moss' ? (Math.random() < 0.5 ? 'fold' : 'moss') : K.fidget, t: 0, dur: { spark: 1.2, moss: 2.4, fold: 3.2, twirl: 0.9, lint: 1.6, roll: 0.8, sniff: 1.4 }[K.fidget] || 1.5 }; } }
   if (c.fid) {
     const F = c.fid; F.t += dt; const u = F.t / F.dur, [wx, wz] = l2w(S, c.x, c.z), top = SY(S, 0.06);
     if (F.k === 'spark') { if (U.hair) U.hair.scale.setScalar(1 + Math.abs(Math.sin(F.t * 30)) * 0.35); if (Math.random() < dt * 9) puff('spark', wx, top, wz, 1, { size: 0.006, vy: 0.03, life: 0.45, add: true, jit: 0.04, color: 0xffe14a }); sy *= 1.05; mouthO = true; }
@@ -2500,9 +2838,17 @@ function colVisual(S, c, dt, time, night, eye) {
     else if (F.k === 'fold') { U.arms[0].rotation.x = U.arms[1].rotation.x = -1.35; U.arms[0].rotation.z = -0.95; U.arms[1].rotation.z = 0.95; ry = Math.sin(F.t * 1.3) * 0.25; }
     else if (F.k === 'twirl') { ry = u * 6.283; y += Math.sin(u * 3.14) * 0.006; if (Math.random() < dt * 10) puff('star', wx, SY(S, 0.04), wz, 1, { size: 0.006, vy: 0.02, life: 0.7, add: true, jit: 0.03, color: 0xffb3e6 }); if (U.wings) for (const w of U.wings) w.rotation.y = Math.sin(F.t * 40) * 0.6; }
     else if (F.k === 'lint') { sy *= 1 - 0.18 * Math.sin(u * 3.14); rx = 0.5 * Math.sin(u * 3.14); if (u > 0.5 && !F.got) { F.got = 1; c.lint = Math.min(12, (c.lint || 0) + 1); puff('fluff', wx, SY(S, 0.006), wz, 2, { size: 0.008, vy: 0.012, life: 0.6, jit: 0.01 }); } }
+    else if (F.k === 'sniff') { if (U.nose) U.nose.scale.set(1 + Math.sin(F.t * 23) * 0.22, 0.7, 0.7); ry = Math.sin(F.t * 8) * 0.14; sy *= 1 + Math.sin(F.t * 17) * 0.025; }
     else if (F.k === 'roll') { rx = u * 6.283; y += Math.sin(u * 3.14) * 0.008; }
     if (F.t >= F.dur || c.moving) { c.fid = null; if (U.hair) U.hair.scale.setScalar(1); B.rotation.y = 0; }
   }
+  if (U.ears) for (let i = 0; i < U.ears.length; i++) U.ears[i].rotation.z = (i ? -0.2 : 0.2) + Math.sin(time * 5.5 + i * 2 + c.id) * (c.moving ? 0.11 : 0.055);
+  if (U.pack) U.pack.rotation.z = (c.moving ? 0.10 : 0.025) * Math.sin(time * (c.moving ? 12 : 2.5) + c.id);
+  if (U.tail) U.tail.rotation.y = Math.sin(time * 4 + c.id) * 0.18;
+  if (U.scarfEnd) U.scarfEnd.rotation.z = Math.sin(time * (c.moving ? 11 : 2.2) + c.id) * (c.moving ? 0.18 : 0.045);
+  if (U.lantern) U.lantern.rotation.z = Math.sin(time * (c.moving ? 12 : 3.2) + c.id) * (c.moving ? 0.16 : 0.045);
+  if (U.fieldMap) U.fieldMap.rotation.z = -0.12 + Math.sin(time * (c.moving ? 8 : 1.6) + c.id) * (c.moving ? .12 : .035);
+  if (U.nose && c.scout) U.nose.scale.x = 1 + Math.sin(time * 8.0 + c.id) * 0.055;
   if (U.lint) U.lint.scale.setScalar(0.5 + Math.min(1.2, (c.lint || 0) * 0.1));
   if (U.wings && !(c.fid && c.fid.k === 'twirl')) for (const w of U.wings) w.rotation.y = Math.sin(time * 3 + c.id) * 0.15 + (c.dancing ? Math.sin(time * 30) * 0.5 : 0);
   if (U.flag) U.flag.visible = !!c.parading && c.job && c.job.type === 'parade'; if (!(c.job && c.job.type === 'parade')) c.parading = false; if (!(c.job && c.job.type === 'crumb')) c.nibble = false;
@@ -2921,9 +3267,9 @@ function ccamText() {
 }
 function ccamRender(probe) {
   const c = CCAM.c; if (!CCAM.on || !c || !c.mesh || !c.S || !c.S.placed) return null; const r = $('ccamView').getBoundingClientRect(); if (r.width < 20 || r.height < 20) return null;
-  const m = c.mesh, S = c.S; m.updateWorldMatrix(true, false); m.getWorldPosition(CCAM.look); const up = S.tf.flip ? -1 : 1; CCAM.look.y += 0.022 * up;
+  const m = c.mesh, S = c.S; m.updateWorldMatrix(true, false); m.getWorldPosition(CCAM.look); const up = S.tf.flip ? -1 : 1, ck = c.scout ? 1.7 : 1; /* build 17: the scout mouse is about 1.7x a creature's height, so the cam steps back */ CCAM.look.y += 0.022 * ck * up;
   m.getWorldDirection(CCAM.fw); CCAM.fw.y = 0; if (CCAM.fw.lengthSq() < 1e-6) CCAM.fw.set(0, 0, 1); CCAM.fw.normalize(); const ca = Math.cos(0.6), sa = Math.sin(0.6);
-  CCAM.tgt.set(CCAM.fw.x * ca + CCAM.fw.z * sa, 0, -CCAM.fw.x * sa + CCAM.fw.z * ca).multiplyScalar(0.062).add(CCAM.look); CCAM.tgt.y += 0.012 * up;
+  CCAM.tgt.set(CCAM.fw.x * ca + CCAM.fw.z * sa, 0, -CCAM.fw.x * sa + CCAM.fw.z * ca).multiplyScalar(0.062 * ck).add(CCAM.look); CCAM.tgt.y += 0.012 * ck * up;
   if (CCAM.snap) { CCAM.pos.copy(CCAM.tgt); CCAM.snap = false; } else CCAM.pos.lerp(CCAM.tgt, 0.18);
   const cam = CCAM.cam; cam.aspect = r.width / r.height; cam.up.set(0, up, 0); cam.position.copy(CCAM.pos); cam.lookAt(CCAM.look); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
   const x = r.left, y = innerHeight - r.bottom, bg0 = scene.background; scene.background = bg0 && bg0.isColor ? bg0 : CCAM.bg;
@@ -2950,7 +3296,7 @@ function chipsHtml(S) { const cs = S.cols.filter((c) => !c.inside && c.spawn <= 
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
 let SAVE_KEY = homeKeys(HOMES.cur).save;
-const colSave = (c) => ({ id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.x, z: c.z, needs: c.needs });
+const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.x, z: c.z, needs: c.needs });
 function serialize() {
   const hr = new Date(); 
   return {
@@ -3078,7 +3424,7 @@ function arLog(msg) { // HelloXR's web view cannot show alert(): every step and 
     } catch (e) { st.textContent = 'AR check error: ' + e.message; }
     if (!pending) { st.textContent = tries < 30 ? 'AR: checking...' : 'AR not available here. Try the practice room, or open this in the HelloXR app.'; if (tries < 30) setTimeout(check, 500); }
   };
-  setTimeout(check, 0); /* hotfix: Safari has no navigator.xr, so check() reached updateTitle() and TOTPH too early. Fix found by the town. */
+  setTimeout(check, 0); /* build 17: run after every later const exists (Safari has no navigator.xr, so check() reached updateTitle() and TOTPH too early). Fix found by the town. */
 })();
 async function arStart(cont) {
   if (AR.on || AR.starting) return; AR.starting = true;
@@ -4505,7 +4851,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div>';
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
@@ -4571,7 +4917,7 @@ function selCard(c) {
   const el = $('sel'); if (!c) { el.hidden = true; return; } el.hidden = false;
   const bar = (k, col) => `<div class="bar"><span style="width:44px">${k}</span><i><u style="width:${Math.round(c.needs[k] * 100)}%;background:${col}"></u></i></div>`;
   const doing = doingText(c);
-  el.innerHTML = `<b style="color:#ffd9a8">${esc(c.name)}</b> is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">${c.persona ? esc(c.persona) + '<br>' : ''}likes: ${c.likes.join(', ') || 'everything'}${c.dream ? '<br>dreams: ' + esc(c.dream) : ''}${c.by ? ' <i class="by">by ' + esc(c.by) + '</i>' : ''}</div>`;
+  el.innerHTML = `<b style="color:#ffd9a8">${esc(c.name)}</b>${c.scout ? ' 🐭 Backpack Scout' : ''} is ${doing}` + bar('food', '#e8483b') + bar('water', '#4aa8e8') + bar('rest', '#b79bf0') + bar('joy', '#ffcf3d') + `<div style="opacity:.7;margin-top:4px">${c.persona ? esc(c.persona) + '<br>' : ''}likes: ${c.likes.join(', ') || 'everything'}${c.dream ? '<br>dreams: ' + esc(c.dream) : ''}${c.by ? ' <i class="by">by ' + esc(c.by) + '</i>' : ''}</div>`;
 }
 function totemThumb() { const u = MULTI_ROOM && G.phase === 'play' ? totemUrl(HOMES.cur) : ''; return u ? '<img class="cth" src="' + u + '" alt="" title="' + esc(homeName(HOMES.cur)) + '">' : ''; }
 $('card').onclick = (e) => {
@@ -4856,7 +5202,7 @@ function btMkRivalLook(m, rv) { // each rival: a colour or material plus one pro
   body.add(g);
 }
 function btMkUnit(side, spec, x, z, y) {
-  const c = { hue: spec.hue, name: spec.name, ck: spec.ck, temper: { base: spec.ck } }; const m = mkColonist(c); m.scale.setScalar(BT_SCALE * BT.k);
+  const c = { scout: spec.ck === 'Scout', hue: spec.hue, name: spec.name, ck: spec.ck, temper: { base: spec.ck } }; const m = mkColonist(c); m.scale.setScalar(BT_SCALE * BT.k);
   const ring = new THREE.Mesh(geo('btRing', () => new THREE.RingGeometry(0.036, 0.05, 28).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: BT_COLS[side], transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide })); ring.position.y = 0.003; ring.renderOrder = 4; ring.scale.setScalar(1.45 / BT_SCALE); m.add(ring);
   if (spec.rv) btMkRivalLook(m, spec.rv);
   const u = { id: ++BT.ids, side, name: spec.name, ck: spec.ck, hue: spec.hue, rv: spec.rv || null, hp: BT.cfg.hp || 2, dizzy: false, pushedBy: -1, hat: null, x, y, z, y0: y, vx: 0, vy: 0, vz: 0, st: 'stand', face: 0, mesh: m, ring, fall: false, weee: false, anim: null, pop: null, dance: 0, sc: 0, selOff: 0, sq: 0, tilt: 0, lastSay: 0, shots: 0 };
@@ -5797,7 +6143,7 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
 // ============ test and debug hooks ============
 window.__g = {
-  DECOR_MK, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
+  SCOUT17, scout17Load, scout17Tick, DECOR_MK, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
     if (dev) { ENV.hourOverride = null; envUpdate(); } },
@@ -5819,6 +6165,7 @@ Object.assign(window.__g, BT_HOOKS);
 G.last = performance.now();
 showTitle(); envUpdate();
 if (ENV.loc && store.get('bc-wxchoice')) fetchWeather(false);
+scout17Load();
 requestAnimationFrame(frame);
 </script>
 </body>
