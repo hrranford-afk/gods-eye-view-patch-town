@@ -76,3 +76,12 @@ in a single block, never split across several boxes.
 - **The arcade ("Toy Cupboard"):** a 3D front page where every game is a toy box on a shelf, with a looping preview
   and "N playing now" counts (counted, never tracked; a server needs Harry's yes). Later: other makers' games, itch.io,
   then Poki and CrazyGames. AR on iPhone and iPad needs a native app one day. Harry: "let's work on that format later".
+
+## Daily milestones (from 14 Nov 2026; Harry agreed the idea on 13 Nov)
+- **The rhythm:** one goal per day that Harry can see.
+  - Morning: read the town's overnight results and set the day's goal.
+  - Day: builders work, and each piece goes live as it passes.
+  - By 17:00: a link, a picture, and an honest check against the goal (hit, partly or missed).
+  - Before Harry stops: send the town tonight's orders.
+- **Start each day in a fresh session,** from this file, HANDOVER.md and `base-camp-ROADMAP.html`. A fresh session is cheaper per message and has a sharper memory.
+- The list of days is in `base-camp-ROADMAP.html` (the "Daily milestones" section).
