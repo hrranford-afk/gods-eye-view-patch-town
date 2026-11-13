@@ -13,16 +13,6 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   await ev(() => __g.simulate(3 * 3600, 0.5));
   const nm = await ev(() => { const a = __g.G.settlements.flatMap((S) => S.cols.map((c) => c.name)); return { n: a.length, u: new Set(a).size }; });
   ok('no two creatures share a name after 3 simulated hours (exact names)', nm.n > 12 && nm.n === nm.u, JSON.stringify(nm));
-  /* the duplicate-name bug that survived the first fix: the chips cut a name to its first word, so "Pip" and "Pip the Packet" were two "Pip" chips, and "Gloop (credit)" matched "Gloop". Check 4 h in every room, the card chips and the scout too. */
-  await ev(() => __g.simulate(3600, 0.5));
-  const nm2 = await ev(() => {
-    const all = []; for (const S of __g.G.settlements) for (const c of S.cols) all.push(c); const keys = all.map((c) => __g.nameKey(c.name)); const scouts = all.filter((c) => c.scout).map((c) => __g.nameKey(c.name));
-    const bad = []; for (const S of __g.G.settlements) { const t = new DOMParser().parseFromString(__g.chipsHtml(S), 'text/html'); const lab = [...t.querySelectorAll('.cbtn')].map((e) => e.textContent.replace('\u{1F3A5}', '').trim()); if (new Set(lab).size !== lab.length) bad.push(lab.join(',')); }
-    const labels = all.map((c) => __g.chipName(c)); return { n: all.length, uniqKeys: new Set(keys).size, scouts: scouts.length, scoutUniq: new Set(scouts).size, badCards: bad, uniqLabels: new Set(labels).size };
-  });
-  ok('4 simulated hours: every creature name (scout mice included, credits ignored) is unique in the room', nm2.n > 12 && nm2.uniqKeys === nm2.n && nm2.scouts >= 2 && nm2.scoutUniq === nm2.scouts, JSON.stringify(nm2));
-  ok('no card shows two identical chips, and every chip label is unique in the room', nm2.badCards.length === 0 && nm2.uniqLabels === nm2.n, JSON.stringify(nm2));
-  ok('a second Pip is "Pip 2", an old save with two Pips is made unique on load', await ev(() => { const S = __g.mainSettlement(); const a = __g.uniqName('Pip'), b = __g.uniqName('Gloop (Dell Reasoner)'); return /^Pip \d+$/.test(a) && (!S.cols.some((c) => __g.nameKey(c.name) === 'gloop') || /^Gloop \d+$/.test(b)); }));
   /* 2. one bubble at a time within a radius */
   const bub = await ev(() => {
     const S = __g.mainSettlement(), cs = S.cols.filter((c) => !c.inside).slice(0, 4); for (const T of __g.G.settlements) for (const q of T.cols) q.sayT = 0; __g.FUN.bubbles = 0;
@@ -79,6 +69,16 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   await calm(); await sleep(800); const nb = await ev(() => __g.G.settlements.flatMap((S) => S.cols).filter((c) => c.sayT > 0).length);
   ok('a whole camp asked to speak at once shows at most 4 bubbles', nb >= 1 && nb <= 4, nb + ' bubbles');
   await p.screenshot({ path: OUT + '60-bubbles-calm.png' });
+  /* the duplicate-name bug that survived the first fix: the chips cut a name to its first word, so "Pip" and "Pip the Packet" were two "Pip" chips, and "Gloop (credit)" matched "Gloop". Check 4 h in every room, the card chips and the scout too. */
+  await ev(() => __g.simulate(3600, 0.5));
+  const nm2 = await ev(() => {
+    const all = []; for (const S of __g.G.settlements) for (const c of S.cols) all.push(c); const keys = all.map((c) => __g.nameKey(c.name)); const scouts = all.filter((c) => c.scout).map((c) => __g.nameKey(c.name));
+    const bad = []; for (const S of __g.G.settlements) { const t = new DOMParser().parseFromString(__g.chipsHtml(S), 'text/html'); const lab = [...t.querySelectorAll('.cbtn')].map((e) => e.textContent.replace('\u{1F3A5}', '').trim()); if (new Set(lab).size !== lab.length) bad.push(lab.join(',')); }
+    const labels = all.map((c) => __g.chipName(c)); return { n: all.length, uniqKeys: new Set(keys).size, scouts: scouts.length, scoutUniq: new Set(scouts).size, badCards: bad, uniqLabels: new Set(labels).size };
+  });
+  ok('4 simulated hours: every creature name (scout mice included, credits ignored) is unique in the room', nm2.n > 12 && nm2.uniqKeys === nm2.n && nm2.scouts >= 2 && nm2.scoutUniq === nm2.scouts, JSON.stringify(nm2));
+  ok('no card shows two identical chips, and every chip label is unique in the room', nm2.badCards.length === 0 && nm2.uniqLabels === nm2.n, JSON.stringify(nm2));
+  ok('a second Pip is "Pip 2", an old save with two Pips is made unique on load', await ev(() => { const S = __g.mainSettlement(); const a = __g.uniqName('Pip'), b = __g.uniqName('Gloop (Dell Reasoner)'); return /^Pip \d+$/.test(a) && (!S.cols.some((c) => __g.nameKey(c.name) === 'gloop') || /^Gloop \d+$/.test(b)); }));
   ok('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
   await b.close(); srv.close(); const f = res.filter((x) => !x).length; console.log(f ? f + ' FAILED' : 'ALL PASS (' + res.length + ')'); process.exit(f ? 1 : 0);
 })();
