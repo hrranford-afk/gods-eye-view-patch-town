@@ -29,3 +29,7 @@ Harry, 13 Nov: about half of the Max plan goes to building the games, and half t
 | 13 Nov | B&B graphics pass (resume) | 137,493 | test link |
 | 13 Nov | Build 19 fixes (resume) | 199,124 | done; 2 claims to check (duplicate Pip chip still in shot 58; the card is not visible in shot 58) |
 | 13 Nov | Restarts | 2 (about 10:40 and 14:49) | |
+| 13 Nov | Build 18 test-timing fixes | 192,942 | tests fixed, no game bugs |
+| 13 Nov | Vigil 3D first playable | 303,515 | test link |
+| 13 Nov | Decor merged into waterworks | 113,106 | branch bc-merge20 |
+| 13 Nov | Shop edition | 534,644 | test link base-camp-shop/ at 20:44 |

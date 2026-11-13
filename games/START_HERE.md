@@ -129,7 +129,7 @@ bring to the game."
 1. **Build 19 release** (builder on `game/bc-build19`): merge waterworks + decor + the build 19 fixes, fix the duplicate
    "Pip" names properly, run every suite, then CAIRN checks it and deploys.
    - **Before deploying,** keep build 17 reachable at `base-camp/b17/` as a fallback.
-2. **Shop edition** (builder on `game/shop-edition`): check it, then deploy to the test link `base-camp-shop/`.
+2. **Shop edition: DONE 20:44.** Live at `base-camp-shop/`. CAIRN checked shots s1 and s3, and it starts with no errors on the live link.
 3. **Sound pass** (after build 19 is live; game sounds made in-house with WebAudio, no download): every action gets a sound
    (ploop, squeak, tink, footsteps, fanfare).
 4. **If time and budget allow:** the first 10 minutes as a story (the Scout lands, unrolls his map, finds the first spot).
