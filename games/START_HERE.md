@@ -77,6 +77,9 @@ in a single block, never split across several boxes.
   and "N playing now" counts (counted, never tracked; a server needs Harry's yes). Later: other makers' games, itch.io,
   then Poki and CrazyGames. AR on iPhone and iPad needs a native app one day. Harry: "let's work on that format later".
 
+- **Screenshots: send them ONE AT A TIME** (Harry, 13 Nov: "One AT A TIME PLZ"), one file per card, numbered ("1 of 7"), with a
+  one-line caption each. Never bundle several pictures into one card.
+
 ## Daily milestones (from 14 Nov 2026; Harry agreed the idea on 13 Nov)
 - **The rhythm:** one goal per day that Harry can see.
   - Morning: read the town's overnight results and set the day's goal.
