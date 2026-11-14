@@ -21,14 +21,17 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await ev(() => { __g.ENV.hourOverride = 12; localStorage.setItem('bc-wxchoice', 'no'); localStorage.removeItem('base-camp-map-v1'); localStorage.removeItem('base-camp-save-v2'); });
   const c = await ev(() => ({ c: __g.COUNCIL.almanac && __g.COUNCIL.rooms && __g.COUNCIL.creatures, names: __g.COLONY_ALMANAC.colonists.map((q) => q.name).join(','), spots: __g.ROOMS.spots.length, cre: __g.CREATURES.map((q) => q.name).join(','), ev: __g.COLONY_ALMANAC.events.length, req: __g.COLONY_ALMANAC.requests.filter((r) => r.council).length }));
   ok('council: almanac, rooms and creatures all loaded', c.c, JSON.stringify(c));
-  ok('council: the six colonists and four creatures', c.names === 'Pip,Gizmo,Lila,Pipkin Bramble,Luna,Sunny' && c.cre === 'Glip,Grizzle,Fluffflur,Glimmerfluff');
+  /* build 7+ (council data update): the almanac and creature lists grew; the original six colonists and four creatures must all still be there */
+  ok('council: the six colonists and four creatures', ['Pip', 'Gizmo', 'Lila', 'Pipkin Bramble', 'Luna', 'Sunny'].every((n) => c.names.split(',').includes(n)) && ['Glip', 'Grizzle', 'Fluffflur', 'Glimmerfluff'].every((n) => c.cre.split(',').includes(n)));
   const m0 = await mem();
 
   // ---- map my room, tag spots ----
   await p.click('#bMore'); await p.click('#bMap'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(400);
   ok('map mode goes to tagging after the scan', await ev(() => __g.G.phase === 'tag'));
   const zs = await ev(() => __g.G.zones.map((z) => [z.type, +z.area.toFixed(2), +z.y.toFixed(2)]));
-  ok('zones found: floor, desk, speaker top, sill, shelf', zs.length === 5, JSON.stringify(zs));
+  /* build 18: the practice room has a toy toilet on the floor, so its lid is a sixth (small, low) zone */
+  const kinds = zs.map((z) => z[0]).sort().join(',');
+  ok('zones found: floor, desk, speaker top, sill, shelf (+ the toy toilet lid)', zs.length === 6 && kinds === 'FLOOR,SHELF,SILL,SMALL,SMALL,TABLE' && zs.some((z) => z[0] === 'SMALL' && z[2] > 0.4) && zs.some((z) => z[0] === 'SMALL' && z[2] < 0.25), JSON.stringify(zs));
   const sp = await ev(() => { const z = __g.G.zones.find((q) => q.type === 'SMALL'); return [z.cx, z.y, z.cz]; });
   let pt = await scr(...sp); await p.mouse.click(pt[0], pt[1]); await sleep(300);
   ok('tapping the speaker top opens the tag picker', await ev(() => !document.getElementById('tagpick').hidden));
@@ -47,7 +50,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   await ev(() => { __g.tagTap; });
   await ev(() => { const c = document.getElementById('bSaveMap'); c.click(); }); await sleep(200);
   const mj = await ev(() => JSON.parse(localStorage.getItem('base-camp-map-v1')));
-  ok('the room map is saved under its own key, versioned', mj.v === 1 && mj.kind === 'base-camp-room-map' && mj.zones.length === 5 && mj.spots.length >= 5 && mj.cables.length === 1, 'bytes=' + JSON.stringify(mj).length);
+  ok('the room map is saved under its own key, versioned', mj.v === 1 && mj.kind === 'base-camp-room-map' && mj.zones.length === zs.length && mj.spots.length >= 5 && mj.cables.length === 1, 'bytes=' + JSON.stringify(mj).length);
   ok('the colony is not in the map', !('settlements' in mj));
   await ev(() => { __g.focusOn(-0.1, 0.7, -0.5, 4.2); __g.P.yaw = 0.2; __g.P.pitch = 0.75; }); await ev(() => { document.getElementById('tagpick').hidden = true; });
   await shot('06-tag-spots.png');

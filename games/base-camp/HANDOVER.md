@@ -396,3 +396,12 @@ From the playtest in `base-camp-first10/FIRST_10_MINUTES.md`: at night a new pla
 - **One voice at a time.** The weather card waits until 8 s after the request is done, or 3 minutes (`F10_WX`), and only when no card or banner is up. Almanac requests and "What is this?" wait until the seed request is done and no card is up. The creature cam moves down below any card (`f10CamDodge`). The Practice sky panel shows only under a test driver (`navigator.webdriver`) or with `?tools`; players turn it on from Menu > Practice sky (`?player` hides it under a test driver too). "First dance party" now needs a built hut and at least two creatures awake in the pit (`partyReal`).
 - **The question.** At 540 s (`F10_Q`) the scout names the farthest unsettled surface ("Something glitters over on the Sunny Perch... Come back later?") as a card with a Come back later button; the toolbar's Come back later glows. On the next visit `awaySummary` puts the answer second in the diary (`f10Answer`: "Pip kept the promise... found a lost button...").
 - **Tests.** `tests/first10-test.js` (17 checks, shots 65 to 68). Existing tests changed: the exact BUILD checks in scout, water, style and props now accept `build 19 + first10`. Nothing else in the old suites needed changing.
+
+## Build 21: old suites repaired
+BUILD is `'build 21'`. The four suites that had failed since about build 16 (room, totem, ar-room, practice) were run one at a time; every failing check is listed. a = stale test (the game changed on purpose; the test now checks the same promise against today's game), b = real game bug (fixed in the game), c = broken harness (fixed in the test).
+
+| Suite | Check | a/b/c | What was done |
+|---|---|---|---|
+| room | council: the six colonists and four creatures | a | Build 7's council update added more colonists and creatures (duplicates told apart). The check now asks that the original six and four are all still there, not that the list is exactly those. |
+| room | zones found: floor, desk, speaker top, sill, shelf | a | Build 18 put a toy sink and toilet in the practice room; the toilet lid is a sixth, low SMALL zone. The check now wants the five kinds plus that low lid (6 zones). |
+| room | the room map is saved under its own key, versioned | a | Same cause: compared the saved zone count to the 5 hard-coded; now compares to the zones actually found. |
