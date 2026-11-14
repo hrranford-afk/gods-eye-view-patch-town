@@ -1,0 +1,174 @@
+{
+ "creatures": [
+  {
+   "name": "Glip",
+   "made_of": "static-charged lint and a single lost earring back",
+   "personality_five_words": [
+    "timid",
+    "obsessive",
+    "clumsy",
+    "fiercely",
+    "loyal"
+   ],
+   "gross_or_silly_habit": "collects and polishes other creatures' shed fluff into tiny, useless statues",
+   "scared_of": "sudden loud noises, especially the microwave beep",
+   "says_when_it_panics": "Static's frizzing! The air's got teeth!",
+   "says_when_happy": "Ooh, crisp! I love the hum of the fridge!",
+   "secretly_brilliant_at": "navigating by magnetic fields and fixing broken cable cars with spit and hope",
+   "by": "The Town Brain"
+  },
+  {
+   "name": "Dustbert",
+   "made_of": "old socks, lint, and forgotten pizza crumbs",
+   "personality_five_words": [
+    "clumsy",
+    "cheerful",
+    "forgetful",
+    "curious",
+    "loyal"
+   ],
+   "gross_or_silly_habit": "always has a half-eaten pizza crust stuck to his back",
+   "scared_of": "vacuum cleaners",
+   "says_when_it_panics": "Not the vacuum! I'm not ready to be sucked up yet!",
+   "says_when_happy": "Pizza time! Who's ready for a party?",
+   "secretly_brilliant_at": "remembering where everyone's lost items are hidden",
+   "by": "The Dell Builder"
+  },
+  {
+   "name": "Glimmerfluff",
+   "made_of": "Shimmering dust and tiny, glittery feathers",
+   "personality_five_words": [
+    "Sparkly",
+    "Mischievous",
+    "Curious",
+    "Giggly",
+    "Friendly"
+   ],
+   "gross_or_silly_habit": "Flutters around in a cloud of glittery dust",
+   "scared_of": "Darkness and loud noises",
+   "says_when_it_panics": "Giggles nervously and tries to fly away",
+   "says_when_happy": "Shines brightly and dances around",
+   "secretly_brilliant_at": "Creating beautiful, intricate patterns with its glittery feathers",
+   "by": "The Dell Coder"
+  },
+  {
+   "name": "Sproutling",
+   "made_of": "dust bunnies, crumpled paper, and dried glue",
+   "personality_five_words": [
+    "curious",
+    "playful",
+    "clumsy",
+    "optimistic",
+    "nervous"
+   ],
+   "gross_or_silly_habit": "collects random shiny objects and hoards them in a nest made of old socks",
+   "scared_of": "sudden loud noises, especially the sound of a vacuum cleaner",
+   "says_when_it_panics": "Not again, not again!",
+   "says_when_happy": "This is the best day ever, isn't it?",
+   "secretly_brilliant_at": "remembering hidden paths and shortcuts through the room",
+   "by": "The Dell Elder"
+  },
+  {
+   "name": "Gloop",
+   "made_of": "melted crayon wax and leftover cereal bits",
+   "personality_five_words": [
+    "clumsy",
+    "loyal",
+    "greedy",
+    "squeaky",
+    "worrisome"
+   ],
+   "gross_or_silly_habit": "sucks up dust particles with its gooey body to make 'gloop soup' for breakfast",
+   "scared_of": "being left alone in the dark",
+   "says_when_it_panics": "WHOOOAAAAA! I'm gonna get stuck in a crack!",
+   "says_when_happy": "Mmmmm... cereal and crayons!",
+   "secretly_brilliant_at": "calculating the exact angle to slide down a cable car rope without falling off",
+   "by": "The Dell Quick Builder"
+  },
+  {
+   "name": "Gloop",
+   "made_of": "old socks and static",
+   "personality_five_words": [
+    "grumpy",
+    "nosy",
+    "snack-hungry",
+    "confused",
+    "nosy"
+   ],
+   "gross_or_silly_habit": "collects lint balls and makes them into a nest",
+   "scared_of": "vacuum cleaners",
+   "says_when_it_panics": "Nooo! My lint nest!",
+   "says_when_happy": "Yum yum! Snack time!",
+   "secretly_brilliant_at": "finding hidden snack crumbs",
+   "by": "The Dell Reasoner"
+  },
+  {
+   "name": "Tacky",
+   "made_of": "a dried-out yellow highlighter cap fused to a wad of old, brown, fossilized chewing gum",
+   "personality_five_words": [
+    "chatty",
+    "clingy",
+    "dramatic",
+    "loyal",
+    "clumsy"
+   ],
+   "gross_or_silly_habit": "sneezes out tiny translucent gum balls that stick to every surface it touches, including the player's phone screen",
+   "scared_of": "a lint roller",
+   "says_when_it_panics": "THE ROLLER! THE ROLLER IS EATING ME! I'M JUST A LITTLE GUM BALL!",
+   "says_when_happy": "I'M STICKY AND I'M PROUD OF IT! WHEEE!",
+   "secretly_brilliant_at": "negotiating tiny peace treaties between the other Fluffkins",
+   "by": "The Dell Scholar"
+  },
+  {
+   "name": "Grizzle",
+   "made_of": "Dried moss and discarded bottle caps",
+   "personality_five_words": [
+    "Grumpy",
+    "Protective",
+    "Stoic",
+    "Practical",
+    "Loyal"
+   ],
+   "gross_or_silly_habit": "Constantly sheds moss flakes, leaving a green trail everywhere.",
+   "scared_of": "Sudden, bright lights; they make his moss brittle.",
+   "says_when_it_panics": "’Dim it! Dim it, I say!’",
+   "says_when_happy": "’Hmph. Adequate.’",
+   "secretly_brilliant_at": "Calculating structural integrity of Fluffkin constructions.",
+   "by": "The Dell Surveyor"
+  },
+  {
+   "name": "Fluffflur",
+   "made_of": "dust bunnies and fluff",
+   "personality_five_words": [
+    "lovable",
+    "curious",
+    "naive",
+    "greedy for attention",
+    "eager to explore"
+   ],
+   "gross_or_silly_habit": "",
+   "scared_of": "",
+   "says_when_it_panics": "I'm going to eat you!",
+   "says_when_happy": "Yay, more fluff! ",
+   "secretly_brilliant_at": "",
+   "by": "The Mill Hand"
+  },
+  {
+   "name": "Glimmerfluff",
+   "made_of": "Shimmering dust and tiny, iridescent feathers",
+   "personality_five_words": [
+    "Sparkly",
+    "Mischievous",
+    "Curious",
+    "Giggly",
+    "Adventurous"
+   ],
+   "gross_or_silly_habit": "Flutters its feathers in a silly dance when excited",
+   "scared_of": "Darkness and loud noises",
+   "says_when_it_panics": "Giggles nervously and starts spinning in circles",
+   "says_when_happy": "Sings a cheerful tune and twirls around",
+   "secretly_brilliant_at": "Creating dazzling light displays and solving puzzles",
+   "by": "The Radeon Coder"
+  }
+ ]
+}

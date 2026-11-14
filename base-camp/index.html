@@ -18,6 +18,8 @@ button.on{background:var(--acc);border-color:#ffd9a8;color:#fff}
 button.big{background:var(--acc);border-color:#ffd9a8;font-size:20px;min-height:54px;padding:6px 22px;color:#fff;box-shadow:0 3px 0 #a85a1e}
 button.alt{background:#5e8f4a;border-color:#b6dc9d;box-shadow:0 3px 0 #38592b}
 button:disabled{opacity:.4}
+a.mlink{font:800 15px var(--body);color:var(--paper);background:rgba(255,246,230,.16);border:2px solid rgba(255,246,230,.42);border-radius:12px;min-height:42px;padding:4px 12px;display:inline-flex;align-items:center;text-decoration:none;box-sizing:border-box}
+#nroom .stkq{font-weight:600;opacity:.85}#chooser .chstk{text-align:center;opacity:.8;font-size:13px}
 #title{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;padding:26px 30px;width:min(92vw,460px);background:rgba(59,42,30,.82)}
 #title{max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box} /* build 25: a long rooms list and More... scroll inside the card instead of running off the screen */
 #title h1{margin:0 0 4px;font-size:44px;letter-spacing:1px;color:#ffd9a8;text-shadow:0 3px 0 #7a4a22}
@@ -196,7 +198,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 26';
+const BUILD = 'build 27';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -2213,7 +2215,7 @@ function mapToJSON() { /* build 26: only the current room's zones, and the spots
     zones: own.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost, ceil: !!Z.ceil,
       land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen), conf: rle(L.conf) } : null }; }),
     spots: spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
-    cables: G.cables.filter((c) => sids.has(c.a) && sids.has(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().filter((s) => sids.has(s.id)).map((s) => s.id), library: G.library };
+    cables: G.cables.filter((c) => sids.has(c.a) && sids.has(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().filter((s) => sids.has(s.id)).map((s) => s.id), library: G.library, stk: stkToJSON() /* build 27: the room's sticker, in the map's frame */ };
 }
 function mapFromJSON(d, room) { /* returns an error string, or '' after loading it into G; room (build 26): the room it is loaded for (default: the current one) */
   if (!d || typeof d !== 'object' || d.kind !== 'base-camp-room-map') return 'This is not a Base Camp room map.';
@@ -2231,6 +2233,7 @@ function mapFromJSON(d, room) { /* returns an error string, or '' after loading 
   G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
   for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
   G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
+  if (!room || room === HOMES.cur) { G.stk = stkFromJSON(d.stk); const hr = homeInfo(room || HOMES.cur); if (G.stk && hr && hr.stk !== G.stk.id) { for (const q of HOMES.rooms) if (q.stk === G.stk.id) delete q.stk; hr.stk = G.stk.id; homesSave(); } } /* build 27: the room's sticker (older maps have none) */
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
@@ -2502,7 +2505,7 @@ function alignPt(T, p) { const c = Math.cos(T.phi), s = Math.sin(T.phi); return 
 function applyAlign(T) { // frames are always computed from the saved ones (f0, p0), so it can be changed again and again
   G.align = T; const c = Math.cos(T.phi), s = Math.sin(T.phi);
   for (const Z of G.zones) { const [f0x, f0z, fa, fy] = Z.f0; setZoneFrame(Z, f0x * c - f0z * s + T.tx, f0x * s + f0z * c + T.tz, fa + T.phi, fy + T.dy); }
-  for (const sp of G.spots) { const [px, py, pz] = sp.p0; sp.x = px * c - pz * s + T.tx; sp.z = px * s + pz * c + T.tz; sp.y = py + T.dy; }
+  for (const sp of G.spots) { const [px, py, pz] = sp.p0; sp.x = px * c - pz * s + T.tx; sp.z = px * s + pz * c + T.tz; sp.y = py + T.dy; } /* build 27: the room's sticker follows through stkLive (it reads G.align) */
   for (const S of G.settlements) if (S.zoneRef) syncTf(S);
   for (const Z of G.zones) syncZoneMesh(Z);
   refreshSpots();
@@ -2512,7 +2515,7 @@ function nudgeAlign(dx, dz, dphi) { // fine-tune around the landmark midpoint
   const mx = pv[0] * c0 - pv[1] * s0 + T.tx + dx, mz = pv[0] * s0 + pv[1] * c0 + T.tz + dz; T.phi += dphi; const c = Math.cos(T.phi), s = Math.sin(T.phi);
   T.tx = mx - (pv[0] * c - pv[1] * s); T.tz = mz - (pv[0] * s + pv[1] * c); applyAlign(T);
 }
-function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; G.align = null; }
+function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; stkCommit(); /* build 27 */ G.align = null; }
 
 // ============ AWAY: the colony keeps going on the saved map. The first 24 hours are simulated in coarse steps; any time beyond that goes in DAY steps (awayDays). A colony never expires. ============
 const AWAY_MAX = 24 * 3600; // the part that is simulated in detail, not a limit on the time away
@@ -4717,7 +4720,7 @@ async function arStart(cont) {
     document.body.classList.add('inar');
     arLog('AR 5/5: sweep the iPad slowly over your desk, shelf and floor');
     setTimeout(() => { const el = $('arLog'); if (el && AR.on) el.remove(); }, 4000);
-    AR.dev = null; resetWorld(); if (G.auto) startAuto(); else startScan(cont); if (RECOG.on) cocoLoad(); if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
+    AR.dev = null; STK.img = null; STK.obs = {}; resetWorld(); if (G.auto) startAuto(); else startScan(cont); if (RECOG.on) { cocoLoad(); stkLoad(); } /* build 27: the sticker finder needs the camera pictures too */ if (store.get('bc-clip') === '1') { RECOG.clip.on = true; clipLoad(); }
     renderer.xr.setAnimationLoop(frame);
   } catch (err) {
     console.warn('AR could not start:', err); const msg = String(err && err.message || err);
@@ -4741,7 +4744,7 @@ function resize2() { renderer.setSize(innerWidth, innerHeight); camera.aspect = 
 function arFrame(frame) {
   if (!frame || !AR.refSpace) return;
   const pose = frame.getViewerPose(AR.refSpace), view = pose && pose.views[0];
-  if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); }
+  if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); if (STK.state === 'ready') { stkCam(); stkPoseNote(); } /* build 27: which viewer pose belongs to the newest camera picture */ }
   if (frame.getGlobalLightEstimate && performance.now() - AR.gtime > 1000) { // non-standard, WebXRKit only: ARKit's ambient light
     AR.gtime = performance.now();
     try { frame.getGlobalLightEstimate().then((pr) => { const v = pr && pr.indirectIrradiance; if (v > 0) AR.light = clamp(v, 0.6, 1.4); }).catch(() => {}); } catch (e) { /* ignore */ }
@@ -5158,7 +5161,7 @@ function buildReport(note) {
   const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
   const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
   const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
-    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, errors: REC.errs, previousSession: REC.prev,
+    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), errors: REC.errs, previousSession: REC.prev,
     snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
   return JSON.stringify(R);
 }
@@ -5196,7 +5199,7 @@ function reportUi(msg) {
 const AUTO = { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' };
 function autoReset() { Object.assign(AUTO, { commitAt: 0, refT: 0, t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '', colonySince: undefined }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; rgReset(); rbReset(); rfReset(); }
 function autoSay(text, secs) { // one short line that fades after a few seconds
-  const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; return; }
+  const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; AUTO.said = ''; /* build 27: else the same line said again later stayed blank */ return; }
   h.hidden = false; h.classList.remove('fade'); if (AUTO.said !== text) { AUTO.said = text; h.textContent = text; }
   AUTO.hintT = secs || 5;
 }
@@ -5322,7 +5325,7 @@ function autoTick(dt) {
     const h = autoHintText(); if (h) autoSay(h, 4); else if (!G.settlements.length && !SCAN.zones.length) autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
     AUTO.steady = G.settlements.length > 0 && (!G.returning || G.locked) && AUTO.t > 40;
   }
-  RELOC.lastHits = SCAN.hits; arQuietTick(); rbTick(dt); rfStep(); /* build 26: the room's extent, and the relock after a sleep */
+  RELOC.lastHits = SCAN.hits; arQuietTick(); rbTick(dt); rfStep(); /* build 26: the room's extent, and the relock after a sleep */ stkTick(dt); /* build 27: the room's sticker */
   if (G.returning && !G.locked) relocStep(dt);
   { const on = G.returning && !G.locked && RELOC.state === 'search'; if ($('idDot').hidden === on) $('idDot').hidden = !on; }
   totemTick(dt); totemOfferTick();
@@ -5543,10 +5546,10 @@ function relocConsider(res) {
   if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
-  const re = RF.on && RF.phase === 'match'; if (re) how = 'relock'; /* build 26: the same room found again after a sleep or an origin jump */
-  let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
+  const stkL = how === 'sticker'; /* build 27: a lock from the room's sticker (the surfaces may polish it only a little) */ const re = RF.on && RF.phase === 'match'; if (re) how = 'relock'; /* build 26: the same room found again after a sleep or an origin jump */
+  let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0 && (!stkL || stkPolishOK(pol.T))) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; /* the frames are committed after a short refinement with the growing scan */
   $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
-  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2), score: Math.round(res.score || 0), ov: +(res.overlap || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; if (!re) { G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; } RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, overlap: res.overlap, how: how || 'auto' };
+  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2), score: Math.round(res.score || 0), ov: +(res.overlap || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; if (!re) { G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; } RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, overlap: res.overlap, how: how || 'auto', stk: stkL ? 'sticker' : '' }; if (!stkL) STK.lockFix = null;
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
@@ -5619,11 +5622,11 @@ function relocPolish(T0, live) { // local search around a pose: yaw +-3 degrees,
 }
 function relocRefine() { // after the lock the scan keeps growing: nudge the registration (ICP from several yaws, lowest boundary distance wins, never worse than now)
   const T0 = G.align; if (!T0 || !RELOC.saved) return false; const live = relocLiveLayers(); if (!live.length) return false;
-  const pol = relocPolish(T0, live); if (pol.q >= 0) { RELOC.lock.q = +pol.q.toFixed(2); if (pol.gain > 0) { applyAlign(pol.T); RELOC.lock.phi = pol.T.phi; RELOC.lock.tx = pol.T.tx; RELOC.lock.tz = pol.T.tz; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; return true; } return false; }
+  const pol = relocPolish(T0, live); if (pol.q >= 0) { RELOC.lock.q = +pol.q.toFixed(2); if (pol.gain > 0 && (!RELOC.lock.stk || stkPolishOK(pol.T))) { /* build 27: a sticker lock is only polished a little */ applyAlign(pol.T); RELOC.lock.phi = pol.T.phi; RELOC.lock.tx = pol.T.tx; RELOC.lock.tz = pol.T.tz; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; return true; } return false; }
   const saved = RELOC.saved, hash = RELOC.hash || (RELOC.hash = relocHash(saved)), lp = relocLivePts(live), dy = T0.dy; let cx = 0, cz = 0; for (let i = 0; i < lp.length; i += 3) { cx += lp[i + 1]; cz += lp[i + 2]; } cx /= Math.max(1, lp.length / 3); cz /= Math.max(1, lp.length / 3);
   const c0 = relocCost(T0, lp, saved, hash, dy); let best = null, bc = c0;
   for (const dd of [0, -0.8, 0.8, -1.6, 1.6, -3, 3]) { const dph = dd * Math.PI / 180, c1 = Math.cos(T0.phi), s1 = Math.sin(T0.phi), sx = c1 * (cx - T0.tx) + s1 * (cz - T0.tz), sz = -s1 * (cx - T0.tx) + c1 * (cz - T0.tz), c2 = Math.cos(T0.phi + dph), s2 = Math.sin(T0.phi + dph), Ts = { phi: T0.phi + dph, tx: cx - (c2 * sx - s2 * sz), tz: cz - (s2 * sx + c2 * sz) }; const Ti = relocIcp(Ts, live, saved, dy, hash), co = relocCost(Ti, lp, saved, hash, dy); if (co < bc * 0.98) { bc = co; best = Ti; } }
-  if (!best) return false;
+  if (!best || (RELOC.lock && RELOC.lock.stk && !stkPolishOK(best))) return false; /* build 27 */
   const v = relocVerify(best, RELOC.savedTop, relocTop(live)); const T = { phi: best.phi, tx: best.tx, tz: best.tz, dy: dy + (v.M > 50 ? v.dyFix : 0), pivot: [0, 0], auto: true }; applyAlign(T);
   if (RELOC.lock) { RELOC.lock.phi = T.phi; RELOC.lock.tx = T.tx; RELOC.lock.tz = T.tz; RELOC.lock.dy = T.dy; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; RELOC.lock.cost = +bc.toFixed(4); } return true;
 }
@@ -5641,7 +5644,7 @@ function relocManual() { // the older way: tap the two furthest-apart named thin
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
   RB.diagT = 0;
   for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
-  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null;
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null; G.stk = null; STK.lockFix = null;
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
 function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
@@ -5721,9 +5724,9 @@ function rbAsk(why) {
   RB.ask = { why, t: AUTO.t, room: HOMES.cur }; RB.asked++; recRB({ ask: why, camGap: +RB.camGap.toFixed(2), held: RB.held }); sfx('ask');
   rbPrompt('<b>Have you moved to another room?</b>', 'no');
 }
-function rbPrompt(head, last) { /* the small prompt at the bottom (#nroom), never a wall */
+function rbPrompt(head, last, pre) { /* the small prompt at the bottom (#nroom), never a wall; pre (build 27): the room whose sticker was seen, offered first */
   const el = $('nroom'), opts = HOMES.rooms.filter((r) => r.id !== HOMES.cur && roomHasData(r.id)); el.classList.remove('pnew', 'prf'); el.classList.add('pmove'); el.hidden = false;
-  el.innerHTML = head + '<button class="alt" id="mvNew">New room</button>' + (opts.length ? '<button id="mvIts">It’s… ▾</button><span id="mvList" hidden>' + opts.map((r) => '<button data-room="' + r.id + '">' + esc(r.name) + '</button>').join('') + '</span>' : '') + (last === 'no' ? '<button id="mvNo">No, still here</button>' : '<button id="mvScan">Scan again</button>');
+  el.innerHTML = head + (pre && opts.some((r) => r.id === pre) ? '<button class="big" id="mvPre" data-room="' + pre + '">It’s ' + esc(homeName(pre)) + '</button>' : '') + '<button class="alt" id="mvNew">New room</button>' + (opts.length ? '<button id="mvIts">It’s… ▾</button><span id="mvList" hidden>' + opts.map((r) => '<button data-room="' + r.id + '">' + esc(r.name) + '</button>').join('') + '</span>' : '') + (last === 'no' ? '<button id="mvNo">No, still here</button>' : '<button id="mvScan">Scan again</button>');
   $('mvNew').onclick = () => rbNewRoom(); if ($('mvIts')) $('mvIts').onclick = () => { $('mvList').hidden = !$('mvList').hidden; };
   for (const b of el.querySelectorAll('[data-room]')) b.onclick = () => rbIts(b.dataset.room);
   if ($('mvNo')) $('mvNo').onclick = () => rbNo(); if ($('mvScan')) $('mvScan').onclick = () => { rbClose(); rfScanAgain(); };
@@ -5740,7 +5743,7 @@ function rbNewRoom() { /* the current room is saved and closed as it is; a fresh
   const from = HOMES.cur; rbClose(); RB.ask = null; recRB({ newRoom: true, from }); rbSaveColony(from); rfReset(); scanReset(); relocNewRoom(); rbReset(); RF.quietUntil = performance.now() + 1500; updateHint(); autoCount();
 }
 function rbIts(id) { /* "It's the Shed": the current room is closed, that room loads and is looked for in a fresh scan */
-  const from = HOMES.cur; rbClose(); RB.ask = null; recRB({ its: id, from }); rbSaveColony(from); rfReset(); scanReset(); G.finding = false; ROOMPRE = {}; $('nroom').hidden = true;
+  const from = HOMES.cur; for (const k of Object.keys(STK.ignore)) if (stkOwner(+k) === id) delete STK.ignore[k]; /* build 27: that room's sticker may lock it now */ rbClose(); RB.ask = null; recRB({ its: id, from }); rbSaveColony(from); rfReset(); scanReset(); G.finding = false; ROOMPRE = {}; $('nroom').hidden = true;
   if (!homeSwitchLoad(id)) { toast('That room could not be loaded.', 4); return; }
   RELOC.scanSecs = 0; RELOC.nextTry = 1.5; RELOC.asked = false; /* the player named the room: its search starts from zero */ G.mapName = homeName(HOMES.cur); rbReset(); RF.quietUntil = performance.now() + 1500; autoSay('Looking for ' + homeName(id) + '… look around slowly.', 5); updateHint(); autoCount();
 }
@@ -5758,10 +5761,11 @@ function rfSuspect(why, hard) {
   if (!G.zones.length) { if (hard) scanReset(); return; } /* nothing mapped yet */
   if (!hard && !RB.base && !G.returning) return; /* a quiet check needs a settled room: a young room is still being mapped */
   if (hard) persist();
+  stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it */
   Object.assign(RF, { on: true, why, hidden: false, phase: 'check', t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
 }
-function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoCount(); autoSay('Look around so I can find the camp again', 600); recRF({ hidden: true }); }
+function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoCount(); autoSay('Look around so I can find the camp again.' + stkHint(), 600); recRF({ hidden: true }); }
 function rfClass(x, y, z) { /* one fresh hit against the room's map as it is now: 1 agrees, -1 conflicts (something else is there, or nothing is at that height), 0 unknown */
   let known = false;
   for (const Z of G.zones) { const L = Z.land; if (!L || Z.lost) continue; const k = landIdx(L, x, z); if (k < 0) continue; const s = L.st[k]; if (!s) continue; known = true; if (Math.abs(y - Z.y) < 0.04 || (s === 2 && Math.abs(y - Z.y - L.ht[k] / 100) < 0.05)) return 1; }
@@ -5780,7 +5784,7 @@ function rfStep() {
     return;
   }
   if (RF.phase === 'match') {
-    if ((AUTO.hintT || 0) < 3) autoSay('Look around so I can find the camp again', 600);
+    if ((AUTO.hintT || 0) < 3) autoSay('Look around so I can find the camp again.' + stkHint(), 600);
     if (!RF.prompted && performance.now() - RF.askT > RF_ASK_S * 1000) rfStuck();
   }
 }
@@ -5836,7 +5840,7 @@ function chooserOpen() {
   const el = $('chooser');
   el.innerHTML = '<div class="chh">Where are you playing?</div><div class="chlist">' + rs.map((r) => { const ph = totemUrl(r.id), facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' · last visit ' + agoText(Date.now() - (r.last || Date.now())) + (near(r) === 0 ? ' · near here' : '');
     return '<button class="chcard" data-room="' + r.id + '">' + (ph ? '<img class="chph" src="' + ph + '" alt="">' : '<span class="chph chno">⛺</span>') + '<span class="cht"><span class="chk">Continue:</span> <b>' + esc(r.name) + '</b><span class="sub">' + facts + '</span></span></button>'; }).join('') + '</div>' +
-    '<button class="big alt" id="chNew">+ New room</button><div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
+    (rs.some((r) => r.stk) ? '<div class="sub chstk">Have a sticker? Point at it when the camera starts.</div>' : '') + '<button class="big alt" id="chNew">+ New room</button><div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
   $('title').classList.add('choosing'); el.hidden = false; return true;
 }
 function chooserClose() { $('chooser').hidden = true; $('title').classList.remove('choosing'); }
@@ -5866,7 +5870,7 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
   const sv = safeRead(k.save, (d) => d && d.v === 2 && Array.isArray(d.settlements)); RG.backed = {}; if (!rgBackup(id, k.map)) { toast('The room could not be backed up first, so it was not split.', 5); return 0; }
   let main = groups.reduce((bi, g, i) => (g.area > groups[bi].area ? i : bi), 0);
   if (sv) { const S = sv.settlements.filter((s) => s && s.zid).sort((a, b) => (b.cols || []).length - (a.cols || []).length)[0]; if (S) { const gi = groups.findIndex((g) => g.ids.includes(S.zid)); if (gi >= 0) main = gi; } }
-  const mapPart = (ids, name) => { const d = JSON.parse(JSON.stringify(md)); d.zones = d.zones.filter((q) => ids.has(q.id)); const sp = new Set(d.spots.filter((s) => ids.has(s.zid)).map((s) => s.id)); d.spots = d.spots.filter((s) => sp.has(s.id)); d.cables = (d.cables || []).filter((c) => sp.has(c.a) && sp.has(c.b)); d.landmarks = (d.landmarks || []).filter((s) => sp.has(s)); d.saved = Date.now(); if (name) d.name = name; return d; };
+  const mapPart = (ids, name) => { const d = JSON.parse(JSON.stringify(md)); d.zones = d.zones.filter((q) => ids.has(q.id)); const sp = new Set(d.spots.filter((s) => ids.has(s.zid)).map((s) => s.id)); d.spots = d.spots.filter((s) => sp.has(s.id)); d.cables = (d.cables || []).filter((c) => sp.has(c.a) && sp.has(c.b)); d.landmarks = (d.landmarks || []).filter((s) => sp.has(s)); d.saved = Date.now(); if (name) { d.name = name; delete d.stk; } /* build 27: the sticker stays with the main room */ return d; };
   const colPart = (keep) => { if (!sv) return null; const d = JSON.parse(JSON.stringify(sv)); d.settlements = d.settlements.filter(keep); const sids = new Set(d.settlements.map((s) => s.id)); d.links = (d.links || []).filter((l) => sids.has(l.a.sid) && sids.has(l.b.sid)); return d; };
   const moved = new Set(), cur = HOMES.cur, made = [];
   for (const [gi, g] of groups.entries()) {
@@ -5878,6 +5882,278 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
   if (made.length) { safeWrite(k.map, JSON.stringify(mapPart(new Set(md.zones.map((q) => q.id).filter((zid) => !moved.has(zid)))))); const cp = colPart((s) => !moved.has(s.zid)); if (cp) safeWrite(k.save, JSON.stringify(cp)); }
   r.splitAsked = 1; r.cols = undefined; homesSave(); delete RS.cache[id]; recRB({ split: id, groups: groups.length, made });
   return made.length;
+}
+/* ============ STICKER LOCK (build 27): a printed sticker gives the room a precise, fast, absolute lock. Read HANDOVER "Sticker lock" before changing anything here. ============
+   The stickers are ArUco 4x4 markers, ids 1 to 6, printed by stickers.html with a black square of STK_SIZE (8 cm). js-aruco2 2.0.0 (vendor/js-aruco2, MIT) finds them in
+   the camera pictures that camera-access gives (the same pictures the recognition uses: recogFrame / arDevice). It is loaded into a hidden same-origin iframe with plain
+   script tags, because its aruco.js declares a global `var AR`, which would clash with this file's `const AR` (the whole game would not start).
+   1. STK.det runs at most STK_HZ times a second and only while it helps: finding a room, after a wake / relock, burst after a sighting, slowly otherwise (binding, refining).
+   2. Each sighting: corners refined to sub-pixel, pose from posit plus Gauss-Newton with the intrinsics from the XR view's projection matrix, then into the world with the
+      viewer pose of the picture. Several sightings (STK_MIN_N over STK_MIN_S seconds) are fitted together as one sticker pose (stkFit), outliers dropped: never one frame.
+   3. A room owns at most one sticker (G.stk, saved with the map in the map's own frame; the registry row says which room owns which id). First sighting in a settled room
+      that has none: it is bound. Seen again while the room is being found or after a wake: the lock comes from it (position pinned, yaw from the sticker when it is sure,
+      else searched on the surfaces near the sticker's yaw; height from the surfaces), then the usual surface polish. Seen while locked: a quiet check and refine.
+      Another saved room's sticker: the build 26 question "Have you moved to another room?" with that room offered first (never a silent merge).
+   No camera-access, or the files did not load: nothing here runs and the game is build 26. ============ */
+const STK_SIZE = 0.08, STK_IDS = [1, 2, 3, 4, 5, 6], STK_FILES = ['cv.js', 'svd.js', 'posit1.js', 'aruco.js', 'dictionaries/aruco_4x4_1000.js'];
+const STK_HZ = 4, STK_SLOW_S = 1, STK_IDLE_S = 4, STK_DET_MAX = 800, STK_REF_MAX = 1280, STK_WIN_S = 8, STK_MIN_N = 5, STK_MIN_S = 0.6, STK_YAW_SD = 0.7, STK_AGREE_M = 0.03, STK_AGREE_DEG = 2.5, STK_FIX_M = 0.06;
+const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0 };
+REC.stk = [];
+function recStk(o) { recRing(REC.stk, Object.assign({ t: recT(), room: HOMES.cur }, o), 60); }
+function stkLoad() { /* the vendored files, with plain script tags, in a hidden iframe of the same origin; any failure leaves STK.state 'error' and the game as build 26 */
+  if (STK.state !== 'off') return; STK.state = 'loading';
+  try {
+    const fr = document.createElement('iframe'), url = (f) => new URL('vendor/js-aruco2/' + f, location.href).href; fr.id = 'stkLib'; fr.title = 'sticker finder'; fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.style.cssText = 'display:none;width:0;height:0;border:0';
+    const to = setTimeout(() => { if (STK.state === 'loading') { STK.state = 'error'; STK.err = 'timeout'; recStk({ lib: 'timeout' }); } }, 20000);
+    fr.onload = () => { clearTimeout(to); if (STK.state !== 'loading') return; try {
+      const w = fr.contentWindow, D = w && w.AR && w.AR.DICTIONARIES; if (!w.CV || !w.POS || !w.SVD || !D || !D.ARUCO_4X4_1000 || typeof w.AR.Detector !== 'function') throw new Error('files missing');
+      D.BC_STICKERS = { nBits: 16, tau: 2, codeList: D.ARUCO_4X4_1000.codeList.slice(0, 7) }; /* ids 0 to 6 of the 4x4 dictionary (0 is never printed); tau 2: one wrong bit is forgiven (the six printed codes are 6 bits apart, rotations included) */
+      STK.det = new w.AR.Detector({ dictionaryName: 'BC_STICKERS' }); STK.lib = w; STK.state = 'ready'; recStk({ lib: 'ready' });
+    } catch (e) { STK.state = 'error'; STK.err = String(e && e.message || e); recStk({ lib: 'error', err: STK.err }); } };
+    fr.srcdoc = '<!doctype html><meta charset="utf-8"><title>sticker finder</title>' + STK_FILES.map((f) => '<script src="' + url(f) + '"><\/script>').join('');
+    document.body.appendChild(fr);
+  } catch (e) { STK.state = 'error'; STK.err = String(e && e.message || e); }
+}
+function stkCam() { /* the camera picture element, its sequence hook (which picture is the newest) and whether pictures arrive at all */
+  if (!AR.on) return null; const d = arDevice(), im = d && d._cameraImage; if (!im) return null;
+  if (STK.img !== im) { STK.img = im; STK.seq = 0; STK.loadSeq = -1; STK.doneSeq = -1; STK.poses = [];
+    try { const ds = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src'); Object.defineProperty(im, 'src', { configurable: true, enumerable: true, get() { return ds.get.call(this); }, set(v) { STK.seq++; ds.set.call(this, v); } }); STK.hook = 'src'; } catch (e) { STK.hook = 'load'; }
+    im.addEventListener('load', () => { STK.loadSeq = STK.hook === 'src' ? STK.seq : ++STK.seq; if (STK.hook !== 'src') stkPoseNote(); }); }
+  return d._videoDataReady && im.naturalWidth ? im : null;
+}
+function stkPoseNote() { /* called every XR frame: the viewer pose of the first frame after a new picture arrived belongs to that picture */
+  if (!STK.img || !AR.on) return; const last = STK.poses[STK.poses.length - 1];
+  if (!last || last.seq !== STK.seq) { STK.poses.push({ seq: STK.seq, V: Array.from(AR.viewM.elements), P: Array.from(AR.projM.elements), t: performance.now() }); if (STK.poses.length > 12) STK.poses.shift(); }
+}
+function stkMoving() { /* how fast the iPad moved over the last 0.15 s (a blurred, late picture is no use) */
+  const now = performance.now(), old = STK.poses.find((q) => now - q.t < 400 && now - q.t > 120); if (!old) return 0;
+  const dt = (now - old.t) / 1000, e = AR.viewM.elements, d = Math.hypot(e[12] - old.V[12], e[13] - old.V[13], e[14] - old.V[14]), c = (e[8] * old.V[8] + e[9] * old.V[9] + e[10] * old.V[10]);
+  return Math.max(d / dt / 0.25, Math.acos(Math.max(-1, Math.min(1, c))) * 57.2958 / dt / 25);
+}
+function stkNeed() { /* how often to look for a sticker now (seconds between looks), 0: not at all */
+  if (!AR.on || !G.auto || G.phase !== 'play' || STK.state !== 'ready' || (typeof BT !== 'undefined' && BT.on)) return 0;
+  const now = performance.now(); if ((G.returning && !G.locked) || G.finding || RF.on || now < STK.burstUntil) return 1 / STK_HZ;
+  if (RB.ask) return 0; if (G.stk && now - (STK.lastFix[G.stk.id] || -1e9) < 30000) return STK_IDLE_S; return STK_SLOW_S;
+}
+function stkTick(dt) {
+  const gap = stkNeed(); if (!gap) return; STK.t += dt; if (STK.t < gap) return;
+  const im = stkCam(); if (!im) { if (STK.t > 5 && !STK.noCam) { STK.noCam = true; recStk({ camera: 'no pictures' }); } return; } STK.noCam = false;
+  if (STK.loadSeq <= STK.doneSeq) return; STK.t = 0;
+  const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); STK.doneSeq = seq; if (!pose) return;
+  if (stkMoving() > 1) return; /* moving faster than 0.25 m/s or 25 degrees a second */
+  const t0 = performance.now(); try { stkRun(im, pose); } catch (e) { STK.err = String(e && e.message || e); recStk({ err: STK.err }); }
+  const ms = performance.now() - t0; STK.ms = ms; STK.msAvg = STK.msAvg ? STK.msAvg * 0.9 + ms * 0.1 : ms; STK.runs++; if (STK.msAvg > 60) STK.t = -gap; /* a slow device looks half as often */
+}
+function stkCanvas(w, h, two) { const k = two ? 'cv2' : 'cv'; if (!STK[k]) { STK[k] = document.createElement('canvas'); STK[two ? 'cx2' : 'cx'] = STK[k].getContext('2d', { willReadFrequently: true }); } const c = STK[k]; if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; return STK[two ? 'cx2' : 'cx']; }
+function stkRun(im, pose) { /* one picture: find stickers, refine, pose, into the world */
+  const iw = im.naturalWidth, ih = im.naturalHeight, sR = Math.min(1, STK_REF_MAX / Math.max(iw, ih)), w = Math.round(iw * sR), h = Math.round(ih * sR), g1 = stkCanvas(w, h, false); g1.drawImage(im, 0, 0, w, h);
+  const full = g1.getImageData(0, 0, w, h), sD = Math.min(1, STK_DET_MAX / Math.max(w, h)); let det = full;
+  if (sD < 1) { const dw = Math.round(w * sD), dh = Math.round(h * sD), g2 = stkCanvas(dw, dh, true); g2.drawImage(STK.cv, 0, 0, dw, dh); det = g2.getImageData(0, 0, dw, dh); }
+  const found = stkDetect(STK.lib, STK.det, { width: det.width, height: det.height, data: det.data }).filter((m) => STK_IDS.includes(m.id)); if (!found.length) return;
+  const gray = stkGray(full.data, w, h), P = pose.P, vw = innerWidth, vh = innerHeight, rot = STK.rot !== null ? STK.rot : ((w > h) !== (vw > vh) ? 90 : 0); /* a landscape picture on a portrait screen is taken as the sensor's picture, a quarter turn from the screen (unproven: see HANDOVER) */
+  const up = (c) => (rot === 90 ? [h - c[1], c[0]] : rot === 270 ? [c[1], w - c[0]] : c), uw = rot ? h : w, uh = rot ? w : h, K = stkIntr(uw, uh, P); STK.K = K; STK.dims = iw + 'x' + ih + ' rot ' + rot;
+  for (const m of found) {
+    const cs0 = m.corners.map((c) => [(c.x + 0.5) / sD - 0.5, (c.y + 0.5) / sD - 0.5]), csR = stkRefine(gray, w, h, cs0) || cs0, cs = csR.map(up), side = Math.min(...cs.map((c, i) => Math.hypot(c[0] - cs[(i + 1) % 4][0], c[1] - cs[(i + 1) % 4][1])));
+    if (side < 16) continue; const q = stkPose(STK.lib, cs, K, STK_SIZE); if (!q || q.rms > 1.5 || q.t[2] > 4) continue;
+    const wp = stkWorldPose(q, pose.V), toCam = [pose.V[12] - wp.p[0], pose.V[13] - wp.p[1], pose.V[14] - wp.p[2]], L = Math.hypot(...toCam), facing = (toCam[0] * wp.n[0] + toCam[1] * wp.n[1] + toCam[2] * wp.n[2]) / L; if (facing < 0.3) continue; /* seen at more than about 70 degrees: too flat to trust */
+    STK.seen++; stkAdd(m.id, { t: performance.now(), V: pose.V, K, cs, q, w: wp, side, refined: csR !== cs0 });
+  }
+}
+function stkAdd(id, o) { /* a sighting joins the last few seconds' sightings of that sticker; enough of them make a fix */
+  const list = STK.obs[id] || (STK.obs[id] = []), now = o.t, last = list[list.length - 1];
+  if (last && Math.hypot(o.w.p[0] - last.w.p[0], o.w.p[1] - last.w.p[1], o.w.p[2] - last.w.p[2]) > 0.25) list.length = 0; /* the world jumped (or another copy of the sticker): start again */
+  list.push(o); while (list.length && (now - list[0].t > STK_WIN_S * 1000 || list.length > 24)) list.shift();
+  STK.burstUntil = now + 3000; if (list.length < STK_MIN_N || now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
+  const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; stkUse(id, F); }
+}
+function stkMed(a) { const s = a.slice().sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
+function stkFixOf(id) { /* several sightings -> one sticker pose: a median filter on the positions, a joint fit of all corners, outliers out, fitted again */
+  let obs = STK.obs[id]; if (!obs || obs.length < STK_MIN_N) return null;
+  const m = [0, 1, 2].map((k) => stkMed(obs.map((o) => o.w.p[k]))); obs = obs.filter((o) => Math.hypot(o.w.p[0] - m[0], o.w.p[1] - m[1], o.w.p[2] - m[2]) < 0.02 + 0.02 * o.w.dist);
+  if (obs.length < STK_MIN_N || obs.length < 0.6 * STK.obs[id].length || (obs[obs.length - 1].t - obs[0].t) / 1000 < STK_MIN_S) return null;
+  let best = null; for (const o of obs.slice().sort((a, b) => b.q.amb - a.q.amb).slice(0, 3)) { const w = o.w, R0 = [[w.ax[0], w.ay[0], w.n[0]], [w.ax[1], w.ay[1], w.n[1]], [w.ax[2], w.ay[2], w.n[2]]], F = stkFit(obs, STK_SIZE, R0, w.p); if (F && (!best || F.rms < best.rms)) best = F; }
+  if (!best) return null; const lim = Math.max(1.2, 2.5 * stkMed(best.per)), kept = obs.filter((o, i) => best.per[i] <= lim);
+  if (kept.length < obs.length) { if (kept.length < STK_MIN_N) return null; obs = kept; best = stkFit(obs, STK_SIZE, best.R, best.p); if (!best) return null; }
+  if (best.rms > 1.0 || best.sdP > 0.01) return null;
+  const R = best.R, n = [R[0][2], R[1][2], R[2][2]], ax = [R[0][0], R[1][0], R[2][0]], hz = Math.hypot(n[0], n[2]), kind = Math.abs(n[1]) < 0.35 ? 'wall' : Math.abs(n[1]) > 0.94 ? 'flat' : 'tilt';
+  const h = kind === 'flat' || hz < 0.3 ? Math.atan2(ax[2], ax[0]) : Math.atan2(n[2], n[0]);
+  return { id, p: best.p, h, kind, n, sdYaw: best.sdYaw, sdP: best.sdP, rms: best.rms, used: obs.length, of: STK.obs[id].length, t: performance.now() };
+}
+const stkAng = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+function stkOwner(id) { const r = HOMES.rooms.find((q) => q.stk === id && roomHasData(q.id)); return r ? r.id : null; }
+function stkLive() { /* the room's sticker where the room is now (its map frame under the current alignment) */
+  const s = G.stk; if (!s) return null; const T = G.align, c = T ? Math.cos(T.phi) : 1, sn = T ? Math.sin(T.phi) : 0;
+  return T ? { p: [s.p0[0] * c - s.p0[2] * sn + T.tx, s.p0[1] + T.dy, s.p0[0] * sn + s.p0[2] * c + T.tz], h: s.h0 + T.phi } : { p: s.p0.slice(), h: s.h0 };
+}
+function stkCommit() { const L = stkLive(); if (L) { G.stk.p0 = L.p; G.stk.h0 = stkAng(L.h); } } /* commitAlign: the sticker's saved pose becomes where it is now, like the zones */
+function stkToJSON() { const s = G.stk; return s ? { id: s.id, p: s.p0.map((v) => +v.toFixed(4)), h: +s.h0.toFixed(5), kind: s.kind, sd: +s.sd.toFixed(2), size: STK_SIZE, at: s.at, n: s.n } : null; }
+function stkFromJSON(d) { if (!d || !STK_IDS.includes(d.id) || !Array.isArray(d.p) || d.p.length !== 3 || !d.p.every(isFinite) || !isFinite(d.h)) return null; return { id: d.id, p0: d.p.map(Number), h0: +d.h, kind: String(d.kind || 'wall'), sd: isFinite(d.sd) ? +d.sd : 2, at: d.at || 0, n: d.n || 0 }; }
+function stkSay(text, secs) { if (performance.now() - STK.sayT < 20000 && !/belongs/.test(text)) return; STK.sayT = performance.now(); toast(text, secs || 2); }
+function stkSettled() { /* the room is known well enough to own a sticker: a lock that is no longer on probation, or a new room whose colony has landed */
+  if (RF.on || RB.ask || !G.zones.some(rbOwn)) return false;
+  if (G.returning) return G.locked && !RG.prob; return G.settlements.some((S) => !S.dead && !S.awaiting) && AUTO.t > 20;
+}
+function stkUse(id, F) {
+  if (STK.ignore[id]) return; const own = stkOwner(id), mine = G.stk && G.stk.id === id, finding = G.returning && !G.locked && RELOC.state === 'search';
+  recStk({ fix: id, kind: F.kind, p: F.p.map((v) => +v.toFixed(3)), yaw: +(F.h * 57.2958).toFixed(1), sdYaw: +F.sdYaw.toFixed(2), sdP: +(F.sdP * 100).toFixed(2), rms: +F.rms.toFixed(2), used: F.used + '/' + F.of, own, mine: !!mine, finding });
+  if (own && own !== HOMES.cur) { /* another saved room's sticker */
+    if (finding && G.finding) { if (!homeSwitchLoad(own)) return; G.finding = false; ROOMPRE = {}; recStk({ switched: own }); if (G.stk && G.stk.id === id) stkLock(F); return; } /* "let the colonists work it out": the sticker names the room, as the surface matcher would */
+    if (RB.ask) return; STK.asks++; STK.ignore[id] = 1; recStk({ foreign: own }); stkAskRoom(own, id); return;
+  }
+  if (mine && (finding || (RF.on && RF.phase === 'match'))) { stkLock(F); return; }
+  if (mine && RF.on && RF.phase === 'check') { const d = stkDiff(F); if (d.ok) { recStk({ check: 'agrees', dm: +d.dm.toFixed(3) }); rfPass(); stkSay('Sticker found ✓'); } else { recStk({ check: 'moved', dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1) }); rfFull(); stkLock(F); } return; }
+  if (mine && !RF.on && !RB.ask && (!G.returning || G.locked)) { stkRefineLock(F); return; }
+  if (!own && !G.stk && stkSettled()) { stkBind(F); return; }
+}
+function stkDiff(F) { const L = stkLive(); if (!L) return { ok: false, dm: 9, dyaw: 180 }; const dm = Math.hypot(F.p[0] - L.p[0], F.p[1] - L.p[1], F.p[2] - L.p[2]), dyaw = Math.abs(stkAng(F.h - L.h)) * 57.2958, sure = Math.hypot(F.sdYaw, G.stk.sd) < STK_YAW_SD * 2; return { dm, dyaw, sure, ok: dm < STK_AGREE_M && (!sure || dyaw < STK_AGREE_DEG) }; }
+function stkBind(F) { /* the first sighting in a room without a sticker: it belongs to this room from now on, in the map's own frame */
+  const B = RB.base, gap = B ? rbGapXZ(B, F.p[0], F.p[2]) : 0; if (gap > 1.5) { recStk({ bind: 'too far from the room', gap: +gap.toFixed(2) }); return; }
+  const T = G.align, c = T ? Math.cos(-T.phi) : 1, s = T ? Math.sin(-T.phi) : 0, dx = F.p[0] - (T ? T.tx : 0), dz = F.p[2] - (T ? T.tz : 0); /* live -> the map's saved frame (the inverse of the alignment) */
+  G.stk = { id: F.id, p0: [dx * c - dz * s, F.p[1] - (T ? T.dy : 0), dx * s + dz * c], h0: stkAng(F.h - (T ? T.phi : 0)), kind: F.kind, sd: F.sdYaw, at: Date.now(), n: F.used };
+  for (const r of HOMES.rooms) if (r.stk === F.id) delete r.stk; const r = homeInfo(HOMES.cur); if (r) r.stk = F.id; homesSave(); AUTO.mapDirty = true; STK.binds++; persistSoon();
+  recStk({ bind: F.id, kind: F.kind, sdYaw: +F.sdYaw.toFixed(2) }); stkSay('Sticker found ✓ It belongs to ' + esc(homeName(HOMES.cur)) + ' now.', 3); sfx('chime');
+}
+function stkRefineLock(F) { /* seen while the room is locked: agree (maybe nudge by a few cm), or ask the surfaces whether the room or the sticker moved */
+  const d = stkDiff(F);
+  if (d.ok || (d.dm < STK_FIX_M && (!d.sure || d.dyaw < STK_AGREE_DEG * 2))) {
+    STK.disagree = 0; let moved = 0; const L = stkLive(), dphi = d.sure && F.sdYaw < 0.5 ? stkAng(F.h - L.h) : 0;
+    if (d.dm > 0.003 || Math.abs(dphi) > 0.002) { stkNudge(L.p, [L.p[0] + (F.p[0] - L.p[0]) * 0.6, L.p[1] + (F.p[1] - L.p[1]) * 0.6, L.p[2] + (F.p[2] - L.p[2]) * 0.6], dphi * 0.6); moved = d.dm; STK.refines++; } /* most of the way each time: a steady look at the sticker settles the room on it without a jump */
+    if (!STK.lockFix && (!G.stk.sd || F.sdYaw < G.stk.sd * 0.6)) { /* (not after a lock from the sticker itself: that would only copy the sticker onto itself) */ const L = stkLive(); if (Math.hypot(F.p[0] - L.p[0], F.p[2] - L.p[2]) < 0.01) { stkRebind(F, 'better yaw'); } } /* a clearer look at the sticker: its saved yaw gets better */
+    recStk({ agree: true, dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1), nudged: +moved.toFixed(3) }); stkSay('Sticker found ✓'); return;
+  }
+  STK.disagree++; recStk({ disagree: STK.disagree, dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1) });
+  if (STK.disagree >= 2 && RF.done > STK.lastPass && performance.now() - STK.checkT < 60000) { stkRebind(F, 'the sticker moved'); STK.disagree = 0; return; } /* the surfaces said the room is where it was: the sticker was moved */
+  if (performance.now() - STK.checkT > 20000) { STK.checkT = performance.now(); STK.lastPass = RF.done; rfSuspect('the sticker is not where it was', false); }
+}
+function stkRebind(F, why) { const was = G.stk.id, n0 = G.stk.n; G.stk = null; stkBindQuiet(F); if (G.stk) { G.stk.n = (n0 || 0) + F.used; recStk({ rebind: was, why }); } }
+function stkBindQuiet(F) { const T = G.align, c = T ? Math.cos(-T.phi) : 1, s = T ? Math.sin(-T.phi) : 0, dx = F.p[0] - (T ? T.tx : 0), dz = F.p[2] - (T ? T.tz : 0); G.stk = { id: F.id, p0: [dx * c - dz * s, F.p[1] - (T ? T.dy : 0), dx * s + dz * c], h0: stkAng(F.h - (T ? T.phi : 0)), kind: F.kind, sd: F.sdYaw, at: Date.now(), n: F.used }; AUTO.mapDirty = true; persistSoon(); }
+function stkComp(T, from, to, dphi) { /* a turn of dphi about the sticker, then a shift from -> to, after the pose T */ const c = Math.cos(dphi), s = Math.sin(dphi), dx = T.tx - from[0], dz = T.tz - from[2]; return Object.assign({}, T, { phi: T.phi + dphi, tx: from[0] + dx * c - dz * s + (to[0] - from[0]), tz: from[2] + dx * s + dz * c + (to[2] - from[2]), dy: T.dy + (to[1] - from[1]) }); }
+function stkNudge(from, to, dphi) { /* move the whole room so its sticker sits where it was seen */
+  if (RELOC.lock) Object.assign(RELOC.lock, stkComp(RELOC.lock, from, to, dphi));
+  if (!G.align) { commitAlign(); G.align = { phi: 0, tx: 0, tz: 0, dy: 0, pivot: [0, 0], auto: true }; }
+  applyAlign(stkComp(G.align, from, to, dphi)); if (!AUTO.commitAt) commitAlign(); persistSoon();
+}
+function stkPin(F, a) { const s = G.stk, c = Math.cos(a), sn = Math.sin(a); return { phi: a, tx: F.p[0] - (s.p0[0] * c - s.p0[2] * sn), tz: F.p[2] - (s.p0[0] * sn + s.p0[2] * c), dy: F.p[1] - s.p0[1] }; }
+function stkLock(F) { /* the room's own sticker while it is being found: the lock comes from it */
+  const s = G.stk; if (!s || !(G.returning && !G.locked)) return false;
+  const a0 = stkAng(F.h - s.h0), sd = Math.hypot(F.sdYaw, s.sd), sure = sd < STK_YAW_SD, live = relocLiveLayers(), cells = live.reduce((a, l) => a + l.n, 0), top = RELOC.curTop || RELOC.savedTop; let res = null, how = '';
+  if (cells >= 150 && top) { /* the position is pinned by the sticker; the surfaces check it, give the height and, when the sticker's yaw is not sure, the yaw near the sticker's */
+    const liveTop = relocTop(live), W = sure ? 2 : Math.min(180, Math.max(8, 5 * sd + 4)), st = W > 20 ? 1 : 0.5; let best = null;
+    for (let a = -W; a <= W + 1e-9; a += st) { const T = stkPin(F, a0 + a * Math.PI / 180), v = relocVerify(T, top, liveTop); if (!best || v.score > best.score) best = Object.assign(T, v); }
+    const surf = best.M >= 100 && best.ratio >= 0.7, clash = best.M + best.X > 150 && best.ratio < 0.5;
+    if (!surf && !(sure && !clash)) { recStk({ lock: 'surfaces disagree', M: best.M, X: best.X, ratio: +best.ratio.toFixed(2), sd: +sd.toFixed(2) }); return false; }
+    if (sure) { const T0 = stkPin(F, a0); res = Object.assign(T0, relocVerify(T0, top, liveTop)); } else res = best;
+    if (res.M > 50) res.dy += res.dyFix; how = surf ? 'sticker + surfaces' : 'sticker';
+  } else if (sure) { res = Object.assign(stkPin(F, a0), { M: 0, X: 0, ratio: 1, score: 0, info: 0, overlap: 0 }); how = 'sticker only'; }
+  else { recStk({ lock: 'waiting for surfaces', cells, sd: +sd.toFixed(2) }); return false; }
+  res.margin = 0; STK.lockFix = { F, sure, sd, a0: res.phi }; STK.locks++; recStk({ lock: how, yaw: +(res.phi * 57.2958).toFixed(2), dy: +res.dy.toFixed(3), M: res.M, ratio: +(res.ratio || 0).toFixed(2), sd: +sd.toFixed(2), secs: +RELOC.scanSecs.toFixed(1) });
+  relocLock(res, 'sticker'); if (RELOC.lock) RELOC.lock.stk = how; setTimeout(() => { if (AR.on) toast('Sticker found ✓', 2); }, 1500); STK.sayT = performance.now(); return true;
+}
+function stkDrift(T) { /* how far a pose moves the room's sticker away from where the lock saw it (metres, degrees) */
+  const L = STK.lockFix; if (!L || !G.stk) return { m: 0, deg: 0 }; const s = G.stk, c = Math.cos(T.phi), sn = Math.sin(T.phi), p = [s.p0[0] * c - s.p0[2] * sn + T.tx, s.p0[1] + T.dy, s.p0[0] * sn + s.p0[2] * c + T.tz];
+  return { m: Math.hypot(p[0] - L.F.p[0], p[2] - L.F.p[2]), deg: Math.abs(stkAng(T.phi - L.a0)) * 57.2958 };
+}
+function stkPolishOK(T) { const L = STK.lockFix; if (!L) return true; const d = stkDrift(T); return d.m < 0.015 && (!L.sure || d.deg < Math.max(0.5, 2 * L.sd)); } /* the surfaces may polish a sticker lock only a little */
+function stkAskRoom(id, sid) { /* another room's sticker: the build 26 question, with that room offered first */
+  if (RB.ask) return; persist(); RB.ask = { why: 'sticker of ' + homeName(id), t: AUTO.t, room: HOMES.cur, stk: id, sid }; RB.asked++; recRB({ ask: 'sticker of another room', other: id }); sfx('ask');
+  rbPrompt('<b>Have you moved to another room?</b> <span class="stkq">That sticker belongs to ' + esc(homeName(id)) + '.</span>', 'no', id);
+}
+function stkClear(why) { STK.obs = {}; STK.lockFix = null; recStk({ clear: why }); } /* after a jump of the world the old sightings no longer fit */
+function stkHint() { return G.stk && STK.state === 'ready' ? ' Have a sticker? Point at it.' : ''; }
+function stkReport() { return { state: STK.state, err: STK.err, hook: STK.hook, dims: STK.dims, K: STK.K ? { fx: +STK.K.fx.toFixed(1), cx: +STK.K.cx.toFixed(1), cy: +STK.K.cy.toFixed(1) } : null, runs: STK.runs, msAvg: +STK.msAvg.toFixed(1), seen: STK.seen, fixes: STK.fixes, binds: STK.binds, locks: STK.locks, refines: STK.refines, asks: STK.asks, room: G.stk ? stkToJSON() : null, log: REC.stk }; }
+/* ---- sticker maths: pictures, corners, pose (no globals of js-aruco2 are used here: the library window is passed in) ---- */
+function stkGray(px, w, h) { const g = new Uint8Array(w * h); for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return g; }
+function stkAt(g, w, h, x, y) { if (x < 0 || y < 0 || x > w - 1.001 || y > h - 1.001) return -1; const x0 = x | 0, y0 = y | 0, ax = x - x0, ay = y - y0, i = y0 * w + x0; return (g[i] * (1 - ax) + g[i + 1] * ax) * (1 - ay) + (g[i + w] * (1 - ax) + g[i + w + 1] * ax) * ay; }
+function stkRefine(g, w, h, cs) { /* sub-pixel corners: each side of the black square is found along its normal (strongest step from paper to black), a line is fitted, neighbouring lines meet at the corners */
+  const lines = [];
+  for (let e = 0; e < 4; e++) {
+    const a = cs[e], b = cs[(e + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 8) return null;
+    const tx = dx / L, ty = dy / L, nx = -ty, ny = tx, cell = L / 6, r = Math.max(1.5, Math.min(4, cell * 0.35)), pts = [];
+    const ctr = [(cs[0][0] + cs[2][0]) / 2, (cs[0][1] + cs[2][1]) / 2], out = ((a[0] + b[0]) / 2 - ctr[0]) * nx + ((a[1] + b[1]) / 2 - ctr[1]) * ny > 0 ? 1 : -1; /* the normal points out of the square */
+    const N = Math.max(6, Math.min(30, Math.round(L / 3)));
+    for (let k = 0; k < N; k++) {
+      const f = 0.12 + 0.76 * k / (N - 1), px = a[0] + dx * f, py = a[1] + dy * f; let best = 0, bs = 0, prof = [];
+      for (let s = -r - 0.5, i = 0; s <= r + 0.5 + 1e-9; s += 0.25, i++) prof.push(stkAt(g, w, h, px + nx * out * s, py + ny * out * s));
+      if (prof.some((v) => v < 0)) continue;
+      for (let i = 1; i < prof.length - 1; i++) { const gr = prof[i + 1] - prof[i - 1]; if (gr > bs) { bs = gr; best = i; } } /* outward the picture gets brighter: black -> paper */
+      if (bs < 12 || best < 2 || best > prof.length - 3) continue;
+      const g0 = prof[best] - prof[best - 2], g1 = prof[best + 1] - prof[best - 1], g2 = prof[best + 2] - prof[best], den = g0 - 2 * g1 + g2, off = Math.abs(den) > 1e-6 ? Math.max(-0.5, Math.min(0.5, 0.5 * (g0 - g2) / den)) : 0;
+      const s = -r - 0.5 + (best + off) * 0.25; pts.push([px + nx * out * s, py + ny * out * s]);
+    }
+    if (pts.length < 4) return null;
+    let mx = 0, my = 0; for (const p of pts) { mx += p[0]; my += p[1]; } mx /= pts.length; my /= pts.length;
+    let sxx = 0, sxy = 0, syy = 0; for (const p of pts) { const u = p[0] - mx, v = p[1] - my; sxx += u * u; sxy += u * v; syy += v * v; }
+    const th = 0.5 * Math.atan2(2 * sxy, sxx - syy); lines.push({ mx, my, dx: Math.cos(th), dy: Math.sin(th) });
+  }
+  const out = [];
+  for (let e = 0; e < 4; e++) { const A = lines[(e + 3) % 4], B = lines[e], det = A.dx * -B.dy - A.dy * -B.dx; if (Math.abs(det) < 1e-6) return null; const qx = B.mx - A.mx, qy = B.my - A.my, s = (qx * -B.dy - qy * -B.dx) / det, p = [A.mx + A.dx * s, A.my + A.dy * s]; if (Math.hypot(p[0] - cs[e][0], p[1] - cs[e][1]) > 3) return null; out.push(p); }
+  return out;
+}
+function stkIntr(w, h, P) { /* the camera picture's intrinsics from the XR view's projection matrix: the screen shows the middle of the picture (aspect fill), square pixels */
+  const av = P[5] / P[0], ai = w / h; let fx, fy; if (ai >= av) { fy = P[5] * h / 2; fx = fy; } else { fx = P[0] * w / 2; fy = fx; }
+  return { fx, fy, cx: w / 2 - fx * P[8] / P[0], cy: h / 2 + fy * P[9] / P[5] };
+}
+function stkRot(w) { const th = Math.hypot(w[0], w[1], w[2]); if (th < 1e-12) return [[1, -w[2], w[1]], [w[2], 1, -w[0]], [-w[1], w[0], 1]]; const k = [w[0] / th, w[1] / th, w[2] / th], c = Math.cos(th), s = Math.sin(th), v = 1 - c; return [[c + k[0] * k[0] * v, k[0] * k[1] * v - k[2] * s, k[0] * k[2] * v + k[1] * s], [k[1] * k[0] * v + k[2] * s, c + k[1] * k[1] * v, k[1] * k[2] * v - k[0] * s], [k[2] * k[0] * v - k[1] * s, k[2] * k[1] * v + k[0] * s, c + k[2] * k[2] * v]]; }
+function stkMul(A, B) { const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j]; return C; }
+function stkRes(R, t, cs, K, S) { /* reprojection residuals of the four corners (posit's camera: x right, y up, z forward) */
+  const hh = S / 2, M = [[-hh, hh], [hh, hh], [hh, -hh], [-hh, -hh]], r = [];
+  for (let i = 0; i < 4; i++) { const X = R[0][0] * M[i][0] + R[0][1] * M[i][1] + t[0], Y = R[1][0] * M[i][0] + R[1][1] * M[i][1] + t[1], Z = R[2][0] * M[i][0] + R[2][1] * M[i][1] + t[2]; if (Z <= 1e-3) return null; r.push(K.cx + K.fx * X / Z - cs[i][0], K.cy - K.fy * Y / Z - cs[i][1]); }
+  return r;
+}
+function stkGN(R, t, cs, K, S) { /* Gauss-Newton on the six pose numbers */
+  let r = stkRes(R, t, cs, K, S); if (!r) return null; let e = r.reduce((a, v) => a + v * v, 0);
+  for (let it = 0; it < 12; it++) {
+    const J = [], eps = 1e-6;
+    for (let p = 0; p < 6; p++) { const d = [0, 0, 0, 0, 0, 0]; d[p] = eps; const R2 = p < 3 ? stkMul(stkRot([d[0], d[1], d[2]]), R) : R, t2 = [t[0] + d[3], t[1] + d[4], t[2] + d[5]], r2 = stkRes(R2, t2, cs, K, S); if (!r2) return null; J.push(r2.map((v, i) => (v - r[i]) / eps)); }
+    const A = [], b = []; for (let i = 0; i < 6; i++) { A.push([]); let s = 0; for (let k = 0; k < 8; k++) s += J[i][k] * r[k]; b.push(-s); for (let j = 0; j < 6; j++) { let q = 0; for (let k = 0; k < 8; k++) q += J[i][k] * J[j][k]; A[i].push(q + (i === j ? 1e-9 + q * 1e-6 : 0)); } }
+    for (let i = 0; i < 6; i++) { let pv = i; for (let k = i + 1; k < 6; k++) if (Math.abs(A[k][i]) > Math.abs(A[pv][i])) pv = k; [A[i], A[pv]] = [A[pv], A[i]]; [b[i], b[pv]] = [b[pv], b[i]]; if (Math.abs(A[i][i]) < 1e-18) return { R, t, e }; for (let k = i + 1; k < 6; k++) { const f = A[k][i] / A[i][i]; for (let j = i; j < 6; j++) A[k][j] -= f * A[i][j]; b[k] -= f * b[i]; } }
+    const x = [0, 0, 0, 0, 0, 0]; for (let i = 5; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < 6; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; }
+    const R2 = stkMul(stkRot([x[0], x[1], x[2]]), R), t2 = [t[0] + x[3], t[1] + x[4], t[2] + x[5]], r2 = stkRes(R2, t2, cs, K, S); if (!r2) break; const e2 = r2.reduce((a, v) => a + v * v, 0);
+    if (e2 >= e) break; R = R2; t = t2; r = r2; const de = e - e2; e = e2; if (de < 1e-10) break;
+  }
+  return { R, t, e };
+}
+function stkPose(lib, cs, K, S) { /* posit (both of its answers) refined with Gauss-Newton; the one with the smaller reprojection error wins */
+  const P = new lib.POS.Posit(S, K.fx), pose = P.pose(cs.map((c) => ({ x: c[0] - K.cx, y: K.cy - c[1] })));
+  const cands = []; for (const [R, t] of [[pose.bestRotation, pose.bestTranslation], [pose.alternativeRotation, pose.alternativeTranslation]]) { if (!R || !t || !(t[2] > 0) || R.some((row) => row.some((v) => !isFinite(v)))) continue; const q = stkGN(R.map((row) => row.slice()), t.slice(), cs, K, S); if (q) cands.push(q); }
+  if (!cands.length) return null; cands.sort((a, b) => a.e - b.e); const best = cands[0], rms = Math.sqrt(best.e / 4);
+  return { R: best.R, t: best.t, rms, amb: cands.length > 1 ? Math.sqrt(cands[1].e / 4) / Math.max(0.05, rms) : 99 };
+}
+function stkWorldPose(q, V) { /* posit's camera -> XR camera (z flipped) -> world (V: the viewer's camera-to-world matrix, column-major) */
+  const c = [q.t[0], q.t[1], -q.t[2]], ax = [q.R[0][0], q.R[1][0], -q.R[2][0]], ay = [q.R[0][1], q.R[1][1], -q.R[2][1]];
+  const tw = (v, w) => [V[0] * v[0] + V[4] * v[1] + V[8] * v[2] + w * V[12], V[1] * v[0] + V[5] * v[1] + V[9] * v[2] + w * V[13], V[2] * v[0] + V[6] * v[1] + V[10] * v[2] + w * V[14]];
+  const p = tw(c, 1), X = tw(ax, 0), Y = tw(ay, 0), n = [X[1] * Y[2] - X[2] * Y[1], X[2] * Y[0] - X[0] * Y[2], X[0] * Y[1] - X[1] * Y[0]];
+  return { p, ax: X, ay: Y, n, dist: Math.hypot(q.t[0], q.t[1], q.t[2]) };
+}
+function stkDetect(lib, det, img) { /* js-aruco2's detect() step by step, except notTooNear: it drops the smaller of two nested squares, which is the sticker itself when its white edge shows against a darker wall */
+  const CV = lib.CV; CV.grayscale(img, det.grey); CV.adaptiveThreshold(det.grey, det.thres, 2, 7); det.contours = CV.findContours(det.thres, det.binary);
+  let c = det.findCandidates(det.contours, img.width * 0.01, 0.05, 10); c = det.clockwiseCorners(c);
+  const keep = []; for (const q of c) if (!keep.some((k) => k.every((p, i) => Math.abs(p.x - q[i].x) + Math.abs(p.y - q[i].y) < 3))) keep.push(q);
+  const out = []; for (const m of det.findMarkers(det.grey, keep, 49)) { const c = m.corners, cx = (c[0].x + c[2].x) / 2, cy = (c[0].y + c[2].y) / 2, per = CV.perimeter(c), j = out.findIndex((o) => o.id === m.id && Math.hypot(o.cx - cx, o.cy - cy) < 0.15 * o.per); if (j < 0) out.push(Object.assign(m, { cx, cy, per })); else if (per > out[j].per) out[j] = Object.assign(m, { cx, cy, per }); } /* the same sticker found twice (the outside and the inside of its black edge): the bigger outline is the edge */
+  return out;
+}
+function stkSolve(A, b) { const n = b.length; A = A.map((r) => r.slice()); b = b.slice(); for (let i = 0; i < n; i++) { let pv = i; for (let k = i + 1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[pv][i])) pv = k; [A[i], A[pv]] = [A[pv], A[i]]; [b[i], b[pv]] = [b[pv], b[i]]; if (Math.abs(A[i][i]) < 1e-18) return null; for (let k = i + 1; k < n; k++) { const f = A[k][i] / A[i][i]; for (let j = i; j < n; j++) A[k][j] -= f * A[i][j]; b[k] -= f * b[i]; } } const x = new Array(n).fill(0); for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; } return x; }
+function stkInv(A) { const n = A.length, out = []; for (let j = 0; j < n; j++) { const e = new Array(n).fill(0); e[j] = 1; const x = stkSolve(A, e); if (!x) return null; out.push(x); } return out.map((c, j) => c.map((_, i) => out[i][j])); }
+function stkRes2(Rm, p, obs, S) { /* every corner of every sighting, projected from one world pose of the sticker (Rm: sticker -> world, columns x right, y up, z out) */
+  const hh = S / 2, M = [[-hh, hh], [hh, hh], [hh, -hh], [-hh, -hh]], r = [];
+  for (const o of obs) { const V = o.V, K = o.K;
+    for (let j = 0; j < 4; j++) { const w = [p[0] + Rm[0][0] * M[j][0] + Rm[0][1] * M[j][1], p[1] + Rm[1][0] * M[j][0] + Rm[1][1] * M[j][1], p[2] + Rm[2][0] * M[j][0] + Rm[2][1] * M[j][1]], d = [w[0] - V[12], w[1] - V[13], w[2] - V[14]];
+      const X = V[0] * d[0] + V[1] * d[1] + V[2] * d[2], Y = V[4] * d[0] + V[5] * d[1] + V[6] * d[2], Z = V[8] * d[0] + V[9] * d[1] + V[10] * d[2]; if (Z > -1e-3) return null;
+      r.push(K.cx + K.fx * X / -Z - o.cs[j][0], K.cy - K.fy * Y / -Z - o.cs[j][1]); } }
+  return r;
+}
+function stkFit(obs, S, R0, p0) { /* one sticker pose that explains all the sightings (Gauss-Newton; the viewer poses are taken as exact), with its uncertainty */
+  let R = R0.map((r) => r.slice()), p = p0.slice(), r = stkRes2(R, p, obs, S); if (!r) return null; let e = r.reduce((a, v) => a + v * v, 0), JtJ = null;
+  const step = (x) => [stkMul(stkRot([x[0], x[1], x[2]]), R), [p[0] + x[3], p[1] + x[4], p[2] + x[5]]];
+  for (let it = 0; it < 15; it++) {
+    const J = [], eps = 1e-6; for (let q = 0; q < 6; q++) { const d = [0, 0, 0, 0, 0, 0]; d[q] = eps; const [R2, p2] = step(d), r2 = stkRes2(R2, p2, obs, S); if (!r2) return null; J.push(r2.map((v, i) => (v - r[i]) / eps)); }
+    const A = [], b = []; for (let i = 0; i < 6; i++) { A.push([]); let s = 0; for (let k = 0; k < r.length; k++) s += J[i][k] * r[k]; b.push(-s); for (let j = 0; j < 6; j++) { let q = 0; for (let k = 0; k < r.length; k++) q += J[i][k] * J[j][k]; A[i].push(q); } }
+    JtJ = A; const x = stkSolve(A.map((row, i) => row.map((v, j) => v + (i === j ? 1e-9 + v * 1e-6 : 0))), b); if (!x) break;
+    const [R2, p2] = step(x), r2 = stkRes2(R2, p2, obs, S); if (!r2) break; const e2 = r2.reduce((a, v) => a + v * v, 0); if (e2 >= e) break;
+    R = R2; p = p2; r = r2; const de = e - e2; e = e2; if (de < 1e-9) break;
+  }
+  const N = r.length, s2 = Math.max(0.25 * 0.25, e / Math.max(1, N - 6)), C = JtJ && stkInv(JtJ), per = obs.map((o, i) => Math.sqrt((r[8 * i] ** 2 + r[8 * i + 1] ** 2 + r[8 * i + 2] ** 2 + r[8 * i + 3] ** 2 + r[8 * i + 4] ** 2 + r[8 * i + 5] ** 2 + r[8 * i + 6] ** 2 + r[8 * i + 7] ** 2) / 4));
+  return { R, p, rms: Math.sqrt(e / Math.max(1, N / 2)), per, sdYaw: C ? Math.sqrt(Math.max(0, s2 * C[1][1])) * 57.2958 : 99, sdP: C ? Math.sqrt(Math.max(0, s2 * (C[3][3] + C[4][4] + C[5][5]))) : 9 };
 }
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
@@ -6266,7 +6542,7 @@ function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
-  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.stk = null; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
@@ -6577,7 +6853,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   if (pr) { const mw = $('mWx'); if (mw) mw.insertAdjacentHTML('afterend', '<button id="mSky">Practice sky ' + (skyShown() ? 'on' : 'off') + '</button>'); } /* first10 */
   { const vs = $('mVol'); if (vs) vs.oninput = () => SND_setVol(vs.value / 100); } /* build 19 + sound: the volume slider (saved as bc-volume) */
   m.onclick = (e) => {
@@ -8003,6 +8279,7 @@ Object.assign(window.__g, { mktBundle, ECON, ECON_TUNE, ECON_GOODS, ECON_SHOP, E
 Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
 Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
+Object.assign(window.__g, { STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
