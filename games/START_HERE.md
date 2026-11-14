@@ -156,3 +156,4 @@ bring to the game."
 - 22:40 First-10 play-through done (games/base-camp-first10/, shots checked). At night a new player sees a dark room, a tiny tent and three popups at once; nobody asks for anything in 10 min.
 - 22:45 Fix builder started on game/bc-first10 (from build 19): campfire instead of bedtime in the first session, camera to camp, seed request at ~40 s, one popup at a time, a question at minute 9. Must merge with game/bc-sound before deploy (sound builder doesn't touch these areas).
 - 22:57 Sound pass done on game/bc-sound (all 9 suites pass, Safari + iPad checks pass, sound board shot checked, no // comments). Waiting for first-10 fixes, then merge both and deploy.
+- 00:04 First-10 fixes done (17/17, shots 65-68 checked). Merged with sound as game/bc-build20 (BUILD 'build 20'). Full suite run in progress; deploy only if green, with build 19 backed up to base-camp/b19/.
