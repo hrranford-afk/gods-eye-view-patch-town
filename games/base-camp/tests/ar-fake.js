@@ -1,14 +1,25 @@
 // The fake native iOS side for the real WebXRKit polyfill: a fake room (SHED list), a moving camera, hit tests against the room, a grey camera picture.
 // Used by auto-ar-test.js. window.__W = { yaw, x, z, y } turns / shifts (and lifts: y, build 26) the whole room between sessions or mid-session (an origin jump); window.__SHED is the room layout.
+/* build 27: window.__MARKS = [{ id, x, y, z, ax: [3], ay: [3], size, bits }] are printed stickers in the room's own coordinates (they turn and shift with __W like the room);
+   with any sticker in the room the camera picture is a 640 x 480 JPEG drawn by marker-render.js from the camera pose of that very frame, every 4th frame (as HelloXR sends
+   half-resolution pictures about every 4th frame). window.__noCamera = true: no pictures at all (camera-access missing). */
+const STK_RENDER = require('./marker-render.js');
 module.exports = function install(p, SHED) {
+  p.addInitScript({ content: 'window.__stkFakeRender = ' + STK_RENDER.toString() + ';' });
   return p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
     const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
-    window.__native = { hits: 0, empty: 0, calls: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
+    window.__native = { hits: 0, empty: 0, calls: 0, pics: 0, picMs: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED; window.__MARKS = window.__MARKS || [];
     try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested
     // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
     const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y: y + (W.y || 0), hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
     window.__place = place;
+    const placeMarks = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw), r = (v) => [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c]; return (window.__MARKS || []).map((k) => { const q = r([k.x, 0, k.z]); return Object.assign({}, k, { x: q[0] + W.x, y: k.y + (W.y || 0), z: q[2] + W.z, ax: r(k.ax), ay: r(k.ay) }); }); };
+    window.__placeMarks = placeMarks;
+    let picN = 0; const picCv = document.createElement('canvas'); picCv.width = 640; picCv.height = 480;
+    const picture = (camM) => { /* the camera picture of this frame: aspect fill of the screen's view (the horizontal field of view matches: 640/480 is narrower than 1180/820) */
+      const t0 = performance.now(), fx = (f / asp) * 320, px = window.__stkFakeRender({ W: 640, H: 480, fx, fy: fx, cx: 320, cy: 240, cam: camM, marks: placeMarks(), ss: 3, seed: ++picN });
+      const g = picCv.getContext('2d'); g.putImageData(new ImageData(px, 640, 480), 0, 0); const url = picCv.toDataURL('image/jpeg', 0.85).split(',')[1]; window.__native.pics++; window.__native.picMs += performance.now() - t0; return url; };
     const h = (fn) => ({ postMessage: (body) => { fn && fn(body); } });
     let dataCb = null, timer = null; const asp = 1180 / 820, f = 1 / Math.tan(0.5);
     const proj = [f / asp, 0, 0, 0, 0, f, 0, 0, 0, 0, (100 + 0.01) / (0.01 - 100), -1, 0, 0, (2 * 100 * 0.01) / (0.01 - 100), 0];
@@ -32,8 +43,10 @@ module.exports = function install(p, SHED) {
     window.webkit = { messageHandlers: {
       initAR: h((b2) => b2.callback && reply(b2.callback, 'ios-ar-device-id')),
       requestSession: h((b2) => {
-        window.__sessionOpts = b2; dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: !!b2.computer_vision_data, worldAccess: true, webXRAccess: true }); clearInterval(timer);
-        timer = setInterval(() => { cam = camNow(); window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: !!window.__video, video_data: window.__video || null, video_width: 320, video_height: 240 }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
+        window.__sessionOpts = b2; dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: !!b2.computer_vision_data && !window.__noCamera, worldAccess: true, webXRAccess: true }); clearInterval(timer); let tick = 0;
+        timer = setInterval(() => { cam = camNow(); tick++; let vid = window.__noCamera ? null : window.__video || null, vw = 320, vh = 240, upd = !!vid;
+          if (!window.__noCamera && (window.__MARKS || []).length) { upd = tick % 4 === 0; vw = 640; vh = 480; vid = upd ? picture(cam) : null; } /* a new picture every 4th frame */
+          window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: upd, video_data: vid, video_width: vw, video_height: vh }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
       }),
       stopAR: h((b2) => { clearInterval(timer); if (b2 && b2.callback) reply(b2.callback, {}); }),
       hitTest: h((b2) => {
