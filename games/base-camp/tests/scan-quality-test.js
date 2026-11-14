@@ -19,7 +19,7 @@ const QSHED = [['floor', -1.2, 0, -1.5, 1.4, 1.4], ['deskA', -0.45, -0.45, -1.2,
   await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await p.reload(); await sleep(2500);
   await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   const m0 = await ev(() => ({ geo: __g.renderer.info.memory.geometries, tex: __g.renderer.info.memory.textures, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : 0 }));
-  await p.click('#bPlay'); await sleep(800);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800);
   await ev(() => { const T = window.__place(), pick = (n) => T.find((t) => t.n === n);
     const look = (tx, ty, tz, off, hgt, ay, ap, dur) => { const q = [tx + off[0], ty + hgt, tz + off[1]], fx = tx - q[0], fy = ty - q[1], fz = tz - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
     window.__cam.path = [look(0, -0.45, -1.2, [0, 1.0], 0.8, 0.5, 0.2, 14), look(0, -0.45, -1.2, [0.2, 0.9], 1.0, 0.5, 0.2, 14), look(0, -1.2, -1.2, [0, 1.3], 1.6, 0.6, 0.25, 12), look(0, -0.45, -1.2, [-0.2, 0.8], 0.7, 0.45, 0.2, 14)];

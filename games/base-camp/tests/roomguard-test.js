@@ -38,11 +38,11 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const guard = () => ev(() => ({ prob: __g.RG.prob, confirmed: __g.RG.confirmed, tops: __g.RG.tops, holds: __g.RG.holds, held: !!__g.RG.held, locked: __g.G.locked, st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, score: __g.RELOC.lock && Math.round(__g.RELOC.lock.score), ov: __g.RELOC.lock && __g.RELOC.lock.overlap }));
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
-  ok('BUILD is build 25', await ev(() => __g.BUILD === 'build 25'));
+  ok('BUILD is build 26', await ev(() => __g.BUILD === 'build 26'));
 
   /* ===================== 1. room A, first time ===================== */
   await setRoom(ROOM_A, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(900); await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(900); await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], 1.0);
   const tS = await waitFor(() => __g.G.settlements.length > 0, 150000, 600);
   await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf', 'deskA', 'floor'], 1.0); await waitFor(() => window.__cam.done, 200000, 2000);
   await ev(() => { __g.simulate(120, 0.5); __g.persist(true); }); await sleep(500);
@@ -52,7 +52,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
 
   /* ===================== 2. return to room A: a strong lock, probation, then it saves ===================== */
   await advance(8); await fresh(); await setRoom(ROOM_A, WA); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
   await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 300);
   const g2 = await guard(); const same2 = (await mapA()) === A0;
   ok('2. the real room locks silently (no question)', g2.locked && g2.how === 'auto' && (await ev(() => document.getElementById('ask').hidden || !document.getElementById('rmSame'))), JSON.stringify(g2));
@@ -68,7 +68,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   /* ===================== 3. room B with only room A saved ===================== */
   await advance(3); await fresh(); await setRoom(ROOM_B, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   const aBefore = await mapA(), bkBefore = await ev(() => [localStorage.getItem('bc-mapold-r1-1'), localStorage.getItem('bc-mapold-r1-2')]);
-  await p.click('#bPlay'); await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
   await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 500); await sleep(800);
   const g3 = await guard(), q3 = await ev(() => ({ ask: !document.getElementById('ask').hidden, text: document.getElementById('ask').innerText.slice(0, 60), same: !!document.getElementById('rmSame'), nw: !!document.getElementById('rmNew'), rec: __g.REC.reloc.filter((r) => r.guard).slice(-3), secs: +__g.RELOC.scanSecs.toFixed(1) }));
   ok('3. room B: no silent lock, the question "Is this the same room?" instead', !g3.locked && q3.ask && q3.same && q3.nw && /same room/i.test(q3.text), JSON.stringify(q3) + ' ' + JSON.stringify(g3));
@@ -114,7 +114,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   ok('...undo by restoring again', back === cur5 && (await ev(() => localStorage.getItem('bc-mapold-r1-1'))) === A0);
   await ev(() => __g.rgRestore('r1')); /* leave room A on its first map and play it: it loads and locks like any map */
   await advance(2); await fresh(); await setRoom(ROOM_A, { yaw: -0.3, x: 0.2, z: 0.2 }); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(900); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
   await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 400); const g5 = await guard();
   ok('...the restored map loads and the real room locks again', g5.locked && g5.st === 'locked', JSON.stringify(g5));
   await endSession();

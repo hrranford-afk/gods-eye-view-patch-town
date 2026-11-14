@@ -11,7 +11,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   await p.reload(); await sleep(1500);
   const setDate = (d, h) => ev(([d, h]) => { __g.ENV.dateOverride = d; if (h !== undefined) __g.ENV.hourOverride = h; __g.ENV._sk = 0; __g.envUpdate(); return __g.mktWeekday(); }, [d, h]);
   await setDate(TUE, 12);
-  ok('BUILD is build 25', await ev(() => __g.BUILD === 'build 25'));
+  ok('BUILD is build 26', await ev(() => __g.BUILD === 'build 26'));
   await p.click('#bMore'); await p.click('#bPrac'); await sleep(300);
   for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit')) break; } await sleep(1000);
   /* the first session's seed request and campfire are another test's business: turn the first session off, keep the rest */
@@ -69,8 +69,8 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   ok('it opens at once on a market day: the bell, a "Market day!" banner, an album entry', opened.open && opened.bell === '2026-11-18' && /Market day!/.test(opened.banner) && opened.album, JSON.stringify(opened));
   await focusMarket(0.3, 0.5, 0.5); await shotPrep(); await sleep(1800);
   await p.screenshot({ path: OUT + '74-market-built.png' });
-  const vis = await ev(() => { const st = __g.mktThings()[0], U = st.t.mesh.userData; return { goods: U.goods && U.goods.visible, covers: U.covers && U.covers.visible, pretty: !!U.bcMarket, draws: (() => { let n = 0; st.t.mesh.traverse((o) => { if ((o.isMesh || o.isSprite || o.isPoints) && o.visible) n++; }); return n; })() }; });
-  ok('the stalls show their goods (covers off), the market.js model is used, under 12 draw calls', vis.goods && !vis.covers && vis.pretty && vis.draws <= 12, JSON.stringify(vis));
+  const vis = await ev(() => { const st = __g.mktThings()[0], U = st.t.mesh.userData; return { goods: U.goods && U.goods.visible, covers: U.covers && U.covers.visible, pretty: !!U.bcMarket, draws: (() => { const skip = new Set([...(U.stacks || []), ...(U.signs || [])].filter(Boolean)); let n = 0; const walk = (o) => { if (skip.has(o)) return; if ((o.isMesh || o.isSprite || o.isPoints) && o.visible) n++; o.children.forEach(walk); }; walk(st.t.mesh); return n; })(), sale: [...(U.stacks || []), ...(U.signs || [])].filter((o) => o && o.visible).length }; }); /* build 26: the button stacks and signs come and go with each sale; they are counted apart (at most 3 stacks of 2 and 3 signs) */
+  ok('the stalls show their goods (covers off), the market.js model is used, at most 13 draw calls without the sale stacks (build 24: the price board adds its body, ink and chalk face)', vis.goods && !vis.covers && vis.pretty && vis.draws <= 13 && vis.sale <= 6, JSON.stringify(vis));
 
   /* 3. one camp alone: they still hold a market among themselves */
   ok('only one camp so far', await ev(() => __g.G.settlements.filter((S) => !S.lost).length === 1));
@@ -78,7 +78,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   let walked = false; for (let i = 0; i < 30; i++) { await ev(() => __g.simulate(5)); if (!walked) walked = await ev(() => __g.mainSettlement().cols.some((c) => c.job && c.job.type === 'market')); if (walked && (await ev(() => __g.MKT.deals)) > d0) break; }
   const one = await ev(() => ({ deals: __g.MKT.deals, last: __g.MKT.log[__g.MKT.log.length - 1] }));
   ok('one camp: colonists walk to the stalls', walked);
-  ok('one camp: they swap among themselves', one.deals > d0 && one.last && one.last.a === one.last.b && /^Market day: .+ swapped .+ for /.test(one.last.text), JSON.stringify(one.last));
+  ok('one camp: they swap among themselves', one.deals > d0 && one.last && one.last.a === one.last.b && /^Market day: .+ (swapped .+ for |sold .+ for \d+ buttons?|bought |got )/.test(one.last.text), JSON.stringify(one.last));
   /* the market-day picture: traders at every stall, haggling */
   await ev(() => { const st = __g.mktSite(); const cs = st.S.cols.filter((c) => !c.inside).slice(0, 3); cs.forEach((c, i) => { c.needs.rest = 1; __g.mktSend(c, st.S, st.t, i); }); });
   for (let i = 0; i < 20; i++) { await ev(() => __g.simulate(1)); if (await ev(() => __g.mainSettlement().cols.filter((c) => c.job && c.job.type === 'market' && c.job.ph === 'do').length >= 2)) break; }
@@ -86,7 +86,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   await focusMarket(0.34, 2.3, 0.42); await shotPrep(); await sleep(2600);
   const talk = await ev(() => __g.FUN.log.filter((e) => e.k === 'say').map((e) => e.x).slice(-6));
   await p.screenshot({ path: OUT + '75-market-day.png' });
-  ok('haggling bubbles at the stalls', talk.some((t) => /Deal|Sold|acorn|thimble|seed|crumb|bead|twig|hug|bargain|bottle|fluff|wet|smile|Who wants|Get your/i.test(t)), JSON.stringify(talk));
+  ok('haggling bubbles at the stalls', talk.some((t) => /Deal|Sold|acorn|thimble|seed|crumb|bead|twig|hug|bargain|bottle|fluff|wet|smile|Who wants|Get your|button|plank|corn|cake|rope/i.test(t)), JSON.stringify(talk));
   await ev(() => { for (const S of __g.G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') c.job.dur = 1; __g.simulate(3); });
 
   /* 4. a second camp by cable car: a trader rides over, stock really moves between the camps */
@@ -139,7 +139,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
 
   /* 6. the away diary on a market day; none on a Tuesday */
   const awayW = await ev(() => { __g.ENV.dateOverride = '2026-11-18'; __g.ENV._sk = 0; __g.envUpdate(); const r = __g.awaySim(4 * 3600, 9); return r.lines.map((l) => l.text).filter((t) => /^Market day:/.test(t)); });
-  ok('back after a market-day morning away: a "Market day:" line in the diary', awayW.length === 1 && / swapped .+ for /.test(awayW[0]), JSON.stringify(awayW));
+  ok('back after a market-day morning away: a "Market day:" line in the diary', awayW.length === 1 && /( swapped .+ for | camp sold .+ for \d+ buttons?| camp bought )/.test(awayW[0]), JSON.stringify(awayW));
   const awayT = await ev(() => { __g.ENV.dateOverride = '2026-11-17'; __g.ENV._sk = 0; __g.envUpdate(); const r = __g.awaySim(4 * 3600, 9); return r.lines.filter((l) => /^Market day:/.test(l.text)).length; });
   ok('a Tuesday away has no market line', awayT === 0);
 

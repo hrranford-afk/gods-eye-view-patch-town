@@ -43,7 +43,7 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   ok('AR ready: Play is the one main button', await ev(() => !document.getElementById('bPlay').disabled && __g.AR.ok && /AR ready/.test(document.getElementById('arStatus').textContent)));
   const m0 = await mem();
   await ev(() => { __g.RECOG.coco.state = 'loading'; }); // the model download is tested in recog-test.js
-  await p.click('#bPlay'); await sleep(800);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800);
   ok('Play started an AR session with camera access, no other taps', await ev(() => __g.AR.on && __g.G.auto && !!(window.__sessionOpts && window.__sessionOpts.options && window.__sessionOpts.options.computer_vision_data)));
   await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2', 'chandelier', 'speakerA', 'shelf'], 1.0);
   const tSettle = await waitFor(() => __g.G.settlements.length > 0, 240000);
@@ -99,7 +99,7 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
     ok('cycle ' + (c + 1) + ': title says "Welcome back, away 8.0 h" with a diary preview BEFORE AR starts', wc.vis && /Welcome back/.test(wc.txt) && /8\.0 h/.test(wc.txt) && wc.lines && wc.lines.length >= 2, JSON.stringify(wc.txt.split('\n').slice(0, 3)));
     if (c === 0) await p.screenshot({ path: OUT + '15-welcome-back.png' });
     await ev(() => { __g.RECOG.coco.state = 'loading'; });
-    await p.click('#bPlay'); await sleep(800); await setPath(C.legs, 1.0);
+    await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(C.legs, 1.0);
     const t0 = Date.now(); const tl = await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 200000, 500);
     const R = await ev(() => ({ state: __g.RELOC.state, lock: __g.RELOC.lock, secs: __g.RELOC.scanSecs, tries: __g.RELOC.tries, hist: __g.RELOC.hist.slice(-3).map((h) => h.res && [h.res.M, +h.res.ratio.toFixed(2), h.res.info, +(h.res.margin || 0).toFixed(2)]) }));
     const lockedFirst = R.lock ? { phi: R.lock.phi, tx: R.lock.tx, tz: R.lock.tz } : null; if (R.state === 'locked') { await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); R.lock = await ev(() => __g.RELOC.lock); }
@@ -126,7 +126,7 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   await ev(() => localStorage.setItem('bc-test-off', String((+localStorage.getItem('bc-test-off') || 0) + 3 * 3600 * 1000)));
   await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await ev(() => { __g.ENV.hourOverride = 12; window.__SHED = [['floor', -1.2, 0, -1.5, 1.0, 1.4], ['speakerA', -0.8, -0.5, -1.0, 0.2, 0.2], ['speakerB', -0.1, 0.6, -2.1, 0.1, 0.3], ['shelf', 0.5, 0.0, -2.9, 0.3, 0.2]]; window.__W = { yaw: 0, x: 0, z: 0 }; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2'], 1.0);
   const tA = await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 300000, 500);
   const D = await ev(() => ({ locked: __g.G.locked, returning: __g.G.returning, arOn: __g.AR.on, hits: __g.SCAN.hits, auto: __g.AUTO.t, state: __g.RELOC.state, secs: __g.RELOC.scanSecs, ask: document.getElementById('ask').innerText, hist: __g.RELOC.hist.slice(-3).map((h) => h.res && [h.res.M, +h.res.ratio.toFixed(2), h.res.info, +(h.res.margin || 0).toFixed(2)]) }));
   ok('a different room: NO false lock', !D.locked, JSON.stringify(D.hist));
