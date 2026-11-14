@@ -23,7 +23,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   const ev = (f, a) => p.evaluate(f, a);
   const noOverlay = () => ev(() => { const rs = navigator.xr.requestSession.bind(navigator.xr); navigator.xr.requestSession = async (m, o) => { const ss = await rs(m, o); try { Object.defineProperty(ss, 'domOverlayState', { value: undefined, configurable: true }); } catch (e) {} for (const sym of Object.getOwnPropertySymbols(ss)) { const d = ss[sym] && ss[sym].device; if (d) d._domOverlayRoot = null; } return ss; }; });
   const truthPx = (name) => ev((n) => { const S = window.__place().find((q) => q.n === n), v = new __g.THREE.Vector3(S.cx, S.y, S.cz).applyMatrix4(__g.AR.viewInv).applyMatrix4(__g.AR.projM); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, S.cx, S.y, S.cz]; }, name);
-  const lookAt = (name, off, hgt) => ev(([n, off, hgt]) => { const S = window.__place().find((q) => q.n === n), p2 = [S.cx + off[0], S.y + hgt, S.cz + off[1]], fx = S.cx - p2[0], fy = S.y - p2[1], fz = S.cz - p2[2], L = Math.hypot(fx, fy, fz); window.__cam.mode = 'fixed'; window.__cam.fixed = [p2[0], p2[1], p2[2], Math.atan2(-fx / L, -fz / L), Math.asin(fy / L)]; }, [name, off, hgt]);
+  const lookAt = (name, off, hgt) => ev(([n, off, hgt]) => { const S = window.__place().find((q) => q.n === n), p2 = [S.cx + off[0], S.y + hgt, S.cz + off[1]], fx = S.cx - p2[0], fy = S.y - p2[1], fz = S.cz - p2[2], L = Math.hypot(fx, fy, fz); window.__cam.mode = 'fixed'; window.__cam.fixed = [p2[0], p2[1], p2[2], Math.atan2(-fx / L, -fz / L), Math.asin(fy / L)]; }, [name, off, hgt]).then(() => p.waitForFunction(() => { const e = __g.AR.viewM.elements, f = window.__cam.fixed; return Math.hypot(e[12] - f[0], e[13] - f[1], e[14] - f[2]) < 0.002; }, null, { timeout: 30000, polling: 100 }).catch(() => {})); /* build 21: wait until the game has the new pose; under load a fixed sleep was not enough and a tap landed on the old view */
   const sweep = async (tag) => { await ev(() => window.__sweep(0.6)); const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) { await sleep(2000); } console.log(tag + ' sweep took ' + Math.round((Date.now() - t0) / 1000) + ' s, hits ' + await ev(() => window.__native.hits + '/' + window.__native.empty)); await ev(() => { window.__cam.mode = 'fixed'; }); };
 
   // ================= session 1: map and tag =================
@@ -36,9 +36,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   ok('Map my room starts an AR session', await ev(() => __g.AR.on && __g.G.intent === 'map'));
   ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.options && window.__sessionOpts.options.computer_vision_data)), await ev(() => JSON.stringify(window.__sessionOpts || null)));
   await sweep('map');
-  console.log('DBG', JSON.stringify(await ev(() => ({ phase: __g.G.phase, scan: __g.SCAN.zones.length, z: __g.G.zones.length, bar: document.getElementById('bar').innerText.slice(0, 120), auto: __g.G.auto, intent: __g.G.intent, mode: __g.G.mode, hidden: document.getElementById('bar').hidden }))));
   await p.click('#bDone'); await sleep(800);
-  console.log('DBG2', JSON.stringify(await ev(() => ({ phase: __g.G.phase, scan: __g.SCAN.zones.length, z: __g.G.zones.length, toast: document.getElementById('toast') && document.getElementById('toast').innerText }))));
   const z1 = await ev(() => __g.G.zones.map((z) => z.type + ':' + z.area.toFixed(2) + '@' + z.y.toFixed(2)));
   ok('the sweep found the floor and the shelf and the speaker tops', z1.length >= 4, z1.join(' '));
   ok('after the scan the player tags spots', await ev(() => __g.G.phase === 'tag'));
@@ -85,7 +83,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   const lm = await ev(() => __g.G.landmarks.map((l) => l.name));
   ok('alignment asks for two landmarks', await ev(() => __g.G.phase === 'align') && lm.length === 2, lm.join(' & '));
   const names = { 'Left hi-fi': 'speakerA', 'Right hi-fi': 'speakerB', 'Beans can': 'can1', 'Egg cup': 'cup' };
-  for (const n of lm) { await lookAt(names[n] || 'floor', [0.0, 0.9], 1.0); await sleep(900); const q = await truthPx(names[n]); console.log('DBG3', JSON.stringify(await ev((q) => { const e = document.elementFromPoint(q[0], q[1]); return { q, el: e && (e.id || e.tagName), cards: ['ask', 'diary', 'modal', 'reqs', 'wx'].filter((id) => document.getElementById(id) && !document.getElementById(id).hidden) }; }, q))); await p.mouse.click(q[0], q[1]); await sleep(300); console.log('DBG4', JSON.stringify(await ev(() => ({ taps: __g.G.alignTaps.length, toast: document.getElementById('toast').innerText.slice(0, 120), phase: __g.G.phase })))); }
+  for (const n of lm) { await lookAt(names[n] || 'floor', [0.0, 0.9], 1.0); await sleep(900); const q = await truthPx(names[n]); await p.mouse.click(q[0], q[1]); await sleep(300); }
   const al = await ev(() => ({ phi: __g.G.align && __g.G.align.phi, tx: __g.G.align && __g.G.align.tx, tz: __g.G.align && __g.G.align.tz, err: __g.G.alignErr }));
   ok('the two taps solved an alignment', al.phi !== undefined && al.phi !== null, JSON.stringify(al));
   const W = { yaw: 0.5236, x: 0.5, z: -0.3 }, c0 = Math.cos(al.phi), s0 = Math.sin(al.phi), tr = (x, z) => { const c = Math.cos(W.yaw), s = Math.sin(W.yaw); return [x * c + z * s + W.x, -x * s + z * c + W.z]; }, sv = (x, z) => [x * c0 - z * s0 + al.tx, x * s0 + z * c0 + al.tz];
