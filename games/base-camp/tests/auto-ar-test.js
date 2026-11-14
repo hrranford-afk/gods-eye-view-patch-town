@@ -63,6 +63,10 @@ const W1 = { yaw: 0.5236, x: 0.6, z: -0.3 };
   // question rate limit
   /* the game asks nothing in its first 60 s of play (AUTO.t is frame time, so it lags wall time on a slow machine): wait until that is over, the rate-limit checks below are about the 2-minute gap */
   await waitFor(() => __g.AUTO.t >= 61, 120000, 1000);
+  /* build 19 + first10: in a brand-new colony's first session no "What is this?" comes before the scout's seed request is answered (one voice at a time). Answer it as a player does (its button picks Seeds, then a seed by the camp), then test the 2-minute gap. */
+  await waitFor(() => !__g.F10.on || __g.F10.reqDone || __g.G.requests.some((r) => r.def.f10), 120000, 1000);
+  const seed = await ev(() => { const r = __g.G.requests.find((q2) => q2.def.f10); if (r) { __g.giveRequest(r); __g.giveRequest(r); } for (const id of ['ask', 'diary', 'wx', 'guess']) { const e = document.getElementById(id); if (e) e.hidden = true; } return { on: __g.F10.on, done: __g.F10.reqDone, cardUp: __g.f10CardUp() }; });
+  console.log('first-session seed request before the question checks: ' + JSON.stringify(seed));
   const q = await ev(() => { __g.AUTO.questions = 0; __g.RECOG.lastQuestion = -1e9; __g.RECOG.asked = []; const S = __g.G.settlements[0]; const mk = (dx) => ({ x: S.tf.x + dx, y: S.tf.y + 0.05, z: S.tf.z, area: 0.01 }); window.unknownTops = () => [mk(0.1), mk(-0.1)]; document.getElementById('tagpick').hidden = true; const r = []; __g.AUTO.colonySince = __g.AUTO.t - 3; __g.autoAskTick(); window.__gateQ = __g.AUTO.questions; __g.AUTO.colonySince = __g.AUTO.t - 20; // build 10: no question while the colony is under 15 s old
     for (let i = 0; i < 4; i++) { __g.autoAskTick(); r.push(__g.AUTO.questions); document.getElementById('tagpick').hidden = true; } return r; });
   ok('no "What is this?" in the first 15 s after the colony landed', await ev(() => window.__gateQ === 0));

@@ -421,6 +421,14 @@ BUILD is `'build 21'`. The four suites that had failed since about build 16 (roo
 | ar-room | the alignment error is small | c | Flaky (it failed once at 30 deg and passed on the rerun). `lookAt` used a fixed 900 ms sleep, so under load a tap could land on the old view. It now waits until the game's AR view has the new pose. |
 | practice | (crash) the whole script | c + a | It was a print-only debug script from the first builds: a hard-coded file in another worktree, `process.argv[2]`, and `#bCont` / `#bDone` / the re-place buttons that no longer exist. Rewritten as a real test on the shared harness (`lib.js`) with 14 PASS/FAIL checks, one per thing it used to print: auto-scan settles, surfaces found, weather by town with only a 0.1-degree location, growth over 10 minutes, flat memory, a thirsty colony asks and a gift helps, night, rain, a cable car, and a 40-minute return. Two changes come from the game changing on purpose. In the first session (first10) the seed request comes first, and at night everybody sits at the campfire. The old manual re-place after a return is automatic since build 4. Waits use game time (`AUTO.t`). |
 
+
+Also repaired while running every suite (these were not in the four old suites):
+
+| Suite | Check | a/b/c | What was done |
+|---|---|---|---|
+| auto-ar | at most one "What is this?" per 2 minutes / the next one after 2 minutes | a | It also fails on the build 20 file. Since first10, a brand-new colony's first session asks no "What is this?" until the scout's seed request is answered (one voice at a time). The test now answers the seed request as a player does, then checks the same 2-minute gap. 36/36. |
+| totem-photo | build 11 or later | a | The regex `^build 1[1-9]` did not match `build 20` or `build 21`. It now accepts any later build. |
+
 **Real game bugs found:** none fixed. One real weakness is open (below).
 
 **Not fixed: a false room lock with one saved room (totem-test, room B).** Room B (a floor at the same height, a desk top at the same height, a shelf 15 cm higher, a stool top) is locked as room A after about 22 scan seconds (`how: auto`, M 1153, ratio 0.94, info 202, no runner-up). The surface matcher (`relocVerify`) counts live cells over unmapped parts of the saved map as "outside", not as conflicts, and room A's map is only about a third known. So the floor and one desk edge are enough. A fix means tuning the matcher (for example, counting a whole live top with no saved top under it as evidence against). That is not a small change, and it needs real HelloXR data. With 2+ saved rooms the rooms compete and multi-room-test identifies them correctly. The totem (still off) was meant to solve exactly this.
