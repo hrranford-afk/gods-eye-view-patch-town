@@ -10,7 +10,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await p.goto(url); await sleep(1500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); });
   await p.reload(); await sleep(1500);
   const setDate = (d, h) => ev(([d, h]) => { __g.ENV.dateOverride = d; if (h !== undefined) __g.ENV.hourOverride = h; __g.ENV._sk = 0; __g.envUpdate(); return __g.mktWeekday(); }, [d, h]);
-  await setDate(TUE, 12);
+  await setDate(TUE, 12); await ev(() => __g.setWxPick('clear')); /* no rain: rain sends traders indoors */
   ok('BUILD is build 24', await ev(() => __g.BUILD === 'build 24'));
   await p.click('#bMore'); await p.click('#bPrac'); await sleep(300);
   for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit')) break; } await sleep(1000);
@@ -20,6 +20,9 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const focusBoard = (d, off, pitch) => ev(([d, off, pitch]) => { const st = __g.mktSite() || { t: __g.mainSettlement().things.find((q) => q.kind === 'market'), S: __g.mainSettlement() }; const m = st.S.group.localToWorld(new __g.THREE.Vector3(st.t.x, 0, st.t.z)), bw = new __g.THREE.Vector3(); st.t.mesh.userData.board.getWorldPosition(bw);
     __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(bw.x - m.x, bw.z - m.z) + off; __g.P.pitch = pitch; __g.focusOn(m.x, m.y + 0.03, m.z, d); return true; }, [d, off, pitch]);
   const snap = async (n) => { await ev(() => { const t = document.getElementById('toast'); if (t) t.innerHTML = ''; }); await p.screenshot({ path: OUT + n }); };
+  const stallSet = () => ev(() => { /* three traders standing at the three stalls, each with a bundle (the picture, not the logic: that is checked above) */
+    const st = __g.mktSite(), cs = st.S.cols.filter((c) => !c.inside && !c.held && !c.riding).slice(0, 3);
+    cs.forEach((c, i) => { __g.mktSend(c, st.S, st.t, i); c.x = c.job.tx; c.z = c.job.tz; c.job.ph = 'do'; c.job.t = 0; c.job.dur = 999; __g.mktBundle(c, ['planks', 'bread', 'rope'][i]); }); return cs.length; });
   const shut = () => ev(() => { const m = document.getElementById('modal'); m.hidden = true; delete m.dataset.eco; });
 
   /* 1. a camp with a market and the three workshops */
@@ -159,12 +162,19 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const xf = await ev(() => ({ x: __g.MKT.xfer, log: __g.MKT.log.slice(-6).map((e) => e.text) }));
   ok('goods and buttons move between the two camps', xf.x > x0 && xf.log.some((t) => /(sold|bought) .+ (to|from) the .+ camp/.test(t)), JSON.stringify(xf.log.slice(-3)));
   /* the market-day picture: traders at the stalls, the pedlar, the board */
-  await ev(() => { const site = __g.mktSite(); const cs = site.S.cols.filter((c) => !c.inside).slice(0, 3); cs.forEach((c, i) => { c.needs.rest = 1; __g.mktSend(c, site.S, site.t, i); }); });
+  await ev(() => { const site = __g.mktSite(); const cs = site.S.cols.filter((c) => !c.inside).slice(0, 3); cs.forEach((c, i) => { c.needs.rest = 1; __g.mktSend(c, site.S, site.t, i); __g.mktBundle(c, ['planks', 'bread', 'rope'][i]); }); __g.econPrices(true); });
   for (let i = 0; i < 20; i++) { await ev(() => __g.simulate(1)); if (await ev(() => __g.mktSite().S.cols.filter((c) => c.job && c.job.type === 'market' && c.job.ph === 'do').length >= 2)) break; }
   await ev(() => { for (const c of __g.mktSite().S.cols) if (c.job && c.job.type === 'market') c.job.dur = 999; __g.MKT.talkT = 0; __g.MKT.reply = null; });
   const mk2 = await ev(() => { const t = __g.mktSite().t; return [t.x, t.z, t.rot, __g.mktSite().S.id]; });
-  await focusBoard(0.34, 0.35, 0.4); await shotPrep(); await sleep(2600);
+  await stallSet(); await focusBoard(0.34, 0.35, 0.4); await shotPrep(); await sleep(2600);
+  console.log('stall signs showing in 83: ' + await ev(() => (__g.mktSite().t.mesh.userData.signs || []).filter((x) => x.visible).length));
   await snap('83-market-goods.png');
+  /* a close look at one stall: its sign and its stack of buttons */
+  await stallSet(); await ev(() => __g.simulate(0.5));
+  await ev(() => { const st = __g.mktSite(), U = st.t.mesh.userData, i = Math.max(0, U.signs.findIndex((x) => x.visible)), w = new __g.THREE.Vector3(), m = new __g.THREE.Vector3(); U.stacks[i].getWorldPosition(w); st.t.mesh.getWorldPosition(m);
+    __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(w.x - m.x, w.z - m.z) + 0.7; __g.P.pitch = 0.42; __g.focusOn(w.x, w.y + 0.02, w.z, 0.17);
+    for (const c of st.S.cols) if (!(c.job && c.job.type === 'market')) { const p = st.S.group.localToWorld(new __g.THREE.Vector3(c.x, 0, c.z)); if (Math.hypot(p.x - w.x, p.z - w.z) < 0.12) { c.x += (c.x - st.t.x) * 0.8; c.z += (c.z - st.t.z) * 0.8; } } }); await shotPrep(); await sleep(1800);
+  await snap('84-stall-stack.png');
   ok('the camp card shows its buttons on one small line', await ev(() => { __g.G.cur = __g.mainSettlement(); __g.cardUi(); const e = document.querySelector('#card .ecoline'); return !!e && /\d+ buttons?/.test(e.textContent); }));
   await ev(() => { for (const S of __g.G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') c.job.dur = 1; __g.simulate(3); });
 
