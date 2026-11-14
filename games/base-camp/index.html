@@ -3097,8 +3097,8 @@ function funFrame(dt) {
   if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), SY(F.S, 0.06), wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
-  const held = uiHoldAway() || (F10.on && f10CardUp()); if (held) for (const q of FUN.queue) if (q.gt !== undefined) { q.gt = G.time; q.st = G.simT; } /* build 20 + return: a banner waiting behind the diary or a first-session card keeps its place */
   FUN.queue = FUN.queue.filter((q) => q.gt === undefined || (G.time - q.gt < 20 && G.simT - q.st < 120)); /* build 19: a banner that waited more than about 20 s (real, or 2 sim minutes) is dropped, the album still has it */
+  const held = uiHoldAway() || (F10.on && f10CardUp()); if (held) for (const q of FUN.queue) if (q.gt !== undefined) { q.gt = G.time; q.st = G.simT; } /* build 20 + return: a banner waiting behind the diary or a first-session card keeps its place */
   if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement() && !held && !uiOverlay() && uiGapOK()) showCelebration(FUN.queue.shift());
   FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
 }
