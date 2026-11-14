@@ -119,7 +119,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
     await advance(8); const prevW = cyc === 0 ? WB : WA, W = cyc === 0 ? WA : { yaw: -0.4, x: -0.3, z: 0.4 };
     await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_A, W); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
     await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
-    await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, lock: __g.RELOC.lock, secs: __g.RELOC.scanSecs, cur: __g.HOMES.cur }));
+    await waitFor(() => __g.G.locked || !document.getElementById('nroom').hidden, 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, lock: __g.RELOC.lock, secs: __g.RELOC.scanSecs, cur: __g.HOMES.cur }));
     ok('return ' + (cyc + 1) + ': "We’re home!" through the surface matcher (not the totem)', L.st === 'locked' && L.lock && L.lock.how !== 'totem' && L.cur === 'r1', 'how ' + (L.lock && L.lock.how) + ', lock after ' + (L.lock ? L.lock.scanSecs.toFixed(1) : '?') + ' scan s, wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
     if (L.lock) { lockTimes.push(L.lock.scanSecs); await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); const lk = await ev(() => __g.RELOC.lock); const e0 = errOf(L.lock, W, prevW); const e = errOf(lk, W, prevW); console.log('homing return ' + (cyc + 1) + ': first lock error yaw ' + e0.yawDeg.toFixed(2) + ' deg, ' + e0.posCm.toFixed(1) + ' cm; after refinement ' + e.yawDeg.toFixed(2) + ' deg, ' + e.posCm.toFixed(1) + ' cm'); ok('return ' + (cyc + 1) + ': accurate (yaw < 3 deg, position < 8 cm)', e.yawDeg < 3 && e.posCm < 8); }
     else ok('return ' + (cyc + 1) + ': accurate (yaw < 3 deg, position < 8 cm)', false, 'no lock');
@@ -131,12 +131,13 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   // ===================== 3. room B, new room; the right room loads =====================
   await advance(3); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_B, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   await p.click('#bPlay'); await sleep(900); await closeUp('b', {}); await sleep(400); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
-  const tAsk = await waitFor(() => __g.RELOC.state === 'asking', 240000, 800);
-  ok('room B (never seen): no false lock, and after ~60 scan seconds the question', tAsk > 0 && !(await ev(() => __g.G.locked)), 'asked after ' + (await ev(() => __g.RELOC.scanSecs)).toFixed(1) + ' scan s');
+  /* build 7: with the Play button (G.finding) the question is the small "New room?" prompt (#nroom) after ~45 scan seconds, not the old RELOC 'asking' card */
+  const tAsk = await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 240000, 800);
+  ok('room B (never seen): no false lock, and after ~45 scan seconds the question', tAsk > 0 && !(await ev(() => __g.G.locked)) && /New room\?/.test(await ev(() => document.getElementById('nroom').innerText)), 'asked after ' + (await ev(() => __g.RELOC.scanSecs)).toFixed(1) + ' scan s');
   const falseTot = await ev(() => __g.TOTEM.stats.found); ok('no false totem find in room B', falseTot === 0, 'finds ' + falseTot);
-  await p.click('#rmNew'); await sleep(1200);
+  await p.click('#nrYes'); await sleep(1200);
   const rooms1 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, prev: !!localStorage.getItem('base-camp-map-v1-prev'), a: !!localStorage.getItem('base-camp-map-v1') }));
-  ok('"A new room" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.prev, JSON.stringify(rooms1));
+  ok('"New room? Yes" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.prev, JSON.stringify(rooms1));
   const tS2 = await waitFor(() => __g.G.settlements.length > 0, 150000, 800);
   await sleep(4000);
   ok('...and does not offer a totem for the new room (the totem is off)', await ev(() => !__g.TOTEM.offer && !/Want to give it a totem/.test(document.getElementById('ask').innerText)), 'colony settled after ' + tS2 + ' ms');
@@ -149,7 +150,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   for (const [name, shed, W, want] of [['A', ROOM_A, { yaw: 0.3, x: 0.2, z: 0.3 }, 'r1'], ['B', ROOM_B, { yaw: -0.5, x: -0.2, z: 0.4 }, 'r2'], ['A again', ROOM_A, { yaw: -0.2, x: 0.1, z: -0.3 }, 'r1']]) {
     await advance(4); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(shed, W); await ev((want) => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; __g.homeSelect(want === 'r1' ? 'r2' : 'r1'); }, want); // start with the wrong room selected
     await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
-    await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) }));
+    await waitFor(() => __g.G.locked || !document.getElementById('nroom').hidden, 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) }));
     ok('start with the wrong room selected, room ' + name + ': room ' + want + ' loads and locks', L.st === 'locked' && L.cur === want && L.how !== 'totem' && L.cols >= 3, JSON.stringify(L) + ' wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
     await sleep(1500); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
@@ -158,7 +159,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   for (const [name, shed, W, want] of [['A', ROOM_A, { yaw: 0.4, x: -0.3, z: 0.2 }, 'r1'], ['B', ROOM_B, { yaw: 0.2, x: 0.3, z: 0.1 }, 'r2']]) {
     await advance(4); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(shed, W); await ev((want) => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; __g.homeSelect(want === 'r1' ? 'r2' : 'r1'); }, want);
     await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['floor', 'shelf', 'deskA', 'speakerA', 'floor2'], 1.0);
-    const tL = await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 500); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, hist: __g.RELOC.hist.filter((e) => e.res).slice(-4).map((e) => [e.room, Math.round(e.res.score), e.ok]) }));
+    const tL = await waitFor(() => __g.G.locked || !document.getElementById('nroom').hidden, 240000, 500); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, hist: __g.RELOC.hist.filter((e) => e.res).slice(-4).map((e) => [e.room, Math.round(e.res.score), e.ok]) }));
     ok('no totem, room ' + name + ' (other room selected): the surface matcher picks room ' + want, L.st === 'locked' && L.cur === want, JSON.stringify(L) + ' wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
     await sleep(1000); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
