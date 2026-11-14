@@ -2863,12 +2863,12 @@ function mkCampfire() {
   for (let i = 0; i < 7; i++) { const a = i * 0.898; g.add(mesh(geo('f10st', () => new THREE.SphereGeometry(0.0026, 6, 4)), st, Math.cos(a) * 0.011, 0.0012, Math.sin(a) * 0.011)); }
   const fl = mesh(geo('f10fl', () => new THREE.ConeGeometry(0.0055, 0.016, 7).translate(0, 0.008, 0)), new THREE.MeshBasicMaterial({ color: 0xff8a2b }), 0, 0.002, 0);
   const fi = mesh(geo('f10fi', () => new THREE.ConeGeometry(0.003, 0.01, 6).translate(0, 0.005, 0)), new THREE.MeshBasicMaterial({ color: 0xffe08a }), 0, 0.002, 0);
-  const gl = glowSprite(0.05, 0.55, 0xffa040); gl.position.y = 0.01; g.add(fl, fi, gl); g.userData.f10 = { fl, fi, gl }; return g;
+  const gl = glowSprite(0.065, 0.7, 0xffa040); gl.position.y = 0.01; g.add(fl, fi, gl); g.userData.f10 = { fl, fi, gl }; return g;
 }
 function f10FireFrame(S, dt, show) {
   if (!S.f10fire) { if (!show) return; S.f10fire = mkCampfire(); const at = f10FireAt(S); S.f10fire.position.set(at[0], 0, at[1]); S.group.add(S.f10fire); }
   const f = S.f10fire; f.visible = show; if (!show) return; const u = f.userData.f10, k = 1 + 0.18 * Math.sin(G.time * 13) + 0.1 * Math.sin(G.time * 29 + 1);
-  u.fl.scale.set(1, k, 1); u.fi.scale.set(1, 2 - k, 1); u.gl.material.opacity = 0.45 + 0.12 * Math.sin(G.time * 9);
+  u.fl.scale.set(1, k, 1); u.fi.scale.set(1, 2 - k, 1); u.gl.material.opacity = 0.62 + 0.12 * Math.sin(G.time * 9);
   if (Math.random() < dt * 2.5) { const [wx, wz] = l2w(S, f.position.x, f.position.z); puff('spark', wx, SY(S, 0.016), wz, 1, { size: 0.004, vy: 0.03, life: 0.9, jit: 0.004, add: true, color: 0xffc070 }); }
 }
 function f10Light(S, show) { /* one warm light at the fire: created once and then only dimmed, so the materials never recompile */
@@ -3080,7 +3080,7 @@ function colVisual(S, c, dt, time, night, eye) {
   let d = c.face - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 8);
   U.blinkT = (U.blinkT || rnd(2, 5)) - dt; const blink = U.blinkT < 0.12; if (U.blinkT <= 0) U.blinkT = rnd(2.5, 5.5); for (const e of U.eyes) e.scale.y = blink ? 0.15 : 1;
   faceMouth(U, mouthO || (c.sayT > 0 && Math.sin(time * 22) > 0));
-  U.glow.material.opacity = (night ? 0.55 : 0.3) + (c.needs.joy > 0.8 ? 0.15 : 0);
+  U.glow.material.opacity = night ? (c.job && c.job.type === 'fireside' ? 0.09 : 0.2) + (c.needs.joy > 0.8 ? 0.05 : 0) : 0.3 + (c.needs.joy > 0.8 ? 0.15 : 0); RING_MAT.opacity = night ? 0.4 : 0.55; /* build 21: at night the disc is a faint hint (the ring keeps creatures findable) and the campfire stays the brightest thing */
   colBubbles(S, c, dt, eye, sc);
 }
 function faceMouth(U, open) { if (U.smile) { U.smile.visible = !open; U.mouthO.visible = !!open; } }
