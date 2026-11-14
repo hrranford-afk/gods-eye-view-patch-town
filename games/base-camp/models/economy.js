@@ -183,7 +183,7 @@
     var g = new T.Group(), s = new T.Group(); s.scale.setScalar(SC); g.add(s); s.add(meshOf(asset('board', boardParts, 0.0004)));
     var tilt = new T.Group(); tilt.position.set(0, 0.0315, 0.0021); tilt.rotation.x = -0.16; s.add(tilt);
     var face = new T.Mesh(new T.PlaneGeometry(0.038, 0.028), new T.MeshBasicMaterial({ color: 0xffffff })); face.position.z = 0.00072; face.name = 'ecBoardFace'; tilt.add(face);
-    g.add(blob(0.022)); g.userData = { bcEcon: 'board', face: face }; return g;
+    g.userData = { bcEcon: 'board', face: face }; return g; /* no shadow blob: the market has one, and a draw-call budget */
   }
 
   /* ---- a paper pinwheel from the pedlar ---- */

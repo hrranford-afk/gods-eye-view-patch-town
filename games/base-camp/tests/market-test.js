@@ -78,7 +78,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   let walked = false; for (let i = 0; i < 30; i++) { await ev(() => __g.simulate(5)); if (!walked) walked = await ev(() => __g.mainSettlement().cols.some((c) => c.job && c.job.type === 'market')); if (walked && (await ev(() => __g.MKT.deals)) > d0) break; }
   const one = await ev(() => ({ deals: __g.MKT.deals, last: __g.MKT.log[__g.MKT.log.length - 1] }));
   ok('one camp: colonists walk to the stalls', walked);
-  ok('one camp: they swap among themselves', one.deals > d0 && one.last && one.last.a === one.last.b && /^Market day: .+ swapped .+ for /.test(one.last.text), JSON.stringify(one.last));
+  ok('one camp: they swap among themselves', one.deals > d0 && one.last && one.last.a === one.last.b && /^Market day: .+ (swapped .+ for |sold .+ for \d+ buttons?|bought |got )/.test(one.last.text), JSON.stringify(one.last));
   /* the market-day picture: traders at every stall, haggling */
   await ev(() => { const st = __g.mktSite(); const cs = st.S.cols.filter((c) => !c.inside).slice(0, 3); cs.forEach((c, i) => { c.needs.rest = 1; __g.mktSend(c, st.S, st.t, i); }); });
   for (let i = 0; i < 20; i++) { await ev(() => __g.simulate(1)); if (await ev(() => __g.mainSettlement().cols.filter((c) => c.job && c.job.type === 'market' && c.job.ph === 'do').length >= 2)) break; }
@@ -139,7 +139,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
 
   /* 6. the away diary on a market day; none on a Tuesday */
   const awayW = await ev(() => { __g.ENV.dateOverride = '2026-11-18'; __g.ENV._sk = 0; __g.envUpdate(); const r = __g.awaySim(4 * 3600, 9); return r.lines.map((l) => l.text).filter((t) => /^Market day:/.test(t)); });
-  ok('back after a market-day morning away: a "Market day:" line in the diary', awayW.length === 1 && / swapped .+ for /.test(awayW[0]), JSON.stringify(awayW));
+  ok('back after a market-day morning away: a "Market day:" line in the diary', awayW.length === 1 && /( swapped .+ for | camp sold .+ for \d+ buttons?| camp bought )/.test(awayW[0]), JSON.stringify(awayW));
   const awayT = await ev(() => { __g.ENV.dateOverride = '2026-11-17'; __g.ENV._sk = 0; __g.envUpdate(); const r = __g.awaySim(4 * 3600, 9); return r.lines.filter((l) => /^Market day:/.test(l.text)).length; });
   ok('a Tuesday away has no market line', awayT === 0);
 

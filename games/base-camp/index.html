@@ -4221,7 +4221,7 @@ const ECON_TUNE = {
   },
   food: { otherEvery: 60, cap: 14 }, /* the floor's own farms are lean.farmland (every 30 s); other surfaces grow about half that */
   thread: { every: 240, cap: 8 },
-  price: { k: 3, sup: 0.5, min: 1, max: 5, pedMarkup: 1 },
+  price: { k: 3, sup: 0.5, min: 1, max: 5, pedMarkup: 1, pedBuyLess: 1 }, /* pedMarkup: the pedlar sells raw goods a button dearer; pedBuyLess: he buys a button cheaper */
   trade: { sell: 6, buy: 3, foodFirst: true },
   craft: { dur: 4.5, cap: 4, capMore: 9, capLess: 1, woodSpare: 2 },
   start: { btn: 3 },
@@ -4294,8 +4294,8 @@ function econTrade(c, H, P, quiet) {
   econPrices(); const parts = [], camp = (X) => econCamp(X); let moved = 0, got = null, earned = 0;
   const g = econSpare(H);
   if (g) { /* sell: to the other camp when it is short and has buttons, else to the pedlar, who buys anything */
-    let n = Math.min(ECON_TUNE.trade.sell, econSellable(H, g)); const pr = econPrice(g), buyer = P && P !== H && econWant(P, g) > 0 && (P.stock.btn || 0) >= pr ? P : null;
-    if (buyer) n = Math.min(n, econWant(P, g), Math.floor(P.stock.btn / pr));
+    let n = Math.min(ECON_TUNE.trade.sell, econSellable(H, g)), pr = econPrice(g); const buyer = P && P !== H && econWant(P, g) > 0 && (P.stock.btn || 0) >= pr ? P : null;
+    if (buyer) n = Math.min(n, econWant(P, g), Math.floor(P.stock.btn / pr)); else pr = Math.max(ECON_TUNE.price.min, pr - ECON_TUNE.price.pedBuyLess); /* the pedlar pays a little less than a camp would */
     if (n > 0) {
       const pay = n * pr; H.stock[g] -= n; H.stock.btn = (H.stock.btn || 0) + pay; earned = pay; const t = econTally(H); t.sold[g] = (t.sold[g] || 0) + n; t.earn += pay; ECON.sales += n; ECON.earned += pay;
       if (buyer) { buyer.stock[g] = (buyer.stock[g] || 0) + n; buyer.stock.btn -= pay; moved += n; const b = econTally(buyer); b.bought[g] = (b.bought[g] || 0) + n; b.spent += pay; }
@@ -4369,9 +4369,9 @@ function econOpen(site, quiet) {
   if (!quiet && fresh) toast('🐌 ' + ECON_PED + ' the pedlar snail has come to market with a cart of treasures. Tap the cart to see. <i class="by">Economy: an idea by ' + MKT_CREDIT + '</i>', 5);
 }
 function econSummary(S) {
-  const t = ECON.tally[S.id]; if (!t) return null; const sold = Object.keys(t.sold).filter((g) => t.sold[g] > 0), got = Object.keys(t.bought).filter((g) => t.bought[g] > 0), bits = [];
-  if (sold.length) bits.push('sold ' + fmtList(sold.map((g) => econQty(g, t.sold[g]))) + ' for ' + plural(t.earn, 'button'));
-  const buys = got.map((g) => econQty(g, t.bought[g])).concat(t.items); if (buys.length) bits.push('bought ' + fmtList(buys));
+  const t = ECON.tally[S.id]; if (!t) return null; const net = (g) => (t.sold[g] || 0) - (t.bought[g] || 0), sold = Object.keys(t.sold).filter((g) => net(g) > 0), got = Object.keys(t.bought).filter((g) => net(g) < 0), bits = []; /* a thing both sold and bought in a day counts once, either way */
+  if (sold.length) bits.push('sold ' + fmtList(sold.map((g) => econQty(g, net(g)))) + ' for ' + plural(t.earn, 'button'));
+  const buys = got.map((g) => econQty(g, -net(g))).concat(t.items); if (buys.length) bits.push('bought ' + fmtList(buys));
   if (t.gifts && !bits.length) bits.push('got a little something from ' + ECON_PED + ' for a hug');
   if (!bits.length) return null; return 'Market day: ' + econCamp(S) + ' ' + bits.join(' and ') + '.';
 }
