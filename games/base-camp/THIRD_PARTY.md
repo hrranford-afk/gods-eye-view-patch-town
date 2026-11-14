@@ -28,3 +28,6 @@ The full licence texts are in the headers of `webxr-polyfill.js`. The game only 
 Backpack Scout mouse: made with ChatGPT, sent by Harry.
 
 `assets/basecamp_mouse_scout_ANIMATED.glb` (1.3 MB, five animation clips: Idle, Walk, Wave, LookAround, Hop) is loaded with three.js r128's `GLTFLoader` (`examples/js/loaders/GLTFLoader.js`, MIT, from jsdelivr, the same version as three.js). The first colonist of each camp is the scout. Without the GLB or the loader the game builds the procedural mouse (`mkMouseScout`), and without that a normal creature. The game's Menu shows the same credit line.
+
+## js-aruco2 2.0.0 (vendor/js-aruco2/)
+ArUco / AprilTag marker detection and pose (posit). MIT licence: Copyright (c) 2020 Damiano Falcioni, (c) 2011 Juan Mellado. From npm js-aruco2@2.0.0 (https://github.com/damianofalcioni/js-aruco2); unmodified files; tarball SHA-256 in vendor/js-aruco2/SOURCE-SHA256. Downloaded 14 Nov 2026 with Harry's yes.
