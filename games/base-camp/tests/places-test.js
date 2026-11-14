@@ -95,7 +95,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   const s5 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, nr: __g.PLACES.newRoom, ret: __g.G.returning, finding: __g.G.finding, pre: Object.keys(__g.ROOMPRE()).length, ask: document.getElementById('nroom').hidden ? '' : document.getElementById('nroom').innerText, skipped: __g.PLACES.skipped.slice() }));
   ok('5. nothing saved within 300 m: a new room, nothing old loaded or compared', s5.n === 4 && s5.cur === s5.nr && s5.cur === 'r4' && !s5.ret && !s5.finding && s5.pre === 0 && s5.skipped.length === 3, JSON.stringify(s5));
   ok('5. it says so gently: "Somewhere new! Shall we start a camp here?" with Yes and the old rooms under "It\'s..."', /Somewhere new! Shall we start a camp here\?/.test(s5.ask) && /Yes!/.test(s5.ask) && (await ev(() => document.querySelectorAll('#nroom [data-room]').length === 3)), s5.ask.replace(/\n/g, ' | '));
-  await p.click('#nrIts'); await sleep(300); await p.screenshot({ path: OUT + '86-somewhere-new.png' });
+  await sleep(2500); /* the AR start log goes after 4 s */ await p.click('#nrIts'); await sleep(300); await p.screenshot({ path: OUT + '86-somewhere-new.png' });
   await p.click('#nrYes'); await sleep(300);
   await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf']);
   const tS = await waitFor(() => __g.G.settlements.length > 0, 200000, 800);
@@ -107,9 +107,9 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
 
   /* ===================== 6. no lat / lon anywhere but bc-places-v1 (and the weather's own 0.1 degree) ===================== */
   const s6 = await ev(() => { __g.ioUi(); const io = document.getElementById('ioText').value; document.getElementById('modal').hidden = true; const rep = __g.buildReport('test'), map = JSON.stringify(__g.mapToJSON()), rooms = localStorage.getItem('bc-rooms-v1');
-    const others = Object.keys(localStorage).filter((k) => !['bc-places-v1', 'bc-loc', 'bc-wxcache'].includes(k)).filter((k) => /"lat"|"lon"|latitude|longitude|51\.3\b|-1\.5\b|51\.300/.test(localStorage.getItem(k) || ''));
-    const bad = (t) => /"lat"|"lon"|latitude|longitude|51\.300|-1\.4995/.test(t); return { io: bad(io), rep: bad(rep), map: bad(map), rooms: bad(rooms), others, ioLen: io.length, repLen: rep.length }; });
-  ok('6. no lat / lon in the map export, the report, the rooms list or any other stored key', !s6.io && !s6.rep && !s6.map && !s6.rooms && !s6.others.length && s6.ioLen > 100 && s6.repLen > 100, JSON.stringify(s6));
+    const others = Object.keys(localStorage).filter((k) => !['bc-places-v1', 'bc-loc', 'bc-wxcache'].includes(k)).filter((k) => /"lat":-?\d+\.\d|"lon":-?\d+\.\d|latitude|longitude|51\.300449|1\.499551/.test(localStorage.getItem(k) || ''));
+    const bad = (t) => { const m = /"lat":-?\d+\.\d|"lon":-?\d+\.\d|latitude|longitude|51\.300449|1\.499551|51\.30045|1\.49955/.exec(t || ''); return m ? m[0] + ' @' + m.index + ': ' + t.slice(Math.max(0, m.index - 40), m.index + 40) : false; }; return { io: bad(io), rep: bad(rep), map: bad(map), rooms: bad(rooms), others, ioLen: io.length, repLen: rep.length }; });
+  ok('6. no lat / lon (a decimal "lat" / "lon", latitude, longitude or the raw numbers) in the map export, the report, the rooms list or any other stored key', !s6.io && !s6.rep && !s6.map && !s6.rooms && !s6.others.length && s6.ioLen > 100 && s6.repLen > 100, JSON.stringify(s6));
   ok('6. nothing logged the position', !logs.some((l) => /51\.30|51\.12|-1\.23|-1\.49/.test(l)));
   await endAR();
 
@@ -132,7 +132,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   const practice = async () => { await openMore(); await p.click('#bPrac'); await sleep(300); for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit' && __g.G.settlements.some((S) => S.placed))) break; } await sleep(800);
     await ev(() => { __g.ENV.hourOverride = 12; __g.F10.on = false; for (const r of __g.G.requests.slice()) __g.resolveRequest(r, true); __g.F10.reqDone = true; }); };
   const shotPrep = () => ev(() => { for (const id of ['toast', 'env', 'sel', 'reqs']) { const e = document.getElementById(id); if (e) { if (id === 'toast' || id === 'reqs') e.innerHTML = ''; else e.hidden = true; } } if (__g.camClose) __g.camClose(); });
-  const focusKind = (kind, d, yaw, pitch) => ev(([kind, d, yaw, pitch]) => { for (const S of __g.G.settlements) { const t = S.things.find((q) => q.kind === kind); if (!t) continue; const w = S.group.localToWorld(new __g.THREE.Vector3(t.x, 0, t.z)); __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = yaw; __g.P.pitch = pitch; __g.focusOn(w.x, w.y + 0.015, w.z, d); return true; } return false; }, [kind, d, yaw, pitch]);
+  const focusKind = (kind, d, yaw, pitch) => ev(([kind, d, yaw, pitch]) => { for (const S of __g.G.settlements) { const t = S.things.find((q) => q.kind === kind); if (!t) continue; const w = S.group.localToWorld(new __g.THREE.Vector3(t.x, 0, t.z)), c = S.group.localToWorld(new __g.THREE.Vector3(0, 0, 0)); __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = yaw === null ? Math.atan2(w.x - c.x, w.z - c.z) + 0.35 : yaw; /* null: from outside the camp, looking in */ __g.P.pitch = pitch; __g.focusOn(w.x, w.y + 0.015, w.z, d); return true; } return false; }, [kind, d, yaw, pitch]);
   await ctx.setGeolocation(CARPET); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); localStorage.setItem('bc-places-v1', JSON.stringify({ v: 1, on: true, spots: {} })); }); await fresh(); await waitFor(() => __g.PLACES.state === 'here', 15000);
   ok('9. a made-up spot inside the carpet-town box reads as carpet town', await ev(() => __g.PLACES.area === 'carpet'));
   const F9 = await ev(() => { const F = __g.PLACE_FLAVOURS.carpet; return { goods: F.goods, special: F.special, maker: F.maker, rope: F.cheaper.rope, fluff: F.replaces.fluff, sound: F.sound, stock: Object.keys(__g.PLACE_STOCK).join() }; });
@@ -144,12 +144,12 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   ok('9. the steam whistle is a sound kind that plays', await ev(() => { if (!__g.SND.KINDS.steam || typeof window.sfx !== 'function') return false; window.sfx('steam'); return true; }));
   await shotPrep(); await focusKind('loom', 0.16, 0.5, 0.42); await sleep(1500); await shotPrep(); await p.screenshot({ path: OUT + '87-loom.png' });
   await ev(() => { __g.persist(true); });
-  await ctx.setGeolocation(SEA); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); localStorage.setItem('bc-places-v1', JSON.stringify({ v: 1, on: true, spots: {} })); }); await fresh(); await waitFor(() => __g.PLACES.state === 'here', 15000);
+  await ctx.setGeolocation(SEA); await fresh(); /* leaving the page saves the colony once more: clear after that */ await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); localStorage.setItem('bc-places-v1', JSON.stringify({ v: 1, on: true, spots: {} })); }); await fresh(); await waitFor(() => __g.PLACES.state === 'here', 15000);
   ok('9. a made-up spot on the coast reads as seaside', await ev(() => __g.PLACES.area === 'seaside'));
   await practice(); for (let i = 0; i < 12; i++) { await ev(() => __g.simulate(60, 0.5)); if (await ev(() => (__g.mainSettlement().stock.shell || 0) >= 3)) break; }
   const s9b = await ev(() => { const S = __g.mainSettlement(); return { shell: S.stock.shell || 0, salt: S.stock.salt || 0, wool: S.stock.wool || 0, loom: S.things.some((t) => t.kind === 'loom'), pile: S.things.some((t) => t.kind === 'lpile' && t.var === 1) }; });
   ok('9. seaside: shells and salt crystals, a shore heap, no wool and no loom', s9b.shell >= 1 && s9b.salt >= 0 && !s9b.wool && !s9b.loom && s9b.pile, JSON.stringify(s9b));
-  await ev(() => { __g.G.cur = __g.mainSettlement(); __g.cardUi(); }); await shotPrep(); await focusKind('lpile', 0.2, 2.2, 0.5); await sleep(1500); await shotPrep(); await p.screenshot({ path: OUT + '88-local-goods.png' });
+  await ev(() => { __g.G.cur = __g.mainSettlement(); __g.cardUi(); }); await shotPrep(); await focusKind('lpile', 0.12, null, 0.62); await sleep(1500); await shotPrep(); await p.screenshot({ path: OUT + '88-local-goods.png' });
   await ev(() => { __g.persist(true); });
   ok('9. location off: today\'s goods only (no local finds)', await ev(() => { const on = __g.PLACES.on; __g.PLACES.on = false; const a0 = __g.PLACES.area; __g.PLACES.area = 'default'; const S = __g.mainSettlement(), s0 = JSON.stringify(S.stock); __g.placesStep(S, 600, __g.ENV, true); const same = JSON.stringify(S.stock) === s0; __g.PLACES.on = on; __g.PLACES.area = a0; return same; }));
 

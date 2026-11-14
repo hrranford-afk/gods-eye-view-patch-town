@@ -6,14 +6,14 @@
    Built like models/decor.js: the body of each model is ONE merged vertex-coloured geometry (the game's bcMerge, the shared toon material) with ONE ink hull (the game's inked).
    The parts that change (the woven rug, the shuttle, the rolled rugs, the heap size) are their own meshes. No letters on any object, no brands.
    The game calls BC_PLACES_MK.init({THREE, BCP, inked, bcMerge, M, toon}) once, then loom() or pile(kind).
-   userData.tick(time, n, busy): n is how many finished goods to show (rugs, or items in the heap), busy is true while the loom is weaving.
+   userData.tick(time, n, busy): n is how many finished goods to show (rugs, or items in the heap); busy, for the loom: 0 when idle, else how far the rug on the loom is (0..1).
    If this file is missing or throws, index.html builds plain shapes instead. */
 (function (root) {
   'use strict';
   var T, BCP, bcMerge, inked, toon, ready = false;
   var PI = Math.PI, TAU = Math.PI * 2;
   var STICK = 0xe8c48e, DSTICK = 0xb98a52, COMB = 0x3a6fc4, CRM = 0xfff3dc, RED = 0xd94b4b, TEAL = 0x39b0a4, GOLD = 0xffc82e, PNK = 0xff8fb0, PUR = 0x9a62d6,
-    SHELL = 0xffe2c8, SHELL2 = 0xffb8a8, SALT = 0xf4fbff, ACORN = 0xb07a3a, CAP = 0x6b4a26, CONK = 0x7a3518, BRED = 0xe0402f, BBLU = 0x3f86dd, BSIL = 0xc4ccd4, STR = 0xd8b884;
+    SHELL = 0xffc49a, SHELL2 = 0xff8f86, SALT = 0xe6f4ff, ACORN = 0xb07a3a, CAP = 0x6b4a26, CONK = 0x7a3518, BRED = 0xe0402f, BBLU = 0x3f86dd, BSIL = 0xc4ccd4, STR = 0xd8b884;
   var CACHE = {};
 
   function P(g, c, x, y, z, o) { o = o || {}; return { g: g, c: c, x: x || 0, y: y || 0, z: z || 0, rx: o.rx, ry: o.ry, rz: o.rz, sx: o.sx, sy: o.sy, sz: o.sz }; }
@@ -49,17 +49,16 @@
   }
   function loom() {
     var g = new T.Group(), b = body('loom', loomParts(), 0.0006); g.add(b);
-    var woven = new T.Mesh(wovenGeo(), toon()); woven.position.set(0, 0.0058, 0.0012); woven.scale.y = 0.15; g.add(woven);
+    var woven = new T.Mesh(wovenGeo(), toon()); woven.position.set(0, 0.0058, 0.0012); woven.scale.y = 0.4; g.add(woven);
     var shuttle = new T.Mesh(bcMerge('pl_shuttle', [cyl(CRM, 0.0006, 0.0006, 0.012, 0, 0, 0, { w: 5, rz: PI / 2 }), sph(CRM, 0.0013, -0.006, 0, 0, { w: 6, h: 4 }), sph(CRM, 0.0013, 0.006, 0, 0, { w: 6, h: 4 }), cyl(RED, 0.001, 0.001, 0.004, 0, 0, 0, { w: 6, rz: PI / 2 })]), toon());
     shuttle.position.set(0, 0.012, 0.0028); g.add(shuttle);
     var rolls = [], rg = rolledGeo();
-    for (var i = 0; i < 3; i++) { var r = new T.Mesh(rg, toon()); r.position.set(0.026, 0.0027 + i * 0.0049, 0.004 - (i % 2) * 0.0015); r.rotation.y = 1.45 + i * 0.12; r.visible = false; inked(r, 0.0004); g.add(r); rolls.push(r); }
+    for (var i = 0; i < 3; i++) { var r = new T.Mesh(rg, toon()); r.position.set(0.036 + (i === 2 ? 0.0026 : i * 0.0052), i === 2 ? 0.0071 : 0.0027, 0.006); r.rotation.y = PI / 2 + (i - 1) * 0.06; /* two side by side, the third on top */ r.visible = false; inked(r, 0.0004); g.add(r); rolls.push(r); }
     var sh = shadow(0.03); g.add(sh);
-    var w0 = 0.15;
-    g.userData = { bcPlaces: 'loom', woven: woven, shuttle: shuttle, rolls: rolls, tick: function (time, n, busy) {
+    g.userData = { bcPlaces: 'loom', woven: woven, shuttle: shuttle, rolls: rolls, tick: function (time, n, busy) { /* busy: 0, or how far the rug on the loom is (0..1) */
       for (var k = 0; k < rolls.length; k++) rolls[k].visible = k < Math.min(rolls.length, n | 0);
-      if (busy) { w0 = Math.min(1, w0 + 0.0008); shuttle.position.x = Math.sin(time * 2.2) * 0.011; shuttle.position.y = 0.006 + woven.scale.y * 0.0156 + 0.001; } else shuttle.position.x *= 0.95;
-      if (!busy && w0 >= 1) w0 = 0.15; woven.scale.y = w0;
+      woven.scale.y = 0.4 + 0.6 * Math.min(1, +busy || 0);
+      if (busy) { shuttle.position.x = Math.sin(time * 2.2) * 0.011; shuttle.position.y = 0.0068 + woven.scale.y * 0.0156; } else shuttle.position.x *= 0.95;
     } };
     return g;
   }
@@ -70,8 +69,13 @@
     var y = i === 5 ? 0.004 : 0, a = r() * TAU, out = [];
     if (kind === 'wool') { out.push(ico([PNK, RED, CRM, GOLD, PUR, TEAL][i], 0.0028, x, 0.0026 + y, z, { d: 1, sy: 0.8, ry: a })); out.push(ico([PNK, RED, CRM, GOLD, PUR, TEAL][i], 0.0017, x + 0.0019, 0.0035 + y, z + 0.0008, { d: 0 })); }
     else if (kind === 'shore') {
-      if (i % 2 === 0) { out.push(sph(i % 4 ? SHELL2 : SHELL, 0.0032, x, 0.0002 + y, z, { half: 1, w: 7, h: 3, sy: 0.55, sz: 0.85, ry: a })); for (var k = -1; k <= 1; k++) out.push(box(SHELL2, 0.0004, 0.0004, 0.0052, x + k * 0.0012, 0.0016 + y, z, { ry: a + k * 0.35 })); }
-      else out.push(box(SALT, 0.0026, 0.0026, 0.0026, x, 0.0014 + y, z, { rx: 0.4, ry: a, rz: 0.3 }), box(SALT, 0.0016, 0.0016, 0.0016, x + 0.0022, 0.0009 + y, z - 0.001, { ry: a + 0.7 }));
+      if (i % 2 === 0) { /* a scallop: a half disc fan with darker ribs and a little hinge, turned by a */
+        var R = 0.0036, ca = Math.cos(a), sa = Math.sin(a), at = function (px, pz) { return [x + px * ca + pz * sa, z - px * sa + pz * ca]; }, q;
+        q = at(0, -0.0012); out.push(P(new T.CylinderGeometry(R, R, 0.0012, 10, 1, false, -PI / 2, PI), i % 4 ? SHELL2 : SHELL, q[0], 0.0006 + y, q[1], { ry: a }));
+        for (var k = 0; k < 5; k++) { var b = -PI / 2 + (k + 0.5) * PI / 5; q = at(Math.sin(b) * R * 0.5, -0.0012 + Math.cos(b) * R * 0.5); out.push(box(i % 4 ? 0xd9605a : 0xe08a5a, 0.0005, 0.0005, R * 0.95, q[0], 0.0013 + y, q[1], { ry: a + b })); }
+        q = at(0, -0.0015); out.push(box(i % 4 ? 0xd9605a : 0xe08a5a, 0.0026, 0.0012, 0.0012, q[0], 0.0006 + y, q[1], { ry: a }));
+      }
+      else out.push(box(SALT, 0.0028, 0.0028, 0.0028, x, 0.0016 + y, z, { rx: 0.4, ry: a, rz: 0.3 }), box(0xcfe8f8, 0.0019, 0.0019, 0.0019, x + 0.0024, 0.001 + y, z - 0.001, { ry: a + 0.7 }), box(SALT, 0.0014, 0.0014, 0.0014, x - 0.0018, 0.0008 + y, z + 0.0012, { ry: a + 0.3, rz: 0.5 }));
     } else if (kind === 'wood') {
       if (i % 2 === 0) out.push(sph(ACORN, 0.0022, x, 0.0022 + y, z, { w: 7, h: 5, sy: 1.25 }), sph(CAP, 0.0024, x, 0.0036 + y, z, { half: 1, w: 7, h: 3, sy: 0.6 }), cyl(CAP, 0.0003, 0.0003, 0.0014, x, 0.0052 + y, z, { w: 4 }));
       else out.push(sph(CONK, 0.0029, x, 0.0027 + y, z, { w: 9, h: 6, sy: 0.9 }), sph(0xd8b07a, 0.0013, x + 0.0012, 0.0045 + y, z + 0.0011, { w: 6, h: 4, sy: 0.4 }));
@@ -88,7 +92,7 @@
   }
   function pile(kind) {
     if (['wool', 'shore', 'wood', 'street'].indexOf(kind) < 0) kind = 'wool';
-    var g = new T.Group(), m = new T.Mesh(heapGeo(kind, 1), toon()); inked(m, 0.0004); g.add(m); g.add(shadow(0.012)); var shown = 1;
+    var g = new T.Group(), m = new T.Mesh(heapGeo(kind, 1), toon()); m.scale.setScalar(1.4); inked(m, 0.0004); g.add(m); g.add(shadow(0.016)); var shown = 1; /* a little bigger than life, so it reads next to a creature */
     g.userData = { bcPlaces: 'pile', kind: kind, heap: m, tick: function (time, n) {
       var k = Math.max(1, Math.min(6, n | 0)); if (k === shown) return; shown = k; m.geometry = heapGeo(kind, k);
       for (var c = 0; c < m.children.length; c++) if (m.children[c].userData.ink) { m.remove(m.children[c]); break; } inked(m, 0.0004);

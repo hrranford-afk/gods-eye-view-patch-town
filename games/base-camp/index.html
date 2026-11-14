@@ -5564,7 +5564,7 @@ const PLACE_FLAVOURS = {
   city: { name: 'city', goods: ['cap', 'string'], weights: [0.55, 0.45], heap: 'street', hello: 'Bottle caps and string! City colonists never run short.', by: PLACE_BY },
 };
 /* PLACE_AREAS: [flavour, south lat, north lat, west lon, east lon], first match wins. Generic kinds and plain numbers, no place names.
-   The carpet-town box is generous on purpose (roughly 25 km round the West Midlands carpet towns), not one town. Countryside is the rest of the British Isles box; elsewhere: today's goods. */
+   The carpet-town box is generous on purpose (roughly 25 km round the carpet-making towns), not one town. Countryside is the rest of the British Isles box; elsewhere: today's goods. */
 const PLACE_AREAS = [
   ['carpet', 52.17, 52.61, -2.58, -1.96],
   ['city', 51.28, 51.70, -0.51, 0.33], ['city', 52.38, 52.60, -1.96, -1.72], ['city', 53.35, 53.58, -2.40, -2.05], ['city', 53.33, 53.48, -3.05, -2.85], ['city', 53.72, 53.86, -1.68, -1.42],
@@ -5612,7 +5612,7 @@ const PLACE_HEAPS = ['wool', 'shore', 'wood', 'street'], PLACE_HEAP_GOODS = { wo
 function placesTick(dt) { /* per frame: the loom and heap models follow the stock; in carpet town a distant steam whistle, now and then */
   for (const S of G.settlements) for (const t of S.things) {
     if ((t.kind !== 'loom' && t.kind !== 'lpile') || !t.mesh || !t.mesh.userData.tick) continue;
-    if (t.kind === 'loom') t.mesh.userData.tick(G.time, S.stock.rug | 0, !!(t.built && t.busy)); else t.mesh.userData.tick(G.time, PLACE_HEAP_GOODS[PLACE_HEAPS[t.var | 0] || 'wool'].reduce((a, k) => a + (S.stock[k] || 0), 0));
+    if (t.kind === 'loom') t.mesh.userData.tick(G.time, S.stock.rug | 0, t.built && t.busy ? Math.max(0.01, t.wv || 0) : 0); else t.mesh.userData.tick(G.time, PLACE_HEAP_GOODS[PLACE_HEAPS[t.var | 0] || 'wool'].reduce((a, k) => a + (S.stock[k] || 0), 0));
   }
   const F = PLACE_FLAVOURS[PLACES.area]; if (!F || F.sound !== 'steam' || G.phase !== 'play' || BT.on) return;
   PLACES.whistleT -= dt; if (PLACES.whistleT <= 0) { PLACES.whistleT = 240 + Math.random() * 420; sfx('steam'); PLACES.whistles++; }
