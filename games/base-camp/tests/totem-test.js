@@ -115,7 +115,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
 
   // ===================== 2. return to A: the surface matcher =====================
   const lockTimes = [];
-  for (let cyc = 0; cyc < 2; cyc++) {
+  for (let cyc = 0; cyc < (process.env.SKIP_RETURNS ? 0 : 2); cyc++) { /* SKIP_RETURNS=1: debugging only, jumps to room B */
     await advance(8); const prevW = cyc === 0 ? WB : WA, W = cyc === 0 ? WA : { yaw: -0.4, x: -0.3, z: 0.4 };
     await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_A, W); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
     await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
@@ -133,9 +133,11 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   await p.click('#bPlay'); await sleep(900); await closeUp('b', {}); await sleep(400); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
   /* with only one saved room the question is still the RELOC 'asking' card (#ask, "A new room" = #rmNew); the small "New room?" prompt is for 2+ rooms (multi-room-test) */
   const tAsk = await waitFor(() => __g.RELOC.state === 'asking' || __g.G.locked, 240000, 800); await sleep(1500);
-  ok('room B (never seen): no false lock, and after ~60 scan seconds the question', tAsk > 0 && !(await ev(() => __g.G.locked)) && (await ev(() => !document.getElementById('ask').hidden && !!document.getElementById('rmNew'))), 'asked after ' + (await ev(() => __g.RELOC.scanSecs)).toFixed(1) + ' scan s ' + JSON.stringify(await ev(() => ({ locked: __g.G.locked, how: __g.RELOC.lock && __g.RELOC.lock.how, st: __g.RELOC.state, finding: __g.G.finding, cur: __g.HOMES.cur, rooms: __g.HOMES.rooms.length, asked: __g.RELOC.asked, nroom: !document.getElementById('nroom').hidden, ask: document.getElementById('ask').hidden ? '' : document.getElementById('ask').innerText.slice(0, 80), phase: __g.G.phase, sett: __g.G.settlements.length }))));
+  ok('room B (never seen): no false lock, and after ~60 scan seconds the question', tAsk > 0 && !(await ev(() => __g.G.locked)) && (await ev(() => !document.getElementById('ask').hidden && !!document.getElementById('rmNew'))), 'asked after ' + (await ev(() => __g.RELOC.scanSecs)).toFixed(1) + ' scan s ' + JSON.stringify(await ev(() => ({ locked: __g.G.locked, how: __g.RELOC.lock && __g.RELOC.lock.how, st: __g.RELOC.state, finding: __g.G.finding, cur: __g.HOMES.cur, rooms: __g.HOMES.rooms.length, asked: __g.RELOC.asked, lock: __g.RELOC.lock && { M: __g.RELOC.lock.M, ratio: __g.RELOC.lock.ratio, info: __g.RELOC.lock.info, margin: __g.RELOC.lock.margin, score: __g.RELOC.lock.score, secs: __g.RELOC.lock.scanSecs, phi: __g.RELOC.lock.phi, tx: __g.RELOC.lock.tx, tz: __g.RELOC.lock.tz }, live: __g.SCAN.zones.map((z) => z.type + ':' + z.y.toFixed(2) + ':' + z.area.toFixed(2)), nroom: !document.getElementById('nroom').hidden, ask: document.getElementById('ask').hidden ? '' : document.getElementById('ask').innerText.slice(0, 80), phase: __g.G.phase, sett: __g.G.settlements.length }))));
+  if (process.env.SKIP_RETURNS && process.env.STOP_B) { await b.close(); srv.close(); process.exit(1); }
   const falseTot = await ev(() => __g.TOTEM.stats.found); ok('no false totem find in room B', falseTot === 0, 'finds ' + falseTot);
-  await p.click('#rmNew'); await sleep(1200);
+  /* a false lock leaves no question to answer: carry on through the same "A new room" path so the rest of the suite still runs */
+  if (await ev(() => !document.getElementById('rmNew'))) await ev(() => __g.relocNewRoom()); else await p.click('#rmNew'); await sleep(1200);
   const rooms1 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, prev: !!localStorage.getItem('base-camp-map-v1-prev'), a: !!localStorage.getItem('base-camp-map-v1') }));
   ok('"A new room" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.prev, JSON.stringify(rooms1));
   const tS2 = await waitFor(() => __g.G.settlements.length > 0, 150000, 800);
