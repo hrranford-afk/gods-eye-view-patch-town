@@ -78,7 +78,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   await p.screenshot({ path: OUT + '68-first10-question.png' });
   /* the next visit: Come back later, and the diary answers */
   await p.click('#reqs .req button'); let back = null;
-  for (let i = 0; i < 60 && !back; i++) { await sleep(500); back = await ev(() => __g.G.awayRes && __g.G.awayRes.lines ? __g.G.awayRes.lines.map((l) => l.text) : null); }
+  for (let i = 0; i < 60 && !back; i++) { await sleep(500); back = await ev(() => __g.G.awayRes && __g.G.awayRes.lines ? [__g.G.awayRes.answer ? __g.G.awayRes.answer.text : ''].concat(__g.G.awayRes.lines.map((l) => l.text)) : null); } /* build 20 + return: the answer is its own card (awayRes.answer) */
   const ans = back && back.find((l) => /kept the promise/.test(l));
   ok('the next visit\'s diary answers the question', !!ans && ans.includes(q.q ? q.q.name : '#') && await ev(() => __g.F10.ans), ans || JSON.stringify(back));
   /* an old save (no first-session record) keeps normal sleep */
