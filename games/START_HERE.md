@@ -161,3 +161,4 @@ bring to the game."
 - 01:16 Replay of build 20 done: 5/10 (build 19: 3/10). Night still dead 1:07-9:00; return dumps 5 things at once; clone names "Gertie 2". The sky panel only shows for robots/?tools (not a real bug).
 - 01:16 Builder on game/bc-return (from build 20): night sprout, ask at ~3 min, surprise at ~6 min, gentle return (answer first, 4-line summary + More, one card at a time), fresh names instead of "2". Merge with game/bc-build21 before deploy.
 - FOR HARRY (taste): a card shows "by CAIRN (placeholder)" where a resident's words belong, and kid-facing text shows "by The Dell …" credits. Credits kept per the standing rule; ask whether kids should see them smaller or hidden.
+- 02:43 game/bc-return done (14 suites green, shots 69-72 checked). Polish note: return cards overlap the top-left panel's chip row. The moth surprise is small. Waiting for game/bc-build21, then merge as build 21.
