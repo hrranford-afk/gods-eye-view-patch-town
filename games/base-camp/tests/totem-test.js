@@ -130,6 +130,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
 
   // ===================== 3. room B, new room; the right room loads =====================
   await advance(3); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_B, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
+  const aBefore = await ev(() => localStorage.getItem('base-camp-map-v1'));
   await p.click('#bPlay'); await sleep(900); await closeUp('b', {}); await sleep(400); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
   /* with only one saved room the question is still the RELOC 'asking' card (#ask, "A new room" = #rmNew); the small "New room?" prompt is for 2+ rooms (multi-room-test) */
   const tAsk = await waitFor(() => __g.RELOC.state === 'asking' || __g.G.locked, 240000, 800); await sleep(1500);
@@ -138,8 +139,9 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const falseTot = await ev(() => __g.TOTEM.stats.found); ok('no false totem find in room B', falseTot === 0, 'finds ' + falseTot);
   /* a false lock leaves no question to answer: carry on through the same "A new room" path so the rest of the suite still runs */
   if (await ev(() => !document.getElementById('rmNew'))) await ev(() => __g.relocNewRoom()); else await p.click('#rmNew'); await sleep(1200);
-  const rooms1 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, prev: !!localStorage.getItem('base-camp-map-v1-prev'), a: !!localStorage.getItem('base-camp-map-v1') }));
-  ok('"A new room" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.prev, JSON.stringify(rooms1));
+  const rooms1 = await ev((aBefore) => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, a: !!localStorage.getItem('base-camp-map-v1'), aSame: localStorage.getItem('base-camp-map-v1') === aBefore }), aBefore);
+  /* build 7 (MULTI_ROOM): room A simply stays under its own keys, so there is no -prev copy any more; "untouched" = its saved map is byte for byte what it was before room B */
+  ok('"A new room" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.aSame, JSON.stringify(rooms1));
   const tS2 = await waitFor(() => __g.G.settlements.length > 0, 150000, 800);
   await sleep(4000);
   ok('...and does not offer a totem for the new room (the totem is off)', await ev(() => !__g.TOTEM.offer && !/Want to give it a totem/.test(document.getElementById('ask').innerText)), 'colony settled after ' + tS2 + ' ms');
@@ -166,7 +168,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
     await sleep(1000); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
   const m1 = await memNow(); console.log('memory', JSON.stringify(m0), JSON.stringify(m1)); ok('memory flat (geometries / textures bounded)', m1.geo < m0.geo + 400 && m1.tex < m0.tex + 100);
-  const rep = await ev(() => JSON.parse(__g.buildReport('test'))); ok('field report holds the totem section (no attempts while it is off) and the rooms', rep.totem && rep.totem.attempts.length === 0 && rep.totem.stats.tries === 0 && rep.rooms.length === 2, rep.totem.attempts.length + ' attempts, ' + (JSON.stringify(rep).length / 1024).toFixed(0) + ' KB');
+  const rep = await ev(() => JSON.parse(__g.buildReport('test'))); ok('field report holds the totem section (no matcher attempts while it is off, only room-switch notes) and the rooms', rep.totem && !rep.totem.attempts.some((a) => a.inl !== undefined || a.sighting) && rep.totem.stats.tries === 0 && rep.rooms.length === 2, JSON.stringify(rep.totem.attempts).slice(0, 120) + ', ' + (JSON.stringify(rep).length / 1024).toFixed(0) + ' KB');
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 4)));
   const fails = res.filter((r) => !r).length; console.log(fails ? fails + ' FAILED' : 'ALL ' + res.length + ' PASSED'); await b.close(); srv.close(); process.exit(fails ? 1 : 0);
 })();
