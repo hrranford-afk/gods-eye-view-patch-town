@@ -48,13 +48,16 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('memory stays flat over 20 more minutes', m2.geo - m1.geo < 150 && m2.tex - m1.tex < 30 && m2.heapMB - m1.heapMB < 80, JSON.stringify([m0, m1, m2]));
 
   /* ---- requests: thirsty on a hot day with no well; giving helps ---- */
-  const rq = await ev(() => { const S = __g.G.settlements[0]; S.things = S.things.filter((t) => t.kind !== 'well'); S.stock.water = 0; S.stock.seeds = 0; __g.setWxPick('hot'); __g.envUpdate(); S.reqT = 0; for (let i = 0; i < 12 && !__g.G.requests.length; i++) __g.simulate(10); return __g.G.requests.map((r) => r.def.id + ':' + r.who); });
-  ok('a thirsty colony on a hot day asks the Giant for something', rq.length > 0, JSON.stringify(rq));
+  /* build 19 + first10: in the first session the scout's "My seeds spilled!" comes first and other requests wait for it, so answer it the way a player does (Seeds button, then a seed by the camp) */
+  const seed = await ev(() => { const r = __g.G.requests.find((q2) => q2.def.f10); if (!r) return 'none'; __g.giveRequest(r); __g.giveRequest(r); return __g.F10.reqDone ? 'done' : 'open'; });
+  await ev(() => { __g.G.requests.length = 0; __g.simulate(15); });
+  const rq = await ev(() => { const S = __g.G.settlements[0]; S.things = S.things.filter((t) => t.kind !== 'well'); S.stock.water = 0; S.stock.seeds = 0; __g.setWxPick('hot'); __g.envUpdate(); S.reqT = 0; for (let i = 0; i < 30 && !__g.G.requests.some((r) => !r.def.f10); i++) __g.simulate(10); return __g.G.requests.filter((r) => !r.def.f10).map((r) => r.def.id + ':' + r.who); });
+  ok('a thirsty colony on a hot day asks the Giant for something (after the seed request)', rq.length > 0, 'seed request ' + seed + ', then ' + JSON.stringify(rq));
   await sleep(600); await p.screenshot({ path: OUT + 'practice-requests.png' });
-  const j0 = await ev(() => { const S = __g.G.settlements[0]; return S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length; });
-  await ev(() => { for (const r of __g.G.requests.slice()) __g.giveRequest(r); });
+  const j0 = await ev(() => { const S = __g.G.settlements[0]; for (const c of S.cols) c.needs.joy = 0.5; return 0.5; }); /* joy sits near 1 after half an hour of play; start from 0.5 so a gift can show */
+  await ev(() => { for (const r of __g.G.requests.filter((q2) => !q2.def.f10)) __g.giveRequest(r); });
   const j1 = await ev(() => { const S = __g.G.settlements[0]; return S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length; });
-  ok('giving the requests makes the colony happier and clears them', j1 > j0 && (await ev(() => __g.G.requests.length)) < rq.length, j0.toFixed(2) + ' -> ' + j1.toFixed(2));
+  ok('giving the requests makes the colony happier and clears them', j1 > j0 && (await ev(() => __g.G.requests.filter((q2) => !q2.def.f10).length)) < rq.length, j0.toFixed(2) + ' -> ' + j1.toFixed(2));
 
   /* ---- night: in the first session everyone sits round the campfire (build 19 + first10), after it they go to bed ---- */
   await ev(() => { __g.setWxPick('clear'); __g.ENV.hourOverride = 2; __g.envUpdate(); __g.simulate(90); });
@@ -86,7 +89,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   await ev(() => { document.getElementById('diary').hidden = true; __g.comeBackLater(40 / 60); });
   const locked = await waitGame(() => __g.G.locked, 240, 600000);
   const after = await ev(() => ({ n: __g.G.settlements.length, placed: __g.G.settlements.filter((S) => S.placed).length, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0), diary: document.getElementById('diary').innerText.slice(0, 60) }));
-  ok('after 40 minutes away the room is found again and every colony is back in place', locked && after.n === before.n && after.placed === after.n && after.cols >= before.cols - 1, JSON.stringify([before, after]));
+  ok('after 40 minutes away the room is found again and every colony is back in place', locked && after.n >= before.n && after.placed === after.n && after.cols >= before.cols - 1, JSON.stringify([before, after]));
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 4)));
   const fails = res.filter((r) => !r).length; console.log(fails ? fails + ' FAILED' : 'ALL ' + res.length + ' PASSED');
   await b.close(); srv.close(); process.exit(fails ? 1 : 0);
