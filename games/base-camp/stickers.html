@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base Camp room stickers</title>
+<style>
+/* Base Camp build 27: printable room stickers. Two A4 pages, six ArUco 4x4 markers (ids 1 to 6). The black square of each sticker is 8 cm across:
+   the game assumes exactly that size (STK_SIZE in index.html). Keep the two in step. */
+@page { size: A4 portrait; margin: 10mm; }
+:root { --ink: #2b1d12; --soft: #6b5640; --paper: #fffaf2; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
+.page { width: 190mm; min-height: 277mm; margin: 0 auto; padding: 0; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 5mm; }
+.page:last-child { page-break-after: auto; break-after: auto; }
+h1 { font-size: 24px; margin: 4mm 0 0; }
+h2 { font-size: 18px; margin: 0; }
+p, li { margin: 0; font-size: 14px; }
+ul { margin: 0; padding-left: 5mm; display: grid; gap: 1.5mm; }
+.big { font-size: 17px; font-weight: 700; }
+.grid { display: grid; grid-template-columns: 93.4mm 93.4mm; gap: 3mm 3.2mm; justify-content: center; }
+.card { display: flex; flex-direction: column; align-items: center; gap: 1mm; }
+.cut { width: 93.4mm; height: 93.4mm; border: 0.3mm dashed #b9a78f; display: flex; align-items: center; justify-content: center; background: #fff; }
+svg.mk { width: 93.33mm; height: 93.33mm; display: block; }
+.lab { font-size: 12px; color: var(--soft); }
+.ruler { width: 100mm; height: 6mm; border: 0.4mm solid var(--ink); border-top: 0; position: relative; margin: 1mm 0 0; background: repeating-linear-gradient(90deg, var(--ink) 0 0.4mm, transparent 0.4mm 10mm); }
+.ruler span { position: absolute; left: 102mm; top: 0; font-size: 12px; white-space: nowrap; }
+.note { color: var(--soft); font-size: 12px; }
+.noprint { background: #fff1dc; border: 1px solid #e8cfa8; border-radius: 8px; padding: 2mm 3mm; font-size: 13px; }
+@media screen { body { padding: 16px; } .page { width: min(190mm, 100%); min-height: 0; margin-bottom: 24px; } .grid { grid-template-columns: repeat(auto-fit, minmax(min(93.4mm, 100%), 93.4mm)); } .cut, svg.mk { max-width: 100%; } }
+@media print { .noprint { display: none; } }
+</style>
+</head>
+<body>
+<section class="page">
+  <h1>Room stickers for Base Camp</h1>
+  <p class="big">Stick one somewhere flat that stays put, like the side of a bookcase.</p>
+  <ul>
+    <li>One sticker for each room. Every sticker has its own pattern, so use a different one in each room.</li>
+    <li>The first time the iPad sees a sticker in a room, that room keeps it. Next time, point the iPad at it and the camp jumps straight back to its place.</li>
+    <li>Cut along the dashed line and keep the white edge around the black square. Do not fold it, and keep shiny tape off the front.</li>
+  </ul>
+  <p><b>For a grown-up:</b> print at actual size (100%, not "fit to page"). The black square of every sticker must be <b>8 cm</b> across: the game counts on that. This line should be exactly 10 cm long:</p>
+  <div class="ruler"><span>10 cm</span></div>
+  <p class="noprint">On screen the stickers may look smaller or bigger. Only the printed size counts.</p>
+  <div class="grid"><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 1"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 1</div></div><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 2"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 2</div></div><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 3"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 3</div></div><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 4"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="2" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 4</div></div></div>
+</section>
+<section class="page">
+  <h2>Two more stickers</h2>
+  <div class="grid"><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 5"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="2" y="1" width="1" height="1"/><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 5</div></div><div class="card"><div class="cut"><svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 6"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg></div><div class="lab">Sticker 6</div></div></div>
+  <h2>Good to know</h2>
+  <ul>
+    <li>Up on a wall, the side of a cupboard or flat on a shelf all work. Somewhere the iPad can see it from about an arm's length to two metres away is best.</li>
+    <li>If a sticker moves, the colonists notice and remember its new place.</li>
+    <li>If the iPad sees a sticker that belongs to another room, it asks whether you have moved rooms. It never mixes two rooms up by itself.</li>
+    <li>The game only looks at the sticker's pattern. No pictures leave the iPad.</li>
+  </ul>
+  <p class="note">Stickers 1 to 6 are ArUco markers (4 x 4 dictionary, ids 1 to 6), black square 8 cm.</p>
+</section>
+</body>
+</html>
