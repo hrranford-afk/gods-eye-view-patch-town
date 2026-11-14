@@ -33,7 +33,7 @@ I followed every card. Shots are in `replay20/`.
 7. **The sky panel is still on screen.** "Practice sky" sits bottom right in every shot. It covers the end of the Build menu (`B06`).
 8. **Build is locked.** Hut needs 5 wood. I had 1.
 9. **Trees hide the camp.** The planted tree grows right in front of the tent and a colonist (`B05`, `B06`).
-10. **Day sound is busy.** About 1,100 sounds in 10 minutes. Mostly footsteps and hammers. It may tire the ear.
+10. **Day sound is busy.** About 1,100 sounds in 10 minutes. Mostly footsteps and hammers.
 11. **Slider bug is still there.** Setting the hour gave "First night survived" at 0:15 in daylight.
 12. **One ask only.** After the seeds, no asks until minute 9.
 
