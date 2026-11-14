@@ -170,3 +170,5 @@ bring to the game."
 - **~09:26 UK — build 22 LIVE.** Room guard (2 map backups + Restore in More…, 60 s wait before saving after a lock, asks "New room?" when unsure with one saved room) and smaller credits (Harry's call: keep, smaller). All suites green (some on rerun under load). Build 21 kept at `base-camp/b21/`. Artifact republished.
 
 - **11:32 UK — Harry: YES to location for Places** (14 Nov). Rules: grown-up switches it on; position asked at app start; each saved room keeps a ~100 m rounded spot ON THE IPAD ONLY; only rooms saved within ~300 m are tried; weather keeps the 10 km rounding; works without it. Local goods: region flavours (carpet town first), no town names in public code. Branch game/bc-places.
+
+- **12:46 UK — build 23 LIVE (market day).** All suites green except battle timer + ar-room alignment, which also fail on build 22 under the current load (load avg 14, 2 builders) — timing flakes, not market. Build 22 kept at `base-camp/b22/`. Artifact republished.
