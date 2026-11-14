@@ -3098,7 +3098,7 @@ function funFrame(dt) {
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
   FUN.queue = FUN.queue.filter((q) => q.gt === undefined || (G.time - q.gt < 20 && G.simT - q.st < 120)); /* build 19: a banner that waited more than about 20 s (real, or 2 sim minutes) is dropped, the album still has it */
-  const held = uiHoldAway() || (F10.on && f10CardUp()); if (held) for (const q of FUN.queue) if (q.gt !== undefined) { q.gt = G.time; q.st = G.simT; } /* build 20 + return: a banner waiting behind the diary or a first-session card keeps its place */
+  const held = uiHoldAway(); if (held) for (const q of FUN.queue) if (q.gt !== undefined) { q.gt = G.time; q.st = G.simT; } /* build 20 + return: a banner waiting behind the diary keeps its place (a request card just hides while a banner shows) */
   if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement() && !held && !uiOverlay() && uiGapOK()) showCelebration(FUN.queue.shift());
   FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
 }
