@@ -5472,7 +5472,7 @@ function rfFrame(time) { /* once per XR frame: a gap in the frame times, or a ca
   if (RF.lastT && RF.lastPos) {
     const gap = (t - RF.lastT) / 1000, quiet = performance.now() < RF.quietUntil;
     if (gap > RF_GAP && RF.frameMs < 300 && !quiet) rfSuspect('frame gap ' + gap.toFixed(1) + ' s', false);
-    else if (gap < 0.25 && !quiet) { const d = Math.hypot(pos[0] - RF.lastPos[0], pos[1] - RF.lastPos[1], pos[2] - RF.lastPos[2]), dot = fw[0] * RF.lastFw[0] + fw[1] * RF.lastFw[1] + fw[2] * RF.lastFw[2], a = Math.acos(Math.max(-1, Math.min(1, dot))) * 57.2958; if (d > RF_JUMP_M || a > RF_JUMP_DEG) rfSuspect('pose jump ' + d.toFixed(2) + ' m ' + a.toFixed(0) + ' deg', false); }
+    else if (gap < 0.1 && !quiet) { /* only between two quick frames: on a slow frame a fast turn is not a jump */ const d = Math.hypot(pos[0] - RF.lastPos[0], pos[1] - RF.lastPos[1], pos[2] - RF.lastPos[2]), dot = fw[0] * RF.lastFw[0] + fw[1] * RF.lastFw[1] + fw[2] * RF.lastFw[2], a = Math.acos(Math.max(-1, Math.min(1, dot))) * 57.2958; if (d > RF_JUMP_M || a > RF_JUMP_DEG) rfSuspect('pose jump ' + d.toFixed(2) + ' m ' + a.toFixed(0) + ' deg', false); }
   }
   RF.lastT = t; RF.lastPos = pos; RF.lastFw = fw;
 }
@@ -7654,6 +7654,7 @@ Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame,
 Object.assign(window.__g, { F10_LOG, f10Sprout, f10Ask2, f10Surprise, f10Tree, f10LogDone, uiOverlay, uiGapOK, reqHold, freshName, nameTaken, showAway, AWAY_SHOW }); /* build 20 + return */
 Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
 Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
+Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============

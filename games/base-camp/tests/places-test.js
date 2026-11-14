@@ -49,7 +49,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   /* ===================== 1. off by default ===================== */
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
   const s1 = await ev(() => ({ build: __g.BUILD, on: __g.PLACES.on, calls: window.__geo.calls, btn: document.getElementById('bPlace').textContent, here: __g.PLACES.here, key: localStorage.getItem('bc-places-v1') }));
-  ok('BUILD is build 25', s1.build === 'build 25');
+  ok('BUILD is build 26', s1.build === 'build 26');
   ok('1. off by default: no position asked for at start, nothing stored', !s1.on && s1.calls === 0 && !s1.here && !s1.key, JSON.stringify(s1));
   ok('1. the setting reads "Use where we are (ask a grown-up)"', s1.btn === 'Use where we are (ask a grown-up)', s1.btn);
 
@@ -79,7 +79,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   /* ===================== 4. near, far and no spot ===================== */
   await rooms3({ r1: NEAR, r2: FAR }); await fresh(); await waitFor(() => __g.PLACES.state === 'here', 15000);
   await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(1500); await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2']);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(1500); await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2']);
   const s4 = await ev(() => ({ finding: __g.G.finding, cur: __g.HOMES.cur, pre: Object.keys(__g.ROOMPRE()), skipped: __g.PLACES.skipped.slice(), dist: [__g.placesDist(__g.PLACES.spots.r1, __g.PLACES.here), __g.placesDist(__g.PLACES.spots.r2, __g.PLACES.here)].map(Math.round) }));
   ok('4. Play with three saved rooms: the far one (' + s4.dist[1] + ' m) is skipped, the near one (' + s4.dist[0] + ' m) and the one with no spot are compared', s4.finding && s4.skipped.join() === 'r2' && s4.cur !== 'r2' && !s4.pre.includes('r2') && [s4.cur].concat(s4.pre).sort().join() === 'r1,r3', JSON.stringify(s4));
   await waitFor(() => Object.keys(__g.RELOC.tried || {}).length >= 2 || __g.G.locked, 150000, 800);
@@ -91,7 +91,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   await ctx.setGeolocation(ELSE); await ev(() => { const d = JSON.parse(localStorage.getItem('bc-places-v1')); d.spots.r3 = { lat: 51.2, lon: -1.0 }; localStorage.setItem('bc-places-v1', JSON.stringify(d)); });
   const before5 = await ev(() => ({ r1: localStorage.getItem('base-camp-map-v1'), r2: localStorage.getItem('base-camp-map-v1.r2'), r3: localStorage.getItem('base-camp-map-v1.r3') }));
   await fresh(); await waitFor(() => __g.PLACES.state === 'here', 15000); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-  await p.click('#bPlay'); await sleep(2500);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(2500);
   const s5 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, nr: __g.PLACES.newRoom, ret: __g.G.returning, finding: __g.G.finding, pre: Object.keys(__g.ROOMPRE()).length, ask: document.getElementById('nroom').hidden ? '' : document.getElementById('nroom').innerText, skipped: __g.PLACES.skipped.slice() }));
   ok('5. nothing saved within 300 m: a new room, nothing old loaded or compared', s5.n === 4 && s5.cur === s5.nr && s5.cur === 'r4' && !s5.ret && !s5.finding && s5.pre === 0 && s5.skipped.length === 3, JSON.stringify(s5));
   ok('5. it says so gently: "Somewhere new! Shall we start a camp here?" with Yes and the old rooms under "It\'s..."', /Somewhere new! Shall we start a camp here\?/.test(s5.ask) && /Yes!/.test(s5.ask) && (await ev(() => document.querySelectorAll('#nroom [data-room]').length === 3)), s5.ask.replace(/\n/g, ' | '));
@@ -117,7 +117,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   await ctx.clearPermissions(); await fresh(); await waitFor(() => __g.PLACES.state !== 'asking', 15000);
   await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; document.getElementById('toast').innerHTML = ''; });
   const s7a = await ev(() => ({ st: __g.PLACES.state, here: __g.PLACES.here, on: __g.PLACES.on, calls: window.__geo.calls }));
-  await p.click('#bPlay'); await sleep(2500);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(2500);
   const s7 = await ev(() => ({ finding: __g.G.finding, ids: [__g.HOMES.cur].concat(Object.keys(__g.ROOMPRE())).sort(), nroom: !document.getElementById('nroom').hidden, toast: document.getElementById('toast').textContent }));
   ok('7. denied: silently no position (no message), and Play compares every saved room as before', s7a.on && !s7a.here && s7a.st === 'none' && s7a.calls === 1 && s7.finding && s7.ids.join() === 'r1,r2,r3,r4' && !s7.nroom && !/location|position/i.test(s7.toast), JSON.stringify([s7a, s7]));
   await endAR(); await ctx.grantPermissions(['geolocation']);

@@ -44,7 +44,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   const mapPasses = async (legs, passes) => { for (let i = 0; i < passes; i++) { await setPath(legs, 1.0); const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) await sleep(1500); } };
   const finishSession = async () => { await ev(() => { __g.simulate(120, 0.5); __g.persist(true); }); await sleep(500); await ev(() => __g.AR.session.end()); await sleep(1500); };
   const idTrial = async (name, room, W, prevW, pts, legs, wantId, wantName) => {
-    await boot(room, W); const before = await ev(() => ({ n: __g.HOMES.rooms.length })); await p.click('#bPlay'); await sleep(800); await setPath(legs, 1.0); const spy = [];
+    await boot(room, W); const before = await ev(() => ({ n: __g.HOMES.rooms.length })); await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(legs, 1.0); const spy = [];
     const t0 = Date.now(); const tl = await waitFor(() => __g.G.locked, 240000, 400, spy);
     const R = await ev(() => ({ cur: __g.HOMES.cur, name: __g.G.mapName, lock: __g.RELOC.lock, finding: __g.G.finding, locked: __g.G.locked }));
     const bad = spy.filter((s) => /Looking|%|\d+ s\)/.test(s.hint) || s.ask || s.modal); const dots = spy.filter((s) => s.dot).length;
@@ -60,7 +60,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   ok('AR ready; build 7 or later; a fresh start has no rooms list', await ev(() => !document.getElementById('bPlay').disabled && /^build ([7-9]|\d\d)/.test(__g.BUILD) && document.getElementById('rooms').hidden && __g.MULTI_ROOM === true && __g.HOMES.rooms.length === 1));
   ok('the main button just says Play (no "find my room")', await ev(() => document.getElementById('bPlay').textContent.trim() === 'Play'));
   const m0 = await mem();
-  await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2', 'chandelier'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2', 'chandelier'], 1.0);
   const tS = await waitFor(() => __g.G.settlements.length > 0, 240000);
   ok('shed: the colony settled by itself', tS > 0);
   await mapPasses(['floor', 'speakerA', 'speakerB', 'shelf', 'floor2', 'speakerA', 'shelf'], 2);
@@ -118,7 +118,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, JSON.stringify(await ev(() => Object.assign({}, localStorage))));
   const shedBeforeE = await ev(() => ({ m: localStorage.getItem('base-camp-map-v1'), s: localStorage.getItem('base-camp-save-v2') }));
   await boot(THIRD, { yaw: 0.3, x: 0.2, z: -0.2 });
-  await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
   const spyE = []; const tE = await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 200000, 500, spyE);
   const E = await ev(() => ({ locked: __g.G.locked, secs: __g.RELOC.scanSecs, txt: document.getElementById('nroom').innerText, ask: !document.getElementById('ask').hidden, modal: !document.getElementById('modal').hidden, state: __g.RELOC.state, nroomH: document.getElementById('nroom').getBoundingClientRect().height, bar: __g.G.phase }));
   if (E.locked) console.log('FALSE LOCK DEBUG', JSON.stringify(await ev(() => ({ cur: __g.HOMES.cur, lock: __g.RELOC.lock, tried: __g.RELOC.tried, rp: __g.RELOC.rp, hist: __g.RELOC.hist.slice(-9).map((h) => ({ room: h.room, ok: h.ok, t: +h.t.toFixed(1), M: h.res && h.res.M, X: h.res && h.res.X, ratio: h.res && +h.res.ratio.toFixed(2), info: h.res && h.res.info, infoX: h.res && h.res.infoX, ov: h.res && +(h.res.overlap || 0).toFixed(2), margin: h.res && +(h.res.margin || 0).toFixed(2), score: h.res && Math.round(h.res.score) })) }))));
@@ -133,7 +133,7 @@ const W_SHED = { yaw: 0.5236, x: 0.6, z: -0.3 }, W_KIT = { yaw: -0.5, x: -0.4, z
   await ev(() => __g.AR.session.end()); await sleep(1500);
   const shedSame = await ev(() => localStorage.getItem('base-camp-save-v2')); // nothing is saved while a room is only being aligned
   await boot(THIRD, { yaw: 0.3, x: 0.2, z: -0.2 });
-  await p.click('#bPlay'); await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800); await setPath(['floor', 'desk', 'crate', 'ledge', 'floor2'], 1.0);
   await waitFor(() => !document.getElementById('nroom').hidden || __g.G.locked, 200000, 500);
   await p.click('#nrYes'); await sleep(1200);
   const Y = await ev(() => ({ cur: __g.HOMES.cur, name: __g.G.mapName, n: __g.HOMES.rooms.length, hidden: document.getElementById('nroom').hidden, returning: __g.G.returning }));

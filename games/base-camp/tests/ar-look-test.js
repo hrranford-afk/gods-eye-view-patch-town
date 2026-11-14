@@ -19,7 +19,7 @@ for (let i = 0; i < 34; i++) { const h = 0.05 + rnd() * 0.5, hw = 0.04 + rnd() *
     const c = document.createElement('canvas'); c.width = 400; c.height = 560; const g = c.getContext('2d'); let s = 3; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 420; i++) { g.fillStyle = 'hsl(' + Math.floor(r() * 360) + ',' + Math.floor(25 + r() * 50) + '%,' + Math.floor(25 + r() * 50) + '%)'; g.fillRect(r() * 400, r() * 560, 10 + r() * 70, 6 + r() * 50); }
     const d = document.createElement('div'); d.id = 'fakeCam'; window.__bgUrl = c.toDataURL('image/jpeg', 0.8); });
-  await p.click('#bPlay'); await sleep(800);
+  await p.click('#bPlay'); await p.evaluate(() => { const c = document.getElementById('chooser'); if (c && !c.hidden) document.getElementById('chFind').click(); }); /* build 26: the start chooser; Find keeps the old Play */ await sleep(800);
   await ev(() => { document.documentElement.style.setProperty('background', 'url(' + window.__bgUrl + ') center/cover', 'important'); }); // the stand-in camera feed
   await ev(() => { const T = window.__place(), look = (tx, ty, tz, off, hgt, ay, ap, dur) => { const q = [tx + off[0], ty + hgt, tz + off[1]], fx = tx - q[0], fy = ty - q[1], fz = tz - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
     window.__cam.path = [look(0, -1.2, -1.5, [0, 1.3], 1.6, 0.6, 0.25, 14), look(0.4, -1.2, -1.2, [0.3, 0.6], 1.3, 0.5, 0.2, 14), look(-0.4, -1.2, -1.8, [-0.2, 0.8], 1.3, 0.5, 0.2, 14), look(0, -1.2, -1.5, [0.3, -0.4], 1.7, 0.7, 0.25, 14)]; window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = 1; window.__cam.done = false; });

@@ -1,5 +1,5 @@
 // The fake native iOS side for the real WebXRKit polyfill: a fake room (SHED list), a moving camera, hit tests against the room, a grey camera picture.
-// Used by auto-ar-test.js. window.__W = { yaw, x, z } turns / shifts the whole room between sessions; window.__SHED is the room layout.
+// Used by auto-ar-test.js. window.__W = { yaw, x, z, y } turns / shifts (and lifts: y, build 26) the whole room between sessions or mid-session (an origin jump); window.__SHED is the room layout.
 module.exports = function install(p, SHED) {
   return p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
@@ -7,7 +7,7 @@ module.exports = function install(p, SHED) {
     window.__native = { hits: 0, empty: 0, calls: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
     try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested
     // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
-    const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y, hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
+    const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y: y + (W.y || 0), hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
     window.__place = place;
     const h = (fn) => ({ postMessage: (body) => { fn && fn(body); } });
     let dataCb = null, timer = null; const asp = 1180 / 820, f = 1 / Math.tan(0.5);
