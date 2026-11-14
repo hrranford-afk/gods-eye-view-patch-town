@@ -4185,7 +4185,7 @@ function mktAway(step, h) {
   }
 }
 function mktAwayLine() { const A = MKT.away; if (!A) return null; const L = econAwayLines(); if (L.length) return { text: L.slice(0, 2).join(' ') + (L.length > 2 ? ' The other camps traded too.' : ''), by: MKT_CREDIT }; return { text: A.text + (A.n > 1 ? ' ' + plural(A.n - 1, 'more swap') + ' after that, and everyone came home pleased.' : ''), by: MKT_CREDIT }; } /* build 24: what each camp sold and bought */
-function mktInfo(t) { return '🧺 The market' + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ': ' + (MKT.open ? 'open! Everyone is swapping.' : mktIsDay() ? (ENV.night ? 'shut for the night.' : 'open from 8 till half past 5.') : 'covered up until Wednesday or Sunday.') + ' <i class="by">Market day: an idea by ' + MKT_CREDIT + ', stalls by ' + MKT_BY + '</i>'; }
+function mktInfo(t) { return '🧺 The market' + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ': ' + (MKT.open ? 'open! Everyone is trading.' : mktIsDay() ? (ENV.night ? 'shut for the night.' : 'open from 8 till half past 5.') : 'covered up until Wednesday or Sunday.') + ' <i class="by">Market day: an idea by ' + MKT_CREDIT + ', stalls by ' + MKT_BY + '</i>'; }
 function mktAskBuild(r) { MKT.unl = true; setTool('build'); G.buildKind = 'market'; barUi(); updateHint(); toast('🧺 Tap the ground near the camp: the market goes there.', 5); }
 /* ============ ECONOMY (build 24): Harry asked "does the market tie into the mechanics? They've got to get corn, wood, they can make things, get things at higher value". ============
    Goods have a value in BUTTONS (the colony money: tiny real buttons, S.stock.btn). Raw goods: wood, food (corn), seeds, water. Crafted goods, made at small workshops from household things,
@@ -4324,7 +4324,7 @@ const econCanOwn = (S, it) => !it.max || (econOf(S).got[it.id] || 0) < it.max;
 function econShop(S, c, quiet) {
   const E = econOf(S), btn = S.stock.btn || 0; let it = null;
   if (E.wish) { const w = econItem(E.wish); if (!w || !econCanOwn(S, w)) E.wish = ''; else if (btn >= w.cost) it = w; else return null; } /* saving up for the Giant's idea: buy nothing else */
-  if (!it) { const can = ECON_SHOP.filter((i) => econCanOwn(S, i) && btn >= i.cost + 3); if (can.length && Math.random() < 0.5) it = pick(can); }
+  if (!it) { const can = ECON_SHOP.filter((i) => econCanOwn(S, i) && btn >= i.cost * 2); if (can.length && Math.random() < 0.3) it = pick(can); /* on their own they only buy with plenty to spare */ }
   if (!it) return null;
   S.stock.btn -= it.cost; const t = econTally(S); t.items.push(it.a); t.spent += it.cost; if (E.wish === it.id) E.wish = '';
   econGive(S, it.id, quiet); if (!quiet && c && c.S && c.S.placed) { sayLine(c, 'We got ' + it.a.replace(/^a (packet of )?/, 'the ').replace(/^the brass pulley.*/, 'the pulley') + '!', 2.6, true); sfx('tada', 1, SND_colPos(c)); }
@@ -4440,10 +4440,13 @@ function econBoardOn(g) { /* the market gets its price board in the gap at the b
 }
 /* ---- the stalls show what is on sale, the workshops show what they have made, the pedlar bobs ---- */
 function econStallSigns(S, t, m) {
-  const U = m.userData; if (!U.signs) { U.signs = MKT_A.map((a) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex('log'), transparent: true, depthWrite: false })); sp.scale.set(0.016, 0.016, 1); sp.position.set(Math.cos(a) * MKT_RS * 1.15, 0.088, Math.sin(a) * MKT_RS * 1.15); sp.visible = false; sp.renderOrder = 8; m.add(sp); return sp; }); }
+  const U = m.userData; if (!U.signs) { U.signs = MKT_A.map((a) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: econSignTex('wood'), transparent: true, depthWrite: false })); sp.scale.set(0.024, 0.024, 1); sp.position.set(Math.cos(a) * MKT_RS * 1.15, 0.088, Math.sin(a) * MKT_RS * 1.15); sp.visible = false; sp.renderOrder = 8; m.add(sp); return sp; }); }
   const sel = [null, null, null]; if (MKT.open && t.built) for (const c of S.cols) { const j = c.job; if (j && j.type === 'market' && j.th === t && j.ph === 'do' && c.bundle && ECON_GOODS[c.bundle.userData.mkt]) sel[(j.slot | 0) % 3] = c.bundle.userData.mkt; }
-  U.signs.forEach((sp, i) => { sp.visible = !!sel[i]; if (sel[i] && sp.userData.g !== sel[i]) { sp.userData.g = sel[i]; sp.material.map = iconTex(ECON_GOODS[sel[i]].ic); sp.material.needsUpdate = true; } if (sp.visible) sp.position.y = 0.088 + Math.sin(G.time * 2.4 + i) * 0.002; });
+  U.signs.forEach((sp, i) => { sp.visible = !!sel[i]; if (sel[i] && sp.userData.g !== sel[i]) { sp.userData.g = sel[i]; sp.material.map = econSignTex(sel[i]); sp.material.needsUpdate = true; } if (sp.visible) sp.position.y = 0.092 + Math.sin(G.time * 2.4 + i) * 0.002; });
   if (U.board && U.board.userData.face && U.board.userData.face.material.map) econBoardTex();
+}
+function econSignTex(g) { /* a little round card on a stall: what it is selling and its price in button pips */
+  const k = 'ecSign_' + g + '_' + econPrice(g); return TEX[k] || (TEX[k] = cv(96, 112, (x) => { x.fillStyle = '#fff3dc'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 5; x.beginPath(); x.arc(48, 46, 40, 0, 7); x.fill(); x.stroke(); econIconDraw(x, ECON_GOODS[g].ic, 20, 18, 56); const n = econPrice(g), r = 6; econPips(x, n, 48 - (n - 1) * r * 1.15, 100, r, '#e0402f', '#5a1712'); }));
 }
 function econAnim(S, t, m, time, dt) {
   const U = m.userData, g = ECON_WS[t.kind]; if (t.busy > 0) t.busy = Math.max(0, t.busy - dt);
