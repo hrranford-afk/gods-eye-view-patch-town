@@ -169,13 +169,14 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="models/props.js"></script>
 <script src="models/decor.js"></script> <!-- build 18: the season decorations (BC_DECOR_MK). Optional: without it the plain DECOR_MK shapes are built -->
+<script src="models/market.js"></script> <!-- build 23: the market stalls (BC_MARKET_MK). Optional: without it a plain market is built -->
 <!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
 <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 22';
+const BUILD = 'build 23';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -405,6 +406,7 @@ SND.KINDS = {
   twinkle: 'a season decoration goes up', pack: 'last season’s decorations go back in the box', patter: 'the mouse scout’s little footsteps',
   setoff: 'the scout sets off on an expedition', home: 'the scout comes home', cablereq: 'a creature asks for a cable car', season: 'a new season begins',
   rainstart: 'it starts to rain', sunny: 'the rain stops', windy: 'the wind gets up', hutdone: 'a hut is finished', built: 'any other build is finished', founded: 'a new camp is founded',
+  mbell: 'the market bell: market day!', haggle: 'haggling at the market stalls',
 };
 SND.BKINDS = { launch: 'a shot leaves', twang: 'a rubber band', boom: 'a big hit', bounce: 'a bounce', weee: 'a long fall', hoover: 'the hoover', tick: 'a timer tick', sad: 'a lost battle', splat: 'a small hit', clip: 'a paper clip', swing: 'a rope swing', fluff: 'a sock hit', clink: 'confetti', jazz: 'a paper-clip chord', sneeze: 'a dusty sneeze', rip: 'tape', plank: 'a plank bridge', ding: 'battle ding', no: 'battle no', chime: 'battle chime', hammer: 'battle hammer' };
 SND.DUCK = { fanfare: 1, cheer: 1, trumpet: 1, tada: 1, hutdone: 1, founded: 1, season: 1 };
@@ -493,6 +495,8 @@ function sfx(kind, pitch, pos) { /* soft synth sounds made on the spot; p: the c
     else if (kind === 'hutdone') { tone(330, 0.06, 'triangle', 0.045, 250); tone(330, 0.06, 'triangle', 0.045, 250, 0.14); [392, 494, 587].forEach((f) => tone(f, 0.6, 'sine', 0.022, 0, 0.32)); } /* knock knock, home sweet home */
     else if (kind === 'built') { tone(420, 0.05, 'triangle', 0.035, 320); tone(470, 0.05, 'triangle', 0.035, 360, 0.09); tone(1175, 0.35, 'sine', 0.025, 0, 0.2); } /* tok tok ding */
     else if (kind === 'founded') { sNoise(c, t, 0.25, 1200, 'bandpass', 0.025); [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.032, 0, 0.12 + i * 0.09)); } /* a tent flaps open, and up we go */
+    else if (kind === 'mbell') { for (let i = 0; i < 6; i++) { const f = i % 2 ? 1568 : 1319; tone(f, 0.32, 'sine', 0.03, 0, i * 0.11); tone(f * 2.76, 0.1, 'sine', 0.006, 0, i * 0.11); } } /* build 23: a handbell, ding-a-ling-a-ling */
+    else if (kind === 'haggle') { for (let i = 0; i < 5; i++) tone((360 + Math.random() * 280) * p, 0.06, 'triangle', 0.022, (280 + Math.random() * 320) * p, i * 0.075 + Math.random() * 0.02); } /* build 23: chatter, mumble-mumble, deal */
     else if (sfxExtra[kind]) sfxExtra[kind](c, t, tone);
     if (SND.DUCK[kind]) SND_duck();
   } catch (e) { /* sound is optional */ } finally { SND.dest = null; SND.jit = 1; }
@@ -538,6 +542,7 @@ const ICONS = {
   spark: (x) => { x.fillStyle = '#fff'; x.beginPath(); x.moveTo(36, 4); x.lineTo(18, 34); x.lineTo(30, 34); x.lineTo(24, 60); x.lineTo(46, 26); x.lineTo(33, 26); x.closePath(); x.fill(); },
   crumbs: (x) => { x.fillStyle = '#d9a066'; for (const [a, b, r] of [[22, 30, 9], [40, 26, 7], [34, 42, 8]]) { x.beginPath(); x.arc(a, b, r, 0, 7); x.fill(); } },
   book: (x) => { x.fillStyle = '#d9483b'; x.fillRect(12, 16, 19, 32); x.fillStyle = '#4a8fd9'; x.fillRect(33, 16, 19, 32); x.fillStyle = '#fff6e6'; x.fillRect(29, 14, 6, 36); },
+  stall: (x) => { /* build 23: a market stall, striped awning over a counter */ x.fillStyle = '#8a5a33'; x.fillRect(14, 22, 3, 30); x.fillRect(47, 22, 3, 30); for (let i = 0; i < 5; i++) { x.fillStyle = i % 2 ? '#fff6e6' : '#d9483b'; x.beginPath(); x.moveTo(8 + i * 9.6, 14); x.lineTo(17.6 + i * 9.6, 14); x.lineTo(17.6 + i * 9.6, 24); x.arc(12.8 + i * 9.6, 24, 4.8, 0, Math.PI); x.closePath(); x.fill(); } x.fillStyle = '#ffc93d'; x.fillRect(12, 38, 40, 9); x.fillStyle = '#7fd36a'; x.beginPath(); x.arc(24, 36, 4, 0, 7); x.fill(); x.fillStyle = '#4aa8e8'; x.beginPath(); x.arc(38, 36, 4, 0, 7); x.fill(); },
 };
 function iconTex(name) { return TEX[name] || (TEX[name] = cv(64, 64, (x) => (ICONS[name] || ICONS.bang)(x))); }
 function bubbleTex(name) { const k = 'b_' + name; return TEX[k] || (TEX[k] = cv(80, 80, (x) => { x.fillStyle = '#fff6e6'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 4; x.beginPath(); x.arc(40, 34, 28, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(30, 58); x.lineTo(40, 76); x.lineTo(46, 56); x.fillStyle = '#fff6e6'; x.fill(); x.save(); x.translate(8, 2); x.scale(0.75, 0.75); (ICONS[name] || ICONS.bang)(x); x.restore(); })); }
@@ -1699,6 +1704,7 @@ function runJob(S, c, dt, E, quiet) {
     case 'crumb': crumbJob(S, c, j, dt, quiet); return;
     case 'mosh': moshStep(S, c, j, dt); return;
     case 'parade': paradeStep(S, c, j, dt, E); return;
+    case 'market': mktJob(S, c, j, dt, quiet); return; /* build 23 */
     case 'cross': return;
     default: break;
   }
@@ -1759,6 +1765,7 @@ function giveRequest(r) {
     if (G.tool === 'seed' && S0) f10Plant(S0, c0 ? c0.x + 0.03 : 0.05, c0 ? c0.z : 0.05); else { setTool('seed'); autoSay('Tap the ground by the tent to drop a seed.', 5); }
     return;
   }
+  if (r.def.give === 'market') { mktAskBuild(r); return; } /* build 23: the button opens the Build menu on the Market; the request ends when one is placed */
   if (r.def.give === 'f10log') { f10LogDone(G.settlements.find((s) => s.id === r.sid), r); return; }
   if (r.def.give === 'f10back') { resolveRequest(r); if (G.mode === 'practice' && G.auto) comeBackLater(); else toast(esc(r.who) + ' waves: see you next time!', 3); return; }
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
@@ -2033,6 +2040,7 @@ function linkStep(l, dt, E, quiet) {
 function arriveAt(c, S, th, quiet) {
   c.S = S; c.x = th.x; c.z = th.z + 0.03; c.riding = null; c.job = null; c.cool = 0.5; S.cols.push(c); S.group.add(c.mesh); c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.set(0, 0, 0); c.mesh.scale.setScalar(COL_S); c.mesh.visible = true; c.needs.joy = Math.min(1, c.needs.joy + 0.15); if (!quiet) { FUN.n.ride = (FUN.n.ride | 0) + 1; funLog('ride'); c.hop = 1; c.cheerT = 1.2; sayLine(c, 'Wheee! Made it!', 2.2); }
   if (S.awaiting) { S.awaiting = false; S.tent.hold = false; S.tent.built = true; S.tent.pop = 1; S.fx = null; syncLandmarks(S); if (!quiet) { toast('Settlers arrived at ' + S.zoneName + '! A new colony begins.', 5); sfx('founded'); } }
+  if (c.mkt) mktArrive(c, S, quiet); /* build 23: a market trader */
 }
 function crossStep(S, c, dt, E) { // a colonist waiting for, or riding, the cable car
   const j = c.job, l = j.link;
@@ -2513,14 +2521,14 @@ function awayDays(secs) { // a light day-level model for time beyond the first d
 }
 function awaySim(secs, startHour) {
   const t0 = performance.now(), total = secs; secs = clamp(secs, 0, AWAY_MAX); const rest = Math.max(0, total - secs), step = clamp(secs / 1500, 20, 60);
-  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; const before = snapColony(); let nights = 0, prev = false, steps = 0;
+  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; MKT.away = null; MKT.awayAcc = 0; const before = snapColony(); let nights = 0, prev = false, steps = 0;
   for (let t = 0; t < secs; t += step) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
     for (const l of G.links) linkStep(l, step, AWAYE, true);
     for (const h of G.hooks) hookStep(h, step, true);
     netStep(step, true);
-    G.simT += step; awayEvents(step, h); seaSim(step, true); if (steps % 40 === 0) autoExpand();
+    G.simT += step; awayEvents(step, h); seaSim(step, true); mktAway(step, h); if (steps % 40 === 0) autoExpand();
   }
   let long = null; if (rest > 0) { long = awayDays(rest); nights += long.days; G.simT += rest; if (!long.days) long = null; autoExpand(); } // part days count too (review 12 Nov): 30 h away is 24 h in full plus one day step
   for (const S of G.settlements) { for (const c of S.cols) { c.job = null; c.inside = false; c.cool = 0; c.moving = false; c.working = false; c.mesh.visible = true; } for (const t of S.things) t.workers = 0; S.reqT = 0; S.planT = 4; }
@@ -2547,6 +2555,7 @@ function awaySummary(a, b, secs, nights, long) {
   if (arrived.length) { const c = cols.find((q) => q.name === arrived[0]); add(plural(arrived.length, 'new settler') + ' moved in: ' + fmtList(arrived.slice(0, 4)) + (arrived.length > 4 ? ' and others' : '') + '.' + sayQuote(c, 'happy'), creatureBy(c)); }
   const bl = []; ['hut', 'farm', 'well', 'lookout'].forEach((k, i) => { if (built[i] > 0) bl.push(plural(built[i], k)); });
   if (bl.length) add('They built ' + fmtList(bl) + (bl.length ? '.' : ''));
+  { const ml = mktAwayLine(); if (ml) add(ml.text, ml.by); } /* build 23: market day */
   if (trees.n > 0) add(plural(trees.n, 'tree') + ' grew up' + (st.food > 0 ? ' and the solar farm brought in ' + plural(st.food, 'harvest') : '') + '.');
   for (const S of G.settlements) {
     if (S.lost) continue; const q = find(S.id), p = a.find((x) => x.id === S.id); if (!q || !p) continue;
@@ -2623,7 +2632,7 @@ function visuals(dt, time) {
       else if (t.scaf) t.scaf.visible = false;
       if (t.glow) t.glow.material.opacity = t.built && night ? (0.85 + Math.sin(time * 3 + t.id) * 0.08) * FUN.berry : 0;
       if (t.kind === 'lantern' && m.userData.glow) m.userData.glow.material.opacity = t.built ? (night ? 0.95 : 0.4) * FUN.berry * (0.9 + 0.1 * Math.sin(time * 3 + t.id)) : 0; // berry-lights, dim for a moment after time away
-      if (DECOR[t.kind]) decorAnim(S, t, m, time, dt);
+      if (DECOR[t.kind]) decorAnim(S, t, m, time, dt); else if (t.kind === 'market') mktAnim(S, t, m, time, dt);
       if (FUN.pulse > 0.01 && t.built && !t.hold && BOUNCY.has(t.kind)) { const k = 1 + 0.09 * FUN.pulse; m.scale.set(m.scale.x / Math.sqrt(k), m.scale.x * k, m.scale.z / Math.sqrt(k)); } // the huts bounce like drums
     }
     for (const c of S.cols) colVisual(S, c, dt, time, night, eye);
@@ -2832,10 +2841,11 @@ function fireworks(S) { // confetti and fluff, three little bursts over the colo
 }
 function funUnlocked(k, S) {
   S = S || mainSettlement(); if (!S) return false; const pop = S.cols.length, hut = S.things.some((t) => t.kind === 'hut' && t.built), tree = S.things.some((t) => t.kind === 'tree' && t.g >= 1);
+  if (k === 'market') { if (MKT.unl) return true; const ok = S.things.filter((t) => t.kind === 'hut' && t.built).length >= 2 || pop >= 4 || mktIsDay(); if (ok) MKT.unl = true; return ok; } /* build 23: early, so a first-week player has it; always on a market day */
   return k === 'nook' ? pop >= 4 || hut : k === 'stage' ? pop >= 5 || S.thriving : k === 'treehouse' ? tree : true;
 }
-const UNLOCK_HINT = { nook: 'with 4 colonists or a hut', stage: 'with 5 colonists', treehouse: 'when a tree has grown' };
-const FUN_BUILDS = ['lantern', 'nook', 'stage', 'treehouse'];
+const UNLOCK_HINT = { nook: 'with 4 colonists or a hut', stage: 'with 5 colonists', treehouse: 'when a tree has grown', market: 'with 2 huts, or on a market day (Wednesday or Sunday)' };
+const FUN_BUILDS = ['lantern', 'nook', 'stage', 'treehouse', 'market']; /* build 23: the market */
 function funCheck() { // twice a second in play: milestones, unlocks, the council's moments, a little idle chatter
   const S = mainSettlement(); if (!S) return; const all = G.settlements.filter((q) => q.placed && !q.lost);
   const has = (k, f) => all.some((q) => q.things.some((t) => t.kind === k && (f ? f(t) : t.built && !t.hold)));
@@ -3602,7 +3612,7 @@ function doingText(c) {
     case 'leap': return 'jumping in the leaves'; case 'plant': return 'planting a seed'; case 'tend': return 'watering'; case 'harvest': return 'picking crops'; case 'gather': return 'gathering wood';
     case 'drink': return 'getting a drink'; case 'eat': return 'having a bite'; case 'sleep': return 'sleeping'; case 'shelter': return 'sheltering from the rain'; case 'chat': return 'chatting'; case 'dance': return 'dancing';
     case 'fireside': return 'warming paws by the campfire';
-    case 'wander': return 'strolling about'; case 'read': return 'reading a book'; case 'cross': return 'off by cable car'; case 'crumb': return 'rushing to a crumb'; case 'mosh': return 'in the mosh pit'; case 'parade': return 'marching in the parade';
+    case 'wander': return 'strolling about'; case 'read': return 'reading a book'; case 'cross': return c.mkt ? (c.mkt.ph === 'back' ? 'riding home from the market' : 'riding to the market') : 'off by cable car'; case 'market': return j.ph === 'go' ? 'off to the market' : 'haggling at the market'; case 'crumb': return 'rushing to a crumb'; case 'mosh': return 'in the mosh pit'; case 'parade': return 'marching in the parade';
     default: return 'busy';
   }
 }
@@ -3983,15 +3993,205 @@ MILESTONES.flush = ['🎺', 'First flush run', 'Ploop! Toot toot! The bucket mad
 sfxExtra.ploop = (c, t, tone) => { tone(900, 0.28, 'sine', 0.012, 380); /* build 19 + sound: a little flush swirl first */ tone(420, 0.1, 'sine', 0.07, 130); tone(260, 0.16, 'sine', 0.05, 90, 0.08); sNoise(c, t + 0.02, 0.05, 900, 'lowpass', 0.03); };
 sfxExtra.trumpet = (c, t, tone) => { [[392, 0.09, 0], [392, 0.09, 0.11], [523, 0.09, 0.22], [659, 0.3, 0.33]].forEach(([f, d, dl]) => { tone(f, d, 'sawtooth', 0.02, 0, dl); tone(f * 2, d, 'square', 0.005, 0, dl); }); tone(784, 0.42, 'sawtooth', 0.015, 0, 0.46); };
 
+/* ============ MARKET DAY (build 23): on Wednesdays and Sundays (the game's date: the device, or ENV.dateOverride) the colonies hold a market. The idea is Harry's; the stalls and the lines are by CAIRN. ============
+   A built Market (KINDS.market, models/market.js) opens from MKT_OPEN to MKT_SHUT on a market day, and never at night. Each round, one or two locals walk to the stalls and every camp with a
+   cable car to the market camp sends one trader over (c.mkt = { home, ph: 'go' | 'back', lid }). At a stall a trader haggles (paired speech bubbles), then makes a deal: real stock moves between
+   the two camps (mktDeal: what one has too much of goes where it is short). One camp alone swaps among itself (two of a spare thing for one of a short thing). Camps with no direct cable car to the
+   market send a parcel along the lines. No market on a market day: a creature asks for one (request 'market', give 'market' opens the Build menu on the Market). Saved as `mkt` in the colony save. */
+const MKT_CREDIT = 'Harry', MKT_BY = 'CAIRN', MKT_DAYS = [3, 0], MKT_OPEN = 8, MKT_SHUT = 17.5; /* Wednesday and Sunday; market hours on the game clock */
+const MKT_A = [Math.PI / 2, Math.PI / 2 + 2.0944, Math.PI / 2 + 4.1888], MKT_SC = 1.3, MKT_RS = 0.027 * MKT_SC, MKT_RSLOT = 0.056 * MKT_SC; /* the stalls round the bell post (the same numbers as models/market.js, which draws its parts at MKT_SC) */
+const MKT = { unl: false, bell: '', day: '', deals: 0, xfer: 0, visits: 0, log: [], roundT: 3, talkT: 1, reply: null, open: false, wasOpen: false, ring: 0, away: null, awayAcc: 0 };
+const MKT_GOODS = { wood: ['matchstick', 'matchsticks', 8, 0xd9a066], food: ['crumb', 'crumbs', 6, 0xe3b36b], seeds: ['seed', 'seeds', 3, 0x8a5a2b], water: ['thimble of water', 'thimbles of water', 5, 0x5ab4ff] }; /* one, many, enough, the colour of the bundle */
+const MKT_CRAFT = ['button', 'acorn cap', 'bead', 'bottle top', 'ribbon', 'paper star', 'thimble'];
+const MKT_WORDS = ['no', 'a', 'two', 'three', 'four', 'five', 'six'];
+const MKT_HAGGLE = [['Two acorns for that button?', 'Deal!'], ['Is this thimble full?', 'Mostly!'], ['Fresh seeds! Very seedy!', 'Three, please!'], ['How much for the crumb?', 'One wobbly bead.'], ['That twig is bent.', 'Bendy twigs cost extra!'],
+  ['I will give you a hug for it.', 'Sold!'], ['Is it a bargain?', 'A bargain-ish.'], ['Swap you a bottle top?', 'Only if it is shiny.'], ['Final offer: one sock fluff.', 'Hmm... deal.'], ['Any wobbly beads?', 'All my beads wobble.'], ['Is the water wet?', 'Very wet. Top quality.'], ['Three seeds and a smile?', 'Make it two smiles.']];
+const MKT_CALL = ['Seeds! Lovely seeds!', 'Get your crumbs here!', 'Matchsticks, two for a button!', 'Thimbles of water! Hardly sloshed!', 'Who wants a bead?'];
+const MKT_HOME = ['Home with goodies!', 'Look what I got!', 'Market was great!', 'I haggled! Twice!'];
+KINDS.market = { r: 0.068, wood: 6, work: 20, mk: () => marketMake(), name: 'Market', by: 'Harry and CAIRN', ic: '🧺' };
+MILESTONES.market = ['🧺', 'Market day!', 'Everybody brings something to swap.', MKT_CREDIT];
+COLONY_ALMANAC.requests.push({ id: 'market', icon: 'stall', text: "It's market day and we've nowhere to trade! Could we build a market?", when: 'marketDay', give: 'market', joy: 0.3, cooldown: 1800 });
+CONDS.marketDay = (S) => mktIsDay() && !ENV.night && S === mainSettlement() && S.cols.length >= 1 && !mktAny();
+function mktReset() { Object.assign(MKT, { unl: false, bell: '', day: '', deals: 0, xfer: 0, visits: 0, log: [], roundT: 3, talkT: 1, reply: null, open: false, wasOpen: false, ring: 0, away: null, awayAcc: 0 }); }
+const mktSave = () => ({ unl: !!MKT.unl, bell: MKT.bell, day: MKT.day, deals: MKT.deals, log: MKT.log.slice(-8) });
+function mktLoad(d) { mktReset(); if (!d || typeof d !== 'object') return; MKT.unl = !!d.unl; MKT.bell = String(d.bell || ''); MKT.day = String(d.day || ''); MKT.deals = d.deals | 0; MKT.log = Array.isArray(d.log) ? d.log.filter((e) => e && typeof e.text === 'string').slice(-8) : []; }
+function mktWeekday() { const d = seaDate(); return new Date(Date.UTC(d.y, d.m - 1, d.d)).getUTCDay(); }
+const mktDayKey = () => { const d = seaDate(); return d.y + '-' + d.m + '-' + d.d; };
+const mktIsDay = () => MKT_DAYS.includes(mktWeekday());
+function mktOpenAt(E) { const h = E.hour === undefined ? ENV.hour : E.hour; return mktIsDay() && !E.night && h >= MKT_OPEN && h < MKT_SHUT; }
+function mktThings(all) { const out = []; for (const S of G.settlements) { if (S.lost || S.awaiting || S.dead) continue; for (const t of S.things) if (t.kind === 'market' && (all || (t.built && !t.hold))) out.push({ S, t }); } return out; }
+const mktAny = () => mktThings(true).length > 0;
+function mktSite() { const l = mktThings(); if (!l.length) return null; const m = mainSettlement(); return l.find((q) => q.S === m) || l[0]; }
+function mktDemoDate(dow) { /* the practice sky's Market day choices: the next such weekday from the device date */
+  const d = new Date(); for (let i = 0; i < 7; i++) { const q = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i); if (q.getDay() === dow) return q.getFullYear() + '-' + String(q.getMonth() + 1).padStart(2, '0') + '-' + String(q.getDate()).padStart(2, '0'); }
+  return '';
+}
+const MKT_DEMO = [['Market day (Wednesday)', 3], ['Market day (Sunday)', 0], ['Tuesday (no market)', 2]];
+/* ---- the model: models/market.js (window.BC_MARKET_MK); without it, three festival stalls with goods and covers ---- */
+let mktInit = 0;
+function marketMake() {
+  const N = window.BC_MARKET_MK;
+  if (N && !BCP.marketOff && typeof N.market === 'function') {
+    try { if (!mktInit) { mktInit = 1; N.init({ THREE, BCP, bcMerge, M }); } } catch (e) { mktInit = 2; console.warn('market.js init failed, plain market', e && e.message); }
+    if (mktInit === 1) { try { const g = N.market(); if (g && g.isObject3D) return g; } catch (e) { console.warn('market.js failed, the plain market is used', e && e.message); } }
+  }
+  return mkMarketPlain();
+}
+function mkMarketPlain() {
+  const g = new THREE.Group(), goods = new THREE.Group(), covers = new THREE.Group(); g.add(goods, covers);
+  MKT_A.forEach((a, i) => {
+    const s = mkStall(CONF[i * 2]), x = Math.cos(a) * MKT_RS, z = Math.sin(a) * MKT_RS, ry = Math.atan2(Math.cos(a), Math.sin(a)); s.position.set(x, 0, z); s.rotation.y = ry; s.scale.setScalar(MKT_SC); g.add(s);
+    const cv = mesh(geo('mkCv', () => new THREE.BoxGeometry(0.029, 0.013, 0.015).translate(0, 0.0065, 0.002)), M([0x4f86c8, 0xd0596e, 0x5e9e4c][i]), x, 0.0005, z); cv.rotation.y = ry; cv.scale.setScalar(MKT_SC); covers.add(cv);
+    for (let k = 0; k < 3; k++) { const o = mesh(geo('mkGd', () => new THREE.SphereGeometry(0.0022, 6, 5)), M([0x8a5a2b, 0x5ab4ff, 0xd9a066][(i + k) % 3]), x + Math.cos(ry) * (k - 1) * 0.008, 0.0135 * MKT_SC, z - Math.sin(ry) * (k - 1) * 0.008); goods.add(o); }
+  });
+  g.add(mesh(geo('mkPost', () => new THREE.CylinderGeometry(0.0014, 0.0016, 0.078, 6).translate(0, 0.039, 0)), M(0x92602e)));
+  const bell = new THREE.Group(); bell.position.set(0, 0.078, 0); bell.add(mesh(geo('mkBell', () => new THREE.SphereGeometry(0.0034, 8, 6, 0, 6.283, 0, 1.57).translate(0, -0.004, 0)), M(0xffc82e))); g.add(bell);
+  goods.visible = false; g.add(blob(0.065)); g.userData = { goods, covers, bell, slots: MKT_A.map((a) => [Math.cos(a) * MKT_RSLOT, Math.sin(a) * MKT_RSLOT]), plain: 1 }; return g;
+}
+function mktSlot(t, i) { /* where a trader stands: in front of stall i, in the camp's own frame */
+  const sl = (t.mesh && t.mesh.userData.slots) || MKT_A.map((a) => [Math.cos(a) * MKT_RSLOT, Math.sin(a) * MKT_RSLOT]), s = sl[i % sl.length], c = Math.cos(t.rot), n = Math.sin(t.rot);
+  return [t.x + s[0] * c + s[1] * n, t.z - s[0] * n + s[1] * c];
+}
+function mktAnim(S, t, m, time, dt) {
+  const U = m.userData, open = t.built && MKT.open; if (U.goods) U.goods.visible = open; if (U.covers) U.covers.visible = !open;
+  if (U.bell) U.bell.rotation.z = Math.sin(time * 17) * 0.7 * MKT.ring * MKT.ring + (open ? Math.sin(time * 1.4 + t.id) * 0.05 : 0);
+}
+/* ---- goods: words and the little bundle a trader carries ---- */
+function mktQty(k, n) { const G0 = MKT_GOODS[k]; if (!G0) { const w = k; return (n === 1 ? (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w : (MKT_WORDS[n] || n) + ' ' + w + 's'); } return n === 1 ? (/^[aeiou]/.test(G0[0]) ? 'an ' : 'a ') + G0[0] : (MKT_WORDS[n] || n) + ' ' + G0[1]; }
+function mktSpare(S) { let best = null, bs = 0; for (const k in MKT_GOODS) { const s = (S.stock[k] || 0) - MKT_GOODS[k][2]; if (s > bs) { bs = s; best = k; } } return best; }
+function mktBundle(c, k) {
+  mktUnbundle(c); if (!c.mesh) return; const col = MKT_GOODS[k] ? MKT_GOODS[k][3] : 0xff6f91;
+  const b = new THREE.Group(); b.add(inked(mesh(geo('mkSack', () => new THREE.SphereGeometry(0.0048, 8, 6)), M(col), 0, 0, 0), 0.0004)); b.add(mesh(geo('mkKnot', () => new THREE.SphereGeometry(0.0018, 6, 4)), M(0xfff3dc), 0, 0.0046, 0));
+  b.children[0].scale.set(1, 0.85, 0.9); b.position.set(0, 0.021, -0.0095); b.userData.mkt = k; c.mesh.add(b); c.bundle = b;
+}
+function mktUnbundle(c) { if (c.bundle) { if (c.bundle.parent) c.bundle.parent.remove(c.bundle); c.bundle = null; } }
+/* ---- a deal: H is the trader's home camp, P the camp they trade with (the same camp when there is only one) ---- */
+function mktDeal(c, H, P, how) {
+  const want = (S, k) => MKT_GOODS[k][2] - (S.stock[k] || 0), spare = (S, k) => (S.stock[k] || 0) - MKT_GOODS[k][2], nm = c ? c.name : 'Somebody';
+  let text = '', moved = 0;
+  if (!P || P === H) { /* one camp: two of a spare thing for one of a short thing, swapped between neighbours */
+    let need = null, nd = 0, sp = null, sd = 1; for (const k in MKT_GOODS) { if (want(H, k) > nd) { nd = want(H, k); need = k; } if (spare(H, k) > sd) { sd = spare(H, k); sp = k; } }
+    const mate = H.cols.find((q) => q !== c && !q.inside); const who = mate ? ' with ' + mate.name : '';
+    if (need && sp && need !== sp) { H.stock[sp] -= 2; H.stock[need] += 1; text = nm + ' swapped ' + mktQty(sp, 2) + ' for ' + mktQty(need, 1) + who + '.'; }
+    else { const a = pick(MKT_CRAFT), b = pick(MKT_CRAFT.filter((q) => q !== a)); text = nm + ' swapped ' + mktQty(a, 1) + ' for ' + mktQty(b, 1) + who + '.'; }
+  } else {
+    let give = null, gn = 0, get = null, en = 0;
+    for (const k in MKT_GOODS) { const n1 = Math.min(3, Math.floor(spare(H, k)), want(P, k)); if (n1 > gn) { gn = n1; give = k; } const n2 = Math.min(3, Math.floor(spare(P, k)), want(H, k)); if (n2 > en) { en = n2; get = k; } }
+    if (give === get) { get = null; en = 0; }
+    if (give) { H.stock[give] -= gn; P.stock[give] += gn; moved += gn; } if (get) { P.stock[get] -= en; H.stock[get] += en; moved += en; }
+    const craft = pick(MKT_CRAFT);
+    if (give && get) text = nm + ' swapped ' + mktQty(give, gn) + ' for ' + mktQty(get, en) + '.';
+    else if (get) text = nm + ' swapped ' + mktQty(craft, 1) + ' for ' + mktQty(get, en) + '.';
+    else if (give) text = nm + ' swapped ' + mktQty(give, gn) + ' for ' + mktQty(craft, 1) + '.';
+    else { const b = pick(MKT_CRAFT.filter((q) => q !== craft)); text = nm + ' swapped ' + mktQty(craft, 1) + ' for ' + mktQty(b, 1) + '.'; }
+    if (how === 'parcel') text = text.replace(' swapped ', ' sent a parcel along the cable cars and swapped ');
+    else if (how === 'with') text = text.replace(/\.$/, ' with the ' + String(P.zoneName || 'other').split(' – ')[0] + ' camp.');
+    MKT.xfer += moved;
+  }
+  MKT.deals++; const e = { text: 'Market day: ' + text, t: Date.now(), moved, a: H.id, b: P ? P.id : H.id }; MKT.log.push(e); if (MKT.log.length > 30) MKT.log.shift(); funLog('market', e.text);
+  return e;
+}
+/* ---- sending traders ---- */
+const mktFree = (c) => !c.inside && !c.held && !c.fall && c.spawn <= 0 && !c.riding && !G.requests.some((r) => r.cid === c.id) && !(c.job && ['cross', 'expedition', 'market', 'fireside', 'build', 'fix', 'crumb'].includes(c.job.type));
+function mktSend(c, S, t, i) {
+  endJob(c); const [tx, tz] = mktSlot(t, i); c.job = { type: 'market', ph: 'go', t: 0, th: t, tx: tx + rnd(-0.004, 0.004), tz: tz + rnd(-0.004, 0.004), dur: rnd(14, 22), slot: i }; c.cool = 0;
+  if (!c.bundle) mktBundle(c, mktSpare(c.mkt ? (G.settlements.find((q) => q.id === c.mkt.home) || S) : S));
+}
+function mktRide(c, from, l) { const fe = l.a.sid === from.id ? 'a' : 'b', th = fe === 'a' ? l.a.th : l.b.th; endJob(c); c.job = { type: 'cross', ph: 'go', t: 0, link: l, from: fe, tx: th.x, tz: th.z + 0.03, dur: 1e9, waited: 0 }; }
+function mktRound(site, quiet) {
+  const A = site.S, t = site.t, busy = A.cols.filter((c) => c.job && c.job.type === 'market').length; if (busy >= 5) return;
+  const loc = A.cols.filter((c) => mktFree(c) && !c.mkt); let slot = Math.floor(Math.random() * 3);
+  for (const c of loc.sort(() => Math.random() - 0.5).slice(0, Math.min(A.cols.length > 1 ? 2 : 1, 5 - busy))) mktSend(c, A, t, slot++);
+  const linked = new Set();
+  for (const l of G.links) {
+    if (!l.ready || (l.a.sid !== A.id && l.b.sid !== A.id)) continue; const B = G.settlements.find((q) => q.id === (l.a.sid === A.id ? l.b.sid : l.a.sid)); if (!B || B.lost || B.awaiting || B.dead) continue; linked.add(B.id);
+    const away = G.settlements.some((q) => q.cols.some((c) => c.mkt && c.mkt.home === B.id)) || G.links.some((q) => q.g.riders.some((c) => c.mkt && c.mkt.home === B.id)); if (away || B.cols.length < 2) continue;
+    const c = B.cols.filter((q) => mktFree(q) && !q.mkt && !q.scout).sort((a, b) => b.needs.rest - a.needs.rest)[0]; if (!c) continue;
+    c.mkt = { home: B.id, ph: 'go', lid: l.id }; mktBundle(c, mktSpare(B)); mktRide(c, B, l); if (!quiet) sayLine(c, pick(['Off to market!', 'Market day!', 'Bargains!']), 2.2);
+  }
+  if (Math.random() < 0.5) for (const X of G.settlements) { if (X === A || X.lost || X.awaiting || X.dead || !X.cols.length || linked.has(X.id)) continue; mktDeal(pick(X.cols), X, A, 'parcel'); } /* farther camps send a parcel along the lines */
+}
+function mktFinish(S, c, j, quiet) {
+  const H = c.mkt ? G.settlements.find((q) => q.id === c.mkt.home) || S : S;
+  const others = S.cols.filter((q) => q !== c && q.job && q.job.type === 'market' && q.job.ph === 'do'), oh = others.map((q) => (q.mkt ? G.settlements.find((s) => s.id === q.mkt.home) : S)).filter((q) => q && q !== H);
+  let P = oh.length ? pick(oh) : H !== S ? S : null;
+  if (!P) { const far = G.settlements.filter((q) => q !== H && !q.lost && !q.awaiting && !q.dead && q.cols.length); P = far.length && Math.random() < 0.5 ? pick(far) : H; }
+  const e = mktDeal(c, H, P, P !== H && P !== S && H === S ? 'with' : '');
+  c.needs.joy = Math.min(1, c.needs.joy + 0.15); for (const q of others) q.needs.joy = Math.min(1, q.needs.joy + 0.05);
+  if (!quiet) { c.hop = 1; c.cheerT = 1.2; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.009, life: 1.3 }); sfx('pop', 1, SND_colPos(c)); }
+  endJob(c);
+  if (c.mkt) { const l = G.links.find((q) => q.id === c.mkt.lid && q.ready); if (l && (l.a.sid === S.id || l.b.sid === S.id) && c.mkt.home !== S.id) { c.mkt.ph = 'back'; if (c.bundle && e.moved) mktBundle(c, pick(Object.keys(MKT_GOODS))); mktRide(c, S, l); } else { c.mkt = null; mktUnbundle(c); } }
+  else mktUnbundle(c);
+  return e;
+}
+function mktJob(S, c, j, dt, quiet) {
+  const t = j.th; c.working = false; c.face = Math.atan2(t.x - c.x, t.z - c.z);
+  if (j.t > j.dur || !MKT.open) mktFinish(S, c, j, quiet);
+}
+function mktArrive(c, S, quiet) { /* from arriveAt: a trader came off the cable car */
+  const m = c.mkt; if (!m) return;
+  if (m.ph === 'go') { const t = S.things.find((q) => q.kind === 'market' && q.built && !q.hold); if (t && MKT.open) { MKT.visits++; mktSend(c, S, t, Math.floor(Math.random() * 3)); if (!quiet) sayLine(c, pick(['Market!', 'Ooh, stalls!', 'What a crowd!']), 2.2); return; } }
+  if (S.id === m.home) { c.mkt = null; mktUnbundle(c); c.needs.joy = Math.min(1, c.needs.joy + 0.1); if (!quiet) { c.hop = 1; sayLine(c, pick(MKT_HOME), 2.4); } return; }
+  const l = G.links.find((q) => q.id === m.lid && q.ready && (q.a.sid === S.id || q.b.sid === S.id)); if (l) { m.ph = 'back'; mktRide(c, S, l); } else { c.mkt = null; mktUnbundle(c); }
+}
+function mktStrays() { /* a visitor whose market is over (night, a save, the away time) goes home by the same cable car */
+  for (const S of G.settlements) for (const c of S.cols.slice()) {
+    if (!c.mkt || c.held || c.fall || (c.job && (c.job.type === 'cross' || (c.job.type === 'market' && MKT.open)))) continue;
+    if (S.id === c.mkt.home) { c.mkt = null; mktUnbundle(c); continue; }
+    if (c.mkt.ph === 'go' && MKT.open && !c.job) { const t = S.things.find((q) => q.kind === 'market' && q.built && !q.hold); if (t) { mktSend(c, S, t, 0); continue; } }
+    const l = G.links.find((q) => q.ready && (q.a.sid === S.id || q.b.sid === S.id) && (q.a.sid === c.mkt.home || q.b.sid === c.mkt.home)); if (l) { c.mkt.ph = 'back'; c.mkt.lid = l.id; mktRide(c, S, l); } else { c.mkt = null; mktUnbundle(c); }
+  }
+}
+/* ---- the day: opening (bell, banner), rounds, closing ---- */
+function mktSim(dt, quiet) {
+  const site = mktSite(), open = !!site && mktOpenAt(ENV); MKT.open = open;
+  if (open && !MKT.wasOpen) mktOpenDay(site, quiet); else if (!open && MKT.wasOpen) mktClose(quiet);
+  MKT.wasOpen = open;
+  if (open) { MKT.roundT -= dt; if (MKT.roundT <= 0) { MKT.roundT = careOn() ? 30 : 45; mktRound(site, quiet); } }
+  MKT.stT = (MKT.stT || 0) - dt; if (MKT.stT <= 0) { MKT.stT = 2; mktStrays(); }
+}
+function mktOpenDay(site, quiet) {
+  const key = mktDayKey(); MKT.roundT = 2; if (MKT.day !== key) { MKT.day = key; MKT.deals = 0; }
+  if (MKT.bell === key) return; MKT.bell = key; if (quiet) return;
+  MKT.ring = 1; sfx('mbell'); if (!celebrate('market', site.S)) FUN.queue.push({ id: 'market', S: site.S, gt: G.time, st: G.simT });
+  toast('🧺 Market day! The colonies bring their goods to the market. <i class="by">Market day: an idea by ' + MKT_CREDIT + '</i>', 5); funLog('marketday', key); if (typeof persistSoon === 'function') persistSoon();
+}
+function mktClose(quiet) {
+  for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') { endJob(c); if (!c.mkt) mktUnbundle(c); }
+  MKT.reply = null; if (quiet || !MKT.deals) return;
+  for (const S of G.settlements) for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + 0.05);
+  toast('The market is packed up for the day: ' + plural(MKT.deals, 'swap') + '. Everyone heads home happy.', 4);
+}
+function mktFrame(dt) { /* real time: the haggling bubbles, the bell */
+  MKT.ring = Math.max(0, MKT.ring - dt * 0.5); if (G.phase !== 'play' || BT.on || !MKT.open) { MKT.reply = null; return; }
+  if (MKT.reply) { MKT.reply.t -= dt; if (MKT.reply.t <= 0) { const R = MKT.reply; MKT.reply = null; if (R.c.job && R.c.job.type === 'market') { sayLine(R.c, R.text, 2.6, true); sfx('haggle', charOf(R.c).pitch, SND_colPos(R.c)); } } return; }
+  MKT.talkT -= dt; if (MKT.talkT > 0) return; MKT.talkT = rnd(3.2, 4.6);
+  const at = []; for (const S of G.settlements) if (S.placed) for (const c of S.cols) if (c.job && c.job.type === 'market' && c.job.ph === 'do' && !c.inside) at.push(c); if (!at.length) return;
+  const a = pick(at), b = pick(at.filter((q) => q !== a && (q.mkt ? q.mkt.home : 0) !== (a.mkt ? a.mkt.home : 0))) || pick(at.filter((q) => q !== a));
+  if (b) { const pr = pick(MKT_HAGGLE); if (sayLine(a, pr[0], 2.6, true)) { sfx('haggle', charOf(a).pitch, SND_colPos(a)); MKT.reply = { c: b, text: pr[1], t: 2.7 }; b.face = Math.atan2(a.x - b.x, a.z - b.z); } }
+  else if (sayLine(a, pick(MKT_CALL), 2.6, true)) sfx('haggle', charOf(a).pitch, SND_colPos(a));
+}
+/* ---- while the Giant is away: a few quiet swaps on a market day, and one line for the diary ---- */
+function mktAway(step, h) {
+  if (!mktIsDay() || h < MKT_OPEN || h >= MKT_SHUT) return; const site = mktSite(); if (!site) return;
+  MKT.awayAcc += step; while (MKT.awayAcc >= 900) {
+    MKT.awayAcc -= 900; const camps = G.settlements.filter((q) => !q.lost && !q.awaiting && !q.dead && q.cols.length); if (!camps.length) return;
+    const H = pick(camps), others = camps.filter((q) => q !== H), P = others.length ? pick(others) : H, e = mktDeal(pick(H.cols), H, P);
+    if (!MKT.away) MKT.away = { text: e.text, n: 1 }; else MKT.away.n++;
+  }
+}
+function mktAwayLine() { const A = MKT.away; if (!A) return null; return { text: A.text + (A.n > 1 ? ' ' + plural(A.n - 1, 'more swap') + ' after that, and everyone came home pleased.' : ''), by: MKT_CREDIT }; }
+function mktInfo(t) { return '🧺 The market' + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ': ' + (MKT.open ? 'open! Everyone is swapping.' : mktIsDay() ? (ENV.night ? 'shut for the night.' : 'open from 8 till half past 5.') : 'covered up until Wednesday or Sunday.') + ' <i class="by">Market day: an idea by ' + MKT_CREDIT + ', stalls by ' + MKT_BY + '</i>'; }
+function mktAskBuild(r) { MKT.unl = true; setTool('build'); G.buildKind = 'market'; barUi(); updateHint(); toast('🧺 Tap the ground near the camp: the market goes there.', 5); }
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
 let SAVE_KEY = homeKeys(HOMES.cur).save;
-const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.job && c.job.type === 'expedition' ? c.job.hx : c.x, z: c.job && c.job.type === 'expedition' ? c.job.hz : c.z, needs: c.needs }); /* build 18: a scout on an expedition is saved at home */
+const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers, likes: c.likes, persona: c.persona, dream: c.dream, by: c.by, temper: c.temper ? c.temper.name : '', hue: c.hue, x: c.job && c.job.type === 'expedition' ? c.job.hx : c.x, z: c.job && c.job.type === 'expedition' ? c.job.hz : c.z, needs: c.needs, mh: c.mkt ? c.mkt.home : undefined }); /* build 18: a scout on an expedition is saved at home; build 23: mh, a market visitor's home camp */
 function serialize() {
   const hr = new Date(); 
   return {
-    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
+    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), mkt: mktSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats, comp: +(S.compost || 0).toFixed(3), waste: +(S.waste === undefined ? 0.6 : S.waste).toFixed(3),
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0 })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
@@ -4007,7 +4207,7 @@ function restoreSettlement(d) {
   const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null, compost: +d.comp || 0, waste: d.waste === undefined ? 0.6 : +d.waste || 0 };
   world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
   for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich, sea: t.sea || th.sea, gift: !!t.gift }); if (t.kind === 'tent') S.tent = th; }
-  for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; }
+  for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; if (c.mh && c.mh !== S.id) q.mkt = { home: c.mh, ph: 'back', lid: 0 }; }
   if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
 }
@@ -4026,7 +4226,7 @@ function prepareContinue() {
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
-  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas); f10Load(sv.f10);
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas); mktLoad(sv.mkt); f10Load(sv.f10);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
   hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables(); netRestore(sv.net);
   for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
@@ -5308,7 +5508,7 @@ function setPhase(p) {
   SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
 }
 function resetWorld() {
-  btCleanup(true); G.ceilCd = 0; seaReset(); camClose(); G.careT = 0;
+  btCleanup(true); G.ceilCd = 0; seaReset(); mktReset(); camClose(); G.careT = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
@@ -5680,7 +5880,7 @@ function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   const MAXR = 1; /* build 20 + return: one request card at a time (the rest wait behind a small "+1 more") */
   for (const q of G.requests.slice(0, MAXR)) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'f10seed' ? '\ud83c\udf31 Seeds' : q.def.give === 'f10back' ? 'Come back later' : q.def.give === 'f10log' ? '\ud83e\udeb5 Add a log' : q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'f10seed' ? '\ud83c\udf31 Seeds' : q.def.give === 'f10back' ? 'Come back later' : q.def.give === 'f10log' ? '\ud83e\udeb5 Add a log' : q.def.give === 'market' ? '\ud83e\uddfa Build it' : q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
@@ -5692,7 +5892,7 @@ const skyShown = () => SKY_TOOLS || !!G.skyOn;
 function envUi() {
   const e = $('env');
   e.innerHTML = `<div>Practice sky</div><label>Sun <input id="eSun" type="range" min="0.5" max="1.5" step="0.05" value="${ENV.sun}"></label><label>Hour <input id="eHour" type="range" min="0" max="24" step="0.25" value="${ENV.hourOverride === null ? 12 : ENV.hourOverride}"></label>`
-    + `<label>Date <select id="eDate"><option value="">today</option>${SEA_DEMO.map(([id, md]) => { const v = new Date().getFullYear() + '-' + md; return `<option value="${v}"${ENV.dateOverride === v ? ' selected' : ''}>${SEA_BY[id].name}</option>`; }).join('')}</select></label>` + `<label>Weather <select id="eWx">${['auto', ...Object.keys(WX_PRESETS)].map((k) => `<option ${ENV.wxPick === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>`;
+    + `<label>Date <select id="eDate"><option value="">today</option>${SEA_DEMO.map(([id, md]) => { const v = new Date().getFullYear() + '-' + md; return `<option value="${v}"${ENV.dateOverride === v ? ' selected' : ''}>${SEA_BY[id].name}</option>`; }).join('')}${MKT_DEMO.map(([nm, dw]) => { const v = mktDemoDate(dw); return `<option value="${v}"${ENV.dateOverride === v ? ' selected' : ''}>${nm}</option>`; }).join('')}</select></label>` + `<label>Weather <select id="eWx">${['auto', ...Object.keys(WX_PRESETS)].map((k) => `<option ${ENV.wxPick === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>`;
   $('eSun').oninput = (ev) => { ENV.sun = +ev.target.value; }; $('eHour').oninput = (ev) => { ENV.hourOverride = +ev.target.value; }; $('eWx').onchange = (ev) => setWxPick(ev.target.value); $('eDate').onchange = (ev) => { ENV.dateOverride = ev.target.value || null; ENV._sk = 0; envUpdate(); cardUi(); };
 }
 function selCard(c) {
@@ -5851,6 +6051,7 @@ function tapAt(cx, cy) {
     const t = S.things.find((q) => Math.hypot(q.x - lx, q.z - lz) < q.r);
     if (!t) { dropCrumb(S, lx, lz); return; } // tap the ground: the Giant drops a crumb and everybody rushes over
     if (t.kind === 'calendar' && t.built) { calUi(); return; }
+    if (t.kind === 'market') { toast(mktInfo(t), 4); return; } /* build 23 */
     if (DECOR[t.kind]) { toast(DECOR[t.kind].ic + ' ' + DECOR[t.kind].name + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ' <i class="by">by ' + esc(DECOR[t.kind].by) + '</i>'); return; }
     if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { lantern: 'A berry lantern <i class="by">by The Town Brain</i>', nook: 'The reading nook <i class="by">by The Dell Coder</i>', stage: 'The festival stage <i class="by">by The Dell Reasoner</i>', treehouse: 'Gertie\'s treehouse: “I\'ve always dreamed of having a cozy spot up in the trees!” <i class="by">by The Dell Builder</i>', pebble: 'A polished pebble: “we kept your spot warm.” <i class="by">by The Town Brain</i>', bridge: 'Pip\'s bridge over the river. Pip will tell you its name tomorrow. <i class="by">by The Dell Scholar</i>', tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
   }
@@ -6886,7 +7087,7 @@ function simTick(dt, quiet) {
   for (const S of G.settlements) if (S.placed && !S.ghost) simSettlement(S, dt, ENV, quiet);
   for (const l of G.links) linkStep(l, dt, ENV, quiet);
   for (const h of G.hooks) hookStep(h, dt, quiet);
-  netStep(dt, quiet);
+  netStep(dt, quiet); mktSim(dt, quiet); /* build 23: market day */
   G.simT += dt; G.evT += dt; if (G.evT > 360 / 10 * 1) { G.evT = 0; if (!quiet) eventsStep(); }
   seaSim(dt, quiet);
 }
@@ -6915,7 +7116,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  funFrame(dt); seaFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
+  funFrame(dt); seaFrame(dt); mktFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -7035,6 +7236,7 @@ window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rg
 Object.assign(window.__g, BT_HOOKS);
 Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame, f10Ask, f10Plant, f10Question, f10Answer, f10CardUp, f10Cam, partyReal, skyShown, SKY_TOOLS, chooseJob, orbitCam }); /* first10 */
 Object.assign(window.__g, { F10_LOG, f10Sprout, f10Ask2, f10Surprise, f10Tree, f10LogDone, uiOverlay, uiGapOK, reqHold, freshName, nameTaken, showAway, AWAY_SHOW }); /* build 20 + return */
+Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
