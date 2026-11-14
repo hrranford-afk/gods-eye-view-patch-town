@@ -61,6 +61,8 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .by{font-size:11px;opacity:.55;font-weight:600;white-space:nowrap}
 #tagpick{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(94vw,640px);display:grid;gap:8px;z-index:4}
 #tagpick .th{font-weight:800;font-size:16px;color:#ffd9a8}#tagpick .tags{display:flex;flex-wrap:wrap;gap:6px}#tagpick .tags button{min-height:38px;font-size:14px;padding:2px 10px}
+#sndBoard{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(94vw,640px);max-height:calc(100vh - 20px);overflow:auto;z-index:30;display:grid;gap:8px;padding:12px 14px;background:rgba(59,42,30,.94)}#sndBoard .sbh{font-weight:800;color:#ffd9a8;font-size:15px;margin-top:4px}#sndBoard .sbg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}#sndBoard .sbg button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:46px;padding:4px 8px;font-size:14px}#sndBoard .sbg small{font:600 11px var(--body);opacity:.8;line-height:1.2}
+label.vol{display:flex;align-items:center;gap:6px;font:800 14px var(--body);padding:2px 8px;border:2px solid rgba(255,246,230,.42);border-radius:12px;min-height:38px}label.vol input{width:120px;accent-color:#e8883a}
 .row2,.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.row2 input{flex:1 1 150px;font:700 14px var(--body);padding:8px;border-radius:10px;border:2px solid #fff6e655;background:#fff6e6;color:#3b2a1e;min-height:38px}
 #modal textarea{width:100%;font:12px ui-monospace,monospace;border-radius:10px;padding:6px;background:#fff6e6;color:#3b2a1e}
 label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px var(--body);border:2px solid rgba(255,246,230,.42);border-radius:12px;padding:9px 12px;background:rgba(255,246,230,.16)}label.file input{position:absolute;inset:0;opacity:0}
@@ -108,6 +110,7 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 #ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
 #ccamView{width:100%;height:118px}#ccam .cinfo{background:rgba(59,42,30,.88);padding:3px 8px 4px;font-size:12px;font-weight:700;line-height:1.25}#ccam .cinfo span{font-size:16px}#ccam .cinfo b{color:#ffd9a8}#ccam .cx{position:absolute;right:4px;top:3px;width:22px;height:22px;border-radius:50%;background:rgba(59,42,30,.72);text-align:center;font-size:12px;line-height:22px}
 body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
+#bar button.f10glow{animation:f10g .9s ease-in-out infinite alternate;border-color:#ffd24a}@keyframes f10g{from{box-shadow:0 0 0 1px #ffd24a66}to{box-shadow:0 0 12px 4px #ffd24a}}
 .doors{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.doors .door{min-height:48px;padding:0;font-size:20px;border-radius:10px;background:rgba(255,246,230,.14)}.doors .door.ready{background:var(--acc);border-color:#ffd9a8;box-shadow:0 0 10px #ffc040}.doors .door.open{background:rgba(143,209,111,.35)}.doors .door.locked{opacity:.45}.doors .door span{font-size:15px}.doors .door b{font-size:17px;color:#fff}
 #arLog{position:fixed;left:8px;top:70px;z-index:99;max-width:60vw;font:600 13px/1.35 var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre-wrap}
 </style>
@@ -169,7 +172,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 19';
+const BUILD = 'build 20';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -353,20 +356,80 @@ function wxCard() {
 }
 try { const l = JSON.parse(store.get('bc-loc') || 'null'); if (l && typeof l.lat === 'number') ENV.loc = l; } catch (e) { /* ignore */ }
 
-// ============ toast, sound ============
+/* ============ toast, sound ============ */
 let toastT = 0;
 function toast(msg, secs) { if (DIARY.on) return; const t = $('toast'); t.innerHTML = '<span class="glass" style="display:inline-block">' + msg + '</span>'; clearTimeout(toastT); toastT = setTimeout(() => { t.innerHTML = ''; }, (secs > 5 ? secs : 2) * 1000); } // toasts are small, at the top, and gone after 2 s (a longer time only for warnings)
-const SND = { ctx: null, on: true, nb: null }, sfxExtra = {}; /* build 18: sounds added by later sections (ploop, trumpet) */
-try { SND.on = localStorage.getItem('bc-sound') !== '0'; } catch (e) { /* storage blocked: sound on */ }
-function audioCtx() { if (!SND.on) return null; try { if (!SND.ctx) SND.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; } }
-function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.05); }
-function sNoise(c, t, d, freq, ft, v) { if (!SND.nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), q = b.getChannelData(0); for (let i = 0; i < q.length; i++) q[i] = Math.random() * 2 - 1; SND.nb = b; } const n = c.createBufferSource(); n.buffer = SND.nb; const f = c.createBiquadFilter(); f.type = ft || 'bandpass'; f.frequency.value = freq || 2000; const g = c.createGain(); g.gain.setValueAtTime(v || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); g.connect(c.destination); n.start(t, Math.random() * 0.5); n.stop(t + d + 0.02); }
-function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no files); p: the creature's voice pitch
-  const c = audioCtx(); if (!c || !kind) return;
+/* ============ SOUND (build 19 + sound): everything is synthesised here with Web Audio. No files, no libraries. ============
+   The mix: each sound -> its own pan and distance gain (creature sounds) -> the sfx, music or ambience bus -> master (the volume slider) -> a soft compressor -> speakers.
+   Nothing makes a sound before the first tap or key (the iOS rule, and kinder): the first gesture creates and resumes the AudioContext.
+   A rate limiter keeps 40 settlers from stacking one sound (at most SND.RATE.max of a kind per 100 ms), and repeats get a little pitch jitter. */
+const SND = { ctx: null, on: true, nb: null, armed: false, bus: null, dest: null, jit: 1, vol: 0.8, ambOn: true, recent: {}, last: {}, live: 0, stat: { played: 0, dropped: 0 }, RATE: { max: 3, win: 100 } }, sfxExtra = {}; /* build 18: sounds added by later sections (ploop, trumpet) */
+try { SND.on = localStorage.getItem('bc-sound') !== '0'; const v = parseFloat(localStorage.getItem('bc-volume')); if (v >= 0 && v <= 1) SND.vol = v; SND.ambOn = localStorage.getItem('bc-amb') !== '0'; } catch (e) { /* storage blocked: sound on */ }
+/* every sound kind and what it is for: the sound board and HANDOVER.md list these */
+SND.KINDS = {
+  plant: 'a seed goes in, a tree is planted', pop: 'something small appears or is given', hammer: 'a creature hammering at a build', cheer: 'a happy little cheer',
+  chime: 'something is ready (a cable car, a straw line, a hook)', water: 'a splash of water is given', ask: 'a creature asks for something', no: 'that does not work (gentle)',
+  squeak: 'a creature is poked', giggle: 'a ticklish creature giggles', grumble: 'a grumpy creature grumbles', zap: 'a static creature crackles',
+  boing: 'a creature is picked up', ding: 'a bright ding', whistle: 'a crumb drops from the Giant', thud: 'a soft landing', nom: 'a creature nibbles a crumb',
+  tada: 'found it!', fanfare: 'a milestone banner', firework: 'a confetti burst', ploop: 'the bucket tips into the compost: ploop', trumpet: 'the tiny bucket-line trumpet',
+  flow: 'water starts to run through a straw', sprinkle: 'a straw sprinkles a farm', gondola: 'the bucket gondola sets off', dock: 'the bucket gondola arrives',
+  twinkle: 'a season decoration goes up', pack: 'last season’s decorations go back in the box', patter: 'the mouse scout’s little footsteps',
+  setoff: 'the scout sets off on an expedition', home: 'the scout comes home', cablereq: 'a creature asks for a cable car', season: 'a new season begins',
+  rainstart: 'it starts to rain', sunny: 'the rain stops', windy: 'the wind gets up', hutdone: 'a hut is finished', built: 'any other build is finished', founded: 'a new camp is founded',
+};
+SND.BKINDS = { launch: 'a shot leaves', twang: 'a rubber band', boom: 'a big hit', bounce: 'a bounce', weee: 'a long fall', hoover: 'the hoover', tick: 'a timer tick', sad: 'a lost battle', splat: 'a small hit', clip: 'a paper clip', swing: 'a rope swing', fluff: 'a sock hit', clink: 'confetti', jazz: 'a paper-clip chord', sneeze: 'a dusty sneeze', rip: 'tape', plank: 'a plank bridge', ding: 'battle ding', no: 'battle no', chime: 'battle chime', hammer: 'battle hammer' };
+SND.DUCK = { fanfare: 1, cheer: 1, trumpet: 1, tada: 1, hutdone: 1, founded: 1, season: 1 };
+function SND_arm() { /* the first gesture: from now on sound may play; also resumes a suspended (or iOS "interrupted") context on any later tap */
+  SND.armed = true; const c = audioCtx(); if (!c) return;
+  try { if (!SND.unlocked) { SND.unlocked = true; const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.onended = () => { try { s.disconnect(); } catch (e) { /* fine */ } }; s.start(0); } } catch (e) { /* fine */ }
+}
+for (const ev of ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown']) addEventListener(ev, SND_arm, { capture: true, passive: true });
+function SND_busMake(c) {
+  let out = c.destination;
+  try { const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.25; comp.connect(c.destination); out = comp; } catch (e) { /* no compressor: straight out */ }
+  const master = c.createGain(); master.gain.value = SND.vol; master.connect(out);
+  const mk = (v) => { const g = c.createGain(); g.gain.value = v; g.connect(master); return g; };
+  SND.bus = { out, master, sfx: mk(1), music: mk(0.85), amb: mk(0.5) };
+}
+function audioCtx() {
+  if (!SND.on || !SND.armed) return null;
+  try { if (!SND.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; SND.ctx = new AC(); SND_busMake(SND.ctx); } if (SND.ctx.state !== 'running' && SND.ctx.state !== 'closed') SND.ctx.resume(); return SND.ctx; } catch (e) { return null; }
+}
+function SND_setVol(v) { SND.vol = clamp(+v || 0, 0, 1); try { localStorage.setItem('bc-volume', String(Math.round(SND.vol * 100) / 100)); } catch (e) { /* no storage */ } if (SND.bus && SND.ctx) SND.bus.master.gain.setTargetAtTime(SND.vol, SND.ctx.currentTime, 0.03); }
+function SND_setOn(on) { SND.on = !!on; try { localStorage.setItem('bc-sound', SND.on ? '1' : '0'); } catch (e) { /* no storage */ } if (!SND.on) { musicStop(); SND_ambStop(); if (SND.ctx && SND.ctx.state === 'running') SND.ctx.suspend(); } else { audioCtx(); if (FUN.party || FUN.fest) musicStart(); } } /* switched on from a tap: resume right here (iOS) */
+function SND_out(c) { return SND.dest || (SND.bus ? SND.bus.sfx : c.destination); }
+function SND_end(src, a, b) { SND.live++; src.onended = () => { SND.live--; try { src.disconnect(); a.disconnect(); if (b) b.disconnect(); } catch (e) { /* fine */ } }; }
+function sTone(c, t, f, d, type, v, f2) { const o = c.createOscillator(), g = c.createGain(), j = SND.jit; o.type = type || 'sine'; o.frequency.setValueAtTime(f * j, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2 * j, t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(SND_out(c)); SND_end(o, g); o.start(t); o.stop(t + d + 0.05); }
+function SND_noiseBuf(c) { if (!SND.nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), q = b.getChannelData(0); for (let i = 0; i < q.length; i++) q[i] = Math.random() * 2 - 1; SND.nb = b; } return SND.nb; }
+function sNoise(c, t, d, freq, ft, v) { const n = c.createBufferSource(); n.buffer = SND_noiseBuf(c); const f = c.createBiquadFilter(); f.type = ft || 'bandpass'; f.frequency.value = freq || 2000; const g = c.createGain(); g.gain.setValueAtTime(v || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); g.connect(SND_out(c)); SND_end(n, f, g); n.start(t, Math.random() * 0.5); n.stop(t + d + 0.02); }
+function SND_gate(kind) { /* the rate limiter: at most RATE.max of one kind per RATE.win ms; a repeat soon after gets a little pitch jitter */
+  const now = performance.now(), r = (SND.recent[kind] || []).filter((x) => now - x < SND.RATE.win);
+  if (r.length >= SND.RATE.max) { SND.recent[kind] = r; SND.stat.dropped++; return false; }
+  r.push(now); SND.recent[kind] = r; SND.jit = SND.last[kind] && now - SND.last[kind] < 700 ? 1 + (Math.random() - 0.5) * 0.09 : 1; SND.last[kind] = now; SND.stat.played++; return true;
+}
+function SND_where(pos) { /* a world position -> [pan -1..1, gain 0..1]: screen x gives the pan; far away or off screen is quieter */
   try {
+    const v = (SND.v || (SND.v = new THREE.Vector3())).set(pos.x, pos.y, pos.z), eye = AR.on ? (SND.v2 || (SND.v2 = new THREE.Vector3())).setFromMatrixPosition(AR.viewM) : camera.position, d = eye.distanceTo(v);
+    const r = toScreen(v), on = r[2] && r[0] > -30 && r[0] < innerWidth + 30 && r[1] > -30 && r[1] < innerHeight + 30;
+    return [clamp(r[0] / innerWidth * 2 - 1, -1, 1) * (r[2] ? 0.75 : 0), clamp(0.5 / Math.max(0.05, d), 0.15, 1) * (on ? 1 : 0.3)];
+  } catch (e) { return [0, 1]; }
+}
+function SND_spot(c, pan, gain, bus) { /* one short-lived pan + gain pair in front of a bus; it unplugs itself a few seconds later */
+  const g = c.createGain(); g.gain.value = gain; g.connect(bus); let head = g;
+  if (c.createStereoPanner) { try { const p = c.createStereoPanner(); p.pan.value = pan; p.connect(g); head = p; } catch (e) { /* no panner: centred */ } }
+  setTimeout(() => { try { head.disconnect(); g.disconnect(); } catch (e) { /* fine */ } }, 5000); return head;
+}
+function SND_colPos(c) { try { return c && c.mesh ? c.mesh.getWorldPosition(SND.cp || (SND.cp = new THREE.Vector3())) : null; } catch (e) { return null; } }
+function SND_duck() { const b = SND.bus, c = SND.ctx; if (!b || !c) return; const t = c.currentTime; b.music.gain.cancelScheduledValues(t); b.music.gain.setTargetAtTime(0.42, t, 0.04); b.music.gain.setTargetAtTime(0.85, t + 1.1, 0.35); }
+function sfx(kind, pitch, pos) { /* soft synth sounds made on the spot; p: the creature's voice pitch; pos (optional): where it happens, for pan and distance */
+  const c = audioCtx(); if (!c || !kind) return;
+  if (!SND_gate(kind)) return;
+  let g = 1, pan = 0; if (pos) { [pan, g] = SND_where(pos); if (g < 0.06) return; }
+  try {
+    SND.dest = pos ? SND_spot(c, pan, g, SND.bus ? SND.bus.sfx : c.destination) : null;
     const t = c.currentTime, p = pitch || 1, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
     if (kind === 'plant') tone(330, 0.18, 'sine', 0.07, 520); else if (kind === 'pop') tone(520, 0.12, 'triangle', 0.06, 880);
-    else if (kind === 'build' || kind === 'hammer') { sNoise(c, t, 0.035, 2600, 'bandpass', 0.05); tone(420, 0.05, 'square', 0.012, 300); } // a little hammer knock
+    else if (kind === 'build' || kind === 'hammer') { sNoise(c, t, 0.035, 2600, 'bandpass', 0.05); tone(420, 0.05, 'square', 0.012, 300); } /* a little hammer knock */
     else if (kind === 'cheer') { tone(523, 0.15, 'triangle', 0.06); tone(784, 0.2, 'triangle', 0.06, 0, 0.11); tone(659 * 1.5, 0.08, 'sine', 0.025, 0, 0.05); }
     else if (kind === 'chime') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, 0, i * 0.13)); }
     else if (kind === 'water') sNoise(c, t, 0.15, 2400, 'bandpass', 0.05);
@@ -383,8 +446,27 @@ function sfx(kind, pitch) { // soft synth sounds made on the spot (Web Audio, no
     else if (kind === 'tada') { tone(659, 0.1, 'triangle', 0.045); tone(988, 0.26, 'triangle', 0.045, 0, 0.1); }
     else if (kind === 'fanfare') { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.045, 0, i * 0.09)); [523, 659, 784].forEach((f) => tone(f, 0.55, 'triangle', 0.025, 0, 0.42)); }
     else if (kind === 'firework') { sNoise(c, t, 0.45, 1100, 'lowpass', 0.07); sNoise(c, t + 0.05, 0.3, 4200, 'highpass', 0.02); }
+    /* ---- build 19 + sound: the events that were silent, or had a sound that did not fit ---- */
+    else if (kind === 'flow') { [300, 360, 430].forEach((f, i) => tone(f, 0.09, 'sine', 0.045, f * 1.7, i * 0.11)); sNoise(c, t + 0.05, 0.4, 1800, 'bandpass', 0.015); } /* glug, glug, glug: the straw fills */
+    else if (kind === 'sprinkle') { sNoise(c, t, 0.16, 5200, 'highpass', 0.014); sNoise(c, t + 0.21, 0.12, 6000, 'highpass', 0.01); tone(2100, 0.03, 'sine', 0.008, 0, 0.1); } /* tsss-tss */
+    else if (kind === 'gondola') { tone(520, 0.14, 'triangle', 0.028, 610); tone(610, 0.14, 'triangle', 0.024, 520, 0.16); tone(1320, 0.3, 'sine', 0.018, 0, 0.32); } /* creaky pulley, then a little bell */
+    else if (kind === 'dock') { tone(240, 0.09, 'triangle', 0.05, 180); sNoise(c, t, 0.05, 900, 'lowpass', 0.03); tone(990, 0.3, 'sine', 0.018, 0, 0.09); } /* clonk, ding: home */
+    else if (kind === 'twinkle') { for (let i = 0; i < 6; i++) tone(2093 * (1 + 0.04 * (i % 3)), 0.12, 'sine', 0.014, 0, i * 0.05); tone(2637, 0.45, 'sine', 0.018, 0, 0.3); } /* sleigh-bell shimmer */
+    else if (kind === 'pack') { tone(180, 0.12, 'sine', 0.05, 110); sNoise(c, t + 0.03, 0.2, 2500, 'bandpass', 0.016); } /* a box lid, a rustle of paper */
+    else if (kind === 'patter') { tone(1400 * p, 0.025, 'triangle', 0.012, 1100 * p); } /* tip */
+    else if (kind === 'setoff') { tone(600 * p, 0.08, 'sine', 0.04, 1000 * p); tone(1000 * p, 0.1, 'sine', 0.035, 1400 * p, 0.1); tone(2600, 0.05, 'sine', 0.01, 0, 0.22); tone(2900, 0.05, 'sine', 0.01, 0, 0.28); } /* "hup!" and a backpack jingle */
+    else if (kind === 'home') { tone(784, 0.12, 'triangle', 0.035); tone(1047, 0.24, 'triangle', 0.035, 0, 0.12); for (let i = 0; i < 3; i++) tone(1500, 0.02, 'triangle', 0.01, 1200, 0.3 + i * 0.08); } /* we're back! */
+    else if (kind === 'cablereq') { [0, 0.22].forEach((dl) => { tone(1175, 0.35, 'sine', 0.035, 0, dl); tone(1568, 0.2, 'sine', 0.012, 0, dl); }); } /* a tram bell: ding ding */
+    else if (kind === 'season') { [784, 988, 1175, 1568, 1175].forEach((f, i) => { tone(f, 0.45, 'sine', 0.028, 0, i * 0.16); tone(f * 2, 0.15, 'sine', 0.007, 0, i * 0.16); }); } /* a music-box phrase */
+    else if (kind === 'rainstart') { for (let i = 0; i < 8; i++) tone(1800 + Math.random() * 1400, 0.03, 'sine', 0.016, 1000 + Math.random() * 400, i * 0.07 + Math.random() * 0.04); sNoise(c, t, 0.9, 1800, 'lowpass', 0.01); } /* pitter-patter */
+    else if (kind === 'sunny') { tone(523, 0.5, 'sine', 0.022, 1047); tone(659, 0.5, 'sine', 0.018, 1319, 0.08); tone(1568, 0.6, 'sine', 0.013, 0, 0.35); } /* the sun comes out */
+    else if (kind === 'windy') { sNoise(c, t, 0.9, 700, 'bandpass', 0.028); tone(300, 0.9, 'sine', 0.005, 520); } /* whoosh */
+    else if (kind === 'hutdone') { tone(330, 0.06, 'triangle', 0.045, 250); tone(330, 0.06, 'triangle', 0.045, 250, 0.14); [392, 494, 587].forEach((f) => tone(f, 0.6, 'sine', 0.022, 0, 0.32)); } /* knock knock, home sweet home */
+    else if (kind === 'built') { tone(420, 0.05, 'triangle', 0.035, 320); tone(470, 0.05, 'triangle', 0.035, 360, 0.09); tone(1175, 0.35, 'sine', 0.025, 0, 0.2); } /* tok tok ding */
+    else if (kind === 'founded') { sNoise(c, t, 0.25, 1200, 'bandpass', 0.025); [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.032, 0, 0.12 + i * 0.09)); } /* a tent flaps open, and up we go */
     else if (sfxExtra[kind]) sfxExtra[kind](c, t, tone);
-  } catch (e) { /* sound is optional */ }
+    if (SND.DUCK[kind]) SND_duck();
+  } catch (e) { /* sound is optional */ } finally { SND.dest = null; SND.jit = 1; }
 }
 
 // ============ three.js basics ============
@@ -1481,10 +1563,11 @@ function approach(S, t, c) { // a spot next to a thing, on the colonist's side
   return [t.x + dx / d * off, t.z + dz / d * off];
 }
 const PRE_JOBS = ['chat', 'wander', 'dance', 'read', 'tend', 'gather', 'plant', 'harvest'];
-const GO_MAX = 40, GO_JOBS = ['fix', 'drink', 'eat', 'tend', 'harvest', 'gather', 'plant', 'chat', 'wander', 'dance', 'read', 'build'];
+const GO_MAX = 40, GO_JOBS = ['fix', 'drink', 'eat', 'tend', 'harvest', 'gather', 'plant', 'chat', 'wander', 'dance', 'read', 'build', 'fireside'];
 function chooseJob(S, c, E) {
   const n = c.needs, P = c.pers, home = homeOf(S, c), cand = [], add = (w, j) => { if (w > 0) cand.push([w, j]); };
   if (E.rain && home) return { type: 'shelter', th: home };
+  if (f10Awake(E) && n.rest >= 0.12) return f10Job(S, c); /* first10: the first session has no bedtime; they sit round the campfire */
   if (E.night && home) return { type: 'sleep', th: home };
   if (n.rest < 0.2 && home) return { type: 'sleep', th: home };
   const well = built(S, 'well');
@@ -1517,6 +1600,7 @@ function startJob(S, c, j, E) {
   if (j.type === 'plant') { j.tx = j.spot[0]; j.tz = j.spot[1]; j.dur = 1.5; }
   else if (j.type === 'chat') { const o = pick(S.cols.filter((q) => q !== c)); if (!o) { c.job = null; return; } j.tx = o.x + 0.012; j.tz = o.z + 0.012; j.dur = 3.2; j.with = o; }
   else if (j.type === 'dance') { j.tx = c.x; j.tz = c.z; j.dur = 3; }
+  else if (j.type === 'fireside') { j.dur = rnd(6, 11); } /* first10 */
   else if (j.type === 'wander') {
     if (j.th) { const [ax, az] = approach(S, j.th, c); j.tx = ax; j.tz = az; } else {
       const near = E.hot ? S.things.find((t) => t.kind === 'tree' && t.g >= 0.9) : null;
@@ -1566,13 +1650,14 @@ function runJob(S, c, dt, E, quiet) {
       const t = j.th; if (t.built) { endJob(c); return; }
       t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1) * (careOn() && !E.away ? 1.25 : 1); c.working = true;
       if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, SY(S, 0.01), S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, SY(S, 0.012), wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
-      if (!quiet && Math.random() < dt * 1.6) sfx('hammer');
-      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx('pop'); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
+      if (!quiet && Math.random() < dt * 1.6) sfx('hammer', 1, SND_colPos(c));
+      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx(t.kind === 'hut' ? 'hutdone' : DECOR[t.kind] ? 'twinkle' : 'built', 1, { x: wx, y: SY(S, 0.03), z: wz }); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
       return;
     }
     case 'chat': if (j.t > j.dur) { n.joy = Math.min(1, n.joy + 0.08); j.with.needs.joy = Math.min(1, j.with.needs.joy + 0.08); if (!quiet) puff('heart', S.tf.x, SY(S, 0.05), S.tf.z, 0); if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.01, life: 1.4 }); } endJob(c); } return;
     case 'dance': c.dancing = true; if (j.t > j.dur) { c.dancing = false; if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, SY(S, 0.04), wz, 3, { size: 0.008, add: true }); } endJob(c); } return;
     case 'wander': if (j.t > j.dur) endJob(c); return;
+    case 'fireside': f10Fireside(S, c, j, dt, quiet); return;
     case 'crumb': crumbJob(S, c, j, dt, quiet); return;
     case 'mosh': moshStep(S, c, j, dt); return;
     case 'parade': paradeStep(S, c, j, dt, E); return;
@@ -1620,17 +1705,23 @@ function requestsStep(S, quiet) {
     const cond = CONDS[def.when]; if (!cond) continue;
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
-    if (on && !act && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
+    if (on && !act && !(F10.on && (!F10.reqDone || f10CardUp())) /* first10: one voice at a time, and the scout's seeds come first */ && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
       const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || ((c.name === def.who || (c.base || c.name) === def.who) && (!def.dup || c.by === def.by)))); if (!cs.length) continue;
-      const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx('ask'); toast(c.name + ': ' + def.text, 4); reqUi();
+      const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx(def.give === 'cablecar' ? 'cablereq' : 'ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
   }
-  for (const r of G.requests.slice()) if ((r.sid === S.id && G.simT - r.t > 420) || !G.settlements.some((q) => q.id === r.sid && !q.lost)) resolveRequest(r, true);
+  for (const r of G.requests.slice()) if ((r.sid === S.id && G.simT - r.t > 420 && !r.def.f10) || !G.settlements.some((q) => q.id === r.sid && !q.lost)) resolveRequest(r, true);
 }
 function resolveRequest(r, silent) { const i = G.requests.indexOf(r); if (i >= 0) G.requests.splice(i, 1); reqUi(); } // stale button: never remove someone else's request (PatchTown stress test, 12 Nov)
 function giveRequest(r) {
   care();
   if (G.requests.indexOf(r) < 0) { reqUi(); return; } // already timed out or answered: no double reward
+  if (r.def.give === 'f10seed') { /* first10: the button picks the Seeds tool; with Seeds in hand, a tap on the scout plants by them */
+    const S0 = G.settlements.find((s) => s.id === r.sid), c0 = S0 && S0.cols.find((q) => q.id === r.cid);
+    if (G.tool === 'seed' && S0) f10Plant(S0, c0 ? c0.x + 0.03 : 0.05, c0 ? c0.z : 0.05); else { setTool('seed'); autoSay('Tap the ground by the tent to drop a seed.', 5); }
+    return;
+  }
+  if (r.def.give === 'f10back') { resolveRequest(r); if (G.mode === 'practice' && G.auto) comeBackLater(); else toast(esc(r.who) + ' waves: see you next time!', 3); return; }
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
   const g = r.def.give, c = S.cols.find((q) => q.id === r.cid) || S.cols[0];
   if (g === 'water') { S.stock.water = Math.min(12, S.stock.water + 6); for (const q of S.cols) q.needs.water = Math.min(1, q.needs.water + 0.4); for (const t of S.things) if (t.kind === 'tree' || t.kind === 'farm') t.tend = 60; puff('drop', S.tf.x, SY(S, 0.1), S.tf.z, 8, { size: 0.008, vy: -0.03, life: 1, spread: 0.06 }); sfx('water'); }
@@ -1679,7 +1770,7 @@ function simSettlement(S, dt, E, quiet) {
     if (E.cold && !quiet && !sleeping) n.joy = Math.max(0.05, n.joy - dt / 3000);
     c.cool -= dt;
     if (!quiet) { // interruptions: night falls, rain starts
-      if (c.job && c.job.type !== 'cross' && c.job.type !== 'expedition') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter') endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
+      if (c.job && c.job.type !== 'cross' && c.job.type !== 'expedition') { if (E.night && c.job.type !== 'sleep' && c.job.type !== 'shelter' && !(c.job.type === 'fireside' && f10Awake(E))) endJob(c); else if (E.rain && !['sleep', 'shelter'].includes(c.job.type)) endJob(c); }
     }
     if (c.job && PRE_JOBS.includes(c.job.type) && ((n.food < 0.12 && S.stock.food > 0) || (n.water < 0.12 && (S.stock.water > 0 || built(S, 'well'))))) endJob(c); /* build 14: hungry or thirsty beats chatting and wandering */
     if (!c.job && c.cool <= 0) { const j = chooseJob(S, c, E); if (j) startJob(S, c, j, E); }
@@ -1902,7 +1993,7 @@ function linkStep(l, dt, E, quiet) {
 }
 function arriveAt(c, S, th, quiet) {
   c.S = S; c.x = th.x; c.z = th.z + 0.03; c.riding = null; c.job = null; c.cool = 0.5; S.cols.push(c); S.group.add(c.mesh); c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.set(0, 0, 0); c.mesh.scale.setScalar(COL_S); c.mesh.visible = true; c.needs.joy = Math.min(1, c.needs.joy + 0.15); if (!quiet) { FUN.n.ride = (FUN.n.ride | 0) + 1; funLog('ride'); c.hop = 1; c.cheerT = 1.2; sayLine(c, 'Wheee! Made it!', 2.2); }
-  if (S.awaiting) { S.awaiting = false; S.tent.hold = false; S.tent.built = true; S.tent.pop = 1; S.fx = null; syncLandmarks(S); if (!quiet) { toast('Settlers arrived at ' + S.zoneName + '! A new colony begins.', 5); sfx('cheer'); } }
+  if (S.awaiting) { S.awaiting = false; S.tent.hold = false; S.tent.built = true; S.tent.pop = 1; S.fx = null; syncLandmarks(S); if (!quiet) { toast('Settlers arrived at ' + S.zoneName + '! A new colony begins.', 5); sfx('founded'); } }
 }
 function crossStep(S, c, dt, E) { // a colonist waiting for, or riding, the cable car
   const j = c.job, l = j.link;
@@ -2405,7 +2496,9 @@ function awaySummary(a, b, secs, nights, long) {
   const L = [], add = (text, by) => L.push({ text, by: by || '' }), find = (id) => b.find((q) => q.id === id);
   const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
   const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
+  const f10a = f10Answer(); /* first10: the answer to the scout's question comes right after the first line */
   add('The Giant was away for ' + fmtAway(secs) + '. ' + (long ? 'The colonists wrote the first day out in full and the rest as a summary. ' : '') + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
+  if (f10a) add(f10a.text, f10a.by);
   if (long) { const lb = []; if (long.births) lb.push(plural(long.births, 'new settler') + ' moved in'); if (long.finished) lb.push(plural(long.finished, 'building') + ' got finished'); if (lb.length) add('Over those ' + plural(long.days, 'day') + ': ' + fmtList(lb) + '.'); for (const t of long.seasons || []) add(t); }
   const arrived = DIARY.arrived.slice(), built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
   for (const q of b) {
@@ -2574,7 +2667,7 @@ function pokeCol(c) {
   const S = c.S, K = charOf(c), now = G.time; FUN.n.poke = (FUN.n.poke | 0) + 1; funLog('poke', c.name);
   FUN.pokes = FUN.pokes.filter((t) => now - t < 4); FUN.pokes.push(now); const many = FUN.pokes.length >= 3;
   c.hop = 1; c.hopBig = 1.7; c.squash = 1; c.react = { k: K.react, t: 1.4 }; c.needs.joy = Math.min(1, c.needs.joy + 0.1);
-  sfx('squeak', K.pitch); setTimeout(() => sfx(K.react === 'giggle' ? 'giggle' : K.react === 'grump' ? 'grumble' : 'zap', K.pitch), 140);
+  sfx('squeak', K.pitch, SND_colPos(c)); setTimeout(() => sfx(K.react === 'giggle' ? 'giggle' : K.react === 'grump' ? 'grumble' : 'zap', K.pitch, SND_colPos(c)), 140);
   sayLine(c, many ? (K.react === 'giggle' ? 'Again! Again!' : 'Stop poking!') : pick(K.poke), 2.2, true); nameTag(c, 3.5);
   const [wx, wz] = l2w(S, c.x, c.z), y = SY(S, 0.075);
   if (K.react === 'panic') { // Glip: scurry off in a little panic, sparks flying
@@ -2588,7 +2681,7 @@ function pickUp(c, cx, cy) {
   if (!c || c.inside || c.riding || c.held || !c.S || !c.S.placed) return false;
   const S = c.S, K = charOf(c); if (c.job && c.job.type !== 'cross') endJob(c); else if (c.job) endJob(c);
   c.held = true; c.moving = false; c.working = false; c.dancing = false; const [wx, wz] = l2w(S, c.x, c.z); FUN.hold = { c, ox: c.x, oz: c.z, wx, wy: SY(S, 0.06), wz };
-  sayLine(c, pick(K.lift), 2.6, true); nameTag(c, 3); sfx('boing', K.pitch); FUN.n.lift = (FUN.n.lift | 0) + 1; funLog('lift', c.name);
+  sayLine(c, pick(K.lift), 2.6, true); nameTag(c, 3); sfx('boing', K.pitch, SND_colPos(c)); FUN.n.lift = (FUN.n.lift | 0) + 1; funLog('lift', c.name);
   if (cx !== undefined) holdMove(cx, cy); return true;
 }
 function holdMove(cx, cy) {
@@ -2601,7 +2694,7 @@ function dropCol(cx, cy) {
   const g = cx === undefined ? null : groundPick(cx, cy), dest = g && g.zone.settled && g.zone.settled.placed && !g.zone.settled.awaiting ? g.zone.settled : null;
   if (dest) { if (dest !== c.S) moveColonist(c, c.S, dest); const [lx, lz] = w2l(dest, g.x, g.z); c.x = lx; c.z = lz; c.fall = { y: Math.max(0.03, H.wy - dest.tf.y), v: 0 }; }
   else { c.x = H.ox; c.z = H.oz; c.fall = { y: 0.06, v: 0 }; c.landSay = 'Not my home!'; } // dropped somewhere nobody lives: they plop back where they were
-  c.cool = 1.4; c.job = null; FUN.n.drop = (FUN.n.drop | 0) + 1; funLog('drop', c.name); sfx('whistle', K.pitch * 1.4);
+  c.cool = 1.4; c.job = null; FUN.n.drop = (FUN.n.drop | 0) + 1; funLog('drop', c.name); sfx('whistle', K.pitch * 1.4, SND_colPos(c));
 }
 function mkCrumb() {
   const g = new THREE.Group(), b = inked(mesh(geo('crumb', () => new THREE.IcosahedronGeometry(0.0085, 0)), M(0xd9a066)), 0.0005); b.scale.set(1, 0.55, 0.9); g.add(b);
@@ -2631,9 +2724,9 @@ function feastDone(S, cr) {
 }
 function crumbJob(S, c, j, dt, quiet) { // at the crumb: nibble, nibble
   const cr = j.cr; if (!cr || cr.gone) { endJob(c); return; } c.face = Math.atan2(cr.x - c.x, cr.z - c.z); c.nibble = true;
-  j.nb = (j.nb || 0) + dt; if (j.nb > 0.6 && cr.landed) { j.nb = 0; cr.bites--; if (!quiet) { const [wx, wz] = l2w(S, cr.x, cr.z); puff('crumbs', wx, SY(S, 0.01), wz, 1, { size: 0.005, vy: 0.02, g: -0.1, life: 0.5, jit: 0.02 }); if (Math.random() < 0.6) sfx('nom', charOf(c).pitch); } }
+  j.nb = (j.nb || 0) + dt; if (j.nb > 0.6 && cr.landed) { j.nb = 0; cr.bites--; if (!quiet) { const [wx, wz] = l2w(S, cr.x, cr.z); puff('crumbs', wx, SY(S, 0.01), wz, 1, { size: 0.005, vy: 0.02, g: -0.1, life: 0.5, jit: 0.02 }); if (Math.random() < 0.6) sfx('nom', charOf(c).pitch, SND_colPos(c)); } }
 }
-// ---- music: the council's mosh pit (The Town Brain, R4: "they form a tiny mosh pit that bounces the huts like drums") ----
+/* ---- music: the council's mosh pit (The Town Brain, R4: "they form a tiny mosh pit that bounces the huts like drums") ---- */
 function partyToggle(on) {
   FUN.party = on === undefined ? !FUN.party : !!on; G.music = FUN.party; barUi();
   if (FUN.party) {
@@ -2649,9 +2742,10 @@ function musicStart() { if (FUN.mus) return; const c = audioCtx(); if (!c) retur
 function musicStop() { if (FUN.mus) { clearInterval(FUN.mus.iv); FUN.mus = null; } }
 function musicPump() {
   const c = SND.ctx, m = FUN.mus; if (!m || !c || !SND.on) { musicStop(); return; }
+  SND.dest = SND.bus ? SND.bus.music : null; /* build 19 + sound: the music has its own bus, ducked under a fanfare */
   try { while (m.next < c.currentTime + 0.16) { const s = m.step % 16, bar = Math.floor(m.step / 16) % 4, t = m.next, n = MUS.mel[m.step % 32];
     if (s % 4 === 0) sTone(c, t, MUS.bass[bar], 0.32, 'triangle', 0.08); if (s % 2 === 1) sNoise(c, t, 0.03, 7000, 'highpass', 0.012); if (s === 4 || s === 12) sNoise(c, t, 0.09, 1600, 'bandpass', 0.035);
-    if (n >= 0) sTone(c, t, MUS.scale[n], 0.15, 'triangle', 0.032); m.next += MUS.step; m.step++; } } catch (e) { musicStop(); }
+    if (n >= 0) sTone(c, t, MUS.scale[n], 0.15, 'triangle', 0.032); m.next += MUS.step; m.step++; } } catch (e) { musicStop(); } finally { SND.dest = null; }
 }
 // ---- milestones: a small celebration and an entry in the Colony album (never a chore list: nothing is shown before it happens) ----
 const MILESTONES = { // id: [icon, title, line, by]
@@ -2675,6 +2769,7 @@ function showCelebration(q) {
   fireworks(S); let first = true;
   for (const c of S.cols) { if (c.inside || c.held) continue; c.hop = 1; c.hopBig = 1.2; c.cheerT = 1.6; if (first && sayLine(c, pick(charOf(c).cheer), 2.4, true)) first = false; }
 }
+function partyReal(S) { /* first10: "the huts bounced" needs real huts and creatures awake in the pit */ return !!S && S.things.some((t) => t.kind === 'hut' && t.built) && S.cols.filter((c) => !c.inside && c.job && c.job.type === 'mosh').length >= Math.min(2, S.cols.length); }
 function mainSettlement() { return (G.cur && G.cur.placed && !G.cur.awaiting ? G.cur : null) || G.settlements.find((S) => S.placed && !S.awaiting && !S.lost) || null; }
 const CONF = [0xff6f91, 0xffc93d, 0x7fd36a, 0x5ab4ff, 0xc77dff, 0xff9a3d, 0xfff6e6];
 function fireworks(S) { // confetti and fluff, three little bursts over the colony
@@ -2699,7 +2794,7 @@ function funCheck() { // twice a second in play: milestones, unlocks, the counci
   if (has('hut')) celebrate('hut'); if (FUN.n.harvest) celebrate('harvest'); if (has('tree', (t) => t.g >= 1)) celebrate('tree'); if (FUN.n.feast) celebrate('feast'); if (FUN.n.giant) celebrate('giant');
   if (hooksBuilt().length) celebrate('hook', S); /* build 13: the first hook up on a ceiling ('hang', the build 12 upside-down camp, is only kept for old albums) */
   if (pop >= 5) celebrate('pop5'); if (pop >= 10) celebrate('pop10'); if (FUN.n.ride) celebrate('ride'); if (FUN.n.night) celebrate('night');
-  if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4) celebrate('party');
+  if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4 && partyReal(S)) celebrate('party');
   const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); if (!FUN.days.includes(day)) { FUN.days.push(day); if (FUN.days.length > 60) FUN.days.shift(); } if (FUN.days.length >= 7) celebrate('week');
   for (const k of FUN_BUILDS) if (!FUN.unl.includes(k) && funUnlocked(k, S)) { FUN.unl.push(k); if (k !== 'lantern') { toast('New to build: ' + KINDS[k].ic + ' ' + KINDS[k].name + ' <i class="by">by ' + esc(KINDS[k].by) + '</i>', 4); sfx('tada'); funLog('unlock', k); if (G.tool === 'build') barUi(); } }
   // the council's moments
@@ -2738,6 +2833,107 @@ function pebbleHello(S, th) {
   if (!th || th.dead) return; const [wx, wz] = l2w(S, th.x, th.z); puff('star', wx, SY(S, 0.03), wz, 6, { size: 0.008, vy: 0.03, life: 1.2, add: true, jit: 0.02, color: 0xdff0ff });
   const c = S.cols.filter((q) => !q.inside && !q.held).sort((a, b) => Math.hypot(a.x - th.x, a.z - th.z) - Math.hypot(b.x - th.x, b.z - th.z))[0];
   if (c) { sayLine(c, 'Kept your spot warm!', 3, true); c.hop = 1; } toast('A polished pebble at the edge: “we kept your spot warm.” <i class="by">by The Town Brain</i>', 5); funLog('pebble');
+}
+/* ---- the first 10 minutes (build 19 + first10). A brand-new colony gets a gentler first session: no bedtime (a campfire by the tent instead),
+   the camera on the camp, one seed request from the scout, one voice at a time, and a question to end on. Only a save that starts in this build
+   has it: an older save has no "f10" record and plays exactly as before. F10.t counts real seconds of play since landing. ---- */
+const F10 = { on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false, light: null };
+const F10_LEN = 900, F10_REQ = 32, F10_WX = 180, F10_Q = 540;
+const F10_SEED = { id: 'f10seeds', icon: 'seed', text: 'My seeds spilled! Tap Seeds, then tap the ground by the tent.', give: 'f10seed', f10: 1 };
+const F10_BACK = { id: 'f10back', icon: 'bang', text: '', give: 'f10back', f10: 1 };
+const F10_FIND = ['a lost button, shiny as a moon', 'a sequin that flashes like a lighthouse', 'a marble full of tiny clouds', 'a bottle cap with a star on it'];
+function f10Reset() { Object.assign(F10, { last: 0, on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false }); }
+function f10Save() { return { on: F10.on ? 1 : 0, t: Math.round(F10.t), done: F10.reqDone ? 1 : 0, wx: F10.wx ? 1 : 0, q: F10.q, ans: F10.ans ? 1 : 0 }; }
+function f10Load(d) { /* an old save has no record: the first session is over for it */
+  f10Reset(); if (!d || typeof d !== 'object') return;
+  F10.t = +d.t || 0; F10.on = !!d.on && F10.t < F10_LEN; F10.reqDone = !!d.done; F10.req = F10.reqDone ? 1 : 0; F10.wx = !!d.wx; F10.ans = !!d.ans;
+  F10.q = d.q && typeof d.q.name === 'string' ? { name: String(d.q.name).slice(0, 40), zid: d.q.zid | 0 } : null;
+}
+function f10Begin() { f10Reset(); F10.on = true; }
+const f10Awake = (E) => F10.on && !!E.night && !E.away;
+function f10Scout(S) { return S ? S.cols.find((c) => c.scout) || S.cols.find((c) => /^Pip\b/.test(c.name)) || S.cols[0] || null : null; }
+function f10FireAt(S) { /* the campfire stands just outside the tent door, on clear ground */
+  if (S.f10at) return S.f10at; let at = null;
+  for (let i = 0; i < 12 && !at; i++) { const a = 0.6 + i * 0.52, x = Math.cos(a) * 0.075, z = Math.sin(a) * 0.075; if (validSpot(S, x, z, 0.03)) at = [x, z]; }
+  S.f10at = at || [0.075, 0.03]; return S.f10at;
+}
+function mkCampfire() {
+  const g = new THREE.Group(), L = M(0x6b4423), st = M(0x8d8a84);
+  for (let i = 0; i < 3; i++) { const lg = mesh(geo('f10log', () => new THREE.CylinderGeometry(0.0017, 0.0017, 0.016, 5)), L, 0, 0.003, 0); lg.rotation.set(Math.PI / 2 - 0.35, i * 2.094, 0, 'YXZ'); g.add(lg); }
+  for (let i = 0; i < 7; i++) { const a = i * 0.898; g.add(mesh(geo('f10st', () => new THREE.SphereGeometry(0.0026, 6, 4)), st, Math.cos(a) * 0.011, 0.0012, Math.sin(a) * 0.011)); }
+  const fl = mesh(geo('f10fl', () => new THREE.ConeGeometry(0.0055, 0.016, 7).translate(0, 0.008, 0)), new THREE.MeshBasicMaterial({ color: 0xff8a2b }), 0, 0.002, 0);
+  const fi = mesh(geo('f10fi', () => new THREE.ConeGeometry(0.003, 0.01, 6).translate(0, 0.005, 0)), new THREE.MeshBasicMaterial({ color: 0xffe08a }), 0, 0.002, 0);
+  const gl = glowSprite(0.05, 0.55, 0xffa040); gl.position.y = 0.01; g.add(fl, fi, gl); g.userData.f10 = { fl, fi, gl }; return g;
+}
+function f10FireFrame(S, dt, show) {
+  if (!S.f10fire) { if (!show) return; S.f10fire = mkCampfire(); const at = f10FireAt(S); S.f10fire.position.set(at[0], 0, at[1]); S.group.add(S.f10fire); }
+  const f = S.f10fire; f.visible = show; if (!show) return; const u = f.userData.f10, k = 1 + 0.18 * Math.sin(G.time * 13) + 0.1 * Math.sin(G.time * 29 + 1);
+  u.fl.scale.set(1, k, 1); u.fi.scale.set(1, 2 - k, 1); u.gl.material.opacity = 0.45 + 0.12 * Math.sin(G.time * 9);
+  if (Math.random() < dt * 2.5) { const [wx, wz] = l2w(S, f.position.x, f.position.z); puff('spark', wx, SY(S, 0.016), wz, 1, { size: 0.004, vy: 0.03, life: 0.9, jit: 0.004, add: true, color: 0xffc070 }); }
+}
+function f10Light(S, show) { /* one warm light at the fire: created once and then only dimmed, so the materials never recompile */
+  if (!F10.light) { if (!show) return; F10.light = new THREE.PointLight(0xffa050, 0, 0.45, 2); scene.add(F10.light); }
+  const L = F10.light; if (!show || !S || !S.f10fire) { L.intensity = 0; return; } S.f10fire.getWorldPosition(L.position); L.position.y += 0.03; L.intensity = 1.6 + 0.3 * Math.sin(G.time * 11);
+}
+function f10Job(S, c) { /* a seat round the fire, facing it */
+  const at = f10FireAt(S), i = S.cols.indexOf(c), n = Math.max(3, S.cols.length), a = (i / n) * 6.283 + 0.4 + rnd(-0.15, 0.15), r = 0.024 + rnd(0, 0.004);
+  return { type: 'fireside', tx: at[0] + Math.cos(a) * r, tz: at[1] + Math.sin(a) * r };
+}
+const F10_FIRE_SAY = ['Toasty paws!', 'Ooh, warm.', 'Tell the one about the sink!', 'Look, sparks!', 'Best night ever.', 'Who brought marshmallows?', 'Shh, listen to the crackle.'];
+function f10Fireside(S, c, j, dt, quiet) {
+  const at = f10FireAt(S); c.face = Math.atan2(at[0] - c.x, at[1] - c.z); c.working = false; c.needs.rest = Math.min(1, c.needs.rest + dt / 1500); c.needs.joy = Math.min(1, c.needs.joy + dt / 900);
+  if (!quiet && Math.random() < dt * 0.05) { c.hop = 0.5; if (Math.random() < 0.5) sayLine(c, pick(F10_FIRE_SAY), 2.2); }
+  if (j.t > j.dur) endJob(c);
+}
+function f10CardUp() { const w = $('wx'), r = $('reqs'); return (!!w && !w.hidden) || (!!r && !!r.querySelector('.req:not(.more)')); }
+function f10CamDodge() { /* first10: while a card is up, the creature cam moves down below it (it keeps rendering) */
+  const up = f10CardUp(), cc = $('ccam'); document.body.classList.toggle('card-up', up); if (!cc) return;
+  if (!up || cc.hidden) { if (cc.style.top) cc.style.top = ''; return; }
+  let bot = 0; for (const e of [$('wx'), ...document.querySelectorAll('#reqs .req')]) if (e && !e.hidden && e.offsetParent !== null) bot = Math.max(bot, e.getBoundingClientRect().bottom);
+  const top = Math.round(bot + 10) + 'px'; if (cc.style.top !== top) cc.style.top = top;
+}
+function f10Bar() { /* the glowing buttons: Seeds while the seed request waits, Come back later once the question is asked */
+  const b = $('bar'); if (!b) return; const sd = b.querySelector('[data-tool="seed"]'), bk = b.querySelector('#bBack');
+  if (sd) sd.classList.toggle('f10glow', !!F10.req && !F10.reqDone && G.tool !== 'seed'); if (bk) bk.classList.toggle('f10glow', !!F10.q && !F10.ans);
+}
+function f10Ask(S) {
+  const c = f10Scout(S); if (!c) return; F10.req = 1;
+  G.requests.push({ id: ++G.uid, def: F10_SEED, sid: S.id, cid: c.id, t: G.simT, who: c.name }); sfx('ask'); c.hop = 1; sayLine(c, 'Oh no, my seeds!', 3, true); reqUi(); f10Bar(); funLog('f10', 'ask');
+}
+function f10Plant(S, lx, lz) { /* the first planting near the camp always works: the nearest free ground to the tap */
+  let sp = validSpot(S, lx, lz, 0.02, { free: true }) ? [lx, lz] : null;
+  for (let r = 0.01; r <= 0.09 && !sp; r += 0.01) for (let i = 0; i < 12 && !sp; i++) { const a = i * 0.5236, x = lx + Math.cos(a) * r, z = lz + Math.sin(a) * r; if (validSpot(S, x, z, 0.02, { free: true })) sp = [x, z]; }
+  sp = sp || findSpot(S, 0.02, { free: true }) || [lx, lz]; plantTree(S, sp[0], sp[1]); S.helped++; f10Thanks(S); return true;
+}
+function f10SeedTap(S, lx, lz) { return !!F10.req && !F10.reqDone && Math.hypot(lx, lz) < plotR(S) * 1.6 + 0.08 && f10Plant(S, lx, lz); }
+function f10Thanks(S) {
+  const r = G.requests.find((q) => q.def === F10_SEED); if (r) resolveRequest(r); F10.reqDone = true; F10.reqDoneT = F10.t;
+  const c = f10Scout(S); for (const q of S.cols) { q.needs.joy = Math.min(1, q.needs.joy + 0.15); if (!q.inside) { q.hop = 1; q.cheerT = 1.4; } }
+  if (c) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 5, { size: 0.01, vy: 0.03, life: 1.4 }); sayLine(c, 'You saved my seeds!', 3, true); }
+  fireworks(S); sfx('cheer'); toast('Thank you, Giant! ' + (c ? esc(c.name) : 'The scout') + ' planted the first seed.', 4); setTool('look'); f10Bar(); funLog('f10', 'done'); persistSoon();
+}
+function f10Question() {
+  const S = mainSettlement(), c = f10Scout(S); if (!S || !c) return;
+  const far = G.zones.filter((z) => z !== S.zoneRef && !z.lost && !z.settled && (z.land || z.ceil)).sort((a, b) => Math.hypot(b.cx - S.tf.x, b.y - S.tf.y, b.cz - S.tf.z) - Math.hypot(a.cx - S.tf.x, a.y - S.tf.y, a.cz - S.tf.z))[0];
+  const name = far ? far.name.split(' – ')[0] : 'Shelf top';
+  F10.q = { name, zid: far ? far.id : 0 }; F10.qT = F10.t;
+  G.requests.push({ id: ++G.uid, def: Object.assign({}, F10_BACK, { text: 'Something glitters over on the ' + name + '. I will go and look tonight. Come back later and I will tell you what it was!' }), sid: S.id, cid: c.id, t: G.simT, who: c.name });
+  c.hop = 1; sayLine(c, 'Something glitters over there!', 3.5, true); sfx('ask'); reqUi(); f10Bar(); funLog('f10', 'question'); persistSoon();
+}
+function f10Answer() { /* the next visit: the diary answers the question */
+  if (!F10.q || F10.ans) return null; F10.ans = true; const S = G.settlements.find((q) => !q.lost && q.cols.length), c = f10Scout(S), nm = c ? c.name : 'The scout';
+  return { text: nm + ' kept the promise: in the night ' + (c ? 'they' : 'it') + ' climbed to the ' + F10.q.name + ' and found what glittered: ' + F10_FIND[Math.floor(hash01(F10.q.name, 7) * F10_FIND.length)] + '. It sits by the campfire now.', by: '' };
+}
+function f10Frame(dt) {
+  f10CamDodge(); /* the Pip cam never sits over a card */
+  const S = mainSettlement(); for (const T of G.settlements) if (T.f10fire || (F10.on && T === S)) f10FireFrame(T, dt, F10.on && ENV.night && T.placed && T === S);
+  f10Light(S, F10.on && ENV.night && !!S); if (!F10.on || G.phase !== 'play') F10.last = 0; if (!F10.on || G.phase !== 'play' || !S || (G.returning && !G.locked) || BT.on) return;
+  const now = performance.now(), rdt = F10.last ? Math.min(1, (now - F10.last) / 1000) : dt; F10.last = now; /* real seconds: a slow frame rate must not stretch the first minute */
+  F10.t += rdt; if (F10.t >= F10_LEN) { F10.on = false; f10FireFrame(S, dt, false); f10Light(S, false); persistSoon(); return; }
+  const quiet = FUN.bannerT <= 0 && !f10CardUp();
+  if (!F10.req && F10.t >= F10_REQ && (quiet || F10.t > F10_REQ + 12)) f10Ask(S);
+  if (!F10.wx && !store.get('bc-wxchoice') && ((F10.reqDone && F10.t - F10.reqDoneT > 8 && quiet) || F10.t >= F10_WX)) { if (quiet || F10.t >= F10_WX + 30) { F10.wx = true; wxCard(); } }
+  if (!F10.q && F10.t >= F10_Q && quiet) f10Question();
 }
 // ---- the festival: stalls, bunting and a parade (The Dell Reasoner, R3) ----
 function mkStall(col) {
@@ -2807,7 +3003,7 @@ function mkTreehouse() {
 function funEye() { return AR.on ? FUN_EYE.setFromMatrixPosition(AR.viewM) : FUN_EYE.copy(camera.position); }
 const FUN_EYE = new THREE.Vector3();
 function funFrame(dt) {
-  const eye = funEye(); rainbowStep(dt, eye);
+  const eye = funEye(); rainbowStep(dt, eye); f10Frame(dt);
   if (FUN.bannerT > 0) { FUN.bannerT -= dt; if (FUN.bannerT <= 0) $('banner').className = ''; }
   if (G.phase !== 'play') return;
   if (FUN.party) { const ph0 = FUN.beatPh; FUN.beatPh = ((G.time - FUN.partyAt) / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5); if (FUN.beatPh < ph0) { const S = mainSettlement(); if (S && S.pit) { const [wx, wz] = l2w(S, S.pit[0], S.pit[1]); puff('note', wx + rnd(-0.05, 0.05), SY(S, 0.075), wz + rnd(-0.05, 0.05), 1, { size: 0.016, vy: 0.04, life: 1.4, jit: 0.015, color: pick(CONF) }); } } if (G.time - FUN.partyAt > 60) { partyToggle(false); toast('Phew! What a party.'); } }
@@ -2828,6 +3024,7 @@ function colVisual(S, c, dt, time, night, eye) {
   const U = c.mesh.userData, m = c.mesh, K = charOf(c), B = U.body;
   c.born += dt; const grow = Math.min(1, c.born * 2.5), sc = COL_S * grow * (1 + 0.12 * Math.sin(grow * 3.14));
   scout17Tick(c, dt); if (c.yOff && !(c.job && c.job.type === 'expedition')) c.yOff = 0;
+  if (c.scout && c.moving && !c.inside && !c.held && SND.ctx) { c.stepT = (c.stepT || 0) - dt; if (c.stepT <= 0) { c.stepT = 0.24; c.stepL = !c.stepL; sfx('patter', c.stepL ? 1 : 1.12, SND_colPos(c)); } } /* build 19 + sound: tip-tap */
   m.visible = c.spawn <= 0 && !c.inside; m.scale.setScalar(Math.max(0.001, sc));
   let y = 0, sx = 1, sy = 1, rx = 0, ry = 0, rz = 0, mouthO = false;
   if (c.hop > 0) { c.hop = Math.max(0, c.hop - dt * 1.7); y = Math.sin(c.hop * 3.14) * 0.014 * (c.hopBig || 1); if (c.hop === 0) { c.hopBig = 1; c.squash = Math.max(c.squash || 0, 0.7); } }
@@ -3166,7 +3363,7 @@ function seaPlace(kind, built, S, o) { /* one decoration on a settlement (the ma
   S = S || mainSettlement(); if (!S || !KINDS[kind]) return null; const K = KINDS[kind];
   const sp = findSpot(S, K.r, { R: plotR(S) * 1.1 }) || findSpot(S, K.r, { free: true, R: plotR(S) * 1.6 }); if (!sp) return null;
   const t = addThing(S, kind, sp[0], sp[1], Object.assign({ built, rot: rnd(0, 6.283) }, o || {})); t.pop = built ? 1 : 0.4;
-  if (built) { const [wx, wz] = l2w(S, sp[0], sp[1]); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.1, add: true, jit: 0.02 }); } decorRefresh(); return t;
+  if (built) { const [wx, wz] = l2w(S, sp[0], sp[1]); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.1, add: true, jit: 0.02 }); sfx('twinkle', 1, { x: wx, y: SY(S, 0.03), z: wz }); } decorRefresh(); return t;
 }
 /* ---- the colony decorates by itself ---- */
 function decorTick(quiet) {
@@ -3193,7 +3390,7 @@ function seaSim(dt, quiet) {
 function packAway(first) { /* a new season: last season's decorations go back in the box (the calendar stays through Advent and New Year) */
   const ok = new Set([ENV.seasonKey]); if (['autumn', 'advent', 'newyear'].includes(ENV.season)) ok.add('advent-' + adventYear()); let n = 0;
   for (const S of G.settlements) for (const t of S.things.slice()) if (DECOR[t.kind] && t.sea && !ok.has(t.sea)) { const [wx, wz] = l2w(S, t.x, t.z); if (!first) puff('dust', wx, SY(S, 0.02), wz, 3, { size: 0.012, life: 0.8, grow: 1 }); removeThing(S, t); n++; }
-  if (n && !first) toast('The colony packed last season’s decorations back into the box.', 4); decorRefresh();
+  if (n && !first) { toast('The colony packed last season’s decorations back into the box.', 4); sfx('pack'); } decorRefresh();
 }
 function seaComplete(P) {
   const key = ENV.seasonKey; SEA.done[key] = true; const id = seaMile(key), S0 = mainSettlement(); celebrate(id, S0);
@@ -3294,6 +3491,7 @@ function doingText(c) {
     case 'build': return j.th && j.th.kind === 'plantern' && j.ph === 'go' ? 'carrying a lantern' : j.ph === 'go' ? 'carrying wood to the ' + nm : 'building the ' + nm;
     case 'leap': return 'jumping in the leaves'; case 'plant': return 'planting a seed'; case 'tend': return 'watering'; case 'harvest': return 'picking crops'; case 'gather': return 'gathering wood';
     case 'drink': return 'getting a drink'; case 'eat': return 'having a bite'; case 'sleep': return 'sleeping'; case 'shelter': return 'sheltering from the rain'; case 'chat': return 'chatting'; case 'dance': return 'dancing';
+    case 'fireside': return 'warming paws by the campfire';
     case 'wander': return 'strolling about'; case 'read': return 'reading a book'; case 'cross': return 'off by cable car'; case 'crumb': return 'rushing to a crumb'; case 'mosh': return 'in the mosh pit'; case 'parade': return 'marching in the parade';
     default: return 'busy';
   }
@@ -3531,11 +3729,11 @@ function lineStep(S, ln, dt, quiet) {
   if (hk) { const H = hookPos(hk, hkV), l1 = A.distanceTo(H), l2 = H.distanceTo(B), tot = Math.max(0.01, l1 + l2), Td = L / 0.1; hh = l1 / tot; spd = (l1 / 0.8 + l2 / 1.6) / (0.7 * Td) * (((ln.dir > 0) === (ln.s < hh)) ? 0.8 : 1.6) / tot; }
   ln.s += ln.dir * spd * dt;
   if (hk && (s0 - hh) * (ln.s - hh) <= 0 && s0 !== hh) hookPass(hk, ln, false);
-  if (ln.dir > 0 && ln.s >= 1) { ln.s = 1; ln.st = 'tip'; ln.tp = 0; ln.f1 = ln.f2 = false; }
-  else if (ln.dir < 0 && ln.s <= 0) { ln.s = 0; ln.st = 'dock'; ln.tm = 3; ln.load = false; G.net.st.returns++; netLog('return', { sid: S.id, line: ln.id }); }
+  if (ln.dir > 0 && ln.s >= 1) { ln.s = 1; ln.st = 'tip'; ln.tp = 0; ln.f1 = ln.f2 = false; sfx('dock', 1, B); }
+  else if (ln.dir < 0 && ln.s <= 0) { ln.s = 0; ln.st = 'dock'; ln.tm = 3; ln.load = false; G.net.st.returns++; netLog('return', { sid: S.id, line: ln.id }); sfx('dock', 1, A); }
 }
 function lineSend(S, ln) { /* a full bucket leaves the loo hut: two nearby creatures hold their noses (the joke is the bucket's, never a creature's) */
-  netLog('send', { sid: S.id, line: ln.id }); sfx('pop'); const loo = looOf(S); if (!loo) return; let n = 0;
+  netLog('send', { sid: S.id, line: ln.id }); { const e = lineEnds(S, ln); sfx('gondola', 1, e && e[0]); } const loo = looOf(S); if (!loo) return; let n = 0;
   for (const c of S.cols) { if (n >= 2) break; if (c.inside || c.held || c.spawn > 0 || Math.hypot(c.x - loo.x, c.z - loo.z) > 0.2) continue; c.noseT = 2.2; sayLine(c, wwText('nose'), 2.2); n++; }
 }
 function lineFanfare(S, ln, B) { /* the bucket has tipped in: a tiny trumpet fanfare, a cheer, compost */
@@ -3610,7 +3808,7 @@ function netExpedTick(dt, quiet) {
 }
 function netExpStart(c, sp) {
   const N = G.net; endJob(c); const home = { x: c.x, z: c.z }; c.job = { type: 'expedition', ph: 'go', t: 0, sp: sp.id, hx: home.x, hz: home.z, dur: 1e9, wait: 0 }; c.cool = 0; c.moving = false; N.exp = { c, sp: sp.id }; N.st.expeds++; netLog('exped', { sid: c.S.id, sp: sp.id, who: c.name });
-  const k = waterKind(sp); sayLine(c, 'Off to find the ' + WSRC[k].name + '!', 2.4); sfx('squeak', 1.3);
+  const k = waterKind(sp); sayLine(c, 'Off to find the ' + WSRC[k].name + '!', 2.4); sfx('setoff', 1, SND_colPos(c));
 }
 function expedStep(S, c, dt, E, quiet) {
   const j = c.job, sp = spotById(j.sp), N = G.net; if (!sp || !campOK(S)) { c.yOff = 0; endJob(c); return; }
@@ -3622,7 +3820,7 @@ function expedStep(S, c, dt, E, quiet) {
   else if (j.ph === 'look') { j.t += dt; c.working = true; c.moving = false; if (j.t > 3.2) { j.ph = 'cheer'; j.t = 0; c.working = false; done(); c.cheerT = 1.8; c.hop = 1; c.hopBig = 1.4; const [wx, wz] = l2w(S, c.x, c.z); puff('star', wx, sp.y + 0.03, wz, 8, { size: 0.01, vy: 0.03, life: 1.3, add: true, jit: 0.03 }); sfx('tada'); sayLine(c, 'Found it!', 2.2, true); toast(esc(wwText(k === 'toilet' ? 'foundToilet' : 'foundSink', c.name)) + ' <i class="by">by ' + WW_BY + '</i>', 4); } }
   else if (j.ph === 'cheer') { j.t += dt; if (j.t > 1.8) { j.ph = h > 0.02 ? 'down' : 'back'; j.t = 0; } }
   else if (j.ph === 'down') { c.moving = true; c.yOff = Math.max(0, (c.yOff || 0) - dt * 0.2); if (c.yOff <= 0) { j.ph = 'back'; ropeShow(S, sp, false); } }
-  else if (j.ph === 'back') { if (walk(j.hx, j.hz, 0.12)) { c.yOff = 0; endJob(c); c.cool = 3; N.exp = null; } }
+  else if (j.ph === 'back') { if (walk(j.hx, j.hz, 0.12)) { c.yOff = 0; endJob(c); c.cool = 3; N.exp = null; sfx('home', 1, SND_colPos(c)); } }
 }
 function ropeShow(S, sp, on) { /* a thread the scout climbs: one thin line from the camp's floor to the top of the source */
   const N = G.net; if (!on) { if (N.rope) N.rope.visible = false; return; }
@@ -3635,9 +3833,10 @@ function netStep(dt, quiet) {
   for (const S of G.settlements) { S.pipeOn = false; for (const t of S.things) if (t.kind === 'farm') t.piped = false; if (campOK(S)) { if (S.waste === undefined) S.waste = 0.6; if (S.compost === undefined) S.compost = 0; S.waste = Math.min(3, S.waste + dt * S.cols.length * 0.008); S.compost = Math.max(0, S.compost - dt / 400); netLoo(S, quiet); } }
   for (const p of N.pipes.slice()) {
     const S = campById(p.sid); if (!S || S.lost || !spotById(p.src)) { netDrop(p); continue; }
-    if (!p.ready) { p.prog = Math.min(1, p.prog + dt / 6); if (p.prog >= 1) { p.ready = true; if (!quiet) { wwToast('pipeReady', 0, 4); sfx('chime'); celebrate('straw', S); } } continue; }
+    if (!p.ready) { p.prog = Math.min(1, p.prog + dt / 6); if (p.prog >= 1) { p.ready = true; if (!quiet) { wwToast('pipeReady', 0, 4); sfx('flow', 1, p.N); celebrate('straw', S); } } continue; }
     if (p.kink) { p.fixT -= dt; if (p.fixT <= 0) netFix(p, 'self'); continue; }
     S.pipeOn = true; const f = pipeFarm(S, p); if (f) f.piped = true;
+    if (f && !quiet && p.N) { p.spT = (p.spT === undefined ? rnd(3, 8) : p.spT) - dt; if (p.spT <= 0) { p.spT = rnd(10, 18); sfx('sprinkle', 1, p.N); } } /* build 19 + sound: the sprinkler now and then */
     p.qT -= dt; if (p.qT <= 0 && !quiet) { p.qT = rnd(18, 34); const c = pick(S.cols.filter((q) => !q.inside && !q.held && q.spawn <= 0) || [null]);
       if (c && p.q === 'green') { sayLine(c, wwText('burp'), 2.2); const [wx, wz] = l2w(S, c.x, c.z); puff('drop', wx, SY(S, 0.045), wz, 4, { size: 0.006, vy: 0.025, life: 1, jit: 0.015, color: 0x9be37a }); sfx('pop'); }
       else if (c && p.q === 'tea') { c.rushUntil = G.time + 25; sayLine(c, wwText('hyper'), 2.2); c.hop = 1; } }
@@ -3671,7 +3870,7 @@ function netRestore(d) {
 }
 MILESTONES.straw = ['🚰', 'First straw', 'Water, all the way home.', 'Harry, words by ' + WW_BY];
 MILESTONES.flush = ['🎺', 'First flush run', 'Ploop! Toot toot! The bucket made it.', 'Harry, words by ' + WW_BY];
-sfxExtra.ploop = (c, t, tone) => { tone(420, 0.1, 'sine', 0.07, 130); tone(260, 0.16, 'sine', 0.05, 90, 0.08); sNoise(c, t + 0.02, 0.05, 900, 'lowpass', 0.03); };
+sfxExtra.ploop = (c, t, tone) => { tone(900, 0.28, 'sine', 0.012, 380); /* build 19 + sound: a little flush swirl first */ tone(420, 0.1, 'sine', 0.07, 130); tone(260, 0.16, 'sine', 0.05, 90, 0.08); sNoise(c, t + 0.02, 0.05, 900, 'lowpass', 0.03); };
 sfxExtra.trumpet = (c, t, tone) => { [[392, 0.09, 0], [392, 0.09, 0.11], [523, 0.09, 0.22], [659, 0.3, 0.33]].forEach(([f, d, dl]) => { tone(f, d, 'sawtooth', 0.02, 0, dl); tone(f * 2, d, 'square', 0.005, 0, dl); }); tone(784, 0.42, 'sawtooth', 0.015, 0, 0.46); };
 
 // ============ save / load / return ============
@@ -3686,6 +3885,7 @@ function serialize() {
     settlements: G.settlements.filter((S) => !S.dead && S.zoneRef).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats, comp: +(S.compost || 0).toFixed(3), waste: +(S.waste === undefined ? 0.6 : S.waste).toFixed(3),
       things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0 })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
+    f10: f10Save(), /* first10: the first-session record; a save without it is an old save */
     hooks: hooksSave(), net: netSave(), /* build 18: the water network; older saves have none */
     links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
   };
@@ -3716,7 +3916,7 @@ function prepareContinue() {
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
-  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas);
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas); f10Load(sv.f10);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
   hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables(); netRestore(sv.net);
   for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
@@ -3970,20 +4170,32 @@ function practiceFrame(dt) {
   if (G.mode !== 'practice') return;
   if (G.phase === 'scan' || (G.auto && P.mode === 'eye' && G.phase !== 'title')) {
     if (P.auto) { // sub-steps so the sweep covers the same ground at any frame rate
-      const n = Math.max(1, Math.round(dt * 90)); for (let i = 0; i < n; i++) { P.auto.t += 1 / 90 * P.auto.speed; if (P.auto.t > PVIEWS.length * PV_T) { if (G.auto) { P.auto.t = 0; P.auto.laps = (P.auto.laps || 0) + 1; if (G.settlements.length && (!G.returning || G.locked)) { P.auto = null; P.mode = 'orbit'; P.yaw = 0.3; P.pitch = 0.55; focusOn(-0.1, 0.8, -0.5, 3.6); break; } continue; } P.auto = null; toast('Auto-scan finished. Tap Done scanning.'); break; } setEye(eyePose(P.auto.t)); practiceHits(); }
+      const n = Math.max(1, Math.round(dt * 90)); for (let i = 0; i < n; i++) { P.auto.t += 1 / 90 * P.auto.speed; if (P.auto.t > PVIEWS.length * PV_T) { if (G.auto) { P.auto.t = 0; P.auto.laps = (P.auto.laps || 0) + 1; if (G.settlements.length && (!G.returning || G.locked)) { P.auto = null; P.mode = 'orbit'; if (!P.campCam) { P.yaw = 0.3; P.pitch = 0.55; focusOn(-0.1, 0.8, -0.5, 3.6); } break; } continue; } P.auto = null; toast('Auto-scan finished. Tap Done scanning.'); break; } setEye(eyePose(P.auto.t)); practiceHits(); }
       if (P.auto) { P.eye.pos.copy(camera.position); }
+      if (P.campCam && G.phase === 'play') orbitCam(dt); /* first10: the sweep keeps mapping the room out of sight while the player watches the camp */
     } else {
       const e = P.eye, sp = dt * 0.9; if (keys.KeyW) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), sp); if (keys.KeyS) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), -sp);
       if (keys.KeyA) e.yaw += dt; if (keys.KeyD) e.yaw -= dt; if (keys.ArrowUp) e.pitch += dt * 0.8; if (keys.ArrowDown) e.pitch -= dt * 0.8; if (keys.KeyQ) e.pos.y += sp; if (keys.KeyE) e.pos.y -= sp;
       e.pitch = clamp(e.pitch, -1.5, 0.6); setEye(e); practiceHits();
     }
   } else {
-    P.target.lerp(P.gTarget, Math.min(1, dt * 3)); P.dist += (P.gDist - P.dist) * Math.min(1, dt * 3);
-    P.pitch = clamp(P.pitch, 0.12, 1.45);
-    camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
-    camera.lookAt(P.target); camera.updateMatrixWorld(true);
+    orbitCam(dt);
     if (G.auto && !SCAN.frozen && G.phase !== 'title' && G.phase !== 'align') practiceHits();
   }
+}
+function orbitCam(dt) {
+  P.target.lerp(P.gTarget, Math.min(1, dt * 3)); P.dist += (P.gDist - P.dist) * Math.min(1, dt * 3);
+  if (P.pitchGoal !== undefined) { P.pitch += (P.pitchGoal - P.pitch) * Math.min(1, dt * 2); if (Math.abs(P.pitchGoal - P.pitch) < 0.01) P.pitchGoal = undefined; }
+  P.pitch = clamp(P.pitch, 0.12, 1.45);
+  camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
+  camera.lookAt(P.target); camera.updateMatrixWorld(true);
+}
+function f10EyeDo(fn) { setEye(eyePose(P.auto.t)); try { fn(); } finally { orbitCam(0); } }
+const F10_CAM_D = 0.36; /* the camp (tent and creatures, about 0.15 m) fills about a third of the screen height: measured at 820 x 1180 */
+function f10Cam(S) { /* first10: on landing the camera flies to the camp, from the side it was already looking from */
+  const at = f10FireAt(S), [cx, cz] = l2w(S, at[0] * 0.45, at[1] * 0.45), cy = S.tf.y + 0.02, cp = camera.position /* aim between the tent and the campfire */, d = Math.max(0.3, Math.hypot(cp.x - cx, cp.y - cy, cp.z - cz));
+  P.campCam = true; P.yaw = Math.atan2(cp.x - cx, cp.z - cz); P.pitch = clamp(Math.asin(clamp((cp.y - cy) / d, -1, 1)), 0.3, 1.3); P.pitchGoal = 0.62;
+  P.target.set(cx, cy, cz); P.dist = d; focusOn(cx, cy, cz, F10_CAM_D);
 }
 const _rc = new THREE.Raycaster();
 function propPick(cx, cy) { _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const hit = _rc.intersectObjects(PROPS.map((p) => p.mesh), false)[0]; return hit ? hit.object.userData.prop : null; }
@@ -4103,6 +4315,10 @@ function autoTag(c) { // a detection that is sure enough gives the spot a name a
 async function recogTick() {
   if (RECOG.busy || !RECOG.on || !(G.phase === 'scan' || G.phase === 'tag' || (G.auto && G.phase !== 'title')) || !SCAN.bands.length) return;
   const fr = recogFrame(); if (!fr) return; RECOG.busy = true;
+  if (!AR.on && G.mode === 'practice' && P.campCam && P.auto && !RECOG.detector) { /* first10: the screen shows the camp while the sweep maps the room; the detector looks through the sweep's eye, as before */
+    try { f10EyeDo(() => { const dets = practiceDetector(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); }); } catch (e) { RECOG.err = String(e && e.message || e); }
+    RECOG.busy = false; return;
+  }
   try { const dets = await recogDetect(fr); RECOG.stats.frames++; for (const d of dets) recogConsider(d, fr); recogPropose(); } catch (e) { RECOG.err = String(e && e.message || e); }
   RECOG.busy = false;
 }
@@ -4457,6 +4673,7 @@ function autoAskTick() { // at most one "What is this?" per two minutes, only fo
   if (!G.auto || G.phase !== 'play' || !G.locked && G.returning || AUTO.t < 60) return; const now = performance.now();
   if (!G.settlements.some((S) => S.placed && !S.lost)) { AUTO.colonySince = undefined; return; } if (AUTO.colonySince === undefined) AUTO.colonySince = AUTO.t; if (AUTO.t - AUTO.colonySince < 15) return; // not while the colony is still settling in: at least 15 s since it landed
   if (now - RECOG.lastQuestion < AUTO.askGap) return;
+  if (F10.on && (!F10.reqDone || f10CardUp())) return; /* first10: one voice at a time */
   if (RECOG.ask || !$('tagpick').hidden || !$('modal').hidden || !$('ask').hidden || !$('diary').hidden || !$('guess').hidden) return;
   const near = (t) => G.settlements.some((S) => S.placed && !S.lost && Math.hypot(t.x - S.tf.x, t.z - S.tf.z) < plotR(S) + 0.3 && Math.abs(t.y - S.tf.y) < 0.8);
   const u = unknownTops().filter((t) => near(t) && !RECOG.asked.some((q) => Math.hypot(q.x - t.x, q.z - t.z) < 0.08)); if (!u.length) return;
@@ -4941,7 +5158,7 @@ function resetWorld() {
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
-  funReset();
+  funReset(); f10Reset(); P.campCam = false; P.pitchGoal = undefined;
 }
 function showTitle() {
   $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
@@ -5063,7 +5280,7 @@ function previewReturn() { // the away story is worked out on the title card alr
 }
 function startAuto() {
   G.auto = true; G.intent = 'play'; autoReset(); document.body.classList.add('auto'); $('title').hidden = true; $('top').hidden = false; $('hint').hidden = true; $('count').textContent = '';
-  if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = false; envUi(); }
+  if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = { t: 0, speed: 1, laps: 0 }; $('env').hidden = !skyShown(); envUi(); }
   setPhase('play'); G.tool = 'look'; G.visitCounted = false;
   TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; 
   const want = G.roomWant || 'find'; G.roomWant = 0; ROOMPRE = {}; G.finding = false; $('nroom').hidden = true;
@@ -5083,7 +5300,7 @@ function comeBackLater(hours) { // practice room: leave, let time pass (8 h unle
 }
 function startScan(cont) {
   setPhase('scan'); G.cont = !!cont; $('title').hidden = true; $('top').hidden = false; $('hint').hidden = false;
-  if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = null; $('env').hidden = false; envUi(); }
+  if (G.mode === 'practice') { room.visible = true; P.mode = 'eye'; P.eye.pos.set(0.3, 1.7, 1.3); P.eye.yaw = 0; P.eye.pitch = -0.7; P.auto = null; $('env').hidden = !skyShown(); envUi(); }
   if (cont) { if (!prepareContinue()) { G.cont = false; } }
   barUi(); updateHint();
 }
@@ -5118,10 +5335,11 @@ function barUi() {
   } else b.hidden = true;
   if (G.phase === 'play' && G.tool === 'cable' && hooksBuilt().length && !b.hidden && !(G.auto && G.barMin)) b.insertAdjacentHTML('beforeend', `<button id="bVia" title="via the ceiling hook" aria-label="via the ceiling hook" class="ic ${G.cableVia === false ? '' : 'on'}"><i>\ud83d\udd14</i><small>Via hook</small></button>`);
   if (G.phase === 'play' && G.tool === 'cable' && netModes().length > 1 && !b.hidden && !(G.auto && G.barMin)) { const nm = netMode(); b.insertAdjacentHTML('beforeend', `<button id="bLine" title="what to lay: cable car, water straw or bucket line" aria-label="what to lay" class="ic on"><i>${nm === 'pipe' ? '\ud83d\udeb0' : nm === 'waste' ? '\ud83d\udebd' : '\ud83d\udea1'}</i><small>${nm === 'pipe' ? 'Straw' : nm === 'waste' ? 'Buckets' : 'Cars'}</small></button>`); }
-  const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build');
+  const m = $('bmenu'); m.hidden = !(G.phase === 'play' && G.tool === 'build') || !!G.bmenuShut;
   if (!m.hidden) { const S = G.cur || mainSettlement(); m.innerHTML = ['hut', 'farm', 'well', 'lookout'].concat(FUN_BUILDS).concat(seaBuildList()).map((k) => { const ok = !FUN_BUILDS.includes(k) || funUnlocked(k, S); return `<button data-build="${k}" class="${G.buildKind === k ? 'on' : ''}"${ok ? '' : ' data-lock="1" style="opacity:.45"'}>${KINDS[k].ic ? KINDS[k].ic + ' ' : ''}${KINDS[k].name} (${ok ? KINDS[k].wood : '\ud83d\udd12'})</button>`; }).join(''); }
+  f10Bar();
 }
-function setTool(t) { G.tool = t; G.cableFrom = null; clearPreview(); barUi(); updateHint(); }
+function setTool(t) { G.tool = t; G.cableFrom = null; G.bmenuShut = false; clearPreview(); barUi(); updateHint(); }
 function gotoTag() { setPhase('tag'); G.tagMode = 'spot'; G.cableFrom = null; paintAll(); updateLabels(false); barUi(); updateHint(); }
 $('bar').addEventListener('click', (e) => {
   const t = e.target.closest('button'); if (!t) return;
@@ -5154,7 +5372,7 @@ $('bar').addEventListener('click', (e) => {
   if (t.id === 'bAlignRe') { alignStart(); return; }
 });
 function rescanFresh() { scanReset(); SCAN.frozen = false; setPhase('scan'); G.aligned = true; $('diary').hidden = true; if (G.mode === 'practice') { P.mode = 'eye'; setEye(P.eye); } paintAll(); barUi(); updateHint(); updateLabels(false); }
-$('bmenu').addEventListener('click', (e) => { const t = e.target.closest('button'); if (t && t.dataset.build) { if (t.dataset.lock) { sfx('no'); toast(KINDS[t.dataset.build].name + ': unlocks ' + UNLOCK_HINT[t.dataset.build] + '.'); return; } G.buildKind = t.dataset.build; barUi(); updateHint(); } });
+$('bmenu').addEventListener('click', (e) => { const t = e.target.closest('button'); if (t && t.dataset.build) { if (t.dataset.lock) { sfx('no'); toast(KINDS[t.dataset.build].name + ': unlocks ' + UNLOCK_HINT[t.dataset.build] + '.'); return; } G.buildKind = t.dataset.build; G.bmenuShut = true; barUi(); updateHint(); } }); /* first10: one pick closes the menu so the camp is clear to tap; Build opens it again */
 // ---- finishing a scan: the first scan makes the map; later ones are compared with it ----
 function doneScanning() {
   extractZones(); if (!SCAN.zones.length) { toast('No zones yet. Sweep a flat surface a bit longer.'); return; }
@@ -5242,11 +5460,14 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  if (pr) { const mw = $('mWx'); if (mw) mw.insertAdjacentHTML('afterend', '<button id="mSky">Practice sky ' + (skyShown() ? 'on' : 'off') + '</button>'); } /* first10 */
+  { const vs = $('mVol'); if (vs) vs.oninput = () => SND_setVol(vs.value / 100); } /* build 19 + sound: the volume slider (saved as bc-volume) */
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
+    if (t.id === 'mSky') { G.skyOn = !skyShown(); $('env').hidden = !skyShown(); return; }
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
-    else if (t.id === 'mSound') { SND.on = !SND.on; store.set('bc-sound', SND.on ? '1' : '0'); if (!SND.on) musicStop(); else if (FUN.party || FUN.fest) musicStart(); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+    else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
     else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
@@ -5292,12 +5513,15 @@ function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
   const MAXR = 2; // at most two requests on screen: the room is the game, not a to-do list
   for (const q of G.requests.slice(0, MAXR)) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'f10seed' ? '\ud83c\udf31 Seeds' : q.def.give === 'f10back' ? 'Come back later' : q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
   if (G.requests.length > MAXR) { const m = document.createElement('div'); m.className = 'req more'; m.textContent = '+' + (G.requests.length - MAXR) + ' more'; m.style.cssText = 'font-size:12px;opacity:.75;justify-content:flex-end;padding:2px 8px'; r.appendChild(m); }
 }
+/* first10: the Practice sky panel is a tool for tests and the practice tools (?tools); a player opens it from the Menu */
+const SKY_TOOLS = (!!navigator.webdriver && !/[?&]player\b/.test(location.search)) || /[?&]tools\b/.test(location.search);
+const skyShown = () => SKY_TOOLS || !!G.skyOn;
 function envUi() {
   const e = $('env');
   e.innerHTML = `<div>Practice sky</div><label>Sun <input id="eSun" type="range" min="0.5" max="1.5" step="0.05" value="${ENV.sun}"></label><label>Hour <input id="eHour" type="range" min="0" max="24" step="0.25" value="${ENV.hourOverride === null ? 12 : ENV.hourOverride}"></label>`
@@ -5442,6 +5666,7 @@ function tapAt(cx, cy) {
   if (!S || S.awaiting) { toast('Nobody lives here yet. When your colony is thriving, a cable car can reach ' + g.zone.name + '.', 4); return; }
   const [lx, lz] = w2l(S, g.x, g.z);
   if (G.tool === 'seed') {
+    if (f10SeedTap(S, lx, lz)) return; /* first10: the first planting near the camp always works */
     if (kindCount(S, 'tree') >= treeCap(S) + 4) return toast('That is plenty of trees for now.');
     if (!validSpot(S, lx, lz, 0.02, { free: true })) return toast('No room there.');
     plantTree(S, lx, lz); S.helped++;
@@ -5468,9 +5693,10 @@ function settleZone(zone) {
   const S = newSettlement(zone); G.cur = S; G.sel = null; S.placed = true; S.group.visible = true;
   for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; addColonist(S, { x: Math.cos(a) * 0.07, z: Math.sin(a) * 0.07, spawn: 0.4 * i + 0.2 }); }
   setPhase('play'); G.tool = 'look'; paintAll(); updateLabels(false); barUi(); updateHint();
-  puff('star', zone.core[0], zone.y + (zone.ceil ? -0.04 : 0.04), zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('chime'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
-  if (G.mode === 'practice') focusZone(zone);
-  if (!store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
+  puff('star', zone.core[0], zone.y + (zone.ceil ? -0.04 : 0.04), zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('founded'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
+  if (G.settlements.length === 1 && !G.returning && !(G.orphans && G.orphans.length)) f10Begin(); /* first10: a brand-new colony */
+  if (G.mode === 'practice') { if (F10.on && G.auto) f10Cam(S); else focusZone(zone); }
+  if (!F10.on && !store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
   syncCables(); persist(true);
 }
 
@@ -6336,9 +6562,10 @@ function btChooser() {
   };
 }
 
-// ---------- sounds (synthesised, like the rest of the game) ----------
+/* ---------- sounds (synthesised, like the rest of the game) ---------- */
 function bsfx(kind, p) {
-  const c = audioCtx(); if (!c) return; p = p || 1;
+  if (!SND.BKINDS[kind]) { sfx(kind, p); return; } /* build 19 + sound: kinds the battle does not have (the victory 'fanfare') use the colony's; before, they were silent */
+  const c = audioCtx(); if (!c) return; p = p || 1; if (!SND_gate('b-' + kind)) return;
   try {
     const t = c.currentTime, tone = (f, d, type, v, f2, dl) => sTone(c, t + (dl || 0), f, d, type, v, f2);
     if (kind === 'launch') { tone(240 * p, 0.16, 'triangle', 0.07, 90); sNoise(c, t, 0.06, 900, 'lowpass', 0.05); }
@@ -6529,6 +6756,7 @@ function frame(time, xrFrame) {
   else for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
   uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
   if (BT.on) battleFrame(dt);
+  SND_ambTick(dt); /* build 19 + sound: the quiet room ambience */
   renderer.render(scene, camera);
   if (CCAM.on && !BT.on) ccamRender(); /* the creature cam: a second small viewport, only while open */
 }
@@ -6537,6 +6765,87 @@ addEventListener('visibilitychange', () => { if (document.hidden) persist(true);
 // every meaningful change saves itself shortly after (on top of the 10 s timer, visibility change and leaving AR)
 { const a0 = window.addSpot; window.addSpot = function (o) { const sp = a0.apply(this, arguments); recTag(sp); return sp; }; }
 for (const n of ['addSpot', 'removeSpot', 'giveRequest', 'makeLink', 'applyChanges', 'answerGuess', 'libAdd', 'answerAsk', 'plantTree']) { const f0 = window[n]; if (typeof f0 === 'function') window[n] = function () { const r = f0.apply(this, arguments); if (G.auto) persistSoon(); return r; }; }
+/* ============ SOUND, part 2 (build 19 + sound): the room's quiet ambience, weather and season cues, and Harry's sound board ============
+   Ambience follows the game clock and weather (ENV): birds by day, crickets in the evening, a rare soft owl at night (otherwise quiet),
+   rain when it rains, and a soft trickle while a straw is flowing. It sits on its own bus at a low level and gets quieter as the camera pulls back.
+   Rain and trickle are two looping noise sources (made once, stopped and unplugged when not needed); birds, crickets and the owl are short one-off notes. */
+const SND_AMB = { layers: ['birds', 'crickets', 'night', 'rain', 'trickle'], lv: { birds: 0, crickets: 0, night: 0, rain: 0, trickle: 0 }, force: {}, loops: {}, t: { birds: 1, crickets: 1, night: 8 }, env: null, modT: 0 };
+function SND_ambTargets() {
+  const L = { birds: 0, crickets: 0, night: 0, rain: 0, trickle: 0 };
+  if (SND.ambOn && G.phase === 'play' && !BT.on) {
+    const h = ENV.hour, ss = ENV.sunset, wet = ENV.rain ? 0.3 : 1, cold = ENV.cold ? 0.4 : 1;
+    L.birds = ENV.daylight * wet * cold * (ENV.windy ? 0.6 : 1);
+    L.crickets = smooth(ss - 0.6, ss + 0.4, h) * (1 - smooth(ss + 3, ss + 4, h)) * wet * (ENV.cold ? 0.15 : 1);
+    L.night = ENV.night && L.crickets < 0.2 ? 1 : 0;
+    L.rain = ENV.rain ? clamp(ENV.rain, 0.3, 1) : 0;
+    L.trickle = G.settlements.some((S) => S.pipeOn && S.placed) ? 1 : 0;
+  }
+  for (const k in SND_AMB.force) if (SND_AMB.force[k]) L[k] = 1; /* the sound board: one layer at full */
+  return L;
+}
+function SND_ambNear() { /* 1 near the main camp, down to 0.3 far away */
+  try { const S = mainSettlement(); if (!S || !S.tf) return 1; const eye = AR.on ? (SND.v3 || (SND.v3 = new THREE.Vector3())).setFromMatrixPosition(AR.viewM) : camera.position; return clamp(0.55 / Math.max(0.05, Math.hypot(eye.x - S.tf.x, eye.y - S.tf.y, eye.z - S.tf.z)), 0.3, 1); } catch (e) { return 1; }
+}
+function SND_trickleAt() { for (const p of G.net.pipes) if (p.ready && !p.kink && p.N) return p.N; return null; }
+function SND_loop(name, level, make) { /* a looping layer: made when wanted, faded, and stopped and unplugged after 3 s of silence */
+  const c = SND.ctx, L = SND_AMB.loops[name];
+  if (level > 0.01 && !L) { try { SND_AMB.loops[name] = Object.assign(make(c), { quietT: 0 }); } catch (e) { /* no loop */ } return; }
+  if (!L) return;
+  L.gain.gain.setTargetAtTime(level * L.max, c.currentTime, 0.6);
+  if (level <= 0.01) { L.quietT += 1; if (L.quietT > 12) { try { L.src.stop(); } catch (e) { /* stopped */ } delete SND_AMB.loops[name]; } } else L.quietT = 0;
+}
+function SND_loopMake(c, filt, max) { /* noise -> filters -> gain -> panner -> ambience bus */
+  const src = c.createBufferSource(); src.buffer = SND_noiseBuf(c); src.loop = true; let head = src;
+  const fs = filt.map(([type, f, q]) => { const b = c.createBiquadFilter(); b.type = type; b.frequency.value = f; if (q) b.Q.value = q; head.connect(b); head = b; return b; });
+  const gain = c.createGain(); gain.gain.value = 0.0001; head.connect(gain); let out = gain, pan = null;
+  if (c.createStereoPanner) { try { pan = c.createStereoPanner(); gain.connect(pan); out = pan; } catch (e) { pan = null; } }
+  out.connect(SND.bus.amb); SND.live++;
+  src.onended = () => { SND.live--; try { src.disconnect(); fs.forEach((b) => b.disconnect()); gain.disconnect(); if (pan) pan.disconnect(); } catch (e) { /* fine */ } };
+  src.start(0, Math.random() * 0.9); return { src, fs, gain, pan, max };
+}
+function SND_ambNote(pan, fn) { const c = SND.ctx; SND.dest = SND_spot(c, pan, 1, SND.bus.amb); try { fn(c, c.currentTime); } catch (e) { /* fine */ } finally { SND.dest = null; } }
+function SND_ambStop() { for (const k in SND_AMB.loops) { try { SND_AMB.loops[k].src.stop(); } catch (e) { /* stopped */ } } SND_AMB.loops = {}; }
+function SND_envWatch() { /* season and weather changes get a short cue (never on the first look, never in a quiet sim) */
+  const now = { season: ENV.season, rain: !!ENV.rain, windy: !!ENV.windy }, was = SND_AMB.env; SND_AMB.env = now;
+  if (!was || G.phase !== 'play' || BT.on) return;
+  if (now.season !== was.season) sfx('season'); else if (now.rain && !was.rain) sfx('rainstart'); else if (!now.rain && was.rain) sfx('sunny'); else if (now.windy && !was.windy) sfx('windy');
+}
+function SND_ambTick(dt) {
+  SND_envWatch();
+  const c = SND.ctx; if (!c || !SND.bus || !SND.on || c.state !== 'running') { if (Object.keys(SND_AMB.loops).length) SND_ambStop(); return; }
+  SND_AMB.modT -= dt; if (SND_AMB.modT > 0) return; SND_AMB.modT = 0.25; const step = 0.25; /* four times a second is plenty */
+  const L = SND_AMB.lv = SND_ambTargets(), near = SND_AMB.force.any ? 1 : SND_ambNear();
+  SND.bus.amb.gain.setTargetAtTime(0.5 * near, c.currentTime, 0.5);
+  SND_loop('rain', L.rain, (c) => SND_loopMake(c, [['highpass', 500], ['lowpass', 3200]], 0.05));
+  SND_loop('trickle', L.trickle, (c) => SND_loopMake(c, [['bandpass', 1000, 4], ['lowpass', 2400]], 0.06));
+  const tr = SND_AMB.loops.trickle; if (tr) { tr.fs[0].frequency.setTargetAtTime(rnd(750, 1500), c.currentTime, 0.08); if (tr.pan) { const at = SND_trickleAt(); tr.pan.pan.setTargetAtTime(at ? SND_where(at)[0] : 0, c.currentTime, 0.3); } if (L.trickle > 0.01 && Math.random() < 0.18) SND_ambNote(tr.pan ? tr.pan.pan.value : 0, (c, t) => sTone(c, t, rnd(500, 800), 0.06, 'sine', 0.006, rnd(1000, 1500))); }
+  if (L.rain > 0.3 && Math.random() < 0.5 * L.rain) SND_ambNote(rnd(-0.8, 0.8), (c, t) => sTone(c, t, rnd(2200, 3600), 0.025, 'sine', 0.004 * L.rain, rnd(1400, 2000))); /* the odd drip */
+  const T = SND_AMB.t;
+  if (L.birds > 0.05 && (T.birds -= step) <= 0) { T.birds = rnd(2.5, 7) / Math.max(0.3, L.birds); const f = rnd(2400, 3800), n = 2 + Math.floor(Math.random() * 4), v = 0.012 * L.birds; SND_ambNote(rnd(-0.85, 0.85), (c, t) => { for (let i = 0; i < n; i++) sTone(c, t + i * rnd(0.09, 0.14), f * rnd(0.92, 1.1), 0.07, 'sine', v, f * rnd(1.15, 1.4)); }); }
+  if (L.crickets > 0.05 && (T.crickets -= step) <= 0) { T.crickets = rnd(0.7, 1.8) / Math.max(0.4, L.crickets); const f = rnd(4300, 4700), v = 0.006 * L.crickets; SND_ambNote(rnd(-0.9, 0.9), (c, t) => { for (let i = 0; i < 4; i++) sTone(c, t + i * 0.045, f, 0.025, 'sine', v); }); }
+  if (L.night > 0.5 && (T.night -= step) <= 0) { T.night = rnd(25, 60); SND_ambNote(rnd(-0.6, 0.6), (c, t) => { sTone(c, t, 410, 0.35, 'sine', 0.008, 380); sTone(c, t + 0.45, 410, 0.5, 'sine', 0.007, 370); }); } /* hoo, hoo: a rare, soft owl */
+}
+/* ---- Harry's sound board: ?soundboard=1 shows one button per sound and per ambience layer, to hear them all and give taste notes ---- */
+function SND_board() {
+  const d = document.createElement('div'); d.id = 'sndBoard'; d.className = 'glass';
+  const btn = (k, desc, data) => '<button ' + data + '="' + k + '"><b>' + k + '</b><small>' + esc(desc) + '</small></button>';
+  d.innerHTML = '<div class="dh">Sound board <button id="sbClose" style="float:right;min-height:34px">Close</button></div><div class="sub">Tap a button to hear it. Tap an ambience layer to switch it on or off. Everything is made in the game: no sound files. ' + esc(BUILD) + '</div>'
+    + '<label class="vol">Volume <input type="range" id="sbVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label>'
+    + '<div class="sbh">Colony sounds</div><div class="sbg">' + Object.keys(SND.KINDS).map((k) => btn(k, SND.KINDS[k], 'data-k')).join('') + '</div>'
+    + '<div class="sbh">Ambience (loops while on)</div><div class="sbg">' + SND_AMB.layers.map((k) => btn(k, { birds: 'daytime birds', crickets: 'evening crickets', night: 'night: quiet, a rare owl', rain: 'rain', trickle: 'water in a straw' }[k], 'data-amb')).join('') + btn('music', 'the mosh-pit tune', 'data-mus') + '</div>'
+    + '<div class="sbh">Battle sounds</div><div class="sbg">' + Object.keys(SND.BKINDS).map((k) => btn(k, SND.BKINDS[k], 'data-b')).join('') + '</div>';
+  document.body.appendChild(d);
+  d.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return; SND_arm();
+    if (b.id === 'sbClose') { d.remove(); SND_AMB.force = {}; return; }
+    if (b.dataset.k) { SND.recent[b.dataset.k] = []; sfx(b.dataset.k, 1); }
+    else if (b.dataset.b) { SND.recent['b-' + b.dataset.b] = []; bsfx(b.dataset.b, 1); }
+    else if (b.dataset.amb) { const k = b.dataset.amb; SND_AMB.force[k] = !SND_AMB.force[k]; SND_AMB.force.any = SND_AMB.layers.some((q) => SND_AMB.force[q]); if (SND_AMB.force[k]) SND_AMB.t[k] = 0; b.classList.toggle('on', !!SND_AMB.force[k]); }
+    else if (b.dataset.mus) { if (FUN.mus) musicStop(); else musicStart(); b.classList.toggle('on', !!FUN.mus); }
+  };
+  const v = $('sbVol'); v.oninput = () => SND_setVol(v.value / 100);
+}
+try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
 window.__g = {
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
@@ -6557,6 +6866,8 @@ window.__g = {
 };
 
 Object.assign(window.__g, BT_HOOKS);
+Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame, f10Ask, f10Plant, f10Question, f10Answer, f10CardUp, f10Cam, partyReal, skyShown, SKY_TOOLS, chooseJob, orbitCam }); /* first10 */
+Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
 G.last = performance.now();
