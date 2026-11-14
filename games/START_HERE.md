@@ -157,3 +157,4 @@ bring to the game."
 - 22:45 Fix builder started on game/bc-first10 (from build 19): campfire instead of bedtime in the first session, camera to camp, seed request at ~40 s, one popup at a time, a question at minute 9. Must merge with game/bc-sound before deploy (sound builder doesn't touch these areas).
 - 22:57 Sound pass done on game/bc-sound (all 9 suites pass, Safari + iPad checks pass, sound board shot checked, no // comments). Waiting for first-10 fixes, then merge both and deploy.
 - 00:04 First-10 fixes done (17/17, shots 65-68 checked). Merged with sound as game/bc-build20 (BUILD 'build 20'). Full suite run in progress; deploy only if green, with build 19 backed up to base-camp/b19/.
+- 00:53 Build 20 LIVE at base-camp/ (all 13 suites green; water 45/45 on rerun after one fail). Build 19 backup at base-camp/b19/, build 17 at b17/. Sound board: base-camp/?soundboard=1. Artifact updated.
