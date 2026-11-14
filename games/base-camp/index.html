@@ -4968,7 +4968,7 @@ function arQuietTick() { // AR: a zone that is not colony land flashes for about
   if (AR.on && G.phase === 'play' && G.locked !== undefined && !(G.returning && !G.locked) && !RF.hidden) { const S = G.settlements.find((q2) => q2.placed && !q2.lost); if (S) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, SY(S, 0.05), S.tf.z)); if (!vis || sx < 30 || sx > innerWidth - 30 || sy < 30 || sy > innerHeight - 90) { const cx = innerWidth / 2, cy = innerHeight / 2; let dx = sx - cx, dy = sy - cy; if (!vis) { dx = -dx; dy = -dy; } const L2 = Math.hypot(dx, dy) || 1, k = Math.min((innerWidth / 2 - 34) / Math.abs(dx || 1e-6), (innerHeight / 2 - 100) / Math.abs(dy || 1e-6)); mk.style.left = (cx + dx * k - 14) + 'px'; mk.style.top = (cy + dy * k - 14) + 'px'; mk.firstChild.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)'; show = true; void L2; } } }
   if (mk.hidden === show) mk.hidden = !show;
 }
-function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n) ? '' : n + ' place' + (n > 1 ? 's' : '') + ' found'; }
+function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n || RF.hidden || (G.returning && !G.locked)) ? '' : /* build 26: no count while the room or the camp is being found (the chip has that line) */ n + ' place' + (n > 1 ? 's' : '') + ' found'; }
 function homeMoment(text) { const el = $('home'); el.textContent = text; el.classList.add('on'); clearTimeout(AUTO.homeT); AUTO.homeT = setTimeout(() => el.classList.remove('on'), 2600); }
 // ---- the tick: runs every frame while in an automatic session ----
 function autoTick(dt) {
@@ -5410,7 +5410,7 @@ function rbIts(id) { /* "It's the Shed": the current room is closed, that room l
 /* ---- RF: finding the camp again after a sleep or an origin jump ---- */
 REC.relock = [];
 function recRF(o) { recRing(REC.relock, Object.assign({ t: recT() }, o), 40); }
-function rfReset() { Object.assign(RF, { on: false, hidden: false, phase: '', buf: [], agree: 0, conflict: 0, unk: 0, prompted: false }); world.visible = true; const el = $('nroom'); if (el && el.classList.contains('prf')) { el.hidden = true; el.classList.remove('prf'); } }
+function rfReset() { Object.assign(RF, { on: false, hidden: false, phase: '', buf: [], agree: 0, conflict: 0, unk: 0, prompted: false }); world.visible = true; if (G.phase !== 'title') autoCount(); const el = $('nroom'); if (el && el.classList.contains('prf')) { el.hidden = true; el.classList.remove('prf'); } }
 function rfFinding() { return (G.returning && !G.locked) || RF.on || !G.settlements.some((S) => !S.dead); } /* finding a room, a camp or a landing place: the only times the recognition chip shows */
 function rfSuspect(why, hard) {
   if (!AR.on || !G.auto || G.phase !== 'play' || (typeof BT !== 'undefined' && BT.on)) return;
@@ -5424,7 +5424,7 @@ function rfSuspect(why, hard) {
   Object.assign(RF, { on: true, why, hidden: false, phase: 'check', t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
 }
-function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoSay('Look around so I can find the camp again', 600); recRF({ hidden: true }); }
+function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoCount(); autoSay('Look around so I can find the camp again', 600); recRF({ hidden: true }); }
 function rfClass(x, y, z) { /* one fresh hit against the room's map as it is now: 1 agrees, -1 conflicts (something else is there, or nothing is at that height), 0 unknown */
   let known = false;
   for (const Z of G.zones) { const L = Z.land; if (!L || Z.lost) continue; const k = landIdx(L, x, z); if (k < 0) continue; const s = L.st[k]; if (!s) continue; known = true; if (Math.abs(y - Z.y) < 0.04 || (s === 2 && Math.abs(y - Z.y - L.ht[k] / 100) < 0.05)) return 1; }
