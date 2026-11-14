@@ -164,3 +164,5 @@ bring to the game."
 - 02:43 game/bc-return done (14 suites green, shots 69-72 checked). Polish note: return cards overlap the top-left panel's chip row. The moth surprise is small. Waiting for game/bc-build21, then merge as build 21.
 - 04:48 game/bc-build21 done: room 38/38, ar-room 15/15, practice 14/14, totem 28/30. REAL WEAKNESS: with one saved room, a similar room can falsely lock after ~22 s and the autosave overwrites the saved map. Merged with bc-return as build 21 (9328417); full 24-suite run in progress (scratchpad b21.log).
 - 04:48 Room guard builder on game/bc-roomguard: backup before overwrite, probation after lock, ask when the match is weak. Not deployed until checked (may land after the morning report).
+
+- **~07:00 UK — build 21 LIVE.** All 25 test sets pass (multi-room 40/40, totem 30/30 on rerun). Practice test fixed: its fast-forward now clears banners (asks wait behind banners, which only clear frame by frame). Build 20 kept at `base-camp/b20/`. Artifact republished.
