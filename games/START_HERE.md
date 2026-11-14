@@ -166,3 +166,5 @@ bring to the game."
 - 04:48 Room guard builder on game/bc-roomguard: backup before overwrite, probation after lock, ask when the match is weak. Not deployed until checked (may land after the morning report).
 
 - **~07:00 UK — build 21 LIVE.** All 25 test sets pass (multi-room 40/40, totem 30/30 on rerun). Practice test fixed: its fast-forward now clears banners (asks wait behind banners, which only clear frame by frame). Build 20 kept at `base-camp/b20/`. Artifact republished.
+
+- **~09:26 UK — build 22 LIVE.** Room guard (2 map backups + Restore in More…, 60 s wait before saving after a lock, asks "New room?" when unsure with one saved room) and smaller credits (Harry's call: keep, smaller). All suites green (some on rerun under load). Build 21 kept at `base-camp/b21/`. Artifact republished.
