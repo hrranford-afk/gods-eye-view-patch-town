@@ -1241,7 +1241,7 @@ function mkMouseScout(c) {
 
   /* No real shadow-casting lights per character: cheaper and safer for mobile devices. */
 
-  const U = { body, arms, legs, glow, eyes, smile, mouthO, ears, pack, nose, tail, scarfEnd, goggles, lantern, fieldMap };
+  const U = { body, arms, legs, glow, eyes, smile, mouthO, ears, pack, nose, tail, scarfEnd, goggles, lantern, fieldMap, disc: floorGlow };
   /* Same parade flag interface as normal colonists. */
   const flag = new THREE.Group(); flag.add(mesh(geo('cFlagP', () => new THREE.CylinderGeometry(0.0004, 0.0004, 0.024, 4).translate(0, 0.012, 0)), M(0x5a4332)));
   flag.add(mesh(geo('smFlag', () => new THREE.PlaneGeometry(0.008, 0.005)), MD(0xf1b769), 0.004, 0.021, 0));
@@ -1251,7 +1251,7 @@ function mkMouseScout(c) {
 function mkColonist(c) {
   if (c.scout) { try { return mkMouseScout(c); } catch (e) { console.warn('[Base Camp Scout] procedural mouse failed, using a normal creature:', e); c.scout = false; } }
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  { const ring = new THREE.Mesh(geo('cRing', () => new THREE.RingGeometry(0.007, 0.019, 24).rotateX(-Math.PI / 2)), RING_MAT); ring.position.y = 0.0015; ring.renderOrder = 6; g.add(ring); const glow = new THREE.Mesh(geo('cGlow', () => new THREE.CircleGeometry(0.019, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending })); glow.position.y = 0.0012; glow.renderOrder = 5; g.add(glow); } // a soft glow ring under every colonist: easy to find on a real room
+  { const ring = new THREE.Mesh(geo('cRing', () => new THREE.RingGeometry(0.007, 0.019, 24).rotateX(-Math.PI / 2)), RING_MAT); ring.position.y = 0.0015; ring.renderOrder = 6; g.add(ring); const glow = new THREE.Mesh(geo('cGlow', () => new THREE.CircleGeometry(0.019, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending })); glow.position.y = 0.0012; glow.renderOrder = 5; g.add(glow); g.userData.disc = glow; } // a soft glow ring under every colonist: easy to find on a real room
   const skin = M(pick([0xf2c9a0, 0xe0a97a, 0xc98b5e, 0xa06a46, 0xffdcb8])), shirt = M(new THREE.Color().setHSL(c.hue, 0.5, 0.6).getHex()), hat = M(new THREE.Color().setHSL((c.hue + 0.45) % 1, 0.75, 0.58).getHex());
   body.add(inked(mesh(geo('cBody', () => new THREE.CylinderGeometry(0.0045, 0.0078, 0.016, 8)), shirt, 0, 0.014, 0), CINK));
   body.add(inked(mesh(geo('cHead', () => new THREE.SphereGeometry(0.0088, 12, 10)), skin, 0, 0.0268, 0), CINK));
@@ -1266,7 +1266,7 @@ function mkColonist(c) {
     const ap = new THREE.Group(); ap.position.set(s * 0.0072, 0.0205, 0); ap.add(mesh(geo('cArm', () => new THREE.CylinderGeometry(0.0016, 0.0016, 0.0085, 6)), shirt, 0, -0.0042, 0)); body.add(ap); arms.push(ap);
   }
   g.add(blob(0.011)); const glow = glowSprite(0.03, 0.34); glow.position.y = 0.016; g.add(glow);
-  const U = { body, legs, arms, glow, eyes, smile, mouthO }, ck = charKey(c); // a look per temperament (the council's creatures): you can tell them apart at a glance
+  const U = { body, legs, arms, glow, eyes, smile, mouthO, disc: g.userData.disc }, ck = charKey(c); // a look per temperament (the council's creatures): you can tell them apart at a glance
   if (ck === 'Glip') { U.hair = new THREE.Group(); U.hair.position.y = 0.0315; for (let i = 0; i < 7; i++) { const a = -1.3 + i * 0.43, sp = mesh(geo('cSpike', () => new THREE.ConeGeometry(0.0013, 0.0075, 4).translate(0, 0.0037, 0)), M(0xffe14a, 0x6a5a10)); sp.position.set(Math.sin(a) * 0.0082, 0, Math.cos(a) * -0.002); sp.rotation.z = -a * 0.9; U.hair.add(sp); } body.add(U.hair); }
   else if (ck === 'Grizzle') { const b = mesh(geo('cBeard', () => new THREE.SphereGeometry(0.0062, 8, 6)), M(0x6f9a3a), 0, 0.0205, 0.0062); b.scale.set(1.1, 0.75, 0.55); body.add(b); for (const s of [-1, 1]) { const br = mesh(geo('cBrow', () => new THREE.BoxGeometry(0.0034, 0.0009, 0.001)), M(0x2a1a10), s * 0.0036, 0.031, 0.0084); br.rotation.z = s * 0.45; body.add(br); } for (let i = 0; i < 3; i++) { const mo = mesh(geo('cMoss', () => new THREE.SphereGeometry(0.0022, 6, 4)), M(0x7fb34a), (i - 1) * 0.004, 0.037 + (i % 2) * 0.002, -0.004); mo.scale.y = 0.5; body.add(mo); } }
   else if (ck === 'Glimmerfluff') { U.wings = []; for (const s of [-1, 1]) { const wp = new THREE.Group(); wp.position.set(s * 0.003, 0.019, -0.005); const w = mesh(geo('cWing', () => new THREE.SphereGeometry(0.0058, 8, 6)), M(0xffc2ec, 0x6a3a60), s * 0.0045, 0.002, -0.001); w.scale.set(1, 0.55, 0.22); w.rotation.z = s * 0.5; wp.add(w); body.add(wp); U.wings.push(wp); } const gl = glowSprite(0.022, 0.25, 0xffb3e6); gl.position.y = 0.03; body.add(gl); }
@@ -3080,7 +3080,7 @@ function colVisual(S, c, dt, time, night, eye) {
   let d = c.face - m.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.rotation.y += d * Math.min(1, dt * 8);
   U.blinkT = (U.blinkT || rnd(2, 5)) - dt; const blink = U.blinkT < 0.12; if (U.blinkT <= 0) U.blinkT = rnd(2.5, 5.5); for (const e of U.eyes) e.scale.y = blink ? 0.15 : 1;
   faceMouth(U, mouthO || (c.sayT > 0 && Math.sin(time * 22) > 0));
-  U.glow.material.opacity = night ? (c.job && c.job.type === 'fireside' ? 0.09 : 0.2) + (c.needs.joy > 0.8 ? 0.05 : 0) : 0.3 + (c.needs.joy > 0.8 ? 0.15 : 0); RING_MAT.opacity = night ? 0.4 : 0.55; /* build 21: at night the disc is a faint hint (the ring keeps creatures findable) and the campfire stays the brightest thing */
+  U.glow.material.opacity = night ? (c.job && c.job.type === 'fireside' ? 0.09 : 0.2) + (c.needs.joy > 0.8 ? 0.05 : 0) : 0.3 + (c.needs.joy > 0.8 ? 0.15 : 0); RING_MAT.opacity = night ? (F10.on ? 0.05 : 0.3) : 0.55; if (U.disc) U.disc.material.opacity = night ? (F10.on ? 0.03 : 0.1) : 0.16; /* build 21: at night the halo, the ring and the floor disc under each creature are a faint hint, so the campfire stays the brightest thing; dimmest while the first-session fire is lit, since everyone sits in its light */
   colBubbles(S, c, dt, eye, sc);
 }
 function faceMouth(U, open) { if (U.smile) { U.smile.visible = !open; U.mouthO.visible = !!open; } }
