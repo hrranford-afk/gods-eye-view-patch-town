@@ -5199,7 +5199,7 @@ function reportUi(msg) {
 const AUTO = { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' };
 function autoReset() { Object.assign(AUTO, { commitAt: 0, refT: 0, t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '', colonySince: undefined }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; rgReset(); rbReset(); rfReset(); }
 function autoSay(text, secs) { // one short line that fades after a few seconds
-  const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; return; }
+  const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; AUTO.said = ''; /* build 27: else the same line said again later stayed blank */ return; }
   h.hidden = false; h.classList.remove('fade'); if (AUTO.said !== text) { AUTO.said = text; h.textContent = text; }
   AUTO.hintT = secs || 5;
 }
@@ -5959,12 +5959,12 @@ function stkRun(im, pose) { /* one picture: find stickers, refine, pose, into th
     STK.seen++; stkAdd(m.id, { t: performance.now(), V: pose.V, K, cs, q, w: wp, side, refined: csR !== cs0 });
   }
 }
-function stkAdd(id, o) {
+function stkAdd(id, o) { /* a sighting joins the last few seconds' sightings of that sticker; enough of them make a fix */
   const list = STK.obs[id] || (STK.obs[id] = []), now = o.t, last = list[list.length - 1];
   if (last && Math.hypot(o.w.p[0] - last.w.p[0], o.w.p[1] - last.w.p[1], o.w.p[2] - last.w.p[2]) > 0.25) list.length = 0; /* the world jumped (or another copy of the sticker): start again */
   list.push(o); while (list.length && (now - list[0].t > STK_WIN_S * 1000 || list.length > 24)) list.shift();
   STK.burstUntil = now + 3000; if (list.length < STK_MIN_N || now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
-  const F = stkFixOf(id); if (F) { STK.fixes++; STK.lastFix[id] = now; stkUse(id, F); }
+  const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; stkUse(id, F); }
 }
 function stkMed(a) { const s = a.slice().sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
 function stkFixOf(id) { /* several sightings -> one sticker pose: a median filter on the positions, a joint fit of all corners, outliers out, fitted again */
@@ -6016,9 +6016,9 @@ function stkBind(F) { /* the first sighting in a room without a sticker: it belo
 function stkRefineLock(F) { /* seen while the room is locked: agree (maybe nudge by a few cm), or ask the surfaces whether the room or the sticker moved */
   const d = stkDiff(F);
   if (d.ok || (d.dm < STK_FIX_M && (!d.sure || d.dyaw < STK_AGREE_DEG * 2))) {
-    STK.disagree = 0; let moved = 0;
-    if (d.dm > 0.008) { const L = stkLive(), dphi = d.sure ? stkAng(F.h - L.h) : 0; stkNudge(L.p, F.p, dphi); moved = d.dm; STK.refines++; }
-    if (!G.stk.sd || F.sdYaw < G.stk.sd * 0.6) { const L = stkLive(); if (Math.hypot(F.p[0] - L.p[0], F.p[2] - L.p[2]) < 0.01) { stkRebind(F, 'better yaw'); } } /* a clearer look at the sticker: its saved yaw gets better */
+    STK.disagree = 0; let moved = 0; const L = stkLive(), dphi = d.sure && F.sdYaw < 0.5 ? stkAng(F.h - L.h) : 0;
+    if (d.dm > 0.003 || Math.abs(dphi) > 0.002) { stkNudge(L.p, [L.p[0] + (F.p[0] - L.p[0]) * 0.6, L.p[1] + (F.p[1] - L.p[1]) * 0.6, L.p[2] + (F.p[2] - L.p[2]) * 0.6], dphi * 0.6); moved = d.dm; STK.refines++; } /* most of the way each time: a steady look at the sticker settles the room on it without a jump */
+    if (!STK.lockFix && (!G.stk.sd || F.sdYaw < G.stk.sd * 0.6)) { /* (not after a lock from the sticker itself: that would only copy the sticker onto itself) */ const L = stkLive(); if (Math.hypot(F.p[0] - L.p[0], F.p[2] - L.p[2]) < 0.01) { stkRebind(F, 'better yaw'); } } /* a clearer look at the sticker: its saved yaw gets better */
     recStk({ agree: true, dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1), nudged: +moved.toFixed(3) }); stkSay('Sticker found ✓'); return;
   }
   STK.disagree++; recStk({ disagree: STK.disagree, dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1) });
@@ -6129,7 +6129,8 @@ function stkDetect(lib, det, img) { /* js-aruco2's detect() step by step, except
   const CV = lib.CV; CV.grayscale(img, det.grey); CV.adaptiveThreshold(det.grey, det.thres, 2, 7); det.contours = CV.findContours(det.thres, det.binary);
   let c = det.findCandidates(det.contours, img.width * 0.01, 0.05, 10); c = det.clockwiseCorners(c);
   const keep = []; for (const q of c) if (!keep.some((k) => k.every((p, i) => Math.abs(p.x - q[i].x) + Math.abs(p.y - q[i].y) < 3))) keep.push(q);
-  return det.findMarkers(det.grey, keep, 49);
+  const out = []; for (const m of det.findMarkers(det.grey, keep, 49)) { const c = m.corners, cx = (c[0].x + c[2].x) / 2, cy = (c[0].y + c[2].y) / 2, per = CV.perimeter(c), j = out.findIndex((o) => o.id === m.id && Math.hypot(o.cx - cx, o.cy - cy) < 0.15 * o.per); if (j < 0) out.push(Object.assign(m, { cx, cy, per })); else if (per > out[j].per) out[j] = Object.assign(m, { cx, cy, per }); } /* the same sticker found twice (the outside and the inside of its black edge): the bigger outline is the edge */
+  return out;
 }
 function stkSolve(A, b) { const n = b.length; A = A.map((r) => r.slice()); b = b.slice(); for (let i = 0; i < n; i++) { let pv = i; for (let k = i + 1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[pv][i])) pv = k; [A[i], A[pv]] = [A[pv], A[i]]; [b[i], b[pv]] = [b[pv], b[i]]; if (Math.abs(A[i][i]) < 1e-18) return null; for (let k = i + 1; k < n; k++) { const f = A[k][i] / A[i][i]; for (let j = i; j < n; j++) A[k][j] -= f * A[i][j]; b[k] -= f * b[i]; } } const x = new Array(n).fill(0); for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; } return x; }
 function stkInv(A) { const n = A.length, out = []; for (let j = 0; j < n; j++) { const e = new Array(n).fill(0); e[j] = 1; const x = stkSolve(A, e); if (!x) return null; out.push(x); } return out.map((c, j) => c.map((_, i) => out[i][j])); }
