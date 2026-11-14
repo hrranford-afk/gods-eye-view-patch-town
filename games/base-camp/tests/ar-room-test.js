@@ -79,9 +79,10 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   // ================= session 1: map and tag =================
   await p.goto(url); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); __g.ENV.hourOverride = 12; });
-  ok('AR is offered by the real polyfill', await ev(() => !document.getElementById('bAR').hidden && __g.AR.ok));
+  /* build 4+: the title's AR button became Play (bPlay is enabled once AR is ready); the manual mapping moved under More... */
+  ok('AR is offered by the real polyfill', await ev(() => !document.getElementById('bPlay').disabled && __g.AR.ok));
   await ev(() => { __g.RECOG.coco.state = 'loading'; }); // the model download is tested in recog-test.js; here it would only slow the sweep
-  await p.click('#bMap'); await sleep(800);
+  await p.click('#bMore'); await p.click('#bMap'); await sleep(800);
   ok('Map my room starts an AR session', await ev(() => __g.AR.on && __g.G.intent === 'map'));
   ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.options && window.__sessionOpts.options.computer_vision_data)), await ev(() => JSON.stringify(window.__sessionOpts || null)));
   await sweep('map');
@@ -121,8 +122,9 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   // ================= session 2: back, room rotated 30 degrees and shifted 0.5 m =================
   await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await ev(() => { __g.ENV.hourOverride = 12; window.__W = { yaw: 0.5236, x: 0.5, z: -0.3 }; const s = JSON.parse(localStorage.getItem('base-camp-save-v2')); s.t -= 9 * 3600 * 1000; localStorage.setItem('base-camp-save-v2', JSON.stringify(s)); });
-  ok('Continue is offered', await ev(() => !document.getElementById('bCont').hidden));
-  await p.click('#bCont'); await sleep(1200);
+  /* the old Continue button is gone: Play finds the room by itself (auto-ar-test, multi-room-test); the manual way back in is More... > Manual: map my room with a saved map */
+  ok('Continue is offered', await ev(() => !!__g.loadSave() && !!localStorage.getItem('base-camp-map-v1') && !document.getElementById('bMap').hidden));
+  await p.click('#bMore'); await p.click('#bMap'); await sleep(1200);
   const diaryTxt = await ev(() => document.getElementById('diary').innerText);
   ok('the away diary shows first, 9 hours', /While you were away/.test(diaryTxt) && /9\.0 h/.test(diaryTxt), diaryTxt.split('\n').length + ' lines');
   await p.screenshot({ path: OUT + 'ar-07-away.png' });
