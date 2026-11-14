@@ -133,7 +133,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   for (let i = 0; i < 24; i++) await ev(() => { for (const S of __g.G.settlements) for (const c of S.cols) { c.needs.food = Math.max(c.needs.food, 0.75); c.needs.water = Math.max(c.needs.water, 0.75); c.needs.rest = Math.max(c.needs.rest, 0.8); } __g.simulate(30, 1); });
   const sur = await ev(() => __g.G.settlements.filter((S) => !S.lost && !S.awaiting).map((S) => ({ zone: S.zoneName, spec: S.spec, sur: __g.econSurplusOf(S), spare: __g.econSpare(S), stock: Object.assign({}, S.stock) })));
   const top = (s) => Object.keys(s.sur).sort((a, b) => s.sur[b] - s.sur[a])[0];
-  ok('camps on different surfaces end up with different surpluses (and bring different things to market)', sur.length >= 2 && sur[0].spare !== sur[1].spare && Object.keys(sur[0].sur).sort().join() !== Object.keys(sur[1].sur).sort().join() && !!top(sur[0]), JSON.stringify(sur.map((s) => [s.spec, s.sur, s.spare])));
+  ok('camps on different surfaces end up with different surpluses (the floor has spare corn or sock fluff, the other camp none)', sur.length >= 2 && Object.keys(sur[0].sur).sort().join() !== Object.keys(sur[1].sur).sort().join() && sur.some((x) => x.spec === 'farmland' && (x.sur.food || x.sur.thread || x.sur.bread || x.sur.rope)) && sur.some((x) => x.spec !== 'farmland' && !x.sur.thread && !x.sur.rope) && !!top(sur[0]), JSON.stringify(sur.map((s) => [s.spec, s.sur, s.spare])));
   ok('sock fluff (thread) is gathered on the floor only', sur.every((s) => (s.spec === 'farmland') === (s.stock.thread > 0) || s.spec !== 'farmland' ? (s.spec === 'farmland' ? s.stock.thread > 0 || s.stock.rope > 0 : !s.stock.thread) : true), JSON.stringify(sur.map((s) => [s.spec, s.stock.thread, s.stock.rope])));
   ok('every camp grows a little food of its own', sur.every((s) => s.stock.food + s.stock.bread >= 6), JSON.stringify(sur.map((s) => [s.spec, s.stock.food, s.stock.bread])));
 
@@ -153,7 +153,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const x0 = await ev(() => __g.MKT.xfer); let carried = null, signs = false;
   for (let i = 0; i < 60; i++) {
     await ev(() => __g.simulate(4));
-    const st = await ev(() => { const site = __g.mktSite(); const v = site.S.cols.find((c) => c.job && c.job.type === 'market' && c.job.ph === 'do' && c.bundle); const U = site.t.mesh.userData, sg = (U.signs || []).some((s) => s.visible) && (U.stacks || []).some((st, i) => st.visible && U.signs[i].visible && st.children.findIndex((b) => b.visible) + 1 === __g.econPrice(U.signs[i].userData.g)); return { v: v ? { id: v.id, g: v.bundle.userData.mkt, home: v.mkt ? v.mkt.home : site.S.id } : null, sg }; });
+    const st = await ev(() => { const site = __g.mktSite(); const v = site.S.cols.find((c) => c.job && c.job.type === 'market' && c.job.ph === 'do' && c.bundle); const U = site.t.mesh.userData, sg = (U.signs || []).some((s) => s.visible) && (U.stacks || []).some((st, i) => st && st.parent && U.signs[i].visible && st.userData.n === __g.econPrice(U.signs[i].userData.g)); return { v: v ? { id: v.id, g: v.bundle.userData.mkt, home: v.mkt ? v.mkt.home : site.S.id } : null, sg }; });
     if (st.v && !carried) carried = st.v; if (st.sg) signs = true;
     if (carried && signs && (await ev(() => __g.MKT.xfer)) > x0) break;
   }
@@ -171,7 +171,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await snap('83-market-goods.png');
   /* a close look at one stall: its sign and its stack of buttons */
   await stallSet(); await ev(() => __g.simulate(0.5));
-  await ev(() => { const st = __g.mktSite(), U = st.t.mesh.userData, i = Math.max(0, U.signs.findIndex((x) => x.visible)), w = new __g.THREE.Vector3(), m = new __g.THREE.Vector3(); U.stacks[i].getWorldPosition(w); st.t.mesh.getWorldPosition(m);
+  await ev(() => { const st = __g.mktSite(), U = st.t.mesh.userData, i = Math.max(0, U.signs.findIndex((x) => x.visible)), w = new __g.THREE.Vector3(), m = new __g.THREE.Vector3(); (U.stacks[i] || U.signs[i]).getWorldPosition(w); st.t.mesh.getWorldPosition(m);
     __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(w.x - m.x, w.z - m.z) + 0.7; __g.P.pitch = 0.42; __g.focusOn(w.x, w.y + 0.02, w.z, 0.17);
     for (const c of st.S.cols) if (!(c.job && c.job.type === 'market')) { const p = st.S.group.localToWorld(new __g.THREE.Vector3(c.x, 0, c.z)); if (Math.hypot(p.x - w.x, p.z - w.z) < 0.12) { c.x += (c.x - st.t.x) * 0.8; c.z += (c.z - st.t.z) * 0.8; } } }); await shotPrep(); await sleep(1800);
   await snap('84-stall-stack.png');

@@ -4445,11 +4445,17 @@ function econBoardOn(g) { /* the market gets its price board in the gap at the b
 function econStallSigns(S, t, m) {
   const U = m.userData; if (!U.signs) { U.signs = MKT_A.map((a) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: econSignTex('wood'), transparent: true, depthWrite: false })); sp.scale.set(0.018, 0.018, 1); sp.position.set(Math.cos(a) * MKT_RS * 1.15, 0.088, Math.sin(a) * MKT_RS * 1.15); sp.visible = false; sp.renderOrder = 8; m.add(sp); return sp; }); }
   const sel = [null, null, null]; if (MKT.open && t.built) for (const c of S.cols) { const j = c.job; if (j && j.type === 'market' && j.th === t && j.ph === 'do' && c.bundle && ECON_GOODS[c.bundle.userData.mkt]) sel[(j.slot | 0) % 3] = c.bundle.userData.mkt; }
-  if (!U.stacks) U.stacks = MKT_A.map((a) => { /* the main price signal: a stack of real buttons on the counter, one per button of price; a tall stack wobbles */
-    const st = new THREE.Group(), cols = [0xe0402f, 0x3f86dd, 0xffc82e, 0x2f9e4f, 0xff6f91]; st.position.set(Math.cos(a + 0.42) * MKT_RS * 1.5, 0.021, Math.sin(a + 0.42) * MKT_RS * 1.5); /* at the counter's corner, beside the trader */
-    for (let n = 1; n <= 5; n++) { const g = bcMerge('ecStk' + n, cols.slice(0, n).map((c, k) => ({ g: geo('ecBtnStk', () => new THREE.CylinderGeometry(0.0042, 0.0042, 0.0016, 12)), c, x: k % 2 ? 0.0006 : -0.0005, y: 0.0008 + k * 0.0017, z: 0, rz: k % 2 ? 0.05 : -0.04 }))); st.add(inked(new THREE.Mesh(g, bcToon()), 0.0004)); } /* one merged stack per price: one draw call */
-    st.visible = false; m.add(st); return st; });
-  U.stacks.forEach((st, i) => { const g = sel[i]; st.visible = !!g; if (!g) return; const n = econPrice(g); st.children.forEach((b, k) => { b.visible = k === n - 1; }); st.rotation.z = n >= 4 ? Math.sin(G.time * 5 + i) * 0.06 * (n - 3) : 0; st.rotation.x = n >= 4 ? Math.cos(G.time * 4.3 + i) * 0.04 * (n - 3) : 0; });
+  if (!U.stacks) U.stacks = [null, null, null]; /* the main price signal: a stack of real buttons on the counter, one per button of price; a tall stack wobbles. Made only while a stall sells (no hidden meshes) */
+  MKT_A.forEach((a, i) => {
+    const g = sel[i], n = g ? econPrice(g) : 0, old = U.stacks[i];
+    if (old && old.userData.n !== n) { m.remove(old); U.stacks[i] = null; }
+    if (n && !U.stacks[i]) {
+      const cols = [0xe0402f, 0x3f86dd, 0xffc82e, 0x2f9e4f, 0xff6f91], geo1 = bcMerge('ecStk' + n, cols.slice(0, n).map((c, k) => ({ g: geo('ecBtnStk', () => new THREE.CylinderGeometry(0.0042, 0.0042, 0.0016, 12)), c, x: k % 2 ? 0.0006 : -0.0005, y: 0.0008 + k * 0.0017, z: 0, rz: k % 2 ? 0.05 : -0.04 })));
+      const st = inked(new THREE.Mesh(geo1, bcToon()), 0.0004); st.position.set(Math.cos(a + 0.42) * MKT_RS * 1.5, 0.021, Math.sin(a + 0.42) * MKT_RS * 1.5); /* at the counter's corner, beside the trader */
+      st.userData.n = n; m.add(st); U.stacks[i] = st;
+    }
+    const st = U.stacks[i]; if (st) { st.rotation.z = n >= 4 ? Math.sin(G.time * 5 + i) * 0.06 * (n - 3) : 0; st.rotation.x = n >= 4 ? Math.cos(G.time * 4.3 + i) * 0.04 * (n - 3) : 0; }
+  });
   U.signs.forEach((sp, i) => { sp.visible = !!sel[i]; if (sel[i] && sp.userData.g !== sel[i]) { sp.userData.g = sel[i]; sp.material.map = econSignTex(sel[i]); sp.material.needsUpdate = true; } if (sp.visible) sp.position.y = 0.092 + Math.sin(G.time * 2.4 + i) * 0.002; });
   if (U.board && U.board.userData.face && U.board.userData.face.material.map) econBoardTex();
 }
