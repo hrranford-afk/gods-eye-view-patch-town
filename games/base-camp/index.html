@@ -5424,10 +5424,10 @@ function rfSuspect(why, hard) {
   if (hard) rfHide();
 }
 function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoSay('Look around so I can find the camp again', 600); recRF({ hidden: true }); }
-function rfClass(x, y, z) { /* one fresh hit against the room as it is now: 1 agrees, -1 conflicts (something else is there, or nothing is at that height), 0 unknown */
+function rfClass(x, y, z) { /* one fresh hit against the room's map as it is now: 1 agrees, -1 conflicts (something else is there, or nothing is at that height), 0 unknown */
   let known = false;
   for (const Z of G.zones) { const L = Z.land; if (!L || Z.lost) continue; const k = landIdx(L, x, z); if (k < 0) continue; const s = L.st[k]; if (!s) continue; known = true; if (Math.abs(y - Z.y) < 0.04 || (s === 2 && Math.abs(y - Z.y - L.ht[k] / 100) < 0.05)) return 1; }
-  if (SCAN.origin) { const g = gIdx(x, z); if (g >= 0) for (const b of SCAN.bands) { if (!b.kn[g] && !b.g[g]) continue; known = true; if (Math.abs(b.y - y) < 0.035) return 1; } }
+  /* only the map is the reference, not the live scan: after a jump the scan may already hold a few frames of the moved room */
   return known ? -1 : 0; /* a place nobody has seen yet tells nothing (a room being mapped finds new tops all the time) */
 }
 function rfHit(p, src, kind, uid, below) { RF.buf.push([p.x, p.y, p.z, src, kind, uid, below, SCAN.fr]); if (RF.buf.length > 5000) RF.buf.shift(); const c = rfClass(p.x, p.y, p.z); if (c > 0) RF.agree++; else if (c < 0) RF.conflict++; else RF.unk++; }
