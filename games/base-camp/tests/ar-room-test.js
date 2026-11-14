@@ -4,7 +4,7 @@
 // Run (about 5 minutes):  NO_OVERLAY=1 NODE_PATH=$(npm root -g) node games/base-camp/tests/ar-room-test.js
 const fs = require('fs'), path = require('path');
 const { serve, ROOT } = require('./lib.js');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright'); const install = require('./ar-fake.js');
 const POLY = fs.readFileSync(process.env.POLY || path.join(ROOT, 'webxr-polyfill.js'), 'utf8');
 const OUT = path.join(ROOT, 'shots') + '/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -17,58 +17,8 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   await ctx.route('**/api.open-meteo.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ current: { temperature_2m: 16, precipitation: 0, rain: 0, cloud_cover: 20, weather_code: 1, is_day: 1, wind_speed_10m: 4 }, daily: { sunrise: ['2026-11-11T07:10'], sunset: ['2026-11-11T16:20'] } }) }));
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/GPU stall|GL Driver|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); });
-  await p.addInitScript((SHED) => {
-    try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
-    const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
-    window.__native = { hits: 0, empty: 0 }; window.__W = { yaw: 0, x: 0, z: 0 }; window.__SHED = SHED;
-    try { const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d'); g.fillStyle = '#8a8070'; g.fillRect(0, 0, 320, 240); window.__video = c.toDataURL('image/jpeg', 0.5).split(',')[1]; } catch (e) {} // a grey camera picture: the pipeline is what is tested
-    // world transform of the whole room: the real room is turned and shifted relative to where AR started this time
-    const place = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw); return window.__SHED.map(([n, y, cx, cz, hw, hd]) => ({ n, y, hw, hd, cx: cx * c + cz * s + W.x, cz: -cx * s + cz * c + W.z, rot: W.yaw })); };
-    window.__place = place;
-    const h = (fn) => ({ postMessage: (body) => { fn && fn(body); } });
-    let dataCb = null, timer = null; const asp = 1180 / 820, f = 1 / Math.tan(0.5);
-    const proj = [f / asp, 0, 0, 0, 0, f, 0, 0, 0, 0, (100 + 0.01) / (0.01 - 100), -1, 0, 0, (2 * 100 * 0.01) / (0.01 - 100), 0];
-    window.__cam = { mode: 'sweep', t0: performance.now(), fixed: [0.2, 0.5, 0.2, 0, -0.75], path: [], speed: 1 };
-    const ease = (a, b2, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b2 - a))); return t * t * (3 - 2 * t); };
-    const camNow = () => {
-      const C = window.__cam; let x, y, z, yaw, pitch;
-      if (C.mode === 'fixed' || !C.path.length) [x, y, z, yaw, pitch] = C.fixed;
-      else {
-        let t = ((performance.now() - C.t0) / 1000) * C.speed, i = 0; while (i < C.path.length - 1 && t > C.path[i].dur) { t -= C.path[i].dur; i++; }
-        const v = C.path[i], pr = C.path[Math.max(0, i - 1)], u = Math.min(1, t / v.dur), fr = ease(0, 0.2, u), w = u * 6.283 * 2;
-        x = pr.p[0] + (v.p[0] - pr.p[0]) * fr; y = pr.p[1] + (v.p[1] - pr.p[1]) * fr; z = pr.p[2] + (v.p[2] - pr.p[2]) * fr;
-        yaw = pr.yaw + (v.yaw - pr.yaw) * fr + Math.sin(w) * v.ay * fr; pitch = pr.pitch + (v.pitch - pr.pitch) * fr + Math.sin(w * 2.3 + 1) * v.ap * fr;
-        if (i === C.path.length - 1 && t >= v.dur) C.done = true;
-      }
-      const cy = Math.cos(yaw), sy = Math.sin(yaw), c = Math.cos(pitch), s = Math.sin(pitch);
-      return [cy, 0, -sy, 0, sy * s, c, cy * s, 0, sy * c, -s, cy * c, 0, x, y, z, 1];
-    };
-    const inv = (m) => { const r = [m[0], m[4], m[8], 0, m[1], m[5], m[9], 0, m[2], m[6], m[10], 0, 0, 0, 0, 1], t = [m[12], m[13], m[14]]; r[12] = -(r[0] * t[0] + r[4] * t[1] + r[8] * t[2]); r[13] = -(r[1] * t[0] + r[5] * t[1] + r[9] * t[2]); r[14] = -(r[2] * t[0] + r[6] * t[1] + r[10] * t[2]); return r; };
-    let cam = camNow();
-    window.webkit = { messageHandlers: {
-      initAR: h((b2) => b2.callback && reply(b2.callback, 'ios-ar-device-id')),
-      requestSession: h((b2) => {
-        window.__sessionOpts = b2; dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: !!b2.computer_vision_data, worldAccess: true, webXRAccess: true }); clearInterval(timer);
-        timer = setInterval(() => { cam = camNow(); window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: !!window.__video, video_data: window.__video || null, video_width: 320, video_height: 240 }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
-      }),
-      stopAR: h((b2) => { clearInterval(timer); if (b2 && b2.callback) reply(b2.callback, {}); }),
-      hitTest: h((b2) => {
-        const nx = b2.x * 2 - 1, ny = 1 - b2.y * 2, dc = [nx * asp / f, ny / f, -1], m = cam, d = [m[0] * dc[0] + m[4] * dc[1] + m[8] * dc[2], m[1] * dc[0] + m[5] * dc[1] + m[9] * dc[2], m[2] * dc[0] + m[6] * dc[1] + m[10] * dc[2]];
-        const out = []; let bt = 1e9, bh = null;
-        if (d[1] < -1e-3) for (const S of place()) { const t = (S.y - m[13]) / d[1]; if (t <= 0 || t >= bt) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { bt = t; bh = [hx, S.y, hz]; } }
-        if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, bh[0], bh[1] + (Math.random() - 0.5) * 0.006, bh[2], 1] });
-        window.__native[out.length ? 'hits' : 'empty']++; reply(b2.callback, out);
-      }),
-      onUpdate: h(), removeAnchors: h(), setUIOptions: h(),
-    } };
-    // a sweep path that looks down at each thing of the shed from about a metre: [{p, yaw, pitch, ay, ap, dur}]
-    window.__sweep = (speed) => {
-      const targets = window.__place(), pick = (n) => targets.find((t) => t.n === n), look = (tx, ty, tz, off, hgt, ay, ap, dur) => { const p = [tx + off[0], ty + hgt, tz + off[1]], fx = tx - p[0], fy = ty - p[1], fz = tz - p[2], L = Math.hypot(fx, fy, fz); return { p, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
-      const fl = pick('floor'), sa = pick('speakerA'), sb = pick('speakerB'), sh = pick('shelf');
-      window.__cam.path = [look(fl.cx, -1.2, fl.cz, [0, 1.3], 1.6, 0.6, 0.25, 16), look(sa.cx, sa.y, sa.cz, [0.1, 0.5], 0.55, 0.12, 0.1, 10), look(sb.cx, sb.y, sb.cz, [-0.1, 0.5], 0.6, 0.12, 0.1, 10), look(sh.cx, sh.y, sh.cz, [0, 0.6], 0.5, 0.18, 0.1, 14), look(fl.cx, -1.2, fl.cz, [0.3, -0.4], 1.7, 0.7, 0.25, 12), look(sa.cx, sa.y, sa.cz, [0.0, 0.45], 0.5, 0.1, 0.08, 7), look(sh.cx, sh.y, sh.cz, [0, 0.55], 0.45, 0.14, 0.08, 8)];
-      window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = speed || 1; window.__cam.done = false;
-    };
-  }, SHED);
+  /* build 21: the inline copy of the fake native side was older than tests/ar-fake.js (no plane uuid on hits, so since build 6 the scan drops them all as weak). Use the maintained fake. */
+  await install(p, SHED);
   await p.addInitScript({ content: POLY });
   const ev = (f, a) => p.evaluate(f, a);
   const noOverlay = () => ev(() => { const rs = navigator.xr.requestSession.bind(navigator.xr); navigator.xr.requestSession = async (m, o) => { const ss = await rs(m, o); try { Object.defineProperty(ss, 'domOverlayState', { value: undefined, configurable: true }); } catch (e) {} for (const sym of Object.getOwnPropertySymbols(ss)) { const d = ss[sym] && ss[sym].device; if (d) d._domOverlayRoot = null; } return ss; }; });
@@ -86,7 +36,9 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   ok('Map my room starts an AR session', await ev(() => __g.AR.on && __g.G.intent === 'map'));
   ok('mapping asks the app for camera pictures (camera-access)', await ev(() => !!(window.__sessionOpts && window.__sessionOpts.options && window.__sessionOpts.options.computer_vision_data)), await ev(() => JSON.stringify(window.__sessionOpts || null)));
   await sweep('map');
+  console.log('DBG', JSON.stringify(await ev(() => ({ phase: __g.G.phase, scan: __g.SCAN.zones.length, z: __g.G.zones.length, bar: document.getElementById('bar').innerText.slice(0, 120), auto: __g.G.auto, intent: __g.G.intent, mode: __g.G.mode, hidden: document.getElementById('bar').hidden }))));
   await p.click('#bDone'); await sleep(800);
+  console.log('DBG2', JSON.stringify(await ev(() => ({ phase: __g.G.phase, scan: __g.SCAN.zones.length, z: __g.G.zones.length, toast: document.getElementById('toast') && document.getElementById('toast').innerText }))));
   const z1 = await ev(() => __g.G.zones.map((z) => z.type + ':' + z.area.toFixed(2) + '@' + z.y.toFixed(2)));
   ok('the sweep found the floor and the shelf and the speaker tops', z1.length >= 4, z1.join(' '));
   ok('after the scan the player tags spots', await ev(() => __g.G.phase === 'tag'));
@@ -133,7 +85,7 @@ const SHED = [['floor', -1.2, 0, -1.5, 1.2, 1.2], ['speakerA', -0.45, 0.9, -1.2,
   const lm = await ev(() => __g.G.landmarks.map((l) => l.name));
   ok('alignment asks for two landmarks', await ev(() => __g.G.phase === 'align') && lm.length === 2, lm.join(' & '));
   const names = { 'Left hi-fi': 'speakerA', 'Right hi-fi': 'speakerB', 'Beans can': 'can1', 'Egg cup': 'cup' };
-  for (const n of lm) { await lookAt(names[n] || 'floor', [0.0, 0.9], 1.0); await sleep(900); const q = await truthPx(names[n]); await p.mouse.click(q[0], q[1]); await sleep(300); }
+  for (const n of lm) { await lookAt(names[n] || 'floor', [0.0, 0.9], 1.0); await sleep(900); const q = await truthPx(names[n]); console.log('DBG3', JSON.stringify(await ev((q) => { const e = document.elementFromPoint(q[0], q[1]); return { q, el: e && (e.id || e.tagName), cards: ['ask', 'diary', 'modal', 'reqs', 'wx'].filter((id) => document.getElementById(id) && !document.getElementById(id).hidden) }; }, q))); await p.mouse.click(q[0], q[1]); await sleep(300); console.log('DBG4', JSON.stringify(await ev(() => ({ taps: __g.G.alignTaps.length, toast: document.getElementById('toast').innerText.slice(0, 120), phase: __g.G.phase })))); }
   const al = await ev(() => ({ phi: __g.G.align && __g.G.align.phi, tx: __g.G.align && __g.G.align.tx, tz: __g.G.align && __g.G.align.tz, err: __g.G.alignErr }));
   ok('the two taps solved an alignment', al.phi !== undefined && al.phi !== null, JSON.stringify(al));
   const W = { yaw: 0.5236, x: 0.5, z: -0.3 }, c0 = Math.cos(al.phi), s0 = Math.sin(al.phi), tr = (x, z) => { const c = Math.cos(W.yaw), s = Math.sin(W.yaw); return [x * c + z * s + W.x, -x * s + z * c + W.z]; }, sv = (x, z) => [x * c0 - z * s0 + al.tx, x * s0 + z * c0 + al.tz];
