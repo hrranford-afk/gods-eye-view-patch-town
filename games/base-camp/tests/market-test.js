@@ -69,8 +69,8 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   ok('it opens at once on a market day: the bell, a "Market day!" banner, an album entry', opened.open && opened.bell === '2026-11-18' && /Market day!/.test(opened.banner) && opened.album, JSON.stringify(opened));
   await focusMarket(0.3, 0.5, 0.5); await shotPrep(); await sleep(1800);
   await p.screenshot({ path: OUT + '74-market-built.png' });
-  const vis = await ev(() => { const st = __g.mktThings()[0], U = st.t.mesh.userData; return { goods: U.goods && U.goods.visible, covers: U.covers && U.covers.visible, pretty: !!U.bcMarket, draws: (() => { let n = 0; st.t.mesh.traverse((o) => { if ((o.isMesh || o.isSprite || o.isPoints) && o.visible) n++; }); return n; })() }; });
-  ok('the stalls show their goods (covers off), the market.js model is used, at most 13 draw calls (build 24: the price board adds its body, ink and chalk face)', vis.goods && !vis.covers && vis.pretty && vis.draws <= 13, JSON.stringify(vis));
+  const vis = await ev(() => { const st = __g.mktThings()[0], U = st.t.mesh.userData; return { goods: U.goods && U.goods.visible, covers: U.covers && U.covers.visible, pretty: !!U.bcMarket, draws: (() => { const skip = new Set([...(U.stacks || []), ...(U.signs || [])].filter(Boolean)); let n = 0; const walk = (o) => { if (skip.has(o)) return; if ((o.isMesh || o.isSprite || o.isPoints) && o.visible) n++; o.children.forEach(walk); }; walk(st.t.mesh); return n; })(), sale: [...(U.stacks || []), ...(U.signs || [])].filter((o) => o && o.visible).length }; }); /* build 26: the button stacks and signs come and go with each sale; they are counted apart (at most 3 stacks of 2 and 3 signs) */
+  ok('the stalls show their goods (covers off), the market.js model is used, at most 13 draw calls without the sale stacks (build 24: the price board adds its body, ink and chalk face)', vis.goods && !vis.covers && vis.pretty && vis.draws <= 13 && vis.sale <= 6, JSON.stringify(vis));
 
   /* 3. one camp alone: they still hold a market among themselves */
   ok('only one camp so far', await ev(() => __g.G.settlements.filter((S) => !S.lost).length === 1));
