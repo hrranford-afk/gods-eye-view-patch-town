@@ -158,3 +158,6 @@ bring to the game."
 - 22:57 Sound pass done on game/bc-sound (all 9 suites pass, Safari + iPad checks pass, sound board shot checked, no // comments). Waiting for first-10 fixes, then merge both and deploy.
 - 00:04 First-10 fixes done (17/17, shots 65-68 checked). Merged with sound as game/bc-build20 (BUILD 'build 20'). Full suite run in progress; deploy only if green, with build 19 backed up to base-camp/b19/.
 - 00:53 Build 20 LIVE at base-camp/ (all 13 suites green; water 45/45 on rerun after one fail). Build 19 backup at base-camp/b19/, build 17 at b17/. Sound board: base-camp/?soundboard=1. Artifact updated.
+- 01:16 Replay of build 20 done: 5/10 (build 19: 3/10). Night still dead 1:07-9:00; return dumps 5 things at once; clone names "Gertie 2". The sky panel only shows for robots/?tools (not a real bug).
+- 01:16 Builder on game/bc-return (from build 20): night sprout, ask at ~3 min, surprise at ~6 min, gentle return (answer first, 4-line summary + More, one card at a time), fresh names instead of "2". Merge with game/bc-build21 before deploy.
+- FOR HARRY (taste): a card shows "by CAIRN (placeholder)" where a resident's words belong, and kid-facing text shows "by The Dell …" credits. Credits kept per the standing rule; ask whether kids should see them smaller or hidden.
