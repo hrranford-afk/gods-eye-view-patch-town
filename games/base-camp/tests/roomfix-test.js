@@ -14,7 +14,7 @@ const { serve, ROOT } = require('./lib.js'); const install = require('./ar-fake.
 const POLY = fs.readFileSync(path.join(ROOT, 'webxr-polyfill.js'), 'utf8'); const OUT = path.join(ROOT, 'shots') + '/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS ' : 'FAIL ') + n + (x !== undefined ? '  ' + x : '')); };
 const SHED = [['floor', -1.2, 0, -1.5, 1.4, 1.4], ['deskA', -0.45, -0.45, -1.2, 0.3, 0.25], ['speakerA', -0.45, 0.8, -1.0, 0.15, 0.125], ['shelf', 0.2, 0.0, -2.7, 0.7, 0.13]];
-const LOUNGE = [['lfloor', -1.2, 0.2, -5.9, 1.3, 1.3], ['sofa', -0.78, 0.6, -6.4, 0.5, 0.3], ['ltable', -0.85, -0.5, -6.0, 0.3, 0.25], ['lamp', -0.6, 0.9, -5.0, 0.15, 0.15]];
+const LOUNGE = [['lfloor', -1.2, 0.2, -5.2, 1.3, 1.3], ['sofa', -0.78, 0.6, -5.7, 0.5, 0.3], ['ltable', -0.85, -0.5, -5.3, 0.3, 0.25], ['lamp', -0.6, 0.9, -4.3, 0.15, 0.15]]; /* about 1 m past the shed's floor: its near edge is inside the shed's scan grid */
 const WORLD = SHED.concat(LOUNGE);
 const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEGS = ['lfloor', 'sofa', 'ltable', 'lamp', 'lfloor2'];
 (async () => {
@@ -32,7 +32,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const sweep = (legs, speed) => ev(([legs, speed]) => { const T = window.__place(), pick = (n) => T.find((t) => t.n === n);
     const look = (n, off, hgt, ay, ap, dur) => { const S = pick(n); if (!S) return null; const q = [S.cx + off[0], S.y + hgt, S.cz + off[1]], fx = S.cx - q[0], fy = S.y - q[1], fz = S.cz - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
     const D = { floor: ['floor', [0, 1.3], 1.6, 0.6, 0.25, 12], floor2: ['floor', [0.3, -0.4], 1.7, 0.7, 0.25, 9], deskA: ['deskA', [0.1, 0.7], 0.8, 0.3, 0.15, 10], speakerA: ['speakerA', [0.1, 0.5], 0.55, 0.12, 0.1, 8], shelf: ['shelf', [0, 0.6], 0.5, 0.18, 0.1, 10],
-      lfloor: ['lfloor', [0, 0.4], 1.5, 0.6, 0.25, 12], lfloor2: ['lfloor', [0.3, -0.5], 1.6, 0.7, 0.25, 9], sofa: ['sofa', [0.1, 0.7], 0.6, 0.15, 0.1, 9], ltable: ['ltable', [0, 0.6], 0.6, 0.15, 0.1, 8], lamp: ['lamp', [0, -0.55], 0.5, 0.12, 0.1, 8] };
+      lfloor: ['lfloor', [0, -0.4], 1.5, 0.6, 0.25, 12], lfloor2: ['lfloor', [0.3, -0.9], 1.6, 0.7, 0.25, 9], sofa: ['sofa', [0.1, -0.65], 0.6, 0.15, 0.1, 9], ltable: ['ltable', [0, -0.6], 0.6, 0.15, 0.1, 8], lamp: ['lamp', [0, -0.9], 0.5, 0.12, 0.1, 8] }; /* lounge views look back towards the shed from the far side */
     const e = __g.AR.on ? __g.AR.viewM.elements : null, here = e ? [{ p: [e[12], e[13], e[14]], yaw: Math.atan2(e[8], e[10]), pitch: Math.asin(Math.max(-1, Math.min(1, -e[9]))), ay: 0, ap: 0, dur: 0.3 }] : []; /* the walk starts where the iPad is: no teleport */
     window.__cam.path = here.concat(legs.map((l) => { const d = D[l]; return look(d[0], d[1], d[2], d[3], d[4], d[5]); }).filter(Boolean)); window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = speed || 1; window.__cam.done = false; }, [legs, speed]);
   const keep = async () => { if (await ev(() => window.__cam.done)) await ev(() => { window.__cam.t0 = performance.now(); window.__cam.done = false; }); };
@@ -79,6 +79,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await sweep(L_LEGS, 1.0); const tAsk2 = await waitFor(() => !document.getElementById('nroom').hidden && /moved to another room/.test(document.getElementById('nroom').innerText), 90000, 500);
   const mapA2 = await mapOf('r1'); const nA2 = (await zinfo()).length;
   ok('2. a locked room asks too when the iPad walks into the lounge', tAsk2 > 0, tAsk2 + ' ms');
+  if (tAsk2 < 0) console.log('DEBUG', JSON.stringify(await ev(() => ({ rb: __g.RB, rf: { on: __g.RF.on, phase: __g.RF.phase, hidden: __g.RF.hidden }, rel: __g.REC.relock.slice(-8), bound: __g.REC.bound.slice(-8), act: __g.rbActive(), locked: __g.G.locked, ret: __g.G.returning }))));
   await p.click('#mvNew'); await sleep(1500);
   const N = await ev(() => ({ cur: __g.HOMES.cur, n: __g.HOMES.rooms.length, zones: __g.G.zones.length, sets: __g.G.settlements.length, ret: __g.G.returning, state: __g.RELOC.state, hits: __g.SCAN.hits, hidden: document.getElementById('nroom').hidden }));
   ok('2. "New room": Room 2 starts in place with an empty map and a fresh scan', N.cur === 'r2' && N.n === 2 && N.zones === 0 && N.sets === 0 && !N.ret && N.state === 'new' && N.hidden, JSON.stringify(N));

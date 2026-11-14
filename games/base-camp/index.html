@@ -5436,8 +5436,8 @@ function rfStep() {
   if (RF.phase === 'check') {
     const dec = RF.agree + RF.conflict, r = dec ? RF.agree / dec : 0;
     if (dec >= 20 && r >= 0.8) return rfPass();
-    if ((dec >= 20 && r < 0.6) || dec >= 60) return r >= 0.8 ? rfPass() : rfFull();
-    if (el > 8) { if (dec >= 8) return r >= 0.8 ? rfPass() : rfFull(); if (!RF.hidden) return rfPass(); if (el > 14) return rfFull(); }
+    if ((dec >= 20 && r < 0.6) || dec >= 60) return r >= 0.8 ? rfPass() : rfFail();
+    if (el > 8) { if (dec >= 8) return r >= 0.8 ? rfPass() : rfFail(); if (!RF.hidden) return rfPass(); if (el > 14) return rfFull(); }
     return;
   }
   if (RF.phase === 'match') {
@@ -5448,6 +5448,11 @@ function rfStep() {
 function rfPass() { /* the fast path: the room is where it was */
   const hid = RF.hidden; recRF({ pass: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk, ms: Math.round(performance.now() - RF.t0) }); RF.phase = 'replay'; rfReplay(); rfReset(); RF.done++;
   if (hid) { autoSay(''); homeMoment('Found it!'); }
+}
+function rfFail() { /* the check did not agree. A quiet check with the iPad outside the room is another room, not a jump: ask about the room instead */
+  const c = rbCam(), out = RB.base ? rbGapXZ(RB.base, c.x, c.z) : 0;
+  if (!RF.hidden && out > RB_HOLD_CAM) { recRF({ outside: +out.toFixed(2), agree: RF.agree, conflict: RF.conflict }); RF.phase = 'replay'; rfReplay(); rfReset(); RB.camGap = out; if (!RB.ask) rbAsk('the hits do not match this room'); return; }
+  rfFull();
 }
 function rfFull() { /* the room moved: start the scan again and find the room's map in it */
   recRF({ full: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk });
@@ -5760,7 +5765,7 @@ function placesNewAsk() {
   if ($('nrIts')) $('nrIts').onclick = () => { $('nrList').hidden = !$('nrList').hidden; };
   for (const b of el.querySelectorAll('[data-room]')) b.onclick = () => { /* "It's the Shed": that room loads and is looked for as usual; the empty new room goes */
     close(); const tmp = PLACES.newRoom; PLACES.newRoom = ''; if (!homeSwitchLoad(b.dataset.room)) return;
-    if (!roomHasData(tmp)) { HOMES.rooms = HOMES.rooms.filter((r) => r.id !== tmp); placesForget(tmp); homesSave(); } G.mapName = homeName(HOMES.cur);
+    if (tmp && tmp !== HOMES.cur && homeInfo(tmp)) { roomDelete(tmp); G.mapName = homeName(HOMES.cur); } /* build 26: the player said this is an old room: the new room goes even if an autosave already wrote it (it only held this scan) */ G.mapName = homeName(HOMES.cur);
   };
 }
 /* ---- the grown-up gate and the setting (title, More...) ---- */
