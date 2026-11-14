@@ -84,6 +84,61 @@ CAIRN's 16 placeholder decorations (`DECOR_MK` in index.html) now have a nicer s
 - **Tests and pictures**: `tests/decor-test.js` (every key builds, draw calls, footprint, ground contact, tick, the game's animation fields, shared geometry, a throwing maker, decor.js blocked, a December practice room with `dateOverride 2026-12-05`: 0 page errors; writes `shots/62-christmas-colony.png`). `tests/decor-preview.html` (served from the game folder, e.g. `http://127.0.0.1:PORT/tests/decor-preview.html`): turning, labelled, buttons old / new / both; it loads the game hidden in an iframe and borrows its THREE and plain makers. Query: `?sheet=1` (still, no bar; the picture `shots/61-decor-sheet.png` is `?sheet=1&view=both&t=1.3`), `?keys=a,b&cols=2&cell=420&dist=0.14&turn=0.7`, `?item=pinetree`.
 - **Rough edges**: the calendar's 24 pip patterns are shapes (6 shapes x 1 to 4), tiny at creature scale; they read as pictures, not numbers (the card window has the real numbers). Ink on thin or open parts (loops of the paper chain) is skipped on purpose. `Points` sizes depend on the renderer's pixel ratio (fine on iPad, maybe small on a 1x desktop). Every geometry is built on first use (a few ms), so the first copy of each kind costs a little. Old saves are untouched (decorations are the same kinds).
 
+## Sound pass (build 19 + sound): everything synthesised with Web Audio, no files, no libraries
+`BUILD` is `'build 19 + sound'`. The save is unchanged. Code: section "toast, sound" (the core: `SND`, `audioCtx`, `sTone`, `sNoise`, `sfx`) and "SOUND, part 2" just before the test hooks (ambience, weather and season cues, the sound board).
+- **Mix**: each sound -> its own pan + distance gain (only when a position is given) -> the `sfx`, `music` or `amb` bus -> `master` (the volume) -> a soft `DynamicsCompressor` -> speakers. `SND.dest` is the node `sTone`/`sNoise` connect to (the music pump sets it to the music bus). Every source unplugs itself on `ended`; `SND.live` counts the live ones.
+- **Gesture gate**: nothing makes a sound, and no AudioContext is created, until the first pointer, touch, click or key (`SND_arm`, capture listeners). Later taps resume a suspended or iOS "interrupted" context. A 1-sample silent buffer is played on the first tap (iOS unlock).
+- **Rate limiter**: `SND_gate(kind)`: at most `SND.RATE.max` (3) of one kind per 100 ms; a repeat within 0.7 s gets up to 4.5% pitch jitter. Battle sounds are gated as `b-<kind>`.
+- **Ducking**: fanfare, cheer, trumpet, tada, hutdone, founded and season dip the music bus to about half for a second.
+- **Pan and distance**: `sfx(kind, pitch, pos)` with a world position (`SND_colPos(c)` for a creature): screen x -> `StereoPannerNode` (skipped where missing), distance from the camera and off-screen make it quieter, very far is silent.
+- **Ambience** (`SND_ambTick`, four times a second from `frame`): on its own bus at 0.5, times 0.3 to 1 for camera distance from the main camp. Birds (sine chirps, by daylight), crickets (sunset to about 3 h after), night (quiet, a rare soft owl), rain (looping filtered noise while `ENV.rain`, plus the odd drip), trickle (looping band-passed noise while a straw flows, panned to the first flowing straw). Loops are made when wanted and stopped and unplugged after 3 s of silence. Weather and season changes get a one-off cue (`SND_envWatch`).
+- **Settings**: menu: Sound on/off (`bc-sound`), Room sounds on/off (`bc-amb`), Volume slider (`bc-volume`, 0 to 1).
+- **Sound board**: `index.html?soundboard=1` shows one button per sound kind, per ambience layer (toggles) and the music, plus battle sounds and a volume slider. Screenshot: `shots/64-soundboard.png`.
+- **Fixed**: the battle's victory `bsfx('fanfare')` was silent (bsfx has no fanfare); unknown battle kinds now fall back to `sfx`.
+- **Test**: `tests/sound-test.js` (15 checks: no audio before a gesture, a burst of 50 capped at 3, every kind and layer makes nodes, music ducks, an 8-hour sim with ambience has no errors and no runaway nodes, the volume persists, the board).
+
+Every sound kind (`SND.KINDS`; the board reads the same list):
+
+| kind | what it is for |
+|---|---|
+| plant | a seed goes in, a tree is planted |
+| pop | something small appears or is given |
+| hammer (also `build`) | a creature hammering at a build |
+| cheer | a happy little cheer (a request answered) |
+| chime | something is ready: a cable car, a bucket line, a hook |
+| water | a splash of water is given |
+| ask | a creature asks for something |
+| no | that does not work (gentle, low) |
+| squeak | a creature is poked |
+| giggle / grumble / zap | a poked creature's reaction (ticklish, grumpy, static) |
+| boing | a creature is picked up |
+| ding | a bright ding |
+| whistle | a creature is dropped / a crumb falls |
+| thud | a soft landing |
+| nom | a creature nibbles a crumb |
+| tada | found it! (the scout finds a sink or loo) |
+| fanfare | a milestone banner |
+| firework | a confetti burst |
+| ploop | the bucket tips into the compost: a little swirl, then ploop |
+| trumpet | the tiny bucket-line trumpet |
+| flow | NEW: water starts to run through a straw (glug glug glug) |
+| sprinkle | NEW: a flowing straw sprinkles its farm, now and then |
+| gondola | NEW: the bucket gondola sets off (creaky pulley, little bell) |
+| dock | NEW: the bucket gondola arrives at either end (clonk, ding) |
+| twinkle | NEW: a season decoration goes up (built, or given) |
+| pack | NEW: last season's decorations go back in the box |
+| patter | NEW: the mouse scout's footsteps |
+| setoff | NEW: the scout sets off on an expedition ("hup!" and a backpack jingle) |
+| home | NEW: the scout comes home |
+| cablereq | NEW: a creature asks for a cable car (a tram bell) |
+| season | NEW: a new season begins (a music-box phrase) |
+| rainstart / sunny / windy | NEW: rain starts, rain stops, the wind gets up |
+| hutdone | NEW: a hut is finished (knock knock, a warm chord) |
+| built | NEW: any other build is finished (tok tok ding) |
+| founded | NEW: a new camp is founded (a tent flaps open, a rising arpeggio) |
+
+Battle sounds (`SND.BKINDS`, via `bsfx`): launch, twang, boom, bounce, weee, hoover, tick, sad, splat, clip, swing, fluff, clink, jazz, sneeze, rip, plank, ding, no, chime, hammer. Ambience layers: birds, crickets, night, rain, trickle. Music: the mosh-pit tune (`musicStart`).
+
 ## Build 19 fixes (from CAIRN's 8-hour play of build 17 and Harry's iPad play; BUILD is NOT bumped, the save is unchanged and backward-compatible)
 All changes are small and local so they merge with build 18 (waterworks). Test: `tests/fixes19-test.js` (16 checks), shots 58 to 60.
 - **Follow-on goal.** Each `SEASONS[]` entry has `goal2` (text `by: PHB` = "CAIRN (placeholder)"). `seaGoal(sd)` returns the goal in force: the season goal, then `goal2` once `SEA.done[key]`, then endless "Keep the room lovely" rounds (+2 of each per round). `seaFollow` celebrates each finished round (milestone `sea-<key>+<n>`, joy +0.2) and `SEA.st[key]` counts rounds (saved as `seas.st`; an old save without it loads as 0). `decorTick`, `seaBuildList`, `goalHtml` use it. Before, `decorTick` returned once the goal was done: no new decorations, nothing to do.

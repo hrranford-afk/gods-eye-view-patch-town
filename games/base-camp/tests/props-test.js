@@ -18,7 +18,7 @@ const HIDE_UI = 'body > *:not(canvas) { visibility: hidden !important; }';
   await p.addInitScript(() => { let s = 4242; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
   await startPractice(p, url);
   ok('props.js loaded: BC_PROPS and bcOK', await ev(() => !!window.BC_PROPS && Object.keys(window.BC_PROPS).length >= 14 && __g.bcOK('matchboxHut') && __g.bcOK('well')));
-  ok('build 19', await ev(() => document.body.innerHTML.includes('build 15') || true) && (await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 19"))));
+  ok('build 20', await ev(() => document.body.innerHTML.includes('build 15') || true) && (await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 20"))));
   await ev(() => __g.simulate(9000)); await sleep(1500);
   const kinds = await ev(() => { const o = {}; for (const S of __g.G.settlements) for (const t of S.things) { const k = t.kind + (t.mesh.userData.bcp ? '+props' : ''); o[k] = (o[k] || 0) + 1; } return o; });
   console.log('  colony things', JSON.stringify(kinds));
