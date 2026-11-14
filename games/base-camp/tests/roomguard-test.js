@@ -1,4 +1,4 @@
-/* Base Camp room guard (build 21 + roomguard, HANDOVER "Room guard"), in AR with the real WebXRKit polyfill and the fake native side (ar-fake.js).
+/* Base Camp room guard (build 22, HANDOVER "Room guard"), in AR with the real WebXRKit polyfill and the fake native side (ar-fake.js).
    The rooms are those of totem-test.js: room B has a floor and a desk top at the same heights as room A, which the surface matcher alone can take for room A.
     1. room A, first time: the colony settles and the map is saved (one saved room).
     2. return to room A (turned and shifted): the lock is on probation (nothing written), a second top lines it up, then it saves; backup 1 = the map before this session.
@@ -38,7 +38,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const guard = () => ev(() => ({ prob: __g.RG.prob, confirmed: __g.RG.confirmed, tops: __g.RG.tops, holds: __g.RG.holds, held: !!__g.RG.held, locked: __g.G.locked, st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, score: __g.RELOC.lock && Math.round(__g.RELOC.lock.score), ov: __g.RELOC.lock && __g.RELOC.lock.overlap }));
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
-  ok('BUILD is build 21 + roomguard', await ev(() => __g.BUILD === 'build 21 + roomguard'));
+  ok('BUILD is build 22', await ev(() => __g.BUILD === 'build 22'));
 
   /* ===================== 1. room A, first time ===================== */
   await setRoom(ROOM_A, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });

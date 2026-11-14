@@ -32,7 +32,7 @@ const AUDIT = () => {
   const { srv, url } = await serve();
   const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await startPractice(p, url, FIX); await ev(AUDIT);
-  ok('build 21', await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 21 + roomguard")));
+  ok('build 22', await ev(() => document.documentElement.innerHTML.includes("const BUILD = 'build 22")));
   ok('the fixture colony loaded (huts, farms, trees, colonists)', await ev(() => { const k = {}; for (const S of __g.G.settlements) for (const t of S.things) k[t.kind] = (k[t.kind] || 0) + 1; return (k.hut || 0) >= 4 && (k.farm || 0) >= 2 && (k.tree || 0) >= 10 && __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) >= 6; }));
   await ev(() => { __g.G.settlements.forEach((S) => { S.cols.forEach((c) => { c.mesh.visible = true; }); }); });
   // ---------- 1. every visible mesh in the real scene ----------

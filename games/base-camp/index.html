@@ -175,7 +175,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 21 + roomguard';
+const BUILD = 'build 22';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -195,7 +195,7 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
   for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
   if (bad) STORE.status = 'corrupt'; return null;
 }
-/* ---- ROOM GUARD (build 21 + roomguard, HANDOVER "Room guard"): the player's saved room is protected from a false room lock.
+/* ---- ROOM GUARD (build 22, HANDOVER "Room guard"): the player's saved room is protected from a false room lock.
    1. Backups: the first time a session replaces a room's stored map, the stored version is copied first to bc-mapold-<room>-1 (newest) and the older one to -2:
       the last RG_KEEP versions, byte for byte (the old map format, so they load like any map). The title's More... has "Restore this room's last map".
    2. Probation: after an automatic room lock nothing is written back to the room for RG_PROB seconds, or until a second, independent top surface lines up
