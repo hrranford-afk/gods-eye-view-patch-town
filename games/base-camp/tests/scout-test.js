@@ -63,7 +63,7 @@ const clearShot = (p, id, d, pitch, wait) => p.evaluate(async ([id, d, pitch, wa
   /* ================= page 1: the GLB mouse, a fresh practice room grown for a while ================= */
   const { b, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await startPractice(p, url, process.env.FAST ? FIX : undefined, 3500); /* FAST=1: start from the fixture colony instead of growing one (quick check of the pictures) */
-  ok('build 23', await ev(() => __g.BUILD === 'build 23'));
+  ok('build 25', await ev(() => __g.BUILD === 'build 25'));
   ok('the GLB loaded: status loaded, 5 clips (Idle Walk Wave LookAround Hop)', await ev(() => __g.SCOUT17.status === 'loaded' && __g.SCOUT17.clips.map((c) => c.name).join() === 'Idle,Walk,Wave,LookAround,Hop'), await ev(() => __g.SCOUT17.status + ' ' + __g.SCOUT17.clips.length));
   if (!process.env.FAST) await ev(() => __g.simulate(9000)); await sleep(1500);
   let s = await ev(SCOUTS); console.log('  scouts', JSON.stringify(s));

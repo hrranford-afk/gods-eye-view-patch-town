@@ -38,7 +38,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const guard = () => ev(() => ({ prob: __g.RG.prob, confirmed: __g.RG.confirmed, tops: __g.RG.tops, holds: __g.RG.holds, held: !!__g.RG.held, locked: __g.G.locked, st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, score: __g.RELOC.lock && Math.round(__g.RELOC.lock.score), ov: __g.RELOC.lock && __g.RELOC.lock.overlap }));
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
-  ok('BUILD is build 23', await ev(() => __g.BUILD === 'build 23'));
+  ok('BUILD is build 25', await ev(() => __g.BUILD === 'build 25'));
 
   /* ===================== 1. room A, first time ===================== */
   await setRoom(ROOM_A, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });

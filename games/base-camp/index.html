@@ -19,6 +19,7 @@ button.big{background:var(--acc);border-color:#ffd9a8;font-size:20px;min-height:
 button.alt{background:#5e8f4a;border-color:#b6dc9d;box-shadow:0 3px 0 #38592b}
 button:disabled{opacity:.4}
 #title{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;padding:26px 30px;width:min(92vw,460px);background:rgba(59,42,30,.82)}
+#title{max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box} /* build 25: a long rooms list and More... scroll inside the card instead of running off the screen */
 #title h1{margin:0 0 4px;font-size:44px;letter-spacing:1px;color:#ffd9a8;text-shadow:0 3px 0 #7a4a22}
 #title p{margin:6px 0 14px;font-size:16px;line-height:1.35;color:#f6e6cc}
 #title .row{display:grid;gap:10px;justify-items:center}
@@ -94,6 +95,7 @@ body.auto #bar{flex-wrap:wrap;gap:2px;padding:3px 4px;max-width:calc(100vw - 8px
 #colMark{position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,217,168,.35);box-shadow:0 0 12px 4px rgba(255,217,168,.55);display:grid;place-items:center;font-size:16px;color:#fff6e6;pointer-events:none;z-index:3}
 #idDot{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:8px;height:8px;border-radius:50%;background:#ffd9a8;opacity:.55;animation:idp 1.6s ease-in-out infinite;pointer-events:none;z-index:3}@keyframes idp{50%{opacity:.12}}
 #nroom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:4;max-width:min(94vw,560px)}#nroom b{font-size:16px;color:#ffd9a8}#nroom button{min-height:36px;font-size:14px;padding:2px 12px}#nroom span{display:flex;gap:6px;flex-wrap:wrap}
+#bPlace{background-image:linear-gradient(90deg,rgba(255,217,168,.55) calc(var(--hold,0) * 100%),transparent 0);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}#bPlace.on{border-color:#ffd9a8}#placeInfo{font-size:12px;opacity:.85}#nroom.pnew b{flex-basis:100%;text-align:center}.lgoods{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;margin:2px 0 4px;opacity:.95}.lgoods span{white-space:nowrap}
 #rooms .rcard{display:flex;min-height:120px;background:rgba(255,246,230,.14);border-radius:16px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,246,230,.22)}#rooms .rcard:active{background:rgba(255,246,230,.26)}#rooms .rph{flex:0 0 38%;max-width:200px;min-width:120px;object-fit:cover;display:block;background:#2b1d12}#rooms .rbody{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}#rooms .rbody b{font-size:17px}#rooms .rgo{font:800 13px var(--body);opacity:.9}#rooms .rbtn{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}#rooms .rbtn button,#rooms .tslot button{min-height:34px;font-size:12px;padding:4px 10px}#rooms .tslot{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}#rooms .tnote{font-size:10px;opacity:.7;flex-basis:100%}#card img.cth{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #ffd9a8;pointer-events:auto;vertical-align:middle;margin-right:8px}#card:not(.inline) img.cth{float:left}
 #rooms{display:grid;gap:6px;margin:8px 0;text-align:left}#rooms .lib{background:rgba(255,246,230,.12);border-radius:12px;padding:6px 10px;flex-wrap:wrap}#rooms .lib>div{min-width:150px}#rooms input.rn{font:800 15px var(--body);padding:6px 10px;border-radius:10px;border:2px solid rgba(255,246,230,.42);background:rgba(0,0,0,.2);color:inherit;width:100%;box-sizing:border-box}
 #banner{display:none;font:800 18px var(--body);color:#3b2a1e;background:linear-gradient(#fffaf0,#ffe1b0);border:3px solid #e8883a;border-radius:22px;padding:5px 18px 6px;box-shadow:0 3px 0 #a85a1e;text-align:center;max-width:100%}@keyframes bpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
@@ -139,6 +141,8 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
       <button id="bRestore" hidden>Restore this room&rsquo;s last map</button>
       <button id="bHomes" hidden>Rooms and totems</button>
       <button id="bNew" hidden>Forget my colony</button>
+      <button id="bPlace">Use where we are (ask a grown-up)</button>
+      <div id="placeInfo" class="sub" style="flex-basis:100%"></div>
       <div id="storeInfo" class="sub" style="flex-basis:100%"></div>
     </div>
     <div id="mapInfo"></div>
@@ -169,14 +173,15 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="models/props.js"></script>
 <script src="models/decor.js"></script> <!-- build 18: the season decorations (BC_DECOR_MK). Optional: without it the plain DECOR_MK shapes are built -->
-<script src="models/market.js"></script> <!-- build 23: the market stalls (BC_MARKET_MK). Optional: without it a plain market is built -->
+<script src="models/market.js"></script>
+<script src="models/places.js"></script> <!-- build 25: the loom and the local-goods heaps (BC_PLACES_MK). Optional: without it plain shapes are built --> <!-- build 23: the market stalls (BC_MARKET_MK). Optional: without it a plain market is built -->
 <!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
 <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 23';
+const BUILD = 'build 25';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -227,6 +232,9 @@ const HOME_TOTEM = false; // OFF: the totem photo / guardian / feature matcher (
 const HOMES = { v: 1, cur: 'r1', rooms: [{ id: 'r1', name: 'My room', created: Date.now(), visits: 0, known: 0, post: [] }] }; // rooms: each has its own map, colony, totem and guardian (keys below)
 (function homesInit() { try { const d = JSON.parse(localStorage.getItem('bc-rooms-v1') || 'null'); if (d && d.v === 1 && Array.isArray(d.rooms) && d.rooms.length && d.rooms.every((r) => r && /^r\d+$/.test(r.id))) { HOMES.rooms = d.rooms.slice(0, 8); HOMES.cur = HOMES.rooms.some((r) => r.id === d.cur) ? d.cur : HOMES.rooms[0].id; } } catch (e) { /* one room */ } })();
 function homesSave() { try { localStorage.setItem('bc-rooms-v1', JSON.stringify(HOMES)); } catch (e) { /* no storage */ } }
+/* build 25, PLACES: where we are, off until a grown-up switches it on (section PLACES, HANDOVER "Places and location"). Only the switch and the rooms' rounded spots are stored, in bc-places-v1. */
+const PLACES = { on: false, spots: {}, here: null, state: 'off', area: 'default', asks: 0, skipped: [], newRoom: '', holding: false, found: {}, rugs: 0, mk: 0, whistleT: 60 + Math.random() * 120, whistles: 0 };
+(function placesInit() { try { const d = JSON.parse(localStorage.getItem('bc-places-v1') || 'null'); if (!d || d.v !== 1 || d.on !== true) return; PLACES.on = true; const sp = d.spots && typeof d.spots === 'object' ? d.spots : {}; for (const id of Object.keys(sp)) { const q = sp[id]; if (/^r\d+$/.test(id) && q && isFinite(q.lat) && isFinite(q.lon)) PLACES.spots[id] = { lat: Math.round(q.lat * 1000) / 1000, lon: Math.round(q.lon * 1000) / 1000 }; } } catch (e) { /* off */ } })();
 const homeInfo = (id) => HOMES.rooms.find((r) => r.id === id) || null, homeName = (id) => { const r = homeInfo(id); return r ? r.name : 'a room'; };
 const homeKeys = (id) => (id === 'r1' ? { map: 'base-camp-map-v1', save: 'base-camp-save-v2' } : { map: 'base-camp-map-v1.' + id, save: 'base-camp-save-v2.' + id }); // the first room keeps the old keys
 function homeSelect(id) { HOMES.cur = id; MAP_KEY = homeKeys(id).map; SAVE_KEY = homeKeys(id).save; homesSave(); }
@@ -1791,6 +1799,7 @@ function simSettlement(S, dt, E, quiet) {
   // Scavenging: colonists always find scraps (matchsticks, twigs, card) so a new colony is never stuck without wood.
   // About +1 wood every 25 s per colonist, up to a small stock; trees and tidying give more.
   if (S.stock.wood < 12 && S.cols.length) { S.scav = (S.scav || 0) + dt * S.cols.length / 25; while (S.scav >= 1 && S.stock.wood < 12) { S.scav -= 1; S.stock.wood++; } }
+  placesStep(S, dt, E, quiet); /* build 25: local goods (section PLACES) */
   // things grow
   for (const t of S.things.slice()) {
     if (t.pop > 0) t.pop = Math.max(0, t.pop - dt * 1.6);
@@ -2500,7 +2509,8 @@ function autoExpand() { // thriving colonies send settlers on to unsettled spots
   }
 }
 const DIARY_SEASONS = [['winter', 'Winter: frost on the window. The colonists wore everything they owned and sat close together.'], ['spring', 'Spring: the window light got longer and the seedlings noticed.'], ['summer', 'Summer: long bright evenings, warm shelves, everyone sleepy by the radiator.'], ['autumn', 'Autumn: the light turned low and gold; dust drifted like leaves.']];
-const seasonOf = (ms) => DIARY_SEASONS[Math.floor(((new Date(ms).getMonth() + 1) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
+const seasonOf = (ms) => DIARY_SEASONS[Math.floor(((new Date(ms).getMonth() + 1 + (placesSouth() ? 6 : 0)) % 12) / 3)]; // Dec-Feb winter, Mar-May spring, ...
+/* build 25: south of the equator (places on), seasonOf counts half a year on */
 function awayDays(secs) { // a light day-level model for time beyond the first day: births, buildings finishing, trees growing, stores refilling, a few events per week, the seasons going by
   const days = Math.min(36500, Math.round(secs / 86400)), out = { days, births: 0, finished: 0 }; if (days < 1) return out;
   const evs = COLONY_ALMANAC.events.filter((e) => e.needs !== 'rain');
@@ -3242,7 +3252,7 @@ const SEASONS = [ // from / to: [month, day] inclusive (UK). goal.items: what to
       { id: 'ad2', need: 'chain', act: 'wobble', title: 'Chain gang', text: 'The paper chain got itself into a knot and then into a bow.', say: 'Ta-da?', by: PHB },
       { id: 'ad3', need: 'stocking', act: 'hop', title: 'Stocking surprise', text: 'Something in a stocking wriggled. It was only a button. Probably.', say: 'Shh!', by: PHB }] },
   { id: 'newyear', name: 'New Year', icon: '✨', from: [12, 27], to: [1, 6], by: PHB,
-    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' }, goal2: { title: 'Get ready for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 6 }] },
+    goal: { title: 'Welcome the new year', items: [{ k: 'plantern', n: 4 }, { k: 'chain', n: 1 }, { k: 'supper', n: 1 }], special: 'sparkle' }, goal2: { title: 'Get ready for winter', items: [{ k: 'snowman', n: 2 }, { k: 'sledge', n: 1 }, { k: 'plantern', n: 6 }] }, goal2S: { title: 'Get ready for summer', items: [{ k: 'daisy', n: 3 }, { k: 'plantern', n: 6 }] },
     events: [{ id: 'ny1', need: 'plantern', act: 'wobble', title: 'Countdown', text: 'The lanterns counted down from ten and got to seven.', say: 'Close enough!', by: PHB },
       { id: 'ny2', need: 'supper', act: 'cheer', title: 'Midnight crumbs', text: 'Everybody stayed up for one more crumb.', say: 'Just one.', by: PHB }] },
   { id: 'winter', name: 'Winter', icon: '❄️', from: [1, 7], to: [2, 29], by: PHB,
@@ -3265,8 +3275,11 @@ function seaDate() { /* the date the game believes in: the override if set, else
   if (ENV.dateOverride) { const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(ENV.dateOverride)); if (m) return { y: +m[1], m: +m[2], d: +m[3] }; }
   const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
 }
-function seasonIdOf(m, d) {
-  const v = m * 100 + d;
+function seasonIdOf(m, d, south) {
+  const v = m * 100 + d; if (south === undefined) south = placesSouth();
+  if (south) { /* build 25, south of the equator: the weather seasons turn half a year (summer from 7 January, autumn in March, winter in June, spring in September); Advent, Christmas and New Year keep their dates */
+    if (v >= 1129 && v <= 1226) return 'advent'; if (v >= 1227 || v <= 106) return 'newyear'; return m <= 2 ? 'summer' : m <= 5 ? 'autumn' : m <= 8 ? 'winter' : 'spring';
+  }
   for (const q of SEASONS) { const f = q.from[0] * 100 + q.from[1], t = q.to[0] * 100 + q.to[1]; if (f <= t ? v >= f && v <= t : v >= f || v <= t) return q.id; }
   return 'autumn';
 }
@@ -3466,7 +3479,7 @@ function seaMile(key) { const id = 'sea-' + key, q = SEA_BY[key.replace(/-\d+$/,
 /* ---- progress: how many of each decoration are built (and planned) for this season ---- */
 function seaCount(k) { let b = 0, p = 0; const key = decorKey(k); for (const S of G.settlements) { if (S.lost) continue; for (const t of S.things) if (t.kind === k && !t.gift && t.sea === key && !t.dead) { if (t.built && !t.hold) b++; else p++; } } return { b, p }; }
 function seaGoal(sd) { /* build 19: the goal in force. Once the season goal is done a follow-on starts at once (goal2: "Prepare for winter"), then endless "keep it lovely" rounds with two more of each */
-  if (!SEA.done[ENV.seasonKey]) return Object.assign({ stage: 0 }, sd.goal); const s = SEA.st[ENV.seasonKey] | 0, g2 = sd.goal2 || sd.goal;
+  if (!SEA.done[ENV.seasonKey]) return Object.assign({ stage: 0 }, sd.goal); const s = SEA.st[ENV.seasonKey] | 0, g2 = (placesSouth() && sd.goal2S) || sd.goal2 || sd.goal; /* build 25: goal2S, the follow-on south of the equator */
   return { stage: s + 1, title: s === 0 ? g2.title : 'Keep the room lovely', items: g2.items.map((i) => ({ k: i.k, n: i.n + (s ? 2 * s : 0) })) };
 }
 function seaProgress() {
@@ -5441,21 +5454,178 @@ function* relocTotemJob(live) {
 function homeMapData(id) { return safeRead(homeKeys(id).map, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
 let ROOMPRE = {}; // layers of the other saved rooms while the player's room is being recognised
 function roomHasData(id) { const k = homeKeys(id); return !!(store.get(k.map) || store.get(k.map + '-bak') || store.get(k.save)); }
-function homePrecomp() { // layers of every other saved room, made before the first room is loaded
+function homePrecomp(allow) { /* build 25, allow: only these rooms are tried */ // layers of every other saved room, made before the first room is loaded
   ROOMPRE = {}; if (HOMES.rooms.length < 2) return;
-  for (const r of HOMES.rooms) { if (r.id === HOMES.cur || !roomHasData(r.id)) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) ROOMPRE[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
+  for (const r of HOMES.rooms) { if (r.id === HOMES.cur || !roomHasData(r.id) || (allow && !allow.includes(r.id))) continue; try { const md = homeMapData(r.id); if (!md || mapFromJSON(md)) continue; const saved = relocSavedLayers(); if (saved.length) ROOMPRE[r.id] = { saved, top: relocTop(saved) }; } catch (e) { /* skip the room */ } }
   for (const Z of G.zones) disposeZone(Z); G.zones = []; G.spots = [];
 }
-function homePickStart() { // the room that loads first while the others wait in ROOMPRE: the most recently used one that has a saved map
-  const r = HOMES.rooms.filter((q) => roomHasData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
+function homePickStart(allow) { /* build 25, allow: only these rooms */ // the room that loads first while the others wait in ROOMPRE: the most recently used one that has a saved map
+  const r = HOMES.rooms.filter((q) => roomHasData(q.id) && (!allow || allow.includes(q.id))).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
 }
 function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
   rgDrop('room switch'); const secs = RELOC.scanSecs; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
   G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
 }
-function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); }
+function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); placesNote(HOMES.cur); }
 function homeSummary() { return HOMES.rooms.map((r) => ({ id: r.id, name: r.name, visits: r.visits, known: r.known, totem: !!imgLoad('totem', r.id), guardian: !!imgLoad('guardian', r.id), post: (r.post || []).length })); }
 function homePost(id, text) { const r = homeInfo(id); if (!r) return; r.post = (r.post || []).concat([{ at: Date.now(), text: String(text).slice(0, 80) }]).slice(-8); homesSave(); } // hook: things colonies may send each other later (only a list and a diary line for now)
+/* ============ PLACES (build 25): where we are, only if a grown-up switches it on. Read HANDOVER "Places and location" before changing anything here. ============
+   The privacy rules (approved by Harry): off by default; a grown-up gate (hold the button 3 s); switching off forgets every stored spot.
+   When on, the browser is asked for its position once at app start (low accuracy, short timeout; a refusal or failure is silent and the game carries on as without).
+   PLACES.here is that position rounded to 3 decimals (about 100 m) and lives in memory only. Each saved room keeps the rounded spot where it was last saved,
+   in bc-places-v1 on this device only: never sent anywhere, never in a map export, a report or the rooms list, never logged.
+   On Play, saved rooms further than PLACES_NEAR from here are not tried for room identification; rooms with no stored spot are always tried.
+   If nothing saved is near, it is a likely new place: a new room starts and a gentle "Somewhere new!" prompt offers the old rooms anyway.
+   The weather keeps its own 0.1 degree (about 10 km) location (setLoc rounds); the finer spot never goes to the weather.
+   Local goods: PLACE_AREAS (generic kinds and numbers only, no place names) picks a flavour from the rounded spot; PLACE_STOCK lists the stock kinds for the market to price. */
+const PLACES_KEY = 'bc-places-v1', PLACES_NEAR = 300, PLACES_HOLD = 3000, PLACE_CAP = 9, PLACE_FIND_S = 90, LOOM_S = 150, PLACE_BY = 'CAIRN (placeholder)';
+function placesRound(v) { return Math.round(+v * 1000) / 1000; }
+function placesDist(a, b) { const k = Math.cos((a.lat + b.lat) / 2 * Math.PI / 180); return Math.hypot((a.lat - b.lat) * 111195, (a.lon - b.lon) * 111195 * k); } /* metres, flat-earth: fine at a few km */
+function placesSave() { if (!PLACES.on) return; try { localStorage.setItem(PLACES_KEY, JSON.stringify({ v: 1, on: true, spots: PLACES.spots })); } catch (e) { /* no storage: nothing kept */ } }
+function placesAsk() { /* one position request: low accuracy, a short timeout; any refusal or failure leaves the game as it is without location */
+  if (!PLACES.on || PLACES.state === 'asking') return; PLACES.state = 'asking'; PLACES.asks++;
+  try { navigator.geolocation.getCurrentPosition((p) => placesGot(p.coords.latitude, p.coords.longitude), () => { if (PLACES.state === 'asking') PLACES.state = 'none'; }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }); }
+  catch (e) { PLACES.state = 'none'; }
+}
+function placesGot(lat, lon) {
+  if (!PLACES.on || !isFinite(lat) || !isFinite(lon)) { if (PLACES.state === 'asking') PLACES.state = 'none'; return; }
+  PLACES.here = { lat: placesRound(lat), lon: placesRound(lon) }; PLACES.state = 'here'; PLACES.area = placesArea(PLACES.here); ENV._sk = 0; placesBtnUi();
+  if (store.get('bc-wxchoice') === 'geo') { const wl = Math.round(PLACES.here.lat * 10) / 10, wn = Math.round(PLACES.here.lon * 10) / 10; if (!ENV.loc || ENV.loc.lat !== wl || ENV.loc.lon !== wn) setLoc(wl, wn); } /* the weather only ever gets 0.1 degree */
+}
+function placesStart() { if (PLACES.on) placesAsk(); } /* app start */
+function placesSet(on) {
+  if (on) { PLACES.on = true; PLACES.state = 'off'; placesSave(); placesAsk(); toast('Where we are: on. Only a rough spot stays on this iPad.', 6); }
+  else { PLACES.on = false; PLACES.spots = {}; PLACES.here = null; PLACES.state = 'off'; PLACES.area = 'default'; ENV._sk = 0; try { localStorage.removeItem(PLACES_KEY); } catch (e) { /* none */ } toast('Where we are: off. Every saved spot is forgotten.', 6); }
+  placesBtnUi();
+}
+function placesForget(id) { if (PLACES.spots[id]) { delete PLACES.spots[id]; placesSave(); } }
+function placesNote(id) { /* the room was saved here: keep its rounded spot (AR only: the practice room is not anywhere) */
+  if (!PLACES.on || !PLACES.here || G.mode !== 'ar' || !id) return; const s = PLACES.spots[id];
+  if (s && s.lat === PLACES.here.lat && s.lon === PLACES.here.lon) return; PLACES.spots[id] = { lat: PLACES.here.lat, lon: PLACES.here.lon }; placesSave();
+}
+function placesTry(ids) { /* the saved rooms worth trying from here: near ones and ones with no spot; without a position, all of them */
+  if (!PLACES.on || !PLACES.here) return ids; PLACES.skipped = [];
+  return ids.filter((id) => { const s = PLACES.spots[id], ok = !s || placesDist(s, PLACES.here) <= PLACES_NEAR; if (!ok) PLACES.skipped.push(id); return ok; });
+}
+function placesSouth() { return !!(PLACES.on && PLACES.here && PLACES.here.lat < 0); }
+function placesNewHere() { /* nothing saved is near: start a new room straight away (nothing old is loaded, so nothing old can be overwritten) and ask gently */
+  const r = homeCreate(); if (!r) return false; PLACES.newRoom = r.id; setTimeout(placesNewAsk, 600); return true;
+}
+function placesNewAsk() {
+  if (G.phase !== 'play' || HOMES.cur !== PLACES.newRoom || G.returning) return; const el = $('nroom'); el.hidden = false; el.classList.add('pnew');
+  const opts = HOMES.rooms.filter((r) => r.id !== PLACES.newRoom && roomHasData(r.id));
+  el.innerHTML = '<b>Somewhere new! Shall we start a camp here?</b><button class="alt" id="nrYes">Yes!</button>' + (opts.length ? '<button id="nrIts">It’s… ▾</button><span id="nrList" hidden>' + opts.map((r) => '<button data-room="' + r.id + '">' + esc(r.name) + '</button>').join('') + '</span>' : '') + '<button id="nrX" aria-label="Not now">×</button>';
+  const close = () => { el.hidden = true; el.classList.remove('pnew'); };
+  $('nrYes').onclick = () => { close(); autoSay('A new camp! Look around slowly: the colonists will find a landing place.', 5); }; $('nrX').onclick = close;
+  if ($('nrIts')) $('nrIts').onclick = () => { $('nrList').hidden = !$('nrList').hidden; };
+  for (const b of el.querySelectorAll('[data-room]')) b.onclick = () => { /* "It's the Shed": that room loads and is looked for as usual; the empty new room goes */
+    close(); const tmp = PLACES.newRoom; PLACES.newRoom = ''; if (!homeSwitchLoad(b.dataset.room)) return;
+    if (!roomHasData(tmp)) { HOMES.rooms = HOMES.rooms.filter((r) => r.id !== tmp); placesForget(tmp); homesSave(); } G.mapName = homeName(HOMES.cur);
+  };
+}
+/* ---- the grown-up gate and the setting (title, More...) ---- */
+function placesBtnUi() {
+  const b = $('bPlace'), info = $('placeInfo'); if (!b || PLACES.holding) return;
+  b.textContent = PLACES.on ? 'Where we are: on (tap to switch off)' : 'Use where we are (ask a grown-up)'; b.classList.toggle('on', PLACES.on); b.style.setProperty('--hold', '0');
+  const F = PLACE_FLAVOURS[PLACES.area];
+  if (info) info.textContent = !PLACES.on ? 'Off. A grown-up holds the button for 3 seconds to switch it on.' : 'On: each room keeps a rough spot (about 100 m) on this iPad only, to tell rooms apart. Never sent anywhere. Switching off forgets every spot.' + (F && F.goods.length ? ' Local goods here: ' + F.name + ' (' + F.goods.concat(F.special ? [F.special] : []).map((k) => PLACE_STOCK[k].many).join(', ') + ').' : '');
+}
+function placesGate() {
+  const b = $('bPlace'); if (!b) return; let t0 = 0, iv = 0, done = false;
+  const stop = () => { clearInterval(iv); iv = 0; PLACES.holding = false; placesBtnUi(); };
+  b.addEventListener('pointerdown', () => {
+    if (PLACES.on) return; done = false; t0 = performance.now(); PLACES.holding = true; clearInterval(iv);
+    iv = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / PLACES_HOLD); b.style.setProperty('--hold', k.toFixed(3)); b.textContent = 'Grown-up: keep holding… ' + Math.max(1, Math.ceil((1 - k) * 3)); if (k >= 1) { done = true; clearInterval(iv); iv = 0; PLACES.holding = false; placesSet(true); } }, 60);
+  });
+  for (const n of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(n, () => { if (iv) stop(); });
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  b.addEventListener('click', () => { if (done) { done = false; return; } if (PLACES.on) placesSet(false); else { const i = $('placeInfo'); if (i) i.textContent = 'A grown-up needs to hold this button for 3 seconds.'; } });
+  placesBtnUi();
+}
+/* ---- local goods ---- */
+/* PLACE_STOCK: the stock kinds that only some places have (S.stock[kind], saved with the colony like wood or food). For the market: one / many are the words, value is a
+   suggested price in crumbs (food), area is where it is found, special: made, not found (rug: from 2 wool tufts on the loom). Nothing here trades by itself yet. */
+const PLACE_STOCK = {
+  wool: { one: 'wool tuft', many: 'wool tufts', ic: '🧶', col: 0xff8fb0, value: 1, area: 'carpet', by: PLACE_BY },
+  rug: { one: 'rug', many: 'rugs', ic: '🟥', col: 0xd94b4b, value: 6, area: 'carpet', special: true, from: { wool: 2 }, by: PLACE_BY },
+  shell: { one: 'shell', many: 'shells', ic: '🐚', col: 0xffe2c8, value: 2, area: 'seaside', by: PLACE_BY },
+  salt: { one: 'salt crystal', many: 'salt crystals', ic: '🧂', col: 0xf4fbff, value: 1, area: 'seaside', by: PLACE_BY },
+  acorn: { one: 'acorn', many: 'acorns', ic: '🌰', col: 0xb07a3a, value: 1, area: 'countryside', by: PLACE_BY },
+  conker: { one: 'conker', many: 'conkers', ic: '🟤', col: 0x7a3518, value: 2, area: 'countryside', by: PLACE_BY },
+  cap: { one: 'bottle cap', many: 'bottle caps', ic: '🔘', col: 0xe0402f, value: 1, area: 'city', by: PLACE_BY },
+  string: { one: 'bit of string', many: 'bits of string', ic: '🧵', col: 0xd8b884, value: 1, area: 'city', by: PLACE_BY },
+};
+/* PLACE_FLAVOURS: what a place changes. replaces / cheaper are for the economy (wool tufts stand in for sock fluff, so rope costs half); maker: the special building; heap: the models/places.js pile. */
+const PLACE_FLAVOURS = {
+  default: { name: '', goods: [], by: PLACE_BY },
+  carpet: { name: 'carpet town', goods: ['wool'], weights: [1], special: 'rug', maker: 'loom', replaces: { fluff: 'wool' }, cheaper: { rope: 0.5 }, sound: 'steam', heap: 'wool', hello: 'Wool tufts everywhere! This is carpet town: rope comes cheap here.', by: PLACE_BY },
+  seaside: { name: 'seaside', goods: ['shell', 'salt'], weights: [0.6, 0.4], heap: 'shore', hello: 'Shells and salt crystals! We must be by the sea.', by: PLACE_BY },
+  countryside: { name: 'countryside', goods: ['acorn', 'conker'], weights: [0.6, 0.4], heap: 'wood', hello: 'Acorns and conkers! The countryside is full of them.', by: PLACE_BY },
+  city: { name: 'city', goods: ['cap', 'string'], weights: [0.55, 0.45], heap: 'street', hello: 'Bottle caps and string! City colonists never run short.', by: PLACE_BY },
+};
+/* PLACE_AREAS: [flavour, south lat, north lat, west lon, east lon], first match wins. Generic kinds and plain numbers, no place names.
+   The carpet-town box is generous on purpose (roughly 25 km round the West Midlands carpet towns), not one town. Countryside is the rest of the British Isles box; elsewhere: today's goods. */
+const PLACE_AREAS = [
+  ['carpet', 52.17, 52.61, -2.58, -1.96],
+  ['city', 51.28, 51.70, -0.51, 0.33], ['city', 52.38, 52.60, -1.96, -1.72], ['city', 53.35, 53.58, -2.40, -2.05], ['city', 53.33, 53.48, -3.05, -2.85], ['city', 53.72, 53.86, -1.68, -1.42],
+  ['city', 53.33, 53.45, -1.56, -1.38], ['city', 55.80, 55.92, -4.40, -4.10], ['city', 55.89, 55.99, -3.32, -3.10], ['city', 51.40, 51.52, -2.68, -2.50], ['city', 51.44, 51.54, -3.25, -3.12],
+  ['city', 52.90, 53.00, -1.22, -1.08], ['city', 54.93, 55.03, -1.68, -1.52], ['city', 54.55, 54.65, -6.02, -5.85],
+  ['seaside', 49.90, 50.85, -5.80, 1.45], ['seaside', 50.85, 51.25, -5.80, -3.90], ['seaside', 51.55, 53.45, -5.40, -4.05], ['seaside', 53.20, 53.45, -4.70, -3.00], ['seaside', 53.60, 54.30, -3.65, -2.90],
+  ['seaside', 51.75, 53.00, 1.20, 1.80], ['seaside', 51.10, 51.40, 1.00, 1.50], ['seaside', 53.90, 54.60, -0.60, 0.20], ['seaside', 54.60, 55.80, -1.65, -1.30], ['seaside', 53.00, 53.60, 0.00, 0.35], ['seaside', 55.90, 57.70, -2.60, -1.70],
+  ['countryside', 49.80, 61.00, -8.70, 1.90],
+];
+function placesArea(h) { if (!h) return 'default'; for (const a of PLACE_AREAS) if (h.lat >= a[1] && h.lat <= a[2] && h.lon >= a[3] && h.lon <= a[4]) return a[0]; return 'default'; }
+function placesPick(F) { let r = Math.random(); for (let i = 0; i < F.goods.length; i++) { r -= F.weights[i]; if (r <= 0) return F.goods[i]; } return F.goods[F.goods.length - 1]; }
+function placesStep(S, dt, E, quiet) { /* from simSettlement: colonists find the local goods, slowly; in carpet town the loom weaves rugs */
+  const F = PLACE_FLAVOURS[PLACES.area]; if (!F || !F.goods.length || !S.cols.length || S.lost || S.ghost) return; const away = !!(E && E.away);
+  S.lgAcc = (S.lgAcc || 0) + dt * Math.min(6, S.cols.length) / PLACE_FIND_S;
+  while (S.lgAcc >= 1) { S.lgAcc -= 1; const k = placesPick(F); if ((S.stock[k] || 0) < PLACE_CAP) { S.stock[k] = (S.stock[k] || 0) + 1; if (!quiet && !away) placesFound(S, k, F); } }
+  if (away) return;
+  if (F.heap && !S.things.some((t) => t.kind === 'lpile' && !t.dead) && F.goods.some((k) => S.stock[k] > 0)) { const sp = findSpot(S, KINDS.lpile.r); if (sp) addThing(S, 'lpile', sp[0], sp[1], { var: Math.max(0, PLACE_HEAPS.indexOf(F.heap)) }); }
+  if (F.maker === 'loom') loomStep(S, dt, quiet);
+}
+function placesFound(S, k, F) {
+  const K = PLACE_STOCK[k]; PLACES.found[k] = (PLACES.found[k] | 0) + 1; puff('star', S.tf.x, SY(S, 0.03), S.tf.z, 2, { size: 0.008, vy: 0.02, life: 0.8, add: true });
+  if (PLACES.found[k] === 1) { toast(K.ic + ' Found ' + (/^[aeiou]/.test(K.one) ? 'an ' : 'a ') + K.one + '! ' + (F.hello || '') + ' <i class="by">by ' + esc(F.by) + '</i>', 6); sfx('tada'); }
+}
+function loomStep(S, dt, quiet) {
+  const L = S.things.find((t) => t.kind === 'loom' && !t.dead);
+  if (!L) { if ((S.stock.wool || 0) >= 2 && S.cols.length >= 2 && canPay(S, KINDS.loom.wood)) { const sp = findSpot(S, KINDS.loom.r); if (sp) { pay(S, KINDS.loom.wood); addThing(S, 'loom', sp[0], sp[1], { built: false }); if (!quiet) toast('🧶 Somebody is making a tiny loom from a comb and lolly sticks!', 5); } } return; }
+  L.busy = L.built && (S.stock.wool || 0) >= 2 && (S.stock.rug || 0) < PLACE_CAP; if (!L.busy) return;
+  L.wv = (L.wv || 0) + dt / LOOM_S; if (L.wv < 1) return; L.wv = 0; S.stock.wool -= 2; S.stock.rug = (S.stock.rug || 0) + 1; PLACES.rugs++;
+  if (!quiet) { toast('🟥 The comb loom wove a rug! Rugs are special: other camps will want one.', 5); const [wx, wz] = l2w(S, L.x, L.z); puff('star', wx, SY(S, 0.04), wz, 4, { size: 0.009, vy: 0.03, life: 1, add: true }); sfx('chime', 1, { x: wx, y: SY(S, 0.03), z: wz }); }
+}
+function placesMake(kind, v) { /* models/places.js (window.BC_PLACES_MK); without it, or if it throws, plain shapes */
+  const N = window.BC_PLACES_MK, heap = PLACE_HEAPS[v | 0] || 'wool';
+  if (N && !BCP.placesOff && typeof N[kind] === 'function') {
+    try { if (!PLACES.mk) { PLACES.mk = 1; N.init({ THREE, BCP, inked, bcMerge, M, toon: bcToon }); } } catch (e) { PLACES.mk = 2; console.warn('places.js init failed, plain models', e && e.message); }
+    if (PLACES.mk === 1) { try { const g = N[kind](heap); if (g && g.isObject3D) return g; } catch (e) { console.warn('places.js: ' + kind + ' failed, the plain one is used', e && e.message); } }
+  }
+  const g = new THREE.Group();
+  if (kind === 'loom') { for (const s of [-1, 1]) g.add(mesh(geo('plU', () => new THREE.BoxGeometry(0.003, 0.036, 0.0012).translate(0, 0.018, 0)), M(0xe8c48e), s * 0.015, 0, 0)); g.add(mesh(geo('plB', () => new THREE.BoxGeometry(0.034, 0.003, 0.0012)), M(0xe8c48e), 0, 0.034, 0)); g.add(mesh(geo('plC', () => new THREE.BoxGeometry(0.032, 0.004, 0.0014)), M(0x3a6fc4), 0, 0.022, 0.001)); g.add(mesh(geo('plR', () => new THREE.BoxGeometry(0.026, 0.01, 0.001)), M(0xd94b4b), 0, 0.009, 0.001)); }
+  else { const col = { wool: 0xff8fb0, shore: 0xffe2c8, wood: 0x7a3518, street: 0xe0402f }[heap]; g.add(mesh(geo('plH', () => new THREE.SphereGeometry(0.005, 8, 5, 0, 6.283, 0, 1.57)), M(col))); }
+  g.add(blob(kind === 'loom' ? 0.03 : 0.012)); g.userData.plain = 1; return g;
+}
+KINDS.loom = { r: 0.022, wood: 3, work: 14, mk: () => placesMake('loom'), name: 'Comb loom', by: PLACE_BY, ic: '🧶' };
+KINDS.lpile = { r: 0.012, wood: 0, work: 0, mk: (t) => placesMake('pile', t && t.var), name: 'Local goods', by: PLACE_BY };
+const PLACE_HEAPS = ['wool', 'shore', 'wood', 'street'], PLACE_HEAP_GOODS = { wool: ['wool'], shore: ['shell', 'salt'], wood: ['acorn', 'conker'], street: ['cap', 'string'] };
+function placesTick(dt) { /* per frame: the loom and heap models follow the stock; in carpet town a distant steam whistle, now and then */
+  for (const S of G.settlements) for (const t of S.things) {
+    if ((t.kind !== 'loom' && t.kind !== 'lpile') || !t.mesh || !t.mesh.userData.tick) continue;
+    if (t.kind === 'loom') t.mesh.userData.tick(G.time, S.stock.rug | 0, !!(t.built && t.busy)); else t.mesh.userData.tick(G.time, PLACE_HEAP_GOODS[PLACE_HEAPS[t.var | 0] || 'wool'].reduce((a, k) => a + (S.stock[k] || 0), 0));
+  }
+  const F = PLACE_FLAVOURS[PLACES.area]; if (!F || F.sound !== 'steam' || G.phase !== 'play' || BT.on) return;
+  PLACES.whistleT -= dt; if (PLACES.whistleT <= 0) { PLACES.whistleT = 240 + Math.random() * 420; sfx('steam'); PLACES.whistles++; }
+}
+sfxExtra.steam = (c, t, tone) => { /* build 25: a steam whistle, far away (carpet town): a soft chord that slides up and fades, a little hiss in front */
+  sNoise(c, t, 0.5, 3200, 'bandpass', 0.006); [466, 587, 698].forEach((f) => tone(f * 0.97, 1.5, 'triangle', 0.009, f, 0.25)); tone(233, 1.4, 'sine', 0.006, 240, 0.3);
+};
+SND.KINDS.steam = 'a distant steam whistle (carpet town, now and then)';
+function placesCardHtml(S) { /* the colony card: one small line of local goods */
+  const F = PLACE_FLAVOURS[PLACES.area]; if (!F || !F.goods.length || !S) return '';
+  const ks = F.goods.concat(F.special ? [F.special] : []).filter((k) => (S.stock[k] || 0) > 0); if (!ks.length) return '';
+  return '<div class="lgoods" title="Local goods: ' + esc(F.name) + '">' + ks.map((k) => '<span>' + PLACE_STOCK[k].ic + ' ' + S.stock[k] + ' ' + esc(S.stock[k] === 1 ? PLACE_STOCK[k].one : PLACE_STOCK[k].many) + '</span>').join('') + '</div>';
+}
 // ---- what the player sees: totem marker and guardian billboard ----
 function totemVisuals(dt) {
   if (!HOME_TOTEM) return;
@@ -5543,14 +5713,14 @@ function roomFacts(r) { // rooms from older builds have no numbers in the regist
 }
 function roomsTidy() { // a room that was started and never saved anything is not a room
   const keep = HOMES.rooms.filter((r) => roomHasData(r.id)); if (keep.length === HOMES.rooms.length) return;
-  for (const r of HOMES.rooms) if (!keep.includes(r)) totemDel(r.id);
+  for (const r of HOMES.rooms) if (!keep.includes(r)) { totemDel(r.id); placesForget(r.id); }
   HOMES.rooms = keep.length ? keep : [HOMES.rooms.find((r) => r.id === 'r1') || HOMES.rooms[0]];
   if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id);
   homesSave();
 }
 function roomDelete(id) { // deleting keeps nothing: map, colony and their backups are gone
   const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x); for (let n = 1; n <= RG_KEEP; n++) store.del(rgOldKey(id, n));
-  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id); totemDel(id);
+  HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id); totemDel(id); placesForget(id);
   if (!HOMES.rooms.length) HOMES.rooms = [{ id: 'r1', name: 'Room 1', created: Date.now(), visits: 0, known: 0, post: [] }];
   if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id); else homesSave();
   G.previewLines = null; G.previewStamp = ''; ROOMS_UI.del = '';
@@ -5642,7 +5812,9 @@ function startAuto() {
   setPhase('play'); G.tool = 'look'; G.visitCounted = false;
   TOTEM.live = null; TOTEM.liveRoom = null; TOTEM.sightings = 0; TOTEM.lastFound = 0; TOTEM.nextAt = 0; TOTEM.watchUntil = 0; TOTEM.moved = 0; 
   const want = G.roomWant || 'find'; G.roomWant = 0; ROOMPRE = {}; G.finding = false; $('nroom').hidden = true;
-  if (MULTI_ROOM && G.mode !== 'practice') { if (want === 'find') { if (HOMES.rooms.filter((r) => roomHasData(r.id)).length >= 2 && G.mode === 'ar') { G.finding = true; homePickStart(); homePrecomp(); } else if (!roomHasData(HOMES.cur)) homePickStart(); } G.mapName = homeName(HOMES.cur); } // Play: all saved rooms are compared silently with what the camera sees
+  if (MULTI_ROOM && G.mode !== 'practice') { if (want === 'find') { const all = HOMES.rooms.filter((r) => roomHasData(r.id)).map((r) => r.id), ids = placesTry(all); /* build 25: with location on, only rooms saved near here (or with no spot) are tried; off: ids is all */
+    if (all.length && !ids.length && G.mode === 'ar' && placesNewHere()) { /* nothing saved is near: a new room, and "Somewhere new!" */ }
+    else if (ids.length >= 2 && G.mode === 'ar') { G.finding = true; homePickStart(ids); homePrecomp(ids); } else if (ids.length === 1 && all.length > 1) { if (HOMES.cur !== ids[0]) homeSelect(ids[0]); } else if (!roomHasData(HOMES.cur)) homePickStart(ids); } G.mapName = homeName(HOMES.cur); } // Play: all saved rooms are compared silently with what the camera sees
   const md = loadMapData();
   if (md && prepareContinue() && G.zones.length) {
     G.returning = true; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); autoSay('');
@@ -5919,7 +6091,7 @@ function cardUi() {
   if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + envLine(false) + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
   const mood = S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null, cap = capOf(S);
   const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>';
-  let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
+  let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + placesCardHtml(S) + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
   if (G.cardMore) html += `<div class="det" style="margin-top:4px">Seasons: an idea by ${SEA_CREDIT}<br>settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
   el.hidden = false; cardSet(el, html);
 }
@@ -7116,7 +7288,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  funFrame(dt); seaFrame(dt); mktFrame(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
+  funFrame(dt); seaFrame(dt); mktFrame(dt); placesTick(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -7237,12 +7409,14 @@ Object.assign(window.__g, BT_HOOKS);
 Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame, f10Ask, f10Plant, f10Question, f10Answer, f10CardUp, f10Cam, partyReal, skyShown, SKY_TOOLS, chooseJob, orbitCam }); /* first10 */
 Object.assign(window.__g, { F10_LOG, f10Sprout, f10Ask2, f10Surprise, f10Tree, f10LogDone, uiOverlay, uiGapOK, reqHold, freshName, nameTaken, showAway, AWAY_SHOW }); /* build 20 + return */
 Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
+Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
 G.last = performance.now();
 showTitle(); envUpdate();
 if (ENV.loc && store.get('bc-wxchoice')) fetchWeather(false);
+placesGate(); placesStart(); /* build 25: asks for the position once, only if a grown-up switched it on */
 scout17Load();
 requestAnimationFrame(frame);
 </script>
