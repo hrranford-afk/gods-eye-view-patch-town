@@ -5417,6 +5417,7 @@ function rfSuspect(why, hard) {
   if (RF.on) { if (hard && !RF.hidden) rfHide(); return; }
   if (G.returning && !G.locked) { if (hard) { scanReset(); RELOC.hist = []; RELOC.job = null; } return; } /* still finding the room: a jump spoils that scan, so it starts again */
   if (!G.zones.length) { if (hard) scanReset(); return; } /* nothing mapped yet */
+  if (!hard && !RB.base && !G.returning) return; /* a quiet check needs a settled room: a young room is still being mapped */
   if (hard) persist();
   Object.assign(RF, { on: true, why, hidden: false, phase: 'check', t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
@@ -5426,8 +5427,7 @@ function rfClass(x, y, z) { /* one fresh hit against the room as it is now: 1 ag
   let known = false;
   for (const Z of G.zones) { const L = Z.land; if (!L || Z.lost) continue; const k = landIdx(L, x, z); if (k < 0) continue; const s = L.st[k]; if (!s) continue; known = true; if (Math.abs(y - Z.y) < 0.04 || (s === 2 && Math.abs(y - Z.y - L.ht[k] / 100) < 0.05)) return 1; }
   if (SCAN.origin) { const g = gIdx(x, z); if (g >= 0) for (const b of SCAN.bands) { if (!b.kn[g] && !b.g[g]) continue; known = true; if (Math.abs(b.y - y) < 0.035) return 1; } }
-  if (known) return -1;
-  return SCAN.bands.some((b) => b.cnt > 40 && Math.abs(b.y - y) < 0.035) || G.zones.some((Z) => Math.abs(Z.y - y) < 0.04) ? 0 : -1;
+  return known ? -1 : 0; /* a place nobody has seen yet tells nothing (a room being mapped finds new tops all the time) */
 }
 function rfHit(p, src, kind, uid, below) { RF.buf.push([p.x, p.y, p.z, src, kind, uid, below, SCAN.fr]); if (RF.buf.length > 5000) RF.buf.shift(); const c = rfClass(p.x, p.y, p.z); if (c > 0) RF.agree++; else if (c < 0) RF.conflict++; else RF.unk++; }
 function rfReplay() { const b = RF.buf, fr = SCAN.fr; RF.buf = []; const ph = RF.phase; RF.phase = 'replay'; for (const q of b) { SCAN.fr = q[7]; scanHit({ x: q[0], y: q[1], z: q[2] }, q[3], q[4], q[5], q[6]); } SCAN.fr = fr; RF.phase = ph; }
@@ -6032,7 +6032,7 @@ function updateTitle() {
   if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
   else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
   else if (STORE.usedBackup) info += ' (restored from the backup copy)';
-  if (nRooms >= 2 && STORE.status === 'ok') info = nRooms + ' rooms saved. Press Play and look around: the colonists work out which room you are in.';
+  if (nRooms >= 2 && STORE.status === 'ok') info = nRooms + ' rooms saved. Press Play and pick the room you are in.'; /* build 26: the start chooser */
   $('mapInfo').textContent = info; if (MULTI_ROOM && G.phase === 'title') { roomsUi(); const t = storeChars(), per = HOMES.rooms.filter((r) => roomHasData(r.id)).map((r) => r.name + ' ' + fmtKB(roomChars(r.id))); $('storeInfo').textContent = 'Storage: ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' used' + (per.length ? ' (' + per.join(', ') + ')' : '') + (t > STORE_LIMIT * 0.7 ? '. Nearly full: delete a room you no longer need.' : '.'); }
   const w = $('welcome');
   if (has && G.phase === 'title' && nRooms < 2) {
