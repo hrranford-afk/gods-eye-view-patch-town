@@ -58,7 +58,7 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 #diary.side{left:12px;top:calc(env(safe-area-inset-top,0px) + 150px);transform:none;width:min(44vw,430px);max-height:62vh}
 .dh{font-size:20px;font-weight:800;color:#ffd9a8}.sub{font-size:13px;opacity:.85;font-weight:600;line-height:1.35}
 #diary ul{margin:0;padding-left:20px;display:grid;gap:7px;font-size:15px;line-height:1.35;font-weight:600}
-.by{font-size:11px;opacity:.55;font-weight:600;white-space:nowrap}
+.by{font-size:9px;opacity:.42;font-weight:600;white-space:nowrap} /* build 22: Harry: keep the credits, smaller */
 #diary .anspic{font-size:28px;text-align:center;white-space:nowrap;line-height:1.2}#diary .anst{font-size:16px;font-weight:700;line-height:1.4}#diary #dMore{justify-self:start;font-size:14px}
 body.ui-hold #reqs{visibility:hidden}body.diary-up #toast{opacity:0}
 #tagpick{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(94vw,640px);display:grid;gap:8px;z-index:4}
@@ -2814,7 +2814,7 @@ function celebrate(id, S) {
   FUN.album.push({ id, at: Date.now() }); FUN.queue.push({ id, S, gt: G.time, st: G.simT }); funLog('milestone', id); if (typeof persistSoon === 'function' && G.auto) persistSoon(); return true;
 }
 function showCelebration(q) {
-  const d = MILESTONES[q.id], b = $('banner'); b.innerHTML = d[0] + ' ' + esc(d[1]) + ' ' + d[0] + '<small>' + esc(d[2]) + (d[3] ? ' · by ' + esc(d[3]) : '') + '</small>'; b.className = 'on'; FUN.bannerT = 3.4; funLog('celebrate', q.id);
+  const d = MILESTONES[q.id], b = $('banner'); b.innerHTML = d[0] + ' ' + esc(d[1]) + ' ' + d[0] + '<small>' + esc(d[2]) + (d[3] ? ' <i class="by">· by ' + esc(d[3]) + '</i>' : '') + '</small>'; b.className = 'on'; FUN.bannerT = 3.4; funLog('celebrate', q.id);
   const S = q.S && q.S.placed ? q.S : mainSettlement(); sfx('fanfare'); if (!S) return;
   fireworks(S); let first = true;
   for (const c of S.cols) { if (c.inside || c.held) continue; c.hop = 1; c.hopBig = 1.2; c.cheerT = 1.6; if (first && sayLine(c, pick(charOf(c).cheer), 2.4, true)) first = false; }
