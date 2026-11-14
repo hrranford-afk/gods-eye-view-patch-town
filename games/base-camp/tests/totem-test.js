@@ -82,84 +82,75 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   console.log('time per attempt (frame features + match + RANSAC): ' + Math.round(U.ms.reduce((a, c) => a + c, 0) / U.ms.length) + ' ms average, max ' + Math.round(Math.max(...U.ms)) + ' ms (sandbox CPU)');
 
   if (process.env.ONLY_U) { const fails0 = res.filter((r) => !r).length; await b.close(); srv.close(); process.exit(fails0 ? 1 : 0); }
+  /* Build 21 repair: since build 6/7 the home totem is OFF on purpose (HOME_TOTEM = false, HANDOVER "Rooms (build 7, ON) and the totem (still OFF)"); the Menu's
+     totem / guardian / rooms entries were removed and #bHomes stays hidden. The matcher above (U) is still in the file and still tested. Sections 1 to 3 used to drive
+     the totem screens; they now check the same promises (room A settles and is saved, returns lock accurately, room B is told apart, the right room loads) through the
+     path a player has today: the surface matcher, with the totem screens unreachable and the matcher never run. */
   // ===================== 1. room A, first time =====================
   await start(); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay();
   await setRoom(ROOM_A, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   const m0 = await memNow();
-  await ev(() => { __g.G.auto = false; }); // the totem photo is added from the Menu in a session; here the title button path first
-  await p.click('#bMore'); await p.click('#bHomes'); await sleep(300); await p.click('#hTotem'); await sleep(300); await p.setInputFiles('#tShot', await pngOf(11)); await sleep(1300);
-  const st1 = await ev(() => ({ rec: !!__g.imgLoad('totem', 'r1'), kb: Math.round(JSON.stringify(__g.imgLoad('totem', 'r1') || {}).length / 1024), txt: document.getElementById('modal').innerText.slice(0, 80) }));
-  ok('totem photo saved on the device from the title (file input), small', st1.rec && st1.kb < 120, st1.kb + ' KB');
-  await p.screenshot({ path: OUT + '18-totem.png' }); await ev(() => { document.getElementById('modal').hidden = true; });
+  const gate = await ev(() => { const bh = document.getElementById('bHomes'); bh.click(); return { flag: __g.HOME_TOTEM, hidden: bh.hidden, modal: document.getElementById('modal').hidden || !/totem/i.test(document.getElementById('modal').innerText) }; });
+  ok('the totem screens are unreachable while HOME_TOTEM is off (button hidden, a click opens nothing)', gate.flag === false && gate.hidden && gate.modal, JSON.stringify(gate));
   await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_A, WB);
-  ok('storage round trip: the totem is still there after a reload (and not in any file)', await ev(() => !!__g.imgLoad('totem', 'r1') && __g.imgLoad('totem', 'r1').jpeg.startsWith('data:image/jpeg')));
+  ok('no totem or guardian picture is stored by the game on its own', await ev(() => !__g.imgLoad('totem', 'r1') && !__g.imgLoad('guardian', 'r1') && !Object.keys(localStorage).some((k) => /^bc-guardian/.test(k))));
   await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   await p.click('#bPlay'); await sleep(900);
-  await closeUp('a', {}); await sleep(500); await showCard(11); const tFind0 = Date.now();
-  const tF = await waitFor(() => __g.TOTEM.sightings >= 1, 40000, 500);
-  const e1 = await truthErr(); const tr1 = await ev(() => ({ n: __g.TOTEM.stats.tries, found: __g.TOTEM.stats.found, rec: __g.REC.totem.slice(-3) }));
-  ok('A first time: the totem is found in the camera frame', tF > 0, 'after ' + ((Date.now() - tFind0) / 1000).toFixed(1) + ' s, ' + JSON.stringify(tr1.rec.slice(-1)));
-  ok('...and its 3D position (raycast at its base) is within 8 cm of the truth', e1 !== null && e1 < 8, e1 === null ? 'none' : e1.toFixed(1) + ' cm');
+  await closeUp('a', {}); await sleep(500); await showCard(11);
+  await waitFor(() => __g.AUTO.t > 12, 60000, 500);
+  const tr1 = await ev(() => ({ tries: __g.TOTEM.stats.tries, sightings: __g.TOTEM.sightings, live: !!__g.TOTEM.live }));
+  ok('A first time: with the totem off, the feature matcher is never run on camera frames', tr1.tries === 0 && tr1.sightings === 0, JSON.stringify(tr1));
+  ok('...and no live totem position is made up', !tr1.live);
   await plain(); await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], 1.0);
   const tS = await waitFor(() => __g.G.settlements.length > 0, 150000, 600);
-  const cz = await ev(() => { const S = __g.G.settlements[0], sp = __g.totemSpot(); return S && { zone: S.zoneName, spot: !!sp, tag: sp && sp.name, d: sp ? Math.hypot(S.tf.x - sp.x, S.tf.z - sp.z) * 100 : null, zy: S.tf.y }; });
-  ok('A first time: the colony settles on the totem’s surface, next to the totem', tS > 0 && cz && cz.spot && /Shelf/.test(cz.zone) && cz.d < 40, JSON.stringify(cz));
+  const cz = await ev(() => { const S = __g.G.settlements[0]; return S && { zone: S.zoneName, spot: !!__g.totemSpot(), area: +S.zoneRef.area.toFixed(2) }; });
+  ok('A first time: the colony settles on a scanned surface (no totem shrine)', tS > 0 && cz && !cz.spot && cz.area > 0.05, JSON.stringify(cz));
   await p.screenshot({ path: OUT + '18b-totem-colony.png' });
-  await setTotemViaMenu(31).then(() => 0); await ev(() => { __g.imgDel && 0; }); // (a second photo replaces the first: the old template must not be used any more) -> restore the real one next
-  await p.click('#bMenu'); await p.click('#mTotem'); await sleep(300); await p.setInputFiles('#tShot', await pngOf(11)); await sleep(1200); await ev(() => { document.getElementById('modal').hidden = true; });
-  // a guardian picture (the player's own creation: a stand-in here) on its plinth
-  await p.click('#bMenu'); await p.click('#mGuard'); await sleep(300); await p.setInputFiles('#tShot', await pngOf(77)); await sleep(1200); await ev(() => { document.getElementById('modal').hidden = true; }); await sleep(1500);
-  ok('guardian picture saved on this device and shown next to the totem', await ev(() => !!__g.imgLoad('guardian', 'r1') && !!__g.TOTEM.group && __g.TOTEM.group.visible && __g.TOTEM.group.children.some((o) => o.userData.kind === 'guardian')));
-  await p.screenshot({ path: OUT + '18c-guardian.png' });
-  await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf', 'deskA', 'floor'], 1.0); { const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) await sleep(2000); }
+  ok('no guardian billboard is shown', await ev(() => !(__g.TOTEM.group && __g.TOTEM.group.visible)));
+  await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf', 'deskA', 'floor'], 1.0); await waitFor(() => window.__cam.done, 200000, 2000);
   await ev(() => { __g.simulate(120, 0.5); __g.persist(true); }); await sleep(500);
   const savedA = await ev(() => ({ spot: JSON.parse(localStorage.getItem('base-camp-map-v1')).spots.filter((s) => s.src === 'totem').length, zones: __g.G.zones.length, known: __g.mapKnown() }));
-  ok('room A saved with its totem place in the map', savedA.spot === 1 && savedA.zones >= 3, JSON.stringify(savedA));
+  ok('room A saved with its map (and no totem place)', savedA.spot === 0 && savedA.zones >= 3, JSON.stringify(savedA));
   await endSession();
 
-  // ===================== 2. return to A: totem + yaw only =====================
+  // ===================== 2. return to A: the surface matcher =====================
   const lockTimes = [];
   for (let cyc = 0; cyc < 2; cyc++) {
     await advance(8); const prevW = cyc === 0 ? WB : WA, W = cyc === 0 ? WA : { yaw: -0.4, x: -0.3, z: 0.4 };
     await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_A, W); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
-    await p.click('#bPlay'); await sleep(900); await closeUp('a', {}); await sleep(400); await showCard(11, { rot: -4 }); const t0 = Date.now();
-    await waitFor(() => __g.TOTEM.sightings >= 1, 30000, 400); const tSee = Date.now() - t0; await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor'], 1.0);
-    const tL = await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 120000, 400); const L = await ev(() => ({ st: __g.RELOC.state, lock: __g.RELOC.lock, secs: __g.RELOC.scanSecs, cur: __g.HOMES.cur, hint: document.getElementById('hint').textContent }));
-    ok('return ' + (cyc + 1) + ': totem seen, then "We’re home!" through the totem (yaw only)', L.st === 'locked' && L.lock && L.lock.how === 'totem', 'totem seen after ' + (tSee / 1000).toFixed(1) + ' s, lock after ' + (L.lock ? L.lock.scanSecs.toFixed(1) : '?') + ' scan s, wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
-    if (L.lock) { lockTimes.push(L.lock.scanSecs); await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); const lk = await ev(() => __g.RELOC.lock); const e0 = errOf(L.lock, W, prevW); const e = errOf(lk, W, prevW); console.log('totem homing return ' + (cyc + 1) + ': first lock error yaw ' + e0.yawDeg.toFixed(2) + ' deg, ' + e0.posCm.toFixed(1) + ' cm; after refinement ' + e.yawDeg.toFixed(2) + ' deg, ' + e.posCm.toFixed(1) + ' cm'); ok('return ' + (cyc + 1) + ': accurate (yaw < 3 deg, position < 8 cm)', e.yawDeg < 3 && e.posCm < 8); }
+    await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
+    await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, lock: __g.RELOC.lock, secs: __g.RELOC.scanSecs, cur: __g.HOMES.cur }));
+    ok('return ' + (cyc + 1) + ': "We’re home!" through the surface matcher (not the totem)', L.st === 'locked' && L.lock && L.lock.how !== 'totem' && L.cur === 'r1', 'how ' + (L.lock && L.lock.how) + ', lock after ' + (L.lock ? L.lock.scanSecs.toFixed(1) : '?') + ' scan s, wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+    if (L.lock) { lockTimes.push(L.lock.scanSecs); await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); const lk = await ev(() => __g.RELOC.lock); const e0 = errOf(L.lock, W, prevW); const e = errOf(lk, W, prevW); console.log('homing return ' + (cyc + 1) + ': first lock error yaw ' + e0.yawDeg.toFixed(2) + ' deg, ' + e0.posCm.toFixed(1) + ' cm; after refinement ' + e.yawDeg.toFixed(2) + ' deg, ' + e.posCm.toFixed(1) + ' cm'); ok('return ' + (cyc + 1) + ': accurate (yaw < 3 deg, position < 8 cm)', e.yawDeg < 3 && e.posCm < 8); }
+    else ok('return ' + (cyc + 1) + ': accurate (yaw < 3 deg, position < 8 cm)', false, 'no lock');
     if (cyc === 0) await p.screenshot({ path: OUT + '18d-totem-home.png' });
     await sleep(1500); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
-  console.log('totem homing (scan seconds): ' + lockTimes.map((s) => s.toFixed(1)).join(', ') + '   (surface matcher alone in auto-ar-test.js: 15 to 20 s)');
+  console.log('homing (scan seconds): ' + lockTimes.map((s) => s.toFixed(1)).join(', '));
 
-  // ===================== 3. room B, new room, its own totem; the right room loads =====================
+  // ===================== 3. room B, new room; the right room loads =====================
   await advance(3); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(ROOM_B, WB); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
   await p.click('#bPlay'); await sleep(900); await closeUp('b', {}); await sleep(400); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
-  const tAsk = await waitFor(() => __g.RELOC.state === 'asking', 150000, 800);
+  const tAsk = await waitFor(() => __g.RELOC.state === 'asking', 240000, 800);
   ok('room B (never seen): no false lock, and after ~60 scan seconds the question', tAsk > 0 && !(await ev(() => __g.G.locked)), 'asked after ' + (await ev(() => __g.RELOC.scanSecs)).toFixed(1) + ' scan s');
-  const falseTot = await ev(() => __g.TOTEM.stats.found); ok('no false totem find in room B while the totem of room A was searched', falseTot === 0, 'finds ' + falseTot);
+  const falseTot = await ev(() => __g.TOTEM.stats.found); ok('no false totem find in room B', falseTot === 0, 'finds ' + falseTot);
   await p.click('#rmNew'); await sleep(1200);
   const rooms1 = await ev(() => ({ n: __g.HOMES.rooms.length, cur: __g.HOMES.cur, prev: !!localStorage.getItem('base-camp-map-v1-prev'), a: !!localStorage.getItem('base-camp-map-v1') }));
   ok('"A new room" creates a second room and keeps room A untouched', rooms1.n === 2 && rooms1.cur === 'r2' && rooms1.a && rooms1.prev, JSON.stringify(rooms1));
-  const tS2 = await waitFor(() => __g.G.settlements.length > 0 || !document.getElementById('ask').hidden, 150000, 800);
-  await waitFor(() => !document.getElementById('ask').hidden && /New room!/.test(document.getElementById('ask').innerText), 60000, 800);
-  ok('...and then offers a totem for the new room', await ev(() => /Want to give it a totem/.test(document.getElementById('ask').innerText)), 'colony settled after ' + tS2 + ' ms');
-  await p.click('#toYes'); await sleep(300); await p.setInputFiles('#tShot', await pngOf(44)); await sleep(1300); await ev(() => { document.getElementById('modal').hidden = true; });
-  await closeUp('b', {}); await sleep(400); await showCard(44); await waitFor(() => __g.TOTEM.sightings >= 1, 40000, 500); await plain();
-  await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2', 'shelf'], 1.0); { const t0 = Date.now(); while (!(await ev(() => window.__cam.done)) && Date.now() - t0 < 200000) await sleep(2000); }
+  const tS2 = await waitFor(() => __g.G.settlements.length > 0, 150000, 800);
+  await sleep(4000);
+  ok('...and does not offer a totem for the new room (the totem is off)', await ev(() => !__g.TOTEM.offer && !/Want to give it a totem/.test(document.getElementById('ask').innerText)), 'colony settled after ' + tS2 + ' ms');
+  await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2', 'shelf'], 1.0); await waitFor(() => window.__cam.done, 200000, 2000);
   await ev(() => { __g.simulate(60, 0.5); __g.persist(true); }); await sleep(300);
-  const rm = await ev(() => ({ rooms: __g.HOMES.rooms.map((r) => [r.id, r.name, r.visits, r.known]), tot: !!__g.imgLoad('totem', 'r2'), spot: !!__g.totemSpot(), keys: Object.keys(localStorage).filter((k) => /^base-camp-(map|save)/.test(k) && !/-(bak|prev)$/.test(k)) }));
-  ok('room B has its own map, colony and totem', rm.tot && rm.spot && rm.keys.length === 4, JSON.stringify(rm));
-  await p.click('#bMenu'); await p.click('#mHomes'); await sleep(300); await p.screenshot({ path: OUT + '18e-rooms.png' }); await ev(() => { document.getElementById('modal').hidden = true; });
+  const rm = await ev(() => ({ rooms: __g.HOMES.rooms.map((r) => [r.id, r.name, r.visits, r.known]), tot: !!__g.imgLoad('totem', 'r2'), cols: __g.G.settlements.length, keys: Object.keys(localStorage).filter((k) => /^base-camp-(map|save)/.test(k) && !/-(bak|prev)$/.test(k)) }));
+  ok('room B has its own map and colony', !rm.tot && rm.cols > 0 && rm.keys.length === 4, JSON.stringify(rm));
   await endSession();
-  // the other room is selected on purpose: the totem decides
-  const wrongStarts = [];
-  for (const [name, shed, W, seed, want, closeKey] of [['A', ROOM_A, { yaw: 0.3, x: 0.2, z: 0.3 }, 11, 'r1', 'a'], ['B', ROOM_B, { yaw: -0.5, x: -0.2, z: 0.4 }, 44, 'r2', 'b'], ['A again', ROOM_A, { yaw: -0.2, x: 0.1, z: -0.3 }, 11, 'r1', 'a']]) {
+  // the other room is selected on purpose: the surface matcher decides
+  for (const [name, shed, W, want] of [['A', ROOM_A, { yaw: 0.3, x: 0.2, z: 0.3 }, 'r1'], ['B', ROOM_B, { yaw: -0.5, x: -0.2, z: 0.4 }, 'r2'], ['A again', ROOM_A, { yaw: -0.2, x: 0.1, z: -0.3 }, 'r1']]) {
     await advance(4); await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await setRoom(shed, W); await ev((want) => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; __g.homeSelect(want === 'r1' ? 'r2' : 'r1'); }, want); // start with the wrong room selected
-    await p.click('#bPlay'); await sleep(900); await closeUp(closeKey, {}); await sleep(400); await showCard(seed, { rot: 2 }); const t0 = Date.now();
-    await waitFor(() => __g.TOTEM.sightings >= 1, 30000, 400); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor'], 1.0);
-    const tL = await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 120000, 400); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0), name: __g.G.mapName }));
-    ok('start with the wrong room selected, room ' + name + ': the totem loads room ' + want + ' and locks', L.st === 'locked' && L.cur === want && L.how === 'totem' && L.cols >= 3, JSON.stringify(L) + ' wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+    await p.click('#bPlay'); await sleep(900); const t0 = Date.now(); await plain(); await sweep(['shelf', 'deskA', 'speakerA', 'floor', 'floor2'], 1.0);
+    await waitFor(() => __g.G.locked || __g.RELOC.state === 'asking', 240000, 400); const L = await ev(() => ({ st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, cur: __g.HOMES.cur, secs: __g.RELOC.lock && __g.RELOC.lock.scanSecs, cols: __g.G.settlements.reduce((a, S) => a + S.cols.length, 0) }));
+    ok('start with the wrong room selected, room ' + name + ': room ' + want + ' loads and locks', L.st === 'locked' && L.cur === want && L.how !== 'totem' && L.cols >= 3, JSON.stringify(L) + ' wall ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
     await sleep(1500); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
   // ===================== 4. no totems: the surface matcher across saved rooms =====================
@@ -172,7 +163,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
     await sleep(1000); await ev(() => { document.getElementById('diary').hidden = true; __g.persist(true); }); await endSession();
   }
   const m1 = await memNow(); console.log('memory', JSON.stringify(m0), JSON.stringify(m1)); ok('memory flat (geometries / textures bounded)', m1.geo < m0.geo + 400 && m1.tex < m0.tex + 100);
-  const rep = await ev(() => JSON.parse(__g.buildReport('test'))); ok('field report holds the totem attempts (inliers, time) and the rooms', rep.totem && rep.totem.attempts.length > 5 && rep.totem.attempts.some((a) => a.inl !== undefined && a.ms !== undefined) && rep.rooms.length === 2, rep.totem.attempts.length + ' attempts, ' + (JSON.stringify(rep).length / 1024).toFixed(0) + ' KB');
+  const rep = await ev(() => JSON.parse(__g.buildReport('test'))); ok('field report holds the totem section (no attempts while it is off) and the rooms', rep.totem && rep.totem.attempts.length === 0 && rep.totem.stats.tries === 0 && rep.rooms.length === 2, rep.totem.attempts.length + ' attempts, ' + (JSON.stringify(rep).length / 1024).toFixed(0) + ' KB');
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 4)));
   const fails = res.filter((r) => !r).length; console.log(fails ? fails + ' FAILED' : 'ALL ' + res.length + ' PASSED'); await b.close(); srv.close(); process.exit(fails ? 1 : 0);
 })();
