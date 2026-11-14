@@ -11,9 +11,9 @@
 :root { --ink: #2b1d12; --soft: #6b5640; --paper: #fffaf2; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
-.page { width: 190mm; min-height: 277mm; margin: 0 auto; padding: 0; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 5mm; }
+.page { width: 190mm; margin: 0 auto; padding: 0; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 2.5mm; }
 .page:last-child { page-break-after: auto; break-after: auto; }
-h1 { font-size: 24px; margin: 4mm 0 0; }
+h1 { font-size: 22px; margin: 0; }
 h2 { font-size: 18px; margin: 0; }
 p, li { margin: 0; font-size: 14px; }
 ul { margin: 0; padding-left: 5mm; display: grid; gap: 1.5mm; }
@@ -27,7 +27,7 @@ svg.mk { width: 93.33mm; height: 93.33mm; display: block; }
 .ruler span { position: absolute; left: 102mm; top: 0; font-size: 12px; white-space: nowrap; }
 .note { color: var(--soft); font-size: 12px; }
 .noprint { background: #fff1dc; border: 1px solid #e8cfa8; border-radius: 8px; padding: 2mm 3mm; font-size: 13px; }
-@media screen { body { padding: 16px; } .page { width: min(190mm, 100%); min-height: 0; margin-bottom: 24px; } .grid { grid-template-columns: repeat(auto-fit, minmax(min(93.4mm, 100%), 93.4mm)); } .cut, svg.mk { max-width: 100%; } }
+@media screen { body { padding: 16px; } .page { width: min(190mm, 100%); margin-bottom: 24px; } .grid { grid-template-columns: repeat(auto-fit, minmax(min(93.4mm, 100%), 93.4mm)); } .cut, svg.mk { max-width: 100%; } }
 @media print { .noprint { display: none; } }
 </style>
 </head>
