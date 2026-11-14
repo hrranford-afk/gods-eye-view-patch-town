@@ -136,6 +136,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
       <button id="bPrac" class="alt">Practice room</button>
       <button id="bMap">Manual: map my room</button>
       <button id="bMapIO">Room map: export / import</button>
+      <button id="bRestore" hidden>Restore this room&rsquo;s last map</button>
       <button id="bHomes" hidden>Rooms and totems</button>
       <button id="bNew" hidden>Forget my colony</button>
       <div id="storeInfo" class="sub" style="flex-basis:100%"></div>
@@ -174,7 +175,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 21';
+const BUILD = 'build 21 + roomguard';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -193,6 +194,32 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
   let bad = false;
   for (const k of [key, key + '-bak']) { let raw = null; try { raw = localStorage.getItem(k); } catch (e) { return null; } if (!raw) continue; try { const d = JSON.parse(raw); if (ok(d)) { if (k !== key) STORE.usedBackup = true; return d; } bad = true; } catch (e) { bad = true; } }
   if (bad) STORE.status = 'corrupt'; return null;
+}
+/* ---- ROOM GUARD (build 21 + roomguard, HANDOVER "Room guard"): the player's saved room is protected from a false room lock.
+   1. Backups: the first time a session replaces a room's stored map, the stored version is copied first to bc-mapold-<room>-1 (newest) and the older one to -2:
+      the last RG_KEEP versions, byte for byte (the old map format, so they load like any map). The title's More... has "Restore this room's last map".
+   2. Probation: after an automatic room lock nothing is written back to the room for RG_PROB seconds, or until a second, independent top surface lines up
+      (rgTops). The saves are held in memory (RG.held) and written once the lock is confirmed; a dropped or corrected lock throws them away.
+   3. Ask when unsure: with one saved room a lock whose score is under RG_WEAK asks "Is this the same room?" (#ask, #rmNew) instead of locking silently. */
+const RG = { prob: false, room: '', t0: 0, held: null, holds: 0, confirmed: '', tops: 0, backed: {}, ask: null, noAskUntil: 0, ct: 0 };
+const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 400;
+function rgOldKey(id, n) { return 'bc-mapold-' + id + '-' + n; }
+function rgIsMap(raw) { try { const d = JSON.parse(raw); return !!(d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); } catch (e) { return false; } }
+function rgBackup(id, key) { /* the room's stored map goes to backup 1, backup 1 to backup 2 (the oldest is dropped); a copy equal to backup 1 is not kept twice */
+  try {
+    const cur = localStorage.getItem(key); if (!cur || !rgIsMap(cur)) return false;
+    if (localStorage.getItem(rgOldKey(id, 1)) === cur) return true;
+    for (let n = RG_KEEP; n > 1; n--) { const prev = localStorage.getItem(rgOldKey(id, n - 1)); if (prev) localStorage.setItem(rgOldKey(id, n), prev); }
+    localStorage.setItem(rgOldKey(id, 1), cur); return localStorage.getItem(rgOldKey(id, 1)) === cur;
+  } catch (e) { return false; } /* storage full: the -bak copy is still there */
+}
+function rgBackups(id) { const out = []; for (let n = 1; n <= RG_KEEP; n++) { const raw = store.get(rgOldKey(id, n)); if (!raw) continue; let saved = 0; try { saved = JSON.parse(raw).saved || 0; } catch (e) { /* unreadable */ } out.push({ n, saved, chars: raw.length }); } return out; }
+function rgRestore(id) { /* backup 1 becomes the room's map again; the map it replaces becomes backup 1, so a second restore undoes the first */
+  const k = homeKeys(id).map, b = store.get(rgOldKey(id, 1)); if (!b || !rgIsMap(b)) return false;
+  const cur = store.get(k); if (!safeWrite(k, b)) return false;
+  if (cur && rgIsMap(cur)) store.set(rgOldKey(id, 1), cur); else { const b2 = store.get(rgOldKey(id, 2)); if (b2) store.set(rgOldKey(id, 1), b2); else store.del(rgOldKey(id, 1)); store.del(rgOldKey(id, 2)); }
+  RG.backed = {}; const r = homeInfo(id); if (r) { try { const d = JSON.parse(b); r.known = +mapKnownJSON(d).toFixed(2); r.zones = d.zones.length; } catch (e) { /* numbers stay */ } homesSave(); }
+  return true;
 }
 const MULTI_ROOM = true; // ON (build 7): several rooms, each with its own map and colony (storage keys per room), a rooms list on the title, silent room recognition by surface matching
 const HOME_TOTEM = false; // OFF: the totem photo / guardian / feature matcher (build 6, never validated) is not reachable while this is false
@@ -2154,7 +2181,7 @@ function mapFromJSON(d) { // returns an error string, or '' after loading it int
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
-function saveMap() { if (!G.zones.length) return true; G.mapSaved = Date.now(); homeStats(); if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) { storeWarn(); return false; } return true; }
+function saveMap() { if (!G.zones.length) return true; G.mapSaved = Date.now(); homeStats(); if (!RG.backed[MAP_KEY]) { RG.backed[MAP_KEY] = 1; rgBackup(HOMES.cur, MAP_KEY); } /* roomguard: once per session, before the stored map is replaced */ if (!safeWrite(MAP_KEY, JSON.stringify(mapToJSON()))) { storeWarn(); return false; } return true; }
 function loadMapData() { return safeRead(MAP_KEY, (d) => d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); }
 function storeWarn() { if (STORE.told) return; STORE.told = true; toast('The colony could not be saved here (' + (STORE.status === 'unavailable' ? 'this browser blocks storage' : 'storage is full or blocked') + '). Use Menu, Export, to keep your room map.', 8); }
 function pickLandmarks() { // the two tagged spots that are furthest apart: the best pair to line the saved room up with the real one
@@ -4595,7 +4622,7 @@ function reportUi(msg) {
 //    snap the saved room into place (relocLock) with a "We're home!" moment. If nothing matches for ~60 s of scanning the player is asked once.
 //  - After a lock the usual change detection (captureScan / applyChanges) runs every minute or so on the matched map.
 const AUTO = { t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '' };
-function autoReset() { Object.assign(AUTO, { commitAt: 0, refT: 0, t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '', colonySince: undefined }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; }
+function autoReset() { Object.assign(AUTO, { commitAt: 0, refT: 0, t: 0, lastHits: -1, scanT: 0, saveT: 0, firstDecent: 0, steady: false, hintT: 0, compareAt: 0, compareHits: 0, settleWait: 0, mapDirty: false, said: '', colonySince: undefined }); G.locked = false; G.returning = false; RELOC.state = 'off'; RELOC.hist = []; RELOC.job = null; RELOC.scanSecs = 0; RELOC.result = null; RECOG.lastQuestion = -1e9; RECOG.asked = []; rgReset(); }
 function autoSay(text, secs) { // one short line that fades after a few seconds
   const h = $('hint'); if (!text) { h.textContent = ''; h.hidden = true; return; }
   h.hidden = false; h.classList.remove('fade'); if (AUTO.said !== text) { AUTO.said = text; h.textContent = text; }
@@ -4604,6 +4631,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
+  if (RG.prob && RG.room === HOMES.cur) { rgHold(); return false; } /* roomguard: a fresh lock is on probation, the room's saves wait in memory */
   if (saveMap()) saveNow(); /* never write a colony whose map did not save: it could not be placed on reload (review 12 Nov) */ AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
@@ -4727,7 +4755,8 @@ function autoTick(dt) {
   if (AUTO.revealT > 0 && G.locked) { AUTO.revealT -= dt; const S = G.settlements.find((q) => q.placed && !q.lost); if (S && AR.on) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, SY(S, 0.1), S.tf.z)); if (!vis || sx < 50 || sx > innerWidth - 50 || sy < 50 || sy > innerHeight - 50) autoSay('Your colony is ' + (vis ? (sx < innerWidth / 2 ? 'to the left' : 'to the right') : 'behind you') + '. Turn to see what they did.', 2); else AUTO.revealT = 0; } }
   if (AUTO.commitAt) { AUTO.refT = (AUTO.refT || 0) + dt; if (AUTO.refT > 2) { AUTO.refT = 0; relocRefine(); } if (AUTO.t > AUTO.commitAt) { AUTO.commitAt = 0; commitAlign(); persist(); } }
   // after a lock: change detection on the matched map
-  if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300 && !AUTO.commitAt) { if (relocGoodForCompare()) autoCompare(); else AUTO.compareAt = AUTO.t + 30; }
+  rgTick(dt);
+  if (G.returning && G.locked && G.phase === 'play' && AUTO.compareAt && AUTO.t > AUTO.compareAt && SCAN.hits - AUTO.compareHits > 300 && !AUTO.commitAt && !RG.prob) { /* roomguard: no change report on a lock still on probation */ if (relocGoodForCompare()) autoCompare(); else AUTO.compareAt = AUTO.t + 30; }
   AUTO.saveT += dt; if (AUTO.saveT > 10) { AUTO.saveT = 0; persist(); }
   RECOG.t += dt; if (RECOG.t > 2) { RECOG.t = 0; recogTick(); recogStatus(); }
   REC.lastCover += dt; if (REC.lastCover > 5) { REC.lastCover = 0; recCover(); if (++REC.lastZones % 3 === 0) { recZones(); wondersTick(); } if (REC.lastZones % 6 === 0) recSave(); }
@@ -4936,6 +4965,7 @@ function relocConsider(res) {
   if (!h.every((e) => angd(e.res.phi, a.phi) < 0.07 && Math.hypot(e.res.tx - a.tx, e.res.tz - a.tz) < 0.08 && Math.abs(e.res.dy - a.dy) < 0.03)) return;
   if (G.finding && [HOMES.cur].concat(Object.keys(ROOMPRE)).some((id) => id !== room && (RELOC.tried[id] || 0) < 2)) return; // never lock on one room before the others were really compared
   const rival = Math.max(0, ...RELOC.hist.filter((e) => e.room !== room && e.res).slice(-6).map((e) => e.res.score)); if (rival > 0.8 * a.score && a.score > 0) { recReloc({ room, rival: Math.round(rival), score: a.score, why: ['another saved room scores nearly as well'] }); return; } // several rooms: the best score wins
+  if (!RELOC.totem && rgAskFirst(a, room)) return; /* roomguard: one saved room and a weak match: ask first */
   if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
@@ -4947,8 +4977,53 @@ function relocLock(res, how) {
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
   autoSay(''); homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
   for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, SY(S, 0.05), S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
-  AUTO.compareAt = AUTO.t + (how === 'totem' ? 10 : 25); AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; TOTEM.watchUntil = AUTO.t + 60; totemCommit(); persist();
+  AUTO.compareAt = AUTO.t + (how === 'totem' ? 10 : 25); AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; TOTEM.watchUntil = AUTO.t + 60; totemCommit(); rgStart(how || 'auto'); persist();
   setTimeout(() => uiWhenFree(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }), 2700); /* build 20 + return: after the home moment, never on top of it */
+}
+/* ---- roomguard: probation after a lock, and the question for a weak lock (see RG above) ---- */
+function rgReset() { RG.prob = false; RG.room = ''; RG.held = null; RG.holds = 0; RG.confirmed = ''; RG.tops = 0; RG.backed = {}; RG.ask = null; RG.noAskUntil = 0; RG.ct = 0; }
+function rgStart(how) { /* a world map is ARKit's own relocalisation: nothing to doubt. Every other lock waits. */
+  RG.held = null; RG.holds = 0; RG.tops = 0; RG.ct = 0; RG.room = HOMES.cur; RG.t0 = AUTO.t;
+  if (how === 'worldmap') { RG.prob = false; RG.confirmed = 'worldmap'; return; }
+  RG.prob = true; RG.confirmed = ''; recReloc({ guard: 'probation', how, secs: RG_PROB });
+}
+function rgHold() { /* what persist() would have written, kept in memory only */
+  try { RG.held = { t: Date.now(), map: G.zones.length ? JSON.stringify(mapToJSON()) : null, save: G.settlements.length ? JSON.stringify(serialize()) : null }; RG.holds++; } catch (e) { RG.held = { t: Date.now(), map: null, save: null }; RG.holds++; }
+  AUTO.mapDirty = false;
+}
+function rgTops() { /* separate tops of the live scan (not the floor) that land on saved tops of the same height under the lock pose */
+  const L = RELOC.lock, saved = RELOC.saved; if (!L || !saved || !saved.length) return 0;
+  const live = relocLiveLayers(); if (!live.length) return 0;
+  const low = live.reduce((m, l) => Math.min(m, l.y), 1e9), T = { phi: L.phi, tx: L.tx, tz: L.tz, dy: L.dy }; let n = 0;
+  for (const l of live) { if (l.y < low + 0.08 || l.n < 12) continue; const r = relocSetScore(T, [l], saved); if (r.m >= 10 && r.q >= 0.4) n++; }
+  return n;
+}
+function rgTick(dt) {
+  if (!RG.prob) return; if (!G.locked || RG.room !== HOMES.cur) { rgDrop('lock lost'); return; }
+  RG.ct += dt; if (RG.ct < 2) return; RG.ct = 0;
+  try { RG.tops = Math.max(RG.tops, rgTops()); } catch (e) { /* keep waiting */ }
+  if (RG.tops >= 2) rgConfirm('surface'); else if (AUTO.t - RG.t0 >= RG_PROB) rgConfirm('time');
+}
+function rgConfirm(why) { /* the lock stands: the held saves are written now (persist writes the newest state, which includes them) */
+  if (!RG.prob) return; RG.prob = false; RG.confirmed = why; const had = RG.holds; RG.held = null;
+  recReloc({ guard: 'confirmed', why, tops: RG.tops, held: had, after: +(AUTO.t - RG.t0).toFixed(1) }); persist();
+}
+function rgDrop(why) { /* the lock was dropped or corrected: the held saves are thrown away, nothing reaches the room */
+  if (!RG.prob && !RG.held) return; const had = RG.holds; RG.prob = false; RG.held = null; RG.holds = 0; RG.confirmed = '';
+  recReloc({ guard: 'dropped', why, held: had });
+}
+function rgAskFirst(a, room) { /* one saved room and a weak match: "Is this the same room?" instead of a silent lock */
+  if (G.finding || room !== HOMES.cur || HOMES.rooms.filter((r) => roomHasData(r.id)).length > 1) return false;
+  if (!a || a.score >= RG_WEAK) return false;
+  if (RELOC.scanSecs < RG.noAskUntil) return true; /* "Keep looking" was tapped: no silent weak lock, and no new question for a while */
+  RG.ask = { res: a, room, t: RELOC.scanSecs }; RELOC.state = 'asking'; RELOC.asked = true;
+  recReloc({ guard: 'ask', score: Math.round(a.score), M: a.M, info: a.info, ratio: +(a.ratio || 0).toFixed(2), room }); recSnap('same room?');
+  const el = $('ask'); el.hidden = false;
+  el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">Is this the same room?</div><div style="font-weight:600">This looks a bit like ' + esc(homeName(room)) + ', but the colonists are not sure.</div><div class="mrow" style="justify-content:center"><button class="big" id="rmSame">Yes, same room</button><button class="big alt" id="rmNew">A new room</button><button id="rmMore">Keep looking</button></div>';
+  $('rmSame').onclick = () => { el.hidden = true; const q = RG.ask; RG.ask = null; if (q && q.room === HOMES.cur && G.returning && !G.locked) relocLock(q.res, 'asked'); };
+  $('rmNew').onclick = () => { el.hidden = true; RG.ask = null; relocNewRoom(); };
+  $('rmMore').onclick = () => { el.hidden = true; RG.ask = null; RG.noAskUntil = RELOC.scanSecs + 30; RELOC.state = 'search'; RELOC.asked = false; RELOC.hist = []; };
+  return true;
 }
 function relocSetScore(T, liveTops, saved) { // how many live top cells land on saved top cells of the same height (tops are clean, small outlines: they pin yaw and shift much better than a floor)
   const C = RELOC.cfg.cell, c = Math.cos(-T.phi), s = Math.sin(-T.phi); let m = 0, o = 0;
@@ -4986,7 +5061,7 @@ function relocAsk() { // nothing matched after a minute of scanning
   $('rmMore').onclick = () => { el.hidden = true; RELOC.state = 'search'; RELOC.scanSecs = 0; RELOC.cfg.askAfter = 1e9; };
 }
 function relocManual() { // the older way: tap the two furthest-apart named things
-  RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
+  rgDrop('corrected by hand'); RELOC.state = 'manual'; G.cont = true; G.landmarks = null; alignStart();
 }
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
   for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
@@ -4994,7 +5069,7 @@ function worldDrop() { // the map and colony go from the world; the fresh scan s
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
 function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
-  let nr = null;
+  rgDrop('a new room'); let nr = null;
   if (MULTI_ROOM) { nr = homeCreate(); if (!nr) { toast('That is eight rooms: delete one you do not need on the title screen first.', 6); return; } }
   else { const m = store.get(MAP_KEY), c = store.get(SAVE_KEY); if (m) store.set(MAP_KEY + '-prev', m); if (c) store.set(SAVE_KEY + '-prev', c); nr = HOME_TOTEM ? homeCreate() : null; }
   const lib = G.library, nl = G.nextLib; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; G.library = lib; G.nextLib = nl; G.mapName = nr ? nr.name : 'My room'; $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
@@ -5175,7 +5250,7 @@ function homePickStart() { // the room that loads first while the others wait in
   const r = HOMES.rooms.filter((q) => roomHasData(q.id)).sort((a, b) => (b.last || 0) - (a.last || 0))[0]; if (r && r.id !== HOMES.cur) homeSelect(r.id);
 }
 function homeSwitchLoad(id) { // another room's map and colony load while the fresh scan stays
-  const secs = RELOC.scanSecs; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
+  rgDrop('room switch'); const secs = RELOC.scanSecs; worldDrop(); funReset(); G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 }; homeSelect(id); const ok = prepareContinue(); if (!ok || !G.zones.length) { G.returning = false; RELOC.state = 'new'; return false; }
   G.returning = true; G.locked = false; for (const Z of G.zones) if (Z.mesh) Z.mesh.visible = false; relocBegin(); RELOC.scanSecs = secs; recTotem({ room: id, switched: true }); return true;
 }
 function homeStats() { const r = homeInfo(HOMES.cur); if (!r) return; r.cols = G.settlements.reduce((a, S) => a + (S.dead ? 0 : S.cols.length), 0); r.visits = G.visits || 0; r.known = +(G.zones.length ? mapKnown() : 0).toFixed(2); r.zones = G.zones.length; r.last = Date.now(); homesSave(); }
@@ -5257,7 +5332,7 @@ function roomBound() { // each room is bounded; near the browser limit the backu
   try {
     const id = HOMES.cur, k = homeKeys(id);
     if (roomChars(id) > ROOM_MAX) { store.del(k.map + '-bak'); store.del(k.save + '-bak'); if (roomChars(id) > ROOM_MAX && !STORE.bigTold) { STORE.bigTold = true; toast('This room has grown very large (' + fmtKB(roomChars(id)) + '). It still saves, but a room that big may not fit next to your others.', 7); } }
-    const t = storeChars(); if (t > STORE_LIMIT * 0.8) for (const r of HOMES.rooms) if (r.id !== id) { const q = homeKeys(r.id); store.del(q.map + '-bak'); store.del(q.save + '-bak'); }
+    const t = storeChars(); if (t > STORE_LIMIT * 0.8) for (const r of HOMES.rooms) if (r.id !== id) { const q = homeKeys(r.id); store.del(q.map + '-bak'); store.del(q.save + '-bak'); store.del(rgOldKey(r.id, RG_KEEP)); } /* roomguard: the oldest map backup of the other rooms goes with them */
     if (t > STORE_LIMIT * 0.7 && !STORE.nearTold) { STORE.nearTold = true; toast('Saved rooms use ' + fmtKB(t) + ' of about ' + fmtKB(STORE_LIMIT) + ' your browser allows. Delete a room you no longer need on the title screen.', 8); }
   } catch (e) { /* storage blocked */ }
 }
@@ -5274,7 +5349,7 @@ function roomsTidy() { // a room that was started and never saved anything is no
   homesSave();
 }
 function roomDelete(id) { // deleting keeps nothing: map, colony and their backups are gone
-  const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x);
+  const k = homeKeys(id); for (const b of [k.map, k.save]) for (const x of ['', '-bak', '-prev']) store.del(b + x); for (let n = 1; n <= RG_KEEP; n++) store.del(rgOldKey(id, n));
   HOMES.rooms = HOMES.rooms.filter((r) => r.id !== id); totemDel(id);
   if (!HOMES.rooms.length) HOMES.rooms = [{ id: 'r1', name: 'Room 1', created: Date.now(), visits: 0, known: 0, post: [] }];
   if (!HOMES.rooms.some((r) => r.id === HOMES.cur)) homeSelect(HOMES.rooms.slice().sort((a, b) => (b.last || 0) - (a.last || 0))[0].id); else homesSave();
@@ -5334,7 +5409,7 @@ $('rooms').onclick = (e) => {
 function updateTitle() {
   if (MULTI_ROOM && G.phase === 'title') roomsTidy();
   const nRooms = MULTI_ROOM ? HOMES.rooms.filter((r) => roomHasData(r.id)).length : 0; if (MULTI_ROOM && G.phase === 'title' && nRooms && !roomHasData(HOMES.cur)) homePickStart(); // only on the title: a room being started has no data yet
-  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has || MULTI_ROOM; $('bFresh').hidden = MULTI_ROOM; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked;
+  const md = loadMapData(), sv = loadSave(), has = !!sv && !!md; $('bNew').hidden = !has || MULTI_ROOM; $('bFresh').hidden = MULTI_ROOM; $('bMapIO').hidden = false; $('bPlay').disabled = !AR.checked; rgRestoreBtn();
   let info = md ? 'Saved room: ' + md.zones.length + ' places, ' + Math.round(mapKnownJSON(md) * 100) + '% known, ' + (md.visits || 0) + ' visit' + ((md.visits || 0) === 1 ? '' : 's') + (has ? ', and a colony.' : ', no colony yet.') : 'No room yet: press Play and look around.';
   if (STORE.status === 'unavailable') info = 'This browser is blocking storage, so nothing can be saved and progress is lost when you close it. Open Room map: export to keep your map.';
   else if (STORE.status === 'corrupt') info = 'The saved colony could not be read (damaged, and the backup too). Room map: export may still show what is there.';
@@ -5563,13 +5638,13 @@ function ioUi(msg) {
   $('ioCopy').onclick = () => { $('ioText').select(); try { navigator.clipboard.writeText($('ioText').value); } catch (e) { document.execCommand && document.execCommand('copy'); } toast('Copied.'); };
   $('ioClose').onclick = () => { m.hidden = true; };
   $('ioLoad').onclick = () => importMapText($('ioText').value);
-  $('ioForget').onclick = () => { store.del(MAP_KEY); store.del(MAP_KEY + '-bak'); updateTitle(); ioUi('The saved room map is forgotten (the colony save is kept, but it needs a map to come back to).'); };
+  $('ioForget').onclick = () => { rgBackup(HOMES.cur, MAP_KEY); store.del(MAP_KEY); store.del(MAP_KEY + '-bak'); updateTitle(); ioUi('The saved room map is forgotten (the colony save is kept, but it needs a map to come back to).'); };
   $('ioFile').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('ioText').value = r.result; importMapText(r.result); }; r.readAsText(f); };
 }
 function importMapText(txt) {
   let d; try { d = JSON.parse(txt); } catch (e) { return ioUi('That is not valid JSON.'); }
   const keep = { zones: G.zones, spots: G.spots }; const err = mapFromJSON(d); if (err) return ioUi(err);
-  store.set(MAP_KEY, JSON.stringify(d)); for (const z of keep.zones) disposeZone(z);
+  rgBackup(HOMES.cur, MAP_KEY); store.set(MAP_KEY, JSON.stringify(d)); for (const z of keep.zones) disposeZone(z);
   for (const S of G.settlements) { S.zoneRef = zoneById(S.zid) || S.zoneRef; }
   for (const Z of G.zones) { const S = G.settlements.find((q) => q.zid === Z.id); if (S) { Z.settled = S; S.zoneRef = Z; syncTf(S); } paintLand(Z); }
   refreshSpots(); updateTitle(); $('modal').hidden = true; toast('Room map loaded: ' + G.zones.length + ' surfaces, ' + G.spots.length + ' spots.', 4);
@@ -5579,7 +5654,16 @@ $('bMore').onclick = () => { $('tmenu').hidden = !$('tmenu').hidden; };
 $('bPrac').onclick = () => { G.intent = 'play'; startPractice(); };
 $('bMap').onclick = () => { G.intent = 'map'; G.auto = false; const again = !!loadMapData(); if (AR.ok) arStart(again); else { G.mode = 'practice'; resetWorld(); startScan(again); } }; // the manual way: scan, then Done scanning
 $('bMapIO').onclick = () => { $('title').hidden = true; ioUi(); $('modal').querySelector('#ioClose').onclick = () => { $('modal').hidden = true; if (G.phase === 'title') $('title').hidden = false; updateTitle(); }; };
-$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); }; // hidden: the totem screens stay unreachable
+$('bHomes').onclick = () => { if (HOME_TOTEM) homesUi(); };
+/* roomguard: put back the room's previous map (backup 1). Asks once more first; the map it replaces becomes the backup, so it can be undone the same way. */
+function rgRestoreBtn() { const b = $('bRestore'); if (!b) return; const bk = G.phase === 'title' ? rgBackups(HOMES.cur) : []; b.hidden = !bk.length; if (!bk.length || b.dataset.sure === '1') return; b.textContent = 'Restore this room\u2019s last map'; }
+$('bRestore').onclick = () => {
+  const b = $('bRestore'), id = HOMES.cur, bk = rgBackups(id)[0]; if (!bk || G.phase !== 'title') { b.hidden = true; return; }
+  if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again: put back the map of ' + homeName(id) + ' saved ' + agoText(Date.now() - (bk.saved || Date.now())) + ' (the map now is kept as a backup)'; clearTimeout(RG.sureT); RG.sureT = setTimeout(() => { b.dataset.sure = ''; rgRestoreBtn(); }, 6000); return; }
+  b.dataset.sure = ''; clearTimeout(RG.sureT);
+  if (rgRestore(id)) { G.previewLines = null; G.previewStamp = ''; toast('The last map of ' + homeName(id) + ' is back. Tap Play and look around.', 5); } else toast('That backup could not be put back.', 4);
+  updateTitle();
+}; // hidden: the totem screens stay unreachable
 // Start a new room: the current room's map and colony are kept as a backup (-prev), then everything starts fresh here.
 $('bFresh').onclick = () => {
   const b = $('bFresh');
@@ -6930,7 +7014,7 @@ function SND_board() {
 }
 try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
-window.__g = {
+window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
