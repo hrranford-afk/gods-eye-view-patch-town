@@ -2994,6 +2994,7 @@ function f10LogDone(S, r) { /* the log goes on: the fire flares, everyone warms 
 function f10Surprise(S) { /* near minute 6, with no input: a paper moth flutters into the firelight, and everyone points */
   F10.sur = true; F10.surT = F10.t; const at = S.f10fire && S.f10fire.visible ? f10FireAt(S) : [0.05, 0.05];
   const t = addThing(S, 'visitor', at[0], at[1], { built: true, gift: true, var: 1, life: 260 }); t.pop = 1; decorRefresh();
+  const B = t.mesh && t.mesh.userData.body; if (B) { B.scale.setScalar(2.2); const gl = glowSprite(0.009, 0.6, 0xffe0c0); gl.position.y = 0.013; B.add(gl); } /* a big moth, lit by the fire */
   const [wx, wz] = l2w(S, at[0], at[1]); puff('star', wx, SY(S, 0.04), wz, 10, { size: 0.008, vy: 0.03, life: 1.4, add: true, jit: 0.03, color: 0xe8d0ff });
   const says = ['A paper moth!', 'Ooh, it is dancing!', 'Hello, little moth!']; let i = 0;
   for (const c of S.cols) if (!c.inside) { c.face = Math.atan2(at[0] - c.x, at[1] - c.z); c.hop = 1; c.cheerT = 1; if (i < 2) sayLine(c, says[i++], 3, true); }
