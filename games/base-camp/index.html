@@ -4008,7 +4008,7 @@ const MKT_HAGGLE = [['Two acorns for that button?', 'Deal!'], ['Is this thimble 
   ['I will give you a hug for it.', 'Sold!'], ['Is it a bargain?', 'A bargain-ish.'], ['Swap you a bottle top?', 'Only if it is shiny.'], ['Final offer: one sock fluff.', 'Hmm... deal.'], ['Any wobbly beads?', 'All my beads wobble.'], ['Is the water wet?', 'Very wet. Top quality.'], ['Three seeds and a smile?', 'Make it two smiles.']];
 const MKT_CALL = ['Seeds! Lovely seeds!', 'Get your crumbs here!', 'Matchsticks, two for a button!', 'Thimbles of water! Hardly sloshed!', 'Who wants a bead?'];
 const MKT_HOME = ['Home with goodies!', 'Look what I got!', 'Market was great!', 'I haggled! Twice!'];
-KINDS.market = { r: 0.062, wood: 6, work: 20, mk: () => marketMake(), name: 'Market', by: 'Harry and CAIRN', ic: '🧺' };
+KINDS.market = { r: 0.068, wood: 6, work: 20, mk: () => marketMake(), name: 'Market', by: 'Harry and CAIRN', ic: '🧺' };
 MILESTONES.market = ['🧺', 'Market day!', 'Everybody brings something to swap.', MKT_CREDIT];
 COLONY_ALMANAC.requests.push({ id: 'market', icon: 'stall', text: "It's market day and we've nowhere to trade! Could we build a market?", when: 'marketDay', give: 'market', joy: 0.3, cooldown: 1800 });
 CONDS.marketDay = (S) => mktIsDay() && !ENV.night && S === mainSettlement() && S.cols.length >= 1 && !mktAny();
@@ -4085,6 +4085,7 @@ function mktDeal(c, H, P, how) {
     else if (give) text = nm + ' swapped ' + mktQty(give, gn) + ' for ' + mktQty(craft, 1) + '.';
     else { const b = pick(MKT_CRAFT.filter((q) => q !== craft)); text = nm + ' swapped ' + mktQty(craft, 1) + ' for ' + mktQty(b, 1) + '.'; }
     if (how === 'parcel') text = text.replace(' swapped ', ' sent a parcel along the cable cars and swapped ');
+    else if (how === 'with') text = text.replace(/\.$/, ' with the ' + String(P.zoneName || 'other').split(' – ')[0] + ' camp.');
     MKT.xfer += moved;
   }
   MKT.deals++; const e = { text: 'Market day: ' + text, t: Date.now(), moved, a: H.id, b: P ? P.id : H.id }; MKT.log.push(e); if (MKT.log.length > 30) MKT.log.shift(); funLog('market', e.text);
@@ -4115,7 +4116,7 @@ function mktFinish(S, c, j, quiet) {
   const others = S.cols.filter((q) => q !== c && q.job && q.job.type === 'market' && q.job.ph === 'do'), oh = others.map((q) => (q.mkt ? G.settlements.find((s) => s.id === q.mkt.home) : S)).filter((q) => q && q !== H);
   let P = oh.length ? pick(oh) : H !== S ? S : null;
   if (!P) { const far = G.settlements.filter((q) => q !== H && !q.lost && !q.awaiting && !q.dead && q.cols.length); P = far.length && Math.random() < 0.5 ? pick(far) : H; }
-  const e = mktDeal(c, H, P, P !== H && P !== S && H === S ? 'parcel' : '');
+  const e = mktDeal(c, H, P, P !== H && P !== S && H === S ? 'with' : '');
   c.needs.joy = Math.min(1, c.needs.joy + 0.15); for (const q of others) q.needs.joy = Math.min(1, q.needs.joy + 0.05);
   if (!quiet) { c.hop = 1; c.cheerT = 1.2; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.009, life: 1.3 }); sfx('pop', 1, SND_colPos(c)); }
   endJob(c);

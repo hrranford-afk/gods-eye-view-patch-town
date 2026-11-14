@@ -18,6 +18,9 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   await ev(() => { __g.F10.on = false; for (const r of __g.G.requests.slice()) __g.resolveRequest(r, true); __g.F10.reqDone = true; });
   const shotPrep = () => ev(() => { for (const id of ['toast', 'env', 'sel']) { const e = document.getElementById(id); if (e) { if (id === 'toast') e.innerHTML = ''; else e.hidden = true; } } __g.CCAM && __g.camClose && __g.camClose(); });
   const focusMarket = (d, yaw, pitch) => ev(([d, yaw, pitch]) => { const st = __g.mktThings(true)[0]; if (!st) return false; const w = st.S.group.localToWorld(new __g.THREE.Vector3(st.t.x, 0, st.t.z)); __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = yaw; __g.P.pitch = pitch; __g.focusOn(w.x, w.y + 0.025, w.z, d); return true; }, [d, yaw, pitch]);
+  const focusVisitor = (id, d, rot, pitch) => ev(([id, d, rot, pitch]) => { /* look past the visitor at the market, from a little to the side, so the bubbles sit in the middle */
+    const st = __g.mktSite(); const v = st.S.cols.find((c) => c.id === id); if (!v) return false; const m = st.S.group.localToWorld(new __g.THREE.Vector3(st.t.x, 0, st.t.z)), w = st.S.group.localToWorld(new __g.THREE.Vector3(v.x, 0, v.z));
+    const a = Math.atan2(w.x - m.x, w.z - m.z) + rot; __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = a; __g.P.pitch = pitch; __g.focusOn((m.x + w.x) / 2, m.y + 0.04, (m.z + w.z) / 2, d); return true; }, [id, d, rot, pitch]);
 
   /* 1. the Market in the Build menu, locked on a Tuesday for a brand-new camp */
   ok('the Market is a build kind with a cost and a footprint', await ev(() => !!__g.KINDS.market && __g.KINDS.market.wood > 0 && __g.KINDS.market.r > 0.04 && __g.KINDS.market.name === 'Market'));
@@ -34,7 +37,9 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   ok('Tuesday: nobody asks for a market', await ev(() => !__g.G.requests.some((r) => r.def.id === 'market')));
 
   /* 2. Wednesday with no market: a creature asks, the button opens the Build menu on the Market */
-  await setDate(WED, 12); await ev(() => __g.simulate(12));
+  await setDate(WED, 12);
+  /* requests wait while a banner shows (one voice at a time), so give it a little while */
+  for (let i = 0; i < 45; i++) { await ev(() => __g.simulate(5)); if (await ev(() => __g.G.requests.some((r) => r.def.id === 'market'))) break; await sleep(900); }
   const rq = await ev(() => { const r = __g.G.requests.find((q) => q.def.id === 'market'); __g.reqUi(); return r ? { who: r.who, text: r.def.text, card: document.getElementById('reqs').textContent } : null; });
   ok('market day, no market: a creature asks for one', !!rq && /market day/i.test(rq.text) && /nowhere to trade/.test(rq.text), JSON.stringify(rq));
   ok('the request card shows it with a Build it button', !!rq && /nowhere to trade/.test(rq.card) && /Build it/.test(rq.card));
@@ -58,10 +63,11 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   ok('the request ends once the market is placed', await ev(() => !__g.G.requests.some((r) => r.def.id === 'market')));
   for (let i = 0; i < 20; i++) { if (await ev(() => __g.mktThings().length > 0)) break; await ev(() => __g.simulate(10)); }
   ok('the colonists finish building the market', await ev(() => __g.mktThings().length === 1));
-  await ev(() => { __g.setTool('look'); __g.simulate(1); }); await sleep(600);
+  await ev(() => { __g.setTool('look'); __g.simulate(1); });
+  for (let i = 0; i < 40; i++) { await sleep(500); if (/Market day!/.test(await ev(() => document.getElementById('banner').textContent))) break; }
   const opened = await ev(() => ({ open: __g.MKT.open, bell: __g.MKT.bell, banner: document.getElementById('banner').textContent, album: __g.FUN.album.some((e) => e.id === 'market') }));
   ok('it opens at once on a market day: the bell, a "Market day!" banner, an album entry', opened.open && opened.bell === '2026-11-18' && /Market day!/.test(opened.banner) && opened.album, JSON.stringify(opened));
-  await focusMarket(0.42, 0.5, 0.55); await shotPrep(); await sleep(1800);
+  await focusMarket(0.3, 0.5, 0.5); await shotPrep(); await sleep(1800);
   await p.screenshot({ path: OUT + '74-market-built.png' });
   const vis = await ev(() => { const st = __g.mktThings()[0], U = st.t.mesh.userData; return { goods: U.goods && U.goods.visible, covers: U.covers && U.covers.visible, pretty: !!U.bcMarket, draws: (() => { let n = 0; st.t.mesh.traverse((o) => { if ((o.isMesh || o.isSprite || o.isPoints) && o.visible) n++; }); return n; })() }; });
   ok('the stalls show their goods (covers off), the market.js model is used, under 12 draw calls', vis.goods && !vis.covers && vis.pretty && vis.draws <= 12, JSON.stringify(vis));
@@ -87,7 +93,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   const linked = await ev(() => {
     const S = __g.mainSettlement(); S.stock.wood = Math.max(S.stock.wood, 20);
     const Zt = __g.G.zones.filter((Z) => !Z.settled && !Z.lost && !Z.ceil && Z.land && Z.area > 0.04 && Z !== S.zoneRef).sort((a, b) => Math.hypot(a.cx - S.zoneRef.cx, a.cz - S.zoneRef.cz) - Math.hypot(b.cx - S.zoneRef.cx, b.cz - S.zoneRef.cz))[0];
-    if (!Zt) return 'no zone'; __g.ensureDist(Zt); const l = __g.makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); return l ? 'ok' : 'no link';
+    if (!Zt) return 'no zone'; __g.ensureDist(Zt); __g.ensureDist(S.zoneRef); const l = __g.makeLink(S, S.zoneRef.core[0], S.zoneRef.core[1], Zt, Zt.core[0], Zt.core[1]); return l ? 'ok' : 'no link';
   });
   for (let i = 0; i < 40; i++) { await ev(() => __g.simulate(10)); if (await ev(() => __g.G.settlements.some((S) => S !== __g.mktSite().S && !S.awaiting && S.cols.length >= 2))) break; }
   const two = await ev(() => { const A = __g.mktSite().S, B = __g.G.settlements.find((S) => S !== A && !S.awaiting && !S.lost); return B ? { b: B.id, pop: B.cols.length, link: __g.G.links.some((l) => l.ready && (l.a.sid === B.id || l.b.sid === B.id)) } : null; });
@@ -101,7 +107,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
     if (st.r) rode = true; if (st.v && !visitor) visitor = st.v;
     if (st.v && st.v.ph === 'do' && !seen76) { /* the trade picture: the visitor haggling at a stall */
       seen76 = true; await ev((id) => { const A = __g.mktSite().S, v = A.cols.find((c) => c.id === id); if (v) v.job.dur = 999; const o = A.cols.find((c) => c !== v && !c.inside && !(c.job && c.job.type === 'market')); if (o) __g.mktSend(o, A, __g.mktSite().t, (v.job.slot + 1) % 3); }, st.v.id);
-      await ev(() => __g.simulate(4)); await ev(() => { __g.MKT.talkT = 0; __g.MKT.reply = null; }); await focusMarket(0.3, 1.2, 0.4); await shotPrep(); await sleep(2700);
+      await ev(() => __g.simulate(4)); await ev(() => { __g.MKT.talkT = 0; __g.MKT.reply = null; }); await focusVisitor(st.v.id, 0.3, 0.9, 0.38); await shotPrep(); await sleep(2700);
       await p.screenshot({ path: OUT + '76-market-trade.png' });
       await ev((id) => { for (const S of __g.G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') c.job.dur = c.id === id ? 0 : 1; }, st.v.id);
     }
@@ -126,7 +132,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   const tue = await ev(() => ({ open: __g.MKT.open, req: __g.G.requests.some((r) => r.def.id === 'market'), info: __g.mktInfo(__g.mktThings()[0].t) }));
   ok('Tuesday: no market, no deals, no traders, no request', !tue.open && !tue.req && tueJobs === 0 && (await ev(() => __g.MKT.deals)) === dt0, JSON.stringify(tue));
   ok('a tap on the market on a Tuesday says when it opens', /Wednesday or Sunday/.test(tue.info) && /Harry/.test(tue.info));
-  await focusMarket(0.3, 0.9, 0.5); await shotPrep(); await sleep(1500);
+  await focusMarket(0.32, 0.9, 0.85); await shotPrep(); await sleep(1500);
   await p.screenshot({ path: OUT + '77-market-quiet.png' });
   const q = await ev(() => { const U = __g.mktThings()[0].t.mesh.userData; return { goods: U.goods.visible, covers: U.covers.visible }; });
   ok('Tuesday: the stalls stand empty with their covers on', !q.goods && q.covers, JSON.stringify(q));
