@@ -59,6 +59,8 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .dh{font-size:20px;font-weight:800;color:#ffd9a8}.sub{font-size:13px;opacity:.85;font-weight:600;line-height:1.35}
 #diary ul{margin:0;padding-left:20px;display:grid;gap:7px;font-size:15px;line-height:1.35;font-weight:600}
 .by{font-size:11px;opacity:.55;font-weight:600;white-space:nowrap}
+#diary .anspic{font-size:38px;text-align:center;letter-spacing:2px;line-height:1.2}#diary .anst{font-size:16px;font-weight:700;line-height:1.4}#diary #dMore{justify-self:start;font-size:14px}
+body.ui-hold #reqs{visibility:hidden}
 #tagpick{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(94vw,640px);display:grid;gap:8px;z-index:4}
 #tagpick .th{font-weight:800;font-size:16px;color:#ffd9a8}#tagpick .tags{display:flex;flex-wrap:wrap;gap:6px}#tagpick .tags button{min-height:38px;font-size:14px;padding:2px 10px}
 #sndBoard{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(94vw,640px);max-height:calc(100vh - 20px);overflow:auto;z-index:30;display:grid;gap:8px;padding:12px 14px;background:rgba(59,42,30,.94)}#sndBoard .sbh{font-weight:800;color:#ffd9a8;font-size:15px;margin-top:4px}#sndBoard .sbg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}#sndBoard .sbg button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:46px;padding:4px 8px;font-size:14px}#sndBoard .sbg small{font:600 11px var(--body);opacity:.8;line-height:1.2}
@@ -172,7 +174,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 20';
+const BUILD = 'build 20 + return';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1545,11 +1547,20 @@ const newStats = () => ({ tin: 0, food: 0, concert: 0, trade: 0, recycled: 0, sq
 function applyTf(S) { S.group.position.set(S.tf.x, S.tf.y, S.tf.z); S.group.rotation.set(S.tf.flip ? Math.PI : 0, S.tf.yaw, 0); S.group.updateMatrixWorld(true); } /* Euler XYZ = Rx * Ry: the yaw is applied first, then the half turn about X hangs the camp from its surface */
 const nameKey = (n) => String(n).replace(/\s*\([^)]*\)/g, '').trim().toLowerCase(); /* build 19: "Gloop (Dell Reasoner)" and "Gloop" are the same name */
 function uniqName(nm, self) { /* build 19: no two creatures in one room share a name, whatever the camp, the scout mouse included (the almanac and the creature list both have a Pip, a Luna, a Zap; the old check missed "Gloop (credit)" vs "Gloop") */ const taken = (q) => G.settlements.some((T) => T.cols.some((c) => c !== self && nameKey(c.name) === nameKey(q))); if (!taken(nm)) return nm; const base = nm.replace(/\s*\([^)]*\)/g, '').replace(/ \d+$/, '').trim(); let q = base, n = 1; while (taken(q) && n < 999) { n++; q = base + ' ' + n; } return q; }
+const nameTaken = (nm, self) => G.settlements.some((T) => T.cols.some((c) => c !== self && nameKey(c.name) === nameKey(nm)));
+const SYL_A = ['Bram', 'Pim', 'Tuff', 'Wob', 'Nib', 'Fen', 'Mim', 'Dot', 'Rue', 'Kip', 'Jun', 'Sol', 'Taz', 'Bix', 'Moss', 'Lul', 'Pog', 'Zib', 'Cob', 'Fizz', 'Hob', 'Quil', 'Tam', 'Wim'];
+const SYL_B = ['ble', 'kin', 'po', 'let', 'wick', 'by', 'zel', 'dle', 'mo', 'nut', 'sy', 'pip', 'ton', 'la', 'rik', 'bo', 'wump', 'sprout', 'fluff', 'dot', 'kins', 'lo', 'bean', 'puff'];
+function freshName(nm) { /* build 20 + return: a taken name gets a new made-up one from syllables ("Wobkin"); a number only if 200 tries all fail. Saved names never come through here. */
+  if (!nameTaken(nm)) return nm;
+  for (let i = 0; i < 200; i++) { const q = pick(SYL_A) + pick(SYL_B) + (i > 120 ? pick(SYL_B) : ''); if (!nameTaken(q)) return q; }
+  return uniqName(nm);
+}
 function chipName(c) { /* build 19: the chip shows the first word only when it is unique in the room, else the whole name ("Pip 2", "Pip the Packet"), so two chips never read the same */ const full = c.name.replace(/\s*\([^)]*\)/g, '').trim(), w = full.split(' ')[0]; return G.settlements.some((T) => T.cols.some((q) => q !== c && q.name.replace(/\s*\([^)]*\)/g, '').trim().split(' ')[0] === w)) ? full : w; }
 function addColonist(S, o) {
-  o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), def = pool[G.nameIdx++ % pool.length], rep = Math.floor((G.nameIdx - 1) / pool.length);
+  o = o || {}; const A = COLONY_ALMANAC.colonists, pool = A.concat(CREATURES.map((c) => ({ name: c.name, personality: persFromText(c.name, c.made_of), likes: likesToKinds([c.gross_or_silly_habit, c.secretly_brilliant_at]), persona: c.made_of, creature: c, by: c.by }))), pick0 = pool[G.nameIdx++ % pool.length]; let def = pick0;
+  if (!o.name && nameTaken(def.name)) for (let i = 0; i < pool.length; i++) { const d = pool[(G.nameIdx + i) % pool.length]; if (!nameTaken(d.name)) { def = d; break; } } /* build 20 + return: a new creature takes a free name from the pools, never "Gertie 2" */
   const temper = (o.temper !== undefined ? o.temper : def.creature) || CREATURES[Math.floor(hash01(def.name, 21) * CREATURES.length)] || null;
-  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name ? uniqName(o.name) : uniqName(def.name + (rep ? ' ' + (rep + 1) : '')), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
+  const c = { scout: o.scout !== undefined ? !!o.scout : !S.cols.some((q) => q.scout), id: o.id || ++G.uid, born: o.born === undefined ? 0 : 1, name: o.name ? uniqName(o.name) : freshName(def.name), pers: o.pers || def.personality || { work: 1, social: 1, lazy: 1 }, likes: o.likes || def.likes || [], persona: o.persona || def.persona || '', dream: o.dream || def.dream || '', by: o.by || def.by || '', temper, hue: o.hue !== undefined ? o.hue : Math.random(), x: 0, z: 0, face: rnd(0, 6.28), needs: o.needs || { food: rnd(0.75, 1), water: rnd(0.75, 1), rest: rnd(0.8, 1), joy: rnd(0.65, 0.9) }, job: null, inside: false, spawn: o.spawn || 0, S, bub: null, bubName: '', anim: 0, moving: false, cool: 0 };
   const a = rnd(0, 6.28), d = rnd(0.045, 0.08); c.x = o.x !== undefined ? o.x : Math.cos(a) * d; c.z = o.z !== undefined ? o.z : Math.sin(a) * d;
   c.mesh = mkColonist(c); c.mesh.position.set(c.x, 0, c.z); S.group.add(c.mesh);
   c.bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex('bang'), transparent: true, depthTest: false })); c.bub.scale.set(0.02, 0.02, 1); c.bub.position.y = 0.05; c.bub.visible = false; c.bub.renderOrder = 20; c.mesh.add(c.bub);
@@ -1705,7 +1716,7 @@ function requestsStep(S, quiet) {
     const cond = CONDS[def.when]; if (!cond) continue;
     const act = G.requests.find((r) => r.sid === S.id && r.def.id === def.id), on = cond(S);
     if (act && !on) { resolveRequest(act, true); continue; }
-    if (on && !act && !(F10.on && (!F10.reqDone || f10CardUp())) /* first10: one voice at a time, and the scout's seeds come first */ && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
+    if (on && !act && !(F10.on && (!F10.reqDone || f10CardUp())) /* first10: one voice at a time, and the scout's seeds come first */ && !reqHold() /* build 20 + return: asks wait for the summary and the banners */ && (S.reqCd[def.id] || 0) <= G.simT && G.requests.filter((r) => r.sid === S.id).length < 3 && !G.requests.some((r) => r.sid === S.id && r.def.when === def.when)) {
       const cs = S.cols.filter((c) => !c.inside && !G.requests.some((r) => r.cid === c.id) && (!def.who || ((c.name === def.who || (c.base || c.name) === def.who) && (!def.dup || c.by === def.by)))); if (!cs.length) continue;
       const c = pick(cs); G.requests.push({ id: ++G.uid, def, sid: S.id, cid: c.id, t: G.simT, who: c.name }); S.reqCd[def.id] = G.simT + (def.cooldown || 240); sfx(def.give === 'cablecar' ? 'cablereq' : 'ask'); toast(c.name + ': ' + def.text, 4); reqUi();
     }
@@ -1721,6 +1732,7 @@ function giveRequest(r) {
     if (G.tool === 'seed' && S0) f10Plant(S0, c0 ? c0.x + 0.03 : 0.05, c0 ? c0.z : 0.05); else { setTool('seed'); autoSay('Tap the ground by the tent to drop a seed.', 5); }
     return;
   }
+  if (r.def.give === 'f10log') { f10LogDone(G.settlements.find((s) => s.id === r.sid), r); return; }
   if (r.def.give === 'f10back') { resolveRequest(r); if (G.mode === 'practice' && G.auto) comeBackLater(); else toast(esc(r.who) + ' waves: see you next time!', 3); return; }
   const S = G.settlements.find((s) => s.id === r.sid); if (!S) return resolveRequest(r);
   const g = r.def.give, c = S.cols.find((q) => q.id === r.cid) || S.cols[0];
@@ -2489,16 +2501,15 @@ function awaySim(secs, startHour) {
   // Coming home must feel good, never like guilt: after time away the colony is content, not miserable (owner's rule).
   for (const S of G.settlements) for (const c of S.cols) { c.needs.joy = Math.max(c.needs.joy, 0.6); c.needs.food = Math.max(c.needs.food, 0.45); c.needs.water = Math.max(c.needs.water, 0.45); c.needs.rest = Math.max(c.needs.rest, 0.5); }
   G.requests = G.requests.filter((q) => q.def.give !== 'cheer');
-  const lines = awaySummary(before, snapColony(), total, nights, long);
-  return { secs: total, ms: performance.now() - t0, steps, lines, nights, long };
+  const lines = awaySummary(before, snapColony(), total, nights, long), answer = lines.answer || null; delete lines.answer;
+  return { secs: total, ms: performance.now() - t0, steps, lines, nights, long, answer };
 }
 function awaySummary(a, b, secs, nights, long) {
   const L = [], add = (text, by) => L.push({ text, by: by || '' }), find = (id) => b.find((q) => q.id === id);
   const cols = []; for (const S of G.settlements) for (const c of S.cols) cols.push(c);
   const lead = (seed) => (cols.length ? cols[Math.floor(hash01(String(seed), 11) * cols.length)] : null);
-  const f10a = f10Answer(); /* first10: the answer to the scout's question comes right after the first line */
+  const f10a = f10Answer(); /* first10: the answer to the scout's question; build 20 + return shows it first, as its own card (res.answer) */
   add('The Giant was away for ' + fmtAway(secs) + '. ' + (long ? 'The colonists wrote the first day out in full and the rest as a summary. ' : '') + (nights ? plural(nights, 'night') + ' passed, with everyone tucked in.' : 'It stayed light the whole time.'));
-  if (f10a) add(f10a.text, f10a.by);
   if (long) { const lb = []; if (long.births) lb.push(plural(long.births, 'new settler') + ' moved in'); if (long.finished) lb.push(plural(long.finished, 'building') + ' got finished'); if (lb.length) add('Over those ' + plural(long.days, 'day') + ': ' + fmtList(lb) + '.'); for (const t of long.seasons || []) add(t); }
   const arrived = DIARY.arrived.slice(), built = [0, 0, 0, 0], trees = { n: 0 }, st = { tin: 0, food: 0, concert: 0, trade: 0, nursery: 0 }; let startedThr = 0;
   for (const q of b) {
@@ -2528,13 +2539,25 @@ function awaySummary(a, b, secs, nights, long) {
   const dreamer = cols.find((c) => c.dream); if (dreamer && L.length < 8) add(dreamer.name + ' spent the evening thinking about a dream: ' + String(dreamer.dream).replace(/^./, (m) => m.toLowerCase()) + (/[.!]$/.test(dreamer.dream) ? '' : '.'), dreamer.by);
   const gl = lead('panic'); if (gl && L.length < 6) add(gl.name + ' watched the door for the Giant.' + sayQuote(gl, 'happy'), creatureBy(gl));
   while (L.length < 5) add(pick(['A quiet stretch: seeds sprouting, kettles cooling, dust settling.', 'Nothing dramatic happened. The colonists consider this a triumph.', 'The room was very large and very quiet. They liked it.']));
-  return L.slice(0, 10);
+  const out = L.slice(0, 10); out.answer = f10a; return out;
 }
 const built_ = (S, k) => built(S, k);
+const AWAY_SHOW = 4; /* build 20 + return: the summary shows at most 4 lines; More opens the rest */
 function showAway(res) {
-  const el = $('diary'); el.hidden = false; el.classList.remove('side');
-  el.innerHTML = '<div class="dh">While you were away</div><ul>' + res.lines.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">' + (G.phase === 'play' ? 'Back to the colony' : 'Now let us find our way around the room') + '</button>';
-  $('dClose').onclick = () => { el.hidden = true; if (G.afterAway) { const f = G.afterAway; G.afterAway = null; f(); } };
+  const el = $('diary'); el.hidden = false; el.classList.remove('side'); if (FUN.bannerT > 0) { FUN.bannerT = 0; $('banner').className = ''; } /* the diary is the one voice now */
+  const close = () => { el.hidden = true; if (G.afterAway) { const f = G.afterAway; G.afterAway = null; f(); } };
+  const li = (l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>';
+  const summary = () => {
+    const a = res.lines.slice(0, AWAY_SHOW), b = res.lines.slice(AWAY_SHOW);
+    el.innerHTML = '<div class="dh">While you were away</div><ul id="dLines">' + a.map(li).join('') + '</ul>' + (b.length ? '<ul id="dRest" hidden>' + b.map(li).join('') + '</ul><button id="dMore">More (' + b.length + ')</button>' : '') + '<button class="big alt" id="dClose">' + (G.phase === 'play' ? 'Back to the colony' : 'Now let us find our way around the room') + '</button>';
+    if (b.length) $('dMore').onclick = () => { $('dRest').hidden = false; $('dMore').remove(); };
+    $('dClose').onclick = close;
+  };
+  const A = res.answer;
+  if (A && !res.ansSeen) { /* the answer to the scout's question comes first, as its own small card */
+    el.innerHTML = '<div class="dh">' + esc(A.who || 'The scout') + ' found it!</div><div class="anspic" aria-hidden="true">' + (A.pic || '') + '</div><div class="anst">' + esc(A.text) + (A.by ? ' <i class="by">by ' + esc(A.by) + '</i>' : '') + '</div><button class="big alt" id="dNext">What else happened?</button>';
+    sfx('chime'); $('dNext').onclick = () => { res.ansSeen = true; summary(); };
+  } else summary();
 }
 function fxOf(S) { // what the room's spots give this colony
   const fx = { n: 0 }; const Z = S.zoneRef; if (!Z) return fx;
@@ -2834,20 +2857,37 @@ function pebbleHello(S, th) {
   const c = S.cols.filter((q) => !q.inside && !q.held).sort((a, b) => Math.hypot(a.x - th.x, a.z - th.z) - Math.hypot(b.x - th.x, b.z - th.z))[0];
   if (c) { sayLine(c, 'Kept your spot warm!', 3, true); c.hop = 1; } toast('A polished pebble at the edge: “we kept your spot warm.” <i class="by">by The Town Brain</i>', 5); funLog('pebble');
 }
+/* ---- build 20 + return: one voice at a time. The diary, the "We're home!" moment, a banner and the weather card are overlays; only one shows,
+   about 2.5 s apart, and request cards stay hidden (not lost) while one is up. New asks wait until the summary and the banners are done. ---- */
+const UIQ = { was: false, freeAt: -1e9 }, UI_GAP = 2500;
+function uiOverlay() { const d = $('diary'), w = $('wx'), b = $('banner'), h = $('home'); return (!!d && !d.hidden) || (!!w && !w.hidden) || (!!b && b.className === 'on') || (!!h && h.classList.contains('on')); }
+function uiHoldAway() { const d = $('diary'), h = $('home'); return (!!d && !d.hidden) || (!!h && h.classList.contains('on')) || !!G.pendingDiary; }
+function uiGapOK() { return performance.now() - UIQ.freeAt >= UI_GAP; }
+function reqHold() { return uiHoldAway() || FUN.bannerT > 0 || FUN.queue.length > 0 || !uiGapOK(); }
+function uiTick() { const up = uiOverlay(); if (up) UIQ.was = true; else if (UIQ.was) { UIQ.was = false; UIQ.freeAt = performance.now(); } if (document.body.classList.contains('ui-hold') !== up) document.body.classList.toggle('ui-hold', up); }
+function uiWhenFree(fn, n) { /* run fn once the home moment and the gap after it are over (gives up waiting after about 8 s) */
+  n = n || 0; const h = $('home'); if (n < 16 && ((h && h.classList.contains('on')) || !uiGapOK())) { setTimeout(() => uiWhenFree(fn, n + 1), 500); return; } fn();
+}
 /* ---- the first 10 minutes (build 19 + first10). A brand-new colony gets a gentler first session: no bedtime (a campfire by the tent instead),
    the camera on the camp, one seed request from the scout, one voice at a time, and a question to end on. Only a save that starts in this build
    has it: an older save has no "f10" record and plays exactly as before. F10.t counts real seconds of play since landing. ---- */
-const F10 = { on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false, light: null };
+const F10 = { on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false, light: null, tid: 0, spr: false, sprT: 0, a2: 0, a2T: 0, sur: false, surT: 0, flare: 0 };
 const F10_LEN = 900, F10_REQ = 32, F10_WX = 180, F10_Q = 540;
+/* build 20 + return: night beats. The seed sprouts about 30 s after planting (a tiny glowing shoot, even at night); a second small ask near minute 3
+   (a log for the fire); a surprise with no input near minute 6 (a paper moth flutters into the firelight). One card at a time, all before the minute-9 question. */
+const F10_SPR = 30, F10_ASK2 = 175, F10_SUR = 360;
+const F10_LOG = { id: 'f10log', icon: 'log', text: '', give: 'f10log', f10: 1 };
 const F10_SEED = { id: 'f10seeds', icon: 'seed', text: 'My seeds spilled! Tap Seeds, then tap the ground by the tent.', give: 'f10seed', f10: 1 };
 const F10_BACK = { id: 'f10back', icon: 'bang', text: '', give: 'f10back', f10: 1 };
+const F10_PIC = ['\ud83d\udd18', '\u2728', '\ud83d\udd2e', '\u2b50']; /* a picture for each find: button, sparkle, marble, star */
 const F10_FIND = ['a lost button, shiny as a moon', 'a sequin that flashes like a lighthouse', 'a marble full of tiny clouds', 'a bottle cap with a star on it'];
-function f10Reset() { Object.assign(F10, { last: 0, on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false }); }
-function f10Save() { return { on: F10.on ? 1 : 0, t: Math.round(F10.t), done: F10.reqDone ? 1 : 0, wx: F10.wx ? 1 : 0, q: F10.q, ans: F10.ans ? 1 : 0 }; }
+function f10Reset() { Object.assign(F10, { last: 0, on: false, t: 0, req: 0, reqDone: false, reqDoneT: 0, wx: false, q: null, qT: 0, ans: false, tid: 0, spr: false, sprT: 0, a2: 0, a2T: 0, sur: false, surT: 0, flare: 0 }); }
+function f10Save() { return { on: F10.on ? 1 : 0, t: Math.round(F10.t), done: F10.reqDone ? 1 : 0, wx: F10.wx ? 1 : 0, q: F10.q, ans: F10.ans ? 1 : 0, tid: F10.tid, spr: F10.spr ? 1 : 0, a2: F10.a2 === 1 ? 0 : F10.a2, sur: F10.sur ? 1 : 0 }; }
 function f10Load(d) { /* an old save has no record: the first session is over for it */
   f10Reset(); if (!d || typeof d !== 'object') return;
   F10.t = +d.t || 0; F10.on = !!d.on && F10.t < F10_LEN; F10.reqDone = !!d.done; F10.req = F10.reqDone ? 1 : 0; F10.wx = !!d.wx; F10.ans = !!d.ans;
   F10.q = d.q && typeof d.q.name === 'string' ? { name: String(d.q.name).slice(0, 40), zid: d.q.zid | 0 } : null;
+  F10.tid = d.tid | 0; F10.spr = !!d.spr; F10.a2 = d.a2 === 2 ? 2 : 0; F10.sur = !!d.sur; F10.reqDoneT = F10.reqDone ? Math.max(0, F10.t - F10_SPR) : 0; /* an ask that was up when the game closed is asked again */
 }
 function f10Begin() { f10Reset(); F10.on = true; }
 const f10Awake = (E) => F10.on && !!E.night && !E.away;
@@ -2867,13 +2907,13 @@ function mkCampfire() {
 }
 function f10FireFrame(S, dt, show) {
   if (!S.f10fire) { if (!show) return; S.f10fire = mkCampfire(); const at = f10FireAt(S); S.f10fire.position.set(at[0], 0, at[1]); S.group.add(S.f10fire); }
-  const f = S.f10fire; f.visible = show; if (!show) return; const u = f.userData.f10, k = 1 + 0.18 * Math.sin(G.time * 13) + 0.1 * Math.sin(G.time * 29 + 1);
-  u.fl.scale.set(1, k, 1); u.fi.scale.set(1, 2 - k, 1); u.gl.material.opacity = 0.45 + 0.12 * Math.sin(G.time * 9);
-  if (Math.random() < dt * 2.5) { const [wx, wz] = l2w(S, f.position.x, f.position.z); puff('spark', wx, SY(S, 0.016), wz, 1, { size: 0.004, vy: 0.03, life: 0.9, jit: 0.004, add: true, color: 0xffc070 }); }
+  const f = S.f10fire; f.visible = show; if (!show) return; const u = f.userData.f10, k = 1 + 0.18 * Math.sin(G.time * 13) + 0.1 * Math.sin(G.time * 29 + 1), fx = 1 + 0.9 * Math.min(1, F10.flare); /* a log on the fire: it flares up for a few seconds */
+  u.fl.scale.set(fx, k * fx, fx); u.fi.scale.set(fx, (2 - k) * fx, fx); u.gl.material.opacity = Math.min(1, (0.45 + 0.12 * Math.sin(G.time * 9)) * (0.6 + 0.4 * fx));
+  if (Math.random() < dt * 2.5 * fx * fx) { const [wx, wz] = l2w(S, f.position.x, f.position.z); puff('spark', wx, SY(S, 0.016), wz, 1, { size: 0.004, vy: 0.03, life: 0.9, jit: 0.004, add: true, color: 0xffc070 }); }
 }
 function f10Light(S, show) { /* one warm light at the fire: created once and then only dimmed, so the materials never recompile */
   if (!F10.light) { if (!show) return; F10.light = new THREE.PointLight(0xffa050, 0, 0.45, 2); scene.add(F10.light); }
-  const L = F10.light; if (!show || !S || !S.f10fire) { L.intensity = 0; return; } S.f10fire.getWorldPosition(L.position); L.position.y += 0.03; L.intensity = 1.6 + 0.3 * Math.sin(G.time * 11);
+  const L = F10.light; if (!show || !S || !S.f10fire) { L.intensity = 0; return; } S.f10fire.getWorldPosition(L.position); L.position.y += 0.03; L.intensity = (1.6 + 0.3 * Math.sin(G.time * 11)) * (1 + 0.8 * Math.min(1, F10.flare));
 }
 function f10Job(S, c) { /* a seat round the fire, facing it */
   const at = f10FireAt(S), i = S.cols.indexOf(c), n = Math.max(3, S.cols.length), a = (i / n) * 6.283 + 0.4 + rnd(-0.15, 0.15), r = 0.024 + rnd(0, 0.004);
@@ -2903,7 +2943,7 @@ function f10Ask(S) {
 function f10Plant(S, lx, lz) { /* the first planting near the camp always works: the nearest free ground to the tap */
   let sp = validSpot(S, lx, lz, 0.02, { free: true }) ? [lx, lz] : null;
   for (let r = 0.01; r <= 0.09 && !sp; r += 0.01) for (let i = 0; i < 12 && !sp; i++) { const a = i * 0.5236, x = lx + Math.cos(a) * r, z = lz + Math.sin(a) * r; if (validSpot(S, x, z, 0.02, { free: true })) sp = [x, z]; }
-  sp = sp || findSpot(S, 0.02, { free: true }) || [lx, lz]; plantTree(S, sp[0], sp[1]); S.helped++; f10Thanks(S); return true;
+  sp = sp || findSpot(S, 0.02, { free: true }) || [lx, lz]; const t = plantTree(S, sp[0], sp[1]); F10.tid = t ? t.id : 0; S.helped++; f10Thanks(S); return true;
 }
 function f10SeedTap(S, lx, lz) { return !!F10.req && !F10.reqDone && Math.hypot(lx, lz) < plotR(S) * 1.6 + 0.08 && f10Plant(S, lx, lz); }
 function f10Thanks(S) {
@@ -2922,7 +2962,42 @@ function f10Question() {
 }
 function f10Answer() { /* the next visit: the diary answers the question */
   if (!F10.q || F10.ans) return null; F10.ans = true; const S = G.settlements.find((q) => !q.lost && q.cols.length), c = f10Scout(S), nm = c ? c.name : 'The scout';
-  return { text: nm + ' kept the promise: in the night ' + (c ? 'they' : 'it') + ' climbed to the ' + F10.q.name + ' and found what glittered: ' + F10_FIND[Math.floor(hash01(F10.q.name, 7) * F10_FIND.length)] + '. It sits by the campfire now.', by: '' };
+  const k = Math.floor(hash01(F10.q.name, 7) * F10_FIND.length);
+  return { text: nm + ' kept the promise: in the night ' + (c ? 'they' : 'it') + ' climbed to the ' + F10.q.name + ' and found what glittered: ' + F10_FIND[k] + '. It sits by the campfire now.', by: '', who: nm, find: F10_FIND[k], pic: '\ud83c\udf19 \u2192 \u26f0\ufe0f \u2192 ' + F10_PIC[k] + ' \u2192 \ud83d\udd25' };
+}
+function f10Tree(S) { return F10.tid && S ? S.things.find((t) => t.id === F10.tid && t.kind === 'tree') : null; }
+function f10Sprout(S) { /* the first seed comes up: a tiny glowing shoot and a small cheer */
+  F10.spr = true; F10.sprT = F10.t; const t = f10Tree(S); if (!t) return; t.g = Math.max(t.g, 0.1); t.pop = 0.6;
+  const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.015), wz, 10, { size: 0.007, vy: 0.025, life: 1.4, add: true, jit: 0.012, color: 0xc8ffa0 });
+  const c = f10Scout(S); for (const q of S.cols) if (!q.inside) { q.hop = 1; q.cheerT = 1.2; q.needs.joy = Math.min(1, q.needs.joy + 0.1); }
+  if (c) sayLine(c, 'It sprouted! Look, it glows!', 3, true); sfx('cheer'); toast('The seed sprouted: a tiny glowing shoot! \ud83c\udf31', 4); funLog('f10', 'sprout'); persistSoon();
+}
+function f10SproutGlow(S) { /* the shoot glows softly while it is small and the night is dark */
+  const t = F10.spr && f10Tree(S); if (!t || !t.mesh) return; const U = t.mesh.userData;
+  if (!U.f10glow) { if (t.g >= 0.42) return; U.f10glow = glowSprite(0.022, 0.8, 0xc8ff9a); U.f10glow.position.y = 0.01; t.mesh.add(U.f10glow); }
+  U.f10glow.visible = t.g < 0.42 && ENV.night; U.f10glow.material.opacity = 0.6 + 0.25 * Math.sin(G.time * 2.4);
+}
+function f10Ask2(S) { /* a second small ask near minute 3: a log for the fire (by day, a log for building) */
+  const cs = S.cols.filter((q) => !q.inside && !q.scout), c = cs.length ? pick(cs) : f10Scout(S); if (!c) return; F10.a2 = 1; F10.a2T = F10.t;
+  const text = ENV.night ? 'Brr, my paws are cold! Could you put a log on the fire? Tap the button.' : 'Could you pass us a log? We want to build something! Tap the button.';
+  G.requests.push({ id: ++G.uid, def: Object.assign({}, F10_LOG, { text }), sid: S.id, cid: c.id, t: G.simT, who: c.name }); sfx('ask'); c.hop = 1; sayLine(c, ENV.night ? 'Brr! Chilly paws.' : 'A log, please!', 3, true); reqUi(); funLog('f10', 'ask2');
+}
+function f10LogDone(S, r) { /* the log goes on: the fire flares, everyone warms up */
+  const q = r || G.requests.find((x) => x.def.id === 'f10log'); if (q) resolveRequest(q); F10.a2 = 2; if (!S) return;
+  const c = q ? S.cols.find((x) => x.id === q.cid) : null; S.stock.wood += 2; F10.flare = r ? 1.5 : 1;
+  for (const x of S.cols) { x.needs.joy = Math.min(1, x.needs.joy + 0.1); if (!x.inside && r) { x.hop = 1; x.cheerT = 1; } }
+  if (S.f10fire && S.f10fire.visible) { const [wx, wz] = l2w(S, S.f10fire.position.x, S.f10fire.position.z); puff('spark', wx, SY(S, 0.02), wz, 14, { size: 0.005, vy: 0.05, life: 1.2, jit: 0.012, add: true, color: 0xffc070 }); }
+  if (r) { if (c) sayLine(c, ENV.night ? 'Ahh, toasty! Thank you!' : 'Thank you, Giant!', 3, true); sfx('cheer'); toast(ENV.night ? 'Whoosh! The fire flares up, warm and bright.' : 'Thank you! Two more logs for building.', 4); }
+  else if (c) toast(esc(c.name) + ' found a stick for the fire all alone.', 3);
+  funLog('f10', 'log'); persistSoon();
+}
+function f10Surprise(S) { /* near minute 6, with no input: a paper moth flutters into the firelight, and everyone points */
+  F10.sur = true; F10.surT = F10.t; const at = S.f10fire && S.f10fire.visible ? f10FireAt(S) : [0.05, 0.05];
+  const t = addThing(S, 'visitor', at[0], at[1], { built: true, gift: true, var: 1, life: 260 }); t.pop = 1; decorRefresh();
+  const [wx, wz] = l2w(S, at[0], at[1]); puff('star', wx, SY(S, 0.04), wz, 10, { size: 0.008, vy: 0.03, life: 1.4, add: true, jit: 0.03, color: 0xe8d0ff });
+  const says = ['A paper moth!', 'Ooh, it is dancing!', 'Hello, little moth!']; let i = 0;
+  for (const c of S.cols) if (!c.inside) { c.face = Math.atan2(at[0] - c.x, at[1] - c.z); c.hop = 1; c.cheerT = 1; if (i < 2) sayLine(c, says[i++], 3, true); }
+  sfx('twinkle', 1, { x: wx, y: SY(S, 0.03), z: wz }); toast('A paper moth flutters into the ' + (ENV.night ? 'firelight' : 'camp') + '. \ud83e\udd8b', 4); funLog('f10', 'surprise'); persistSoon();
 }
 function f10Frame(dt) {
   f10CamDodge(); /* the Pip cam never sits over a card */
@@ -2930,8 +3005,14 @@ function f10Frame(dt) {
   f10Light(S, F10.on && ENV.night && !!S); if (!F10.on || G.phase !== 'play') F10.last = 0; if (!F10.on || G.phase !== 'play' || !S || (G.returning && !G.locked) || BT.on) return;
   const now = performance.now(), rdt = F10.last ? Math.min(1, (now - F10.last) / 1000) : dt; F10.last = now; /* real seconds: a slow frame rate must not stretch the first minute */
   F10.t += rdt; if (F10.t >= F10_LEN) { F10.on = false; f10FireFrame(S, dt, false); f10Light(S, false); persistSoon(); return; }
-  const quiet = FUN.bannerT <= 0 && !f10CardUp();
+  const quiet = FUN.bannerT <= 0 && !f10CardUp() && !FUN.queue.length && uiGapOK();
+  if (F10.flare > 0) F10.flare = Math.max(0, F10.flare - rdt / 4);
+  f10SproutGlow(S);
   if (!F10.req && F10.t >= F10_REQ && (quiet || F10.t > F10_REQ + 12)) f10Ask(S);
+  if (F10.reqDone && !F10.spr && F10.t - F10.reqDoneT >= F10_SPR && (FUN.bannerT <= 0 || F10.t - F10.reqDoneT >= F10_SPR + 25)) f10Sprout(S);
+  if (F10.reqDone && !F10.a2 && F10.t >= F10_ASK2 && F10.t < F10_Q - 60 && quiet) f10Ask2(S);
+  if (F10.a2 === 1 && F10.t - F10.a2T > 240) f10LogDone(S, null); /* nobody answered: the creature finds a stick by itself, so minute 9 still comes */
+  if (!F10.sur && F10.t >= F10_SUR && F10.t < F10_Q - 30 && (FUN.bannerT <= 0 || F10.t >= F10_SUR + 40)) f10Surprise(S);
   if (!F10.wx && !store.get('bc-wxchoice') && ((F10.reqDone && F10.t - F10.reqDoneT > 8 && quiet) || F10.t >= F10_WX)) { if (quiet || F10.t >= F10_WX + 30) { F10.wx = true; wxCard(); } }
   if (!F10.q && F10.t >= F10_Q && quiet) f10Question();
 }
@@ -3003,7 +3084,7 @@ function mkTreehouse() {
 function funEye() { return AR.on ? FUN_EYE.setFromMatrixPosition(AR.viewM) : FUN_EYE.copy(camera.position); }
 const FUN_EYE = new THREE.Vector3();
 function funFrame(dt) {
-  const eye = funEye(); rainbowStep(dt, eye); f10Frame(dt);
+  const eye = funEye(); rainbowStep(dt, eye); uiTick(); f10Frame(dt);
   if (FUN.bannerT > 0) { FUN.bannerT -= dt; if (FUN.bannerT <= 0) $('banner').className = ''; }
   if (G.phase !== 'play') return;
   if (FUN.party) { const ph0 = FUN.beatPh; FUN.beatPh = ((G.time - FUN.partyAt) / (MUS.step * 2)) % 1; FUN.pulse = Math.exp(-FUN.beatPh * 5); if (FUN.beatPh < ph0) { const S = mainSettlement(); if (S && S.pit) { const [wx, wz] = l2w(S, S.pit[0], S.pit[1]); puff('note', wx + rnd(-0.05, 0.05), SY(S, 0.075), wz + rnd(-0.05, 0.05), 1, { size: 0.016, vy: 0.04, life: 1.4, jit: 0.015, color: pick(CONF) }); } } if (G.time - FUN.partyAt > 60) { partyToggle(false); toast('Phew! What a party.'); } }
@@ -3015,8 +3096,9 @@ function funFrame(dt) {
   if (FUN.fest) { FUN.fest.t += dt; if (FUN.fest.t > FUN.fest.dur) festivalEnd(); else if (Math.random() < dt * 2) { const F = FUN.fest, [wx, wz] = l2w(F.S, F.c[0], F.c[1]); puff('note', wx + rnd(-0.06, 0.06), SY(F.S, 0.06), wz + rnd(-0.06, 0.06), 1, { size: 0.01, vy: 0.03, life: 1.2, color: pick(CONF) }); } }
   for (const S of G.settlements) if (S.crumbs && S.crumbs.length && S.placed) for (const cr of S.crumbs.slice()) crumbStep(S, cr, dt);
   let nb = 0; for (const S of G.settlements) for (const c of S.cols) if (c.sayT > 0) nb++; FUN.bubbles = nb;
+  const held = uiHoldAway() || (F10.on && f10CardUp()); if (held) for (const q of FUN.queue) if (q.gt !== undefined) { q.gt = G.time; q.st = G.simT; } /* build 20 + return: a banner waiting behind the diary or a first-session card keeps its place */
   FUN.queue = FUN.queue.filter((q) => q.gt === undefined || (G.time - q.gt < 20 && G.simT - q.st < 120)); /* build 19: a banner that waited more than about 20 s (real, or 2 sim minutes) is dropped, the album still has it */
-  if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement()) showCelebration(FUN.queue.shift());
+  if (FUN.bannerT <= 0 && FUN.queue.length && mainSettlement() && !held && !uiOverlay() && uiGapOK()) showCelebration(FUN.queue.shift());
   FUN.checkT -= dt; if (FUN.checkT <= 0) { FUN.checkT = 0.5; funCheck(); }
 }
 // ---- how a colonist looks this frame: squash-and-stretch hops, fidgets in character, bubbles that stay readable ----
@@ -4865,7 +4947,7 @@ function relocLock(res, how) {
   autoSay(''); homeMoment('We’re home!'); sfx('chime'); toast('The colonists know this room again. Welcome back!', 4);
   for (const S of G.settlements) if (S.placed) puff('star', S.tf.x, SY(S, 0.05), S.tf.z, 14, { size: 0.012, vy: 0.04, life: 1.6, add: true, jit: 0.04 });
   AUTO.compareAt = AUTO.t + (how === 'totem' ? 10 : 25); AUTO.compareHits = SCAN.hits; AUTO.revealT = 14; TOTEM.watchUntil = AUTO.t + 60; totemCommit(); persist();
-  setTimeout(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }, 2500);
+  setTimeout(() => uiWhenFree(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }), 2700); /* build 20 + return: after the home moment, never on top of it */
 }
 function relocSetScore(T, liveTops, saved) { // how many live top cells land on saved top cells of the same height (tops are clean, small outlines: they pin yaw and shift much better than a floor)
   const C = RELOC.cfg.cell, c = Math.cos(-T.phi), s = Math.sin(-T.phi); let m = 0, o = 0;
@@ -5511,9 +5593,9 @@ $('bFresh').onclick = () => {
 $('bNew').onclick = () => { if ($('bNew').dataset.sure !== '1') { $('bNew').dataset.sure = '1'; $('bNew').textContent = 'Really forget the colony?'; return; } $('bNew').dataset.sure = ''; $('bNew').textContent = 'Forget my colony'; store.del(SAVE_KEY); store.del(SAVE_KEY + '-bak'); G.previewLines = null; G.previewStamp = ''; updateTitle(); toast('The colony is forgotten. The room map is kept.'); };
 function reqUi() {
   const r = $('reqs'); r.innerHTML = '';
-  const MAXR = 2; // at most two requests on screen: the room is the game, not a to-do list
+  const MAXR = 1; /* build 20 + return: one request card at a time (the rest wait behind a small "+1 more") */
   for (const q of G.requests.slice(0, MAXR)) {
-    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'f10seed' ? '\ud83c\udf31 Seeds' : q.def.give === 'f10back' ? 'Come back later' : q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
+    const d = document.createElement('div'); d.className = 'req'; d.innerHTML = `<canvas width="34" height="34"></canvas><div><b>${esc(q.who)}</b>${esc(q.def.text)}${q.def.by ? ' <i class="by">by ' + esc(q.def.by) + '</i>' : ''}</div><button>${q.def.give === 'f10seed' ? '\ud83c\udf31 Seeds' : q.def.give === 'f10back' ? 'Come back later' : q.def.give === 'f10log' ? '\ud83e\udeb5 Add a log' : q.def.give === 'cablecar' || q.def.give === 'expedition' || q.def.give === 'ceilthing' ? 'Yes!' : 'Give'}</button>`;
     const ctx = d.querySelector('canvas').getContext('2d'); ctx.scale(34 / 64, 34 / 64); (ICONS[q.def.icon] || ICONS.bang)(ctx);
     d.querySelector('button').onclick = () => giveRequest(q); r.appendChild(d);
   }
@@ -5696,7 +5778,7 @@ function settleZone(zone) {
   puff('star', zone.core[0], zone.y + (zone.ceil ? -0.04 : 0.04), zone.core[1], 14, { size: 0.012, vy: 0.04, life: 1.4, add: true, jit: 0.03 }); sfx('founded'); toast(G.auto ? 'Hooray! The colonists found a lovely spot on the ' + zone.name.split(' \u2013 ')[0] + ' and landed. Three settlers, one tent!' : 'Colony founded on ' + zone.name + '! Three settlers arrive with a tent.', 5); persistSoon();
   if (G.settlements.length === 1 && !G.returning && !(G.orphans && G.orphans.length)) f10Begin(); /* first10: a brand-new colony */
   if (G.mode === 'practice') { if (F10.on && G.auto) f10Cam(S); else focusZone(zone); }
-  if (!F10.on && !store.get('bc-wxchoice')) setTimeout(() => { if (G.phase === 'play' && !store.get('bc-wxchoice')) wxCard(); }, 9000);
+  if (!F10.on && !store.get('bc-wxchoice')) { const tryWx = (n) => { if (G.phase !== 'play' || store.get('bc-wxchoice')) return; if (n < 20 && (uiOverlay() || !uiGapOK())) { setTimeout(() => tryWx(n + 1), 1500); return; } wxCard(); }; setTimeout(() => tryWx(0), 9000); } /* build 20 + return: never on top of another card */
   syncCables(); persist(true);
 }
 
@@ -6867,6 +6949,7 @@ window.__g = {
 
 Object.assign(window.__g, BT_HOOKS);
 Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame, f10Ask, f10Plant, f10Question, f10Answer, f10CardUp, f10Cam, partyReal, skyShown, SKY_TOOLS, chooseJob, orbitCam }); /* first10 */
+Object.assign(window.__g, { F10_LOG, f10Sprout, f10Ask2, f10Surprise, f10Tree, f10LogDone, uiOverlay, uiGapOK, reqHold, freshName, nameTaken, showAway, AWAY_SHOW }); /* build 20 + return */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
