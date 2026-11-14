@@ -150,12 +150,12 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const x0 = await ev(() => __g.MKT.xfer); let carried = null, signs = false;
   for (let i = 0; i < 60; i++) {
     await ev(() => __g.simulate(4));
-    const st = await ev(() => { const site = __g.mktSite(); const v = site.S.cols.find((c) => c.job && c.job.type === 'market' && c.job.ph === 'do' && c.bundle); const sg = (site.t.mesh.userData.signs || []).some((s) => s.visible); return { v: v ? { id: v.id, g: v.bundle.userData.mkt, home: v.mkt ? v.mkt.home : site.S.id } : null, sg }; });
+    const st = await ev(() => { const site = __g.mktSite(); const v = site.S.cols.find((c) => c.job && c.job.type === 'market' && c.job.ph === 'do' && c.bundle); const U = site.t.mesh.userData, sg = (U.signs || []).some((s) => s.visible) && (U.stacks || []).some((st, i) => st.visible && U.signs[i].visible && st.children.findIndex((b) => b.visible) + 1 === __g.econPrice(U.signs[i].userData.g)); return { v: v ? { id: v.id, g: v.bundle.userData.mkt, home: v.mkt ? v.mkt.home : site.S.id } : null, sg }; });
     if (st.v && !carried) carried = st.v; if (st.sg) signs = true;
     if (carried && signs && (await ev(() => __g.MKT.xfer)) > x0) break;
   }
   ok('traders carry a bundle of their goods to the stalls', !!carried && !!carried.g, JSON.stringify(carried));
-  ok('a stall shows what it is selling (a sign over the stall)', signs);
+  ok('a stall shows what it is selling (a sign) and its price as a stack of real buttons (one per button of price)', signs);
   const xf = await ev(() => ({ x: __g.MKT.xfer, log: __g.MKT.log.slice(-6).map((e) => e.text) }));
   ok('goods and buttons move between the two camps', xf.x > x0 && xf.log.some((t) => /(sold|bought) .+ (to|from) the .+ camp/.test(t)), JSON.stringify(xf.log.slice(-3)));
   /* the market-day picture: traders at the stalls, the pedlar, the board */
