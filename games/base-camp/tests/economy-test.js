@@ -11,7 +11,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await p.reload(); await sleep(1500);
   const setDate = (d, h) => ev(([d, h]) => { __g.ENV.dateOverride = d; if (h !== undefined) __g.ENV.hourOverride = h; __g.ENV._sk = 0; __g.envUpdate(); return __g.mktWeekday(); }, [d, h]);
   await setDate(TUE, 12); await ev(() => __g.setWxPick('clear')); /* no rain: rain sends traders indoors */
-  ok('BUILD is build 24', await ev(() => __g.BUILD === 'build 24'));
+  ok('BUILD is build 26', await ev(() => __g.BUILD === 'build 26'));
   await p.click('#bMore'); await p.click('#bPrac'); await sleep(300);
   for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit')) break; } await sleep(1000);
   await ev(() => { __g.F10.on = false; for (const r of __g.G.requests.slice()) __g.resolveRequest(r, true); __g.F10.reqDone = true; __g.FUN.queue.length = 0; });
