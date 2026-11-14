@@ -32,7 +32,7 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   /* build 18: the practice room has a toy toilet on the floor, so its lid is a sixth (small, low) zone */
   const kinds = zs.map((z) => z[0]).sort().join(',');
   ok('zones found: floor, desk, speaker top, sill, shelf (+ the toy toilet lid)', zs.length === 6 && kinds === 'FLOOR,SHELF,SILL,SMALL,SMALL,TABLE' && zs.some((z) => z[0] === 'SMALL' && z[2] > 0.4) && zs.some((z) => z[0] === 'SMALL' && z[2] < 0.25), JSON.stringify(zs));
-  const sp = await ev(() => { const z = __g.G.zones.find((q) => q.type === 'SMALL'); return [z.cx, z.y, z.cz]; });
+  const sp = await ev(() => { const z = __g.G.zones.filter((q) => q.type === 'SMALL').sort((a, b) => b.y - a.y)[0]; return [z.cx, z.y, z.cz]; }); /* build 18 added the toy toilet lid, a second SMALL zone; the speaker top is the higher one (which comes first in the list depends on the scan) */
   let pt = await scr(...sp); await p.mouse.click(pt[0], pt[1]); await sleep(300);
   ok('tapping the speaker top opens the tag picker', await ev(() => !document.getElementById('tagpick').hidden));
   await p.click('#tagpick [data-tag=speaker]'); await sleep(200);
@@ -96,7 +96,9 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   ok('on return the diary comes first, before any scan', await ev(() => !document.getElementById('diary').hidden && /5\.0 h/.test(document.getElementById('diary').innerText)), await ev(() => document.getElementById('diary').innerText.slice(0, 90) + '|' + __g.G.phase + '|' + __g.G.auto));
   await p.click('#dClose'); await ev(() => __g.injectScan(0.02)); await ev(() => __g.doneScanning()); await sleep(300);
   ok('then the two-landmark alignment starts', await ev(() => __g.G.phase === 'align' && __g.G.landmarks.length === 2), await ev(() => __g.G.landmarks.map((l) => l.name).join(' & ')));
-  await ev(() => __g.focusOn(0.2, 0.6, -0.4, 4.4));
+  /* build 21 (harness): focusOn only sets the camera's goal; it eases there over the next frames. Wait until it has arrived before working out where to tap
+     (the taps used to be computed while the camera was still moving, so the result depended on frame timing) */
+  await p.waitForFunction(() => { __g.focusOn(0.2, 0.6, -0.4, 4.4); return __g.P.target.distanceTo(__g.P.gTarget) < 0.002 && Math.abs(__g.P.dist - __g.P.gDist) < 0.005; }, null, { timeout: 60000, polling: 200 });
   const taps = await ev(() => __g.G.landmarks.map((l) => { const m = { Speaker: 'speaker', Radeon: 'gpu', 'Tin one': 'can1', 'kettle mug': 'cup', Window: 'sill' }[l.name], q = m === 'sill' ? { x: -1.525, z: 0.6, base: 1.0, h: 0 } : __g.PROPS.find((x) => x.id === m), c = Math.cos(__g.PLACE.yaw), s = Math.sin(__g.PLACE.yaw), wx = q.x * c + q.z * s + __g.PLACE.x, wz = -q.x * s + q.z * c + __g.PLACE.z, y = m === 'speaker' ? 0.55 : q.base + q.h, v = new __g.THREE.Vector3(wx, y, wz).project(__g.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; }));
   for (const t of taps) { await p.mouse.click(t[0] + 1, t[1] + 1); await sleep(200); }
   const al = await ev(() => ({ phi: __g.G.align.phi, tx: __g.G.align.tx, tz: __g.G.align.tz, err: __g.G.alignErr, yaw: __g.PLACE.yaw, X: __g.PLACE.x, Z: __g.PLACE.z }));
@@ -159,9 +161,9 @@ const ok = (name, cond, extra) => { results.push([name, !!cond]); console.log((c
   const ask = await ev(() => ({ n: __g.G.asks.length, vis: !document.getElementById('ask').hidden, text: document.getElementById('ask').innerText }));
   ok('the speaker moved 30 cm: "Did the ... move here?"', ask.n >= 1 && ask.vis && /move here/.test(ask.text), ask.text.split('\n')[0]);
   await shot('moved-question.png');
-  const zx0 = await ev(() => __g.G.zones.find((z) => z.type === 'SMALL').cx);
+  const zx0 = await ev(() => __g.G.zones.filter((q) => q.type === 'SMALL').sort((a, b) => b.y - a.y)[0].cx);
   await p.click('#askYes'); await sleep(300);
-  const zx1 = await ev(() => __g.G.zones.find((z) => z.type === 'SMALL').cx);
+  const zx1 = await ev(() => __g.G.zones.filter((q) => q.type === 'SMALL').sort((a, b) => b.y - a.y)[0].cx);
   ok('answering yes moves the whole colony with the speaker', Math.abs(zx1 - zx0) > 0.2 && await ev(() => __g.G.settlements.find((S) => S.zoneName.includes('Perch')).cols.length) === popBefore, 'moved ' + Math.round(Math.abs(zx1 - zx0) * 100) + ' cm');
   ok('moving the speaker does not count as tidying or squashing', (await ev(() => __g.G.report.lines.filter((l) => /New land|squashed/.test(l.text)).length)) === 0);
   await closeCards();
