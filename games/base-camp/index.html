@@ -5404,7 +5404,7 @@ function rbNewRoom() { /* the current room is saved and closed as it is; a fresh
 function rbIts(id) { /* "It's the Shed": the current room is closed, that room loads and is looked for in a fresh scan */
   const from = HOMES.cur; rbClose(); RB.ask = null; recRB({ its: id, from }); rbSaveColony(from); rfReset(); scanReset(); G.finding = false; ROOMPRE = {}; $('nroom').hidden = true;
   if (!homeSwitchLoad(id)) { toast('That room could not be loaded.', 4); return; }
-  G.mapName = homeName(HOMES.cur); rbReset(); RF.quietUntil = performance.now() + 1500; autoSay('Looking for ' + homeName(id) + '… look around slowly.', 5); updateHint(); autoCount();
+  RELOC.scanSecs = 0; RELOC.nextTry = 1.5; RELOC.asked = false; /* the player named the room: its search starts from zero */ G.mapName = homeName(HOMES.cur); rbReset(); RF.quietUntil = performance.now() + 1500; autoSay('Looking for ' + homeName(id) + '… look around slowly.', 5); updateHint(); autoCount();
 }
 /* ---- RF: finding the camp again after a sleep or an origin jump ---- */
 REC.relock = [];

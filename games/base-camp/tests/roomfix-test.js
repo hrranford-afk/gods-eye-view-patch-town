@@ -27,7 +27,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await install(p, WORLD); await p.addInitScript({ content: POLY });
   const ev = (f, a) => p.evaluate(f, a);
   const noOverlay = () => ev(() => { const rs = navigator.xr.requestSession.bind(navigator.xr); navigator.xr.requestSession = async (m, o) => { const ss = await rs(m, o); try { Object.defineProperty(ss, 'domOverlayState', { value: undefined, configurable: true }); } catch (e) {} for (const sym of Object.getOwnPropertySymbols(ss)) { const d = ss[sym] && ss[sym].device; if (d) d._domOverlayRoot = null; } return ss; }; });
-  const fresh = async () => { await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await ev(() => { window.__SHED = window.__WORLD; window.__W = { yaw: 0, x: 0, z: 0, y: 0 }; __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; }); };
+  const fresh = async () => { await p.reload(); await sleep(2500); if (process.env.NO_OVERLAY) await noOverlay(); await ev(() => { window.__SHED = window.__WORLD; window.__W = { yaw: 0, x: 0, z: 0, y: 0 }; window.__cam.fixed = [0, -0.1, -2.1, 0, -1.3]; /* the first look is at the far end of the shed: the scan grid reaches into the lounge */ __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; }); };
   await p.addInitScript((W) => { window.__WORLD = W; }, WORLD);
   const sweep = (legs, speed) => ev(([legs, speed]) => { const T = window.__place(), pick = (n) => T.find((t) => t.n === n);
     const look = (n, off, hgt, ay, ap, dur) => { const S = pick(n); if (!S) return null; const q = [S.cx + off[0], S.y + hgt, S.cz + off[1]], fx = S.cx - q[0], fy = S.y - q[1], fz = S.cz - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay, ap, dur }; };
@@ -67,6 +67,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await p.click('#mvNo'); await sleep(500);
   const tGrow = await waitFor(() => __g.G.zones.some((z) => z.cz < -3.6), 90000, 800); const zA3 = await zinfo();
   ok('1. "No, still here": the room\'s extent grows and the lounge surfaces may join it', tGrow > 0 && (await ev(() => !__g.RB.ask && __g.RB.base.z0 < -4)), zA3.length + ' zones, beyond ' + zA3.filter((z) => z.cz < -3.6).length);
+  if (tGrow < 0) console.log('DEBUG', JSON.stringify(await ev(() => ({ origin: __g.SCAN.origin, base: __g.RB.base, cg: __g.RB.camGap, held: __g.RB.held, ask: __g.RB.ask, act: __g.rbActive(), rf: __g.RF.on, sz: __g.SCAN.zones.map((z) => [z.mz, +z.cx.toFixed(2), +z.cz.toFixed(2), +z.y.toFixed(2), +z.area.toFixed(2), z.stable]) }))));
   await endSession();
   await ev((snap) => { localStorage.clear(); const o = JSON.parse(snap); for (const k of Object.keys(o)) localStorage.setItem(k, o[k]); }, snap1); /* put the saves back as they were at the question */
 
@@ -98,6 +99,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('3. It’s… Room 1: the lounge is unloaded completely (zones, camps, cables) and only the shed is loaded', S3.cur === 'r1' && S3.ret && S3.zones > 0 && S3.rooms.join() === 'r1' && S3.sets.every((r) => r === 'r1') && S3.left === 0, JSON.stringify(S3));
   const r2map = await ev(() => JSON.parse(localStorage.getItem('base-camp-map-v1.r2'))); ok('3. Room 2\'s saved map has only its own zones', r2map && r2map.zones.length > 0 && r2map.zones.every((z) => z.cz < -3.6) && r2map.room === 'r2', r2map && r2map.zones.length);
   const tL3 = await waitFor(() => __g.G.locked, 240000, 600); ok('3. ...and the shed is found again (relocalised)', tL3 > 0, tL3 + ' ms');
+  if (tL3 < 0) console.log('DEBUG3', JSON.stringify(await ev(() => ({ st: __g.RELOC.state, secs: __g.RELOC.scanSecs, tries: __g.RELOC.tries, hits: __g.SCAN.hits, ask: !document.getElementById('ask').hidden, rel: __g.REC.reloc.slice(-5) }))));
   await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800);
 
   /* ===================== 6. tidy (on the locked shed) ===================== */
