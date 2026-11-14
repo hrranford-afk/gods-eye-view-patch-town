@@ -2200,7 +2200,7 @@ function mapToJSON() { /* build 26: only the current room's zones, and the spots
     spots: spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
     cables: G.cables.filter((c) => sids.has(c.a) && sids.has(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().filter((s) => sids.has(s.id)).map((s) => s.id), library: G.library };
 }
-function mapFromJSON(d, room) { // returns an error string, or '' after loading it into G; room (build 26): the room it is loaded for (default: the current one)
+function mapFromJSON(d, room) { /* returns an error string, or '' after loading it into G; room (build 26): the room it is loaded for (default: the current one) */
   if (!d || typeof d !== 'object' || d.kind !== 'base-camp-room-map') return 'This is not a Base Camp room map.';
   if (d.v !== MAP_V) return 'This room map is version ' + d.v + '; this game reads version ' + MAP_V + '.';
   if (!Array.isArray(d.zones) || !Array.isArray(d.spots)) return 'The room map is missing its zones or spots.';
@@ -2268,7 +2268,7 @@ function fzOnZone(fz, Z) { // how much of a fresh scan zone lies on a map zone's
   for (let k = 0; k < b.lab.length; k += 3) if (b.lab[k] === fz.id) { n++; const c = gXZ(k), q = landIdx(L, c[0], c[1]); if (q >= 0 && L.st[q]) h++; }
   return n ? h / n : 0;
 }
-function growLand(Z, fz, clip) { // a fresh scan reached beyond the saved land of a big surface: make the grid bigger (old cells keep their place and history); clip (build 26): never past the room's box
+function growLand(Z, fz, clip) { /* a fresh scan reached beyond the saved land of a big surface: make the grid bigger (old cells keep their place and history); clip (build 26): never past the room's box */
   const L = Z.land, b = fz.band; let i0 = L.i0, j0 = L.j0, i1 = L.i0 + L.w - 1, j1 = L.j0 + L.h - 1;
   for (let k = 0; k < b.lab.length; k += 2) if (b.lab[k] === fz.id) { const [x, zz] = gXZ(k); if (clip && rbGapXZ(clip.box, x, zz) > clip.m) continue; const dx = x - L.cx, dz = zz - L.cz, i = Math.floor((dx * L.c + dz * L.s) / LC), j = Math.floor((-dx * L.s + dz * L.c) / LC); if (i - 3 < i0) i0 = i - 3; if (j - 3 < j0) j0 = j - 3; if (i + 3 > i1) i1 = i + 3; if (j + 3 > j1) j1 = j + 3; }
   if (i0 === L.i0 && j0 === L.j0 && i1 === L.i0 + L.w - 1 && j1 === L.j0 + L.h - 1) return;
