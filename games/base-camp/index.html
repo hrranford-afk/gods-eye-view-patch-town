@@ -223,7 +223,7 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
 const RG = { prob: false, room: '', block: '', t0: 0, held: null, holds: 0, confirmed: '', tops: 0, backed: {}, ask: null, noAskUntil: 0, ct: 0 };
 /* build 26, ROOM BOUNDARIES AND SLEEP RELOCK (section after relocAskRooms, HANDOVER "Room boundaries and sleep relock"): RB guards the room's extent, RF finds the camp again after a sleep or an origin jump. */
 const RB = { base: null, cam0: null, youngT0: 0, outT: 0, ask: null, noUntil: 0, held: 0, camGap: 0, floorY: null, asked: 0, diag: 0, diagT: 0 };
-const RB_ADD = 2.5, RB_CAM = 2.0, RB_CAM_S = 5, RB_HOLD_CAM = 0.75, RB_HOLD_GAP = 0.3, RB_YOUNG = 60, RB_FLOOR_DY = 0.07, RB_TRAVEL = 3, RS_GAP = 4;
+const RB_NEAR = 1.0, RB_ADD = 2.5, RB_CAM = 2.0, RB_CAM_S = 5, RB_HOLD_CAM = 0.75, RB_HOLD_GAP = 0.3, RB_YOUNG = 60, RB_FLOOR_DY = 0.07, RB_TRAVEL = 3, RS_GAP = 4;
 const RF = { on: false, hidden: false, phase: '', why: '', t0: 0, buf: [], agree: 0, conflict: 0, unk: 0, n: 0, wasNew: false, askT: 0, prompted: false, lastT: 0, lastPos: null, lastFw: null, frameMs: 0, quietUntil: 0, docHidden: false, xrHidden: false, done: 0 };
 const RF_GAP = 0.5, RF_JUMP_M = 0.3, RF_JUMP_DEG = 15, RF_ASK_S = 30;
 const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 160, RG_WEAK_OV = 0.8; /* weak: score under RG_WEAK, or under RG_WEAK_OV of the live cells over known saved cells. Room B (totem-test) locked with score 111 to 193 and overlap 0.6; real returns scored 208 to 350 with overlap 1.0 (HANDOVER "Room guard") */
@@ -5328,7 +5328,7 @@ function relocAskRooms() { // several rooms and none matched after ~45 s of scan
    1. RB, the room's extent: the box of the room's zones (RB.base), fixed once the room is settled (RB_YOUNG s after the colony landed) or locked.
       A surface more than RB_ADD outside it, a floor at another height after the iPad travelled RB_TRAVEL, or the iPad itself more than RB_CAM outside it
       for RB_CAM_S seconds: nothing more is added, and one small prompt asks "Have you moved to another room?" (New room / It's... / No, still here).
-      While the iPad is a little outside (RB_HOLD_CAM), surfaces outside the box wait. Big surfaces only grow up to RB_ADD past the box.
+      While the iPad is a little outside (RB_HOLD_CAM), surfaces outside the box wait; a big surface more than RB_NEAR outside asks too. Big surfaces only grow up to RB_NEAR past the box.
    2. Zones carry their room (Z.room); mapToJSON writes only the current room's zones, spots and cables (rbOwn).
    3. RF, the relock: wake-ups (page visibility, pageshow, the XR session's visibility, a reference space reset) hide the camp at once; a gap in the XR frame
       times or a jump of the camera pose start a quiet check. Fresh hits are held back and compared with the map where it is now (the fast path); when they
@@ -5375,9 +5375,10 @@ function rbAllow(fz) { /* may this scanned surface become part of the current ro
   if (gap > RB_ADD) { if (fz.area >= 0.08 && AUTO.t >= RB.noUntil) rbAsk('a surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; }
   if (RB.floorY !== null && RB.cam0 && !fz.ceil && fz.area >= 0.3 && fz.y < RB.floorY + 0.15 && Math.abs(fz.y - RB.floorY) > RB_FLOOR_DY) { const c = rbCam(); if (Math.hypot(c.x - RB.cam0.x, c.z - RB.cam0.z) > RB_TRAVEL) { if (AUTO.t >= RB.noUntil) rbAsk('a floor at another height'); RB.held++; return false; } }
   if (RB.camGap > RB_HOLD_CAM && gap > RB_HOLD_GAP) { RB.held++; return false; } /* the iPad is outside the room: surfaces outside it wait */
+  if (gap > RB_NEAR) { if (fz.area >= 0.25 && (fz.stable || 0) >= 3 && AUTO.t >= RB.noUntil) rbAsk('a big surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; } /* a settled room does not quietly take in a big surface a metre or more beyond it: it asks */
   return true;
 }
-function rbClip() { return RB.base && rbActive() ? { box: RB.base, m: RB.camGap > RB_HOLD_CAM ? RB_HOLD_GAP : RB_ADD } : null; } /* how far a big surface may grow past the room's box */
+function rbClip() { return RB.base && rbActive() ? { box: RB.base, m: RB.camGap > RB_HOLD_CAM ? RB_HOLD_GAP : RB_NEAR } : null; } /* how far a big surface may grow past the room's box */
 function rbAsk(why) {
   if (RB.ask) return; persist(); /* the room as it is, once: nothing is added to it while the question is up */
   RB.ask = { why, t: AUTO.t, room: HOMES.cur }; RB.asked++; recRB({ ask: why, camGap: +RB.camGap.toFixed(2), held: RB.held }); sfx('ask');

@@ -14,7 +14,7 @@ const { serve, ROOT } = require('./lib.js'); const install = require('./ar-fake.
 const POLY = fs.readFileSync(path.join(ROOT, 'webxr-polyfill.js'), 'utf8'); const OUT = path.join(ROOT, 'shots') + '/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS ' : 'FAIL ') + n + (x !== undefined ? '  ' + x : '')); };
 const SHED = [['floor', -1.2, 0, -1.5, 1.4, 1.4], ['deskA', -0.45, -0.45, -1.2, 0.3, 0.25], ['speakerA', -0.45, 0.8, -1.0, 0.15, 0.125], ['shelf', 0.2, 0.0, -2.7, 0.7, 0.13]];
-const LOUNGE = [['lfloor', -1.2, 0.2, -5.2, 1.3, 1.3], ['sofa', -0.78, 0.6, -5.7, 0.5, 0.3], ['ltable', -0.85, -0.5, -5.3, 0.3, 0.25], ['lamp', -0.6, 0.9, -4.3, 0.15, 0.15]]; /* about 1 m past the shed's floor: its near edge is inside the shed's scan grid */
+const LOUNGE = [['lfloor', -1.2, 0.2, -5.6, 1.3, 1.3], ['sofa', -0.78, 0.6, -6.1, 0.5, 0.3], ['ltable', -0.85, -0.5, -5.7, 0.3, 0.25], ['lamp', -0.6, 0.9, -4.7, 0.15, 0.15]]; /* about 1.4 m past the shed's floor: its near edge is inside the shed's scan grid */
 const WORLD = SHED.concat(LOUNGE);
 const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEGS = ['lfloor', 'sofa', 'ltable', 'lamp', 'lfloor2'];
 (async () => {
