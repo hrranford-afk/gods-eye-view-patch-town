@@ -202,7 +202,7 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
       (rgTops). The saves are held in memory (RG.held) and written once the lock is confirmed; a dropped or corrected lock throws them away.
    3. Ask when unsure: with one saved room a lock whose score is under RG_WEAK asks "Is this the same room?" (#ask, #rmNew) instead of locking silently. */
 const RG = { prob: false, room: '', block: '', t0: 0, held: null, holds: 0, confirmed: '', tops: 0, backed: {}, ask: null, noAskUntil: 0, ct: 0 };
-const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 160; /* RG_WEAK: room B in totem-test locked with score 112; real returns there scored 208 and 350 (see HANDOVER) */
+const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 160, RG_WEAK_OV = 0.8; /* weak: score under RG_WEAK, or under RG_WEAK_OV of the live cells over known saved cells. Room B (totem-test) locked with score 111 to 193 and overlap 0.6; real returns scored 208 to 350 with overlap 1.0 (HANDOVER "Room guard") */
 function rgOldKey(id, n) { return 'bc-mapold-' + id + '-' + n; }
 function rgIsMap(raw) { try { const d = JSON.parse(raw); return !!(d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); } catch (e) { return false; } }
 function rgBackup(id, key) { /* the room's stored map goes to backup 1, backup 1 to backup 2 (the oldest is dropped); a copy equal to backup 1 is not kept twice */
@@ -4971,7 +4971,7 @@ function relocConsider(res) {
 function relocLock(res, how) {
   let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; // the frames are committed after a short refinement with the growing scan
   $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
-  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, how: how || 'auto' };
+  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2), score: Math.round(res.score || 0), ov: +(res.overlap || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, overlap: res.overlap, how: how || 'auto' };
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
@@ -5014,10 +5014,10 @@ function rgDrop(why) { /* the lock was dropped or corrected: the held saves are 
 }
 function rgAskFirst(a, room) { /* one saved room and a weak match: "Is this the same room?" instead of a silent lock */
   if (G.finding || room !== HOMES.cur || HOMES.rooms.filter((r) => roomHasData(r.id)).length > 1) return false;
-  if (!a || a.score >= RG_WEAK) return false;
+  if (!a || (a.score >= RG_WEAK && (a.overlap === undefined || a.overlap >= RG_WEAK_OV))) return false;
   if (RELOC.scanSecs < RG.noAskUntil) return true; /* "Keep looking" was tapped: no silent weak lock, and no new question for a while */
   RG.ask = { res: a, room, t: RELOC.scanSecs }; RELOC.state = 'asking'; RELOC.asked = true;
-  recReloc({ guard: 'ask', score: Math.round(a.score), M: a.M, info: a.info, ratio: +(a.ratio || 0).toFixed(2), room }); recSnap('same room?');
+  recReloc({ guard: 'ask', score: Math.round(a.score), ov: +(a.overlap || 0).toFixed(2), M: a.M, info: a.info, ratio: +(a.ratio || 0).toFixed(2), room }); recSnap('same room?');
   const el = $('ask'); el.hidden = false;
   el.innerHTML = '<div style="font-size:18px;color:#ffd9a8">Is this the same room?</div><div style="font-weight:600">This looks a bit like ' + esc(homeName(room)) + ', but the colonists are not sure.</div><div class="mrow" style="justify-content:center"><button class="big" id="rmSame">Yes, same room</button><button class="big alt" id="rmNew">A new room</button><button id="rmMore">Keep looking</button></div>';
   $('rmSame').onclick = () => { el.hidden = true; const q = RG.ask; RG.ask = null; if (q && q.room === HOMES.cur && G.returning && !G.locked) relocLock(q.res, 'asked'); };
@@ -7014,7 +7014,7 @@ function SND_board() {
 }
 try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
-window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
+window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }

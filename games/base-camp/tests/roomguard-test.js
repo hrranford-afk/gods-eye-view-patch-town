@@ -35,7 +35,7 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const endSession = async () => { await ev(() => __g.AR.session.end()); await sleep(1500); };
   const advance = (h) => ev((h) => localStorage.setItem('bc-test-off', String((+localStorage.getItem('bc-test-off') || 0) + h * 3600 * 1000)), h);
   const mapA = () => ev(() => localStorage.getItem('base-camp-map-v1'));
-  const guard = () => ev(() => ({ prob: __g.RG.prob, confirmed: __g.RG.confirmed, tops: __g.RG.tops, holds: __g.RG.holds, held: !!__g.RG.held, locked: __g.G.locked, st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, score: __g.RELOC.lock && Math.round(__g.RELOC.lock.score) }));
+  const guard = () => ev(() => ({ prob: __g.RG.prob, confirmed: __g.RG.confirmed, tops: __g.RG.tops, holds: __g.RG.holds, held: !!__g.RG.held, locked: __g.G.locked, st: __g.RELOC.state, how: __g.RELOC.lock && __g.RELOC.lock.how, score: __g.RELOC.lock && Math.round(__g.RELOC.lock.score), ov: __g.RELOC.lock && __g.RELOC.lock.overlap }));
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
   ok('BUILD is build 21 + roomguard', await ev(() => __g.BUILD === 'build 21 + roomguard'));
@@ -46,9 +46,9 @@ const WA = { yaw: 0.5, x: 0.5, z: -0.3 }, WB = { yaw: 0, x: 0, z: 0 };
   const tS = await waitFor(() => __g.G.settlements.length > 0, 150000, 600);
   await sweep(['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf', 'deskA', 'floor'], 1.0); await waitFor(() => window.__cam.done, 200000, 2000);
   await ev(() => { __g.simulate(120, 0.5); __g.persist(true); }); await sleep(500);
+  await endSession(); /* the session end saves once more: A0 is the map as it is after that */
   const A0 = await mapA();
-  ok('1. room A settles and its map is saved; a first save makes no backup', tS > 0 && !!A0 && (await ev(() => !localStorage.getItem('bc-mapold-r1-1'))), 'settled after ' + tS + ' ms, map ' + (A0 || '').length + ' chars');
-  await endSession();
+  ok('1. room A settles and its map is saved; a first session makes no backup', tS > 0 && !!A0 && (await ev(() => !localStorage.getItem('bc-mapold-r1-1'))), 'settled after ' + tS + ' ms, map ' + (A0 || '').length + ' chars');
 
   /* ===================== 2. return to room A: a strong lock, probation, then it saves ===================== */
   await advance(8); await fresh(); await setRoom(ROOM_A, WA); await ev(() => { __g.ENV.hourOverride = 12; __g.RECOG.coco.state = 'loading'; });
