@@ -19,7 +19,7 @@ const WRAP = () => {
   const { srv, url } = await serve(); const { b, ctx, p, errs } = await launch(); const ev = (f, a) => p.evaluate(f, a);
   await ctx.addInitScript(WRAP);
   await p.goto(url); await sleep(1500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await p.reload(); await sleep(2500);
-  ok('build 21', await ev(() => __g.BUILD === 'build 21'));
+  ok('build 21', await ev(() => __g.BUILD === 'build 21 + roomguard'));
   /* 1. nothing plays before a gesture: sounds, music and ambience asked for from code all stay silent */
   const pre = await ev(() => { sfx('cheer'); sfx('fanfare'); __g.bsfx('boom'); __g.partyToggle(true); __g.partyToggle(false); for (let i = 0; i < 8; i++) __g.SND_ambTick(0.3); return { ctx: __au.ctx, nodes: __au.total, armed: __g.SND.armed, sndCtx: !!__g.SND.ctx }; });
   ok('no audio before a gesture (no AudioContext, no nodes)', pre.ctx === 0 && pre.nodes === 0 && !pre.armed && !pre.sndCtx, JSON.stringify(pre));

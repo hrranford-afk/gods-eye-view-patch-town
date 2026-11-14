@@ -201,8 +201,8 @@ function safeRead(key, ok) { // main slot, then the backup; sets STORE.status = 
    2. Probation: after an automatic room lock nothing is written back to the room for RG_PROB seconds, or until a second, independent top surface lines up
       (rgTops). The saves are held in memory (RG.held) and written once the lock is confirmed; a dropped or corrected lock throws them away.
    3. Ask when unsure: with one saved room a lock whose score is under RG_WEAK asks "Is this the same room?" (#ask, #rmNew) instead of locking silently. */
-const RG = { prob: false, room: '', t0: 0, held: null, holds: 0, confirmed: '', tops: 0, backed: {}, ask: null, noAskUntil: 0, ct: 0 };
-const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 400;
+const RG = { prob: false, room: '', block: '', t0: 0, held: null, holds: 0, confirmed: '', tops: 0, backed: {}, ask: null, noAskUntil: 0, ct: 0 };
+const RG_KEEP = 2, RG_PROB = 60, RG_WEAK = 160; /* RG_WEAK: room B in totem-test locked with score 112; real returns there scored 208 and 350 (see HANDOVER) */
 function rgOldKey(id, n) { return 'bc-mapold-' + id + '-' + n; }
 function rgIsMap(raw) { try { const d = JSON.parse(raw); return !!(d && d.kind === 'base-camp-room-map' && Array.isArray(d.zones)); } catch (e) { return false; } }
 function rgBackup(id, key) { /* the room's stored map goes to backup 1, backup 1 to backup 2 (the oldest is dropped); a copy equal to backup 1 is not kept twice */
@@ -4631,7 +4631,7 @@ function autoSay(text, secs) { // one short line that fades after a few seconds
 function persist(force) { // the one place that saves: the room map and the colony, never while a returning map is not yet lined up
   if (G.auto && G.returning && !G.locked) return false;
   if (G.phase === 'title') return false;
-  if (RG.prob && RG.room === HOMES.cur) { rgHold(); return false; } /* roomguard: a fresh lock is on probation, the room's saves wait in memory */
+  if (RG.prob && RG.room === HOMES.cur) { rgHold(); return false; } if (RG.block && RG.block === HOMES.cur) return false; /* roomguard: a fresh lock is on probation, the room's saves wait in memory */
   if (saveMap()) saveNow(); /* never write a colony whose map did not save: it could not be placed on reload (review 12 Nov) */ AUTO.mapDirty = false; if (MULTI_ROOM && (!STORE.boundT || performance.now() - STORE.boundT > 60000)) { STORE.boundT = performance.now(); roomBound(); } return true;
 }
 // ---- the live map (first play, or a new room): stable scan zones become map zones; map zones grow as the scan grows ----
@@ -4981,9 +4981,9 @@ function relocLock(res, how) {
   setTimeout(() => uiWhenFree(() => { if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; showAway(r); $('diary').classList.add('side'); } }), 2700); /* build 20 + return: after the home moment, never on top of it */
 }
 /* ---- roomguard: probation after a lock, and the question for a weak lock (see RG above) ---- */
-function rgReset() { RG.prob = false; RG.room = ''; RG.held = null; RG.holds = 0; RG.confirmed = ''; RG.tops = 0; RG.backed = {}; RG.ask = null; RG.noAskUntil = 0; RG.ct = 0; }
+function rgReset() { RG.prob = false; RG.room = ''; RG.block = ''; RG.held = null; RG.holds = 0; RG.confirmed = ''; RG.tops = 0; RG.backed = {}; RG.ask = null; RG.noAskUntil = 0; RG.ct = 0; }
 function rgStart(how) { /* a world map is ARKit's own relocalisation: nothing to doubt. Every other lock waits. */
-  RG.held = null; RG.holds = 0; RG.tops = 0; RG.ct = 0; RG.room = HOMES.cur; RG.t0 = AUTO.t;
+  RG.held = null; RG.holds = 0; RG.tops = 0; RG.ct = 0; RG.room = HOMES.cur; RG.block = ''; RG.t0 = AUTO.t;
   if (how === 'worldmap') { RG.prob = false; RG.confirmed = 'worldmap'; return; }
   RG.prob = true; RG.confirmed = ''; recReloc({ guard: 'probation', how, secs: RG_PROB });
 }
@@ -5009,8 +5009,8 @@ function rgConfirm(why) { /* the lock stands: the held saves are written now (pe
   recReloc({ guard: 'confirmed', why, tops: RG.tops, held: had, after: +(AUTO.t - RG.t0).toFixed(1) }); persist();
 }
 function rgDrop(why) { /* the lock was dropped or corrected: the held saves are thrown away, nothing reaches the room */
-  if (!RG.prob && !RG.held) return; const had = RG.holds; RG.prob = false; RG.held = null; RG.holds = 0; RG.confirmed = '';
-  recReloc({ guard: 'dropped', why, held: had });
+  if (!RG.prob && !RG.held) return; const had = RG.holds; RG.block = RG.room; RG.prob = false; RG.held = null; RG.holds = 0; RG.confirmed = '';
+  recReloc({ guard: 'dropped', why, held: had }); /* RG.block: that room is not written again until a new lock, or a line-up by hand is finished */
 }
 function rgAskFirst(a, room) { /* one saved room and a weak match: "Is this the same room?" instead of a silent lock */
   if (G.finding || room !== HOMES.cur || HOMES.rooms.filter((r) => roomHasData(r.id)).length > 1) return false;
@@ -5572,7 +5572,7 @@ function alignTap(cx, cy) {
 }
 function finishAlign(skip) {
   if (skip) { G.alignErr = null; if (G.zones.length) applyAlign({ phi: 0, tx: 0, tz: 0, dy: 0, pivot: [0, 0] }); }
-  G.aligned = true; if (G.auto) { G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; AUTO.compareAt = AUTO.t + 30; AUTO.compareHits = SCAN.hits; if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; setTimeout(() => { showAway(r); $('diary').classList.add('side'); }, 600); } }
+  RG.block = ''; /* roomguard: lined up by hand, the player has placed the room */ G.aligned = true; if (G.auto) { G.locked = true; RELOC.state = 'locked'; G.visits = (G.visits || 0) + 1; G.visitCounted = true; AUTO.compareAt = AUTO.t + 30; AUTO.compareHits = SCAN.hits; if (G.pendingDiary) { const r = G.pendingDiary; G.pendingDiary = null; setTimeout(() => { showAway(r); $('diary').classList.add('side'); }, 600); } }
   setPhase('play'); finishScan();
 }
 // ---- tagging spots ----
