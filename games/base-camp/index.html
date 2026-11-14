@@ -67,6 +67,7 @@ body.ui-hold #reqs{visibility:hidden}body.diary-up #toast{opacity:0}
 #sndBoard{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(94vw,640px);max-height:calc(100vh - 20px);overflow:auto;z-index:30;display:grid;gap:8px;padding:12px 14px;background:rgba(59,42,30,.94)}#sndBoard .sbh{font-weight:800;color:#ffd9a8;font-size:15px;margin-top:4px}#sndBoard .sbg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}#sndBoard .sbg button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:46px;padding:4px 8px;font-size:14px}#sndBoard .sbg small{font:600 11px var(--body);opacity:.8;line-height:1.2}
 label.vol{display:flex;align-items:center;gap:6px;font:800 14px var(--body);padding:2px 8px;border:2px solid rgba(255,246,230,.42);border-radius:12px;min-height:38px}label.vol input{width:120px;accent-color:#e8883a}
 .row2,.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.row2 input{flex:1 1 150px;font:700 14px var(--body);padding:8px;border-radius:10px;border:2px solid #fff6e655;background:#fff6e6;color:#3b2a1e;min-height:38px}
+#modal .egrid{display:grid;gap:4px}#modal .erow{display:flex;align-items:center;gap:8px;font-size:14px}#modal .erow b{min-width:92px}#modal .epips{display:inline-flex;gap:2px;min-width:94px}#modal .earr{font-size:12px;opacity:.9}#modal .earr.up{color:#ffb3a0}#modal .earr.down{color:#b6f0a6}#modal .eic{vertical-align:middle}#modal .ebtns{display:flex;gap:8px;flex-wrap:wrap}#modal .ebtns button.on,#modal .eitem.on{outline:3px solid #ffd27a}#modal .eshop{display:grid;grid-template-columns:1fr 1fr;gap:6px}#modal .eitem{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 6px;text-align:left;padding:6px 8px}#modal .ecost{display:inline-flex;max-width:96px;justify-content:flex-end}#modal .ecost .epips{min-width:0;flex-wrap:wrap;justify-content:flex-end}#modal .eitem small{grid-column:1/-1;opacity:.8;font-size:11px}#modal .eitem .eic2{font-size:22px}#modal .eitem[disabled]{opacity:.5}.ecoline{font-size:11px;opacity:.9;margin:1px 0 2px;display:flex;align-items:center;gap:3px;flex-wrap:wrap}.ecoline img{vertical-align:middle}
 #modal textarea{width:100%;font:12px ui-monospace,monospace;border-radius:10px;padding:6px;background:#fff6e6;color:#3b2a1e}
 label.file{display:inline-block;position:relative;overflow:hidden;font:800 15px var(--body);border:2px solid rgba(255,246,230,.42);border-radius:12px;padding:9px 12px;background:rgba(255,246,230,.16)}label.file input{position:absolute;inset:0;opacity:0}
 #guess{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(92vw,520px);display:grid;gap:8px;z-index:4;text-align:center}#guess .th{font-weight:800;font-size:18px;color:#ffd9a8}#guess .row2{justify-content:center}
@@ -186,8 +187,9 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="models/props.js"></script>
 <script src="models/decor.js"></script> <!-- build 18: the season decorations (BC_DECOR_MK). Optional: without it the plain DECOR_MK shapes are built -->
-<script src="models/market.js"></script>
-<script src="models/places.js"></script> <!-- build 25: the loom and the local-goods heaps (BC_PLACES_MK). Optional: without it plain shapes are built --> <!-- build 23: the market stalls (BC_MARKET_MK). Optional: without it a plain market is built -->
+<script src="models/market.js"></script> <!-- build 23: the market stalls (BC_MARKET_MK). Optional: without it a plain market is built -->
+<script src="models/economy.js"></script> <!-- build 24: the workshops, the pedlar, the price board (BC_ECON_MK). Optional: without it plain shapes are built -->
+<script src="models/places.js"></script> <!-- build 25: the loom and the local-goods heaps (BC_PLACES_MK). Optional: without it plain shapes are built -->
 <!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
 <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
 <script>
@@ -432,7 +434,7 @@ SND.KINDS = {
   twinkle: 'a season decoration goes up', pack: 'last season’s decorations go back in the box', patter: 'the mouse scout’s little footsteps',
   setoff: 'the scout sets off on an expedition', home: 'the scout comes home', cablereq: 'a creature asks for a cable car', season: 'a new season begins',
   rainstart: 'it starts to rain', sunny: 'the rain stops', windy: 'the wind gets up', hutdone: 'a hut is finished', built: 'any other build is finished', founded: 'a new camp is founded',
-  mbell: 'the market bell: market day!', haggle: 'haggling at the market stalls',
+  mbell: 'the market bell: market day!', haggle: 'haggling at the market stalls', coins: 'buttons jingle: something sold at the market',
 };
 SND.BKINDS = { launch: 'a shot leaves', twang: 'a rubber band', boom: 'a big hit', bounce: 'a bounce', weee: 'a long fall', hoover: 'the hoover', tick: 'a timer tick', sad: 'a lost battle', splat: 'a small hit', clip: 'a paper clip', swing: 'a rope swing', fluff: 'a sock hit', clink: 'confetti', jazz: 'a paper-clip chord', sneeze: 'a dusty sneeze', rip: 'tape', plank: 'a plank bridge', ding: 'battle ding', no: 'battle no', chime: 'battle chime', hammer: 'battle hammer' };
 SND.DUCK = { fanfare: 1, cheer: 1, trumpet: 1, tada: 1, hutdone: 1, founded: 1, season: 1 };
@@ -523,6 +525,7 @@ function sfx(kind, pitch, pos) { /* soft synth sounds made on the spot; p: the c
     else if (kind === 'founded') { sNoise(c, t, 0.25, 1200, 'bandpass', 0.025); [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.032, 0, 0.12 + i * 0.09)); } /* a tent flaps open, and up we go */
     else if (kind === 'mbell') { for (let i = 0; i < 6; i++) { const f = i % 2 ? 1568 : 1319; tone(f, 0.32, 'sine', 0.03, 0, i * 0.11); tone(f * 2.76, 0.1, 'sine', 0.006, 0, i * 0.11); } } /* build 23: a handbell, ding-a-ling-a-ling */
     else if (kind === 'haggle') { for (let i = 0; i < 5; i++) tone((360 + Math.random() * 280) * p, 0.06, 'triangle', 0.022, (280 + Math.random() * 320) * p, i * 0.075 + Math.random() * 0.02); } /* build 23: chatter, mumble-mumble, deal */
+    else if (kind === 'coins') { for (let i = 0; i < 6; i++) { const f = (2200 + Math.random() * 1600) * p; tone(f, 0.07, 'triangle', 0.02, f * 0.92, i * 0.055 + Math.random() * 0.02); tone(f * 1.5, 0.04, 'sine', 0.008, 0, i * 0.055); } } /* build 24: a jingle of tiny buttons */
     else if (sfxExtra[kind]) sfxExtra[kind](c, t, tone);
     if (SND.DUCK[kind]) SND_duck();
   } catch (e) { /* sound is optional */ } finally { SND.dest = null; SND.jit = 1; }
@@ -569,6 +572,13 @@ const ICONS = {
   crumbs: (x) => { x.fillStyle = '#d9a066'; for (const [a, b, r] of [[22, 30, 9], [40, 26, 7], [34, 42, 8]]) { x.beginPath(); x.arc(a, b, r, 0, 7); x.fill(); } },
   book: (x) => { x.fillStyle = '#d9483b'; x.fillRect(12, 16, 19, 32); x.fillStyle = '#4a8fd9'; x.fillRect(33, 16, 19, 32); x.fillStyle = '#fff6e6'; x.fillRect(29, 14, 6, 36); },
   stall: (x) => { /* build 23: a market stall, striped awning over a counter */ x.fillStyle = '#8a5a33'; x.fillRect(14, 22, 3, 30); x.fillRect(47, 22, 3, 30); for (let i = 0; i < 5; i++) { x.fillStyle = i % 2 ? '#fff6e6' : '#d9483b'; x.beginPath(); x.moveTo(8 + i * 9.6, 14); x.lineTo(17.6 + i * 9.6, 14); x.lineTo(17.6 + i * 9.6, 24); x.arc(12.8 + i * 9.6, 24, 4.8, 0, Math.PI); x.closePath(); x.fill(); } x.fillStyle = '#ffc93d'; x.fillRect(12, 38, 40, 9); x.fillStyle = '#7fd36a'; x.beginPath(); x.arc(24, 36, 4, 0, 7); x.fill(); x.fillStyle = '#4aa8e8'; x.beginPath(); x.arc(38, 36, 4, 0, 7); x.fill(); },
+  /* build 24: the economy's goods */
+  corn: (x) => { x.fillStyle = '#5fae46'; x.beginPath(); x.moveTo(32, 60); x.quadraticCurveTo(10, 40, 14, 14); x.quadraticCurveTo(24, 34, 32, 60); x.fill(); x.beginPath(); x.moveTo(32, 60); x.quadraticCurveTo(54, 40, 50, 14); x.quadraticCurveTo(40, 34, 32, 60); x.fill(); x.fillStyle = '#ffd23a'; x.beginPath(); x.ellipse(32, 30, 10, 24, 0, 0, 7); x.fill(); x.fillStyle = '#e8a91a'; for (let r = 0; r < 6; r++) for (let c = -1; c <= 1; c++) { x.beginPath(); x.arc(32 + c * 5.5, 14 + r * 6.5, 1.8, 0, 7); x.fill(); } },
+  plank: (x) => { x.save(); x.translate(32, 32); x.rotate(-0.35); x.fillStyle = '#c9995a'; x.fillRect(-26, -2, 52, 14); x.fillStyle = '#e8c48a'; x.fillRect(-26, -12, 52, 12); x.strokeStyle = '#a8763c'; x.lineWidth = 2; x.beginPath(); x.moveTo(-20, -6); x.lineTo(8, -6); x.moveTo(-6, -9); x.lineTo(20, -9); x.stroke(); x.restore(); },
+  bread: (x) => { x.fillStyle = '#c98a2a'; x.beginPath(); x.ellipse(32, 40, 26, 14, 0, 0, 7); x.fill(); x.fillStyle = '#ecb44f'; x.beginPath(); x.ellipse(32, 34, 24, 15, 0, 0, 7); x.fill(); x.strokeStyle = '#b4741c'; x.lineWidth = 3; for (const d of [-10, 0, 10]) { x.beginPath(); x.moveTo(32 + d - 4, 28); x.lineTo(32 + d + 4, 40); x.stroke(); } },
+  thread: (x) => { x.fillStyle = '#f2a7c8'; x.beginPath(); x.arc(30, 34, 20, 0, 7); x.fill(); x.strokeStyle = '#d67aa6'; x.lineWidth = 3; for (const r of [7, 13]) { x.beginPath(); x.arc(30, 34, r, 0.4, 5.6); x.stroke(); } x.strokeStyle = '#f2a7c8'; x.lineWidth = 4; x.beginPath(); x.moveTo(48, 40); x.quadraticCurveTo(60, 50, 54, 60); x.stroke(); x.fillStyle = 'rgba(255,255,255,.6)'; x.beginPath(); x.arc(22, 24, 4, 0, 7); x.fill(); },
+  rope: (x) => { x.strokeStyle = '#a8703e'; x.lineWidth = 9; x.beginPath(); x.ellipse(32, 38, 22, 14, 0, 0, 7); x.stroke(); x.strokeStyle = '#d9a066'; x.lineWidth = 7; x.beginPath(); x.ellipse(32, 32, 20, 12, 0, 0, 7); x.stroke(); x.strokeStyle = '#8a5a2b'; x.lineWidth = 2; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; x.beginPath(); x.moveTo(32 + Math.cos(a) * 16, 32 + Math.sin(a) * 9); x.lineTo(32 + Math.cos(a + 0.25) * 24, 32 + Math.sin(a + 0.25) * 15); x.stroke(); } x.strokeStyle = '#d9a066'; x.lineWidth = 6; x.beginPath(); x.moveTo(50, 38); x.quadraticCurveTo(60, 50, 52, 58); x.stroke(); },
+  button: (x) => { x.fillStyle = '#e0402f'; x.beginPath(); x.arc(32, 32, 26, 0, 7); x.fill(); x.strokeStyle = '#a82a22'; x.lineWidth = 4; x.beginPath(); x.arc(32, 32, 19, 0, 7); x.stroke(); x.fillStyle = '#5a1712'; for (const [a, b] of [[25, 25], [39, 25], [25, 39], [39, 39]]) { x.beginPath(); x.arc(a, b, 3.6, 0, 7); x.fill(); } x.fillStyle = 'rgba(255,255,255,.45)'; x.beginPath(); x.ellipse(22, 16, 7, 3.5, -0.6, 0, 7); x.fill(); },
 };
 function iconTex(name) { return TEX[name] || (TEX[name] = cv(64, 64, (x) => (ICONS[name] || ICONS.bang)(x))); }
 function bubbleTex(name) { const k = 'b_' + name; return TEX[k] || (TEX[k] = cv(80, 80, (x) => { x.fillStyle = '#fff6e6'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 4; x.beginPath(); x.arc(40, 34, 28, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(30, 58); x.lineTo(40, 76); x.lineTo(46, 56); x.fillStyle = '#fff6e6'; x.fill(); x.save(); x.translate(8, 2); x.scale(0.75, 0.75); (ICONS[name] || ICONS.bang)(x); x.restore(); })); }
@@ -1596,8 +1606,8 @@ function bcRebuild() { /* rebuild every thing's model (the props switched on or 
 function removeThing(S, t) { t.dead = true; S.things.splice(S.things.indexOf(t), 1); S.group.remove(t.mesh); }
 function newSettlement(zone, o) {
   o = o || {}; ensureDist(zone);
-  const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, o: zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: { wood: 14, food: 5, seeds: 4, water: 8, tin: 0 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: !G.holdPlace, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0, stats: newStats(), fx: null };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
+  const S = { id: ++G.uid, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: zone.spec, adj: 0, o: zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: { wood: 14, food: 5, seeds: 4, water: 8, tin: 0, btn: ECON_TUNE.start.btn, thread: 0, planks: 0, bread: 0, rope: 0 }, things: [], cols: [], t: 0, born: Date.now(), group: new THREE.Group(), placed: !G.holdPlace, thriving: false, awaiting: !!o.awaiting, arrT: 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: 0, wellWet: 0, stats: newStats(), fx: null };
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); econFix(S);
   const tent = addThing(S, 'tent', 0, 0, { built: !o.awaiting, hold: !!o.awaiting, rot: 0.3 }); S.tent = tent; if (!o.awaiting) tent.pop = 1;
   syncLandmarks(S);
   return S;
@@ -1626,7 +1636,7 @@ function addColonist(S, o) {
   S.cols.push(c); return c;
 }
 function homeOf(S, c) { const hs = S.things.filter((t) => t.built && !t.hold && HOMES_K.includes(t.kind)); if (!hs.length) return null; hs.sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z)); return hs[0]; }
-const housing = (S) => S.things.reduce((n, t) => n + (t.built && !t.hold ? KINDS[t.kind].cap || 0 : 0), 0);
+const housing = (S) => S.things.reduce((n, t) => n + (t.built && !t.hold ? (KINDS[t.kind].cap || 0) + (t.plank && t.kind === 'hut' ? 1 : 0) : 0), 0); /* build 24: a hut built with a plank has room for one more */
 const treeCap = (S) => (S.spec === 'grove' ? 5 : Math.min(18, 6 + 2 * S.cols.length));
 function approach(S, t, c) { // a spot next to a thing, on the colonist's side
   let dx = c.x - t.x, dz = c.z - t.z; const d = Math.hypot(dx, dz) || 1; const off = t.r * 0.8 + 0.006;
@@ -1643,7 +1653,7 @@ function chooseJob(S, c, E) {
   const well = built(S, 'well');
   const canDrink = well || S.stock.water > 0;
   if (canDrink && n.water < 0.6) add((0.6 - n.water) * 10, { type: 'drink', th: well || home });
-  if (S.stock.food > 0 && n.food < 0.6 && home) add((0.6 - n.food) * 10, { type: 'eat', th: home });
+  if ((S.stock.food > 0 || S.stock.bread > 0) && n.food < 0.6 && home) add((0.6 - n.food) * 10, { type: 'eat', th: home });
   if (n.rest < 0.45 && home) add((0.45 - n.rest) * 8 * P.lazy, { type: 'sleep', th: home });
   for (const t of S.things) {
     if (t.hold) continue;
@@ -1652,6 +1662,7 @@ function chooseJob(S, c, E) {
     else if (t.kind === 'tree' && t.yield > 0) add(3 * P.work, { type: 'gather', th: t });
     else if ((t.kind === 'tree' || t.kind === 'farm') && t.built && t.g < 1 && t.tend < 10) add(2.2 * P.work, { type: 'tend', th: t });
   }
+  econCraftJobs(S, c, add); /* build 24: make planks, corn cakes, rope at a workshop */
   for (const r of netBreaksOf(S)) { const th = netFixTarget(S, r); if (th) add(9 * P.work, { type: 'fix', th, run: r }); } /* build 18: a kinked straw or a stuck bucket */
   if (S.stock.seeds > 0 && kindCount(S, 'tree') < treeCap(S)) { const sp = findSpot(S, 0.026); if (sp) add(2.6 * P.work, { type: 'plant', spot: sp }); }
   if (S.cols.length > 1) add(1.2 * P.social, { type: 'chat' });
@@ -1682,6 +1693,7 @@ function startJob(S, c, j, E) {
     const [ax, az] = approach(S, j.th, c); j.tx = ax; j.tz = az;
     j.dur = { drink: 1.6, eat: 2.2, tend: 2.2, harvest: 2.2, gather: 1.6, shelter: 1e9, sleep: 1e9, build: 1e9, read: 5, leap: 2.6 }[j.type] || 2;
     if (j.type === 'build') j.th.workers++;
+    if (j.type === 'craft') j.dur = econCraftDur(S);
     if (j.type === 'fix') { j.dur = 3.2; if (j.run) j.run.fixer = c; }
   }
 }
@@ -1718,10 +1730,10 @@ function runJob(S, c, dt, E, quiet) {
     }
     case 'build': {
       const t = j.th; if (t.built) { endJob(c); return; }
-      t.prog += dt / KINDS[t.kind].work * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1) * (careOn() && !E.away ? 1.25 : 1); c.working = true;
+      t.prog += dt / KINDS[t.kind].work * (S.stock.planks > 0 && !DECOR[t.kind] ? 1.5 : 1) * (n.rest < 0.2 ? 0.7 : 1) * (S.fx && S.fx.workshop ? 1.3 : 1) * (careOn() && !E.away ? 1.25 : 1); c.working = true;
       if (!quiet && Math.random() < dt * 1.5) { puff('dust', S.tf.x + 0, SY(S, 0.01), S.tf.z, 0, {}); const [wx, wz] = l2w(S, t.x, t.z); puff('dust', wx, SY(S, 0.012), wz, 1, { size: 0.014, vy: 0.012, life: 0.8, grow: 1.5, g: 0 }); }
       if (!quiet && Math.random() < dt * 1.6) sfx('hammer', 1, SND_colPos(c));
-      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx(t.kind === 'hut' ? 'hutdone' : DECOR[t.kind] ? 'twinkle' : 'built', 1, { x: wx, y: SY(S, 0.03), z: wz }); toast(c.name + ' finished a ' + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
+      if (t.prog >= 1) { t.built = true; t.pop = 1; endJob(c); if (S.stock.planks > 0 && t.kind === 'hut') { S.stock.planks--; t.plank = true; } /* build 24: a plank hut */ if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('star', wx, SY(S, 0.04), wz, 6, { size: 0.01, vy: 0.03, life: 1.2, add: true, jit: 0.02 }); sfx(t.kind === 'hut' ? 'hutdone' : DECOR[t.kind] ? 'twinkle' : 'built', 1, { x: wx, y: SY(S, 0.03), z: wz }); toast(c.name + ' finished a ' + (t.plank ? 'plank ' : '') + (KINDS[t.kind].name || t.kind).toLowerCase() + '!'); funDone(S, c, t); } else if (t.giant) FUN.n.giant = (FUN.n.giant | 0) + 1; }
       return;
     }
     case 'chat': if (j.t > j.dur) { n.joy = Math.min(1, n.joy + 0.08); j.with.needs.joy = Math.min(1, j.with.needs.joy + 0.08); if (!quiet) puff('heart', S.tf.x, SY(S, 0.05), S.tf.z, 0); if (!quiet) { const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.01, life: 1.4 }); } endJob(c); } return;
@@ -1732,6 +1744,7 @@ function runJob(S, c, dt, E, quiet) {
     case 'mosh': moshStep(S, c, j, dt); return;
     case 'parade': paradeStep(S, c, j, dt, E); return;
     case 'market': mktJob(S, c, j, dt, quiet); return; /* build 23 */
+    case 'craft': if (j.th) j.th.busy = 0.4; break; /* build 24 */
     case 'cross': return;
     default: break;
   }
@@ -1741,12 +1754,13 @@ function runJob(S, c, dt, E, quiet) {
     case 'drink': if (t && t.kind === 'well') n.water = Math.min(1, n.water + 0.7); else if (S.stock.water > 0) { S.stock.water--; n.water = Math.min(1, n.water + 0.6); } break;
     case 'leap': n.joy = Math.min(1, n.joy + 0.15); if (t && !t.dead) { t.squash = 1; c.hop = 1; c.hopBig = 1.5; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('leaf', wx, SY(S, 0.03), wz, 7, { size: 0.007, vy: 0.04, life: 1.3, jit: 0.02, color: pick([0xe08a2b, 0xc2452d, 0xd9b13b]), g: -0.05 }); sayLine(c, pick(['Wheee!', 'Crunch!', 'Again!']), 1.8); sfx('pop'); } } break;
     case 'read': n.joy = Math.min(1, n.joy + 0.12); n.rest = Math.min(1, n.rest + 0.05); break;
-    case 'eat': if (S.stock.food > 0) { S.stock.food--; n.food = Math.min(1, n.food + 0.6); n.joy = Math.min(1, n.joy + 0.05); } break;
+    case 'eat': if (S.stock.bread > 0 && (S.stock.food <= 0 || Math.random() < 0.35)) { S.stock.bread--; n.food = Math.min(1, n.food + 1); n.joy = Math.min(1, n.joy + 0.08); } else if (S.stock.food > 0) { S.stock.food--; n.food = Math.min(1, n.food + 0.6); n.joy = Math.min(1, n.joy + 0.05); } break; /* build 24: a corn cake fills a tummy for longer */
     case 'tend': if (!t.dead) { t.tend = 60; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('drop', wx, SY(S, 0.03), wz, 4, { size: 0.007, vy: 0.02, g: -0.08, life: 0.9, jit: 0.015 }); sfx('water'); } } break;
     case 'plant': if (validSpot(S, j.spot[0], j.spot[1], 0.026) && S.stock.seeds > 0) { S.stock.seeds--; plantTree(S, j.spot[0], j.spot[1], quiet); } break;
     case 'harvest': if (!t.dead && t.g >= 1) { S.stock.food += 3; t.g = 0.25; FUN.n.harvest = (FUN.n.harvest | 0) + 1; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff('food', wx, SY(S, 0.04), wz, 2, { size: 0.012, vy: 0.03, life: 1.2 }); sfx('pop'); } } break;
     case 'gather': if (!t.dead && t.yield > 0) { t.yield--; if (t.var === 2 || t.var === 3) S.stock.food += 1; else S.stock.wood += 1; if (Math.random() < 0.4) S.stock.seeds++; if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(t.var >= 2 ? 'food' : 'log', wx, SY(S, 0.05), wz, 1, { size: 0.011, vy: 0.03, life: 1.1 }); } } break;
     case 'fix': netFixDone(S, c, j.run); break;
+    case 'craft': econCraftDone(S, c, t, j.g, quiet); break; /* build 24 */
     default: break;
   }
   endJob(c);
@@ -1832,7 +1846,7 @@ function simSettlement(S, dt, E, quiet) {
     else if (t.kind === 'farm' && t.built && t.g < 1) t.g = Math.min(1, t.g + dt / FARM_T * E.grow * fxm * calmK * (S.fx && S.fx.farm ? 1.25 : 1) * (t.tend > 0 ? 1.8 : 1) * compostK(S));
   }
   S.stock.water = Math.min(8, S.stock.water + dt / 90); if (S.pipeOn) S.stock.water = Math.min(12, S.stock.water + dt / 8); /* build 18: a straw from the sink refills the water store */
-  if (!S.fx) S.fx = fxOf(S); roleStep(S, dt, E, quiet);
+  if (!S.fx) S.fx = fxOf(S); roleStep(S, dt, E, quiet); econSim(S, dt); /* build 24: each surface leans to one good */
   // colonists
   for (const c of S.cols.slice()) {
     if (c.spawn > 0) { c.spawn -= dt; continue; }
@@ -1862,6 +1876,7 @@ function simSettlement(S, dt, E, quiet) {
     if (S.spec !== 'grove') {
       want('well', !built(S, 'well') && kindCount(S, 'well') === 0 && pop >= 2) || want('hut', housing(S) < pop + 1 && kindCount(S, 'hut') < HUT_MAX) || want('farm', kindCount(S, 'farm') < farmsMax && (S.stock.food < 8 || S.spec === 'farmland')) || want('lookout', (S.spec === 'lookout' || S.spec === 'orchard') && kindCount(S, 'lookout') === 0 && pop >= 3) || want('hut', S.stock.wood > 10 && kindCount(S, 'hut') < HUT_MAX);
     }
+    { const ws = econWsWanted(S); if (ws) want(ws, true); } /* build 24: a workshop to suit the surface, once there is a market */
   }
   // arrivals: new settlers wander in when there is room, food and a good mood
   S.arrT += dt;
@@ -2018,8 +2033,8 @@ function makeLink(Sa, wxa, wza, zb, wxb, wzb, via) {
   const err = canLink(Sa, wxa, wza, zb, wxb, wzb, via); if (err) { toast(err); sfx('no'); return null; }
   let Sb = zb.settled; if (!Sb) Sb = newSettlement(zb, { awaiting: true });
   const spB = stationSpot(Sb, wxb, wzb); if (!spB) { toast('No room for a station there.'); return null; }
-  const spA = stationSpot(Sa, wxa, wza); pay(Sa, CABLE_COST);
-  const l = { id: ++G.uid, how: 'cable car', a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, via: via || 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0 };
+  const spA = stationSpot(Sa, wxa, wza); pay(Sa, CABLE_COST); const roped = (Sa.stock.rope || 0) > 0; if (roped) Sa.stock.rope--; /* build 24: rope makes a faster line */
+  const l = { id: ++G.uid, how: 'cable car', a: { sid: Sa.id }, b: { sid: Sb.id }, prog: 0, ready: false, via: via || 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 0, rope: roped };
   l.a.th = addThing(Sa, 'station', spA[0], spA[1], { link: l.id, end: 'a' }); l.b.th = addThing(Sb, 'station', spB[0], spB[1], { link: l.id, end: 'b' });
   l.a.th.pop = l.b.th.pop = 1; makeLinkMesh(l); G.links.push(l); sfx('chime'); toast('The colonists start rigging a cable car to ' + Sb.zoneName + (via ? ', over the ceiling hook' : '') + '.', 4);
   return l;
@@ -2055,7 +2070,7 @@ function linkStep(l, dt, E, quiet) {
   if (g.state === 'run') {
     const hk = linkHook(l); let spd = 0.08 / Math.max(L, 0.2), hh = 0, s0 = g.s;
     if (hk) { const H = hookPos(hk, hkV), l1 = A.distanceTo(H), l2 = H.distanceTo(B), tot = Math.max(0.01, l1 + l2), Td = Math.max(L, 0.2) / 0.08; hh = l1 / tot; /* a hooked trip takes 70% of the straight trip: slow climb, quick swoop down the far side */ spd = (l1 / 0.8 + l2 / 1.6) / (0.7 * Td) * (((g.dir > 0) === (g.s < hh)) ? 0.8 : 1.6) / tot; }
-    spd *= quiet ? 8 : 1; g.s += g.dir * spd * dt;
+    spd *= (quiet ? 8 : 1) * (econFast(Sa, Sb) ? 1.6 : 1) * (l.rope ? 1.3 : 1); g.s += g.dir * spd * dt; /* build 24: the pedlar's pulley */
     if (hk && (s0 - hh) * (g.s - hh) <= 0 && s0 !== hh) hookPass(hk, l, quiet);
     else if (hk && !quiet && ((g.dir > 0) !== (g.s < hh)) && Math.random() < dt * 4) puff('star', l.cab.position.x, l.cab.position.y - 0.01, l.cab.position.z, 1, { size: 0.006, vy: 0.01, life: 0.6, add: true, jit: 0.004, color: 0xfff0a0 });
     if (g.s >= 1 || g.s <= 0) {
@@ -2552,7 +2567,7 @@ function awayDays(secs) { // a light day-level model for time beyond the first d
 }
 function awaySim(secs, startHour) {
   const t0 = performance.now(), total = secs; secs = clamp(secs, 0, AWAY_MAX); const rest = Math.max(0, total - secs), step = clamp(secs / 1500, 20, 60);
-  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; MKT.away = null; MKT.awayAcc = 0; const before = snapColony(); let nights = 0, prev = false, steps = 0;
+  DIARY.on = true; DIARY.lines = []; DIARY.found = []; DIARY.seen = {}; DIARY.arrived = []; MKT.away = null; MKT.awayAcc = 0; ECON.tally = {}; const before = snapColony(); let nights = 0, prev = false, steps = 0;
   for (let t = 0; t < secs; t += step) {
     const h = (startHour + t / 3600) % 24; envForHour(AWAYE, h); if (AWAYE.night && !prev) nights++; prev = AWAYE.night; steps++;
     for (const S of G.settlements) if (!S.lost) simSettlement(S, step, AWAYE, true);
@@ -2663,7 +2678,7 @@ function visuals(dt, time) {
       else if (t.scaf) t.scaf.visible = false;
       if (t.glow) t.glow.material.opacity = t.built && night ? (0.85 + Math.sin(time * 3 + t.id) * 0.08) * FUN.berry : 0;
       if (t.kind === 'lantern' && m.userData.glow) m.userData.glow.material.opacity = t.built ? (night ? 0.95 : 0.4) * FUN.berry * (0.9 + 0.1 * Math.sin(time * 3 + t.id)) : 0; // berry-lights, dim for a moment after time away
-      if (DECOR[t.kind]) decorAnim(S, t, m, time, dt); else if (t.kind === 'market') mktAnim(S, t, m, time, dt);
+      if (DECOR[t.kind]) decorAnim(S, t, m, time, dt); else if (t.kind === 'market') mktAnim(S, t, m, time, dt); else if (ECON_WS[t.kind] || t.kind === 'pinwheel') econAnim(S, t, m, time, dt);
       if (FUN.pulse > 0.01 && t.built && !t.hold && BOUNCY.has(t.kind)) { const k = 1 + 0.09 * FUN.pulse; m.scale.set(m.scale.x / Math.sqrt(k), m.scale.x * k, m.scale.z / Math.sqrt(k)); } // the huts bounce like drums
     }
     for (const c of S.cols) colVisual(S, c, dt, time, night, eye);
@@ -2873,9 +2888,10 @@ function fireworks(S) { // confetti and fluff, three little bursts over the colo
 function funUnlocked(k, S) {
   S = S || mainSettlement(); if (!S) return false; const pop = S.cols.length, hut = S.things.some((t) => t.kind === 'hut' && t.built), tree = S.things.some((t) => t.kind === 'tree' && t.g >= 1);
   if (k === 'market') { if (MKT.unl) return true; const ok = S.things.filter((t) => t.kind === 'hut' && t.built).length >= 2 || pop >= 4 || mktIsDay(); if (ok) MKT.unl = true; return ok; } /* build 23: early, so a first-week player has it; always on a market day */
+  if (k === 'sawbench' || k === 'oven' || k === 'reel') return mktAny(); /* build 24: the workshops come with a market */
   return k === 'nook' ? pop >= 4 || hut : k === 'stage' ? pop >= 5 || S.thriving : k === 'treehouse' ? tree : true;
 }
-const UNLOCK_HINT = { nook: 'with 4 colonists or a hut', stage: 'with 5 colonists', treehouse: 'when a tree has grown', market: 'with 2 huts, or on a market day (Wednesday or Sunday)' };
+const UNLOCK_HINT = { nook: 'with 4 colonists or a hut', stage: 'with 5 colonists', treehouse: 'when a tree has grown', market: 'with 2 huts, or on a market day (Wednesday or Sunday)', sawbench: 'when there is a market', oven: 'when there is a market', reel: 'when there is a market' };
 const FUN_BUILDS = ['lantern', 'nook', 'stage', 'treehouse', 'market']; /* build 23: the market */
 function funCheck() { // twice a second in play: milestones, unlocks, the council's moments, a little idle chatter
   const S = mainSettlement(); if (!S) return; const all = G.settlements.filter((q) => q.placed && !q.lost);
@@ -2887,7 +2903,7 @@ function funCheck() { // twice a second in play: milestones, unlocks, the counci
   if (pop >= 5) celebrate('pop5'); if (pop >= 10) celebrate('pop10'); if (FUN.n.ride) celebrate('ride'); if (FUN.n.night) celebrate('night');
   if (G.awayRes && G.awayRes.secs >= 600 && (!G.returning || G.locked)) celebrate('back'); if (FUN.party && G.time - FUN.partyAt > 4 && partyReal(S)) celebrate('party');
   const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); if (!FUN.days.includes(day)) { FUN.days.push(day); if (FUN.days.length > 60) FUN.days.shift(); } if (FUN.days.length >= 7) celebrate('week');
-  for (const k of FUN_BUILDS) if (!FUN.unl.includes(k) && funUnlocked(k, S)) { FUN.unl.push(k); if (k !== 'lantern') { toast('New to build: ' + KINDS[k].ic + ' ' + KINDS[k].name + ' <i class="by">by ' + esc(KINDS[k].by) + '</i>', 4); sfx('tada'); funLog('unlock', k); if (G.tool === 'build') barUi(); } }
+  for (const k of FUN_BUILDS) if (!FUN.unl.includes(k) && funUnlocked(k, S)) { FUN.unl.push(k); if (k !== 'lantern' && k !== 'oven' && k !== 'reel') { toast(k === 'sawbench' ? 'New to build: workshops! 🪚 Sawbench, 🔥 Thimble oven, 🧵 Rope reel. They make things worth more buttons. <i class="by">Economy: an idea by ' + MKT_CREDIT + '</i>' : 'New to build: ' + KINDS[k].ic + ' ' + KINDS[k].name + ' <i class="by">by ' + esc(KINDS[k].by) + '</i>', 4); sfx('tada'); funLog('unlock', k); if (G.tool === 'build') barUi(); } }
   // the council's moments
   if (!FUN.fest && !FUN.party && !ENV.night && !ENV.rain) for (const q of all) { if (q.awaiting) continue; const stage = q.things.some((t) => t.kind === 'stage' && t.built); if ((q.thriving || stage) && q.cols.length >= 4) { if (!q.festNext) q.festNext = G.time + (stage ? 8 : 20); else if (G.time > q.festNext) { festivalStart(q); break; } } }
   for (const q of all) if (!q.awaiting && q.t > 90 && !q.riverTried && !q.things.some((t) => t.kind === 'bridge')) { const pip = q.cols.find((c) => /^Pip\b/.test(c.name) && !c.inside && !c.held && !c.fall && c.spawn <= 0); if (pip) pipRiver(q, pip); }
@@ -4039,8 +4055,9 @@ const MKT_GOODS = { wood: ['matchstick', 'matchsticks', 8, 0xd9a066], food: ['cr
 const MKT_CRAFT = ['button', 'acorn cap', 'bead', 'bottle top', 'ribbon', 'paper star', 'thimble'];
 const MKT_WORDS = ['no', 'a', 'two', 'three', 'four', 'five', 'six'];
 const MKT_HAGGLE = [['Two acorns for that button?', 'Deal!'], ['Is this thimble full?', 'Mostly!'], ['Fresh seeds! Very seedy!', 'Three, please!'], ['How much for the crumb?', 'One wobbly bead.'], ['That twig is bent.', 'Bendy twigs cost extra!'],
-  ['I will give you a hug for it.', 'Sold!'], ['Is it a bargain?', 'A bargain-ish.'], ['Swap you a bottle top?', 'Only if it is shiny.'], ['Final offer: one sock fluff.', 'Hmm... deal.'], ['Any wobbly beads?', 'All my beads wobble.'], ['Is the water wet?', 'Very wet. Top quality.'], ['Three seeds and a smile?', 'Make it two smiles.']];
-const MKT_CALL = ['Seeds! Lovely seeds!', 'Get your crumbs here!', 'Matchsticks, two for a button!', 'Thimbles of water! Hardly sloshed!', 'Who wants a bead?'];
+  ['I will give you a hug for it.', 'Sold!'], ['Is it a bargain?', 'A bargain-ish.'], ['Swap you a bottle top?', 'Only if it is shiny.'], ['Final offer: one sock fluff.', 'Hmm... deal.'], ['Any wobbly beads?', 'All my beads wobble.'], ['Is the water wet?', 'Very wet. Top quality.'], ['Three seeds and a smile?', 'Make it two smiles.'],
+  ['Three buttons for a plank?', 'Four. It is a very flat plank.'], ['Is this corn cake fresh?', 'Baked this morning in a thimble!'], ['How strong is the rope?', 'Strong enough for a cable car!'], ['Any sock fluff?', 'The floor camp has heaps.'], ['Two buttons?', 'Two buttons and a wink.']]; /* build 24: buttons and made things */
+const MKT_CALL = ['Seeds! Lovely seeds!', 'Get your crumbs here!', 'Matchsticks, two for a button!', 'Thimbles of water! Hardly sloshed!', 'Who wants a bead?', 'Planks! Smooth as a lolly stick!', 'Corn cakes, warm from the thimble!', 'Rope! Twisty rope!'];
 const MKT_HOME = ['Home with goodies!', 'Look what I got!', 'Market was great!', 'I haggled! Twice!'];
 KINDS.market = { r: 0.068, wood: 6, work: 20, mk: () => marketMake(), name: 'Market', by: 'Harry and CAIRN', ic: '🧺' };
 MILESTONES.market = ['🧺', 'Market day!', 'Everybody brings something to swap.', MKT_CREDIT];
@@ -4067,9 +4084,9 @@ function marketMake() {
   const N = window.BC_MARKET_MK;
   if (N && !BCP.marketOff && typeof N.market === 'function') {
     try { if (!mktInit) { mktInit = 1; N.init({ THREE, BCP, bcMerge, M }); } } catch (e) { mktInit = 2; console.warn('market.js init failed, plain market', e && e.message); }
-    if (mktInit === 1) { try { const g = N.market(); if (g && g.isObject3D) return g; } catch (e) { console.warn('market.js failed, the plain market is used', e && e.message); } }
+    if (mktInit === 1) { try { const g = N.market(); if (g && g.isObject3D) { econBoardOn(g); return g; } } catch (e) { console.warn('market.js failed, the plain market is used', e && e.message); } }
   }
-  return mkMarketPlain();
+  const g = mkMarketPlain(); econBoardOn(g); return g; /* build 24: the price board */
 }
 function mkMarketPlain() {
   const g = new THREE.Group(), goods = new THREE.Group(), covers = new THREE.Group(); g.add(goods, covers);
@@ -4089,40 +4106,25 @@ function mktSlot(t, i) { /* where a trader stands: in front of stall i, in the c
 function mktAnim(S, t, m, time, dt) {
   const U = m.userData, open = t.built && MKT.open; if (U.goods) U.goods.visible = open; if (U.covers) U.covers.visible = !open;
   if (U.bell) U.bell.rotation.z = Math.sin(time * 17) * 0.7 * MKT.ring * MKT.ring + (open ? Math.sin(time * 1.4 + t.id) * 0.05 : 0);
+  econStallSigns(S, t, m); /* build 24: each stall shows what it is selling; the price board */
 }
 /* ---- goods: words and the little bundle a trader carries ---- */
 function mktQty(k, n) { const G0 = MKT_GOODS[k]; if (!G0) { const w = k; return (n === 1 ? (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w : (MKT_WORDS[n] || n) + ' ' + w + 's'); } return n === 1 ? (/^[aeiou]/.test(G0[0]) ? 'an ' : 'a ') + G0[0] : (MKT_WORDS[n] || n) + ' ' + G0[1]; }
-function mktSpare(S) { let best = null, bs = 0; for (const k in MKT_GOODS) { const s = (S.stock[k] || 0) - MKT_GOODS[k][2]; if (s > bs) { bs = s; best = k; } } return best; }
+function mktSpare(S) { return econSpare(S) || ECON_RAW.reduce((b, k) => ((S.stock[k] || 0) > (S.stock[b] || 0) ? k : b), 'wood'); } /* build 24: what the camp has spare to sell */
 function mktBundle(c, k) {
-  mktUnbundle(c); if (!c.mesh) return; const col = MKT_GOODS[k] ? MKT_GOODS[k][3] : 0xff6f91;
+  mktUnbundle(c); if (!c.mesh) return; const col = ECON_GOODS[k] ? ECON_GOODS[k].col : MKT_GOODS[k] ? MKT_GOODS[k][3] : 0xff6f91;
   const b = new THREE.Group(); b.add(inked(mesh(geo('mkSack', () => new THREE.SphereGeometry(0.0048, 8, 6)), M(col), 0, 0, 0), 0.0004)); b.add(mesh(geo('mkKnot', () => new THREE.SphereGeometry(0.0018, 6, 4)), M(0xfff3dc), 0, 0.0046, 0));
   b.children[0].scale.set(1, 0.85, 0.9); b.position.set(0, 0.021, -0.0095); b.userData.mkt = k; c.mesh.add(b); c.bundle = b;
 }
 function mktUnbundle(c) { if (c.bundle) { if (c.bundle.parent) c.bundle.parent.remove(c.bundle); c.bundle = null; } }
 /* ---- a deal: H is the trader's home camp, P the camp they trade with (the same camp when there is only one) ---- */
-function mktDeal(c, H, P, how) {
-  const want = (S, k) => MKT_GOODS[k][2] - (S.stock[k] || 0), spare = (S, k) => (S.stock[k] || 0) - MKT_GOODS[k][2], nm = c ? c.name : 'Somebody';
-  let text = '', moved = 0;
-  if (!P || P === H) { /* one camp: two of a spare thing for one of a short thing, swapped between neighbours */
-    let need = null, nd = 0, sp = null, sd = 1; for (const k in MKT_GOODS) { if (want(H, k) > nd) { nd = want(H, k); need = k; } if (spare(H, k) > sd) { sd = spare(H, k); sp = k; } }
-    const mate = H.cols.find((q) => q !== c && !q.inside); const who = mate ? ' with ' + mate.name : '';
-    if (need && sp && need !== sp) { H.stock[sp] -= 2; H.stock[need] += 1; text = nm + ' swapped ' + mktQty(sp, 2) + ' for ' + mktQty(need, 1) + who + '.'; }
-    else { const a = pick(MKT_CRAFT), b = pick(MKT_CRAFT.filter((q) => q !== a)); text = nm + ' swapped ' + mktQty(a, 1) + ' for ' + mktQty(b, 1) + who + '.'; }
-  } else {
-    let give = null, gn = 0, get = null, en = 0;
-    for (const k in MKT_GOODS) { const n1 = Math.min(3, Math.floor(spare(H, k)), want(P, k)); if (n1 > gn) { gn = n1; give = k; } const n2 = Math.min(3, Math.floor(spare(P, k)), want(H, k)); if (n2 > en) { en = n2; get = k; } }
-    if (give === get) { get = null; en = 0; }
-    if (give) { H.stock[give] -= gn; P.stock[give] += gn; moved += gn; } if (get) { P.stock[get] -= en; H.stock[get] += en; moved += en; }
-    const craft = pick(MKT_CRAFT);
-    if (give && get) text = nm + ' swapped ' + mktQty(give, gn) + ' for ' + mktQty(get, en) + '.';
-    else if (get) text = nm + ' swapped ' + mktQty(craft, 1) + ' for ' + mktQty(get, en) + '.';
-    else if (give) text = nm + ' swapped ' + mktQty(give, gn) + ' for ' + mktQty(craft, 1) + '.';
-    else { const b = pick(MKT_CRAFT.filter((q) => q !== craft)); text = nm + ' swapped ' + mktQty(craft, 1) + ' for ' + mktQty(b, 1) + '.'; }
-    if (how === 'parcel') text = text.replace(' swapped ', ' sent a parcel along the cable cars and swapped ');
-    else if (how === 'with') text = text.replace(/\.$/, ' with the ' + String(P.zoneName || 'other').split(' – ')[0] + ' camp.');
-    MKT.xfer += moved;
-  }
-  MKT.deals++; const e = { text: 'Market day: ' + text, t: Date.now(), moved, a: H.id, b: P ? P.id : H.id }; MKT.log.push(e); if (MKT.log.length > 30) MKT.log.shift(); funLog('market', e.text);
+function mktDeal(c, H, P, how) { /* build 24: a deal is a real trade in buttons (econTrade); with nothing to sell or buy, the old friendly swap of crafted bits */
+  const nm = c ? c.name : 'Somebody', quiet = how === 'away' || how === 'parcel' || !c || !c.S || !c.S.placed || DIARY.on; let text = '', moved = 0, got = null;
+  const r = econTrade(c, H, P, quiet); moved = r.moved; got = r.got;
+  if (r.parts.length) text = nm + ' ' + fmtList(r.parts) + '.';
+  else { const a = pick(MKT_CRAFT), b = pick(MKT_CRAFT.filter((q) => q !== a)), mate = H.cols.find((q) => q !== c && !q.inside); text = nm + ' swapped ' + mktQty(a, 1) + ' for ' + mktQty(b, 1) + (P && P !== H ? ' with ' + econCamp(P) : mate ? ' with ' + mate.name : '') + '.'; }
+  if (how === 'parcel') text = text.replace(nm + ' ', nm + ' sent a parcel along the cable cars and ');
+  MKT.deals++; const e = { text: 'Market day: ' + text, t: Date.now(), moved, a: H.id, b: P ? P.id : H.id, got, earned: r.earned }; MKT.log.push(e); if (MKT.log.length > 30) MKT.log.shift(); funLog('market', e.text);
   return e;
 }
 /* ---- sending traders ---- */
@@ -4154,7 +4156,7 @@ function mktFinish(S, c, j, quiet) {
   c.needs.joy = Math.min(1, c.needs.joy + 0.15); for (const q of others) q.needs.joy = Math.min(1, q.needs.joy + 0.05);
   if (!quiet) { c.hop = 1; c.cheerT = 1.2; const [wx, wz] = l2w(S, c.x, c.z); puff('heart', wx, SY(S, 0.05), wz, 2, { size: 0.009, life: 1.3 }); sfx('pop', 1, SND_colPos(c)); }
   endJob(c);
-  if (c.mkt) { const l = G.links.find((q) => q.id === c.mkt.lid && q.ready); if (l && (l.a.sid === S.id || l.b.sid === S.id) && c.mkt.home !== S.id) { c.mkt.ph = 'back'; if (c.bundle && e.moved) mktBundle(c, pick(Object.keys(MKT_GOODS))); mktRide(c, S, l); } else { c.mkt = null; mktUnbundle(c); } }
+  if (c.mkt) { const l = G.links.find((q) => q.id === c.mkt.lid && q.ready); if (l && (l.a.sid === S.id || l.b.sid === S.id) && c.mkt.home !== S.id) { c.mkt.ph = 'back'; if (e.got) mktBundle(c, e.got); else if (c.bundle) mktUnbundle(c); mktRide(c, S, l); } else { c.mkt = null; mktUnbundle(c); } }
   else mktUnbundle(c);
   return e;
 }
@@ -4183,16 +4185,18 @@ function mktSim(dt, quiet) {
   MKT.wasOpen = open;
   if (open) { MKT.roundT -= dt; if (MKT.roundT <= 0) { MKT.roundT = careOn() ? 30 : 45; mktRound(site, quiet); } }
   MKT.stT = (MKT.stT || 0) - dt; if (MKT.stT <= 0) { MKT.stT = 2; mktStrays(); }
+  econPedSync(site, open, quiet); /* build 24: Mossby the pedlar parks by the market while it is open */
 }
 function mktOpenDay(site, quiet) {
   const key = mktDayKey(); MKT.roundT = 2; if (MKT.day !== key) { MKT.day = key; MKT.deals = 0; }
+  econOpen(site, quiet || MKT.bell === key); /* build 24: today's prices, the pedlar */
   if (MKT.bell === key) return; MKT.bell = key; if (quiet) return;
   MKT.ring = 1; sfx('mbell'); if (!celebrate('market', site.S)) FUN.queue.push({ id: 'market', S: site.S, gt: G.time, st: G.simT });
   toast('🧺 Market day! The colonies bring their goods to the market. <i class="by">Market day: an idea by ' + MKT_CREDIT + '</i>', 5); funLog('marketday', key); if (typeof persistSoon === 'function') persistSoon();
 }
 function mktClose(quiet) {
   for (const S of G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') { endJob(c); if (!c.mkt) mktUnbundle(c); }
-  MKT.reply = null; if (quiet || !MKT.deals) return;
+  MKT.reply = null; econClose(quiet); if (quiet || !MKT.deals) return;
   for (const S of G.settlements) for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + 0.05);
   toast('The market is packed up for the day: ' + plural(MKT.deals, 'swap') + '. Everyone heads home happy.', 4);
 }
@@ -4210,13 +4214,346 @@ function mktAway(step, h) {
   if (!mktIsDay() || h < MKT_OPEN || h >= MKT_SHUT) return; const site = mktSite(); if (!site) return;
   MKT.awayAcc += step; while (MKT.awayAcc >= 900) {
     MKT.awayAcc -= 900; const camps = G.settlements.filter((q) => !q.lost && !q.awaiting && !q.dead && q.cols.length); if (!camps.length) return;
-    const H = pick(camps), others = camps.filter((q) => q !== H), P = others.length ? pick(others) : H, e = mktDeal(pick(H.cols), H, P);
+    const H = pick(camps), others = camps.filter((q) => q !== H), P = others.length ? pick(others) : H, e = mktDeal(pick(H.cols), H, P, 'away');
     if (!MKT.away) MKT.away = { text: e.text, n: 1 }; else MKT.away.n++;
   }
 }
-function mktAwayLine() { const A = MKT.away; if (!A) return null; return { text: A.text + (A.n > 1 ? ' ' + plural(A.n - 1, 'more swap') + ' after that, and everyone came home pleased.' : ''), by: MKT_CREDIT }; }
-function mktInfo(t) { return '🧺 The market' + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ': ' + (MKT.open ? 'open! Everyone is swapping.' : mktIsDay() ? (ENV.night ? 'shut for the night.' : 'open from 8 till half past 5.') : 'covered up until Wednesday or Sunday.') + ' <i class="by">Market day: an idea by ' + MKT_CREDIT + ', stalls by ' + MKT_BY + '</i>'; }
+function mktAwayLine() { const A = MKT.away; if (!A) return null; const L = econAwayLines(); if (L.length) return { text: L.slice(0, 2).join(' ') + (L.length > 2 ? ' The other camps traded too.' : ''), by: MKT_CREDIT }; return { text: A.text + (A.n > 1 ? ' ' + plural(A.n - 1, 'more swap') + ' after that, and everyone came home pleased.' : ''), by: MKT_CREDIT }; } /* build 24: what each camp sold and bought */
+function mktInfo(t) { return '🧺 The market' + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ': ' + (MKT.open ? 'open! Everyone is trading.' : mktIsDay() ? (ENV.night ? 'shut for the night.' : 'open from 8 till half past 5.') : 'covered up until Wednesday or Sunday.') + ' <i class="by">Market day: an idea by ' + MKT_CREDIT + ', stalls by ' + MKT_BY + '</i>'; }
 function mktAskBuild(r) { MKT.unl = true; setTool('build'); G.buildKind = 'market'; barUi(); updateHint(); toast('🧺 Tap the ground near the camp: the market goes there.', 5); }
+/* ============ ECONOMY (build 24): Harry asked "does the market tie into the mechanics? They've got to get corn, wood, they can make things, get things at higher value". ============
+   Goods have a value in BUTTONS (the colony money: tiny real buttons, S.stock.btn). Raw goods: wood, food (corn), seeds, water. Crafted goods, made at small workshops from household things,
+   are worth more than what goes in: planks (2 wood, at a sawbench), corn cakes (2 food, at a thimble oven) and rope (2 threads of sock fluff, at a cotton-reel rope reel; the fluff is only found on the floor).
+   Crafted goods are useful at home too: a camp with planks builds faster and a hut built with a plank has room for one more; a corn cake fills a tummy for longer; a cable car strung with rope runs faster.
+   Each camp leans to what its surface is good at (ECON_LEAN, by the zone's spec): the floor grows corn, shelves and the perch give wood, the desk is for crafts, the windowsill grows herbs and seeds; every camp grows a little food of its own. All numbers: ECON_TUNE.
+   On a market day (MKT) the prices move with supply and demand across the camps (econPrices: plentiful = cheap, scarce = dear, 1 to 5 button pips) and show on a chalkboard by the market.
+   Traders sell what their camp has spare (never the reserve: nobody goes hungry), buy what it is short of, and Mossby the pedlar snail comes with a cart: he buys any surplus (so a lone camp
+   still earns) and sells special things only buttons can buy (ECON_SHOP). The colonists decide; the Giant can nudge (a workshop card: make more / make fewer) and suggest a pedlar item.
+   At closing every camp gets a diary line: "Market day: the Shelf camp sold 6 planks for 9 buttons and bought a lantern." Saved as `eco` (top level) and `S.eco`; stock keys btn, thread, planks, bread, rope. */
+const ECON_BY = 'CAIRN';
+/* ECON_TUNE: EVERY price and rate of the economy in one table, so it can be retuned from the town sandbox's results without touching the logic.
+   goods: base (the usual price in buttons, 1 to 5 pips), keep (the reserve a camp never sells), need (a crafted thing's recipe), at (its workshop).
+   lean: what each surface (the zone's spec) is good at: an extra trickle of one good (every n s of play, up to cap), the workshops the colonists build, a word for the card.
+   food: every camp grows a little food of its own (crumbs, window herbs): off the floor about half as fast as the floor's farms (every otherEvery s), up to cap.
+   thread: sock fluff is only found on the floor: each floor colonist gathers one thread every `every` s (up to cap), so rope needs trade.
+   price: plentiful = cheap, scarce = dear: base * (demand + k) / (supply * sup + k), rounded, kept between min and max. trade: per deal at most sell / buy units. */
+const ECON_TUNE = {
+  goods: {
+    wood: { base: 1, keep: 8, one: 'matchstick', many: 'matchsticks', ic: 'log', name: 'Wood', col: 0xd9a066 },
+    food: { base: 1, keep: 6, one: 'ear of corn', many: 'ears of corn', ic: 'corn', name: 'Corn', col: 0xffd23a },
+    seeds: { base: 2, keep: 3, one: 'seed', many: 'seeds', ic: 'seed', name: 'Seeds', col: 0x8a5a2b },
+    water: { base: 1, keep: 5, one: 'thimble of water', many: 'thimbles of water', ic: 'drop', name: 'Water', col: 0x5ab4ff },
+    thread: { base: 2, keep: 0, one: 'thread of sock fluff', many: 'threads of sock fluff', ic: 'thread', name: 'Thread', col: 0xf2a7c8 },
+    planks: { base: 3, keep: 1, one: 'plank', many: 'planks', ic: 'plank', name: 'Planks', col: 0xe2b878, need: { wood: 2 }, at: 'sawbench' },
+    bread: { base: 3, keep: 1, one: 'corn cake', many: 'corn cakes', ic: 'bread', name: 'Corn cakes', col: 0xe8b04a, need: { food: 2 }, at: 'oven' },
+    rope: { base: 5, keep: 1, one: 'coil of rope', many: 'coils of rope', ic: 'rope', name: 'Rope', col: 0xc98a5a, need: { thread: 2 }, at: 'reel' },
+  },
+  lean: {
+    farmland: { g: 'food', every: 30, cap: 22, ws: ['oven', 'reel'], word: 'corn and sock fluff' }, orchard: { g: 'wood', every: 25, cap: 26, ws: ['sawbench'], word: 'wood' },
+    grove: { g: 'wood', every: 40, cap: 20, ws: ['sawbench'], word: 'wood' }, village: { g: 'wood', every: 50, cap: 16, ws: ['sawbench', 'reel'], word: 'crafts', craft: 1.6 },
+    lookout: { g: 'seeds', every: 40, cap: 10, ws: ['oven'], word: 'herbs and seeds' }, hanging: { g: 'seeds', every: 60, cap: 8, ws: ['oven'], word: 'seeds' },
+  },
+  food: { otherEvery: 60, cap: 14 }, /* the floor's own farms are lean.farmland (every 30 s); other surfaces grow about half that */
+  thread: { every: 240, cap: 8 },
+  price: { k: 3, sup: 0.5, min: 1, max: 5, pedMarkup: 1, pedBuyLess: 1 }, /* pedMarkup: the pedlar sells raw goods a button dearer; pedBuyLess: he buys a button cheaper */
+  trade: { sell: 6, buy: 3, foodFirst: true },
+  craft: { dur: 4.5, cap: 4, capMore: 9, capLess: 1, woodSpare: 2 },
+  start: { btn: 3 },
+  shop: [ /* Mossby's cart: special things only buttons can buy. max: how many a camp can own (0: any number) */
+    { id: 'rare', name: 'Rare seeds', a: 'a packet of rare seeds', ic: '🌻', cost: 4, max: 0, say: 'Rare seeds! A golden tree will grow.' },
+    { id: 'lantern', name: 'Berry lantern', a: 'a lantern', ic: '🏮', cost: 6, max: 3, say: 'A lantern for the dark evenings.' },
+    { id: 'pinwheel', name: 'Paper pinwheel', a: 'a paper pinwheel', ic: '🎐', cost: 8, max: 2, say: 'It spins in the slightest puff.' },
+    { id: 'pulley', name: 'Cable car pulley', a: 'a brass pulley for the cable car', ic: '🚡', cost: 12, max: 1, say: 'Our cable cars will whizz!' },
+  ],
+};
+const ECON_GOODS = ECON_TUNE.goods, ECON_LEAN = ECON_TUNE.lean, ECON_SHOP = ECON_TUNE.shop;
+const ECON_RAW = ['food', 'water', 'wood', 'seeds', 'thread'], ECON_MADE = ['planks', 'bread', 'rope']; /* food first: it is the first thing a short camp buys */
+const ECON_WS = { sawbench: 'planks', oven: 'bread', reel: 'rope' }; /* workshop kind -> what it makes */
+const ECON_PED = 'Mossby';
+KINDS.sawbench = { r: 0.03, wood: 4, work: 14, mk: () => econMake('sawbench'), name: 'Sawbench', by: 'Harry and CAIRN', ic: '🪚' };
+KINDS.oven = { r: 0.026, wood: 4, work: 14, mk: () => econMake('oven'), name: 'Thimble oven', by: 'Harry and CAIRN', ic: '🔥' };
+KINDS.reel = { r: 0.026, wood: 4, work: 14, mk: () => econMake('reel'), name: 'Rope reel', by: 'Harry and CAIRN', ic: '🧵' };
+KINDS.pinwheel = { r: 0.012, wood: 0, work: 0, mk: () => econMake('pinwheel'), name: 'Paper pinwheel', by: 'CAIRN' };
+FUN_BUILDS.push('sawbench', 'oven', 'reel'); BOUNCY.add('sawbench'); BOUNCY.add('oven'); BOUNCY.add('reel');
+const ECON = { price: {}, prev: {}, pday: '', ver: 1, tally: {}, ped: null, pedBought: 0, pedSold: 0, sales: 0, earned: 0, onAt: -1, on: false, boardTex: null, boardVer: 0, days: 0, lines: [] };
+function econReset() { econPedGone(); Object.assign(ECON, { price: {}, prev: {}, pday: '', ver: ECON.ver + 1, tally: {}, ped: null, pedBought: 0, pedSold: 0, sales: 0, earned: 0, onAt: -1, on: false, days: 0, lines: [] }); }
+const econSave = () => ({ price: ECON.price, prev: ECON.prev, pday: ECON.pday, pb: ECON.pedBought, ps: ECON.pedSold, sales: ECON.sales, earned: ECON.earned, days: ECON.days, lines: ECON.lines.slice(-6) });
+function econLoad(d) {
+  econReset(); if (!d || typeof d !== 'object') return; const num = (o) => { const r = {}; if (o && typeof o === 'object') for (const k in ECON_GOODS) if (+o[k] >= 1 && +o[k] <= 5) r[k] = Math.round(+o[k]); return r; };
+  ECON.price = num(d.price); ECON.prev = num(d.prev); ECON.pday = String(d.pday || ''); ECON.pedBought = d.pb | 0; ECON.pedSold = d.ps | 0; ECON.sales = d.sales | 0; ECON.earned = d.earned | 0; ECON.days = d.days | 0;
+  ECON.lines = Array.isArray(d.lines) ? d.lines.filter((q) => typeof q === 'string').slice(-6) : [];
+}
+function econFix(S, d) { /* a camp's own economy record: nudges, a wish from the Giant, what it bought from the pedlar */
+  d = d && typeof d === 'object' ? d : {}; const n = d.nudge && typeof d.nudge === 'object' ? d.nudge : {};
+  S.eco = { nudge: { planks: clamp(n.planks | 0, -1, 1), bread: clamp(n.bread | 0, -1, 1), rope: clamp(n.rope | 0, -1, 1) }, wish: ECON_SHOP.some((i) => i.id === d.wish) ? d.wish : '', got: Object.assign({}, d.got && typeof d.got === 'object' ? d.got : {}), pulley: !!d.pulley, leanAcc: 0, foodAcc: 0, threadAcc: 0 };
+  for (const k of ['btn', 'thread', 'planks', 'bread', 'rope']) if (!(S.stock[k] >= 0)) S.stock[k] = 0;
+  return S.eco;
+}
+const econOf = (S) => S.eco || econFix(S);
+const econCamp = (S) => 'the ' + String(S.zoneName || 'little').split(' – ')[0] + ' camp';
+const econOn = () => { const k = Math.floor(G.simT / 2); if (ECON.onAt !== k) { ECON.onAt = k; ECON.on = mktAny(); } return ECON.on; }; /* the economy runs in a world with a market */
+const econLean = (S) => ECON_LEAN[S.spec] || ECON_LEAN.village;
+function econKeep(S, g) { /* the reserve a camp keeps for itself: enough to live on, so selling never makes anybody hungry or thirsty */
+  const pop = S.cols.length, E = ECON_GOODS[g];
+  if (g === 'food') return Math.max(E.keep, 2 * pop + 2 - 2 * (S.stock.bread || 0));
+  if (g === 'water') return built(S, 'well') ? 2 : Math.max(E.keep, pop + 2);
+  if (g === 'bread') return (S.stock.food || 0) < 2 * pop ? Math.max(1, pop) : 1;
+  return E.keep;
+}
+const econSellable = (S, g) => Math.max(0, Math.floor((S.stock[g] || 0) - econKeep(S, g)));
+const econWant = (S, g) => Math.max(0, Math.ceil(econKeep(S, g) - (S.stock[g] || 0)));
+const econPrice = (g) => ECON.price[g] || ECON_GOODS[g].base;
+const econQty = (g, n) => n + ' ' + (n === 1 ? ECON_GOODS[g].one : ECON_GOODS[g].many);
+const econWords = (g, n) => (n === 1 ? (/^[aeiou]/.test(ECON_GOODS[g].one) ? 'an ' : 'a ') + ECON_GOODS[g].one : (MKT_WORDS[n] || n) + ' ' + ECON_GOODS[g].many);
+const econCamps = () => G.settlements.filter((S) => !S.lost && !S.awaiting && !S.dead && S.cols.length);
+/* ---- prices: once per market day, from what the camps have spare and what they are short of ---- */
+function econPrices(force) {
+  const key = mktDayKey(); if (ECON.pday === key && !force && Object.keys(ECON.price).length) return ECON.price;
+  const fresh = ECON.pday !== key; if (fresh && Object.keys(ECON.price).length) ECON.prev = Object.assign({}, ECON.price); ECON.pday = key;
+  for (const g in ECON_GOODS) {
+    let sup = 0, dem = 1; for (const S of econCamps()) { const s = (S.stock[g] || 0) - econKeep(S, g); if (s > 0) sup += s; else dem += -s; }
+    const T = ECON_TUNE.price; ECON.price[g] = clamp(Math.round(ECON_GOODS[g].base * (dem + T.k) / (sup * T.sup + T.k)), T.min, T.max);
+  }
+  if (!Object.keys(ECON.prev).length) ECON.prev = Object.assign({}, ECON.price);
+  ECON.ver++; return ECON.price;
+}
+const econTrend = (g) => { const a = ECON.prev[g] || econPrice(g), b = econPrice(g); return b > a ? 1 : b < a ? -1 : 0; };
+function econTally(S) { return ECON.tally[S.id] || (ECON.tally[S.id] = { sold: {}, earn: 0, bought: {}, spent: 0, items: [], gifts: 0 }); }
+/* ---- what a camp brings to market: its best spare thing (made things first, they are worth more) ---- */
+function econSpare(S) { let best = null, bv = 0; for (const g in ECON_GOODS) { const n = Math.min(ECON_TUNE.trade.sell, econSellable(S, g)), v = n * econPrice(g) * (ECON_GOODS[g].need ? 1.5 : 1); if (n > 0 && v > bv) { bv = v; best = g; } } return best; }
+function econNeed(S) { if (ECON_TUNE.trade.foodFirst && econWant(S, 'food') > 0) return 'food'; let best = null, bn = 0; for (const g of ECON_RAW) { const n = econWant(S, g); if (n > bn) { bn = n; best = g; } } return best; }
+function econSurplusOf(S) { const out = {}; for (const g in ECON_GOODS) { const n = econSellable(S, g); if (n > 0) out[g] = n; } return out; }
+/* ---- a trade at the market: H is the trader's home camp, P another camp at the market (or H itself), c the trader ---- */
+function econTrade(c, H, P, quiet) {
+  econPrices(); const parts = [], camp = (X) => econCamp(X); let moved = 0, got = null, earned = 0;
+  const g = econSpare(H);
+  if (g) { /* sell: to the other camp when it is short and has buttons, else to the pedlar, who buys anything */
+    let n = Math.min(ECON_TUNE.trade.sell, econSellable(H, g)), pr = econPrice(g); const buyer = P && P !== H && econWant(P, g) > 0 && (P.stock.btn || 0) >= pr ? P : null;
+    if (buyer) n = Math.min(n, econWant(P, g), Math.floor(P.stock.btn / pr)); else pr = Math.max(ECON_TUNE.price.min, pr - ECON_TUNE.price.pedBuyLess); /* the pedlar pays a little less than a camp would */
+    if (n > 0) {
+      const pay = n * pr; H.stock[g] -= n; H.stock.btn = (H.stock.btn || 0) + pay; earned = pay; const t = econTally(H); t.sold[g] = (t.sold[g] || 0) + n; t.earn += pay; ECON.sales += n; ECON.earned += pay;
+      if (buyer) { buyer.stock[g] = (buyer.stock[g] || 0) + n; buyer.stock.btn -= pay; moved += n; const b = econTally(buyer); b.bought[g] = (b.bought[g] || 0) + n; b.spent += pay; }
+      else ECON.pedBought += n;
+      parts.push('sold ' + econWords(g, n) + ' to ' + (buyer ? camp(buyer) : ECON_PED + ' the pedlar') + ' for ' + plural(pay, 'button'));
+    }
+  }
+  const need = econNeed(H);
+  if (need) { /* buy what home is short of: from a camp with some spare, else from the pedlar (a button dearer); no buttons and short of food: the pedlar gives a little for a hug */
+    const want = Math.min(ECON_TUNE.trade.buy, econWant(H, need)), seller = P && P !== H && econSellable(P, need) > 0 ? P : null, pr = seller ? econPrice(need) : Math.min(ECON_TUNE.price.max, econPrice(need) + ECON_TUNE.price.pedMarkup);
+    let n = Math.min(want, Math.floor((H.stock.btn || 0) / pr)); if (seller) n = Math.min(n, econSellable(P, need));
+    if (n > 0) {
+      const pay = n * pr; H.stock.btn -= pay; H.stock[need] = (H.stock[need] || 0) + n; got = need; const t = econTally(H); t.bought[need] = (t.bought[need] || 0) + n; t.spent += pay;
+      if (seller) { seller.stock[need] -= n; seller.stock.btn = (seller.stock.btn || 0) + pay; moved += n; const s = econTally(seller); s.sold[need] = (s.sold[need] || 0) + n; s.earn += pay; } else ECON.pedSold += n;
+      parts.push('bought ' + econWords(need, n) + (seller ? ' from ' + camp(seller) : ' from ' + ECON_PED));
+    } else if ((need === 'food' || need === 'water') && (H.stock.btn || 0) < pr) { const k = Math.min(2, want); H.stock[need] = (H.stock[need] || 0) + k; econTally(H).gifts += k; got = need; parts.push('got ' + econWords(need, k) + ' from ' + ECON_PED + ' for a hug'); }
+  }
+  const it = econShop(H, c, quiet); if (it) parts.push('bought ' + it.a + ' from ' + ECON_PED);
+  if (!quiet && earned && c && c.S && c.S.placed) econJingle(c, earned);
+  MKT.xfer += moved;
+  return { parts, moved, got, earned, item: it };
+}
+/* ---- the pedlar's cart: the colony chooses; the Giant can suggest (S.eco.wish) and they save up for it ---- */
+const econItem = (id) => ECON_SHOP.find((i) => i.id === id);
+const econCanOwn = (S, it) => !it.max || (econOf(S).got[it.id] || 0) < it.max;
+function econShop(S, c, quiet) {
+  const E = econOf(S), btn = S.stock.btn || 0; let it = null;
+  if (E.wish) { const w = econItem(E.wish); if (!w || !econCanOwn(S, w)) E.wish = ''; else if (btn >= w.cost) it = w; else return null; } /* saving up for the Giant's idea: buy nothing else */
+  if (!it) { const can = ECON_SHOP.filter((i) => econCanOwn(S, i) && btn >= i.cost * 2); if (can.length && Math.random() < 0.3) it = pick(can); /* on their own they only buy with plenty to spare */ }
+  if (!it) return null;
+  S.stock.btn -= it.cost; const t = econTally(S); t.items.push(it.a); t.spent += it.cost; if (E.wish === it.id) E.wish = '';
+  econGive(S, it.id, quiet); if (!quiet && c && c.S && c.S.placed) { sayLine(c, 'We got ' + it.a.replace(/^a (packet of )?/, 'the ').replace(/^the brass pulley.*/, 'the pulley') + '!', 2.6, true); sfx('tada', 1, SND_colPos(c)); }
+  return it;
+}
+function econGive(S, id, quiet) {
+  const E = econOf(S); E.got[id] = (E.got[id] || 0) + 1;
+  if (id === 'rare') { S.stock.seeds = Math.min(12, (S.stock.seeds || 0) + 3); const sp = findSpot(S, 0.026); if (sp) { const t = plantTree(S, sp[0], sp[1], quiet); t.rich = true; t.g = Math.max(t.g, 0.3); t.var = 2; } }
+  else if (id === 'lantern' || id === 'pinwheel') { const sp = findSpot(S, KINDS[id].r + 0.004); if (sp) { const t = addThing(S, id, sp[0], sp[1], { built: true }); t.pop = 1; t.gift = true; } for (const c of S.cols) c.needs.joy = Math.min(1, c.needs.joy + 0.08); }
+  else if (id === 'pulley') E.pulley = true;
+  if (!quiet && typeof persistSoon === 'function') persistSoon();
+}
+const econFast = (Sa, Sb) => (Sa && Sa.eco && Sa.eco.pulley) || (Sb && Sb.eco && Sb.eco.pulley); /* a cable car with a pulley at either end runs faster */
+function econJingle(c, n) { const S = c.S; const [wx, wz] = l2w(S, c.x, c.z); puff('button', wx, SY(S, 0.045), wz, Math.min(5, 1 + Math.ceil(n / 3)), { size: 0.0075, vy: 0.04, life: 1.1, jit: 0.015, g: -0.06 }); sfx('coins', 1, SND_colPos(c)); }
+/* ---- making things: a colonist at a workshop turns inputs into one crafted thing ---- */
+function econCap(S, g) { const nd = econOf(S).nudge[g] | 0, C = ECON_TUNE.craft; return nd > 0 ? C.capMore : nd < 0 ? C.capLess : C.cap; } /* how many a camp likes to have; the Giant's nudge moves it */
+function econCanMake(S, g) { const R = ECON_GOODS[g].need; if ((S.stock[g] || 0) >= econCap(S, g)) return false; for (const k in R) if ((S.stock[k] || 0) - R[k] < econKeep(S, k) + (k === 'wood' && (econOf(S).nudge[g] | 0) <= 0 ? ECON_TUNE.craft.woodSpare : 0)) return false; return true; }
+function econCraftJobs(S, c, add) {
+  for (const t of S.things) { const g = ECON_WS[t.kind]; if (!g || !t.built || t.hold) continue; if (econCanMake(S, g)) add((econOf(S).nudge[g] > 0 ? 6 : 2.4) * c.pers.work, { type: 'craft', th: t, g }); }
+}
+const econCraftDur = (S) => ECON_TUNE.craft.dur / (econLean(S).craft || 1);
+function econCraftDone(S, c, t, g, quiet) {
+  if (!t || t.dead || !econCanMake(S, g)) return; const R = ECON_GOODS[g].need; for (const k in R) S.stock[k] -= R[k]; S.stock[g] = (S.stock[g] || 0) + 1; S.stats.made = (S.stats.made || 0) + 1;
+  if (!quiet) { const [wx, wz] = l2w(S, t.x, t.z); puff(ECON_GOODS[g].ic, wx, SY(S, 0.04), wz, 1, { size: 0.011, vy: 0.03, life: 1.2 }); puff('star', wx, SY(S, 0.035), wz, 2, { size: 0.007, add: true, life: 0.8 }); sfx('pop', 1, SND_colPos(c)); if (!S.madeOnce) { S.madeOnce = 1; sayLine(c, pick({ planks: ['A plank! Smooth!', 'Sawn it!'], bread: ['Corn cakes! Warm!', 'Fresh from the thimble!'], rope: ['Rope! Twisty!', 'All wound up!'] }[g]), 2.4); } }
+}
+/* ---- each surface leans to one good, and the colonists build the workshop that suits it ---- */
+function econSim(S, dt) {
+  if (!S.cols.length || S.awaiting || !econOn()) return; const L = econLean(S), E = econOf(S);
+  E.leanAcc += dt; while (E.leanAcc >= L.every) { E.leanAcc -= L.every; if ((S.stock[L.g] || 0) < L.cap) S.stock[L.g] = (S.stock[L.g] || 0) + 1; }
+  const F = ECON_TUNE.food; if (S.spec !== 'farmland') { E.foodAcc += dt; while (E.foodAcc >= F.otherEvery) { E.foodAcc -= F.otherEvery; if ((S.stock.food || 0) < F.cap) S.stock.food = (S.stock.food || 0) + 1; } } /* every camp grows a little food */
+  if (S.spec === 'farmland') { const T = ECON_TUNE.thread; E.threadAcc += dt * S.cols.length; while (E.threadAcc >= T.every) { E.threadAcc -= T.every; if ((S.stock.thread || 0) < T.cap) S.stock.thread = (S.stock.thread || 0) + 1; } } /* sock fluff: floor only */
+}
+function econWsWanted(S) { /* the planner: once there is a market, a camp of 3 or more with wood to spare makes its first workshop (the desk camp makes two) */
+  if (!econOn() || S.cols.length < 3) return null; const L = econLean(S); let have = 0;
+  for (const k of L.ws) { if (S.things.some((t) => t.kind === k)) { have++; continue; } if (have === 0 || (L.craft && have < 2)) return S.stock.wood >= KINDS[k].wood + 8 ? k : null; }
+  return null;
+}
+/* ---- market day: prices, the pedlar arriving and leaving, the diary lines at closing ---- */
+function econOpen(site, quiet) {
+  const key = mktDayKey(), fresh = ECON.pday !== key; econPrices();
+  if (fresh) { ECON.tally = {}; ECON.days++; }
+  if (!quiet && fresh) toast('🐌 ' + ECON_PED + ' the pedlar snail has come to market with a cart of treasures. Tap the cart to see. <i class="by">Economy: an idea by ' + MKT_CREDIT + '</i>', 5);
+}
+function econSummary(S) {
+  const t = ECON.tally[S.id]; if (!t) return null; const net = (g) => (t.sold[g] || 0) - (t.bought[g] || 0), sold = Object.keys(t.sold).filter((g) => net(g) > 0), got = Object.keys(t.bought).filter((g) => net(g) < 0), bits = []; /* a thing both sold and bought in a day counts once, either way */
+  if (sold.length) bits.push('sold ' + fmtList(sold.map((g) => econQty(g, net(g)))) + ' for ' + plural(t.earn, 'button'));
+  const buys = got.map((g) => econQty(g, -net(g))).concat(t.items); if (buys.length) bits.push('bought ' + fmtList(buys));
+  if (t.gifts && !bits.length) bits.push('got a little something from ' + ECON_PED + ' for a hug');
+  if (!bits.length) return null; return 'Market day: ' + econCamp(S) + ' ' + bits.join(' and ') + '.';
+}
+function econClose(quiet) {
+  const lines = []; for (const S of econCamps()) { const l = econSummary(S); if (l) lines.push(l); }
+  for (const l of lines) { MKT.log.push({ text: l, t: Date.now(), moved: 0, a: 0, b: 0, sum: 1 }); if (MKT.log.length > 30) MKT.log.shift(); funLog('market', l); ECON.lines.push(l); if (ECON.lines.length > 6) ECON.lines.shift(); }
+  econPedGone(); if (!quiet && lines.length) toast('🧺 ' + esc(lines[0]), 5);
+  return lines;
+}
+function econAwayLines() { const out = []; for (const S of econCamps()) { const l = econSummary(S); if (l) out.push(l); } return out; }
+/* ---- the pedlar: Mossby parks his cart by the market while it is open ---- */
+let ecInit = 0;
+function econMake(key) {
+  const N = window.BC_ECON_MK;
+  if (N && !BCP.econOff && typeof N.make === 'function') {
+    try { if (!ecInit) { ecInit = 1; N.init({ THREE, BCP, bcMerge, M }); } } catch (e) { ecInit = 2; console.warn('economy.js init failed, plain shapes', e && e.message); }
+    if (ecInit === 1) { try { const g = N.make(key); if (g && g.isObject3D) return g; } catch (e) { console.warn('economy.js failed for ' + key + ', a plain one is used', e && e.message); } }
+  }
+  return econPlain(key);
+}
+function econPlain(key) { /* without models/economy.js: simple shapes with the same userData */
+  const g = new THREE.Group(), U = { plain: 1, bcEcon: key, items: [] }; g.userData = U;
+  const it = (col, x, y, z) => { const m = mesh(geo('ecIt', () => new THREE.BoxGeometry(0.008, 0.003, 0.004)), M(col), x, y, z); g.add(m); U.items.push(m); return m; };
+  if (key === 'sawbench') { g.add(inked(mesh(geo('ecSb', () => new THREE.BoxGeometry(0.04, 0.004, 0.022).translate(0, 0.014, 0)), M(0xe8c890)), 0.0005), mesh(geo('ecSbS', () => new THREE.BoxGeometry(0.009, 0.008, 0.008).translate(0.012, 0.02, 0)), M(0x3f86dd))); for (let i = 0; i < 3; i++) it(0xe2b878, -0.012, 0.002 + i * 0.003, 0.018); }
+  else if (key === 'oven') { g.add(inked(mesh(geo('ecOv', () => new THREE.CylinderGeometry(0.011, 0.013, 0.026, 12).translate(0, 0.013, 0)), M(0xb9c2ca)), 0.0005)); const gl = mesh(geo('ecOvG', () => new THREE.CircleGeometry(0.004, 10)), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true }), 0, 0.009, 0.0122); g.add(gl); U.glow = gl; for (let i = 0; i < 3; i++) it(0xe8b04a, 0.02, 0.002, -0.006 + i * 0.006); }
+  else if (key === 'reel') { g.add(inked(mesh(geo('ecRl', () => new THREE.CylinderGeometry(0.008, 0.008, 0.02, 12).translate(0, 0.01, 0)), M(0xf2a7c8)), 0.0005)); for (let i = 0; i < 3; i++) it(0xc98a5a, -0.008 + i * 0.008, 0.002, 0.016); }
+  else if (key === 'pedlar') { const body = new THREE.Group(); body.add(inked(mesh(geo('ecPdB', () => new THREE.SphereGeometry(0.01, 10, 8).scale(0.7, 0.5, 1.6).translate(0, 0.006, 0.006)), M(0x8fd16f)), 0.0005), inked(mesh(geo('ecPdS', () => new THREE.SphereGeometry(0.013, 10, 8).translate(0, 0.022, -0.004)), M(0xf08a24)), 0.0005)); g.add(body, inked(mesh(geo('ecPdC', () => new THREE.BoxGeometry(0.032, 0.01, 0.024).translate(0, 0.012, -0.045)), M(0xe0402f)), 0.0005)); U.body = body; }
+  else if (key === 'board') { g.add(inked(mesh(geo('ecBdF', () => new THREE.BoxGeometry(0.05, 0.04, 0.003).translate(0, 0.04, 0)), M(0x92602e)), 0.0005)); const f = mesh(geo('ecBdP', () => new THREE.PlaneGeometry(0.046, 0.036)), new THREE.MeshBasicMaterial({ color: 0xffffff }), 0, 0.04, 0.0017); g.add(f); U.face = f; }
+  else if (key === 'pinwheel') { g.add(mesh(geo('ecPwS', () => new THREE.CylinderGeometry(0.001, 0.001, 0.05, 5).translate(0, 0.025, 0)), M(0x6fd0e0))); const h = new THREE.Group(); h.position.set(0, 0.05, 0.002); h.add(mesh(geo('ecPwH', () => new THREE.BoxGeometry(0.02, 0.02, 0.001).rotateZ(0.785)), M(0xe0402f))); g.add(h); U.head = h; }
+  g.add(blob(0.022)); return g;
+}
+function econPedSpot(S, t) { /* in a gap between the stalls, a little way out from the market; the snail and the cart behind it both need free ground */
+  const c = Math.cos(t.rot), n = Math.sin(t.rot), at = (a, R) => [t.x + Math.cos(a) * R * c + Math.sin(a) * R * n, t.z - Math.cos(a) * R * n + Math.sin(a) * R * c];
+  const fits = (x, z, ry) => validSpot(S, x, z, 0.022, { free: true }) && validSpot(S, x - Math.sin(ry) * 0.048, z - Math.cos(ry) * 0.048, 0.024, { free: true });
+  for (const R of [0.112, 0.13, 0.15, 0.17]) for (const a of [2.618, 0.524, 2.0, 3.2, 1.2, 0, -0.3, 3.5]) { /* never at the back (-PI/2): the price board stands there */
+    const [x, z] = at(a, R), face = Math.atan2(t.x - x, t.z - z);
+    for (const ry of [face + 1.2, face - 1.2, face + Math.PI]) if (fits(x, z, ry)) return [x, z, ry];
+  }
+  const [x, z] = at(2.618, 0.112); return [x, z, Math.atan2(t.x - x, t.z - z) + 1.2];
+}
+function econPedSync(site, open, quiet) {
+  const P = ECON.ped; if (!open || !site || quiet) { if (P && (!open || !site)) econPedGone(); return; }
+  if (P && P.sid === site.S.id && P.tid === site.t.id) return; econPedGone();
+  const S = site.S, [x, z, ry] = econPedSpot(S, site.t), m = econMake('pedlar'); m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(0.01); S.group.add(m);
+  ECON.ped = { sid: S.id, tid: site.t.id, x, z, mesh: m, t: 0 };
+  { const [wx, wz] = l2w(S, x, z); puff('star', wx, SY(S, 0.04), wz, 8, { size: 0.01, vy: 0.04, life: 1.2, add: true, jit: 0.03 }); sfx('tada', 1, { x: wx, y: SY(S, 0.03), z: wz }); setTimeout(() => sfx('coins'), 500); } /* an arrival: a fanfare and the cart unfolding (it grows in) */
+}
+function econPedGone() { const P = ECON.ped; if (P && P.mesh && P.mesh.parent) P.mesh.parent.remove(P.mesh); ECON.ped = null; }
+function econPedHit(S, lx, lz) { const P = ECON.ped; if (!P || P.sid !== S.id) return false; const c = Math.cos(P.mesh.rotation.y), s = Math.sin(P.mesh.rotation.y), cx = P.x - s * 0.02, cz = P.z - c * 0.02; return Math.hypot(lx - cx, lz - cz) < 0.05; }
+/* ---- the chalkboard: chalk icons, button pips and little arrows; one canvas shared by every board ---- */
+function econIconDraw(x, name, px, py, s) { x.save(); x.translate(px, py); x.scale(s / 64, s / 64); (ICONS[name] || ICONS.bang)(x); x.restore(); }
+function econPips(x, n, px, py, r, fill, ring) { for (let i = 0; i < n; i++) { const cx = px + i * r * 2.3; x.fillStyle = fill; x.beginPath(); x.arc(cx, py, r, 0, 7); x.fill(); x.fillStyle = ring; x.beginPath(); x.arc(cx - r * 0.3, py, r * 0.18, 0, 7); x.arc(cx + r * 0.3, py, r * 0.18, 0, 7); x.fill(); } }
+function econArrow(x, d, px, py, s, up, down) { if (!d) return; x.fillStyle = d > 0 ? up : down; x.beginPath(); if (d > 0) { x.moveTo(px, py - s); x.lineTo(px + s, py + s * 0.6); x.lineTo(px - s, py + s * 0.6); } else { x.moveTo(px, py + s); x.lineTo(px + s, py - s * 0.6); x.lineTo(px - s, py - s * 0.6); } x.fill(); }
+function econBoardDraw(x, W, H) {
+  x.fillStyle = '#24382e'; x.fillRect(0, 0, W, H); x.fillStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 30; i++) x.fillRect((i * 53) % W, (i * 31) % H, 22, 2);
+  const keys = ['wood', 'food', 'seeds', 'water', 'thread', 'planks', 'bread', 'rope'], rowH = H / 4;
+  keys.forEach((g, i) => { const col = i < 4 ? 0 : 1, row = i < 4 ? i : i - 4, px = 8 + col * W / 2, py = row * rowH + rowH / 2;
+    econIconDraw(x, ECON_GOODS[g].ic, px, py - 18, 36); econPips(x, econPrice(g), px + 46, py, 7, '#f4efe1', '#24382e'); econArrow(x, econTrend(g), px + W / 2 - 18, py, 7, '#ffb3a0', '#b6f0a6'); });
+  x.strokeStyle = 'rgba(244,239,225,.5)'; x.lineWidth = 2; x.beginPath(); x.moveTo(W / 2, 8); x.lineTo(W / 2, H - 8); x.stroke();
+}
+function econBoardTex() {
+  if (!ECON.boardTex) { const c = document.createElement('canvas'); c.width = 320; c.height = 240; ECON.boardTex = new THREE.CanvasTexture(c); ECON.boardTex.minFilter = THREE.LinearFilter; ECON.boardVer = -1; }
+  if (ECON.boardVer !== ECON.ver) { ECON.boardVer = ECON.ver; const c = ECON.boardTex.image; econBoardDraw(c.getContext('2d'), c.width, c.height); ECON.boardTex.needsUpdate = true; }
+  return ECON.boardTex;
+}
+function econBoardOn(g) { /* the market gets its price board in the gap at the back between two stalls */
+  const b = econMake('board'), a = -Math.PI / 2, R = 0.074; b.position.set(Math.cos(a) * R, 0, Math.sin(a) * R); b.rotation.y = Math.atan2(Math.cos(a), Math.sin(a)); g.add(b); g.userData.board = b;
+  if (b.userData.face) { b.userData.face.material = new THREE.MeshBasicMaterial({ map: econBoardTex() }); } return b;
+}
+/* ---- the stalls show what is on sale, the workshops show what they have made, the pedlar bobs ---- */
+function econStallSigns(S, t, m) {
+  const U = m.userData; if (!U.signs) { U.signs = MKT_A.map((a) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: econSignTex('wood'), transparent: true, depthWrite: false })); sp.scale.set(0.018, 0.018, 1); sp.position.set(Math.cos(a) * MKT_RS * 1.15, 0.088, Math.sin(a) * MKT_RS * 1.15); sp.visible = false; sp.renderOrder = 8; m.add(sp); return sp; }); }
+  const sel = [null, null, null]; if (MKT.open && t.built) for (const c of S.cols) { const j = c.job; if (j && j.type === 'market' && j.th === t && j.ph === 'do' && c.bundle && ECON_GOODS[c.bundle.userData.mkt]) sel[(j.slot | 0) % 3] = c.bundle.userData.mkt; }
+  if (!U.stacks) U.stacks = [null, null, null]; /* the main price signal: a stack of real buttons on the counter, one per button of price; a tall stack wobbles. Made only while a stall sells (no hidden meshes) */
+  MKT_A.forEach((a, i) => {
+    const g = sel[i], n = g ? econPrice(g) : 0, old = U.stacks[i];
+    if (old && old.userData.n !== n) { m.remove(old); U.stacks[i] = null; }
+    if (n && !U.stacks[i]) {
+      const cols = [0xe0402f, 0x3f86dd, 0xffc82e, 0x2f9e4f, 0xff6f91], geo1 = bcMerge('ecStk' + n, cols.slice(0, n).map((c, k) => ({ g: geo('ecBtnStk', () => new THREE.CylinderGeometry(0.0042, 0.0042, 0.0016, 12)), c, x: k % 2 ? 0.0006 : -0.0005, y: 0.0008 + k * 0.0017, z: 0, rz: k % 2 ? 0.05 : -0.04 })));
+      const st = inked(new THREE.Mesh(geo1, bcToon()), 0.0004); st.position.set(Math.cos(a + 0.42) * MKT_RS * 1.5, 0.021, Math.sin(a + 0.42) * MKT_RS * 1.5); /* at the counter's corner, beside the trader */
+      st.userData.n = n; m.add(st); U.stacks[i] = st;
+    }
+    const st = U.stacks[i]; if (st) { st.rotation.z = n >= 4 ? Math.sin(G.time * 5 + i) * 0.06 * (n - 3) : 0; st.rotation.x = n >= 4 ? Math.cos(G.time * 4.3 + i) * 0.04 * (n - 3) : 0; }
+  });
+  U.signs.forEach((sp, i) => { sp.visible = !!sel[i]; if (sel[i] && sp.userData.g !== sel[i]) { sp.userData.g = sel[i]; sp.material.map = econSignTex(sel[i]); sp.material.needsUpdate = true; } if (sp.visible) sp.position.y = 0.092 + Math.sin(G.time * 2.4 + i) * 0.002; });
+  if (U.board && U.board.userData.face && U.board.userData.face.material.map) econBoardTex();
+}
+function econSignTex(g) { /* a little round card over a stall: what it is selling (the price is the stack of buttons on the counter) */
+  const k = 'ecSign_' + g; return TEX[k] || (TEX[k] = cv(96, 96, (x) => { x.fillStyle = '#fff3dc'; x.strokeStyle = '#3b2a1e'; x.lineWidth = 5; x.beginPath(); x.arc(48, 48, 40, 0, 7); x.fill(); x.stroke(); econIconDraw(x, ECON_GOODS[g].ic, 20, 20, 56); }));
+}
+function econAnim(S, t, m, time, dt) {
+  const U = m.userData, g = ECON_WS[t.kind]; if (t.busy > 0) t.busy = Math.max(0, t.busy - dt);
+  if (g && U.items) { const n = Math.min(U.items.length, S.stock[g] || 0); U.items.forEach((o, i) => { o.visible = t.built && i < n; }); }
+  const on = t.built && t.busy > 0;
+  if (U.work) U.work.position.x = -0.002 + (on ? Math.sin(time * 18) * 0.003 : 0);
+  if (U.glow) U.glow.material.opacity = t.built ? (on ? 0.95 : 0.55) * (0.85 + 0.15 * Math.sin(time * 9 + t.id)) : 0;
+  if (U.flame) { U.flame.visible = t.built; U.flame.scale.set(1, (on ? 1.25 : 0.8) + Math.sin(time * 13 + t.id) * 0.15, 1); }
+  if (U.head) U.head.rotation.z = -time * (ENV.windy ? 7 : 2.2) - t.id;
+  if (U.spin && on) U.spin.rotation.x += dt * 9;
+  if (on && Math.random() < dt * 3 && S.placed) { const [wx, wz] = l2w(S, t.x, t.z); if (t.kind === 'sawbench') puff('dust', wx, SY(S, 0.022), wz, 1, { size: 0.007, vy: 0.01, life: 0.6, grow: 1 }); else puff('fluff', wx, SY(S, 0.045), wz, 1, { size: 0.007, vy: 0.02, life: 1.2, grow: 1.2, color: 0xeeeeee }); }
+}
+function econFrame(dt) {
+  const P = ECON.ped; if (!P || !P.mesh) return; P.t += dt; const m = P.mesh, U = m.userData, k = Math.min(1, P.t / 0.8); m.scale.setScalar(k < 1 ? 0.01 + k * k * (1.2 - 0.2 * k) : 1);
+  if (U.body) U.body.position.y = Math.abs(Math.sin(G.time * 2.2)) * 0.0008; if (U.eyes) U.eyes.rotation.z = Math.sin(G.time * 1.7) * 0.06;
+}
+/* ---- the cards: prices (tap the market), a workshop (make more / make fewer), the pedlar's cart (suggest something) ---- */
+const ECON_IMG = {};
+function econImg(name, s) { if (!ECON_IMG[name]) { const c = document.createElement('canvas'); c.width = c.height = 64; (ICONS[name] || ICONS.bang)(c.getContext('2d')); ECON_IMG[name] = c.toDataURL(); } return `<img class="eic" src="${ECON_IMG[name]}" width="${s || 22}" height="${s || 22}" alt="">`; }
+function econPipsHtml(n, s) { let h = ''; for (let i = 0; i < n; i++) h += econImg('button', s || 16); return '<span class="epips">' + h + '</span>'; }
+function econCard(html, key) { const m = $('modal'); m.hidden = false; m.dataset.eco = key; m.innerHTML = html + '<button id="ecClose">Close</button>'; return m; }
+function econCardShut() { const m = $('modal'); m.hidden = true; delete m.dataset.eco; m.onclick = null; }
+function econCampsLine() { return econCamps().map((S) => esc(String(S.zoneName).split(' – ')[0]) + ' ' + econImg('button', 14) + ' ' + (S.stock.btn || 0)).join(' · '); }
+function priceUi(t) {
+  econPrices(); const info = mktInfo(t).replace(/ <i class="by">.*<\/i>$/, '');
+  const rows = Object.keys(ECON_GOODS).map((g) => { const d = econTrend(g); return `<div class="erow">${econImg(ECON_GOODS[g].ic)}<b>${ECON_GOODS[g].name}</b>${econPipsHtml(econPrice(g))}<span class="earr ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '▲ dearer' : d < 0 ? '▼ cheaper' : ''}</span></div>`; }).join('');
+  const m = econCard(`<div class="dh">${econImg('stall', 26)} Market prices</div><div class="sub">${info}</div><div class="egrid">${rows}</div><div class="sub">${econImg('button', 14)} = one button. Plenty of something makes it cheap; when it is scarce it is dear.</div><div class="sub">Buttons: ${econCampsLine()}</div><div class="sub"><i class="by">Economy: an idea by ${MKT_CREDIT}, prices and stalls by ${ECON_BY}</i></div>`, 'price');
+  m.onclick = (e) => { if (e.target.closest && e.target.closest('#ecClose')) econCardShut(); };
+}
+const ECON_WSN = { sawbench: ['🪚', 'Sawbench', 'Wood goes in, planks come out. A plank is worth more than its wood, and a hut built with planks goes up faster and has room for one more.'], oven: ['🔥', 'Thimble oven', 'Corn goes in, corn cakes come out. A corn cake is worth more than its corn, and fills a tummy for longer.'], reel: ['🧵', 'Rope reel', 'Threads of sock fluff are twisted into rope. Rope is worth the most, and a cable car strung with rope runs faster. Sock fluff is only found on the floor, so other camps buy it at the market.'] };
+function wsUi(S, t) {
+  const g = ECON_WS[t.kind], N = ECON_WSN[t.kind], E = econOf(S), nd = E.nudge[g] | 0, nm = ECON_GOODS[g].many, st = nd > 0 ? 'Making lots of ' + nm + '.' : nd < 0 ? 'Making just a few ' + nm + '.' : 'Making ' + nm + ' when there is enough to spare.';
+  const need = Object.keys(ECON_GOODS[g].need).map((k) => econImg(ECON_GOODS[k].ic, 20)).join('') + ' → ' + econImg(ECON_GOODS[g].ic, 24);
+  const m = econCard(`<div class="dh">${N[0]} ${N[1]}${t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)'}</div><div class="sub">${N[2]}</div><div class="erow">${need} <span>${econCamp(S).replace(/^the /, 'The ')} has ${econQty(g, S.stock[g] || 0)}.</span></div><div class="sub" id="ecState"><b>${st}</b></div><div class="ebtns"><button data-nudge="1" class="${nd > 0 ? 'on' : ''}">➕ Make more ${nm}</button><button data-nudge="-1" class="${nd < 0 ? 'on' : ''}">➖ Make fewer ${nm}</button></div><div class="sub"><i class="by">Economy: an idea by ${MKT_CREDIT}, workshops by ${ECON_BY}</i></div>`, 'ws');
+  m.onclick = (e) => { const b = e.target.closest && e.target.closest('[data-nudge]'); if (b) { econNudge(S, g, +b.dataset.nudge); wsUi(S, t); return; } if (e.target.closest && e.target.closest('#ecClose')) econCardShut(); };
+}
+function econNudge(S, g, d) { /* one tap: more or fewer (a second tap the same way goes back to normal) */
+  const E = econOf(S), cur = E.nudge[g] | 0; E.nudge[g] = cur === d ? 0 : d; sfx(E.nudge[g] ? 'pop' : 'ding');
+  const c = S.cols.find((q) => !q.inside && !q.held && !q.fall); if (c && E.nudge[g]) sayLine(c, E.nudge[g] > 0 ? pick(['More ' + ECON_GOODS[g].many + '? On it!', 'Right away, Giant!']) : pick(['Fewer ' + ECON_GOODS[g].many + ', got it.', 'We will slow down.']), 2.4, true);
+  care(); if (typeof persistSoon === 'function') persistSoon(); return E.nudge[g];
+}
+function pedUi(S) {
+  const E = econOf(S), btn = S.stock.btn || 0, wish = E.wish ? econItem(E.wish) : null;
+  const rows = ECON_SHOP.map((it) => { const own = econCanOwn(S, it), cost = econPipsHtml(it.cost, it.cost > 5 ? 11 : 16); return `<button class="eitem${E.wish === it.id ? ' on' : ''}" data-wish="${it.id}"${own ? '' : ' disabled'}><span class="eic2">${it.ic}</span><b>${it.name}</b><span class="ecost">${cost}</span><small>${own ? esc(it.say) : 'You have all you need of these.'}</small></button>`; }).join('');
+  const sur = econSurplusOf(S), sl = Object.keys(sur).map((g) => econImg(ECON_GOODS[g].ic, 18)).join('');
+  const m = econCard(`<div class="dh">🐌 ${ECON_PED} the pedlar</div><div class="sub">“Treasures for buttons! And I'll buy anything you have spare.” ${econCamp(S).replace(/^the /, 'The ')} has ${econImg('button', 16)} ${btn} button${btn === 1 ? '' : 's'}${sl ? ' and spare ' + sl : ''}.</div><div class="eshop">${rows}</div><div class="sub" id="ecWish">${wish ? '<b>' + esc(econWisher(S).name) + ' wants ' + esc(wish.a) + '!</b> They will buy it when they have saved enough buttons.' : 'Tap something to suggest it. The colonists decide.'}</div><div class="sub"><i class="by">Economy: an idea by ${MKT_CREDIT}, ${ECON_PED} by ${ECON_BY}</i></div>`, 'ped');
+  m.onclick = (e) => { const b = e.target.closest && e.target.closest('[data-wish]'); if (b && !b.disabled) { econSuggest(S, b.dataset.wish); pedUi(S); return; } if (e.target.closest && e.target.closest('#ecClose')) econCardShut(); };
+}
+function econWisher(S) { return S.cols.find((c) => /^Pip\b/.test(c.name)) || S.cols[0] || { name: 'Somebody' }; }
+function econSuggest(S, id) {
+  const E = econOf(S), it = econItem(id); if (!it || !econCanOwn(S, it)) return false; E.wish = E.wish === id ? '' : id; care();
+  if (E.wish) { const c = econWisher(S); toast(esc(c.name) + ' wants ' + esc(it.a) + '! ' + ((S.stock.btn || 0) >= it.cost ? 'They will buy it at the next market.' : 'They will save up the buttons.'), 3); if (c.S && c.S.placed && !c.inside) { sayLine(c, 'Ooh! ' + it.name + '!', 2.4, true); c.hop = 1; } sfx('ding'); }
+  if (typeof persistSoon === 'function') persistSoon(); return true;
+}
+function econCardLine(S) { /* one small line on the camp card: buttons and what it has made */
+  if (!econOn() && !(S.stock.btn > 3) && !(S.stock.planks || S.stock.bread || S.stock.rope)) return '';
+  const made = ECON_MADE.filter((g) => S.stock[g] > 0).map((g) => econImg(ECON_GOODS[g].ic, 14) + S.stock[g]).join(' ');
+  return `<div class="ecoline">${econImg('button', 14)} ${S.stock.btn || 0} button${S.stock.btn === 1 ? '' : 's'}${made ? ' · ' + made : ''} · good for ${econLean(S).word}</div>`;
+}
 // ============ save / load / return ============
 // The colony is saved apart from the room map. Its settlements name the map zone they live on (zid) and store their position in that zone's own frame,
 // so after the map is lined up with the real room again (alignment) every settlement is simply in the right place.
@@ -4225,22 +4562,22 @@ const colSave = (c) => ({ scout: !!c.scout, id: c.id, name: c.name, pers: c.pers
 function serialize() {
   const hr = new Date(); 
   return {
-    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), mkt: mktSave(), // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
-    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef && rbOwn(S.zoneRef)).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats, comp: +(S.compost || 0).toFixed(3), waste: +(S.waste === undefined ? 0.6 : S.waste).toFixed(3),
-      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0 })),
+    v: 2, t: Date.now(), hour: hr.getHours() + hr.getMinutes() / 60, simT: G.simT, uid: G.uid, nameIdx: G.nameIdx, tidy: G.tidy, fun: funSave(), seas: seaSave(), mkt: mktSave(), eco: econSave(), /* build 24: the economy */ // fun (build 8): the Colony album, visit days, unlocks; older builds ignore it
+    settlements: G.settlements.filter((S) => !S.dead && S.zoneRef && rbOwn(S.zoneRef)).map((S) => ({ id: S.id, zid: S.zid, spec: S.spec, adj: S.adj, o: S.o, stock: S.stock, t: S.t, arrT: S.arrT, thriving: S.thriving, awaiting: S.awaiting, lost: !!S.lost, born: S.born, helped: S.helped, stats: S.stats, eco: S.eco ? { nudge: S.eco.nudge, wish: S.eco.wish, got: S.eco.got, pulley: S.eco.pulley } : undefined, comp: +(S.compost || 0).toFixed(3), waste: +(S.waste === undefined ? 0.6 : S.waste).toFixed(3),
+      things: S.things.map((t) => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rot: t.rot, g: t.g, built: t.built, prog: t.prog, tend: t.tend, yield: t.yield, yt: t.yt, var: t.var, hold: t.hold, life: t.life, link: t.link, end: t.end, role: t.role, spot: t.spot, tin: t.tin, rich: t.rich, sea: t.sea, gift: t.gift ? 1 : 0, pk: t.plank ? 1 : undefined })),
       cols: S.cols.map(colSave).concat(G.links.flatMap((l) => l.g.riders).filter((c) => c.S === S).map(colSave)) })).concat(G.orphans || []),
     f10: f10Save(), /* first10: the first-session record; a save without it is an old save */
     hooks: hooksSave(), net: netSave(), /* build 18: the water network; older saves have none */
-    links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready })),
+    links: G.links.map((l) => ({ id: l.id, cid: l.cid, how: l.how, gate: l.gate, via: l.via || 0, a: { sid: l.a.sid, tid: l.a.th.id }, b: { sid: l.b.sid, tid: l.b.th.id }, prog: l.prog, ready: l.ready, rope: l.rope ? 1 : undefined })),
   };
 }
 function saveNow() { if (!G.settlements.length) return; if (!safeWrite(SAVE_KEY, JSON.stringify(serialize()))) storeWarn(); }
 function loadSave() { return safeRead(SAVE_KEY, (d) => d && d.v === 2 && Array.isArray(d.settlements) && d.settlements.length); } // v: the schema version; a future v3 gets a migration here
 function restoreSettlement(d) {
   const zone = zoneById(d.zid); if (!zone) return null; ensureDist(zone);
-  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null, compost: +d.comp || 0, waste: d.waste === undefined ? 0.6 : +d.waste || 0 };
-  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S);
-  for (const t of d.things) { const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich, sea: t.sea || th.sea, gift: !!t.gift }); if (t.kind === 'tent') S.tent = th; }
+  const S = { id: d.id, zid: zone.id, zoneRef: zone, zoneType: zone.type, zoneName: zone.name, spec: d.spec || zone.spec, adj: d.adj || 0, o: d.o || zoneLocal(zone, zone.core[0], zone.core[1]), tf: { x: 0, z: 0, y: zone.y, yaw: 0 }, stock: Object.assign({ tin: 0, btn: 0, thread: 0, planks: 0, bread: 0, rope: 0 }, d.stock), things: [], cols: [], t: d.t, born: d.born, group: new THREE.Group(), placed: !G.holdPlace, thriving: d.thriving, awaiting: d.awaiting, lost: !!d.lost, arrT: d.arrT || 0, planT: 8, reqT: 5, xferT: 0, reqCd: {}, helped: d.helped || 0, stats: Object.assign(newStats(), d.stats), fx: null, compost: +d.comp || 0, waste: d.waste === undefined ? 0.6 : +d.waste || 0 };
+  world.add(S.group); syncTf(S); zone.settled = S; G.settlements.push(S); econFix(S, d.eco); /* build 24: the camp's economy (an old save has none) */
+  for (const t of d.things) { if (!KINDS[t.kind]) continue; const th = addThing(S, t.kind, t.x, t.z, t); Object.assign(th, { g: t.g, tend: t.tend, yield: t.yield, yt: t.yt, rich: t.rich, sea: t.sea || th.sea, gift: !!t.gift, plank: !!t.pk }); if (t.kind === 'tent') S.tent = th; }
   for (const c of d.cols) { const q = addColonist(S, Object.assign({}, c, { temper: CREATURES.find((k) => k.name === c.temper) || null })); q.x = c.x; q.z = c.z; q.needs = c.needs; if (c.mh && c.mh !== S.id) q.mkt = { home: c.mh, ph: 'back', lid: 0 }; }
   if (S.lost) { S.placed = false; S.group.visible = false; }
   return S;
@@ -4250,7 +4587,7 @@ function restoreLinks(sv) { // saved cable cars between settlements that exist a
   for (const L of sv) {
     const Sa = G.settlements.find((s) => s.id === L.a.sid), Sb = G.settlements.find((s) => s.id === L.b.sid);
     if (!Sa || !Sb) continue; const ta = Sa.things.find((t) => t.id === L.a.tid), tb = Sb.things.find((t) => t.id === L.b.tid); if (!ta || !tb) continue;
-    const l = { id: L.id, cid: L.cid, how: L.how || 'cable car', gate: L.gate, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, via: (L.via && G.hooks.some((h) => h.id === L.via)) ? L.via : 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5 };
+    const l = { id: L.id, cid: L.cid, how: L.how || 'cable car', gate: L.gate, a: { sid: Sa.id, th: ta }, b: { sid: Sb.id, th: tb }, prog: L.prog, ready: L.ready, via: (L.via && G.hooks.some((h) => h.id === L.via)) ? L.via : 0, g: { s: 0, dir: 1, state: 'dock', end: 'a', timer: 3, riders: [] }, key: '', xfer: 5, rope: !!L.rope };
     makeLinkMesh(l); G.links.push(l);
   }
 }
@@ -4260,7 +4597,7 @@ function prepareContinue() {
   const err = mapFromJSON(md); if (err) { toast(err, 5); return false; }
   if (MULTI_ROOM) G.mapName = homeName(HOMES.cur); // the rooms list owns the name
   G.aligned = false; if (!sv) { for (const Z of G.zones) paintLand(Z); return true; } // a saved room map and no colony yet: just line the map up again
-  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas); mktLoad(sv.mkt); f10Load(sv.f10);
+  G.holdPlace = true; G.uid = Math.max(G.uid, sv.uid || 0); G.nameIdx = sv.nameIdx || 0; G.simT = sv.simT || 0; G.tidy = Object.assign(G.tidy, sv.tidy); funLoad(sv.fun); seaLoad(sv.seas); mktLoad(sv.mkt); econLoad(sv.eco); f10Load(sv.f10);
   G.orphans = []; for (const d of sv.settlements) if (!restoreSettlement(d)) G.orphans.push(d); // a settlement whose zone is missing from the map is kept as saved, never dropped (review 12 Nov)
   hooksRestore(sv.hooks); restoreLinks(sv.links || []); syncCables(); netRestore(sv.net);
   for (const S of G.settlements.slice()) if (S.zoneRef && S.zoneRef.ceil) ceilEvac(S, false); /* a save from build 12 with a hanging camp: they all come down */
@@ -5925,7 +6262,7 @@ function setPhase(p) {
   SPOTMARK.visible = p === 'tag' || p === 'align' || p === 'zones' || p === 'scan'; refreshSpots();
 }
 function resetWorld() {
-  btCleanup(true); G.ceilCd = 0; seaReset(); mktReset(); camClose(); G.careT = 0;
+  btCleanup(true); G.ceilCd = 0; seaReset(); mktReset(); econReset(); camClose(); G.careT = 0;
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
@@ -6340,7 +6677,7 @@ function cardUi() {
   }
   if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + envLine(false) + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
   const mood = S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null, cap = capOf(S);
-  const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>';
+  const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>' + econCardLine(S);
   let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + placesCardHtml(S) + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
   if (G.cardMore) html += `<div class="det" style="margin-top:4px">Seasons: an idea by ${SEA_CREDIT}<br>settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
   el.hidden = false; cardSet(el, html);
@@ -6470,10 +6807,13 @@ function tapAt(cx, cy) {
     let best = null, bd = 0.09; for (const c of S.cols) { const d = Math.hypot(c.x - lx, c.z - lz); if (d < bd) { bd = d; best = c; } }
     if (best) { best.needs.joy = Math.min(1, best.needs.joy + 0.3); best.hop = 1; G.sel = best; selCard(best); G.selT = 6; sfx('cheer'); puff('heart', g.x, g.y + 0.05, g.z, 3, { size: 0.01, vy: 0.03, life: 1.2 }); } else puff('star', g.x, g.y + 0.03, g.z, 4, { size: 0.008, add: true });
   } else { // look: tap a building to see what it is
+    if (econPedHit(S, lx, lz)) { pedUi(S); return; } /* build 24: Mossby's cart */
     const t = S.things.find((q) => Math.hypot(q.x - lx, q.z - lz) < q.r);
     if (!t) { dropCrumb(S, lx, lz); return; } // tap the ground: the Giant drops a crumb and everybody rushes over
     if (t.kind === 'calendar' && t.built) { calUi(); return; }
-    if (t.kind === 'market') { toast(mktInfo(t), 4); return; } /* build 23 */
+    if (t.kind === 'market') { if (t.built) priceUi(t); else toast(mktInfo(t), 4); return; } /* build 23; build 24: the price board card */
+    if (ECON_WS[t.kind]) { wsUi(S, t); return; } /* build 24: a workshop: make more / make fewer */
+    if (t.kind === 'pinwheel') { toast('🎐 A paper pinwheel from ' + ECON_PED + ' the pedlar. It spins in the slightest puff. <i class="by">by ' + ECON_BY + '</i>'); t.wob = 1; return; }
     if (DECOR[t.kind]) { toast(DECOR[t.kind].ic + ' ' + DECOR[t.kind].name + (t.built ? '' : ' (being made ' + Math.round(t.prog * 100) + '%)') + ' <i class="by">by ' + esc(DECOR[t.kind].by) + '</i>'); return; }
     if (t) { const sp = t.kind === 'lm' ? spotById(t.spot) : null; toast(sp ? sp.name + ': ' + spotUsed(sp) + ' (' + spotRole(sp).gives + ')' : { lantern: 'A berry lantern <i class="by">by The Town Brain</i>', nook: 'The reading nook <i class="by">by The Dell Coder</i>', stage: 'The festival stage <i class="by">by The Dell Reasoner</i>', treehouse: 'Gertie\'s treehouse: “I\'ve always dreamed of having a cozy spot up in the trees!” <i class="by">by The Dell Builder</i>', pebble: 'A polished pebble: “we kept your spot warm.” <i class="by">by The Town Brain</i>', bridge: 'Pip\'s bridge over the river. Pip will tell you its name tomorrow. <i class="by">by The Dell Scholar</i>', tree: t.g >= 1 ? 'A grown tree' : 'A young tree: ' + Math.round(t.g * 100) + '%', farm: 'A farm: ' + Math.round(t.g * 100) + '% ripe', hut: t.tin ? 'A hut with a flattened-can roof' : 'A hut', tent: 'The base camp tent', well: 'A well', lookout: 'A lookout', station: 'A cable car station', shade: 'A sunshade', rubble: 'Rubble. Something GIANT sat here.' }[t.kind] + (t.built ? '' : ' (being built ' + Math.round(t.prog * 100) + '%)')); }
   }
@@ -7538,7 +7878,7 @@ function frame(time, xrFrame) {
     if (!G.auto) { saveT += dt; if (saveT > 10) { saveT = 0; saveNow(); } }
   }
   if (!G.auto && (G.phase === 'scan' || G.phase === 'tag')) { RECOG.t += dt; if (RECOG.t > 1.5) { RECOG.t = 0; recogTick(); recogStatus(); } }
-  funFrame(dt); seaFrame(dt); mktFrame(dt); placesTick(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
+  funFrame(dt); seaFrame(dt); mktFrame(dt); econFrame(dt); placesTick(dt); visuals(dt, G.time); partsUpdate(dt); totemVisuals(dt);
   if (SPOTMARK.visible) { const eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position; for (const o of SPOTMARK.children) if (o.userData.spot) { const k = clamp(eye.distanceTo(o.position) / 1.2, 0.7, 4); o.scale.set(0.2 * k, 0.0375 * k, 1); } }
   if (G.auto) { const tidy = rbTidy(), eye = AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position, fw = AR.on ? tmpV2.set(-AR.viewM.elements[8], -AR.viewM.elements[9], -AR.viewM.elements[10]) : camera.getWorldDirection(tmpV2);
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
@@ -7659,6 +7999,7 @@ window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rg
 Object.assign(window.__g, BT_HOOKS);
 Object.assign(window.__g, { F10, F10_SEED, f10Begin, f10Load, f10Save, f10Frame, f10Ask, f10Plant, f10Question, f10Answer, f10CardUp, f10Cam, partyReal, skyShown, SKY_TOOLS, chooseJob, orbitCam }); /* first10 */
 Object.assign(window.__g, { F10_LOG, f10Sprout, f10Ask2, f10Surprise, f10Tree, f10LogDone, uiOverlay, uiGapOK, reqHold, freshName, nameTaken, showAway, AWAY_SHOW }); /* build 20 + return */
+Object.assign(window.__g, { mktBundle, ECON, ECON_TUNE, ECON_GOODS, ECON_SHOP, ECON_WS, ECON_LEAN, econPrices, econTrade, econSpare, econNeed, econSellable, econWant, econKeep, econSurplusOf, econCraftDone, econCanMake, econNudge, econSuggest, econShop, econGive, econOf, econFix, econSave, econLoad, econReset, econOpen, econClose, econSummary, econAwayLines, econMake, econPlain, econPedSync, econPedGone, econPedHit, econBoardTex, econSim, econWsWanted, econOn, priceUi, wsUi, pedUi, econCardLine, econPrice, econTrend, housing, restoreSettlement, serialize, chooseJob, startJob, runJob }); /* build 24: the economy */
 Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
 Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
