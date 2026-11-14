@@ -5414,6 +5414,7 @@ function rfReset() { Object.assign(RF, { on: false, hidden: false, phase: '', bu
 function rfFinding() { return (G.returning && !G.locked) || RF.on || !G.settlements.some((S) => !S.dead); } /* finding a room, a camp or a landing place: the only times the recognition chip shows */
 function rfSuspect(why, hard) {
   if (!AR.on || !G.auto || G.phase !== 'play' || (typeof BT !== 'undefined' && BT.on)) return;
+  if (hard && document.hidden) return; /* still asleep: the wake-up is what counts */
   recRF({ suspect: why, hard: !!hard });
   if (RF.on) { if (hard && !RF.hidden) rfHide(); return; }
   if (G.returning && !G.locked) { if (hard) { scanReset(); RELOC.hist = []; RELOC.job = null; } return; } /* still finding the room: a jump spoils that scan, so it starts again */
@@ -5487,7 +5488,7 @@ function rfWatch(session) { /* the wake-up signals of one AR session (cheap even
   try { session.addEventListener('visibilitychange', () => { const v = session.visibilityState; if (v === 'hidden' || v === 'visible-blurred') RF.xrHidden = true; else if (v === 'visible' && RF.xrHidden) { RF.xrHidden = false; rfSuspect('AR view visible again', true); } }); } catch (e) { /* no session events */ }
   try { if (AR.refSpace && typeof AR.refSpace.addEventListener === 'function') AR.refSpace.addEventListener('reset', () => rfSuspect('reference space reset', true)); } catch (e) { /* no reset event */ }
 }
-addEventListener('visibilitychange', () => { if (document.hidden) { RF.docHidden = true; return; } if (RF.docHidden) { RF.docHidden = false; rfSuspect('page visible again', true); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { RF.docHidden = true; return; } if (RF.docHidden) { RF.docHidden = false; rfSuspect('page visible again', true); } }); /* on document: it fires there first */
 addEventListener('pageshow', () => { if (AR.on) rfSuspect('page shown again', true); });
 /* ---- the start chooser: Play with saved rooms asks where we are first (never a silent new room over an old one) ---- */
 function chooserOpen() {
