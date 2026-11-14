@@ -11,7 +11,7 @@ const WED = '2026-11-18', TUE = '2026-11-17';
   await p.reload(); await sleep(1500);
   const setDate = (d, h) => ev(([d, h]) => { __g.ENV.dateOverride = d; if (h !== undefined) __g.ENV.hourOverride = h; __g.ENV._sk = 0; __g.envUpdate(); return __g.mktWeekday(); }, [d, h]);
   await setDate(TUE, 12);
-  ok('BUILD is build 23', await ev(() => __g.BUILD === 'build 23'));
+  ok('BUILD is build 24', await ev(() => __g.BUILD === 'build 24'));
   await p.click('#bMore'); await p.click('#bPrac'); await sleep(300);
   for (let i = 0; i < 240; i++) { await sleep(500); if (await ev(() => __g.P.mode === 'orbit')) break; } await sleep(1000);
   /* the first session's seed request and campfire are another test's business: turn the first session off, keep the rest */

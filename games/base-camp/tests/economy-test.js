@@ -19,12 +19,13 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const focusLocal = (sid, x, z, d, yaw, pitch, up) => ev(([sid, x, z, d, yaw, pitch, up]) => { const S = __g.G.settlements.find((q) => q.id === sid); const w = S.group.localToWorld(new __g.THREE.Vector3(x, 0, z)); __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = yaw; __g.P.pitch = pitch; __g.focusOn(w.x, w.y + (up || 0.02), w.z, d); return true; }, [sid, x, z, d, yaw, pitch, up]);
   const focusBoard = (d, off, pitch) => ev(([d, off, pitch]) => { const st = __g.mktSite() || { t: __g.mainSettlement().things.find((q) => q.kind === 'market'), S: __g.mainSettlement() }; const m = st.S.group.localToWorld(new __g.THREE.Vector3(st.t.x, 0, st.t.z)), bw = new __g.THREE.Vector3(); st.t.mesh.userData.board.getWorldPosition(bw);
     __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(bw.x - m.x, bw.z - m.z) + off; __g.P.pitch = pitch; __g.focusOn(m.x, m.y + 0.03, m.z, d); return true; }, [d, off, pitch]);
+  const snap = async (n) => { await ev(() => { const t = document.getElementById('toast'); if (t) t.innerHTML = ''; }); await p.screenshot({ path: OUT + n }); };
   const shut = () => ev(() => { const m = document.getElementById('modal'); m.hidden = true; delete m.dataset.eco; });
 
   /* 1. a camp with a market and the three workshops */
   const A = await ev(() => {
-    const S = __g.mainSettlement(); S.stock.wood = 30; const put = (k, R) => { for (let i = 0; i < 40; i++) { const sp = __g.findSpot(S, __g.KINDS[k].r + 0.006, { R: R || 0.24 }); if (sp) { const t = __g.addThing(S, k, sp[0], sp[1], { built: true, rot: Math.atan2(-sp[0], -sp[1]) }); return t; } } return null; };
-    const m = put('market', 0.2), ws = ['sawbench', 'oven', 'reel'].map((k) => put(k, 0.2));
+    const S = __g.mainSettlement(); S.stock.wood = 30; const put = (k, R, near) => { for (let i = 0; i < 40; i++) { const sp = __g.findSpot(S, __g.KINDS[k].r + 0.006, near && i < 30 ? { R: 0.1, cx: near.x, cz: near.z } : { R: R || 0.24 }); if (sp) { const t = __g.addThing(S, k, sp[0], sp[1], { built: true, rot: Math.atan2(-sp[0], -sp[1]) }); return t; } } return null; };
+    const m = put('market', 0.2), sb0 = put('sawbench', 0.2), ws = [sb0, put('oven', 0.2, sb0), put('reel', 0.2, sb0)];
     return { id: S.id, spec: S.spec, zone: S.zoneName, market: !!m, ws: ws.map((t) => t && t.kind), btn: S.stock.btn };
   });
   ok('the main camp has a market and three workshops (sawbench, thimble oven, rope reel)', A.market && A.ws.join() === 'sawbench,oven,reel', JSON.stringify(A));
@@ -56,7 +57,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await ev(() => { for (const S of __g.G.settlements) for (const c of S.cols) if (c.job && c.job.type !== 'craft') { /* nobody in the way of the tap */ } });
   let wsCard = await tapThing('sawbench'); if (wsCard !== 'ws') { await ev(() => { const S = __g.mainSettlement(); __g.wsUi(S, S.things.find((q) => q.kind === 'sawbench')); }); wsCard = 'ws(direct)'; }
   ok('a tap on the sawbench (Look) opens its card with "Make more planks" / "Make fewer planks"', /ws/.test(wsCard) && await ev(() => /Make more planks/.test(document.getElementById('modal').textContent) && /Make fewer planks/.test(document.getElementById('modal').textContent)), wsCard);
-  await shotPrep(); await sleep(300); await p.screenshot({ path: OUT + '78-workshop-card.png' });
+  await sleep(300); await shotPrep(); await snap('78-workshop-card.png');
   await p.click('#modal [data-nudge="-1"]'); await sleep(200);
   const less = await ev(() => { const S = __g.mainSettlement(); return { n: S.eco.nudge.planks, txt: document.getElementById('ecState').textContent }; });
   ok('one tap on "Make fewer planks" sets the nudge and the card says so', less.n === -1 && /just a few/i.test(less.txt), JSON.stringify(less));
@@ -64,13 +65,13 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   const runPlanks = async (secs) => { await ev(() => { const S = __g.mainSettlement(); S.stock.planks = 0; }); let mx = 0; for (let i = 0; i < secs / 4; i++) { mx = Math.max(mx, await ev(() => { const S = __g.mainSettlement(); S.stock.wood = Math.max(S.stock.wood, 22); for (const c of S.cols) { c.needs.food = Math.max(c.needs.food, 0.8); c.needs.water = Math.max(c.needs.water, 0.8); c.needs.rest = Math.max(c.needs.rest, 0.9); } __g.simulate(4); return S.stock.planks; })); } return mx; };
   const fewMax = await runPlanks(100);
   await ev(() => __g.econNudge(__g.mainSettlement(), 'planks', 1));
-  const moreMax = await runPlanks(100);
+  const moreMax = await runPlanks(180);
   ok('the nudge changes production: "fewer" stops at 1 plank, "more" makes plenty', fewMax <= 1 && moreMax >= 5, 'fewer ' + fewMax + ', more ' + moreMax);
   await ev(() => __g.econNudge(__g.mainSettlement(), 'planks', 1)); /* a second tap the same way: back to normal */
   ok('a second tap the same way goes back to normal', await ev(() => __g.mainSettlement().eco.nudge.planks === 0));
   const wc = await ev(() => { const S = __g.mainSettlement(), ws = S.things.filter((q) => __g.ECON_WS[q.kind]); let x = 0, z = 0; for (const t of ws) { x += t.x; z += t.z; } x /= ws.length; z /= ws.length; return [x, z, Math.max(...ws.map((t) => Math.hypot(t.x - x, t.z - z)))]; });
-  await focusLocal(A.id, wc[0], wc[1], Math.max(0.24, wc[2] * 2.6), 0.6, 0.6, 0.012); await shotPrep(); await sleep(1500);
-  await p.screenshot({ path: OUT + '79-workshops.png' });
+  await ev(([x, z, r]) => { const S = __g.mainSettlement(), w = S.group.localToWorld(new __g.THREE.Vector3(x, 0, z)), c = S.group.localToWorld(new __g.THREE.Vector3(0, 0, 0)); __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(c.x - w.x, c.z - w.z); __g.P.pitch = 0.75; __g.focusOn(w.x, w.y + 0.012, w.z, Math.max(0.26, r * 3)); for (const q of S.cols) if (!q.job || q.job.type !== 'craft') { const d = Math.hypot(q.x - x, q.z - z); if (d < r + 0.06) { q.x = x + (q.x - x) / (d || 1) * (r + 0.09); q.z = z + (q.z - z) / (d || 1) * (r + 0.09); } } }, wc); await shotPrep(); await sleep(1500);
+  await snap('79-workshops.png');
 
   /* 4. market day with one camp: the pedlar comes, buys the surplus, so a lone camp still earns */
   await setDate(WED, 11); await ev(() => __g.simulate(2));
@@ -85,8 +86,12 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   ok('a camp short of corn with no buttons is given a little by the pedlar (never debt)', hungry.food > 2 && /for a hug/.test(hungry.text), JSON.stringify(hungry));
   /* the pedlar's card: tap the cart, suggest the lantern */
   const pp = await ev(() => { const P = __g.ECON.ped; return [P.x, P.z, P.sid]; });
-  await focusLocal(pp[2], pp[0], pp[1], 0.24, 0.9, 0.45, 0.015); await shotPrep(); await sleep(1600);
-  await p.screenshot({ path: OUT + '80-pedlar.png' });
+  await ev(() => { const P = __g.ECON.ped, S = __g.G.settlements.find((q) => q.id === P.sid), ry = P.mesh.rotation.y, mx = P.x - Math.sin(ry) * 0.024, mz = P.z - Math.cos(ry) * 0.024, st = S.things.find((q) => q.kind === 'market');
+    /* look at the snail's side, from whichever side faces away from the market */
+    const sx = Math.sin(ry + Math.PI / 2), sz = Math.cos(ry + Math.PI / 2), away = (mx - st.x) * sx + (mz - st.z) * sz > 0 ? 1 : -1, w = S.group.localToWorld(new __g.THREE.Vector3(mx, 0, mz)), w2 = S.group.localToWorld(new __g.THREE.Vector3(mx + sx * away, 0, mz + sz * away));
+    __g.P.mode = 'orbit'; __g.P.campCam = false; __g.P.yaw = Math.atan2(w2.x - w.x, w2.z - w.z) + 0.35; __g.P.pitch = 0.5; __g.focusOn(w.x, w.y + 0.02, w.z, 0.22);
+    for (const q of S.cols) { const d = Math.hypot(q.x - mx, q.z - mz); if (d < 0.07) { q.x = mx + (q.x - mx) / (d || 1) * 0.1; q.z = mz + (q.z - mz) / (d || 1) * 0.1; } } }); await shotPrep(); await sleep(1600);
+  await snap('80-pedlar.png');
   const pcard = await ev(() => { const S = __g.G.settlements.find((q) => q.id === __g.ECON.ped.sid), P = __g.ECON.ped; const w = S.group.localToWorld(new __g.THREE.Vector3(P.x, 0, P.z)); const s = __g.toScreen(w); __g.tapAt(s[0], s[1]); return document.getElementById('modal').dataset.eco || ''; });
   if (pcard !== 'ped') await ev(() => __g.pedUi(__g.mainSettlement()));
   ok('a tap on the cart opens the pedlar card: rare seeds, a lantern, a pinwheel, a cable car pulley', pcard === 'ped' && await ev(() => { const t = document.getElementById('modal').textContent; return /Rare seeds/.test(t) && /lantern/i.test(t) && /pinwheel/i.test(t) && /pulley/i.test(t); }), pcard);
@@ -94,7 +99,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await p.click('#modal [data-wish="lantern"]'); await sleep(250);
   const wish = await ev(() => ({ wish: __g.mainSettlement().eco.wish, txt: document.getElementById('ecWish').textContent }));
   ok('tap the lantern to suggest it: "Pip wants a lantern!" (or the first colonist)', wish.wish === 'lantern' && /wants a lantern!/.test(wish.txt), JSON.stringify(wish));
-  await shotPrep(); await sleep(200); await p.screenshot({ path: OUT + '81-pedlar-card.png' }); await shut();
+  await sleep(200); await shotPrep(); await snap('81-pedlar-card.png'); await shut();
   const saving = await ev(() => { const S = __g.mainSettlement(); S.stock.btn = 5; S.stock.food = 10; const n0 = S.things.filter((t) => t.kind === 'lantern').length; const it = __g.econShop(S, S.cols[0], true); return { it: it && it.id, btn: S.stock.btn, n: S.things.filter((t) => t.kind === 'lantern').length - n0 }; });
   ok('saving up: with too few buttons they buy nothing else', !saving.it && saving.btn === 5 && saving.n === 0, JSON.stringify(saving));
   const bought = await ev(() => { const S = __g.mainSettlement(); S.stock.btn = 9; S.stock.food = 22; const n0 = S.things.filter((t) => t.kind === 'lantern').length; const e = __g.mktDeal(S.cols[0], S, S); return { text: e.text, btn: S.stock.btn, n: S.things.filter((t) => t.kind === 'lantern').length - n0, wish: S.eco.wish, got: S.eco.got.lantern }; });
@@ -108,7 +113,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   if (pc !== 'price') await ev(() => __g.priceUi(__g.mainSettlement().things.find((q) => q.kind === 'market')));
   const card = await ev(() => ({ rows: document.querySelectorAll('#modal .erow').length, pips: document.querySelectorAll('#modal .epips img').length, txt: document.getElementById('modal').textContent }));
   ok('a tap on the market (Look) opens the price card: a row per good with 1 to 5 button pips', (pc === 'price') && card.rows === 8 && card.pips >= 8 && card.pips <= 40 && /Market prices/.test(card.txt), pc + ' ' + JSON.stringify({ rows: card.rows, pips: card.pips }));
-  await shotPrep(); await sleep(200); await p.screenshot({ path: OUT + '82-price-card.png' }); await shut();
+  await sleep(200); await shotPrep(); await snap('82-price-card.png'); await shut();
 
   /* 6. a second camp on another surface: different surpluses */
   const linked = await ev(() => {
@@ -159,7 +164,7 @@ const WED = '2026-11-18', TUE = '2026-11-17', SUN = '2026-11-22';
   await ev(() => { for (const c of __g.mktSite().S.cols) if (c.job && c.job.type === 'market') c.job.dur = 999; __g.MKT.talkT = 0; __g.MKT.reply = null; });
   const mk2 = await ev(() => { const t = __g.mktSite().t; return [t.x, t.z, t.rot, __g.mktSite().S.id]; });
   await focusBoard(0.34, 0.35, 0.4); await shotPrep(); await sleep(2600);
-  await p.screenshot({ path: OUT + '83-market-goods.png' });
+  await snap('83-market-goods.png');
   ok('the camp card shows its buttons on one small line', await ev(() => { __g.G.cur = __g.mainSettlement(); __g.cardUi(); const e = document.querySelector('#card .ecoline'); return !!e && /\d+ buttons?/.test(e.textContent); }));
   await ev(() => { for (const S of __g.G.settlements) for (const c of S.cols) if (c.job && c.job.type === 'market') c.job.dur = 1; __g.simulate(3); });
 

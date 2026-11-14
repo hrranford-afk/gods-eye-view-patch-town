@@ -4403,17 +4403,19 @@ function econPlain(key) { /* without models/economy.js: simple shapes with the s
   else if (key === 'pinwheel') { g.add(mesh(geo('ecPwS', () => new THREE.CylinderGeometry(0.001, 0.001, 0.05, 5).translate(0, 0.025, 0)), M(0x6fd0e0))); const h = new THREE.Group(); h.position.set(0, 0.05, 0.002); h.add(mesh(geo('ecPwH', () => new THREE.BoxGeometry(0.02, 0.02, 0.001).rotateZ(0.785)), M(0xe0402f))); g.add(h); U.head = h; }
   g.add(blob(0.022)); return g;
 }
-function econPedSpot(S, t) { /* in a gap between the stalls, a little way out from the market */
-  for (const [a, R] of [[2.618, 0.112], [-1.571, 0.112], [0.524, 0.13], [2.618, 0.14], [-1.571, 0.14]]) {
-    const s0 = Math.cos(a) * R, s1 = Math.sin(a) * R, c = Math.cos(t.rot), n = Math.sin(t.rot), x = t.x + s0 * c + s1 * n, z = t.z - s0 * n + s1 * c;
-    if (validSpot(S, x, z, 0.02, { free: true })) return [x, z, a];
+function econPedSpot(S, t) { /* in a gap between the stalls, a little way out from the market; the snail and the cart behind it both need free ground */
+  const c = Math.cos(t.rot), n = Math.sin(t.rot), at = (a, R) => [t.x + Math.cos(a) * R * c + Math.sin(a) * R * n, t.z - Math.cos(a) * R * n + Math.sin(a) * R * c];
+  const fits = (x, z, ry) => validSpot(S, x, z, 0.022, { free: true }) && validSpot(S, x - Math.sin(ry) * 0.048, z - Math.cos(ry) * 0.048, 0.024, { free: true });
+  for (const R of [0.112, 0.13, 0.15, 0.17]) for (const a of [2.618, 0.524, 2.0, 3.2, 1.2, 0, -0.3, 3.5]) { /* never at the back (-PI/2): the price board stands there */
+    const [x, z] = at(a, R), face = Math.atan2(t.x - x, t.z - z);
+    for (const ry of [face + 1.2, face - 1.2, face + Math.PI]) if (fits(x, z, ry)) return [x, z, ry];
   }
-  const a = 2.618, R = 0.112; return [t.x + Math.cos(a) * R * Math.cos(t.rot) + Math.sin(a) * R * Math.sin(t.rot), t.z - Math.cos(a) * R * Math.sin(t.rot) + Math.sin(a) * R * Math.cos(t.rot), a];
+  const [x, z] = at(2.618, 0.112); return [x, z, Math.atan2(t.x - x, t.z - z) + 1.2];
 }
 function econPedSync(site, open, quiet) {
   const P = ECON.ped; if (!open || !site || quiet) { if (P && (!open || !site)) econPedGone(); return; }
   if (P && P.sid === site.S.id && P.tid === site.t.id) return; econPedGone();
-  const S = site.S, [x, z] = econPedSpot(S, site.t), m = econMake('pedlar'); m.position.set(x, 0, z); m.rotation.y = Math.atan2(site.t.x - x, site.t.z - z) + 1.2; m.scale.setScalar(0.01); S.group.add(m);
+  const S = site.S, [x, z, ry] = econPedSpot(S, site.t), m = econMake('pedlar'); m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(0.01); S.group.add(m);
   ECON.ped = { sid: S.id, tid: site.t.id, x, z, mesh: m, t: 0 };
 }
 function econPedGone() { const P = ECON.ped; if (P && P.mesh && P.mesh.parent) P.mesh.parent.remove(P.mesh); ECON.ped = null; }
