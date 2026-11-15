@@ -3644,7 +3644,7 @@ function explode(x, z, big, color = 0x444444) {
 }
 // Per-entity effects each frame: tyre dust behind fast wheels, ripples behind boats and hovers on water.
 function fxEntity(e, dt) {
-  if (e.hp <= 0 || e.fly || e.inf || e.air || (e.kind === 'player' && !e.alive)) return;
+  if (e.hp <= 0 || e.fly || e.inf || e.air || e.krAir || e.scr || (e.kind === 'player' && !e.alive)) return; // (krAir, scr: off the ground on the Kitchen Run)
   const sp = Math.hypot(e.vx || 0, e.vz || 0);
   if (sp < 3.5 || dist2(e, camTarget) > 3600) return;
   const bx = e.x - Math.cos(e.heading) * 1.5, bz = e.z - Math.sin(e.heading) * 1.5;
@@ -3656,7 +3656,7 @@ function fxEntity(e, dt) {
   if (state.water && inWaterX(e.x, e.z, 0) && !(bridgeLift(e) > 0) && !onFerry(e)) return;
   if (Math.random() < dt * Math.min(16, sp * 1.3)) {
     const j = () => (Math.random() - 0.5) * 1.4;
-    puff('dust', bx + j(), 0.3, bz + j(), 0.55 + Math.min(1.1, sp * 0.07), 0.5, -Math.cos(e.heading) * 1.2 + j(), 1.2, -Math.sin(e.heading) * 1.2 + j(), 2);
+    puff('dust', bx + j(), (state.race?.kr && e === state.player ? e.y + KR.LIFT : 0) + 0.3, bz + j(), 0.55 + Math.min(1.1, sp * 0.07), 0.5, -Math.cos(e.heading) * 1.2 + j(), 1.2, -Math.sin(e.heading) * 1.2 + j(), 2);
   }
 }
 // A water splash: a ring on the surface and a spray of droplets.
@@ -7199,7 +7199,7 @@ $('lrStart').addEventListener('click', lrStartGo);
 // so they always sit under the road. Static shapes are merged per material and per 90-unit cell (`kMerge`), so the whole kitchen is a few dozen
 // draw calls. Cars: you drive with the usual `drive()` in x and z and ride a height (`krCar`: ground, air with gravity, fall = quick respawn a little
 // back with a wobble); the 3 red cars are scripted along the main line (s, a lane, rubber band), so they take every jump, flight and teleport.
-const KR = { G: 50, STEP: 1.25, TOP: 24, BOOST: 36, FALL: 5.5 };
+const KR = { G: 50, STEP: 1.25, TOP: 24, BOOST: 36, FALL: 5.5, LIFT: 0.1 }; // LIFT: cars are drawn this far above the path's height, on the painted road (the road strips sit 0.035 to 0.1 above it)
 let krFlashEl = null; // the white flash for the microwave
 const KR_RIVALS = [{ name: 'Red 1', k: 0.84, lane: -1.4 }, { name: 'Red 2', k: 0.815, lane: 1.4 }, { name: 'Red 3', k: 0.79, lane: 0 }];
 const kVC = (s) => shared(`kr:vc${s}`, () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: s ? 0.3 : 0.7, metalness: s ? 0.45 : 0.04 }));
@@ -7302,12 +7302,14 @@ function krCourse(lv) {
   kS(M, 12, { dy: 8, hw: 3, edge: 1, surf: 'knife', name: 'knife' });
   kS(M, 6, { hw: 3.5, edge: 1, surf: 'toaster', name: 'toaster' });
   kJ(M, 40, 70, 0, Math.PI, { scr: 'fly', v: 38, arc: 30, gap: 1, hw: 4, name: 'flight' });
-  kS(M, 12, { hw: 7, name: 'land' });
-  kS(M, 4, { dy: 0.4, hob: 1, name: 'hobIn' });
+  kS(M, 8, { hw: 7, name: 'land' });
+  kS(M, 1.25, { dy: 0.4, hob: 1, name: 'hobIn' }); // a bevel up onto the hob's glass, then flat on it past the first ring
+  kS(M, 6.75, { hob: 1, name: 'hobUp' });
   const hw = lv === 4 ? [-35, 70, -70, 70, -70, 70, -35] : [-35, 70, -70, 70, -35];
   hw.forEach((a, i) => kT(M, a, 12, { hob: 1, name: `hob${i}` }));
-  kS(M, 4, { dy: -0.4, name: 'hobOut' });
-  kS(M, 10, { boost: 1, name: 'foil2' });
+  kS(M, 6.75, { hob: 1, name: 'hobDown' });
+  kS(M, 1.25, { dy: -0.4, name: 'hobOut' }); // (land, the hob's ends and the tinfoil are as long as before: 30 units)
+  kS(M, 6, { boost: 1, name: 'foil2' });
   kS(M, 5, { dy: 2, surf: 'spatula', hw: 4.5, kick: 24, kmin: 27, name: 'spatula' });
   kS(M, 16, { gap: 1, arc: 7, dy: -2, hw: 5, name: 'cake' });
   kS(M, 12, { hw: 7, name: 'land2' });
@@ -7512,7 +7514,7 @@ function krScene(K, lv, R) {
   const runs = (P) => { const out = []; let a = 0; for (let i = 1; i <= P.pts.length; i++) { const q = P.pts[i], p = P.pts[i - 1]; if (i === P.pts.length || q.surf !== p.surf || q.solid !== p.solid || !!q.scr !== !!p.scr || q.boost !== p.boost) { out.push([a, i - 1, p]); a = i - 1; } } return out; };
   for (const P of [M, ...K.br]) for (const [i0, i1, q] of runs(P)) {
     if (!q.solid || q.scr || i1 <= i0) continue;
-    if (q.boost) kRibbon(src, P, i0, i1, (p) => -p.hw + 0.3, (p) => p.hw - 0.3, 0xffffff, kMat('foilMat', () => kMt(0xffffff, { map: kTex.foil(), emissive: 0xffd27a, emissiveIntensity: 0.25, roughness: 0.25, metalness: 0.6 })), { off: 0.12, vs: 6 });
+    if (q.boost) kRibbon(src, P, i0, i1, (p) => -p.hw + 0.3, (p) => p.hw - 0.3, 0xffffff, kMat('foilMat', () => kMt(0xffffff, { map: kTex.foil(), emissive: 0xffd27a, emissiveIntensity: 0.25, roughness: 0.25, metalness: 0.6 })), { off: 0.1, vs: 6 });
     if (q.surf === 'sponge') continue;
     if (q.surf === 'tape' || q.surf === 'sill' || q.surf === 'bin') { // the worktop roads (and the sill and the bread bin's lid): a toy play-mat road, with red and white kerbs on the bends
       if (!q.boost) kRibbon(src, P, i0, i1, (p) => -p.hw, (p) => p.hw, 0xffffff, kMat('roadMat', () => kMt(0xffffff, { map: kTex.road(), roughness: 0.85 })), { vs: 14, off: P === M ? 0.05 : 0.035 });
@@ -7544,7 +7546,7 @@ function krScene(K, lv, R) {
   kBox(src, 27, 7, 0.6, 0xffffff, (A(M, N.bin).x + B(M, N.bin).x) / 2, 5.4, A(M, N.bin).z + 7.6, 0, 0, 0, kTM('bread'));
   kBox(src, 8, 1, 1.4, 0xc8ccd2, (A(M, N.bin).x + B(M, N.bin).x) / 2, 1.6, A(M, N.bin).z + 8, 0, 0, 0, kShiny());
   kCyl(src, 1.8, 1.8, 24, 10, 0xd99a48, A(M, N.bin).x + 14, 7, A(M, N.bin).z - 10, 0, 0.35, 0.3); // a baguette leaning on the bin
-  kAlong(src, M, N.tin, 14, 7, 2, 0x2e6fb5, 7, kShiny()); kAlong(src, M, N.tin, 14.6, 0.8, 2.6, 0xe8c547, 7.1, kShiny());
+  kAlong(src, M, N.tin, 14, 7, 2, 0x2e6fb5, 7, kShiny()); kAlong(src, M, N.tin, 14.6, 0.8, 2.6, 0xe8c547, 7.03, kShiny()); // (the lid's top just under the road strip: at 7.1 it hid the road and the cars sat in it)
   kSlab(src, A(M, N.tinramp), B(M, N.tinramp), 13, 1.6, 0x8a3b3b);
   // The kitchen roll (you drive through its cardboard tube) and breakfast in the loop.
   const tA = A(M, N.tube), tB = B(M, N.tube), tL = Math.hypot(tB.x - tA.x, tB.z - tA.z) + 2;
@@ -7578,8 +7580,10 @@ function krScene(K, lv, R) {
   for (let k = 0; k < 4; k++) kAdd(src, shared('kr:whiskG', () => new THREE.TorusGeometry(3.6, 0.25, 6, 20)), 0xd5d9de, pd.x, 1.2, pd.z, k * Math.PI / 4, 0, 0, kShiny()).scale.set(1, 0.5, 1);
   // Cereal-box ramps and the cookbook stack between them.
   for (const [nm, c] of [['ramp1', 0xffd23d], ['ramp2', 0x6ec3ff]]) kSlab(src, A(M, N[nm]), B(M, N[nm]), 16, 7, c);
-  const pc = N.plat.c, pr = pc[2] + 7.5;
-  [0x8a3b3b, 0x2f5f8a, 0x3f7a4a, 0xd9a03a].forEach((c, k) => kBox(src, pr * 2 + kRand(k) * 3, 4, pr * 2 + kRand(k + 3) * 2, c, pc[0] + (kRand(k + 6) - 0.5) * 1.5, k * 4 + 2, pc[1] + (kRand(k + 9) - 0.5) * 1.5, (kRand(k + 1) - 0.5) * 0.12));
+  // (The stack starts where the first cereal box ends: centred on the bend's centre it reached 15 units back down that ramp, and its books stood up
+  // to 3.7 through the road.)
+  const pc = N.plat.c, pr = pc[2] + 7.5, a0 = A(M, N.plat); // (the first ramp runs in along +x)
+  [0x8a3b3b, 0x2f5f8a, 0x3f7a4a, 0xd9a03a].forEach((c, k) => { const w = pc[2] + 8.5 + kRand(k) * 1.5; kBox(src, w, 4, pr * 2 + kRand(k + 3) * 2, c, a0.x + 0.3 + w / 2, k * 4 + 2, pc[1] + (kRand(k + 9) - 0.5) * 1.5, (kRand(k + 1) - 0.5) * 0.03); });
   // The sill's things: a plant in the bend, a jam jar, a radio.
   const ppc = N.plant.c;
   kCyl(src, 4.2, 3.2, 7, 14, 0xc4603a, ppc[0], sy + 3.5, ppc[1]); kCyl(src, 4.4, 4.4, 1, 14, 0xb3542f, ppc[0], sy + 7, ppc[1]);
@@ -7602,19 +7606,20 @@ function krScene(K, lv, R) {
   for (const sd of [-1, 1]) kCyl(src, 1.5, 1.5, 2.5, 10, sd < 0 ? 0x2f7df6 : 0xef4136, tx + sd * 6, 1.3, bz0 - 4, 0, 0, 0, kShiny());
   for (const nm of Object.keys(N).filter((k) => /^sink/.test(k) && k !== 'sinkT' && k !== 'sinkExit')) {
     const s = N[nm];
-    for (let i = s.i0 + 1; i <= s.i1; i += 4) { const q = M.pts[i], h = M.head[i], j = i * 7; kBox(src, 4.6, 2.4, q.hw * 2 + 0.6, [0xffd23d, 0xffe16b, 0xf6c42f][j % 3], q.x, q.y - 1.95, q.z, -h + (kRand(j) - 0.5) * 0.25); kBox(src, 4.6, 0.7, q.hw * 2 + 0.6, 0x3f9a4a, q.x, q.y - 0.4, q.z, -h + (kRand(j) - 0.5) * 0.25); }
+    for (let i = s.i0 + 1; i <= s.i1; i += 4) { const q = M.pts[i], h = M.head[i], j = i * 7; kBox(src, 4.6, 2.4, q.hw * 2 + 0.6, [0xffd23d, 0xffe16b, 0xf6c42f][j % 3], q.x, q.y - 1.85, q.z, -h + (kRand(j) - 0.5) * 0.25); kBox(src, 4.6, 0.7, q.hw * 2 + 0.6, 0x3f9a4a, q.x, q.y - 0.3, q.z, -h + (kRand(j) - 0.5) * 0.25); }
   }
   // The butter knife up onto the toaster, the toaster, and its toast (it pops when you launch).
   kSlab(src, A(M, N.knife), B(M, N.knife), 7, 0.6, 0xd5d9de, kShiny());
   kBox(src, 9, 1.4, 3, 0x2b2b2b, A(M, N.knife).x + 6, 0.7, A(M, N.knife).z);
   const ta = A(M, N.toaster), tb = B(M, N.toaster), tcx = (ta.x + tb.x) / 2 - 1, tcz = ta.z + 2.5;
-  kBox(src, 16, 8, 15, 0xd63b2f, tcx, 4, tcz, 0, 0, 0, kShiny()); kBox(src, 16.4, 1, 15.4, 0xd5d9de, tcx, 7.9, tcz, 0, 0, 0, kShiny());
-  kBox(src, 10, 0.3, 2, 0x1c1712, tcx, 8.45, tcz + 5); kBox(src, 3, 1.5, 1.2, 0x1c1712, tcx + 4, 5, tcz + 8);
+  kBox(src, 16, 8, 15, 0xd63b2f, tcx, 4, tcz, 0, 0, 0, kShiny()); kBox(src, 16.4, 1, 15.4, 0xd5d9de, tcx, 7.53, tcz, 0, 0, 0, kShiny()); // (the chrome top level with the road: it stood 0.4 above it)
+  kBox(src, 10, 0.3, 2, 0x1c1712, tcx, 8.1, tcz + 5); kBox(src, 3, 1.5, 1.2, 0x1c1712, tcx + 4, 5, tcz + 8);
   const toast = new THREE.Group(); toast.position.set(tcx, 6, tcz + 5); grp.add(toast);
   mesh(shared('kr:toastG', () => new THREE.BoxGeometry(8, 7, 1.2)), kMat('toastM', () => kMt(0xd99a48)), 0, 0, 0, toast); mesh(shared('kr:toastG2', () => new THREE.BoxGeometry(7, 6, 1.3)), kMat('toastM2', () => kMt(0xf2d27a)), 0, -0.2, 0, toast);
   K.toast = toast;
   // The hob: black glass with rings; one (two on level 5) flickers hot. The tinfoil, the spatula, the cake.
   const hb = bbox(M, Object.keys(N).filter((k) => /^hob\d/.test(k)), 6);
+  hb[1] = M.pts[N.hobIn.i1].x; hb[0] = M.pts[N.hobOut.i0].x; // the glass stops where the road comes down to the worktop (6 more each way buried the landing and the tinfoil 0.4 deep)
   kBox(src, hb[1] - hb[0], 0.8, hb[3] - hb[2], 0x15161a, (hb[0] + hb[1]) / 2, 0, (hb[2] + hb[3]) / 2, 0, 0, 0, kShiny());
   K.rings = [];
   const hot = kMat('hotRing', () => kMt(0x5a1a10, { emissive: 0xff3a10, emissiveIntensity: 0.4 }));
@@ -7625,7 +7630,7 @@ function krScene(K, lv, R) {
     K.rings.push({ x: c[0], z: c[1], r: 6.5, hot: isHot });
   });
   kSlab(src, A(M, N.spatula), B(M, N.spatula), 9.5, 0.6, 0xe8603c);
-  kBox(src, 16, 1, 2, 0x2b2b2b, A(M, N.spatula).x + 9, 0.5, A(M, N.spatula).z + 0.5);
+  kBox(src, 16, 1, 2, 0x2b2b2b, A(M, N.spatula).x + 9, 0.5, A(M, N.spatula).z + 8); // the handle, beside the road (it lay across the tinfoil, and cars drove through it)
   const ck = [(A(M, N.cake).x + B(M, N.cake).x) / 2, (A(M, N.cake).z + B(M, N.cake).z) / 2];
   kCyl(src, 5.4, 5.4, 2, 24, 0xe7b968, ck[0], 1, ck[1]); kCyl(src, 5.5, 5.5, 0.7, 24, 0xd8344a, ck[0], 2.3, ck[1]); kCyl(src, 5.4, 5.4, 1.8, 24, 0xe7b968, ck[0], 3.5, ck[1]); kCyl(src, 5.7, 5.7, 0.7, 24, 0xfff8ec, ck[0], 4.7, ck[1]);
   kAdd(src, shared('kr:cherryG', () => new THREE.SphereGeometry(0.9, 10, 8)), 0xd8344a, ck[0], 5.8, ck[1], 0, 0, 0, kShiny());
@@ -7782,6 +7787,14 @@ function krNear(c) {
   const gy = q2.solid ? q.y + (q2.y - q.y) * f : q.y;
   return { q, lat, gy, f: along >= 0 ? f : 0 };
 }
+// A hard landing: a few soft dust puffs at the wheels (round puffs, not the spark cubes), at most once every 0.7 s per car, so a car that bounces
+// over and over never fills the screen.
+function krDust(c, n, y) {
+  const t = state.race.t;
+  if (t - (c.dustT ?? -9) < 0.7) return;
+  c.dustT = t;
+  for (let k = 0; k < n; k++) { const a = c.heading + Math.PI + (k - (n - 1) / 2) * 0.9; puff('dust', c.x + Math.cos(a) * 1.6, y + KR.LIFT + 0.3, c.z + Math.sin(a) * 1.6, 1.3, 0.55, Math.cos(a) * 3, 1.2, Math.sin(a) * 3, 2.5); }
+}
 // You: steer with drive() in x and z; the height is yours: ride the ground, fly off kicks and edges, fall and come back.
 function krCar(c, dt, go, ix, iz) {
   const K = state.race.kr, G = KR.G;
@@ -7793,12 +7806,16 @@ function krCar(c, dt, go, ix, iz) {
     c.vx = (x - c.x) / dt; c.vz = (z - c.z) / dt; c.vy = (y - c.y) / dt;
     c.x = x; c.y = y; c.z = z; c.wp = i; if (Math.hypot(c.vx, c.vz) > 1) c.heading = Math.atan2(c.vz, c.vx);
     if (S.s >= end) {
-      const q = P.pts[S.end], h = P.head[S.end], v = Math.max(18, S.out);
-      Object.assign(c, { x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * v, vz: Math.sin(h) * v, wp: S.end, scr: null, krAir: false, good: [P, S.end], goodY: q.y });
+      // A ride that ends a shortcut (the whisk: its last point is still in the air, on the sill) hands you to the main line where the shortcut joins.
+      // (It used to leave you on that last scripted point, which started the ride again on the next frame: stuck on the sill for good, "Boing!" and a burst every other frame.)
+      let Q = P, e = S.end;
+      if (Q.pts[e].scr && Q !== K.main && Q.to != null) { Q = K.main; e = P.to; }
+      const q = Q.pts[e], h = Q.head[e], v = Math.max(18, S.out);
+      Object.assign(c, { kp: Q, x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * v, vz: Math.sin(h) * v, wp: e, scr: null, scrOff: 0.5, krAir: false, good: [Q, e], goodY: q.y });
       if (S.kind === 'tele') { K.flash = 1; K.snap = true; sfx('ding'); burst(q.x, q.z, 0xffe9a0, 14, 12, q.y + 2); toast('Ding! Out of the oven'); }
-      else { sfx('thud'); burst(q.x, q.z, 0xfff8ec, 8, 8, q.y + 0.5); state.shake = Math.max(state.shake || 0, 0.5); }
+      else { sfx('thud'); krDust(c, 4, q.y); state.shake = Math.max(state.shake || 0, 0.5); }
     }
-    c.prog = Math.max(c.prog, krMainS(P, c.wp));
+    c.prog = Math.max(c.prog, krMainS(c.kp, c.wp));
     return;
   }
   const top = KR.TOP * (c.sog > 0 ? 0.72 : 1) * (c.wob > 0 ? 0.75 : 1) * (c.kp.pts[c.wp].surf === 'sponge' ? 0.85 : 1), boosting = c.boostT > 0;
@@ -7806,7 +7823,7 @@ function krCar(c, dt, go, ix, iz) {
   if (c.krAir) { c.x += c.vx * dt; c.z += c.vz * dt; } // no steering in the air
   else if (c.spinT > 0) { c.heading += dt * 13; c.vx *= 0.96; c.vz *= 0.96; c.x += c.vx * dt; c.z += c.vz * dt; }
   else { const hm = Math.hypot(ix, iz); drive(c, ix / (hm || 1), iz / (hm || 1), go ? Math.min(1, hm) : 0, dt, stats); }
-  for (const k of ['boostT', 'spinT', 'sog', 'wob']) if (c[k] > 0) c[k] -= dt;
+  for (const k of ['boostT', 'spinT', 'sog', 'wob', 'scrOff']) if (c[k] > 0) c[k] -= dt;
   const g = krNear(c), q = g.q, P = c.kp, i = c.wp;
   // Ground under the car: the deck if you are on it; the worktop roads have soft rails; raised roads have edges you can drive off.
   let ground = null;
@@ -7817,7 +7834,7 @@ function krCar(c, dt, go, ix, iz) {
       if (!c.krAir) { const [nx, nz] = P.nor[i], over = g.lat - Math.sign(g.lat) * q.hw; c.x -= nx * over; c.z -= nz * over; const vn = c.vx * nx + c.vz * nz; if (vn * Math.sign(g.lat) > 0) { c.vx -= nx * vn * 1.3; c.vz -= nz * vn * 1.3; } c.vx *= 0.985; c.vz *= 0.985; }
     }
   }
-  if (q.scr && Math.abs(g.lat) <= q.hw + 1.2 && Math.abs(c.y - q.y) < 5 && go) { // into a scripted ride
+  if (q.scr && !(c.scrOff > 0) && i < P.pts.length - 1 && Math.abs(g.lat) <= q.hw + 1.2 && Math.abs(c.y - q.y) < 5 && go) { // into a scripted ride (not on a path's last point, and not again straight after one: no ride can trap a car)
     let end = i; while (end < P.pts.length - 1 && P.pts[end + 1].scr) end++;
     end = Math.min(P.pts.length - 1, end + 1);
     c.scr = { s: P.cum[i], s0: P.cum[i], end, v: q.v, kind: q.scr, out: Math.hypot(c.vx, c.vz), si: i };
@@ -7831,8 +7848,8 @@ function krCar(c, dt, go, ix, iz) {
   if (c.krAir) {
     c.vy -= G * dt; c.y += c.vy * dt;
     if (ground !== null && c.y <= ground && c.y > ground - 2.6) { // land
-      if (c.vy < -16) { sfx('thud'); state.shake = Math.max(state.shake || 0, 0.35); burst(c.x, c.z, 0xfff8ec, 6, 6, c.y + 0.3); }
-      c.y = ground; c.vy = 0; c.krAir = false;
+      if (c.vy < -16) { sfx('thud'); state.shake = Math.max(state.shake || 0, 0.35); krDust(c, 3, ground); }
+      c.y = ground; c.vy = 0; c.krAir = false; c.lastKick = -1; // (a jump can fire again once you are down: a slow car that dropped back onto the bread bin's kick used to roll off the end without it, fall, and do it again for ever)
     }
   }
   if (!c.krAir && q.solid && Math.abs(g.lat) <= q.hw + 0.4) {
@@ -7858,7 +7875,7 @@ function krRespawn(c, wet) {
   const q = P.pts[i], h = P.head[i];
   if (wet) { burst(c.x, c.z, 0x9fe0ff, 12, 9, c.y + 1); sfx('plip'); toast('Splash! Soggy for a bit'); c.sog = 2.2; }
   else { sfx('respawn'); toast('Whoops! Back on the road'); }
-  Object.assign(c, { kp: P, wp: i, x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * 6, vz: Math.sin(h) * 6, krAir: false, scr: null, wob: 0.9, spinT: 0, boostT: 0, good: [P, i], goodY: q.y });
+  Object.assign(c, { kp: P, wp: i, x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * 6, vz: Math.sin(h) * 6, krAir: false, scr: null, wob: 0.9, spinT: 0, boostT: 0, lastKick: -1, good: [P, i], goodY: q.y });
   c.prog = krMainS(P, i);
 }
 // The red cars: scripted along the main line at a speed set by their skill, the bends and how far you are behind (rubber band).
@@ -7880,7 +7897,7 @@ function krRival(c, dt, go) {
   c.x = nx; c.z = nz; c.y = y; c.heading = M.head[i]; c.prog = c.s; c.wp = i; c.tele = q.scr === 'tele' && c.s > M.cum[M.named.mw.i1] - 1;
   if (q.scr === 'fly' && !c.flying) { c.flying = true; if (dist2(c, p) < 3600) sfx('boing'); } else if (!q.scr) c.flying = false;
   c.mesh.visible = !c.tele;
-  c.mesh.position.set(c.x, c.y, c.z); c.mesh.rotation.set(0, -c.heading, Math.atan2(M.pts[Math.min(M.pts.length - 1, i + 1)].y - M.pts[Math.max(0, i - 1)].y, 2.5));
+  c.mesh.position.set(c.x, c.y + KR.LIFT, c.z); c.mesh.rotation.set(0, -c.heading, Math.atan2(M.pts[Math.min(M.pts.length - 1, i + 1)].y - M.pts[Math.max(0, i - 1)].y, 2.5));
 }
 function krCollide() {
   const R = state.race, p = state.player;
@@ -7939,10 +7956,14 @@ function krCam(dt) {
   if (p.mesh) {
     p.mesh.visible = !(tele && p.scr.hide);
     const a = p.kp.pts[Math.min(p.kp.pts.length - 1, p.wp + 1)], b = p.kp.pts[Math.max(0, p.wp - 1)];
-    const pitch = flying || p.krAir ? Math.max(-0.6, Math.min(0.6, Math.atan2(p.vy, Math.hypot(p.vx, p.vz) || 1))) : Math.atan2(a.y - b.y, 2.5);
-    p.mesh.position.set(p.x, p.y, p.z);
+    // On the ground the car lies on the slope: pitched by the grade along its own heading and tipped by the grade across it (a car pointing
+    // off the road's line on a ramp otherwise had two wheels in the ramp and two in the air).
+    const air = flying || p.krAir, gr = (a.y - b.y) / (Math.hypot(a.x - b.x, a.z - b.z) || 1), off = p.heading - p.kp.head[p.wp];
+    const pitch = air ? Math.max(-0.6, Math.min(0.6, Math.atan2(p.vy, Math.hypot(p.vx, p.vz) || 1))) : Math.atan(gr * Math.cos(off)), tip = air ? 0 : Math.atan(gr * Math.sin(off));
+    p.mesh.position.set(p.x, p.y + KR.LIFT, p.z);
     const roll = flying && p.scr.v > 36 ? Math.max(0, Math.min(1, (p.scr.s - p.scr.s0) / (p.kp.cum[p.scr.end] - p.scr.s0))) * Math.PI * 2 : 0; // the toaster flight: one barrel roll
-    p.mesh.rotation.set(p.wob > 0 ? Math.sin(p.wob * 24) * 0.25 * p.wob : roll, -p.heading, pitch);
+    p.mesh.rotation.order = 'YXZ'; // (yaw, then the roll about the car's own length, then the pitch)
+    p.mesh.rotation.set((p.wob > 0 ? Math.sin(p.wob * 24) * 0.25 * p.wob : roll) + tip, -p.heading, pitch);
   }
   // The camera's height follows the road, not the jump: in the air it holds, so the car rises towards you and you feel the drop below.
   const ty = tele || flying || p.krAir ? K.camY : p.y;
@@ -7964,7 +7985,7 @@ function krCam(dt) {
     const [bx0, bx1, bz0, bz1] = K.basin, fy = p.x > bx0 && p.x < bx1 && p.z > bz0 && p.z < bz1 ? -5.9 : K.floors.some(([a, b, c, d]) => p.x > a && p.x < b && p.z > c && p.z < d) ? 0.12 : -89.8;
     const h = Math.max(0, p.y - fy);
     K.blob.visible = h > 1; K.blob.position.set(p.x, fy, p.z); K.blob.scale.setScalar(Math.max(0.5, 1.2 - h / 80)); K.blob.material.opacity = Math.max(0.12, 0.4 - h / 200);
-    if (flying && (K.puff = (K.puff || 0) - dt) <= 0) { K.puff = 0.05; burst(p.x - Math.cos(p.heading) * 2, p.z - Math.sin(p.heading) * 2, 0xfff8ec, 1, 1.5, p.y + 0.8); }
+    if (flying && (K.puff = (K.puff || 0) - dt) <= 0) { K.puff = 0.1; puff('dust', p.x - Math.cos(p.heading) * 2.2, p.y + 0.8, p.z - Math.sin(p.heading) * 2.2, 1.1, 0.6, 0, 0.8, 0, 2); } // (soft puffs: it was a white spark cube every 0.05 s)
   } else K.blob.visible = false;
   if (ghost) ghost.visible = false;
 }
