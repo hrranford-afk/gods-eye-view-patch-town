@@ -5,7 +5,7 @@
     1. keyframes are made while the shed is played, spread over viewpoints, saved with the room map: descriptors and 3D points only (no picture anywhere in storage);
        their points lie on the real surfaces; bytes per room.
     2. sleep + origin jump, NO sticker: the snapshots give the camp back (time, worst error), then the same jump with the snapshots switched off (surfaces only, build 26).
-    3. the lounge becomes Room 2 with its own snapshots; Room 1's rug seen in the lounge asks "Have you moved to another room?" with Room 1 first; nothing is merged.
+    3. the lounge becomes Room 2 with its own snapshots; from the lounge's doorway the iPad looks back into the shed (still inside the lounge's box, so the build 26 guard does not ask): Room 1's snapshots ask "Have you moved to another room?" with Room 1 first; nothing is merged.
     4. Continue Room 1 from the chooser: the snapshots lock it.
     5. "Not sure? Let the colonists work it out" in the lounge: every saved room's snapshots are scored, Room 2 wins.
     6. Room 1 gets a sticker: after a jump with the sticker in view the sticker still locks first; the chooser names the room that has one.
@@ -25,7 +25,7 @@ const Vt = (x, y, z, ax, hw, hh, tex, seed) => ({ n: tex + seed, x, y, z, ax, ay
 const SHED_TEX = [H(0.35, -1.197, -1.75, 0.45, 0.32, 'rug', 11), H(-0.5, -0.448, -1.15, 0.12, 0.12, 'cushion', 12), H(0.8, -0.448, -1.0, 0.12, 0.1, 'tray', 13), H(-0.2, 0.202, -2.7, 0.34, 0.11, 'books', 14),
   Vt(-0.3, 0.05, -2.569, [1, 0, 0], 0.35, 0.13, 'spines', 15), Vt(0.5, 0.6, -2.89, [1, 0, 0], 0.3, 0.22, 'poster', 16), Vt(1.39, -0.4, -1.5, [0, 0, 1], 0.3, 0.2, 'poster', 17)];
 const LOUNGE_TEX = [H(0.0, -1.197, -5.35, 0.5, 0.35, 'rug', 21), H(0.45, -0.778, -6.1, 0.15, 0.15, 'cushion', 22), H(-0.5, -0.848, -5.7, 0.14, 0.1, 'books', 23), Vt(0.2, -0.2, -6.89, [1, 0, 0], 0.3, 0.25, 'poster', 24)];
-const RUG_IN_LOUNGE = H(0.6, -1.197, -5.0, 0.45, 0.32, 'rug', 11); /* Room 1's rug (same pattern) carried into the lounge */
+const DOOR_VIEW = [[0.35, -1.2, -1.75], 1.95, 1.2]; /* the shed's rug seen from the lounge's doorway (z -3.7, 0.6 m outside the lounge's box: within RB_CAM, so the build 26 guard stays quiet) */
 const ST2 = { id: 2, x: 0.25, y: -0.02, z: -2.565, ax: [1, 0, 0], ay: [0, 1, 0], size: 0.08, bits: bits(2) }; /* on the front of the shed's shelf */
 const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEGS = ['lfloor', 'sofa', 'ltable', 'lamp', 'lfloor2'];
 (async () => {
@@ -51,7 +51,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const viewAt = (pt, dist, heads, hgt, dur) => ev(([pt, dist, heads, hgt, dur]) => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw), k = [pt[0] * c + pt[2] * s + W.x, pt[1] + (W.y || 0), -pt[0] * s + pt[2] * c + W.z];
     const e = __g.AR.viewM.elements, here = [{ p: [e[12], e[13], e[14]], yaw: Math.atan2(e[8], e[10]), pitch: Math.asin(Math.max(-1, Math.min(1, -e[9]))), ay: 0, ap: 0, dur: 0.3 }];
     const legs = heads.map((a) => { const r = a * Math.PI / 180 + W.yaw, q = [k[0] + Math.sin(r) * dist, k[1] + hgt, k[2] + Math.cos(r) * dist], fx = k[0] - q[0], fy = k[1] - q[1], fz = k[2] - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay: 0.02, ap: 0.015, dur }; });
-    window.__cam.path = here.concat(legs); window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = 1; window.__cam.done = false; }, [pt, dist, heads, hgt, dur]);
+    window.__cam.path = here.concat(legs, [Object.assign({}, here[0], { dur: 4 })]); /* ends where the loop starts again: no jump of the camera when it repeats */ window.__cam.mode = 'sweep'; window.__cam.t0 = performance.now(); window.__cam.speed = 1; window.__cam.done = false; }, [pt, dist, heads, hgt, dur]);
   const viewSticker = (st, dist, angs, dur, up) => ev(([st, dist, angs, dur, up]) => { const ki = window.__MARKS.findIndex((q) => q.id === st.id && Math.hypot(q.x - st.x, q.y - st.y, q.z - st.z) < 0.05), k = window.__placeMarks()[ki], n = [k.ax[1] * k.ay[2] - k.ax[2] * k.ay[1], k.ax[2] * k.ay[0] - k.ax[0] * k.ay[2], k.ax[0] * k.ay[1] - k.ax[1] * k.ay[0]];
     const e = __g.AR.viewM.elements, here = [{ p: [e[12], e[13], e[14]], yaw: Math.atan2(e[8], e[10]), pitch: Math.asin(Math.max(-1, Math.min(1, -e[9]))), ay: 0, ap: 0, dur: 0.3 }];
     const legs = angs.map((a) => { const r = a * Math.PI / 180, dx = n[0] * Math.cos(r) - n[2] * Math.sin(r), dz = n[0] * Math.sin(r) + n[2] * Math.cos(r), q = [k.x + dx * dist, k.y + (up || 0.12), k.z + dz * dist], fx = k.x - q[0], fy = k.y - q[1], fz = k.z - q[2], L = Math.hypot(fx, fy, fz); return { p: q, yaw: Math.atan2(-fx / L, -fz / L), pitch: Math.asin(fy / L), ay: 0.015, ap: 0.01, dur }; });
@@ -87,6 +87,8 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh({ items: SHED_TEX.concat(LOUNGE_TEX) });
   ok('BUILD is build 28', await ev(() => __g.BUILD === 'build 28'));
+  const FROM = +(process.env.SN_FROM || 1), SAVED = path.join(require('os').tmpdir(), 'bc-snapshot-test-after4.json'); /* SN_FROM=5: start at section 5 from the storage SN_SAVE=1 kept after section 4 (for working on the later sections) */
+  if (FROM < 5) {
 
   /* ===================== 1. keyframes while playing ===================== */
   await play(); await sweep(A_LEGS, 1.0);
@@ -143,7 +145,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const WA = W2, end2 = await things(); /* where the shed and its things stand at the end of this session */
   await ev(() => __g.persist(true)); await endSession();
 
-  /* ===================== 3. Room 2 (the lounge), and Room 1's rug seen there ===================== */
+  /* ===================== 3. Room 2 (the lounge), and the shed seen from its doorway ===================== */
   await ev(() => localStorage.setItem('bc-test-off', String(3 * 3600 * 1000))); await fresh({ items: SHED_TEX.concat(LOUNGE_TEX) });
   await ev(() => { window.__cam.mode = 'fixed'; window.__cam.fixed = [0.6, -0.3, -4.9, 0, -0.55]; });
   await play('#chNew'); await sweep(L_LEGS, 1.0);
@@ -151,18 +153,17 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await settle(L_LEGS.concat(['sofa', 'lfloor'])); await sweep(L_LEGS.concat(['ltable', 'lfloor2']), 1.0); await waitFor(() => __g.G.snap && __g.G.snap.kf.length >= 5, 150000, 1500);
   const S3 = await snap(); ok('3. Room 2 makes its own keyframes', S3.kf >= 4, JSON.stringify({ kf: S3.kf, pts: S3.pts }));
   await ev(() => __g.persist(true)); const map1 = await mapOf('r1'), z3 = await zinfo();
-  await ev((rug) => { window.__TEX.items.push(rug); }, RUG_IN_LOUNGE);
-  await viewAt([RUG_IN_LOUNGE.x, -1.2, RUG_IN_LOUNGE.z], 1.0, [0, 25, -20, 10], 1.1, 4);
+  await viewAt(DOOR_VIEW[0], DOOR_VIEW[1], [180, 172, 188, 176], DOOR_VIEW[2], 4);
   const tQ = await waitFor(() => !document.getElementById('nroom').hidden && /moved to another room/.test(document.getElementById('nroom').innerText), 90000, 400);
   const Q3 = await ev(() => { const el = document.getElementById('nroom'), pre = document.getElementById('mvPre'); return { txt: el.innerText.replace(/\s+/g, ' '), pre: pre ? pre.dataset.room + ':' + pre.innerText : '', first: el.querySelector('button') && el.querySelector('button').id, why: __g.RB.ask && __g.RB.ask.why, log: __g.REC.snap.filter((e) => e.foreign).slice(-1) }; });
   if (tQ < 0) console.log('DEBUG3', JSON.stringify(await ev(() => ({ last: __g.SNAP.last, lastF: __g.SNAP.lastF && { room: __g.SNAP.lastF.room, inl: __g.SNAP.lastF.inl, pics: __g.SNAP.lastF.pics, ok: __g.SNAP.lastF.ok }, log: __g.REC.snap.slice(-8) }))));
   ok('3. Room 1\'s snapshots seen in Room 2 ask "Have you moved to another room?" with Room 1 offered first', tQ >= 0 && /This looks like Room 1/.test(Q3.txt) && Q3.pre === 'r1:It’s Room 1' && Q3.first === 'mvPre' && /No, still here/.test(Q3.txt), JSON.stringify(Q3));
   await sleep(300); await shot('106-snapshot-other-room-prompt.png');
   const z3b = await zinfo(); ok('3. nothing is merged: Room 2 keeps its zones, Room 1\'s saved map is byte for byte the same', z3b.length === z3.length && z3b.every((z) => z.room === 'r2') && (await mapOf('r1')) === map1, z3.length + ' -> ' + z3b.length);
-  await p.click('#mvNo'); await sleep(600); await viewAt([RUG_IN_LOUNGE.x, -1.2, RUG_IN_LOUNGE.z], 1.0, [15, -10], 1.1, 4); await sleep(10000);
+  if (tQ >= 0) await p.click('#mvNo'); await sleep(600); await viewAt(DOOR_VIEW[0], DOOR_VIEW[1], [184, 174], DOOR_VIEW[2], 4); await sleep(12000);
   const Q3b = await ev(() => ({ up: !document.getElementById('nroom').hidden, ign: __g.SNAP.ignore.r1, cur: __g.HOMES.cur }));
   ok('3. "No, still here": the lounge stays Room 2 and the question does not come back for Room 1 this session', !Q3b.up && Q3b.ign === 1 && Q3b.cur === 'r2', JSON.stringify(Q3b));
-  await ev(() => { window.__TEX.items.pop(); }); await ev(() => __g.persist(true)); await endSession();
+  await ev(() => __g.persist(true)); await endSession();
   await stop(3);
 
   /* ===================== 4. Continue Room 1 from the chooser ===================== */
@@ -175,16 +176,22 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const L4 = await ev(() => ({ lock: __g.RELOC.lock, log: __g.REC.snap.filter((e) => e.lock).slice(-1) }));
   ok('4. Continue Room 1: the snapshots lock the shed', tL4 > 0 && L4.lock && !!L4.lock.snap, secs4.toFixed(1) + ' s ' + JSON.stringify({ snap: L4.lock && L4.lock.snap, log: L4.log, settlements: thingsSaved }));
   await sleep(3000); await shot('107-snapshot-continue-found.png', true);
+  /* against the room as it was first mapped (section 1): the surface-only relock of section 2 moved the whole saved room by its own error (a few cm), keyframes included, so the
+     snapshots put it back where it really is; against where it stood at the end of section 2 it is off by that surface relock's error */
+  if (process.env.SN_DEBUG) console.log('DEBUG4', JSON.stringify(await ev(() => ({ fix: __g.SNAP.lockFix && __g.SNAP.lockFix.T, lock: __g.RELOC.lock && { phi: __g.RELOC.lock.phi, tx: __g.RELOC.lock.tx, tz: __g.RELOC.lock.tz, dy: __g.RELOC.lock.dy, refined: __g.RELOC.lock.refined }, align: __g.G.align }))));
+  const e4 = thingErr(before2, W0, await things(), W4), e4s = thingErr(end2, WA, await things(), W4); console.log('CONTINUE snapshots: ' + secs4.toFixed(1) + ' s to lock; against the room as first mapped worst ' + e4.worst.toFixed(2) + ' cm mean ' + e4.mean.toFixed(2) + ' cm (' + e4.n + ' things); against the end of section 2 (after the surface-only relock) worst ' + e4s.worst.toFixed(2) + ' cm');
+  ok('4. the shed is where it really is: every thing within 2 cm of where it was first mapped', e4.n > 0 && e4.worst < 2, JSON.stringify(e4));
   await stop(4);
-  const e4 = thingErr(end2, WA, await things(), W4); console.log('CONTINUE snapshots: ' + secs4.toFixed(1) + ' s to lock; worst ' + e4.worst.toFixed(2) + ' cm mean ' + e4.mean.toFixed(2) + ' cm (' + e4.n + ' things)');
-  ok('4. the shed is where it was: every thing within 2 cm of its place at the end of section 2', e4.n > 0 && e4.worst < 2, JSON.stringify(e4));
   await sweep(A_LEGS, 1.0); await waitFor(() => __g.AUTO.commitAt === 0, 90000, 800); await ev(() => __g.persist(true)); await endSession();
+  if (process.env.SN_SAVE) fs.writeFileSync(SAVED, await ev(() => JSON.stringify(Object.assign({}, localStorage))));
+  } else { await ev((d) => { localStorage.clear(); for (const k of Object.keys(d)) localStorage.setItem(k, d[k]); }, JSON.parse(fs.readFileSync(SAVED, 'utf8'))); }
 
   /* ===================== 5. "Not sure?" in the lounge: every room's snapshots are scored ===================== */
   await ev(() => localStorage.setItem('bc-test-off', String(9 * 3600 * 1000))); await fresh({ items: SHED_TEX.concat(LOUNGE_TEX) });
   await ev((W) => { window.__W = W; }, compose({ yaw: 0.3, x: 0.2, z: -0.2, y: -0.1 }, W0)); await ev(() => { window.__cam.mode = 'fixed'; window.__cam.fixed = [0.6, -0.3, -4.9, 0, -0.55]; });
   await play('#chFind'); const t5 = Date.now(); await sweep(L_LEGS, 1.0); const tL5 = await waitFor(() => __g.G.locked, 150000, 300); const secs5 = (Date.now() - t5) / 1000;
   const L5 = await ev(() => ({ cur: __g.HOMES.cur, lock: __g.RELOC.lock, log: __g.REC.snap.filter((e) => e.switched || e.lock || e.wait).slice(-3) }));
+  if (process.env.SN_DEBUG) console.log('DEBUG5', JSON.stringify(await ev(() => ({ snap: __g.REC.snap.slice(-12), last: __g.SNAP.last, rooms: __g.HOMES.rooms.map((r) => r.id + ':' + __g.snapKfs(r.id).length), reloc: __g.REC.reloc.slice(-2) }))));
   ok('5. "Not sure? Let the colonists work it out" in the lounge: the snapshots pick Room 2 and lock it', tL5 > 0 && L5.cur === 'r2' && L5.lock && !!L5.lock.snap, secs5.toFixed(1) + ' s ' + JSON.stringify({ cur: L5.cur, snap: L5.lock && L5.lock.snap, log: L5.log }));
   await ev(() => __g.persist(true)); await endSession();
   await stop(5);
@@ -194,14 +201,14 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await play('#chooser [data-room="r1"]'); await sweep(A_LEGS, 1.0); const tL6 = await waitFor(() => __g.G.locked, 120000, 300);
   ok('6. Room 1 is found again (snapshots; its sticker is not bound yet)', tL6 > 0, JSON.stringify(await ev(() => __g.RELOC.lock && { snap: __g.RELOC.lock.snap, stk: __g.RELOC.lock.stk })));
   await waitFor(() => !__g.RG.prob, 90000, 1000); await ev(() => { __g.STK.obs = {}; }); await viewSticker(ST2, 0.8, [0, 25, -25, 40], 3.2);
-  const tB6 = await waitFor(() => __g.G.stk && __g.G.stk.id === 2, 90000, 500); ok('6. the shed takes sticker 2', tB6 >= 0, JSON.stringify(await ev(() => __g.REC.stk.slice(-2))));
+  const tB6 = await waitFor(() => __g.G.stk && __g.G.stk.id === 2, 90000, 500); if (process.env.SN_DEBUG) console.log('DEBUG6', JSON.stringify(await ev(() => ({ stk: __g.stkReport(), rel: __g.REC.relock.slice(-6), snap: __g.REC.snap.slice(-10), settled: __g.stkSettled(), prob: __g.RG.prob, rf: __g.RF.on })))); ok('6. the shed takes sticker 2', tB6 >= 0, JSON.stringify(await ev(() => __g.REC.stk.slice(-2))));
   await sweep(A_LEGS, 1.0); await sleep(3000); await waitFor(() => __g.AUTO.commitAt === 0 && !__g.RF.on, 60000, 800);
   const W6 = await ev(() => window.__W), W6b = compose(JUMP, W6); await sleepJump(W6b);
   const H6 = await ev(() => ({ hint: document.getElementById('hint').innerText }));
   ok('6. the wake hint offers the sticker now that the room owns one', /Have a sticker\? Point at it/.test(H6.hint), JSON.stringify(H6));
   const t6 = Date.now(); await viewSticker(ST2, 0.8, [30, 15, 40, 20], 3.5); const tR6 = await waitFor(back, 120000, 250); const secs6 = (Date.now() - t6) / 1000;
   const L6 = await ev(() => ({ lock: __g.RELOC.lock, wait: __g.REC.snap.filter((e) => e.wait).slice(-1), stk: __g.REC.stk.filter((e) => e.lock).slice(-1) }));
-  ok('6. after a jump with the sticker in view, the sticker locks first (the snapshots wait for it)', tR6 > 0 && L6.lock && L6.lock.stk === 'sticker' && !L6.lock.snap, secs6.toFixed(1) + ' s ' + JSON.stringify({ stk: L6.lock && L6.lock.stk, snap: L6.lock && L6.lock.snap, wait: L6.wait, sl: L6.stk }));
+  ok('6. after a jump with the sticker in view, the sticker locks first (the snapshots wait for it)', tR6 > 0 && L6.lock && /sticker/.test(L6.lock.stk) && !L6.lock.snap, secs6.toFixed(1) + ' s ' + JSON.stringify({ stk: L6.lock && L6.lock.stk, snap: L6.lock && L6.lock.snap, wait: L6.wait, sl: L6.stk }));
   await sleep(2500); await shot('108-sticker-preferred.png');
   await ev(() => __g.persist(true)); await endSession(); await ev(() => localStorage.setItem('bc-test-off', String(15 * 3600 * 1000))); await fresh({ items: SHED_TEX.concat(LOUNGE_TEX) }, [ST2]);
   await p.click('#bPlay'); await sleep(700); const C6 = await ev(() => (document.querySelector('#chooser .chstk') || {}).innerText || '');
@@ -214,7 +221,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await play(); await sweep(A_LEGS, 1.0); const t7 = await waitFor(() => __g.G.settlements.length > 0, 150000, 600); ok('7. texture-poor room: the colony settles', t7 > 0);
   await settle(A_LEGS.concat(['deskA', 'floor'])); await sweep(A_LEGS, 1.0); await waitFor(() => window.__cam.done, 200000, 2000);
   const S7 = await snap(); console.log('SNAP texture-poor ' + JSON.stringify(S7));
-  ok('7. texture-poor room: no keyframes (too few points with a 3D point), and it says why in the field log', S7.kf <= 1 && S7.tooFew > 0, JSON.stringify({ kf: S7.kf, tooFew: S7.tooFew, runs: S7.runs, log: S7.log }));
+  ok('7. texture-poor room: no keyframes (too few corners or points), and it says why in the field log', S7.kf <= 1 && S7.tooFew > 0, JSON.stringify({ kf: S7.kf, tooFew: S7.tooFew, runs: S7.runs, log: S7.log }));
   await sleep(3000); await waitFor(() => __g.AUTO.commitAt === 0 && !__g.RF.on, 60000, 800);
   const before7 = await things(), W7 = compose(JUMP, W0); await sleepJump(W7); const t7r = Date.now(); await sweep(A_LEGS, 1.0); const tR7 = await waitFor(back, 180000, 500); const secs7 = (Date.now() - t7r) / 1000;
   await sleep(1000); const e7 = thingErr(before7, W0, await things(), W7);
