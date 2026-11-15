@@ -130,7 +130,7 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 #camui{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:4px;padding:3px 4px;background:rgba(59,42,30,.55)}#camui button{min-height:34px;min-width:34px;font-size:15px;padding:2px 7px;border-radius:10px}#camui #cRoom{font-size:12px}
 #rlist{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);display:grid;gap:4px;padding:6px;z-index:5}#rlist button{min-height:34px;font-size:13px;text-align:left;padding:2px 10px}#rlist button.on{background:#ffd24a;color:#3b2a1e}
 @media (max-width:900px){#camui{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}#rlist{bottom:calc(env(safe-area-inset-bottom,0px) + 108px)}}
-#card .resrow{margin:3px 0}.res{display:inline-flex;align-items:center;gap:3px;margin-right:9px}.res i{font-style:normal;font-size:15px}.res u{display:inline-block;width:34px;height:7px;border-radius:4px;background:rgba(255,246,230,.25);text-decoration:none;overflow:hidden}.res u em{display:block;height:100%;border-radius:4px;background:#8fd16f}
+#card .resrow{margin:2px 0;display:flex;flex-wrap:wrap;gap:2px 10px}#card .rn{display:inline-flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}#card .rn i{font-style:normal;font-size:14px}#card .strip.cnt{font-size:13px;letter-spacing:0;white-space:nowrap}#card .cbrow{display:flex;gap:6px;flex-wrap:wrap}#card .cbrow .cbtn{margin-top:4px}#card .goal b{font-size:13px}.res{display:inline-flex;align-items:center;gap:3px;margin-right:9px}.res i{font-style:normal;font-size:15px}.res u{display:inline-block;width:34px;height:7px;border-radius:4px;background:rgba(255,246,230,.25);text-decoration:none;overflow:hidden}.res u em{display:block;height:100%;border-radius:4px;background:#8fd16f}
 #card .face{font-size:20px;vertical-align:-2px}#card .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}#card .cbtn{pointer-events:auto;min-height:30px;min-width:0;font-size:12px;padding:1px 8px;border-radius:10px;margin-top:4px}#card .chips .cbtn{margin-top:0}
 #ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
 #ccamView{width:100%;height:118px}#ccam .cinfo{background:rgba(59,42,30,.88);padding:3px 8px 4px;font-size:12px;font-weight:700;line-height:1.25}#ccam .cinfo span{font-size:16px}#ccam .cinfo b{color:#ffd9a8}#ccam .cx{position:absolute;right:4px;top:3px;width:22px;height:22px;border-radius:50%;background:rgba(59,42,30,.72);text-align:center;font-size:12px;line-height:22px}
@@ -2485,16 +2485,50 @@ function reportCompact(L) { /* 1 short line plus "and N more", small text, "More
   $('repX').onclick = () => { clearTimeout(c._t); hide(); G.report = null; };
   $('repMore').onclick = () => { clearTimeout(c._t); hide(); const el = $('diary'); el.hidden = false; el.classList.add('side'); el.innerHTML = '<div class="dh">What the colonists noticed</div><ul>' + full.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>'; $('dClose').onclick = () => { el.hidden = true; G.report = null; }; };
 }
-function showReport() {
-  const rep = G.report; if (!rep) return; const el = $('diary');
-  const sm = (rep.same || []).length, parts = [];
-  if (sm) parts.push(sm + ' place' + (sm > 1 ? 's' : '') + ' the same');
-  const L = rep.lines.slice(0, 10);
-  if (!L.length) L.push({ text: 'Everything is where the colonists left it. They carry on.', by: '' });
-  if (AR.on || innerWidth < 760 || innerHeight > innerWidth) { reportCompact(L); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
+/* ---- build 29: the notices feed. The owner saw "What the colonists noticed ... 3 places the same" come up again and again on a Mac.
+   Each automatic compare (autoCompare, every 60 s after a lock while the scan grows) re-reported what it re-measured and opened the card again, and the header
+   counted the places that had NOT changed. Now: a line already told in the last 30 minutes is never told again (newsKey ignores numbers and quotes), lines of the
+   same shape are grouped ("and 2 more like this"), an automatic card comes at most once every 90 s (the rest waits, NEWS.held), a compare with nothing new
+   shows nothing at all, and "N places the same" is only a footnote in the full list. Everything told is in Menu > What they noticed. ---- */
+const NEWS = { seen: {}, log: [], held: [], lastShow: -1e9, stat: { cards: 0, lines: 0, dropped: 0, grouped: 0, held: 0, silent: 0 } }, NEWS_FORGET = 1800, NEWS_GAP = 90;
+const newsNow = () => performance.now() / 1000;
+function newsKey(t) { return String(t).toLowerCase().replace(/<[^>]*>/g, '').replace(/[“"][^”"]*[”"]/g, '').replace(/\d+(\.\d+)?/g, '#').replace(/[^a-z#]+/g, ' ').trim(); }
+function newsShape(t) { const w = newsKey(t).split(' '); return w.length <= 6 ? w.join(' ') : w.slice(0, 2).join(' ') + ' ~ ' + w.slice(-4).join(' '); }
+function newsSift(L) { /* drop what was told recently, group what has the same shape; keeps the order */
+  const now = newsNow(), out = [], by = {};
+  for (const l of L) {
+    const k = newsKey(l.text); if (NEWS.seen[k] !== undefined && now - NEWS.seen[k] < NEWS_FORGET) { NEWS.stat.dropped++; continue; } NEWS.seen[k] = now;
+    const sh = newsShape(l.text); if (by[sh]) { by[sh].more = (by[sh].more || 0) + 1; NEWS.stat.grouped++; continue; }
+    const c = Object.assign({}, l); by[sh] = c; out.push(c);
+  }
+  return out;
+}
+const newsText = (l) => l.text + (l.more ? ' (and ' + l.more + ' more like this)' : '');
+function newsLogAdd(L) { for (const l of L) { NEWS.log.push({ text: newsText(l), by: l.by || '', at: Date.now() }); NEWS.stat.lines++; } if (NEWS.log.length > 40) NEWS.log.splice(0, NEWS.log.length - 40); }
+function newsTick() { /* held automatic news comes out once the gap has passed and nothing else is on screen */
+  if (!NEWS.held.length || newsNow() - NEWS.lastShow < NEWS_GAP || !$('ask').hidden || !$('diary').hidden || !$('repc').hidden || !$('modal').hidden) return;
+  const L = NEWS.held.splice(0); newsCard(L, 0);
+}
+function newsUi() { /* Menu > What they noticed: everything told this session, newest first */
+  const el = $('diary'); el.hidden = false; el.classList.add('side'); const L = NEWS.log.slice().reverse();
+  el.innerHTML = '<div class="dh">What they noticed</div>' + (L.length ? '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul>' : '<div class="dsub">Nothing new yet.</div>') + '<button class="big alt" id="dClose">Back to the colony</button>';
+  $('dClose').onclick = () => { el.hidden = true; };
+}
+function newsCard(L, same) {
+  const el = $('diary'); NEWS.lastShow = newsNow(); NEWS.stat.cards++; newsLogAdd(L);
+  const shown = L.map((l) => ({ text: newsText(l), by: l.by }));
+  if (AR.on || innerWidth < 760 || innerHeight > innerWidth) { reportCompact(shown); return; } /* build 12: in AR (and on narrow screens) the report is a small card in the message column */
   el.hidden = false; el.classList.add('side');
-  el.innerHTML = '<div class="dh">What the colonists noticed</div>' + (parts.length ? '<div class="dsub">' + parts.join(', ') + '</div>' : '') + '<ul>' + L.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul><button class="big alt" id="dClose">Back to the colony</button>';
+  el.innerHTML = '<div class="dh">What the colonists noticed</div><ul>' + shown.map((l) => '<li>' + esc(l.text) + (l.by ? ' <i class="by">by ' + esc(l.by) + '</i>' : '') + '</li>').join('') + '</ul>' + (same ? '<div class="dsub">' + same + ' place' + (same > 1 ? 's' : '') + ' checked: the same as before.</div>' : '') + '<button class="big alt" id="dClose">Back to the colony</button>';
   $('dClose').onclick = () => { el.hidden = true; G.report = null; };
+}
+function showReport(auto) { /* auto: from the quiet compare (autoCompare); otherwise the player asked (a scan, an answer) and always gets an answer */
+  const rep = G.report; if (!rep) return;
+  const sm = (rep.same || []).length, big = rep.lines.some((l) => /squashed|is gone|vanished|moved|jump clear/i.test(l.text)), L = newsSift(rep.lines).slice(0, 10);
+  if (!L.length) { if (auto) { NEWS.stat.silent++; return; } L.push({ text: rep.lines.length ? 'Nothing new since the colonists last told you.' : 'Everything is where the colonists left it. They carry on.', by: '' }); }
+  if (auto && !big && newsNow() - NEWS.lastShow < NEWS_GAP) { NEWS.held.push(...L); NEWS.stat.held += L.length; return; } /* too soon after the last card: it waits (newsTick) */
+  if (auto && NEWS.held.length) L.unshift(...NEWS.held.splice(0));
+  newsCard(L, sm);
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // ============ ALIGNING ON RETURN: two landmarks give yaw and shift ============
@@ -3635,8 +3669,10 @@ function goalHtml() {
   if (cal && ENV.season === 'autumn') extra = '<div class="gsub">' + (cal.b >= 1 ? 'Calendar ready: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' until it opens' : 'it opens today') : 'Calendar: ' + (info.daysToStand ? info.daysToStand + (info.daysToStand === 1 ? ' day' : ' days') + ' to get it ready' : 'get it ready')) + '</div>';
   const calBtn = advCalendars().length ? '<button class="cbtn" data-cal="1">📅 Advent calendar</button>' : '';
   const unl = SEA.unl[ENV.seasonKey] ? '<div class="gsub">Unlocked: ' + DECOR[SEA.unl[ENV.seasonKey]].ic + ' ' + esc(DECOR[SEA.unl[ENV.seasonKey]].name) + '</div>' : '';
+  if (!G.cardMore) return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.gl.title)}</b> <span class="strip cnt">${seaCountHtml(P)}</span>${calBtn}</div>`; /* build 29: counts, not rows of pictures; the rest is under Details */
   return `<div class="goal"><b>${P.sd.icon} ${esc(P.done ? P.sd.name + ' is ready!' : P.gl.title)}</b><div class="strip">${seaStripHtml(P)}</div>${extra}${unl}${calBtn}</div>`;
 }
+function seaCountHtml(P) { return P.items.map((it) => '<span class="gg" title="' + esc(DECOR[it.k].name) + '">' + DECOR[it.k].ic + '\u2009' + it.b + '/' + it.n + '</span>').join(' ') + (P.done ? ' \u2714\ufe0f' : ''); }
 /* ---- per-frame life of the decorations (called from visuals) ---- */
 function decorAnim(S, t, m, time, dt) {
   const U = m.userData; if (!t.built) return;
@@ -5648,6 +5684,7 @@ function autoTick(dt) {
   REC.lastCover += dt; if (REC.lastCover > 5) { REC.lastCover = 0; recCover(); if (++REC.lastZones % 3 === 0) { recZones(); wondersTick(); } if (REC.lastZones % 6 === 0) recSave(); }
   AUTO.askT = (AUTO.askT || 0) + dt; if (AUTO.askT > 6) { AUTO.askT = 0; autoAskTick(); ceilTick(); }
   if (RELOC.state === 'asking' && !RELOC.asked) relocAsk();
+  newsTick(); /* build 29 */
 }
 function autoCompare() { // quiet change detection on a matched map: what is new, moved, gone, tidied or squashed
   AUTO.compareAt = AUTO.t + 60; AUTO.compareHits = SCAN.hits;
@@ -5655,7 +5692,7 @@ function autoCompare() { // quiet change detection on a matched map: what is new
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   applyChanges(rep); autoSpots(); refreshSpots(); for (const Z of G.zones) if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z);
   G.report = rep; G.asks = rep.asks.slice(); persist();
-  if (G.asks.length) askNext(); else if (rep.lines.length) showReport();
+  if (G.asks.length) askNext(); else if (rep.lines.length) showReport(true); /* build 29: automatic, so sifted and rate-limited */
 }
 /* build 13: with a colony and one working cable car, somebody asks to hang something up on the ceiling (a hook first, then a sock nest; see CEIL_THINGS). Nothing lives up there. */
 function ceilTick() {
@@ -7393,12 +7430,13 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mNews">What they noticed (' + NEWS.log.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   if (pr) { const mw = $('mWx'); if (mw) mw.insertAdjacentHTML('afterend', '<button id="mSky">Practice sky ' + (skyShown() ? 'on' : 'off') + '</button>'); } /* first10 */
   { const vs = $('mVol'); if (vs) vs.oninput = () => SND_setVol(vs.value / 100); } /* build 19 + sound: the volume slider (saved as bc-volume) */
   m.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return; m.hidden = true;
     if (t.id === 'mSky') { G.skyOn = !skyShown(); $('env').hidden = !skyShown(); return; }
+    if (t.id === 'mNews') { newsUi(); return; }
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
     else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
     else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
@@ -7480,6 +7518,7 @@ function totemThumb() { const u = MULTI_ROOM && G.phase === 'play' ? totemUrl(HO
 $('card').onclick = (e) => {
   const t = e.target; if (t.classList && t.classList.contains('cth')) { toast(esc(homeName(HOMES.cur)), 2.5); return; }
   const b = t.closest && t.closest('button'); if (!b) return;
+  if (b.dataset.camnext) { const all = G.settlements.flatMap((q) => q.cols).filter((q) => !q.inside && q.spawn <= 0); if (all.length) { const c = all[(all.indexOf(CCAM.c) + 1) % all.length]; camOpen(c); G.sel = c; selCard(c); G.selT = 6; } return; } /* build 29: one button walks the creature cam through everybody */
   if (b.dataset.more) { G.cardMore = !G.cardMore; $('card')._h = ''; cardUi(); } else if (b.dataset.cal) calUi(); else if (b.dataset.cam) { const c = G.settlements.flatMap((q) => q.cols).find((q) => q.id === +b.dataset.cam); if (c) { camOpen(c); G.sel = c; selCard(c); G.selT = 6; } }
 };
 function cardSet(el, html) { if (el._h !== html) { el._h = html; el.innerHTML = html; } } /* the info card is rebuilt every 0.4 s: only touch the page when the text changed (a tap on the room thumbnail kept missing a replaced element) */
@@ -7489,12 +7528,14 @@ function cardUi() {
   if (AR.on) { /* in AR the card is one tiny line in the top corner, the season goal a second one under it (details are in the Menu) */
     const play = S && G.phase === 'play', mood = play && S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0;
     el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + esc(play ? roomTag() + S.zoneName.split(' \u2013 ')[0] + ' ' : '') + (play ? seaFace(mood) : esc(Math.round(ENV.wx.temp) + '\u00b0C')));
-    if (play) { const P = seaProgress(); gs.hidden = false; cardSet(gs, P.sd.icon + ' ' + seaStripHtml(P)); } return;
+    if (play) { const P = seaProgress(); gs.hidden = false; cardSet(gs, P.sd.icon + ' ' + seaCountHtml(P)); } return; /* build 29: counts, not a row of pictures */
   }
   if (!S || G.phase !== 'play') { el.hidden = G.phase === 'title' || G.phase === 'scan'; cardSet(el, th + envLine(false) + (G.zones.length && G.phase !== 'title' ? roomTidyLine() : '')); return; }
   const mood = S.cols.length ? S.cols.reduce((a, c) => a + c.needs.joy, 0) / S.cols.length : 0, t = S.zoneRef && S.zoneRef.land ? landTidy(S.zoneRef.land) : null, cap = capOf(S);
-  const res = '<div class="resrow">' + resHtml('\ud83e\udeb5', S.stock.wood, cap, 'wood') + resHtml('\ud83c\udf4e', S.stock.food, cap, 'food') + resHtml('\ud83c\udf31', S.stock.seeds, 12, 'seeds') + resHtml('\ud83d\udca7', S.stock.water, 8, 'water') + (S.stock.tin ? resHtml('\ud83e\udd6b', S.stock.tin, cap, 'tin') : '') + '</div>' + econCardLine(S);
-  let html = th + `<b>${esc(roomTag() + S.zoneName)}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + placesCardHtml(S) + goalHtml() + chipsHtml(S) + `<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button>`;
+  const rn = (ic, v, t) => `<span class="rn" title="${t}"><i>${ic}</i>${v}</span>`, nc = S.cols.length; /* build 29: a small picture and a number for each thing, no bars */
+  const res = '<div class="resrow">' + rn('\ud83e\udeb5', S.stock.wood, 'wood') + rn('\ud83c\udf4e', S.stock.food, 'food') + rn('\ud83c\udf31', S.stock.seeds, 'seeds') + rn('\ud83d\udca7', S.stock.water, 'water') + (S.stock.tin ? rn('\ud83e\udd6b', S.stock.tin, 'tin') : '') + rn('\ud83d\udc65', nc, 'settlers') + '</div>' + econCardLine(S);
+  const camBtn = nc ? `<button class="cbtn" data-camnext="1" title="Watch the colonists one by one">\ud83c\udfa5 ${nc}</button>` : '';
+  let html = th + `<b>${esc(roomTag() + S.zoneName.split(' \u2013 ')[0])}</b>${S.thriving ? ' \u2605' : ''} <span class="face">${seaFace(mood)}</span>` + res + placesCardHtml(S) + goalHtml() + (G.cardMore ? chipsHtml(S) : '') + `<div class="cbrow">${G.cardMore ? '' : camBtn}<button class="cbtn" data-more="1">${G.cardMore ? 'Hide details' : 'Details'}</button></div>`;
   if (G.cardMore) html += `<div class="det" style="margin-top:4px">Seasons: an idea by ${SEA_CREDIT}<br>settlers ${S.cols.length} \u00b7 mood ${Math.round(mood * 100)}%<br>wood ${S.stock.wood} \u00b7 food ${S.stock.food} \u00b7 seeds ${S.stock.seeds} \u00b7 tin ${S.stock.tin || 0}` + (t ? `<br>land ${Math.round(t.ratio * 100)}% clear (${t.area.toFixed(2)} m\u00b2)` : '') + '</div>' + envLine(true) + roomTidyLine(); else html += envLine(false);
   el.hidden = false; cardSet(el, html);
 }
