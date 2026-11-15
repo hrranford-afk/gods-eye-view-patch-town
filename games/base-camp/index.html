@@ -44,9 +44,9 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 .bar i{display:block;height:8px;border-radius:4px;background:#ffffff33;width:90px;overflow:hidden}
 .bar i u{display:block;height:100%;border-radius:4px;text-decoration:none}
 #reqs{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 8px);display:grid;gap:6px;max-width:min(46vw,300px)}
-.req{display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
-.req b{font-size:12px;color:#a85a1e;display:block}
-.req button{min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
+.req{box-sizing:border-box;max-width:100%;display:flex;gap:8px;align-items:center;text-align:left;font-size:14px;padding:6px 10px;border-radius:14px;background:#fff6e6;color:#3b2a1e;border:2px solid #e8883a}
+.req>div{flex:1 1 auto;min-width:0}.req b{font-size:12px;color:#a85a1e;display:block}
+.req button{flex:0 0 auto;min-height:34px;font-size:13px;padding:2px 10px;color:#fff;background:var(--leaf);border-color:#b6dc9d}
 @media (orientation:portrait),(max-width:560px){#reqs{max-width:min(94vw,420px)}.req{flex-wrap:wrap}.req>div{flex:1 1 0;min-width:9em}.req button{flex:1 0 100%}} /* build 19: narrow screens stack the button under the text */
 #toast{font-weight:700;font-size:13px;text-align:center;max-width:100%}#toast .glass{padding:4px 10px;border-radius:10px}
 #toast:empty{display:none}
@@ -130,6 +130,7 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 #camui{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:4px;padding:3px 4px;background:rgba(59,42,30,.55)}#camui button{min-height:34px;min-width:34px;font-size:15px;padding:2px 7px;border-radius:10px}#camui #cRoom{font-size:12px}
 #rlist{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);display:grid;gap:4px;padding:6px;z-index:5}#rlist button{min-height:34px;font-size:13px;text-align:left;padding:2px 10px}#rlist button.on{background:#ffd24a;color:#3b2a1e}
 @media (max-width:900px){#camui{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}#rlist{bottom:calc(env(safe-area-inset-bottom,0px) + 108px)}}
+@media (orientation:portrait),(max-width:900px){body:not(.inar) #card{max-width:calc(56vw - 24px)}body:not(.inar) #reqs{max-width:min(42vw,340px)}#card .strip.cnt{white-space:normal}} /* build 29: the info card and the requests sit side by side, never on top of each other */
 #card .resrow{margin:2px 0;display:flex;flex-wrap:wrap;gap:2px 10px}#card .rn{display:inline-flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}#card .rn i{font-style:normal;font-size:14px}#card .strip.cnt{font-size:13px;letter-spacing:0;white-space:nowrap}#card .cbrow{display:flex;gap:6px;flex-wrap:wrap}#card .cbrow .cbtn{margin-top:4px}#card .goal b{font-size:13px}.res{display:inline-flex;align-items:center;gap:3px;margin-right:9px}.res i{font-style:normal;font-size:15px}.res u{display:inline-block;width:34px;height:7px;border-radius:4px;background:rgba(255,246,230,.25);text-decoration:none;overflow:hidden}.res u em{display:block;height:100%;border-radius:4px;background:#8fd16f}
 #card .face{font-size:20px;vertical-align:-2px}#card .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}#card .cbtn{pointer-events:auto;min-height:30px;min-width:0;font-size:12px;padding:1px 8px;border-radius:10px;margin-top:4px}#card .chips .cbtn{margin-top:0}
 #ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
@@ -924,7 +925,13 @@ function reconcileLand(L, m, first) {
   const ev = { removed: [], placed: [], gained: 0 }, st = L.st, n = st.length, conf0 = G.auto && !first ? L.conf.slice() : null; bumpConf(L, m.obs); // automatic play: a cell only counts as evidence of a change when earlier visits saw it (two earlier visits must have seen it, so events start on the third visit), so a thin first map cannot invent tidying or squashing
   if (first) { for (let k = 0; k < n; k++) { st[k] = m.obs[k]; L.ht[k] = m.ht[k]; if (m.obs[k] === 1 && m.sharp[k]) L.seen[k] = 1; } L.objs = landComps(L, (k) => st[k] === 2, 3); L.ver++; return ev; }
   const obs = m.obs, mark = new Uint8Array(n), oldHt = L.ht.slice();
-  const removed = changedObjects(L, (k) => st[k] === 2 && m.sharp[k] === 1 && (!conf0 || conf0[k] >= 2), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => st[k] === 1 && obs[k] === 2 && L.seen[k] === 1 && (!conf0 || conf0[k] >= 2), 5); // an object counts as put down only where the bare cells were really seen before
+  const bR = new Uint8Array(n), bP = new Uint8Array(n); for (let k = 0; k < n; k++) { bR[k] = st[k] === 2 && m.sharp[k] === 1 && (!conf0 || conf0[k] >= 2) ? 1 : 0; bP[k] = st[k] === 1 && obs[k] === 2 && L.seen[k] === 1 && (!conf0 || conf0[k] >= 2) ? 1 : 0; }
+  /* build 29, the root cause of the repeated notices: in the practice room a small top (the toilet, a can) is a "bump" over the floor while its band is small and stops being one when the band grows into a surface,
+     so one compare said "a GIANT CAN appeared" and squashed a hut, the next "the floor is clear!", and so on every minute. In the automatic compare of the practice room and the house a cell
+     only makes news when the previous compare saw the same change there too (L.pendR / L.pendP, in memory): a flicker is never told, a real move is told one compare later. AR is unchanged. */
+  const gate = G.auto && G.mode === 'practice' && !AR.on && AUTO.cmpGate, pR = gate && L.pendR && L.pendR.length === n ? L.pendR : null, pP = gate && L.pendP && L.pendP.length === n ? L.pendP : null;
+  if (gate) { L.pendR = bR; L.pendP = bP; }
+  const removed = changedObjects(L, (k) => bR[k] === 1 && (!gate || (!!pR && pR[k] === 1)), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => bP[k] === 1 && (!gate || (!!pP && pP[k] === 1)), 5); // an object counts as put down only where the bare cells were really seen before
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
@@ -5235,6 +5242,73 @@ function keysUi() {
 $('camui').addEventListener('click', (e) => { const t = e.target.closest('button'); if (!t) return; sfx('');
   if (t.id === 'cRoom') roomListUi(); else if (t.id === 'cFollow') { HOUSE.whole = false; deskFollowNext(); } else if (t.id === 'cWhole') { deskWhole(); HOUSE.whole = true; } else if (t.id === 'cReset') { HOUSE.whole = false; deskReset(); } else if (t.id === 'cKeys') keysUi(); });
 
+/* ============ BOT PLAYTEST (build 29): ?bot=1&speed=N&seed=S runs the practice house with nobody there. A seeded pretend player looks round, taps colonists, plants,
+   builds, answers requests, closes cards, moves things now and then and walks from room to room, at N times the speed (default 30). Every in-game day (one turn of the
+   game clock: the clock is driven by the simulation here, 360 simulated seconds to the hour) it writes a numbers-only line to window.__bot.days and the console
+   ("BOT {...}"): resources, settlers, builds made, stuck colonists, repeated notices, errors, fps, draw calls, camera-inside-geometry frames. tests/house-test.js reads it. ============ */
+const BOT = { on: /[?&]bot=1\b/.test(location.search), speed: +((location.search.match(/[?&]speed=(\d+)/) || [])[1] || 30), seed: +((location.search.match(/[?&]seed=(\d+)/) || [])[1] || 1), rnd: null, t: 0, thinkT: 0, started: false, day: 0, sim0: 0, hour0: 9,
+  n: { builds: 0, plants: 0, pokes: 0, gifts: 0, rooms: 0, moves: 0, closes: 0, cards: 0, repeats: 0, errors: 0, inside: 0, frames: 0, wall: 0, stuckMax: 0 }, seen: {}, idle: new Map(), lastCard: '', days: [], errs: [] };
+const BOT_HOUR = +((location.search.match(/[?&]hour=(\d+)/) || [])[1] || 360), BOT_STUCK = 5 * BOT_HOUR; /* simulated seconds: one game hour (?hour=S makes the day shorter for quick tests); a colonist standing still for five game hours (outside a tent) counts as stuck */
+if (BOT.on) { BOT.rnd = seededRandom(BOT.seed); addEventListener('error', (e) => { BOT.n.errors++; BOT.errs.push(String(e.message || e)); }); addEventListener('unhandledrejection', (e) => { BOT.n.errors++; BOT.errs.push(String(e.reason && e.reason.message || e.reason)); }); }
+const botR = () => BOT.rnd(), botPick = (a) => a[Math.floor(botR() * a.length)];
+function botStart() { /* from the title: Practice room (the house), nobody to ask */
+  if (BOT.started || G.phase !== 'title' || !AR.checked) return; BOT.started = true;
+  store.set('bc-wxchoice', 'no'); G.skyOn = false; ENV.hourOverride = BOT.hour0; G.intent = 'play'; startPractice(); G.speed = BOT.speed; BOT.sim0 = G.simT;
+}
+function botCamp() { return G.settlements.filter((S) => S.placed && !S.ghost && !S.lost && !S.awaiting && S.zoneRef); }
+function botTapNear(S, r) { /* tap the screen where a spot near the camp shows, as a finger would */
+  const a = botR() * 6.283, d = (0.04 + botR() * (r || 0.16)), [wx, wz] = l2w(S, Math.cos(a) * d, Math.sin(a) * d), [sx, sy, ok] = toScreen(tmpV.set(wx, SY(S, 0), wz));
+  if (!ok || sx < 20 || sy < 20 || sx > innerWidth - 20 || sy > innerHeight - 90) { P.gTarget.set(S.tf.x, SY(S, 0.02), S.tf.z); P.gDist = 0.9; return false; }
+  tapAt(sx, sy); return true;
+}
+function botCards() { /* close or answer whatever card is up, the way a person would */
+  const ask = $('ask'); if (!ask.hidden) { const b = botR() < 0.6 ? $('askYes') : $('askNo'); if (b) { b.click(); BOT.n.closes++; return true; } }
+  for (const id of ['wx', 'modal', 'tagpick', 'guess']) { const el = $(id); if (el.hidden) continue; const bs = [...el.querySelectorAll('button')].filter((b) => !/^(mTitle|mScan|mBack|mIO|mAlign|mSkip|mMap|mReport|mLib)$/.test(b.id) && b.getClientRects().length); if (bs.length) { botPick(bs).click(); } else el.hidden = true; if (id === 'modal' && !el.hidden) el.hidden = true; BOT.n.closes++; return true; }
+  const d = $('diary'); if (!d.hidden && botR() < 0.5) { const b = d.querySelector('#dClose') || d.querySelector('button'); if (b) b.click(); else d.hidden = true; BOT.n.closes++; return true; }
+  const rx = $('repX'); if (rx && !$('repc').hidden && botR() < 0.5) { rx.click(); BOT.n.closes++; return true; }
+  return false;
+}
+function botNotices() { /* a card counts as a repeat when a line on it was already on a card in the last 30 minutes */
+  const parts = []; const d = $('diary'), c = $('repc'); if (!d.hidden && /noticed/i.test(d.querySelector('.dh') ? d.querySelector('.dh').textContent : '')) parts.push(...[...d.querySelectorAll('li')].map((l) => l.textContent)); if (!c.hidden) parts.push(...[...c.querySelectorAll('.rl:not(.rm)')].map((l) => l.textContent));
+  const key = parts.join('|'); if (!key || key === BOT.lastCard) return; BOT.lastCard = key; BOT.n.cards++; const now = performance.now() / 1000;
+  for (const t of parts) { const k = newsKey(t.replace(/\s*by .*$/, '')); if (BOT.seen[k] !== undefined && now - BOT.seen[k] < NEWS_FORGET) BOT.n.repeats++; BOT.seen[k] = now; }
+}
+function botThink() {
+  if (botCards()) return; const camps = botCamp(); if (G.phase !== 'play') return; const r = botR();
+  if (!camps.length) { if (r < 0.3) deskMove((botR() - 0.5) * 0.6, (botR() - 0.5) * 0.6, 0); return; }
+  const S = botPick(camps); G.cur = S;
+  if (G.requests.length && r < 0.25) { const b = document.querySelector('#reqs .req button'); if (b) { b.click(); BOT.n.gifts++; return; } }
+  if (r < 0.2) { setTool('look'); const c = botPick(S.cols.filter((q) => !q.inside && q.spawn <= 0)); if (c) { const [wx, wz] = l2w(S, c.x, c.z), [sx, sy, ok] = toScreen(tmpV.set(wx, SY(S, 0.026), wz)); if (ok) { tapAt(sx, sy); BOT.n.pokes++; } } return; }
+  if (r < 0.38) { setTool('seed'); const n0 = S.things.length; botTapNear(S, 0.14); if (S.things.length > n0) BOT.n.plants++; return; }
+  if (r < 0.55) { const ks = BUILD_KINDS.filter((k) => S.stock.wood >= KINDS[k].wood); if (!ks.length) { setTool('look'); botTapNear(S, 0.1); return; } setTool('build'); G.buildKind = botPick(ks); G.bmenuShut = true; const n0 = S.things.length; botTapNear(S, 0.18); if (S.things.length > n0) BOT.n.builds++; return; }
+  if (r < 0.75) { const k = botR(); if (k < 0.5) deskMove((botR() - 0.5) * 0.4, (botR() - 0.5) * 0.4, 0); else if (k < 0.7) { deskTake(); P.yaw += (botR() - 0.5) * 1.2; } else if (k < 0.8) deskZoom(0.7 + botR() * 0.7); else if (k < 0.88) deskFollowNext(); else if (k < 0.94) { deskWhole(); HOUSE.whole = true; } else { HOUSE.whole = false; deskReset(); } return; }
+  if (r < 0.8 && G.tool !== 'look') { setTool('look'); botTapNear(S, 0.12); return; }
+  if (r < 0.84) { const ps = PROPS.filter(propHere); if (ps.length) { const p = botPick(ps), sf = PSURF.find((q) => Math.abs(q.y - p.base) < 0.01 && p.x > q.x0 && p.x < q.x1 && p.z > q.z0 && p.z < q.z1); if (sf) { p.x = clamp(p.x + (botR() - 0.5) * 0.3, sf.x0 + p.w, sf.x1 - p.w); p.z = clamp(p.z + (botR() - 0.5) * 0.3, sf.z0 + p.d, sf.z1 - p.d); syncProp(p); BOT.n.moves++; } } return; }
+  if (r < 0.9 && HOUSE.on && BOT.t > 60) { HOUSE.whole = false; if (houseStep(botR() < 0.5 ? 1 : -1)) BOT.n.rooms++; return; }
+  setTool('look'); deskReset();
+}
+function botStuck() { /* colonists standing still for BOT_STUCK simulated seconds, outside a tent */
+  let stuck = 0; const seen = new Set();
+  for (const S of G.settlements) for (const c of S.cols) { seen.add(c); if (c.inside || c.spawn > 0 || !S.placed) { BOT.idle.delete(c); continue; } const q = BOT.idle.get(c); if (!q || Math.hypot(q.x - c.x, q.z - c.z) > 0.005) { BOT.idle.set(c, { x: c.x, z: c.z, t: G.simT }); continue; } const idle = G.simT - q.t; BOT.n.stuckMax = Math.max(BOT.n.stuckMax, idle); if (idle > BOT_STUCK) stuck++; }
+  for (const c of BOT.idle.keys()) if (!seen.has(c)) BOT.idle.delete(c); return stuck;
+}
+function botDay() {
+  const sum = (k) => G.settlements.reduce((a, S) => a + (S.stock[k] || 0), 0), info = renderer.info.render;
+  const row = { day: BOT.day, room: HOUSE.cur, rooms: HOUSE_ORDER.filter((k) => houseId(k)).length, camps: G.settlements.length, settlers: G.settlements.reduce((a, S) => a + S.cols.length, 0), wood: sum('wood'), food: sum('food'), seeds: sum('seeds'), water: sum('water'), tin: sum('tin'),
+    things: G.settlements.reduce((a, S) => a + S.things.length, 0), builds: BOT.n.builds, plants: BOT.n.plants, pokes: BOT.n.pokes, gifts: BOT.n.gifts, roomMoves: BOT.n.rooms, propMoves: BOT.n.moves, stuck: botStuck(), stuckMaxS: Math.round(BOT.n.stuckMax), noticeCards: BOT.n.cards, repeatedNotices: BOT.n.repeats,
+    newsDropped: NEWS.stat.dropped, newsGrouped: NEWS.stat.grouped, newsHeld: NEWS.stat.held, newsSilent: NEWS.stat.silent, errors: BOT.n.errors, fps: +(BOT.n.frames / Math.max(1e-3, BOT.n.wall)).toFixed(1), calls: info.calls, tris: info.triangles, camInside: BOT.n.inside, guardHits: DESK.guardHits, wallS: Math.round(BOT.t) };
+  BOT.days.push(row); BOT.n.frames = 0; BOT.n.wall = 0; window.__botDay = row; console.log('BOT ' + JSON.stringify(row)); return row;
+}
+function botTick(dt) {
+  if (!BOT.on) return; BOT.t += dt; BOT.n.frames++; BOT.n.wall += dt;
+  if (!BOT.started) { botStart(); return; } if (G.mode !== 'practice') return;
+  if (G.speed !== BOT.speed && G.phase === 'play') G.speed = BOT.speed;
+  const sim = G.simT - BOT.sim0; ENV.hourOverride = (BOT.hour0 + sim / BOT_HOUR) % 24; /* the game clock follows the simulation */
+  if (deskOn() && deskInside()) BOT.n.inside++;
+  BOT.thinkT -= dt; if (BOT.thinkT <= 0) { BOT.thinkT = 0.6 + botR() * 1.2; try { botThink(); } catch (e) { BOT.n.errors++; BOT.errs.push('bot: ' + (e && e.message)); } botNotices(); if (BOT.idleT === undefined || G.simT - BOT.idleT > 60) { BOT.idleT = G.simT; botStuck(); } }
+  if (sim >= (BOT.day + 1) * BOT_HOUR * 24) { BOT.day++; botDay(); }
+}
+window.__bot = BOT;
 // ============ RECOGNITION: "they know what a lot of stuff is", and ask when unsure ============
 // Camera pictures never leave the device: the models are downloaded, the pictures are only looked at here.
 //  1. COCO-SSD (TensorFlow.js, about 5 MB of weights) looks at the camera picture every ~1.5 s while the player is mapping. A detection's bottom-centre is
@@ -5653,7 +5727,7 @@ function arQuietTick() { // AR: a zone that is not colony land flashes for about
   if (AR.on && G.phase === 'play' && G.locked !== undefined && !(G.returning && !G.locked) && !RF.hidden) { const S = G.settlements.find((q2) => q2.placed && !q2.lost); if (S) { const [sx, sy, vis] = toScreen(tmpV.set(S.tf.x, SY(S, 0.05), S.tf.z)); if (!vis || sx < 30 || sx > innerWidth - 30 || sy < 30 || sy > innerHeight - 90) { const cx = innerWidth / 2, cy = innerHeight / 2; let dx = sx - cx, dy = sy - cy; if (!vis) { dx = -dx; dy = -dy; } const L2 = Math.hypot(dx, dy) || 1, k = Math.min((innerWidth / 2 - 34) / Math.abs(dx || 1e-6), (innerHeight / 2 - 100) / Math.abs(dy || 1e-6)); mk.style.left = (cx + dx * k - 14) + 'px'; mk.style.top = (cy + dy * k - 14) + 'px'; mk.firstChild.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)'; show = true; void L2; } } }
   if (mk.hidden === show) mk.hidden = !show;
 }
-function autoCount() { const n = G.zones.length || SCAN.zones.length; $('count').textContent = (G.phase === 'title' || !n || RF.hidden || (G.returning && !G.locked)) ? '' : /* build 26: no count while the room or the camp is being found (the chip has that line) */ n + ' place' + (n > 1 ? 's' : '') + ' found'; }
+function autoCount() { const n = G.zones.length || SCAN.zones.length; if (n !== AUTO.countN) { AUTO.countN = n; AUTO.countAt = AUTO.t; } $('count').textContent = (G.phase === 'title' || !n || RF.hidden || (G.returning && !G.locked) || AUTO.t - (AUTO.countAt || 0) > 8) ? '' /* build 29: the count shows when it changes, then goes (it sat under the banners for good) */ : /* build 26: no count while the room or the camp is being found (the chip has that line) */ n + ' place' + (n > 1 ? 's' : '') + ' found'; }
 function homeMoment(text) { const el = $('home'); el.textContent = text; el.classList.add('on'); clearTimeout(AUTO.homeT); AUTO.homeT = setTimeout(() => el.classList.remove('on'), 2600); }
 // ---- the tick: runs every frame while in an automatic session ----
 function autoTick(dt) {
@@ -5688,7 +5762,7 @@ function autoTick(dt) {
 }
 function autoCompare() { // quiet change detection on a matched map: what is new, moved, gone, tidied or squashed
   AUTO.compareAt = AUTO.t + 60; AUTO.compareHits = SCAN.hits;
-  const rep = captureScan(); if (!rep) return;
+  AUTO.cmpGate = true; let rep; try { rep = captureScan(); } finally { AUTO.cmpGate = false; } if (!rep) return; /* build 29: changes must be seen twice (reconcileLand) */
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   applyChanges(rep); autoSpots(); refreshSpots(); for (const Z of G.zones) if (!Z.mesh || Z.paintVer !== Z.land.ver) paintLand(Z);
   G.report = rep; G.asks = rep.asks.slice(); persist();
@@ -7127,7 +7201,7 @@ function resetWorld() {
 }
 function showTitle() {
   $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
-  chooserClose(); rfReset(); rbReset(); room.visible = false; houseShow(false); scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
+  chooserClose(); rfReset(); rbReset(); room.visible = false; houseShow(false); if (HOUSE.on) houseUse('play'); /* build 29: the manual tools and the title see the Playroom */ scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
 }
 // ---- the rooms list (title) ----
 const STORE_LIMIT = 5000000, ROOM_MAX = 1400000; // characters: browsers keep about 5 million per site; one room (map + colony + their backup copies) is held under ROOM_MAX
@@ -8724,7 +8798,7 @@ function persistSoon() { if (_persistT) return; _persistT = setTimeout(() => { _
 function frame(time, xrFrame) {
   const now = performance.now(), fT0 = now; /* build 26: fT0 times this frame's own work (a gap after a long frame of ours is not a sleep) */ let dt = Math.min(0.1, (now - G.last) / 1000); if (!(dt >= 0)) dt = 0.016; G.last = now; G.time += dt; frameN++; recFrame(dt);
   if (!AR.on) requestAnimationFrame(frame);
-  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); } else { deskPad(dt); practiceFrame(dt); houseTick(dt); if (HOUSE.on) houseLabelTick(); } /* build 29: the controller, the house's doorways */
+  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); } else { deskPad(dt); botTick(dt); practiceFrame(dt); houseTick(dt); if (HOUSE.on) houseLabelTick(); } /* build 29: the controller, the house's doorways */
   envUpdate(); lighting();
   if (G.auto && !BT.on) autoTick(dt);
   else if (G.phase === 'scan' && !BT.on) {
@@ -8838,7 +8912,7 @@ function SND_board() {
 }
 try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
-window.__g = { HOUSE, HOUSE_ROOMS, HOUSE_ORDER, HOUSE_SURF, HOUSE_PROPS, houseGo, houseStep, houseUse, houseVisit, houseArrive, houseAt, DESK, deskOn, deskInside, deskWhole, deskReset, deskFollowNext, deskMove, deskGuard, deskSolids, padRead, PSURF, PVIEWS, PROPS, camUi, RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
+window.__g = { seededRandom, houseRoomCentre, homeName, newsTick, BOT, botDay, NEWS, newsSift, newsKey, HOUSE, HOUSE_ROOMS, HOUSE_ORDER, HOUSE_SURF, HOUSE_PROPS, houseGo, houseStep, houseUse, houseVisit, houseArrive, houseAt, DESK, deskOn, deskInside, deskWhole, deskReset, deskFollowNext, deskMove, deskGuard, deskSolids, padRead, PSURF, PVIEWS, PROPS, camUi, RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
