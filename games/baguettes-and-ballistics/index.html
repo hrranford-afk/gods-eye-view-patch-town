@@ -252,6 +252,8 @@ button.abil.ready { box-shadow: 0 0 14px 2px rgba(255, 194, 61, 0.75); backgroun
     <ul id="lvlTips"></ul>
     <div class="myBox" id="myBox"></div>
     <button class="go" id="play">PLAY</button>
+    <button class="go alt" id="play2" hidden>2 PLAYERS<small id="play2Sub"></small></button>
+    <p class="sub" id="padNote" hidden></p>
   </div>
 </div>
 <div class="screen" id="lrIntro" hidden>
@@ -338,6 +340,50 @@ button.abil.ready { box-shadow: 0 0 14px 2px rgba(255, 194, 61, 0.75); backgroun
   </div>
 </div>
 <!-- ===================== end of Characters and dialogue (HTML/CSS) ===================== -->
+
+<!-- ===================== Controllers and couch versus (HTML/CSS; the code is the last <script>) =====================
+     A game controller (standard mapping) drives and builds; the hint strip shows its buttons while it is in use. 2 PLAYERS splits the screen:
+     left = Player 1 (blue), right = Player 2 (red, Red's car). Hooks in the main script are marked "Couch hook". -->
+<style>
+.padStrip { position: fixed; z-index: 4; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); max-width: calc(100vw - 540px); min-width: 240px;
+  display: flex; flex-wrap: wrap; gap: 5px 7px; align-items: center; padding: 7px 9px; border-radius: 14px; background: rgba(20, 16, 12, 0.72); pointer-events: none; font: 700 13px/1 var(--body); color: var(--paper); }
+.padStrip.menu { left: 50%; transform: translateX(-50%); max-width: calc(100vw - 32px); min-width: 0; z-index: 8; }
+.padStrip .who { font: 12px var(--display); letter-spacing: 0.05em; padding: 4px 7px; border-radius: 8px; color: #fff; }
+.padStrip .who.b { background: var(--blue); } .padStrip .who.r { background: var(--red); }
+.padStrip .k { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.padStrip .k small { color: var(--gold); font-size: 12px; }
+.padStrip .k.pick { padding: 2px 6px 2px 2px; border: 2px solid var(--gold); border-radius: 9px; background: rgba(255, 194, 61, 0.18); }
+.padStrip .k.dim { opacity: 0.45; }
+.padStrip .g { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; box-sizing: border-box; border-radius: 10px; background: #f3ece0; color: #1c1712; font: 800 10px/1 var(--body); }
+.padStrip .g svg { width: 14px; height: 14px; display: block; }
+.padStrip .g.sh { border-radius: 5px; min-width: 24px; }
+.padStrip .hp { width: 64px; height: 8px; border-radius: 5px; background: rgba(255, 248, 236, 0.2); overflow: hidden; }
+.padStrip .hp i { display: block; height: 100%; background: #3ddc84; }
+body.couch .hud:not(.hud2) { right: 50%; }
+.hud.hud2 { left: 50%; }
+body.couch .controls { opacity: 0; pointer-events: none; } /* (still laid out: Player 1's controller presses these buttons) */
+body.couch .hint { display: none; }
+body.couch .garage { left: 25%; max-width: calc(50vw - 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 64px); }
+body.couch .padStrip { max-width: calc(50vw - 32px); min-width: 0; }
+body.couch .padStrip.p2 { left: calc(50% + 16px); }
+body.couch .banner { font-size: clamp(22px, 3.6vw, 40px); }
+.split { position: fixed; z-index: 2; top: 0; bottom: 0; left: calc(50% - 2px); width: 4px; background: #1c1712; pointer-events: none; }
+.padFocus { outline: 4px solid var(--gold) !important; outline-offset: 3px; }
+#couchNote { font-size: 14px; opacity: 0.85; }
+</style>
+<div class="hud hud2" id="hud2" hidden>
+  <div class="basebar blue"><b>PLAYER 1 BOX <span class="pct" id="pctBlue2"></span></b><div class="bar"><i id="hpBlue2"></i></div></div>
+  <div class="mid"><div class="res"><div class="cereal" id="cereal2">0</div><div class="cereal clips" id="clips2" hidden>0</div></div><div class="toast" id="toast2"></div></div>
+  <div class="basebar red"><b>PLAYER 2 BOX <span class="pct" id="pctRed2"></span></b><div class="bar"><i id="hpRed2"></i></div><small class="eco" id="ecoRed2"></small></div>
+</div>
+<div class="split" id="split" hidden></div>
+<div class="padStrip p1" id="strip1" hidden></div>
+<div class="padStrip p2" id="strip2" hidden></div>
+<div class="screen" id="pause" hidden>
+  <div class="card"><h1>PAUSED</h1><p id="pauseText">Options (the button right of the touch pad) to carry on.</p>
+    <div class="two"><button class="go" id="resume">RESUME</button><button class="go alt" id="quit">LEVELS</button></div></div>
+</div>
+<!-- ===================== end of Controllers and couch versus (HTML/CSS) ===================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
 <script>
@@ -350,6 +396,8 @@ const $ = (id) => document.getElementById(id);
 
 // AR hook: a transparent canvas is needed to see the camera feed in AR; only ask for one when WebXR exists (no change in plain Safari/desktop). The AR mode itself is the last <script> ("AR mode").
 const AR = { on: false, placed: false, sparkCap: 400 };
+// Couch hook: two players on one screen (P2 drives Red's car, the screen splits in two) and the pause that a controller's Options button opens. The code is the last <script>, "Controllers and couch versus"
+const COUCH = { on: false, paused: false }; // (Player 2's car is state.p2, null in 1 player)
 const MT = { on: false }; // My Track hook: true while the player's own track (drawn or auto-built on a scanned surface) is being made, raced or fought on. The code is the <script> "My Track" after AR mode // AR.on is true only while an immersive-ar session is running
 // ---------- Graphics: the toy look (flags first; see HANDOVER.md "Graphics: the toy look") ----------
 // Every flag can be switched off from the URL (?tilt=0&round=0&ao=0&env=0&clearcoat=0&fx=0&pr=1) or in the console (GFX.tiltShift = false).
@@ -2914,11 +2962,12 @@ const workersOf = (team, role) => entities.filter((e) => e.kind === 'worker' && 
 function buyWorker(role, team) {
   if (state.over) return false;
   const w = WORKERS[role];
-  if (workersOf(team, role).length >= boxTrucksMax(team, w.max)) { if (team === BLUE) { toast(`${boxTrucksMax(team, w.max)} ${role}s is the most`); sfx('no'); } return false; }
-  if (state.cereal[team] < w.cost) { if (team === BLUE) { toast(`Need ${w.cost} cereal`); sfx('no'); } return false; }
+  const told = team === BLUE || COUCH.on; // (Couch hook: Player 2 hears about its own workers)
+  if (workersOf(team, role).length >= boxTrucksMax(team, w.max)) { if (told) { sideToast(team, `${boxTrucksMax(team, w.max)} ${role}s is the most`); sfx('no'); } return false; }
+  if (state.cereal[team] < w.cost) { if (told) { sideToast(team, `Need ${w.cost} cereal`); sfx('no'); } return false; }
   state.cereal[team] -= w.cost;
   spawnWorker(role, team);
-  if (team === BLUE) { sfx('build'); toast(role === 'truck' ? 'Dump truck on the way' : 'Digger on the way'); }
+  if (told) { sfx('build'); sideToast(team, role === 'truck' ? 'Dump truck on the way' : 'Digger on the way'); }
   return true;
 }
 // Where a team can unload: its toy box, or any bottle cap it holds.
@@ -3221,6 +3270,7 @@ function reset() {
   if (!stageL) { for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } for (let i = 0; i < (state.bases[BLUE].box.fx.trucks || 0); i++) spawnWorker('truck', BLUE); } // (Garage: more trucks = free ones to start) // not during the race (the real level is built after it)
   state.player = { kind: 'player', team: BLUE, x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
+  state.p2 = null; if (COUCH.on && !stageL) couchSpawn(L); // Couch hook: Player 2's red car
   if (state.finale) finaleBegin();
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
@@ -3401,6 +3451,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 let toastTimer = 0;
 let bannerTimer = 0;
 function banner(big, small) { $('banner').innerHTML = `${big}<small>${small}</small>`; $('banner').hidden = false; bannerTimer = 4; }
+const sideToast = (team, text) => (team === BLUE ? toast(text) : couchToast(text)); // Couch hook: a message for whoever acted (Player 2's goes in the right-hand HUD)
 function toast(text) {
   if (state.level?.cerealName) text = String(text).replace(/\bcereal\b/g, state.level.cerealName); $('toast').textContent = text; toastTimer = 2.2; }
 
@@ -3478,7 +3529,7 @@ function drive(e, dx, dz, throttle, dt, stats) {
   }
   const patch = patchAt(e.x, e.z);
   let grip = stats.grip, top = stats.speed;
-  if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'turbo') top *= 1.45; // gumball turbo
+  if (e.kind === 'player' && state.buff?.[e.team]?.kind === 'turbo') top *= 1.45; // gumball turbo
   top *= boxSpeed(e); // toy box effects: Boiling Point, steam deck, Cinnamon Boost
   if (e.spin > 0) grip *= 0.15; // spun out on butter or by a marble
   if ((patch === 'juice' || patch === 'oil') && !stats.floats) grip *= 0.12; // juice and cooking oil: slide
@@ -3627,9 +3678,9 @@ function hurt(e, dmg, byTeam, weapon) {
   if (byTeam === BLUE && state.bases?.[BLUE]?.box?.boil > 0) dmg *= 1.4; // Tea Kettle: Boiling Point
   if (weapon?.flatten && e.kind === 'turret') dmg *= e.type === 'wall' ? 4 : 1.6; // the Baguette Cannon flattens walls
   if (byTeam != null && state.buff?.[byTeam]?.kind === 'double') dmg *= 2;
-  if (e.kind === 'player' && state.buff?.[BLUE]?.kind === 'armour') dmg *= 0.5;
+  if (e.kind === 'player' && state.buff?.[e.team]?.kind === 'armour') dmg *= 0.5; // (e.team: Player 2's red car wins gumballs too)
   // Paperclip armour on your car: each plate takes 15% off every hit (3 plates at most).
-  if (e.kind === 'player' && state.plates) dmg *= 1 - 0.15 * state.plates;
+  if (e === state.player && state.plates) dmg *= 1 - 0.15 * state.plates;
   // Staples pin a car in place for a moment (a boss only flinches).
   if (weapon?.pin && e.kind !== 'base' && e.kind !== 'turret') {
     const pin = e.kind === 'boss' ? weapon.pin * 0.25 : weapon.pin;
@@ -3650,7 +3701,8 @@ function hurt(e, dmg, byTeam, weapon) {
   if (state.water && inWaterX(e.x, e.z, 0) && e.kind !== 'base') splash(e.x, e.z, big ? 2 : 1.2); else explode(e.x, e.z, big || e.kind === 'player', e.team === BLUE ? 0x2f7df6 : 0xef4136);
   if (near || big) { sfx(big ? 'bigBoom' : e.kind === 'player' ? 'wreck' : 'boom'); state.shake = Math.min(1.6, (state.shake || 0) + (big ? 1.6 : e.kind === 'unit' || e.kind === 'worker' ? 0.3 : 0.6)); }
   if (e.kind === 'player') {
-    e.alive = false; e.mesh.visible = false; state.respawn = 3; toast('Wrecked! Back in 3…');
+    e.alive = false; e.mesh.visible = false;
+    if (e === state.p2) { state.respawn2 = 3; couchToast('Wrecked! Back in 3…'); } else { state.respawn = 3; toast('Wrecked! Back in 3…'); } // (Couch hook: Player 2 has its own clock)
     return;
   }
   // Wrecks spill cereal where they fall: scoop it up (or let your trucks).
@@ -3696,10 +3748,11 @@ const TURRETS = {
   laser: { name: 'Laser', cost: 35, weapon: WEAPONS.laser, hp: 130, range: 23, rate: 0.14, dmg: 8 },
   staple: { name: 'Staple gun', cost: 20, weapon: WEAPONS.staple, hp: 130, range: 18, rate: 0.12, dmg: 5, burst: 4, reload: 1.6 },
 };
-const costOf = (type) => Math.round(TURRETS[type].cost * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
+const carOf = (team) => (team === RED ? state.p2 : state.player); // Couch hook: the car that builds for a side (Red has one only in 2 players)
+const costOf = (type, team = BLUE) => Math.round(TURRETS[type].cost * (VEHICLES[carOf(team).vehicle].builder ? 0.5 : 1));
 // Paperclips a turret costs on this level (0 on level 1).
-const clipsOf = (type) => Math.round((state.level.turretClips?.[type] || 0) * (VEHICLES[state.player.vehicle].builder ? 0.5 : 1));
-const priceText = (type) => costOf(type) + (clipsOf(type) ? ` + ${clipsOf(type)} ${secondName()}` : '');
+const clipsOf = (type, team = BLUE) => Math.round((state.level.turretClips?.[type] || 0) * (VEHICLES[carOf(team).vehicle].builder ? 0.5 : 1));
+const priceText = (type, team = BLUE) => costOf(type, team) + (clipsOf(type, team) ? ` + ${clipsOf(type, team)} ${secondName()}` : '');
 function makeTurret(type, team, x, z) {
   const t = TURRETS[type];
   const g = new THREE.Group();
@@ -3755,18 +3808,18 @@ function canPlace(x, z, team) {
   if (entities.filter((e) => e.kind === 'turret' && e.type !== 'wall' && e.team === team && e.hp > 0).length >= 10) return 'Turret limit reached (10)';
   return null;
 }
-function build(type) {
-  const p = state.player;
-  if (!p.alive || state.over) return;
-  const cost = costOf(type);
+function build(type, team = BLUE) { // (team: Couch hook, Player 2 builds for Red with its own car and cereal)
+  const p = carOf(team);
+  if (!p?.alive || state.over) return;
+  const cost = costOf(type, team);
   const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4; // drop it behind you
-  const why = canPlace(x, z, BLUE);
-  if (why) { toast(why); sfx('no'); return; }
-  const clips = clipsOf(type);
-  if (state.cereal[BLUE] < cost || state.clips[BLUE] < clips) { toast(`Need ${priceText(type)}`); sfx('no'); return; }
-  state.cereal[BLUE] -= cost; state.clips[BLUE] -= clips;
-  const tur = makeTurret(type, BLUE, x, z);
-  sfx('build'); toast(tur.high ? `${TURRETS[type].name} turret built on the ledge: +30% range` : `${TURRETS[type].name} turret built`);
+  const why = canPlace(x, z, team);
+  if (why) { sideToast(team, why); sfx('no'); return; }
+  const clips = clipsOf(type, team);
+  if (state.cereal[team] < cost || state.clips[team] < clips) { sideToast(team, `Need ${priceText(type, team)}`); sfx('no'); return; }
+  state.cereal[team] -= cost; state.clips[team] -= clips;
+  const tur = makeTurret(type, team, x, z);
+  sfx('build'); sideToast(team, tur.high ? `${TURRETS[type].name} turret built on the ledge: +30% range` : `${TURRETS[type].name} turret built`);
 }
 // ---------- Domino run: line them up, knock the first, the last one falls on their toy box ----------
 const dominoes = [];
@@ -3786,16 +3839,16 @@ function domTex(face, spot, pips) {
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
   return t;
 }
-function placeDomino() {
-  const p = state.player;
-  if (!p.alive || state.over) return;
-  if (dominoes.filter((d) => d.team === BLUE).length >= 40) { toast('40 dominoes is the most'); sfx('no'); return; }
-  if (state.cereal[BLUE] < 4) { toast('Need 4 cereal'); sfx('no'); return; }
+function placeDomino(team = BLUE) { // (team: Couch hook, Player 2 lays red ones)
+  const p = carOf(team);
+  if (!p?.alive || state.over) return;
+  if (dominoes.filter((d) => d.team === team).length >= 40) { sideToast(team, '40 dominoes is the most'); sfx('no'); return; }
+  if (state.cereal[team] < 4) { sideToast(team, 'Need 4 cereal'); sfx('no'); return; }
   const x = p.x - Math.cos(p.heading) * 4, z = p.z - Math.sin(p.heading) * 4;
-  if (Math.abs(x) > W / 2 - 2 || Math.abs(z) > D / 2 - 2 || inWaterX(x, z, 1) || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 0.8 && Math.abs(z - o.z) < o.d / 2 + 0.8)) { toast('No room for a domino here'); sfx('no'); return; }
-  state.cereal[BLUE] -= 4;
-  addDomino(x, z, Math.cos(p.heading), Math.sin(p.heading), BLUE);
-  sfx('clack'); toast(`Domino ${dominoes.filter((d) => d.team === BLUE).length}: drive into the first one to knock them over`);
+  if (Math.abs(x) > W / 2 - 2 || Math.abs(z) > D / 2 - 2 || inWaterX(x, z, 1) || obstacles.some((o) => Math.abs(x - o.x) < o.w / 2 + 0.8 && Math.abs(z - o.z) < o.d / 2 + 0.8)) { sideToast(team, 'No room for a domino here'); sfx('no'); return; }
+  state.cereal[team] -= 4;
+  addDomino(x, z, Math.cos(p.heading), Math.sin(p.heading), team);
+  sfx('clack'); sideToast(team, `Domino ${dominoes.filter((d) => d.team === team).length}: drive into the first one to knock them over`);
 }
 // A domino stands across its line, so a run falls along the way it was laid. Theirs are red with white spots.
 function addDomino(x, z, dx, dz, team, fixed = false) {
@@ -4006,7 +4059,8 @@ function runsUpdate(dt) {
     if (run.ready) {
       run.cap.material.emissiveIntensity = 0.3 + Math.sin(state.time * 5) * 0.25; // glows when it's ready
       // Your drones help: park on your button and any of your drones nearby pile on with you.
-      if (run.team === BLUE && state.player.alive && dist2(state.player, run) < 8 * 8) for (const e of entities) if (e.kind === 'unit' && e.team === BLUE && e.hp > 0 && dist2(e, run) < 22 * 22) e.presser = run;
+      const me = carOf(run.team); // (Couch hook: Player 2's drones help on Red's button the same way)
+      if (me?.alive && dist2(me, run) < 8 * 8) for (const e of entities) if (e.kind === 'unit' && e.team === run.team && e.hp > 0 && dist2(e, run) < 22 * 22) e.presser = run;
       const on = entities.filter((e) => e.team === run.team && e.hp > 0 && (e.kind === 'unit' || (e.kind === 'player' && e.alive)) && dist2(e, run) < 5 * 5); // a crew crowds round it
       const weight = on.reduce((t, e) => t + weightOf(e), 0);
       if (on.length && weight < BUTTON_WEIGHT && on.includes(state.player) && state.time - (run.toldAt || -9) > 3) {
@@ -4100,7 +4154,7 @@ function makeGumball(x, z, s = 1) {
 }
 function spinGumball(t) {
   const cost = state.finale ? FIN_GUM_COST : GUMBALL_COST, pool = state.finale ? finalePrizes(t) : PRIZES; // level 6: dearer, with heroes and the Stand Mixer in the pool
-  if (state.cereal[t] < cost) { if (t === BLUE) { toast(`A spin costs ${cost} cereal`); sfx('no'); } return; }
+  if (state.cereal[t] < cost) { if (t === BLUE || COUCH.on) { sideToast(t, `A spin costs ${cost} cereal`); sfx('no'); } return; }
   state.cereal[t] -= cost;
   gumball.cool[t] = 2.5; gumball.spin = 1.2;
   const total = pool.reduce((s, p) => s + p[0], 0);
@@ -4110,7 +4164,7 @@ function spinGumball(t) {
   // The gumball rolls out of the chute towards whoever paid.
   burst(gumball.x + (t === BLUE ? -3.5 : 3.5), gumball.z, prize[1], 10, 6, 2);
   if (dist2(gumball, state.player) < 2500) sfx(prize[2] === 'Dud' ? 'no' : 'cap');
-  toast(t === BLUE ? `Gumball! You got ${said}` : `They spun the gumball machine: ${prize[2]}`);
+  if (COUCH.on) sideToast(t, `Gumball! You got ${said}`); else toast(t === BLUE ? `Gumball! You got ${said}` : `They spun the gumball machine: ${prize[2]}`);
 }
 function gumballUpdate(dt) {
   if (!gumball) return;
@@ -4264,9 +4318,10 @@ function armour() {
   sfx('build'); toast(`Paperclip armour ${state.plates}/3: hits do ${100 - 15 * state.plates}%`);
 }
 const upgradeCost = (t) => 20 + t.level * 15;
-function nearOwnTurret() {
+function nearOwnTurret(team = BLUE) {
+  const car = carOf(team);
   let best = null, bd = 36;
-  for (const e of entities) if (e.kind === 'turret' && e.team === BLUE && e.hp > 0 && e.level < 3 && dist2(e, state.player) < bd) { bd = dist2(e, state.player); best = e; }
+  for (const e of entities) if (e.kind === 'turret' && e.team === team && e.hp > 0 && e.level < 3 && dist2(e, car) < bd) { bd = dist2(e, car); best = e; }
   return best;
 }
 function levelUp(t) {
@@ -4277,23 +4332,24 @@ function levelUp(t) {
   pip.position.set(-0.6 + (t.level - 2) * 1.2, 3, 0);
   t.pips.add(pip);
 }
-function upgrade() {
-  const t = nearOwnTurret();
-  if (!t || !state.player.alive) { toast('Drive next to your turret'); sfx('no'); return; }
-  const free = state.freeUp > 0, cost = free ? 0 : upgradeCost(t); // 1st place in the Loadout Race wins one free Upgrade
-  if (state.cereal[BLUE] < cost) { toast(`Need ${cost} cereal`); sfx('no'); return; }
-  state.cereal[BLUE] -= cost;
+function upgrade(team = BLUE) {
+  const t = nearOwnTurret(team);
+  if (!t || !carOf(team).alive) { sideToast(team, 'Drive next to your turret'); sfx('no'); return; }
+  const free = team === BLUE && state.freeUp > 0, cost = free ? 0 : upgradeCost(t); // 1st place in the Loadout Race wins one free Upgrade
+  if (state.cereal[team] < cost) { sideToast(team, `Need ${cost} cereal`); sfx('no'); return; }
+  state.cereal[team] -= cost;
   levelUp(t);
   if (free) state.freeUp--;
-  sfx('build'); toast(`Turret level ${t.level}${free ? ' (free upgrade)' : ''}`);
+  sfx('build'); sideToast(team, `Turret level ${t.level}${free ? ' (free upgrade)' : ''}`);
 }
-function drones() {
+function drones(team = BLUE) {
   if (state.over) return;
-  if (state.cereal[BLUE] < 20) { toast('Need 20 cereal'); sfx('no'); return; }
-  if (state.finale && armyOf(BLUE) + 3 > ARMY_CAP) { toast(`Army full (${ARMY_CAP})`); sfx('no'); return; }
-  state.cereal[BLUE] -= 20;
-  for (let i = 0; i < 3; i++) { const sp = state.finale ? spawnPt(BLUE, 8) : [-52, -4]; spawnUnit('drone', BLUE, sp[0] + i * 2, sp[1] + (state.finale ? i * 2 : i * 4)); }
-  sfx('build'); toast('Drones away!');
+  if (state.cereal[team] < 20) { sideToast(team, 'Need 20 cereal'); sfx('no'); return; }
+  if (state.finale && armyOf(team) + 3 > ARMY_CAP) { toast(`Army full (${ARMY_CAP})`); sfx('no'); return; }
+  state.cereal[team] -= 20;
+  const s = team === BLUE ? 1 : -1; // (Couch hook: Red's drones take off from Red's end)
+  for (let i = 0; i < 3; i++) { const sp = state.finale ? spawnPt(BLUE, 8) : [-52 * s, -4 * s]; spawnUnit('drone', team, sp[0] + i * 2 * s, sp[1] + (state.finale ? i * 2 : i * 4 * s)); }
+  sfx('build'); sideToast(team, 'Drones away!');
 }
 
 // ---------- Garage ----------
@@ -7919,7 +7975,8 @@ function step(now, xrFrame) {
   last = now;
   state.dt = dt;
   if (AR.on) arFrame(xrFrame, dt); // AR hook: head pose, hit test, the world's place on the table
-  if (!state.over && $('start').hidden && !(AR.on && !AR.placed)) update(dt); // (AR: the game waits until the table is chosen)
+  if (window.padPoll) padPoll(dt); // Couch hook: read the controllers (sticks into `input`, buttons into actions and menus). (The first frames can run before that <script> is parsed.)
+  if (!state.over && $('start').hidden && !COUCH.paused && !(AR.on && !AR.placed)) update(dt); // (AR: the game waits until the table is chosen)
   render(dt);
 }
 
@@ -7958,7 +8015,7 @@ function update(dt) {
     const mag = Math.min(1, Math.hypot(ix, iz));
     drive(p, ix / (mag || 1), iz / (mag || 1), mag, dt, VEHICLES[p.vehicle]);
     p.cool -= dt;
-    if ((input.fire || input.keys.has('Space')) && p.cool <= 0) {
+    if ((input.fire || input.padFire || input.keys.has('Space')) && p.cool <= 0) { // (padFire: a controller's Cross or R2)
       const target = nearestEnemy(p, p.weapon.range);
       // Aim at the nearest enemy in range if it's roughly ahead; otherwise shoot straight.
       const aim = target && Math.abs(wrap(angleTo(p, target) - p.heading)) < 1.4 ? angleTo(p, target) : p.heading;
@@ -7974,6 +8031,7 @@ function update(dt) {
     }
   }
 
+  if (COUCH.on) couchUpdate(dt); // Couch hook: Player 2's red car (drive, fire, repair, scoop, respawn) and the right-hand HUD
   boxesUpdate(dt); // toy boxes: unfold, roof turret, the Baron's cannon, abilities
   // Units, turrets
   for (const e of entities) {
@@ -8005,8 +8063,8 @@ function update(dt) {
   dominoesUpdate(dt);
   if (flares.length) flaresUpdate(dt);
   const R = state.level.rules;
-  if (R.raidEvery && state.time >= state.nextRaid) { state.nextRaid += R.raidEvery; spawnRaid(); }
-  if (R.boss && !state.boss && state.time >= R.boss.at) spawnBoss();
+  if (R.raidEvery && !COUCH.on && state.time >= state.nextRaid) { state.nextRaid += R.raidEvery; spawnRaid(); } // (Couch hook: raids and the boss only ever fight for Red, so they are off in 2 players)
+  if (R.boss && !COUCH.on && !state.boss && state.time >= R.boss.at) spawnBoss();
   if (state.boss && state.boss.hp > 0) $('bossHp').style.width = `${state.boss.hp / state.boss.maxHp * 100}%`;
 
   // Shots
@@ -8101,10 +8159,7 @@ function update(dt) {
     pl.group.visible = pl.amount > 0;
   }
 
-  commander(dt);
-  rushUpdate();
-  enemyBoats();
-  enemyTricks();
+  if (!COUCH.on) { commander(dt); rushUpdate(); enemyBoats(); enemyTricks(); } // Couch hook: Player 2 makes Red's build, army and trick decisions, so the commander stands down (workers think the same on both sides)
   cookUpdate(dt);
   runsUpdate(dt);
   gumballUpdate(dt);
@@ -8240,13 +8295,13 @@ function render(dt) {
   mixArrowDraw();
   if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
   if (state.level?.dark) darkUpdate(dt);
-  if (AR.on) arRender(); else gfxRender(); // AR hook
+  if (AR.on) arRender(); else if (COUCH.on) couchRender(dt); else gfxRender(); // AR hook; Couch hook: two views side by side
 }
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   gfxSize();
-  camera.aspect = innerWidth / innerHeight;
+  camera.aspect = innerWidth / (COUCH.on ? 2 : 1) / innerHeight; // Couch hook: each player's view is half the width
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
@@ -8454,6 +8509,7 @@ function boxHud() {
 
 function endGame(won) {
   state.over = true;
+  if (COUCH.on) return couchEnd(won); // Couch hook: PLAYER 1 / PLAYER 2 WINS, no stars, no dialogue
   const earned = won ? 1 + (state.time < FAST_WIN ? 1 : 0) + (state.trucksLost === 0 ? 1 : 0) : 0;
   if (MT.on) { /* My Track hook: no level stars */ } else if (won && earned > starsOf(curLevel)) { progress.stars[curLevel + 1] = earned; saveProgress(); }
   else if (won) saveProgress();
@@ -8472,15 +8528,16 @@ function endGame(won) {
 }
 function start() {
   if (MT.on) return mtAgain(); // My Track hook: Play again races the same track
+  if (COUCH.on) return couchStart(); // Couch hook: Play again starts another 2-player battle
   audioInit();
   $('start').hidden = true; $('end').hidden = true;
   reset();
   if (state.race) talkThen(curLevel, 'pre', lrIntro); // dialogue hook: the cast trade insults, then the Loadout Race intro card (the race holds still until GO!)
 }
-$('play').addEventListener('click', start);
+$('play').addEventListener('click', () => { if (COUCH.on) couchOff(); start(); }); // (Couch hook: PLAY is always 1 player)
 $('again').addEventListener('click', start);
 $('next').addEventListener('click', () => { curLevel += 1; start(); });
-$('menu').addEventListener('click', () => { $('end').hidden = true; if (MT.on) return mtExit(); $('start').hidden = false; selectLevel(curLevel); }); // (My Track hook)
+$('menu').addEventListener('click', () => { $('end').hidden = true; if (COUCH.on) couchOff(); if (MT.on) return mtExit(); $('start').hidden = false; selectLevel(curLevel); }); // (My Track hook)
 renderLevels();
 reset();
 requestAnimationFrame(step);
@@ -10784,4 +10841,437 @@ function mtUi(force) {
   $('mtExit').addEventListener('click', mtExit);
 })();
 // ===================== end of My Track =====================
+</script>
+<script>
+// ===================== Controllers and couch versus (15 Nov 2026) =====================
+// Controllers: the Gamepad API, standard mapping (a console pad paired by Bluetooth shows up like this in Safari and Chrome; no libraries).
+// padPoll() runs once a frame from step(). The left stick writes into `input.x/z`, the same numbers the touch stick and WASD feed, so the race,
+// the Kitchen Run, drift and the battle all steer the same; Cross or R2 sets `input.padFire`. Buttons fire on the press (not while held):
+// in the battle Player 1's buttons press the same HUD buttons a finger would (so a tool you did not win stays off); on a card the D-pad or
+// stick moves a gold ring between its buttons and Cross clicks one. Options pauses. The hint strip shows only while a controller is in use.
+// Couch versus: 2 PLAYERS on the title card (levels 1 and 2), offered when a controller is connected. Player 1 = blue, the first controller
+// (and the keyboard and touch); Player 2 = red, the second controller (or the only one, when Player 1 plays on the keyboard). Player 2 gets
+// Red's car (`state.p2`, a second 'player' entity, so turrets, units, caps and buttons treat it like yours), Red's cereal and clips, and the
+// same buttons. The commander, the raids and the boss stand down (hooks in update()); trucks and diggers think the same on both sides.
+// The screen splits down the middle (couchRender): two follow cameras, the scissor test, one shadow map for both views, one tilt-shift pass.
+const PAD_DEAD = 0.15; // stick deadzone (radial); the rest of the travel is rescaled to 0..1
+const PB = { cross: 0, circle: 1, square: 2, triangle: 3, l1: 4, r1: 5, l2: 6, r2: 7, options: 9, up: 12, down: 13, left: 14, right: 15 }; // standard mapping
+const COUCH_LEVELS = [0, 1]; // levels 3 to 6 lean on scripted Red behaviour (the sneaky drawer, boats, the rusher, the finale's squadrons): 1 player only for now
+const PADS = { prev: new Map(), used: false, drove: false, n: 0, focus: null, focusAt: null, dir: '', rep: 0, pick: ['', ''], in2: { x: 0, z: 0, fire: false }, stripT: 0, sig: ['', ''], title: '' };
+const P1_DIRECT = { [PB.square]: 'bGun', [PB.triangle]: 'bRocket', [PB.l1]: 'bTruck', [PB.r1]: 'bDigger', [PB.l2]: 'bUpgrade', [PB.circle]: 'bAbility', [PB.down]: 'bDrones' };
+
+// --- reading the pads ---
+function padsNow() {
+  let got = [];
+  try { got = navigator.getGamepads ? navigator.getGamepads() : []; } catch (e) { got = []; }
+  const out = [];
+  for (const g of got || []) if (g && g.connected !== false && (g.mapping === 'standard' || g.buttons.length >= 16)) out.push(g);
+  return out;
+}
+function padRead(g) { // { x, z, held[], hit[] }: hit = pressed this frame
+  const held = g.buttons.map((q) => !!q && (q.pressed || q.value > 0.5)), was = PADS.prev.get(g.index) || [];
+  PADS.prev.set(g.index, held);
+  let x = g.axes[0] || 0, z = g.axes[1] || 0;
+  const m = Math.hypot(x, z);
+  if (m < PAD_DEAD) x = z = 0; else { const k = Math.min(1, (m - PAD_DEAD) / (1 - PAD_DEAD)) / m; x *= k; z *= k; }
+  return { x, z, held, hit: held.map((h, i) => h && !was[i]) };
+}
+function padMerge(list) { // 1 player: every controller drives Player 1 (the stick that is pushed furthest wins)
+  if (!list.length) return null;
+  const r = { x: 0, z: 0, held: [], hit: [] };
+  for (const q of list) {
+    if (Math.hypot(q.x, q.z) > Math.hypot(r.x, r.z)) { r.x = q.x; r.z = q.z; }
+    q.held.forEach((h, i) => { r.held[i] = r.held[i] || h; r.hit[i] = r.hit[i] || q.hit[i]; });
+  }
+  return r;
+}
+const live = (el) => !!el && !el.hidden && !el.classList.contains('off') && el.getClientRects().length > 0; // (in 2 players the HUD buttons are see-through but still laid out)
+function press(el) { // what a finger on the HUD button does (a disabled button still answers, so Upgrade can say "drive next to your turret")
+  const d = el.disabled; el.disabled = false;
+  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 77 }));
+  el.disabled = d;
+}
+
+// --- the card on top, and moving round it ---
+function padScreen() {
+  if (!$('pause').hidden) return $('pause');
+  if (typeof TK !== 'undefined' && TK.open) return $('talk');
+  let top = null, tz = -1;
+  for (const el of document.querySelectorAll('.screen')) {
+    if (el.hidden || !el.getClientRects().length) continue;
+    const z = +getComputedStyle(el).zIndex || 0;
+    if (z >= tz) { top = el; tz = z; }
+  }
+  return top;
+}
+function padFocus(el) {
+  if (PADS.focus === el) return;
+  if (PADS.focus) PADS.focus.classList.remove('padFocus');
+  PADS.focus = el;
+  if (!el) return;
+  el.classList.add('padFocus');
+  try { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); } catch (e) { /* old browsers: the ring is enough */ }
+  const r = el.getBoundingClientRect(); PADS.focusAt = [r.left + r.width / 2, r.top + r.height / 2];
+}
+function padStep(from, list, dir) { // the nearest button that way (a cone, favouring straight lines)
+  const a = from.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  const [ux, uy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
+  let best = null, bs = Infinity;
+  for (const b of list) {
+    if (b === from) continue;
+    const r = b.getBoundingClientRect(), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
+    const along = dx * ux + dy * uy, side = Math.abs(dx * uy - dy * ux);
+    if (along < 4) continue;
+    const sc = along + side * 2.2;
+    if (sc < bs) { bs = sc; best = b; }
+  }
+  return best;
+}
+function padDir(r, dt) { // D-pad or stick, with key-repeat (0.35 s, then every 0.13 s)
+  const h = r.held, d = h[PB.up] || r.z < -0.6 ? 'up' : h[PB.down] || r.z > 0.6 ? 'down' : h[PB.left] || r.x < -0.6 ? 'left' : h[PB.right] || r.x > 0.6 ? 'right' : '';
+  if (d !== PADS.dir) { PADS.dir = d; PADS.rep = 0.35; return d; }
+  if (d && (PADS.rep -= dt) <= 0) { PADS.rep = 0.13; return d; }
+  return '';
+}
+function padMenu(scr, r, dt) {
+  if (scr.id === 'talk') { if (r.hit[PB.cross]) talkAdvance(); if (r.hit[PB.circle] || r.hit[PB.options]) talkClose(true); return; }
+  const list = [...scr.querySelectorAll('button')].filter((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden');
+  if (!list.length) return;
+  let f = PADS.focus;
+  if (!f || !list.includes(f)) { // first visit, or the card redrew its buttons: the nearest to where the ring was, else the main button
+    const gone = PADS.focus && !PADS.focus.isConnected;
+    f = null;
+    if (gone && PADS.focusAt) {
+      let bd = Infinity;
+      for (const b of list) { const q = b.getBoundingClientRect(), d = Math.hypot(q.left + q.width / 2 - PADS.focusAt[0], q.top + q.height / 2 - PADS.focusAt[1]); if (d < bd) { bd = d; f = b; } }
+    }
+    f ||= list.find((b) => b.classList.contains('go') && !b.classList.contains('alt')) || list[0];
+    padFocus(f);
+  }
+  const d = padDir(r, dt);
+  if (d) { const n = padStep(f, list, d); if (n) padFocus(n); }
+  if (r.hit[PB.cross]) { audioInit(); f.click(); }
+  if (r.hit[PB.circle]) { const back = { pause: 'resume', boxScr: 'boxDone', end: 'menu' }[scr.id]; if (back && live($(back))) $(back).click(); }
+  if (r.hit[PB.options]) { if (scr.id === 'pause') $('resume').click(); else if (scr.id === 'start' && !f.id.startsWith('play')) $('play').click(); else if (scr.id === 'start') f.click(); }
+}
+
+// --- the pause card (Options, or Escape on a keyboard) ---
+const canPause = () => $('start').hidden && !state.over && !MT.on && !AR.on && ['battle', 'race', 'countdown'].includes(state.phase) && !padScreen();
+function padPause(on, why) {
+  COUCH.paused = on;
+  $('pause').hidden = !on;
+  $('pauseText').textContent = why || 'Press Options (or Escape) to carry on.';
+  input.padFire = false; PADS.in2.fire = false;
+  if (on && engine && audio) engine.g.gain.setTargetAtTime(0, audio.currentTime, 0.05);
+  if (!on && PADS.focus) { PADS.focus.classList.remove('padFocus'); PADS.focus = null; }
+}
+$('resume').addEventListener('click', () => padPause(false));
+$('quit').addEventListener('click', () => { padPause(false); $('end').hidden = true; if (COUCH.on) couchOff(); $('start').hidden = false; selectLevel(curLevel); });
+addEventListener('keydown', (e) => { if (e.code !== 'Escape' || e.repeat) return; if (COUCH.paused) padPause(false); else if (canPause()) padPause(true); });
+
+// --- the battle and the race: what each button does ---
+function p1Tools() { // the D-pad list: every other button on the HUD (dominoes, staples, the item, ...) and, at home, the garage
+  const direct = new Set([...Object.values(P1_DIRECT), 'bFire', 'bDrop', 'bPeek']);
+  const out = [];
+  for (const b of document.querySelectorAll('.controls button, #garage button, #planBox button, #squadPanel button')) {
+    if (direct.has(b.id) || !live(b)) continue;
+    out.push({ key: b.id || b.dataset.v || b.textContent, label: (b.childNodes[0]?.textContent || b.textContent).trim(), cost: b.querySelector('small')?.textContent || '', run: () => press(b) });
+  }
+  return out;
+}
+function p2Tools() { // Player 2's D-pad list: Red's other tools on this level, a gumball item, and the garage at Red's box
+  const out = [], q = state.p2;
+  if (aiHas('domino')) out.push({ key: 'domino', label: 'Domino', cost: '4', run: () => placeDomino(RED) });
+  if (hasClips()) for (const id of ['staple', 'magnet', 'catapult']) if (aiHas(id)) out.push({ key: id, label: TURRETS[id].name.replace(' gun', ''), cost: priceText(id, RED), run: () => build(id, RED) });
+  if (state.redItems?.length) out.push({ key: 'item', label: `Use ${ITEMS[state.redItems[0]].icon}`, cost: '', run: () => { if (q.alive) useItem(RED, q); } });
+  if (q?.alive && dist2(q, state.bases[RED]) < 16 * 16) for (const [k, v] of Object.entries(VEHICLES)) {
+    const vc = vehCost(k);
+    out.push({ key: 'v:' + k, label: v.name, cost: state.unlocked2.has(k) ? (q.vehicle === k ? 'Driving' : 'Ready') : `${vc.c}${vc.p ? ` + ${vc.p}` : ''}`, run: () => couchVehicle(k) });
+  }
+  return out;
+}
+function p2Direct(i) {
+  const q = state.p2;
+  if (!q?.alive && i !== PB.l1 && i !== PB.r1 && i !== PB.down) return;
+  if (i === PB.square) build('gun', RED);
+  else if (i === PB.triangle) { if (aiHas('rocket')) build('rocket', RED); else sfx('no'); }
+  else if (i === PB.l1) buyWorker('truck', RED);
+  else if (i === PB.r1) buyWorker('digger', RED);
+  else if (i === PB.l2) { if (aiHas('upgrade')) upgrade(RED); else sfx('no'); }
+  else if (i === PB.down) { if (aiHas('drones')) drones(RED); else sfx('no'); }
+}
+function padTools(who, r, tools) { // D-pad left/right picks a tool, up uses it
+  const keys = tools.map((t) => t.key);
+  let k = Math.max(0, keys.indexOf(PADS.pick[who]));
+  if (r.hit[PB.left]) k = (k + tools.length - 1) % Math.max(1, tools.length);
+  if (r.hit[PB.right]) k = (k + 1) % Math.max(1, tools.length);
+  PADS.pick[who] = keys[k] || '';
+  if (r.hit[PB.up] && tools[k]) tools[k].run();
+}
+function padBattle(r1, r2) {
+  if (r1) {
+    for (const [i, id] of Object.entries(P1_DIRECT)) if (r1.hit[i] && live($(id))) press($(id));
+    padTools(0, r1, p1Tools());
+  }
+  if (r2 && COUCH.on && state.p2) {
+    for (const i of [PB.square, PB.triangle, PB.l1, PB.r1, PB.l2, PB.down]) if (r2.hit[i]) p2Direct(i);
+    padTools(1, r2, p2Tools());
+  }
+}
+function padRace(r) {
+  if (r.hit[PB.cross] || r.hit[PB.square]) { if (live($('bDrop'))) press($('bDrop')); }
+  if (r.hit[PB.triangle] && state.phase === 'race') skipRace();
+}
+
+// --- every frame ---
+function padPoll(dt) {
+  const list = padsNow(), reads = list.map(padRead);
+  if (list.length !== PADS.n) { PADS.n = list.length; if (!list.length) { PADS.used = false; input.padFire = false; } }
+  let r1 = null, r2 = null;
+  if (COUCH.on) [r1, r2] = reads.length >= 2 ? [reads[0], reads[1]] : [null, reads[0] || null];
+  else r1 = padMerge(reads);
+  const all = padMerge(reads);
+  if (all && (all.held.some(Boolean) || all.x || all.z)) PADS.used = true;
+  // Player 1's stick feeds the same input as the touch stick (letting go puts it back to 0, unless a finger is on the screen)
+  if (r1 && (r1.x || r1.z)) { input.x = r1.x; input.z = r1.z; PADS.drove = true; }
+  else if (PADS.drove) { PADS.drove = false; if (stickId === null) input.x = input.z = 0; }
+  const scr = padScreen();
+  const playing = !scr && $('start').hidden && !state.over;
+  input.padFire = !!(r1 && playing && state.phase === 'battle' && (r1.held[PB.cross] || r1.held[PB.r2]));
+  PADS.in2.x = r2 && playing ? r2.x : 0; PADS.in2.z = r2 && playing ? r2.z : 0;
+  PADS.in2.fire = !!(r2 && playing && (r2.held[PB.cross] || r2.held[PB.r2]));
+  if (scr) { if (all) padMenu(scr, all, dt); }
+  else if (all?.hit[PB.options] && canPause()) padPause(true);
+  else if (playing && !COUCH.paused) {
+    if (state.phase === 'battle') padBattle(r1, r2);
+    else if (r1 && (state.phase === 'race' || state.phase === 'countdown')) padRace(r1);
+  }
+  if (!scr && PADS.focus) { PADS.focus.classList.remove('padFocus'); PADS.focus = null; }
+  couchTitle(list.length);
+  if ((PADS.stripT -= dt) <= 0) { PADS.stripT = 0.1; stripDraw(scr); }
+}
+// A finger or a key (a real one, not our own pressed buttons) hides the hint strip again in 1 player.
+for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, (e) => { if (e.isTrusted && !COUCH.on && e.code !== 'Escape') PADS.used = false; }, true);
+addEventListener('gamepadconnected', (e) => { PADS.used = true; if ($('start').hidden && !state.over) toast(`Controller ${e.gamepad.index + 1} connected`); });
+addEventListener('gamepaddisconnected', (e) => {
+  PADS.prev.delete(e.gamepad.index);
+  if (COUCH.on && $('start').hidden && !state.over && !COUCH.paused) padPause(true, 'A controller went to sleep or was unplugged. Turn it back on (press its middle button), then RESUME.');
+});
+
+// --- the hint strip: the buttons as little pictures, with what they cost ---
+const GL = (d) => `<svg viewBox="0 0 14 14">${d}</svg>`, INK = 'stroke="#1c1712" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+const GLYPH = {
+  cross: GL(`<path d="M3.5 3.5l7 7M10.5 3.5l-7 7" ${INK}/>`), circle: GL(`<circle cx="7" cy="7" r="4.3" ${INK}/>`),
+  square: GL(`<rect x="3" y="3" width="8" height="8" ${INK}/>`), triangle: GL(`<path d="M7 2.8l4.6 8H2.4z" ${INK}/>`),
+  up: GL('<path d="M7 3l4.5 7h-9z" fill="#1c1712"/>'), down: GL('<path d="M7 11l4.5-7h-9z" fill="#1c1712"/>'),
+  left: GL('<path d="M3 7l7-4.5v9z" fill="#1c1712"/>'), right: GL('<path d="M11 7l-7-4.5v9z" fill="#1c1712"/>'),
+  options: GL(`<path d="M3 4h8M3 7h8M3 10h8" ${INK}/>`), stick: GL('<circle cx="7" cy="7" r="4.6" fill="#1c1712"/><circle cx="7" cy="7" r="2" fill="#f3ece0"/>'),
+};
+const gk = (g) => (GLYPH[g] ? `<span class="g">${GLYPH[g]}</span>` : `<span class="g sh">${g}</span>`);
+const chip = (gs, label, cost, cls = '') => `<span class="k ${cls}">${gs.map(gk).join('')}${esc(label)}${cost ? ` <small>${esc(cost)}</small>` : ''}</span>`;
+function stripBattle(who) {
+  const h = [];
+  if (who === 0) {
+    const t = (id, gs, label) => { const b = $(id); if (live(b)) h.push(chip(gs, label || (b.childNodes[0]?.textContent || '').trim(), b.querySelector('small')?.textContent || '')); };
+    h.push(chip(['cross', 'R2'], 'Fire', ''));
+    t('bGun', ['square']); t('bRocket', ['triangle']); t('bTruck', ['L1']); t('bDigger', ['R1']); t('bUpgrade', ['L2']);
+    if (live($('bAbility'))) h.push(chip(['circle'], $('abilName').textContent, ''));
+    t('bDrones', ['down']);
+  } else {
+    const q = state.p2, ut = nearOwnTurret(RED);
+    h.push(chip(['cross', 'R2'], 'Fire', ''), chip(['square'], 'Gun', priceText('gun', RED)));
+    if (aiHas('rocket')) h.push(chip(['triangle'], 'Rocket', priceText('rocket', RED)));
+    h.push(chip(['L1'], 'Truck', '15'), chip(['R1'], 'Digger', '20'));
+    if (aiHas('upgrade')) h.push(chip(['L2'], 'Upgrade', ut ? String(upgradeCost(ut)) : '—', ut ? '' : 'dim'));
+    if (aiHas('drones')) h.push(chip(['down'], 'Drones', '20'));
+    if (q && !q.alive) h.unshift(`<span class="k"><small>Back in ${Math.max(1, Math.ceil(state.respawn2))}…</small></span>`);
+  }
+  const tools = who === 0 ? p1Tools() : p2Tools();
+  if (tools.length) {
+    const k = Math.max(0, tools.findIndex((x) => x.key === PADS.pick[who])), tl = tools[k];
+    h.push(`<span class="k">${gk('left')}${gk('right')}</span>${chip(['up'], tl.label, tl.cost, 'pick')}`);
+  }
+  h.push(chip(['options'], 'Pause', ''));
+  return h.join('');
+}
+function stripDraw(scr) {
+  const s1 = $('strip1'), s2 = $('strip2');
+  const pads = PADS.n, game = !scr && $('start').hidden && !state.over;
+  let h1 = '', h2 = '', menu = false;
+  if (pads && scr && scr.id !== 'talk' && (PADS.used || COUCH.on)) { menu = true; h1 = chip(['cross'], 'Choose', '') + chip(['up', 'down', 'left', 'right'], 'Move', '') + chip(['circle'], 'Back', '') + (scr.id === 'start' ? chip(['options'], 'Play', '') : ''); }
+  else if (pads && scr?.id === 'talk' && PADS.used) { menu = true; h1 = chip(['cross'], 'Next', '') + chip(['circle'], 'Skip', ''); }
+  else if (pads && game && COUCH.on && state.phase === 'battle') {
+    const hp = (car) => (car ? `<span class="hp"><i style="width:${Math.round(Math.max(0, car.alive === false ? 0 : car.hp / car.maxHp) * 100)}%"></i></span>` : '');
+    h1 = `<span class="who b">P1</span>${hp(state.player)}${PADS.n >= 2 ? stripBattle(0) : '<span class="k">Keyboard: WASD, Space, T G 1 2 U 3</span>'}`;
+    h2 = `<span class="who r">P2</span>${hp(state.p2)}${stripBattle(1)}`;
+  } else if (pads && game && PADS.used) {
+    if (state.phase === 'battle') h1 = stripBattle(0);
+    else if (state.phase === 'race' || state.phase === 'countdown') h1 = chip(['stick'], 'Drive', '') + (live($('bDrop')) ? chip(['cross'], 'Drop box', '') : '') + chip(['triangle'], 'Skip race', '') + chip(['options'], 'Pause', '');
+  }
+  if (h1 !== PADS.sig[0]) { PADS.sig[0] = h1; s1.innerHTML = h1; }
+  if (h2 !== PADS.sig[1]) { PADS.sig[1] = h2; s2.innerHTML = h2; }
+  s1.classList.toggle('menu', menu);
+  if (s1.hidden === !!h1) s1.hidden = !h1;
+  if (s2.hidden === !!h2) s2.hidden = !h2;
+}
+
+// --- the title card: 2 PLAYERS ---
+function couchTitle(n) {
+  if ($('start').hidden) return;
+  const ok = COUCH_LEVELS.includes(curLevel), show = n > 0 && !AR.on && !MT.on;
+  const sig = `${n}|${curLevel}|${show}`;
+  if (sig === PADS.title) return;
+  PADS.title = sig;
+  $('play2').hidden = !show; $('padNote').hidden = !show;
+  if (!show) return;
+  $('play2').disabled = !ok;
+  $('play2Sub').textContent = !ok ? '1 player only for now (levels 1 and 2)' : n >= 2 ? 'controller 1 (blue) vs controller 2 (red)' : 'keyboard (blue) vs controller (red)';
+  $('padNote').textContent = `${n} controller${n === 1 ? '' : 's'} connected · split screen: Player 1 left, Player 2 right`;
+}
+$('play2').addEventListener('click', () => { if (COUCH_LEVELS.includes(curLevel)) couchStart(); });
+
+// --- couch versus: start, Player 2's car, the right-hand HUD, the two views, the end ---
+const cam2 = new THREE.PerspectiveCamera(45, 1, 0.5, 400), cam2At = new THREE.Vector3(), cam2V = new THREE.Vector3();
+let ghost2 = null;
+function couchStart() {
+  if (!COUCH_LEVELS.includes(curLevel) || AR.on || MT.on) return;
+  COUCH.on = true; padPause(false);
+  document.body.classList.add('couch');
+  $('hud2').hidden = false; $('split').hidden = false;
+  $('pctRed').previousSibling.textContent = 'PLAYER 2 BOX ';
+  audioInit();
+  $('start').hidden = true; $('end').hidden = true; $('endBoxes').hidden = true;
+  const L = LOADOUTS[curLevel], tools = [...BASICS, ...L.must, ...L.def]; // both sides get the Skip-race loadout: the same tools, the same +25 cereal
+  pendingLoad = { tools, ai: tools, freeUp: 0, bonus: LR_BONUS[1], aiBonus: LR_BONUS[1], place: 2 };
+  resize(); reset();
+  PADS.pick = ['', ''];
+  banner('2 PLAYERS: FIGHT!', 'Player 1 is blue, on the left. Player 2 is red, on the right. Break the other toy box');
+  sfx('build');
+}
+function couchOff() {
+  COUCH.on = false;
+  document.body.classList.remove('couch');
+  $('hud2').hidden = true; $('split').hidden = true; $('strip2').hidden = true;
+  $('pctRed').previousSibling.textContent = 'ENEMY TOY BOX ';
+  $('endBoxes').hidden = false; $('endTitle').style.color = '';
+  if (ghost2) ghost2.visible = false;
+  resize();
+}
+function couchSpawn(L) { // called by reset(): Red's car, at Red's end, facing the fight
+  const [x, z] = spawnPt(RED, 0);
+  state.p2 = { kind: 'player', team: RED, x, z, vx: 0, vz: 0, heading: Math.PI, cool: 0, alive: true };
+  entities.push(state.p2);
+  state.unlocked2 = new Set(L.start.unlocked); state.respawn2 = 0;
+  couchSetVehicle('racer');
+  cam2At.set(x, 0, z);
+}
+function couchSetVehicle(kind) {
+  const q = state.p2, v = VEHICLES[kind];
+  if (q.mesh) scene.remove(q.mesh);
+  Object.assign(q, { vehicle: kind, hp: v.hp, maxHp: v.hp, r: v.r, weapon: WEAPONS[v.weapon], mesh: buildModel(kind, RED) });
+}
+function couchVehicle(k) { // Player 2's garage: at Red's box, paid from Red's cereal and clips
+  const q = state.p2, v = VEHICLES[k];
+  if (!q?.alive || dist2(q, state.bases[RED]) > 16 * 16) return;
+  if (!state.unlocked2.has(k)) {
+    const vc = vehCost(k);
+    if (state.cereal[RED] < vc.c || state.clips[RED] < vc.p) { couchToast(`${v.name} costs ${vc.c} cereal${vc.p ? ` + ${vc.p} ${secondName()}` : ''}`); sfx('no'); return; }
+    state.cereal[RED] -= vc.c; state.clips[RED] -= vc.p; state.unlocked2.add(k);
+  }
+  if (q.vehicle !== k) couchSetVehicle(k);
+  sfx('build'); couchToast(`${v.name} ready`);
+}
+function couchToast(text) {
+  if (!COUCH.on) return;
+  if (state.level?.cerealName) text = String(text).replace(/\bcereal\b/g, state.level.cerealName);
+  $('toast2').textContent = text; COUCH.toastT = 2.2;
+}
+function couchUpdate(dt) { // Player 2's car: the same rules as Player 1's in update()
+  const q = state.p2;
+  if (!q) return;
+  if (q.alive) {
+    const { x: ix, z: iz } = PADS.in2, mag = Math.min(1, Math.hypot(ix, iz));
+    drive(q, ix / (mag || 1), iz / (mag || 1), mag, dt, VEHICLES[q.vehicle]);
+    q.cool -= dt;
+    if (PADS.in2.fire && q.cool <= 0) {
+      const target = nearestEnemy(q, q.weapon.range);
+      const aim = target && Math.abs(wrap(angleTo(q, target) - q.heading)) < 1.4 ? angleTo(q, target) : q.heading;
+      fire(q, target, q.weapon, aim);
+      q.cool = q.weapon.rate;
+    }
+    if (dist2(q, state.bases[RED]) < 14 * 14 && q.hp < q.maxHp) q.hp = Math.min(q.maxHp, q.hp + 30 * dt); // repairs at home
+    for (const sp of spills) if (sp.amount > 0 && dist2(q, sp) < (sp.r + q.r) ** 2) { const got = Math.round(takeFrom(sp, sp.amount)); state.cereal[RED] += got; couchToast(`Scooped ${got} cereal`); sfx('crunch'); }
+    if (gumball && gumball.cool[RED] <= 0 && Math.abs(q.z - gumball.z) < 4 * (gumball.s || 1) && q.x > gumball.x && q.x - gumball.x < 5.8 * (gumball.s || 1) && Math.hypot(q.vx, q.vz) > 2) spinGumball(RED); // ram Red's side of the machine
+  } else if ((state.respawn2 -= dt) <= 0) {
+    const [x, z] = spawnPt(RED, 4);
+    Object.assign(q, { alive: true, x, z, vx: 0, vz: 0, heading: Math.PI, hp: q.maxHp });
+    q.mesh.visible = true; sfx('respawn');
+  }
+  // the right-hand HUD
+  const L = state.level, two = L.resources.length > 1;
+  $('cereal2').textContent = `${Math.floor(state.cereal[RED])} ${L.cerealName || 'cereal'}`;
+  if ($('clips2').hidden === two) $('clips2').hidden = !two;
+  if (two) $('clips2').textContent = `${Math.floor(state.clips[RED])} ${secondName()}`;
+  for (const [t, bar, pct] of [[BLUE, 'hpBlue2', 'pctBlue2'], [RED, 'hpRed2', 'pctRed2']]) {
+    const f = Math.max(0, state.bases[t].hp / state.bases[t].maxHp);
+    $(bar).style.width = `${f * 100}%`; $(pct).textContent = `${Math.ceil(f * 100)}%`;
+  }
+  $('ecoRed2').textContent = $('ecoRed').textContent;
+  if (COUCH.toastT > 0 && (COUCH.toastT -= dt) <= 0) $('toast2').textContent = '';
+}
+function couchCam(dt) { // Player 2's follow camera: render()'s rules for Player 1, on the red car
+  const q = state.p2;
+  if (!q) return;
+  const zoom = (camera.aspect < 1 ? 1.5 : 1) * (state.level.camZoom || 1);
+  cam2V.set(Math.max(-W / 2 + 30, Math.min(W / 2 - 30, q.x + q.vx * 0.35)), 0, Math.max(-D / 2 + 22, Math.min(D / 2 - 14, q.z + q.vz * 0.35)));
+  cam2At.lerp(cam2V, 1 - Math.exp(-4 * dt));
+  cam2.position.set(cam2At.x, 50 * zoom, cam2At.z + 34 * zoom);
+  cam2.lookAt(cam2At.x, 0, cam2At.z + 2);
+  if (cam2.aspect !== camera.aspect) { cam2.aspect = camera.aspect; cam2.updateProjectionMatrix(); }
+  if (!ghost) return;
+  if (!ghost2) { ghost2 = new THREE.Mesh(ghost.geometry, ghost.material.clone()); scene.add(ghost2); }
+  const gx = q.x - Math.cos(q.heading) * 4, gz = q.z - Math.sin(q.heading) * 4;
+  ghost2.visible = q.alive && !state.over && state.phase === 'battle';
+  ghost2.position.set(gx, 0.1, gz);
+  ghost2.material.color.setHex(q.alive && !canPlace(gx, gz, RED) && state.cereal[RED] >= costOf('gun', RED) ? 0x3ddc84 : 0xff5a5f);
+  ghost2.material.opacity = ghost.material.opacity;
+}
+function couchRender(dt) { // left half: Player 1's camera; right half: Player 2's. The second view reuses the first view's shadow map (the sun's box covers the whole table).
+  couchCam(dt);
+  const w = innerWidth, h = innerHeight, hw = Math.floor(w / 2), rt = post.on && post.rt ? post.rt : null;
+  const g1 = !!ghost?.visible, g2 = !!ghost2?.visible;
+  renderer.info.autoReset = false; renderer.info.reset(); // count both views and the blur pass as one frame
+  const view = (i, cam) => {
+    if (rt) { const pw = Math.floor(rt.width / 2), x = i ? pw : 0, ww = i ? rt.width - pw : pw; rt.viewport.set(x, 0, ww, rt.height); rt.scissor.set(x, 0, ww, rt.height); rt.scissorTest = true; renderer.setRenderTarget(rt); }
+    else { const x = i ? hw : 0, ww = i ? w - hw : hw; renderer.setViewport(x, 0, ww, h); renderer.setScissor(x, 0, ww, h); renderer.setScissorTest(true); }
+    if (ghost) ghost.visible = g1 && i === 0; // each player sees only their own build ghost
+    if (ghost2) ghost2.visible = g2 && i === 1;
+    renderer.render(scene, cam);
+  };
+  view(0, camera);
+  renderer.shadowMap.autoUpdate = false;
+  view(1, cam2);
+  renderer.shadowMap.autoUpdate = true;
+  if (ghost) ghost.visible = g1; if (ghost2) ghost2.visible = g2;
+  if (rt) {
+    rt.viewport.set(0, 0, rt.width, rt.height); rt.scissor.set(0, 0, rt.width, rt.height); rt.scissorTest = false;
+    renderer.setRenderTarget(null);
+    const y = (car, cam) => (car ? (cam2V.set(car.x, 0.8, car.z).project(cam).y + 1) / 2 : 0.46); // the sharp band sits between the two cars' heights on screen
+    post.focus += (Math.max(0.22, Math.min(0.78, (y(state.player, camera) + y(state.p2, cam2)) / 2)) - post.focus) * Math.min(1, dt * 6);
+    post.mat.uniforms.focus.value = post.focus;
+    post.mat.uniforms.amount.value = GFX.tiltShift ? GFX.tiltAmount : 0;
+    renderer.render(post.scene, post.cam);
+  } else { renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h); }
+  renderer.info.autoReset = true;
+}
+function couchEnd(won) { // called by endGame(): the toy box that broke says who won
+  const who = won ? 1 : 2, mins = Math.floor(state.time / 60), secs = String(Math.floor(state.time % 60)).padStart(2, '0');
+  $('endTitle').textContent = `PLAYER ${who} WINS!`;
+  $('endTitle').style.color = won ? '#8fbcff' : '#ff8f86';
+  $('endText').textContent = `Player ${3 - who}'s toy box is crumbs after ${mins}:${secs}. ${won ? 'Blue' : 'Red'} rules the ${state.level.name.toLowerCase()}. PLAY AGAIN for a rematch.`;
+  $('endStars').innerHTML = ''; $('next').hidden = true; $('endBoxes').hidden = true;
+  padPause(false);
+  setTimeout(() => { sfx('win'); $('end').hidden = false; }, 1200);
+}
+// ===================== end of Controllers and couch versus =====================
 </script>
