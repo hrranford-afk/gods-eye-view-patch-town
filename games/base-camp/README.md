@@ -69,6 +69,10 @@ Virtual floor, desk, shelf, sill and a speaker, plus **movable things**: three c
 - **Move things**: drag cans, cup, boxes between visits (even onto a colony), then **Scan again**: new land, tin, squashing, learning.
 - Reload and **Continue**: away diary, scan, line up, changes.
 
+**The dolls' house (build 29).** The practice room is now the Playroom of a toy house: a Kitchen, Bathroom, Lounge, Bedroom and Garden join it through doorways. Each room is a room of its own (its own map and colony); walk the camera through a doorway, or pick a room with the room button bottom left, L1 / R1 on a controller or [ ]. Now and then a colonist walks through a door to visit next door. `?house=0` gives the old single room.
+
+**On a computer (build 29).** Drag to turn round, right-drag or shift-drag to slide, wheel or pinch to zoom; W A S D or the arrows walk, Q / E turn, R / F up and down, C follows a colonist, H shows the whole house, 0 goes back to the camp. A game controller works too (left stick walk, right stick look, L2 / R2 zoom, D-pad the tool bar, Cross taps at the crosshair, Options the Menu). The "?" button bottom left shows all of it. `?bot=1&speed=30` lets a pretend player run the house by itself and log a summary every in-game day (HANDOVER "Mac and dolls' house").
+
 ## Recognition: "they know what a lot of stuff is"
 
 While mapping, the camera picture is looked at about every 1.5 s (AR needs the `camera-access` feature; practice has built-in eyes that know a cup, half-know a can and have never heard of a speaker):

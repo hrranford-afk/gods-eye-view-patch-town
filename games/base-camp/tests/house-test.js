@@ -40,7 +40,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   /* ---- 3. shots: each room, the whole house ---- */
   let n = 115;
   for (const k of ['play', 'kitchen', 'bath', 'bed', 'lounge', 'garden']) {
-    await ev((k) => { if (__g.HOUSE.cur !== k) __g.houseGo(k); const [cx, cz] = __g.houseRoomCentre(k), P = __g.P; P.gTarget.set(cx, 0.35, cz + 0.1); P.target.copy(P.gTarget); P.yaw = 0.55; P.pitch = 0.85; P.gDist = P.dist = k === 'bath' ? 2.9 : 3.5; P.pitchGoal = undefined; __g.DESK.last = performance.now(); __g.HOUSE.whole = true; }, k);
+    await ev((k) => { if (__g.HOUSE.cur !== k) __g.houseGo(k); const [cx, cz] = __g.houseRoomCentre(k), P = __g.P; P.gTarget.set(cx, 0.35, cz + 0.1); P.target.copy(P.gTarget); P.yaw = k === 'bath' ? -0.35 : 0.55; P.pitch = 0.85; P.gDist = P.dist = k === 'bath' ? 3.2 : 3.5; P.pitchGoal = undefined; __g.DESK.last = performance.now(); __g.HOUSE.whole = true; }, k);
     await sleep(3200); await calm(); await sleep(200); console.log(k + ' camera', JSON.stringify(await ev(() => ({ d: +__g.P.dist.toFixed(2), gd: +__g.P.gDist.toFixed(2), pitch: +__g.P.pitch.toFixed(2), cam: __g.camera.position.toArray().map((v) => +v.toFixed(2)), guard: __g.DESK.guardHits })))); await p.screenshot({ path: OUT + n + '-house-' + k + '.png' }); n++;
   }
   await ev(() => { __g.houseGo('play'); __g.deskWhole(); __g.HOUSE.whole = true; }); await sleep(2500); await calm(); await sleep(200);
@@ -85,14 +85,16 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('a stick inside the deadzone does nothing', Math.hypot(g3[0] - g2[0], g3[2] - g2[2]) < 1e-3);
   const z0 = await ev(() => __g.P.gDist); await ev(() => { window.__pad.buttons[7] = { pressed: true, value: 1 }; }); await sleep(500); await ev(() => { window.__pad.buttons[7] = { pressed: false, value: 0 }; });
   ok('R2 zooms in', (await ev(() => __g.P.gDist)) < z0 * 0.95);
+  await calm(); await ev(() => { for (const id of ['tagpick', 'guess']) document.getElementById(id).hidden = true; }); console.log('card up before the D-pad: ' + JSON.stringify(await ev(() => { const c = __g.padCard(); return c ? c.id : ''; })));
   await press(15); await press(15);
   const ring = await ev(() => { const f = document.querySelector('#bar .padFocus'); return f ? (f.dataset.tool || f.id) : ''; });
   ok('D-pad right moves a ring along the tool bar', !!ring, ring);
   await press(12); ok('D-pad up uses the ringed tool', await ev((r) => __g.G.tool === r || !!document.querySelector('#bar .padFocus'), ring));
   await ev(() => { __g.setTool('look'); }); await calm(); const pk = await ev(() => { const S = __g.G.settlements[0], c = S.cols.find((q) => !q.inside && q.spawn <= 0); __g.DESK.follow = c; const P = __g.P; P.dist = P.gDist = 0.5; P.pitch = 0.9; __g.G.sel = null; __g.G.requests.length = 0; return c.name; });
   await sleep(800); await calm();
-  await sleep(300); await press(0);
-  ok('Cross taps at the crosshair (picks the colonist under it)', await ev(() => !!__g.G.sel || !document.getElementById('sel').hidden), pk);
+  await sleep(300); console.log('card up before Cross: ' + JSON.stringify(await ev(() => { const c = __g.padCard(); return c ? c.id + ':' + c.innerText.slice(0, 60) : ''; }))); await press(0);
+  const cx = await ev(() => { const S = __g.G.settlements[0], c = __g.DESK.follow, [wx, wz] = c ? __g.l2w(S, c.x, c.z) : [0, 0], sp = c ? __g.toScreen(new __g.THREE.Vector3(wx, __g.SY(S, 0.026), wz)) : null; return { sel: __g.G.sel ? __g.G.sel.name : '', shown: !document.getElementById('sel').hidden, at: sp && sp.slice(0, 2).map(Math.round), pick: __g.colPick(innerWidth / 2, innerHeight / 2) ? 'yes' : 'no', tool: __g.G.tool, ph: __g.G.phase }; });
+  ok('Cross taps at the crosshair (picks the colonist under it)', !!cx.sel || cx.shown, pk + ' ' + JSON.stringify(cx));
   await calm(); await sleep(300); await p.screenshot({ path: OUT + '122-controller-crosshair.png' });
   await press(9); ok('Options opens the Menu', await ev(() => !document.getElementById('modal').hidden));
   await press(1); ok('Circle closes it', await ev(() => document.getElementById('modal').hidden));
@@ -114,12 +116,12 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('Menu > What they noticed lists everything told', await ev(() => document.querySelectorAll('#diary li').length >= 3));
   await p.screenshot({ path: OUT + '123-notices-feed.png' });
   ok('no page errors in the house run', errs.length === 0, errs.slice(0, 3).join(' | '));
-  const fps = await ev(async () => { const P = __g.P; __g.deskWhole(); await new Promise((r) => setTimeout(r, 1500)); const n0 = __g.G.time; let f = 0; const t0 = performance.now(); await new Promise((r) => { const go = () => { f++; if (performance.now() - t0 < 3000) requestAnimationFrame(go); else r(); }; requestAnimationFrame(go); }); return { fps: +(f / ((performance.now() - t0) / 1000)).toFixed(1), calls: __g.renderer.info.render.calls, tris: __g.renderer.info.render.triangles }; });
+  const fps = await ev(async () => { const P = __g.P; if (!document.getElementById('ccam').hidden) document.getElementById('ccam').click(); __g.deskWhole(); await new Promise((r) => setTimeout(r, 1500)); const n0 = __g.G.time; let f = 0; const t0 = performance.now(); await new Promise((r) => { const go = () => { f++; if (performance.now() - t0 < 3000) requestAnimationFrame(go); else r(); }; requestAnimationFrame(go); }); return { fps: +(f / ((performance.now() - t0) / 1000)).toFixed(1), calls: __g.renderer.info.render.calls, tris: __g.renderer.info.render.triangles }; });
   console.log('DESKTOP HOUSE (whole view, software GL): ' + JSON.stringify(fps));
   await b.close();
 
   /* ---- 7. the bot plays the house for a few in-game days ---- */
-  const DAYS = +(process.env.BOT_DAYS || 3); ({ b, p, errs } = await launch()); ev = (f, a) => p.evaluate(f, a);
+  const DAYS = +(process.env.BOT_DAYS === undefined ? 3 : process.env.BOT_DAYS); if (DAYS > 0) { ({ b, p, errs } = await launch()); ev = (f, a) => p.evaluate(f, a);
   await p.goto(url); await sleep(800); await ev(() => localStorage.clear());
   const lines = []; p.on('console', (m) => { if (/^BOT /.test(m.text())) { lines.push(JSON.parse(m.text().slice(4))); console.log(m.text()); } });
   await p.goto(url + '?bot=1&speed=60&hour=60&seed=7&player');
@@ -132,6 +134,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('bot: no repeated notices', days.every((d) => d.repeatedNotices === 0), JSON.stringify(days.map((d) => d.noticeCards + ' cards, ' + d.repeatedNotices + ' repeats')));
   ok('bot: the camera was never inside geometry', days.every((d) => d.camInside === 0));
   ok('bot: it played (built or planted, poked, walked between rooms)', days.length && days[days.length - 1].builds + days[days.length - 1].plants > 0 && days[days.length - 1].roomMoves >= 1, JSON.stringify(days[days.length - 1]));
-  await b.close(); srv.close();
+  await b.close(); }
+  srv.close();
   const nOk = res.filter(Boolean).length; console.log(nOk + '/' + res.length + ' passed'); process.exit(nOk === res.length ? 0 : 1);
 })();

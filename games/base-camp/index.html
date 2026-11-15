@@ -5058,6 +5058,7 @@ function houseGo(k, quiet) { /* leave this room (saved), walk into room k: its o
     let id = houseId(k); if (!id) { const r = homeCreate(HOUSE_ROOMS[k].name); if (!r) { toast('The house has no room left in storage for the ' + HOUSE_ROOMS[k].name + ': delete a saved room on the title screen.', 5); return false; } id = r.id; HOUSE.ids[k] = id; } else homeSelect(id);
     G.mapName = homeName(id); houseUse(k); houseSave();
     resetWorld(); G.auto = true; G.previewSecs = null; G.roomWant = 'room'; startAuto();
+    if (G.pendingDiary && !(G.pendingDiary.secs >= 1800)) G.pendingDiary = null; /* walking next door and back is not "while you were away": the diary waits for a real absence (30 minutes) */
     { const [rx, rz] = toRoom(cam.t.x, cam.t.z); if (houseAt(rx, rz, 0.1) !== k) { const [cx, cz] = houseRoomCentre(k), [wx, wz] = fromRoom(cx, cz); cam.t.set(wx, 0.4, wz); cam.d = clamp(Math.max(cam.d, 2.4), 2.4, 3.6); } } /* the camera looks into the room it went to (else the doorway check would walk straight back) */
     P.campCam = true; P.target.copy(cam.t); P.gTarget.copy(cam.t); P.yaw = cam.yaw; P.pitch = cam.pitch; P.dist = P.gDist = cam.d; DESK.follow = null; orbitCam(0);
     if (G.returning && HOUSE.at[k] === (PLACE.n || 0)) relocLock({ phi: 0, tx: 0, tz: 0, dy: 0, score: 0, ratio: 1, M: 0, info: 0, margin: 0 }, 'worldmap'); /* the house has not moved since this room was saved: found at once */
@@ -5171,12 +5172,17 @@ function deskSolids() { /* boxes the camera may not pass through: the room's fur
   return DESK.sol;
 }
 function deskGuard() { /* march from what the camera looks at out to the camera: the first solid box pulls the camera in front of it (never inside a wall or under the floor) */
-  const t = P.target, c = camera.position, all = deskSolids(), n = 28; let hit = 1;
-  for (let i = 0; i < 4; i++) { const b = all.find((q) => q.containsPoint(t)); if (!b) break; t.y = b.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); c.y = Math.max(c.y, t.y + 0.05); } /* a target inside furniture steps up onto its top: the camera is never inside anything */
-  const sol = all;
-  for (let i = 1; i <= n; i++) { const k = i / n; tmpV.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); if (tmpV.y < 0.02 || sol.some((b) => b.containsPoint(tmpV))) { hit = (i - 1) / n; break; } }
-  if (hit < 1) { const k = Math.max(Math.min(1, 0.1 / Math.max(0.1, P.dist)), hit - 0.015); c.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); DESK.guardHits++; }
-  if (c.y < 0.03) c.y = 0.03; camera.lookAt(t); camera.updateMatrixWorld(true);
+  const t = P.target, c = camera.position, sol = deskSolids(), n = clamp(Math.ceil(P.dist / 0.03), 8, 300), want = c.clone(); let hit = 1; /* 3 cm steps: no wall is thinner */
+  for (let i = 0; i < 4; i++) { const b = sol.find((q) => q.containsPoint(t)); if (!b) break; t.y = b.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); } /* a target inside furniture steps up onto its top: the camera is never inside anything */
+  for (let pass = 0; pass < 3; pass++) {
+    hit = 1; let hb = null; c.copy(want); if (c.y < t.y + 0.05) c.y = t.y + 0.05;
+    for (let i = 1; i <= n; i++) { const k = i / n; tmpV.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); if (tmpV.y < 0.02) { hit = (i - 1) / n; break; } hb = sol.find((b) => b.containsPoint(tmpV)) || null; if (hb) { hit = (i - 1) / n; break; } }
+    if (hb && hb.min.y >= t.y - 0.01 && t.x > hb.min.x && t.x < hb.max.x && t.z > hb.min.z && t.z < hb.max.z) { t.y = hb.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); want.y = t.y + Math.sin(P.pitch) * P.dist; continue; } /* looking at something under a table top: look at the top instead of diving under it */
+    break;
+  }
+  if (hit < 1) { const k = Math.max(0.5 / n, hit - 0.5 / n); c.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); DESK.guardHits++; }
+  if (c.y < 0.03) c.y = 0.03; for (let i = 0; i < 60 && sol.some((b) => b.containsPoint(c)); i++) c.y += 0.05; /* still in something (the target hugs a wall): rise straight up out of it */
+  camera.lookAt(t); camera.updateMatrixWorld(true);
 }
 function deskInside() { /* test hook: is the camera inside anything solid right now? */ const c = camera.position; return c.y < 0.02 || deskSolids().some((b) => b.containsPoint(c)); }
 /* ---- the controller ---- */
@@ -8917,7 +8923,7 @@ function SND_board() {
 }
 try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
-window.__g = { seededRandom, houseRoomCentre, homeName, newsTick, BOT, botDay, NEWS, newsSift, newsKey, HOUSE, HOUSE_ROOMS, HOUSE_ORDER, HOUSE_SURF, HOUSE_PROPS, houseGo, houseStep, houseUse, houseVisit, houseArrive, houseAt, DESK, deskOn, deskInside, deskWhole, deskReset, deskFollowNext, deskMove, deskGuard, deskSolids, padRead, PSURF, PVIEWS, PROPS, camUi, RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
+window.__g = { padCard, seededRandom, houseRoomCentre, homeName, newsTick, BOT, botDay, NEWS, newsSift, newsKey, HOUSE, HOUSE_ROOMS, HOUSE_ORDER, HOUSE_SURF, HOUSE_PROPS, houseGo, houseStep, houseUse, houseVisit, houseArrive, houseAt, DESK, deskOn, deskInside, deskWhole, deskReset, deskFollowNext, deskMove, deskGuard, deskSolids, padRead, PSURF, PVIEWS, PROPS, camUi, RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }
