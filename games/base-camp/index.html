@@ -58,7 +58,7 @@ body.inar #arLog{top:auto;bottom:150px;left:8px;max-width:50vw}
 [hidden]{display:none!important}
 #ask,#diary,#modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);max-height:80vh;overflow:auto;text-align:left;display:grid;gap:10px;padding:16px 18px;background:rgba(59,42,30,.92);border-radius:16px;z-index:5}
 #ask{text-align:center}
-#diary.side{left:12px;top:calc(env(safe-area-inset-top,0px) + 150px);transform:none;width:min(44vw,430px);max-height:62vh}
+#diary.side{left:12px;top:calc(env(safe-area-inset-top,0px) + 176px);transform:none;width:min(44vw,430px);max-height:62vh}
 .dh{font-size:20px;font-weight:800;color:#ffd9a8}.sub{font-size:13px;opacity:.85;font-weight:600;line-height:1.35}
 #diary ul{margin:0;padding-left:20px;display:grid;gap:7px;font-size:15px;line-height:1.35;font-weight:600}
 .by{font-size:9px;opacity:.42;font-weight:600;white-space:nowrap} /* build 22: Harry: keep the credits, smaller */
@@ -931,7 +931,7 @@ function reconcileLand(L, m, first) {
      only makes news when the previous compare saw the same change there too (L.pendR / L.pendP, in memory): a flicker is never told, a real move is told one compare later. AR is unchanged. */
   const gate = G.auto && G.mode === 'practice' && !AR.on && AUTO.cmpGate, pR = gate && L.pendR && L.pendR.length === n ? L.pendR : null, pP = gate && L.pendP && L.pendP.length === n ? L.pendP : null;
   if (gate) { L.pendR = bR; L.pendP = bP; }
-  const removed = changedObjects(L, (k) => bR[k] === 1 && (!gate || (!!pR && pR[k] === 1)), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => bP[k] === 1 && (!gate || (!!pP && pP[k] === 1)), 5); // an object counts as put down only where the bare cells were really seen before
+  const removed = changedObjects(L, (k) => bR[k] === 1 && (!gate || (!!pR && pR[k] === 1)), 5), placed = changedObjects({ w: L.w, h: L.h, ht: m.ht, cx: L.cx, cz: L.cz, c: L.c, s: L.s, i0: L.i0, j0: L.j0 }, (k) => bP[k] === 1 && (!gate || (!!pP && pP[k] === 1)), 5); /* an object counts as put down only where the bare cells were really seen before */
   for (const o of removed) { for (const k of o.cells) st[k] = 1; ev.removed.push(o); }
   for (const o of placed) { for (const k of o.cells) { st[k] = 2; L.ht[k] = m.ht[k]; } o.h = Math.max(...o.cells.map((k) => m.ht[k])) / 100; ev.placed.push(o); }
   for (const o of removed.concat(placed)) for (const k of o.cells) { const i = k % L.w, j = (k / L.w) | 0; for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < L.w && jj < L.h) mark[jj * L.w + ii] = 1; } }
@@ -4893,7 +4893,7 @@ function practiceHits() { // the virtual hit test: five rays from the virtual iP
 }
 // Test and demo helper: scan the whole practice room at once (no camera path). Fixed grid, small noise.
 function injectScan(step) {
-  step = step || 0.014; const surfs = allSurfs().sort((a, b) => a.y - b.y); let n = 0; if (!SCAN.origin) { const [ox, oz] = HOUSE.on ? fromRoom(...houseRoomCentre()) : fromRoom(0, 0); SCAN.origin = { x: ox, z: oz }; } // the scan grid is 5 m wide around where the scan started: start in the middle
+  step = step || 0.014; const surfs = allSurfs().sort((a, b) => a.y - b.y); let n = 0; if (!SCAN.origin) { const [ox, oz] = HOUSE.on ? fromRoom(...houseRoomCentre()) : fromRoom(0, 0); SCAN.origin = { x: ox, z: oz }; } /* the scan grid is 5 m wide around where the scan started: start in the middle */
   for (const sf of surfs) for (let x = sf.x0 + step / 2; x < sf.x1; x += step) for (let z = sf.z0 + step / 2; z < sf.z1; z += step) {
     // hidden from above: under a higher top that covers this point, the lower surface is not seen
     if (surfs.some((o) => o.y > sf.y + 0.03 && x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1)) continue;
@@ -4970,8 +4970,8 @@ function houseAt(rx, rz, inset) { inset = inset || 0; for (const k of HOUSE_ORDE
 function houseSave() { store.set('bc-house-v1', JSON.stringify({ v: 1, ids: HOUSE.ids, q: HOUSE.q, at: HOUSE.at })); }
 const HOUSE_SURF = {}, HOUSE_PROPS = {};
 (function buildHouse() { /* the rooms beyond the Playroom: furniture boxes, the tops colonists can live on, walls with doorways, floors */
-  const g = new THREE.Group(); HOUSE.g = g; room.add(g); let cur = 'play';
-  const box = (w, h, d, c, x, y, z, soft) => { const m = mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); if (soft) m.userData.soft = 1; g.add(m); return m; };
+  const g = new THREE.Group(); HOUSE.g = g; room.add(g); let cur = 'play'; const bins = {}; HOUSE.sol = [];
+  const box = (w, h, d, c, x, y, z, soft) => { (bins[c] = bins[c] || []).push(new THREE.BoxGeometry(w, h, d).translate(x, y, z).toNonIndexed()); if (!soft) HOUSE.sol.push(new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2))); }; /* every box of one colour becomes one mesh (a few dozen draw calls for the whole house); the camera's solids are kept as boxes (HOUSE.sol, house frame) */
   const top = (y, x0, x1, z0, z1) => { (HOUSE_SURF[cur] = HOUSE_SURF[cur] || []).push({ y, x0, x1, z0, z1 }); };
   const furn = (x0, x1, z0, z1, h, c, tc) => { box(x1 - x0, h - 0.03, z1 - z0, c, (x0 + x1) / 2, (h - 0.03) / 2, (z0 + z1) / 2); box(x1 - x0 + 0.02, 0.03, z1 - z0 + 0.02, tc || c, (x0 + x1) / 2, h - 0.015, (z0 + z1) / 2); top(h, x0, x1, z0, z1); };
   const table = (x0, x1, z0, z1, h, c, lc) => { box(x1 - x0, 0.04, z1 - z0, c, (x0 + x1) / 2, h - 0.02, (z0 + z1) / 2); for (const [x, z] of [[x0 + 0.05, z0 + 0.05], [x1 - 0.05, z0 + 0.05], [x0 + 0.05, z1 - 0.05], [x1 - 0.05, z1 - 0.05]]) box(0.05, h - 0.04, 0.05, lc, x, (h - 0.04) / 2, z); top(h, x0, x1, z0, z1); };
@@ -5020,6 +5020,8 @@ const HOUSE_SURF = {}, HOUSE_PROPS = {};
   furn(2.3, 3.1, 4.95, 5.7, 1.6, 0x8a9f6a, 0x6b4a2b); box(0.3, 0.6, 0.01, 0x5d4a33, 2.7, 0.3, 5.705, true); /* the shed */
   { const pd = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.01, 24), M(0x5fb3d9), -0.6, 0.004, 6.8); pd.userData.soft = 1; g.add(pd); }
   for (const [x, z] of [[-1.2, 7.3], [2.9, 7.3], [-1.3, 6.2]]) { box(0.06, 0.4, 0.06, 0x7a5a3a, x, 0.2, z, true); const b = mesh(new THREE.SphereGeometry(0.22, 10, 8), M(0x4f9a3e), x, 0.5, z); b.userData.soft = 1; g.add(b); }
+  for (const c of Object.keys(bins)) { const L = bins[c], n = L.reduce((a, q) => a + q.attributes.position.count, 0), pos = new Float32Array(n * 3), nor = new Float32Array(n * 3); let o = 0; for (const q of L) { pos.set(q.attributes.position.array, o * 3); nor.set(q.attributes.normal.array, o * 3); o += q.attributes.position.count; q.dispose(); }
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); const m = new THREE.Mesh(bg, M(+c)); m.userData.soft = 1; g.add(m); }
   g.visible = false;
   /* the movable things in each room (the same toy kinds the practice room's eyes know) */
   HOUSE_PROPS.kitchen = [['k_sink', 'sink', 2.4, -1.3, 0.9], ['k_cup', 'cup', 2.8, 0.3, 0.75], ['k_can', 'can', 3.0, -1.25, 0.9], ['k_box', 'box', 2.0, -1.3, 0.9], ['k_can2', 'can', 3.2, 0.5, 0.75]];
@@ -5030,7 +5032,7 @@ const HOUSE_SURF = {}, HOUSE_PROPS = {};
 })();
 function houseViews(k) { /* where the virtual iPad is held to sweep a room: four corners and the middle, looking in (room frame, see eyePose) */
   const r = HOUSE_ROOMS[k].r, cx = (r[0] + r[1]) / 2, cz = (r[2] + r[3]) / 2, ix = Math.min(0.5, (r[1] - r[0]) / 4), iz = Math.min(0.5, (r[3] - r[2]) / 4), out = [];
-  for (const [x, z] of [[r[1] - ix, r[3] - iz], [r[0] + ix, r[3] - iz], [r[0] + ix, r[2] + iz], [r[1] - ix, r[2] + iz], [cx + 0.3, cz + 0.3], [cx - 0.3, cz - 0.3]]) out.push({ rf: 1, p: [x, 1.8, z], yaw: Math.atan2(x - cx, z - cz), pitch: -0.8, ay: 0.7, ap: 0.32 });
+  for (const [x, z] of [[r[1] - ix, r[3] - iz], [r[0] + ix, r[3] - iz], [r[0] + ix, r[2] + iz], [r[1] - ix, r[2] + iz], [cx + 0.3, cz + 0.3], [cx - 0.3, cz - 0.3]]) out.push({ rf: 1, p: [x, 2.15, z], /* above the tallest furniture (the wardrobe is 1.9 m) */ yaw: Math.atan2(x - cx, z - cz), pitch: -0.8, ay: 0.7, ap: 0.32 });
   out[4].pitch = -1.2; out[4].ay = 1.4; out[5].pitch = -1.0; out[5].ay = 1.2; return out;
 }
 function houseUse(k) { /* make room k the one the virtual hit test sees: its tops, its things, its sweep */
@@ -5047,7 +5049,7 @@ function houseId(k) { const id = HOUSE.ids[k]; return id && homeInfo(id) ? id : 
 function houseStep(d) { const i = HOUSE_ORDER.indexOf(HOUSE.cur), k = HOUSE_ORDER[(i + d + HOUSE_ORDER.length) % HOUSE_ORDER.length]; HOUSE.whole = false; return houseGo(k); }
 function houseGo(k, quiet) { /* leave this room (saved), walk into room k: its own map and colony, or a fresh scan if it was never mapped */
   if (!HOUSE.on || !HOUSE_ROOMS[k] || k === HOUSE.cur || HOUSE.busy || G.mode !== 'practice' || !G.auto || BT.on) return false;
-  if (G.returning && !G.locked) { if (!quiet) toast('The colonists are still finding their way home here. Give them a moment.', 3); return false; }
+  if ((G.returning && !G.locked) || (RG.prob && RG.room === HOMES.cur)) { if (!quiet) toast('The colonists are still making sure this is their room. Give them a moment.', 3); return false; } /* roomguard: a lock on probation keeps its saves in memory, so the room waits */
   HOUSE.busy = true;
   try {
     if (!HOUSE.ids.play || !homeInfo(HOUSE.ids.play)) HOUSE.ids.play = HOMES.cur;
@@ -5162,13 +5164,16 @@ addEventListener('keydown', (e) => { /* one-press keys (the held ones are read e
   else if (e.code === 'BracketRight' && HOUSE.on) houseStep(1); else if (e.code === 'BracketLeft' && HOUSE.on) houseStep(-1);
 });
 function deskSolids() { /* boxes the camera may not pass through: the room's furniture and walls (the house's too), in world space; rebuilt when the room moves */
-  const key = PLACE.yaw + ',' + PLACE.x + ',' + PLACE.z + ',' + HOUSE.ver + ',' + room.children.length; if (key === DESK.solKey) return DESK.sol;
+  const key = PLACE.yaw + ',' + PLACE.x + ',' + PLACE.z + ',' + HOUSE.ver + ',' + room.children.length + ',' + (HOUSE.g && HOUSE.g.visible); if (key === DESK.solKey) return DESK.sol;
   DESK.solKey = key; DESK.sol = []; room.updateMatrixWorld(true);
-  room.traverse((o) => { if (!o.isMesh || o.userData.prop || o.userData.soft || !o.geometry || o.geometry.type === 'PlaneGeometry') return; const b = new THREE.Box3().setFromObject(o); if (b.max.y - b.min.y < 0.03) return; DESK.sol.push(b); });
+  room.traverse((o) => { if (!o.isMesh || o.userData.prop || o.userData.soft || !o.geometry || o.geometry.type === 'PlaneGeometry') return; if (HOUSE.g && !HOUSE.g.visible && o.parent === HOUSE.g) return; const b = new THREE.Box3().setFromObject(o); if (b.max.y - b.min.y < 0.03) return; DESK.sol.push(b); });
+  if (HOUSE.on && HOUSE.g && HOUSE.g.visible) for (const b of HOUSE.sol) if (b.max.y - b.min.y >= 0.03) DESK.sol.push(b.clone().applyMatrix4(room.matrixWorld)); /* the house's merged furniture and walls, kept as boxes */
   return DESK.sol;
 }
 function deskGuard() { /* march from what the camera looks at out to the camera: the first solid box pulls the camera in front of it (never inside a wall or under the floor) */
-  const t = P.target, c = camera.position, sol = deskSolids().filter((b) => !b.containsPoint(t)), n = 28; let hit = 1;
+  const t = P.target, c = camera.position, all = deskSolids(), n = 28; let hit = 1;
+  for (let i = 0; i < 4; i++) { const b = all.find((q) => q.containsPoint(t)); if (!b) break; t.y = b.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); c.y = Math.max(c.y, t.y + 0.05); } /* a target inside furniture steps up onto its top: the camera is never inside anything */
+  const sol = all;
   for (let i = 1; i <= n; i++) { const k = i / n; tmpV.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); if (tmpV.y < 0.02 || sol.some((b) => b.containsPoint(tmpV))) { hit = (i - 1) / n; break; } }
   if (hit < 1) { const k = Math.max(Math.min(1, 0.1 / Math.max(0.1, P.dist)), hit - 0.015); c.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); DESK.guardHits++; }
   if (c.y < 0.03) c.y = 0.03; camera.lookAt(t); camera.updateMatrixWorld(true);
@@ -5247,8 +5252,8 @@ $('camui').addEventListener('click', (e) => { const t = e.target.closest('button
    game clock: the clock is driven by the simulation here, 360 simulated seconds to the hour) it writes a numbers-only line to window.__bot.days and the console
    ("BOT {...}"): resources, settlers, builds made, stuck colonists, repeated notices, errors, fps, draw calls, camera-inside-geometry frames. tests/house-test.js reads it. ============ */
 const BOT = { on: /[?&]bot=1\b/.test(location.search), speed: +((location.search.match(/[?&]speed=(\d+)/) || [])[1] || 30), seed: +((location.search.match(/[?&]seed=(\d+)/) || [])[1] || 1), rnd: null, t: 0, thinkT: 0, started: false, day: 0, sim0: 0, hour0: 9,
-  n: { builds: 0, plants: 0, pokes: 0, gifts: 0, rooms: 0, moves: 0, closes: 0, cards: 0, repeats: 0, errors: 0, inside: 0, frames: 0, wall: 0, stuckMax: 0 }, seen: {}, idle: new Map(), lastCard: '', days: [], errs: [] };
-const BOT_HOUR = +((location.search.match(/[?&]hour=(\d+)/) || [])[1] || 360), BOT_STUCK = 5 * BOT_HOUR; /* simulated seconds: one game hour (?hour=S makes the day shorter for quick tests); a colonist standing still for five game hours (outside a tent) counts as stuck */
+  n: { builds: 0, plants: 0, pokes: 0, gifts: 0, rooms: 0, moves: 0, closes: 0, cards: 0, repeats: 0, errors: 0, inside: 0, frames: 0, wall: 0, stuckMax: 0 }, seen: {}, idle: new Map(), stuckIds: new Set(), lastCard: '', days: [], errs: [] };
+const BOT_HOUR = +((location.search.match(/[?&]hour=(\d+)/) || [])[1] || 360), BOT_STUCK = +((location.search.match(/[?&]stuck=(\d+)/) || [])[1] || 1800); /* simulated seconds: one game hour (?hour=S makes the day shorter for quick tests); a colonist standing still for 30 simulated minutes (outside a tent) counts as stuck */
 if (BOT.on) { BOT.rnd = seededRandom(BOT.seed); addEventListener('error', (e) => { BOT.n.errors++; BOT.errs.push(String(e.message || e)); }); addEventListener('unhandledrejection', (e) => { BOT.n.errors++; BOT.errs.push(String(e.reason && e.reason.message || e.reason)); }); }
 const botR = () => BOT.rnd(), botPick = (a) => a[Math.floor(botR() * a.length)];
 function botStart() { /* from the title: Practice room (the house), nobody to ask */
@@ -5279,25 +5284,25 @@ function botThink() {
   const S = botPick(camps); G.cur = S;
   if (G.requests.length && r < 0.25) { const b = document.querySelector('#reqs .req button'); if (b) { b.click(); BOT.n.gifts++; return; } }
   if (r < 0.2) { setTool('look'); const c = botPick(S.cols.filter((q) => !q.inside && q.spawn <= 0)); if (c) { const [wx, wz] = l2w(S, c.x, c.z), [sx, sy, ok] = toScreen(tmpV.set(wx, SY(S, 0.026), wz)); if (ok) { tapAt(sx, sy); BOT.n.pokes++; } } return; }
-  if (r < 0.38) { setTool('seed'); const n0 = S.things.length; botTapNear(S, 0.14); if (S.things.length > n0) BOT.n.plants++; return; }
-  if (r < 0.55) { const ks = BUILD_KINDS.filter((k) => S.stock.wood >= KINDS[k].wood); if (!ks.length) { setTool('look'); botTapNear(S, 0.1); return; } setTool('build'); G.buildKind = botPick(ks); G.bmenuShut = true; const n0 = S.things.length; botTapNear(S, 0.18); if (S.things.length > n0) BOT.n.builds++; return; }
+  if (r < 0.38) { setTool('seed'); const n0 = S.things.length; for (let i = 0; i < 3 && S.things.length === n0; i++) if (!botTapNear(S, 0.2)) break; if (S.things.length > n0) BOT.n.plants++; return; }
+  if (r < 0.55) { const ks = BUILD_KINDS.filter((k) => S.stock.wood >= KINDS[k].wood); if (!ks.length) { setTool('look'); botTapNear(S, 0.1); return; } setTool('build'); G.buildKind = botPick(ks); G.bmenuShut = true; const n0 = S.things.length; for (let i = 0; i < 3 && S.things.length === n0; i++) if (!botTapNear(S, 0.22)) break; if (S.things.length > n0) BOT.n.builds++; return; }
   if (r < 0.75) { const k = botR(); if (k < 0.5) deskMove((botR() - 0.5) * 0.4, (botR() - 0.5) * 0.4, 0); else if (k < 0.7) { deskTake(); P.yaw += (botR() - 0.5) * 1.2; } else if (k < 0.8) deskZoom(0.7 + botR() * 0.7); else if (k < 0.88) deskFollowNext(); else if (k < 0.94) { deskWhole(); HOUSE.whole = true; } else { HOUSE.whole = false; deskReset(); } return; }
   if (r < 0.8 && G.tool !== 'look') { setTool('look'); botTapNear(S, 0.12); return; }
   if (r < 0.84) { const ps = PROPS.filter(propHere); if (ps.length) { const p = botPick(ps), sf = PSURF.find((q) => Math.abs(q.y - p.base) < 0.01 && p.x > q.x0 && p.x < q.x1 && p.z > q.z0 && p.z < q.z1); if (sf) { p.x = clamp(p.x + (botR() - 0.5) * 0.3, sf.x0 + p.w, sf.x1 - p.w); p.z = clamp(p.z + (botR() - 0.5) * 0.3, sf.z0 + p.d, sf.z1 - p.d); syncProp(p); BOT.n.moves++; } } return; }
-  if (r < 0.9 && HOUSE.on && BOT.t > 60) { HOUSE.whole = false; if (houseStep(botR() < 0.5 ? 1 : -1)) BOT.n.rooms++; return; }
+  if (r < 0.9 && HOUSE.on && BOT.t > 20) { HOUSE.whole = false; if (houseStep(botR() < 0.5 ? 1 : -1)) BOT.n.rooms++; return; }
   setTool('look'); deskReset();
 }
 function botStuck() { /* colonists standing still for BOT_STUCK simulated seconds, outside a tent */
   let stuck = 0; const seen = new Set();
-  for (const S of G.settlements) for (const c of S.cols) { seen.add(c); if (c.inside || c.spawn > 0 || !S.placed) { BOT.idle.delete(c); continue; } const q = BOT.idle.get(c); if (!q || Math.hypot(q.x - c.x, q.z - c.z) > 0.005) { BOT.idle.set(c, { x: c.x, z: c.z, t: G.simT }); continue; } const idle = G.simT - q.t; BOT.n.stuckMax = Math.max(BOT.n.stuckMax, idle); if (idle > BOT_STUCK) stuck++; }
+  for (const S of G.settlements) for (const c of S.cols) { seen.add(c); if (c.inside || c.spawn > 0 || !S.placed) { BOT.idle.delete(c); continue; } const q = BOT.idle.get(c); if (!q || Math.hypot(q.x - c.x, q.z - c.z) > 0.005) { BOT.idle.set(c, { x: c.x, z: c.z, t: G.simT }); continue; } const idle = G.simT - q.t; BOT.n.stuckMax = Math.max(BOT.n.stuckMax, idle); if (idle > BOT_STUCK) { stuck++; BOT.stuckIds.add(c.id); } }
   for (const c of BOT.idle.keys()) if (!seen.has(c)) BOT.idle.delete(c); return stuck;
 }
 function botDay() {
-  const sum = (k) => G.settlements.reduce((a, S) => a + (S.stock[k] || 0), 0), info = renderer.info.render;
+  const sum = (k) => Math.round(G.settlements.reduce((a, S) => a + (S.stock[k] || 0), 0) * 10) / 10, info = renderer.info.render;
   const row = { day: BOT.day, room: HOUSE.cur, rooms: HOUSE_ORDER.filter((k) => houseId(k)).length, camps: G.settlements.length, settlers: G.settlements.reduce((a, S) => a + S.cols.length, 0), wood: sum('wood'), food: sum('food'), seeds: sum('seeds'), water: sum('water'), tin: sum('tin'),
-    things: G.settlements.reduce((a, S) => a + S.things.length, 0), builds: BOT.n.builds, plants: BOT.n.plants, pokes: BOT.n.pokes, gifts: BOT.n.gifts, roomMoves: BOT.n.rooms, propMoves: BOT.n.moves, stuck: botStuck(), stuckMaxS: Math.round(BOT.n.stuckMax), noticeCards: BOT.n.cards, repeatedNotices: BOT.n.repeats,
+    things: G.settlements.reduce((a, S) => a + S.things.length, 0), builds: BOT.n.builds, plants: BOT.n.plants, pokes: BOT.n.pokes, gifts: BOT.n.gifts, roomMoves: BOT.n.rooms, propMoves: BOT.n.moves, stuckNow: botStuck(), stuck: BOT.stuckIds.size, stuckMaxS: Math.round(BOT.n.stuckMax), noticeCards: BOT.n.cards, repeatedNotices: BOT.n.repeats,
     newsDropped: NEWS.stat.dropped, newsGrouped: NEWS.stat.grouped, newsHeld: NEWS.stat.held, newsSilent: NEWS.stat.silent, errors: BOT.n.errors, fps: +(BOT.n.frames / Math.max(1e-3, BOT.n.wall)).toFixed(1), calls: info.calls, tris: info.triangles, camInside: BOT.n.inside, guardHits: DESK.guardHits, wallS: Math.round(BOT.t) };
-  BOT.days.push(row); BOT.n.frames = 0; BOT.n.wall = 0; window.__botDay = row; console.log('BOT ' + JSON.stringify(row)); return row;
+  BOT.days.push(row); BOT.n.frames = 0; BOT.n.wall = 0; BOT.stuckIds.clear(); BOT.n.stuckMax = 0; window.__botDay = row; console.log('BOT ' + JSON.stringify(row)); return row;
 }
 function botTick(dt) {
   if (!BOT.on) return; BOT.t += dt; BOT.n.frames++; BOT.n.wall += dt;
@@ -5305,7 +5310,7 @@ function botTick(dt) {
   if (G.speed !== BOT.speed && G.phase === 'play') G.speed = BOT.speed;
   const sim = G.simT - BOT.sim0; ENV.hourOverride = (BOT.hour0 + sim / BOT_HOUR) % 24; /* the game clock follows the simulation */
   if (deskOn() && deskInside()) BOT.n.inside++;
-  BOT.thinkT -= dt; if (BOT.thinkT <= 0) { BOT.thinkT = 0.6 + botR() * 1.2; try { botThink(); } catch (e) { BOT.n.errors++; BOT.errs.push('bot: ' + (e && e.message)); } botNotices(); if (BOT.idleT === undefined || G.simT - BOT.idleT > 60) { BOT.idleT = G.simT; botStuck(); } }
+  BOT.thinkT -= dt; if (BOT.thinkT <= 0) { BOT.thinkT = 0.3 + botR() * 0.5; try { botThink(); } catch (e) { BOT.n.errors++; BOT.errs.push('bot: ' + (e && e.message)); } botNotices(); if (BOT.idleT === undefined || G.simT - BOT.idleT > 30) { BOT.idleT = G.simT; botStuck(); } }
   if (sim >= (BOT.day + 1) * BOT_HOUR * 24) { BOT.day++; botDay(); }
 }
 window.__bot = BOT;
@@ -7596,7 +7601,7 @@ $('card').onclick = (e) => {
   if (b.dataset.more) { G.cardMore = !G.cardMore; $('card')._h = ''; cardUi(); } else if (b.dataset.cal) calUi(); else if (b.dataset.cam) { const c = G.settlements.flatMap((q) => q.cols).find((q) => q.id === +b.dataset.cam); if (c) { camOpen(c); G.sel = c; selCard(c); G.selT = 6; } }
 };
 function cardSet(el, html) { if (el._h !== html) { el._h = html; el.innerHTML = html; } } /* the info card is rebuilt every 0.4 s: only touch the page when the text changed (a tap on the room thumbnail kept missing a replaced element) */
-const roomTag = () => (MULTI_ROOM && HOMES.rooms.length > 1 ? homeName(HOMES.cur) + ' \u00b7 ' : ''); /* build 12: with several rooms the card says which room this is */
+const roomTag = () => (HOUSE.on && G.mode === 'practice' && !AR.on ? HOUSE_ROOMS[HOUSE.cur].name + ' \u00b7 ' : MULTI_ROOM && HOMES.rooms.length > 1 ? homeName(HOMES.cur) + ' \u00b7 ' : ''); /* build 29: in the house the card names the house's room */ /* build 12: with several rooms the card says which room this is */
 function cardUi() {
   const S = G.cur || G.settlements[0], el = $('card'), gs = $('gstrip'); const th = totemThumb(); el.classList.toggle('inline', !!AR.on); if (CCAM.on) ccamText(); gs.hidden = true;
   if (AR.on) { /* in AR the card is one tiny line in the top corner, the season goal a second one under it (details are in the Menu) */

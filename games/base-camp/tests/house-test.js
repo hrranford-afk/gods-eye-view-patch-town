@@ -6,7 +6,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
 (async () => {
   const { srv, url } = await serve(); let { b, p, errs } = await launch(); let ev = (f, a) => p.evaluate(f, a);
   const waitFor = async (f, ms, step, a) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await ev(f, a)) return true; await sleep(step || 500); } return false; };
-  const calm = () => ev(() => { for (const id of ['diary', 'modal', 'ask', 'wx']) document.getElementById(id).hidden = true; document.getElementById('toast').innerHTML = ''; document.getElementById('banner').className = ''; document.getElementById('repc').hidden = true; });
+  const calm = () => ev(() => { for (const id of ['diary', 'modal', 'ask', 'wx']) document.getElementById(id).hidden = true; document.getElementById('toast').innerHTML = ''; document.getElementById('banner').className = ''; document.getElementById('repc').hidden = true; document.getElementById('home').classList.remove('on'); document.getElementById('bmenu').hidden = true; });
   await p.goto(url); await sleep(1200); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); });
   await p.goto(url + '?player'); await sleep(1500); await ev(() => { __g.ENV.hourOverride = 12; __g.ENV.dateOverride = '2026-10-20'; });
   ok('BUILD is build 29', await ev(() => __g.BUILD === 'build 29'));
@@ -41,7 +41,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   let n = 115;
   for (const k of ['play', 'kitchen', 'bath', 'bed', 'lounge', 'garden']) {
     await ev((k) => { if (__g.HOUSE.cur !== k) __g.houseGo(k); const [cx, cz] = __g.houseRoomCentre(k), P = __g.P; P.gTarget.set(cx, 0.35, cz + 0.1); P.target.copy(P.gTarget); P.yaw = 0.55; P.pitch = 0.85; P.gDist = P.dist = k === 'bath' ? 2.9 : 3.5; P.pitchGoal = undefined; __g.DESK.last = performance.now(); __g.HOUSE.whole = true; }, k);
-    await sleep(1500); await calm(); await sleep(200); await p.screenshot({ path: OUT + n + '-house-' + k + '.png' }); n++;
+    await sleep(3200); await calm(); await sleep(200); console.log(k + ' camera', JSON.stringify(await ev(() => ({ d: +__g.P.dist.toFixed(2), gd: +__g.P.gDist.toFixed(2), pitch: +__g.P.pitch.toFixed(2), cam: __g.camera.position.toArray().map((v) => +v.toFixed(2)), guard: __g.DESK.guardHits })))); await p.screenshot({ path: OUT + n + '-house-' + k + '.png' }); n++;
   }
   await ev(() => { __g.houseGo('play'); __g.deskWhole(); __g.HOUSE.whole = true; }); await sleep(2500); await calm(); await sleep(200);
   ok('whole-house view: far out, every room has its sign', await ev(() => __g.P.dist > 8 && __g.HOUSE.labels.length === 6 && __g.HOUSE.labels.every((s) => s.visible)));
@@ -60,7 +60,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   const t0 = await ev(() => __g.P.gTarget.toArray()); await p.keyboard.down('Shift'); await p.mouse.move(600, 420); await p.mouse.down(); await p.mouse.move(680, 470, { steps: 6 }); await p.mouse.up(); await p.keyboard.up('Shift');
   const t1 = await ev(() => __g.P.gTarget.toArray());
   ok('shift-drag slides the camera', Math.hypot(t1[0] - t0[0], t1[2] - t0[2]) > 0.02);
-  const yy = await ev(() => __g.P.yaw); await p.mouse.move(600, 420); await p.mouse.down(); await p.mouse.move(700, 420, { steps: 6 }); await p.mouse.up();
+  await ev(() => { __g.G.settlements.forEach((S) => { S.group.visible = true; }); }); const yy = await ev(() => __g.P.yaw); await p.mouse.move(150, 650); await p.mouse.down(); await p.mouse.move(260, 650, { steps: 6 }); await p.mouse.up(); /* away from the camp, so the press does not pick up a colonist */
   ok('a plain drag turns round', Math.abs((await ev(() => __g.P.yaw)) - yy) > 0.2);
   await p.keyboard.press('KeyC'); await sleep(800);
   ok('C follows a colonist', await ev(() => !!__g.DESK.follow));
@@ -89,7 +89,8 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   const ring = await ev(() => { const f = document.querySelector('#bar .padFocus'); return f ? (f.dataset.tool || f.id) : ''; });
   ok('D-pad right moves a ring along the tool bar', !!ring, ring);
   await press(12); ok('D-pad up uses the ringed tool', await ev((r) => __g.G.tool === r || !!document.querySelector('#bar .padFocus'), ring));
-  await ev(() => { __g.setTool('look'); }); const pk = await ev(() => { const S = __g.G.settlements[0], c = S.cols.find((q) => !q.inside && q.spawn <= 0); const [wx, wz] = __g.l2w(S, c.x, c.z), P = __g.P; P.gTarget.set(wx, __g.SY(S, 0.026), wz); P.target.copy(P.gTarget); P.dist = P.gDist = 0.5; __g.orbitCam(0); __g.G.sel = null; return c.name; });
+  await ev(() => { __g.setTool('look'); }); await calm(); const pk = await ev(() => { const S = __g.G.settlements[0], c = S.cols.find((q) => !q.inside && q.spawn <= 0); __g.DESK.follow = c; const P = __g.P; P.dist = P.gDist = 0.5; P.pitch = 0.9; __g.G.sel = null; __g.G.requests.length = 0; return c.name; });
+  await sleep(800); await calm();
   await sleep(300); await press(0);
   ok('Cross taps at the crosshair (picks the colonist under it)', await ev(() => !!__g.G.sel || !document.getElementById('sel').hidden), pk);
   await calm(); await sleep(300); await p.screenshot({ path: OUT + '122-controller-crosshair.png' });
@@ -104,7 +105,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
     __g.G.report = { same: [1, 2, 3], lines: L(['A GIANT CAN appeared on the desk. It is now a tower.', 'A GIANT BOX appeared on the shelf. It is now a tower.', 'A GIANT CUP appeared on the floor. It is now a tower.', 'New land! The windowsill is clear!']) }; __g.showReport(true);
     const d = document.getElementById('diary'); out.first = !d.hidden ? [...d.querySelectorAll('li')].map((l) => l.textContent) : [...document.querySelectorAll('#repc .rl')].map((l) => l.textContent); out.head = d.innerText.includes('3 places the same');
     d.hidden = true; __g.G.report = { same: [1, 2, 3], lines: L(['A GIANT CAN appeared on the desk. It is now a tower.', 'New land! The windowsill is clear!']) }; __g.showReport(true); out.again = !d.hidden;
-    __g.G.report = { same: [], lines: L(['The cup moved 12 cm. The colonists carry its little town after it.']) }; __g.showReport(true); out.soon = !d.hidden; out.held = __g.NEWS.held.length;
+    __g.G.report = { same: [], lines: L(['New land spotted: a stool that was never on our map! An expedition would like to go.']) }; __g.showReport(true); out.soon = !d.hidden; out.held = __g.NEWS.held.length;
     __g.NEWS.lastShow = -1e9; __g.newsTick(); out.later = !d.hidden; out.stat = __g.NEWS.stat; return out;
   });
   ok('the same news is never shown twice; same-shape news is grouped ("and 2 more like this"); "3 places the same" is not a headline', nf.first.length === 2 && /and 2 more like this/.test(nf.first[0]) && !nf.head && !nf.again, JSON.stringify(nf));
@@ -127,7 +128,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   ok('bot: ran ' + DAYS + ' in-game days unattended', days.length >= DAYS, days.length + ' days');
   ok('bot: wrote a numbers-only summary each day (window.__bot.days and the console)', days.length && days.every((d) => Object.entries(d).every(([k, v]) => typeof v === 'number' || k === 'room')) && lines.length >= Math.min(DAYS, days.length));
   ok('bot: no errors', days.every((d) => d.errors === 0) && errs.length === 0, JSON.stringify(errsB.slice(0, 3)) + ' ' + errs.slice(0, 2).join(' | '));
-  ok('bot: no colonist stuck for more than 5 game hours', days.every((d) => d.stuck === 0), JSON.stringify(days.map((d) => d.stuck + '/' + d.stuckMaxS)));
+  ok('bot: no colonist stood stuck for more than 30 simulated minutes (outside a tent)', days.every((d) => d.stuck === 0), JSON.stringify(days.map((d) => d.stuck + '/' + d.stuckMaxS)));
   ok('bot: no repeated notices', days.every((d) => d.repeatedNotices === 0), JSON.stringify(days.map((d) => d.noticeCards + ' cards, ' + d.repeatedNotices + ' repeats')));
   ok('bot: the camera was never inside geometry', days.every((d) => d.camInside === 0));
   ok('bot: it played (built or planted, poked, walked between rooms)', days.length && days[days.length - 1].builds + days[days.length - 1].plants > 0 && days[days.length - 1].roomMoves >= 1, JSON.stringify(days[days.length - 1]));
