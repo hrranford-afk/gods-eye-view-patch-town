@@ -367,7 +367,10 @@ body.couch .garage { left: 25%; max-width: calc(50vw - 32px); bottom: calc(env(s
 body.couch .padStrip { max-width: calc(50vw - 32px); min-width: 0; }
 body.couch .padStrip.p2 { left: calc(50% + 16px); }
 body.couch .banner { font-size: clamp(22px, 3.6vw, 40px); }
+body.couch .hud .mid { flex: 0 1 auto; max-width: 36%; } body.couch .hud .toast { font-size: 12px; }
+body.couch .basebar { min-width: 120px; }
 .split { position: fixed; z-index: 2; top: 0; bottom: 0; left: calc(50% - 2px); width: 4px; background: #1c1712; pointer-events: none; }
+body.padMenu .screen { padding-bottom: 72px; } /* room to scroll the last button above the menu strip */
 .padFocus { outline: 4px solid var(--gold) !important; outline-offset: 3px; }
 #couchNote { font-size: 14px; opacity: 0.85; }
 </style>
@@ -10910,7 +10913,7 @@ function padFocus(el) {
   PADS.focus = el;
   if (!el) return;
   el.classList.add('padFocus');
-  try { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); } catch (e) { /* old browsers: the ring is enough */ }
+  try { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); } catch (e) { /* old browsers: the ring is enough */ }
   const r = el.getBoundingClientRect(); PADS.focusAt = [r.left + r.width / 2, r.top + r.height / 2];
 }
 function padStep(from, list, dir) { // the nearest button that way (a cone, favouring straight lines)
@@ -11110,7 +11113,7 @@ function stripDraw(scr) {
   }
   if (h1 !== PADS.sig[0]) { PADS.sig[0] = h1; s1.innerHTML = h1; }
   if (h2 !== PADS.sig[1]) { PADS.sig[1] = h2; s2.innerHTML = h2; }
-  s1.classList.toggle('menu', menu);
+  s1.classList.toggle('menu', menu); document.body.classList.toggle('padMenu', menu);
   if (s1.hidden === !!h1) s1.hidden = !h1;
   if (s2.hidden === !!h2) s2.hidden = !h2;
 }
@@ -11128,6 +11131,7 @@ function couchTitle(n) {
   $('play2Sub').textContent = !ok ? '1 player only for now (levels 1 and 2)' : n >= 2 ? 'controller 1 (blue) vs controller 2 (red)' : 'keyboard (blue) vs controller (red)';
   $('padNote').textContent = `${n} controller${n === 1 ? '' : 's'} connected · split screen: Player 1 left, Player 2 right`;
 }
+$('play').after($('play2')); // beside PLAY (the Drift, My Track and AR blocks have put PLAY in a row by now)
 $('play2').addEventListener('click', () => { if (COUCH_LEVELS.includes(curLevel)) couchStart(); });
 
 // --- couch versus: start, Player 2's car, the right-hand HUD, the two views, the end ---
@@ -11270,6 +11274,11 @@ function couchEnd(won) { // called by endGame(): the toy box that broke says who
   $('endTitle').style.color = won ? '#8fbcff' : '#ff8f86';
   $('endText').textContent = `Player ${3 - who}'s toy box is crumbs after ${mins}:${secs}. ${won ? 'Blue' : 'Red'} rules the ${state.level.name.toLowerCase()}. PLAY AGAIN for a rematch.`;
   $('endStars').innerHTML = ''; $('next').hidden = true; $('endBoxes').hidden = true;
+  $('banner').hidden = true; bannerTimer = 0;
+  for (const [t, ids] of [[BLUE, ['hpBlue', 'pctBlue', 'hpBlue2', 'pctBlue2']], [RED, ['hpRed', 'pctRed', 'hpRed2', 'pctRed2']]]) { // the HUD stops with the game: show the broken box at 0%
+    const f = Math.max(0, state.bases[t].hp / state.bases[t].maxHp);
+    $(ids[0]).style.width = $(ids[2]).style.width = `${f * 100}%`; $(ids[1]).textContent = $(ids[3]).textContent = `${Math.ceil(f * 100)}%`;
+  }
   padPause(false);
   setTimeout(() => { sfx('win'); $('end').hidden = false; }, 1200);
 }

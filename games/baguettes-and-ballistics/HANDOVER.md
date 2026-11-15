@@ -1171,3 +1171,95 @@ So graphics on cost about 20 to 45% of the frame rate on a CPU renderer (the mac
  Screenshots: `shots/gfx-before-after-1.png` to `-3.png` (left half old game, right half new).
 
 Rough edges: the 4x multisample target and the blur are heavy on a software renderer; on an iPad they are one extra full-screen pass. Not checked on real iPad hardware.
+
+## Couch versus and controllers (branch game/bb-couch, 15 Nov 2026)
+
+Play it with a game controller, and two people on one screen. No libraries and no downloads: the browser's Gamepad API.
+
+| A controller in use (1 player) | 2 PLAYERS on the title card |
+|---|---|
+| ![strip](shots/73-controller-strip.png) | ![choice](shots/74-two-players-choice.png) |
+
+| Split screen, mid-battle | The win screen |
+|---|---|
+| ![split](shots/75-split-screen-battle.png) | ![win](shots/76-win-screen.png) |
+
+### How to play
+1. On the Mac: **System Settings > Bluetooth**. Hold the controller's pairing buttons (on the face-button pad: the small button left of the touch pad and the middle button, together, until the light flashes) and pick it in the list. Pair a second one the same way for two players.
+2. Open `index.html` in **Safari or Chrome**. Press any button on the controller: browsers only show a controller to a page after it has been pressed once. The title card then says "1 controller connected" and shows **2 PLAYERS**.
+3. **1 player:** any controller drives and builds. The keyboard, mouse and touch still work as before; a key or a tap hides the hint strip, a button on the controller shows it again.
+4. **2 players** (levels 1 and 2): pick the level, then **2 PLAYERS**. With two controllers, controller 1 is Player 1 (blue, left half) and controller 2 is Player 2 (red, right half). With one controller, Player 1 plays on the keyboard (WASD, Space, T, G, 1, 2, U, 3, X ...) and the controller is Player 2. There is no race and no dialogue: both sides start the battle with the level's ready-made (Skip race) loadout and +25 cereal. Break the other toy box.
+5. If a controller goes to sleep in a 2-player game, the game pauses until you turn it back on and press RESUME.
+
+### Button map (both players, the same)
+| Button | In the battle | In the race | On a card (title, loadout, end, pause, toy boxes) |
+|---|---|---|---|
+| Left stick | drive (deadzone 0.15) | drive | move the gold ring |
+| Cross | fire (hold) | drop the box you carry | choose |
+| R2 | fire (hold) | | |
+| Square | gun turret | drop the box | |
+| Triangle | rocket turret | skip the race | |
+| L1 | truck | | |
+| R1 | digger | | |
+| L2 | upgrade the turret next to you | | |
+| Circle | your toy box's ability (Player 1; Red's Bread Bin has none) | | back (end card: LEVELS; toy boxes: DONE; pause: RESUME) |
+| D-pad down | drones | | move the ring |
+| D-pad left / right | pick another tool: everything else on the build bar (dominoes, trojan, staple gun, magnet, catapult, armour, flare, laser, boat, toaster, the gumball item, level 6's plan and squad buttons) and, at your toy box, the garage's vehicles | | move the ring |
+| D-pad up | use the picked tool | | move the ring |
+| Options | pause / resume | pause | title: PLAY; pause: RESUME |
+| (dialogue) | | | Cross: next line; Circle or Options: skip |
+
+Keyboard extra: **Escape** pauses and resumes (the pause card has RESUME and LEVELS).
+The hint strip (bottom left; in 2 players one per half, with the player's colour and car health) shows only the buttons that do something on this level, with what they cost, and the picked tool in a gold frame.
+
+### How it is built (the last `<script>`, "Controllers and couch versus"; HTML and CSS in the block after the dialogue's)
+- **Hooks in the main script** (search `Couch hook`): `COUCH` (on, paused) at the top; `step()` calls `padPoll(dt)` and skips `update` while paused; `input.padFire` beside `input.fire`; `update()` calls `couchUpdate` and, in 2 players, skips `commander`, `rushUpdate`, `enemyBoats`, `enemyTricks`, the raids and the boss; `render()` ends in `couchRender`; `resize()` halves the camera aspect; `reset()` calls `couchSpawn`; `endGame` calls `couchEnd`; `start`, PLAY and LEVELS switch it on and off. With 2 players off every hook is one boolean test.
+- **Shared code made two-sided** (default `team = BLUE`, so 1 player is unchanged): `build`, `costOf`, `clipsOf`, `priceText`, `upgrade`, `nearOwnTurret`, `drones`, `placeDomino`, `buyWorker`'s messages, `carOf(team)`, `sideToast(team, text)`. `hurt` and `drive` use the car's own team for gumball armour and turbo; paperclip armour stays Player 1's.
+- **Reading pads** (`padPoll`, once a frame): standard-mapping pads from `navigator.getGamepads()`; a radial 0.15 deadzone rescaled to 0..1; buttons act on the press. 1 player merges every pad. The stick writes `input.x/z` (what the touch stick and WASD write), so race, Kitchen Run, drift and battle all steer the same; letting go puts it back to 0 unless a finger holds the touch stick. Hot-plug: `getGamepads()` is read every frame; `gamepadconnected` shows the strip and a toast, `gamepaddisconnected` pauses a 2-player game.
+- **Player 1's buttons press the HUD buttons** (`press()`: a synthetic `pointerdown` on `bGun`, `bRocket`, ...), so a tool not won in the loadout race stays off exactly as for a finger, and every level's own buttons work with no extra code. In 2 players the HUD buttons are see-through (`opacity: 0`) but still laid out, so this still works. Player 2 has its own small table (`p2Direct`, `p2Tools`) gated by `aiHas()` (Red's loadout).
+- **Menus** (`padMenu`): the card on top is the visible `.screen` with the highest z-index (or the pause card, or the dialogue). The D-pad or stick moves a gold ring (`.padFocus`) to the nearest button that way; Cross is `click()`. When a card redraws its buttons (the level buttons do), the ring goes to the button nearest where it was.
+- **Player 2** is a second `kind: 'player'` entity (`state.p2`, team RED), so turrets, units, bottle caps, domino buttons, collisions and the render loop treat it like Player 1's car with no changes. `couchUpdate` drives it, fires, repairs it at Red's box, scoops spills into Red's cereal, rams Red's side of the gumball machine, respawns it after 3 s, and fills the right-hand HUD (`#hud2`). Its garage (`couchVehicle`) pays from Red's cereal and clips.
+- **Red's commander** stands down entirely: no workers, turrets, cars, dominoes, hijackers, gumball spins or items by itself. The free truck every 45 s and the trickle are the same for both sides, and the workers think the same. The Baron's Bread Bin keeps its roof cannon (as Player 1's box keeps its roof gun). On level 2 the raids and the Stapler are off (they only ever fight for Red).
+- **Split screen** (`couchRender`): two cameras (`camera` for Player 1, `cam2` for Player 2, the same follow rule; at half width the existing "tall screen" rule pulls each camera back 1.5x). Both views draw into the tilt-shift pass's multisampled target with `rt.viewport`/`rt.scissor` (or straight to the canvas with `setViewport`/`setScissor` once the watchdog has dropped the pass), then one blur pass for the whole screen, its sharp band between the two cars. The second view reuses the first view's **shadow map** (`shadowMap.autoUpdate = false`): the sun's shadow box covers the whole table, so it is the same map. Each player sees only their own build ghost. A 4 px line marks the split.
+- **The end card** names the winner (PLAYER 1 WINS! in blue, PLAYER 2 WINS! in red), with no stars, no dialogue and no toy-box button; PLAY AGAIN is a rematch, LEVELS goes back to 1 player.
+
+### Levels
+| Level | 2 players |
+|---|---|
+| 1 Breakfast table | yes |
+| 2 Pencil case | yes (raids and the Stapler off) |
+| 3 Remote-control drawer | "1 player only for now": the sneaky enemy, the dark-level light rules for Red's cars and the Remote Car are scripted for Red |
+| 4 The Sink | 1 player only for now: Red's boats and rafts (`enemyBoats`), the island pile (only Player 1 can scoop) and the Rubber Duck |
+| 5 Hob and oven | 1 player only for now: the rusher waves, Red's toaster launcher and the Toaster Tank |
+| 6 The finale | 1 player only for now: the build-up, squadrons, battle plan, Red's Great Run press and the Baguette are all Red AI (`finaleEnemy` and friends) |
+
+### Tested here (headless Chromium, SwiftShader, Playwright, fake controllers)
+`tests/couch-test.js` (run from this folder: `NODE_PATH=$(npm root -g) node tests/couch-test.js`; add `--shots` for the screenshots and `--perf` for the numbers). It serves the folder on a free port and replaces `navigator.getGamepads` with standard-mapping pads whose axes and buttons the test sets, and fires `gamepadconnected` / `gamepaddisconnected`.
+**Result (15 Nov, last run): 49 passed, 0 failed, no page or console errors.** What it checks:
+- **Keyboard only (unchanged):** no 2 PLAYERS button and no strip; D drives (x -52.1 to -42.8), 1 builds a turret; no Player 2; Red's commander still plays (skipped to 2:30 with 600 cereal, 20 s by hand: units 2 to 10, turrets 0 to 7, workers 2 to 7).
+- **One controller:** 2 PLAYERS offered on level 1; strip on the title; Cross on PLAY starts; Circle skips the dialogue; the D-pad moves the ring GO! to Skip race; Cross confirms the loadout card and START; the stick drives (x -52.3 to -48.2); a stick at (0.1, 0.1) gives no input; Square builds a turret, L1 a truck, Cross held fires, D-pad right picks Dominoes and up lays one; the battle strip lists the buttons; Options pauses (the clock stops) and resumes; a key hides the strip; unplugging hides 2 PLAYERS and plugging back shows it; level 3 says "1 player only for now"; with AR on, 2 PLAYERS is hidden and cannot start.
+- **Two controllers:** "controller 1 (blue) vs controller 2 (red)"; controller 2's Cross starts it; a second HUD; each camera's aspect 0.720 (half of 1180 x 820); Player 2's stick drives the red car (x 52.2 to 43.1) and is not Player 1's input; Player 1's stick drives blue; Player 2's Square builds a red turret, L1 a red truck, with its message in the right-hand HUD; R2 fires; **Red AI stands down** (2:30, 600 red cereal, 20 s by hand: units 0 to 0, turrets 1 to 1 (Player 2's), workers 3 to 3; Red's cereal untouched at 653); two cameras over the two cars (x -45 / 45); a controller dropping out pauses, Circle resumes; Player 1's box breaks: **PLAYER 2 WINS!** (no stars, no toy-box button); Cross on PLAY AGAIN: a rematch; Player 2's box breaks: **PLAYER 1 WINS!**; Circle (LEVELS): back to 1 player (camera aspect back, no Player 2); level 2 in 2 players: no raids, no Stapler, Player 2 has the staple gun and catapult.
+
+**Frame rate and draw calls** (`--perf`: level 1 battle, `?auto=0`, the cameras over the cars, 8 s; draw calls counted at the WebGL context, so the shadow pass and the blur pass are in; SwiftShader is a CPU renderer, so only the ratios mean anything):
+
+| | fps | draw calls a frame |
+|---|---|---|
+| 1 player | 1.63 | 1,002 |
+| 2 players, split screen | 1.22 (75%) | 1,396 (+39%) |
+
+Each half-width view costs about 270 to 320 calls (it is pulled back 1.5x, so it sees more of the table than the 1-player view's 232); the shadow pass, the biggest single cost, is drawn once and shared. (Measured with three's `renderer.info` instead, which leaves the shadow pass out: 258 against 1,399; that comparison is wrong, which is why the test counts at the context.)
+
+Screenshots (`--shots`): `shots/73-controller-strip.png` (1 player with a controller: the hint strip bottom left), `74-two-players-choice.png` (the title card, 2 PLAYERS focused, the menu strip), `75-split-screen-battle.png`, `76-win-screen.png`.
+
+### Not done
+- Levels 3 to 6 in 2 players (see the table).
+- Player 2 has no toy-box ability (Red's box is the Baron's Bread Bin, with its cannon and no button), no paperclip armour, no Trojan (not in the levels 1 and 2 loadouts anyway), no free upgrade.
+- No race before a 2-player battle, and no dialogue. A 2-player Kitchen Run would need the race cars and tokens split per player.
+- No controller rumble, no button remapping, no per-player colour choice; the toy box choice (and its upgrades) is Player 1's only. Player 1's box upgrades are a head start in 2 players: worth balancing with a playtest.
+- AR mode was not changed (2 PLAYERS is hidden while AR is on, and AR cannot start a 2-player game).
+
+### Known risks
+- **No real controller was used.** Every controller test here is a faked `navigator.getGamepads()`. Real pads to check on the Mac: that Safari and Chrome both report `mapping: 'standard'` for the pad you have (if one reports a different layout the buttons will be in the wrong places; the code accepts any pad with 16 or more buttons), the stick deadzone (0.15) on a worn stick, that the triggers (L2, R2) count as pressed past half way, and that the Options button does not also open something in the browser.
+- Browsers expose a controller only after a button is pressed on the page, and Safari can stop reading it while the tab is in the background.
+- Frame rate: two views cost 39% more draw calls and a quarter of the frame rate on a CPU renderer (numbers above). On a Mac with a real GPU this should be fine; on an iPad two players is not offered unless a controller is connected, but if it is, watch the frame-time watchdog (it drops the blur pass first, which the split screen handles).
+- Sound comes from Player 1's car (engine, nearby hits); Player 2 hears Player 1's side.
