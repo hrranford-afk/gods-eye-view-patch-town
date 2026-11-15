@@ -286,6 +286,63 @@ function fakePads() {
     console.log(`PERF  2 players: ${perf2.fps.toFixed(2)} fps, ${perf2.calls} draw calls a frame  [${perf2.where}]`);
   }
 
+  // ---------- 5. The Kitchen Run on an iPad held upright (820 x 1180): the controller's stick takes the whisk spring onto the sill ----------
+  // (15 Nov: a car that took the whisk was left on the shortcut's last point, still in the air, so the ride started again every other frame:
+  // stuck on the sill with "Boing! Up onto the sill" and 8 white spark cubes each time. And a slow car that dropped back onto the bread bin's
+  // jump after using it rolled off the end without it, fell, and did that for ever.) A bot steers with the stick at the road 7 points ahead,
+  // on the line and 1.5 off it, full stick and a light touch; it must pass the sill and the later jumps (the slow
+  // run may be beaten home by a red car, but not before the baking tray), never go 4 s without getting further (a fall into the sink costs
+  // about 2), throw no white cubes, and the car's tyres must sit on the road.
+  {
+    const page = await open('?auto=0', 820, 1180);
+    await ev(page, () => { window.__connect(0); selectLevel(0); });
+    await page.click('#play'); if (await page.isVisible('#talk')) await page.click('#talkSkip');
+    await page.click('#lrGo'); await frames(page, 2);
+    const drive = (o) => ev(page, (o) => {
+      if (!window.__realUpdate) { window.__realUpdate = window.update; window.update = () => {}; window.__white = 0; const ob = window.burst; window.burst = function (x, z, color, n = 12, ...a) { const p0 = parts.length; const r = ob.call(this, x, z, color, n, ...a); if (color === 0xfff8ec) window.__white += parts.length - p0; return r; }; }
+      if (o.restart) { cleanupRace(); reset(); $('lrIntro').hidden = true; state.race.intro = false; }
+      state.race.hold = 0;
+      const K = state.race.kr, p = state.player, M = K.main, Sp = K.br.find((b) => b.name === 'spring'), w0 = window.__white;
+      let still = 0, worst = 0, last = p.prog, gapLo = 9, gapHi = -9;
+      // (not the sponges' last stretch: there the ruler's start passes overhead, and a ray down from above a wheel meets the ruler)
+      const secs = ['start', 'board', 'bin', 'tube', 'ramp1', 'plat', 'ramp2', 'sill2', 'caddy', 'slide', 'sink2', 'knife', 'toaster', 'land', 'hob2', 'foil2', 'spatula', 'fridge', 'ovendoor'], seen = new Set();
+      const ray = new THREE.Raycaster(), V = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
+      const skip = new Set([...state.race.cars.map((c) => c.mesh), ...state.race.tokens.map((t) => t.g)]), course = [];
+      state.race.group.traverse((m) => { if (!m.isMesh || m.material.depthWrite === false) return; let a = m; while (a && !skip.has(a)) a = a.parent; if (!a) course.push(m); });
+      for (let k = 0; k < 30 * 150 && state.phase === 'race'; k++) {
+        let P = p.kp, i = p.wp;
+        if (P === M && i >= Sp.from - 6 && i <= Sp.from + 2) { P = Sp; i = 0; }
+        let j = Math.min(P.pts.length - 1, i + 7);
+        if (P === M && i < Sp.from - 6 && i > Sp.from - 40) j = Math.min(j, Sp.from);
+        const q = P.pts[j], lat = Math.max(-q.hw + 1, Math.min(q.hw - 1, o.off)), dx = q.x + P.nor[j][0] * lat - p.x, dz = q.z + P.nor[j][1] * lat - p.z, d = Math.hypot(dx, dz) || 1;
+        window.__stick(0, dx / d * o.thr, dz / d * o.thr); padPoll(1 / 30); window.__realUpdate(1 / 30);
+        if (p.prog > last + 0.05) { still = 0; last = p.prog; } else worst = Math.max(worst, still += 1 / 30);
+        const sec = o.gaps && p.kp === M && !p.krAir && !p.scr && secs.find((n) => !seen.has(n) && Math.abs(p.wp - Math.round((M.named[n].i0 + M.named[n].i1) / 2)) <= 1);
+        if (sec) { // the middle of a section: each tyre's lowest point, measured straight up from the road face under that wheel
+          seen.add(sec); krCam(1 / 30); p.mesh.updateMatrixWorld(true);
+          for (const [wx, wz] of [[1.15, 0.95], [1.15, -0.95], [-1.15, 0.95], [-1.15, -0.95]]) {
+            const vs = []; p.mesh.traverse((m) => { if (!m.isMesh || !m.geometry.attributes.color) return; const pa = m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { V.fromBufferAttribute(pa, v); if (Math.abs(V.x - wx) < 0.7 && Math.abs(V.z - wz) < 0.35 && V.y < 1.2) vs.push(V.clone().applyMatrix4(m.matrixWorld)); } });
+            const c = vs.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / vs.length);
+            ray.set(new THREE.Vector3(c.x, c.y + 1, c.z), down); const h = ray.intersectObjects(course, false)[0];
+            if (!h) continue;
+            const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+            const g = Math.min(...vs.map((v) => v.y - (h.point.y - (n.x * (v.x - h.point.x) + n.z * (v.z - h.point.z)) / n.y)));
+            gapLo = Math.min(gapLo, g); gapHi = Math.max(gapHi, g);
+          }
+        }
+      }
+      window.__stick(0, 0, 0); padPoll(1 / 30);
+      return { done: p.prog >= K.fin || (state.phase !== 'race' && p.prog > M.cum[M.named.slide.i1]), secs: seen.size, worst: +worst.toFixed(2), white: window.__white - w0, gapLo: +gapLo.toFixed(3), gapHi: +gapHi.toFixed(3), where: $('raceLine').textContent };
+    }, o);
+    const runs = [{ off: 0, thr: 1, gaps: true }, { off: 1.5, thr: 0.45, restart: true }, { off: -1.5, thr: 1, restart: true }];
+    for (const o of runs) {
+      const r = await drive(o);
+      ok(r.done && r.worst < 4 && r.white === 0, `Kitchen Run, iPad portrait: the stick takes the whisk onto the sill and on to the finish (${o.off ? `${o.off} off the line` : 'on the line'}, stick ${o.thr})`, `finished ${r.done}, longest stand-still ${r.worst} s, white cubes ${r.white}`);
+      if (o.gaps) ok(r.secs >= 15 && r.gapLo >= -0.01 && r.gapHi <= 0.08, 'Kitchen Run: the tyres sit on the road (each tyre\'s lowest point 0 to 0.08 above it, mid-section)', `${r.secs} sections, ${r.gapLo} to ${r.gapHi}`);
+    }
+    await page.close();
+  }
+
   ok(errors.length === 0, 'no page errors or console errors', errors.slice(0, 5).join(' | '));
   console.log(`\n${pass} passed, ${fail} failed`);
   await browser.close();
