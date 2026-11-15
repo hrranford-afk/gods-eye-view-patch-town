@@ -1,0 +1,28 @@
+<!doctype html><html><body style="margin:0;background:#9a9a9a">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const W=1024,H=1024,r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(W,H);r.setClearColor(0x9a9a9a);r.shadowMap.enabled=true;document.body.appendChild(r.domElement);
+const clay=(c)=>new THREE.MeshStandardMaterial({color:c||0xd8d4cc,roughness:0.85});
+function box(g,w,h,d,x,y,z,c,ry){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),clay(c));m.position.set(x,y,z);if(ry)m.rotation.y=ry;m.castShadow=m.receiveShadow=true;g.add(m);return m;}
+function cyl(g,rt,rb,h,x,y,z,c,seg){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||20),clay(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;g.add(m);return m;}
+function sph(g,rad,x,y,z,c){const m=new THREE.Mesh(new THREE.SphereGeometry(rad,20,14),clay(c));m.position.set(x,y,z);m.castShadow=true;g.add(m);return m;}
+function rbox(g,w,h,d,x,y,z,c){/* soft cushion: a squashed sphere-ish box */const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),clay(c));m.scale.set(w/2,h/2,d/2);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;g.add(m);return m;}
+function crew(g,x,z,s){s=s||1;sph(g,0.05*s,x,0.05*s+g.userData.base,z,0xe8e4dc);sph(g,0.012*s,x+0.02*s,0.065*s+g.userData.base,z+0.04*s,0x333333);sph(g,0.012*s,x-0.02*s,0.065*s+g.userData.base,z+0.04*s,0x333333);}
+function flag(g,x,y,z){cyl(g,0.006,0.006,0.3,x,y+0.15,z,0x8a7a66,8);const f=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.09),new THREE.MeshStandardMaterial({color:0xc85a4a,side:THREE.DoubleSide}));f.position.set(x+0.07,y+0.26,z);g.add(f);}
+function sofa(g){/* a plain sofa seat with arms and back */box(g,2.4,0.35,1.1,0,0.175,0,0xb9b2a6);box(g,2.4,0.7,0.25,0,0.55,-0.45,0xb9b2a6);box(g,0.25,0.55,1.1,-1.2,0.45,0,0xb9b2a6);box(g,0.25,0.55,1.1,1.2,0.45,0,0xb9b2a6);rbox(g,1.15,0.18,1.0,-0.58,0.42,0.02,0xc6bfb2);rbox(g,1.15,0.18,1.0,0.58,0.42,0.02,0xc6bfb2);}
+function fort(g,base){g.userData.base=base;/* cushion walls, matchbox towers, bottle-cap turret, flag, crew */
+ for(let i=-1;i<=1;i++)rbox(g,0.24,0.2,0.14,i*0.24,base+0.1,0.32,0xd9cfe0);for(const sx of[-1,1])for(let j=0;j<2;j++)rbox(g,0.14,0.2,0.26,sx*0.36,base+0.1,0.14-j*0.27,0xd9cfe0);
+ box(g,0.14,0.32,0.09,-0.36,base+0.16,-0.3,0xe0c48a);box(g,0.14,0.32,0.09,0.36,base+0.16,-0.3,0xe0c48a);box(g,0.16,0.06,0.11,-0.36,base+0.35,-0.3,0xe0c48a);box(g,0.16,0.06,0.11,0.36,base+0.35,-0.3,0xe0c48a);
+ cyl(g,0.09,0.09,0.05,0,base+0.025,-0.05,0xc9cdd2,24);cyl(g,0.03,0.03,0.14,0,base+0.08,0.02,0x9aa0a6).rotation.x=1.1;
+ flag(g,0.36,base+0.38,-0.3);crew(g,-0.12,0.12);crew(g,0.13,0.08);crew(g,0.02,-0.2,0.9);}
+function catapult(g,x,base){box(g,0.22,0.04,0.14,x,base+0.02,0,0xb08c5e);box(g,0.03,0.12,0.03,x,base+0.1,0.05,0xb08c5e);box(g,0.03,0.12,0.03,x,base+0.1,-0.05,0xb08c5e);const a=box(g,0.26,0.02,0.03,x,base+0.17,0,0xb08c5e);a.rotation.z=0.5;cyl(g,0.035,0.025,0.03,x+0.11,base+0.235,0,0xc9cdd2);sph(g,0.025,x+0.11,base+0.265,0,0xd94e3a);}
+function rocket(g,x,base){box(g,0.18,0.03,0.12,x,base+0.015,0,0x8f9aa4);const t=cyl(g,0.03,0.03,0.22,x,base+0.13,0,0xe6e2da);t.rotation.z=-0.6;const n=new THREE.Mesh(new THREE.ConeGeometry(0.03,0.06,16),clay(0xd94e3a));n.position.set(x+0.09,base+0.21,0);n.rotation.z=-0.6;g.add(n);for(const s of[-1,1]){const f=box(g,0.04,0.04,0.004,x-0.06,base+0.06,s*0.03,0xd94e3a);f.rotation.z=-0.6;}}
+function plane(g,x,y,z,ry,s){s=s||1;const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,0.1*s,-0.06*s,0,-0.06*s,0,0.012*s,-0.04*s, 0,0,0.1*s,0,0.012*s,-0.04*s,0.06*s,0,-0.06*s],3));geo.computeVertexNormals();const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xf2f0ea,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=ry;m.castShadow=true;g.add(m);}
+function lights(sc){sc.add(new THREE.HemisphereLight(0xffffff,0x777777,0.75));const d=new THREE.DirectionalLight(0xffffff,0.8);d.position.set(2,4,3);d.castShadow=true;d.shadow.mapSize.set(2048,2048);Object.assign(d.shadow.camera,{left:-3,right:3,top:3,bottom:-3});sc.add(d);}
+function shot(name,build,cam,look){const sc=new THREE.Scene();lights(sc);const g=new THREE.Group();sc.add(g);build(g);const c=new THREE.PerspectiveCamera(32,1,0.01,50);c.position.set(...cam);c.lookAt(...look);r.render(sc,c);return r.domElement.toDataURL('image/png');}
+window.SHOTS={
+ 'sofa-fort':()=>shot('f',(g)=>{sofa(g);const f=new THREE.Group();f.scale.setScalar(0.55);f.position.set(-0.5,0.5,0.05);g.add(f);fort(f,0);},[0.9,1.7,3.3],[-0.2,0.45,0]),
+ 'weapons':()=>shot('w',(g)=>{box(g,1.6,0.06,0.6,0,0.03,0,0xbdb7ab);catapult(g,-0.36,0.06);rocket(g,0,0.06);for(let i=0;i<7;i++)plane(g,0.36+((i*37)%5-2)*0.05,0.12+(i%3)*0.06,((i*53)%7-3)*0.05,0.4+i*0.15,0.7);},[0,0.8,2.1],[0,0.12,0]),
+ 'the-hit':()=>shot('h',(g)=>{sofa(g);const f=new THREE.Group();f.scale.setScalar(0.55);f.position.set(-0.5,0.5,0.05);g.add(f);fort(f,0);g=f;/* a soft splat on the left tower: blob + flying bits */sph(g,0.07,-0.3,0.42,-0.24,0xd94e3a);for(let i=0;i<9;i++){const a=i/9*6.28;box(g,0.04,0.025,0.03,-0.3+Math.cos(a)*0.18,0.42+Math.sin(a)*0.14,-0.2+Math.sin(a*2)*0.08,i%2?0xe0c48a:0xd9cfe0,a);}g.children.filter(m=>m.position.x<-0.3&&m.position.x>-0.42&&m.position.y>0.1&&m.position.y<0.36).forEach(m=>{m.rotation.z=0.35;m.position.x-=0.04;});},[0.2,1.3,2.0],[-0.5,0.55,0])
+};
+</script></body></html>

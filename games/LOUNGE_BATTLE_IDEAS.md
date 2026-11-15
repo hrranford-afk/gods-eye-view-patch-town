@@ -23,3 +23,12 @@ two iPads in one room.
 ## Needs Harry later
 - A small matchmaking service so two iPads can find each other (money and security).
 - Taste: which weapon family comes first.
+
+## From the town, 15 Nov (look-1, words untouched in games/orders/results/2026-11-15-power1-economy1b-look1.md)
+- Town Brain picked style B (toy box) for reading at arm's length; it was judging from words, not pictures.
+  Harry still picks the style once the pictures exist (look-1b).
+- Town Brain's rule, "Material Resistances": each fort material resists one weapon and is weak to another,
+  so the fort you build decides which weapon wins. Fits the rock-paper-scissors plan. Use it.
+- Sparks worth keeping: paper planes bounce off cushions (Synthesist); a "leaky roof" puddle that slows the
+  other side (Choreographer); planes drift like gales (Swarmkeeper); a red-balloon rocket that pops softly
+  (Choreographer).
