@@ -198,7 +198,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 27';
+const BUILD = 'build 28';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -2215,7 +2215,7 @@ function mapToJSON() { /* build 26: only the current room's zones, and the spots
     zones: own.map((Z) => { const L = Z.land; return { id: Z.id, name: Z.name, type: Z.type, spec: Z.spec, y: +Z.y.toFixed(4), h: +(Z.h || 0).toFixed(3), cx: +Z.cx.toFixed(4), cz: +Z.cz.toFixed(4), ang: +Z.ang.toFixed(5), w: +Z.w.toFixed(3), d: +Z.d.toFixed(3), area: +Z.area.toFixed(4), color: Z.color, lost: !!Z.lost, ceil: !!Z.ceil,
       land: L ? { cell: LC, i0: L.i0, j0: L.j0, w: L.w, h: L.h, st: rle(L.st), dist: rle(L.dist), calm: rle(L.calm), ht: rle(L.ht), seen: rle(L.seen), conf: rle(L.conf) } : null }; }),
     spots: spots.map((s) => ({ id: s.id, tag: s.tag, name: s.name, zid: s.zid, x: +s.x.toFixed(4), y: +s.y.toFixed(4), z: +s.z.toFixed(4), area: +s.area.toFixed(4), on: s.on, src: s.src, who: s.who || '' })),
-    cables: G.cables.filter((c) => sids.has(c.a) && sids.has(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().filter((s) => sids.has(s.id)).map((s) => s.id), library: G.library, stk: stkToJSON() /* build 27: the room's sticker, in the map's frame */ };
+    cables: G.cables.filter((c) => sids.has(c.a) && sids.has(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })), landmarks: pickLandmarks().filter((s) => sids.has(s.id)).map((s) => s.id), library: G.library, stk: stkToJSON() /* build 27: the room's sticker, in the map's frame */, snap: snapToJSON() /* build 28: the room's snapshots (descriptors and 3D points, no pictures) */ };
 }
 function mapFromJSON(d, room) { /* returns an error string, or '' after loading it into G; room (build 26): the room it is loaded for (default: the current one) */
   if (!d || typeof d !== 'object' || d.kind !== 'base-camp-room-map') return 'This is not a Base Camp room map.';
@@ -2233,7 +2233,7 @@ function mapFromJSON(d, room) { /* returns an error string, or '' after loading 
   G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
   for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
   G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
-  if (!room || room === HOMES.cur) { G.stk = stkFromJSON(d.stk); const hr = homeInfo(room || HOMES.cur); if (G.stk && hr && hr.stk !== G.stk.id) { for (const q of HOMES.rooms) if (q.stk === G.stk.id) delete q.stk; hr.stk = G.stk.id; homesSave(); } } /* build 27: the room's sticker (older maps have none) */
+  if (!room || room === HOMES.cur) { G.snap = snapFromJSON(d.snap); /* build 28 */ G.stk = stkFromJSON(d.stk); const hr = homeInfo(room || HOMES.cur); if (G.stk && hr && hr.stk !== G.stk.id) { for (const q of HOMES.rooms) if (q.stk === G.stk.id) delete q.stk; hr.stk = G.stk.id; homesSave(); } } /* build 27: the room's sticker (older maps have none) */
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
@@ -2515,7 +2515,7 @@ function nudgeAlign(dx, dz, dphi) { // fine-tune around the landmark midpoint
   const mx = pv[0] * c0 - pv[1] * s0 + T.tx + dx, mz = pv[0] * s0 + pv[1] * c0 + T.tz + dz; T.phi += dphi; const c = Math.cos(T.phi), s = Math.sin(T.phi);
   T.tx = mx - (pv[0] * c - pv[1] * s); T.tz = mz - (pv[0] * s + pv[1] * c); applyAlign(T);
 }
-function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; stkCommit(); /* build 27 */ G.align = null; }
+function commitAlign() { for (const Z of G.zones) Z.f0 = [Z.cx, Z.cz, Z.ang, Z.y]; for (const sp of G.spots) sp.p0 = [sp.x, sp.y, sp.z]; stkCommit(); /* build 27 */ snapCommit(); /* build 28 */ G.align = null; }
 
 // ============ AWAY: the colony keeps going on the saved map. The first 24 hours are simulated in coarse steps; any time beyond that goes in DAY steps (awayDays). A colony never expires. ============
 const AWAY_MAX = 24 * 3600; // the part that is simulated in detail, not a limit on the time away
@@ -4744,7 +4744,7 @@ function resize2() { renderer.setSize(innerWidth, innerHeight); camera.aspect = 
 function arFrame(frame) {
   if (!frame || !AR.refSpace) return;
   const pose = frame.getViewerPose(AR.refSpace), view = pose && pose.views[0];
-  if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); if (STK.state === 'ready') { stkCam(); stkPoseNote(); } /* build 27: which viewer pose belongs to the newest camera picture */ }
+  if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); if (STK.state === 'ready' || RECOG.on) { stkCam(); stkPoseNote(); } /* build 27: which viewer pose belongs to the newest camera picture (build 28: also for the room snapshots, without the sticker library) */ }
   if (frame.getGlobalLightEstimate && performance.now() - AR.gtime > 1000) { // non-standard, WebXRKit only: ARKit's ambient light
     AR.gtime = performance.now();
     try { frame.getGlobalLightEstimate().then((pr) => { const v = pr && pr.indirectIrradiance; if (v > 0) AR.light = clamp(v, 0.6, 1.4); }).catch(() => {}); } catch (e) { /* ignore */ }
@@ -5161,7 +5161,7 @@ function buildReport(note) {
   const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
   const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
   const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
-    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), errors: REC.errs, previousSession: REC.prev,
+    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), roomSnapshots: snapReport() /* build 28: numbers only, no pictures */, errors: REC.errs, previousSession: REC.prev,
     snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
   return JSON.stringify(R);
 }
@@ -5325,7 +5325,7 @@ function autoTick(dt) {
     const h = autoHintText(); if (h) autoSay(h, 4); else if (!G.settlements.length && !SCAN.zones.length) autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
     AUTO.steady = G.settlements.length > 0 && (!G.returning || G.locked) && AUTO.t > 40;
   }
-  RELOC.lastHits = SCAN.hits; arQuietTick(); rbTick(dt); rfStep(); /* build 26: the room's extent, and the relock after a sleep */ stkTick(dt); /* build 27: the room's sticker */
+  RELOC.lastHits = SCAN.hits; arQuietTick(); rbTick(dt); rfStep(); /* build 26: the room's extent, and the relock after a sleep */ stkTick(dt); /* build 27: the room's sticker */ snapTick(dt); /* build 28: the room's snapshots */
   if (G.returning && !G.locked) relocStep(dt);
   { const on = G.returning && !G.locked && RELOC.state === 'search'; if ($('idDot').hidden === on) $('idDot').hidden = !on; }
   totemTick(dt); totemOfferTick();
@@ -5546,10 +5546,10 @@ function relocConsider(res) {
   if (room !== HOMES.cur && !homeSwitchLoad(room)) return; relocLock(a, RELOC.totem ? 'totem' : undefined);
 }
 function relocLock(res, how) {
-  const stkL = how === 'sticker'; /* build 27: a lock from the room's sticker (the surfaces may polish it only a little) */ const re = RF.on && RF.phase === 'match'; if (re) how = 'relock'; /* build 26: the same room found again after a sleep or an origin jump */
-  let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0 && (!stkL || stkPolishOK(pol.T))) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; /* the frames are committed after a short refinement with the growing scan */
+  const stkL = how === 'sticker', snapL = how === 'snap'; /* build 27: a lock from the room's sticker (the surfaces may polish it only a little); build 28: from its snapshots, the same */ const re = RF.on && RF.phase === 'match'; if (re) how = 'relock'; /* build 26: the same room found again after a sleep or an origin jump */
+  let T = { phi: res.phi, tx: res.tx, tz: res.tz, dy: res.dy, pivot: [0, 0], auto: true }; if (how !== 'worldmap') { try { const pol = relocPolish(T, relocLiveLayers()); if (pol.q >= 0 && pol.gain > 0 && (!stkL || stkPolishOK(pol.T)) && (!snapL || snapPolishOK(pol.T))) T = pol.T; } catch (e) { /* keep the matched pose */ } } applyAlign(T); G.alignErr = null; AUTO.commitAt = AUTO.t + 24; /* the frames are committed after a short refinement with the growing scan */
   $('nroom').hidden = true; ROOMPRE = {}; G.finding = false;
-  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2), score: Math.round(res.score || 0), ov: +(res.overlap || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; if (!re) { G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; } RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, overlap: res.overlap, how: how || 'auto', stk: stkL ? 'sticker' : '' }; if (!stkL) STK.lockFix = null;
+  recReloc({ locked: true, how: how || 'auto', M: res.M, ratio: +(res.ratio || 0).toFixed(2), score: Math.round(res.score || 0), ov: +(res.overlap || 0).toFixed(2) }); G.aligned = true; G.locked = true; RELOC.state = 'locked'; if (!re) { G.visits = (G.visits || 0) + 1; G.visitCounted = true; for (const S of G.settlements) for (const t of S.things) if (t.id > (G.awayUid0 || 1e9)) t.pop = 0.9; } RELOC.lock = { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, scanSecs: RELOC.scanSecs, tries: RELOC.tries, ms: performance.now() - RELOC.t0, score: res.score, ratio: res.ratio, M: res.M, info: res.info, margin: res.margin, overlap: res.overlap, how: how || 'auto', stk: stkL ? 'sticker' : '', snap: snapL ? 'snapshots' : '' }; if (!stkL) STK.lockFix = null; if (!snapL) { SNAP.lockFix = null; SNAP.kfHold = performance.now() + 40000; } /* build 28: the snapshots may still correct this lock (snapCorrect); no new keyframes until then */
   G.holdPlace = false; for (const S of G.settlements) if (!S.lost) { S.placed = true; S.group.visible = true; }
   for (const Z of G.zones) { if (Z.mesh) Z.mesh.visible = true; paintLand(Z); }
   setPhase('play'); barUi(); updateHint(); updateLabels(true);
@@ -5622,11 +5622,11 @@ function relocPolish(T0, live) { // local search around a pose: yaw +-3 degrees,
 }
 function relocRefine() { // after the lock the scan keeps growing: nudge the registration (ICP from several yaws, lowest boundary distance wins, never worse than now)
   const T0 = G.align; if (!T0 || !RELOC.saved) return false; const live = relocLiveLayers(); if (!live.length) return false;
-  const pol = relocPolish(T0, live); if (pol.q >= 0) { RELOC.lock.q = +pol.q.toFixed(2); if (pol.gain > 0 && (!RELOC.lock.stk || stkPolishOK(pol.T))) { /* build 27: a sticker lock is only polished a little */ applyAlign(pol.T); RELOC.lock.phi = pol.T.phi; RELOC.lock.tx = pol.T.tx; RELOC.lock.tz = pol.T.tz; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; return true; } return false; }
+  const pol = relocPolish(T0, live); if (pol.q >= 0) { RELOC.lock.q = +pol.q.toFixed(2); if (pol.gain > 0 && (!RELOC.lock.stk || stkPolishOK(pol.T)) && (!RELOC.lock.snap || snapPolishOK(pol.T))) { /* build 27: a sticker lock is only polished a little (build 28: a snapshot lock too) */ applyAlign(pol.T); RELOC.lock.phi = pol.T.phi; RELOC.lock.tx = pol.T.tx; RELOC.lock.tz = pol.T.tz; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; return true; } return false; }
   const saved = RELOC.saved, hash = RELOC.hash || (RELOC.hash = relocHash(saved)), lp = relocLivePts(live), dy = T0.dy; let cx = 0, cz = 0; for (let i = 0; i < lp.length; i += 3) { cx += lp[i + 1]; cz += lp[i + 2]; } cx /= Math.max(1, lp.length / 3); cz /= Math.max(1, lp.length / 3);
   const c0 = relocCost(T0, lp, saved, hash, dy); let best = null, bc = c0;
   for (const dd of [0, -0.8, 0.8, -1.6, 1.6, -3, 3]) { const dph = dd * Math.PI / 180, c1 = Math.cos(T0.phi), s1 = Math.sin(T0.phi), sx = c1 * (cx - T0.tx) + s1 * (cz - T0.tz), sz = -s1 * (cx - T0.tx) + c1 * (cz - T0.tz), c2 = Math.cos(T0.phi + dph), s2 = Math.sin(T0.phi + dph), Ts = { phi: T0.phi + dph, tx: cx - (c2 * sx - s2 * sz), tz: cz - (s2 * sx + c2 * sz) }; const Ti = relocIcp(Ts, live, saved, dy, hash), co = relocCost(Ti, lp, saved, hash, dy); if (co < bc * 0.98) { bc = co; best = Ti; } }
-  if (!best || (RELOC.lock && RELOC.lock.stk && !stkPolishOK(best))) return false; /* build 27 */
+  if (!best || (RELOC.lock && RELOC.lock.stk && !stkPolishOK(best)) || (RELOC.lock && RELOC.lock.snap && !snapPolishOK(best))) return false; /* build 27, 28 */
   const v = relocVerify(best, RELOC.savedTop, relocTop(live)); const T = { phi: best.phi, tx: best.tx, tz: best.tz, dy: dy + (v.M > 50 ? v.dyFix : 0), pivot: [0, 0], auto: true }; applyAlign(T);
   if (RELOC.lock) { RELOC.lock.phi = T.phi; RELOC.lock.tx = T.tx; RELOC.lock.tz = T.tz; RELOC.lock.dy = T.dy; RELOC.lock.refined = (RELOC.lock.refined || 0) + 1; RELOC.lock.cost = +bc.toFixed(4); } return true;
 }
@@ -5644,7 +5644,7 @@ function relocManual() { // the older way: tap the two furthest-apart named thin
 function worldDrop() { // the map and colony go from the world; the fresh scan stays
   RB.diagT = 0;
   for (const S of G.settlements) world.remove(S.group); for (const l of G.links) world.remove(l.group); for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
-  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null; G.stk = null; STK.lockFix = null;
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.zones = []; G.spots = []; G.cables = []; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.pendingDiary = null; G.cur = null; G.sel = null; G.stk = null; STK.lockFix = null; G.snap = null; SNAP.lockFix = null; SNAP.obs = {}; /* build 28 */
   for (const id of ['ask', 'diary']) $(id).hidden = true; for (const z of SCAN.zones) z.mz = 0; refreshSpots();
 }
 function relocNewRoom() { // a new room: with several rooms the old room simply stays as it is under its own keys; a fresh map starts from what has been scanned
@@ -5743,7 +5743,7 @@ function rbNewRoom() { /* the current room is saved and closed as it is; a fresh
   const from = HOMES.cur; rbClose(); RB.ask = null; recRB({ newRoom: true, from }); rbSaveColony(from); rfReset(); scanReset(); relocNewRoom(); rbReset(); RF.quietUntil = performance.now() + 1500; updateHint(); autoCount();
 }
 function rbIts(id) { /* "It's the Shed": the current room is closed, that room loads and is looked for in a fresh scan */
-  const from = HOMES.cur; for (const k of Object.keys(STK.ignore)) if (stkOwner(+k) === id) delete STK.ignore[k]; /* build 27: that room's sticker may lock it now */ rbClose(); RB.ask = null; recRB({ its: id, from }); rbSaveColony(from); rfReset(); scanReset(); G.finding = false; ROOMPRE = {}; $('nroom').hidden = true;
+  const from = HOMES.cur; for (const k of Object.keys(STK.ignore)) if (stkOwner(+k) === id) delete STK.ignore[k]; /* build 27: that room's sticker may lock it now */ delete SNAP.ignore[id]; /* build 28: and its snapshots */ rbClose(); RB.ask = null; recRB({ its: id, from }); rbSaveColony(from); rfReset(); scanReset(); G.finding = false; ROOMPRE = {}; $('nroom').hidden = true;
   if (!homeSwitchLoad(id)) { toast('That room could not be loaded.', 4); return; }
   RELOC.scanSecs = 0; RELOC.nextTry = 1.5; RELOC.asked = false; /* the player named the room: its search starts from zero */ G.mapName = homeName(HOMES.cur); rbReset(); RF.quietUntil = performance.now() + 1500; autoSay('Looking for ' + homeName(id) + '… look around slowly.', 5); updateHint(); autoCount();
 }
@@ -5761,7 +5761,7 @@ function rfSuspect(why, hard) {
   if (!G.zones.length) { if (hard) scanReset(); return; } /* nothing mapped yet */
   if (!hard && !RB.base && !G.returning) return; /* a quiet check needs a settled room: a young room is still being mapped */
   if (hard) persist();
-  stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it */
+  stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it */ snapClear('suspect'); /* build 28: nor do the pictures */
   Object.assign(RF, { on: true, why, hidden: false, phase: 'check', t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
 }
@@ -5840,7 +5840,7 @@ function chooserOpen() {
   const el = $('chooser');
   el.innerHTML = '<div class="chh">Where are you playing?</div><div class="chlist">' + rs.map((r) => { const ph = totemUrl(r.id), facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' · last visit ' + agoText(Date.now() - (r.last || Date.now())) + (near(r) === 0 ? ' · near here' : '');
     return '<button class="chcard" data-room="' + r.id + '">' + (ph ? '<img class="chph" src="' + ph + '" alt="">' : '<span class="chph chno">⛺</span>') + '<span class="cht"><span class="chk">Continue:</span> <b>' + esc(r.name) + '</b><span class="sub">' + facts + '</span></span></button>'; }).join('') + '</div>' +
-    (rs.some((r) => r.stk) ? '<div class="sub chstk">Have a sticker? Point at it when the camera starts.</div>' : '') + '<button class="big alt" id="chNew">+ New room</button><div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
+    (rs.some((r) => r.stk) ? '<div class="sub chstk">' + rs.filter((r) => r.stk).map((r) => esc(r.name)).join(' and ') + ' ' + (rs.filter((r) => r.stk).length > 1 ? 'have stickers: point at one' : 'has a sticker: point at it') + ' when the camera starts.</div>' : '') /* build 28: only for a room that owns a sticker */ + '<button class="big alt" id="chNew">+ New room</button><div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
   $('title').classList.add('choosing'); el.hidden = false; return true;
 }
 function chooserClose() { $('chooser').hidden = true; $('title').classList.remove('choosing'); }
@@ -5870,7 +5870,7 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
   const sv = safeRead(k.save, (d) => d && d.v === 2 && Array.isArray(d.settlements)); RG.backed = {}; if (!rgBackup(id, k.map)) { toast('The room could not be backed up first, so it was not split.', 5); return 0; }
   let main = groups.reduce((bi, g, i) => (g.area > groups[bi].area ? i : bi), 0);
   if (sv) { const S = sv.settlements.filter((s) => s && s.zid).sort((a, b) => (b.cols || []).length - (a.cols || []).length)[0]; if (S) { const gi = groups.findIndex((g) => g.ids.includes(S.zid)); if (gi >= 0) main = gi; } }
-  const mapPart = (ids, name) => { const d = JSON.parse(JSON.stringify(md)); d.zones = d.zones.filter((q) => ids.has(q.id)); const sp = new Set(d.spots.filter((s) => ids.has(s.zid)).map((s) => s.id)); d.spots = d.spots.filter((s) => sp.has(s.id)); d.cables = (d.cables || []).filter((c) => sp.has(c.a) && sp.has(c.b)); d.landmarks = (d.landmarks || []).filter((s) => sp.has(s)); d.saved = Date.now(); if (name) { d.name = name; delete d.stk; } /* build 27: the sticker stays with the main room */ return d; };
+  const mapPart = (ids, name) => { const d = JSON.parse(JSON.stringify(md)); d.zones = d.zones.filter((q) => ids.has(q.id)); const sp = new Set(d.spots.filter((s) => ids.has(s.zid)).map((s) => s.id)); d.spots = d.spots.filter((s) => sp.has(s.id)); d.cables = (d.cables || []).filter((c) => sp.has(c.a) && sp.has(c.b)); d.landmarks = (d.landmarks || []).filter((s) => sp.has(s)); d.saved = Date.now(); if (name) { d.name = name; delete d.stk; delete d.snap; } /* build 27: the sticker stays with the main room (build 28: the snapshots too) */ return d; };
   const colPart = (keep) => { if (!sv) return null; const d = JSON.parse(JSON.stringify(sv)); d.settlements = d.settlements.filter(keep); const sids = new Set(d.settlements.map((s) => s.id)); d.links = (d.links || []).filter((l) => sids.has(l.a.sid) && sids.has(l.b.sid)); return d; };
   const moved = new Set(), cur = HOMES.cur, made = [];
   for (const [gi, g] of groups.entries()) {
@@ -5916,7 +5916,7 @@ function stkLoad() { /* the vendored files, with plain script tags, in a hidden 
 }
 function stkCam() { /* the camera picture element, its sequence hook (which picture is the newest) and whether pictures arrive at all */
   if (!AR.on) return null; const d = arDevice(), im = d && d._cameraImage; if (!im) return null;
-  if (STK.img !== im) { STK.img = im; STK.seq = 0; STK.loadSeq = -1; STK.doneSeq = -1; STK.poses = [];
+  if (STK.img !== im) { STK.img = im; STK.seq = 0; STK.loadSeq = -1; STK.doneSeq = -1; STK.poses = []; SNAP.doneSeq = -1;
     try { const ds = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src'); Object.defineProperty(im, 'src', { configurable: true, enumerable: true, get() { return ds.get.call(this); }, set(v) { STK.seq++; ds.set.call(this, v); } }); STK.hook = 'src'; } catch (e) { STK.hook = 'load'; }
     im.addEventListener('load', () => { STK.loadSeq = STK.hook === 'src' ? STK.seq : ++STK.seq; if (STK.hook !== 'src') stkPoseNote(); }); }
   return d._videoDataReady && im.naturalWidth ? im : null;
@@ -5950,8 +5950,7 @@ function stkRun(im, pose) { /* one picture: find stickers, refine, pose, into th
   const full = g1.getImageData(0, 0, w, h), sD = Math.min(1, STK_DET_MAX / Math.max(w, h)); let det = full;
   if (sD < 1) { const dw = Math.round(w * sD), dh = Math.round(h * sD), g2 = stkCanvas(dw, dh, true); g2.drawImage(STK.cv, 0, 0, dw, dh); det = g2.getImageData(0, 0, dw, dh); }
   const found = stkDetect(STK.lib, STK.det, { width: det.width, height: det.height, data: det.data }).filter((m) => STK_IDS.includes(m.id)); if (!found.length) return;
-  const gray = stkGray(full.data, w, h), P = pose.P, vw = innerWidth, vh = innerHeight, rot = STK.rot !== null ? STK.rot : ((w > h) !== (vw > vh) ? 90 : 0); /* a landscape picture on a portrait screen is taken as the sensor's picture, a quarter turn from the screen (unproven: see HANDOVER) */
-  const up = (c) => (rot === 90 ? [h - c[1], c[0]] : rot === 270 ? [c[1], w - c[0]] : c), uw = rot ? h : w, uh = rot ? w : h, K = stkIntr(uw, uh, P); STK.K = K; STK.dims = iw + 'x' + ih + ' rot ' + rot;
+  const gray = stkGray(full.data, w, h), view = stkView(w, h, pose.P), rot = view.rot, up = view.up, K = view.K; /* build 28: shared with the room snapshots (stkView) */ STK.K = K; STK.dims = iw + 'x' + ih + ' rot ' + rot;
   for (const m of found) {
     const cs0 = m.corners.map((c) => [(c.x + 0.5) / sD - 0.5, (c.y + 0.5) / sD - 0.5]), csR = stkRefine(gray, w, h, cs0) || cs0, cs = csR.map(up), side = Math.min(...cs.map((c, i) => Math.hypot(c[0] - cs[(i + 1) % 4][0], c[1] - cs[(i + 1) % 4][1])));
     if (side < 16) continue; const q = stkPose(STK.lib, cs, K, STK_SIZE); if (!q || q.rms > 1.5 || q.t[2] > 4) continue;
@@ -5986,7 +5985,7 @@ function stkLive() { /* the room's sticker where the room is now (its map frame 
   return T ? { p: [s.p0[0] * c - s.p0[2] * sn + T.tx, s.p0[1] + T.dy, s.p0[0] * sn + s.p0[2] * c + T.tz], h: s.h0 + T.phi } : { p: s.p0.slice(), h: s.h0 };
 }
 function stkCommit() { const L = stkLive(); if (L) { G.stk.p0 = L.p; G.stk.h0 = stkAng(L.h); } } /* commitAlign: the sticker's saved pose becomes where it is now, like the zones */
-function stkToJSON() { const s = G.stk; return s ? { id: s.id, p: s.p0.map((v) => +v.toFixed(4)), h: +s.h0.toFixed(5), kind: s.kind, sd: +s.sd.toFixed(2), size: STK_SIZE, at: s.at, n: s.n } : null; }
+function stkToJSON() { const s = G.stk, L = s && stkLive(); /* build 28: written where the room is now, like the zones (the saved frame and the zones' frame differ until commitAlign) */ return s ? { id: s.id, p: L.p.map((v) => +v.toFixed(4)), h: +stkAng(L.h).toFixed(5), kind: s.kind, sd: +s.sd.toFixed(2), size: STK_SIZE, at: s.at, n: s.n } : null; }
 function stkFromJSON(d) { if (!d || !STK_IDS.includes(d.id) || !Array.isArray(d.p) || d.p.length !== 3 || !d.p.every(isFinite) || !isFinite(d.h)) return null; return { id: d.id, p0: d.p.map(Number), h0: +d.h, kind: String(d.kind || 'wall'), sd: isFinite(d.sd) ? +d.sd : 2, at: d.at || 0, n: d.n || 0 }; }
 function stkSay(text, secs) { if (performance.now() - STK.sayT < 20000 && !/belongs/.test(text)) return; STK.sayT = performance.now(); toast(text, secs || 2); }
 function stkSettled() { /* the room is known well enough to own a sticker: a lock that is no longer on probation, or a new room whose colony has landed */
@@ -6155,6 +6154,238 @@ function stkFit(obs, S, R0, p0) { /* one sticker pose that explains all the sigh
   const N = r.length, s2 = Math.max(0.25 * 0.25, e / Math.max(1, N - 6)), C = JtJ && stkInv(JtJ), per = obs.map((o, i) => Math.sqrt((r[8 * i] ** 2 + r[8 * i + 1] ** 2 + r[8 * i + 2] ** 2 + r[8 * i + 3] ** 2 + r[8 * i + 4] ** 2 + r[8 * i + 5] ** 2 + r[8 * i + 6] ** 2 + r[8 * i + 7] ** 2) / 4));
   return { R, p, rms: Math.sqrt(e / Math.max(1, N / 2)), per, sdYaw: C ? Math.sqrt(Math.max(0, s2 * C[1][1])) * 57.2958 : 99, sdP: C ? Math.sqrt(Math.max(0, s2 * (C[3][3] + C[4][4] + C[5][5]))) : 9 };
 }
+/* ============ ROOM SNAPSHOTS (build 28): the room's own texture (pictures, books, rugs, furniture edges) finds the camp again, no sticker needed. Read HANDOVER "Room snapshots" before changing anything here. ============
+   ARKit relocalises by saving sparse feature points from its camera pictures; HelloXR keeps none, so the game keeps its own, per room, on this iPad only.
+   1. Keyframes while playing: about every SNAP_PLAY_S seconds a still camera picture of a settled or locked room is looked at (the same pictures and viewer poses as the
+      sticker lock: stkCam / stkPoseNote / stkView). When the iPad stands far enough from every keyframe the room has (SNAP_KF_M or SNAP_KF_DEG) and the picture is sharp and
+      has enough corners, it becomes a keyframe: the corners FEAT finds (FAST + rotated BRIEF, the totem matcher) with the 3D point where each corner's camera ray meets the
+      room's scanned surfaces (snapCast: no hit, a skimming hit or a depth step next to it and the corner is dropped). ONLY the descriptors and the points are kept, never the
+      picture. At most SNAP_MAX keyframes of SNAP_PTS points; when full the weakest goes (few points, never used, close to another keyframe).
+   2. Relock: after a wake / origin jump (RF), on Continue, and in "Not sure?" (G.finding, every saved room's snapshots are scored), live pictures are matched against the
+      keyframes (2D to 3D). Gravity comes from ARKit, so only x, y, z and yaw are unknown: a 3-point linear solve in RANSAC over the matches of several pictures at once (their
+      viewer poses are exact within the session), then Gauss-Newton on the four numbers. A fix needs SNAP_MIN_PICS pictures with inliers, never one. It locks through
+      relocLock; the surfaces may polish it only by SNAP_POL_M and SNAP_POL_DEG. The room's own sticker, when the room has one and it is seen, comes first.
+   3. While playing, a strong fix to ANOTHER saved room's snapshots (and a weak one to this room's) asks the build 26 question "Have you moved to another room?" with that
+      room first; never a silent merge.
+   Saved as `snap` in the room map (written in the map's frame like the zones; commitAlign moves the points with the room). Nothing leaves the iPad. ============ */
+const SNAP_MAX = 16, SNAP_PTS = 96, SNAP_MIN_PTS = 30, SNAP_KF_M = 0.3, SNAP_KF_DEG = 20, SNAP_PLAY_S = 2.5, SNAP_HZ = 3, SNAP_WIN_S = 8, SNAP_PLAY_WIN_S = 14, SNAP_MIN_PICS = 3, SNAP_PIC_INL = 8, SNAP_MIN_INL = 30;
+const SNAP_PX = 3.5, SNAP_GRAZE = 0.26, SNAP_W = 640, SNAP_PER_LVL = 180, SNAP_FAST = 14, SNAP_KF_LOOK_S = 0.4, SNAP_POL_M = 0.02, SNAP_POL_DEG = 1, SNAP_STK_WAIT = 3, SNAP_AGREE_M = 0.03, SNAP_AGREE_DEG = 1.5, SNAP_OFF_M = 0.08;
+const SNAP = { t: 0, doneSeq: -1, obs: {}, last: {}, runs: 0, ms: 0, msAvg: 0, msMax: 0, msKf: 0, made: 0, dropped: 0, tooFew: 0, fixes: 0, locks: 0, asks: 0, checks: 0, agree: 0, disagree: 0, checkT: -1e9, offN: 0, moving: 0, lookT: -1e9, kfHold: 0, corrected: 0, disabled: false, lockFix: null, ignore: {}, cache: {}, sharp: [], playN: 0, err: '', dims: '', lastF: null, lastKf: null };
+REC.snap = [];
+function recSnapL(o) { recRing(REC.snap, Object.assign({ t: recT(), room: HOMES.cur }, o), 60); }
+function snapKfs(id) { /* a room's keyframes: the current room's from G.snap, another room's read from its saved map (cached while that map is unchanged) */
+  if (id === HOMES.cur) return G.snap ? G.snap.kf : [];
+  const raw = store.get(homeKeys(id).map); if (!raw) return []; const key = raw.length + ':' + raw.slice(-40), c = SNAP.cache[id]; if (c && c.key === key) return c.kf;
+  let kf = []; try { const md = JSON.parse(raw), s = md && md.kind === 'base-camp-room-map' ? snapFromJSON(md.snap) : null; kf = s ? s.kf : []; } catch (e) { kf = []; }
+  SNAP.cache[id] = { key, kf }; return kf;
+}
+function snapRelocking() { return (G.returning && !G.locked) || RF.on; }
+function snapRooms() { /* the rooms whose snapshots this picture is matched against */
+  if (snapRelocking()) { const ids = G.finding && !RF.on ? HOMES.rooms.filter((r) => roomHasData(r.id)).map((r) => r.id) : [HOMES.cur]; return ids.filter((id) => snapKfs(id).length); }
+  return snapKfs(HOMES.cur).length || stkSettled() ? [HOMES.cur] : [];
+}
+function snapNeed() { /* seconds between looks, 0: not now */
+  if (SNAP.disabled || !AR.on || !G.auto || G.phase !== 'play' || G.mode !== 'ar' || (typeof BT !== 'undefined' && BT.on)) return 0; /* disabled: a switch for the tests (and the field: surfaces and sticker only) */
+  if (snapRelocking()) return snapRooms().length ? 1 / SNAP_HZ : 0;
+  if (RB.ask || !(stkSettled() || (G.locked && !RF.on && snapKfs(HOMES.cur).length))) return 0; return SNAP_KF_LOOK_S; /* each new picture's pose is checked (cheap); its corners only every SNAP_PLAY_S, or when it would make a new keyframe */
+}
+function snapTick(dt) {
+  const gap = snapNeed(); if (!gap) return; SNAP.t += dt; if (SNAP.t < gap) return;
+  const im = stkCam(); if (!im || STK.loadSeq <= SNAP.doneSeq) return;
+  const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); SNAP.doneSeq = seq; if (!pose) return;
+  const rl = snapRelocking(); if (!rl && performance.now() - SNAP.lookT < SNAP_PLAY_S * 1000 && !snapNovel(pose.V)) return;
+  if (stkMoving() > (rl ? 1.6 : 0.8)) { SNAP.moving++; return; } /* relock: under 0.4 m/s and 40 degrees/s (blur only costs corners); a keyframe: under 0.2 m/s and 20 degrees/s, and sharp (snapRun) */ SNAP.t = 0;
+  const t0 = performance.now(); SNAP.lookT = t0; try { snapRun(im, pose, rl); } catch (e) { SNAP.err = String(e && e.message || e); recSnapL({ err: SNAP.err }); }
+  const ms = performance.now() - t0; SNAP.ms = ms; SNAP.msAvg = SNAP.msAvg ? SNAP.msAvg * 0.9 + ms * 0.1 : ms; SNAP.msMax = Math.max(SNAP.msMax, ms); SNAP.runs++; if (SNAP.msAvg > 90) SNAP.t = -gap; /* a slow device looks half as often */
+}
+function stkView(w, h, P) { /* a camera picture's orientation and intrinsics (shared with the sticker lock): a landscape picture on a portrait screen is the sensor's picture a quarter turn from the screen (unproven: see HANDOVER "Sticker lock") */
+  const vw = innerWidth, vh = innerHeight, rot = STK.rot !== null ? STK.rot : ((w > h) !== (vw > vh) ? 90 : 0), up = (c) => (rot === 90 ? [h - c[1], c[0]] : rot === 270 ? [c[1], w - c[0]] : c), uw = rot ? h : w, uh = rot ? w : h;
+  return { rot, up, uw, uh, K: stkIntr(uw, uh, P) };
+}
+function snapSharp(g) { let s = 0, n = 0; const w = g.w, d = g.d; for (let y = 2; y < g.h - 2; y += 3) for (let x = 2; x < w - 2; x += 3) { const i = y * w + x; s += Math.abs(d[i + 1] - d[i - 1]) + Math.abs(d[i + w] - d[i - w]); n++; } return n ? s / n : 0; }
+function snapRun(im, pose, rl) { /* one picture: corners, then matched (relock / checks / another room) and maybe kept as a keyframe */
+  const iw = im.naturalWidth, ih = im.naturalHeight, g = FEAT.gray(im, iw, ih, SNAP_W), f = FEAT.extract(g, 3, SNAP_PER_LVL, SNAP_FAST), sc = iw / g.w, cam = stkView(iw, ih, pose.P), U = new Float32Array(f.n), W = new Float32Array(f.n);
+  for (let i = 0; i < f.n; i++) { const c = cam.up([f.x[i] * sc, f.y[i] * sc]); U[i] = c[0]; W[i] = c[1]; }
+  SNAP.dims = iw + 'x' + ih + ' rot ' + cam.rot + ' corners ' + f.n; const pic = { f, U, W, V: pose.V, K: cam.K, t: performance.now() };
+  if (rl) { for (const id of snapRooms()) snapObs(id, pic, SNAP_WIN_S); return; }
+  SNAP.playN++; if (snapKfs(HOMES.cur).length >= 2) snapObs(HOMES.cur, pic, SNAP_PLAY_WIN_S); else SNAP.last[HOMES.cur] = { inl: 0, t: pic.t };
+  if (SNAP.playN % 2 === 0) for (const r of HOMES.rooms) if (r.id !== HOMES.cur && !SNAP.ignore[r.id] && roomHasData(r.id) && snapKfs(r.id).length) snapObs(r.id, pic, SNAP_PLAY_WIN_S); /* another room? every second look */
+  const sh = snapSharp(g); SNAP.sharp.push(sh); if (SNAP.sharp.length > 12) SNAP.sharp.shift();
+  if (stkSettled() && performance.now() > SNAP.kfHold && f.n < 60 && snapNovel(pic.V)) { SNAP.tooFew++; if (SNAP.tooFew % 5 === 1) recSnapL({ keyframe: 'too few corners', corners: f.n }); } /* a blank wall, a dark room */
+  if (stkSettled() && performance.now() > SNAP.kfHold && f.n >= 60 && sh >= 0.6 * stkMed(SNAP.sharp)) { const t1 = performance.now(); if (snapKeep(pic)) SNAP.msKf = performance.now() - t1; }
+}
+/* ---- keyframes ---- */
+function snapToMap(p) { const T = G.align; if (!T) return p.slice(); const c = Math.cos(-T.phi), s = Math.sin(-T.phi), dx = p[0] - T.tx, dz = p[2] - T.tz; return [dx * c - dz * s, p[1] - T.dy, dx * s + dz * c]; } /* live -> the map's own frame (the inverse of the alignment) */
+function snapFromMap(p, T) { if (!T) return p.slice(); const c = Math.cos(T.phi), s = Math.sin(T.phi); return [p[0] * c - p[2] * s + T.tx, p[1] + T.dy, p[0] * s + p[2] * c + T.tz]; }
+function snapCamOf(V) { /* where the iPad stands and looks, in the map's frame */ const c = snapToMap([V[12], V[13], V[14]]), yaw = Math.atan2(-V[10], -V[8]) - (G.align ? G.align.phi : 0), pitch = Math.asin(Math.max(-1, Math.min(1, -V[9]))); return { c, yaw, pitch }; }
+function snapApart(a, b) { /* how far apart two keyframe viewpoints are, in units of the spacing (1: just far enough) */
+  const dp = Math.hypot(a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]), f = (q) => [Math.cos(q.pitch) * Math.cos(q.yaw), Math.sin(q.pitch), Math.cos(q.pitch) * Math.sin(q.yaw)], fa = f(a), fb = f(b);
+  const da = Math.acos(Math.max(-1, Math.min(1, fa[0] * fb[0] + fa[1] * fb[1] + fa[2] * fb[2]))) * 57.2958; return Math.max(dp / SNAP_KF_M, da / SNAP_KF_DEG);
+}
+function snapRay(V, K, u, v) { const x = (u - K.cx) / K.fx, y = -(v - K.cy) / K.fy, d = [V[0] * x + V[4] * y - V[8], V[1] * x + V[5] * y - V[9], V[2] * x + V[6] * y - V[10]], L = Math.hypot(d[0], d[1], d[2]); return [d[0] / L, d[1] / L, d[2] / L]; }
+function snapZoneTop(L) { if (L.snapVer !== L.ver || L.snapTop === undefined) { let m = 0; for (let k = 0; k < L.st.length; k++) if (L.st[k] === 2 && L.ht[k] > m) m = L.ht[k]; L.snapVer = L.ver; L.snapTop = m / 100; } return L.snapTop; }
+function snapCast(o, d) { /* the first scanned surface of the room along a ray (the zones, and the tops of things standing on them), or null: no hit, a skimming hit, or the side of a thing */
+  if (d[1] > -SNAP_GRAZE) return null; let bt = 1e9, best = null;
+  for (const Z of G.zones) {
+    const L = Z.land; if (!L || Z.lost || Z.ceil || !rbOwn(Z)) continue; const t2 = (Z.y - o[1]) / d[1]; if (t2 <= 0.05 || t2 > 8) continue;
+    const top = snapZoneTop(L), t1 = Math.max(0.05, (Z.y + top + 0.005 - o[1]) / d[1]); if (t1 >= bt) continue; let hit = null;
+    if (top > 0.012) { const dt = Math.max(0.002, LC * 0.5 / Math.max(1e-3, Math.hypot(d[0], d[2])));
+      for (let t = t1; t < t2 && t < bt; t += dt) { const k = landIdx(L, o[0] + d[0] * t, o[2] + d[2] * t); if (k < 0 || L.st[k] !== 2) continue; const yt = Z.y + L.ht[k] / 100; if (o[1] + d[1] * t > yt) continue;
+        const tt = (yt - o[1]) / d[1], kt = landIdx(L, o[0] + d[0] * tt, o[2] + d[2] * tt); hit = kt >= 0 && L.st[kt] === 2 && Math.abs(L.ht[kt] - L.ht[k]) < 2 ? { t: tt, y: yt } : { t, side: true }; break; } }
+    if (!hit) { const k = landIdx(L, o[0] + d[0] * t2, o[2] + d[2] * t2); if (k >= 0 && L.st[k] === 1) hit = { t: t2, y: Z.y }; else if (k >= 0 && L.st[k] === 2) hit = L.ht[k] < 2 ? { t: (Z.y + L.ht[k] / 100 - o[1]) / d[1], y: Z.y + L.ht[k] / 100 } : { t: t2, side: true }; }
+    if (hit && hit.t < bt) { bt = hit.t; best = hit; }
+  }
+  return !best || best.side ? null : [o[0] + d[0] * best.t, best.y, o[2] + d[2] * best.t, best.t];
+}
+function snapPoint(V, K, u, v) { /* a corner's 3D point (live frame): its ray and four rays 3 px around it must all land on the same surface (no depth step: a corner on the edge of a desk is no use) */
+  const o = [V[12], V[13], V[14]], p = snapCast(o, snapRay(V, K, u, v)); if (!p) return null;
+  for (const [a, b] of [[3, 0], [-3, 0], [0, 3], [0, -3]]) { const q = snapCast(o, snapRay(V, K, u + a, v + b)); if (!q || Math.abs(q[1] - p[1]) > 0.012 || Math.abs(q[3] - p[3]) > 0.06 * p[3]) return null; }
+  return p;
+}
+function snapKeep(pic) { /* this picture as a keyframe, when it stands far enough from every keyframe the room has */
+  const S = G.snap || (G.snap = { kf: [] }), here = snapCamOf(pic.V), apart = S.kf.reduce((m, k) => Math.min(m, snapApart(here, k)), 1e9); if (apart < 1) return false;
+  const pts = [], f = pic.f; for (let i = 0; i < f.n; i++) { const p = snapPoint(pic.V, pic.K, pic.U[i], pic.W[i]); if (p) pts.push([i, p]); }
+  if (pts.length < SNAP_MIN_PTS) { SNAP.tooFew++; if (SNAP.tooFew % 5 === 1) recSnapL({ keyframe: 'too few points', pts: pts.length, corners: f.n }); return false; }
+  const GX = 6, GY = 4, cells = Array.from({ length: GX * GY }, () => []), uw = pic.K.cx * 2, uh = pic.K.cy * 2; /* spread over the picture: a 6 x 4 grid, taken in turn (strongest corners first) */
+  for (const q of pts) { const gx = Math.max(0, Math.min(GX - 1, Math.floor(pic.U[q[0]] / uw * GX))), gy = Math.max(0, Math.min(GY - 1, Math.floor(pic.W[q[0]] / uh * GY))); cells[gy * GX + gx].push(q); }
+  const pick = []; for (let r = 0; pick.length < SNAP_PTS && pick.length < pts.length; r++) for (const c of cells) if (c[r] && pick.length < SNAP_PTS) pick.push(c[r]);
+  const n = pick.length, kf = { at: Date.now(), c: here.c, yaw: here.yaw, pitch: here.pitch, n, used: 0, P: new Float32Array(3 * n), d: new Int32Array(8 * n) };
+  pick.forEach(([i, p], j) => { const m = snapToMap(p); kf.P[3 * j] = m[0]; kf.P[3 * j + 1] = m[1]; kf.P[3 * j + 2] = m[2]; for (let w = 0; w < 8; w++) kf.d[8 * j + w] = f.d[8 * i + w]; });
+  let drop = -1; if (S.kf.length >= SNAP_MAX) { let bw = 1e9; S.kf.forEach((k, ki) => { const near = S.kf.reduce((m, k2, k2i) => (k2i === ki ? m : Math.min(m, snapApart(k, k2))), 1e9), w = snapWorth(k) * Math.min(1, near); if (w < bw) { bw = w; drop = ki; } }); if (bw >= snapWorth(kf) * Math.min(1, apart)) return false; S.kf.splice(drop, 1); SNAP.dropped++; }
+  S.kf.push(kf); SNAP.made++; SNAP.lastKf = { n, corners: f.n, hits: pts.length }; recSnapL({ keyframe: S.kf.length, pts: n, of: pts.length + '/' + f.n, dropped: drop >= 0 ? 1 : 0 }); AUTO.mapDirty = true; persistSoon(); return true;
+}
+function snapNovel(V) { const S = G.snap; if (!S || !S.kf.length) return true; const here = snapCamOf(V); return S.kf.every((k) => snapApart(here, k) >= 1); }
+function snapWorth(k) { return k.n * (1 + 0.25 * Math.min(8, k.used || 0)); }
+function snapCommit() { /* commitAlign: the keyframes' points become where the room is now, like the zones */
+  const T = G.align, S = G.snap; SNAP.obs = {}; if (!T || !S) return;
+  for (const k of S.kf) { for (let j = 0; j < k.n; j++) { const q = snapFromMap([k.P[3 * j], k.P[3 * j + 1], k.P[3 * j + 2]], T); k.P[3 * j] = q[0]; k.P[3 * j + 1] = q[1]; k.P[3 * j + 2] = q[2]; } k.c = snapFromMap(k.c, T); k.yaw += T.phi; }
+}
+function snapB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function snapToJSON() { /* descriptors (32 bytes) and points (3 x 16-bit millimetres) only, base64; written in the frame the zones are written in */
+  const S = G.snap; if (!S || !S.kf.length) return null; const T = G.align;
+  return { v: 1, kf: S.kf.map((k) => { const u8 = new Uint8Array(38 * k.n), dv = new DataView(u8.buffer);
+    for (let j = 0; j < k.n; j++) { const o = 38 * j, q = snapFromMap([k.P[3 * j], k.P[3 * j + 1], k.P[3 * j + 2]], T); for (let w = 0; w < 8; w++) dv.setInt32(o + 4 * w, k.d[8 * j + w], true); for (let a = 0; a < 3; a++) dv.setInt16(o + 32 + 2 * a, Math.max(-32767, Math.min(32767, Math.round(q[a] * 1000))), true); }
+    const c = snapFromMap(k.c, T); return { at: k.at, c: c.map((v) => +v.toFixed(3)), yaw: +(k.yaw + (T ? T.phi : 0)).toFixed(3), pitch: +k.pitch.toFixed(3), n: k.n, u: k.used | 0, b: snapB64(u8) }; }) };
+}
+function snapFromJSON(d) {
+  if (!d || d.v !== 1 || !Array.isArray(d.kf)) return null; const kf = [];
+  for (const q of d.kf.slice(0, SNAP_MAX)) { try {
+    const n = q.n | 0, s = atob(String(q.b || '')); if (n < 1 || s.length !== 38 * n || !Array.isArray(q.c) || q.c.length !== 3 || !q.c.every(isFinite)) continue;
+    const u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); const dv = new DataView(u8.buffer), k = { at: q.at || 0, c: q.c.map(Number), yaw: +q.yaw || 0, pitch: +q.pitch || 0, n, used: q.u | 0, P: new Float32Array(3 * n), d: new Int32Array(8 * n) };
+    for (let j = 0; j < n; j++) { const o = 38 * j; for (let w = 0; w < 8; w++) k.d[8 * j + w] = dv.getInt32(o + 4 * w, true); for (let a = 0; a < 3; a++) k.P[3 * j + a] = dv.getInt16(o + 32 + 2 * a, true) / 1000; }
+    kf.push(k); } catch (e) { /* a damaged keyframe is skipped */ } }
+  return kf.length ? { kf } : null;
+}
+function snapBytes(id) { try { const s = id === undefined || id === HOMES.cur ? snapToJSON() : (JSON.parse(store.get(homeKeys(id).map) || 'null') || {}).snap; return s ? JSON.stringify(s).length : 0; } catch (e) { return 0; } }
+/* ---- matching and the 4-number pose ---- */
+function snapMatch(kfs, f) { /* every live corner against a room's keyframes (ratio test within each keyframe); per live corner the closest */
+  const best = new Map(); kfs.forEach((kf, ki) => { for (const [j, i, h] of FEAT.match(kf, f)) { if (h > 64) continue; const b = best.get(i); if (!b || h < b[0]) best.set(i, [h, ki, j]); } });
+  const n = best.size, out = { n, i: new Int32Array(n), kf: new Uint8Array(n), P: new Float32Array(3 * n) }; let q = 0;
+  for (const [i, b] of best) { const k = kfs[b[1]]; out.i[q] = i; out.kf[q] = b[1]; out.P[3 * q] = k.P[3 * b[2]]; out.P[3 * q + 1] = k.P[3 * b[2] + 1]; out.P[3 * q + 2] = k.P[3 * b[2] + 2]; q++; }
+  return out;
+}
+function snapObs(room, pic, win) { /* one picture's matches join the last few seconds' pictures of that room; enough of them make a fix */
+  const kfs = snapKfs(room); if (!kfs.length) return; const m = snapMatch(kfs, pic.f), list = SNAP.obs[room] || (SNAP.obs[room] = []);
+  list.push({ t: pic.t, V: pic.V, K: pic.K, U: pic.U, W: pic.W, m }); while (list.length && (pic.t - list[0].t > win * 1000 || list.length > 10)) list.shift();
+  if (list.length < SNAP_MIN_PICS) { SNAP.last[room] = { inl: 0, t: pic.t, m: m.n }; return; }
+  const F = snapSolve(list); SNAP.last[room] = { inl: F ? F.inl : 0, now: F ? F.now : 0, pics: F ? F.pics : 0, t: pic.t, m: m.n }; if (snapRelocking()) recSnapL({ try: room, m: m.n, inl: F ? F.inl : 0, pics: F ? F.pics : 0, sdP: F ? +(F.sdP * 100).toFixed(2) : 0, ok: !!(F && F.ok) }); if (!F) return;
+  SNAP.lastF = Object.assign({ room }, F); if (!F.ok) return; SNAP.fixes++; snapUse(room, F, kfs);
+}
+function snapProj(o, X) { const V = o.V, K = o.K, dx = X[0] - V[12], dy = X[1] - V[13], dz = X[2] - V[14], Zc = V[8] * dx + V[9] * dy + V[10] * dz; if (Zc > -0.05) return null; const Xc = V[0] * dx + V[1] * dy + V[2] * dz, Yc = V[4] * dx + V[5] * dy + V[6] * dz; return [K.cx + K.fx * Xc / -Zc, K.cy - K.fy * Yc / -Zc]; }
+function snapSolve(list) { /* all matches of the pictures together -> the room pose (map frame -> live): RANSAC over 3-point linear solves, then Gauss-Newton on yaw, x, y, z */
+  const C = []; list.forEach((o, oi) => { const V = o.V, c = [V[12], V[13], V[14]], m = o.m; for (let q = 0; q < m.n; q++) { const i = m.i[q], d = snapRay(V, o.K, o.U[i], o.W[i]); let e1 = [d[2], 0, -d[0]]; const L1 = Math.hypot(e1[0], e1[2]); if (L1 < 1e-6) e1 = [1, 0, 0]; else e1 = [e1[0] / L1, 0, e1[2] / L1]; const e2 = [d[1] * e1[2] - d[2] * e1[1], d[2] * e1[0] - d[0] * e1[2], d[0] * e1[1] - d[1] * e1[0]];
+    C.push({ oi, u: o.U[i], v: o.W[i], P: [m.P[3 * q], m.P[3 * q + 1], m.P[3 * q + 2]], c, e: [e1, e2], kf: m.kf[q] }); } });
+  const N = C.length; if (N < SNAP_MIN_INL) return null;
+  const rows = (cs, phi) => { const A = [], b = []; for (const k of cs) for (const e of k.e) { const P = k.P, ec = e[0] * k.c[0] + e[1] * k.c[1] + e[2] * k.c[2];
+    if (phi === undefined) { A.push([e[0] * P[0] + e[2] * P[2], e[2] * P[0] - e[0] * P[2], e[0], e[1], e[2]]); b.push(ec - e[1] * P[1]); } else { const c = Math.cos(phi), s = Math.sin(phi), R = [P[0] * c - P[2] * s, P[1], P[0] * s + P[2] * c]; A.push([e[0], e[1], e[2]]); b.push(ec - e[0] * R[0] - e[1] * R[1] - e[2] * R[2]); } } return [A, b]; };
+  const lsq = (A, b) => { const n = A[0].length, M = Array.from({ length: n }, () => new Array(n).fill(0)), r = new Array(n).fill(0); for (let i = 0; i < A.length; i++) for (let a = 0; a < n; a++) { r[a] += A[i][a] * b[i]; for (let c = 0; c < n; c++) M[a][c] += A[i][a] * A[i][c]; } let tr = 0; for (let a = 0; a < n; a++) tr += M[a][a]; for (let a = 0; a < n; a++) M[a][a] += 1e-7 * tr + 1e-12; return stkSolve(M, r); }; /* a little ridge: see hyp */
+  const hyp = (cs) => { const [A, b] = rows(cs); const x = lsq(A, b); if (!x) return null; const L = Math.hypot(x[0], x[1]); if (L < 1e-3) return null; /* cos and sin are solved as two free numbers; on one flat top they come out scaled (a scale about the camera plus a lift fits the same rays), but their angle is the yaw all the same; then x, y, z with that yaw */ const phi = Math.atan2(x[1], x[0]), [A2, b2] = rows(cs, phi), t = lsq(A2, b2); return t ? { phi, tx: t[0], dy: t[1], tz: t[2] } : null; };
+  const place = (T, P) => { const c = Math.cos(T.phi), s = Math.sin(T.phi); return [P[0] * c - P[2] * s + T.tx, P[1] + T.dy, P[0] * s + P[2] * c + T.tz]; };
+  const err2 = (T, k) => { const p = snapProj(list[k.oi], place(T, k.P)); return p ? (p[0] - k.u) ** 2 + (p[1] - k.v) ** 2 : 1e9; };
+  const inliers = (T, px) => { const lim = px * px, r = []; for (let i = 0; i < N; i++) if (err2(T, C[i]) < lim) r.push(i); return r; };
+  const rnd = seededRandom(1013 + N * 7 + list.length); let best = null, bestIn = [], bestSub = 0;
+  /* most matches are wrong (often 9 in 10), so the three come mostly from one picture and one keyframe (where the right ones gather), and a guess is first counted on a sample */
+  const grp = new Map(); C.forEach((k, i) => { const g = k.oi * 64 + k.kf; let a = grp.get(g); if (!a) grp.set(g, a = []); a.push(i); }); const gl = [...grp.values()].filter((a) => a.length >= 3), gw = gl.reduce((s, a) => s + a.length, 0);
+  const sub = []; for (let i = 0; i < Math.min(N, 400); i++) sub.push(N <= 400 ? i : (rnd() * N) | 0); const lim1 = (SNAP_PX * 1.5) ** 2;
+  for (let it = 0; it < 500; it++) { let pool = null; if (gl.length && it % 4 !== 3) { let r = rnd() * gw; for (const a of gl) { r -= a.length; if (r <= 0) { pool = a; break; } } pool = pool || gl[gl.length - 1]; }
+    const pk = () => (pool ? pool[(rnd() * pool.length) | 0] : (rnd() * N) | 0), a = pk(), b = pk(), c = pk(); if (a === b || b === c || a === c) continue; const T = hyp([C[a], C[b], C[c]]); if (!T) continue;
+    let ns = 0; for (const i of sub) if (err2(T, C[i]) < lim1) ns++; if (ns < Math.max(3, bestSub)) continue; bestSub = ns; const r = inliers(T, SNAP_PX * 1.5); if (r.length > bestIn.length) { bestIn = r; best = T; if (r.length > 0.6 * N && it > 40) break; } }
+  if (!best || bestIn.length < 12) return null;
+  const gn = (T0, idx) => { let T = Object.assign({}, T0), JtJ = null, e = 0; const vec = (T) => { const r = []; for (const i of idx) { const k = C[i], p = snapProj(list[k.oi], place(T, k.P)); if (!p) { r.push(50, 50); continue; } const du = p[0] - k.u, dv = p[1] - k.v, a = Math.hypot(du, dv), w = a > 2 ? Math.sqrt(2 / a) : 1; r.push(du * w, dv * w); } return r; }; /* Huber weights over 2 px */
+    let r = vec(T); e = r.reduce((s, v) => s + v * v, 0); const keys = ['phi', 'tx', 'dy', 'tz'];
+    for (let iter = 0; iter < 8; iter++) { const J = keys.map((k) => { const T2 = Object.assign({}, T); T2[k] += k === 'phi' ? 1e-5 : 1e-5; const r2 = vec(T2); return r2.map((v, i) => (v - r[i]) / 1e-5); });
+      const A = keys.map((_, a) => keys.map((_, c) => { let s = 0; for (let i = 0; i < r.length; i++) s += J[a][i] * J[c][i]; return s; })), g = keys.map((_, a) => { let s = 0; for (let i = 0; i < r.length; i++) s -= J[a][i] * r[i]; return s; }); JtJ = A;
+      const x = stkSolve(A.map((row, i) => row.map((v, j) => v + (i === j ? 1e-9 + v * 1e-4 : 0))), g); if (!x) break; const T2 = { phi: T.phi + x[0], tx: T.tx + x[1], dy: T.dy + x[2], tz: T.tz + x[3] }, r2 = vec(T2), e2 = r2.reduce((s, v) => s + v * v, 0); if (e2 >= e) break; const de = e - e2; T = T2; r = r2; e = e2; if (de < 1e-6) break; }
+    return { T, JtJ, e, n: idx.length }; };
+  let idx = bestIn, G1 = gn(best, idx); idx = inliers(G1.T, SNAP_PX); if (idx.length < 12) return null; G1 = gn(G1.T, idx); idx = inliers(G1.T, SNAP_PX); if (idx.length < 12) return null;
+  const per = list.map(() => 0), kfu = {}; let sum = 0, pc = [0, 0, 0]; for (const i of idx) { const k = C[i]; per[k.oi]++; kfu[k.kf] = (kfu[k.kf] || 0) + 1; sum += err2(G1.T, k); pc[0] += k.P[0]; pc[1] += k.P[1]; pc[2] += k.P[2]; } pc = pc.map((v) => v / idx.length);
+  const pics = per.filter((v) => v >= SNAP_PIC_INL).length, rms = Math.sqrt(sum / idx.length), s2 = Math.max(0.5 * 0.5, G1.e / Math.max(1, 2 * idx.length - 4)), Cv = G1.JtJ && stkInv(G1.JtJ);
+  const T = G1.T, cph = Math.cos(T.phi), sph = Math.sin(T.phi), gphi = [-pc[0] * sph - pc[2] * cph, 0, pc[0] * cph - pc[2] * sph]; let vp = 0; /* the position uncertainty where the matched points are (map centre of the inliers) */
+  if (Cv) for (let a = 0; a < 3; a++) { const gv = [gphi[a], a === 0 ? 1 : 0, a === 1 ? 1 : 0, a === 2 ? 1 : 0]; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) vp += gv[i] * Cv[i][j] * gv[j]; }
+  const t0 = list[0].t, span = (list[list.length - 1].t - t0) / 1000, sdYaw = Cv ? Math.sqrt(Math.max(0, s2 * Cv[0][0])) * 57.2958 : 99, sdP = Cv ? Math.sqrt(Math.max(0, s2 * vp)) : 9;
+  const ok = idx.length >= SNAP_MIN_INL && pics >= SNAP_MIN_PICS && span >= 0.6 && rms <= 2 && sdP < 0.01 && sdYaw < 0.5;
+  return { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, inl: idx.length, now: per[per.length - 1], of: N, pics, n: list.length, rms, sdP, sdYaw, span, pc, kfu, ok, A: G.align ? { phi: G.align.phi, tx: G.align.tx, tz: G.align.tz, dy: G.align.dy } : null, t: performance.now() };
+}
+function snapRebase(F) { /* a fix found before commitAlign moved the map's frame (rfFull commits first): the same room pose, from the new frame */
+  const T = { phi: F.phi, tx: F.tx, tz: F.tz, dy: F.dy }, A = F.A; if (!A || G.align) return T;
+  const phi = F.phi - A.phi, c = Math.cos(phi), s = Math.sin(phi); return { phi, tx: F.tx - (A.tx * c - A.tz * s), tz: F.tz - (A.tx * s + A.tz * c), dy: F.dy - A.dy };
+}
+function snapDiff(F) { /* a fix against where the room is now (G.align, or none), at the matched points */
+  const T = G.align || { phi: 0, tx: 0, tz: 0, dy: 0 }, a = snapFromMap(F.pc, F), b = snapFromMap(F.pc, T), dm = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), dyaw = Math.abs(stkAng(F.phi - T.phi)) * 57.2958;
+  return { dm, dyaw, ok: dm < SNAP_AGREE_M && dyaw < SNAP_AGREE_DEG };
+}
+function snapRec(F, extra) { return Object.assign({ inl: F.inl + '/' + F.of, pics: F.pics + '/' + F.n, rms: +F.rms.toFixed(2), sdP: +(F.sdP * 100).toFixed(2), sdYaw: +F.sdYaw.toFixed(2), yaw: +(F.phi * 57.2958).toFixed(2), tx: +F.tx.toFixed(3), tz: +F.tz.toFixed(3), dy: +F.dy.toFixed(3) }, extra); }
+function snapStkFirst() { /* the room's own sticker comes first: wait for it a moment, and while it is being seen */
+  if (!G.stk || STK.state !== 'ready') return false; const now = performance.now(), since = (now - (RF.on ? RF.t0 : RELOC.t0 || 0)) / 1000, L = STK.obs[G.stk.id], seen = L && L.length && now - L[L.length - 1].t < 2500;
+  return since < SNAP_STK_WAIT || !!seen;
+}
+function snapUse(room, F, kfs) {
+  const mine = room === HOMES.cur, finding = G.returning && !G.locked && RELOC.state === 'search', relock = finding || (RF.on && RF.phase === 'match');
+  if (!mine) {
+    if (finding && G.finding && !RF.on) { /* "Not sure?": every saved room's snapshots were scored on the same pictures; the clear winner names the room */
+      const rival = Math.max(0, ...Object.keys(SNAP.last).filter((id) => id !== room && performance.now() - SNAP.last[id].t < 4000).map((id) => SNAP.last[id].inl)); if (rival > 0.6 * F.inl) { recSnapL(snapRec(F, { other: room, wait: 'another room scores nearly as well', rival })); return; }
+      if (!homeSwitchLoad(room)) return; G.finding = false; ROOMPRE = {}; recSnapL(snapRec(F, { switched: room })); snapLock(F); return;
+    }
+    if (!snapRelocking() && !RB.ask && stkSettled() && !SNAP.ignore[room]) { /* while playing: this looks like another saved room */
+      const own = SNAP.last[HOMES.cur], ownInl = own && performance.now() - own.t < 6000 ? own.now : 0; /* on the newest picture: this room's snapshots against the other room's */
+      if (F.inl >= 1.5 * SNAP_MIN_INL && F.now >= 15 && ownInl < 0.4 * F.now) { SNAP.ignore[room] = 1; SNAP.asks++; recSnapL(snapRec(F, { foreign: room, ownInl })); snapAskRoom(room); }
+    }
+    return;
+  }
+  for (const k in F.kfu) if (kfs[k] && F.kfu[k] >= 4) kfs[k].used = (kfs[k].used || 0) + 1;
+  if (relock) { if (snapStkFirst()) { if (!SNAP.waitSaid) { SNAP.waitSaid = 1; recSnapL(snapRec(F, { wait: 'the sticker first' })); } return; } snapLock(F); return; }
+  if (RF.on && RF.phase === 'check') { const d = snapDiff(F); SNAP.checks++; if (d.ok) { recSnapL(snapRec(F, { check: 'agrees', dm: +d.dm.toFixed(3) })); rfPass(); } else { recSnapL(snapRec(F, { check: 'moved', dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(2) })); rfFull(); snapLock(F); } return; }
+  if (!RF.on && !RB.ask && (!G.returning || G.locked)) { /* while playing: the snapshots agree with the room, or (twice, far off) ask the surfaces quietly */
+    const d = snapDiff(F); if (snapCorrect(F, d)) return; if (d.ok) { SNAP.agree++; SNAP.offN = 0; return; }
+    SNAP.disagree++; recSnapL(snapRec(F, { disagree: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(2) }));
+    if (d.dm > SNAP_OFF_M && ++SNAP.offN >= 2 && performance.now() - SNAP.checkT > 30000) { SNAP.offN = 0; SNAP.checkT = performance.now(); rfSuspect('the snapshots do not fit', false); }
+  }
+}
+function snapCorrect(F, d) { /* soon after a lock by the surfaces (a few cm off), the snapshots, which are better, move the room to where they see it; keyframes made after that lock wait (kfHold) so they never mix the two frames */
+  if (performance.now() > SNAP.kfHold || !RELOC.lock || RELOC.lock.snap || STK.lockFix || d.dm < 0.006 || d.dm > SNAP_OFF_M || d.dyaw > 3 || F.sdP > 0.004 || F.sdYaw > 0.2 || !G.locked) return false;
+  const T = snapRebase(F); if (!G.align) commitAlign(); applyAlign(Object.assign({ pivot: [0, 0], auto: true }, T)); Object.assign(RELOC.lock, { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy, snap: 'snapshots (corrected the ' + (RELOC.lock.how || 'lock') + ')' });
+  SNAP.lockFix = snapFixOf(T, F); SNAP.corrected++; if (!AUTO.commitAt) commitAlign(); persistSoon(); recSnapL(snapRec(F, { corrected: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(2) })); return true;
+}
+function snapLock(F) { /* the room's snapshots while it is being found: the lock comes from them; the surfaces check it when there are enough of them */
+  if (!(G.returning && !G.locked)) return false; const T = snapRebase(F), live = relocLiveLayers(), cells = live.reduce((a, l) => a + l.n, 0), top = RELOC.curTop || RELOC.savedTop;
+  const res = Object.assign({ M: 0, X: 0, ratio: 1, score: 0, info: 0, overlap: 0 }, T); let how = 'snapshots';
+  if (cells >= 150 && top) { const v = relocVerify(T, top, relocTop(live)); if (v.M + v.X > 150 && v.ratio < 0.5) { recSnapL(snapRec(F, { lock: 'surfaces disagree', M: v.M, X: v.X, ratio: +v.ratio.toFixed(2) })); return false; } Object.assign(res, v, T); if (v.M >= 100 && v.ratio >= 0.7) how = 'snapshots + surfaces'; }
+  res.margin = 0; SNAP.lockFix = snapFixOf(T, F); SNAP.locks++; SNAP.waitSaid = 0;
+  recSnapL(snapRec(F, { lock: how, cells, secs: +((performance.now() - (RF.on ? RF.t0 : RELOC.t0 || 0)) / 1000).toFixed(1) }));
+  relocLock(res, 'snap'); if (RELOC.lock) RELOC.lock.snap = how; return true;
+}
+function snapFixOf(T, F) { return { T: { phi: T.phi, tx: T.tx, tz: T.tz, dy: T.dy }, sdYaw: F.sdYaw, pts: [F.pc.slice()].concat(G.zones.filter((Z) => rbOwn(Z) && !Z.lost && Z.f0).map((Z) => [Z.f0[0], Z.f0[3], Z.f0[1]])) }; } /* the lock, and the points it must keep in place: the matched points' centre and every zone's centre */
+function snapPolishOK(T) { /* the surfaces may polish a snapshot lock only a little: no zone moves more than SNAP_POL_M, the yaw no more than max(0.3, 2 sd) up to SNAP_POL_DEG degrees */
+  const L = SNAP.lockFix; if (!L) return true; if (Math.abs(stkAng(T.phi - L.T.phi)) * 57.2958 > Math.min(SNAP_POL_DEG, Math.max(0.3, 2 * L.sdYaw))) return false;
+  return L.pts.every((p) => { const a = snapFromMap(p, T), b = snapFromMap(p, L.T); return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < SNAP_POL_M; });
+}
+function snapAskRoom(id) { /* another room's snapshots: the build 26 question, with that room offered first */
+  if (RB.ask) return; persist(); RB.ask = { why: 'snapshots of ' + homeName(id), t: AUTO.t, room: HOMES.cur, snap: id }; RB.asked++; recRB({ ask: 'snapshots of another room', other: id }); sfx('ask');
+  rbPrompt('<b>Have you moved to another room?</b> <span class="stkq">This looks like ' + esc(homeName(id)) + '.</span>', 'no', id);
+}
+function snapClear(why) { SNAP.obs = {}; SNAP.lockFix = null; SNAP.offN = 0; recSnapL({ clear: why }); } /* after a jump of the world the old pictures no longer fit */
+function snapReport() { const S = G.snap; return { keyframes: S ? S.kf.length : 0, points: S ? S.kf.reduce((a, k) => a + k.n, 0) : 0, bytes: snapBytes(), runs: SNAP.runs, msAvg: +SNAP.msAvg.toFixed(1), msMax: Math.round(SNAP.msMax), msKeyframe: Math.round(SNAP.msKf), dims: SNAP.dims, made: SNAP.made, dropped: SNAP.dropped, fixes: SNAP.fixes, locks: SNAP.locks, checks: SNAP.checks, agree: SNAP.agree, disagree: SNAP.disagree, asks: SNAP.asks, err: SNAP.err, log: REC.snap }; }
+
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
 // save the map blob next to the room map (worldMapSave) and load it before the session starts (worldMapLoad); ARKit relocalises by itself and the saved frames are valid as they are.
@@ -6542,7 +6773,7 @@ function resetWorld() {
   for (const S of G.settlements) { world.remove(S.group); }
   for (const l of G.links) world.remove(l.group);
   for (const z of G.zones) disposeZone(z); hooksDrop(); netReset();
-  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.stk = null; G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
+  G.settlements = []; G.orphans = []; G.links = []; G.requests = []; G.cur = null; G.sel = null; G.zones = []; G.spots = []; G.cables = []; G.stk = null; G.snap = null; SNAP.obs = {}; SNAP.lockFix = null; /* build 28: a new room never keeps the last room's snapshots */ G.nextMZ = 1; G.nextSpot = 1; G.nextCable = 1; G.asks = []; G.report = null; G.align = null; G.holdPlace = false; G.aligned = true; G.visits = 0; G.visitCounted = false; G.pendingDiary = null; G.library = []; G.nextLib = 1; RECOG.cand = []; RECOG.ask = null; G.tagMode = 'spot'; G.cableFrom = null; G.tidy = { cleared: 0, objects: 0, tin: 0, settlers: 0, placed: 0, squashed: 0, learned: 0, moved: 0 };
   for (const id of ['ask', 'diary', 'tagpick', 'modal']) $(id).hidden = true;
   scanReset(); refreshSpots();
   for (const p of PARTS) { p.on = false; p.sp.visible = false; }
@@ -8280,6 +8511,7 @@ Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt
 Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
 Object.assign(window.__g, { STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
+Object.assign(window.__g, { SNAP, SNAP_MAX, SNAP_PTS, SNAP_MIN_INL, SNAP_MIN_PICS, snapTick, snapRun, snapNeed, snapRooms, snapKfs, snapKeep, snapCast, snapPoint, snapMatch, snapObs, snapSolve, snapUse, snapLock, snapDiff, snapRebase, snapToJSON, snapFromJSON, snapBytes, snapReport, snapClear, snapAskRoom, snapPolishOK, snapCorrect, stkSettled, stkView, commitAlign, applyAlign, relocLiveLayers }); /* build 28: room snapshots */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============
