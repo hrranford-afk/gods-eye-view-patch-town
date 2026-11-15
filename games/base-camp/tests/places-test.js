@@ -49,7 +49,7 @@ const CARPET = { latitude: 52.401234, longitude: -2.261234 }, SEA = { latitude: 
   /* ===================== 1. off by default ===================== */
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
   const s1 = await ev(() => ({ build: __g.BUILD, on: __g.PLACES.on, calls: window.__geo.calls, btn: document.getElementById('bPlace').textContent, here: __g.PLACES.here, key: localStorage.getItem('bc-places-v1') }));
-  ok('BUILD is build 27', s1.build === 'build 27');
+  ok('BUILD is build 28', s1.build === 'build 28');
   ok('1. off by default: no position asked for at start, nothing stored', !s1.on && s1.calls === 0 && !s1.here && !s1.key, JSON.stringify(s1));
   ok('1. the setting reads "Use where we are (ask a grown-up)"', s1.btn === 'Use where we are (ask a grown-up)', s1.btn);
 

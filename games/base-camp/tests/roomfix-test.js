@@ -49,7 +49,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const settleMap = async () => { await sweep(A_LEGS.concat(['deskA', 'floor']), 1.0); await waitFor(() => window.__cam.done, 200000, 2000); };
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
-  ok('BUILD is build 27', await ev(() => __g.BUILD === 'build 27'));
+  ok('BUILD is build 28', await ev(() => __g.BUILD === 'build 28'));
 
   /* ===================== 1. room A, then a walk into the lounge ===================== */
   await play(); await sweep(A_LEGS, 1.0);

@@ -5,9 +5,9 @@
    (row 0 at the top, '1' = white). Around the black square is white paper (one cell wide), beyond it the grey room.
    Returns RGBA bytes (W x H). Pixels are sampled ss x ss times (anti-aliased edges, like a real lens). */
 module.exports = function stkFakeRender(o) {
-  const W = o.W, H = o.H, ss = o.ss || 3, out = new Uint8ClampedArray(W * H * 4), m = o.cam;
+  const W = o.W, H = o.H, ss = o.ss || 3, out = o.base || new Uint8ClampedArray(W * H * 4), m = o.cam; /* build 28: o.base, a picture of the room (texture-render.js) to draw the stickers on */
   let seed = (o.seed || 1) >>> 0; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  for (let i = 0; i < W * H; i++) { const g = 132 + ((i % W) / W) * 18 + (rnd() - 0.5) * 8; out[i * 4] = g; out[i * 4 + 1] = g * 0.97; out[i * 4 + 2] = g * 0.9; out[i * 4 + 3] = 255; }
+  if (!o.base) for (let i = 0; i < W * H; i++) { const g = 132 + ((i % W) / W) * 18 + (rnd() - 0.5) * 8; out[i * 4] = g; out[i * 4 + 1] = g * 0.97; out[i * 4 + 2] = g * 0.9; out[i * 4 + 3] = 255; }
   const ox = m[12], oy = m[13], oz = m[14];
   const toCam = (p) => { const dx = p[0] - ox, dy = p[1] - oy, dz = p[2] - oz; return [m[0] * dx + m[1] * dy + m[2] * dz, m[4] * dx + m[5] * dy + m[6] * dz, m[8] * dx + m[9] * dy + m[10] * dz]; };
   for (const k of o.marks || []) {

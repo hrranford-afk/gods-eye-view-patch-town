@@ -3,9 +3,14 @@
 /* build 27: window.__MARKS = [{ id, x, y, z, ax: [3], ay: [3], size, bits }] are printed stickers in the room's own coordinates (they turn and shift with __W like the room);
    with any sticker in the room the camera picture is a 640 x 480 JPEG drawn by marker-render.js from the camera pose of that very frame, every 4th frame (as HelloXR sends
    half-resolution pictures about every 4th frame). window.__noCamera = true: no pictures at all (camera-access missing). */
-const STK_RENDER = require('./marker-render.js');
+/* build 28: window.__TEX = { items: [{ n, x, y, z, ax: [3], ay: [3], hw, hh, tex, seed, block }], tones: { shedName: [r, g, b] } } gives the room its own texture (posters, book
+   spines, a rug, a cushion: texture-render.js), drawn into the same 640 x 480 pictures together with the plain tops of every SHED surface (nearest surface wins), stickers on top.
+   items are in the room's own coordinates and turn and shift with __W. An item with block (the vertical ones: posters, spines) also stops the fake's hit tests behind it,
+   as a real wall or bookcase would (ARKit then has no plane there). __TEX = { items: [] } is a texture-poor room: plain tops and grey walls only. */
+const STK_RENDER = require('./marker-render.js'); const TEX = require('./texture-render.js');
 module.exports = function install(p, SHED) {
   p.addInitScript({ content: 'window.__stkFakeRender = ' + STK_RENDER.toString() + ';' });
+  p.addInitScript({ content: 'window.__texFakeMake = ' + TEX.texFakeMake.toString() + '; window.__texFakeRender = ' + TEX.texFakeRender.toString() + ';' });
   return p.addInitScript((SHED) => {
     try { delete Navigator.prototype.xr; delete WebGLRenderingContext.prototype.makeXRCompatible; delete WebGL2RenderingContext.prototype.makeXRCompatible; } catch (e) {} for (const k of Object.getOwnPropertyNames(window)) if (/^XR/.test(k)) { try { delete window[k]; } catch (e) {} }
     const reply = (cb, data) => setTimeout(() => window[cb] && window[cb](data), 5);
@@ -16,9 +21,17 @@ module.exports = function install(p, SHED) {
     window.__place = place;
     const placeMarks = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw), r = (v) => [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c]; return (window.__MARKS || []).map((k) => { const q = r([k.x, 0, k.z]); return Object.assign({}, k, { x: q[0] + W.x, y: k.y + (W.y || 0), z: q[2] + W.z, ax: r(k.ax), ay: r(k.ay) }); }); };
     window.__placeMarks = placeMarks;
+    const placeTex = () => { const W = window.__W, c = Math.cos(W.yaw), s = Math.sin(W.yaw), r = (v) => [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c], T = window.__TEX; if (!T) return []; return (T.items || []).map((k) => { const q = r([k.x, 0, k.z]); return Object.assign({}, k, { c: [q[0] + W.x, k.y + (W.y || 0), q[2] + W.z], ax: r(k.ax), ay: r(k.ay) }); }); };
+    window.__placeTex = placeTex; window.__texCache = {};
+    const texOf = (k) => { const tw = k.tw || Math.max(16, Math.min(512, Math.round(k.hw * 2 * 560))), th = k.th || Math.max(16, Math.min(512, Math.round(k.hh * 2 * 560))), key = k.tex + ':' + (k.seed || 1) + ':' + tw + 'x' + th; return window.__texCache[key] || (window.__texCache[key] = window.__texFakeMake(k.tex, k.seed || 1, tw, th)); };
+    const texPlanes = () => { const T = window.__TEX, tones = (T && T.tones) || {}, out = [];
+      for (const S of place()) { const c = Math.cos(S.rot), s = Math.sin(S.rot); let hsh = 0; for (const ch of S.n) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0; const g = 112 + (hsh % 60); out.push({ c: [S.cx, S.y, S.cz], ax: [c, 0, -s], ay: [s, 0, c], hw: S.hw, hh: S.hd, tex: null, tone: tones[S.n] || [g, g * 0.96, g * 0.9] }); }
+      for (const k of placeTex()) out.push({ c: k.c, ax: k.ax, ay: k.ay, hw: k.hw, hh: k.hh, tex: texOf(k), tone: null });
+      return out; };
     let picN = 0; const picCv = document.createElement('canvas'); picCv.width = 640; picCv.height = 480;
     const picture = (camM) => { /* the camera picture of this frame: aspect fill of the screen's view (the horizontal field of view matches: 640/480 is narrower than 1180/820) */
-      const t0 = performance.now(), fx = (f / asp) * 320, px = window.__stkFakeRender({ W: 640, H: 480, fx, fy: fx, cx: 320, cy: 240, cam: camM, marks: placeMarks(), ss: 3, seed: ++picN });
+      const t0 = performance.now(), fx = (f / asp) * 320, base = window.__TEX ? window.__texFakeRender({ W: 640, H: 480, fx, fy: fx, cx: 320, cy: 240, cam: camM, planes: texPlanes(), seed: picN + 7 }) : null, mk = placeMarks();
+      const px = mk.length || !base ? window.__stkFakeRender({ W: 640, H: 480, fx, fy: fx, cx: 320, cy: 240, cam: camM, marks: mk, ss: 3, seed: ++picN, base }) : (++picN, base);
       const g = picCv.getContext('2d'); g.putImageData(new ImageData(px, 640, 480), 0, 0); const url = picCv.toDataURL('image/jpeg', 0.85).split(',')[1]; window.__native.pics++; window.__native.picMs += performance.now() - t0; return url; };
     const h = (fn) => ({ postMessage: (body) => { fn && fn(body); } });
     let dataCb = null, timer = null; const asp = 1180 / 820, f = 1 / Math.tan(0.5);
@@ -45,7 +58,7 @@ module.exports = function install(p, SHED) {
       requestSession: h((b2) => {
         window.__sessionOpts = b2; dataCb = b2.data_callback; reply(b2.callback, { cameraAccess: !!b2.computer_vision_data && !window.__noCamera, worldAccess: true, webXRAccess: true }); clearInterval(timer); let tick = 0;
         timer = setInterval(() => { cam = camNow(); tick++; let vid = window.__noCamera ? null : window.__video || null, vw = 320, vh = 240, upd = !!vid;
-          if (!window.__noCamera && (window.__MARKS || []).length) { upd = tick % 4 === 0; vw = 640; vh = 480; vid = upd ? picture(cam) : null; } /* a new picture every 4th frame */
+          if (!window.__noCamera && ((window.__MARKS || []).length || window.__TEX)) { upd = tick % 4 === 0; vw = 640; vh = 480; vid = upd ? picture(cam) : null; } /* a new picture every 4th frame */
           window.NativeARData = window.NativeARData || {}; Object.assign(window.NativeARData, { timestamp: performance.now(), light_intensity: 1000, camera_transform: cam, camera_view: inv(cam), projection_camera: proj, video_updated: upd, video_data: vid, video_width: vw, video_height: vh }); if (dataCb && window[dataCb]) window[dataCb](); }, 33);
       }),
       stopAR: h((b2) => { clearInterval(timer); if (b2 && b2.callback) reply(b2.callback, {}); }),
@@ -59,6 +72,9 @@ module.exports = function install(p, SHED) {
           else if (est && S.n !== 'chandelier' && Math.abs(lx) < S.hw + EXT && Math.abs(lz) < S.hd + EXT && t < et) { et = t; eh = [hx, S.y, hz]; } }
         /* build 12: a ceiling plane (a SHED entry named ceil...) answers rays that look UP at it. Its normal is plain +Y like ARKit's horizontal anchors, unless window.__native.ceilNormal is set (then it faces down: Y axis -1). */
         let up = false; if (d[1] > 1e-3) for (const S of place()) { if (!/^ceil/.test(S.n)) continue; const t = (S.y - m[13]) / d[1]; if (t <= 0 || t >= bt) continue; const hx = m[12] + d[0] * t, hz = m[14] + d[2] * t, dx = hx - S.cx, dz = hz - S.cz, c = Math.cos(S.rot), s = Math.sin(S.rot), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < S.hw && Math.abs(lz) < S.hd) { bt = t; bh = [hx, S.y, hz]; bu = 'plane-' + S.n; up = true; } }
+        if (window.__TEX) for (const k of placeTex()) { if (!k.block) continue; const n = [k.ax[1] * k.ay[2] - k.ax[2] * k.ay[1], k.ax[2] * k.ay[0] - k.ax[0] * k.ay[2], k.ax[0] * k.ay[1] - k.ax[1] * k.ay[0]], dn = d[0] * n[0] + d[1] * n[1] + d[2] * n[2]; if (Math.abs(dn) < 1e-9) continue;
+          const t = ((k.c[0] - m[12]) * n[0] + (k.c[1] - m[13]) * n[1] + (k.c[2] - m[14]) * n[2]) / dn; if (t <= 0) continue; const q = [m[12] + d[0] * t - k.c[0], m[13] + d[1] * t - k.c[1], m[14] + d[2] * t - k.c[2]];
+          if (Math.abs(q[0] * k.ax[0] + q[1] * k.ax[1] + q[2] * k.ax[2]) > k.hw || Math.abs(q[0] * k.ay[0] + q[1] * k.ay[1] + q[2] * k.ay[2]) > k.hh) continue; if (t < bt) { bt = t; bh = null; bu = null; } if (t < et) { et = t; eh = null; } } /* build 28: a wall or a bookcase stops the ray */
         const nz = () => (Math.random() - 0.5), cn = up && window.__native.ceilNormal ? -1 : 1;
         if (bh) out.push({ world_transform: [1, 0, 0, 0, 0, cn, 0, 0, 0, 0, cn, 0, bh[0], bh[1] + nz() * 0.006, bh[2], 1], uuid: bu });
         else if (eh) out.push({ world_transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, eh[0] + nz() * 0.03, eh[1] + nz() * 0.03, eh[2] + nz() * 0.03, 1] });
