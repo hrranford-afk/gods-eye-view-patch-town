@@ -141,6 +141,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('2. the same jump with the snapshots off is found by the surfaces (build 26)', tR2s > 0 && !(await ev(() => __g.RELOC.lock.snap)), secs2s.toFixed(1) + ' s');
   await ev(() => { __g.SNAP.disabled = false; });
   ok('2. the snapshot relock: under 5 s and every thing within 2 cm, faster than the surfaces', tR2 > 0 && secs2 < 5 && e2a.worst < 2 && e2b.worst < 2 && (tR2s < 0 || secs2 < secs2s), 'snapshots ' + secs2.toFixed(1) + ' s, worst ' + e2a.worst.toFixed(2) + ' / ' + e2b.worst.toFixed(2) + ' cm; surfaces ' + secs2s.toFixed(1) + ' s, worst ' + e2s.worst.toFixed(2) + ' / ' + e2sb.worst.toFixed(2) + ' cm');
+  { const S2 = await snap(); console.log('COST textured room (sections 1-2): ms per picture mean ' + S2.ms + ', worst ' + S2.msMax + ', keyframe step ' + S2.msKf + ' (' + S2.runs + ' pictures, ' + S2.dims + ')'); }
   await stop(2);
   const WA = W2, end2 = await things(); /* where the shed and its things stand at the end of this session */
   await ev(() => __g.persist(true)); await endSession();
