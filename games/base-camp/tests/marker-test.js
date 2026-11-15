@@ -156,7 +156,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   /* ===================== 5. Continue Room 1: the chooser hint, the fast sticker lock ===================== */
   await ev(() => localStorage.setItem('bc-test-off', String(6 * 3600 * 1000))); await fresh([ST2, ST5]);
   await p.click('#bPlay'); await sleep(700); const C5 = await ev(() => ({ shown: !document.getElementById('chooser').hidden, hint: (document.querySelector('#chooser .chstk') || {}).innerText || '' }));
-  ok('5. the start chooser says "Room 1 has a sticker: point at it" (build 28: only for a room that owns one)', C5.shown && /Room 1 has a sticker: point at it/.test(C5.hint), JSON.stringify(C5));
+  ok('5. the start chooser names Room 1 among the rooms that have a sticker (build 28: only for a room that owns one)', C5.shown && /(^|and )Room 1( and Room \d)* (has a sticker: point at it|have stickers: point at one)/.test(C5.hint), JSON.stringify(C5));
   await shot('100-chooser-sticker-hint.png');
   await p.click('#chooser [data-room="r1"]'); await sleep(900); await ev(() => { window.__cam.mode = 'fixed'; window.__cam.fixed = [0.45, 0.1, -1.85, 0.3, -0.12]; });
   const t5 = Date.now(); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL5 = await waitFor(() => __g.G.locked, 120000, 300); const secs5 = (Date.now() - t5) / 1000;
