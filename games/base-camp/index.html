@@ -124,6 +124,12 @@ body.inar #bar{gap:4px;padding:5px}body.inar #bar button{min-height:44px;min-wid
 @media (max-width:520px){#bar button{font-size:12px;padding:2px 6px}#bar{gap:4px}}body.auto #bmenu{gap:4px;padding:5px}body.auto #bmenu button{min-height:34px;font-size:13px;padding:2px 9px}
 #gstrip{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 34px);font-size:13px;font-weight:700;padding:2px 8px;border-radius:9px;max-width:80vw;white-space:nowrap;pointer-events:none}
 #card .goal{margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,246,230,.22)}#card .goal .strip{font-size:17px;line-height:1.35;letter-spacing:1px}#card .gg{white-space:nowrap}#card .dim,#gstrip .dim{opacity:.38}#card .gsub{font-size:11px;opacity:.78;font-weight:600;line-height:1.3}
+#xhair{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none;z-index:4;border:2px solid rgba(255,246,230,.95);border-radius:50%;box-shadow:0 0 0 1px rgba(59,42,30,.7)}#xhair::after{content:'';position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#fff6e6}
+#padstrip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);font-size:11px;font-weight:700;padding:2px 10px;border-radius:9px;white-space:nowrap;pointer-events:none;z-index:4}#padstrip b{color:#ffd9a8}
+.padFocus{outline:3px solid #ffd24a !important;outline-offset:2px}
+#camui{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:4px;padding:3px 4px;background:rgba(59,42,30,.55)}#camui button{min-height:34px;min-width:34px;font-size:15px;padding:2px 7px;border-radius:10px}#camui #cRoom{font-size:12px}
+#rlist{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);display:grid;gap:4px;padding:6px;z-index:5}#rlist button{min-height:34px;font-size:13px;text-align:left;padding:2px 10px}#rlist button.on{background:#ffd24a;color:#3b2a1e}
+@media (max-width:900px){#camui{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}#rlist{bottom:calc(env(safe-area-inset-bottom,0px) + 108px)}}
 #card .resrow{margin:3px 0}.res{display:inline-flex;align-items:center;gap:3px;margin-right:9px}.res i{font-style:normal;font-size:15px}.res u{display:inline-block;width:34px;height:7px;border-radius:4px;background:rgba(255,246,230,.25);text-decoration:none;overflow:hidden}.res u em{display:block;height:100%;border-radius:4px;background:#8fd16f}
 #card .face{font-size:20px;vertical-align:-2px}#card .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}#card .cbtn{pointer-events:auto;min-height:30px;min-width:0;font-size:12px;padding:1px 8px;border-radius:10px;margin-top:4px}#card .chips .cbtn{margin-top:0}
 #ccam{position:absolute;right:8px;top:calc(env(safe-area-inset-top,0px) + 118px);width:152px;border-radius:16px;border:3px solid #ffd9a8;box-shadow:0 3px 0 #a85a1e;overflow:hidden;pointer-events:auto;z-index:7;background:transparent;cursor:pointer}#ccam[hidden]{display:none}
@@ -171,6 +177,8 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
   <div id="nroom" class="glass" hidden></div>
   <div id="gstrip" class="glass" hidden></div>
   <div id="card" class="glass" hidden></div>
+  <div id="xhair" hidden></div><div id="padstrip" class="glass" hidden></div>
+  <div id="camui" class="glass" hidden><button id="cRoom" title="Rooms of the house">🧸 Playroom</button><button id="cFollow" title="Follow a colonist (C)" aria-label="Follow a colonist">👣</button><button id="cWhole" title="The whole house (H)" aria-label="The whole house">🏠</button><button id="cReset" title="Reset the view (0)" aria-label="Reset the view">⟲</button><button id="cKeys" title="Keys and controller" aria-label="Keys and controller">?</button></div>
   <div id="ccam" hidden><div id="ccamView"></div><div class="cinfo"><span id="ccamMood"></span> <b id="ccamName"></b><div id="ccamDoing"></div></div><div class="cx">✕</div></div>
   <div id="sel" class="glass" hidden></div>
   <div id="reqs"></div>
@@ -198,7 +206,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 28';
+const BUILD = 'build 29';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -4808,7 +4816,7 @@ function movePropTo(id, x, z, base) { const p = PROPS.find((q) => q.id === id); 
 function placeRoom(yaw, x, z) { PLACE.yaw = yaw; PLACE.x = x; PLACE.z = z; room.rotation.y = yaw; room.position.set(x, 0, z); room.updateMatrixWorld(true); }
 const toRoom = (wx, wz) => { const c = Math.cos(PLACE.yaw), s = Math.sin(PLACE.yaw), dx = wx - PLACE.x, dz = wz - PLACE.z; return [dx * c - dz * s, dx * s + dz * c]; }; 
 const fromRoom = (rx, rz) => { const c = Math.cos(PLACE.yaw), s = Math.sin(PLACE.yaw); return [rx * c + rz * s + PLACE.x, -rx * s + rz * c + PLACE.z]; };
-function allSurfs() { const out = PSURF.slice(); for (const p of PROPS) out.push({ y: p.base + p.h, x0: p.x - p.w / 2, x1: p.x + p.w / 2, z0: p.z - p.d / 2, z1: p.z + p.d / 2, prop: p }); return out; }
+function allSurfs() { const out = PSURF.slice(); for (const p of PROPS) if (propHere(p)) out.push({ y: p.base + p.h, x0: p.x - p.w / 2, x1: p.x + p.w / 2, z0: p.z - p.d / 2, z1: p.z + p.d / 2, prop: p }); return out; }
 function resetProps() {
   while (PROPS.length) removeProp(PROPS[0].id);
   addProp('can1', 'can', -1.18, -1.45, 1.45); addProp('can2', 'can', -1.0, -1.45, 1.45); addProp('can3', 'can', -0.82, -1.45, 1.45);
@@ -4822,7 +4830,9 @@ function eyePose(t) { // the auto-scan path: smoothly between viewpoints, sweepi
   const k = Math.min(1, u * 6) * Math.min(1, (1 - u) * 0 + 1); // quick ease into each viewpoint
   const prev = PVIEWS[Math.max(0, i - 1)], f = smooth(0, 0.18, u);
   const pos = new THREE.Vector3(...prev.p).lerp(new THREE.Vector3(...v.p), f);
-  return { pos, yaw: mixLerp(prev.yaw, v.yaw, f) + Math.sin(w) * v.ay * f, pitch: mixLerp(prev.pitch, v.pitch, f) + Math.sin(w * 2.3 + 1) * v.ap * f };
+  const out = { pos, yaw: mixLerp(prev.yaw, v.yaw, f) + Math.sin(w) * v.ay * f, pitch: mixLerp(prev.pitch, v.pitch, f) + Math.sin(w * 2.3 + 1) * v.ap * f };
+  if (v.rf) { const [wx, wz] = fromRoom(pos.x, pos.z); pos.x = wx; pos.z = wz; out.yaw += PLACE.yaw; } /* build 29: a house room's sweep is in the house's own frame, so it follows the house when it is moved */
+  return out;
 }
 function setEye(e) { camera.position.copy(e.pos); camera.rotation.set(e.pitch, e.yaw, 0, 'YXZ'); camera.updateMatrixWorld(true); }
 const _ndcs = [[0, 0], [-0.55, 0.5], [0.55, 0.5], [-0.55, -0.5], [0.55, -0.5]];
@@ -4840,7 +4850,7 @@ function practiceHits() { // the virtual hit test: five rays from the virtual iP
 }
 // Test and demo helper: scan the whole practice room at once (no camera path). Fixed grid, small noise.
 function injectScan(step) {
-  step = step || 0.014; const surfs = allSurfs().sort((a, b) => a.y - b.y); let n = 0; if (!SCAN.origin) { const [ox, oz] = fromRoom(0, 0); SCAN.origin = { x: ox, z: oz }; } // the scan grid is 5 m wide around where the scan started: start in the middle
+  step = step || 0.014; const surfs = allSurfs().sort((a, b) => a.y - b.y); let n = 0; if (!SCAN.origin) { const [ox, oz] = HOUSE.on ? fromRoom(...houseRoomCentre()) : fromRoom(0, 0); SCAN.origin = { x: ox, z: oz }; } // the scan grid is 5 m wide around where the scan started: start in the middle
   for (const sf of surfs) for (let x = sf.x0 + step / 2; x < sf.x1; x += step) for (let z = sf.z0 + step / 2; z < sf.z1; z += step) {
     // hidden from above: under a higher top that covers this point, the lower surface is not seen
     if (surfs.some((o) => o.y > sf.y + 0.03 && x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1)) continue;
@@ -4856,13 +4866,14 @@ function practiceFrame(dt) {
     if (P.auto) { // sub-steps so the sweep covers the same ground at any frame rate
       const n = Math.max(1, Math.round(dt * 90)); for (let i = 0; i < n; i++) { P.auto.t += 1 / 90 * P.auto.speed; if (P.auto.t > PVIEWS.length * PV_T) { if (G.auto) { P.auto.t = 0; P.auto.laps = (P.auto.laps || 0) + 1; if (G.settlements.length && (!G.returning || G.locked)) { P.auto = null; P.mode = 'orbit'; if (!P.campCam) { P.yaw = 0.3; P.pitch = 0.55; focusOn(-0.1, 0.8, -0.5, 3.6); } break; } continue; } P.auto = null; toast('Auto-scan finished. Tap Done scanning.'); break; } setEye(eyePose(P.auto.t)); practiceHits(); }
       if (P.auto) { P.eye.pos.copy(camera.position); }
-      if (P.campCam && G.phase === 'play') orbitCam(dt); /* first10: the sweep keeps mapping the room out of sight while the player watches the camp */
+      if (P.campCam && G.phase === 'play') { if (deskOn()) { deskKeys(dt); deskFollowStep(); } orbitCam(dt); } /* build 29: keys walk the camera while the sweep maps out of sight. first10: the sweep keeps mapping the room out of sight while the player watches the camp */
     } else {
       const e = P.eye, sp = dt * 0.9; if (keys.KeyW) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), sp); if (keys.KeyS) e.pos.addScaledVector(tmpV.set(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)), -sp);
       if (keys.KeyA) e.yaw += dt; if (keys.KeyD) e.yaw -= dt; if (keys.ArrowUp) e.pitch += dt * 0.8; if (keys.ArrowDown) e.pitch -= dt * 0.8; if (keys.KeyQ) e.pos.y += sp; if (keys.KeyE) e.pos.y -= sp;
       e.pitch = clamp(e.pitch, -1.5, 0.6); setEye(e); practiceHits();
     }
   } else {
+    if (deskOn()) { deskKeys(dt); deskFollowStep(); } /* build 29 */
     orbitCam(dt);
     if (G.auto && !SCAN.frozen && G.phase !== 'title' && G.phase !== 'align') practiceHits();
   }
@@ -4873,6 +4884,7 @@ function orbitCam(dt) {
   P.pitch = clamp(P.pitch, 0.12, 1.45);
   camera.position.set(P.target.x + Math.sin(P.yaw) * Math.cos(P.pitch) * P.dist, P.target.y + Math.sin(P.pitch) * P.dist, P.target.z + Math.cos(P.yaw) * Math.cos(P.pitch) * P.dist);
   camera.lookAt(P.target); camera.updateMatrixWorld(true);
+  if (deskOn() && DESK.last) deskGuard(); /* build 29: once the player drives the camera it never goes inside a wall, furniture or the floor */
 }
 function f10EyeDo(fn) { setEye(eyePose(P.auto.t)); try { fn(); } finally { orbitCam(0); } }
 const F10_CAM_D = 0.36; /* the camp (tent and creatures, about 0.15 m) fills about a third of the screen height: measured at 820 x 1180 */
@@ -4882,7 +4894,7 @@ function f10Cam(S) { /* first10: on landing the camera flies to the camp, from t
   P.target.set(cx, cy, cz); P.dist = d; focusOn(cx, cy, cz, F10_CAM_D);
 }
 const _rc = new THREE.Raycaster();
-function propPick(cx, cy) { _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const hit = _rc.intersectObjects(PROPS.map((p) => p.mesh), false)[0]; return hit ? hit.object.userData.prop : null; }
+function propPick(cx, cy) { _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const hit = _rc.intersectObjects(PROPS.filter(propHere).map((p) => p.mesh), false)[0]; /* build 29: only the things of the room being played */ return hit ? hit.object.userData.prop : null; }
 function moveProp(p, cx, cy) { // drag a prop along the surfaces of the room
   _rc.setFromCamera({ x: cx / innerWidth * 2 - 1, y: -(cy / innerHeight) * 2 + 1 }, camera); const o = _rc.ray.origin, d = _rc.ray.direction, [ox, oz] = toRoom(o.x, o.z), cs = Math.cos(PLACE.yaw), sn = Math.sin(PLACE.yaw), dx = d.x * cs - d.z * sn, dz = d.x * sn + d.z * cs;
   let bt = 1e9, best = null; for (const sf of PSURF) { if (d.y > -1e-4) break; const t = (sf.y - o.y) / d.y; if (t <= 0) continue; const x = ox + dx * t, z = oz + dz * t; if (x > sf.x0 && x < sf.x1 && z > sf.z0 && z < sf.z1 && t < bt) { bt = t; best = [x, z, sf.y]; } }
@@ -4890,6 +4902,302 @@ function moveProp(p, cx, cy) { // drag a prop along the surfaces of the room
 }
 function focusOn(x, y, z, d) { P.gTarget.set(x, y, z); P.gDist = d; }
 function focusZone(z) { focusOn(z.cx, z.y + 0.03, z.cz, clamp(0.22 + Math.max(z.w, z.d) * 0.42, 0.4, 3.2)); }
+/* ============ DOLLS' HOUSE (build 29): the practice room grows into a toy house: the old room (the Playroom) plus a kitchen, a lounge, a bedroom, a bathroom and a garden,
+   joined by doorways. Each room is a real room to the game: its own HOMES row (bc-rooms-v1), its own map and colony keys, scanned by the same virtual hit test
+   (practiceHits / injectScan) against that room's own tops only. Walking the camera through a doorway (or L1/R1, [ and ], the room button) saves this room and opens the
+   other one; while the house has not been moved (comeBackLater moves it) the other room is found again at once, like ARKit's own world map (relocLock 'worldmap').
+   Colonists visit: now and then one walks through a doorway to a neighbour room and joins the colony there (HOUSE.q, kept in bc-house-v1).
+   ?house=0 keeps the old single practice room exactly as it was (the tests use it). All the furniture is our own toy design: no brands. ============ */
+const HOUSE = { on: !/[?&]house=0\b/.test(location.search), cur: 'play', ver: 0, ids: {}, q: {}, at: {}, busy: false, want: '', wantT: 0, g: null, labels: [], whole: false, travelT: 0, moves: 0 };
+const HOUSE_ROOMS = {
+  play: { name: 'Playroom', ic: '🧸', r: [-1.6, 1.6, -1.6, 1.6] },
+  kitchen: { name: 'Kitchen', ic: '🍳', r: [1.6, 4.8, -1.6, 1.6] },
+  bath: { name: 'Bathroom', ic: '🛁', r: [4.8, 6.8, -1.6, 1.6] },
+  lounge: { name: 'Lounge', ic: '🛋️', r: [-1.6, 1.6, 1.6, 4.8] },
+  bed: { name: 'Bedroom', ic: '🛏️', r: [1.6, 4.8, 1.6, 4.8] },
+  garden: { name: 'Garden', ic: '🌼', r: [-1.6, 3.2, 4.8, 7.6] },
+};
+const HOUSE_ORDER = ['play', 'kitchen', 'bath', 'bed', 'lounge', 'garden'];
+const HOUSE_DOORS = { /* which rooms a doorway joins (for visitors) */ play: ['kitchen', 'lounge'], kitchen: ['play', 'bath', 'bed'], bath: ['kitchen'], lounge: ['play', 'bed', 'garden'], bed: ['kitchen', 'lounge'], garden: ['lounge'] };
+const PSURF0 = PSURF.slice(), PVIEWS0 = PVIEWS.slice();
+function houseBounds() { return [-1.6, 6.8, -1.6, 7.6]; }
+function houseRoomCentre(k) { const r = HOUSE_ROOMS[k || HOUSE.cur].r; return [(r[0] + r[1]) / 2, (r[2] + r[3]) / 2]; }
+function houseAt(rx, rz, inset) { inset = inset || 0; for (const k of HOUSE_ORDER) { const r = HOUSE_ROOMS[k].r; if (rx > r[0] + inset && rx < r[1] - inset && rz > r[2] + inset && rz < r[3] - inset) return k; } return ''; }
+(function houseLoad() { try { const d = JSON.parse(localStorage.getItem('bc-house-v1') || 'null'); if (d && d.v === 1) { HOUSE.ids = d.ids || {}; HOUSE.q = d.q || {}; HOUSE.at = d.at || {}; } } catch (e) { /* a fresh house */ } })();
+function houseSave() { store.set('bc-house-v1', JSON.stringify({ v: 1, ids: HOUSE.ids, q: HOUSE.q, at: HOUSE.at })); }
+const HOUSE_SURF = {}, HOUSE_PROPS = {};
+(function buildHouse() { /* the rooms beyond the Playroom: furniture boxes, the tops colonists can live on, walls with doorways, floors */
+  const g = new THREE.Group(); HOUSE.g = g; room.add(g); let cur = 'play';
+  const box = (w, h, d, c, x, y, z, soft) => { const m = mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); if (soft) m.userData.soft = 1; g.add(m); return m; };
+  const top = (y, x0, x1, z0, z1) => { (HOUSE_SURF[cur] = HOUSE_SURF[cur] || []).push({ y, x0, x1, z0, z1 }); };
+  const furn = (x0, x1, z0, z1, h, c, tc) => { box(x1 - x0, h - 0.03, z1 - z0, c, (x0 + x1) / 2, (h - 0.03) / 2, (z0 + z1) / 2); box(x1 - x0 + 0.02, 0.03, z1 - z0 + 0.02, tc || c, (x0 + x1) / 2, h - 0.015, (z0 + z1) / 2); top(h, x0, x1, z0, z1); };
+  const table = (x0, x1, z0, z1, h, c, lc) => { box(x1 - x0, 0.04, z1 - z0, c, (x0 + x1) / 2, h - 0.02, (z0 + z1) / 2); for (const [x, z] of [[x0 + 0.05, z0 + 0.05], [x1 - 0.05, z0 + 0.05], [x0 + 0.05, z1 - 0.05], [x1 - 0.05, z1 - 0.05]]) box(0.05, h - 0.04, 0.05, lc, x, (h - 0.04) / 2, z); top(h, x0, x1, z0, z1); };
+  const floor = (k, tex) => { const r = HOUSE_ROOMS[k].r, w = r[1] - r[0], d = r[3] - r[2]; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(w / 0.8, d / 0.8); const f = mesh(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }), (r[0] + r[1]) / 2, -0.002, (r[2] + r[3]) / 2); g.add(f); (HOUSE_SURF[k] = HOUSE_SURF[k] || []).unshift({ y: 0, x0: r[0], x1: r[1], z0: r[2], z1: r[3] }); };
+  const tiles = (a, b) => cv(128, 128, (x) => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? a : b; x.fillRect(i * 32, j * 32, 32, 32); } x.strokeStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32, 128); x.moveTo(0, i * 32); x.lineTo(128, i * 32); x.stroke(); } });
+  const plain = (a, b, n) => cv(128, 128, (x) => { x.fillStyle = a; x.fillRect(0, 0, 128, 128); for (let i = 0; i < (n || 300); i++) { x.fillStyle = b; x.fillRect(Math.random() * 128, Math.random() * 128, 2, 2); } });
+  const boards = (a, b) => cv(128, 128, (x) => { for (let i = 0; i < 4; i++) { x.fillStyle = i % 2 ? a : b; x.fillRect(0, i * 32, 128, 31); x.fillStyle = 'rgba(60,30,10,.14)'; x.fillRect((i * 53) % 128, i * 32, 2, 31); } });
+  floor('kitchen', tiles('#e9e4d4', '#8fb6c9')); floor('bath', tiles('#f2f4f6', '#a8d4d0')); floor('lounge', boards('#c89a6c', '#b98b5e')); floor('bed', plain('#b9a6d9', 'rgba(255,255,255,.25)', 500)); floor('garden', plain('#7cb85a', 'rgba(40,90,30,.35)', 900));
+  /* walls: the back two (north and west) are tall like the Playroom's, the inside ones are low, cut away like a dolls' house, with doorways */
+  const WH = 1.1, WT = 0.06, wallX = (x, z0, z1, h, doors, c) => { let a = z0; for (const [d0, d1] of (doors || []).concat([[z1, z1]])) { if (d0 - a > 0.01) box(WT, h, d0 - a, c || 0xf3ead8, x, h / 2, (a + d0) / 2); if (d1 > d0) box(WT, 0.06, d1 - d0, 0xd9b98a, x, h - 0.03, (d0 + d1) / 2); a = d1; } };
+  const wallZ = (z, x0, x1, h, doors, c) => { let a = x0; for (const [d0, d1] of (doors || []).concat([[x1, x1]])) { if (d0 - a > 0.01) box(d0 - a, h, WT, c || 0xf3ead8, (a + d0) / 2, h / 2, z); if (d1 > d0) box(d1 - d0, 0.06, WT, 0xd9b98a, (d0 + d1) / 2, h - 0.03, z); a = d1; } };
+  wallZ(-1.62, 1.6, 6.82, 2.6, [], 0xe9dcc2); wallX(-1.62, 1.6, 4.8, 2.6, [], 0xe4d5bb);
+  wallX(1.6, -1.6, 1.6, WH, [[-0.2, 0.6]]); wallX(4.8, -1.6, 1.6, WH, [[0.5, 1.3]]); wallX(6.82, -1.6, 1.6, WH); wallZ(1.6, -1.6, 1.6, WH, [[-0.6, 0.2]]); wallZ(1.6, 1.6, 4.8, WH, [[2.0, 2.8]]); wallZ(1.6, 4.8, 6.82, WH);
+  wallX(1.6, 1.6, 4.8, WH, [[2.4, 3.2]]); wallX(4.8, 1.6, 4.8, WH); wallZ(4.8, -1.6, 1.6, WH, [[0.4, 1.2]]); wallZ(4.8, 1.6, 4.8, WH);
+  const fence = 0xf6efe0; wallZ(7.62, -1.62, 3.22, 0.45, [], fence); wallX(3.22, 4.8, 7.62, 0.45, [], fence); wallX(-1.62, 4.8, 7.62, 0.45, [], fence);
+  for (let x = -1.5; x < 3.2; x += 0.3) box(0.05, 0.55, 0.05, fence, x, 0.275, 7.62); /* fence posts */
+  /* KITCHEN */
+  cur = 'kitchen';
+  furn(1.75, 4.05, -1.58, -1.0, 0.9, 0xf4ecd8, 0x9a7a55); for (let x = 2.0; x < 4.0; x += 0.5) box(0.42, 0.7, 0.01, 0xe2d6b8, x + 0.22, 0.42, -0.995, true); /* cupboard doors */
+  box(0.6, 0.012, 0.5, 0x3d3a3a, 3.6, 0.906, -1.3, true); for (const [x, z] of [[3.45, -1.42], [3.75, -1.42], [3.45, -1.18], [3.75, -1.18]]) box(0.14, 0.006, 0.14, 0xb7493b, x, 0.915, z, true); /* the hob */
+  furn(4.15, 4.75, -1.0, -0.4, 1.75, 0xdfe9ef, 0xcfdbe2); box(0.02, 0.5, 0.04, 0xa9b4bb, 4.14, 1.2, -0.5, true); box(0.02, 0.4, 0.04, 0xa9b4bb, 4.14, 0.55, -0.5, true); /* fridge and its handles */
+  table(2.5, 3.5, 0.0, 0.8, 0.75, 0xd8a868, 0x9a6a3a); for (const [x, z] of [[2.3, 0.4], [3.7, 0.4]]) { furn(x - 0.18, x + 0.18, z - 0.18, z + 0.18, 0.45, 0xc9824e); box(0.36, 0.4, 0.04, 0xc9824e, x, 0.65, z + (x < 3 ? 0 : 0) - 0.16, true); }
+  /* BATHROOM */
+  cur = 'bath';
+  furn(4.9, 6.7, -1.56, -0.86, 0.55, 0xf5f7f9, 0xf5f7f9); box(1.6, 0.012, 0.5, 0x8fd0f0, 5.8, 0.553, -1.21, true); /* the bath and its water */
+  furn(6.15, 6.75, 0.2, 0.7, 0.85, 0x9fc9c3, 0xf5f7f9); box(0.04, 0.5, 0.42, 0xe7f3ff, 6.78, 1.45, 0.45, true); /* the basin cupboard and its mirror */
+  box(0.5, 0.04, 0.12, 0xd96e5e, 5.3, 1.0, -1.57, true);
+  /* LOUNGE */
+  cur = 'lounge';
+  furn(-1.5, -0.2, 4.0, 4.55, 0.42, 0x6a8fb5, 0x7aa0c6); box(1.3, 0.45, 0.18, 0x5a7fa5, -0.85, 0.62, 4.64); box(0.16, 0.6, 0.72, 0x5a7fa5, -1.5, 0.3, 4.32); box(0.16, 0.6, 0.72, 0x5a7fa5, -0.2, 0.3, 4.32); /* the sofa */
+  table(-1.1, -0.4, 3.0, 3.5, 0.4, 0xc99a62, 0x9a6a3a);
+  furn(-1.2, 0.2, 1.75, 2.15, 0.5, 0x8a5a33, 0x9a6a3a); box(0.9, 0.52, 0.05, 0x26262b, -0.5, 0.77, 1.9, true); box(0.82, 0.44, 0.01, 0x4c6a8a, -0.5, 0.77, 1.928, true); /* the TV cabinet, a plain toy screen */
+  furn(1.2, 1.55, 3.6, 4.7, 1.2, 0xb88655, 0x9a6a3a); for (const y of [0.4, 0.8]) box(0.34, 0.025, 1.08, 0x9a6a3a, 1.375, y, 4.15, true); for (let i = 0; i < 9; i++) box(0.22, 0.26, 0.05, [0xd96e5e, 0x6a8fb5, 0xe8c547, 0x7cb85a][i % 4], 1.36, 0.95, 3.7 + i * 0.1, true); /* bookshelf */
+  box(1.4, 0.012, 1.0, 0xe8c547, -0.75, 0.006, 3.2, true);
+  /* BEDROOM */
+  cur = 'bed';
+  furn(2.6, 4.0, 3.0, 4.6, 0.5, 0xf2efe6, 0xb7c9e8); box(1.42, 0.07, 1.0, 0x7b9fd6, 3.3, 0.52, 3.55, true); box(0.5, 0.08, 0.28, 0xffffff, 2.95, 0.54, 4.38, true); box(0.5, 0.08, 0.28, 0xffffff, 3.65, 0.54, 4.38, true); box(1.5, 0.9, 0.08, 0x9a6a3a, 3.3, 0.45, 4.66); /* the bed */
+  furn(4.1, 4.5, 4.2, 4.6, 0.55, 0xc99a62); box(0.1, 0.25, 0.1, 0xffe08a, 4.3, 0.68, 4.45, true); /* bedside table and a lamp */
+  furn(1.7, 2.3, 3.9, 4.7, 1.9, 0xd8b48a, 0xc8a47a); box(0.01, 1.6, 0.36, 0xc49c70, 2.305, 0.95, 4.1, true); box(0.01, 1.6, 0.36, 0xc49c70, 2.305, 0.95, 4.5, true);
+  furn(4.2, 4.75, 1.8, 2.6, 0.85, 0xe0a5b5, 0xd28fa0); for (const y of [0.2, 0.45, 0.7]) box(0.01, 0.18, 0.7, 0xc97f92, 4.195, y, 2.2, true);
+  box(1.2, 0.012, 0.8, 0xffd0a0, 3.3, 0.006, 2.4, true);
+  /* GARDEN */
+  cur = 'garden';
+  furn(-1.3, 0.2, 5.1, 5.7, 0.3, 0xa0703e, 0x6b4a2b); for (let i = 0; i < 5; i++) box(0.08, 0.12, 0.08, 0x58a845, -1.1 + i * 0.3, 0.36, 5.4, true); /* raised bed and seedlings */
+  table(1.0, 2.2, 6.0, 6.8, 0.72, 0xc9a06b, 0x8a6a43); furn(1.0, 2.2, 5.62, 5.88, 0.42, 0xb38a55); furn(1.0, 2.2, 6.92, 7.18, 0.42, 0xb38a55);
+  furn(2.3, 3.1, 4.95, 5.7, 1.6, 0x8a9f6a, 0x6b4a2b); box(0.3, 0.6, 0.01, 0x5d4a33, 2.7, 0.3, 5.705, true); /* the shed */
+  { const pd = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.01, 24), M(0x5fb3d9), -0.6, 0.004, 6.8); pd.userData.soft = 1; g.add(pd); }
+  for (const [x, z] of [[-1.2, 7.3], [2.9, 7.3], [-1.3, 6.2]]) { box(0.06, 0.4, 0.06, 0x7a5a3a, x, 0.2, z, true); const b = mesh(new THREE.SphereGeometry(0.22, 10, 8), M(0x4f9a3e), x, 0.5, z); b.userData.soft = 1; g.add(b); }
+  g.visible = false;
+  /* the movable things in each room (the same toy kinds the practice room's eyes know) */
+  HOUSE_PROPS.kitchen = [['k_sink', 'sink', 2.4, -1.3, 0.9], ['k_cup', 'cup', 2.8, 0.3, 0.75], ['k_can', 'can', 3.0, -1.25, 0.9], ['k_box', 'box', 2.0, -1.3, 0.9], ['k_can2', 'can', 3.2, 0.5, 0.75]];
+  HOUSE_PROPS.bath = [['b_sink', 'sink', 6.45, 0.45, 0.85], ['b_toilet', 'toilet', 5.2, 1.2, 0], ['b_cup', 'cup', 6.3, 0.3, 0.85], ['b_box', 'box', 6.2, 1.25, 0]];
+  HOUSE_PROPS.lounge = [['l_cup', 'cup', -0.7, 3.2, 0.4], ['l_speaker', 'speaker', 0.4, 2.0, 0], ['l_box', 'box', 0.9, 4.3, 0], ['l_can', 'can', -0.9, 3.35, 0.4]];
+  HOUSE_PROPS.bed = [['d_cup', 'cup', 4.3, 4.3, 0.55], ['d_box', 'box', 4.45, 2.2, 0.85], ['d_can', 'can', 3.0, 3.4, 0.5]];
+  HOUSE_PROPS.garden = [['g_can', 'can', -0.4, 5.4, 0.3], ['g_box', 'box', 1.6, 6.4, 0.72], ['g_cup', 'cup', 1.3, 6.2, 0.72]];
+})();
+function houseViews(k) { /* where the virtual iPad is held to sweep a room: four corners and the middle, looking in (room frame, see eyePose) */
+  const r = HOUSE_ROOMS[k].r, cx = (r[0] + r[1]) / 2, cz = (r[2] + r[3]) / 2, ix = Math.min(0.5, (r[1] - r[0]) / 4), iz = Math.min(0.5, (r[3] - r[2]) / 4), out = [];
+  for (const [x, z] of [[r[1] - ix, r[3] - iz], [r[0] + ix, r[3] - iz], [r[0] + ix, r[2] + iz], [r[1] - ix, r[2] + iz], [cx + 0.3, cz + 0.3], [cx - 0.3, cz - 0.3]]) out.push({ rf: 1, p: [x, 1.8, z], yaw: Math.atan2(x - cx, z - cz), pitch: -0.8, ay: 0.7, ap: 0.32 });
+  out[4].pitch = -1.2; out[4].ay = 1.4; out[5].pitch = -1.0; out[5].ay = 1.2; return out;
+}
+function houseUse(k) { /* make room k the one the virtual hit test sees: its tops, its things, its sweep */
+  HOUSE.cur = k; PSURF.length = 0; for (const s of k === 'play' ? PSURF0 : HOUSE_SURF[k] || []) PSURF.push(s);
+  PVIEWS.length = 0; for (const v of k === 'play' ? PVIEWS0 : houseViews(k)) PVIEWS.push(v); HOUSE.ver++;
+}
+function houseShow(on) { /* the other rooms are drawn whenever the practice room is (house mode only), and their things are set out once */
+  if (!HOUSE.on || !HOUSE.g) return; HOUSE.g.visible = !!on;
+  if (on && !PROPS.some((p) => p.room)) for (const k of Object.keys(HOUSE_PROPS)) for (const [id, kind, x, z, base] of HOUSE_PROPS[k]) { const p = addProp(id, kind, x, z, base); p.room = k; }
+  houseLabels(on);
+}
+const propHere = (p) => (p.room || 'play') === HOUSE.cur; /* a thing belongs to the room the virtual hit test is scanning (the Playroom's own things have no .room) */
+function houseId(k) { const id = HOUSE.ids[k]; return id && homeInfo(id) ? id : ''; }
+function houseStep(d) { const i = HOUSE_ORDER.indexOf(HOUSE.cur), k = HOUSE_ORDER[(i + d + HOUSE_ORDER.length) % HOUSE_ORDER.length]; HOUSE.whole = false; return houseGo(k); }
+function houseGo(k, quiet) { /* leave this room (saved), walk into room k: its own map and colony, or a fresh scan if it was never mapped */
+  if (!HOUSE.on || !HOUSE_ROOMS[k] || k === HOUSE.cur || HOUSE.busy || G.mode !== 'practice' || !G.auto || BT.on) return false;
+  if (G.returning && !G.locked) { if (!quiet) toast('The colonists are still finding their way home here. Give them a moment.', 3); return false; }
+  HOUSE.busy = true;
+  try {
+    if (!HOUSE.ids.play || !homeInfo(HOUSE.ids.play)) HOUSE.ids.play = HOMES.cur;
+    persist(true); houseCount();
+    const cam = { t: P.gTarget.clone(), yaw: P.yaw, pitch: P.pitch, d: P.gDist };
+    let id = houseId(k); if (!id) { const r = homeCreate(HOUSE_ROOMS[k].name); if (!r) { toast('The house has no room left in storage for the ' + HOUSE_ROOMS[k].name + ': delete a saved room on the title screen.', 5); return false; } id = r.id; HOUSE.ids[k] = id; } else homeSelect(id);
+    G.mapName = homeName(id); houseUse(k); houseSave();
+    resetWorld(); G.auto = true; G.previewSecs = null; G.roomWant = 'room'; startAuto();
+    { const [rx, rz] = toRoom(cam.t.x, cam.t.z); if (houseAt(rx, rz, 0.1) !== k) { const [cx, cz] = houseRoomCentre(k), [wx, wz] = fromRoom(cx, cz); cam.t.set(wx, 0.4, wz); cam.d = clamp(Math.max(cam.d, 2.4), 2.4, 3.6); } } /* the camera looks into the room it went to (else the doorway check would walk straight back) */
+    P.campCam = true; P.target.copy(cam.t); P.gTarget.copy(cam.t); P.yaw = cam.yaw; P.pitch = cam.pitch; P.dist = P.gDist = cam.d; DESK.follow = null; orbitCam(0);
+    if (G.returning && HOUSE.at[k] === (PLACE.n || 0)) relocLock({ phi: 0, tx: 0, tz: 0, dy: 0, score: 0, ratio: 1, M: 0, info: 0, margin: 0 }, 'worldmap'); /* the house has not moved since this room was saved: found at once */
+    HOUSE.at[k] = PLACE.n || 0; houseSave(); HOUSE.moves++;
+    houseArrive(k); toast(HOUSE_ROOMS[k].ic + ' ' + HOUSE_ROOMS[k].name + (G.returning ? '' : ': the colonists look around a new room.'), 2.5); houseLabels(true);
+    return true;
+  } finally { HOUSE.busy = false; }
+}
+function houseCount() { const r = homeInfo(HOMES.cur); if (r) { r.cols = G.settlements.reduce((a, S) => a + S.cols.length, 0); r.last = Date.now(); homesSave(); } }
+function houseStart() { /* Practice room: the house starts in the Playroom (the old room, same keys as before) */
+  if (!HOUSE.on) return; let k = HOUSE_ORDER.find((q) => HOUSE.ids[q] === HOMES.cur && homeInfo(HOMES.cur)) || ''; /* a room picked on the title opens in its place in the house */
+  if (!k) { k = 'play'; if (!HOUSE.ids.play || !homeInfo(HOUSE.ids.play)) HOUSE.ids.play = HOMES.cur; else homeSelect(HOUSE.ids.play); }
+  houseUse(k); HOUSE.at[k] = PLACE.n || 0; houseSave();
+}
+function houseTick(dt) { /* doorways: the camera's point of interest stays inside another room for a moment -> go there. Visitors walk between rooms now and then. */
+  if (!HOUSE.on || G.mode !== 'practice' || AR.on || G.phase !== 'play' || !G.auto || HOUSE.busy) return;
+  if (DESK.last && !HOUSE.whole && P.gDist < 4.5 && (P.campCam || P.mode === 'orbit')) {
+    const [rx, rz] = toRoom(P.target.x, P.target.z), k = houseAt(rx, rz, 0.25);
+    if (k && k !== HOUSE.cur) { if (HOUSE.want !== k) { HOUSE.want = k; HOUSE.wantT = 0; } else if ((HOUSE.wantT += dt) > 0.6) { HOUSE.want = ''; houseGo(k, true); } } else HOUSE.want = '';
+  }
+  HOUSE.travelT += dt * G.speed; if (HOUSE.travelT > 240) { HOUSE.travelT = 0; houseVisit(); }
+}
+function houseVisit() { /* a colonist of a busy camp walks through a doorway to a neighbour room; they join that room's colony when the room is next opened */
+  const S = G.settlements.find((q) => q.placed && !q.ghost && q.cols.length >= 5); if (!S) return null;
+  const c = S.cols.filter((q) => !q.scout && !q.inside && q.spawn <= 0)[0]; if (!c) return null;
+  const to = HOUSE_DOORS[HOUSE.cur][Math.floor(Math.random() * HOUSE_DOORS[HOUSE.cur].length)];
+  if (CCAM.c === c) camClose(); if (DESK.follow === c) DESK.follow = null; if (G.sel === c) { G.sel = null; selCard(null); }
+  S.cols.splice(S.cols.indexOf(c), 1); if (c.mesh && c.mesh.parent) c.mesh.parent.remove(c.mesh);
+  (HOUSE.q[to] = HOUSE.q[to] || []).push({ name: c.name, persona: c.persona, likes: c.likes, by: c.by, hue: c.hue }); houseSave(); persistSoon();
+  toast('🚪 ' + esc(c.name) + ' packed a tiny bag and walked through the door to the ' + HOUSE_ROOMS[to].name + '.', 4); return to;
+}
+function houseArrive(k) { /* visitors waiting for this room join its colony (once it has one) */
+  const L = HOUSE.q[k]; if (!L || !L.length) return 0; const S = G.settlements.find((q) => q.placed && !q.ghost); if (!S) return 0;
+  for (const v of L) { const c = addColonist(S, { name: v.name, persona: v.persona, likes: v.likes, by: v.by, hue: v.hue, x: 0.06, z: 0.06 }); c.spawn = 0.5; }
+  const n = L.length; HOUSE.q[k] = []; houseSave(); setTimeout(() => toast('🚪 ' + (n === 1 ? esc(L[0].name) + ' came' : n + ' visitors came') + ' through the door from next door and moved in.', 4), 2800); persistSoon(); return n;
+}
+function houseLabels(on) { /* a small sign over each room: its name and how many live there (shown from far away) */
+  for (const s of HOUSE.labels) HOUSE.g.remove(s); HOUSE.labels = []; if (!on || !HOUSE.on) return;
+  for (const k of HOUSE_ORDER) {
+    const r = homeInfo(HOUSE.ids[k] || ''), n = k === HOUSE.cur ? G.settlements.reduce((a, S) => a + S.cols.length, 0) : r ? r.cols || 0 : 0, txt = HOUSE_ROOMS[k].ic + ' ' + HOUSE_ROOMS[k].name + (n ? '  👥' + n : '');
+    const tex = cv(256, 48, (x) => { x.fillStyle = k === HOUSE.cur ? 'rgba(255,214,120,.92)' : 'rgba(59,42,30,.78)'; x.beginPath(); x.roundRect ? x.roundRect(2, 2, 252, 44, 14) : x.rect(2, 2, 252, 44); x.fill(); x.fillStyle = k === HOUSE.cur ? '#3b2a1e' : '#fff6e6'; x.font = 'bold 24px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 128, 25); });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); const [cx, cz] = houseRoomCentre(k); sp.position.set(cx, 2.0, cz); sp.scale.set(1.2, 0.225, 1); sp.renderOrder = 5; sp.userData.soft = 1; HOUSE.g.add(sp); HOUSE.labels.push(sp);
+  }
+}
+function houseLabelTick() { const far = P.dist > 4.2 || HOUSE.whole; for (const s of HOUSE.labels) s.visible = far; }
+/* ============ DESKTOP CAMERA (build 29, "Mac and dolls' house"): mouse, trackpad, keys and a controller move the camera of the practice room and the house.
+   Read HANDOVER "Mac and dolls' house (build 29)". None of it runs in AR (deskOn is false there), so the iPad behaves exactly as before.
+   Mouse: drag = turn round, right-drag / shift-drag / middle-drag = slide, wheel or pinch = zoom. Keys: WASD or arrows walk, Q/E turn, R/F up/down, C follow a colonist,
+   H whole house, 0 or Home reset, Esc stop following. Controller (Gamepad API, standard mapping): left stick walk, right stick look, L2/R2 zoom, D-pad = the tool bar
+   (left/right pick, up uses it), Cross = tap at the crosshair, Circle = back, Triangle = follow, Square = whole house, L1/R1 = the next room, R3 = reset, Options = Menu.
+   The camera is pulled in front of anything solid between it and what it looks at (deskGuard), so it can never end up inside a wall or the floor. ============ */
+const DESK = { follow: null, sol: [], solKey: '', pad: { prev: [], used: false, n: 0, ring: -1, dir: '', rep: 0, stripT: 0, lastKey: '' }, inside: 0, last: 0, guardHits: 0 };
+const PAD_DEAD = 0.15, PB = { cross: 0, circle: 1, square: 2, triangle: 3, l1: 4, r1: 5, l2: 6, r2: 7, options: 9, l3: 10, r3: 11, up: 12, down: 13, left: 14, right: 15 };
+const deskOn = () => G.mode === 'practice' && !AR.on && !BT.on && G.phase !== 'title' && G.phase !== 'scan';
+function deskTake() { /* the player moves the camera: during the automatic sweep it keeps mapping out of sight (like first10's camp camera), the camera is the player's from now on */
+  DESK.last = performance.now();
+  if (P.mode === 'eye' && P.auto && !P.campCam) {
+    const cp = camera.position, fw = camera.getWorldDirection(tmpV2), t = tmpV.copy(cp).addScaledVector(fw, 1.6); t.y = Math.max(0, t.y);
+    const d = Math.max(0.3, cp.distanceTo(t)); P.target.copy(t); P.gTarget.copy(t); P.dist = P.gDist = d;
+    P.yaw = Math.atan2(cp.x - t.x, cp.z - t.z); P.pitch = clamp(Math.asin(clamp((cp.y - t.y) / d, -1, 1)), 0.12, 1.45);
+  }
+  if (P.auto) P.campCam = true;
+}
+function deskMaxD() { return HOUSE.on ? 13 : 6; }
+function deskMove(fx, rx, uy) { /* walk: forward / right in the camera's own heading, up */
+  deskTake(); if (DESK.follow) DESK.follow = null;
+  const s = Math.sin(P.yaw), c = Math.cos(P.yaw); P.gTarget.x += -s * fx + c * rx; P.gTarget.z += -c * fx - s * rx; P.gTarget.y += uy; deskBound();
+}
+function deskPan(dx, dy) { const k = P.dist * 0.0016; deskMove(dy * k, -dx * k, 0); }
+function deskZoom(f) { deskTake(); P.gDist = clamp(P.gDist * f, 0.15, deskMaxD()); }
+function deskBound() { /* the point the camera looks at stays in the room (or the house), between the floor and the ceiling */
+  const B = HOUSE.on ? houseBounds() : [-1.7, 1.7, -1.7, 1.7], [rx, rz] = toRoom(P.gTarget.x, P.gTarget.z), cx = clamp(rx, B[0], B[1]), cz = clamp(rz, B[2], B[3]);
+  if (cx !== rx || cz !== rz) { const [wx, wz] = fromRoom(cx, cz); P.gTarget.x = wx; P.gTarget.z = wz; }
+  P.gTarget.y = clamp(P.gTarget.y, 0, 2.4);
+}
+function deskFollowNext() { /* the next colonist to watch (the camera stays on them until you move it) */
+  const all = G.settlements.filter((S) => S.placed && !S.ghost).flatMap((S) => S.cols.filter((c) => !c.dead && c.spawn <= 0));
+  if (!all.length) { toast('Nobody to follow yet.'); return null; }
+  const i = DESK.follow ? all.indexOf(DESK.follow) : -1, c = all[(i + 1) % all.length]; deskTake(); DESK.follow = c; P.gDist = Math.min(P.gDist, 0.5); P.pitchGoal = 0.55;
+  toast('Following ' + esc(c.name) + '. Move the camera to stop.', 2); return c;
+}
+function deskFollowStep() {
+  const c = DESK.follow; if (!c) return; if (!c.S || !c.S.cols.includes(c) || !c.S.placed) { DESK.follow = null; return; }
+  const [wx, wz] = l2w(c.S, c.x, c.z); P.gTarget.set(wx, SY(c.S, 0.03), wz);
+}
+function deskWhole() { /* the whole house (or the whole room) from above, at an angle */
+  deskTake(); DESK.follow = null; const B = HOUSE.on ? houseBounds() : [-1.6, 1.6, -1.6, 1.6], [wx, wz] = fromRoom((B[0] + B[1]) / 2, (B[2] + B[3]) / 2);
+  P.gTarget.set(wx, 0.4, wz); P.gDist = clamp(Math.max(B[1] - B[0], B[3] - B[2]) * 1.15, 3.5, deskMaxD()); P.pitchGoal = 1.0;
+}
+function deskReset() { /* back to where the camera starts: the camp if there is one, else the room */
+  deskTake(); DESK.follow = null; P.pitchGoal = 0.55; const S = G.settlements.find((q) => q.placed && !q.ghost && !q.lost);
+  if (S) { P.gTarget.set(S.tf.x, SY(S, 0.02), S.tf.z); P.gDist = 1.1; } else { const [cx, cz] = HOUSE.on ? houseRoomCentre() : [0, 0], [wx, wz] = fromRoom(cx - 0.1, cz - 0.5); P.gTarget.set(wx, 0.8, wz); P.gDist = 3.6; }
+}
+function deskKeys(dt) {
+  const a = document.activeElement; if (a && (a.tagName === 'INPUT' && a.type !== 'range' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA')) return;
+  const sp = dt * Math.max(0.5, P.dist * 0.7) * (keys.ShiftLeft || keys.ShiftRight ? 2.5 : 1);
+  const f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0), r = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), u = (keys.KeyR ? 1 : 0) - (keys.KeyF ? 1 : 0), t = (keys.KeyQ ? 1 : 0) - (keys.KeyE ? 1 : 0);
+  if (f || r || u) deskMove(f * sp, r * sp, u * sp * 0.6);
+  if (t) { deskTake(); P.yaw += t * dt * 1.6; }
+}
+addEventListener('keydown', (e) => { /* one-press keys (the held ones are read every frame by deskKeys) */
+  if (!deskOn() || e.repeat) return; const a = document.activeElement; if (a && (a.tagName === 'INPUT' && a.type !== 'range' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA')) return;
+  if (e.code === 'KeyC') deskFollowNext(); else if (e.code === 'KeyH') deskWhole(); else if (e.code === 'Digit0' || e.code === 'Home') deskReset(); else if (e.code === 'Escape') DESK.follow = null;
+  else if (e.code === 'BracketRight' && HOUSE.on) houseStep(1); else if (e.code === 'BracketLeft' && HOUSE.on) houseStep(-1);
+});
+function deskSolids() { /* boxes the camera may not pass through: the room's furniture and walls (the house's too), in world space; rebuilt when the room moves */
+  const key = PLACE.yaw + ',' + PLACE.x + ',' + PLACE.z + ',' + HOUSE.ver + ',' + room.children.length; if (key === DESK.solKey) return DESK.sol;
+  DESK.solKey = key; DESK.sol = []; room.updateMatrixWorld(true);
+  room.traverse((o) => { if (!o.isMesh || o.userData.prop || o.userData.soft || !o.geometry || o.geometry.type === 'PlaneGeometry') return; const b = new THREE.Box3().setFromObject(o); if (b.max.y - b.min.y < 0.03) return; DESK.sol.push(b); });
+  return DESK.sol;
+}
+function deskGuard() { /* march from what the camera looks at out to the camera: the first solid box pulls the camera in front of it (never inside a wall or under the floor) */
+  const t = P.target, c = camera.position, sol = deskSolids().filter((b) => !b.containsPoint(t)), n = 28; let hit = 1;
+  for (let i = 1; i <= n; i++) { const k = i / n; tmpV.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); if (tmpV.y < 0.02 || sol.some((b) => b.containsPoint(tmpV))) { hit = (i - 1) / n; break; } }
+  if (hit < 1) { const k = Math.max(Math.min(1, 0.1 / Math.max(0.1, P.dist)), hit - 0.015); c.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); DESK.guardHits++; }
+  if (c.y < 0.03) c.y = 0.03; camera.lookAt(t); camera.updateMatrixWorld(true);
+}
+function deskInside() { /* test hook: is the camera inside anything solid right now? */ const c = camera.position; return c.y < 0.02 || deskSolids().some((b) => b.containsPoint(c)); }
+/* ---- the controller ---- */
+function padsNow() { let got = []; try { got = navigator.getGamepads ? navigator.getGamepads() : []; } catch (e) { got = []; } const out = []; for (const g of got || []) if (g && g.connected !== false && (g.mapping === 'standard' || g.buttons.length >= 16)) out.push(g); return out; }
+function padStick(x, y) { const m = Math.hypot(x, y); if (m < PAD_DEAD) return [0, 0]; const k = Math.min(1, (m - PAD_DEAD) / (1 - PAD_DEAD)) / m; return [x * k, y * k]; }
+function padRead() { /* every controller merged: the stick pushed furthest wins, a button counts if any pad holds it */
+  const list = padsNow(); if (list.length !== DESK.pad.n) { DESK.pad.n = list.length; if (!list.length) DESK.pad.used = false; }
+  if (!list.length) return null; const r = { l: [0, 0], r: [0, 0], held: [], hit: [], l2: 0, r2: 0 };
+  for (const g of list) { const L = padStick(g.axes[0] || 0, g.axes[1] || 0), R = padStick(g.axes[2] || 0, g.axes[3] || 0); if (Math.hypot(...L) > Math.hypot(...r.l)) r.l = L; if (Math.hypot(...R) > Math.hypot(...r.r)) r.r = R;
+    g.buttons.forEach((b, i) => { const h = !!b && (b.pressed || b.value > 0.5); r.held[i] = r.held[i] || h; }); r.l2 = Math.max(r.l2, g.buttons[PB.l2] ? g.buttons[PB.l2].value || 0 : 0); r.r2 = Math.max(r.r2, g.buttons[PB.r2] ? g.buttons[PB.r2].value || 0 : 0); }
+  const was = DESK.pad.prev; r.hit = r.held.map((h, i) => h && !was[i]); DESK.pad.prev = r.held.slice();
+  if (r.held.some(Boolean) || r.l[0] || r.l[1] || r.r[0] || r.r[1]) DESK.pad.used = true; return r;
+}
+const padLive = (el) => !!el && !el.hidden && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+function padCard() { /* the card on top that the D-pad should move round, if any */
+  for (const id of ['modal', 'ask', 'wx', 'tagpick', 'guess', 'diary', 'bmenu']) { const el = $(id); if (padLive(el) && el.querySelector('button')) return el; }
+  return null;
+}
+function padRing(el) { for (const q of document.querySelectorAll('.padFocus')) if (q !== el) q.classList.remove('padFocus'); if (el) el.classList.add('padFocus'); }
+function padNear(from, list, dir) { /* the nearest button that way (a cone, favouring straight lines) */
+  const a = from.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2, [ux, uy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir]; let best = null, bs = 1e9;
+  for (const b of list) { if (b === from) continue; const r = b.getBoundingClientRect(), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay, along = dx * ux + dy * uy, side = Math.abs(dx * uy - dy * ux); if (along < 4) continue; const sc = along + side * 2.2; if (sc < bs) { bs = sc; best = b; } }
+  return best;
+}
+function padDir(r, dt) { const h = r.held, d = h[PB.up] ? 'up' : h[PB.down] ? 'down' : h[PB.left] ? 'left' : h[PB.right] ? 'right' : ''; if (d !== DESK.pad.dir) { DESK.pad.dir = d; DESK.pad.rep = 0.35; return d; } if (d && (DESK.pad.rep -= dt) <= 0) { DESK.pad.rep = 0.13; return d; } return ''; }
+function deskPad(dt) {
+  const r = padRead(), X = $('xhair'), S = $('padstrip'); if (!r) { if (X && !X.hidden) { X.hidden = true; S.hidden = true; padRing(null); } return; }
+  const on = deskOn() && DESK.pad.used; if (X) { X.hidden = !on; S.hidden = !on; }
+  if (!deskOn()) { if (G.phase === 'title' && r.hit[PB.cross]) { const b = $('bPlay'); if (b && !b.disabled && !$('title').hidden) b.click(); } return; }
+  const card = padCard(), d = padDir(r, dt);
+  if (card) { /* a card is up: the D-pad moves a ring round its buttons, Cross presses, Circle closes */
+    const list = [...card.querySelectorAll('button')].filter(padLive); let f = list.find((b) => b.classList.contains('padFocus')); if (!f) { f = list[0]; padRing(f); }
+    if (d) { const n = padNear(f, list, d); if (n) { f = n; padRing(f); } }
+    if (r.hit[PB.cross] && f) f.click();
+    if (r.hit[PB.circle]) { const x = card.querySelector('#dClose,#repX,#wxX,#mClose,.x,[aria-label="Close"]'); if (x) x.click(); else card.hidden = true; padRing(null); }
+  } else {
+    const bar = [...$('bar').querySelectorAll('button')].filter(padLive); let i = bar.findIndex((b) => b.classList.contains('padFocus'));
+    if (d === 'left' || d === 'right') { i = i < 0 ? bar.findIndex((b) => b.classList.contains('on')) : i; i = (Math.max(0, i) + (d === 'right' ? 1 : bar.length - 1)) % Math.max(1, bar.length); padRing(bar[i]); }
+    if (d === 'up' && i >= 0 && bar[i]) bar[i].click(); if (d === 'down') padRing(null);
+    if (r.hit[PB.cross]) { tapAt(innerWidth / 2, innerHeight / 2); }
+    if (r.hit[PB.circle]) { DESK.follow = null; if (CCAM.on) camClose(); if (G.sel) { G.sel = null; selCard(null); } }
+  }
+  if (r.hit[PB.options]) { const b = $('bMenu'); if (!$('modal').hidden) $('modal').hidden = true; else if (b) b.click(); }
+  if (r.hit[PB.triangle]) deskFollowNext(); if (r.hit[PB.square]) deskWhole(); if (r.hit[PB.r3] || r.hit[PB.l3]) deskReset();
+  if (HOUSE.on && r.hit[PB.r1]) houseStep(1); if (HOUSE.on && r.hit[PB.l1]) houseStep(-1);
+  const sp = dt * Math.max(0.5, P.dist * 0.8);
+  if (r.l[0] || r.l[1]) deskMove(-r.l[1] * sp, r.l[0] * sp, 0);
+  if (r.r[0] || r.r[1]) { deskTake(); P.yaw -= r.r[0] * dt * 2.2; P.pitch = clamp(P.pitch + r.r[1] * dt * 1.6, 0.12, 1.45); P.pitchGoal = undefined; }
+  if (r.l2 > 0.08 || r.r2 > 0.08) deskZoom(Math.exp((r.l2 - r.r2) * dt * 1.6));
+  if ((DESK.pad.stripT -= dt) <= 0) { DESK.pad.stripT = 0.3; const k = card ? 'card' : 'play'; if (k !== DESK.pad.lastKey) { DESK.pad.lastKey = k; S.innerHTML = card ? '<b>✕</b> choose · <b>D-pad</b> move · <b>○</b> back' : '<b>✕</b> tap · <b>◀▶</b> tools <b>▲</b> use · <b>△</b> follow · <b>□</b> house · <b>L1 R1</b> rooms · <b>☰</b> menu'; } }
+}
+addEventListener('pointerdown', (e) => { if (e.isTrusted) DESK.pad.used = false; }, true);
+function camUi() { /* the small camera buttons, bottom left: only on a computer (practice room or house, no AR) */
+  const el = $('camui'), on = deskOn() && G.phase === 'play'; if (el.hidden === on) el.hidden = !on; if (!on) { const l = $('rlist'); if (l) l.remove(); return; }
+  const R = HOUSE_ROOMS[HOUSE.cur], b = $('cRoom'); b.hidden = !HOUSE.on; const t = R.ic + ' ' + R.name + ' ▾'; if (b.textContent !== t) b.textContent = t; $('cWhole').title = HOUSE.on ? 'The whole house (H)' : 'The whole room (H)';
+}
+function roomListUi() { /* the house's rooms: tap one to walk there */
+  let l = $('rlist'); if (l) { l.remove(); return; } l = document.createElement('div'); l.id = 'rlist'; l.className = 'glass';
+  l.innerHTML = HOUSE_ORDER.map((k) => { const r = homeInfo(HOUSE.ids[k] || ''), n = k === HOUSE.cur ? G.settlements.reduce((a, S) => a + S.cols.length, 0) : r ? r.cols || 0 : 0; return '<button data-room="' + k + '" class="' + (k === HOUSE.cur ? 'on' : '') + '">' + HOUSE_ROOMS[k].ic + ' ' + HOUSE_ROOMS[k].name + (n ? ' · 👥 ' + n : (r ? '' : ' · new')) + '</button>'; }).join('');
+  l.onclick = (e) => { const t = e.target.closest('button'); if (!t) return; l.remove(); const k = t.dataset.room; if (k === HOUSE.cur) return; HOUSE.whole = false; houseGo(k); };
+  $('ui').appendChild(l);
+}
+function keysUi() {
+  const m = $('modal'); m.hidden = false;
+  m.innerHTML = '<div class="dh">Moving round</div><div class="sub"><b>Mouse:</b> drag to turn round, right-drag or shift-drag to slide, wheel to zoom. <b>Trackpad:</b> pinch to zoom, two-finger swipe sideways to turn, shift + swipe to slide.<br><b>Keys:</b> W A S D or the arrows walk, Q E turn, R F up and down, C follow a colonist, H the whole house, 0 back to the camp, [ ] the next room.<br><b>Controller:</b> left stick walk, right stick look, L2 R2 zoom, D-pad the tool bar (◀ ▶ pick, ▲ use), ✕ tap at the crosshair, ○ back, △ follow, □ whole house, L1 R1 rooms, Options the menu.</div><div class="mrow"><button id="mClose">Close</button></div>';
+  m.onclick = (e) => { const t = e.target.closest('button'); if (t && t.id === 'mClose') m.hidden = true; };
+}
+$('camui').addEventListener('click', (e) => { const t = e.target.closest('button'); if (!t) return; sfx('');
+  if (t.id === 'cRoom') roomListUi(); else if (t.id === 'cFollow') { HOUSE.whole = false; deskFollowNext(); } else if (t.id === 'cWhole') { deskWhole(); HOUSE.whole = true; } else if (t.id === 'cReset') { HOUSE.whole = false; deskReset(); } else if (t.id === 'cKeys') keysUi(); });
 
 // ============ RECOGNITION: "they know what a lot of stuff is", and ask when unsure ============
 // Camera pictures never leave the device: the models are downloaded, the pictures are only looked at here.
@@ -5094,6 +5402,7 @@ function libUi() {
 function practiceDetector(fr) {
   const out = []; if (G.mode !== 'practice') return out;
   for (const p of PROPS) {
+    if (!propHere(p)) continue; /* build 29: the house's other rooms are not this room */
     const cls = { cup: ['cup', 0.86], can: ['bottle', 0.52], gpu: ['laptop', 0.31], sink: ['sink', 0.88], toilet: ['toilet', 0.88] }[p.kind]; if (!cls) continue;
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, vis = true; room.updateMatrixWorld(true);
     for (const sx of [-1, 1]) for (const sy of (p.kind === 'sink' || p.kind === 'toilet' ? [1] : [0, 1])) for (const sz of [-1, 1]) { /* the toy sink and toilet are seen by their tops, so the feet ray lands on the top surface (a real COCO box would put it there too) */ const v = new THREE.Vector3(p.x + sx * p.w / 2, p.base + sy * p.h, p.z + sz * p.d / 2).applyMatrix4(room.matrixWorld), [px, py, ok] = toScreen(v); if (!ok) vis = false; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
@@ -6781,7 +7090,7 @@ function resetWorld() {
 }
 function showTitle() {
   $('title').hidden = false; for (const id of ['top', 'card', 'sel', 'bar', 'bmenu', 'repl', 'env', 'ask', 'diary', 'tagpick', 'modal', 'nroom', 'idDot']) $(id).hidden = true; $('hint').textContent = ''; $('chips').innerHTML = '';
-  chooserClose(); rfReset(); rbReset(); room.visible = false; scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
+  chooserClose(); rfReset(); rbReset(); room.visible = false; houseShow(false); scene.background = null; G.phase = 'title'; G.auto = false; document.body.classList.remove('auto'); $('count').textContent = ''; $('tmenu').hidden = true; updateTitle();
 }
 // ---- the rooms list (title) ----
 const STORE_LIMIT = 5000000, ROOM_MAX = 1400000; // characters: browsers keep about 5 million per site; one room (map + colony + their backup copies) is held under ROOM_MAX
@@ -6916,7 +7225,7 @@ function startAuto() {
   } else autoSay('Look around slowly. The colonists are searching for a landing place.', 6);
   barUi(); updateHint(); autoCount();
 }
-function startPractice() { G.mode = 'practice'; G.auto = true; resetWorld(); G.auto = true; placeRoom(0, 0, 0); startAuto(); }
+function startPractice() { G.mode = 'practice'; G.auto = true; houseStart(); resetWorld(); G.auto = true; placeRoom(0, 0, 0); startAuto(); houseShow(true); }
 function comeBackLater(hours) { // practice room: leave, let time pass (8 h unless told), and come back with the room turned and shifted: the colony has to find its home again
   if (!persist(true)) return; const sv = loadSave(); if (sv) { sv.t -= (hours || 8) * 3600 * 1000; safeWrite(SAVE_KEY, JSON.stringify(sv)); }
   PLACE.n = (PLACE.n || 0) + 1; const yaws = [0.5236, -0.35, 0.9, -0.6], sh = [[0.6, -0.4], [-0.5, 0.45], [0.3, 0.6], [-0.4, -0.3]], i = (PLACE.n - 1) % yaws.length;
@@ -7230,7 +7539,7 @@ const down = { on: false };
 $('touch').addEventListener('pointerdown', (e) => {
   e.preventDefault(); sfx('');
   if (BT.on) { btPointer('down', e); return; }
-  Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null, held: false });
+  Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null, held: false, shift: e.shiftKey });
   if (G.phase === 'play' && ['look', 'cheer', 'seed', 'build'].includes(G.tool) && e.button !== 2) down.col = colPick(e.clientX, e.clientY); // touch a colonist: a tap pokes it, holding or dragging picks it up
   try { $('touch').setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; }
@@ -7259,10 +7568,13 @@ $('touch').addEventListener('pointermove', (e) => {
   if (down.prop) { moveProp(down.prop, e.clientX, e.clientY); return; }
   if (G.mode === 'practice' && !AR.on) {
     if (G.phase === 'scan' && !P.auto) { P.eye.yaw -= dx * 0.005; P.eye.pitch = clamp(P.eye.pitch - dy * 0.005, -1.5, 0.6); }
-    else if (G.phase !== 'scan' && (G.tool === 'look' || down.btn === 2 || G.phase !== 'play' || (G.tool === 'move' && !down.prop)) && !down.col) { P.yaw -= dx * 0.006; P.pitch += dy * 0.005; }
+    else if (deskOn() && down.moved && !down.col && (down.btn === 2 || down.btn === 1 || down.shift)) { deskPan(dx, dy); HOUSE.whole = false; } /* build 29: right-drag, middle-drag or shift-drag slides the camera */
+    else if (G.phase !== 'scan' && (G.tool === 'look' || down.btn === 2 || G.phase !== 'play' || (G.tool === 'move' && !down.prop) || (deskOn() && ['seed', 'build', 'cheer'].includes(G.tool))) && !down.col) { if (deskOn()) deskTake(); P.yaw -= dx * 0.006; P.pitch += dy * 0.005; P.pitchGoal = undefined; }
   }
 });
-$('touch').addEventListener('wheel', (e) => { if (G.mode === 'practice') { P.gDist = clamp(P.gDist * (1 + Math.sign(e.deltaY) * 0.1), 0.25, 6); } }, { passive: true });
+$('touch').addEventListener('wheel', (e) => { if (G.mode !== 'practice') return; if (!deskOn()) { P.gDist = clamp(P.gDist * (1 + Math.sign(e.deltaY) * 0.1), 0.25, 6); return; } /* build 29: a pinch (ctrl + wheel) or the wheel zooms; shift + wheel or a two-finger sideways swipe slides */
+  e.preventDefault(); const k = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1, dx = e.deltaX * k, dy = e.deltaY * k;
+  if (e.shiftKey) deskPan(-dx - dy, 0); else if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy) * 1.5) { deskTake(); P.yaw -= dx * 0.004; } else deskZoom(Math.exp(clamp(dy, -120, 120) * (e.ctrlKey ? 0.01 : 0.0018))); }, { passive: false });
 $('touch').addEventListener('contextmenu', (e) => e.preventDefault());
 const endDown = (e) => {
   if (BT.on) { btPointer('up', e); return; }
@@ -8371,7 +8683,7 @@ function persistSoon() { if (_persistT) return; _persistT = setTimeout(() => { _
 function frame(time, xrFrame) {
   const now = performance.now(), fT0 = now; /* build 26: fT0 times this frame's own work (a gap after a long frame of ours is not a sleep) */ let dt = Math.min(0.1, (now - G.last) / 1000); if (!(dt >= 0)) dt = 0.016; G.last = now; G.time += dt; frameN++; recFrame(dt);
   if (!AR.on) requestAnimationFrame(frame);
-  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); } else practiceFrame(dt);
+  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); } else { deskPad(dt); practiceFrame(dt); houseTick(dt); if (HOUSE.on) houseLabelTick(); } /* build 29: the controller, the house's doorways */
   envUpdate(); lighting();
   if (G.auto && !BT.on) autoTick(dt);
   else if (G.phase === 'scan' && !BT.on) {
@@ -8391,7 +8703,7 @@ function frame(time, xrFrame) {
     for (const z of SCAN.zones.concat(G.zones)) if (z.label) { if (z.t0 === undefined) z.t0 = G.time; const inScan = SCAN.zones.includes(z), mapped = inScan && z.mz > 0 && zoneById(z.mz), dx = z.cx - eye.x, dy = z.y - eye.y, dz = z.cz - eye.z, L2 = Math.hypot(dx, dy, dz) || 1, look = (dx * fw.x + dy * fw.y + dz * fw.z) / L2 > 0.985;
       z.label.visible = !tidy && !mapped && !z.settled && G.phase !== 'title' && (G.time - z.t0 < 3.5 || look); /* build 26: tidy, no floating names once the room is locked */ if (z.label.visible) { z.label.position.y = z.y + 0.05; const k = clamp(L2 / 1.2, 0.5, 2.5); z.label.scale.set(0.16 * k, 0.03 * k, 1); } } }
   else for (const z of SCAN.zones.concat(G.zones)) if (z.label && z.label.visible) { z.label.position.y = z.y + 0.07 + Math.sin(G.time * 2 + z.id) * 0.004; const dd = (AR.on ? tmpV.setFromMatrixPosition(AR.viewM) : camera.position).distanceTo(z.label.position), k = clamp(dd / 1.0, 0.7, 4); z.label.scale.set(0.28 * k, 0.052 * k, 1); }
-  uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
+  uiT += dt; if (uiT > 0.4) { uiT = 0; cardUi(); camUi(); /* build 29 */ if (G.sel && G.selT > 0) { G.selT -= 0.4; selCard(G.sel); } else if (G.sel) { G.sel = null; selCard(null); } if (frameN % 3 === 0 && Math.min(G.requests.length, 2) + (G.requests.length > 2 ? 1 : 0) !== $('reqs').children.length) reqUi(); }
   if (BT.on) battleFrame(dt);
   SND_ambTick(dt); /* build 19 + sound: the quiet room ambience */
   renderer.render(scene, camera);
@@ -8485,7 +8797,7 @@ function SND_board() {
 }
 try { if (new URLSearchParams(location.search).get('soundboard') === '1') addEventListener('load', SND_board); } catch (e) { /* no board */ }
 // ============ test and debug hooks ============
-window.__g = { RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
+window.__g = { HOUSE, HOUSE_ROOMS, HOUSE_ORDER, HOUSE_SURF, HOUSE_PROPS, houseGo, houseStep, houseUse, houseVisit, houseArrive, houseAt, DESK, deskOn, deskInside, deskWhole, deskReset, deskFollowNext, deskMove, deskGuard, deskSolids, padRead, PSURF, PVIEWS, PROPS, camUi, RG, RG_KEEP, RG_PROB, RG_WEAK, RG_WEAK_OV, rgOldKey, rgBackup, rgBackups, rgRestore, rgTops, rgConfirm, rgDrop, rgAskFirst,
   chipsHtml, chipName, nameKey, uniqName, SCOUT17, scout17Load, scout17Tick, DECOR_MK, decorMake, M, room, BCP, inked, bcMerge, mkColonist, mkTree, mkTent, mkRubble, mkPebble, mkShade, mkLantern, mkNook, mkStage, mkTreehouse, mkCrumb, mkStation, mkBalloon, bcProp, bcOK, bcRebuild, mkHut, mkWell, mkFarm, mkLookout, mkLandmark, world, barUi, recogStatus, ceilTick, ceilOK, addColonist, hookFor, hooksBuilt, addHook, addNest, ceilEvac, linkStep, linkEnds, hookPos, CEIL_THINGS, fxOf, autoExpand, liveReclass, reportCompact, SY, l2w, w2l, classify, clearArea, envUpdate, G, SCAN, ENV, AR, P, PROPS, PLACE, COLONY_ALMANAC, COUNCIL, ROOMS, CREATURES, TAGS, ROLES, KINDS, TIDY, DIARY, THREE, scene, renderer, camera,
   simulate(sec, step) { /* with the device clock the simulated time also moves the sun, so a long run has days and nights (a fixed hourOverride stays fixed) */
     step = step || 0.5; const dev = ENV.hourOverride === null, h0 = ENV.hour; for (let t = 0; t < sec; t += step) { if (dev && t % 30 < step) { ENV.hourOverride = (h0 + t / 3600) % 24; envUpdate(); } simTick(step, false); }

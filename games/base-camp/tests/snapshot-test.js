@@ -86,7 +86,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const W0 = { yaw: 0, x: 0, z: 0, y: 0 }, JUMP = { yaw: 25 * Math.PI / 180, x: 0.4, z: -0.3, y: -0.2 }; /* the jump of marker-test section 3 */
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh({ items: SHED_TEX.concat(LOUNGE_TEX) });
-  ok('BUILD is build 28', await ev(() => __g.BUILD === 'build 28'));
+  ok('BUILD is build 29', await ev(() => __g.BUILD === 'build 29'));
   const FROM = +(process.env.SN_FROM || 1), SAVED = path.join(require('os').tmpdir(), 'bc-snapshot-test-after4.json'); /* SN_FROM=5: start at section 5 from the storage SN_SAVE=1 kept after section 4 (for working on the later sections) */
   if (FROM < 5) {
 

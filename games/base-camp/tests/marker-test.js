@@ -66,7 +66,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const settleShed = async () => { await sweep(A_LEGS.concat(['deskA', 'floor']), 1.0); await waitFor(() => window.__cam.done, 200000, 2000); await waitFor(() => !!__g.RB.base, 120000, 1000); };
 
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh([ST2, ST5]);
-  ok('BUILD is build 28', await ev(() => __g.BUILD === 'build 28'));
+  ok('BUILD is build 29', await ev(() => __g.BUILD === 'build 29'));
 
   /* ===================== 1. detection and pose accuracy ===================== */
   await play(); await sweep(A_LEGS, 1.0);
