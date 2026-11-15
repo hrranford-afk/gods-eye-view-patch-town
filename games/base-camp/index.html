@@ -5084,7 +5084,7 @@ function houseTick(dt) { /* doorways: the camera's point of interest stays insid
 function houseVisit() { /* a colonist of a busy camp walks through a doorway to a neighbour room; they join that room's colony when the room is next opened */
   const S = G.settlements.find((q) => q.placed && !q.ghost && q.cols.length >= 5); if (!S) return null;
   const c = S.cols.filter((q) => !q.scout && !q.inside && q.spawn <= 0)[0]; if (!c) return null;
-  const to = HOUSE_DOORS[HOUSE.cur][Math.floor(Math.random() * HOUSE_DOORS[HOUSE.cur].length)];
+  const nb = HOUSE_DOORS[HOUSE.cur].filter((k) => houseId(k)); if (!nb.length) return null; const to = nb[Math.floor(Math.random() * nb.length)]; /* only into rooms the colony already knows (a room that has been opened) */
   if (CCAM.c === c) camClose(); if (DESK.follow === c) DESK.follow = null; if (G.sel === c) { G.sel = null; selCard(null); }
   S.cols.splice(S.cols.indexOf(c), 1); if (c.mesh && c.mesh.parent) c.mesh.parent.remove(c.mesh);
   (HOUSE.q[to] = HOUSE.q[to] || []).push({ name: c.name, persona: c.persona, likes: c.likes, by: c.by, hue: c.hue }); houseSave(); persistSoon();
@@ -5103,7 +5103,7 @@ function houseLabels(on) { /* a small sign over each room: its name and how many
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); const [cx, cz] = houseRoomCentre(k); sp.position.set(cx, 2.0, cz); sp.scale.set(1.2, 0.225, 1); sp.renderOrder = 5; sp.userData.soft = 1; HOUSE.g.add(sp); HOUSE.labels.push(sp);
   }
 }
-function houseLabelTick() { const far = P.dist > 4.2 || HOUSE.whole; for (const s of HOUSE.labels) s.visible = far; }
+function houseLabelTick() { const far = P.dist > 4.2; for (const s of HOUSE.labels) s.visible = far; }
 /* ============ DESKTOP CAMERA (build 29, "Mac and dolls' house"): mouse, trackpad, keys and a controller move the camera of the practice room and the house.
    Read HANDOVER "Mac and dolls' house (build 29)". None of it runs in AR (deskOn is false there), so the iPad behaves exactly as before.
    Mouse: drag = turn round, right-drag / shift-drag / middle-drag = slide, wheel or pinch = zoom. Keys: WASD or arrows walk, Q/E turn, R/F up/down, C follow a colonist,
