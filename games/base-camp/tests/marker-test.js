@@ -99,7 +99,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('2. the settled shed takes sticker 2 the first time it is seen (registry row and G.stk)', tB >= 0 && S2.stk && S2.stk.id === 2 && row.stk === 2, JSON.stringify({ stk: S2.stk, row: row.stk, log: S2.log.filter((e) => e.bind || e.agree).slice(-2) }));
   const bp = S2.stk && Math.hypot(S2.stk.p[0] - truth.x, S2.stk.p[1] - truth.y, S2.stk.p[2] - truth.z) * 100; ok('2. the bound pose is where the sticker really is (map frame = this session\'s frame)', bp < 2, bp && bp.toFixed(2) + ' cm');
   await ev(() => __g.persist(true)); const m2 = JSON.parse(await mapOf('r1')); ok('2. the sticker is saved with the room map (map frame, size 8 cm)', m2 && m2.stk && m2.stk.id === 2 && m2.stk.size === 0.08, JSON.stringify(m2 && m2.stk));
-  const toastSeen = await ev(() => __g.STK.binds >= 1 && window.__toasts.some((t) => /Sticker found \u2713 It belongs to Room 1 now/.test(t))); ok('2. "Sticker found ✓" was said quietly (a 2-3 s toast, no card)', toastSeen && (await ev(() => document.getElementById('modal').hidden && document.getElementById('ask').hidden)));
+  const toastSeen = await ev(() => __g.STK.binds >= 1 && window.__toasts.some((t) => /Room 1 now has sticker 2 \u2713/.test(t))); ok('2. "Room 1 now has sticker 2 ✓" was said quietly (16 Nov wording) (a 2-3 s toast, no card)', toastSeen && (await ev(() => document.getElementById('modal').hidden && document.getElementById('ask').hidden)));
   await viewSticker(ST2, 0.7, [20, 30], 3); await ev(() => { __g.STK.sayT = -1e9; }); await waitFor(() => /Sticker found/.test(document.getElementById('toast').innerText), 15000, 150); await shot('96-sticker-found.png');
 
   /* ===================== 3. sleep + origin jump: the surfaces alone (sticker hidden, build 26), then the sticker ===================== */
@@ -141,6 +141,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await ev(() => { __g.STK.obs = {}; }); await viewSticker(ST5, 0.8, [0, 25, -25, 40], 3.2);
   const tB4 = await waitFor(() => __g.G.stk && __g.G.stk.id === 5, 90000, 500); ok('4. Room 2 takes sticker 5', tB4 >= 0 && (await ev(() => __g.HOMES.rooms.find((r) => r.id === 'r2').stk === 5)), JSON.stringify(await ev(() => __g.REC.stk.slice(-3))));
   await ev(() => __g.persist(true)); const map1 = await mapOf('r1'), map2 = await mapOf('r2'), z4 = await zinfo();
+  await ev(() => { for (const S of __g.G.settlements) S.born = Date.now() - 10 * 60000; }); /* 16 Nov: only a grown colony (over 2 min) asks; a younger one is left for the sticker's room at once (stickerkey-test) */
   await ev(([a, c, d]) => { window.__MARKS = [a, c, d]; }, [ST2, ST5, ST2L]); await ev(() => { __g.STK.obs = {}; });
   await viewSticker(ST2L, 0.8, [0, 20, -20, 35], 3.2);
   const tQ = await waitFor(() => !document.getElementById('nroom').hidden && /moved to another room/.test(document.getElementById('nroom').innerText), 60000, 400);

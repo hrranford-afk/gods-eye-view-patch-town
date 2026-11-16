@@ -6928,11 +6928,16 @@ function depthMsg(m, t0) {
 function depthCalm() { /* the room is known and nothing is being found again: the depth model may load and run (it leaves the CPU to the relock, the sticker finder and the snapshots) */
   return G.phase === 'play' && G.zones.length > 0 && !RF.on && !RF.hidden && !G.finding && !(G.returning && !G.locked) && !depthSlow(); }
 function depthSlow() { /* a device that cannot keep about 8 frames a second gets no depth model on top (on the sandbox's software GL the worker's CPU made frame gaps over RF_GAP and false wake-up checks); DEPTH.slowOK: the depth test's override */
-  return !DEPTH.slowOK && DEPTH.frameAvg > DEPTH_SLOW_MS; }
+  if (DEPTH.slowOK) return false; if (depthSoftGL()) return true; /* 16 Nov: software GL (the sandbox's SwiftShader) is never fast enough: roomfix failed on build 30 because the model still loaded there */
+  if (!DEPTH.frameAvg || DEPTH.frameN < 40) return true; /* not measured yet: the model never starts loading before about 40 frames were timed */
+  if (DEPTH.frameAvg > DEPTH_SLOW_MS) DEPTH.wasSlow = true; else if (DEPTH.frameAvg < DEPTH_SLOW_MS * 0.7) DEPTH.wasSlow = false; return !!DEPTH.wasSlow; } /* hysteresis: a pause does not flip back on the next fast frame */
+function depthSoftGL() { /* the renderer draws on the CPU (SwiftShader, llvmpipe): no depth model on top */
+  if (DEPTH.soft === undefined) { DEPTH.soft = false; try { const gl = renderer.getContext(), x = gl.getExtension('WEBGL_debug_renderer_info'); DEPTH.gl = String(gl.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '').slice(0, 80); DEPTH.soft = /swiftshader|llvmpipe|softpipe|software/i.test(DEPTH.gl); } catch (e) { /* unknown: judged by its frame times */ } }
+  return DEPTH.soft; }
 function depthOff() { return !AR.on || !DEPTH.want || DEPTH.disabled; }
 function depthHide() { DEPTH.ok = false; if (DEPTH.mesh) DEPTH.mesh.visible = false; if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = false; DEPTH.shown = false; }
 function depthTick(dt) { /* every frame in AR: show or hide the current map, send a picture now and then, work on a returned map for at most DEPTH_BUDGET_MS */
-  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } if (DEPTH.lastT && now - DEPTH.lastT < 2000) DEPTH.frameAvg = DEPTH.frameAvg ? DEPTH.frameAvg * 0.95 + (now - DEPTH.lastT) * 0.05 : now - DEPTH.lastT; DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not; the smoothed frame time */
+  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } if (DEPTH.lastT && now - DEPTH.lastT < 2000) { DEPTH.frameAvg = DEPTH.frameAvg ? DEPTH.frameAvg * 0.95 + (now - DEPTH.lastT) * 0.05 : now - DEPTH.lastT; DEPTH.frameN = (DEPTH.frameN || 0) + 1; } DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not; the smoothed frame time */
   if (depthOff()) { if (DEPTH.shown || (DEPTH.mesh && DEPTH.mesh.visible)) depthHide(); DEPTH.job = null; return; }
   const calm = depthCalm(); if (DEPTH.state === 'off' && calm) depthLoad();
   if (!calm && DEPTH.shown) depthHide(); depthShow(dt);
@@ -7019,7 +7024,7 @@ function depthDbgInset(J) { /* ?depthdbg=1: the model's raw output (near bright,
 function depthToggle() { /* Menu: "Things can hide behind furniture" (remembered in this browser) */
   DEPTH.want = !DEPTH.want; store.set('bc-depth', DEPTH.want ? '1' : '0'); if (!DEPTH.want) depthHide();
   toast(DEPTH.want ? 'Things can hide behind furniture: on' + (AR.on ? '' : ' (in AR)') : 'Things can hide behind furniture: off'); }
-function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle), frameMs: Math.round(DEPTH.frameAvg), slow: depthSlow(),
+function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle), frameMs: Math.round(DEPTH.frameAvg), slow: depthSlow(), softGL: !!DEPTH.soft, gl: DEPTH.gl || '',
   fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
 function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
 
@@ -7047,7 +7052,7 @@ function devRows() { /* the numbers behind the panel: [tick, label, text] per ro
     [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
     [sk ? (skWhy && skWhy !== 'too few' ? 'cross' : 'tick') : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + (skOwn ? (skOwn === HOMES.cur ? 'this room' : homeName(skOwn)) : 'no room') + ' · ' + sk.d.toFixed(2) + ' m · ' + (skN >= STK_MIN_N4 ? skN + ' sightings' : skN + '/' + STK_MIN_N4 + ' sightings') + (skWhy ? ' · refused: ' + skWhy : (STK.lastFix[sk.id] && now - STK.lastFix[sk.id] < 5000 ? ' · fix ok' : '')) : 'not seen' + (STK.rej.moving ? ' · ' + STK.rej.moving + ' pictures skipped (moving)' : '')],
     [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
-    [dep, 'Depth', (depthSlow() ? 'paused (frames slow) \u00b7 ' : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
+    [dep, 'Depth', (depthSlow() ? (!DEPTH.slowOK && DEPTH.soft ? 'off (software GL) \u00b7 ' : 'paused (frames slow) \u00b7 ') : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
     [REC.errs.length ? 'cross' : 'tick', 'Errors', REC.errs.length + (e ? ' · ' + String(e.msg).slice(0, 60) : '')],
     [kb < 0 ? 'cross' : kb < 4000 ? 'tick' : 'cross', 'Storage', Math.round(kb) + ' KB']];
   return { rows, num };
