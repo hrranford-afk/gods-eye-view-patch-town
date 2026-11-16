@@ -1,0 +1,90 @@
+{"t":"2026-11-15T07:53:00Z","who":"foreman","where":"library","what":"Town pack for 15 Nov: picks, lounge battle notes, art order look-1b","kind":"step"}
+{"t":"2026-11-15T10:05:00Z","who":"builder:snap","where":"workshop:game/bc-snap","what":"Room snapshots builder starts on build 28","kind":"start","ref":"game/bc-snap"}
+{"t":"2026-11-15T11:16:00Z","who":"builder:couch","where":"workshop:game/bb-couch","what":"Couch versus and game controllers for Baguettes & Ballistics","kind":"start","ref":"game/bb-couch"}
+{"t":"2026-11-15T12:04:00Z","who":"builder:couch","where":"workshop:game/bb-couch","what":"Couch versus done: 49 checks pass, handed back","kind":"end","ref":"game/bb-couch"}
+{"t":"2026-11-15T12:05:00Z","who":"foreman","where":"shop","what":"Couch versus live on the test link bnb-couch","kind":"deploy","ref":"bnb-couch/"}
+{"t":"2026-11-15T12:05:30Z","who":"town","where":"yard","what":"couch-test 49/49","kind":"test","suite":"couch","status":"pass","n":"49/49"}
+{"t":"2026-11-15T12:32:00Z","who":"foreman","where":"bridge","what":"Order mega-1 sent to the town","kind":"order","ref":"mega-1"}
+{"t":"2026-11-15T13:59:00Z","who":"town","where":"yard","what":"snapshot 29/29","kind":"test","suite":"snapshot","status":"pass","n":"29/29"}
+{"t":"2026-11-15T13:59:10Z","who":"town","where":"yard","what":"marker, roomfix, roomguard, multi-room, auto-ar, totem, room, places, economy, market, first10, return all green","kind":"test","suite":"base-camp-all","status":"pass"}
+{"t":"2026-11-15T13:59:20Z","who":"town","where":"yard","what":"ar-room fails on builds 27 and 28 alike under load: an old flake","kind":"test","suite":"ar-room","status":"flaky"}
+{"t":"2026-11-15T14:10:00Z","who":"builder:snap","where":"workshop:game/bc-snap","what":"Room snapshots done: build 28 handed back","kind":"end","ref":"game/bc-snap"}
+{"t":"2026-11-15T14:15:00Z","who":"foreman","where":"shop","what":"Build 28 live: the room relocks after sleep with no sticker","kind":"win","ref":"base-camp/"}
+{"t":"2026-11-15T14:25:00Z","who":"foreman","where":"hut","what":"Hired the build 29 builder: Mac controls and the dolls' house","kind":"hire","ref":"game/bc-mac"}
+{"t":"2026-11-15T14:26:00Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Build 29 builder starts: Mac controls and the dolls' house","kind":"start","ref":"game/bc-mac"}
+{"t":"2026-11-15T14:30:00Z","who":"town","where":"yard","what":"couch-test 53/53","kind":"test","suite":"couch","status":"pass","n":"53/53"}
+{"t":"2026-11-15T14:35:00Z","who":"foreman","where":"shop","what":"Kitchen Run fixes live on bnb-couch and bnb-toy","kind":"deploy","ref":"bnb-toy/"}
+{"t":"2026-11-15T16:47:00Z","who":"foreman","where":"library","what":"Engine brief: the AR and room engine in plain words","kind":"step"}
+{"t":"2026-11-16T12:19:00Z","who":"foreman","where":"hut","what":"Found the build 29 builder stopped since 16:27 yesterday (machine restart): picked up from lost property","kind":"end","ref":"game/bc-mac"}
+{"t":"2026-11-16T12:25:00Z","who":"foreman","where":"hut","what":"Hired the depth builder","kind":"hire","ref":"game/bc-depth"}
+{"t":"2026-11-16T12:26:00Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Depth builder starts: things hide behind furniture","kind":"start","ref":"game/bc-depth"}
+{"t":"2026-11-16T12:29:15Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30 (WIP): depth occlusion with Depth Anything V2 Small in a worker, fit to the scanned surfaces, depth-only mesh, Menu to...","kind":"commit","ref":"26c1bc8","branch":"game/bc-depth"}
+{"t":"2026-11-16T12:34:00Z","who":"foreman","where":"shop","what":"Build 29 preview put in the back room (base-camp-next)","kind":"deploy","ref":"base-camp-next/"}
+{"t":"2026-11-16T12:34:21Z","who":"foreman","where":"shop","what":"Base Camp build 29 preview at base-camp-next/ (Mac controls and dolls' house; full test run still in progress)","kind":"deploy","ref":"ae8c6be"}
+{"t":"2026-11-16T12:46:25Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: depth test (load, fit vs truth, hidden behind the box, small step / big step, hand, setting off, missing model, priva...","kind":"commit","ref":"35d11c6","branch":"game/bc-depth"}
+{"t":"2026-11-16T12:48:05Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: HANDOVER section 'Depth: hide behind furniture', README, shots 130 to 134","kind":"commit","ref":"166c670","branch":"game/bc-depth"}
+{"t":"2026-11-16T12:56:48Z","who":"foreman","where":"library","what":"Save Harry's co-op dragon defence idea","kind":"commit","ref":"4300b0a","branch":"game/micro-precinct"}
+{"t":"2026-11-16T13:07:00Z","who":"foreman","where":"bridge","what":"Order scan-1: video of a room to a 3D room","kind":"order","ref":"scan-1"}
+{"t":"2026-11-16T13:07:33Z","who":"foreman","where":"bridge","what":"Order scan-1: video of a room to a 3D room for the test world (downloads need Harry's yes in the town chat)","kind":"commit","ref":"c7843b3","branch":"game/micro-precinct"}
+{"t":"2026-11-16T14:20:00Z","who":"town","where":"yard","what":"Snapshot test flaky on builds 28 and 29 alike","kind":"test","suite":"snapshot","status":"flaky"}
+{"t":"2026-11-16T15:23:00Z","who":"foreman","where":"shop","what":"Check page for HelloXR put in the window","kind":"deploy","ref":"base-camp/check.html"}
+{"t":"2026-11-16T15:23:23Z","who":"builder:snap","where":"workshop:game/bc-snap","what":"Base Camp: check.html, a one-page HelloXR check (bridge, WebXR, AR, WebGL, downloads, saved rooms, game load, short AR run)","kind":"commit","ref":"4269dc0","branch":"game/bc-snap"}
+{"t":"2026-11-16T15:23:26Z","who":"foreman","where":"shop","what":"Base Camp: check page for HelloXR","kind":"deploy","ref":"36efee2"}
+{"t":"2026-11-16T15:26:00Z","who":"foreman","where":"bridge","what":"Order report-1: iPad field reports go to the Mini at home","kind":"order","ref":"report-1"}
+{"t":"2026-11-16T15:26:19Z","who":"foreman","where":"bridge","what":"Order report-1: iPad field reports go to the Mini at home (Harry's yes in the game session, 16 Nov)","kind":"commit","ref":"35c5f00","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:32:23Z","who":"builder:snap","where":"workshop:game/bc-snap","what":"Base Camp: screen-sticker.html, a room sticker shown on a TV or monitor, sized with a bank card","kind":"commit","ref":"9287833","branch":"game/bc-snap"}
+{"t":"2026-11-16T15:32:27Z","who":"foreman","where":"shop","what":"Base Camp: screen sticker page","kind":"deploy","ref":"5c80c00"}
+{"t":"2026-11-16T15:35:38Z","who":"builder:snap","where":"workshop:game/bc-snap","what":"Base Camp build 28: shots from today's comparison runs (snapshot, fun, practice)","kind":"commit","ref":"8f71314","branch":"game/bc-snap"}
+{"t":"2026-11-16T15:40:11Z","who":"foreman","where":"library","what":"START_HERE: screen sticker works on Harry's iPad; today's pages and orders","kind":"commit","ref":"c384557","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:46:24Z","who":"foreman","where":"library","what":"Game modes plan: one shared kit, many play styles (Harry's idea)","kind":"commit","ref":"21650fc","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:48:03Z","who":"foreman","where":"library","what":"Save Harry's Sofa Keep siege idea with games to learn from","kind":"commit","ref":"0c98e69","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:49:35Z","who":"foreman","where":"library","what":"Sofa Keep: Harry's adult version idea and the guard rails","kind":"commit","ref":"6d69e20","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:50:00Z","who":"foreman","where":"hut","what":"Hired a fixer: tapping creatures broke","kind":"hire","ref":"game/bc-mac"}
+{"t":"2026-11-16T15:51:00Z","who":"builder:fixer","where":"workshop:game/bc-mac","what":"Fixer starts on the colonist tapping","kind":"start","ref":"game/bc-mac"}
+{"t":"2026-11-16T15:51:00Z","who":"foreman","where":"bridge","what":"Order keep-1: first designs for Sofa Keep","kind":"order","ref":"keep-1"}
+{"t":"2026-11-16T15:51:38Z","who":"foreman","where":"bridge","what":"Order keep-1: first designs and concept pictures for Sofa Keep","kind":"commit","ref":"ae4a368","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:52:53Z","who":"foreman","where":"library","what":"Standing orders: a run report with every result (how the town was used)","kind":"commit","ref":"56f87d8","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:53:45Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: developer mode (?dev=1 or a 3 s hold on the build line: nine rows, Show depth, Copy numbers); depth waits while the c...","kind":"commit","ref":"7698a5b","branch":"game/bc-depth"}
+{"t":"2026-11-16T15:54:53Z","who":"foreman","where":"bridge","what":"Order mega-review-1: the town's answer to 'what's missing', plus a capability check and up to 2 small training runs","kind":"commit","ref":"80b3a3e","branch":"game/micro-precinct"}
+{"t":"2026-11-16T15:55:00Z","who":"foreman","where":"bridge","what":"Order mega-review-1: what is missing, plus a capability check","kind":"order","ref":"mega-review-1"}
+{"t":"2026-11-16T15:59:08Z","who":"foreman","where":"library","what":"Mega review, 16 Nov: top 10 gaps, three bold bets, training on our hardware, horror guard rails, 4-week plan","kind":"commit","ref":"2e21afb","branch":"game/micro-precinct"}
+{"t":"2026-11-16T16:10:00Z","who":"harry","where":"harry","what":"The screen sticker locked the room on Harry's real iPad","kind":"win","ref":"base-camp/screen-sticker.html"}
+{"t":"2026-11-16T16:19:12Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: Cross takes the colonist nearest the crosshair, a mouse tap pokes the colonist that was pressed even if the camera gl...","kind":"commit","ref":"82cf5cf","branch":"game/bc-mac"}
+{"t":"2026-11-16T16:19:30Z","who":"builder:fixer","where":"workshop:game/bc-mac","what":"Colonists can be tapped again, with the mouse and the Cross","kind":"fix","ref":"game/bc-mac"}
+{"t":"2026-11-16T16:20:00Z","who":"foreman","where":"bridge","what":"Wagons out: scan-1, report-1, keep-1, mega-review-1 wait for Harry's go","kind":"step"}
+{"t":"2026-11-16T16:40:00Z","who":"foreman","where":"library","what":"Hired a researcher: what would make it mega?","kind":"hire"}
+{"t":"2026-11-16T17:05:00Z","who":"town","where":"yard","what":"house 43/43","kind":"test","suite":"house","status":"pass","n":"43/43"}
+{"t":"2026-11-16T17:05:10Z","who":"town","where":"yard","what":"fun 18/18 (on rerun)","kind":"test","suite":"fun","status":"pass","n":"18/18"}
+{"t":"2026-11-16T17:05:20Z","who":"town","where":"yard","what":"practice 14/14","kind":"test","suite":"practice","status":"pass","n":"14/14"}
+{"t":"2026-11-16T17:05:30Z","who":"town","where":"yard","what":"first10, return, room, multi-room, auto-ar, marker, roomguard, places, economy, market, style green","kind":"test","suite":"base-camp-all","status":"pass"}
+{"t":"2026-11-16T17:05:40Z","who":"town","where":"yard","what":"snapshot fails the same 5 checks on builds 28 and 29: an old flake","kind":"test","suite":"snapshot","status":"flaky"}
+{"t":"2026-11-16T17:06:00Z","who":"town","where":"yard","what":"noxr clean, diagclash AR ready","kind":"test","suite":"noxr","status":"pass"}
+{"t":"2026-11-16T17:06:41Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: handover note on the colonist-picking fix","kind":"commit","ref":"730601e","branch":"game/bc-mac"}
+{"t":"2026-11-16T17:07:00Z","who":"builder:fixer","where":"workshop:game/bc-mac","what":"Fixer done: handover note written","kind":"end","ref":"game/bc-mac"}
+{"t":"2026-11-16T17:07:32Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: developer panel waits for its first 2 s of rates; HANDOVER numbers","kind":"commit","ref":"8a0b670","branch":"game/bc-depth"}
+{"t":"2026-11-16T17:10:00Z","who":"foreman","where":"shop","what":"Build 29 live: Mac controls and the dolls' house","kind":"win","ref":"base-camp/"}
+{"t":"2026-11-16T17:13:33Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: shots from the verification runs","kind":"commit","ref":"0ac0db5","branch":"game/bc-mac"}
+{"t":"2026-11-16T17:13:43Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: bring over check.html and screen-sticker.html from build 28","kind":"commit","ref":"9689818","branch":"game/bc-mac"}
+{"t":"2026-11-16T17:13:47Z","who":"foreman","where":"shop","what":"Base Camp build 29: Mac controls, dolls' house, calmer notices, compact card, bot playtest; build 28 kept at b28","kind":"deploy","ref":"e71b40f"}
+{"t":"2026-11-16T17:14:32Z","who":"foreman","where":"shop","what":"base-camp-next: same as live build 29 (with the picking fix)","kind":"deploy","ref":"a8bc5bc"}
+{"t":"2026-11-16T17:14:44Z","who":"foreman","where":"library","what":"START_HERE: build 29 live","kind":"commit","ref":"a7c88e7","branch":"game/micro-precinct"}
+{"t":"2026-11-16T17:20:00Z","who":"town","where":"yard","what":"depth 29/29","kind":"test","suite":"depth","status":"pass","n":"29/29"}
+{"t":"2026-11-16T17:22:25Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: depth pauses on a device under 8 fps (depthSlow); the depth test opts in on software GL","kind":"commit","ref":"e7b7435","branch":"game/bc-depth"}
+{"t":"2026-11-16T17:46:35Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: the whole-house view looks down over the house (the camera guard ignores walls and furniture when the camera is above...","kind":"commit","ref":"304eb09","branch":"game/bc-mac"}
+{"t":"2026-11-16T17:46:39Z","who":"foreman","where":"shop","what":"Base Camp build 29: whole-house view fix","kind":"deploy","ref":"1fe4d93"}
+{"t":"2026-11-16T17:46:40Z","who":"foreman","where":"workshop:game/bc-mac","what":"Fixed the blank whole-house view","kind":"fix"}
+{"t":"2026-11-16T17:57:08Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: HANDOVER: roomfix still open","kind":"commit","ref":"c0c23c5","branch":"game/bc-depth"}
+{"t":"2026-11-16T17:58:04Z","who":"foreman","where":"shop","what":"base-camp-next: build 30 preview (depth: hide behind furniture; developer mode ?dev=1)","kind":"deploy","ref":"c4efd92"}
+{"t":"2026-11-16T17:59:00Z","who":"foreman","where":"shop","what":"Depth arrives in the back room: things hide behind furniture","kind":"win","ref":"base-camp-next/"}
+{"t":"2026-11-16T18:00:00Z","who":"town","where":"yard","what":"roomfix passes on build 29 but fails on build 30","kind":"test","suite":"roomfix","status":"fail"}
+{"t":"2026-11-16T18:02:00Z","who":"foreman","where":"hut","what":"Hired a builder: the sticker becomes the room's key","kind":"hire","ref":"game/bc-depth"}
+{"t":"2026-11-16T18:03:46Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: roomfix shot from the side-by-side check","kind":"commit","ref":"144ada7","branch":"game/bc-mac"}
+{"t":"2026-11-16T18:08:21Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: roomfix shots from the side-by-side check","kind":"commit","ref":"012d4de","branch":"game/bc-mac"}
+{"t":"2026-11-16T18:10:42Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: the sticker is the room's key (WIP): another room's sticker loads that room at once, an unowned sticker binds at once...","kind":"commit","ref":"aff8f06","branch":"game/bc-depth"}
+{"t":"2026-11-16T18:16:00Z","who":"town","where":"yard","what":"roomfix 35/35 on build 29 in the side-by-side check","kind":"test","suite":"roomfix","status":"pass","n":"35/35"}
+{"t":"2026-11-16T18:16:02Z","who":"builder:mac","where":"workshop:game/bc-mac","what":"Base Camp build 29: roomfix shots (35/35 in the side-by-side check)","kind":"commit","ref":"7d09f0b","branch":"game/bc-mac"}
+{"t":"2026-11-16T18:16:04Z","who":"foreman","where":"library","what":"PatchTown Works: first mock-up of the studio as a 3D town (today's events typed in)","kind":"commit","ref":"f4c82f8","branch":"game/micro-precinct"}
+{"t":"2026-11-16T18:18:00Z","who":"foreman","where":"hut","what":"Hired a builder for PatchTown Works: the town you can watch","kind":"hire","ref":"game/micro-precinct"}
+{"t":"2026-11-16T18:20:00Z","who":"builder:works","where":"library","what":"Works builder starts: the live town page","kind":"start","ref":"game/micro-precinct"}
+{"t":"2026-11-16T18:20:24Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"Base Camp build 30: depth never loads on software GL or before its frames are timed (roomfix regression); sticker-key test and HANDOVER (...","kind":"commit","ref":"9748c8f","branch":"game/bc-depth"}
+{"t":"2026-11-16T18:31:00Z","who":"foreman","where":"library","what":"PatchTown Works atlas: geography, infrastructure, weather, civic buildings and AI homes, each tied to real data","kind":"commit","ref":"70ab164","branch":"game/micro-precinct"}

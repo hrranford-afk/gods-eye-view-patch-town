@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PatchTown Works</title>
+<meta name="description" content="A live 3D town that shows how the PatchTown AI studio builds software: builders, tests, commits and what is live.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* PatchTown Works v1. Layout: the 3D town fills the screen (projector first). Title plate top-left, diary right
+   (hidden on phones), detail card bottom-left, timeline along the bottom. Finished, checked work is the brightest
+   thing on screen; chatter and activity are quieter (the town's own verdict: "it shows talk better than finished work"). */
+:root {
+  --night: #18233a; --night2: #1d2b44;
+  --ink: #f4ead8; --muted: #b9b3c9; --dim: #8e93ab;
+  --lantern: #ffb44a; --moss: #7fd18b; --rose: #ff7a85; --wait: #f2b660; --quiet: #5d6f8c; --gold: #ffd76a;
+  --mini: #6aa6e8; --dell: #6fbf8f; --mill: #e0a15a;
+  --panel: rgba(20, 28, 48, 0.8);
+  --line: rgba(244, 234, 216, 0.16);
+  --tl-h: 5.4rem;
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html { font-size: clamp(15px, 0.45vw + 9.5px, 26px); height: 100%; }
+body { margin: 0; height: 100%; background: var(--night); color: var(--ink); font: 1rem/1.45 var(--f-body); overflow: hidden; }
+body.day { --panel: rgba(16, 24, 42, 0.88); background: #9cc8e8; }
+#scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+#labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.lab { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); white-space: nowrap; font: 700 0.8rem/1.2 var(--f-body); color: var(--ink);
+  background: rgba(16, 22, 38, 0.74); border: 1px solid var(--line); padding: 0.25rem 0.6rem 0.3rem; border-radius: 999px; pointer-events: auto; cursor: pointer; }
+.lab small { display: block; font-weight: 400; font-size: 0.68rem; color: var(--muted); text-align: center; }
+.lab .dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; vertical-align: 0.05rem; background: var(--quiet); }
+.lab .dot.on { background: var(--lantern); }
+.lab .dot.ok { background: var(--moss); box-shadow: 0 0 10px var(--moss); }
+.lab .dot.bad { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+.lab.win { border-color: rgba(127, 209, 139, 0.7); background: rgba(18, 40, 30, 0.82); }
+.lab.chip { cursor: default; font-weight: 400; background: rgba(29, 43, 68, 0.86); pointer-events: none; }
+.lab.chip b { font: 800 0.95rem/1 var(--f-display); margin-right: 0.35rem; }
+.lab.chip.warn b { color: var(--wait); } .lab.chip.good b { color: var(--moss); } .lab.chip.bad b { color: var(--rose); }
+.lab.tiny { font-size: 0.68rem; padding: 0.15rem 0.45rem; }
+.lab:focus-visible { outline: 2px solid var(--lantern); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.plate { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
+  max-width: min(31rem, calc(100% - 32px)); box-sizing: border-box; padding: 0.85rem 1.1rem; }
+.eyebrow { font: 500 0.68rem/1.2 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lantern); }
+h1 { font: 800 clamp(1.8rem, 3.2vw, 3.3rem)/0.98 var(--f-display); margin: 0.35rem 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 0.7rem 1.3rem; margin-top: 0.7rem; }
+.stat b { display: block; font: 800 1.6rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.75rem; color: var(--muted); }
+.stat.v b { color: var(--moss); text-shadow: 0 0 14px rgba(127, 209, 139, .45); }
+.stat.q b { color: var(--ink); opacity: .8; }
+.btns { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+button { font: 700 0.85rem/1 var(--f-body); color: var(--ink); background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 999px; padding: 0.55rem 0.85rem; cursor: pointer; min-height: 2.2rem; }
+button:hover { background: rgba(255,255,255,.15); }
+button[aria-pressed="true"] { background: rgba(255,180,74,.22); border-color: rgba(255,180,74,.6); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
+.src { margin-top: 0.6rem; font: 500 0.68rem/1.3 var(--f-mono); color: var(--muted); }
+.src i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; background: var(--quiet); }
+.src i.live { background: var(--moss); } .src i.cache { background: var(--wait); } .src i.off { background: var(--rose); }
+
+.diary { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--tl-h) + 16px);
+  width: min(23rem, 31vw); box-sizing: border-box; padding: 0.85rem 1rem; overflow: auto; }
+.diary h2, .card h2 { font: 800 1.25rem/1.1 var(--f-display); margin: 0.25rem 0 0.6rem; }
+.ev { display: grid; grid-template-columns: 3.3rem 1fr; gap: 0.6rem; padding: 0.45rem 0; border-top: 1px solid var(--line); }
+.ev time { font: 500 0.8rem/1.6 var(--f-mono); color: var(--dim); font-variant-numeric: tabular-nums; }
+.ev p { margin: 0; font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.ev .who { color: var(--dim); font-size: 0.75rem; }
+.ev.v p { color: #eafbe9; font-weight: 700; } .ev.v time { color: var(--moss); }
+.ev.w p { color: #fff0c4; font-weight: 700; } .ev.w time { color: var(--gold); }
+.ev.f p { color: #ffd0d4; } .ev.f time { color: var(--rose); }
+.ev.h p { color: var(--ink); }
+
+.card { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(var(--tl-h) + 16px); width: min(32rem, calc(100% - 32px)); box-sizing: border-box;
+  padding: 0.85rem 1.1rem; max-height: calc(100% - var(--tl-h) - 12.5rem); overflow: auto; }
+.card .close { float: right; margin-left: 0.5rem; }
+.card h3 { font: 700 0.8rem/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0.9rem 0 0.35rem; }
+.card ul { list-style: none; margin: 0; padding: 0; }
+.card li { display: grid; grid-template-columns: 3.3rem 1fr; gap: 0.5rem; padding: 0.3rem 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
+.card li time { font: 500 0.78rem/1.6 var(--f-mono); color: var(--dim); }
+.card li span { min-width: 0; overflow-wrap: anywhere; }
+.card li.v span { color: #eafbe9; font-weight: 700; } .card li.f span { color: #ffd0d4; } .card li.q span { color: var(--muted); }
+.card a { color: #ffd39a; }
+.card .note { font: 500 0.7rem/1.35 var(--f-mono); color: var(--muted); margin-top: 0.7rem; }
+.lamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.4rem 0.8rem; }
+.lamps div { display: flex; gap: 0.45rem; align-items: center; font-size: 0.9rem; min-width: 0; }
+.lamps i, .heads i, .sq { flex: none; display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: 50%; background: var(--quiet); }
+.pass { background: var(--moss) !important; box-shadow: 0 0 10px rgba(127,209,139,.7); }
+.fail { background: var(--rose) !important; } .flaky, .border { background: var(--wait) !important; } .never, .silent { background: var(--quiet) !important; }
+.empty { background: var(--rose) !important; }
+.heads { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.35rem 0.8rem; }
+.heads div { display: flex; gap: 0.45rem; align-items: center; font-size: 0.85rem; min-width: 0; }
+.heads small { color: var(--dim); }
+.sqrow { margin: 0.35rem 0 0.6rem; } .sqrow .lbl { font-size: 0.88rem; font-weight: 700; }
+.sqrow .sqs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0.2rem 0; } .sq { border-radius: 3px; }
+.sqrow .tell { font-size: 0.8rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chips span { background: var(--night2); border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.chips b { font: 800 1rem/1 var(--f-display); margin-right: 0.3rem; }
+.chips .warn b { color: var(--wait); } .chips .good b { color: var(--moss); } .chips .bad b { color: var(--rose); }
+.mach { display: grid; grid-template-columns: 0.4rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-top: 1px solid var(--line); font-size: 0.88rem; }
+.mach > i { border-radius: 3px; } .mach b { font-family: var(--f-display); font-size: 1rem; } .mach small { color: var(--muted); display: block; }
+.fox { color: var(--wait); font-weight: 700; }
+
+.timeline { position: fixed; left: 0; right: 0; bottom: 0; height: var(--tl-h); box-sizing: border-box; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.5rem 0.9rem;
+  background: rgba(12, 17, 30, 0.9); border-top: 1px solid var(--line);
+  padding: 0.4rem max(16px, env(safe-area-inset-right, 0px)) calc(0.4rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.daysel { display: flex; align-items: center; gap: 0.3rem; }
+.daysel b { font: 800 1rem/1.1 var(--f-display); min-width: 6.5rem; text-align: center; }
+.daysel button { padding: 0.4rem 0.6rem; }
+.track { position: relative; min-width: 0; }
+.ticks { position: absolute; left: 0.5rem; right: 0.5rem; top: 0; height: 0.6rem; pointer-events: none; }
+.tk { position: absolute; top: 0; width: 3px; height: 0.6rem; margin-left: -1px; border-radius: 2px; background: var(--quiet); }
+.tk.v { background: var(--moss); height: 0.75rem; } .tk.w { background: var(--gold); height: 0.85rem; } .tk.f { background: var(--rose); }
+.tk.o { background: #c9a36b; } .tk.c { background: #6c7ea8; }
+input[type=range] { width: 100%; margin: 0.7rem 0 0.15rem; accent-color: var(--lantern); height: 1.6rem; }
+.tlrow { display: flex; gap: 0.7rem; align-items: baseline; min-width: 0; }
+.tlrow .clock { flex: none; font: 500 1rem/1.2 var(--f-mono); color: var(--lantern); font-variant-numeric: tabular-nums; }
+.tlrow p { margin: 0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#bLive[aria-pressed="true"] { background: rgba(127,209,139,.22); border-color: rgba(127,209,139,.7); }
+.skip { position: absolute; left: -9999px; }
+
+@media (max-width: 760px) {
+  :root { --tl-h: 7.6rem; }
+  .plate { padding: 0.6rem 0.8rem; max-width: calc(100% - 32px); }
+  .plate .sub { display: none; }
+  .stats { gap: 0.4rem 0.9rem; margin-top: 0.4rem; } .stat b { font-size: 1.15rem; } .stat span { font-size: 0.68rem; }
+  .btns { margin-top: 0.5rem; } .btns button { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
+  .diary { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; max-height: 40%; }
+  .card { right: max(16px, env(safe-area-inset-right, 0px)); width: auto; max-height: 52%; }
+  .timeline { grid-template-columns: auto auto 1fr; grid-template-rows: auto auto; }
+  .track { grid-column: 1 / -1; grid-row: 2; }
+  .lab { font-size: 0.72rem; } .lab small { display: none; }
+  .lab.chip, .lab.tiny { display: none !important; }
+  body.carding .plate .stats, body.carding .plate .src { display: none; }
+}
+body.carding .plate .sub { display: none; }
+@media (max-height: 760px) and (min-width: 761px) { body.carding .plate .stats { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="A 3D town: each building is part of the studio's work"></canvas>
+<div id="labels"></div>
+
+<section class="plate panel" aria-label="About this town">
+  <div class="eyebrow" id="eyebrow">PatchTown Works · live</div>
+  <h1>PatchTown Works</h1>
+  <p class="sub">Watch the AI studio build software. Builders walk from the foreman's hut to their workshops, every build goes through the inspection yard, parcels leave the post office, and finished work lights up the shop window. Wagons carry orders over the bridge to Harry's machines.</p>
+  <div class="stats" id="stats"></div>
+  <div class="btns">
+    <button id="bDay" type="button">Daylight</button>
+    <button id="bTour" type="button" aria-pressed="false">Tour</button>
+    <button id="bDiary" type="button">Hide diary</button>
+  </div>
+  <div class="src" id="src"><i></i>Loading…</div>
+</section>
+
+<aside class="diary panel" id="diary" aria-label="The day in the town">
+  <div class="eyebrow" id="dEye">Today</div>
+  <h2>What happened</h2>
+  <div id="events"></div>
+</aside>
+
+<div class="card panel" id="card" hidden role="dialog" aria-labelledby="cTitle">
+  <button class="close" id="bClose" type="button" aria-label="Close">✕</button>
+  <div class="eyebrow" id="cEye"></div>
+  <h2 id="cTitle"></h2>
+  <div id="cBody"></div>
+</div>
+
+<div class="timeline" role="group" aria-label="Timeline">
+  <div class="daysel"><button id="bPrev" type="button" aria-label="Day before">‹</button><b id="dayName">–</b><button id="bNext" type="button" aria-label="Day after">›</button></div>
+  <button id="bPlay" type="button" aria-pressed="false">▶ Replay</button>
+  <div class="track">
+    <div class="ticks" id="ticks"></div>
+    <label class="skip" for="scrub">Time of day</label>
+    <input id="scrub" type="range" min="0" max="1440" step="1" value="1440">
+    <div class="tlrow"><span class="clock" id="clock">--:--</span><p id="cap" aria-live="polite"></p></div>
+  </div>
+  <button id="bLive" type="button" aria-pressed="true">Live</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* =====================================================================================================
+   1. Settings
+   ===================================================================================================== */
+const CFG = {
+  repo: 'hrranford-afk/gods-eye-view-patch-town',
+  api: 'https://api.github.com',
+  raw: 'https://raw.githubusercontent.com',
+  ledgerBranch: 'game/micro-precinct',
+  ledgerPath: 'games/works/ledger.jsonl',
+  pages: 'https://hrranford-afk.github.io/gods-eye-view-patch-town/',
+  pollMs: 120000,          /* at most one look at GitHub every 2 minutes */
+  slowMs: 600000,          /* branches, runs, deployments: every 10 minutes */
+  activeDays: 7,           /* a workshop stands for a branch active in the last 7 days */
+  maxWorkshops: 8,
+  walkMin: 40              /* a walker is out for 40 minutes after its event */
+};
+const Q = new URLSearchParams(location.search);
+const OFFLINE = Q.has('offline');
+const FIXED_NOW = Q.get('now') ? Date.parse(Q.get('now')) : 0;
+const NOW = () => FIXED_NOW || Date.now();
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* privacy: never show an email address or anything that looks like a token */
+const clean = (s) => String(s || '').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '(email hidden)').replace(/\b(gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9-]{20,})\b/g, '(hidden)');
+const hhmm = (t) => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+const dayKey = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dayStart = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+const dayName = (k) => new Date(dayStart(k)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+/* =====================================================================================================
+   2. Harry's town: the town's own wall. SAMPLE values "as of 16:35, from the town's wall" (16 Nov).
+      Slot: if town-report.json sits next to this page (same shape as WALL), the town's run reports replace it.
+   ===================================================================================================== */
+let WALL = {
+  asOf: '16:35, 16 Nov', from: "the town's wall (sample values)", sample: true,
+  chips: [
+    { v: '35 GB', t: 'disk left on the Mini (floor is 30)', s: 'warn' },
+    { v: '3 of 3', t: 'machines given work by one order', s: 'good' },
+    { v: '2', t: 'things rebuilt this week that already existed', s: 'bad' },
+    { v: '3', t: 'hand touches per order', s: '' }
+  ],
+  rebuilt: 2,
+  machines: {
+    Mini: { sub: 'home of the Radeon card', state: 'idle', doing: 'Idle', note: 'Finished: 6 pictures, 6 trainings, 3 Brain answers', waiting: 1 },
+    Radeon: { sub: '16 GB graphics card', state: 'idle', doing: 'Idle (with the Mini)', note: '', waiting: 0 },
+    Dell: { sub: '32 GB, no graphics card', state: 'busy', doing: 'Sofa Keep: residents inventing', note: 'Waiting: mega-review, 8 residents', waiting: 1 },
+    Mill: { sub: '4 GB graphics card', state: 'busy', doing: 'Sofa Keep: sorting 72 ideas', note: 'Waiting: nothing', waiting: 0 }
+  },
+  speakers: [
+    ['Mill Hand', 'ok', '9 of 9'], ['Dell Scholar', 'ok', '27B, best today'], ['Dell Reasoner', 'ok'], ['Dell Coder', 'ok'], ['Dell Elder', 'ok'],
+    ['Dell Surveyor', 'ok'], ['Radeon Coder', 'ok'], ['Dell Writer', 'empty', 'says "(DONE)"'], ['Dell Builder', 'silent'], ['Quick Builder', 'silent'],
+    ['Radeon Clerk', 'unproven', 'moved, not heard'], ['Radeon Runner', 'unproven', 'moved, not heard'], ['Radeon Senior', 'unproven', 'moved, not heard']
+  ],
+  parcels: [
+    ['Train tells the truth (5 tests)', 'ppppp'],
+    ['Six new voices, examined', 'ppbfff', 'Eight-Year-Old and Cosy Gamer pass. Grandparent borderline. Tone is there, ideas are few.'],
+    ['Sofa Keep pictures, town painter', 'ffffff', 'Six nice toy rooms. None shows what its line asked for. The train marked them done.'],
+    ['Sofa Keep picture, a visitor AI', 'p'],
+    ["Residents' test of CAIRN (8 seats)", 'pppppfnn'],
+    ['Cold looks at the town', 'ppp', 'A visitor AI, the 27B and the Brain. All three said: it shows talk better than finished work.']
+  ],
+  credits: 'White smoke over a building means something was built that already existed: idea by the Swarmkeeper, a tiny specialist on the Mill. The fox in the pond is the Choreographer\'s.'
+};
+
+/* =====================================================================================================
+   3. Data: GitHub (public, unauthenticated, cached with ETags) + the ledger
+   ===================================================================================================== */
+const CK = 'works.cache.v1';
+let cache = (() => { try { const c = JSON.parse(localStorage.getItem(CK)); if (c && c.u) return c; } catch (e) { /* storage blocked */ } return { u: {}, rate: {} }; })();
+function saveCache() {
+  try { localStorage.setItem(CK, JSON.stringify(cache)); } catch (e) {
+    try { for (const k in cache.u) if (k.includes('/commits')) delete cache.u[k]; localStorage.setItem(CK, JSON.stringify(cache)); } catch (e2) { /* give up quietly */ }
+  }
+}
+const net = { calls: 0, ok: 0, notModified: 0, limited: false, errors: 0, lastOk: 0, ledgerFrom: '', mode: 'start' };
+function slim(path, d) {
+  if (!Array.isArray(d) && !(d && d.workflow_runs)) return d;
+  if (path.startsWith('/events')) return d.filter((e) => e.type === 'PushEvent' || (e.type === 'CreateEvent' && e.payload && e.payload.ref_type === 'branch'))
+    .map((e) => ({ type: e.type, t: e.created_at, ref: (e.payload.ref || '').replace('refs/heads/', ''), head: e.payload.head || '' }));
+  if (path.startsWith('/commits')) return d.map((c) => ({ sha: c.sha.slice(0, 7), t: (c.commit.author && c.commit.author.date) || (c.commit.committer && c.commit.committer.date), msg: clean(c.commit.message.split('\n')[0]).slice(0, 160), merge: (c.parents || []).length > 1 }));
+  if (path.startsWith('/branches')) return d.map((b) => ({ name: b.name, sha: b.commit.sha.slice(0, 7) }));
+  if (path.startsWith('/actions/runs')) return d.workflow_runs.map((r) => ({ name: r.name, branch: r.head_branch, status: r.status, conclusion: r.conclusion, t: r.updated_at, n: r.run_number, sha: (r.head_sha || '').slice(0, 7) }));
+  if (path.startsWith('/deployments')) return d.map((x) => ({ env: x.environment, t: x.created_at, sha: (x.sha || '').slice(0, 7) }));
+  return d;
+}
+async function gh(path, maxAge) {
+  const url = CFG.api + '/repos/' + CFG.repo + path, c = cache.u[url], now = Date.now();
+  if (c && now - c.at < maxAge) return c.d;
+  if (OFFLINE) return c ? c.d : null;
+  const r = cache.rate || {};
+  if (r.rem !== undefined && r.rem < 3 && now < r.reset) { net.limited = true; return c ? c.d : null; }
+  try {
+    const h = { Accept: 'application/vnd.github+json' };
+    if (c && c.etag) h['If-None-Match'] = c.etag;
+    const res = await fetch(url, { headers: h, cache: 'no-store' });
+    net.calls++;
+    const rem = res.headers.get('x-ratelimit-remaining'), rs = res.headers.get('x-ratelimit-reset');
+    if (rem !== null) cache.rate = { rem: +rem, reset: (+rs || 0) * 1000 };
+    if (res.status === 304 && c) { c.at = now; net.notModified++; net.lastOk = now; net.limited = false; saveCache(); return c.d; }
+    if (res.status === 403 || res.status === 429) { net.limited = true; if (rem === null) cache.rate = { rem: 0, reset: now + 10 * MIN }; saveCache(); return c ? c.d : null; }
+    if (!res.ok) { net.errors++; return c ? c.d : null; }
+    const d = slim(path, await res.json());
+    cache.u[url] = { at: now, etag: res.headers.get('etag') || '', d };
+    net.ok++; net.lastOk = now; net.limited = false; saveCache();
+    return d;
+  } catch (e) { net.errors++; return c ? c.d : null; }
+}
+function parseLedger(txt) {
+  const out = [];
+  for (const line of String(txt).split('\n')) { const s = line.trim(); if (!s) continue; try { const o = JSON.parse(s); if (o && o.t && o.what) out.push(o); } catch (e) { /* skip a bad line */ } }
+  return out;
+}
+async function loadLedger() {
+  const urls = OFFLINE ? ['ledger.jsonl'] : [CFG.raw + '/' + CFG.repo + '/' + CFG.ledgerBranch + '/' + CFG.ledgerPath, 'ledger.jsonl'];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const txt = await r.text(), rows = parseLedger(txt);
+      if (!rows.length) continue;
+      net.ledgerFrom = u.startsWith('http') ? 'github' : 'bundled';
+      try { localStorage.setItem('works.ledger.v1', JSON.stringify({ at: Date.now(), txt })); } catch (e) { /* ok */ }
+      return rows;
+    } catch (e) { /* try the next */ }
+  }
+  try { const c = JSON.parse(localStorage.getItem('works.ledger.v1')); if (c && c.txt) { net.ledgerFrom = 'cache'; return parseLedger(c.txt); } } catch (e) { /* none */ }
+  net.ledgerFrom = 'none';
+  return [];
+}
+
+let LEDGER = [], GH = { events: [], runs: [], deps: [], branches: [], commits: {} }, EV = [], WORKSHOPS = [];
+const SKIP_WS = new Set(['gh-pages', 'main', 'master', CFG.ledgerBranch]);
+async function loadGitHub() {
+  const events = (await gh('/events?per_page=100', CFG.pollMs - 5000)) || [];
+  const slow = (cache.rate && cache.rate.rem !== undefined && cache.rate.rem < 15) ? CFG.slowMs * 3 : CFG.slowMs;
+  const [runs, deps, branches] = await Promise.all([gh('/actions/runs?per_page=15', slow), gh('/deployments?per_page=10', slow), gh('/branches?per_page=100', slow)]);
+  const last = {};
+  for (const e of events) { if (!e.ref) continue; const t = Date.parse(e.t); if (!last[e.ref] || t > last[e.ref].t) last[e.ref] = { t, head: e.head }; }
+  const cut = Date.now() - CFG.activeDays * DAY;
+  /* oldest push first, so a commit merged into a newer branch stays with the branch it was made on */
+  const act = Object.keys(last).filter((b) => last[b].t > cut).sort((a, b) => last[b].t - last[a].t).slice(0, 10).reverse();
+  const commits = {};
+  for (const b of act) {
+    const p = '/commits?sha=' + encodeURIComponent(b) + '&per_page=15';
+    const c = cache.u[CFG.api + '/repos/' + CFG.repo + p];
+    const moved = c && last[b].head && c.d && c.d[0] && !last[b].head.startsWith(c.d[0].sha);
+    const d = await gh(p, moved ? 0 : slow * 3);
+    if (d) commits[b] = d;
+  }
+  GH = { events, runs: runs || [], deps: deps || [], branches: branches || [], commits, order: act, last };
+}
+function fromCommit(b, c) {
+  const t = Date.parse(c.t);
+  if (b === 'gh-pages') return { t, who: 'foreman', where: 'shop', what: c.msg, kind: 'deploy', ref: c.sha, branch: b, src: 'github' };
+  if (b === CFG.ledgerBranch) return { t, who: 'foreman', where: /^Order /.test(c.msg) ? 'bridge' : 'library', what: c.msg, kind: 'commit', ref: c.sha, branch: b, src: 'github' };
+  return { t, who: 'builder:' + b.split('/').pop().replace(/^bc-/, ''), where: 'workshop:' + b, what: c.msg, kind: 'commit', ref: c.sha, branch: b, src: 'github' };
+}
+function buildEvents() {
+  const out = [], shas = new Set();
+  for (const l of LEDGER) {
+    const t = Date.parse(l.t); if (!t) continue;
+    out.push(Object.assign({}, l, { t, what: clean(l.what), src: 'ledger' }));
+    if (l.ref && /^[0-9a-f]{7,40}$/.test(l.ref)) shas.add(l.ref.slice(0, 7));
+  }
+  const cut = NOW() - CFG.activeDays * DAY - DAY;
+  for (const b of (GH.order || [])) for (const c of (GH.commits[b] || [])) {
+    if (shas.has(c.sha) || c.merge || /^Merge /.test(c.msg)) continue;
+    shas.add(c.sha);
+    const e = fromCommit(b, c); if (e.t > cut) out.push(e);
+  }
+  out.sort((a, b) => a.t - b.t);
+  EV = out;
+  /* workshops: branches with work in the 7 days before the latest thing we know about */
+  const lastAt = {}, end = Math.max(NOW(), out.length ? out[out.length - 1].t : 0);
+  for (const e of out) if (e.where && e.where.startsWith('workshop:') && e.t > end - CFG.activeDays * DAY) lastAt[e.where.slice(9)] = e.t;
+  for (const b in (GH.last || {})) if (!SKIP_WS.has(b) && GH.last[b].t > end - CFG.activeDays * DAY) lastAt[b] = Math.max(lastAt[b] || 0, GH.last[b].t);
+  for (const b of SKIP_WS) delete lastAt[b];
+  WORKSHOPS = Object.keys(lastAt).sort((a, b) => lastAt[b] - lastAt[a]).slice(0, CFG.maxWorkshops).sort();
+}
+
+/* =====================================================================================================
+   4. The 3D town (three.js r128). Shapes drawn in code; Kenney GLB models can replace them (assets/models.json).
+   ===================================================================================================== */
+const cv = document.getElementById('scene');
+const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: Q.has('shots') });
+R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+R.outputEncoding = THREE.sRGBEncoding;
+const S = new THREE.Scene();
+const CAM = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
+const DUSK = { sky: 0x1b2742, fog: 0x1b2742, hemi: [0x7d8fc0, 0x2a2318, 0.6], sun: [0xffa36a, 0.5], win: 1.0, lamp: 1.0 };
+const DAYL = { sky: 0xa8d2f0, fog: 0xa8d2f0, hemi: [0xe8f3ff, 0x6b5a3a, 1.0], sun: [0xfff3d6, 1.15], win: 0.25, lamp: 0 };
+let mode = DUSK;
+S.fog = new THREE.Fog(DUSK.fog, 30, 70);
+const hemi = new THREE.HemisphereLight(...DUSK.hemi); S.add(hemi);
+const sun = new THREE.DirectionalLight(...DUSK.sun); sun.position.set(-12, 16, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -24 }); S.add(sun);
+const MATS = {};
+const mat = (c, e) => { const k = c + ':' + (e || 0); return MATS[k] || (MATS[k] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, emissive: e || 0x000000 })); };
+const glowMat = (c, i) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i == null ? 1 : i });
+const G = { box: new THREE.BoxGeometry(1, 1, 1), sph: new THREE.SphereGeometry(1, 14, 10), cyl: new THREE.CylinderGeometry(1, 1, 1, 10), cone4: new THREE.ConeGeometry(1, 1, 4), cone: new THREE.ConeGeometry(1, 1, 10) };
+function mesh(geo, m, sx, sy, sz, x, y, z) { const o = new THREE.Mesh(geo, m); o.scale.set(sx, sy, sz); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; o.receiveShadow = true; return o; }
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(15.5, 72), mat(0x3b5a3a)); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; S.add(ground);
+const HOME = { x: 0, z: -19 };
+const homeGround = new THREE.Mesh(new THREE.CircleGeometry(6.2, 56), mat(0x4a5f3a)); homeGround.rotation.x = -Math.PI / 2; homeGround.position.set(HOME.x, 0.01, HOME.z); homeGround.receiveShadow = true; S.add(homeGround);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ color: 0x1f3550, roughness: 0.35, metalness: 0.1 })); water.rotation.x = -Math.PI / 2; water.position.y = -0.05; S.add(water);
+
+/* fixed buildings (positions from the mock-up) */
+const B = {
+  hut:     { x: 0,    z: 0,    w: 2.2, d: 2.0, h: 1.6, roof: 0x8a4b3a, wall: 0xe9d6b6, name: "Foreman's hut", eye: 'The main AI session' },
+  library: { x: 2.8,  z: 4.8,  w: 1.8, d: 1.6, h: 1.4, roof: 0x9a6b3a, wall: 0xe4d2b0, name: 'Library', eye: 'Research, notes and plans (' + CFG.ledgerBranch + ')' },
+  yard:    { x: 5.6,  z: 1.4,  w: 3.4, d: 2.6, h: 0.4, roof: 0x2f3a52, wall: 0x9aa3b8, name: 'Inspection yard', eye: 'The test suites', yard: true },
+  post:    { x: 4.8,  z: -3.0, w: 1.8, d: 1.6, h: 1.2, roof: 0xa83a3a, wall: 0xe8dcc4, name: 'Post office', eye: 'GitHub: every saved change' },
+  shop:    { x: 0.6,  z: -5.0, w: 3.2, d: 1.6, h: 1.5, roof: 0xc77a2a, wall: 0xf0e2c8, name: 'Shop window', eye: "What's live on GitHub Pages" },
+  lost:    { x: 3.6,  z: -8.2, w: 1.6, d: 1.3, h: 1.0, roof: 0x6a5a6a, wall: 0xcfc6c0, name: 'Lost property', eye: 'Work that started and stopped without an end' },
+  bridge:  { x: 0,    z: -12.4, w: 1.4, d: 6.4, h: 0.1, name: 'Bridge', eye: 'Orders on their way to Harry\'s machines', flat: true },
+  harry:   { x: HOME.x, z: HOME.z, w: 6, d: 6, h: 0.1, name: "Harry's town", eye: "Harry's machines at home: Mini, Radeon, Dell, Mill", flat: true }
+};
+const pickables = [];
+const winMats = [];
+function house(b, key) {
+  const g = new THREE.Group(); g.position.set(b.x, 0, b.z);
+  const body = mesh(G.box, mat(b.wall), b.w, b.h, b.d, 0, b.h / 2, 0); g.add(body);
+  const roof = mesh(G.cone4, mat(b.roof), Math.max(b.w, b.d) * 0.78, b.h * 0.8, Math.max(b.w, b.d) * 0.78 * (b.d / b.w), 0, b.h * 1.4, 0); roof.rotation.y = Math.PI / 4; g.add(roof);
+  const door = mesh(G.box, mat(0x5a3a26), 0.36, 0.56, 0.04, 0, 0.28, b.d / 2 + 0.01); g.add(door);
+  const chim = mesh(G.box, mat(0x6f5a4f), 0.22, 0.6, 0.22, b.w * 0.28, b.h * 1.45, -b.d * 0.15); g.add(chim);
+  const wm = glowMat(0xffb44a, 1); wm.color.set(0x332211); winMats.push(wm); b.win = wm;
+  const nW = Math.max(1, Math.round(b.w / 0.8));
+  for (let i = 0; i < nW; i++) {
+    const x = -b.w / 2 + (i + 0.5) * b.w / nW; if (Math.abs(x) < 0.3) continue;
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.32), wm); w.position.set(x, b.h * 0.58, b.d / 2 + 0.012); g.add(w);
+    const w2 = w.clone(); w2.rotation.y = Math.PI; w2.position.z = -b.d / 2 - 0.012; g.add(w2);
+  }
+  g.traverse((o) => { o.userData.key = key; }); pickables.push(g);
+  S.add(g); b.g = g; b.body = body; b.roofM = roof; return g;
+}
+house(B.hut, 'hut'); house(B.library, 'library'); house(B.post, 'post'); house(B.shop, 'shop'); house(B.lost, 'lost');
+/* lost property: abandoned carts out front and an alarm lamp on the roof */
+const alarmM = glowMat(0xff4a5a, 0); alarmM.color.set(0x552226);
+const alarm = mesh(G.sph, alarmM, 0.16, 0.16, 0.16, B.lost.x, B.lost.h * 2.25, B.lost.z); alarm.castShadow = false; alarm.userData.key = 'lost'; S.add(alarm);
+const alarmLight = new THREE.PointLight(0xff4a5a, 0, 5, 2); alarmLight.position.set(B.lost.x, B.lost.h * 2.4, B.lost.z + 0.4); S.add(alarmLight);
+const carts = [];
+for (let i = 0; i < 4; i++) {
+  const g = new THREE.Group(); g.position.set(B.lost.x - 0.9 + i * 0.6, 0, B.lost.z + 1.25); g.rotation.y = 0.3 - i * 0.25;
+  g.add(mesh(G.box, mat(0x8a6a4a), 0.36, 0.18, 0.5, 0, 0.24, 0));
+  for (const sx of [-0.2, 0.2]) { const w = mesh(G.cyl, mat(0x3a2a1a), 0.1, 0.04, 0.1, sx, 0.1, 0.05); w.rotation.z = Math.PI / 2; g.add(w); }
+  const h = mesh(G.box, mat(0x5a4028), 0.04, 0.04, 0.4, 0.1, 0.32, -0.42); h.rotation.x = -0.5; g.add(h);
+  g.rotation.z = 0.12; g.visible = false; g.traverse((o) => { o.userData.key = 'lost'; }); S.add(g); carts.push(g);
+}
+/* library: a little book stack sign; post office: a post box */
+B.post.g.add(mesh(G.cyl, mat(0xb8322e), 0.14, 0.5, 0.14, 1.15, 0.25, 0.9));
+/* the shop window: a wide glowing window that is the brightest thing in town when something went live */
+const shopGlass = glowMat(0xfff1c8, 0.4); shopGlass.color.set(0x443322);
+const shopWin = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 0.62), shopGlass); shopWin.position.set(0, 0.62, B.shop.d / 2 + 0.02); B.shop.g.add(shopWin); shopWin.userData.key = 'shop';
+const shopAwn = mesh(G.box, mat(0xd9534f), 2.6, 0.06, 0.5, 0, 1.08, B.shop.d / 2 + 0.22); shopAwn.rotation.x = 0.35; B.shop.g.add(shopAwn);
+const shopLight = new THREE.PointLight(0xffe2a8, 0, 6, 2); shopLight.position.set(B.shop.x, 1.2, B.shop.z + 1.6); S.add(shopLight);
+/* goods on the stall in front of the shop: one per thing that went live that day (gold = a win) */
+const goods = [];
+for (let i = 0; i < 8; i++) { const m = glowMat(0xffd76a, 1.2); const o = mesh(G.box, m, 0.2, 0.2, 0.2, B.shop.x - 1.05 + i * 0.3, 0.55, B.shop.z + 1.25); o.visible = false; S.add(o); goods.push(o); }
+const stall = mesh(G.box, mat(0x7a5a3a), 2.6, 0.08, 0.5, B.shop.x, 0.42, B.shop.z + 1.25); S.add(stall);
+for (const sx of [-1.2, 1.2]) S.add(mesh(G.box, mat(0x5a4028), 0.06, 0.42, 0.06, B.shop.x + sx, 0.21, B.shop.z + 1.25));
+const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), glowMat(0xffd76a, 2)); star.position.set(B.shop.x, 3.4, B.shop.z); star.visible = false; S.add(star);
+
+/* the yard: floor, fence, benches, one lamp per suite */
+(function yard() {
+  const b = B.yard, g = new THREE.Group(); g.position.set(b.x, 0, b.z);
+  g.add(mesh(G.box, mat(0x55607a), b.w, 0.06, b.d, 0, 0.03, 0));
+  for (const [x, z, w, d] of [[0, -b.d / 2, b.w, 0.05], [0, b.d / 2, b.w, 0.05], [-b.w / 2, 0, 0.05, b.d], [b.w / 2, 0, 0.05, b.d]]) g.add(mesh(G.box, mat(0x8a7a5e), w, 0.22, d, x, 0.17, z));
+  g.traverse((o) => { o.userData.key = 'yard'; }); pickables.push(g); S.add(g); b.g = g;
+})();
+const lamps = [];
+for (let i = 0; i < 18; i++) {
+  const x = B.yard.x - 1.35 + (i % 6) * 0.54, z = B.yard.z - 0.8 + Math.floor(i / 6) * 0.8;
+  const m = glowMat(0x7fd18b, 1.4); const bulb = mesh(G.sph, m, 0.13, 0.13, 0.13, x, 0.42, z); bulb.castShadow = false;
+  const pole = mesh(G.cyl, mat(0x333a4a), 0.025, 0.3, 0.025, x, 0.15, z);
+  bulb.visible = pole.visible = false; bulb.userData.key = pole.userData.key = 'yard'; S.add(bulb); S.add(pole); lamps.push({ bulb, pole, m, st: '' });
+}
+const yardLight = new THREE.PointLight(0x7fd18b, 0, 7, 2); yardLight.position.set(B.yard.x, 1.6, B.yard.z); S.add(yardLight);
+
+/* paths and the bridge */
+const pathMat = mat(0x8a7a5e);
+const paths = new THREE.Group(); S.add(paths);
+function path(ax, az, bx, bz, w, grp) {
+  const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w || 0.55, L), pathMat); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(dx, dz);
+  m.position.set((ax + bx) / 2, 0.02, (az + bz) / 2); m.receiveShadow = true; (grp || S).add(m); return m;
+}
+for (const k of ['library', 'yard', 'post', 'shop']) path(0, 0, B[k].x, B[k].z);
+path(B.post.x, B.post.z, B.yard.x, B.yard.z, 0.4);
+path(B.shop.x, B.shop.z, 0, -9.2, 0.7);
+path(B.post.x, B.post.z, B.lost.x, B.lost.z, 0.4);
+const bridge = mesh(G.box, mat(0x7a5a3a), 1.5, 0.14, 6.6, 0, 0.1, B.bridge.z); S.add(bridge);
+bridge.userData.key = 'bridge'; pickables.push(bridge);
+for (const s of [-1, 1]) for (let i = 0; i < 7; i++) S.add(mesh(G.box, mat(0x5a4028), 0.08, 0.5, 0.08, s * 0.72, 0.35, B.bridge.z + 3.1 - i * 1.03));
+path(0, B.bridge.z - 3.3, HOME.x, HOME.z + 1, 0.7);
+
+/* trees around the edge */
+for (let i = 0; i < 26; i++) {
+  const a = i / 26 * Math.PI * 2 + 0.13, r = 12.6 + (hash('t' + i) % 100) / 60;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r; if (Math.abs(x) < 2.4 && z < -8) continue;
+  const h = 0.8 + (hash('h' + i) % 100) / 120;
+  S.add(mesh(G.cyl, mat(0x5a4028), 0.07, h * 0.5, 0.07, x, h * 0.25, z));
+  S.add(mesh(G.cone, mat(i % 3 ? 0x2f5a3a : 0x3c6a40), 0.45, h * 1.3, 0.45, x, h * 0.5 + h * 0.6, z));
+}
+
+/* lanterns (warm, but softer than the finished-work lights) */
+const lanternLights = [], lanternBulbs = [];
+[[-2.6, -1.3], [-2.8, 1.1], [2.7, -1.6], [2.7, 0.8], [0.3, -2.4], [-1.3, 2.6], [1.4, 2.4], [0.5, -8.2], [0.5, -16.0]].forEach(([x, z]) => {
+  S.add(mesh(G.cyl, mat(0x2a2a2a), 0.03, 0.9, 0.03, x, 0.45, z));
+  const bm = glowMat(0xffb44a, 1.2); bm.color.set(0xffd08a); const bulb = mesh(G.sph, bm, 0.08, 0.08, 0.08, x, 0.94, z); S.add(bulb); lanternBulbs.push(bm);
+  const L = new THREE.PointLight(0xffb44a, 0.7, 4.2, 2); L.position.set(x, 1.1, z); S.add(L); lanternLights.push(L);
+});
+
+/* stars and moon */
+const sg = new THREE.BufferGeometry(), sp = [];
+for (let i = 0; i < 600; i++) { const a = Math.random() * Math.PI * 2, e = 0.12 + Math.random() * 1.25, r = 100; sp.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r); }
+sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfff6e0, size: 0.6, sizeAttenuation: true, fog: false })); S.add(stars);
+const moon = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff1d0, fog: false })); moon.position.set(-60, 42, -70); S.add(moon);
+
+/* weather from the tests: sunshine (all green), clouds (flaky), storm (failures), rainbow (a win) */
+const clouds = new THREE.Group(); S.add(clouds);
+const cloudM = new THREE.MeshStandardMaterial({ color: 0xdfe4ee, roughness: 1, transparent: true, opacity: 0.88, depthWrite: false });
+for (let i = 0; i < 7; i++) {
+  const c = new THREE.Group(), a = i / 7 * Math.PI * 2, r = 5 + (i % 3) * 2.5;
+  c.position.set(Math.cos(a) * r, 8.5 + (i % 2) * 1.2, Math.sin(a) * r - 3);
+  for (let j = 0; j < 4; j++) { const p = new THREE.Mesh(G.sph, cloudM); p.scale.set(1.1 - j * 0.12, 0.65, 0.8); p.position.set(j * 0.9 - 1.3, (j % 2) * 0.3, (j % 3) * 0.25); c.add(p); }
+  clouds.add(c);
+}
+clouds.visible = false;
+const rainG = new THREE.BufferGeometry(), rainP = new Float32Array(900 * 3);
+for (let i = 0; i < 900; i++) { rainP[i * 3] = (Math.random() - 0.5) * 26; rainP[i * 3 + 1] = Math.random() * 9; rainP[i * 3 + 2] = (Math.random() - 0.5) * 26 - 3; }
+rainG.setAttribute('position', new THREE.BufferAttribute(rainP, 3));
+const rain = new THREE.Points(rainG, new THREE.PointsMaterial({ color: 0x9fb8e0, size: 0.07, transparent: true, opacity: 0.7 })); rain.visible = false; S.add(rain);
+const rainbow = new THREE.Group(); rainbow.position.set(-2, 0, -12); rainbow.rotation.y = 0.5;
+[0xff5a5a, 0xffa24a, 0xffe36a, 0x7fd18b, 0x6aa6e8, 0x9a7ae0].forEach((c, i) => {
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(11 - i * 0.32, 0.16, 6, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.55, fog: false, depthWrite: false })); rainbow.add(arc);
+});
+rainbow.visible = false; S.add(rainbow);
+let flash = 0;
+
+/* Harry's town: four machines, the pond with the fox, the residents on the green */
+const HM = [['Mini', -2.4, 0.2, 1.0, 0x6aa6e8], ['Radeon', -0.4, -1.8, 1.5, 0x4f86c6], ['Dell', 2.4, 0.4, 1.3, 0x6fbf8f], ['Mill', 0.2, 2.4, 1.4, 0xe0a15a]];
+const homeB = {};
+for (const [n, x, z, h, roof] of HM) { const b = { x: HOME.x + x, z: HOME.z + z, w: 1.5, d: 1.2, h, roof, wall: 0xcfc2a6, name: n }; house(b, 'harry'); homeB[n] = b;
+  const lamp = mesh(G.sph, glowMat(0xffc857, 1.6), 0.13, 0.13, 0.13, b.x + 0.6, h + 0.25, b.z + 0.62); lamp.castShadow = false; S.add(lamp); b.lamp = lamp; }
+const mill = new THREE.Group(); mill.position.set(homeB.Mill.x, homeB.Mill.h + 0.55, homeB.Mill.z + 0.64); S.add(mill);
+for (let i = 0; i < 4; i++) { const blade = mesh(G.box, mat(0xe8dcc4), 0.1, 0.9, 0.02, 0, 0.45, 0); const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; arm.add(blade); mill.add(arm); }
+const pond = new THREE.Mesh(new THREE.CircleGeometry(0.75, 28), new THREE.MeshStandardMaterial({ color: 0x3d6f9a, roughness: 0.2, metalness: 0.2 })); pond.rotation.x = -Math.PI / 2; pond.position.set(homeB.Mini.x - 0.4, 0.025, homeB.Mini.z + 1.7); S.add(pond);
+const fox = new THREE.Group(); fox.position.set(pond.position.x + 0.15, 0.02, pond.position.z - 0.05);
+{ const o = mat(0xe07a2e), w = mat(0xf5ead8);
+  fox.add(mesh(G.sph, o, 0.2, 0.14, 0.12, 0, 0.14, 0)); fox.add(mesh(G.sph, o, 0.1, 0.1, 0.1, 0.2, 0.25, 0));
+  const ear1 = mesh(G.cone, o, 0.035, 0.08, 0.035, 0.22, 0.36, 0.04), ear2 = ear1.clone(); ear2.position.z = -0.04; fox.add(ear1, ear2);
+  fox.add(mesh(G.cone, o, 0.03, 0.08, 0.03, 0.3, 0.24, 0)).children; const snout = fox.children[fox.children.length - 1]; snout.rotation.z = -Math.PI / 2;
+  const tail = mesh(G.sph, o, 0.16, 0.06, 0.06, -0.24, 0.12, 0.05); tail.rotation.y = 0.5; fox.add(tail); fox.add(mesh(G.sph, w, 0.05, 0.045, 0.045, -0.38, 0.12, 0.12)); }
+fox.rotation.y = 2.4; fox.visible = false; S.add(fox);
+const heads = [];
+function buildHeads() {
+  for (const h of heads) S.remove(h.g); heads.length = 0;
+  const n = WALL.speakers.length;
+  WALL.speakers.forEach(([name, st], i) => {
+    const a = Math.PI * 0.15 + i / Math.max(1, n - 1) * Math.PI * 0.7, r = 4.5;
+    const col = st === 'ok' ? 0x7bd88f : st === 'empty' ? 0xff7a6b : st === 'unproven' ? 0xf2b660 : 0x5d6f8c;
+    const g = new THREE.Group(); g.position.set(HOME.x + Math.cos(a + Math.PI) * r, 0, HOME.z - Math.sin(a + Math.PI) * r * 0.3 + 2.8);
+    g.add(mesh(G.cyl, mat(0x40506e), 0.09, 0.2, 0.09, 0, 0.1, 0));
+    g.add(mesh(G.sph, st === 'ok' || st === 'empty' ? glowMat(col, 0.35) : mat(col), 0.11, 0.11, 0.11, 0, 0.3, 0));
+    g.traverse((o) => { o.userData.key = 'harry'; }); S.add(g); heads.push({ g, st });
+  });
+}
+
+/* chimney smoke from the hut: grey normally, WHITE when something was rebuilt that already existed */
+const puffs = [];
+for (let i = 0; i < 14; i++) { const p = new THREE.Mesh(G.sph, new THREE.MeshStandardMaterial({ color: 0xcfd3dc, transparent: true, opacity: 0.5, depthWrite: false })); p.userData.t = i / 14; S.add(p); puffs.push(p); }
+
+/* builders: little figures with a small lantern */
+function figure() {
+  const g = new THREE.Group(), cm = new THREE.MeshStandardMaterial({ color: 0x3f6f8f, roughness: 0.8 });
+  g.add(mesh(G.cyl, cm, 0.13, 0.34, 0.15, 0, 0.2, 0)); g.add(mesh(G.sph, mat(0xf1d2b4), 0.11, 0.11, 0.11, 0, 0.46, 0));
+  g.add(mesh(G.cone, mat(0xffb44a), 0.12, 0.16, 0.12, 0, 0.6, 0));
+  const glow = mesh(G.sph, glowMat(0xffd08a, 0.9), 0.045, 0.045, 0.045, 0.16, 0.28, 0); glow.castShadow = false; g.add(glow);
+  g.visible = false; S.add(g); return { g, cm, route: null, phase: 0, speed: 0.1, ev: null };
+}
+const walkers = Array.from({ length: 16 }, figure);
+/* parcels at the post office: one per commit that day */
+const parcels = [];
+for (let i = 0; i < 30; i++) { const o = mesh(G.box, mat(0xb08a5a), 0.22, 0.16, 0.22, B.post.x + 1.2 + (i % 5) * 0.27, 0.08 + Math.floor(i / 15) * 0.17, B.post.z - 0.6 + (Math.floor(i / 5) % 3) * 0.27); o.visible = false; o.userData.key = 'post'; S.add(o); parcels.push(o); }
+/* wagons: orders waiting at the bridge, or rolling to Harry's town */
+function wagon() {
+  const g = new THREE.Group();
+  g.add(mesh(G.box, mat(0xa8763e), 0.5, 0.28, 0.7, 0, 0.28, 0));
+  const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.7, 12, 1, false, 0, Math.PI), mat(0xf0e6d0)); cover.rotation.x = Math.PI / 2; cover.rotation.z = Math.PI / 2; cover.position.y = 0.42; g.add(cover);
+  for (const [x, z] of [[-0.27, 0.22], [0.27, 0.22], [-0.27, -0.22], [0.27, -0.22]]) { const w = mesh(G.cyl, mat(0x3a2a1a), 0.11, 0.05, 0.11, x, 0.11, z); w.rotation.z = Math.PI / 2; g.add(w); }
+  g.visible = false; g.traverse((o) => { o.userData.key = 'bridge'; }); S.add(g); return { g, roll: false, t: 0 };
+}
+const wagons = Array.from({ length: 6 }, wagon);
+
+/* workshops: one per active branch, built from data */
+const SLOTS = [[6, 120], [6, 160], [6, 200], [6.4, 240], [10, 135], [10, 170], [10, 205], [10, 100]];
+const wsGroup = new THREE.Group(); S.add(wsGroup);
+let wsKeys = '';
+const WS_ROOFS = [0x3f6f8f, 0x5a4a8a, 0x4f7a5a, 0x8a5a7a, 0x6a7a3a, 0x3a6a7a, 0x7a4a3a, 0x5a5a8a];
+function buildWorkshops() {
+  const keys = WORKSHOPS.join('|'); if (keys === wsKeys) return; wsKeys = keys;
+  for (const k in B) if (k.startsWith('workshop:')) { const i = pickables.indexOf(B[k].g); if (i >= 0) pickables.splice(i, 1); const wi = winMats.indexOf(B[k].win); if (wi >= 0) winMats.splice(wi, 1); delete B[k]; }
+  while (wsGroup.children.length) wsGroup.remove(wsGroup.children[0]);
+  WORKSHOPS.forEach((br, i) => {
+    const [r, deg] = SLOTS[i % SLOTS.length], a = deg * Math.PI / 180, key = 'workshop:' + br;
+    const b = { x: Math.cos(a) * r, z: Math.sin(a) * r, w: 2.2, d: 1.7, h: 1.2, roof: WS_ROOFS[hash(br) % WS_ROOFS.length], wall: 0xd7c7a7, name: 'Workshop · ' + br.split('/').pop(), eye: 'Branch ' + br, branch: br };
+    B[key] = b; const g = house(b, key); S.remove(g); wsGroup.add(g); g.lookAt(0, 0, 0);
+    /* face the hut: rotate so the door (+z) points to the town centre */
+    path(0, 0, b.x, b.z, 0.5, wsGroup);
+  });
+  rebuildLabels();
+}
+
+/* optional Kenney models: assets/models.json maps "hut", "workshop", "shop", "post", "library", "home" to .glb files */
+async function tryModels() {
+  if (OFFLINE || Q.has('nomodels')) return;
+  let map; try { const r = await fetch('assets/models.json'); if (!r.ok) return; map = await r.json(); } catch (e) { return; }
+  await new Promise((ok) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
+  if (!THREE.GLTFLoader) return;
+  const L = new THREE.GLTFLoader();
+  const swap = (b, url) => L.load(url, (gl) => {
+    const m = gl.scene; const box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3());
+    const s = Math.min(b.w / sz.x, b.d / sz.z) * 1.05; m.scale.setScalar(s); m.position.y = -box.min.y * s;
+    m.traverse((o) => { o.castShadow = o.receiveShadow = true; o.userData.key = b.g.children[0].userData.key; });
+    b.body.visible = false; b.roofM.visible = false; b.g.add(m);
+  }, undefined, () => { /* keep the drawn shape */ });
+  for (const k in B) { const b = B[k]; if (!b.g || b.flat || b.yard) continue; const url = map[k.startsWith('workshop:') ? 'workshop' : k]; if (url) swap(b, url); }
+  for (const n in homeB) if (map.home) swap(homeB[n], map.home);
+}
+
+/* v2 hooks: power cuts, the car park and jams, the town hall (see ATLAS.md) plug in here without touching the core.
+   HOOKS.state(fns) get (state, events) after each time change; HOOKS.frame(fns) get (dt, secs) every frame;
+   HOOKS.card[key](state) returns extra card HTML for a building. */
+const HOOKS = { state: [], frame: [], card: {} };
+window.WORKS_HOOKS = HOOKS;
+
+/* =====================================================================================================
+   5. Labels over the buildings
+   ===================================================================================================== */
+const labEl = document.getElementById('labels');
+let labs = [];
+function addLabel(pos, key, cls) {
+  const d = document.createElement('div'); d.className = 'lab ' + (cls || '');
+  if (key) { d.tabIndex = 0; d.setAttribute('role', 'button'); d.onclick = () => openCard(key); d.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(key); } }; d.dataset.key = key; }
+  labEl.appendChild(d); const l = { d, obj: pos, key, html: '' }; labs.push(l); return l;
+}
+function setLab(l, html, cls) { if (l.html !== html) { l.d.innerHTML = html; l.html = html; } if (cls !== undefined && l.cls !== cls) { l.d.className = 'lab ' + cls; l.cls = cls; } }
+let chipLabs = [];
+function rebuildLabels() {
+  for (const l of labs) l.d.remove(); labs = []; chipLabs = [];
+  for (const k in B) { const b = B[k]; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 3.6 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
+  WALL.chips.forEach((c, i) => { chipLabs.push(addLabel(new THREE.Vector3(HOME.x - 4.5 + i * 3, 5.6 + (i % 2) * 0.7, HOME.z - 3), null, 'chip ' + (c.s || ''))); });
+  for (const n in homeB) homeB[n].lab = addLabel(new THREE.Vector3(homeB[n].x, homeB[n].h * 2.05 + 0.25, homeB[n].z), 'harry', 'tiny');
+  labs.foxLab = addLabel(new THREE.Vector3(fox.position.x, 0.9, fox.position.z), 'harry', 'tiny');
+  labs.smokeLab = addLabel(new THREE.Vector3(B.hut.x + 0.6, B.hut.h + 3.4, B.hut.z - 0.6), 'hut', 'tiny');
+  paintLabels();
+}
+
+/* =====================================================================================================
+   6. The state of the town at time T (live, or anywhere on the timeline)
+   ===================================================================================================== */
+const view = { day: dayKey(NOW()), T: NOW(), live: true, playing: false, card: null };
+let ST = {};
+const VERIFIED = (e) => (e.kind === 'test' && e.status === 'pass') || e.kind === 'deploy' || e.kind === 'win' || e.kind === 'result';
+const evClass = (e) => e.kind === 'win' ? 'w' : VERIFIED(e) ? 'v' : (e.kind === 'fail' || (e.kind === 'test' && e.status === 'fail')) ? 'f' : (e.who === 'harry' ? 'h' : 'q');
+function whereName(w) { if (!w) return ''; if (w.startsWith('workshop:')) return 'Workshop · ' + w.slice(9).split('/').pop(); return (B[w] && B[w].name) || w; }
+function routeFor(e) {
+  const w = e.where || '';
+  if (e.kind === 'test' || e.kind === 'order' || e.kind === 'download' || e.where === 'harry') return null;
+  if (e.kind === 'end') return B[w] && w !== 'hut' ? [w, 'hut'] : null;
+  if (e.kind === 'hire' || e.kind === 'start') return ['hut', B[w] && w !== 'hut' ? w : (e.ref && B['workshop:' + e.ref] ? 'workshop:' + e.ref : 'library')];
+  if (e.kind === 'deploy' || e.kind === 'win') return ['post', 'shop'];
+  if (w.startsWith('workshop:') && B[w]) return [w, 'yard', 'post'];
+  if (w === 'library') return ['library', 'post'];
+  if (w === 'bridge') return ['hut', 'shop', 'bridgeHead'];
+  if (w === 'hut') return ['hut', 'library'];
+  return null;
+}
+const su0 = (s) => Object.values(s.suites);
+/* lost property: a "start" with no "end" and no sign of life (a commit, step or fix from the same builder or branch) for 2 hours */
+function lostProperty(T) {
+  const open = [];
+  for (const e of EV) {
+    if (e.t > T) break;
+    if (e.kind === 'start') { open.push({ s: e, life: e.t }); continue; }
+    if (e.kind === 'end') {
+      const m = open.find((o) => o.s.ref && o.s.ref === e.ref && o.s.who === e.who) || open.find((o) => o.s.ref && o.s.ref === e.ref) || open.find((o) => !e.ref && o.s.who === e.who);
+      if (m) open.splice(open.indexOf(m), 1); continue;
+    }
+    for (const o of open) if (e.who === o.s.who || (o.s.ref && (e.branch === o.s.ref || e.ref === o.s.ref)) || ((o.s.where || '').startsWith('workshop:') && e.where === o.s.where)) o.life = e.t;
+  }
+  return open.filter((o) => T - o.life > 2 * HOUR).map((o) => Object.assign({}, o.s, { life: o.life }));
+}
+function computeState(T) {
+  const d0 = dayStart(view.day), d1 = d0 + DAY;
+  const s = { T, day: [], busy: {}, suites: {}, live: [], wins: 0, parcels: [], orders: [], walkers: [], counts: {}, fails: {} };
+  const orderDone = new Set();
+  for (const e of EV) {
+    if (e.t > T) break;
+    if (e.t >= d0 && e.t < d1) {
+      s.day.push(e);
+      if (e.kind === 'commit' || e.kind === 'deploy') s.parcels.push(e);
+      if (e.kind === 'deploy' || e.kind === 'win') { s.live.push(e); if (e.kind === 'win') s.wins++; }
+      if (e.where) s.counts[e.where] = (s.counts[e.where] || 0) + 1;
+    }
+    if (e.kind === 'test' && e.suite && e.t > T - 2 * DAY) s.suites[e.suite] = e;
+    if (e.kind === 'fail' && e.t > T - 6 * HOUR) s.fails[e.where] = e;
+    if (e.kind === 'result' && e.ref) orderDone.add(e.ref);
+    if (e.kind === 'order' && e.t > T - 2 * DAY) s.orders.push(e);
+    if (e.t > T - 45 * MIN && e.where) s.busy[e.where] = (s.busy[e.where] || 0) + 1;
+    if (e.t > T - CFG.walkMin * MIN && routeFor(e)) s.walkers.push(e);
+  }
+  s.orders = s.orders.filter((o) => !orderDone.has(o.ref));
+  s.lost = lostProperty(T);
+  s.flaky = su0(s).some((e) => e.status === 'flaky');
+  s.failN = su0(s).filter((e) => e.status === 'fail').length + Object.keys(s.fails).length;
+  const lastWin = s.day.filter((e) => e.kind === 'win').pop();
+  s.rainbow = !!(lastWin && T - lastWin.t < 2 * HOUR);
+  s.weather = s.failN ? 'storm' : s.flaky ? 'clouds' : 'sunshine';
+  s.walkers = s.walkers.slice(-walkers.length);
+  const su = Object.values(s.suites); s.pass = su.filter((e) => e.status === 'pass').length; s.nSuites = su.length;
+  s.anyFail = su.some((e) => e.status === 'fail');
+  s.lastEv = s.day.length ? s.day[s.day.length - 1] : null;
+  return s;
+}
+function applyTime(T) {
+  view.T = T; ST = computeState(T);
+  /* walkers */
+  walkers.forEach((w, i) => {
+    const e = ST.walkers[i];
+    if (!e) { w.g.visible = false; w.ev = null; return; }
+    if (w.ev !== e) { w.ev = e; w.route = routeFor(e); const h = hash(e.who + e.t); w.phase = (h % 1000) / 1000; w.speed = 0.07 + (h % 7) / 200; w.cm.color.setHSL(((hash(e.who) % 360) / 360), 0.42, 0.42); }
+    w.g.visible = true;
+  });
+  /* yard lamps */
+  const su = Object.values(ST.suites).sort((a, b) => a.suite.localeCompare(b.suite));
+  lamps.forEach((l, i) => {
+    const e = su[i]; l.bulb.visible = l.pole.visible = !!e; if (!e) return; l.st = e.status;
+    const c = e.status === 'pass' ? 0x7fd18b : e.status === 'fail' ? 0xff6a75 : 0xffc65a; l.m.color.set(c); l.m.emissive.set(c);
+    l.m.emissiveIntensity = e.status === 'pass' ? 2.2 : 1.2; l.bulb.scale.setScalar(e.status === 'pass' ? 0.15 : 0.12);
+  });
+  yardLight.color.set(ST.anyFail ? 0xff6a75 : 0x7fd18b); yardLight.userData.on = ST.nSuites > 0;
+  /* shop: brightest when something went live that day */
+  goods.forEach((o, i) => { const e = ST.live[ST.live.length - 1 - i]; o.visible = !!e; if (e) { const c = e.kind === 'win' ? 0xffd76a : 0xfff1c8; o.material.color.set(c); o.material.emissive.set(c); } });
+  const lastWin = ST.live.filter((e) => e.kind === 'win').pop();
+  star.visible = !!(lastWin && T - lastWin.t < 3 * HOUR);
+  shopGlass.userData.target = ST.live.length ? 2.4 : 0.35;
+  /* parcels */
+  parcels.forEach((o, i) => { o.visible = i < ST.parcels.length; });
+  /* wagons: open orders wait at the bridge; one ordered in the last 40 min rolls over to Harry's town */
+  wagons.forEach((v, i) => { const o = ST.orders[i]; v.g.visible = !!o; v.roll = !!(o && T - o.t < CFG.walkMin * MIN); v.slot = i; });
+  /* lost property */
+  carts.forEach((c, i) => { c.visible = i < ST.lost.length; });
+  alarmM.userData.on = ST.lost.length > 0;
+  /* weather */
+  clouds.visible = ST.weather !== 'sunshine'; rain.visible = ST.weather === 'storm'; rainbow.visible = ST.rainbow;
+  cloudM.color.set(ST.weather === 'storm' ? 0x6a7184 : 0xdfe4ee);
+  for (const f of HOOKS.state) { try { f(ST, EV); } catch (e) { /* a v2 hook must never stop the town */ } }
+  /* windows: activity is warm but quiet */
+  for (const k in B) if (B[k].win) B[k].win.userData.target = (ST.busy[k] ? 0.75 : 0.32);
+  paintLabels(); renderPanels();
+}
+function paintLabels() {
+  if (!ST.day) return;
+  for (const l of labs) {
+    const k = l.key; if (!k || !B[k] || l === labs.foxLab || l === labs.smokeLab || l.d.classList.contains('tiny')) continue;
+    const b = B[k], n = ST.counts[k] || 0;
+    let dot = ST.busy[k] ? 'on' : '', sub = '', cls = '';
+    if (k === 'yard') { sub = ST.nSuites ? ST.pass + ' of ' + ST.nSuites + ' suites pass' : 'no tests yet'; dot = ST.anyFail ? 'bad' : ST.nSuites ? 'ok' : ''; if (ST.nSuites && !ST.anyFail) cls = 'win'; }
+    else if (k === 'shop') { sub = ST.live.length ? ST.live.length + ' went live' : 'nothing new live'; if (ST.live.length) { dot = 'ok'; cls = 'win'; } }
+    else if (k === 'post') sub = ST.parcels.length + ' parcels';
+    else if (k === 'lost') { sub = ST.lost.length ? ST.lost.length + ' stopped, never picked up' : 'nothing lost'; if (ST.lost.length) dot = 'bad'; }
+    else if (k === 'bridge') sub = ST.orders.length ? ST.orders.length + ' wagons waiting' : 'no wagons waiting';
+    else if (k === 'harry') sub = 'Mini · Radeon · Dell · Mill';
+    else sub = n ? n + (n === 1 ? ' thing' : ' things') + ' today' : 'quiet today';
+    if (ST.fails[k]) dot = 'bad';
+    setLab(l, '<span class="dot ' + dot + '"></span>' + esc(b.name) + '<small>' + esc(sub) + '</small>', cls);
+  }
+  WALL.chips.forEach((c, i) => { if (chipLabs[i]) setLab(chipLabs[i], '<b>' + esc(c.v) + '</b>' + esc(c.t)); });
+  for (const n in homeB) { const m = WALL.machines[n] || {}; if (homeB[n].lab) setLab(homeB[n].lab, '<span class="dot ' + (m.state === 'busy' ? 'on' : '') + '"></span>' + esc(n) + ' · ' + esc(m.doing || '')); }
+  const foxOn = Object.values(WALL.machines).some((m) => m.state === 'idle' && m.waiting > 0);
+  fox.visible = foxOn; if (labs.foxLab) { setLab(labs.foxLab, 'Fox in the pond: a machine idle while work waits'); labs.foxLab.d.style.visibility = foxOn ? '' : 'hidden'; }
+  if (labs.smokeLab) { setLab(labs.smokeLab, 'White smoke: ' + WALL.rebuilt + ' rebuilt that already existed'); labs.smokeLab.d.style.visibility = WALL.rebuilt ? '' : 'hidden'; }
+  for (const n in homeB) homeB[n].lamp.visible = (WALL.machines[n] || {}).state === 'busy';
+}
+
+/* =====================================================================================================
+   7. Panels: stats, diary, timeline, cards
+   ===================================================================================================== */
+const $ = (id) => document.getElementById(id);
+function renderPanels() {
+  const s = ST, today = view.day === dayKey(NOW());
+  const busyWs = WORKSHOPS.filter((b) => s.counts['workshop:' + b]).length;
+  $('stats').innerHTML =
+    '<div class="stat v"><b>' + s.live.length + '</b><span>went live</span></div>' +
+    '<div class="stat v"><b>' + (s.nSuites ? s.pass + '/' + s.nSuites : '–') + '</b><span>test suites pass</span></div>' +
+    '<div class="stat q"><b>' + busyWs + '</b><span>workshops busy</span></div>' +
+    '<div class="stat q"><b>' + s.parcels.length + '</b><span>parcels posted</span></div>' +
+    '<div class="stat q"><b>' + s.orders.length + '</b><span>orders waiting</span></div>' +
+    '<div class="stat ' + (s.weather === 'sunshine' ? 'v' : 'q') + '"><b>' + ({ sunshine: '☀', clouds: '☁', storm: '⛈' }[s.weather]) + '' + '</b><span>' + ({ sunshine: 'all tests green', clouds: 'flaky tests', storm: 'failures' }[s.weather]) + (s.rainbow ? ', a win' : '') + '</span></div>' +
+    (s.lost.length ? '<div class="stat"><b style="color:var(--rose)">' + s.lost.length + '</b><span>lost property</span></div>' : '');
+  $('dEye').textContent = (today ? 'Today' : dayName(view.day)) + (view.live ? ' · live' : ' · at ' + hhmm(view.T));
+  const evs = s.day.slice(-80).reverse();
+  $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + '"><time>' + hhmm(e.t) + '</time><p>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) +
+    '<br><span class="who">' + esc(whereName(e.where)) + (e.src === 'github' ? ' · GitHub' : '') + '</span></p></div>').join('') : '<p class="sub">Nothing yet on this day.</p>';
+  $('clock').textContent = hhmm(view.T);
+  const le = s.lastEv; $('cap').textContent = le ? (hhmm(le.t) + ' · ' + le.what) : 'Quiet so far.';
+  $('dayName').textContent = today ? 'Today' : dayName(view.day);
+  const d0 = dayStart(view.day), mins = Math.round((view.T - d0) / MIN); if (!view.dragging) $('scrub').value = Math.max(0, Math.min(1440, mins));
+  $('bLive').setAttribute('aria-pressed', String(view.live));
+  if (view.card) fillCard(view.card);
+  renderSource();
+}
+function renderSource() {
+  const ago = net.lastOk ? Math.round((Date.now() - net.lastOk) / MIN) : -1;
+  let dot = 'off', txt;
+  if (OFFLINE) txt = 'Offline mode: bundled ledger only';
+  else if (net.lastOk && !net.limited) { dot = 'live'; txt = 'Live from GitHub · checked ' + (ago < 1 ? 'just now' : ago + ' min ago'); }
+  else if (net.limited) { dot = 'cache'; txt = 'GitHub says wait (rate limit): showing the last copy'; }
+  else if (Object.keys(cache.u).length) { dot = 'cache'; txt = 'Offline: showing the last copy from GitHub'; }
+  else txt = 'Offline: showing the ledger only';
+  txt += ' · ledger: ' + ({ github: 'GitHub', bundled: 'bundled copy', cache: 'last copy', none: 'none' }[net.ledgerFrom] || '…');
+  $('src').innerHTML = '<i class="' + dot + '"></i>' + esc(txt);
+}
+function renderTicks() {
+  const d0 = dayStart(view.day), d1 = d0 + DAY, html = [];
+  for (const e of EV) { if (e.t < d0 || e.t >= d1) continue; const c = evClass(e), k = c === 'q' ? (e.kind === 'order' ? 'o' : 'c') : c; html.push('<span class="tk ' + k + '" style="left:' + ((e.t - d0) / DAY * 100).toFixed(2) + '%"></span>'); }
+  $('ticks').innerHTML = html.join('');
+}
+const li = (e) => '<li class="' + evClass(e) + '"><time>' + hhmm(e.t) + '</time><span>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + '</span></li>';
+const list = (arr, empty) => arr.length ? '<ul>' + arr.map(li).join('') + '</ul>' : '<p class="sub">' + esc(empty) + '</p>';
+function fillCard(k) {
+  const b = B[k]; if (!b) return;
+  const s = ST, at = view.live ? 'now' : 'at ' + hhmm(view.T), dayEv = s.day.filter((e) => e.where === k).slice().reverse();
+  $('cEye').textContent = b.eye; $('cTitle').textContent = b.name;
+  let h = '';
+  if (k.startsWith('workshop:')) {
+    const br = b.branch, commits = dayEv.filter((e) => e.kind === 'commit'), other = dayEv.filter((e) => e.kind !== 'commit');
+    const older = EV.filter((e) => e.where === k && e.t <= view.T && e.t < dayStart(view.day)).slice(-5).reverse();
+    h += '<h3>Saved changes (commits) this day</h3>' + list(commits, 'No commits on this day.');
+    if (other.length) h += '<h3>From the ledger</h3>' + list(other, '');
+    if (!commits.length && older.length) h += '<h3>Earlier this week</h3>' + list(older, '');
+    h += '<p class="note"><a href="https://github.com/' + CFG.repo + '/commits/' + encodeURIComponent(br) + '" target="_blank" rel="noopener">All commits on ' + esc(br) + '</a></p>';
+  } else if (k === 'yard') {
+    const su = Object.values(s.suites).sort((a, b) => (a.status === 'pass') - (b.status === 'pass') || a.suite.localeCompare(b.suite));
+    h += '<h3>Test suites ' + esc(at) + '</h3>' + (su.length ? '<div class="lamps">' + su.map((e) => '<div title="' + esc(e.what) + '"><i class="' + esc(e.status) + '"></i><span>' + esc(e.suite) + (e.n ? ' ' + esc(e.n) : '') + '</span></div>').join('') + '</div>' : '<p class="sub">No test results yet.</p>');
+    h += '<p class="note">Green passed · red failed · amber flaky (fails the same on the old build too)</p>';
+    h += '<h3>Yard log</h3>' + list(s.day.filter((e) => e.kind === 'test').slice().reverse(), 'No tests on this day.');
+  } else if (k === 'post') {
+    h += '<h3>Last parcels (commits)</h3>' + list(s.parcels.slice(-14).reverse().map((e) => Object.assign({}, e, { what: (e.branch ? e.branch.split('/').pop() + ': ' : '') + e.what })), 'No parcels on this day.');
+  } else if (k === 'shop') {
+    h += '<h3>Went live this day</h3>' + list(s.live.slice().reverse(), 'Nothing new went live on this day.');
+    const runs = (GH.runs || []).filter((r) => Date.parse(r.t) <= view.T).slice(0, 4);
+    if (runs.length) h += '<h3>GitHub Pages builds</h3><ul>' + runs.map((r) => '<li class="' + (r.conclusion === 'success' ? 'v' : r.conclusion === 'failure' ? 'f' : 'q') + '"><time>' + hhmm(Date.parse(r.t)) + '</time><span>' + esc(r.name) + ' #' + esc(r.n) + ': ' + esc(r.conclusion || r.status) + '</span></li>').join('') + '</ul>';
+    h += '<p class="note"><a href="' + CFG.pages + '" target="_blank" rel="noopener">Open the shop window (GitHub Pages)</a></p>';
+  } else if (k === 'lost') {
+    h += '<h3>Stopped and never picked up ' + esc(at) + '</h3>' + (s.lost.length ? '<ul>' + s.lost.map((e) => '<li class="f"><time>' + hhmm(e.t) + '</time><span>' + esc(e.what) + ' · no sign of life since ' + hhmm(e.life) + (dayKey(e.life) !== view.day ? ' (' + esc(dayName(dayKey(e.life))) + ')' : '') + '</span></li>').join('') + '</ul>' : '<p class="sub">Nothing lost: every builder that started is finished or still working.</p>');
+    h += '<p class="note">A ledger "start" with no "end" and no commit or step from that builder or branch for 2 hours lands here, with the alarm on. It would have caught the build 29 builder that stopped at 16:27 on 15 Nov.</p>';
+    h += '<h3>Picked up this day</h3>' + list(s.day.filter((e) => e.kind === 'end').reverse(), 'Nothing ended on this day.');
+  } else if (k === 'bridge') {
+    h += '<h3>Wagons waiting for Harry\'s go</h3>' + list(s.orders.slice().reverse(), 'No orders waiting.');
+    h += '<h3>On the bridge this day</h3>' + list(dayEv, 'Nothing on this day.');
+  } else if (k === 'harry') {
+    h += '<h3>Vital numbers</h3><div class="chips">' + WALL.chips.map((c) => '<span class="' + esc(c.s) + '"><b>' + esc(c.v) + '</b>' + esc(c.t) + '</span>').join('') + '</div>';
+    h += '<h3>The machines</h3>' + HM.map(([n, , , , roof]) => { const m = WALL.machines[n] || {}; return '<div class="mach"><i style="background:#' + roof.toString(16).padStart(6, '0') + '"></i><div><b>' + esc(n) + '</b> <small>' + esc(m.sub) + '</small>' + esc(m.doing) + (m.note ? '<small>' + esc(m.note) + '</small>' : '') + (m.state === 'idle' && m.waiting ? '<div class="fox">Fox in the pond: idle with work waiting</div>' : '') + '</div></div>'; }).join('');
+    h += '<h3>Who is speaking</h3><div class="heads">' + WALL.speakers.map(([n, st, note]) => '<div><i class="' + ({ ok: 'pass', empty: 'empty', silent: 'silent', unproven: 'flaky' }[st] || '') + '"></i><span>' + esc(n) + (note ? ' <small>' + esc(note) + '</small>' : '') + '</span></div>').join('') + '</div>';
+    h += '<p class="note">Green answering · red answers with nothing in it · grey silent · amber not proven yet</p>';
+    h += '<h3>Parcels delivered today</h3>' + WALL.parcels.map(([lbl, sq, tell]) => '<div class="sqrow"><div class="lbl">' + esc(lbl) + '</div><div class="sqs">' + sq.split('').map((c) => '<span class="sq ' + ({ p: 'pass', f: 'fail', b: 'border', n: 'never' }[c] || '') + '"></span>').join('') + '</div>' + (tell ? '<div class="tell">' + esc(tell) + '</div>' : '') + '</div>').join('');
+    h += '<p class="note">Green passed its test · red failed · amber borderline · grey never arrived</p>';
+    const harryEv = s.day.filter((e) => e.who === 'harry' || e.where === 'harry').reverse();
+    if (harryEv.length) h += '<h3>Harry this day</h3>' + list(harryEv, '');
+    h += '<p class="note">' + (WALL.sample ? 'Sample values: as of ' + esc(WALL.asOf) + ', from ' + esc(WALL.from) + '. The town\'s run reports will fill this in later (town-report.json).' : 'From the town\'s run report, ' + esc(WALL.asOf) + '.') + ' ' + esc(WALL.credits) + '</p>';
+  } else if (k === 'hut') {
+    h += '<h3>The foreman ' + esc(at) + '</h3>' + list(s.day.filter((e) => e.who === 'foreman' && (e.where === 'hut' || e.kind === 'hire' || e.kind === 'step')).reverse(), 'Nothing on this day.');
+    h += '<h3>Workshops this week</h3><ul>' + WORKSHOPS.map((br) => '<li class="q"><time>' + (s.counts['workshop:' + br] || 0) + '</time><span>' + esc(br) + '</span></li>').join('') + '</ul>';
+    if (WALL.rebuilt) h += '<p class="note">White smoke from the chimney: ' + esc(WALL.rebuilt) + ' things rebuilt this week that already existed (' + (WALL.sample ? 'sample, as of ' + esc(WALL.asOf) : esc(WALL.asOf)) + ').</p>';
+  } else {
+    h += list(dayEv, 'Nothing on this day.');
+  }
+  if (HOOKS.card[k]) { try { h += HOOKS.card[k](s); } catch (e) { /* ignore */ } }
+  $('cBody').innerHTML = h;
+}
+function openCard(k) {
+  if (!B[k]) return; view.card = k; $('card').hidden = false; document.body.classList.add('carding'); fillCard(k);
+  const b = B[k]; camGoal.target.set(b.x, 0, b.z + (k === 'harry' ? 0 : 0)); camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
+}
+function closeCard() { view.card = null; $('card').hidden = true; document.body.classList.remove('carding'); camGoal.target.copy(HOMEVIEW.target); camGoal.dist = HOMEVIEW.dist; }
+
+/* =====================================================================================================
+   8. Timeline: scrub, replay, days, live
+   ===================================================================================================== */
+function days() { const s = new Set(EV.map((e) => dayKey(e.t))); s.add(dayKey(NOW())); return [...s].sort(); }
+function setDay(k) { view.day = k; renderTicks(); const today = k === dayKey(NOW()); if (today) goLive(); else { view.live = false; applyTime(dayStart(k) + DAY - 1); } }
+function goLive() { view.live = true; view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; view.day = dayKey(NOW()); renderTicks(); applyTime(NOW()); }
+function scrubTo(mins) {
+  const T = dayStart(view.day) + mins * MIN, now = NOW();
+  if (T >= now - MIN && view.day === dayKey(now)) return goLive();
+  view.live = false; applyTime(Math.min(T, now));
+}
+$('scrub').addEventListener('input', (e) => { view.dragging = true; view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; scrubTo(+e.target.value); });
+$('scrub').addEventListener('change', () => { view.dragging = false; });
+$('bPrev').onclick = () => { const d = days(), i = d.indexOf(view.day); if (i > 0) setDay(d[i - 1]); else if (i < 0 && d.length) setDay(d[d.length - 1]); };
+$('bNext').onclick = () => { const d = days(), i = d.indexOf(view.day); if (i >= 0 && i < d.length - 1) setDay(d[i + 1]); };
+$('bLive').onclick = goLive;
+function startReplay() {
+  const d0 = dayStart(view.day), dayEv = EV.filter((e) => e.t >= d0 && e.t < d0 + DAY);
+  view.playFrom = dayEv.length ? dayEv[0].t - 30 * MIN : d0 + 8 * HOUR;
+  view.playTo = Math.min(NOW(), dayEv.length ? dayEv[dayEv.length - 1].t + 30 * MIN : d0 + DAY);
+  view.playing = true; view.live = false; $('bPlay').setAttribute('aria-pressed', 'true'); $('bPlay').textContent = '❚❚ Pause';
+  applyTime(view.playFrom);
+}
+$('bPlay').onclick = () => { if (view.playing) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } else startReplay(); };
+
+/* =====================================================================================================
+   9. Camera: slow orbit, drag to turn, wheel or pinch to zoom, tap a building for its card
+   ===================================================================================================== */
+const HOMEVIEW = { target: new THREE.Vector3(0, 0, -3.5), dist: 27 };
+const camGoal = { target: HOMEVIEW.target.clone(), dist: HOMEVIEW.dist };
+let yaw = 0.7, pitch = 0.62, dist = 27, target = HOMEVIEW.target.clone(), autoT = 0;
+const ptrs = new Map(); let down = null, pinch0 = 0;
+function size() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); CAM.aspect = w / h; CAM.updateProjectionMatrix(); HOMEVIEW.dist = w < 760 ? 38 : w / h < 1.2 ? 32 : 27; if (!view.card) camGoal.dist = HOMEVIEW.dist; }
+addEventListener('resize', size); size();
+cv.addEventListener('pointerdown', (e) => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); down = { x: e.clientX, y: e.clientY, t: performance.now() }; autoT = 0; stopTour(); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+addEventListener('pointerup', (e) => {
+  ptrs.delete(e.pointerId);
+  if (down && e.target === cv && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6 && performance.now() - down.t < 500) pick(e.clientX, e.clientY);
+  down = null;
+});
+addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); down = null; });
+addEventListener('pointermove', (e) => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  if (ptrs.size === 2) { p.x = e.clientX; p.y = e.clientY; const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) { camGoal.dist = Math.min(55, Math.max(5, camGoal.dist * pinch0 / d)); dist = camGoal.dist; } pinch0 = d; return; }
+  yaw -= (e.clientX - p.x) * 0.005; pitch = Math.min(1.35, Math.max(0.22, pitch + (e.clientY - p.y) * 0.004)); p.x = e.clientX; p.y = e.clientY;
+});
+cv.addEventListener('wheel', (e) => { e.preventDefault(); camGoal.dist = Math.min(55, Math.max(5, camGoal.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+function pick(x, y) {
+  mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(mouse, CAM);
+  const hit = ray.intersectObjects(S.children, true).find((h) => h.object.userData.key && h.object.visible);
+  if (hit) openCard(hit.object.userData.key);
+}
+
+/* the projector tour: every building in turn, its card open */
+let tour = false, tourI = 0, tourT = 0;
+const tourStops = () => ['hut', ...WORKSHOPS.map((b) => 'workshop:' + b), 'yard', 'post', 'shop', 'library', ...(ST.lost && ST.lost.length ? ['lost'] : []), 'bridge', 'harry'];
+function stopTour() { if (!tour) return; tour = false; $('bTour').setAttribute('aria-pressed', 'false'); }
+$('bTour').onclick = () => { tour = !tour; $('bTour').setAttribute('aria-pressed', String(tour)); tourI = 0; tourT = 0; if (tour) openCard(tourStops()[0]); else closeCard(); };
+$('bClose').onclick = () => { stopTour(); closeCard(); };
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && view.card) { stopTour(); closeCard(); } });
+$('bDiary').onclick = (e) => { const d = $('diary'); d.hidden = !d.hidden; e.target.textContent = d.hidden ? 'Show diary' : 'Hide diary'; };
+if (innerWidth < 760) { $('diary').hidden = true; $('bDiary').textContent = 'Show diary'; }
+
+/* day and evening */
+function setMode(m) {
+  mode = m; S.background = new THREE.Color(m.sky); S.fog.color.set(m.fog); hemi.color.set(m.hemi[0]); hemi.groundColor.set(m.hemi[1]); hemi.intensity = m.hemi[2];
+  sun.color.set(m.sun[0]); sun.intensity = m.sun[1]; sun.position.set(m === DUSK ? -12 : 8, m === DUSK ? 10 : 20, 8);
+  lanternLights.forEach((L) => { L.intensity = 0.7 * m.lamp; }); lanternBulbs.forEach((b) => { b.emissiveIntensity = m.lamp ? 1.2 : 0.1; });
+  stars.visible = moon.visible = m === DUSK; document.body.classList.toggle('day', m === DAYL);
+  $('bDay').textContent = m === DUSK ? 'Daylight' : 'Evening';
+}
+$('bDay').onclick = () => setMode(mode === DUSK ? DAYL : DUSK);
+{ const h = new Date().getHours(); setMode(Q.get('mode') === 'day' ? DAYL : Q.get('mode') === 'evening' ? DUSK : (h >= 17 || h < 7) ? DUSK : DAYL); }
+
+/* =====================================================================================================
+   10. The frame loop
+   ===================================================================================================== */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const tmp = new THREE.Vector3(); let last = performance.now(), liveTick = 0;
+function door(k) {
+  if (k === 'bridgeHead') return new THREE.Vector3(0.3, 0, -8.8);
+  if (k === 'home') return new THREE.Vector3(HOME.x + 0.4, 0, HOME.z + 2.8);
+  const b = B[k]; if (!b) return new THREE.Vector3();
+  if (k.startsWith('workshop:')) { const L = Math.hypot(b.x, b.z) || 1; return new THREE.Vector3(b.x - b.x / L * (b.d / 2 + 0.4), 0, b.z - b.z / L * (b.d / 2 + 0.4)); }
+  if (k === 'yard') return new THREE.Vector3(b.x - b.w / 2 - 0.3, 0, b.z);
+  return new THREE.Vector3(b.x, 0, b.z + b.d / 2 + 0.4);
+}
+const WAGON_PATH = [new THREE.Vector3(0.3, 0, -8.8), new THREE.Vector3(0.3, 0.18, -15.4), new THREE.Vector3(HOME.x + 0.6, 0, HOME.z + 2.6)];
+function frame(now) {
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const sp = reduce ? 0.25 : 1, secs = now / 1000;
+  /* time: live follows the clock; replay runs the day at 20 minutes a second */
+  if (view.playing) { const T = view.T + dt * 20 * MIN * sp; if (T >= view.playTo) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } applyTime(Math.min(T, view.playTo)); }
+  else if (view.live && now - liveTick > 15000) { liveTick = now; if (view.day !== dayKey(NOW())) { view.day = dayKey(NOW()); renderTicks(); } applyTime(NOW()); }
+  /* camera */
+  if (tour) { tourT += dt; if (tourT > 8) { tourT = 0; const st = tourStops(); tourI = (tourI + 1) % st.length; openCard(st[tourI]); } yaw += dt * 0.08 * sp; }
+  else if (!ptrs.size) { autoT += dt; if (autoT > 4) yaw += dt * 0.04 * sp; }
+  target.lerp(camGoal.target, Math.min(1, dt * 2)); dist += (camGoal.dist - dist) * Math.min(1, dt * 2);
+  CAM.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist); CAM.lookAt(target);
+  /* walkers loop their route; a small pause at each stop */
+  for (const w of walkers) {
+    if (!w.g.visible || !w.route) continue;
+    const legs = w.route.length - 1, p = (secs * w.speed * sp + w.phase) % 1, f = p * legs, leg = Math.min(legs - 1, Math.floor(f)), u = Math.min(1, (f - leg) * 1.25);
+    const a = door(w.route[leg]), b = door(w.route[leg + 1]); w.g.position.lerpVectors(a, b, u);
+    w.g.position.y = u < 1 ? Math.abs(Math.sin(now * 0.008 * sp)) * 0.04 : 0; if (u < 1) w.g.lookAt(b.x, 0, b.z);
+  }
+  /* wagons: waiting ones line up at the bridge head; a new order rolls to Harry's town and back */
+  for (const v of wagons) {
+    if (!v.g.visible) continue;
+    if (v.roll) {
+      v.t = (v.t + dt * 0.03 * sp) % 1; const k = v.t < 0.5 ? v.t * 2 : 2 - v.t * 2, seg = Math.min(1, Math.floor(k * 2)), f = k * 2 - seg;
+      v.g.position.lerpVectors(WAGON_PATH[seg], WAGON_PATH[seg + 1], f); const nx = WAGON_PATH[v.t < 0.5 ? seg + 1 : seg]; v.g.lookAt(nx.x, v.g.position.y, nx.z);
+    } else { v.g.position.set(-1.6 + (v.slot % 3) * 0.75 + (v.slot >= 3 ? 0.35 : 0), 0, -8.0 + Math.floor(v.slot / 3) * 0.9); v.g.rotation.set(0, 0, 0); }
+  }
+  /* smoke: white when something was rebuilt that already existed */
+  const white = WALL.rebuilt > 0;
+  for (const p of puffs) {
+    p.userData.t = (p.userData.t + dt * 0.12 * sp) % 1; const t = p.userData.t;
+    p.position.set(B.hut.x + B.hut.w * 0.28 + Math.sin(t * 6) * 0.15, B.hut.h * 1.75 + t * 2.4, B.hut.z - B.hut.d * 0.15 - t * 0.6);
+    p.scale.setScalar((0.1 + t * 0.26) * (white ? 1.25 : 1)); p.material.color.set(white ? 0xffffff : 0x9aa0ab); p.material.opacity = (white ? 0.75 : 0.4) * (1 - t);
+  }
+  mill.rotation.z += dt * ((WALL.machines.Mill || {}).state === 'busy' ? 1.2 : 0.15) * sp;
+  fox.rotation.y = 2.4 + Math.sin(secs * 0.7) * 0.15;
+  /* finished work glows: yard lamps steady and bright, failures pulse; shop window eases to its brightness */
+  lamps.forEach((l, i) => { if (l.bulb.visible && l.st !== 'pass') l.m.emissiveIntensity = 0.6 + 0.8 * Math.abs(Math.sin(now * 0.004 + i)); });
+  yardLight.intensity += ((yardLight.userData.on ? (mode === DUSK ? 1.6 : 0.5) : 0) - yardLight.intensity) * Math.min(1, dt * 3);
+  const sg2 = shopGlass.userData.target || 0.35; shopGlass.emissiveIntensity += (sg2 * (mode === DUSK ? 1 : 0.7) - shopGlass.emissiveIntensity) * Math.min(1, dt * 3);
+  shopLight.intensity = sg2 > 1 ? (mode === DUSK ? 2.2 : 0.6) : 0;
+  for (const w of winMats) { const tg = (w.userData.target || 0.32) * (mode === DUSK ? 1 : 0.3); w.emissiveIntensity += (tg - w.emissiveIntensity) * Math.min(1, dt * 3); }
+  alarmM.emissiveIntensity = alarmM.userData.on ? 0.6 + 1.6 * Math.abs(Math.sin(secs * 4)) : 0; alarmLight.intensity = alarmM.userData.on ? alarmM.emissiveIntensity * 0.8 : 0;
+  if (rain.visible) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9 * sp; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true;
+    if (!reduce && Math.random() < dt * 0.15) flash = 1; }
+  flash = Math.max(0, flash - dt * 3); hemi.intensity = mode.hemi[2] * (rain.visible ? 0.7 : clouds.visible ? 0.88 : 1) + flash * 1.5;
+  clouds.rotation.y += dt * 0.01 * sp;
+  for (const f of HOOKS.frame) { try { f(dt, secs); } catch (e) { /* ignore */ } }
+  if (star.visible) { star.rotation.y += dt * 1.2; star.position.y = 3.4 + Math.sin(secs * 2) * 0.12; }
+  goods.forEach((o, i) => { if (o.visible) o.material.emissiveIntensity = 1.1 + 0.25 * Math.sin(secs * 2 + i); });
+  R.render(S, CAM);
+  const W = innerWidth, H = innerHeight;
+  for (const l of labs) {
+    tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.05 && tmp.x < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
+    l.d.style.display = vis ? '' : 'none'; if (vis) l.d.style.transform = 'translate(' + ((tmp.x + 1) / 2 * W).toFixed(1) + 'px,' + ((1 - tmp.y) / 2 * H).toFixed(1) + 'px) translate(-50%,-100%)';
+  }
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================================================
+   11. Start, and keep looking (at most every 2 minutes)
+   ===================================================================================================== */
+async function loadWall() {
+  if (OFFLINE) return;
+  try { const r = await fetch('town-report.json', { cache: 'no-cache' }); if (!r.ok) return; const w = await r.json(); if (w && w.machines && w.chips) { WALL = Object.assign({}, WALL, w, { sample: false }); } } catch (e) { /* keep the sample */ }
+}
+async function refresh() {
+  const [ledger] = await Promise.all([loadLedger(), OFFLINE ? null : loadGitHub()]);
+  if (ledger && ledger.length) LEDGER = ledger;
+  if (OFFLINE || !GH.order) { const u = cache.u; /* last copy from GitHub, if any */
+    if (!GH.order) { const ev = (u[CFG.api + '/repos/' + CFG.repo + '/events?per_page=100'] || {}).d; if (ev) { /* rebuild from cache */ } } }
+  buildEvents(); buildWorkshops();
+  /* pick the day: today if anything happened, else the latest day with events */
+  if (!view.started) {
+    view.started = true; const d = days(), today = dayKey(NOW()), qd = Q.get('day');
+    const hasToday = EV.some((e) => dayKey(e.t) === today);
+    view.day = qd && /^\d{4}-\d\d-\d\d$/.test(qd) ? qd : hasToday ? today : d[d.length - 1];
+    renderTicks();
+    const qt = Q.get('t');
+    if (qt && /^\d\d:\d\d$/.test(qt)) { const [hh, mm] = qt.split(':').map(Number); view.live = false; applyTime(dayStart(view.day) + (hh * 60 + mm) * MIN); }
+    else if (view.day === today) goLive(); else { view.live = false; applyTime(dayStart(view.day) + DAY - 1); }
+  } else { renderTicks(); applyTime(view.live ? NOW() : view.T); }
+}
+let readyResolve; const ready = new Promise((r) => { readyResolve = r; });
+(async () => {
+  rebuildLabels();
+  await loadWall(); buildHeads(); rebuildLabels();
+  await refresh();
+  requestAnimationFrame(frame);
+  tryModels();
+  readyResolve(true);
+  setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, CFG.pollMs);
+})();
+
+/* test hooks (read-only views of the state) */
+window.__works = {
+  ready,
+  state: () => ({ day: view.day, T: view.T, live: view.live, playing: view.playing, card: view.card, workshops: WORKSHOPS.slice(), events: EV.length,
+    dayEvents: ST.day ? ST.day.length : 0, walkers: walkers.filter((w) => w.g.visible).length, lamps: lamps.filter((l) => l.bulb.visible).map((l) => l.st),
+    live_items: ST.live ? ST.live.length : 0, lost: ST.lost ? ST.lost.length : 0, weather: ST.weather, rainbow: ST.rainbow, parcels: ST.parcels ? ST.parcels.length : 0, orders: ST.orders ? ST.orders.length : 0, net: Object.assign({}, net), labels: labs.map((l) => l.d.textContent) }),
+  scrub: (hh, mm) => { $('scrub').value = hh * 60 + mm; $('scrub').dispatchEvent(new Event('input')); $('scrub').dispatchEvent(new Event('change')); },
+  openCard, closeCard, setDay, goLive, startReplay,
+  pick: (k) => { const b = B[k]; if (!b) return null; tmp.set(b.x, (b.h || 0.2) * 0.6, b.z).project(CAM); return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight }; },
+  view: (y, p, d) => { yaw = y; pitch = p; camGoal.dist = dist = d; autoT = -1e9; }
+};
+</script>
+</body>
+</html>
