@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Base Camp check</title>
+<style>
+  /* One screen of big ticks, readable on an iPad held at arm's length. */
+  :root { --bg: #f3efe7; --fg: #2a241e; --card: #fffaf2; --line: #dcd2c2; --ok: #2f8a3e; --bad: #c0392b; --wait: #8a7d6b; --accent: #e07b2c; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+  h1 { font-size: 26px; margin: 4px 0 2px; }
+  .sub { color: var(--wait); margin: 0 0 14px; font-size: 15px; }
+  .rows { display: grid; gap: 8px; max-width: 760px; }
+  .row { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .ic { font-size: 22px; font-weight: 800; text-align: center; line-height: 1.2; }
+  .ok .ic { color: var(--ok); } .bad .ic { color: var(--bad); } .wait .ic { color: var(--wait); }
+  .name { font-weight: 700; }
+  .info { color: #5b5146; font-size: 14.5px; word-break: break-word; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 8px; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 12px 18px; background: var(--accent); color: #fff; }
+  button.grey { background: #6d6155; }
+  button:disabled { opacity: .5; }
+  #arPanel { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-bottom)); background: rgba(30,26,22,.82); color: #fff; font-size: 16px; }
+  #arPanel b { color: #ffd59a; }
+  #arPanel button { margin-top: 8px; }
+  pre { white-space: pre-wrap; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-width: 760px; }
+</style>
+</head>
+<body>
+<h1>Base Camp check</h1>
+<p class="sub">Open this in HelloXR. It checks each piece the game needs, one row at a time. Nothing is sent anywhere.</p>
+<div class="rows" id="rows"></div>
+<div class="btns">
+  <button id="bAR" disabled>Start AR test</button>
+  <button id="bCopy" class="grey">Copy results</button>
+  <button id="bGame" class="grey">Open the game</button>
+</div>
+<pre id="out" hidden></pre>
+<div id="arPanel" hidden>
+  <div id="arText">Starting AR...</div>
+  <button id="bStop" class="grey">Stop AR test</button>
+</div>
+<script>
+/* Base Camp check page (16 Nov 2026). Standalone: it does not load the game's code except in step 8 (in a hidden frame).
+   Same HelloXR fix as the game: when the native bridge is there but navigator.xr is not, load webxr-polyfill.js with an iPad user agent. */
+var R = {}, ROWS = [
+  ['js', 'This page runs'],
+  ['bridge', 'HelloXR bridge found'],
+  ['xr', 'WebXR available'],
+  ['arok', 'AR supported'],
+  ['gl', '3D drawing (WebGL)'],
+  ['cdn', 'Game libraries download'],
+  ['store', 'Saved rooms on this iPad'],
+  ['game', 'The game page loads without errors'],
+  ['arrun', 'AR test: tracking and surfaces']
+];
+var rowsEl = document.getElementById('rows');
+ROWS.forEach(function (r) {
+  var d = document.createElement('div'); d.className = 'row wait'; d.id = 'r-' + r[0];
+  d.innerHTML = '<div class="ic">…</div><div><div class="name">' + r[1] + '</div><div class="info">waiting</div></div>';
+  rowsEl.appendChild(d);
+});
+function set(id, state, info) {
+  R[id] = { state: state, info: info };
+  var d = document.getElementById('r-' + id); if (!d) return;
+  d.className = 'row ' + state;
+  d.querySelector('.ic').textContent = state === 'ok' ? '✓' : state === 'bad' ? '✗' : '…';
+  d.querySelector('.info').textContent = info;
+}
+set('js', 'ok', 'build check 1 · ' + new Date().toLocaleTimeString());
+
+/* 2 + 3: bridge and WebXR (with the game's iPad fix) */
+var mh = window.webkit && window.webkit.messageHandlers;
+var hasBridge = !!(mh && mh.initAR);
+set('bridge', hasBridge ? 'ok' : 'bad', hasBridge ? 'the app can do AR' : 'not found: this is not HelloXR (fine on a Mac or in Safari, but AR needs HelloXR)');
+function afterXR() {
+  if (!navigator.xr) { set('xr', 'bad', 'navigator.xr is missing'); set('arok', 'bad', 'cannot ask without WebXR'); return; }
+  set('xr', 'ok', 'navigator.xr is there');
+  var tries = 0;
+  (function ask() {
+    tries++;
+    if (!navigator.xr.isSessionSupported) { set('arok', 'bad', 'isSessionSupported is missing'); return; }
+    navigator.xr.isSessionSupported('immersive-ar').then(function (ok) {
+      if (ok) { set('arok', 'ok', 'immersive AR is supported'); document.getElementById('bAR').disabled = false; return; }
+      if (tries < (hasBridge ? 30 : 3)) { set('arok', 'wait', 'asking again (' + tries + ')'); setTimeout(ask, 500); return; }
+      set('arok', 'bad', 'this browser says no AR');
+    }).catch(function (e) { set('arok', 'bad', 'error: ' + (e && e.message || e)); });
+  })();
+}
+if (!navigator.xr && hasBridge) {
+  try {
+    var ipadUA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: function () { return ipadUA; } });
+    var sc = document.createElement('script'); sc.src = 'webxr-polyfill.js';
+    var done = function () { try { delete navigator.userAgent; } catch (e) { /* ignore */ } };
+    sc.onload = function () { done(); set('xr', 'wait', 'helper loaded'); setTimeout(afterXR, 300); };
+    sc.onerror = function () { done(); set('xr', 'bad', 'could not load webxr-polyfill.js'); set('arok', 'bad', 'no WebXR'); };
+    document.head.appendChild(sc);
+  } catch (e) { set('xr', 'bad', 'helper failed: ' + e.message); }
+} else { afterXR(); }
+
+/* 5: WebGL */
+try {
+  var c = document.createElement('canvas'), gl = c.getContext('webgl2') || c.getContext('webgl');
+  if (gl) { var dbg = gl.getExtension('WEBGL_debug_renderer_info'); set('gl', 'ok', (gl instanceof (window.WebGL2RenderingContext || Object) ? 'WebGL 2' : 'WebGL 1') + (dbg ? ' · ' + gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '')); }
+  else set('gl', 'bad', 'no WebGL');
+} catch (e) { set('gl', 'bad', 'error: ' + e.message); }
+
+/* 6: the game's libraries (three.js from cdnjs, the loader from jsdelivr, the polyfill and models from this site) */
+(function () {
+  var urls = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js', 'models/props.js', 'webxr-polyfill.js', 'index.html'];
+  var left = urls.length, bad = [], t0 = performance.now();
+  urls.forEach(function (u) {
+    fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) bad.push(u.split('/').pop() + ' ' + r.status); }).catch(function (e) { bad.push(u.split('/').pop() + ' (' + (e && e.message || 'failed') + ')'); })
+      .then(function () { if (--left) return; var ms = Math.round(performance.now() - t0); set('cdn', bad.length ? 'bad' : 'ok', bad.length ? 'failed: ' + bad.join(', ') : 'all ' + urls.length + ' downloaded in ' + ms + ' ms'); });
+  });
+})();
+
+/* 7: saved rooms (keys and sizes only, never the contents) */
+try {
+  var keys = [], total = 0;
+  for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); var v = localStorage.getItem(k) || ''; total += k.length + v.length; if (/^(base-camp|bc-)/.test(k)) keys.push(k + ' ' + Math.round(v.length / 1024) + ' KB'); }
+  set('store', keys.length ? 'ok' : 'wait', keys.length ? keys.length + ' saved items, ' + Math.round(total / 1024) + ' KB in all: ' + keys.join(' · ') : 'nothing saved yet on this iPad in this app (scans are saved per app: HelloXR and Safari keep separate copies)');
+} catch (e) { set('store', 'bad', 'storage blocked: ' + e.message); }
+
+/* 8: load the game in a hidden frame and catch errors */
+(function () {
+  var f = document.createElement('iframe'), errs = [], t0 = performance.now();
+  f.style.cssText = 'position:absolute;width:390px;height:600px;left:-9999px;top:0;border:0';
+  f.src = 'index.html?check=1';
+  f.onload = function () {
+    try {
+      var w = f.contentWindow;
+      w.addEventListener('error', function (e) { errs.push(e.message); });
+      w.addEventListener('unhandledrejection', function (e) { errs.push('promise: ' + (e.reason && e.reason.message || e.reason)); });
+    } catch (e) { /* cross-origin: should not happen */ }
+    setTimeout(function () {
+      var st = '', build = '';
+      try { var d = f.contentWindow.document; st = (d.getElementById('arStatus') || {}).textContent || ''; var m = /build \d+[^·]*/.exec(st); build = m ? m[0].trim() : ''; } catch (e) { errs.push('could not read the game: ' + e.message); }
+      var ms = Math.round(performance.now() - t0);
+      set('game', errs.length ? 'bad' : (build ? 'ok' : 'wait'), (build ? build + ' · ' : '') + 'loaded in ' + ms + ' ms' + (errs.length ? ' · errors: ' + errs.slice(0, 3).join(' | ') : ' · no errors') + (st ? ' · says: ' + st.slice(0, 120) : ''));
+    }, 8000);
+  };
+  document.body.appendChild(f);
+})();
+
+/* 9: a short AR session: frames, pose, hit tests per second. Draws nothing. */
+var AR = { s: null, ref: null, src: null, frames: 0, pose: 0, hits: 0, t0: 0, last: '' };
+document.getElementById('bAR').onclick = function () {
+  var ui = document.getElementById('arPanel'), txt = document.getElementById('arText');
+  ui.hidden = false; set('arrun', 'wait', 'starting');
+  navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: ui } }).then(function (s) {
+    AR.s = s; AR.frames = AR.pose = AR.hits = 0; AR.t0 = performance.now();
+    var cv = document.createElement('canvas'), gl = cv.getContext('webgl', { xrCompatible: true, alpha: true });
+    var setup = gl.makeXRCompatible ? gl.makeXRCompatible() : Promise.resolve();
+    return setup.then(function () {
+      s.updateRenderState({ baseLayer: new XRWebGLLayer(s, gl) });
+      return s.requestReferenceSpace('local');
+    }).then(function (ref) {
+      AR.ref = ref;
+      return s.requestReferenceSpace('viewer').then(function (v) { return s.requestHitTestSource({ space: v }); });
+    }).then(function (src) {
+      AR.src = src;
+      s.addEventListener('end', function () { finish('ended'); });
+      s.requestAnimationFrame(function loop(t, fr) {
+        if (!AR.s) return;
+        AR.frames++;
+        var p = fr.getViewerPose(AR.ref); if (p) AR.pose++;
+        if (AR.src) { var h = fr.getHitTestResults(AR.src); if (h && h.length) AR.hits++; }
+        var sec = (performance.now() - AR.t0) / 1000;
+        if (AR.frames % 15 === 0) {
+          AR.last = 'frames ' + Math.round(AR.frames / sec) + '/s · pose ' + Math.round(100 * AR.pose / AR.frames) + '% · surface hits ' + Math.round(100 * AR.hits / AR.frames) + '% · ' + Math.round(sec) + ' s';
+          txt.innerHTML = '<b>Look around slowly at the floor and a table.</b><br>' + AR.last;
+        }
+        s.requestAnimationFrame(loop);
+      });
+    });
+  }).catch(function (e) { ui.hidden = true; set('arrun', 'bad', 'could not start: ' + (e && e.message || e)); });
+};
+function finish(why) {
+  var ui = document.getElementById('arPanel'); ui.hidden = true;
+  var good = AR.frames > 30 && AR.pose > AR.frames * 0.8;
+  set('arrun', good && AR.hits > 0 ? 'ok' : 'bad', (AR.last || 'no frames') + (AR.hits ? '' : ' · no surfaces found yet'));
+  AR.s = null;
+}
+document.getElementById('bStop').onclick = function () { if (AR.s) AR.s.end().catch(function () { finish('stop'); }); else finish('stop'); };
+
+/* Copy results: words and numbers only */
+document.getElementById('bCopy').onclick = function () {
+  var o = { page: 'base-camp-check', at: new Date().toISOString(), ua: navigator.userAgent, rows: R };
+  var s = JSON.stringify(o, null, 1), out = document.getElementById('out');
+  out.hidden = false; out.textContent = s;
+  try { navigator.clipboard.writeText(s).then(function () { document.getElementById('bCopy').textContent = 'Copied'; }, function () { selectOut(); }); } catch (e) { selectOut(); }
+  function selectOut() { var r = document.createRange(); r.selectNodeContents(out); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.getElementById('bCopy').textContent = 'Selected: copy it'; }
+};
+document.getElementById('bGame').onclick = function () { location.href = 'index.html'; };
+</script>
+</body>
+</html>

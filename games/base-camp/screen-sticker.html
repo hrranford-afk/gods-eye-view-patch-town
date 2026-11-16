@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base Camp screen sticker</title>
+<style>
+/* Base Camp: a room sticker shown on a screen instead of printed (16 Nov 2026). The game expects the black square to be
+   exactly 8 cm (STK_SIZE in index.html), so the page is sized with a bank card held against the screen (85.6 x 54 mm). */
+:root { --bg: #ffffff; --ink: #2b1d12; --soft: #6b5640; --accent: #e07b2c; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; height: 100%; }
+#set { padding: 16px; max-width: 900px; margin: 0 auto; display: grid; gap: 12px; }
+h1 { font-size: 22px; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 16px; background: #eee3d3; color: var(--ink); cursor: pointer; }
+button.on, button.go { background: var(--accent); color: #fff; }
+#card { border: 3px dashed var(--accent); border-radius: 3.2mm; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: var(--soft); font-size: 14px; text-align: center; }
+.note { color: var(--soft); font-size: 14px; }
+#show { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
+#show[hidden], #set[hidden] { display: none; }
+#show .tip { position: fixed; left: 12px; bottom: 10px; font-size: 13px; color: #9a8a76; }
+</style>
+</head>
+<body>
+<div id="set">
+  <h1>Screen sticker</h1>
+  <p>Use a screen that stays in one place (a TV or a desk monitor, not a laptop you carry about) as the room's sticker.</p>
+  <div class="row"><b>1. Pick a number</b> (one per room): <span id="ids"></span></div>
+  <div><b>2. Make it the right size.</b> Hold a bank card flat against the screen over the dashed box. Press <b>−</b> or <b>+</b> until the box is exactly the size of the card.</div>
+  <div class="row"><button id="m10">−−</button><button id="m1">−</button><button id="p1">+</button><button id="p10">++</button><span class="note" id="kv"></span></div>
+  <div id="card">bank card size</div>
+  <div class="row"><button class="go" id="go">3. Show the sticker</button></div>
+  <p class="note">Then: turn off the screen saver and sleep, and turn the brightness up. In the game, lock the room first (find the camp), then look at the screen: the room keeps the sticker. Next time, look at the screen and the camp jumps straight back. Tap or press a key to come back here. The size is remembered on this screen.</p>
+</div>
+<div id="show" hidden><div id="mk"></div><div class="tip">Base Camp screen sticker · tap to go back</div></div>
+<script>
+/* Sticker patterns copied from stickers.html (ArUco 4x4, ids 1 to 6). The viewBox is 7 units: the black square is 6 units = 8 cm when the svg is 93.33 mm. */
+var SV = {1:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 1"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg>',2:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 2"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/></g></svg>',3:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 3"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg>',4:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 4"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="2" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg>',5:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 5"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="2" y="1" width="1" height="1"/><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/></g></svg>',6:'<svg class="mk" viewBox="-0.5 -0.5 7 7" shape-rendering="crispEdges" role="img" aria-label="Sticker 6"><rect x="-0.5" y="-0.5" width="7" height="7" fill="#fff"/><rect x="0" y="0" width="6" height="6" fill="#000"/><g fill="#fff"><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/></g></svg>'};
+var st = { id: 1, k: 96 / 25.4 };
+try { var sv = JSON.parse(localStorage.getItem('bc-screen-sticker') || 'null'); if (sv && sv.k > 0.5 && sv.k < 40) st = sv; } catch (e) { /* fine without storage */ }
+function save() { try { localStorage.setItem('bc-screen-sticker', JSON.stringify(st)); } catch (e) { /* fine */ } }
+var idsEl = document.getElementById('ids');
+[1, 2, 3, 4, 5, 6].forEach(function (i) { var b = document.createElement('button'); b.textContent = i; b.onclick = function () { st.id = i; save(); draw(); }; b.dataset.id = i; idsEl.appendChild(b); });
+function draw() {
+  var c = document.getElementById('card'); c.style.width = (85.6 * st.k) + 'px'; c.style.height = (53.98 * st.k) + 'px';
+  document.getElementById('kv').textContent = 'size ' + st.k.toFixed(2) + ' px per mm · sticker ' + st.id;
+  [].forEach.call(idsEl.children, function (b) { b.className = +b.dataset.id === st.id ? 'on' : ''; });
+  var m = document.getElementById('mk'); m.innerHTML = SV[st.id]; var s = m.firstChild; s.style.width = s.style.height = (93.33 * st.k) + 'px'; s.style.display = 'block';
+}
+function step(f) { st.k = Math.max(0.6, Math.min(40, st.k * f)); save(); draw(); }
+document.getElementById('m10').onclick = function () { step(0.95); };
+document.getElementById('m1').onclick = function () { step(0.995); };
+document.getElementById('p1').onclick = function () { step(1.005); };
+document.getElementById('p10').onclick = function () { step(1.05); };
+var setEl = document.getElementById('set'), showEl = document.getElementById('show'), lock = null;
+document.getElementById('go').onclick = function () {
+  setEl.hidden = true; showEl.hidden = false;
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {}); } catch (e) { /* fine */ }
+  try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {}); } catch (e) { /* fine */ }
+};
+function back() { if (showEl.hidden) return; showEl.hidden = true; setEl.hidden = false; try { if (lock) lock.release(); } catch (e) { /* fine */ } try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { /* fine */ } }
+showEl.onclick = back; document.addEventListener('keydown', function (e) { if (!showEl.hidden) back(); });
+draw();
+</script>
+</body>
+</html>

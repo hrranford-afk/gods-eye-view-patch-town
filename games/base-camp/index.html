@@ -5180,7 +5180,8 @@ function deskSolids() { /* boxes the camera may not pass through: the room's fur
 function deskGuard() { /* march from what the camera looks at out to the camera: the first solid box pulls the camera in front of it (never inside a wall or under the floor) */
   const t = P.target, c = camera.position, sol = deskSolids(), n = clamp(Math.ceil(P.dist / 0.03), 8, 300), want = c.clone(); let hit = 1; /* 3 cm steps: no wall is thinner */
   for (let i = 0; i < 4; i++) { const b = sol.find((q) => q.containsPoint(t)); if (!b) break; t.y = b.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); } /* a target inside furniture steps up onto its top: the camera is never inside anything */
-  for (let pass = 0; pass < 3; pass++) {
+  let top = 0; for (const b of sol) if (b.max.y > top) top = b.max.y; /* a dolls' house has no roof: a camera above every wall and cupboard looks down over them, nothing can be in its way */
+  for (let pass = 0; pass < 3 && want.y <= top + 0.1; pass++) {
     hit = 1; let hb = null; c.copy(want); if (c.y < t.y + 0.05) c.y = t.y + 0.05;
     for (let i = 1; i <= n; i++) { const k = i / n; tmpV.set(t.x + (c.x - t.x) * k, t.y + (c.y - t.y) * k, t.z + (c.z - t.z) * k); if (tmpV.y < 0.02) { hit = (i - 1) / n; break; } hb = sol.find((b) => b.containsPoint(tmpV)) || null; if (hb) { hit = (i - 1) / n; break; } }
     if (hb && hb.min.y >= t.y - 0.01 && t.x > hb.min.x && t.x < hb.max.x && t.z > hb.min.z && t.z < hb.max.z) { t.y = hb.max.y + 0.02; P.gTarget.y = Math.max(P.gTarget.y, t.y); want.y = t.y + Math.sin(P.pitch) * P.dist; continue; } /* looking at something under a table top: look at the top instead of diving under it */
