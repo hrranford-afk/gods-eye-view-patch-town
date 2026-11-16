@@ -6838,9 +6838,9 @@ function snapReport() { const S = G.snap; return { keyframes: S ? S.kf.length : 
    move only part of the way when the pose is the same. Privacy: the picture only goes to the local worker and is dropped; the depth map lives in memory only;
    the field report gets numbers. ?depthdbg=1 colours the mesh (near red, far blue) and shows the model's raw output in a corner. */
 const DEPTH_ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/', DEPTH_MODEL = 'models/depth/model_fp16.onnx', DEPTH_N = 266, DEPTH_GAP_S = 1.2, DEPTH_MX = 56;
-const DEPTH_PAD_M = 0.03, DEPTH_PAD_R = 0.04, DEPTH_MOVE_M = 0.3, DEPTH_TURN_DEG = 25, DEPTH_AGE_S = 10, DEPTH_STEP = 1.15, DEPTH_FAR = 8, DEPTH_BUDGET_MS = 4;
+const DEPTH_SLOW_MS = 120, DEPTH_PAD_M = 0.03, DEPTH_PAD_R = 0.04, DEPTH_MOVE_M = 0.3, DEPTH_TURN_DEG = 25, DEPTH_AGE_S = 10, DEPTH_STEP = 1.15, DEPTH_FAR = 8, DEPTH_BUDGET_MS = 4;
 const DEPTH = { want: store.get('bc-depth') !== '0', state: 'off', err: '', worker: null, busy: false, t: 0, seq: -1, job: null, mesh: null, dbgMesh: null, fit: null, ok: false, shown: false, ver: 0,
-  runs: 0, ms: 0, msAvg: 0, msMax: 0, gapIdle: 0, prepMs: 0, fitMs: 0, loadMs: 0, bytes: 0, gapMax: 0, lastT: 0, fits: 0, good: 0, poor: 0, why: '', cm: 0, pts: 0, shownS: 0, hidS: 0, disabled: false, model: DEPTH_MODEL,
+  runs: 0, ms: 0, msAvg: 0, msMax: 0, gapIdle: 0, frameAvg: 0, slowOK: false, prepMs: 0, fitMs: 0, loadMs: 0, bytes: 0, gapMax: 0, lastT: 0, fits: 0, good: 0, poor: 0, why: '', cm: 0, pts: 0, shownS: 0, hidS: 0, disabled: false, model: DEPTH_MODEL,
   dbg: /[?&]depthdbg=1/.test(location.search), cache: 'none' };
 const DEPTH_WORKER = 'let sess = null;\n' +
   'onmessage = async (e) => { const m = e.data; try {\n' +
@@ -6869,11 +6869,13 @@ function depthMsg(m, t0) {
   J.r = new Float32Array(m.d); J.rw = m.w; J.rh = m.h; J.k = 0; J.t1 = performance.now(); DEPTH.job = J; DEPTH.t = 0; if (DEPTH.dbg) depthDbgInset(J);
 }
 function depthCalm() { /* the room is known and nothing is being found again: the depth model may load and run (it leaves the CPU to the relock, the sticker finder and the snapshots) */
-  return G.phase === 'play' && G.zones.length > 0 && !RF.on && !RF.hidden && !G.finding && !(G.returning && !G.locked); }
+  return G.phase === 'play' && G.zones.length > 0 && !RF.on && !RF.hidden && !G.finding && !(G.returning && !G.locked) && !depthSlow(); }
+function depthSlow() { /* a device that cannot keep about 8 frames a second gets no depth model on top (on the sandbox's software GL the worker's CPU made frame gaps over RF_GAP and false wake-up checks); DEPTH.slowOK: the depth test's override */
+  return !DEPTH.slowOK && DEPTH.frameAvg > DEPTH_SLOW_MS; }
 function depthOff() { return !AR.on || !DEPTH.want || DEPTH.disabled; }
 function depthHide() { DEPTH.ok = false; if (DEPTH.mesh) DEPTH.mesh.visible = false; if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = false; DEPTH.shown = false; }
 function depthTick(dt) { /* every frame in AR: show or hide the current map, send a picture now and then, work on a returned map for at most DEPTH_BUDGET_MS */
-  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not */
+  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } if (DEPTH.lastT && now - DEPTH.lastT < 2000) DEPTH.frameAvg = DEPTH.frameAvg ? DEPTH.frameAvg * 0.95 + (now - DEPTH.lastT) * 0.05 : now - DEPTH.lastT; DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not; the smoothed frame time */
   if (depthOff()) { if (DEPTH.shown || (DEPTH.mesh && DEPTH.mesh.visible)) depthHide(); DEPTH.job = null; return; }
   const calm = depthCalm(); if (DEPTH.state === 'off' && calm) depthLoad();
   if (!calm && DEPTH.shown) depthHide(); depthShow(dt);
@@ -6960,7 +6962,7 @@ function depthDbgInset(J) { /* ?depthdbg=1: the model's raw output (near bright,
 function depthToggle() { /* Menu: "Things can hide behind furniture" (remembered in this browser) */
   DEPTH.want = !DEPTH.want; store.set('bc-depth', DEPTH.want ? '1' : '0'); if (!DEPTH.want) depthHide();
   toast(DEPTH.want ? 'Things can hide behind furniture: on' + (AR.on ? '' : ' (in AR)') : 'Things can hide behind furniture: off'); }
-function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle),
+function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle), frameMs: Math.round(DEPTH.frameAvg), slow: depthSlow(),
   fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
 function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
 
@@ -6987,7 +6989,7 @@ function devRows() { /* the numbers behind the panel: [tick, label, text] per ro
     [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
     [sk ? 'tick' : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + sk.d.toFixed(2) + ' m' : 'not seen'],
     [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
-    [dep, 'Depth', D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
+    [dep, 'Depth', (depthSlow() ? 'paused (frames slow) \u00b7 ' : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
     [REC.errs.length ? 'cross' : 'tick', 'Errors', REC.errs.length + (e ? ' · ' + String(e.msg).slice(0, 60) : '')],
     [kb < 0 ? 'cross' : kb < 4000 ? 'tick' : 'cross', 'Storage', Math.round(kb) + ' KB']];
   return { rows, num };
