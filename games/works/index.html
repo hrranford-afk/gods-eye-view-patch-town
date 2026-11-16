@@ -391,7 +391,7 @@ R.outputEncoding = THREE.sRGBEncoding;
 const S = new THREE.Scene();
 const CAM = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
 const DUSK = { sky: 0x1b2742, fog: 0x1b2742, hemi: [0x7d8fc0, 0x2a2318, 0.6], sun: [0xffa36a, 0.5], win: 1.0, lamp: 1.0 };
-const DAYL = { sky: 0xa8d2f0, fog: 0xa8d2f0, hemi: [0xe8f3ff, 0x6b5a3a, 1.0], sun: [0xfff3d6, 1.15], win: 0.25, lamp: 0 };
+const DAYL = { sky: 0x8fc3e6, fog: 0x9cc8e8, hemi: [0xdfeeff, 0x5a4a30, 0.55], sun: [0xfff3d6, 0.8], win: 0.25, lamp: 0 };
 let mode = DUSK;
 S.fog = new THREE.Fog(DUSK.fog, 30, 70);
 const hemi = new THREE.HemisphereLight(...DUSK.hemi); S.add(hemi);
@@ -439,7 +439,7 @@ function house(b, key) {
 }
 house(B.hut, 'hut'); house(B.library, 'library'); house(B.post, 'post'); house(B.shop, 'shop'); house(B.lost, 'lost');
 /* lost property: abandoned carts out front and an alarm lamp on the roof */
-const alarmM = glowMat(0xff4a5a, 0); alarmM.color.set(0x552226);
+const alarmM = glowMat(0xff4a5a, 0); alarmM.color.set(0x220a0c);
 const alarm = mesh(G.sph, alarmM, 0.16, 0.16, 0.16, B.lost.x, B.lost.h * 2.25, B.lost.z); alarm.castShadow = false; alarm.userData.key = 'lost'; S.add(alarm);
 const alarmLight = new THREE.PointLight(0xff4a5a, 0, 5, 2); alarmLight.position.set(B.lost.x, B.lost.h * 2.4, B.lost.z + 0.4); S.add(alarmLight);
 const carts = [];
@@ -751,7 +751,7 @@ function applyTime(T) {
   const su = Object.keys(ST.suites).sort().map((k) => ST.suites[k]);
   lamps.forEach((l, i) => {
     const e = su[i]; l.bulb.visible = l.pole.visible = !!e; if (!e) return; l.st = e.status;
-    const c = e.status === 'pass' ? 0x7fd18b : e.status === 'fail' ? 0xff6a75 : e.status === 'rerun' ? 0xc8d86a : 0xffc65a; l.m.color.set(c); l.m.emissive.set(c);
+    const c = e.status === 'pass' ? 0x3fd15b : e.status === 'fail' ? 0xff3a4a : e.status === 'rerun' ? 0xb8d83a : 0xffa62a; l.m.color.set(0x111111); l.m.emissive.set(c);
     l.m.emissiveIntensity = e.status === 'pass' ? 0.9 : 0.7; l.bulb.scale.setScalar(e.status === 'pass' ? 0.15 : 0.12);
   });
   yardLight.color.set(ST.anyFail ? 0xff6a75 : 0x7fd18b); yardLight.userData.on = ST.nSuites > 0;
@@ -816,6 +816,7 @@ function renderPanels() {
     '<div class="stat q"><b>' + s.orders.length + '</b><span>orders waiting</span></div>' +
     '<div class="stat ' + (s.weather === 'sunshine' ? 'v' : 'q') + '"><b>' + ({ sunshine: '☀', clouds: '☁', storm: '⛈' }[s.weather]) + '' + '</b><span>' + ({ sunshine: 'all tests green', clouds: 'flaky tests', storm: 'failures' }[s.weather]) + (s.rainbow ? ', a win' : '') + '</span></div>' +
     (s.lost.length ? '<div class="stat"><b style="color:var(--rose)">' + s.lost.length + '</b><span>lost property</span></div>' : '');
+  $('eyebrow').textContent = 'PatchTown Works · ' + (view.live ? 'live' : view.playing ? 'replaying ' + (today ? 'today' : dayName(view.day)) : 'looking back: ' + (today ? 'today' : dayName(view.day)) + ' ' + hhmm(view.T));
   $('dEye').textContent = (today ? 'Today' : dayName(view.day)) + (view.live ? ' · live' : ' · at ' + hhmm(view.T));
   const evs = s.day.slice(-80).reverse();
   $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><p>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) +
@@ -1057,7 +1058,7 @@ function frame(now) {
   const W = innerWidth, H = innerHeight;
   for (const l of labs) {
     tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.05 && tmp.x < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
-    const near = !l.zoomOnly || dist < 19 || (l.zoomOnly === 'harry' && view.card === 'harry');
+    const near = !l.zoomOnly || (dist < 19 && Math.hypot(target.x - l.obj.x, target.z - l.obj.z) < 8) || (l.zoomOnly === 'harry' && view.card === 'harry');
     l.d.style.display = vis && near ? '' : 'none'; if (vis) l.d.style.transform = 'translate(' + ((tmp.x + 1) / 2 * W).toFixed(1) + 'px,' + ((1 - tmp.y) / 2 * H).toFixed(1) + 'px) translate(-50%,-100%)';
   }
   requestAnimationFrame(frame);
@@ -1107,6 +1108,7 @@ window.__works = {
   scrub: (hh, mm) => { $('scrub').value = hh * 60 + mm; $('scrub').dispatchEvent(new Event('input')); $('scrub').dispatchEvent(new Event('change')); },
   openCard, closeCard, setDay, goLive, startReplay,
   pick: (k) => { const b = B[k]; if (!b) return null; tmp.set(b.x, (b.h || 0.2) * 0.6, b.z).project(CAM); return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight }; },
+  walkerSpots: () => walkers.filter((w) => w.g.visible).map((w) => [w.g.position.x.toFixed(3), w.g.position.z.toFixed(3)]),
   view: (y, p, d) => { yaw = y; pitch = p; camGoal.dist = dist = d; autoT = -1e9; }
 };
 </script>

@@ -135,6 +135,10 @@ const st = (pg) => pg.evaluate(() => window.__works.state());
   ok(s.weather === 'storm', 'storm at 18:05 (roomfix failing on build 30): ' + s.weather);
   ok(s.lamps.includes('fail') && s.lamps.includes('pass'), 'yard has green and red lamps');
   await shot(pg, 'w3-storm-1805.png');
+  await pg.evaluate(() => window.__works.scrub(18, 20));
+  s = await st(pg);
+  ok(s.suites.includes('roomfix@game/bc-depth') && s.suites.includes('roomfix@game/bc-mac') && s.lamps.includes('fail'), "18:20: build 29's roomfix pass does not hide build 30's fail");
+  ok(s.lamps.includes('rerun'), 'a pass on rerun is shown as a rerun');
   await pg.evaluate(() => window.__works.scrub(16, 30));
   s = await st(pg);
   ok(s.rainbow, 'rainbow after the real-iPad win at 16:10');
@@ -203,12 +207,15 @@ const st = (pg) => pg.evaluate(() => window.__works.state());
 
 /* ---- 3. rate-limited: falls back to the ledger ---- */
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
   await mockGitHub(ctx, { limited: true });
   const { pg, errs } = await open(ctx, BASE + '?mode=evening');
   const s = await st(pg);
   ok(s.events > 50 && s.workshops.includes('game/bc-depth'), 'rate-limited: town still built from the ledger');
   ok((await pg.textContent('#src')).includes('rate limit'), 'rate-limited: says so');
+  const still = () => pg.evaluate(() => JSON.stringify(window.__works.walkerSpots()));
+  const a = await still(); await pg.waitForTimeout(1500); const b = await still();
+  ok(a === b, 'reduced motion: walkers stand still');
   ok(errs.length === 0, 'no page errors (rate-limited) ' + errs.join(' | '));
   await ctx.close();
 }

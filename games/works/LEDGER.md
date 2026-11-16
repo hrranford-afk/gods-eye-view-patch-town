@@ -77,3 +77,15 @@ same shape (`asOf`, `chips`, `rebuilt`, `machines`, `speakers`, `parcels`) and t
 Claude Code hooks (`PostToolUse` after a `git commit`, `SubagentStop`, `Stop`) could call `works_log`, and Claude
 Code's OpenTelemetry events could be mapped to lines (see `SOURCES.md`). Not switched on: nothing in `.claude/`
 settings or hooks was changed for this. Harry decides that.
+
+## Next (noted by the data-honesty review, 16 Nov)
+
+Done in v1: test lamps per suite and branch ("not run" in grey), `trust` on every line (typed lines drawn dimmer),
+`rerun` as its own status, one count per thing going live, wagons wait until a `result` arrives, and the stall alarm
+worked out from the page's own clock (amber after 45 min, red after 2 h).
+
+Still to do:
+- A test line should carry the commit it tested (`ref`), so a lamp can say which build it means.
+- Builders should write `trust:"measured"` lines straight from their test runs instead of the foreman typing them.
+- v2: a snapshot file (one JSON with branches, runs and the ledger) written by a scheduled job, so viewers never hit
+  GitHub's 60-an-hour limit; the page would read the snapshot first and GitHub second.
