@@ -1,0 +1,10 @@
+Quaternius packs: CC0 1.0 Universal (public domain). https://creativecommons.org/publicdomain/zero/1.0/
+Checked 12 Nov 2026 on the official pack pages, each of which shows "License: CC0" linking to that deed:
+  Survival Pack            https://quaternius.com/packs/survival.html
+  Medieval Village Pack    https://quaternius.com/packs/medievalvillage.html
+  Ultimate Crops Pack      https://quaternius.com/packs/ultimatecrops.html
+  Simple Nature Pack       https://quaternius.com/packs/simplenature.html
+Files were taken from the mirror https://github.com/trebeljahr/quaternius-showcase (public/glb/<pack>/),
+whose LICENSES.md records each pack as CC0-1.0 with the official page above. The mirror's own MIT licence covers
+only its website code, not the models. The packs ship no licence file of their own; the official page is the record.
+Changes by us: none (files copied unchanged).
