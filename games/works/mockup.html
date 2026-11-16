@@ -1,0 +1,331 @@
+<title>PatchTown Works</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a living 3D town fills the screen (projector first); a title plate top-left, today's diary on the right
+   (a bottom sheet on phones), a ticker along the bottom. One committed dusk world, with a daylight switch inside the scene. */
+:root {
+  --night: #18233a;      /* sky and page ground at dusk */
+  --ink: #f4ead8;        /* text on dusk */
+  --muted: #b9b3c9;      /* secondary text */
+  --lantern: #ffb44a;    /* warm light: activity */
+  --moss: #7fd18b;       /* passed / live */
+  --rose: #ff7a85;       /* failed / needs a look */
+  --panel: rgba(20, 28, 48, 0.78);
+  --line: rgba(244, 234, 216, 0.16);
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--night); color: var(--ink); font: 16px/1.45 var(--f-body); overflow: hidden; }
+#scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
+#labels { position: fixed; inset: 0; pointer-events: none; }
+.lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 700 13px/1.2 var(--f-body); color: var(--ink);
+  background: rgba(16, 22, 38, 0.72); border: 1px solid var(--line); padding: 4px 9px 5px; border-radius: 999px; pointer-events: auto; cursor: pointer; }
+.lab .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--muted); }
+.lab .dot.on { background: var(--lantern); box-shadow: 0 0 8px var(--lantern); }
+.lab .dot.ok { background: var(--moss); }
+.lab .dot.bad { background: var(--rose); }
+.lab:focus-visible { outline: 2px solid var(--lantern); }
+
+.plate { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); max-width: min(520px, calc(100% - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px 14px; backdrop-filter: blur(6px); }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lantern); }
+h1 { font: 800 clamp(30px, 4.2vw, 56px)/0.98 var(--f-display); margin: 6px 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; font-size: 15px; }
+.stats { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 12px; }
+.stat b { display: block; font: 800 26px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+button { font: 700 14px/1 var(--f-body); color: var(--ink); background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+button:hover { background: rgba(255,255,255,.14); }
+button:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
+
+.diary { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: 74px; width: min(360px, 34vw);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; overflow: auto; backdrop-filter: blur(6px); }
+.diary h2, .card h2 { font: 800 20px/1.1 var(--f-display); margin: 4px 0 10px; }
+.ev { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.ev time { font: 500 13px/1.5 var(--f-mono); color: var(--lantern); font-variant-numeric: tabular-nums; }
+.ev p { margin: 0; font-size: 15px; min-width: 0; }
+.ev .who { color: var(--muted); font-size: 13px; }
+.ev.star p { color: #ffe1a8; }
+
+.ticker { position: fixed; left: 0; right: 0; bottom: 0; height: 58px; display: flex; align-items: center; gap: 14px; background: rgba(12, 17, 30, 0.86); border-top: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.ticker .now { font: 500 12px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--night); background: var(--lantern); padding: 6px 9px; border-radius: 6px; flex: none; }
+.ticker p { margin: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.card { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 74px; width: min(420px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; backdrop-filter: blur(6px); }
+.card ul { margin: 6px 0 0; padding-left: 18px; }
+.card li { margin: 4px 0; }
+.card .close { float: right; }
+.mock { font: 500 11px/1.3 var(--f-mono); color: var(--muted); margin-top: 10px; }
+
+@media (max-width: 760px) {
+  .diary { top: auto; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: auto; bottom: 66px; max-height: 34vh; }
+  .plate { padding: 10px 14px; }
+  .stats { gap: 10px 16px; } .stat b { font-size: 20px; }
+  .card { bottom: calc(66px + 34vh + 10px); }
+  .ticker { height: 52px; } .ticker p { font-size: 15px; }
+  .lab { font-size: 11px; padding: 3px 7px 4px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<canvas id="scene" aria-label="A 3D town: each building is part of the game studio's work today"></canvas>
+<div id="labels"></div>
+
+<section class="plate" aria-label="About this town">
+  <div class="eyebrow">Mock-up · snapshot of Mon 16 Nov 2026</div>
+  <h1>PatchTown Works</h1>
+  <p class="sub">The cloud workshop as a town. Builders walk in and out, the yard checks every build, and wagons carry orders across the bridge to Harry's machines at home.</p>
+  <div class="stats">
+    <div class="stat"><b id="sB">5</b><span>builders hired</span></div>
+    <div class="stat"><b>3</b><span>builds to the window</span></div>
+    <div class="stat"><b>4</b><span>orders to the town</span></div>
+    <div class="stat"><b>1</b><span>real-iPad win</span></div>
+  </div>
+  <div class="btns">
+    <button id="bDay" type="button">Daylight</button>
+    <button id="bTour" type="button">Tour</button>
+    <button id="bDiary" type="button">Hide diary</button>
+  </div>
+</section>
+
+<aside class="diary" id="diary" aria-label="Today in the town">
+  <div class="eyebrow">Today</div>
+  <h2>What happened</h2>
+  <div id="events"></div>
+</aside>
+
+<div class="card" id="card" hidden>
+  <button class="close" id="bClose" type="button" aria-label="Close">✕</button>
+  <div class="eyebrow" id="cEye"></div>
+  <h2 id="cTitle"></h2>
+  <ul id="cList"></ul>
+  <div class="mock">Mock-up: today's real events, typed in by hand. The live version would read them from GitHub every minute.</div>
+</div>
+
+<div class="ticker" role="status" aria-live="polite"><span class="now">Now</span><p id="tick"></p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------- today's data (a snapshot; the live version reads GitHub) ---------- */
+const EVENTS = [
+  ['12:19', 'Found last night\'s builder stopped when the machine restarted', 'Foreman'],
+  ['12:25', 'Hired the depth builder', 'Workshop: depth'],
+  ['12:40', 'Mac dolls\' house put in the back room for testing', 'Shop window'],
+  ['14:20', 'Yard: snapshot test flaky on builds 28 and 29 alike', 'Inspection yard'],
+  ['15:20', 'Check page put in the window', 'Shop window'],
+  ['15:50', 'Hired a fixer: tapping creatures broke', 'Workshop: Mac'],
+  ['16:10', 'The screen sticker locked the room on Harry\'s real iPad', 'Harry\'s lounge', true],
+  ['16:20', 'Wagons out: scan-1, report-1, keep-1, mega-review-1', 'Bridge'],
+  ['16:40', 'Hired a researcher: what would make it mega?', 'Library'],
+  ['17:10', 'Build 29 live: Mac controls and the dolls\' house', 'Shop window', true],
+  ['17:46', 'Fixed the blank whole-house view', 'Workshop: Mac'],
+  ['18:05', 'Depth arrives in the back room: things hide behind furniture', 'Shop window', true],
+  ['18:45', 'Hired a builder: the sticker becomes the room\'s key', 'Workshop: depth']
+];
+const NOW = [
+  'Sticker-key builder at work in the depth workshop (due about 21:30)',
+  'Inspection yard: roomfix passes on build 29, fails on build 30, so a builder is fixing it',
+  'Wagons waiting at the bridge for Harry to say go in the town chat',
+  'Shop window: build 29 live, build 30 in the back room'
+];
+const B = {
+  hut:    { x: 0,    z: 0,    w: 2.2, d: 2.0, h: 1.6, roof: 0x8a4b3a, wall: 0xe9d6b6, name: 'Foreman\'s hut', state: 'on', eye: 'The main session', list: ['Plans the day, talks to Harry, hires builders', 'Keeps the notes so nothing is forgotten', '5 builders hired today'] },
+  mac:    { x: -5.2, z: -2.6, w: 2.4, d: 1.8, h: 1.3, roof: 0x3f6f8f, wall: 0xd7c7a7, name: 'Workshop: Mac', state: 'ok', eye: 'Branch game/bc-mac', list: ['Build 29: Mac controls, dolls\' house, calmer news', 'Fixer repaired tapping creatures', 'Whole-house view fixed at 17:46'] },
+  depth:  { x: -5.6, z: 1.8,  w: 2.4, d: 1.8, h: 1.3, roof: 0x5a4a8a, wall: 0xd7c7a7, name: 'Workshop: depth', state: 'on', eye: 'Branch game/bc-depth', list: ['Build 30: things hide behind furniture', 'Developer mode for the iPad', 'Now: the sticker becomes the room\'s key'] },
+  snap:   { x: -2.6, z: 4.6,  w: 2.0, d: 1.6, h: 1.1, roof: 0x4f7a5a, wall: 0xd7c7a7, name: 'Workshop: rooms', state: 'ok', eye: 'Branch game/bc-snap', list: ['Build 28: pattern finding', 'Check page and screen sticker made here'] },
+  notes:  { x: 2.8,  z: 4.8,  w: 1.8, d: 1.6, h: 1.4, roof: 0x9a6b3a, wall: 0xe4d2b0, name: 'Library', state: 'ok', eye: 'Research and notes', list: ['Mega review: 10 gaps, 3 bold bets', 'Siege games, AR horror, training on our own machines', 'START_HERE and HANDOVER notes'] },
+  yard:   { x: 5.4,  z: 1.6,  w: 3.0, d: 2.4, h: 0.5, roof: 0x2f3a52, wall: 0x9aa3b8, name: 'Inspection yard', state: 'bad', eye: 'The test suites', list: ['house 43/43, fun 18/18, depth 29/29', 'roomfix: build 29 passes, build 30 fails, so it is being fixed', 'Flaky when crowded: snapshot, ar-room'] },
+  post:   { x: 4.8,  z: -2.8, w: 1.8, d: 1.6, h: 1.2, roof: 0xa83a3a, wall: 0xe8dcc4, name: 'Post office', state: 'ok', eye: 'GitHub', list: ['Every saved change leaves from here', 'Dozens of parcels today'] },
+  shop:   { x: 0.6,  z: -4.8, w: 3.2, d: 1.6, h: 1.5, roof: 0xc77a2a, wall: 0xf0e2c8, name: 'Shop window', state: 'ok', eye: 'Where Harry plays', list: ['Base Camp build 29 (live)', 'Build 30 with depth (back room)', 'Baguettes & Ballistics, Vigil, the check page'] }
+};
+const HOME = { x: 0, z: -15 }; /* Harry's town across the bridge */
+
+/* ---------- three.js scene ---------- */
+const cv = document.getElementById('scene');
+const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+const S = new THREE.Scene();
+const CAM = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+const DUSK = { sky: 0x1b2742, fog: 0x1b2742, hemi: [0x6d7fb0, 0x2a2318, 0.55], sun: [0xffb07a, 0.45], win: 1.0 };
+const DAY = { sky: 0x9cc8e8, fog: 0x9cc8e8, hemi: [0xdfeeff, 0x6b5a3a, 0.9], sun: [0xfff3d6, 1.0], win: 0.15 };
+let mode = DUSK;
+S.fog = new THREE.Fog(DUSK.fog, 26, 60);
+const hemi = new THREE.HemisphereLight(...DUSK.hemi); S.add(hemi);
+const sun = new THREE.DirectionalLight(...DUSK.sun); sun.position.set(-12, 16, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16 }); S.add(sun);
+
+const mat = (c, e) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, emissive: e || 0x000000 });
+const ground = new THREE.Mesh(new THREE.CircleGeometry(15, 64), mat(0x3b5a3a)); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; S.add(ground);
+const homeGround = new THREE.Mesh(new THREE.CircleGeometry(5.5, 48), mat(0x4a5f3a)); homeGround.rotation.x = -Math.PI / 2; homeGround.position.set(HOME.x, 0.01, HOME.z); homeGround.receiveShadow = true; S.add(homeGround);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), mat(0x1f3550)); water.rotation.x = -Math.PI / 2; water.position.y = -0.05; S.add(water);
+
+/* paths: hut to every building, and the road to the bridge */
+const pathMat = mat(0x8a7a5e);
+function path(ax, az, bx, bz, w) {
+  const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w || 0.55, L), pathMat); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(dx, dz);
+  m.position.set((ax + bx) / 2, 0.02, (az + bz) / 2); m.receiveShadow = true; S.add(m);
+}
+for (const k in B) if (k !== 'hut') path(0, 0, B[k].x, B[k].z);
+path(B.shop.x, B.shop.z, 0, -9.6, 0.7);
+const bridge = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 6), mat(0x7a5a3a)); bridge.position.set(0, 0.1, -12.2); bridge.castShadow = true; S.add(bridge);
+for (const s of [-1, 1]) for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), mat(0x5a4028)); p.position.set(s * 0.68, 0.35, -9.6 - i * 1.05); S.add(p); }
+
+/* buildings */
+const winMats = [];
+function house(b) {
+  const g = new THREE.Group(); g.position.set(b.x, 0, b.z);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), mat(b.wall)); body.position.y = b.h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
+  if (b.h > 0.6) {
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(b.w, b.d) * 0.78, b.h * 0.8, 4), mat(b.roof)); roof.position.y = b.h + b.h * 0.4; roof.rotation.y = Math.PI / 4; roof.scale.z = b.d / b.w; roof.castShadow = true; g.add(roof);
+  } else { /* the yard: a low fence and testing benches */
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.06, b.d), mat(0x55607a)); floor.position.y = 0.03; g.add(floor); body.visible = false;
+  }
+  const wm = new THREE.MeshStandardMaterial({ color: 0x332211, emissive: 0xffb44a, emissiveIntensity: 1 }); winMats.push(wm);
+  const nW = Math.max(1, Math.round(b.w / 0.8));
+  for (let i = 0; i < nW && b.h > 0.6; i++) { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), wm); w.position.set(-b.w / 2 + (i + 0.5) * b.w / nW, b.h * 0.55, b.d / 2 + 0.01); g.add(w); const w2 = w.clone(); w2.rotation.y = Math.PI; w2.position.z = -b.d / 2 - 0.01; g.add(w2); }
+  S.add(g); b.g = g; return g;
+}
+for (const k in B) house(B[k]);
+
+/* the yard's lamps: one per suite, green or red */
+const SUITES = [1,1,1,1,1,1,0,1,1,2,1,1,2,1,1,1];
+const lamps = [];
+SUITES.forEach((s, i) => {
+  const c = s === 1 ? 0x7fd18b : s === 0 ? 0xff7a85 : 0xffd27a;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.2 }));
+  m.position.set(B.yard.x - 1.2 + (i % 8) * 0.34, 0.3, B.yard.z - 0.5 + Math.floor(i / 8) * 0.9); S.add(m); lamps.push({ m, s });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.24, 6), mat(0x333a4a)); pole.position.set(m.position.x, 0.12, m.position.z); S.add(pole);
+});
+
+/* Harry's town: four machines */
+const HM = [['Mini', -2.2, 0, 1.0, 0x6a8fb0], ['Radeon', 0.4, -1.4, 1.6, 0xb05050], ['Dell', 2.6, 0.6, 1.2, 0x8a8a6a], ['Mill', -0.4, 2.2, 1.4, 0x7a6a9a]];
+const homeB = HM.map(([n, x, z, h, roof]) => { const b = { x: HOME.x + x, z: HOME.z + z, w: 1.4, d: 1.2, h, roof, wall: 0xcfc2a6, name: n }; house(b); return b; });
+const mill = new THREE.Group(); mill.position.set(homeB[3].x, homeB[3].h + 0.5, homeB[3].z + 0.62); S.add(mill);
+for (let i = 0; i < 4; i++) { const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.02), mat(0xe8dcc4)); blade.position.y = 0.45; const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; arm.add(blade); mill.add(arm); }
+
+/* lanterns along the paths */
+const lanternLights = [];
+[[-2.6, -1.3], [-2.8, 0.9], [2.7, -1.4], [2.7, 0.8], [0.3, -2.4], [-1.3, 2.4], [1.4, 2.4], [0.4, -8.2], [0.4, -10.8]].forEach(([x, z]) => {
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mat(0x2a2a2a)); post.position.set(x, 0.45, z); S.add(post);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffd08a, emissive: 0xffb44a, emissiveIntensity: 1.5 })); bulb.position.set(x, 0.94, z); S.add(bulb);
+  const L = new THREE.PointLight(0xffb44a, 0.9, 4.2, 2); L.position.set(x, 1.1, z); S.add(L); lanternLights.push(L);
+});
+
+/* stars */
+const sg = new THREE.BufferGeometry(), sp = [];
+for (let i = 0; i < 500; i++) { const a = Math.random() * Math.PI * 2, e = 0.15 + Math.random() * 1.2, r = 90; sp.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r); }
+sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfff6e0, size: 0.6, sizeAttenuation: true, fog: false })); S.add(stars);
+
+/* builders: little figures with a lantern, walking hut -> workshop -> yard -> post */
+function figure(c) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.34, 10), mat(c)); body.position.y = 0.2; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), mat(0xf1d2b4)); head.position.y = 0.46; head.castShadow = true; g.add(head);
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.16, 10), mat(0xffb44a)); hat.position.y = 0.6; g.add(hat);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb44a, emissiveIntensity: 2 })); glow.position.set(0.16, 0.28, 0); g.add(glow);
+  S.add(g); return g;
+}
+const ROUTES = [
+  ['hut', 'depth', 'yard', 'post', 'hut'],
+  ['hut', 'mac', 'yard', 'shop', 'hut'],
+  ['hut', 'notes', 'hut'],
+  ['hut', 'yard', 'hut']
+];
+const walkers = ROUTES.map((r, i) => ({ g: figure([0x3f6f8f, 0x5a4a8a, 0x9a6b3a, 0x4f7a5a][i]), r, leg: 0, t: Math.random(), speed: 0.11 + i * 0.015 }));
+
+/* wagons: post office -> bridge -> Harry's town */
+function wagon() {
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.7), mat(0xa8763e)); box.position.y = 0.28; box.castShadow = true; g.add(box);
+  const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.7, 12, 1, false, 0, Math.PI), mat(0xf0e6d0)); cover.rotation.x = Math.PI / 2; cover.rotation.z = Math.PI / 2; cover.position.y = 0.42; g.add(cover);
+  for (const [x, z] of [[-0.27, 0.22], [0.27, 0.22], [-0.27, -0.22], [0.27, -0.22]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 12), mat(0x3a2a1a)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.11, z); g.add(w); }
+  S.add(g); return g;
+}
+const wagons = [0, 0.5].map((o) => ({ g: wagon(), t: o }));
+
+/* chimney smoke from the hut */
+const puffs = [];
+for (let i = 0; i < 14; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshStandardMaterial({ color: 0xcfd3dc, transparent: true, opacity: 0.5 })); p.userData.t = i / 14; S.add(p); puffs.push(p); }
+
+/* ---------- labels ---------- */
+const labEl = document.getElementById('labels'), labs = [];
+function addLabel(obj, text, state, key) {
+  const d = document.createElement('div'); d.className = 'lab'; d.tabIndex = 0;
+  d.innerHTML = '<span class="dot ' + (state || '') + '"></span>' + text; labEl.appendChild(d);
+  if (key) { d.onclick = () => openCard(key); d.onkeydown = (e) => { if (e.key === 'Enter') openCard(key); }; }
+  labs.push({ d, obj }); return d;
+}
+for (const k in B) addLabel(new THREE.Vector3(B[k].x, B[k].h + B[k].h * 0.95 + 0.3, B[k].z), B[k].name, B[k].state, k);
+addLabel(new THREE.Vector3(HOME.x, 3.4, HOME.z), 'Harry\'s town · Mini, Radeon, Dell, Mill', 'on');
+addLabel(new THREE.Vector3(0, 0.9, -12.2), 'Bridge · 4 wagons waiting', '');
+
+/* ---------- camera: slow orbit, drag to turn, wheel to zoom ---------- */
+let yaw = 0.7, pitch = 0.62, dist = 24, target = new THREE.Vector3(0, 0, -3), autoT = 0, drag = null, tour = false, tourI = 0, tourT = 0;
+const TOUR = ['hut', 'depth', 'yard', 'shop', 'home'];
+function size() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); CAM.aspect = w / h; CAM.updateProjectionMatrix(); if (w < 760) dist = Math.max(dist, 30); }
+addEventListener('resize', size); size();
+cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; autoT = 0; tour = false; });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', (e) => { if (!drag) return; yaw -= (e.clientX - drag.x) * 0.005; pitch = Math.min(1.35, Math.max(0.25, pitch + (e.clientY - drag.y) * 0.004)); drag = { x: e.clientX, y: e.clientY }; });
+cv.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.min(48, Math.max(8, dist * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: false });
+
+/* ---------- panels ---------- */
+const evEl = document.getElementById('events');
+EVENTS.slice().reverse().forEach(([t, txt, who, star]) => { const d = document.createElement('div'); d.className = 'ev' + (star ? ' star' : ''); d.innerHTML = '<time>' + t + '</time><p>' + (star ? '★ ' : '') + txt + '<br><span class="who">' + who + '</span></p>'; evEl.appendChild(d); });
+let tickI = 0; const tickEl = document.getElementById('tick');
+function tick() { tickEl.textContent = NOW[tickI % NOW.length]; tickI++; }
+tick(); setInterval(tick, 5000);
+function openCard(k) {
+  const b = B[k]; if (!b) return; const c = document.getElementById('card'); c.hidden = false;
+  document.getElementById('cEye').textContent = b.eye; document.getElementById('cTitle').textContent = b.name;
+  document.getElementById('cList').innerHTML = b.list.map((x) => '<li>' + x + '</li>').join('');
+  target.set(b.x, 0, b.z); dist = Math.min(dist, 14);
+}
+document.getElementById('bClose').onclick = () => { document.getElementById('card').hidden = true; target.set(0, 0, -3); dist = 24; };
+document.getElementById('bDiary').onclick = (e) => { const d = document.getElementById('diary'); d.hidden = !d.hidden; e.target.textContent = d.hidden ? 'Show diary' : 'Hide diary'; };
+document.getElementById('bTour').onclick = () => { tour = !tour; tourT = 0; tourI = 0; };
+function setMode(m) {
+  mode = m; S.background = new THREE.Color(m.sky); S.fog.color.set(m.fog); hemi.color.set(m.hemi[0]); hemi.groundColor.set(m.hemi[1]); hemi.intensity = m.hemi[2];
+  sun.color.set(m.sun[0]); sun.intensity = m.sun[1]; winMats.forEach((w) => { w.emissiveIntensity = m.win; }); lanternLights.forEach((L) => { L.intensity = m === DUSK ? 0.9 : 0; });
+  stars.visible = m === DUSK; document.getElementById('bDay').textContent = m === DUSK ? 'Daylight' : 'Evening';
+}
+document.getElementById('bDay').onclick = () => setMode(mode === DUSK ? DAY : DUSK);
+setMode(DUSK);
+
+/* ---------- loop ---------- */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const tmp = new THREE.Vector3(); let last = performance.now();
+function posOf(k) { return k === 'home' ? new THREE.Vector3(HOME.x, 0, HOME.z) : new THREE.Vector3(B[k].x, 0, B[k].z + B[k].d / 2 + 0.35); }
+function frame(now) {
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const sp = reduce ? 0.25 : 1;
+  if (!drag && !tour) { autoT += dt; if (autoT > 3) yaw += dt * 0.05 * sp; }
+  if (tour) { tourT += dt; if (tourT > 5) { tourT = 0; tourI = (tourI + 1) % TOUR.length; } const p = posOf(TOUR[tourI]); target.lerp(p, Math.min(1, dt * 1.5)); dist += ((TOUR[tourI] === 'home' ? 14 : 11) - dist) * Math.min(1, dt * 1.5); yaw += dt * 0.12; }
+  CAM.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist); CAM.lookAt(target);
+  for (const w of walkers) { /* walk the legs of the route */
+    w.t += dt * w.speed * sp; if (w.t >= 1) { w.t = 0; w.leg = (w.leg + 1) % (w.r.length - 1); }
+    const a = posOf(w.r[w.leg]), b = posOf(w.r[w.leg + 1]); w.g.position.lerpVectors(a, b, w.t); w.g.position.y = Math.abs(Math.sin(now * 0.008 * sp)) * 0.04; w.g.lookAt(b.x, 0, b.z);
+  }
+  for (const v of wagons) { /* post -> bridge -> home and back */
+    v.t = (v.t + dt * 0.035 * sp) % 1; const k = v.t < 0.5 ? v.t * 2 : 2 - v.t * 2;
+    const pts = [posOf('post'), new THREE.Vector3(0.3, 0, -8.6), new THREE.Vector3(0.3, 0.18, -13.8), new THREE.Vector3(HOME.x + 0.6, 0, HOME.z + 2.6)];
+    const seg = Math.min(2, Math.floor(k * 3)), f = k * 3 - seg; v.g.position.lerpVectors(pts[seg], pts[seg + 1], f);
+    const nx = pts[v.t < 0.5 ? seg + 1 : seg]; v.g.lookAt(nx.x, v.g.position.y, nx.z);
+  }
+  for (const p of puffs) { p.userData.t = (p.userData.t + dt * 0.12 * sp) % 1; const t = p.userData.t; p.position.set(B.hut.x + 0.5 + Math.sin(t * 6) * 0.15, B.hut.h + 1.2 + t * 2.2, B.hut.z - 0.3 - t * 0.6); p.scale.setScalar(0.6 + t * 1.6); p.material.opacity = 0.45 * (1 - t); }
+  mill.rotation.z += dt * 0.8 * sp;
+  lamps.forEach((l, i) => { if (l.s !== 1) l.m.material.emissiveIntensity = 0.7 + 0.6 * Math.abs(Math.sin(now * 0.004 + i)); });
+  R.render(S, CAM);
+  const W = innerWidth, H = innerHeight;
+  for (const l of labs) { tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.1 && tmp.x < 1.1 && tmp.y > -1.1 && tmp.y < 1.1; l.d.style.display = vis ? '' : 'none'; if (vis) { l.d.style.left = ((tmp.x + 1) / 2 * W) + 'px'; l.d.style.top = ((1 - tmp.y) / 2 * H) + 'px'; } }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
