@@ -828,7 +828,7 @@ Every home has the same readable parts:
 
 ### 7.1 Time of day from the real clock
 
-- The sun follows **real UK local time** for the location's latitude (a fixed 52 degrees North; no location is read):
+- The sun follows **real UK local time** for the location's latitude (a fixed, generic latitude; no location is read):
   sunrise, noon and sunset times computed for the date. In November, the studio's evening work happens after dark, so the
   town is mostly at dusk and night: its best look.
 - **Readability floor**: the scene is never darker than "moonlit blue" (hemisphere at least 0.45) and never brighter than
