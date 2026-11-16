@@ -138,11 +138,10 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const tL4 = await waitFor(() => __g.G.locked, 180000, 600); const P4 = await ev(() => ({ prob: __g.RG.prob, cur: __g.HOMES.cur, how: __g.RELOC.lock && __g.RELOC.lock.how }));
   ok('4. Continue Room 3 (sticker hidden): the surfaces find it', tL4 >= 0 && P4.cur === 'r3', JSON.stringify(P4));
   await waitFor(() => !__g.RF.on, 30000, 500); await ev((a) => { window.__MARKS = [a]; __g.STK.obs = {}; __g.REC.stk.length = 0; window.__toasts.length = 0; }, ST4);
-  const t4 = Date.now(); await viewSticker(ST4, 0.75, [0, 25, -25, 35], 3.2); const tB4 = await waitFor(() => __g.G.stk && __g.G.stk.id === 4, 60000, 300); const secs4 = (Date.now() - t4) / 1000;
+  const t4 = Date.now(); await viewSticker(ST4, 0.75, [0, 25, -25, 35], 3.2); const tB4 = await waitFor(() => __g.G.stk && __g.G.stk.id === 4, 60000, 300); const secs4 = (Date.now() - t4) / 1000; await shot('143-stickerkey-bound.png');
   const B4 = await ev(() => ({ row: __g.HOMES.rooms.find((r) => r.id === 'r3').stk, prob: __g.RG.prob, toast: window.__toasts.find((t) => /now has sticker/.test(t)) || '', log: __g.REC.stk.filter((e) => e.bind).slice(-1) }));
   if (tB4 < 0) console.log('DEBUG4', JSON.stringify(await ev(() => ({ rf: __g.RF.on, ask: !!__g.RB.ask, can: __g.stkCanBind(), base: __g.RB.base, seen: __g.STK.seen, rej: __g.STK.rej, rel: __g.REC.relock.slice(-6), stk: __g.REC.stk.slice(-12) }))));
   ok('4. sticker 4 (no room owns it) is taken by Room 3 at once (no 20 s wait), "Room 3 now has sticker 4 ✓"', tB4 >= 0 && secs4 < 15 && B4.row === 4 && /Room 3 now has sticker 4 ✓/.test(B4.toast), secs4.toFixed(1) + ' s (lock still on probation then: ' + P4.prob + ') ' + JSON.stringify(B4));
-  await shot('143-stickerkey-bound.png');
 
   /* ===================== 5. a grown colony: the question, with "It's Room 2" first ===================== */
   await ev(() => { for (const S of __g.G.settlements) S.born = Date.now() - 10 * 60000; }); const map3 = await mapOf('r3');
@@ -164,6 +163,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('6. "Forget this room’s sticker": Room 2 has none, and seeing sticker 2 again does not bind it back by itself', !F6.row && F6.off === 2 && !F6.g, JSON.stringify(F6));
   await ev(() => __g.stkRoomsUi()); await sleep(200); const gb = await ev(() => { const b = document.getElementById('stkGiveSeen'); return b ? b.innerText : ''; });
   await p.click(gb ? '#stkGiveSeen' : '#modal [data-give="2"]'); await viewSticker(ST2, 0.8, [25, 15], 3); const tG = await waitFor(() => __g.G.stk && __g.G.stk.id === 2, 30000, 300);
+  if (tG < 0) console.log('DEBUG6', JSON.stringify(await ev(() => ({ give: __g.STK.give, can: __g.stkCanBind(), rf: __g.RF.on, ask: !!__g.RB.ask, locked: __g.G.locked, ret: __g.G.returning, toasts: window.__toasts.slice(-4), stk: __g.REC.stk.filter((e) => !e.fix && !e.refused).slice(-8) }))));
   ok('6. "Give this room sticker 2" gives it back', tG >= 0 && gb === 'Give this room sticker 2' && (await ev(() => __g.HOMES.rooms.find((r) => r.id === 'r2').stk === 2)), gb);
   await ev(() => __g.devOpen()); await viewSticker(ST2, 0.8, [20, 30], 3); await sleep(2500);
   const D6 = await ev(() => ({ row: [...document.querySelectorAll('#devPanel .devRow')].map((r) => r.innerText.replace(/\s+/g, ' ')).find((t) => /Sticker/.test(t)) || '', num: __g.devRows().num.sticker, rep: Object.keys(__g.stkReport().refused || {}) }));

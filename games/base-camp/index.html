@@ -6482,8 +6482,8 @@ function stkJump(own, id, F) { /* the sticker names the room: it loads, and lock
   const done = G.stk && G.stk.id === id && stkLock(F); if (!done) autoSay('Sticker ' + id + ': this is ' + homeName(own) + '. Look around slowly so the camp lines up.', 6); updateHint(); autoCount();
 }
 function stkGive(id) { /* Menu, Rooms: this room takes sticker id (from another room too): now if it was just seen, else the next time it is seen in the next minute */
-  if (!stkCanBind()) { toast('Find this room first (or let the colony land), then give it a sticker.', 4); return; }
-  const r = homeInfo(HOMES.cur); if (r) delete r.stkOff; STK.gives++; const last = STK.obs[id], F = last && last.length && performance.now() - last[last.length - 1].t < 3000 ? stkFixOf(id) : null;
+  if (!G.zones.some(rbOwn)) { toast('Let the colonists find this room first, then give it a sticker.', 4); return; }
+  const r = homeInfo(HOMES.cur); if (r) delete r.stkOff; STK.gives++; const last = STK.obs[id], F = stkCanBind() && last && last.length && performance.now() - last[last.length - 1].t < 3000 ? stkFixOf(id) : null; /* not lined up this moment (a quick check after a frame gap): it waits, and the next fix binds it */
   if (F) { stkBind(F, true); return; } STK.give = { id, until: performance.now() + 60000 }; recStk({ give: id, waiting: true }); toast('Point the camera at sticker ' + id + '.', 4);
 }
 function stkRoomsUi(msg) { /* Menu, Rooms and stickers: which room owns which sticker; give this room a sticker, or forget its sticker */
