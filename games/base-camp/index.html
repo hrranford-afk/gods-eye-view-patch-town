@@ -6967,11 +6967,11 @@ function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign
 /* ============ DEVELOPER MODE (build 30): a small corner panel for testing on the iPad. ?dev=1, or hold the build line on the title for 3 s. Read HANDOVER "Developer mode (build 30)". ============
    One row per part of the AR stack: a tick (working), a cross (should work but does not) or a dash (not running here), and a number. Refreshed twice a second while open.
    "Copy numbers" copies the panel as JSON (numbers and short texts only, never a picture). When closed the panel does not exist: nothing on the page moves. */
-const DEV = { on: false, el: null, timer: 0, prev: null, rate: { fps: 0, hits: 0, pics: 0 }, hold: 0, last: null, copied: '' };
+const DEV = { on: false, el: null, timer: 0, prev: null, rate: null, hold: 0, last: null, copied: '' };
 function devRows() { /* the numbers behind the panel: [tick, label, text] per row, plus the raw numbers for the JSON */
   const now = performance.now(), P = DEV.prev, n = { t: now, frames: frameN, hits: SCAN.hits, pics: STK.seq || 0 };
   if (P && now - P.t >= 2000) { /* rates over at least 2 s (pictures come a few a second) */ const s = (now - P.t) / 1000; DEV.rate = { fps: (n.frames - P.frames) / s, hits: (n.hits - P.hits) / s, pics: Math.max(0, n.pics - P.pics) / s }; DEV.prev = n; } else if (!P) DEV.prev = n;
-  const R = DEV.rate, ar = !!AR.on, poseOk = ar && now - (AR.poseT || 0) < 1000, im = ar && STK.img && STK.img.naturalWidth ? STK.img : null, rot = im ? stkView(im.naturalWidth, im.naturalHeight, AR.projM.elements).rot : null;
+  const R = DEV.rate || { fps: NaN, hits: NaN, pics: NaN }, wait = !DEV.rate, f0 = (v, d) => (isFinite(v) ? v.toFixed(d || 0) : '...'), ar = !!AR.on, poseOk = ar && now - (AR.poseT || 0) < 1000, im = ar && STK.img && STK.img.naturalWidth ? STK.img : null, rot = im ? stkView(im.naturalWidth, im.naturalHeight, AR.projM.elements).rot : null;
   const kf = G.snap ? G.snap.kf.length : 0, pts = G.snap ? G.snap.kf.reduce((a, k) => a + k.n, 0) : 0, L = RELOC.lock, lockHow = L ? (L.stk || L.snap || 'surfaces') : '', lockSd = L && L.snap && SNAP.lastF && SNAP.lastF.sdP ? SNAP.lastF.sdP * 100 : null;
   const sk = STK.lastSeen && now - STK.lastSeen.t < 5000 ? STK.lastSeen : null, c = RECOG.coco, g = REC.recog.length ? REC.recog[REC.recog.length - 1] : null, e = REC.errs.length ? REC.errs[REC.errs.length - 1] : null;
   let kb = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); kb += (k.length + (localStorage.getItem(k) || '').length) / 1024; } } catch (er) { kb = -1; }
@@ -6981,9 +6981,9 @@ function devRows() { /* the numbers behind the panel: [tick, label, text] per ro
     sticker: sk ? { id: sk.id, m: +sk.d.toFixed(2), agoS: +((now - sk.t) / 1000).toFixed(1) } : null, objects: { state: c.state, runs: c.runs, ms: Math.round(c.ms || 0), last: g ? { cls: g.cls || '', score: g.score || 0 } : null },
     depth: { state: D.state, want: D.want, msRun: Math.round(D.msAvg), fitCm: D.fits ? +D.cm.toFixed(1) : null, occlusion: !!D.shown, runs: D.runs, good: D.good, poor: D.poor, why: D.why }, errors: { count: REC.errs.length, last: e ? String(e.msg).slice(0, 120) : '' }, storageKB: Math.round(kb) };
   const rows = [
-    [!ar ? 'dash' : poseOk ? 'tick' : 'cross', 'AR tracking', ar ? (poseOk ? 'pose ok' : 'no pose') + ' · ' + R.fps.toFixed(0) + ' fps' : 'not in AR · ' + R.fps.toFixed(0) + ' fps'],
-    [!ar ? 'dash' : R.hits > 0 || G.zones.length ? 'tick' : 'cross', 'Hit points', R.hits.toFixed(0) + '/s · ' + G.zones.length + ' surfaces'],
-    [!ar ? 'dash' : R.pics > 0 ? 'tick' : 'cross', 'Camera pictures', ar ? R.pics.toFixed(1) + '/s' + (im ? ' · ' + im.naturalWidth + 'x' + im.naturalHeight + ' · turn ' + rot + '°' : ' · none') : '-'],
+    [!ar ? 'dash' : poseOk ? 'tick' : 'cross', 'AR tracking', ar ? (poseOk ? 'pose ok' : 'no pose') + ' · ' + f0(R.fps) + ' fps' : 'not in AR · ' + f0(R.fps) + ' fps'],
+    [!ar || wait ? 'dash' : R.hits > 0 || G.zones.length ? 'tick' : 'cross', 'Hit points', f0(R.hits) + '/s · ' + G.zones.length + ' surfaces'],
+    [!ar || wait ? 'dash' : R.pics > 0 ? 'tick' : 'cross', 'Camera pictures', ar ? f0(R.pics, 1) + '/s' + (im ? ' · ' + im.naturalWidth + 'x' + im.naturalHeight + ' · turn ' + rot + '°' : ' · none') : '-'],
     [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
     [sk ? 'tick' : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + sk.d.toFixed(2) + ' m' : 'not seen'],
     [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
