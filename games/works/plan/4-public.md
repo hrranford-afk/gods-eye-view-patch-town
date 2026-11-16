@@ -467,7 +467,7 @@ This matters more than anything in explainer mode. A careful explainer on top of
 | Never show | Why | How we stop it |
 |---|---|---|
 | Room photos, camera frames, depth maps, room scans, saved room maps | A family home. Layout shows wealth, children's rooms, ways in. | No image from the game ever enters the public diary. Scanner rejects image files. |
-| Any location: town, street, rounded position, region, weather location, "carpet town" | Finds the house | Allow-list filter. Words like "Places", "km", place names are blocked. |
+| Any location: town, street, rounded position, region, weather location, regional nicknames | Finds the house | Allow-list filter. Words like "Places", "km", place names are blocked. |
 | Home routine: when the owner sleeps, is away, or works | Burglary risk; personal life | Public replay is delayed by at least 7 days and shows times as "evening", "night", "morning" only. No exact times for owner actions. |
 | Machine addresses: IP addresses, host names, network names, ports, remote-control or bridge details, Tailscale names, SSH details | A map for attackers | Scanner blocks number patterns like addresses and anything after `@` or `://` |
 | Secrets: tokens, keys, passwords, session links, API URLs with codes | Direct attack | Secret scanner (patterns for common keys) on every public diary line; any hit stops the whole update |

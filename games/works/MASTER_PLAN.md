@@ -97,7 +97,7 @@ signs are not yet true. The plan fixes truth first, then reading at a glance, th
 AIs drawn as faceless wind-up toys; storm only for real trouble; sound soft and silent at night.
 
 **What was corrected** (Appendix B): the alarm pulse rate, "7 of 72 sparks" (really 7 of 144), the build 29 live time,
-the draw-call count (worse than stated), and an unverified "usage limit on 15 Nov".
+the draw-call count (our own count is higher), and an unverified "usage limit on 15 Nov".
 
 ---
 
@@ -855,7 +855,7 @@ Pictograms are listed in brackets.
 
 **Customs house** (Home end of the bridge). The privacy check: nothing personal crosses.
 - Silhouette: a neat little customs post with a **scanning arch** over the road (a toy archway with a lamp on top) and a
-  flag pole. Every returning wagon passes through the arch; the arch lamp flashes **green** (clean) on each pass. A wagon
+  flag pole. Every returning wagon passes through the arch; the arch lamp glows **bluish green** (clean) as each wagon passes. A wagon
   that fails the check is pulled aside into a fenced bay and its crate is opened (alarm).
 - Data: the privacy checks in the tests, and the `clean()` filter's hits (counted, never shown).
 
@@ -1141,7 +1141,7 @@ The games are family games, so children may see the town. Children are more like
 | **Covered wagon** | An order (to Home Town), a result (back) | Bridge depot -> toll -> bridge -> customs -> machine | Horse-drawn toy wagon, canvas in an order colour band; loaded with crates on the way back | Exists today; restyled |
 | **Postal van** | A deploy | Post office -> shop window | Small red van | |
 | **Toy cars** | Jobs queued at a machine | Park in the machine's car park; jam on Dell Lane | Six rounded car shapes, one colour per origin | Instanced: one draw call for all cars |
-| **Ambulance** | An urgent fix | Hospital -> workshop -> hospital | White van, vermilion stripe, flashing light | One real point light, desktop only |
+| **Ambulance** | An urgent fix | Hospital -> workshop -> hospital | White van, vermilion stripe, a slow turning light | One real point light, desktop only |
 | **Fire engine** | A rollback | Fire station -> shop window -> back | Red engine with ladder | |
 | **Tow truck** | Lost work picked up | Lost property -> workshop | Small yellow truck with a hook | |
 | **Repair truck** | Power restored | Power station -> hut | Honey truck with a ladder | |
@@ -1835,9 +1835,9 @@ system design, agents misaligned with each other, and weak checking of the work 
 | R2 Silent builder | open job (start, no end), no `beat`/`commit`/`test` with that job for **45 min** | lost property, amber lamp | Builders use tools every few minutes; 45 min tolerates a long test run. v1 used 2 h, which would have caught 16:27 only at 18:27. |
 | R3 Lost | same as R2 for 2 h | lost property, red alarm, town crier | Real abandonment |
 | R4 Whole studio silent | no measured line at all for 3 h during a declared working window | haze over the town, "last heard 15:12" | Catches a dead foreman, where nobody is left to write anything |
-| R5 Restart with open jobs | `restart` line listing open jobs | power cut flash on those workshops | Catches the 15 Nov case at the moment it happens |
-| R6 Order stuck | `order` with no `quote` after 24 h; `go` with no `result` after the quoted minutes × 2 + 24 h | wagon on the bridge with a clock | Pastes go through Harry; long but bounded |
-| R7 Ask stuck | `ask` with no `answer` after 48 h | motion on the town hall turns red | Nothing waits forgotten |
+| R5 Restart with open jobs | `restart` line listing open jobs | power cut on those workshops (lights go off, no flashing) | Catches the 15 Nov case at the moment it happens |
+| R6 Order stuck | `order` with no `quote` after 12 h (amber) or 24 h (red); `go` with no `result` past its due time, or the quoted minutes × 2 + 24 h (Appendix A #24) | wagon on the bridge with a clock | Pastes go through Harry; long but bounded |
+| R7 Ask stuck | `ask` blocking work with no `answer` after 24 h (a Bell) or 48 h (a Call) | the scroll on the town hall yellows and curls; the bell lights sky blue | Nothing waits forgotten |
 
 Notes:
 - The page computes R2–R4 from the clock and the newest data. So the alarm works when every writer is dead, as long as
@@ -1851,8 +1851,8 @@ Notes:
 
 *From plan 3 (operations), section 4. References like "section 3.8" inside this part point to that plan.*
 
-Times are UK. "Lamp" means a colour on the building. "Bell" means a sound and a line on the town crier's board. "Page"
-means a message that reaches Harry (used rarely: see section 7).
+Times are UK. "Lamp" means a colour on the building. "Bell" means a sound and a line on the town crier's board. "Call"
+(plan 3 said "Page") means a message that reaches Harry (used rarely: see section 7, and section 5.8 of this plan).
 
 #### P1. The stalled builder (F1, F3, F12)
 
@@ -3482,7 +3482,7 @@ Each number in the public town carries one of three small marks:
 | Never show | Why | How we stop it |
 |---|---|---|
 | Room photos, camera frames, depth maps, room scans, saved room maps | A family home. Layout shows wealth, children's rooms, ways in. | No image from the game ever enters the public diary. Scanner rejects image files. |
-| Any location: town, street, rounded position, region, weather location, "carpet town" | Finds the house | Allow-list filter. Words like "Places", "km", place names are blocked. |
+| Any location: town, street, rounded position, region, weather location, regional nicknames | Finds the house | Allow-list filter. Words like "Places", "km", place names are blocked. |
 | Home routine: when the owner sleeps, is away, or works | Burglary risk; personal life | Public replay is delayed by at least 7 days and shows times as "evening", "night", "morning" only. No exact times for owner actions. |
 | Machine addresses: IP addresses, host names, network names, ports, remote-control or bridge details, Tailscale names, SSH details | A map for attackers | Scanner blocks number patterns like addresses and anything after `@` or `://` |
 | Secrets: tokens, keys, passwords, session links, API URLs with codes | Direct attack | Secret scanner (patterns for common keys) on every public diary line; any hit stops the whole update |
