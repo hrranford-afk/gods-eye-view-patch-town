@@ -69,6 +69,9 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const lockedIn = (room) => ev((room) => __g.HOMES.cur === room && __g.G.locked && !!(__g.RELOC.lock && __g.RELOC.lock.stk), room);
   const S = () => ev(() => ({ cur: __g.HOMES.cur, locked: __g.G.locked, lock: __g.RELOC.lock && __g.RELOC.lock.stk, rooms: __g.HOMES.rooms.map((r) => r.id + (r.stk ? ':' + r.stk : '')), log: __g.REC.stk.filter((e) => !e.fix && !e.refused).slice(-8), refused: __g.STK.rej }));
 
+  /* look at sticker 2; once the room has switched, look around a little if the lock still waits for the surfaces (the sticker's yaw alone is not always sure), as a player would */
+  const toR2 = async () => { await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tj = await waitFor(() => __g.HOMES.cur === 'r2', 30000, 300); jumpS.push(tj < 0 ? -1 : +(tj / 1000).toFixed(1)); if (tj >= 0 && !(await waitFor(() => __g.G.locked, 6000, 300) >= 0)) { swept.push(1); await sweep(['shelf', 'deskA', 'floor', 'shelf'], 1.0); } else swept.push(0); };
+  const jumpS = [], swept = [];
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh([]); /* the sticker comes out once the shed is settled */
   ok('BUILD is build 30', await ev(() => __g.BUILD === 'build 30'));
 
@@ -94,14 +97,14 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('1. the chooser shows which room owns which sticker ("Room 2 · sticker 2") and the slots left (3 of 8, 5 left)', C1.cards.includes('Room 2 · sticker 2') && C1.cards.includes('Room 1') && /3 of 8 rooms saved · 5 left/.test(C1.slots), JSON.stringify(C1));
   await shot('140-stickerkey-chooser.png');
   await p.click('#chFind'); await sleep(600); await ev((f) => { window.__cam.mode = 'fixed'; window.__cam.fixed = f; }, FACE2);
-  const t1 = Date.now(); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL1 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const secs1 = (Date.now() - t1) / 1000; const S1 = await S();
+  const t1 = Date.now(); await toR2(); const tL1 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 60000, 300); const secs1 = (Date.now() - t1) / 1000; const S1 = await S();
   ok('1. "Not sure?" facing sticker 2: Room 2 is loaded and locked from the sticker, with no question', tL1 >= 0 && S1.cur === 'r2' && !!S1.lock && (await ev(() => window.__prompts.length)) === 0, secs1.toFixed(1) + ' s ' + JSON.stringify(S1));
   await sleep(2500); await shot('141-stickerkey-found.png'); await endSession();
 
   /* ===================== 2. Continue Room 1 (the wrong room) facing sticker 2 ===================== */
   await ev(() => localStorage.setItem('bc-test-off', String(4 * 3600 * 1000))); await fresh([ST2]); await prompts();
   await play('#chooser [data-room="r1"]'); await ev((f) => { window.__cam.mode = 'fixed'; window.__cam.fixed = f; }, FACE2);
-  const t2 = Date.now(); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL2 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const secs2 = (Date.now() - t2) / 1000; const S2 = await S();
+  const t2 = Date.now(); await toR2(); const tL2 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 60000, 300); const secs2 = (Date.now() - t2) / 1000; const S2 = await S();
   ok('2. Continue Room 1 while facing Room 2\'s sticker: Room 2 loads and locks from the sticker, no question', tL2 >= 0 && S2.cur === 'r2' && !!S2.lock && (await ev(() => window.__prompts.length)) === 0, secs2.toFixed(1) + ' s ' + JSON.stringify(S2));
   ok('2. Room 1 (never found) is untouched: its saved map is byte for byte the same and it is still a room', (await mapOf('r1')) === map1 && S2.rooms.includes('r1'));
   await endSession();
@@ -111,7 +114,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await play('#chNew'); const nrA = await ev(() => __g.HOMES.cur); await sweep(['shelf', 'deskA', 'floor'], 1.0);
   const tC = await waitFor(() => __g.G.settlements.some((S) => S.cols.length), 150000, 600);
   await ev((a) => { window.__MARKS = [a]; __g.STK.obs = {}; }, ST2); await ev((f) => { window.__cam.mode = 'fixed'; window.__cam.fixed = f; }, FACE2);
-  const age3 = await ev(() => Math.round(__g.stkColAge())); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL3a = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const S3a = await S();
+  const age3 = await ev(() => Math.round(__g.stkColAge())); await toR2(); const tL3a = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 60000, 300); const S3a = await S();
   const K3a = await ev((id) => { const d = JSON.parse(localStorage.getItem('base-camp-save-v2.' + id) || 'null'); return !!d && d.settlements.some((S) => S.cols && S.cols.length); }, nrA);
   ok('3a. a new room whose colony landed ' + age3 + ' s ago: sticker 2 takes the player to Room 2 at once (no question); the new room is kept with its colony', tC >= 0 && age3 < 120 && tL3a >= 0 && !!S3a.lock && (await ev(() => window.__prompts.length)) === 0 && S3a.rooms.includes(nrA) && K3a, JSON.stringify({ nrA, S3a }));
   await endSession();
@@ -123,7 +126,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const N3 = await ev(() => ({ cur: __g.HOMES.cur, zones: __g.G.zones.length, cols: __g.G.settlements.filter((S) => S.cols.length).length, rooms: __g.HOMES.rooms.length }));
   ok('3. + New room makes a new room with no colony yet', N3.cur === nr && N3.cols === 0 && N3.rooms === 5, JSON.stringify(N3));
   await ev((a) => { window.__SHED = window.__WORLD; window.__MARKS = [a]; __g.STK.obs = {}; }, ST2); await ev((f) => { window.__cam.mode = 'fixed'; window.__cam.fixed = f; }, FACE2);
-  const t3 = Date.now(); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL3 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const secs3 = (Date.now() - t3) / 1000; const S3 = await S();
+  const t3 = Date.now(); await toR2(); const tL3 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 60000, 300); const secs3 = (Date.now() - t3) / 1000; const S3 = await S();
   const K3 = await ev((id) => Object.keys(localStorage).filter((k) => k.endsWith('.' + id) || k.includes('.' + id + '-')), nr);
   ok('3. the sticker takes the player from the new room to Room 2 (locked from the sticker), no question', tL3 >= 0 && S3.cur === 'r2' && !!S3.lock && (await ev(() => window.__prompts.length)) === 0, secs3.toFixed(1) + ' s ' + JSON.stringify(S3));
   ok('3. the empty new room is not kept (not in the rooms, nothing in storage)', !S3.rooms.some((r) => r.split(':')[0] === nr) && K3.length === 0 && (await ev(() => __g.STK.dropped)) >= 1, JSON.stringify({ nr, rooms: S3.rooms, keys: K3 }));
@@ -148,7 +151,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const Q5 = await ev(() => { const el = document.getElementById('nroom'), pre = document.getElementById('mvPre'); return { txt: el.innerText.replace(/\s+/g, ' '), pre: pre ? pre.dataset.room + ':' + pre.innerText : '', first: el.querySelector('button') && el.querySelector('button').id, cur: __g.HOMES.cur, age: Math.round(__g.stkColAge()) }; });
   ok('5. a colony over 2 min old would be left: "Have you moved to another room?" with "It’s Room 2" first, nothing switched yet', tQ >= 0 && Q5.cur === 'r3' && /That sticker belongs to Room 2/.test(Q5.txt) && Q5.pre === 'r2:It’s Room 2' && Q5.first === 'mvPre', JSON.stringify(Q5));
   await sleep(300); await shot('144-stickerkey-grown-colony-asks.png');
-  await p.click('#mvPre'); await sweep(['shelf', 'deskA', 'floor', 'shelf'], 1.0); /* "It's Room 2" starts a fresh scan: the sticker's yaw is checked on the surfaces (unless it is sure) */ const tL5 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const S5 = await S();
+  await p.click('#mvPre'); await sweep(['shelf', 'deskA', 'floor', 'shelf'], 1.0); /* "It's Room 2" starts a fresh scan: the sticker's yaw is checked on the surfaces (unless it is sure) */ const tL5 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 60000, 300); const S5 = await S();
   ok('5. "It’s Room 2": Room 2 loads and locks; Room 3 keeps its colony and its sticker', tL5 >= 0 && S5.rooms.includes('r3:4') && S5.cur === 'r2' && S5.locked && (await ev(() => { const d = JSON.parse(localStorage.getItem('base-camp-save-v2.r3') || 'null'); return !!d && d.settlements.some((S) => S.cols && S.cols.length); })), JSON.stringify(S5) + ' map3 kept: ' + ((await mapOf('r3')).length > 1000));
 
   /* ===================== 6. Menu, Rooms and stickers; the developer panel ===================== */
@@ -167,6 +170,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   ok('6. the developer panel\'s sticker row: id, owner room, distance, sightings toward a fix (refusal reason when there is one)', /id 2 · this room · \d\.\d\d m · \d+(\/4)? sightings/.test(D6.row) && D6.num && D6.num.owner === 'r2', JSON.stringify(D6));
   await shot('146-stickerkey-dev-row.png'); await ev(() => __g.DEV && __g.devClose && __g.devClose());
 
+  console.log('NUMBERS seconds from the first look until the room switched: ' + JSON.stringify(jumpS) + '; needed a look around for the surfaces: ' + JSON.stringify(swept));
   ok('0 page errors', errs.length === 0, JSON.stringify(errs.slice(0, 5)));
   const fails = res.filter((r) => !r).length; console.log(fails ? fails + ' FAILED' : 'ALL ' + res.length + ' PASSED'); await b.close(); srv.close(); process.exit(fails ? 1 : 0);
 })();

@@ -6479,7 +6479,7 @@ function stkJump(own, id, F) { /* the sticker names the room: it loads, and lock
   if (!homeSwitchLoad(own)) { toast('That room could not be loaded.', 4); recStk({ jump: 'failed', room: own }); return; }
   G.finding = false; ROOMPRE = {}; PLACES.newRoom = ''; RELOC.asked = false; G.mapName = homeName(own); rbReset(); RF.quietUntil = performance.now() + 1500;
   if (fresh && from !== HOMES.cur && homeInfo(from) && !stkSavedCols(from)) { roomDelete(from); STK.dropped++; recStk({ dropped: from }); } /* the empty room only ever held this scan */
-  autoSay('Sticker ' + id + ': this is ' + homeName(own) + '.', 4); if (G.stk && G.stk.id === id) stkLock(F); updateHint(); autoCount();
+  const done = G.stk && G.stk.id === id && stkLock(F); if (!done) autoSay('Sticker ' + id + ': this is ' + homeName(own) + '. Look around slowly so the camp lines up.', 6); updateHint(); autoCount();
 }
 function stkGive(id) { /* Menu, Rooms: this room takes sticker id (from another room too): now if it was just seen, else the next time it is seen in the next minute */
   if (!stkCanBind()) { toast('Find this room first (or let the colony land), then give it a sticker.', 4); return; }
@@ -6534,15 +6534,16 @@ function stkLock(F) { /* the room's own sticker while it is being found: the loc
     const liveTop = relocTop(live), W = sure ? 2 : Math.min(180, Math.max(8, 5 * sd + 4)), st = W > 20 ? 1 : 0.5; let best = null;
     for (let a = -W; a <= W + 1e-9; a += st) { const T = stkPin(F, a0 + a * Math.PI / 180), v = relocVerify(T, top, liveTop); if (!best || v.score > best.score) best = Object.assign(T, v); }
     const surf = best.M >= 100 && best.ratio >= 0.7, clash = best.M + best.X > 150 && best.ratio < 0.5;
-    if (!surf && !(sure && !clash)) { recStk({ lock: 'surfaces disagree', M: best.M, X: best.X, ratio: +best.ratio.toFixed(2), sd: +sd.toFixed(2) }); return false; }
+    if (!surf && !(sure && !clash)) { stkWait(best.M + best.X < 30 ? 'no tops to check yet' : 'surfaces disagree', { M: best.M, X: best.X, ratio: +best.ratio.toFixed(2), sd: +sd.toFixed(2) }); return false; }
     if (sure) { const T0 = stkPin(F, a0); res = Object.assign(T0, relocVerify(T0, top, liveTop)); } else res = best;
     if (res.M > 50) res.dy += res.dyFix; how = surf ? 'sticker + surfaces' : 'sticker';
   } else if (sure) { res = Object.assign(stkPin(F, a0), { M: 0, X: 0, ratio: 1, score: 0, info: 0, overlap: 0 }); how = 'sticker only'; }
-  else { recStk({ lock: 'waiting for surfaces', cells, sd: +sd.toFixed(2) }); return false; }
+  else { stkWait('waiting for surfaces', { cells, sd: +sd.toFixed(2) }); return false; }
   if ($('ask').querySelector('#rmNew')) { $('ask').hidden = true; RG.ask = null; } /* 16 Nov: "Is this a new room?" is answered by the sticker */
   res.margin = 0; STK.lockFix = { F, sure, sd, a0: res.phi }; STK.locks++; recStk({ lock: how, yaw: +(res.phi * 57.2958).toFixed(2), dy: +res.dy.toFixed(3), M: res.M, ratio: +(res.ratio || 0).toFixed(2), sd: +sd.toFixed(2), secs: +RELOC.scanSecs.toFixed(1) });
   relocLock(res, 'sticker'); if (RELOC.lock) RELOC.lock.stk = how; setTimeout(() => { if (AR.on) toast('Sticker found ✓', 2); }, 1500); STK.sayT = performance.now(); return true;
 }
+function stkWait(why, o) { /* 16 Nov: a lock that waits is logged once per reason every 3 s (it is tried at every fix, and the log keeps only 60 lines) */ const now = performance.now(); if (STK.waitWhy === why && now - STK.waitT < 3000) return; STK.waitWhy = why; STK.waitT = now; recStk(Object.assign({ lock: why }, o)); }
 function stkDrift(T) { /* how far a pose moves the room's sticker away from where the lock saw it (metres, degrees) */
   const L = STK.lockFix; if (!L || !G.stk) return { m: 0, deg: 0 }; const s = G.stk, c = Math.cos(T.phi), sn = Math.sin(T.phi), p = [s.p0[0] * c - s.p0[2] * sn + T.tx, s.p0[1] + T.dy, s.p0[0] * sn + s.p0[2] * c + T.tz];
   return { m: Math.hypot(p[0] - L.F.p[0], p[2] - L.F.p[2]), deg: Math.abs(stkAng(T.phi - L.a0)) * 57.2958 };
