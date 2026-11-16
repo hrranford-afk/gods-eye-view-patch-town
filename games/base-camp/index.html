@@ -5228,7 +5228,7 @@ function deskPad(dt) {
     const bar = [...$('bar').querySelectorAll('button')].filter(padLive); let i = bar.findIndex((b) => b.classList.contains('padFocus'));
     if (d === 'left' || d === 'right') { i = i < 0 ? bar.findIndex((b) => b.classList.contains('on')) : i; i = (Math.max(0, i) + (d === 'right' ? 1 : bar.length - 1)) % Math.max(1, bar.length); padRing(bar[i]); }
     if (d === 'up' && i >= 0 && bar[i]) bar[i].click(); if (d === 'down') padRing(null);
-    if (r.hit[PB.cross]) { tapAt(innerWidth / 2, innerHeight / 2); }
+    if (r.hit[PB.cross]) { const cx = innerWidth / 2, cy = innerHeight / 2, c = colPick(cx, cy, Math.max(70, Math.min(innerWidth, innerHeight) * 0.1)), sp = c && colScreen(c); if (sp) tapAt(sp[0], sp[1]); else tapAt(cx, cy); } /* the crosshair is aimed with a stick and the camera trails a walking colonist (slow frames): Cross takes the colonist nearest the ring, a wider reach than a mouse tap */
     if (r.hit[PB.circle]) { DESK.follow = null; if (CCAM.on) camClose(); if (G.sel) { G.sel = null; selCard(null); } }
   }
   if (r.hit[PB.options]) { const b = $('bMenu'); if (!$('modal').hidden) $('modal').hidden = true; else if (b) b.click(); }
@@ -7849,6 +7849,7 @@ function toScreen(v) {
   const p = tmpV2.copy(v); if (AR.on) p.applyMatrix4(AR.viewInv).applyMatrix4(AR.projM); else p.project(camera);
   return [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight, p.z < 1];
 }
+function colScreen(c) { /* where a colonist stands on screen now, or null when it is off screen */ if (!c || !c.S || !c.S.cols.includes(c)) return null; const [wx, wz] = l2w(c.S, c.x, c.z), sp = toScreen(tmpV.set(wx, SY(c.S, 0.026), wz)); return sp[2] ? sp : null; }
 function colPick(cx, cy, maxd) {
   let best = null, bd = maxd || 46;
   for (const S of G.settlements) { if (!S.placed || S.ghost) continue; for (const c of S.cols) { if (c.inside || c.spawn > 0) continue; const [wx, wz] = l2w(S, c.x, c.z); const [sx, sy, ok] = toScreen(tmpV.set(wx, SY(S, 0.026), wz)); if (!ok) continue; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c; } } }
@@ -7867,7 +7868,7 @@ $('touch').addEventListener('pointerdown', (e) => {
   e.preventDefault(); sfx('');
   if (BT.on) { btPointer('down', e); return; }
   Object.assign(down, { on: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button, col: null, held: false, shift: e.shiftKey });
-  if (G.phase === 'play' && ['look', 'cheer', 'seed', 'build'].includes(G.tool) && e.button !== 2) down.col = colPick(e.clientX, e.clientY); // touch a colonist: a tap pokes it, holding or dragging picks it up
+  if (G.phase === 'play' && ['look', 'cheer', 'seed', 'build'].includes(G.tool) && e.button !== 2 && !(deskOn() && (e.button === 1 || e.shiftKey))) down.col = colPick(e.clientX, e.clientY); /* build 29: a middle-drag or shift-drag slides the camera, even when it starts on a colonist */ // touch a colonist: a tap pokes it, holding or dragging picks it up
   try { $('touch').setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
   if (G.phase === 'play' && G.tool === 'water') { const g = groundPick(e.clientX, e.clientY); G.water = g && g.zone.settled ? g : null; }
   if (G.phase === 'play' && G.tool === 'cable') {
@@ -7914,6 +7915,7 @@ const endDown = (e) => {
     if (g) { const l = makeLink(f.S, f.x, f.z, g.zone, g.x, g.z, viaPick(f.S, g)); if (l) setTool('look'); } else toast('Drop the line onto another zone.');
     return;
   }
+  if (tap && down.col && deskOn()) { const sp = colScreen(down.col); if (sp && Math.hypot(sp[0] - e.clientX, sp[1] - e.clientY) < 90) { tapAt(sp[0], sp[1]); return; } } /* build 29: the desktop camera can glide (follow, a zoom easing in) between press and release: the tap pokes the colonist that was pressed */
   if (tap) tapAt(e.clientX, e.clientY);
 };
 $('touch').addEventListener('pointerup', endDown); $('touch').addEventListener('pointercancel', endDown);
