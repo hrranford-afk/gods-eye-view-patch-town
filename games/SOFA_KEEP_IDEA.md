@@ -25,3 +25,14 @@
 
 ## Status
 Saved idea. It becomes the first co-op mode on the shared kit. Next to it are Sofa siege (versus) and Dragon defence (GAME_MODES_PLAN.md).
+
+## The adult version (Harry, 16 Nov 2026, later)
+"Okay, this might sound a bit different. Things might be dying on this. This might be quite scary. Little things might be crawling up on you. This could be the adult version."
+
+CAIRN's notes:
+- This is a separate game for grown-ups, not a setting inside Base Camp. Base Camp's "nobody dies" rule stays for the family games.
+- In AR it would be scary for real: things come out from behind your own furniture (depth) and climb towards you.
+- It needs its own link and an age check, so children don't open it by accident.
+- It needs a phobia switch (legs off / blobs instead of spiders) and a no-jump-scares setting.
+- Our own creatures only; nothing copied from horror films or games.
+- How dark it goes is Harry's taste call: creepy and tense, or properly gory.
