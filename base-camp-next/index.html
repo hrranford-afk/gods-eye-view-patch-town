@@ -19,7 +19,7 @@ button.big{background:var(--acc);border-color:#ffd9a8;font-size:20px;min-height:
 button.alt{background:#5e8f4a;border-color:#b6dc9d;box-shadow:0 3px 0 #38592b}
 button:disabled{opacity:.4}
 a.mlink{font:800 15px var(--body);color:var(--paper);background:rgba(255,246,230,.16);border:2px solid rgba(255,246,230,.42);border-radius:12px;min-height:42px;padding:4px 12px;display:inline-flex;align-items:center;text-decoration:none;box-sizing:border-box}
-#nroom .stkq{font-weight:600;opacity:.85}#chooser .chstk{text-align:center;opacity:.8;font-size:13px}
+#nroom .stkq{font-weight:600;opacity:.85}#chooser .chstk,#chooser .chslots{text-align:center;opacity:.8;font-size:13px}
 #title{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;padding:26px 30px;width:min(92vw,460px);background:rgba(59,42,30,.82)}
 #title{max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box} /* build 25: a long rooms list and More... scroll inside the card instead of running off the screen */
 #title h1{margin:0 0 4px;font-size:44px;letter-spacing:1px;color:#ffd9a8;text-shadow:0 3px 0 #7a4a22}
@@ -2254,7 +2254,7 @@ function mapFromJSON(d, room) { /* returns an error string, or '' after loading 
   G.spots = d.spots.filter((s) => s && typeof s.x === 'number' && TAGS[s.tag] !== undefined).map((s) => { const T = TAGS[s.tag]; return { id: s.id, tag: s.tag, name: String(s.name || T.label).slice(0, 28), role: T.role, zid: s.zid, x: s.x, y: s.y, z: s.z, area: s.area || 0, on: s.on || 'top', src: s.src || 'player', who: s.who || '', p0: [s.x, s.y, s.z] }; });
   for (const s of G.spots) G.nextSpot = Math.max(G.nextSpot, s.id + 1);
   G.cables = (d.cables || []).filter((c) => c && spotById(c.a) && spotById(c.b)).map((c) => ({ id: c.id, a: c.a, b: c.b })); for (const c of G.cables) G.nextCable = Math.max(G.nextCable, c.id + 1);
-  if (!room || room === HOMES.cur) { G.snap = snapFromJSON(d.snap); /* build 28 */ G.stk = stkFromJSON(d.stk); const hr = homeInfo(room || HOMES.cur); if (G.stk && hr && hr.stk !== G.stk.id) { for (const q of HOMES.rooms) if (q.stk === G.stk.id) delete q.stk; hr.stk = G.stk.id; homesSave(); } } /* build 27: the room's sticker (older maps have none) */
+  if (!room || room === HOMES.cur) { G.snap = snapFromJSON(d.snap); /* build 28 */ G.stk = stkFromJSON(d.stk); const hr = homeInfo(room || HOMES.cur); if (G.stk && hr && hr.stk !== G.stk.id) { if (hr.stkOff === G.stk.id || HOMES.rooms.some((q) => q !== hr && q.stk === G.stk.id)) G.stk = null; /* 16 Nov: forgotten here, or given to another room since (Menu, Rooms) */ else { hr.stk = G.stk.id; homesSave(); } } } /* build 27: the room's sticker (older maps have none) */
   G.library = (Array.isArray(d.library) ? d.library : []).filter((e) => e && typeof e.key === 'string' && TAGS[e.tag]).map((e, i) => ({ id: e.id || i + 1, key: e.key, tag: e.tag, name: String(e.name || '').slice(0, 28), by: String(e.by || 'you').slice(0, 30), how: String(e.how || 'taught').slice(0, 60), at: e.at || 0, n: e.n || 1 })); G.nextLib = Math.max(0, ...G.library.map((e) => e.id)) + 1;
   return '';
 }
@@ -6277,10 +6277,11 @@ function chooserOpen() {
   rs.sort((a, b) => near(a) - near(b) || (b.last || 0) - (a.last || 0));
   const el = $('chooser');
   el.innerHTML = '<div class="chh">Where are you playing?</div><div class="chlist">' + rs.map((r) => { const ph = totemUrl(r.id), facts = (r.cols ? r.cols + ' colonist' + (r.cols === 1 ? '' : 's') : 'no colony yet') + ' · last visit ' + agoText(Date.now() - (r.last || Date.now())) + (near(r) === 0 ? ' · near here' : '');
-    return '<button class="chcard" data-room="' + r.id + '">' + (ph ? '<img class="chph" src="' + ph + '" alt="">' : '<span class="chph chno">⛺</span>') + '<span class="cht"><span class="chk">Continue:</span> <b>' + esc(r.name) + '</b><span class="sub">' + facts + '</span></span></button>'; }).join('') + '</div>' +
-    (rs.some((r) => r.stk) ? '<div class="sub chstk">' + rs.filter((r) => r.stk).map((r) => esc(r.name)).join(' and ') + ' ' + (rs.filter((r) => r.stk).length > 1 ? 'have stickers: point at one' : 'has a sticker: point at it') + ' when the camera starts.</div>' : '') /* build 28: only for a room that owns a sticker */ + '<button class="big alt" id="chNew">+ New room</button><div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
+    return '<button class="chcard" data-room="' + r.id + '">' + (ph ? '<img class="chph" src="' + ph + '" alt="">' : '<span class="chph chno">⛺</span>') + '<span class="cht"><span class="chk">Continue:</span> <b>' + esc(r.name) + (r.stk ? ' · sticker ' + r.stk : '') /* 16 Nov: which room owns which sticker */ + '</b><span class="sub">' + facts + '</span></span></button>'; }).join('') + '</div>' +
+    (rs.some((r) => r.stk) ? '<div class="sub chstk">' + rs.filter((r) => r.stk).map((r) => esc(r.name)).join(' and ') + ' ' + (rs.filter((r) => r.stk).length > 1 ? 'have stickers: point at one' : 'has a sticker: point at it') + ' when the camera starts.</div>' : '') /* build 28: only for a room that owns a sticker */ + '<button class="big alt" id="chNew">+ New room</button>' + stkSlots() + '<div class="chfoot"><button id="chFind">Not sure? Let the colonists work it out</button><button id="chBack">Back</button></div>';
   $('title').classList.add('choosing'); el.hidden = false; return true;
 }
+function stkSlots() { /* 16 Nov: the room memory holds 8 rooms; the chooser says how many are left */ const n = HOMES.rooms.filter((r) => roomHasData(r.id)).length, left = Math.max(0, 8 - n); return '<div class="sub chslots">' + n + ' of 8 rooms saved · ' + (left ? left + ' left' : 'full: delete a room on the title screen first') + '</div>'; }
 function chooserClose() { $('chooser').hidden = true; $('title').classList.remove('choosing'); }
 $('chooser').onclick = (e) => {
   const b = e.target.closest && e.target.closest('button'); if (!b) return;
@@ -6335,7 +6336,8 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
    No camera-access, or the files did not load: nothing here runs and the game is build 26. ============ */
 const STK_SIZE = 0.08, STK_IDS = [1, 2, 3, 4, 5, 6], STK_FILES = ['cv.js', 'svd.js', 'posit1.js', 'aruco.js', 'dictionaries/aruco_4x4_1000.js'];
 const STK_HZ = 4, STK_SLOW_S = 1, STK_IDLE_S = 4, STK_DET_MAX = 800, STK_REF_MAX = 1280, STK_WIN_S = 8, STK_MIN_N = 5, STK_MIN_S = 0.6, STK_YAW_SD = 0.7, STK_AGREE_M = 0.03, STK_AGREE_DEG = 2.5, STK_FIX_M = 0.06;
-const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0 };
+const STK_MIN_N4 = 4, STK_MIN_S4 = 0.4, STK_RMS4 = 0.6, STK_MOVE = 1.4, STK_KEEP_S = 120, STK_T0 = Date.now(); /* the sticker is the room's key (16 Nov): 4 sightings over 0.4 s make a fix when the fit is tight; pictures are skipped above 0.35 m/s or 35 degrees/s (1.4 x the 0.25 / 25 of stkMoving); a colony under STK_KEEP_S seconds old is left without a question */
+const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0, jumps: 0, dropped: 0, gives: 0, give: null, rej: {}, why: '', whyT: 0, whyId: 0 };
 REC.stk = [];
 function recStk(o) { recRing(REC.stk, Object.assign({ t: recT(), room: HOMES.cur }, o), 60); }
 function stkLoad() { /* the vendored files, with plain script tags, in a hidden iframe of the same origin; any failure leaves STK.state 'error' and the game as build 26 */
@@ -6370,15 +6372,15 @@ function stkMoving() { /* how fast the iPad moved over the last 0.15 s (a blurre
 }
 function stkNeed() { /* how often to look for a sticker now (seconds between looks), 0: not at all */
   if (!AR.on || !G.auto || G.phase !== 'play' || STK.state !== 'ready' || (typeof BT !== 'undefined' && BT.on)) return 0;
-  const now = performance.now(); if ((G.returning && !G.locked) || G.finding || RF.on || now < STK.burstUntil) return 1 / STK_HZ;
-  if (RB.ask) return 0; if (G.stk && now - (STK.lastFix[G.stk.id] || -1e9) < 30000) return STK_IDLE_S; return STK_SLOW_S;
+  const now = performance.now(); if ((G.returning && !G.locked) || G.finding || RF.on || now < STK.burstUntil || (STK.give && now < STK.give.until)) return 1 / STK_HZ;
+  if (RB.ask) return STK_SLOW_S; /* 16 Nov: a sticker can still answer the room question */ if (G.stk && now - (STK.lastFix[G.stk.id] || -1e9) < 30000) return STK_IDLE_S; return STK_SLOW_S;
 }
 function stkTick(dt) {
   const gap = stkNeed(); if (!gap) return; STK.t += dt; if (STK.t < gap) return;
   const im = stkCam(); if (!im) { if (STK.t > 5 && !STK.noCam) { STK.noCam = true; recStk({ camera: 'no pictures' }); } return; } STK.noCam = false;
   if (STK.loadSeq <= STK.doneSeq) return; STK.t = 0;
   const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); STK.doneSeq = seq; if (!pose) return;
-  if (stkMoving() > 1) return; /* moving faster than 0.25 m/s or 25 degrees a second */
+  if (stkMoving() > STK_MOVE) { stkRej('moving'); return; } /* moving faster than 0.35 m/s or 35 degrees a second (16 Nov: was 0.25 / 25) */
   const t0 = performance.now(); try { stkRun(im, pose); } catch (e) { STK.err = String(e && e.message || e); recStk({ err: STK.err }); }
   const ms = performance.now() - t0; STK.ms = ms; STK.msAvg = STK.msAvg ? STK.msAvg * 0.9 + ms * 0.1 : ms; STK.runs++; if (STK.msAvg > 60) STK.t = -gap; /* a slow device looks half as often */
 }
@@ -6391,8 +6393,8 @@ function stkRun(im, pose) { /* one picture: find stickers, refine, pose, into th
   const gray = stkGray(full.data, w, h), view = stkView(w, h, pose.P), rot = view.rot, up = view.up, K = view.K; /* build 28: shared with the room snapshots (stkView) */ STK.K = K; STK.dims = iw + 'x' + ih + ' rot ' + rot;
   for (const m of found) {
     const cs0 = m.corners.map((c) => [(c.x + 0.5) / sD - 0.5, (c.y + 0.5) / sD - 0.5]), csR = stkRefine(gray, w, h, cs0) || cs0, cs = csR.map(up), side = Math.min(...cs.map((c, i) => Math.hypot(c[0] - cs[(i + 1) % 4][0], c[1] - cs[(i + 1) % 4][1])));
-    if (side < 16) continue; const q = stkPose(STK.lib, cs, K, STK_SIZE); if (!q || q.rms > 1.5 || q.t[2] > 4) continue;
-    const wp = stkWorldPose(q, pose.V), toCam = [pose.V[12] - wp.p[0], pose.V[13] - wp.p[1], pose.V[14] - wp.p[2]], L = Math.hypot(...toCam), facing = (toCam[0] * wp.n[0] + toCam[1] * wp.n[1] + toCam[2] * wp.n[2]) / L; if (facing < 0.3) continue; /* seen at more than about 70 degrees: too flat to trust */
+    if (side < 16) { stkRej('small', m.id); continue; } const q = stkPose(STK.lib, cs, K, STK_SIZE); if (!q || q.rms > 1.5) { stkRej('blur', m.id); continue; } if (q.t[2] > 4) { stkRej('far', m.id); continue; } /* 16 Nov: every refused picture is counted by its reason (developer panel, field report) */
+    const wp = stkWorldPose(q, pose.V), toCam = [pose.V[12] - wp.p[0], pose.V[13] - wp.p[1], pose.V[14] - wp.p[2]], L = Math.hypot(...toCam), facing = (toCam[0] * wp.n[0] + toCam[1] * wp.n[1] + toCam[2] * wp.n[2]) / L; if (facing < 0.3) { stkRej('flat', m.id); continue; } /* seen at more than about 70 degrees: too flat to trust */
     STK.seen++; stkAdd(m.id, { t: performance.now(), V: pose.V, K, cs, q, w: wp, side, refined: csR !== cs0 });
   }
 }
@@ -6401,18 +6403,24 @@ function stkAdd(id, o) { /* a sighting joins the last few seconds' sightings of 
   if (last && Math.hypot(o.w.p[0] - last.w.p[0], o.w.p[1] - last.w.p[1], o.w.p[2] - last.w.p[2]) > 0.25) list.length = 0; /* the world jumped (or another copy of the sticker): start again */
   list.push(o); while (list.length && (now - list[0].t > STK_WIN_S * 1000 || list.length > 24)) list.shift();
   STK.lastSeen = { id, t: now, d: Math.hypot(o.w.p[0] - o.V[12], o.w.p[1] - o.V[13], o.w.p[2] - o.V[14]) }; /* build 30: the developer panel */
-  STK.burstUntil = now + 3000; if (list.length < STK_MIN_N || now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
-  const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; stkUse(id, F); }
+  STK.burstUntil = now + 3000; if (list.length < STK_MIN_N4) { stkRej('too few', id, true); return; } if (now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
+  const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; STK.why = ''; stkUse(id, F); }
+}
+function stkRej(why, id, fix) { /* 16 Nov: why a picture (or a fix) was refused, counted for the developer panel and the field report; the log gets one line per reason every 5 s at most */
+  const now = performance.now(); STK.rej[why] = (STK.rej[why] || 0) + 1; if (why !== 'moving' || (STK.lastSeen && now - STK.lastSeen.t < 3000)) { STK.why = why; STK.whyT = now; if (id) STK.whyId = id; }
+  if (!STK.rejT) STK.rejT = {}; if (now - (STK.rejT[why] || -1e9) > 5000 && (why !== 'moving' || STK.why === 'moving')) { STK.rejT[why] = now; recStk({ refused: why, id: id || 0, fix: !!fix, n: STK.rej[why] }); }
 }
 function stkMed(a) { const s = a.slice().sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
 function stkFixOf(id) { /* several sightings -> one sticker pose: a median filter on the positions, a joint fit of all corners, outliers out, fitted again */
-  let obs = STK.obs[id]; if (!obs || obs.length < STK_MIN_N) return null;
+  /* 16 Nov: STK_MIN_N sightings over STK_MIN_S s as before, or STK_MIN_N4 over STK_MIN_S4 s when the joint fit is tight (rms under STK_RMS4 px); the surfaces still check every lock */
+  const no = (why) => { stkRej(why, id, true); return null; }, span = (a) => (a[a.length - 1].t - a[0].t) / 1000, quick = (a) => a.length < STK_MIN_N || span(a) < STK_MIN_S;
+  let obs = STK.obs[id]; if (!obs || obs.length < STK_MIN_N4) return no('too few');
   const m = [0, 1, 2].map((k) => stkMed(obs.map((o) => o.w.p[k]))); obs = obs.filter((o) => Math.hypot(o.w.p[0] - m[0], o.w.p[1] - m[1], o.w.p[2] - m[2]) < 0.02 + 0.02 * o.w.dist);
-  if (obs.length < STK_MIN_N || obs.length < 0.6 * STK.obs[id].length || (obs[obs.length - 1].t - obs[0].t) / 1000 < STK_MIN_S) return null;
+  if (obs.length < STK_MIN_N4 || obs.length < 0.6 * STK.obs[id].length) return no('spread'); if (span(obs) < STK_MIN_S4) return no('too few');
   let best = null; for (const o of obs.slice().sort((a, b) => b.q.amb - a.q.amb).slice(0, 3)) { const w = o.w, R0 = [[w.ax[0], w.ay[0], w.n[0]], [w.ax[1], w.ay[1], w.n[1]], [w.ax[2], w.ay[2], w.n[2]]], F = stkFit(obs, STK_SIZE, R0, w.p); if (F && (!best || F.rms < best.rms)) best = F; }
-  if (!best) return null; const lim = Math.max(1.2, 2.5 * stkMed(best.per)), kept = obs.filter((o, i) => best.per[i] <= lim);
-  if (kept.length < obs.length) { if (kept.length < STK_MIN_N) return null; obs = kept; best = stkFit(obs, STK_SIZE, best.R, best.p); if (!best) return null; }
-  if (best.rms > 1.0 || best.sdP > 0.01) return null;
+  if (!best) return no('rms'); const lim = Math.max(1.2, 2.5 * stkMed(best.per)), kept = obs.filter((o, i) => best.per[i] <= lim);
+  if (kept.length < obs.length) { if (kept.length < STK_MIN_N4 || span(kept) < STK_MIN_S4) return no('too few'); obs = kept; best = stkFit(obs, STK_SIZE, best.R, best.p); if (!best) return no('rms'); }
+  if (best.rms > (quick(obs) ? STK_RMS4 : 1.0)) return no('rms'); if (best.sdP > 0.01) return no('unsure');
   const R = best.R, n = [R[0][2], R[1][2], R[2][2]], ax = [R[0][0], R[1][0], R[2][0]], hz = Math.hypot(n[0], n[2]), kind = Math.abs(n[1]) < 0.35 ? 'wall' : Math.abs(n[1]) > 0.94 ? 'flat' : 'tilt';
   const h = kind === 'flat' || hz < 0.3 ? Math.atan2(ax[2], ax[0]) : Math.atan2(n[2], n[0]);
   return { id, p: best.p, h, kind, n, sdYaw: best.sdYaw, sdP: best.sdP, rms: best.rms, used: obs.length, of: STK.obs[id].length, t: performance.now() };
@@ -6431,25 +6439,72 @@ function stkSettled() { /* the room is known well enough to own a sticker: a loc
   if (RF.on || RB.ask || !G.zones.some(rbOwn)) return false;
   if (G.returning) return G.locked && !RG.prob; return G.settlements.some((S) => !S.dead && !S.awaiting) && AUTO.t > 20;
 }
-function stkUse(id, F) {
-  if (STK.ignore[id]) return; const own = stkOwner(id), mine = G.stk && G.stk.id === id, finding = G.returning && !G.locked && RELOC.state === 'search';
+function stkUse(id, F) { /* 16 Nov, "the sticker is the room's key": another room's sticker loads that room at once (asking first only when a grown colony would be left); a sticker nobody owns is taken by a known room at once */
+  if (STK.ignore[id]) return; const own = stkOwner(id), mine = G.stk && G.stk.id === id, finding = G.returning && !G.locked && RELOC.state !== 'manual', now = performance.now();
   recStk({ fix: id, kind: F.kind, p: F.p.map((v) => +v.toFixed(3)), yaw: +(F.h * 57.2958).toFixed(1), sdYaw: +F.sdYaw.toFixed(2), sdP: +(F.sdP * 100).toFixed(2), rms: +F.rms.toFixed(2), used: F.used + '/' + F.of, own, mine: !!mine, finding });
+  if (STK.give && STK.give.id === id && now < STK.give.until && !mine) { if (stkCanBind()) { STK.give = null; stkBind(F, true); } return; } /* Menu, Rooms: "Give this room sticker N" */
   if (own && own !== HOMES.cur) { /* another saved room's sticker */
-    if (finding && G.finding) { if (!homeSwitchLoad(own)) return; G.finding = false; ROOMPRE = {}; recStk({ switched: own }); if (G.stk && G.stk.id === id) stkLock(F); return; } /* "let the colonists work it out": the sticker names the room, as the surface matcher would */
-    if (RB.ask) return; STK.asks++; STK.ignore[id] = 1; recStk({ foreign: own }); stkAskRoom(own, id); return;
+    if (RB.ask && RB.ask.stk) return; /* the question about a sticker is up: the player answers it */
+    if (stkKeep()) { /* a grown colony would be left: the build 26 question, with that room first */
+      STK.asks++; STK.ignore[id] = 1; recStk({ foreign: own, colonyS: Math.round(stkColAge()) });
+      if (RB.ask) { RB.ask.stk = own; RB.ask.sid = id; rbPrompt('<b>Have you moved to another room?</b> <span class="stkq">That sticker belongs to ' + esc(homeName(own)) + '.</span>', 'no', own); } else stkAskRoom(own, id); return;
+    }
+    stkJump(own, id, F); return;
   }
   if (mine && (finding || (RF.on && RF.phase === 'match'))) { stkLock(F); return; }
   if (mine && RF.on && RF.phase === 'check') { const d = stkDiff(F); if (d.ok) { recStk({ check: 'agrees', dm: +d.dm.toFixed(3) }); rfPass(); stkSay('Sticker found ✓'); } else { recStk({ check: 'moved', dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1) }); rfFull(); stkLock(F); } return; }
   if (mine && !RF.on && !RB.ask && (!G.returning || G.locked)) { stkRefineLock(F); return; }
-  if (!own && !G.stk && stkSettled()) { stkBind(F); return; }
+  if (!own && !G.stk && stkCanBind()) { const r = homeInfo(HOMES.cur); if (r && r.stkOff === id) return; /* "Forget this room's sticker": not taken back by itself */ stkBind(F); return; }
+}
+function stkCanBind() { /* 16 Nov: a room may take a sticker as soon as it is known: locked, or a new room whose colony has landed (no 20 s wait, no probation wait) */
+  if (RF.on || RB.ask || !G.zones.some(rbOwn)) return false; if (G.returning) return G.locked; return G.settlements.some((S) => !S.dead && !S.awaiting);
+}
+function stkColAge() { /* seconds since the room's colony landed (0: no colony); a colony from an older save without a time counts as grown */
+  const ss = G.settlements.filter((S) => !S.dead && !S.awaiting && S.cols && S.cols.length); if (!ss.length) return 0; return (Date.now() - Math.min(...ss.map((S) => S.born || 0))) / 1000;
+}
+function stkKeep() { /* true: leaving now would leave a grown colony (over STK_KEEP_S), so the player is asked first. A room still being found is not left: it was never found */
+  if (G.returning && !G.locked && !RF.on) return false; return stkColAge() > STK_KEEP_S;
+}
+function stkSavedCols(id) { const d = safeRead(homeKeys(id).save, (q) => q && Array.isArray(q.settlements)); return !!d && d.settlements.some((S) => S && Array.isArray(S.cols) && S.cols.length); }
+function stkFresh(id) { /* a room made by mistake: started in this visit to the page and holding no colony (nothing saved, nothing alive). Never a room with a colony */
+  const r = homeInfo(id); return !!r && (r.created || 0) >= STK_T0 && !G.settlements.some((S) => !S.dead && S.cols && S.cols.length) && !stkSavedCols(id);
+}
+function stkJump(own, id, F) { /* the sticker names the room: it loads, and locks from the sticker; an empty room made by mistake is not kept */
+  const from = HOMES.cur, fresh = stkFresh(from), why = G.returning && !G.locked ? 'finding' : fresh ? 'empty new room' : 'young colony';
+  recStk({ jump: own, from, why, fresh }); STK.jumps++;
+  if (!fresh) persist(); /* a young colony is saved as it is (persist itself never writes a room that is not lined up, and only the colony while the room question is up) */
+  const el = $('nroom'); el.hidden = true; el.classList.remove('pmove', 'prf', 'pnew'); RB.ask = null;
+  if ($('ask').querySelector('#rmNew')) { $('ask').hidden = true; RG.ask = null; } /* "Is this a new room?" is answered by the sticker */
+  rfReset(); for (const k of Object.keys(STK.ignore)) if (stkOwner(+k) === own) delete STK.ignore[k]; delete SNAP.ignore[own];
+  if (!homeSwitchLoad(own)) { toast('That room could not be loaded.', 4); recStk({ jump: 'failed', room: own }); return; }
+  G.finding = false; ROOMPRE = {}; PLACES.newRoom = ''; RELOC.asked = false; G.mapName = homeName(own); rbReset(); RF.quietUntil = performance.now() + 1500;
+  if (fresh && from !== HOMES.cur && homeInfo(from) && !stkSavedCols(from)) { roomDelete(from); STK.dropped++; recStk({ dropped: from }); } /* the empty room only ever held this scan */
+  const done = G.stk && G.stk.id === id && stkLock(F); if (!done) autoSay('Sticker ' + id + ': this is ' + homeName(own) + '. Look around slowly so the camp lines up.', 6); updateHint(); autoCount();
+}
+function stkGive(id) { /* Menu, Rooms: this room takes sticker id (from another room too): now if it was just seen, else the next time it is seen in the next minute */
+  if (!G.zones.some(rbOwn)) { toast('Let the colonists find this room first, then give it a sticker.', 4); return; }
+  const r = homeInfo(HOMES.cur); if (r) delete r.stkOff; STK.gives++; const last = STK.obs[id], F = stkCanBind() && last && last.length && performance.now() - last[last.length - 1].t < 3000 ? stkFixOf(id) : null; /* not lined up this moment (a quick check after a frame gap): it waits, and the next fix binds it */
+  if (F) { stkBind(F, true); return; } STK.give = { id, until: performance.now() + 60000 }; recStk({ give: id, waiting: true }); toast('Point the camera at sticker ' + id + '.', 4);
+}
+function stkRoomsUi(msg) { /* Menu, Rooms and stickers: which room owns which sticker; give this room a sticker, or forget its sticker */
+  const m = $('modal'); m.hidden = false; const cur = HOMES.cur, rs = HOMES.rooms.filter((r) => r.id === cur || roomHasData(r.id)), now = performance.now(), ls = STK.lastSeen && now - STK.lastSeen.t < 60000 ? STK.lastSeen.id : 0, mine = G.stk ? G.stk.id : (homeInfo(cur) || {}).stk;
+  const rows = rs.map((r) => '<div class="lib stkrow"><div style="flex:1"><b>' + esc(r.name) + (r.stk ? ' · sticker ' + r.stk : '') + '</b>' + (r.id === cur ? ' (this room)' : '') + '<div class="sub">' + (r.stk ? 'Show sticker ' + r.stk + ' and the game goes to ' + esc(r.name) + '.' : 'No sticker yet.') + '</div></div></div>').join('');
+  const ar = AR.on && G.mode === 'ar', give = ar && ls && ls !== mine ? '<button class="big alt" id="stkGiveSeen" data-give="' + ls + '">Give this room sticker ' + ls + '</button>' : '';
+  m.innerHTML = '<div class="dh">Rooms and stickers</div><div class="sub">' + (msg || 'A sticker is a room’s key: show it and the game goes to that room and lines it up.') + '</div>' + rows + stkSlots()
+    + (ar ? '<div class="mrow">' + give + (mine ? '<button id="stkForget">Forget this room’s sticker</button>' : '') + '</div><div class="sub">Give this room a sticker by number (then point at it):</div><div class="mrow">' + STK_IDS.map((i) => '<button data-give="' + i + '"' + (i === mine ? ' disabled' : '') + '>' + i + (stkOwner(i) && stkOwner(i) !== cur ? ' (' + esc(homeName(stkOwner(i))) + ')' : '') + '</button>').join('') + '</div>' : '<div class="sub">Giving a sticker works in AR, in the room.</div>')
+    + '<div class="mrow"><a class="mlink" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="stkClose">Close</button></div>';
+  m.onclick = (e) => { const b = e.target.closest && e.target.closest('button'); if (!b) return; if (b.id === 'stkClose') { m.hidden = true; return; } if (b.id === 'stkForget') { m.hidden = true; stkForget(); return; } if (b.dataset.give) { m.hidden = true; stkGive(+b.dataset.give); } };
+}
+function stkForget() { /* Menu, Rooms: this room lets its sticker go (it is not taken back by itself; "Give" gives it again) */
+  const r = homeInfo(HOMES.cur), id = G.stk ? G.stk.id : r && r.stk; if (!id) return; G.stk = null; STK.lockFix = null; STK.give = null; if (r) { delete r.stk; r.stkOff = id; } homesSave(); AUTO.mapDirty = true; persistSoon(); recStk({ forget: id }); toast(esc(homeName(HOMES.cur)) + ' has no sticker now.', 3);
 }
 function stkDiff(F) { const L = stkLive(); if (!L) return { ok: false, dm: 9, dyaw: 180 }; const dm = Math.hypot(F.p[0] - L.p[0], F.p[1] - L.p[1], F.p[2] - L.p[2]), dyaw = Math.abs(stkAng(F.h - L.h)) * 57.2958, sure = Math.hypot(F.sdYaw, G.stk.sd) < STK_YAW_SD * 2; return { dm, dyaw, sure, ok: dm < STK_AGREE_M && (!sure || dyaw < STK_AGREE_DEG) }; }
-function stkBind(F) { /* the first sighting in a room without a sticker: it belongs to this room from now on, in the map's own frame */
+function stkBind(F, given) { /* the first sighting in a room without a sticker: it belongs to this room from now on, in the map's own frame (given: Menu, Rooms) */
   const B = RB.base, gap = B ? rbGapXZ(B, F.p[0], F.p[2]) : 0; if (gap > 1.5) { recStk({ bind: 'too far from the room', gap: +gap.toFixed(2) }); return; }
   const T = G.align, c = T ? Math.cos(-T.phi) : 1, s = T ? Math.sin(-T.phi) : 0, dx = F.p[0] - (T ? T.tx : 0), dz = F.p[2] - (T ? T.tz : 0); /* live -> the map's saved frame (the inverse of the alignment) */
   G.stk = { id: F.id, p0: [dx * c - dz * s, F.p[1] - (T ? T.dy : 0), dx * s + dz * c], h0: stkAng(F.h - (T ? T.phi : 0)), kind: F.kind, sd: F.sdYaw, at: Date.now(), n: F.used };
-  for (const r of HOMES.rooms) if (r.stk === F.id) delete r.stk; const r = homeInfo(HOMES.cur); if (r) r.stk = F.id; homesSave(); AUTO.mapDirty = true; STK.binds++; persistSoon();
-  recStk({ bind: F.id, kind: F.kind, sdYaw: +F.sdYaw.toFixed(2) }); stkSay('Sticker found ✓ It belongs to ' + esc(homeName(HOMES.cur)) + ' now.', 3); sfx('chime');
+  for (const r of HOMES.rooms) if (r.stk === F.id) delete r.stk; const r = homeInfo(HOMES.cur); if (r) { r.stk = F.id; delete r.stkOff; } homesSave(); AUTO.mapDirty = true; STK.binds++; persistSoon();
+  recStk({ bind: F.id, kind: F.kind, sdYaw: +F.sdYaw.toFixed(2), given: !!given }); STK.sayT = performance.now(); toast(esc(homeName(HOMES.cur)) + ' now has sticker ' + F.id + ' ✓', 3); sfx('chime'); /* 16 Nov: always said, at once */
 }
 function stkRefineLock(F) { /* seen while the room is locked: agree (maybe nudge by a few cm), or ask the surfaces whether the room or the sticker moved */
   const d = stkDiff(F);
@@ -6479,14 +6534,16 @@ function stkLock(F) { /* the room's own sticker while it is being found: the loc
     const liveTop = relocTop(live), W = sure ? 2 : Math.min(180, Math.max(8, 5 * sd + 4)), st = W > 20 ? 1 : 0.5; let best = null;
     for (let a = -W; a <= W + 1e-9; a += st) { const T = stkPin(F, a0 + a * Math.PI / 180), v = relocVerify(T, top, liveTop); if (!best || v.score > best.score) best = Object.assign(T, v); }
     const surf = best.M >= 100 && best.ratio >= 0.7, clash = best.M + best.X > 150 && best.ratio < 0.5;
-    if (!surf && !(sure && !clash)) { recStk({ lock: 'surfaces disagree', M: best.M, X: best.X, ratio: +best.ratio.toFixed(2), sd: +sd.toFixed(2) }); return false; }
+    if (!surf && !(sure && !clash)) { stkWait(best.M + best.X < 30 ? 'no tops to check yet' : 'surfaces disagree', { M: best.M, X: best.X, ratio: +best.ratio.toFixed(2), sd: +sd.toFixed(2) }); return false; }
     if (sure) { const T0 = stkPin(F, a0); res = Object.assign(T0, relocVerify(T0, top, liveTop)); } else res = best;
     if (res.M > 50) res.dy += res.dyFix; how = surf ? 'sticker + surfaces' : 'sticker';
   } else if (sure) { res = Object.assign(stkPin(F, a0), { M: 0, X: 0, ratio: 1, score: 0, info: 0, overlap: 0 }); how = 'sticker only'; }
-  else { recStk({ lock: 'waiting for surfaces', cells, sd: +sd.toFixed(2) }); return false; }
+  else { stkWait('waiting for surfaces', { cells, sd: +sd.toFixed(2) }); return false; }
+  if ($('ask').querySelector('#rmNew')) { $('ask').hidden = true; RG.ask = null; } /* 16 Nov: "Is this a new room?" is answered by the sticker */
   res.margin = 0; STK.lockFix = { F, sure, sd, a0: res.phi }; STK.locks++; recStk({ lock: how, yaw: +(res.phi * 57.2958).toFixed(2), dy: +res.dy.toFixed(3), M: res.M, ratio: +(res.ratio || 0).toFixed(2), sd: +sd.toFixed(2), secs: +RELOC.scanSecs.toFixed(1) });
   relocLock(res, 'sticker'); if (RELOC.lock) RELOC.lock.stk = how; setTimeout(() => { if (AR.on) toast('Sticker found ✓', 2); }, 1500); STK.sayT = performance.now(); return true;
 }
+function stkWait(why, o) { /* 16 Nov: a lock that waits is logged once per reason every 3 s (it is tried at every fix, and the log keeps only 60 lines) */ const now = performance.now(); if (STK.waitWhy === why && now - STK.waitT < 3000) return; STK.waitWhy = why; STK.waitT = now; recStk(Object.assign({ lock: why }, o)); }
 function stkDrift(T) { /* how far a pose moves the room's sticker away from where the lock saw it (metres, degrees) */
   const L = STK.lockFix; if (!L || !G.stk) return { m: 0, deg: 0 }; const s = G.stk, c = Math.cos(T.phi), sn = Math.sin(T.phi), p = [s.p0[0] * c - s.p0[2] * sn + T.tx, s.p0[1] + T.dy, s.p0[0] * sn + s.p0[2] * c + T.tz];
   return { m: Math.hypot(p[0] - L.F.p[0], p[2] - L.F.p[2]), deg: Math.abs(stkAng(T.phi - L.a0)) * 57.2958 };
@@ -6498,7 +6555,7 @@ function stkAskRoom(id, sid) { /* another room's sticker: the build 26 question,
 }
 function stkClear(why) { STK.obs = {}; STK.lockFix = null; recStk({ clear: why }); } /* after a jump of the world the old sightings no longer fit */
 function stkHint() { return G.stk && STK.state === 'ready' ? ' Have a sticker? Point at it.' : ''; }
-function stkReport() { return { state: STK.state, err: STK.err, hook: STK.hook, dims: STK.dims, K: STK.K ? { fx: +STK.K.fx.toFixed(1), cx: +STK.K.cx.toFixed(1), cy: +STK.K.cy.toFixed(1) } : null, runs: STK.runs, msAvg: +STK.msAvg.toFixed(1), seen: STK.seen, fixes: STK.fixes, binds: STK.binds, locks: STK.locks, refines: STK.refines, asks: STK.asks, room: G.stk ? stkToJSON() : null, log: REC.stk }; }
+function stkReport() { return { state: STK.state, err: STK.err, hook: STK.hook, dims: STK.dims, K: STK.K ? { fx: +STK.K.fx.toFixed(1), cx: +STK.K.cx.toFixed(1), cy: +STK.K.cy.toFixed(1) } : null, runs: STK.runs, msAvg: +STK.msAvg.toFixed(1), seen: STK.seen, fixes: STK.fixes, binds: STK.binds, locks: STK.locks, refines: STK.refines, asks: STK.asks, jumps: STK.jumps, dropped: STK.dropped, gives: STK.gives, refused: STK.rej /* 16 Nov: pictures and fixes refused, by reason */, owners: HOMES.rooms.filter((r) => r.stk).map((r) => r.id + ':' + r.stk), room: G.stk ? stkToJSON() : null, log: REC.stk }; }
 /* ---- sticker maths: pictures, corners, pose (no globals of js-aruco2 are used here: the library window is passed in) ---- */
 function stkGray(px, w, h) { const g = new Uint8Array(w * h); for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return g; }
 function stkAt(g, w, h, x, y) { if (x < 0 || y < 0 || x > w - 1.001 || y > h - 1.001) return -1; const x0 = x | 0, y0 = y | 0, ax = x - x0, ay = y - y0, i = y0 * w + x0; return (g[i] * (1 - ax) + g[i + 1] * ax) * (1 - ay) + (g[i + w] * (1 - ax) + g[i + w + 1] * ax) * ay; }
@@ -6872,11 +6929,16 @@ function depthMsg(m, t0) {
 function depthCalm() { /* the room is known and nothing is being found again: the depth model may load and run (it leaves the CPU to the relock, the sticker finder and the snapshots) */
   return G.phase === 'play' && G.zones.length > 0 && !RF.on && !RF.hidden && !G.finding && !(G.returning && !G.locked) && !depthSlow(); }
 function depthSlow() { /* a device that cannot keep about 8 frames a second gets no depth model on top (on the sandbox's software GL the worker's CPU made frame gaps over RF_GAP and false wake-up checks); DEPTH.slowOK: the depth test's override */
-  return !DEPTH.slowOK && DEPTH.frameAvg > DEPTH_SLOW_MS; }
+  if (DEPTH.slowOK) return false; if (depthSoftGL()) return true; /* 16 Nov: software GL (the sandbox's SwiftShader) is never fast enough: roomfix failed on build 30 because the model still loaded there */
+  if (!DEPTH.frameAvg || DEPTH.frameN < 40) return true; /* not measured yet: the model never starts loading before about 40 frames were timed */
+  if (DEPTH.frameAvg > DEPTH_SLOW_MS) DEPTH.wasSlow = true; else if (DEPTH.frameAvg < DEPTH_SLOW_MS * 0.7) DEPTH.wasSlow = false; return !!DEPTH.wasSlow; } /* hysteresis: a pause does not flip back on the next fast frame */
+function depthSoftGL() { /* the renderer draws on the CPU (SwiftShader, llvmpipe): no depth model on top */
+  if (DEPTH.soft === undefined) { DEPTH.soft = false; try { const gl = renderer.getContext(), x = gl.getExtension('WEBGL_debug_renderer_info'); DEPTH.gl = String(gl.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '').slice(0, 80); DEPTH.soft = /swiftshader|llvmpipe|softpipe|software/i.test(DEPTH.gl); } catch (e) { /* unknown: judged by its frame times */ } }
+  return DEPTH.soft; }
 function depthOff() { return !AR.on || !DEPTH.want || DEPTH.disabled; }
 function depthHide() { DEPTH.ok = false; if (DEPTH.mesh) DEPTH.mesh.visible = false; if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = false; DEPTH.shown = false; }
 function depthTick(dt) { /* every frame in AR: show or hide the current map, send a picture now and then, work on a returned map for at most DEPTH_BUDGET_MS */
-  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } if (DEPTH.lastT && now - DEPTH.lastT < 2000) DEPTH.frameAvg = DEPTH.frameAvg ? DEPTH.frameAvg * 0.95 + (now - DEPTH.lastT) * 0.05 : now - DEPTH.lastT; DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not; the smoothed frame time */
+  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } if (DEPTH.lastT && now - DEPTH.lastT < 2000) { DEPTH.frameAvg = DEPTH.frameAvg ? DEPTH.frameAvg * 0.95 + (now - DEPTH.lastT) * 0.05 : now - DEPTH.lastT; DEPTH.frameN = (DEPTH.frameN || 0) + 1; } DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not; the smoothed frame time */
   if (depthOff()) { if (DEPTH.shown || (DEPTH.mesh && DEPTH.mesh.visible)) depthHide(); DEPTH.job = null; return; }
   const calm = depthCalm(); if (DEPTH.state === 'off' && calm) depthLoad();
   if (!calm && DEPTH.shown) depthHide(); depthShow(dt);
@@ -6963,7 +7025,7 @@ function depthDbgInset(J) { /* ?depthdbg=1: the model's raw output (near bright,
 function depthToggle() { /* Menu: "Things can hide behind furniture" (remembered in this browser) */
   DEPTH.want = !DEPTH.want; store.set('bc-depth', DEPTH.want ? '1' : '0'); if (!DEPTH.want) depthHide();
   toast(DEPTH.want ? 'Things can hide behind furniture: on' + (AR.on ? '' : ' (in AR)') : 'Things can hide behind furniture: off'); }
-function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle), frameMs: Math.round(DEPTH.frameAvg), slow: depthSlow(),
+function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle), frameMs: Math.round(DEPTH.frameAvg), slow: depthSlow(), softGL: !!DEPTH.soft, gl: DEPTH.gl || '',
   fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
 function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
 
@@ -6976,21 +7038,22 @@ function devRows() { /* the numbers behind the panel: [tick, label, text] per ro
   if (P && now - P.t >= 2000) { /* rates over at least 2 s (pictures come a few a second) */ const s = (now - P.t) / 1000; DEV.rate = { fps: (n.frames - P.frames) / s, hits: (n.hits - P.hits) / s, pics: Math.max(0, n.pics - P.pics) / s }; DEV.prev = n; } else if (!P) DEV.prev = n;
   const R = DEV.rate || { fps: NaN, hits: NaN, pics: NaN }, wait = !DEV.rate, f0 = (v, d) => (isFinite(v) ? v.toFixed(d || 0) : '...'), ar = !!AR.on, poseOk = ar && now - (AR.poseT || 0) < 1000, im = ar && STK.img && STK.img.naturalWidth ? STK.img : null, rot = im ? stkView(im.naturalWidth, im.naturalHeight, AR.projM.elements).rot : null;
   const kf = G.snap ? G.snap.kf.length : 0, pts = G.snap ? G.snap.kf.reduce((a, k) => a + k.n, 0) : 0, L = RELOC.lock, lockHow = L ? (L.stk || L.snap || 'surfaces') : '', lockSd = L && L.snap && SNAP.lastF && SNAP.lastF.sdP ? SNAP.lastF.sdP * 100 : null;
-  const sk = STK.lastSeen && now - STK.lastSeen.t < 5000 ? STK.lastSeen : null, c = RECOG.coco, g = REC.recog.length ? REC.recog[REC.recog.length - 1] : null, e = REC.errs.length ? REC.errs[REC.errs.length - 1] : null;
+  const sk = STK.lastSeen && now - STK.lastSeen.t < 5000 ? STK.lastSeen : null, skOwn = sk ? stkOwner(sk.id) : null, skN = sk ? (STK.obs[sk.id] || []).length : 0, skWhy = sk && STK.why && now - STK.whyT < 3000 ? STK.why : ''; /* 16 Nov: the sticker row says whose it is, how many sightings toward a fix, and why a fix was refused */
+  const c = RECOG.coco, g = REC.recog.length ? REC.recog[REC.recog.length - 1] : null, e = REC.errs.length ? REC.errs[REC.errs.length - 1] : null;
   let kb = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); kb += (k.length + (localStorage.getItem(k) || '').length) / 1024; } } catch (er) { kb = -1; }
   const D = DEPTH, dep = D.state === 'ready' ? (D.lastFit && D.lastFit.ok ? 'tick' : 'dash') : D.state === 'error' ? 'cross' : 'dash';
   const num = { ar: { on: ar, pose: poseOk, fps: +R.fps.toFixed(1) }, hits: { perS: +R.hits.toFixed(1), total: SCAN.hits, surfaces: G.zones.length, scanZones: SCAN.zones.length },
     camera: { perS: +R.pics.toFixed(2), w: im ? im.naturalWidth : 0, h: im ? im.naturalHeight : 0, rot }, snapshots: { keyframes: kf, points: pts, relock: L ? { how: lockHow, s: +((L.ms || 0) / 1000).toFixed(1), sdCm: lockSd === null ? null : +lockSd.toFixed(2) } : null },
-    sticker: sk ? { id: sk.id, m: +sk.d.toFixed(2), agoS: +((now - sk.t) / 1000).toFixed(1) } : null, objects: { state: c.state, runs: c.runs, ms: Math.round(c.ms || 0), last: g ? { cls: g.cls || '', score: g.score || 0 } : null },
+    sticker: sk ? { id: sk.id, m: +sk.d.toFixed(2), agoS: +((now - sk.t) / 1000).toFixed(1), owner: skOwn, n: skN, need: STK_MIN_N4, why: skWhy, rej: STK.rej } : { rej: STK.rej }, objects: { state: c.state, runs: c.runs, ms: Math.round(c.ms || 0), last: g ? { cls: g.cls || '', score: g.score || 0 } : null },
     depth: { state: D.state, want: D.want, msRun: Math.round(D.msAvg), fitCm: D.fits ? +D.cm.toFixed(1) : null, occlusion: !!D.shown, runs: D.runs, good: D.good, poor: D.poor, why: D.why }, errors: { count: REC.errs.length, last: e ? String(e.msg).slice(0, 120) : '' }, storageKB: Math.round(kb) };
   const rows = [
     [!ar ? 'dash' : poseOk ? 'tick' : 'cross', 'AR tracking', ar ? (poseOk ? 'pose ok' : 'no pose') + ' · ' + f0(R.fps) + ' fps' : 'not in AR · ' + f0(R.fps) + ' fps'],
     [!ar || wait ? 'dash' : R.hits > 0 || G.zones.length ? 'tick' : 'cross', 'Hit points', f0(R.hits) + '/s · ' + G.zones.length + ' surfaces'],
     [!ar || wait ? 'dash' : R.pics > 0 ? 'tick' : 'cross', 'Camera pictures', ar ? f0(R.pics, 1) + '/s' + (im ? ' · ' + im.naturalWidth + 'x' + im.naturalHeight + ' · turn ' + rot + '°' : ' · none') : '-'],
     [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
-    [sk ? 'tick' : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + sk.d.toFixed(2) + ' m' : 'not seen'],
+    [sk ? (skWhy && skWhy !== 'too few' ? 'cross' : 'tick') : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + (skOwn ? (skOwn === HOMES.cur ? 'this room' : homeName(skOwn)) : 'no room') + ' · ' + sk.d.toFixed(2) + ' m · ' + (skN >= STK_MIN_N4 ? skN + ' sightings' : skN + '/' + STK_MIN_N4 + ' sightings') + (skWhy ? ' · refused: ' + skWhy : (STK.lastFix[sk.id] && now - STK.lastFix[sk.id] < 5000 ? ' · fix ok' : '')) : 'not seen' + (STK.rej.moving ? ' · ' + STK.rej.moving + ' pictures skipped (moving)' : '')],
     [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
-    [dep, 'Depth', (depthSlow() ? 'paused (frames slow) \u00b7 ' : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
+    [dep, 'Depth', (depthSlow() ? (!DEPTH.slowOK && DEPTH.soft ? 'off (software GL) \u00b7 ' : 'paused (frames slow) \u00b7 ') : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
     [REC.errs.length ? 'cross' : 'tick', 'Errors', REC.errs.length + (e ? ' · ' + String(e.msg).slice(0, 60) : '')],
     [kb < 0 ? 'cross' : kb < 4000 ? 'tick' : 'cross', 'Storage', Math.round(kb) + ' KB']];
   return { rows, num };
@@ -7719,7 +7782,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mNews">What they noticed (' + NEWS.log.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mDepth">' + (DEPTH.want ? 'Things can hide behind furniture: on' : 'Things can hide behind furniture: off') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mNews">What they noticed (' + NEWS.log.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mDepth">' + (DEPTH.want ? 'Things can hide behind furniture: on' : 'Things can hide behind furniture: off') + '</button><button id="mScan">Scan again from scratch</button>' + (MULTI_ROOM ? '<button id="mRooms">Rooms and stickers</button>' : '') + '<a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   if (pr) { const mw = $('mWx'); if (mw) mw.insertAdjacentHTML('afterend', '<button id="mSky">Practice sky ' + (skyShown() ? 'on' : 'off') + '</button>'); } /* first10 */
   { const vs = $('mVol'); if (vs) vs.oninput = () => SND_setVol(vs.value / 100); } /* build 19 + sound: the volume slider (saved as bc-volume) */
   m.onclick = (e) => {
@@ -7728,7 +7791,7 @@ function menuUi() {
     if (t.id === 'mNews') { newsUi(); return; }
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
     else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle(); else if (t.id === 'mDepth') depthToggle();
-    else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
+    else if (t.id === 'mRooms') stkRoomsUi(); /* 16 Nov */ else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
 }
@@ -9154,7 +9217,7 @@ Object.assign(window.__g, { mktBundle, ECON, ECON_TUNE, ECON_GOODS, ECON_SHOP, E
 Object.assign(window.__g, { MKT, MKT_A, MKT_GOODS, MKT_DEMO, mktIsDay, mktOpenAt, mktThings, mktSite, mktSim, mktRound, mktDeal, mktSend, mktFinish, mktAway, mktAwayLine, mktSave, mktLoad, mktReset, mktDemoDate, marketMake, mkMarketPlain, mktInfo, mktWeekday, simTick, arriveAt, resolveRequest, reqUi, findSpot, validSpot, envUi }); /* build 23: market day */
 Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_FLAVOURS, PLACE_AREAS, placesRound, placesDist, placesAsk, placesGot, placesSet, placesTry, placesArea, placesSouth, placesNote, placesStep, placesMake, placesCardHtml, placesNewAsk, loomStep, seaGoal, seasonOf }); /* build 25: places */
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
-Object.assign(window.__g, { STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
+Object.assign(window.__g, { stkJump, stkKeep, stkColAge, stkFresh, stkCanBind, stkGive, stkForget, stkRoomsUi, stkSlots, stkRej, STK_KEEP_S, STK_MIN_N4, roomDelete, homeCreate, menuUi, devOpen, devRows, STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
 Object.assign(window.__g, { SNAP, SNAP_MAX, SNAP_PTS, SNAP_MIN_INL, SNAP_MIN_PICS, snapTick, snapRun, snapNeed, snapRooms, snapKfs, snapKeep, snapCast, snapPoint, snapMatch, snapObs, snapSolve, snapUse, snapLock, snapDiff, snapRebase, snapToJSON, snapFromJSON, snapBytes, snapReport, snapClear, snapAskRoom, snapPolishOK, snapCorrect, stkSettled, stkView, commitAlign, applyAlign, relocLiveLayers }); /* build 28: room snapshots */
 Object.assign(window.__g, { DEV, devOpen, devClose, devRows, devJSON, devCopy, depthCalm }); /* build 30: developer mode */
 Object.assign(window.__g, { DEPTH, DEPTH_MODEL, DEPTH_ORT, depthLoad, depthTick, depthSend, depthWork, depthFit, depthBuild, depthShow, depthHide, depthToggle, depthReport, depthAt, depthGrid }); /* build 30: depth */
