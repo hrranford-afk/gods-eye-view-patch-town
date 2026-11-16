@@ -207,7 +207,7 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
 // (light, clock, weather), scan (zones), models, colony simulation, input and UI, AR mode, practice room, main loop.
-const BUILD = 'build 29';
+const BUILD = 'build 30';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), mixLerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -4785,7 +4785,7 @@ function arEnded() {
   if (!AR.on && !AR.session) return;
   persist(true);
   for (const s of AR.srcs) try { s.cancel(); } catch (e) { /* ignore */ }
-  AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null; DIRECT.on = false; DIRECT.gen++;
+  depthHide(); /* build 30 */ AR.srcs = []; AR.on = false; AR.session = null; AR.hitSource = null; AR.refSpace = null; DIRECT.on = false; DIRECT.gen++;
   try { renderer.xr.setAnimationLoop(null); renderer.xr.enabled = false; } catch (e) { /* ignore */ }
   if (AR.saved) { camera.near = AR.saved.near; camera.far = AR.saved.far; document.body.style.background = AR.saved.bodyBg; document.documentElement.style.background = AR.saved.htmlBg; AR.saved = null; }
   camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearAlpha(0);
@@ -5591,7 +5591,7 @@ function buildReport(note) {
   const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
   const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
   const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
-    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), roomSnapshots: snapReport() /* build 28: numbers only, no pictures */, errors: REC.errs, previousSession: REC.prev,
+    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), roomSnapshots: snapReport() /* build 28: numbers only, no pictures */, depth: depthReport() /* build 30: numbers only */, errors: REC.errs, previousSession: REC.prev,
     snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
   return JSON.stringify(R);
 }
@@ -6817,6 +6817,143 @@ function snapAskRoom(id) { /* another room's snapshots: the build 26 question, w
 function snapClear(why) { SNAP.obs = {}; SNAP.lockFix = null; SNAP.offN = 0; recSnapL({ clear: why }); } /* after a jump of the world the old pictures no longer fit */
 function snapReport() { const S = G.snap; return { keyframes: S ? S.kf.length : 0, points: S ? S.kf.reduce((a, k) => a + k.n, 0) : 0, bytes: snapBytes(), runs: SNAP.runs, msAvg: +SNAP.msAvg.toFixed(1), msMax: Math.round(SNAP.msMax), msKeyframe: Math.round(SNAP.msKf), dims: SNAP.dims, made: SNAP.made, dropped: SNAP.dropped, fixes: SNAP.fixes, locks: SNAP.locks, checks: SNAP.checks, agree: SNAP.agree, disagree: SNAP.disagree, asks: SNAP.asks, err: SNAP.err, log: REC.snap }; }
 
+/* ============ DEPTH (build 30): "hide behind the sofa". Real things in front of the toys hide them. Read HANDOVER "Depth: hide behind furniture (build 30)" first. ============
+   About every 1.2 s (never while the iPad moves fast) the newest camera picture is drawn small and upright (DEPTH_N px on its long side, a multiple of 14) and handed to a
+   Web Worker that runs Depth Anything V2 Small (models/depth/model_fp16.onnx, onnxruntime-web 1.22.0 from jsdelivr, one wasm thread), so the game never waits for it.
+   The model gives RELATIVE inverse depth. Over a grid of rays through that picture (its own pose and intrinsics: stkView, as the sticker lock and the snapshots assume)
+   the scanned surfaces give METRIC depth (snapCast); a robust fit r = a / z + b (RANSAC + least squares) turns the model into metres. A poor fit (few points, wrong sign,
+   large error, all points at one depth) turns occlusion off: toys are never hidden on a guess.
+   The result is a depth-only mesh (colorWrite off, drawn first) in the world, one vertex per grid ray, at the fitted depth pushed back by DEPTH_PAD_M + DEPTH_PAD_R: the
+   toys behind nearer real things fail the depth test. Where the model agrees with a scanned surface (not clearly in front of it) the vertex sits on that surface. Triangles
+   across a depth step, or with a vertex the model sees as far away, are left out (a hole hides nothing). Because the mesh is world geometry it reprojects itself as the iPad
+   moves a little; it is hidden when the iPad moved more than DEPTH_MOVE_M / DEPTH_TURN_DEG from where that picture was taken, or the map is older than DEPTH_AGE_S.
+   Smoothing: a new map from about the same pose averages with the last one per vertex (unless the depth changed a lot: something moved), and the fit's scale and shift
+   move only part of the way when the pose is the same. Privacy: the picture only goes to the local worker and is dropped; the depth map lives in memory only;
+   the field report gets numbers. ?depthdbg=1 colours the mesh (near red, far blue) and shows the model's raw output in a corner. */
+const DEPTH_ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/', DEPTH_MODEL = 'models/depth/model_fp16.onnx', DEPTH_N = 266, DEPTH_GAP_S = 1.2, DEPTH_MX = 56;
+const DEPTH_PAD_M = 0.03, DEPTH_PAD_R = 0.04, DEPTH_MOVE_M = 0.3, DEPTH_TURN_DEG = 25, DEPTH_AGE_S = 10, DEPTH_STEP = 1.15, DEPTH_FAR = 8, DEPTH_BUDGET_MS = 4;
+const DEPTH = { want: store.get('bc-depth') !== '0', state: 'off', err: '', worker: null, busy: false, t: 0, seq: -1, job: null, mesh: null, dbgMesh: null, fit: null, ok: false, shown: false, ver: 0,
+  runs: 0, ms: 0, msAvg: 0, msMax: 0, gapIdle: 0, prepMs: 0, fitMs: 0, loadMs: 0, bytes: 0, gapMax: 0, lastT: 0, fits: 0, good: 0, poor: 0, why: '', cm: 0, pts: 0, shownS: 0, hidS: 0, disabled: false, model: DEPTH_MODEL,
+  dbg: /[?&]depthdbg=1/.test(location.search), cache: 'none' };
+const DEPTH_WORKER = 'let sess = null;\n' +
+  'onmessage = async (e) => { const m = e.data; try {\n' +
+  '  if (m.type === "init") { const t0 = performance.now(); importScripts(m.ort + "ort.wasm.min.js"); ort.env.wasm.wasmPaths = m.ort; ort.env.wasm.numThreads = 1; ort.env.wasm.proxy = false;\n' +
+  '    let buf = null, cache = "none", cs = null; try { cs = await caches.open("bc-depth-v1"); const hit = await cs.match(m.model); if (hit) { buf = await hit.arrayBuffer(); cache = "hit"; } } catch (er) { cs = null; }\n' +
+  '    if (!buf) { const r = await fetch(m.model); if (!r.ok) throw new Error("model " + r.status); if (cs) { try { await cs.put(m.model, r.clone()); cache = "stored"; } catch (er) { cache = "full"; } } buf = await r.arrayBuffer(); }\n' +
+  '    sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"], graphOptimizationLevel: "all" }); postMessage({ type: "ready", ms: performance.now() - t0, bytes: buf.byteLength, cache }); }\n' +
+  '  else if (m.type === "run") { const t0 = performance.now(), W = m.w, H = m.h, px = new Uint8ClampedArray(m.px), n = W * H, inp = new Float32Array(3 * n), mu = [0.485, 0.456, 0.406], sd = [0.229, 0.224, 0.225];\n' +
+  '    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) inp[k * n + i] = (px[i * 4 + k] / 255 - mu[k]) / sd[k];\n' +
+  '    const out = await sess.run({ [sess.inputNames[0]]: new ort.Tensor("float32", inp, [1, 3, H, W]) }), d = out[sess.outputNames[0]], dims = d.dims, oh = dims[dims.length - 2], ow = dims[dims.length - 1], data = Float32Array.from(d.data);\n' +
+  '    postMessage({ type: "depth", id: m.id, w: ow, h: oh, d: data.buffer, ms: performance.now() - t0 }, [data.buffer]); }\n' +
+  '} catch (err) { postMessage({ type: "error", id: m.id, err: String(err && err.message || err) }); } };\n';
+function depthLoad() { /* lazily, only in AR with the setting on: the worker, the runtime and the model (about 50 MB, kept in the browser's cache storage when it allows) */
+  if (DEPTH.state !== 'off' || DEPTH.disabled) return; DEPTH.state = 'loading'; DEPTH.err = ''; const t0 = performance.now();
+  try {
+    const w = new Worker(URL.createObjectURL(new Blob([DEPTH_WORKER], { type: 'text/javascript' }))); DEPTH.worker = w;
+    w.onmessage = (e) => depthMsg(e.data, t0); w.onerror = (e) => { DEPTH.state = 'error'; DEPTH.err = String(e && e.message || 'worker failed'); DEPTH.busy = false; depthHide(); };
+    w.postMessage({ type: 'init', ort: DEPTH_ORT, model: new URL(DEPTH.model, location.href).href });
+  } catch (e) { DEPTH.state = 'error'; DEPTH.err = String(e && e.message || e); }
+}
+function depthMsg(m, t0) {
+  if (m.type === 'ready') { DEPTH.state = 'ready'; DEPTH.loadMs = performance.now() - t0; DEPTH.bytes = m.bytes; DEPTH.cache = m.cache; return; }
+  if (m.type === 'error') { DEPTH.busy = false; if (DEPTH.state === 'loading') { DEPTH.state = 'error'; try { DEPTH.worker.terminate(); } catch (e) { /* gone */ } DEPTH.worker = null; } DEPTH.err = String(m.err).slice(0, 200); depthHide(); return; }
+  if (m.type !== 'depth') return; const J = DEPTH.pend; DEPTH.pend = null; DEPTH.busy = false; if (!J || J.id !== m.id || !AR.on) return;
+  DEPTH.runs++; DEPTH.ms = m.ms; DEPTH.msAvg = DEPTH.msAvg ? DEPTH.msAvg * 0.8 + m.ms * 0.2 : m.ms; DEPTH.msMax = Math.max(DEPTH.msMax, m.ms);
+  J.r = new Float32Array(m.d); J.rw = m.w; J.rh = m.h; J.k = 0; J.t1 = performance.now(); DEPTH.job = J; DEPTH.t = 0; if (DEPTH.dbg) depthDbgInset(J);
+}
+function depthOff() { return !AR.on || !DEPTH.want || DEPTH.disabled; }
+function depthHide() { DEPTH.ok = false; if (DEPTH.mesh) DEPTH.mesh.visible = false; if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = false; DEPTH.shown = false; }
+function depthTick(dt) { /* every frame in AR: show or hide the current map, send a picture now and then, work on a returned map for at most DEPTH_BUDGET_MS */
+  const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not */
+  if (depthOff()) { if (DEPTH.shown || (DEPTH.mesh && DEPTH.mesh.visible)) depthHide(); DEPTH.job = null; return; }
+  if (DEPTH.state === 'off' && G.zones.length) depthLoad();
+  depthShow(dt);
+  if (DEPTH.job) { try { depthWork(DEPTH.job); } catch (e) { DEPTH.err = String(e && e.message || e); DEPTH.job = null; depthHide(); } return; }
+  if (DEPTH.state !== 'ready' || DEPTH.busy || G.phase === 'title' || !G.zones.length) return;
+  DEPTH.t += dt; if (DEPTH.t < DEPTH_GAP_S) return;
+  const im = stkCam(); if (!im || STK.loadSeq <= DEPTH.seq) return; const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); if (!pose) return;
+  if (stkMoving() > 0.8) return; DEPTH.seq = seq; DEPTH.t = 0; depthSend(im, pose);
+}
+function depthSend(im, pose) { /* the picture drawn upright and small, to the worker; nothing of it is kept here */
+  const t0 = performance.now(), iw = im.naturalWidth, ih = im.naturalHeight, cam = stkView(iw, ih, pose.P), land = cam.uw >= cam.uh;
+  const ow = land ? DEPTH_N : Math.max(14, Math.round(DEPTH_N * cam.uw / cam.uh / 14) * 14), oh = land ? Math.max(14, Math.round(DEPTH_N * cam.uh / cam.uw / 14) * 14) : DEPTH_N;
+  const cv = DEPTH.cv || (DEPTH.cv = document.createElement('canvas')); cv.width = ow; cv.height = oh; const g = cv.getContext('2d', { willReadFrequently: true }), sx = ow / cam.uw, sy = oh / cam.uh;
+  if (cam.rot === 90) g.setTransform(0, sy, -sx, 0, sx * ih, 0); else if (cam.rot === 270) g.setTransform(0, -sy, sx, 0, 0, sy * iw); else g.setTransform(sx, 0, 0, sy, 0, 0);
+  g.drawImage(im, 0, 0); g.setTransform(1, 0, 0, 1, 0, 0); const px = g.getImageData(0, 0, ow, oh).data; g.clearRect(0, 0, ow, oh);
+  const id = (DEPTH.id = (DEPTH.id || 0) + 1); DEPTH.pend = { id, V: pose.V.slice(), K: cam.K, uw: cam.uw, uh: cam.uh, t0 }; DEPTH.busy = true;
+  DEPTH.worker.postMessage({ type: 'run', id, w: ow, h: oh, px: px.buffer }, [px.buffer]); DEPTH.prepMs = performance.now() - t0;
+}
+function depthGrid(J) { const MX = J.uw >= J.uh ? DEPTH_MX : Math.max(8, Math.round(DEPTH_MX * J.uw / J.uh)), MY = J.uw >= J.uh ? Math.max(8, Math.round(DEPTH_MX * J.uh / J.uw)) : DEPTH_MX; return [MX, MY]; }
+function depthAt(J, u, v) { /* the model's value at an upright picture point: the FARTHEST (smallest) of 3 x 3 output pixels, so an edge never grows */
+  const x = clamp(Math.round(u / J.uw * J.rw - 0.5), 1, J.rw - 2), y = clamp(Math.round(v / J.uh * J.rh - 0.5), 1, J.rh - 2); let m = Infinity;
+  for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) m = Math.min(m, J.r[(y + b) * J.rw + x + a]); return m;
+}
+function depthWork(J) { /* per vertex: its ray, the model's value and the scanned surface along it (in slices of a few ms); then the fit and the mesh */
+  const t0 = performance.now(), [MX, MY] = J.n || (J.n = depthGrid(J)), N = MX * MY, V = J.V, o = [V[12], V[13], V[14]], fw = [-V[8], -V[9], -V[10]];
+  if (!J.D) { J.D = new Float32Array(3 * N); J.R = new Float32Array(N); J.Z = new Float32Array(N).fill(-1); }
+  while (J.k < N && performance.now() - t0 < DEPTH_BUDGET_MS) { const k = J.k++, i = k % MX, j = (k / MX) | 0, u = i / (MX - 1) * J.uw, v = j / (MY - 1) * J.uh, d = snapRay(V, J.K, u, v), c = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+    J.D[3 * k] = d[0] / c; J.D[3 * k + 1] = d[1] / c; J.D[3 * k + 2] = d[2] / c; J.R[k] = depthAt(J, u, v); const p = snapCast(o, d); if (p) J.Z[k] = p[3] * c; }
+  J.work = (J.work || 0) + performance.now() - t0; if (J.k < N) return;
+  DEPTH.job = null; const t1 = performance.now(), F = depthFit(J.R, J.Z); DEPTH.fits++; DEPTH.fitMs = J.work + performance.now() - t1; DEPTH.lat = performance.now() - J.t0;
+  DEPTH.cm = F.cm; DEPTH.pts = F.n; DEPTH.why = F.why; DEPTH.lastFit = F; DEPTH.lastJ = { V: J.V, R: J.R, Z: J.Z, D: J.D, MX, MY }; /* numbers for the tests (no picture) */
+  if (!F.ok) { DEPTH.poor++; depthHide(); recDepth({ fit: 'poor', why: F.why, pts: F.n, cm: +F.cm.toFixed(1) }); return; }
+  DEPTH.good++; depthBuild(J, F, MX, MY, o); if (DEPTH.good === 1) recDepth({ fit: 'first', pts: F.n, cm: +F.cm.toFixed(1), ms: Math.round(DEPTH.ms) });
+}
+function depthFit(R, Z) { /* r = a / z + b over the rays that hit a scanned surface: RANSAC on pairs, then least squares on the inliers; how good it is in cm */
+  const ix = []; for (let k = 0; k < Z.length; k++) if (Z[k] > 0.1 && isFinite(R[k])) ix.push(k);
+  const F = { ok: false, n: ix.length, a: 0, b: 0, cm: 99, inl: 0, frac: 0, why: '' }; if (ix.length < 40) { F.why = 'too few surface points'; return F; }
+  const zOf = (a, b, r) => (r - b > 1e-6 ? a / (r - b) : Infinity), TOL = 0.06; let best = null, bn = 0;
+  const count = (a, b) => { let n = 0; for (const k of ix) { const z = zOf(a, b, R[k]); if (Math.abs(z - Z[k]) < TOL * Z[k]) n++; } return n; };
+  for (let it = 0; it < 300; it++) { const k1 = ix[(Math.random() * ix.length) | 0], k2 = ix[(Math.random() * ix.length) | 0], w1 = 1 / Z[k1], w2 = 1 / Z[k2]; if (Math.abs(w1 - w2) < 0.08 * Math.max(w1, w2)) continue;
+    const a = (R[k1] - R[k2]) / (w1 - w2), b = R[k1] - a * w1; if (!(a > 0)) continue; const n = count(a, b); if (n > bn) { bn = n; best = [a, b]; } }
+  if (!best) { F.why = 'all at one depth'; return F; }
+  let [a, b] = best, inl = [];
+  for (let rep = 0; rep < 3; rep++) { inl = ix.filter((k) => Math.abs(zOf(a, b, R[k]) - Z[k]) < TOL * Z[k]); if (inl.length < 8) break;
+    let sw = 0, sr = 0, sww = 0, swr = 0; for (const k of inl) { const w = 1 / Z[k]; sw += w; sr += R[k]; sww += w * w; swr += w * R[k]; } const n = inl.length, den = n * sww - sw * sw; if (Math.abs(den) < 1e-12) break;
+    const a2 = (n * swr - sw * sr) / den; if (!(a2 > 0)) break; a = a2; b = (sr - a * sw) / n; }
+  const errs = inl.map((k) => Math.abs(zOf(a, b, R[k]) - Z[k])).sort((p, q) => p - q), zs = inl.map((k) => Z[k]).sort((p, q) => p - q);
+  F.a = a; F.b = b; F.inl = inl.length; F.frac = inl.length / ix.length; F.cm = errs.length ? errs[(errs.length / 2) | 0] * 100 : 99; F.p90 = errs.length ? errs[Math.floor(errs.length * 0.9)] * 100 : 99;
+  const zMed = zs.length ? zs[(zs.length / 2) | 0] : 1, spread = zs.length ? (zs[Math.floor(zs.length * 0.9)] - zs[Math.floor(zs.length * 0.1)]) / zMed : 0; F.spread = spread;
+  F.why = inl.length < 40 ? 'too few agree' : F.frac < 0.45 ? 'half the surfaces disagree' : spread < 0.15 ? 'all at one depth' : F.cm > Math.max(3, 3.5 * zMed) ? 'error too large' : '';
+  F.ok = !F.why; return F;
+}
+function depthBuild(J, F, MX, MY, o) { /* the depth-only mesh in the world: vertex = the camera + ray x fitted depth (on the surface where the model agrees with it), pushed back */
+  const N = MX * MY, Zv = new Float32Array(N).fill(-1), P = DEPTH.prev, same = P && P.N === N && Math.hypot(P.o[0] - o[0], P.o[1] - o[1], P.o[2] - o[2]) < 0.05 && P.fw[0] * -J.V[8] + P.fw[1] * -J.V[9] + P.fw[2] * -J.V[10] > Math.cos(3 / 57.2958);
+  let a = F.a, b = F.b; if (same && P.F) { a = mixLerp(P.F.a, a, 0.6); b = mixLerp(P.F.b, b, 0.6); } /* the same view: the scale and shift move part of the way */
+  for (let k = 0; k < N; k++) { const r = J.R[k] - b; if (!(r > a / DEPTH_FAR)) continue; let z = a / r; const zc = J.Z[k];
+    if (zc > 0 && z > zc - Math.max(0.04, 0.08 * zc)) z = zc; /* not clearly in front of the scanned surface: it IS that surface */
+    if (same && P.Z[k] > 0 && Math.abs(P.Z[k] - z) < 0.1 * z) z = (z + P.Z[k]) / 2; /* in time: about the same depth as last time, averaged */
+    Zv[k] = Math.max(0.12, z); }
+  DEPTH.prev = { N, o: o.slice(), fw: [-J.V[8], -J.V[9], -J.V[10]], Z: Zv, F: { a, b } };
+  const pos = new Float32Array(3 * N), col = new Float32Array(3 * N), idx = [];
+  for (let k = 0; k < N; k++) { const z = Zv[k] > 0 ? Zv[k] * (1 + DEPTH_PAD_R) + DEPTH_PAD_M : 1; pos[3 * k] = o[0] + J.D[3 * k] * z; pos[3 * k + 1] = o[1] + J.D[3 * k + 1] * z; pos[3 * k + 2] = o[2] + J.D[3 * k + 2] * z;
+    const h = clamp((Zv[k] - 0.3) / 2.7, 0, 1); col[3 * k] = Zv[k] > 0 ? 1 - h : 0.2; col[3 * k + 1] = Zv[k] > 0 ? 0.35 + 0.4 * (1 - Math.abs(h - 0.5) * 2) : 0.2; col[3 * k + 2] = Zv[k] > 0 ? h : 0.2; }
+  const tri = (p, q, s) => { const zp = Zv[p], zq = Zv[q], zs = Zv[s]; if (zp <= 0 || zq <= 0 || zs <= 0) return; const lo = Math.min(zp, zq, zs), hi = Math.max(zp, zq, zs); if (hi > lo * DEPTH_STEP + 0.02) return; idx.push(p, q, s); };
+  for (let j = 0; j < MY - 1; j++) for (let i = 0; i < MX - 1; i++) { const k = j * MX + i; tri(k, k + MX, k + 1); tri(k + 1, k + MX, k + MX + 1); }
+  if (!DEPTH.mesh) { const g = new THREE.BufferGeometry(); DEPTH.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide })); DEPTH.mesh.renderOrder = -100; DEPTH.mesh.frustumCulled = false; DEPTH.mesh.userData.soft = true; scene.add(DEPTH.mesh);
+    DEPTH.dbgMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide })); DEPTH.dbgMesh.renderOrder = 100; DEPTH.dbgMesh.frustumCulled = false; scene.add(DEPTH.dbgMesh); }
+  const g = DEPTH.mesh.geometry; g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx); g.computeBoundingSphere();
+  DEPTH.at = { o: o.slice(), fw: [-J.V[8], -J.V[9], -J.V[10]], t: performance.now() }; DEPTH.tris = idx.length / 3; DEPTH.ok = true; DEPTH.ver++;
+}
+function depthShow(dt) { /* the map is shown while the iPad stands about where its picture was taken (it is world geometry: small moves reproject it), and while it is young */
+  const M = DEPTH.mesh, A = DEPTH.at; if (!M) return; let on = DEPTH.ok && !!A;
+  if (on) { const e = AR.viewM.elements, mv = Math.hypot(e[12] - A.o[0], e[13] - A.o[1], e[14] - A.o[2]), c = -e[8] * A.fw[0] - e[9] * A.fw[1] - e[10] * A.fw[2]; on = mv < DEPTH_MOVE_M && c > Math.cos(DEPTH_TURN_DEG / 57.2958) && performance.now() - A.t < DEPTH_AGE_S * 1000; }
+  M.visible = on; DEPTH.dbgMesh.visible = on && DEPTH.dbg; DEPTH.shown = on; if (on) DEPTH.shownS += dt; else DEPTH.hidS += dt;
+}
+function depthDbgInset(J) { /* ?depthdbg=1: the model's raw output (near bright, far dark) in a corner, with the last fit */
+  let c = document.getElementById('depthDbg'); if (!c) { c = document.createElement('canvas'); c.id = 'depthDbg'; c.style.cssText = 'position:fixed;right:8px;top:64px;width:200px;border:2px solid #fff;border-radius:6px;z-index:60;pointer-events:none;background:#000'; $('ui').appendChild(c); }
+  c.width = J.rw; c.height = J.rh + 16; const g = c.getContext('2d'), im = g.createImageData(J.rw, J.rh); let lo = Infinity, hi = -Infinity; for (const v of J.r) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  for (let i = 0; i < J.rw * J.rh; i++) { const h = (J.r[i] - lo) / Math.max(1e-6, hi - lo); im.data[i * 4] = 255 * h; im.data[i * 4 + 1] = 90 + 120 * (1 - Math.abs(h - 0.5) * 2); im.data[i * 4 + 2] = 255 * (1 - h); im.data[i * 4 + 3] = 255; }
+  g.putImageData(im, 0, 0); g.fillStyle = '#000'; g.fillRect(0, J.rh, J.rw, 16); g.fillStyle = '#fff'; g.font = '11px sans-serif'; const F = DEPTH.lastFit;
+  g.fillText('depth ' + Math.round(DEPTH.ms) + ' ms' + (F ? ' · fit ' + (F.ok ? F.cm.toFixed(1) + ' cm, ' + F.inl + ' pts' : 'off: ' + F.why) : ''), 4, J.rh + 12);
+}
+function depthToggle() { /* Menu: "Things can hide behind furniture" (remembered in this browser) */
+  DEPTH.want = !DEPTH.want; store.set('bc-depth', DEPTH.want ? '1' : '0'); if (!DEPTH.want) depthHide();
+  toast(DEPTH.want ? 'Things can hide behind furniture: on' + (AR.on ? '' : ' (in AR)') : 'Things can hide behind furniture: off'); }
+function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle),
+  fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
+function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
+
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
 // save the map blob next to the room map (worldMapSave) and load it before the session starts (worldMapLoad); ARKit relocalises by itself and the saved frames are valid as they are.
@@ -7515,7 +7652,7 @@ function tagTap(cx, cy) {
 // ---- the menu, and the export / import window ----
 function menuUi() {
   const m = $('modal'); m.hidden = false; const pr = G.mode === 'practice';
-  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mNews">What they noticed (' + NEWS.log.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
+  m.innerHTML = '<div class="dh">Menu</div><div class="mrow"><button id="mAlbum" class="alt">Colony album (' + FUN.album.length + ')</button><button id="mNews">What they noticed (' + NEWS.log.length + ')</button><button id="mWx">Weather</button><button id="mMap">Name spots</button><button id="mMusic">Music ' + (G.music ? 'on' : 'off') + '</button><button id="mSound">' + (SND.on ? 'Sound on' : 'Sound off') + '</button><button id="mAmb">' + (SND.ambOn ? 'Room sounds on' : 'Room sounds off') + '</button><label class="vol">Volume <input type="range" id="mVol" min="0" max="100" step="5" value="' + Math.round(SND.vol * 100) + '"></label><button id="mTime">Time x' + G.speed + '</button>' + (pr ? '<button id="mSkip" class="alt">Skip 8 hours</button><button id="mBack" class="alt">Come back later</button>' : '') + '<button id="mAlign">Line up by tapping two things</button><button id="mIO">Export / import room map</button><button id="mLib">Our library</button><button id="mSmart">' + (RECOG.clip.on ? 'Smarter recognition: on' : 'Smarter recognition (downloads ~55 MB)') + '</button><button id="mDepth">' + (DEPTH.want ? 'Things can hide behind furniture: on' : 'Things can hide behind furniture: off') + '</button><button id="mScan">Scan again from scratch</button><a class="mlink" id="mStick" href="stickers.html" target="_blank" rel="noopener">Print room stickers</a><button id="mReport">Report</button><button id="mTitle">Back to the title</button><button id="mClose">Close</button></div><div class="sub">' + (G.zones.length ? 'Map ' + Math.round(mapKnown() * 100) + '% known \u00b7 ' + (G.visits || 0) + ' visit' + ((G.visits || 0) === 1 ? '' : 's') + '. It saves itself.' : 'It saves itself.') + '</div><div class="sub" style="opacity:.7;font-size:11px">3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0</div><div class="sub" style="opacity:.7;font-size:11px">Backpack Scout mouse: made with ChatGPT, sent by Harry</div><div class="sub" style="opacity:.7;font-size:11px">Waterworks (straws, bucket lines, the flush run): an idea by Harry</div>';
   if (pr) { const mw = $('mWx'); if (mw) mw.insertAdjacentHTML('afterend', '<button id="mSky">Practice sky ' + (skyShown() ? 'on' : 'off') + '</button>'); } /* first10 */
   { const vs = $('mVol'); if (vs) vs.oninput = () => SND_setVol(vs.value / 100); } /* build 19 + sound: the volume slider (saved as bc-volume) */
   m.onclick = (e) => {
@@ -7523,7 +7660,7 @@ function menuUi() {
     if (t.id === 'mSky') { G.skyOn = !skyShown(); $('env').hidden = !skyShown(); return; }
     if (t.id === 'mNews') { newsUi(); return; }
     if (t.id === 'mWx') wxCard(); else if (t.id === 'mMap') gotoTag(); else if (t.id === 'mMusic') { partyToggle(); toast('Music ' + (G.music ? 'on: everybody dance!' : 'off')); } else if (t.id === 'mAlbum') albumUi();
-    else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle();
+    else if (t.id === 'mSound') { SND_setOn(!SND.on); toast(SND.on ? 'Sound on' : 'Sound off'); } else if (t.id === 'mAmb') { SND.ambOn = !SND.ambOn; store.set('bc-amb', SND.ambOn ? '1' : '0'); toast('Room sounds ' + (SND.ambOn ? 'on' : 'off')); } else if (t.id === 'mSkip') { skipHours(8); } else if (t.id === 'mIO') ioUi(); else if (t.id === 'mLib') libUi(); else if (t.id === 'mSmart') smartToggle(); else if (t.id === 'mDepth') depthToggle();
     else if (t.id === 'mReport') reportUi();  else if (t.id === 'mTime') { G.speed = G.speed === 1 ? 6 : G.speed === 6 ? 30 : 1; toast('Time x' + G.speed); } else if (t.id === 'mBack') comeBackLater(); else if (t.id === 'mAlign') relocManual();
     else if (t.id === 'mScan') { G.auto = false; G.returning = false; rescanFresh(); } else if (t.id === 'mTitle') { persist(true); if (AR.on) { try { AR.session.end(); } catch (er) { arEnded(); } } else { resetWorld(); G.phase = 'title'; showTitle(); } }
   };
@@ -8809,7 +8946,7 @@ function persistSoon() { if (_persistT) return; _persistT = setTimeout(() => { _
 function frame(time, xrFrame) {
   const now = performance.now(), fT0 = now; /* build 26: fT0 times this frame's own work (a gap after a long frame of ours is not a sleep) */ let dt = Math.min(0.1, (now - G.last) / 1000); if (!(dt >= 0)) dt = 0.016; G.last = now; G.time += dt; frameN++; recFrame(dt);
   if (!AR.on) requestAnimationFrame(frame);
-  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); } else { deskPad(dt); botTick(dt); practiceFrame(dt); houseTick(dt); if (HOUSE.on) houseLabelTick(); } /* build 29: the controller, the house's doorways */
+  if (AR.on) { arFrame(xrFrame); if (xrFrame) rfFrame(time); depthTick(dt); /* build 30: real things hide the toys */ } else { deskPad(dt); botTick(dt); practiceFrame(dt); houseTick(dt); if (HOUSE.on) houseLabelTick(); } /* build 29: the controller, the house's doorways */
   envUpdate(); lighting();
   if (G.auto && !BT.on) autoTick(dt);
   else if (G.phase === 'scan' && !BT.on) {
@@ -8833,7 +8970,7 @@ function frame(time, xrFrame) {
   if (BT.on) battleFrame(dt);
   SND_ambTick(dt); /* build 19 + sound: the quiet room ambience */
   renderer.render(scene, camera);
-  if (CCAM.on && !BT.on) ccamRender(); /* the creature cam: a second small viewport, only while open */
+  if (CCAM.on && !BT.on) { const dm = DEPTH.mesh, dv = !!(dm && dm.visible); if (dm) { dm.visible = false; DEPTH.dbgMesh.visible = false; } ccamRender(); if (dm) { dm.visible = dv; DEPTH.dbgMesh.visible = dv && DEPTH.dbg; } } /* the creature cam: a second small viewport, only while open (build 30: without the depth mesh, which belongs to the iPad's view) */
   RF.frameMs = performance.now() - fT0;
 }
 addEventListener('visibilitychange', () => { if (document.hidden) persist(true); }); addEventListener('pagehide', () => persist(true));
@@ -8950,6 +9087,7 @@ Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
 Object.assign(window.__g, { STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
 Object.assign(window.__g, { SNAP, SNAP_MAX, SNAP_PTS, SNAP_MIN_INL, SNAP_MIN_PICS, snapTick, snapRun, snapNeed, snapRooms, snapKfs, snapKeep, snapCast, snapPoint, snapMatch, snapObs, snapSolve, snapUse, snapLock, snapDiff, snapRebase, snapToJSON, snapFromJSON, snapBytes, snapReport, snapClear, snapAskRoom, snapPolishOK, snapCorrect, stkSettled, stkView, commitAlign, applyAlign, relocLiveLayers }); /* build 28: room snapshots */
+Object.assign(window.__g, { DEPTH, DEPTH_MODEL, DEPTH_ORT, depthLoad, depthTick, depthSend, depthWork, depthFit, depthBuild, depthShow, depthHide, depthToggle, depthReport, depthAt, depthGrid }); /* build 30: depth */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 
 // ============ start ============

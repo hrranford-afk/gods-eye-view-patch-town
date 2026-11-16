@@ -17,6 +17,12 @@ The full licence texts are in the headers of `webxr-polyfill.js`. The game only 
 - transformers.js 3.7.5 (Apache License 2.0) from jsdelivr, and the ONNX export `Xenova/clip-vit-base-patch32` of OpenAI's CLIP (MIT) from huggingface.co: only the vision model, about 53 MB, only after the player turns on "Smarter recognition". `clip-labels.json` (in this folder) holds CLIP text embeddings of our own label list, made once with `tests/make-clip-labels.mjs`.
 - Camera pictures are never uploaded: the models run on the device.
 
+## Depth model (build 30): "Things can hide behind furniture"
+
+- `models/depth/model_fp16.onnx` (49.6 MB): **Depth Anything V2 Small** (Yang et al., 2024, https://github.com/DepthAnything/Depth-Anything-V2, https://huggingface.co/depth-anything/Depth-Anything-V2-Small), Apache License 2.0, in the fp16 ONNX export by onnx-community / Xenova for Transformers.js (`onnx-community/depth-anything-v2-small`, file `onnx/model_fp16.onnx`, unmodified). Its model card is `models/depth/MODEL-CARD.md`. The Apache License 2.0 text: https://www.apache.org/licenses/LICENSE-2.0. Only the Small model is Apache-2.0 (the Base / Large / Giant Depth Anything V2 models are CC BY-NC 4.0 and must not be used).
+- onnxruntime-web 1.22.0 (MIT, Microsoft), loaded at run time from jsdelivr (`ort.wasm.min.js` and its wasm) inside a Web Worker, only in AR with the setting on.
+- The camera picture goes only to that local worker and is dropped; nothing is uploaded or stored.
+
 ## 3D models (build 15)
 
 3D models: Kenney (kenney.nl) and Quaternius (quaternius.com), CC0.

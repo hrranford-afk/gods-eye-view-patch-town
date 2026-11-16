@@ -1,0 +1,2 @@
+# The depth model is binary: never touch its bytes.
+*.onnx binary

@@ -9,7 +9,7 @@ const res = []; const ok = (n, c, x) => { res.push(!!c); console.log((c ? 'PASS 
   const calm = () => ev(() => { for (const id of ['diary', 'modal', 'ask', 'wx']) document.getElementById(id).hidden = true; document.getElementById('toast').innerHTML = ''; document.getElementById('banner').className = ''; document.getElementById('repc').hidden = true; document.getElementById('home').classList.remove('on'); document.getElementById('bmenu').hidden = true; });
   await p.goto(url); await sleep(1200); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); });
   await p.goto(url + '?player'); await sleep(1500); await ev(() => { __g.ENV.hourOverride = 12; __g.ENV.dateOverride = '2026-10-20'; });
-  ok('BUILD is build 29', await ev(() => __g.BUILD === 'build 29'));
+  ok('BUILD is build 30', await ev(() => __g.BUILD === 'build 30'));
   ok('the house is on by default with six rooms', await ev(() => __g.HOUSE.on && __g.HOUSE_ORDER.length === 6 && ['kitchen', 'lounge', 'bed', 'bath', 'garden'].every((k) => (__g.HOUSE_SURF[k] || []).length >= 3)));
 
   /* ---- 1. the Playroom (the old practice room) settles as before ---- */
