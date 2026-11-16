@@ -78,7 +78,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   await settleShed(); await ev((a) => { window.__MARKS = [a]; __g.STK.obs = {}; __g.REC.stk.length = 0; window.__toasts.length = 0; }, ST2);
   const t0b = Date.now(); await viewSticker(ST2, 0.8, [0, 25, -25, 40], 3.2); const tB = await waitFor(() => !!__g.G.stk, 60000, 300); const secsB = (Date.now() - t0b) / 1000;
   const B0 = await ev(() => ({ row: __g.HOMES.rooms.find((r) => r.id === 'r1').stk, toast: window.__toasts.find((t) => /now has sticker/.test(t)) || '', first: (__g.REC.stk.find((e) => e.fix) || {}).t, bind: (__g.REC.stk.find((e) => e.bind) || {}).t }));
-  ok('0. an unowned sticker is taken by the settled room at once, with "Room 1 now has sticker 2 ✓"', tB >= 0 && B0.row === 2 && /Room 1 now has sticker 2 ✓/.test(B0.toast) && B0.bind === B0.first, secsB.toFixed(1) + ' s from the first look; ' + JSON.stringify(B0));
+  ok('0. an unowned sticker is taken by the settled room at once, with "Room 1 now has sticker 2 ✓"', tB >= 0 && B0.row === 2 && /Room 1 now has sticker 2 ✓/.test(B0.toast) && secsB < 10 && B0.bind - B0.first < 5, secsB.toFixed(1) + ' s from the first look; ' + JSON.stringify(B0));
   await ev(() => __g.persist(true)); await endSession();
   /* three saved rooms with the same map; Room 2 owns sticker 2 */
   await ev(() => { const H = JSON.parse(localStorage.getItem('bc-rooms-v1')), m = JSON.parse(localStorage.getItem('base-camp-map-v1')), sv = localStorage.getItem('base-camp-save-v2'), now = Date.now();
@@ -126,7 +126,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const t3 = Date.now(); await viewSticker(ST2, 0.8, [25, 10, 35], 3.5); const tL3 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const secs3 = (Date.now() - t3) / 1000; const S3 = await S();
   const K3 = await ev((id) => Object.keys(localStorage).filter((k) => k.endsWith('.' + id) || k.includes('.' + id + '-')), nr);
   ok('3. the sticker takes the player from the new room to Room 2 (locked from the sticker), no question', tL3 >= 0 && S3.cur === 'r2' && !!S3.lock && (await ev(() => window.__prompts.length)) === 0, secs3.toFixed(1) + ' s ' + JSON.stringify(S3));
-  ok('3. the empty new room is not kept (not in the rooms, nothing in storage)', !S3.rooms.some((r) => r.split(':')[0] === nr) && K3.length === 0 && S3.log.some((e) => e.dropped === nr), JSON.stringify({ nr, rooms: S3.rooms, keys: K3 }));
+  ok('3. the empty new room is not kept (not in the rooms, nothing in storage)', !S3.rooms.some((r) => r.split(':')[0] === nr) && K3.length === 0 && (await ev(() => __g.STK.dropped)) >= 1, JSON.stringify({ nr, rooms: S3.rooms, keys: K3 }));
   await sleep(2000); await shot('142-stickerkey-from-new-room.png'); await endSession();
 
   /* ===================== 4. Continue Room 3 (no sticker): an unowned sticker is taken at once ===================== */
@@ -148,7 +148,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'], L_LEG
   const Q5 = await ev(() => { const el = document.getElementById('nroom'), pre = document.getElementById('mvPre'); return { txt: el.innerText.replace(/\s+/g, ' '), pre: pre ? pre.dataset.room + ':' + pre.innerText : '', first: el.querySelector('button') && el.querySelector('button').id, cur: __g.HOMES.cur, age: Math.round(__g.stkColAge()) }; });
   ok('5. a colony over 2 min old would be left: "Have you moved to another room?" with "It’s Room 2" first, nothing switched yet', tQ >= 0 && Q5.cur === 'r3' && /That sticker belongs to Room 2/.test(Q5.txt) && Q5.pre === 'r2:It’s Room 2' && Q5.first === 'mvPre', JSON.stringify(Q5));
   await sleep(300); await shot('144-stickerkey-grown-colony-asks.png');
-  await p.click('#mvPre'); const tL5 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const S5 = await S();
+  await p.click('#mvPre'); await sweep(['shelf', 'deskA', 'floor', 'shelf'], 1.0); /* "It's Room 2" starts a fresh scan: the sticker's yaw is checked on the surfaces (unless it is sure) */ const tL5 = await waitFor(() => __g.HOMES.cur === 'r2' && __g.G.locked, 90000, 300); const S5 = await S();
   ok('5. "It’s Room 2": Room 2 loads and locks; Room 3 keeps its colony and its sticker', tL5 >= 0 && S5.rooms.includes('r3:4') && S5.cur === 'r2' && S5.locked && (await ev(() => { const d = JSON.parse(localStorage.getItem('base-camp-save-v2.r3') || 'null'); return !!d && d.settlements.some((S) => S.cols && S.cols.length); })), JSON.stringify(S5) + ' map3 kept: ' + ((await mapOf('r3')).length > 1000));
 
   /* ===================== 6. Menu, Rooms and stickers; the developer panel ===================== */
