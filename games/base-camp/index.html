@@ -26,6 +26,12 @@ a.mlink{font:800 15px var(--body);color:var(--paper);background:rgba(255,246,230
 #title p{margin:6px 0 14px;font-size:16px;line-height:1.35;color:#f6e6cc}
 #title .row{display:grid;gap:10px;justify-items:center}
 #arStatus{margin-top:12px;font:700 13px var(--body);opacity:.8}
+#devPanel{position:fixed;left:8px;top:8px;z-index:80;width:min(360px,calc(100vw - 16px));max-height:80vh;overflow:auto;background:rgba(20,22,28,.9);color:#fff;border-radius:10px;padding:8px 10px;font:13px/1.35 system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.4);text-align:left}
+#devPanel .devHead{font-weight:700;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+#devPanel button{min-height:36px;font:600 13px system-ui,sans-serif;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:#fff;padding:4px 12px;margin:0}
+#devPanel .devRow{display:grid;grid-template-columns:18px 118px 1fr;gap:4px;padding:3px 0;border-top:1px solid rgba(255,255,255,.08)}
+#devPanel .devRow b{text-align:center}#devPanel .tick b{color:#7f7}#devPanel .cross b{color:#f77}#devPanel .dash b{color:#aaa}
+#devPanel .devRow i{font-style:normal;opacity:.92;word-break:break-word}#devPanel .devBtns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}#devPanel .devMsg{font-size:12px;opacity:.8;min-height:15px;margin-top:3px}
 #top{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);max-width:min(94vw,640px);text-align:center;font-weight:800;font-size:16px;pointer-events:none}
 #hint{display:inline-block;pointer-events:none}
 #hint:empty{display:none}
@@ -4795,7 +4801,7 @@ function resize2() { renderer.setSize(innerWidth, innerHeight); camera.aspect = 
 function arFrame(frame) {
   if (!frame || !AR.refSpace) return;
   const pose = frame.getViewerPose(AR.refSpace), view = pose && pose.views[0];
-  if (view) { AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); if (STK.state === 'ready' || RECOG.on) { stkCam(); stkPoseNote(); } /* build 27: which viewer pose belongs to the newest camera picture (build 28: also for the room snapshots, without the sticker library) */ }
+  if (view) { AR.poseT = performance.now(); /* build 30: the developer panel's "pose arriving" */ AR.viewM.fromArray(view.transform.matrix); AR.viewInv.copy(AR.viewM).invert(); AR.projM.fromArray(view.projectionMatrix); AR.projInv.copy(AR.projM).invert(); if (STK.state === 'ready' || RECOG.on) { stkCam(); stkPoseNote(); } /* build 27: which viewer pose belongs to the newest camera picture (build 28: also for the room snapshots, without the sticker library) */ }
   if (frame.getGlobalLightEstimate && performance.now() - AR.gtime > 1000) { // non-standard, WebXRKit only: ARKit's ambient light
     AR.gtime = performance.now();
     try { frame.getGlobalLightEstimate().then((pr) => { const v = pr && pr.indirectIrradiance; if (v > 0) AR.light = clamp(v, 0.6, 1.4); }).catch(() => {}); } catch (e) { /* ignore */ }
@@ -6393,6 +6399,7 @@ function stkAdd(id, o) { /* a sighting joins the last few seconds' sightings of 
   const list = STK.obs[id] || (STK.obs[id] = []), now = o.t, last = list[list.length - 1];
   if (last && Math.hypot(o.w.p[0] - last.w.p[0], o.w.p[1] - last.w.p[1], o.w.p[2] - last.w.p[2]) > 0.25) list.length = 0; /* the world jumped (or another copy of the sticker): start again */
   list.push(o); while (list.length && (now - list[0].t > STK_WIN_S * 1000 || list.length > 24)) list.shift();
+  STK.lastSeen = { id, t: now, d: Math.hypot(o.w.p[0] - o.V[12], o.w.p[1] - o.V[13], o.w.p[2] - o.V[14]) }; /* build 30: the developer panel */
   STK.burstUntil = now + 3000; if (list.length < STK_MIN_N || now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
   const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; stkUse(id, F); }
 }
@@ -6822,7 +6829,7 @@ function snapReport() { const S = G.snap; return { keyframes: S ? S.kf.length : 
    Web Worker that runs Depth Anything V2 Small (models/depth/model_fp16.onnx, onnxruntime-web 1.22.0 from jsdelivr, one wasm thread), so the game never waits for it.
    The model gives RELATIVE inverse depth. Over a grid of rays through that picture (its own pose and intrinsics: stkView, as the sticker lock and the snapshots assume)
    the scanned surfaces give METRIC depth (snapCast); a robust fit r = a / z + b (RANSAC + least squares) turns the model into metres. A poor fit (few points, wrong sign,
-   large error, all points at one depth) turns occlusion off: toys are never hidden on a guess.
+   large error, all points at one depth, the model seeing THROUGH scanned surfaces) turns occlusion off: toys are never hidden on a guess.
    The result is a depth-only mesh (colorWrite off, drawn first) in the world, one vertex per grid ray, at the fitted depth pushed back by DEPTH_PAD_M + DEPTH_PAD_R: the
    toys behind nearer real things fail the depth test. Where the model agrees with a scanned surface (not clearly in front of it) the vertex sits on that surface. Triangles
    across a depth step, or with a vertex the model sees as far away, are left out (a hole hides nothing). Because the mesh is world geometry it reprojects itself as the iPad
@@ -6861,15 +6868,17 @@ function depthMsg(m, t0) {
   DEPTH.runs++; DEPTH.ms = m.ms; DEPTH.msAvg = DEPTH.msAvg ? DEPTH.msAvg * 0.8 + m.ms * 0.2 : m.ms; DEPTH.msMax = Math.max(DEPTH.msMax, m.ms);
   J.r = new Float32Array(m.d); J.rw = m.w; J.rh = m.h; J.k = 0; J.t1 = performance.now(); DEPTH.job = J; DEPTH.t = 0; if (DEPTH.dbg) depthDbgInset(J);
 }
+function depthCalm() { /* the room is known and nothing is being found again: the depth model may load and run (it leaves the CPU to the relock, the sticker finder and the snapshots) */
+  return G.phase === 'play' && G.zones.length > 0 && !RF.on && !RF.hidden && !G.finding && !(G.returning && !G.locked); }
 function depthOff() { return !AR.on || !DEPTH.want || DEPTH.disabled; }
 function depthHide() { DEPTH.ok = false; if (DEPTH.mesh) DEPTH.mesh.visible = false; if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = false; DEPTH.shown = false; }
 function depthTick(dt) { /* every frame in AR: show or hide the current map, send a picture now and then, work on a returned map for at most DEPTH_BUDGET_MS */
   const now = performance.now(); if (DEPTH.lastT && now - DEPTH.lastT < 1000) { if (DEPTH.busy) DEPTH.gapMax = Math.max(DEPTH.gapMax, now - DEPTH.lastT); else DEPTH.gapIdle = Math.max(DEPTH.gapIdle, now - DEPTH.lastT); } DEPTH.lastT = now; /* frame gaps while the worker runs, and while it does not */
   if (depthOff()) { if (DEPTH.shown || (DEPTH.mesh && DEPTH.mesh.visible)) depthHide(); DEPTH.job = null; return; }
-  if (DEPTH.state === 'off' && G.zones.length) depthLoad();
-  depthShow(dt);
+  const calm = depthCalm(); if (DEPTH.state === 'off' && calm) depthLoad();
+  if (!calm && DEPTH.shown) depthHide(); depthShow(dt);
   if (DEPTH.job) { try { depthWork(DEPTH.job); } catch (e) { DEPTH.err = String(e && e.message || e); DEPTH.job = null; depthHide(); } return; }
-  if (DEPTH.state !== 'ready' || DEPTH.busy || G.phase === 'title' || !G.zones.length) return;
+  if (DEPTH.state !== 'ready' || DEPTH.busy || !calm) return;
   DEPTH.t += dt; if (DEPTH.t < Math.max(DEPTH_GAP_S, DEPTH.msAvg / 1000)) return; /* a slow device: the worker is busy at most about half the time */
   const im = stkCam(); if (!im || STK.loadSeq <= DEPTH.seq) return; const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); if (!pose) return;
   if (stkMoving() > 0.8) return; DEPTH.seq = seq; DEPTH.t = 0; depthSend(im, pose);
@@ -6896,8 +6905,8 @@ function depthWork(J) { /* per vertex: its ray, the model's value and the scanne
   J.work = (J.work || 0) + performance.now() - t0; if (J.k < N) return;
   DEPTH.job = null; const t1 = performance.now(), F = depthFit(J.R, J.Z); DEPTH.fits++; DEPTH.fitMs = J.work + performance.now() - t1; DEPTH.lat = performance.now() - J.t0;
   DEPTH.cm = F.cm; DEPTH.pts = F.n; DEPTH.why = F.why; DEPTH.lastFit = F; DEPTH.lastJ = { V: J.V, R: J.R, Z: J.Z, D: J.D, MX, MY }; /* numbers for the tests (no picture) */
-  if (!F.ok) { DEPTH.poor++; depthHide(); recDepth({ fit: 'poor', why: F.why, pts: F.n, cm: +F.cm.toFixed(1) }); return; }
-  DEPTH.good++; depthBuild(J, F, MX, MY, o); if (DEPTH.good === 1) recDepth({ fit: 'first', pts: F.n, cm: +F.cm.toFixed(1), ms: Math.round(DEPTH.ms) });
+  if (!F.ok) { DEPTH.poor++; DEPTH.poorRun = (DEPTH.poorRun || 0) + 1; if (DEPTH.poorRun >= 2 || !DEPTH.at || performance.now() - DEPTH.at.t > 4000) depthHide(); /* one poor fit keeps the last good map (checked by its own fit, young, and still subject to the move limits); two in a row turn it off */ recDepth({ fit: 'poor', why: F.why, pts: F.n, cm: +F.cm.toFixed(1) }); return; }
+  DEPTH.good++; DEPTH.poorRun = 0; depthBuild(J, F, MX, MY, o); if (DEPTH.good === 1) recDepth({ fit: 'first', pts: F.n, cm: +F.cm.toFixed(1), ms: Math.round(DEPTH.ms) });
 }
 function depthFit(R, Z) { /* r = a / z + b over the rays that hit a scanned surface: RANSAC on pairs, then least squares on the inliers; how good it is in cm */
   const ix = []; for (let k = 0; k < Z.length; k++) if (Z[k] > 0.1 && isFinite(R[k])) ix.push(k);
@@ -6922,7 +6931,7 @@ function depthBuild(J, F, MX, MY, o) { /* the depth-only mesh in the world: vert
   const N = MX * MY, Zv = new Float32Array(N).fill(-1), P = DEPTH.prev, same = P && P.N === N && Math.hypot(P.o[0] - o[0], P.o[1] - o[1], P.o[2] - o[2]) < 0.05 && P.fw[0] * -J.V[8] + P.fw[1] * -J.V[9] + P.fw[2] * -J.V[10] > Math.cos(3 / 57.2958);
   let a = F.a, b = F.b; if (same && P.F) { a = mixLerp(P.F.a, a, 0.6); b = mixLerp(P.F.b, b, 0.6); } /* the same view: the scale and shift move part of the way */
   for (let k = 0; k < N; k++) { const r = J.R[k] - b; if (!(r > a / DEPTH_FAR)) continue; let z = a / r; const zc = J.Z[k];
-    if (zc > 0 && z > zc - Math.max(0.04, 0.08 * zc)) z = zc; /* not clearly in front of the scanned surface: it IS that surface */
+    if (zc > 0 && z > zc - Math.max(0.08, 0.15 * zc)) z = zc; /* not clearly (8 cm and 15 %) in front of the scanned surface: it IS that surface (the model blurs a box's foot into the floor in front of it) */
     if (same && P.Z[k] > 0 && Math.abs(P.Z[k] - z) < 0.1 * z) z = (z + P.Z[k]) / 2; /* in time: about the same depth as last time, averaged */
     Zv[k] = Math.max(0.12, z); }
   DEPTH.prev = { N, o: o.slice(), fw: [-J.V[8], -J.V[9], -J.V[10]], Z: Zv, F: { a, b } };
@@ -6954,6 +6963,60 @@ function depthToggle() { /* Menu: "Things can hide behind furniture" (remembered
 function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEPTH.err, cache: DEPTH.cache, loadMs: Math.round(DEPTH.loadMs), runs: DEPTH.runs, msAvg: Math.round(DEPTH.msAvg), msMax: Math.round(DEPTH.msMax), prepMs: +DEPTH.prepMs.toFixed(1), fitMs: +DEPTH.fitMs.toFixed(1), frameGapMaxMs: Math.round(DEPTH.gapMax), frameGapIdleMs: Math.round(DEPTH.gapIdle),
   fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
 function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
+
+/* ============ DEVELOPER MODE (build 30): a small corner panel for testing on the iPad. ?dev=1, or hold the build line on the title for 3 s. Read HANDOVER "Developer mode (build 30)". ============
+   One row per part of the AR stack: a tick (working), a cross (should work but does not) or a dash (not running here), and a number. Refreshed twice a second while open.
+   "Copy numbers" copies the panel as JSON (numbers and short texts only, never a picture). When closed the panel does not exist: nothing on the page moves. */
+const DEV = { on: false, el: null, timer: 0, prev: null, rate: { fps: 0, hits: 0, pics: 0 }, hold: 0, last: null, copied: '' };
+function devRows() { /* the numbers behind the panel: [tick, label, text] per row, plus the raw numbers for the JSON */
+  const now = performance.now(), P = DEV.prev, n = { t: now, frames: frameN, hits: SCAN.hits, pics: STK.seq || 0 };
+  if (P && now - P.t >= 2000) { /* rates over at least 2 s (pictures come a few a second) */ const s = (now - P.t) / 1000; DEV.rate = { fps: (n.frames - P.frames) / s, hits: (n.hits - P.hits) / s, pics: Math.max(0, n.pics - P.pics) / s }; DEV.prev = n; } else if (!P) DEV.prev = n;
+  const R = DEV.rate, ar = !!AR.on, poseOk = ar && now - (AR.poseT || 0) < 1000, im = ar && STK.img && STK.img.naturalWidth ? STK.img : null, rot = im ? stkView(im.naturalWidth, im.naturalHeight, AR.projM.elements).rot : null;
+  const kf = G.snap ? G.snap.kf.length : 0, pts = G.snap ? G.snap.kf.reduce((a, k) => a + k.n, 0) : 0, L = RELOC.lock, lockHow = L ? (L.stk || L.snap || 'surfaces') : '', lockSd = L && L.snap && SNAP.lastF && SNAP.lastF.sdP ? SNAP.lastF.sdP * 100 : null;
+  const sk = STK.lastSeen && now - STK.lastSeen.t < 5000 ? STK.lastSeen : null, c = RECOG.coco, g = REC.recog.length ? REC.recog[REC.recog.length - 1] : null, e = REC.errs.length ? REC.errs[REC.errs.length - 1] : null;
+  let kb = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); kb += (k.length + (localStorage.getItem(k) || '').length) / 1024; } } catch (er) { kb = -1; }
+  const D = DEPTH, dep = D.state === 'ready' ? (D.lastFit && D.lastFit.ok ? 'tick' : 'dash') : D.state === 'error' ? 'cross' : 'dash';
+  const num = { ar: { on: ar, pose: poseOk, fps: +R.fps.toFixed(1) }, hits: { perS: +R.hits.toFixed(1), total: SCAN.hits, surfaces: G.zones.length, scanZones: SCAN.zones.length },
+    camera: { perS: +R.pics.toFixed(2), w: im ? im.naturalWidth : 0, h: im ? im.naturalHeight : 0, rot }, snapshots: { keyframes: kf, points: pts, relock: L ? { how: lockHow, s: +((L.ms || 0) / 1000).toFixed(1), sdCm: lockSd === null ? null : +lockSd.toFixed(2) } : null },
+    sticker: sk ? { id: sk.id, m: +sk.d.toFixed(2), agoS: +((now - sk.t) / 1000).toFixed(1) } : null, objects: { state: c.state, runs: c.runs, ms: Math.round(c.ms || 0), last: g ? { cls: g.cls || '', score: g.score || 0 } : null },
+    depth: { state: D.state, want: D.want, msRun: Math.round(D.msAvg), fitCm: D.fits ? +D.cm.toFixed(1) : null, occlusion: !!D.shown, runs: D.runs, good: D.good, poor: D.poor, why: D.why }, errors: { count: REC.errs.length, last: e ? String(e.msg).slice(0, 120) : '' }, storageKB: Math.round(kb) };
+  const rows = [
+    [!ar ? 'dash' : poseOk ? 'tick' : 'cross', 'AR tracking', ar ? (poseOk ? 'pose ok' : 'no pose') + ' · ' + R.fps.toFixed(0) + ' fps' : 'not in AR · ' + R.fps.toFixed(0) + ' fps'],
+    [!ar ? 'dash' : R.hits > 0 || G.zones.length ? 'tick' : 'cross', 'Hit points', R.hits.toFixed(0) + '/s · ' + G.zones.length + ' surfaces'],
+    [!ar ? 'dash' : R.pics > 0 ? 'tick' : 'cross', 'Camera pictures', ar ? R.pics.toFixed(1) + '/s' + (im ? ' · ' + im.naturalWidth + 'x' + im.naturalHeight + ' · turn ' + rot + '°' : ' · none') : '-'],
+    [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
+    [sk ? 'tick' : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + sk.d.toFixed(2) + ' m' : 'not seen'],
+    [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
+    [dep, 'Depth', D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
+    [REC.errs.length ? 'cross' : 'tick', 'Errors', REC.errs.length + (e ? ' · ' + String(e.msg).slice(0, 60) : '')],
+    [kb < 0 ? 'cross' : kb < 4000 ? 'tick' : 'cross', 'Storage', Math.round(kb) + ' KB']];
+  return { rows, num };
+}
+function devDraw() {
+  const el = DEV.el; if (!el) return; const r = devRows(), ic = { tick: '✔', cross: '✖', dash: '–' }; DEV.last = r.num;
+  el.querySelector('.devRows').innerHTML = r.rows.map(([k, l, t], i) => '<div class="devRow ' + k + '"><b>' + ic[k] + '</b><span>' + (i + 1) + '. ' + esc(l) + '</span><i>' + esc(t) + '</i></div>').join('');
+  const sw = el.querySelector('#devDepth'); if (sw) sw.textContent = 'Show depth: ' + (DEPTH.dbg ? 'on' : 'off');
+}
+function devOpen() {
+  if (DEV.el) return; DEV.on = true; store.set('bc-dev', '1'); const el = document.createElement('div'); el.id = 'devPanel'; DEV.el = el;
+  el.innerHTML = '<div class="devHead">Developer · ' + esc(BUILD) + '<button id="devX">×</button></div><div class="devRows"></div><div class="devBtns"><button id="devCopy">Copy numbers</button><button id="devDepth">Show depth: off</button></div><div class="devMsg"></div>';
+  $('ui').appendChild(el); devDraw(); DEV.timer = setInterval(devDraw, 500);
+  el.onclick = (ev) => { const b = ev.target.closest('button'); if (!b) return; ev.stopPropagation();
+    if (b.id === 'devX') devClose(); else if (b.id === 'devCopy') devCopy(); else if (b.id === 'devDepth') { DEPTH.dbg = !DEPTH.dbg; if (!DEPTH.dbg) { const c = document.getElementById('depthDbg'); if (c) c.remove(); } if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = DEPTH.dbg && DEPTH.shown; devDraw(); } };
+}
+function devClose() { clearInterval(DEV.timer); DEV.timer = 0; if (DEV.el) DEV.el.remove(); DEV.el = null; DEV.on = false; store.set('bc-dev', '0'); }
+function devJSON() { const r = devRows(); return JSON.stringify({ kind: 'base-camp-dev-numbers', build: BUILD, at: new Date().toISOString(), rows: r.rows.map((q) => [q[0], q[1], q[2]]), numbers: r.num }); }
+function devCopy() { /* numbers only: the panel's rows and the numbers behind them */
+  const s = devJSON(), msg = (t) => { const m = DEV.el && DEV.el.querySelector('.devMsg'); if (m) m.textContent = t; }; DEV.copied = s;
+  const old = () => { try { const ta = document.createElement('textarea'); ta.value = s; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); msg(ok ? 'Copied (' + s.length + ' characters)' : 'Could not copy'); } catch (e) { msg('Could not copy'); } };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(() => msg('Copied (' + s.length + ' characters)'), old); else old(); } catch (e) { old(); }
+}
+(function devStart() { /* ?dev=1 (or left on last time), or a 3 s hold on the build line on the title */
+  try { const q = new URLSearchParams(location.search).get('dev'); if (q === '1' || (q !== '0' && store.get('bc-dev') === '1')) setTimeout(devOpen, 0); if (q === '0') store.set('bc-dev', '0'); } catch (e) { /* no panel */ }
+  const st = $('arStatus'); if (!st) return; const stop = () => { clearTimeout(DEV.hold); DEV.hold = 0; };
+  st.addEventListener('pointerdown', () => { stop(); DEV.hold = setTimeout(() => { DEV.hold = 0; if (DEV.el) devClose(); else devOpen(); }, 3000); });
+  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) st.addEventListener(t, stop);
+})();
 
 // FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
 // session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
@@ -9088,6 +9151,7 @@ Object.assign(window.__g, { PLACES, PLACES_KEY, PLACES_NEAR, PLACE_STOCK, PLACE_
 Object.assign(window.__g, { RB, RF, RS, RB_ADD, RB_CAM, RB_CAM_S, RB_YOUNG, RS_GAP, RF_GAP, rbActive, rbTidy, rbTick, rbAllow, rbAsk, rbNo, rbNewRoom, rbIts, rbReset, rbMature, rbZonesBox, rbDiag, rbOwn, rfSuspect, rfReset, rfFinding, rfClass, rfFull, rfPass, rfScanAgain, chooserOpen, chooserClose, rsClusters, rsCheck, rsSplit, refreshSpots, SPOTMARK, disposeZone, l2w }); /* build 26: room boundaries and sleep relock */
 Object.assign(window.__g, { STK, STK_SIZE, STK_IDS, STK_YAW_SD, stkLoad, stkCam, stkTick, stkRun, stkDetect, stkRefine, stkIntr, stkPose, stkWorldPose, stkFit, stkFixOf, stkUse, stkLock, stkBind, stkLive, stkDiff, stkOwner, stkAskRoom, stkReport, stkToJSON, stkFromJSON, stkNeed, stkClear, rbPrompt }); /* build 27: the sticker lock */
 Object.assign(window.__g, { SNAP, SNAP_MAX, SNAP_PTS, SNAP_MIN_INL, SNAP_MIN_PICS, snapTick, snapRun, snapNeed, snapRooms, snapKfs, snapKeep, snapCast, snapPoint, snapMatch, snapObs, snapSolve, snapUse, snapLock, snapDiff, snapRebase, snapToJSON, snapFromJSON, snapBytes, snapReport, snapClear, snapAskRoom, snapPolishOK, snapCorrect, stkSettled, stkView, commitAlign, applyAlign, relocLiveLayers }); /* build 28: room snapshots */
+Object.assign(window.__g, { DEV, devOpen, devClose, devRows, devJSON, devCopy, depthCalm }); /* build 30: developer mode */
 Object.assign(window.__g, { DEPTH, DEPTH_MODEL, DEPTH_ORT, depthLoad, depthTick, depthSend, depthWork, depthFit, depthBuild, depthShow, depthHide, depthToggle, depthReport, depthAt, depthGrid }); /* build 30: depth */
 Object.assign(window.__g, { SND_AMB, SND_ambTick, SND_ambTargets, SND_ambStop, SND_board, SND_gate, SND_where, SND_setVol, SND_setOn, SND_arm, bsfx });
 

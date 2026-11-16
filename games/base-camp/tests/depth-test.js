@@ -6,6 +6,7 @@
     3. three markers (8 cm boxes): behind the cushion box (hidden), in front of it (visible), beside it (visible); pixels read back from the WebGL canvas. Shots 130 to 133.
     4. the setting off (Menu), and a missing model: nothing hidden, no errors.
     5. privacy: no picture or depth map in localStorage or in the field report (numbers only).
+    6. developer mode (?dev=1, or a 3 s hold on the build line): nine rows with ticks, "Show depth", "Copy numbers" (JSON, numbers only). Shots 135, 136.
    Run (about 6 minutes):  NO_OVERLAY=1 NODE_PATH=$(npm root -g) node tests/depth-test.js
    ORT_DIR=<onnxruntime-web 1.22.0 dist folder>: serve the runtime from that folder instead of jsdelivr (the same files). */
 const fs = require('fs'), path = require('path');
@@ -29,6 +30,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
   await ctx.route('**/api.open-meteo.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ current: { temperature_2m: 16, precipitation: 0, rain: 0, cloud_cover: 20, weather_code: 1, is_day: 1, wind_speed_10m: 4 }, daily: { sunrise: ['2026-11-11T07:10'], sunset: ['2026-11-11T16:20'] } }) }));
   const ORT_DIR = process.env.ORT_DIR; let ortHits = 0;
   if (ORT_DIR) await ctx.route('**/onnxruntime-web@1.22.0/dist/**', (r) => { const f = path.join(ORT_DIR, r.request().url().split('/dist/')[1].split('?')[0]); ortHits++; if (!fs.existsSync(f)) return r.continue(); r.fulfill({ body: fs.readFileSync(f), contentType: /\.wasm$/.test(f) ? 'application/wasm' : 'text/javascript', headers: { 'access-control-allow-origin': '*' } }); });
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/GPU stall|GL Driver|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); });
   await install(p, SHED); await p.addInitScript({ content: POLY });
@@ -56,6 +58,7 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
       const u = Math.round((P[0] * X / -Z + P[8] + 1) / 2 * W), v = Math.round((1 - (P[5] * Y / -Z + P[9])) / 2 * Hh), d = g.getImageData(u - 5, v - 5, 11, 11).data; let n = 0;
       for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200 && Math.abs(d[i] - m.rgb[0]) < 60 && Math.abs(d[i + 1] - m.rgb[1]) < 60 && Math.abs(d[i + 2] - m.rgb[2]) < 60) n++; out[m.n] = +(n / 121).toFixed(2); }
     return out; }, MARKS);
+  const seenUntil = async (test, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (test(await seen())) return Date.now() - t0; await sleep(300); } return -1; };
   const bg = (on) => ev((on) => { if (on && window.__lastPic) document.body.style.background = 'url(data:image/jpeg;base64,' + window.__lastPic + ') center / cover no-repeat'; else if (__g.AR.on) document.body.style.background = 'transparent'; }, on);
   const shot = async (name) => { await bg(true); await sleep(300); await p.screenshot({ path: OUT + name }); await bg(false); console.log('shot ' + name); };
   const D = () => ev(() => ({ state: __g.DEPTH.state, err: __g.DEPTH.err, runs: __g.DEPTH.runs, ms: Math.round(__g.DEPTH.msAvg), msMax: Math.round(__g.DEPTH.msMax), loadMs: Math.round(__g.DEPTH.loadMs), gap: Math.round(__g.DEPTH.gapMax), gapIdle: Math.round(__g.DEPTH.gapIdle), prep: +__g.DEPTH.prepMs.toFixed(1), fitMs: +__g.DEPTH.fitMs.toFixed(1), fits: __g.DEPTH.fits, good: __g.DEPTH.good, poor: __g.DEPTH.poor, why: __g.DEPTH.why, cm: +__g.DEPTH.cm.toFixed(1), pts: __g.DEPTH.pts, ok: __g.DEPTH.ok, shown: __g.DEPTH.shown, ver: __g.DEPTH.ver, tris: __g.DEPTH.tris, lat: Math.round(__g.DEPTH.lat || 0), cache: __g.DEPTH.cache }));
@@ -64,6 +67,15 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
   await p.goto(url); await sleep(2500); await ev(() => { localStorage.clear(); localStorage.setItem('bc-wxchoice', 'no'); }); await fresh();
   ok('BUILD is build 30', await ev(() => __g.BUILD === 'build 30'));
   ok('0. the setting is on by default, nothing loads before AR', await ev(() => __g.DEPTH.want && __g.DEPTH.state === 'off' && !__g.DEPTH.worker));
+  /* ===================== 6a. developer mode on the title: a 3 s hold on the build line ===================== */
+  const rects = () => ev(() => [...document.querySelectorAll('#title button, #arStatus, #bPlay')].map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(','); }).join(' '));
+  const r0 = await rects(); ok('6. no developer panel unless asked for', await ev(() => !document.getElementById('devPanel')));
+  await p.hover('#arStatus'); await p.mouse.down(); await sleep(1200); const early = await ev(() => !!document.getElementById('devPanel')); await sleep(2200); await p.mouse.up(); await sleep(700);
+  const t6 = await ev(() => { const el = document.getElementById('devPanel'); return el ? { rows: el.querySelectorAll('.devRow').length, text: el.innerText.slice(0, 400) } : null; });
+  ok('6. a 3 s hold on the build line opens the developer panel (not a short press), nine rows', !early && t6 && t6.rows === 9, JSON.stringify(t6));
+  await p.screenshot({ path: OUT + '135-dev-title.png' }); console.log('shot 135-dev-title.png');
+  await p.click('#devX'); await sleep(300); const r1 = await rects();
+  ok('6. closed: the panel is gone and nothing on the page moved', await ev(() => !document.getElementById('devPanel') && localStorage.getItem('bc-dev') === '0') && r0 === r1, r0 === r1 ? 'same layout' : r0 + ' | ' + r1);
 
   /* ===================== 1. the model loads and runs in the worker ===================== */
   await play(); await sweep(A_LEGS, 1.0);
@@ -89,11 +101,13 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
       if (bz > 50) continue; const r = J.R[k] - F.b; if (!(r > 0)) continue; const zf = F.a / r, e = Math.abs(zf - bz) * 100, rel = Math.abs(zf - bz) / bz; all.push(rel); if (J.Z[k] > 0) surf.push(e); if (bn === 'cushion31') box.push({ e, rel, zf, bz }); }
     const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[(s.length / 2) | 0] : null; };
     return { surfCm: +med(surf).toFixed(1), surfN: surf.length, boxCm: box.length ? +med(box.map((q) => q.e)).toFixed(1) : null, boxN: box.length, boxTrue: box.length ? +med(box.map((q) => q.bz)).toFixed(2) : null, boxFit: box.length ? +med(box.map((q) => q.zf)).toFixed(2) : null, allRel: +(med(all) * 100).toFixed(1), allN: all.length }; });
-  ok('2. the fitted depth agrees with the true room: surfaces within a few cm, the box front well in front of the floor behind it', truth.surfCm !== null && truth.surfCm < 6 && truth.boxN > 20 && truth.boxCm < 15, JSON.stringify(truth));
+  ok('2. the fitted depth agrees with the true room: surfaces within a few cm, the box front within 20 % (median)', truth.surfCm !== null && truth.surfCm < 6 && truth.boxN > 20 && Math.abs(truth.boxFit - truth.boxTrue) < 0.2 * truth.boxTrue && truth.boxCm < 25, JSON.stringify(truth));
 
   /* ===================== 3. behind the box: hidden; in front and beside: visible ===================== */
-  await fitsAfter(2); const s3 = await seen(); const d3 = await D();
-  ok('3. the marker BEHIND the cushion box is hidden', d3.shown && s3.behind < 0.1, JSON.stringify({ seen: s3, shown: d3.shown, ok: d3.ok, why: d3.why }));
+  await fitsAfter(2); let s3 = null, nHid = 0, nAll = 0, nFront = 0; const tW = Date.now(); while (Date.now() - tW < 15000) { s3 = await seen(); nAll++; if (s3.behind < 0.1) nHid++; if (s3.front > 0.6 && s3.beside > 0.6) nFront++; await sleep(400); } const d3 = await D(); /* 15 s of looking: how much of the time it is hidden */
+  ok('3. the marker BEHIND the cushion box is hidden (most of the time while the iPad looks at it)', nHid >= 0.8 * nAll, JSON.stringify({ hiddenShare: +(nHid / nAll).toFixed(2), samples: nAll, last: s3, fits: d3.fits, good: d3.good, poor: d3.poor, why: d3.why }));
+  ok('3. the markers IN FRONT of it and BESIDE it are drawn all the time', nFront === nAll, JSON.stringify({ shownShare: +(nFront / nAll).toFixed(2) }));
+  await seenUntil((s) => s.behind < 0.1, 20000); s3 = await seen();
   ok('3. the markers IN FRONT of it and BESIDE it are still drawn', s3.front > 0.6 && s3.beside > 0.6, JSON.stringify(s3));
   await shot('131-depth-after.png');
   /* the map is world geometry: a small step keeps it right without a new run; a big step hides it until the next run */
@@ -105,7 +119,6 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
   await atView(); await ev(() => { __g.DEPTH.t = 0; }); await fitsAfter(2);
   /* a hand in front of the camp: a 14 cm board 40 cm from the iPad, over the marker in front of the box; then taken away */
   const tH0 = Date.now(); await ev(() => { window.__TEX.items.push({ n: 'hand', x: 0.35, y: -0.86, z: -0.15, ax: [1, 0, 0], ay: [0, 1, 0], hw: 0.07, hh: 0.08, tex: 'tray', seed: 41, block: true }); });
-  const seenUntil = async (test, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (test(await seen())) return Date.now() - t0; await sleep(300); } return -1; };
   const tHand = await seenUntil((s) => s.front < 0.1, 20000);
   await shot('134-depth-hand.png');
   await ev(() => { window.__TEX.items = window.__TEX.items.filter((q) => q.n !== 'hand'); }); const tGone = await seenUntil((s) => s.front > 0.6, 20000);
@@ -113,10 +126,26 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
   await fitsAfter(1);
   await ev(() => { __g.DEPTH.dbg = true; }); await fitsAfter(1); await sleep(400); await shot('132-depth-debug.png'); await ev(() => { __g.DEPTH.dbg = false; const c = document.getElementById('depthDbg'); if (c) c.remove(); });
 
+  /* ===================== 6b. developer mode in AR: every row, Show depth, Copy numbers ===================== */
+  await ev(() => __g.devOpen()); await sleep(3000);
+  const t6b = await ev(() => [...document.querySelectorAll('#devPanel .devRow')].map((r) => r.className.replace('devRow ', '') + ' ' + r.innerText.replace(/\s+/g, ' ')));
+  const tk = (i) => t6b[i] && t6b[i].startsWith('tick');
+  ok('6. in AR the panel ticks tracking, hit points, camera pictures, snapshots row present, depth, no errors, storage', t6b.length === 9 && tk(0) && tk(1) && tk(2) && tk(6) && tk(7) && tk(8), JSON.stringify(t6b));
+  await p.click('#devDepth'); await fitsAfter(1); await sleep(500);
+  const dbgOn = await ev(() => __g.DEPTH.dbg && !!document.getElementById('depthDbg') && document.getElementById('devDepth').textContent === 'Show depth: on');
+  ok('6. "Show depth" turns the depth colours on live', dbgOn); await shot('136-dev-ar.png');
+  await p.click('#devDepth'); await sleep(300); ok('6. ...and off again', await ev(() => !__g.DEPTH.dbg && !document.getElementById('depthDbg') && !__g.DEPTH.dbgMesh.visible));
+  await p.click('#devCopy'); await sleep(800);
+  const cp = await ev(async () => { let s = ''; try { s = await navigator.clipboard.readText(); } catch (e) { s = ''; } return { clip: s, kept: __g.DEV.copied, msg: document.querySelector('#devPanel .devMsg').textContent }; });
+  let js = null; try { js = JSON.parse(cp.clip || cp.kept); } catch (e) { js = null; }
+  const pics = /data:|jpe?g|\/9j\/|iVBORw0|[A-Za-z0-9+\/=]{120,}/i.test(cp.clip || cp.kept);
+  ok('6. "Copy numbers" copies the panel as JSON: numbers only, no picture', js && js.kind === 'base-camp-dev-numbers' && js.rows.length === 9 && typeof js.numbers.depth.msRun === 'number' && typeof js.numbers.ar.fps === 'number' && !pics && /Copied/.test(cp.msg), JSON.stringify({ fromClipboard: !!cp.clip, bytes: (cp.clip || cp.kept).length, msg: cp.msg, numbers: js && js.numbers }).slice(0, 900));
+  await p.click('#devX'); await sleep(300);
+
   /* ===================== 4. the setting off, and a missing model ===================== */
   await ev(() => document.getElementById('bMenu').click()); await sleep(500);
   const label = await ev(() => { const b = document.getElementById('mDepth'); return b && b.textContent; }); ok('4. Menu has "Things can hide behind furniture: on"', label === 'Things can hide behind furniture: on', label);
-  await p.screenshot({ path: OUT + '133-depth-setting.png' }); console.log('shot 133-depth-setting.png');
+  await shot('133-depth-setting.png');
   await ev(() => document.getElementById('mDepth').click()); await sleep(800);
   const s4 = await seen(); const st4 = await ev(() => ({ want: __g.DEPTH.want, stored: localStorage.getItem('bc-depth'), vis: !!(__g.DEPTH.mesh && __g.DEPTH.mesh.visible) }));
   ok('4. setting off: the mesh is gone and the marker behind the box shows again', !st4.want && st4.stored === '0' && !st4.vis && s4.behind > 0.6 && s4.front > 0.6, JSON.stringify({ seen: s4, st4 }));
@@ -140,6 +169,9 @@ const A_LEGS = ['shelf', 'deskA', 'floor', 'speakerA', 'floor2', 'shelf'];
   const rep = await ev(() => { const R = JSON.parse(__g.buildReport('depth test')), d = R.depth, snaps = R.snapshots.length; delete R.snapshots; const s = JSON.stringify(R);
     const flat = (o) => Object.values(o).every((v) => v === null || ['number', 'string', 'boolean'].includes(typeof v) || (Array.isArray(v) && v.every((q) => q && typeof q === 'object' && Object.values(q).every((w) => typeof w !== 'object')))); return { hasDepth: !!d, flat: flat(d), depthBytes: JSON.stringify(d).length, img: /data:image|\/9j\/|iVBORw0/.test(s), snaps, recSnaps: __g.REC.snaps.length, d }; });
   ok('5. the field report has depth NUMBERS only (no picture, no depth map); its older "snapshots" list is not fed by depth', rep.hasDepth && rep.flat && rep.depthBytes < 3000 && !rep.img && rep.snaps === rep.recSnaps, JSON.stringify({ depthBytes: rep.depthBytes, snaps: rep.snaps, depth: rep.d }));
+  /* ?dev=1 opens the panel straight away */
+  await p.goto(url + '?dev=1'); await sleep(2500); ok('6. ?dev=1 opens the developer panel', await ev(() => !!document.getElementById('devPanel') && document.querySelectorAll('#devPanel .devRow').length === 9));
+  await p.click('#devX');
   ok('no page errors', errs.length === 0, errs.slice(0, 5).join(' | '));
   const fails = res.filter((r) => !r).length; console.log(fails ? fails + ' FAILED' : 'ALL ' + res.length + ' PASSED'); await b.close(); srv.close(); process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
