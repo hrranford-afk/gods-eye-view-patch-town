@@ -41,6 +41,8 @@ body.day { --panel: rgba(16, 24, 42, 0.88); background: #9cc8e8; }
 .lab.chip b { font: 800 0.95rem/1 var(--f-display); margin-right: 0.35rem; }
 .lab.chip.warn b { color: var(--wait); } .lab.chip.good b { color: var(--moss); } .lab.chip.bad b { color: var(--rose); }
 .lab.tiny { font-size: 0.68rem; padding: 0.15rem 0.45rem; }
+.age { display: inline-block; margin-left: 0.4rem; font: 500 0.62rem/1.2 var(--f-mono); color: var(--dim); letter-spacing: .04em; text-transform: uppercase; }
+.lab.sample, .chips.sample span, .sample-block { filter: grayscale(0.75); opacity: 0.78; }
 .lab:focus-visible { outline: 2px solid var(--lantern); }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -92,6 +94,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--lantern); o
 .pass { background: var(--moss) !important; box-shadow: 0 0 10px rgba(127,209,139,.7); }
 .fail { background: var(--rose) !important; } .flaky, .border { background: var(--wait) !important; } .never, .silent { background: var(--quiet) !important; }
 .empty { background: var(--rose) !important; }
+.rerun { background: #c8d86a !important; }
+.ev.t, .card li.t { opacity: 0.72; }
+.trust { font: 500 0.6rem/1 var(--f-mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-left: 0.3rem; }
+.mx { overflow-x: auto; } .mx table { border-collapse: collapse; font-size: 0.82rem; } .mx th, .mx td { padding: 0.2rem 0.45rem; text-align: left; white-space: nowrap; }
+.mx th { color: var(--muted); font-weight: 700; } .mx td i { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; vertical-align: -0.1rem; margin-right: 0.3rem; background: var(--quiet); }
+.mx td.nr { color: var(--dim); }
 .heads { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.35rem 0.8rem; }
 .heads div { display: flex; gap: 0.45rem; align-items: center; font-size: 0.85rem; min-width: 0; }
 .heads small { color: var(--dim); }
@@ -253,6 +261,9 @@ let WALL = {
   credits: 'White smoke over a building means something was built that already existed: idea by the Swarmkeeper, a tiny specialist on the Mill. The fox in the pond is the Choreographer\'s.'
 };
 
+const ageTag = () => WALL.sample ? 'sample · ' + String(WALL.asOf).split(',')[0] : 'report · ' + WALL.asOf;
+const age = () => '<span class="age">' + esc(ageTag()) + '</span>';
+
 /* =====================================================================================================
    3. Data: GitHub (public, unauthenticated, cached with ETags) + the ledger
    ===================================================================================================== */
@@ -340,7 +351,8 @@ async function loadGitHub() {
   }
   GH = { events, runs: runs || [], deps: deps || [], branches: branches || [], commits, order: act, last };
 }
-function fromCommit(b, c) {
+function fromCommit(b, c) { const e = fromCommit0(b, c); e.trust = 'measured'; return e; }
+function fromCommit0(b, c) {
   const t = Date.parse(c.t);
   if (b === 'gh-pages') return { t, who: 'foreman', where: 'shop', what: c.msg, kind: 'deploy', ref: c.sha, branch: b, src: 'github' };
   if (b === CFG.ledgerBranch) return { t, who: 'foreman', where: /^Order /.test(c.msg) ? 'bridge' : 'library', what: c.msg, kind: 'commit', ref: c.sha, branch: b, src: 'github' };
@@ -514,7 +526,7 @@ const clouds = new THREE.Group(); S.add(clouds);
 const cloudM = new THREE.MeshStandardMaterial({ color: 0xdfe4ee, roughness: 1, transparent: true, opacity: 0.88, depthWrite: false });
 for (let i = 0; i < 7; i++) {
   const c = new THREE.Group(), a = i / 7 * Math.PI * 2, r = 5 + (i % 3) * 2.5;
-  c.position.set(Math.cos(a) * r, 8.5 + (i % 2) * 1.2, Math.sin(a) * r - 3);
+  c.position.set(Math.cos(a) * r, 11 + (i % 2) * 1.5, Math.sin(a) * r - 4); c.scale.setScalar(0.8);
   for (let j = 0; j < 4; j++) { const p = new THREE.Mesh(G.sph, cloudM); p.scale.set(1.1 - j * 0.12, 0.65, 0.8); p.position.set(j * 0.9 - 1.3, (j % 2) * 0.3, (j % 3) * 0.25); c.add(p); }
   clouds.add(c);
 }
@@ -551,10 +563,12 @@ function buildHeads() {
   const n = WALL.speakers.length;
   WALL.speakers.forEach(([name, st], i) => {
     const a = Math.PI * 0.15 + i / Math.max(1, n - 1) * Math.PI * 0.7, r = 4.5;
-    const col = st === 'ok' ? 0x7bd88f : st === 'empty' ? 0xff7a6b : st === 'unproven' ? 0xf2b660 : 0x5d6f8c;
+    const c0 = new THREE.Color(st === 'ok' ? 0x7bd88f : st === 'empty' ? 0xff7a6b : st === 'unproven' ? 0xf2b660 : 0x5d6f8c);
+    if (WALL.sample) c0.lerp(new THREE.Color(0x8a8f9c), 0.55);
+    const col = c0.getHex();
     const g = new THREE.Group(); g.position.set(HOME.x + Math.cos(a + Math.PI) * r, 0, HOME.z - Math.sin(a + Math.PI) * r * 0.3 + 2.8);
     g.add(mesh(G.cyl, mat(0x40506e), 0.09, 0.2, 0.09, 0, 0.1, 0));
-    g.add(mesh(G.sph, st === 'ok' || st === 'empty' ? glowMat(col, 0.35) : mat(col), 0.11, 0.11, 0.11, 0, 0.3, 0));
+    g.add(mesh(G.sph, !WALL.sample && (st === 'ok' || st === 'empty') ? glowMat(col, 0.35) : mat(col), 0.11, 0.11, 0.11, 0, 0.3, 0));
     g.traverse((o) => { o.userData.key = 'harry'; }); S.add(g); heads.push({ g, st });
   });
 }
@@ -641,11 +655,11 @@ function setLab(l, html, cls) { if (l.html !== html) { l.d.innerHTML = html; l.h
 let chipLabs = [];
 function rebuildLabels() {
   for (const l of labs) l.d.remove(); labs = []; chipLabs = [];
-  for (const k in B) { const b = B[k]; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 3.6 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
-  WALL.chips.forEach((c, i) => { chipLabs.push(addLabel(new THREE.Vector3(HOME.x - 4.5 + i * 3, 5.6 + (i % 2) * 0.7, HOME.z - 3), null, 'chip ' + (c.s || ''))); });
-  for (const n in homeB) homeB[n].lab = addLabel(new THREE.Vector3(homeB[n].x, homeB[n].h * 2.05 + 0.25, homeB[n].z), 'harry', 'tiny');
-  labs.foxLab = addLabel(new THREE.Vector3(fox.position.x, 0.9, fox.position.z), 'harry', 'tiny');
-  labs.smokeLab = addLabel(new THREE.Vector3(B.hut.x + 0.6, B.hut.h + 3.4, B.hut.z - 0.6), 'hut', 'tiny');
+  for (const k in B) { const b = B[k]; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 4.4 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
+  WALL.chips.forEach((c, i) => { const l = addLabel(new THREE.Vector3(HOME.x - 3.6 + (i % 2) * 7.2, 5.2 + Math.floor(i / 2) * 1.1, HOME.z - 2), null, 'chip ' + (c.s || '')); l.zoomOnly = 'harry'; chipLabs.push(l); });
+  for (const n in homeB) { homeB[n].lab = addLabel(new THREE.Vector3(homeB[n].x, homeB[n].h * 2.05 + 0.25, homeB[n].z), 'harry', 'tiny'); homeB[n].lab.zoomOnly = 'harry'; }
+  labs.foxLab = addLabel(new THREE.Vector3(fox.position.x, 0.9, fox.position.z), 'harry', 'tiny'); labs.foxLab.zoomOnly = 'harry';
+  labs.smokeLab = addLabel(new THREE.Vector3(B.hut.x + 0.6, B.hut.h + 3.4, B.hut.z - 0.6), 'hut', 'tiny'); labs.smokeLab.zoomOnly = 'hut';
   paintLabels();
 }
 
@@ -670,7 +684,8 @@ function routeFor(e) {
   return null;
 }
 const su0 = (s) => Object.values(s.suites);
-/* lost property: a "start" with no "end" and no sign of life (a commit, step or fix from the same builder or branch) for 2 hours */
+/* lost property: a "start" with no "end" and no sign of life (a commit, step or fix from the same builder or branch):
+   amber after 45 minutes, red (lost) after 2 hours */
 function lostProperty(T) {
   const open = [];
   for (const e of EV) {
@@ -682,7 +697,8 @@ function lostProperty(T) {
     }
     for (const o of open) if (e.who === o.s.who || (o.s.ref && (e.branch === o.s.ref || e.ref === o.s.ref)) || ((o.s.where || '').startsWith('workshop:') && e.where === o.s.where)) o.life = e.t;
   }
-  return open.filter((o) => T - o.life > 2 * HOUR).map((o) => Object.assign({}, o.s, { life: o.life }));
+  /* worked out from the page's own clock: amber after 45 min of silence on an open job, red after 2 hours */
+  return open.filter((o) => T - o.life > 45 * MIN).map((o) => Object.assign({}, o.s, { life: o.life, level: T - o.life > 2 * HOUR ? 'red' : 'amber' }));
 }
 function computeState(T) {
   const d0 = dayStart(view.day), d1 = d0 + DAY;
@@ -693,25 +709,31 @@ function computeState(T) {
     if (e.t >= d0 && e.t < d1) {
       s.day.push(e);
       if (e.kind === 'commit' || e.kind === 'deploy') s.parcels.push(e);
-      if (e.kind === 'deploy' || e.kind === 'win') { s.live.push(e); if (e.kind === 'win') s.wins++; }
+      if (e.kind === 'deploy' || e.kind === 'win') {
+        /* one thing going live counts once, even if both a deploy commit and a win line name it */
+        const j = e.ref ? s.live.findIndex((x) => x.ref === e.ref) : -1;
+        if (j < 0) s.live.push(e); else if (e.kind === 'win') s.live[j] = e;
+        if (e.kind === 'win') s.wins++;
+      }
       if (e.where) s.counts[e.where] = (s.counts[e.where] || 0) + 1;
     }
-    if (e.kind === 'test' && e.suite && e.t > T - 2 * DAY) s.suites[e.suite] = e;
+    if (e.kind === 'test' && e.suite && e.t > T - 2 * DAY) s.suites[e.suite + '@' + (e.branch || '')] = e;
     if (e.kind === 'fail' && e.t > T - 6 * HOUR) s.fails[e.where] = e;
     if (e.kind === 'result' && e.ref) orderDone.add(e.ref);
-    if (e.kind === 'order' && e.t > T - 2 * DAY) s.orders.push(e);
+    if (e.kind === 'order') s.orders.push(e);
     if (e.t > T - 45 * MIN && e.where) s.busy[e.where] = (s.busy[e.where] || 0) + 1;
     if (e.t > T - CFG.walkMin * MIN && routeFor(e)) s.walkers.push(e);
   }
   s.orders = s.orders.filter((o) => !orderDone.has(o.ref));
-  s.lost = lostProperty(T);
-  s.flaky = su0(s).some((e) => e.status === 'flaky');
+  const stalls = lostProperty(T);
+  s.lost = stalls.filter((o) => o.level === 'red'); s.quiet = stalls.filter((o) => o.level === 'amber');
+  s.flaky = su0(s).some((e) => e.status === 'flaky' || e.status === 'rerun');
   s.failN = su0(s).filter((e) => e.status === 'fail').length + Object.keys(s.fails).length;
   const lastWin = s.day.filter((e) => e.kind === 'win').pop();
   s.rainbow = !!(lastWin && T - lastWin.t < 2 * HOUR);
   s.weather = s.failN ? 'storm' : s.flaky ? 'clouds' : 'sunshine';
   s.walkers = s.walkers.slice(-walkers.length);
-  const su = Object.values(s.suites); s.pass = su.filter((e) => e.status === 'pass').length; s.nSuites = su.length;
+  const su = Object.values(s.suites); s.pass = su.filter((e) => e.status === 'pass').length; s.reruns = su.filter((e) => e.status === 'rerun').length; s.nSuites = su.length;
   s.anyFail = su.some((e) => e.status === 'fail');
   s.lastEv = s.day.length ? s.day[s.day.length - 1] : null;
   return s;
@@ -726,11 +748,11 @@ function applyTime(T) {
     w.g.visible = true;
   });
   /* yard lamps */
-  const su = Object.values(ST.suites).sort((a, b) => a.suite.localeCompare(b.suite));
+  const su = Object.keys(ST.suites).sort().map((k) => ST.suites[k]);
   lamps.forEach((l, i) => {
     const e = su[i]; l.bulb.visible = l.pole.visible = !!e; if (!e) return; l.st = e.status;
-    const c = e.status === 'pass' ? 0x7fd18b : e.status === 'fail' ? 0xff6a75 : 0xffc65a; l.m.color.set(c); l.m.emissive.set(c);
-    l.m.emissiveIntensity = e.status === 'pass' ? 2.2 : 1.2; l.bulb.scale.setScalar(e.status === 'pass' ? 0.15 : 0.12);
+    const c = e.status === 'pass' ? 0x7fd18b : e.status === 'fail' ? 0xff6a75 : e.status === 'rerun' ? 0xc8d86a : 0xffc65a; l.m.color.set(c); l.m.emissive.set(c);
+    l.m.emissiveIntensity = e.status === 'pass' ? 0.9 : 0.7; l.bulb.scale.setScalar(e.status === 'pass' ? 0.15 : 0.12);
   });
   yardLight.color.set(ST.anyFail ? 0xff6a75 : 0x7fd18b); yardLight.userData.on = ST.nSuites > 0;
   /* shop: brightest when something went live that day */
@@ -744,7 +766,8 @@ function applyTime(T) {
   wagons.forEach((v, i) => { const o = ST.orders[i]; v.g.visible = !!o; v.roll = !!(o && T - o.t < CFG.walkMin * MIN); v.slot = i; });
   /* lost property */
   carts.forEach((c, i) => { c.visible = i < ST.lost.length; });
-  alarmM.userData.on = ST.lost.length > 0;
+  alarmM.userData.on = ST.lost.length > 0; alarmM.userData.amber = !ST.lost.length && ST.quiet.length > 0;
+  alarmM.emissive.set(ST.lost.length ? 0xff4a5a : 0xffb44a); alarmLight.color.set(ST.lost.length ? 0xff4a5a : 0xffb44a);
   /* weather */
   clouds.visible = ST.weather !== 'sunshine'; rain.visible = ST.weather === 'storm'; rainbow.visible = ST.rainbow;
   cloudM.color.set(ST.weather === 'storm' ? 0x6a7184 : 0xdfe4ee);
@@ -759,21 +782,22 @@ function paintLabels() {
     const k = l.key; if (!k || !B[k] || l === labs.foxLab || l === labs.smokeLab || l.d.classList.contains('tiny')) continue;
     const b = B[k], n = ST.counts[k] || 0;
     let dot = ST.busy[k] ? 'on' : '', sub = '', cls = '';
-    if (k === 'yard') { sub = ST.nSuites ? ST.pass + ' of ' + ST.nSuites + ' suites pass' : 'no tests yet'; dot = ST.anyFail ? 'bad' : ST.nSuites ? 'ok' : ''; if (ST.nSuites && !ST.anyFail) cls = 'win'; }
+    if (k === 'yard') { sub = ST.nSuites ? ST.pass + ' of ' + ST.nSuites + ' pass' + (ST.reruns ? ', ' + ST.reruns + ' on rerun' : '') : 'no tests yet'; dot = ST.anyFail ? 'bad' : ST.nSuites ? 'ok' : ''; if (ST.nSuites && !ST.anyFail) cls = 'win'; }
     else if (k === 'shop') { sub = ST.live.length ? ST.live.length + ' went live' : 'nothing new live'; if (ST.live.length) { dot = 'ok'; cls = 'win'; } }
     else if (k === 'post') sub = ST.parcels.length + ' parcels';
-    else if (k === 'lost') { sub = ST.lost.length ? ST.lost.length + ' stopped, never picked up' : 'nothing lost'; if (ST.lost.length) dot = 'bad'; }
+    else if (k === 'lost') { sub = ST.lost.length ? ST.lost.length + ' stopped, never picked up' : ST.quiet.length ? ST.quiet.length + ' quiet for 45 min+' : 'nothing lost'; if (ST.lost.length) dot = 'bad'; else if (ST.quiet.length) dot = 'on'; }
     else if (k === 'bridge') sub = ST.orders.length ? ST.orders.length + ' wagons waiting' : 'no wagons waiting';
     else if (k === 'harry') sub = 'Mini · Radeon · Dell · Mill';
     else sub = n ? n + (n === 1 ? ' thing' : ' things') + ' today' : 'quiet today';
     if (ST.fails[k]) dot = 'bad';
     setLab(l, '<span class="dot ' + dot + '"></span>' + esc(b.name) + '<small>' + esc(sub) + '</small>', cls);
   }
-  WALL.chips.forEach((c, i) => { if (chipLabs[i]) setLab(chipLabs[i], '<b>' + esc(c.v) + '</b>' + esc(c.t)); });
-  for (const n in homeB) { const m = WALL.machines[n] || {}; if (homeB[n].lab) setLab(homeB[n].lab, '<span class="dot ' + (m.state === 'busy' ? 'on' : '') + '"></span>' + esc(n) + ' · ' + esc(m.doing || '')); }
+  const smp = WALL.sample ? ' sample' : '';
+  WALL.chips.forEach((c, i) => { if (chipLabs[i]) setLab(chipLabs[i], '<b>' + esc(c.v) + '</b>' + esc(c.t) + age(), 'chip ' + (c.s || '') + smp); });
+  for (const n in homeB) { const m = WALL.machines[n] || {}; if (homeB[n].lab) setLab(homeB[n].lab, '<span class="dot ' + (m.state === 'busy' ? 'on' : '') + '"></span>' + esc(n) + ' · ' + esc(m.doing || '') + age(), 'tiny' + smp); }
   const foxOn = Object.values(WALL.machines).some((m) => m.state === 'idle' && m.waiting > 0);
-  fox.visible = foxOn; if (labs.foxLab) { setLab(labs.foxLab, 'Fox in the pond: a machine idle while work waits'); labs.foxLab.d.style.visibility = foxOn ? '' : 'hidden'; }
-  if (labs.smokeLab) { setLab(labs.smokeLab, 'White smoke: ' + WALL.rebuilt + ' rebuilt that already existed'); labs.smokeLab.d.style.visibility = WALL.rebuilt ? '' : 'hidden'; }
+  fox.visible = foxOn; if (labs.foxLab) { setLab(labs.foxLab, 'Fox in the pond: a machine idle while work waits' + age(), 'tiny' + smp); labs.foxLab.d.style.visibility = foxOn ? '' : 'hidden'; }
+  if (labs.smokeLab) { setLab(labs.smokeLab, 'White smoke: ' + WALL.rebuilt + ' rebuilt that already existed' + age(), 'tiny' + smp); labs.smokeLab.d.style.visibility = WALL.rebuilt ? '' : 'hidden'; }
   for (const n in homeB) homeB[n].lamp.visible = (WALL.machines[n] || {}).state === 'busy';
 }
 
@@ -786,7 +810,7 @@ function renderPanels() {
   const busyWs = WORKSHOPS.filter((b) => s.counts['workshop:' + b]).length;
   $('stats').innerHTML =
     '<div class="stat v"><b>' + s.live.length + '</b><span>went live</span></div>' +
-    '<div class="stat v"><b>' + (s.nSuites ? s.pass + '/' + s.nSuites : '–') + '</b><span>test suites pass</span></div>' +
+    '<div class="stat v"><b>' + (s.nSuites ? s.pass + '/' + s.nSuites : '–') + '</b><span>tests pass' + (s.reruns ? ' (+' + s.reruns + ' on rerun)' : '') + '</span></div>' +
     '<div class="stat q"><b>' + busyWs + '</b><span>workshops busy</span></div>' +
     '<div class="stat q"><b>' + s.parcels.length + '</b><span>parcels posted</span></div>' +
     '<div class="stat q"><b>' + s.orders.length + '</b><span>orders waiting</span></div>' +
@@ -794,8 +818,8 @@ function renderPanels() {
     (s.lost.length ? '<div class="stat"><b style="color:var(--rose)">' + s.lost.length + '</b><span>lost property</span></div>' : '');
   $('dEye').textContent = (today ? 'Today' : dayName(view.day)) + (view.live ? ' · live' : ' · at ' + hhmm(view.T));
   const evs = s.day.slice(-80).reverse();
-  $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + '"><time>' + hhmm(e.t) + '</time><p>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) +
-    '<br><span class="who">' + esc(whereName(e.where)) + (e.src === 'github' ? ' · GitHub' : '') + '</span></p></div>').join('') : '<p class="sub">Nothing yet on this day.</p>';
+  $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><p>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) +
+    '<br><span class="who">' + esc(whereName(e.where)) + (e.src === 'github' ? ' · GitHub' : '') + '</span>' + (e.trust && e.trust !== 'measured' ? '<span class="trust">' + esc(e.trust) + '</span>' : '') + '</p></div>').join('') : '<p class="sub">Nothing yet on this day.</p>';
   $('clock').textContent = hhmm(view.T);
   const le = s.lastEv; $('cap').textContent = le ? (hhmm(le.t) + ' · ' + le.what) : 'Quiet so far.';
   $('dayName').textContent = today ? 'Today' : dayName(view.day);
@@ -820,7 +844,7 @@ function renderTicks() {
   for (const e of EV) { if (e.t < d0 || e.t >= d1) continue; const c = evClass(e), k = c === 'q' ? (e.kind === 'order' ? 'o' : 'c') : c; html.push('<span class="tk ' + k + '" style="left:' + ((e.t - d0) / DAY * 100).toFixed(2) + '%"></span>'); }
   $('ticks').innerHTML = html.join('');
 }
-const li = (e) => '<li class="' + evClass(e) + '"><time>' + hhmm(e.t) + '</time><span>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + '</span></li>';
+const li = (e) => '<li class="' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><span>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + '</span></li>';
 const list = (arr, empty) => arr.length ? '<ul>' + arr.map(li).join('') + '</ul>' : '<p class="sub">' + esc(empty) + '</p>';
 function fillCard(k) {
   const b = B[k]; if (!b) return;
@@ -835,9 +859,10 @@ function fillCard(k) {
     if (!commits.length && older.length) h += '<h3>Earlier this week</h3>' + list(older, '');
     h += '<p class="note"><a href="https://github.com/' + CFG.repo + '/commits/' + encodeURIComponent(br) + '" target="_blank" rel="noopener">All commits on ' + esc(br) + '</a></p>';
   } else if (k === 'yard') {
-    const su = Object.values(s.suites).sort((a, b) => (a.status === 'pass') - (b.status === 'pass') || a.suite.localeCompare(b.suite));
-    h += '<h3>Test suites ' + esc(at) + '</h3>' + (su.length ? '<div class="lamps">' + su.map((e) => '<div title="' + esc(e.what) + '"><i class="' + esc(e.status) + '"></i><span>' + esc(e.suite) + (e.n ? ' ' + esc(e.n) : '') + '</span></div>').join('') + '</div>' : '<p class="sub">No test results yet.</p>');
-    h += '<p class="note">Green passed · red failed · amber flaky (fails the same on the old build too)</p>';
+    const su = Object.values(s.suites), names = [...new Set(su.map((e) => e.suite))].sort(), brs = [...new Set(su.map((e) => e.branch || ''))].sort();
+    h += '<h3>Test suites by branch ' + esc(at) + '</h3>' + (su.length ? '<div class="mx"><table><tr><th>Suite</th>' + brs.map((b) => '<th>' + esc(b ? b.split('/').pop() : 'branch?') + '</th>').join('') + '</tr>' +
+      names.map((n) => '<tr><td>' + esc(n) + '</td>' + brs.map((b) => { const e = s.suites[n + '@' + b]; return e ? '<td title="' + esc(e.what) + '"><i class="' + esc(e.status) + '"></i>' + esc(e.n || e.status) + '</td>' : '<td class="nr"><i></i>not run</td>'; }).join('') + '</tr>').join('') + '</table></div>' : '<p class="sub">No test results yet.</p>');
+    h += '<p class="note">Green passed · yellow-green passed on rerun · amber flaky (fails the same on the old build too) · red failed · grey not run on that branch</p>';
     h += '<h3>Yard log</h3>' + list(s.day.filter((e) => e.kind === 'test').slice().reverse(), 'No tests on this day.');
   } else if (k === 'post') {
     h += '<h3>Last parcels (commits)</h3>' + list(s.parcels.slice(-14).reverse().map((e) => Object.assign({}, e, { what: (e.branch ? e.branch.split('/').pop() + ': ' : '') + e.what })), 'No parcels on this day.');
@@ -847,18 +872,21 @@ function fillCard(k) {
     if (runs.length) h += '<h3>GitHub Pages builds</h3><ul>' + runs.map((r) => '<li class="' + (r.conclusion === 'success' ? 'v' : r.conclusion === 'failure' ? 'f' : 'q') + '"><time>' + hhmm(Date.parse(r.t)) + '</time><span>' + esc(r.name) + ' #' + esc(r.n) + ': ' + esc(r.conclusion || r.status) + '</span></li>').join('') + '</ul>';
     h += '<p class="note"><a href="' + CFG.pages + '" target="_blank" rel="noopener">Open the shop window (GitHub Pages)</a></p>';
   } else if (k === 'lost') {
+    if (s.quiet.length) h += '<h3>Quiet for 45 minutes or more</h3><ul>' + s.quiet.map((e) => '<li class="q"><time>' + hhmm(e.t) + '</time><span>' + esc(e.what) + ' · quiet since ' + hhmm(e.life) + '</span></li>').join('') + '</ul>';
     h += '<h3>Stopped and never picked up ' + esc(at) + '</h3>' + (s.lost.length ? '<ul>' + s.lost.map((e) => '<li class="f"><time>' + hhmm(e.t) + '</time><span>' + esc(e.what) + ' · no sign of life since ' + hhmm(e.life) + (dayKey(e.life) !== view.day ? ' (' + esc(dayName(dayKey(e.life))) + ')' : '') + '</span></li>').join('') + '</ul>' : '<p class="sub">Nothing lost: every builder that started is finished or still working.</p>');
-    h += '<p class="note">A ledger "start" with no "end" and no commit or step from that builder or branch for 2 hours lands here, with the alarm on. It would have caught the build 29 builder that stopped at 16:27 on 15 Nov.</p>';
+    h += '<p class="note">Worked out by this page from its own clock, so it fires even if every writer has stopped: a ledger "start" with no "end" and no commit or step from that builder or branch turns amber after 45 minutes and lands here, red, after 2 hours. It would have caught the build 29 builder that stopped at 16:27 on 15 Nov.</p>';
     h += '<h3>Picked up this day</h3>' + list(s.day.filter((e) => e.kind === 'end').reverse(), 'Nothing ended on this day.');
   } else if (k === 'bridge') {
-    h += '<h3>Wagons waiting for Harry\'s go</h3>' + list(s.orders.slice().reverse(), 'No orders waiting.');
+    const ageOf = (t) => { const m = Math.round((view.T - t) / MIN); return m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : Math.floor(m / 1440) + ' d ' + Math.floor((m % 1440) / 60) + ' h'; };
+    h += '<h3>Wagons waiting (until a result comes back)</h3>' + list(s.orders.slice().reverse().map((e) => Object.assign({}, e, { what: e.what + ' · waiting ' + ageOf(e.t) })), 'No orders waiting.');
     h += '<h3>On the bridge this day</h3>' + list(dayEv, 'Nothing on this day.');
   } else if (k === 'harry') {
-    h += '<h3>Vital numbers</h3><div class="chips">' + WALL.chips.map((c) => '<span class="' + esc(c.s) + '"><b>' + esc(c.v) + '</b>' + esc(c.t) + '</span>').join('') + '</div>';
-    h += '<h3>The machines</h3>' + HM.map(([n, , , , roof]) => { const m = WALL.machines[n] || {}; return '<div class="mach"><i style="background:#' + roof.toString(16).padStart(6, '0') + '"></i><div><b>' + esc(n) + '</b> <small>' + esc(m.sub) + '</small>' + esc(m.doing) + (m.note ? '<small>' + esc(m.note) + '</small>' : '') + (m.state === 'idle' && m.waiting ? '<div class="fox">Fox in the pond: idle with work waiting</div>' : '') + '</div></div>'; }).join('');
-    h += '<h3>Who is speaking</h3><div class="heads">' + WALL.speakers.map(([n, st, note]) => '<div><i class="' + ({ ok: 'pass', empty: 'empty', silent: 'silent', unproven: 'flaky' }[st] || '') + '"></i><span>' + esc(n) + (note ? ' <small>' + esc(note) + '</small>' : '') + '</span></div>').join('') + '</div>';
+    const sm = WALL.sample ? ' sample' : '';
+    h += '<h3>Vital numbers' + age() + '</h3><div class="chips' + sm + '">' + WALL.chips.map((c) => '<span class="' + esc(c.s) + '"><b>' + esc(c.v) + '</b>' + esc(c.t) + '</span>').join('') + '</div>';
+    h += '<h3>The machines' + age() + '</h3><div class="' + (sm ? 'sample-block' : '') + '">' + HM.map(([n, , , , roof]) => { const m = WALL.machines[n] || {}; return '<div class="mach"><i style="background:#' + roof.toString(16).padStart(6, '0') + '"></i><div><b>' + esc(n) + '</b> <small>' + esc(m.sub) + '</small>' + esc(m.doing) + (m.note ? '<small>' + esc(m.note) + '</small>' : '') + (m.state === 'idle' && m.waiting ? '<div class="fox">Fox in the pond: idle with work waiting</div>' : '') + '</div></div>'; }).join('') + '</div>';
+    h += '<h3>Who is speaking' + age() + '</h3><div class="heads' + (sm ? ' sample-block' : '') + '">' + WALL.speakers.map(([n, st, note]) => '<div><i class="' + ({ ok: 'pass', empty: 'empty', silent: 'silent', unproven: 'flaky' }[st] || '') + '"></i><span>' + esc(n) + (note ? ' <small>' + esc(note) + '</small>' : '') + '</span></div>').join('') + '</div>';
     h += '<p class="note">Green answering · red answers with nothing in it · grey silent · amber not proven yet</p>';
-    h += '<h3>Parcels delivered today</h3>' + WALL.parcels.map(([lbl, sq, tell]) => '<div class="sqrow"><div class="lbl">' + esc(lbl) + '</div><div class="sqs">' + sq.split('').map((c) => '<span class="sq ' + ({ p: 'pass', f: 'fail', b: 'border', n: 'never' }[c] || '') + '"></span>').join('') + '</div>' + (tell ? '<div class="tell">' + esc(tell) + '</div>' : '') + '</div>').join('');
+    h += '<h3>Parcels delivered (town)' + age() + '</h3><div class="' + (sm ? 'sample-block' : '') + '">' + WALL.parcels.map(([lbl, sq, tell]) => '<div class="sqrow"><div class="lbl">' + esc(lbl) + '</div><div class="sqs">' + sq.split('').map((c) => '<span class="sq ' + ({ p: 'pass', f: 'fail', b: 'border', n: 'never' }[c] || '') + '"></span>').join('') + '</div>' + (tell ? '<div class="tell">' + esc(tell) + '</div>' : '') + '</div>').join('') + '</div>';
     h += '<p class="note">Green passed its test · red failed · amber borderline · grey never arrived</p>';
     const harryEv = s.day.filter((e) => e.who === 'harry' || e.where === 'harry').reverse();
     if (harryEv.length) h += '<h3>Harry this day</h3>' + list(harryEv, '');
@@ -866,15 +894,21 @@ function fillCard(k) {
   } else if (k === 'hut') {
     h += '<h3>The foreman ' + esc(at) + '</h3>' + list(s.day.filter((e) => e.who === 'foreman' && (e.where === 'hut' || e.kind === 'hire' || e.kind === 'step')).reverse(), 'Nothing on this day.');
     h += '<h3>Workshops this week</h3><ul>' + WORKSHOPS.map((br) => '<li class="q"><time>' + (s.counts['workshop:' + br] || 0) + '</time><span>' + esc(br) + '</span></li>').join('') + '</ul>';
-    if (WALL.rebuilt) h += '<p class="note">White smoke from the chimney: ' + esc(WALL.rebuilt) + ' things rebuilt this week that already existed (' + (WALL.sample ? 'sample, as of ' + esc(WALL.asOf) : esc(WALL.asOf)) + ').</p>';
+    if (WALL.rebuilt) h += '<p class="note">' + age() + ' White smoke from the chimney: ' + esc(WALL.rebuilt) + ' things rebuilt this week that already existed (' + (WALL.sample ? 'sample, as of ' + esc(WALL.asOf) : esc(WALL.asOf)) + ').</p>';
   } else {
     h += list(dayEv, 'Nothing on this day.');
   }
   if (HOOKS.card[k]) { try { h += HOOKS.card[k](s); } catch (e) { /* ignore */ } }
   $('cBody').innerHTML = h;
 }
+function fitCard() {
+  const c = $('card'); if (c.hidden) return;
+  const pb = document.querySelector('.plate').getBoundingClientRect().bottom, tl = document.querySelector('.timeline').getBoundingClientRect().top;
+  c.style.maxHeight = Math.max(140, tl - 16 - pb - 12) + 'px';
+}
+addEventListener('resize', fitCard);
 function openCard(k) {
-  if (!B[k]) return; view.card = k; $('card').hidden = false; document.body.classList.add('carding'); fillCard(k);
+  if (!B[k]) return; view.card = k; $('card').hidden = false; document.body.classList.add('carding'); fillCard(k); fitCard();
   const b = B[k]; camGoal.target.set(b.x, 0, b.z + (k === 'harry' ? 0 : 0)); camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
 }
 function closeCard() { view.card = null; $('card').hidden = true; document.body.classList.remove('carding'); camGoal.target.copy(HOMEVIEW.target); camGoal.dist = HOMEVIEW.dist; }
@@ -899,7 +933,7 @@ function startReplay() {
   const d0 = dayStart(view.day), dayEv = EV.filter((e) => e.t >= d0 && e.t < d0 + DAY);
   view.playFrom = dayEv.length ? dayEv[0].t - 30 * MIN : d0 + 8 * HOUR;
   view.playTo = Math.min(NOW(), dayEv.length ? dayEv[dayEv.length - 1].t + 30 * MIN : d0 + DAY);
-  view.playing = true; view.live = false; $('bPlay').setAttribute('aria-pressed', 'true'); $('bPlay').textContent = '❚❚ Pause';
+  view.playing = true; view.live = false; view.playWall = 0; $('bPlay').setAttribute('aria-pressed', 'true'); $('bPlay').textContent = '❚❚ Pause';
   applyTime(view.playFrom);
 }
 $('bPlay').onclick = () => { if (view.playing) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } else startReplay(); };
@@ -907,11 +941,11 @@ $('bPlay').onclick = () => { if (view.playing) { view.playing = false; $('bPlay'
 /* =====================================================================================================
    9. Camera: slow orbit, drag to turn, wheel or pinch to zoom, tap a building for its card
    ===================================================================================================== */
-const HOMEVIEW = { target: new THREE.Vector3(0, 0, -3.5), dist: 27 };
+const HOMEVIEW = { target: new THREE.Vector3(0, 0, -5), dist: 28 };
 const camGoal = { target: HOMEVIEW.target.clone(), dist: HOMEVIEW.dist };
 let yaw = 0.7, pitch = 0.62, dist = 27, target = HOMEVIEW.target.clone(), autoT = 0;
 const ptrs = new Map(); let down = null, pinch0 = 0;
-function size() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); CAM.aspect = w / h; CAM.updateProjectionMatrix(); HOMEVIEW.dist = w < 760 ? 38 : w / h < 1.2 ? 32 : 27; if (!view.card) camGoal.dist = HOMEVIEW.dist; }
+function size() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); CAM.aspect = w / h; CAM.updateProjectionMatrix(); HOMEVIEW.dist = w < 760 ? 40 : w / h < 1.2 ? 34 : 28; if (!view.card) camGoal.dist = HOMEVIEW.dist; }
 addEventListener('resize', size); size();
 cv.addEventListener('pointerdown', (e) => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); down = { x: e.clientX, y: e.clientY, t: performance.now() }; autoT = 0; stopTour(); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
 addEventListener('pointerup', (e) => {
@@ -969,21 +1003,21 @@ function door(k) {
 }
 const WAGON_PATH = [new THREE.Vector3(0.3, 0, -8.8), new THREE.Vector3(0.3, 0.18, -15.4), new THREE.Vector3(HOME.x + 0.6, 0, HOME.z + 2.6)];
 function frame(now) {
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const sp = reduce ? 0.25 : 1, secs = now / 1000;
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const sp = reduce ? 0 : 1, secs = reduce ? 0 : now / 1000;
   /* time: live follows the clock; replay runs the day at 20 minutes a second */
-  if (view.playing) { const T = view.T + dt * 20 * MIN * sp; if (T >= view.playTo) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } applyTime(Math.min(T, view.playTo)); }
+  if (view.playing) { const rdt = Math.min(0.5, (now - (view.playWall || now)) / 1000); view.playWall = now; const T = view.T + rdt * 20 * MIN; if (T >= view.playTo) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } applyTime(Math.min(T, view.playTo)); }
   else if (view.live && now - liveTick > 15000) { liveTick = now; if (view.day !== dayKey(NOW())) { view.day = dayKey(NOW()); renderTicks(); } applyTime(NOW()); }
   /* camera */
   if (tour) { tourT += dt; if (tourT > 8) { tourT = 0; const st = tourStops(); tourI = (tourI + 1) % st.length; openCard(st[tourI]); } yaw += dt * 0.08 * sp; }
   else if (!ptrs.size) { autoT += dt; if (autoT > 4) yaw += dt * 0.04 * sp; }
-  target.lerp(camGoal.target, Math.min(1, dt * 2)); dist += (camGoal.dist - dist) * Math.min(1, dt * 2);
+  const cl = reduce ? 1 : Math.min(1, dt * 2); target.lerp(camGoal.target, cl); dist += (camGoal.dist - dist) * cl;
   CAM.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist); CAM.lookAt(target);
   /* walkers loop their route; a small pause at each stop */
   for (const w of walkers) {
     if (!w.g.visible || !w.route) continue;
     const legs = w.route.length - 1, p = (secs * w.speed * sp + w.phase) % 1, f = p * legs, leg = Math.min(legs - 1, Math.floor(f)), u = Math.min(1, (f - leg) * 1.25);
     const a = door(w.route[leg]), b = door(w.route[leg + 1]); w.g.position.lerpVectors(a, b, u);
-    w.g.position.y = u < 1 ? Math.abs(Math.sin(now * 0.008 * sp)) * 0.04 : 0; if (u < 1) w.g.lookAt(b.x, 0, b.z);
+    w.g.position.y = u < 1 && !reduce ? Math.abs(Math.sin(now * 0.008)) * 0.04 : 0; if (u < 1) w.g.lookAt(b.x, 0, b.z);
   }
   /* wagons: waiting ones line up at the bridge head; a new order rolls to Harry's town and back */
   for (const v of wagons) {
@@ -1003,24 +1037,28 @@ function frame(now) {
   mill.rotation.z += dt * ((WALL.machines.Mill || {}).state === 'busy' ? 1.2 : 0.15) * sp;
   fox.rotation.y = 2.4 + Math.sin(secs * 0.7) * 0.15;
   /* finished work glows: yard lamps steady and bright, failures pulse; shop window eases to its brightness */
-  lamps.forEach((l, i) => { if (l.bulb.visible && l.st !== 'pass') l.m.emissiveIntensity = 0.6 + 0.8 * Math.abs(Math.sin(now * 0.004 + i)); });
+  lamps.forEach((l, i) => { if (!l.bulb.visible || l.st === 'pass') return; if (l.seen !== l.st) { l.seen = l.st; l.since = now; }
+    l.m.emissiveIntensity = !reduce && now - l.since < 5000 ? 0.3 + 0.6 * Math.abs(Math.sin(now * 0.004 + i)) : 0.8; });
   yardLight.intensity += ((yardLight.userData.on ? (mode === DUSK ? 1.6 : 0.5) : 0) - yardLight.intensity) * Math.min(1, dt * 3);
   const sg2 = shopGlass.userData.target || 0.35; shopGlass.emissiveIntensity += (sg2 * (mode === DUSK ? 1 : 0.7) - shopGlass.emissiveIntensity) * Math.min(1, dt * 3);
   shopLight.intensity = sg2 > 1 ? (mode === DUSK ? 2.2 : 0.6) : 0;
   for (const w of winMats) { const tg = (w.userData.target || 0.32) * (mode === DUSK ? 1 : 0.3); w.emissiveIntensity += (tg - w.emissiveIntensity) * Math.min(1, dt * 3); }
-  alarmM.emissiveIntensity = alarmM.userData.on ? 0.6 + 1.6 * Math.abs(Math.sin(secs * 4)) : 0; alarmLight.intensity = alarmM.userData.on ? alarmM.emissiveIntensity * 0.8 : 0;
-  if (rain.visible) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9 * sp; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true;
+  if (alarmM.userData.on && !alarmM.userData.since) alarmM.userData.since = now; if (!alarmM.userData.on) alarmM.userData.since = 0;
+  const pulse = (since) => !reduce && now - since < 5000;
+  alarmM.emissiveIntensity = alarmM.userData.on ? (pulse(alarmM.userData.since) ? 0.6 + 1.6 * Math.abs(Math.sin(now / 250)) : 1.6) : alarmM.userData.amber ? 1.0 : 0; alarmLight.intensity = alarmM.emissiveIntensity * 0.8;
+  if (rain.visible && !reduce) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9 * sp; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true;
     if (!reduce && Math.random() < dt * 0.15) flash = 1; }
   flash = Math.max(0, flash - dt * 3); hemi.intensity = mode.hemi[2] * (rain.visible ? 0.7 : clouds.visible ? 0.88 : 1) + flash * 1.5;
   clouds.rotation.y += dt * 0.01 * sp;
   for (const f of HOOKS.frame) { try { f(dt, secs); } catch (e) { /* ignore */ } }
   if (star.visible) { star.rotation.y += dt * 1.2; star.position.y = 3.4 + Math.sin(secs * 2) * 0.12; }
-  goods.forEach((o, i) => { if (o.visible) o.material.emissiveIntensity = 1.1 + 0.25 * Math.sin(secs * 2 + i); });
+  goods.forEach((o, i) => { if (o.visible) o.material.emissiveIntensity = 1.1 + (reduce ? 0 : 0.25 * Math.sin(secs * 2 + i)); });
   R.render(S, CAM);
   const W = innerWidth, H = innerHeight;
   for (const l of labs) {
     tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.05 && tmp.x < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
-    l.d.style.display = vis ? '' : 'none'; if (vis) l.d.style.transform = 'translate(' + ((tmp.x + 1) / 2 * W).toFixed(1) + 'px,' + ((1 - tmp.y) / 2 * H).toFixed(1) + 'px) translate(-50%,-100%)';
+    const near = !l.zoomOnly || dist < 19 || (l.zoomOnly === 'harry' && view.card === 'harry');
+    l.d.style.display = vis && near ? '' : 'none'; if (vis) l.d.style.transform = 'translate(' + ((tmp.x + 1) / 2 * W).toFixed(1) + 'px,' + ((1 - tmp.y) / 2 * H).toFixed(1) + 'px) translate(-50%,-100%)';
   }
   requestAnimationFrame(frame);
 }
@@ -1065,7 +1103,7 @@ window.__works = {
   ready,
   state: () => ({ day: view.day, T: view.T, live: view.live, playing: view.playing, card: view.card, workshops: WORKSHOPS.slice(), events: EV.length,
     dayEvents: ST.day ? ST.day.length : 0, walkers: walkers.filter((w) => w.g.visible).length, lamps: lamps.filter((l) => l.bulb.visible).map((l) => l.st),
-    live_items: ST.live ? ST.live.length : 0, lost: ST.lost ? ST.lost.length : 0, weather: ST.weather, rainbow: ST.rainbow, parcels: ST.parcels ? ST.parcels.length : 0, orders: ST.orders ? ST.orders.length : 0, net: Object.assign({}, net), labels: labs.map((l) => l.d.textContent) }),
+    live_items: ST.live ? ST.live.length : 0, lost: ST.lost ? ST.lost.length : 0, quiet: ST.quiet ? ST.quiet.length : 0, suites: ST.suites ? Object.keys(ST.suites) : [], weather: ST.weather, rainbow: ST.rainbow, parcels: ST.parcels ? ST.parcels.length : 0, orders: ST.orders ? ST.orders.length : 0, net: Object.assign({}, net), labels: labs.map((l) => l.d.textContent) }),
   scrub: (hh, mm) => { $('scrub').value = hh * 60 + mm; $('scrub').dispatchEvent(new Event('input')); $('scrub').dispatchEvent(new Event('change')); },
   openCard, closeCard, setDay, goLive, startReplay,
   pick: (k) => { const b = B[k]; if (!b) return null; tmp.set(b.x, (b.h || 0.2) * 0.6, b.z).project(CAM); return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight }; },
