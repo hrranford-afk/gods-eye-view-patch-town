@@ -6870,7 +6870,7 @@ function depthTick(dt) { /* every frame in AR: show or hide the current map, sen
   depthShow(dt);
   if (DEPTH.job) { try { depthWork(DEPTH.job); } catch (e) { DEPTH.err = String(e && e.message || e); DEPTH.job = null; depthHide(); } return; }
   if (DEPTH.state !== 'ready' || DEPTH.busy || G.phase === 'title' || !G.zones.length) return;
-  DEPTH.t += dt; if (DEPTH.t < DEPTH_GAP_S) return;
+  DEPTH.t += dt; if (DEPTH.t < Math.max(DEPTH_GAP_S, DEPTH.msAvg / 1000)) return; /* a slow device: the worker is busy at most about half the time */
   const im = stkCam(); if (!im || STK.loadSeq <= DEPTH.seq) return; const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); if (!pose) return;
   if (stkMoving() > 0.8) return; DEPTH.seq = seq; DEPTH.t = 0; depthSend(im, pose);
 }
@@ -6912,9 +6912,10 @@ function depthFit(R, Z) { /* r = a / z + b over the rays that hit a scanned surf
     let sw = 0, sr = 0, sww = 0, swr = 0; for (const k of inl) { const w = 1 / Z[k]; sw += w; sr += R[k]; sww += w * w; swr += w * R[k]; } const n = inl.length, den = n * sww - sw * sw; if (Math.abs(den) < 1e-12) break;
     const a2 = (n * swr - sw * sr) / den; if (!(a2 > 0)) break; a = a2; b = (sr - a * sw) / n; }
   const errs = inl.map((k) => Math.abs(zOf(a, b, R[k]) - Z[k])).sort((p, q) => p - q), zs = inl.map((k) => Z[k]).sort((p, q) => p - q);
-  F.a = a; F.b = b; F.inl = inl.length; F.frac = inl.length / ix.length; F.cm = errs.length ? errs[(errs.length / 2) | 0] * 100 : 99; F.p90 = errs.length ? errs[Math.floor(errs.length * 0.9)] * 100 : 99;
+  let far = 0; for (const k of ix) if (zOf(a, b, R[k]) > Z[k] * (1 + TOL)) far++; /* the model sees past a scanned surface: wrong (nearer is fine: something stands in front of it) */
+  F.a = a; F.b = b; F.inl = inl.length; F.far = far; F.frac = inl.length / Math.max(1, inl.length + far); F.cm = errs.length ? errs[(errs.length / 2) | 0] * 100 : 99; F.p90 = errs.length ? errs[Math.floor(errs.length * 0.9)] * 100 : 99;
   const zMed = zs.length ? zs[(zs.length / 2) | 0] : 1, spread = zs.length ? (zs[Math.floor(zs.length * 0.9)] - zs[Math.floor(zs.length * 0.1)]) / zMed : 0; F.spread = spread;
-  F.why = inl.length < 40 ? 'too few agree' : F.frac < 0.45 ? 'half the surfaces disagree' : spread < 0.15 ? 'all at one depth' : F.cm > Math.max(3, 3.5 * zMed) ? 'error too large' : '';
+  F.why = inl.length < 40 ? 'too few agree' : F.frac < 0.6 ? 'it sees through the surfaces' : spread < 0.15 ? 'all at one depth' : F.cm > Math.max(3, 3.5 * zMed) ? 'error too large' : '';
   F.ok = !F.why; return F;
 }
 function depthBuild(J, F, MX, MY, o) { /* the depth-only mesh in the world: vertex = the camera + ray x fitted depth (on the surface where the model agrees with it), pushed back */
@@ -6941,7 +6942,7 @@ function depthShow(dt) { /* the map is shown while the iPad stands about where i
   M.visible = on; DEPTH.dbgMesh.visible = on && DEPTH.dbg; DEPTH.shown = on; if (on) DEPTH.shownS += dt; else DEPTH.hidS += dt;
 }
 function depthDbgInset(J) { /* ?depthdbg=1: the model's raw output (near bright, far dark) in a corner, with the last fit */
-  let c = document.getElementById('depthDbg'); if (!c) { c = document.createElement('canvas'); c.id = 'depthDbg'; c.style.cssText = 'position:fixed;right:8px;top:64px;width:200px;border:2px solid #fff;border-radius:6px;z-index:60;pointer-events:none;background:#000'; $('ui').appendChild(c); }
+  let c = document.getElementById('depthDbg'); if (!c) { c = document.createElement('canvas'); c.id = 'depthDbg'; c.style.cssText = 'position:fixed;left:8px;bottom:84px;width:200px;border:2px solid #fff;border-radius:6px;z-index:60;pointer-events:none;background:#000'; $('ui').appendChild(c); }
   c.width = J.rw; c.height = J.rh + 16; const g = c.getContext('2d'), im = g.createImageData(J.rw, J.rh); let lo = Infinity, hi = -Infinity; for (const v of J.r) { if (v < lo) lo = v; if (v > hi) hi = v; }
   for (let i = 0; i < J.rw * J.rh; i++) { const h = (J.r[i] - lo) / Math.max(1e-6, hi - lo); im.data[i * 4] = 255 * h; im.data[i * 4 + 1] = 90 + 120 * (1 - Math.abs(h - 0.5) * 2); im.data[i * 4 + 2] = 255 * (1 - h); im.data[i * 4 + 3] = 255; }
   g.putImageData(im, 0, 0); g.fillStyle = '#000'; g.fillRect(0, J.rh, J.rw, 16); g.fillStyle = '#fff'; g.font = '11px sans-serif'; const F = DEPTH.lastFit;
