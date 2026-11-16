@@ -100,3 +100,15 @@ Harry, 16 Nov 2026: "What about the town, the infrastructure, the geography? The
 - **v2:** power cuts and the lost property office (stall alarm), weather from tests, the car park and jams from run reports, the town hall board.
 - **v3:** resident homes with report cards, the university and the exam hall, the museum and the fire station.
 - **v4:** the town crier with a voice, the harbour and customs, the bank, a public explainer mode.
+
+## What feeds the town (Harry, 16 Nov: "there's so much to be learned... that all needs to be fed in")
+The town learns about itself from every source we have, and each source has a place:
+- **The ledger:** every step by every AI (the backbone).
+- **GitHub:** branches, commits, merges, deploys, and later the automatic tests.
+- **The home town's run reports:** busy or idle, queues, empties, retries, disk (standing order, 16 Nov).
+- **The home town's own wall** (PatchTown Wall, 16 Nov): the fox, white smoke, "who is speaking", parcels.
+- **Order results:** residents' answers with timings and empties, credited.
+- **Reviews:** the mega review (16 Nov), the town's mega-review-1, ChatGPT stress tests, the residents' "cold looks" at the town.
+- **Real-device reports:** field reports from the iPad to the Mini (report-1), the check page and the developer panel.
+- **Harry's own words:** every idea, kept verbatim in the games folder.
+Each review's findings are sorted into do now, later, and no (with why), and the atlas is updated. The town shows its own improvement over time in the museum.
