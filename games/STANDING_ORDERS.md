@@ -21,3 +21,14 @@ Harry left the choice to CAIRN. Started: **order 1 only**, small. Others wait un
 2. Diary voices (20 lines per creature in its own voice).
 3. Reading the colony's diary back (needs the game to send its diary; not built yet).
 4. Spark sessions (ran once as a trial on 11 Nov).
+
+## Standing: a run report with every result (from 16 Nov 2026, Harry's idea)
+Every result the town sends back ends with a short **run report**, so the game session can see how the town was used and suggest
+how to design it better. Numbers only, one table:
+- per stage: machine, model, started / finished (UK time), minutes running, minutes waiting in the queue;
+- per machine for the whole order: busy %, idle %, and what it was waiting on;
+- seats asked / real answers / empty / broken, with the reason for each empty or broken one;
+- canaries: passed first time, or how many tries;
+- retries, restarts, brake stops, memory peak, free disk at the start and the end;
+- speed where it is known (words per second, pictures per minute, sparks per minute);
+- one line: the slowest step and why.
