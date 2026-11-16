@@ -693,7 +693,7 @@ Pictograms are listed in brackets.
   out front, and a tall **battery gauge tower**: a glass column with ten stacked cells that light from the bottom (budget
   left today). Pylons carry a line across the river to Home Town. [a lightning bolt]
 - Busy: both chimneys smoke in proportion to session minutes this hour; the turbine hall's windows hum.
-- Battery gauge: cells lit = share of today's budget left. Below 2 cells the top cell blinks honey. The reset time is on
+- Battery gauge: cells lit = share of today's budget left, **from Harry's last plan-meter reading, drawn pale (typed) with its age; "unknown" after 24 h** (Appendix A #20). Below 2 cells the top cell turns honey (steady). The reset time is on
   the DOM label.
 - **Power cut** (usage limit hit, or a restart): the power station's lights die with a spark; then the whole Works bank's
   window panes and street lights switch off district by district over 2 seconds (a rolling blackout), builders freeze
@@ -835,7 +835,7 @@ Pictograms are listed in brackets.
 
 **Theatre / arcade** (front right). The games people play.
 - Silhouette: a little theatre with a **marquee of bulbs** and a curtain. The marquee bulbs light **in proportion to plays**
-  (counted, never tracked). Each game has its own marquee panel.
+  (counted, never tracked). Each game has its own marquee panel. **Not built until Harry approves a counting service (decision M4).**
 - Data: play counts only.
 
 **Bank** (west). Cost.
@@ -1227,7 +1227,7 @@ A sign may be shown only if it passes all four:
 | **Check** | Can an independent source confirm or contradict it later? | commit SHA exists on GitHub on that branch | "the train marked them done" with no check of the pictures |
 
 A sign that passes Source and Time but not Check is shown as **reported** (dimmer). A sign with no source is not shown,
-or is shown only as **fog** ("we don't know").
+or is shown only as **haze** ("we don't know"; plan 1 said fog, but fog means "not tried on a device", Appendix A #18).
 
 Four trust levels, used everywhere in this plan:
 
@@ -1281,7 +1281,7 @@ Specific honesty problems found in the 90 lines:
 | Polls `/events` every 2 min, `/actions/runs`, `/deployments`, `/branches` every 10 min, and `/commits?sha=` for up to 10 branches, from each viewer's browser, **unauthenticated** | Unauthenticated limit is **60 requests per hour per IP address**. The wall projector, Harry's iPad and his Mac share one home IP. Worst case the page wants about 30 + 18 + up to 60 commit calls an hour. When it runs out, the town silently freezes on cached data. GitHub says a 304 only spares the limit when the request is authorised, so unauthenticated 304s may still count. | One snapshot file built server-side with the Actions `GITHUB_TOKEN` (1,000 requests per hour per repo), served next to the page on GitHub Pages. Viewers fetch one file; no API limit applies to them. |
 | Uses the **Events API** to see which branches are active | GitHub documents event latency of **30 seconds to 6 hours**, "not built to serve real-time use cases". | Use `/branches` (current heads) plus `/commits` per changed head. Events only as a hint. |
 | `/deployments` | This repo deploys by pushing to `gh-pages`, not through the Deployments API, so this list is likely empty or unrelated | Treat the `gh-pages` branch's commits as the deploy log; verify the deployed path exists on Pages. |
-| Shows "rate limited" only in a status object | A frozen town looks alive. | Show the age of the newest data on the screen ("GitHub: 14 min old"). After 30 min, fog rolls in over the post office. |
+| Shows "rate limited" only in a status object | A frozen town looks alive. | Show the age of the newest data on the screen ("GitHub: 14 min old"). After 30 min, haze rolls in over the post office (decided: the freshness strip greys at 15 min). |
 
 #### The home town's wall (`WALL` in `index.html`)
 
@@ -1385,7 +1385,7 @@ a source we don't have; **NO** = cannot be measured honestly, do not build (or s
 |---|---|---|---|---|---|---|
 | **Power station** (compute) | cloud: builder minutes and tokens per job (S8); home: busy minutes per machine (S10) | none | end of job / per report | Wall-clock minutes include waiting on Harry; tokens without cache split overstate cost; home "busy" from a report written by the busy machine | Cloud: `duration_ms`, `tokens`, `tool_uses` on each `end`. Home: per-stage start/end and per-machine busy % from the run report. Show both as "minutes of work", not a single "power" number. | v2 |
 | **Power cut** | a session or builder that stopped without an end; a usage limit hit; a machine restart | none (L11) | instant for hooks; dead-man for silence | Recorded only when someone notices (20 h late on 15 Nov) | (a) `StopFailure` hook → `fail` with `cause:"api"`/`"limit"`; (b) `SessionStart` with `source:"startup"` while jobs are open → `restart` line; (c) **silence**: no `beat` from an open job for 45 min (see section 7). The page computes (c) itself, so it works even when nobody is alive to write. | v2 |
-| **Battery gauge** (budget left today) | remaining usage and reset time | **no API exposes this** | n/a | Any gauge would be a guess | Do not draw a gauge. Show **"last limit hit: 15 Nov, reset 19:00"** from `limit` lines, and tokens used today from `end` lines. Gauge only if a real remaining number ever becomes readable. | NO (gauge) / v2 (last hit) |
+| **Battery gauge** (budget left today) | remaining usage and reset time | **no API exposes this** | n/a | Any gauge would be a guess | Do not draw a gauge. Show **"last limit hit: 15 Nov, reset 19:00"** from `limit` lines, and tokens used today from `end` lines. Gauge only if a real remaining number ever becomes readable. **Decided (Appendix A #20):** draw the tower from Harry's last plan-meter reading, marked typed, with its age; "unknown" after 24 h. | v2 (typed gauge, last hit) |
 | **Reservoir** (disk) | free GB on the Mini, floor 30 GB | wall sample (35 GB) | per report | Stale number looks current; a report from a different disk | `town-report.json` `disk_free_gb` with `as_of`; water level greys after 24 h; show the floor line. | v2 |
 | **Roads** (paths work travels) | step durations: order→quote→go→result; hire→start→first commit→end | ledger, untimed | per event | Typed round times make paths look tidy | Only measured `t` values used for durations; typed lines excluded from timing stats. | v2 |
 | **Traffic jam** (queue wait) | minutes waiting in queue per stage | run report (standing order), not machine-readable yet | per report | Waiting for Harry's paste counted as machine queue | `stage` lines with `queued_at`, `started_at`, `ended_at` from the home queue. Bridge wait (paste delay) is drawn on the bridge, not on the Dell's road. | v2 |
@@ -1402,7 +1402,7 @@ a source we don't have; **NO** = cannot be measured honestly, do not build (or s
 |---|---|---|---|---|
 | Sunshine | all suites green **for the live build's SHA** | L7, L10: green from old builds or vanished lamps | Sunshine only if every suite in the expected list ran on the live SHA in the last 24 h and passed first try | v2 |
 | Clouds | any suite flaky (pass on rerun) | L9: reruns written as pass | `tries > 1` and final pass → flaky. Count flaky suites. | v2 |
-| Storm | failures per hour ≥ 2 across suites | failures not written as lines; one lamp = 12 suites (L8) | runner writes every fail; rate computed over measured lines only | v2 |
+| Storm | 2 or more suites failing on current heads, or any failure on the live build (decided, Appendix A #8) | failures not written as lines; one lamp = 12 suites (L8) | runner writes every fail; rate computed over measured lines only | v2 |
 | Rainbow | a real-device win | a robot win called a device win | `win` must carry `evidence` = `device` (Harry's report or field-report summary ID). Robot wins are a star, not a rainbow. | NOW (one line exists) |
 | Fog | untested on a real iPad | see Geography | see Geography | v2 |
 | (new) **Haze** | the town's own data is stale | — | If the newest measured line is older than the expected rhythm, the whole sky goes hazy with "last heard 3 h ago". Silence must never look like sunshine. | v2 |
@@ -2061,8 +2061,8 @@ Times are UK. "Lamp" means a colour on the building. "Bell" means a sound and a 
 
 #### P16. The town hall backlog: waiting on Harry (F21, F23, F24)
 
-- **Shows as:** motions pinned on the town hall board, each with an age. Fresh motions are white; over a day, yellow; over
-  three days, they curl. Each motion shows what it blocks (a rope to the stuck wagon or workshop). The **toll booth** on
+- **Shows as:** motions pinned on the town hall board, each with an age. Fresh motions are white; over a day, cream; over
+  three days, yellow and curling; over a week, brown (Appendix A #25). Each motion shows what it blocks (a rope to the stuck wagon or workshop). The **toll booth** on
   the bridge shows downloads and installs waiting.
 - **Alarm rules:**
   - A motion that blocks running work and is over 24 hours old: the town crier reads it out once, in the next morning
@@ -2806,7 +2806,7 @@ guidance says the same: few interruptions, all deferrable, sound off by default.
   led to action. If fewer than half lead to action, the trigger is too loose and is retuned at the weekly review.
 - **One alarm per cause.** A power cut swallows the separate stalls it caused. A paired-run result replaces the raw
   test failure.
-- **Severity** (from P3, section 4.4.7): Sev 1 (a live game broken for players, or a privacy or kids' rule broken) and
+- **Severity** (from plan 3; see "Incidents and postmortems" in section 4.4): Sev 1 (a live game broken for players, or a privacy or kids' rule broken) and
   Sev 2 (work lost or stopped for over 2 hours) can be Calls; Sev 3 and 4 are Bells or Lamps.
 
 **How an alarm looks** (decided in Appendix A, #5): the failed thing goes **dark**; a small vermilion cross beacon
