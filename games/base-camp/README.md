@@ -82,6 +82,9 @@ While mapping, the camera picture is looked at about every 1.5 s (AR needs the `
 - Every answer goes into **Our library** (Menu): icon, name, role and **who taught it**. The library overrides guesses from then on and travels with the room map.
 - **Camera pictures never leave the device.** Only model files are downloaded.
 
+## Hide behind the sofa (build 30)
+In AR, real things in front of the toys now hide them: a colonist walking behind the arm of the sofa, a box or a chair leg disappears behind it, and a hand held in front of the camp covers it. About every 1 to 2 seconds the camera picture goes to a small depth model on the iPad (Depth Anything V2 Small, about 50 MB, downloaded once when AR has a map; it runs in the background, the game never waits for it). Its guesses are measured against the surfaces the colonists have already scanned; when they do not agree, nothing is hidden. Menu: **Things can hide behind furniture** (on by default). `?depthdbg=1` colours what the model sees. Pictures are never stored or sent.
+
 ## The real world drives it
 
 - **Light**, **time of day** and **weather** (optional, asked once; rounded location, Open-Meteo, non-commercial only): as in the first prototype (see HANDOVER).
