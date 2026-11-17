@@ -6461,6 +6461,9 @@ function stkUse(id, F) { /* 16 Nov, "the sticker is the room's key": another roo
   if (mine && !RF.on && !RB.ask && (!G.returning || G.locked)) { stkRefineLock(F); return; }
   if (!own && !G.stk) { const r = homeInfo(HOMES.cur); if (r && r.stkOff === id) return; /* "Forget this room's sticker": not taken back by itself */ if (stkUnsure(F)) return; if (stkCanBind()) stkBind(F); else if (stkCanBindSoon()) { stkBind(F); stkProv(id, null, null); } return; } /* 17 Nov: during a quiet check too (taken back if the check fails) */
 }
+function stkAskInside() { /* 17 Nov: "Have you moved to another room?" is up (often for a surface seen through a doorway) while the iPad stands inside this room's box: a sticker inside the box (stkBind) may still be taken. Not for a question about a sticker */
+  const A = RB.ask, B = RB.base; if (!A || A.stk || !B || A.room !== HOMES.cur) return false; const c = rbCam(); return rbGapXZ(B, c.x, c.z) < RB_HOLD_GAP;
+}
 function stkUnsure(F) { /* 17 Nov: a new sticker's yaw is the room's yaw from then on: a fix whose yaw is not sure (sdYaw over STK_YAW_SD) waits up to STK_BIND_WAIT s for a better one (more sightings; usually 0.5 to 3 s). Bound at once, a sticker kept a yaw 2 to 3 degrees unsure and every later lock from it needed the surfaces */
   if (F.sdYaw < STK_YAW_SD) return false; const now = performance.now(), W = STK.bindWait; if (!W || W.id !== F.id || now - W.last > 5000) { STK.bindWait = { id: F.id, t0: now, last: now }; return true; } W.last = now; return now - W.t0 < STK_BIND_WAIT * 1000;
 }
@@ -6473,7 +6476,7 @@ function stkUnprov(why) { /* 17 Nov: the quiet check failed (the world may have 
   if (P.prev && P.prev !== HOMES.cur) { const q = homeInfo(P.prev); if (q) q.stk = P.id; } if (P.give) STK.give = P.give; homesSave(); AUTO.mapDirty = true; STK.binds--; recStk({ unbind: P.id, why });
 }
 function stkCanBind() { /* 16 Nov: a room may take a sticker as soon as it is known: locked, or a new room whose colony has landed (no 20 s wait, no probation wait) */
-  if (RF.on || RB.ask || !G.zones.some(rbOwn)) return false; if (G.returning) return G.locked; return G.settlements.some((S) => !S.dead && !S.awaiting);
+  if (RF.on || (RB.ask && !stkAskInside()) || !G.zones.some(rbOwn)) return false; if (G.returning) return G.locked; return G.settlements.some((S) => !S.dead && !S.awaiting);
 }
 function stkColAge() { /* seconds since the room's colony landed (0: no colony); a colony from an older save without a time counts as grown */
   const ss = G.settlements.filter((S) => !S.dead && !S.awaiting && S.cols && S.cols.length); if (!ss.length) return 0; return (Date.now() - Math.min(...ss.map((S) => S.born || 0))) / 1000;
@@ -6516,7 +6519,7 @@ function stkForget() { /* Menu, Rooms: this room lets its sticker go (it is not 
 }
 function stkDiff(F) { const L = stkLive(); if (!L) return { ok: false, dm: 9, dyaw: 180 }; const dm = Math.hypot(F.p[0] - L.p[0], F.p[1] - L.p[1], F.p[2] - L.p[2]), dyaw = Math.abs(stkAng(F.h - L.h)) * 57.2958, sure = Math.hypot(F.sdYaw, G.stk.sd) < STK_YAW_SD * 2; return { dm, dyaw, sure, ok: dm < STK_AGREE_M && (!sure || dyaw < STK_AGREE_DEG) }; }
 function stkBind(F, given) { /* the first sighting in a room without a sticker: it belongs to this room from now on, in the map's own frame (given: Menu, Rooms) */
-  const B = RB.base, gap = B ? rbGapXZ(B, F.p[0], F.p[2]) : 0; if (gap > 1.5) { recStk({ bind: 'too far from the room', gap: +gap.toFixed(2) }); return; }
+  const B = RB.base, gap = B ? rbGapXZ(B, F.p[0], F.p[2]) : 0; if (gap > 1.5) { recStk({ bind: 'too far from the room', gap: +gap.toFixed(2) }); return; } if (RB.ask && gap > RB_HOLD_GAP) { recStk({ bind: 'room question up, sticker outside the room', gap: +gap.toFixed(2) }); return; }
   const T = G.align, c = T ? Math.cos(-T.phi) : 1, s = T ? Math.sin(-T.phi) : 0, dx = F.p[0] - (T ? T.tx : 0), dz = F.p[2] - (T ? T.tz : 0); /* live -> the map's saved frame (the inverse of the alignment) */
   G.stk = { id: F.id, p0: [dx * c - dz * s, F.p[1] - (T ? T.dy : 0), dx * s + dz * c], h0: stkAng(F.h - (T ? T.phi : 0)), kind: F.kind, sd: F.sdYaw, at: Date.now(), n: F.used };
   for (const r of HOMES.rooms) if (r.stk === F.id) delete r.stk; const r = homeInfo(HOMES.cur); if (r) { r.stk = F.id; delete r.stkOff; } homesSave(); AUTO.mapDirty = true; STK.binds++; persistSoon();
