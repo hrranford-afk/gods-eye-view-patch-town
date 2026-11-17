@@ -6337,7 +6337,7 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
    No camera-access, or the files did not load: nothing here runs and the game is build 26. ============ */
 const STK_SIZE = 0.08, STK_IDS = [1, 2, 3, 4, 5, 6], STK_FILES = ['cv.js', 'svd.js', 'posit1.js', 'aruco.js', 'dictionaries/aruco_4x4_1000.js'];
 const STK_HZ = 4, STK_SLOW_S = 1, STK_IDLE_S = 4, STK_DET_MAX = 800, STK_REF_MAX = 1280, STK_WIN_S = 8, STK_MIN_N = 5, STK_MIN_S = 0.6, STK_YAW_SD = 0.7, STK_AGREE_M = 0.03, STK_AGREE_DEG = 2.5, STK_FIX_M = 0.06;
-const STK_MIN_N4 = 4, STK_MIN_S4 = 0.4, STK_RMS4 = 0.6, STK_MOVE = 1.4, STK_KEEP_S = 120, STK_T0 = Date.now(); /* the sticker is the room's key (16 Nov): 4 sightings over 0.4 s make a fix when the fit is tight; pictures are skipped above 0.35 m/s or 35 degrees/s (1.4 x the 0.25 / 25 of stkMoving); a colony under STK_KEEP_S seconds old is left without a question */
+const STK_WIN_SLOW_S = 20, STK_MIN_N4 = 4, STK_MIN_S4 = 0.4, STK_RMS4 = 0.6, STK_MOVE = 1.4, STK_KEEP_S = 120, STK_T0 = Date.now(); /* the sticker is the room's key (16 Nov): 4 sightings over 0.4 s make a fix when the fit is tight; pictures are skipped above 0.35 m/s or 35 degrees/s (1.4 x the 0.25 / 25 of stkMoving); a colony under STK_KEEP_S seconds old is left without a question */
 const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0, jumps: 0, dropped: 0, gives: 0, give: null, rej: {}, why: '', whyT: 0, whyId: 0, prov: null, keepT: 0 };
 REC.stk = [];
 function recStk(o) { recRing(REC.stk, Object.assign({ t: recT(), room: HOMES.cur }, o), 60); }
@@ -6403,7 +6403,7 @@ function stkRun(im, pose) { /* one picture: find stickers, refine, pose, into th
 function stkAdd(id, o) { /* a sighting joins the last few seconds' sightings of that sticker; enough of them make a fix */
   const list = STK.obs[id] || (STK.obs[id] = []), now = o.t, last = list[list.length - 1];
   if (last && Math.hypot(o.w.p[0] - last.w.p[0], o.w.p[1] - last.w.p[1], o.w.p[2] - last.w.p[2]) > 0.25) list.length = 0; /* the world jumped (or another copy of the sticker): start again */
-  list.push(o); while (list.length && (now - list[0].t > STK_WIN_S * 1000 || list.length > 24)) list.shift();
+  list.push(o); while (list.length && (now - list[0].t > (list.length > STK_MIN_N ? STK_WIN_S : STK_WIN_SLOW_S) * 1000 || list.length > 24)) list.shift(); /* 17 Nov: the newest STK_MIN_N sightings are kept for up to 20 s: where pictures come slowly (a few frames a second) 4 never fitted inside 8 s */
   STK.lastSeen = { id, t: now, d: Math.hypot(o.w.p[0] - o.V[12], o.w.p[1] - o.V[13], o.w.p[2] - o.V[14]) }; /* build 30: the developer panel */
   STK.burstUntil = now + 3000; if (list.length < STK_MIN_N4) { stkRej('too few', id, true); return; } if (now - (STK.lastTry || 0) < 400) return; STK.lastTry = now;
   const F = stkFixOf(id); STK.lastF = F; if (F) { STK.fixes++; STK.lastFix[id] = now; STK.why = ''; stkUse(id, F); }
