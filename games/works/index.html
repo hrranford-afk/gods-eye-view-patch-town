@@ -1356,13 +1356,14 @@ function frame(now) {
     const r = routePoint(w.route, tripU(w, now)); w.g.position.copy(r.p);
     if (r.moving) { w.g.position.y = off ? 0 : Math.abs(Math.sin(now * 0.008)) * 0.04; w.g.lookAt(r.to.x, 0, r.to.z); } else w.g.position.y = 0;
   }
-  /* smoke: rises only while the foreman is working; white (still) when something was rebuilt that already existed */
-  const white = WALL.rebuilt > 0, smoking = !!(ST.busy && ST.busy.hut);
+  /* smoke: rises only while the foreman is working; white when something was rebuilt that already existed (from a real
+     town report only: sample numbers never drive the 3D town) */
+  const white = WALL.rebuilt > 0 && !WALL.sample, smoking = !!(ST.busy && ST.busy.hut);
   for (const p of puffs) {
     p.visible = smoking || white;
     if (smoking && !off) p.userData.t = (p.userData.t + dt * 0.12) % 1; const t = p.userData.t;
     p.position.set(B.hut.x + B.hut.w * 0.28 + Math.sin(t * 6) * 0.15, B.hut.h * 1.75 + t * 2.4, B.hut.z - B.hut.d * 0.15 - t * 0.6);
-    p.scale.setScalar((0.1 + t * 0.26) * (white ? 1.25 : 1)); p.material.color.set(white ? 0xffffff : 0x9aa0ab); p.material.opacity = (white ? (WALL.sample ? 0.45 : 0.75) : 0.4) * (1 - t);
+    p.scale.setScalar((0.1 + t * 0.26) * (white ? 1.25 : 1)); p.material.color.set(white ? 0xffffff : 0x9aa0ab); p.material.opacity = (white ? 0.75 : 0.4) * (1 - t);
   }
   if (!off && !WALL.sample && (WALL.machines.Mill || {}).state === 'busy') mill.rotation.z += dt * 1.2;
   /* lamps settle once (1.5 s) to their state and then stay steady: no pulsing, nothing flashes */
