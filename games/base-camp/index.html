@@ -6377,7 +6377,8 @@ function stkNeed() { /* how often to look for a sticker now (seconds between loo
   if (RB.ask) return STK_SLOW_S; /* 16 Nov: a sticker can still answer the room question */ if (G.stk && now - (STK.lastFix[G.stk.id] || -1e9) < 30000) return STK_IDLE_S; return STK_SLOW_S;
 }
 function stkTick(dt) {
-  const gap = stkNeed(); if (!gap) return; STK.t += dt; if (STK.t < gap) return;
+  const now = performance.now(), real = STK.tickT ? Math.min(1, (now - STK.tickT) / 1000) : dt; STK.tickT = now; /* 17 Nov: the real time since the last frame. The game's dt is capped at 0.1 s, so at 2 frames a second the finder looked 5 times less often than meant and a new sticker never had 4 sightings inside its 8 s window */
+  const gap = stkNeed(); if (!gap) return; STK.t += Math.max(dt, real); if (STK.t < gap) return;
   const im = stkCam(); if (!im) { if (STK.t > 5 && !STK.noCam) { STK.noCam = true; recStk({ camera: 'no pictures' }); } return; } STK.noCam = false;
   if (STK.loadSeq <= STK.doneSeq) return; STK.t = 0;
   const seq = STK.loadSeq, pose = STK.poses.find((q) => q.seq === seq) || (STK.hook !== 'src' ? STK.poses[STK.poses.length - 1] : null); STK.doneSeq = seq; if (!pose) return;
