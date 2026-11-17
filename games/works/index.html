@@ -263,7 +263,7 @@ const dayKey = (t) => { const d = new Date(t); return d.getFullYear() + '-' + St
 const dayStart = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
 const dayName = (k) => new Date(dayStart(k)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-const ago = (ms) => { const m = Math.max(0, Math.round(ms / MIN)); return m < 1 ? 'just now' : m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h' + (m % 60 && m < 600 ? ' ' + (m % 60) + ' min' : '') : Math.floor(m / 1440) + ' d' + (Math.floor((m % 1440) / 60) ? ' ' + Math.floor((m % 1440) / 60) + ' h' : ''); };
+const ago = (ms) => { const m = Math.max(0, Math.round(ms / MIN)); return m < 1 ? 'just now' : m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : Math.floor(m / 1440) + ' d' + (Math.floor((m % 1440) / 60) ? ' ' + Math.floor((m % 1440) / 60) + ' h' : ''); };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 /* plain workshop names: "game/bc-depth" -> "Depth" (codes must not need decoding at a glance) */
 const plainBranch = (b) => { const s = String(b || '').split('/').pop().replace(/^(bc|bb)-/, '').replace(/-/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -597,7 +597,7 @@ for (let i = 0; i < 18; i++) {
   const pole = mesh(G.cyl, mat(0x333a4a), 0.025, 0.3, 0.025, x, 0.15, z);
   /* a failed lamp goes dark and a small vermilion cross flag stands over it */
   const cross = new THREE.Group(); cross.position.set(x, 0.72, z);
-  for (const r of [Math.PI / 4, -Math.PI / 4]) { const bar = mesh(G.box, glowMat(0xD55E00, 1.1), 0.06, 0.3, 0.06, 0, 0, 0); bar.rotation.z = r; bar.castShadow = false; cross.add(bar); }
+  for (const r of [Math.PI / 4, -Math.PI / 4]) { const bar = mesh(G.box, glowMat(0xD55E00, 0.7), 0.06, 0.3, 0.06, 0, 0, 0); bar.rotation.z = r; bar.castShadow = false; cross.add(bar); }
   cross.visible = false;
   bulb.visible = pole.visible = false; bulb.userData.key = pole.userData.key = 'yard'; S.add(bulb); S.add(pole); S.add(cross); lamps.push({ bulb, pole, cross, m, st: '' });
 }
@@ -783,7 +783,7 @@ function rebuildLabels() {
   for (const l of labs) l.d.remove(); labs = []; chipLabs = [];
   for (const k in B) { const b = B[k]; if (b.nolabel) continue; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 4.4 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
   /* wagon labels: shown when you look at the bridge (order name and age) */
-  wagons.forEach((v) => { v.lab = addLabel(v.g.position, 'bridge', 'tiny'); v.lab.zoomOnly = 'bridge'; v.lab.wagon = v; });
+  wagons.forEach((v) => { v.lab = addLabel(v.g.position, 'bridge', 'tiny'); v.lab.zoomOnly = 'bridge'; v.lab.wagon = v; v.lab.prio = 10; });
   WALL.chips.forEach((c, i) => { const l = addLabel(new THREE.Vector3(HOME.x - 3.6 + (i % 2) * 7.2, 5.2 + Math.floor(i / 2) * 1.1, HOME.z - 2), null, 'chip ' + (c.s || '')); l.zoomOnly = 'harry'; chipLabs.push(l); });
   for (const n in homeB) { homeB[n].lab = addLabel(new THREE.Vector3(homeB[n].x, homeB[n].h * 2.05 + 0.25, homeB[n].z), 'harry', 'tiny'); homeB[n].lab.zoomOnly = 'harry'; }
   labs.foxLab = addLabel(new THREE.Vector3(fox.position.x, 0.9, fox.position.z), 'harry', 'tiny'); labs.foxLab.zoomOnly = 'harry';
@@ -904,7 +904,8 @@ function computeState(T) {
   s.pass = su.filter((e) => e.status === 'pass').length; s.reruns = su.filter((e) => e.status === 'rerun').length; s.nSuites = su.length;
   s.anyFail = s.failing.length > 0;
   s.lastEv = s.day.length ? s.day[s.day.length - 1] : null;
-  s.asks = ASKS.asks.filter((a) => (a.status || 'open') === 'open');
+  /* open questions that had been asked by time T (replay shows the board as it was) */
+  s.asks = ASKS.asks.filter((a) => (a.status || 'open') === 'open' && !(Date.parse(a.asked || '') > T));
   s.mood = moodLine(s);
   s.since = sinceLines(s);
   return s;
@@ -918,6 +919,7 @@ function moodLine(s) {
   if (s.lost.length) bad.push(s.lost.length === 1 ? whoName(s.lost[0]) + ' lost since ' + when(s.lost[0].life) : s.lost.length + ' builders lost');
   if (s.overdue.length) bad.push(plural(s.overdue.length, 'order', 'orders') + ' overdue');
   if (s.quiet.length) bad.push(s.quiet.length === 1 ? whoName(s.quiet[0]) + ' quiet since ' + when(s.quiet[0].life) : s.quiet.length + ' builders quiet');
+  const rf = (net.refused || []).length; if (rf) bad.push(plural(rf, 'ledger line', 'ledger lines') + ' refused');
   const n = s.asks.length, need = n ? plural(n, 'thing needs', 'things need') + ' you.' : 'Nothing needs you.';
   const parts = [];
   if (!bad.length) parts.push({ c: 'm-ok', t: 'All good.' });
@@ -979,14 +981,14 @@ function applyTime(T) {
   shopGlass.userData.target = ST.live.length ? 2.4 : 0.35;
   /* parcels */
   parcels.forEach((o, i) => { o.visible = i < ST.parcels.length; });
-  /* wagons: out (orange), late 12 h+ (orange, says late), overdue 24 h+ (vermilion), back today (bluish green, parked
-     on the far side of the path) */
+  /* wagons: out (orange), late 12 h+ (orange, says late), overdue 24 h+ (vermilion), back in the last day (bluish green) */
   const wl = ST.orderList.filter((o) => o.state !== 'back').concat(ST.back).slice(-wagons.length);
   let nOut = 0, nBack = 0;
   wagons.forEach((v) => {
     const o = wl.shift(); v.o = o || null; v.g.visible = !!o; if (!o) return;
     const back = o.state === 'back', slot = back ? nBack++ : nOut++;
-    v.g.position.set(back ? 1.7 + (slot % 2) * 0.75 : -1.6 + (slot % 3) * 0.75 + (slot >= 3 ? 0.35 : 0), 0, -8.0 + Math.floor(slot / (back ? 2 : 3)) * 0.9);
+    /* out: queued on the bridge deck, facing Harry's town; back: parked at the bridge head on the near bank */
+    if (back) v.g.position.set(-1.6 + (slot % 3) * 0.75, 0, -8.0 + Math.floor(slot / 3) * 0.9); else v.g.position.set(0, 0.17, -10.0 - slot * 0.95);
     const c = back ? 0x009E73 : o.state === 'overdue' ? 0xD55E00 : 0xE69F00; v.flagM.color.set(c); v.flagM.emissive.set(c);
     if (v.lab) setLab(v.lab, '<span class="sym ' + (back ? 's-done' : o.state === 'overdue' ? 's-fail' : o.state === 'late' ? 's-late' : 's-busy') + '"></span>' + esc(o.id) + ' · ' + (back ? 'back after ' + ago(o.took) : (o.state === 'out' ? 'out ' : o.state + ', out ') + ago(o.age)), 'tiny');
   });
@@ -1076,10 +1078,10 @@ function renderPanels() {
   renderFresh();
   measurePanels();
 }
-/* glance text: 12 words at most, no brackets */
+/* glance text: 7 words at most, the first clause only, no brackets */
 function shortWhat(e) {
   let t = String(e.what || '').replace(/\s*\([^)]*\)/g, '').split(/;\s/)[0].replace(/\s+/g, ' ').trim();
-  const w = t.split(' '); if (w.length > 9) t = w.slice(0, 9).join(' ').replace(/[,:;.]$/, '') + '…';
+  const w = t.split(' '); if (w.length > 7) t = w.slice(0, 7).join(' ').replace(/[,:;.]$/, '') + '…';
   return t;
 }
 function renderDiary() {
@@ -1119,7 +1121,7 @@ function renderTicks() {
 }
 const li = (e) => '<li class="' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><span>' + symHtml(isProblem(e) ? 'fail' : isDone(e) ? 'done' : 'busy') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + (e.trust && e.trust !== 'measured' ? '<span class="trust">' + esc(e.trust) + '</span>' : '') + '</span></li>';
 const list = (arr, empty) => arr.length ? '<ul>' + arr.map(li).join('') + '</ul>' : '<p class="sub">' + esc(empty) + '</p>';
-const askAge = (a) => { const t = Date.parse(a.asked || ''); return t ? NOW() - t : 0; };
+const askAge = (a) => { const t = Date.parse(a.asked || ''); return t ? Math.max(0, view.T - t) : 0; };
 function fillCard(k) {
   const b = B[k]; if (!b) return;
   const s = ST, at = view.live ? 'now' : 'at ' + hhmm(view.T), dayEv = s.day.filter((e) => e.where === k).slice().reverse();
@@ -1134,13 +1136,15 @@ function fillCard(k) {
     if (!commits.length && older.length) h += '<h3>Earlier this week</h3>' + list(older, '');
     h += '<p class="note"><a href="https://github.com/' + CFG.repo + '/commits/' + encodeURIComponent(br) + '" target="_blank" rel="noopener">All commits on ' + esc(br) + '</a></p>';
   } else if (k === 'yard') {
-    const su = Object.values(s.suites), names = [...new Set(su.map((e) => e.suite))].sort(), brs = [...new Set(su.map((e) => e.branch || ''))].sort();
-    const cell = (e) => { const st = e.old ? 'old' : e.status === 'pass' ? 'done' : e.status === 'fail' || e.status === 'error' ? 'fail' : e.status === 'skipped' ? 'idle' : 'half';
-      const word = e.old ? 'not run lately' : ({ pass: 'pass', fail: 'fails', error: 'error', rerun: 'pass on rerun', flaky: 'flaky', skipped: 'skipped' }[e.status] || e.status);
-      return '<td title="' + esc(e.what) + '">' + symHtml(st) + esc(word) + (e.n ? ' ' + esc(String(e.n).replace('/', ' of ')) : '') + '<small>' + esc(hhmm(e.t) + (dayKey(e.t) !== view.day ? ', ' + dayName(dayKey(e.t)) : '')) + (e.sha ? ' · on ' + esc(e.sha) : '') + (e.newer ? ' · not run on ' + esc(e.newer) : '') + '</small></td>'; };
-    h += '<h3>Test lamps by suite and branch ' + esc(at) + '</h3>' + (su.length ? '<div class="mx"><table><tr><th>Suite</th>' + brs.map((b) => '<th>' + esc(b ? plainBranch(b) : 'branch?') + '</th>').join('') + '</tr>' +
-      names.map((n) => '<tr><td>' + esc(n) + '</td>' + brs.map((b) => { const e = s.suites[n + '@' + b]; return e ? cell(e) : '<td class="nr">' + symHtml('idle') + 'not run</td>'; }).join('') + '</tr>').join('') + '</table></div>' : '<p class="sub">No test results yet.</p>');
-    h += '<p class="note">' + symHtml('done') + 'pass · ' + symHtml('half') + 'pass on rerun or flaky · ' + symHtml('fail') + 'fails · ' + symHtml('old') + 'not run for 2 days · ' + symHtml('idle') + 'not run on that branch. "On abc1234" is the commit the run tested, when the line names it; "not run on" names a newer commit on that branch.</p>';
+    /* one row per lamp (suite on a branch), worst first: a list reads better than a wide table on a projector or a phone */
+    const lampSt = (e) => e.old ? 'old' : e.status === 'pass' ? 'done' : e.status === 'fail' || e.status === 'error' ? 'fail' : e.status === 'skipped' ? 'idle' : 'half';
+    const ORDER = { fail: 0, half: 1, done: 2, idle: 3, old: 4 };
+    const su = Object.values(s.suites).sort((a, b) => ORDER[lampSt(a)] - ORDER[lampSt(b)] || a.suite.localeCompare(b.suite));
+    const row = (e) => { const st = lampSt(e), word = e.old ? 'not run lately' : ({ pass: 'passes', fail: 'fails', error: 'error', rerun: 'passes on rerun', flaky: 'flaky', skipped: 'skipped' }[e.status] || e.status);
+      return '<div class="ord" title="' + esc(e.what) + '">' + symHtml(st) + '<div><b>' + esc(e.suite) + '</b> on ' + esc(e.branch ? plainBranch(e.branch) : 'an unknown branch') + ': ' + esc(word) + (e.n ? ' ' + esc(String(e.n).replace('/', ' of ')) : '') +
+        '<small>' + esc(hhmm(e.t) + (dayKey(e.t) !== view.day ? ', ' + dayName(dayKey(e.t)) : '')) + (e.trust !== 'measured' ? ' (' + esc(e.trust) + ')' : '') + (e.sha ? ' · tested commit ' + esc(e.sha) : '') + (e.newer ? ' · not run on the newer commit ' + esc(e.newer) : '') + '</small></div></div>'; };
+    h += '<h3>Test lamps, one per suite and branch, ' + esc(at) + '</h3>' + (su.length ? su.map(row).join('') : '<p class="sub">No test results yet.</p>');
+    h += '<p class="note">' + symHtml('done') + 'passes · ' + symHtml('half') + 'passes on rerun, or flaky · ' + symHtml('fail') + 'fails · ' + symHtml('old') + 'not run lately (2 days) · a suite with no lamp for a branch was not run on that branch. A pass on one branch never hides a fail on another.</p>';
     h += '<h3>Yard log</h3>' + list(s.day.filter((e) => e.kind === 'test').slice().reverse(), 'No tests on this day.');
   } else if (k === 'post') {
     h += '<h3>Last parcels (commits)</h3>' + list(s.parcels.slice(-14).reverse().map((e) => Object.assign({}, e, { what: (e.branch ? plainBranch(e.branch) + ': ' : '') + e.what })), 'No parcels on this day.');
@@ -1210,7 +1214,10 @@ addEventListener('resize', fitCard);
 function openCard(k) {
   if (!B[k]) return; view.card = k; $('card').hidden = false; document.body.classList.add('carding'); fillCard(k); fitCard();
   if (k === 'hall') return; /* the question board has no building yet: the town stays where it is */
-  const b = B[k]; camGoal.target.set(b.x, 0, b.z); camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
+  const b = B[k]; camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
+  /* on the wall the card sits on the left, so the place is framed in the right half of the screen */
+  const off = innerWidth > 760 ? camGoal.dist * 0.36 : 0, bz = k === 'bridge' ? -9.6 : b.z;
+  camGoal.target.set(b.x - Math.cos(yaw) * off, 0, bz + Math.sin(yaw) * off);
 }
 function closeCard() { view.card = null; $('card').hidden = true; document.body.classList.remove('carding'); camGoal.target.copy(HOMEVIEW.target); camGoal.dist = HOMEVIEW.dist; measurePanels(); }
 
@@ -1333,14 +1340,15 @@ function tripU(w, now) {
 }
 const SETTLE = 1500;
 function frame(now) {
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const off = motionOff();
+  const rdt = Math.max(0, Math.min(1, (now - last) / 1000)), dt = Math.min(0.05, rdt); last = now; const off = motionOff();
   /* time: live follows the clock; replay runs the day at 20 minutes a second */
   if (view.playing) { const rdt = Math.min(0.5, (now - (view.playWall || now)) / 1000); view.playWall = now; const T = view.T + rdt * 20 * MIN; if (T >= view.playTo) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } applyTime(Math.min(T, view.playTo)); }
   else if (view.live && now - liveTick > 15000) { liveTick = now; if (view.day !== dayKey(NOW())) { view.day = dayKey(NOW()); renderTicks(); } applyTime(NOW()); }
   /* camera: still. It only glides when you ask (a card, the tour); with motion off it jumps */
   if (tour) { tourT += dt; if (tourT > TOUR_SECS) { tourT = 0; const st = tourStops(); tourI = (tourI + 1) % st.length; openCard(st[tourI]); } }
-  const cl = off ? 1 : Math.min(1, dt * 2); target.lerp(camGoal.target, cl); dist += (camGoal.dist - dist) * cl;
-  if (target.distanceTo(camGoal.target) < 0.002) target.copy(camGoal.target); if (Math.abs(camGoal.dist - dist) < 0.002) dist = camGoal.dist;
+  /* the glide takes about a second whatever the frame rate (slow machines included) */
+  const cl = off ? 1 : 1 - Math.pow(0.004, rdt); target.lerp(camGoal.target, cl); dist += (camGoal.dist - dist) * cl;
+  if (target.distanceTo(camGoal.target) < 0.01) target.copy(camGoal.target); if (Math.abs(camGoal.dist - dist) < 0.01) dist = camGoal.dist;
   CAM.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist); CAM.lookAt(target);
   /* walkers: one trip per event, then they stand at the destination */
   for (const w of walkers) {
@@ -1369,7 +1377,7 @@ function frame(now) {
   for (const w of winMats) { const tg = (w.userData.target || 0.32) * (mode === DUSK ? 1 : 0.3); w.emissiveIntensity += (tg - w.emissiveIntensity) * Math.min(1, dt * 3); }
   const lvl = alarmM.userData.on ? 'red' : alarmM.userData.amber ? 'amber' : '';
   if (lvl !== alarmM.userData.lvl) { alarmM.userData.lvl = lvl; alarmM.userData.since = now; }
-  const aGoal = lvl === 'red' ? 1.6 : lvl === 'amber' ? 1.0 : 0, aK = off ? 1 : Math.min(1, (now - alarmM.userData.since) / SETTLE);
+  const aGoal = lvl === 'red' ? 0.9 : lvl === 'amber' ? 0.8 : 0, aK = off ? 1 : Math.min(1, (now - alarmM.userData.since) / SETTLE);
   alarmM.emissiveIntensity = aGoal * aK; alarmLight.intensity = alarmM.emissiveIntensity * 0.8;
   if (rain.visible && !off) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true; }
   rain.material.opacity = off ? 0 : 0.7;
@@ -1392,13 +1400,19 @@ function placeLabels() {
   }
   for (const l of cand) if (l.shown !== true) { l.d.style.display = ''; l.shown = true; }
   for (const l of cand) if (l.dirty || !l.w) { l.w = l.d.offsetWidth; l.h = l.d.offsetHeight; l.dirty = false; }
-  cand.sort((a, b) => (b.prio || (b.zoomOnly ? 3 : 0)) - (a.prio || (a.zoomOnly ? 3 : 0)));
+  /* the place whose card is open wins, then alarms, then the rest */
+  const pr = (l) => (l.prio || (l.zoomOnly ? 3 : 0)) + (view.card && l.key === view.card ? 20 : 0);
+  cand.sort((a, b) => pr(b) - pr(a));
   const placed = [], hit = (r, q) => r.x < q.right && r.x + r.w > q.left && r.y < q.bottom && r.y + r.h > q.top;
+  /* a label may slide up to half its width sideways, or one line up or down, to find a free spot near its place */
+  const bad = (r) => r.x < 0 || r.x + r.w > W || r.y < 0 || panelRects.some((q) => hit(r, q)) || placed.some((q) => hit(r, { left: q.x - 4, right: q.x + q.w + 4, top: q.y - 3, bottom: q.y + q.h + 3 }));
   for (const l of cand) {
-    const r = { x: l.x - l.w / 2, y: l.y - l.h, w: l.w, h: l.h };
-    const out = r.x < 0 || r.x + r.w > W || r.y < 0;
-    const clash = out || panelRects.some((q) => hit(r, q)) || placed.some((q) => hit(r, { left: q.x - 4, right: q.x + q.w + 4, top: q.y - 3, bottom: q.y + q.h + 3 }));
-    if (clash) { l.d.style.display = 'none'; l.shown = false; l.clash = true; continue; }
+    let r = null;
+    for (const [dx, dy] of [[0, 0], [0.55, 0], [-0.55, 0], [0, -1.1], [0, 1.1], [0.55, -1.1], [-0.55, -1.1]]) {
+      const q = { x: l.x - l.w / 2 + dx * l.w, y: l.y - l.h + dy * l.h, w: l.w, h: l.h };
+      if (!bad(q)) { r = q; break; }
+    }
+    if (!r) { l.d.style.display = 'none'; l.shown = false; l.clash = true; continue; }
     l.clash = false; placed.push(r);
     l.d.style.transform = 'translate(' + r.x.toFixed(1) + 'px,' + r.y.toFixed(1) + 'px)';
   }

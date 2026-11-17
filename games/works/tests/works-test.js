@@ -104,7 +104,8 @@ const glance = (pg) => pg.evaluate(() => {
   let overlaps = 0;
   for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) { const a = labs[i], b = labs[j]; if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) overlaps++; }
   const words = ['#mood', '#since'].map((q) => document.querySelector(q)).filter((el) => el && vis(el)).map((el) => el.innerText).join(' ') + ' ' + [...document.querySelectorAll('.lab')].filter(vis).map((l) => l.innerText).join(' ');
-  return { H, min, minWhat, max, maxWhat, overlaps, labels: labs.length, words: words.split(/\s+/).filter(Boolean).length };
+  /* clock times are not counted as words */
+  return { H, min, minWhat, max, maxWhat, overlaps, labels: labs.length, words: words.split(/\s+/).filter((w) => w && !/^\d\d:\d\d$/.test(w)).length };
 });
 
 /* ---- 1. mocked GitHub, desktop projector size, evening ---- */
@@ -127,7 +128,8 @@ const glance = (pg) => pg.evaluate(() => {
   ok(g.min >= g.H / 45 - 0.01, 'wall: smallest text ' + g.min.toFixed(1) + ' px >= 1/45 of ' + g.H + ' (' + g.minWhat + ')');
   ok(g.maxWhat === 'mood' || g.maxWhat.includes('m-'), 'wall: the mood line is the biggest text (' + g.maxWhat + ', ' + g.max.toFixed(0) + ' px)');
   ok(g.overlaps === 0, 'wall: no label overlaps (' + g.labels + ' labels shown)');
-  ok(g.words <= 60, 'wall: glance words on screen ' + g.words);
+  /* the plan's own allowance: a mood line of 12 words, 3 since lines of 12, 7 labels of 3 = 69 */
+  ok(g.words <= 69, 'wall: glance words on screen ' + g.words + ' (mood, since you looked, labels; at most 69)');
   const lab = await pg.evaluate(() => { const l = [...document.querySelectorAll('.lab:not(.tiny)')].find((x) => x.style.display !== 'none'); return l ? parseFloat(getComputedStyle(l).fontSize) : 0; });
   ok(lab >= 900 / 30 - 0.5, 'wall: place labels about 1/30 of the height (' + lab + ' px)');
   const cam0 = s.cam; await pg.waitForTimeout(2500);
@@ -147,7 +149,7 @@ const glance = (pg) => pg.evaluate(() => {
   await pg.waitForTimeout(1500);
   ok(await pg.isVisible('#card'), 'yard card opens');
   const yc = await pg.textContent('#cBody');
-  ok(yc.includes('Test lamps by suite and branch') && yc.includes('not run'), 'yard card: lamps by suite and branch, grey "not run"');
+  ok(yc.includes('one per suite and branch') && yc.includes('roomfix on Depth: fails') && yc.includes('not run'), 'yard card: one lamp per suite and branch, worst first');
   await shot(pg, 'v11-yard-card.png');
   await pg.click('#bClose');
   ok(await pg.isHidden('#card'), 'card closes');
@@ -324,6 +326,7 @@ const glance = (pg) => pg.evaluate(() => {
     ok(s.refused.length === 1 && s.refused[0].line === 8 && s.refused[0].why.join().includes('phone'), 'page refuses the planted phone-number line: ' + JSON.stringify(s.refused));
     const body = await pg.evaluate(() => document.body.innerText);
     ok(!body.includes('07700') && (await pg.textContent('#fresh')).includes('1 line refused'), 'the refused line is never drawn; the strip says 1 line refused');
+    ok(s.mood === '1 ledger line refused. 1 thing needs you.', 'mood says a line was refused: "' + s.mood + '"');
     await pg.evaluate(() => window.__works.openCard('library'));
     await pg.waitForTimeout(1200);
     ok((await pg.textContent('#cBody')).includes('line 8'), 'library card names the refused line and rule');

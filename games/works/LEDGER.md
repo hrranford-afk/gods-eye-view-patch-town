@@ -13,10 +13,12 @@ One line = one thing that happened. Each line is one JSON object. Never edit old
 | `who` | yes | `foreman` (the main session), `builder:<name>` (a hired builder, e.g. `builder:depth`), `town` (the test yard or the machines), or `harry`. |
 | `where` | yes | Which building: `hut`, `library`, `yard`, `post`, `shop`, `bridge`, `lost`, `harry`, or `workshop:<branch>` (e.g. `workshop:game/bc-depth`). |
 | `what` | yes | One short plain sentence. No names except "Harry". No places, no room photos, no personal details. |
-| `kind` | yes | One of `hire`, `start`, `end`, `step`, `fix`, `test`, `commit`, `deploy`, `download`, `order`, `result`, `win`, `fail`. |
+| `kind` | yes | One of `hire`, `start`, `end`, `step`, `fix`, `test`, `commit`, `deploy`, `download`, `order`, `result`, `win`, `fail`, `heartbeat`. |
 | `ref` | no | A commit (short hash), a branch, an order name (`scan-1`) or a page path (`base-camp/`). |
 | `branch` | for commits and tests | The branch a commit was on, or the branch a test ran on. **Test lamps are kept per suite and branch**, so build 29 passing roomfix never hides build 30 failing it. A suite with no line for a branch shows grey, "not run". |
 | `trust` | yes (new lines) | How we know: `measured` (from git, GitHub or a test run's own output), `reported` (a builder's report), `typed` (typed in by hand from notes, e.g. the START_HERE seed lines) or `sample` (made-up example values). Typed and sample lines are drawn dimmer. |
+| `job` | no | The job a `heartbeat` belongs to (the `ref` of its `start` line, e.g. `game/bc-depth`). |
+| `order` | no | On a `result` line: the order it answers (`keep-1`), when `ref` points at a results file instead. |
 | `suite`, `status`, `n` | for `kind:"test"` | The test suite name; `pass`, `rerun` (passed only on a rerun: never write it as a plain pass), `fail` or `flaky`; and the count (`43/43`). Lamps: green pass, yellow-green rerun, amber flaky, red fail. |
 
 What each kind looks like in the town:
@@ -35,6 +37,28 @@ What each kind looks like in the town:
 - `order`: a wagon waits at the bridge, showing its age, **until a `result` line with the same `ref` arrives** (no time-out).
 - `deploy`: one per thing going live. If a `win` names the same thing, give it the deploy's commit as `ref`; the page counts it once.
 - `fail`: the building's lamp goes red.
+- `heartbeat`: "still working", at most one about every 10 minutes per job. Not drawn and not in the diary, but it
+  counts as a sign of life for the stall alarm, and once a job has written one the alarm for that job tightens:
+  late after 20 min, lost after 60 min (instead of 45 min and 2 h). Example:
+  `{"t":"…Z","who":"builder:depth","where":"workshop:game/bc-depth","what":"still working","kind":"heartbeat","job":"game/bc-depth","trust":"measured"}`
+- `result`: closes an order's wagon when it names the order: the same `ref`, an `order` field, or the order name as a
+  word in `what` ("Results back for keep-1: …"). The bridge card shows each wagon's age: out, late after 12 h,
+  overdue after 24 h, or "back after 16 h 29 min".
+
+## The checker (v1.1)
+
+`node games/works/tools/ledger-check.mjs` checks every line: valid JSON, the needed fields, a known `kind` and
+`trust`, tests with a `suite` and `status`, no unknown fields, and **no personal data** (email addresses, phone
+numbers, street addresses, postcodes, tokens, "my house"-style words, or an exact clock time on an iPad line). It runs
+the same rules as the page (they live in `index.html` between `LEDGER-RULES-START` and `LEDGER-RULES-END`). A line
+that fails is **refused**: the town does not draw it, the freshness strip says "1 line refused", the mood line counts
+it as a problem, and the library card names the line number and the rule (never the text). Run it before you push.
+
+## Harry's questions (asks.json)
+
+`games/works/asks.json` holds the open decisions for the question board (the "Questions" button): `id`, `q`,
+`default`, `if_silent`, `type`, `asked`, `blocks`, `status`. Made from `DECISIONS.md` (its top 5). When Harry answers in
+the town chat, set `status` to his answer (`yes`, `no`, `withdrawn`); the mood line counts only `open` ones.
 
 ## How to add a line (any agent, any machine)
 
