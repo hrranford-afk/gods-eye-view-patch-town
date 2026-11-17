@@ -6199,7 +6199,7 @@ function rfSuspect(why, hard) {
   if (!G.zones.length) { if (hard) scanReset(); return; } /* nothing mapped yet */
   if (!hard && !RB.base && !G.returning) return; /* a quiet check needs a settled room: a young room is still being mapped */
   if (hard) persist();
-  const gapOnly = !hard && /^frame gap/.test(why); if (gapOnly) STK.keepT = performance.now(); else stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it. 17 Nov: a quiet check after a frame gap (nothing jumped) keeps them until it fails (rfFull drops the older ones); before, every gap threw them away and on a slow device a sticker was never taken */ snapClear('suspect'); /* build 28: nor do the pictures */
+  const gapOnly = !hard && /^frame gap/.test(why); if (gapOnly) { STK.keepT = performance.now(); STK.lockFix = null; } else stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it. 17 Nov: a quiet check after a frame gap (nothing jumped) keeps them (but not STK.lockFix, as before: a kept lockFix held the surfaces' polish and the snapshots' correction to an unsure sticker yaw) until it fails (rfFull drops the older ones); before, every gap threw them away and on a slow device a sticker was never taken */ snapClear('suspect'); /* build 28: nor do the pictures */
   Object.assign(RF, { on: true, why, hidden: false, phase: 'check', soft: gapOnly, t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
 }
