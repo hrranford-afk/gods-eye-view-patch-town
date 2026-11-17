@@ -1,0 +1,14 @@
+{
+  "about": "Harry's question board for PatchTown Works (the town hall card). Made from DECISIONS.md, 'The top 5'. One entry per open decision: id (as in DECISIONS.md), q (the plain question), default (the recommended answer), if_silent (what happens if Harry says nothing), type (money, security, deleting, downloads or taste), asked (when it was first asked: the commit that added DECISIONS.md), blocks (what it holds up), status (open, yes, no or withdrawn). When Harry answers in the town chat, set status to his answer; the board and the mood line count only open ones.",
+  "asks": [
+    { "id": "S1", "q": "Let Claude Code write the town's diary by itself (hooks)?", "default": "Yes, after a one-week trial", "if_silent": "No (security never takes a default)", "type": "security", "asked": "2026-11-16T19:17:31Z", "blocks": "automatic ledger lines (v2)", "status": "open" },
+    { "id": "S2", "q": "Let a GitHub workflow publish one town file every few minutes?", "default": "Yes", "if_silent": "No (security never takes a default)", "type": "security", "asked": "2026-11-16T19:17:31Z", "blocks": "the town-state.json snapshot (v2)", "status": "open" },
+    { "id": "S3", "q": "Keep the repo public, or move the work to a private repo?", "default": "Keep it for now; decide again before going public", "if_silent": "It stays public as it is now", "type": "security", "asked": "2026-11-16T19:17:31Z", "blocks": "any public launch", "status": "open" },
+    { "id": "D1", "q": "Download the free Kenney model kits for the new look?", "default": "Yes (you download; the build machine is blocked)", "if_silent": "No (downloads never take a default)", "type": "downloads", "asked": "2026-11-16T19:17:31Z", "blocks": "the v1.5 look pass", "status": "open" },
+    { "id": "M1", "q": "A check every 30 minutes that wakes a foreman only when something stalls?", "default": "Yes (uses a little of the plan, only when it fires)", "if_silent": "No (money never takes a default)", "type": "money", "asked": "2026-11-16T19:17:31Z", "blocks": "the stall watcher outside the session", "status": "open" }
+  ],
+  "more": {
+    "count": 54,
+    "text": "54 more questions are in DECISIONS.md, each with a recommended answer: 23 about security, money, downloads or deleting (silence means no) and 31 taste calls (each takes its recommended answer after 3 quiet days)."
+  }
+}

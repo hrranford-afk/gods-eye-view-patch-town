@@ -6,148 +6,182 @@
 <title>PatchTown Works</title>
 <meta name="description" content="A live 3D town that shows how the PatchTown AI studio builds software: builders, tests, commits and what is live.">
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
-/* PatchTown Works v1. Layout: the 3D town fills the screen (projector first). Title plate top-left, diary right
-   (hidden on phones), detail card bottom-left, timeline along the bottom. Finished, checked work is the brightest
-   thing on screen; chatter and activity are quieter (the town's own verdict: "it shows talk better than finished work"). */
+/* PatchTown Works v1.1 ("truth and glance"). The 3D town fills the screen and the camera stands still.
+   Top left: the mood line (one rules-written sentence, the biggest text on screen), "since you looked" (3 lines) and a
+   few buttons. Just above the timeline: the freshness strip (how old each data source is). The diary and the cards
+   open only on demand. Type on the wall is sized from screen height: 1rem = 1/45 of the height (the smallest text
+   allowed), labels 1.5rem (1/30), the mood line 3.2rem (1/14). One font, sentence case, no capitals rows.
+   States use Okabe-Ito colours, and every state also has a shape and a word (colour is never the only signal). */
 :root {
   --night: #18233a; --night2: #1d2b44;
-  --ink: #f4ead8; --muted: #b9b3c9; --dim: #8e93ab;
-  --lantern: #ffb44a; --moss: #7fd18b; --rose: #ff7a85; --wait: #f2b660; --quiet: #5d6f8c; --gold: #ffd76a;
-  --mini: #6aa6e8; --dell: #6fbf8f; --mill: #e0a15a;
-  --panel: rgba(20, 28, 48, 0.8);
-  --line: rgba(244, 234, 216, 0.16);
-  --tl-h: 5.4rem;
-  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --ink: #f4ead8; --muted: #c6c0d4; --dim: #a3a7bd;
+  --lantern: #ffb44a;
+  /* state colours (Okabe-Ito) */
+  --ok: #009E73; --busy: #E69F00; --bad: #D55E00; --need: #56B4E9; --idle: #8E93AB; --half: #F0E442; --old: #b59a72;
+  --ok-t: #7fe0bf; --bad-t: #ffb08a; --need-t: #a9dcf7; --busy-t: #ffd27a;
+  --panel: rgba(16, 22, 38, 0.9);
+  --line: rgba(244, 234, 216, 0.18);
+  --tl-h: 4.6rem; --fr-h: 1.9rem;
   --f-body: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
 }
-html { font-size: clamp(15px, 0.45vw + 9.5px, 26px); height: 100%; }
-body { margin: 0; height: 100%; background: var(--night); color: var(--ink); font: 1rem/1.45 var(--f-body); overflow: hidden; }
-body.day { --panel: rgba(16, 24, 42, 0.88); background: #9cc8e8; }
+/* the wall scale: 1rem is 1/45 of the screen height (nothing smaller is ever drawn), capped by width on odd shapes */
+html { font-size: clamp(14px, min(calc(100vh / 45), calc(100vw / 52)), 64px); height: 100%; }
+body { margin: 0; height: 100%; background: var(--night); color: var(--ink); font: 1rem/1.4 var(--f-body); letter-spacing: 0.01em; overflow: hidden; }
+body.day { --panel: rgba(14, 20, 36, 0.92); background: #9cc8e8; }
 #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
 #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-.lab { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); white-space: nowrap; font: 700 0.8rem/1.2 var(--f-body); color: var(--ink);
-  background: rgba(16, 22, 38, 0.74); border: 1px solid var(--line); padding: 0.25rem 0.6rem 0.3rem; border-radius: 999px; pointer-events: auto; cursor: pointer; }
-.lab small { display: block; font-weight: 400; font-size: 0.68rem; color: var(--muted); text-align: center; }
-.lab .dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; vertical-align: 0.05rem; background: var(--quiet); }
-.lab .dot.on { background: var(--lantern); }
-.lab .dot.ok { background: var(--moss); box-shadow: 0 0 10px var(--moss); }
-.lab .dot.bad { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
-.lab.win { border-color: rgba(127, 209, 139, 0.7); background: rgba(18, 40, 30, 0.82); }
-.lab.chip { cursor: default; font-weight: 400; background: rgba(29, 43, 68, 0.86); pointer-events: none; }
-.lab.chip b { font: 800 0.95rem/1 var(--f-display); margin-right: 0.35rem; }
-.lab.chip.warn b { color: var(--wait); } .lab.chip.good b { color: var(--moss); } .lab.chip.bad b { color: var(--rose); }
-.lab.tiny { font-size: 0.68rem; padding: 0.15rem 0.45rem; }
-.age { display: inline-block; margin-left: 0.4rem; font: 500 0.62rem/1.2 var(--f-mono); color: var(--dim); letter-spacing: .04em; text-transform: uppercase; }
-.lab.sample, .chips.sample span, .sample-block { filter: grayscale(0.75); opacity: 0.78; }
-.lab:focus-visible { outline: 2px solid var(--lantern); }
 
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.plate { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
-  max-width: min(31rem, calc(100% - 32px)); box-sizing: border-box; padding: 0.85rem 1.1rem; }
-.eyebrow { font: 500 0.68rem/1.2 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lantern); }
-h1 { font: 800 clamp(1.8rem, 3.2vw, 3.3rem)/0.98 var(--f-display); margin: 0.35rem 0; letter-spacing: -0.01em; }
-.sub { color: var(--muted); margin: 0; font-size: 0.92rem; }
-.stats { display: flex; flex-wrap: wrap; gap: 0.7rem 1.3rem; margin-top: 0.7rem; }
-.stat b { display: block; font: 800 1.6rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
-.stat span { font-size: 0.75rem; color: var(--muted); }
-.stat.v b { color: var(--moss); text-shadow: 0 0 14px rgba(127, 209, 139, .45); }
-.stat.q b { color: var(--ink); opacity: .8; }
-.btns { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
-button { font: 700 0.85rem/1 var(--f-body); color: var(--ink); background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 999px; padding: 0.55rem 0.85rem; cursor: pointer; min-height: 2.2rem; }
+/* state symbols: shape + colour, always next to a word */
+.sym { display: inline-block; flex: none; width: 0.78em; height: 0.78em; margin-right: 0.4em; vertical-align: -0.06em; position: relative; box-sizing: border-box; }
+.s-done { background: var(--ok); border-radius: 2px; }
+.s-done::after { content: ""; position: absolute; left: 30%; top: 8%; width: 28%; height: 55%; border: solid #fff; border-width: 0 0.14em 0.14em 0; transform: rotate(45deg); }
+.s-fail::before, .s-fail::after { content: ""; position: absolute; left: 40%; top: -8%; width: 22%; height: 116%; background: var(--bad); border-radius: 2px; transform: rotate(45deg); }
+.s-fail::after { transform: rotate(-45deg); }
+.s-busy { background: var(--busy); border-radius: 50%; }
+.s-need { background: var(--need); transform: rotate(45deg) scale(0.86); border-radius: 2px; }
+.s-idle { border: 0.13em solid var(--idle); border-radius: 50%; }
+.s-half { border: 0.12em solid var(--half); border-radius: 50%; background: linear-gradient(90deg, var(--half) 50%, transparent 50%); }
+.s-late { width: 0.86em; background: var(--busy); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.s-old { border: 0.13em dashed var(--old); border-radius: 2px; }
+
+/* labels over the buildings (1/30 of the height) */
+.lab { position: absolute; left: 0; top: 0; white-space: nowrap; font: 700 1.5rem/1.15 var(--f-body); color: var(--ink);
+  background: rgba(14, 20, 34, 0.86); border: 1px solid var(--line); padding: 0.2rem 0.6rem 0.25rem; border-radius: 0.6rem; pointer-events: auto; cursor: pointer; }
+.lab small { display: block; font-weight: 400; font-size: 1rem; color: var(--muted); }
+.lab.st-done { border-color: rgba(0, 158, 115, 0.9); }
+.lab.st-fail { border-color: rgba(213, 94, 0, 0.95); }
+.lab.st-idle { color: var(--muted); font-weight: 400; }
+.lab.tiny, .lab.chip { font-size: 1rem; font-weight: 400; padding: 0.15rem 0.45rem; }
+.lab.chip { cursor: default; background: rgba(29, 43, 68, 0.9); pointer-events: none; }
+.lab.chip b { font-weight: 700; margin-right: 0.35rem; }
+.lab.sample, .chips.sample span, .sample-block { filter: sepia(0.6) grayscale(0.4); opacity: 0.85; }
+.lab:focus-visible { outline: 2px solid var(--lantern); }
+.age { display: inline-block; margin-left: 0.4rem; font-size: 1rem; font-weight: 400; color: var(--old); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 0.8rem; }
+/* the glance panel: mood line, since you looked, buttons */
+.glance { position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
+  width: fit-content; max-width: min(56rem, 62vw); box-sizing: border-box; padding: 0.5rem 1rem 0.6rem; }
+.eyebrow { font-size: 1rem; color: var(--muted); margin: 0; }
+.eyebrow b { color: var(--ink); }
+#mood { font: 700 3.2rem/1.08 var(--f-body); margin: 0.15rem 0 0.3rem; letter-spacing: -0.005em; }
+#mood .m-bad { color: var(--bad-t); } #mood .m-need { color: var(--need-t); } #mood .m-ok { color: var(--ok-t); } #mood .m-old { color: var(--old); }
+.since { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(var(--tl-h) + var(--fr-h) + 12px); max-width: min(40rem, 44vw); box-sizing: border-box; padding: 0.4rem 0.9rem 0.5rem; }
+.since h2 { font-size: 1rem; font-weight: 400; color: var(--muted); margin: 0 0 0.1rem; }
+.since ol { list-style: none; margin: 0; padding: 0; }
+.since li { display: flex; align-items: baseline; gap: 0.2rem; font-size: 1.6rem; line-height: 1.3; min-width: 0; }
+.since li span.w { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.since li time { flex: none; color: var(--dim); font-size: 1.2rem; margin-left: 0.6rem; font-variant-numeric: tabular-nums; }
+.since li.t .w { opacity: 0.75; }
+.btns { display: flex; gap: 0.45rem; margin-top: 0.55rem; flex-wrap: wrap; }
+button { font: 700 1rem/1 var(--f-body); color: var(--ink); background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 999px; padding: 0.45rem 0.8rem; cursor: pointer; min-height: 2.2rem; }
 button:hover { background: rgba(255,255,255,.15); }
 button[aria-pressed="true"] { background: rgba(255,180,74,.22); border-color: rgba(255,180,74,.6); }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
-.src { margin-top: 0.6rem; font: 500 0.68rem/1.3 var(--f-mono); color: var(--muted); }
-.src i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; background: var(--quiet); }
-.src i.live { background: var(--moss); } .src i.cache { background: var(--wait); } .src i.off { background: var(--rose); }
+#bAsk { background: rgba(86,180,233,.18); border-color: rgba(86,180,233,.7); }
+#bAsk.none { background: rgba(255,255,255,.08); border-color: var(--line); }
 
-.diary { position: fixed; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--tl-h) + 16px);
-  width: min(23rem, 31vw); box-sizing: border-box; padding: 0.85rem 1rem; overflow: auto; }
-.diary h2, .card h2 { font: 800 1.25rem/1.1 var(--f-display); margin: 0.25rem 0 0.6rem; }
-.ev { display: grid; grid-template-columns: 3.3rem 1fr; gap: 0.6rem; padding: 0.45rem 0; border-top: 1px solid var(--line); }
-.ev time { font: 500 0.8rem/1.6 var(--f-mono); color: var(--dim); font-variant-numeric: tabular-nums; }
-.ev p { margin: 0; font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
-.ev .who { color: var(--dim); font-size: 0.75rem; }
-.ev.v p { color: #eafbe9; font-weight: 700; } .ev.v time { color: var(--moss); }
-.ev.w p { color: #fff0c4; font-weight: 700; } .ev.w time { color: var(--gold); }
-.ev.f p { color: #ffd0d4; } .ev.f time { color: var(--rose); }
-.ev.h p { color: var(--ink); }
+/* the freshness strip: how old each source is; old sources are grey and say so */
+.fresh { position: fixed; left: 0; right: 0; bottom: var(--tl-h); min-height: var(--fr-h); box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem 1.1rem;
+  padding: 0.2rem max(16px, env(safe-area-inset-right, 0px)) 0.2rem max(16px, env(safe-area-inset-left, 0px)); background: rgba(10, 14, 26, 0.88); border-top: 1px solid var(--line); font-size: 1rem; color: var(--muted); }
+.fresh .fr { white-space: nowrap; }
+.fresh .fr b { color: var(--ink); font-weight: 700; }
+.fresh .fr.old { color: var(--dim); filter: grayscale(1); }
+.fresh .fr.old b { color: var(--dim); }
+.fresh .fr.bad b { color: var(--bad-t); }
+.fresh .lbl { color: var(--dim); }
 
-.card { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(var(--tl-h) + 16px); width: min(32rem, calc(100% - 32px)); box-sizing: border-box;
-  padding: 0.85rem 1.1rem; max-height: calc(100% - var(--tl-h) - 12.5rem); overflow: auto; }
+.diary { position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--tl-h) + var(--fr-h) + 12px);
+  width: min(30rem, 34vw); box-sizing: border-box; padding: 0.7rem 0.9rem; overflow: auto; }
+.diary h2, .card h2 { font: 700 1.5rem/1.15 var(--f-body); margin: 0.15rem 0 0.5rem; }
+.ev { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--line); }
+.ev time { font-size: 1rem; line-height: 1.4; color: var(--dim); font-variant-numeric: tabular-nums; }
+.ev p { margin: 0; font-size: 1rem; min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.ev .who { color: var(--dim); }
+.ev.v p { color: #eafbf3; font-weight: 700; } .ev.w p { color: #fff0c4; font-weight: 700; } .ev.f p { color: #ffd9c4; } .ev.h p { color: var(--ink); }
+
+.card { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(var(--tl-h) + var(--fr-h) + 12px); width: min(44rem, calc(100% - 32px)); box-sizing: border-box;
+  padding: 0.7rem 1rem; max-height: 60%; overflow: auto; }
 .card .close { float: right; margin-left: 0.5rem; }
-.card h3 { font: 700 0.8rem/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0.9rem 0 0.35rem; }
+.card h3 { font-size: 1.15rem; font-weight: 700; color: var(--muted); margin: 0.8rem 0 0.3rem; }
 .card ul { list-style: none; margin: 0; padding: 0; }
-.card li { display: grid; grid-template-columns: 3.3rem 1fr; gap: 0.5rem; padding: 0.3rem 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
-.card li time { font: 500 0.78rem/1.6 var(--f-mono); color: var(--dim); }
+.card li { display: grid; grid-template-columns: 3.4rem 1fr; gap: 0.5rem; padding: 0.3rem 0; border-top: 1px solid var(--line); font-size: 1.1rem; }
+.card li time { font-size: 1rem; line-height: 1.5; color: var(--dim); }
 .card li span { min-width: 0; overflow-wrap: anywhere; }
-.card li.v span { color: #eafbe9; font-weight: 700; } .card li.f span { color: #ffd0d4; } .card li.q span { color: var(--muted); }
+.card li.v span { color: #eafbf3; font-weight: 700; } .card li.f span { color: #ffd9c4; } .card li.q span { color: var(--muted); }
 .card a { color: #ffd39a; }
-.card .note { font: 500 0.7rem/1.35 var(--f-mono); color: var(--muted); margin-top: 0.7rem; }
-.lamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.4rem 0.8rem; }
-.lamps div { display: flex; gap: 0.45rem; align-items: center; font-size: 0.9rem; min-width: 0; }
-.lamps i, .heads i, .sq { flex: none; display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: 50%; background: var(--quiet); }
-.pass { background: var(--moss) !important; box-shadow: 0 0 10px rgba(127,209,139,.7); }
-.fail { background: var(--rose) !important; } .flaky, .border { background: var(--wait) !important; } .never, .silent { background: var(--quiet) !important; }
-.empty { background: var(--rose) !important; }
-.rerun { background: #c8d86a !important; }
+.card .note { font-size: 1rem; color: var(--muted); margin-top: 0.6rem; }
+.card .sub, .diary .sub { color: var(--muted); margin: 0.2rem 0; }
 .ev.t, .card li.t { opacity: 0.72; }
-.trust { font: 500 0.6rem/1 var(--f-mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-left: 0.3rem; }
-.mx { overflow-x: auto; } .mx table { border-collapse: collapse; font-size: 0.82rem; } .mx th, .mx td { padding: 0.2rem 0.45rem; text-align: left; white-space: nowrap; }
-.mx th { color: var(--muted); font-weight: 700; } .mx td i { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; vertical-align: -0.1rem; margin-right: 0.3rem; background: var(--quiet); }
+.ev.t p, .card li.t span { border-left: 2px dotted var(--dim); padding-left: 0.4rem; }
+.trust { font-size: 1rem; color: var(--dim); margin-left: 0.3rem; }
+.mx { overflow-x: auto; } .mx table { border-collapse: collapse; font-size: 1.05rem; } .mx th, .mx td { padding: 0.2rem 0.45rem; text-align: left; white-space: nowrap; }
+.mx th { color: var(--muted); font-weight: 700; } .mx td small { display: block; color: var(--dim); font-size: 1rem; }
 .mx td.nr { color: var(--dim); }
-.heads { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.35rem 0.8rem; }
-.heads div { display: flex; gap: 0.45rem; align-items: center; font-size: 0.85rem; min-width: 0; }
-.heads small { color: var(--dim); }
-.sqrow { margin: 0.35rem 0 0.6rem; } .sqrow .lbl { font-size: 0.88rem; font-weight: 700; }
-.sqrow .sqs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0.2rem 0; } .sq { border-radius: 3px; }
-.sqrow .tell { font-size: 0.8rem; color: var(--muted); }
+.heads { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.3rem 0.8rem; }
+.heads div { display: flex; gap: 0.3rem; align-items: baseline; font-size: 1rem; min-width: 0; }
+.heads small { color: var(--dim); font-size: 1rem; }
+.sqrow { margin: 0.35rem 0 0.6rem; } .sqrow .lbl { font-size: 1rem; font-weight: 700; }
+.sqrow .sqs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0.2rem 0; }
+.sqrow .tell { font-size: 1rem; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.chips span { background: var(--night2); border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-.chips b { font: 800 1rem/1 var(--f-display); margin-right: 0.3rem; }
-.chips .warn b { color: var(--wait); } .chips .good b { color: var(--moss); } .chips .bad b { color: var(--rose); }
-.mach { display: grid; grid-template-columns: 0.4rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-top: 1px solid var(--line); font-size: 0.88rem; }
-.mach > i { border-radius: 3px; } .mach b { font-family: var(--f-display); font-size: 1rem; } .mach small { color: var(--muted); display: block; }
-.fox { color: var(--wait); font-weight: 700; }
+.chips span { background: var(--night2); border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 1rem; }
+.chips b { margin-right: 0.3rem; }
+.mach { display: grid; grid-template-columns: 0.4rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-top: 1px solid var(--line); font-size: 1rem; }
+.mach > i { border-radius: 3px; } .mach b { font-size: 1.1rem; } .mach small { color: var(--muted); display: block; font-size: 1rem; }
+.fox { color: var(--busy-t); font-weight: 700; }
+/* Harry's question board */
+.ask { border-top: 1px solid var(--line); padding: 0.45rem 0 0.5rem; }
+.ask .q { font-size: 1.2rem; font-weight: 700; }
+.ask .d { font-size: 1rem; color: var(--muted); }
+.ask .d b { color: var(--ink); }
+.ask.a1 .q { color: #fff3d6; } .ask.a3 .q { color: #ffe08a; } .ask.a7 .q { color: #e3b98a; }
+.ask .id { display: inline-block; min-width: 2.2rem; color: var(--need-t); }
+/* order wagons */
+.ord { display: grid; grid-template-columns: 1.2rem 1fr; gap: 0.3rem; padding: 0.35rem 0; border-top: 1px solid var(--line); font-size: 1.1rem; }
+.ord small { display: block; color: var(--muted); font-size: 1rem; }
 
-.timeline { position: fixed; left: 0; right: 0; bottom: 0; height: var(--tl-h); box-sizing: border-box; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.5rem 0.9rem;
-  background: rgba(12, 17, 30, 0.9); border-top: 1px solid var(--line);
-  padding: 0.4rem max(16px, env(safe-area-inset-right, 0px)) calc(0.4rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.timeline { position: fixed; left: 0; right: 0; bottom: 0; height: var(--tl-h); box-sizing: border-box; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.4rem 0.9rem;
+  background: rgba(10, 14, 26, 0.94); border-top: 1px solid var(--line);
+  padding: 0.3rem max(16px, env(safe-area-inset-right, 0px)) calc(0.3rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .daysel { display: flex; align-items: center; gap: 0.3rem; }
-.daysel b { font: 800 1rem/1.1 var(--f-display); min-width: 6.5rem; text-align: center; }
+.daysel b { font-size: 1.1rem; min-width: 6rem; text-align: center; }
 .daysel button { padding: 0.4rem 0.6rem; }
 .track { position: relative; min-width: 0; }
 .ticks { position: absolute; left: 0.5rem; right: 0.5rem; top: 0; height: 0.6rem; pointer-events: none; }
-.tk { position: absolute; top: 0; width: 3px; height: 0.6rem; margin-left: -1px; border-radius: 2px; background: var(--quiet); }
-.tk.v { background: var(--moss); height: 0.75rem; } .tk.w { background: var(--gold); height: 0.85rem; } .tk.f { background: var(--rose); }
-.tk.o { background: #c9a36b; } .tk.c { background: #6c7ea8; }
-input[type=range] { width: 100%; margin: 0.7rem 0 0.15rem; accent-color: var(--lantern); height: 1.6rem; }
+.tk { position: absolute; top: 0; width: 3px; height: 0.55rem; margin-left: -1px; border-radius: 2px; background: var(--idle); }
+.tk.v { background: var(--ok); height: 0.7rem; } .tk.w { background: var(--half); height: 0.8rem; } .tk.f { background: var(--bad); width: 5px; height: 0.8rem; }
+.tk.o { background: var(--busy); } .tk.c { background: #6c7ea8; }
+input[type=range] { width: 100%; margin: 0.6rem 0 0.1rem; accent-color: var(--lantern); height: 1.4rem; }
 .tlrow { display: flex; gap: 0.7rem; align-items: baseline; min-width: 0; }
-.tlrow .clock { flex: none; font: 500 1rem/1.2 var(--f-mono); color: var(--lantern); font-variant-numeric: tabular-nums; }
-.tlrow p { margin: 0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-#bLive[aria-pressed="true"] { background: rgba(127,209,139,.22); border-color: rgba(127,209,139,.7); }
+.tlrow .clock { flex: none; font-size: 1.15rem; font-weight: 700; color: var(--lantern); font-variant-numeric: tabular-nums; }
+.tlrow p { margin: 0; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#bLive[aria-pressed="true"] { background: rgba(0,158,115,.25); border-color: rgba(0,158,115,.85); }
 .skip { position: absolute; left: -9999px; }
 
+/* phone (Pocket): px sizes with a 15px floor; the answer on top, the town in the middle, the timeline at the bottom */
 @media (max-width: 760px) {
-  :root { --tl-h: 7.6rem; }
-  .plate { padding: 0.6rem 0.8rem; max-width: calc(100% - 32px); }
-  .plate .sub { display: none; }
-  .stats { gap: 0.4rem 0.9rem; margin-top: 0.4rem; } .stat b { font-size: 1.15rem; } .stat span { font-size: 0.68rem; }
-  .btns { margin-top: 0.5rem; } .btns button { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
-  .diary { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; max-height: 40%; }
-  .card { right: max(16px, env(safe-area-inset-right, 0px)); width: auto; max-height: 52%; }
+  html { font-size: 15px; }
+  :root { --tl-h: 7.2rem; --fr-h: 2.6rem; }
+  .glance { width: auto; max-width: none; right: max(16px, env(safe-area-inset-right, 0px)); padding: 0.5rem 0.75rem 0.6rem; }
+  .since { right: max(16px, env(safe-area-inset-right, 0px)); max-width: none; padding: 0.35rem 0.7rem 0.4rem; }
+  #mood { font-size: 28px; line-height: 1.15; }
+  .since li { font-size: 16px; } .since li time { font-size: 15px; }
+  .btns { gap: 0.35rem; margin-top: 0.45rem; } .btns button { padding: 0.45rem 0.7rem; }
+  .lab { font-size: 16px; } .lab small { font-size: 15px; }
+  .diary { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; max-height: 45%; }
+  .card { right: max(16px, env(safe-area-inset-right, 0px)); width: auto; max-height: 55%; }
+  .fresh { gap: 0 0.7rem; padding-top: 0.15rem; padding-bottom: 0.15rem; }
+  .fresh .lbl { display: none; }
   .timeline { grid-template-columns: auto auto 1fr; grid-template-rows: auto auto; }
   .track { grid-column: 1 / -1; grid-row: 2; }
-  .lab { font-size: 0.72rem; } .lab small { display: none; }
   .lab.chip, .lab.tiny { display: none !important; }
-  body.carding .plate .stats, body.carding .plate .src { display: none; }
+  body.carding .glance .btns { display: none; }
 }
-body.carding .plate .sub { display: none; }
-@media (max-height: 760px) and (min-width: 761px) { body.carding .plate .stats { display: none; } }
+body.carding .since, body.diarying .since { display: none; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
 </head>
@@ -155,31 +189,34 @@ body.carding .plate .sub { display: none; }
 <canvas id="scene" aria-label="A 3D town: each building is part of the studio's work"></canvas>
 <div id="labels"></div>
 
-<section class="plate panel" aria-label="About this town">
-  <div class="eyebrow" id="eyebrow">PatchTown Works · live</div>
-  <h1>PatchTown Works</h1>
-  <p class="sub">Watch the AI studio build software. Builders walk from the foreman's hut to their workshops, every build goes through the inspection yard, parcels leave the post office, and finished work lights up the shop window. Wagons carry orders over the bridge to Harry's machines.</p>
-  <div class="stats" id="stats"></div>
+<section class="glance panel" aria-label="How the town is doing">
+  <p class="eyebrow" id="eyebrow"><b>PatchTown Works</b> · live</p>
+  <p id="mood" aria-live="polite">Looking…</p>
   <div class="btns">
-    <button id="bDay" type="button">Daylight</button>
+    <button id="bAsk" type="button">Questions</button>
+    <button id="bDiary" type="button" aria-pressed="false">Diary</button>
     <button id="bTour" type="button" aria-pressed="false">Tour</button>
-    <button id="bDiary" type="button">Hide diary</button>
+    <button id="bStill" type="button" aria-pressed="false">Still</button>
+    <button id="bDay" type="button">Daylight</button>
   </div>
-  <div class="src" id="src"><i></i>Loading…</div>
 </section>
 
-<aside class="diary panel" id="diary" aria-label="The day in the town">
-  <div class="eyebrow" id="dEye">Today</div>
+<section class="since panel" id="since" aria-label="Since you looked"></section>
+
+<aside class="diary panel" id="diary" aria-label="The day in the town" hidden>
+  <p class="eyebrow" id="dEye">Today</p>
   <h2>What happened</h2>
   <div id="events"></div>
 </aside>
 
 <div class="card panel" id="card" hidden role="dialog" aria-labelledby="cTitle">
-  <button class="close" id="bClose" type="button" aria-label="Close">✕</button>
-  <div class="eyebrow" id="cEye"></div>
+  <button class="close" id="bClose" type="button" aria-label="Close">Close</button>
+  <p class="eyebrow" id="cEye"></p>
   <h2 id="cTitle"></h2>
   <div id="cBody"></div>
 </div>
+
+<div class="fresh" id="fresh" role="status" aria-label="How old the data is"></div>
 
 <div class="timeline" role="group" aria-label="Timeline">
   <div class="daysel"><button id="bPrev" type="button" aria-label="Day before">‹</button><b id="dayName">–</b><button id="bNext" type="button" aria-label="Day after">›</button></div>
@@ -188,7 +225,7 @@ body.carding .plate .sub { display: none; }
     <div class="ticks" id="ticks"></div>
     <label class="skip" for="scrub">Time of day</label>
     <input id="scrub" type="range" min="0" max="1440" step="1" value="1440">
-    <div class="tlrow"><span class="clock" id="clock">--:--</span><p id="cap" aria-live="polite"></p></div>
+    <div class="tlrow"><span class="clock" id="clock">--:--</span><p id="cap"></p></div>
   </div>
   <button id="bLive" type="button" aria-pressed="true">Live</button>
 </div>
@@ -205,6 +242,7 @@ const CFG = {
   raw: 'https://raw.githubusercontent.com',
   ledgerBranch: 'game/micro-precinct',
   ledgerPath: 'games/works/ledger.jsonl',
+  asksPath: 'games/works/asks.json',
   pages: 'https://hrranford-afk.github.io/gods-eye-view-patch-town/',
   pollMs: 120000,          /* at most one look at GitHub every 2 minutes */
   slowMs: 600000,          /* branches, runs, deployments: every 10 minutes */
@@ -225,6 +263,68 @@ const dayKey = (t) => { const d = new Date(t); return d.getFullYear() + '-' + St
 const dayStart = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
 const dayName = (k) => new Date(dayStart(k)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const ago = (ms) => { const m = Math.max(0, Math.round(ms / MIN)); return m < 1 ? 'just now' : m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : Math.floor(m / 1440) + ' d' + (Math.floor((m % 1440) / 60) ? ' ' + Math.floor((m % 1440) / 60) + ' h' : ''); };
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+/* plain workshop names: "game/bc-depth" -> "Depth" (codes must not need decoding at a glance) */
+const plainBranch = (b) => { const s = String(b || '').split('/').pop().replace(/^(bc|bb)-/, '').replace(/-/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); };
+
+/* =====================================================================================================
+   1b. The ledger checker. tools/ledger-check.mjs runs exactly this block (it reads it out of this page between the
+       two markers), so the page and the checker can never disagree. A line that fails is not drawn: the town shows
+       "1 line refused" in the freshness strip and the library card says which line and which rule (never the text).
+   ===================================================================================================== */
+/* LEDGER-RULES-START */
+var WORKS_RULES = (function () {
+  var KINDS = ['hire', 'start', 'end', 'step', 'fix', 'test', 'commit', 'deploy', 'download', 'order', 'result', 'win', 'fail', 'heartbeat'];
+  var TRUST = ['measured', 'reported', 'typed', 'sample'];
+  var STATUS = ['pass', 'rerun', 'flaky', 'fail', 'error', 'skipped'];
+  var PLACES = ['hut', 'library', 'yard', 'post', 'shop', 'lost', 'bridge', 'harry'];
+  var FIELDS = ['t', 'who', 'where', 'what', 'kind', 'trust', 'ref', 'branch', 'suite', 'status', 'n', 'order', 'job', 'id', 'src', 't_rec', 'v'];
+  var PRIVACY = [
+    ['an email address', /[\w.+-]+@[\w-]+\.[\w.-]+/],
+    ['a phone number', /(?:\+\d{1,3}[\s.-]?|\b0)\(?\d{2,5}\)?(?:[\s.-]?\d){6,}/],
+    ['a street address', /\b[A-Z][a-z]+\s+(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Close|Drive|Crescent|Terrace|Grove|Gardens|Mews|Place|Court|Square|Way)\b(?![-\w])/],
+    ['a postcode', /\b[A-Z]{1,2}\d[A-Z\d]?\s+\d[A-Z]{2}\b/],
+    ['a secret token', /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9-]{20,}|AKIA[A-Z0-9]{16})\b/],
+    ['a home or street word', /\b(?:my|our|his|her)\s+(?:house|flat|street|address|school|bedroom|postcode)\b/i]
+  ];
+  var IPAD = /\b(?:ipad|field report)/i;
+  var CLOCK = /\b(?:[01]?\d|2[0-3])[:.][0-5]\d\b/;
+  function checkLine(o) {
+    var bad = [];
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return ['not a JSON object'];
+    if (typeof o.t !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?Z$/.test(o.t) || isNaN(Date.parse(o.t))) bad.push('t must be a UTC time like 2026-11-17T14:30:00Z');
+    if (typeof o.who !== 'string' || !/^(foreman|town|harry|builder:[a-z0-9][a-z0-9-]{0,30})$/.test(o.who)) bad.push('who must be foreman, town, harry or builder:<name>');
+    if (typeof o.where !== 'string' || !(PLACES.indexOf(o.where) >= 0 || /^workshop:[\w./-]{1,80}$/.test(o.where))) bad.push('where must be a known place or workshop:<branch>');
+    if (typeof o.what !== 'string' || !o.what.trim()) bad.push('what is missing');
+    else if (o.what.length > 300) bad.push('what is longer than 300 characters');
+    if (KINDS.indexOf(o.kind) < 0) bad.push('kind must be one of ' + KINDS.join(', '));
+    if (TRUST.indexOf(o.trust) < 0) bad.push('trust must be measured, reported, typed or sample');
+    if (o.kind === 'test') {
+      if (typeof o.suite !== 'string' || !o.suite) bad.push('a test needs a suite');
+      if (STATUS.indexOf(o.status) < 0) bad.push('a test needs a status: ' + STATUS.join(', '));
+    }
+    if (o.kind === 'order' && !o.ref) bad.push('an order needs a ref (the order name)');
+    for (var k in o) if (FIELDS.indexOf(k) < 0) bad.push('unknown field ' + k);
+    var text = '';
+    for (var f in o) if (typeof o[f] === 'string' && f !== 't') text += ' ' + o[f];
+    for (var i = 0; i < PRIVACY.length; i++) if (PRIVACY[i][1].test(text)) bad.push('privacy: looks like ' + PRIVACY[i][0]);
+    if (IPAD.test(text) && CLOCK.test(o.what || '')) bad.push('privacy: an exact clock time on an iPad line');
+    return bad;
+  }
+  function checkText(txt) {
+    var ok = [], refused = [], lines = String(txt).split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var s = lines[i].trim(); if (!s) continue;
+      var o; try { o = JSON.parse(s); } catch (e) { refused.push({ line: i + 1, why: ['not valid JSON'] }); continue; }
+      var why = checkLine(o);
+      if (why.length) refused.push({ line: i + 1, why: why }); else ok.push(o);
+    }
+    return { ok: ok, refused: refused };
+  }
+  return { checkLine: checkLine, checkText: checkText, KINDS: KINDS, TRUST: TRUST };
+})();
+/* LEDGER-RULES-END */
 
 /* =====================================================================================================
    2. Harry's town: the town's own wall. SAMPLE values "as of 16:35, from the town's wall" (16 Nov).
@@ -274,7 +374,7 @@ function saveCache() {
     try { for (const k in cache.u) if (k.includes('/commits')) delete cache.u[k]; localStorage.setItem(CK, JSON.stringify(cache)); } catch (e2) { /* give up quietly */ }
   }
 }
-const net = { calls: 0, ok: 0, notModified: 0, limited: false, errors: 0, lastOk: 0, ledgerFrom: '', mode: 'start' };
+const net = { calls: 0, ok: 0, notModified: 0, limited: false, errors: 0, lastOk: 0, ledgerFrom: '', ledgerAt: 0, refused: [], asksFrom: '', asksAt: 0, mode: 'start' };
 function slim(path, d) {
   if (!Array.isArray(d) && !(d && d.workflow_runs)) return d;
   if (path.startsWith('/events')) return d.filter((e) => e.type === 'PushEvent' || (e.type === 'CreateEvent' && e.payload && e.payload.ref_type === 'branch'))
@@ -308,9 +408,9 @@ async function gh(path, maxAge) {
   } catch (e) { net.errors++; return c ? c.d : null; }
 }
 function parseLedger(txt) {
-  const out = [];
-  for (const line of String(txt).split('\n')) { const s = line.trim(); if (!s) continue; try { const o = JSON.parse(s); if (o && o.t && o.what) out.push(o); } catch (e) { /* skip a bad line */ } }
-  return out;
+  /* every line goes through the checker; lines that fail are refused (counted, never drawn) */
+  const r = WORKS_RULES.checkText(txt);
+  return { rows: r.ok, refused: r.refused };
 }
 async function loadLedger() {
   const urls = OFFLINE ? ['ledger.jsonl'] : [CFG.raw + '/' + CFG.repo + '/' + CFG.ledgerBranch + '/' + CFG.ledgerPath, 'ledger.jsonl'];
@@ -318,16 +418,30 @@ async function loadLedger() {
     try {
       const r = await fetch(u, { cache: 'no-cache' });
       if (!r.ok) continue;
-      const txt = await r.text(), rows = parseLedger(txt);
-      if (!rows.length) continue;
-      net.ledgerFrom = u.startsWith('http') ? 'github' : 'bundled';
+      const txt = await r.text(), p = parseLedger(txt);
+      if (!p.rows.length) continue;
+      net.ledgerFrom = u.startsWith('http') ? 'github' : 'bundled'; net.ledgerAt = Date.now(); net.refused = p.refused;
       try { localStorage.setItem('works.ledger.v1', JSON.stringify({ at: Date.now(), txt })); } catch (e) { /* ok */ }
-      return rows;
+      return p.rows;
     } catch (e) { /* try the next */ }
   }
-  try { const c = JSON.parse(localStorage.getItem('works.ledger.v1')); if (c && c.txt) { net.ledgerFrom = 'cache'; return parseLedger(c.txt); } } catch (e) { /* none */ }
+  try { const c = JSON.parse(localStorage.getItem('works.ledger.v1')); if (c && c.txt) { const p = parseLedger(c.txt); net.ledgerFrom = 'cache'; net.ledgerAt = c.at || 0; net.refused = p.refused; return p.rows; } } catch (e) { /* none */ }
   net.ledgerFrom = 'none';
   return [];
+}
+/* Harry's question board: asks.json (made from DECISIONS.md), from GitHub first, then the copy next to the page */
+let ASKS = { asks: [], more: null };
+async function loadAsks() {
+  const urls = OFFLINE ? ['asks.json'] : [CFG.raw + '/' + CFG.repo + '/' + CFG.ledgerBranch + '/' + CFG.asksPath, 'asks.json'];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { cache: 'no-cache' }); if (!r.ok) continue;
+      const d = await r.json(); if (!d || !Array.isArray(d.asks)) continue;
+      ASKS = { asks: d.asks.filter((a) => a && a.id && a.q), more: d.more || null };
+      net.asksFrom = u.startsWith('http') ? 'github' : 'bundled'; net.asksAt = Date.now(); return;
+    } catch (e) { /* try the next */ }
+  }
+  net.asksFrom = net.asksFrom || 'none';
 }
 
 let LEDGER = [], GH = { events: [], runs: [], deps: [], branches: [], commits: {} }, EV = [], WORKSHOPS = [];
@@ -417,7 +531,9 @@ const B = {
   shop:    { x: 0.6,  z: -5.0, w: 3.2, d: 1.6, h: 1.5, roof: 0xc77a2a, wall: 0xf0e2c8, name: 'Shop window', eye: "What's live on GitHub Pages" },
   lost:    { x: 3.6,  z: -8.2, w: 1.6, d: 1.3, h: 1.0, roof: 0x6a5a6a, wall: 0xcfc6c0, name: 'Lost property', eye: 'Work that started and stopped without an end' },
   bridge:  { x: 0,    z: -12.4, w: 1.4, d: 6.4, h: 0.1, name: 'Bridge', eye: 'Orders on their way to Harry\'s machines', flat: true },
-  harry:   { x: HOME.x, z: HOME.z, w: 6, d: 6, h: 0.1, name: "Harry's town", eye: "Harry's machines at home: Mini, Radeon, Dell, Mill", flat: true }
+  harry:   { x: HOME.x, z: HOME.z, w: 6, d: 6, h: 0.1, name: "Harry's town", eye: "Harry's machines at home: Mini, Radeon, Dell, Mill", flat: true },
+  /* no building yet (v1.1 adds no art): the question board opens from the "Questions" button and looks at the hut */
+  hall:    { x: 0,    z: 0,    w: 0, d: 0, h: 0, name: 'Questions for Harry', eye: 'The town hall board: open decisions from DECISIONS.md', flat: true, nolabel: true }
 };
 const pickables = [];
 const winMats = [];
@@ -439,9 +555,12 @@ function house(b, key) {
 }
 house(B.hut, 'hut'); house(B.library, 'library'); house(B.post, 'post'); house(B.shop, 'shop'); house(B.lost, 'lost');
 /* lost property: abandoned carts out front and an alarm lamp on the roof */
-const alarmM = glowMat(0xff4a5a, 0); alarmM.color.set(0x220a0c);
-const alarm = mesh(G.sph, alarmM, 0.16, 0.16, 0.16, B.lost.x, B.lost.h * 2.25, B.lost.z); alarm.castShadow = false; alarm.userData.key = 'lost'; S.add(alarm);
-const alarmLight = new THREE.PointLight(0xff4a5a, 0, 5, 2); alarmLight.position.set(B.lost.x, B.lost.h * 2.4, B.lost.z + 0.4); S.add(alarmLight);
+/* the alarm beacon is a cross (shape, not only colour): vermilion when lost, orange when late; it settles once, then stays steady */
+const alarmM = glowMat(0xD55E00, 0); alarmM.color.set(0x220a0c);
+const alarm = new THREE.Group(); alarm.position.set(B.lost.x, B.lost.h * 2.25, B.lost.z);
+for (const r of [Math.PI / 4, -Math.PI / 4]) { const bar = mesh(G.box, alarmM, 0.09, 0.42, 0.09, 0, 0, 0); bar.rotation.z = r; bar.castShadow = false; bar.userData.key = 'lost'; alarm.add(bar); }
+S.add(alarm);
+const alarmLight = new THREE.PointLight(0xD55E00, 0, 5, 2); alarmLight.position.set(B.lost.x, B.lost.h * 2.4, B.lost.z + 0.4); S.add(alarmLight);
 const carts = [];
 for (let i = 0; i < 4; i++) {
   const g = new THREE.Group(); g.position.set(B.lost.x - 0.9 + i * 0.6, 0, B.lost.z + 1.25); g.rotation.y = 0.3 - i * 0.25;
@@ -474,11 +593,15 @@ const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), glowMat(0xffd
 const lamps = [];
 for (let i = 0; i < 18; i++) {
   const x = B.yard.x - 1.35 + (i % 6) * 0.54, z = B.yard.z - 0.8 + Math.floor(i / 6) * 0.8;
-  const m = glowMat(0x7fd18b, 1.4); const bulb = mesh(G.sph, m, 0.13, 0.13, 0.13, x, 0.42, z); bulb.castShadow = false;
+  const m = glowMat(0x009E73, 1.4); const bulb = mesh(G.sph, m, 0.13, 0.13, 0.13, x, 0.42, z); bulb.castShadow = false;
   const pole = mesh(G.cyl, mat(0x333a4a), 0.025, 0.3, 0.025, x, 0.15, z);
-  bulb.visible = pole.visible = false; bulb.userData.key = pole.userData.key = 'yard'; S.add(bulb); S.add(pole); lamps.push({ bulb, pole, m, st: '' });
+  /* a failed lamp goes dark and a small vermilion cross flag stands over it */
+  const cross = new THREE.Group(); cross.position.set(x, 0.72, z);
+  for (const r of [Math.PI / 4, -Math.PI / 4]) { const bar = mesh(G.box, glowMat(0xD55E00, 0.7), 0.06, 0.3, 0.06, 0, 0, 0); bar.rotation.z = r; bar.castShadow = false; cross.add(bar); }
+  cross.visible = false;
+  bulb.visible = pole.visible = false; bulb.userData.key = pole.userData.key = 'yard'; S.add(bulb); S.add(pole); S.add(cross); lamps.push({ bulb, pole, cross, m, st: '' });
 }
-const yardLight = new THREE.PointLight(0x7fd18b, 0, 7, 2); yardLight.position.set(B.yard.x, 1.6, B.yard.z); S.add(yardLight);
+const yardLight = new THREE.PointLight(0x7fe0bf, 0, 7, 2); yardLight.position.set(B.yard.x, 1.6, B.yard.z); S.add(yardLight);
 
 /* paths and the bridge */
 const pathMat = mat(0x8a7a5e);
@@ -540,7 +663,6 @@ const rainbow = new THREE.Group(); rainbow.position.set(-2, 0, -12); rainbow.rot
   const arc = new THREE.Mesh(new THREE.TorusGeometry(11 - i * 0.32, 0.16, 6, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.55, fog: false, depthWrite: false })); rainbow.add(arc);
 });
 rainbow.visible = false; S.add(rainbow);
-let flash = 0;
 
 /* Harry's town: four machines, the pond with the fox, the residents on the green */
 const HM = [['Mini', -2.4, 0.2, 1.0, 0x6aa6e8], ['Radeon', -0.4, -1.8, 1.5, 0x4f86c6], ['Dell', 2.4, 0.4, 1.3, 0x6fbf8f], ['Mill', 0.2, 2.4, 1.4, 0xe0a15a]];
@@ -595,9 +717,13 @@ function wagon() {
   g.add(mesh(G.box, mat(0xa8763e), 0.5, 0.28, 0.7, 0, 0.28, 0));
   const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.7, 12, 1, false, 0, Math.PI), mat(0xf0e6d0)); cover.rotation.x = Math.PI / 2; cover.rotation.z = Math.PI / 2; cover.position.y = 0.42; g.add(cover);
   for (const [x, z] of [[-0.27, 0.22], [0.27, 0.22], [-0.27, -0.22], [0.27, -0.22]]) { const w = mesh(G.cyl, mat(0x3a2a1a), 0.11, 0.05, 0.11, x, 0.11, z); w.rotation.z = Math.PI / 2; g.add(w); }
-  g.visible = false; g.traverse((o) => { o.userData.key = 'bridge'; }); S.add(g); return { g, roll: false, t: 0 };
+  /* a pennant on a pole: its colour and the label say the wagon's state (out, late, overdue, back) */
+  g.add(mesh(G.cyl, mat(0x3a2a1a), 0.015, 0.5, 0.015, 0.2, 0.75, -0.25));
+  const flagM = new THREE.MeshStandardMaterial({ color: 0xE69F00, emissive: 0xE69F00, emissiveIntensity: 0.4 });
+  g.add(mesh(G.box, flagM, 0.02, 0.16, 0.24, 0.2, 0.92, -0.13));
+  g.visible = false; g.traverse((o) => { o.userData.key = 'bridge'; }); S.add(g); return { g, flagM, t: 0 };
 }
-const wagons = Array.from({ length: 6 }, wagon);
+const wagons = Array.from({ length: 8 }, wagon);
 
 /* workshops: one per active branch, built from data */
 const SLOTS = [[6, 120], [6, 160], [6, 200], [6.4, 240], [10, 135], [10, 170], [10, 205], [10, 100]];
@@ -610,7 +736,7 @@ function buildWorkshops() {
   while (wsGroup.children.length) wsGroup.remove(wsGroup.children[0]);
   WORKSHOPS.forEach((br, i) => {
     const [r, deg] = SLOTS[i % SLOTS.length], a = deg * Math.PI / 180, key = 'workshop:' + br;
-    const b = { x: Math.cos(a) * r, z: Math.sin(a) * r, w: 2.2, d: 1.7, h: 1.2, roof: WS_ROOFS[hash(br) % WS_ROOFS.length], wall: 0xd7c7a7, name: 'Workshop · ' + br.split('/').pop(), eye: 'Branch ' + br, branch: br };
+    const b = { x: Math.cos(a) * r, z: Math.sin(a) * r, w: 2.2, d: 1.7, h: 1.2, roof: WS_ROOFS[hash(br) % WS_ROOFS.length], wall: 0xd7c7a7, name: plainBranch(br) + ' workshop', eye: 'Branch ' + br, branch: br };
     B[key] = b; const g = house(b, key); S.remove(g); wsGroup.add(g); g.lookAt(0, 0, 0);
     /* face the hut: rotate so the door (+z) points to the town centre */
     path(0, 0, b.x, b.z, 0.5, wsGroup);
@@ -651,11 +777,13 @@ function addLabel(pos, key, cls) {
   if (key) { d.tabIndex = 0; d.setAttribute('role', 'button'); d.onclick = () => openCard(key); d.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(key); } }; d.dataset.key = key; }
   labEl.appendChild(d); const l = { d, obj: pos, key, html: '' }; labs.push(l); return l;
 }
-function setLab(l, html, cls) { if (l.html !== html) { l.d.innerHTML = html; l.html = html; } if (cls !== undefined && l.cls !== cls) { l.d.className = 'lab ' + cls; l.cls = cls; } }
+function setLab(l, html, cls) { if (l.html !== html) { l.d.innerHTML = html; l.html = html; l.dirty = true; } if (cls !== undefined && l.cls !== cls) { l.d.className = 'lab ' + cls; l.cls = cls; l.dirty = true; } }
 let chipLabs = [];
 function rebuildLabels() {
   for (const l of labs) l.d.remove(); labs = []; chipLabs = [];
-  for (const k in B) { const b = B[k]; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 4.4 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
+  for (const k in B) { const b = B[k]; if (b.nolabel) continue; addLabel(new THREE.Vector3(b.x, b.flat ? (k === 'harry' ? 4.4 : 1.1) : b.h * 2.05 + 0.35, b.z), k); }
+  /* wagon labels: shown when you look at the bridge (order name and age) */
+  wagons.forEach((v) => { v.lab = addLabel(v.g.position, 'bridge', 'tiny'); v.lab.zoomOnly = 'bridge'; v.lab.wagon = v; v.lab.prio = 10; });
   WALL.chips.forEach((c, i) => { const l = addLabel(new THREE.Vector3(HOME.x - 3.6 + (i % 2) * 7.2, 5.2 + Math.floor(i / 2) * 1.1, HOME.z - 2), null, 'chip ' + (c.s || '')); l.zoomOnly = 'harry'; chipLabs.push(l); });
   for (const n in homeB) { homeB[n].lab = addLabel(new THREE.Vector3(homeB[n].x, homeB[n].h * 2.05 + 0.25, homeB[n].z), 'harry', 'tiny'); homeB[n].lab.zoomOnly = 'harry'; }
   labs.foxLab = addLabel(new THREE.Vector3(fox.position.x, 0.9, fox.position.z), 'harry', 'tiny'); labs.foxLab.zoomOnly = 'harry';
@@ -670,10 +798,10 @@ const view = { day: dayKey(NOW()), T: NOW(), live: true, playing: false, card: n
 let ST = {};
 const VERIFIED = (e) => (e.kind === 'test' && e.status === 'pass') || e.kind === 'deploy' || e.kind === 'win' || e.kind === 'result';
 const evClass = (e) => e.kind === 'win' ? 'w' : VERIFIED(e) ? 'v' : (e.kind === 'fail' || (e.kind === 'test' && e.status === 'fail')) ? 'f' : (e.who === 'harry' ? 'h' : 'q');
-function whereName(w) { if (!w) return ''; if (w.startsWith('workshop:')) return 'Workshop · ' + w.slice(9).split('/').pop(); return (B[w] && B[w].name) || w; }
+function whereName(w) { if (!w) return ''; if (w.startsWith('workshop:')) return plainBranch(w.slice(9)) + ' workshop'; return (B[w] && B[w].name) || w; }
 function routeFor(e) {
   const w = e.where || '';
-  if (e.kind === 'test' || e.kind === 'order' || e.kind === 'download' || e.where === 'harry') return null;
+  if (e.kind === 'test' || e.kind === 'order' || e.kind === 'download' || e.kind === 'heartbeat' || e.where === 'harry') return null;
   if (e.kind === 'end') return B[w] && w !== 'hut' ? [w, 'hut'] : null;
   if (e.kind === 'hire' || e.kind === 'start') return ['hut', B[w] && w !== 'hut' ? w : (e.ref && B['workshop:' + e.ref] ? 'workshop:' + e.ref : 'library')];
   if (e.kind === 'deploy' || e.kind === 'win') return ['post', 'shop'];
@@ -683,30 +811,57 @@ function routeFor(e) {
   if (w === 'hut') return ['hut', 'library'];
   return null;
 }
-const su0 = (s) => Object.values(s.suites);
-/* lost property: a "start" with no "end" and no sign of life (a commit, step or fix from the same builder or branch):
-   amber after 45 minutes, red (lost) after 2 hours */
+const su0 = (s) => Object.values(s.suites).filter((e) => !e.old);
+/* stall alarm (lost property): a "start" with no "end" and no sign of life from the same builder or branch.
+   Any line counts as life (a commit, step, test, fix, or a "heartbeat"). Until a job writes heartbeats: late after
+   45 min, lost after 2 h. Once heartbeats exist for that job (one about every 10 min): late after 20 min, lost after 60. */
+const STALL = { late: 45 * MIN, lost: 2 * HOUR, beatLate: 20 * MIN, beatLost: 60 * MIN };
 function lostProperty(T) {
   const open = [];
   for (const e of EV) {
     if (e.t > T) break;
-    if (e.kind === 'start') { open.push({ s: e, life: e.t }); continue; }
+    if (e.kind === 'start') { open.push({ s: e, life: e.t, beats: 0 }); continue; }
     if (e.kind === 'end') {
       const m = open.find((o) => o.s.ref && o.s.ref === e.ref && o.s.who === e.who) || open.find((o) => o.s.ref && o.s.ref === e.ref) || open.find((o) => !e.ref && o.s.who === e.who);
       if (m) open.splice(open.indexOf(m), 1); continue;
     }
-    for (const o of open) if (e.who === o.s.who || (o.s.ref && (e.branch === o.s.ref || e.ref === o.s.ref)) || ((o.s.where || '').startsWith('workshop:') && e.where === o.s.where)) o.life = e.t;
+    for (const o of open) if (e.who === o.s.who || (o.s.ref && (e.branch === o.s.ref || e.ref === o.s.ref || e.job === o.s.ref)) || ((o.s.where || '').startsWith('workshop:') && e.where === o.s.where)) {
+      o.life = e.t; if (e.kind === 'heartbeat') o.beats++;
+    }
   }
-  /* worked out from the page's own clock: amber after 45 min of silence on an open job, red after 2 hours */
-  return open.filter((o) => T - o.life > 45 * MIN).map((o) => Object.assign({}, o.s, { life: o.life, level: T - o.life > 2 * HOUR ? 'red' : 'amber' }));
+  /* worked out from the page's own clock, so it fires even if every writer has stopped */
+  return open.map((o) => {
+    const late = o.beats ? STALL.beatLate : STALL.late, lost = o.beats ? STALL.beatLost : STALL.lost, q = T - o.life;
+    return q > late ? Object.assign({}, o.s, { life: o.life, beats: o.beats, lateAfter: late, lostAfter: lost, level: q > lost ? 'red' : 'amber' }) : null;
+  }).filter(Boolean);
 }
-function computeState(T) {
-  const d0 = dayStart(view.day), d1 = d0 + DAY;
-  const s = { T, day: [], busy: {}, suites: {}, live: [], wins: 0, parcels: [], orders: [], walkers: [], counts: {}, fails: {} };
-  const orderDone = new Set();
+/* orders: each wagon from its "order" line to the first "result" that names it (same ref, an "order" field, or the
+   order name as a word in the result's sentence: today's result lines point at a results file, not the order) */
+const ORDER_LATE = 12 * HOUR, ORDER_OVERDUE = 24 * HOUR;
+const namesOrder = (r, id) => r.ref === id || r.order === id || new RegExp('(^|[^\\w-])' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w-])').test(r.what || '');
+function trackOrders(T) {
+  const orders = [];
   for (const e of EV) {
     if (e.t > T) break;
-    if (e.t >= d0 && e.t < d1) {
+    if (e.kind === 'order' && e.ref) orders.push({ id: e.ref, e, sent: e.t, back: null, result: null });
+    if (e.kind === 'result') for (const o of orders) if (!o.back && namesOrder(e, o.id)) { o.back = e.t; o.result = e; }
+  }
+  for (const o of orders) {
+    if (o.back) { o.state = 'back'; o.took = o.back - o.sent; }
+    else { o.age = T - o.sent; o.state = o.age > ORDER_OVERDUE ? 'overdue' : o.age > ORDER_LATE ? 'late' : 'out'; }
+  }
+  return orders;
+}
+const NOTE_KINDS = new Set(['fail', 'deploy', 'win', 'result', 'order', 'start', 'hire', 'end', 'test']);
+const isProblem = (e) => e.kind === 'fail' || (e.kind === 'test' && (e.status === 'fail' || e.status === 'error'));
+const isDone = (e) => e.kind === 'deploy' || e.kind === 'win' || e.kind === 'result' || (e.kind === 'test' && e.status === 'pass');
+function computeState(T) {
+  const d0 = dayStart(view.day), d1 = d0 + DAY;
+  const s = { T, day: [], busy: {}, suites: {}, live: [], wins: 0, parcels: [], walkers: [], counts: {}, fails: {}, heads: {} };
+  for (const e of EV) {
+    if (e.t > T) break;
+    const beat = e.kind === 'heartbeat';
+    if (e.t >= d0 && e.t < d1 && !beat) {
       s.day.push(e);
       if (e.kind === 'commit' || e.kind === 'deploy') s.parcels.push(e);
       if (e.kind === 'deploy' || e.kind === 'win') {
@@ -717,44 +872,108 @@ function computeState(T) {
       }
       if (e.where) s.counts[e.where] = (s.counts[e.where] || 0) + 1;
     }
-    if (e.kind === 'test' && e.suite && e.t > T - 2 * DAY) s.suites[e.suite + '@' + (e.branch || '')] = e;
+    if (e.kind === 'commit' && e.branch) s.heads[e.branch] = e;
+    /* test lamps keyed by suite + branch (+ the commit when the line names one); never dropped, grey after 2 days */
+    if (e.kind === 'test' && e.suite) s.suites[e.suite + '@' + (e.branch || '')] = e;
     if (e.kind === 'fail' && e.t > T - 6 * HOUR) s.fails[e.where] = e;
-    if (e.kind === 'result' && e.ref) orderDone.add(e.ref);
-    if (e.kind === 'order') s.orders.push(e);
     if (e.t > T - 45 * MIN && e.where) s.busy[e.where] = (s.busy[e.where] || 0) + 1;
-    if (e.t > T - CFG.walkMin * MIN && routeFor(e)) s.walkers.push(e);
+    if (!beat && e.t > T - CFG.walkMin * MIN && routeFor(e)) s.walkers.push(e);
   }
-  s.orders = s.orders.filter((o) => !orderDone.has(o.ref));
+  for (const k in s.suites) {
+    const e = s.suites[k], head = s.heads[e.branch];
+    const old = T - e.t > 2 * DAY;
+    const sha = e.ref && /^[0-9a-f]{7,40}$/.test(e.ref) ? e.ref.slice(0, 7) : '';
+    const newer = head && head.t > e.t && (!sha || head.ref !== sha) ? head.ref : '';
+    s.suites[k] = Object.assign({}, e, { old, sha, newer });
+  }
+  s.orderList = trackOrders(T);
+  s.orders = s.orderList.filter((o) => o.state !== 'back').map((o) => o.e);
+  s.overdue = s.orderList.filter((o) => o.state === 'overdue');
+  s.back = s.orderList.filter((o) => o.state === 'back' && T - o.back < DAY);
   const stalls = lostProperty(T);
   s.lost = stalls.filter((o) => o.level === 'red'); s.quiet = stalls.filter((o) => o.level === 'amber');
-  s.flaky = su0(s).some((e) => e.status === 'flaky' || e.status === 'rerun');
-  s.failN = su0(s).filter((e) => e.status === 'fail').length + Object.keys(s.fails).length;
+  const su = su0(s);
+  s.failing = su.filter((e) => e.status === 'fail' || e.status === 'error');
+  s.flaky = su.some((e) => e.status === 'flaky' || e.status === 'rerun');
+  s.failN = s.failing.length + Object.keys(s.fails).length;
   const lastWin = s.day.filter((e) => e.kind === 'win').pop();
-  s.rainbow = !!(lastWin && T - lastWin.t < 2 * HOUR);
   s.weather = s.failN ? 'storm' : s.flaky ? 'clouds' : 'sunshine';
+  /* one weather at a time: no rainbow during a storm */
+  s.rainbow = !!(lastWin && T - lastWin.t < 2 * HOUR) && s.weather !== 'storm';
   s.walkers = s.walkers.slice(-walkers.length);
-  const su = Object.values(s.suites); s.pass = su.filter((e) => e.status === 'pass').length; s.reruns = su.filter((e) => e.status === 'rerun').length; s.nSuites = su.length;
-  s.anyFail = su.some((e) => e.status === 'fail');
+  s.pass = su.filter((e) => e.status === 'pass').length; s.reruns = su.filter((e) => e.status === 'rerun').length; s.nSuites = su.length;
+  s.anyFail = s.failing.length > 0;
   s.lastEv = s.day.length ? s.day[s.day.length - 1] : null;
+  /* open questions that had been asked by time T (replay shows the board as it was) */
+  s.asks = ASKS.asks.filter((a) => (a.status || 'open') === 'open' && !(Date.parse(a.asked || '') > T));
+  s.mood = moodLine(s);
+  s.since = sinceLines(s);
   return s;
+}
+/* ---- the mood line: one sentence, written by rules, leading with what failed or needs Harry ---- */
+function moodLine(s) {
+  const bad = [], whoName = (o) => o.who && o.who.startsWith('builder:') ? plainBranch(o.who.slice(8)) + ' builder' : 'A builder';
+  const when = (t) => hhmm(t) + (dayKey(t) === dayKey(s.T) ? '' : dayKey(t) === dayKey(s.T - DAY) ? ' yesterday' : ' on ' + dayName(dayKey(t)));
+  if (s.failing.length) { const e = s.failing[0]; bad.push(s.failing.length === 1 ? e.suite.charAt(0).toUpperCase() + e.suite.slice(1) + ' fails on ' + plainBranch(e.branch) : s.failing.length + ' tests fail'); }
+  const fl = Object.values(s.fails); if (fl.length) bad.push(plural(fl.length, 'job', 'jobs') + ' failed today');
+  if (s.lost.length) bad.push(s.lost.length === 1 ? whoName(s.lost[0]) + ' lost since ' + when(s.lost[0].life) : s.lost.length + ' builders lost');
+  if (s.overdue.length) bad.push(plural(s.overdue.length, 'order', 'orders') + ' overdue');
+  if (s.quiet.length) bad.push(s.quiet.length === 1 ? whoName(s.quiet[0]) + ' quiet since ' + when(s.quiet[0].life) : s.quiet.length + ' builders quiet');
+  const rf = (net.refused || []).length; if (rf) bad.push(plural(rf, 'ledger line', 'ledger lines') + ' refused');
+  const n = s.asks.length, need = n ? plural(n, 'thing needs', 'things need') + ' you.' : 'Nothing needs you.';
+  const parts = [];
+  if (!bad.length) parts.push({ c: 'm-ok', t: 'All good.' });
+  else {
+    parts.push({ c: 'm-bad', t: bad[0] + '.' });
+    if (bad.length > 1) parts.push({ c: 'm-bad', t: plural(bad.length - 1, 'more problem.', 'more problems.') });
+  }
+  parts.push({ c: n ? 'm-need' : '', t: need });
+  const stale = staleness();
+  if (stale) parts.unshift({ c: 'm-old', t: 'Old data (' + stale + ').' });
+  return { parts, text: parts.map((p) => p.t).join(' '), bad: bad.length, problems: bad, need: n };
+}
+/* ---- since you looked: up to 3 lines, newest problem first, then newest finished work, then anything else ---- */
+let SEEN = 0;
+try { SEEN = +localStorage.getItem('works.seen.v1') || 0; } catch (e) { /* per-viewer convenience only */ }
+function sinceLines(s) {
+  const from = view.live && SEEN && SEEN > dayStart(view.day) ? SEEN : dayStart(view.day);
+  const pool = s.day.filter((e) => e.t >= from && NOTE_KINDS.has(e.kind) && !(e.kind === 'test' && !isProblem(e) && e.status !== 'pass'));
+  const pick = [], take = (f) => { const e = pool.filter((x) => f(x) && !pick.includes(x)).pop(); if (e) pick.push(e); };
+  take(isProblem); take(isDone); take(isProblem); take(isDone); take(() => true); take(() => true);
+  return { from, items: pick.slice(0, 3).sort((a, b) => b.t - a.t) };
+}
+function staleness() {
+  if (OFFLINE) return '';
+  const now = Date.now(), ages = [];
+  if (net.ledgerAt) ages.push(now - net.ledgerAt);
+  if (net.lastOk) ages.push(now - net.lastOk);
+  if (!ages.length) return '';
+  const a = Math.min(...ages);
+  return a > 15 * MIN ? ago(a) : '';
 }
 function applyTime(T) {
   view.T = T; ST = computeState(T);
-  /* walkers */
+  /* walkers: one trip per event, then they stand at the destination (motion means something really happened) */
   walkers.forEach((w, i) => {
     const e = ST.walkers[i];
     if (!e) { w.g.visible = false; w.ev = null; return; }
-    if (w.ev !== e) { w.ev = e; w.route = routeFor(e); const h = hash(e.who + e.t); w.phase = (h % 1000) / 1000; w.speed = 0.07 + (h % 7) / 200; w.cm.color.setHSL(((hash(e.who) % 360) / 360), 0.42, 0.42); }
+    if (w.ev !== e) { w.ev = e; w.route = routeFor(e); w.born = performance.now(); w.liveFresh = undefined; w.cm.color.setHSL(((hash(e.who) % 360) / 360), 0.42, 0.42); }
     w.g.visible = true;
   });
-  /* yard lamps */
+  /* yard lamps: pass = bright bluish green; rerun/flaky = yellow, half height; fail = dark lamp with a vermilion cross;
+     a lamp not run for 2 days goes grey ("not run lately") and never vanishes */
   const su = Object.keys(ST.suites).sort().map((k) => ST.suites[k]);
   lamps.forEach((l, i) => {
-    const e = su[i]; l.bulb.visible = l.pole.visible = !!e; if (!e) return; l.st = e.status;
-    const c = e.status === 'pass' ? 0x3fd15b : e.status === 'fail' ? 0xff3a4a : e.status === 'rerun' ? 0xb8d83a : 0xffa62a; l.m.color.set(0x111111); l.m.emissive.set(c);
-    l.m.emissiveIntensity = e.status === 'pass' ? 0.9 : 0.7; l.bulb.scale.setScalar(e.status === 'pass' ? 0.15 : 0.12);
+    const e = su[i]; l.bulb.visible = l.pole.visible = !!e; l.cross.visible = false; if (!e) return;
+    const st = e.old ? 'old' : e.status; l.st = st;
+    const fail = st === 'fail' || st === 'error';
+    const c = st === 'pass' ? 0x00b383 : fail ? 0x3a1400 : st === 'old' || st === 'skipped' ? 0x5a5e6e : 0xF0E442;
+    l.m.color.set(0x111111); l.m.emissive.set(c);
+    l.target = st === 'pass' ? 1.6 : fail ? 0.5 : st === 'old' ? 0.25 : 0.9;
+    l.bulb.scale.set(st === 'pass' ? 0.16 : 0.12, st === 'rerun' || st === 'flaky' ? 0.07 : st === 'pass' ? 0.16 : 0.12, st === 'pass' ? 0.16 : 0.12);
+    l.cross.visible = fail;
   });
-  yardLight.color.set(ST.anyFail ? 0xff6a75 : 0x7fd18b); yardLight.userData.on = ST.nSuites > 0;
+  yardLight.color.set(ST.anyFail ? 0xD55E00 : 0x7fe0bf); yardLight.userData.on = ST.nSuites > 0;
   /* shop: brightest when something went live that day */
   goods.forEach((o, i) => { const e = ST.live[ST.live.length - 1 - i]; o.visible = !!e; if (e) { const c = e.kind === 'win' ? 0xffd76a : 0xfff1c8; o.material.color.set(c); o.material.emissive.set(c); } });
   const lastWin = ST.live.filter((e) => e.kind === 'win').pop();
@@ -762,13 +981,23 @@ function applyTime(T) {
   shopGlass.userData.target = ST.live.length ? 2.4 : 0.35;
   /* parcels */
   parcels.forEach((o, i) => { o.visible = i < ST.parcels.length; });
-  /* wagons: open orders wait at the bridge; one ordered in the last 40 min rolls over to Harry's town */
-  wagons.forEach((v, i) => { const o = ST.orders[i]; v.g.visible = !!o; v.roll = !!(o && T - o.t < CFG.walkMin * MIN); v.slot = i; });
+  /* wagons: out (orange), late 12 h+ (orange, says late), overdue 24 h+ (vermilion), back in the last day (bluish green) */
+  const wl = ST.orderList.filter((o) => o.state !== 'back').concat(ST.back).slice(-wagons.length);
+  let nOut = 0, nBack = 0;
+  wagons.forEach((v) => {
+    const o = wl.shift(); v.o = o || null; v.g.visible = !!o; if (!o) return;
+    const back = o.state === 'back', slot = back ? nBack++ : nOut++;
+    /* out: queued on the bridge deck, facing Harry's town; back: parked at the bridge head on the near bank */
+    if (back) v.g.position.set(-1.6 + (slot % 3) * 0.75, 0, -8.0 + Math.floor(slot / 3) * 0.9); else v.g.position.set(0, 0.17, -10.0 - slot * 0.95);
+    const c = back ? 0x009E73 : o.state === 'overdue' ? 0xD55E00 : 0xE69F00; v.flagM.color.set(c); v.flagM.emissive.set(c);
+    if (v.lab) setLab(v.lab, '<span class="sym ' + (back ? 's-done' : o.state === 'overdue' ? 's-fail' : o.state === 'late' ? 's-late' : 's-busy') + '"></span>' + esc(o.id) + ' · ' + (back ? 'back after ' + ago(o.took) : (o.state === 'out' ? 'out ' : o.state + ', out ') + ago(o.age)), 'tiny');
+  });
+  for (const v of wagons) if (v.lab) v.lab.hide = !v.g.visible;
   /* lost property */
   carts.forEach((c, i) => { c.visible = i < ST.lost.length; });
   alarmM.userData.on = ST.lost.length > 0; alarmM.userData.amber = !ST.lost.length && ST.quiet.length > 0;
-  alarmM.emissive.set(ST.lost.length ? 0xff4a5a : 0xffb44a); alarmLight.color.set(ST.lost.length ? 0xff4a5a : 0xffb44a);
-  /* weather */
+  alarmM.emissive.set(ST.lost.length ? 0xD55E00 : 0xE69F00); alarmLight.color.set(ST.lost.length ? 0xD55E00 : 0xE69F00);
+  /* weather (one at a time: storm, then clouds, then sunshine) */
   clouds.visible = ST.weather !== 'sunshine'; rain.visible = ST.weather === 'storm'; rainbow.visible = ST.rainbow;
   cloudM.color.set(ST.weather === 'storm' ? 0x6a7184 : 0xdfe4ee);
   for (const f of HOOKS.state) { try { f(ST, EV); } catch (e) { /* a v2 hook must never stop the town */ } }
@@ -776,29 +1005,54 @@ function applyTime(T) {
   for (const k in B) if (B[k].win) B[k].win.userData.target = (ST.busy[k] ? 0.75 : 0.32);
   paintLabels(); renderPanels();
 }
+/* the state of one place, in the shared vocabulary: { st, word, prio }. st is one of done, busy, fail, need, idle,
+   half, late, old; prio decides which label wins when two would overlap (alarm first, quiet places last) */
+const SYM = { done: 's-done', busy: 's-busy', fail: 's-fail', need: 's-need', idle: 's-idle', half: 's-half', late: 's-late', old: 's-old' };
+const symHtml = (st) => '<span class="sym ' + SYM[st] + '" aria-hidden="true"></span>';
+function placeState(k) {
+  const s = ST;
+  if (k === 'yard') {
+    if (!s.nSuites) return { st: 'idle', word: 'no tests lately', prio: 2 };
+    if (s.anyFail) return { st: 'fail', word: s.failing.length + ' fail' + (s.failing.length === 1 ? 's' : '') + ', ' + s.pass + ' pass', prio: 9 };
+    if (s.reruns || s.flaky) return { st: 'half', word: s.pass + ' of ' + s.nSuites + ' pass, ' + (s.nSuites - s.pass) + ' shaky', prio: 6 };
+    return { st: 'done', word: 'all ' + s.nSuites + ' pass', prio: 7 };
+  }
+  if (k === 'shop') return s.live.length ? { st: 'done', word: s.live.length + ' went live', prio: 7 } : { st: 'idle', word: '', prio: 3 };
+  if (k === 'lost') return s.lost.length ? { st: 'fail', word: s.lost.length + ' lost', prio: 9 } : s.quiet.length ? { st: 'late', word: s.quiet.length + ' quiet', prio: 8 } : { st: 'idle', word: '', prio: 1 };
+  if (k === 'bridge') {
+    const out = s.orderList.filter((o) => o.state !== 'back').length;
+    if (s.overdue.length) return { st: 'fail', word: s.overdue.length + ' overdue' + (out > s.overdue.length ? ', ' + (out - s.overdue.length) + ' out' : ''), prio: 8 };
+    if (out) return { st: 'busy', word: out + ' out', prio: 5 };
+    if (s.back.length) return { st: 'done', word: s.back.length + ' back', prio: 5 };
+    return { st: 'idle', word: '', prio: 2 };
+  }
+  if (k === 'harry') return { st: 'old', word: WALL.sample ? 'sample, ' + (String(WALL.asOf).split(',')[1] || String(WALL.asOf)).trim() : 'as of ' + WALL.asOf, prio: 4 };
+  if (s.fails[k]) return { st: 'fail', word: 'failed', prio: 9 };
+  if (k.startsWith('workshop:')) {
+    const br = k.slice(9), f = s.failing.find((e) => e.branch === br);
+    if (f) return { st: 'fail', word: f.suite + ' fails', prio: 9 };
+    if (s.busy[k]) return { st: 'busy', word: 'working', prio: 4 };
+    return { st: 'idle', word: '', prio: 0, glanceHide: true };
+  }
+  if (s.busy[k]) return { st: 'busy', word: 'working', prio: 4 };
+  return { st: 'idle', word: '', prio: 1 };
+}
 function paintLabels() {
   if (!ST.day) return;
   for (const l of labs) {
-    const k = l.key; if (!k || !B[k] || l === labs.foxLab || l === labs.smokeLab || l.d.classList.contains('tiny')) continue;
-    const b = B[k], n = ST.counts[k] || 0;
-    let dot = ST.busy[k] ? 'on' : '', sub = '', cls = '';
-    if (k === 'yard') { sub = ST.nSuites ? ST.pass + ' of ' + ST.nSuites + ' pass' + (ST.reruns ? ', ' + ST.reruns + ' on rerun' : '') : 'no tests yet'; dot = ST.anyFail ? 'bad' : ST.nSuites ? 'ok' : ''; if (ST.nSuites && !ST.anyFail) cls = 'win'; }
-    else if (k === 'shop') { sub = ST.live.length ? ST.live.length + ' went live' : 'nothing new live'; if (ST.live.length) { dot = 'ok'; cls = 'win'; } }
-    else if (k === 'post') sub = ST.parcels.length + ' parcels';
-    else if (k === 'lost') { sub = ST.lost.length ? ST.lost.length + ' stopped, never picked up' : ST.quiet.length ? ST.quiet.length + ' quiet for 45 min+' : 'nothing lost'; if (ST.lost.length) dot = 'bad'; else if (ST.quiet.length) dot = 'on'; }
-    else if (k === 'bridge') sub = ST.orders.length ? ST.orders.length + ' wagons waiting' : 'no wagons waiting';
-    else if (k === 'harry') sub = 'Mini · Radeon · Dell · Mill';
-    else sub = n ? n + (n === 1 ? ' thing' : ' things') + ' today' : 'quiet today';
-    if (ST.fails[k]) dot = 'bad';
-    setLab(l, '<span class="dot ' + dot + '"></span>' + esc(b.name) + '<small>' + esc(sub) + '</small>', cls);
+    const k = l.key; if (!k || !B[k] || l === labs.foxLab || l === labs.smokeLab || l.wagon || l.d.classList.contains('tiny')) continue;
+    const b = B[k], p = placeState(k);
+    l.prio = p.prio; l.glanceHide = !!p.glanceHide;
+    setLab(l, symHtml(p.st) + esc(b.name) + (p.word ? '<small>' + esc(p.word) + '</small>' : ''), 'st-' + p.st);
+    l.d.setAttribute('aria-label', b.name + (p.word ? ': ' + p.word : ''));
   }
   const smp = WALL.sample ? ' sample' : '';
-  WALL.chips.forEach((c, i) => { if (chipLabs[i]) setLab(chipLabs[i], '<b>' + esc(c.v) + '</b>' + esc(c.t) + age(), 'chip ' + (c.s || '') + smp); });
-  for (const n in homeB) { const m = WALL.machines[n] || {}; if (homeB[n].lab) setLab(homeB[n].lab, '<span class="dot ' + (m.state === 'busy' ? 'on' : '') + '"></span>' + esc(n) + ' · ' + esc(m.doing || '') + age(), 'tiny' + smp); }
+  WALL.chips.forEach((c, i) => { if (chipLabs[i]) setLab(chipLabs[i], '<b>' + esc(c.v) + '</b>' + esc(c.t) + age(), 'chip ' + smp); });
+  for (const n in homeB) { const m = WALL.machines[n] || {}; if (homeB[n].lab) setLab(homeB[n].lab, symHtml(WALL.sample ? 'old' : m.state === 'busy' ? 'busy' : 'idle') + esc(n) + ' · ' + esc(m.doing || '') + age(), 'tiny' + smp); }
   const foxOn = Object.values(WALL.machines).some((m) => m.state === 'idle' && m.waiting > 0);
-  fox.visible = foxOn; if (labs.foxLab) { setLab(labs.foxLab, 'Fox in the pond: a machine idle while work waits' + age(), 'tiny' + smp); labs.foxLab.d.style.visibility = foxOn ? '' : 'hidden'; }
-  if (labs.smokeLab) { setLab(labs.smokeLab, 'White smoke: ' + WALL.rebuilt + ' rebuilt that already existed' + age(), 'tiny' + smp); labs.smokeLab.d.style.visibility = WALL.rebuilt ? '' : 'hidden'; }
-  for (const n in homeB) homeB[n].lamp.visible = (WALL.machines[n] || {}).state === 'busy';
+  fox.visible = foxOn; if (labs.foxLab) { setLab(labs.foxLab, 'Fox in the pond: a machine idle while work waits' + age(), 'tiny' + smp); labs.foxLab.hide = !foxOn; }
+  if (labs.smokeLab) { setLab(labs.smokeLab, 'White smoke: ' + WALL.rebuilt + ' rebuilt that already existed' + age(), 'tiny' + smp); labs.smokeLab.hide = !WALL.rebuilt; }
+  for (const n in homeB) homeB[n].lamp.visible = !WALL.sample && (WALL.machines[n] || {}).state === 'busy';
 }
 
 /* =====================================================================================================
@@ -807,46 +1061,67 @@ function paintLabels() {
 const $ = (id) => document.getElementById(id);
 function renderPanels() {
   const s = ST, today = view.day === dayKey(NOW());
-  const busyWs = WORKSHOPS.filter((b) => s.counts['workshop:' + b]).length;
-  $('stats').innerHTML =
-    '<div class="stat v"><b>' + s.live.length + '</b><span>went live</span></div>' +
-    '<div class="stat v"><b>' + (s.nSuites ? s.pass + '/' + s.nSuites : '–') + '</b><span>tests pass' + (s.reruns ? ' (+' + s.reruns + ' on rerun)' : '') + '</span></div>' +
-    '<div class="stat q"><b>' + busyWs + '</b><span>workshops busy</span></div>' +
-    '<div class="stat q"><b>' + s.parcels.length + '</b><span>parcels posted</span></div>' +
-    '<div class="stat q"><b>' + s.orders.length + '</b><span>orders waiting</span></div>' +
-    '<div class="stat ' + (s.weather === 'sunshine' ? 'v' : 'q') + '"><b>' + ({ sunshine: '☀', clouds: '☁', storm: '⛈' }[s.weather]) + '' + '</b><span>' + ({ sunshine: 'all tests green', clouds: 'flaky tests', storm: 'failures' }[s.weather]) + (s.rainbow ? ', a win' : '') + '</span></div>' +
-    (s.lost.length ? '<div class="stat"><b style="color:var(--rose)">' + s.lost.length + '</b><span>lost property</span></div>' : '');
-  $('eyebrow').textContent = 'PatchTown Works · ' + (view.live ? 'live' : view.playing ? 'replaying ' + (today ? 'today' : dayName(view.day)) : 'looking back: ' + (today ? 'today' : dayName(view.day)) + ' ' + hhmm(view.T));
-  $('dEye').textContent = (today ? 'Today' : dayName(view.day)) + (view.live ? ' · live' : ' · at ' + hhmm(view.T));
-  const evs = s.day.slice(-80).reverse();
-  $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><p>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) +
-    '<br><span class="who">' + esc(whereName(e.where)) + (e.src === 'github' ? ' · GitHub' : '') + '</span>' + (e.trust && e.trust !== 'measured' ? '<span class="trust">' + esc(e.trust) + '</span>' : '') + '</p></div>').join('') : '<p class="sub">Nothing yet on this day.</p>';
+  /* the mood line and since you looked */
+  $('mood').innerHTML = s.mood.parts.map((p) => '<span class="' + p.c + '">' + esc(p.t) + '</span>').join(' ');
+  const sl = s.since, head = view.live ? (sl.from > dayStart(view.day) ? 'Since you looked (' + ago(NOW() - sl.from) + ' ago)' : 'Today so far') : 'Before ' + hhmm(view.T) + ', ' + (today ? 'today' : dayName(view.day));
+  $('since').innerHTML = '<h2>' + esc(head) + '</h2>' + (sl.items.length ? '<ol>' + sl.items.map((e) => '<li class="' + (e.trust === 'typed' || e.trust === 'sample' ? 't' : '') + '">' + symHtml(isProblem(e) ? 'fail' : isDone(e) ? 'done' : 'busy') + '<span class="w">' + esc(shortWhat(e)) + '</span><time>' + hhmm(e.t) + '</time></li>').join('') + '</ol>' : '<ol><li>' + symHtml('idle') + '<span class="w">Nothing new.</span></li></ol>');
+  const n = s.asks.length; $('bAsk').textContent = n ? plural(n, 'question', 'questions') + ' for you' : 'No questions'; $('bAsk').classList.toggle('none', !n);
+  $('eyebrow').innerHTML = '<b>PatchTown Works</b> · ' + esc(view.live ? 'live, ' + hhmm(NOW()) : view.playing ? 'replaying ' + (today ? 'today' : dayName(view.day)) : 'looking back: ' + (today ? 'today' : dayName(view.day)) + ' ' + hhmm(view.T));
+  $('dEye').textContent = (today ? 'Today' : dayName(view.day)) + (view.live ? ', live' : ', at ' + hhmm(view.T));
+  if (!$('diary').hidden) renderDiary();
   $('clock').textContent = hhmm(view.T);
-  const le = s.lastEv; $('cap').textContent = le ? (hhmm(le.t) + ' · ' + le.what) : 'Quiet so far.';
+  const le = s.lastEv; $('cap').textContent = le ? (hhmm(le.t) + ' · ' + shortWhat(le)) : 'Quiet so far.';
   $('dayName').textContent = today ? 'Today' : dayName(view.day);
   const d0 = dayStart(view.day), mins = Math.round((view.T - d0) / MIN); if (!view.dragging) $('scrub').value = Math.max(0, Math.min(1440, mins));
   $('bLive').setAttribute('aria-pressed', String(view.live));
   if (view.card) fillCard(view.card);
-  renderSource();
+  renderFresh();
+  measurePanels();
 }
-function renderSource() {
-  const ago = net.lastOk ? Math.round((Date.now() - net.lastOk) / MIN) : -1;
-  let dot = 'off', txt;
-  if (OFFLINE) txt = 'Offline mode: bundled ledger only';
-  else if (net.lastOk && !net.limited) { dot = 'live'; txt = 'Live from GitHub · checked ' + (ago < 1 ? 'just now' : ago + ' min ago'); }
-  else if (net.limited) { dot = 'cache'; txt = 'GitHub says wait (rate limit): showing the last copy'; }
-  else if (Object.keys(cache.u).length) { dot = 'cache'; txt = 'Offline: showing the last copy from GitHub'; }
-  else txt = 'Offline: showing the ledger only';
-  txt += ' · ledger: ' + ({ github: 'GitHub', bundled: 'bundled copy', cache: 'last copy', none: 'none' }[net.ledgerFrom] || '…');
-  $('src').innerHTML = '<i class="' + dot + '"></i>' + esc(txt);
+/* glance text: 7 words at most, the first clause only, no brackets */
+function shortWhat(e) {
+  let t = String(e.what || '').replace(/\s*\([^)]*\)/g, '').split(/;\s/)[0].replace(/\s+/g, ' ').trim();
+  const w = t.split(' '); if (w.length > 7) t = w.slice(0, 7).join(' ').replace(/[,:;.]$/, '') + '…';
+  return t;
 }
+function renderDiary() {
+  const evs = ST.day.slice(-80).reverse();
+  $('events').innerHTML = evs.length ? evs.map((e) => '<div class="ev ' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><p>' + symHtml(isProblem(e) ? 'fail' : isDone(e) ? 'done' : 'busy') + esc(e.what) +
+    '<br><span class="who">' + esc(whereName(e.where)) + (e.src === 'github' ? ' · GitHub' : '') + '</span>' + (e.trust && e.trust !== 'measured' ? '<span class="trust">' + esc(e.trust) + '</span>' : '') + '</p></div>').join('') : '<p class="sub">Nothing yet on this day.</p>';
+}
+/* the freshness strip: one entry per source, with its age; anything older than 15 minutes is grey and says "old" */
+const FRESH_OLD = 15 * MIN;
+function freshList() {
+  const now = Date.now(), out = [];
+  const add = (name, at, how, oldAt) => { const a = at ? now - at : -1; out.push({ name, age: a, old: a < 0 || a > (oldAt || FRESH_OLD), txt: a < 0 ? how : ago(a) + (a >= MIN ? ' old' : '') + (how ? ', ' + how : '') }); };
+  if (OFFLINE) add('Ledger', 0, 'offline copy');
+  else add('Ledger', net.ledgerAt, { github: '', bundled: 'bundled copy', cache: 'last copy', none: 'none' }[net.ledgerFrom] || '');
+  const newest = EV.filter((e) => e.src === 'ledger' && e.t <= NOW()).pop();
+  if (newest) out.push({ name: 'Newest line', age: NOW() - newest.t, old: false, txt: ago(NOW() - newest.t) + ' ago' });
+  if (OFFLINE) add('GitHub', 0, 'offline');
+  else add('GitHub', net.lastOk, net.limited ? 'rate limit, last copy' : net.lastOk ? '' : 'not reached');
+  add('Questions', net.asksAt, net.asksFrom === 'bundled' ? 'bundled copy' : net.asksFrom === 'none' ? 'none' : '');
+  out.push({ name: "Harry's town", age: -1, old: true, txt: WALL.sample ? 'sample, as of ' + WALL.asOf : 'report, as of ' + WALL.asOf });
+  return out;
+}
+function renderFresh() {
+  const f = freshList(), r = net.refused || [];
+  $('fresh').innerHTML = '<span class="lbl">Data:</span>' + f.map((x) => '<span class="fr' + (x.old ? ' old' : '') + '"><b>' + esc(x.name) + '</b> ' + esc(x.txt) + '</span>').join('') +
+    (r.length ? '<span class="fr bad">' + symHtml('fail') + '<b>' + esc(plural(r.length, 'line', 'lines') + ' refused') + '</b> by the checker</span>' : '');
+  /* panels above the strip sit on its real height (it wraps to 2 or 3 rows on a phone) */
+  const fh = $('fresh').offsetHeight; if (fh && fh !== renderFresh.h) { renderFresh.h = fh; document.documentElement.style.setProperty('--fr-h', fh + 'px'); fitCard(); }
+}
+let panelRects = [];
+function measurePanels() { panelRects = ['.glance', '#since', '#diary', '#card', '#fresh', '.timeline'].map((q) => document.querySelector(q)).filter((el) => el && !el.hidden).map((el) => el.getBoundingClientRect()); }
+addEventListener('resize', () => { measurePanels(); });
 function renderTicks() {
   const d0 = dayStart(view.day), d1 = d0 + DAY, html = [];
-  for (const e of EV) { if (e.t < d0 || e.t >= d1) continue; const c = evClass(e), k = c === 'q' ? (e.kind === 'order' ? 'o' : 'c') : c; html.push('<span class="tk ' + k + '" style="left:' + ((e.t - d0) / DAY * 100).toFixed(2) + '%"></span>'); }
+  for (const e of EV) { if (e.t < d0 || e.t >= d1 || e.kind === 'heartbeat') continue; const c = evClass(e), k = c === 'q' ? (e.kind === 'order' ? 'o' : 'c') : c; html.push('<span class="tk ' + k + '" style="left:' + ((e.t - d0) / DAY * 100).toFixed(2) + '%"></span>'); }
   $('ticks').innerHTML = html.join('');
 }
-const li = (e) => '<li class="' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><span>' + (e.kind === 'win' ? '★ ' : '') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + '</span></li>';
+const li = (e) => '<li class="' + evClass(e) + (e.trust === 'typed' || e.trust === 'sample' ? ' t' : '') + '"><time>' + hhmm(e.t) + '</time><span>' + symHtml(isProblem(e) ? 'fail' : isDone(e) ? 'done' : 'busy') + esc(e.what) + (e.ref && /^[0-9a-f]{7}$/.test(e.ref) ? ' <a href="https://github.com/' + CFG.repo + '/commit/' + esc(e.ref) + '" target="_blank" rel="noopener">' + esc(e.ref) + '</a>' : '') + (e.trust && e.trust !== 'measured' ? '<span class="trust">' + esc(e.trust) + '</span>' : '') + '</span></li>';
 const list = (arr, empty) => arr.length ? '<ul>' + arr.map(li).join('') + '</ul>' : '<p class="sub">' + esc(empty) + '</p>';
+const askAge = (a) => { const t = Date.parse(a.asked || ''); return t ? Math.max(0, view.T - t) : 0; };
 function fillCard(k) {
   const b = B[k]; if (!b) return;
   const s = ST, at = view.live ? 'now' : 'at ' + hhmm(view.T), dayEv = s.day.filter((e) => e.where === k).slice().reverse();
@@ -854,48 +1129,75 @@ function fillCard(k) {
   let h = '';
   if (k.startsWith('workshop:')) {
     const br = b.branch, commits = dayEv.filter((e) => e.kind === 'commit'), other = dayEv.filter((e) => e.kind !== 'commit');
-    const older = EV.filter((e) => e.where === k && e.t <= view.T && e.t < dayStart(view.day)).slice(-5).reverse();
+    const older = EV.filter((e) => e.where === k && e.kind !== 'heartbeat' && e.t <= view.T && e.t < dayStart(view.day)).slice(-5).reverse();
+    const p = placeState(k); h += '<p class="sub">' + symHtml(p.st) + esc(p.word || 'quiet') + '</p>';
     h += '<h3>Saved changes (commits) this day</h3>' + list(commits, 'No commits on this day.');
     if (other.length) h += '<h3>From the ledger</h3>' + list(other, '');
     if (!commits.length && older.length) h += '<h3>Earlier this week</h3>' + list(older, '');
     h += '<p class="note"><a href="https://github.com/' + CFG.repo + '/commits/' + encodeURIComponent(br) + '" target="_blank" rel="noopener">All commits on ' + esc(br) + '</a></p>';
   } else if (k === 'yard') {
-    const su = Object.values(s.suites), names = [...new Set(su.map((e) => e.suite))].sort(), brs = [...new Set(su.map((e) => e.branch || ''))].sort();
-    h += '<h3>Test suites by branch ' + esc(at) + '</h3>' + (su.length ? '<div class="mx"><table><tr><th>Suite</th>' + brs.map((b) => '<th>' + esc(b ? b.split('/').pop() : 'branch?') + '</th>').join('') + '</tr>' +
-      names.map((n) => '<tr><td>' + esc(n) + '</td>' + brs.map((b) => { const e = s.suites[n + '@' + b]; return e ? '<td title="' + esc(e.what) + '"><i class="' + esc(e.status) + '"></i>' + esc(e.n || e.status) + '</td>' : '<td class="nr"><i></i>not run</td>'; }).join('') + '</tr>').join('') + '</table></div>' : '<p class="sub">No test results yet.</p>');
-    h += '<p class="note">Green passed · yellow-green passed on rerun · amber flaky (fails the same on the old build too) · red failed · grey not run on that branch</p>';
+    /* one row per lamp (suite on a branch), worst first: a list reads better than a wide table on a projector or a phone */
+    const lampSt = (e) => e.old ? 'old' : e.status === 'pass' ? 'done' : e.status === 'fail' || e.status === 'error' ? 'fail' : e.status === 'skipped' ? 'idle' : 'half';
+    const ORDER = { fail: 0, half: 1, done: 2, idle: 3, old: 4 };
+    const su = Object.values(s.suites).sort((a, b) => ORDER[lampSt(a)] - ORDER[lampSt(b)] || a.suite.localeCompare(b.suite));
+    const row = (e) => { const st = lampSt(e), word = e.old ? 'not run lately' : ({ pass: 'passes', fail: 'fails', error: 'error', rerun: 'passes on rerun', flaky: 'flaky', skipped: 'skipped' }[e.status] || e.status);
+      return '<div class="ord" title="' + esc(e.what) + '">' + symHtml(st) + '<div><b>' + esc(e.suite) + '</b> on ' + esc(e.branch ? plainBranch(e.branch) : 'an unknown branch') + ': ' + esc(word) + (e.n ? ' ' + esc(String(e.n).replace('/', ' of ')) : '') +
+        '<small>' + esc(hhmm(e.t) + (dayKey(e.t) !== view.day ? ', ' + dayName(dayKey(e.t)) : '')) + (e.trust !== 'measured' ? ' (' + esc(e.trust) + ')' : '') + (e.sha ? ' · tested commit ' + esc(e.sha) : '') + (e.newer ? ' · not run on the newer commit ' + esc(e.newer) : '') + '</small></div></div>'; };
+    h += '<h3>Test lamps, one per suite and branch, ' + esc(at) + '</h3>' + (su.length ? su.map(row).join('') : '<p class="sub">No test results yet.</p>');
+    h += '<p class="note">' + symHtml('done') + 'passes · ' + symHtml('half') + 'passes on rerun, or flaky · ' + symHtml('fail') + 'fails · ' + symHtml('old') + 'not run lately (2 days) · a suite with no lamp for a branch was not run on that branch. A pass on one branch never hides a fail on another.</p>';
     h += '<h3>Yard log</h3>' + list(s.day.filter((e) => e.kind === 'test').slice().reverse(), 'No tests on this day.');
   } else if (k === 'post') {
-    h += '<h3>Last parcels (commits)</h3>' + list(s.parcels.slice(-14).reverse().map((e) => Object.assign({}, e, { what: (e.branch ? e.branch.split('/').pop() + ': ' : '') + e.what })), 'No parcels on this day.');
+    h += '<h3>Last parcels (commits)</h3>' + list(s.parcels.slice(-14).reverse().map((e) => Object.assign({}, e, { what: (e.branch ? plainBranch(e.branch) + ': ' : '') + e.what })), 'No parcels on this day.');
   } else if (k === 'shop') {
     h += '<h3>Went live this day</h3>' + list(s.live.slice().reverse(), 'Nothing new went live on this day.');
     const runs = (GH.runs || []).filter((r) => Date.parse(r.t) <= view.T).slice(0, 4);
-    if (runs.length) h += '<h3>GitHub Pages builds</h3><ul>' + runs.map((r) => '<li class="' + (r.conclusion === 'success' ? 'v' : r.conclusion === 'failure' ? 'f' : 'q') + '"><time>' + hhmm(Date.parse(r.t)) + '</time><span>' + esc(r.name) + ' #' + esc(r.n) + ': ' + esc(r.conclusion || r.status) + '</span></li>').join('') + '</ul>';
+    if (runs.length) h += '<h3>GitHub Pages builds</h3><ul>' + runs.map((r) => '<li class="' + (r.conclusion === 'success' ? 'v' : r.conclusion === 'failure' ? 'f' : 'q') + '"><time>' + hhmm(Date.parse(r.t)) + '</time><span>' + symHtml(r.conclusion === 'success' ? 'done' : r.conclusion === 'failure' ? 'fail' : 'busy') + esc(r.name) + ' #' + esc(r.n) + ': ' + esc(r.conclusion || r.status) + '</span></li>').join('') + '</ul>';
     h += '<p class="note"><a href="' + CFG.pages + '" target="_blank" rel="noopener">Open the shop window (GitHub Pages)</a></p>';
   } else if (k === 'lost') {
-    if (s.quiet.length) h += '<h3>Quiet for 45 minutes or more</h3><ul>' + s.quiet.map((e) => '<li class="q"><time>' + hhmm(e.t) + '</time><span>' + esc(e.what) + ' · quiet since ' + hhmm(e.life) + '</span></li>').join('') + '</ul>';
-    h += '<h3>Stopped and never picked up ' + esc(at) + '</h3>' + (s.lost.length ? '<ul>' + s.lost.map((e) => '<li class="f"><time>' + hhmm(e.t) + '</time><span>' + esc(e.what) + ' · no sign of life since ' + hhmm(e.life) + (dayKey(e.life) !== view.day ? ' (' + esc(dayName(dayKey(e.life))) + ')' : '') + '</span></li>').join('') + '</ul>' : '<p class="sub">Nothing lost: every builder that started is finished or still working.</p>');
-    h += '<p class="note">Worked out by this page from its own clock, so it fires even if every writer has stopped: a ledger "start" with no "end" and no commit or step from that builder or branch turns amber after 45 minutes and lands here, red, after 2 hours. It would have caught the build 29 builder that stopped at 16:27 on 15 Nov.</p>';
+    const why = (e) => (e.beats ? 'writes heartbeats: late after 20 min, lost after 60' : 'no heartbeats: late after 45 min, lost after 2 h');
+    if (s.quiet.length) h += '<h3>Quiet (late)</h3><ul>' + s.quiet.map((e) => '<li class="q"><time>' + hhmm(e.t) + '</time><span>' + symHtml('late') + esc(e.what) + ' · quiet since ' + hhmm(e.life) + ' · ' + esc(why(e)) + '</span></li>').join('') + '</ul>';
+    h += '<h3>Stopped and never picked up ' + esc(at) + '</h3>' + (s.lost.length ? '<ul>' + s.lost.map((e) => '<li class="f"><time>' + hhmm(e.t) + '</time><span>' + symHtml('fail') + esc(e.what) + ' · no sign of life since ' + hhmm(e.life) + (dayKey(e.life) !== view.day ? ' (' + esc(dayName(dayKey(e.life))) + ')' : '') + ' · ' + esc(why(e)) + '</span></li>').join('') + '</ul>' : '<p class="sub">Nothing lost: every builder that started is finished or still working.</p>');
+    h += '<p class="note">Worked out by this page from its own clock, so it fires even if every writer has stopped. A ledger "start" with no "end" and no sign of life (a commit, step, test or heartbeat) from that builder or branch is late after 45 minutes and lost after 2 hours. A job that writes "heartbeat" lines (about one every 10 minutes) is held to tighter times: late after 20 minutes, lost after 60. It would have caught the build 29 builder that stopped at 16:27 on 15 Nov.</p>';
     h += '<h3>Picked up this day</h3>' + list(s.day.filter((e) => e.kind === 'end').reverse(), 'Nothing ended on this day.');
   } else if (k === 'bridge') {
-    const ageOf = (t) => { const m = Math.round((view.T - t) / MIN); return m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : Math.floor(m / 1440) + ' d ' + Math.floor((m % 1440) / 60) + ' h'; };
-    h += '<h3>Wagons waiting (until a result comes back)</h3>' + list(s.orders.slice().reverse().map((e) => Object.assign({}, e, { what: e.what + ' · waiting ' + ageOf(e.t) })), 'No orders waiting.');
-    h += '<h3>On the bridge this day</h3>' + list(dayEv, 'Nothing on this day.');
+    const out = s.orderList.filter((o) => o.state !== 'back').reverse(), back = s.orderList.filter((o) => o.state === 'back').reverse();
+    const ow = (o) => '<div class="ord">' + symHtml(o.state === 'back' ? 'done' : o.state === 'overdue' ? 'fail' : o.state === 'late' ? 'late' : 'busy') + '<div><b>' + esc(o.id) + '</b> · ' +
+      (o.state === 'back' ? 'back after ' + esc(ago(o.took)) : esc({ out: 'out', late: 'late (no answer after 12 h)', overdue: 'overdue (no answer after 24 h)' }[o.state]) + ', out ' + esc(ago(o.age))) +
+      '<small>Sent ' + hhmm(o.sent) + ', ' + esc(dayName(dayKey(o.sent))) + (o.e.trust !== 'measured' ? ' (' + esc(o.e.trust) + ')' : '') + ': ' + esc(o.e.what) + '</small>' +
+      (o.result ? '<small>Back ' + hhmm(o.back) + ', ' + esc(dayName(dayKey(o.back))) + ' (' + esc(o.result.trust) + '): ' + esc(o.result.what) + '</small>' : '') + '</div></div>';
+    h += '<h3>Wagons out ' + esc(at) + ' (until a result names the order)</h3>' + (out.length ? out.map(ow).join('') : '<p class="sub">No orders out.</p>');
+    h += '<h3>Back</h3>' + (back.length ? back.map(ow).join('') : '<p class="sub">No results yet.</p>');
+    h += '<p class="note">An order is out from its "order" line until a "result" line names it (same ref, an "order" field, or the order name in its sentence). Late after 12 hours with no answer, overdue after 24.</p>';
+  } else if (k === 'hall') {
+    const open = s.asks.slice().sort((a, b) => askAge(b) - askAge(a)), shut = ASKS.asks.filter((a) => (a.status || 'open') !== 'open');
+    const ac = (a) => { const d = askAge(a) / DAY; return d >= 7 ? 'a7' : d >= 3 ? 'a3' : d >= 1 ? 'a1' : ''; };
+    h += '<p class="sub">' + (open.length ? esc(plural(open.length, 'decision waits', 'decisions wait')) + ' on Harry. Say yes or no in the town chat.' : 'Nothing waits on Harry.') + '</p>';
+    h += open.map((a) => '<div class="ask ' + ac(a) + '"><div class="q">' + symHtml('need') + '<span class="id">' + esc(a.id) + '</span> ' + esc(a.q) + '</div><div class="d">Recommended: <b>' + esc(a.default) + '</b>' +
+      (a.if_silent ? ' · If you say nothing: <b>' + esc(a.if_silent) + '</b>' : '') + ' · ' + esc(a.type || '') + (askAge(a) ? ' · asked ' + esc(ago(askAge(a))) + ' ago' : '') + (a.blocks ? ' · holds up: ' + esc(a.blocks) : '') + '</div></div>').join('');
+    if (shut.length) h += '<h3>Answered</h3>' + shut.map((a) => '<div class="ask"><div class="d">' + symHtml('done') + esc(a.id) + ' ' + esc(a.q) + ': <b>' + esc(a.status) + '</b></div></div>').join('');
+    if (ASKS.more) h += '<p class="note">' + esc(ASKS.more.text || '') + '</p>';
+    h += '<p class="note">From asks.json, made from DECISIONS.md. Money, security, deleting and downloads never take a default: silence means no. Older questions turn cream (1 day), yellow (3 days) and brown (a week).</p>';
+  } else if (k === 'library') {
+    h += list(dayEv, 'Nothing on this day.');
+    const r = net.refused || [];
+    h += '<h3>Ledger checker</h3>' + (r.length ? '<ul>' + r.map((x) => '<li class="f"><time>line ' + x.line + '</time><span>' + symHtml('fail') + 'Refused, not drawn: ' + esc(x.why.join('; ')) + '</span></li>').join('') + '</ul>' : '<p class="sub">' + symHtml('done') + 'Every ledger line passed the checker.</p>');
+    h += '<p class="note">The same rules run in tools/ledger-check.mjs: valid JSON, the needed fields, known kinds and trust, and no personal data (emails, phone numbers, addresses, exact times on iPad lines).</p>';
   } else if (k === 'harry') {
     const sm = WALL.sample ? ' sample' : '';
-    h += '<h3>Vital numbers' + age() + '</h3><div class="chips' + sm + '">' + WALL.chips.map((c) => '<span class="' + esc(c.s) + '"><b>' + esc(c.v) + '</b>' + esc(c.t) + '</span>').join('') + '</div>';
+    h += '<h3>Vital numbers' + age() + '</h3><div class="chips' + sm + '">' + WALL.chips.map((c) => '<span><b>' + esc(c.v) + '</b>' + esc(c.t) + '</span>').join('') + '</div>';
     h += '<h3>The machines' + age() + '</h3><div class="' + (sm ? 'sample-block' : '') + '">' + HM.map(([n, , , , roof]) => { const m = WALL.machines[n] || {}; return '<div class="mach"><i style="background:#' + roof.toString(16).padStart(6, '0') + '"></i><div><b>' + esc(n) + '</b> <small>' + esc(m.sub) + '</small>' + esc(m.doing) + (m.note ? '<small>' + esc(m.note) + '</small>' : '') + (m.state === 'idle' && m.waiting ? '<div class="fox">Fox in the pond: idle with work waiting</div>' : '') + '</div></div>'; }).join('') + '</div>';
-    h += '<h3>Who is speaking' + age() + '</h3><div class="heads' + (sm ? ' sample-block' : '') + '">' + WALL.speakers.map(([n, st, note]) => '<div><i class="' + ({ ok: 'pass', empty: 'empty', silent: 'silent', unproven: 'flaky' }[st] || '') + '"></i><span>' + esc(n) + (note ? ' <small>' + esc(note) + '</small>' : '') + '</span></div>').join('') + '</div>';
-    h += '<p class="note">Green answering · red answers with nothing in it · grey silent · amber not proven yet</p>';
-    h += '<h3>Parcels delivered (town)' + age() + '</h3><div class="' + (sm ? 'sample-block' : '') + '">' + WALL.parcels.map(([lbl, sq, tell]) => '<div class="sqrow"><div class="lbl">' + esc(lbl) + '</div><div class="sqs">' + sq.split('').map((c) => '<span class="sq ' + ({ p: 'pass', f: 'fail', b: 'border', n: 'never' }[c] || '') + '"></span>').join('') + '</div>' + (tell ? '<div class="tell">' + esc(tell) + '</div>' : '') + '</div>').join('') + '</div>';
-    h += '<p class="note">Green passed its test · red failed · amber borderline · grey never arrived</p>';
+    const SPK = { ok: ['done', 'answering'], empty: ['fail', 'empty answers'], silent: ['idle', 'silent'], unproven: ['half', 'not proven'] };
+    h += '<h3>Who is speaking' + age() + '</h3><div class="heads' + (sm ? ' sample-block' : '') + '">' + WALL.speakers.map(([n, st, note]) => '<div>' + symHtml((SPK[st] || ['idle'])[0]) + '<span>' + esc(n) + ' <small>' + esc((SPK[st] || ['', st])[1]) + (note ? ', ' + esc(note) : '') + '</small></span></div>').join('') + '</div>';
+    h += '<h3>Parcels delivered (town)' + age() + '</h3><div class="' + (sm ? 'sample-block' : '') + '">' + WALL.parcels.map(([lbl, sq, tell]) => '<div class="sqrow"><div class="lbl">' + esc(lbl) + '</div><div class="sqs">' + sq.split('').map((c) => symHtml({ p: 'done', f: 'fail', b: 'half', n: 'idle' }[c] || 'idle')).join('') + '</div>' + (tell ? '<div class="tell">' + esc(tell) + '</div>' : '') + '</div>').join('') + '</div>';
+    h += '<p class="note">' + symHtml('done') + 'passed · ' + symHtml('fail') + 'failed · ' + symHtml('half') + 'borderline · ' + symHtml('idle') + 'never arrived</p>';
     const harryEv = s.day.filter((e) => e.who === 'harry' || e.where === 'harry').reverse();
     if (harryEv.length) h += '<h3>Harry this day</h3>' + list(harryEv, '');
     h += '<p class="note">' + (WALL.sample ? 'Sample values: as of ' + esc(WALL.asOf) + ', from ' + esc(WALL.from) + '. The town\'s run reports will fill this in later (town-report.json).' : 'From the town\'s run report, ' + esc(WALL.asOf) + '.') + ' ' + esc(WALL.credits) + '</p>';
   } else if (k === 'hut') {
     h += '<h3>The foreman ' + esc(at) + '</h3>' + list(s.day.filter((e) => e.who === 'foreman' && (e.where === 'hut' || e.kind === 'hire' || e.kind === 'step')).reverse(), 'Nothing on this day.');
-    h += '<h3>Workshops this week</h3><ul>' + WORKSHOPS.map((br) => '<li class="q"><time>' + (s.counts['workshop:' + br] || 0) + '</time><span>' + esc(br) + '</span></li>').join('') + '</ul>';
+    h += '<h3>Workshops this week</h3><ul>' + WORKSHOPS.map((br) => '<li class="q"><time>' + (s.counts['workshop:' + br] || 0) + '</time><span>' + esc(plainBranch(br)) + ' (' + esc(br) + ')</span></li>').join('') + '</ul>';
     if (WALL.rebuilt) h += '<p class="note">' + age() + ' White smoke from the chimney: ' + esc(WALL.rebuilt) + ' things rebuilt this week that already existed (' + (WALL.sample ? 'sample, as of ' + esc(WALL.asOf) : esc(WALL.asOf)) + ').</p>';
+    h += '<p class="note">Watch the AI studio build software. Builders walk from the foreman\'s hut to their workshops, every build goes through the inspection yard, parcels leave the post office, and finished work lights up the shop window. Wagons carry orders over the bridge to Harry\'s machines.</p>';
   } else {
     h += list(dayEv, 'Nothing on this day.');
   }
@@ -904,15 +1206,20 @@ function fillCard(k) {
 }
 function fitCard() {
   const c = $('card'); if (c.hidden) return;
-  const pb = document.querySelector('.plate').getBoundingClientRect().bottom, tl = document.querySelector('.timeline').getBoundingClientRect().top;
-  c.style.maxHeight = Math.max(140, tl - 16 - pb - 12) + 'px';
+  const pb = document.querySelector('.glance').getBoundingClientRect().bottom, tl = $('fresh').getBoundingClientRect().top;
+  c.style.maxHeight = Math.max(140, tl - 12 - pb - 12) + 'px';
+  measurePanels();
 }
 addEventListener('resize', fitCard);
 function openCard(k) {
   if (!B[k]) return; view.card = k; $('card').hidden = false; document.body.classList.add('carding'); fillCard(k); fitCard();
-  const b = B[k]; camGoal.target.set(b.x, 0, b.z + (k === 'harry' ? 0 : 0)); camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
+  if (k === 'hall') return; /* the question board has no building yet: the town stays where it is */
+  const b = B[k]; camGoal.dist = k === 'harry' ? 15 : k === 'bridge' ? 13 : 9.5;
+  /* on the wall the card sits on the left, so the place is framed in the right half of the screen */
+  const off = innerWidth > 760 ? camGoal.dist * 0.36 : 0, bz = k === 'bridge' ? -9.6 : b.z;
+  camGoal.target.set(b.x - Math.cos(yaw) * off, 0, bz + Math.sin(yaw) * off);
 }
-function closeCard() { view.card = null; $('card').hidden = true; document.body.classList.remove('carding'); camGoal.target.copy(HOMEVIEW.target); camGoal.dist = HOMEVIEW.dist; }
+function closeCard() { view.card = null; $('card').hidden = true; document.body.classList.remove('carding'); camGoal.target.copy(HOMEVIEW.target); camGoal.dist = HOMEVIEW.dist; measurePanels(); }
 
 /* =====================================================================================================
    8. Timeline: scrub, replay, days, live
@@ -944,7 +1251,7 @@ $('bPlay').onclick = () => { if (view.playing) { view.playing = false; $('bPlay'
    ===================================================================================================== */
 const HOMEVIEW = { target: new THREE.Vector3(0, 0, -5), dist: 28 };
 const camGoal = { target: HOMEVIEW.target.clone(), dist: HOMEVIEW.dist };
-let yaw = 0.7, pitch = 0.62, dist = 27, target = HOMEVIEW.target.clone(), autoT = 0;
+let yaw = 0.7, pitch = 0.62, dist = HOMEVIEW.dist, target = HOMEVIEW.target.clone(), autoT = 0;
 const ptrs = new Map(); let down = null, pinch0 = 0;
 function size() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); CAM.aspect = w / h; CAM.updateProjectionMatrix(); HOMEVIEW.dist = w < 760 ? 40 : w / h < 1.2 ? 34 : 28; if (!view.card) camGoal.dist = HOMEVIEW.dist; }
 addEventListener('resize', size); size();
@@ -968,15 +1275,29 @@ function pick(x, y) {
   if (hit) openCard(hit.object.userData.key);
 }
 
-/* the projector tour: every building in turn, its card open */
+/* the tour (optional, off by default): only places whose state is not quiet, most urgent first, 6 stops at most,
+   12 seconds each (long enough to read a card) */
 let tour = false, tourI = 0, tourT = 0;
-const tourStops = () => ['hut', ...WORKSHOPS.map((b) => 'workshop:' + b), 'yard', 'post', 'shop', 'library', ...(ST.lost && ST.lost.length ? ['lost'] : []), 'bridge', 'harry'];
+const TOUR_SECS = 12;
+const tourStops = () => { const ks = Object.keys(B).filter((k) => !B[k].nolabel).map((k) => [k, placeState(k)]).filter(([, p]) => p.st !== 'idle').sort((a, b) => b[1].prio - a[1].prio).map(([k]) => k).slice(0, 6); return ks.length ? ks : ['hut']; };
 function stopTour() { if (!tour) return; tour = false; $('bTour').setAttribute('aria-pressed', 'false'); }
 $('bTour').onclick = () => { tour = !tour; $('bTour').setAttribute('aria-pressed', String(tour)); tourI = 0; tourT = 0; if (tour) openCard(tourStops()[0]); else closeCard(); };
 $('bClose').onclick = () => { stopTour(); closeCard(); };
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && view.card) { stopTour(); closeCard(); } });
-$('bDiary').onclick = (e) => { const d = $('diary'); d.hidden = !d.hidden; e.target.textContent = d.hidden ? 'Show diary' : 'Hide diary'; };
-if (innerWidth < 760) { $('diary').hidden = true; $('bDiary').textContent = 'Show diary'; }
+/* the diary opens on demand (it used to cover a quarter of the town all the time) */
+function setDiary(on) { $('diary').hidden = !on; document.body.classList.toggle('diarying', on); $('bDiary').setAttribute('aria-pressed', String(on)); if (on) renderDiary(); measurePanels(); }
+$('bDiary').onclick = () => setDiary($('diary').hidden);
+$('bAsk').onclick = () => { stopTour(); if (view.card === 'hall') closeCard(); else openCard('hall'); };
+/* Still: stops all motion in one press (as reduced motion does); remembered in this browser only */
+let still = false;
+try { still = localStorage.getItem('works.still.v1') === '1'; } catch (e) { /* per-viewer convenience */ }
+function setStill(on) { still = on; $('bStill').setAttribute('aria-pressed', String(on)); try { localStorage.setItem('works.still.v1', on ? '1' : '0'); } catch (e) { /* ok */ } }
+$('bStill').onclick = () => setStill(!still);
+setStill(still);
+/* since you looked: remember when this viewer last had the page open */
+const markSeen = () => { try { localStorage.setItem('works.seen.v1', String(Date.now())); } catch (e) { /* ok */ } };
+addEventListener('pagehide', markSeen);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') markSeen(); });
 
 /* day and evening */
 function setMode(m) {
@@ -992,7 +1313,10 @@ $('bDay').onclick = () => setMode(mode === DUSK ? DAYL : DUSK);
 /* =====================================================================================================
    10. The frame loop
    ===================================================================================================== */
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+/* motion rules: the camera stands still; things move only for real events (a walker per ledger line, rain while tests
+   fail, smoke while the foreman works); reduced motion or the Still button stops all of it */
+const motionOff = () => RM.matches || still;
 const tmp = new THREE.Vector3(); let last = performance.now(), liveTick = 0;
 function door(k) {
   if (k === 'bridgeHead') return new THREE.Vector3(0.3, 0, -8.8);
@@ -1002,66 +1326,97 @@ function door(k) {
   if (k === 'yard') return new THREE.Vector3(b.x - b.w / 2 - 0.3, 0, b.z);
   return new THREE.Vector3(b.x, 0, b.z + b.d / 2 + 0.4);
 }
-const WAGON_PATH = [new THREE.Vector3(0.3, 0, -8.8), new THREE.Vector3(0.3, 0.18, -15.4), new THREE.Vector3(HOME.x + 0.6, 0, HOME.z + 2.6)];
+function routePoint(route, u) {
+  const legs = route.length - 1, f = Math.min(1, Math.max(0, u)) * legs, leg = Math.min(legs - 1, Math.floor(f)), k = Math.min(1, f - leg);
+  const a = door(route[leg]), b = door(route[leg + 1]); return { p: a.clone().lerp(b, k), to: b, moving: u < 1 };
+}
+/* how far along its single trip a walker is: replay and scrubbing use the town's clock (a trip takes 15 town minutes);
+   live, a line first seen within 2 minutes of happening walks for 20 seconds, anything older is already there */
+function tripU(w, now) {
+  if (motionOff()) return 1;
+  if (!view.live) return (view.T - w.ev.t) / (15 * MIN);
+  if (w.liveFresh === undefined) w.liveFresh = NOW() - w.ev.t < 2 * MIN;
+  return w.liveFresh ? (now - w.born) / 20000 : 1;
+}
+const SETTLE = 1500;
 function frame(now) {
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const sp = reduce ? 0 : 1, secs = reduce ? 0 : now / 1000;
+  const rdt = Math.max(0, Math.min(1, (now - last) / 1000)), dt = Math.min(0.05, rdt); last = now; const off = motionOff();
   /* time: live follows the clock; replay runs the day at 20 minutes a second */
   if (view.playing) { const rdt = Math.min(0.5, (now - (view.playWall || now)) / 1000); view.playWall = now; const T = view.T + rdt * 20 * MIN; if (T >= view.playTo) { view.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Replay'; } applyTime(Math.min(T, view.playTo)); }
   else if (view.live && now - liveTick > 15000) { liveTick = now; if (view.day !== dayKey(NOW())) { view.day = dayKey(NOW()); renderTicks(); } applyTime(NOW()); }
-  /* camera */
-  if (tour) { tourT += dt; if (tourT > 8) { tourT = 0; const st = tourStops(); tourI = (tourI + 1) % st.length; openCard(st[tourI]); } yaw += dt * 0.08 * sp; }
-  else if (!ptrs.size) { autoT += dt; if (autoT > 4) yaw += dt * 0.04 * sp; }
-  const cl = reduce ? 1 : Math.min(1, dt * 2); target.lerp(camGoal.target, cl); dist += (camGoal.dist - dist) * cl;
+  /* camera: still. It only glides when you ask (a card, the tour); with motion off it jumps */
+  if (tour) { tourT += dt; if (tourT > TOUR_SECS) { tourT = 0; const st = tourStops(); tourI = (tourI + 1) % st.length; openCard(st[tourI]); } }
+  /* the glide takes about a second whatever the frame rate (slow machines included) */
+  const cl = off ? 1 : 1 - Math.pow(0.004, rdt); target.lerp(camGoal.target, cl); dist += (camGoal.dist - dist) * cl;
+  if (target.distanceTo(camGoal.target) < 0.01) target.copy(camGoal.target); if (Math.abs(camGoal.dist - dist) < 0.01) dist = camGoal.dist;
   CAM.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist); CAM.lookAt(target);
-  /* walkers loop their route; a small pause at each stop */
+  /* walkers: one trip per event, then they stand at the destination */
   for (const w of walkers) {
     if (!w.g.visible || !w.route) continue;
-    const legs = w.route.length - 1, p = (secs * w.speed * sp + w.phase) % 1, f = p * legs, leg = Math.min(legs - 1, Math.floor(f)), u = Math.min(1, (f - leg) * 1.25);
-    const a = door(w.route[leg]), b = door(w.route[leg + 1]); w.g.position.lerpVectors(a, b, u);
-    w.g.position.y = u < 1 && !reduce ? Math.abs(Math.sin(now * 0.008)) * 0.04 : 0; if (u < 1) w.g.lookAt(b.x, 0, b.z);
+    const r = routePoint(w.route, tripU(w, now)); w.g.position.copy(r.p);
+    if (r.moving) { w.g.position.y = off ? 0 : Math.abs(Math.sin(now * 0.008)) * 0.04; w.g.lookAt(r.to.x, 0, r.to.z); } else w.g.position.y = 0;
   }
-  /* wagons: waiting ones line up at the bridge head; a new order rolls to Harry's town and back */
-  for (const v of wagons) {
-    if (!v.g.visible) continue;
-    if (v.roll) {
-      v.t = (v.t + dt * 0.03 * sp) % 1; const k = v.t < 0.5 ? v.t * 2 : 2 - v.t * 2, seg = Math.min(1, Math.floor(k * 2)), f = k * 2 - seg;
-      v.g.position.lerpVectors(WAGON_PATH[seg], WAGON_PATH[seg + 1], f); const nx = WAGON_PATH[v.t < 0.5 ? seg + 1 : seg]; v.g.lookAt(nx.x, v.g.position.y, nx.z);
-    } else { v.g.position.set(-1.6 + (v.slot % 3) * 0.75 + (v.slot >= 3 ? 0.35 : 0), 0, -8.0 + Math.floor(v.slot / 3) * 0.9); v.g.rotation.set(0, 0, 0); }
-  }
-  /* smoke: white when something was rebuilt that already existed */
-  const white = WALL.rebuilt > 0;
+  /* smoke: rises only while the foreman is working; white when something was rebuilt that already existed (from a real
+     town report only: sample numbers never drive the 3D town) */
+  const white = WALL.rebuilt > 0 && !WALL.sample, smoking = !!(ST.busy && ST.busy.hut);
   for (const p of puffs) {
-    p.userData.t = (p.userData.t + dt * 0.12 * sp) % 1; const t = p.userData.t;
+    p.visible = smoking || white;
+    if (smoking && !off) p.userData.t = (p.userData.t + dt * 0.12) % 1; const t = p.userData.t;
     p.position.set(B.hut.x + B.hut.w * 0.28 + Math.sin(t * 6) * 0.15, B.hut.h * 1.75 + t * 2.4, B.hut.z - B.hut.d * 0.15 - t * 0.6);
     p.scale.setScalar((0.1 + t * 0.26) * (white ? 1.25 : 1)); p.material.color.set(white ? 0xffffff : 0x9aa0ab); p.material.opacity = (white ? 0.75 : 0.4) * (1 - t);
   }
-  mill.rotation.z += dt * ((WALL.machines.Mill || {}).state === 'busy' ? 1.2 : 0.15) * sp;
-  fox.rotation.y = 2.4 + Math.sin(secs * 0.7) * 0.15;
-  /* finished work glows: yard lamps steady and bright, failures pulse; shop window eases to its brightness */
-  lamps.forEach((l, i) => { if (!l.bulb.visible || l.st === 'pass') return; if (l.seen !== l.st) { l.seen = l.st; l.since = now; }
-    l.m.emissiveIntensity = !reduce && now - l.since < 5000 ? 0.3 + 0.6 * Math.abs(Math.sin(now * 0.004 + i)) : 0.8; });
+  if (!off && !WALL.sample && (WALL.machines.Mill || {}).state === 'busy') mill.rotation.z += dt * 1.2;
+  /* lamps settle once (1.5 s) to their state and then stay steady: no pulsing, nothing flashes */
+  lamps.forEach((l) => {
+    if (!l.bulb.visible) return;
+    if (l.seen !== l.st) { l.seen = l.st; l.since = now; l.from = l.m.emissiveIntensity; }
+    const k = off ? 1 : Math.min(1, (now - l.since) / SETTLE); l.m.emissiveIntensity = l.from + ((l.target || 0.8) - l.from) * k;
+  });
   yardLight.intensity += ((yardLight.userData.on ? (mode === DUSK ? 1.6 : 0.5) : 0) - yardLight.intensity) * Math.min(1, dt * 3);
   const sg2 = shopGlass.userData.target || 0.35; shopGlass.emissiveIntensity += (sg2 * (mode === DUSK ? 1 : 0.7) - shopGlass.emissiveIntensity) * Math.min(1, dt * 3);
   shopLight.intensity = sg2 > 1 ? (mode === DUSK ? 2.2 : 0.6) : 0;
   for (const w of winMats) { const tg = (w.userData.target || 0.32) * (mode === DUSK ? 1 : 0.3); w.emissiveIntensity += (tg - w.emissiveIntensity) * Math.min(1, dt * 3); }
-  if (alarmM.userData.on && !alarmM.userData.since) alarmM.userData.since = now; if (!alarmM.userData.on) alarmM.userData.since = 0;
-  const pulse = (since) => !reduce && now - since < 5000;
-  alarmM.emissiveIntensity = alarmM.userData.on ? (pulse(alarmM.userData.since) ? 0.6 + 1.6 * Math.abs(Math.sin(now / 250)) : 1.6) : alarmM.userData.amber ? 1.0 : 0; alarmLight.intensity = alarmM.emissiveIntensity * 0.8;
-  if (rain.visible && !reduce) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9 * sp; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true;
-    if (!reduce && Math.random() < dt * 0.15) flash = 1; }
-  flash = Math.max(0, flash - dt * 3); hemi.intensity = mode.hemi[2] * (rain.visible ? 0.7 : clouds.visible ? 0.88 : 1) + flash * 1.5;
-  clouds.rotation.y += dt * 0.01 * sp;
-  for (const f of HOOKS.frame) { try { f(dt, secs); } catch (e) { /* ignore */ } }
-  if (star.visible) { star.rotation.y += dt * 1.2; star.position.y = 3.4 + Math.sin(secs * 2) * 0.12; }
-  goods.forEach((o, i) => { if (o.visible) o.material.emissiveIntensity = 1.1 + (reduce ? 0 : 0.25 * Math.sin(secs * 2 + i)); });
+  const lvl = alarmM.userData.on ? 'red' : alarmM.userData.amber ? 'amber' : '';
+  if (lvl !== alarmM.userData.lvl) { alarmM.userData.lvl = lvl; alarmM.userData.since = now; }
+  const aGoal = lvl === 'red' ? 0.9 : lvl === 'amber' ? 0.8 : 0, aK = off ? 1 : Math.min(1, (now - alarmM.userData.since) / SETTLE);
+  alarmM.emissiveIntensity = aGoal * aK; alarmLight.intensity = alarmM.emissiveIntensity * 0.8;
+  if (rain.visible && !off) { const a = rainG.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] -= dt * 9; if (a[i] < 0) a[i] += 9; } rainG.attributes.position.needsUpdate = true; }
+  rain.material.opacity = off ? 0 : 0.7;
+  hemi.intensity = mode.hemi[2] * (rain.visible ? 0.7 : clouds.visible ? 0.88 : 1);
+  for (const f of HOOKS.frame) { try { f(dt, off ? 0 : now / 1000); } catch (e) { /* ignore */ } }
+  goods.forEach((o) => { if (o.visible) o.material.emissiveIntensity = 1.2; });
   R.render(S, CAM);
-  const W = innerWidth, H = innerHeight;
-  for (const l of labs) {
-    tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.05 && tmp.x < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
-    const near = !l.zoomOnly || (dist < 19 && Math.hypot(target.x - l.obj.x, target.z - l.obj.z) < 8) || (l.zoomOnly === 'harry' && view.card === 'harry');
-    l.d.style.display = vis && near ? '' : 'none'; if (vis) l.d.style.transform = 'translate(' + ((tmp.x + 1) / 2 * W).toFixed(1) + 'px,' + ((1 - tmp.y) / 2 * H).toFixed(1) + 'px) translate(-50%,-100%)';
-  }
+  placeLabels();
   requestAnimationFrame(frame);
+}
+/* labels: project, then hide any that would overlap a more important one or sit under a panel (no stacked text) */
+function placeLabels() {
+  const W = innerWidth, H = innerHeight, cand = [];
+  for (const l of labs) {
+    tmp.copy(l.obj).project(CAM); const vis = tmp.z < 1 && tmp.x > -1.02 && tmp.x < 1.02 && tmp.y > -1.02 && tmp.y < 1.02;
+    const close = dist < 19 && Math.hypot(target.x - l.obj.x, target.z - l.obj.z) < 8;
+    const near = (!l.zoomOnly && !l.glanceHide) || close || (l.zoomOnly && view.card === l.zoomOnly);
+    if (!vis || !near || l.hide) { if (l.shown !== false) { l.d.style.display = 'none'; l.shown = false; } continue; }
+    l.x = (tmp.x + 1) / 2 * W; l.y = (1 - tmp.y) / 2 * H; cand.push(l);
+  }
+  for (const l of cand) if (l.shown !== true) { l.d.style.display = ''; l.shown = true; }
+  for (const l of cand) if (l.dirty || !l.w) { l.w = l.d.offsetWidth; l.h = l.d.offsetHeight; l.dirty = false; }
+  /* the place whose card is open wins, then alarms, then the rest */
+  const pr = (l) => (l.prio || (l.zoomOnly ? 3 : 0)) + (view.card && l.key === view.card ? 20 : 0);
+  cand.sort((a, b) => pr(b) - pr(a));
+  const placed = [], hit = (r, q) => r.x < q.right && r.x + r.w > q.left && r.y < q.bottom && r.y + r.h > q.top;
+  /* a label may slide up to half its width sideways, or one line up or down, to find a free spot near its place */
+  const bad = (r) => r.x < 0 || r.x + r.w > W || r.y < 0 || panelRects.some((q) => hit(r, q)) || placed.some((q) => hit(r, { left: q.x - 4, right: q.x + q.w + 4, top: q.y - 3, bottom: q.y + q.h + 3 }));
+  for (const l of cand) {
+    let r = null;
+    for (const [dx, dy] of [[0, 0], [0.55, 0], [-0.55, 0], [0, -1.1], [0, 1.1], [0.55, -1.1], [-0.55, -1.1]]) {
+      const q = { x: l.x - l.w / 2 + dx * l.w, y: l.y - l.h + dy * l.h, w: l.w, h: l.h };
+      if (!bad(q)) { r = q; break; }
+    }
+    if (!r) { l.d.style.display = 'none'; l.shown = false; l.clash = true; continue; }
+    l.clash = false; placed.push(r);
+    l.d.style.transform = 'translate(' + r.x.toFixed(1) + 'px,' + r.y.toFixed(1) + 'px)';
+  }
 }
 
 /* =====================================================================================================
@@ -1072,7 +1427,7 @@ async function loadWall() {
   try { const r = await fetch('town-report.json', { cache: 'no-cache' }); if (!r.ok) return; const w = await r.json(); if (w && w.machines && w.chips) { WALL = Object.assign({}, WALL, w, { sample: false }); } } catch (e) { /* keep the sample */ }
 }
 async function refresh() {
-  const [ledger] = await Promise.all([loadLedger(), OFFLINE ? null : loadGitHub()]);
+  const [ledger] = await Promise.all([loadLedger(), OFFLINE ? null : loadGitHub(), loadAsks()]);
   if (ledger && ledger.length) LEDGER = ledger;
   if (OFFLINE || !GH.order) { const u = cache.u; /* last copy from GitHub, if any */
     if (!GH.order) { const ev = (u[CFG.api + '/repos/' + CFG.repo + '/events?per_page=100'] || {}).d; if (ev) { /* rebuild from cache */ } } }
@@ -1104,10 +1459,16 @@ window.__works = {
   ready,
   state: () => ({ day: view.day, T: view.T, live: view.live, playing: view.playing, card: view.card, workshops: WORKSHOPS.slice(), events: EV.length,
     dayEvents: ST.day ? ST.day.length : 0, walkers: walkers.filter((w) => w.g.visible).length, lamps: lamps.filter((l) => l.bulb.visible).map((l) => l.st),
+    mood: ST.mood ? ST.mood.text : '', since: ST.since ? ST.since.items.map((e) => shortWhat(e)) : [], asks: ST.asks ? ST.asks.map((a) => a.id) : [],
+    orderList: ST.orderList ? ST.orderList.map((o) => ({ id: o.id, state: o.state, ageMin: o.age ? Math.round(o.age / MIN) : null, tookMin: o.took ? Math.round(o.took / MIN) : null })) : [],
+    refused: (net.refused || []).map((r) => ({ line: r.line, why: r.why })), fresh: freshList().map((f) => ({ name: f.name, old: f.old, txt: f.txt })),
+    stalls: (ST.lost || []).concat(ST.quiet || []).map((o) => ({ who: o.who, level: o.level, beats: o.beats, lateMin: o.lateAfter / MIN, lostMin: o.lostAfter / MIN })),
+    still: motionOff(), cam: [CAM.position.x.toFixed(3), CAM.position.y.toFixed(3), CAM.position.z.toFixed(3)].join(','),
+    shownLabels: labs.filter((l) => l.shown).map((l) => l.d.textContent),
     live_items: ST.live ? ST.live.length : 0, lost: ST.lost ? ST.lost.length : 0, quiet: ST.quiet ? ST.quiet.length : 0, suites: ST.suites ? Object.keys(ST.suites) : [], weather: ST.weather, rainbow: ST.rainbow, parcels: ST.parcels ? ST.parcels.length : 0, orders: ST.orders ? ST.orders.length : 0, net: Object.assign({}, net), labels: labs.map((l) => l.d.textContent) }),
   scrub: (hh, mm) => { $('scrub').value = hh * 60 + mm; $('scrub').dispatchEvent(new Event('input')); $('scrub').dispatchEvent(new Event('change')); },
   openCard, closeCard, setDay, goLive, startReplay,
-  pick: (k) => { const b = B[k]; if (!b) return null; tmp.set(b.x, (b.h || 0.2) * 0.6, b.z).project(CAM); return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight }; },
+  pick: (k) => { const b = B[k]; if (!b) return null; tmp.set(b.x, (b.h || 0.2) * 0.4, b.z + (b.d || 0) / 2).project(CAM); return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight }; },
   walkerSpots: () => walkers.filter((w) => w.g.visible).map((w) => [w.g.position.x.toFixed(3), w.g.position.z.toFixed(3)]),
   view: (y, p, d) => { yaw = y; pitch = p; camGoal.dist = dist = d; autoT = -1e9; }
 };
