@@ -6152,11 +6152,11 @@ function rbTick(dt) {
 function rbAllow(fz) { /* may this scanned surface become part of the current room? */
   if (!RB.base || !rbActive()) return true;
   if (RB.ask) return false;
-  const gap = rbBoxGap(rbFzBox(fz), RB.base);
-  if (gap > RB_ADD) { if (fz.area >= 0.08 && AUTO.t >= RB.noUntil) rbAsk('a surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; }
+  const gap = rbBoxGap(rbFzBox(fz), RB.base), inside = RB.camGap <= RB_HOLD_GAP; /* 17 Nov: the iPad stands inside the room's box: a surface far outside it is seen through a doorway, so it waits (held) and asks nothing. Walking out of the box still asks (here, or "the iPad left the room" in rbTick) */
+  if (gap > RB_ADD) { if (!inside && fz.area >= 0.08 && AUTO.t >= RB.noUntil) rbAsk('a surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; }
   if (RB.floorY !== null && RB.cam0 && !fz.ceil && fz.area >= 0.3 && fz.y < RB.floorY + 0.15 && Math.abs(fz.y - RB.floorY) > RB_FLOOR_DY) { const c = rbCam(); if (Math.hypot(c.x - RB.cam0.x, c.z - RB.cam0.z) > RB_TRAVEL) { if (AUTO.t >= RB.noUntil) rbAsk('a floor at another height'); RB.held++; return false; } }
   if (RB.camGap > RB_HOLD_CAM && gap > RB_HOLD_GAP) { RB.held++; return false; } /* the iPad is outside the room: surfaces outside it wait */
-  if (gap > RB_NEAR) { if (fz.area >= 0.25 && (fz.stable || 0) >= 3 && AUTO.t >= RB.noUntil) rbAsk('a big surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; } /* a settled room does not quietly take in a big surface a metre or more beyond it: it asks */
+  if (gap > RB_NEAR) { if (!inside && fz.area >= 0.25 && (fz.stable || 0) >= 3 && AUTO.t >= RB.noUntil) rbAsk('a big surface ' + gap.toFixed(1) + ' m outside the room'); RB.held++; return false; } /* a settled room does not quietly take in a big surface a metre or more beyond it: it asks */
   return true;
 }
 function rbClip() { return RB.base && rbActive() ? { box: RB.base, m: RB.camGap > RB_HOLD_CAM ? RB_HOLD_GAP : RB_NEAR } : null; } /* how far a big surface may grow past the room's box */
