@@ -6199,8 +6199,8 @@ function rfSuspect(why, hard) {
   if (!G.zones.length) { if (hard) scanReset(); return; } /* nothing mapped yet */
   if (!hard && !RB.base && !G.returning) return; /* a quiet check needs a settled room: a young room is still being mapped */
   if (hard) persist();
-  stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it */ snapClear('suspect'); /* build 28: nor do the pictures */
-  Object.assign(RF, { on: true, why, hidden: false, phase: 'check', t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
+  const gapOnly = !hard && /^frame gap/.test(why); if (gapOnly) STK.keepT = performance.now(); else stkClear('suspect'); /* build 27: sightings from before a jump do not fit after it. 17 Nov: a quiet check after a frame gap (nothing jumped) keeps them until it fails (rfFull drops the older ones); before, every gap threw them away and on a slow device a sticker was never taken */ snapClear('suspect'); /* build 28: nor do the pictures */
+  Object.assign(RF, { on: true, why, hidden: false, phase: 'check', soft: gapOnly, t0: performance.now(), buf: [], agree: 0, conflict: 0, unk: 0, n: RF.n + 1, wasNew: !G.returning, prompted: false });
   if (hard) rfHide();
 }
 function rfHide() { RF.hidden = true; world.visible = false; $('colMark').hidden = true; autoCount(); autoSay('Look around so I can find the camp again.' + stkHint(), 600); recRF({ hidden: true }); }
@@ -6227,16 +6227,17 @@ function rfStep() {
   }
 }
 function rfPass() { /* the fast path: the room is where it was */
-  const hid = RF.hidden; recRF({ pass: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk, ms: Math.round(performance.now() - RF.t0) }); RF.phase = 'replay'; rfReplay(); rfReset(); RF.done++;
+  const hid = RF.hidden; STK.prov = null; /* 17 Nov: a sticker taken during the check stays */ recRF({ pass: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk, ms: Math.round(performance.now() - RF.t0) }); RF.phase = 'replay'; rfReplay(); rfReset(); RF.done++;
   if (hid) { autoSay(''); homeMoment('Found it!'); }
 }
 function rfFail() { /* the check did not agree. A quiet check with the iPad outside the room is another room, not a jump: ask about the room instead */
   const c = rbCam(), out = RB.base ? rbGapXZ(RB.base, c.x, c.z) : 0;
-  if (!RF.hidden && out > RB_HOLD_CAM) { recRF({ outside: +out.toFixed(2), agree: RF.agree, conflict: RF.conflict }); RF.phase = 'replay'; rfReplay(); rfReset(); RB.camGap = out; if (!RB.ask) rbAsk('the hits do not match this room'); return; }
+  if (!RF.hidden && out > RB_HOLD_CAM) { stkUnprov('outside the room'); recRF({ outside: +out.toFixed(2), agree: RF.agree, conflict: RF.conflict }); RF.phase = 'replay'; rfReplay(); rfReset(); RB.camGap = out; if (!RB.ask) rbAsk('the hits do not match this room'); return; }
   rfFull();
 }
 function rfFull() { /* the room moved: start the scan again and find the room's map in it */
-  recRF({ full: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk });
+  recRF({ full: true, agree: RF.agree, conflict: RF.conflict, unk: RF.unk }); stkUnprov('the check failed');
+  if (RF.soft) { const k0 = STK.keepT || 0; for (const id in STK.obs) STK.obs[id] = STK.obs[id].filter((o) => o.t >= k0); STK.lockFix = null; recStk({ clear: 'moved' }); } /* 17 Nov: the quiet check failed: the sightings from before it are dropped now (as build 27 did at the suspicion) */
   if (!RF.hidden) rfHide();
   AUTO.commitAt = 0; commitAlign(); /* the map's frames are where they are now; the relocalisation registers them again */
   const buf = RF.buf; scanReset(); RF.buf = buf; RF.phase = 'replay'; rfReplay(); RF.phase = 'match'; RB.base = null;
@@ -6337,7 +6338,7 @@ function rsSplit(id) { /* the group with the colony's main camp stays; every oth
 const STK_SIZE = 0.08, STK_IDS = [1, 2, 3, 4, 5, 6], STK_FILES = ['cv.js', 'svd.js', 'posit1.js', 'aruco.js', 'dictionaries/aruco_4x4_1000.js'];
 const STK_HZ = 4, STK_SLOW_S = 1, STK_IDLE_S = 4, STK_DET_MAX = 800, STK_REF_MAX = 1280, STK_WIN_S = 8, STK_MIN_N = 5, STK_MIN_S = 0.6, STK_YAW_SD = 0.7, STK_AGREE_M = 0.03, STK_AGREE_DEG = 2.5, STK_FIX_M = 0.06;
 const STK_MIN_N4 = 4, STK_MIN_S4 = 0.4, STK_RMS4 = 0.6, STK_MOVE = 1.4, STK_KEEP_S = 120, STK_T0 = Date.now(); /* the sticker is the room's key (16 Nov): 4 sightings over 0.4 s make a fix when the fit is tight; pictures are skipped above 0.35 m/s or 35 degrees/s (1.4 x the 0.25 / 25 of stkMoving); a colony under STK_KEEP_S seconds old is left without a question */
-const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0, jumps: 0, dropped: 0, gives: 0, give: null, rej: {}, why: '', whyT: 0, whyId: 0 };
+const STK = { lib: null, state: 'off', det: null, err: '', seq: 0, loadSeq: -1, doneSeq: -1, poses: [], obs: {}, t: 0, runs: 0, ms: 0, msAvg: 0, seen: 0, fixes: 0, lastFix: {}, ignore: {}, burstUntil: 0, sayT: -1e9, img: null, hook: '', rot: null, dims: '', K: null, cv: null, cx: null, cv2: null, cx2: null, lockFix: null, disagree: 0, checkT: -1e9, lastPass: 0, binds: 0, locks: 0, asks: 0, refines: 0, jumps: 0, dropped: 0, gives: 0, give: null, rej: {}, why: '', whyT: 0, whyId: 0, prov: null, keepT: 0 };
 REC.stk = [];
 function recStk(o) { recRing(REC.stk, Object.assign({ t: recT(), room: HOMES.cur }, o), 60); }
 function stkLoad() { /* the vendored files, with plain script tags, in a hidden iframe of the same origin; any failure leaves STK.state 'error' and the game as build 26 */
@@ -6442,7 +6443,7 @@ function stkSettled() { /* the room is known well enough to own a sticker: a loc
 function stkUse(id, F) { /* 16 Nov, "the sticker is the room's key": another room's sticker loads that room at once (asking first only when a grown colony would be left); a sticker nobody owns is taken by a known room at once */
   if (STK.ignore[id]) return; const own = stkOwner(id), mine = G.stk && G.stk.id === id, finding = G.returning && !G.locked && RELOC.state !== 'manual', now = performance.now();
   recStk({ fix: id, kind: F.kind, p: F.p.map((v) => +v.toFixed(3)), yaw: +(F.h * 57.2958).toFixed(1), sdYaw: +F.sdYaw.toFixed(2), sdP: +(F.sdP * 100).toFixed(2), rms: +F.rms.toFixed(2), used: F.used + '/' + F.of, own, mine: !!mine, finding });
-  if (STK.give && STK.give.id === id && now < STK.give.until && !mine) { if (stkCanBind()) { STK.give = null; stkBind(F, true); } return; } /* Menu, Rooms: "Give this room sticker N" */
+  if (STK.give && STK.give.id === id && now < STK.give.until && !mine) { if (stkCanBind()) { STK.give = null; stkBind(F, true); } else if (stkCanBindSoon()) { const gv = STK.give, prev = stkOwner(id); STK.give = null; stkBind(F, true); stkProv(id, prev, gv); } return; } /* Menu, Rooms: "Give this room sticker N" */
   if (own && own !== HOMES.cur) { /* another saved room's sticker */
     if (RB.ask && RB.ask.stk) return; /* the question about a sticker is up: the player answers it */
     if (stkKeep()) { /* a grown colony would be left: the build 26 question, with that room first */
@@ -6454,7 +6455,15 @@ function stkUse(id, F) { /* 16 Nov, "the sticker is the room's key": another roo
   if (mine && (finding || (RF.on && RF.phase === 'match'))) { stkLock(F); return; }
   if (mine && RF.on && RF.phase === 'check') { const d = stkDiff(F); if (d.ok) { recStk({ check: 'agrees', dm: +d.dm.toFixed(3) }); rfPass(); stkSay('Sticker found ✓'); } else { recStk({ check: 'moved', dm: +d.dm.toFixed(3), dyaw: +d.dyaw.toFixed(1) }); rfFull(); stkLock(F); } return; }
   if (mine && !RF.on && !RB.ask && (!G.returning || G.locked)) { stkRefineLock(F); return; }
-  if (!own && !G.stk && stkCanBind()) { const r = homeInfo(HOMES.cur); if (r && r.stkOff === id) return; /* "Forget this room's sticker": not taken back by itself */ stkBind(F); return; }
+  if (!own && !G.stk) { const r = homeInfo(HOMES.cur); if (r && r.stkOff === id) return; /* "Forget this room's sticker": not taken back by itself */ if (stkCanBind()) stkBind(F); else if (stkCanBindSoon()) { stkBind(F); stkProv(id, null, null); } return; } /* 17 Nov: during a quiet check too (taken back if the check fails) */
+}
+function stkCanBindSoon() { /* 17 Nov: a quiet check of a known, locked room is running (a frame gap or a quick turn; the room still shows). Such checks last up to 8 s and on a slow device follow each other, so a new sticker waited for a gap between them: it is now taken at once, on trial (stkProv). Never while the room is hidden, being found or relocked */
+  return RF.on && RF.phase === 'check' && !RF.hidden && !RB.ask && G.zones.some(rbOwn) && (G.returning ? G.locked : G.settlements.some((S) => !S.dead && !S.awaiting));
+}
+function stkProv(id, prev, give) { if (G.stk && G.stk.id === id) STK.prov = { id, prev, give, n: RF.n }; } /* taken during a quiet check: kept when it passes (rfPass), given back when it fails */
+function stkUnprov(why) { /* 17 Nov: the quiet check failed (the world may have jumped): a sticker taken during it is not trusted; the next fix after the relock takes it again */
+  const P = STK.prov; STK.prov = null; if (!P || P.n !== RF.n || !G.stk || G.stk.id !== P.id) return; G.stk = null; STK.lockFix = null; const r = homeInfo(HOMES.cur); if (r && r.stk === P.id) delete r.stk;
+  if (P.prev && P.prev !== HOMES.cur) { const q = homeInfo(P.prev); if (q) q.stk = P.id; } if (P.give) STK.give = P.give; homesSave(); AUTO.mapDirty = true; STK.binds--; recStk({ unbind: P.id, why });
 }
 function stkCanBind() { /* 16 Nov: a room may take a sticker as soon as it is known: locked, or a new room whose colony has landed (no 20 s wait, no probation wait) */
   if (RF.on || RB.ask || !G.zones.some(rbOwn)) return false; if (G.returning) return G.locked; return G.settlements.some((S) => !S.dead && !S.awaiting);
