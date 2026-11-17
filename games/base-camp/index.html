@@ -654,10 +654,13 @@ function evBlock(b, k, kind, uid) { // one hit (this frame) on cell k and its 8 
     if (!b.kn[q] && (b.na[q] >= 2 || (b.na[q] >= 1 && b.na[q] + b.ne[q] >= 2))) { b.kn[q] = 1; b.cnt++; b.ev = true; b.dirty = true; }
   } }
 }
+function scanOrigin(p) { /* 17 Nov: the 5 m grid is centred on the first hit, but never more than 1.5 m from the iPad. A fresh scan that started while looking through a doorway (stickerkey section 5: "It's Room 2" while facing the shelf, the first hits on the lounge floor 3 to 4 m away) had the room it was looking for outside its grid, and the relock never saw its tops */
+  if (!AR.on) return { x: p.x, z: p.z }; const e = AR.viewM.elements, dx = p.x - e[12], dz = p.z - e[14], d = Math.hypot(dx, dz), k = d > 1.5 ? 1.5 / d : 1; return { x: e[12] + dx * k, z: e[14] + dz * k };
+}
 function scanHit(p, src, kind, uid, below) { /* below: this hit was made from underneath (the surface is above the eye, or its normal faces down): the ceiling signal */
   if (SCAN.frozen) return; if (kind === undefined) kind = 2;
   if (RF.on && RF.phase === 'check') { if (kind) rfHit(p, src, kind, uid, below); return; } /* build 26: while the relock checks the room, fresh hits are held back and compared first */
-  if (!SCAN.origin) { if (!kind) return; SCAN.origin = { x: p.x, z: p.z }; }
+  if (!SCAN.origin) { if (!kind) return; SCAN.origin = scanOrigin(p); }
   const b = kind ? bandFor(p.y) : nearBand(p.y); if (!b) { if (!kind) SCAN.weak++; return; }
   if (kind) { b.y = (b.y * Math.min(b.n, 300) + p.y) / (Math.min(b.n, 300) + 1); b.n++; SCAN.hits++; b.nh++; if (below) b.nb++; b.mesh.position.y = b.y + 0.002; } else SCAN.weak++;
   const k = gIdx(p.x, p.z); if (k < 0) return;
