@@ -57,7 +57,7 @@ function f(n) { return Math.round(n * 100) / 100; }
 function marker(cx, cy, S, id) {
   var x0 = Math.round(cx - S / 2), y0 = Math.round(cy - S / 2), e = [], i, r, c, q = Math.round(S / 6 * 1.25), b = BITS[id], o = '';
   for (i = 0; i <= 6; i++) e.push(Math.round(i * S / 6));
-  o += '<g shape-rendering="crispEdges"><rect x="' + (x0 - q) + '" y="' + (y0 - q) + '" width="' + (S + 2 * q) + '" height="' + (S + 2 * q) + '" fill="#fff"/>';
+  o += '<g class="stk" shape-rendering="crispEdges"><rect x="' + (x0 - q) + '" y="' + (y0 - q) + '" width="' + (S + 2 * q) + '" height="' + (S + 2 * q) + '" fill="#fff"/>';
   o += '<rect x="' + x0 + '" y="' + y0 + '" width="' + S + '" height="' + S + '" fill="#000"/>';
   for (r = 0; r < 4; r++) for (c = 0; c < 4; c++) if (b[r * 4 + c] === '1') o += '<rect x="' + (x0 + e[c + 1]) + '" y="' + (y0 + e[r + 1]) + '" width="' + (e[c + 2] - e[c + 1]) + '" height="' + (e[r + 2] - e[r + 1]) + '" fill="#fff"/>';
   return { svg: o + '</g>', x0: x0 - q, y0: y0 - q, x1: x0 + S + q, y1: y0 + S + q, q: q };
@@ -130,8 +130,11 @@ function poster(d, W, H, S, id) {
       + '<path d="M800 770 C 840 810, 850 850, 826 878 L 774 878 C 750 850, 760 810, 800 770 Z" fill="#f08a2e"/><path d="M800 815 C 820 838, 822 858, 810 876 L 790 876 C 778 858, 782 838, 800 815 Z" fill="#ffd25e" stroke-width="3"/></g>'
       + mouse(530, 720, 0.78, false);
     o += art(s1);
-    /* the signboard, sized by the sticker */
+    /* the title: a plank hung from the top */
     var tsz = Math.min(W * 0.09, H * 0.13), tw = tsz * 5.3, ty = Math.max(tsz * 0.25, oy + 40 * u), tx = W / 2;
+    o += '<g stroke="' + INK + '" stroke-width="' + f(tsz * 0.06) + '" stroke-linejoin="round"><path d="M' + f(tx - tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + ' M' + f(tx + tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + '" stroke="#7a5233" stroke-width="' + f(tsz * 0.07) + '"/>'
+      + '<rect x="' + f(tx - tw / 2) + '" y="' + f(ty) + '" width="' + f(tw) + '" height="' + f(tsz * 1.32) + '" rx="' + f(tsz * 0.24) + '" fill="#b0743f"/></g>' + title(tx, ty + tsz * 1.0, tsz, CREAM, INK);
+    /* the signboard, sized by the sticker */
     c = P(1235, 540); c[1] = Math.max(c[1], Math.min(ty + tsz * 1.32 + Math.max(14, dS * 0.3) + half + Math.max(10, dS * 0.26) + 12, H - half - Math.max(10, dS * 0.26) - Math.max(hs * 1.9, dS * 0.26) - 4)); var bd = Math.max(10, dS * 0.26), hb = Math.max(hs * 1.9, dS * 0.26), L = c[0] - half - bd, R = c[0] + half + bd, T = c[1] - half - bd, B = c[1] + half + bd + hb, gy = P(0, 900)[1], pw = Math.max(8, dS * 0.13);
     o += '<g stroke="' + INK + '" stroke-width="' + f(Math.max(3, dS * 0.03)) + '" stroke-linejoin="round">';
     [L + (R - L) * 0.2, R - (R - L) * 0.2].forEach(function (px) { o += '<rect x="' + f(px - pw / 2) + '" y="' + f(B - 4) + '" width="' + f(pw) + '" height="' + f(Math.max(8, gy - B + 4)) + '" fill="#8a5a33"/>'; });
@@ -139,11 +142,8 @@ function poster(d, W, H, S, id) {
     o += '<rect x="' + f(L) + '" y="' + f(T) + '" width="' + f(R - L) + '" height="' + f(B - T) + '" rx="' + f(bd * 0.5) + '" fill="#b0743f"/></g>';
     o += '<g stroke="#8f5a2f" stroke-width="' + f(Math.max(1.5, dS * 0.012)) + '" fill="none"><path d="M' + f(L + bd * 0.4) + ' ' + f(T + bd * 0.5) + ' H' + f(L + bd * 0.9) + ' M' + f(R - bd * 0.9) + ' ' + f(B - hb * 0.25) + ' H' + f(R - bd * 0.3) + '"/></g>';
     o += hint((L + R) / 2, B - hb * 0.32, hs, CREAM);
+    var pr = Math.max(3, dS * 0.045), mt = c[1] - half; o += '<g stroke="' + INK + '" stroke-width="' + f(Math.max(1.5, pr * 0.3)) + '"><circle cx="' + f(c[0] - half * 0.6) + '" cy="' + f(mt - pr * 0.35) + '" r="' + f(pr) + '" fill="#d9493b"/><circle cx="' + f(c[0] + half * 0.6) + '" cy="' + f(mt - pr * 0.35) + '" r="' + f(pr) + '" fill="#d9493b"/></g>'; /* the pins hold the paper at its top edge, under the sticker's white edge */
     mk = marker(c[0], c[1], S, id); o += mk.svg;
-    var pr = Math.max(3, dS * 0.045); o += '<g stroke="' + INK + '" stroke-width="' + f(Math.max(1.5, pr * 0.3)) + '"><circle cx="' + f(mk.x0 + pr * 0.2) + '" cy="' + f(mk.y0 + pr * 0.2) + '" r="' + f(pr) + '" fill="#d9493b"/><circle cx="' + f(mk.x1 - pr * 0.2) + '" cy="' + f(mk.y0 + pr * 0.2) + '" r="' + f(pr) + '" fill="#d9493b"/></g>';
-    /* the title: a plank hung from the top */
-    o += '<g stroke="' + INK + '" stroke-width="' + f(tsz * 0.06) + '" stroke-linejoin="round"><path d="M' + f(tx - tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + ' M' + f(tx + tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + '" stroke="#7a5233" stroke-width="' + f(tsz * 0.07) + '"/>'
-      + '<rect x="' + f(tx - tw / 2) + '" y="' + f(ty) + '" width="' + f(tw) + '" height="' + f(tsz * 1.32) + '" rx="' + f(tsz * 0.24) + '" fill="#b0743f"/></g>' + title(tx, ty + tsz * 1.0, tsz, CREAM, INK);
   } else if (d === 2) { /* Toy-room wall: the sticker is a painting in a chunky frame, the title is toy blocks on the floor */
     o += '<defs><pattern id="' + z + 'wp" width="70" height="70" patternUnits="userSpaceOnUse"><rect width="70" height="70" fill="#f7e5ca"/><rect width="35" height="70" fill="#f2d9b8"/><circle cx="52" cy="35" r="4" fill="#e9c79c"/></pattern></defs>';
     o += '<rect width="' + W + '" height="' + H + '" fill="#f7e5ca"/>';
