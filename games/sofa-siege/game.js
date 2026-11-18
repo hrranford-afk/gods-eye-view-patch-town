@@ -179,7 +179,8 @@ SG.done=function(s){if(SG.phase!=='build')return;if(SG.mode!=='table'){finishBui
 /* a tidy camp from a preset; used by the bot, by demos and by tests */
 function layoutSpot(s,L,i){var q=LAYOUTS[L][i],w=w2(s,Math.sin(q[1])*q[0],Math.cos(q[1])*q[0]);return [w[0],w[1],q[1]+q[2]+phiOf(s)];}
 function botPlace(s,i){var side=SG.sides[s],q=layoutSpot(s,side.layout,i),r=place(s,i,q[0],q[1],q[2]);
-  for(var t=0;t<60&&!r.ok;t++){var a=(rand()-.5)*2*(ZONE.half-.25),d=1.3+rand()*1.2,w=w2(s,Math.sin(a)*d,Math.cos(a)*d);r=place(s,i,w[0],w[1],a+PI+phiOf(s));}
+  var wide=SG.layout.custom,nt=wide?400:60;   /* on an unusual table the preset spot may not fit: look anywhere in the camp's zone */
+  for(var t=0;t<nt&&!r.ok;t++){var a=(rand()-.5)*2*(ZONE.half-(wide?.05:.25)),d=wide?.5+rand()*2.2:1.3+rand()*1.2,w=w2(s,Math.sin(a)*d,Math.cos(a)*d);r=place(s,i,w[0],w[1],a+PI+phiOf(s)+(wide&&t>200?(rand()-.5)*2:0));}
   return r;}
 SG.demo=function(n,sideI){var s=sideI||0,out=[];SG.sides[s].layout=0;for(var i=0;i<Math.min(n==null?KIT.length:n,KIT.length);i++)if(!SG.sides[s].kit[i].used)out.push(botPlace(s,i));SG.sides[s].sel=-1;return out;};
 function nextSlot(s){var k=SG.sides[s].kit;for(var i=0;i<k.length;i++)if(!k[i].used)return i;return -1;}
@@ -699,7 +700,7 @@ function initInput(){
 /* ================= run ================= */
 SG.boot=function(){
   initView();initInput();ui();
-  var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0])Q[p[0]]=decodeURIComponent(p[1]||'');});
+  var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0]){try{Q[p[0]]=decodeURIComponent(p[1]||'');}catch(e){Q[p[0]]=p[1]||'';}}});
   if(Q.shot){SG.shot(Q.shot,Q.team||'blue');ui();SG.camSnap=true;render();SS.whenTextures(function(){SG.camSnap=true;render();render();window.__done=true;},4000);return;}
   if(Q.layout){var lr;try{lr=SG.applyLayout(atob(Q.layout.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){lr={ok:false,reason:'The layout in the address could not be read'};SG.layoutNote=lr.reason;}
     if(E('layoutNote')){E('layoutNote').style.display='block';E('layoutNote').textContent=lr.ok?'Table layout loaded from the address.':'Layout refused: '+lr.reason+' Using the usual table.';}}

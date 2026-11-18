@@ -13,7 +13,7 @@ const rec = (pl, extra) => Object.assign({ schema_version: 1, table_id: 'test', 
 const GOOD = {
   'camps east and west': rec({ blue_base: [-304, 0, -90], red_base: [304, 0, 90], capture_flag: [0, 0, 0], hill: null }),
   'camps not opposite, flag off-centre': rec({ blue_base: [-250, -240, -40], red_base: [330, -60, 100], capture_flag: [40, 130, 0] }),
-  'a mound, and another scale': rec({ blue_base: [0, -600, 0], red_base: [80, 590, 175], capture_flag: [-60, 0, 0], hill: [330, -40, 0] }, { mm_per_unit: 320 })
+  'a mound, and another scale': rec({ blue_base: [0, -600, 0], red_base: [80, 590, 175], capture_flag: [-60, 0, 0], hill: [520, -40, 0] }, { mm_per_unit: 320 })
 };
 const BAD = {
   'bases too close': [rec({ blue_base: [-150, -280, 0], red_base: [150, -280, 0], capture_flag: [0, 100, 0] }), /too close/],
