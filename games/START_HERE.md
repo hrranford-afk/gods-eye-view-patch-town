@@ -189,3 +189,9 @@ bring to the game."
 - The previous test build is kept at base-camp-b30a.
 - Still open: a stickerkey section 0 race, where "Have you moved to another room?" comes up from the lounge floor seen through the doorway before the first sticker binds (about 5 in 17 runs at high load). Next fix: the room guard should ignore surfaces seen through a doorway while the iPad stands inside the room. See HANDOVER, "The sticker is the room's key".
 - My own runs: 17/20 at 20:43 (before cf918bf), 20/20 at 22:52.
+
+## 18 Nov 02:28 UK: doorway fix on the test link
+- base-camp-next is now build 30 at bc-depth f48ddd4 (code f9aec24). While the iPad is inside the room's box, a big surface seen through a doorway is held without asking "Have you moved?". Walking out still asks.
+- Fixer: stickerkey 8 of 8 at 20/20 under load up to 6; roomfix, roomguard, house, marker, snapshot and depth all green. Foreman's own runs: stickerkey 20/20, multi-room 40/40, return 16/16. Page checks clean.
+- Previous test build kept at base-camp-b30b. A container restart at 00:50 stopped the fixer; it resumed with nothing lost.
+- Next: Harry's iPad test of base-camp-next/?dev=1; then build 30 goes to the main link (back up build 29 as b29), merge bc-depth into room-kit, and room-kit step 2.
