@@ -3,75 +3,68 @@ ORDER
 id:        siege-2
 from:      game session
 date:      2026-11-18
-goal:      Play Round Table Kingdom on the town's own machines in a real Safari-family browser
-           engine, and tell us what breaks and how fast it runs. The cloud can only test in one
-           engine with no graphics card, so this is a check the cloud cannot do.
-done:      A run report with errors, speed numbers and 4 screenshots from each engine the town
-           has; the residents' view of the bot report; the Town Brain's 5 most useful fixes.
-priority:  after siege-1; before server-1
-budget:    1 hour of Mini (robot browsers), 1 hour of Dell (residents), 20 min of Radeon (Brain);
-           0 GB of downloads; no training
-deliver:   one paste to the game session (words untouched, each with "by"; pictures listed by
-           file name and kept on the home machines)
+goal:      Prove Round Table Kingdom starts and plays a whole robot match in WebKit as well as
+           Chromium, on a machine with a real graphics card, and measure its speed.
+done:      A two-engine report: page errors, speed numbers and 4 screenshots per engine; the
+           residents' reading of the robot-match numbers; the Town Brain's 5 fixes.
+priority:  after siege-1
+budget:    1 hour of Mini, 1 hour of Dell, 20 minutes of Radeon; 0 GB of downloads
+deliver:   one paste to the game session
 
 STAGE 1
-talent:    two-engine test
-inputs:    the test link and the three addresses below
-canary:    the title screen loads in one engine with 0 errors
-test:      every address tried in every engine the town has; each result is real numbers or the
-           word UNKNOWN, never a guess
+talent:    two-engine-test
+inputs:    the live game https://hrranford-afk.github.io/gods-eye-view-patch-town/sofa-siege/
+           and the three addresses listed below
+canary:    load the title screen in WebKit: the title reads "Round Table Kingdom", with no
+           page error
+test:      in each engine: all three addresses tried; page errors counted (must be 0); the
+           robot match finishes with a winner; every number is measured or says UNKNOWN
 output:    engines.json + 4 screenshots per engine
 
 STAGE 2
 talent:    own-answers
-inputs:    engines.json, and BOT_REPORT.md from the link below
+inputs:    engines.json; games/sofa-siege/BOT_REPORT.md (branch game/sofa-siege)
 canary:    one resident answers question 1 with real words
-test:      every seat marked real, empty or timed out
+test:      every seat is counted as answered, empty, broken, timed out or never got a turn
 output:    residents.json
 
 STAGE 3
-talent:    pick-and-warn
+talent:    how-to-build
 inputs:    engines.json, residents.json
-test:      5 fixes, each with its maker and its evidence
+canary:    one fix with its maker and its evidence
+test:      5 fixes, each with its maker and a number or an error message as evidence
 output:    brain.md
 
 NEEDS HARRY
-- nothing (no downloads; the game page is public)
+- nothing
 ```
 
-## The game (context for every model)
+## Context (the same for every model)
 
-Round Table Kingdom is a toy battle on a round table. Two teams of toy mice each build a camp from a kit, then fight for 3 one-minute rounds over a flag hill in the middle. A Marble Lobber knocks single planks off walls; mice that are hit go dizzy and pop home; mice mend in the breaks. Nobody dies. Today it runs on a practice table on a web page, not in augmented reality yet.
+Round Table Kingdom is a toy battle on a round table. Two teams of toy mice each build a camp from a kit, then fight for 3 one-minute rounds over a flag hill in the middle. A launcher called the Marble Lobber knocks single planks off walls. Mice that are hit go dizzy and pop home. Mice mend in the breaks. Nobody dies. Today it runs on a practice table on a web page, not in augmented reality yet. Robots can play both sides.
 
-## Stage 1: what to open
+## Stage 1: the three addresses
 
-Test link: https://hrranford-afk.github.io/gods-eye-view-patch-town/sofa-siege/
-
-1. The link as it is: the title screen. Record page errors and the time to first picture.
-2. The link with `?auto=both&level=easy&report=1` added: two robots play a whole match at real speed (about 5 minutes). When it ends, the page shows a report on screen and in `window.SG_REPORT`. Record all of it.
+1. The live game as it is: the title screen. Record page errors and the time to the first picture.
+2. The live game with `?auto=both&level=easy&report=1` added. Two robots play a whole match at real speed, about 5 minutes. At the end the page shows a report on screen, and the same report is in `SG_REPORT` on the page.
 3. The same with `level=hard`.
 
-If address 2 shows the title screen and no robot match, the game session has not put that feature on the link yet: say so and stop stage 1 there. Do not work around it.
+If address 2 shows the title screen and no robot match, that feature is not on the live game yet. Say so and stop stage 1 there. It is due at about 15:45 UK on 18 Nov.
 
-For each engine, report: engine name and version, machine, page errors (word for word), frames per second (average, and the worst 1 in 100), the longest single freeze, memory if known, who won, and whether the match finished. Screenshots: the title, the build step at 1 minute, round 2, the win screen.
+For each engine, record: engine name and version, page errors word for word, frames per second (average, and the worst 1 in 100), the longest single freeze, who won, and whether the match finished. Screenshots: the title, the build step at 1 minute, round 2, the win screen.
 
-## Stage 2: questions for each resident (about 150 words in all)
-
-BOT_REPORT.md is at:
-https://raw.githubusercontent.com/hrranford-afk/gods-eye-view-patch-town/game/sofa-siege/games/sofa-siege/BOT_REPORT.md
+## Stage 2: three questions for each resident, about 150 words
 
 1. From the numbers, what is the single most worrying thing? Quote the number.
 2. Which rule would you change first to make a match more exciting to watch, and what would you expect to happen?
 3. Name one thing the report does not measure that it should.
 
-## Stage 3: what the Brain is asked
+```json
+{"worry": {"number": "", "why": ""},
+ "rule_change": {"rule": "", "expect": ""},
+ "missing_measure": ""}
+```
 
-From stages 1 and 2 only: the 5 fixes most worth doing first, each with its maker and the evidence (a number or an error message). If the engines disagree with each other, say which one and how.
+## What the Brain is asked (stage 3)
 
-## Lessons to apply (the town decides HOW)
-- Refuse a job with missing or wrong arguments out loud.
-- Ask the Dell Writer in plain text. Give the Dell Elder longer, or questions 1 and 2 only.
-- No training and no pictures made by models: the Mini's disk is under its floor.
-
-## Run report (standing order)
-For each stage: machine, model, start and finish (UK time), minutes running and waiting (and why), seats asked / real / empty / timed out, canaries, free disk at start and end, the slowest step.
+From stages 1 and 2 only: the 5 fixes most worth doing first, each with its maker and its evidence. If the two engines disagree, say which one and how.
