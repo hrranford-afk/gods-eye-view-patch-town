@@ -1,0 +1,111 @@
+{
+  "set": "Round Table Kingdom AR placement cards - set 2",
+  "status": "camera target CANDIDATES; no device testing",
+  "dimensions_mm": {
+    "width": 148,
+    "height": 105
+  },
+  "raster_pixels": {
+    "width": 2220,
+    "height": 1575
+  },
+  "ink": "pure black/white, no gray",
+  "cards": [
+    {
+      "id": "00",
+      "type": "world_anchor",
+      "title": "WORLD ANCHOR",
+      "instruction": "Place first. Keep it still.",
+      "file": "cards_A6/00_world_anchor.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "223ef028cc4f2e063427e83986be3bebeb71abb3bc9eefbb5c9c90363602d621"
+    },
+    {
+      "id": "01",
+      "type": "blue_base",
+      "title": "BLUE BASE",
+      "instruction": "Blue camp goes here.",
+      "file": "cards_A6/01_blue_base.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "13dd261af7712f1f5036cd06b322314e2e6f2976cfbbc802ec6c867c41c4c0c8"
+    },
+    {
+      "id": "02",
+      "type": "red_base",
+      "title": "RED BASE",
+      "instruction": "Red camp goes here.",
+      "file": "cards_A6/02_red_base.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "e922f0a0fbd820e0f1c5cc8e3576d78065e41d01c65ba23831b5529dac30a818"
+    },
+    {
+      "id": "03",
+      "type": "capture_flag",
+      "title": "CAPTURE FLAG",
+      "instruction": "The flag to fight over.",
+      "file": "cards_A6/03_capture_flag.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "62cdef7e67c766a3328795b06a456322da23044420c312ca016607167c4bb2cb"
+    },
+    {
+      "id": "04",
+      "type": "hill",
+      "title": "HILL",
+      "instruction": "A hill rises here.",
+      "file": "cards_A6/04_hill.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "3531a4a5ed502ce97b95c4c59dea70de13455a28f265712b31b187f2d815bbc3"
+    },
+    {
+      "id": "05",
+      "type": "build_camp",
+      "title": "BUILD CAMP",
+      "instruction": "Build and mend here.",
+      "file": "cards_A6/05_build_camp.png",
+      "size_mm": [
+        148,
+        105
+      ],
+      "size_px": [
+        2220,
+        1575
+      ],
+      "sha256": "927081e53198819da257848120c3a6638a9696f75d00ee643a7462236d7601ea"
+    }
+  ]
+}
