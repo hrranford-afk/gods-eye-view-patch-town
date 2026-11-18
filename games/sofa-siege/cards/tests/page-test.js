@@ -21,9 +21,10 @@ let n = 0, bad = 0; const ok = (name, cond, extra) => { n++; if (!cond) bad++; c
 const ev = (f, a) => p.evaluate(f, a);
 const frames = (k) => p.waitForFunction((k) => window.CARDS_PAGE.P.frames >= k, k, { timeout: 180000 });
 const more = async (k) => { const f = await ev(() => CARDS_PAGE.P.frames); await frames(f + k); };
-const shot = (name) => p.screenshot({ path: path.join(DIR, 'shots', name), fullPage: true });
+const shot = (name) => p.screenshot({ path: path.join(DIR, 'shots', name.replace('.png', SUF + '.png')), fullPage: true });
 
-await p.goto(base + 'cards.html?demo=1&fps=10');
+const SETQ = process.argv.includes('--set') ? process.argv[process.argv.indexOf('--set') + 1] : '1', SUF = SETQ === '1' ? '' : '-set' + SETQ;
+await p.goto(base + 'cards.html?demo=1&fps=10&set=' + SETQ);
 ok('page says the picture stays on the device', await ev(() => /stays on this device/.test(document.querySelector('.private').textContent)));
 ok('demo is labelled as made-up frames', await ev(() => /made-up/.test(document.getElementById('modeTag').textContent)));
 ok('before start: every card NOT SEEN, values UNKNOWN', await ev(() => CARDS_PAGE.registry.snapshot().every((c) => c.state === 'NOT_SEEN' && c.first_seen_ms === 'UNKNOWN') && /UNKNOWN/.test(document.getElementById('cardRows').textContent)));
@@ -55,13 +56,13 @@ await shot('cards-page-lost.png');
 await p.click('#bCopy'); await p.waitForTimeout(300);
 const log = JSON.parse(await ev(() => CARDS_PAGE.P.lastLog));
 ok('log has user agent, camera size, six cards with sightings and distances', !!log.user_agent && log.camera.width === 1280 && log.cards.length === 6 && log.cards[0].sightings > 5 && typeof log.cards[0].distance_mm.median === 'number' && log.cards[4].distance_mm === 'UNKNOWN', { ms: log.recogniser.ms_per_frame_median, events: log.events.length });
-fs.writeFileSync(path.join(DIR, 'tests', 'demo-log-example.json'), JSON.stringify(log, null, 1));
+fs.writeFileSync(path.join(DIR, 'tests', 'demo-log-example' + SUF + '.json'), JSON.stringify(log, null, 1));
 
 /* touch fallback, no camera and no cards at all */
-await p.goto(base + 'cards.html?demo=1');
+await p.goto(base + 'cards.html?demo=1&set=' + SETQ);
 const tap = async (id, fx, fy) => { await p.click('#manualRow button[data-id="' + id + '"]'); const r = await p.locator('#top').boundingBox(); await p.mouse.click(r.x + r.width * fx, r.y + r.height * fy); };
 await tap('01', 0.5, 0.85); await tap('02', 0.5, 0.15); ok('LOCK is refused until the flag is placed', await ev(() => document.getElementById('bLock').disabled));
-await tap('03', 0.55, 0.5); await p.click('#bTurnL');
+await tap('03', 0.64, 0.4); await p.click('#bTurnL');
 ok('touch placement alone allows the lock', await ev(() => !document.getElementById('bLock').disabled));
 await p.click('#bLock'); const lm = await ev(() => CARDS_PAGE.setup.locked);
 ok('touch lock gives the same JSON shape, placement_mode manual_touch', lm && lm.schema_version === 1 && lm.placement_mode === 'manual_touch' && lm.placements.filter((q) => q.status === 'LOCKED' && q.source === 'manual_touch').length === 3 && lm.placements[2].transform_anchor_relative.yaw_deg === 15 && Object.keys(lm).join() === Object.keys(locked).join(), lm && lm.placements.slice(0, 3).map((q) => q.transform_anchor_relative));
@@ -69,16 +70,17 @@ ok('game helper turns the JSON into table units', await ev(() => { const g = RTK
 await shot('cards-page-manual.png');
 
 /* print page: true size */
-await p.goto(base + 'cards/print.html'); await p.waitForLoadState('networkidle');
+await p.goto(base + 'cards/print.html?set=' + SETQ); await p.waitForLoadState('networkidle');
 const sz = await ev(() => Array.from(document.querySelectorAll('.sheet img')).map((i) => { const r = i.getBoundingClientRect(); return [r.width, r.height, i.naturalWidth > 0]; }));
-ok('print page: six cards, each 210 x 148.5 mm in CSS units, two per sheet', sz.length === 6 && sz.every((s) => Math.abs(s[0] - 210 * 96 / 25.4) < 0.6 && Math.abs(s[1] - 148.5 * 96 / 25.4) < 0.6 && s[2]) && await ev(() => document.querySelectorAll('.sheet').length === 3), sz[0]);
-await p.setViewportSize({ width: 900, height: 1200 }); await p.screenshot({ path: path.join(DIR, 'shots', 'print-page.png'), fullPage: false });
+const PW = SETQ === '2' ? 148 : 210, PH = SETQ === '2' ? 105 : 148.5;
+ok('print page: six cards, each ' + PW + ' x ' + PH + ' mm in CSS units, two per sheet', sz.length === 6 && sz.every((s) => Math.abs(s[0] - PW * 96 / 25.4) < 0.6 && Math.abs(s[1] - PH * 96 / 25.4) < 0.6 && s[2]) && await ev(() => document.querySelectorAll('.sheet').length === 3), sz[0]);
+await p.setViewportSize({ width: 900, height: 1200 }); await p.screenshot({ path: path.join(DIR, 'shots', 'print-page' + SUF + '.png'), fullPage: false });
 
 /* time per frame in this Chromium, main thread, on made-up frames */
-await p.goto(base + 'cards.html?demo=1'); await p.addScriptTag({ url: base + 'cards/synth.js' });
+await p.goto(base + 'cards.html?demo=1&set=' + SETQ); await p.addScriptTag({ url: base + 'cards/synth.js' });
 const timing = await ev(async () => { const ims = await CARDS_PAGE.loadCards(), t0 = performance.now(); CV_CARDS.init(ims); const init = performance.now() - t0, lib = {}; ims.forEach((m) => { lib[m.id] = CARD_SYNTH.mips({ d: m.gray, w: m.w, h: m.h }); }); const r = CARD_SYNTH.rng(5), out = { init_ms: Math.round(init), user_agent: navigator.userAgent, cores: navigator.hardwareConcurrency };
   for (const [w, h] of [[640, 480], [1280, 720]]) { const ts = []; let found = 0; for (let k = 0; k < 10; k++) { const sc = CARD_SYNTH.singleScene(r, w, h, ims[k % 6].id, [0.5, 0.9], [40, 70]), f = CARD_SYNTH.render(sc, lib, 100 + k), a = performance.now(), d = CV_CARDS.detect(f.gray, w, h); ts.push(performance.now() - a); found += d.length; } ts.sort((x, y) => x - y); out[w + 'x' + h] = { median_ms: Math.round(ts[5]), min_ms: Math.round(ts[0]), max_ms: Math.round(ts[9]), frames: 10, cards_found: found }; } return out; });
 timing.note = 'Headless Chromium, software rendering, shared build machine. NOT an iPad. iPad speed is UNKNOWN.';
-fs.writeFileSync(path.join(DIR, 'tests', 'browser-timing.json'), JSON.stringify(timing, null, 1)); console.log('timing', JSON.stringify(timing));
+fs.writeFileSync(path.join(DIR, 'tests', 'browser-timing' + SUF + '.json'), JSON.stringify(timing, null, 1)); console.log('timing', JSON.stringify(timing));
 ok('no page errors', errs.length === 0, errs.slice(0, 3));
 console.log(n - bad + ' of ' + n + ' passed'); await b.close(); server.close(); process.exit(bad ? 1 : 0);

@@ -16,7 +16,7 @@ const args = process.argv.slice(2), has = (a) => args.includes(a), val = (a, d) 
 const SETARG = args.includes('--set') ? args[args.indexOf('--set') + 1] : '1', MIXED = SETARG === 'mixed';
 const SEED = val('--seed', 20261118), QUICK = has('--quick'), REPS = QUICK ? 1 : val('--reps', MIXED ? 2 : 6), EXTRA = QUICK ? 12 : 60;
 const DB = [[0.4, 0.7], [0.7, 1.0], [1.0, 1.5]], EB = [[20, 35], [35, 55], [55, 75]], RES = [[640, 480], [1280, 720]];
-const ims = []; for (const sn of (MIXED ? ['1', '2'] : [SETARG])) { const st = CV.SETS[sn]; for (const id of Object.keys(st.files).sort()) ims.push({ id: MIXED ? 'S' + sn + '-' + id : id, mm: st.mm, ...readGray(path.join(DIR, st.dir, st.files[id])) }); }
+const ims = []; for (const sn of (MIXED ? ['1', '2'] : [SETARG])) { const st = CV.SETS[sn]; for (const id of Object.keys(st.files).sort()) ims.push({ id: MIXED ? 'S' + sn + '-' + id : id, mm: has('--a5') ? { w: 210, h: 148.5 } : st.mm, ...readGray(path.join(DIR, st.dir, st.files[id])) }); }
 const IDS = ims.map((m) => m.id), MM = {}, NAME = (id) => (MIXED ? 'set ' + id[1] + ' ' : '') + CV.NAMES[id.slice(-2)];
 const lib = {}; ims.forEach((m) => { lib[m.id] = SY.mips({ d: m.gray, w: m.w, h: m.h }); MM[m.id] = m.mm; });
 const decoys = SY.makeDecoys(ims.slice(0, 6), 99); decoys.forEach((m) => { lib[m.id] = SY.mips({ d: m.gray, w: m.w, h: m.h }); MM[m.id] = ims[0].mm; });
@@ -47,7 +47,7 @@ function score(dets, truth, intr) {
     const o = { id: t.id, decoy: t.id[0] === 'D', dist: t.dist, elev: t.elev, occl: t.occl, wpx, outcome: 'miss', got: 'none' };
     const same = here.find((x) => x.d.id === t.id);
     if (same) { const errs = same.d.corners.map((p, i) => Math.hypot(p[0] - t.corners[i][0], p[1] - t.corners[i][1])), mean = errs.reduce((a, b) => a + b, 0) / 4; used.add(same.i);
-      if (mean < 0.15 * wpx) { o.outcome = 'tp'; o.got = t.id; o.cornerMean = mean; o.cornerMax = Math.max(...errs); o.inliers = same.d.inliers; o.score = same.d.score; o.glob = same.d.glob; o.margin = same.d.margin; o.all = same.d.all; o.via = same.d.via; const p = CV.pose(same.d, intr, { w: 210, h: 148.5 }); if (p) { o.reproj = p.reproj_px; o.tErr = Math.hypot(p.t[0] - t.t[0], p.t[1] - t.t[1], p.t[2] - t.t[2]); o.dErr = Math.abs(p.distance_mm - t.dist); o.rErr = rotErr(p.R, t.R); } }
+      if (mean < 0.15 * wpx) { o.outcome = 'tp'; o.got = t.id; o.cornerMean = mean; o.cornerMax = Math.max(...errs); o.inliers = same.d.inliers; o.score = same.d.score; o.glob = same.d.glob; o.margin = same.d.margin; o.all = same.d.all; o.via = same.d.via; const p = CV.pose(same.d, intr); if (p) { o.reproj = p.reproj_px; o.tErr = Math.hypot(p.t[0] - t.t[0], p.t[1] - t.t[1], p.t[2] - t.t[2]); o.dErr = Math.abs(p.distance_mm - t.dist); o.rErr = rotErr(p.R, t.R); } }
       else { const e2 = same.d.corners.map((p, i) => Math.hypot(p[0] - t.corners[(i + 2) % 4][0], p[1] - t.corners[(i + 2) % 4][1])).reduce((a, b) => a + b, 0) / 4; o.outcome = e2 < 0.15 * wpx ? 'flipped' : 'badOutline'; o.got = t.id; } }
     else if (here.length) { o.outcome = 'wrong'; o.got = here[0].d.id; o.bad = here[0].d; here.forEach((x) => used.add(x.i)); }
     cards.push(o); }
@@ -56,16 +56,18 @@ function score(dets, truth, intr) {
 }
 
 /* ---------- run ---------- */
+const SHEET_ONLY = has('--sheet-only');
 const results = [], times = { '640x480': [], '1280x720': [] }, vres = {}, sheet = [], wantSheet = has('--sheet');
-const sheetPick = { single: {}, multi: 0, decoy: 0, none: 0 };
 let done = 0; const tRun = Date.now();
+const WANT = [['1280x720', 0, 2, 0], ['1280x720', 1, 1, 3], ['1280x720', 2, 0, 1], ['1280x720', 2, 2, 2], ['1280x720', 1, 0, 4], ['640x480', 0, 1, 5], ['640x480', 1, 2, 3], ['640x480', 2, 1, 0]];
+{ const cnt = {}; frames.forEach((f) => { const key = f.w + 'x' + f.h; if (f.type === 'single') { const wi = WANT.findIndex((q) => q[0] === key && q[1] === f.d && q[2] === f.e && IDS[q[3] % IDS.length] === f.sc.cards[0].id); if (wi >= 0 && !cnt['s' + wi]) { cnt['s' + wi] = 1; f.sheet = true; } } else { const k2 = f.type + key; cnt[k2] = (cnt[k2] || 0) + 1; if ((f.type === 'multi' && ((key === '1280x720' && cnt[k2] <= 2) || (key === '640x480' && cnt[k2] === 2))) || (f.type === 'decoy' && key === '1280x720' && cnt[k2] === 1)) f.sheet = true; } }); }
 for (const f of frames) {
+  if (SHEET_ONLY && !f.sheet) continue;
   const img = SY.render(f.sc, lib, f.seed), key = f.w + 'x' + f.h;
   const ta = performance.now(), fr = CV.extract(img.gray, f.w, f.h), dets = CV.detectFr(fr), ms = performance.now() - ta; times[key].push(ms);
   const sc = score(dets, f.sc.cards, f.sc.cam.intr); results.push({ type: f.type, res: key, d: f.d, e: f.e, occ: !!f.occ, blur: img.blur, cards: sc.cards, phantoms: sc.phantoms });
   if (Object.keys(variants).length && ((f.type === 'single' && f.k % 2 === 0) || f.type === 'decoy' || f.type === 'none')) { for (const k in variants) { const dv = variants[k].detectFr(fr), sv = score(dv, f.sc.cards, f.sc.cam.intr); (vres[k] = vres[k] || []).push({ type: f.type, res: key, cards: sv.cards, phantoms: sv.phantoms }); } (vres[VF] = vres[VF] || []).push({ type: f.type, res: key, cards: sc.cards, phantoms: sc.phantoms }); }
-  if (wantSheet) { let take = false; if (f.type === 'single') { const k2 = key + f.d + (f.occ ? 'o' : ''); if (!sheetPick.single[k2] && ((f.w === 1280) || f.d < 2) && (f.d + f.e) % 2 === 0) { sheetPick.single[k2] = 1; take = Object.keys(sheetPick.single).length <= 7; } } else if (f.type === 'multi') take = sheetPick.multi++ < 3 && f.w === 1280; else if (f.type === 'decoy') take = sheetPick.decoy++ < 1; else take = sheetPick.none++ < 1;
-    if (take && sheet.length < 12) sheet.push({ img, f, dets, sc }); }
+  if ((wantSheet || SHEET_ONLY) && f.sheet) sheet.push({ img, f, dets, sc });
   if (++done % 50 === 0) console.log(done, '/', frames.length, ((Date.now() - tRun) / 1000).toFixed(0) + ' s');
 }
 
@@ -100,13 +102,15 @@ for (const [w, h] of RES) { const key = w + 'x' + h; for (let d = 0; d <= 3; d++
 out('\n### Time per frame in Node on this machine (one core; see the Chromium numbers in the report)\n'); for (const k in times) out('- ' + k + ': median ' + f1(med(times[k])) + ' ms, 90% ' + f1(p90(times[k])) + ' ms over ' + times[k].length + ' frames');
 if (Object.keys(vres).length) { out('\n### Six ways of finding and naming the cards (single-card, decoy and no-card frames)\n'); out('| Way | res | right card | wrong card | missed | decoy pages named as a card | no-card frames with a sighting |'); out('|---|---|---|---|---|---|---|');
   for (const k of Object.keys(vres).sort()) for (const [w, h] of RES) { const key = w + 'x' + h, V = vres[k].filter((x) => x.res === key), S2 = V.filter((x) => x.type === 'single'), q = rate(S2), D2 = V.filter((x) => x.type === 'decoy'), da = D2.filter((x) => x.cards.some((c) => c.got !== 'none') || x.phantoms.length).length, N2 = V.filter((x) => x.type === 'none'), na = N2.filter((x) => x.phantoms.length).length; out('| ' + k + ' | ' + key + ' | ' + pct(q.tp, q.n) + ' (' + q.tp + '/' + q.n + ') | ' + pct(q.wr, q.n) + ' (' + q.wr + ') | ' + pct(q.miss + q.bo, q.n) + ' | ' + da + '/' + D2.length + ' | ' + na + '/' + N2.length + ' |'); } }
+if (!SHEET_ONLY) {
 console.log('\n' + md);
-const tag = 'set' + SETARG + '-' + (QUICK ? 'quick' : 'full') + (args.includes('--tag') ? '-' + args[args.indexOf('--tag') + 1] : '');
+const tag = 'set' + SETARG + (has('--a5') ? 'a5' : '') + '-' + (QUICK ? 'quick' : 'full') + (args.includes('--tag') ? '-' + args[args.indexOf('--tag') + 1] : '');
 fs.writeFileSync(path.join(DIR, 'tests', 'results-' + tag + '-seed' + SEED + '.md'), md);
 fs.writeFileSync(path.join(DIR, 'tests', 'results-' + tag + '-seed' + SEED + '.json'), JSON.stringify({ seed: SEED, quick: QUICK, frames: frames.length, node: process.version, opt: CV.opt, results: results.map((x) => ({ t: x.type, r: x.res, d: x.d, e: x.e, o: x.occ ? 1 : 0, c: x.cards.map((c) => [c.id, c.outcome, c.got, Math.round(c.dist), Math.round(c.elev), c.cornerMean === undefined ? null : +c.cornerMean.toFixed(2), c.tErr === undefined ? null : +c.tErr.toFixed(1), c.rErr === undefined ? null : +c.rErr.toFixed(2), c.score === undefined ? null : +c.score.toFixed(2)]), p: x.phantoms })) }));
 
+}
 /* ---------- the contact sheet ---------- */
-if (wantSheet && sheet.length) {
+if ((wantSheet || SHEET_ONLY) && sheet.length) {
   const TW = 480, TH = 270, cols = 4, rows = Math.ceil(sheet.length / cols), W = TW * cols, H = TH * rows, px = new Uint8Array(W * H * 3).fill(24);
   const G = { '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001010010010', '8': '111101111101111', '9': '111101111001111', '.': '000000000000010', 'm': '000000111111101', 'D': '110101101101110', 'x': '000101010101000', '-': '000000111000000', '?': '111001011000010', ' ': '000000000000000' };
   const dot = (x, y, c) => { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= W || y >= H) return; const i = (y * W + x) * 3; px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; };
@@ -118,5 +122,5 @@ if (wantSheet && sheet.length) {
     s.sc.cards.forEach((c) => { if (c.outcome !== 'tp') { const t = s.f.sc.cards.find((q) => q.id === c.id); for (let i = 0; i < 4; i++) line(P(t.corners[i]), P(t.corners[(i + 1) % 4]), c.decoy ? [90, 160, 255] : [255, 170, 0], 1); const ce = P(centre(t.corners)); text(c.decoy ? c.id : c.id.slice(-2) + '?', ce[0] - 10, ce[1] + 8, c.decoy ? [90, 160, 255] : [255, 170, 0], 2); } });
     s.dets.forEach((d) => { const t = s.sc.cards.find((c) => c.outcome === 'tp' && c.id === d.id), col = t ? [60, 230, 90] : [255, 60, 60]; for (let i = 0; i < 4; i++) line(P(d.corners[i]), P(d.corners[(i + 1) % 4]), col, 2); line(P(d.corners[0]), P(d.corners[1]), [255, 255, 255], 1); const ce = P(centre(d.corners)); text(d.id.slice(-2), ce[0] - 10, ce[1] - 8, col, 3); });
     const c0 = s.f.sc.cards[0]; text(s.f.w + 'x' + s.f.h + (c0 ? ' ' + (c0.dist / 1000).toFixed(1) + 'm ' + Math.round(c0.elev) : ''), ox + 6, oy + 6, [255, 255, 120], 2); });
-  fs.mkdirSync(path.join(DIR, 'shots'), { recursive: true }); writePNG(path.join(DIR, 'shots', 'recognise-examples-set' + SETARG + '.png'), px, W, H, 3); console.log('wrote shots/recognise-examples-set' + SETARG + '.png');
+  fs.mkdirSync(path.join(DIR, 'shots'), { recursive: true }); writePNG(path.join(DIR, 'shots', 'recognise-examples-set' + SETARG + (has('--a5') ? 'a5' : '') + '.png'), px, W, H, 3); console.log('wrote shots/recognise-examples-set' + SETARG + '.png');
 }

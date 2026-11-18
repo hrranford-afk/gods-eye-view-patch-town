@@ -1,0 +1,20 @@
+{
+ "init_ms": 1463,
+ "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+ "cores": 4,
+ "640x480": {
+  "median_ms": 356,
+  "min_ms": 193,
+  "max_ms": 1195,
+  "frames": 10,
+  "cards_found": 9
+ },
+ "1280x720": {
+  "median_ms": 496,
+  "min_ms": 425,
+  "max_ms": 587,
+  "frames": 10,
+  "cards_found": 10
+ },
+ "note": "Headless Chromium, software rendering, shared build machine. NOT an iPad. iPad speed is UNKNOWN."
+}
