@@ -16,19 +16,31 @@ canvas{display:block;touch-action:none}
 .row{display:flex;gap:10px;justify-content:center;margin:10px 0;flex-wrap:wrap}
 #tag{position:fixed;left:12px;bottom:12px;font-size:12px;opacity:.75;pointer-events:none}
 #bCam{position:fixed;right:12px;top:12px;display:none;font-size:14px;padding:8px 12px}
+#side{position:fixed;left:8px;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:8px}#side .btn{font-size:18px;padding:8px 10px}#bPause2{display:none}
+.pp{position:fixed;left:0;right:0;bottom:0;height:70px;display:none;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;box-sizing:border-box;pointer-events:none}
+.pp.flip{bottom:auto;top:0;transform:rotate(180deg)}
+.pp .meter{min-width:210px;font-size:15px}.pp .pbtns{display:flex;gap:6px;pointer-events:auto}.pp .btn{font-size:16px;padding:10px 13px;touch-action:none}
+.pp .psay{flex:1;text-align:center;background:#fff8ea;color:#3a281a;border:2px solid #3a281a;border-radius:12px;padding:6px 10px;font-weight:700;font-size:15px;max-width:38vw;margin:0 auto}
+.pp .psay.bad{background:#ffe1d6;border-color:#b3261e;color:#7a1a12}
+.pp .pbig{position:absolute;left:50%;bottom:24vh;transform:translateX(-50%);font-size:110px;font-weight:800;color:#fff3df;text-shadow:0 5px 0 #3a281a,0 0 24px rgba(0,0,0,.5);display:none}
+.pp .pcard{position:absolute;left:50%;bottom:17vh;transform:translateX(-50%);background:rgba(58,40,26,.95);border:3px solid #ffd9a8;border-radius:20px;padding:12px 26px;text-align:center;display:none;pointer-events:auto;white-space:nowrap}
+.pp .pcard h2{margin:0 0 4px;font-size:30px}.pp .pcard p{margin:0 0 8px;font-size:15px}
 #big{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:150px;font-weight:800;color:#fff3df;text-shadow:0 6px 0 #3a281a,0 0 30px rgba(0,0,0,.5);display:none;pointer-events:none}
 #pops{position:fixed;inset:0;pointer-events:none;overflow:hidden}
 .pop{position:absolute;transform:translate(-50%,-100%);background:#fff8ea;color:#7a1a12;border:2px solid #7a1a12;border-radius:10px;padding:2px 8px;font-weight:800;font-size:14px;white-space:nowrap}
+.pop.icon{background:#fff8ea;border-color:#3a281a;font-size:20px;padding:1px 6px}
 .pop.good{color:#1f5a26;border-color:#1f5a26;background:#eaffe4}.pop.ask{color:#3a281a;border-color:#3a281a;border-radius:50%;font-size:18px;padding:1px 9px}
 @media (max-width:700px){.pill{font-size:14px;padding:6px 11px}.btn{font-size:15px;padding:9px 13px}.meter{min-width:110px}}
 </style></head><body>
 <div id="hud"><div class="pill meter" id="mA" style="display:none"><span></span><div class="m"><i></i></div></div><div class="pill" id="hTeam"></div><div class="pill" id="hTime">2:00</div><div class="pill" id="hCount"></div><div class="pill meter" id="mB" style="display:none"><span></span><div class="m"><i></i></div></div></div>
-<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button>
+<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button></div>
 <div class="bar" id="bar"><button class="btn" id="bL">⟲ Turn</button><button class="btn" id="bR">Turn ⟳</button><button class="btn" id="bUndo">Undo</button><button class="btn go" id="bDone">Done</button></div>
 <div class="bar" id="fbar"><button class="btn on" id="b_squad">👉 Send squad</button><button class="btn" id="b_lobber">🔮 Lobber</button><button class="btn" id="b_mend">🔨 Mend</button><button class="btn" id="bPause">⏸ Pause</button></div>
-<div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p>Mock table · practice match against a bot</p>
-  <div class="row"><button class="btn on" id="tBlue">🪶 Blue</button><button class="btn" id="tRed">⚙️ Red</button></div>
-  <div class="row"><button class="btn on" id="l_easy">Easy</button><button class="btn" id="l_normal">Normal</button><button class="btn" id="l_hard">Hard</button></div>
+<div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p>Mock table · not AR yet</p>
+  <div class="row"><button class="btn on" id="m_solo">1 player (against a robot)</button><button class="btn" id="m_table">2 players (iPad flat between you)</button></div>
+  <div id="soloOpts"><div class="row"><button class="btn on" id="tBlue">🪶 Blue</button><button class="btn" id="tRed">⚙️ Red</button></div>
+  <div class="row"><button class="btn on" id="l_easy">Easy</button><button class="btn" id="l_normal">Normal</button><button class="btn" id="l_hard">Hard</button></div></div>
+  <p id="tableNote" style="display:none">Lay the iPad flat. Blue sits at this edge, red at the far edge.<br>Each of you has your own buttons.</p>
   <p>Build your camp, then hold the hill in the middle.<br>Tap a piece on the mat, then tap the table.</p><button class="btn go" id="bPlay" style="font-size:22px;padding:13px 40px">Play</button></div></div>
 <div class="cover" id="end" style="display:none;background:none;align-items:flex-start;padding-top:120px;pointer-events:none"><div class="card" style="padding:14px 30px"><h1 style="font-size:34px">Camp ready</h1><p id="endText" style="margin-bottom:10px"></p><button class="btn go" id="bStart" style="pointer-events:auto;font-size:20px">Start battle</button></div></div>
 <div class="cover" id="win" style="display:none;background:none;align-items:flex-start;padding-top:110px;pointer-events:none"><div class="card" style="pointer-events:auto;padding:16px 32px"><h1 style="font-size:38px" id="winTitle"></h1><p id="winText" style="margin-bottom:10px"></p><button class="btn go" id="bAgain">Play again</button></div></div>
