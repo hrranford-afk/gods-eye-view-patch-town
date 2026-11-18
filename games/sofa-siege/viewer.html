@@ -90,9 +90,9 @@ var VIEWS={
 function camp(team,g){
   var o={};
   o.w0=piece('wall',team,-2.3,.42,1.05+Math.PI,g,{variant:1});o.w1=piece('wall',team,-1.62,1.0,.3+Math.PI,g);o.gate=piece('gate',team,-.74,1.32,.1+Math.PI,g);o.w2=piece('wall',team,1.0,1.3,-.35+Math.PI,g,{variant:2});
-  o.tower=piece('tower',team,-1.8,1.72,Math.PI-.5,g,{light:true});o.lobber=piece('lobber',team,.2,1.22,Math.PI-.12,g);o.popgun=piece('popgun',team,-2.5,1.15,2.3,g);
-  o.tent=piece('tent',team,-.95,2.05,.25,g);o.workshop=piece('workshop',team,.15,2.1,-.3,g);o.flag=piece('flag',team,-.4,1.75,0,g);
-  piece('planks',team,.95,1.85,.5,g);piece('crate',team,-2.2,2.0,.6,g);piece('barrel',team,-1.5,2.4,0,g);piece('rope',team,1.5,1.65,0,g);
+  o.tower=piece('tower',team,-2.55,1.25,Math.PI-.7,g,{light:true});o.lobber=piece('lobber',team,.2,1.22,Math.PI-.12,g);o.popgun=piece('popgun',team,-1.65,1.75,2.5,g);
+  o.tent=piece('tent',team,1.9,1.85,-.6,g);o.workshop=piece('workshop',team,.2,2.15,-.2,g);o.flag=piece('flag',team,-.75,1.95,0,g);
+  piece('planks',team,-.9,2.5,.4,g);piece('crate',team,-2.2,2.0,.6,g);piece('barrel',team,-1.75,2.3,0,g);piece('rope',team,1.15,2.3,0,g);
   return o;}
 function fightScene(){
   var hill=SS.hill({share:.5});put(hill,0,.1);waves.push(hill);SS.setHill(hill,.81);
