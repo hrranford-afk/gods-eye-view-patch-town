@@ -26,6 +26,21 @@ Made by `tests/sweep.js`: 200 matches at each level, stepped headless (no frames
 
 With 200 matches a win share is good to about ±3.5 points, so "50%" here means "somewhere from 46 to 54".
 
+## Check on fresh matches
+
+The numbers were tuned on the same 200 matches a level that the table above shows, so the table flatters them a little. A second run on 200 different matches a level (`node tests/sweep.js 200 seedBase=500000`) gave:
+
+| | Easy | Normal | Hard |
+|---|---|---|---|
+| Blue wins | 50% | 55% | 51% |
+| Red wins | 50% | 45% | 50% |
+| Front seat wins | 50% | 49% | 51% |
+| Dizzies a match | 13.6 | 15.7 | 23.3 |
+| Hill changes hands | 7.2 | 7.5 | 9.3 |
+| Mended back | 75% | 73% | 67% |
+
+Normal sits on the edge of the 45–55% band there.
+
 ## What was changed, and why
 
 Only numbers in the `CONFIG` object at the top of `game.js` were tuned. "Before" is the build of the last report (commit 54fad53).

@@ -555,7 +555,7 @@ function initInput(){
 SG.boot=function(){
   initView();initInput();ui();
   var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0])Q[p[0]]=decodeURIComponent(p[1]||'');});
-  if(Q.shot){SG.shot(Q.shot,Q.team||'blue');SG.camSnap=true;render();SG.camSnap=true;render();window.__done=true;return;}
+  if(Q.shot){SG.shot(Q.shot,Q.team||'blue');ui();SG.camSnap=true;render();SG.camSnap=true;render();window.__done=true;return;}
   if(Q.auto)autoRun(Q);
   var last=performance.now();(function loop(){var now=performance.now(),raw=now-last,dt=Math.min(.1,raw/1000);last=now;if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(dt*(SG.speed||1));render();if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
 /* ?auto=both|blue|red&level=easy|normal|hard&report=1 : bots play a match with no title screen, drawn normally, and the page
@@ -598,11 +598,11 @@ SG.shot=function(name,team){
     return;}
   SG.quick(team,{level:'easy',seed:777});SG.sides[1].bot=false;var foe=wallOf(1);SG.sides[0].reload=0;
   if(name==='fight-0-count'){SG.start(team,{seed:777});SG.demo(11,0);SG.sides[1].layout=0;SG.skipBuild();SG.begin();SG.step(1.2);return;}
-  SG.order(0,0,.35);SG.order(1,0,-.35);SG.step(4);SG.sides[0].reload=0;
+  SG.order(0,0,.35);SG.order(1,0,-.35);SG.step(4);stepUntil(function(){return crewReady(0);},10);SG.sides[0].reload=0;
   if(name==='fight-1-aim'){SG.setTool('lobber');SG.aim={on:true,tx:foe.x,tz:foe.z};SG.msg.t=0;SG.callout.t=0;}
   else if(name==='fight-1b-own-wall'){var tw=SG.pieces.filter(function(p){return p.side===0&&p.kind==='tower';})[0],l=lobberOf(0);SG.setTool('lobber');SG.aim={on:true,tx:l.x+(tw.x-l.x)*2.2,tz:l.z+(tw.z-l.z)*2.2};SG.msg.t=0;SG.callout.t=0;}
   else if(name==='fight-2-hit'){SG.fire(0,foe.x,foe.z);stepUntil(function(){return SG.lastHit;},6);SG.step(.25);SG.cam=0;}
-  else if(name==='fight-3-dizzy'){SG.fire(0,0,-.4);stepUntil(function(){return SG.lastHit;},6);SG.step(1.2);SG.cam=2;}
+  else if(name==='fight-3-dizzy'){stepUntil(function(){return SG.onHill()[1]>=4&&SG.mice.every(function(m){return m.state==='hold';});},10);SG.sides[0].reload=0;var fm=SG.mice.filter(function(m){return m.side===1&&m.x*m.x+m.z*m.z<1;}).sort(function(a,b){return a.z-b.z;})[1]||{x:0,z:-.35};SG.fire(0,fm.x,fm.z);stepUntil(function(){return SG.lastHit;},6);SG.step(1.2);SG.cam=2;}
   else if(name==='fight-4-mend'){var mw=wallOf(0);['wall.plank.1','wall.plank.2','wall.plank.4','wall.plank.5'].forEach(function(id){SG.debug.knock(mw.id,id);});SG.step(1);SG.mend(0,mw.id);stepUntil(function(){return SG.mice.some(function(m){return m.state==='fix';});},12);SG.step(.9);SG.setTool('mend');SG.msg.t=0;SG.callout.t=0;SG.cam=1;}
   else if(name==='fight-5-win'){SG.sides[0].score=99.5;SG.sides[1].score=41;SG.step(1.6);}
 };
