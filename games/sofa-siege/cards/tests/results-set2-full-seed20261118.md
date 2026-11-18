@@ -87,33 +87,16 @@ Sightings away from any page in the single and multi frames: 1 in 768 frames.
 
 | res | distance | sightings | corner error px: median / 90% / worst | position error mm: median / 90% | distance error mm: median / 90% | tilt-and-turn error deg: median / 90% |
 |---|---|---|---|---|---|---|
-| 640x480 | 0.4-0.7 m | 93 | 0.8 / 1.9 / 30.7 | 231.2 / 283.9 | 231.2 / 283.9 | 0.5 / 1.8 |
-| 640x480 | 0.7-1 m | 96 | 0.6 / 2.7 / 13.6 | 350.4 / 420.5 | 350.4 / 420.5 | 0.7 / 23.6 |
-| 640x480 | 1-1.5 m | 114 | 0.5 / 1.3 / 20.1 | 492.7 / 591.7 | 492.7 / 591.7 | 0.8 / 4.2 |
-| 640x480 | all | 312 | 0.6 / 2.0 / 30.7 | 371.5 / 573.1 | 371.5 / 573.1 | 0.7 / 4.9 |
-| 1280x720 | 0.4-0.7 m | 111 | 0.7 / 1.8 / 13.7 | 225.3 / 276.0 | 225.3 / 276.0 | 0.3 / 0.9 |
-| 1280x720 | 0.7-1 m | 114 | 0.9 / 2.0 / 14.8 | 345.6 / 405.8 | 345.6 / 405.8 | 0.4 / 1.6 |
-| 1280x720 | 1-1.5 m | 163 | 1.0 / 3.8 / 31.4 | 523.7 / 643.5 | 523.7 / 643.5 | 0.8 / 29.1 |
-| 1280x720 | all | 405 | 0.9 / 2.8 / 31.4 | 390.2 / 612.4 | 390.2 / 612.4 | 0.5 / 3.0 |
+| 640x480 | 0.4-0.7 m | 93 | 0.8 / 1.9 / 30.7 | 1.5 / 6.6 | 1.4 / 6.5 | 0.5 / 1.7 |
+| 640x480 | 0.7-1 m | 96 | 0.6 / 2.7 / 13.6 | 5.4 / 28.8 | 5.4 / 28.8 | 0.7 / 23.8 |
+| 640x480 | 1-1.5 m | 114 | 0.5 / 1.3 / 20.1 | 7.9 / 23.2 | 7.9 / 23.2 | 0.9 / 4.1 |
+| 640x480 | all | 312 | 0.6 / 2.0 / 30.7 | 4.4 / 20.8 | 4.4 / 20.8 | 0.7 / 4.7 |
+| 1280x720 | 0.4-0.7 m | 111 | 0.7 / 1.8 / 13.7 | 0.6 / 2.2 | 0.6 / 2.2 | 0.2 / 0.8 |
+| 1280x720 | 0.7-1 m | 114 | 0.9 / 2.0 / 14.8 | 2.4 / 7.6 | 2.3 / 7.6 | 0.3 / 1.2 |
+| 1280x720 | 1-1.5 m | 163 | 1.0 / 3.8 / 31.4 | 6.5 / 68.0 | 6.4 / 67.9 | 0.9 / 29.1 |
+| 1280x720 | all | 405 | 0.9 / 2.8 / 31.4 | 3.0 / 23.0 | 2.9 / 23.0 | 0.4 / 3.1 |
 
 ### Time per frame in Node on this machine (one core; see the Chromium numbers in the report)
 
-- 640x480: median 265.8 ms, 90% 334.4 ms over 504 frames
-- 1280x720: median 344.2 ms, 90% 410.6 ms over 504 frames
-
-### Six ways of finding and naming the cards (single-card, decoy and no-card frames)
-
-| Way | res | right card | wrong card | missed | decoy pages named as a card | no-card frames with a sighting |
-|---|---|---|---|---|---|---|
-| A corners: all, most inliers names the card | 640x480 | 23% (38/162) | 0% (0) | 77% | 0/60 | 0/60 |
-| A corners: all, most inliers names the card | 1280x720 | 72% (116/162) | 0% (0) | 28% | 0/60 | 0/60 |
-| B corners: distinct ones only, most inliers names the card | 640x480 | 19% (31/162) | 0% (0) | 81% | 0/60 | 0/60 |
-| B corners: distinct ones only, most inliers names the card | 1280x720 | 65% (106/162) | 0% (0) | 35% | 0/60 | 0/60 |
-| C corners: all, dense check names the card | 640x480 | 28% (45/162) | 0% (0) | 72% | 0/60 | 0/60 |
-| C corners: all, dense check names the card | 1280x720 | 73% (118/162) | 0% (0) | 27% | 0/60 | 0/60 |
-| D corners: title + centre drawing only, most inliers names the card | 640x480 | 24% (39/162) | 0% (0) | 76% | 0/60 | 0/60 |
-| D corners: title + centre drawing only, most inliers names the card | 1280x720 | 72% (117/162) | 0% (0) | 28% | 0/60 | 0/60 |
-| E paper outline only, dense check names the card | 640x480 | 64% (103/162) | 0% (0) | 36% | 0/60 | 0/60 |
-| E paper outline only, dense check names the card | 1280x720 | 65% (106/162) | 0% (0) | 35% | 0/60 | 0/60 |
-| F corners + paper outline, dense check names the card (THE DEFAULT) | 640x480 | 73% (118/162) | 0% (0) | 27% | 0/60 | 0/60 |
-| F corners + paper outline, dense check names the card (THE DEFAULT) | 1280x720 | 84% (136/162) | 0% (0) | 16% | 0/60 | 0/60 |
+- 640x480: median 262.7 ms, 90% 331.5 ms over 504 frames
+- 1280x720: median 341.3 ms, 90% 433.6 ms over 504 frames

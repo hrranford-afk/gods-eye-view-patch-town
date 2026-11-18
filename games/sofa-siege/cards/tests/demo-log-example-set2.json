@@ -1,0 +1,677 @@
+{
+ "page": "Round Table Kingdom card checker",
+ "log_version": 1,
+ "mode": "demo (made-up frames, not a camera)",
+ "started_at": "2026-11-18T12:24:54.113Z",
+ "run_ms": 23025,
+ "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+ "screen": {
+  "width": 1280,
+  "height": 1000,
+  "pixel_ratio": 1
+ },
+ "camera": {
+  "width": 1280,
+  "height": 720,
+  "label": "made-up frames (synth.js)",
+  "facing": "UNKNOWN",
+  "frame_rate": "UNKNOWN",
+  "lens_data": "exact (demo camera)",
+  "note": "Browsers do not give lens data for getUserMedia. Distances from a real camera use the assumed lens angle and are rough."
+ },
+ "card_set": "2 (Set 2: bold woodcut, A6, 148 x 105 mm)",
+ "recogniser": {
+  "provider": "cardvision.js natural-feature matcher",
+  "thread": "worker",
+  "frames_processed": 32,
+  "fps_cap": 10,
+  "ms_per_frame_median": 405,
+  "database": {
+   "initMs": 1930,
+   "dbSizes": [
+    2676,
+    2676,
+    2676,
+    2588,
+    2676,
+    2676
+   ]
+  }
+ },
+ "cards": [
+  {
+   "card_id": "00",
+   "kind": "world_anchor",
+   "name": "WORLD ANCHOR",
+   "state": "TRACKING",
+   "first_seen_ms": 882,
+   "last_seen_ms": 22545,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 978,
+    "median": 983.5,
+    "max": 997
+   },
+   "recent": [
+    {
+     "t_ms": 9722,
+     "inliers": 40,
+     "quality": 0.862,
+     "distance_mm": 982
+    },
+    {
+     "t_ms": 10473,
+     "inliers": 51,
+     "quality": 0.859,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 11179,
+     "inliers": 44,
+     "quality": 0.85,
+     "distance_mm": 987
+    },
+    {
+     "t_ms": 11833,
+     "inliers": 41,
+     "quality": 0.858,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 12527,
+     "inliers": 44,
+     "quality": 0.86,
+     "distance_mm": 979
+    },
+    {
+     "t_ms": 13219,
+     "inliers": 46,
+     "quality": 0.845,
+     "distance_mm": 979
+    },
+    {
+     "t_ms": 13855,
+     "inliers": 45,
+     "quality": 0.848,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 14580,
+     "inliers": 46,
+     "quality": 0.857,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 15243,
+     "inliers": 41,
+     "quality": 0.856,
+     "distance_mm": 986
+    },
+    {
+     "t_ms": 15858,
+     "inliers": 49,
+     "quality": 0.841,
+     "distance_mm": 988
+    },
+    {
+     "t_ms": 16494,
+     "inliers": 42,
+     "quality": 0.848,
+     "distance_mm": 988
+    },
+    {
+     "t_ms": 17135,
+     "inliers": 44,
+     "quality": 0.857,
+     "distance_mm": 982
+    },
+    {
+     "t_ms": 17739,
+     "inliers": 41,
+     "quality": 0.853,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 18427,
+     "inliers": 43,
+     "quality": 0.863,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 19157,
+     "inliers": 44,
+     "quality": 0.861,
+     "distance_mm": 984
+    },
+    {
+     "t_ms": 19808,
+     "inliers": 50,
+     "quality": 0.858,
+     "distance_mm": 986
+    },
+    {
+     "t_ms": 20473,
+     "inliers": 40,
+     "quality": 0.851,
+     "distance_mm": 986
+    },
+    {
+     "t_ms": 21092,
+     "inliers": 47,
+     "quality": 0.856,
+     "distance_mm": 988
+    },
+    {
+     "t_ms": 21729,
+     "inliers": 42,
+     "quality": 0.861,
+     "distance_mm": 980
+    },
+    {
+     "t_ms": 22545,
+     "inliers": 59,
+     "quality": 0.859,
+     "distance_mm": 985
+    }
+   ]
+  },
+  {
+   "card_id": "01",
+   "kind": "blue_base",
+   "name": "BLUE BASE",
+   "state": "LOST",
+   "first_seen_ms": 882,
+   "last_seen_ms": 13219,
+   "sightings": 18,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1027,
+    "median": 1050.5,
+    "max": 1065
+   },
+   "recent": [
+    {
+     "t_ms": 882,
+     "inliers": 65,
+     "quality": 0.773,
+     "distance_mm": 1032
+    },
+    {
+     "t_ms": 1576,
+     "inliers": 50,
+     "quality": 0.773,
+     "distance_mm": 1039
+    },
+    {
+     "t_ms": 2307,
+     "inliers": 56,
+     "quality": 0.774,
+     "distance_mm": 1042
+    },
+    {
+     "t_ms": 3035,
+     "inliers": 57,
+     "quality": 0.772,
+     "distance_mm": 1048
+    },
+    {
+     "t_ms": 3828,
+     "inliers": 44,
+     "quality": 0.732,
+     "distance_mm": 1056
+    },
+    {
+     "t_ms": 4546,
+     "inliers": 50,
+     "quality": 0.775,
+     "distance_mm": 1059
+    },
+    {
+     "t_ms": 5274,
+     "inliers": 57,
+     "quality": 0.764,
+     "distance_mm": 1058
+    },
+    {
+     "t_ms": 5957,
+     "inliers": 61,
+     "quality": 0.771,
+     "distance_mm": 1065
+    },
+    {
+     "t_ms": 6740,
+     "inliers": 52,
+     "quality": 0.771,
+     "distance_mm": 1059
+    },
+    {
+     "t_ms": 7536,
+     "inliers": 53,
+     "quality": 0.773,
+     "distance_mm": 1061
+    },
+    {
+     "t_ms": 8229,
+     "inliers": 60,
+     "quality": 0.774,
+     "distance_mm": 1060
+    },
+    {
+     "t_ms": 9018,
+     "inliers": 53,
+     "quality": 0.753,
+     "distance_mm": 1060
+    },
+    {
+     "t_ms": 9722,
+     "inliers": 51,
+     "quality": 0.774,
+     "distance_mm": 1053
+    },
+    {
+     "t_ms": 10473,
+     "inliers": 57,
+     "quality": 0.769,
+     "distance_mm": 1045
+    },
+    {
+     "t_ms": 11179,
+     "inliers": 48,
+     "quality": 0.773,
+     "distance_mm": 1041
+    },
+    {
+     "t_ms": 11833,
+     "inliers": 53,
+     "quality": 0.774,
+     "distance_mm": 1032
+    },
+    {
+     "t_ms": 12527,
+     "inliers": 61,
+     "quality": 0.774,
+     "distance_mm": 1033
+    },
+    {
+     "t_ms": 13219,
+     "inliers": 63,
+     "quality": 0.775,
+     "distance_mm": 1027
+    }
+   ]
+  },
+  {
+   "card_id": "02",
+   "kind": "red_base",
+   "name": "RED BASE",
+   "state": "TRACKING",
+   "first_seen_ms": 882,
+   "last_seen_ms": 22545,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1023,
+    "median": 1052,
+    "max": 1132
+   },
+   "recent": [
+    {
+     "t_ms": 9722,
+     "inliers": 75,
+     "quality": 0.954,
+     "distance_mm": 1033
+    },
+    {
+     "t_ms": 10473,
+     "inliers": 71,
+     "quality": 0.951,
+     "distance_mm": 1041
+    },
+    {
+     "t_ms": 11179,
+     "inliers": 76,
+     "quality": 0.949,
+     "distance_mm": 1045
+    },
+    {
+     "t_ms": 11833,
+     "inliers": 76,
+     "quality": 0.953,
+     "distance_mm": 1047
+    },
+    {
+     "t_ms": 12527,
+     "inliers": 70,
+     "quality": 0.954,
+     "distance_mm": 1051
+    },
+    {
+     "t_ms": 13219,
+     "inliers": 72,
+     "quality": 0.928,
+     "distance_mm": 1054
+    },
+    {
+     "t_ms": 13855,
+     "inliers": 81,
+     "quality": 0.948,
+     "distance_mm": 1065
+    },
+    {
+     "t_ms": 14580,
+     "inliers": 72,
+     "quality": 0.951,
+     "distance_mm": 1071
+    },
+    {
+     "t_ms": 15243,
+     "inliers": 71,
+     "quality": 0.945,
+     "distance_mm": 1080
+    },
+    {
+     "t_ms": 15858,
+     "inliers": 76,
+     "quality": 0.949,
+     "distance_mm": 1087
+    },
+    {
+     "t_ms": 16494,
+     "inliers": 75,
+     "quality": 0.944,
+     "distance_mm": 1132
+    },
+    {
+     "t_ms": 17135,
+     "inliers": 75,
+     "quality": 0.949,
+     "distance_mm": 1081
+    },
+    {
+     "t_ms": 17739,
+     "inliers": 72,
+     "quality": 0.944,
+     "distance_mm": 1083
+    },
+    {
+     "t_ms": 18427,
+     "inliers": 75,
+     "quality": 0.954,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 19157,
+     "inliers": 76,
+     "quality": 0.953,
+     "distance_mm": 1077
+    },
+    {
+     "t_ms": 19808,
+     "inliers": 72,
+     "quality": 0.948,
+     "distance_mm": 1075
+    },
+    {
+     "t_ms": 20473,
+     "inliers": 78,
+     "quality": 0.951,
+     "distance_mm": 1070
+    },
+    {
+     "t_ms": 21092,
+     "inliers": 72,
+     "quality": 0.94,
+     "distance_mm": 1071
+    },
+    {
+     "t_ms": 21729,
+     "inliers": 87,
+     "quality": 0.952,
+     "distance_mm": 1061
+    },
+    {
+     "t_ms": 22545,
+     "inliers": 71,
+     "quality": 0.945,
+     "distance_mm": 1057
+    }
+   ]
+  },
+  {
+   "card_id": "03",
+   "kind": "capture_flag",
+   "name": "CAPTURE FLAG",
+   "state": "TRACKING",
+   "first_seen_ms": 882,
+   "last_seen_ms": 22545,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1082,
+    "median": 1089,
+    "max": 1097
+   },
+   "recent": [
+    {
+     "t_ms": 9722,
+     "inliers": 43,
+     "quality": 0.922,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 10473,
+     "inliers": 48,
+     "quality": 0.917,
+     "distance_mm": 1089
+    },
+    {
+     "t_ms": 11179,
+     "inliers": 43,
+     "quality": 0.92,
+     "distance_mm": 1091
+    },
+    {
+     "t_ms": 11833,
+     "inliers": 51,
+     "quality": 0.923,
+     "distance_mm": 1090
+    },
+    {
+     "t_ms": 12527,
+     "inliers": 35,
+     "quality": 0.921,
+     "distance_mm": 1087
+    },
+    {
+     "t_ms": 13219,
+     "inliers": 44,
+     "quality": 0.922,
+     "distance_mm": 1087
+    },
+    {
+     "t_ms": 13855,
+     "inliers": 64,
+     "quality": 0.923,
+     "distance_mm": 1088
+    },
+    {
+     "t_ms": 14580,
+     "inliers": 61,
+     "quality": 0.922,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 15243,
+     "inliers": 59,
+     "quality": 0.923,
+     "distance_mm": 1089
+    },
+    {
+     "t_ms": 15858,
+     "inliers": 52,
+     "quality": 0.92,
+     "distance_mm": 1089
+    },
+    {
+     "t_ms": 16494,
+     "inliers": 52,
+     "quality": 0.921,
+     "distance_mm": 1095
+    },
+    {
+     "t_ms": 17135,
+     "inliers": 55,
+     "quality": 0.922,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 17739,
+     "inliers": 52,
+     "quality": 0.921,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 18427,
+     "inliers": 52,
+     "quality": 0.915,
+     "distance_mm": 1097
+    },
+    {
+     "t_ms": 19157,
+     "inliers": 57,
+     "quality": 0.919,
+     "distance_mm": 1090
+    },
+    {
+     "t_ms": 19808,
+     "inliers": 55,
+     "quality": 0.916,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 20473,
+     "inliers": 61,
+     "quality": 0.922,
+     "distance_mm": 1094
+    },
+    {
+     "t_ms": 21092,
+     "inliers": 52,
+     "quality": 0.917,
+     "distance_mm": 1090
+    },
+    {
+     "t_ms": 21729,
+     "inliers": 57,
+     "quality": 0.921,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 22545,
+     "inliers": 58,
+     "quality": 0.919,
+     "distance_mm": 1093
+    }
+   ]
+  },
+  {
+   "card_id": "04",
+   "kind": "hill",
+   "name": "HILL",
+   "state": "NOT_SEEN",
+   "first_seen_ms": "UNKNOWN",
+   "last_seen_ms": "UNKNOWN",
+   "sightings": 0,
+   "ambiguous_sightings": 0,
+   "distance_mm": "UNKNOWN",
+   "recent": []
+  },
+  {
+   "card_id": "05",
+   "kind": "build_camp",
+   "name": "BUILD CAMP",
+   "state": "NOT_SEEN",
+   "first_seen_ms": "UNKNOWN",
+   "last_seen_ms": "UNKNOWN",
+   "sightings": 0,
+   "ambiguous_sightings": 0,
+   "distance_mm": "UNKNOWN",
+   "recent": []
+  }
+ ],
+ "events": [
+  {
+   "t_ms": 882,
+   "type": "first_seen",
+   "card_id": "02"
+  },
+  {
+   "t_ms": 882,
+   "type": "first_seen",
+   "card_id": "03"
+  },
+  {
+   "t_ms": 882,
+   "type": "first_seen",
+   "card_id": "00"
+  },
+  {
+   "t_ms": 882,
+   "type": "first_seen",
+   "card_id": "01"
+  },
+  {
+   "t_ms": 14843,
+   "type": "lost",
+   "card_id": "01"
+  }
+ ],
+ "setup": {
+  "state": "SCANNING",
+  "placement_mode": "card_scan",
+  "anchor_seen": true,
+  "messages": [
+   "BLUE BASE is lost from view. Showing its last place. Show the card again, or place it by touch.",
+   "All needed cards are placed. Check the layout, then press LOCK TABLE."
+  ],
+  "events": [
+   {
+    "t_ms": 7536,
+    "type": "bad_geometry",
+    "card_id": "02",
+    "scale": 0.88,
+    "residual_mm": 11.6
+   },
+   {
+    "t_ms": 7536,
+    "type": "bad_geometry",
+    "card_id": "01",
+    "scale": 1.155,
+    "residual_mm": 15.8
+   },
+   {
+    "t_ms": 12861,
+    "type": "locked",
+    "card_id": null
+   },
+   {
+    "t_ms": 18893,
+    "type": "unlocked",
+    "card_id": null
+   },
+   {
+    "t_ms": 19157,
+    "type": "placement_regained",
+    "card_id": "02"
+   },
+   {
+    "t_ms": 19157,
+    "type": "placement_regained",
+    "card_id": "03"
+   }
+  ]
+ },
+ "locked": null,
+ "errors": []
+}
