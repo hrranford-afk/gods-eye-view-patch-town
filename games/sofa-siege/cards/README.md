@@ -1,6 +1,15 @@
 # Round Table Kingdom: picture cards (builder notes, 18 Nov 2026)
 
-Six printed cards say where things go on the real table. There are two sets of artwork: **Set 1** (engraved, A5, in `art/`) and **Set 2** (bold woodcut, A6, in `art2/`). Pick one with `?set=1` or `?set=2`. With no `?set`, the page uses Set 2 (it named no card wrongly in the test; Set 1 did, 10 times in 978). This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
+Six printed cards say where things go on the real table. There are four sets of artwork, all by ChatGPT:
+
+| `?set=` | Folder | What |
+|---|---|---|
+| `1` | `art/` | Set 1: engraved, A5 (210 × 148.5 mm) |
+| `2` | `art2/` | Set 2: bold woodcut, A6 (148 × 105 mm) |
+| `2b` | `art2b/` | Set 2b: Set 2 with Blue Base redrawn and a thicker Capture Flag border, A6 |
+| `2bc` | `art2b-colour/` | Set 2b with a coloured frame and accent on each card, A6 |
+
+ With no `?set`, the page uses Set 2 (it named no card wrongly in the test; Set 1 did, 10 times in 978). This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
 
 **Status in one line:** works on made-up frames on this machine (numbers in `RECOGNITION_REPORT.md`); **NOT TESTED on a real device or a real print.**
 
@@ -16,9 +25,10 @@ Six printed cards say where things go on the real table. There are two sets of a
 | `print.html` | Prints the six cards, two per A4 sheet, at true size. `?set=1` (A5, edge to edge) or `?set=2` (A6, with margins and crop ticks). |
 | `tests/recognise-test.js` | The offline recognition experiment (Node). `--set 1`, `--set 2` or `--set mixed`. |
 | `tests/compare-sets.js`, `tests/art-stats.js` | Set 1 against Set 2 tables, and what the recogniser sees in each card. |
+| `tests/colour-test.js` | Does a colour cue help the colour set? Three lights. |
 | `tests/page-test.js` | Drives the checker page and the setup flow in headless Chromium. |
 | `RECOGNITION_REPORT.md` | The measured results. |
-| `inputs/`, `inputs/set2/` | ChatGPT's handovers and manifests for both sets, untouched. |
+| `inputs/`, `inputs/set2/`, `inputs/set2b/` | ChatGPT's handovers, manifests and check tables, untouched. |
 
 ## How to try it on an iPad (not yet done by anyone)
 
@@ -42,6 +52,7 @@ CV_CARDS.pose(det, K, sizeMM)    // K = { fx, fy, cx, cy } in pixels; sizeMM is 
 
 - `corners` are picture pixels in the order top-left, top-right, bottom-right, bottom-left **of the artwork**.
 - `H` (9 numbers, row by row) maps the card's own millimetres (centre = 0,0; x right; y **down** the artwork; `sizeMM` says which card size) to picture pixels.
+- For a colour set only: `CV_CARDS.initColour(rgbImages)` once, then `CV_CARDS.colourCue(det, { rgba }, w, h)` gives the main hue inside the outline and which card's hue it is nearest to. It is a second opinion. It never changes the name.
 - `via` is `corners` (found by matching corner features) or `outline` (found as a sheet of paper, then checked against the artwork).
 - `score` is 0 to 1: how well the flattened picture matches that card. `margin` is its lead over the next-best card.
 - `pose`: card frame x right, y down the artwork, z into the table. Camera frame x right, y down, z forward. `t` in mm.
