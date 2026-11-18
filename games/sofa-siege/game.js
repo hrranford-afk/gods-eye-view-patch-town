@@ -6,17 +6,17 @@
 /* Every number that tunes the match is here. The balance sweep changes nothing else. */
 var CONFIG={
   build:120,ready:3,count:3,round:60,rounds:3,brk:10,   /* seconds: build step, bot's wait at "Camp ready", 3-2-1, a round, rounds, mend break */
-  win:100,gain:.9,                                      /* points to win; points a second for each mouse more than the other side on the hill */
-  walk:1.15,buildTime:3,mendTime:2.5,noShopMend:1.5,    /* mouse speed; hammer seconds per piece and per part; mending is this much slower with a broken workshop */
-  reload:6,blast:.3,dizzy:5,                            /* lobber winding seconds; marble thump radius; dizzy seconds (both teams) */
+  win:100,gain:.9,holdSecs:2,                                      /* points to win; points a second for each mouse more than the other side on the hill */
+  walk:1.15,buildTime:3,mendTime:2.2,noShopMend:1.5,    /* mouse speed; hammer seconds per piece and per part; mending is this much slower with a broken workshop */
+  reload:6,blast:.27,dizzy:5,                            /* lobber winding seconds; marble thump radius; dizzy seconds (both teams) */
   squadRing:.5,                                         /* how far apart a squad stands round the spot it was sent to */
-  corkRange:1.2,corkEvery:3,corkChance:.05,corkDaze:1.6,/* blue: cork reach, seconds between corks, chance to daze, daze seconds (a daze is a short sit, no trip home) */
+  corkRange:1.2,corkEvery:3,corkChance:.02,corkDaze:1.6,/* blue: cork reach, seconds between corks, chance to daze, daze seconds (a daze is a short sit, no trip home) */
   scrapEvery:5,scrapReach:.38,                          /* red: seconds between knocking parts off, and reach */
-  redParts:2,blueParts:1,                               /* parts a marble knocks off a piece */
+  redParts:1,blueParts:1,                               /* parts a marble knocks off a piece */
   raidLead:8,                                           /* the red bot sends one scrapper at a wall only when this many points ahead */
-  botMendAt:2,                                          /* a bot mends during a round once this many of its parts lie fallen */
+  botMendAt:1,                                          /* a bot mends during a round once this many of its parts lie fallen */
   wallShots:.3,                                         /* share of bot marbles aimed at pieces, not at mice */
-  levels:{easy:{fire:13,err:.8,send:5},normal:{fire:9.5,err:.45,send:2.5},hard:{fire:7,err:.2,send:.6}}   /* seconds between bot shots, aim error, seconds before it sends its squad */
+  levels:{easy:{fire:14,err:.8,send:5},normal:{fire:12,err:.45,send:2.5},hard:{fire:11,err:.2,send:.6}}   /* seconds between bot shots, aim error, seconds before it sends its squad */
 };
 var PI=Math.PI,STEP=1/60,PS=.88,RULES=CONFIG,LEVELS=CONFIG.levels;
 var KIT=['wall','wall','wall','wall','wall','wall','gate','tower','lobber','tent','workshop'];
@@ -73,11 +73,11 @@ SG.snap=function(kind,x,z,rot){return snap(0,kind,x,z,rot);};
 function w2(side,x,z){return side?[-x,-z]:[x,z];}
 
 /* ================= start ================= */
-function newStats(){return {events:0,lastEvent:0,longestGap:0,last:null,partsOff:0,partsMended:0,dizzies:0,dazes:0,hillFlips:0,shots:0,corks:0,stuck:0,noPath:0,ownHits:0,fightTime:0};}
+function newStats(){return {events:0,lastEvent:0,longestGap:0,last:null,partsOff:0,partsMended:0,dizzies:0,dazes:0,hillFlips:0,shots:0,corks:0,stuck:0,noPath:0,ownHits:0,fightTime:0,bySide:[{shots:0,dizzied:0,partsLost:0,hillSecs:0,blocked:0},{shots:0,dizzied:0,partsLost:0,hillSecs:0,blocked:0}]};}
 SG.start=function(team,opts){
   viewClear();opts=opts||{};SG.opts=opts;SG.team=team==='red'?'red':'blue';SG.level=LEVELS[opts.level]?opts.level:(SG.level||'easy');
-  SG.phase='build';SG.time=CONFIG.build;SG.round=0;SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.sel=-1;SG.clock=0;SG.acc=0;SG.nextId=1;SG.seed=opts.seed||12345;
-  SG.msg={code:'',text:'',t:0};SG.callout={text:'',t:0};SG.tool='squad';SG.aim={on:false,tx:0,tz:0};SG.winner=-1;SG.holder=-1;SG.lastHolder=null;SG.lastKnock=null;SG.lastHit=null;SG.stats=newStats();SG.sec=0;
+  SG.phase='build';SG.time=CONFIG.build;SG.round=0;SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.sel=-1;SG.clock=0;SG.acc=0;SG.nextId=1;SG.seed=((opts.seed||12345)*48271+11)%2147483647||7;for(var w0=0;w0<6;w0++)rand();   /* stir the seed, so near seeds do not give near first numbers */
+  SG.msg={code:'',text:'',t:0};SG.callout={text:'',t:0};SG.tool='squad';SG.aim={on:false,tx:0,tz:0};SG.winner=-1;SG.holder=-1;SG.lastHolder=null;SG.cand=-1;SG.candT=0;SG.lastKnock=null;SG.lastHit=null;SG.stats=newStats();SG.sec=0;
   SG.ghost={x:0,z:1.9,rot:0,ok:false,code:''};SG.sides=[];gridDirty=true;
   for(var s=0;s<2;s++){var side={team:s===0?SG.team:(SG.team==='blue'?'red':'blue'),bot:s===1,level:SG.level,kit:[],score:0,reload:0,fired:-9,order:null,lobber:0,workshop:0,crew:-1,raid:null,
       bt:2+s,layout:Math.floor(rand()*LAYOUTS.length),sendT:0,fireT:0,placed:0};SG.sides.push(side);
@@ -222,8 +222,9 @@ function standing(m){return m.state!=='dizzy'&&m.x*m.x+m.z*m.z<HILL*HILL;}
 SG.onHill=function(){var n=[0,0];SG.mice.forEach(function(m){if(standing(m))n[m.side]++;});return n;};
 function scoreTick(dt){
   var n=SG.onHill(),h=n[0]>n[1]?0:(n[1]>n[0]?1:-1);
-  if(h>=0&&h!==SG.lastHolder){if(SG.lastHolder!=null)SG.stats.hillFlips++;event('hill',h);shout(NAME[SG.sides[h].team]+' holds the hill!');SG.lastHolder=h;}
-  SG.holder=h;SG.sec+=dt;
+  /* the hill changes hands only when the new side has had more mice on it for a moment */
+  if(h>=0&&h!==SG.lastHolder){if(SG.cand!==h){SG.cand=h;SG.candT=0;}SG.candT+=dt;if(SG.candT>=CONFIG.holdSecs){if(SG.lastHolder!=null)SG.stats.hillFlips++;event('hill',h);shout(NAME[SG.sides[h].team]+' holds the hill!');SG.lastHolder=h;}}else if(h===SG.lastHolder){SG.cand=-1;}
+  SG.holder=h;SG.sec+=dt;SG.stats.bySide[0].hillSecs+=n[0]*dt;SG.stats.bySide[1].hillSecs+=n[1]*dt;
   while(SG.sec>=1){SG.sec-=1;if(h>=0){SG.sides[h].score=Math.min(CONFIG.win,SG.sides[h].score+CONFIG.gain*Math.abs(n[0]-n[1]));}}
   for(var s=0;s<2;s++)if(SG.sides[s].score>=CONFIG.win){endMatch(s);return true;}return false;}
 SG.blueShare=function(){var b=SG.sides[0].team==='blue'?0:1,d=SG.sides[b].score-SG.sides[1-b].score;return Math.max(0,Math.min(1,.5+d/70+(SG.holder<0?0:(SG.holder===b?.12:-.12))));};
@@ -247,14 +248,14 @@ SG.arc=function(s,tx,tz){var l=lobberOf(s);if(!l)return null;var dx=tx-l.x,dz=tz
   for(var k=.12;k<=1.0001;k+=.02){var pos=marblePos(a,Math.min(1,k)),p=pieceAt(pos[0],pos[1],pos[2],l.id);if(p){a.hit={piece:p.id,side:p.side,own:p.side===s,k:k,x:pos[0],y:pos[1],z:pos[2]};break;}}
   return a;};
 SG.fire=function(s,tx,tz){var side=SG.sides[s];if(SG.phase!=='fight'||SG.lobberBlock(s))return null;var a=SG.arc(s,tx,tz);if(!a)return null;
-  a.id=SG.nextId++;a.side=s;a.t=0;a.live=true;SG.marbles.push(a);side.reload=CONFIG.reload;side.fired=SG.clock;SG.stats.shots++;event('shot',s);
+  a.id=SG.nextId++;a.side=s;a.t=0;a.live=true;SG.marbles.push(a);side.reload=CONFIG.reload;side.fired=SG.clock;SG.stats.shots++;SG.stats.bySide[s].shots++;event('shot',s);
   var l=lobberOf(s);l.aim=Math.atan2(a.x1-l.x,a.z1-l.z);return a;};
 function knock(p,i,dx,dz,by){var q=p.ps[i];if(!q||q.st!=='on')return false;var l=Math.sqrt(dx*dx+dz*dz)||1,f=.28+rand()*.3,lat=(rand()-.5)*.3;
   q.st='off';q.t0=SG.clock;q.rx=q.wx+dx/l*f-dz/l*lat;q.rz=q.wz+dz/l*f+dx/l*lat;var rr=Math.sqrt(q.rx*q.rx+q.rz*q.rz);if(rr>3.05){q.rx*=3.05/rr;q.rz*=3.05/rr;}
-  q.mender=-1;p.parts--;SG.stats.partsOff++;gridDirty=true;event('part',p.side,q.id);pop(q.wx,q.wz,partName(q.id)+' off!',false,q.wy+.15);viewFlash(q.wx,q.wy,q.wz);SG.lastKnock={piece:p.id,part:q.id,by:by||'',t:SG.clock};return true;}
+  q.mender=-1;p.parts--;SG.stats.partsOff++;SG.stats.bySide[p.side].partsLost++;gridDirty=true;event('part',p.side,q.id);pop(q.wx,q.wz,partName(q.id)+' off!',false,q.wy+.15);viewFlash(q.wx,q.wy,q.wz);SG.lastKnock={piece:p.id,part:q.id,by:by||'',t:SG.clock};return true;}
 function nearestPart(p,x,y,z,flat){var best=-1,bd=1e9;p.ps.forEach(function(q,i){if(q.st!=='on')return;var d=(q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(flat?0:(q.wy-y)*(q.wy-y));if(d<bd){bd=d;best=i;}});return best;}
 function hitPiece(p,x,y,z,dx,dz){var i=nearestPart(p,x,y,z,false);if(i<0)return '';var id=p.ps[i].id;knock(p,i,dx,dz,'marble');return id;}
-function dizzy(m){if(m.state==='dizzy'||SG.phase==='over')return false;dropJob(m);m.state='dizzy';m.t=CONFIG.dizzy;m.speed=0;m.goal=false;m.daze=false;m.crewing=false;m.path=null;SG.stats.dizzies++;event('dizzy',m.side);return true;}
+function dizzy(m){if(m.state==='dizzy'||SG.phase==='over')return false;dropJob(m);m.state='dizzy';m.t=CONFIG.dizzy;m.speed=0;m.goal=false;m.daze=false;m.crewing=false;m.path=null;SG.stats.dizzies++;SG.stats.bySide[m.side].dizzied++;event('dizzy',m.side);return true;}
 function dropJob(m){if(m.part>=0){var p=pieceById(m.job),q=p&&p.ps[m.part];if(q){if(q.st==='carried'){q.st='off';q.rx=m.x;q.rz=m.z;q.t0=SG.clock-2;}q.mender=-1;}}m.job=0;m.part=-1;}
 function tickMarbles(dt){
   for(var i=SG.marbles.length-1;i>=0;i--){var a=SG.marbles[i];a.t+=dt;
@@ -304,7 +305,7 @@ function tickMice(dt){
     var tx=m.hx,tz=m.hz,slack=.3,crew=side.crew===m.i&&side.lobber;
     if(crew){var cw=crewSpot(lobberOf(m.side));tx=cw[0];tz=cw[1];slack=.4;}
     else if(side.bot&&side.team==='red'&&m.i===4&&side.raid){tx=side.raid.x;tz=side.raid.z;slack=.45;}
-    else if(side.order){var a=m.i/5*PI*2+m.side,rad=m.i===0?0:CONFIG.squadRing;tx=side.order.x+Math.cos(a)*rad;tz=side.order.z+Math.sin(a)*rad;slack=.45;}
+    else if(side.order){var a=m.i/5*PI*2+.3,rad=m.i===0?0:CONFIG.squadRing,off=w2(m.side,Math.cos(a)*rad,Math.sin(a)*rad);tx=side.order.x+off[0];tz=side.order.z+off[1];slack=.45;}   /* the same ring for both ends of the table */
     goTo(m,tx,tz,slack);if(walk(m,dt,CONFIG.walk)){m.state=side.order||crew?'hold':'idle';m.goal=false;m.crewing=!!crew;if(crew){var lb=lobberOf(m.side);m.rot=Math.atan2(lb.x-m.x,lb.z-m.z);}}else{m.state='go';m.goal=m.q<=0;m.crewing=false;}
     if(SG.phase!=='fight'||crew)return;
     /* blue pops corks at range, if it can see the target; red knocks parts off pieces it can reach */
@@ -320,7 +321,7 @@ function stuckCheck(dt){SG.mice.forEach(function(m){if(!m.goal){m.moved=0;m.sx=m
 /* --- the bot --- */
 function botFight(s,dt){
   var side=SG.sides[s],L=LEVELS[side.level],en=1-s,w;side.sendT-=dt;side.fireT-=dt;
-  if(side.sendT<=0){w=w2(s,(rand()-.5)*.5,.3+rand()*.2);side.order={x:w[0],z:w[1]};side.sendT=10+rand()*6;side.raid=null;
+  if(side.sendT<=0){w=w2(s,(rand()-.5)*.4,.2+rand()*.15);side.order={x:w[0],z:w[1]};side.sendT=10+rand()*6;side.raid=null;
     if(side.team==='red'&&side.score>=SG.sides[en].score+CONFIG.raidLead){var best=null,bd=1e9;SG.pieces.forEach(function(p){if(p.side!==en||!p.built||!p.total||p.parts<=0||(p.kind!=='wall'&&p.kind!=='gate'))return;var d=dist(p.x,p.z,0,0);if(d<bd){bd=d;best=p;}});
       if(best){var d0=Math.sqrt(best.x*best.x+best.z*best.z)||1,k=(d0-FOOT[best.kind][1]-.3)/d0;side.raid={x:best.x*k,z:best.z*k};}}}
   if(SG.fallen(s)>=CONFIG.botMendAt)autoMend(s,1);
@@ -329,7 +330,7 @@ function botFight(s,dt){
     for(var tr=0;tr<4;tr++){var tx=0,tz=0,found=false;
       if(rand()>=CONFIG.wallShots&&foes.length){var bestN=-1;foes.forEach(function(m){var n=0;foes.forEach(function(o){if(dist(m.x,m.z,o.x,o.z)<.6)n++;});if(n>bestN){bestN=n;tx=m.x;tz=m.z;}});found=true;}
       else if(ws.length){var p=ws[Math.floor(rand()*ws.length)];tx=p.x;tz=p.z;found=true;}
-      if(!found)continue;tx+=gauss()*L.err;tz+=gauss()*L.err;var a=SG.arc(s,tx,tz);if(a&&a.hit&&a.hit.own)continue;   /* never through its own camp on purpose */
+      if(!found)continue;tx+=gauss()*L.err;tz+=gauss()*L.err;var a=SG.arc(s,tx,tz);if(a&&a.hit&&a.hit.own){SG.stats.bySide[s].blocked++;continue;}   /* never through its own camp on purpose */
       SG.fire(s,tx,tz);side.fireT=L.fire*(.8+rand()*.4);break;}}}
 
 function tickFight(dt){
@@ -555,7 +556,33 @@ SG.boot=function(){
   initView();initInput();ui();
   var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0])Q[p[0]]=decodeURIComponent(p[1]||'');});
   if(Q.shot){SG.shot(Q.shot,Q.team||'blue');SG.camSnap=true;render();SG.camSnap=true;render();window.__done=true;return;}
-  var last=performance.now();(function loop(){var now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(dt);render();window.__done=true;requestAnimationFrame(loop);})();};
+  if(Q.auto)autoRun(Q);
+  var last=performance.now();(function loop(){var now=performance.now(),raw=now-last,dt=Math.min(.1,raw/1000);last=now;if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(dt*(SG.speed||1));render();if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
+/* ?auto=both|blue|red&level=easy|normal|hard&report=1 : bots play a match with no title screen, drawn normally, and the page
+   measures itself. auto=both: bots on both sides. auto=blue or auto=red: the bot plays that team and you play the other.
+   Extra, for tests: &speed=8 runs the clock faster, &skipbuild=1 starts from preset camps. Not part of the normal game. */
+var PERF=null;
+function autoRun(Q){
+  var lvl=LEVELS[Q.level]?Q.level:'easy',both=Q.auto==='both',team=Q.auto==='blue'?'red':'blue';
+  PERF={frames:[],calls:0,tris:0,errors:[],show:Q.report==='1',done:false,t0:performance.now(),auto:Q.auto,level:lvl};window.SG_REPORT=null;
+  window.onerror=function(msg,src,line){PERF.errors.push(String(msg)+(line?' (line '+line+')':''));};window.addEventListener('unhandledrejection',function(e){PERF.errors.push('promise: '+String(e.reason));});
+  SG.speed=Math.max(1,Math.min(40,+(Q.speed||1)));SG.start(team,{level:lvl,seed:Q.seed?+Q.seed:Math.floor(performance.now()*7919)%1000000+1});if(both)SG.auto(0,lvl);if(Q.skipbuild==='1')SG.skipBuild();}
+function perfFrame(ms){
+  if(PERF.done)return;if(PERF.frames.length<60000&&PERF.frames.length+1>3)PERF.frames.push(ms);else if(PERF.frames.length<=3)PERF.frames.push(-1);   /* the first frames are warm-up */
+  var inf=R.info.render;if(inf.calls>PERF.calls)PERF.calls=inf.calls;if(inf.triangles>PERF.tris)PERF.tris=inf.triangles;
+  if(SG.phase!=='over')return;PERF.done=true;
+  var f=PERF.frames.filter(function(x){return x>0;}).sort(function(a,b){return a-b;}),sum=0,i;for(i=0;i<f.length;i++)sum+=f[i];var worst=f.slice(Math.floor(f.length*.99)),ws=0;for(i=0;i<worst.length;i++)ws+=worst[i];
+  var st=SG.stats,rep={game:'Round Table Kingdom',auto:PERF.auto,level:PERF.level,speed:SG.speed,winner:SG.sides[SG.winner].team,winnerSide:SG.winner===0?'front':'far',
+    scores:{front:{team:SG.sides[0].team,score:Math.round(SG.sides[0].score)},far:{team:SG.sides[1].team,score:Math.round(SG.sides[1].score)}},rounds:SG.round,matchSeconds:Math.round(st.fightTime),clockSeconds:Math.round(SG.clock),
+    wallSeconds:Math.round((performance.now()-PERF.t0)/1000),frames:f.length,fpsAverage:f.length?+(1000/(sum/f.length)).toFixed(1):0,fpsWorst1pc:worst.length?+(1000/(ws/worst.length)).toFixed(1):0,longestFrameMs:f.length?+f[f.length-1].toFixed(1):0,
+    pageErrors:PERF.errors.slice(0,20),peakDrawCalls:PERF.calls,peakTriangles:PERF.tris,partsKnockedOff:st.partsOff,partsMended:st.partsMended,dizzies:st.dizzies,hillChanges:st.hillFlips,marbles:st.shots,stuckMice:st.stuck,
+    userAgent:navigator.userAgent,canvas:{width:R.domElement.width,height:R.domElement.height,cssWidth:W,cssHeight:H,pixelRatio:R.getPixelRatio()}};
+  window.SG_REPORT=rep;
+  if(PERF.show){var d=document.createElement('div');d.id='report';d.style.cssText='position:fixed;left:3%;right:3%;top:8%;bottom:8%;background:#fffdf6;color:#1e1a16;border:3px solid #3a281a;border-radius:12px;padding:12px;z-index:50;display:flex;flex-direction:column;gap:8px;-webkit-user-select:text;user-select:text';
+    var b=document.createElement('button');b.id='bCopy';b.textContent='Copy';b.style.cssText='align-self:flex-start;font-size:18px;padding:8px 20px';var t=document.createElement('textarea');t.id='reportText';t.readOnly=true;t.value=JSON.stringify(rep,null,1);
+    t.style.cssText='flex:1;width:100%;box-sizing:border-box;font:13px/1.35 ui-monospace,Menlo,monospace;-webkit-user-select:text;user-select:text';
+    b.onclick=function(){t.focus();t.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(function(){b.textContent='Copied';},function(){b.textContent=ok?'Copied':'Select all, then copy';});else b.textContent=ok?'Copied':'Select all, then copy';};
+    d.appendChild(b);d.appendChild(t);document.body.appendChild(d);}}
 function wallOf(s){var best=null,bd=1e9;SG.pieces.forEach(function(p){if(p.side===s&&p.kind==='wall'){var d=dist(p.x,p.z,0,0);if(d<bd){bd=d;best=p;}}});return best;}
 function stepUntil(fn,max){for(var t=0;t<(max||30);t+=STEP){SG.step(STEP);if(fn())return true;}return false;}
 SG.stepUntil=stepUntil;
