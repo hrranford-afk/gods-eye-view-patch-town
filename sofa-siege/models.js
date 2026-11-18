@@ -66,39 +66,53 @@ function makeAtlas(){
   });
   /* a pure white block for untextured parts */
   g.fillStyle='#ffffff';g.fillRect(256,0,24,24);
-  var t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t;
+  return c;
 }
 /* tile rects in uv space: [u0,v0,size] (canvas y is flipped) */
 var TILE={wood:[0,.5],paint:[.5,.5],rust:[0,0],cloth:[.5,0]};
 var PLAIN_UV=[(256+12)/512,1-12/512];
 
 var _mat=null,_glow=null,_gloss=null,_metal=null;
-function mat(){if(!_mat){SS.tex=makeAtlas();_mat=new THREE.MeshStandardMaterial({vertexColors:true,map:SS.tex,roughness:.84,metalness:0});SS.mat=_mat;}return _mat;}
+function mat(){if(!_mat){SS.tex=makeBig();_mat=new THREE.MeshStandardMaterial({vertexColors:true,map:SS.tex,roughness:.84,metalness:0});SS.mat=_mat;}return _mat;}
 function glow(){if(!_glow){_glow=new THREE.MeshBasicMaterial({vertexColors:true});SS.glow=_glow;}return _glow;}
 function metal(){if(!_metal){mat();_metal=new THREE.MeshStandardMaterial({vertexColors:true,map:SS.tex,roughness:.42,metalness:.32});SS.metal=_metal;}return _metal;}
 /* ---------- painted textures (art pack 3), loaded as real repeating textures ----------
    Until a picture arrives, or if it never does, each material shows a small procedural stand-in of the same kind and colour,
    so the game is playable at once. ?tex=0 in the page address switches the painted textures off (the old look). */
 SS.texOn=!(typeof location!=='undefined'&&/[?&]tex=0(&|$)/.test(location.search||''));SS.texPath='tex/';SS.texLoaded={};
-var TEXKEYS=['wood','blue','red','tin','canvas','grass'],_tm={};
+/* One big atlas, 2048 x 1024, eight cells of 512: the procedural atlas, then wood, blue, red, tin, canvas, grass and grey tin.
+   Everything is drawn with one material again. A painted cell is used with a small inset so that neighbours do not bleed in. */
+var TEXKEYS=['wood','blue','red','tin','canvas','grass'],CELL={base:0,wood:1,blue:2,red:3,tin:4,canvas:5,grass:6,greytin:7},PAD=10,_big=null,_bigCtx=null;
 function standIn(key){var c=document.createElement('canvas');c.width=c.height=128;var g=c.getContext('2d'),r=rng(hash('tex'+key)),i,y;
-  var base={wood:'#d28a3a',blue:'#3f74bd',red:'#cc4a2a',tin:'#a8623a',canvas:'#e2cfa6',grass:'#648a40'}[key];g.fillStyle=base;g.fillRect(0,0,128,128);
+  var base={wood:'#c98a48',blue:'#3f74bd',red:'#b3482c',tin:'#a8623a',canvas:'#e2cfa6',grass:'#648a40',greytin:'#8f9498'}[key];g.fillStyle=base;g.fillRect(0,0,128,128);
   if(key==='wood'||key==='blue'||key==='red'){for(i=0;i<160;i++){g.fillStyle=r()<.5?'rgba(255,240,210,.10)':'rgba(60,30,10,.12)';g.fillRect(r()*128,r()*128,10+r()*40,1.5);}
     if(key!=='wood')for(i=0;i<40;i++){g.fillStyle='rgba(214,150,70,.8)';g.fillRect(r()*128,(Math.floor(r()*4)*32)+(r()<.5?1:26)+r()*3,4+r()*14,2+r()*3);}
     for(y=0;y<4;y++){g.fillStyle='rgba(50,25,10,.75)';g.fillRect(0,y*32,128,1.6);g.fillStyle='rgba(255,235,200,.25)';g.fillRect(0,y*32+2,128,1);}}
-  else if(key==='tin'){for(i=0;i<60;i++){g.fillStyle=r()<.3?'rgba(150,160,165,.5)':(r()<.5?'rgba(210,110,40,.35)':'rgba(110,50,20,.3)');g.beginPath();g.arc(r()*128,r()*128,3+r()*12,0,6.3);g.fill();}}
+  else if(key==='tin'||key==='greytin'){for(i=0;i<60;i++){g.fillStyle=r()<.3?'rgba(150,160,165,.5)':(r()<.5?(key==='tin'?'rgba(210,110,40,.35)':'rgba(90,95,100,.3)'):'rgba(110,50,20,.3)');g.beginPath();g.arc(r()*128,r()*128,3+r()*12,0,6.3);g.fill();}}
   else if(key==='canvas'){for(i=0;i<128;i+=3){g.fillStyle='rgba(120,100,70,.1)';g.fillRect(i,0,1,128);g.fillRect(0,i,128,1);}}
   else{for(i=0;i<260;i++){g.fillStyle=r()<.5?'rgba(120,160,70,.35)':'rgba(50,90,40,.3)';g.beginPath();g.arc(r()*128,r()*128,2+r()*6,0,6.3);g.fill();}}
-  var t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
-function texMat(key){if(_tm[key])return _tm[key];var m=_tm[key]=new THREE.MeshStandardMaterial({vertexColors:true,map:standIn(key),roughness:key==='tin'?.62:.86,metalness:key==='tin'?.12:0});m.name='tex_'+key;SS.texLoaded[key]=false;
-  if(typeof Image!=='undefined'){var img=new Image();img.onload=function(){try{var c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;var g=c.getContext('2d');g.drawImage(img,0,0);g.getImageData(0,0,1,1);   /* throws if the picture may not be read */
-      var t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;m.map=t;m.needsUpdate=true;SS.texLoaded[key]=true;}catch(e){SS.texLoaded[key]='blocked';}};
-    img.onerror=function(){SS.texLoaded[key]='missing';};img.src=SS.texPath+key+'.jpg';}
-  return m;}
-function matFor(key){return key==='base'?mat():(key==='metal'?metal():texMat(key));}
-SS.texMaterials=function(){return TEXKEYS.map(texMat);};
+  return c;}
+/* draws a tile into its cell, edge colours spread into the padding, then tones it:
+   wood a little less orange, red towards brick, and a greyed copy of the tin for bare metal */
+function drawCell(key,img){var g=_bigCtx,ci=CELL[key],x0=(ci%4)*512,y0=Math.floor(ci/4)*512;g.save();g.beginPath();g.rect(x0,y0,512,512);g.clip();
+  g.drawImage(img,x0,y0,512,512);g.drawImage(img,x0+PAD,y0+PAD,512-2*PAD,512-2*PAD);
+  function tone(desat,mul){if(desat){g.globalCompositeOperation='saturation';g.globalAlpha=desat;g.fillStyle='#808080';g.fillRect(x0,y0,512,512);}g.globalAlpha=1;if(mul){g.globalCompositeOperation='multiply';g.fillStyle=mul;g.fillRect(x0,y0,512,512);}}
+  if(key==='red')tone(.3,'#d6c2ba');else if(key==='wood')tone(.2,'#f0ebe6');else if(key==='greytin')tone(.82,'#e9eef2');else if(key==='blue')tone(.1,null);
+  g.restore();}
+function makeBig(){_big=document.createElement('canvas');_big.width=2048;_big.height=1024;_bigCtx=_big.getContext('2d');_bigCtx.fillStyle='#fff';_bigCtx.fillRect(0,0,2048,1024);_bigCtx.drawImage(makeAtlas(),0,0);
+  var t=new THREE.CanvasTexture(_big);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;
+  if(SS.texOn){Object.keys(CELL).forEach(function(k){if(k!=='base')drawCell(k,standIn(k));});
+    TEXKEYS.forEach(function(key){SS.texLoaded[key]=false;if(typeof Image==='undefined')return;var img=new Image();
+      img.onload=function(){try{drawCell(key,img);if(key==='tin')drawCell('greytin',img);_bigCtx.getImageData(0,0,1,1);t.needsUpdate=true;SS.texLoaded[key]=true;}catch(e){SS.texLoaded[key]='blocked';}};
+      img.onerror=function(){SS.texLoaded[key]='missing';};img.src=SS.texPath+key+'.jpg';});}
+  return t;}
+/* where a cell's own u,v (0..1) sits in the atlas */
+function cellU(ci,u,pad){return ((ci%4)*512+pad+u*(512-2*pad))/2048;}
+function cellV(ci,v,pad){return 1-(Math.floor(ci/4)*512+pad+(1-v)*(512-2*pad))/1024;}
+function matFor(key){return key==='metal'?metal():mat();}
+SS.texMaterials=function(){return [mat()];};
 /* true once every painted texture asked for so far has arrived or failed */
-SS.texSettled=function(){for(var k in SS.texLoaded)if(SS.texLoaded[k]===false)return false;return true;};
+SS.texSettled=function(){mat();for(var k in SS.texLoaded)if(SS.texLoaded[k]===false)return false;return true;};
 /* calls back when the textures have settled, or after maxMs at the latest */
 SS.whenTextures=function(cb,maxMs){var t0=Date.now();(function wait(){if(SS.texSettled()||Date.now()-t0>(maxMs||3000))cb();else setTimeout(wait,50);})();};
 function gloss(){if(!_gloss){_gloss=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.18,metalness:.05});SS.gloss=_gloss;}return _gloss;}
@@ -119,7 +133,7 @@ function isTin(col,tile){if(tile!=='rust')return false;var r=(col>>16)&255,g=(co
 Bld.prototype.side=function(key){key=key||'metal';var b=this.sub[key];if(!b){b=this.sub[key]=new Bld(1);b.M=this.M;b.r=this.r;b.key=key;b.isAlt=true;}return b;};
 /* which painted texture a tile and colour use, or '' for the procedural atlas */
 function texKey(col,tile){if(!SS.texOn||!tile)return '';var r=(col>>16)&255,g=(col>>8)&255,b=col&255;
-  if(tile==='grass')return 'grass';if(tile==='wood')return 'wood';if(tile==='rust')return r>g*1.6&&r>b*1.6?'red':'tin';   /* red-painted scrap uses the red paint */
+  if(tile==='grass')return 'grass';if(tile==='wood')return 'wood';if(tile==='rust')return r>g*1.6&&r>b*1.6?'red':(isTin(col,tile)?'greytin':'tin');   /* red paint, bare grey tin, or rust */
   if(tile==='paint')return b>r*1.25&&b>g?'blue':(r>g*1.6&&r>b*1.6?'red':'');
   if(tile==='cloth')return r>205&&g>190&&b>140&&r-b<90?'canvas':'';return '';}
 /* the painted textures carry the colour, so the vertex colour is only a light tint: darker for dark woods, redder for red tin */
@@ -128,14 +142,15 @@ function texTint(key,col){var r=(col>>16)&255,g=(col>>8)&255,b=col&255,l=.3*r+.5
   if(key==='wood'){k=cl(l/172,.5,1.08);k*=k;return [k,k*.98,k*.95];}
   if(key==='blue'){k=cl(l/105,.62,1.12);k*=k;return [k,k,k];}
   if(key==='red'){k=cl(l/116,.62,1.12);k*=k;return [k,k,k];}
-  if(key==='tin'){k=cl(l/150,.55,1.05);k*=k;return isTin(col,'rust')?[k*1.05,k*1.05,k*1.05]:[k,k*.92,k*.88];}
+  if(key==='tin'){k=cl(l/150,.55,1.05);k*=k;return [k,k*.92,k*.88];}
+  if(key==='greytin'){k=cl(l/160,.6,1.1);k*=k;return [k,k,k];}
   if(key==='canvas'){k=cl(l/222,.7,1.04);k*=k;return [k,k,k];}
   return [1,1,1];}
 /* tile: 'wood','paint','rust','cloth','grass' (add 'h' to turn the grain sideways) or falsy for plain */
 Bld.prototype.add=function(geo,col,tile,pos,rot,scl,flat){
   var turn=false,tl=null;if(tile){if(tile.charAt(tile.length-1)==='h'){turn=true;tile=tile.slice(0,-1);}}
   if(this.metalOK&&!this.isAlt&&isTin(col,tile)){this.side('metal').add(geo,col,tile+(turn?'h':''),pos,rot,scl,flat);return this;}
-  var key=this.isAlt?'':texKey(col,tile),T=key?this.side(key):this;if(tile==='grass'&&!key)tile='cloth';if(tile)tl=TILE[tile];
+  var key=texKey(col,tile),T=this;if(tile==='grass'&&!key)tile='cloth';if(tile)tl=TILE[tile];
   var g=geo.index?geo.toNonIndexed():geo,m=this.M[this.M.length-1].clone().multiply(compose(pos,rot,scl));
   var pa=g.attributes.position,na=g.attributes.normal,ua=g.attributes.uv,c=key?texTint(key,col):lin(col),i,P=T.P,N=T.N,U=T.U,C=T.C,r=this.r;
   var f=.42,ou=0,ov=0;if(tl){ou=tl[0]+.03+r()*(.5-.06-f*.5);ov=tl[1]+.03+r()*(.5-.06-f*.5);if(tile==='paint'){ou=tl[0]+.06+r()*(.5-.09-f*.5);ov=tl[1]+.03+r()*(.5-.12-f*.5);}}
@@ -150,6 +165,7 @@ Bld.prototype.add=function(geo,col,tile,pos,rot,scl,flat){
   if(flat||!na){for(i=start;i<P.length;i+=9){var ax=P[i+3]-P[i],ay=P[i+4]-P[i+1],az=P[i+5]-P[i+2],bx=P[i+6]-P[i],by=P[i+7]-P[i+1],bz=P[i+8]-P[i+2];
     var nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx,l=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;nx/=l;ny/=l;nz/=l;for(var k=0;k<9;k+=3){N[i+k]=nx;N[i+k+1]=ny;N[i+k+2]=nz;}}}
   if(key)realUV(P,U,start,ustart,key,r);
+  var ci=key?CELL[key]:0,pd=key?PAD:0;for(i=ustart;i<U.length;i+=2){U[i]=cellU(ci,U[i],pd);U[i+1]=cellV(ci,U[i+1],pd);}
   return this;};
 /* UVs for a painted texture, in real sizes. u,v (0..1 over the primitive) become texture coordinates so that the paint is the
    same size everywhere. The plank tiles hold four planks, grain along u: one piece of wood gets one plank row (more if it is broad),
@@ -160,12 +176,14 @@ function realUV(P,U,start,ustart,key,r){
       du1=U[b+2]-U[b],dv1=U[b+3]-U[b+1],du2=U[b+4]-U[b],dv2=U[b+5]-U[b+1],det=du1*dv2-du2*dv1;if(Math.abs(det)<1e-7)continue;
     var tx=(e1x*dv2-e2x*dv1)/det,ty=(e1y*dv2-e2y*dv1)/det,tz=(e1z*dv2-e2z*dv1)/det,bx=(e2x*du1-e1x*du2)/det,by=(e2y*du1-e1y*du2)/det,bz=(e2z*du1-e1z*du2)/det;
     var cx=e1y*e2z-e1z*e2y,cy=e1z*e2x-e1x*e2z,cz=e1x*e2y-e1y*e2x,w=Math.sqrt(cx*cx+cy*cy+cz*cz);su+=Math.sqrt(tx*tx+ty*ty+tz*tz)*w;sv+=Math.sqrt(bx*bx+by*by+bz*bz)*w;sw+=w;}
-  var Lu=sw?su/sw:.1,Lv=sw?sv/sw:.1,o1=r(),o2=r();
-  if(key==='grass'){for(i=0;i<n*3;i++){U[ustart+i*2]=P[start+i*3]/1.25+.5;U[ustart+i*2+1]=P[start+i*3+2]/1.25+.5;}return;}
-  if(key==='tin'||key==='canvas'){var S=key==='tin'?.62:.85;for(i=0;i<n*3;i++){U[ustart+i*2]=o1+U[ustart+i*2]*Lu/S;U[ustart+i*2+1]=o2+U[ustart+i*2+1]*Lv/S;}return;}
-  /* planks: here v is taken as along the grain (callers turn it with the 'h' tiles), u across it */
-  var across=Math.max(Lu,.01),along=Lv,rows=Math.max(1,Math.min(4,Math.round(across/.13))),row=Math.floor(o1*4)%4,sc=rows*.25/across;
-  for(i=0;i<n*3;i++){var uu=U[ustart+i*2],vv=U[ustart+i*2+1];U[ustart+i*2]=o2+vv*along*sc;U[ustart+i*2+1]=row*.25+.014+uu*(rows*.25-.028);}}
+  var Lu=sw?su/sw:.1,Lv=sw?sv/sw:.1,o1=r(),o2=r(),o3=r();
+  function fit(span){return span>.94?.94:span;}
+  if(key==='grass'){for(i=0;i<n*3;i++){U[ustart+i*2]=Math.min(1,Math.max(0,P[start+i*3]/1.45+.5));U[ustart+i*2+1]=Math.min(1,Math.max(0,P[start+i*3+2]/1.45+.5));}return;}
+  if(key==='tin'||key==='greytin'||key==='canvas'){var S=key==='canvas'?.85:.62,a1=fit(Lu/S),a2=fit(Lv/S),flip=o3<.5;   /* each part takes its own patch, some turned a quarter */
+    for(i=0;i<n*3;i++){var x=U[ustart+i*2],y=U[ustart+i*2+1];if(flip){var t=x;x=y;y=t;}U[ustart+i*2]=o1*(1-a1)+x*a1;U[ustart+i*2+1]=o2*(1-a2)+y*a2;}return;}
+  /* planks: v is along the grain (callers turn it with the 'h' tiles), u across it. A long part stretches the grain, it never leaves the cell. */
+  var across=Math.max(Lu,.01),along=Lv,rows=Math.max(1,Math.min(4,Math.round(across/.13))),row=Math.floor(o1*(5-rows))%(5-rows),span=fit(along*rows*.25/across),back=o3<.5;
+  for(i=0;i<n*3;i++){var uu=U[ustart+i*2],vv=U[ustart+i*2+1];if(back)vv=1-vv;U[ustart+i*2]=o2*(1-span)+vv*span;U[ustart+i*2+1]=row*.25+.014+uu*(rows*.25-.028);}}
 /* append an already built geometry, moved by an offset */
 Bld.prototype.raw=function(geo,off){var p=geo.attributes.position.array,n=geo.attributes.normal.array,u=geo.attributes.uv.array,c=geo.attributes.color.array,i;off=off||[0,0,0];
   var keys=geo.userData.keys||['base'],gs=geo.groups.length?geo.groups:[{start:0,count:p.length/3}],me=this;
@@ -240,7 +258,7 @@ function mouseGeo(team,furName){
   b=new Bld(hash(key));
   b.sph(.058,9,6,fur,null,[0,.054,0],null,[1,1.08,.92]);
   b.cyl(.058,.071,.086,10,T.main,'cloth',[0,.04,0]);b.cyl(.072,.074,.012,10,T.dark,'cloth',[0,.003,0]);
-  b.sph(.047,8,6,cream,null,[0,.047,.034],null,[.95,1.15,.62]);                       /* belly */
+  b.sph(.05,10,8,cream,null,[0,.046,.03],null,[.86,1.02,.92]);                       /* belly */
   b.cyl(.066,.069,.013,8,0x7a5234,null,[0,.03,0]);b.box(.024,.02,.01,GOLD,null,[0,.03,.07]);
   if(team==='blue'){ /* tan collar, short cape, quiver of cork bolts */
     b.tor(.05,.011,0xd9a55c,null,[0,.096,.004],[PI/2,0,0],null,null,8);
