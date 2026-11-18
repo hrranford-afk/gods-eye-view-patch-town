@@ -17,7 +17,7 @@ var CONFIG={
   botMendAt:1,                                          /* a bot mends during a round once this many of its parts lie fallen */
   wallShots:.3,                                         /* share of bot marbles aimed at pieces, not at mice */
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
-  levels:{easy:{fire:8.5,err:.8,send:5,raidLead:10},normal:{fire:12,err:.45,send:2.5,raidLead:10},hard:{fire:11,err:.2,send:.6,raidLead:2}}
+  levels:{easy:{fire:13,err:.5,send:5,raidLead:6},normal:{fire:12,err:.45,send:2.5,raidLead:1.5},hard:{fire:11,err:.2,send:.6,raidLead:2}}
 };
 var PI=Math.PI,STEP=1/60,PS=.88,RULES=CONFIG,LEVELS=CONFIG.levels;
 var KIT=['wall','wall','wall','wall','wall','wall','gate','tower','lobber','tent','workshop'];
@@ -26,7 +26,9 @@ for(k0 in FOOT0){FOOT[k0]=[FOOT0[k0][0]*PS,FOOT0[k0][1]*PS];TALL[k0]*=PS;}
 var ZONE={rMin:1.03,rMax:2.72,half:1.22},MAT={r0:2.78,r1:3.2,r:2.99,scale:.32,pick:2.6,step:.185},HILL=1.0;
 var REASON={hill:'Not on the hill ring',third:'Only on your own side of the table',overlap:'Too close to another piece'};
 var NAME={blue:'Blue',red:'Red'};
-/* preset camps for the bot: [distance from the hill, angle, extra turn] for each kit slot, in the side's own frame */
+/* preset camps. The bot always builds the third. The three were far from even (in hard bot matches the first won 8% and the third 69 to 78%),
+   so the weaker two are kept only for demos and tests.
+   Each entry: [distance from the hill, angle, extra turn] for each kit slot, in the side's own frame */
 var LAYOUTS=[
   [[1.3,-.7,PI],[1.3,.7,PI],[1.72,-.82,PI],[1.72,-.3,PI],[1.72,.3,PI],[1.72,.82,PI],[1.3,0,PI],[2.28,-.72,PI],[2.2,-.22,PI],[2.22,.26,0],[2.26,.74,0]],
   [[1.25,-.35,PI],[1.25,.35,PI],[1.42,-1.0,PI],[1.42,1.0,PI],[1.8,-.62,PI],[1.8,.62,PI],[1.75,0,PI],[2.25,.78,PI],[2.25,0,PI],[2.25,-.42,0],[2.25,-.86,0]],
@@ -84,7 +86,7 @@ SG.start=function(team,opts){
   SG.callout={text:'',t:0};SG.winner=-1;SG.holder=-1;SG.lastHolder=null;SG.cand=-1;SG.candT=0;SG.lastKnock=null;SG.lastHit=null;SG.stats=newStats();SG.sec=0;
   SG.sides=[];gridDirty=true;
   for(var s=0;s<2;s++){var human=SG.mode==='table'||s===0,side={team:s===0?SG.team:(SG.team==='blue'?'red':'blue'),human:human,bot:!human,ready:false,sel:-1,ghost:{x:0,z:s?-1.9:1.9,rot:s?PI:0,ok:false,code:''},tool:'squad',aim:{on:false,tx:0,tz:0},msg:{code:'',text:'',t:0},level:SG.level,kit:[],score:0,reload:0,fired:-9,order:null,lobber:0,workshop:0,crew:-1,raid:null,
-      bt:2+s,layout:Math.floor(rand()*LAYOUTS.length),sendT:0,fireT:0,placed:0};SG.sides.push(side);
+      bt:2+s,layout:2,sendT:0,fireT:0,placed:0};SG.sides.push(side);
     KIT.forEach(function(kind,i){var a=(i-(KIT.length-1)/2)*MAT.step,w=w2(s,Math.sin(a)*MAT.r,Math.cos(a)*MAT.r);side.kit.push({kind:kind,a:a,x:w[0],z:w[1],used:false,picked:false});});
     for(var i=0;i<5;i++){var h=w2(s,(i-2)*.42,2.3-Math.abs(i-2)*.1);SG.mice.push({side:s,i:i,state:'idle',x:h[0],z:h[1],rot:s?0:PI,tx:h[0],tz:h[1],hx:h[0],hz:h[1],job:0,part:-1,t:0,wait:.5+i*.4,speed:0,
       slack:.3,q:0,asked:-9,path:null,pi:0,pver:-1,ptx:0,ptz:0,cd:1+i*.5,act:0,moved:0,goal:false,daze:false});}}
@@ -199,7 +201,8 @@ function walk(m,dt,speed){
   if(!m.path){m.speed=0;return false;}if(m.pi>=m.path.length){m.speed=0;return true;}m.speed=speed;return false;}
 /* mice do not stand on top of each other: any two that are too close step apart, if the square they step to is open */
 function separate(){var M=SG.mice,i,j,still={dizzy:1,cheer:1,hammer:1,fix:1};
-  for(i=0;i<M.length;i++){var a=M[i];if(a.state==='dizzy'||a.state==='cheer')continue;for(j=i+1;j<M.length;j++){var b=M[j];if(b.state==='dizzy'||b.state==='cheer')continue;
+  /* only mice that have stopped step apart; a mouse on its way is never pushed, so it always arrives */
+  for(i=0;i<M.length;i++){var a=M[i];if(a.state==='dizzy'||a.state==='cheer'||a.speed>0)continue;for(j=i+1;j<M.length;j++){var b=M[j];if(b.state==='dizzy'||b.state==='cheer'||b.speed>0)continue;
     var dx=b.x-a.x,dz=b.z-a.z,d=Math.sqrt(dx*dx+dz*dz);if(d>=CONFIG.personal)continue;if(d<1e-4){dx=Math.cos(i*2.4+j);dz=Math.sin(i*2.4+j);d=1;}
     var push=(CONFIG.personal-d)*.3,ux=dx/d*push,uz=dz/d*push;if(!still[a.state]&&isOpen(a.side,a.x-ux,a.z-uz)){a.x-=ux;a.z-=uz;}if(!still[b.state]&&isOpen(b.side,b.x+ux,b.z+uz)){b.x+=ux;b.z+=uz;}}}}
 function goTo(m,x,z,slack){m.tx=x;m.tz=z;m.slack=slack==null?.3:slack;}
@@ -331,7 +334,7 @@ function tickMice(dt){
         var i=nearestPart(p,m.x,0,m.z,true);if(i>=0){knock(p,i,p.x-m.x,p.z-m.z,'scrap');m.cd=CONFIG.scrapEvery;m.act=.7;m.rot=Math.atan2(p.x-m.x,p.z-m.z);break;}}}
   });separate();}
 function stuckCheck(dt){SG.mice.forEach(function(m){if(!m.goal){m.moved=0;m.sx=m.x;m.sz=m.z;return;}if(m.sx==null){m.sx=m.x;m.sz=m.z;}
-  if(dist(m.x,m.z,m.sx,m.sz)>.08){m.sx=m.x;m.sz=m.z;m.moved=0;}else{m.moved+=dt;if(m.moved>20){SG.stats.stuck++;m.moved=-1e9;}}});}
+  if(dist(m.x,m.z,m.sx,m.sz)>.08){m.sx=m.x;m.sz=m.z;m.moved=0;}else{m.moved+=dt;if(m.moved>20){SG.stats.stuck++;SG.stats.stuckInfo={state:m.state,side:m.side,i:m.i,x:m.x,z:m.z,tx:m.tx,tz:m.tz,q:m.q,path:m.path?m.path.length:-1,pi:m.pi,rough:m.rough||0,phase:SG.phase,t:SG.clock,crew:SG.sides[m.side].crew};m.moved=-1e9;}}});}
 
 /* --- the bot --- */
 function botFight(s,dt){

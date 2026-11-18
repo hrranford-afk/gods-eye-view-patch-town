@@ -1,45 +1,34 @@
 # Round Table Kingdom: balance sweep, bot against bot
 
-Made by `tests/sweep.js`: 200 matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match, and each camp is one of three presets picked at random. All matches start from finished camps.
+Made by `tests/sweep.js`: 200 matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match. Both camps are the same preset, so the only differences are the team rules and the dice. All matches start from finished camps.
 
 ## Results
 
 | | Easy | Normal | Hard |
 |---|---|---|---|
-| Blue wins | 48% | 52% | 50% |
-| Red wins | 52% | 49% | 50% |
+| Blue wins | 53% | 54% | 54% |
+| Red wins | 48% | 47% | 46% |
 | Each team inside 45–55% | yes | yes | yes |
-| Front seat wins | 47% | 52% | 46% |
+| Front seat wins | 53% | 48% | 48% |
 | Front seat under 55% | yes | yes | yes |
-| Dizzies a match (target 15–25) | 13.6, of which cork dazes 4.0 | 15.2, of which cork dazes 4.0 | 23.7, of which cork dazes 3.9 |
-| Hill changes hands (target 6–12) | 7.3 | 8.4 | 10.2 |
-| Parts knocked off a match | 18.4 | 13.1 | 17.9 |
-| Mended back by the end (target about 70%) | 74% | 72% | 69% |
-| Marbles fired a match | 40 | 28 | 30 |
-| Fight length, of 180 s | 176 s | 175 s | 174 s |
-| Ended early at 100 points | 8% | 8% | 13% |
-| Average winning margin, points | 34 | 31 | 35 |
+| Dizzies a match (target 15–25) | 14.8, of which cork dazes 4.3 | 17.0, of which cork dazes 4.4 | 25.1, of which cork dazes 4.1 |
+| Hill changes hands (target 6–12) | 9.0 | 10.0 | 13.0 |
+| Parts knocked off a match | 13.0 | 17.4 | 15.4 |
+| Mended back by the end (target about 70%) | 71% | 67% | 74% |
+| Marbles fired a match | 27 | 29 | 31 |
+| Fight length, of 180 s | 180 s | 180 s | 180 s |
+| Ended early at 100 points | 1% | 2% | 1% |
+| Average winning margin, points | 23 | 29 | 20 |
 | Stuck mice (no move for 20 s with a goal) | 0 | 0 | 0 |
-| "?" no-way-through moments a match | 1.3 | 1.2 | 1.3 |
-| Marbles into own pieces a match | 0.01 | 0.00 | 0.00 |
-| Longest stretch with no event, worst of 200 | 27 s | 29 s | 28 s |
+| "?" no-way-through moments a match | 0.0 | 0.0 | 0.0 |
+| Marbles into own pieces a match | 0.00 | 0.00 | 0.00 |
+| Longest stretch with no event, worst of 200 | 34 s | 28 s | 28 s |
 
 With 200 matches a win share is good to about ±3.5 points, so "50%" here means "somewhere from 46 to 54".
 
-## Check on fresh matches
+## Note on this run
 
-The numbers were tuned on the same 200 matches a level that the table above shows, so the table flatters them a little. A second run on 200 different matches a level (`node tests/sweep.js 200 seedBase=500000`) gave:
-
-| | Easy | Normal | Hard |
-|---|---|---|---|
-| Blue wins | 50% | 55% | 51% |
-| Red wins | 50% | 45% | 50% |
-| Front seat wins | 50% | 49% | 51% |
-| Dizzies a match | 13.6 | 15.7 | 23.3 |
-| Hill changes hands | 7.2 | 7.5 | 9.3 |
-| Mended back | 75% | 73% | 67% |
-
-Normal sits on the edge of the 45–55% band there.
+This table was made after the two-player pass (mice keep apart and claim their own spots, everyone lines up at home when the battle starts, the bot always builds the same camp, easy fires less but aims better). The numbers were tuned on these same 200 matches a level; no second run on fresh matches was made this time, so read the win shares as a little flattering.
 
 ## What was changed, and why
 
@@ -59,8 +48,10 @@ Only numbers in the `CONFIG` object at the top of `game.js` were tuned. "Before"
 | `botMendAt` | none | 1 | New: a bot sends one mouse to mend during a round once this many of its parts lie fallen. |
 | `scrapEvery` | 4 s | 5 s | Calm down: fewer parts off. |
 | `wallShots` | 0.38 | 0.3 | Share of bot marbles aimed at pieces. |
-| bot `fire` (easy, normal, hard) | 10, 6.5, 4.4 s | 8.5, 12, 11 s | Calm down. Easy fires most often but misses most (aim error 0.8); otherwise easy matches had too few dizzies. |
-| bot `raidLead` (easy, normal, hard) | 8 for all | 10, 10, 2 | The strongest balance lever found. The red bot sends one scrapper to the nearest enemy wall when it is this many points ahead. The scrapper stands at the hill's edge, away from the marbles, and still counts on the hill. With 2 at every level red won about 60% on easy and normal; with 25 blue won about 60 to 64% everywhere. One value could not fit all three levels, so it is set per level. |
+| bot `fire` (easy, normal, hard) | 10, 6.5, 4.4 s | 13, 12, 11 s | Calm down. Easy now fires least often, with aim error 0.5 (was 0.8 with many misses): fewer, better-aimed shots. |
+| `personal` | none | 0.17 | New: mice that have stopped keep this far apart, and each claims its own spot. |
+| bot camp preset | one of three at random | always the third | The three were far from even: in hard bot matches the first won 8% and the third 69 to 78%. The other two are kept for demos and tests only. |
+| bot `raidLead` (easy, normal, hard) | 8 for all | 6, 1.5, 2 | The strongest balance lever found. The red bot sends one scrapper to the nearest enemy wall when it is this many points ahead. The scrapper stands at the hill's edge, away from the marbles, and still counts on the hill. It is a jumpy lever and one value does not fit all three levels, so it is set per level; a negative value means the scrapper goes even when red is a little behind. |
 
 Team rules that survived: blue corks (now need a clear line of sight), red scrappers (reach 0.38), the red bot's wall raid. Dropped: red's shorter dizzy and red's two-part marble.
 
@@ -84,6 +75,7 @@ Team rules that survived: blue corks (now need a clear line of sight), red scrap
  "reload": 6,
  "blast": 0.27,
  "dizzy": 5,
+ "personal": 0.17,
  "squadRing": 0.5,
  "corkRange": 1.2,
  "corkEvery": 3,
@@ -97,16 +89,16 @@ Team rules that survived: blue corks (now need a clear line of sight), red scrap
  "wallShots": 0.3,
  "levels": {
   "easy": {
-   "fire": 8.5,
-   "err": 0.8,
+   "fire": 13,
+   "err": 0.5,
    "send": 5,
-   "raidLead": 10
+   "raidLead": 6
   },
   "normal": {
    "fire": 12,
    "err": 0.45,
    "send": 2.5,
-   "raidLead": 10
+   "raidLead": 1.5
   },
   "hard": {
    "fire": 11,

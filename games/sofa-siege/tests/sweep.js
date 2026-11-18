@@ -41,7 +41,7 @@ const run = async () => {
     const L = out.levels, c = out.config, f0 = (x) => x.toFixed(0), f1 = (x) => x.toFixed(1), row = (name, f) => '| ' + name + ' | ' + ['easy', 'normal', 'hard'].map((k) => f(L[k])).join(' | ') + ' |';
     const inR = (x, a, b2) => x >= a && x <= b2 ? 'yes' : 'NO';
     const md = ['# Round Table Kingdom: balance sweep, bot against bot', '',
-      'Made by `tests/sweep.js`: ' + N + ' matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match, and each camp is one of three presets picked at random. All matches start from finished camps.', '',
+      'Made by `tests/sweep.js`: ' + N + ' matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match. Both camps are the same preset, so the only differences are the team rules and the dice. All matches start from finished camps.', '',
       '## Results', '', '| | Easy | Normal | Hard |', '|---|---|---|---|',
       row('Blue wins', (x) => f0(x.blue) + '%'), row('Red wins', (x) => f0(x.red) + '%'), row('Each team inside 45–55%', (x) => inR(x.blue, 45, 55)),
       row('Front seat wins', (x) => f0(x.front) + '%'), row('Front seat under 55%', (x) => x.front < 55 ? 'yes' : 'NO'),
@@ -65,8 +65,10 @@ const run = async () => {
       '| `botMendAt` | none | ' + c.botMendAt + ' | New: a bot sends one mouse to mend during a round once this many of its parts lie fallen. |',
       '| `scrapEvery` | 4 s | ' + c.scrapEvery + ' s | Calm down: fewer parts off. |',
       '| `wallShots` | 0.38 | ' + c.wallShots + ' | Share of bot marbles aimed at pieces. |',
-      '| bot `fire` (easy, normal, hard) | 10, 6.5, 4.4 s | ' + c.levels.easy.fire + ', ' + c.levels.normal.fire + ', ' + c.levels.hard.fire + ' s | Calm down. Easy fires most often but misses most (aim error ' + c.levels.easy.err + '); otherwise easy matches had too few dizzies. |',
-      '| bot `raidLead` (easy, normal, hard) | 8 for all | ' + c.levels.easy.raidLead + ', ' + c.levels.normal.raidLead + ', ' + c.levels.hard.raidLead + ' | The strongest balance lever found. The red bot sends one scrapper to the nearest enemy wall when it is this many points ahead. The scrapper stands at the hill\'s edge, away from the marbles, and still counts on the hill. With 2 at every level red won about 60% on easy and normal; with 25 blue won about 60 to 64% everywhere. One value could not fit all three levels, so it is set per level. |', '',
+      '| bot `fire` (easy, normal, hard) | 10, 6.5, 4.4 s | ' + c.levels.easy.fire + ', ' + c.levels.normal.fire + ', ' + c.levels.hard.fire + ' s | Calm down. Easy now fires least often, with aim error ' + c.levels.easy.err + ' (was 0.8 with many misses): fewer, better-aimed shots. |',
+      '| `personal` | none | ' + c.personal + ' | New: mice that have stopped keep this far apart, and each claims its own spot. |',
+      '| bot camp preset | one of three at random | always the third | The three were far from even: in hard bot matches the first won 8% and the third 69 to 78%. The other two are kept for demos and tests only. |',
+      '| bot `raidLead` (easy, normal, hard) | 8 for all | ' + c.levels.easy.raidLead + ', ' + c.levels.normal.raidLead + ', ' + c.levels.hard.raidLead + ' | The strongest balance lever found. The red bot sends one scrapper to the nearest enemy wall when it is this many points ahead. The scrapper stands at the hill\'s edge, away from the marbles, and still counts on the hill. It is a jumpy lever and one value does not fit all three levels, so it is set per level; a negative value means the scrapper goes even when red is a little behind. |', '',
       'Team rules that survived: blue corks (now need a clear line of sight), red scrappers (reach ' + c.scrapReach + '), the red bot\'s wall raid. Dropped: red\'s shorter dizzy and red\'s two-part marble.', '',
       '## Final numbers', '', '```', JSON.stringify(c, null, 1), '```', ''];
     fs.writeFileSync(path.resolve(__dirname, '..', 'BOT_REPORT.md'), md.join('\n'));
