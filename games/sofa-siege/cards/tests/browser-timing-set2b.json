@@ -1,18 +1,18 @@
 {
- "init_ms": 2546,
+ "init_ms": 2125,
  "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
  "cores": 4,
  "640x480": {
-  "median_ms": 444,
-  "min_ms": 244,
-  "max_ms": 527,
+  "median_ms": 297,
+  "min_ms": 161,
+  "max_ms": 466,
   "frames": 10,
   "cards_found": 9
  },
  "1280x720": {
-  "median_ms": 510,
-  "min_ms": 438,
-  "max_ms": 591,
+  "median_ms": 371,
+  "min_ms": 348,
+  "max_ms": 440,
   "frames": 10,
   "cards_found": 10
  },

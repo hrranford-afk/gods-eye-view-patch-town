@@ -101,6 +101,10 @@ var RTK_SETUP = (function () {
       return { ok: missing.length === 0 && S.state !== 'LOCKED', missing: missing }; };
     S.lock = function (t) { var c = S.canLock(); if (!c.ok) { note(t || 0, 'lock_refused', null, { missing: c.missing }); return { ok: false, reason: S.state === 'LOCKED' ? 'Already locked' : 'Not placed yet: ' + c.missing.join(', '), missing: c.missing }; }
       S.locked = LockedPlacementStore.build(S); S.state = 'LOCKED'; note(t || 0, 'locked'); return { ok: true, locked: S.locked }; };
+    S.loadLocked = function (o, t) { /* start from a layout locked earlier (LockedPlacementStore.load()). Nothing is scanned; the table is locked straight away. */
+      var errs = LockedPlacementStore.validate(o); if (errs.length) { note(t || 0, 'load_refused', null, { errors: errs }); return { ok: false, errors: errs }; }
+      o.placements.forEach(function (q) { var p = S.placements[q.card_id]; if (!p) return; var tr = q.transform_anchor_relative; p.samples = []; p.quality = q.quality || null; if (tr) { p.t = { x_mm: tr.x_mm, y_mm: tr.y_mm, z_mm: 0, yaw_deg: tr.yaw_deg }; p.source = q.source || 'card_scan'; p.status = p.source === 'manual_touch' ? 'MANUAL' : 'LOST'; } else { p.t = null; p.source = null; p.status = 'NOT_SCANNED'; } });
+      S.table_id = o.table_id || S.table_id; S.anchorSeen = !!o.anchor_scanned; S.anchorVisible = false; if (o.card_size_mm) S.cardSize = { w: o.card_size_mm.width, h: o.card_size_mm.height }; S.locked = o; S.state = 'LOCKED'; note(t || 0, 'loaded_locked'); return { ok: true, locked: o }; };
     S.unlock = function (t) { if (S.state !== 'LOCKED') return false; S.state = 'SCANNING'; S.locked = null; CARDS.forEach(function (c) { var p = S.placements[c.id]; if (p && p.source !== 'manual_touch') { p.samples = []; if (p.t) { p.status = 'LOST'; } } }); note(t || 0, 'unlocked'); return true; };
     S.messages = function (t) { var m = [];
       if (S.state === 'LOCKED') { m.push({ level: 'ok', text: 'Table locked. Moving a card now changes nothing. Press "Unlock and re-scan" to change the layout.' }); return m; }

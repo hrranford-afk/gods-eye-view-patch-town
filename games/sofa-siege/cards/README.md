@@ -64,6 +64,7 @@ The game needs only the locked record. Two ways to get it:
 ```js
 // 1. The player already locked a layout on the checker/setup page (saved on the device):
 var locked = RTK_SETUP.LockedPlacementStore.load();          // null if there is none, or if it fails validation
+// (to show that layout again in the setup screen without scanning: setup.loadLocked(locked, t))
 
 // 2. The game runs the flow itself:
 var registry = RTK_SETUP.CardRegistry();
@@ -125,6 +126,6 @@ var places = RTK_SETUP.LockedPlacementStore.toTableUnits(locked, { mmPerUnit: 16
 ## Not done
 
 - Not wired into the game.
-- No 3D preview with the game's models. The checker page shows a flat top-down map.
+- The handover asks for the game's own 3D models as previews. Not done: `models.js` was being changed by another builder. The checker page shows a flat top-down map.
 - The table's own size is not known to the flow, so "off the table" is only checked if the game passes `tableRadiusMM`.
 - HILL and BUILD CAMP are recognised and can be placed. No game rule uses them.

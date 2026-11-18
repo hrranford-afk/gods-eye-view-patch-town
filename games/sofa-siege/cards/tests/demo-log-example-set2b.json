@@ -2,8 +2,8 @@
  "page": "Round Table Kingdom card checker",
  "log_version": 1,
  "mode": "demo (made-up frames, not a camera)",
- "started_at": "2026-11-18T17:52:27.017Z",
- "run_ms": 30966,
+ "started_at": "2026-11-18T21:53:46.911Z",
+ "run_ms": 25886,
  "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
  "screen": {
   "width": 1280,
@@ -23,11 +23,11 @@
  "recogniser": {
   "provider": "cardvision.js natural-feature matcher",
   "thread": "worker",
-  "frames_processed": 32,
+  "frames_processed": 34,
   "fps_cap": 10,
-  "ms_per_frame_median": 585,
+  "ms_per_frame_median": 420,
   "database": {
-   "initMs": 2806,
+   "initMs": 2063,
    "dbSizes": [
     2676,
     2676,
@@ -44,135 +44,135 @@
    "kind": "world_anchor",
    "name": "WORLD ANCHOR",
    "state": "TRACKING",
-   "first_seen_ms": 1127,
-   "last_seen_ms": 30388,
-   "sightings": 32,
+   "first_seen_ms": 905,
+   "last_seen_ms": 25424,
+   "sightings": 34,
    "ambiguous_sightings": 0,
    "distance_mm": {
     "min": 978,
-    "median": 984.5,
+    "median": 985,
     "max": 997
    },
    "recent": [
     {
-     "t_ms": 13243,
-     "inliers": 39,
-     "quality": 0.863,
-     "distance_mm": 981
-    },
-    {
-     "t_ms": 14245,
-     "inliers": 50,
-     "quality": 0.86,
-     "distance_mm": 981
-    },
-    {
-     "t_ms": 15248,
+     "t_ms": 12731,
      "inliers": 43,
      "quality": 0.852,
      "distance_mm": 987
     },
     {
-     "t_ms": 16225,
+     "t_ms": 13492,
      "inliers": 41,
      "quality": 0.859,
      "distance_mm": 983
     },
     {
-     "t_ms": 17119,
+     "t_ms": 14296,
      "inliers": 44,
      "quality": 0.861,
      "distance_mm": 979
     },
     {
-     "t_ms": 17978,
+     "t_ms": 15006,
      "inliers": 46,
      "quality": 0.846,
      "distance_mm": 979
     },
     {
-     "t_ms": 18783,
-     "inliers": 45,
-     "quality": 0.849,
-     "distance_mm": 981
+     "t_ms": 15698,
+     "inliers": 42,
+     "quality": 0.857,
+     "distance_mm": 979
     },
     {
-     "t_ms": 19567,
-     "inliers": 46,
-     "quality": 0.858,
-     "distance_mm": 981
+     "t_ms": 16406,
+     "inliers": 39,
+     "quality": 0.851,
+     "distance_mm": 978
     },
     {
-     "t_ms": 20332,
+     "t_ms": 17083,
      "inliers": 41,
      "quality": 0.856,
      "distance_mm": 986
     },
     {
-     "t_ms": 21133,
+     "t_ms": 17725,
      "inliers": 49,
      "quality": 0.841,
      "distance_mm": 988
     },
     {
-     "t_ms": 21978,
+     "t_ms": 18319,
      "inliers": 42,
      "quality": 0.848,
      "distance_mm": 988
     },
     {
-     "t_ms": 22812,
+     "t_ms": 18936,
      "inliers": 44,
      "quality": 0.857,
      "distance_mm": 982
     },
     {
-     "t_ms": 23626,
+     "t_ms": 19631,
      "inliers": 41,
      "quality": 0.854,
      "distance_mm": 981
     },
     {
-     "t_ms": 24460,
+     "t_ms": 20270,
      "inliers": 43,
      "quality": 0.863,
      "distance_mm": 981
     },
     {
-     "t_ms": 25414,
+     "t_ms": 20894,
      "inliers": 44,
      "quality": 0.862,
      "distance_mm": 984
     },
     {
-     "t_ms": 26332,
+     "t_ms": 21519,
      "inliers": 50,
      "quality": 0.859,
      "distance_mm": 986
     },
     {
-     "t_ms": 27294,
+     "t_ms": 22184,
      "inliers": 40,
      "quality": 0.851,
      "distance_mm": 986
     },
     {
-     "t_ms": 28467,
+     "t_ms": 22869,
      "inliers": 47,
      "quality": 0.856,
      "distance_mm": 988
     },
     {
-     "t_ms": 29433,
+     "t_ms": 23527,
      "inliers": 42,
      "quality": 0.862,
      "distance_mm": 980
     },
     {
-     "t_ms": 30388,
+     "t_ms": 24132,
      "inliers": 59,
      "quality": 0.859,
      "distance_mm": 985
+    },
+    {
+     "t_ms": 24768,
+     "inliers": 40,
+     "quality": 0.841,
+     "distance_mm": 988
+    },
+    {
+     "t_ms": 25424,
+     "inliers": 44,
+     "quality": 0.857,
+     "distance_mm": 987
     }
    ]
   },
@@ -181,123 +181,135 @@
    "kind": "blue_base",
    "name": "BLUE BASE",
    "state": "LOST",
-   "first_seen_ms": 1127,
-   "last_seen_ms": 17978,
-   "sightings": 18,
+   "first_seen_ms": 905,
+   "last_seen_ms": 16406,
+   "sightings": 20,
    "ambiguous_sightings": 0,
    "distance_mm": {
-    "min": 1028,
-    "median": 1051.5,
+    "min": 1018,
+    "median": 1048.5,
     "max": 1142
    },
    "recent": [
     {
-     "t_ms": 1127,
+     "t_ms": 905,
      "inliers": 63,
      "quality": 0.774,
      "distance_mm": 1038
     },
     {
-     "t_ms": 2180,
+     "t_ms": 1669,
      "inliers": 65,
      "quality": 0.776,
      "distance_mm": 1037
     },
     {
-     "t_ms": 3275,
+     "t_ms": 2454,
      "inliers": 60,
      "quality": 0.775,
      "distance_mm": 1046
     },
     {
-     "t_ms": 4344,
+     "t_ms": 3159,
      "inliers": 60,
      "quality": 0.77,
      "distance_mm": 1049
     },
     {
-     "t_ms": 5413,
+     "t_ms": 3871,
      "inliers": 55,
      "quality": 0.775,
      "distance_mm": 1054
     },
     {
-     "t_ms": 6308,
+     "t_ms": 4601,
      "inliers": 51,
      "quality": 0.747,
      "distance_mm": 1139
     },
     {
-     "t_ms": 7258,
+     "t_ms": 5403,
      "inliers": 56,
      "quality": 0.77,
      "distance_mm": 1059
     },
     {
-     "t_ms": 8212,
+     "t_ms": 6253,
      "inliers": 53,
      "quality": 0.777,
      "distance_mm": 1061
     },
     {
-     "t_ms": 9247,
+     "t_ms": 7004,
      "inliers": 56,
      "quality": 0.775,
      "distance_mm": 1059
     },
     {
-     "t_ms": 10126,
+     "t_ms": 9186,
      "inliers": 60,
      "quality": 0.748,
      "distance_mm": 1142
     },
     {
-     "t_ms": 11041,
+     "t_ms": 9959,
      "inliers": 56,
      "quality": 0.755,
      "distance_mm": 1064
     },
     {
-     "t_ms": 12292,
+     "t_ms": 10660,
      "inliers": 54,
      "quality": 0.762,
      "distance_mm": 1061
     },
     {
-     "t_ms": 13243,
+     "t_ms": 11361,
      "inliers": 56,
      "quality": 0.776,
      "distance_mm": 1054
     },
     {
-     "t_ms": 14245,
-     "inliers": 53,
+     "t_ms": 12015,
+     "inliers": 55,
      "quality": 0.773,
      "distance_mm": 1048
     },
     {
-     "t_ms": 15248,
+     "t_ms": 12731,
      "inliers": 55,
      "quality": 0.763,
      "distance_mm": 1045
     },
     {
-     "t_ms": 16225,
+     "t_ms": 13492,
      "inliers": 61,
      "quality": 0.775,
      "distance_mm": 1037
     },
     {
-     "t_ms": 17119,
+     "t_ms": 14296,
      "inliers": 66,
      "quality": 0.773,
      "distance_mm": 1035
     },
     {
-     "t_ms": 17978,
+     "t_ms": 15006,
      "inliers": 63,
      "quality": 0.772,
      "distance_mm": 1028
+    },
+    {
+     "t_ms": 15698,
+     "inliers": 65,
+     "quality": 0.776,
+     "distance_mm": 1024
+    },
+    {
+     "t_ms": 16406,
+     "inliers": 70,
+     "quality": 0.777,
+     "distance_mm": 1018
     }
    ]
   },
@@ -306,135 +318,135 @@
    "kind": "red_base",
    "name": "RED BASE",
    "state": "TRACKING",
-   "first_seen_ms": 1127,
-   "last_seen_ms": 30388,
-   "sightings": 32,
+   "first_seen_ms": 905,
+   "last_seen_ms": 25424,
+   "sightings": 34,
    "ambiguous_sightings": 0,
    "distance_mm": {
     "min": 1023,
-    "median": 1052,
+    "median": 1049.5,
     "max": 1087
    },
    "recent": [
     {
-     "t_ms": 13243,
-     "inliers": 75,
-     "quality": 0.955,
-     "distance_mm": 1033
-    },
-    {
-     "t_ms": 14245,
-     "inliers": 71,
-     "quality": 0.954,
-     "distance_mm": 1038
-    },
-    {
-     "t_ms": 15248,
+     "t_ms": 12731,
      "inliers": 76,
      "quality": 0.949,
      "distance_mm": 1045
     },
     {
-     "t_ms": 16225,
+     "t_ms": 13492,
      "inliers": 75,
      "quality": 0.953,
      "distance_mm": 1048
     },
     {
-     "t_ms": 17119,
+     "t_ms": 14296,
      "inliers": 70,
      "quality": 0.954,
      "distance_mm": 1051
     },
     {
-     "t_ms": 17978,
+     "t_ms": 15006,
      "inliers": 72,
      "quality": 0.928,
      "distance_mm": 1054
     },
     {
-     "t_ms": 18783,
-     "inliers": 81,
-     "quality": 0.948,
-     "distance_mm": 1065
-    },
-    {
-     "t_ms": 19567,
+     "t_ms": 15698,
      "inliers": 72,
-     "quality": 0.951,
-     "distance_mm": 1071
+     "quality": 0.952,
+     "distance_mm": 1064
     },
     {
-     "t_ms": 20332,
+     "t_ms": 16406,
+     "inliers": 65,
+     "quality": 0.95,
+     "distance_mm": 1070
+    },
+    {
+     "t_ms": 17083,
      "inliers": 71,
      "quality": 0.945,
      "distance_mm": 1080
     },
     {
-     "t_ms": 21133,
+     "t_ms": 17725,
      "inliers": 76,
      "quality": 0.949,
      "distance_mm": 1087
     },
     {
-     "t_ms": 21978,
+     "t_ms": 18319,
      "inliers": 76,
      "quality": 0.943,
      "distance_mm": 1085
     },
     {
-     "t_ms": 22812,
+     "t_ms": 18936,
      "inliers": 76,
      "quality": 0.95,
      "distance_mm": 1082
     },
     {
-     "t_ms": 23626,
+     "t_ms": 19631,
      "inliers": 72,
      "quality": 0.944,
      "distance_mm": 1083
     },
     {
-     "t_ms": 24460,
+     "t_ms": 20270,
      "inliers": 75,
      "quality": 0.954,
      "distance_mm": 1085
     },
     {
-     "t_ms": 25414,
+     "t_ms": 20894,
      "inliers": 76,
      "quality": 0.953,
      "distance_mm": 1077
     },
     {
-     "t_ms": 26332,
+     "t_ms": 21519,
      "inliers": 72,
      "quality": 0.948,
      "distance_mm": 1075
     },
     {
-     "t_ms": 27294,
+     "t_ms": 22184,
      "inliers": 78,
      "quality": 0.951,
      "distance_mm": 1070
     },
     {
-     "t_ms": 28467,
+     "t_ms": 22869,
      "inliers": 72,
      "quality": 0.94,
      "distance_mm": 1071
     },
     {
-     "t_ms": 29433,
+     "t_ms": 23527,
      "inliers": 87,
      "quality": 0.952,
      "distance_mm": 1061
     },
     {
-     "t_ms": 30388,
+     "t_ms": 24132,
      "inliers": 71,
      "quality": 0.945,
      "distance_mm": 1057
+    },
+    {
+     "t_ms": 24768,
+     "inliers": 72,
+     "quality": 0.95,
+     "distance_mm": 1047
+    },
+    {
+     "t_ms": 25424,
+     "inliers": 71,
+     "quality": 0.955,
+     "distance_mm": 1043
     }
    ]
   },
@@ -443,135 +455,135 @@
    "kind": "capture_flag",
    "name": "CAPTURE FLAG",
    "state": "TRACKING",
-   "first_seen_ms": 1127,
-   "last_seen_ms": 30388,
-   "sightings": 32,
+   "first_seen_ms": 905,
+   "last_seen_ms": 25424,
+   "sightings": 34,
    "ambiguous_sightings": 0,
    "distance_mm": {
     "min": 1083,
-    "median": 1091.5,
+    "median": 1090,
     "max": 1101
    },
    "recent": [
     {
-     "t_ms": 13243,
-     "inliers": 39,
-     "quality": 0.92,
+     "t_ms": 12731,
+     "inliers": 40,
+     "quality": 0.924,
      "distance_mm": 1088
     },
     {
-     "t_ms": 14245,
-     "inliers": 44,
-     "quality": 0.923,
-     "distance_mm": 1095
-    },
-    {
-     "t_ms": 15248,
-     "inliers": 43,
-     "quality": 0.921,
-     "distance_mm": 1090
-    },
-    {
-     "t_ms": 16225,
+     "t_ms": 13492,
      "inliers": 46,
      "quality": 0.924,
      "distance_mm": 1093
     },
     {
-     "t_ms": 17119,
+     "t_ms": 14296,
      "inliers": 42,
      "quality": 0.922,
      "distance_mm": 1094
     },
     {
-     "t_ms": 17978,
+     "t_ms": 15006,
      "inliers": 48,
      "quality": 0.924,
      "distance_mm": 1087
     },
     {
-     "t_ms": 18783,
-     "inliers": 61,
-     "quality": 0.921,
-     "distance_mm": 1090
+     "t_ms": 15698,
+     "inliers": 49,
+     "quality": 0.925,
+     "distance_mm": 1084
     },
     {
-     "t_ms": 19567,
-     "inliers": 53,
-     "quality": 0.923,
+     "t_ms": 16406,
+     "inliers": 48,
+     "quality": 0.921,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 17083,
+     "inliers": 69,
+     "quality": 0.925,
      "distance_mm": 1083
     },
     {
-     "t_ms": 20332,
-     "inliers": 63,
-     "quality": 0.917,
-     "distance_mm": 1092
+     "t_ms": 17725,
+     "inliers": 67,
+     "quality": 0.923,
+     "distance_mm": 1087
     },
     {
-     "t_ms": 21133,
-     "inliers": 56,
-     "quality": 0.908,
+     "t_ms": 18319,
+     "inliers": 64,
+     "quality": 0.921,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 18936,
+     "inliers": 55,
+     "quality": 0.909,
      "distance_mm": 1100
     },
     {
-     "t_ms": 21978,
-     "inliers": 55,
-     "quality": 0.921,
-     "distance_mm": 1096
-    },
-    {
-     "t_ms": 22812,
-     "inliers": 60,
-     "quality": 0.92,
-     "distance_mm": 1092
-    },
-    {
-     "t_ms": 23626,
+     "t_ms": 19631,
      "inliers": 60,
      "quality": 0.922,
      "distance_mm": 1094
     },
     {
-     "t_ms": 24460,
+     "t_ms": 20270,
      "inliers": 57,
      "quality": 0.909,
      "distance_mm": 1101
     },
     {
-     "t_ms": 25414,
+     "t_ms": 20894,
      "inliers": 59,
      "quality": 0.917,
      "distance_mm": 1095
     },
     {
-     "t_ms": 26332,
+     "t_ms": 21519,
      "inliers": 56,
      "quality": 0.916,
      "distance_mm": 1094
     },
     {
-     "t_ms": 27294,
+     "t_ms": 22184,
      "inliers": 60,
      "quality": 0.921,
      "distance_mm": 1094
     },
     {
-     "t_ms": 28467,
+     "t_ms": 22869,
      "inliers": 59,
      "quality": 0.922,
      "distance_mm": 1092
     },
     {
-     "t_ms": 29433,
+     "t_ms": 23527,
      "inliers": 50,
      "quality": 0.922,
      "distance_mm": 1091
     },
     {
-     "t_ms": 30388,
+     "t_ms": 24132,
      "inliers": 57,
      "quality": 0.92,
      "distance_mm": 1094
+    },
+    {
+     "t_ms": 24768,
+     "inliers": 56,
+     "quality": 0.919,
+     "distance_mm": 1091
+    },
+    {
+     "t_ms": 25424,
+     "inliers": 56,
+     "quality": 0.923,
+     "distance_mm": 1089
     }
    ]
   },
@@ -602,27 +614,67 @@
  ],
  "events": [
   {
-   "t_ms": 1127,
+   "t_ms": 905,
    "type": "first_seen",
    "card_id": "02"
   },
   {
-   "t_ms": 1127,
+   "t_ms": 905,
    "type": "first_seen",
    "card_id": "03"
   },
   {
-   "t_ms": 1127,
+   "t_ms": 905,
    "type": "first_seen",
    "card_id": "00"
   },
   {
-   "t_ms": 1127,
+   "t_ms": 905,
    "type": "first_seen",
    "card_id": "01"
   },
   {
-   "t_ms": 19567,
+   "t_ms": 9163,
+   "type": "lost",
+   "card_id": "00"
+  },
+  {
+   "t_ms": 9163,
+   "type": "lost",
+   "card_id": "01"
+  },
+  {
+   "t_ms": 9163,
+   "type": "lost",
+   "card_id": "02"
+  },
+  {
+   "t_ms": 9163,
+   "type": "lost",
+   "card_id": "03"
+  },
+  {
+   "t_ms": 9186,
+   "type": "regained",
+   "card_id": "02"
+  },
+  {
+   "t_ms": 9186,
+   "type": "regained",
+   "card_id": "03"
+  },
+  {
+   "t_ms": 9186,
+   "type": "regained",
+   "card_id": "00"
+  },
+  {
+   "t_ms": 9186,
+   "type": "regained",
+   "card_id": "01"
+  },
+  {
+   "t_ms": 18163,
    "type": "lost",
    "card_id": "01"
   }
@@ -637,36 +689,66 @@
   ],
   "events": [
    {
-    "t_ms": 10126,
+    "t_ms": 9164,
+    "type": "placement_lost",
+    "card_id": "01"
+   },
+   {
+    "t_ms": 9164,
+    "type": "placement_lost",
+    "card_id": "02"
+   },
+   {
+    "t_ms": 9164,
+    "type": "placement_lost",
+    "card_id": "03"
+   },
+   {
+    "t_ms": 9186,
     "type": "bad_geometry",
     "card_id": "02",
     "scale": 0.879,
     "residual_mm": 11.7
    },
    {
-    "t_ms": 10126,
+    "t_ms": 9186,
     "type": "bad_geometry",
     "card_id": "01",
     "scale": 1.149,
     "residual_mm": 15.3
    },
    {
-    "t_ms": 17513,
-    "type": "locked",
-    "card_id": null
+    "t_ms": 9186,
+    "type": "placement_regained",
+    "card_id": "03"
    },
    {
-    "t_ms": 25150,
-    "type": "unlocked",
-    "card_id": null
+    "t_ms": 9959,
+    "type": "placement_regained",
+    "card_id": "01"
    },
    {
-    "t_ms": 25414,
+    "t_ms": 9959,
     "type": "placement_regained",
     "card_id": "02"
    },
    {
-    "t_ms": 25414,
+    "t_ms": 16037,
+    "type": "locked",
+    "card_id": null
+   },
+   {
+    "t_ms": 22004,
+    "type": "unlocked",
+    "card_id": null
+   },
+   {
+    "t_ms": 22184,
+    "type": "placement_regained",
+    "card_id": "02"
+   },
+   {
+    "t_ms": 22184,
     "type": "placement_regained",
     "card_id": "03"
    }
