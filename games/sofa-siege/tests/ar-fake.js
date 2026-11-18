@@ -5,7 +5,9 @@
      cam: { pos: [x,y,z], target: [x,y,z] }   where the iPad is and what it looks at (metres, y up)
      table: { y, cx, cz, r }                  the real table top
      track: false                             no viewer pose (tracking lost)
-     anchors: true / overlay: false           what the device offers */
+     anchors: true / overlay: false           what the device offers
+     timeStep: 16                             the session clock moves this many ms a frame, whatever the real frame time (so slow test machines do not look slow)
+     __XRF.tap(x, y), __XRF.press(x, y), __XRF.drag(x, y), __XRF.release()   a finger on the screen, reported ONLY through the XR select events (no page touch events at all) */
 export default function installFakeAR(page, opts) {
   return page.addInitScript((opts) => {
     const F = window.__XRF = Object.assign({ supported: true, anchors: false, overlay: true, track: true, fov: 60, cam: { pos: [0, 0, 0], target: [0, -0.45, -0.9] }, table: { y: -0.45, cx: 0, cz: -0.9, r: 0.6 }, sessions: 0, hitCalls: 0, anchorsMade: 0, ended: 0 }, opts || {});
@@ -24,6 +26,7 @@ export default function installFakeAR(page, opts) {
       getHitTestResults() { F.hitCalls++; if (!F.track) return []; const m = camMatrix(), o = [m[12], m[13], m[14]], d = [-m[8], -m[9], -m[10]]; if (d[1] > -0.05) return []; const t = (F.table.y - o[1]) / d[1], x = o[0] + d[0] * t, z = o[2] + d[2] * t;
         if (Math.hypot(x - F.table.cx, z - F.table.cz) > F.table.r) return []; const pose = { transform: at(x, F.table.y, z) }; return [{ getPose: () => pose }]; }
       getPose(space) { return space && space.pose ? { transform: space.pose } : null; }
+      get dummy() { return 0; }
       createAnchor(tr) { F.anchorsMade++; const sp = new Space('anchor'); sp.pose = at(tr.position.x, tr.position.y, tr.position.z); return Promise.resolve({ anchorSpace: sp, delete() {} }); } }
     if (!F.anchors) delete Frame.prototype.createAnchor;
     class Session extends EventTarget { constructor(init) { super(); this.init = init; this.renderState = { baseLayer: null }; this.inputSources = []; this.environmentBlendMode = 'alpha-blend';
@@ -31,9 +34,17 @@ export default function installFakeAR(page, opts) {
       updateRenderState(s) { Object.assign(this.renderState, s); }
       requestReferenceSpace(kind) { return Promise.resolve(new Space(kind)); }
       requestHitTestSource() { return Promise.resolve({ cancel() {} }); }
-      requestAnimationFrame(cb) { return window.requestAnimationFrame((t) => { if (!this.over) cb(t, new Frame(this)); }); }
+      requestAnimationFrame(cb) { return window.requestAnimationFrame((t) => { if (this.over) return; if (F.timeStep) { F.clock = (F.clock || 1000) + F.timeStep; t = F.clock; } cb(t, new Frame(this)); }); }
       cancelAnimationFrame(id) { window.cancelAnimationFrame(id); }
       end() { this.over = true; F.ended++; this.dispatchEvent(new Event('end')); return Promise.resolve(); } }
+    /* a finger on the screen, as XR select events with a 'screen' target ray */
+    const raySpace = (x, y) => { const m = camMatrix(), P = proj(), nx = x / innerWidth * 2 - 1, ny = -(y / innerHeight * 2 - 1), d = norm([nx / P[0], ny / P[5], -1]), w = norm([m[0] * d[0] + m[4] * d[1] + m[8] * d[2], m[1] * d[0] + m[5] * d[1] + m[9] * d[2], m[2] * d[0] + m[6] * d[1] + m[10] * d[2]]);
+      let ax = norm(cross([0, 1, 0], [-w[0], -w[1], -w[2]])); const ay = cross([-w[0], -w[1], -w[2]], ax); return rigid([ax[0], ax[1], ax[2], 0, ay[0], ay[1], ay[2], 0, -w[0], -w[1], -w[2], 0, m[12], m[13], m[14], 1]); };
+    const fire = (type) => { const s = F.session; if (!s || s.over) return; const e = new Event(type); e.inputSource = F.finger; e.frame = new Frame(s); s.dispatchEvent(e); };
+    F.press = (x, y) => { const sp = new Space('ray'); sp.pose = raySpace(x, y); F.finger = { targetRayMode: 'screen', handedness: 'none', targetRaySpace: sp, profiles: [] }; F.selects = (F.selects || 0) + 1; fire('selectstart'); };
+    F.drag = (x, y) => { if (F.finger) F.finger.targetRaySpace.pose = raySpace(x, y); };
+    F.release = () => { if (!F.finger) return; fire('select'); fire('selectend'); F.finger = null; };
+    F.tap = (x, y) => { F.press(x, y); F.release(); };
     window.XRWebGLLayer = class { constructor(session, gl) { this.gl = gl; this.framebuffer = null; this.framebufferWidth = gl.drawingBufferWidth; this.framebufferHeight = gl.drawingBufferHeight; }
       getViewport() { return { x: 0, y: 0, width: this.gl.drawingBufferWidth, height: this.gl.drawingBufferHeight }; } };
     window.XRRigidTransform = class { constructor(p, o) { this.position = p || { x: 0, y: 0, z: 0, w: 1 }; this.orientation = o || { x: 0, y: 0, z: 0, w: 1 }; } };
