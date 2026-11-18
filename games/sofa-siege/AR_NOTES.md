@@ -35,8 +35,8 @@ The fake is a small hand-written WebXR (`tests/ar-fake.js`): one flat disc for t
 
 ## NOT TESTED on a real iPad (most of it)
 
-1. **Whether the session starts in HelloXR at all** with these features. Base Camp asks for `entityTypes: ['plane']` on its hit-test source; this asks for the default.
-2. **The dom overlay.** Base Camp's notes say HelloXR's polyfill "can start without wiring the overlay" and it connects the overlay itself. This build does NOT do that. If the buttons are missing in AR, that is why. There are no in-scene buttons as a fallback: without the overlay there is nothing to press.
+1. **Whether the session starts in HelloXR at all** with these features. The hit-test source asks for `entityTypes: ['plane']` as Base Camp does, and falls back to the default if that is refused.
+2. **The dom overlay.** Base Camp's notes say HelloXR's polyfill can start without wiring the overlay. This build copies Base Camp's fix (it finds the polyfill's device and calls `setDomOverlayRoot`), and the dev line then says `overlay connected by the game`. That path cannot run in the fake, so it is untested. There are no in-scene buttons as a fallback: if the overlay does not show, there is nothing to press.
 3. **Touches.** In AR the taps are read from the overlay root (`#ui`). Whether HelloXR delivers pointer events there, and whether a tap on a button also reaches the table, is unknown.
 4. **The camera picture behind the game.** The canvas is see-through and the page background is clear in AR. Whether HelloXR shows the camera behind it, or a black page, is unknown.
 5. **three.js r128's own XR code in HelloXR** (`renderer.xr.setSession`). Base Camp uses the same call, so this is the likeliest part to work.

@@ -20,7 +20,7 @@ const run = async () => {
   await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await p.waitForFunction('window.__done', null, { timeout: 60000 });
   ok('page loads with 0 errors', errs.length === 0, errs.join(' | '));
-  ok('start screen shows the title and the mock note', await ev(() => document.getElementById('start').style.display !== 'none' && /Round Table Kingdom/.test(document.querySelector('#start h1').textContent) && /Mock table/.test(document.getElementById('start').textContent)));
+  ok('start screen shows the title and the mock note', await ev(() => document.getElementById('start').style.display !== 'none' && /Round Table Kingdom/.test(document.querySelector('#start h1').textContent) && /Practice table/.test(document.getElementById('start').textContent)));
   await p.click('#tRed'); await p.click('#tBlue'); await p.click('#bPlay');
   await ev(() => { SG.hold = true; });   /* the test drives time itself */
   ok('Play starts the build phase: 2:00, 11 kit pieces, 5 mice a side', await ev(() => SG.phase === 'build' && SG.time > 119 && SG.time <= 120 && SG.kit.length === 11 && SG.mice.filter((m) => m.side === 0).length === 5 && SG.mice.length === 10 && SG.team === 'blue'));

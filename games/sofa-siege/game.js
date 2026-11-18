@@ -678,15 +678,19 @@ SG.arStart=function(){
   var init={requiredFeatures:['hit-test'],optionalFeatures:['dom-overlay','anchors'],domOverlay:{root:E('ui')}};
   return navigator.xr.requestSession('immersive-ar',init).then(function(session){
     AR.session=session;AR.overlay=session.domOverlayState?session.domOverlayState.type:'none';
+    /* HelloXR quirk (from Base Camp's field notes): its polyfill can start without wiring the overlay, so the buttons vanish. Connect it ourselves. */
+    if(!session.domOverlayState){try{var syms=Object.getOwnPropertySymbols(session),si;for(si=0;si<syms.length;si++){var dv=session[syms[si]]&&session[syms[si]].device;
+        if(dv&&typeof dv.setDomOverlayRoot==='function'){dv.setDomOverlayRoot(E('ui'));if(typeof dv.setActiveXRSession==='function')dv.setActiveXRSession(session);AR.overlay='connected by the game';break;}}}catch(eo){}}
+    document.documentElement.style.background='transparent';
     R.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));R.xr.enabled=true;R.xr.setReferenceSpaceType('local');   /* the pixel ratio cap must go in before the session presents */
-    return R.xr.setSession(session).then(function(){return session.requestReferenceSpace('viewer');}).then(function(viewer){return session.requestHitTestSource({space:viewer});}).then(function(src){
+    return R.xr.setSession(session).then(function(){return session.requestReferenceSpace('viewer');}).then(function(viewer){return session.requestHitTestSource({space:viewer,entityTypes:['plane']}).catch(function(){return session.requestHitTestSource({space:viewer});});}).then(function(src){
       AR.hitSrc=src;AR.on=true;AR.state='find';AR.hit=null;AR.anchor=null;AR.anchorKind='none';AR.lost=false;AR.lastPose=0;AR.last=0;AR.slow=0;AR.shadowsOff=false;AR.size=100;AR.pose={x:0,y:0,z:0,yaw:0};
       session.addEventListener('end',arEnd);arView(true);R.xr.setAnimationLoop(arFrame);arText();arPublic();ui();return true;});
   }).catch(function(e){AR.error=String(e&&e.message||e);try{R.xr.enabled=false;}catch(e2){}AR.on=false;arPublic();
     if(E('arNote')){E('arNote').style.display='block';E('arNote').textContent='AR could not start ('+AR.error+'). The practice table works here.';}return false;});};
 /* switches the look between the practice room and the real table */
 function arView(on){
-  document.body.className=on?'ar':'';ROOMG.visible=!on;V.edge.visible=on;V.catcher.visible=on;V.reticle.visible=false;SCN.background=on?null:new THREE.Color(0x3b2a1c);
+  document.body.className=on?'ar':'';if(!on)document.documentElement.style.background='';C.near=on?.01:.1;C.far=on?30:60;C.updateProjectionMatrix();ROOMG.visible=!on;V.edge.visible=on;V.catcher.visible=on;V.reticle.visible=false;SCN.background=on?null:new THREE.Color(0x3b2a1c);
   if(on){V.fogKeep=SCN.fog;SCN.fog=null;R.setClearColor(0x000000,0);SUN.shadow.mapSize.set(1024,1024);}else{SCN.fog=V.fogKeep||SCN.fog;SUN.shadow.mapSize.set(2048,2048);SUN.castShadow=true;S.position.set(0,0,0);S.rotation.set(0,0,0);S.scale.set(1,1,1);S.visible=true;arShadowBox(1);R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.setSize(W,H);}
   if(SUN.shadow.map){SUN.shadow.map.dispose();SUN.shadow.map=null;}
 }
