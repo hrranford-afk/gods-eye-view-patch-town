@@ -32,8 +32,8 @@ var RTK_SETUP = (function () {
   function wrapDeg(a) { a = a % 360; if (a > 180) a -= 360; if (a <= -180) a += 360; return a; }
 
   /* Where is card B in the anchor's table frame? Ha, Hb: card mm (x right, y DOWN the artwork, centred) -> picture pixels. */
-  function relative(Ha, Hb) {
-    var Hi = inv3(Ha); if (!Hi) return null; var M = mul3(Hi, Hb), src = [[-CARD_W / 2, -CARD_H / 2], [CARD_W / 2, -CARD_H / 2], [CARD_W / 2, CARD_H / 2], [-CARD_W / 2, CARD_H / 2]], q = [], i, cx = 0, cy = 0;
+  function relative(Ha, Hb, mmB) { /* mmB: card B's printed size { w, h } (default A5) */
+    var Hi = inv3(Ha); if (!Hi) return null; var bw = (mmB && mmB.w) || CARD_W, bh = (mmB && mmB.h) || CARD_H, M = mul3(Hi, Hb), src = [[-bw / 2, -bh / 2], [bw / 2, -bh / 2], [bw / 2, bh / 2], [-bw / 2, bh / 2]], q = [], i, cx = 0, cy = 0;
     for (i = 0; i < 4; i++) { var w = M[6] * src[i][0] + M[7] * src[i][1] + M[8]; if (!(w * M[8] > 0)) return null; var p = ap(M, src[i][0], src[i][1]); q.push([p[0], -p[1]]); cx += p[0] / 4; cy += -p[1] / 4; } /* flip to y up */
     var a = 0, b = 0, pp = 0; for (i = 0; i < 4; i++) { var px = src[i][0], py = -src[i][1], qx = q[i][0] - cx, qy = q[i][1] - cy; a += px * qx + py * qy; b += px * qy - py * qx; pp += px * px + py * py; }
     var yaw = Math.atan2(b, a), sc = Math.sqrt(a * a + b * b) / pp, c = Math.cos(yaw), s = Math.sin(yaw), res = 0;
@@ -68,22 +68,22 @@ var RTK_SETUP = (function () {
        writing another adapter that returns the same sighting objects. */
     return { provider: 'cardvision.js natural-feature matcher',
       init: function (images) { return cv.init(images); },
-      detect: function (gray, w, h, K) { return this.normalise(cv.detect(gray, w, h), K, function (d) { return cv.pose(d, K, { w: CARD_W, h: CARD_H }); }); },
+      detect: function (gray, w, h, K) { return this.normalise(cv.detect(gray, w, h), K, function (d) { return cv.pose(d, K); }); },
       normalise: function (dets, K, poseFn) { return (dets || []).map(function (d) { var c = byId(d.id), p = d.pose !== undefined ? d.pose : (K && poseFn ? poseFn(d) : null);
-        return { id: d.id, kind: c ? c.kind : 'unknown', name: c ? c.name : 'UNKNOWN', inliers: d.inliers, quality: d.score, margin: d.margin, corners: d.corners, H: d.H, pose: p || null }; }); } };
+        return { id: d.id, kind: c ? c.kind : 'unknown', name: c ? c.name : 'UNKNOWN', sizeMM: d.sizeMM || { w: CARD_W, h: CARD_H }, via: d.via, inliers: d.inliers, quality: d.score, margin: d.margin, corners: d.corners, H: d.H, pose: p || null }; }); } };
   }
 
   /* ---------- SetupState: previews follow the cards until LOCK TABLE; after that nothing moves ---------- */
   function SetupState(opts) {
     opts = opts || {}; var windowMs = opts.windowMs || 1500, maxSamples = opts.maxSamples || 12, lostAfter = opts.lostAfterMs || 1500;
-    var S = { state: 'SCANNING', table_id: opts.tableId || 'local_test_table', anchorSeen: false, anchorVisible: false, anchorLast: null, placements: {}, locked: null, log: [] };
+    var S = { state: 'SCANNING', table_id: opts.tableId || 'local_test_table', anchorSeen: false, anchorVisible: false, anchorLast: null, cardSize: opts.cardSizeMM || { w: CARD_W, h: CARD_H }, placements: {}, locked: null, log: [] };
     CARDS.forEach(function (c) { if (c.id !== '00') S.placements[c.id] = { card_id: c.id, kind: c.kind, status: 'NOT_SCANNED', source: null, t: null, samples: [], last_seen_ms: null, quality: null }; });
     function note(t, type, id, extra) { var e = { t_ms: Math.round(t), type: type, card_id: id || null }; if (extra) for (var k in extra) e[k] = extra[k]; S.log.push(e); if (S.log.length > 300) S.log.shift(); if (opts.onEvent) opts.onEvent(e); }
     S.update = function (sightings, t) { /* sightings: the SAFE ones from CardRegistry.update, all from ONE camera frame */
       if (S.state === 'LOCKED') return; /* locked: cards are no longer controls */
       var anchor = null, i; for (i = 0; i < sightings.length; i++) if (sightings[i].id === '00') anchor = sightings[i];
-      S.anchorVisible = !!anchor; if (anchor) { S.anchorSeen = true; S.anchorLast = t; }
-      if (anchor) sightings.forEach(function (s) { var p = S.placements[s.id]; if (!p || p.source === 'manual_touch') return; var rel = relative(anchor.H, s.H);
+      S.anchorVisible = !!anchor; if (anchor) { S.anchorSeen = true; S.anchorLast = t; S.cardSize = anchor.sizeMM || S.cardSize; }
+      if (anchor) sightings.forEach(function (s) { var p = S.placements[s.id]; if (!p || p.source === 'manual_touch') return; var rel = relative(anchor.H, s.H, s.sizeMM);
         if (!rel || Math.abs(rel.scale - 1) > 0.12 || rel.residual_mm > 15) { note(t, 'bad_geometry', s.id, rel ? { scale: +rel.scale.toFixed(3), residual_mm: +rel.residual_mm.toFixed(1) } : null); return; } /* the two outlines do not agree on one flat table: do not use */
         p.samples.push({ t: t, x: rel.x_mm, y: rel.y_mm, yaw: rel.yaw_deg, res: rel.residual_mm, sc: rel.scale, q: s.quality }); p.last_seen_ms = t; });
       CARDS.forEach(function (c) { var p = S.placements[c.id]; if (!p || p.source === 'manual_touch') return;
@@ -117,11 +117,11 @@ var RTK_SETUP = (function () {
   /* ---------- PlacementPreview: the layout as plain items, its warnings, and a small top-down drawing ---------- */
   var COLOURS = { world_anchor: '#f2c14e', blue_base: '#4a8df0', red_base: '#e2553d', capture_flag: '#f4f1e8', hill: '#5fb760', build_camp: '#b58a5a' };
   var PlacementPreview = {
-    layout: function (S) { var src = S.state === 'LOCKED' && S.locked ? null : S, items = [{ card_id: '00', kind: 'world_anchor', name: 'WORLD ANCHOR', x_mm: 0, y_mm: 0, yaw_deg: 0, status: S.anchorSeen ? (S.state === 'LOCKED' ? 'LOCKED' : S.anchorVisible ? 'PREVIEW' : 'LOST') : (S.mode() === 'manual_touch' ? 'VIRTUAL' : 'NOT_SCANNED') }];
-      CARDS.forEach(function (c) { var p = S.placements[c.id]; if (!p || !p.t) return; items.push({ card_id: c.id, kind: c.kind, name: c.name, x_mm: p.t.x_mm, y_mm: p.t.y_mm, yaw_deg: p.t.yaw_deg, status: S.state === 'LOCKED' ? 'LOCKED' : p.status, source: p.source }); });
+    layout: function (S) { var items = [{ size: S.cardSize, card_id: '00', kind: 'world_anchor', name: 'WORLD ANCHOR', x_mm: 0, y_mm: 0, yaw_deg: 0, status: S.anchorSeen ? (S.state === 'LOCKED' ? 'LOCKED' : S.anchorVisible ? 'PREVIEW' : 'LOST') : (S.mode() === 'manual_touch' ? 'VIRTUAL' : 'NOT_SCANNED') }];
+      CARDS.forEach(function (c) { var p = S.placements[c.id]; if (!p || !p.t) return; items.push({ size: S.cardSize, card_id: c.id, kind: c.kind, name: c.name, x_mm: p.t.x_mm, y_mm: p.t.y_mm, yaw_deg: p.t.yaw_deg, status: S.state === 'LOCKED' ? 'LOCKED' : p.status, source: p.source }); });
       return items; },
     check: function (items, opts) { opts = opts || {}; var w = [], i, j, get = function (k) { for (var n = 0; n < items.length; n++) if (items[n].kind === k) return items[n]; return null; };
-      for (i = 0; i < items.length; i++) for (j = i + 1; j < items.length; j++) { var d = Math.hypot(items[i].x_mm - items[j].x_mm, items[i].y_mm - items[j].y_mm); if (d < 150) w.push(items[i].name + ' and ' + items[j].name + ' overlap. Move them apart.'); }
+      for (i = 0; i < items.length; i++) for (j = i + 1; j < items.length; j++) { var d = Math.hypot(items[i].x_mm - items[j].x_mm, items[i].y_mm - items[j].y_mm); if (d < ((items[i].size && items[i].size.h) || CARD_H)) w.push(items[i].name + ' and ' + items[j].name + ' overlap. Move them apart.'); }
       var b = get('blue_base'), r = get('red_base'), f = get('capture_flag'), h = get('hill');
       if (b && r) { var dbr = Math.hypot(b.x_mm - r.x_mm, b.y_mm - r.y_mm); if (dbr < 400) w.push('BLUE BASE and RED BASE are very close (' + Math.round(dbr) + ' mm). Put them at opposite edges.'); }
       if (b && r && f) { var df1 = Math.hypot(f.x_mm - b.x_mm, f.y_mm - b.y_mm), df2 = Math.hypot(f.x_mm - r.x_mm, f.y_mm - r.y_mm); if (Math.max(df1, df2) > 2.5 * Math.min(df1, df2)) w.push('CAPTURE FLAG is much nearer one base than the other. That may not be fair.'); }
@@ -135,7 +135,7 @@ var RTK_SETUP = (function () {
       ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; for (i = 100; i <= R; i += 100) { ctx.beginPath(); ctx.arc(0, 0, i * k, 0, 2 * Math.PI); ctx.stroke(); }
       ctx.beginPath(); ctx.moveTo(-R * k, 0); ctx.lineTo(R * k, 0); ctx.moveTo(0, -R * k); ctx.lineTo(0, R * k); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText('rings: 100 mm', -w / 2 + 6, h / 2 - 6);
-      items.forEach(function (it) { ctx.save(); ctx.translate(it.x_mm * k, -it.y_mm * k); ctx.rotate(-it.yaw_deg * Math.PI / 180); var cw = CARD_W * k, ch = CARD_H * k, col = COLOURS[it.kind] || '#fff';
+      items.forEach(function (it) { ctx.save(); ctx.translate(it.x_mm * k, -it.y_mm * k); ctx.rotate(-it.yaw_deg * Math.PI / 180); var cw = ((it.size && it.size.w) || CARD_W) * k, ch = ((it.size && it.size.h) || CARD_H) * k, col = COLOURS[it.kind] || '#fff';
         ctx.globalAlpha = it.status === 'LOST' ? 0.5 : 1; ctx.fillStyle = col; ctx.strokeStyle = it.status === 'LOCKED' ? '#fff' : '#111'; ctx.lineWidth = it.status === 'LOCKED' ? 2.5 : 1.5; ctx.setLineDash(it.status === 'LOST' ? [5, 4] : it.status === 'MANUAL' || it.status === 'VIRTUAL' ? [2, 3] : []);
         ctx.fillRect(-cw / 2, -ch / 2, cw, ch); ctx.strokeRect(-cw / 2, -ch / 2, cw, ch); ctx.setLineDash([]);
         ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(0, -ch / 2 + 3); ctx.lineTo(-5, -ch / 2 + 11); ctx.lineTo(5, -ch / 2 + 11); ctx.fill(); /* a small arrow at the top of the artwork */
@@ -148,7 +148,7 @@ var RTK_SETUP = (function () {
     key: STORE_KEY,
     build: function (S) { var r3 = function (v) { return Math.round(v * 10) / 10; };
       return { schema_version: SCHEMA, table_id: S.table_id, reference_card_id: '00', placement_mode: S.mode(), locked_at: new Date().toISOString(),
-        card_size_mm: { width: CARD_W, height: CARD_H }, units: { length: 'mm', angle: 'deg' },
+        card_size_mm: { width: S.cardSize.w, height: S.cardSize.h }, units: { length: 'mm', angle: 'deg' },
         frame: 'origin = centre of card 00; x = right of its artwork; y = top of its artwork; z = up from the table; yaw_deg = counter-clockwise seen from above',
         anchor_scanned: !!S.anchorSeen,
         placements: CARDS.filter(function (c) { return c.id !== '00'; }).map(function (c) { var p = S.placements[c.id]; if (!p.t) return { card_id: c.id, kind: c.kind, transform_anchor_relative: null, status: 'NOT_SCANNED' };

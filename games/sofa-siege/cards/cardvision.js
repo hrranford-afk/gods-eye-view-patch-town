@@ -27,7 +27,7 @@ var CV_CARDS = (function () {
     frameLevels: 3, upTo: 0, frameCap: 1400, fastThr: 12, cell: 32, perCell: 18,
     maxHam: 70, ratio: 0.9, ratioMM: 12,
     ransacIters: 300, minInl: 8, maxRounds: 8,
-    dense: true, features: true, quads: true, quadK: 1.1, maxQuads: 12, quadNccMin: 0.4, quadNccAll: 0.3, nccMin: 0.34, nccMargin: 0.07, nccAll: 0.22, minVisible: 0.45,
+    dense: true, features: true, quads: true, quadK: 1.1, quadMaxK: 0, quadMaxR: 3, quadClose: 0, quadErode: 0, quadFill: 0.12, maxQuads: 12, quadNccMin: 0.55, quadNccAll: 0.3, quadMargin: 0.12, globMin: 0.3, quadGlobMin: 0.65, nccMin: 0.34, nccMargin: 0.07, nccAll: 0.22, minVisible: 0.45,
     inlMin: 14                            /* idMode 'inliers' only */
   };
   var BORD = 20;
@@ -195,7 +195,10 @@ var CV_CARDS = (function () {
       var vis = 0, tot = 0, scores = [], alls = []; for (i = 0; i < n; i++) { tot += W[i]; if (best[i] >= 0.2) vis += W[i]; }
       for (k = 0; k < per.length; k++) { var s = 0, a = 0; for (i = 0; i < n; i++) { var pv = per[k][i] > 0 ? per[k][i] : 0; s += W[i] * pv; a += pv; } scores.push(s / tot); alls.push(a / n); } /* a hidden or wrong cell counts as zero: a warped look-alike cannot win on a few good cells */
       var bi = 0, b2 = -1; for (k = 1; k < scores.length; k++) if (scores[k] > scores[bi]) bi = k; for (k = 0; k < scores.length; k++) if (k !== bi && (b2 < 0 || scores[k] > scores[b2])) b2 = k;
-      return { best: bi, score: scores[bi], margin: scores[bi] - (b2 >= 0 ? scores[b2] : 0), all: alls[bi], visible: tot > 0 ? vis / tot : 0, inside: fl.inside, scores: scores };
+      /* one whole-card likeness as well: bold art has many near-blank cells, and a blank cell proves nothing */
+      var T = S.cards[bi].tm[ci].f, sf = 0, st2 = 0, N = T.length; for (i = 0; i < N; i++) { sf += fl.f[i]; st2 += T[i]; } sf /= N; st2 /= N; var cft = 0, cff = 0, ctt = 0; for (i = 0; i < N; i++) { var df = fl.f[i] - sf, dt = T[i] - st2; cft += df * dt; cff += df * df; ctt += dt * dt; }
+      var glob = cff > 1e-6 && ctt > 1e-6 ? cft / Math.sqrt(cff * ctt) : 0;
+      return { best: bi, glob: glob, score: scores[bi], margin: scores[bi] - (b2 >= 0 ? scores[b2] : 0), all: alls[bi], visible: tot > 0 ? vis / tot : 0, inside: fl.inside, scores: scores };
     }
 
     function refineDense(fr, H, quad, k, forceS, radius) { /* nudge H so every cell of the flattened picture sits on the named card's own drawing; returns a better H or null */
@@ -214,28 +217,51 @@ var CV_CARDS = (function () {
       var g = fr.pyr[fr.pyr.length - 1]; if (g.w > 400) g = resizeArea(g, 320, Math.round(g.h * 320 / g.w));
       var w = g.w, h = g.h, d = g.d, I = new Uint32Array((w + 1) * (h + 1)), x, y, i, r = Math.round(w / 8), quads = [];
       for (y = 0; y < h; y++) { var rs = 0; for (x = 0; x < w; x++) { rs += d[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + rs; } }
-      var mask = new Uint8Array(w * h);
-      for (y = 0; y < h; y++) { var y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1); for (x = 0; x < w; x++) { var x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), mean = (I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0]) / ((x1 - x0) * (y1 - y0)); if (d[y * w + x] > mean * o.quadK + 5) mask[y * w + x] = 1; } }
-      var stack = new Int32Array(w * h), sx = fr.w / w, sy = fr.h / h;
-      for (i = 0; i < w * h; i++) { if (mask[i] !== 1) continue; var top = 0, area = 0, pts = []; stack[top++] = i; mask[i] = 2;
-        while (top) { var p = stack[--top], px = p % w, py = (p / w) | 0, edge = false; area++;
+      var mask = new Uint8Array(w * h), B = 8, bw = Math.ceil(w / B), bh = Math.ceil(h / B), bm = new Uint8Array(bw * bh), lm = new Uint8Array(bw * bh), bxx, byy;
+      /* the brightest thing nearby (paper white, most of the time): block maxima, spread over a 5 x 5 block neighbourhood */
+      for (y = 0; y < h; y++) for (x = 0; x < w; x++) { var bi = ((y / B) | 0) * bw + ((x / B) | 0), v0 = (I[(Math.min(h, y + 2)) * (w + 1) + Math.min(w, x + 2)] - I[Math.max(0, y - 1) * (w + 1) + Math.min(w, x + 2)] - I[Math.min(h, y + 2) * (w + 1) + Math.max(0, x - 1)] + I[Math.max(0, y - 1) * (w + 1) + Math.max(0, x - 1)]) / ((Math.min(w, x + 2) - Math.max(0, x - 1)) * (Math.min(h, y + 2) - Math.max(0, y - 1))); if (v0 > bm[bi]) bm[bi] = v0; }
+      for (byy = 0; byy < bh; byy++) for (bxx = 0; bxx < bw; bxx++) { var mxv = 0; for (var dy2 = -o.quadMaxR; dy2 <= o.quadMaxR; dy2++) for (var dx2 = -o.quadMaxR; dx2 <= o.quadMaxR; dx2++) { var xx2 = bxx + dx2, yy2 = byy + dy2; if (xx2 < 0 || yy2 < 0 || xx2 >= bw || yy2 >= bh) continue; if (bm[yy2 * bw + xx2] > mxv) mxv = bm[yy2 * bw + xx2]; } lm[byy * bw + bxx] = mxv; }
+      for (y = 0; y < h; y++) { var y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1); for (x = 0; x < w; x++) { var x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), mean = (I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0]) / ((x1 - x0) * (y1 - y0)); if (d[y * w + x] > mean * o.quadK + 5 && d[y * w + x] >= o.quadMaxK * lm[((y / B) | 0) * bw + ((x / B) | 0)]) mask[y * w + x] = 1; } }
+      /* fill the ink holes inside a sheet (close), then shave thin bright streaks such as wood grain off it (open) */
+      function morph(m, grow) { var m2 = new Uint8Array(w * h); for (var yy = 1; yy < h - 1; yy++) for (var xx = 1; xx < w - 1; xx++) { var ii = yy * w + xx, n = m[ii] + m[ii - 1] + m[ii + 1] + m[ii - w] + m[ii + w] + m[ii - w - 1] + m[ii - w + 1] + m[ii + w - 1] + m[ii + w + 1]; m2[ii] = grow ? (n > 0 ? 1 : 0) : (n === 9 ? 1 : 0); } return m2; }
+      var er; for (er = 0; er < o.quadClose; er++) mask = morph(mask, true); for (er = 0; er < o.quadClose + o.quadErode; er++) mask = morph(mask, false);
+      if (o.debug) S.dbg = { mask: mask.slice(), g: g, comps: [], sx: fr.w / w };
+      var stack = new Int32Array(w * h), sx = fr.w / w, sy = fr.h / h; var qrnd = rng(977 + w);
+      for (i = 0; i < w * h; i++) { if (mask[i] !== 1) continue; var top = 0, area = 0, pts = [], all = [], bx0 = w, bx1 = 0, by0 = h, by1 = 0; stack[top++] = i; mask[i] = 2;
+        while (top) { var p = stack[--top], px = p % w, py = (p / w) | 0, edge = false; area++; all.push(p); if (px < bx0) bx0 = px; if (px > bx1) bx1 = px; if (py < by0) by0 = py; if (py > by1) by1 = py;
           if (px > 0) { if (mask[p - 1] === 1) { mask[p - 1] = 2; stack[top++] = p - 1; } else if (!mask[p - 1]) edge = true; } else edge = true;
           if (px < w - 1) { if (mask[p + 1] === 1) { mask[p + 1] = 2; stack[top++] = p + 1; } else if (!mask[p + 1]) edge = true; } else edge = true;
           if (py > 0) { if (mask[p - w] === 1) { mask[p - w] = 2; stack[top++] = p - w; } else if (!mask[p - w]) edge = true; } else edge = true;
           if (py < h - 1) { if (mask[p + w] === 1) { mask[p + w] = 2; stack[top++] = p + w; } else if (!mask[p + w]) edge = true; } else edge = true;
           if (edge) pts.push([px, py]); }
-        if (area < 50 || area > w * h * 0.6 || pts.length < 12) continue;
-        /* convex hull, then the four corners: the farthest pair and the farthest point on each side of that line */
-        pts.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; }); var hull = [], k, t; function cr(a, b, c) { return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); }
-        for (k = 0; k < pts.length; k++) { while (hull.length >= 2 && cr(hull[hull.length - 2], hull[hull.length - 1], pts[k]) <= 0) hull.pop(); hull.push(pts[k]); } t = hull.length + 1; for (k = pts.length - 2; k >= 0; k--) { while (hull.length >= t && cr(hull[hull.length - 2], hull[hull.length - 1], pts[k]) <= 0) hull.pop(); hull.push(pts[k]); } hull.pop(); if (hull.length < 4) continue;
-        var A = 0, C = 0, bd = -1, a2, b2; for (a2 = 0; a2 < hull.length; a2++) for (b2 = a2 + 1; b2 < hull.length; b2++) { var dd = (hull[a2][0] - hull[b2][0]) * (hull[a2][0] - hull[b2][0]) + (hull[a2][1] - hull[b2][1]) * (hull[a2][1] - hull[b2][1]); if (dd > bd) { bd = dd; A = a2; C = b2; } }
-        var B = -1, D = -1, bp = 0, bn = 0; for (k = 0; k < hull.length; k++) { var cv = cr(hull[A], hull[C], hull[k]); if (cv > bp) { bp = cv; B = k; } if (cv < bn) { bn = cv; D = k; } } if (B < 0 || D < 0) continue;
-        var q = [hull[A], hull[B], hull[C], hull[D]], sa = 0; for (k = 0; k < 4; k++) sa += q[k][0] * q[(k + 1) % 4][1] - q[(k + 1) % 4][0] * q[k][1]; if (sa < 0) { q = [q[0], q[3], q[2], q[1]]; sa = -sa; } sa /= 2; if (sa < 60) continue;
-        /* is the blob really four-sided? every hull point must lie near the outline, and the blob must fill a fair part of it */
-        var worst = 0; for (k = 0; k < hull.length; k++) { var best = 1e9; for (t = 0; t < 4; t++) { var e0 = q[t], e1 = q[(t + 1) % 4], ex = e1[0] - e0[0], ey = e1[1] - e0[1], el = Math.hypot(ex, ey) || 1, dist = Math.abs((hull[k][0] - e0[0]) * ey - (hull[k][1] - e0[1]) * ex) / el; if (dist < best) best = dist; } if (best > worst) worst = best; }
-        if (worst > Math.max(1.6, 0.07 * Math.sqrt(sa)) || area < 0.3 * sa) continue;
+        if (area < 50 || area > w * h * 0.6 || pts.length < 12) { if (o.debug && area >= 50) S.dbg.comps.push({ why: 'size', area: area, pts: pts }); continue; }
+        /* keep only the OUTSIDE rim of the blob (not the edges of ink holes inside it): flood the background in from the blob's bounding box */
+        var gw = bx1 - bx0 + 3, gh = by1 - by0 + 3, grid = new Uint8Array(gw * gh), qd = [0], qh = 0; for (var ai = 0; ai < all.length; ai++) grid[(((all[ai] / w) | 0) - by0 + 1) * gw + (all[ai] % w) - bx0 + 1] = 1; grid[0] = 2;
+        while (qh < qd.length) { var gp = qd[qh++], gx = gp % gw, gy = (gp / gw) | 0; if (gx > 0 && !grid[gp - 1]) { grid[gp - 1] = 2; qd.push(gp - 1); } if (gx < gw - 1 && !grid[gp + 1]) { grid[gp + 1] = 2; qd.push(gp + 1); } if (gy > 0 && !grid[gp - gw]) { grid[gp - gw] = 2; qd.push(gp - gw); } if (gy < gh - 1 && !grid[gp + gw]) { grid[gp + gw] = 2; qd.push(gp + gw); } }
+        pts = pts.filter(function (p2) { var gi = (p2[1] - by0 + 1) * gw + p2[0] - bx0 + 1; return grid[gi - 1] === 2 || grid[gi + 1] === 2 || grid[gi - gw] === 2 || grid[gi + gw] === 2; }); if (pts.length < 12) continue;
+        /* four straight OUTER edges of the blob, each found by trial lines through two edge pixels (a spur of wood grain or a covered corner does not spoil it) */
+        if (pts.length > 500) { var keepN = pts.length / 500, sub = []; for (var si = 0; si < 500; si++) sub.push(pts[(si * keepN) | 0]); pts = sub; }
+        var n = pts.length, usedP = new Uint8Array(n), lines = [], minLen2 = Math.max(16, 0.03 * area), k, t;
+        for (var L = 0; L < 4; L++) { var bl = null, free = []; for (k = 0; k < n; k++) if (!usedP[k]) free.push(k); if (free.length < 6) break;
+          for (var it = 0; it < 90; it++) { var p0 = pts[free[(qrnd() * free.length) | 0]], p1 = pts[free[(qrnd() * free.length) | 0]], ex = p1[0] - p0[0], ey = p1[1] - p0[1], el2 = ex * ex + ey * ey; if (el2 < minLen2) continue; var el = Math.sqrt(el2), na = -ey / el, nb = ex / el, nc = -(na * p0[0] + nb * p0[1]), inl = 0, pos = 0, neg = 0;
+            for (k = 0; k < n; k++) { var dd = na * pts[k][0] + nb * pts[k][1] + nc; if (dd > 1.6) pos++; else if (dd < -1.6) neg++; else if (!usedP[k] && dd < 1.1 && dd > -1.1) inl++; }
+            if (Math.min(pos, neg) > 0.07 * n) continue; if (!bl || inl > bl.inl) bl = { inl: inl, a: na, b: nb, c: nc, flip: neg > pos }; }
+          if (!bl || bl.inl < Math.max(5, 0.05 * n)) break; if (bl.flip) { bl.a = -bl.a; bl.b = -bl.b; bl.c = -bl.c; }
+          /* least-squares line through its inliers */
+          var sxx = 0, sxy = 0, syy = 0, mx = 0, my = 0, cnt = 0; for (k = 0; k < n; k++) { var d1 = bl.a * pts[k][0] + bl.b * pts[k][1] + bl.c; if (!usedP[k] && d1 < 1.1 && d1 > -1.1) { mx += pts[k][0]; my += pts[k][1]; cnt++; } } mx /= cnt; my /= cnt;
+          for (k = 0; k < n; k++) { var d2 = bl.a * pts[k][0] + bl.b * pts[k][1] + bl.c; if (!usedP[k] && d2 < 1.1 && d2 > -1.1) { var ux = pts[k][0] - mx, uy = pts[k][1] - my; sxx += ux * ux; sxy += ux * uy; syy += uy * uy; } }
+          var th = 0.5 * Math.atan2(2 * sxy, sxx - syy), la = -Math.sin(th), lb = Math.cos(th); if (la * bl.a + lb * bl.b < 0) { la = -la; lb = -lb; } bl.a = la; bl.b = lb; bl.c = -(la * mx + lb * my);
+          for (k = 0; k < n; k++) { var d3 = bl.a * pts[k][0] + bl.b * pts[k][1] + bl.c; if (d3 < 2.2 && d3 > -2.2) usedP[k] = 1; } lines.push(bl); }
+        if (lines.length < 4) { if (o.debug) S.dbg.comps.push({ why: 'lines' + lines.length, area: area, pts: pts }); continue; }
+        lines.sort(function (p, q2) { return Math.atan2(p.b, p.a) - Math.atan2(q2.b, q2.a); });
+        var q = [], okq = true; for (k = 0; k < 4; k++) { var l1 = lines[k], l2 = lines[(k + 1) % 4], det = l1.a * l2.b - l2.a * l1.b; if (Math.abs(det) < 0.12) { okq = false; break; } q.push([(l1.b * l2.c - l2.b * l1.c) / det, (l2.a * l1.c - l1.a * l2.c) / det]); }
+        if (!okq) { if (o.debug) S.dbg.comps.push({ why: 'parallel', area: area, pts: pts }); continue; }
+        var sa = 0; for (k = 0; k < 4; k++) sa += q[k][0] * q[(k + 1) % 4][1] - q[(k + 1) % 4][0] * q[k][1]; if (sa < 0) { q = [q[0], q[3], q[2], q[1]]; sa = -sa; } sa /= 2;
+        var okc = sa >= 60 && sa < w * h * 0.7 && area >= o.quadFill * sa && area <= 1.25 * sa; for (k = 0; k < 4 && okc; k++) { var qa = q[k], qb = q[(k + 1) % 4], qc = q[(k + 2) % 4]; if ((qb[0] - qa[0]) * (qc[1] - qb[1]) - (qb[1] - qa[1]) * (qc[0] - qb[0]) <= 0) okc = false; if (qa[0] < -w * 0.3 || qa[0] > w * 1.3 || qa[1] < -h * 0.3 || qa[1] > h * 1.3) okc = false; }
+        if (o.debug) S.dbg.comps.push({ why: okc ? 'ok' : 'shape', area: area, sa: sa, pts: pts, q: q });
+        if (!okc) continue;
         var cxq = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cyq = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
-        quads.push(q.map(function (p2) { var dx = p2[0] - cxq, dy = p2[1] - cyq, dl = Math.hypot(dx, dy) || 1; return [(p2[0] + 0.5 + dx / dl * 0.7) * sx - 0.5, (p2[1] + 0.5 + dy / dl * 0.7) * sy - 0.5]; })); if (quads.length >= o.maxQuads) break; }
+        quads.push(q.map(function (p2) { var dx = p2[0] - cxq, dy = p2[1] - cyq, dl = Math.hypot(dx, dy) || 1, grow = 0.7 + 1.2 * o.quadErode; return [(p2[0] + 0.5 + dx / dl * grow) * sx - 0.5, (p2[1] + 0.5 + dy / dl * grow) * sy - 0.5]; })); if (quads.length >= o.maxQuads) break; }
       return quads;
     }
     function fromQuad(fr, q) { /* a paper-shaped outline: which way up is it, which card is it, and does the artwork really fit? */
@@ -247,8 +273,8 @@ var CV_CARDS = (function () {
       for (r = 0; r < cands.length && r < 2; r++) { var c = cands[r]; if (c.tol < 0.3) continue; var id = identify(fr, c.H, c.corners);
         for (var it = 0; it < 3; it++) { var rd2 = refineDense(fr, c.H, c.corners, id.best, it === 0, it === 0 ? 3 : 0); if (!rd2) break; var id2 = identify(fr, rd2.H, rd2.corners); if (id2.score >= id.score - 0.02) { c = rd2; id = id2; } else break; }
         if (!best || id.score > best.id.score) best = { c: c, id: id }; }
-      if (!best) return null; var d = { inliers: 0, db: 'outline', via: 'outline', corners: best.c.corners, H: best.c.H, score: best.id.score, margin: best.id.margin, all: best.id.all, visible: best.id.visible, scores: best.id.scores };
-      d.id = S.cards[best.id.best].id; d.name = S.cards[best.id.best].name; d.kind = S.cards[best.id.best].kind; d.ok = d.score >= o.quadNccMin && d.margin >= o.nccMargin && d.all >= o.quadNccAll; return d;
+      if (!best) return null; var d = { inliers: 0, db: 'outline', via: 'outline', corners: best.c.corners, H: best.c.H, score: best.id.score, glob: best.id.glob, margin: best.id.margin, all: best.id.all, visible: best.id.visible, scores: best.id.scores };
+      d.id = S.cards[best.id.best].id; d.name = S.cards[best.id.best].name; d.kind = S.cards[best.id.best].kind; d.ok = d.score >= o.quadNccMin && d.margin >= o.quadMargin && d.all >= o.quadNccAll && d.glob >= o.quadGlobMin; return d;
     }
     function detectFr(fr) { S.stats.rejected = []; S.stats.matches = 0; var out = o.features ? detectFeat(fr) : []; S.stats.quads = 0;
       if (o.quads) { var qs = findQuads(fr); S.stats.quads = qs.length; qs.forEach(function (q) { var cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4, k, t, taken = false;
@@ -308,7 +334,7 @@ var CV_CARDS = (function () {
             if (id.best !== k && id.score >= o.nccMin * 0.6) { /* found through look-alike parts of another card: fit again on the named card's own features, then look again */
               var f2 = refit(fit.H, byCard[id.best], true); if (f2 && f2.list.length >= o.minInl) { var q2 = quadOf(f2.H), H2p = toPx(f2.H), id2 = identify(fr, H2p, q2); if (id2.score > id.score) { det.corners = q2; det.H = H2p; det.inliers = f2.list.length; det.list = det.list.concat(f2.list); id = id2; } } }
             if (o.dense && id.score >= o.nccMin * 0.6) for (var dr = 0; dr < 2; dr++) { var rd = refineDense(fr, det.H, det.corners, id.best); if (!rd) break; var id3 = identify(fr, rd.H, rd.corners); if (id3.best === id.best && id3.score >= id.score - 0.01) { det.H = rd.H; det.corners = rd.corners; det.cells = rd.cells; id = id3; } else break; }
-            det.score = id.score; det.margin = id.margin; det.all = id.all; det.visible = id.visible; det.scores = id.scores; idx2 = id.best; det.ok = id.score >= o.nccMin && id.margin >= o.nccMargin && id.all >= o.nccAll; det.rank = id.score + id.margin; }
+            det.score = id.score; det.glob = id.glob; det.margin = id.margin; det.all = id.all; det.visible = id.visible; det.scores = id.scores; idx2 = id.best; det.ok = id.score >= o.nccMin && id.margin >= o.nccMargin && id.all >= o.nccAll && id.glob >= o.globMin; det.rank = id.score + id.margin; }
           else { det.score = det.inliers; det.ok = det.inliers >= o.inlMin; det.rank = det.inliers; }
           det.id = S.cards[idx2].id; det.name = S.cards[idx2].name; det.kind = S.cards[idx2].kind; used = used.concat(det.list);
           if (!best || (det.ok && !best.ok) || (det.ok === best.ok && det.rank > best.rank)) best = det; }
@@ -324,6 +350,7 @@ var CV_CARDS = (function () {
     }
     function detect(gray, w, h) { if (!S.ready) return []; var t0 = now(), fr = extract(gray, w, h, o), t1 = now(), r = detectFr(fr); S.stats.extractMs = t1 - t0; S.stats.matchMs = now() - t1; S.stats.features = fr.n; return r; }
 
+    S.findQuads = findQuads; S.fromQuad = fromQuad;
     S.init = init; S.detect = detect; S.detectFr = detectFr; S.identify = identify; S.extract = function (g, w, h) { return extract(g, w, h, o); };
     return S;
   }
@@ -369,6 +396,7 @@ var CV_CARDS = (function () {
   D.grayFromRGBA = function (px, w, h) { var g = new Uint8Array(w * h); for (var i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return g; };
   D.SETS = { '1': { dir: 'art', mm: { w: 210, h: 148.5 }, label: 'Set 1: engraved, A5', files: { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' } },
     '2': { dir: 'art2', mm: { w: 148, h: 105 }, label: 'Set 2: bold woodcut, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } } };
+  D.DEFAULT_SET = '1'; /* set after measuring: see RECOGNITION_REPORT.md */
   D.CARD_FILES = { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' };
   return D;
 })();

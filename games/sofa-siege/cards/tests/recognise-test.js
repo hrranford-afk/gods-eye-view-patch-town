@@ -47,10 +47,11 @@ function score(dets, truth, intr) {
     const o = { id: t.id, decoy: t.id[0] === 'D', dist: t.dist, elev: t.elev, occl: t.occl, wpx, outcome: 'miss', got: 'none' };
     const same = here.find((x) => x.d.id === t.id);
     if (same) { const errs = same.d.corners.map((p, i) => Math.hypot(p[0] - t.corners[i][0], p[1] - t.corners[i][1])), mean = errs.reduce((a, b) => a + b, 0) / 4; used.add(same.i);
-      if (mean < 0.15 * wpx) { o.outcome = 'tp'; o.got = t.id; o.cornerMean = mean; o.cornerMax = Math.max(...errs); o.inliers = same.d.inliers; o.score = same.d.score; o.via = same.d.via; const p = CV.pose(same.d, intr, { w: 210, h: 148.5 }); if (p) { o.reproj = p.reproj_px; o.tErr = Math.hypot(p.t[0] - t.t[0], p.t[1] - t.t[1], p.t[2] - t.t[2]); o.dErr = Math.abs(p.distance_mm - t.dist); o.rErr = rotErr(p.R, t.R); } }
+      if (mean < 0.15 * wpx) { o.outcome = 'tp'; o.got = t.id; o.cornerMean = mean; o.cornerMax = Math.max(...errs); o.inliers = same.d.inliers; o.score = same.d.score; o.glob = same.d.glob; o.margin = same.d.margin; o.all = same.d.all; o.via = same.d.via; const p = CV.pose(same.d, intr, { w: 210, h: 148.5 }); if (p) { o.reproj = p.reproj_px; o.tErr = Math.hypot(p.t[0] - t.t[0], p.t[1] - t.t[1], p.t[2] - t.t[2]); o.dErr = Math.abs(p.distance_mm - t.dist); o.rErr = rotErr(p.R, t.R); } }
       else { const e2 = same.d.corners.map((p, i) => Math.hypot(p[0] - t.corners[(i + 2) % 4][0], p[1] - t.corners[(i + 2) % 4][1])).reduce((a, b) => a + b, 0) / 4; o.outcome = e2 < 0.15 * wpx ? 'flipped' : 'badOutline'; o.got = t.id; } }
-    else if (here.length) { o.outcome = 'wrong'; o.got = here[0].d.id; here.forEach((x) => used.add(x.i)); }
+    else if (here.length) { o.outcome = 'wrong'; o.got = here[0].d.id; o.bad = here[0].d; here.forEach((x) => used.add(x.i)); }
     cards.push(o); }
+  if (has('--dev')) { cards.forEach((c) => { if (c.outcome === 'tp') console.log('DEV TP', c.via, 'wpx', c.wpx | 0, 'sc', c.score.toFixed(2), 'gl', c.glob.toFixed(2), 'mg', c.margin.toFixed(2), 'all', c.all.toFixed(2)); else if (c.bad) console.log('DEV WRONG', c.id, '->', c.got, c.bad.via, 'sc', c.bad.score.toFixed(2), 'gl', c.bad.glob.toFixed(2), 'mg', c.bad.margin.toFixed(2), 'all', c.bad.all.toFixed(2)); }); dets.filter((d, i) => !used.has(i)).forEach((d) => console.log('DEV PHANTOM', d.id, d.via, 'sc', d.score.toFixed(2), 'gl', d.glob.toFixed(2), 'mg', d.margin.toFixed(2), 'all', d.all.toFixed(2), 'inl', d.inliers)); }
   return { cards, phantoms: dets.filter((d, i) => !used.has(i)).map((d) => d.id) };
 }
 
