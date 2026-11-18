@@ -28,3 +28,19 @@
 2. Lift the shared kit out of Base Camp and B&B.
 3. First two modes on it: Sofa siege (most already built) and Dragon defence.
 4. Then Raid and Hold the table. Kitchen Run and Squad tactics move across.
+
+## CAIRN's picks (18 Nov 2026)
+Harry, 18 Nov: "Should we design some clear game modes? So wouldn't it be great if we could build a little base? Okay, and then you pick."
+
+**Every mode starts the same way: build your base.** You get 2 minutes and a pile of kept resources. You place walls, a tower and one launcher on real furniture. One build step, three ways to play:
+
+| # | Mode | Players | How you win | Played first in |
+|---|---|---|---|---|
+| 1 | **Sofa siege** | 2, taking turns | Knock the flag off the other base. Toy lobs, bounces and flicks; walls really break | The lounge (sofa against armchair) |
+| 2 | **Dragon defence** | 1 or 2 together | Survive 3 waves of household dragons. They come in through doorways and over furniture | The kitchen (doorways on two sides) |
+| 3 | **Raid** | 2, real time | Run your squad across the room and tag their base first, while your base defends itself | Two rooms joined by a doorway |
+
+- **Why these 3:** they reuse the most of what is already built (Base Camp's battle, B&B's weapons, the room brain). They cover the 3 styles Harry asked for: taking turns, together, and against each other in real time.
+- **Nobody dies:** hit units go dizzy and pop home. Toy weapons only, our own characters.
+- **The 3D house is the test arena:** bots play all 3 modes overnight in the dolls' house and send a nightly report: who won, how long it took, what broke, what was boring.
+- **Later:** Hold the table, Kitchen Run, Squad tactics, and Sofa Keep (the king on the sofa) as a fourth mode built on the same base step.
