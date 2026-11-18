@@ -49,7 +49,7 @@ Round Table Kingdom is a toy battle on a round table. Two teams of toy mice each
 2. The live game with `?auto=both&level=easy&report=1` added. Two robots play a whole match at real speed, about 5 minutes. At the end the page shows a report on screen, and the same report is in `SG_REPORT` on the page.
 3. The same with `level=hard`.
 
-If address 2 shows the title screen and no robot match, that feature is not on the live game yet. Say so and stop stage 1 there. It is due at about 15:45 UK on 18 Nov.
+The robot match went live at 11:42 UK on 18 Nov. If address 2 still shows the title screen and no robot match, say so and stop stage 1 there.
 
 For each engine, record: engine name and version, page errors word for word, frames per second (average, and the worst 1 in 100), the longest single freeze, who won, and whether the match finished. Screenshots: the title, the build step at 1 minute, round 2, the win screen.
 
