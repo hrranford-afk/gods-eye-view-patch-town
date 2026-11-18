@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Round Table Kingdom: print the cards</title>
+<style>
+  /* A4 portrait pages, two cards on each, at true size (CSS millimetres).
+     Set 1: A5 cards, 210 x 148.5 mm, edge to edge: cut across the middle. Most printers cannot print the outer 3-5 mm.
+     Set 2: A6 cards, 148 x 105 mm, with ordinary margins and crop ticks outside the cards. */
+  @page { size: A4 portrait; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #ddd; font-family: system-ui, sans-serif; }
+  .note { max-width: 190mm; margin: 6mm auto; padding: 4mm 5mm; background: #fff; border-radius: 2mm; font-size: 12pt; line-height: 1.5; }
+  .sheet { position: relative; width: 210mm; height: 297mm; margin: 6mm auto; background: #fff; overflow: hidden; page-break-after: always; break-after: page; }
+  .sheet img { position: absolute; display: block; image-rendering: auto; }
+  .tick { position: absolute; background: #000; }
+  @media print { html, body { background: #fff; } .note { display: none; } .sheet { margin: 0; } .sheet:last-child { page-break-after: auto; break-after: auto; } }
+</style>
+</head>
+<body>
+<div class="note">
+  <b id="ttl">Print the cards.</b><br>
+  1. Paper: A4, upright. Black ink only is fine. Matte paper is best.<br>
+  2. Scale: <b>100%</b> ("Actual size"). Do <b>not</b> pick "Fit to page".<br>
+  3. <span id="cut"></span><br>
+  4. Check with a ruler: a cut card should be <b id="wmm"></b> wide. If it is not, the scale was not 100%.<br>
+  <button onclick="window.print()" style="font-size:12pt;padding:2mm 4mm">Print</button>
+  <a id="other" href="#" style="margin-left:4mm"></a>
+  <a id="back" href="../cards.html" style="margin-left:4mm">Back to the card checker</a>
+</div>
+<div id="sheets"></div>
+<script>
+/* Builds the pages for ?set=1 (A5, engraved) or ?set=2 (A6, bold). No set given: set 1. */
+(function () {
+  var SETS = { '1': { dir: 'art', w: 210, h: 148.5, label: 'Set 1: engraved, A5', files: ['00_world_anchor_A5_artwork.png', '03_capture_flag_A5_artwork.png', '01_blue_base_A5_artwork.png', '02_red_base_A5_artwork.png', '04_hill_A5_artwork.png', '05_build_camp_A5_artwork.png'] },
+    '2': { dir: 'art2', w: 148, h: 105, label: 'Set 2: bold woodcut, A6', files: ['00_world_anchor.png', '03_capture_flag.png', '01_blue_base.png', '02_red_base.png', '04_hill.png', '05_build_camp.png'] } };
+  var q = new URLSearchParams(location.search), n = q.get('set') === '2' ? '2' : '1', S = SETS[n], host = document.getElementById('sheets');
+  document.getElementById('ttl').textContent = 'Print the six cards. ' + S.label + ' (' + S.w + ' × ' + S.h + ' mm each).';
+  document.getElementById('wmm').textContent = S.w + ' mm';
+  document.getElementById('cut').textContent = n === '1' ? 'Cut each sheet across the middle. Each half is one card. Your printer may leave the outer few millimetres blank: that is fine.' : 'Cut along the small corner ticks. Each card has white paper all round it on the sheet.';
+  var o = n === '1' ? '2' : '1'; document.getElementById('other').href = '?set=' + o; document.getElementById('other').textContent = 'Show ' + SETS[o].label; document.getElementById('back').href = '../cards.html?set=' + n;
+  for (var p = 0; p < 3; p++) { var sh = document.createElement('div'); sh.className = 'sheet';
+    for (var k = 0; k < 2; k++) { var x = (210 - S.w) / 2, gap = (297 - 2 * S.h) / 3, y = n === '1' ? k * S.h : gap + k * (S.h + gap), im = document.createElement('img'); im.src = S.dir + '/' + S.files[p * 2 + k]; im.alt = 'Card ' + S.files[p * 2 + k].slice(0, 2); im.style.cssText = 'left:' + x + 'mm;top:' + y + 'mm;width:' + S.w + 'mm;height:' + S.h + 'mm'; sh.appendChild(im);
+      if (n === '2') [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(function (c) { var cx = x + c[0] * S.w, cy = y + c[1] * S.h, a = document.createElement('div'), b = document.createElement('div'); a.className = b.className = 'tick'; a.style.cssText = 'left:' + (cx + (c[0] ? 2 : -8)) + 'mm;top:' + (cy - 0.1) + 'mm;width:6mm;height:0.2mm'; b.style.cssText = 'left:' + (cx - 0.1) + 'mm;top:' + (cy + (c[1] ? 2 : -8)) + 'mm;width:0.2mm;height:6mm'; sh.appendChild(a); sh.appendChild(b); }); }
+    host.appendChild(sh); }
+})();
+</script>
+</body>
+</html>

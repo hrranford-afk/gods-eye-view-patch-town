@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Round Table Kingdom: card checker</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #1d1611; color: #f3eadb; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 10px 14px; background: #2a1f16; border-bottom: 1px solid #4a3828; }
+  h1 { margin: 0; font-size: 20px; }
+  h2 { margin: 0 0 8px; font-size: 16px; }
+  .private { margin-top: 4px; font-size: 14px; color: #b9e3b0; }
+  .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #6b4a1c; color: #ffe2a8; font-size: 12px; vertical-align: middle; }
+  main { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; padding: 12px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel { background: #2a1f16; border: 1px solid #4a3828; border-radius: 10px; padding: 10px; }
+  #view { width: 100%; display: block; background: #000; border-radius: 6px; aspect-ratio: 16 / 9; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid #7a5f43; background: #4a3828; color: #fff; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.go { background: #2f7d3b; border-color: #56b866; font-weight: 700; }
+  button.on { background: #86601f; border-color: #f2c14e; }
+  .stats { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #e7d9c3; white-space: pre-wrap; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #4a3828; }
+  th { color: #c9b79c; font-weight: 600; }
+  .st { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: 12px; font-weight: 700; }
+  .st.TRACKING { background: #2f7d3b; } .st.LOST { background: #9a5a12; } .st.NOT_SEEN { background: #554636; color: #cbb; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; border: 1px solid #000; }
+  #msgs div { padding: 6px 9px; border-radius: 7px; margin-bottom: 6px; font-size: 14px; }
+  #msgs .info { background: #33414f; } #msgs .warn { background: #7a4a12; } #msgs .ok { background: #245f2e; }
+  #top { width: 100%; max-width: 360px; aspect-ratio: 1; display: block; margin: 0 auto; border-radius: 8px; touch-action: none; }
+  pre { margin: 8px 0 0; padding: 8px; background: #17110c; border-radius: 6px; font-size: 12px; max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  a { color: #ffd98a; }
+  .small { font-size: 13px; color: #cdbda4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Round Table Kingdom: card checker <span class="tag" id="modeTag">camera</span></h1>
+  <div class="private">The camera picture stays on this device. Nothing is uploaded or saved. Only the text log leaves, and only if you press "Copy log" and paste it somewhere.</div>
+</header>
+<main>
+  <section class="panel">
+    <canvas id="view" width="1280" height="720"></canvas>
+    <div class="row">
+      <button id="bStart" class="go">Start camera</button>
+      <button id="bCopy">Copy log</button>
+      <a id="aPrint" href="cards/print.html">Print the cards</a>
+      <a id="aSet" href="#"></a>
+      <span id="demoBar" style="display:none">
+        <button id="bHide">Demo: hide BLUE card</button>
+        <button id="bMove">Demo: move FLAG card</button>
+      </span>
+    </div>
+    <div class="stats" id="stats">Not started.</div>
+    <h2 style="margin-top:12px">The six cards</h2>
+    <table><thead><tr><th>Card</th><th>State</th><th>First seen</th><th>Last seen</th><th>Seen</th><th>Inliers</th><th>Distance</th></tr></thead><tbody id="cardRows"></tbody></table>
+    <p class="small">Read-only check. Not AR. "UNKNOWN" means the browser did not give that value. Distance from a real camera uses an assumed lens angle, so treat it as rough.</p>
+  </section>
+  <section class="panel">
+    <h2>Table setup <span class="tag" id="setupTag">SCANNING</span></h2>
+    <div id="msgs"></div>
+    <canvas id="top" width="360" height="360"></canvas>
+    <div class="row">
+      <button id="bLock" class="go" disabled>LOCK TABLE</button>
+      <button id="bUnlock" disabled>Unlock and re-scan</button>
+    </div>
+    <div class="row"><span class="small">Place by touch (no card needed): pick one, then tap the map.</span></div>
+    <div class="row" id="manualRow"></div>
+    <div class="row"><button id="bTurnL">Turn left</button><button id="bTurnR">Turn right</button><button id="bClear">Back to card</button></div>
+    <h2 style="margin-top:12px">Locked layout (JSON)</h2>
+    <pre id="lockedOut">Not locked yet.</pre>
+    <pre id="logOut" style="display:none"></pre>
+  </section>
+</main>
+<script src="cards/cardvision.js"></script>
+<script src="cards/setup.js"></script>
+<script>
+/* cards.html: a read-only diagnostic page for the picture cards. No AR, no WebXR.
+   Camera frames are read into a canvas on this device, turned to grey, and handed to cardvision.js (in a worker when
+   the browser allows). No frame is ever sent anywhere. ?demo=1 feeds made-up frames (cards/synth.js) in place of the camera.
+   Other switches: ?fps=4 (cap on recognised frames per second), ?fov=60 (assumed lens angle across the picture, degrees),
+   ?maxw=1280 (longest picture side handed to the recogniser). */
+(function () {
+  'use strict';
+  var Q = new URLSearchParams(location.search), DEMO = Q.get('demo') === '1', FPS_CAP = Math.max(0.5, Math.min(15, +(Q.get('fps') || 4))), FOV = +(Q.get('fov') || 60), MAXW = +(Q.get('maxw') || 1280), SETN = Q.get('set') === '1' ? '1' : Q.get('set') === '2' ? '2' : CV_CARDS.DEFAULT_SET, SET = CV_CARDS.SETS[SETN];
+  var $ = function (id) { return document.getElementById(id); };
+  var view = $('view'), vx = view.getContext('2d'), top = $('top'), tx = top.getContext('2d');
+  var registry = RTK_SETUP.CardRegistry(), setup = RTK_SETUP.SetupState({ tableId: 'local_test_table', cardSizeMM: SET.mm }), adapter = RTK_SETUP.CardDetectorAdapter(CV_CARDS);
+  var P = { started: false, t0: performance.now(), startedAt: new Date().toISOString(), frames: 0, busy: false, lastSent: 0, last: null, lastSightings: [], ms: [], stamps: [], cam: { width: 'UNKNOWN', height: 'UNKNOWN', label: 'UNKNOWN', facing: 'UNKNOWN' }, worker: null, useWorker: false, ready: false, initStats: null, errors: [], manualSel: null, manualYaw: 0, demo: null, src: null, K: null, Kbasis: 'UNKNOWN' };
+  window.CARDS_PAGE = { P: P, registry: registry, setup: setup, loadCards: function () { return loadCards(); }, buildLog: function () { return buildLog(); } };
+  $('aPrint').href = 'cards/print.html?set=' + SETN; $('aPrint').textContent = 'Print the cards (' + SET.label + ')'; (function () { var o = SETN === '1' ? '2' : '1', q = new URLSearchParams(location.search); q.set('set', o); $('aSet').href = '?' + q.toString(); $('aSet').textContent = 'Switch to ' + CV_CARDS.SETS[o].label; })();
+  $('modeTag').textContent = DEMO ? 'demo: made-up frames, not a camera' : 'camera';
+  if (DEMO) { $('bStart').textContent = 'Start demo'; $('demoBar').style.display = ''; }
+  function now() { return performance.now() - P.t0; }
+  function fail(msg) { P.errors.push({ t_ms: Math.round(now()), message: msg }); $('stats').textContent = 'Problem: ' + msg; }
+
+  /* ----- the card pictures -> grey, for the recogniser's database ----- */
+  function loadCards() { var ids = Object.keys(SET.files).sort();
+    return Promise.all(ids.map(function (id) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0); var d = x.getImageData(0, 0, c.width, c.height); res({ id: id, mm: SET.mm, gray: CV_CARDS.grayFromRGBA(d.data, c.width, c.height), w: c.width, h: c.height }); }; im.onerror = function () { rej(new Error('could not load card picture ' + id)); }; im.src = 'cards/' + SET.dir + '/' + SET.files[id]; }); })); }
+  function initDetector(images) { return new Promise(function (res) {
+    var mainThread = function () { P.useWorker = false; P.initStats = adapter.init(images); P.ready = true; res(); };
+    try { var w = new Worker('cards/cardworker.js'); w.onmessage = function (e) { var m = e.data; if (m.type === 'ready') { P.worker = w; P.useWorker = true; P.initStats = m.stats; P.ready = true; res(); } else if (m.type === 'result') onResult(m); else if (m.type === 'error') { fail('recogniser: ' + m.message); P.busy = false; } };
+      w.onerror = function () { if (!P.ready) mainThread(); }; w.postMessage({ type: 'init', images: images.map(function (m) { return { id: m.id, mm: m.mm, gray: m.gray.slice(), w: m.w, h: m.h }; }) }); }
+    catch (x) { mainThread(); } }); }
+
+  /* ----- frame sources ----- */
+  function cameraSource() { var video = document.createElement('video'); video.playsInline = true; video.muted = true; video.setAttribute('playsinline', '');
+    var grab = document.createElement('canvas'), gx = grab.getContext('2d', { willReadFrequently: true });
+    return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } }).then(function (stream) {
+      video.srcObject = stream; var tr = stream.getVideoTracks()[0], st = tr && tr.getSettings ? tr.getSettings() : {}; P.cam.label = (tr && tr.label) || 'UNKNOWN'; P.cam.facing = st.facingMode || 'UNKNOWN'; P.cam.frameRate = st.frameRate || 'UNKNOWN';
+      return video.play().then(function () { return { kind: 'camera', size: function () { return [video.videoWidth, video.videoHeight]; }, draw: function (ctx, w, h) { ctx.drawImage(video, 0, 0, w, h); },
+        frame: function () { var vw = video.videoWidth, vh = video.videoHeight; if (!vw) return null; var k = Math.min(1, MAXW / Math.max(vw, vh)), w = Math.round(vw * k), h = Math.round(vh * k); grab.width = w; grab.height = h; gx.drawImage(video, 0, 0, w, h); var d = gx.getImageData(0, 0, w, h); P.cam.width = vw; P.cam.height = vh;
+          var f = (w / 2) / Math.tan(FOV * Math.PI / 360); P.Kbasis = 'assumed ' + FOV + ' degree lens'; return { gray: CV_CARDS.grayFromRGBA(d.data, w, h), w: w, h: h, K: { fx: f, fy: f, cx: w / 2, cy: h / 2 } }; } }; }); }); }
+  function demoSource(images) { return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = 'cards/synth.js'; s.onerror = function () { rej(new Error('could not load cards/synth.js')); };
+    s.onload = function () { var SY = CARD_SYNTH, lib = {}; images.forEach(function (m) { lib[m.id] = SY.mips({ d: m.gray, w: m.w, h: m.h }); });
+      var D = { n: 0, hideBlue: false, moveFlag: false, flagK: 0, canvas: document.createElement('canvas'), truth: null }, W = 1280, H = 720; D.canvas.width = W; D.canvas.height = H; P.demo = D; P.cam.width = W; P.cam.height = H; P.cam.label = 'made-up frames (synth.js)';
+      res({ kind: 'demo', size: function () { return [W, H]; }, draw: function (ctx, w, h) { ctx.drawImage(D.canvas, 0, 0, w, h); },
+        frame: function () { var n = D.n++, az = (-90 + 12 * Math.sin(n / 5)) * Math.PI / 180, el = 62 * Math.PI / 180, dist = 1000, C = [dist * Math.cos(el) * Math.cos(az), 40 + dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el)], cam = SY.camera(W, H, C, [0, 40, 0], 0.03 * Math.sin(n / 3));
+          if (D.moveFlag) D.flagK = Math.min(1, D.flagK + 0.2); else D.flagK = Math.max(0, D.flagK - 0.2);
+          var cards = [SY.placeCard(cam, '00', [0, 0, 0], 0, SET.mm), SY.placeCard(cam, '03', [40 - 150 * D.flagK, 215 - 10 * D.flagK, 0], 0.25 * D.flagK, SET.mm), SY.placeCard(cam, '02', [305, 60, 0], -Math.PI / 2 + 0.1, SET.mm)]; if (!D.hideBlue) cards.push(SY.placeCard(cam, '01', [-305, 20, 0], Math.PI / 2, SET.mm));
+          var img = SY.render({ cam: cam, cards: cards }, lib, 4242, { bg: 'wood', blur: 0.6, noise: 3, glare: false }); D.truth = cards;
+          var id = D.canvas.getContext('2d').createImageData(W, H); for (var i = 0, j = 0; i < img.gray.length; i++, j += 4) { id.data[j] = id.data[j + 1] = id.data[j + 2] = img.gray[i]; id.data[j + 3] = 255; } D.canvas.getContext('2d').putImageData(id, 0, 0);
+          P.Kbasis = 'exact (demo camera)'; return { gray: img.gray, w: W, h: H, K: cam.intr }; } }); };
+    document.head.appendChild(s); }); }
+
+  /* ----- the loop: draw every animation frame, recognise at a capped rate ----- */
+  function onResult(m) { P.busy = false; P.frames++; P.ms.push(m.ms); if (P.ms.length > 60) P.ms.shift(); var t = now(); P.stamps.push(t); while (P.stamps.length && t - P.stamps[0] > 5000) P.stamps.shift();
+    var sight = adapter.normalise(m.dets, null, null); P.last = { w: m.w, h: m.h, features: m.features, sightings: sight, t: t };
+    var good = registry.update(sight, t); setup.update(good, t); refresh(); }
+  function tick() { requestAnimationFrame(tick); if (!P.src) return; var sz = P.src.size(); if (!sz[0]) return;
+    if (view.width !== sz[0] || view.height !== sz[1]) { view.width = sz[0]; view.height = sz[1]; view.style.aspectRatio = sz[0] + ' / ' + sz[1]; }
+    P.src.draw(vx, view.width, view.height); overlay();
+    var t = performance.now(); if (P.busy || !P.ready || t - P.lastSent < 1000 / FPS_CAP) return; var f = P.src.frame(); if (!f) return; P.busy = true; P.lastSent = t; P.K = f.K;
+    if (P.useWorker) P.worker.postMessage({ type: 'frame', gray: f.gray, w: f.w, h: f.h, K: f.K, t: t }, [f.gray.buffer]);
+    else setTimeout(function () { try { var t1 = performance.now(), dets = CV_CARDS.detect(f.gray, f.w, f.h).map(function (d) { d.pose = CV_CARDS.pose(d, f.K); return d; }); onResult({ dets: dets, ms: performance.now() - t1, features: CV_CARDS.stats.features, w: f.w, h: f.h }); } catch (x) { P.busy = false; fail(String(x.message || x)); } }, 0); }
+  function overlay() { var L = P.last; if (!L) return; var k = view.width / L.w, fresh = now() - L.t < 1500; vx.save(); vx.lineJoin = 'round';
+    L.sightings.forEach(function (s) { var col = RTK_SETUP.COLOURS[s.kind] || '#fff', c = s.corners; vx.globalAlpha = fresh ? 1 : 0.35; vx.strokeStyle = '#000'; vx.lineWidth = Math.max(5, view.width / 220); vx.beginPath(); c.forEach(function (p, i) { if (i) vx.lineTo(p[0] * k, p[1] * k); else vx.moveTo(p[0] * k, p[1] * k); }); vx.closePath(); vx.stroke(); vx.strokeStyle = col; vx.lineWidth = Math.max(3, view.width / 400); vx.stroke();
+      vx.strokeStyle = '#fff'; vx.beginPath(); vx.moveTo(c[0][0] * k, c[0][1] * k); vx.lineTo(c[1][0] * k, c[1][1] * k); vx.stroke(); /* white edge = top of the artwork */
+      var cx = (c[0][0] + c[1][0] + c[2][0] + c[3][0]) / 4 * k, cy = (c[0][1] + c[1][1] + c[2][1] + c[3][1]) / 4 * k, fs = Math.max(13, Math.round(view.width / 60)), l1 = s.id + ' ' + s.name, l2 = 'inliers ' + s.inliers + '  match ' + (s.quality === undefined ? 'UNKNOWN' : s.quality.toFixed(2)) + '  ' + (s.pose ? (s.pose.distance_mm / 1000).toFixed(2) + ' m' : 'distance UNKNOWN');
+      vx.font = 'bold ' + fs + 'px system-ui, sans-serif'; vx.textAlign = 'center'; var w1 = Math.max(vx.measureText(l1).width, vx.measureText(l2).width) + 12; vx.fillStyle = 'rgba(0,0,0,.72)'; vx.fillRect(cx - w1 / 2, cy - fs * 1.3, w1, fs * 2.7); vx.fillStyle = col; vx.fillText(l1, cx, cy - fs * 0.15); vx.fillStyle = '#fff'; vx.font = Math.round(fs * 0.8) + 'px system-ui, sans-serif'; vx.fillText(l2, cx, cy + fs * 1.0); });
+    vx.restore(); }
+
+  /* ----- the panels ----- */
+  function fmtT(v) { return v === null || v === 'UNKNOWN' ? 'UNKNOWN' : (v / 1000).toFixed(1) + ' s'; }
+  function median(a) { if (!a.length) return NaN; var s = a.slice().sort(function (x, y) { return x - y; }); return s[(s.length / 2) | 0]; }
+  function refresh() { var t = now(), fps = P.stamps.length > 1 ? (P.stamps.length - 1) / ((P.stamps[P.stamps.length - 1] - P.stamps[0]) / 1000) : NaN;
+    $('stats').textContent = 'cards: ' + SET.label + ' (' + SET.mm.w + ' x ' + SET.mm.h + ' mm)\ncamera picture: ' + P.cam.width + ' x ' + P.cam.height + '   recognised at: ' + (P.last ? P.last.w + ' x ' + P.last.h : 'UNKNOWN') + '\nrecognition rate: ' + (isNaN(fps) ? 'UNKNOWN' : fps.toFixed(1) + ' frames/s') + ' (cap ' + FPS_CAP + ')   time per frame: ' + (P.ms.length ? median(P.ms).toFixed(0) + ' ms' : 'UNKNOWN') + '   corners found: ' + (P.last ? P.last.features : 'UNKNOWN') + '\nrecogniser: ' + (P.ready ? (P.useWorker ? 'worker thread' : 'main thread') + ', database built in ' + (P.initStats ? P.initStats.initMs : '?') + ' ms' : 'loading') + '   lens data: ' + P.Kbasis + '   frames done: ' + P.frames;
+    var rows = ''; registry.snapshot().forEach(function (c) { var e = registry.entries[c.card_id], l = e.last, live = c.state === 'TRACKING';
+      rows += '<tr><td><span class="sw" style="background:' + RTK_SETUP.COLOURS[c.kind] + '"></span>' + c.card_id + ' ' + c.name + '</td><td><span class="st ' + c.state + '">' + c.state.replace('_', ' ') + '</span></td><td>' + fmtT(c.first_seen_ms) + '</td><td>' + fmtT(c.last_seen_ms) + '</td><td>' + c.sightings + '</td><td>' + (live && l ? l.inliers : 'UNKNOWN') + '</td><td>' + (live && l && l.pose ? (l.pose.distance_mm / 1000).toFixed(2) + ' m' : 'UNKNOWN') + '</td></tr>'; });
+    $('cardRows').innerHTML = rows; drawSetup(t); }
+  function drawSetup(t) { var items = RTK_SETUP.PlacementPreview.layout(setup); RTK_SETUP.PlacementPreview.draw(tx, top.width, top.height, items, {});
+    $('setupTag').textContent = setup.state + ' · ' + setup.mode().replace('_', ' '); var html = ''; setup.messages(t).forEach(function (m) { html += '<div class="' + m.level + '"></div>'; }); $('msgs').innerHTML = html; var ms = setup.messages(t), nodes = $('msgs').children; for (var i = 0; i < nodes.length; i++) nodes[i].textContent = ms[i].text;
+    $('bLock').disabled = !setup.canLock().ok; $('bUnlock').disabled = setup.state !== 'LOCKED';
+    if (P.demo && P.demo.truth && setup.state !== 'LOCKED') { /* demo only: how far the preview is from the made-up truth */ var a = P.demo.truth[0], errs = []; P.demo.truth.slice(1).forEach(function (c) { var p = setup.placements[c.id]; if (!p || !p.t || p.status !== 'PREVIEW') return; var gt = RTK_SETUP.relative(a.H, c.H, SET.mm); errs.push(c.id + ': ' + Math.hypot(gt.x_mm - p.t.x_mm, gt.y_mm - p.t.y_mm).toFixed(1) + ' mm, ' + Math.abs(gt.yaw_deg - p.t.yaw_deg).toFixed(1) + ' deg'); }); P.demoErr = errs; if (errs.length) $('stats').textContent += '\ndemo check, preview against the made-up truth: ' + errs.join('   '); } }
+  function buildLog() { return { page: 'Round Table Kingdom card checker', log_version: 1, mode: DEMO ? 'demo (made-up frames, not a camera)' : 'camera', started_at: P.startedAt, run_ms: Math.round(now()), user_agent: navigator.userAgent, screen: { width: screen.width, height: screen.height, pixel_ratio: window.devicePixelRatio || 'UNKNOWN' },
+      camera: { width: P.cam.width, height: P.cam.height, label: P.cam.label, facing: P.cam.facing, frame_rate: P.cam.frameRate || 'UNKNOWN', lens_data: P.Kbasis, note: 'Browsers do not give lens data for getUserMedia. Distances from a real camera use the assumed lens angle and are rough.' },
+      card_set: SETN + ' (' + SET.label + ', ' + SET.mm.w + ' x ' + SET.mm.h + ' mm)', recogniser: { provider: adapter.provider, thread: P.useWorker ? 'worker' : 'main', frames_processed: P.frames, fps_cap: FPS_CAP, ms_per_frame_median: P.ms.length ? Math.round(median(P.ms)) : 'UNKNOWN', database: P.initStats || 'UNKNOWN' },
+      cards: registry.snapshot(), events: registry.events.slice(-200), setup: { state: setup.state, placement_mode: setup.mode(), anchor_seen: setup.anchorSeen, messages: setup.messages(now()).map(function (m) { return m.text; }), events: setup.log.slice(-100) }, locked: setup.locked || null, errors: P.errors }; }
+
+  /* ----- buttons ----- */
+  $('bStart').onclick = function () { if (P.started) return; P.started = true; $('bStart').disabled = true; $('stats').textContent = 'Loading the six card pictures…';
+    var images; loadCards().then(function (im) { images = im; $('stats').textContent = 'Building the card database…'; return initDetector(images); }).then(function () { return DEMO ? demoSource(images) : cameraSource(); }).then(function (src) { P.src = src; P.t0 = performance.now(); refresh(); })
+      .catch(function (x) { P.started = false; $('bStart').disabled = false; fail((x && x.name === 'NotAllowedError') ? 'Camera permission was refused. Allow the camera for this page, then press Start again.' : String(x && x.message || x)); }); };
+  $('bCopy').onclick = function () { var txt = JSON.stringify(buildLog(), null, 1), done = function (ok) { $('bCopy').textContent = ok ? 'Copied' : 'Shown below: select and copy'; var o = $('logOut'); o.style.display = ok ? 'none' : ''; o.textContent = txt; setTimeout(function () { $('bCopy').textContent = 'Copy log'; }, 2500); }; P.lastLog = txt;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); else done(false); };
+  $('bLock').onclick = function () { var r = setup.lock(now()); if (r.ok) { var sv = RTK_SETUP.LockedPlacementStore.save(r.locked); $('lockedOut').textContent = JSON.stringify(r.locked, null, 1) + (sv.ok ? '' : '\n(not saved on this device: ' + sv.errors.join('; ') + ')'); } refresh(); };
+  $('bUnlock').onclick = function () { setup.unlock(now()); $('lockedOut').textContent = 'Not locked yet.'; refresh(); };
+  RTK_SETUP.CARDS.forEach(function (c) { if (c.id === '00') return; var b = document.createElement('button'); b.textContent = c.name; b.dataset.id = c.id; b.onclick = function () { P.manualSel = P.manualSel === c.id ? null : c.id; P.manualYaw = 0; Array.prototype.forEach.call($('manualRow').children, function (n) { n.className = n.dataset.id === P.manualSel ? 'on' : ''; }); }; $('manualRow').appendChild(b); });
+  top.addEventListener('pointerdown', function (e) { if (!P.manualSel || setup.state === 'LOCKED') return; var r = top.getBoundingClientRect(), mm = RTK_SETUP.PlacementPreview.toMM((e.clientX - r.left) * top.width / r.width, (e.clientY - r.top) * top.height / r.height, top.width, top.height, {}); setup.setManual(P.manualSel, mm[0], mm[1], P.manualYaw, now()); refresh(); });
+  function turn(d) { if (!P.manualSel || setup.state === 'LOCKED') return; var p = setup.placements[P.manualSel]; if (!p.t || p.source !== 'manual_touch') return; P.manualYaw = p.t.yaw_deg + d; setup.setManual(P.manualSel, p.t.x_mm, p.t.y_mm, P.manualYaw, now()); refresh(); }
+  $('bTurnL').onclick = function () { turn(15); }; $('bTurnR').onclick = function () { turn(-15); };
+  $('bClear').onclick = function () { if (P.manualSel) { setup.clearManual(P.manualSel, now()); refresh(); } };
+  $('bHide').onclick = function () { if (P.demo) { P.demo.hideBlue = !P.demo.hideBlue; $('bHide').className = P.demo.hideBlue ? 'on' : ''; } };
+  $('bMove').onclick = function () { if (P.demo) { P.demo.moveFlag = !P.demo.moveFlag; $('bMove').className = P.demo.moveFlag ? 'on' : ''; } };
+  setInterval(function () { if (P.started) { registry.update([], now()); if (setup.state !== 'LOCKED' && now() - (P.last ? P.last.t : 0) > 1600) setup.update([], now()); refresh(); } }, 1000);
+  var saved = RTK_SETUP.LockedPlacementStore.load(); if (saved) $('lockedOut').textContent = 'Saved on this device from ' + saved.locked_at + ' (not loaded into this session):\n' + JSON.stringify(saved, null, 1);
+  refresh(); requestAnimationFrame(tick);
+  if (DEMO && Q.get('auto') === '1') $('bStart').click();
+})();
+</script>
+</body>
+</html>
