@@ -57,3 +57,20 @@ Marks on the flags: feather (blue), pine tree (green), cog (red).
 - Mice carry and hammer during the build step: the camp is seen being made, not just appearing.
 - The toy cannon is a pop-gun: it fires corks or wooden balls, things go dizzy, nobody dies.
 - The wall emblem matches the team (the picture shows a cog on a blue wall; ours will be a feather).
+
+## Concept Pack 01 from Harry and ChatGPT (18 Nov): what we take
+The brief is kept word for word in `inputs/BUILD_BRIEF_01_by_ChatGPT.md`.
+
+**Taken into v1 (this week)**
+- **The Marble Lobber** (by ChatGPT): a heavy launcher on a wheeled carriage with a crank, a cup and a bucket of marbles. Drag to aim (direction and power), a dotted arc, one marble per shot, recoil and wobble. Built from named parts with sockets, as the brief lists.
+- **Hits land on a part, not a health bar** (by ChatGPT): every wall plank, post and roof piece has its own id. A marble knocks off the piece it hits.
+- **Mice pick up fallen pieces and mend** (by ChatGPT): each fallen piece can be reclaimed once.
+- **Mock-up and tested gameplay are always labelled apart** (by ChatGPT). Already our rule.
+
+**Next week, after v1 is playable**
+- **Supports and collapse** (by ChatGPT): posts and braces hold roofs up; knock out an unbraced post and the roof drops. Rules tested on their own first.
+- The Pinbow (a precise bolt shooter), the fold-out travel base, the close-up collapse camera.
+
+**Open, for Harry**
+- The name: the pack calls the game "Round Table Kingdom / Little Base Fights". We have been calling it "Sofa siege".
+- The pack mentions an "older playable mechanics prototype" and a "support-collapse experiment" in an earlier handover. They are not in this repo.
