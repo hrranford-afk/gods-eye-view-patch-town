@@ -1,0 +1,112 @@
+{
+  "project": "Round Table Kingdom",
+  "version": "AR card visual handover v1, 2026-11-18",
+  "status": "printable artwork reference; NOT a validated AR tracking set",
+  "physical_card_size_mm": {
+    "width": 210.0,
+    "height": 148.5,
+    "orientation": "landscape A5"
+  },
+  "paper": "A4 portrait 210 x 297 mm; two cards each page",
+  "print": "black and white, 100% / Actual size; matte paper; cut horizontally at centre of each A4 sheet",
+  "pdf": "print/Round_Table_Kingdom_A4_two_A5_cards_per_page.pdf",
+  "cards": [
+    {
+      "id": "00",
+      "type": "world_anchor",
+      "image": "cards_A5/00_world_anchor_A5_artwork.png",
+      "source_sheet": "source_sheets/01_world_anchor_capture_flag.png",
+      "page": 1,
+      "half": "top",
+      "crop_pixels": [
+        0,
+        0,
+        1055,
+        745
+      ],
+      "sha256": "278ad2efa78a8c64f1d99ff00e7477887ad3e7636209cfa1c957265ba49d161c",
+      "ar_tracking_validated": false
+    },
+    {
+      "id": "01",
+      "type": "blue_base",
+      "image": "cards_A5/01_blue_base_A5_artwork.png",
+      "source_sheet": "source_sheets/02_blue_base_red_base.png",
+      "page": 2,
+      "half": "top",
+      "crop_pixels": [
+        0,
+        0,
+        1055,
+        745
+      ],
+      "sha256": "f4c42c2ebd9edf308e95172af21790a03c54a62e2d9bbed813d62f5e57998c80",
+      "ar_tracking_validated": false
+    },
+    {
+      "id": "02",
+      "type": "red_base",
+      "image": "cards_A5/02_red_base_A5_artwork.png",
+      "source_sheet": "source_sheets/02_blue_base_red_base.png",
+      "page": 2,
+      "half": "bottom",
+      "crop_pixels": [
+        0,
+        745,
+        1055,
+        1491
+      ],
+      "sha256": "99165824daefde6dc0cf8f7069da2112b98ad762eafa8079462e5c0a479ae463",
+      "ar_tracking_validated": false
+    },
+    {
+      "id": "03",
+      "type": "capture_flag",
+      "image": "cards_A5/03_capture_flag_A5_artwork.png",
+      "source_sheet": "source_sheets/01_world_anchor_capture_flag.png",
+      "page": 1,
+      "half": "bottom",
+      "crop_pixels": [
+        0,
+        745,
+        1055,
+        1491
+      ],
+      "sha256": "408bcd88d8d336735541eda72ccdac3bec1acd271ac29b5844b43182c1858c1a",
+      "ar_tracking_validated": false
+    },
+    {
+      "id": "04",
+      "type": "hill",
+      "image": "cards_A5/04_hill_A5_artwork.png",
+      "source_sheet": "source_sheets/03_hill_build_camp.png",
+      "page": 3,
+      "half": "top",
+      "crop_pixels": [
+        0,
+        0,
+        1055,
+        745
+      ],
+      "sha256": "4a9eb8bfdd943bdb891621a2f4c4728d5e71d74333db83bdb89920789c63849a",
+      "ar_tracking_validated": false
+    },
+    {
+      "id": "05",
+      "type": "build_camp",
+      "image": "cards_A5/05_build_camp_A5_artwork.png",
+      "source_sheet": "source_sheets/03_hill_build_camp.png",
+      "page": 3,
+      "half": "bottom",
+      "crop_pixels": [
+        0,
+        745,
+        1055,
+        1491
+      ],
+      "sha256": "1dd4a534920ff7f39a01c49eb85e544a623c568735cccbe98af462e660d99580",
+      "ar_tracking_validated": false
+    }
+  ],
+  "pdf_sha256": "4dc6e875a5fc865d3d388ece03078db956a4cf29f8d7cfafc25438d81f5665d9"
+}
