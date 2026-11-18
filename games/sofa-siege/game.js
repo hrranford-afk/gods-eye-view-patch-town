@@ -774,7 +774,7 @@ function arFrame(time,frame){
   if(AR.xrSrc&&vp){var sp=arSelPoint(frame,AR.xrSrc);if(sp&&AR.xrPt&&(Math.abs(sp.x-AR.xrPt.x)>.5||Math.abs(sp.y-AR.xrPt.y)>.5)){AR.xrPt=sp;AR.h.move(synth(sp));}}
   /* no overlay 1.5 s in, or taps seen by XR that never reached the page: draw the buttons in the scene instead */
   if(!AR.sceneUi&&((AR.overlay==='none'&&time-AR.started>1500)||(AR.selN>0&&!AR.domInput&&performance.now()-AR.selT>400))){AR.sceneUi=true;AR.inputPath='xr select';arEvent('in-scene buttons on ('+(AR.overlay==='none'?'no overlay':'overlay gets no touches')+')');}
-  if(AR.sceneUi)sceneUiFrame();else if(V.sui)V.sui.visible=false;
+  if(AR.sceneUi){sceneUiFrame();if(document.body.className!=='ar sceneui')document.body.className='ar sceneui';}else if(V.sui)V.sui.visible=false;   /* with the buttons in the scene, the page's own bars are put away so the two never overlap */
   arPublic();render();if(SG.dev)devLine(raw);if(PERF)perfFrame(raw);}
 /* ---- XR select as taps and drags ---- */
 function synth(pt){return {clientX:pt.x,clientY:pt.y,pointerId:9001,pointerType:'touch',target:E('ui'),xr:true,preventDefault:function(){}};}

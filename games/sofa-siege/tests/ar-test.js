@@ -166,6 +166,7 @@ const run = async () => {
     await ev2(() => SG.demo(11, 0)); await btn('done'); ok(label + ': Done ends the build; Start battle is offered in the scene', await ev2(() => SG.phase === 'ready' && SG.ar.buttons.indexOf('start') >= 0));
     await btn('start'); await ev2(() => { SG.step(SG.CONFIG.count + .1); SG.sides[1].bot = false; SG.stepUntil(() => SG.debug.crewReady(0), 15); SG.sides[0].reload = 0; }); await fr(3);
     ok(label + ': the fight shows Squad, Lobber, Mend, Pause and Exit AR in the scene', await ev2(() => SG.phase === 'fight' && ['squad', 'lobber', 'mend', 'pause', 'exit'].every((b) => SG.ar.buttons.indexOf(b) >= 0)), JSON.stringify(await ev2(() => SG.ar.buttons)));
+    if (label === 'overlay missing') { await ev2(() => { document.body.style.background = 'linear-gradient(#6f7780,#3d4248)'; SG.render(); }); await fr(2); await p.screenshot({ path: path.join(SHOTS, 'ar-4-scene-buttons.png') }); }
     q = await sc(0.1, 0.3); await tap(q.x, q.y); ok(label + ': a tap sends the squad', await ev2(() => SG.sides[0].order && Math.hypot(SG.sides[0].order.x - 0.1, SG.sides[0].order.z - 0.3) < 0.05));
     await btn('lobber'); const d0 = await sc(-1.0, 1.4), d1 = await sc(-1.0, 2.3);
     await ev2(([d0]) => __XRF.press(d0.x, d0.y), [d0]); await fr(2); for (let k = 1; k <= 4; k++) { await ev2(([d0, d1, k]) => __XRF.drag(d0.x + (d1.x - d0.x) * k / 4, d0.y + (d1.y - d0.y) * k / 4), [d0, d1, k]); await fr(2); }
