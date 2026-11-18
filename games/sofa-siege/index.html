@@ -33,13 +33,14 @@ canvas{display:block;touch-action:none}
 @media (max-width:700px){.pill{font-size:14px;padding:6px 11px}.btn{font-size:15px;padding:9px 13px}.meter{min-width:110px}}
 </style></head><body>
 <div id="hud"><div class="pill meter" id="mA" style="display:none"><span></span><div class="m"><i></i></div></div><div class="pill" id="hTeam"></div><div class="pill" id="hTime">2:00</div><div class="pill" id="hCount"></div><div class="pill meter" id="mB" style="display:none"><span></span><div class="m"><i></i></div></div></div>
-<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button></div>
+<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button><button class="btn" id="bTilt" style="display:none;font-size:13px">📐 0°</button></div>
 <div class="bar" id="bar"><button class="btn" id="bL">⟲ Turn</button><button class="btn" id="bR">Turn ⟳</button><button class="btn" id="bUndo">Undo</button><button class="btn go" id="bDone">Done</button></div>
 <div class="bar" id="fbar"><button class="btn on" id="b_squad">👉 Send squad</button><button class="btn" id="b_lobber">🔮 Lobber</button><button class="btn" id="b_mend">🔨 Mend</button><button class="btn" id="bPause">⏸ Pause</button></div>
 <div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p>Mock table · not AR yet</p>
   <div class="row"><button class="btn on" id="m_solo">1 player (against a robot)</button><button class="btn" id="m_table">2 players (iPad flat between you)</button></div>
   <div id="soloOpts"><div class="row"><button class="btn on" id="tBlue">🪶 Blue</button><button class="btn" id="tRed">⚙️ Red</button></div>
   <div class="row"><button class="btn on" id="l_easy">Easy</button><button class="btn" id="l_normal">Normal</button><button class="btn" id="l_hard">Hard</button></div></div>
+  <p id="layoutNote" style="display:none;color:#ffd9a8"></p>
   <p id="tableNote" style="display:none">Lay the iPad flat. Blue sits at this edge, red at the far edge.<br>Each of you has your own buttons.</p>
   <p>Build your camp, then hold the hill in the middle.<br>Tap a piece on the mat, then tap the table.</p><button class="btn go" id="bPlay" style="font-size:22px;padding:13px 40px">Play</button></div></div>
 <div class="cover" id="end" style="display:none;background:none;align-items:flex-start;padding-top:120px;pointer-events:none"><div class="card" style="padding:14px 30px"><h1 style="font-size:34px">Camp ready</h1><p id="endText" style="margin-bottom:10px"></p><button class="btn go" id="bStart" style="pointer-events:auto;font-size:20px">Start battle</button></div></div>
