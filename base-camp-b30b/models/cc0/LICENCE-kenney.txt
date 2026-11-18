@@ -1,0 +1,37 @@
+Kenney assets (Food Kit, Survival Kit, Nature Kit, Furniture Kit): CC0 1.0 Universal (public domain).
+Source: https://kenney.nl (kenney.nl returned 403 from our machine). Files were taken from the mirror
+https://github.com/shorepine/kenney (3d/food, 3d/survival, 3d/nature, 3d/furniture), which carries Kenney's
+original licence file (copied below). Kenney's itch.io page https://kenney.itch.io/kenney-game-assets also lists
+the licence as "Creative Commons Zero v1.0 Universal" (https://itch.io/game-assets/assets-cc0).
+Note: the mirror ships one root LICENSE.txt, headed "Castle Kit (2.0)", for the whole library; Kenney uses the same
+text in every kit. The per-kit licence files were not individually available.
+Changes by us: texture colormap.png embedded into each .glb. No geometry changes.
+
+----- LICENSE.txt from the mirror (verbatim) -----
+
+	Castle Kit (2.0)
+
+	Created/distributed by Kenney (www.kenney.nl)
+	Creation date: 27-03-2024 13:37
+	
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	You can use this content for personal, educational, and commercial purposes.
+
+	Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
+
+			------------------------------
+
+	• Website : www.kenney.nl
+	• Donate  : www.kenney.nl/donate
+
+	• Patreon : patreon.com/kenney
+	
+	Follow on social media for updates:
+
+	• Twitter:   twitter.com/KenneyNL
+	• Instagram: instagram.com/kenney_nl
+	• Mastodon:  mastodon.gamedev.place/@kenneyslug

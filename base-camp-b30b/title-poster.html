@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base Camp title poster</title>
+<style>
+/* Base Camp: the title poster for a TV or a monitor (17 Nov 2026). The room's sticker is hidden in the art, so leaving the poster up locks the room.
+   The sticker must stay a crisp black and white ArUco 4x4 code (ids 1 to 6) with a white edge, and its black square must be exactly 8 cm (STK_SIZE in
+   index.html). The size comes from the bank-card step and is kept under the same key as screen-sticker.html ('bc-screen-sticker'), so sizing one page sizes
+   both. ?design=1, 2 or 3 shows that poster at once; without it the page shows the setup and the three designs to pick from. */
+:root { --bg: #fff8ee; --ink: #2b1d12; --soft: #6b5640; --accent: #e07b2c; --font: ui-rounded, "Nunito", "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 var(--font); height: 100%; }
+#set { padding: 16px; max-width: 980px; margin: 0 auto; display: grid; gap: 12px; }
+h1 { font-size: 24px; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button { font: inherit; font-weight: 800; border: 0; border-radius: 10px; padding: 10px 16px; background: #eee3d3; color: var(--ink); cursor: pointer; }
+button.on, button.go { background: var(--accent); color: #fff; }
+#card { border: 3px dashed var(--accent); border-radius: 3.2mm; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: var(--soft); font-size: 14px; text-align: center; }
+.note { color: var(--soft); font-size: 14px; margin: 0; }
+#designs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+#designs button { padding: 8px; display: grid; gap: 6px; text-align: left; background: #f3e8d8; border: 3px solid transparent; }
+#designs button.on { border-color: var(--accent); background: #fbe2c9; color: var(--ink); }
+#designs svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+#show { position: fixed; inset: 0; background: #234a3f; cursor: none; }
+#show svg { display: block; width: 100%; height: 100%; }
+#show[hidden], #set[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="set">
+  <h1>Title poster</h1>
+  <p class="note">Put the Base Camp poster on a TV or a monitor that stays in one place. The room's sticker is hidden in the picture, so while the poster is up the iPad can find the room.</p>
+  <div class="row"><b>1. Pick a number</b> (one per room): <span id="ids"></span></div>
+  <div><b>2. Make it the right size.</b> Hold a bank card flat against the screen over the dashed box. Press <b>−</b> or <b>+</b> until the box is exactly the size of the card. (The screen sticker page uses the same size, so do it once on each screen.)</div>
+  <div class="row"><button id="m10">−−</button><button id="m1">−</button><button id="p1">+</button><button id="p10">++</button><span class="note" id="kv"></span></div>
+  <div id="card">bank card size</div>
+  <div><b>3. Pick a poster</b></div>
+  <div id="designs"></div>
+  <div class="row"><button class="go" id="go">4. Show the poster</button></div>
+  <p class="note">Then: turn off the screen saver and sleep. In the game, find the camp first, then look at the poster: the room keeps that sticker. Next time, point the iPad at the poster and the camp jumps straight back. Tap or press a key to come back here.</p>
+</div>
+<div id="show" hidden></div>
+<script>
+/* The code bits of stickers 1 to 6 (ArUco 4x4 ids 1 to 6, the game's BC_STICKERS), row by row from the top, '1' = white: the same patterns as stickers.html. */
+var BITS = { 1: '0000111110011010', 2: '0011001100101101', 3: '1001100101000110', 4: '0101010010011110', 5: '0111100111001101', 6: '1001111000101110' };
+var NAMES = { 1: 'Camp at dusk', 2: 'Toy-room wall', 3: 'Scout badge' };
+var INK = '#3b2a1e', CREAM = '#fff6e6', FONT = 'ui-rounded, Nunito, \'Trebuchet MS\', \'Arial Rounded MT Bold\', system-ui, sans-serif';
+var st = { id: 1, k: 96 / 25.4 };
+try { var sv = JSON.parse(localStorage.getItem('bc-screen-sticker') || 'null'); if (sv && sv.k > 0.5 && sv.k < 40) st = sv; } catch (e) { /* fine without storage */ }
+if (!BITS[st.id]) st.id = 1;
+function save() { try { localStorage.setItem('bc-screen-sticker', JSON.stringify(st)); } catch (e) { /* fine */ } }
+var q0 = new URLSearchParams(location.search), design = +q0.get('design') || 0; if (!NAMES[design]) design = 0;
+function f(n) { return Math.round(n * 100) / 100; }
+
+/* ---------- the sticker: black square S px (= 8 cm), cells on whole pixels, a white edge of 1.25 cells; drawn last so nothing covers it ---------- */
+function marker(cx, cy, S, id) {
+  var x0 = Math.round(cx - S / 2), y0 = Math.round(cy - S / 2), e = [], i, r, c, q = Math.round(S / 6 * 1.25), b = BITS[id], o = '';
+  for (i = 0; i <= 6; i++) e.push(Math.round(i * S / 6));
+  o += '<g class="stk" shape-rendering="crispEdges"><rect x="' + (x0 - q) + '" y="' + (y0 - q) + '" width="' + (S + 2 * q) + '" height="' + (S + 2 * q) + '" fill="#fff"/>';
+  o += '<rect x="' + x0 + '" y="' + y0 + '" width="' + S + '" height="' + S + '" fill="#000"/>';
+  for (r = 0; r < 4; r++) for (c = 0; c < 4; c++) if (b[r * 4 + c] === '1') o += '<rect x="' + (x0 + e[c + 1]) + '" y="' + (y0 + e[r + 1]) + '" width="' + (e[c + 2] - e[c + 1]) + '" height="' + (e[r + 2] - e[r + 1]) + '" fill="#fff"/>';
+  return { svg: o + '</g>', x0: x0 - q, y0: y0 - q, x1: x0 + S + q, y1: y0 + S + q, q: q };
+}
+
+/* ---------- our own toon pieces (art units) ---------- */
+/* the backpack scout mouse, sitting, facing right; 200 x 240 units, feet at y 232 */
+var MOUSE = '<g stroke="' + INK + '" stroke-linejoin="round" stroke-linecap="round">'
+  + '<path d="M62 206 C 18 222, -2 176, 26 158 C 40 150, 52 160, 44 170" fill="none" stroke="#c98f86" stroke-width="8"/>'
+  + '<rect x="26" y="96" width="64" height="88" rx="20" fill="#c96b2c" stroke-width="5"/><rect x="30" y="94" width="58" height="34" rx="15" fill="#e8883a" stroke-width="4"/>'
+  + '<rect x="22" y="80" width="72" height="20" rx="10" fill="#7bb661" stroke-width="4"/>'
+  + '<ellipse cx="108" cy="166" rx="56" ry="60" fill="#b7a79a" stroke-width="5"/><ellipse cx="124" cy="178" rx="32" ry="40" fill="#efe3d3" stroke="none"/>'
+  + '<path d="M70 120 C 84 150, 88 180, 94 210" fill="none" stroke="#8a4a1f" stroke-width="10"/>'
+  + '<ellipse cx="86" cy="224" rx="24" ry="12" fill="#e9b7ad" stroke-width="4"/><ellipse cx="146" cy="224" rx="24" ry="12" fill="#e9b7ad" stroke-width="4"/>'
+  + '<ellipse cx="150" cy="164" rx="13" ry="17" fill="#b7a79a" stroke-width="4"/>'
+  + '<circle cx="84" cy="44" r="31" fill="#b7a79a" stroke-width="5"/><circle cx="84" cy="44" r="18" fill="#f0a9a0" stroke="none"/>'
+  + '<circle cx="164" cy="42" r="31" fill="#b7a79a" stroke-width="5"/><circle cx="164" cy="42" r="18" fill="#f0a9a0" stroke="none"/>'
+  + '<circle cx="126" cy="86" r="48" fill="#b7a79a" stroke-width="5"/>'
+  + '<ellipse cx="106" cy="104" rx="10" ry="6" fill="#f0a9a0" stroke="none" opacity=".7"/><ellipse cx="158" cy="102" rx="9" ry="6" fill="#f0a9a0" stroke="none" opacity=".7"/>'
+  + '<circle cx="122" cy="84" r="7.5" fill="' + INK + '" stroke="none"/><circle cx="150" cy="82" r="7.5" fill="' + INK + '" stroke="none"/>'
+  + '<circle cx="120" cy="81" r="2.6" fill="#fff" stroke="none"/><circle cx="148" cy="79" r="2.6" fill="#fff" stroke="none"/>'
+  + '<ellipse cx="172" cy="96" rx="8" ry="7" fill="#e57a7a" stroke-width="3"/><path d="M146 106 Q 154 114 162 106" fill="none" stroke-width="3"/>'
+  + '<path d="M176 92 L 198 84 M176 98 L 199 100 M 176 103 L 194 112" fill="none" stroke-width="2"/>'
+  + '<ellipse cx="124" cy="46" rx="56" ry="12" fill="#5e8f4a" stroke-width="5"/><path d="M96 46 Q 98 10 124 8 Q 150 10 152 46 Z" fill="#6fa457" stroke-width="5"/>'
+  + '<path d="M97 38 Q 124 44 151 38" fill="none" stroke="#c96b2c" stroke-width="6"/></g>';
+function mouse(x, y, s, flip) { return '<g transform="translate(' + f(x) + ' ' + f(y) + ') scale(' + f(flip ? -s : s) + ' ' + f(s) + ')">' + MOUSE + '</g>'; }
+function pine(x, base, h, col, dark) {
+  var w = h * 0.62, t = h * 0.14, o = '<rect x="' + f(x - t * 0.35) + '" y="' + f(base - t) + '" width="' + f(t * 0.7) + '" height="' + f(t) + '" fill="#7a5233"/>';
+  for (var i = 0; i < 3; i++) { var yb = base - t - i * h * 0.24, yt = yb - h * 0.42, ww = w * (1 - i * 0.24) / 2; o += '<path d="M' + f(x - ww) + ' ' + f(yb) + ' L' + f(x) + ' ' + f(yt) + ' L' + f(x + ww) + ' ' + f(yb) + ' Z" fill="' + col + '" stroke="' + dark + '" stroke-width="' + f(h * 0.035) + '" stroke-linejoin="round"/>'; }
+  return o;
+}
+function tent(x, base, w, body, door) {
+  var h = w * 0.72, o = '<g stroke="' + INK + '" stroke-linejoin="round" stroke-linecap="round" stroke-width="' + f(w * 0.02) + '">';
+  o += '<path d="M' + f(x - w * 0.62) + ' ' + f(base) + ' L' + f(x - w * 0.5) + ' ' + f(base - h * 0.25) + ' M' + f(x + w * 0.62) + ' ' + f(base) + ' L' + f(x + w * 0.5) + ' ' + f(base - h * 0.25) + '" fill="none"/>';
+  o += '<path d="M' + f(x - w / 2) + ' ' + f(base) + ' L' + f(x) + ' ' + f(base - h) + ' L' + f(x + w / 2) + ' ' + f(base) + ' Z" fill="' + body + '"/>';
+  o += '<path d="M' + f(x - w * 0.17) + ' ' + f(base) + ' L' + f(x) + ' ' + f(base - h * 0.62) + ' L' + f(x + w * 0.17) + ' ' + f(base) + ' Z" fill="' + door + '"/>';
+  o += '<path d="M' + f(x) + ' ' + f(base - h * 0.62) + ' L' + f(x + w * 0.26) + ' ' + f(base) + ' L' + f(x + w * 0.1) + ' ' + f(base) + ' Z" fill="#f6b46c"/>';
+  o += '<path d="M' + f(x) + ' ' + f(base - h) + ' L' + f(x) + ' ' + f(base - h - w * 0.14) + '" fill="none"/><path d="M' + f(x) + ' ' + f(base - h - w * 0.14) + ' L' + f(x + w * 0.13) + ' ' + f(base - h - w * 0.1) + ' L' + f(x) + ' ' + f(base - h - w * 0.06) + ' Z" fill="#7bb661"/>';
+  return o + '</g>';
+}
+function title(x, y, size, fill, edge, shadow) {
+  var t = 'font-family="' + FONT + '" font-weight="900" font-size="' + f(size) + '" text-anchor="middle" letter-spacing="' + f(size * 0.02) + '"';
+  return (shadow ? '<text x="' + f(x) + '" y="' + f(y + size * 0.07) + '" ' + t + ' fill="' + shadow + '" stroke="' + shadow + '" stroke-width="' + f(size * 0.12) + '" stroke-linejoin="round">Base Camp</text>' : '')
+    + '<text x="' + f(x) + '" y="' + f(y) + '" ' + t + ' fill="' + fill + '" stroke="' + edge + '" stroke-width="' + f(size * 0.1) + '" stroke-linejoin="round" paint-order="stroke">Base Camp</text>';
+}
+function hint(x, y, size, col) { return '<text x="' + f(x) + '" y="' + f(y) + '" font-family="' + FONT + '" font-weight="800" font-size="' + f(size) + '" text-anchor="middle" fill="' + col + '">point the iPad here</text>'; }
+
+/* ---------- the three posters. W x H px; S = the black square in px (8 cm); the scene is drawn in 1600 x 1000 art units fitted to the screen, the sticker's frame in px ---------- */
+var PID = 0;
+function poster(d, W, H, S, id) {
+  var z = 'p' + (++PID) + '-'; /* gradient ids are unique per poster: the thumbnails share the page */
+  var u = Math.min(W / 1600, H / 1000), ox = (W - 1600 * u) / 2, oy = (H - 1000 * u) / 2, P = function (x, y) { return [ox + x * u, oy + y * u]; };
+  var art = function (s) { return '<g transform="translate(' + f(ox) + ' ' + f(oy) + ') scale(' + f(u) + ')">' + s + '</g>'; };
+  var o = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Base Camp">';
+  var dS = Math.min(S, H * 0.16), c, m, mk, half = S / 2 + Math.round(S / 6 * 1.25), hs = Math.max(13, dS * 0.12); /* dS: frames, rings and the hint grow with the sticker only up to about a sixth of the screen's height */
+  if (d === 1) { /* Camp at dusk: a tent, a campfire and the scout by it; the sticker is the notice pinned on the camp's signboard */
+    o += '<defs><linearGradient id="' + z + 'sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6f8fb8"/><stop offset=".55" stop-color="#f1c39c"/><stop offset="1" stop-color="#f3ad7c"/></linearGradient>'
+      + '<radialGradient id="' + z + 'glow"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>';
+    o += '<rect width="' + W + '" height="' + H + '" fill="url(#' + z + 'sky)"/>';
+    var s1 = '<circle cx="1150" cy="590" r="120" fill="#ffe3a8"/>'
+      + '<g fill="#fff3e2" opacity=".75"><ellipse cx="260" cy="330" rx="120" ry="34"/><ellipse cx="330" cy="306" rx="70" ry="40"/><ellipse cx="1330" cy="250" rx="110" ry="30"/><ellipse cx="1280" cy="230" rx="60" ry="34"/></g>'
+      + '<path d="M-900 640 Q -400 540 200 620 T 900 600 T 1600 610 T 2500 600 V 2200 H -900 Z" fill="#9dba86"/>'
+      + pine(70, 650, 150, '#5f8f63', '#4b7550') + pine(150, 660, 110, '#5f8f63', '#4b7550') + pine(1480, 640, 160, '#5f8f63', '#4b7550') + pine(1560, 650, 120, '#5f8f63', '#4b7550')
+      + '<path d="M-900 760 Q -300 680 400 740 T 1200 730 T 2500 740 V 2200 H -900 Z" fill="#7aa560"/>'
+      + '<path d="M-900 860 Q 0 820 800 850 T 2500 850 V 2200 H -900 Z" fill="#679250"/>'
+      + tent(330, 870, 330, '#e8883a', '#8a4a1f')
+      + '<ellipse cx="800" cy="860" rx="190" ry="110" fill="url(#' + z + 'glow)"/>'
+      + '<g stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"><ellipse cx="740" cy="896" rx="22" ry="14" fill="#a39b91"/><ellipse cx="860" cy="896" rx="22" ry="14" fill="#a39b91"/><ellipse cx="800" cy="906" rx="26" ry="14" fill="#b3aa9f"/>'
+      + '<rect x="735" y="868" width="130" height="24" rx="12" fill="#8a5a33" transform="rotate(-14 800 880)"/><rect x="735" y="868" width="130" height="24" rx="12" fill="#9b6a3f" transform="rotate(14 800 880)"/>'
+      + '<path d="M800 770 C 840 810, 850 850, 826 878 L 774 878 C 750 850, 760 810, 800 770 Z" fill="#f08a2e"/><path d="M800 815 C 820 838, 822 858, 810 876 L 790 876 C 778 858, 782 838, 800 815 Z" fill="#ffd25e" stroke-width="3"/></g>'
+      + mouse(530, 720, 0.78, false);
+    o += art(s1);
+    /* the title: a plank hung from the top */
+    var tsz = Math.min(W * 0.09, H * 0.13), tw = tsz * 5.3, ty = Math.max(tsz * 0.25, oy + 40 * u), tx = W / 2;
+    o += '<g stroke="' + INK + '" stroke-width="' + f(tsz * 0.06) + '" stroke-linejoin="round"><path d="M' + f(tx - tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + ' M' + f(tx + tw * 0.38) + ' -10 V' + f(ty + tsz * 0.2) + '" stroke="#7a5233" stroke-width="' + f(tsz * 0.07) + '"/>'
+      + '<rect x="' + f(tx - tw / 2) + '" y="' + f(ty) + '" width="' + f(tw) + '" height="' + f(tsz * 1.32) + '" rx="' + f(tsz * 0.24) + '" fill="#b0743f"/></g>' + title(tx, ty + tsz * 1.0, tsz, CREAM, INK);
+    /* the signboard, sized by the sticker */
+    c = P(1235, 540); c[1] = Math.max(c[1], Math.min(ty + tsz * 1.32 + Math.max(14, dS * 0.3) + half + Math.max(10, dS * 0.26) + 12, H - half - Math.max(10, dS * 0.26) - Math.max(hs * 1.9, dS * 0.26) - 4)); var bd = Math.max(10, dS * 0.26), hb = Math.max(hs * 1.9, dS * 0.26), L = c[0] - half - bd, R = c[0] + half + bd, T = c[1] - half - bd, B = c[1] + half + bd + hb, gy = P(0, 900)[1], pw = Math.max(8, dS * 0.13);
+    o += '<g stroke="' + INK + '" stroke-width="' + f(Math.max(3, dS * 0.03)) + '" stroke-linejoin="round">';
+    [L + (R - L) * 0.2, R - (R - L) * 0.2].forEach(function (px) { o += '<rect x="' + f(px - pw / 2) + '" y="' + f(B - 4) + '" width="' + f(pw) + '" height="' + f(Math.max(8, gy - B + 4)) + '" fill="#8a5a33"/>'; });
+    var rh = Math.max(14, dS * 0.3); o += '<path d="M' + f(L - bd * 0.7) + ' ' + f(T + 2) + ' L' + f((L + R) / 2) + ' ' + f(T - rh) + ' L' + f(R + bd * 0.7) + ' ' + f(T + 2) + ' Z" fill="#5e8f4a"/>';
+    o += '<rect x="' + f(L) + '" y="' + f(T) + '" width="' + f(R - L) + '" height="' + f(B - T) + '" rx="' + f(bd * 0.5) + '" fill="#b0743f"/></g>';
+    o += '<g stroke="#8f5a2f" stroke-width="' + f(Math.max(1.5, dS * 0.012)) + '" fill="none"><path d="M' + f(L + bd * 0.4) + ' ' + f(T + bd * 0.5) + ' H' + f(L + bd * 0.9) + ' M' + f(R - bd * 0.9) + ' ' + f(B - hb * 0.25) + ' H' + f(R - bd * 0.3) + '"/></g>';
+    o += hint((L + R) / 2, B - hb * 0.32, hs, CREAM);
+    var pr = Math.max(3, dS * 0.045), mt = c[1] - half; o += '<g stroke="' + INK + '" stroke-width="' + f(Math.max(1.5, pr * 0.3)) + '"><circle cx="' + f(c[0] - half * 0.6) + '" cy="' + f(mt - pr * 0.35) + '" r="' + f(pr) + '" fill="#d9493b"/><circle cx="' + f(c[0] + half * 0.6) + '" cy="' + f(mt - pr * 0.35) + '" r="' + f(pr) + '" fill="#d9493b"/></g>'; /* the pins hold the paper at its top edge, under the sticker's white edge */
+    mk = marker(c[0], c[1], S, id); o += mk.svg;
+  } else if (d === 2) { /* Toy-room wall: the sticker is a painting in a chunky frame, the title is toy blocks on the floor */
+    o += '<defs><pattern id="' + z + 'wp" width="70" height="70" patternUnits="userSpaceOnUse"><rect width="70" height="70" fill="#f7e5ca"/><rect width="35" height="70" fill="#f2d9b8"/><circle cx="52" cy="35" r="4" fill="#e9c79c"/></pattern></defs>';
+    o += '<rect width="' + W + '" height="' + H + '" fill="#f7e5ca"/>';
+    var s2 = '<rect x="-1500" y="-800" width="4600" height="3000" fill="url(#' + z + 'wp)"/>'
+      + '<rect x="-1500" y="720" width="4600" height="160" fill="#c7dcbc"/><rect x="-1500" y="712" width="4600" height="16" fill="#fff6e6" stroke="' + INK + '" stroke-width="3"/>'
+      + '<rect x="-1500" y="870" width="4600" height="28" fill="#fff6e6" stroke="' + INK + '" stroke-width="3"/><rect x="-1500" y="898" width="4600" height="1400" fill="#c9965f"/>'
+      + '<g stroke="#b38150" stroke-width="3"><path d="M-1500 940 H3100 M-1500 990 H3100 M-1500 1050 H3100"/></g>'
+      + '<path d="M-150 30 Q 300 190 750 30 M850 30 Q 1300 190 1750 30" fill="none" stroke="#8a5a33" stroke-width="4"/>';
+    var cols = ['#e8883a', '#7bb661', '#6fa3d2', '#f2c14e'], k2 = 0;
+    [[-150, 300, 750], [850, 1300, 1750]].forEach(function (A) { for (var j = 1; j < 9; j++) { var t = j / 9, bx = (1 - t) * (1 - t) * A[0] + 2 * t * (1 - t) * A[1] + t * t * A[2], by = (1 - t) * (1 - t) * 30 + 2 * t * (1 - t) * 190 + t * t * 30;
+      s2 += '<path d="M' + f(bx - 28) + ' ' + f(by - 2) + ' L' + f(bx) + ' ' + f(by + 58) + ' L' + f(bx + 28) + ' ' + f(by - 2) + ' Z" fill="' + cols[k2++ % 4] + '" stroke="' + INK + '" stroke-width="4" stroke-linejoin="round"/>'; } });
+    s2 += '<g stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"><rect x="170" y="300" width="170" height="140" rx="10" fill="#8f6a46"/><rect x="186" y="316" width="138" height="108" fill="#cfe3f2"/></g>' + pine(255, 418, 90, '#5e8f4a', '#3f6a33')
+      + '<g stroke="' + INK + '" stroke-width="5"><circle cx="1400" cy="370" r="72" fill="#8f6a46"/><circle cx="1400" cy="370" r="56" fill="#ffe3a8"/><path d="M1352 400 Q 1400 350 1448 400 Z" fill="#7bb661" stroke-linejoin="round"/></g>'
+      + tent(215, 962, 200, '#e8883a', '#8a4a1f') + mouse(1290, 735, 0.95, false);
+    var word = 'BASE CAMP', bw = 104, gap = 10, x = 800 - (8 * (bw + gap) + 40 - gap) / 2, ci = 0;
+    for (var i = 0; i < word.length; i++) { if (word[i] === ' ') { x += 40; continue; } var col = cols[ci++ % 4];
+      s2 += '<g stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"><path d="M' + x + ' ' + (866) + ' l18 -18 h' + bw + ' l-18 18 Z" fill="' + col + '" opacity=".75"/><path d="M' + (x + bw) + ' 866 l18 -18 v' + bw + ' l-18 18 Z" fill="' + col + '"/><rect x="' + x + '" y="866" width="' + bw + '" height="' + bw + '" rx="10" fill="' + col + '"/></g>'
+        + '<text x="' + (x + bw / 2) + '" y="' + (866 + bw * 0.78) + '" font-family="' + FONT + '" font-weight="900" font-size="' + (bw * 0.78) + '" text-anchor="middle" fill="' + CREAM + '" stroke="' + INK + '" stroke-width="7" stroke-linejoin="round" paint-order="stroke">' + word[i] + '</text>';
+      x += bw + gap; }
+    o += art(s2);
+    c = P(800, 370); var fb = Math.max(10, dS * 0.27), L2 = c[0] - half - fb, T2 = c[1] - half - fb, Wf = 2 * (half + fb), sw = Math.max(3, dS * 0.03), nail = c[1] - half - fb - Math.max(16, dS * 0.32);
+    o += '<g stroke="' + INK + '" stroke-width="' + f(sw) + '" stroke-linejoin="round" stroke-linecap="round"><path d="M' + f(L2 + Wf * 0.2) + ' ' + f(T2 + 2) + ' L' + f(c[0]) + ' ' + f(nail) + ' L' + f(L2 + Wf * 0.8) + ' ' + f(T2 + 2) + '" fill="none" stroke="#7a5233"/><circle cx="' + f(c[0]) + '" cy="' + f(nail) + '" r="' + f(sw * 1.4) + '" fill="#8f8a84"/>'
+      + '<rect x="' + f(L2 + fb * 0.18) + '" y="' + f(T2 + fb * 0.25) + '" width="' + f(Wf) + '" height="' + f(Wf) + '" rx="' + f(fb * 0.3) + '" fill="#000" opacity=".12" stroke="none"/>'
+      + '<rect x="' + f(L2) + '" y="' + f(T2) + '" width="' + f(Wf) + '" height="' + f(Wf) + '" rx="' + f(fb * 0.3) + '" fill="#b0743f"/><rect x="' + f(L2 + fb * 0.42) + '" y="' + f(T2 + fb * 0.42) + '" width="' + f(Wf - fb * 0.84) + '" height="' + f(Wf - fb * 0.84) + '" rx="' + f(fb * 0.15) + '" fill="#d39554"/></g>';
+    var lw = hs * 10.5, ly = T2 + Wf + Math.max(8, dS * 0.08);
+    o += '<rect x="' + f(c[0] - lw / 2) + '" y="' + f(ly) + '" width="' + f(lw) + '" height="' + f(hs * 1.7) + '" rx="' + f(hs * 0.3) + '" fill="' + CREAM + '" stroke="' + INK + '" stroke-width="' + f(Math.max(1.5, hs * 0.1)) + '"/>' + hint(c[0], ly + hs * 1.2, hs, '#6b5640');
+    mk = marker(c[0], c[1], S, id); o += mk.svg;
+  } else { /* Scout badge: the sticker is the middle of a big stitched camp badge, the scout beside it, the title above */
+    o += '<defs><radialGradient id="' + z + 'bg3" cx=".5" cy=".55" r=".75"><stop offset="0" stop-color="#3f7766"/><stop offset="1" stop-color="#21463b"/></radialGradient></defs>';
+    o += '<rect width="' + W + '" height="' + H + '" fill="url(#' + z + 'bg3)"/>';
+    var s3 = '<g fill="#fff6e6" opacity=".55">', stars = [[120, 120], [300, 70], [520, 160], [1080, 110], [1300, 60], [1480, 170], [90, 420], [1520, 430], [220, 300], [1390, 320]];
+    stars.forEach(function (p, j) { var r = 6 + (j % 3) * 3; s3 += '<path d="M' + p[0] + ' ' + (p[1] - r * 2) + ' Q' + p[0] + ' ' + p[1] + ' ' + (p[0] + r * 2) + ' ' + p[1] + ' Q' + p[0] + ' ' + p[1] + ' ' + p[0] + ' ' + (p[1] + r * 2) + ' Q' + p[0] + ' ' + p[1] + ' ' + (p[0] - r * 2) + ' ' + p[1] + ' Q' + p[0] + ' ' + p[1] + ' ' + p[0] + ' ' + (p[1] - r * 2) + ' Z"/>'; });
+    s3 += '</g><path d="M-900 900 Q -300 820 300 880 T 1300 870 T 2500 880 V 2200 H -900 Z" fill="#1c3b32"/>' + pine(110, 905, 170, '#1c3b32', '#1c3b32') + pine(210, 900, 120, '#1c3b32', '#1c3b32') + pine(1440, 895, 190, '#1c3b32', '#1c3b32') + pine(1530, 905, 130, '#1c3b32', '#1c3b32');
+    o += art(s3);
+    var R0 = half * Math.SQRT2 + dS * 0.05, ring = Math.max(14, dS * 0.34), Rb = R0 + ring + Math.max(3, dS * 0.04), rib = Math.max(hs * 2.2, dS * 0.26);
+    var tsz3 = Math.min(W * 0.1, H * 0.14), room = H - 2 * Rb - rib * 0.6 - H * 0.08, cx = W / 2, cy, ms;
+    if (room > H * 0.12 || W < 3.4 * Rb) { /* the title above the badge */
+      if (tsz3 * 1.25 > room) tsz3 = Math.max(22, room / 1.25);
+      cy = Math.max((H - (tsz3 * 1.25 + 2 * Rb + rib * 0.6)) / 2 + tsz3 * 1.25 + Rb, H * 0.35);
+      o += title(cx, cy - Rb - tsz3 * 0.3, tsz3, CREAM, '#a85a1e', '#16302a');
+      ms = Rb * 1.25 / 240; o += mouse(cx + Rb * 0.78, cy + Rb - 236 * ms, ms, false);
+      o += pine(cx - Rb * 1.08, cy + Rb * 0.98, Rb * 0.95, '#5e8f4a', '#3f6a33') + pine(cx - Rb * 1.42, cy + Rb * 0.98, Rb * 0.62, '#6fa457', '#3f6a33');
+    } else { /* a big sticker on a small screen: the badge on the right, the title in two lines on the left, the scout under it */
+      cx = Math.max(W * 0.5 + Rb * 0.2, W - Rb - Math.max(16, W * 0.04)); cy = Math.min(H / 2, H - Rb - rib * 0.7); var A = cx - Rb - W * 0.03, tx3 = A / 2 + W * 0.015;
+      tsz3 = Math.min(A / 2.9, H * 0.2); o += title(tx3, H * 0.12 + tsz3 * 0.9, tsz3, CREAM, '#a85a1e', '#16302a').replace(/>Base Camp</g, '>Base<tspan x="' + f(tx3) + '" dy="' + f(tsz3 * 1.05) + '">Camp</tspan><');
+      ms = Math.min(A * 0.6 / 200, (H - (H * 0.12 + tsz3 * 2.2)) * 0.85 / 240); o += mouse(tx3 - 105 * ms, H - 240 * ms - H * 0.04, ms, false);
+    }
+    var sw3 = Math.max(3, dS * 0.03);
+    o += '<g stroke="' + INK + '" stroke-width="' + f(sw3) + '"><circle cx="' + f(cx) + '" cy="' + f(cy + sw3 * 2) + '" r="' + f(Rb) + '" fill="#000" opacity=".2" stroke="none"/>'
+      + '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(Rb) + '" fill="#c96b2c"/><circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(R0 + ring * 0.82) + '" fill="#e8883a" stroke="none"/>'
+      + '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(R0 + ring * 0.42) + '" fill="none" stroke="' + CREAM + '" stroke-width="' + f(Math.max(2, dS * 0.025)) + '" stroke-dasharray="' + f(Math.max(5, dS * 0.06)) + ' ' + f(Math.max(4, dS * 0.045)) + '" stroke-linecap="round"/>'
+      + '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(R0) + '" fill="#fff"/></g>';
+    [-1, 1].forEach(function (sgn) { var sx = cx + sgn * (R0 + ring * 0.42), r = Math.max(4, ring * 0.22); o += '<path d="M' + f(sx) + ' ' + f(cy - r) + ' Q' + f(sx) + ' ' + f(cy) + ' ' + f(sx + r) + ' ' + f(cy) + ' Q' + f(sx) + ' ' + f(cy) + ' ' + f(sx) + ' ' + f(cy + r) + ' Q' + f(sx) + ' ' + f(cy) + ' ' + f(sx - r) + ' ' + f(cy) + ' Q' + f(sx) + ' ' + f(cy) + ' ' + f(sx) + ' ' + f(cy - r) + ' Z" fill="' + CREAM + '"/>'; });
+    var rw = Math.max(hs * 11, Rb * 1.5), ry = cy + Rb - rib * 0.4;
+    o += '<g stroke="' + INK + '" stroke-width="' + f(sw3) + '" stroke-linejoin="round"><path d="M' + f(cx - rw / 2 - rib * 0.6) + ' ' + f(ry + rib * 0.3) + ' l' + f(rib * 0.7) + ' ' + f(-rib * 0.15) + ' v' + f(rib) + ' l' + f(-rib * 0.7) + ' ' + f(rib * 0.15) + ' l' + f(rib * 0.3) + ' ' + f(-rib * 0.5) + ' Z" fill="#4f7d3f"/>'
+      + '<path d="M' + f(cx + rw / 2 + rib * 0.6) + ' ' + f(ry + rib * 0.3) + ' l' + f(-rib * 0.7) + ' ' + f(-rib * 0.15) + ' v' + f(rib) + ' l' + f(rib * 0.7) + ' ' + f(rib * 0.15) + ' l' + f(-rib * 0.3) + ' ' + f(-rib * 0.5) + ' Z" fill="#4f7d3f"/>'
+      + '<rect x="' + f(cx - rw / 2) + '" y="' + f(ry) + '" width="' + f(rw) + '" height="' + f(rib) + '" rx="' + f(rib * 0.12) + '" fill="#6fa457"/></g>' + hint(cx, ry + rib * 0.5 + hs * 0.36, hs, CREAM);
+    mk = marker(cx, cy, S, id); o += mk.svg;
+  }
+  return o + '</svg>';
+}
+
+/* ---------- the setup page (as screen-sticker.html) ---------- */
+var idsEl = document.getElementById('ids'), dEl = document.getElementById('designs');
+[1, 2, 3, 4, 5, 6].forEach(function (i) { var b = document.createElement('button'); b.textContent = i; b.onclick = function () { st.id = i; save(); draw(); }; b.dataset.id = i; idsEl.appendChild(b); });
+[1, 2, 3].forEach(function (d) { var b = document.createElement('button'); b.dataset.d = d; b.onclick = function () { design = d; draw(); }; dEl.appendChild(b); });
+function draw() {
+  var c = document.getElementById('card'); c.style.width = (85.6 * st.k) + 'px'; c.style.height = (53.98 * st.k) + 'px';
+  document.getElementById('kv').textContent = 'size ' + st.k.toFixed(2) + ' px per mm · sticker ' + st.id;
+  [].forEach.call(idsEl.children, function (b) { b.className = +b.dataset.id === st.id ? 'on' : ''; });
+  [].forEach.call(dEl.children, function (b) { var d = +b.dataset.d; b.className = d === (design || 1) ? 'on' : ''; b.innerHTML = poster(d, 480, 300, 34, st.id) + '<span>' + d + '. ' + NAMES[d] + '</span>'; });
+}
+function step(x) { st.k = Math.max(0.6, Math.min(40, st.k * x)); save(); draw(); }
+document.getElementById('m10').onclick = function () { step(0.95); };
+document.getElementById('m1').onclick = function () { step(0.995); };
+document.getElementById('p1').onclick = function () { step(1.005); };
+document.getElementById('p10').onclick = function () { step(1.05); };
+var setEl = document.getElementById('set'), showEl = document.getElementById('show'), lock = null;
+function showPoster() { var W = innerWidth, H = innerHeight; showEl.innerHTML = poster(design || 1, W, H, Math.round(80 * st.k), st.id); }
+function openPoster(full) {
+  if (!design) design = 1; setEl.hidden = true; showEl.hidden = false; showPoster();
+  try { history.replaceState(null, '', '?design=' + design); } catch (e) { /* fine */ }
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {}); } catch (e) { /* fine */ }
+  if (full) try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {}); } catch (e) { /* fine */ }
+}
+document.getElementById('go').onclick = function () { openPoster(true); };
+function back() { if (showEl.hidden) return; showEl.hidden = true; setEl.hidden = false; draw(); try { if (lock) lock.release(); } catch (e) { /* fine */ } try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { /* fine */ } }
+showEl.onclick = back; document.addEventListener('keydown', function () { if (!showEl.hidden) back(); });
+addEventListener('resize', function () { if (!showEl.hidden) showPoster(); });
+document.addEventListener('visibilitychange', function () { if (!showEl.hidden && document.visibilityState === 'visible') try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {}); } catch (e) { /* fine */ } });
+draw(); if (design) openPoster(false);
+</script>
+</body>
+</html>
