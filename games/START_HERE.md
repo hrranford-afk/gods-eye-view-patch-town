@@ -206,3 +206,10 @@ bring to the game."
 - Known flaky under load: stickerkey section 4 (time only), return-test, snapshot section 4. See KIT_PLAN section 10.
 - 12:00 to 17:10: all builders stopped on the account's 5-hour usage limit; nothing restarted them until Harry's next message. Lesson: run at most two builders, and schedule a check-in just after a known reset time.
 - Orders written, not yet confirmed sent: siege-1 (ideas), siege-2 (two-engine playtest). ChatGPT packs received: concept pack 1, cards set 1, set 2, art pack 3 (textures, mouse sheets, set 2b).
+
+## 18 Nov, 22:05 UK: end-of-day state
+- Test link sofa-siege/ = game/sofa-siege 9171688: full match, 1 player against a bot or 2 players on one flat iPad, sound, painted textures in one atlas (166 draw calls), new mice, `SG.applyLayout` for the cards' locked layout. Tests: build 24, table 30, fight 48, layout 34. Older versions kept at sofa-siege-b1 to -b4.
+- Cards: finished on game/sofa-cards 2e441ee. Verdict: print set 2b, black and white, at A5 (`cards/print.html?set=2b&size=a5`), check with `cards.html?set=2b&size=a5`. All numbers are from made-up frames. NOT TESTED on a real camera.
+- Usage limit stopped the builders twice today (12:00 to 17:10 and 18:15 to 21:52). Check-ins are set for 23:30 and 03:00.
+- Overnight: one builder on AR mode v0 (play on a real table in HelloXR), tested with the fake AR only.
+- Nobody has played the game by hand yet. Harry's iPad test is the most valuable next step.
