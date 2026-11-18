@@ -18,7 +18,8 @@ canvas{display:block;touch-action:none}
 #ui{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none}#ui .btn,#ui input{pointer-events:auto}.cover{pointer-events:auto}.bar{pointer-events:none}
 body.ar{background:transparent}body.ar #ui{pointer-events:auto;touch-action:none}body.ar #tag,body.ar #bCam{display:none!important}
 #arbar{display:none;align-items:center}
-#dev{position:fixed;left:8px;bottom:30px;font:12px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.6);color:#d8ffd0;padding:3px 7px;border-radius:6px;display:none;pointer-events:none;white-space:pre}
+body.sceneui .bar,body.sceneui #side,body.sceneui #say{display:none!important}
+#dev{position:fixed;left:8px;top:72px;font:12px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.6);color:#d8ffd0;padding:3px 7px;border-radius:6px;display:none;pointer-events:none;white-space:pre}
 #bCam{position:fixed;right:12px;top:12px;display:none;font-size:14px;padding:8px 12px}
 #side{position:fixed;left:8px;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:8px}#side .btn{font-size:18px;padding:8px 10px}#bPause2{display:none}
 .pp{position:fixed;left:0;right:0;bottom:0;height:70px;display:none;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;box-sizing:border-box;pointer-events:none}
@@ -40,7 +41,7 @@ body.ar{background:transparent}body.ar #ui{pointer-events:auto;touch-action:none
 </style></head><body>
 <div id="ui">
 <div id="hud"><div class="pill meter" id="mA" style="display:none"><span></span><div class="m"><i></i></div></div><div class="pill" id="hTeam"></div><div class="pill" id="hTime">2:00</div><div class="pill" id="hCount"></div><div class="pill meter" id="mB" style="display:none"><span></span><div class="m"><i></i></div></div></div>
-<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button><button class="btn" id="bTilt" style="display:none;font-size:13px">📐 0°</button><button class="btn" id="bReplace" style="display:none;font-size:13px">📍 Re-place table</button></div>
+<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button><button class="btn" id="bTilt" style="display:none;font-size:13px">📐 0°</button><button class="btn" id="bReplace" style="display:none;font-size:13px">📍 Re-place table</button><button class="btn" id="bExit" style="display:none;font-size:13px">✖ Exit AR</button><button class="btn" id="bLog" style="display:none;font-size:13px">📋 Copy AR log</button></div>
 <div class="bar" id="bar"><button class="btn" id="bL">⟲ Turn</button><button class="btn" id="bR">Turn ⟳</button><button class="btn" id="bUndo">Undo</button><button class="btn go" id="bDone">Done</button></div>
 <div class="bar" id="fbar"><button class="btn on" id="b_squad">👉 Send squad</button><button class="btn" id="b_lobber">🔮 Lobber</button><button class="btn" id="b_mend">🔨 Mend</button><button class="btn" id="bPause">⏸ Pause</button></div>
 <div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p id="subTitle">Practice table</p>
@@ -58,7 +59,9 @@ body.ar{background:transparent}body.ar #ui{pointer-events:auto;touch-action:none
   <button class="btn" id="arL">⟲</button><button class="btn" id="arR">⟳</button>
   <label class="pill" style="font-size:14px;pointer-events:auto">Size <input type="range" id="arSize" min="60" max="140" step="5" value="100" style="width:120px;vertical-align:middle"> <span id="arSizeText">100 cm</span></label>
   <button class="btn go" id="arLock">Lock table</button><button class="btn" id="arLeave">Leave AR</button></div>
-<div class="cover" id="arAsk" style="display:none;background:none"><div class="card" style="padding:14px 24px"><p style="margin:0 0 10px">You have a card layout saved.</p><div class="row"><button class="btn go" id="arCards">🃏 Use my card layout</button><button class="btn" id="arPlain">Usual table</button></div></div></div>
+<div class="cover" id="arAsk" style="display:none;background:none;pointer-events:none"><div class="card" style="padding:14px 24px;pointer-events:auto"><p style="margin:0 0 10px">You have a card layout saved.</p><div class="row"><button class="btn go" id="arCards">🃏 Use my card layout</button><button class="btn" id="arPlain">Usual table</button></div></div></div>
+<div class="cover" id="arJump" style="display:none;background:none;pointer-events:none"><div class="card" style="padding:14px 24px;pointer-events:auto"><p style="margin:0 0 10px">The view jumped. Is the table still in place?</p><div class="row"><button class="btn go" id="jFine">Table is fine</button><button class="btn" id="jReplace">📍 Re-place table</button></div></div></div>
+<textarea id="logText" readonly style="display:none;position:fixed;left:10%;top:15%;width:80%;height:55%;font:12px ui-monospace,Menlo,monospace;pointer-events:auto;-webkit-user-select:text;user-select:text;z-index:60"></textarea>
 <div id="dev"></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
