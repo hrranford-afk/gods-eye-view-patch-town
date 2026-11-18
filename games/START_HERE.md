@@ -195,3 +195,14 @@ bring to the game."
 - Fixer: stickerkey 8 of 8 at 20/20 under load up to 6; roomfix, roomguard, house, marker, snapshot and depth all green. Foreman's own runs: stickerkey 20/20, multi-room 40/40, return 16/16. Page checks clean.
 - Previous test build kept at base-camp-b30b. A container restart at 00:50 stopped the fixer; it resumed with nothing lost.
 - Next: Harry's iPad test of base-camp-next/?dev=1; then build 30 goes to the main link (back up build 29 as b29), merge bc-depth into room-kit, and room-kit step 2.
+
+## 18 Nov: where things stand at 17:30 UK
+- **Round Table Kingdom** (was Sofa siege; Harry's name) is the week's one goal. Plan: games/WEEK_PLAN_18NOV.md. Design: games/SOFA_SIEGE_DESIGN.md and games/sofa-siege/DESIGN.md (branch game/sofa-siege).
+- Live test link: gh-pages sofa-siege/ (full match against a bot on a practice table; `?auto=both&report=1` for a robot match). Older versions kept at sofa-siege-b1 and -b2. Card checker: sofa-siege/cards.html.
+- Branches: game/sofa-siege (game, models, tests, BOT_REPORT.md), game/sofa-cards (card recognition, RECOGNITION_REPORT.md), game/room-kit.
+- Card result (made-up frames only): set 2 style printed at A5 is best (96% sharp camera, 75% low-detail), never names a wrong card. Set 1 confuses Hill and Capture Flag.
+- Room kit: step 2 (recorder, dev mode) is on game/room-kit (head 266154f). The dolls' house is now a world for the fake AR camera (tests/house-world.js, tests/house-ar-test.js, 14/14 in 4 of 4 runs).
+- Known gap, game unchanged: two rooms on one floor level joined by a doorway only ask "Have you moved?" once the iPad is about 2 m into the new room. Stickers and cards cover this for now.
+- Known flaky under load: stickerkey section 4 (time only), return-test, snapshot section 4. See KIT_PLAN section 10.
+- 12:00 to 17:10: all builders stopped on the account's 5-hour usage limit; nothing restarted them until Harry's next message. Lesson: run at most two builders, and schedule a check-in just after a known reset time.
+- Orders written, not yet confirmed sent: siege-1 (ideas), siege-2 (two-engine playtest). ChatGPT packs received: concept pack 1, cards set 1, set 2, art pack 3 (textures, mouse sheets, set 2b).
