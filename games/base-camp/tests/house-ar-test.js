@@ -89,8 +89,13 @@ const A = 'play', B = 'kitchen';
   await walkDone(); const m2a = await ev(() => window.__moved.slice()); const sc2 = await ev(() => __g.SCAN.hits);
   ok('2. standing in A at the doorway, looking into B for 34 s: no "Have you moved to another room?"', m2a.length === 0, JSON.stringify({ moved: m2a, hits: sc2, zones: (await ev(() => __g.G.zones.map((z) => [+z.cx.toFixed(1), +z.cz.toFixed(1), +z.y.toFixed(2)]))) }));
   await shot('161-house-ar-doorway.png');
-  const t2 = Date.now(); await walk([{ at: atDoor(0), look: [bc[0], -0.6, bc[1]], dur: 3, ay: 0.1, ap: 0.05 }, { at: atDoor(-0.6), look: [bc[0], -1.2, bc[1]], dur: 4, ay: 0.2, ap: 0.1 }].concat(roomLegs(W, B)));
+  /* the far side of B, looking back over it. Base Camp asks "the iPad left the room" only 2 m beyond the old room's box for 5 s (RB_CAM, RB_CAM_S), and a surface only
+     when it lies 1 m or more beyond the box; B's floor is level with A's and joins it through the doorway, so a player who stays in B's near half may not be asked (seen
+     18 Nov: one run of five ended its walk 0.65 m past A's box and was never asked). The walk ends where a player who crossed the room would stand. */
+  const rB = W.rooms[B].r, farB = { at: [dx ? (sgn > 0 ? rB[1] - 0.4 : rB[0] + 0.4) : bc[0], 0.2, dz ? (sgn > 0 ? rB[3] - 0.4 : rB[2] + 0.4) : bc[1]], look: [bc[0], -1.2, bc[1]], dur: 12, ay: 0.4, ap: 0.15 };
+  const t2 = Date.now(); await walk([{ at: atDoor(0), look: [bc[0], -0.6, bc[1]], dur: 3, ay: 0.1, ap: 0.05 }, { at: atDoor(-0.6), look: [bc[0], -1.2, bc[1]], dur: 4, ay: 0.2, ap: 0.1 }].concat(roomLegs(W, B), [farB]));
   const tAsk = await waitFor(() => window.__moved.length > 0, 150000, 500, true); const m2 = await ev(() => window.__moved.slice()); const where = m2.length ? [m2[0].x, m2[0].z] : null;
+  const gapAt = m2.length ? await ev(() => +__g.RB.camGap.toFixed(2)) : null; console.log('NOTE the question came with the iPad ' + gapAt + ' m outside room A\'s box (now), why: ' + (await ev(() => __g.RB.ask && __g.RB.ask.why)));
   ok('2. walking through the doorway: the question comes once the iPad is inside B, never while it is still in A', tAsk >= 0 && m2.every((q) => !inA([q.x, q.z])) && inB(where) && /New room/.test(m2[0].txt), ((Date.now() - t2) / 1000).toFixed(1) + ' s ' + JSON.stringify(m2));
   if (tAsk < 0) console.log('DEBUG2', JSON.stringify(await ev(() => ({ rb: __g.RB.base, ask: __g.RB.ask, act: __g.rbActive(), held: __g.RB.held, cam: window.NativeARData && [window.NativeARData.camera_transform[12], window.NativeARData.camera_transform[14]], zones: __g.SCAN.zones.map((z) => [+z.cx.toFixed(2), +z.cz.toFixed(2), +z.y.toFixed(2), +z.area.toFixed(2)]), bound: __g.REC.bound.slice(-8) }))));
 
