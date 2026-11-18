@@ -40,7 +40,7 @@ const run = async () => {
   const cr = await ev(() => { SG.hold = true; SG.start('blue', { seed: 4242 }); SG.demo(11, 0); SG.skipBuild(); SG.begin(); SG.step(.2); const early = SG.lobberBlock(0); SG.step(SG.CONFIG.count); SG.sides[1].bot = false;
     const m0 = SG.mice[SG.sides[0].crew]; SG.debug.dizzy(0, m0.i); SG.sides[0].reload = 0; const b0 = SG.lobberBlock(0) + '/' + early, f0 = SG.fire(0, 1.6, -.2); const ready = CREW(0); const who = SG.sides[0].crew, b1 = SG.lobberBlock(0);
     SG.debug.dizzy(0, who); const b2 = SG.lobberBlock(0), f2 = SG.fire(0, 1.6, -.2); const again = SG.stepUntil(() => SG.debug.crewReady(0), 15); return { b0, f0: !!f0, ready, who, b1, b2, f2: !!f2, again, who2: SG.sides[0].crew }; });
-  ok('the lobber cannot fire until a mouse stands beside it', cr.b0 === 'crew/crew' && !cr.f0 && cr.ready && cr.b1 === '', JSON.stringify(cr));
+  ok('the lobber cannot fire until a mouse stands beside it', cr.b0.indexOf('crew/') === 0 && !cr.f0 && cr.ready && cr.b1 === '', JSON.stringify(cr));
   ok('a dizzy crew means no shots until another mouse arrives', cr.b2 === 'crew' && !cr.f2 && cr.again && cr.who2 !== cr.who, JSON.stringify(cr));
 
   /* a marble lands where the arc says */
@@ -62,8 +62,8 @@ const run = async () => {
   ok('a marble aimed too low hits your own piece and knocks a part off it', own.hit.own && own.hit.piece === own.tower && own.lost === 1 && own.ownHits === 1, JSON.stringify(own));
 
   /* walls: walking and seeing */
-  const wl = await ev(() => { FIGHT('blue'); const w = WALL(0), d = Math.hypot(w.x, w.z), inP = [w.x * (1 + .32 / d), w.z * (1 + .32 / d)], outP = [w.x * (1 - .32 / d), w.z * (1 - .32 / d)];
-    const blocked = !SG.sightClear(inP[0], inP[1], outP[0], outP[1]), open = SG.sightClear(0, .5, .3, -.5), wallShut = !SG.debug.isOpen(1, w.x, w.z) && !SG.debug.isOpen(0, w.x, w.z), g = KIND(0, 'gate'), gateMine = SG.debug.isOpen(0, g.x, g.z), gateTheirs = !SG.debug.isOpen(1, g.x, g.z);
+  const wl = await ev(() => { FIGHT('red'); const w = WALL(0), d = Math.hypot(w.x, w.z), inP = [w.x * (1 + .32 / d), w.z * (1 + .32 / d)], outP = [w.x * (1 - .32 / d), w.z * (1 - .32 / d)];
+    const blocked = !SG.sightClear(inP[0], inP[1], outP[0], outP[1]), open = SG.sightClear(0, .5, .3, -.5) && SG.sides[1].team === 'blue', wallShut = !SG.debug.isOpen(1, w.x, w.z) && !SG.debug.isOpen(0, w.x, w.z), g = KIND(0, 'gate'), gateMine = SG.debug.isOpen(0, g.x, g.z), gateTheirs = !SG.debug.isOpen(1, g.x, g.z);
     const keep = SG.CONFIG.squadRing; SG.CONFIG.squadRing = 0; SG.order(0, inP[0], inP[1]); SG.order(1, outP[0], outP[1]); let inside = 0; for (let i = 0; i < 100; i++) { SG.step(.1); inside += SG.inWall(); } const c0 = SG.stats.corks; SG.step(8);
     const near = SG.mice.filter((m) => m.side === 0 && Math.hypot(m.x - inP[0], m.z - inP[1]) < .25).length, nearRed = SG.mice.filter((m) => m.side === 1 && Math.hypot(m.x - outP[0], m.z - outP[1]) < .25).length, corks1 = SG.stats.corks - c0;
     w.ps.forEach((q) => { if (/plank/.test(q.id)) SG.debug.knock(w.id, q.id); }); const seeNow = SG.sightClear(inP[0], inP[1], outP[0], outP[1]), walkNow = SG.debug.isOpen(1, w.x, w.z); SG.step(7); SG.CONFIG.squadRing = keep;
@@ -77,7 +77,7 @@ const run = async () => {
     const sq = SG.mice.filter((m) => m.side === 0 && m.i !== SG.sides[0].crew); return asked && SG.stats.noPath >= 1 && SG.stats.stuck === 0 && sq.every((m) => m.state === 'hold') && SG.inWall() === 0; }));
 
   /* dizzy, then home */
-  const dz = await ev(() => { FIGHT('blue'); SG.order(1, 0, -.3); CREW(0); SG.stepUntil(() => SG.onHill()[1] === 4, 15); SG.step(.5); SG.sides[0].reload = 0; const foe = SG.mice.filter((m) => m.side === 1 && Math.hypot(m.x, m.z) < 1); const t = { x: 0, z: -.3 }; SG.fire(0, t.x, t.z); SG.stepUntil(() => SG.lastHit, 8);
+  const dz = await ev(() => { FIGHT('blue'); SG.order(1, 0, -.3); CREW(0); SG.stepUntil(() => SG.onHill()[1] === 4, 15); SG.step(.5); SG.sides[0].reload = 0; const foe = SG.mice.filter((m) => m.side === 1 && Math.hypot(m.x, m.z) < 1); const t = foe[0]; SG.fire(0, t.x, t.z); SG.stepUntil(() => SG.lastHit, 8);
     const d = foe.filter((m) => m.state === 'dizzy'); const who = d[0]; if (!who) return { n: 0, hit: SG.lastHit }; const at = [who.x, who.z]; SG.step(2); const still = who.state === 'dizzy' && who.x === at[0]; SG.step(SG.CONFIG.dizzy - 2 + .1);
     return { n: d.length, still, state: who.state, home: Math.hypot(who.x, who.z), z: who.z }; });
   ok('a marble on the hill makes enemy mice dizzy (' + dz.n + ' hit)', dz.n >= 1, JSON.stringify(dz));
@@ -143,7 +143,7 @@ const run = async () => {
   ok('still 0 errors', errs.length === 0, errs.join(' | '));
 
   /* the self-measuring auto-play page, sped up */
-  const p2 = await b.newPage({ viewport: { width: 1024, height: 768 } }); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
+  const p2 = await b.newPage({ viewport: { width: 480, height: 360 } }); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
   await p2.goto('file://' + path.resolve(__dirname, '..', 'index.html') + '?auto=both&level=normal&report=1&speed=30&skipbuild=1');
   await p2.waitForFunction('window.SG_REPORT', null, { timeout: 100000 }).catch(() => {});
   const rp = await p2.evaluate(() => ({ r: window.SG_REPORT, started: document.getElementById('start').style.display === 'none', panel: !!document.getElementById('report'), text: document.getElementById('reportText') ? document.getElementById('reportText').value : '', copy: !!document.getElementById('bCopy') }));

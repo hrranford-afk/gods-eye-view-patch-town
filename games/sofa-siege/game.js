@@ -6,17 +6,17 @@
 /* Every number that tunes the match is here. The balance sweep changes nothing else. */
 var CONFIG={
   build:120,ready:3,count:3,round:60,rounds:3,brk:10,   /* seconds: build step, bot's wait at "Camp ready", 3-2-1, a round, rounds, mend break */
-  win:100,gain:.9,holdSecs:2,                                      /* points to win; points a second for each mouse more than the other side on the hill */
+  win:100,gain:.9,holdSecs:1.5,                                      /* points to win; points a second for each mouse more than the other side on the hill */
   walk:1.15,buildTime:3,mendTime:2.2,noShopMend:1.5,    /* mouse speed; hammer seconds per piece and per part; mending is this much slower with a broken workshop */
   reload:6,blast:.27,dizzy:5,                            /* lobber winding seconds; marble thump radius; dizzy seconds (both teams) */
   squadRing:.5,                                         /* how far apart a squad stands round the spot it was sent to */
   corkRange:1.2,corkEvery:3,corkChance:.02,corkDaze:1.6,/* blue: cork reach, seconds between corks, chance to daze, daze seconds (a daze is a short sit, no trip home) */
   scrapEvery:5,scrapReach:.38,                          /* red: seconds between knocking parts off, and reach */
   redParts:1,blueParts:1,                               /* parts a marble knocks off a piece */
-  raidLead:8,                                           /* the red bot sends one scrapper at a wall only when this many points ahead */
   botMendAt:1,                                          /* a bot mends during a round once this many of its parts lie fallen */
   wallShots:.3,                                         /* share of bot marbles aimed at pieces, not at mice */
-  levels:{easy:{fire:14,err:.8,send:5},normal:{fire:12,err:.45,send:2.5},hard:{fire:11,err:.2,send:.6}}   /* seconds between bot shots, aim error, seconds before it sends its squad */
+  /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
+  levels:{easy:{fire:8.5,err:.8,send:5,raidLead:10},normal:{fire:12,err:.45,send:2.5,raidLead:10},hard:{fire:11,err:.2,send:.6,raidLead:2}}
 };
 var PI=Math.PI,STEP=1/60,PS=.88,RULES=CONFIG,LEVELS=CONFIG.levels;
 var KIT=['wall','wall','wall','wall','wall','wall','gate','tower','lobber','tent','workshop'];
@@ -322,7 +322,7 @@ function stuckCheck(dt){SG.mice.forEach(function(m){if(!m.goal){m.moved=0;m.sx=m
 function botFight(s,dt){
   var side=SG.sides[s],L=LEVELS[side.level],en=1-s,w;side.sendT-=dt;side.fireT-=dt;
   if(side.sendT<=0){w=w2(s,(rand()-.5)*.4,.2+rand()*.15);side.order={x:w[0],z:w[1]};side.sendT=10+rand()*6;side.raid=null;
-    if(side.team==='red'&&side.score>=SG.sides[en].score+CONFIG.raidLead){var best=null,bd=1e9;SG.pieces.forEach(function(p){if(p.side!==en||!p.built||!p.total||p.parts<=0||(p.kind!=='wall'&&p.kind!=='gate'))return;var d=dist(p.x,p.z,0,0);if(d<bd){bd=d;best=p;}});
+    if(side.team==='red'&&side.score>=SG.sides[en].score+L.raidLead){var best=null,bd=1e9;SG.pieces.forEach(function(p){if(p.side!==en||!p.built||!p.total||p.parts<=0||(p.kind!=='wall'&&p.kind!=='gate'))return;var d=dist(p.x,p.z,0,0);if(d<bd){bd=d;best=p;}});
       if(best){var d0=Math.sqrt(best.x*best.x+best.z*best.z)||1,k=(d0-FOOT[best.kind][1]-.3)/d0;side.raid={x:best.x*k,z:best.z*k};}}}
   if(SG.fallen(s)>=CONFIG.botMendAt)autoMend(s,1);
   var lb=lobberOf(s);if(lb&&mendable(lb).length&&(!partOn(lb,'lobber.crank')||!partOn(lb,'lobber.bucket')))mendPick(s,lb,mendable(lb)[0],true);
