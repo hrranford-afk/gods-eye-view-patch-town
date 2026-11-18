@@ -233,79 +233,76 @@ function dentGeo(g,at,rad,depth){var p=g.attributes.position,v=new THREE.Vector3
 function mouseGeo(team,furName){
   var key=team+'|'+furName;if(_mg[key])return _mg[key];
   var T=PAL[team],fur=FUR[furName]||FUR.tan,furL=blend(fur,0xfff2dc,.55),G={},b,s,i;
-  /* body: torso, tunic, belt, collar and the team's back pack */
+  /* The look follows the character sheets in art/pack3/characters: a big head with big round ears and large dark eyes,
+     a cream muzzle and belly, a team coat, and each team's own hat. */
+  var cream=blend(fur,0xfff0d8,.72),SHOE=0x6a4634;
+  /* body: torso, cream belly, coat, belt, and the team's neck wear and back pack */
   b=new Bld(hash(key));
-  b.sph(.06,9,6,fur,null,[0,.058,0],null,[1,1.12,.92]);
-  b.sph(.04,6,4,furL,null,[0,.085,.03],null,[1,1,.6]);
-  b.cyl(.059,.07,.082,10,T.main,'cloth',[0,.04,0]);
-  b.cyl(.071,.073,.012,10,T.dark,'cloth',[0,.004,0]);
-  b.cyl(.066,.068,.014,8,0x6b4423,null,[0,.034,0]);b.box(.022,.02,.008,GOLD,null,[0,.034,.066]);
-  b.tor(.047,.013,T.dark,'cloth',[0,.098,.002],[PI/2,0,0],null,null,8);
-  if(team==='blue'){ /* scarf knot, quiver of cork bolts */
-    b.sph(.014,6,5,T.dark,'cloth',[.03,.092,.045]);b.box(.016,.04,.008,T.dark,'cloth',[.034,.068,.054],[0,0,.25]);
-    b.push([-.012,.075,-.066],[.12,0,.35]);b.cyl(.021,.017,.085,8,0x7a4a26,'wood');b.tor(.021,.004,T.main,null,[0,.03,0],[PI/2,0,0],null,null,8);
-    for(i=0;i<3;i++){var bx=(i-1)*.011;b.cyl(.003,.003,.05,4,CREAM,null,[bx,.06,(i%2)*.008-.004]);b.sph(.008,5,4,0xffffff,null,[bx,.088,(i%2)*.008-.004],null,[.5,1.5,1]);}
+  b.sph(.058,9,6,fur,null,[0,.054,0],null,[1,1.08,.92]);
+  b.cyl(.058,.071,.086,10,T.main,'cloth',[0,.04,0]);b.cyl(.072,.074,.012,10,T.dark,'cloth',[0,.003,0]);
+  b.sph(.047,8,6,cream,null,[0,.047,.034],null,[.95,1.15,.62]);                       /* belly */
+  b.cyl(.066,.069,.013,8,0x7a5234,null,[0,.03,0]);b.box(.024,.02,.01,GOLD,null,[0,.03,.07]);
+  if(team==='blue'){ /* tan collar, short cape, quiver of cork bolts */
+    b.tor(.05,.011,0xd9a55c,null,[0,.096,.004],[PI/2,0,0],null,null,8);
+    b.add(new THREE.CylinderGeometry(.07,.086,.1,8,1,true,PI*.5,PI),T.dark,'cloth',[0,.05,-.012]);b.add(new THREE.CylinderGeometry(.068,.084,.1,8,1,true,PI*.5,PI),T.main,'cloth',[0,.05,-.012],[0,0,0],[-1,1,1]);
+    b.push([.048,.07,-.058],[.1,0,-.3]);b.cyl(.02,.017,.085,7,0x9a6a3e,'wood');b.tor(.021,.004,0x6e4a2a,null,[0,.03,0],[PI/2,0,0],null,null,7);
+    for(i=0;i<3;i++){var bx=(i-1)*.011;b.cyl(.003,.003,.05,4,0xe6c88a,null,[bx,.06,(i%2)*.008-.004]);b.cyl(.007,.005,.012,5,CORK,null,[bx,.088,(i%2)*.008-.004]);}
     b.pop();
-    
-  }else if(team==='red'){ /* scrap sack with bits poking out */
-    b.sph(.05,8,6,0xb58a58,'cloth',[0,.078,-.07],null,[1.05,1,.82]);b.cyl(.014,.02,.02,6,0x9a744a,'cloth',[0,.128,-.07]);b.tor(.016,.004,0x5a4030,null,[0,.122,-.07],[PI/2,0,0],null,null,6);
-    b.box(.032,.03,.004,T.main,'cloth',[.018,.07,-.112],[.1,0,.2]);
-    b.cyl(.006,.006,.06,5,TIN,'rust',[.02,.15,-.072],[0,0,-.3]);b.push([-.018,.145,-.07],[0,.3,.3],.045);mark(b,'red',1,[0,0,0]);b.pop();
-    b.tor(.064,.005,0x5a4030,null,[0,.075,0],[PI/2,.5,0],null,null,10);
-  }else{ /* plank pack and a rope coil */
-    for(i=0;i<3;i++)b.box(.03,.17,.011,i===1?T.end:PAL.blue.wood2,'wood',[(i-1)*.033,.1,-.066-(i===1?.004:0)],[.06,0,(i-1)*.05]);
-    b.box(.11,.012,.018,T.rope,null,[0,.07,-.066]);b.box(.11,.012,.018,T.rope,null,[0,.135,-.068]);
-    b.tor(.02,.006,0xd2ad6e,null,[.062,.03,-.02],[0,PI/2,0],null,null,8);
-    b.tor(.064,.005,0x6b4423,null,[0,.08,0],[PI/2,-.5,0],null,null,10);
+  }else if(team==='red'){ /* brick-red scarf with a hanging end, brown patched sack */
+    b.tor(.052,.016,T.dark,'cloth',[0,.096,.004],[PI/2,0,0],null,null,8);b.box(.03,.05,.012,T.dark,'cloth',[.034,.07,.058],[.15,0,-.2]);
+    b.sph(.052,8,6,0x9a7248,'cloth',[0,.07,-.066],null,[1.1,1.05,.8]);b.cyl(.014,.02,.02,6,0x8a6238,'cloth',[0,.125,-.066]);
+    b.box(.034,.03,.004,T.main,'cloth',[.016,.062,-.11],[.1,0,.15]);b.rod([-.04,.11,-.09],[.045,.04,-.105],.004,0xd9b98a,null,4);
+    b.tor(.064,.005,0x6e4a2a,null,[0,.075,0],[PI/2,.5,0],null,null,10);
+  }else{ /* moss-green scarf, plank pack tied with rope */
+    b.tor(.052,.016,T.dark,'cloth',[0,.096,.004],[PI/2,0,0],null,null,8);b.box(.03,.045,.012,T.dark,'cloth',[-.034,.07,.058],[.15,0,.2]);
+    for(i=0;i<3;i++)b.box(.115,.03,.012,i===1?0xd9ab6c:0xc9955a,'woodh',[0,.045+i*.033,-.068-(i===1?.003:0)],[.05,0,(i-1)*.03]);
+    b.rod([-.05,.03,-.078],[.05,.115,-.08],.005,0xd2ad6e,null,4);b.rod([.05,.03,-.078],[-.05,.115,-.08],.005,0xd2ad6e,null,4);
+    b.tor(.02,.006,0xd2ad6e,null,[.066,.03,-.02],[0,PI/2,0],null,null,8);
   }
   G.body=b.geo();
-  /* head (the red helmet is the one shiny tin part of a mouse) */
+  /* head: the red helmet is the one shiny tin part of a mouse */
   b=new Bld(3);b.metalOK=true;
-  b.sph(.066,11,7,fur,null,[0,.05,0],null,[1.06,.96,1]);
-  b.sph(.034,7,5,furL,null,[0,.034,.05],null,[1.12,.86,1.25]);
-  b.sph(.0125,6,4,PINK,null,[0,.043,.093]);
-  b.tor(.017,.0042,0x5a2c22,null,[0,.034,.084],[.42,0,PI],null,PI,7);
-  var ex=team==='blue'?.076:.06,ey=team==='blue'?.078:.1,er=team==='blue'?.75:.3;
+  b.sph(.08,12,8,fur,null,[0,.062,0],null,[1.08,.95,1]);
+  b.sph(.042,8,6,cream,null,[0,.04,.056],null,[1.25,.82,1.05]);
+  b.sph(.015,6,4,0xd98a8e,null,[0,.054,.1],null,[1.25,.85,1]);
+  b.tor(.014,.0036,0x5a3a2c,null,[-.012,.031,.094],[.3,0,PI],null,PI,6);b.tor(.014,.0036,0x5a3a2c,null,[.012,.031,.094],[.3,0,PI],null,PI,6);
   for(s=-1;s<=1;s+=2){
-    b.sph(.0165,7,5,0x1a1210,null,[s*.029,.064,.051],null,[1,1.12,1]);b.sph(.0058,4,3,0xffffff,null,[s*.029+.005,.071,.064]);
-    b.sph(.011,5,3,0xf0a090,null,[s*.043,.036,.046],null,[1,.7,.5]);
-    b.sph(.037,7,4,fur,null,[s*ex,ey,-.008],[0,0,-s*er],[1,1,.28]);b.sph(.026,6,4,PINK,null,[s*ex,ey,-.001],[0,0,-s*er],[1,1,.26]);
-    b.box(.045,.0022,.0022,0x4a342a,null,[s*.05,.04,.068],[0,-s*.5,s*.12]);b.box(.042,.0022,.0022,0x4a342a,null,[s*.05,.03,.068],[0,-s*.5,-s*.14]);
+    b.sph(.024,7,5,0xfff4e2,null,[s*.035,.078,.058],null,[1,1.18,.7]);                                                     /* pale rim */
+    b.sph(.02,7,5,0x2a1e18,null,[s*.035,.078,.064],null,[1,1.2,.75]);b.sph(.0075,5,4,0xffffff,null,[s*.035-.006,.089,.079]);  /* big dark eye with a glint */
+    b.sph(.054,9,5,shade(fur,.86),null,[s*.082,.118,-.016],[0,0,-s*.22],[1,1.08,.26]);b.sph(.039,7,4,0xd9a0a0,null,[s*.082,.116,-.006],[0,0,-s*.22],[1,1.08,.24]);
+    for(i=-1;i<=1;i++)b.box(.05,.0024,.0024,0x7a5a48,null,[s*.068,.044+i*.008,.066],[0,-s*.45,s*i*.13]);
   }
-  if(team==='blue'){ /* floppy hat, goggles, white feather */
-    b.push([0,.104,-.004],[-.1,0,.05]);
-    b.cyl(.058,.064,.008,12,T.dark,'cloth',[0,0,.006],null,[1,1,1.12]);
-    b.cyl(.046,.058,.03,10,T.main,'cloth',[0,.018,0]);b.tor(.056,.007,CREAM,'cloth',[0,.008,0],[PI/2,0,0]);
-    b.sph(.047,8,5,T.main,'cloth',[.004,.034,-.006],null,[1,.55,1]);
-    b.cyl(.022,.04,.035,8,T.main,'cloth',[-.022,.048,-.016],[-.5,0,.9]);b.cyl(.008,.022,.034,6,T.main,'cloth',[-.05,.05,-.034],[-.9,0,1.9]);b.sph(.012,5,4,CREAM,null,[-.066,.036,-.046]);
-    for(s=-1;s<=1;s+=2){b.cyl(.017,.017,.014,8,GOLD,null,[s*.021,.026,.05],[PI/2-.25,0,0]);b.cyl(.0125,.0125,.016,6,0xbfe6ff,null,[s*.021,.0265,.0515],[PI/2-.25,0,0]);}b.box(.012,.007,.008,GOLD,null,[0,.026,.053]);
-    b.sph(.022,6,4,0xffffff,null,[.05,.062,-.004],[-.15,0,-.45],[.42,2.3,.16]);b.box(.004,.085,.004,0xe0d4b8,null,[.046,.052,-.002],[-.15,0,-.45]);
+  if(team==='blue'){ /* rounded cap with a peak and a pale band, goggles on top, one feather */
+    b.push([0,.1,-.004],[-.06,0,0]);
+    b.dome(.082,12,5,T.main,'cloth',null,null,[1.05,.82,1.05]);b.tor(.084,.008,T.light,'cloth',[0,.004,0],[PI/2,0,0],null,null,12);
+    b.cyl(.06,.064,.008,10,T.dark,'cloth',[0,.004,.05],[.12,0,0],[1.1,1,.9]);
+    for(s=-1;s<=1;s+=2){b.cyl(.023,.023,.016,9,0x6e4a2a,null,[s*.026,.05,.052],[PI/2-.75,0,0]);b.cyl(.017,.017,.02,8,0x86b8d8,null,[s*.026,.0515,.0535],[PI/2-.75,0,0]);b.sph(.005,4,3,0xffffff,null,[s*.026-.006,.062,.058]);}
+    b.box(.012,.008,.008,0x6e4a2a,null,[0,.05,.054]);b.tor(.079,.005,0x6e4a2a,null,[0,.038,0],[PI/2+.3,0,0],[1,1,.9],null,10);
+    b.sph(.026,6,4,0xf4efdc,null,[-.052,.105,-.012],[-.1,0,.42],[.45,2.3,.18]);b.box(.004,.1,.004,0xbdb39a,null,[-.05,.1,-.01],[-.1,0,.42]);
     b.pop();
-  }else if(team==='red'){ /* dented tin helmet */
-    b.push([0,.066,-.002],[-.1,0,.13]);
-    b.add(dentGeo(new THREE.SphereGeometry(.07,12,5,0,PI*2,0,PI/2),[.04,.05,.03],.045,.42),TIN,'rust',null,null,[1.04,.92,1.04]);
-    b.tor(.073,.006,shade(TIN,.8),'rust',[0,.002,0],[PI/2,0,0],null,null,10);
-    b.cyl(.008,.01,.012,6,shade(TIN,.75),null,[0,.066,0]);
-    b.box(.034,.028,.005,PAL.red.rust,'rust',[-.04,.035,.042],[-.55,-.75,0]);
-    for(i=0;i<4;i++){var a=i/4*PI*2+.4;b.sph(.005,5,4,shade(TIN,.7),null,[Math.cos(a)*.068,.012,Math.sin(a)*.068]);}
+  }else if(team==='red'){ /* grey dome helmet with a dent, and a rivet band */
+    b.push([0,.098,-.002],[-.05,0,.05]);
+    b.add(dentGeo(new THREE.SphereGeometry(.084,12,5,0,PI*2,0,PI/2),[.045,.06,.03],.05,.38),TIN,'rust',null,null,[1.04,.9,1.04]);
+    b.cyl(.092,.096,.022,12,shade(TIN,.72),'rust',[0,.004,0]);
+    for(i=0;i<8;i++){var a=i/8*PI*2+.4;b.sph(.007,5,3,0xd8d2c0,null,[Math.cos(a)*.095,.005,Math.sin(a)*.095]);}
+    b.box(.004,.03,.004,shade(TIN,.6),null,[-.02,.06,.066],[-.6,0,.3]);b.box(.004,.022,.004,shade(TIN,.6),null,[.03,.065,.058],[-.6,0,-.4]);
     b.pop();
-  }else{ /* miner's helmet; the lamp lens is a separate glowing mesh */
-    b.push([0,.066,-.002],[-.08,0,0]);
-    b.dome(.07,12,5,T.metal,'paint',null,null,[1.04,.92,1.04]);b.tor(.073,.006,shade(T.metal,.85),null,[0,.002,0],[PI/2,0,0],null,null,10);
-    b.box(.085,.007,.04,T.metal,'paint',[0,.004,.078]);
-    b.tor(.066,.008,shade(T.metal,.85),null,[0,0,0],[0,PI/2,0],[1,.93,1],PI,10);
-    b.cyl(.021,.021,.022,10,0x5a5a5e,null,[0,.04,.066],[PI/2,0,0]);b.cyl(.024,.021,.008,10,0x8a8a8e,null,[0,.04,.078],[PI/2,0,0]);
+  }else{ /* yellow miner's helmet with a brim band; the lamp lens is a separate glowing mesh */
+    b.push([0,.098,-.002],[-.05,0,0]);
+    b.dome(.084,12,5,T.metal,null,null,null,[1.04,.9,1.04]);b.cyl(.092,.096,.02,12,shade(T.metal,.86),null,[0,.003,0]);
+    b.box(.07,.008,.02,0xffe9a0,null,[0,.05,.058],[-.7,0,0]);
+    b.box(.05,.05,.03,0x8a6a34,null,[0,.058,.072],[-.35,0,0]);
     b.pop();
   }
   G.head=b.geo();
-  if(team==='green'){b=new Bld(4);b.cyl(.017,.017,.006,10,0xfff2b0,null,[0,.1,.0835],[PI/2-.08,0,0]);G.lamp=b.geo();}
+  if(team==='green'){b=new Bld(4);b.cyl(.019,.019,.008,10,0xfff2b0,null,[0,.149,.088],[PI/2-.38,0,0]);G.lamp=b.geo();}
   /* dizzy eyes: swirls that sit over the eyes */
-  b=new Bld(5);for(s=-1;s<=1;s+=2){b.cyl(.021,.021,.004,10,0xffffff,null,[s*.029,.064,.068],[PI/2,0,0]);b.tor(.011,.0034,0x2a1c14,null,[s*.029,.064,.071],null,null,PI*1.6,8);b.sph(.0045,4,3,0x2a1c14,null,[s*.029,.064,.071]);}
+  b=new Bld(5);for(s=-1;s<=1;s+=2){b.cyl(.024,.024,.004,10,0xffffff,null,[s*.035,.078,.081],[PI/2,0,0]);b.tor(.012,.0036,0x2a1c14,null,[s*.035,.078,.084],null,null,PI*1.6,8);b.sph(.005,4,3,0x2a1c14,null,[s*.035,.078,.084]);}
   G.dizzy=b.geo();
   /* arms hang down from the shoulder */
-  b=new Bld(6);b.cyl(.017,.021,.04,7,T.main,'cloth',[0,-.016,0]);b.cyl(.013,.013,.03,6,fur,null,[0,-.052,0]);b.sph(.018,6,4,furL,null,[0,-.07,0]);G.arm=b.geo();
+  b=new Bld(6);b.cyl(.017,.021,.04,7,T.main,'cloth',[0,-.016,0]);b.cyl(.013,.013,.03,6,T.main,'cloth',[0,-.05,0]);b.sph(.02,6,4,blend(fur,0xfff0d8,.72),null,[0,-.07,0]);G.arm=b.geo();
   /* legs hang down from the hip */
-  b=new Bld(7);b.cyl(.021,.017,.04,7,T.dark,'cloth',[0,-.02,0]);b.sph(.024,6,4,PINK,null,[0,-.046,.013],null,[1,.56,1.5]);G.leg=b.geo();
+  b=new Bld(7);b.cyl(.021,.017,.04,7,T.dark,'cloth',[0,-.02,0]);b.sph(.026,6,4,0x6a4634,null,[0,-.046,.014],null,[1,.56,1.5]);G.leg=b.geo();
   /* tail */
   b=new Bld(8);b.tube([[0,0,.01],[0,-.012,-.035],[0,0,-.075],[0,.035,-.1],[0,.075,-.09],[0,.095,-.07]],.0065,PINK,null,7,4);b.sph(.0075,5,4,PINK,null,[0,.095,-.07]);G.tail=b.geo();
   /* the team tool, held in the right hand */
@@ -337,14 +334,14 @@ SS.mouse=function(team,opts){
   var root=new THREE.Group(),rig=new THREE.Group(),body=new THREE.Group(),head=new THREE.Group(),armL=new THREE.Group(),armR=new THREE.Group(),legL=new THREE.Group(),legR=new THREE.Group(),tail=new THREE.Group();
   root.name='mouse';rig.name='rig';body.name='body';head.name='head';armL.name='armL';armR.name='armR';legL.name='legL';legR.name='legR';tail.name='tail';
   root.add(rig);rig.add(body);rig.add(legL);rig.add(legR);body.add(head);body.add(armL);body.add(armR);body.add(tail);
-  body.position.set(0,HIP,0);head.position.set(0,.118,0);armL.position.set(.064,.1,0);armR.position.set(-.064,.1,0);legL.position.set(.03,HIP,0);legR.position.set(-.03,HIP,0);tail.position.set(0,.014,-.052);
+  body.position.set(0,HIP,0);head.position.set(0,.108,0);armL.position.set(.064,.1,0);armR.position.set(-.064,.1,0);legL.position.set(.03,HIP,0);legR.position.set(-.03,HIP,0);tail.position.set(0,.014,-.052);
   body.add(mesh(G.body));head.add(mesh(G.head));armL.add(mesh(G.arm,M,false));armR.add(mesh(G.arm,M,false));legL.add(mesh(G.leg,M,false));legR.add(mesh(G.leg,M,false));tail.add(mesh(G.tail,M,false));
   var tool=mesh(G.tool);tool.name='tool';tool.position.set(0,-.072,0);armR.add(tool);
   var hammer=mesh(G.hammer,M,false);hammer.name='hammer';hammer.position.set(0,-.072,0);hammer.visible=false;armR.add(hammer);
   var plank=mesh(G.plank);plank.name='plank';plank.position.set(0,.082,.092);plank.visible=false;body.add(plank);
   var dz=mesh(G.dizzy,M,false);dz.name='dizzyEyes';dz.visible=false;head.add(dz);
   if(G.lamp){var lamp=mesh(G.lamp,glow(),false);lamp.name='lamp';head.add(lamp);}
-  var stars=SS.fx.stars();stars.name='stars';stars.position.set(0,.37,0);stars.visible=false;rig.add(stars);
+  var stars=SS.fx.stars();stars.name='stars';stars.position.set(0,.4,0);stars.visible=false;rig.add(stars);
   root.userData={team:team,fur:furName,toolKind:team==='blue'?'crossbow':(team==='red'?'cog':'mallet'),
     parts:{rig:rig,body:body,head:head,armL:armL,armR:armR,legL:legL,legR:legR,tail:tail,tool:tool,hammer:hammer,plank:plank,dizzyEyes:dz,stars:stars}};
   if(opts.scale)root.scale.setScalar(opts.scale);
@@ -379,7 +376,7 @@ SS.pose=function(m,name,t){
     rig.position.y=-.046;lL.rotation.set(-1.45,0,.32);lR.rotation.set(-1.45,0,-.32);
     b.rotation.x=-.14+.08*Math.sin(w);b.rotation.z=.1*Math.cos(w);h.rotation.z=.26*Math.sin(w+1);h.rotation.x=.16*Math.cos(w+1);
     aL.rotation.set(-.35,0,.6+.08*Math.sin(w));aR.rotation.set(-.35,0,-.6);tool.rotation.set(1.2,0,0);tl.rotation.y=.9;
-    P.dizzyEyes.visible=true;P.stars.visible=true;P.stars.position.y=.37+.008*Math.sin(t*5);P.stars.rotation.y=t*3.2;
+    P.dizzyEyes.visible=true;P.stars.visible=true;P.stars.position.y=.4+.008*Math.sin(t*5);P.stars.rotation.y=t*3.2;
   }else{ /* idle */
     s=Math.sin(t*2);b.position.y=HIP+.003*s;b.scale.y=1+.015*s;h.rotation.y=.32*Math.sin(t*.8);h.rotation.z=.06*Math.sin(t*1.3);
     tl.rotation.y=.4*Math.sin(t*1.7);aL.rotation.x=.08*s;aR.rotation.x=-.08*s;
