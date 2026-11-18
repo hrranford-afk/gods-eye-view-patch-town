@@ -172,17 +172,21 @@ function clearLine(s,x0,z0,x1,z1){var d=dist(x0,z0,x1,z1),n=Math.ceil(d/.04),g=G
 /* flood out from the mouse over open squares; head for the reachable square nearest the target */
 function plan(m){
   var g=GRID[m.side],si=ci(m.x),sj=ci(m.z),start=sj*GN+si,ti=ci(m.tx),tj=ci(m.tz),goal=tj*GN+ti,head=0,tail=0,best=start,bd=dist(m.x,m.z,m.tx,m.tz),c,i,j,k;
-  m.pver=GVER;m.ptx=m.tx;m.ptz=m.tz;m.pi=0;m.path=[];
+  m.pver=GVER;m.ptx=m.tx;m.ptz=m.tz;m.pi=0;m.path=[];m.claim=[m.x,m.z];
+  /* spots other mice stand on, or are heading for, are taken: pick a free one beside them */
+  var taken=[];SG.mice.forEach(function(o){if(o!==m&&o.claim&&o.state!=='cheer')taken.push(o.claim);});
+  function crowd(x,z){for(var q=0;q<taken.length;q++)if(dist(x,z,taken[q][0],taken[q][1])<CONFIG.personal)return .45;return 0;}
+  var goalTaken=crowd(m.tx,m.tz)>0;bd+=goalTaken?.45:0;
   if(bd<.05)return;
   _mark++;_q[tail++]=start;_seen[start]=_mark;_par[start]=-1;
   var DI=[1,-1,0,0,1,1,-1,-1],DJ=[0,0,1,-1,1,-1,1,-1];
-  while(head<tail){c=_q[head++];if(c===goal){best=c;bd=0;break;}i=c%GN;j=(c-i)/GN;var d=dist(cc(i),cc(j),m.tx,m.tz);if(d<bd-1e-6){bd=d;best=c;}
+  while(head<tail){c=_q[head++];if(c===goal&&!goalTaken){best=c;bd=0;break;}i=c%GN;j=(c-i)/GN;var d=dist(cc(i),cc(j),m.tx,m.tz);d+=crowd(cc(i),cc(j));if(d<bd-1e-6){bd=d;best=c;}
     for(k=0;k<8;k++){var ni=i+DI[k],nj=j+DJ[k];if(ni<0||nj<0||ni>=GN||nj>=GN)continue;var nc=nj*GN+ni;if(_seen[nc]===_mark||g[nc])continue;if(k>3&&(g[j*GN+ni]||g[nj*GN+i]))continue;_seen[nc]=_mark;_par[nc]=c;_q[tail++]=nc;}}
   var pts=[];c=best;while(c!==start&&c>=0){i=c%GN;pts.push([cc(i),cc((c-i)/GN)]);c=_par[c];}pts.reverse();
-  if(best===goal&&!g[goal]){if(pts.length)pts[pts.length-1]=[m.tx,m.tz];else pts.push([m.tx,m.tz]);}
+  if(best===goal&&!g[goal]&&!goalTaken){if(pts.length)pts[pts.length-1]=[m.tx,m.tz];else pts.push([m.tx,m.tz]);}
   /* pull the path tight: skip to the farthest point with a clear line */
   var out=[],px=m.x,pz=m.z,a=0;while(a<pts.length){var b=pts.length-1;while(b>a&&!clearLine(m.side,px,pz,pts[b][0],pts[b][1]))b--;out.push(pts[b]);px=pts[b][0];pz=pts[b][1];a=b+1;}
-  m.path=out;
+  m.path=out;if(out.length)m.claim=out[out.length-1];if(goalTaken)bd-=.45;
   if(bd>m.slack&&SG.clock-m.asked>6){m.q=1.2;m.asked=SG.clock;SG.stats.noPath++;pop(m.x,m.z,'?',false,.42);}}
 function walk(m,dt,speed){
   if(!m.path||m.pver!==GVER||m.ptx!==m.tx||m.ptz!==m.tz)plan(m);
@@ -562,7 +566,7 @@ function initView(){
 function camTarget(){var a=W/H,t=Math.tan(20*PI/180),v=SG.cam||0,need=[3.65,2.9,1.9][v],dH=[7.1,5.2,3.9][v],d=Math.max(need/(t*a),dH),el=v===0?(a<1?.95:.72):(v===1?.7:.62),lz=[.25,1.75,.1][v];
   return [0,Math.sin(el)*d,lz+Math.cos(el)*d,0,-.1,lz];}
 function moveCamera(){
-  if(SG.mode==='table'&&SG.phase!=='start'){var t=Math.tan(10*PI/180),hh=Math.max(120,H-150),d=Math.max(3.38*H/hh/t,3.38/(t*W/H));C.fov=20;C.aspect=W/H;C.up.set(0,0,-1);C.position.set(0,d,0);C.lookAt(0,0,0);C.near=1;C.far=d+12;C.updateProjectionMatrix();C.updateMatrixWorld();S.fog.near=d+4;S.fog.far=d+40;camNow=null;return;}
+  if(SG.mode==='table'&&SG.phase!=='start'){var t=Math.tan(10*PI/180),hh=Math.max(120,H-128),d=Math.max(3.38*H/hh/t,3.38/(t*W/H));C.fov=20;C.aspect=W/H;C.up.set(0,0,-1);C.position.set(0,d,0);C.lookAt(0,0,0);C.near=1;C.far=d+12;C.updateProjectionMatrix();C.updateMatrixWorld();S.fog.near=d+4;S.fog.far=d+40;camNow=null;return;}
   if(C.fov!==40){C.fov=40;C.up.set(0,1,0);C.near=.1;C.far=60;S.fog.near=9;S.fog.far=22;}
   var q=camTarget(),i;if(!camNow||SG.camSnap){camNow=q.slice();SG.camSnap=false;}else for(i=0;i<6;i++)camNow[i]+=(q[i]-camNow[i])*.14;
   C.aspect=W/H;C.position.set(camNow[0],camNow[1],camNow[2]);C.lookAt(camNow[3],camNow[4],camNow[5]);C.updateProjectionMatrix();C.updateMatrixWorld();}
@@ -672,7 +676,7 @@ SG.shot=function(name,team){
     SG.demo(11,0);SG.demo(11,1);SG.done(0);SG.done(1);SG.step(CONFIG.count+.05);SG.order(0,0,.3);SG.order(1,0,-.3);SG.step(5);stepUntil(function(){return crewReady(0)&&crewReady(1);},10);SG.sides[0].reload=SG.sides[1].reload=0;
     if(name==='table-2-fight'){var f1=wallOf(1),f0=wallOf(0);SG.setTool('lobber',0);SG.setTool('lobber',1);SG.sides[0].aim={on:true,tx:f1.x,tz:f1.z};SG.sides[1].aim={on:true,tx:.2,tz:.45};SG.debug.knock(f0.id,'wall.plank.2');SG.step(.5);SG.sides[0].msg.t=SG.sides[1].msg.t=0;SG.callout.t=0;}
     else if(name==='table-0-count'){SG.start('blue',{mode:'table',seed:777});SG.demo(11,0);SG.demo(11,1);SG.done(0);SG.done(1);SG.step(1.2);}
-    else{SG.sides[1].score=99.5;SG.sides[0].score=57;SG.step(2);}
+    else{SG.sides[1].score=100;SG.sides[0].score=57;SG.step(.5);}
     return;}
   if(name.indexOf('fight')!==0){SG.start(team,{level:'easy',seed:777});
     if(name==='build-2-ghost'){SG.demo(4);SG.step(14);SG.select(7);var q=layoutSpot(0,0,7);SG.turn(q[2]-SG.ghost.rot);SG.moveGhost(q[0],q[1]);}
