@@ -640,7 +640,7 @@ function initInput(){
 SG.boot=function(){
   initView();initInput();ui();
   var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0])Q[p[0]]=decodeURIComponent(p[1]||'');});
-  if(Q.shot){SG.shot(Q.shot,Q.team||'blue');ui();SG.camSnap=true;render();SG.camSnap=true;render();window.__done=true;return;}
+  if(Q.shot){SG.shot(Q.shot,Q.team||'blue');ui();SG.camSnap=true;render();SS.whenTextures(function(){SG.camSnap=true;render();render();window.__done=true;},4000);return;}
   if(Q.auto)autoRun(Q);
   var last=performance.now();(function loop(){var now=performance.now(),raw=now-last,dt=Math.min(.1,raw/1000);last=now;if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(dt*(SG.speed||1));render();if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
 /* ?auto=both|blue|red&level=easy|normal|hard&report=1 : bots play a match with no title screen, drawn normally, and the page
