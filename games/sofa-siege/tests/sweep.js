@@ -23,17 +23,18 @@ const run = async () => {
     const rows = [];
     for (let i = 0; i < N; i += 10) {   /* ten matches a call keeps each browser call short */
       rows.push(...await p.evaluate(([i0, lvl, seedBase]) => { const r = []; for (let i = i0; i < i0 + 10; i++) {
-        SG.start(i % 2 ? 'red' : 'blue', { seed: seedBase + i * 131, level: lvl }); SG.auto(0, lvl); SG.skipBuild(); SG.begin(); let g = 0; while (SG.phase !== 'over' && g++ < 400) SG.step(1);
+        SG.start(i % 2 ? 'red' : 'blue', { seed: seedBase + i * 131, level: lvl }); SG.auto(0, lvl); SG.skipBuild(); const lay = [SG.sides[0].layout, SG.sides[1].layout]; SG.begin(); let g = 0; while (SG.phase !== 'over' && g++ < 400) SG.step(1);
         const st = SG.stats, off = SG.pieces.reduce((s, q) => s + q.ps.filter((x) => x.st !== 'on').length, 0);
-        r.push({ over: SG.phase === 'over', win: SG.sides[SG.winner].team, front: SG.winner === 0, len: st.fightTime, diz: st.dizzies, daze: st.dazes, flips: st.hillFlips, off: st.partsOff, mended: st.partsMended, still: off, shots: st.shots, stuck: st.stuck, noPath: st.noPath, own: st.ownHits, gap: st.longestGap,
+        r.push({ lay, over: SG.phase === 'over', win: SG.sides[SG.winner].team, front: SG.winner === 0, len: st.fightTime, diz: st.dizzies, daze: st.dazes, flips: st.hillFlips, off: st.partsOff, mended: st.partsMended, still: off, shots: st.shots, stuck: st.stuck, noPath: st.noPath, own: st.ownHits, gap: st.longestGap,
           margin: Math.abs(SG.sides[0].score - SG.sides[1].score) }); } return r; }, [i, lvl, seedBase]));
     }
     const R = rows.slice(0, N), avg = (f) => R.reduce((s, r) => s + f(r), 0) / R.length, pct = (f) => 100 * R.filter(f).length / R.length;
     const L = out.levels[lvl] = { blue: pct((r) => r.win === 'blue'), red: pct((r) => r.win === 'red'), front: pct((r) => r.front), allOver: R.every((r) => r.over), len: avg((r) => r.len), early: pct((r) => r.len < 179.9),
       dizzies: avg((r) => r.diz), dazes: avg((r) => r.daze), flips: avg((r) => r.flips), partsOff: avg((r) => r.off), mendedPct: 100 * avg((r) => r.mended) / Math.max(1, avg((r) => r.off)), shots: avg((r) => r.shots),
+      layouts: [0, 1, 2].map((k) => { const g = R.filter((r) => r.lay[0] !== r.lay[1] && (r.lay[0] === k || r.lay[1] === k)); return g.length ? Math.round(100 * g.filter((r) => r.lay[r.front ? 0 : 1] === k).length / g.length) : -1; }),
       stuck: R.reduce((s, r) => s + r.stuck, 0), noPath: avg((r) => r.noPath), ownHits: avg((r) => r.own), gapMax: Math.max(...R.map((r) => r.gap)), margin: avg((r) => r.margin) };
     console.log(lvl.padEnd(7) + ' blue ' + L.blue.toFixed(0) + '%  red ' + L.red.toFixed(0) + '%  front ' + L.front.toFixed(0) + '%  | dizzies ' + L.dizzies.toFixed(1) + ' (dazes ' + L.dazes.toFixed(1) + ')  flips ' + L.flips.toFixed(1) + '  parts off ' + L.partsOff.toFixed(1) + '  mended ' + L.mendedPct.toFixed(0) + '%  shots ' + L.shots.toFixed(0) +
-      '  len ' + L.len.toFixed(0) + ' s  early ' + L.early.toFixed(0) + '%  margin ' + L.margin.toFixed(0) + '  stuck ' + L.stuck + '  no-path ' + L.noPath.toFixed(1) + '  own hits ' + L.ownHits.toFixed(2) + '  quiet ' + L.gapMax.toFixed(0) + ' s');
+      '  len ' + L.len.toFixed(0) + ' s  early ' + L.early.toFixed(0) + '%  margin ' + L.margin.toFixed(0) + '  stuck ' + L.stuck + '  no-path ' + L.noPath.toFixed(1) + '  own hits ' + L.ownHits.toFixed(2) + '  quiet ' + L.gapMax.toFixed(0) + ' s  | camp presets win ' + L.layouts.join('/') + '%');
   }
   out.errors = errs; fs.writeFileSync(path.resolve(__dirname, 'sweep-result.json'), JSON.stringify(out, null, 1));
   if (!sets.length && seedBase === 9000) {   /* a run with the numbers as they are in game.js writes the report */
