@@ -213,3 +213,8 @@ bring to the game."
 - Usage limit stopped the builders twice today (12:00 to 17:10 and 18:15 to 21:52). Check-ins are set for 23:30 and 03:00.
 - Overnight: one builder on AR mode v0 (play on a real table in HelloXR), tested with the fake AR only.
 - Nobody has played the game by hand yet. Harry's iPad test is the most valuable next step.
+
+## 18 Nov, 22:52 UK: AR mode v0 on the test link
+- sofa-siege/ = game/sofa-siege ccda72c, build label `rtk-ar-2`. "Play on my table (AR)" shows in HelloXR only. In-scene buttons take over if the overlay is missing or deaf. Tests: ar 73, build 24, table 30, fight 48, layout 37. Loaded clean with HelloXR's own polyfill injected.
+- NOT TESTED on a real iPad. Harry's 8 steps are in games/sofa-siege/AR_NOTES.md (branch game/sofa-siege). Previous practice-table-only version kept at sofa-siege-b5.
+- No builder is running overnight: the next useful input is Harry's hands on the iPad.
