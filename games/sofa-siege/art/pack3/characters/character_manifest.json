@@ -1,0 +1,53 @@
+{
+  "status": "hand-painted-style concept sheets, approximate model reference; NOT 3D meshes",
+  "characters": [
+    {
+      "type": "blue_archer",
+      "png": "characters/01_blue_archer.png",
+      "svg_source": "characters/01_blue_archer.svg",
+      "size_px": [
+        2400,
+        1130
+      ],
+      "view_order": [
+        "front",
+        "side",
+        "back",
+        "three-quarter"
+      ],
+      "sha256": "a11ec25cff7b6416bbfe828e81b68a43e865353b21c75c89487ff253a2cc610f"
+    },
+    {
+      "type": "red_scrapper",
+      "png": "characters/02_red_scrapper.png",
+      "svg_source": "characters/02_red_scrapper.svg",
+      "size_px": [
+        2400,
+        1130
+      ],
+      "view_order": [
+        "front",
+        "side",
+        "back",
+        "three-quarter"
+      ],
+      "sha256": "4e4b8bbaf74d9d0f70f75e1428792c64896e265be9ec907db719d568b0b01609"
+    },
+    {
+      "type": "green_builder",
+      "png": "characters/03_green_builder.png",
+      "svg_source": "characters/03_green_builder.svg",
+      "size_px": [
+        2400,
+        1130
+      ],
+      "view_order": [
+        "front",
+        "side",
+        "back",
+        "three-quarter"
+      ],
+      "sha256": "81da70b0a398ac028459ff7efc000aafb3c092ba194dd538bbba52f3a692cac4"
+    }
+  ]
+}

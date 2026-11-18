@@ -1,0 +1,102 @@
+{
+  "source_atlas": "textures/source/painted_wood_metal_atlas.png",
+  "seed": 20261118,
+  "tiles": [
+    {
+      "name": "01_wood_planks",
+      "file": "textures/01_wood_planks.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "7f131ed9bd688c88fbe8ea84120f33a87b3b69ab978a61bb295c83c61c6ad49c",
+      "method": "painted atlas + wrap blend"
+    },
+    {
+      "name": "02_blue_painted_planks",
+      "file": "textures/02_blue_painted_planks.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "c1c74a58e2702d7123c23401d5516a3a26647a80f23a04f4686f2de2aca35646",
+      "method": "painted atlas + wrap blend"
+    },
+    {
+      "name": "03_red_painted_planks",
+      "file": "textures/03_red_painted_planks.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "edb12176f4f3307126e187054606bb8971cacec4cc8c1b441b5e189cdf59d075",
+      "method": "painted atlas + wrap blend"
+    },
+    {
+      "name": "04_rusty_tin",
+      "file": "textures/04_rusty_tin.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "fb46e8e1371f2ea4011dd9fd30341136e7aa75b038613faede57b9e5eb2e636b",
+      "method": "painted atlas + wrap blend"
+    },
+    {
+      "name": "05_cream_canvas",
+      "file": "textures/05_cream_canvas.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "d5b3a8148b5a637c79adc956cc654011db97ad6ce3a37298223ffa8d91f4a39d",
+      "method": "deterministic procedural painted strokes"
+    },
+    {
+      "name": "06_rope_rows",
+      "file": "textures/06_rope_rows.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "d5051a7a08f80c6056a632aaf774a50b2d1ef0abf94d010ee88ca074edb5b9fe",
+      "method": "deterministic procedural painted strokes"
+    },
+    {
+      "name": "07_grass_moss_daisies",
+      "file": "textures/07_grass_moss_daisies.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "18ded1e2f5c24ae2c06932dece929c069b09782c46d55e844bd80fff553178f1",
+      "method": "deterministic procedural painted strokes"
+    },
+    {
+      "name": "08_mouse_fur_swatches",
+      "file": "textures/08_mouse_fur_swatches.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "edge_left_right_max_abs_difference": 0,
+      "edge_top_bottom_max_abs_difference": 0,
+      "sha256": "006fd16d0875d3cc1ee1827ea3cbb160c82c721f8152b4a8fa2eb39821f3ff33",
+      "method": "deterministic procedural painted strokes"
+    }
+  ]
+}
