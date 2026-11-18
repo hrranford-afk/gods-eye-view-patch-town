@@ -27,7 +27,7 @@ var CV_CARDS = (function () {
     frameLevels: 3, upTo: 0, frameCap: 1400, fastThr: 12, cell: 32, perCell: 18,
     maxHam: 70, ratio: 0.9, ratioMM: 12,
     ransacIters: 300, minInl: 8, maxRounds: 8,
-    dense: true, features: true, quads: true, quadK: 1.1, quadMaxK: 0, quadMaxR: 3, quadClose: 0, quadErode: 0, quadFill: 0.12, maxQuads: 12, quadNccMin: 0.55, quadNccAll: 0.3, quadMargin: 0.12, globMin: 0.3, quadGlobMin: 0.65, nccMin: 0.34, nccMargin: 0.07, nccAll: 0.22, minVisible: 0.45,
+    dense: true, features: true, quads: true, quadK: 1.1, quadMaxK: 0, quadMaxR: 3, quadClose: 0, quadErode: 0, quadFill: 0.12, maxQuads: 12, quadNccMin: 0.55, quadNccAll: 0.3, quadMargin: 0.12, globMin: 0.3, quadGlobMin: 0.65, hueChroma: 0.12, hueMinFrac: 0.008, nccMin: 0.34, nccMargin: 0.07, nccAll: 0.22, minVisible: 0.45,
     inlMin: 14                            /* idMode 'inliers' only */
   };
   var BORD = 20;
@@ -279,10 +279,10 @@ var CV_CARDS = (function () {
     function detectFr(fr) { S.stats.rejected = []; S.stats.matches = 0; var out = o.features ? detectFeat(fr) : []; S.stats.quads = 0;
       if (o.quads) { var qs = findQuads(fr); S.stats.quads = qs.length; qs.forEach(function (q) { var cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4, k, t, taken = false;
         for (k = 0; k < out.length && !taken; k++) { var g = out[k].corners, ins = true; for (t = 0; t < 4; t++) { var a = g[t], b = g[(t + 1) % 4]; if ((b[0] - a[0]) * (cy - a[1]) - (b[1] - a[1]) * (cx - a[0]) < 0) { ins = false; break; } } if (ins) taken = true; } if (taken) return;
-        var d = fromQuad(fr, q); if (!d) return; if (!d.ok) { S.stats.rejected.push({ id: d.id, db: 'outline', inliers: 0, score: d.score, margin: d.margin, all: d.all, corners: d.corners }); return; } delete d.ok;
+        var d = fromQuad(fr, q); if (!d) return; if (!d.ok) { S.stats.rejected.push({ id: d.id, db: 'outline', via: 'outline', inliers: 0, score: d.score, glob: d.glob, margin: d.margin, all: d.all, corners: d.corners, H: d.H }); return; } delete d.ok;
         var prev = -1; for (k = 0; k < out.length; k++) if (out[k].id === d.id) prev = k; if (prev < 0) out.push(d); else if (d.score > out[prev].score + 0.1) out[prev] = d; }); }
       /* inside, every card is worked on as 210 x 148.5 units; hand back H in the card's own printed millimetres */
-      out.forEach(function (d) { var c = null; for (var k = 0; k < S.cards.length; k++) if (S.cards[k].id === d.id) c = S.cards[k]; var fx = CW / c.mm.w, fy = CH / c.mm.h, H = d.H; d.H = [H[0] * fx, H[1] * fy, H[2], H[3] * fx, H[4] * fy, H[5], H[6] * fx, H[7] * fy, H[8]]; d.sizeMM = { w: c.mm.w, h: c.mm.h }; if (!d.via) d.via = 'corners'; });
+      out.concat(S.stats.rejected).forEach(function (d) { if (!d.H) return; var c = null; for (var k = 0; k < S.cards.length; k++) if (S.cards[k].id === d.id) c = S.cards[k]; var fx = CW / c.mm.w, fy = CH / c.mm.h, H = d.H; d.H = [H[0] * fx, H[1] * fy, H[2], H[3] * fx, H[4] * fy, H[5], H[6] * fx, H[7] * fy, H[8]]; d.sizeMM = { w: c.mm.w, h: c.mm.h }; if (!d.via) d.via = 'corners'; });
       return out; }
     function detectFeat(fr) {
       var out = [], M = matchAll(fr), nM = M.f.length; S.lastMatches = M; var alive = new Uint8Array(nM).fill(1), rnd = rng(1234567 + nM), thr = 2 + fr.w / 640, thr2 = thr * thr;
@@ -344,12 +344,32 @@ var CV_CARDS = (function () {
           var gq = best.corners, cxq = (gq[0][0] + gq[1][0] + gq[2][0] + gq[3][0]) / 4, cyq = (gq[0][1] + gq[1][1] + gq[2][1] + gq[3][1]) / 4, big = gq.map(function (p) { return [cxq + (p[0] - cxq) * 1.06, cyq + (p[1] - cyq) * 1.06]; });
           for (i = 0; i < nM; i++) { if (!alive[i]) continue; var px = fr.x[M.f[i]], py = fr.y[M.f[i]], inq = true; for (k = 0; k < 4; k++) { var a = big[k], b = big[(k + 1) % 4]; if ((b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]) < 0) { inq = false; break; } } if (inq) alive[i] = 0; }
           lst.forEach(function (m) { alive[m] = 0; }); }
-        else { S.stats.rejected.push({ id: best.id, db: best.db, inliers: best.inliers, score: best.score, margin: best.margin, all: best.all, visible: best.visible, corners: best.corners }); used.forEach(function (m) { alive[m] = 0; }); }
+        else { S.stats.rejected.push({ id: best.id, db: best.db, via: 'corners', inliers: best.inliers, score: best.score, glob: best.glob, margin: best.margin, all: best.all, visible: best.visible, corners: best.corners, H: best.H }); used.forEach(function (m) { alive[m] = 0; }); }
       }
       return out;
     }
     function detect(gray, w, h) { if (!S.ready) return []; var t0 = now(), fr = extract(gray, w, h, o), t1 = now(), r = detectFr(fr); S.stats.extractMs = t1 - t0; S.stats.matchMs = now() - t1; S.stats.features = fr.n; return r; }
 
+    /* ---------- colour cue (only for a colour-printed set) ----------
+       The dominant hue of the coloured parts inside a card outline, after balancing to the card's own paper white.
+       src: { r, g, b } Uint8Arrays, or { rgba } as from getImageData. H: card mm -> pixels (as in a sighting). */
+    function hueOf(src, w, h, H, mm) { var NX = 64, NY = 45, n = NX * NY, R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n), L = new Float32Array(n), k = 0, x, y;
+      for (y = 0; y < NY; y++) for (x = 0; x < NX; x++) { var p = hApply(H, ((x + 0.5) / NX - 0.5) * mm.w * 0.97, ((y + 0.5) / NY - 0.5) * mm.h * 0.97), px = Math.round(p[0]), py = Math.round(p[1]); if (px < 0 || py < 0 || px >= w || py >= h) continue; var i = py * w + px;
+        if (src.rgba) { R[k] = src.rgba[i * 4]; G[k] = src.rgba[i * 4 + 1]; B[k] = src.rgba[i * 4 + 2]; } else { R[k] = src.r[i]; G[k] = src.g[i]; B[k] = src.b[i]; } L[k] = R[k] + G[k] + B[k]; k++; }
+      if (k < n * 0.7) return { hue_deg: null, fraction: 0, why: 'card partly out of the picture' };
+      var sorted = Array.from(L.subarray(0, k)).sort(function (a, b) { return a - b; }), cut = sorted[(k * 0.7) | 0], wr = 0, wg = 0, wb = 0, wn = 0, j;
+      for (j = 0; j < k; j++) if (L[j] >= cut) { wr += R[j]; wg += G[j]; wb += B[j]; wn++; } wr /= wn; wg /= wn; wb /= wn; if (wr < 20 || wg < 20 || wb < 20) return { hue_deg: null, fraction: 0, why: 'too dark' };
+      var sxh = 0, syh = 0, cnt = 0, sat = 0;
+      for (j = 0; j < k; j++) { var r = R[j] / wr, g = G[j] / wg, b = B[j] / wb, mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; if (c < o.hueChroma || mx < 0.3) continue; var hh = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4; hh *= Math.PI / 3; sxh += c * Math.cos(hh); syh += c * Math.sin(hh); cnt++; sat += c; }
+      if (cnt < n * o.hueMinFrac) return { hue_deg: null, fraction: cnt / k, why: 'no clear colour' };
+      var hue = Math.atan2(syh, sxh) * 180 / Math.PI; if (hue < 0) hue += 360; return { hue_deg: hue, fraction: cnt / k, strength: Math.hypot(sxh, syh) / sat }; }
+    function initColour(rgbImages) { /* rgbImages: [{ id, r, g, b, w, h }] the colour card PNGs. Stores each card's own hue. */
+      S.hues = {}; rgbImages.forEach(function (im) { var mm = { w: 210, h: 148.5 }, Hc = [im.w / mm.w, 0, im.w / 2, 0, im.h / mm.h, im.h / 2, 0, 0, 1], q = hueOf(im, im.w, im.h, Hc, mm); S.hues[im.id] = q.hue_deg; }); return S.hues; }
+    function colourCue(det, src, w, h) { /* -> { hue_deg, best, best_diff_deg, own_diff_deg, runner_up_diff_deg } or hue_deg null when no colour can be read */
+      if (!S.hues || !det || !det.H) return null; var q = hueOf(src, w, h, det.H, det.sizeMM || { w: CW, h: CH }); if (q.hue_deg === null) return q;
+      var best = null, bd = 999, sd = 999, id; for (id in S.hues) { if (S.hues[id] === null) continue; var dd = Math.abs(((q.hue_deg - S.hues[id]) % 360 + 540) % 360 - 180); if (dd < bd) { sd = bd; bd = dd; best = id; } else if (dd < sd) sd = dd; }
+      q.best = best; q.best_diff_deg = bd; q.runner_up_diff_deg = sd; q.own_diff_deg = S.hues[det.id] === null || S.hues[det.id] === undefined ? null : Math.abs(((q.hue_deg - S.hues[det.id]) % 360 + 540) % 360 - 180); return q; }
+    S.initColour = initColour; S.colourCue = colourCue;
     S.findQuads = findQuads; S.fromQuad = fromQuad;
     S.init = init; S.detect = detect; S.detectFr = detectFr; S.identify = identify; S.extract = function (g, w, h) { return extract(g, w, h, o); };
     return S;
@@ -395,8 +415,10 @@ var CV_CARDS = (function () {
   D.util = { resizeArea: resizeArea, hApply: hApply, hFit: hFit, mul3: mul3, inv3: inv3, rodrigues: rodrigues, rng: rng, bil: bil };
   D.grayFromRGBA = function (px, w, h) { var g = new Uint8Array(w * h); for (var i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return g; };
   D.SETS = { '1': { dir: 'art', mm: { w: 210, h: 148.5 }, label: 'Set 1: engraved, A5', files: { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' } },
-    '2': { dir: 'art2', mm: { w: 148, h: 105 }, label: 'Set 2: bold woodcut, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } } };
-  D.DEFAULT_SET = '2'; /* Set 2 named no card wrongly in 978 showings; Set 1 did 10 times. See RECOGNITION_REPORT.md */
+    '2': { dir: 'art2', mm: { w: 148, h: 105 }, label: 'Set 2: bold woodcut, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } },
+    '2b': { dir: 'art2b', mm: { w: 148, h: 105 }, label: 'Set 2b: bold woodcut, redrawn, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } },
+    '2bc': { dir: 'art2b-colour', mm: { w: 148, h: 105 }, colour: true, label: 'Set 2b in colour, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } } };
+  D.DEFAULT_SET = '2b'; /* Set 2 and 2b named no card wrongly in 978 showings; Set 1 did 10 times. See RECOGNITION_REPORT.md */
   D.CARD_FILES = { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' };
   return D;
 })();
