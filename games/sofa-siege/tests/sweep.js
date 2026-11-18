@@ -14,7 +14,7 @@ const all = process.argv.slice(3).map((s) => s.split('='));
 const sets = all.filter((q) => q[0] !== 'seedBase');   /* seedBase=N plays a different set of matches, to check the tuning on fresh ones */
 const seedBase = +((all.find((q) => q[0] === 'seedBase') || [0, 9000])[1]);
 const run = async () => {
-  const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const p = await b.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto('file://' + path.resolve(__dirname, '..', 'index.html')); await p.waitForFunction('window.__done', null, { timeout: 60000 });
   await p.evaluate((sets) => { SG.hold = true; sets.forEach(([k, v]) => { const ks = k.split('.'); let o = SG.CONFIG; while (ks.length > 1) o = o[ks.shift()]; o[ks[0]] = +v; }); }, sets);
@@ -37,11 +37,12 @@ const run = async () => {
       '  len ' + L.len.toFixed(0) + ' s  early ' + L.early.toFixed(0) + '%  margin ' + L.margin.toFixed(0) + '  stuck ' + L.stuck + '  no-path ' + L.noPath.toFixed(1) + '  own hits ' + L.ownHits.toFixed(2) + '  quiet ' + L.gapMax.toFixed(0) + ' s  | camp presets win ' + L.layouts.join('/') + '%');
   }
   out.errors = errs; fs.writeFileSync(path.resolve(__dirname, 'sweep-result.json'), JSON.stringify(out, null, 1));
-  if (!sets.length && seedBase === 9000) {   /* a run with the numbers as they are in game.js writes the report */
+  if (!sets.length) {   /* a run with the numbers as they are in game.js writes the report */
     const L = out.levels, c = out.config, f0 = (x) => x.toFixed(0), f1 = (x) => x.toFixed(1), row = (name, f) => '| ' + name + ' | ' + ['easy', 'normal', 'hard'].map((k) => f(L[k])).join(' | ') + ' |';
     const inR = (x, a, b2) => x >= a && x <= b2 ? 'yes' : 'NO';
     const md = ['# Round Table Kingdom: balance sweep, bot against bot', '',
       'Made by `tests/sweep.js`: ' + N + ' matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match. Both camps are the same preset, so the only differences are the team rules and the dice. All matches start from finished camps.', '',
+      seedBase === 9000 ? 'These are the matches the numbers were tuned on, so the win shares flatter them a little.' : '**Fresh seeds:** this run used seedBase ' + seedBase + ', matches the numbers were never tuned on. Nothing was changed after seeing it.', '',
       '## Results', '', '| | Easy | Normal | Hard |', '|---|---|---|---|',
       row('Blue wins', (x) => f0(x.blue) + '%'), row('Red wins', (x) => f0(x.red) + '%'), row('Each team inside 45–55%', (x) => inR(x.blue, 45, 55)),
       row('Front seat wins', (x) => f0(x.front) + '%'), row('Front seat under 55%', (x) => x.front < 55 ? 'yes' : 'NO'),

@@ -100,11 +100,14 @@ function hillSpot(side,lat,fwd){var h=SG.layout.hill,b=baseOf(side),dx=b.x-h.x,d
    hill is an optional extra mound. Millimetres and degrees from the anchor, which is taken as the middle of the table.
    x = x_mm / mm_per_unit, z = -y_mm / mm_per_unit, a base's turn = yaw_deg (0 for blue's usual way round, 180 for red's).
    A bad layout is refused with a plain reason and the layout in use stays. It takes effect at the next SG.start. */
-SG.applyLayout=function(json){
+SG.MM_PER_UNIT=160;SG.CARD_STORE_KEY='rtk.locked_placements.v1';
+/* the layout the player locked on the cards page, if this device has one saved (the same key cards/setup.js uses) */
+SG.savedCardLayout=function(){try{var t=window.localStorage.getItem(SG.CARD_STORE_KEY);if(!t)return null;var o=JSON.parse(t);return o&&o.schema_version===1&&Array.isArray(o.placements)?o:null;}catch(e){return null;}};
+SG.applyLayout=function(json,opts){
   function no(reason){SG.layoutNote=reason;return {ok:false,reason:reason};}
   var o=json;if(typeof o==='string'){try{o=JSON.parse(o);}catch(e){return no('The layout is not readable JSON');}}
   if(!o||o.schema_version!==1||!Array.isArray(o.placements))return no('The layout must be schema_version 1 with a list of placements');
-  var mm=+(o.mm_per_unit||160),got={},names={blue_base:'BLUE BASE',red_base:'RED BASE',capture_flag:'CAPTURE FLAG',hill:'HILL'};if(!(mm>20&&mm<2000))return no('mm_per_unit is not a sensible number');
+  var mm=+((opts&&opts.mmPerUnit)||o.mm_per_unit||SG.MM_PER_UNIT),got={},names={blue_base:'BLUE BASE',red_base:'RED BASE',capture_flag:'CAPTURE FLAG',hill:'HILL'};   /* build_camp and the anchor are read past: the game has no use for them yet */if(!(mm>20&&mm<2000))return no('mm_per_unit is not a sensible number');
   o.placements.forEach(function(p){var t=p&&p.transform_anchor_relative;if(!p||!names[p.kind]||!t)return;got[p.kind]={x:+t.x_mm/mm,z:-(+t.y_mm)/mm,phi:(+t.yaw_deg||0)*PI/180,name:names[p.kind]};});
   var miss=['blue_base','red_base','capture_flag'].filter(function(k){return !got[k];});if(miss.length)return no('Not placed yet: '+miss.map(function(k){return names[k];}).join(', '));
   var k,B=got.blue_base,Rd=got.red_base,F=got.capture_flag,M=got.hill||null;
@@ -141,7 +144,7 @@ SG.start=function(team,opts){
     for(var i=0;i<5;i++){var h=w2(s,(i-2)*.42,2.3-Math.abs(i-2)*.1);SG.mice.push({side:s,i:i,state:'idle',x:h[0],z:h[1],rot:phiOf(s)+PI,tx:h[0],tz:h[1],hx:h[0],hz:h[1],job:0,part:-1,t:0,wait:.5+i*.4,speed:0,
       slack:.3,q:0,asked:-9,path:null,pi:0,pver:-1,ptx:0,ptz:0,cd:1+i*.5,act:0,moved:0,goal:false,daze:false});}}
   SG.kit=SG.sides[0].kit;viewStart();ui();};
-SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;s.sel=-1;};
+SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;s.sel=-1;ui();};
 SG.reset=function(){viewClear();SG.phase='start';SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.sides=[];SG.kit=[];ui();};
 function say(code,text,bad,s){var side=SG.sides[s||0];if(side)side.msg={code:code,text:text,t:bad?2.2:2.6,bad:!!bad};}
 function shout(text){SG.callout={text:text,t:2.6};}
@@ -689,6 +692,9 @@ function initInput(){
     d.addEventListener('pointerdown',function(e){var b=e.target.closest?e.target.closest('button'):null;if(!b)return;e.preventDefault();e.stopPropagation();soundOn();var a=b.getAttribute('data-a');
       if(a==='L')SG.turn(PI/12,s);else if(a==='R')SG.turn(-PI/12,s);else if(a==='undo')SG.undo(s);else if(a==='ready')SG.done(s);else if(a==='again')SG.reset();else SG.setTool(a,s);});})(s2);
   var pick='blue',lvl='easy',mode='solo';
+  if(SG.savedCardLayout()){E('bCards').style.display='inline-block';E('bCards').onclick=function(){var on=SG.layout.custom&&SG.layoutFrom==='cards',n=E('layoutNote');n.style.display='block';
+    if(on){SG.clearLayout();SG.layoutFrom='';E('bCards').className='btn';n.textContent='Using the usual table.';return;}
+    var r=SG.applyLayout(SG.savedCardLayout());if(r.ok){SG.layoutFrom='cards';E('bCards').className='btn on';n.textContent='Using your card layout.';}else n.textContent='Your card layout cannot be used: '+r.reason+' Using the usual table.';};}
   E('m_solo').onclick=function(){mode='solo';choose(['m_solo','m_table'],'m_solo');E('soloOpts').style.display='block';E('tableNote').style.display='none';};
   E('m_table').onclick=function(){mode='table';choose(['m_solo','m_table'],'m_table');E('soloOpts').style.display='none';E('tableNote').style.display='block';};
   function choose(ids,on){ids.forEach(function(id){E(id).className='btn'+(id===on?' on':'');});}

@@ -81,6 +81,17 @@ const run = async () => {
   await p.goto(url + '?layout=%%%'); await p.waitForFunction('window.__done').catch(() => {});
   ok('an unreadable ?layout= does not break the page', await ev(() => SG.layout.custom === false && SG.phase === 'start'));
 
+  /* a layout locked on the cards page (saved under the key cards/setup.js uses) is offered on the title screen */
+  await p.goto(url); await p.waitForFunction('window.__done');
+  ok('with no saved card layout the title has no "Use my card layout"', await ev(() => getComputedStyle(document.getElementById('bCards')).display === 'none'));
+  const stored = await ev((j) => { try { localStorage.setItem('rtk.locked_placements.v1', JSON.stringify(j)); return true; } catch (e) { return false; } }, Object.assign({}, GOOD['camps east and west'], { placements: GOOD['camps east and west'].placements.concat([{ card_id: '05', kind: 'build_camp', transform_anchor_relative: { x_mm: 10, y_mm: 10, z_mm: 0, yaw_deg: 0 }, status: 'LOCKED' }]) }));
+  if (stored) { await p.goto(url); await p.waitForFunction('window.__done'); await p.click('#bCards');
+    ok('a saved locked record (with build_camp in it) is offered, and "Use my card layout" applies it', await ev(() => SG.layout.custom === true && Math.abs(SG.layout.bases.blue.x + 1.9) < 1e-6 && /Using your card layout/.test(document.getElementById('layoutNote').textContent)));
+    await p.click('#bCards'); ok('pressing it again goes back to the usual table', await ev(() => SG.layout.custom === false));
+    await ev(() => localStorage.removeItem('rtk.locked_placements.v1')); }
+  else ok('(localStorage is blocked here, so the saved-layout button could not be tested)', true);
+  ok('applyLayout takes mmPerUnit as an option', await ev((j) => { const r = SG.applyLayout(j, { mmPerUnit: 152 }); const x = SG.layout.bases.blue.x; SG.clearLayout(); return r.ok && Math.abs(x + 2) < 1e-6; }, GOOD['camps east and west']));
+
   /* how unfair is an off-centre table? 30 bot matches, teams swapping who is the front side */
   await ev(() => { SG.hold = true; });
   const fair = await ev((j) => { SG.applyLayout(j); const L = SG.layout, d = (t) => Math.hypot(L.bases[t].x - L.hill.x, L.bases[t].z - L.hill.z); const out = { blue: 0, red: 0, dBlue: d('blue'), dRed: d('red'), stuck: 0, over: 0, margin: 0 };

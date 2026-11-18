@@ -2,33 +2,31 @@
 
 Made by `tests/sweep.js`: 200 matches at each level, stepped headless (no frames drawn). Both sides are the same bot at the same level. The teams swap ends every match. Both camps are the same preset, so the only differences are the team rules and the dice. All matches start from finished camps.
 
+**Fresh seeds:** this run used seedBase 777000, matches the numbers were never tuned on. Nothing was changed after seeing it.
+
 ## Results
 
 | | Easy | Normal | Hard |
 |---|---|---|---|
-| Blue wins | 53% | 54% | 54% |
-| Red wins | 48% | 47% | 46% |
+| Blue wins | 55% | 49% | 50% |
+| Red wins | 45% | 52% | 50% |
 | Each team inside 45–55% | yes | yes | yes |
-| Front seat wins | 53% | 48% | 48% |
-| Front seat under 55% | yes | yes | yes |
-| Dizzies a match (target 15–25) | 14.8, of which cork dazes 4.3 | 17.0, of which cork dazes 4.4 | 25.1, of which cork dazes 4.1 |
-| Hill changes hands (target 6–12) | 9.0 | 10.0 | 13.0 |
-| Parts knocked off a match | 13.0 | 17.4 | 15.4 |
-| Mended back by the end (target about 70%) | 71% | 67% | 74% |
-| Marbles fired a match | 27 | 29 | 31 |
-| Fight length, of 180 s | 180 s | 180 s | 180 s |
-| Ended early at 100 points | 1% | 2% | 1% |
-| Average winning margin, points | 23 | 29 | 20 |
+| Front seat wins | 51% | 51% | 56% |
+| Front seat under 55% | yes | yes | NO |
+| Dizzies a match (target 15–25) | 15.0, of which cork dazes 4.4 | 17.2, of which cork dazes 4.2 | 25.6, of which cork dazes 4.3 |
+| Hill changes hands (target 6–12) | 8.5 | 9.6 | 13.3 |
+| Parts knocked off a match | 11.8 | 16.4 | 16.1 |
+| Mended back by the end (target about 70%) | 73% | 68% | 72% |
+| Marbles fired a match | 26 | 29 | 31 |
+| Fight length, of 180 s | 179 s | 179 s | 180 s |
+| Ended early at 100 points | 2% | 2% | 1% |
+| Average winning margin, points | 23 | 29 | 21 |
 | Stuck mice (no move for 20 s with a goal) | 0 | 0 | 0 |
 | "?" no-way-through moments a match | 0.0 | 0.0 | 0.0 |
 | Marbles into own pieces a match | 0.00 | 0.00 | 0.00 |
-| Longest stretch with no event, worst of 200 | 34 s | 28 s | 28 s |
+| Longest stretch with no event, worst of 200 | 33 s | 30 s | 24 s |
 
 With 200 matches a win share is good to about ±3.5 points, so "50%" here means "somewhere from 46 to 54".
-
-## Note on this run
-
-This table was made after the two-player pass (mice keep apart and claim their own spots, everyone lines up at home when the battle starts, the bot always builds the same camp, easy fires less but aims better). The numbers were tuned on these same 200 matches a level; no second run on fresh matches was made this time, so read the win shares as a little flattering.
 
 ## What was changed, and why
 
