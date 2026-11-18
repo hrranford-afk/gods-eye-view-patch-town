@@ -85,7 +85,7 @@ function shade(hex,f){var r=(hex>>16)&255,g=(hex>>8)&255,b=hex&255;r=Math.max(0,
 function blend(a,b,k){var ar=(a>>16)&255,ag=(a>>8)&255,ab=a&255,br=(b>>16)&255,bg=(b>>8)&255,bb=b&255;return (Math.round(ar+(br-ar)*k)<<16)|(Math.round(ag+(bg-ag)*k)<<8)|Math.round(ab+(bb-ab)*k);}
 function compose(pos,rot,scl){pos=pos||[0,0,0];rot=rot||[0,0,0];_p.set(pos[0],pos[1],pos[2]);_e.set(rot[0],rot[1],rot[2]);_q.setFromEuler(_e);
   if(scl==null)_s.set(1,1,1);else if(typeof scl==='number')_s.set(scl,scl,scl);else _s.set(scl[0],scl[1],scl[2]);return new THREE.Matrix4().compose(_p,_q,_s);}
-function Bld(seed){this.P=[];this.N=[];this.U=[];this.C=[];this.M=[new THREE.Matrix4()];this.r=rng(seed||1);this.alt=null;}
+function Bld(seed){this.P=[];this.N=[];this.U=[];this.C=[];this.M=[new THREE.Matrix4()];this.r=rng(seed||1);this.alt=null;this.metalOK=false;}
 /* bare grey tin on the rust tile goes to a second buffer, drawn with the shiny metal material */
 function isTin(col,tile){if(tile!=='rust')return false;var r=(col>>16)&255,g=(col>>8)&255,b=col&255;return r<g&&g<=b&&b-r<24;}
 Bld.prototype.side=function(){if(!this.alt){this.alt=new Bld(1);this.alt.M=this.M;this.alt.r=this.r;this.alt.isAlt=true;}return this.alt;};
@@ -93,7 +93,7 @@ Bld.prototype.push=function(pos,rot,scl){this.M.push(this.M[this.M.length-1].clo
 Bld.prototype.pop=function(){this.M.pop();return this;};
 /* tile: 'wood','paint','rust','cloth' (add 'h' to turn the grain sideways) or falsy for plain */
 Bld.prototype.add=function(geo,col,tile,pos,rot,scl,flat){
-  if(!this.isAlt&&isTin(col,tile)){this.side().add(geo,col,tile,pos,rot,scl,flat);return this;}
+  if(this.metalOK&&!this.isAlt&&isTin(col,tile)){this.side().add(geo,col,tile,pos,rot,scl,flat);return this;}
   var g=geo.index?geo.toNonIndexed():geo,m=this.M[this.M.length-1].clone().multiply(compose(pos,rot,scl));
   var pa=g.attributes.position,na=g.attributes.normal,ua=g.attributes.uv,c=lin(col),i,P=this.P,N=this.N,U=this.U,C=this.C,r=this.r;
   var turn=false,tl=null;if(tile){if(tile.charAt(tile.length-1)==='h'){turn=true;tile=tile.slice(0,-1);}tl=TILE[tile];}
@@ -198,8 +198,8 @@ function mouseGeo(team,furName){
     b.tor(.064,.005,0x6b4423,null,[0,.08,0],[PI/2,-.5,0],null,null,10);
   }
   G.body=b.geo();
-  /* head */
-  b=new Bld(3);
+  /* head (the red helmet is the one shiny tin part of a mouse) */
+  b=new Bld(3);b.metalOK=true;
   b.sph(.066,11,7,fur,null,[0,.05,0],null,[1.06,.96,1]);
   b.sph(.034,7,5,furL,null,[0,.034,.05],null,[1.12,.86,1.25]);
   b.sph(.0125,6,4,PINK,null,[0,.043,.093]);
@@ -582,7 +582,7 @@ BUILD.popgun=function(K,team,T,v){
   b.push([.3,0,-.08],[0,.4,0]);b.box(.16,.07,.12,T.wood,'wood',[0,.035,0]);b.box(.165,.016,.125,team==='red'?T.rust:T.main,team==='red'?'rust':'paint',[0,.066,0]);
   for(i=0;i<5;i++)b.cyl(.024,.019,.04,7,jit(b,CORK,.08),null,[-.045+(i%3)*.045,.085+((i/3)|0)*.012,-.025+((i/3)|0)*.05+(i%2)*.01],[b.r()*.4,0,b.r()*.4]);
   b.pop();
-  var g=new Bld(hash(K.key+'barrel'));
+  var g=new Bld(hash(K.key+'barrel'));g.metalOK=true;
   if(team==='green'){g.cyl(.07,.08,.4,10,T.wood2,'wood',[0,0,.06],[PI/2,0,0]);g.cyl(.058,.058,.404,10,0x3a2a1c,null,[0,0,.06],[PI/2,0,0]);g.tor(.064,.012,T.end,null,[0,0,.262]);lash(g,[0,0,.1],.078,T.rope,'z');lash(g,[0,0,-.08],.082,T.rope,'z');leaves(g,3,0,.07,.0,[.06,.02,.2],T);}
   else if(team==='red'){g.cyl(.07,.07,.36,12,TIN,'rust',[0,0,.04],[PI/2,0,0]);for(i=0;i<4;i++)g.tor(.071,.007,i%2?T.main:shade(TIN,.8),'rust',[0,0,-.1+i*.095]);g.cyl(.1,.07,.07,12,T.main,'rust',[0,0,.25],[PI/2,0,0]);g.cyl(.085,.085,.01,12,0x3a2a1c,null,[0,0,.283],[PI/2,0,0]);g.cyl(.075,.075,.02,10,T.rust,'rust',[0,0,-.15],[PI/2,0,0]);}
   else{g.cyl(.062,.078,.4,12,T.wood,'wood',[0,0,.06],[PI/2,0,0]);g.cyl(.064,.064,.05,12,T.main,'paint',[0,0,.22],[PI/2,0,0]);g.cyl(.074,.074,.05,12,T.main,'paint',[0,0,-.02],[PI/2,0,0]);g.tor(.064,.012,T.dark,'paint',[0,0,.262]);g.cyl(.05,.05,.01,10,0x3a2a1c,null,[0,0,.262],[PI/2,0,0]);lash(g,[0,0,.1],.07,T.rope,'z');}
@@ -632,7 +632,7 @@ BUILD.lobber=function(K,team,T,v){
   b.cyl(.014,.014,.14,6,T.woodD,null,[0,0,0],[0,0,PI/2]);lash(b,[0,.03,0],.032,T.rope);lash(b,[0,.44,0],.03,T.rope);b.tor(.014,.005,GOLD,null,[0,.12,-.024],[0,PI/2,0],null,null,6);
   G.arm=b.geo();
   /* cup: opens toward +z of the arm */
-  b=new Bld(hash(K.key+'u'));
+  b=new Bld(hash(K.key+'u'));b.metalOK=true;
   if(metal){b.cyl(.066,.045,.06,10,TIN,'rust',[0,0,.03],[PI/2,0,0]);b.tor(.066,.007,T.main,'rust',[0,0,.06]);}
   else if(logs){b.cyl(.064,.05,.06,8,T.wood2,'wood',[0,0,.03],[PI/2,0,0]);b.tor(.062,.008,T.end,null,[0,0,.06]);}
   else{b.cyl(.064,.046,.06,10,T.wood2,'wood',[0,0,.03],[PI/2,0,0]);b.tor(.064,.008,T.main,'paint',[0,0,.06]);}
