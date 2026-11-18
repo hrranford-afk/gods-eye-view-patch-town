@@ -418,7 +418,7 @@ var CV_CARDS = (function () {
     '2': { dir: 'art2', mm: { w: 148, h: 105 }, label: 'Set 2: bold woodcut, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } },
     '2b': { dir: 'art2b', mm: { w: 148, h: 105 }, label: 'Set 2b: bold woodcut, redrawn, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } },
     '2bc': { dir: 'art2b-colour', mm: { w: 148, h: 105 }, colour: true, label: 'Set 2b in colour, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } } };
-  D.DEFAULT_SET = '2'; /* Set 2 named no card wrongly in 978 showings; Set 1 did 10 times. See RECOGNITION_REPORT.md */
+  D.DEFAULT_SET = '2b'; /* Set 2 and 2b named no card wrongly in 978 showings; Set 1 did 10 times. See RECOGNITION_REPORT.md */
   D.CARD_FILES = { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' };
   return D;
 })();

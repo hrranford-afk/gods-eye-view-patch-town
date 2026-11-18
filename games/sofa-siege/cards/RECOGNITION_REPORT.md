@@ -2,6 +2,16 @@
 
 **Every number here was measured on this build machine with made-up camera frames. Nothing here has been tested on a real iPad, a real camera or a real print. Those are marked NOT TESTED.**
 
+## Which set to print
+
+**Print Set 2b, in black and white, at A5.** Open `print.html?set=2b&size=a5`, then check it with `cards.html?set=2b&size=a5`.
+
+- Set 2 and Set 2b never named a card wrongly (0 in 978 showings each). Set 1 did, 10 times.
+- Bigger paper is the largest gain measured: Set 2 art at A5 was right 96% of the time at 1280×720, against 82% at A6. (Set 2b at A5 was not run as its own test. Its art is the same as Set 2 for four cards and it scored the same at A6, so the same gain is expected. That part is a forecast, not a measurement.)
+- Set 2b over Set 2: BLUE BASE went from 87% to 91% at 1280×720. Nothing got worse by more than the noise.
+- Colour is optional. The colour print did no better and no worse through the grey recogniser (59% and 83%, against 62% and 82%). The colour cue was right every time it could be read, even under a warm lamp, but using it to take back near-misses added as many wrong sightings as right ones. So: print colour if Harry likes the look; it does not help or hurt recognition. A grey print of the colour file works as plain black and white.
+- All of this is from made-up frames. **NOT TESTED on a real device.**
+
 ## The short answer
 
 1. **Yes, the camera can tell the cards apart from the artwork alone, with no QR code, in made-up frames.** Two finders work together: one matches corner features, the other finds the sheet of paper and checks the drawing on it.
@@ -19,7 +29,7 @@
 
 324 frames per cell (216 for the mixed row). False sightings on frames with no card: 0 of 120 for each set. A different printed page named as a card: 1 of 120 for Set 1, 0 of 120 for Set 2. Upside-down mistakes: 0 for both sets.
 
-**Recommendation: pure artwork, in Set 2's style, printed at A5. No hidden marker is needed on this evidence.** Ask ChatGPT for a small revision of Set 2 (see "Notes for ChatGPT"). Then the one thing that matters: print the cards and try `cards.html` on the real iPad.
+**Recommendation: pure artwork, in Set 2's style (now Set 2b), printed at A5. No hidden marker is needed on this evidence.** Ask ChatGPT for a small revision of Set 2 (see "Notes for ChatGPT"). Then the one thing that matters: print the cards and try `cards.html` on the real iPad.
 
 ## How it was tested
 
@@ -272,6 +282,65 @@ Per-card and per-band tables: `tests/results-set2-full-seed20261118.md`.
 
 **Too few corner points on Set 2?** Yes: far fewer, as ChatGPT warned. The counts are under "What the recogniser sees". Corner matching alone found only 28% of Set 2 cards at 640×480 (Set 1: 46%). The paper-outline finder is the second method the bold art needed. On its own it found 64–65% of Set 2 cards. Together they reach 73–84% on the same frames.
 
+## Set 2b and its colour version
+
+Same test, same seed, same thresholds, A6 size. Cells: right card / wrong card / missed.
+
+| | Set 2 | Set 2b | Set 2b colour, read as grey |
+|---|---|---|---|
+| **all cards, 640x480** | **62% / 0% / 38%** | **62% / 0% / 38%** | **59% / 0% / 41%** |
+| 00 WORLD ANCHOR, 640x480 | 54% / 0% / 46% | 52% / 0% / 48% | 48% / 0% / 52% |
+| 01 BLUE BASE, 640x480 | 69% / 0% / 31% | 70% / 0% / 30% | 61% / 0% / 39% |
+| 02 RED BASE, 640x480 | 70% / 0% / 30% | 69% / 0% / 31% | 69% / 0% / 31% |
+| 03 CAPTURE FLAG, 640x480 | 59% / 0% / 41% | 56% / 0% / 44% | 59% / 0% / 41% |
+| 04 HILL, 640x480 | 63% / 0% / 37% | 65% / 0% / 35% | 63% / 0% / 37% |
+| 05 BUILD CAMP, 640x480 | 59% / 0% / 41% | 59% / 0% / 41% | 54% / 0% / 46% |
+| part covered, 640x480 | 13% / 0% / 87% | 19% / 0% / 81% | 19% / 0% / 81% |
+| **all cards, 1280x720** | **82% / 0% / 18%** | **82% / 0% / 18%** | **83% / 0% / 17%** |
+| 00 WORLD ANCHOR, 1280x720 | 67% / 0% / 33% | 67% / 0% / 33% | 70% / 0% / 30% |
+| 01 BLUE BASE, 1280x720 | 87% / 0% / 13% | 91% / 0% / 9% | 91% / 0% / 9% |
+| 02 RED BASE, 1280x720 | 87% / 0% / 13% | 89% / 0% / 11% | 89% / 0% / 11% |
+| 03 CAPTURE FLAG, 1280x720 | 83% / 0% / 17% | 83% / 0% / 17% | 83% / 0% / 17% |
+| 04 HILL, 1280x720 | 78% / 0% / 22% | 78% / 0% / 22% | 78% / 0% / 22% |
+| 05 BUILD CAMP, 1280x720 | 89% / 0% / 11% | 87% / 0% / 13% | 87% / 0% / 13% |
+| part covered, 1280x720 | 69% / 0% / 31% | 69% / 0% / 31% | 69% / 0% / 31% |
+| named as a different card (of 978 shown) | 0 | 0 | 0 |
+| right name but upside down | 0 | 0 | 1 |
+| right name, outline badly placed | 7 | 6 | 7 |
+| no-card frames with a false sighting | 0 of 120 | 0 of 120 | 0 of 120 |
+| decoy pages where something was named | 0 of 120 | 0 of 120 | 0 of 120 |
+
+- **Set 2b is as good as Set 2, and a little better on BLUE BASE** (the redrawn card): 87% → 91% at 1280×720.
+- **The thicker CAPTURE FLAG border did not show up in the numbers**: still 83% at 1280×720, and 5 of the 6 badly placed outlines are still this card.
+- **00 WORLD ANCHOR is still the weakest card** (52% and 67%). It was not changed in 2b. It is the card to fix next.
+- Small moves on unchanged cards (a point or two) are noise: changing two cards changes what the identity check weighs.
+- The colour version read as grey: one upside-down sighting (WORLD ANCHOR), the only one in any run. Why is not established.
+
+### The colour cue
+
+The recogniser stays grey. The cue is the main hue of the coloured parts inside a found outline, balanced to the card's own paper white (`CV_CARDS.colourCue`). 396 real cards shown in each light.
+
+| Light | real cards shown | grey pipeline: right / wrong or badly placed / missed | hue could be read on right sightings | of those, hue agrees with the card | hue points to another card | near-misses taken back: right | near-misses taken back: WRONG | with colour: right / wrong or badly placed / missed | false sightings on decoy + no-card frames (grey -> with colour) |
+|---|---|---|---|---|---|---|---|---|---|
+| neutral light, colour print | 396 | 75% / 0% / 25% | 281 of 297 (95%) | 281 of 281 (100%) | 0 | 3 | 3 | 76% / 1% / 23% | 0 -> 1 |
+| warm lamp, colour print | 396 | 75% / 1% / 24% | 286 of 298 (96%) | 286 of 286 (100%) | 0 | 1 | 3 | 76% / 2% / 23% | 0 -> 1 |
+| neutral light, printed grey | 396 | 73% / 1% / 26% | 0 of 288 (0%) | 0 of 0 (n/a) | 0 | 0 | 0 | 73% / 1% / 26% | 0 -> 0 |
+
+Could the hue be read, and was it the right one, by how wide the card is in the picture (right sightings only):
+
+| Light | under 80 px | 80-130 px | 130-200 px | over 200 px |
+|---|---|---|---|---|
+| neutral light, colour print | read 47/55, right 47/47 | read 97/105, right 97/97 | read 88/88, right 88/88 | read 49/49, right 49/49 |
+| warm lamp, colour print | read 52/57, right 52/52 | read 99/106, right 99/99 | read 88/88, right 88/88 | read 47/47, right 47/47 |
+| neutral light, printed grey | read 0/55, right 0/0 | read 0/100, right 0/0 | read 0/85, right 0/0 | read 0/48, right 0/0 |
+
+What this shows:
+- **The hue can be read on 95% of right sightings, and when read it was the right card's hue every time (567 of 567), under a warm lamp too.** Balancing to the paper white is what makes the lamp harmless.
+- **As a tie-breaker it does not help.** Taking back near-misses on the strength of the hue added 3 right and 3 wrong in neutral light, 1 right and 3 wrong under the lamp, and one false sighting on a decoy page each time. The cards the grey recogniser misses are mostly not found at all; they are not near-misses waiting for a casting vote.
+- **Printed grey, the cue reads nothing and changes nothing.** No harm.
+- The grey recogniser never named a colour card as another card in this test, so there were no ties to break and no wrong names for the hue to veto. If real-device tests show wrong names, the cue is a ready second opinion: `cards.html?set=2bc` shows "colour agrees" or "colour points to NN" beside each sighting and logs a disagreement.
+- Not modelled: a real printer's colours, a real camera's white balance, coloured table tops (the made-up tables are grey). NOT TESTED on a device.
+
 ## Ways of finding and naming the cards, compared
 
 The question: use all corner features, or only the ones that differ between cards, or only the title and centre drawing? Measured on the single-card frames that were not part-covered (162 per resolution), plus the decoy and no-card frames.
@@ -453,7 +522,7 @@ Not built and not measured. The reasoning, from sizes alone:
 - A white or pale table. The paper-outline finder needs the table to be darker than the paper. On a pale table only corner matching is left.
 - Cards lying partly on top of each other, or closer together than about 5 cm.
 - The camera's real lens data. Browsers do not give it. Card-to-card placement does not need it. Camera-to-card distance does, and uses an assumed lens angle on a real device.
-- Set 2 at A5 in the page. The page uses each set's stated size, so Set 2 is treated as A6 there.
+- Set 2b at A5 as its own offline run (only Set 2 at A5 was run). The page and the print page do handle A5 for the A6 sets (`?size=a5`), and the page test passes with it.
 
 ## Pictures
 
@@ -471,4 +540,6 @@ Not built and not measured. The reasoning, from sizes alone:
     node tests/recognise-test.js --set mixed
     node tests/compare-sets.js
     node tests/art-stats.js
-    NODE_PATH=$(npm root -g) node tests/page-test.js            (and again with --set 2)
+    node tests/recognise-test.js --set 2b        (and --set 2bc)
+    node tests/colour-test.js                    (about 25 minutes)
+    NODE_PATH=$(npm root -g) node tests/page-test.js            (and again with --set 2, --set 2b, --set 2bc, --set 2b --a5)

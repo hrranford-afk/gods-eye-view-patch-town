@@ -9,7 +9,7 @@ Six printed cards say where things go on the real table. There are four sets of 
 | `2b` | `art2b/` | Set 2b: Set 2 with Blue Base redrawn and a thicker Capture Flag border, A6 |
 | `2bc` | `art2b-colour/` | Set 2b with a coloured frame and accent on each card, A6 |
 
- With no `?set`, the page uses Set 2 (it named no card wrongly in the test; Set 1 did, 10 times in 978). This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
+ `?size=a5` tells the page and the print page that an A6 set was printed at A5. With no `?set`, the page uses Set 2b (it named no card wrongly in the test; Set 1 did, 10 times in 978). This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
 
 **Status in one line:** works on made-up frames on this machine (numbers in `RECOGNITION_REPORT.md`); **NOT TESTED on a real device or a real print.**
 
@@ -32,8 +32,8 @@ Six printed cards say where things go on the real table. There are four sets of 
 
 ## How to try it on an iPad (not yet done by anyone)
 
-1. Open `cards/print.html?set=1` (or `?set=2`), print at **100%**, and cut the cards out.
-2. Open `cards.html?set=1` (or `?set=2`) over https. Press **Start camera** and allow the camera.
+1. Open `cards/print.html?set=2b&size=a5` (the recommended print: Set 2b at A5), print at **100%**, and cut the cards out.
+2. Open `cards.html?set=2b&size=a5` over https. The set and size in the address must match what was printed. Press **Start camera** and allow the camera.
 3. Lay the cards on a table. Outlines and names should appear on the picture.
 4. Press **Copy log** and paste the text back to the builder.
 

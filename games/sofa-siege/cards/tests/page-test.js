@@ -23,7 +23,7 @@ const frames = (k) => p.waitForFunction((k) => window.CARDS_PAGE.P.frames >= k, 
 const more = async (k) => { const f = await ev(() => CARDS_PAGE.P.frames); await frames(f + k); };
 const shot = (name) => p.screenshot({ path: path.join(DIR, 'shots', name.replace('.png', SUF + '.png')), fullPage: true });
 
-const SETQ = process.argv.includes('--set') ? process.argv[process.argv.indexOf('--set') + 1] : '1', SUF = SETQ === '1' ? '' : '-set' + SETQ;
+const A5 = process.argv.includes('--a5'), SETRAW = process.argv.includes('--set') ? process.argv[process.argv.indexOf('--set') + 1] : '1', SETQ = SETRAW + (A5 ? '&size=a5' : ''), SUF = (SETRAW === '1' ? '' : '-set' + SETRAW) + (A5 ? '-a5' : '');
 await p.goto(base + 'cards.html?demo=1&fps=10&set=' + SETQ);
 ok('page says the picture stays on the device', await ev(() => /stays on this device/.test(document.querySelector('.private').textContent)));
 ok('demo is labelled as made-up frames', await ev(() => /made-up/.test(document.getElementById('modeTag').textContent)));
@@ -72,7 +72,7 @@ await shot('cards-page-manual.png');
 /* print page: true size */
 await p.goto(base + 'cards/print.html?set=' + SETQ); await p.waitForLoadState('networkidle');
 const sz = await ev(() => Array.from(document.querySelectorAll('.sheet img')).map((i) => { const r = i.getBoundingClientRect(); return [r.width, r.height, i.naturalWidth > 0]; }));
-const PW = SETQ === '1' ? 210 : 148, PH = SETQ === '1' ? 148.5 : 105;
+const PW = SETRAW === '1' || A5 ? 210 : 148, PH = SETRAW === '1' || A5 ? 148.5 : 105;
 ok('print page: six cards, each ' + PW + ' x ' + PH + ' mm in CSS units, two per sheet', sz.length === 6 && sz.every((s) => Math.abs(s[0] - PW * 96 / 25.4) < 0.6 && Math.abs(s[1] - PH * 96 / 25.4) < 0.6 && s[2]) && await ev(() => document.querySelectorAll('.sheet').length === 3), sz[0]);
 await p.setViewportSize({ width: 900, height: 1200 }); await p.screenshot({ path: path.join(DIR, 'shots', 'print-page' + SUF + '.png'), fullPage: false });
 

@@ -1,0 +1,663 @@
+{
+ "page": "Round Table Kingdom card checker",
+ "log_version": 1,
+ "mode": "demo (made-up frames, not a camera)",
+ "started_at": "2026-11-18T21:51:59.771Z",
+ "run_ms": 24167,
+ "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+ "screen": {
+  "width": 1280,
+  "height": 1000,
+  "pixel_ratio": 1
+ },
+ "camera": {
+  "width": 1280,
+  "height": 720,
+  "label": "made-up frames (synth.js)",
+  "facing": "UNKNOWN",
+  "frame_rate": "UNKNOWN",
+  "lens_data": "exact (demo camera)",
+  "note": "Browsers do not give lens data for getUserMedia. Distances from a real camera use the assumed lens angle and are rough."
+ },
+ "card_set": "2b (Set 2b: bold woodcut, redrawn, printed at A5, 210 x 148.5 mm)",
+ "recogniser": {
+  "provider": "cardvision.js natural-feature matcher",
+  "thread": "worker",
+  "frames_processed": 32,
+  "fps_cap": 10,
+  "ms_per_frame_median": 429,
+  "database": {
+   "initMs": 2028,
+   "dbSizes": [
+    2676,
+    2676,
+    2676,
+    2603,
+    2676,
+    2676
+   ]
+  }
+ },
+ "cards": [
+  {
+   "card_id": "00",
+   "kind": "world_anchor",
+   "name": "WORLD ANCHOR",
+   "state": "TRACKING",
+   "first_seen_ms": 846,
+   "last_seen_ms": 23656,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 979,
+    "median": 981.5,
+    "max": 987
+   },
+   "recent": [
+    {
+     "t_ms": 9829,
+     "inliers": 59,
+     "quality": 0.872,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 10596,
+     "inliers": 51,
+     "quality": 0.867,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 11361,
+     "inliers": 68,
+     "quality": 0.874,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 12054,
+     "inliers": 66,
+     "quality": 0.872,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 12750,
+     "inliers": 63,
+     "quality": 0.874,
+     "distance_mm": 982
+    },
+    {
+     "t_ms": 13435,
+     "inliers": 64,
+     "quality": 0.873,
+     "distance_mm": 980
+    },
+    {
+     "t_ms": 14131,
+     "inliers": 86,
+     "quality": 0.87,
+     "distance_mm": 982
+    },
+    {
+     "t_ms": 14804,
+     "inliers": 71,
+     "quality": 0.872,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 15473,
+     "inliers": 84,
+     "quality": 0.873,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 16159,
+     "inliers": 77,
+     "quality": 0.873,
+     "distance_mm": 982
+    },
+    {
+     "t_ms": 16874,
+     "inliers": 85,
+     "quality": 0.873,
+     "distance_mm": 980
+    },
+    {
+     "t_ms": 17549,
+     "inliers": 92,
+     "quality": 0.873,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 18263,
+     "inliers": 95,
+     "quality": 0.874,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 18919,
+     "inliers": 91,
+     "quality": 0.874,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 19661,
+     "inliers": 80,
+     "quality": 0.872,
+     "distance_mm": 979
+    },
+    {
+     "t_ms": 20354,
+     "inliers": 82,
+     "quality": 0.873,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 21173,
+     "inliers": 86,
+     "quality": 0.872,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 21926,
+     "inliers": 88,
+     "quality": 0.873,
+     "distance_mm": 983
+    },
+    {
+     "t_ms": 22725,
+     "inliers": 80,
+     "quality": 0.874,
+     "distance_mm": 981
+    },
+    {
+     "t_ms": 23656,
+     "inliers": 87,
+     "quality": 0.87,
+     "distance_mm": 980
+    }
+   ]
+  },
+  {
+   "card_id": "01",
+   "kind": "blue_base",
+   "name": "BLUE BASE",
+   "state": "LOST",
+   "first_seen_ms": 846,
+   "last_seen_ms": 13435,
+   "sightings": 18,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1025,
+    "median": 1053,
+    "max": 1063
+   },
+   "recent": [
+    {
+     "t_ms": 846,
+     "inliers": 84,
+     "quality": 0.782,
+     "distance_mm": 1036
+    },
+    {
+     "t_ms": 1636,
+     "inliers": 86,
+     "quality": 0.783,
+     "distance_mm": 1040
+    },
+    {
+     "t_ms": 2376,
+     "inliers": 75,
+     "quality": 0.782,
+     "distance_mm": 1046
+    },
+    {
+     "t_ms": 3108,
+     "inliers": 70,
+     "quality": 0.783,
+     "distance_mm": 1051
+    },
+    {
+     "t_ms": 3853,
+     "inliers": 74,
+     "quality": 0.778,
+     "distance_mm": 1057
+    },
+    {
+     "t_ms": 4596,
+     "inliers": 77,
+     "quality": 0.783,
+     "distance_mm": 1058
+    },
+    {
+     "t_ms": 5357,
+     "inliers": 70,
+     "quality": 0.783,
+     "distance_mm": 1060
+    },
+    {
+     "t_ms": 6070,
+     "inliers": 69,
+     "quality": 0.782,
+     "distance_mm": 1061
+    },
+    {
+     "t_ms": 6789,
+     "inliers": 74,
+     "quality": 0.783,
+     "distance_mm": 1063
+    },
+    {
+     "t_ms": 7556,
+     "inliers": 75,
+     "quality": 0.782,
+     "distance_mm": 1062
+    },
+    {
+     "t_ms": 8353,
+     "inliers": 75,
+     "quality": 0.783,
+     "distance_mm": 1061
+    },
+    {
+     "t_ms": 9093,
+     "inliers": 78,
+     "quality": 0.78,
+     "distance_mm": 1058
+    },
+    {
+     "t_ms": 9829,
+     "inliers": 82,
+     "quality": 0.782,
+     "distance_mm": 1055
+    },
+    {
+     "t_ms": 10596,
+     "inliers": 74,
+     "quality": 0.778,
+     "distance_mm": 1046
+    },
+    {
+     "t_ms": 11361,
+     "inliers": 79,
+     "quality": 0.783,
+     "distance_mm": 1045
+    },
+    {
+     "t_ms": 12054,
+     "inliers": 78,
+     "quality": 0.783,
+     "distance_mm": 1039
+    },
+    {
+     "t_ms": 12750,
+     "inliers": 86,
+     "quality": 0.783,
+     "distance_mm": 1034
+    },
+    {
+     "t_ms": 13435,
+     "inliers": 83,
+     "quality": 0.783,
+     "distance_mm": 1025
+    }
+   ]
+  },
+  {
+   "card_id": "02",
+   "kind": "red_base",
+   "name": "RED BASE",
+   "state": "TRACKING",
+   "first_seen_ms": 846,
+   "last_seen_ms": 23656,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1022,
+    "median": 1054,
+    "max": 1084
+   },
+   "recent": [
+    {
+     "t_ms": 9829,
+     "inliers": 78,
+     "quality": 0.962,
+     "distance_mm": 1034
+    },
+    {
+     "t_ms": 10596,
+     "inliers": 73,
+     "quality": 0.962,
+     "distance_mm": 1039
+    },
+    {
+     "t_ms": 11361,
+     "inliers": 83,
+     "quality": 0.963,
+     "distance_mm": 1043
+    },
+    {
+     "t_ms": 12054,
+     "inliers": 76,
+     "quality": 0.962,
+     "distance_mm": 1050
+    },
+    {
+     "t_ms": 12750,
+     "inliers": 82,
+     "quality": 0.96,
+     "distance_mm": 1057
+    },
+    {
+     "t_ms": 13435,
+     "inliers": 79,
+     "quality": 0.962,
+     "distance_mm": 1060
+    },
+    {
+     "t_ms": 14131,
+     "inliers": 87,
+     "quality": 0.961,
+     "distance_mm": 1066
+    },
+    {
+     "t_ms": 14804,
+     "inliers": 81,
+     "quality": 0.956,
+     "distance_mm": 1073
+    },
+    {
+     "t_ms": 15473,
+     "inliers": 83,
+     "quality": 0.961,
+     "distance_mm": 1075
+    },
+    {
+     "t_ms": 16159,
+     "inliers": 89,
+     "quality": 0.96,
+     "distance_mm": 1078
+    },
+    {
+     "t_ms": 16874,
+     "inliers": 87,
+     "quality": 0.96,
+     "distance_mm": 1081
+    },
+    {
+     "t_ms": 17549,
+     "inliers": 85,
+     "quality": 0.962,
+     "distance_mm": 1081
+    },
+    {
+     "t_ms": 18263,
+     "inliers": 90,
+     "quality": 0.953,
+     "distance_mm": 1084
+    },
+    {
+     "t_ms": 18919,
+     "inliers": 78,
+     "quality": 0.959,
+     "distance_mm": 1081
+    },
+    {
+     "t_ms": 19661,
+     "inliers": 85,
+     "quality": 0.959,
+     "distance_mm": 1079
+    },
+    {
+     "t_ms": 20354,
+     "inliers": 84,
+     "quality": 0.961,
+     "distance_mm": 1074
+    },
+    {
+     "t_ms": 21173,
+     "inliers": 88,
+     "quality": 0.956,
+     "distance_mm": 1073
+    },
+    {
+     "t_ms": 21926,
+     "inliers": 86,
+     "quality": 0.962,
+     "distance_mm": 1068
+    },
+    {
+     "t_ms": 22725,
+     "inliers": 97,
+     "quality": 0.959,
+     "distance_mm": 1062
+    },
+    {
+     "t_ms": 23656,
+     "inliers": 93,
+     "quality": 0.962,
+     "distance_mm": 1056
+    }
+   ]
+  },
+  {
+   "card_id": "03",
+   "kind": "capture_flag",
+   "name": "CAPTURE FLAG",
+   "state": "TRACKING",
+   "first_seen_ms": 846,
+   "last_seen_ms": 23656,
+   "sightings": 32,
+   "ambiguous_sightings": 0,
+   "distance_mm": {
+    "min": 1084,
+    "median": 1090,
+    "max": 1095
+   },
+   "recent": [
+    {
+     "t_ms": 9829,
+     "inliers": 61,
+     "quality": 0.937,
+     "distance_mm": 1094
+    },
+    {
+     "t_ms": 10596,
+     "inliers": 62,
+     "quality": 0.936,
+     "distance_mm": 1095
+    },
+    {
+     "t_ms": 11361,
+     "inliers": 65,
+     "quality": 0.936,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 12054,
+     "inliers": 63,
+     "quality": 0.936,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 12750,
+     "inliers": 69,
+     "quality": 0.936,
+     "distance_mm": 1089
+    },
+    {
+     "t_ms": 13435,
+     "inliers": 69,
+     "quality": 0.937,
+     "distance_mm": 1088
+    },
+    {
+     "t_ms": 14131,
+     "inliers": 81,
+     "quality": 0.936,
+     "distance_mm": 1086
+    },
+    {
+     "t_ms": 14804,
+     "inliers": 74,
+     "quality": 0.937,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 15473,
+     "inliers": 73,
+     "quality": 0.935,
+     "distance_mm": 1085
+    },
+    {
+     "t_ms": 16159,
+     "inliers": 71,
+     "quality": 0.936,
+     "distance_mm": 1089
+    },
+    {
+     "t_ms": 16874,
+     "inliers": 75,
+     "quality": 0.934,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 17549,
+     "inliers": 87,
+     "quality": 0.936,
+     "distance_mm": 1094
+    },
+    {
+     "t_ms": 18263,
+     "inliers": 74,
+     "quality": 0.932,
+     "distance_mm": 1090
+    },
+    {
+     "t_ms": 18919,
+     "inliers": 67,
+     "quality": 0.935,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 19661,
+     "inliers": 82,
+     "quality": 0.935,
+     "distance_mm": 1090
+    },
+    {
+     "t_ms": 20354,
+     "inliers": 78,
+     "quality": 0.936,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 21173,
+     "inliers": 86,
+     "quality": 0.935,
+     "distance_mm": 1093
+    },
+    {
+     "t_ms": 21926,
+     "inliers": 77,
+     "quality": 0.935,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 22725,
+     "inliers": 85,
+     "quality": 0.936,
+     "distance_mm": 1092
+    },
+    {
+     "t_ms": 23656,
+     "inliers": 72,
+     "quality": 0.937,
+     "distance_mm": 1093
+    }
+   ]
+  },
+  {
+   "card_id": "04",
+   "kind": "hill",
+   "name": "HILL",
+   "state": "NOT_SEEN",
+   "first_seen_ms": "UNKNOWN",
+   "last_seen_ms": "UNKNOWN",
+   "sightings": 0,
+   "ambiguous_sightings": 0,
+   "distance_mm": "UNKNOWN",
+   "recent": []
+  },
+  {
+   "card_id": "05",
+   "kind": "build_camp",
+   "name": "BUILD CAMP",
+   "state": "NOT_SEEN",
+   "first_seen_ms": "UNKNOWN",
+   "last_seen_ms": "UNKNOWN",
+   "sightings": 0,
+   "ambiguous_sightings": 0,
+   "distance_mm": "UNKNOWN",
+   "recent": []
+  }
+ ],
+ "events": [
+  {
+   "t_ms": 846,
+   "type": "first_seen",
+   "card_id": "02"
+  },
+  {
+   "t_ms": 846,
+   "type": "first_seen",
+   "card_id": "03"
+  },
+  {
+   "t_ms": 846,
+   "type": "first_seen",
+   "card_id": "00"
+  },
+  {
+   "t_ms": 846,
+   "type": "first_seen",
+   "card_id": "01"
+  },
+  {
+   "t_ms": 15473,
+   "type": "lost",
+   "card_id": "01"
+  }
+ ],
+ "setup": {
+  "state": "SCANNING",
+  "placement_mode": "card_scan",
+  "anchor_seen": true,
+  "messages": [
+   "BLUE BASE is lost from view. Showing its last place. Show the card again, or place it by touch.",
+   "All needed cards are placed. Check the layout, then press LOCK TABLE."
+  ],
+  "events": [
+   {
+    "t_ms": 13065,
+    "type": "locked",
+    "card_id": null
+   },
+   {
+    "t_ms": 19449,
+    "type": "unlocked",
+    "card_id": null
+   },
+   {
+    "t_ms": 19661,
+    "type": "placement_regained",
+    "card_id": "02"
+   },
+   {
+    "t_ms": 19661,
+    "type": "placement_regained",
+    "card_id": "03"
+   }
+  ]
+ },
+ "locked": null,
+ "errors": []
+}
