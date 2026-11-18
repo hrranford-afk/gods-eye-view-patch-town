@@ -41,6 +41,7 @@ const run = async () => {
   ok('with immersive-ar the title offers "Play on my table (AR)"', await ev(() => SG.ar.supported === true && getComputedStyle(document.getElementById('bAR')).display !== 'none' && /Play on my table \(AR\)/.test(document.getElementById('bAR').textContent) && getComputedStyle(document.getElementById('arNote')).display === 'none'));
   await ev(() => { __XRF.cam = { pos: [0, 0, 0], target: [0, 0.3, -1] }; }); /* looking up, away from the table */
   await p.click('#bAR'); await p.waitForFunction('SG.ar.on', null, { timeout: 10000 }); await frames(4);
+  await ev(() => { SG.noGuard = true; });   /* this machine draws slowly; the guard is tested on its own below */
   ok('the session starts, with hit-test asked for and the dom overlay given', await ev(() => SG.ar.on && SG.ar.state === 'find' && __XRF.sessions === 1 && __XRF.session.init.requiredFeatures.indexOf('hit-test') >= 0 && __XRF.session.init.domOverlay.root === document.getElementById('ui') && SG.ar.overlay === 'screen'));
   ok('the practice room and its table top are not drawn in AR; the page is see-through', await ev(() => document.body.className === 'ar' && document.getElementById('start').style.display === 'none' && getComputedStyle(document.getElementById('bCam')).display === 'none'));
   ok('looking away from the table: no reticle, and the bar says to find it', await ev(() => SG.ar.reticle === false && /Find your table/.test(document.getElementById('arText').textContent)));
