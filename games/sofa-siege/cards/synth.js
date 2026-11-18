@@ -5,7 +5,6 @@
    A card's own frame: x right along the artwork, y down the artwork, z into the table. */
 var CARD_SYNTH = (function () {
   'use strict';
-  var CW = 210, CH = 148.5;
   function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function gauss(r) { var u = 0; for (var i = 0; i < 6; i++) u += r(); return (u - 3) * 1.4142; }
   function mips(g) { var L = [g]; while (L[L.length - 1].w > 16) { var p = L[L.length - 1], w = p.w >> 1, h = p.h >> 1, d = new Uint8Array(w * h); for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) { var i = 2 * y * p.w + 2 * x; d[y * w + x] = (p.d[i] + p.d[i + 1] + p.d[i + p.w] + p.d[i + p.w + 1] + 2) >> 2; } L.push({ d: d, w: w, h: h }); } return L; }
@@ -65,23 +64,23 @@ var CARD_SYNTH = (function () {
     var c = Math.cos(roll), s = Math.sin(roll), x2 = [x[0] * c + y[0] * s, x[1] * c + y[1] * s, x[2] * c + y[2] * s], y2 = [-x[0] * s + y[0] * c, -x[1] * s + y[1] * c, -x[2] * s + y[2] * c];
     var R = [x2[0], x2[1], x2[2], y2[0], y2[1], y2[2], z[0], z[1], z[2]], t = [-(R[0] * C[0] + R[1] * C[1] + R[2] * C[2]), -(R[3] * C[0] + R[4] * C[1] + R[5] * C[2]), -(R[6] * C[0] + R[7] * C[1] + R[8] * C[2])];
     return { w: w, h: h, K: K, R: R, t: t, C: C, intr: { fx: f, fy: f, cx: w / 2, cy: h / 2 } }; }
-  function placeCard(cam, id, P, yaw) { var cx = [Math.cos(yaw), Math.sin(yaw), 0], cy = [Math.sin(yaw), -Math.cos(yaw), 0], cz = [0, 0, -1], R = cam.R, t = cam.t;
+  function placeCard(cam, id, P, yaw, mm) { var CW = (mm && mm.w) || 210, CH = (mm && mm.h) || 148.5; var cx = [Math.cos(yaw), Math.sin(yaw), 0], cy = [Math.sin(yaw), -Math.cos(yaw), 0], cz = [0, 0, -1], R = cam.R, t = cam.t;
     function rot(v) { return [R[0] * v[0] + R[1] * v[1] + R[2] * v[2], R[3] * v[0] + R[4] * v[1] + R[5] * v[2], R[6] * v[0] + R[7] * v[1] + R[8] * v[2]]; }
     var a = rot(cx), b = rot(cy), c = rot(cz), p = rot(P); p = [p[0] + t[0], p[1] + t[1], p[2] + t[2]];
     var H = mul3(cam.K, [a[0], b[0], p[0], a[1], b[1], p[1], a[2], b[2], p[2]]), corners = [[-CW / 2, -CH / 2], [CW / 2, -CH / 2], [CW / 2, CH / 2], [-CW / 2, CH / 2]].map(function (q) { return ap(H, q[0], q[1]); });
     var dv = [cam.C[0] - P[0], cam.C[1] - P[1], cam.C[2] - P[2]], dist = Math.hypot(dv[0], dv[1], dv[2]);
-    return { id: id, P: P, yaw: yaw, H: H.map(function (v) { return v / H[8]; }), Hraw: H, corners: corners, R: [a[0], b[0], c[0], a[1], b[1], c[1], a[2], b[2], c[2]], t: p, dist: dist, elev: Math.asin(dv[2] / dist) * 180 / Math.PI, occl: 0 }; }
+    return { id: id, mm: { w: CW, h: CH }, P: P, yaw: yaw, H: H.map(function (v) { return v / H[8]; }), Hraw: H, corners: corners, R: [a[0], b[0], c[0], a[1], b[1], c[1], a[2], b[2], c[2]], t: p, dist: dist, elev: Math.asin(dv[2] / dist) * 180 / Math.PI, occl: 0 }; }
   function inFrame(c, w, h, m) { return c.corners.every(function (p) { return p[0] > m && p[1] > m && p[0] < w - m && p[1] < h - m; }); }
-  function singleScene(r, w, h, id, dBand, eBand) { /* one card, distance and elevation drawn from the bands, any rotation */
+  function singleScene(r, w, h, id, dBand, eBand, mm) { /* one card, distance and elevation drawn from the bands, any rotation */
     for (var tries = 0; tries < 400; tries++) { var d = (dBand[0] + r() * (dBand[1] - dBand[0])) * 1000, e = (eBand[0] + r() * (eBand[1] - eBand[0])) * Math.PI / 180, az = r() * 2 * Math.PI, roll = (r() - 0.5) * 24 * Math.PI / 180, off = 0.3 * d;
-      var C = [d * Math.cos(e) * Math.cos(az), d * Math.cos(e) * Math.sin(az), d * Math.sin(e)], T = [(r() - 0.5) * off, (r() - 0.5) * off, 0], cam = camera(w, h, C, T, roll), card = placeCard(cam, id, [0, 0, 0], 0);
+      var C = [d * Math.cos(e) * Math.cos(az), d * Math.cos(e) * Math.sin(az), d * Math.sin(e)], T = [(r() - 0.5) * off, (r() - 0.5) * off, 0], cam = camera(w, h, C, T, roll), card = placeCard(cam, id, [0, 0, 0], 0, mm);
       if (inFrame(card, w, h, 6)) return { cam: cam, cards: [card] }; }
     return null; }
-  function multiScene(r, w, h, ids) { /* two to four pages on the table at once */
+  function multiScene(r, w, h, ids, mmOf) { /* two to four pages on the table at once */
     for (var tries = 0; tries < 600; tries++) { var pos = [], ok = true, i, j; for (i = 0; i < ids.length && ok; i++) { var g = 0, p; do { p = [(r() - 0.5) * 620, (r() - 0.5) * 620, 0]; g++; } while (g < 60 && pos.some(function (q) { return Math.hypot(q[0] - p[0], q[1] - p[1]) < 265; })); if (g >= 60) ok = false; pos.push(p); } if (!ok) continue;
       var mx = 0, my = 0; pos.forEach(function (p) { mx += p[0] / pos.length; my += p[1] / pos.length; });
       var d = (0.6 + r() * 0.9) * 1000, e = (32 + r() * 43) * Math.PI / 180, az = r() * 2 * Math.PI, roll = (r() - 0.5) * 20 * Math.PI / 180, C = [mx + d * Math.cos(e) * Math.cos(az), my + d * Math.cos(e) * Math.sin(az), d * Math.sin(e)], cam = camera(w, h, C, [mx + (r() - 0.5) * 60, my + (r() - 0.5) * 60, 0], roll);
-      var cards = ids.map(function (id, k) { return placeCard(cam, id, pos[k], r() * 2 * Math.PI); }); if (cards.every(function (c) { return inFrame(c, w, h, 4); })) return { cam: cam, cards: cards }; }
+      var cards = ids.map(function (id, k) { return placeCard(cam, id, pos[k], r() * 2 * Math.PI, mmOf ? mmOf(id) : null); }); if (cards.every(function (c) { return inFrame(c, w, h, 4); })) return { cam: cam, cards: cards }; }
     return null; }
   function emptyScene(r, w, h) { var d = (0.4 + r() * 1.1) * 1000, e = (20 + r() * 55) * Math.PI / 180, az = r() * 2 * Math.PI; return { cam: camera(w, h, [d * Math.cos(e) * Math.cos(az), d * Math.cos(e) * Math.sin(az), d * Math.sin(e)], [(r() - 0.5) * 200, (r() - 0.5) * 200, 0], (r() - 0.5) * 0.4), cards: [] }; }
 
@@ -93,14 +92,14 @@ var CARD_SYNTH = (function () {
     var Ht = mul3(cam.K, [cam.R[0], cam.R[1], cam.t[0], cam.R[3], cam.R[4], cam.t[1], cam.R[6], cam.R[7], cam.t[2]]), Hi = inv3(Ht), nw = noise2(seed + 77);
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) { var W = Hi[6] * x + Hi[7] * y + Hi[8], X = (Hi[0] * x + Hi[1] * y + Hi[2]) / W, Y = (Hi[3] * x + Hi[4] * y + Hi[5]) / W, z = cam.R[6] * X + cam.R[7] * Y + cam.t[2]; F[y * w + x] = (z > 0 && z < 6000) ? texAt(T, X, Y) : T.wall + 30 * (nw(x / 90, y / 90) - 0.5) - 0.05 * y; }
     var SS = w >= 1000 ? 2 : 3;
-    scene.cards.forEach(function (c) { var L = lib[c.id], Hc = inv3(c.Hraw), white = 205 + r() * 40, black = 18 + r() * 34, mnx = w, mny = h, mxx = 0, mxy = 0; c.corners.forEach(function (p) { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); });
+    scene.cards.forEach(function (c) { var L = lib[c.id], CW = c.mm.w, CH = c.mm.h, Hc = inv3(c.Hraw), white = 205 + r() * 40, black = 18 + r() * 34, mnx = w, mny = h, mxx = 0, mxy = 0; c.corners.forEach(function (p) { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); });
       mnx = Math.max(0, Math.floor(mnx) - 1); mny = Math.max(0, Math.floor(mny) - 1); mxx = Math.min(w - 1, Math.ceil(mxx) + 1); mxy = Math.min(h - 1, Math.ceil(mxy) + 1); var base = L[0].w / CW;
       for (var py = mny; py <= mxy; py++) for (var px = mnx; px <= mxx; px++) { var p0 = ap(Hc, px, py), p1 = ap(Hc, px + 1, py), p2 = ap(Hc, px, py + 1), rho = Math.max(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), Math.hypot(p2[0] - p0[0], p2[1] - p0[1])) * base / SS, lod = rho > 1 ? Math.log(rho) / Math.LN2 : 0, acc = 0, cov = 0;
         for (var sy = 0; sy < SS; sy++) for (var sx = 0; sx < SS; sx++) { var q = ap(Hc, px + (sx + 0.5) / SS - 0.5, py + (sy + 0.5) / SS - 0.5), u = q[0] / CW + 0.5, v = q[1] / CH + 0.5; if (u < 0 || v < 0 || u > 1 || v > 1) continue; acc += black + (white - black) * sampleMip(L, u, v, lod) / 255; cov++; }
         if (cov) { var n = SS * SS, k = py * w + px; F[k] = (acc + F[k] * (n - cov)) / n; } }
       c.white = white; });
     /* something lying across part of a card */
-    scene.cards.forEach(function (c) { var frac = fx.occlude !== undefined ? fx.occlude : 0; if (c.occlWant !== undefined) frac = c.occlWant; if (!(frac > 0)) return; var th = r() * 2 * Math.PI, nx = Math.cos(th), ny = Math.sin(th), lo = -140, hi = 140, cc = 0, it, gx, gy;
+    scene.cards.forEach(function (c) { var frac = fx.occlude !== undefined ? fx.occlude : 0; if (c.occlWant !== undefined) frac = c.occlWant; if (!(frac > 0)) return; var CW = c.mm.w, CH = c.mm.h, th = r() * 2 * Math.PI, nx = Math.cos(th), ny = Math.sin(th), lo = -140, hi = 140, cc = 0, it, gx, gy;
       for (it = 0; it < 22; it++) { cc = (lo + hi) / 2; var cnt = 0; for (gy = 0; gy < 20; gy++) for (gx = 0; gx < 28; gx++) if (nx * ((gx + 0.5) / 28 - 0.5) * CW + ny * ((gy + 0.5) / 20 - 0.5) * CH > cc) cnt++; if (cnt / 560 > frac) lo = cc; else hi = cc; }
       var tone = r() < 0.5 ? 150 + r() * 60 : 40 + r() * 50, Hc = inv3(c.Hraw), no = noise2(seed + 5), ex = 60, cs = [[-CW / 2 - ex, -CH / 2 - ex], [CW / 2 + ex, -CH / 2 - ex], [CW / 2 + ex, CH / 2 + ex], [-CW / 2 - ex, CH / 2 + ex]].map(function (q) { return ap(c.Hraw, q[0], q[1]); }), mnx = w, mny = h, mxx = 0, mxy = 0; cs.forEach(function (p) { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); });
       mnx = Math.max(0, Math.floor(mnx)); mny = Math.max(0, Math.floor(mny)); mxx = Math.min(w - 1, Math.ceil(mxx)); mxy = Math.min(h - 1, Math.ceil(mxy));
@@ -108,7 +107,7 @@ var CARD_SYNTH = (function () {
       c.occl = frac; });
     /* uneven light, a mild glare patch, blur, sensor noise */
     var la = r() * 2 * Math.PI, lx = Math.cos(la), ly = Math.sin(la), l0 = 0.62 + r() * 0.2, l1 = 0.95 + r() * 0.17, diag = Math.hypot(w, h), glare = fx.glare !== undefined ? fx.glare : r() < 0.4, gx0 = 0, gy0 = 0, gr = 1, ga = 0;
-    if (glare) { if (scene.cards.length) { var gc = scene.cards[(r() * scene.cards.length) | 0], gp = ap(gc.Hraw, (r() - 0.5) * CW * 0.8, (r() - 0.5) * CH * 0.8); gx0 = gp[0]; gy0 = gp[1]; gc.glare = true; } else { gx0 = r() * w; gy0 = r() * h; } gr = (0.04 + r() * 0.08) * w; ga = 35 + r() * 55; }
+    if (glare) { if (scene.cards.length) { var gc = scene.cards[(r() * scene.cards.length) | 0], gp = ap(gc.Hraw, (r() - 0.5) * gc.mm.w * 0.8, (r() - 0.5) * gc.mm.h * 0.8); gx0 = gp[0]; gy0 = gp[1]; gc.glare = true; } else { gx0 = r() * w; gy0 = r() * h; } gr = (0.04 + r() * 0.08) * w; ga = 35 + r() * 55; }
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) { i = y * w + x; var tt = ((x - w / 2) * lx + (y - h / 2) * ly) / diag + 0.5, v = F[i] * (l0 + (l1 - l0) * tt); if (glare) { var dd = ((x - gx0) * (x - gx0) + (y - gy0) * (y - gy0)) / (gr * gr); if (dd < 9) v += ga * Math.exp(-dd); } F[i] = v; }
     var sig = fx.blur !== undefined ? fx.blur : 0.35 + r() * 1.0 * (w / 1280 * 0.5 + 0.5), rad = Math.max(1, Math.ceil(sig * 2.5)), ker = [], ks = 0; for (i = -rad; i <= rad; i++) { var kv = Math.exp(-i * i / (2 * sig * sig)); ker.push(kv); ks += kv; }
     var G = new Float32Array(w * h), a, kk;
@@ -117,5 +116,5 @@ var CARD_SYNTH = (function () {
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) { a = 0; for (kk = -rad; kk <= rad; kk++) { var yy = y + kk; if (yy < 0) yy = 0; if (yy >= h) yy = h - 1; a += G[yy * w + x] * ker[kk + rad]; } a = a / ks + ns * gauss(r); out[y * w + x] = a < 0 ? 0 : a > 255 ? 255 : a; }
     return { gray: out, w: w, h: h, blur: sig, noise: ns, glare: glare, truth: scene.cards };
   }
-  return { rng: rng, mips: mips, makeDecoys: makeDecoys, camera: camera, placeCard: placeCard, singleScene: singleScene, multiScene: multiScene, emptyScene: emptyScene, render: render, CW: CW, CH: CH };
+  return { rng: rng, mips: mips, makeDecoys: makeDecoys, camera: camera, placeCard: placeCard, singleScene: singleScene, multiScene: multiScene, emptyScene: emptyScene, render: render };
 })();
