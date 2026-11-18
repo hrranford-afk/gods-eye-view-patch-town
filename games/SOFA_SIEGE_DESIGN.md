@@ -38,3 +38,22 @@ Games played, who won, average length, how often the hill changed hands, walls b
 
 ## Done means
 Harry and a mate finish a full match on the iPad on a real table, and want another go.
+
+## From Harry's two pictures (18 Nov, later): the people and the build step
+(Harry's ChatGPT pictures; they stay with Harry, not in this repo.)
+
+**The people are mice.** Same family as Base Camp's mouse scout, so the animated mouse we already have is the base model. Each team has a clear job you can read from its silhouette:
+| Team | Hat | Carries | Job |
+|---|---|---|---|
+| Blue | floppy blue hat, goggles, white feather | toy crossbow, quiver | archer: quick, long reach |
+| Green | yellow miner's helmet with a lamp | planks, rope, big mallet | builder: mends and builds fastest |
+| Red | dented tin helmet | cog, sack of scrap | scrapper: slow, knocks walls down |
+
+Marks on the flags: feather (blue), pine tree (green), cog (red).
+
+**The build step is a kit laid out on a cloth mat.** Pieces sit in a tray at the front of the table; the player drags one onto the table and the mice carry it and hammer it in. Kit pieces seen in the picture: plank bundles, a wall panel, a double gate, a ladder, roof pieces, a tent, a toy cannon with a box of balls, a wheel, rope, bolts, flag poles and a banner. A foreman mouse reads the plan at a workbench; a lantern hangs in the tower.
+
+**Notes for the build**
+- Mice carry and hammer during the build step: the camp is seen being made, not just appearing.
+- The toy cannon is a pop-gun: it fires corks or wooden balls, things go dizzy, nobody dies.
+- The wall emblem matches the team (the picture shows a cog on a blue wall; ours will be a feather).
