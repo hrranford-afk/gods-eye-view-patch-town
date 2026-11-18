@@ -656,6 +656,7 @@ BUILD.lobber=function(K,team,T,v){
     var sf=new THREE.Object3D();sf.name='socket_fire';sf.position.set(0,0,.09);u.cup.add(sf);u.fire=sf;
     var sc=new THREE.Object3D();sc.name='socket_crew';sc.position.set(.42,0,-.22);sc.rotation.y=-PI/2;root.add(sc);u.crew=sc;
     var bk=grp('ammo_bucket',root,[-.4,0,.12],G.bucket);var mm=mesh(G.marbles,gloss());mm.name='marbles';bk.add(mm);u.bucket=bk;
+    [[u.wheelL,'lobber.wheel.L'],[u.wheelR,'lobber.wheel.R'],[u.crank,'lobber.crank'],[bk,'lobber.bucket']].forEach(function(q){q[0].userData.partId=q[1];q[0].userData.home=q[0].position.toArray();u.parts.push(q[0]);});
     SS.lobberPose(root,0,0);};
 };
 /* pull 0..1 draws the arm back and winds the crank; recoil 0..1 plays the kick and wobble after a shot */
@@ -704,12 +705,14 @@ BUILD.tent=function(K,team,T,v){
 
 /* workshop bench with a tool board, a plan, a vice and a stool */
 BUILD.workshop=function(K,team,T,v){
-  var b=K.d,i,metal=team==='red',logs=team==='green';
+  var i,metal=team==='red',logs=team==='green';
+  K.part('workshop.bench',function(b){
   if(logs){logp(b,.2,.05,T,[0,.2,0],null,12);b.box(.5,.03,.24,T.end,'woodh',[0,.215,0]);logp(b,.06,.19,T,[-.17,.095,0]);logp(b,.06,.19,T,[.17,.095,0]);}
   else{for(i=0;i<3;i++)b.box(.52,.03,.085,jit(b,i%2?T.wood2:T.wood,.06),'woodh',[0,.21,(i-1)*.087]);
     [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(q){if(metal)b.cyl(.018,.018,.2,6,shade(TIN,.8),'rust',[q[0]*.22,.1,q[1]*.1]);else b.box(.035,.2,.035,T.woodD,'wood',[q[0]*.22,.1,q[1]*.1]);});
     b.box(.46,.02,.2,T.wood2,'woodh',[0,.06,0]);b.box(.5,.04,.02,metal?T.rust:T.main,metal?'rust':'paint',[0,.185,.125]);}
-  /* tool board at the back */
+  });
+  K.part('workshop.board',function(b){
   b.box(.03,.5,.03,T.woodD,'wood',[-.24,.25,-.13]);b.box(.03,.5,.03,T.woodD,'wood',[.24,.25,-.13]);
   if(metal)sheet(b,.5,.22,T.main,[0,.39,-.13]);else b.box(.5,.22,.02,logs?T.wood:T.main,logs?'woodh':'paint',[0,.39,-.13]);
   b.box(.54,.03,.06,T.woodD,'woodh',[0,.51,-.12]);
@@ -718,15 +721,18 @@ BUILD.workshop=function(K,team,T,v){
   b.push([-.04,.39,-.112],[0,0,.2]);b.box(.03,.035,.012,T.wood2,'wood',[0,.05,0]);b.tri([-.02,.035,0],[.02,.035,0],[.012,-.09,0],0xc8ccd0,null,.006);b.pop();
   b.push([.07,.39,-.11],null,.09);mark(b,'red',1,[0,0,0]);b.pop();
   mark(b,team,.11,[.18,.39,-.11]);
-  /* on the bench: the plan, a vice, a pot of bolts, a candle stub */
+  if(logs)leaves(b,5,0,.52,-.12,[.5,.04,.04],T);
+  });
+  K.part('workshop.plan',function(b){
   b.box(.2,.004,.14,0xf4e8c8,'cloth',[-.08,.228,.01],[0,.15,0]);b.box(.14,.002,.004,0x4a6ab0,null,[-.08,.231,-.02],[0,.15,0]);b.box(.1,.002,.004,0x4a6ab0,null,[-.09,.231,.02],[0,.15,0]);b.box(.004,.002,.08,0x4a6ab0,null,[-.04,.231,.01],[0,.15,0]);
   b.cyl(.016,.016,.14,6,0xf4e8c8,null,[-.2,.24,.03],[PI/2,.15,0]);
   b.box(.05,.05,.07,metal?T.rust:0x7a7e84,metal?'rust':null,[.17,.25,.03]);b.box(.012,.06,.06,0x9aa0a6,null,[.14,.26,.03]);b.cyl(.006,.006,.09,4,0x5a5a5e,null,[.17,.25,.08],[0,0,PI/2]);
   b.cyl(.026,.022,.04,8,metal?TIN:T.dark,null,[.06,.245,.06]);for(i=0;i<3;i++)b.cyl(.004,.004,.035,4,0x8a8e94,null,[.055+i*.006,.27,.058+i*.004],[.2*i-.2,0,.25-.2*i]);
-  /* stool and a few shavings */
+  });
+  K.part('workshop.stool',function(b){
   if(logs)logp(b,.06,.11,T,[.02,.055,.3]);else{b.cyl(.065,.065,.025,10,metal?T.main:T.wood,metal?'rust':'wood',[.02,.11,.3]);for(i=0;i<3;i++){var a=i/3*PI*2;b.rod([.02+Math.cos(a)*.03,.1,.3+Math.sin(a)*.03],[.02+Math.cos(a)*.06,0,.3+Math.sin(a)*.06],.01,T.woodD,null,4);}}
-  for(i=0;i<6;i++)b.box(.03,.004,.012,T.wood,null,[-.25+b.r()*.5,.003,.16+b.r()*.1],[0,b.r()*3,0]);
-  if(logs)leaves(b,5,0,.52,-.12,[.5,.04,.04],T);
+  });
+  for(i=0;i<6;i++)K.d.box(.03,.004,.012,T.wood,null,[-.25+K.r()*.5,.003,.16+K.r()*.1],[0,K.r()*3,0]);
   return function(root){var s=new THREE.Object3D();s.name='socket_crew';s.position.set(0,0,.3);s.rotation.y=PI;root.add(s);};
 };
 

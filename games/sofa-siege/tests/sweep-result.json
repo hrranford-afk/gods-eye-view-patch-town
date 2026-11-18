@@ -1,0 +1,109 @@
+{
+ "n": 40,
+ "config": {
+  "build": 120,
+  "ready": 3,
+  "count": 3,
+  "round": 60,
+  "rounds": 3,
+  "brk": 10,
+  "win": 100,
+  "gain": 0.9,
+  "walk": 1.15,
+  "buildTime": 3,
+  "mendTime": 2.5,
+  "noShopMend": 1.5,
+  "reload": 6,
+  "blast": 0.3,
+  "dizzy": 5,
+  "squadRing": 0.5,
+  "corkRange": 1.2,
+  "corkEvery": 3,
+  "corkChance": 0.05,
+  "corkDaze": 1.6,
+  "scrapEvery": 5,
+  "scrapReach": 0.38,
+  "redParts": 2,
+  "blueParts": 1,
+  "raidLead": 8,
+  "botMendAt": 2,
+  "wallShots": 0.3,
+  "levels": {
+   "easy": {
+    "fire": 13,
+    "err": 0.8,
+    "send": 5
+   },
+   "normal": {
+    "fire": 9.5,
+    "err": 0.45,
+    "send": 2.5
+   },
+   "hard": {
+    "fire": 7,
+    "err": 0.2,
+    "send": 0.6
+   }
+  }
+ },
+ "levels": {
+  "easy": {
+   "blue": 32.5,
+   "red": 67.5,
+   "front": 47.5,
+   "allOver": true,
+   "len": 174.3720833333654,
+   "early": 10,
+   "dizzies": 18.35,
+   "dazes": 9.85,
+   "flips": 12,
+   "partsOff": 22.2,
+   "mendedPct": 63.96396396396396,
+   "shots": 26.075,
+   "stuck": 0,
+   "noPath": 1.2,
+   "ownHits": 0,
+   "gapMax": 21.71666666666544,
+   "margin": 38.98249999999997
+  },
+  "normal": {
+   "blue": 15,
+   "red": 85,
+   "front": 45,
+   "allOver": true,
+   "len": 173.79625000003077,
+   "early": 22.5,
+   "dizzies": 26.175,
+   "dazes": 9.775,
+   "flips": 15.575,
+   "partsOff": 32.075,
+   "mendedPct": 63.2891660171473,
+   "shots": 35.4,
+   "stuck": 0,
+   "noPath": 1.05,
+   "ownHits": 0,
+   "gapMax": 16.883333333332374,
+   "margin": 46.575
+  },
+  "hard": {
+   "blue": 15,
+   "red": 85,
+   "front": 35,
+   "allOver": true,
+   "len": 166.0679166666912,
+   "early": 40,
+   "dizzies": 35.375,
+   "dazes": 8.875,
+   "flips": 16.8,
+   "partsOff": 40.475,
+   "mendedPct": 65.22544780728845,
+   "shots": 44,
+   "stuck": 0,
+   "noPath": 1.825,
+   "ownHits": 0,
+   "gapMax": 13.66666666666589,
+   "margin": 60.475
+  }
+ },
+ "errors": []
+}
