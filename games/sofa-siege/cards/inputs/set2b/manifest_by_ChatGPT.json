@@ -1,0 +1,166 @@
+{
+  "set": "Round Table Kingdom AR Placement Cards Set 2b",
+  "status": "ART / CANDIDATE CAMERA TARGETS, NOT DEVICE TESTED",
+  "size_mm": [
+    148,
+    105
+  ],
+  "raster_px": [
+    2220,
+    1575
+  ],
+  "colour_values": {
+    "world_anchor": "#512469",
+    "blue_base": "#196CBF",
+    "red_base": "#D65E54",
+    "capture_flag": "#F2DD77",
+    "hill": "#55B96C",
+    "build_camp": "#F0A852"
+  },
+  "cards": [
+    {
+      "id": "00",
+      "type": "world_anchor",
+      "title": "WORLD ANCHOR",
+      "instruction": "Place first. Keep it still.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/00_world_anchor.png",
+      "bw_sha256": "223ef028cc4f2e063427e83986be3bebeb71abb3bc9eefbb5c9c90363602d621",
+      "colour_file": "cards_A6_colour/00_world_anchor.png",
+      "colour_sha256": "fdcfd5a2710f3b99d7d765d83f3007400de07515bce51e053b7b5bb8a3e939a2",
+      "colour_hex": "#512469",
+      "colour_luminance_srgb_weighted": 50.55
+    },
+    {
+      "id": "01",
+      "type": "blue_base",
+      "title": "BLUE BASE",
+      "instruction": "Blue camp goes here.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/01_blue_base.png",
+      "bw_sha256": "657edcfac4118a2f4419d8d82ef0846050d3017848fdf9cca3c9662437e327cf",
+      "colour_file": "cards_A6_colour/01_blue_base.png",
+      "colour_sha256": "cdddf7dd207a1efa1baa5c595907f8667140ea08a846a685986d74b671ce9c15",
+      "colour_hex": "#196CBF",
+      "colour_luminance_srgb_weighted": 96.35
+    },
+    {
+      "id": "02",
+      "type": "red_base",
+      "title": "RED BASE",
+      "instruction": "Red camp goes here.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/02_red_base.png",
+      "bw_sha256": "e922f0a0fbd820e0f1c5cc8e3576d78065e41d01c65ba23831b5529dac30a818",
+      "colour_file": "cards_A6_colour/02_red_base.png",
+      "colour_sha256": "15cee80c691d3722a6e36bd89312918000c72426dd25b05cf9c25a24cd9d1dd1",
+      "colour_hex": "#D65E54",
+      "colour_luminance_srgb_weighted": 118.79
+    },
+    {
+      "id": "03",
+      "type": "capture_flag",
+      "title": "CAPTURE FLAG",
+      "instruction": "The flag to fight over.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/03_capture_flag.png",
+      "bw_sha256": "44bd27aac385bfca7c7f637a8d35958b9f4810725285f3c02ea5af64a105d63a",
+      "colour_file": "cards_A6_colour/03_capture_flag.png",
+      "colour_sha256": "15bcaea24767ca19d4525b1a012085bc3e6b05119bc3ef1d2e5fbbc420ecc7e8",
+      "colour_hex": "#F2DD77",
+      "colour_luminance_srgb_weighted": 218.1
+    },
+    {
+      "id": "04",
+      "type": "hill",
+      "title": "HILL",
+      "instruction": "A hill rises here.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/04_hill.png",
+      "bw_sha256": "3531a4a5ed502ce97b95c4c59dea70de13455a28f265712b31b187f2d815bbc3",
+      "colour_file": "cards_A6_colour/04_hill.png",
+      "colour_sha256": "828bda8cc9237f5ef5f688b63dfc586ce922abbd7834fcb8846ef1f5a820827f",
+      "colour_hex": "#55B96C",
+      "colour_luminance_srgb_weighted": 158.18
+    },
+    {
+      "id": "05",
+      "type": "build_camp",
+      "title": "BUILD CAMP",
+      "instruction": "Build and mend here.",
+      "size_mm": [
+        148,
+        105
+      ],
+      "bw_file": "cards_A6/05_build_camp.png",
+      "bw_sha256": "927081e53198819da257848120c3a6638a9696f75d00ee643a7462236d7601ea",
+      "colour_file": "cards_A6_colour/05_build_camp.png",
+      "colour_sha256": "58ae1aa083037b61fc8598c1f911624ec62411bfc0703b2c446da85397a8f0bb",
+      "colour_hex": "#F0A852",
+      "colour_luminance_srgb_weighted": 177.1
+    }
+  ],
+  "checks": {
+    "bw_max_pair_corr": 0.4096,
+    "colour_gray_max_pair_corr": 0.4405,
+    "bw_rotation_corr": {
+      "world_anchor": 0.2022,
+      "blue_base": 0.4471,
+      "red_base": 0.1878,
+      "capture_flag": 0.118,
+      "hill": 0.0787,
+      "build_camp": 0.2352
+    },
+    "colour_rotation_corr": {
+      "world_anchor": 0.2912,
+      "blue_base": 0.4683,
+      "red_base": 0.1677,
+      "capture_flag": 0.1316,
+      "hill": 0.1264,
+      "build_camp": 0.2311
+    },
+    "colour_luminance_sorted": [
+      [
+        "world_anchor",
+        50.55
+      ],
+      [
+        "blue_base",
+        96.35
+      ],
+      [
+        "red_base",
+        118.79
+      ],
+      [
+        "hill",
+        158.18
+      ],
+      [
+        "build_camp",
+        177.1
+      ],
+      [
+        "capture_flag",
+        218.1
+      ]
+    ],
+    "minimum_colour_luminance_gap": 18.92,
+    "similarity_method": "Pearson corr 130 px wide grayscale Gaussian blur sigma=.7; heuristic only; no AR-camera test"
+  }
+}

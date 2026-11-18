@@ -1,0 +1,70 @@
+{
+  "metric": "Pearson correlation of normalized 130px-wide grayscale images after Gaussian sigma=0.7px blur",
+  "ids": [
+    "world_anchor",
+    "blue_base",
+    "red_base",
+    "capture_flag",
+    "hill",
+    "build_camp"
+  ],
+  "pairwise": [
+    [
+      1.0,
+      0.4096,
+      0.3055,
+      0.085,
+      0.2447,
+      0.2409
+    ],
+    [
+      0.4096,
+      1.0,
+      0.3051,
+      0.2046,
+      0.3508,
+      0.3434
+    ],
+    [
+      0.3055,
+      0.3051,
+      1.0,
+      0.2382,
+      0.2868,
+      0.2961
+    ],
+    [
+      0.085,
+      0.2046,
+      0.2382,
+      1.0,
+      0.1594,
+      0.2406
+    ],
+    [
+      0.2447,
+      0.3508,
+      0.2868,
+      0.1594,
+      1.0,
+      0.25
+    ],
+    [
+      0.2409,
+      0.3434,
+      0.2961,
+      0.2406,
+      0.25,
+      1.0
+    ]
+  ],
+  "rotate_180": {
+    "world_anchor": 0.2022,
+    "blue_base": 0.4471,
+    "red_base": 0.1878,
+    "capture_flag": 0.118,
+    "hill": 0.0787,
+    "build_camp": 0.2352
+  },
+  "highest_distinct_pair": 0.4096334488889009
+}
