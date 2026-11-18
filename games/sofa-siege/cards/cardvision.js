@@ -396,7 +396,7 @@ var CV_CARDS = (function () {
   D.grayFromRGBA = function (px, w, h) { var g = new Uint8Array(w * h); for (var i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8; return g; };
   D.SETS = { '1': { dir: 'art', mm: { w: 210, h: 148.5 }, label: 'Set 1: engraved, A5', files: { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' } },
     '2': { dir: 'art2', mm: { w: 148, h: 105 }, label: 'Set 2: bold woodcut, A6', files: { '00': '00_world_anchor.png', '01': '01_blue_base.png', '02': '02_red_base.png', '03': '03_capture_flag.png', '04': '04_hill.png', '05': '05_build_camp.png' } } };
-  D.DEFAULT_SET = '1'; /* set after measuring: see RECOGNITION_REPORT.md */
+  D.DEFAULT_SET = '2'; /* Set 2 named no card wrongly in 978 showings; Set 1 did 10 times. See RECOGNITION_REPORT.md */
   D.CARD_FILES = { '00': '00_world_anchor_A5_artwork.png', '01': '01_blue_base_A5_artwork.png', '02': '02_red_base_A5_artwork.png', '03': '03_capture_flag_A5_artwork.png', '04': '04_hill_A5_artwork.png', '05': '05_build_camp_A5_artwork.png' };
   return D;
 })();

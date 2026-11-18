@@ -88,5 +88,5 @@ This takes the paper size out of the comparison.
 |---|---|---|---|---|
 | sightings | 354 | 312 | 406 | 405 |
 | corner error px, median / 90% | 0.5 / 1.8 | 0.6 / 2.0 | 0.5 / 1.6 | 0.9 / 2.8 |
-| position error mm, median / 90% | 3.9 / 13.7 | 371.5 / 573.1 | 1.5 / 6.8 | 390.2 / 612.4 |
-| tilt-and-turn error deg, median / 90% | 0.4 / 1.9 | 0.7 / 4.9 | 0.2 / 0.8 | 0.5 / 3.0 |
+| position error mm, median / 90% | 3.9 / 13.7 | 4.4 / 20.8 | 1.5 / 6.8 | 3.0 / 23.0 |
+| tilt-and-turn error deg, median / 90% | 0.4 / 1.9 | 0.7 / 4.7 | 0.2 / 0.8 | 0.4 / 3.1 |

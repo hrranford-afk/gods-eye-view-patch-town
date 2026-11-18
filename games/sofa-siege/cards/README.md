@@ -1,6 +1,6 @@
 # Round Table Kingdom: picture cards (builder notes, 18 Nov 2026)
 
-Six printed cards say where things go on the real table. There are two sets of artwork: **Set 1** (engraved, A5, in `art/`) and **Set 2** (bold woodcut, A6, in `art2/`). Pick one with `?set=1` or `?set=2`. DEFAULT_SET_LINE This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
+Six printed cards say where things go on the real table. There are two sets of artwork: **Set 1** (engraved, A5, in `art/`) and **Set 2** (bold woodcut, A6, in `art2/`). Pick one with `?set=1` or `?set=2`. With no `?set`, the page uses Set 2 (it named no card wrongly in the test; Set 1 did, 10 times in 978). This folder holds the recogniser, the checker page and the setup flow. **Nothing here is wired into the game yet** (`index.html` and `models.js` are untouched).
 
 **Status in one line:** works on made-up frames on this machine (numbers in `RECOGNITION_REPORT.md`); **NOT TESTED on a real device or a real print.**
 
