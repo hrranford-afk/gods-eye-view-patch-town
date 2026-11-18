@@ -167,11 +167,11 @@ function mouseGeo(team,furName){
   var T=PAL[team],fur=FUR[furName]||FUR.tan,furL=blend(fur,0xfff2dc,.55),G={},b,s,i;
   /* body: torso, tunic, belt, collar and the team's back pack */
   b=new Bld(hash(key));
-  b.sph(.06,10,7,fur,null,[0,.058,0],null,[1,1.12,.92]);
+  b.sph(.06,9,6,fur,null,[0,.058,0],null,[1,1.12,.92]);
   b.sph(.04,6,4,furL,null,[0,.085,.03],null,[1,1,.6]);
   b.cyl(.059,.07,.082,10,T.main,'cloth',[0,.04,0]);
   b.cyl(.071,.073,.012,10,T.dark,'cloth',[0,.004,0]);
-  b.cyl(.066,.068,.014,10,0x6b4423,null,[0,.034,0]);b.box(.022,.02,.008,GOLD,null,[0,.034,.066]);
+  b.cyl(.066,.068,.014,8,0x6b4423,null,[0,.034,0]);b.box(.022,.02,.008,GOLD,null,[0,.034,.066]);
   b.tor(.047,.013,T.dark,'cloth',[0,.098,.002],[PI/2,0,0],null,null,8);
   if(team==='blue'){ /* scarf knot, quiver of cork bolts */
     b.sph(.014,6,5,T.dark,'cloth',[.03,.092,.045]);b.box(.016,.04,.008,T.dark,'cloth',[.034,.068,.054],[0,0,.25]);
@@ -193,14 +193,14 @@ function mouseGeo(team,furName){
   G.body=b.geo();
   /* head */
   b=new Bld(3);
-  b.sph(.066,12,8,fur,null,[0,.05,0],null,[1.06,.96,1]);
-  b.sph(.034,8,6,furL,null,[0,.034,.05],null,[1.12,.86,1.25]);
+  b.sph(.066,11,7,fur,null,[0,.05,0],null,[1.06,.96,1]);
+  b.sph(.034,7,5,furL,null,[0,.034,.05],null,[1.12,.86,1.25]);
   b.sph(.0125,6,4,PINK,null,[0,.043,.093]);
   b.tor(.011,.003,0x6a3a2a,null,[0,.03,.082],[.5,0,PI],null,PI,6);
   for(s=-1;s<=1;s+=2){
-    b.sph(.013,6,5,0x1a1210,null,[s*.027,.064,.053]);b.sph(.0045,4,3,0xffffff,null,[s*.027+.004,.069,.063]);
+    b.sph(.013,6,4,0x1a1210,null,[s*.027,.064,.053]);b.sph(.0045,4,3,0xffffff,null,[s*.027+.004,.069,.063]);
     b.sph(.011,5,3,0xf0a090,null,[s*.043,.036,.046],null,[1,.7,.5]);
-    b.sph(.037,8,5,fur,null,[s*.06,.1,-.008],[0,0,-s*.3],[1,1,.28]);b.sph(.026,6,4,PINK,null,[s*.06,.1,-.001],[0,0,-s*.3],[1,1,.26]);
+    b.sph(.037,7,4,fur,null,[s*.06,.1,-.008],[0,0,-s*.3],[1,1,.28]);b.sph(.026,6,4,PINK,null,[s*.06,.1,-.001],[0,0,-s*.3],[1,1,.26]);
     b.box(.045,.0022,.0022,0x4a342a,null,[s*.05,.04,.068],[0,-s*.5,s*.12]);b.box(.042,.0022,.0022,0x4a342a,null,[s*.05,.03,.068],[0,-s*.5,-s*.14]);
   }
   if(team==='blue'){ /* floppy hat, goggles, white feather */
@@ -239,7 +239,7 @@ function mouseGeo(team,furName){
   /* legs hang down from the hip */
   b=new Bld(7);b.cyl(.021,.017,.04,7,T.dark,'cloth',[0,-.02,0]);b.sph(.024,6,4,PINK,null,[0,-.046,.013],null,[1,.56,1.5]);G.leg=b.geo();
   /* tail */
-  b=new Bld(8);b.tube([[0,0,.01],[0,-.012,-.035],[0,0,-.075],[0,.035,-.1],[0,.075,-.09],[0,.095,-.07]],.0065,PINK,null,8,4);b.sph(.0075,5,4,PINK,null,[0,.095,-.07]);G.tail=b.geo();
+  b=new Bld(8);b.tube([[0,0,.01],[0,-.012,-.035],[0,0,-.075],[0,.035,-.1],[0,.075,-.09],[0,.095,-.07]],.0065,PINK,null,7,4);b.sph(.0075,5,4,PINK,null,[0,.095,-.07]);G.tail=b.geo();
   /* the team tool, held in the right hand */
   b=new Bld(9);
   if(team==='blue'){ /* toy crossbow with a cork-tipped bolt; points along +z */
