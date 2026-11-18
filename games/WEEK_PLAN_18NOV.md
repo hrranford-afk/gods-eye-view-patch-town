@@ -2,14 +2,14 @@
 
 Harry, 18 Nov: "Ok plan" (after the fresh-eye review: too many fronts, too little proven on the real iPad).
 
-**One goal:** by Sunday 22 Nov, Harry and a mate play Sofa siege on the iPad: a base each, built on real furniture, taking turns to knock the other flag off.
+**One goal:** by Sunday 22 Nov, Harry and a mate play Sofa siege on the iPad: a base each, built on real furniture, fighting over the flag hill in the middle (Harry picked the middle flag, 18 Nov). Design: SOFA_SIEGE_DESIGN.md.
 
 ## Days
 | Day | Lands | Proof |
 |---|---|---|
 | Wed 18 | Room kit merge and step 2 (11:00). The test camera walks the 3D house (15:00). Sofa siege design, one page (17:00) | Tests green; screenshots |
 | Thu 19 | Base building step: 2 minutes, walls, tower, launcher, flag, on real surfaces | Bots build bases in the 3D house overnight |
-| Fri 20 | Turns and weapons: lob, bounce, flick; walls break; flag falls; win screen | Bots play 20 full games overnight; morning report |
+| Fri 20 | The fight: squads, launchers, the flag hill and its meter, dizzy and pop home, win screen | Bots play 20 full games overnight; morning report |
 | Sat 21 | On the test link for Harry's iPad. Fixes from his test | Harry's Copy numbers |
 | Sun 22 | Two players pass the iPad (or iPad + Mac). Main link if good | Harry plays a full game |
 
