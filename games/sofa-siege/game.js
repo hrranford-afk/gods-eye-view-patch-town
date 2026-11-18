@@ -174,7 +174,7 @@ function plan(m){
   var g=GRID[m.side],si=ci(m.x),sj=ci(m.z),start=sj*GN+si,ti=ci(m.tx),tj=ci(m.tz),goal=tj*GN+ti,head=0,tail=0,best=start,bd=dist(m.x,m.z,m.tx,m.tz),c,i,j,k;
   m.pver=GVER;m.ptx=m.tx;m.ptz=m.tz;m.pi=0;m.path=[];m.claim=[m.x,m.z];
   /* spots other mice stand on, or are heading for, are taken: pick a free one beside them */
-  var taken=[];SG.mice.forEach(function(o){if(o!==m&&o.claim&&o.state!=='cheer')taken.push(o.claim);});
+  var taken=[];if(!m.crewGoal)SG.mice.forEach(function(o){if(o!==m&&o.claim&&o.state!=='cheer')taken.push(o.claim);});   /* the lobber's crew goes first */
   function crowd(x,z){for(var q=0;q<taken.length;q++)if(dist(x,z,taken[q][0],taken[q][1])<CONFIG.personal)return .45;return 0;}
   var goalTaken=crowd(m.tx,m.tz)>0;bd+=goalTaken?.45:0;
   if(bd<.05)return;
@@ -228,7 +228,7 @@ function tickBuild(dt){
 
 /* ================= the fight ================= */
 function startRound(n){snd('beep');SG.phase='count';SG.round=n;SG.time=CONFIG.count;SG.sec=0;fixGrid();if(n===1){SG.stats.lastEvent=SG.clock;SG.stats.longestGap=0;}
-  SG.mice.forEach(function(m){if(m.state==='cheer'||m.state==='wander'){m.state='idle';}if(n===1){var w=freeSpot(m.side,m.i);m.hx=w[0];m.hz=w[1];}});
+  SG.mice.forEach(function(m){if(m.state==='cheer'||m.state==='wander'){m.state='idle';}if(n===1){var w=freeSpot(m.side,m.i);m.hx=w[0];m.hz=w[1];m.x=w[0];m.z=w[1];m.tx=w[0];m.tz=w[1];m.path=null;m.claim=[w[0],w[1]];m.rot=m.side?0:PI;}});   /* everyone lines up at home for the battle, so nobody starts walled in */
   SG.sides.forEach(function(s){s.sendT=LEVELS[s.level].send;s.fireT=LEVELS[s.level].fire*(.4+rand()*.5);if(n===1)s.reload=CONFIG.reload*.5;});ui();}
 function endMatch(w){SG.phase='over';SG.winner=w;SG.sides[0].aim.on=SG.sides[1].aim.on=false;snd('win');SG.mice.forEach(function(m){if(m.state==='dizzy'){m.state='idle';}if(m.side===w){m.state='cheer';m.rot=0;}else if(m.state!=='cheer'){m.state='idle';m.speed=0;}m.goal=false;});
   event('win',w);ui();}
@@ -247,7 +247,7 @@ SG.blueShare=function(){var b=SG.sides[0].team==='blue'?0:1,d=SG.sides[b].score-
 function lobberOf(s){var id=SG.sides[s].lobber;return id?pieceById(id):null;}
 function partOn(p,id){for(var i=0;i<p.ps.length;i++)if(p.ps[i].id===id)return p.ps[i].st==='on';return true;}
 function crewSpot(p){var c=Math.cos(p.rot),s=Math.sin(p.rot),lx=.42*PS,lz=-.22*PS;return [p.x+lx*c+lz*s,p.z-lx*s+lz*c];}
-function crewReady(s){var l=lobberOf(s),side=SG.sides[s];if(!l||side.crew<0)return false;var m=SG.mice[s*5+side.crew],w=crewSpot(l);return m.state!=='dizzy'&&m.crewing&&dist(m.x,m.z,w[0],w[1])<.42;}
+function crewReady(s){var l=lobberOf(s),side=SG.sides[s];if(!l||side.crew<0)return false;var m=SG.mice[s*5+side.crew],w=crewSpot(l);return m.state!=='dizzy'&&m.crewing&&dist(m.x,m.z,w[0],w[1])<.55;}
 /* why the lobber cannot fire now, or '' if it can */
 SG.lobberBlock=function(s){var l=lobberOf(s),side=SG.sides[s];if(!l)return 'none';if(!partOn(l,'lobber.crank')||!partOn(l,'lobber.bucket'))return 'broken';if(!crewReady(s))return 'crew';if(side.reload>0)return 'winding';return '';};
 /* which piece a point in the air would hit (any side's, but not the lobber that fired) */
@@ -320,7 +320,7 @@ function tickMice(dt){
     if(crew){var cw=crewSpot(lobberOf(m.side));tx=cw[0];tz=cw[1];slack=.4;}
     else if(side.bot&&side.team==='red'&&m.i===4&&side.raid){tx=side.raid.x;tz=side.raid.z;slack=.45;}
     else if(side.order){var a=m.i/5*PI*2+.3,rad=m.i===0?0:CONFIG.squadRing,off=w2(m.side,Math.cos(a)*rad,Math.sin(a)*rad);tx=side.order.x+off[0];tz=side.order.z+off[1];slack=.35;}   /* the same ring for both ends of the table */
-    goTo(m,tx,tz,slack);if(walk(m,dt,CONFIG.walk)){m.state=side.order||crew?'hold':'idle';m.goal=false;m.crewing=!!crew;if(crew){var lb=lobberOf(m.side);m.rot=Math.atan2(lb.x-m.x,lb.z-m.z);}}else{m.state='go';m.goal=m.q<=0;m.crewing=false;}
+    m.crewGoal=!!crew;goTo(m,tx,tz,slack);if(walk(m,dt,CONFIG.walk)){m.state=side.order||crew?'hold':'idle';m.goal=false;m.crewing=!!crew;if(crew){var lb=lobberOf(m.side);m.rot=Math.atan2(lb.x-m.x,lb.z-m.z);}}else{m.state='go';m.goal=m.q<=0;m.crewing=false;}
     if(SG.phase!=='fight'||crew)return;
     /* blue pops corks at range, if it can see the target; red knocks parts off pieces it can reach */
     if(side.team==='blue'&&m.cd<=0){var best=null,bd=CONFIG.corkRange;SG.mice.forEach(function(o){if(o.side!==en||o.state==='dizzy')return;var d=dist(m.x,m.z,o.x,o.z);if(d<bd&&sightClear(m.x,m.z,o.x,o.z)){bd=d;best=o;}});
