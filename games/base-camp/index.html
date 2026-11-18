@@ -209,7 +209,9 @@ body.inar #ccam{top:calc(env(safe-area-inset-top,0px) + 150px)}
 <script src="models/places.js"></script> <!-- build 25: the loom and the local-goods heaps (BC_PLACES_MK). Optional: without it plain shapes are built -->
 <!-- build 17: three.js glTF loader (same version as three.js), for the animated mouse. async, so a slow CDN never holds the game back; without it the procedural mouse is used -->
 <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onerror="window.__gltfBad = 1"></script>
+<script src="room-kit/recorder.js"></script> <!-- room kit (18 Nov): the field recorder (REC, rec*, buildReport, report*), moved out of this file. Loads first: the script below does REC.x = [] at load. Source: games/room-kit/recorder.js -->
 <script src="room-kit/vision.js"></script> <!-- room kit (17 Nov): the picture maths of the sticker lock and the room snapshots (stkRefine ... stkFit, FEAT), moved out of this file unchanged. Must load before the script below. Source: games/room-kit/vision.js -->
+<script src="room-kit/dev.js"></script> <!-- room kit (18 Nov): the developer panel (DEV, dev*) and worldMap*, moved out of this file. Source: games/room-kit/dev.js -->
 <script>
 'use strict';
 // Base Camp: a living colony on the real surfaces of your room. One file. Sections: basics, almanac (data), environment
@@ -5544,42 +5546,12 @@ function practiceDetector(fr) {
 }
 
 // ============ FIELD RECORDER: real rooms correct our assumptions ============
-// Bounded ring buffers of what the game saw (surfaces, coverage, recognition, tags, things it could not classify, homing attempts, frame times, errors), kept on this
-// device. "Report" in the menu builds ONE JSON report (optional note, up to 6 small camera snapshots of confused moments). It is only ever downloaded or copied by the
-// player; nothing is uploaded. Unknown things also become landmarks in the game (WONDERS below: a data table the residents can extend).
-const REC_KEY = 'bc-rec-v1', REPORTS_KEY = 'bc-reports-v1', REC_V = 1;
-const REC = { t0: Date.now(), zones: [], zoneLog: [], cover: [], recog: [], tags: [], unknown: [], reloc: [], errs: [], snaps: [], nh: new Map(), nhCount: 0, fps: { n: 0, sum: 0, max: 0, slow: 0, worst: [] }, lastCover: 0, lastZones: 0, lastSnap: {}, prev: null };
+/* ---- the field recorder (REC_KEY, REC, recRing, recT, recInit, recFrame ... recSave, buildReport, reportsLoad, reportsAdd, reportCopy, reportDownload, reportUi): moved to the room kit, room-kit/recorder.js (18 Nov, still build 30). recInit runs here, where its load-time block was ---- */
 const WONDERS = { // what the colony makes of a thing it cannot classify; add a kind here (or let a resident add one) and it is used
   high: { names: ['the Great Glittering Thing', 'the Hanging Mystery', 'the Sky Lantern', 'the Dangling Wonder'], line: 'Something hangs high above the colony, up where nobody has ever been. The colonists named it {name} and point at it whenever they are nervous.' },
   vertical: { names: ['the Tall Slanted Thing', 'the Leaning Marvel'], line: 'The colonists found something at a funny angle. They called it {name} and agreed not to go near it.' },
 };
-function recRing(a, item, max) { a.push(item); if (a.length > max) a.shift(); }
-const recT = () => Math.round((Date.now() - REC.t0) / 100) / 10;
-(function recInit() {
-  try { const old = JSON.parse(localStorage.getItem(REC_KEY) || 'null'); if (old && old.v === REC_V) REC.prev = { at: old.at, dur: old.dur, fps: old.fps, zones: (old.zones || []).slice(0, 12), reloc: (old.reloc || []).slice(-8), errs: (old.errs || []).slice(-8), unknown: (old.unknown || []).slice(-8) }; } catch (e) { /* none */ }
-  addEventListener('error', (e) => recRing(REC.errs, { t: recT(), msg: String(e.message || e).slice(0, 300), src: String(e.filename || '').split('/').pop(), line: e.lineno || 0, col: e.colno || 0 }, 30));
-  addEventListener('unhandledrejection', (e) => recRing(REC.errs, { t: recT(), msg: 'unhandled rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 300) }, 30));
-})();
-function recFrame(dt) { const F = REC.fps, ms = dt * 1000; F.n++; F.sum += ms; if (ms > F.max) F.max = ms; if (ms > 60) { F.slow++; recRing(F.worst, { t: recT(), ms: Math.round(ms) }, 10); } }
-function recNonHoriz(p) { // a hit on a plane that is not flat: counted per 30 cm cell (walls, slopes, chandeliers)
-  REC.nhCount++; const key = Math.floor(p.x / 0.3) + ',' + Math.floor(p.y / 0.3) + ',' + Math.floor(p.z / 0.3); let c = REC.nh.get(key);
-  if (!c) { if (REC.nh.size >= 300) return; c = { n: 0, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) }; REC.nh.set(key, c); } c.n++;
-}
-function recZones() { // every surface the scan has now: height, size, outline box, type guess, how densely it was hit
-  const low = SCAN.zones.reduce((m, z) => Math.min(m, z.y), 1e9); REC.zones = SCAN.zones.map((z) => ({ id: z.id, type: z.type, name: z.name, h: +(z.y - low).toFixed(2), y: +z.y.toFixed(3), area: +z.area.toFixed(3), w: +z.w.toFixed(2), d: +z.d.toFixed(2), cx: +z.cx.toFixed(2), cz: +z.cz.toFixed(2), hits: z.band ? z.band.n : 0, hitsPerM2: z.band ? Math.round(z.band.n / Math.max(0.01, z.area)) : 0 }));
-  recRing(REC.zoneLog, { t: recT(), n: REC.zones.length, area: +REC.zones.reduce((a, z) => a + z.area, 0).toFixed(2) }, 60);
-}
-function recCover() { recRing(REC.cover, { t: recT(), hits: SCAN.hits, bands: SCAN.bands.length, zones: SCAN.zones.length, mapZones: G.zones.length, nonHoriz: REC.nhCount, weak: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, lat: Math.round(DIRECT.lat), pend: DIRECT.pend, chk: DIRECT.chk } : 0, known: +(G.zones.length ? mapKnown() : 0).toFixed(2) }, 120); }
-function recRecog(o) { recRing(REC.recog, Object.assign({ t: recT() }, o), 80); }
-function recTag(sp) { recRing(REC.tags, { t: recT(), tag: sp.tag, name: sp.name, src: sp.src, y: +sp.y.toFixed(2), area: +(sp.area || 0).toFixed(3), on: sp.on }, 80); }
-function recReloc(o) { recRing(REC.reloc, Object.assign({ t: recT(), scanSecs: +RELOC.scanSecs.toFixed(1) }, o), 60); }
-function recUnknown(o) { recRing(REC.unknown, Object.assign({ t: recT() }, o), 40); }
-function recSnap(reason) { // a small camera picture of a confused moment (only when the app gives camera frames); kept in memory for the report
-  if (REC.snaps.length >= 6 || performance.now() - (REC.lastSnap[reason] || -1e9) < 20000) return false; const fr = recogFrame(); if (!fr || !fr.real || !fr.img) return false;
-  try { const sc = Math.min(1, 640 / Math.max(fr.w, fr.h)), c = document.createElement('canvas'); c.width = Math.max(8, Math.round(fr.w * sc)); c.height = Math.max(8, Math.round(fr.h * sc)); c.getContext('2d').drawImage(fr.img, 0, 0, c.width, c.height);
-    REC.lastSnap[reason] = performance.now(); REC.snaps.push({ reason, t: recT(), w: c.width, h: c.height, jpeg: c.toDataURL('image/jpeg', 0.6) }); return true; } catch (e) { return false; }
-}
-function recSave() { try { const o = { v: REC_V, at: Date.now(), dur: recT(), fps: REC.fps, zones: REC.zones, reloc: REC.reloc, errs: REC.errs, unknown: REC.unknown }; localStorage.setItem(REC_KEY, JSON.stringify(o)); } catch (e) { /* storage full: the recorder is optional */ } }
+recInit();
 // ---- things the game cannot classify become landmarks ----
 function wondersTick() {
   if (!G.auto || G.phase === 'title' || (G.returning && !G.locked)) return;
@@ -5596,40 +5568,6 @@ function makeWonder(kind, x, y, z, area) {
   const text = W.line.replace('{name}', nm); toast(text, 6); diary(text, 'the colonists'); G.wonders = (G.wonders || []).concat(text); recUnknown({ kind, name: nm, x: +x.toFixed(2), y: +y.toFixed(2), z: +z.toFixed(2), area: +area.toFixed(3) }); recSnap('unknown object: ' + nm);
   const S = G.settlements.find((q) => q.placed); if (S) puff('star', x, y, z, 6, { size: 0.01, vy: 0.02, life: 1.6, add: true, jit: 0.03 });
   persistSoon(); return sp;
-}
-// ---- the report ----
-function buildReport(note) {
-  const sess = { seconds: recT(), mode: G.mode, auto: !!G.auto, returning: !!G.returning, locked: !!G.locked, visits: G.visits || 0, phase: G.phase, storage: { status: STORE.status, fails: STORE.fails, err: STORE.err, usedBackup: !!STORE.usedBackup }, settlements: G.settlements.length, spots: G.spots.length, mapZones: G.zones.length, mapKnown: +(G.zones.length ? mapKnown() : 0).toFixed(2), questions: AUTO.questions || 0 };
-  const nh = [...REC.nh.values()].sort((a, b) => b.n - a.n).slice(0, 30);
-  const R = { kind: 'base-camp-field-report', v: REC_V, build: BUILD, at: new Date().toISOString(), note: String(note || '').slice(0, 2000), device: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ar: !!AR.on, arOk: !!AR.ok, camera: !!(AR.on && recogFrame()), mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null },
-    session: sess, fps: { frames: REC.fps.n, avgMs: REC.fps.n ? +(REC.fps.sum / REC.fps.n).toFixed(1) : 0, maxMs: Math.round(REC.fps.max), slow: REC.fps.slow, worst: REC.fps.worst }, zones: REC.zones, zoneLog: REC.zoneLog, coverage: REC.cover, recognition: REC.recog, recogStats: RECOG.stats, tags: REC.tags, unknown: REC.unknown, nonHorizontalHits: { total: REC.nhCount, cells: nh }, homing: REC.reloc, totem: { attempts: REC.totem, stats: TOTEM.stats }, rooms: homeSummary(), scanQuality: { trustedHits: SCAN.hits, weakHits: SCAN.weak, direct: DIRECT.on ? { hps: +DIRECT.hps.toFixed(0), anch: DIRECT.anch, est: DIRECT.est, none: DIRECT.none, err: DIRECT.err, chk: DIRECT.chk } : null }, lock: RELOC.lock || null, sticker: stkReport(), roomSnapshots: snapReport() /* build 28: numbers only, no pictures */, depth: depthReport() /* build 30: numbers only */, errors: REC.errs, previousSession: REC.prev,
-    snapshots: REC.snaps.map((s) => ({ reason: s.reason, t: s.t, w: s.w, h: s.h, jpeg: s.jpeg })) };
-  return JSON.stringify(R);
-}
-function reportsLoad() { try { const a = JSON.parse(localStorage.getItem(REPORTS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-function reportsAdd(json, note) {
-  let list = reportsLoad(); list.push({ id: Date.now(), at: new Date().toISOString(), note: String(note || '').slice(0, 80), bytes: json.length, json }); list = list.slice(-5);
-  for (let tries = 0; tries < 6; tries++) { try { localStorage.setItem(REPORTS_KEY, JSON.stringify(list)); return list; } catch (e) { const i = list.findIndex((r) => r.json && r.json.indexOf('"jpeg"') > 0 && r.id !== list[list.length - 1].id); if (i >= 0) { try { const o = JSON.parse(list[i].json); o.snapshots = []; list[i].json = JSON.stringify(o); list[i].stripped = true; continue; } catch (e2) { /* fall through */ } } list.shift(); if (!list.length) return []; } }
-  return list;
-}
-function reportCopy(text) { // the web view may not have the clipboard API: fall back to a hidden textarea and execCommand
-  const fb = () => { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } t.remove(); return ok; };
-  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => true, () => fb()); } catch (e) { /* use the fallback */ }
-  return Promise.resolve(fb());
-}
-function reportDownload(text, name) { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); return true; } catch (e) { return false; } }
-function reportUi(msg) {
-  const m = $('modal'); m.hidden = false; const list = reportsLoad().slice().reverse();
-  m.innerHTML = '<div class="dh">Report</div><div class="sub">' + (msg || 'Builds one file about what the game saw in your room (surfaces, recognition, homing, speed, errors) and up to 6 small camera pictures of confusing moments. It stays on this device until you download or copy it yourself.') + '</div><textarea id="repNote" rows="3" maxlength="2000" placeholder="Anything to add? (what felt wrong)"></textarea><div class="mrow"><button id="repBuild" class="big alt">Build report</button><button id="repClose">Close</button></div>'
-    + (list.length ? '<div class="sub">Last reports</div>' + list.map((r) => '<div class="lib"><div><b>' + esc(r.at.replace('T', ' ').slice(0, 16)) + '</b> ' + esc(r.note || '') + '<div class="sub">' + (r.bytes / 1024).toFixed(0) + ' KB' + (r.stripped ? ' (pictures dropped to save room)' : '') + '</div></div><button data-rdl="' + r.id + '">Download</button><button data-rcp="' + r.id + '">Copy</button></div>').join('') : '');
-  m.onclick = async (ev) => {
-    const t = ev.target.closest('button'); if (!t) return;
-    if (t.id === 'repClose') { m.hidden = true; return; }
-    if (t.id === 'repBuild') { const json = buildReport($('repNote').value); reportsAdd(json, $('repNote').value); reportUi('Report built: ' + (json.length / 1024).toFixed(0) + ' KB, ' + REC.snaps.length + ' picture' + (REC.snaps.length === 1 ? '' : 's') + '. Download it or copy it below.'); return; }
-    const r = reportsLoad().find((q) => String(q.id) === (t.dataset.rdl || t.dataset.rcp)); if (!r) return;
-    if (t.dataset.rdl) toast(reportDownload(r.json, 'base-camp-report-' + r.at.slice(0, 16).replace(/[:T]/g, '-') + '.json') ? 'Report downloaded.' : 'Download is not available here. Use Copy.');
-    else toast((await reportCopy(r.json)) ? 'Report copied.' : 'Copy is not available here. Use Download.');
-  };
 }
 // ============ AUTOMATIC PLAY: continuous scanning, auto-settle, auto-save, "it knows where it is" ============
 // Pressing Play starts one flow with no phases: hit-test samples go into SCAN all the time; every second or so the surfaces are rebuilt (cheap, throttled).
@@ -6950,68 +6888,8 @@ function depthReport() { return { want: DEPTH.want, state: DEPTH.state, err: DEP
   fits: DEPTH.fits, good: DEPTH.good, poor: DEPTH.poor, lastWhy: DEPTH.why, fitCm: +DEPTH.cm.toFixed(1), fitPts: DEPTH.pts, shownS: Math.round(DEPTH.shownS), hiddenS: Math.round(DEPTH.hidS), log: REC.depth }; }
 function recDepth(o) { REC.depth = REC.depth || []; REC.depth.push(Object.assign({ t: recT() }, o)); if (REC.depth.length > 20) REC.depth.shift(); }
 
-/* ============ DEVELOPER MODE (build 30): a small corner panel for testing on the iPad. ?dev=1, or hold the build line on the title for 3 s. Read HANDOVER "Developer mode (build 30)". ============
-   One row per part of the AR stack: a tick (working), a cross (should work but does not) or a dash (not running here), and a number. Refreshed twice a second while open.
-   "Copy numbers" copies the panel as JSON (numbers and short texts only, never a picture). When closed the panel does not exist: nothing on the page moves. */
-const DEV = { on: false, el: null, timer: 0, prev: null, rate: null, hold: 0, last: null, copied: '' };
-function devRows() { /* the numbers behind the panel: [tick, label, text] per row, plus the raw numbers for the JSON */
-  const now = performance.now(), P = DEV.prev, n = { t: now, frames: frameN, hits: SCAN.hits, pics: STK.seq || 0 };
-  if (P && now - P.t >= 2000) { /* rates over at least 2 s (pictures come a few a second) */ const s = (now - P.t) / 1000; DEV.rate = { fps: (n.frames - P.frames) / s, hits: (n.hits - P.hits) / s, pics: Math.max(0, n.pics - P.pics) / s }; DEV.prev = n; } else if (!P) DEV.prev = n;
-  const R = DEV.rate || { fps: NaN, hits: NaN, pics: NaN }, wait = !DEV.rate, f0 = (v, d) => (isFinite(v) ? v.toFixed(d || 0) : '...'), ar = !!AR.on, poseOk = ar && now - (AR.poseT || 0) < 1000, im = ar && STK.img && STK.img.naturalWidth ? STK.img : null, rot = im ? stkView(im.naturalWidth, im.naturalHeight, AR.projM.elements).rot : null;
-  const kf = G.snap ? G.snap.kf.length : 0, pts = G.snap ? G.snap.kf.reduce((a, k) => a + k.n, 0) : 0, L = RELOC.lock, lockHow = L ? (L.stk || L.snap || 'surfaces') : '', lockSd = L && L.snap && SNAP.lastF && SNAP.lastF.sdP ? SNAP.lastF.sdP * 100 : null;
-  const sk = STK.lastSeen && now - STK.lastSeen.t < 5000 ? STK.lastSeen : null, skOwn = sk ? stkOwner(sk.id) : null, skN = sk ? (STK.obs[sk.id] || []).length : 0, skWhy = sk && STK.why && now - STK.whyT < 3000 ? STK.why : ''; /* 16 Nov: the sticker row says whose it is, how many sightings toward a fix, and why a fix was refused */
-  const c = RECOG.coco, g = REC.recog.length ? REC.recog[REC.recog.length - 1] : null, e = REC.errs.length ? REC.errs[REC.errs.length - 1] : null;
-  let kb = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); kb += (k.length + (localStorage.getItem(k) || '').length) / 1024; } } catch (er) { kb = -1; }
-  const D = DEPTH, dep = D.state === 'ready' ? (D.lastFit && D.lastFit.ok ? 'tick' : 'dash') : D.state === 'error' ? 'cross' : 'dash';
-  const num = { ar: { on: ar, pose: poseOk, fps: +R.fps.toFixed(1) }, hits: { perS: +R.hits.toFixed(1), total: SCAN.hits, surfaces: G.zones.length, scanZones: SCAN.zones.length },
-    camera: { perS: +R.pics.toFixed(2), w: im ? im.naturalWidth : 0, h: im ? im.naturalHeight : 0, rot }, snapshots: { keyframes: kf, points: pts, relock: L ? { how: lockHow, s: +((L.ms || 0) / 1000).toFixed(1), sdCm: lockSd === null ? null : +lockSd.toFixed(2) } : null },
-    sticker: sk ? { id: sk.id, m: +sk.d.toFixed(2), agoS: +((now - sk.t) / 1000).toFixed(1), owner: skOwn, n: skN, need: STK_MIN_N4, why: skWhy, rej: STK.rej } : { rej: STK.rej }, objects: { state: c.state, runs: c.runs, ms: Math.round(c.ms || 0), last: g ? { cls: g.cls || '', score: g.score || 0 } : null },
-    depth: { state: D.state, want: D.want, msRun: Math.round(D.msAvg), fitCm: D.fits ? +D.cm.toFixed(1) : null, occlusion: !!D.shown, runs: D.runs, good: D.good, poor: D.poor, why: D.why }, errors: { count: REC.errs.length, last: e ? String(e.msg).slice(0, 120) : '' }, storageKB: Math.round(kb) };
-  const rows = [
-    [!ar ? 'dash' : poseOk ? 'tick' : 'cross', 'AR tracking', ar ? (poseOk ? 'pose ok' : 'no pose') + ' · ' + f0(R.fps) + ' fps' : 'not in AR · ' + f0(R.fps) + ' fps'],
-    [!ar || wait ? 'dash' : R.hits > 0 || G.zones.length ? 'tick' : 'cross', 'Hit points', f0(R.hits) + '/s · ' + G.zones.length + ' surfaces'],
-    [!ar || wait ? 'dash' : R.pics > 0 ? 'tick' : 'cross', 'Camera pictures', ar ? f0(R.pics, 1) + '/s' + (im ? ' · ' + im.naturalWidth + 'x' + im.naturalHeight + ' · turn ' + rot + '°' : ' · none') : '-'],
-    [kf ? 'tick' : 'dash', 'Room snapshots', kf + ' kf · ' + pts + ' pts' + (L ? ' · last lock ' + lockHow + ' ' + ((L.ms || 0) / 1000).toFixed(1) + ' s' + (lockSd !== null ? ' ±' + lockSd.toFixed(1) + ' cm' : '') : '')],
-    [sk ? (skWhy && skWhy !== 'too few' ? 'cross' : 'tick') : 'dash', 'Sticker', sk ? 'id ' + sk.id + ' · ' + (skOwn ? (skOwn === HOMES.cur ? 'this room' : homeName(skOwn)) : 'no room') + ' · ' + sk.d.toFixed(2) + ' m · ' + (skN >= STK_MIN_N4 ? skN + ' sightings' : skN + '/' + STK_MIN_N4 + ' sightings') + (skWhy ? ' · refused: ' + skWhy : (STK.lastFix[sk.id] && now - STK.lastFix[sk.id] < 5000 ? ' · fix ok' : '')) : 'not seen' + (STK.rej.moving ? ' · ' + STK.rej.moving + ' pictures skipped (moving)' : '')],
-    [c.state === 'ready' ? 'tick' : c.state === 'error' ? 'cross' : 'dash', 'Object spotting', c.state + (g ? ' · ' + (g.cls || '?') + ' ' + Math.round((g.score || 0) * 100) + '%' : '')],
-    [dep, 'Depth', (depthSlow() ? (!DEPTH.slowOK && DEPTH.soft ? 'off (software GL) \u00b7 ' : 'paused (frames slow) \u00b7 ') : '') + D.state + (D.runs ? ' · ' + Math.round(D.msAvg) + ' ms' : '') + (D.fits ? ' · fit ' + (D.lastFit && D.lastFit.ok ? D.cm.toFixed(1) + ' cm' : D.why) : '') + ' · hiding ' + (D.shown ? 'on' : 'off')],
-    [REC.errs.length ? 'cross' : 'tick', 'Errors', REC.errs.length + (e ? ' · ' + String(e.msg).slice(0, 60) : '')],
-    [kb < 0 ? 'cross' : kb < 4000 ? 'tick' : 'cross', 'Storage', Math.round(kb) + ' KB']];
-  return { rows, num };
-}
-function devDraw() {
-  const el = DEV.el; if (!el) return; const r = devRows(), ic = { tick: '✔', cross: '✖', dash: '–' }; DEV.last = r.num;
-  el.querySelector('.devRows').innerHTML = r.rows.map(([k, l, t], i) => '<div class="devRow ' + k + '"><b>' + ic[k] + '</b><span>' + (i + 1) + '. ' + esc(l) + '</span><i>' + esc(t) + '</i></div>').join('');
-  const sw = el.querySelector('#devDepth'); if (sw) sw.textContent = 'Show depth: ' + (DEPTH.dbg ? 'on' : 'off');
-}
-function devOpen() {
-  if (DEV.el) return; DEV.on = true; store.set('bc-dev', '1'); const el = document.createElement('div'); el.id = 'devPanel'; DEV.el = el;
-  el.innerHTML = '<div class="devHead">Developer · ' + esc(BUILD) + '<button id="devX">×</button></div><div class="devRows"></div><div class="devBtns"><button id="devCopy">Copy numbers</button><button id="devDepth">Show depth: off</button></div><div class="devMsg"></div>';
-  $('ui').appendChild(el); devDraw(); DEV.timer = setInterval(devDraw, 500);
-  el.onclick = (ev) => { const b = ev.target.closest('button'); if (!b) return; ev.stopPropagation();
-    if (b.id === 'devX') devClose(); else if (b.id === 'devCopy') devCopy(); else if (b.id === 'devDepth') { DEPTH.dbg = !DEPTH.dbg; if (!DEPTH.dbg) { const c = document.getElementById('depthDbg'); if (c) c.remove(); } if (DEPTH.dbgMesh) DEPTH.dbgMesh.visible = DEPTH.dbg && DEPTH.shown; devDraw(); } };
-}
-function devClose() { clearInterval(DEV.timer); DEV.timer = 0; if (DEV.el) DEV.el.remove(); DEV.el = null; DEV.on = false; store.set('bc-dev', '0'); }
-function devJSON() { const r = devRows(); return JSON.stringify({ kind: 'base-camp-dev-numbers', build: BUILD, at: new Date().toISOString(), rows: r.rows.map((q) => [q[0], q[1], q[2]]), numbers: r.num }); }
-function devCopy() { /* numbers only: the panel's rows and the numbers behind them */
-  const s = devJSON(), msg = (t) => { const m = DEV.el && DEV.el.querySelector('.devMsg'); if (m) m.textContent = t; }; DEV.copied = s;
-  const old = () => { try { const ta = document.createElement('textarea'); ta.value = s; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); msg(ok ? 'Copied (' + s.length + ' characters)' : 'Could not copy'); } catch (e) { msg('Could not copy'); } };
-  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(() => msg('Copied (' + s.length + ' characters)'), old); else old(); } catch (e) { old(); }
-}
-(function devStart() { /* ?dev=1 (or left on last time), or a 3 s hold on the build line on the title */
-  try { const q = new URLSearchParams(location.search).get('dev'); if (q === '1' || (q !== '0' && store.get('bc-dev') === '1')) setTimeout(devOpen, 0); if (q === '0') store.set('bc-dev', '0'); } catch (e) { /* no panel */ }
-  const st = $('arStatus'); if (!st) return; const stop = () => { clearTimeout(DEV.hold); DEV.hold = 0; };
-  st.addEventListener('pointerdown', () => { stop(); DEV.hold = setTimeout(() => { DEV.hold = 0; if (DEV.el) devClose(); else devOpen(); }, 3000); });
-  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) st.addEventListener(t, stop);
-})();
-
-// FUTURE HOOK (native app only): when the page runs inside our own iOS app, WebXRKit's polyfill exposes ARKit's ARWorldMap through
-// session.nonStandard_getWorldMap() / nonStandard_setWorldMap(map) (see webxr-polyfill.js around lines 5795-5815). Then returning needs no surface matching:
-// save the map blob next to the room map (worldMapSave) and load it before the session starts (worldMapLoad); ARKit relocalises by itself and the saved frames are valid as they are.
-// Not implemented natively here: this only detects the API and stores / returns the blob so the app side can be wired in later. Without it relocalisation is the surface matcher above.
-function worldMapAvailable() { return !!(AR.session && typeof AR.session.nonStandard_getWorldMap === 'function' && typeof AR.session.nonStandard_setWorldMap === 'function'); }
-async function worldMapSave() { if (!worldMapAvailable()) return false; try { const wm = await AR.session.nonStandard_getWorldMap(); if (wm) { store.set('base-camp-worldmap', typeof wm === 'string' ? wm : JSON.stringify(wm)); return true; } } catch (e) { /* not supported by this app version */ } return false; }
-async function worldMapLoad() { if (!worldMapAvailable()) return false; const raw = store.get('base-camp-worldmap'); if (!raw) return false; try { await AR.session.nonStandard_setWorldMap(raw); return true; } catch (e) { return false; } }
+/* ---- DEVELOPER MODE (build 30: DEV, devRows, devDraw, devOpen, devClose, devJSON, devCopy, devStart) and the native world-map hook (worldMapAvailable, worldMapSave, worldMapLoad): moved to the room kit, room-kit/dev.js (18 Nov, still build 30). Read HANDOVER "Developer mode (build 30)". devStart runs here, where its load-time block was ---- */
+devStart();
 
 // ============ HOME TOTEM, GUARDIAN AND ROOMS: a real object tells the game which room this is (and where) ============
 // Every room has its own map, colony and (optionally) a TOTEM: a photo of one real thing in that room (a beer mat, a poster, a can seen front-on). On Play the camera frames are searched
