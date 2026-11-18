@@ -1,0 +1,135 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Sofa siege build step</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#2a1c12;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+canvas{display:block}
+.pill{background:rgba(58,40,26,.88);color:#fff3df;border-radius:18px;padding:8px 16px;font-weight:700;font-size:17px}
+.hud{position:fixed;left:0;right:0;top:14px;display:flex;justify-content:center;gap:14px}
+.tag{position:fixed;left:16px;top:14px;font-size:14px}
+.tray{position:fixed;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:10px}
+.slot{background:rgba(58,40,26,.88);color:#fff3df;border:2px solid rgba(255,243,223,.5);border-radius:14px;padding:8px 14px;font-weight:700;font-size:15px;text-align:center;min-width:74px}
+.slot b{display:block;font-size:22px}.slot.on{background:#e8842c;border-color:#ffd9a8}.slot.off{opacity:.45}
+.say{position:fixed;background:#fff8ea;color:#3a281a;border-radius:12px;padding:6px 12px;font-weight:700;font-size:15px;border:2px solid #3a281a}
+</style></head><body>
+<div class="tag pill">Mock-up · not the game yet</div>
+<div class="hud"><div class="pill">🪶 Blue camp · Build</div><div class="pill">⏱ 1:24 left</div><div class="pill">Pieces 5 of 9 placed</div></div>
+<div class="say" id="say">Drag a piece onto the table</div>
+<div class="tray"><div class="slot on">Wall ×3 · tap a piece on the mat, then tap the table</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* Sofa siege build-step mock-up: mice build the blue camp from a kit on a cloth mat. Static scene. */
+(function(){
+var W=innerWidth,H=innerHeight,R=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});R.setSize(W,H);R.setPixelRatio(Math.min(2,devicePixelRatio||1));
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.outputEncoding=THREE.sRGBEncoding;document.body.appendChild(R.domElement);
+var S=new THREE.Scene();S.background=new THREE.Color(0x3b2a1c);S.fog=new THREE.Fog(0x4a3320,6,14);
+var C=new THREE.PerspectiveCamera(36,W/H,.1,60);C.position.set(0.1,3.1,4.7);C.lookAt(0.05,0.1,0.6);
+var seed=11;function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
+function M(c,o){o=o||{};return new THREE.MeshStandardMaterial({color:c,roughness:o.r==null?.85:o.r,metalness:o.m||0,flatShading:!!o.f,emissive:o.e||0,emissiveIntensity:o.ei||0,transparent:!!o.t,opacity:o.o==null?1:o.o});}
+function add(g,m,x,y,z,p){var o=new THREE.Mesh(g,m);o.position.set(x||0,y||0,z||0);o.castShadow=true;o.receiveShadow=true;(p||S).add(o);return o;}
+function box(w,h,d,m,x,y,z,p){return add(new THREE.BoxGeometry(w,h,d),m,x,y,z,p);}
+function cyl(a,b,h,m,x,y,z,p,n){return add(new THREE.CylinderGeometry(a,b,h,n||14),m,x,y,z,p);}
+function sph(r,m,x,y,z,p){return add(new THREE.SphereGeometry(r,14,12),m,x,y,z,p);}
+
+S.add(new THREE.HemisphereLight(0xfff0dc,0x6a4a30,.62));
+var sun=new THREE.DirectionalLight(0xffd29a,1.3);sun.position.set(-4,4.5,2.5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+var sc=sun.shadow.camera;sc.left=-4;sc.right=4;sc.top=4;sc.bottom=-4;sc.near=.5;sc.far=20;sun.shadow.bias=-.0006;sun.shadow.radius=4;S.add(sun);
+var lamp=new THREE.PointLight(0xffb45a,.9,5);lamp.position.set(-1.25,.75,-.25);S.add(lamp);
+
+/* room and table */
+var floor=add(new THREE.PlaneGeometry(40,40),M(0x5b3d28),0,-1.9,0);floor.rotation.x=-Math.PI/2;floor.castShadow=false;
+box(30,9,.3,M(0x6e5038),0,2,-6);for(var i=0;i<3;i++)box(7,.12,.6,M(0x5a3a22),2.5,.9+i*.9,-5.6);
+for(var i=0;i<14;i++)box(.2+rnd()*.25,.5+rnd()*.3,.4,M([0x7b2f2a,0x2f5b4a,0x3a5a8c,0xb08a4a][i%4]),-.6+i*.46,1.25+((i/5)|0)*.0,-5.6);
+var tc=document.createElement('canvas');tc.width=tc.height=1024;var g=tc.getContext('2d');
+for(var i=0;i<16;i++){g.fillStyle=['#b27238','#c08347','#a96a33','#bd7d41'][i%4];g.fillRect(0,i*64,1024,64);}
+g.globalAlpha=.16;for(var i=0;i<900;i++){g.fillStyle=rnd()<.5?'#6b3d18':'#e0a968';g.fillRect(rnd()*1024,rnd()*1024,30+rnd()*130,1.5);}g.globalAlpha=1;
+var tt=new THREE.CanvasTexture(tc);tt.encoding=THREE.sRGBEncoding;
+cyl(3.25,3.25,.16,[M(0x8a5428),new THREE.MeshStandardMaterial({map:tt,roughness:.8}),M(0x8a5428)],0,-.08,0,S,64);
+/* mug with a blue stripe, pencil pot */
+var mug=new THREE.Group();mug.position.set(-2.0,0,-1.4);S.add(mug);cyl(.36,.33,.66,M(0xf1e7d2,{r:.35}),0,.33,0,mug,28);cyl(.365,.365,.1,M(0x3f6fc4,{r:.4}),0,.42,0,mug,28);
+var hd=add(new THREE.TorusGeometry(.18,.045,10,20,Math.PI),M(0xf1e7d2,{r:.35}),.36,.33,0,mug);hd.rotation.z=-Math.PI/2;
+
+var wood=M(0xc99a5e),wood2=M(0xb3824a),dark=M(0x7a5230),blue=M(0x2563d6),blue2=M(0x1c459c),cloth=M(0xf2e6cb,{r:.95}),iron=M(0x8d9296,{r:.45,m:.7}),brass=M(0xc9a04a,{r:.4,m:.6}),fur=M(0xb98556),furL=M(0xe9c9a0),pink=M(0xf2a6a0);
+
+/* plank texture helper: a wall panel = planks + two rails + rope lashings */
+function panel(x,z,ry,n,o){o=o||{};var gr=new THREE.Group();gr.position.set(x,o.y||0,z);gr.rotation.y=ry||0;(o.p||S).add(gr);
+  for(var i=0;i<n;i++){var h=.4+rnd()*.08,m=(i%3===1)?blue:(i%3===2?wood2:wood);if(o.ghost)m=M(0x9fd0ff,{t:true,o:.45});var p=box(.1,h,.045,m,(i-(n-1)/2)*.112,h/2,0,gr);p.rotation.z=(rnd()-.5)*.06;if(o.ghost)p.castShadow=false;}
+  if(!o.ghost){box(n*.112+.03,.035,.06,dark,0,.12,.03,gr);box(n*.112+.03,.035,.06,dark,0,.3,.03,gr);
+    [-1,1].forEach(function(s){cyl(.035,.04,.5,wood2,s*(n*.056+.03),.25,0,gr,8);var rp=add(new THREE.TorusGeometry(.04,.012,6,12),M(0xcaa56a),s*(n*.056+.03),.34,0,gr);rp.rotation.x=Math.PI/2;});}
+  return gr;}
+function feather(p,x,y,z,s){var f=add(new THREE.SphereGeometry(.05*s,10,8),M(0xffffff),x,y,z,p);f.scale.set(.45,1.5,.12);f.rotation.z=.5;return f;}
+
+/* a mouse: body, head, round ears, snout, tail, team hat. o.pose: 'carry','hammer','read','wave' */
+function mouse(x,z,ry,o){o=o||{};var gr=new THREE.Group();gr.position.set(x,o.y||0,z);gr.rotation.y=ry||0;S.add(gr);var k=(o.s||1)*1.4;gr.scale.set(k,k,k);
+  var body=sph(.075,M(0x6f7f95),0,.11,0,gr);body.scale.set(1,1.15,.9);                     /* grey-blue tunic */
+  box(.15,.02,.11,M(0x6b4423),0,.085,0,gr);                                               /* belt */
+  var head=sph(.07,fur,0,.25,.01,gr);var sn=sph(.035,furL,0,.235,.065,gr);sn.scale.set(1,.8,1);sph(.012,pink,0,.24,.1,gr);
+  [-1,1].forEach(function(s){var e=cyl(.042,.042,.012,fur,s*.07,.305,-.005,gr,14);e.rotation.x=Math.PI/2;var ei=cyl(.028,.028,.014,pink,s*.07,.305,-.003,gr,12);ei.rotation.x=Math.PI/2;
+    sph(.009,M(0x1a1410,{r:.2}),s*.028,.262,.064,gr);
+    box(.032,.03,.05,M(0x4a3020),s*.035,.016,.012,gr);});
+  /* blue floppy hat with a brim, goggles and a feather */
+  var hat=sph(.066,blue,0,.3,0,gr);hat.scale.set(1.05,.62,1.05);var brim=cyl(.085,.085,.012,blue2,0,.287,.012,gr,16);brim.rotation.x=.12;
+  [-1,1].forEach(function(s){var gq=cyl(.02,.02,.016,brass,s*.026,.318,.058,gr,10);gq.rotation.x=Math.PI/2-.35;});
+  feather(gr,-.06,.37,-.02,1);
+  /* tail */
+  var tl=add(new THREE.TorusGeometry(.06,.008,6,12,Math.PI),pink,0,.06,-.1,gr);tl.rotation.y=Math.PI/2;
+  /* arms */
+  var arm=M(0x6f7f95);
+  if(o.pose==='carry'){[-1,1].forEach(function(s){var a=cyl(.016,.016,.09,arm,s*.075,.15,.04,gr,6);a.rotation.x=-1.1;});
+    for(var i=0;i<3;i++)box(.34,.03,.05,i%2?wood2:wood,0,.165+(i>1?.034:0),.1+(i%2)*.052-(i>1?.026:0),gr);var rp=add(new THREE.TorusGeometry(.05,.01,6,12),M(0xcaa56a),.08,.175,.125,gr);rp.rotation.y=Math.PI/2;}
+  else if(o.pose==='hammer'){var a=cyl(.016,.016,.11,arm,.08,.2,.02,gr,6);a.rotation.z=-.9;a.rotation.x=-.4;var hg=new THREE.Group();hg.position.set(.14,.3,.04);hg.rotation.z=-.5;gr.add(hg);cyl(.008,.008,.14,wood2,0,0,0,hg,6);var hh=cyl(.022,.022,.06,iron,0,.07,0,hg,8);hh.rotation.z=Math.PI/2;
+    var a2=cyl(.016,.016,.09,arm,-.08,.14,.03,gr,6);a2.rotation.x=-.9;}
+  else if(o.pose==='read'){[-1,1].forEach(function(s){var a=cyl(.016,.016,.1,arm,s*.075,.15,.05,gr,6);a.rotation.x=-1.25;});}
+  else {var a=cyl(.016,.016,.1,arm,.085,.21,0,gr,6);a.rotation.z=-1.0;var a2=cyl(.016,.016,.09,arm,-.08,.12,0,gr,6);a2.rotation.z=.25;}
+  return gr;}
+
+/* the half-built blue camp */
+panel(-.9,-.35,.05,6);panel(-.15,-.4,-.05,6);panel(.62,-.3,-.22,6);
+panel(1.3,.05,-.75,5);
+panel(-1.55,.1,.9,5,{ghost:true});                                  /* where the next wall will go */
+var gl=add(new THREE.RingGeometry(.3,.33,32),new THREE.MeshBasicMaterial({color:0x9fd0ff,transparent:true,opacity:.7}),-1.55,.004,.1);gl.rotation.x=-Math.PI/2;gl.castShadow=false;
+/* watchtower, half built, with a ladder and a lantern */
+(function(){var gr=new THREE.Group();gr.position.set(-1.25,0,-.3);S.add(gr);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(q){cyl(.03,.035,.86,wood,q[0]*.19,.43,q[1]*.19,gr,8);});
+  box(.5,.045,.5,wood2,0,.62,0,gr);[[0,.23,0],[.23,0,1],[-.23,0,1]].forEach(function(q){var r=box(.5,.1,.035,blue,q[2]?q[0]:0,.72,q[2]?0:-.23,gr);if(q[2])r.rotation.y=Math.PI/2;});
+  var x1=box(.03,.52,.02,dark,0,.3,.2,gr);x1.rotation.z=.7;var x2=box(.03,.52,.02,dark,0,.3,.2,gr);x2.rotation.z=-.7;
+  var ld=new THREE.Group();ld.position.set(.3,0,.06);ld.rotation.z=.17;gr.add(ld);box(.02,.72,.02,wood2,-.05,.36,0,ld);box(.02,.72,.02,wood2,.05,.36,0,ld);for(var i=0;i<6;i++)box(.1,.015,.02,wood2,0,.08+i*.11,0,ld);
+  cyl(.03,.03,.05,brass,0,.5,0,gr,8);sph(.026,M(0xffd27a,{e:0xffb030,ei:1.4}),0,.47,0,gr).castShadow=false;})();
+mouse(-1.25,-.3,.4,{y:.645,pose:'hammer',s:.8});
+mouse(.72,-.1,2.9,{pose:'hammer'});
+mouse(-.25,.35,-1.9,{pose:'carry'});
+mouse(.25,-.75,.2,{pose:'wave',s:.95});
+/* flag pole with the feather banner */
+cyl(.016,.016,.95,wood2,1.55,.47,-.5,S,6);sph(.025,brass,1.55,.96,-.5);
+var fg=new THREE.PlaneGeometry(.42,.24,8,3),pa=fg.attributes.position;for(var i=0;i<pa.count;i++){var x=pa.getX(i);pa.setZ(i,Math.sin(x*10)*.03*(x+.21)*3);}fg.computeVertexNormals();
+add(fg,new THREE.MeshStandardMaterial({color:0x2563d6,side:THREE.DoubleSide,roughness:.9}),1.77,.8,-.5);feather(S,1.77,.8,-.48,1.6);
+
+/* the foreman at a workbench with the plan */
+box(.5,.03,.3,wood2,-2.0,.2,.55).rotation.y=.5;[[-.18,-.1],[.18,-.1],[-.18,.1],[.18,.1]].forEach(function(q){var a=.5,x=q[0]*Math.cos(a)+q[1]*Math.sin(a),z=-q[0]*Math.sin(a)+q[1]*Math.cos(a);box(.03,.2,.03,dark,-2.0+x,.1,.55+z);});
+var plan=add(new THREE.PlaneGeometry(.34,.22),M(0xf4e8c8,{r:1}),-2.0,.218,.55);plan.rotation.set(-Math.PI/2,0,.5);plan.castShadow=false;
+mouse(-1.85,.82,-2.4,{pose:'read'});
+/* barrels and a paint pot */
+cyl(.09,.08,.17,wood2,-2.35,.085,.0);cyl(.092,.092,.015,iron,-2.35,.13,.0);cyl(.06,.055,.1,blue2,.95,.05,.3);cyl(.055,.055,.01,blue,.95,.1,.3);
+
+/* the kit on a cloth mat at the front */
+var mat=box(3.5,.012,.95,M(0xdcc79c,{r:1}),.1,.006,1.75);mat.castShadow=false;
+function stack(x,z,n){for(var i=0;i<n;i++)box(.42,.045,.075,i%3===1?blue:(i%2?wood2:wood),x+(rnd()-.5)*.02,.035+((i/3)|0)*.048,z+(i%3)*.082);}
+stack(-1.35,1.5,6);stack(-1.35,1.86,3);
+/* wall panel lying flat, gate lying flat */
+var pf=panel(-.6,1.75,0,5,{y:.03});pf.rotation.x=-Math.PI/2+.02;pf.position.z=1.98;
+(function(){var gr=new THREE.Group();gr.position.set(.08,.03,1.98);gr.rotation.x=-Math.PI/2+.02;S.add(gr);
+  for(var i=0;i<6;i++)box(.085,.44,.04,i%2?blue:wood,(i-2.5)*.092,.22,0,gr);box(.56,.03,.05,dark,0,.08,.03,gr);box(.56,.03,.05,dark,0,.36,.03,gr);var d=box(.03,.5,.05,dark,-.14,.22,.03,gr);d.rotation.z=.65;var d2=box(.03,.5,.05,dark,.14,.22,.03,gr);d2.rotation.z=-.65;})();
+/* ladder, rope coil, pop-gun, cork box, tent, flag poles */
+(function(){var ld=new THREE.Group();ld.position.set(.62,.03,1.75);ld.rotation.set(-Math.PI/2,0,.1);S.add(ld);box(.02,.5,.02,wood2,-.06,0,0,ld);box(.02,.5,.02,wood2,.06,0,0,ld);for(var i=0;i<5;i++)box(.12,.015,.02,wood2,0,-.2+i*.1,0,ld);})();
+for(var i=0;i<3;i++){var rp=add(new THREE.TorusGeometry(.1-i*.012,.022,8,20),M(0xcaa56a),-.72,.035+i*.035,1.42);rp.rotation.x=Math.PI/2;}
+(function(){var gr=new THREE.Group();gr.position.set(1.02,0,1.62);gr.rotation.y=.5;S.add(gr);box(.2,.05,.34,wood2,0,.09,0,gr);
+  [-1,1].forEach(function(s){var w=cyl(.065,.065,.035,dark,s*.12,.065,.06,gr,12);w.rotation.z=Math.PI/2;});
+  var b=cyl(.05,.06,.36,brass,0,.17,.04,gr,14);b.rotation.x=Math.PI/2-.2;var c=cyl(.03,.035,.05,M(0xc9a37a),0,.21,.24,gr,10);c.rotation.x=Math.PI/2-.2;})();
+box(.2,.07,.16,wood2,1.0,.035,2.0);for(var i=0;i<4;i++)cyl(.028,.032,.05,M(0xc9a37a),.95+(i%2)*.09,.09,1.96+((i/2)|0)*.07,S,8);
+for(var i=0;i<2;i++){var pl=cyl(.012,.012,.5,wood2,.5+i*.07,.02,1.42);pl.rotation.z=Math.PI/2;}
+/* nuts and bolts */
+for(var i=0;i<5;i++){var b=cyl(.022,.022,.018,iron,-.25+i*.11,.02,1.42,S,6);}
+
+R.render(S,C);
+var v=new THREE.Vector3(-1.55,.75,.1).project(C),sy=document.getElementById('say');sy.style.left=((v.x*.5+.5)*W-95)+'px';sy.style.top=((-v.y*.5+.5)*H-30)+'px';sy.textContent='Next wall goes here';
+window.__done=true;
+})();
+</script></body></html>
