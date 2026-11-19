@@ -6,12 +6,12 @@ The game plays rules v2 ("Break the camp") by default; `?rules=1` plays the firs
 
 | Test | What it covers | Rules |
 |---|---|---|
-| `v2-test.js` | v2 rules: the Keep, blasts, supports, ammunition, orders, the budget and the new pieces, piece sizes | v2 |
+| `v2-test.js` | v2 rules: the Keep, blasts, supports, ammunition (five kinds, the ammo row), two lobbers (own crew, own reload, own aim), Glue and Bouncer, orders, the budget and the new pieces, piece sizes | v2 |
 | `table-test.js` | two players at one screen, real multi-touch | v2; `RULES=1` before the command runs it under the first rules |
 | `ar-test.js` | AR mode against a fake WebXR device | v2; `RULES=1` for the first rules |
 | `layout-test.js` | tables laid out from the picture cards | v2 |
 | `build-test.js`, `fight-test.js` | the first rules' build step and fight | first rules only |
-| `proof.js` | v2 proof by bots: writes `BOT_REPORT.md` (`node tests/proof.js 200`, about an hour; `only=even,build,aim` runs some; `key=value` tries a number without writing the report) | v2 |
+| `proof.js` | v2 proof by bots: writes `BOT_REPORT.md` (`node tests/proof.js 200`, about an hour; `node tests/proof.js 60 mode=v2b` runs the v2b checks (second lobber, ammunition) and writes the "v2b" part of the report, about five minutes; `only=even,build,aim` runs some; `key=value` tries a number without writing the report) | v2 |
 | `sweep.js` | the first rules' balance sweep: writes `BOT_REPORT_V1.md` | first rules |
 
 ## Table layout from the picture cards

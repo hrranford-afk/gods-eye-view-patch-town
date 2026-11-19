@@ -114,8 +114,28 @@ The measured results are in `BOT_REPORT.md`. Every number below is in `CONFIG.v2
 
 **Orders.** Four mice are yours to split between: hold the hill, raid their walls (pull a part every 3 seconds), guard the Keep (pop corks at raiders), mend (12 seconds a part, 6 with a whole workshop). The fifth works the lobber.
 
-**The kit, 12 points.** The Keep and the first lobber are free. Wall 1, gate 1, brace 1, tent 1 (dizzy for 3 seconds, not 5), workshop 2 (mends twice as fast), spring trap 2 (flings the first raider to step on it home; a mender must set it again), second lobber 3 (winds in about half the time).
+**The kit, 12 points.** The Keep and the first lobber are free. Wall 1, gate 1, brace 1, tent 1 (dizzy for 3 seconds, not 5), workshop 2 (mends twice as fast), spring trap 2 (flings the first raider to step on it home; a mender must set it again), second lobber 5 (a weapon of its own with its own crew; see v2b below).
 
 **Piece size.** Small by default (about a third smaller than before); medium and large on the title. Rules 1 always uses large. In AR a table under 80 cm always gets small pieces.
 
 **Teams.** Blue's guard corks reach half as far again. Red's mice walk 17% quicker in the fight. Both numbers are there to make the two teams win equally often with bots; see the note in `BOT_REPORT.md`.
+
+## v2b (19 Nov, after Harry played v2): both lobbers are real, and the ammunition is a choice you can see
+
+Harry: "We've got two catapults. Only one works. Do we need some different types of ammo to put into it?" He was right about the first part: the second lobber was bought for 3 points and then only made the first one wind faster. It did nothing of its own. Everything below is in `game.js`; the numbers are in `CONFIG.v2` and the measurements are in `BOT_REPORT.md` under "v2b".
+
+**Two lobbers, two weapons.** Each lobber has its own crew mouse, its own winding (the normal 2.5 s each, no discount), its own aim and its own working or broken state. A side with two lobbers needs two crew mice, taken from the field mice, so it has three mice for the four orders instead of four. If one crew mouse goes dizzy only that lobber stops. If one lobber is broken the other still fires. A part can still be mended only once, so a lobber that has lost its bucket twice is gone for good, and the second lobber is also the spare. The second lobber costs **5** points now (it was 3: at 3 a bot with two lobbers beat one with one 78 to 85% of the time).
+
+**Choosing a lobber.** With two lobbers, tap one to choose it: a bright ring under it and its name ("Lobber 1" or "Lobber 2", the other one dim), then drag back from anywhere to fire it. In Table mode and in the AR scene there is a "Lobber 1 / 2" button that does the same. With one lobber nothing changes.
+
+**Ammunition is a table.** `AMMO` in `game.js` lists every kind once: name, icon, ball colour, whether it is limited by a store (Big Marble) or a wait, whether it always flies low, its blast or splash size (the aim ring), whether it may break a Keep leg, and what it does where it lands. To add a kind: add an entry, its numbers in `CONFIG.v2`, and a `land` (or `fire`) function if it is not an ordinary blast. The buttons, the aim ring, the hints and the bots' reach pick it up from the table. The waits and the Big Marble store are shared by a side's two lobbers.
+
+**The ammo row.** Pressing Lobber shows one button for each kind, with its icon, its name and what is left: "Marble ∞", "Big Marble ×2", "Corks (ready in 5 s)". The chosen one is lit, one that cannot be used yet is dimmed, and the aim ring changes size with it. In Table mode each player has their own row on their own edge. In the AR scene the same kinds are short buttons ("Marble", "Big x2", "Cork 5s", "Bounce", "Glue") that replace the four orders while the lobber is chosen, with an "Orders" button to go back.
+
+**Two new kinds that make a decision.**
+- **Bouncer** (5 s wait, unlimited). A rubber ball. It comes down in a high arc to a first touchdown, then hops on 0.9 further and lands there (the spot you aim at). The hop clears a wall, so it lands behind a wall that stops every marble. Its blast is small (0.2), and it never breaks a Keep leg: it takes braces, rails, roofs and mice behind the wall. It is the answer to a wall in front of the Keep. The aim shows two arcs.
+- **Glue blob** (8 s wait, unlimited, no damage). It sticks to the part it hits and to every fallen part of theirs in its splash: none of those can be mended for 15 s (the fallen parts show a honey pot and a green ring), and mice that walk through the puddle are slowed to 45% speed for 4 s. It is the answer to a fast workshop, or to a lobber they are trying to put back together.
+
+The aiming bot throws a Glue blob where a mender is at work among fallen parts, and a Bouncer when its blast, reckoned from where the hop really comes down, is worth more than a marble. The second lobber does not aim where the first has just fired.
+
+**What is still true.** The old numbers for everything that was not touched still stand. Four things moved in the tuning, see `BOT_REPORT.md`: the second lobber 3 to 5, a Big Marble every 22 s of holding the hill (was 24), the Big Marble's blast 0.33 (was 0.36), red's walk 1.05 (was 1.17).

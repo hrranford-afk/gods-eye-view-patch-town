@@ -38,8 +38,8 @@ const run = async () => {
     return { nk, before, after: w.parts, off, R, far }; });
   ok('a marble knocks off every part within its blast (' + bl.nk + ' parts), not one', bl.nk >= 3 && bl.before - bl.after >= bl.nk, JSON.stringify(bl));
   ok('the nearest parts are thrown furthest', bl.far.length >= 4 && bl.far[0].far > bl.far[bl.far.length - 1].far * 1.25, JSON.stringify(bl.far));
-  ok('a Big Marble reaches further', await ev(() => { const at = (R, big) => { F2('blue'); const w = K(1, 'wall'), q0 = w.ps.find((x) => x.id === 'wall.plank.0'), q1 = w.ps.find((x) => x.id === 'wall.plank.1'), dx = q0.wx - q1.wx, dz = q0.wz - q1.wz, l = Math.hypot(dx, dz); SG.debug.blast(q0.wx + dx / l * .03, q0.wy, q0.wz + dz / l * .03, R * SG.unit(), 0, big); return w.ps.filter((x) => x.st !== 'on' && /plank/.test(x.id)).length; };
-    const C = SG.CONFIG.v2; return at(C.bigBlast, true) > at(C.blast, false) && C.bigBlast > C.blast; }));
+  ok('a Big Marble reaches further (summed over four spots along a wall, up to 25 cm off: more parts than a marble, never fewer)', await ev(() => { const at = (R, big, off) => { F2('blue'); const w = K(1, 'wall'), q0 = w.ps.find((x) => x.id === 'wall.plank.0'), q1 = w.ps.find((x) => x.id === 'wall.plank.1'), dx = q0.wx - q1.wx, dz = q0.wz - q1.wz, l = Math.hypot(dx, dz); SG.debug.blast(q0.wx + dx / l * off, q0.wy, q0.wz + dz / l * off, R * SG.unit(), 0, big); return w.ps.filter((x) => x.st !== 'on' && /plank/.test(x.id)).length; };
+    const C = SG.CONFIG.v2; let big = 0, small = 0, worse = 0; [.03, .12, .2, .25].forEach((o) => { const a = at(C.bigBlast, true, o), b = at(C.blast, false, o); big += a; small += b; if (a < b) worse++; }); return big > small && worse === 0 && C.bigBlast > C.blast; }));
 
   /* B2: supports */
   ok('a wall stands with one post and one rail', await ev(() => { F2('blue'); const w = K(1, 'wall'); KN(w, ['wall.post.L', 'wall.rail.top']); return ON(w, /plank/) === w.ps.filter((q) => /plank/.test(q.id)).length && SG.stats.collapses === 0; }));
