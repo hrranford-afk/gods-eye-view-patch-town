@@ -39,6 +39,10 @@ body.sceneui .bar,body.sceneui #side,body.sceneui #say{display:none!important}
 .pop.cost{background:#3a281a;color:#ffd9a8;border-color:#ffd9a8;font-size:12px;padding:0 6px}.pop.cost.dear{opacity:.45}
 .pop.crash{font-size:26px;padding:4px 14px;background:#ffe15a;color:#7a1a12;border-width:3px;transform:translate(-50%,-100%) rotate(-6deg)}
 .pop.good{color:#1f5a26;border-color:#1f5a26;background:#eaffe4}.pop.ask{color:#3a281a;border-color:#3a281a;border-radius:50%;font-size:18px;padding:1px 9px}
+.btn.ammo{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:6px 11px;min-width:92px;line-height:1.15}.btn.ammo .ai{font-size:22px}.btn.ammo .an{font-size:14px}.btn.ammo .ac{font-size:12px;opacity:.9}.btn.ammo.wait{opacity:.6}.btn.ammo.none{opacity:.4}
+#arow{bottom:78px;align-items:stretch}
+.pp .pammo{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);display:none;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:center;width:98%}.pp .pammo .btn.ammo{min-width:74px;padding:4px 7px;touch-action:none}.pp .pammo .btn.ammo .ai{font-size:18px}.pp .pammo .btn.ammo .an{font-size:12px}.pp .pammo .btn.ammo .ac{font-size:11px}
+.pop.lobtag{background:#3a281a;color:#ffd9a8;border-color:#ffd9a8;font-size:13px}.pop.lobtag.sel{background:#ffd23a;color:#3a281a;border-color:#3a281a;font-size:15px}
 @media (max-width:700px){.pill{font-size:14px;padding:6px 11px}.btn{font-size:15px;padding:9px 13px}.meter{min-width:110px}}
 </style></head><body>
 <div id="ui">
@@ -47,7 +51,8 @@ body.sceneui .bar,body.sceneui #side,body.sceneui #say{display:none!important}
 <div class="bar" id="bar"><button class="btn" id="bL">⟲ Turn</button><button class="btn" id="bR">Turn ⟳</button><button class="btn" id="bUndo">Undo</button><button class="btn go" id="bDone">Done</button></div>
 <div class="bar" id="fbar"><button class="btn on" id="b_squad">👉 Send squad</button><button class="btn" id="b_lobber">🔮 Lobber</button><button class="btn" id="b_mend">🔨 Mend</button><button class="btn" id="bPause">⏸ Pause</button></div>
 <div class="bar" id="nrow" style="bottom:70px"><button class="btn" id="n0">0</button><button class="btn" id="n1">1</button><button class="btn" id="n2">2</button><button class="btn" id="n3">3</button><button class="btn" id="n4">4</button><button class="btn" id="n5">5</button></div>
-<div class="bar" id="fbar2"><button class="btn" id="o_hill">🚩 Hill</button><button class="btn" id="o_raid">⚔️ Raid</button><button class="btn" id="o_guard">🛡 Guard</button><button class="btn" id="o_mend">🔨 Mend</button><button class="btn" id="b2_lobber">🔮 Lobber</button><button class="btn" id="b_high">⤴ High lob</button><button class="btn" id="a_marble">🔵 Marble</button><button class="btn" id="a_big">⚫ Big ×0</button><button class="btn" id="a_corks">🍾 Corks</button><button class="btn" id="bPauseB">⏸</button></div>
+<div class="bar" id="fbar2"><button class="btn" id="o_hill">🚩 Hill</button><button class="btn" id="o_raid">⚔️ Raid</button><button class="btn" id="o_guard">🛡 Guard</button><button class="btn" id="o_mend">🔨 Mend</button><button class="btn" id="b2_lobber">🔮 Lobber</button><button class="btn" id="bPauseB">⏸</button></div>
+<div class="bar" id="arow"><button class="btn" id="b_lsel">Lobber 1 / 2</button><button class="btn" id="b_high">⤴ High lob</button></div>
 <div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p id="subTitle">Practice table</p>
   <div class="row"><button class="btn on" id="m_solo">1 player (against a robot)</button><button class="btn" id="m_table">2 players (iPad flat between you)</button></div>
   <div id="soloOpts"><div class="row"><button class="btn on" id="tBlue">🪶 Blue</button><button class="btn" id="tRed">⚙️ Red</button></div>
