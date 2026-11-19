@@ -84,7 +84,7 @@ window.SG=SG;
 /* Each side keeps its own selection, ghost, tool, aim and message, so two people can play at once.
    SG.sel, SG.ghost, SG.tool, SG.aim and SG.msg are the front side's, kept for the one-player game and the tests. */
 ['sel','ghost','tool','aim','msg'].forEach(function(k){Object.defineProperty(SG,k,{enumerable:true,get:function(){return SG.sides[0]?SG.sides[0][k]:(k==='sel'?-1:{on:false,ok:false,code:'',text:'',t:0});},set:function(v){if(SG.sides[0])SG.sides[0][k]=v;}});});
-SG.CONFIG=CONFIG;SG.RULES=CONFIG;SG.FOOT=FOOT;SG.ZONE=ZONE;SG.LEVELS=LEVELS;
+SG.CONFIG=CONFIG;SG.unit=U;SG.RULES=CONFIG;SG.FOOT=FOOT;SG.ZONE=ZONE;SG.LEVELS=LEVELS;
 var V={pieces:{},mice:[],slots:[[],[]],marbles:{},corks:{},puffs:[],flashes:[],rings:[],on:false};
 function rand(){SG.seed=(SG.seed*16807)%2147483647;return (SG.seed-1)/2147483646;}
 function gauss(){return (rand()+rand()+rand()-1.5)*1.15;}
@@ -191,7 +191,7 @@ SG.start=function(team,opts){
     for(var i=0;i<5;i++){var h=w2(s,(i-2)*.42,2.3-Math.abs(i-2)*.1);SG.mice.push({side:s,i:i,state:'idle',x:h[0],z:h[1],rot:phiOf(s)+PI,tx:h[0],tz:h[1],hx:h[0],hz:h[1],job:0,part:-1,t:0,wait:.5+i*.4,speed:0,
       slack:.3,q:0,asked:-9,path:null,pi:0,pver:-1,ptx:0,ptz:0,cd:1+i*.5,act:0,moved:0,goal:false,daze:false});}}
   SG.kit=SG.sides[0].kit;for(var bs=0;bs<2;bs++)if(V2()&&!SG.sides[bs].preset&&SG.sides[bs].bot)SG.sides[bs].preset=LEVELS[SG.sides[bs].level].preset||'average';fitPreset(0);fitPreset(1);viewStart();ui();};
-SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;s.sel=-1;ui();};
+SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;if(V2()&&!s.preset&&SG.phase==='build'&&!SG.pieces.some(function(q){return q.side===side;})){s.preset=LEVELS[s.level].preset||'average';fitPreset(side);}s.sel=-1;ui();};
 SG.reset=function(){viewClear();SG.phase='start';SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.sides=[];SG.kit=[];ui();};
 function say(code,text,bad,s){var side=SG.sides[s||0];if(side)side.msg={code:code,text:text,t:bad?2.2:2.6,bad:!!bad};}
 function shout(text){SG.callout={text:text,t:2.6};}

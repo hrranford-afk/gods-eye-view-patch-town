@@ -8,11 +8,12 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { chromium } = require('playwright');
 const T0 = Date.now(), SHOTS = path.resolve(__dirname, '..', 'shots'), url = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const V1 = process.env.RULES === '1';   /* RULES=1 runs this test under the old rules; the default is v2 (the Keep goes first, the fight bar carries the four orders) */
 const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   let n = 0, bad = 0; const errs = [];
   const ok = (name, cond, extra) => { n++; if (!cond) bad++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra && !cond ? '  -> ' + extra : '')); };
-  const open = async (fake, query) => { const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p.addInitScript(() => { window.__RULES = 1; }); p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  const open = async (fake, query) => { const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p.addInitScript((r) => { if (r) window.__RULES = 1; }, process.env.RULES === '1'); p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
     if (fake) await installFakeAR(p, fake); await p.goto(url + (query || '')); await p.waitForFunction('window.__done', null, { timeout: 60000 }); await p.waitForTimeout(200); return p; };
 
   /* the page starts with and without WebXR */
@@ -67,13 +68,14 @@ const run = async () => {
 
   /* taps become rays from the XR camera into the table: a piece lands at the right table position from three camera poses */
   const poses = [[[0, 0, 0], [0, -0.45, -0.9]], [[0.55, 0.1, -0.35], [0, -0.45, -0.9]], [[-0.35, 0.25, -1.75], [0.05, -0.45, -0.95]]];
-  const spots = [[0, 1.3], [-0.9, 1.75], [0.95, 2.0]], kit = [0, 7, 9];
+  const spots = [[0, 1.3], [-0.9, 1.75], V1 ? [0.95, 2.0] : [0.95, 1.5]],   /* v2's longer mat is in the way of the old third spot from the third camera pose */
+  kit = V1 ? [0, 7, 9] : [7, 0, 9];
   for (let i = 0; i < 3; i++) {
     await look(poses[i][0], poses[i][1]); await ev(() => SG.render());
     const ks = await ev((k) => SG.sides[0].kit[k], kit[i]); let q = await scr(ks.x, ks.z, pose); await p.mouse.click(q.x, q.y);
     const sel = await ev(() => SG.sel); q = await scr(spots[i][0], spots[i][1], pose); await p.mouse.click(q.x, q.y); await frames(2);
     const pc = await ev((k) => SG.pieces.filter((x) => x.side === 0 && x.slot === k)[0] || null, kit[i]);
-    ok('camera pose ' + (i + 1) + ': a tap picks the right tray piece and places it within 3 mm of the tapped table spot', sel === kit[i] && pc && Math.hypot(pc.x - spots[i][0], pc.z - spots[i][1]) * pose.unit < 0.003, JSON.stringify({ sel, pc, q }));
+    ok('camera pose ' + (i + 1) + ': a tap picks the right tray piece and places it within 3 mm of the tapped table spot', sel === kit[i] && pc && Math.hypot(pc.x - spots[i][0], pc.z - spots[i][1]) * pose.unit < 0.003, JSON.stringify({ sel, pc, q, msg: await ev(() => [SG.sides[0].msg, SG.sel, SG.sides[0].ghost, SG.sides[0].points]) }));
   }
   ok('SG.screen and the fake camera agree on where a table spot is', await (async () => { const q = await scr(0.6, 1.1, pose), g = await ev(() => SG.screen(0.6, 1.1)); return Math.hypot(q.x - g.x, q.y - g.y) < 1.5; })());
 
@@ -157,22 +159,22 @@ const run = async () => {
     ok(label + ': the Lock table scene button locks and the build starts, with Done and Exit AR in the scene', await ev2(() => SG.ar.state === 'locked' && SG.phase === 'build' && ['done', 'undo', 'replace', 'exit'].every((b) => SG.ar.buttons.indexOf(b) >= 0)), JSON.stringify(await ev2(() => SG.ar.buttons)));
     await ev2(() => { SG.hold = true; }); const A = await ev2(() => SG.ar), pose = { x: A.pose.x, y: A.pose.y, z: A.pose.z, yaw: A.pose.yaw, unit: A.unitMetres };
     const sc = (x, z) => ev2(([x, z, pose]) => { const k = pose.unit, c = Math.cos(pose.yaw), s = Math.sin(pose.yaw); return __XRF.project([pose.x + (x * c + z * s) * k, pose.y, pose.z + (-x * s + z * c) * k]); }, [x, z, pose]);
-    const k0 = await ev2(() => SG.sides[0].kit[0]); let q = await sc(k0.x, k0.z); await tap(q.x, q.y); q = await sc(0, 1.3); await tap(q.x, q.y);
-    const k7 = await ev2(() => SG.sides[0].kit[7]), a = await sc(k7.x, k7.z), c = await sc(-1.0, 1.9);
+    const k0 = await ev2((i) => SG.sides[0].kit[i], V1 ? 0 : 7); let q = await sc(k0.x, k0.z); await tap(q.x, q.y); q = await sc(0, 1.3); await tap(q.x, q.y);
+    const k7 = await ev2((i) => SG.sides[0].kit[i], V1 ? 7 : 0), a = await sc(k7.x, k7.z), c = await sc(-1.0, 1.9);
     await ev2(([a]) => __XRF.press(a.x, a.y), [a]); await fr(2); for (let k = 1; k <= 4; k++) { await ev2(([a, c, k]) => __XRF.drag(a.x + (c.x - a.x) * k / 4, a.y + (c.y - a.y) * k / 4), [a, c, k]); await fr(2); } await ev2(() => __XRF.release()); await fr(2);
     const pcs = await ev2(() => SG.pieces.filter((x) => x.side === 0).map((x) => ({ kind: x.kind, x: x.x, z: x.z })));
-    ok(label + ': a tapped wall and a dragged tower land where the finger was', pcs.length === 2 && Math.hypot(pcs[0].x, pcs[0].z - 1.3) < 0.03 && pcs[1].kind === 'tower' && Math.hypot(pcs[1].x + 1.0, pcs[1].z - 1.9) < 0.03, JSON.stringify(pcs));
+    ok(label + (V1 ? ': a tapped wall and a dragged tower land where the finger was' : ': a tapped Keep and a dragged wall land where the finger was'), pcs.length === 2 && Math.hypot(pcs[0].x, pcs[0].z - 1.3) < 0.03 && pcs[1].kind === (V1 ? 'tower' : 'wall') && Math.hypot(pcs[1].x + 1.0, pcs[1].z - 1.9) < 0.03, JSON.stringify(pcs));
     await btn('undo'); ok(label + ': Undo', await ev2(() => SG.pieces.filter((x) => x.side === 0).length === 1));
     await ev2(() => SG.demo(11, 0)); await btn('done'); ok(label + ': Done ends the build; Start battle is offered in the scene', await ev2(() => SG.phase === 'ready' && SG.ar.buttons.indexOf('start') >= 0));
     await btn('start'); await ev2(() => { SG.step(SG.CONFIG.count + .1); SG.sides[1].bot = false; SG.stepUntil(() => SG.debug.crewReady(0), 15); SG.sides[0].reload = 0; }); await fr(3);
-    ok(label + ': the fight shows Squad, Lobber, Mend, Pause and Exit AR in the scene', await ev2(() => SG.phase === 'fight' && ['squad', 'lobber', 'mend', 'pause', 'exit'].every((b) => SG.ar.buttons.indexOf(b) >= 0)), JSON.stringify(await ev2(() => SG.ar.buttons)));
+    ok(label + (V1 ? ': the fight shows Squad, Lobber, Mend, Pause and Exit AR in the scene' : ': the fight shows the four orders, Lobber, Pause and Exit AR in the scene'), await ev2((want) => SG.phase === 'fight' && want.every((b) => SG.ar.buttons.indexOf(b) >= 0), V1 ? ['squad', 'lobber', 'mend', 'pause', 'exit'] : ['o_hill', 'o_raid', 'o_guard', 'o_mend', 'lobber', 'pause', 'exit']), JSON.stringify(await ev2(() => SG.ar.buttons)));
     if (label === 'overlay missing') { await ev2(() => { document.body.style.background = 'linear-gradient(#6f7780,#3d4248)'; SG.render(); }); await fr(2); await p.screenshot({ path: path.join(SHOTS, 'ar-4-scene-buttons.png') }); }
     q = await sc(0.1, 0.3); await tap(q.x, q.y); ok(label + ': a tap sends the squad', await ev2(() => SG.sides[0].order && Math.hypot(SG.sides[0].order.x - 0.1, SG.sides[0].order.z - 0.3) < 0.05));
     await btn('lobber'); const d0 = await sc(-1.0, 1.4), d1 = await sc(-1.0, 2.3);
     await ev2(([d0]) => __XRF.press(d0.x, d0.y), [d0]); await fr(2); for (let k = 1; k <= 4; k++) { await ev2(([d0, d1, k]) => __XRF.drag(d0.x + (d1.x - d0.x) * k / 4, d0.y + (d1.y - d0.y) * k / 4), [d0, d1, k]); await fr(2); }
     const aiming = await ev2(() => SG.sides[0].aim.on); await ev2(() => __XRF.release()); await fr(2);
     ok(label + ': Lobber, then drag back and let go fires a marble', aiming && await ev2(() => SG.sides[0].tool === 'lobber' && SG.stats.shots === 1));
-    await btn('mend'); ok(label + ': Mend', await ev2(() => SG.sides[0].tool === 'mend'));
+    if (V1) { await btn('mend'); ok(label + ': Mend', await ev2(() => SG.sides[0].tool === 'mend')); } else { const m0 = await ev2(() => SG.sides[0].plan.mend); await btn('o_mend'); ok(label + ': the Mend order button adds a mender', await ev2((m0) => SG.sides[0].plan.mend === m0 + 1, m0), JSON.stringify(await ev2(() => SG.sides[0].plan))); }
     await btn('pause'); ok(label + ': Pause, and Re-place table appears', await ev2(() => SG.paused && SG.ar.buttons.indexOf('replace') >= 0));
     await btn('replace'); ok(label + ': Re-place table unlocks the table', await ev2(() => SG.ar.state === 'placed'));
     await btn('lock'); await btn('exit'); await fr(3);

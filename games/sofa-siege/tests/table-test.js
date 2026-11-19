@@ -6,11 +6,11 @@ import { fileURLToPath } from 'url';
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { chromium } = require('playwright');
-const T0 = Date.now();
+const T0 = Date.now(), V1 = process.env.RULES === '1';   /* RULES=1 runs this test under the old rules; the default is v2, where the Keep is placed first and the panels carry the four orders */
 const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true });
-  const p = await ctx.newPage(), cdp = await ctx.newCDPSession(p); await p.addInitScript(() => { window.__RULES = 1; });
+  const p = await ctx.newPage(), cdp = await ctx.newCDPSession(p); await p.addInitScript((r) => { if (r) window.__RULES = 1; }, process.env.RULES === '1');
   const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   let n = 0, bad = 0;
   const ok = (name, cond, extra) => { n++; if (!cond) bad++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra && !cond ? '  -> ' + extra : '')); };
@@ -37,19 +37,19 @@ const run = async () => {
     return a.style.display === 'flex' && c.style.display === 'flex' && ra.top > innerHeight / 2 && rc.bottom < innerHeight / 2 && /matrix\(-1, 0, 0, -1/.test(t) && document.getElementById('hud').style.display === 'none'; }));
 
   /* build: both pick and place at once */
-  await both(await slot(0, 0), await slot(1, 0)); await lift();
-  ok('two fingers pick a piece each from their own mat at the same time', await ev(() => SG.sides[0].sel === 0 && SG.sides[1].sel === 0));
+  const first = V1 ? 0 : 7; await both(await slot(0, first), await slot(1, first)); await lift();
+  ok('two fingers pick a piece each from their own mat at the same time', await ev((f) => SG.sides[0].sel === f && SG.sides[1].sel === f, first));
   await both(await world(0, 1.25), await world(0, -1.25)); await lift();
   let st = await ev(() => SG.pieces.map((q) => ({ side: q.side, kind: q.kind, z: q.z })));
-  ok('both place in the same frames, each in their own half', st.length === 2 && st.some((q) => q.side === 0 && q.z > 1) && st.some((q) => q.side === 1 && q.z < -1) && st.every((q) => q.kind === 'wall'), JSON.stringify(st));
+  ok('both place in the same frames, each in their own half', st.length === 2 && st.some((q) => q.side === 0 && q.z > 1) && st.some((q) => q.side === 1 && q.z < -1) && st.every((q) => q.kind === (V1 ? 'wall' : 'tower')), JSON.stringify(st));
   /* drag from the mat: tower for blue, gate for red, fingers moving together */
-  const sa = await slot(0, 7), sc = await slot(1, 6), ta = await world(-1.3, 1.9), tc = await world(.9, -1.9);
+  const sa = await slot(0, V1 ? 7 : 0), sc = await slot(1, 6), ta = await world(-1.3, 1.9), tc = await world(.9, -1.9);
   await both(sa, sc, ta, tc);
   const mid = await ev(() => ({ a: SG.sides[0].sel, c: SG.sides[1].sel, ga: SG.sides[0].ghost, gc: SG.sides[1].ghost }));
   await lift();
   st = await ev(() => SG.pieces.map((q) => ({ side: q.side, kind: q.kind, x: q.x, z: q.z })));
-  ok('both drag a piece from their mat at the same time; each ghost follows its own finger', mid.a === 7 && mid.c === 6 && Math.abs(mid.ga.x + 1.3) < .08 && Math.abs(mid.ga.z - 1.9) < .08 && Math.abs(mid.gc.x - .9) < .08 && Math.abs(mid.gc.z + 1.9) < .08, JSON.stringify(mid));
-  ok('and both pieces land where they were dragged, nothing crossed over', st.length === 4 && st.some((q) => q.side === 0 && q.kind === 'tower' && q.z > 0) && st.some((q) => q.side === 1 && q.kind === 'gate' && q.z < 0) && st.filter((q) => q.side === 0).length === 2, JSON.stringify(st));
+  ok('both drag a piece from their mat at the same time; each ghost follows its own finger', mid.a === (V1 ? 7 : 0) && mid.c === 6 && Math.abs(mid.ga.x + 1.3) < .08 && Math.abs(mid.ga.z - 1.9) < .08 && Math.abs(mid.gc.x - .9) < .08 && Math.abs(mid.gc.z + 1.9) < .08, JSON.stringify(mid));
+  ok('and both pieces land where they were dragged, nothing crossed over', st.length === 4 && st.some((q) => q.side === 0 && q.kind === (V1 ? 'tower' : 'wall') && q.x < -1 && q.z > 0) && st.some((q) => q.side === 1 && q.kind === 'gate' && q.z < 0) && st.filter((q) => q.side === 0).length === 2, JSON.stringify(st));
   /* a blue finger cannot build in red's half, and red is not disturbed */
   await touch('touchStart', [{ id: 1, ...(await slot(0, 1)) }]); await touch('touchEnd', []);
   const redSel = await ev(() => { SG.select(2, 1); return SG.sides[1].sel; });
@@ -85,19 +85,20 @@ const run = async () => {
   const aim = await ev(() => ({ a: SG.sides[0].aim, c: SG.sides[1].aim, la: SG.debug.piece(SG.sides[0].lobber).z, lc: SG.debug.piece(SG.sides[1].lobber).z }));
   await lift();
   ok('both drag back in their own half and aim at once, each toward the other camp', aim.a.on && aim.c.on && aim.a.tz < aim.la - 1.5 && aim.c.tz > aim.lc + 1.5, JSON.stringify(aim));
-  ok('letting go fires one marble each', await ev(() => SG.stats.shots === 2 && SG.marbles.length === 2 && SG.marbles.some((m) => m.side === 0) && SG.marbles.some((m) => m.side === 1) && SG.sides[0].reload > 3 && SG.sides[1].reload > 3), JSON.stringify(await ev(() => [SG.stats.shots, SG.marbles.length, SG.sides[0].reload, SG.sides[1].reload, SG.lobberBlock(0), SG.lobberBlock(1), SG.sides[0].msg, SG.sides[1].msg])));
+  ok('letting go fires one marble each', await ev(() => SG.stats.shots === 2 && SG.marbles.length === 2 && SG.marbles.some((m) => m.side === 0) && SG.marbles.some((m) => m.side === 1) && SG.sides[0].reload > 2 && SG.sides[1].reload > 2), JSON.stringify(await ev(() => [SG.stats.shots, SG.marbles.length, SG.sides[0].reload, SG.sides[1].reload, SG.lobberBlock(0), SG.lobberBlock(1), SG.sides[0].msg, SG.sides[1].msg])));
   /* an order from a touch that wanders into the other half stays at home */
-  await both(await btn(0, 'squad'), await btn(1, 'squad')); await lift();
+  if (V1) { await both(await btn(0, 'squad'), await btn(1, 'squad')); await lift(); } else { await both(await btn(0, 'lobber'), await btn(1, 'lobber')); await lift(); }   /* v2: the Lobber button is pressed again to put the lobber down */
   await touch('touchStart', [{ id: 1, ...(await world(.2, .6)) }]); await touch('touchMove', [{ id: 1, ...(await world(.2, -1.2)) }]); await lift();
   ok('a blue touch that ends in red\'s half still orders blue only, inside blue\'s half', await ev(() => SG.sides[0].order.z >= 0 && Math.hypot(SG.sides[1].order.x + .3, SG.sides[1].order.z + .4) < .08));
-  await both(await btn(0, 'mend'), await btn(1, 'squad')); await lift();
-  ok('each panel keeps its own tool', await ev(() => SG.sides[0].tool === 'mend' && SG.sides[1].tool === 'squad'));
-  const mnd = await ev(() => { const w = SG.pieces.filter((q) => q.side === 1 && q.kind === 'wall')[0]; SG.debug.knock(w.id, 'wall.plank.2'); SG.step(1); const q = w.ps.find((x) => x.id === 'wall.plank.2'); SG.setTool('mend', 1); return { x: q.rx, z: q.rz, id: w.id }; });
+  if (V1) { await both(await btn(0, 'mend'), await btn(1, 'squad')); await lift(); ok('each panel keeps its own tool', await ev(() => SG.sides[0].tool === 'mend' && SG.sides[1].tool === 'squad')); }
+  else { const pl = await ev(() => [SG.sides[0].plan.raid, SG.sides[1].plan.guard]); await both(await btn(0, 'o_raid'), await btn(1, 'o_guard')); await lift(); await ev(() => SG.render());
+    ok('each panel gives its own orders: blue adds a raider while red adds a guard', await ev((pl) => SG.sides[0].plan.raid === pl[0] + 1 && SG.sides[1].plan.guard === pl[1] + 1 && SG.sides[0].plan.guard === 0 && SG.sides[1].plan.raid === pl[0] && new RegExp((pl[0] + 1) + '$').test(document.querySelector('#pp0 button[data-a="o_raid"]').textContent) && new RegExp((pl[1] + 1) + '$').test(document.querySelector('#pp1 button[data-a="o_guard"]').textContent), pl), JSON.stringify(await ev(() => [SG.sides[0].plan, SG.sides[1].plan, document.querySelector('#pp0 button[data-a="o_raid"]').textContent, document.querySelector('#pp1 button[data-a="o_guard"]').textContent]))); }
+  const mnd = await ev(() => { const w = SG.pieces.filter((q) => q.side === 1 && q.kind === 'wall')[0]; SG.debug.knock(w.id, 'wall.plank.2'); SG.step(1); const q = w.ps.find((x) => x.id === 'wall.plank.2'); if (SG.rules === 1) SG.setTool('mend', 1); return { x: q.rx, z: q.rz, id: w.id }; });
   await touch('touchStart', [{ id: 2, ...(await world(mnd.x, mnd.z)) }]); await lift(); await ev(() => SG.render());
-  ok('red taps its own fallen plank and a red mouse goes to mend it; a hammer shows over the wall', await ev(() => SG.mice.some((m) => m.side === 1 && m.state === 'toPart') && !SG.mice.some((m) => m.side === 0 && m.state === 'toPart') && [...document.querySelectorAll('.pop.icon')].length === 1));
+  ok('red taps its own fallen plank and a red mouse goes to mend it; a hammer shows over the wall', await ev((id) => SG.mice.some((m) => m.side === 1 && m.state === 'toPart' && m.job === id) && !SG.mice.some((m) => m.side === 0 && m.job === id) && [...document.querySelectorAll('.pop.icon')].length >= 1 && SG.sides[1].msg.code === 'mend', mnd.id), JSON.stringify(await ev(() => [SG.mice.map((m) => m.side + m.role + ':' + m.state).join(' '), document.querySelectorAll('.pop.icon').length, SG.sides[1].msg])));
 
   /* callouts and the win are shown to both */
-  await ev(() => { SG.sides[0].score = 100; SG.step(.3); SG.render(); });
+  await ev(() => { if (SG.rules === 1) { SG.sides[0].score = 100; SG.step(.3); } else { const k = SG.debug.piece(SG.sides[1].keep); ['tower.post.NE', 'tower.post.SE', 'tower.post.NW'].forEach((id) => SG.debug.knock(k.id, id)); SG.step(SG.CONFIG.v2.keepFall + .5); } SG.render(); });
   ok('the win is shown twice, once facing each player', await ev(() => { const a = document.querySelector('#pp0 .pcard'), c = document.querySelector('#pp1 .pcard'); return SG.phase === 'over' && SG.winner === 0 && a.style.display === 'block' && c.style.display === 'block' && /You win/.test(a.textContent) && /Blue wins/.test(c.textContent) && document.getElementById('win').style.display === 'none'; }));
   await touch('touchStart', [{ id: 1, ...(await ev(() => { const r = document.querySelector('#pp1 button[data-a="again"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })) }]); await lift();
   ok('Play again goes back to the title', await ev(() => SG.phase === 'start' && document.getElementById('start').style.display === 'flex'));

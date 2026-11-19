@@ -72,7 +72,7 @@ const run = async () => {
       '| bot `raidLead` (easy, normal, hard) | 8 for all | ' + c.levels.easy.raidLead + ', ' + c.levels.normal.raidLead + ', ' + c.levels.hard.raidLead + ' | The strongest balance lever found. The red bot sends one scrapper to the nearest enemy wall when it is this many points ahead. The scrapper stands at the hill\'s edge, away from the marbles, and still counts on the hill. It is a jumpy lever and one value does not fit all three levels, so it is set per level; a negative value means the scrapper goes even when red is a little behind. |', '',
       'Team rules that survived: blue corks (now need a clear line of sight), red scrappers (reach ' + c.scrapReach + '), the red bot\'s wall raid. Dropped: red\'s shorter dizzy and red\'s two-part marble.', '',
       '## Final numbers', '', '```', JSON.stringify(c, null, 1), '```', ''];
-    fs.writeFileSync(path.resolve(__dirname, '..', 'BOT_REPORT.md'), md.join('\n'));
+    fs.writeFileSync(path.resolve(__dirname, '..', 'BOT_REPORT_V1.md'), md.join('\n'));
   }
   if (errs.length) console.log('errors:', errs);
   await b.close();
