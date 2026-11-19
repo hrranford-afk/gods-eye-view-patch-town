@@ -20,12 +20,12 @@ var CONFIG={
   /* ---- rules v2, "Break the camp" (the default; ?rules=1 plays the old rules above) ---- */
   v2:{
     reload:2.5,                                 /* lobber winding seconds */
-    blast:.3,bigBlast:.36,sturdy:.55,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep breaks the leg nearest to where it hit, braced or not */
+    blast:.3,bigBlast:.33,sturdy:.55,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep breaks the leg nearest to where it hit, braced or not */
     throwNear:.6,throwFar:.2,                   /* how far a knocked part flies: nearest to the hit, and at the edge of the blast */
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
-    hillSecs:25,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
+    hillSecs:22,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
     piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
-    mendTime:12,redWalk:1.17,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
+    mendTime:12,redWalk:1.05,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
     raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's interval times this (1: the same for both); reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
@@ -1287,6 +1287,15 @@ SG.quick=function(team,opts){SG.start(team,opts||{seed:777});SG.demo(11,0);SG.si
 /* fixed scenes for screenshots */
 SG.shot=function(name,team){
   if(name==='v2-4-build'){SG.start(team,{seed:777,level:'hard',rules:2});SG.sides[0].preset='good';var P0=PRESETS.good;for(var qi=0;qi<7;qi++)botPlace(0,P0[qi][0]);SG.sides[0].preset='';SG.step(26);SG.select(3,0);var gs=w2(0,Math.sin(-.3)*1.55,Math.cos(-.3)*1.55);SG.turn(PI-SG.sides[0].ghost.rot,0);SG.moveGhost(gs[0],gs[1],0);SG.sides[0].msg.t=0;return;}
+  if(name.indexOf('v2b')===0){ /* two lobbers (blue's second lobber, chosen), the ammo row, a Bouncer over a wall, a Glue blob on fallen parts; the other camp is the good one, with its wall in front of the Keep */
+    PRESETS.wallOnly=[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.5,PI],[2,2.06,.5,PI],[8,2.2,1.2,PI]];   /* a Keep, its braces and one wall across the front: just enough to show a Bouncer or a Glue blob */
+    SG.start(team,{seed:777,level:'easy',rules:2,presets:['average2',name==='v2b-3-bouncer'||name==='v2b-4-glue'?'wallOnly':'good']});SG.sides[0].bot=true;SG.skipBuild();SG.sides[0].bot=false;SG.begin();SG.step(CONFIG.count+.05);SG.sides[1].bot=false;SG.sides[1].plan={hill:4,raid:0,guard:0,mend:0};SG.sides[0].plan={hill:2,raid:1,guard:0,mend:0};
+    SG.step(6);stepUntil(function(){return crewReady(0,0)&&crewReady(0,1);},14);lobbersOf(0).forEach(function(l){l.reload=0;});SG.sides[0].big=2;var s0=SG.sides[0],kp=pieceById(SG.sides[1].keep),fw=wallOf(1),Ls=lobbersOf(0);
+    if(name==='v2b-1-two-lobbers'){SG.fire(0,fw.x,fw.z,0);SG.step(.45);SG.selectLobber(0,1);SG.setTool('lobber');s0.aim={on:true,tx:kp.x+.1,tz:kp.z+.5};}
+    else if(name==='v2b-2-ammo-row'){s0.cd.corks=5;s0.cd.glue=3;SG.setTool('lobber');SG.selectLobber(0,1);SG.setAmmo(0,'bouncer');s0.aim={on:true,tx:0,tz:-2.36};}
+    else if(name==='v2b-3-bouncer'){SG.setTool('lobber');SG.setAmmo(0,'bouncer');s0.high=false;var bf=SG.fire(0,0,-2.36,0);stepUntil(function(){return bf.leg===2&&bf.t>.18;},8);SG.selectLobber(0,1);s0.aim={on:true,tx:.08,tz:-2.4};}
+    else if(name==='v2b-4-glue'){['wall.plank.1','wall.plank.2','wall.plank.4'].forEach(function(id){SG.debug.knock(fw.id,id);});SG.step(1);var gm=SG.mice.filter(function(m){return m.side===1;})[0];gm.x=fw.x+.12;gm.z=fw.z-.12;SG.setTool('lobber');SG.setAmmo(0,'glue');s0.high=true;var fp=fw.ps.filter(function(q){return q.st==='off';})[0],gf=SG.fire(0,fp.rx,fp.rz,0);stepUntil(function(){return gf.t>gf.T-.08;},8);gm.x=fp.rx;gm.z=fp.rz+.03;stepUntil(function(){return SG.lastHit&&SG.lastHit.ammo==='glue';},4);SG.step(.4);s0.aim={on:false,tx:0,tz:0};SG.selectLobber(0,1);}
+    s0.msg.t=0;SG.callout.t=0;return;}
   if(name.indexOf('v2')===0){SG.start(team,{seed:777,level:'easy',rules:2,presets:['good','average']});SG.sides[0].bot=true;SG.skipBuild();SG.sides[0].bot=false;SG.begin();SG.step(CONFIG.count+.05);SG.sides[1].bot=false;SG.sides[0].plan={hill:2,raid:1,guard:0,mend:1};SG.sides[1].plan={hill:3,raid:0,guard:1,mend:0};
     SG.step(6);stepUntil(function(){return crewReady(0);},10);SG.sides[0].reload=0;SG.sides[0].big=2;var kp=pieceById(SG.sides[1].keep),fw=wallOf(1);
     if(name==='v2-1-keep-falling'){SG.cam=0;['tower.brace.S','tower.brace.E'].forEach(function(id){SG.debug.knock(kp.id,id);});SG.step(.8);SG.debug.knock(kp.id,'tower.post.SE');SG.debug.knock(kp.id,'tower.post.NE');SG.debug.knock(kp.id,'tower.post.SW');SG.step(1.25);}
