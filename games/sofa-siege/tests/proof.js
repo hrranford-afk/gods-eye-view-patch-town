@@ -21,7 +21,7 @@ function writeReport(out) { const E = out.exps, need = ['build', 'aim', 'even'];
     '| 3b. A Keep comes down | in 40 to 70% of matches | **' + f0(e.keep) + '%** | ' + e.n + ' | ' + yes(e.keep >= 40 && e.keep <= 70) + ' |',
     '| 3c. Camp parts off at the end | about a third to a half | **' + f0(e.share) + '%** (winner ' + f0(e.winnerShare) + '%, loser ' + f0(e.loserShare) + '%) | ' + e.n + ' | ' + yes(e.share >= 30 && e.share <= 52) + ' |',
     '| 3d. Longest stretch with nothing happening | under 12 s | average **' + f1(e.gap) + ' s**, worst of all matches ' + f0(e.gapMax) + ' s; under 12 s in ' + f0(e.gapOk) + '% of matches | ' + e.n + ' | ' + yes(e.gapMax < 12) + ' |',
-    '| 4. Blue against red, same camps and bots | each wins 45 to 55% | blue **' + f0(e.blue) + '%**, red ' + f0(100 - e.blue) + '% | ' + e.n + ' | ' + yes(e.blue >= 45 && e.blue <= 55) + ' |',
+    '| 4. Blue against red, same camps and bots | each wins 45 to 55% | blue **' + f0(e.blue) + '%**, red ' + (100 - Math.round(e.blue)) + '% | ' + e.n + ' | ' + yes(e.blue >= 45 && e.blue <= 55) + ' |',
     '| Stuck mice (20 s with a goal and no move) | none | ' + (b.stuck + a.stuck + e.stuck) + ' | ' + (b.n + a.n + e.n) + ' | ' + yes(b.stuck + a.stuck + e.stuck === 0) + ' |', '',
     'A win share from ' + e.n + ' matches is good to about ' + pm(e) + ' points, so read every percentage here with that in mind.', '',
     'What the camps and bots are:', '', '- **Good camp:** the Keep at the back with two braces propping it, three walls close in front of it, a gate and two more walls as a forward screen, a workshop, a spring trap. 12 points.',
@@ -56,7 +56,8 @@ const NOTES = [
   '## What to know before trusting this',
   '',
   '- **These are bots, not people.** They show that the rules reward a good camp and good aim when both are played competently. They do not show that the game is fun.',
-  '- **Two good camps never lose a Keep to each other** (see the "equal good camps" column): the walls stop every Big Marble and the bots do not manage to open a lane and use it in time. Those matches are decided on points. A person may find the lane; the bots do not.',
+  '- **Two good camps never lose a Keep to each other** (see the "equal good camps" and "hard bots" columns; the hard bot builds the good camp): the walls stop every Big Marble and the bots do not manage to open a lane and use it in time. Those matches all go the full three rounds and are decided on points. So the "Keep down in 40 to 70%" target holds for the normal bot and its average camp, not for the hard bot, and with easy bots it is lower too. A person may find the lane; the bots do not.',
+  '- **The first two proofs came out at 100%, not just over 70%.** The bad camp is very bad (its Keep stands in front of everything) and random fire is very poor. The proofs say building and aiming matter; they do not say by how much between two sensible players.',
   '- **Keeps are felled by Big Marbles, almost never by ordinary marbles.** Ordinary marbles strip walls, braces and roofs and send mice home. So the hill matters a great deal: no hill, no Big Marbles, no Keep.',
   '- **Spring traps hardly ever go off** in bot matches (see the row): raiders go for the nearest wall and seldom cross the trap. The trap works when a mouse steps on it (it is tested), but the bots do not show it earning its 2 points.',
   '- **There are a lot of dizzies** (see the row), far more than under the old rules, because the aiming bot fires at mice that stand still. It may feel busy. `aimWorth.mouse` turns it down, but the proofs would need running again.',
@@ -64,7 +65,7 @@ const NOTES = [
   '- The good camp spends its 12 points on a propped Keep, five walls, a gate, a workshop and a trap. It has no tent. The bad camp has the same value in pieces, badly placed.',
 ].join('\n');
 const run = async () => {
-  if (process.argv[2] === 'report') { writeReport(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'proof-result.json'), 'utf8'))); return; }   /* write BOT_REPORT.md again from the last results */
+  if (process.argv[2] === 'report') { writeReport(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'proof-result.json'), 'utf8'))); process.exit(0); }   /* write BOT_REPORT.md again from the last results */
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const p = await b.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto('file://' + path.resolve(__dirname, '..', 'index.html')); await p.waitForFunction('window.__done', null, { timeout: 60000 });
