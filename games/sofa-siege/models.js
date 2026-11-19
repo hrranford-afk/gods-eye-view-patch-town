@@ -17,7 +17,7 @@ var SS=(function(){
 'use strict';
 var SS={},PI=Math.PI;
 SS.TEAMS=['blue','red','green'];
-SS.PIECES=['wall','gate','tower','popgun','lobber','tent','workshop','flag','planks','rope','crate','barrel'];
+SS.PIECES=['wall','gate','tower','popgun','lobber','tent','workshop','flag','planks','rope','crate','barrel','brace','trap'];
 SS.POSES=['idle','walk','carry','hammer','aim','cheer','dizzy'];
 
 function rng(seed){var s=(seed|0)%2147483647;if(s<=0)s+=2147483646;return function(){s=(s*16807)%2147483647;return (s-1)/2147483646;};}
@@ -870,6 +870,18 @@ BUILD.barrel=function(K,team,T,v){
   else{g=new THREE.CylinderGeometry(.1,.1,h,14,4);p=g.attributes.position;for(i=0;i<p.count;i++){var y=p.getY(i)/(h/2),kk=1+.2*(1-y*y);p.setX(i,p.getX(i)*kk);p.setZ(i,p.getZ(i)*kk);}g.computeVertexNormals();
     b.add(g,T.wood,'wood',[0,h/2,0]);for(i=0;i<3;i++){var yy=[.045,.15,.255][i],rr=.1*(1+.2*(1-Math.pow((yy-h/2)/(h/2),2)))+.002;b.tor(rr,.008,i===1?T.dark:T.main,'paint',[0,yy,0],[PI/2,0,0],null,null,14);}
     b.cyl(.092,.092,.006,14,T.wood2,'woodh',[0,h-.006,0]);b.cyl(.012,.014,.03,6,CORK,null,[0,.15,.125],[PI/2,0,0]);mark(b,'blue',.08,[0,.215,.118],[-.1,0,0]);}
+};
+
+/* brace: a diagonal prop with a foot block, leaning toward -z (set it against a tower leg or a wall) */
+BUILD.brace=function(K,team,T,v){
+  K.part('brace.beam',function(b){var metal=team==='red';b.rod([0,.02,.16],[0,.4,-.08],.026,metal?shade(TIN,.85):T.wood2,metal?'rust':'wood',6);b.box(.11,.05,.1,T.woodD,'wood',[0,.025,.17]);
+    b.box(.09,.04,.03,metal?T.rust:T.main,metal?'rust':'paint',[0,.39,-.085],[.5,0,0]);lash(b,[0,.2,.065],.03,T.rope);});
+};
+/* spring trap: a board on a coiled spring; userData.flap tips up when it goes off */
+BUILD.trap=function(K,team,T,v){
+  var b=K.d,i;b.cyl(.13,.14,.02,12,T.woodD,'wood',[0,.01,0]);for(i=0;i<4;i++)b.tor(.05,.008,shade(TIN,.8),null,[0,.03+i*.014,0],[PI/2,0,0],null,null,10);
+  var f=new Bld(hash(K.key+'f'));f.cyl(.12,.12,.016,12,T.main,team==='red'?'rust':'paint',[0,0,0]);f.cyl(.05,.05,.02,8,0xffe15a,null,[0,.004,0]);var fg=f.geo();
+  return function(root){var fl=new THREE.Group();fl.name='flap';fl.position.set(0,.09,0);fl.add(mesh(fg));root.add(fl);root.userData.flap=fl;};
 };
 
 /* ---------- counting ---------- */
