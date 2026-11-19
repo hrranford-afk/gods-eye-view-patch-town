@@ -61,7 +61,7 @@ const NOTES = [
   '- **Spring traps hardly ever go off** in bot matches (see the row): raiders go for the nearest wall and seldom cross the trap. The trap works when a mouse steps on it (it is tested), but the bots do not show it earning its 2 points.',
   '- **There are a lot of dizzies** (see the row), far more than under the old rules, because the aiming bot fires at mice that stand still. It may feel busy. `aimWorth.mouse` turns it down, but the proofs would need running again.',
   '- **Blue against red rests on one counterweight number** (`redWalk`), as said above.',
-  '- The good camp spends its 12 points on a propped Keep, six walls, a gate, a workshop and a trap. It has no tent. The bad camp has the same value in pieces, badly placed.',
+  '- The good camp spends its 12 points on a propped Keep, five walls, a gate, a workshop and a trap. It has no tent. The bad camp has the same value in pieces, badly placed.',
 ].join('\n');
 const run = async () => {
   if (process.argv[2] === 'report') { writeReport(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'proof-result.json'), 'utf8'))); return; }   /* write BOT_REPORT.md again from the last results */

@@ -190,7 +190,8 @@ SG.start=function(team,opts){
       var dl=dist(o[0],o[1],w[0],w[1])||1,pk=[w[0]+(o[0]-w[0])/dl*.39,w[1]+(o[1]-w[1])/dl*.39];side.kit.push({kind:kind,a:a,x:w[0],z:w[1],px:pk[0],pz:pk[1],used:false,picked:false});});
     for(var i=0;i<5;i++){var h=w2(s,(i-2)*.42,2.3-Math.abs(i-2)*.1);SG.mice.push({side:s,i:i,state:'idle',x:h[0],z:h[1],rot:phiOf(s)+PI,tx:h[0],tz:h[1],hx:h[0],hz:h[1],job:0,part:-1,t:0,wait:.5+i*.4,speed:0,
       slack:.3,q:0,asked:-9,path:null,pi:0,pver:-1,ptx:0,ptz:0,cd:1+i*.5,act:0,moved:0,goal:false,daze:false});}}
-  SG.kit=SG.sides[0].kit;for(var bs=0;bs<2;bs++)if(V2()&&!SG.sides[bs].preset&&SG.sides[bs].bot)SG.sides[bs].preset=LEVELS[SG.sides[bs].level].preset||'average';fitPreset(0);fitPreset(1);viewStart();ui();};
+  SG.kit=SG.sides[0].kit;for(var bs=0;bs<2;bs++)if(V2()&&!SG.sides[bs].preset&&SG.sides[bs].bot)SG.sides[bs].preset=LEVELS[SG.sides[bs].level].preset||'average';fitPreset(0);fitPreset(1);viewStart();if(V2())for(var hs=0;hs<2;hs++)if(SG.sides[hs].human)SG.select(towerSlot(hs),hs);   /* the Keep goes first, so it is already in hand */
+  ui();};
 SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;if(V2()&&!s.preset&&SG.phase==='build'&&!SG.pieces.some(function(q){return q.side===side;})){s.preset=LEVELS[s.level].preset||'average';fitPreset(side);}s.sel=-1;ui();};
 SG.reset=function(){viewClear();SG.phase='start';SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.sides=[];SG.kit=[];ui();};
 function say(code,text,bad,s){var side=SG.sides[s||0];if(side)side.msg={code:code,text:text,t:bad?2.2:2.6,bad:!!bad};}
@@ -793,7 +794,7 @@ function ui(){if(!hasDom||!E('start'))return;var ph=SG.phase,fight=ph==='fight'|
 function listParts(o){var k=Object.keys(o);return k.map(function(n){return o[n]+' '+n+(o[n]>1&&n!=='roof cap'?'s':'');}).join(', ');}
 /* the line of help or news for one side */
 function lineFor(s){var ph=SG.phase,a=SG.sides[s],n=0;SG.pieces.forEach(function(p){if(p.side===s)n++;});var hint='';
-  if(ph==='build'&&a.human)hint=a.ready?'Ready! Waiting for the other camp':(a.sel>=0?'Tap the table to place the '+a.kit[a.sel].kind:(n<KIT.length&&!(V2()&&a.points<=0)?(V2()?'Tap a piece on the mat · '+a.points+' points left':'Tap a piece on the mat'):'All placed. Tap '+(SG.mode==='table'?'Ready':'Done')+' when you like'));
+  if(ph==='build'&&a.human)hint=a.ready?'Ready! Waiting for the other camp':(a.sel>=0?(V2()&&a.kit[a.sel].kind==='tower'?'Your Keep goes first: tap the table to place it':'Tap the table to place the '+a.kit[a.sel].kind):(n<KIT.length&&!(V2()&&a.points<=0)?(V2()?(a.keep||SG.pieces.some(function(q){return q.side===s&&q.kind==='tower';})?'Tap a piece on the mat · '+a.points+' points left':'Your Keep goes first: tap the tower on the mat'):'Tap a piece on the mat'):'All placed. Tap '+(SG.mode==='table'?'Ready':'Done')+' when you like'));
   else if(ph==='mend'){var md=listParts(SG.mending(s));hint=md?'Mend break · your mice are mending: '+md:'Mend break · nothing to mend';}
   else if(ph==='fall')hint='';
   else if(ph==='fight'&&a.human&&V2()){var b2=SG.lobberBlock(s);hint=a.pick?'How many mice? Tap a number':(a.tool==='lobber'?({none:'You have no lobber',broken:'The lobber is broken. Mend it first',crew:'The lobber needs a mouse beside it',winding:'Winding…',nobig:'No Big Marble yet: hold the hill for 10 seconds',corks:'Corks are not ready yet','':'Drag back and let go to fire'})[b2]:'Bring down their Keep! Give orders, or use the lobber');}
