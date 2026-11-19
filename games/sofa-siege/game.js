@@ -20,7 +20,7 @@ var CONFIG={
   /* ---- rules v2, "Break the camp" (the default; ?rules=1 plays the old rules above) ---- */
   v2:{
     reload:2.5,                                 /* lobber winding seconds */
-    blast:.3,bigBlast:.36,sturdy:.55,bigLeg:.15,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep (within this share of its blast of it) breaks the nearest leg, braced or not */
+    blast:.3,bigBlast:.36,sturdy:.55,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep breaks the leg nearest to where it hit, braced or not */
     throwNear:.6,throwFar:.2,                   /* how far a knocked part flies: nearest to the hit, and at the edge of the blast */
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
     hillSecs:18,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
@@ -31,7 +31,7 @@ var CONFIG={
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
     collapseReach:.25,slowMo:.4,keepFall:2.4,   /* a collapse makes mice this near the piece dizzy; slow-motion seconds; seconds a Keep takes to fall before the win card */
     points:12,cost:{tower:0,wall:1,gate:1,brace:1,lobber:3,workshop:2,tent:1,trap:2},   /* the build budget; the first lobber is free */
-    walk:.5,                                    /* mouse speed at piece scale 0.88: about 6 to 8 seconds from camp to hill at any scale */
+    walk:.42,                                   /* mouse speed at piece scale 0.88: about 6 to 8 seconds from camp to hill at any scale */
     shopMend:.5,tentDizzy:3,twoLobbers:.55,trapReach:.2,trapReset:2,   /* a whole workshop halves mending time; a whole tent: dizzy for 3 s; two lobbers: reload times this; trap reach; seconds to set a trap again */
     arcLow:[.1,.09],arcHigh:[.3,.24],highBlast:.5,   /* arc height = a + distance x b: the flat shot is stopped by a wall just in front of its target, the high lob clears it but has this share of the blast */
     plan:{hill:2,raid:1,guard:0,mend:1},        /* how a bot (and a player to begin with) splits the four mice that are not at the lobber */
@@ -476,9 +476,9 @@ function setProp(b){var best=null,bd=.3*U();SG.pieces.forEach(function(q){if(q.s
 function trapsTick(){SG.pieces.forEach(function(p){if(p.kind!=='trap'||!p.built||p.sprung||p.parts<=0)return;for(var i=0;i<SG.mice.length;i++){var m=SG.mice[i];if(m.side===p.side||m.state==='dizzy')continue;
       if(dist(m.x,m.z,p.x,p.z)<C2.trapReach*U()){p.sprung=true;p.sprungT=SG.clock;SG.stats.trapped++;dizzy(m);pop(p.x,p.z,'BOING!',true,.3,p.side);event('trap',p.side);snd('twang');break;}}});}
 /* everything within reach of a hit comes off, the nearest thrown furthest. big: also breaks the nearest tower leg outright. half: a high lob, half the reach */
-function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry){
+function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry,hitId){
   var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1;if(!dry){SG.att=att;SG.cause=big?'big':'marble';}
-  for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9,near=big&&p.kind==='tower'&&boxDist(p,x,z)<=R*C2.bigLeg;
+  for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9,near=big&&p.kind==='tower'&&p.id===hitId;
     for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(near&&q.cls===1){if(d<ld){ld=d;leg=i;}continue;}if(d>R)continue;
       if(q.cls===1){if(d>R*C2.legSturdy||legBraced(p,q.id))continue;}else if(q.cls===3&&d>R*C2.sturdy)continue;else if(q.cls===2&&d>R*C2.braceSturdy)continue;hits.push([d,i]);}
     if(leg>=0)hits.push([Math.min(ld,R*.8),leg]);if(!hits.length)continue;
@@ -512,7 +512,7 @@ function keepDown(p,att){p.down=true;p.fallT=SG.clock;p.fallDir=Math.atan2(p.x-h
 /* a marble, a Big Marble or a cork comes down */
 function landV2(a,pos,hit){var n=0,R=(a.ammo==='big'?C2.bigBlast:C2.blast)*U()*(a.high?C2.highBlast:1),knocked=0;
   if(a.ammo==='corks'){SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<C2.corkHit*U()&&dizzy(m))n++;});}
-  else{knocked=blastAt(pos[0],pos[1],pos[2],R,a.side,a.ammo==='big',a.x1-a.x0,a.z1-a.z0,a.from);if(hit&&hit.side===a.side)SG.stats.ownHits++;
+  else{knocked=blastAt(pos[0],pos[1],pos[2],R,a.side,a.ammo==='big',a.x1-a.x0,a.z1-a.z0,a.from,false,hit?hit.id:0);if(hit&&hit.side===a.side)SG.stats.ownHits++;
     SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<R&&dizzy(m))n++;});if(knocked>=3||a.ammo==='big')SG.shake=Math.max(SG.shake,.6);}
   snd('thud');a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];if(a.ammo!=='corks'||!SG.lastHit||SG.lastHit.id!==a.id)SG.lastHit={id:a.id,side:a.side,ammo:a.ammo,x:pos[0],y:pos[1],z:pos[2],piece:hit?hit.id:0,own:!!hit&&hit.side===a.side,part:'',knocked:knocked,dizzied:n,t:SG.clock};viewPuff(pos[0],pos[2],a.ammo==='big'?2:1.2);}
 /* thrown parts land: they thump mice, and a part thrown hard knocks off an attached part it lands on */
@@ -569,7 +569,7 @@ function freeV2(m,dt){
 /* the aiming bot looks at what each shot would knock off: the Keep's braces, then the legs they held, a wall in the way, the other lobber. It tries the low and the high lob. */
 function bestShot(s){var side=SG.sides[s],en=1-s,l=lobberOf(s),was=side.high,wasA=side.ammo,e=LEVELS[side.level].err2*U(),SP=[[1.2*e,0],[-1.2*e,0],[0,1.2*e],[0,-1.2*e],[.9*e,.9*e],[-.9*e,-.9*e]],cands=[],list=[],best=null,bv=.01;if(!l)return null;
   /* what one shot at (x,z) would be worth where it really comes down; null if one of our own pieces is in the way */
-  function worth(x,z,hi,big){side.high=hi;var a=SG.arc(s,x,z);if(!a)return 0;if(a.hit&&a.hit.own)return null;var px=a.hit?a.hit.x:a.x1,py=a.hit?a.hit.y:0,pz=a.hit?a.hit.z:a.z1,R=(big?C2.bigBlast:C2.blast)*U()*(hi?C2.highBlast:1),t=blastAt(px,py,pz,R,s,big,0,0,l.id,true);
+  function worth(x,z,hi,big){side.high=hi;var a=SG.arc(s,x,z);if(!a)return 0;if(a.hit&&a.hit.own)return null;var px=a.hit?a.hit.x:a.x1,py=a.hit?a.hit.y:0,pz=a.hit?a.hit.z:a.z1,R=(big?C2.bigBlast:C2.blast)*U()*(hi?C2.highBlast:1),t=blastAt(px,py,pz,R,s,big,0,0,l.id,true,a.hit?a.hit.piece:0);
     for(var j=0;j<SG.mice.length;j++){var m=SG.mice[j];if(m.side!==s&&(m.state==='hold'||m.state==='fix')&&dist(m.x,m.z,px,pz)<R)t+=C2.aimWorth.mouse;}return t;}
   SG.pieces.forEach(function(p){if(p.side!==en||!p.built||p.down||!p.total||p.parts<=0)return;
     if(p.kind==='tower')p.ps.forEach(function(q){if(q.st==='on'&&(q.cls===1||q.cls===2))C2.aimTry.forEach(function(o){cands.push([q.wx,q.wz,o]);});});else cands.push([p.x,p.z,0]);});
@@ -642,7 +642,7 @@ SG.step=function(dt){SG.acc+=dt;var n=0;while(SG.acc>=STEP-1e-9){tick(STEP);SG.a
 /* true if a mouse stands inside a wall or gate that still blocks it (used by the tests) */
 SG.inWall=function(){var bad=0;SG.mice.forEach(function(m){SG.pieces.forEach(function(p){if((p.kind!=='wall'&&p.kind!=='gate')||!p.built||!blocks(p))return;if(solidAt(p,m.side,m.x,m.z,0))bad++;});});return bad;};
 SG.debug={knock:function(pieceId,partId){var p=pieceById(pieceId);if(!p)return false;for(var i=0;i<p.ps.length;i++)if(p.ps[i].id===partId){var r=knock(p,i,p.side?1:-1,p.side?-1:1,'debug');if(V2())settle(p,1-p.side);fixGrid();return r;}return false;},
-  blast:function(x,y,z,R,att,big){var n=blastAt(x,y,z,R,att,!!big,0,att?1:-1,0);fixGrid();return n;},v2Score:function(s,f){return v2Score(s,f);},roles:function(){roles(0);roles(1);return SG.mice.map(function(m){return m.role;});},
+  blast:function(x,y,z,R,att,big,hitId){var n=blastAt(x,y,z,R,att,!!big,0,att?1:-1,0,false,hitId||0);fixGrid();return n;},v2Score:function(s,f){return v2Score(s,f);},roles:function(){roles(0);roles(1);return SG.mice.map(function(m){return m.role;});},
   dizzy:function(s,i){var m=SG.mice[s*5+i];return m?dizzy(m):false;},matLook:function(){var o={cloth:0,outline:0};V.matG.forEach(function(g){g.children.forEach(function(m){if(m.visible){if(m.userData.ar)o.outline++;else o.cloth++;}});});return o;},piece:pieceById,layoutSpot:function(s,i){return layoutSpot(s,SG.sides[s].layout,i);},blocks:function(id){return blocks(pieceById(id));},crewSpot:function(s){var l=lobberOf(s);return l?crewSpot(l):null;},crewReady:crewReady,isOpen:isOpen};
 
 /* ================= sound: small synthesised noises, WebAudio only =================
