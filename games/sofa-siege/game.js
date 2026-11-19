@@ -20,13 +20,13 @@ var CONFIG={
   /* ---- rules v2, "Break the camp" (the default; ?rules=1 plays the old rules above) ---- */
   v2:{
     reload:2.5,                                 /* lobber winding seconds */
-    blast:.3,bigBlast:.36,sturdy:.55,bigLeg:.6,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble breaks a tower leg within this share of its blast */
+    blast:.3,bigBlast:.36,sturdy:.55,bigLeg:.15,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep (within this share of its blast of it) breaks the nearest leg, braced or not */
     throwNear:.6,throwFar:.2,                   /* how far a knocked part flies: nearest to the hit, and at the edge of the blast */
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
-    hillSecs:12,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
+    hillSecs:18,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
     piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
     mendTime:12,                                /* seconds to put one part back */
-    raidEvery:3,redRaid:.5,raidReach:.4,        /* seconds between a raider's pulls; red's are this much quicker; reach */
+    raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's are this much quicker; reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
     collapseReach:.25,slowMo:.4,keepFall:2.4,   /* a collapse makes mice this near the piece dizzy; slow-motion seconds; seconds a Keep takes to fall before the win card */
@@ -36,8 +36,8 @@ var CONFIG={
     arcLow:[.1,.09],arcHigh:[.3,.24],highBlast:.5,   /* arc height = a + distance x b: the flat shot is stopped by a wall just in front of its target, the high lob clears it but has this share of the blast */
     plan:{hill:2,raid:1,guard:0,mend:1},        /* how a bot (and a player to begin with) splits the four mice that are not at the lobber */
     randomAim:1.9,botHigh:.5,botFirst:1.5,       /* a random-fire bot's spread round the other base; how often an aiming bot lobs over a wall in its way; seconds before a bot's first shot of a round */
-    legSturdy:.5,braceSturdy:.4,   /* an unbraced leg breaks only when the hit is within this share of the blast */
-    aimWorth:{leg:30,lastLeg:60,brace:3,mouse:2},aimTry:[-.25,0,.2,.45],bigWorth:20,   /* the aiming bot values a shot by the points it would score, plus this much for a Keep leg (more for the leg that brings it down) and for a Keep brace; how far before and past a part it tries; a Big Marble is kept for a shot worth this much more */
+    legSturdy:.5,braceSturdy:.7,   /* an unbraced leg breaks only when the hit is within this share of the blast */
+    aimWorth:{leg:30,lastLeg:60,brace:3,mouse:2},aimTry:[-.25,0,.2,.45],bigWorth:8,aimDeep:5,   /* the aiming bot values a shot by the points it would score, plus this much for a Keep leg (more for the leg that brings it down) and for a Keep brace; how far before and past a part it tries; a Big Marble is kept for a shot worth this much more */
     botRetarget:4                               /* seconds between a bot's looks at its plan */
   },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
@@ -478,10 +478,10 @@ function trapsTick(){SG.pieces.forEach(function(p){if(p.kind!=='trap'||!p.built|
 /* everything within reach of a hit comes off, the nearest thrown furthest. big: also breaks the nearest tower leg outright. half: a high lob, half the reach */
 function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry){
   var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1;if(!dry){SG.att=att;SG.cause=big?'big':'marble';}
-  for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9;
-    for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(d>R)continue;
-      if(q.cls===1){if(big&&d<=R*C2.bigLeg){if(d<ld){ld=d;leg=i;}continue;}if(d>R*C2.legSturdy||legBraced(p,q.id))continue;}else if(q.cls===3&&d>R*C2.sturdy)continue;else if(q.cls===2&&d>R*C2.braceSturdy)continue;hits.push([d,i]);}
-    if(leg>=0)hits.push([ld,leg]);if(!hits.length)continue;
+  for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9,near=big&&p.kind==='tower'&&boxDist(p,x,z)<=R*C2.bigLeg;
+    for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(near&&q.cls===1){if(d<ld){ld=d;leg=i;}continue;}if(d>R)continue;
+      if(q.cls===1){if(d>R*C2.legSturdy||legBraced(p,q.id))continue;}else if(q.cls===3&&d>R*C2.sturdy)continue;else if(q.cls===2&&d>R*C2.braceSturdy)continue;hits.push([d,i]);}
+    if(leg>=0)hits.push([Math.min(ld,R*.8),leg]);if(!hits.length)continue;
     if(dry){var A=C2.aimWorth,w=partWorth(p),sg=p.side===att?-1:1,v=0,rails=0,posts=0,legs=0;
       for(var hh=0;hh<hits.length;hh++){var qq=p.ps[hits[hh][1]];v+=w;if(qq.cls===1)legs++;else if(qq.cls===2)v+=A.brace;else if(qq.cls===3){if(/rail/.test(qq.id))rails++;else posts++;}}
       if(legs)v+=legs*(A.leg+(onCount(p,/^tower\.post/)<=3?A.lastLeg:0));
@@ -567,16 +567,21 @@ function freeV2(m,dt){
   else if(role==='guard'&&m.cd<=0){var best=null,bd=C2.guardRange*U()*(side.team==='blue'?C2.blueGuard:1);SG.mice.forEach(function(o){if(o.side!==en||o.state==='dizzy')return;var d=dist(m.x,m.z,o.x,o.z);if(d<bd&&sightClear(m.x,m.z,o.x,o.z)){bd=d;best=o;}});
     if(best){m.cd=C2.guardEvery;m.act=.6;m.rot=Math.atan2(best.x-m.x,best.z-m.z);SG.corks.push({id:SG.nextId++,x0:m.x,z0:m.z,x1:best.x,z1:best.z,t:0});SG.stats.corks++;SG.stats.guardCorks++;if(rand()<C2.guardChance)dizzy(best);}}}
 /* the aiming bot looks at what each shot would knock off: the Keep's braces, then the legs they held, a wall in the way, the other lobber. It tries the low and the high lob. */
-function bestShot(s){var e=LEVELS[SG.sides[s].level].err2*U(),SP=[[0,0],[1.2*e,0],[-1.2*e,0],[0,1.2*e],[0,-1.2*e],[.9*e,.9*e],[-.9*e,-.9*e]];function ev(x,y,z,R,big,id){var t=0;for(var i=0;i<7;i++){t+=blastAt(x+SP[i][0],y,z+SP[i][1],R,s,big,0,0,id,true);for(var j=0;j<SG.mice.length;j++){var m=SG.mice[j];if(m.side!==s&&(m.state==='hold'||m.state==='fix')&&dist(m.x,m.z,x+SP[i][0],z+SP[i][1])<R)t+=C2.aimWorth.mouse;}}return t/7;}   /* it allows for its own wobble: the worth of a shot is the average over where it may land */
-  var side=SG.sides[s],en=1-s,l=lobberOf(s),was=side.high,wasA=side.ammo,best=null,bv=.01,cands=[];if(!l)return null;
+function bestShot(s){var side=SG.sides[s],en=1-s,l=lobberOf(s),was=side.high,wasA=side.ammo,e=LEVELS[side.level].err2*U(),SP=[[1.2*e,0],[-1.2*e,0],[0,1.2*e],[0,-1.2*e],[.9*e,.9*e],[-.9*e,-.9*e]],cands=[],list=[],best=null,bv=.01;if(!l)return null;
+  /* what one shot at (x,z) would be worth where it really comes down; null if one of our own pieces is in the way */
+  function worth(x,z,hi,big){side.high=hi;var a=SG.arc(s,x,z);if(!a)return 0;if(a.hit&&a.hit.own)return null;var px=a.hit?a.hit.x:a.x1,py=a.hit?a.hit.y:0,pz=a.hit?a.hit.z:a.z1,R=(big?C2.bigBlast:C2.blast)*U()*(hi?C2.highBlast:1),t=blastAt(px,py,pz,R,s,big,0,0,l.id,true);
+    for(var j=0;j<SG.mice.length;j++){var m=SG.mice[j];if(m.side!==s&&(m.state==='hold'||m.state==='fix')&&dist(m.x,m.z,px,pz)<R)t+=C2.aimWorth.mouse;}return t;}
   SG.pieces.forEach(function(p){if(p.side!==en||!p.built||p.down||!p.total||p.parts<=0)return;
-    if(p.kind==='tower')p.ps.forEach(function(q){if(q.st==='on'&&/post|brace/.test(q.id))C2.aimTry.forEach(function(o){cands.push([q.wx,q.wz,o]);});});else cands.push([p.x,p.z,0]);});
+    if(p.kind==='tower')p.ps.forEach(function(q){if(q.st==='on'&&(q.cls===1||q.cls===2))C2.aimTry.forEach(function(o){cands.push([q.wx,q.wz,o]);});});else cands.push([p.x,p.z,0]);});
   SG.mice.forEach(function(m){if(m.side===en&&(m.state==='hold'||m.state==='fix'))cands.push([m.x,m.z,0]);});   /* only mice standing still: a walking one has gone by the time the marble lands */
-  cands.forEach(function(c){var dx=c[0]-l.x,dz=c[1]-l.z,d=Math.sqrt(dx*dx+dz*dz)||1,x=c[0]+dx/d*c[2]*U(),z=c[1]+dz/d*c[2]*U();
-    side.ammo='marble';for(var hi=0;hi<2;hi++){side.high=!!hi;var a=SG.arc(s,x,z);if(!a||(a.hit&&a.hit.own))continue;var px=a.hit?a.hit.x:a.x1,py=a.hit?a.hit.y:0,pz=a.hit?a.hit.z:a.z1,k=hi?C2.highBlast:1;
-      var v=ev(px,py,pz,C2.blast*U()*k,false,l.id);if(v>bv){bv=v;best={x:x,z:z,high:!!hi,big:false,px:px,py:py,pz:pz};}
-      if(side.big>0&&!hi){v=ev(px,py,pz,C2.bigBlast*U()*k,true,l.id)-C2.bigWorth;if(v>bv){bv=v;best={x:x,z:z,high:!!hi,big:true,px:px,py:py,pz:pz};}}}});
-  side.high=was;side.ammo=wasA;side.pred=best?{v:Math.round(bv*10)/10,x:Math.round(best.px*100)/100,y:Math.round(best.py*100)/100,z:Math.round(best.pz*100)/100}:null;return best;}
+  side.ammo='marble';
+  cands.forEach(function(c){var dx=c[0]-l.x,dz=c[1]-l.z,d=Math.sqrt(dx*dx+dz*dz)||1,x=c[0]+dx/d*c[2]*U(),z=c[1]+dz/d*c[2]*U(),v;
+    for(var hi=0;hi<2;hi++){v=worth(x,z,!!hi,false);if(v>0)list.push({x:x,z:z,high:!!hi,big:false,v:v});
+      if(side.big>0&&!hi){v=worth(x,z,false,true);if(v!==null)v-=side.big>=C2.bigMax?0:C2.bigWorth;if(v>0)list.push({x:x,z:z,high:false,big:true,v:v});}}});
+  /* it allows for its own wobble: the few best are tried again a little off to each side, and the best average wins */
+  list.sort(function(a,b){return b.v-a.v;});
+  for(var i=0;i<list.length&&i<C2.aimDeep;i++){var c=list[i],t=c.v,n=1;for(var j=0;j<SP.length;j++){var w=worth(c.x+SP[j][0],c.z+SP[j][1],c.high,c.big);n++;if(w===null)t-=1;else t+=w-(c.big&&side.big<C2.bigMax?C2.bigWorth:0);}c.m=t/n;if(c.m>bv){bv=c.m;best=c;}}
+  side.high=was;side.ammo=wasA;side.pred=best?{v:Math.round(bv*10)/10}:null;return best;}
 /* ---- the v2 bot: splits its mice, and fires at what holds the other Keep up ---- */
 function botV2(s,dt){
   var side=SG.sides[s],L=LEVELS[side.level],en=1-s,foe=SG.sides[en];side.planT-=dt;side.fireT-=dt;
