@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
 const T0 = Date.now();
 const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
-  const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+  const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await p.addInitScript(() => { window.__RULES = 1; });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   let n = 0, bad = 0;
   const ok = (name, cond, extra) => { n++; if (!cond) bad++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra && !cond ? '  -> ' + extra : '')); };
@@ -143,7 +143,7 @@ const run = async () => {
   ok('still 0 errors', errs.length === 0, errs.join(' | '));
 
   /* the self-measuring auto-play page, sped up */
-  const p2 = await b.newPage({ viewport: { width: 480, height: 360 } }); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
+  const p2 = await b.newPage({ viewport: { width: 480, height: 360 } }); await p2.addInitScript(() => { window.__RULES = 1; }); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
   await p2.goto('file://' + path.resolve(__dirname, '..', 'index.html') + '?auto=both&level=normal&report=1&speed=30&skipbuild=1');
   await p2.waitForFunction('window.SG_REPORT', null, { timeout: 100000 }).catch(() => {});
   const rp = await p2.evaluate(() => ({ r: window.SG_REPORT, started: document.getElementById('start').style.display === 'none', panel: !!document.getElementById('report'), text: document.getElementById('reportText') ? document.getElementById('reportText').value : '', copy: !!document.getElementById('bCopy') }));
@@ -152,7 +152,7 @@ const run = async () => {
   ok('the report has frame times, draw calls, triangles and match numbers', r.frames > 5 && r.fpsAverage > 0 && r.fpsWorst1pc > 0 && r.fpsWorst1pc <= r.fpsAverage + .01 && r.longestFrameMs > 0 && r.peakDrawCalls > 50 && r.peakTriangles > 10000 && r.partsKnockedOff >= 0 && r.dizzies >= 0 && r.hillChanges >= 0 && Array.isArray(r.pageErrors) && r.pageErrors.length === 0 && /Mozilla/.test(r.userAgent || '') && r.canvas && r.canvas.width > 0, JSON.stringify(r));
   ok('report=1 shows it in a panel that can be selected, with a Copy button', rp.panel && rp.copy && rp.text.indexOf('"fpsAverage"') > 0 && JSON.parse(rp.text).winner === r.winner);
   await p2.close(); await ev(() => { SG.hold = true; });
-  const p3 = await b.newPage({ viewport: { width: 800, height: 600 } });
+  const p3 = await b.newPage({ viewport: { width: 800, height: 600 } }); await p3.addInitScript(() => { window.__RULES = 1; });
   await p3.goto('file://' + path.resolve(__dirname, '..', 'index.html') + '?auto=red&level=hard'); await p3.waitForFunction('window.__done');
   ok('?auto=red skips the title: the bot plays red and you play blue', await p3.evaluate(() => SG.phase === 'build' && SG.team === 'blue' && SG.sides[1].team === 'red' && SG.sides[1].bot && !SG.sides[0].bot && SG.level === 'hard' && document.getElementById('start').style.display === 'none'));
   ok('a normal start has no report and no panel', await ev(() => window.SG_REPORT === undefined && !document.getElementById('report')));

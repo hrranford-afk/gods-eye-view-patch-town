@@ -12,7 +12,7 @@ const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   let n = 0, bad = 0; const errs = [];
   const ok = (name, cond, extra) => { n++; if (!cond) bad++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra && !cond ? '  -> ' + extra : '')); };
-  const open = async (fake, query) => { const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  const open = async (fake, query) => { const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p.addInitScript(() => { window.__RULES = 1; }); p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
     if (fake) await installFakeAR(p, fake); await p.goto(url + (query || '')); await p.waitForFunction('window.__done', null, { timeout: 60000 }); await p.waitForTimeout(200); return p; };
 
   /* the page starts with and without WebXR */

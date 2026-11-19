@@ -10,7 +10,7 @@ const T0 = Date.now();
 const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true });
-  const p = await ctx.newPage(), cdp = await ctx.newCDPSession(p);
+  const p = await ctx.newPage(), cdp = await ctx.newCDPSession(p); await p.addInitScript(() => { window.__RULES = 1; });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   let n = 0, bad = 0;
   const ok = (name, cond, extra) => { n++; if (!cond) bad++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra && !cond ? '  -> ' + extra : '')); };
@@ -112,7 +112,7 @@ const run = async () => {
   ok('sound is optional and off until the first tap; here it ' + (snd.a.started ? 'started after the taps' : 'never started') + ', and the game ran either way', typeof snd.a.started === 'boolean' && snd.muted === false);
   await ev(() => { SG.start('blue', {}); SG.render(); }); await p.click('#bMute');
   ok('the mute button mutes, and remembers it', await ev(() => { let v = null; try { v = localStorage.getItem('rtk-mute'); } catch (e) { v = 'blocked'; } return SG.muted === true && (v === '1' || v === 'blocked') && document.getElementById('bMute').textContent === '🔇'; }));
-  const p2 = await ctx.newPage(); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
+  const p2 = await ctx.newPage(); await p2.addInitScript(() => { window.__RULES = 1; }); const errs2 = []; p2.on('pageerror', (e) => errs2.push(e.message));
   await p2.goto('file://' + path.resolve(__dirname, '..', 'index.html')); await p2.waitForFunction('window.__done');
   ok('a fresh page starts with no audio at all, and the mute is still on', await p2.evaluate(() => { let v = null; try { v = localStorage.getItem('rtk-mute'); } catch (e) { v = 'blocked'; } return SG.audio().started === false && (v === 'blocked' || SG.muted === true); }));
   await p2.evaluate(() => { SG.setMute(false); }); await p2.close();
