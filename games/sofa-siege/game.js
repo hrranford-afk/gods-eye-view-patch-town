@@ -34,7 +34,7 @@ var CONFIG={
     walk:.42,                                   /* mouse speed at piece scale 0.88: about 6 to 8 seconds from camp to hill at any scale */
     shopMend:.5,tentDizzy:3,trapReach:.2,trapReset:2,   /* a whole workshop halves mending time; a whole tent: dizzy for 3 s; trap reach; seconds to set a trap again. (Each lobber has its own crew, reload and aim: there is no two-lobber discount.) */
     bouncer:{cd:5,blast:.2,hop:.9,hopH:.7,hopT:.5,arc:[.3,.24],slow:1.35},   /* Bouncer: seconds before the next one; blast (no leg breaking); how far past its first touchdown it hops on; height and seconds of the hop (it clears a wall); the arc down to the first touchdown (height = a + distance x b, like the high lob) and how much slower it flies */
-    glue:{cd:8,reach:.26,lock:15,slow:4,slowTo:.45,puddle:9,blob:1},   /* Glue blob: seconds before the next; how far the splash reaches; seconds a glued part cannot be mended; seconds a mouse is slowed after the splash, and its speed then (share); seconds the puddle stays; (no damage) */
+    glue:{cd:8,reach:.26,lock:15,slow:4,slowTo:.45,puddle:9},   /* Glue blob: seconds before the next; how far the splash reaches; seconds a glued part cannot be mended; seconds a mouse is slowed after the splash, and its speed then (share); seconds the puddle stays (it does no damage) */
     arcLow:[.1,.09],arcHigh:[.3,.24],highBlast:.5,   /* arc height = a + distance x b: the flat shot is stopped by a wall just in front of its target, the high lob clears it but has this share of the blast */
     plan:{hill:2,raid:1,guard:0,mend:1},        /* how a bot (and a player to begin with) splits the four mice that are not at the lobber */
     randomAim:1.9,botFirst:1.5,                 /* a random-fire bot's spread round the other base; seconds before a bot's first shot of a round */
@@ -95,7 +95,7 @@ var LAYOUTS=[
 /* v2 bot camps of three qualities, to measure whether building matters. Each entry: [kit slot, distance from the hill, angle, turn], in building order
    (a brace is [slot, x, z, turn] in the camp's own frame). Slots: 0-5, 11, 12 walls; 6 gate; 7 tower; 8 lobber; 9 tent; 10 workshop; 13-15 braces; 16 second lobber; 17, 18 traps.
    good: the Keep at the back, braced, a tight wall close in front of it, a forward screen, a trap. average: walls spread wide, nothing close to the Keep.
-   bad: the Keep out in front with nothing before it, the walls behind. average2 and good2 are the same camps with a second lobber bought right after the first; the budget leaves out whatever would come last (average2 loses its tent, good2 its trap and a wall). */
+   bad: the Keep out in front with nothing before it, the walls behind. average2 and good2 are the same camps with a second lobber bought right after the first; the budget leaves out whatever would come last (at 5 points: average2 loses its workshop and tent, good2 its gate, two walls and its trap). */
 var PRESETS={
   good:[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.25,PI],[2,2.06,.25,PI],[8,1.3,.85,PI],[10,2.3,-.6,PI],[6,1.5,0,PI],[3,1.52,-.36,PI],[4,1.52,.36,PI],[17,1.3,0,0]],
   average:[[7,2.3,-.5,PI],[8,2.2,.45,PI],[6,1.75,0,PI],[0,1.2,0,PI],[1,1.32,-.66,PI],[2,1.32,.66,PI],[3,1.7,-.95,PI],[4,1.7,.95,PI],[5,1.85,.3,PI],[10,2.3,0,PI],[9,2.3,-.95,0]],

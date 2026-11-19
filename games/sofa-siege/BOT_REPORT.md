@@ -2,7 +2,7 @@
 
 Made by `tests/proof.js`. Every match is bot against bot, stepped headless (no frames drawn), at the default piece size (small), with the numbers in `CONFIG` as committed. In each experiment the two sides differ only in the thing being measured; the side that has it swaps ends and teams from match to match. Seeds start at 40000.
 
-The old rules (`?rules=1`) have their own report in `BOT_REPORT_V1.md`.
+The old rules (`?rules=1`) have their own report in `BOT_REPORT_V1.md`. **The part of this file under the heading "v2b", at the end, was measured later, with a second lobber that really fires and five kinds of ammunition, and is the current one.**
 
 ## The four proofs
 
@@ -94,14 +94,14 @@ Everything above this heading was measured before the second lobber became a wea
 
 | Check | Asked for | Measured | Matches | Holds |
 |---|---|---|---|---|
-| 1. Good camp against bad camp | good wins 70% or more | good wins **98%** | 60 | yes |
-| 2. The aiming bot against random fire | aimer wins 70% or more | aimer wins **97%** | 60 | yes |
-| 3. A bot with two lobbers against one with one, equal otherwise (average camp, the second lobber bought with one wall and the spare points) | two wins clearly, but under 75% | two lobbers win **72%** | 60 | yes |
-| 3b. The same with the good camp (the second lobber bought with the workshop and a wall) | the same | two lobbers win **100%** | 60 | **NO** |
-| 4. Blue against red, same camps and bots | each wins 45 to 55% | blue **48%** in the normal-bot matches, **37%** over all 240 equal matches (equal camps and bots; equal good camps; equal, easy bots; equal, hard bots) | 240 | **NO** |
-| 5. No kind of ammunition decides more than about 60% of matches | 60% or under | most any kind decides: **52%** (Big Marble) | 240 | yes |
-| 6a. A Keep comes down | in 40 to 70% of matches | **50%** (equal normal bots); the other equal columns: 0% equal good camps, 27% easy, 0% hard | 60 | yes |
-| 6b. Collapses in a match | 2 or more | **3.6** on average; 2 or more in 93% of matches | 60 | yes |
+| 1. Good camp against bad camp | good wins 70% or more | good wins **100%** | 60 | yes |
+| 2. The aiming bot against random fire | aimer wins 70% or more | aimer wins **100%** | 60 | yes |
+| 3. A bot with two lobbers against one with one, equal otherwise (average camp; the second lobber is bought right after the first, so with the price at 5 the camp goes without its workshop and its tent) | two wins clearly, but under 75% | two lobbers win **73%** | 60 | yes |
+| 3b. The same with the good camp (it goes without its gate, two walls and its trap) | the same | two lobbers win **100%** | 60 | **NO** |
+| 4. Blue against red, same camps and bots | each wins 45 to 55% | blue **63%** in the normal-bot matches, **48%** over all 240 equal matches (equal camps and bots; equal good camps; equal, easy bots; equal, hard bots) | 240 | yes |
+| 5. No kind of ammunition decides more than about 60% of matches | 60% or under | the most any one kind decides: **53%** (Big Marble) | 240 | yes |
+| 6a. A Keep comes down | in 40 to 70% of matches | **55%** (equal normal bots); the other equal columns: 0% equal good camps, 52% easy, 0% hard | 60 | yes |
+| 6b. Collapses in a match | 2 or more | **3.7** on average; 2 or more in 88% of matches | 60 | yes |
 | Stuck mice (20 s with a goal and no move) | none | 0 | 480 | yes |
 
 ### Which ammunition is fired, and which decides
@@ -110,39 +110,66 @@ Per match, in the equal-camp, equal-bot matches (normal bots, average camps; 60 
 
 | Ammunition | Fired a match (normal bots) | Fired a match (all equal) | Keep felled by it (normal bots) | Keep felled (all equal) | Decides (normal bots) | Decides (all equal) |
 |---|---|---|---|---|---|---|
-| Marble | 61.7 | 57.2 | 5% | 2% | 22% | 28% |
-| Big Marble | 3.4 | 3.8 | 45% | 18% | 52% | 30% |
-| Corks | 0.7 | 0.9 | 0% | 0% | 0% | 0% |
-| Bouncer | 3.3 | 5.5 | 0% | 0% | 7% | 7% |
-| Glue blob | 8.8 | 12.3 | 0% | 0% | 0% | 0% |
-| raiders and flying parts |  |  | 0% | 0% | 17% | 34% |
-| nothing in it (level on damage) | 0.0 | 0.0 | 0% | 0% | 3% | 1% |
+| Marble | 59.5 | 55.6 | 8% | 3% | 33% | 24% |
+| Big Marble | 3.1 | 3.7 | 47% | 24% | 53% | 38% |
+| Corks | 0.5 | 1.0 | 0% | 0% | 0% | 0% |
+| Bouncer | 3.1 | 5.3 | 0% | 0% | 2% | 5% |
+| Glue blob | 8.2 | 12.2 | 0% | 0% | 0% | 0% |
+| raiders and flying parts |  |  | 0% | 0% | 10% | 30% |
+| nothing in it (level on damage) | 0.0 | 0.0 | 0% | 0% | 2% | 2% |
 
-Glued parts a match (normal bots): **14.7**. Bouncer hops that came off: **3.3** a match.
+Glued parts a match (normal bots): **13.4**. Bouncer hops that came off: **3.1** a match.
 
 ### Averages for a match
 
 | | good camp against bad camp | aimer against random fire | equal camps and bots | equal good camps | equal, easy bots | equal, hard bots | two lobbers against one (average camp) | two lobbers against one (good camp, paid for) |
 |---|---|---|---|---|---|---|---|---|
 | Matches | 60 | 60 | 60 | 60 | 60 | 60 | 60 | 60 |
-| First-named side wins | 98% | 97% | 42% | 55% | 52% | 55% | 72% | 100% |
-| Blue wins | 48% | 50% | 48% | 45% | 28% | 25% | 65% | 50% |
-| A Keep comes down | 77% | 78% | 50% | 0% | 27% | 0% | 93% | 83% |
-| Collapses | 4.3 | 3.1 | 3.6 | 3.6 | 3.7 | 4.2 | 2.3 | 2.7 |
-| Parts knocked off | 89 | 96 | 114 | 112 | 115 | 122 | 91 | 91 |
-| Parts mended back | 37 | 36 | 39 | 44 | 44 | 41 | 20 | 27 |
-| Camp parts off at the end | 31% | 34% | 40% | 40% | 37% | 47% | 42% | 44% |
-| Dizzies | 37 | 25 | 46 | 49 | 43 | 53 | 27 | 40 |
-| Shots in all | 65 | 66 | 78 | 78 | 79 | 84 | 69 | 81 |
-| Glued parts | 6.7 | 5.2 | 14.7 | 24.6 | 13.4 | 26.6 | 8.0 | 22.0 |
-| Fight length (of 180 s) | 148 s | 134 s | 153 s | 180 s | 167 s | 180 s | 99 s | 154 s |
-| Longest quiet stretch, worst | 9 s | 10 s | 9 s | 13 s | 10 s | 11 s | 10 s | 14 s |
+| First-named side wins | 100% | 100% | 47% | 55% | 50% | 55% | 73% | 100% |
+| Blue wins | 50% | 50% | 63% | 45% | 53% | 32% | 70% | 50% |
+| A Keep comes down | 58% | 85% | 55% | 0% | 52% | 0% | 97% | 80% |
+| Collapses | 4.2 | 3.3 | 3.7 | 3.0 | 3.6 | 3.8 | 2.3 | 2.9 |
+| Parts knocked off | 89 | 95 | 112 | 110 | 112 | 121 | 91 | 88 |
+| Parts mended back | 37 | 37 | 38 | 43 | 42 | 40 | 21 | 24 |
+| Camp parts off at the end | 31% | 34% | 40% | 39% | 38% | 47% | 42% | 43% |
+| Dizzies | 39 | 25 | 42 | 49 | 39 | 53 | 26 | 38 |
+| Shots in all | 68 | 67 | 75 | 78 | 75 | 84 | 67 | 78 |
+| Glued parts | 6.2 | 5.4 | 13.4 | 23.4 | 13.7 | 25.3 | 7.4 | 22.1 |
+| Fight length (of 180 s) | 151 s | 135 s | 146 s | 180 s | 160 s | 180 s | 98 s | 149 s |
+| Longest quiet stretch, worst | 10 s | 10 s | 10 s | 11 s | 10 s | 10 s | 9 s | 14 s |
 | Stuck mice | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
+### What was changed to make the v2b checks hold, and what did not hold
+
+The first measurements, before any tuning, with the numbers as they were when the lobbers and the ammunition were first made real (second lobber 3, Big Marble every 24 s, Big blast 0.36, red walk 1.17):
+
+- Two lobbers beat one **78 to 85%** of the time (average camp). Too many. The price was wrong.
+- The bots threw a Glue blob whenever one was ready (28 a match): marbles fired fell from 74 to 49, and a Keep came down in only 30 to 33% of matches (it was 50% before).
+- A Big Marble decided **67 to 78%** of matches.
+
+What I changed, all in `CONFIG.v2` (the rest of the numbers are as they were):
+
+| Number | Was | Now | Why |
+|---|---|---|---|
+| `cost.lobber` (the second lobber) | 3 | **5** | at 3 two lobbers won 78 to 85%; at 5 about 64 to 73%. Trying 3, 4, 5, 6 and 7 (40 to 100 matches each) gave roughly 80, 76, 68, 68 and 72%: it stops falling beyond 5, so a dearer lobber does not help |
+| `botGlue` and the bot's rule for Glue | none | Glue only where a mender is at work and at least 3 fallen parts and menders lie in one splash | glue every 8 s took a third of the marbles |
+| `hillSecs` (hill time for one Big Marble) | 24 | **22** | with the Big blast lowered, Keeps fell in too few matches (24% at 0.30, 43% at 0.33 and 25 s, 50% at 22 s) |
+| `bigBlast` | 0.36 | **0.33** | at 0.36 a Big Marble decided 67 to 78% of matches, even those where no Keep fell. At 0.30 blue won only 22 to 38% and collapses fell to 3.4 a match |
+| `redWalk` | 1.17 | **1.05** | after the two changes above red's quick raiders won too much (blue 37% over all the equal matches); 1.0 gave blue 62%, 1.03 gave 55%, 1.05 gave 48% |
+
+New numbers: `bouncer` (wait 5 s, blast 0.2, hop 0.9, hop height 0.7, arc like the high lob), `glue` (wait 8 s, splash 0.26, locks a part 15 s, slows mice to 45% for 4 s, puddle 9 s), `botGlue` 3, `bouncerBias` 1.
+
+**What did not hold, plainly**
+
+- **Check 3b fails: two lobbers against one, both with the good camp, win 100% at every price from 3 to 7 points.** The second lobber cannot be priced out of that match. The reason, as far as I can tell: a lobber that has had its bucket (or crank) knocked off twice is gone for good (a part is mended once), and the good camp's only lobber stands forward by the hill. With two lobbers one is always spare, and, I think (I did not follow it shot by shot), while one opens a lane through the wall the other fires a Big Marble down it, which the bots with one lobber each never manage (two good camps with one lobber each never lose a Keep, as before). The one-lobber side fires 3 to 5 shots a match. So against a camp that can be broken only by opening a lane, a second lobber is overwhelming, not just strong. The "average camp" check (3) passes at 73%, but a sample of 60 is good to about ±12 points, so 73% is not clearly under 75%.
+- **Blue against red is only held on average.** Over all 240 equal matches blue won 48%, but by column it swings: 63% with normal bots on average camps, 53% easy, 45% equal good camps, 32% with hard bots. Sixty matches a column is good to ±12, and the old counterweight (`redWalk`) is still a counterweight, not a cure (see above).
+- **"Decides" is my own measure** (the kind that felled the Keep, or else the kind that put most of the winner's lead on the board). By that measure the Big Marble decides 53% of the normal-bot matches and 38% of all equal matches, which is under 60%. By the plain count of Keeps felled it is 47% of normal-bot matches. A Glue blob does no damage, so by this measure it never decides: what it does is keep parts down (about 13 glued parts a match). I have no measure of how much a match turns on it. The Bouncer decides 2 to 5%: bots throw 3 a match against average camps and 5 over all, mostly against walled camps, and it cannot fell a Keep by itself.
+- **Two good camps still never lose a Keep to each other** (0% in "equal good camps" and "hard bots"), as in the first report. The Bouncer and the Glue blob do not change that: the bots do not find a way to get a Big Marble past the walls.
+- **Longest quiet stretch** is 10 to 14 s, a little over the 12 s limit of the first proofs in the good-camp match with two lobbers (14 s), though that limit is not one of this round's checks.
 
 
 ### The v2b numbers used
 
 ```
-{"reload":2.5, "cost":{"tower":0, "wall":1, "gate":1, "brace":1, "lobber":5, "workshop":2, "tent":1, "trap":2}, "bouncer":{"cd":5, "blast":0.2, "hop":0.9, "hopH":0.7, "hopT":0.5, "arc":[0.3,0.24], "slow":1.35}, "glue":{"cd":8, "reach":0.26, "lock":15, "slow":4, "slowTo":0.45, "puddle":9, "blob":1}, "botGlue":3, "bouncerBias":1, "plan":{"hill":2, "raid":1, "guard":0, "mend":1}, "corkCd":8, "hillSecs":22, "bigMax":3, "mendTime":12}
+{"reload":2.5, "cost":{"tower":0, "wall":1, "gate":1, "brace":1, "lobber":5, "workshop":2, "tent":1, "trap":2}, "bouncer":{"cd":5, "blast":0.2, "hop":0.9, "hopH":0.7, "hopT":0.5, "arc":[0.3,0.24], "slow":1.35}, "glue":{"cd":8, "reach":0.26, "lock":15, "slow":4, "slowTo":0.45, "puddle":9}, "botGlue":3, "bouncerBias":1, "plan":{"hill":2, "raid":1, "guard":0, "mend":1}, "corkCd":8, "hillSecs":22, "bigMax":3, "mendTime":12}
 ```
