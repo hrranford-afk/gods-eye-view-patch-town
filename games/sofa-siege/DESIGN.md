@@ -95,3 +95,27 @@ Nobody dies: mice still go dizzy and pop home. Toy weapons only.
 - A well-built camp beats a badly built one at least 7 times in 10 with equal bots.
 - At least 2 collapses a match on average, and most matches end with a Keep down or badly damaged.
 - A human-style bot that aims well beats one that fires at random at least 7 times in 10.
+
+## v2 as built (19 Nov, after the bot proofs)
+
+The measured results are in `BOT_REPORT.md`. Every number below is in `CONFIG.v2` in `game.js`. The old rules still play with `?rules=1`.
+
+**Win.** Bring the other Keep down and you win at once. If no Keep falls in 3 rounds of 60 seconds, the higher score wins.
+
+**Score.** At the end of each round every part still off the other camp counts its share of what the whole piece is worth: a Keep 54, a lobber 8, a wall 5, a tent 5, a workshop 4, a gate 3.5. A collapse you caused: 2. A little for the hill.
+
+**What holds things up.** A wall needs one post and one rail; with both rails gone its planks fall, with both posts gone all of it falls. A gate needs both posts. A Keep stands on three legs, or on two if the brace across the open side is still on, or if a brace piece props it.
+
+**The lobber.** It winds for 2.5 seconds. A marble knocks off everything within its blast; the first piece along its arc takes the hit. Three kinds of shot:
+- **Marble.** The ordinary shot. It cannot take a Keep leg while either of that leg's braces is on.
+- **Big Marble.** Earned by holding the hill: one for every 24 seconds, up to three in store. It always flies low. If it lands on a Keep it breaks the nearest leg, braced or not. A wall in front of the Keep stops it.
+- **Cork scatter.** Five corks. Mice they land near go dizzy; nothing breaks. Eight seconds between scatters.
+- **High lob** (a switch, for marbles and corks): a higher arc that clears a wall, with half the blast.
+
+**Orders.** Four mice are yours to split between: hold the hill, raid their walls (pull a part every 3 seconds), guard the Keep (pop corks at raiders), mend (12 seconds a part, 6 with a whole workshop). The fifth works the lobber.
+
+**The kit, 12 points.** The Keep and the first lobber are free. Wall 1, gate 1, brace 1, tent 1 (dizzy for 3 seconds, not 5), workshop 2 (mends twice as fast), spring trap 2 (flings the first raider to step on it home; a mender must set it again), second lobber 3 (winds in about half the time).
+
+**Piece size.** Small by default (about a third smaller than before); medium and large on the title. Rules 1 always uses large. In AR a table under 80 cm always gets small pieces.
+
+**Teams.** Blue's guard corks reach half as far again. Red's mice walk 17% quicker in the fight. Both numbers are there to make the two teams win equally often with bots; see the note in `BOT_REPORT.md`.

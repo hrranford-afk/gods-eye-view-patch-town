@@ -2,6 +2,18 @@
 
 Open `index.html`. Model viewer: `viewer.html`. Tests are in `tests/` (run each with `NODE_PATH=$(npm root -g) node tests/<name>.js`).
 
+The game plays rules v2 ("Break the camp") by default; `?rules=1` plays the first rules. The v2 rules as built are at the end of `DESIGN.md`.
+
+| Test | What it covers | Rules |
+|---|---|---|
+| `v2-test.js` | v2 rules: the Keep, blasts, supports, ammunition, orders, the budget and the new pieces, piece sizes | v2 |
+| `table-test.js` | two players at one screen, real multi-touch | v2; `RULES=1` before the command runs it under the first rules |
+| `ar-test.js` | AR mode against a fake WebXR device | v2; `RULES=1` for the first rules |
+| `layout-test.js` | tables laid out from the picture cards | v2 |
+| `build-test.js`, `fight-test.js` | the first rules' build step and fight | first rules only |
+| `proof.js` | v2 proof by bots: writes `BOT_REPORT.md` (`node tests/proof.js 200`, about an hour; `only=even,build,aim` runs some; `key=value` tries a number without writing the report) | v2 |
+| `sweep.js` | the first rules' balance sweep: writes `BOT_REPORT_V1.md` | first rules |
+
 ## Table layout from the picture cards
 
 The game can take its table layout from the locked record that the cards page makes (`cards/setup.js` on branch `game/sofa-cards`, schema_version 1).
