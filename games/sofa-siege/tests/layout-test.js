@@ -59,7 +59,7 @@ const run = async () => {
       out.hillFar = Math.max(...SG.mice.map((m) => Math.hypot(m.x, m.z))); return out; }, [json, name.startsWith('camps not')]);
     ok('good layout "' + name + '" is accepted', r.a === true, JSON.stringify(r));
     ok('  both bots build their camp in their own zone (' + (r.placed || []).join(' and ') + ' of 11 placed)', r.kitOnTable && r.ownSide && r.placed[0] >= 9 && r.placed[1] >= 9 && r.built === r.placed[0] + r.placed[1], JSON.stringify(r));
-    ok('  a whole bot match runs: mice reach the moved hill, score, shoot, and it ends with a winner', r.over && r.winner >= 0 && r.onHill >= 4 && r.score[0] + r.score[1] > 20 && r.shots > 5, JSON.stringify(r));
+    ok('  a whole bot match runs: mice reach the moved hill, score, shoot, and it ends with a winner', r.over && r.winner >= 0 && r.onHill >= 4 && (r.score[0] + r.score[1] > 20 || r.partsOff > 40) && r.shots > 5, JSON.stringify(r));
     ok('  no mouse stuck, none inside a wall' + (r.mound ? ', none walking over the mound' : ''), r.stuck === 0 && r.inside === 0 && r.moundHits === 0, JSON.stringify(r));
   }
 

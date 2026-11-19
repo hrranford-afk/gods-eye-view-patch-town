@@ -23,14 +23,14 @@ var CONFIG={
     blast:.3,bigBlast:.36,sturdy:.55,                      /* how far a marble and a Big Marble knock parts off (at piece scale 0.88); posts and rails only come off within this share of it; a Big Marble that lands on the Keep breaks the leg nearest to where it hit, braced or not */
     throwNear:.6,throwFar:.2,                   /* how far a knocked part flies: nearest to the hit, and at the edge of the blast */
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
-    hillSecs:24,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
+    hillSecs:25,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
     piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
     mendTime:12,redWalk:1.17,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
     raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's interval times this (1: the same for both); reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
     collapseReach:.25,slowMo:.4,keepFall:2.4,   /* a collapse makes mice this near the piece dizzy; slow-motion seconds; seconds a Keep takes to fall before the win card */
-    points:12,cost:{tower:0,wall:1,gate:1,brace:1,lobber:3,workshop:2,tent:1,trap:2},   /* the build budget; the first lobber is free */
+    points:12,cost:{tower:0,wall:1,gate:1,brace:1,lobber:5,workshop:2,tent:1,trap:2},   /* the build budget; the first lobber is free, a second costs 5 (it was 3 before it fired on its own: at 3 a bot with two lobbers won 78 to 85% against one with one) */
     walk:.42,                                   /* mouse speed at piece scale 0.88: about 6 to 8 seconds from camp to hill at any scale */
     shopMend:.5,tentDizzy:3,trapReach:.2,trapReset:2,   /* a whole workshop halves mending time; a whole tent: dizzy for 3 s; trap reach; seconds to set a trap again. (Each lobber has its own crew, reload and aim: there is no two-lobber discount.) */
     bouncer:{cd:5,blast:.2,hop:.9,hopH:.7,hopT:.5,arc:[.3,.24],slow:1.35},   /* Bouncer: seconds before the next one; blast (no leg breaking); how far past its first touchdown it hops on; height and seconds of the hop (it clears a wall); the arc down to the first touchdown (height = a + distance x b, like the high lob) and how much slower it flies */
@@ -41,7 +41,7 @@ var CONFIG={
     legSturdy:.5,braceSturdy:.7,                /* an unbraced Keep leg, and a Keep brace, come off only when the hit is within this share of the blast */
     aimWorth:{leg:30,lastLeg:60,brace:3,mouse:2},aimTry:[-.25,0,.2,.45],bigWorth:8,aimDeep:5,   /* the aiming bot values a shot by the points it would score, plus this much for a Keep leg (more for the leg that brings it down) and for a Keep brace; how far before and past a part it tries; a Big Marble is kept for a shot worth this much more; how many of its best shots it tries again with its wobble */
     botRetarget:4,                              /* seconds between a bot's looks at its plan */
-    botGlue:2,bouncerBias:1                     /* the bot throws Glue when this many fallen parts and menders lie within one splash; its Bouncer shots are worth this times what the blast would take off */
+    botGlue:3,bouncerBias:1                     /* the bot throws Glue when this many fallen parts and menders (with at least one mender among them) lie within one splash; its Bouncer shots are worth this times what the blast would take off */
   },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
   levels:{easy:{err2:.2,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.12,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.06,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
@@ -95,14 +95,15 @@ var LAYOUTS=[
 /* v2 bot camps of three qualities, to measure whether building matters. Each entry: [kit slot, distance from the hill, angle, turn], in building order
    (a brace is [slot, x, z, turn] in the camp's own frame). Slots: 0-5, 11, 12 walls; 6 gate; 7 tower; 8 lobber; 9 tent; 10 workshop; 13-15 braces; 16 second lobber; 17, 18 traps.
    good: the Keep at the back, braced, a tight wall close in front of it, a forward screen, a trap. average: walls spread wide, nothing close to the Keep.
-   bad: the Keep out in front with nothing before it, the walls behind. average2 and good2 are the same camps with a second lobber (3 points): average pays for it with one wall (it has two points spare), good with its workshop and one wall. */
+   bad: the Keep out in front with nothing before it, the walls behind. average2 and good2 are the same camps with a second lobber bought right after the first; the budget leaves out whatever would come last (average2 loses its tent, good2 its trap and a wall). */
 var PRESETS={
   good:[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.25,PI],[2,2.06,.25,PI],[8,1.3,.85,PI],[10,2.3,-.6,PI],[6,1.5,0,PI],[3,1.52,-.36,PI],[4,1.52,.36,PI],[17,1.3,0,0]],
   average:[[7,2.3,-.5,PI],[8,2.2,.45,PI],[6,1.75,0,PI],[0,1.2,0,PI],[1,1.32,-.66,PI],[2,1.32,.66,PI],[3,1.7,-.95,PI],[4,1.7,.95,PI],[5,1.85,.3,PI],[10,2.3,0,PI],[9,2.3,-.95,0]],
   bad:[[7,1.45,0,PI],[8,2.3,0,PI],[0,2.0,-.3,PI],[1,2.0,.3,PI],[2,2.3,-.6,PI],[3,2.3,.6,PI],[6,2.5,0,PI],[4,1.9,-.9,PI],[5,1.9,.9,PI],[10,2.45,-.9,PI],[9,2.45,.9,0]]
 };
-PRESETS.average2=PRESETS.average.filter(function(q){return q[0]!==5;}).concat([[16,2.2,.95,PI]]);
-PRESETS.good2=PRESETS.good.filter(function(q){return q[0]!==10&&q[0]!==4;}).concat([[16,2.3,-.6,PI]]);
+function withSecond(P,spot){var o=[];P.forEach(function(q){o.push(q);if(q[0]===8)o.push(spot);});return o;}   /* the second lobber is bought right after the first, so what the budget cannot pay for is what comes last */
+PRESETS.average2=withSecond(PRESETS.average,[16,2.2,.95,PI]);
+PRESETS.good2=withSecond(PRESETS.good,[16,2.3,-.6,PI]);
 var SG={phase:'start',mode:'solo',time:CONFIG.build,round:0,team:'blue',level:'easy',sides:[],pieces:[],mice:[],marbles:[],corks:[],pops:[],kit:[],callout:{text:'',t:0},cam:0,
   clock:0,acc:0,nextId:1,seed:12345,winner:-1,holder:-1,paused:false,lastHit:null,stats:{},opts:{}};
 window.SG=SG;
@@ -651,8 +652,8 @@ function bestShot(s,li,avoid){var side=SG.sides[s],en=1-s,l=lobberOf(s,li),was=s
 /* where a Glue blob would stop the most mending: the spot with the most fallen parts (and mice mending them) within its splash. null if fewer than CONFIG.v2.botGlue. */
 function glueTarget(s){var en=1-s,R=C2.glue.reach*U(),spots=[],best=null,bn=0;
   SG.pieces.forEach(function(p){if(p.side!==en||!p.built||p.down||!p.total)return;p.ps.forEach(function(q){if(q.st==='off'&&!q.used&&!(q.glue>SG.clock))spots.push([q.rx,q.rz]);});});
-  SG.mice.forEach(function(m){if(m.side===en&&(m.state==='toPart'||m.state==='bring'||m.state==='fix'))spots.push([m.x,m.z]);});
-  spots.forEach(function(a){var n=0,sx=0,sz=0;spots.forEach(function(b){if(dist(a[0],a[1],b[0],b[1])<R){n++;sx+=b[0];sz+=b[1];}});if(n>bn){bn=n;best={x:sx/n,z:sz/n,n:n};}});
+  var menders=[];SG.mice.forEach(function(m){if(m.side===en&&(m.state==='toPart'||m.state==='bring'||m.state==='fix'))menders.push([m.x,m.z]);});
+  spots.forEach(function(a){var n=0,sx=0,sz=0,mn=0;spots.forEach(function(b){if(dist(a[0],a[1],b[0],b[1])<R){n++;sx+=b[0];sz+=b[1];}});menders.forEach(function(b){if(dist(a[0],a[1],b[0],b[1])<R*1.6)mn++;});if(mn>0&&n+mn>bn){bn=n+mn;best={x:sx/n,z:sz/n,n:n+mn};}});   /* only where a mender is at work */
   return best&&best.n>=C2.botGlue?best:null;}
 /* ---- the v2 bot: splits its mice, and fires at what holds the other Keep up ---- */
 function botV2(s,dt){
