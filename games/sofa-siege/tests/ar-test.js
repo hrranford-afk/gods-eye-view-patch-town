@@ -186,6 +186,12 @@ const run = async () => {
   p = await open({ supported: true, timeStep: 16 }); await p.click('#bAR'); await p.waitForFunction('SG.ar.on');
   await p.evaluate(() => { __XRF.session.end = () => new Promise(() => {}); SG.arLeave(); }); await p.waitForTimeout(1100);
   ok('Exit AR tidies up even when the session never answers', await p.evaluate(() => !SG.ar.on && SG.phase === 'start' && document.body.className === '')); await p.close();
+  /* piece size in AR: a table under 80 cm always gets the small pieces; a bigger one keeps the size chosen on the title */
+  if (!V1) { const sizeAt = async (cm) => { p = await open({ supported: true, timeStep: 16 }); await p.click('#z_large'); await p.click('#bAR'); await p.waitForFunction('SG.ar.on'); await p.evaluate(() => { __XRF.cam = { pos: [0, 0, 0], target: [0, -0.45, -0.9] }; });
+      for (let i = 0; i < 6; i++) await p.evaluate(() => new Promise((r) => requestAnimationFrame(r))); await p.mouse.click(590, 300); await p.waitForTimeout(100); await p.evaluate((cm) => SG.arResize(cm), cm); await p.click('#arLock'); await p.waitForTimeout(150);
+      const o = await p.evaluate(() => ({ size: SG.ar.size, pieces: SG.pieceSize, phase: SG.phase, state: SG.ar.state, unit: SG.unit() })); await p.close(); return o; };
+    const sm = await sizeAt(70), lg = await sizeAt(100);
+    ok('in AR a table under 80 cm uses the small pieces even when large was chosen; at 100 cm the chosen size stays', sm.state === 'locked' && sm.size === 70 && sm.pieces === 'small' && lg.size === 100 && lg.pieces === 'large', JSON.stringify([sm, lg])); }
   ok('no page errors in any of it', errs.length === 0, errs.join(' | '));
   console.log('test took ' + ((Date.now() - T0) / 1000).toFixed(0) + ' s');
   console.log(bad ? ('FAILED ' + bad + ' of ' + n) : ('ALL ' + n + ' PASSED'));
