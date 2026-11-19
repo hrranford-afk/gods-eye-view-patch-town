@@ -35,8 +35,36 @@ function writeReport(out) { const E = out.exps, need = ['build', 'aim', 'even'];
   row('Dizzies', (x) => f0(x.diz)); row('Marbles fired', (x) => f0(x.shots)); row('Raider pulls', (x) => f0(x.raid)); row('Spring traps sprung', (x) => f1(x.trapped)); row('Fight length (of 180 s)', (x) => f0(x.len) + ' s'); row('Longest quiet stretch, average', (x) => f1(x.gap) + ' s'); row('Longest quiet stretch, worst', (x) => f0(x.gapMax) + ' s'); row('Stuck mice', (x) => x.stuck);
   md.push('', NOTES, '', '## The numbers used', '', '```', JSON.stringify(C).replace(/,"/g, ', "'), 'levels: ' + JSON.stringify(out.config.levels).replace(/,"/g, ', "'), '```', '');
   fs.writeFileSync(path.resolve(__dirname, '..', 'BOT_REPORT.md'), md.join('\n')); console.log('wrote BOT_REPORT.md'); }
-const NOTES = 'NOTES_PLACEHOLDER';
+const NOTES = [
+  '## What was changed to make the proofs hold',
+  '',
+  'The first measurements failed badly: the good camp won 42 to 53%, the aimer lost to random fire, the Keep of an average camp fell in 97% of matches and a good camp\'s never, and only 12 to 21% of a camp was off at the end. These are the changes, rules first, then numbers.',
+  '',
+  '**Rules**',
+  '',
+  '1. **A Big Marble always flies low.** It is too heavy for the high lob. So a wall in front of the Keep stops it (the first piece along the arc takes the hit), and the attacker has to open a lane first. This is what makes a wall worth building.',
+  '2. **A Big Marble that lands on a Keep breaks the leg nearest to where it hit, braced or not.** Before, it had to land within a share of its blast of the leg, which worked from one side of the Keep and not from another.',
+  '3. **Keep braces and unbraced legs are sturdier.** A brace comes off only when the hit is within 70% of the blast, an unbraced leg within 50%.',
+  '4. **Score counts whole pieces, not parts.** A whole Keep is worth 54, a lobber 8, a wall 5, a gate 3.5; each part off counts its share. A collapse is worth 2, not 5. Before, every part was 1 point, so a camp with many walls handed points to the other side, and blue\'s seven-plank walls gave away more than red\'s five-plank ones.',
+  '5. **The marble lands exactly where the dotted arc says.** The arc shown, the spot the bot reckons with and the real landing used to differ by up to 5 cm of table, enough to miss a brace.',
+  '6. **Red no longer pulls parts twice as fast** (`redRaid` 1). With it red won nearly every match that went to points. Blue keeps its longer guard corks. **Red\'s mice now walk 15% quicker in the fight** (`redWalk`): without it blue won about two matches in three. I do not fully understand where blue\'s edge comes from (the two teams\' wall and tent models differ); the number is a counterweight, not a cure.',
+  '7. **The bot keeps two mice on the hill**, sends one to raid and one to mend, and calls the raider back to guard when raiders are in its camp. Before, it pulled mice off the hill to mend whenever four parts were down, which was nearly always.',
+  '8. **The aiming bot is new.** For each shot it works out what would really come off, low lob and high, a little to each side for its own wobble, and takes the best. It saves Big Marbles for the Keep. It also fires at mice that are standing still.',
+  '',
+  '**Numbers** (all in `CONFIG.v2`): blast 0.2 to 0.3; mending 4 s to 12 s a part (a whole workshop still halves it); a Big Marble for every 24 s of holding the hill, not 10; raiders pull every 3 s, not 5; mouse speed 0.5 to 0.42 (camp to hill in about 6.5 s at the small size); the normal bot\'s aim wobble 0.12.',
+  '',
+  '## What to know before trusting this',
+  '',
+  '- **These are bots, not people.** They show that the rules reward a good camp and good aim when both are played competently. They do not show that the game is fun.',
+  '- **Two good camps never lose a Keep to each other** (see the "equal good camps" column): the walls stop every Big Marble and the bots do not manage to open a lane and use it in time. Those matches are decided on points. A person may find the lane; the bots do not.',
+  '- **Keeps are felled by Big Marbles, almost never by ordinary marbles.** Ordinary marbles strip walls, braces and roofs and send mice home. So the hill matters a great deal: no hill, no Big Marbles, no Keep.',
+  '- **Spring traps hardly ever go off** in bot matches (see the row): raiders go for the nearest wall and seldom cross the trap. The trap works when a mouse steps on it (it is tested), but the bots do not show it earning its 2 points.',
+  '- **There are a lot of dizzies** (see the row), far more than under the old rules, because the aiming bot fires at mice that stand still. It may feel busy. `aimWorth.mouse` turns it down, but the proofs would need running again.',
+  '- **Blue against red rests on one counterweight number** (`redWalk`), as said above.',
+  '- The good camp spends its 12 points on a propped Keep, six walls, a gate, a workshop and a trap. It has no tent. The bad camp has the same value in pieces, badly placed.',
+].join('\n');
 const run = async () => {
+  if (process.argv[2] === 'report') { writeReport(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'proof-result.json'), 'utf8'))); return; }   /* write BOT_REPORT.md again from the last results */
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const p = await b.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto('file://' + path.resolve(__dirname, '..', 'index.html')); await p.waitForFunction('window.__done', null, { timeout: 60000 });
