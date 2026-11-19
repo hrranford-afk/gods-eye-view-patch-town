@@ -25,7 +25,7 @@ var CONFIG={
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
     hillSecs:24,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
     piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
-    mendTime:12,redWalk:1.15,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
+    mendTime:12,redWalk:1.17,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
     raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's interval times this (1: the same for both); reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
