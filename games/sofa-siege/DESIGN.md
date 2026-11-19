@@ -74,3 +74,24 @@ The brief is kept word for word in `inputs/BUILD_BRIEF_01_by_ChatGPT.md`.
 **Open, for Harry**
 - The name: the pack calls the game "Round Table Kingdom / Little Base Fights". We have been calling it "Sofa siege".
 - The pack mentions an "older playable mechanics prototype" and a "support-collapse experiment" in an earlier handover. They are not in this repo.
+
+## Harry's first play, 19 Nov, and the v2 rules ("Break the camp")
+
+Harry, 19 Nov, after playing: "It's very cool, but I feel like it's a little bit limited the gameplay at the moment. You don't really get much destruction from the catapult. Gameplay is not much fun to it at all, really. Building the bases don't really seem to make any difference to the outcome at all."
+
+He is right, and the numbers agree: one marble knocks off one plank, the lobber reloads in 6 seconds, mice mend a plank in 2.2 seconds, and the only way to score is standing on the hill, which a camp has no part in.
+
+**What v2 changes**
+
+1. **The camp is what you win and lose.** Each camp has a Keep: the watchtower with the team's flag on top. Bring the other Keep down and you win at once. If no Keep falls in 3 rounds, the higher score wins, and score now comes from damage done as well as the hill.
+2. **The hill feeds the lobber.** Holding the hill no longer wins by itself. It gives your lobber better ammunition, so the hill is worth fighting for because it helps you break things.
+3. **Real destruction.** A marble knocks off several parts where it lands, parts fly and can knock others, and things that lose their supports fall down: a wall section with both posts gone, a tower with two legs gone. Fallen parts can thump mice.
+4. **Building decides the fight.** Walls in front of the Keep stop marbles. Braces hold a tower up. The kit is a choice from more pieces than you can afford, so two players build different camps.
+5. **More for the player to do.** Faster shots, three kinds of ammunition, and squad orders that mean something: hold the hill, raid their wall, guard the Keep, mend.
+
+Nobody dies: mice still go dizzy and pop home. Toy weapons only.
+
+**How we will know it worked (measured by bot matches before Harry plays again)**
+- A well-built camp beats a badly built one at least 7 times in 10 with equal bots.
+- At least 2 collapses a match on average, and most matches end with a Keep down or badly damaged.
+- A human-style bot that aims well beats one that fires at random at least 7 times in 10.
