@@ -1,0 +1,17 @@
+import { createRequire } from 'module';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const { chromium } = require('playwright');
+const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
+await p.waitForFunction('window.__done', null, { timeout: 60000 });
+const code = fs.readFileSync(process.argv[2], 'utf8');
+const r = await p.evaluate(new Function('return (async()=>{' + code + '})()'));
+console.log(JSON.stringify(r, null, 1));
+console.log('errs', errs.slice(0, 5));
+await b.close();
