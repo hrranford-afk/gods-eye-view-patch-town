@@ -36,10 +36,12 @@ var CONFIG={
     arcLow:[.1,.09],arcHigh:[.3,.24],highBlast:.5,   /* arc height = a + distance x b: the flat shot is stopped by a wall just in front of its target, the high lob clears it but has this share of the blast */
     plan:{hill:2,raid:1,guard:0,mend:1},        /* how a bot (and a player to begin with) splits the four mice that are not at the lobber */
     randomAim:1.9,botHigh:.5,botFirst:1.5,       /* a random-fire bot's spread round the other base; how often an aiming bot lobs over a wall in its way; seconds before a bot's first shot of a round */
+    legSturdy:1,braceSturdy:1,   /* an unbraced leg breaks only when the hit is within this share of the blast */
+    aimWorth:{leg:30,lastLeg:60,brace:3,mouse:2},aimTry:[-.3,-.15,0,.15,.3,.45],bigWorth:20,   /* the aiming bot values a shot by the points it would score, plus this much for a Keep leg (more for the leg that brings it down) and for a Keep brace; how far before and past a part it tries; a Big Marble is kept for a shot worth this much more */
     botRetarget:4                               /* seconds between a bot's looks at its plan */
   },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
-  levels:{easy:{fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
+  levels:{easy:{err2:.3,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.2,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.1,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
 };
 var PI=Math.PI,STEP=1/60,PS=.88,SCALES={small:.58,medium:.72,large:.88},RULES=CONFIG,LEVELS=CONFIG.levels,C2=CONFIG.v2;
 function V2(){return SG.rules!==1;}
@@ -72,7 +74,7 @@ var LAYOUTS=[
    good: the Keep at the back, braced, a tight wall close in front of it, a forward screen, a trap. average: walls spread wide, nothing close to the Keep.
    bad: the Keep out in front with nothing before it, the walls behind. */
 var PRESETS={
-  good:[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.25,PI],[2,2.06,.25,PI],[8,1.95,.8,PI],[6,1.5,0,PI],[3,1.52,-.36,PI],[4,1.52,.36,PI],[9,2.28,-.55,0],[17,1.3,0,0],[5,1.6,-.7,PI]],
+  good:[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.25,PI],[2,2.06,.25,PI],[8,1.3,.85,PI],[10,2.3,-.6,PI],[6,1.5,0,PI],[3,1.52,-.36,PI],[4,1.52,.36,PI],[17,1.3,0,0]],
   average:[[7,2.3,-.5,PI],[8,2.2,.45,PI],[6,1.75,0,PI],[0,1.2,0,PI],[1,1.32,-.66,PI],[2,1.32,.66,PI],[3,1.7,-.95,PI],[4,1.7,.95,PI],[5,1.85,.3,PI],[10,2.3,0,PI],[9,2.3,-.95,0]],
   bad:[[7,1.45,0,PI],[8,2.3,0,PI],[0,2.0,-.3,PI],[1,2.0,.3,PI],[2,2.3,-.6,PI],[3,2.3,.6,PI],[6,2.5,0,PI],[4,1.9,-.9,PI],[5,1.9,.9,PI],[10,2.45,-.9,PI],[9,2.45,.9,0]]
 };
@@ -371,14 +373,14 @@ function crewReady(s){var l=lobberOf(s),side=SG.sides[s];if(!l||side.crew<0)retu
 /* why the lobber cannot fire now, or '' if it can */
 SG.lobberBlock=function(s){var l=lobberOf(s),side=SG.sides[s];if(!l)return 'none';if(V2()&&!lobberWorks(l))return 'broken';if(V2()&&side.ammo==='big'&&side.big<=0)return 'nobig';if(V2()&&side.ammo==='corks'&&side.corkCd>0)return 'corks';if(!partOn(l,'lobber.crank')||!partOn(l,'lobber.bucket'))return 'broken';if(!crewReady(s))return 'crew';if(side.reload>0)return 'winding';return '';};
 /* which piece a point in the air would hit (any side's, but not the lobber that fired) */
-function pieceAt(x,y,z,skip){for(var j=0;j<SG.pieces.length;j++){var p=SG.pieces[j];if(p.id===skip||!p.built||y>TALL[p.kind])continue;if(p.total&&p.parts<=0)continue;
+function pieceAt(x,y,z,skip){for(var j=0;j<SG.pieces.length;j++){var p=SG.pieces[j];if(p.id===skip||!p.built||y>TALL[p.kind])continue;if(p.total&&p.parts<=0)continue;var qx=x-p.x,qz=z-p.z;if(qx*qx+qz*qz>.6)continue;
     var f=FOOT[p.kind],l=toLocal(p,x,z);if(Math.abs(l[0])<f[0]+.03&&Math.abs(l[1])<f[1]+.05)return p;}return null;}
 function marblePos(a,k){return [a.x0+(a.x1-a.x0)*k,a.y0*(1-k)+4*a.h*k*(1-k),a.z0+(a.z1-a.z0)*k];}
-/* the arc to a spot; .hit says which piece is first in the way, if any */
+/* the arc to a spot; .hit says which piece is first in the way, if any. A Big Marble is too heavy for the high lob: it always flies low, so a wall in front of the Keep stops it */
 SG.arc=function(s,tx,tz){var l=lobberOf(s);if(!l)return null;var dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz),mx=6.2,mn=.7;
   if(d>mx){tx=l.x+dx/d*mx;tz=l.z+dz/d*mx;d=mx;}else if(d<mn&&d>0){tx=l.x+dx/d*mn;tz=l.z+dz/d*mn;d=mn;}
   var rr=Math.sqrt(tx*tx+tz*tz);if(rr>3.2){tx*=3.2/rr;tz*=3.2/rr;}
-  var hi=V2()&&SG.sides[s].high,ar=V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2],a={x0:l.x,y0:.42*U(),z0:l.z,x1:tx,z1:tz,h:ar[0]*U()+d*ar[1],T:(.65+d*.17)*(hi?1.35:1),from:l.id,hit:null,high:!!hi};
+  var hi=V2()&&SG.sides[s].high&&SG.sides[s].ammo!=='big',ar=V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2],a={x0:l.x,y0:.42*U(),z0:l.z,x1:tx,z1:tz,h:ar[0]*U()+d*ar[1],T:(.65+d*.17)*(hi?1.35:1),from:l.id,hit:null,high:!!hi};
   for(var k=.12;k<=1.0001;k+=.02){var pos=marblePos(a,Math.min(1,k)),p=pieceAt(pos[0],pos[1],pos[2],l.id);if(p){a.hit={piece:p.id,side:p.side,own:p.side===s,k:k,x:pos[0],y:pos[1],z:pos[2]};break;}}
   return a;};
 SG.fire=function(s,tx,tz){var side=SG.sides[s];if(SG.phase!=='fight'||SG.lobberBlock(s))return null;var a=SG.arc(s,tx,tz);if(!a)return null;
@@ -472,14 +474,20 @@ function setProp(b){var best=null,bd=.3*U();SG.pieces.forEach(function(q){if(q.s
 function trapsTick(){SG.pieces.forEach(function(p){if(p.kind!=='trap'||!p.built||p.sprung||p.parts<=0)return;for(var i=0;i<SG.mice.length;i++){var m=SG.mice[i];if(m.side===p.side||m.state==='dizzy')continue;
       if(dist(m.x,m.z,p.x,p.z)<C2.trapReach*U()){p.sprung=true;p.sprungT=SG.clock;SG.stats.trapped++;dizzy(m);pop(p.x,p.z,'BOING!',true,.3,p.side);event('trap',p.side);snd('twang');break;}}});}
 /* everything within reach of a hit comes off, the nearest thrown furthest. big: also breaks the nearest tower leg outright. half: a high lob, half the reach */
-function blastAt(x,y,z,R,att,big,dirx,dirz,skipId){
-  var touched=[],n=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1;SG.att=att;
+function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry){
+  var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1;if(!dry){SG.att=att;SG.cause=big?'big':'marble';}
   SG.pieces.forEach(function(p){if(p.id===skipId||!p.built||!p.total||p.down||boxDist(p,x,z)>R+.05)return;var hits=[],leg=-1,ld=1e9;
     p.ps.forEach(function(q,i){if(q.st!=='on')return;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(d>R)return;
-      if(/^tower\.post/.test(q.id)){if(big&&d<=R*C2.bigLeg){if(d<ld){ld=d;leg=i;}return;}if(legBraced(p,q.id))return;}else if(/post|rail/.test(q.id)&&d>R*C2.sturdy)return;hits.push([d,i]);});
-    if(leg>=0)hits.push([ld,leg]);if(!hits.length)return;hits.sort(function(a,b){return a[0]-b[0];});
+      if(/^tower\.post/.test(q.id)){if(big&&d<=R*C2.bigLeg){if(d<ld){ld=d;leg=i;}return;}if(legBraced(p,q.id)||d>R*C2.legSturdy)return;}else if(/post|rail/.test(q.id)&&d>R*C2.sturdy)return;else if(/^tower\.brace/.test(q.id)&&d>R*C2.braceSturdy)return;hits.push([d,i]);});
+    if(leg>=0)hits.push([ld,leg]);if(!hits.length)return;
+    if(dry){var A=C2.aimWorth,W=C2.partPts,w=W[p.kind]==null?W.other:W[p.kind],sg=p.side===att?-1:1,legsOn=onCount(p,/^tower\.post/),v=0,rails=0,posts=0;
+      hits.forEach(function(h){var id=p.ps[h[1]].id;v+=w;if(/^tower\.post/.test(id))v+=A.leg+(legsOn<=3?A.lastLeg:0);else if(/^tower\.brace/.test(id))v+=A.brace;else if(/rail/.test(id))rails++;else if(/post/.test(id))posts++;});
+      if(p.kind==='wall'&&((rails&&rails>=onCount(p,/rail/))||(posts&&posts>=onCount(p,/post/)&&!props(p).length)))v+=C2.collapsePts+w*Math.max(0,onCount(p,/plank/)-(hits.length-rails-posts));   /* this shot would bring the wall down */
+      if(p.kind==='gate'&&posts&&onCount(p,/gate\.post/)-posts<2)v+=C2.collapsePts+w*2;
+      val+=sg*v;return;}
+    hits.sort(function(a,b){return a[0]-b[0];});
     hits.forEach(function(h){var q=p.ps[h[1]],ax=q.wx-x,az=q.wz-z,al=Math.sqrt(ax*ax+az*az)||1,k=1-h[0]/R;if(knock(p,h[1],ax/al*.6+dirx/dl,az/al*.6+dirz/dl,'marble',(C2.throwFar+(C2.throwNear-C2.throwFar)*k)*U()))n++;});touched.push(p);});
-  touched.forEach(function(p){settle(p,att);});return n;}
+  if(dry)return val;touched.forEach(function(p){settle(p,att);});return n;}
 function dropAll(p,re,att){var n=0,sgn=p.side?1:-1;p.ps.forEach(function(q,i){if(q.st==='on'&&re.test(q.id)){var a=rand()*PI*2;if(knock(p,i,Math.cos(a),Math.sin(a),'collapse',(.12+rand()*.22)*U()))n++;}});return n;}
 /* what still holds a piece up. When the support is gone the parts that hung on it fall together. */
 function settle(p,att){
@@ -495,7 +503,7 @@ function settle(p,att){
 function collapse(p,att,n){var st=SG.stats;st.collapses++;if(att!==p.side)SG.sides[att].collapses++;SG.slowT=C2.slowMo;SG.shake=1;snd('crash');event('collapse',p.side,p.kind);pop(p.x,p.z,'CRASH!',false,TALL[p.kind]+.25);viewPuff(p.x,p.z,2.2);
   var f=FOOT[p.kind];SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*U())dizzy(m);});gridDirty=true;}
 /* the Keep comes down: that side has lost. It falls slowly, then the win card. */
-function keepDown(p,att){p.down=true;p.fallT=SG.clock;p.fallDir=Math.atan2(p.x-hillAt().x,p.z-hillAt().z)+(rand()-.5)*.8;p.ps.forEach(function(q){q.st='gone';q.mender=-1;});p.parts=0;SG.stats.keepDown=true;SG.stats.collapses++;if(att!==p.side)SG.sides[att].collapses++;
+function keepDown(p,att){p.down=true;p.fallT=SG.clock;p.fallDir=Math.atan2(p.x-hillAt().x,p.z-hillAt().z)+(rand()-.5)*.8;p.ps.forEach(function(q){q.st='gone';q.mender=-1;});p.parts=0;SG.stats.keepDown=true;SG.stats.keepBy=SG.cause||'';SG.stats.keepAt=SG.clock;SG.stats.collapses++;if(att!==p.side)SG.sides[att].collapses++;
   SG.slowT=C2.slowMo*2;SG.shake=1.6;snd('crash');event('keep',p.side);pop(p.x,p.z,'CRASH!',false,TALL.tower+.3);viewPuff(p.x,p.z,3);SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*2*U())dizzy(m);});
   SG.mice.forEach(function(m){dropJob(m);});gridDirty=true;SG.fallWinner=1-p.side;SG.phase='fall';SG.time=C2.keepFall;SG.sides[0].aim.on=SG.sides[1].aim.on=false;shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");ui();}
 /* a marble, a Big Marble or a cork comes down */
@@ -508,7 +516,7 @@ function landV2(a,pos,hit){var n=0,R=(a.ammo==='big'?C2.bigBlast:C2.blast)*U()*(
 function tickDebris(){for(var i=SG.debris.length-1;i>=0;i--){var d=SG.debris[i];if(SG.clock<d.t)continue;SG.debris.splice(i,1);
     SG.mice.forEach(function(m){if(dist(m.x,m.z,d.x,d.z)<C2.fallReach*U())dizzy(m);});
     if(d.far>=C2.chainThrow*U()&&SG.phase==='fight'){var best=null,bi=-1,bd=C2.chainReach*U();SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||p.id===d.pid||boxDist(p,d.x,d.z)>bd)return;p.ps.forEach(function(q,qi){if(q.st!=='on'||/^tower\.post/.test(q.id))return;var dd=dist(q.wx,q.wz,d.x,d.z);if(dd<bd){bd=dd;best=p;bi=qi;}});});
-      if(best){SG.stats.chain++;knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());settle(best,SG.att);}}}}
+      if(best){SG.stats.chain++;SG.cause='debris';knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());settle(best,SG.att);}}}}
 /* score: damage standing on the other camp, collapses caused, and a smaller share from the hill */
 function standingDamage(s){var n=0,W=C2.partPts;SG.pieces.forEach(function(p){if(p.side!==s||!p.built)return;var w=W[p.kind]==null?W.other:W[p.kind];p.ps.forEach(function(q){if(q.st!=='on')n+=w;});});return n;}
 function v2Score(s,final){var side=SG.sides[s];return Math.round((side.bank+side.hill+side.collapses*C2.collapsePts+(final?0:standingDamage(1-s)))*10)/10;}
@@ -551,9 +559,20 @@ function freeV2(m,dt){
   m.crewGoal=role==='crew';goTo(m,tx,tz,slack);
   if(walk(m,dt,WALK())){m.state=role==='hill'||role==='crew'||role==='guard'||role==='raid'?'hold':'idle';m.goal=false;m.crewing=role==='crew';if(role==='crew'){var lb=lobberOf(m.side);m.rot=Math.atan2(lb.x-m.x,lb.z-m.z);}}else{m.state='go';m.goal=m.q<=0;m.crewing=false;}
   if(SG.phase!=='fight'||role==='crew')return;
-  if(role==='raid'&&m.cd<=0&&m.raidId){p=pieceById(m.raidId);if(p&&!p.down&&boxDist(p,m.x,m.z)<=C2.raidReach*U()){i=raidPart(p,m,false);if(i>=0){SG.att=m.side;knock(p,i,p.x-m.x,p.z-m.z,'raid',.2*U());settle(p,m.side);SG.stats.raidPulls++;m.cd=C2.raidEvery*(side.team==='red'?C2.redRaid:1);m.act=.7;m.rot=Math.atan2(p.x-m.x,p.z-m.z);}}}
+  if(role==='raid'&&m.cd<=0&&m.raidId){p=pieceById(m.raidId);if(p&&!p.down&&boxDist(p,m.x,m.z)<=C2.raidReach*U()){i=raidPart(p,m,false);if(i>=0){SG.att=m.side;SG.cause='raid';knock(p,i,p.x-m.x,p.z-m.z,'raid',.2*U());settle(p,m.side);SG.stats.raidPulls++;m.cd=C2.raidEvery*(side.team==='red'?C2.redRaid:1);m.act=.7;m.rot=Math.atan2(p.x-m.x,p.z-m.z);}}}
   else if(role==='guard'&&m.cd<=0){var best=null,bd=C2.guardRange*U()*(side.team==='blue'?C2.blueGuard:1);SG.mice.forEach(function(o){if(o.side!==en||o.state==='dizzy')return;var d=dist(m.x,m.z,o.x,o.z);if(d<bd&&sightClear(m.x,m.z,o.x,o.z)){bd=d;best=o;}});
     if(best){m.cd=C2.guardEvery;m.act=.6;m.rot=Math.atan2(best.x-m.x,best.z-m.z);SG.corks.push({id:SG.nextId++,x0:m.x,z0:m.z,x1:best.x,z1:best.z,t:0});SG.stats.corks++;SG.stats.guardCorks++;if(rand()<C2.guardChance)dizzy(best);}}}
+/* the aiming bot looks at what each shot would knock off: the Keep's braces, then the legs they held, a wall in the way, the other lobber. It tries the low and the high lob. */
+function bestShot(s){var e=LEVELS[SG.sides[s].level].err2*U()*.8,SP=[[0,0],[e,0],[-e,0],[0,e],[0,-e]];function ev(x,y,z,R,big,id){var t=0;for(var i=0;i<5;i++){t+=blastAt(x+SP[i][0],y,z+SP[i][1],R,s,big,0,0,id,true);for(var j=0;j<SG.mice.length;j++){var m=SG.mice[j];if(m.side!==s&&m.state!=='dizzy'&&dist(m.x,m.z,x+SP[i][0],z+SP[i][1])<R)t+=C2.aimWorth.mouse;}}return t/5;}   /* it allows for its own wobble: the worth of a shot is the average over where it may land */
+  var side=SG.sides[s],en=1-s,l=lobberOf(s),was=side.high,wasA=side.ammo,best=null,bv=.01,cands=[];if(!l)return null;
+  SG.pieces.forEach(function(p){if(p.side!==en||!p.built||p.down||!p.total||p.parts<=0)return;
+    if(p.kind==='tower')p.ps.forEach(function(q){if(q.st==='on'&&/post|brace/.test(q.id))C2.aimTry.forEach(function(o){cands.push([q.wx,q.wz,o]);});});else cands.push([p.x,p.z,0]);});
+  SG.mice.forEach(function(m){if(m.side===en&&m.state!=='dizzy')cands.push([m.x,m.z,0]);});
+  cands.forEach(function(c){var dx=c[0]-l.x,dz=c[1]-l.z,d=Math.sqrt(dx*dx+dz*dz)||1,x=c[0]+dx/d*c[2]*U(),z=c[1]+dz/d*c[2]*U();
+    side.ammo='marble';for(var hi=0;hi<2;hi++){side.high=!!hi;var a=SG.arc(s,x,z);if(!a||(a.hit&&a.hit.own))continue;var px=a.hit?a.hit.x:a.x1,py=a.hit?a.hit.y:0,pz=a.hit?a.hit.z:a.z1,k=hi?C2.highBlast:1;
+      var v=ev(px,py,pz,C2.blast*U()*k,false,l.id);if(v>bv){bv=v;best={x:x,z:z,high:!!hi,big:false};}
+      if(side.big>0&&!hi){v=ev(px,py,pz,C2.bigBlast*U()*k,true,l.id)-C2.bigWorth;if(v>bv){bv=v;best={x:x,z:z,high:!!hi,big:true};}}}});
+  side.high=was;side.ammo=wasA;return best;}
 /* ---- the v2 bot: splits its mice, and fires at what holds the other Keep up ---- */
 function botV2(s,dt){
   var side=SG.sides[s],L=LEVELS[side.level],en=1-s,foe=SG.sides[en];side.planT-=dt;side.fireT-=dt;
@@ -569,10 +588,8 @@ function botV2(s,dt){
   else{ /* an aimer: corks at a crowd, else the Keep; a Big Marble as soon as there is one */
     var crowd=null,cn=1;foes.forEach(function(m){var n=0;foes.forEach(function(o){if(dist(m.x,m.z,o.x,o.z)<C2.corkSpread*U())n++;});if(n>cn){cn=n;crowd=m;}});
     if(crowd&&side.corkCd<=0&&cn>=3&&rand()<.7){tx=crowd.x;tz=crowd.z;ammo='corks';}
-    else if(keep&&!keep.down){tx=keep.x;tz=keep.z;ammo=side.big>0?'big':'marble';side.high=false;var a0=SG.arc(s,tx,tz);if(a0&&a0.hit&&a0.hit.piece!==keep.id&&rand()<C2.botHigh)side.high=true;   /* a wall is in the way: sometimes lob over it */
-      /* if nothing would come off the Keep (its braces facing us are gone and its legs hold), try the wall or piece with most to lose near it */
-      }
-    tx+=gauss()*L.err*U();tz+=gauss()*L.err*U();}
+    else{var pk=bestShot(s);if(!pk)pk={x:keep&&!keep.down?keep.x:eb.x,z:keep&&!keep.down?keep.z:eb.z,high:false,big:false};tx=pk.x;tz=pk.z;side.high=pk.high;ammo=pk.big?'big':'marble';}
+    tx+=gauss()*L.err2*U();tz+=gauss()*L.err2*U();}
   side.ammo=ammo;if(SG.lobberBlock(s)){side.ammo='marble';if(SG.lobberBlock(s))return;}
   var a=SG.arc(s,tx,tz);if(a&&a.hit&&a.hit.own){SG.stats.bySide[s].blocked++;side.fireT=.5;return;}
   if(SG.fire(s,tx,tz))side.fireT=Math.max(C2.reload,L.fire*.3)*(.9+rand()*.3);}
@@ -738,7 +755,7 @@ function syncAll(){
   SG.sides.forEach(function(side,s){var G=GH[s],aim=side.aim.on&&ph==='fight'?SG.arc(s,side.aim.tx,side.aim.tz):null;G.arc.visible=G.land.visible=!!aim;
     if(aim){var own=aim.hit&&aim.hit.own,ex=aim.hit?aim.hit.x:aim.x1,ez=aim.hit?aim.hit.z:aim.z1;side.aim.own=!!own;
       SS.fx.setArc(G.arc,new THREE.Vector3(aim.x0,aim.y0,aim.z0),new THREE.Vector3(aim.x1,0,aim.z1),aim.h,SG.clock*.8);G.arc.material.color.set(own?0xff4a36:0xfff3d0);
-      G.land.position.set(ex,.01+(aim.hit?aim.hit.y:0),ez);G.land.scale.setScalar(V2()?(side.ammo==='big'?C2.bigBlast:(side.ammo==='corks'?C2.corkSpread:C2.blast))*U()*(side.high&&side.ammo!=='corks'?C2.highBlast:1):CONFIG.blast);G.land.material.color.set(own?0xff4a36:0xfff3d0);
+      G.land.position.set(ex,.01+(aim.hit?aim.hit.y:0),ez);G.land.scale.setScalar(V2()?(side.ammo==='big'?C2.bigBlast:(side.ammo==='corks'?C2.corkSpread:C2.blast))*U()*(side.high&&side.ammo==='marble'?C2.highBlast:1):CONFIG.blast);G.land.material.color.set(own?0xff4a36:0xfff3d0);
       var lv=V.pieces[side.lobber];if(lv&&lv.obj)lv.obj.rotation.y=Math.atan2(aim.x1-aim.x0,aim.z1-aim.z0);}
     var od=side.order;G.order.visible=!!od&&(ph==='fight'||ph==='mend'||ph==='count')&&side.human;if(od){G.order.position.set(od.x,hy(od.x,od.z)+.012,od.z);G.order.scale.setScalar(1+.08*Math.sin(SG.clock*6));G.order.material.color.set(SG.mode==='table'?(side.team==='red'?0xffb09a:0xa9c8ff):0xfff3d0);}});
   SS.setHill(hill,ph==='build'||ph==='ready'||ph==='start'?.5:SG.blueShare());
@@ -761,7 +778,7 @@ function ui(){if(!hasDom||!E('start'))return;var ph=SG.phase,fight=ph==='fight'|
   if(v2f){var LAB={hill:'🚩 Hill',raid:'⚔️ Raid',guard:'🛡 Guard',mend:'🔨 Mend'};ORDERS.forEach(function(o){E('o_'+o).textContent=LAB[o]+' '+me.plan[o];E('o_'+o).className='btn'+(me.pick===o?' on':'');});
     E('nrow').style.display=me.pick&&!table&&ph!=='fall'?'flex':'none';E('b2_lobber').className='btn'+(me.tool==='lobber'?' on':'');
     ['marble','big','corks'].forEach(function(a){var b=E('a_'+a);b.style.display=me.tool==='lobber'?'inline-block':'none';b.className='btn'+(me.ammo===a?' on':'');});
-    E('b_high').style.display=me.tool==='lobber'?'inline-block':'none';E('b_high').className='btn'+(me.high?' on':'');
+    E('b_high').style.display=me.tool==='lobber'?'inline-block':'none';E('b_high').className='btn'+(me.high&&me.ammo!=='big'?' on':'');E('b_high').disabled=me.ammo==='big';
     E('a_big').textContent='⚫ Big ×'+me.big;E('a_corks').textContent='🍾 Corks'+(me.corkCd>0?' '+Math.ceil(me.corkCd)+'s':'');E('bPauseB').textContent=SG.paused?'▶ Go on':'⏸';}
   else{E('nrow').style.display='none';}E('bCam').textContent='🎥 '+CAMNAME[SG.cam];E('bMute').textContent=SG.muted?'🔇':'🔊';lastHud='';}
 function listParts(o){var k=Object.keys(o);return k.map(function(n){return o[n]+' '+n+(o[n]>1&&n!=='roof cap'?'s':'');}).join(', ');}
