@@ -626,20 +626,23 @@ function settle(p,att){
   if(fell>=2)collapse(p,att,fell);
   else if(f&&f!=='roof'&&f!=='keep'&&SG.mode==='lab'&&SG.lab&&SG.lab.topple&&!p.fallen){p.fallen=true;collapse(p,att,fell);}   /* Lab, chain topple on: a wall or gate that has lost its frame falls even if the blast already took its planks */
   return fell;}
-function collapse(p,att,n){var st=SG.stats;if(SG.mode==='lab')labNote('collapse',p,chainDepth+1);st.collapses++;if(att!==p.side)SG.sides[att].collapses++;SG.slowT=C2.slowMo;SG.shake=1;snd('crash');event('collapse',p.side,p.kind);pop(p.x,p.z,'CRASH!',false,TALL[p.kind]+.25);viewPuff(p.x,p.z,2.2);
+/* a match shakes and slows the same for every collapse; in the Lab, with "Shake by size" or "Slow-mo beat by size" on, labFx sets them from the parts that fell at once instead */
+function fxShake(v){if(!(SG.mode==='lab'&&SG.lab&&SG.lab.fxShake))SG.shake=v;}
+function fxSlow(v){if(!(SG.mode==='lab'&&SG.lab&&SG.lab.fxSlow))SG.slowT=v;}
+function collapse(p,att,n){var st=SG.stats;if(SG.mode==='lab')labNote('collapse',p,chainDepth+1);st.collapses++;if(att!==p.side)SG.sides[att].collapses++;fxSlow(C2.slowMo);fxShake(1);snd('crash');event('collapse',p.side,p.kind);pop(p.x,p.z,'CRASH!',false,TALL[p.kind]+.25);viewPuff(p.x,p.z,2.2);
   var f=FOOT[p.kind];SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*U())dizzy(m);});gridDirty=true;
   if(SG.mode==='lab'&&SG.lab&&SG.lab.topple){chainDepth++;topple(p,att);chainDepth--;}}
 /* the Keep comes down: that side has lost. It falls slowly, then the win card. */
 function keepDown(p,att){p.down=true;p.fallT=SG.clock;p.fallDir=Math.atan2(p.x-hillAt().x,p.z-hillAt().z)+(rand()-.5)*.8;p.ps.forEach(function(q){q.st='gone';q.mender=-1;});p.parts=0;SG.stats.keepDown=true;SG.stats.keepBy=SG.cause||'';SG.stats.keepAt=SG.clock;SG.stats.collapses++;if(att!==p.side)SG.sides[att].collapses++;
-  SG.slowT=C2.slowMo*2;SG.shake=1.6;snd('crash');event('keep',p.side);pop(p.x,p.z,'CRASH!',false,TALL.tower+.3);viewPuff(p.x,p.z,3);SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*2*U())dizzy(m);});
+  fxSlow(C2.slowMo*2);fxShake(1.6);snd('crash');event('keep',p.side);pop(p.x,p.z,'CRASH!',false,TALL.tower+.3);viewPuff(p.x,p.z,3);SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*2*U())dizzy(m);});
   SG.mice.forEach(function(m){dropJob(m);});gridDirty=true;if(SG.mode==='lab'){labNote('keep',p,chainDepth+1);if(SG.lab&&SG.lab.topple){chainDepth++;topple(p,att);chainDepth--;}shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");return;}   /* in the Lab nothing ends: the Keep just falls, and Reset or Heal puts it back */
   SG.fallWinner=1-p.side;SG.phase='fall';SG.time=C2.keepFall;SG.sides[0].aim.on=SG.sides[1].aim.on=false;shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");ui();}
 /* a marble, a Big Marble, a cork or a Workshop weapon comes down. What it does follows its weapon record (AMMO[id].w). */
 function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,n0=SG.stats.partsOff;
   /* a bouncing ball that touches down with nothing in the way hops on: the same ball, a new flight (popEach: and goes off at every touchdown) */
-  if(a.next&&!hit){var nx=a.next;a.x0=nx.x0;a.y0=nx.y0;a.z0=nx.z0;a.x1=nx.x1;a.z1=nx.z1;a.h=nx.h;a.T=nx.T;a.t=0;a.leg=2;a.next=nx.next||null;SG.stats.bounces++;snd('tap');viewPuff(pos[0],pos[2],.7);if(W.popEach){boom(a,pos,null);if(SG.mode==='lab')labFx(SG.stats.partsOff-n0);}return;}
+  if(a.next&&!hit){var nx=a.next;a.x0=nx.x0;a.y0=nx.y0;a.z0=nx.z0;a.x1=nx.x1;a.z1=nx.z1;a.h=nx.h;a.T=nx.T;a.t=0;a.leg=2;a.next=nx.next||null;SG.stats.bounces++;snd('tap');viewPuff(pos[0],pos[2],.7);if(W.popEach){var rb=boom(a,pos,null);if(SG.mode==='lab'){labNote('land',a,pos,rb.R,null);labFx(SG.stats.partsOff-n0);}}return;}
   /* a fuse: it lies where it landed, then pops */
-  if(W.fuse>0&&!a.fz){a.fz=1;a.pend=true;a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];SG.fuses.push({a:a,pos:pos.slice(),hit:hit,t:SG.clock+W.fuse});snd('tap');viewPuff(pos[0],pos[2],.5);return;}
+  if(W.fuse>0&&!a.fused){a.fused=1;a.pend=true;a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];SG.fuses.push({a:a,pos:pos.slice(),hit:hit,t:SG.clock+W.fuse});snd('tap');viewPuff(pos[0],pos[2],.5);return;}
   if(a.tw&&!a.snag)a.snag=tetherAt(a,pos,hit);   /* a tether that has not snagged in the air snags the part it comes down on, or the nearest one on the ground */
   var r=boom(a,pos,hit);
   if(SG.mode==='lab'){labNote('land',a,pos,r.R,hit);labFx(SG.stats.partsOff-n0);}
@@ -709,7 +712,7 @@ function topple(p,att){var T=C3.topple,u=U();if(SG.topN>=T.max||(p.kind!=='wall'
 function tickDebris(){for(var i=SG.debris.length-1;i>=0;i--){var d=SG.debris[i];if(SG.clock<d.t)continue;SG.debris.splice(i,1);
     SG.mice.forEach(function(m){if(dist(m.x,m.z,d.x,d.z)<C2.fallReach*U())dizzy(m);});
     if(d.far>=C2.chainThrow*U()&&SG.phase==='fight'&&!(SG.mode==='lab'&&SG.topN>=C3.topple.max)){var best=null,bi=-1,bd=C2.chainReach*U();SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||p.id===d.pid||boxDist(p,d.x,d.z)>bd)return;p.ps.forEach(function(q,qi){if(q.st!=='on'||/^tower\.post/.test(q.id))return;var dd=dist(q.wx,q.wz,d.x,d.z);if(dd<bd){bd=dd;best=p;bi=qi;}});});
-      if(best){SG.stats.chain++;SG.cause='debris';if(SG.mode==='lab')SG.topN++;knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());chainDepth=d.dep||0;settle(best,SG.att);chainDepth=0;}}}}
+      if(best){SG.stats.chain++;SG.cause='debris';var np0=SG.stats.partsOff;if(SG.mode==='lab')SG.topN++;knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());chainDepth=d.dep||0;settle(best,SG.att);chainDepth=0;if(SG.mode==='lab'&&SG.stats.partsOff-np0>2)labFx(SG.stats.partsOff-np0);}}}}
 /* score: damage standing on the other camp, collapses caused, and a smaller share from the hill */
 function partWorth(p){return p.total?(C2.piecePts[p.kind]||1)/p.total:0;}
 function standingDamage(s){var n=0;SG.pieces.forEach(function(p){if(p.side!==s||!p.built)return;var w=partWorth(p);p.ps.forEach(function(q){if(q.st!=='on')n+=w;});});return n;}
@@ -1421,7 +1424,7 @@ function labInit(){
   labLoadTarget('walled',true);
   L.undo=[];L.redo=[];labProtosOn();L.base=labBase();L.card=!labStore(LAB_SEEN);
   SG.lab.onKey=function(){};ui();}
-SG.labDraw=function(){return V.lab;};   /* the Lab's own three.js objects, for tests */
+SG.labDraw=function(){return V.lab;};SG.labRefresh=function(){if(SG.lab){SG.lab.rkey='';labHud();}};   /* the Lab's own three.js objects, for tests */
 SG.labStart=function(){SG.start('blue',{mode:'lab',seed:777});};
 SG.labBack=function(){SG.lab=null;labProtosOff();labWeaponsOff();SG.speed=1;SG.paused=false;SG.reset();};
 function labBase(){var st=SG.stats;return {partsOff:st.partsOff,collapses:st.collapses,dizzies:st.dizzies,shots:st.shots};}
@@ -1452,7 +1455,7 @@ function labHomeMice(s){fixGrid();SG.mice.forEach(function(m){if(s!=null&&m.side
 function labSettleView(){labRepoint();fixGrid();}
 /* replace one side's pieces by these records, all built at once */
 function labSetSide(s,recs,instant){labRemoveSide(s);var order=recs.filter(function(r){return r.kind!=='brace';}).concat(recs.filter(function(r){return r.kind==='brace';}));
-  order.forEach(function(r){r.side=s;labPutRaw(r,instant!==false);});SG.debris=[];SG.fuses=[];SG.puddles=[];labRepoint();labSaveSides();labHomeMice(s);}
+  order.forEach(function(r,i){r.side=s;if(r.vari==null)r.vari=i%3;labPutRaw(r,instant!==false);});SG.debris=[];SG.fuses=[];SG.puddles=[];   /* a camp built from a list always gets the same looks, so a shot at it always has the same result */labRepoint();labSaveSides();labHomeMice(s);}
 /* put these piece records on one side, built at once (for tests and for loading a camp from a match) */
 SG.labLoadRecs=function(s,recs){labSetSide(s,recs.map(function(r){return Object.assign({},r);}),true);ui();};
 SG.labReset=function(s){var L=SG.lab;labSetSide(s,L.saved[s].map(function(r){return Object.assign({},r);}),true);labMsg(s?'Target camp rebuilt':'My camp rebuilt',false);ui();};
@@ -1679,8 +1682,8 @@ SG.labWeaponCheck=function(r){if(typeof r==='string'){try{r=JSON.parse(r);}catch
   var name=String(r.name||'').replace(/^\s+|\s+$/g,'').slice(0,40);if(!name)return {ok:false,text:'The weapon has no name'};var c=wClamp(r.params);
   return {ok:true,text:c.notes.length?'Loaded, with '+c.notes.length+' number'+(c.notes.length>1?'s':'')+' held to the range':'Loaded',notes:c.notes,rec:{schema:'rtk.weapon',version:1,name:name,base:LAB_BASES[r.base]?r.base:'marble',icon:typeof r.icon==='string'?r.icon.slice(0,4):'',tint:r.tint!=null?r.tint:null,scale:+r.scale>0&&+r.scale<4?+r.scale:null,maker:String(r.maker||'').slice(0,80),params:c.w}};};
 SG.labWeapons=function(){var o=labStore(LAB_WKEY);return o&&typeof o==='object'?o:{};};
-SG.labWeaponSave=function(rec){var k=SG.labWeaponCheck(rec);if(!k.ok)return k;var all=SG.labWeapons();all[k.rec.name]=k.rec;labStore(LAB_WKEY,all);return {ok:true,text:'Saved "'+k.rec.name+'"',rec:k.rec};};
-SG.labWeaponDelete=function(name){var all=SG.labWeapons();delete all[name];labStore(LAB_WKEY,all);};
+SG.labWeaponSave=function(rec){var k=SG.labWeaponCheck(rec);if(!k.ok)return k;var all=SG.labWeapons();all[k.rec.name]=k.rec;labStore(LAB_WKEY,all);if(SG.lab)labUi();return {ok:true,text:'Saved "'+k.rec.name+'"',rec:k.rec};};
+SG.labWeaponDelete=function(name){var all=SG.labWeapons();delete all[name];labStore(LAB_WKEY,all);if(SG.lab)labUi();};
 /* the editor: L.wk = {base, name, w (plain numbers), id (the ammo id once it is in the ammo row, or '')} */
 function labWkState(){var L=SG.lab;if(!L.wk)L.wk={base:'marble',name:'My weapon',w:wCopy(wRec(LAB_BASES.marble.w())),id:''};return L.wk;}
 function labWkPush(){var L=SG.lab,k=labWkState();if(!k.id||!AMMO[k.id])return;var c=wClamp(k.w);AMMO[k.id].w=c.w;AMMO[k.id].name=k.name||'My weapon';AMMO[k.id].short=String(k.name||'Mine').slice(0,9);}
@@ -1689,7 +1692,7 @@ SG.labWkSet=function(key,v){var k=labWkState();if(typeof WDEF[key]==='undefined'
 SG.labWkName=function(n){var k=labWkState();k.name=String(n||'').slice(0,40);labWkPush();};
 /* "Use it": the weapon goes in the ammo row, chosen */
 SG.labWkUse=function(){var k=labWkState(),b=LAB_BASES[k.base],nm=(k.name||'').replace(/^\s+|\s+$/g,'')||'My weapon';k.name=nm;
-  var rec={name:nm,base:k.base,icon:b.icon,tint:b.tint,scale:b.scale,params:k.w},id=labWkInstall(rec,k.id||undefined);k.id=id;SG.labSetAmmo(id);labMsg(nm+' is in the ammo row',false);return id;};
+  var rec={name:nm,base:k.base,icon:b.icon,tint:b.tint,scale:b.scale,params:k.w},id=labWkInstall(rec,'w_'+labSlug(nm));k.id=id;SG.labSetAmmo(id);labMsg(nm+' is in the ammo row',false);return id;};
 SG.labWkLoad=function(rec){var k=SG.labWeaponCheck(rec);if(!k.ok)return k;var L=SG.lab,w=labWkState();w.base=k.rec.base;w.name=k.rec.name;w.w=k.rec.params;w.id=labWkInstall(k.rec,'w_'+labSlug(k.rec.name));w.maker=k.rec.maker;SG.labSetAmmo(w.id);k.id=w.id;labUi();return k;};
 SG.labWkSaveNow=function(){var k=labWkState(),b=LAB_BASES[k.base];return SG.labWeaponSave({schema:'rtk.weapon',version:1,name:k.name||'My weapon',base:k.base,icon:b.icon,tint:b.tint,scale:b.scale,params:k.w});};
 /* the six presets, made with the Workshop (each also a prototype that lists it in the ammo row) */
