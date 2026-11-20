@@ -4,12 +4,14 @@ Made by `tests/range.js`, which runs the Lab's own range (`SG.labRange`) with ev
 
 ## What the range found
 
-Read with the settings below: one gun position, still mice, no raiders, no mending, small pieces, unlimited Big Marbles, Chain topple on. 20 weapon rows (the five kinds a match uses and their high lobs, the six Workshop presets and their high lobs, and one saved Workshop weapon, "Heavy popper") against 12 target camps (the seven old ones and the five big ones), 28 shots each at three aim spots, and "Rate it" for every weapon. **These are numbers from a machine, not play: nobody has held an iPad and fired any of this. "Fun" below is my judgement from the numbers and the screenshots.**
+Read with the settings below: one gun position, still mice, no raiders, no mending, small pieces, unlimited Big Marbles, Chain topple on. 20 weapon rows (the five kinds a match uses and their high lobs, the six Workshop presets and their high lobs, and one saved Workshop weapon, "Heavy popper") against 19 target camps (the seven old ones, the five big ones, and the seven of the Building Yard), 49 shots each at their aim spots, and "Rate it" for every weapon (Rate it still uses the original eleven targets, so its numbers did not move). **The paragraphs below were written for the first 12 targets and 28 shots a weapon; their counts ("1 shot of 28") are those, and the Building Yard section says what the seven new targets add.** **These are numbers from a machine, not play: nobody has held an iPad and fired any of this. "Fun" below is my judgement from the numbers and the screenshots.**
+
+**The Building Yard (20 Nov)** has its own table, "Building Yard: stage by stage", near the end of the report, and its own seven targets above. Short version, at the default size: a **light touch** (a Marble that lands just out of reach) takes nothing off any building; **one Marble** takes 4 or 5 parts, trim first (3 to 4 trim, 0 to 2 walls, no frame, no collapse); a **high lob** takes 1; **eight Marbles at one spot** dig a hole (3 to 5 trim, 1 to 4 walls, at most 1 frame part) and collapse only the cottage (at shot 2: the second shot takes the ridge beam and the cascade counts); **a Big Marble** brings a side down every time (a collapse; 2 to 24 parts of 21 to 40 left) and **two** leave 0 to 8 parts; with **Chain topple** the market row and the yard of three lose 7 and 8 more parts to their neighbours than without. A **salvo of ten Marbles** spread over a building takes 4 to 16 parts and collapses the cottage and the market row once. **Nothing is ever left floating** (the last column of that table is 0 everywhere, and the Lab test checks it after every shot). What I would want played before trusting: the Marble cannot bring a building down by itself unless it lands within a hand's width of a post, which may be too hard; a Big Marble takes a side with one shot, which may be too easy. Both are numbers in `CONFIG.workshop.yard`.
 
 **Useless on their own (they do little to a whole camp)**
 
 - **Bead shot** did something in 1 shot of 28 (2 in the high lob). Eight tiny blasts of .05 take almost nothing off; the point of it is to slow mice, and the Lab's mice stand still and nobody mends, so the report cannot see the point. Rated on damage it "does little".
-- **Pocket Earthquake** did something in 1 shot of 28. A whole piece has nothing held by one fastener, so a quake does nothing to an undamaged camp. It is a finisher: after a Marble has taken a rail or a post, the quake brings the rest of a wall down (the test shows a wall with one post and one rail losing everything but the post). Rated with a Marble before each shot, it is "weaker than a Marble". If Harry wants it to be a weapon in its own right, it needs a rule that loosens whole pieces too (the cheapest: a quake takes one random rail or post off every piece in reach, then loosens what is left); I did not invent that, because the idea said "without striking".
+- **Pocket Earthquake** did something in 1 shot of 28. A whole piece has nothing held by one fastener, so a quake does nothing to an undamaged camp. It is a finisher: after a Marble has taken a rail or a post, the quake brings the rest of a wall down (the test shows a wall with one post and one rail losing everything but the post). Rated with a Marble before each shot, it is "weaker than a Marble". (Since the Building Yard it does something to buildings: it shakes every piece of trim loose, 17 parts off a cottage and nothing else, and it did something in 22 of 49 shots in all.) If Harry wants it to be a weapon in its own right, it needs a rule that loosens whole pieces too (the cheapest: a quake takes one random rail or post off every piece in reach, then loosens what is left); I did not invent that, because the idea said "without striking".
 - **Corks** and **Glue blob** do no damage, by design; the report cannot say how good they are because the target's mice never move and nobody mends (the first report said the same).
 - **Marble (high lob)** is still the weakest of the old kinds: 9 of 28 shots did anything, 9 parts in all (the flat Marble: 26 of 28 and 59 parts). Nothing changed there.
 - **Triple bouncer** is weak for what it costs: 26 of 28 shots did something but 40 parts in all, "weaker than a Marble". It is priced at 6.4 points, because the price counts a small blast at each of three touchdowns, but in practice it meets a wall on its first flight and goes off once. The price formula overrates it (a Bouncer, one bounce, is 1.6 points and scores the same).
@@ -853,6 +855,573 @@ Aimed at the mice (the middle of the five target mice) (-0.01, -2.39):
 | Heavy popper | 2 | 0 | no | 0 | 0 | Keep |
 | Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Keep |
 
+## Cottage (one building, 40 parts: tiles, shutters, walls, door, frame)
+
+1 pieces: 1 cottage.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Cottage | 14 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage | 10 · 1 · stands |
+| Big Marble | 22 | 1 | no | 0 | 0 | Cottage | 40 · 3 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Cottage | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Cottage | 0 · 0 · stands |
+| Bouncer | 2 | 0 | no | 0 | 0 | Cottage | 10 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Cottage | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Cottage | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Cottage | 40 · 4 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage | 39 · 3 · stands |
+| Pocket Earthquake | 17 | 0 | no | 0 | 0 | Cottage | 17 · 0 · stands |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Cottage | 36 · 2 · stands |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Cottage | 37 · 2 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Cottage | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Cottage | 2 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Cottage | 21 · 0 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Cottage | 11 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 10 · 0 · stands |
+| Heavy popper | 14 | 0 | no | 0 | 0 | Cottage | 14 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Cottage | - |
+
+Aimed at the front piece (cottage) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Cottage |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Big Marble | 22 | 1 | no | 0 | 0 | Cottage |
+| Corks | 0 | 0 | no | 0 | 0 | Cottage |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Cottage |
+| Bouncer | 2 | 0 | no | 0 | 0 | Cottage |
+| Glue blob | 0 | 0 | no | 0 | 1 | Cottage |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Cottage |
+| Tether marble | 1 | 0 | no | 0 | 0 | Cottage |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Pocket Earthquake | 17 | 0 | no | 0 | 0 | Cottage |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Cottage |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Cottage |
+| Bead shot | 0 | 0 | no | 0 | 0 | Cottage |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Cottage |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 14 | 0 | no | 0 | 0 | Cottage |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Cottage |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Cottage |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Big Marble | 22 | 1 | no | 0 | 0 | Cottage |
+| Corks | 0 | 0 | no | 0 | 0 | Cottage |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Cottage |
+| Bouncer | 1 | 0 | no | 0 | 0 | Cottage |
+| Glue blob | 0 | 0 | no | 0 | 1 | Cottage |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Cottage |
+| Tether marble | 1 | 0 | no | 0 | 0 | Cottage |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Pocket Earthquake | 17 | 0 | no | 0 | 0 | Cottage |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Cottage |
+| Acorn drum (high lob) | 1 | 0 | no | 1 | 0 | Cottage |
+| Bead shot | 1 | 0 | no | 0 | 0 | Cottage |
+| Bead shot (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Cottage |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 8 | 0 | no | 0 | 0 | Cottage |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Cottage |
+
+## Barn (one building, 40 parts: big doors, hayloft, lean-to)
+
+1 pieces: 1 barn.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Barn | 9 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Barn | 3 · 0 · stands |
+| Big Marble | 23 | 1 | no | 3 | 0 | Barn | 40 · 4 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Bouncer | 2 | 0 | no | 0 | 0 | Barn | 3 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Barn | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Barn | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Barn | 40 · 4 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Barn | 38 · 5 · stands |
+| Pocket Earthquake | 11 | 0 | no | 0 | 0 | Barn | 11 · 0 · stands |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Barn | 26 · 2 · stands |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Barn | 27 · 2 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Barn | 1 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Barn | 10 · 0 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Barn | 4 · 0 · stands |
+| Triple bouncer | 1 | 0 | no | 0 | 0 | ground | 3 · 0 · stands |
+| Heavy popper | 9 | 0 | no | 0 | 0 | Barn | 10 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Barn | - |
+
+Aimed at the front piece (barn) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Barn |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Big Marble | 23 | 1 | no | 3 | 0 | Barn |
+| Corks | 0 | 0 | no | 0 | 0 | Barn |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Bouncer | 2 | 0 | no | 0 | 0 | Barn |
+| Glue blob | 0 | 0 | no | 0 | 1 | Barn |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Barn |
+| Tether marble | 1 | 0 | no | 0 | 0 | Barn |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Pocket Earthquake | 11 | 0 | no | 0 | 0 | Barn |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Barn |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Barn |
+| Bead shot | 0 | 0 | no | 0 | 0 | Barn |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Barn |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Barn |
+| Triple bouncer | 1 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 9 | 0 | no | 0 | 0 | Barn |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Barn |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 5 | 0 | no | 0 | 0 | Barn |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Big Marble | 23 | 1 | no | 3 | 0 | Barn |
+| Corks | 0 | 0 | no | 0 | 0 | Barn |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Bouncer | 1 | 0 | no | 0 | 0 | Barn |
+| Glue blob | 0 | 0 | no | 0 | 1 | Barn |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Barn |
+| Tether marble | 1 | 0 | no | 0 | 0 | Barn |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Pocket Earthquake | 11 | 0 | no | 0 | 0 | Barn |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Barn |
+| Acorn drum (high lob) | 1 | 0 | no | 1 | 0 | Barn |
+| Bead shot | 0 | 0 | no | 0 | 0 | Barn |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Barn |
+| Pop bomb (high lob) | 3 | 0 | no | 1 | 0 | Barn |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 7 | 0 | no | 0 | 0 | Barn |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 2 | Barn |
+
+## Watch tower house (one building, 31 parts: floors, steps, flag roof)
+
+1 pieces: 1 lookout.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 5 | 0 | no | 0 | 0 | Watch tower house | 8 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Watch tower house | 4 · 0 · stands |
+| Big Marble | 14 | 1 | no | 0 | 0 | Watch tower house | 31 · 3 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Watch tower house | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Watch tower house | 0 · 0 · stands |
+| Bouncer | 2 | 0 | no | 0 | 0 | Watch tower house | 5 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Watch tower house | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Watch tower house | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Watch tower house | 31 · 3 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Watch tower house | 31 · 4 · stands |
+| Pocket Earthquake | 9 | 0 | no | 0 | 0 | Watch tower house | 9 · 0 · stands |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Watch tower house | 9 · 0 · stands |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Watch tower house | 9 · 0 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Watch tower house | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Watch tower house | 0 · 0 · stands |
+| Pop bomb | 7 | 0 | no | 0 | 0 | Watch tower house | 13 · 1 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Watch tower house | 5 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 5 · 0 · stands |
+| Heavy popper | 7 | 0 | no | 0 | 0 | Watch tower house | 11 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Watch tower house | - |
+
+Aimed at the front piece (lookout) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 5 | 0 | no | 0 | 0 | Watch tower house |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Watch tower house |
+| Big Marble | 14 | 1 | no | 0 | 0 | Watch tower house |
+| Corks | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Bouncer | 2 | 0 | no | 0 | 0 | Watch tower house |
+| Glue blob | 0 | 0 | no | 0 | 1 | Watch tower house |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Watch tower house |
+| Tether marble | 1 | 0 | no | 0 | 0 | Watch tower house |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Watch tower house |
+| Pocket Earthquake | 9 | 0 | no | 0 | 0 | Watch tower house |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Watch tower house |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Watch tower house |
+| Bead shot | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Pop bomb | 7 | 0 | no | 0 | 0 | Watch tower house |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Watch tower house |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 7 | 0 | no | 0 | 0 | Watch tower house |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Watch tower house |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 5 | 0 | no | 0 | 0 | Watch tower house |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Watch tower house |
+| Big Marble | 14 | 1 | no | 0 | 0 | Watch tower house |
+| Corks | 0 | 0 | no | 1 | 0 | Watch tower house |
+| Corks (high lob) | 0 | 0 | no | 1 | 0 | Watch tower house |
+| Bouncer | 2 | 0 | no | 0 | 0 | Watch tower house |
+| Glue blob | 0 | 0 | no | 0 | 1 | Watch tower house |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Watch tower house |
+| Tether marble | 1 | 0 | no | 0 | 0 | Watch tower house |
+| Tether marble (high lob) | 2 | 1 | no | 0 | 0 | Watch tower house |
+| Pocket Earthquake | 9 | 0 | no | 0 | 0 | Watch tower house |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Watch tower house |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Watch tower house |
+| Bead shot | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Watch tower house |
+| Pop bomb | 7 | 0 | no | 0 | 0 | Watch tower house |
+| Pop bomb (high lob) | 4 | 0 | no | 0 | 0 | Watch tower house |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 7 | 0 | no | 0 | 0 | Watch tower house |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Watch tower house |
+
+## Bridge + gatehouse (one building, 28 parts: two towers, a deck, a hanging gate)
+
+1 pieces: 1 bridge.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Bridge + gatehouse | 9 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Bridge + gatehouse | 2 · 0 · stands |
+| Big Marble | 20 | 1 | no | 0 | 0 | Bridge + gatehouse | 28 · 2 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Bridge + gatehouse | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse | 0 · 0 · stands |
+| Bouncer | 1 | 0 | no | 0 | 0 | Bridge + gatehouse | 2 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Bridge + gatehouse | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Bridge + gatehouse | 28 · 2 · stands |
+| Tether marble (high lob) | 3 | 1 | no | 0 | 0 | Bridge + gatehouse | 28 · 3 · stands |
+| Pocket Earthquake | 15 | 0 | no | 0 | 0 | Bridge + gatehouse | 15 · 0 · stands |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Bridge + gatehouse | 2 · 0 · stands |
+| Acorn drum (high lob) | 2 | 0 | no | 1 | 0 | Bridge + gatehouse | 2 · 0 · stands |
+| Bead shot | 1 | 0 | no | 0 | 0 | Bridge + gatehouse | 1 · 0 · stands |
+| Bead shot (high lob) | 1 | 0 | no | 0 | 0 | Bridge + gatehouse | 1 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Bridge + gatehouse | 12 · 0 · stands |
+| Pop bomb (high lob) | 2 | 0 | no | 0 | 0 | Bridge + gatehouse | 4 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 2 · 0 · stands |
+| Heavy popper | 8 | 0 | no | 0 | 0 | Bridge + gatehouse | 13 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse | - |
+
+Aimed at the front piece (bridge) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Big Marble | 20 | 1 | no | 0 | 0 | Bridge + gatehouse |
+| Corks | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Bouncer | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Glue blob | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+| Tether marble | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Tether marble (high lob) | 3 | 1 | no | 0 | 0 | Bridge + gatehouse |
+| Pocket Earthquake | 15 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Bridge + gatehouse |
+| Acorn drum (high lob) | 2 | 0 | no | 1 | 0 | Bridge + gatehouse |
+| Bead shot | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Bead shot (high lob) | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Pop bomb (high lob) | 2 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 8 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Marble (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Big Marble | 20 | 1 | no | 0 | 0 | Bridge + gatehouse |
+| Corks | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Bouncer | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Glue blob | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+| Tether marble | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Pocket Earthquake | 15 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Bridge + gatehouse |
+| Acorn drum (high lob) | 1 | 0 | no | 1 | 0 | Bridge + gatehouse |
+| Bead shot | 1 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Pop bomb (high lob) | 0 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 8 | 0 | no | 0 | 0 | Bridge + gatehouse |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Bridge + gatehouse |
+
+## Windmill (one building, 21 parts: tiers, hub, four sails)
+
+1 pieces: 1 windmill.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Windmill | 4 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill | 3 · 0 · stands |
+| Big Marble | 19 | 1 | no | 0 | 0 | Windmill | 19 · 1 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Windmill | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Windmill | 0 · 0 · stands |
+| Bouncer | 2 | 0 | no | 0 | 0 | Windmill | 4 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Windmill | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Windmill | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Windmill | 21 · 1 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill | 21 · 1 · stands |
+| Pocket Earthquake | 8 | 0 | no | 0 | 0 | Windmill | 8 · 0 · stands |
+| Acorn drum | 19 | 1 | no | 1 | 0 | Windmill | 19 · 1 · stands |
+| Acorn drum (high lob) | 19 | 1 | no | 1 | 0 | Windmill | 19 · 1 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Windmill | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Windmill | 2 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Windmill | 18 · 1 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Windmill | 4 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 5 · 0 · stands |
+| Heavy popper | 4 | 0 | no | 0 | 0 | Windmill | 9 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Windmill | - |
+
+Aimed at the front piece (windmill) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Windmill |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill |
+| Big Marble | 19 | 1 | no | 0 | 0 | Windmill |
+| Corks | 0 | 0 | no | 0 | 0 | Windmill |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Windmill |
+| Bouncer | 2 | 0 | no | 0 | 0 | Windmill |
+| Glue blob | 0 | 0 | no | 0 | 1 | Windmill |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Windmill |
+| Tether marble | 1 | 0 | no | 0 | 0 | Windmill |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill |
+| Pocket Earthquake | 8 | 0 | no | 0 | 0 | Windmill |
+| Acorn drum | 19 | 1 | no | 1 | 0 | Windmill |
+| Acorn drum (high lob) | 19 | 1 | no | 1 | 0 | Windmill |
+| Bead shot | 0 | 0 | no | 0 | 0 | Windmill |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Windmill |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Windmill |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Windmill |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 4 | 0 | no | 0 | 0 | Windmill |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Windmill |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Windmill |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill |
+| Big Marble | 19 | 1 | no | 0 | 0 | Windmill |
+| Corks | 0 | 0 | no | 1 | 0 | Windmill |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Windmill |
+| Bouncer | 2 | 0 | no | 0 | 0 | Windmill |
+| Glue blob | 0 | 0 | no | 0 | 1 | Windmill |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Windmill |
+| Tether marble | 1 | 0 | no | 0 | 0 | Windmill |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Windmill |
+| Pocket Earthquake | 8 | 0 | no | 0 | 0 | Windmill |
+| Acorn drum | 19 | 1 | no | 1 | 0 | Windmill |
+| Acorn drum (high lob) | 19 | 1 | no | 1 | 0 | Windmill |
+| Bead shot | 0 | 0 | no | 0 | 0 | Windmill |
+| Bead shot (high lob) | 1 | 0 | no | 0 | 0 | Windmill |
+| Pop bomb | 7 | 0 | no | 0 | 0 | Windmill |
+| Pop bomb (high lob) | 4 | 0 | no | 0 | 0 | Windmill |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 4 | 0 | no | 0 | 0 | Windmill |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Windmill |
+
+## Market row (three stalls of 13 parts, awnings and crates)
+
+3 pieces: 3 stall.
+
+Aimed at the Keep (or the middle of the camp) (0.00, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Market stall | 17 · 1 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Market stall | 3 · 0 · stands |
+| Big Marble | 15 | 1 | no | 0 | 0 | Market stall | 28 · 3 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Market stall | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Market stall | 0 · 0 · stands |
+| Bouncer | 2 | 0 | no | 0 | 0 | Market stall | 3 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Market stall | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Market stall | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Market stall | 28 · 3 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Market stall | 28 · 3 · stands |
+| Pocket Earthquake | 15 | 0 | no | 0 | 0 | Market stall | 15 · 0 · stands |
+| Acorn drum | 4 | 0 | no | 1 | 0 | Market stall | 35 · 6 · stands |
+| Acorn drum (high lob) | 4 | 0 | no | 1 | 0 | Market stall | 35 · 6 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Market stall | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Market stall | 0 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Market stall | 10 · 0 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Market stall | 6 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 3 · 0 · stands |
+| Heavy popper | 8 | 0 | no | 0 | 0 | Market stall | 29 · 4 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Market stall | - |
+
+Aimed at the front piece (stall) (0.45, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Market stall |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Market stall |
+| Big Marble | 10 | 1 | no | 0 | 0 | Market stall |
+| Corks | 0 | 0 | no | 0 | 0 | Market stall |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Market stall |
+| Bouncer | 2 | 0 | no | 0 | 0 | Market stall |
+| Glue blob | 0 | 0 | no | 0 | 1 | Market stall |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Market stall |
+| Tether marble | 1 | 0 | no | 0 | 0 | Market stall |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Market stall |
+| Pocket Earthquake | 10 | 0 | no | 0 | 0 | Market stall |
+| Acorn drum | 4 | 0 | no | 0 | 0 | Market stall |
+| Acorn drum (high lob) | 4 | 0 | no | 0 | 0 | Market stall |
+| Bead shot | 0 | 0 | no | 0 | 0 | Market stall |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Market stall |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Market stall |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Market stall |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 9 | 0 | no | 0 | 0 | Market stall |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Market stall |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Market stall |
+| Marble (high lob) | 0 | 0 | no | 1 | 0 | ground |
+| Big Marble | 14 | 1 | no | 0 | 0 | Market stall |
+| Corks | 0 | 0 | no | 0 | 0 | Market stall |
+| Corks (high lob) | 0 | 0 | no | 1 | 0 | Market stall |
+| Bouncer | 2 | 0 | no | 0 | 0 | Market stall |
+| Glue blob | 0 | 0 | no | 0 | 1 | Market stall |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 0 | ground |
+| Tether marble | 1 | 0 | no | 0 | 0 | Market stall |
+| Tether marble (high lob) | 2 | 0 | no | 0 | 0 | Market stall |
+| Pocket Earthquake | 15 | 0 | no | 0 | 0 | Market stall |
+| Acorn drum | 4 | 0 | no | 1 | 0 | Market stall |
+| Acorn drum (high lob) | 0 | 0 | no | 1 | 0 | ground |
+| Bead shot | 0 | 0 | no | 0 | 0 | Market stall |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Market stall |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Market stall |
+| Pop bomb (high lob) | 0 | 0 | no | 1 | 0 | ground |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 6 | 0 | no | 0 | 0 | Market stall |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Market stall |
+
+## Building yard of 3 (a cottage, a barn and a windmill, side by side)
+
+3 pieces: 1 barn, 1 cottage, 1 windmill.
+
+Aimed at the Keep (or the middle of the camp) (-0.03, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
+|---|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Barn | 9 · 0 · stands |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Barn | 3 · 0 · stands |
+| Big Marble | 31 | 1 | no | 2 | 0 | Barn | 87 · 8 · stands |
+| Corks | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Bouncer | 1 | 0 | no | 0 | 0 | Barn | 3 · 0 · stands |
+| Glue blob | 0 | 0 | no | 0 | 1 | Barn | 0 · 0 · stands |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Barn | 0 · 0 · stands |
+| Tether marble | 1 | 0 | no | 0 | 0 | Barn | 84 · 7 · stands |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Barn | 87 · 8 · stands |
+| Pocket Earthquake | 36 | 0 | no | 1 | 0 | Barn | 36 · 0 · stands |
+| Acorn drum | 3 | 0 | no | 1 | 0 | Barn | 61 · 5 · stands |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Barn | 62 · 5 · stands |
+| Bead shot | 0 | 0 | no | 0 | 0 | Barn | 0 · 0 · stands |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Barn | 1 · 0 · stands |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Barn | 10 · 0 · stands |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Barn | 6 · 0 · stands |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground | 3 · 0 · stands |
+| Heavy popper | 9 | 0 | no | 0 | 0 | Barn | 10 · 0 · stands |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Barn | - |
+
+Aimed at the front piece (cottage) (0.59, -1.95):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 4 | 0 | no | 0 | 0 | Cottage |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Big Marble | 22 | 1 | no | 0 | 0 | Cottage |
+| Corks | 0 | 0 | no | 0 | 0 | Cottage |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Cottage |
+| Bouncer | 2 | 0 | no | 0 | 0 | Cottage |
+| Glue blob | 0 | 0 | no | 0 | 1 | Cottage |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Cottage |
+| Tether marble | 1 | 0 | no | 0 | 0 | Cottage |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Cottage |
+| Pocket Earthquake | 28 | 0 | no | 0 | 0 | Cottage |
+| Acorn drum | 2 | 0 | no | 1 | 0 | Cottage |
+| Acorn drum (high lob) | 3 | 0 | no | 1 | 0 | Cottage |
+| Bead shot | 0 | 0 | no | 0 | 0 | Cottage |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Cottage |
+| Pop bomb (high lob) | 3 | 0 | no | 0 | 0 | Cottage |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 14 | 0 | no | 0 | 0 | Cottage |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Cottage |
+
+Aimed at the mice (the middle of the five target mice) (0.00, -2.42):
+
+| Weapon | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on |
+|---|---|---|---|---|---|---|
+| Marble | 3 | 0 | no | 0 | 0 | Barn |
+| Marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Big Marble | 31 | 1 | no | 2 | 0 | Barn |
+| Corks | 0 | 0 | no | 0 | 0 | Barn |
+| Corks (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Bouncer | 2 | 0 | no | 0 | 0 | Barn |
+| Glue blob | 0 | 0 | no | 0 | 1 | Barn |
+| Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Barn |
+| Tether marble | 1 | 0 | no | 0 | 0 | Barn |
+| Tether marble (high lob) | 1 | 0 | no | 0 | 0 | Barn |
+| Pocket Earthquake | 36 | 0 | no | 1 | 0 | Barn |
+| Acorn drum | 0 | 0 | no | 1 | 0 | Barn |
+| Acorn drum (high lob) | 0 | 0 | no | 1 | 0 | Barn |
+| Bead shot | 1 | 0 | no | 0 | 0 | Barn |
+| Bead shot (high lob) | 0 | 0 | no | 0 | 0 | Barn |
+| Pop bomb | 6 | 0 | no | 0 | 0 | Barn |
+| Pop bomb (high lob) | 3 | 0 | no | 1 | 0 | Barn |
+| Triple bouncer | 2 | 0 | no | 0 | 0 | ground |
+| Heavy popper | 7 | 0 | no | 0 | 0 | Barn |
+| Glue blob (after a Marble) | 0 | 0 | no | 0 | 1 | Barn |
+
+## Building Yard: stage by stage
+
+Each row is a fresh copy of the building (the yard of 3 is aimed at its middle building, the market row at its middle stall), the free gun, seed fixed, Chain topple on unless said. **Trim** is shutters, tiles, flags, awnings, crates; **walls** are panels, doors, floors, sails; **frame** is posts, beams, rafters. "Floating" is a part still on that stands on a part that is gone: it must always be 0.
+
+| Building | Pieces | Parts (trim / walls / frame) | Light touch (a Marble just out of reach) | One Marble: off (trim / walls / frame), collapses | High lob | Eight Marbles running: trim / walls / frame off, first collapse at shot | One Big Marble: parts left of whole, collapses | Two Big Marbles: parts left | One Big Marble, Chain topple off: parts left | Salvo of ten Marbles: off, collapses, left | Floating (after each) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Cottage | 1 | 40 (17 / 10 / 13) | 0 | 4 (4 / 0 / 0), 0 | 1 | 5 / 4 / 1, 2 | 18 of 40, 1 | 5 of 40 | 18 of 40 | 14, 1, 26 | 0 / 0 / 0 / 0 |
+| Barn | 1 | 40 (11 / 11 / 18) | 0 | 4 (3 / 1 / 0), 0 | 1 | 3 / 1 / 0, none | 17 of 40, 1 | 8 of 40 | 17 of 40 | 7, 0, 33 | 0 / 0 / 0 / 0 |
+| Watch tower house | 1 | 31 (9 / 13 / 9) | 0 | 5 (3 / 2 / 0), 0 | 1 | 3 / 2 / 1, none | 17 of 31, 1 | 8 of 31 | 17 of 31 | 8, 0, 23 | 0 / 0 / 0 / 0 |
+| Bridge + gatehouse | 1 | 28 (14 / 8 / 6) | 0 | 4 (3 / 1 / 0), 0 | 1 | 3 / 1 / 1, none | 8 of 28, 1 | 0 of 28 | 8 of 28 | 9, 0, 19 | 0 / 0 / 0 / 0 |
+| Windmill | 1 | 21 (10 / 9 / 2) | 0 | 4 (3 / 1 / 0), 0 | 1 | 3 / 1 / 0, none | 2 of 21, 1 | 2 of 21 | 2 of 21 | 4, 0, 17 | 0 / 0 / 0 / 0 |
+| Market row | 3 | 39 (18 / 6 / 15) | 0 | 4 (3 / 1 / 0), 0 | 1 | 3 / 1 / 1, none | 24 of 39, 1 | 4 of 39 | 31 of 39 | 16, 1, 23 | 0 / 0 / 0 / 0 |
+| Yard of 3 | 3 | 101 (38 / 30 / 33) | 0 | 4 (3 / 1 / 0), 0 | 1 | 3 / 1 / 0, none | 70 of 101, 1 | 33 of 101 | 78 of 101 | 7, 0, 94 | 0 / 0 / 0 / 0 |
+
 ## Probe: eight Marbles, one after another, at the Walled Keep's gate (the bug the first report found)
 
 Aimed at the Keep through the gate, each shot a little to one side (x - 0.1, 0, +0.1, ...), nothing mended in between, Chain topple off. Before the fix, after the doors and lintel went, the bare posts and braces stopped every Marble and nothing more came off (shots 3 to 8: 0 parts, landed on the Gate). Now a Marble passes between the posts and lands on the Keep.
@@ -872,23 +1441,23 @@ Aimed at the Keep through the gate, each shot a little to one side (x - 0.1, 0, 
 
 | Weapon | Single shots | Parts off | Collapses | Keeps felled | Mice dizzy | Parts glued | Shots that did anything | Salvos of 10: parts off | collapses | Keeps felled |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Marble | 28 | 59 | 0 | 0 | 1 | 0 | 26 of 28 | 70 | 0 | 0 of 12 |
-| Marble (high lob) | 28 | 9 | 0 | 0 | 2 | 0 | 9 of 28 | 14 | 0 | 0 of 12 |
-| Big Marble | 28 | 83 | 0 | 0 | 5 | 0 | 26 of 28 | 152 | 15 | 8 of 12 |
-| Corks | 28 | 0 | 0 | 0 | 5 | 0 | 3 of 28 | 0 | 0 | 0 of 12 |
-| Corks (high lob) | 28 | 0 | 0 | 0 | 11 | 0 | 6 of 28 | 0 | 0 | 0 of 12 |
-| Bouncer | 28 | 19 | 0 | 0 | 1 | 0 | 24 of 28 | 36 | 0 | 0 of 12 |
-| Glue blob | 28 | 0 | 0 | 0 | 0 | 27 | 27 of 28 | 0 | 0 | 0 of 12 |
-| Glue blob (high lob) | 28 | 0 | 0 | 0 | 0 | 25 | 25 of 28 | 0 | 0 | 0 of 12 |
-| Tether marble | 28 | 28 | 0 | 0 | 0 | 0 | 28 of 28 | 164 | 15 | 4 of 12 |
-| Tether marble (high lob) | 28 | 28 | 0 | 0 | 0 | 0 | 27 of 28 | 209 | 25 | 5 of 12 |
-| Pocket Earthquake | 28 | 0 | 0 | 0 | 1 | 0 | 1 of 28 | 0 | 0 | 0 of 12 |
-| Acorn drum | 28 | 93 | 0 | 0 | 17 | 0 | 28 of 28 | 251 | 25 | 0 of 12 |
-| Acorn drum (high lob) | 28 | 82 | 0 | 0 | 17 | 0 | 28 of 28 | 141 | 9 | 0 of 12 |
-| Bead shot | 28 | 1 | 0 | 0 | 0 | 0 | 1 of 28 | 2 | 0 | 0 of 12 |
-| Bead shot (high lob) | 28 | 3 | 0 | 0 | 0 | 0 | 2 of 28 | 2 | 0 | 0 of 12 |
-| Pop bomb | 28 | 289 | 31 | 0 | 16 | 0 | 27 of 28 | 245 | 25 | 0 of 12 |
-| Pop bomb (high lob) | 28 | 51 | 0 | 0 | 4 | 0 | 24 of 28 | 64 | 1 | 0 of 12 |
-| Triple bouncer | 28 | 40 | 0 | 0 | 0 | 0 | 26 of 28 | 45 | 0 | 0 of 12 |
-| Heavy popper | 28 | 134 | 3 | 0 | 6 | 0 | 27 of 28 | 272 | 27 | 0 of 12 |
-| Glue blob (after a Marble) | 28 | 0 | 0 | 0 | 0 | 33 | 27 of 28 | - | - | - |
+| Marble | 49 | 146 | 0 | 0 | 1 | 0 | 47 of 49 | 140 | 1 | 0 of 19 |
+| Marble (high lob) | 49 | 28 | 0 | 0 | 3 | 0 | 29 of 49 | 42 | 1 | 0 of 19 |
+| Big Marble | 49 | 500 | 21 | 0 | 18 | 0 | 47 of 49 | 425 | 39 | 8 of 19 |
+| Corks | 49 | 0 | 0 | 0 | 7 | 0 | 5 of 49 | 0 | 0 | 0 of 19 |
+| Corks (high lob) | 49 | 0 | 0 | 0 | 13 | 0 | 8 of 49 | 0 | 0 | 0 of 19 |
+| Bouncer | 49 | 55 | 0 | 0 | 1 | 0 | 45 of 49 | 66 | 0 | 0 of 19 |
+| Glue blob | 49 | 0 | 0 | 0 | 0 | 48 | 48 of 49 | 0 | 0 | 0 of 19 |
+| Glue blob (high lob) | 49 | 0 | 0 | 0 | 0 | 45 | 45 of 49 | 0 | 0 | 0 of 19 |
+| Tether marble | 49 | 49 | 0 | 0 | 0 | 0 | 49 of 49 | 436 | 39 | 4 of 19 |
+| Tether marble (high lob) | 49 | 55 | 3 | 0 | 0 | 0 | 48 of 49 | 481 | 52 | 5 of 19 |
+| Pocket Earthquake | 49 | 320 | 0 | 0 | 3 | 0 | 22 of 49 | 111 | 0 | 0 of 19 |
+| Acorn drum | 49 | 198 | 3 | 0 | 37 | 0 | 49 of 49 | 439 | 41 | 0 of 19 |
+| Acorn drum (high lob) | 49 | 181 | 3 | 0 | 37 | 0 | 49 of 49 | 332 | 25 | 0 of 19 |
+| Bead shot | 49 | 6 | 0 | 0 | 0 | 0 | 6 of 49 | 3 | 0 | 0 of 19 |
+| Bead shot (high lob) | 49 | 7 | 0 | 0 | 0 | 0 | 6 of 49 | 9 | 0 | 0 of 19 |
+| Pop bomb | 49 | 419 | 31 | 0 | 16 | 0 | 48 of 49 | 339 | 27 | 0 of 19 |
+| Pop bomb (high lob) | 49 | 108 | 0 | 0 | 7 | 0 | 44 of 49 | 104 | 1 | 0 of 19 |
+| Triple bouncer | 49 | 80 | 0 | 0 | 0 | 0 | 47 of 49 | 76 | 0 | 0 of 19 |
+| Heavy popper | 49 | 305 | 3 | 0 | 6 | 0 | 48 of 49 | 368 | 31 | 0 of 19 |
+| Glue blob (after a Marble) | 49 | 0 | 0 | 0 | 0 | 55 | 48 of 49 | - | - | - |

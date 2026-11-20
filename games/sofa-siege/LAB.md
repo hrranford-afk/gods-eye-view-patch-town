@@ -11,7 +11,7 @@ Open it from the title screen ("Shooting range (sandbox)") or go straight in wit
 - **Top row:** Back to menu, How to use (the card shown on first entry; it is remembered, and this button brings it back), Panel (show or hide the right panel). The camera button (top right) works as in a match: whole table, my camp, the hill.
 - **Left card, "Readout"** (collapsible): the last shot, the session, and the piece you tapped.
 - **Bottom bar:** the tools, then the pieces (or the ammunition). Every button is at least 44 px tall.
-- **Right panel:** Target camp, My camp, Settings, Range report, Designs, Prototypes.
+- **Right panel:** Target camp, My camp, Building Yard, Settings, Range report, Weapon Workshop, Designs, Prototypes.
 
 The table has two camps, "My camp" (blue, near) and "Target camp" (red, far). Nothing ever ends. A fallen Keep just stays fallen until you Reset or Heal.
 
@@ -54,6 +54,8 @@ The Target menu loads a camp into the far zone, built and whole: **Empty, Walled
 | **Wall maze** | Three rings of walls round a Keep, a gate in each ring, the gates on opposite sides so a way in is a way round. | 28 |
 | **Domino row** | Three lines of eight unbraced walls, each wall a little behind the one before, close enough that a falling wall reaches the next. No Keep. | 24 |
 | **Tower stack** | Seven Keeps in two rows, close together, with braces in the gaps: each leans on its neighbour. | 14 |
+
+Seven more targets are the **Building Yard** (cottage, barn, watch tower house, bridge + gatehouse, windmill, market row, a yard of three): see "The Building Yard" below.
 
 The big targets are laid out by `labBigTemplate` from the piece sizes, for small and medium pieces (large ones crowd the table, and the Castle's corners go past the table's edge). `SG.labTemplateOverlaps(id)` lists any two pieces of a template that overlap by the real overlap rule; all five are empty. The camera button has a fourth view in the Lab, **The target camp**. With several Keeps the default aim spot is the one nearest the middle. You can edit the target camp like your own.
 
@@ -214,6 +216,81 @@ Six weapons made with the Workshop. Each is also a prototype (Prototypes panel, 
 - **The gate fix.** A wall or gate that has lost every plank, rail, door and lintel (only posts, and a gate's braces, are left) no longer stops a flat shot: a shot passes between the posts and is stopped only within `CONFIG.v2.frameR` (.07, scale 1) of a post. Anything with a plank, rail, door or lintel left stops a shot as it always did. This is in the shared `pieceAt`, so it applies in matches too; it can only matter for a frame stripped to its posts, which is rare in a match, and none of the match tests changed. It was the real bug the first range report found (a one-point gate shielded a Keep from flat shots for good).
 - **Rebuilt camps look the same every time**: a camp built from a list (a template, a design) now gives its pieces fixed looks (by position in the list), so the same shot at the same camp always has the same result (before, the look followed a counter).
 
+## The Building Yard (20 Nov)
+
+Harry, 20 Nov: destruction should be fun "bit by bit". The Yard adds real little buildings to the Lab with layered damage, using the same idea as the rest of the game: a thing falls when what holds it goes. **Everything here is Lab only.** The six kinds (`cottage`, `barn`, `lookout`, `bridge`, `windmill`, `stall`) are in `FOOT0` and `BK` but in no kit, so a match never has one (a test starts a match and checks). No outside assets: the models are built from the same primitives and the same texture atlas as the rest of the library (`models.js`, `SS.bldInfo`), in the team's colours (blue near, red far).
+
+### The six
+
+Each is **one piece with its own parts**, between 15 and 40 (the market row is three stalls of 13). Every part has a **stage** and the parts it hangs on.
+
+| Building | Parts | Trim (stage 0) | Walls (stage 1) | Frame (stage 2) | What holds what |
+|---|---|---|---|---|---|
+| **Cottage** (`cottage`) | 40 | 12 roof tiles, 4 shutters, the chimney | 4 wall panels (2 front, 2 side), a back wall, a door, 2 window frames, 2 gables | 4 posts, 4 beams, 4 rafters, the ridge | A beam needs both its posts; a panel, door or gable hangs on its beam; a rafter on its side's beam; a tile on its rafter; the ridge on any rafter; a shutter on its window frame |
+| **Barn** (`barn`) | 40 | 8 roof tiles, a hay bale, 2 lean-to tiles | 2 big doors, panels, 2 gables, the hayloft floor, the hatch | 4 posts, 4 beams, 4 rafters, the ridge, and the lean-to's 2 posts, beam and 2 rafters | The loft floor hangs on both side beams; the lean-to's rafters hang on its own beam **and** on the barn's side beam, so the lean-to goes when the barn's wall does |
+| **Watch tower house** (`lookout`) | 31 | 4 roof panels, cap, pole, flag, 2 shutters | 4 lower and 4 upper wall panels, door, window, 3 stair ledges | 4 tall posts, the first floor, 4 top beams | The floor needs 3 of the 4 posts; a wall panel its two posts (an upper one also the floor); a roof panel its beam; the flag its pole, the pole the cap, the cap any roof panel |
+| **Bridge + gatehouse** (`bridge`) | 28 | 2 roofs, 2 flags, 6 merlons, 2 rails, 2 chains | 2 slit windows, 5 deck planks, the hanging gate | 2 tower cores, 2 tower tops, 2 deck beams | The deck beams need **both** tower cores; a plank any beam; the gate hangs on its two chains (it falls only when both are gone), each chain on its beam |
+| **Windmill** (`windmill`) | 21 | 4 sail cloths, cap, 2 windows, tail, 2 sacks | 3 tiers, balcony, door, **4 sails** | the base, the hub | The tiers stack (each on the one below); the hub on the top tier; a sail on the hub; its cloth on the sail. The sails fall in order, half a second apart (`dly`), not all at once |
+| **Market row** (`market`) | 3 stalls × 13 | awning, sign, goods, 3 stacked crates | counter, back board | 4 posts, the rail | The rail needs both front posts; the awning hangs on the rail; a crate on the crate under it |
+
+### The rules
+
+- **Three stages, then the collapse.** A landing takes **trim first** (nearest first), then walls, then frame, never more than a few at once: `CONFIG.workshop.yard.perHit` (4) for a Marble, more for a bigger blast (by its area: a blast twice as wide takes four times as many; a high lob's half-radius blast takes one). Each stage only comes off close to the hit, as a share of the blast: trim 1, walls .55, frame .32 (`yard.sturdy`). A marble that strikes the building does not stop at the wall: the blow runs on `deep` (.4) of the way to its middle and up to at least `high` (.5) of its height, so a shot at a wall shakes the roof tiles loose first. A blast that lands beside a building (not on it) is measured from where it landed.
+- **The support rule** (`bSettle`, one rule for every building). After anything comes off, every part still on whose supports are gone (fewer than its `min` of its `need` parts are on) falls, and then whatever hung on that, round after round until everything left is held. Nothing can stay up with its support gone: `SG.bldFloating()` lists any that does, and every test and every range cell checks it is empty. A round later than the first waits `yard.delay` (.2 s), so a roof comes down after its walls and a sail after its sail.
+- **The Big Marble** also breaks the nearest frame leg outright (`bigLegs`: one for most, two for a stall), as it breaks a Keep leg, and takes up to `yard.bigHit` (9) parts. So it takes **a side**: one corner post goes, and the beams, walls, rafters and tiles that hung on it go with it. A second Big Marble finishes most of the rest.
+- **A collapse** is counted when at least 8% of a building's parts (at least 2) fall in one go, or frame parts come off with others (`nf` in `bSettle`). It makes mice near it dizzy and shakes the screen like any collapse.
+- **Chain topple** (the existing Lab switch) works between neighbours: a building that collapses falls the way the shot was going and lands on what stands within reach on that side (`yard.reach`, or 40% of its height, whichever is more; a market row touches, a yard is a little apart), knocking `topple.hit` (3) parts off up to two neighbours, trim and walls before frame; the neighbour then settles by the same rule, so it may fall too. At most `topple.max` (8) topples a shot, as before. The thrown crates and tiles also knock attached parts by the existing `chainThrow` rule.
+- **Mice** treat a building as a solid block while it has any part left.
+
+### In the Lab
+
+- **Targets:** Cottage, Barn, Watch tower house, Bridge + gatehouse, Windmill, Market row, Building yard of 3 (a cottage, a barn and a windmill). All are in the Range report's target list, so every weapon is fired at each.
+- **Building Yard panel** (right): **Rebuild selected** puts every part of the selected building back at once, without touching anything else (a fallen Keep is rebuilt as a fresh piece). Select with Inspect or the Lobber tool; the Inspect bar and the readout card each have a Rebuild button too. **Build your own yard**: three pickers (the six buildings, the second and third can be "none") and **Place in target camp** or **Place in my camp**; they are laid across the camp side by side (two rows if they would not fit), facing the hill, clear of each other and the table's edge (all 216 combinations are tested), and Undo takes them back. Any building can also be placed with the Build tool like any piece, and saved in a design.
+- **Inspect and Show supports.** The readout lists a building's frame parts, which of them alone would bring others down ("alone it drops 9 more parts", in red), and how many parts of each stage are on. With Show supports on, a line joins every part to what holds it (red where that part is critical).
+- **The carnage HUD** has a second line, **Bits off / stage: trim, walls, frame, collapse** (the last shot's buildings; `SG.labStages()`). It is there only when a building is on the table.
+- `SG.labYard(list, side)`, `SG.labRebuild(piece)`, `SG.labStages()`, `SG.bldFloating()`, `SG.bldStats(piece)`, `SG.labBuildings` are for tests and scripts.
+- Close-up for pictures and tests: `SG.lab.focus = {x, z, zoom, y}` (zoom is a share of the usual camera distance).
+
+### What the range says
+
+`tests/range.js` has a section **Building Yard: stage by stage** in `RANGE_REPORT.md`: for each building, one Marble, a high lob, a light touch, eight Marbles running, one and two Big Marbles (and one with Chain topple off), and a salvo of ten spread Marbles, by stage, and the floating check (always 0). The headline, at the default piece size (small), the free gun at the building's middle:
+
+| | Marble | High lob | Light touch | One Big Marble (parts left) | Two Big Marbles | Big, Chain topple off |
+|---|---|---|---|---|---|---|
+| Cottage | 4 trim | 1 | 0 | 18 of 40, a collapse | 5 | 18 |
+| Barn | 3 trim, 1 wall | 1 | 0 | 17 of 40, a collapse | 8 | 17 |
+| Watch tower house | 3 trim, 2 walls | 1 | 0 | 17 of 31, a collapse | 8 | 17 |
+| Bridge + gatehouse | 3 trim, 1 wall | 1 | 0 | 8 of 28, a collapse | 0 | 8 |
+| Windmill | 3 trim, 1 wall | 1 | 0 | 2 of 21, a collapse | 2 | 2 |
+| Market row (middle stall) | 3 trim, 1 wall | 1 | 0 | 24 of 39, a collapse | 4 | 31 |
+| Yard of 3 (middle building) | 3 trim, 1 wall | 1 | 0 | 70 of 101, a collapse | 33 | 78 |
+
+(the Marble never takes frame or collapses a building at the middle: a post comes off only when a Marble lands within a hand's width of it, which is the point of aiming.) A salvo of ten Marbles spread over a building takes 4 to 16 parts and collapses the cottage and the market row once.
+
+### Frame time: the Castle against a yard of three
+
+Measured in the same session, back to back, in headless Chromium with software GL (SwiftShader, 1280 by 800, `tests/lab-shots.js --frames`, 8 seconds each, the camera on the target camp, my camp's Keep and two lobbers on the table in both):
+
+| | Pieces on the table | Part models | Draw calls | Triangles | Frame (gap between frames, two runs) |
+|---|---|---|---|---|---|
+| Castle | 39 | 313 | 137 | 57.9 thousand | 527 and 537 ms |
+| Building yard of 3 (cottage, barn, windmill) | 6 | 127 | 65 | 18.4 thousand | 390 and 256 ms |
+| Market row (three stalls) | 6 | 65 | 65 | 15.7 thousand | 359 ms |
+
+So a yard of three costs about **half to three quarters of a Castle**, with less than half the draw calls and a third of the triangles. A building is drawn as one merged mesh while it is whole, and as one small mesh per part once it is damaged (the same as every other piece). The numbers are software GL, a thousand times slower than an iPad's GPU, and noisy (the yard's two runs differ by 50%, the machine was shared with nothing else); read them as relative. Nobody has timed it on an iPad. The worst case is a whole yard torn into hundreds of loose parts: the 160-part debris limit still holds.
+
+### Adding a building
+
+In `models.js` write `BUILD.name` with the `bp(K, id, stage, need, fn, {min, dly, leg})` helper (see the cottage, which uses the shared `house()` builder) and put the name in `SS.BUILDINGS`; set `K.meta = {bigLegs: n}`. In `game.js` add it to `FOOT0`, `TALL0`, `BK` (and `C2.piecePts`), and to `LAB_BLD` (the pickers and target buttons: a target id is the kind, or a unit of several pieces in `labUnit`). Then run `tests/lab-test.js` (it loops over `LAB_BLD`-style lists in `tests/lab-test.js`, add the name there) and `tests/range.js`.
+
+### Limits of the Yard
+
+- Buildings are one piece each, so the walking grid treats one as a solid block until its last part is gone: mice cannot walk through a bridge's arch or into a barn with its doors off.
+- The blast numbers are my own: Marbles chip, Big Marbles break, and nothing has been tuned against play. The Marble cannot bring a building down alone except by chance (a collapse needs the frame, and the frame is only hit by aiming at a post).
+- A fallen building is parts lying about (up to the 160-part debris limit, then the oldest vanish); nothing is left standing as rubble.
+- The models are plain: boxes, cones and rods with the usual textures. The windmill's sails are a lattice and cloth; a stall's goods are balls on a tray. They look right from the Lab's camera, not from a very low one.
+- Nobody has played the Yard on an iPad. See the frame-time note under the screenshots below.
+
 ## How the Lab is wired into the game (the hooks in the real code)
 
 A match never takes these branches, because each starts with `SG.mode === 'lab'` (or the Lab's own `labFree`, `crewOK`, `a.k0`).
@@ -235,6 +312,8 @@ A match never takes these branches, because each starts with `SG.mode === 'lab'`
 | `SG.fire` | A scatter (`w.scatter`) throws the extra balls the corks used to. |
 | `tickMarbles` | Fuses, rollers and the tether's snag in flight. |
 | `collapse`, `keepDown`, `settle`, `tickDebris` | Lab only (`SG.lab.topple`): `topple`, the chain depth, the cap (`SG.topN`). `fxShake` / `fxSlow` leave the shake and the beat to `labFx` when the Lab's switches are on. |
+| `settle`, `holdFail`, `blastAt`, `topple`, `looseParts`, `startObj` | A kind in `BK` (the six Building Yard kinds, which no match has) takes its own branch: `bSettle`, `bldHits`, `toppleB`, a part table from `SS.bldInfo`. Every other kind takes the old branch untouched. |
+| `syncPieces` | A fallen part may wait to start falling (`q.t0` in the future): the time is clamped at 0. |
 | `pieceAt` | **Shared with matches**: the bare-frame rule (`bareFrame`, `nearFrame`). |
 | `viewObj` | Keeps a cache of each model's parts (`VCACHE`) so a camp rebuilt while nothing is drawn (the range tests) is cheap. The drawn game is unchanged. |
 | the view | The hill and the mats are hidden; the Lab draws its own ghost, gun, rings and support lines. A fused ball throbs where it lies; a rolling one rolls; a swept part is hidden. |
@@ -243,7 +322,7 @@ A match never takes these branches, because each starts with `SG.mode === 'lab'`
 
 - **The Raid mode** is not built; it is only planned (`RAID_MODE_PLAN.md` in the cards folder).
 - **Workshop weapons are not balanced for matches.** They live in the Lab until Harry promotes one. The prices are a formula of mine. Rate it judges damage only: a slowing weapon (the Bead shot) and a sticking one (glue) show little because the Lab's mice stand still and nobody mends.
-- **Pocket Earthquake does nothing to a whole camp** (nothing is held by one fastener). It finishes what a Marble began; Rate it fires a Marble first.
+- **Pocket Earthquake does nothing to a whole camp of walls, gates and Keeps** (nothing is held by one fastener). It finishes what a Marble began; Rate it fires a Marble first. On a building of the Building Yard it shakes every piece of trim loose (a tile hangs on one rafter, a shutter on one window), and nothing else.
 - **Chain topple is a Lab rule**, not a match one: with it on, the Lab is no longer exactly a match (switch it off for that).
 - **The Castle's frame time is a software-GL number** (see above); no iPad has timed it.
 - **AR.** The Lab does not run in AR. The AR scene buttons, locking and start path are all written for a match; porting them is a job of its own. The Lab is a flat-screen mode; the title screen's AR button starts a match as before.
