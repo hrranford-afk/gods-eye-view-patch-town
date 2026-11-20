@@ -1163,7 +1163,7 @@ function initView(){
 function camTarget(){var a=W/H,t=Math.tan(20*PI/180),v=SG.cam||0,need=[3.65,2.9,1.9,2.7][v],dH=[7.1,5.2,3.9,4.5][v],d=Math.max(need/(t*a),dH),el=v===0?(a<1?.95:.72):(v===1?.7:(v===3?.58:.62)),lz=[.25,1.75,.1,-1.9][v];
   /* the camera stands behind your own camp and looks across the table */
   var b=baseOf(0),bl=Math.sqrt(b.x*b.x+b.z*b.z),dx=bl>.2?b.x/bl:0,dz=bl>.2?b.z/bl:1,h=v===2?hillAt():{x:0,z:0};if(v===1)lz=Math.max(.9,bl-.15);if(v===2)lz=0;if(SG.mode==='lab'&&SG.phase!=='start'&&v===0)lz+=.45;   /* the Lab's bars cover the bottom of the screen: the table sits a little higher */
-  var F=SG.mode==='lab'&&SG.lab&&SG.lab.focus;if(F){var d2=d*F.zoom;return [F.x+dx*Math.cos(el)*d2,Math.sin(el)*d2+(F.y||0),F.z+dz*Math.cos(el)*d2,F.x,(F.y||0)-.1,F.z];}   /* the Lab's close-up (screenshots, tests): look at a spot, from this share of the usual distance */
+  var F=SG.mode==='lab'&&SG.lab&&SG.lab.focus;if(F){var d2=d*F.zoom,e2=F.el||el,cx=dx*Math.cos(e2)*d2,cz=dz*Math.cos(e2)*d2,yw=F.yaw||0,c1=Math.cos(yw),s1=Math.sin(yw);return [F.x+cx*c1-cz*s1,Math.sin(e2)*d2+(F.y||0),F.z+cx*s1+cz*c1,F.x,(F.y||0)-.1,F.z];}   /* F.el (elevation) and F.yaw (turn round the spot, radians) are optional: the Arsenal's screenshots use them */   /* the Lab's close-up (screenshots, tests): look at a spot, from this share of the usual distance */
   return [h.x+dx*(lz+Math.cos(el)*d),Math.sin(el)*d,h.z+dz*(lz+Math.cos(el)*d),h.x+dx*lz,-.1,h.z+dz*lz];}
 function moveCamera(){
   if(SG.mode==='table'&&SG.phase!=='start'){var t=Math.tan(10*PI/180),hh=Math.max(120,H-128),d=Math.max(3.38*H/hh/t,3.38/(t*W/H));var tl=(SG.tilt||0)*PI/180;var bb=baseOf(0),bn=Math.sqrt(bb.x*bb.x+bb.z*bb.z),ux=bn>.2?bb.x/bn:0,uz=bn>.2?bb.z/bn:1;   /* blue's camp is at the bottom edge of the screen */
@@ -1790,7 +1790,7 @@ var ARS={
   thin:{wall:1,gate:1,lowwall:1},  /* what a flinger can punch through */
   counters:['awning','shield','ditch','logs','net','cutter','heavy','lowwall','brace']
 };
-SG.ARS=ARS;SG.CK=CK;
+SG.ARS=ARS;SG.CK=CK;SG.TALL=TALL;
 /* what a weapon is, from its numbers (so a Workshop weapon is placed too) */
 function famOf(W){if(!W)return 'lob';if(W.gust>0)return 'gust';if(W.tether>0)return 'tether';if(W.roll>0)return 'roll';if(W.quake>0&&W.blast<=.05)return 'thump';if(W.line>0||W.pierce>0)return 'flat';if(W.scatter>=4)return 'scatter';return 'lob';}
 SG.famOf=famOf;
@@ -1836,22 +1836,23 @@ function arsRoll(a,r){if(r.stopped||r.left<=0)return;var u=U(),pad=C3.rollR*u;
     var li=-1,hy=-1;p.ps.forEach(function(q,j){if(q.st==='on'&&/\.log\./.test(q.id)&&q.wy>hy){hy=q.wy;li=j;}});if(li<0)continue;
     var lq=p.ps[li];lq.hits=(lq.hits|0)+1;pop(r.x,r.z,'Thunk!',false,.2);arsStop(a,r);if(lq.hits>=ARS.logDepth){SG.att=a.side;SG.cause='roll';knock(p,li,r.dx,r.dz,'roll',(.08+rand()*.05)*u);settle(p,a.side);}return;}}
 /* a strong thump (qlvl 2) also shakes loose what only a heavy shake can: the planks of a wall with no brace, a gate's door and lintel, a Keep's braces with none to prop it. A brace piece holds all of it. */
-function arsLoose(p,list,pos,Rq,a){var A=AMMO[a.ammo],W=A&&A.w;if(!W||!(W.qlvl>=2)||boxDist(p,pos[0],pos[2])>Rq*ARS.strongR)return list;
-  var add=[],k=p.kind,cap=W.cap>0?W.cap:99;if((a.qn|0)>=cap)return list;
-  if(k==='wall'){if(!props(p).length)p.ps.forEach(function(q,i){if(q.st==='on'&&/plank/.test(q.id))add.push(i);});}
-  else if(k==='gate'){p.ps.forEach(function(q,i){if(q.st==='on'&&/lintel|door/.test(q.id))add.push(i);});}
-  else if(k==='tower'){if(!props(p).length)p.ps.forEach(function(q,i){if(q.st==='on'&&/^tower\.brace/.test(q.id))add.push(i);});}
-  add=add.filter(function(i){return list.indexOf(i)<0;});add.sort(function(x,y){var qa=p.ps[x],qb=p.ps[y];return dist(qa.wx,qa.wz,pos[0],pos[2])-dist(qb.wx,qb.wz,pos[0],pos[2]);});
-  add=add.slice(0,Math.max(0,cap-(a.qn|0)-list.length));a.qn=(a.qn|0)+add.length+list.length;return list.concat(add);}
+function arsLoose(p,list,pos,Rq,a){var A=AMMO[a.ammo],W=A&&A.w;if(!W||!(W.qlvl>=2))return list;
+  if(!a.qplan){   /* the strong thump takes the nearest loose parts first, across every piece, up to the weapon's cap */
+    var cap=W.cap>0?W.cap:99,cand=[];
+    SG.pieces.forEach(function(q){if(!q.built||q.down||!q.total||boxDist(q,pos[0],pos[2])>Rq*ARS.strongR)return;var k=q.kind,re=null;
+      if(k==='wall'){if(!props(q).length)re=/plank/;}else if(k==='gate')re=/lintel|door/;else if(k==='tower'){if(!props(q).length)re=/^tower\.brace/;}
+      if(re)q.ps.forEach(function(r,i){if(r.st==='on'&&re.test(r.id))cand.push({p:q.id,i:i,d:dist(r.wx,r.wz,pos[0],pos[2])});});});
+    cand.sort(function(x,y){return x.d-y.d||x.p-y.p||x.i-y.i;});a.qplan={};cand.slice(0,cap).forEach(function(c){(a.qplan[c.p]||(a.qplan[c.p]=[])).push(c.i);});}
+  var add=(a.qplan[p.id]||[]).filter(function(i){return list.indexOf(i)<0&&p.ps[i].st==='on';});return list.concat(add);}
 /* ---- the fan's gust: a field that blows for a few seconds. It moves shots in the air, mice, loose parts and the cloth of a roof or a net, and does no damage by itself. ---- */
 function arsMass(id){var A=AMMO[id],m=A&&A.w?A.w.mass:1;return m!==1?m:(ARS.massBy[id]||1);}
 function arsLee(x,z,g){var u=U();for(var i=0;i<SG.pieces.length;i++){var p=SG.pieces[i];if((p.kind!=='heavy'&&p.kind!=='lowwall')||p.side===g.side||!p.built||p.down||p.parts<=0)continue;if(boxDist(p,x,z)<=(p.kind==='heavy'?ARS.leeHeavy:ARS.leeLow)*u)return true;}return false;}
 function arsGustAt(a,pos){var W=AMMO[a.ammo].w,u=U(),dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1;
-  (SG.gusts||(SG.gusts=[])).push({x:pos[0],z:pos[2],r:W.gust*u,t0:SG.clock,life:W.gustSecs,dx:-dz/l,dz:dx/l,k:W.push,side:a.side,pm:{},blown:0,parts:0,cloth:0,shots:0});
+  (SG.gusts||(SG.gusts=[])).push({x:pos[0],z:pos[2],r:W.gust*u,t0:SG.clock,age:0,life:W.gustSecs,dx:-dz/l,dz:dx/l,k:W.push,side:a.side,pm:{},blown:0,parts:0,cloth:0,shots:0});
   snd('whoosh');viewPuff(pos[0],pos[2],1.4);pop(pos[0],pos[2],'Gust!',false,.3);}
-function arsBusy(){var G=SG.gusts;if(!G)return false;for(var i=0;i<G.length;i++)if(SG.clock-G[i].t0<G[i].life&&SG.clock>=G[i].t0)return true;return false;}
+function arsBusy(){var G=SG.gusts;if(!G)return false;for(var i=0;i<G.length;i++)if(G[i].age<G[i].life)return true;return false;}
 function arsTick(dt){var G=SG.gusts;if(!G||!G.length)return;var u=U();
-  for(var gi=G.length-1;gi>=0;gi--){var g=G[gi],age=SG.clock-g.t0;if(age<0||age>=g.life){G.splice(gi,1);continue;}
+  for(var gi=G.length-1;gi>=0;gi--){var g=G[gi],age;g.age+=dt;age=g.age;if(age>=g.life){G.splice(gi,1);continue;}   /* its age is counted in ticks, not read from the clock, so a gust lasts the same number of ticks whenever it is blown */
     var env=Math.min(1,age/.25,(g.life-age)/.5),sp=ARS.gustSpeed*u*g.k*env;
     SG.marbles.forEach(function(m){if(!m.live||m.rolling||m.t<0)return;var k=Math.min(1,m.t/m.T),pp=marblePos(m,k);if(dist(pp[0],pp[2],g.x,g.z)>=g.r||arsLee(pp[0],pp[2],g))return;
       var s=sp*dt*ARS.shotK/arsMass(m.ammo),sx=g.dx*s,sz=g.dz*s;m.x0+=sx;m.x1+=sx;m.z0+=sz;m.z1+=sz;if(m.fx!=null){m.fx+=sx;m.fz+=sz;}m.drift=(m.drift||0)+s;if(!m.gusted){m.gusted=1;g.shots++;}});
@@ -2005,7 +2006,7 @@ function arsViewInit(){var A=V.ars={rings:[],streaks:null,string:null,i:0};for(v
   A.streaks=mk(90,0xe8f6ff,.8);A.string=mk(8,0xf5e6b0,.95);}
 function arsView(){if(!V.on||SG.mode!=='lab')return;if(!V.ars)arsViewInit();var A=V.ars,G=SG.gusts||[],i,n=0,pos=A.streaks.geometry.attributes.position,gi=0;
   for(i=0;i<A.rings.length;i++)A.rings[i].visible=false;
-  G.forEach(function(g){var age=SG.clock-g.t0;if(age<0||age>=g.life||gi>=A.rings.length)return;var env=Math.min(1,age/.25,(g.life-age)/.5),rg=A.rings[gi++];rg.visible=true;rg.position.set(g.x,.014,g.z);rg.scale.setScalar(g.r*(.96+.04*Math.sin(SG.clock*9)));rg.material.opacity=.45*env;
+  G.forEach(function(g){var age=g.age;if(age>=g.life||gi>=A.rings.length)return;var env=Math.min(1,age/.25,(g.life-age)/.5),rg=A.rings[gi++];rg.visible=true;rg.position.set(g.x,.014,g.z);rg.scale.setScalar(g.r*(.96+.04*Math.sin(SG.clock*9)));rg.material.opacity=.45*env;
     for(var k=0;k<14&&n<45;k++){var ph=((k*.37+age*.55)%1),pr=((k*.6180339)%1),ax=(pr-.5)*2*g.r*.9,ay=((k*.43)%1-.5)*2*g.r*.7;   /* streak k: starts upwind, slides downwind across the field */
       var cx=g.x-g.dx*g.r*.8+g.dx*ph*g.r*1.6+(-g.dz)*ax*.0+(-g.dz)*ay*.55,cz=g.z-g.dz*g.r*.8+g.dz*ph*g.r*1.6+(g.dx)*ay*.55,yy=.04+((k*.29)%1)*.34,len=g.r*.3;
       pos.setXYZ(n*2,cx,yy,cz);pos.setXYZ(n*2+1,cx+g.dx*len,yy,cz+g.dz*len);n++;}});
@@ -2015,21 +2016,20 @@ function arsView(){if(!V.on||SG.mode!=='lab')return;if(!V.ars)arsViewInit();var 
   A.string.visible=m>0;A.string.geometry.setDrawRange(0,m*2);sp.needsUpdate=true;}
 function arsViewHide(){var A=V.ars;if(!A)return;A.rings.forEach(function(r){r.visible=false;});A.streaks.visible=false;A.string.visible=false;}
 /* ---- screenshots: arsenal-1 to arsenal-8, one weapon in action each, two of them showing a counter ---- */
-SG.arsShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab;L.card=false;L.panel=false;L.read=true;L.topple=false;SG.setProto('arsenal',true,false);SG.cam=3;L.tool='gun';SG.sides.forEach(function(sd){sd.hold=true;});
+SG.arsShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab;L.card=false;L.panel=false;L.read=true;L.topple=false;SG.setProto('arsenal',true,false);SG.cam=3;L.tool='gun';
   var Y=arsLayout();function aimAt(id){var f=ARS_FAMS.concat(ARS_EXTRA).filter(function(q){return q.id===id;})[0],a=f.aim(Y),w=w2(1,a[0],a[1]);return {f:f,x:w[0],z:w[1]};}
-  function focus(zoom,y,dx,dz){var ps=SG.pieces.filter(function(q){return q.side===1;}),fx=0,fz=0;ps.forEach(function(q){fx+=q.x;fz+=q.z;});L.focus={x:fx/ps.length+(dx||0),z:fz/ps.length+(dz||0),zoom:zoom,y:y||0};SG.camSnap=true;}
-  function fire(id,camp,seed,until,after){labLoadTarget('ars_'+camp,true);var q=aimAt(id);L.ammo=q.f.ammo;L.high=!!q.f.high;SG.sides.forEach(function(sd){sd.ammo=q.f.ammo;sd.high=!!q.f.high;});L.gunAim={tx:q.x,tz:q.z};var a=SG.labFire(0,'gun',q.x,q.z,{force:true,seed:seed});
-    for(var i=0;i<900&&!until(a);i++)SG.step(STEP);for(i=0;i<(after||0);i++)SG.step(STEP);return a;}
+  function focus(cz,zoom,y,el,yaw,cx){L.focus={x:cx||0,z:-cz,zoom:zoom,y:y||0,el:el,yaw:yaw||0};SG.camSnap=true;}   /* cz: how far along the target camp (its Keep is at 2.55) */
+  function load(camp,id){labLoadTarget('ars_'+camp,true);var q=aimAt(id);L.ammo=q.f.ammo;L.high=!!q.f.high;SG.sides.forEach(function(sd){sd.ammo=q.f.ammo;sd.high=!!q.f.high;});L.gunAim={tx:q.x,tz:q.z};return q;}
+  function fire(camp,id,seed,until,after){var q=load(camp,id),a=SG.labFire(0,'gun',q.x,q.z,{force:true,seed:seed});for(var i=0;i<900&&!until(a);i++)SG.step(STEP);for(i=0;i<(after||0);i++)SG.step(STEP);return a;}
   var landed=function(){return !!(L.cur&&L.cur.landings.length);};
-  if(name==='arsenal-1-lobber'){fire('lobber','bare',5,landed,14);focus(.62,.2,0,.15);}
-  else if(name==='arsenal-2-flinger'){fire('flinger','bare',5,function(a){return a&&a.pn>0;},3);focus(.55,.1,0,.55);}
-  else if(name==='arsenal-3-roller'){fire('roller','bare',5,function(a){return a&&a.rolling&&a.rl&&a.rl.n>=3;},4);focus(.62,.1,0,.1);}
-  else if(name==='arsenal-4-popper'){fire('popper','bare',5,function(a){return SG.marbles.filter(function(m){return m.t>m.T+.05;}).length>=5;},10);focus(.62,.1,0,.1);}
-  else if(name==='arsenal-5-hook'){fire('hook','bare',5,function(a){return a&&a.snag;},12);focus(.62,.15,0,.4);}
-  else if(name==='arsenal-6-thumper'){fire('thumper','bare',5,landed,10);focus(.6,.1,0,.1);}
-  else if(name==='arsenal-7-fan-and-heavy'){fire('fan','all',5,landed,70);focus(.62,.2,0,.1);}
-  else if(name==='arsenal-8-shield-and-ditch'){labLoadTarget('ars_all',true);var q2=aimAt('flinger');L.ammo='flinger';SG.sides.forEach(function(sd){sd.ammo='flinger';});L.gunAim={tx:q2.x,tz:q2.z};SG.labFire(0,'gun',q2.x,q2.z,{force:true,seed:5});SG.labSettle(10);
-    L.ammo='roller';SG.sides.forEach(function(sd){sd.ammo='roller';});var q3=aimAt('roller');SG.labFire(0,'gun',q3.x,q3.z,{force:true,seed:6});SG.labSettle(10);SG.step(.3);focus(.6,.1,0,.5);}
+  if(name==='arsenal-1-lobber'){fire('roof','lobber',5,landed,16);focus(2.25,.5,.1,.62,.55);}
+  else if(name==='arsenal-2-flinger'){fire('bare','flinger',5,function(a){return a&&a.pn>0;},4);focus(2.2,.42,.05,.45,.8);}
+  else if(name==='arsenal-3-roller'){fire('ground','roller',5,function(a){return a&&a.rl&&a.rl.stopped;},10);focus(1.9,.45,.05,.55,.6);}
+  else if(name==='arsenal-4-popper'){fire('net','popper',5,function(a){return SG.stats.caught>=4;},6);focus(2.3,.45,.15,.6,.5);}
+  else if(name==='arsenal-5-hook'){fire('bare','hook',5,function(a){return a&&a.snag;},14);focus(1.4,.55,.25,.5,.45);}
+  else if(name==='arsenal-6-thumper'){fire('bare','thumper',5,landed,12);focus(2.25,.5,.1,.6,.4);}
+  else if(name==='arsenal-7-fan-and-heavy'){fire('all','fan',5,landed,80);focus(2.4,.5,.15,.6,.5);}
+  else if(name==='arsenal-8-shield-and-ditch'){load('all','flinger');var q2=aimAt('flinger');SG.labFire(0,'gun',q2.x,q2.z,{force:true,seed:5});SG.labSettle(10);L.ammo='roller';SG.sides.forEach(function(sd){sd.ammo='roller';});var q3=aimAt('roller');SG.labFire(0,'gun',q3.x,q3.z,{force:true,seed:6});SG.labSettle(10);SG.step(.3);focus(2.1,.62,.1,.8,.5);}
   SG.step(.2);if(hasDom)labUi();};
 
 /* ---- the range report: every kind of ammunition, in turn, at a fresh copy of the target ---- */
