@@ -28,6 +28,7 @@ var CONFIG={
     mendTime:12,redWalk:1.05,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
     raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's interval times this (1: the same for both); reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
+    frameR:.07,                                 /* a wall or gate that is only a bare frame stops a flat shot only this near a post (scale 1) */
     fallReach:.2,chainReach:.13,chainThrow:.42, /* a landing part makes mice this near dizzy, and knocks an attached part this near if it was thrown at least this far */
     collapseReach:.25,slowMo:.4,keepFall:2.4,   /* a collapse makes mice this near the piece dizzy; slow-motion seconds; seconds a Keep takes to fall before the win card */
     points:12,cost:{tower:0,wall:1,gate:1,brace:1,lobber:5,workshop:2,tent:1,trap:2},   /* the build budget; the first lobber is free, a second costs 5 (it was 3 before it fired on its own: at 3 a bot with two lobbers won 78 to 85% against one with one) */
@@ -43,30 +44,53 @@ var CONFIG={
     botRetarget:4,                              /* seconds between a bot's looks at its plan */
     botGlue:3,bouncerBias:1                     /* the bot throws Glue when this many fallen parts and menders (with at least one mender among them) lie within one splash; its Bouncer shots are worth this times what the blast would take off */
   },
+  /* ---- the Lab's Weapon Workshop, carnage tools and big targets. Lab only: no match ever reads this block. ---- */
+  workshop:{
+    caps:{blast:[0,.6],hiMul:[.2,1],falloff:[0,2],cap:[0,12],speed:[.5,2],arcMul:[.5,2.5],bounces:[0,3],hop:[.3,1.4],hopH:[.2,1.2],hopT:[.3,.8],scatter:[1,8],spread:[0,.8],fuse:[0,2],stick:[0,20],splash:[0,.5],slowTo:[.2,1],slowSecs:[0,10],puddle:[0,12],dizzyR:[-1,.6],dizzySecs:[0,8],tether:[0,6],yank:[.1,1],quake:[0,1.2],roll:[0,3],cd:[0,12]},   /* the safe range of every parameter: [least, most]. A weapon outside them is clamped, never refused. dizzyR -1 = the same as the blast */
+    decay:.75,                                  /* each further bounce is this much shorter and lower */
+    hookR:.1,hookY:.45,                         /* tether: how near a part the marble must pass (across, and up and down) to snag it */
+    rollSpeed:1.6,rollR:.07,rollBase:.3,rollEvery:.14,rollMax:8,   /* roller: units a second, how near a part it must be, the highest part it can knock (its base), seconds between knocks, most knocks */
+    price:{blast:10,leg:1,legForce:2,speed:1,arc:1.5,bounce:1.5,scatter:.45,fuse:.4,stick:.1,slow:.5,puddle:.1,splash:4,dizzy:4,dizzySecs:.15,tether:2,tetherLen:.15,yank:2,quake:3,roll:1.2,cd:.15,floor:.5},   /* the budget points of a weapon: see wPrice */
+    topple:{max:8,reach:1.1,hit:3,throwFar:.12},   /* chain reactions (Lab option): most topples a shot can start; how far a falling piece reaches (times its height); parts it knocks off what it falls on; how far they fly */
+    rate:{salvo:5,single:1,salvoShare:.3,parts:1,collapse:4,keep:15,dizzy:.5,little:.25,likeLo:.8,likeHi:1.25,much:1.5},   /* Rate it: shots in a salvo; how much a salvo counts beside a single shot; the points of each result; the verdict thresholds (shares of a Marble's and a Big Marble's score) */
+    carnage:{part:1,collapse:5,keep:25,chain:3,dizzy:.5},   /* the carnage score: points for each part off, collapse, Keep felled, step of chain beyond the first, mouse dizzy */
+    fx:{shake:.14,shakeMax:2.4,slow:.06,slowBase:.15,slowMax:1.4,slowFrom:3},   /* screen shake and slow-motion beat per part that falls at once */
+    debrisMax:160,debrisSecs:3                  /* most fallen parts left lying; seconds before they vanish when "Leave debris" is off */
+  },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
   levels:{easy:{err2:.2,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.12,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.06,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
 };
-var PI=Math.PI,STEP=1/60,PS=.88,SCALES={small:.58,medium:.72,large:.88},RULES=CONFIG,LEVELS=CONFIG.levels,C2=CONFIG.v2;
+var PI=Math.PI,STEP=1/60,PS=.88,SCALES={small:.58,medium:.72,large:.88},RULES=CONFIG,LEVELS=CONFIG.levels,C2=CONFIG.v2,C3=CONFIG.workshop,chainDepth=0;
 function V2(){return SG.rules!==1;}
 /* v2 distances are written for piece scale 0.88 and follow the pieces */
 function U(){return PS/.88;}
-/* ---- ammunition. One entry per kind: add an entry here (and its numbers in CONFIG.v2) and it shows up in the ammo row, the aim ring and the bots' reach.
-   name, icon: the button. tint: the ball's colour ('team' = the firing team's). store: a count on the side that the hill fills (Big Marble). cd: seconds before the next, from CONFIG (none = no wait).
-   flat: always the low arc (too heavy to lob). R(high): the blast or splash radius at piece scale 1. noLeg: never breaks a Keep leg. bounce: a CONFIG block; the ball hops on past its first touchdown.
-   land(a,pos,hit): what happens where it comes down, if it is not an ordinary blast. fire(s,a,li): extra things it throws when it leaves the lobber. ---- */
+/* ---- ammunition. One entry per kind, and each entry carries a weapon record, w: a plain list of numbers. Add an entry here and it shows up in the ammo row, the aim ring and the bots' reach.
+   name, icon, short, tint: the button and the ball's colour ('team' = the firing team's, 'cork' = a cork). store: a count on the side that the hill fills (Big Marble). scale: the ball's size.
+   w (distances at piece scale 1, seconds): blast (radius, 0 = none) hiMul (blast share when lobbed high) falloff (1 = as in a match; 0 = every part flies as far as the nearest; 2 = the edge barely moves) cap (most parts one landing takes off, 0 = no limit)
+   leg (can break a Keep leg) legForce (breaks the nearest leg outright, braced or not) flat (too heavy to lob) speed (flight speed, 1 = usual) arcMul (arc height) arc ([a,b] own arc) bounces (0 to 3) hop, hopH, hopT (each hop: distance, height, seconds)
+   popEach (a blast at every touchdown) scatter (balls thrown, 1 to 8) spread (how far they scatter) fuse (seconds before it pops after landing) stick (seconds a glued part cannot be mended) splash (radius of stick, slow and puddle)
+   slowTo, slowSecs (mice in the splash walk at this share of their speed, for this long) puddle (seconds the puddle stays) dizzyR (mice this near go dizzy; -1 = the blast radius) dizzySecs (0 = the usual) tether (0, or the string's reach), yank (how far a snagged part is dragged to the shooter)
+   quake (radius: parts held by one fastener fall) roll (distance it rolls on after landing) cd (seconds before the next of this kind). The five that matches use read their numbers from CONFIG.v2, so a prototype that changes CONFIG still works. Where they land is the code below, the same for every record. ---- */
+var WDEF={blast:0,hiMul:1,falloff:1,cap:0,leg:false,legForce:false,flat:false,speed:1,arcMul:1,arc:null,bounces:0,hop:.9,hopH:.7,hopT:.5,popEach:false,scatter:1,spread:.42,fuse:0,stick:0,splash:0,slowTo:1,slowSecs:0,puddle:0,dizzyR:-1,dizzySecs:0,tether:0,yank:.5,quake:0,roll:0,cd:0};
+/* a record: the defaults, then plain numbers, then numbers that follow CONFIG (a getter; setting one turns it into a plain number) */
+function wRec(over,live){var w={},k;for(k in WDEF)w[k]=WDEF[k];for(k in over)w[k]=over[k];
+  if(live)Object.keys(live).forEach(function(k2){Object.defineProperty(w,k2,{enumerable:true,configurable:true,get:live[k2],set:function(v){Object.defineProperty(w,k2,{value:v,writable:true,enumerable:true,configurable:true});}});});return w;}
 var AMMO={
-  marble:{name:'Marble',icon:'🔵',short:'Marble',tint:'team',R:function(hi){return C2.blast*(hi?C2.highBlast:1);}},
-  big:{name:'Big Marble',icon:'⚫',short:'Big',tint:0x2a2a30,store:'big',flat:true,scale:2,R:function(){return C2.bigBlast;}},
-  corks:{name:'Corks',icon:'🍾',short:'Corks',tint:'cork',cd:function(){return C2.corkCd;},scale:.8,R:function(){return C2.corkSpread;}},
-  bouncer:{name:'Bouncer',icon:'🏀',short:'Bounce',tint:0xff7a2e,cd:function(){return C2.bouncer.cd;},flat:true,noLeg:true,bounce:function(){return C2.bouncer;},R:function(){return C2.bouncer.blast;}},
-  glue:{name:'Glue blob',icon:'🍯',short:'Glue',tint:0x86d23c,cd:function(){return C2.glue.cd;},scale:1.4,R:function(){return C2.glue.reach;}}
+  marble:{name:'Marble',icon:'🔵',short:'Marble',tint:'team',w:wRec({leg:true},{blast:function(){return C2.blast;},hiMul:function(){return C2.highBlast;}})},
+  big:{name:'Big Marble',icon:'⚫',short:'Big',tint:0x2a2a30,store:'big',scale:2,w:wRec({flat:true,leg:true,legForce:true},{blast:function(){return C2.bigBlast;}})},
+  corks:{name:'Corks',icon:'🍾',short:'Corks',tint:'cork',scale:.8,w:wRec({},{scatter:function(){return C2.corkCount;},spread:function(){return C2.corkSpread;},dizzyR:function(){return C2.corkHit;},cd:function(){return C2.corkCd;}})},
+  bouncer:{name:'Bouncer',icon:'🏀',short:'Bounce',tint:0xff7a2e,w:wRec({flat:true,bounces:1,dizzyR:-1},{blast:function(){return C2.bouncer.blast;},hop:function(){return C2.bouncer.hop;},hopH:function(){return C2.bouncer.hopH;},hopT:function(){return C2.bouncer.hopT;},arc:function(){return C2.bouncer.arc;},speed:function(){return 1/C2.bouncer.slow;},cd:function(){return C2.bouncer.cd;}})},
+  glue:{name:'Glue blob',icon:'🍯',short:'Glue',tint:0x86d23c,scale:1.4,w:wRec({dizzyR:0},{splash:function(){return C2.glue.reach;},stick:function(){return C2.glue.lock;},slowTo:function(){return C2.glue.slowTo;},slowSecs:function(){return C2.glue.slow;},puddle:function(){return C2.glue.puddle;},cd:function(){return C2.glue.cd;}})}
 };
 var AMMO_ORDER=['marble','big','corks','bouncer','glue'];
-function ammoR(id,hi){var A=AMMO[id]||AMMO.marble;return A.R(hi)*U();}
-function ammoReady(side,id){var A=AMMO[id];if(!A)return false;if(A.store)return (side[A.store]||0)>0;if(A.cd)return !((side.cd[id]||0)>0);return true;}
-function ammoSpend(side,id){var A=AMMO[id];if(A.store)side[A.store]--;else if(A.cd)side.cd[id]=A.cd();}
+/* the ring a shot is drawn with: the blast, or the scatter, or the splash */
+function ammoR(id,hi){var W=(AMMO[id]||AMMO.marble).w,r=W.blast>0?W.blast*(hi?W.hiMul:1):(W.scatter>1?W.spread:W.splash);return r*U();}
+function ammoReady(side,id){var A=AMMO[id];if(!A)return false;if(A.store)return (side[A.store]||0)>0;if(A.w.cd>0)return !((side.cd[id]||0)>0);return true;}
+function ammoSpend(side,id){var A=AMMO[id];if(A.store)side[A.store]--;else if(A.w.cd>0)side.cd[id]=A.w.cd;}
+/* how far a ball with n bounces travels after its first touchdown (scale 1) */
+function bounceTotal(W){var t=0;for(var i=0;i<(W.bounces|0);i++)t+=W.hop*Math.pow(C3.decay,i);return t;}
 /* the words on an ammo button: "Marble ∞", "Big Marble ×2", "Corks (ready in 5 s)" */
-function ammoCount(side,id){var A=AMMO[id];if(A.store)return '×'+(side[A.store]||0);if(A.cd&&(side.cd[id]||0)>0)return '(ready in '+Math.ceil(side.cd[id])+' s)';return '∞';}
+function ammoCount(side,id){var A=AMMO[id];if(A.store)return '×'+(side[A.store]||0);if(A.w.cd>0&&(side.cd[id]||0)>0)return '(ready in '+Math.ceil(side.cd[id])+' s)';return '∞';}
 function ammoLabel(side,id){return AMMO[id].name+' '+ammoCount(side,id);}
 /* a short string that changes whenever any ammo count or wait changes, so the buttons are redrawn */
 function ammoKey(side){return AMMO_ORDER.map(function(id){return ammoCount(side,id);}).join(',')+'|'+side.ammo+'|'+side.lsel;}
@@ -209,7 +233,7 @@ function sideCompat(side,s){Object.defineProperty(side,'reload',{enumerable:fals
   Object.defineProperty(side,'corkCd',{enumerable:false,configurable:true,get:function(){return side.cd.corks||0;},set:function(v){side.cd.corks=v;}});}
 function newStats(){return {dmg:{},ammoShots:{},glued:0,bounces:0,events:0,lastEvent:0,longestGap:0,last:null,partsOff:0,partsMended:0,dizzies:0,dazes:0,hillFlips:0,shots:0,corks:0,stuck:0,noPath:0,ownHits:0,sightBlocked:0,collapses:0,keepDown:false,raidPulls:0,guardCorks:0,trapped:0,chain:0,fightTime:0,bySide:[{shots:0,dizzied:0,partsLost:0,hillSecs:0,blocked:0},{shots:0,dizzied:0,partsLost:0,hillSecs:0,blocked:0}]};}
 SG.start=function(team,opts){
-  viewClear();opts=opts||{};if(opts.mode==='lab')opts.rules=2;SG.opts=opts;SG.rules=opts.rules===1||(opts.rules==null&&SG.rulesDefault===1)?1:2;SG.pieceSize=SCALES[opts.pieces]?opts.pieces:(SG.rules===1?'large':(SG.piecesDefault||CONFIG.pieceScale));setScale(SCALES[SG.pieceSize]);SG.debris=[];SG.slowT=0;SG.shake=0;SG.fallWinner=-1;SG.att=0;SG.mode=opts.mode==='table'?'table':(opts.mode==='lab'?'lab':'solo');if(SG.mode==='lab')SG.rules=2;SG.team=SG.mode==='table'||SG.mode==='lab'?'blue':(team==='red'?'red':'blue');SG.level=LEVELS[opts.level]?opts.level:(SG.level||'easy');
+  viewClear();opts=opts||{};if(opts.mode==='lab')opts.rules=2;SG.opts=opts;SG.rules=opts.rules===1||(opts.rules==null&&SG.rulesDefault===1)?1:2;SG.pieceSize=SCALES[opts.pieces]?opts.pieces:(SG.rules===1?'large':(SG.piecesDefault||CONFIG.pieceScale));setScale(SCALES[SG.pieceSize]);SG.debris=[];SG.fuses=[];SG.topN=0;SG.lastDir=null;chainDepth=0;SG.slowT=0;SG.shake=0;SG.fallWinner=-1;SG.att=0;SG.mode=opts.mode==='table'?'table':(opts.mode==='lab'?'lab':'solo');if(SG.mode==='lab')SG.rules=2;SG.team=SG.mode==='table'||SG.mode==='lab'?'blue':(team==='red'?'red':'blue');SG.level=LEVELS[opts.level]?opts.level:(SG.level||'easy');
   SG.phase='build';SG.time=CONFIG.build;SG.round=0;SG.pieces=[];SG.mice=[];SG.marbles=[];SG.corks=[];SG.pops=[];SG.puddles=[];SG.clock=0;SG.acc=0;SG.nextId=1;SG.seed=((opts.seed||12345)*48271+11)%2147483647||7;for(var w0=0;w0<6;w0++)rand();   /* stir the seed, so near seeds do not give near first numbers */
   SG.callout={text:'',t:0};SG.winner=-1;SG.holder=-1;SG.lastHolder=null;SG.cand=-1;SG.candT=0;SG.lastKnock=null;SG.lastHit=null;SG.stats=newStats();SG.sec=0;
   SG.sides=[];gridDirty=true;
@@ -421,7 +445,11 @@ function crewReady(s,li){var l=lobberOf(s,li),m=crewMouse(l);if(!l||!m)return fa
 SG.lobberBlock=function(s,li){var l=lobberOf(s,li),side=SG.sides[s];if(!l)return 'none';if(V2()&&!lobberWorks(l))return 'broken';if(V2()&&!ammoReady(side,side.ammo))return AMMO[side.ammo].store?'no'+side.ammo:side.ammo;if(!partOn(l,'lobber.crank')||!partOn(l,'lobber.bucket'))return 'broken';if(!crewOK(s,li))return 'crew';if((l.reload||0)>0)return 'winding';return '';};
 /* which piece a point in the air would hit (any side's, but not the lobber that fired) */
 function pieceAt(x,y,z,skip){for(var j=0;j<SG.pieces.length;j++){var p=SG.pieces[j];if(p.id===skip||!p.built||y>TALL[p.kind])continue;if(p.total&&p.parts<=0)continue;var qx=x-p.x,qz=z-p.z;if(qx*qx+qz*qz>.6)continue;
-    var f=FOOT[p.kind],l=toLocal(p,x,z);if(Math.abs(l[0])<f[0]+.03&&Math.abs(l[1])<f[1]+.05)return p;}return null;}
+    var f=FOOT[p.kind],l=toLocal(p,x,z);if(Math.abs(l[0])<f[0]+.03&&Math.abs(l[1])<f[1]+.05){if(bareFrame(p)&&!nearFrame(p,x,z))continue;return p;}}return null;}
+/* A wall or gate that has lost every plank, rail, door and lintel is only a frame (posts, and a gate's braces): a flat shot passes between them and stops only where a post stands. Anything with a plank, rail, door or lintel left still stops a shot as it always did. */
+function bareFrame(p){if(p.kind!=='wall'&&p.kind!=='gate')return false;var re=p.kind==='wall'?/plank|rail/:/lintel|door/;for(var i=0;i<p.ps.length;i++)if(p.ps[i].st==='on'&&re.test(p.ps[i].id))return false;return true;}
+function nearFrame(p,x,z){var r=C2.frameR*U();for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st==='on'&&dist(q.wx,q.wz,x,z)<r)return true;}return false;}
+SG.pieceAt=pieceAt;
 function marblePos(a,k){return [a.x0+(a.x1-a.x0)*k,a.y0*(1-k)+4*a.h*k*(1-k),a.z0+(a.z1-a.z0)*k];}
 /* where between two points of its flight a marble first touches a piece, so the spot shown, the spot the bot reckons with and the real landing agree */
 function entryK(a,k0,k1,skip){for(var i=0;i<8;i++){var km=(k0+k1)/2,q=marblePos(a,km);if(pieceAt(q[0],q[1],q[2],skip))k1=km;else k0=km;}return k1;}
@@ -429,37 +457,41 @@ function entryK(a,k0,k1,skip){for(var i=0;i<8;i++){var km=(k0+k1)/2,q=marblePos(
 /* the first piece a flight touches, from k0 on: {piece, side, own, x, y, z} or null */
 function scanArc(a,s,skip,k0){for(var k=k0;k<=1.0001;k+=.02){var pos=marblePos(a,Math.min(1,k)),p=pieceAt(pos[0],pos[1],pos[2],skip);if(p){if(V2()){k=entryK(a,k-.02,Math.min(1,k),skip);pos=marblePos(a,k);p=pieceAt(pos[0],pos[1],pos[2],skip)||p;}return {piece:p.id,side:p.side,own:p.side===s,k:k,x:pos[0],y:pos[1],z:pos[2]};}}return null;}
 /* a.fx, a.fz: where it finally comes down if nothing is in the way. A bouncing ball (a.next) lands first at a.x1,a.z1, then hops on to a.fx,a.fz. */
-SG.arc=function(s,tx,tz,li){var l=lobberOf(s,li);if(!l)return null;var side=SG.sides[s],A=V2()?AMMO[side.ammo]:null,bn=A&&A.bounce?A.bounce():null,hop=bn?bn.hop*U():0,dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz),mx=6.2,mn=.7+hop;
+SG.arc=function(s,tx,tz,li){var l=lobberOf(s,li);if(!l)return null;var side=SG.sides[s],A=V2()?AMMO[side.ammo]:null,W=A?A.w:null,nb=W?(W.bounces|0):0,hop=nb?bounceTotal(W)*U():0,dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz),mx=6.2,mn=.7+hop;
   if(d>mx){tx=l.x+dx/d*mx;tz=l.z+dz/d*mx;d=mx;}else if(d<mn&&d>0){tx=l.x+dx/d*mn;tz=l.z+dz/d*mn;d=mn;}
-  var rr=Math.sqrt(tx*tx+tz*tz);if(rr>3.2){tx*=3.2/rr;tz*=3.2/rr;if(bn)d=Math.sqrt((tx-l.x)*(tx-l.x)+(tz-l.z)*(tz-l.z));}
-  var hi=V2()&&side.high&&!(A&&A.flat),ar=bn?bn.arc:(V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2]),fx=tx,fz=tz,ux=d>0?(tx-l.x)/d:0,uz=d>0?(tz-l.z)/d:1;
-  if(bn){d-=hop;tx=fx-ux*hop;tz=fz-uz*hop;}
-  var a={x0:l.x,y0:.42*U(),z0:l.z,x1:tx,z1:tz,h:ar[0]*U()+d*ar[1],T:(.65+d*.17)*(bn?bn.slow:(hi?1.35:1)),from:l.id,hit:null,high:!!hi,fx:fx,fz:fz,li:li==null?side.lsel:li};
+  var rr=Math.sqrt(tx*tx+tz*tz);if(rr>3.2){tx*=3.2/rr;tz*=3.2/rr;if(nb)d=Math.sqrt((tx-l.x)*(tx-l.x)+(tz-l.z)*(tz-l.z));}
+  var hi=V2()&&side.high&&!(W&&W.flat),ar=W&&W.arc?W.arc:(V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2]),fx=tx,fz=tz,ux=d>0?(tx-l.x)/d:0,uz=d>0?(tz-l.z)/d:1;
+  if(nb){d-=hop;tx=fx-ux*hop;tz=fz-uz*hop;}
+  var a={x0:l.x,y0:.42*U(),z0:l.z,x1:tx,z1:tz,h:(ar[0]*U()+d*ar[1])*(W?W.arcMul:1),T:(.65+d*.17)*(hi?1.35:1)/(W?W.speed:1),from:l.id,hit:null,high:!!hi,fx:fx,fz:fz,li:li==null?side.lsel:li};
   labProto('arc',a,s);
   a.k0=li==='gun'?.3:.12;   /* the Lab's free gun sits on the table's rim and clears the first third of its flight, so it shoots over your own camp */
   a.hit=scanArc(a,s,l.id,a.k0);
-  if(bn&&!a.hit){var b2={x0:tx,y0:.02,z0:tz,x1:fx,z1:fz,h:bn.hopH*U(),T:bn.hopT,from:l.id,hit:null,high:false};b2.hit=scanArc(b2,s,l.id,.03);a.next=b2;a.hit=b2.hit;}
+  /* a bouncing ball: a chain of hops after the first touchdown, each shorter and lower; the chain stops at the first piece one of them meets */
+  if(nb&&!a.hit){var prev=a,sx=tx,sz=tz;for(var bi=0;bi<nb;bi++){var hp=W.hop*U()*Math.pow(C3.decay,bi),ex=bi===nb-1?fx:sx+ux*hp,ez=bi===nb-1?fz:sz+uz*hp,b2={x0:sx,y0:.02,z0:sz,x1:ex,z1:ez,h:W.hopH*U()*Math.pow(C3.decay,bi),T:W.hopT*Math.pow(C3.decay,bi*.5),from:l.id,hit:null,high:false};
+      b2.hit=scanArc(b2,s,l.id,.03);prev.next=b2;prev=b2;sx=ex;sz=ez;if(b2.hit){a.hit=b2.hit;break;}}}
   return a;};
 SG.fire=function(s,tx,tz,li){var side=SG.sides[s];if(li==null)li=side.lsel||0;if(SG.phase!=='fight'||SG.lobberBlock(s,li))return null;var a=SG.arc(s,tx,tz,li);if(!a)return null;var l=lobberOf(s,li);
-  if(V2()){a.ammo=side.ammo;var A=AMMO[a.ammo];ammoSpend(side,a.ammo);SG.stats.ammoShots[a.ammo]=(SG.stats.ammoShots[a.ammo]||0)+1;if(A.fire)A.fire(s,a,li);
+  if(V2()){a.ammo=side.ammo;var A=AMMO[a.ammo],W=A.w;ammoSpend(side,a.ammo);SG.stats.ammoShots[a.ammo]=(SG.stats.ammoShots[a.ammo]||0)+1;a.tw=W.tether>0?W.tether*U():0;a.sx=a.x0;a.sz=a.z0;
+    /* a scatter: more balls thrown round the aimed spot, each a shot of its own */
+    for(var ci2=1;ci2<W.scatter;ci2++){var an=ci2/(W.scatter-1)*PI*2+rand(),rd=W.spread*U()*(.45+rand()*.55),c2=SG.arc(s,a.x1+Math.cos(an)*rd,a.z1+Math.sin(an)*rd,li);c2.id=SG.nextId++;c2.side=s;c2.t=-ci2*.04;c2.live=true;c2.ammo=a.ammo;c2.tw=a.tw;c2.sx=a.sx;c2.sz=a.sz;SG.marbles.push(c2);}
     if(a.ammo!=='marble'&&!(A.store&&side[A.store]>0))side.ammo='marble';}
   snd('twang');a.id=SG.nextId++;a.side=s;a.t=0;a.live=true;SG.marbles.push(a);l.reload=V2()?C2.reload:CONFIG.reload;l.fired=SG.clock;SG.stats.shots++;SG.stats.bySide[s].shots++;event('shot',s);
   l.aim=Math.atan2(a.x1-l.x,a.z1-l.z);return a;};
-/* corks: four more corks thrown round the aimed spot, as marbles of their own */
-AMMO.corks.fire=function(s,a,li){for(var ci2=1;ci2<C2.corkCount;ci2++){var an=ci2/(C2.corkCount-1)*PI*2+rand(),rd=C2.corkSpread*U()*(.45+rand()*.55),c2=SG.arc(s,a.x1+Math.cos(an)*rd,a.z1+Math.sin(an)*rd,li);c2.id=SG.nextId++;c2.side=s;c2.t=-ci2*.04;c2.live=true;c2.ammo='corks';SG.marbles.push(c2);}};
 function knock(p,i,dx,dz,by,far){var q=p.ps[i];if(!q||q.st!=='on')return false;var l=Math.sqrt(dx*dx+dz*dz)||1,f=far==null?.28+rand()*.3:far*(.85+rand()*.3),lat=(rand()-.5)*.3;
-  q.st=V2()&&q.used?'gone':'off';if(V2()){SG.debris.push({t:SG.clock+.72,x:0,z:0,far:f,pid:p.id,i:i});}
+  q.st=V2()&&q.used?'gone':'off';if(V2()){SG.debris.push({t:SG.clock+.72,x:0,z:0,far:f,pid:p.id,i:i,dep:chainDepth+(by==='collapse'?1:0)});}
   q.t0=SG.clock;q.rx=q.wx+dx/l*f-dz/l*lat;q.rz=q.wz+dz/l*f+dx/l*lat;var rr=Math.sqrt(q.rx*q.rx+q.rz*q.rz);if(rr>3.05){q.rx*=3.05/rr;q.rz*=3.05/rr;}
   snd('knock');q.mender=-1;p.parts--;SG.stats.partsOff++;SG.stats.bySide[p.side].partsLost++;if(V2()&&SG.att!=null){var cz=SG.cause||'other',dd=SG.stats.dmg[cz]||(SG.stats.dmg[cz]=[0,0]);dd[SG.att?1:0]+=partWorth(p);}   /* the score value of what each kind of shot took off, by who fired it */gridDirty=true;event('part',p.side,q.id);if(!V2()||SG.clock-(SG.popT||-9)>.35){SG.popT=SG.clock;pop(q.wx,q.wz,partName(q.id)+' off!',false,q.wy+.15);}viewFlash(q.wx,q.wy,q.wz);if(V2())SG.debris[SG.debris.length-1].x=q.rx,SG.debris[SG.debris.length-1].z=q.rz;SG.lastKnock={piece:p.id,part:q.id,by:by||'',t:SG.clock};if(SG.mode==='lab')labNote('part',p,q);return true;}
 function nearestPart(p,x,y,z,flat){var best=-1,bd=1e9;p.ps.forEach(function(q,i){if(q.st!=='on')return;var d=(q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(flat?0:(q.wy-y)*(q.wy-y));if(d<bd){bd=d;best=i;}});return best;}
 function hitPiece(p,x,y,z,dx,dz){var i=nearestPart(p,x,y,z,false);if(i<0)return '';var id=p.ps[i].id;knock(p,i,dx,dz,'marble');return id;}
-function dizzy(m){if(m.state==='dizzy'||SG.phase==='over')return false;dropJob(m);m.state='dizzy';m.t=V2()&&standsOK(SG.sides[m.side].tent)?C2.tentDizzy:CONFIG.dizzy;m.speed=0;m.goal=false;m.daze=false;m.crewing=false;m.path=null;snd('twinkle');SG.stats.dizzies++;SG.stats.bySide[m.side].dizzied++;event('dizzy',m.side);return true;}
+function dizzy(m,secs){if(m.state==='dizzy'||SG.phase==='over')return false;dropJob(m);m.state='dizzy';m.t=secs>0?secs:(V2()&&standsOK(SG.sides[m.side].tent)?C2.tentDizzy:CONFIG.dizzy);m.speed=0;m.goal=false;m.daze=false;m.crewing=false;m.path=null;snd('twinkle');SG.stats.dizzies++;SG.stats.bySide[m.side].dizzied++;event('dizzy',m.side);return true;}
 function dropJob(m){if(m.part>=0){var p=pieceById(m.job),q=p&&p.ps[m.part];if(q){if(q.st==='carried'){q.st='off';q.rx=m.x;q.rz=m.z;q.t0=SG.clock-2;}q.mender=-1;}}m.job=0;m.part=-1;}
-function tickMarbles(dt){
+function tickMarbles(dt){tickFuses();
   for(var i=SG.marbles.length-1;i>=0;i--){var a=SG.marbles[i];a.t+=dt;
-    if(!a.live){if(a.t>a.T+.8)SG.marbles.splice(i,1);continue;}
+    if(a.rolling){rollTick(a,dt);continue;}
+    if(!a.live){if(a.t>a.T+.8&&!a.pend)SG.marbles.splice(i,1);continue;}
     if(a.t<0)continue;var k=Math.min(1,a.t/a.T),pos=marblePos(a,k),hit=k>(a.leg===2?.03:(a.k0||.12))?pieceAt(pos[0],pos[1],pos[2],a.from):null,part='',n=0,red=SG.sides[a.side].team==='red';
-    if(V2()){if(hit){var ke=entryK(a,Math.max(a.leg===2?.03:(a.k0||.12),(a.t-dt)/a.T),k,a.from);pos=marblePos(a,ke);hit=pieceAt(pos[0],pos[1],pos[2],a.from)||hit;}if(hit||k>=1)landV2(a,pos,hit);continue;}
+    if(V2()){if(a.tw>0&&!a.snag&&k>(a.k0||.12)){var sn=tetherFind(a,pos);if(sn){a.snag=sn;landV2(a,pos,sn.p);continue;}}   /* a tether snags the first part it passes */
+      if(hit){var ke=entryK(a,Math.max(a.leg===2?.03:(a.k0||.12),(a.t-dt)/a.T),k,a.from);pos=marblePos(a,ke);hit=pieceAt(pos[0],pos[1],pos[2],a.from)||hit;}if(hit||k>=1)landV2(a,pos,hit);continue;}
     if(hit){part=hitPiece(hit,pos[0],pos[1],pos[2],a.x1-a.x0,a.z1-a.z0);for(var e=1;e<(red?CONFIG.redParts:CONFIG.blueParts);e++)hitPiece(hit,pos[0],pos[1],pos[2],a.x1-a.x0,a.z1-a.z0);if(hit.side===a.side)SG.stats.ownHits++;}
     if(hit||k>=1){SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<CONFIG.blast&&dizzy(m))n++;});
       snd('thud');a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];SG.lastHit={id:a.id,side:a.side,x:pos[0],y:pos[1],z:pos[2],piece:hit?hit.id:0,own:!!hit&&hit.side===a.side,part:part,dizzied:n,t:SG.clock};viewPuff(pos[0],pos[2],1.2);}}
@@ -494,7 +526,7 @@ function pickCrew(s){var side=SG.sides[s],ls=lobbersOf(s);if(!ls.length){side.cr
 function normPlan(s){var side=SG.sides[s],pl=side.plan,tot=fieldCount(s),sum=pl.hill+pl.raid+pl.guard+pl.mend;
   while(sum>tot){if(pl.hill>0)pl.hill--;else{var big='',bn=0;ORDERS.forEach(function(o){if(pl[o]>bn){bn=pl[o];big=o;}});if(!big)break;pl[big]--;}sum--;}
   if(sum<tot)pl.hill+=tot-sum;}
-function slowOf(m){return V2()&&m.slowT>0?C2.glue.slowTo:1;}
+function slowOf(m){return V2()&&m.slowT>0?(m.slowK||C2.glue.slowTo):1;}
 function tickMice(dt){
   if(SG.mode==='lab'&&SG.lab&&!SG.lab.crew){lobbersOf(0).concat(lobbersOf(1)).forEach(function(l){l.crew=-1;});SG.sides[0].crew=SG.sides[1].crew=-1;SG.mice.forEach(function(m){m.crewing=false;});}else{pickCrew(0);pickCrew(1);}if(V2()){normPlan(0);normPlan(1);roles(0);roles(1);}
   SG.mice.forEach(function(m){
@@ -541,8 +573,8 @@ function setProp(b){var best=null,bd=.3*U();SG.pieces.forEach(function(q){if(q.s
 function trapsTick(){SG.pieces.forEach(function(p){if(p.kind!=='trap'||!p.built||p.sprung||p.parts<=0)return;for(var i=0;i<SG.mice.length;i++){var m=SG.mice[i];if(m.side===p.side||m.state==='dizzy')continue;
       if(dist(m.x,m.z,p.x,p.z)<C2.trapReach*U()){p.sprung=true;p.sprungT=SG.clock;SG.stats.trapped++;dizzy(m);pop(p.x,p.z,'BOING!',true,.3,p.side);event('trap',p.side);snd('twang');break;}}});}
 /* everything within reach of a hit comes off, the nearest thrown furthest. big: also breaks the nearest tower leg outright. half: a high lob, half the reach */
-function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry,hitId,kind){
-  var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1,noLeg=!!(kind&&AMMO[kind]&&AMMO[kind].noLeg);if(!dry){SG.att=att;SG.cause=kind||(big?'big':'marble');}
+function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry,hitId,kind,cap,fall){
+  var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1,noLeg=!!(kind&&AMMO[kind]&&!AMMO[kind].w.leg),plan=[],defer=cap>0&&!dry;if(!dry){SG.att=att;SG.cause=kind||(big?'big':'marble');}
   for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9,near=big&&p.kind==='tower'&&p.id===hitId;
     for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(noLeg&&q.cls===1)continue;if(near&&q.cls===1){if(d<ld){ld=d;leg=i;}continue;}if(d>R)continue;
       if(q.cls===1){if(d>R*C2.legSturdy||legBraced(p,q.id))continue;}else if(q.cls===3&&d>R*C2.sturdy)continue;else if(q.cls===2&&d>R*C2.braceSturdy)continue;hits.push([d,i]);}
@@ -554,8 +586,16 @@ function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry,hitId,kind){
       if(p.kind==='gate'&&posts&&onCount(p,/gate\.post/)-posts<2)v+=C2.collapsePts+w*2;
       val+=sg*v;continue;}
     hits.sort(function(a,b){return a[0]-b[0];});
-    hits.forEach(function(h){var q=this.ps[h[1]],ax=q.wx-x,az=q.wz-z,al=Math.sqrt(ax*ax+az*az)||1,k=1-h[0]/R;if(knock(this,h[1],ax/al*.6+dirx/dl,az/al*.6+dirz/dl,'marble',(C2.throwFar+(C2.throwNear-C2.throwFar)*k)*U()))n++;},p);touched.push(p);}
-  if(dry)return val;touched.forEach(function(p){settle(p,att);});return n;}
+    if(defer){plan.push({p:p,hits:hits});continue;}   /* a capped weapon first sees every part in reach, then takes the nearest */
+    hits.forEach(function(h){blastKnock(this,h,x,z,R,dirx,dirz,dl,fall)&&n++;},p);touched.push(p);}
+  if(dry)return val;
+  if(defer){var all=[];plan.forEach(function(e){e.hits.forEach(function(h){all.push([h[0],h]);});});all.sort(function(a,b){return a[0]-b[0];});var keepH=all.slice(0,cap).map(function(e){return e[1];});
+    plan.forEach(function(e){e.hits.forEach(function(h){if(keepH.indexOf(h)>=0&&blastKnock(e.p,h,x,z,R,dirx,dirz,dl,fall))n++;});touched.push(e.p);});}
+  touched.forEach(function(p){settle(p,att);});return n;}
+/* one part of a blast comes off, thrown away from the centre; the nearest fly furthest (fall: 1 = as in a match) */
+function blastKnock(p,h,x,z,R,dirx,dirz,dl,fall){var q=p.ps[h[1]],ax=q.wx-x,az=q.wz-z,al=Math.sqrt(ax*ax+az*az)||1,k=1-h[0]/R,
+  th=fall==null||fall===1?(C2.throwFar+(C2.throwNear-C2.throwFar)*k):Math.max(.03,C2.throwNear-(C2.throwNear-C2.throwFar)*fall*(1-k));
+  return knock(p,h[1],ax/al*.6+dirx/dl,az/al*.6+dirz/dl,'marble',th*U());}
 function dropAll(p,re,att){var n=0,sgn=p.side?1:-1;p.ps.forEach(function(q,i){if(q.st==='on'&&re.test(q.id)){var a=rand()*PI*2;if(knock(p,i,Math.cos(a),Math.sin(a),'collapse',(.12+rand()*.22)*U()))n++;}});return n;}
 /* what gives way in a piece right now, if anything: '' (it stands), 'wall-all', 'wall-planks', 'gate', 'keep' (the tower comes down) or 'roof'. settle() acts on it, and the Lab asks it
    about each part in turn ("would this part alone bring it down?"), so the Lab shows the real rule. */
@@ -574,37 +614,85 @@ function settle(p,att){
   if(f==='wall-all')fell=dropAll(p,/./,att);else if(f==='wall-planks')fell=dropAll(p,/plank/,att);else if(f==='gate')fell=dropAll(p,/lintel|door|brace/,att);
   else if(f==='keep'){keepDown(p,att);return 99;}else if(f==='roof')fell=dropAll(p,/roof/,att);
   if(fell>=2)collapse(p,att,fell);return fell;}
-function collapse(p,att,n){var st=SG.stats;if(SG.mode==='lab')labNote('collapse',p);st.collapses++;if(att!==p.side)SG.sides[att].collapses++;SG.slowT=C2.slowMo;SG.shake=1;snd('crash');event('collapse',p.side,p.kind);pop(p.x,p.z,'CRASH!',false,TALL[p.kind]+.25);viewPuff(p.x,p.z,2.2);
-  var f=FOOT[p.kind];SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*U())dizzy(m);});gridDirty=true;}
+function collapse(p,att,n){var st=SG.stats;if(SG.mode==='lab')labNote('collapse',p,chainDepth+1);st.collapses++;if(att!==p.side)SG.sides[att].collapses++;SG.slowT=C2.slowMo;SG.shake=1;snd('crash');event('collapse',p.side,p.kind);pop(p.x,p.z,'CRASH!',false,TALL[p.kind]+.25);viewPuff(p.x,p.z,2.2);
+  var f=FOOT[p.kind];SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*U())dizzy(m);});gridDirty=true;
+  if(SG.mode==='lab'&&SG.lab&&SG.lab.topple){chainDepth++;topple(p,att);chainDepth--;}}
 /* the Keep comes down: that side has lost. It falls slowly, then the win card. */
 function keepDown(p,att){p.down=true;p.fallT=SG.clock;p.fallDir=Math.atan2(p.x-hillAt().x,p.z-hillAt().z)+(rand()-.5)*.8;p.ps.forEach(function(q){q.st='gone';q.mender=-1;});p.parts=0;SG.stats.keepDown=true;SG.stats.keepBy=SG.cause||'';SG.stats.keepAt=SG.clock;SG.stats.collapses++;if(att!==p.side)SG.sides[att].collapses++;
   SG.slowT=C2.slowMo*2;SG.shake=1.6;snd('crash');event('keep',p.side);pop(p.x,p.z,'CRASH!',false,TALL.tower+.3);viewPuff(p.x,p.z,3);SG.mice.forEach(function(m){if(boxDist(p,m.x,m.z)<C2.collapseReach*2*U())dizzy(m);});
-  SG.mice.forEach(function(m){dropJob(m);});gridDirty=true;if(SG.mode==='lab'){labNote('keep',p);shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");return;}   /* in the Lab nothing ends: the Keep just falls, and Reset or Heal puts it back */
+  SG.mice.forEach(function(m){dropJob(m);});gridDirty=true;if(SG.mode==='lab'){labNote('keep',p,chainDepth+1);if(SG.lab&&SG.lab.topple){chainDepth++;topple(p,att);chainDepth--;}shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");return;}   /* in the Lab nothing ends: the Keep just falls, and Reset or Heal puts it back */
   SG.fallWinner=1-p.side;SG.phase='fall';SG.time=C2.keepFall;SG.sides[0].aim.on=SG.sides[1].aim.on=false;shout(NAME[SG.sides[p.side].team]+"'s Keep is down!");ui();}
-/* a marble, a Big Marble or a cork comes down */
-function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble;
-  /* a bouncing ball that touches down with nothing in the way hops on: the same ball, a new flight */
-  if(A.bounce&&a.next&&!hit){var nx=a.next;a.x0=nx.x0;a.y0=nx.y0;a.z0=nx.z0;a.x1=nx.x1;a.z1=nx.z1;a.h=nx.h;a.T=nx.T;a.t=0;a.leg=2;a.next=null;SG.stats.bounces++;snd('tap');viewPuff(pos[0],pos[2],.7);return;}
-  var n=0,R=labProto('blastR',ammoR(a.ammo,a.high),a),knocked=0;
-  if(A.land)n=A.land(a,pos,hit)||0;
-  else{knocked=blastAt(pos[0],pos[1],pos[2],R,a.side,a.ammo==='big',a.x1-a.x0,a.z1-a.z0,a.from,false,hit?hit.id:0,a.ammo);if(hit&&hit.side===a.side)SG.stats.ownHits++;
-    SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<R&&dizzy(m))n++;});if(knocked>=3||a.ammo==='big')SG.shake=Math.max(SG.shake,.6);}
-  if(SG.mode==='lab')labNote('land',a,pos,R,hit);
-  snd('thud');a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];if(a.ammo!=='corks'||!SG.lastHit||SG.lastHit.id!==a.id)SG.lastHit={id:a.id,side:a.side,ammo:a.ammo,x:pos[0],y:pos[1],z:pos[2],piece:hit?hit.id:0,own:!!hit&&hit.side===a.side,part:'',knocked:knocked,dizzied:n,t:SG.clock};viewPuff(pos[0],pos[2],a.ammo==='big'?2:1.2);}
-/* corks make mice they land near dizzy; nothing breaks */
-AMMO.corks.land=function(a,pos){var n=0;SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<C2.corkHit*U()&&dizzy(m))n++;});return n;};
-/* glue: no damage. It sticks to the part it hits and to every fallen part of theirs in the splash (none of those can be mended for a while), and mice that walk through the puddle are slowed. */
-AMMO.glue.land=function(a,pos,hit){var G=C2.glue,R=G.reach*U(),en=1-a.side,n=0;
-  if(hit&&hit.total&&hit.side!==a.side){var hi=nearestPart(hit,pos[0],pos[1],pos[2],false);if(hi>=0){hit.ps[hi].glue=SG.clock+G.lock;n++;}}
-  SG.pieces.forEach(function(p){if(p.side!==en||!p.built||!p.total)return;p.ps.forEach(function(q,i){if(q.st!=='off'||q.used||dist(q.rx,q.rz,pos[0],pos[2])>=R)return;q.glue=SG.clock+G.lock;n++;
-    if(q.mender>=0)SG.mice.forEach(function(m){if(m.job===p.id&&m.part===i&&m.state==='toPart'){dropJob(m);m.state='idle';m.goal=false;}});});});
-  SG.stats.glued+=n;SG.puddles.push({x:pos[0],z:pos[2],r:R,side:a.side,t0:SG.clock,life:G.puddle});SG.mice.forEach(function(m){if(m.side===en&&dist(m.x,m.z,pos[0],pos[2])<R)m.slowT=G.slow;});if(hit)pop(pos[0],pos[2],'Glued!',false,.3);return 0;};
-function tickPuddles(dt){for(var i=SG.puddles.length-1;i>=0;i--){var pd=SG.puddles[i];if(SG.clock-pd.t0>pd.life){SG.puddles.splice(i,1);continue;}SG.mice.forEach(function(m){if(m.side!==pd.side&&dist(m.x,m.z,pd.x,pd.z)<pd.r&&!(m.slowT>C2.glue.slow-.3))m.slowT=C2.glue.slow;});}}
+/* a marble, a Big Marble, a cork or a Workshop weapon comes down. What it does follows its weapon record (AMMO[id].w). */
+function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,n0=SG.stats.partsOff;
+  /* a bouncing ball that touches down with nothing in the way hops on: the same ball, a new flight (popEach: and goes off at every touchdown) */
+  if(a.next&&!hit){var nx=a.next;a.x0=nx.x0;a.y0=nx.y0;a.z0=nx.z0;a.x1=nx.x1;a.z1=nx.z1;a.h=nx.h;a.T=nx.T;a.t=0;a.leg=2;a.next=nx.next||null;SG.stats.bounces++;snd('tap');viewPuff(pos[0],pos[2],.7);if(W.popEach){boom(a,pos,null);if(SG.mode==='lab')labFx(SG.stats.partsOff-n0);}return;}
+  /* a fuse: it lies where it landed, then pops */
+  if(W.fuse>0&&!a.fz){a.fz=1;a.pend=true;a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];SG.fuses.push({a:a,pos:pos.slice(),hit:hit,t:SG.clock+W.fuse});snd('tap');viewPuff(pos[0],pos[2],.5);return;}
+  var r=boom(a,pos,hit);
+  if(SG.mode==='lab'){labNote('land',a,pos,r.R,hit);labFx(SG.stats.partsOff-n0);}
+  snd('thud');a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];if(a.ammo!=='corks'||!SG.lastHit||SG.lastHit.id!==a.id)SG.lastHit={id:a.id,side:a.side,ammo:a.ammo,x:pos[0],y:pos[1],z:pos[2],piece:hit?hit.id:0,own:!!hit&&hit.side===a.side,part:'',knocked:r.knocked,dizzied:r.n,t:SG.clock};viewPuff(pos[0],pos[2],W.legForce?2:1.2);
+  if(W.roll>0)rollStart(a,pos);}
+/* what a landing does, in the order: a tether yanks its part, the blast, mice made dizzy, glue and slowing, a quake. Returns {R, n (mice), knocked (parts off by the blast)}. */
+function boom(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,u=U(),n=0,knocked=0,R=labProto('blastR',ammoR(a.ammo,a.high),a),en=1-a.side;
+  if(SG.mode==='lab'&&SG.lab){var dl=Math.sqrt((a.x1-a.x0)*(a.x1-a.x0)+(a.z1-a.z0)*(a.z1-a.z0))||1;SG.lastDir={x:(a.x1-a.x0)/dl,z:(a.z1-a.z0)/dl};}
+  if(a.snag){var sp=a.snag.p,sq=sp.ps[a.snag.i];if(sq&&sq.st==='on'){SG.att=a.side;SG.cause='tether';knock(sp,a.snag.i,a.sx-sq.wx,a.sz-sq.wz,'tether',W.yank*u);pop(sq.wx,sq.wz,'Snagged!',false,sq.wy+.2);settle(sp,a.side);}}
+  if(W.blast>0){knocked=blastAt(pos[0],pos[1],pos[2],R,a.side,W.legForce,a.x1-a.x0,a.z1-a.z0,a.from,false,hit?hit.id:0,a.ammo,W.cap,W.falloff);if(hit&&hit.side===a.side)SG.stats.ownHits++;if(knocked>=3||W.legForce)SG.shake=Math.max(SG.shake,.6);}
+  var dr=W.dizzyR<0?R:W.dizzyR*u;
+  if(dr>0)SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<dr&&dizzy(m,W.dizzySecs))n++;});
+  /* glue and its kin: a splash that sticks fallen parts, slows mice and may leave a puddle */
+  if(W.splash>0){var Rs=W.splash*u,ng=0;
+    if(W.stick>0){if(hit&&hit.total&&hit.side!==a.side){var hi=nearestPart(hit,pos[0],pos[1],pos[2],false);if(hi>=0){hit.ps[hi].glue=SG.clock+W.stick;ng++;}}
+      SG.pieces.forEach(function(p){if(p.side!==en||!p.built||!p.total)return;p.ps.forEach(function(q,i){if(q.st!=='off'||q.used||dist(q.rx,q.rz,pos[0],pos[2])>=Rs)return;q.glue=SG.clock+W.stick;ng++;
+        if(q.mender>=0)SG.mice.forEach(function(m){if(m.job===p.id&&m.part===i&&m.state==='toPart'){dropJob(m);m.state='idle';m.goal=false;}});});});SG.stats.glued+=ng;}
+    if(W.puddle>0)SG.puddles.push({x:pos[0],z:pos[2],r:Rs,side:a.side,t0:SG.clock,life:W.puddle,k:W.slowTo,secs:W.slowSecs});
+    if(W.slowSecs>0)SG.mice.forEach(function(m){if(m.side===en&&dist(m.x,m.z,pos[0],pos[2])<Rs){m.slowT=W.slowSecs;m.slowK=W.slowTo;}});
+    if(hit&&W.stick>0)pop(pos[0],pos[2],'Glued!',false,.3);}
+  if(W.quake>0)knocked+=quakeAt(pos,W.quake*u,a);
+  return {R:R,n:n,knocked:knocked};}
+function tickPuddles(dt){for(var i=SG.puddles.length-1;i>=0;i--){var pd=SG.puddles[i];if(SG.clock-pd.t0>pd.life){SG.puddles.splice(i,1);continue;}SG.mice.forEach(function(m){if(m.side!==pd.side&&dist(m.x,m.z,pd.x,pd.z)<pd.r&&!(m.slowT>pd.secs-.3)){m.slowT=pd.secs;m.slowK=pd.k;}});}}
+/* fuses: a ball that landed with a delay pops when its time is up */
+function tickFuses(){var F=SG.fuses;if(!F||!F.length)return;for(var i=F.length-1;i>=0;i--){var f=F[i];if(SG.clock<f.t)continue;F.splice(i,1);f.a.pend=false;landV2(f.a,f.pos,f.hit);}}
+/* a tether: the first part of the other side's camp the ball passes, within the string's reach of the shooter */
+function tetherFind(a,pos){var u=U(),best=null,bd=C3.hookR*u;if(dist(pos[0],pos[2],a.sx,a.sz)>a.tw)return null;
+  SG.pieces.forEach(function(p){if(p.side===a.side||!p.built||p.down||!p.total||p.parts<=0||Math.abs(p.x-pos[0])>.9||Math.abs(p.z-pos[2])>.9)return;
+    p.ps.forEach(function(q,i){if(q.st!=='on'||Math.abs(q.wy-pos[1])>C3.hookY*u)return;var d=dist(q.wx,q.wz,pos[0],pos[2]);if(d<bd){bd=d;best={p:p,i:i};}});});return best;}
+/* a roller: after landing it rolls on in the direction of travel, knocking off parts at its base and making mice dizzy */
+function rollStart(a,pos){var dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1;a.rolling=true;a.live=true;a.rl={x:pos[0],z:pos[2],dx:dx/l,dz:dz/l,left:AMMO[a.ammo].w.roll*U(),acc:0,n:0};}
+function rollTick(a,dt){var r=a.rl,u=U(),step=Math.min(r.left,C3.rollSpeed*u*dt),n0=SG.stats.partsOff;r.x+=r.dx*step;r.z+=r.dz*step;r.left-=step;r.acc+=dt;a.hx=r.x;a.hz=r.z;a.hy=.05;
+  if(r.x*r.x+r.z*r.z>3.1*3.1)r.left=0;
+  SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,r.x,r.z)<C3.rollR*u*1.8)dizzy(m);});
+  if(r.acc>=C3.rollEvery&&r.n<C3.rollMax){var bp=null,bi=-1,bd=C3.rollR*u*2;
+    SG.pieces.forEach(function(p){if(p.side===a.side||!p.built||p.down||!p.total||p.parts<=0||Math.abs(p.x-r.x)>.9||Math.abs(p.z-r.z)>.9)return;p.ps.forEach(function(q,i){if(q.st!=='on'||q.wy>C3.rollBase*u)return;var d=dist(q.wx,q.wz,r.x,r.z);if(d<bd){bd=d;bp=p;bi=i;}});});
+    if(bp){r.acc=0;r.n++;SG.att=a.side;SG.cause='roll';knock(bp,bi,r.dx,r.dz,'roll',(.1+rand()*.12)*u);settle(bp,a.side);}}
+  if(r.left<=0||r.n>=C3.rollMax){a.rolling=false;a.live=false;a.T=a.t;if(SG.mode==='lab')labFx(SG.stats.partsOff-n0);}}
+/* a quake: every part that is held by only one fastener falls (a plank on one rail, a rail on one post, a lintel on one post, a Keep brace on one leg) */
+function looseParts(p){var o=[],k=p.kind;
+  if(k==='wall'){var rails=onCount(p,/rail/),posts=onCount(p,/post/),pr=props(p).length;p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/plank/.test(q.id)&&rails===1)o.push(i);else if(/rail/.test(q.id)&&posts===1&&!pr)o.push(i);});}
+  else if(k==='gate'){var gp=onCount(p,/gate\.post/);p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/lintel/.test(q.id)&&gp===1)o.push(i);else if(/door/.test(q.id)&&(isOn(p,'gate.lintel')?1:0)+(isOn(p,'gate.post.'+q.id.split('.')[2])?1:0)===1)o.push(i);});}
+  else if(k==='tower'){p.ps.forEach(function(q,i){if(q.st!=='on'||!/^tower\.brace/.test(q.id))return;var b=q.id.split('.')[2],held=['NE','NW','SE','SW'].filter(function(c){return c.indexOf(b)>=0&&isOn(p,'tower.post.'+c);}).length;if(held===1)o.push(i);});}
+  return o;}
+function quakeAt(pos,Rq,a){var n=0,touched=[];SG.att=a.side;SG.cause='quake';
+  SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||boxDist(p,pos[0],pos[2])>Rq)return;var list=looseParts(p);list.forEach(function(i){var an=rand()*PI*2;if(knock(p,i,Math.cos(an),Math.sin(an),'quake',(.12+rand()*.22)*U()))n++;});if(list.length)touched.push(p);});
+  touched.forEach(function(p){settle(p,a.side);});SG.shake=Math.max(SG.shake,.5);viewPuff(pos[0],pos[2],1.6);return n;}
+/* chain reactions (Lab option "Chain topple"): a piece that falls lands on its neighbours in the way it falls and knocks parts off them, which may bring them down too. At most CONFIG.workshop.topple.max a shot. */
+function topple(p,att){var T=C3.topple,u=U();if(SG.topN>=T.max||(p.kind!=='wall'&&p.kind!=='gate'&&p.kind!=='tower'))return;
+  var f=FOOT[p.kind],dir,lat;
+  if(p.kind==='tower'){var ld=SG.lastDir||{x:Math.cos(p.rot),z:Math.sin(p.rot)};dir=[ld.x,ld.z];lat=[-dir[1],dir[0]];}
+  else{var nz=[Math.sin(p.rot),Math.cos(p.rot)],ld2=SG.lastDir||{x:nz[0],z:nz[1]},sg=(nz[0]*ld2.x+nz[1]*ld2.z)<0?-1:1;dir=[nz[0]*sg,nz[1]*sg];lat=[Math.cos(p.rot),-Math.sin(p.rot)];}
+  var depth=p.kind==='tower'?f[0]:f[1],reach=TALL[p.kind]*T.reach,seen=[];
+  for(var d=depth+.02;d<=depth+reach+.001;d+=.05)for(var o=-1;o<=1;o++){var px=p.x+dir[0]*d+lat[0]*o*f[0]*.8,pz=p.z+dir[1]*d+lat[1]*o*f[0]*.8;
+    for(var j=0;j<SG.pieces.length;j++){var q=SG.pieces[j];if(q===p||!q.built||q.down||!q.total||q.parts<=0||seen.some(function(e){return e.p===q;}))continue;if(boxDist(q,px,pz)<.02)seen.push({p:q,d:d});}}
+  if(!seen.length)return;
+  seen.sort(function(a,b){return a.d-b.d;});
+  seen.slice(0,2).forEach(function(e){var q=e.p;if(SG.topN>=T.max)return;SG.topN++;SG.att=att;SG.cause='topple';var k;
+    for(k=0;k<T.hit;k++){var bi=-1,bd=1e9;q.ps.forEach(function(r,i){if(r.st!=='on'||/^tower\.post/.test(r.id))return;var dd=(r.wx-(q.x+(p.x-q.x)*.5))*(r.wx-(q.x+(p.x-q.x)*.5))+(r.wz-(q.z+(p.z-q.z)*.5))*(r.wz-(q.z+(p.z-q.z)*.5))+(r.wy-TALL[q.kind]*.7)*(r.wy-TALL[q.kind]*.7);if(dd<bd){bd=dd;bi=i;}});
+      if(bi<0)break;knock(q,bi,dir[0],dir[1],'topple',(T.throwFar+rand()*.1)*u);}
+    chainDepth++;settle(q,att);chainDepth--;});}
 /* thrown parts land: they thump mice, and a part thrown hard knocks off an attached part it lands on */
 function tickDebris(){for(var i=SG.debris.length-1;i>=0;i--){var d=SG.debris[i];if(SG.clock<d.t)continue;SG.debris.splice(i,1);
     SG.mice.forEach(function(m){if(dist(m.x,m.z,d.x,d.z)<C2.fallReach*U())dizzy(m);});
-    if(d.far>=C2.chainThrow*U()&&SG.phase==='fight'){var best=null,bi=-1,bd=C2.chainReach*U();SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||p.id===d.pid||boxDist(p,d.x,d.z)>bd)return;p.ps.forEach(function(q,qi){if(q.st!=='on'||/^tower\.post/.test(q.id))return;var dd=dist(q.wx,q.wz,d.x,d.z);if(dd<bd){bd=dd;best=p;bi=qi;}});});
-      if(best){SG.stats.chain++;SG.cause='debris';knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());settle(best,SG.att);}}}}
+    if(d.far>=C2.chainThrow*U()&&SG.phase==='fight'&&!(SG.mode==='lab'&&SG.topN>=C3.topple.max)){var best=null,bi=-1,bd=C2.chainReach*U();SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||p.id===d.pid||boxDist(p,d.x,d.z)>bd)return;p.ps.forEach(function(q,qi){if(q.st!=='on'||/^tower\.post/.test(q.id))return;var dd=dist(q.wx,q.wz,d.x,d.z);if(dd<bd){bd=dd;best=p;bi=qi;}});});
+      if(best){SG.stats.chain++;SG.cause='debris';if(SG.mode==='lab')SG.topN++;knock(best,bi,best.ps[bi].wx-d.x,best.ps[bi].wz-d.z,'debris',.15*U());chainDepth=d.dep||0;settle(best,SG.att);chainDepth=0;}}}}
 /* score: damage standing on the other camp, collapses caused, and a smaller share from the hill */
 function partWorth(p){return p.total?(C2.piecePts[p.kind]||1)/p.total:0;}
 function standingDamage(s){var n=0;SG.pieces.forEach(function(p){if(p.side!==s||!p.built)return;var w=partWorth(p);p.ps.forEach(function(q){if(q.st!=='on')n+=w;});});return n;}
@@ -821,7 +909,7 @@ function syncPieces(){
     if(v.solid){SS.solid(v.obj,false);v.solid=false;}
     for(i=0;i<n;i++){var q=p.ps[i],m=v.parts[i],h=m.userData.home;
       if(q.st==='on'){if(v.pst[i]!=='on'){m.visible=true;m.position.fromArray(h);if(v.pst[i])m.rotation.set(0,0,0);v.pst[i]='on';}}
-      else if(q.st==='carried'){m.visible=false;v.pst[i]='carried';}
+      else if(q.st==='carried'||q.swept){m.visible=false;v.pst[i]=q.swept?'off':'carried';}   /* swept: the Lab's "Sweep up" took it off the table */
       else{m.visible=true;v.pst[i]='off';var u=Math.min(1,(SG.clock-q.t0)/.75);_v.set(q.rx,.035,q.rz);v.obj.worldToLocal(_v);
         m.position.set(h[0]+(_v.x-h[0])*u,h[1]+(_v.y-h[1])*u+Math.sin(u*PI)*.55,h[2]+(_v.z-h[2])*u);m.rotation.set(u*(PI/2+((i%3)-1)*.2),u*(1.3+i),u<1?u*7:0);
         /* a fallen part that can still be mended gets a bright ring round it */
@@ -858,8 +946,10 @@ function syncAll(){
       var rr=Math.max(FOOT[kind][0],FOOT[kind][1])+.1;G.ring.visible=true;G.ring.scale.setScalar(rr);G.ring.position.set(G.obj.position.x,.008,G.obj.position.z);G.ring.material.color.set(g.ok?0x8fd0ff:0xff5a44);
     }else{if(G.obj)G.obj.visible=false;G.ring.visible=false;}});
   /* marbles, corks, aim arc, order marker */
-  var seen={};SG.marbles.forEach(function(a){seen[a.id]=1;var o=V.marbles[a.id];if(!o){var AM=AMMO[a.ammo];o=V.marbles[a.id]=a.ammo==='corks'?SS.fx.cork():SS.fx.marble(AM&&AM.tint!=='team'?AM.tint:SG.sides[a.side].team);a.sc=(AM&&AM.scale)||1.25;o.scale.setScalar(a.sc);world.add(o);}o.visible=a.t>=0&&!(!a.live&&a.ammo==='glue');
-    if(a.live){var p=marblePos(a,Math.min(1,a.t/a.T));o.position.set(p[0],p[1]+.03,p[2]);o.rotation.x=a.t*9;}
+  var seen={};SG.marbles.forEach(function(a){seen[a.id]=1;var o=V.marbles[a.id];if(!o){var AM=AMMO[a.ammo];o=V.marbles[a.id]=(AM&&AM.tint==='cork')?SS.fx.cork():SS.fx.marble(AM&&AM.tint!=='team'?AM.tint:SG.sides[a.side].team);a.sc=(AM&&AM.scale)||1.25;o.scale.setScalar(a.sc);world.add(o);}o.visible=a.t>=0&&!(!a.live&&a.ammo==='glue');
+    if(a.rolling){o.position.set(a.hx,.05+.03,a.hz);o.rotation.x=a.t*14;}
+    else if(a.live){var p=marblePos(a,Math.min(1,a.t/a.T));o.position.set(p[0],p[1]+.03,p[2]);o.rotation.x=a.t*9;}
+    else if(a.pend){o.position.set(a.hx,Math.max(.034,a.hy*.3)+.03,a.hz);o.scale.setScalar((a.sc||1.25)*(1+.12*Math.sin(SG.clock*26)));}   /* a fused ball lies where it landed, and throbs */
     else{var u=Math.min(1,(a.t-a.T)/.8),dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1;o.position.set(a.hx+dx/l*.3*u,Math.max(.034,a.hy*(1-u*2))+Math.abs(Math.sin(u*PI*2))*.08*(1-u),a.hz+dz/l*.3*u);o.scale.setScalar(u>.7?1.25*(1-(u-.7)/.3):1.25);}});
   for(var id in V.marbles)if(!seen[id]){world.remove(V.marbles[id]);delete V.marbles[id];}
   seen={};SG.corks.forEach(function(c){seen[c.id]=1;var o=V.corks[c.id];if(!o){o=V.corks[c.id]=SS.fx.cork();o.scale.setScalar(.75);world.add(o);}var u=Math.min(1,c.t/.25);o.position.set(c.x0+(c.x1-c.x0)*u,.2+Math.sin(u*PI)*.12,c.z0+(c.z1-c.z0)*u);o.rotation.y=Math.atan2(c.x1-c.x0,c.z1-c.z0);});
@@ -899,7 +989,7 @@ function ui(){if(!hasDom||!E('start'))return;var ph=SG.phase,fight=ph==='fight'|
     var inL=me.tool==='lobber'&&!me.pick&&!table&&ph!=='fall',nL=lobbersOf(0).length;E('arow').style.display=inL?'flex':'none';
     AMMO_ORDER.forEach(function(a){var b=E('a_'+a);if(!b)return;b.className='btn ammo'+(me.ammo===a?' on':'')+(ammoReady(me,a)?'':(AMMO[a].store?' none':' wait'));b.querySelector('.ac').textContent=ammoCount(me,a);b.title=ammoLabel(me,a);});
     E('b_lsel').style.display=nL>1?'inline-block':'none';E('b_lsel').textContent='Lobber '+((me.lsel||0)+1)+' / '+nL;E('b_lsel').className='btn on';
-    E('b_high').className='btn'+(me.high&&!AMMO[me.ammo].flat?' on':'');E('b_high').disabled=!!AMMO[me.ammo].flat;
+    E('b_high').className='btn'+(me.high&&!AMMO[me.ammo].w.flat?' on':'');E('b_high').disabled=!!AMMO[me.ammo].w.flat;
     E('arow').style.bottom=(E('fbar2').offsetHeight+22)+'px';E('bPauseB').textContent=SG.paused?'▶ Go on':'⏸';}
   else{E('nrow').style.display='none';E('arow').style.display='none';}E('bCam').textContent='🎥 '+CAMNAME[SG.cam];E('bMute').textContent=SG.muted?'🔇':'🔊';lastHud='';if(SG.mode==='lab'&&ph!=='start')labUi();else if(ph==='start')labUiHide();}
 /* what to tell a player about why the chosen lobber cannot fire yet (or how to fire it) */
@@ -1140,8 +1230,8 @@ function sceneButtons(){var ph=SG.phase,o=[],me=SG.sides[0];function b(id,label,
   else if(ph==='ready'){b('start','Start battle');b('replace','Re-place table');}
   else if(ph==='over'){b('again','Play again');}
   else if(V2()&&me){if(me.tool==='lobber'){   /* aiming: the lobber, its ammo (short and compact), then back to the orders */
-      if(lobbersOf(0).length>1)b('lsel','Lobber '+((me.lsel||0)+1)+'/'+lobbersOf(0).length,true);AMMO_ORDER.forEach(function(id){var st=AMMO[id].store?' x'+(me[AMMO[id].store]||0):((AMMO[id].cd&&(me.cd[id]||0)>0)?' '+Math.ceil(me.cd[id])+'s':'');b('am_'+id,AMMO[id].short+st,me.ammo===id);});
-      if(!AMMO[me.ammo].flat)b('high','High lob',me.high);b('lobber','Orders');}
+      if(lobbersOf(0).length>1)b('lsel','Lobber '+((me.lsel||0)+1)+'/'+lobbersOf(0).length,true);AMMO_ORDER.forEach(function(id){var st=AMMO[id].store?' x'+(me[AMMO[id].store]||0):((AMMO[id].w.cd>0&&(me.cd[id]||0)>0)?' '+Math.ceil(me.cd[id])+'s':'');b('am_'+id,AMMO[id].short+st,me.ammo===id);});
+      if(!AMMO[me.ammo].w.flat)b('high','High lob',me.high);b('lobber','Orders');}
     else{b('o_hill','Hill '+me.plan.hill);b('o_raid','Raid '+me.plan.raid);b('o_guard','Guard '+me.plan.guard);b('o_mend','Mend '+me.plan.mend);b('lobber','Lobber');}
     b('pause',SG.paused?'Go on':'Pause',SG.paused);if(SG.paused)b('replace','Re-place table');}
   else{b('squad','Squad',me&&me.tool==='squad');b('lobber','Lobber',me&&me.tool==='lobber');b('mend','Mend',me&&me.tool==='mend');b('pause',SG.paused?'Go on':'Pause',SG.paused);if(SG.paused)b('replace','Re-place table');}
@@ -1341,7 +1431,7 @@ function labHomeMice(s){fixGrid();SG.mice.forEach(function(m){if(s!=null&&m.side
 function labSettleView(){labRepoint();fixGrid();}
 /* replace one side's pieces by these records, all built at once */
 function labSetSide(s,recs,instant){labRemoveSide(s);var order=recs.filter(function(r){return r.kind!=='brace';}).concat(recs.filter(function(r){return r.kind==='brace';}));
-  order.forEach(function(r){r.side=s;labPutRaw(r,instant!==false);});SG.debris=[];SG.puddles=[];labRepoint();labSaveSides();labHomeMice(s);}
+  order.forEach(function(r){r.side=s;labPutRaw(r,instant!==false);});SG.debris=[];SG.fuses=[];SG.puddles=[];labRepoint();labSaveSides();labHomeMice(s);}
 /* put these piece records on one side, built at once (for tests and for loading a camp from a match) */
 SG.labLoadRecs=function(s,recs){labSetSide(s,recs.map(function(r){return Object.assign({},r);}),true);ui();};
 SG.labReset=function(s){var L=SG.lab;labSetSide(s,L.saved[s].map(function(r){return Object.assign({},r);}),true);labMsg(s?'Target camp rebuilt':'My camp rebuilt',false);ui();};
@@ -1450,11 +1540,16 @@ function labMouse(m,dt){goTo(m,m.hx,m.hz,.3);if(walk(m,dt,WALK())){m.state='idle
 /* ---- what happened: the real code tells the Lab through labNote, from knock, collapse, keepDown and landV2 ---- */
 function labNote(kind,a,b,c,d){var L=SG.lab,cur=L&&L.cur;if(!cur||cur.done)return;
   if(kind==='part')cur.parts.push({piece:a.id,kind:a.kind,side:a.side,part:b.id});
-  else if(kind==='collapse')cur.fell.push(labName(a.kind)+(a.side?' (target)':' (mine)'));
-  else if(kind==='keep'){cur.keep=true;cur.fell.push('Keep'+(a.side?' (target)':' (mine)'));L.sess.keeps++;}
+  else if(kind==='collapse'){cur.fell.push(labName(a.kind)+(a.side?' (target)':' (mine)'));cur.chain=Math.max(cur.chain||0,b||1);}
+  else if(kind==='keep'){cur.keep=true;cur.fell.push('Keep'+(a.side?' (target)':' (mine)'));L.sess.keeps++;cur.chain=Math.max(cur.chain||0,b||1);}
   else if(kind==='land')cur.landings.push({x:b[0],y:b[1],z:b[2],r:c,ammo:a.ammo,high:!!a.high,hit:d?d.kind:'',hitSide:d?d.side:-1});}
+/* screen shake, the slow-motion beat and the sounds scale with the parts that fell at once (n), if the Lab's switches for them are on. Without them a landing shakes and slows as in a match. */
+function labFx(n){var L=SG.lab,cur=L&&L.cur;if(!L||n<=0)return;var F=C3.fx;if(cur&&!cur.done)cur.burst=Math.max(cur.burst||0,n);L.lastBurst=n;
+  if(L.fxShake)SG.shake=Math.min(F.shakeMax,n*F.shake);
+  if(L.fxSlow)SG.slowT=n>=F.slowFrom?Math.min(F.slowMax,F.slowBase+n*F.slow):0;
+  if(L.fxSound&&hasDom){var later=function(ms,nm){setTimeout(function(){snd(nm);},ms);};if(n>=3)snd('knock');if(n>=6)snd('crash');if(n>=12){later(90,'thud');later(200,'crash');}if(n>=24)later(340,'thud');}}
 /* a shot is over when nothing is in the air and no thrown part is still to land */
-function labTrack(){var L=SG.lab,cur=L.cur;if(!cur||cur.done)return;if(SG.marbles.some(function(m){return m.live;})||SG.debris.length)return;
+function labTrack(){var L=SG.lab,cur=L.cur;if(!cur||cur.done)return;if(SG.marbles.some(function(m){return m.live||m.pend;})||SG.debris.length||SG.fuses.length)return;
   var st=SG.stats;cur.done=true;cur.partsOff=st.partsOff-cur.b.partsOff;cur.collapses=st.collapses-cur.b.collapses;cur.dizzies=st.dizzies-cur.b.dizzies;cur.glued=st.glued-cur.b.glued;cur.bounces=st.bounces-cur.b.bounces;cur.secs=+(SG.clock-cur.b.t).toFixed(2);
   cur.fellOne=cur.fell.slice();L.landings=cur.landings.slice();cur.fell.forEach(function(f){L.fellLog.unshift(f);});L.fellLog=L.fellLog.slice(0,8);L.rkey='';}
 function labNewCur(rec){var st=SG.stats;return {rec:rec,done:false,parts:[],fell:[],keep:false,landings:[],b:{partsOff:st.partsOff,collapses:st.collapses,dizzies:st.dizzies,glued:st.glued,bounces:st.bounces,t:SG.clock}};}
@@ -1471,7 +1566,7 @@ SG.labFire=function(s,li,tx,tz,opt){var L=SG.lab;if(!L)return null;opt=opt||{};v
   side.ammo=L.ammo;side.high=L.high;side.big=99;
   if(opt.force){l.reload=0;side.cd[L.ammo]=0;}
   var blk=SG.lobberBlock(s,li);if(blk){labMsg(blockText(blk,s),true);return null;}
-  var rec={s:s,li:li,ammo:L.ammo,high:L.high&&!A.flat,tx:tx,tz:tz,gx:l.x,gz:l.z,seed:SG.seed};if(opt.seed!=null)SG.seed=opt.seed;
+  var rec={s:s,li:li,ammo:L.ammo,high:L.high&&!A.w.flat,tx:tx,tz:tz,gx:l.x,gz:l.z,seed:SG.seed};if(opt.seed!=null)SG.seed=opt.seed;
   var cur=labNewCur(rec);L.cur=cur;
   var a=SG.fire(s,tx,tz,li);side.ammo=L.ammo;
   if(!a){L.cur=null;return null;}
@@ -1511,7 +1606,7 @@ SG.labRestore=function(sn){var L=SG.lab;if(!sn)return false;SG.pieces.slice().fo
   sn.pieces.forEach(function(e){var p=labPutRaw(Object.assign({},e.rec),true);p.aim=e.aim;p.sprung=e.sprung;
     e.ps.forEach(function(sq,i){var q=p.ps[i];if(!q||sq.st==='on')return;q.st=sq.st;q.rx=sq.rx;q.rz=sq.rz;q.t0=-99;q.used=sq.used;});
     if(p.ps.length)p.parts=p.ps.filter(function(q){return q.st==='on';}).length;if(e.down){p.down=true;p.fallT=SG.clock-99;p.fallDir=e.fallDir;p.parts=0;}});
-  L.saved=[sn.saved[0].slice(),sn.saved[1].slice()];L.target=sn.target;SG.debris=[];SG.puddles=[];SG.marbles=[];labRepoint();fixGrid();labHomeMice();L.cur=null;L.landings=[];L.rkey='';return true;};
+  L.saved=[sn.saved[0].slice(),sn.saved[1].slice()];L.target=sn.target;SG.debris=[];SG.fuses=[];SG.puddles=[];SG.marbles=[];labRepoint();fixGrid();labHomeMice();L.cur=null;L.landings=[];L.rkey='';return true;};
 SG.labTakeSnapshot=function(){SG.lab.snap=SG.labSnapshot();labMsg('Snapshot taken',false);ui();};
 SG.labRestoreSnapshot=function(){var L=SG.lab;if(!L.snap){labMsg('Take a snapshot first',true);return false;}SG.labRestore(L.snap);labMsg('Table restored',false);ui();return true;};
 
@@ -1519,10 +1614,10 @@ SG.labRestoreSnapshot=function(){var L=SG.lab;if(!L.snap){labMsg('Take a snapsho
 var LAB_SEED=424242,LAB_CARPET=[[0,0],[.22,0],[-.22,0],[0,.22],[0,-.22],[.22,.22],[-.22,.22],[.22,-.22],[-.22,-.22],[0,0]];   /* the ten aim points of a salvo, round the spot, in units that follow the piece scale */
 SG.labRange=function(o){var L=SG.lab;o=o||{};var spot=o.spot||L.spot||SG.labDefaultSpot(),keepTable=SG.labSnapshot(),keepStats=JSON.parse(JSON.stringify(SG.stats)),keepLast=L.last,keepCur=L.cur,keepSeed=SG.seed,keepAim=SG.sides[0].aim,keepUndo=[L.undo,L.redo],keepSess=L.sess,keepBase=L.base,keepFell=L.fellLog,keepLand=L.landings,quick=L.quick,keepAmmo=L.ammo,keepHigh=L.high;
   var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})),variants=[],rows=[];
-  ids.forEach(function(id){variants.push({id:id,high:false});if(!AMMO[id].flat)variants.push({id:id,high:true});});
+  ids.forEach(function(id){variants.push({id:id,high:false});if(!AMMO[id].w.flat)variants.push({id:id,high:true});});
   variants.push({id:'glue',high:false,after:'marble',label:'Glue blob (after a Marble)'});
   /* my camp is taken off the table for the test, so nothing of mine stands in the way of the free gun */
-  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;SG.marbles=[];SG.debris=[];SG.puddles=[];   /* nothing still flying from before can land on the test */
+  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;SG.marbles=[];SG.debris=[];SG.fuses=[];SG.puddles=[];   /* nothing still flying from before can land on the test */
   variants.forEach(function(v){SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.after||v.id;L.high=v.high;L.sess={keeps:0};
     if(v.after){L.ammo=v.after;L.high=false;SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED});SG.labSettle(10);}
     L.ammo=v.id;L.high=v.high;SG.sides.forEach(function(sd){sd.ammo=v.id;sd.high=v.high;});
