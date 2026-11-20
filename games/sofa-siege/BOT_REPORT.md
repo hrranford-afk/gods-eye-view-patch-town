@@ -173,3 +173,17 @@ New numbers: `bouncer` (wait 5 s, blast 0.2, hop 0.9, hop height 0.7, arc like t
 ```
 {"reload":2.5, "cost":{"tower":0, "wall":1, "gate":1, "brace":1, "lobber":5, "workshop":2, "tent":1, "trap":2}, "bouncer":{"cd":5, "blast":0.2, "hop":0.9, "hopH":0.7, "hopT":0.5, "arc":[0.3,0.24], "slow":1.35}, "glue":{"cd":8, "reach":0.26, "lock":15, "slow":4, "slowTo":0.45, "puddle":9}, "botGlue":3, "bouncerBias":1, "plan":{"hill":2, "raid":1, "guard":0, "mend":1}, "corkCd":8, "hillSecs":22, "bigMax":3, "mendTime":12}
 ```
+
+## Robot levels for the first game (20 Nov, `tests/winrate.js`)
+Harry lost his first match quickly to the default robot. The title screen now has **Robot: Friendly, Fair, Fierce**, and the first game starts on Friendly (after that, Fair). Fair is the robot as it was (`easy`), Fierce is `hard`; `normal` is still there (`?level=normal`) and none of those numbers changed. Friendly is new: its aim wobble is 3 times Fair's, it winds its lobber 3.5 times slower, waits 10 seconds before it sends mice, and never throws a Big Marble (`CONFIG.levels.friendly`).
+
+How it was measured: the robot of each level played bot-vs-bot matches, headless, 20 games per cell, sides and teams swapped each game, different seeds. The opponent stands in for a person: **average** = the Normal robot with an average camp; **beginner** = a bot with an average camp that throws its marbles at random spots in the robot's camp, the way a first-time player does. Numbers are the share of games the *robot* won.
+
+| Robot level | vs "average" player | vs "beginner" player |
+|---|---|---|
+| Friendly | 0% (0 of 20) | 20% (4 of 20) |
+| Fair (`easy`) | 20% (4 of 20) | 85% (17 of 20) |
+| Normal | 60% (12 of 20) | 100% (20 of 20) |
+| Fierce (`hard`) | 30% (6 of 20) | 100% (20 of 20) |
+
+What to take from it, honestly: the stand-in "beginner" is a bot, not Harry. It does say Fair beats a random-firing beginner 85% of the time, which matches what happened, and Friendly turns that into about 20%. Friendly has not been played by a child. Two things look odd and are not explained: Fierce (`hard`) loses more often than Normal to the average stand-in (30% against 60%), which suggests the good camp preset does not help the robot as much as it should; and the "average" stand-in is the same bot as Normal, so Normal at 60% is mostly the side or team that wins a mirror match. Both were left alone: "do not change Fair/Fierce numbers". Earlier test run with a quicker Friendly (reload 1.7 times, wobble 2.2 times): the beginner stand-in lost only 50% of 12 games, too hard for a first game, hence the slower numbers.
