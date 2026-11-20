@@ -1294,7 +1294,7 @@ function labProtosOn(){var sv=labStore(LAB_FLAGSKEY)||{};Object.keys(sv).forEach
 
 /* ---- state ---- */
 function labFresh(){var P=labStore(LAB_PREFS)||{};function pv(k,d){return P[k]==null?d:P[k];}
-  return {instant:pv('instant',true),quick:pv('quick',true),crew:pv('crew',false),strict:pv('strict',false),supports:pv('supports',false),panel:pv('panel',true),read:pv('read',true),slow:false,
+  return {instant:pv('instant',true),quick:pv('quick',true),crew:pv('crew',false),strict:pv('strict',false),supports:pv('supports',false),panel:pv('panel',innerWidth>=1000),read:pv('read',innerWidth>=900),slow:false,   /* on a narrow screen the panel and the readout start folded away */
     tool:'build',kind:'wall',ammo:'marble',high:false,ghost:{on:false,x:0,z:2,rot:PI,ok:false,code:'',text:'',sx:0,sz:0,kind:'wall',side:0},carry:null,sel:0,fire:{s:0,li:0},
     gun:{id:-7,kind:'lobber',x:0,z:LAB_GUNR,rot:PI,built:true,ps:[],total:0,parts:0,side:0,reload:0,crew:-1,fired:-9,aim:null,x1:0},gunAim:null,spot:null,
     undo:[],redo:[],uid:0,target:'empty',saved:[[],[]],snap:null,last:null,cur:null,landings:[],fellLog:[],msg:{text:'',until:0,bad:false},sess:{keeps:0},base:{partsOff:0,collapses:0,dizzies:0,shots:0},rkey:'',card:false};}

@@ -46,7 +46,7 @@ The Target menu loads a camp into the far zone, built and whole: **Empty, Walled
 - **Reset target** rebuilds the far camp at once to its saved state (every part back, no mending). The saved state is the layout as you last loaded or edited it.
 - **Heal all** does the same for both camps.
 - **Snapshot / Restore** keeps the whole table, damage and all, and brings it back.
-- **My camp:** "Keep + 2 lobbers" is the starting camp; "Clear my camp" and "Clear target" empty a camp. Both can be undone.
+- **My camp:** "Keep + 2 lobbers" (`SG.labStarter()`) is the starting camp; "Clear my camp" and "Clear target" empty a camp. All can be undone.
 
 ## Shooting and readouts
 
@@ -58,7 +58,7 @@ The Readout card shows, for the last shot: ammunition, parts knocked off (and wh
 
 ## The range report
 
-"Test all ammo" (Range report, in the panel) fires every kind of ammunition, in turn, at a fresh copy of the target from the free gun, at the aim spot (the target's Keep, or the middle of the camp, or the spot you chose with "Set aim spot"). The high lob is fired too for every kind that can lob, and there is a Glue row "after a Marble" (glue needs fallen parts to stick to). It runs stepped, not at real speed, with a fixed random seed, and puts the table back as it was. The same call, `SG.labRange()`, runs headless:
+"Test all ammo" (Range report, in the panel) fires every kind of ammunition, in turn, at a fresh copy of the target from the free gun, at the aim spot (the target's Keep, or the middle of the camp, or the spot you chose with "Set aim spot"). The high lob is fired too for every kind that can lob, and there is a Glue row "after a Marble" (glue needs fallen parts to stick to). Each row also has a **salvo**: ten shots of that ammunition running, spread over the camp round the aim spot (`LAB_CARPET`), nothing mended in between, because one shot rarely brings anything down. It takes my camp off the table for the test (so nothing of mine is in the way of the free gun), runs stepped, not at real speed, with a fixed random seed, and puts the table back as it was. The same call, `SG.labRange()`, runs headless:
 
 `NODE_PATH=$(npm root -g) node tests/range.js` runs it on every template and writes `RANGE_REPORT.md`, with the settings used.
 
@@ -150,7 +150,8 @@ A match never takes these branches, because each starts with `SG.mode === 'lab'`
 - The free gun stands on a fixed rim and turns to its aim; you cannot move it along the rim yourself (it follows where you aim, a little).
 - The Move tool heals a piece it moves (it is lifted and put down whole). Undo of a build step does not mend damage elsewhere, but Undo of a template load rebuilds that whole camp.
 - The target camp's mice are not fighters: they stand at their resting places and go dizzy and home as in a match. Raiders, guard corks, traps springing on walkers: none of them happen, because nobody walks.
-- No sound on build (the real build sounds play when the mice hammer; instantly-built pieces make a small tap).
 - Mice builders in the Lab fetch pieces from a spot at the back of their camp, not from a tray: there is no mat.
-- The panel covers part of the table on a small screen; hide it with Panel.
-- The Lab has not been tried on an iPad by a person. It was run in a desktop browser with real mouse events at 1280 by 800 and 1000 by 700.
+- The panel and readout cover part of the table. On a screen narrower than 1000 px they start folded away (Panel and Readout buttons bring them back).
+- The Lab has not been tried on an iPad by a person. It was run in a desktop browser with real mouse events at 1280 by 800; the page was also opened at 1000 by 700 and 834 by 1112 (an iPad upright) and looked at.
+- A rebuilt camp is the same camp plank for plank: each piece keeps its look (`vari`, one of three) with its uid. In a match the look follows the piece's id, so a match and the Lab can differ by the odd plank height; the Lab test compares them for the same camp with the look copied across.
+- The range report's mice stand still beside the Keep, so it cannot rate Corks properly.

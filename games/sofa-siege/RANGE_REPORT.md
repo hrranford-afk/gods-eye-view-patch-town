@@ -182,11 +182,11 @@ Aimed at the Keep (or the middle of the camp) (0.00, -2.42):
 | Ammo | Parts off | Collapses | Keep fell | Mice dizzy | Parts glued | First landed on | Salvo of 10: parts off · collapses · Keep |
 |---|---|---|---|---|---|---|---|
 | Marble | 3 | 0 | no | 0 | 0 | Gate | 8 · 0 · stands |
-| Marble (high lob) | 0 | 0 | no | 0 | 0 | Keep | 3 · 0 · stands |
+| Marble (high lob) | 0 | 0 | no | 0 | 0 | Keep | 4 · 0 · stands |
 | Big Marble | 3 | 0 | no | 0 | 0 | Gate | 12 · 0 · stands |
 | Corks | 0 | 0 | no | 0 | 0 | Gate | 0 · 0 · stands |
 | Corks (high lob) | 0 | 0 | no | 0 | 0 | Wall | 0 · 0 · stands |
-| Bouncer | 1 | 0 | no | 0 | 0 | Gate | 6 · 0 · stands |
+| Bouncer | 1 | 0 | no | 0 | 0 | Gate | 7 · 0 · stands |
 | Glue blob | 0 | 0 | no | 0 | 1 | Gate | 0 · 0 · stands |
 | Glue blob (high lob) | 0 | 0 | no | 0 | 1 | Keep | 0 · 0 · stands |
 | Glue blob (after a Marble) | 0 | 0 | no | 0 | 2 | Gate | - |
@@ -257,11 +257,11 @@ Aimed at the Keep through the gate, each shot a little to one side (x - 0.1, 0, 
 | Ammo | Single shots | Parts off | Collapses | Keeps felled | Mice dizzy | Parts glued | Shots that did anything | Salvos of 10: parts off | collapses | Keeps felled |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Marble | 14 | 28 | 0 | 0 | 1 | 0 | 12 of 14 | 66 | 0 | 0 of 14 |
-| Marble (high lob) | 14 | 1 | 0 | 0 | 2 | 0 | 3 of 14 | 15 | 0 | 0 of 14 |
+| Marble (high lob) | 14 | 1 | 0 | 0 | 2 | 0 | 3 of 14 | 16 | 0 | 0 of 14 |
 | Big Marble | 14 | 34 | 0 | 0 | 5 | 0 | 12 of 14 | 86 | 3 | 3 of 14 |
 | Corks | 14 | 0 | 0 | 0 | 5 | 0 | 3 of 14 | 0 | 0 | 0 of 14 |
 | Corks (high lob) | 14 | 0 | 0 | 0 | 9 | 0 | 5 of 14 | 0 | 0 | 0 of 14 |
-| Bouncer | 14 | 7 | 0 | 0 | 1 | 0 | 7 of 14 | 34 | 0 | 0 of 14 |
+| Bouncer | 14 | 7 | 0 | 0 | 1 | 0 | 7 of 14 | 35 | 0 | 0 of 14 |
 | Glue blob | 14 | 0 | 0 | 0 | 0 | 13 | 13 of 14 | 0 | 0 | 0 of 14 |
 | Glue blob (high lob) | 14 | 0 | 0 | 0 | 0 | 11 | 11 of 14 | 0 | 0 | 0 of 14 |
 | Glue blob (after a Marble) | 14 | 0 | 0 | 0 | 0 | 14 | 13 of 14 | - | - | - |
@@ -274,15 +274,15 @@ Read with the settings above: one gun position, still mice, no raiders, no mendi
 
 - **Marble.** Took something off in 12 of 14 single shots (28 parts in all), and 66 parts in the ten-shot salvos. It is the workhorse and it works. It never brought down anything by itself (0 collapses in 14 shots and 14 salvos).
 - **Big Marble.** The only ammunition that felled a Keep: 3 of 14 salvos (the Glass house at shot 2, the Braced Keep at shot 3, the mirrored starter Keep at shot 2), and the only one that ever caused a collapse (3, all of them those Keeps). It did 34 parts in single shots and 86 in salvos. Behind a gate or a wall it never reached the Keep in ten shots.
-- **High lob (Marble).** **The weakest thing on the list.** 3 of 14 single shots did anything, and the whole 14 took off **1 part** (the Marble's flat shot: 28). In a ten-shot salvo 15 parts against 66. It does get over a wall (it landed on the Keep in 5 runs), but its blast is half the radius, and half the radius took nothing off a Keep in any run. As it stands a player has no reason to use it except to dizzy a mouse. If the high lob is meant to be a way to hurt a Keep behind a wall, its blast needs to be more than half. (The aiming bot picks it when a wall is in the way, so bots may be wasting shots on it; that is a question for the bot report, not for this one.)
+- **High lob (Marble).** **The weakest thing on the list.** 3 of 14 single shots did anything, and the whole 14 took off **1 part** (the Marble's flat shot: 28). In a ten-shot salvo 16 parts against 66. It does get over a wall (it landed on the Keep in 5 runs), but its blast is half the radius, and half the radius took nothing off a Keep in any run. As it stands a player has no reason to use it except to dizzy a mouse. If the high lob is meant to be a way to hurt a Keep behind a wall, its blast needs to be more than half. (The aiming bot picks it when a wall is in the way, so bots may be wasting shots on it; that is a question for the bot report, not for this one.)
 - **Corks.** No damage, by design. They made mice dizzy in 3 of 14 flat shots and 5 of 14 high lobs (14 mice in all): only when the cork landed within 0.2 units of a mouse, never when a gate or wall stood in front (the corks land on the front piece). Not broken; but the report cannot say how good they are, because the target's mice stand still beside the Keep and mice in a match walk to the hill.
-- **Bouncer.** Did something in 7 of 14 single shots (7 parts, 1 to 2 each) and 34 parts in salvos. **It never got past a gate or a wall in these runs**: the first touchdown is 0.6 units short of the aim spot, so with any wall nearer than that to the Keep, aiming at the Keep puts the first touchdown on the wall (the Walled Keep, the Fortress: "first landed on Gate"). To get behind a wall the player has to aim past the Keep. The aim ring shows both arcs, so this can be learned; it is worth knowing when judging the Bouncer.
+- **Bouncer.** Did something in 7 of 14 single shots (7 parts, 1 to 2 each) and 35 parts in salvos. **It never got past a gate or a wall in these runs**: the first touchdown is 0.6 units short of the aim spot, so with any wall nearer than that to the Keep, aiming at the Keep puts the first touchdown on the wall (the Walled Keep, the Fortress: "first landed on Gate"). To get behind a wall the player has to aim past the Keep. The aim ring shows both arcs, so this can be learned; it is worth knowing when judging the Bouncer.
 - **Glue blob.** Works as written: it glued a part in 13 of 14 single shots (the part it hit), and 14 parts in the 14 "after a Marble" shots, where it glues the fallen parts too (1 to 2 parts a shot). Its effect (no mending for 15 s, mice slowed) cannot be seen in a shot's numbers; it needs mice mending.
 
 **Anything surprising**
 
 1. **The empty frame of a gate or wall is a wall.** A flat shot is stopped by any piece that still has a part, and a post comes off only when the blast lands close to it (within 0.55 of the blast radius). Eight Marbles at the Walled Keep's gate (the probe table above) took off 2, then 1, then **0, 0, 0, 0, 0, 0** parts: after the doors and lintel went, the bare posts and braces went on stopping every Marble, and nothing was left for a blast to take. In the ten-shot Marble and Big Marble salvos at the Walled Keep and the Fortress, the Keep was never reached. A one-point gate (or a wall stripped to its posts) shields a Keep from flat shots until someone hits a post exactly, or a raider pulls it, or a high lob or Bouncer goes over. This looks like the strongest thing a player can build, and it is cheap. (Not a bug I would fix without asking Harry; it is the support and sturdiness rule doing what it says. It is what to watch when new buildings or ammunition are tried.)
-2. **A lobber is hard to snipe from the front.** None of the 10 single shots (five kinds, high lobs too, at two camps) took a part off a lobber, and the Big Marble took 0 off the mirrored pair in ten shots. The shot lands on the front edge of the lobber's box and the nearest part (the bucket) is just outside the blast: in the Fortress run the Big Marble came down 0.23 from the bucket with a blast of 0.22. A lobber that stands where a flat shot meets its end first is close to safe.
+2. **A lobber is hard to snipe from the front.** None of the 10 single shots (five kinds, high lobs too, at two camps) took a part off a lobber, and the Big Marble took 0 off the mirrored pair in ten shots. The shot lands on the front edge of the lobber's box and the nearest part (the bucket) is just outside the blast: in the Fortress run the Big Marble came down about 0.23 from the bucket with a blast of 0.22. A lobber that stands where a flat shot meets its end first is close to safe.
 3. **A single shot never brings anything down.** 0 collapses in all 126 single shots (14 runs times 9 rows). The only collapses in the report are the 3 Big Marble Keeps. Walls did not collapse from Marbles anywhere, because a post or a rail comes off only on a near-direct hit; in matches walls collapse because raiders pull parts and thrown parts chain.
 4. **The pieces behind a gate are safe from mice-dizzying too**: corks and the blasts mostly land on the front piece.
 
