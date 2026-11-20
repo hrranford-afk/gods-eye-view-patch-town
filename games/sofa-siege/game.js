@@ -998,7 +998,7 @@ function initView(){
 /* three views: the whole table (both mats must fit, landscape or portrait), my camp, the hill */
 function camTarget(){var a=W/H,t=Math.tan(20*PI/180),v=SG.cam||0,need=[3.65,2.9,1.9][v],dH=[7.1,5.2,3.9][v],d=Math.max(need/(t*a),dH),el=v===0?(a<1?.95:.72):(v===1?.7:.62),lz=[.25,1.75,.1][v];
   /* the camera stands behind your own camp and looks across the table */
-  var b=baseOf(0),bl=Math.sqrt(b.x*b.x+b.z*b.z),dx=bl>.2?b.x/bl:0,dz=bl>.2?b.z/bl:1,h=v===2?hillAt():{x:0,z:0};if(v===1)lz=Math.max(.9,bl-.15);if(v===2)lz=0;
+  var b=baseOf(0),bl=Math.sqrt(b.x*b.x+b.z*b.z),dx=bl>.2?b.x/bl:0,dz=bl>.2?b.z/bl:1,h=v===2?hillAt():{x:0,z:0};if(v===1)lz=Math.max(.9,bl-.15);if(v===2)lz=0;if(SG.mode==='lab'&&SG.phase!=='start'&&v===0)lz+=.45;   /* the Lab's bars cover the bottom of the screen: the table sits a little higher */
   return [h.x+dx*(lz+Math.cos(el)*d),Math.sin(el)*d,h.z+dz*(lz+Math.cos(el)*d),h.x+dx*lz,-.1,h.z+dz*lz];}
 function moveCamera(){
   if(SG.mode==='table'&&SG.phase!=='start'){var t=Math.tan(10*PI/180),hh=Math.max(120,H-128),d=Math.max(3.38*H/hh/t,3.38/(t*W/H));var tl=(SG.tilt||0)*PI/180;var bb=baseOf(0),bn=Math.sqrt(bb.x*bb.x+bb.z*bb.z),ux=bn>.2?bb.x/bn:0,uz=bn>.2?bb.z/bn:1;   /* blue's camp is at the bottom edge of the screen */
@@ -1339,6 +1339,8 @@ function labSettleView(){labRepoint();fixGrid();}
 /* replace one side's pieces by these records, all built at once */
 function labSetSide(s,recs,instant){labRemoveSide(s);var order=recs.filter(function(r){return r.kind!=='brace';}).concat(recs.filter(function(r){return r.kind==='brace';}));
   order.forEach(function(r){r.side=s;labPutRaw(r,instant!==false);});SG.debris=[];SG.puddles=[];labRepoint();labSaveSides();labHomeMice(s);}
+/* put these piece records on one side, built at once (for tests and for loading a camp from a match) */
+SG.labLoadRecs=function(s,recs){labSetSide(s,recs.map(function(r){return Object.assign({},r);}),true);ui();};
 SG.labReset=function(s){var L=SG.lab;labSetSide(s,L.saved[s].map(function(r){return Object.assign({},r);}),true);labMsg(s?'Target camp rebuilt':'My camp rebuilt',false);ui();};
 SG.labHeal=function(){var L=SG.lab;[0,1].forEach(function(s){labSetSide(s,L.saved[s].map(function(r){return Object.assign({},r);}),true);});SG.marbles=[];labMsg('Everything mended',false);ui();};
 /* a plain description of what is on the table now, for comparing */
@@ -1520,7 +1522,7 @@ SG.labRange=function(o){var L=SG.lab;o=o||{};var spot=o.spot||L.spot||SG.labDefa
       landed:hit?(hit.hit?labName(hit.hit)+(hit.hitSide===1?'':' (mine)'):'ground'):'-',fell:cur?cur.fell.slice():[]});});
   var out={spot:spot,from:'free gun',seed:LAB_SEED,target:L.target,pieceScale:SG.pieceSize,rows:rows,settings:{reload:'quick (0.3 s)',crew:'not needed',aim:'free gun on the near rim, aimed at ('+spot.x.toFixed(2)+', '+spot.z.toFixed(2)+')',seed:LAB_SEED,note:'Each shot is fired at a fresh copy of the target. Only the Keep, mice and pieces of the target camp are on the table.'}};
   /* put everything back as it was */
-  L.quick=quick;SG.labRestore(keepTable);SG.stats=keepStats;L.last=keepLast;L.cur=keepCur;SG.seed=keepSeed;SG.sides[0].aim=keepAim;L.undo=keepUndo[0];L.redo=keepUndo[1];L.sess=keepSess;L.base=keepBase;L.fellLog=keepFell;L.landings=keepLand;
+  L.quick=quick;SG.labRestore(keepTable);SG.stats=keepStats;L.last=keepLast;L.cur=keepCur;SG.seed=keepSeed;SG.sides[0].aim=keepAim;SG.pops=[];L.undo=keepUndo[0];L.redo=keepUndo[1];L.sess=keepSess;L.base=keepBase;L.fellLog=keepFell;L.landings=keepLand;
   L.ammo=keepAmmo;L.high=keepHigh;SG.sides.forEach(function(sd){sd.ammo=L.ammo;sd.high=L.high;});L.rkey='';return out;};
 
 /* ---- the Lab's own drawing: ghost, camp zones, free gun, aim spot, blast rings, support lines ---- */
@@ -1570,11 +1572,11 @@ var LAB_HELP='<h2>How to use the Lab</h2><ul><li><b>Build</b>: pick a piece, tap
 function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='lab';
   var tg=LAB_TARGETS.map(function(t){return '<button class="btn lb" data-a="tg_'+t[0]+'">'+t[1]+'</button>';}).join('');
   d.innerHTML='<div id="labTop" class="labp"><button class="btn lb" data-a="back">⬅ Back to menu</button><span class="pill" id="labTitle">🎯 Shooting range</span><button class="btn lb" data-a="help">? How to use</button><button class="btn lb" data-a="panel" id="labPanelBtn">☰ Panel</button></div>'+
+  '<div id="labReadCard" class="labp"><button class="btn lb" data-a="readtog" id="labReadBtn">Readout ▾</button><div id="labReadBody"><div id="labRead"></div><div class="lgrid"><button class="btn lb" data-a="clear">Clear counters</button></div></div></div>'+
   '<div id="labPanel" class="labp">'+
   '<details open><summary>Target camp</summary><div class="lgrid">'+tg+'</div><div class="lgrid"><button class="btn lb go big" data-a="reset">⟳ Reset target</button><button class="btn lb" data-a="heal">Heal all</button><button class="btn lb" data-a="snap">📷 Snapshot</button><button class="btn lb" data-a="restore">⏪ Restore</button></div></details>'+
   '<details open><summary>Settings</summary><div class="lgrid"><button class="btn lb" data-a="t_instant"></button><button class="btn lb" data-a="t_quick"></button><button class="btn lb" data-a="t_crew"></button><button class="btn lb" data-a="t_strict"></button><button class="btn lb" data-a="t_supports"></button><button class="btn lb" data-a="t_slow"></button><button class="btn lb" data-a="t_pause"></button></div></details>'+
-  '<details open id="labReadD"><summary>Readout</summary><div id="labRead"></div><div class="lgrid"><button class="btn lb" data-a="clear">Clear counters</button></div></details>'+
-  '<details><summary>Range report</summary><div class="lgrid"><button class="btn lb go" data-a="range">Test all ammo</button><button class="btn lb" data-a="t_spot">Set aim spot</button><button class="btn lb" data-a="spotclr">Aim at the Keep</button></div><div id="labSpotTxt" class="lnote"></div></details>'+
+    '<details><summary>Range report</summary><div class="lgrid"><button class="btn lb go" data-a="range">Test all ammo</button><button class="btn lb" data-a="t_spot">Set aim spot</button><button class="btn lb" data-a="spotclr">Aim at the Keep</button></div><div id="labSpotTxt" class="lnote"></div></details>'+
   '<details><summary>Designs</summary><div class="lgrid"><input id="labName" type="text" placeholder="Name your camp" maxlength="40"><button class="btn lb go" data-a="dsave">Save design</button></div><div id="labList"></div><div class="lgrid"><button class="btn lb" data-a="dcopy">Copy JSON</button><button class="btn lb" data-a="dpaste">Paste JSON</button></div><div class="lnote">In a match: choose "My camp in a match" on the title screen.</div></details>'+
   '<details><summary>Prototypes</summary><div id="labProtos"></div></details></div>'+
   '<div id="labBar" class="labp"><div class="labrow" id="labTools"></div><div class="labrow" id="labSub"></div></div>'+
@@ -1605,7 +1607,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   var sp=L.spot||SG.labDefaultSpot();E('labSpotTxt').textContent='Aim spot: '+(L.spot?'tapped':'the target Keep')+' ('+sp.x.toFixed(2)+', '+sp.z.toFixed(2)+')';
   var dz=SG.labDesigns(),names=Object.keys(dz);E('labList').innerHTML=names.length?names.map(function(n){return '<div class="lrow"><span>'+labEsc(n)+' ('+dz[n].placements.length+')</span><button class="btn lb" data-a="dload_'+names.indexOf(n)+'">Load</button><button class="btn lb" data-a="ddel_'+names.indexOf(n)+'">✕</button></div>';}).join(''):'<div class="lnote">No saved designs yet.</div>';
   E('labProtos').innerHTML=Object.keys(LAB_PROTOS).map(function(id){var p=LAB_PROTOS[id];return '<div class="lrow"><button class="btn lb'+(LAB_FLAGS[id]?' on':'')+'" data-a="pr_'+id+'">'+(LAB_FLAGS[id]?'On':'Off')+'</button><span>'+labEsc(p.name)+'<br><small>'+labEsc(p.note||'')+'</small></span></div>';}).join('');
-  E('labPanel').style.display=L.panel?'block':'none';E('labCard').style.display=L.card?'flex':'none';
+  E('labPanel').style.display=L.panel?'block':'none';E('labReadBody').style.display=L.read?'block':'none';E('labReadBtn').textContent=L.read?'Readout ▾':'Readout ▸';E('labCard').style.display=L.card?'flex':'none';
   E('bPause2').textContent=SG.paused?'▶':'⏸';L.rkey='';labHud();}
 function labEsc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 /* every frame: the message line, the ammo buttons' waits, and the readout when something changed */
@@ -1614,10 +1616,10 @@ function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('sa
   var ss=SG.labSession(),cur=L.cur,sel=L.sel?pieceById(L.sel):null,key=[ss.shots,ss.partsOff,ss.collapses,ss.keeps,ss.dizzies,cur?cur.done+'|'+cur.parts.length:'-',sel?sel.id+'|'+sel.parts+'|'+(sel.down?1:0)+'|'+SG.stats.partsOff:'-',L.fellLog.join(),L.read].join('/');if(key===L.rkey)return;L.rkey=key;
   var h='',r=L.last;
   h+='<h4>Last shot</h4>';
-  if(!cur&&!r)h+='<div class="lnote">No shots yet.</div>';
-  else{var c=cur||{};h+='<table class="lt"><tr><td>Ammo</td><td>'+(r?labEsc(AMMO[r.ammo].name)+(r.high?' (high lob)':''):'-')+'</td></tr><tr><td>Parts knocked off</td><td>'+(c.done?c.partsOff:(c.parts?c.parts.length+' so far':0))+'</td></tr><tr><td>Collapses</td><td>'+(c.done?c.collapses:'…')+'</td></tr><tr><td>Mice made dizzy</td><td>'+(c.done?c.dizzies:'…')+'</td></tr>'+(c.done&&c.glued?'<tr><td>Parts glued</td><td>'+c.glued+'</td></tr>':'')+'<tr><td>Fell</td><td>'+(c.fell&&c.fell.length?c.fell.map(labEsc).join(', '):'nothing fell')+'</td></tr><tr><td>Landed on</td><td>'+(c.landings&&c.landings[0]?(c.landings[0].hit?labName(c.landings[0].hit):'the table'):'-')+'</td></tr></table>';
+  if(!cur&&!r)h+='<div class="lnote">No shots yet. Fire one.</div>';
+  else{var c=cur||{};h+='<table class="lt"><tr><td>Ammo</td><td>'+(r?labEsc(AMMO[r.ammo].name)+(r.high?' (high lob)':''):'-')+'</td></tr><tr><td>Parts off</td><td>'+(c.done?c.partsOff:(c.parts?c.parts.length+' so far':0))+'</td></tr><tr><td>Collapses</td><td>'+(c.done?c.collapses:'…')+'</td></tr><tr><td>Mice dizzy</td><td>'+(c.done?c.dizzies:'…')+'</td></tr>'+(c.done&&c.glued?'<tr><td>Parts glued</td><td>'+c.glued+'</td></tr>':'')+'<tr><td>Fell</td><td>'+(c.fell&&c.fell.length?c.fell.map(labEsc).join(', '):'nothing')+'</td></tr><tr><td>Landed on</td><td>'+(c.landings&&c.landings[0]?(c.landings[0].hit?labName(c.landings[0].hit):'the table'):'-')+'</td></tr></table>';
     if(c.done&&c.parts&&c.parts.length){var cnt={};c.parts.forEach(function(q){var k=labName(q.kind)+' '+partName(q.part);cnt[k]=(cnt[k]||0)+1;});h+='<div class="lnote">Off: '+Object.keys(cnt).map(function(k){return cnt[k]>1?cnt[k]+' × '+k:k;}).join(', ')+'</div>';}}
-  h+='<h4>This session</h4><table class="lt"><tr><td>Shots</td><td>'+ss.shots+'</td></tr><tr><td>Parts off</td><td>'+ss.partsOff+'</td></tr><tr><td>Collapses</td><td>'+ss.collapses+'</td></tr><tr><td>Keeps felled</td><td>'+ss.keeps+'</td></tr><tr><td>Mice dizzied</td><td>'+ss.dizzies+'</td></tr></table>'+(L.fellLog.length?'<div class="lnote">Fell lately: '+L.fellLog.map(labEsc).join(', ')+'</div>':'');
+  h+='<div class="lnote"><b>Session:</b> '+ss.shots+' shots · '+ss.partsOff+' parts off · '+ss.collapses+' collapses · '+ss.keeps+' Keeps · '+ss.dizzies+' dizzy'+(L.fellLog.length?'<br>Fell lately: '+L.fellLog.map(labEsc).join(', '):'')+'</div>';
   if(sel){var sp=SG.labSupports(sel);h+='<h4>'+labEsc(sp.title)+(sp.state==='stands'?' · stands':(sp.state==='down'?' · down':' · '+LAB_WHY[sp.state]))+'</h4><div class="lnote">'+labEsc(sp.rule)+'</div><ul class="ls">'+sp.rows.map(function(q){return '<li class="'+(q.crit?'crit':(q.on?'ok':'gone'))+'">'+labEsc(q.text)+(q.crit?' · alone it '+q.why:'')+'</li>';}).join('')+'</ul>';}
   else h+='<h4>Tapped piece</h4><div class="lnote">Tap a piece (Inspect or Lobber tool) to see what holds it up.</div>';
   E('labRead').innerHTML=h;}
@@ -1628,7 +1630,7 @@ function labShowJson(title,text,paste){E('labJsonTitle').textContent=title;E('la
 function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a==='back'){SG.labBack();return;}
   if(a==='help'){L.card=true;labUi();return;}if(a==='cardok'){L.card=false;labStore(LAB_SEEN,1);labUi();return;}
-  if(a==='panel'){L.panel=!L.panel;labPrefs();labUi();return;}
+  if(a==='panel'){L.panel=!L.panel;labPrefs();labUi();return;}if(a==='readtog'){L.read=!L.read;labPrefs();labUi();return;}
   if(a.indexOf('tool_')===0){SG.labTool(a.slice(5));return;}
   if(a.indexOf('k_')===0){L.kind=a.slice(2);if(L.tool!=='build')SG.labTool('build');L.ghost.on=false;labUi();return;}
   if(a.indexOf('am_')===0){SG.labSetAmmo(a.slice(3));return;}
@@ -1732,8 +1734,22 @@ function stepUntil(fn,max){for(var t=0;t<(max||30);t+=STEP){SG.step(STEP);if(fn(
 SG.stepUntil=stepUntil;
 /* straight to the start of round 1 with two preset camps (for tests and screenshots) */
 SG.quick=function(team,opts){SG.start(team,opts||{seed:777});SG.demo(11,0);SG.sides[1].layout=0;SG.skipBuild();SG.begin();SG.step(CONFIG.count+.05);};
+
+/* fixed scenes for the Lab's screenshots */
+SG.labShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab,sp;L.card=name==='lab-1-entry';L.panel=true;
+  function mine(kind,x,z,t){return SG.labPlace(kind,w2(0,x,z)[0],w2(0,x,z)[1],t==null?PI:t);}
+  if(name==='lab-1-entry'){return;}
+  if(name==='lab-2-building'){labLoadTarget('fortress',true);mine('wall',-.45,1.55);mine('wall',.05,1.55);mine('gate',.62,1.55);mine('workshop',-1.0,2.5);mine('brace',-.29,2.42,-PI/2);mine('tent',.95,2.5);
+    L.tool='build';L.kind='wall';L.ghost.on=true;var w=w2(0,-.95,1.55);L.ghost.x=w[0];L.ghost.z=w[1];L.ghost.rot=PI;L.msg={text:'Wall placed. Drag to slide the ghost; green is a good spot',until:99,bad:false};SG.step(.2);return;}
+  if(name==='lab-3-readout'){labLoadTarget('fortress',true);L.tool='fire';L.read=true;sp=SG.labDefaultSpot();SG.labSetHigh(true);SG.labFire(0,0,sp.x,sp.z+.05);SG.labSettle(10);SG.labSetHigh(false);SG.labSetAmmo('big');SG.sides[0].big=99;
+    var s2=SG.labFire(0,1,sp.x,sp.z);SG.labSettle(10);SG.step(.3);L.tool='fire';var kp=SG.pieces.filter(function(q){return q.side===1&&q.kind==='wall';})[0];SG.labSelect(kp);return;}
+  if(name==='lab-4-range-report'){labLoadTarget('walled',true);labAct('range');return;}
+  if(name==='lab-5-supports'){labLoadTarget('braced',true);L.supports=true;L.tool='inspect';SG.cam=1;var bx=FOOT.tower[0]+FOOT.brace[1]+.015;mine('brace',-bx,2.42,-PI/2);mine('brace',bx,2.42,PI/2);mine('wall',-.9,1.7);mine('wall',-.9+FOOT.wall[0]*2+.004,1.7);
+    var kp2=SG.pieces.filter(function(q){return q.side===0&&q.kind==='tower';})[0],wl=SG.pieces.filter(function(q){return q.side===0&&q.kind==='wall';})[0];SG.debug.knock(kp2.id,'tower.brace.W');SG.debug.knock(kp2.id,'tower.post.SW');SG.debug.knock(wl.id,'wall.post.L');SG.labSelect(kp2);SG.step(.5);return;}
+};
 /* fixed scenes for screenshots */
 SG.shot=function(name,team){
+  if(name.indexOf('lab-')===0){SG.labShot(name);return;}
   if(name==='v2-4-build'){SG.start(team,{seed:777,level:'hard',rules:2});SG.sides[0].preset='good';var P0=PRESETS.good;for(var qi=0;qi<7;qi++)botPlace(0,P0[qi][0]);SG.sides[0].preset='';SG.step(26);SG.select(3,0);var gs=w2(0,Math.sin(-.3)*1.55,Math.cos(-.3)*1.55);SG.turn(PI-SG.sides[0].ghost.rot,0);SG.moveGhost(gs[0],gs[1],0);SG.sides[0].msg.t=0;return;}
   if(name.indexOf('v2b')===0){ /* two lobbers (blue's second lobber, chosen), the ammo row, a Bouncer over a wall, a Glue blob on fallen parts; the other camp is the good one, with its wall in front of the Keep */
     PRESETS.wallOnly=[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.5,PI],[2,2.06,.5,PI],[8,2.2,1.2,PI]];   /* a Keep, its braces and one wall across the front: just enough to show a Bouncer or a Glue blob */
