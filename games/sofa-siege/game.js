@@ -695,6 +695,7 @@ function rollTick(a,dt){var r=a.rl,u=U(),step=Math.min(r.left,C3.rollSpeed*u*dt)
 function looseParts(p){var o=[],k=p.kind;
   if(k==='wall'){var rails=onCount(p,/rail/),posts=onCount(p,/post/),pr=props(p).length;p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/plank/.test(q.id)&&rails===1)o.push(i);else if(/rail/.test(q.id)&&posts===1&&!pr)o.push(i);});}
   else if(k==='gate'){var gp=onCount(p,/gate\.post/);p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/lintel/.test(q.id)&&gp===1)o.push(i);else if(/door/.test(q.id)&&(isOn(p,'gate.lintel')?1:0)+(isOn(p,'gate.post.'+q.id.split('.')[2])?1:0)===1)o.push(i);});}
+  else if(BK[k]){p.ps.forEach(function(q,i){if(q.st==='on'&&q.stg===0&&q.need&&q.need.length)o.push(i);});}   /* a building: the trim, which hangs on one thing (a tile on its rafter, a shutter on its window, a flag on its pole) */
   else if(k==='tower'){p.ps.forEach(function(q,i){if(q.st!=='on'||!/^tower\.brace/.test(q.id))return;var b=q.id.split('.')[2],held=['NE','NW','SE','SW'].filter(function(c){return c.indexOf(b)>=0&&isOn(p,'tower.post.'+c);}).length;if(held===1)o.push(i);});}
   return o;}
 function quakeAt(pos,Rq,a){var n=0,touched=[];SG.att=a.side;SG.cause='quake';
@@ -2164,6 +2165,16 @@ SG.labShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab,sp
     SG.labSetAmmo('p_pop');SG.labFire(0,'gun',wl.x,wl.z,{force:true,seed:11});for(var ci=0;ci<900&&!(L.cur&&L.cur.landings.length);ci++)SG.step(STEP);for(ci=0;ci<20;ci++)SG.step(STEP);return;}
   /* Rate it: the table for a Bead shot beside a Marble and a Big Marble */
   if(name==='lab-10-rate-it'){labLoadTarget('walled',true);SG.setProto('p_pop',true,false);SG.labWkPreset('pop');SG.labWkUse();L.tool='gun';L.panel=true;if(hasDom){labUi();labAct('wrate');}return;}
+  /* the Building Yard: a yard of three, a Marble's few bits of trim, a Big Marble taking a side of the barn, the windmill's sails going one after another, a market row falling into itself, and the bridge with its supports shown */
+  function bFocus(zoom,y,dx){var ps=SG.pieces.filter(function(q){return q.side===1;}),fx=0,fz=0;ps.forEach(function(q){fx+=q.x;fz+=q.z;});L.focus={x:fx/ps.length+(dx||0),z:fz/ps.length,zoom:zoom,y:y||0};SG.camSnap=true;}
+  function bFire(id,seed,hi){var q=SG.pieces.filter(function(e){return e.side===1;}),c=0,d=0;q.forEach(function(e){c+=e.x;d+=e.z;});L.ammo=id;L.high=!!hi;SG.sides.forEach(function(sd){sd.ammo=id;sd.high=!!hi;});L.tool='gun';L.gunAim={tx:c/q.length,tz:d/q.length};return SG.labFire(0,'gun',c/q.length,d/q.length,{force:true,seed:seed});}
+  if(name==='lab-11-yard'){labLoadTarget('yard',true);SG.cam=3;L.panel=true;L.read=false;L.tool='fire';bFocus(.8,.1,.55);SG.step(.3);
+    if(hasDom){labUi();[].forEach.call(document.querySelectorAll('#labPanel details'),function(d){d.open=d.id==='labYardDet';});}return;}
+  if(name==='lab-12-cottage-trim'){labLoadTarget('cottage',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.4,.2);bFire('marble',5,false);for(var ti=0;ti<600&&!(L.cur&&L.cur.landings.length);ti++)SG.step(STEP);for(ti=0;ti<22;ti++)SG.step(STEP);return;}
+  if(name==='lab-13-barn-side'){labLoadTarget('barn',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.46,.15);bFire('big',5,false);SG.labSettle(10);SG.step(1.6);return;}
+  if(name==='lab-14-windmill-sails'){labLoadTarget('windmill',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.52,.5);bFire('big',5,false);for(var wi=0;wi<600&&!(L.cur&&L.cur.landings.length);wi++)SG.step(STEP);for(wi=0;wi<66;wi++)SG.step(STEP);return;}
+  if(name==='lab-15-market-chain'){labLoadTarget('market',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.5,.1);var mk=SG.pieces.filter(function(e){return e.side===1;}).sort(function(a2,b2){return a2.x-b2.x;});L.ammo='big';L.tool='gun';SG.sides.forEach(function(sd){sd.ammo='big';});SG.labFire(0,'gun',mk[1].x,mk[1].z,{force:true,seed:5});for(var mi=0;mi<600&&!(L.cur&&L.cur.landings.length);mi++)SG.step(STEP);for(mi=0;mi<40;mi++)SG.step(STEP);return;}
+  if(name==='lab-16-bridge-supports'){labLoadTarget('bridge',true);SG.cam=3;L.panel=false;L.read=true;L.supports=true;L.tool='inspect';bFocus(.5,.25);bFire('marble',5,true);SG.labSettle(10);L.tool='inspect';SG.labSelect(SG.pieces.filter(function(e){return e.side===1;})[0]);SG.step(.5);if(hasDom)labUi();return;}
   if(name==='lab-5-supports'){labLoadTarget('braced',true);L.supports=true;L.tool='inspect';SG.cam=1;var bx=FOOT.tower[0]+FOOT.brace[1]+.015;mine('brace',-bx,2.42,-PI/2);mine('brace',bx,2.42,PI/2);mine('wall',-.9,1.7);mine('wall',-.9+FOOT.wall[0]*2+.004,1.7);
     var kp2=SG.pieces.filter(function(q){return q.side===0&&q.kind==='tower';})[0],wl=SG.pieces.filter(function(q){return q.side===0&&q.kind==='wall';})[0];SG.debug.knock(kp2.id,'tower.brace.W');SG.debug.knock(kp2.id,'tower.post.SW');SG.debug.knock(wl.id,'wall.post.L');SG.labSelect(kp2);SG.step(.5);return;}
 };

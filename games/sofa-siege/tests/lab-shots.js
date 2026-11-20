@@ -1,14 +1,26 @@
-/* Round Table Kingdom Lab: the screenshots of the Workshop, the Castle, the Tether marble, the carnage counter and Rate it.
-   Run: NODE_PATH=$(npm root -g) node tests/lab-shots.js   (writes shots/lab-6 to lab-10). The scenes are SG.labShot in game.js. */
+/* Round Table Kingdom Lab: the screenshots of the Workshop, the Castle, the Tether marble, the carnage counter, Rate it, and the Building Yard.
+   Run: NODE_PATH=$(npm root -g) node tests/lab-shots.js   (writes shots/lab-6 to lab-16; name some scenes to make only those). The scenes are SG.labShot in game.js.
+   With --frames it makes no pictures and prints the frame time of the page as drawn, for the Castle and for a Building Yard of 3 (and the market row): software GL in a headless browser, so only the ratio means anything. */
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { chromium } = require('playwright');
-const NAMES = process.argv.slice(2).length ? process.argv.slice(2) : ['lab-6-workshop', 'lab-7-castle', 'lab-8-tether', 'lab-9-carnage', 'lab-10-rate-it'];
+const FRAMES = process.argv.indexOf('--frames') >= 0;
+const ARGS = process.argv.slice(2).filter((a) => a[0] !== '-');
+const NAMES = ARGS.length ? ARGS : ['lab-6-workshop', 'lab-7-castle', 'lab-8-tether', 'lab-9-carnage', 'lab-10-rate-it', 'lab-11-yard', 'lab-12-cottage-trim', 'lab-13-barn-side', 'lab-14-windmill-sails', 'lab-15-market-chain', 'lab-16-bridge-supports'];
 const run = async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
+  if (FRAMES) {
+    for (const tg of ['castle', 'yard', 'market', 'castle', 'yard']) {
+      const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+      await p.goto('file://' + path.resolve(__dirname, '..', 'index.html') + '?lab=1'); await p.waitForFunction('window.__done', null, { timeout: 60000 });
+      await p.evaluate((t) => { SG.lab.card = false; SG.lab.panel = false; SG.labLoadTarget(t); SG.setCam(3); SG.labTool('fire'); SG.labFrameReset(); }, tg);
+      await p.waitForTimeout(8000); console.log(tg, JSON.stringify(await p.evaluate(() => SG.labFrameStats()))); await p.close();
+    }
+    await b.close(); return;
+  }
   for (const name of NAMES) {
     const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     if (name === 'lab-7-castle') { /* the real loop, so that the readout shows the frame time of the page as it is drawn */

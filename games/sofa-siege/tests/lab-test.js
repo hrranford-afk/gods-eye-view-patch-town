@@ -309,6 +309,84 @@ const run = async () => {
   ok('the range-report bug is fixed: a gate with no doors and no lintel (only posts and braces) lets a flat shot through between the posts, so a Marble aimed at the Keep behind it lands on the Keep', gb.whole && !gb.centre && gb.atPost && gb.bare.every((x) => /post|brace/.test(x)) && /tower|Keep/i.test(gb.landed || ''), JSON.stringify(gb));
   ok('...and what is left decides: a gate with one door still stops a shot, a wall with a rail still stops it, a wall that is only posts lets it through but a post still stops it (nothing else in a match changes)', gb.oneDoor && gb.wallRail && !gb.wallBare && gb.wallPost, JSON.stringify(gb));
 
+  /* 11g. the Building Yard: six buildings of 15 to 40 parts that come apart in stages (trim, walls, frame, collapse) by the same support rule */
+  const BLD = [['cottage', 'Cottage'], ['barn', 'Barn'], ['lookout', 'Watch tower house'], ['bridge', 'Bridge + gatehouse'], ['windmill', 'Windmill'], ['market', 'Market row']];
+  const byb = await ev((list) => {
+    SG.hold = true; SG.lab.card = false; SG.lab.quick = true; SG.lab.topple = true; const out = {};
+    const shot = (id, high, x, z, seed) => { SG.lab.ammo = id; SG.lab.high = !!high; SG.sides.forEach((s) => { s.ammo = id; s.high = !!high; }); SG.labFire(0, 'gun', x, z, { force: true, seed }); const c = SG.labSettle(10), st = SG.labStages(); return { off: c.partsOff, col: c.collapses, trim: st.trim, walls: st.walls, frame: st.frame }; };
+    list.forEach(([t]) => {
+      const o = {}; SG.labLoadTarget(t); let ps = SG.pieces.filter((q) => q.side === 1); const cx = ps.reduce((a, q) => a + q.x, 0) / ps.length, cz = ps.reduce((a, q) => a + q.z, 0) / ps.length;
+      o.pieces = ps.length; o.parts = ps.reduce((a, q) => a + q.total, 0); o.perPiece = ps.map((q) => q.total); o.stages = ps.map((q) => SG.bldStats(q).stage.map((g) => g.n)); o.start = ps.every((q) => q.parts === q.total && !q.down); o.startFloat = SG.bldFloating().length; o.overlaps = SG.labTemplateOverlaps(t).length;
+      o.onTable = ps.every((q) => Math.hypot(q.x, q.z) < 3.05); o.kinds = ps.map((q) => q.kind).join(',');
+      SG.labReset(1); const R = .3 * SG.unit(), fz = Math.max(...ps.map((q) => SG.FOOT[q.kind][1]));
+      o.touch = shot('marble', false, cx, cz + fz + R * 1.15, 5); SG.labReset(1);
+      o.marble = shot('marble', false, cx, cz, 5); o.marbleFloat = SG.bldFloating().length; o.marbleCol = SG.stats.collapses;
+      /* a few more Marbles at the same spot, nothing mended: the stages go in order (trim first) */
+      const mid = SG.pieces.filter((q) => q.side === 1).sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0], fx = SG.FOOT[mid.kind][0], fz2 = SG.FOOT[mid.kind][1];
+      o.seq = [[o.marble.trim, o.marble.walls, o.marble.frame, o.marble.col]]; [[.5, 0], [-.5, 0], [0, .5], [0, -.5], [.5, .5], [-.5, -.5], [.5, -.5], [-.5, .5], [0, 0], [.8, 0], [-.8, 0]].forEach((f, i) => { const r = shot('marble', false, mid.x + f[0] * fx, mid.z + f[1] * fz2, 6 + i); o.seq.push([r.trim, r.walls, r.frame, r.col]); });
+      o.seqFloat = SG.bldFloating().length; SG.labReset(1);
+      o.high = shot('marble', true, cx, cz, 5); SG.labReset(1);
+      const hit = (() => { ps = SG.pieces.filter((q) => q.side === 1).sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx)); return ps[0]; })(), tot = hit.total;
+      o.big = shot('big', false, hit.x, hit.z, 5); o.bigHitOff = tot - hit.parts; o.bigTot = tot; o.bigFloat = SG.bldFloating().length;
+      const big2 = shot('big', false, hit.x, hit.z, 9); o.big2Off = tot - hit.parts; o.big2Float = SG.bldFloating().length;
+      SG.labReset(1); SG.lab.topple = false; const noTop = shot('big', false, hit.x, hit.z, 5); o.topN0 = SG.topN; o.nbOff0 = SG.pieces.filter((q) => q.side === 1 && q !== SG.pieces.filter((e) => e.side === 1).sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0]).reduce((a, q) => a + (q.total - q.parts), 0);
+      SG.lab.topple = true; SG.labReset(1); shot('big', false, hit.x, hit.z, 5); o.topN1 = SG.topN; const hh = SG.pieces.filter((q) => q.side === 1).sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0]; o.nbOff1 = SG.pieces.filter((q) => q.side === 1 && q !== hh).reduce((a, q) => a + (q.total - q.parts), 0);
+      /* the Inspect card: the frame parts that alone would bring others down */
+      SG.labReset(1); const p0 = SG.pieces.filter((q) => q.side === 1)[0], sp = SG.labSupports(p0); o.crit = sp.rows.filter((r) => r.crit).length; o.rows = sp.rows.length; o.state = sp.state;
+      out[t] = o;
+    });
+    return out; }, BLD);
+  for (const [t, nm] of BLD) {
+    const o = byb[t], per = o.perPiece;
+    ok('Building Yard, ' + nm + ': it is ' + o.pieces + ' piece' + (o.pieces > 1 ? 's' : '') + ' of ' + per.join(' + ') + ' parts (15 to 40 each... the market row 13 a stall, 39 in all), with parts in all three stages: trim, walls and frame', (t === 'market' ? o.parts >= 15 && o.parts <= 40 : per.every((n) => n >= 15 && n <= 40)) && o.stages.every((g) => g.every((n) => n > 0)), JSON.stringify(o.stages) + ' ' + per);
+    ok('...' + nm + ' stands at the start (every part on, nothing floating on a part that is not there), nothing overlaps, and it is on the table', o.start && o.startFloat === 0 && o.overlaps === 0 && o.onTable);
+    ok('...' + nm + ': a light touch (a Marble that lands just out of reach) takes nothing off, and a high lob takes at most a bit of trim', o.touch.off === 0 && o.high.off <= 2 && o.high.frame === 0 && o.high.walls === 0, JSON.stringify([o.touch, o.high]));
+    ok('...' + nm + ': one Marble takes off a few bits (1 to 6), trim first, no frame, no collapse, and nothing is left floating', o.marble.off >= 1 && o.marble.off <= 6 && o.marble.trim >= 1 && o.marble.frame === 0 && o.marble.col === 0 && o.marbleFloat === 0, JSON.stringify(o.marble));
+    const firstFrame = o.seq.findIndex((r) => r[2] > 0), trimBefore = o.seq.slice(0, firstFrame < 0 ? o.seq.length : firstFrame + 1).reduce((a, r) => a + r[0], 0);
+    ok('...' + nm + ': Marble after Marble the stages go in order: trim goes before any frame part does (a frame part comes off only after ' + trimBefore + ' trim parts, with the Marbles spread over the building), and the pile never has a floating part', trimBefore >= 2 && o.seqFloat === 0, JSON.stringify(o.seq));
+    ok('...' + nm + ': a Big Marble takes a side (a collapse, at least a third of the hit piece off), nothing floats, and a second one finishes most of it (' + o.bigHitOff + ' then ' + o.big2Off + ' of ' + o.bigTot + ')', o.big.col >= 1 && o.bigHitOff >= o.bigTot / 3 && o.bigFloat === 0 && o.big2Off >= o.bigTot * .6 && o.big2Float === 0, JSON.stringify([o.big, o.bigHitOff, o.big2Off, o.bigTot]));
+    ok('...' + nm + ': Inspect names the frame parts that alone would bring more down (' + o.crit + ') and says it stands', o.crit >= 1 && o.state === 'stands' && o.rows >= 4);
+  }
+  const yd = await ev(() => {
+    SG.lab.quick = true; SG.lab.topple = true; const o = {};
+    const shot = (id, x, z, seed) => { SG.lab.ammo = id; SG.lab.high = false; SG.sides.forEach((s) => { s.ammo = id; s.high = false; }); SG.labFire(0, 'gun', x, z, { force: true, seed }); return SG.labSettle(10); };
+    /* chain topple between neighbours: a Big Marble on the barn of the yard of three; the cottage and the windmill beside it are knocked, with Chain topple off they are not */
+    SG.labLoadTarget('yard'); o.yardKinds = SG.pieces.filter((q) => q.side === 1).map((q) => q.kind).join(','); o.yardOverlaps = SG.labTemplateOverlaps('yard').length;
+    const nb = () => SG.pieces.filter((q) => q.side === 1 && q.kind !== 'barn').reduce((a, q) => a + (q.total - q.parts), 0), barn = () => SG.pieces.filter((q) => q.kind === 'barn')[0];
+    SG.lab.topple = false; SG.labReset(1); let b0 = barn(); let c = shot('big', b0.x, b0.z, 5); o.off = { barn: b0.total - barn().parts, nb: nb(), topN: SG.topN, chain: c.chain };
+    SG.lab.topple = true; SG.labReset(1); b0 = barn(); c = shot('big', b0.x, b0.z, 5); o.on = { barn: b0.total - barn().parts, nb: nb(), topN: SG.topN, chain: c.chain, fell: c.fell.join('|') }; o.nbCollapse = c.collapses;
+    /* the market row: crates and awnings come down into the next stall */
+    SG.labLoadTarget('market'); const st = SG.pieces.filter((q) => q.side === 1).sort((a, b) => a.x - b.x); SG.lab.topple = true; SG.labReset(1); const mid = SG.pieces.filter((q) => q.side === 1).sort((a, b) => a.x - b.x)[1]; c = shot('big', mid.x, mid.z, 5);
+    const sts = SG.pieces.filter((q) => q.side === 1).sort((a, b) => a.x - b.x); o.market = { mid: sts[1].total - sts[1].parts, left: sts[0].total - sts[0].parts, right: sts[2].total - sts[2].parts, topN: SG.topN, chain: c.chain };
+    /* the stage readout */
+    SG.labLoadTarget('cottage'); const q = SG.pieces.filter((e) => e.side === 1)[0]; shot('marble', q.x, q.z, 5); SG.labRefresh(); const sg = SG.labStages(); o.stg = sg; o.hud = document.querySelector('#labCarn .stg') ? document.querySelector('#labCarn .stg').textContent : '';
+    SG.labLoadTarget('walled'); SG.labResetCounters(); SG.labRefresh(); o.hudHidden = !document.querySelector('#labCarn .stg');
+    /* Rebuild: only the selected building comes back */
+    SG.labLoadTarget('yard'); const ps = SG.pieces.filter((e) => e.side === 1); const cot = ps.filter((e) => e.kind === 'cottage')[0], brn = ps.filter((e) => e.kind === 'barn')[0];
+    shot('big', cot.x, cot.z, 5); shot('big', brn.x, brn.z, 7); const cd = cot.total - cot.parts, bd = brn.total - brn.parts; SG.labSelect(cot); o.before = { cd, bd };
+    document.querySelector('#lab [data-a="rebuild"]').click(); const cot2 = SG.pieces.filter((e) => e.kind === 'cottage')[0], brn2 = SG.pieces.filter((e) => e.kind === 'barn')[0];
+    o.after = { cd: cot2.total - cot2.parts, bd: brn2.total - brn2.parts, float: SG.bldFloating().length, whole: cot2.ps.every((e) => e.st === 'on'), msg: SG.lab.msg.text };
+    return o; });
+  ok('Chain topple works between neighbours: a Big Marble on the barn brings it down and the cottage and windmill beside it lose parts (' + yd.on.nb + ' with Chain topple, ' + yd.off.nb + ' without; topples ' + yd.on.topN + ' and ' + yd.off.topN + ')', yd.yardKinds === 'cottage,barn,windmill' && yd.yardOverlaps === 0 && yd.on.barn > 0 && yd.on.topN >= 1 && yd.on.nb > yd.off.nb && yd.off.topN === 0, JSON.stringify(yd));
+  ok('...and in the market row a Big Marble on the middle stall knocks the stalls beside it (crates, awnings), and a collapse counts as a link of the chain', yd.market.mid >= 5 && yd.market.left + yd.market.right >= 2 && yd.market.topN >= 1, JSON.stringify(yd.market));
+  ok('the carnage HUD has a "Bits off / stage" line (trim, walls, frame, collapse) that matches the shot, and it is not there when there is no building on the table', /Bits off \/ stage/.test(yd.hud) && yd.stg.trim >= 1 && new RegExp('trim\\s*' + yd.stg.trim + '(?!\\d)').test(yd.hud) && yd.hudHidden, JSON.stringify([yd.hud, yd.stg, yd.hudHidden]));
+  ok('Rebuild puts back the selected building only (the other one stays as damaged as it was) and nothing floats', yd.before.cd > 0 && yd.before.bd > 0 && yd.after.cd === 0 && yd.after.whole && yd.after.bd === yd.before.bd && yd.after.float === 0 && /rebuilt/.test(yd.after.msg), JSON.stringify([yd.before, yd.after]));
+  const own = await ev(() => { const o = {}; const sel = (i, v) => { const e = document.getElementById('labY' + i); e.value = v; };
+    sel(0, 'market'); sel(1, 'lookout'); sel(2, 'bridge'); document.querySelector('#lab [data-a="yard_t"]').click();
+    let ps = SG.pieces.filter((q) => q.side === 1); o.t = ps.map((q) => q.kind).join(','); o.clear = ps.every((a, i) => ps.every((b, j) => j <= i || !SG.overlap(a, b))) && ps.every((q) => Math.hypot(q.x, q.z) < 3.05); o.built = ps.every((q) => q.built && q.parts === q.total);
+    sel(0, 'windmill'); sel(1, 'windmill'); sel(2, ''); document.querySelector('#lab [data-a="yard_m"]').click(); ps = SG.pieces.filter((q) => q.side === 0); o.m = ps.map((q) => q.kind).join(','); o.mine = ps.every((q) => q.z > 0 && q.built);
+    SG.labUndo(); o.undo = SG.pieces.filter((q) => q.side === 0).map((q) => q.kind).join(',');
+    /* every pair of the six, three at a time, lays out clean */
+    const names = ['cottage', 'barn', 'lookout', 'bridge', 'windmill', 'market']; o.bad = []; for (const a of names) for (const b of names) for (const c of names) { const r = SG.labYard([a, b, c], 1); const q = SG.pieces.filter((e) => e.side === 1); if (!r.ok || !q.every((x, i) => q.every((y, j) => j <= i || !SG.overlap(x, y))) || !q.every((x) => Math.hypot(x.x, x.z) < 3.05)) o.bad.push(a + '+' + b + '+' + c); }
+    o.picks = document.querySelectorAll('#lab select.ysel').length; return o; });
+  ok('"Build your own yard": three pickers and Place buttons; market row + watch tower house + bridge go into the target camp built and clear of each other (5 pieces), two windmills into my camp, and Undo takes them back', own.picks === 3 && own.t === 'stall,stall,stall,lookout,bridge' && own.clear && own.built && own.m === 'windmill,windmill' && own.mine, JSON.stringify(own));
+  ok('...any three of the six lay out clean on the table (all 216 combinations: nothing overlaps, nothing is off the table)', own.bad.length === 0, own.bad.slice(0, 5).join(' '));
+  const mt = await ev(() => { const o = {}; SG.labLoadTarget('yard'); o.designOk = SG.labDesignCheck(SG.labToDesign(1, 'y')) === ''; const d = SG.labToDesign(1, 'y'); o.kinds = d.placements.map((q) => q.kind).join(','); o.lab = SG.pieces.filter((q) => q.side === 1).map((q) => q.kind).join(',');
+    SG.labLoadTarget('walled'); SG.labStart(); SG.lab.card = false; return o; });
+  ok('a camp of buildings is a design like any other (saved and loaded by kind, schema 1)', mt.designOk && mt.kinds === 'cottage,barn,windmill');
+  const mm = await ev(() => { SG.start('blue', { level: 'easy', seed: 3 }); const o = { kit: SG.sides.every((s) => s.kit.every((k) => !SG.BK[k.kind])), phase: SG.phase }; SG.skipBuild(); o.pieces = SG.pieces.every((p) => !SG.BK[p.kind]); SG.reset(); SG.labStart(); SG.lab.card = false; return o; });
+  ok('a match never has a building: no kit has one, and a match camp built for both sides has none', mm.kit && mm.pieces);
+
   /* 12. ten simulated minutes: nothing ends, nothing errors */
   const long = await ev(() => { SG.labStart(); SG.lab.card = false; SG.seed = 2024; SG.labPresets.forEach((pr) => SG.setProto('p_' + pr.key, true)); const ids = Object.keys(SG.ammo), T = ['walled', 'domino', 'braced', 'stack', 'fortress', 'castle', 'glass', 'copy', 'longwall', 'workshops', 'village', 'maze', 'empty'], kinds = ['wall', 'gate', 'tent', 'workshop', 'trap', 'tower'];
     let shots = 0, resets = 0, t = 0, r = 12345; const rnd = () => { r = (r * 16807) % 2147483647; return r / 2147483647; };
