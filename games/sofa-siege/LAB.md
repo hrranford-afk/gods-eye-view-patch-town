@@ -291,6 +291,87 @@ In `models.js` write `BUILD.name` with the `bp(K, id, stage, need, fn, {min, dly
 - The models are plain: boxes, cones and rods with the usual textures. The windmill's sails are a lattice and cloth; a stall's goods are balls on a tray. They look right from the Lab's camera, not from a very low one.
 - Nobody has played the Yard on an iPad. See the frame-time note under the screenshots below.
 
+## The Arsenal: seven weapon families and the pieces that counter them (20 Nov)
+
+Harry, 20 Nov: "we need to build them all, make them all different, and realise how the bases need to be different to counteract them." The rule of the set: **every weapon has one cheap counter, and every weapon is great against something that has not got it**, so no one layout beats everything. **All of it is Lab only.** The six new weapons are on the `AMMO` table only while the **Arsenal** switch (a Lab prototype, Prototypes panel or the Arsenal panel, off by default) is on, and Back to menu or starting a match puts them away. The counter pieces are in `FOOT0`, `TALL0` and `BK` but in no kit, so a match never has one (a test checks: five kinds of ammunition, no kit has one, a design with a Roof in it drops the Roof). The numbers of the report are in `ARSENAL_REPORT.md`, written by `tests/lab-test.js` every run.
+
+### The weapons (each its own look, motion, sound and behaviour)
+
+The first column is the family. All are plain records on the `AMMO` table (the Workshop's `w` record), with seven new numbers in `WDEF` (`line`, `pierce`, `gust`, `gustSecs`, `push`, `qlvl`, `mass`; the old weapons have 0 or 1 of them and shoot exactly as before). The family of a record is read from its numbers (`famOf`), so a Workshop weapon with `roll` or `tether` is placed in the right family and meets the same counters. Prices are `wPrice` (my formula).
+
+| Family (price) | Look and sound | How it moves | What it does | Counter |
+|---|---|---|---|---|
+| **Lobber** (Marble, 4) | blue marble, twang | the old arc; high lob over a wall | blast .3 (high lob: half) | **Roof**: a lob landing within reach of its edge keeps a quarter of its blast, and the roof loses a panel for every 1.6 Marbles it takes. A Shield board also stops a *low* lob (it is in the way). |
+| **Flat flinger** (4.9) | small yellow ball, "zip" | `line:1`: a straight line from the gun to the ground at the target, `speed` 2 (about half the Marble's time) | blast .22, 4 parts a hit, Keep leg. `pierce:1`: it **punches through one thin piece** (a wall or a gate: one part comes off, the blast keeps 85%) and flies on. Needs a clear line: a tent, a Keep or a board in its way stops it | **Shield board** (the blast keeps 20%, a plank wears), **Log barrier** (35%) |
+| **Roller** (acorn drum, 5.1) | brown acorn, rattle | lands short (blast .08), then **rolls** 2.4 on along the ground (`roll`), knocking off parts at its base | a lane of the camp, the gate and the foot of the walls | **Ditch** (3 lanes; a roller falls in, 4 to a lane, then a lane is filled in), **Log barrier** (stops it, a log comes off for every 2). A **Low wall** does nothing: it hops it |
+| **Scatter popper** (3.3) | eight pink beads, pop | `scatter:8` on a high arc | a wide cloud (spread .55), blast .14 each, 2 parts a bead, slows mice in .2 for 4 s | **Net** (catches a bead that lands within reach of it: 10 beads wear a strip of its mesh); a Roof blunts them |
+| **Tether hook** (3.1) | gold hook, thrum, a drawn string | high arc; snags the first part within a hand of its path, or the nearest low part where it lands | yanks that part 1.6 toward the gun: a door, a wall post (the wall comes down), a Keep leg | **Cutter post** (a string passing within .3 of it is cut; one of its two blades comes off), **Net** (catches the string or the ball). Anything in front of the camp that the hook meets first takes the yank instead |
+| **Thumper** (4.7) | big grey ball, boom | lobbed, `blast 0`; a ground shake of radius .9 | `quake` with `qlvl:2`: parts held by one fastener fall (as the old Pocket Earthquake), and in the inner 65% also **the planks of a wall with no brace, a gate's doors and lintel, a Keep's braces if nothing props it**, nearest first, 7 at most | **Extra brace** (the kit's brace piece: a wall or Keep it props keeps everything). A gate cannot be braced: it stays the weak point |
+| **Fan** (2.9) | pale ball, whoosh, a ring and streaks | lobbed; leaves a **gust** (`gust` radius .9, 5 s) blowing sideways (to the left of the shot) | no damage by itself. Blows mice off their places, moves loose parts and **shots in the air** (a Marble fired through it lands off its line; heavy ones, `mass`, less), and tears the cloth off a Roof or a Net | **Heavy block** (shelters .55 round it) and **Low wall** (.3). A Big Marble hardly moves |
+
+### The counter pieces (in the Build bar; stage and need as the Building Yard)
+
+Each is one piece of a few parts with a real support rule: take what holds a part up and it falls (a test knocks the supports out one at a time and checks `SG.bldFloating()` stays empty). Costs are budget points (`CONFIG.v2.cost`; a Marble is 4, a Flinger 4.9).
+
+| Piece | Cost | Parts (what holds what) | Does |
+|---|---|---|---|
+| **Roof (awning)** | 1 | 4 posts, 2 beams, 3 cloth panels. A beam needs its 2 posts, a panel either beam | a shell lobbed from above lands on it. Tall: a flat shot goes under |
+| **Shield board** | 1 | 2 legs, 4 planks (a plank needs either leg) | thick: stops a flat shot |
+| **Ditch** | 1 | 2 rims, 3 pit lanes (a lane needs either rim) | a flat trench (shots go over it): swallows rollers |
+| **Log barrier** | 1 | 2 pegs, 3 logs (two lie, one on top of both) | stops a roller; thick for a flat shot |
+| **Net** | 0.5 | 4 poles, 2 ropes, 3 mesh strips | a tall canopy: catches beads and a hook, lets a heavy ball through |
+| **Cutter post** | 0.5 | post, arm, 2 blades (the blade needs the arm) | cuts a hook string; shots go past it |
+| **Extra brace** | 1 | the kit's brace (it must lean on a wall or a Keep) | holds against a strong thump |
+| **Heavy block** | 1.5 | block, cap, ring | does not move; shelters from a gust |
+| **Low wall** | 0.5 | sill, 4 bricks | shelters a little from a gust; a flat shot goes through it |
+
+A Marble that lands among them chips them like any piece (`bldHits`), and a counter that wears out is a counter that is gone: **no counter makes a camp immune** (a test: twenty shots from at least one family still do five points or more to a camp with every counter).
+
+### The Counter matrix
+
+The Arsenal panel's **Counter matrix** button (and `SG.labMatrix()`, headless) fires every weapon at nine camps and shows a table of points, a verdict for each weapon ("countered by X, strong vs Y") and a second table of the stock camps. The camp is always the same (a Keep behind a gate and two walls, a tent, a workshop: `SG.arsCamp(id,side)`, in the Target camp list as "Arsenal: ..."): the bare camp, one camp for each kind of counter, and a camp with all of them. (Nine camps, not eight: Roof, Shield, Ditch + logs, Net, Cutter, Braces, Heavy block + low wall, then none and all.) A cell is a volley of 5 shots (the aim spot and four round it), nothing mended, the mean of 4 seeds, free gun, Chain topple off. **Points**: a camp part off 1, a collapse 3, a Keep felled 10, a mouse dizzied, slowed or blown .25; the counters' own wear is shown and not counted. A weapon is "countered" by a counter that cuts its points by 40% or more. The whole matrix runs in about two seconds headless. `SG.labMatrixCell(family, camp, {shots, seeds})` is one cell (a camp can also be one counter alone: `ditch`, `logs`, `awning`, `lowwall`); `SG.labMatrixMd(result)` is the text of `ARSENAL_REPORT.md`.
+
+What it says now (details and every number in `ARSENAL_REPORT.md`): Roof cuts the Lobber 98% (and the high lob 100%); Shield board cuts the Flinger 100%; Ditch and Log barrier each stop the Roller (100% for 5 rollers; a volley of twenty gets through); Net cuts the Popper 71% and the Hook 100%; Cutter post cuts the Hook 68%; three braces cut the Thumper 80%; Heavy block + low wall cut the Fan 67%. Each weapon's best stock camp: Lobber and Thumper the Long wall, Flinger and Roller the Walled Keep, Popper the Long wall (4 points: it is light), Hook the Glass house (a lone Keep: it can pull its legs), Fan the Braced Keep (3 points, all of it mice).
+
+### What the Lab does with it (the hooks)
+
+| Where | What |
+|---|---|
+| `pieceAt` | `IGN` (pieces a shot has already gone through) and `arsSkip` for the counter kinds only: a ditch and a cutter post are not in a shot's way, a roof or a net hangs over a low shot, a net lets a heavy ball through. Matches have no such kind, so nothing changes. |
+| `SG.arc`, `tickMarbles` | `ARSF` (the family of the shot being looked at); `arsIn`; `arsPierce` (Lab only). |
+| `boom` | `arsBoom` (Lab only): a tether is cut or caught, a ball caught by a net, a roof or a thick board cuts the blast; `arsGustAt` for a gust. |
+| `rollTick` | `arsRoll` (Lab only): ditch and logs. |
+| `quakeAt` | `arsLoose` (a strong thump's extra parts). |
+| `tickLab`, `labTrack` | `arsTick` (gusts), `arsBusy` (a shot is not over while a gust blows). |
+| `wPrice` | `arsPrice`: the new numbers cost; 0 for every old weapon. |
+| `camTarget` | `SG.lab.focus` may have `el` (elevation) and `yaw` (turn round the spot): the Arsenal's pictures use them. |
+
+### How to add a family or a counter
+
+A weapon: put a record in `ARS_W` (name, icon, tint, sound `sfx`, `w` numbers) and, to have it in the matrix, an entry in `ARS_FAMS` with its aim spot; a new motion is a number in `WDEF` read by the one landing code (`boom`, `tickMarbles`, `rollTick`), as the seven above are. A counter: a `BUILD.name` in `models.js` with `bp()` (see `ctr()` at the Arsenal section), a row in `CK` (size and height) in `game.js`, a cost, a rule in `arsBoom` or `arsRoll`, and a line in `arsCamp`.
+
+### Pictures
+
+`shots/arsenal-1-lobber.png` to `arsenal-8-shield-and-ditch.png` (made by `tests/lab-shots.js`; name them to make only those): a Roof taking a lob ("Roofed!"), the Flinger through a gate, the Roller falling down a Ditch behind a Log barrier, beads caught by a Net, the Hook's snag, the Thumper's planks and braces shaken loose, the Fan's gust ripping cloth off a Roof and a Net beside a Heavy block, and the camp with every counter after a Flinger and a Roller.
+
+### Frame time
+
+Same machine and method as the Yard (headless Chromium, software GL, 1280 by 800, 8 seconds, `tests/lab-shots.js --frames`): the camp with **every counter** (20 pieces on the table, 129 part models) is **82 draw calls, 24 thousand triangles and about 190 ms a frame**, back to back with the Castle (137 calls, 58 thousand triangles, about 265 ms): about **70% of a Castle**. A gust adds one ring and a few lines. Software GL, so read the ratio only; nobody has timed it on an iPad.
+
+### What is wrong or untested
+
+- **Nobody has played it, and not on an iPad.** Everything here was run in a desktop browser by tests and by looking at pictures.
+- **Mice stand still in the Lab**, so the Popper's slow and the Fan's push (mice blown off their places) show as counts, not as what they would do in a match (a crew mouse blown off a lobber, a squad slowed on the way to the hill). Both look weaker than they are, and the Fan's points are all mice.
+- **The Thumper is the strongest weapon by points** (17.9 on the bare camp, against 7 to 15 for the others) for a price of 4.7. Its counter is cheap (a brace, 1 point) but needs one per wall and one for the Keep (3 here), and a gate cannot be braced. Not tuned; probably too strong against unbraced walls.
+- **Several counters also stop weapons they were not made for, because they are in the way**: a Shield board stops a low lob (51% off), a low-flying Hook and a Popper's low beads; a Log barrier stops a Flinger and a Hook. That is physics, not design, and it blurs "one counter each". A Roof still beats everything that comes from above and nothing that flies low.
+- **The camp is built so that the counters protect it**: the Roof, Ditch, Net and Cutter stand on the line of fire, the Heavy block next to where the mice rest. Put them a hand to the side and they do much less (a Cutter post only cuts a string that passes within .3 of it; a Net and a Roof cover .8 and .45 of a piece's size round their edge). That is the point, but the matrix is the best case for each counter.
+- The numbers (blasts, wear, costs, prices) are mine and untested against play. A Roof absorbs about five Marbles for one point; a twenty-shot volley wears everything out.
+- Weapon numbers are for piece scale small. The camps fit without overlap at small and medium; at large the tent and workshop overlap two braces (the Castle has the same problem), and I did not retune the camp or the numbers for medium or large.
+- The aim preview (the arc line) does not know that a Flinger will punch through a wall: it ends at the wall.
+- The Weapon Workshop's sliders do not have the seven new numbers (a test requires exactly 23 sliders); a weapon can carry them in pasted JSON (`line`, `pierce`, `gust`, `gustSecs`, `push`, `qlvl`, `mass` are clamped like the rest), and a record with `line:1` is a straight shot even without an `arc`.
+- The new sounds are synthesised noises I could not hear; the pictures were looked at, the sounds were not.
+- `SG.labMatrix` takes the Lab's rules (Chain topple off, quick reload, no crew): it is not a match.
+
 ## How the Lab is wired into the game (the hooks in the real code)
 
 A match never takes these branches, because each starts with `SG.mode === 'lab'` (or the Lab's own `labFree`, `crewOK`, `a.k0`).

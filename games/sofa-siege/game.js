@@ -484,7 +484,7 @@ function scanArc(a,s,skip,k0){for(var k=k0;k<=1.0001;k+=.02){var pos=marblePos(a
 SG.arc=function(s,tx,tz,li){var l=lobberOf(s,li);if(!l)return null;var side=SG.sides[s],A=V2()?AMMO[side.ammo]:null,W=A?A.w:null,nb=W?(W.bounces|0):0,hop=nb?bounceTotal(W)*U():0,dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz),mx=6.2,mn=.7+hop;
   if(d>mx){tx=l.x+dx/d*mx;tz=l.z+dz/d*mx;d=mx;}else if(d<mn&&d>0){tx=l.x+dx/d*mn;tz=l.z+dz/d*mn;d=mn;}
   var rr=Math.sqrt(tx*tx+tz*tz);if(rr>3.2){tx*=3.2/rr;tz*=3.2/rr;if(nb)d=Math.sqrt((tx-l.x)*(tx-l.x)+(tz-l.z)*(tz-l.z));}
-  var hi=V2()&&side.high&&!(W&&W.flat),ar=W&&W.arc?W.arc:(V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2]),fx=tx,fz=tz,ux=d>0?(tx-l.x)/d:0,uz=d>0?(tz-l.z)/d:1;
+  var hi=V2()&&side.high&&!(W&&W.flat),ar=W&&W.arc?W.arc:(W&&W.line>0?[0,0]:(V2()?(hi?C2.arcHigh:C2.arcLow):[.3,.2])),fx=tx,fz=tz,ux=d>0?(tx-l.x)/d:0,uz=d>0?(tz-l.z)/d:1;
   if(nb){d-=hop;tx=fx-ux*hop;tz=fz-uz*hop;}
   var a={x0:l.x,y0:.42*U(),z0:l.z,x1:tx,z1:tz,h:(ar[0]*U()+d*ar[1])*(W?W.arcMul:1),T:(.65+d*.17)*(hi?1.35:1)/(W?W.speed:1),from:l.id,hit:null,high:!!hi,fx:fx,fz:fz,li:li==null?side.lsel:li};
   labProto('arc',a,s);ARSF=famOf(W);
@@ -1465,7 +1465,7 @@ function labFresh(){var P=labStore(LAB_PREFS)||{};function pv(k,d){return P[k]==
 function labPrefs(){var L=SG.lab;labStore(LAB_PREFS,{instant:L.instant,quick:L.quick,crew:L.crew,strict:L.strict,supports:L.supports,panel:L.panel,read:L.read,topple:L.topple,debris:L.debris,fxShake:L.fxShake,fxSlow:L.fxSlow,fxSound:L.fxSound});}
 function labMsg(text,bad){var L=SG.lab;if(!L)return;L.msg={text:text,until:SG.clock+2.8,bad:!!bad};}
 function labInit(){
-  SG.lab=labFresh();var L=SG.lab;SG.clearLayout();
+  SG.lab=labFresh();var L=SG.lab;SG.clearLayout();SG.gusts=[];
   SG.phase='fight';SG.time=1e6;SG.round=1;SG.cam=0;SG.hold=!!SG.hold;
   SG.sides.forEach(function(sd){sd.sel=-1;sd.big=99;sd.tool='lobber';sd.crew=-1;});
   SG.mice.forEach(function(m){m.state='idle';m.job=0;m.part=-1;});

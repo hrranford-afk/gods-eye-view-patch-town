@@ -393,6 +393,7 @@ const run = async () => {
   /* 13. The Arsenal: seven families of weapon, the pieces that counter them, and the counter matrix */
   const ARS_START = () => { SG.labStart(); SG.lab.card = false; SG.hold = true; SG.lab.topple = false; SG.setProto('arsenal', true, false); };
   const KINDS = ['awning', 'shield', 'ditch', 'logs', 'net', 'cutter', 'heavy', 'lowwall'];
+  await ev(() => { SG.labBack(); window.localStorage.removeItem('rtk.lab.flags.v1'); });   /* earlier sections switched prototypes on and the Lab remembers that: start clean */
   await ev(ARS_START);
   ok('Arsenal: eight new pieces (Roof, Shield board, Ditch, Log barrier, Net, Cutter post, Heavy block, Low wall) have a size, a height and a part table of three parts or more; the kit brace is the ninth counter', await ev((K) => K.every((k) => SG.FOOT[k] && SG.TALL[k] > 0 && SG.BK[k] && SG.bldInfo(k) && Object.keys(SG.bldInfo(k).parts).length >= 3) && !!SG.FOOT.brace, KINDS));
   await btn('tool_build');
