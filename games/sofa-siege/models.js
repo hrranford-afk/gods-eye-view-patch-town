@@ -17,7 +17,7 @@ var SS=(function(){
 'use strict';
 var SS={},PI=Math.PI;
 SS.TEAMS=['blue','red','green'];
-SS.PIECES=['wall','gate','tower','popgun','lobber','tent','workshop','flag','planks','rope','crate','barrel','brace','trap'];
+SS.PIECES=['wall','gate','tower','popgun','lobber','tent','workshop','flag','planks','rope','crate','barrel','brace','trap','cottage','barn','lookout','bridge','windmill','stall'];
 SS.POSES=['idle','walk','carry','hammer','aim','cheer','dizzy'];
 
 function rng(seed){var s=(seed|0)%2147483647;if(s<=0)s+=2147483646;return function(){s=(s*16807)%2147483647;return (s-1)/2147483646;};}
@@ -640,6 +640,135 @@ BUILD.tower=function(K,team,T,v){
   return function(root,opts){var g=mesh(glowGeo,glow(),false);g.name='lantern';g.position.set(lx,ly,lz);root.add(g);root.userData.lantern=g;root.userData.stand=new THREE.Vector3(0,.618,0);
     if(opts.light){var L=new THREE.PointLight(0xffb45a,opts.light===true?.9:opts.light,2.2,2);L.position.set(lx,ly,lz);L.name='lantern_light';root.add(L);root.userData.light=L;}};
 };
+
+/* ---------- the Building Yard (Lab only): little buildings of 15 to 40 parts that come apart in stages ----------
+   Every part has a stage (0 trim: shutters, tiles, flags, awnings; 1 walls: panels, doors, floors, sails; 2 frame: posts, beams, rafters, cores)
+   and says what holds it: need = the parts it hangs on, min = how many of them must still be on (all of them unless a part says otherwise).
+   A part with nothing to hang on stands on the ground. game.js reads this table (SS.bldInfo) and drops whatever has lost its support, the same rule for every building.
+   leg: a frame part the Big Marble can break outright (bigLegs says how many). dly: seconds it hangs on after what held it has gone (the windmill's sails fall one after another). */
+SS.BUILDINGS=['cottage','barn','lookout','bridge','windmill','stall'];
+function bp(K,id,stg,need,fn,o){o=o||{};K.part(id,fn);(K.bd||(K.bd={}))[id]={stg:stg,need:need,min:o.min!=null?o.min:need.length,dly:o.dly||0,leg:!!o.leg};}
+/* a slab laid along a slope, from (ax,ay) to (cx,cy) in the xy plane, w wide along z: a roof tile with a darker lip */
+function slab(b,ax,ay,cx,cy,z,w,col,lip){var dx=cx-ax,dy=cy-ay,len=Math.sqrt(dx*dx+dy*dy),an=Math.atan2(dy,dx),mx=(ax+cx)/2,my=(ay+cy)/2;
+  b.box(len*1.1,.022,w,col,'paint',[mx,my+.011,z],[0,0,an]);b.box(len*1.1,.026,.014,shade(col,.74),null,[mx,my+.012,z+w*.46],[0,0,an]);if(lip)b.box(.014,.03,w,shade(col,.8),null,[ax,ay+.015,z],[0,0,an]);}
+/* a wall panel: a board, with the lines of its planks. rot turns it (for a side wall) */
+function panel(b,w,h,d,col,tile,pos,rot){b.push(pos,rot);b.box(w,h,d,col,tile,[0,0,0]);var n=Math.max(2,Math.round(w/.075)),i;for(i=0;i<n;i++)b.box(.008,h*.98,d+.008,shade(col,.84),null,[-w/2+(i+.5)*w/n,0,0]);b.pop();}
+function winFrame(b,pos,rot,T){b.push(pos,rot);b.box(.15,.13,.02,0x2a2e3a,null,[0,0,0]);b.box(.17,.016,.03,T.woodD,'woodh',[0,.075,0]);b.box(.17,.016,.03,T.woodD,'woodh',[0,-.075,0]);b.box(.016,.15,.03,T.woodD,'woodh',[-.085,0,0]);b.box(.016,.15,.03,T.woodD,'woodh',[.085,0,0]);b.box(.012,.13,.026,T.woodD,'woodh',[0,0,0]);b.pop();}
+/* a gable house: the cottage and the barn. 4 posts, 4 beams, rafters, a ridge; panels, doors, windows and gables hang on them; tiles hang on the rafters. */
+function house(K,T,v,c){
+  var k=c.k,hw=c.hw,hd=c.hd,wh=c.wh,rise=c.rise,ye=wh+.03,yr=ye+rise,xe=hw+.07,n=c.cols,rows=c.rows,ox=c.ox||0,ph=wh+.04,roofC=c.roofC||[T.main,T.dark,T.light][v%3],zs=[],i;
+  for(i=0;i<n;i++)zs.push(-hd+(i+.5)*2*hd/n);
+  function P(id,stg,need,fn,o){bp(K,k+'.'+id,stg,need.map(function(q){return k+'.'+q;}),function(b,r){b.push([ox,0,0]);fn(b,r);b.pop();},o);}
+  ['SW','SE','NW','NE'].forEach(function(id){var sx=id.charAt(1)==='W'?-1:1,sz=id.charAt(0)==='S'?1:-1;P('post.'+id,2,[],function(b){b.box(.06,ph,.06,T.woodD,'wood',[sx*hw,ph/2,sz*hd]);b.box(.08,.03,.08,T.woodD,'woodh',[sx*hw,.015,sz*hd]);},{leg:true});});
+  P('beam.F',2,['post.SW','post.SE'],function(b){b.box(2*hw+.07,.045,.06,T.woodD,'woodh',[0,wh+.02,hd]);});
+  P('beam.B',2,['post.NW','post.NE'],function(b){b.box(2*hw+.07,.045,.06,T.woodD,'woodh',[0,wh+.02,-hd]);});
+  P('beam.L',2,['post.NW','post.SW'],function(b){b.box(.06,.045,2*hd+.07,T.woodD,'wood',[-hw,wh+.02,0]);});
+  P('beam.R',2,['post.NE','post.SE'],function(b){b.box(.06,.045,2*hd+.07,T.woodD,'wood',[hw,wh+.02,0]);});
+  var rafs=[];
+  ['L','R'].forEach(function(sd){var sx=sd==='L'?-1:1;zs.forEach(function(z,zi){rafs.push('rafter.'+sd+zi);P('rafter.'+sd+zi,2,['beam.'+sd],function(b){b.rod([sx*xe,ye,z],[0,yr,z],.017,T.wood2,'wood',5);},{});});});
+  P('ridge',2,rafs,function(b){b.box(.05,.05,2*hd+.12,T.woodD,'woodh',[0,yr,0]);},{min:1});
+  [['F',1],['B',-1]].forEach(function(q){P('gable.'+q[0],1,['beam.'+q[0]],function(b){b.prism(2*hw+.01,(yr-ye)*hw/xe+.02,.036,c.wallC,c.wallT,[0,wh+.04,q[1]*hd]);b.cyl(.04,.04,.02,10,0x2a2e3a,null,[0,wh+.09,q[1]*hd+q[1]*.02],[PI/2,0,0]);});});
+  var dw=c.dw,pw=(2*hw-.06-dw)/2,wH=wh-.03;
+  [-1,1].forEach(function(sx,i2){P('wall.F'+i2,1,['beam.F'],function(b){panel(b,pw,wH,.04,c.wallC,c.wallT,[sx*(dw/2+pw/2),wH/2+.015,hd]);});});
+  if(c.doors===1)P('door',1,['beam.F'],function(b){b.box(dw,c.dh,.035,T.wood2,'wood',[0,c.dh/2+.015,hd+.005]);b.box(dw*.7,.03,.04,T.woodD,'woodh',[0,c.dh*.55,hd+.012]);b.sph(.014,5,4,GOLD,null,[dw*.3,c.dh*.45,hd+.03]);});
+  else [-1,1].forEach(function(sx,i2){P('door.'+(i2?'R':'L'),1,['beam.F'],function(b){var w=dw/2-.01,x=sx*(w/2+.01);b.box(w,c.dh,.035,T.wood2,'wood',[x,c.dh/2+.015,hd+.005]);b.rod([x-w*.45,.04,hd+.03],[x+w*.45,c.dh-.03,hd+.03],.013,T.woodD,'wood',4);b.rod([x-w*.45,c.dh-.03,hd+.03],[x+w*.45,.04,hd+.03],.013,T.woodD,'wood',4);b.box(w+.02,.02,.04,T.woodD,'woodh',[x,c.dh+.02,hd+.015]);});});
+  P('wall.B',1,['beam.B'],function(b){panel(b,2*hw-.06,wH,.04,c.wallC,c.wallT,[0,wH/2+.015,-hd]);});
+  var sn=c.sn,sd2=(2*hd-.06)/sn;
+  ['L','R'].forEach(function(sd){var sx=sd==='L'?-1:1;for(var j=0;j<sn;j++)(function(j){P('wall.'+sd+j,1,['beam.'+sd],function(b){panel(b,sd2,wH,.04,c.wallC,c.wallT,[sx*hw,wH/2+.015,-hd+.03+(j+.5)*sd2],[0,PI/2,0]);});})(j);});
+  (c.win||[]).forEach(function(w){var sd=w[0],j=w[1],sx=sd==='L'?-1:1,zc=-hd+.03+(j+.5)*sd2;
+    P('window.'+sd+j,1,['wall.'+sd+j],function(b){winFrame(b,[sx*(hw+.025),wh*.56,zc],[0,PI/2,0],T);});
+    [-1,1].forEach(function(t,ti){P('shutter.'+sd+j+(ti?'b':'a'),0,['window.'+sd+j],function(b){b.box(.02,.15,.07,T.main,'paint',[sx*(hw+.04),wh*.56,zc+t*.115]);b.box(.024,.012,.05,shade(T.main,.7),null,[sx*(hw+.042),wh*.56+.03,zc+t*.115]);b.box(.024,.012,.05,shade(T.main,.7),null,[sx*(hw+.042),wh*.56-.03,zc+t*.115]);});});});
+  ['L','R'].forEach(function(sd){var sx=sd==='L'?-1:1;zs.forEach(function(z,zi){for(var r=0;r<rows;r++)(function(r){P('tile.'+sd+zi+'_'+r,0,['rafter.'+sd+zi],function(b){slab(b,sx*xe*(1-r/rows),ye+rise*r/rows,sx*xe*(1-(r+1)/rows),ye+rise*(r+1)/rows,z,2*hd/n-.012,jit(b,(r+zi)%2?roofC:shade(roofC,.88),.05),r===0);});})(r);});});
+  if(c.chim)P('chimney',0,['rafter.R'+(n-1)],function(b){var cx=hw*.46,cy=ye+rise*(1-cx/xe),cz=zs[n-1]-.03;b.box(.1,.26,.1,0xb0683a,'rust',[cx,cy+.05,cz]);b.box(.125,.028,.125,0x6a5a4a,null,[cx,cy+.19,cz]);b.cyl(.025,.03,.045,6,0x4a3a2e,null,[cx,cy+.225,cz]);});
+  return {P:P,zs:zs,hw:hw,hd:hd,wh:wh,ye:ye,yr:yr,xe:xe,ph:ph};}
+BUILD.cottage=function(K,team,T,v){
+  house(K,T,v,{k:'cottage',hw:.36,hd:.27,wh:.34,rise:.27,cols:2,rows:3,dw:.17,dh:.25,doors:1,sn:1,win:[['L',0],['R',0]],chim:true,wallC:team==='red'?0xe9cfa6:CREAM,wallT:'paint'});
+  K.meta={bigLegs:1};};
+BUILD.barn=function(K,team,T,v){
+  var c={k:'barn',hw:.34,hd:.5,wh:.38,rise:.31,cols:2,rows:2,dw:.5,dh:.31,doors:2,sn:1,win:[],ox:-.1,roofC:[T.woodD,shade(T.woodD,1.2),shade(T.wood2,.9)][v%3],wallC:T.dark,wallT:'paint'},h=house(K,T,v,c),P=h.P,hw=h.hw,hd=h.hd,wh=h.wh;
+  P('loft',1,['beam.L','beam.R'],function(b){b.box(2*hw-.06,.03,hd*1.1,T.wood2,'woodh',[0,wh-.1,-hd*.5]);for(var i=0;i<3;i++)b.box(2*hw-.06,.012,.01,T.woodD,null,[0,wh-.082,-hd*.15-i*.16]);});
+  P('hatch',1,['gable.F'],function(b){b.box(.15,.15,.03,T.wood2,'wood',[0,wh+.1,hd+.02]);b.box(.17,.02,.04,T.woodD,'woodh',[0,wh+.185,hd+.02]);b.rod([-.07,wh+.04,hd+.045],[.07,wh+.16,hd+.045],.01,T.woodD,'wood',4);});
+  P('hay',0,['loft'],function(b){b.cyl(.07,.07,.2,8,0xe3c25c,'cloth',[.1,wh-.02,-hd*.2],[0,0,PI/2]);b.cyl(.065,.065,.2,8,0xd8b44a,'cloth',[-.12,wh-.03,-hd*.3],[0,0,PI/2]);b.cyl(.06,.06,.18,8,0xe8cb6c,'cloth',[0,wh+.05,-hd*.25],[0,0,PI/2]);});
+  var lx=hw+.27,lh=.23;
+  [1,-1].forEach(function(sz,i){P('lean.post.'+(i?'B':'F'),2,[],function(b){b.box(.05,lh+.02,.05,T.woodD,'wood',[lx,(lh+.02)/2,sz*(hd-.05)]);},{leg:true});});
+  P('lean.beam',2,['lean.post.F','lean.post.B'],function(b){b.box(.055,.04,2*hd-.04,T.woodD,'woodh',[lx,lh+.02,0]);});
+  [-1,1].forEach(function(sz,i){P('lean.rafter.'+i,2,['lean.beam','beam.R'],function(b){b.rod([lx+.02,lh+.02,sz*hd*.5],[hw+.02,h.ye,sz*hd*.5],.016,T.wood2,'wood',5);});});
+  [-1,1].forEach(function(sz,i){P('lean.tile.'+i,0,['lean.rafter.'+i],function(b){slab(b,lx+.03,lh+.045,hw+.02,h.ye+.02,sz*hd*.5,hd-.02,[T.woodD,shade(T.woodD,1.18)][i],true);});});
+  K.meta={bigLegs:1};};
+/* the watch tower house: four tall posts, a floor between two rooms, steps up the side, a roof with a flag */
+BUILD.lookout=function(K,team,T,v){
+  var hx=.24,H=.88,fy=.4,by=.85,sum=[0,0],roofC=[T.main,T.dark,T.light][v%3],wallC=team==='red'?0xe9cfa6:CREAM,i,
+    EN={F:['SW','SE'],B:['NW','NE'],L:['NW','SW'],R:['NE','SE']};
+  function P(id,stg,need,fn,o){bp(K,'lookout.'+id,stg,need.map(function(q){return 'lookout.'+q;}),fn,o);}
+  ['SW','SE','NW','NE'].forEach(function(id){var sx=id.charAt(1)==='W'?-1:1,sz=id.charAt(0)==='S'?1:-1;P('post.'+id,2,[],function(b){b.box(.06,H,.06,T.woodD,'wood',[sx*hx,H/2,sz*hx]);b.box(.08,.03,.08,T.woodD,'woodh',[sx*hx,.015,sz*hx]);lash(b,[sx*hx,fy,sz*hx],.045,T.rope);},{leg:true});});
+  P('floor.1',2,['post.SW','post.SE','post.NW','post.NE'],function(b){b.box(2*hx+.04,.035,2*hx+.04,T.wood2,'woodh',[0,fy,0]);b.box(2*hx+.06,.03,.04,T.woodD,'woodh',[0,fy-.03,hx]);},{min:3});
+  ['F','B','L','R'].forEach(function(s){var f=s==='F'||s==='B',sg=(s==='F'||s==='R')?1:-1;
+    P('beam.'+s,2,['post.'+EN[s][0],'post.'+EN[s][1]],function(b){if(f)b.box(2*hx+.07,.045,.06,T.woodD,'woodh',[0,by,sg*hx]);else b.box(.06,.045,2*hx+.07,T.woodD,'wood',[sg*hx,by,0]);});
+    P('wall.1.'+s,1,['post.'+EN[s][0],'post.'+EN[s][1]],function(b){panel(b,2*hx-.07,fy-.05,.04,wallC,'paint',[f?0:sg*hx,(fy-.05)/2+.02,f?sg*hx:0],f?null:[0,PI/2,0]);});
+    P('wall.2.'+s,1,['floor.1','post.'+EN[s][0],'post.'+EN[s][1]],function(b){panel(b,2*hx-.07,by-fy-.07,.04,wallC,'paint',[f?0:sg*hx,fy+.035+(by-fy-.07)/2,f?sg*hx:0],f?null:[0,PI/2,0]);});});
+  P('door',1,['wall.1.F'],function(b){b.box(.15,.24,.035,T.wood2,'wood',[0,.14,hx+.015]);b.box(.12,.025,.04,T.woodD,'woodh',[0,.12,hx+.03]);b.sph(.013,5,4,GOLD,null,[.05,.12,hx+.045]);});
+  P('window',1,['wall.2.F'],function(b){winFrame(b,[0,fy+.22,hx+.025],null,T);});
+  [-1,1].forEach(function(t,ti){P('shutter.'+(ti?'b':'a'),0,['window'],function(b){b.box(.07,.15,.02,T.main,'paint',[t*.115,fy+.22,hx+.04]);b.box(.05,.012,.024,shade(T.main,.7),null,[t*.115,fy+.25,hx+.042]);});});
+  for(i=0;i<3;i++)(function(i){P('ledge.'+i,1,i<2?['wall.1.R']:['floor.1'],function(b){b.box(.15,.035,.17,T.wood,'woodh',[hx+.1,.1+i*.14,.17-i*.17]);b.box(.15,.03,.03,T.woodD,'woodh',[hx+.1,.075+i*.14,.255-i*.17]);});})(i);
+  var ap=[0,by+.36,0],rw=hx+.1,rs={F:[[rw,by,rw],[-rw,by,rw]],B:[[-rw,by,-rw],[rw,by,-rw]],R:[[rw,by,-rw],[rw,by,rw]],L:[[-rw,by,rw],[-rw,by,-rw]]};
+  ['F','R','B','L'].forEach(function(s,ix){P('roof.'+s,0,['beam.'+s],function(b){var e=rs[s],col=ix%2?roofC:shade(roofC,.86);b.tri(e[0],e[1],ap,col,'paint',.02);for(var j=1;j<4;j++){var u=j/4;b.rod([e[0][0]*(1-u)+ap[0]*u,e[0][1]*(1-u)+ap[1]*u,e[0][2]*(1-u)+ap[2]*u],[e[1][0]*(1-u)+ap[0]*u,e[1][1]*(1-u)+ap[1]*u,e[1][2]*(1-u)+ap[2]*u],.007,shade(roofC,.7),null,4);}});});
+  P('cap',0,['roof.F','roof.R','roof.B','roof.L'],function(b){b.sph(.035,8,6,GOLD,null,[0,by+.37,0]);b.cone(.05,.05,6,shade(roofC,.7),null,[0,by+.33,0]);},{min:1});
+  P('pole',0,['cap'],function(b){b.cyl(.009,.009,.3,5,T.woodD,null,[0,by+.52,0]);});
+  P('flag',0,['pole'],function(b){b.tri([.005,by+.66,0],[.2,by+.6,.0],[.005,by+.54,0],T.main,'cloth',.008);b.tri([.005,by+.66,0],[.2,by+.6,0],[.005,by+.54,0],T.light,null,.002);});
+  K.meta={bigLegs:1};};
+/* bridge and gatehouse: two towers, a deck on two beams between them, and a gate that hangs from the deck by two ropes */
+BUILD.bridge=function(K,team,T,v){
+  var tx=.56,stone=team==='red'?0xc9b79a:0xcfc8b8,roofC=[T.main,T.dark,T.light][v%3],cy=.4;
+  function P(id,stg,need,fn,o){bp(K,'bridge.'+id,stg,need.map(function(q){return 'bridge.'+q;}),fn,o);}
+  [['A',-1],['B',1]].forEach(function(q){var t=q[0],sx=q[1],x=sx*tx;
+    P('core.'+t,2,[],function(b){b.box(.31,.5,.31,stone,'paint',[x,.25,0]);b.box(.34,.04,.34,shade(stone,.85),'paint',[x,.02,0]);for(var j=0;j<3;j++)b.box(.325,.012,.325,shade(stone,.8),null,[x,.12+j*.14,0]);},{leg:true});
+    P('upper.'+t,2,['core.'+t],function(b){b.box(.26,.3,.26,shade(stone,1.04),'paint',[x,.65,0]);b.box(.35,.04,.35,shade(stone,.82),'paint',[x,.82,0]);});
+    for(var m=0;m<3;m++)(function(m){P('mer.'+t+m,0,['upper.'+t],function(b){b.box(.07,.07,.07,shade(stone,.92),'paint',[x+(m-1)*.12,.875,.15]);});})(m);
+    P('win.'+t,1,['upper.'+t],function(b){b.box(.06,.12,.02,0x2a2e3a,null,[x,.68,.135]);b.box(.08,.014,.03,T.woodD,'woodh',[x,.745,.135]);});
+    P('roof.'+t,0,['upper.'+t],function(b){b.cone(.2,.26,8,roofC,'paint',[x,.98,0]);b.tor(.18,.012,shade(roofC,.7),null,[x,.86,0],[PI/2,0,0],null,null,8);});
+    P('flag.'+t,0,['roof.'+t],function(b){b.cyl(.008,.008,.26,5,T.woodD,null,[x,1.24,0]);b.tri([x+.004,1.36,0],[x+.18*sx*-1,1.31,0],[x+.004,1.26,0],T.main,'cloth',.008);});});
+  [-1,1].forEach(function(sz,i){P('deck.beam.'+i,2,['core.A','core.B'],function(b){b.box(2*tx-.28,.055,.06,T.woodD,'wood',[0,cy,sz*.09]);});});
+  for(var i=0;i<5;i++)(function(i){P('deck.'+i,1,['deck.beam.0','deck.beam.1'],function(b){b.box(.16,.032,.3,jit(b,i%2?T.wood:T.wood2,.07),'wood',[(i-2)*.168,cy+.043,0]);b.box(.012,.034,.3,T.woodD,null,[(i-2)*.168+.08,cy+.043,0]);},{min:1});})(i);
+  [-1,1].forEach(function(sz,i){P('rail.'+i,0,['deck.beam.'+i],function(b){b.box(2*tx-.3,.022,.025,T.woodD,'woodh',[0,cy+.15,sz*.15]);for(var j=0;j<5;j++)b.box(.025,.12,.025,T.wood2,'wood',[(j-2)*.18,cy+.09,sz*.15]);});});
+  [-1,1].forEach(function(sx,i){P('chain.'+i,0,['deck.beam.'+i],function(b){b.rod([sx*.2,cy-.02,i?.09:-.09],[sx*.2,cy-.09,i?.09:-.09],.007,0x5a4a40,null,4);b.tor(.016,.005,0x6a6460,null,[sx*.2,cy-.055,i?.09:-.09],null,null,null,6);});});
+  P('gate',1,['chain.0','chain.1'],function(b){b.box(.52,.03,.04,T.woodD,'woodh',[0,cy-.11,0]);for(var j=0;j<7;j++)b.box(.026,.3,.03,T.wood2,'wood',[(j-3)*.082,cy-.26,0]);b.box(.52,.028,.034,T.woodD,'woodh',[0,cy-.18,0]);b.box(.52,.028,.034,T.woodD,'woodh',[0,cy-.32,0]);for(j=0;j<7;j++)b.cone(.014,.04,4,0x6a6460,null,[(j-3)*.082,cy-.43,0],[PI,0,0]);},{min:1});
+  K.meta={bigLegs:1};};
+/* the windmill: a stone base and three tiers stacked, a cap, a hub on the front of the cap, and four sails with cloth on them that fall off one after another */
+BUILD.windmill=function(K,team,T,v){
+  var stone=team==='red'?0xd7c4a6:0xdcd6c6,roofC=[T.main,T.dark,T.light][v%3],hy=1.14,hz=.24,sailC=T.wood2;
+  function P(id,stg,need,fn,o){bp(K,'windmill.'+id,stg,need.map(function(q){return 'windmill.'+q;}),fn,o);}
+  P('base',2,[],function(b){b.cyl(.25,.29,.24,12,shade(stone,.86),'paint',[0,.12,0]);b.tor(.27,.016,shade(stone,.7),null,[0,.235,0],[PI/2,0,0],null,null,12);},{leg:true});
+  P('tier.0',1,['base'],function(b){b.cyl(.21,.25,.3,12,stone,'paint',[0,.39,0]);},{});
+  P('tier.1',1,['tier.0'],function(b){b.cyl(.18,.21,.3,12,shade(stone,1.04),'paint',[0,.69,0]);});
+  P('tier.2',1,['tier.1'],function(b){b.cyl(.15,.18,.27,12,stone,'paint',[0,.975,0]);b.tor(.155,.012,shade(stone,.7),null,[0,1.11,0],[PI/2,0,0],null,null,12);});
+  P('balcony',1,['tier.0'],function(b){b.tor(.255,.02,T.woodD,'woodh',[0,.55,0],[PI/2,0,0],null,null,14);for(var j=0;j<8;j++){var a=j/8*PI*2;b.box(.02,.08,.02,T.wood2,'wood',[Math.cos(a)*.255,.59,Math.sin(a)*.255]);}b.cyl(.27,.27,.02,14,T.wood2,'woodh',[0,.53,0]);});
+  P('door',1,['base'],function(b){b.box(.13,.2,.04,T.wood2,'wood',[0,.15,.27]);b.box(.15,.02,.045,T.woodD,'woodh',[0,.26,.27]);b.sph(.012,5,4,GOLD,null,[.04,.14,.295]);});
+  [-1,1].forEach(function(s,i){P('window.'+i,0,['tier.1'],function(b){b.box(.07,.1,.02,0x2a2e3a,null,[s*.075,.72,.185]);b.box(.04,.1,.016,T.main,'paint',[s*.075+s*.06,.72,.18]);});});
+  P('cap',0,['tier.2'],function(b){b.cone(.21,.26,12,roofC,'paint',[0,1.25,0]);b.tor(.2,.016,shade(roofC,.7),null,[0,1.13,0],[PI/2,0,0],null,null,12);});
+  P('hub',2,['tier.2'],function(b){b.cyl(.05,.05,.1,8,T.woodD,'wood',[0,hy,hz-.03],[PI/2,0,0]);b.sph(.045,8,6,T.main,'paint',[0,hy,hz+.04]);});
+  for(var k=0;k<4;k++)(function(k){var an=k*PI/2+.4;
+    P('sail.'+k,1,['hub'],function(b){b.push([0,hy,hz],[0,0,an]);b.box(.024,.52,.016,sailC,'wood',[0,.29,0]);b.box(.014,.4,.012,T.woodD,'woodh',[.08,.3,0]);b.box(.014,.4,.012,T.woodD,'woodh',[.19,.3,0]);b.box(.19,.014,.012,T.woodD,'woodh',[.1,.52,0]);b.box(.17,.012,.012,T.woodD,'woodh',[.1,.12,0]);for(var j=0;j<3;j++)b.box(.16,.01,.01,T.woodD,null,[.1,.22+j*.1,0]);b.pop();},{dly:k*.5});
+    P('cloth.'+k,0,['sail.'+k],function(b){b.push([0,hy,hz+.012],[0,0,an]);b.box(.17,.38,.006,T.cloth,'cloth',[.105,.3,0]);b.box(.17,.02,.008,T.main,'paint',[.105,.46,0]);b.box(.17,.02,.008,T.main,'paint',[.105,.14,0]);b.pop();},{dly:k*.5});})(k);
+  P('tail',0,['cap'],function(b){b.rod([0,1.12,-.12],[0,.8,-.4],.012,T.woodD,'wood',5);b.cyl(.06,.06,.014,10,T.main,'paint',[0,.8,-.41],[0,PI/2,0]);});
+  [[.22,.3],[-.2,.32]].forEach(function(s,i){P('sack.'+i,0,[],function(b){b.sph(.06,8,6,0xe8dcc0,'cloth',[s[0],.05,s[1]],null,[1,1.15,.9]);b.box(.05,.016,.05,0x8a7a5e,null,[s[0],.115,s[1]]);});});
+  K.meta={bigLegs:1};};
+/* a market stall: four posts, a rail, a striped awning, a counter, a back board, a sign, a basket of fruit and a stack of three crates */
+BUILD.stall=function(K,team,T,v){
+  K.meta={bigLegs:2};
+  var ac=[T.main,0xf3e7cc],gy=.52;
+  function P(id,stg,need,fn,o){bp(K,'stall.'+id,stg,need.map(function(q){return 'stall.'+q;}),fn,o);}
+  [['FL',-1,1,.4],['FR',1,1,.4],['BL',-1,-1,.5],['BR',1,-1,.5]].forEach(function(q){P('post.'+q[0],2,[],function(b){b.box(.04,q[3],.04,T.woodD,'wood',[q[1]*.23,q[3]/2,q[2]*.15]);},{leg:true});});
+  P('rail',2,['post.FL','post.FR'],function(b){b.box(.5,.035,.04,T.woodD,'woodh',[0,.41,.15]);});
+  P('awning',0,['rail'],function(b){for(var i=0;i<6;i++){b.box(.5/6,.016,.3,ac[i%2],'cloth',[-.25+(i+.5)*.5/6,.49,.07],[.3,0,0]);}b.box(.52,.012,.02,T.woodD,null,[0,.425,.205]);for(i=0;i<6;i++)b.prism(.5/6-.004,.035,.012,ac[i%2],'cloth',[-.25+(i+.5)*.5/6,.41,.215],[PI,0,0]);});
+  P('table',1,['post.FL','post.FR'],function(b){b.box(.46,.04,.2,T.wood,'woodh',[0,.22,.04]);b.box(.46,.14,.02,T.wood2,'wood',[0,.14,.14]);},{min:1});
+  P('back',1,['post.BL','post.BR'],function(b){b.box(.46,.34,.025,T.wood2,'wood',[0,.26,-.15]);b.box(.46,.02,.03,T.woodD,'woodh',[0,.4,-.15]);},{min:1});
+  P('sign',0,['awning'],function(b){b.box(.2,.07,.014,T.cloth,'cloth',[0,.4,.225]);b.box(.205,.012,.018,T.woodD,null,[0,.44,.225]);b.sph(.016,5,4,T.main,null,[0,.4,.235]);});
+  P('goods',0,['table'],function(b){b.cyl(.07,.055,.05,10,T.wood2,'wood',[-.1,.265,.04]);for(var i=0;i<5;i++)b.sph(.028,6,5,[0xd9402c,0xf0b43c,0x78b43c][i%3],null,[-.1+((i%3)-1)*.035,.3+(i>2?.03:0),.04+(i>1?.02:-.01)]);b.box(.08,.05,.07,T.wood,'wood',[.08,.265,.05]);});
+  for(var i=0;i<3;i++)(function(i){P('crate.'+i,0,i?['crate.'+(i-1)]:[],function(b){b.box(.1,.1,.1,jit(b,T.wood,.08),'wood',[.31+(i%2)*.01,.05+i*.1,-.03-(i%2)*.012],[0,.15*i,0]);b.box(.104,.014,.104,T.woodD,'woodh',[.31,.07+i*.1,-.03]);b.box(.014,.1,.104,T.woodD,'woodh',[.31,.05+i*.1,-.03]);});})(i);
+  };
+
+/* the part table of a building, for game.js: {parts: {id: {stg, need, min, dly, leg}}, bigLegs}. null for any other kind. */
+SS.bldInfo=function(kind){if(SS.BUILDINGS.indexOf(kind)<0)return null;var key=kind+'|blue|0';if(!_kits[key])SS.piece(kind,'blue',{variant:0});var K=_kits[key];return {parts:K.bd,bigLegs:K.meta?K.meta.bigLegs:2};};
 
 function wheel(b,r,team,T){ /* a wheel in the yz plane, axle along x, centred on the origin */
   if(team==='red'){b.cyl(r*.82,r*.82,.035,12,TIN,'rust',null,[0,0,PI/2]);for(var i=0;i<8;i++){var a=i/8*PI*2;b.box(.035,r*.3,r*.42,TIN,'rust',[0,Math.cos(a)*r*.9,Math.sin(a)*r*.9],[a,0,0]);}b.cyl(r*.3,r*.3,.05,8,T.main,'rust',null,[0,0,PI/2]);}
