@@ -156,3 +156,10 @@ Harry asked for "more of a sandbox, more just like a shooting range version of t
 **For tests and bots:** `SG.fireLobber(side, x, z, power01, opts)`. With `power01` the point gives only the direction and the power gives the range, with the scatter for that power; with `power01` null it lands exactly on the point, as `SG.fire` always did. `opts`: `li` (which lobber), `high`, `scatter` (force a number), `rand` (own random function), `exact`. Bots keep using `SG.fire`, so their balance is unchanged.
 **Easy aim** (`SG.easyAim`, a button in the ammo row and in the Lab) puts back the old tap-and-drag aim: exact, no meter. It is OFF by default on the iPad and the screen; it turns ON when an AR table starts under 80 cm across (`CONFIG.pull.easyAr`), because there the table is tiny or far from the camera and a pull of 1.5 table units is only a few pixels of finger, too fine to control.
 **Not proved:** feel on a real iPad finger. The numbers were made to be changed.
+
+
+## Clearer table (20 Nov, after Harry's iPad play)
+- The cream rings Harry saw before anything was built were left over from an earlier game in the same tab: the ring meshes live in the table group, and the clean-up that runs on a new game forgot them (it only emptied its list), so they stayed lit where parts had lain. Fixed in `viewClear`; `tests/clarity-test.js` plays, knocks parts off, restarts and checks none is lit.
+- A ring now shows only in a fight, only on a camp a person plays, and only while a part can really be mended (no mouse already on it, not glued). A yellow "Mend me" label with a wrench marks the first such part. None at all while building.
+- First-run captions on the one-player table, each once ever (localStorage, in try/catch): "Blue mice are yours", "Cream ring = a fallen part. Mice can mend it.", "Hill: hold it to earn a Big Marble." A "?" button at the top right opens a legend of every icon, ring, colour and number (the numbers on the table edge while building are what a piece costs); the game waits while it is open.
+- Robot level on the title screen: Friendly (first game), Fair, Fierce. See BOT_REPORT.md.

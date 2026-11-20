@@ -58,7 +58,7 @@ var CONFIG={
     debrisMax:160,debrisSecs:3                  /* most fallen parts left lying; seconds before they vanish when "Leave debris" is off */
   },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
-  levels:{easy:{err2:.2,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.12,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.06,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
+  levels:{friendly:{err2:.65,fire:18,err:.7,send:10,raidLead:8,preset:'average',reloadMul:3.5,noBig:true},easy:{err2:.2,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.12,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.06,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
 };
 var PI=Math.PI,STEP=1/60,PS=.88,SCALES={small:.58,medium:.72,large:.88},RULES=CONFIG,LEVELS=CONFIG.levels,C2=CONFIG.v2,C3=CONFIG.workshop,chainDepth=0;
 function V2(){return SG.rules!==1;}
@@ -485,7 +485,7 @@ SG.fire=function(s,tx,tz,li){var side=SG.sides[s];if(li==null)li=side.lsel||0;if
     /* a scatter: more balls thrown round the aimed spot, each a shot of its own */
     for(var ci2=1;ci2<W.scatter;ci2++){var an=ci2/(W.scatter-1)*PI*2+rand(),rd=W.spread*U()*(.45+rand()*.55),c2=SG.arc(s,a.x1+Math.cos(an)*rd,a.z1+Math.sin(an)*rd,li);c2.id=SG.nextId++;c2.side=s;c2.t=-ci2*.04;c2.live=true;c2.ammo=a.ammo;c2.tw=a.tw;c2.sx=a.sx;c2.sz=a.sz;SG.marbles.push(c2);}
     if(a.ammo!=='marble'&&!(A.store&&side[A.store]>0))side.ammo='marble';}
-  snd('twang');a.id=SG.nextId++;a.side=s;a.t=0;a.live=true;SG.marbles.push(a);l.reload=V2()?C2.reload:CONFIG.reload;l.fired=SG.clock;SG.stats.shots++;SG.stats.bySide[s].shots++;event('shot',s);
+  snd('twang');a.id=SG.nextId++;a.side=s;a.t=0;a.live=true;SG.marbles.push(a);l.reload=(V2()?C2.reload:CONFIG.reload)*(side.bot&&LEVELS[side.level]&&LEVELS[side.level].reloadMul||1);l.fired=SG.clock;SG.stats.shots++;SG.stats.bySide[s].shots++;event('shot',s);
   l.aim=Math.atan2(a.x1-l.x,a.z1-l.z);return a;};
 function knock(p,i,dx,dz,by,far){var q=p.ps[i];if(!q||q.st!=='on')return false;var l=Math.sqrt(dx*dx+dz*dz)||1,f=far==null?.28+rand()*.3:far*(.85+rand()*.3),lat=(rand()-.5)*.3;
   q.st=V2()&&q.used?'gone':'off';if(V2()){SG.debris.push({t:SG.clock+.72,x:0,z:0,far:f,pid:p.id,i:i,dep:chainDepth+(by==='collapse'?1:0)});}
@@ -826,7 +826,7 @@ function bestShot(s,li,avoid){var side=SG.sides[s],en=1-s,l=lobberOf(s,li),was=s
   var bounce=ammoReady(side,'bouncer');
   cands.forEach(function(c){var dx=c[0]-l.x,dz=c[1]-l.z,d=Math.sqrt(dx*dx+dz*dz)||1,x=c[0]+dx/d*c[2]*U(),z=c[1]+dz/d*c[2]*U(),v;if(avoid&&dist(x,z,avoid.x,avoid.z)<avoid.r)return;
     for(var hi=0;hi<2;hi++){v=worth(x,z,!!hi,'marble');if(v>0)list.push({x:x,z:z,high:!!hi,big:false,kind:'marble',v:v});
-      if(side.big>0&&!hi){v=worth(x,z,false,'big');if(v!==null)v-=side.big>=C2.bigMax?0:C2.bigWorth;if(v>0)list.push({x:x,z:z,high:false,big:true,kind:'big',v:v});}
+      if(side.big>0&&!hi&&!LEVELS[side.level].noBig){v=worth(x,z,false,'big');if(v!==null)v-=side.big>=C2.bigMax?0:C2.bigWorth;if(v>0)list.push({x:x,z:z,high:false,big:true,kind:'big',v:v});}
       if(bounce&&!hi){v=worth(x,z,false,'bouncer');if(v>0)list.push({x:x,z:z,high:false,big:false,kind:'bouncer',v:v});}}});
   /* it allows for its own wobble: the few best are tried again a little off to each side, and the best average wins */
   list.sort(function(a,b){return b.v-a.v;});
@@ -852,7 +852,7 @@ function botV2(s,dt){
 function botShoot(s,li,lb){
   var side=SG.sides[s],L=LEVELS[side.level],en=1-s,foe=SG.sides[en],was=side.ammo;side.ammo='marble';if(SG.lobberBlock(s,li)){side.ammo=was;return;}
   var keep=foe.keep?pieceById(foe.keep):null,tx=0,tz=0,ammo='marble',eb=baseOf(en),foes=SG.mice.filter(function(m){return m.side===en&&m.state!=='dizzy';}),avoid=side.lastShot&&SG.clock-side.lastShot.t<2.4&&side.lastShot.li!==li?{x:side.lastShot.x,z:side.lastShot.z,r:C2.blast*U()*1.6}:null;
-  if(side.aimMode==='random'){var ra=rand()*PI*2,rr=Math.sqrt(rand())*C2.randomAim;tx=eb.x+Math.cos(ra)*rr;tz=eb.z+Math.sin(ra)*rr;ammo=side.big>0?'big':'marble';side.high=false;}   /* anywhere in the other camp's ground */
+  if(side.aimMode==='random'){var ra=rand()*PI*2,rr=Math.sqrt(rand())*C2.randomAim;tx=eb.x+Math.cos(ra)*rr;tz=eb.z+Math.sin(ra)*rr;ammo=side.big>0&&!L.noBig?'big':'marble';side.high=false;}   /* anywhere in the other camp's ground */
   else{ /* an aimer: glue on a camp that is mending, corks at a crowd, else the best shot (a Big Marble, a Bouncer or a marble) */
     var crowd=null,cn=1,gt=ammoReady(side,'glue')&&!(avoid&&side.lastShot.ammo==='glue')?glueTarget(s):null;foes.forEach(function(m){var n=0;foes.forEach(function(o){if(dist(m.x,m.z,o.x,o.z)<C2.corkSpread*U())n++;});if(n>cn){cn=n;crowd=m;}});
     if(gt){tx=gt.x;tz=gt.z;ammo='glue';side.high=false;}
@@ -902,6 +902,7 @@ function tick(dt){
 SG.step=function(dt){SG.acc+=dt;var n=0;while(SG.acc>=STEP-1e-9){tick(STEP);SG.acc-=STEP;n++;}return n;};
 /* true if a mouse stands inside a wall or gate that still blocks it (used by the tests) */
 SG.inWall=function(){var bad=0;SG.mice.forEach(function(m){SG.pieces.forEach(function(p){if((p.kind!=='wall'&&p.kind!=='gate')||!p.built||!blocks(p))return;if(solidAt(p,m.side,m.x,m.z,0))bad++;});});return bad;};
+SG.fallRings=function(){return S?S.children.filter(function(o){return o.geometry===V.fallGeo&&o.visible;}).length:0;};   /* cream rings lit on the table now (for the test) */
 SG.debug={knock:function(pieceId,partId){var p=pieceById(pieceId);if(!p)return false;for(var i=0;i<p.ps.length;i++)if(p.ps[i].id===partId){var r=knock(p,i,p.side?1:-1,p.side?-1:1,'debug');if(V2())settle(p,1-p.side);fixGrid();return r;}return false;},
   blast:function(x,y,z,R,att,big,hitId,kind){var n=blastAt(x,y,z,R,att,!!big,0,att?1:-1,0,false,hitId||0,kind);fixGrid();return n;},v2Score:function(s,f){return v2Score(s,f);},roles:function(){roles(0);roles(1);return SG.mice.map(function(m){return m.role;});},
   dizzy:function(s,i){var m=SG.mice[s*5+i];return m?dizzy(m):false;},matLook:function(){var o={cloth:0,outline:0};V.matG.forEach(function(g){g.children.forEach(function(m){if(m.visible){if(m.userData.ar)o.outline++;else o.cloth++;}});});return o;},piece:pieceById,layoutSpot:function(s,i){return layoutSpot(s,SG.sides[s].layout,i);},blocks:function(id){return blocks(pieceById(id));},crewSpot:function(s){var l=lobberOf(s);return l?crewSpot(l):null;},crewReady:crewReady,isOpen:isOpen,landScale:function(s){return GH[s]&&GH[s].land?GH[s].land.scale.x:0;},lring:function(s){return GH[s]&&GH[s].lring?GH[s].lring.map(function(r){return r.visible;}):[];},arc2:function(s){return !!(GH[s]&&GH[s].arc2&&GH[s].arc2.visible);}};
@@ -935,7 +936,7 @@ SG.audio=function(){return {started:!!AC,muted:SG.muted};};
 /* ================= drawing ================= */
 var R,S,SCN,ROOMG,SUN,arCam,C,W,H,world,hill,GH=[{obj:null,kind:''},{obj:null,kind:''}],GM,camNow=null,hasDom=typeof document!=='undefined';
 function E(id){return document.getElementById(id);}
-function viewClear(){if(!V.on)return;if(V.lab)labViewHide();while(world.children.length)world.remove(world.children[0]);V.pieces={};V.mice=[];V.slots=[[],[]];V.marbles={};V.corks={};V.puffs=[];V.flashes=[];V.rings=[];GH.forEach(function(g){if(g.obj){S.remove(g.obj);g.obj=null;g.kind='';}});
+function viewClear(){if(!V.on)return;if(V.lab)labViewHide();while(world.children.length)world.remove(world.children[0]);V.pieces={};V.mice=[];V.slots=[[],[]];V.marbles={};V.corks={};V.puffs=[];V.flashes=[];(V.rings||[]).forEach(function(r){S.remove(r);});V.rings=[];   /* the rings sit in the table group, not in world: take them out, or they stay lit on the table for ever (Harry's cream rings) */GH.forEach(function(g){if(g.obj){S.remove(g.obj);g.obj=null;g.kind='';}});
   var pl=E('pops');if(pl)pl.innerHTML='';V.popEls={};}
 function viewStart(){if(!V.on)return;
   SG.sides.forEach(function(side,s){side.kit.forEach(function(k,i){var o=SS.piece(k.kind,side.team);o.scale.setScalar(MAT.scale);o.position.set(k.x,.012,k.z);o.rotation.y=k.a+phiOf(s);world.add(o);V.slots[s].push(o);});});
@@ -993,9 +994,11 @@ function syncPieces(){
       else{m.visible=true;v.pst[i]='off';var u=Math.min(1,(SG.clock-q.t0)/.75);_v.set(q.rx,.035,q.rz);v.obj.worldToLocal(_v);
         m.position.set(h[0]+(_v.x-h[0])*u,h[1]+(_v.y-h[1])*u+Math.sin(u*PI)*.55,h[2]+(_v.z-h[2])*u);m.rotation.set(u*(PI/2+((i%3)-1)*.2),u*(1.3+i),u<1?u*7:0);
         /* a fallen part that can still be mended gets a bright ring round it */
-        if(u>=1&&!q.used){var rg=V.rings[nr];if(!rg){rg=V.rings[nr]=new THREE.Mesh(V.fallGeo,V.fallMat);rg.rotation.x=-PI/2;S.add(rg);}rg.visible=true;rg.material=q.glue>SG.clock?V.glueMat:V.fallMat;rg.position.set(q.rx,.012,q.rz);rg.scale.setScalar(1+.1*Math.sin(SG.clock*5+i));nr++;}}}
+        if(u>=1&&!q.used&&ringOK(p,q)){var rg=V.rings[nr];if(!rg){rg=V.rings[nr]=new THREE.Mesh(V.fallGeo,V.fallMat);rg.rotation.x=-PI/2;S.add(rg);}rg.visible=true;rg.material=q.glue>SG.clock?V.glueMat:V.fallMat;rg.position.set(q.rx,.012,q.rz);rg.scale.setScalar(1+.1*Math.sin(SG.clock*5+i));nr++;}}}
   });
   for(var r=nr;r<V.rings.length;r++)V.rings[r].visible=false;}
+/* a ring round a fallen part: only in a fight, only on a camp a person plays, and only while no mouse is on the way to mend it (then the hammer shows) */
+function ringOK(p,q){var ph=SG.phase;if(ph!=='fight'&&ph!=='mend'&&ph!=='count')return false;if(p.down||q.mender>=0||q.swept)return false;return !!SG.sides[p.side]&&SG.sides[p.side].human;}
 function syncPops(){var pl=E('pops');if(!pl)return;var seen={},table=SG.mode==='table';V.popEls=V.popEls||{};
   function show(id,cls,text,x,z,y,side,op){seen[id]=1;var el=V.popEls[id];if(!el){el=V.popEls[id]=document.createElement('div');el.className=cls;el.textContent=text;pl.appendChild(el);}
     var q=SG.screen(x,z,y);el.style.left=q.x+'px';el.style.top=q.y+'px';el.style.opacity=op;var eg=table&&side===1?(SG.sides[1].edge||'top'):'';el.style.transform=eg==='top'?'translate(-50%,0) rotate(180deg)':(eg==='left'?'translate(0,-50%) rotate(90deg)':(eg==='right'?'translate(-100%,-50%) rotate(-90deg)':'translate(-50%,-100%)'));}
@@ -1008,6 +1011,8 @@ function syncPops(){var pl=E('pops');if(!pl)return;var seen={},table=SG.mode==='
   SG.pieces.forEach(function(p){if(!p.built||!p.total)return;p.ps.forEach(function(q,i){if(q.st==='off'&&q.glue>SG.clock)show('gl'+p.id+'_'+i,'pop icon','🍯',q.rx,q.rz,.16,p.side,1);});});
   /* a hammer over every piece that is being mended, so mending shows even when the mouse is behind it */
   SG.pieces.forEach(function(p){if(!p.built)return;var busy=false;p.ps.forEach(function(q){if(q.mender>=0&&q.st!=='on')busy=true;});if(busy)show('m'+p.id,'pop icon','🔨',p.x,p.z,TALL[p.kind]+.18+.04*Math.sin(SG.clock*6),p.side,1);});
+  /* "Mend me": a wrench label on the first part of each person's camp that a mouse can mend now */
+  if(SG.phase==='fight'||SG.phase==='mend')SG.sides.forEach(function(side,s){if(!side.human)return;var done=false;SG.pieces.forEach(function(p){if(done||p.side!==s||!p.built||p.down)return;for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st==='off'&&!q.used&&q.mender<0&&!(q.glue>SG.clock)&&!q.swept&&SG.clock-q.t0>.75){show('mm'+s,'pop mendme','🔧 Mend me',q.rx,q.rz,.22,s,1);done=true;return;}}});});
   for(var id in V.popEls)if(!seen[id]){pl.removeChild(V.popEls[id]);delete V.popEls[id];}}
 function syncAll(){
   if(!V.on)return;var i,ph=SG.phase;
@@ -1115,7 +1120,28 @@ function hud(){if(!hasDom||!SG.sides.length)return;if(SG.mode==='lab'){labHud();
   E('bPause').textContent=SG.paused?'▶ Go on':'⏸ Pause';}
 /* a collapse plays in slow motion for a moment (real time only: SG.step itself never slows) */
 function slowed(dt){if(SG.slowT>0&&(SG.speed||1)<=4){SG.slowT-=dt;return dt*.3;}return dt;}
-function render(){if(!V.on)return;syncAll();pullView();if(!AR.on){moveCamera();if(SG.shake>.02){var sk=SG.shake*.05;C.position.x+=(Math.random()-.5)*sk;C.position.y+=(Math.random()-.5)*sk;SG.shake*=.88;}else SG.shake=0;}SS.wave(hill,SG.clock);hud();R.render(SCN,C);}
+/* ================= FIRST-RUN HELPER and the "?" legend =================
+   Three one-line captions, each shown once ever (localStorage, in try/catch), on the one-player table; and a "?" button that opens a list of every icon, ring, colour and number on the table. */
+var COACH=[
+  {k:'rtk.coach.1',when:function(){return SG.phase==='build';},text:'Blue mice are yours. Tap a piece, then tap the table.'},
+  {k:'rtk.coach.2',when:function(){return SG.fallRings()>0;},text:'Cream ring = a fallen part. Mice can mend it.'},
+  {k:'rtk.coach.3',when:function(){return SG.phase==='fight';},text:'Hill: hold it to earn a Big Marble.'}];
+var coachNow=null,coachT=0,coachSeen={};
+function coachGet(k){if(coachSeen[k])return true;try{return !!window.localStorage.getItem(k);}catch(e){return false;}}
+function coachSet(k){coachSeen[k]=1;try{window.localStorage.setItem(k,'1');}catch(e){}}
+SG.coachReset=function(){coachSeen={};coachNow=null;coachT=0;try{COACH.forEach(function(c){window.localStorage.removeItem(c.k);});}catch(e){}};
+function coachTick(dt){if(!hasDom||!E('coach'))return;var el=E('coach'),want=SG.mode==='solo'&&SG.sides.length&&!AR.on&&!PERF&&SG.phase!=='start'&&SG.phase!=='over';
+  if(E('bHelp'))E('bHelp').style.display=(SG.sides.length&&SG.phase!=='start'&&SG.mode!=='lab'&&!AR.on)?'block':'none';
+  if(!want){el.style.display='none';coachNow=null;return;}
+  if(coachNow){coachT-=dt;if(coachT<=0||!coachNow.when()&&coachT<4){el.style.display='none';coachNow=null;}return;}
+  for(var i=0;i<COACH.length;i++){var c=COACH[i];if(coachGet(c.k)||!c.when())continue;coachNow=c;coachSet(c.k);coachT=6.5;el.textContent=c.text;el.style.display='block';return;}
+  el.style.display='none';}
+SG.coachTick=coachTick;SG.coach=function(){return {shown:coachNow?coachNow.text:'',seen:Object.keys(coachSeen)};};
+var legendPaused=false;
+function legendToggle(on){var el=E('legend');if(!el)return;el.style.display=on?'flex':'none';if(on){legendPaused=!SG.paused;if(legendPaused)SG.paused=true;}else if(legendPaused){SG.paused=false;legendPaused=false;lastHud='';}}
+SG.legend=function(on){legendToggle(on===undefined?E('legend').style.display!=='flex':!!on);return E('legend').style.display==='flex';};
+/* ================= end of first-run helper ================= */
+function render(){if(!V.on)return;coachTick(1/60);syncAll();pullView();if(!AR.on){moveCamera();if(SG.shake>.02){var sk=SG.shake*.05;C.position.x+=(Math.random()-.5)*sk;C.position.y+=(Math.random()-.5)*sk;SG.shake*=.88;}else SG.shake=0;}SS.wave(hill,SG.clock);hud();R.render(SCN,C);}
 SG.render=render;
 
 function initView(){
@@ -1480,7 +1506,7 @@ function initInput(){
   E('bCam').onclick=function(){SG.setCam(SG.cam+1);};E('bStart').onclick=function(){SG.begin();};
   ORDERS.forEach(function(o){E('o_'+o).onclick=function(){var me=SG.sides[0];me.pick=me.pick===o?'':o;ui();};});
   [0,1,2,3,4,5].forEach(function(nn){E('n'+nn).onclick=function(){var me=SG.sides[0];if(me.pick){SG.setPlan(0,me.pick,nn);me.pick='';ui();}};});
-  E('b_easy').onclick=function(){SG.setEasyAim(!SG.easyAim);};E('b_high').onclick=function(){var me=SG.sides[0];me.high=!me.high;ui();};
+  E('bHelp').onclick=function(){legendToggle(true);};E('bHelpOk').onclick=function(){legendToggle(false);};E('b_easy').onclick=function(){SG.setEasyAim(!SG.easyAim);};E('b_high').onclick=function(){var me=SG.sides[0];me.high=!me.high;ui();};
   E('b2_lobber').onclick=function(){SG.setTool(SG.sides[0].tool==='lobber'?'squad':'lobber');};E('b_lsel').onclick=function(){SG.nextLobber(0);};
   AMMO_ORDER.forEach(function(id){var b=document.createElement('button');b.className='btn ammo';b.id='a_'+id;b.innerHTML='<span class="ai">'+AMMO[id].icon+'</span><span class="an">'+AMMO[id].name+'</span><span class="ac"></span>';E('arow').insertBefore(b,E('b_high'));b.onclick=function(){SG.setAmmo(0,id);};});E('bPauseB').onclick=function(){SG.paused=!SG.paused;lastHud='';ui();};
   E('bMute').onclick=function(){soundOn();SG.setMute(!SG.muted);};E('bTilt').onclick=function(){SG.setTilt(SG.tilt?0:18);};E('bPause2').onclick=function(){SG.paused=!SG.paused;};
@@ -1495,7 +1521,8 @@ function initInput(){
       if(a==='L')SG.turn(PI/12,s);else if(a==='R')SG.turn(-PI/12,s);else if(a==='undo')SG.undo(s);else if(a==='ready')SG.done(s);else if(a==='again')SG.reset();
       else if(a.indexOf('o_')===0)SG.bumpPlan(s,a.slice(2));else if(a==='lsel')SG.nextLobber(s);else if(a.indexOf('am_')===0)SG.setAmmo(s,a.slice(3));
       else if(a==='lobber'&&V2())SG.setTool(SG.sides[s].tool==='lobber'?'squad':'lobber',s);else SG.setTool(a,s);});})(s2);
-  var pick='blue',lvl='easy',mode='solo';SG.pick=function(){return {team:pick,level:lvl};};arInitUi();
+  var pick='blue',lvl=(function(){try{return window.localStorage.getItem('rtk.played')?'easy':'friendly';}catch(e){return 'friendly';}})(),mode='solo';   /* the first game is against the Friendly robot; after that Fair (the robot as it was) */
+  choose(['l_friendly','l_easy','l_hard'],'l_'+lvl);SG.pick=function(){return {team:pick,level:lvl};};arInitUi();
   if(SG.savedCardLayout()){E('bCards').style.display='inline-block';E('bCards').onclick=function(){var on=SG.layout.custom&&SG.layoutFrom==='cards',n=E('layoutNote');n.style.display='block';
     if(on){SG.clearLayout();SG.layoutFrom='';E('bCards').className='btn';n.textContent='Using the usual table.';return;}
     var r=SG.applyLayout(SG.savedCardLayout());if(r.ok){SG.layoutFrom='cards';E('bCards').className='btn on';n.textContent='Using your card layout.';}else n.textContent='Your card layout cannot be used: '+r.reason+' Using the usual table.';};}
@@ -1503,9 +1530,9 @@ function initInput(){
   E('m_table').onclick=function(){mode='table';choose(['m_solo','m_table'],'m_table');E('soloOpts').style.display='none';E('tableNote').style.display='block';};
   function choose(ids,on){ids.forEach(function(id){E(id).className='btn'+(id===on?' on':'');});}
   E('tBlue').onclick=function(){pick='blue';choose(['tBlue','tRed'],'tBlue');};E('tRed').onclick=function(){pick='red';choose(['tBlue','tRed'],'tRed');};
-  ['easy','normal','hard'].forEach(function(l){E('l_'+l).onclick=function(){lvl=l;choose(['l_easy','l_normal','l_hard'],'l_'+l);};});
+  ['friendly','easy','hard'].forEach(function(l){E('l_'+l).onclick=function(){lvl=l;choose(['l_friendly','l_easy','l_hard'],'l_'+l);};});
   ['small','medium','large'].forEach(function(z){E('z_'+z).onclick=function(){SG.piecesDefault=z;choose(['z_small','z_medium','z_large'],'z_'+z);};});if(SG.rulesDefault===1)E('zRow').style.display='none';
-  E('bPlay').onclick=function(){SG.paused=false;SG.cam=0;var dn=E('designSel')?E('designSel').value:'',dz=dn?SG.labDesigns()[dn]:null;SG.start(pick,{level:lvl,mode:mode,design:dz||null});};
+  E('bPlay').onclick=function(){try{window.localStorage.setItem('rtk.played','1');}catch(e){}SG.paused=false;SG.cam=0;var dn=E('designSel')?E('designSel').value:'',dz=dn?SG.labDesigns()[dn]:null;SG.start(pick,{level:lvl,mode:mode,design:dz||null});};
   E('m_lab').onclick=function(){soundOn();SG.paused=false;SG.cam=0;SG.labStart();};
   E('designSel').onchange=function(){SG.designChoice=E('designSel').value;};E('bAgain').onclick=function(){SG.reset();};
   addEventListener('resize',function(){W=innerWidth;H=innerHeight;if(!AR.on)R.setSize(W,H);});}
