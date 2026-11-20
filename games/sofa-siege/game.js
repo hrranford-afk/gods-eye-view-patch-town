@@ -1903,7 +1903,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   var sub='';
   if(L.tool==='build'||L.tool==='move'){sub=LAB_KINDS.map(function(k){return '<button class="btn lb'+(L.kind===k&&L.tool==='build'?' on':'')+'" data-a="k_'+k+'">'+(LAB_ICON[k]||'🧩')+' '+labName(k)+'</button>';}).join('');if(L.carry)sub+='<button class="btn lb go" data-a="drop">Drop here</button><button class="btn lb" data-a="cancelcarry">Put it back</button>';}
   else if(L.tool==='fire'||L.tool==='gun'){var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;}));
-    sub=ids.map(function(id){return '<button class="btn lb ammo'+(L.ammo===id?' on':'')+'" data-a="am_'+id+'" id="lab_a_'+id+'"><span class="ai">'+AMMO[id].icon+'</span><span class="an">'+AMMO[id].name+'</span><span class="ac"></span></button>';}).join('')+
+    sub=ids.map(function(id){return '<button class="btn lb ammo'+(L.ammo===id?' on':'')+'" data-a="am_'+id+'" id="lab_a_'+id+'"><span class="ai">'+labEsc(AMMO[id].icon)+'</span><span class="an">'+labEsc(AMMO[id].name)+'</span><span class="ac"></span></button>';}).join('')+
       '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
   else if(L.tool==='inspect')sub='<span class="lnote">Tap a piece to see what holds it up. Turn on "Show supports" to see the links.</span>';
   else if(L.tool==='erase')sub='<span class="lnote">Tap a piece to take it away. Undo brings it back.</span>';

@@ -210,6 +210,10 @@ const run = async () => {
       if (SG.phase === 'over' && SG.winner >= 0) o.over++; if (SG.stats.keepDown) o.keep++; o.col += SG.stats.collapses; o.off += SG.stats.partsOff; o.stuck += SG.stats.stuck; } return o; });
   ok('12 bot matches under v2 all end with a winner; nobody stuck, nobody inside a wall', bots.over === bots.n && bots.stuck === 0 && bots.inside === 0, JSON.stringify(bots));
   console.log('--- 12 bot matches: Keep down in ' + bots.keep + ', collapses ' + (bots.col / bots.n).toFixed(1) + ' a match, parts off ' + (bots.off / bots.n).toFixed(0) + ' a match (the tuned numbers are in BOT_REPORT.md)');
+  /* the bare-frame fix (20 Nov), in a real match: a gate with no doors and no lintel is only posts and braces and lets a flat shot through; anything left on it still stops one */
+  const gf = await ev(() => { F2('blue'); const g = K(1, 'gate'), w = K(1, 'wall'); const whole = !!SG.pieceAt(g.x, .2, g.z); KN(g, ['gate.lintel']); const noLintel = !!SG.pieceAt(g.x, .2, g.z); KN(g, ['gate.door.L']); const oneDoor = !!SG.pieceAt(g.x, .2, g.z); KN(g, ['gate.door.R']); const bare = g.ps.filter((q) => q.st === 'on').map((q) => q.id);
+    const centre = !!SG.pieceAt(g.x, .2, g.z), post = g.ps.find((q) => q.st === 'on' && /post/.test(q.id)), atPost = !!SG.pieceAt(post.wx, .2, post.wz); const wallRail = w.ps.filter((q) => /plank/.test(q.id)).map((q) => q.id); KN(w, wallRail); const railOnly = !!SG.pieceAt(w.x, .2, w.z); return { whole, noLintel, oneDoor, bare, centre, atPost, railOnly }; });
+  ok('a gate stripped to its posts and braces lets a flat shot through between the posts, and stops one only at a post; a gate with a door or lintel left, and a wall with a rail left, still stop a shot (the match rule is unchanged)', gf.whole && gf.noLintel && gf.oneDoor && gf.bare.every((x) => /post|brace/.test(x)) && !gf.centre && gf.atPost && gf.railOnly, JSON.stringify(gf));
   ok('no page errors', errs.length === 0, errs.join(' | '));
   console.log('test took ' + ((Date.now() - T0) / 1000).toFixed(0) + ' s');
   console.log(bad ? ('FAILED ' + bad + ' of ' + n) : ('ALL ' + n + ' PASSED'));
