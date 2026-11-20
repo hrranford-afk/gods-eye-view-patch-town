@@ -24,7 +24,7 @@ var CONFIG={
     throwNear:.6,throwFar:.2,                   /* how far a knocked part flies: nearest to the hit, and at the edge of the blast */
     corkCount:5,corkSpread:.42,corkHit:.2,corkCd:8,   /* cork scatter: corks, spread, how near a cork must land to make a mouse dizzy, seconds before the next scatter */
     hillSecs:22,bigMax:3,                       /* seconds holding the hill for one Big Marble; most that can be stored */
-    piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
+    piecePts:{tower:54,lobber:8,wall:5,gate:3.5,workshop:4,tent:5,brace:1,trap:1,cottage:10,barn:14,lookout:12,bridge:14,windmill:12,stall:4},collapsePts:2,hillPts:.07,        /* score: what a whole piece is worth when all of it is off at a round's end; each part off counts its share (the Keep counts most, walls least, so walls are not a gift to the other side, and blue's seven-plank walls count the same as red's five-plank ones); a collapse you caused; a second of hill for each mouse more than the other side */
     mendTime:12,redWalk:1.05,                   /* seconds to put one part back; red's mice walk this much quicker in the fight (it evens out blue's edge: with the same speed blue won about two matches in three) */
     raidEvery:3,redRaid:1,raidReach:.4,        /* seconds between a raider's pulls; red's interval times this (1: the same for both); reach */
     guardRange:1.1,blueGuard:1.5,guardEvery:2,guardChance:.45,guardRing:.55,   /* guard corks: reach, blue's reach times this, seconds between, chance to send the raider home dizzy, how far guards stand from the Keep */
@@ -55,7 +55,8 @@ var CONFIG={
     rate:{salvo:5,single:1,salvoShare:.3,parts:1,collapse:4,keep:15,dizzy:.5,little:.25,likeLo:.8,likeHi:1.25,much:1.5},   /* Rate it: shots in a salvo; how much a salvo counts beside a single shot; the points of each result; the verdict thresholds (shares of a Marble's and a Big Marble's score) */
     carnage:{part:1,collapse:5,keep:25,chain:3,dizzy:.5},   /* the carnage score: points for each part off, collapse, Keep felled, step of chain beyond the first, mouse dizzy */
     fx:{shake:.14,shakeMax:2.4,slow:.06,slowBase:.15,slowMax:1.4,slowFrom:3},   /* screen shake and slow-motion beat per part that falls at once */
-    debrisMax:160,debrisSecs:3                  /* most fallen parts left lying; seconds before they vanish when "Leave debris" is off */
+    debrisMax:160,debrisSecs:3,                 /* most fallen parts left lying; seconds before they vanish when "Leave debris" is off */
+    yard:{perHit:4,bigHit:9,sturdy:[1,.55,.32],deep:.4,high:.5,collapseShare:.08,delay:.2,fall:[.08,.2],reach:.22}   /* the Building Yard: parts a Marble takes off one building (a bigger blast takes more, by its area); the Big Marble's; how far a blow runs on into a building (share of the way to its middle) and how high up (share of its height, at least); how near the hit a trim, wall and frame part must be (share of the blast); the share of a building's parts that must fall in one go (at least 2) for it to count as a collapse; seconds between rounds of a collapse; how far a part falls (scale 1); how near a neighbour must be for a falling building to land on it */
   },
   /* per level: seconds between bot shots, aim error, seconds before it sends its squad, and how many points ahead the red bot must be before it spares a scrapper for the walls */
   levels:{easy:{err2:.2,fire:13,err:.5,send:5,raidLead:6,preset:'average'},normal:{err2:.12,fire:12,err:.45,send:2.5,raidLead:1.5,preset:'average'},hard:{err2:.06,fire:11,err:.2,send:.6,raidLead:2,preset:'good'}}
@@ -110,7 +111,10 @@ var KIT2=KIT.concat(['wall','wall','brace','brace','brace','lobber','trap','trap
 function KITL(){return V2()?KIT2:KIT;}
 /* what a piece costs a side now: the tower and the first lobber are free */
 function cost(s,kind){var c=C2.cost[kind];if(kind==='lobber'&&!SG.pieces.some(function(p){return p.side===s&&p.kind==='lobber';}))return 0;return c==null?1:c;}
-var FOOT0={wall:[.43,.07],gate:[.48,.1],tower:[.3,.3],lobber:[.33,.4],tent:[.36,.36],workshop:[.3,.25],brace:[.07,.17],trap:[.15,.15]},FOOT={},TALL0={wall:.42,gate:.62,tower:1.1,lobber:.5,tent:.42,workshop:.5,brace:.42,trap:.12},TALL={};
+var FOOT0={wall:[.43,.07],gate:[.48,.1],tower:[.3,.3],lobber:[.33,.4],tent:[.36,.36],workshop:[.3,.25],brace:[.07,.17],trap:[.15,.15],cottage:[.42,.32],barn:[.5,.54],lookout:[.3,.3],bridge:[.74,.2],windmill:[.34,.3],stall:[.37,.2]},FOOT={},TALL0={wall:.42,gate:.62,tower:1.1,lobber:.5,tent:.42,workshop:.5,brace:.42,trap:.12,cottage:.62,barn:.7,lookout:1.45,bridge:1.0,windmill:1.3,stall:.55},TALL={};
+/* the Building Yard's kinds (Lab only: they are in no kit, so a match never has one). Each is one piece with 15 to 40 parts that hang on each other (models.js, SS.bldInfo) */
+var BK={cottage:1,barn:1,lookout:1,bridge:1,windmill:1,stall:1},BLDI={};
+function bldInfo(k){if(BLDI[k]===undefined)BLDI[k]=BK[k]&&SS.bldInfo?SS.bldInfo(k):null;return BLDI[k];}
 /* one number sets how big everything on the table is: pieces, mice, the hill, blasts and reaches all follow it */
 function setScale(ps){PS=ps;for(var k in FOOT0){FOOT[k]=[FOOT0[k][0]*PS,FOOT0[k][1]*PS];TALL[k]=TALL0[k]*PS;}gridDirty=true;}
 function WALK(){return V2()?C2.walk*U():CONFIG.walk;}
@@ -323,7 +327,8 @@ function finishBuild(){
 SG.skipBuild=function(){if(SG.phase!=='build')return;for(var s=0;s<2;s++){var i;while((i=nextSlot(s))>=0){if(!botPlace(s,i).ok)SG.sides[s].kit[i].used=true;}}finishBuild();};
 SG.begin=function(){if(SG.phase==='ready')startRound(1);};
 function startObj(p){if(p.ps.length||p.started)return;p.started=true;var ids=viewObj(p);
-  ids.forEach(function(q){p.ps.push({id:q.id,st:'on',used:false,mender:-1,wx:q.x,wy:q.y,wz:q.z,rx:0,rz:0,t0:-9,rank:q.rank,cls:/^tower\.post/.test(q.id)?1:(/^tower\.brace/.test(q.id)?2:(/post|rail/.test(q.id)?3:0))});});p.total=p.ps.length;gridDirty=true;}
+  ids.forEach(function(q){p.ps.push({id:q.id,st:'on',used:false,mender:-1,wx:q.x,wy:q.y,wz:q.z,rx:0,rz:0,t0:-9,rank:q.rank,cls:/^tower\.post/.test(q.id)?1:(/^tower\.brace/.test(q.id)?2:(/post|rail/.test(q.id)?3:0))});});p.total=p.ps.length;gridDirty=true;
+  if(BK[p.kind]){var B=bldInfo(p.kind);p.pi={};p.ps.forEach(function(e,i){p.pi[e.id]=i;var bi=B&&B.parts[e.id];if(bi){e.cls=0;e.stg=bi.stg;e.need=bi.need;e.min=bi.min;e.dly=bi.dly;e.leg=bi.leg;}});p.legs=B?B.bigLegs:2;}}
 function raise(p){var n=p.ps.length;if(n){p.parts=Math.min(n,Math.floor(p.progress*n+.001));}else p.parts=p.progress>=1?1:0;}
 function completePiece(p,puff){p.progress=1;raise(p);p.built=true;p.parts=p.total||1;SG.sides[p.side].kit[p.slot].picked=true;if(p.kind==='lobber'){if(SG.sides[p.side].lobber&&SG.sides[p.side].lobber!==p.id)SG.sides[p.side].lobber2=p.id;else SG.sides[p.side].lobber=p.id;}if(p.kind==='tent')SG.sides[p.side].tent=p.id;if(p.kind==='brace')setProp(p);if(p.kind==='workshop')SG.sides[p.side].workshop=p.id;if(p.kind==='tower')SG.sides[p.side].keep=p.id;gridDirty=true;if(puff)viewPuff(p.x,p.z,2);}
 
@@ -586,7 +591,7 @@ function trapsTick(){SG.pieces.forEach(function(p){if(p.kind!=='trap'||!p.built|
 function blastAt(x,y,z,R,att,big,dirx,dirz,skipId,dry,hitId,kind,cap,fall){
   var touched=[],n=0,val=0,dl=Math.sqrt(dirx*dirx+dirz*dirz)||1,noLeg=!!(kind&&AMMO[kind]&&!AMMO[kind].w.leg),plan=[],defer=cap>0&&!dry;if(!dry){SG.att=att;SG.cause=kind||(big?'big':'marble');}
   for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===skipId||!p.built||!p.total||p.down||Math.abs(p.x-x)>R+.75||Math.abs(p.z-z)>R+.75||boxDist(p,x,z)>R+.05)continue;var hits=[],leg=-1,ld=1e9,near=big&&p.kind==='tower'&&p.id===hitId;
-    for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(noLeg&&q.cls===1)continue;if(near&&q.cls===1){if(d<ld){ld=d;leg=i;}continue;}if(d>R)continue;
+    if(BK[p.kind]){if(dry)continue;hits=bldHits(p,x,y,z,R,big,noLeg,p.id===hitId);}else for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on')continue;var d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(noLeg&&q.cls===1)continue;if(near&&q.cls===1){if(d<ld){ld=d;leg=i;}continue;}if(d>R)continue;
       if(q.cls===1){if(d>R*C2.legSturdy||legBraced(p,q.id))continue;}else if(q.cls===3&&d>R*C2.sturdy)continue;else if(q.cls===2&&d>R*C2.braceSturdy)continue;hits.push([d,i]);}
     if(leg>=0)hits.push([Math.min(ld,R*.8),leg]);if(!hits.length)continue;
     if(dry){var A=C2.aimWorth,w=partWorth(p),sg=p.side===att?-1:1,v=0,rails=0,posts=0,legs=0;
@@ -610,6 +615,7 @@ function dropAll(p,re,att){var n=0,sgn=p.side?1:-1;p.ps.forEach(function(q,i){if
 /* what gives way in a piece right now, if anything: '' (it stands), 'wall-all', 'wall-planks', 'gate', 'keep' (the tower comes down) or 'roof'. settle() acts on it, and the Lab asks it
    about each part in turn ("would this part alone bring it down?"), so the Lab shows the real rule. */
 function holdFail(p){
+  if(BK[p.kind])return '';   /* a building has no single verdict: bSettle asks each part */
   if(p.kind==='wall'){if(onCount(p,/post/)===0&&!props(p).length)return 'wall-all';if(onCount(p,/rail/)===0)return 'wall-planks';return '';}
   if(p.kind==='gate')return onCount(p,/gate\.post/)<2?'gate':'';
   if(p.kind==='tower'){var legs=[];p.ps.forEach(function(q){if(q.st==='on'&&/^tower\.post/.test(q.id))legs.push(q.id.split('.')[2]);});var stands=legs.length>=3;
@@ -620,6 +626,7 @@ function holdFail(p){
   return '';}
 /* what still holds a piece up. When the support is gone the parts that hung on it fall together. */
 function settle(p,att){
+  if(BK[p.kind])return bSettle(p,att);
   if(!V2()||!p.built||p.down)return 0;var fell=0,f=holdFail(p);
   if(f==='wall-all')fell=dropAll(p,/./,att);else if(f==='wall-planks')fell=dropAll(p,/plank/,att);else if(f==='gate')fell=dropAll(p,/lintel|door|brace/,att);
   else if(f==='keep'){keepDown(p,att);return 99;}else if(f==='roof')fell=dropAll(p,/roof/,att);
@@ -688,13 +695,42 @@ function rollTick(a,dt){var r=a.rl,u=U(),step=Math.min(r.left,C3.rollSpeed*u*dt)
 function looseParts(p){var o=[],k=p.kind;
   if(k==='wall'){var rails=onCount(p,/rail/),posts=onCount(p,/post/),pr=props(p).length;p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/plank/.test(q.id)&&rails===1)o.push(i);else if(/rail/.test(q.id)&&posts===1&&!pr)o.push(i);});}
   else if(k==='gate'){var gp=onCount(p,/gate\.post/);p.ps.forEach(function(q,i){if(q.st!=='on')return;if(/lintel/.test(q.id)&&gp===1)o.push(i);else if(/door/.test(q.id)&&(isOn(p,'gate.lintel')?1:0)+(isOn(p,'gate.post.'+q.id.split('.')[2])?1:0)===1)o.push(i);});}
+  else if(BK[k]){p.ps.forEach(function(q,i){if(q.st==='on'&&q.stg===0&&q.need&&q.need.length)o.push(i);});}   /* a building: the trim, which hangs on one thing (a tile on its rafter, a shutter on its window, a flag on its pole) */
   else if(k==='tower'){p.ps.forEach(function(q,i){if(q.st!=='on'||!/^tower\.brace/.test(q.id))return;var b=q.id.split('.')[2],held=['NE','NW','SE','SW'].filter(function(c){return c.indexOf(b)>=0&&isOn(p,'tower.post.'+c);}).length;if(held===1)o.push(i);});}
   return o;}
 function quakeAt(pos,Rq,a){var n=0,touched=[];SG.att=a.side;SG.cause='quake';
   SG.pieces.forEach(function(p){if(!p.built||p.down||!p.total||boxDist(p,pos[0],pos[2])>Rq)return;var list=looseParts(p);list.forEach(function(i){var an=rand()*PI*2;if(knock(p,i,Math.cos(an),Math.sin(an),'quake',(.12+rand()*.22)*U()))n++;});if(list.length)touched.push(p);});
   touched.forEach(function(p){settle(p,a.side);});SG.shake=Math.max(SG.shake,.5);viewPuff(pos[0],pos[2],1.6);return n;}
+/* ---- the Building Yard (Lab only): buildings of 15 to 40 parts that come apart in stages ----
+   Each part has a stage (0 trim, 1 walls, 2 frame) and the parts it hangs on (models.js). A landing takes trim first, then walls, then frame, never more than a few at once, and the frame only close to the hit;
+   a part comes off only within a share of the blast (CONFIG.workshop.yard.sturdy). Then bSettle drops whatever has lost its support, round after round, the same rule for every building. */
+function bldHits(p,x,y,z,R,big,noLeg,hit){var Y=C3.yard,u=U(),cand=[[],[],[]],hits=[],r0=C2.blast*u,cap=big?Y.bigHit:Math.max(1,Math.round(Y.perHit*(R*R)/(r0*r0))),i,q,d;
+  if(hit){x+=(p.x-x)*Y.deep;z+=(p.z-z)*Y.deep;y=Math.max(y,TALL[p.kind]*Y.high);}   /* a marble that strikes the building does not stop at the wall: the blow runs on into it, toward the middle and up into the roof, so a wall shot shakes the trim loose first */
+  for(i=0;i<p.ps.length;i++){q=p.ps[i];if(q.st!=='on'||q.stg==null)continue;d=Math.sqrt((q.wx-x)*(q.wx-x)+(q.wz-z)*(q.wz-z)+(q.wy-y)*(q.wy-y)*.45);if(d>R*Y.sturdy[q.stg]||(noLeg&&q.stg===2))continue;cand[q.stg].push([d,i]);}
+  for(var s=0;s<3;s++){cand[s].sort(function(a,b){return a[0]-b[0];});cand[s].forEach(function(c){if(hits.length<cap)hits.push(c);});}
+  if(big&&hit&&!noLeg){var legs=[];p.ps.forEach(function(e,j){if(e.st==='on'&&e.leg){var dd=Math.sqrt((e.wx-x)*(e.wx-x)+(e.wz-z)*(e.wz-z));legs.push([dd,j]);}});legs.sort(function(a,b){return a[0]-b[0];});
+    legs.slice(0,p.legs||1).forEach(function(l){var at=-1;hits.forEach(function(h,k){if(h[1]===l[1])at=k;});if(at>=0)hits.splice(at,1);hits.push([Math.min(l[0],R*.8),l[1]]);});}   /* the Big Marble breaks the nearest frame legs outright */
+  return hits;}
+/* the parts of a building that stand on something that is gone: [] when everything left is held */
+function bFloating(p,skip){var out=[],i,j,q,n;for(i=0;i<p.ps.length;i++){q=p.ps[i];if(q.st!=='on'||i===skip||!q.need||!q.need.length)continue;n=0;for(j=0;j<q.need.length;j++){var k=p.pi[q.need[j]];if(k!==skip&&p.ps[k].st==='on')n++;}if(n<q.min)out.push(i);}return out;}
+function bSettle(p,att){if(!V2()||!p.built||p.down)return 0;var Y=C3.yard,fell=0,round=0,drop;
+  while(round<14&&(drop=bFloating(p,-1)).length){
+    drop.forEach(function(i){var q=p.ps[i],a=rand()*PI*2,dl=round*Y.delay+q.dly;if(knock(p,i,Math.cos(a),Math.sin(a),'collapse',(Y.fall[0]+rand()*(Y.fall[1]-Y.fall[0]))*U())){fell++;if(dl>0){q.t0=SG.clock+dl;var D=SG.debris[SG.debris.length-1];if(D)D.t+=dl;}}});   /* a part that falls later waits where it hangs */
+    round++;}
+  var nf=0;p.ps.forEach(function(q){if(q.stg===2&&q.st!=='on'&&q.t0>=SG.clock)nf++;});   /* frame parts that came off in this very tick, by the blast or the fall */
+  if(fell>=Math.max(2,Math.round(p.total*Y.collapseShare))||nf>=2||(nf>=1&&fell>=1))collapse(p,att,fell+nf);
+  return fell;}
+/* a building that comes down falls the way the shot was going and lands on what stands near it on that side (a stall row touches, a yard is a little apart): it knocks parts off, and the neighbour settles by the same rule, so it may come down too */
+function toppleB(p,att){var T=C3.topple,Y=C3.yard,u=U(),ld=SG.lastDir||{x:0,z:-1},reach=Math.max(Y.reach*u,TALL[p.kind]*.4),cand=[];
+  SG.pieces.forEach(function(q){if(q===p||!q.built||q.down||!q.total||q.parts<=0)return;var gap=1e9;corners(q.kind,q.x,q.z,q.rot).concat([[q.x,q.z]]).forEach(function(a){gap=Math.min(gap,boxDist(p,a[0],a[1]));});if(gap>reach)return;
+    var dx=q.x-p.x,dz=q.z-p.z,dl=Math.sqrt(dx*dx+dz*dz)||1,dot=(dx*ld.x+dz*ld.z)/dl;if(dot<-.35)return;cand.push({q:q,dot:dot,gap:gap,dx:dx/dl,dz:dz/dl});});
+  cand.sort(function(a,b){return b.dot-a.dot||a.gap-b.gap;});
+  cand.slice(0,2).forEach(function(e){var q=e.q;if(SG.topN>=T.max)return;SG.topN++;SG.att=att;SG.cause='topple';var mx=(p.x+q.x)/2,mz=(p.z+q.z)/2,k;
+    for(k=0;k<T.hit;k++){var bi=-1,bd=1e9;q.ps.forEach(function(r,i){if(r.st!=='on')return;var dd=(r.wx-mx)*(r.wx-mx)+(r.wz-mz)*(r.wz-mz)+(r.wy-TALL[q.kind]*.6)*(r.wy-TALL[q.kind]*.6)+(r.stg===2?.06:0);if(dd<bd){bd=dd;bi=i;}});
+      if(bi<0)break;knock(q,bi,e.dx,e.dz,'topple',(T.throwFar+rand()*.1)*u);}
+    settle(q,att);});}
 /* chain reactions (Lab option "Chain topple"): a piece that falls lands on its neighbours in the way it falls and knocks parts off them, which may bring them down too. At most CONFIG.workshop.topple.max a shot. */
-function topple(p,att){var T=C3.topple,u=U();if(SG.topN>=T.max||(p.kind!=='wall'&&p.kind!=='gate'&&p.kind!=='tower'))return;
+function topple(p,att){var T=C3.topple,u=U();if(SG.topN>=T.max||(p.kind!=='wall'&&p.kind!=='gate'&&p.kind!=='tower'&&!BK[p.kind]))return;if(BK[p.kind])return toppleB(p,att);
   var f=FOOT[p.kind],dir,lat;
   if(p.kind==='tower'){var ld=SG.lastDir||{x:Math.cos(p.rot),z:Math.sin(p.rot)};dir=[ld.x,ld.z];lat=[-dir[1],dir[0]];}
   else{var nz=[Math.sin(p.rot),Math.cos(p.rot)],ld2=SG.lastDir||{x:nz[0],z:nz[1]},sg=(nz[0]*ld2.x+nz[1]*ld2.z)<0?-1:1;dir=[nz[0]*sg,nz[1]*sg];lat=[Math.cos(p.rot),-Math.sin(p.rot)];}
@@ -934,7 +970,7 @@ function syncPieces(){
     for(i=0;i<n;i++){var q=p.ps[i],m=v.parts[i],h=m.userData.home;
       if(q.st==='on'){if(v.pst[i]!=='on'){m.visible=true;m.position.fromArray(h);if(v.pst[i])m.rotation.set(0,0,0);v.pst[i]='on';}}
       else if(q.st==='carried'||q.swept){m.visible=false;v.pst[i]=q.swept?'off':'carried';}   /* swept: the Lab's "Sweep up" took it off the table */
-      else{m.visible=true;v.pst[i]='off';var u=Math.min(1,(SG.clock-q.t0)/.75);_v.set(q.rx,.035,q.rz);v.obj.worldToLocal(_v);
+      else{m.visible=true;v.pst[i]='off';var u=Math.max(0,Math.min(1,(SG.clock-q.t0)/.75));_v.set(q.rx,.035,q.rz);v.obj.worldToLocal(_v);
         m.position.set(h[0]+(_v.x-h[0])*u,h[1]+(_v.y-h[1])*u+Math.sin(u*PI)*.55,h[2]+(_v.z-h[2])*u);m.rotation.set(u*(PI/2+((i%3)-1)*.2),u*(1.3+i),u<1?u*7:0);
         /* a fallen part that can still be mended gets a bright ring round it */
         if(u>=1&&!q.used){var rg=V.rings[nr];if(!rg){rg=V.rings[nr]=new THREE.Mesh(V.fallGeo,V.fallMat);rg.rotation.x=-PI/2;S.add(rg);}rg.visible=true;rg.material=q.glue>SG.clock?V.glueMat:V.fallMat;rg.position.set(q.rx,.012,q.rz);rg.scale.setScalar(1+.1*Math.sin(SG.clock*5+i));nr++;}}}
@@ -1114,6 +1150,7 @@ function initView(){
 function camTarget(){var a=W/H,t=Math.tan(20*PI/180),v=SG.cam||0,need=[3.65,2.9,1.9,2.7][v],dH=[7.1,5.2,3.9,4.5][v],d=Math.max(need/(t*a),dH),el=v===0?(a<1?.95:.72):(v===1?.7:(v===3?.58:.62)),lz=[.25,1.75,.1,-1.9][v];
   /* the camera stands behind your own camp and looks across the table */
   var b=baseOf(0),bl=Math.sqrt(b.x*b.x+b.z*b.z),dx=bl>.2?b.x/bl:0,dz=bl>.2?b.z/bl:1,h=v===2?hillAt():{x:0,z:0};if(v===1)lz=Math.max(.9,bl-.15);if(v===2)lz=0;if(SG.mode==='lab'&&SG.phase!=='start'&&v===0)lz+=.45;   /* the Lab's bars cover the bottom of the screen: the table sits a little higher */
+  var F=SG.mode==='lab'&&SG.lab&&SG.lab.focus;if(F){var d2=d*F.zoom;return [F.x+dx*Math.cos(el)*d2,Math.sin(el)*d2+(F.y||0),F.z+dz*Math.cos(el)*d2,F.x,(F.y||0)-.1,F.z];}   /* the Lab's close-up (screenshots, tests): look at a spot, from this share of the usual distance */
   return [h.x+dx*(lz+Math.cos(el)*d),Math.sin(el)*d,h.z+dz*(lz+Math.cos(el)*d),h.x+dx*lz,-.1,h.z+dz*lz];}
 function moveCamera(){
   if(SG.mode==='table'&&SG.phase!=='start'){var t=Math.tan(10*PI/180),hh=Math.max(120,H-128),d=Math.max(3.38*H/hh/t,3.38/(t*W/H));var tl=(SG.tilt||0)*PI/180;var bb=baseOf(0),bn=Math.sqrt(bb.x*bb.x+bb.z*bb.z),ux=bn>.2?bb.x/bn:0,uz=bn>.2?bb.z/bn:1;   /* blue's camp is at the bottom edge of the screen */
@@ -1388,7 +1425,7 @@ function initInput(){
    free ammunition. Where it must reach into the real code it does so through a few marked hooks (search "lab" in this file); none of them
    changes a match. The phase stays 'fight' the whole time, so every rule that needs a fight (aiming, firing, the blast, collapses) runs as it does in a match.
    Everything the Lab adds lives in this section. LAB.md says how to use it and how to add a prototype. */
-var LAB_KINDS=Object.keys(FOOT0),LAB_ICON={wall:'🧱',gate:'🚪',tower:'🏰',brace:'📐',lobber:'🔮',tent:'⛺',workshop:'🔨',trap:'🪤'},LAB_NAME={tower:'Keep',trap:'Spring trap'};
+var LAB_KINDS=Object.keys(FOOT0),LAB_ICON={wall:'🧱',gate:'🚪',tower:'🏰',brace:'📐',lobber:'🔮',tent:'⛺',workshop:'🔨',trap:'🪤',cottage:'🏠',barn:'🌾',lookout:'🗼',bridge:'🌉',windmill:'🌀',stall:'🛒'},LAB_NAME={tower:'Keep',trap:'Spring trap',lookout:'Watch tower house',bridge:'Bridge + gatehouse',stall:'Market stall'};
 var LAB_PREFS='rtk.lab.prefs.v1',LAB_DESIGNS='rtk.lab.designs.v1',LAB_SEEN='rtk.lab.seen.v1',LAB_FLAGSKEY='rtk.lab.flags.v1',LAB_GUNR=3.15;
 function labName(k){return LAB_NAME[k]||(k.charAt(0).toUpperCase()+k.slice(1));}
 /* localStorage, always inside try/catch (it can be missing or full): labStore(key) reads, labStore(key,value) writes */
@@ -1497,7 +1534,7 @@ function labSetUndoable(s,recs){var L=SG.lab,before=L.saved[s].map(function(r){r
 SG.labStarter=function(){labSetUndoable(0,labStarter());labMsg('My camp: a Keep and two lobbers',false);};
 SG.labClearCamp=function(s){labSetUndoable(s,[]);labMsg((s?'Target':'My')+' camp cleared',false);};
 /* ---- the target camps ---- */
-var LAB_TARGETS=[['empty','Empty'],['walled','Walled Keep'],['braced','Braced Keep'],['longwall','Long wall'],['workshops','Workshop cluster'],['fortress','Fortress'],['glass','Glass house'],['copy','My camp copy'],['castle','Castle'],['village','Village'],['maze','Wall maze'],['domino','Domino row'],['stack','Tower stack']];
+var LAB_TARGETS=[['empty','Empty'],['walled','Walled Keep'],['braced','Braced Keep'],['longwall','Long wall'],['workshops','Workshop cluster'],['fortress','Fortress'],['glass','Glass house'],['copy','My camp copy'],['castle','Castle'],['village','Village'],['maze','Wall maze'],['domino','Domino row'],['stack','Tower stack'],['cottage','Cottage'],['barn','Barn'],['lookout','Watch tower house'],['bridge','Bridge + gatehouse'],['windmill','Windmill'],['market','Market row'],['yard','Building yard of 3']];
 /* each template is a list of [kind, x, z, turn] in a camp's own frame (x across, z toward the camp's back; the Keep stands at z 2.42, facing the hill is turn PI). Sizes follow the piece scale. */
 function labTemplate(id,s){var F=FOOT,T=PI,out=[],i;
   if(id==='empty')return [];
@@ -1509,6 +1546,8 @@ function labTemplate(id,s){var F=FOOT,T=PI,out=[],i;
   if(id==='fortress'){var P=PRESETS.good,l2=[];P.forEach(function(q){var kind=KIT2[q[0]];if(kind==='brace')l2.push([kind,q[1],q[2],q[3]]);else l2.push([kind,Math.sin(q[2])*q[1],Math.cos(q[2])*q[1],q[2]+q[3]]);});return labCampRecs(s,l2);}
   if(id==='copy')return labMirror(0,s);
   if(id==='castle'||id==='village'||id==='maze'||id==='domino'||id==='stack')return labBigTemplate(id,s);
+  if(id==='yard')return labYardRecs(LAB_YARD3,s);
+  if(id==='cottage'||id==='barn'||id==='lookout'||id==='bridge'||id==='windmill'||id==='market')return labYardRecs([id],s);
   return [];}
 /* my camp, copied across the table onto the other camp: the same place in that camp's own frame */
 function labMirror(from,to){return labFromDesign(labToDesign(from,'copy'),to);}
@@ -1564,8 +1603,8 @@ function labMouse(m,dt){goTo(m,m.hx,m.hz,.3);if(walk(m,dt,WALK())){m.state='idle
 
 /* ---- what happened: the real code tells the Lab through labNote, from knock, collapse, keepDown and landV2 ---- */
 function labNote(kind,a,b,c,d){var L=SG.lab,cur=L&&L.cur;if(!cur||cur.done)return;
-  if(kind==='part')cur.parts.push({piece:a.id,kind:a.kind,side:a.side,part:b.id});
-  else if(kind==='collapse'){cur.fell.push(labName(a.kind)+(a.side?' (target)':' (mine)'));cur.chain=Math.max(cur.chain||0,b||1);}
+  if(kind==='part')cur.parts.push({piece:a.id,kind:a.kind,side:a.side,part:b.id,stg:b.stg});
+  else if(kind==='collapse'){cur.fell.push(labName(a.kind)+(a.side?' (target)':' (mine)'));cur.chain=Math.max(cur.chain||0,b||1);if(BK[a.kind])cur.bcol=(cur.bcol||0)+1;}
   else if(kind==='keep'){cur.keep=true;cur.fell.push('Keep'+(a.side?' (target)':' (mine)'));L.sess.keeps++;cur.keeps=(cur.keeps||0)+1;cur.chain=Math.max(cur.chain||0,b||1);}
   else if(kind==='land')cur.landings.push({x:b[0],y:b[1],z:b[2],r:c,ammo:a.ammo,high:!!a.high,hit:d?d.kind:'',hitSide:d?d.side:-1});}
 /* screen shake, the slow-motion beat and the sounds scale with the parts that fell at once (n), if the Lab's switches for them are on. Without them a landing shakes and slows as in a match. */
@@ -1608,15 +1647,19 @@ SG.labResetCounters=function(){var L=SG.lab;L.base=labBase();L.sess={keeps:0,sco
 var LAB_WHY={keep:'brings the Keep down',roof:'drops the roof','wall-all':'brings the whole wall down','wall-planks':'drops the planks',gate:'brings the gate down'};
 /* for each attached part: would losing it alone bring something down? Asked of the real rule (holdFail), one part at a time. */
 function labCritical(p){var out={};if(p.down||!p.built)return out;
+  if(BK[p.kind]){p.ps.forEach(function(q,i){if(q.st!=='on'||q.stg!==2)return;var n=bCascade(p,i);if(n>0)out[q.id]='bld:'+n;});return out;}   /* a building: the frame parts that alone would bring more parts down */
   p.ps.forEach(function(q){if(q.st!=='on'||!/post|rail|brace|floor/.test(q.id))return;q.st='off';var f=holdFail(p);q.st='on';if(f)out[q.id]=f;});
   props(p).forEach(function(b){var was=b.parts;b.parts=0;var f=holdFail(p);b.parts=was;if(f)out['piece:'+b.id]=f;});return out;}
 SG.labSupports=function(p){if(typeof p==='number')p=pieceById(p);if(!p)return null;var cr=labCritical(p),rows=[],rule='',k=p.kind;
-  function row(label,on,key){var f=cr[key];rows.push({text:label+(on?'':' (gone)'),on:on,crit:!!f,why:f?LAB_WHY[f]:''});}
+  function row(label,on,key){var f=cr[key];rows.push({text:label+(on?'':' (gone)'),on:on,crit:!!f,why:f?(/^bld:/.test(f)?'drops '+f.slice(4)+' more parts':LAB_WHY[f]):''});}
   function parts(re){p.ps.forEach(function(q){if(re.test(q.id))row(partName(q.id)+' '+(q.id.split('.')[2]||''),q.st==='on',q.id);});}
   if(k==='wall'){rule='A wall stands while it has a post (or a brace is propping it). Its planks hang on the rails.';parts(/post|rail/);rows.push({text:'Planks on: '+onCount(p,/plank/)+' of '+p.ps.filter(function(q){return /plank/.test(q.id);}).length,on:true});}
   else if(k==='gate'){rule='A gate needs both its posts.';parts(/gate\.post/);}
   else if(k==='tower'){rule='A Keep stands on 3 legs, or on 2 if the brace across the open side is on (or a brace piece props it). The roof needs the floor and a rail.';parts(/^tower\.post/);parts(/^tower\.brace/);parts(/^tower\.floor|^tower\.rail/);}
   else if(k==='lobber'){rule='No support rules. A lobber needs its crank and bucket to fire.';parts(/crank|bucket/);}
+  else if(BK[k]){rule='A building comes apart in stages. Trim (tiles, shutters, flags, awnings) hangs on the walls and the frame, walls hang on the frame, the frame stands on the ground. Take a support and what hung on it falls.';
+    p.ps.forEach(function(q){if(q.stg===2)row(partName(q.id)+' '+(q.id.split('.').slice(2).join('.')||''),q.st==='on',q.id);});
+    ['trim','walls','frame'].forEach(function(nm,g){var all=p.ps.filter(function(q){return q.stg===g;});rows.push({text:'Stage '+g+', '+nm+': '+all.filter(function(q){return q.st==='on';}).length+' of '+all.length+' on',on:true});});}
   else if(k==='brace'){rule='A brace props the tower or wall it leans on. If it is knocked off, that piece loses the help.';}
   else rule='No support rules: parts come off only when a blast reaches them, and nothing falls by itself.';
   props(p).forEach(function(b){row('Brace piece',true,'piece:'+b.id);});
@@ -1779,6 +1822,40 @@ function labBigTemplate(id,s){var F=FOOT,T=PI,l=[],i,k;
     var pc=F.tower[0]*2+F.brace[1]*2+.03;for(i=0;i<4;i++)l.push(['tower',(i-1.5)*pc,2.45,T]);for(i=0;i<3;i++)l.push(['tower',(i-1)*pc,1.85,T]);
     for(i=0;i<3;i++)l.push(['brace',(i-1)*pc,2.45,PI/2]);for(i=0;i<2;i++)l.push(['brace',(i-.5)*pc,1.85,PI/2]);l.push(['brace',-1.5*pc-F.tower[0]-F.brace[1]-.015,2.45,PI/2],['brace',1.5*pc+F.tower[0]+F.brace[1]+.015,2.45,-PI/2]);}
   return labCampRecs(s,l);}
+/* ---- the Building Yard (Lab only): the six buildings, laying them out, rebuilding one, the stage counts ----
+   The six: Cottage, Barn, Watch tower house, Bridge + gatehouse, Windmill, Market row (three stalls side by side). Each is one piece with its own parts (models.js), 15 to 40, in three stages:
+   trim (shutters, tiles, flags, awnings), walls, frame. A normal Marble takes a few bits of trim; a Big Marble breaks the nearest frame legs and a side comes down; a collapse may land on a neighbour (Chain topple). */
+var LAB_BLD=[['cottage','Cottage'],['barn','Barn'],['lookout','Watch tower house'],['bridge','Bridge + gatehouse'],['windmill','Windmill'],['market','Market row']],LAB_YARD3=['cottage','barn','windmill'],LAB_STAGES=['trim','walls','frame'];
+SG.labBuildings=LAB_BLD;
+/* how many other parts would fall if this one part alone came off (the same rule as bSettle, asked without doing it) */
+function bCascade(p,first){var gone={},n=0,more=true;gone[first]=1;
+  while(more){more=false;for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st!=='on'||gone[i]||!q.need||!q.need.length)continue;var c=0;for(var j=0;j<q.need.length;j++){var k=p.pi[q.need[j]];if(!gone[k]&&p.ps[k].st==='on')c++;}if(c<q.min){gone[i]=1;n++;more=true;}}}
+  return n;}
+/* one unit of a yard: a building, or the market row's three stalls; w, d the footprint, l the pieces [kind, dx, dz] round its middle */
+function labUnit(id){var F=FOOT;if(id==='market'){var sw=F.stall[0]*2+.03*U();return {w:sw*3-.03*U(),d:F.stall[1]*2,l:[['stall',-sw,0],['stall',0,0],['stall',sw,0]]};}var f=F[id];return {w:f[0]*2,d:f[1]*2,l:[[id,0,0]]};}
+/* up to three units side by side across a camp (two rows if they would not fit across), every piece facing the hill, as records for a camp */
+function labYardRecs(list,s,rows2){var us=list.map(labUnit),gap=.16*U(),wid=function(a){return a.reduce(function(t,q){return t+q.w;},0)+gap*(a.length-1);},two=rows2||wid(us)>3.4,rows=two?[us.slice(0,Math.ceil(us.length/2)),us.slice(Math.ceil(us.length/2))]:[us],zr=two?[1.5,2.4]:[1.95],l=[];
+  rows.forEach(function(row,ri){var x=-wid(row)/2;row.forEach(function(u){var cx=x+u.w/2;u.l.forEach(function(e){l.push([e[0],cx+e[1],zr[ri]+e[2],PI]);});x+=u.w+gap;});});
+  return labCampRecs(s,l);}
+/* are the records clear of each other and on the table? */
+function labYardClear(recs){for(var i=0;i<recs.length;i++){var cs=corners(recs[i].kind,recs[i].x,recs[i].z,recs[i].rot);for(var k=0;k<4;k++)if(dist(cs[k][0],cs[k][1],0,0)>3.05)return false;for(var j=i+1;j<recs.length;j++)if(overlap(recs[i],recs[j]))return false;}return true;}
+/* "Build your own yard": these buildings (up to three, by name) laid out across a camp. Undo brings back what was there. */
+SG.labYard=function(list,s){var L=SG.lab;if(!L)return {ok:false,text:'Not in the Lab'};s=s==null?1:s;list=(list||[]).filter(function(id){return LAB_BLD.some(function(b){return b[0]===id;});}).slice(0,3);
+  if(!list.length){labMsg('Pick a building first',true);return {ok:false,text:'Pick a building first'};}
+  var recs=labYardRecs(list,s);if(!labYardClear(recs))recs=labYardRecs(list,s,true);if(!labYardClear(recs)){labMsg('Those do not fit on the table together',true);return {ok:false,text:'They do not fit'};}
+  labSetUndoable(s,recs);if(s===1)L.target='yard';labMsg((list.length===1?'1 building':list.length+' buildings')+' placed in '+(s?'the target':'my')+' camp',false);return {ok:true,pieces:recs.length,list:list};};
+/* Rebuild: every part of this building back on, at once (the piece's damage only: nothing else on the table is touched) */
+SG.labRebuild=function(p){var L=SG.lab;if(!L)return false;if(typeof p==='number')p=pieceById(p);if(!p&&L.sel)p=pieceById(L.sel);if(!p||!p.total){labMsg('Tap a building first (Inspect tool)',true);return false;}
+  if(p.down){var rec=labRec(p);labRemove(p);var np=labPutRaw(rec,true);labRepoint();fixGrid();labSaveSides();L.sel=np.id;labMsg(labName(np.kind)+' rebuilt',false);return true;}
+  p.ps.forEach(function(q){q.st='on';q.used=false;q.swept=false;q.glue=0;q.mender=-1;q.rx=q.wx;q.rz=q.wz;});p.parts=p.total;p.fallen=false;SG.debris=SG.debris.filter(function(d){return d.pid!==p.id;});gridDirty=true;L.rkey='';
+  labMsg(labName(p.kind)+' rebuilt',false);return true;};
+/* what has come off the buildings in the last shot, by stage, and the buildings that collapsed */
+SG.labStages=function(){var L=SG.lab,cur=L&&L.cur,o={trim:0,walls:0,frame:0,collapse:0,any:SG.pieces.some(function(p){return BK[p.kind];})};if(!cur)return o;
+  (cur.parts||[]).forEach(function(q){if(q.stg!=null)o[LAB_STAGES[q.stg]]++;});o.collapse=cur.bcol||0;return o;};
+/* the parts of every building that stand on something that is gone (there should be none), and the stage counts of one building: for tests and the range report */
+SG.bldFloating=function(){var out=[];SG.pieces.forEach(function(p){if(BK[p.kind]&&p.pi)bFloating(p,-1).forEach(function(i){out.push(p.kind+':'+p.ps[i].id);});});return out;};
+SG.bldStats=function(p){if(typeof p==='number')p=pieceById(p);var o={total:p.total,on:p.parts,stage:[{n:0,on:0},{n:0,on:0},{n:0,on:0}]};p.ps.forEach(function(q){var g=o.stage[q.stg];g.n++;if(q.st==='on')g.on++;});return o;};
+SG.bldInfo=bldInfo;SG.BK=BK;
 function labTargetName(id){var nm=LAB_TARGETS.filter(function(t){return t[0]===id;})[0];return nm?nm[1]:id;}
 /* which pieces of a template overlap each other (by the real overlap rule): [] means it is laid out cleanly */
 SG.labTemplateOverlaps=function(id){var recs=labTemplate(id,1),out=[];for(var i=0;i<recs.length;i++)for(var j=i+1;j<recs.length;j++)if(overlap(recs[i],recs[j]))out.push([recs[i].kind+' '+i,recs[j].kind+' '+j]);return out;};
@@ -1862,17 +1939,18 @@ function labView(){var L=SG.lab;if(!L||!V.on)return;if(!V.lab)labViewInit();var 
 /* the Lab's drawings are put away when the Lab is left, so a match never shows them */
 function labViewHide(){var Lv=V.lab;if(!Lv)return;Lv.rings.concat(Lv.hl,[Lv.sel,Lv.spot,Lv.spot2,Lv.gun,Lv.gunRing,Lv.lines]).forEach(function(o){o.visible=false;});}
 function labLines(Lv){var key=SG.pieces.length+'|'+SG.stats.partsOff+'|'+SG.stats.collapses+'|'+SG.clock.toFixed(1),pos=Lv.lines.geometry.attributes.position,col=Lv.lines.geometry.attributes.color,n=0;
-  if(Lv.ckey!==key){Lv.ckey=key;Lv.crit={};SG.pieces.forEach(function(p){if(p.built&&!p.down&&(p.kind==='wall'||p.kind==='gate'||p.kind==='tower'))Lv.crit[p.id]=labCritical(p);});}
+  if(Lv.ckey!==key){Lv.ckey=key;Lv.crit={};SG.pieces.forEach(function(p){if(p.built&&!p.down&&(p.kind==='wall'||p.kind==='gate'||p.kind==='tower'||BK[p.kind]))Lv.crit[p.id]=labCritical(p);});}
   function seg(a,b,red){if(n>=899)return;pos.setXYZ(n*2,a[0],a[1],a[2]);pos.setXYZ(n*2+1,b[0],b[1],b[2]);var c=red?[1,.25,.18]:[.35,.95,.4];col.setXYZ(n*2,c[0],c[1],c[2]);col.setXYZ(n*2+1,c[0],c[1],c[2]);n++;}
   SG.pieces.forEach(function(p){if(!p.built||p.down)return;var cr=Lv.crit[p.id];if(!cr&&p.kind!=='brace')return;var top=[p.x,TALL[p.kind]*.85,p.z];
     if(p.kind==='brace'){var pr=p.props?pieceById(p.props):null;if(pr)seg([p.x,TALL.brace*.7,p.z],[pr.x,TALL[pr.kind]*.5,pr.z],false);return;}
+    if(BK[p.kind]){p.ps.forEach(function(q){if(q.st!=='on'||!q.need)return;q.need.forEach(function(id){var r=p.ps[p.pi[id]];if(r&&r.st==='on')seg([q.wx,q.wy,q.wz],[r.wx,r.wy,r.wz],!!cr[id]);});});return;}   /* a building: each part to what holds it */
     var re=p.kind==='wall'?/post|rail/:(p.kind==='gate'?/gate\.post/:/^tower\.(post|brace|floor|rail)/);
     p.ps.forEach(function(q){if(q.st==='on'&&re.test(q.id))seg(top,[q.wx,q.wy,q.wz],!!cr[q.id]);});
     props(p).forEach(function(b){seg(top,[b.x,TALL.brace*.7,b.z],!!cr['piece:'+b.id]);});});
   Lv.lines.geometry.setDrawRange(0,n*2);pos.needsUpdate=true;col.needsUpdate=true;}
 
 /* ---- the Lab's screen: a top row, a bottom toolbar, a panel on the right ---- */
-var LAB_HELP='<h2>How to use the Lab</h2><ul><li><b>Build</b>: pick a piece, tap the table. Drag to slide the ghost before you let go. Turn with the turn buttons. Undo and Redo work.</li><li><b>Erase</b>: tap a piece to remove it. <b>Move</b>: tap a piece, then tap or drag to where it goes.</li><li><b>Lobber</b>: tap a lobber, then drag back and let go to fire. <b>Free gun</b>: tap the table to aim from the near edge, then press Fire.</li><li><b>Inspect</b>: tap a piece to see what holds it up. Red marks the part that alone would bring it down.</li><li>The panel on the right loads a target camp, resets it, saves designs and runs the range report. Nothing here ends: shoot as long as you like.</li></ul>';
+var LAB_HELP='<h2>How to use the Lab</h2><ul><li><b>Build</b>: pick a piece, tap the table. Drag to slide the ghost before you let go. Turn with the turn buttons. Undo and Redo work.</li><li><b>Erase</b>: tap a piece to remove it. <b>Move</b>: tap a piece, then tap or drag to where it goes.</li><li><b>Lobber</b>: tap a lobber, then drag back and let go to fire. <b>Free gun</b>: tap the table to aim from the near edge, then press Fire.</li><li><b>Inspect</b>: tap a piece to see what holds it up. Red marks the part that alone would bring it down.</li><li>The panel on the right loads a target camp, resets it, saves designs and runs the range report. Nothing here ends: shoot as long as you like.</li><li><b>Building Yard</b>: load a Cottage, Barn, Watch tower house, Bridge, Windmill or Market row as the target, or pick three and place them. Trim comes off first, then walls, then the frame. Select one and press Rebuild to put it back.</li></ul>';
 function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='lab';
   var tg=LAB_TARGETS.map(function(t){return '<button class="btn lb" data-a="tg_'+t[0]+'">'+t[1]+'</button>';}).join('');
   d.innerHTML='<div id="labTop" class="labp"><button class="btn lb" data-a="back">⬅ Back to menu</button><span class="pill" id="labTitle">🎯 Shooting range</span><button class="btn lb" data-a="help">? How to use</button><button class="btn lb" data-a="panel" id="labPanelBtn">☰ Panel</button></div>'+
@@ -1880,6 +1958,7 @@ function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='l
   '<div id="labPanel" class="labp">'+
   '<details open><summary>Target camp</summary><div class="lgrid">'+tg+'</div><div class="lgrid"><button class="btn lb go big" data-a="reset">⟳ Reset target</button><button class="btn lb" data-a="heal">Heal all</button><button class="btn lb" data-a="snap">📷 Snapshot</button><button class="btn lb" data-a="restore">⏪ Restore</button></div></details>'+
   '<details><summary>My camp</summary><div class="lgrid"><button class="btn lb" data-a="mine_starter">Keep + 2 lobbers</button><button class="btn lb" data-a="mine_clear">Clear my camp</button><button class="btn lb" data-a="tgt_clear">Clear target</button></div></details>'+
+  '<details open id="labYardDet"><summary>Building Yard</summary><div class="lnote">Real little buildings. Trim comes off first, then walls, then the frame, then it all comes down.</div><div class="lgrid"><button class="btn lb go" data-a="rebuild">🔧 Rebuild selected</button></div><div class="lnote"><b>Build your own yard:</b> pick three.</div><div class="lgrid">'+labYardSel(0)+labYardSel(1)+labYardSel(2)+'</div><div class="lgrid"><button class="btn lb go" data-a="yard_t">Place in target camp</button><button class="btn lb" data-a="yard_m">Place in my camp</button></div></details>'+
   '<details open><summary>Settings</summary><div class="lgrid"><button class="btn lb" data-a="t_instant"></button><button class="btn lb" data-a="t_quick"></button><button class="btn lb" data-a="t_crew"></button><button class="btn lb" data-a="t_strict"></button><button class="btn lb" data-a="t_supports"></button><button class="btn lb" data-a="t_topple"></button><button class="btn lb" data-a="t_debris"></button><button class="btn lb" data-a="sweep">🧹 Sweep up</button><button class="btn lb" data-a="t_fxshake"></button><button class="btn lb" data-a="t_fxslow"></button><button class="btn lb" data-a="t_fxsound"></button><button class="btn lb" data-a="t_slow"></button><button class="btn lb" data-a="t_pause"></button></div></details>'+
     '<details><summary>Range report</summary><div class="lgrid"><button class="btn lb go" data-a="range">Test all ammo</button><button class="btn lb" data-a="t_spot">Set aim spot</button><button class="btn lb" data-a="spotclr">Aim at the Keep</button></div><div id="labSpotTxt" class="lnote"></div></details>'+
   '<details id="labWkDet"><summary>Weapon Workshop</summary><div id="labWk">'+labWkDom()+'</div></details>'+
@@ -1894,6 +1973,8 @@ function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='l
   d.addEventListener('click',function(ev){var b=ev.target.closest?ev.target.closest('[data-a]'):null;if(!b)return;ev.stopPropagation();soundOn();labAct(b.getAttribute('data-a'),b);});
   d.addEventListener('input',function(ev){var t=ev.target,wk=t&&t.getAttribute?t.getAttribute('data-w'):null;if(wk)SG.labWkSet(wk,t.value);else if(t&&t.id==='labWkName')SG.labWkName(t.value);});
   d.addEventListener('pointerdown',function(ev){ev.stopPropagation();});}
+/* one of the three drop-downs of "Build your own yard" */
+function labYardSel(i){return '<select class="ysel" id="labY'+i+'">'+(i?'<option value="">(none)</option>':'')+LAB_BLD.map(function(b,j){return '<option value="'+b[0]+'"'+(LAB_YARD3[i]===b[0]?' selected':'')+'>'+b[1]+'</option>';}).join('')+'</select>';}
 function labUiHide(){var d=E('lab');if(d)d.style.display='none';var sel=E('designSel');if(!sel||!SG.labDesigns)return;var names=Object.keys(SG.labDesigns()),cur=sel.value||SG.designChoice||'';
   while(sel.options.length>1)sel.remove(1);names.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=names.indexOf(cur)>=0?cur:'';E('designRow').style.display=names.length?'flex':'none';}
 function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return;labDom();var L=SG.lab,d=E('lab');d.style.display='block';
@@ -1905,7 +1986,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   else if(L.tool==='fire'||L.tool==='gun'){var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;}));
     sub=ids.map(function(id){return '<button class="btn lb ammo'+(L.ammo===id?' on':'')+'" data-a="am_'+id+'" id="lab_a_'+id+'"><span class="ai">'+labEsc(AMMO[id].icon)+'</span><span class="an">'+labEsc(AMMO[id].name)+'</span><span class="ac"></span></button>';}).join('')+
       '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
-  else if(L.tool==='inspect')sub='<span class="lnote">Tap a piece to see what holds it up. Turn on "Show supports" to see the links.</span>';
+  else if(L.tool==='inspect')sub='<span class="lnote">Tap a piece to see what holds it up. Turn on "Show supports" to see the links.</span><button class="btn lb go" data-a="rebuild">🔧 Rebuild</button>';
   else if(L.tool==='erase')sub='<span class="lnote">Tap a piece to take it away. Undo brings it back.</span>';
   else if(L.tool==='spot')sub='<span class="lnote">Tap the table where the range report should aim.</span>';
   E('labSub').innerHTML=sub;
@@ -1920,7 +2001,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
 function labEsc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 /* every frame: the message line, the ammo buttons' waits, and the readout when something changed */
 function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('say'),m=L.msg,vis=m.text&&SG.clock<m.until;sy.style.display=vis?'block':'none';sy.textContent=vis?m.text:'';sy.className=m.bad?'bad':'';sy.style.top='62px';
-  var cg=SG.labCarnage(),ck=[cg.parts,cg.collapses,cg.chain,cg.longest,cg.score,cg.burst].join('/');if(ck!==L.ckey2&&E('labCarn')){L.ckey2=ck;E('labCarn').innerHTML='<span>Parts off <b>'+cg.parts+'</b></span><span>Collapses <b>'+cg.collapses+'</b></span><span>Chain <b>'+cg.chain+'</b> (longest <b>'+cg.longest+'</b>)</span><span class="cs">Carnage <b>'+cg.score+'</b></span>';}
+  var cg=SG.labCarnage(),sg0=SG.labStages(),ck=[cg.parts,cg.collapses,cg.chain,cg.longest,cg.score,cg.burst,sg0.any,sg0.trim,sg0.walls,sg0.frame,sg0.collapse].join('/');if(ck!==L.ckey2&&E('labCarn')){L.ckey2=ck;var sg=SG.labStages();E('labCarn').innerHTML='<div class="cr"><span>Parts off <b>'+cg.parts+'</b></span><span>Collapses <b>'+cg.collapses+'</b></span><span>Chain <b>'+cg.chain+'</b> (longest <b>'+cg.longest+'</b>)</span><span class="cs">Carnage <b>'+cg.score+'</b></span></div>'+(sg.any?'<div class="cr stg"><span>Bits off / stage:</span><span>trim <b>'+sg.trim+'</b></span><span>walls <b>'+sg.walls+'</b></span><span>frame <b>'+sg.frame+'</b></span><span>collapse <b>'+sg.collapse+'</b></span></div>':'');}
   if((L.fk=(L.fk||0)+1)%20===0&&E('labFrameTxt')){var fs=SG.labFrameStats();E('labFrameTxt').textContent=fs&&fs.frames?'Frame '+fs.msSmooth+' ms (worst '+fs.worstMs+'), drawing '+fs.renderMsAvg+' ms, '+fs.calls+' draw calls, '+Math.round(fs.triangles/1000)+'k triangles, '+fs.pieces+' pieces':'';}
   var s0=SG.sides[0];AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})).forEach(function(id){var b=E('lab_a_'+id);if(!b)return;var ac=b.querySelector('.ac'),t=L.quick?'∞':ammoCount({big:99,cd:s0.cd},id).replace('×99','∞');if(ac&&ac.textContent!==t)ac.textContent=t;});
   var ss=SG.labSession(),cur=L.cur,sel=L.sel?pieceById(L.sel):null,key=[ss.shots,ss.partsOff,ss.collapses,ss.keeps,ss.dizzies,cur?cur.done+'|'+cur.parts.length:'-',sel?sel.id+'|'+sel.parts+'|'+(sel.down?1:0)+'|'+SG.stats.partsOff:'-',L.fellLog.join(),L.read].join('/');if(key===L.rkey)return;L.rkey=key;
@@ -1930,7 +2011,7 @@ function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('sa
   else{var c=cur||{};h+='<table class="lt"><tr><td>Ammo</td><td>'+(r?labEsc((AMMO[r.ammo]||{name:r.ammo}).name)+(r.high?' (high lob)':''):'-')+'</td></tr><tr><td>Parts off</td><td>'+(c.done?c.partsOff:(c.parts?c.parts.length+' so far':0))+'</td></tr><tr><td>Collapses</td><td>'+(c.done?c.collapses:'…')+'</td></tr><tr><td>Mice dizzy</td><td>'+(c.done?c.dizzies:'…')+'</td></tr>'+(c.done&&c.glued?'<tr><td>Parts glued</td><td>'+c.glued+'</td></tr>':'')+'<tr><td>Fell</td><td>'+(c.fell&&c.fell.length?c.fell.map(labEsc).join(', '):'nothing')+'</td></tr><tr><td>Landed on</td><td>'+(c.landings&&c.landings[0]?(c.landings[0].hit?labName(c.landings[0].hit):'the table'):'-')+'</td></tr></table>';
     if(c.done&&c.parts&&c.parts.length){var cnt={};c.parts.forEach(function(q){var k=labName(q.kind)+' '+partName(q.part);cnt[k]=(cnt[k]||0)+1;});h+='<div class="lnote">Off: '+Object.keys(cnt).map(function(k){return cnt[k]>1?cnt[k]+' × '+k:k;}).join(', ')+'</div>';}}
   h+='<div class="lnote"><b>Session:</b> '+ss.shots+' shots · '+ss.partsOff+' parts off · '+ss.collapses+' collapses · '+ss.keeps+' Keeps · '+ss.dizzies+' dizzy'+(L.fellLog.length?'<br>Fell lately: '+L.fellLog.map(labEsc).join(', '):'')+'</div>';
-  if(sel){var sp=SG.labSupports(sel);h+='<h4>'+labEsc(sp.title)+(sp.state==='stands'?' · stands':(sp.state==='down'?' · down':' · '+LAB_WHY[sp.state]))+'</h4><div class="lnote">'+labEsc(sp.rule)+'</div><ul class="ls">'+sp.rows.map(function(q){return '<li class="'+(q.crit?'crit':(q.on?'ok':'gone'))+'">'+labEsc(q.text)+(q.crit?' · alone it '+q.why:'')+'</li>';}).join('')+'</ul>';}
+  if(sel){var sp=SG.labSupports(sel);h+='<h4>'+labEsc(sp.title)+(sp.state==='stands'?' · stands':(sp.state==='down'?' · down':' · '+LAB_WHY[sp.state]))+'</h4>'+(BK[sel.kind]?'<div class="lgrid"><button class="btn lb go" data-a="rebuild">🔧 Rebuild this '+labEsc(labName(sel.kind))+'</button></div>':'')+'<div class="lnote">'+labEsc(sp.rule)+'</div><ul class="ls">'+sp.rows.map(function(q){return '<li class="'+(q.crit?'crit':(q.on?'ok':'gone'))+'">'+labEsc(q.text)+(q.crit?' · alone it '+q.why:'')+'</li>';}).join('')+'</ul>';}
   else h+='<h4>Tapped piece</h4><div class="lnote">Tap a piece (Inspect or Lobber tool) to see what holds it up.</div>';
   E('labRead').innerHTML=h;}
 function labRangeHtml(out){var h='<div class="lnote">Target: '+labEsc(out.target)+' · '+labEsc(out.settings.aim)+' · '+labEsc(out.settings.reload)+', crew '+labEsc(out.settings.crew)+'. Each row is a fresh copy of the target.</div><table class="lt wide"><tr><th>Ammo</th><th>Parts off</th><th>Collapses</th><th>Keep fell</th><th>Mice dizzy</th><th>Glued</th><th>Landed on</th><th>After a salvo of '+out.settings.salvo+': parts off · collapses · Keep</th></tr>';
@@ -1958,6 +2039,8 @@ function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a==='clear'){SG.labResetCounters();return;}
   if(a==='gunfire'){if(!L.gunAim){labMsg('Tap the table to aim first',true);return;}SG.labFire(0,'gun',L.gunAim.tx,L.gunAim.tz);return;}
   if(a==='replay'){SG.labReplay();return;}
+  if(a==='rebuild'){SG.labRebuild();ui();return;}
+  if(a==='yard_t'||a==='yard_m'){var yl=[0,1,2].map(function(i){var e=E('labY'+i);return e?e.value:'';}).filter(function(v2){return v2;});SG.labYard(yl,a==='yard_t'?1:0);return;}
   if(a==='range'){x=SG.labRange();L.rangeOut=x;E('labRangeTxt').innerHTML=labRangeHtml(x);E('labRangeBox').style.display='flex';return;}
   if(a==='rangeok'){E('labRangeBox').style.display='none';return;}
   if(a==='dsave'){x=SG.labSaveDesign(E('labName').value);labMsg(x.text,!x.ok);labUi();return;}
@@ -2082,6 +2165,16 @@ SG.labShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab,sp
     SG.labSetAmmo('p_pop');SG.labFire(0,'gun',wl.x,wl.z,{force:true,seed:11});for(var ci=0;ci<900&&!(L.cur&&L.cur.landings.length);ci++)SG.step(STEP);for(ci=0;ci<20;ci++)SG.step(STEP);return;}
   /* Rate it: the table for a Bead shot beside a Marble and a Big Marble */
   if(name==='lab-10-rate-it'){labLoadTarget('walled',true);SG.setProto('p_pop',true,false);SG.labWkPreset('pop');SG.labWkUse();L.tool='gun';L.panel=true;if(hasDom){labUi();labAct('wrate');}return;}
+  /* the Building Yard: a yard of three, a Marble's few bits of trim, a Big Marble taking a side of the barn, the windmill's sails going one after another, a market row falling into itself, and the bridge with its supports shown */
+  function bFocus(zoom,y,dx){var ps=SG.pieces.filter(function(q){return q.side===1;}),fx=0,fz=0;ps.forEach(function(q){fx+=q.x;fz+=q.z;});L.focus={x:fx/ps.length+(dx||0),z:fz/ps.length,zoom:zoom,y:y||0};SG.camSnap=true;}
+  function bFire(id,seed,hi){var q=SG.pieces.filter(function(e){return e.side===1;}),c=0,d=0;q.forEach(function(e){c+=e.x;d+=e.z;});L.ammo=id;L.high=!!hi;SG.sides.forEach(function(sd){sd.ammo=id;sd.high=!!hi;});L.tool='gun';L.gunAim={tx:c/q.length,tz:d/q.length};return SG.labFire(0,'gun',c/q.length,d/q.length,{force:true,seed:seed});}
+  if(name==='lab-11-yard'){labLoadTarget('yard',true);SG.cam=3;L.panel=true;L.read=false;L.tool='fire';bFocus(.8,.1,.55);SG.step(.3);
+    if(hasDom){labUi();[].forEach.call(document.querySelectorAll('#labPanel details'),function(d){d.open=d.id==='labYardDet';});}return;}
+  if(name==='lab-12-cottage-trim'){labLoadTarget('cottage',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.4,.2);bFire('marble',5,false);for(var ti=0;ti<600&&!(L.cur&&L.cur.landings.length);ti++)SG.step(STEP);for(ti=0;ti<22;ti++)SG.step(STEP);return;}
+  if(name==='lab-13-barn-side'){labLoadTarget('barn',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.46,.15);bFire('big',5,false);SG.labSettle(10);SG.step(1.6);return;}
+  if(name==='lab-14-windmill-sails'){labLoadTarget('windmill',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.52,.5);bFire('big',5,false);for(var wi=0;wi<600&&!(L.cur&&L.cur.landings.length);wi++)SG.step(STEP);for(wi=0;wi<66;wi++)SG.step(STEP);return;}
+  if(name==='lab-15-market-chain'){labLoadTarget('market',true);SG.cam=3;L.panel=false;L.read=true;bFocus(.5,.1);var mk=SG.pieces.filter(function(e){return e.side===1;}).sort(function(a2,b2){return a2.x-b2.x;});L.ammo='big';L.tool='gun';SG.sides.forEach(function(sd){sd.ammo='big';});SG.labFire(0,'gun',mk[1].x,mk[1].z,{force:true,seed:5});for(var mi=0;mi<600&&!(L.cur&&L.cur.landings.length);mi++)SG.step(STEP);for(mi=0;mi<40;mi++)SG.step(STEP);return;}
+  if(name==='lab-16-bridge-supports'){labLoadTarget('bridge',true);SG.cam=3;L.panel=false;L.read=true;L.supports=true;L.tool='inspect';bFocus(.5,.25);bFire('marble',5,true);SG.labSettle(10);L.tool='inspect';SG.labSelect(SG.pieces.filter(function(e){return e.side===1;})[0]);SG.step(.5);if(hasDom)labUi();return;}
   if(name==='lab-5-supports'){labLoadTarget('braced',true);L.supports=true;L.tool='inspect';SG.cam=1;var bx=FOOT.tower[0]+FOOT.brace[1]+.015;mine('brace',-bx,2.42,-PI/2);mine('brace',bx,2.42,PI/2);mine('wall',-.9,1.7);mine('wall',-.9+FOOT.wall[0]*2+.004,1.7);
     var kp2=SG.pieces.filter(function(q){return q.side===0&&q.kind==='tower';})[0],wl=SG.pieces.filter(function(q){return q.side===0&&q.kind==='wall';})[0];SG.debug.knock(kp2.id,'tower.brace.W');SG.debug.knock(kp2.id,'tower.post.SW');SG.debug.knock(wl.id,'wall.post.L');SG.labSelect(kp2);SG.step(.5);return;}
 };
