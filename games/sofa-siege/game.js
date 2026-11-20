@@ -647,7 +647,7 @@ function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,n0=SG.stats.par
   var r=boom(a,pos,hit);
   if(SG.mode==='lab'){labNote('land',a,pos,r.R,hit);labFx(SG.stats.partsOff-n0);}
   snd('thud');a.live=false;a.T=a.t;a.hx=pos[0];a.hy=pos[1];a.hz=pos[2];if(a.ammo!=='corks'||!SG.lastHit||SG.lastHit.id!==a.id)SG.lastHit={id:a.id,side:a.side,ammo:a.ammo,x:pos[0],y:pos[1],z:pos[2],piece:hit?hit.id:0,own:!!hit&&hit.side===a.side,part:'',knocked:r.knocked,dizzied:r.n,t:SG.clock};viewPuff(pos[0],pos[2],W.legForce?2:1.2);
-  if(W.roll>0)rollStart(a,pos);}
+  if(W.roll>0)rollStart(a,pos);else if(!hit)momentumLands(a,pos);}
 /* what a landing does, in the order: a tether yanks its part, the blast, mice made dizzy, glue and slowing, a quake. Returns {R, n (mice), knocked (parts off by the blast)}. */
 function boom(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,u=U(),n=0,knocked=0,R=labProto('blastR',ammoR(a.ammo,a.high),a),en=1-a.side;
   if(SG.mode==='lab'&&SG.lab){var dl=Math.sqrt((a.x1-a.x0)*(a.x1-a.x0)+(a.z1-a.z0)*(a.z1-a.z0))||1;SG.lastDir={x:(a.x1-a.x0)/dl,z:(a.z1-a.z0)/dl};}
@@ -676,8 +676,62 @@ function tetherAt(a,pos,hit){var u=U(),best=null,bd=1e9;
   if(hit&&hit.total&&hit.side!==a.side&&!hit.down){var i=nearestPart(hit,pos[0],pos[1],pos[2],false);if(i>=0)return {p:hit,i:i};}
   SG.pieces.forEach(function(p){if(p.side===a.side||!p.built||p.down||!p.total||p.parts<=0||Math.abs(p.x-pos[0])>.9||Math.abs(p.z-pos[2])>.9)return;p.ps.forEach(function(q,i){if(q.st!=='on'||q.wy>.35*u)return;var d=dist(q.wx,q.wz,pos[0],pos[2]);if(d<C3.hookR*2.5*u&&d<bd){bd=d;best={p:p,i:i};}});});return best;}
 /* a roller: after landing it rolls on in the direction of travel, knocking off parts at its base and making mice dizzy */
+/* ================= ROLLING SHOTS (CONFIG.v2.rolling) =================
+   A Marble that comes down on open ground does not stop: it hops on 1 to 3 times (each hop shorter and lower, with dust and a tap),
+   then ROLLS on along its flight line, losing distance with every part it knocks loose. The ball has an energy in table units;
+   moving spends it, and each part it meets costs some (a plank a little, a rail more, a post a lot, a Keep part more than any ball has).
+   A part that costs more than the ball has left stops it. A Big Marble is heavy (its cost counts less) and has more energy, so it ploughs
+   through planks and light walls. A gap or a gate with no door lets it pass. Off in matches until the balance is proved; on in the Lab.
+   Touching down on a piece (a hit) still works as before: only a landing on open ground rolls. */
+CONFIG.v2.rolling={
+  on:false,                                   /* matches: off until re-proved. (The Lab has its own switch, on by default.) */
+  speed:2.4,minSpeed:.3,                      /* table units a second at full energy; the slowest it rolls (share of that) */
+  reach:.06,high:.09,                         /* how near a part the ball's middle must come (across, and up and down) to touch it */
+  marble:{hops:2,hopLen:.5,hopH:.16,decay:.6,roll:1.3,mass:1},           /* hops (1 to 3), the first hop's length and height, how much each next one shrinks, the roll after the hops, how much parts' cost counts */
+  big:{hops:1,hopLen:.4,hopH:.1,decay:.6,roll:2.8,mass:.4},
+  bouncer:{roll:.2,mass:.9},                  /* after its own hops (the Bouncer's weapon numbers) a Bouncer rolls this much more */
+  cost:{plank:.35,door:.5,rail:.8,brace:.6,post:2,lintel:1.4,other:.5,tent:1,workshop:1.2,lobber:.8,trap:0,heavy:9},   /* the energy a part takes from the ball; a Keep part (heavy) is more than any ball has */
+  dizzy:true,max:40                           /* mice on the other side it runs into are dizzy; most parts one ball can knock */
+};
+SG.rollingOn=function(){var R=CONFIG.v2.rolling;return SG.mode==='lab'?SG.labRolling!==false:!!R.on;};
+SG.setRolling=function(v){if(SG.mode==='lab')SG.labRolling=!!v;else CONFIG.v2.rolling.on=!!v;if(hasDom)ui();return SG.rollingOn();};
+function rollCost(p,q){var K=CONFIG.v2.rolling.cost,id=q.id||'';if(p.kind==='tower')return K.heavy;
+  if(p.kind==='wall'||p.kind==='gate'){if(/plank/.test(id))return K.plank;if(/door/.test(id))return K.door;if(/rail/.test(id))return K.rail;if(/lintel/.test(id))return K.lintel;if(/post/.test(id))return K.post;return K.other;}
+  if(p.kind==='brace')return K.brace;if(p.kind==='tent')return K.tent;if(p.kind==='workshop')return K.workshop;if(p.kind==='lobber')return K.lobber;if(p.kind==='trap')return K.trap;return K.other;}
+/* the ball starts: from where it came down, along its flight line */
+function momentumStart(a,pos,kind){var R=CONFIG.v2.rolling,c=R[kind==='big'?'big':(kind==='bouncer'?'bouncer':'marble')],u=U(),dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1,hops=[],E=0,i;
+  if(kind!=='bouncer'){var n=Math.max(1,Math.min(3,c.hops|0));for(i=0;i<n;i++){hops.push([c.hopLen*Math.pow(c.decay,i)*u,c.hopH*Math.pow(c.decay,i)*u]);}}
+  hops.forEach(function(h){E+=h[0];});E+=c.roll*u;
+  a.rolling=true;a.live=true;a.rm={x:pos[0],z:pos[2],y:.05,dx:dx/l,dz:dz/l,E:E,E0:E,hops:hops,hi:-1,hs:0,mass:c.mass,n:0,tr:0,v:R.speed*u,v0:R.speed*u,hit:0,last:null};
+  a.hy=.05;a.hx=pos[0];a.hz=pos[2];momentumHop(a);}
+function momentumHop(a){var r=a.rm;r.hi++;r.hs=0;if(r.hi<r.hops.length){r.cur=r.hops[r.hi];}else r.cur=null;}
+function momentumEnd(a){var n0=SG.stats.partsOff;a.rolling=false;a.live=false;a.T=a.t;a.rm.done=true;a.hy=.05;viewPuff(a.rm.x,a.rm.z,.5);if(SG.mode==='lab')labFx(SG.stats.partsOff-n0);}
+function momentumTick(a,dt){var r=a.rm,R=CONFIG.v2.rolling,u=U(),want=Math.max(R.minSpeed,r.E/r.E0)*r.v0,n0=SG.stats.partsOff;r.v=want;
+  var dist0=r.v*dt,steps=Math.max(1,Math.ceil(dist0/(.03*u))),sd=dist0/steps;
+  for(var s=0;s<steps&&r.E>0;s++){
+    r.x+=r.dx*sd;r.z+=r.dz*sd;r.E-=sd;r.hs+=sd;
+    if(r.cur){var k=Math.min(1,r.hs/r.cur[0]);r.y=.05+4*r.cur[1]*k*(1-k);if(r.hs>=r.cur[0]){r.y=.05;SG.stats.bounces++;snd('tap');viewPuff(r.x,r.z,.45);momentumHop(a);}}else r.y=.05;
+    if(r.x*r.x+r.z*r.z>3.1*3.1){r.E=0;break;}
+    /* the nearest part within reach */
+    var bp=null,bi=-1,bd=1e9,rr=(R.reach)*u;
+    for(var pi=0;pi<SG.pieces.length;pi++){var p=SG.pieces[pi];if(p.id===a.from||!p.built||p.down||!p.total||p.parts<=0||Math.abs(p.x-r.x)>.9||Math.abs(p.z-r.z)>.9)continue;
+      for(var qi=0;qi<p.ps.length;qi++){var q=p.ps[qi];if(q.st!=='on'||Math.abs(q.wy-r.y)>R.high*u+rr*.3)continue;var d=dist(q.wx,q.wz,r.x,r.z);if(d<rr+.045*u&&d<bd){bd=d;bp=p;bi=qi;}}}
+    for(var ti=0;ti<SG.pieces.length&&r.E>0;ti++){var tp=SG.pieces[ti];if(tp.kind!=='tower'||!tp.built||tp.down||tp.parts<=0||Math.abs(tp.x-r.x)>.6||Math.abs(tp.z-r.z)>.6)continue;var tl=toLocal(tp,r.x,r.z);if(Math.abs(tl[0])<FOOT.tower[0]&&Math.abs(tl[1])<FOOT.tower[1]){r.E=0;snd('tap');viewPuff(r.x,r.z,.6);}}   /* a Keep is a wall of its own: nothing rolls in between its legs */
+    if(r.E<=0)break;
+    if(bp){var q2=bp.ps[bi],cost=rollCost(bp,q2)*r.mass;
+      if(cost>r.E+1e-9){r.E=0;snd('tap');viewPuff(r.x,r.z,.6);break;}
+      r.E-=cost;r.n++;r.hit++;SG.att=a.side;SG.cause='roll';r.last={piece:bp.id,part:q2.id,cost:cost};knock(bp,bi,r.dx,r.dz,'roll',(.1+rand()*.12)*u);settle(bp,a.side);viewPuff(r.x,r.z,.5);
+      if(r.n>=R.max){r.E=0;break;}}
+    if(R.dizzy)SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,r.x,r.z)<.07*u*1.8)dizzy(m);});}
+  r.tr+=dt;if(r.tr>.11){r.tr=0;viewPuff(r.x,r.z,.22);}   /* a faint trail of dust */
+  a.hx=r.x;a.hz=r.z;a.hy=r.y;
+  if(r.E<=0)momentumEnd(a);}
+/* the Bouncer's last landing rolls on a little, as a ball would */
+function momentumLands(a,pos){var A=AMMO[a.ammo]||AMMO.marble;if(!SG.rollingOn()||a.rolling||A.w.roll>0||A.w.fuse>0||A.w.scatter>1||A.w.splash>0)return;
+  if(a.ammo==='marble'||a.ammo==='big')momentumStart(a,pos,a.ammo);else if(a.ammo==='bouncer'&&CONFIG.v2.rolling.bouncer.roll>0)momentumStart(a,pos,'bouncer');}
+/* ================= end of rolling shots ================= */
 function rollStart(a,pos){var dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1;a.rolling=true;a.live=true;a.rl={x:pos[0],z:pos[2],dx:dx/l,dz:dz/l,left:AMMO[a.ammo].w.roll*U(),acc:0,n:0};}
-function rollTick(a,dt){var r=a.rl,u=U(),step=Math.min(r.left,C3.rollSpeed*u*dt),n0=SG.stats.partsOff;r.x+=r.dx*step;r.z+=r.dz*step;r.left-=step;r.acc+=dt;a.hx=r.x;a.hz=r.z;a.hy=.05;
+function rollTick(a,dt){if(a.rm){momentumTick(a,dt);return;}var r=a.rl,u=U(),step=Math.min(r.left,C3.rollSpeed*u*dt),n0=SG.stats.partsOff;r.x+=r.dx*step;r.z+=r.dz*step;r.left-=step;r.acc+=dt;a.hx=r.x;a.hz=r.z;a.hy=.05;
   if(r.x*r.x+r.z*r.z>3.1*3.1)r.left=0;
   SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,r.x,r.z)<C3.rollR*u*1.8)dizzy(m);});
   if(r.acc>=C3.rollEvery&&r.n<C3.rollMax){var bp=null,bi=-1,bd=C3.rollR*u*2;
@@ -973,7 +1027,7 @@ function syncAll(){
     }else{if(G.obj)G.obj.visible=false;G.ring.visible=false;}});
   /* marbles, corks, aim arc, order marker */
   var seen={};SG.marbles.forEach(function(a){seen[a.id]=1;var o=V.marbles[a.id];if(!o){var AM=AMMO[a.ammo];o=V.marbles[a.id]=(AM&&AM.tint==='cork')?SS.fx.cork():SS.fx.marble(AM&&AM.tint!=='team'?AM.tint:SG.sides[a.side].team);a.sc=(AM&&AM.scale)||1.25;o.scale.setScalar(a.sc);world.add(o);}o.visible=a.t>=0&&!(!a.live&&a.ammo==='glue');
-    if(a.rolling){o.position.set(a.hx,.05+.03,a.hz);o.rotation.x=a.t*14;}
+    if(a.rolling){o.position.set(a.hx,(a.rm?a.hy:.05)+.03,a.hz);o.rotation.x=a.t*14;}
     else if(a.live){var p=marblePos(a,Math.min(1,a.t/a.T));o.position.set(p[0],p[1]+.03,p[2]);o.rotation.x=a.t*9;}
     else if(a.pend){o.position.set(a.hx,Math.max(.034,a.hy*.3)+.03,a.hz);o.scale.setScalar((a.sc||1.25)*(1+.12*Math.sin(SG.clock*26)));}   /* a fused ball lies where it landed, and throbs */
     else{var u=Math.min(1,(a.t-a.T)/.8),dx=a.x1-a.x0,dz=a.z1-a.z0,l=Math.sqrt(dx*dx+dz*dz)||1;o.position.set(a.hx+dx/l*.3*u,Math.max(.034,a.hy*(1-u*2))+Math.abs(Math.sin(u*PI*2))*.08*(1-u),a.hz+dz/l*.3*u);o.scale.setScalar(u>.7?1.25*(1-(u-.7)/.3):1.25);}});
@@ -1344,7 +1398,8 @@ function pullSet(sd,t,P){if(t){if(sd.pull&&sd.pull.zone!==t.zone&&t.p!=null)snd(
 SG.fireLobber=function(s,tx,tz,pw,opts){opts=opts||{};var side=SG.sides[s];if(!side)return null;var li=opts.li==null?(side.lsel||0):opts.li,l=lobberOf(s,li);if(!l)return null;
   var info=null,ax=tx,az=tz;
   if(pw!=null&&!opts.exact){var P=CONFIG.pull,p=Math.max(0,Math.min(1,pw)),dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz);if(d<1e-6){dx=0;dz=l.z>0?-1:1;d=1;}
-    var rg=P.rangeMin+p*(P.rangeMax-P.rangeMin),sc=opts.scatter!=null?opts.scatter:SG.pullScatter(p),rf=opts.rand||rand,an=rf()*PI*2,rd=sc*Math.sqrt(rf());
+    var rg=P.rangeMin+p*(P.rangeMax-P.rangeMin),sc=opts.scatter!=null?opts.scatter:SG.pullScatter(p),rf=opts.rand||rand,an=sc>0?rf()*PI*2:0,rd=sc>0?sc*Math.sqrt(rf()):0;   /* no random number is used for a shot with no scatter: the game's random stream stays as it was */
+   
     ax=l.x+dx/d*rg+Math.cos(an)*rd;az=l.z+dz/d*rg+Math.sin(an)*rd;
     info={power:p,zone:pullZone(p),range:rg,scatter:sc,aimX:l.x+dx/d*rg,aimZ:l.z+dz/d*rg,missX:ax-(l.x+dx/d*rg),missZ:az-(l.z+dz/d*rg)};}
   var wasHigh=side.high;if(opts.high!=null)side.high=!!opts.high;
@@ -1977,7 +2032,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   if(L.tool==='build'||L.tool==='move'){sub=LAB_KINDS.map(function(k){return '<button class="btn lb'+(L.kind===k&&L.tool==='build'?' on':'')+'" data-a="k_'+k+'">'+(LAB_ICON[k]||'🧩')+' '+labName(k)+'</button>';}).join('');if(L.carry)sub+='<button class="btn lb go" data-a="drop">Drop here</button><button class="btn lb" data-a="cancelcarry">Put it back</button>';}
   else if(L.tool==='fire'||L.tool==='gun'){var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;}));
     sub=ids.map(function(id){return '<button class="btn lb ammo'+(L.ammo===id?' on':'')+'" data-a="am_'+id+'" id="lab_a_'+id+'"><span class="ai">'+labEsc(AMMO[id].icon)+'</span><span class="an">'+labEsc(AMMO[id].name)+'</span><span class="ac"></span></button>';}).join('')+
-      '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+'<button class="btn lb'+(SG.easyAim?' on':'')+'" data-a="easy">Easy aim</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
+      '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+'<button class="btn lb'+(SG.easyAim?' on':'')+'" data-a="easy">Easy aim</button>'+'<button class="btn lb'+(SG.rollingOn()?' on':'')+'" data-a="rolling">Rolling shots</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
   else if(L.tool==='inspect')sub='<span class="lnote">Tap a piece to see what holds it up. Turn on "Show supports" to see the links.</span>';
   else if(L.tool==='erase')sub='<span class="lnote">Tap a piece to take it away. Undo brings it back.</span>';
   else if(L.tool==='spot')sub='<span class="lnote">Tap the table where the range report should aim.</span>';
@@ -2017,7 +2072,7 @@ function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a.indexOf('tool_')===0){SG.labTool(a.slice(5));return;}
   if(a.indexOf('k_')===0){L.kind=a.slice(2);if(L.tool!=='build')SG.labTool('build');L.ghost.on=false;labUi();return;}
   if(a.indexOf('am_')===0){SG.labSetAmmo(a.slice(3));return;}
-  if(a==='high'){SG.labSetHigh(!L.high);return;}if(a==='easy'){SG.setEasyAim(!SG.easyAim);labUi();return;}
+  if(a==='high'){SG.labSetHigh(!L.high);return;}if(a==='rolling'){SG.setRolling(!SG.rollingOn());labUi();return;}if(a==='easy'){SG.setEasyAim(!SG.easyAim);labUi();return;}
   if(a==='turnL'||a==='turnR'){L.ghost.rot+=(a==='turnL'?1:-1)*PI/12;return;}
   if(a==='undo'){if(L.carry)SG.labCancelCarry();SG.labUndo();return;}if(a==='redo'){SG.labRedo();return;}
   if(a==='drop'){SG.labDrop();return;}if(a==='cancelcarry'){SG.labCancelCarry();labUi();return;}
@@ -2095,6 +2150,7 @@ SG.boot=function(){
   initView();initInput();ui();
   var Q={};location.search.slice(1).split('&').forEach(function(kv){var p=kv.split('=');if(p[0]){try{Q[p[0]]=decodeURIComponent(p[1]||'');}catch(e){Q[p[0]]=p[1]||'';}}});
   if(Q.rules==='1'||window.__RULES===1)SG.rulesDefault=1;
+  if(Q.rolling==='1')CONFIG.v2.rolling.on=true;   /* rolling shots in matches (they are off until the balance is proved) */
   if(Q.shot){SG.shot(Q.shot,Q.team||'blue');ui();SG.camSnap=true;render();SS.whenTextures(function(){SG.camSnap=true;render();render();window.__done=true;},4000);return;}
   if(Q.layout){var lr;try{lr=SG.applyLayout(atob(Q.layout.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){lr={ok:false,reason:'The layout in the address could not be read'};SG.layoutNote=lr.reason;}
     if(E('layoutNote')){E('layoutNote').style.display='block';E('layoutNote').textContent=lr.ok?'Table layout loaded from the address.':'Layout refused: '+lr.reason+' Using the usual table.';}}

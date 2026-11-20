@@ -144,3 +144,15 @@ The aiming bot throws a Glue blob where a mender is at work among fallen parts, 
 ## The Lab (20 Nov): a shooting range
 
 Harry asked for "more of a sandbox, more just like a shooting range version of this to help with development". It is built as a mode of the same page (`SG.mode === 'lab'`), reusing the real pieces, `AMMO` table, blast, supports and collapse code, so what is learned there is true in a match. How to use it, the design record, how to add a prototype and what is not done are in `LAB.md`; the measured results of every ammunition against every target are in `RANGE_REPORT.md`.
+
+
+## Pull-back aiming (20 Nov): a slingshot, with a little skill
+**For kids, three lines:**
+1. Put your finger on a lobber and pull it back, away from where you want to hit. The band stretches.
+2. Watch the meter: stop in the green. Green goes exactly where you aim. Too short is weak; too far makes the marble wobble.
+3. Let go to fire. Bring your finger back to the little ring to cancel. (Easy aim is a button that makes every shot go exactly where you point.)
+
+**How it works.** The drag direction picks the way (opposite to the pull); the pull length picks the power; power picks range (0.7 to 5.6 table units). Numbers are `CONFIG.pull`: minimum pull 0.2 (shorter is a cancel), full pull 1.5, sweet band 65 to 85% of full, a little scatter under it (0.25 units at no power, fading to none), growing scatter over it (up to 1.2 units at full). The band is drawn from the lobber to a pouch that follows the finger, a ring round the lobber grows with power, and the meter stands above and beside the thumb so the finger does not hide it. The lobber leans back and the band twangs on release. High or flat lob stays a button (a finger cannot also choose that without a second gesture; a button is the simplest thing that works). Two lobbers: pressing on one chooses it and pulls only that one; each has its own winding.
+**For tests and bots:** `SG.fireLobber(side, x, z, power01, opts)`. With `power01` the point gives only the direction and the power gives the range, with the scatter for that power; with `power01` null it lands exactly on the point, as `SG.fire` always did. `opts`: `li` (which lobber), `high`, `scatter` (force a number), `rand` (own random function), `exact`. Bots keep using `SG.fire`, so their balance is unchanged.
+**Easy aim** (`SG.easyAim`, a button in the ammo row and in the Lab) puts back the old tap-and-drag aim: exact, no meter. It is OFF by default on the iPad and the screen; it turns ON when an AR table starts under 80 cm across (`CONFIG.pull.easyAr`), because there the table is tiny or far from the camera and a pull of 1.5 table units is only a few pixels of finger, too fine to control.
+**Not proved:** feel on a real iPad finger. The numbers were made to be changed.

@@ -8,6 +8,7 @@ The game plays rules v2 ("Break the camp") by default; `?rules=1` plays the firs
 
 | Test | What it covers | Rules |
 |---|---|---|
+| `pull-test.js` | pull-back aiming: pull length to power, the sweet band, over-pull scatter, cancel, two lobbers, touch events, Easy aim | v2 |
 | `v2-test.js` | v2 rules: the Keep, blasts, supports, ammunition (five kinds, the ammo row), two lobbers (own crew, own reload, own aim), Glue and Bouncer, orders, the budget and the new pieces, piece sizes | v2 |
 | `table-test.js` | two players at one screen, real multi-touch | v2; `RULES=1` before the command runs it under the first rules |
 | `ar-test.js` | AR mode against a fake WebXR device | v2; `RULES=1` for the first rules |
