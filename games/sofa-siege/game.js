@@ -50,7 +50,7 @@ var CONFIG={
     decay:.75,                                  /* each further bounce is this much shorter and lower */
     hookR:.1,hookY:.45,                         /* tether: how near a part the marble must pass (across, and up and down) to snag it */
     rollSpeed:1.6,rollR:.07,rollBase:.3,rollEvery:.14,rollMax:8,   /* roller: units a second, how near a part it must be, the highest part it can knock (its base), seconds between knocks, most knocks */
-    price:{blast:10,leg:1,legForce:2,speed:1,arc:1.5,bounce:1.5,scatter:.45,fuse:.4,stick:.1,slow:.5,puddle:.1,splash:4,dizzy:4,dizzySecs:.15,tether:2,tetherLen:.8,quake:3,roll:1.2,cd:.15,floor:.5},   /* the budget points of a weapon: see wPrice */
+    price:{blast:10,blastRef:.3,leg:1,legForce:2,speed:1,arc:1.5,bounce:1,popEach:.5,scatter:.45,fuse:.4,stick:.1,slow:.5,puddle:.1,splash:4,dizzy:4,dizzySecs:.15,tether:2,tetherLen:.8,quake:3,roll:2,cd:.15,floor:.5},   /* the budget points of a weapon: see wPrice. The blast is priced by its area, so a blast twice as wide costs four times as much */
     topple:{max:8,reach:1.1,hit:3,throwFar:.12},   /* chain reactions (Lab option): most topples a shot can start; how far a falling piece reaches (times its height); parts it knocks off what it falls on; how far they fly */
     rate:{salvo:5,single:1,salvoShare:.3,parts:1,collapse:4,keep:15,dizzy:.5,little:.25,likeLo:.8,likeHi:1.25,much:1.5},   /* Rate it: shots in a salvo; how much a salvo counts beside a single shot; the points of each result; the verdict thresholds (shares of a Marble's and a Big Marble's score) */
     carnage:{part:1,collapse:5,keep:25,chain:3,dizzy:.5},   /* the carnage score: points for each part off, collapse, Keep felled, step of chain beyond the first, mouse dizzy */
@@ -1652,7 +1652,7 @@ function wClamp(src){var o={},notes=[],caps=C3.caps,k;src=src||{};
     o[k]=n;}
   return {w:o,notes:notes};}
 /* the price in budget points, from the numbers: what a weapon can do costs, what holds it back (a long wait) takes a little off */
-function wPrice(w){var P=C3.price,p=w.blast*P.blast*(w.cap>0?Math.min(1,.5+w.cap/16):1)*(1+(w.scatter-1)*P.scatter)*(w.popEach?1+w.bounces:1);
+function wPrice(w){var P=C3.price,p=w.blast*(w.blast/P.blastRef)*P.blast*(w.cap>0?Math.min(1,.5+w.cap/16):1)*(1+(w.scatter-1)*P.scatter)*(w.popEach?1+w.bounces*P.popEach:1);
   p+=(w.leg?P.leg:0)+(w.legForce?P.legForce:0)+Math.max(0,w.speed-1)*P.speed+Math.max(0,w.arcMul-1)*P.arc+w.bounces*P.bounce+w.fuse*P.fuse+w.stick*P.stick+(1-w.slowTo)*w.slowSecs*P.slow+w.puddle*P.puddle+w.splash*P.splash;
   p+=(w.dizzyR>0?w.dizzyR*P.dizzy:0)+w.dizzySecs*P.dizzySecs+(w.tether>0?P.tether+w.tether*P.tetherLen:0)+w.quake*P.quake+w.roll*P.roll-w.cd*P.cd;
   return Math.round(Math.max(P.floor,p)*10)/10;}
@@ -1702,7 +1702,7 @@ var LAB_PRESETS=[
   {key:'roller',name:'Acorn drum',icon:'🌰',tint:0x9c6b30,base:'acorn',maker:'Gemini #11 (also Gemini #18, Grok #19, ChatGPT #19)',note:'Lands, then rolls on along the table, knocking parts off at its base.',w:{blast:.1,roll:2.4,cd:3}},
   {key:'beads',name:'Bead shot',icon:'📿',tint:0xe05fa8,base:'cork',maker:'Gemini #20',note:'Eight tiny beads scatter; mice they land near are slowed.',w:{blast:.05,scatter:8,spread:.5,dizzyR:0,splash:.12,slowTo:.5,slowSecs:3,cd:2}},
   {key:'pop',name:'Pop bomb',icon:'🎈',tint:0xf06a8a,base:'marble',maker:'the Lab (a toy "pop"; fire and powder are out)',note:'Lies a second, then goes pop: a large blast that takes parts off and only makes mice dizzy.',w:{fuse:1,blast:.42,falloff:.8,dizzyR:.35,cap:6,leg:false,hiMul:.6,cd:6}},
-  {key:'triple',name:'Triple bouncer',icon:'🎾',tint:0xc8e03a,base:'ball',maker:'the Lab (from the Bouncer)',note:'Three bounces, a small blast at each.',w:{blast:.17,leg:false,flat:true,bounces:3,hop:.8,hopH:.5,popEach:true,speed:1/1.35,arc:[.3,.24],cd:4}}];
+  {key:'triple',name:'Triple bouncer',icon:'🎾',tint:0xc8e03a,base:'ball',maker:'the Lab (from the Bouncer)',note:'Three bounces, a small blast at each.',w:{blast:.22,leg:false,flat:true,bounces:3,hop:.8,hopH:.5,popEach:true,speed:1/1.35,arc:[.3,.24],cd:4}}];
 function labPresetRec(pr){var b=LAB_BASES[pr.base],w=Object.assign(wCopy(WDEF),b.w(),pr.w);return {schema:'rtk.weapon',version:1,name:pr.name,base:pr.base,icon:pr.icon,tint:pr.tint,scale:b.scale,maker:pr.maker,params:wClamp(w).w};}
 SG.labPresets=LAB_PRESETS;SG.labPresetRec=function(key){var pr=LAB_PRESETS.filter(function(q){return q.key===key;})[0];return pr?labPresetRec(pr):null;};
 LAB_PRESETS.forEach(function(pr){LAB_PROTOS['p_'+pr.key]={name:pr.name+' (weapon)',note:pr.note+' Made by: '+pr.maker+'.',on:function(){labWkInstall(labPresetRec(pr),'p_'+pr.key);},off:function(){labWkRemove('p_'+pr.key);}};});

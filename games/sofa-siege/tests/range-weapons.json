@@ -1,0 +1,6 @@
+[
+  {
+    "schema": "rtk.weapon", "version": 1, "name": "Heavy popper", "base": "ball", "icon": "⚪", "tint": 14211296, "scale": 1.7, "maker": "the Lab (a saved Workshop weapon, used by tests/range.js to cover saved weapons)",
+    "params": { "blast": 0.32, "falloff": 0.6, "cap": 5, "leg": true, "flat": true, "speed": 0.85, "fuse": 0.5, "scatter": 3, "spread": 0.22, "dizzyR": 0.25, "cd": 5 }
+  }
+]
