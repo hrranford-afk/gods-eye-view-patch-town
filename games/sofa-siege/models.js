@@ -787,15 +787,15 @@ BUILD.shield=function(K,team,T,v){var P=ctr(K,'shield'),i;
 };
 /* Ditch: a trench across the way, three lanes, a plank rim on each side. Stops a roller. */
 BUILD.ditch=function(K,team,T,v){var P=ctr(K,'ditch'),i;
-  P('rim.F',2,[],function(b){b.box(1.0,.03,.035,T.woodD,'woodh',[0,.015,.13]);for(var j=0;j<3;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.42+j*.42,.025,.13]);});
-  P('rim.B',2,[],function(b){b.box(1.0,.03,.035,T.woodD,'woodh',[0,.015,-.13]);for(var j=0;j<3;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.42+j*.42,.025,-.13]);});
-  for(i=0;i<3;i++)(function(i){P('pit.'+i,1,['rim.F','rim.B'],function(b){var x=-.325+i*.325;b.box(.31,.014,.22,0x3a2a1c,null,[x,.008,0]);b.box(.24,.016,.15,0x1e140c,null,[x,.009,0]);b.box(.05,.02,.04,0x6c6458,null,[x+.07,.012,.04]);b.box(.04,.016,.04,0x6c6458,null,[x-.08,.012,-.05]);},{min:1});})(i);
+  P('rim.F',2,[],function(b){b.box(1.62,.03,.035,T.woodD,'woodh',[0,.015,.13]);for(var j=0;j<5;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.7+j*.35,.025,.13]);});
+  P('rim.B',2,[],function(b){b.box(1.62,.03,.035,T.woodD,'woodh',[0,.015,-.13]);for(var j=0;j<5;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.7+j*.35,.025,-.13]);});
+  for(i=0;i<3;i++)(function(i){P('pit.'+i,1,['rim.F','rim.B'],function(b){var x=-.53+i*.53;b.box(.5,.014,.22,0x3a2a1c,null,[x,.008,0]);b.box(.42,.016,.15,0x1e140c,null,[x,.009,0]);b.box(.05,.02,.04,0x6c6458,null,[x+.1,.012,.04]);b.box(.04,.016,.04,0x6c6458,null,[x-.12,.012,-.05]);},{min:1});})(i);
 };
 /* Log barrier: three logs lying across the way, held by a stake at each end. Stops a roller. */
 BUILD.logs=function(K,team,T,v){var P=ctr(K,'logs');
-  [['L',-1],['R',1]].forEach(function(q){P('peg.'+q[0],2,[],function(b){b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.45,.15,.06]);b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.45,.15,-.06]);},{leg:true});});
-  [['0',.065],['1',-.065]].forEach(function(q){P('log.'+q[0],1,['peg.L','peg.R'],function(b){b.cyl(.065,.065,.9,9,jit(b,T.wood2,.08),'wood',[0,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.45,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.45,.066,q[1]],[0,0,PI/2]);},{min:1});});
-  P('log.2',1,['log.0','log.1'],function(b){b.cyl(.065,.065,.86,9,jit(b,T.wood,.08),'wood',[0,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.43,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.43,.19,0],[0,0,PI/2]);},{min:1});
+  [['L',-1],['R',1]].forEach(function(q){P('peg.'+q[0],2,[],function(b){b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.72,.15,.06]);b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.72,.15,-.06]);},{leg:true});});
+  [['0',.065],['1',-.065]].forEach(function(q){P('log.'+q[0],1,['peg.L','peg.R'],function(b){b.cyl(.065,.065,1.4,9,jit(b,T.wood2,.08),'wood',[0,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.7,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.7,.066,q[1]],[0,0,PI/2]);},{min:1});});
+  P('log.2',1,['log.0','log.1'],function(b){b.cyl(.065,.065,1.36,9,jit(b,T.wood,.08),'wood',[0,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.68,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.68,.19,0],[0,0,PI/2]);},{min:1});
 };
 /* Net: four poles and a rope net stretched across the top. Catches a tether and a cloud of beads. */
 BUILD.net=function(K,team,T,v){var P=ctr(K,'net'),i;

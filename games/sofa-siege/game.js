@@ -125,8 +125,8 @@ var ZONE={rMin:1.03,rMax:2.72,half:1.22},MAT={r0:2.78,r1:3.2,r:2.99,scale:.32,pi
 /* ===== ARSENAL data that must exist early (Lab only; the rules are in the ARSENAL section further down) ===== */
 var IGN=null,ARSF='';   /* the pieces the shot being looked at has already gone through; its family */
 /* the eight counter pieces: [half length, half depth, height] at piece scale 1. They are in FOOT0, TALL0 and BK (so the Building Yard's support rule and stages hold them up) but in no kit: a match never has one. */
-var CK={awning:[.34,.13,1],shield:[.34,.08,.5],ditch:[.5,.12,.04],logs:[.45,.15,.28],net:[.36,.13,1],cutter:[.1,.1,.6],heavy:[.2,.2,.34],lowwall:[.34,.07,.16]};
-(function(){var k,pts={awning:2,shield:2,ditch:1,logs:2,net:1.5,cutter:1,heavy:3,lowwall:1.5},cost={awning:1,shield:1,ditch:.5,logs:1,net:.5,cutter:.5,heavy:1.5,lowwall:.5};
+var CK={awning:[.34,.13,1],shield:[.34,.08,.5],ditch:[.8,.12,.04],logs:[.7,.15,.28],net:[.36,.13,1],cutter:[.1,.1,.6],heavy:[.2,.2,.34],lowwall:[.34,.07,.16]};
+(function(){var k,pts={awning:2,shield:2,ditch:1,logs:2,net:1.5,cutter:1,heavy:3,lowwall:1.5},cost={awning:1,shield:1,ditch:1,logs:1,net:.5,cutter:.5,heavy:1.5,lowwall:.5};
   for(k in CK){FOOT0[k]=[CK[k][0],CK[k][1]];TALL0[k]=CK[k][2];BK[k]=1;C2.piecePts[k]=pts[k];C2.cost[k]=cost[k];}
   var cp=C3.caps;cp.line=[0,1];cp.pierce=[0,3];cp.gust=[0,1];cp.gustSecs=[0,10];cp.push=[0,2];cp.qlvl=[1,2];cp.mass=[.2,4];setScale(PS);})();
 var REASON={hill:'Not on the hill ring',third:'Only on your own side of the table',overlap:'Too close to another piece'};
@@ -1777,14 +1777,15 @@ SG.labWkPreset=function(key){var r=SG.labPresetRec(key);if(!r)return false;var k
    pieces are in no kit, and every hook in the old code starts with SG.mode === 'lab' or looks up a piece kind that only the Lab has. Rules are in LAB.md. */
 var ARS={
   clear:.5,                       /* a roof or net hangs this high (scale 1): a shot lower than this goes under it */
-  roofCover:.45,roofCut:.35,      /* a roof shelters a landing this near its edge; a lobbed blast there keeps this share of its radius. It wears: each blast it takes adds (radius / a Marble's radius) squared to the roof's load, and a cloth panel comes off for every whole 1 of it */
+  roofCover:.45,roofCut:.25,roofLoad:1.6,      /* a roof shelters a landing this near its edge; a lobbed blast there keeps this share of its radius. It wears: each blast it takes adds (radius / a Marble's radius) squared to the roof's load, and a cloth panel comes off for every roofLoad of it */
   flatCut:{shield:.2,logs:.35,lowwall:.5,heavy:.2},   /* thick pieces: the share of a flat shot's blast that gets through when it strikes them */
   pierceKeep:.85,                 /* what is left of the blast after a punch through a thin piece */
-  netCover:.55,netWear:8,          /* a net catches a bead or a hook that lands this near its edge, or a string that crosses it; every netWear catches wears one strip of mesh (3 strips) */
+  netCover:.8,netWear:10,          /* a net catches a bead or a hook that lands this near its edge, or a string that crosses it; every netWear catches wears one strip of mesh (3 strips) */
   cutR:.3,                        /* a string that passes this near a cutter post (with a blade on) is cut, and the blade comes off */
+  ditchDepth:4,logDepth:2,        /* rollers a lane of a ditch swallows before it is filled in; rollers a log stops before it is knocked off */
   strongR:.65,                    /* a strong thump (qlvl 2) works this share of its radius out from where it lands */
   gustSpeed:1,shotK:.55,pushMax:.9,ripSecs:1.2,   /* gust: units a second at strength 1; how much of it a shot in the air feels; how far a mouse is blown at most; seconds of gust that tear one panel of cloth off */
-  leeHeavy:.45,leeLow:.18,         /* a Heavy block shelters this far round it from a gust, a Low wall this far (from its edge, scale 1) */
+  leeHeavy:.55,leeLow:.3,         /* a Heavy block shelters this far round it from a gust, a Low wall this far (from its edge, scale 1) */
   massBy:{big:3,glue:1.2,corks:.5,bouncer:1.3},   /* how hard a gust moves a shot of these kinds (a weapon's own mass, if it has one, counts instead) */
   thin:{wall:1,gate:1,lowwall:1},  /* what a flinger can punch through */
   counters:['awning','shield','ditch','logs','net','cutter','heavy','lowwall','brace']
@@ -1821,9 +1822,9 @@ function arsBoom(a,pos,hit,R){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,fam=famOf(W)
   if(a.snag){var sp=a.snag.p,sq=sp&&sp.ps[a.snag.i];if(sq&&sq.st==='on'){if(arsCutter(a,sq.wx,sq.wz)){a.snag=null;a.cut=true;}else if(arsNet(a,[sq.wx,sq.wy,sq.wz],true)){a.snag=null;a.caught=true;return 0;}}}
   if(fam==='scatter'||fam==='tether'){if(arsNet(a,pos,false)){a.caught=true;return 0;}}
   /* a roof over the spot: a ball lobbed from above loses most of its blast, and the roof loses a panel */
-  if(R>0&&(fam==='lob'||fam==='scatter')&&!(W.line>0)){var rf=arsFind('awning',en,/cloth/,pos[0],pos[2],ARS.roofCover*u);if(rf){SG.att=a.side;var r1=C2.blast*u;rf.load=(rf.load||0)+(R*R)/(r1*r1);R*=ARS.roofCut;while(rf.load>=1&&arsOn(rf,/cloth/)){rf.load-=1;arsWear(rf,/cloth/,pos[0],pos[2],a.x1-a.x0,a.z1-a.z0,'roof');}a.roofed=true;pop(pos[0],pos[2],'Roofed!',false,.5);}}
+  if(R>0&&(fam==='lob'||fam==='scatter')&&!(W.line>0)){var rf=arsFind('awning',en,/cloth/,pos[0],pos[2],ARS.roofCover*u);if(rf){SG.att=a.side;var r1=C2.blast*u;rf.load=(rf.load||0)+(R*R)/(r1*r1);R*=ARS.roofCut;while(rf.load>=ARS.roofLoad&&arsOn(rf,/cloth/)){rf.load-=ARS.roofLoad;arsWear(rf,/cloth/,pos[0],pos[2],a.x1-a.x0,a.z1-a.z0,'roof');}a.roofed=true;pop(pos[0],pos[2],'Roofed!',false,.5);}}
   /* a thick piece struck by a flat shot: only a little of the blast gets past, and the board wears */
-  if(R>0&&fam==='flat'&&hit&&hit.side===en&&ARS.flatCut[hit.kind]!=null&&!hit.down){R*=ARS.flatCut[hit.kind];SG.att=a.side;if(hit.kind!=='heavy')arsWear(hit,/plank|log|brick/,pos[0],pos[2],a.x1-a.x0,a.z1-a.z0,'absorbed');pop(pos[0],pos[2],'Stopped!',false,pos[1]+.1);a.stopped=true;}
+  if(R>0&&fam==='flat'&&hit&&hit.side===en&&ARS.flatCut[hit.kind]!=null&&!hit.down){R*=ARS.flatCut[hit.kind];SG.att=a.side;if(hit.kind!=='heavy')arsWear(hit,/\.(plank|log|brick)\./,pos[0],pos[2],a.x1-a.x0,a.z1-a.z0,'absorbed');pop(pos[0],pos[2],'Stopped!',false,pos[1]+.1);a.stopped=true;}
   return R;}
 /* a ball that rolls: a ditch lane that is still open swallows it, a log barrier stops it */
 function arsStop(a,r){r.left=0;r.acc=-9;r.stopped=true;snd('thud');}
@@ -1831,9 +1832,9 @@ function arsRoll(a,r){if(r.stopped||r.left<=0)return;var u=U(),pad=C3.rollR*u;
   for(var i=0;i<SG.pieces.length;i++){var p=SG.pieces[i];if(p.side===a.side||!p.built||p.down||p.parts<=0||(p.kind!=='ditch'&&p.kind!=='logs'))continue;
     var f=FOOT[p.kind],l=toLocal(p,r.x,r.z);if(Math.abs(l[0])>f[0]||Math.abs(l[1])>f[1]+pad)continue;
     if(p.kind==='ditch'){var lane=Math.max(0,Math.min(2,Math.floor((l[0]+f[0])/(2*f[0]/3)))),qi=p.pi['ditch.pit.'+lane];if(qi==null||p.ps[qi].st!=='on')continue;   /* a lane that is already filled in lets it over */
-      SG.att=a.side;SG.cause='roll';knock(p,qi,r.dx,r.dz,'roll',.04*u);pop(r.x,r.z,'Down the ditch!',false,.2);arsStop(a,r);settle(p,a.side);return;}
-    var li=-1,hy=-1;p.ps.forEach(function(q,j){if(q.st==='on'&&/log/.test(q.id)&&q.wy>hy){hy=q.wy;li=j;}});if(li<0)continue;
-    SG.att=a.side;SG.cause='roll';knock(p,li,r.dx,r.dz,'roll',(.08+rand()*.05)*u);pop(r.x,r.z,'Thunk!',false,.2);arsStop(a,r);settle(p,a.side);return;}}
+      p.fill=p.fill||[0,0,0];p.fill[lane]++;pop(r.x,r.z,'Down the ditch!',false,.2);arsStop(a,r);if(p.fill[lane]>=ARS.ditchDepth){SG.att=a.side;SG.cause='roll';knock(p,qi,r.dx,r.dz,'roll',.04*u);settle(p,a.side);}return;}
+    var li=-1,hy=-1;p.ps.forEach(function(q,j){if(q.st==='on'&&/\.log\./.test(q.id)&&q.wy>hy){hy=q.wy;li=j;}});if(li<0)continue;
+    var lq=p.ps[li];lq.hits=(lq.hits|0)+1;pop(r.x,r.z,'Thunk!',false,.2);arsStop(a,r);if(lq.hits>=ARS.logDepth){SG.att=a.side;SG.cause='roll';knock(p,li,r.dx,r.dz,'roll',(.08+rand()*.05)*u);settle(p,a.side);}return;}}
 /* a strong thump (qlvl 2) also shakes loose what only a heavy shake can: the planks of a wall with no brace, a gate's door and lintel, a Keep's braces with none to prop it. A brace piece holds all of it. */
 function arsLoose(p,list,pos,Rq,a){var A=AMMO[a.ammo],W=A&&A.w;if(!W||!(W.qlvl>=2)||boxDist(p,pos[0],pos[2])>Rq*ARS.strongR)return list;
   var add=[],k=p.kind,cap=W.cap>0?W.cap:99;if((a.qn|0)>=cap)return list;
@@ -1874,7 +1875,7 @@ SOUNDS.whoosh=function(){noise(.7,.4,0,700);tone(300,.6,'sine',.06,0,500);};
 var ARS_W=[
   {id:'flinger',name:'Flat flinger',icon:'🥎',tint:0xffd23a,scale:.9,sfx:'zip',note:'Straight, low and fast. Punches through a thin wall or gate; stopped by a thick board. Needs a clear line.',w:{blast:.22,cap:4,falloff:.6,leg:true,flat:true,line:1,arc:[0,0],speed:2,pierce:1,dizzyR:.12,mass:1.4}},
   {id:'roller',name:'Roller (acorn drum)',icon:'🌰',tint:0x9c6b30,scale:1.5,sfx:'rattle',note:'Lands short, then rolls along the ground, knocking parts off at the base. A ditch or a log barrier stops it.',w:{blast:.08,roll:2.4,dizzyR:.1,cd:2,mass:1.5}},
-  {id:'popper',name:'Scatter popper',icon:'📿',tint:0xe05fa8,scale:.55,sfx:'pop',note:'Eight beads in a wide cloud: light damage, slows mice. A net catches them; a roof blunts them.',w:{blast:.12,cap:1,scatter:8,spread:.5,dizzyR:0,splash:.16,slowTo:.5,slowSecs:3,speed:1.1,arc:[.3,.24],cd:2,mass:.4}},
+  {id:'popper',name:'Scatter popper',icon:'📿',tint:0xe05fa8,scale:.55,sfx:'pop',note:'Eight beads in a wide cloud: light damage, slows mice. A net catches them; a roof blunts them.',w:{blast:.14,cap:2,scatter:8,spread:.55,dizzyR:0,splash:.2,slowTo:.5,slowSecs:4,speed:1.1,arc:[.3,.24],cd:2,mass:.4}},
   {id:'hook',name:'Tether hook',icon:'🪝',tint:0xe8c070,scale:1.1,sfx:'thrum',note:'Hooks the first part it passes and yanks it toward the gun. A cutter post cuts the string; a net catches it.',w:{blast:.05,tether:1.6,cd:3,speed:1.2,arc:[.3,.24],mass:.8}},
   {id:'thumper',name:'Thumper',icon:'🥁',tint:0x6a6f78,scale:2,sfx:'boom',note:'A heavy ball that shakes the ground: planks, doors and braces with nothing extra holding them shake loose. An extra brace holds.',w:{blast:0,leg:false,quake:.9,qlvl:2,cap:7,dizzyR:.3,cd:3,speed:.9,mass:2.2}},
   {id:'fan',name:'Fan (gust)',icon:'🌬️',tint:0xbfe8ff,scale:1.6,sfx:'whoosh',note:'No damage by itself. Leaves a gust that blows mice, loose parts and shots sideways, and tears the cloth off a roof or a net. A heavy block shelters.',w:{blast:0,gust:.9,gustSecs:5,push:1,dizzyR:0,cd:4,mass:.5}}];
@@ -1893,13 +1894,15 @@ SG.arsLayout=arsLayout;
 var ARS_CAMPS=[['bare','No counter'],['roof','Roof'],['shield','Shield board'],['ground','Ditch + log barrier'],['net','Net'],['cutter','Cutter post'],['brace','Extra braces'],['heavy','Heavy block + low wall'],['all','Every counter']];
 /* the same camp every time: a Keep behind a gate and two walls, a tent and a workshop to the sides. The mice rest in a row beside the Keep. */
 function arsCamp(id,s){var F=FOOT,Y=arsLayout(),T=PI,x=F.gate[0]+F.wall[0]+.01,l=[['tower',0,Y.keep,T],['gate',0,Y.row,T],['wall',-x,Y.row,T],['wall',x,Y.row,T],['tent',F.tent[0]+1.0,Y.keep-.1,T],['workshop',-(F.workshop[0]+1.0),Y.keep-.1,T]],all=id==='all',bx=F.tower[0]+F.brace[1]+.015;
-  if(id==='roof'||all)l.push(['awning',0,Y.awning,T]);
+  /* id: a camp of the matrix, or one counter alone (ditch, logs, awning, ..., lowwall) */
+  var has=function(k){return all||id===k||(id==='roof'&&k==='awning')||(id==='ground'&&(k==='ditch'||k==='logs'))||(id==='heavy'&&(k==='heavy'||k==='lowwall'));};
+  if(has('awning'))l.push(['awning',0,Y.awning,T]);
   if(id==='net')l.push(['net',0,Y.awning,T]);else if(all)l.push(['net',-(F.awning[0]+F.net[0]+.04),Y.awning,T]);
-  if(id==='shield'||all)l.push(['shield',0,Y.shield,T]);
-  if(id==='ground'||all){l.push(['logs',0,Y.logs,T]);l.push(['ditch',0,Y.ditch,T]);}
-  if(id==='cutter'||all)l.push(['cutter',F.cutter[0]*1.2,Y.front-.22,T]);
-  if(id==='brace'||all){l.push(['brace',bx,Y.keep,PI/2]);var by=Y.row+F.wall[1]+F.brace[1]+.012;l.push(['brace',-(x+.15),by,0]);l.push(['brace',x+.15,by,0]);}
-  if(id==='heavy'||all){l.push(['heavy',F.tower[0]+F.heavy[0]+.12,Y.keep-.03,T]);l.push(['lowwall',-(F.lowwall[0]+.3),Y.keep-.03,T]);}
+  if(has('shield'))l.push(['shield',0,Y.shield,T]);
+  if(has('logs'))l.push(['logs',0,Y.logs,T]);if(has('ditch'))l.push(['ditch',0,Y.ditch,T]);
+  if(has('cutter'))l.push(['cutter',F.cutter[0]*1.2,Y.front-.22,T]);
+  if(id==='brace'||all){l.push(['brace',bx,Y.keep,PI/2]);var by=Y.row+F.wall[1]+F.brace[1]+.012,bw=x+F.wall[0]-F.brace[0]-.02;l.push(['brace',-bw,by,0]);l.push(['brace',bw,by,0]);}
+  if(has('heavy'))l.push(['heavy',bx+F.brace[1]+F.heavy[0]+.03,Y.keep-.03,T]);if(has('lowwall'))l.push(['lowwall',-(F.lowwall[0]+.28),Y.keep+.01,T]);
   return labCampRecs(s,l);}
 SG.arsCamp=arsCamp;
 (function(){ARS_CAMPS.forEach(function(c){LAB_TARGETS.push(['ars_'+c[0],'Arsenal: '+c[1]]);});})();
@@ -1916,11 +1919,11 @@ var ARS_FAMS=[
   {id:'fan',name:'Fan',ammo:'fan',aim:function(Y){return [0,Y.keep-.1];}}];
 var ARS_EXTRA=[{id:'lobhigh',name:'Lobber, high lob (variant)',ammo:'marble',high:true,aim:function(Y){return [0,Y.keep];}}];   /* not a family: the Marble lobbed high, which clears a wall but carries half the blast */
 /* a volley: ARS_SHOTS shots at the aim spot and round it (the first of the range report's carpet), nothing mended; the same volley at ARS_SEEDS seeds, and the cell is the mean. The points: a part of the camp 1, a collapse 3, a Keep felled 10, a mouse dizzy, slowed or blown .25. What the counters lose is shown beside the points (wear) and is not counted: a counter is there to be hit. */
-var ARS_COUNTERED=40,ARS_SHOTS=5,ARS_SEEDS=4,ARS_SCORE={part:1,collapse:3,keep:10,mouse:.25};
+var ARS_COUNTERED=40,ARS_SHOTS=5,ARS_SEEDS=4,ARS_N=0,ARS_NS=0,ARS_SCORE={part:1,collapse:3,keep:10,mouse:.25};
 function arsVolley(fam,recs,spotFn,seed){var L=SG.lab,u=U();labSetSide(1,recs,true);SG.marbles=[];SG.debris=[];SG.fuses=[];SG.puddles=[];SG.gusts=[];SG.acc=0;SG.step(.1);
   var st0={d:SG.stats.dizzies,c:SG.stats.collapses,b:SG.stats.blown|0,bp:SG.stats.blownParts|0,ca:SG.stats.caught|0,cu:SG.stats.cuts|0},slowed={},sp=spotFn();
   L.ammo=fam.ammo;L.high=!!fam.high;SG.sides.forEach(function(sd){sd.ammo=fam.ammo;sd.high=!!fam.high;});
-  for(var i=0;i<ARS_SHOTS;i++){SG.topN=0;var of=LAB_CARPET[i];var sh=SG.labFire(0,'gun',sp.x+of[0]*u,sp.z+of[1]*u,{force:true,seed:seed+i});if(!sh)continue;var t=0;
+  for(var i=0;i<(ARS_N||ARS_SHOTS);i++){SG.topN=0;var of=LAB_CARPET[i%LAB_CARPET.length];var sh=SG.labFire(0,'gun',sp.x+of[0]*u,sp.z+of[1]*u,{force:true,seed:seed+i});if(!sh)continue;var t=0;
     while(t<14){SG.step(STEP);t+=STEP;SG.mice.forEach(function(m){if(m.side===1&&m.slowT>0)slowed[m.i]=1;});if(L.cur&&L.cur.done&&!arsBusy())break;}}
   var camp=0,ctr=0,keep=0,i2;
   SG.pieces.forEach(function(p){if(p.side!==1||!p.total)return;if(p.down){keep++;return;}var off=p.ps.filter(function(q){return q.st!=='on';}).length;if(ARS.counters.indexOf(p.kind)>=0)ctr+=off;else camp+=off;});
@@ -1929,15 +1932,19 @@ function arsVolley(fam,recs,spotFn,seed){var L=SG.lab,u=U();labSetSide(1,recs,tr
     score:camp*ARS_SCORE.part+col*ARS_SCORE.collapse+keep*ARS_SCORE.keep+mice*ARS_SCORE.mouse};}
 function arsMean(list){var o={},n=list.length;Object.keys(list[0]).forEach(function(k){var t=0;list.forEach(function(r){t+=r[k];});o[k]=Math.round(t/n*100)/100;});return o;}
 function arsCell(fam,campId,seed){var Y=arsLayout(),ax=fam.aim(Y),w=w2(1,ax[0],ax[1]),out=[];
-  for(var k=0;k<ARS_SEEDS;k++)out.push(arsVolley(fam,arsCamp(campId,1),function(){return {x:w[0],z:w[1]};},seed+k*100));return arsMean(out);}
+  for(var k=0;k<(ARS_NS||ARS_SEEDS);k++)out.push(arsVolley(fam,arsCamp(campId,1),function(){return {x:w[0],z:w[1]};},seed+k*100));return arsMean(out);}
 /* the stock camps a weapon is strong against (no counters in them) */
 var ARS_STOCK=['walled','braced','longwall','workshops','glass','village'];
 function arsStockCell(fam,tid,seed){var out=[],recs=labTemplate(tid,1);
-  for(var k=0;k<ARS_SEEDS;k++)out.push(arsVolley(fam,recs.map(function(r){return Object.assign({},r);}),function(){labSetSide(1,recs.map(function(r){return Object.assign({},r);}),true);var sp=SG.labDefaultSpot(),front=9;
+  for(var k=0;k<(ARS_NS||ARS_SEEDS);k++)out.push(arsVolley(fam,recs.map(function(r){return Object.assign({},r);}),function(){labSetSide(1,recs.map(function(r){return Object.assign({},r);}),true);var sp=SG.labDefaultSpot(),front=9;
     SG.pieces.forEach(function(p){if(p.side===1&&p.built)front=Math.min(front,Math.abs(p.z));});return fam.id==='roller'?{x:sp.x-ARS_LANE.roller,z:-(Math.max(.9,front-.5))}:sp;},seed+k*100));return arsMean(out);}
 /* SG.labMatrix(): every weapon at every camp. Returns the table and a verdict per weapon. */
+/* one cell, for the tests: a weapon family (or the variant) at a camp or a single counter */
+SG.labMatrixCell=function(famId,campId,o){var L=SG.lab;if(!L)return null;o=o||{};var wasOn=!!LAB_FLAGS.arsenal,wasTop=L.topple;if(!wasOn)SG.setProto('arsenal',true,false);var out;
+  try{L.topple=false;ARS_N=o.shots||0;ARS_NS=o.seeds||0;out=labSandbox(function(){var f=ARS_FAMS.concat(ARS_EXTRA).filter(function(q){return q.id===famId;})[0];return arsCell(f,campId,LAB_SEED);});}finally{SG.gusts=[];ARS_N=ARS_NS=0;L.topple=wasTop;if(!wasOn)SG.setProto('arsenal',false,false);}
+  return out;};
 SG.labMatrix=function(o){var L=SG.lab;if(!L)return null;o=o||{};var wasOn=!!LAB_FLAGS.arsenal,wasTop=L.topple;if(!wasOn)SG.setProto('arsenal',true,false);
-  var res;try{L.topple=false;res=labSandbox(function(){var out={shots:ARS_SHOTS,seeds:ARS_SEEDS,seed:LAB_SEED,scale:SG.pieceSize,camps:ARS_CAMPS.map(function(c){return {id:c[0],name:c[1]};}),prices:{},weapons:[],score:ARS_SCORE,stock:ARS_STOCK.map(function(t){return {id:t,name:labTargetName(t)};})};
+  var res;try{L.topple=false;ARS_N=o.shots||0;ARS_NS=o.seeds||0;res=labSandbox(function(){var out={shots:ARS_N||ARS_SHOTS,seeds:ARS_NS||ARS_SEEDS,seed:LAB_SEED,scale:SG.pieceSize,camps:ARS_CAMPS.map(function(c){return {id:c[0],name:c[1]};}),prices:{},weapons:[],score:ARS_SCORE,stock:ARS_STOCK.map(function(t){return {id:t,name:labTargetName(t)};})};
     ARS_CAMPS.forEach(function(c){var recs=arsCamp(c[0],1),k=0;recs.forEach(function(r){if(ARS.counters.indexOf(r.kind)>=0)k+=(C2.cost[r.kind]==null?1:C2.cost[r.kind]);});out.prices[c[0]]=k;});
     (o.fams||ARS_FAMS.concat(ARS_EXTRA)).forEach(function(fam){var A=AMMO[fam.ammo],row={id:fam.id,name:fam.name,ammo:fam.ammo,price:wPrice(A.w),cells:{},stock:{}};
       ARS_CAMPS.forEach(function(c){row.cells[c[0]]=arsCell(fam,c[0],LAB_SEED);});
@@ -1948,11 +1955,11 @@ SG.labMatrix=function(o){var L=SG.lab;if(!L)return null;o=o||{};var wasOn=!!LAB_
       var nm=function(id){return ARS_CAMPS.filter(function(c){return c[0]===id;})[0][1];};
       row.verdict=(list.length?'countered by '+list.map(function(id){return nm(id)+' ('+row.reduction[id]+'% less)';}).join(', '):'no single counter cuts it by '+ARS_COUNTERED+'%'+(best?' (best: '+nm(best)+', '+row.reduction[best]+'%)':''))+(sb?'; strong vs '+labTargetName(sb)+' ('+row.stock[sb].score+' points)':'')+(B<=0?' [does nothing to the bare camp]':'');
       out.weapons.push(row);});
-    return out;});}finally{L.topple=wasTop;if(!wasOn)SG.setProto('arsenal',false,false);}
+    return out;});}finally{SG.gusts=[];ARS_N=ARS_NS=0;L.topple=wasTop;if(!wasOn)SG.setProto('arsenal',false,false);}
   return res;};
 
 /* ---- the Arsenal panel, the matrix table, the report text, the drawing, the screenshots ---- */
-var ARS_INFO={awning:'Stops a lob from above (the blast keeps 35%). Wears: 3 panels.',shield:'Stops a flat shot (the blast keeps 20%). Wears: 4 planks.',ditch:'Swallows a roller, one lane at a time (3 lanes).',logs:'Stops a roller; also a flat shot (35%). 3 logs.',net:'Catches beads and a hook, one strip per 8 caught (3 strips).',cutter:'Cuts a hook string that passes near it; the blade comes off (2).',brace:'Holds a wall or Keep against a strong thump (the kit brace).',heavy:'Does not move. Shelters near it from a gust.',lowwall:'Knee high: shelters a little from a gust, and a roller hops it.'};
+var ARS_INFO={awning:'Stops a lob from above (the blast keeps 25%). Wears: a panel for every 1.6 Marbles it takes (3 panels).',shield:'Stops a flat shot (the blast keeps 20%). Wears: 4 planks.',ditch:'Swallows rollers: 4 to a lane, 3 lanes, then a lane is filled in.',logs:'Stops a roller (a log comes off every 2nd one, 3 logs); also stops a flat shot (35%).',net:'Catches beads and a hook, one strip per 10 caught (3 strips).',cutter:'Cuts a hook string that passes near it; the blade comes off (2).',brace:'Holds a wall or Keep against a strong thump (the kit brace).',heavy:'Does not move. Shelters near it from a gust.',lowwall:'Knee high: shelters a little from a gust, and a roller hops it.'};
 var ARS_FOR={lobber:['awning'],flinger:['shield','logs'],roller:['ditch','logs'],popper:['net'],hook:['cutter','net'],thumper:['brace'],fan:['heavy','lowwall']};
 SG.arsFor=ARS_FOR;SG.arsFams=ARS_FAMS;SG.arsExtra=ARS_EXTRA;SG.arsCamps=ARS_CAMPS;SG.arsStock=ARS_STOCK;
 function arsUi(){if(!hasDom||!SG.lab||!E('labArs'))return;var L=SG.lab,on=!!LAB_FLAGS.arsenal,h='<div class="lnote">Seven families of weapon, and the cheap pieces that counter them. Switch the weapons on, load a test camp from Target camp ("Arsenal: ..."), and press Counter matrix to fire every weapon at every camp.</div>'+
