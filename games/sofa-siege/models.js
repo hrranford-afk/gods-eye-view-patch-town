@@ -767,6 +767,61 @@ BUILD.stall=function(K,team,T,v){
   for(var i=0;i<3;i++)(function(i){P('crate.'+i,0,i?['crate.'+(i-1)]:[],function(b){b.box(.1,.1,.1,jit(b,T.wood,.08),'wood',[.31+(i%2)*.01,.05+i*.1,-.03-(i%2)*.012],[0,.15*i,0]);b.box(.104,.014,.104,T.woodD,'woodh',[.31,.07+i*.1,-.03]);b.box(.014,.1,.104,T.woodD,'woodh',[.31,.05+i*.1,-.03]);});})(i);
   };
 
+/* ---------- ARSENAL counter pieces (Lab only; the Arsenal section of game.js has the rules) ----------
+   Eight cheap pieces, each made to blunt one kind of weapon. They use the Building Yard's part table (stage, need, min), so each has a real support rule:
+   a roof stands on its posts, a shield board on its legs, a net on its poles. Take the support and what hung on it falls. A brace piece (the "extra brace" against the Thumper) is the old kit brace. */
+SS.COUNTERS=['awning','shield','ditch','logs','net','cutter','heavy','lowwall'];
+SS.BUILDINGS=SS.BUILDINGS.concat(SS.COUNTERS);SS.PIECES=SS.PIECES.concat(SS.COUNTERS);
+function ctr(K,k){K.meta={bigLegs:1};return function(id,stg,need,fn,o){bp(K,k+'.'+id,stg,need.map(function(q){return k+'.'+q;}),fn,o);};}
+/* Roof / awning: four posts, two beams, three cloth panels. Stops a lobbed arc from above. */
+BUILD.awning=function(K,team,T,v){var P=ctr(K,'awning'),ac=[T.main,T.cloth],i;
+  [['FL',-1,1],['FR',1,1],['BL',-1,-1],['BR',1,-1]].forEach(function(q){P('post.'+q[0],2,[],function(b){b.box(.04,.95,.04,T.woodD,'wood',[q[1]*.3,.475,q[2]*.1]);b.box(.07,.025,.07,T.woodD,'woodh',[q[1]*.3,.012,q[2]*.1]);b.rod([q[1]*.3,.1,q[2]*.1+q[2]*.1],[q[1]*.3,.5,q[2]*.1],.014,T.wood2,'wood',5);},{leg:true});});
+  P('beam.F',2,['post.FL','post.FR'],function(b){b.box(.66,.035,.04,T.woodD,'woodh',[0,.86,.1]);});
+  P('beam.B',2,['post.BL','post.BR'],function(b){b.box(.66,.035,.04,T.woodD,'woodh',[0,.96,-.1]);});
+  for(i=0;i<3;i++)(function(i){P('cloth.'+i,1,['beam.F','beam.B'],function(b){var x=-.22+i*.22;b.box(.21,.014,.27,ac[(i+v)%2],'cloth',[x,.91,0],[.35,0,0]);b.box(.21,.03,.012,shade(ac[(i+v)%2],.85),'cloth',[x,.85,.125]);},{min:1});})(i);
+};
+/* Shield board: a thick board of four planks on two legs. Stops a flat shot. */
+BUILD.shield=function(K,team,T,v){var P=ctr(K,'shield'),i;
+  [['L',-1],['R',1]].forEach(function(q){P('leg.'+q[0],2,[],function(b){b.box(.05,.5,.05,T.woodD,'wood',[q[1]*.31,.25,0]);b.box(.05,.04,.22,T.woodD,'woodh',[q[1]*.31,.02,0]);b.rod([q[1]*.31,.03,.1],[q[1]*.31,.3,.02],.016,T.wood2,'wood',5);b.rod([q[1]*.31,.03,-.1],[q[1]*.31,.3,-.02],.016,T.wood2,'wood',5);},{leg:true});});
+  for(i=0;i<4;i++)(function(i){P('plank.'+i,1,['leg.L','leg.R'],function(b){var x=-.234+i*.156;b.box(.15,.46,.09,jit(b,i%2?T.wood:T.wood2,.07),'wood',[x,.26,0]);b.box(.15,.05,.095,T.main,'paint',[x,.44,0]);b.box(.012,.012,.1,0x6a6460,null,[x,.33,0]);},{min:1});})(i);
+};
+/* Ditch: a trench across the way, three lanes, a plank rim on each side. Stops a roller. */
+BUILD.ditch=function(K,team,T,v){var P=ctr(K,'ditch'),i;
+  P('rim.F',2,[],function(b){b.box(1.0,.03,.035,T.woodD,'woodh',[0,.015,.13]);for(var j=0;j<3;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.42+j*.42,.025,.13]);});
+  P('rim.B',2,[],function(b){b.box(1.0,.03,.035,T.woodD,'woodh',[0,.015,-.13]);for(var j=0;j<3;j++)b.box(.04,.05,.05,T.woodD,'wood',[-.42+j*.42,.025,-.13]);});
+  for(i=0;i<3;i++)(function(i){P('pit.'+i,1,['rim.F','rim.B'],function(b){var x=-.325+i*.325;b.box(.31,.014,.22,0x3a2a1c,null,[x,.008,0]);b.box(.24,.016,.15,0x1e140c,null,[x,.009,0]);b.box(.05,.02,.04,0x6c6458,null,[x+.07,.012,.04]);b.box(.04,.016,.04,0x6c6458,null,[x-.08,.012,-.05]);},{min:1});})(i);
+};
+/* Log barrier: three logs lying across the way, held by a stake at each end. Stops a roller. */
+BUILD.logs=function(K,team,T,v){var P=ctr(K,'logs');
+  [['L',-1],['R',1]].forEach(function(q){P('peg.'+q[0],2,[],function(b){b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.45,.15,.06]);b.cyl(.035,.04,.3,6,T.woodD,'wood',[q[1]*.45,.15,-.06]);},{leg:true});});
+  [['0',.065],['1',-.065]].forEach(function(q){P('log.'+q[0],1,['peg.L','peg.R'],function(b){b.cyl(.065,.065,.9,9,jit(b,T.wood2,.08),'wood',[0,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.45,.066,q[1]],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.45,.066,q[1]],[0,0,PI/2]);},{min:1});});
+  P('log.2',1,['log.0','log.1'],function(b){b.cyl(.065,.065,.86,9,jit(b,T.wood,.08),'wood',[0,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[.43,.19,0],[0,0,PI/2]);b.cyl(.045,.045,.01,9,T.woodD,null,[-.43,.19,0],[0,0,PI/2]);},{min:1});
+};
+/* Net: four poles and a rope net stretched across the top. Catches a tether and a cloud of beads. */
+BUILD.net=function(K,team,T,v){var P=ctr(K,'net'),i;
+  [['FL',-1,1],['FR',1,1],['BL',-1,-1],['BR',1,-1]].forEach(function(q){P('pole.'+q[0],2,[],function(b){b.cyl(.022,.028,.95,6,T.woodD,'wood',[q[1]*.31,.475,q[2]*.1]);b.sph(.03,6,5,T.rope,null,[q[1]*.31,.96,q[2]*.1]);},{leg:true});});
+  P('rope.F',2,['pole.FL','pole.FR'],function(b){b.box(.66,.016,.016,T.rope,null,[0,.86,.1]);});
+  P('rope.B',2,['pole.BL','pole.BR'],function(b){b.box(.66,.016,.016,T.rope,null,[0,.95,-.1]);});
+  for(i=0;i<3;i++)(function(i){P('mesh.'+i,1,['rope.F','rope.B'],function(b){var x=-.22+i*.22,j;b.push([x,.9,0],[.33,0,0]);for(j=0;j<5;j++)b.box(.012,.008,.2,T.rope,null,[-.1+j*.05,0,0]);for(j=0;j<5;j++)b.box(.22,.008,.012,T.rope,null,[0,0,-.09+j*.045]);b.pop();},{min:1});})(i);
+};
+/* Cutter post: a pole with a swivel arm and two tin blades. A tether string that runs past it is cut. */
+BUILD.cutter=function(K,team,T,v){var P=ctr(K,'cutter');
+  P('post',2,[],function(b){b.cyl(.09,.1,.03,8,T.woodD,'wood',[0,.015,0]);b.box(.045,.52,.045,T.woodD,'wood',[0,.28,0]);},{leg:true});
+  P('arm',1,['post'],function(b){b.box(.34,.03,.04,T.wood2,'wood',[0,.5,0]);b.sph(.035,6,5,TIN,'rust',[0,.5,0]);});
+  [['0',-1],['1',1]].forEach(function(q){P('blade.'+q[0],0,['arm'],function(b){b.prism(.1,.12,.012,TIN,'rust',[q[1]*.17,.4,0],[0,0,q[1]*PI/2+PI]);b.box(.05,.02,.02,T.main,'paint',[q[1]*.13,.5,0]);});});
+};
+/* Heavy block: a lump of tin-bound stone that does not move, and shelters what is near it from a gust. */
+BUILD.heavy=function(K,team,T,v){var P=ctr(K,'heavy');
+  P('block',2,[],function(b){b.box(.4,.26,.4,TIN,'rust',[0,.13,0]);b.box(.42,.03,.42,shade(TIN,.8),'rust',[0,.03,0]);b.box(.42,.03,.42,shade(TIN,.8),'rust',[0,.2,0]);},{leg:true});
+  P('cap',1,['block'],function(b){b.box(.34,.04,.34,T.main,'paint',[0,.28,0]);});
+  P('ring',0,['cap'],function(b){b.tor(.06,.014,T.rope,null,[0,.33,0],[PI/2,0,0],null,null,10);});
+};
+/* Low wall: a knee-high wall of four blocks on a sill. Too short for a gust to get over, too short to stop a lob. */
+BUILD.lowwall=function(K,team,T,v){var P=ctr(K,'lowwall'),i;
+  P('base',2,[],function(b){b.box(.7,.03,.11,T.woodD,'woodh',[0,.015,0]);},{leg:true});
+  for(i=0;i<4;i++)(function(i){P('brick.'+i,1,['base'],function(b){b.box(.165,.1,.09,jit(b,i%2?T.wood:T.wood2,.08),'wood',[-.2475+i*.165,.08,0]);b.box(.165,.012,.095,T.main,'paint',[-.2475+i*.165,.134,0]);},{min:1});})(i);
+};
+
 /* the part table of a building, for game.js: {parts: {id: {stg, need, min, dly, leg}}, bigLegs}. null for any other kind. */
 SS.bldInfo=function(kind){if(SS.BUILDINGS.indexOf(kind)<0)return null;var key=kind+'|blue|0';if(!_kits[key])SS.piece(kind,'blue',{variant:0});var K=_kits[key];return {parts:K.bd,bigLegs:K.meta?K.meta.bigLegs:2};};
 
