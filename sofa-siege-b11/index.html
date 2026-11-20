@@ -1,0 +1,107 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Round Table Kingdom</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;}body{background:#2a1c12;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff3df;-webkit-user-select:none;user-select:none}
+canvas{display:block;touch-action:none}
+.pill{background:rgba(58,40,26,.88);color:#fff3df;border-radius:18px;padding:8px 16px;font-weight:700;font-size:17px}
+#hud{position:fixed;left:0;right:0;top:12px;display:none;justify-content:center;align-items:flex-start;gap:10px;flex-wrap:wrap;pointer-events:none}
+.meter{min-width:150px}.meter .m{height:13px;border-radius:8px;background:rgba(255,255,255,.22);overflow:hidden;margin-top:5px}.meter i{display:block;height:100%;width:0}
+.bar{position:fixed;left:0;right:0;bottom:14px;display:none;justify-content:center;gap:10px;flex-wrap:wrap}
+.btn{background:rgba(58,40,26,.9);color:#fff3df;border:2px solid rgba(255,243,223,.5);border-radius:14px;padding:11px 18px;font-weight:700;font-size:17px;cursor:pointer;font-family:inherit}
+.btn.on,.btn.go{background:#e8842c;border-color:#ffd9a8}
+#say{position:fixed;left:50%;top:86px;transform:translateX(-50%);background:#fff8ea;color:#3a281a;border-radius:12px;padding:7px 14px;font-weight:700;font-size:16px;border:2px solid #3a281a;display:none;pointer-events:none;white-space:nowrap}
+#say.bad{background:#ffe1d6;border-color:#b3261e;color:#7a1a12}
+.cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(30,18,10,.55)}
+.card{background:rgba(58,40,26,.95);border:3px solid #ffd9a8;border-radius:24px;padding:24px 32px;text-align:center;max-width:86vw}
+.card h1{margin:0 0 6px;font-size:40px;letter-spacing:.5px}.card p{margin:6px 0 14px;font-size:16px;opacity:.9}
+.row{display:flex;gap:10px;justify-content:center;margin:10px 0;flex-wrap:wrap}
+#tag{position:fixed;left:12px;bottom:12px;font-size:12px;opacity:.75;pointer-events:none}
+#ui{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none}#ui .btn,#ui input{pointer-events:auto}.cover{pointer-events:auto}.bar{pointer-events:none}
+body.ar{background:transparent}body.ar #ui{pointer-events:auto;touch-action:none}body.ar #tag,body.ar #bCam{display:none!important}
+#arbar{display:none;align-items:center}
+body.sceneui .bar,body.sceneui #side,body.sceneui #say{display:none!important}
+#dev{position:fixed;left:8px;top:72px;font:12px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.6);color:#d8ffd0;padding:3px 7px;border-radius:6px;display:none;pointer-events:none;white-space:pre}
+#bCam{position:fixed;right:12px;top:12px;display:none;font-size:14px;padding:8px 12px}
+#side{position:fixed;left:8px;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:8px}#side .btn{font-size:18px;padding:8px 10px}#bPause2{display:none}
+.pp{position:fixed;left:0;right:0;bottom:0;height:70px;display:none;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;box-sizing:border-box;pointer-events:none}
+.pp.flip{bottom:auto;top:0;transform:rotate(180deg)}
+.pp.left{left:0;top:0;bottom:auto;right:auto;width:100vh;transform-origin:top left;transform:translateX(70px) rotate(90deg)}
+.pp.right{left:100vw;top:100vh;bottom:auto;right:auto;width:100vh;transform-origin:top left;transform:translateX(-70px) rotate(-90deg)}
+.pp .meter{min-width:210px;font-size:15px}.pp .pbtns{display:flex;gap:6px;pointer-events:auto}.pp .btn{font-size:16px;padding:10px 13px;touch-action:none}
+.pp .psay{flex:1;text-align:center;background:#fff8ea;color:#3a281a;border:2px solid #3a281a;border-radius:12px;padding:6px 10px;font-weight:700;font-size:15px;max-width:38vw;margin:0 auto}
+.pp .psay.bad{background:#ffe1d6;border-color:#b3261e;color:#7a1a12}
+.pp .pbig{position:absolute;left:50%;bottom:24vh;transform:translateX(-50%);font-size:110px;font-weight:800;color:#fff3df;text-shadow:0 5px 0 #3a281a,0 0 24px rgba(0,0,0,.5);display:none}
+.pp .pcard{position:absolute;left:50%;bottom:17vh;transform:translateX(-50%);background:rgba(58,40,26,.95);border:3px solid #ffd9a8;border-radius:20px;padding:12px 26px;text-align:center;display:none;pointer-events:auto;white-space:nowrap}
+.pp .pcard h2{margin:0 0 4px;font-size:30px}.pp .pcard p{margin:0 0 8px;font-size:15px}
+#big{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:150px;font-weight:800;color:#fff3df;text-shadow:0 6px 0 #3a281a,0 0 30px rgba(0,0,0,.5);display:none;pointer-events:none}
+#pops{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.pop{position:absolute;transform:translate(-50%,-100%);background:#fff8ea;color:#7a1a12;border:2px solid #7a1a12;border-radius:10px;padding:2px 8px;font-weight:800;font-size:14px;white-space:nowrap}
+.pop.icon{background:#fff8ea;border-color:#3a281a;font-size:20px;padding:1px 6px}
+.pop.cost{background:#3a281a;color:#ffd9a8;border-color:#ffd9a8;font-size:12px;padding:0 6px}.pop.cost.dear{opacity:.45}
+.pop.crash{font-size:26px;padding:4px 14px;background:#ffe15a;color:#7a1a12;border-width:3px;transform:translate(-50%,-100%) rotate(-6deg)}
+.pop.good{color:#1f5a26;border-color:#1f5a26;background:#eaffe4}.pop.ask{color:#3a281a;border-color:#3a281a;border-radius:50%;font-size:18px;padding:1px 9px}
+.btn.ammo{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:6px 11px;min-width:92px;line-height:1.15}.btn.ammo .ai{font-size:22px}.btn.ammo .an{font-size:14px}.btn.ammo .ac{font-size:12px;opacity:.9}.btn.ammo.wait{opacity:.6}.btn.ammo.none{opacity:.4}
+#arow{bottom:78px;align-items:stretch}
+.pp .pammo{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);display:none;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:center;width:98%}.pp .pammo .btn.ammo{min-width:74px;padding:4px 7px;touch-action:none}.pp .pammo .btn.ammo .ai{font-size:18px}.pp .pammo .btn.ammo .an{font-size:12px}.pp .pammo .btn.ammo .ac{font-size:11px}
+.pop.lobtag{background:#3a281a;color:#ffd9a8;border-color:#ffd9a8;font-size:13px}.pop.lobtag.sel{background:#ffd23a;color:#3a281a;border-color:#3a281a;font-size:15px}
+
+/* the Lab (shooting range): big touch targets for the iPad */
+#lab{position:fixed;inset:0;pointer-events:none;display:none}
+.labp{pointer-events:auto}
+#labTop{position:fixed;left:10px;top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 190px)}
+.btn.lb{min-height:50px;font-size:17px;padding:10px 16px;touch-action:manipulation}
+.btn.lb.big{min-height:62px;font-size:20px}
+.btn.lb.ammo{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:5px 10px;min-width:92px;line-height:1.15}.btn.lb.ammo .ai{font-size:22px}.btn.lb.ammo .an{font-size:14px}.btn.lb.ammo .ac{font-size:12px;opacity:.9}
+#labReadCard{position:fixed;left:10px;top:72px;width:292px;max-height:calc(100vh - 330px);overflow-y:auto;background:rgba(40,27,17,.93);border:2px solid rgba(255,243,223,.4);border-radius:16px;padding:6px 10px;box-sizing:border-box;touch-action:pan-y}#labReadCard>.btn{width:100%;min-height:44px}
+#labPanel{position:fixed;right:10px;top:62px;bottom:150px;width:316px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(40,27,17,.93);border:2px solid rgba(255,243,223,.4);border-radius:16px;padding:8px 10px;box-sizing:border-box;touch-action:pan-y}
+#labPanel summary{font-weight:800;font-size:18px;padding:12px 4px;cursor:pointer}#labPanel details{border-bottom:1px solid rgba(255,243,223,.2)}
+.lgrid{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 10px}.lgrid .btn{flex:1 1 130px}
+.lgrid select{flex:1 1 100%;min-height:50px;font-size:17px;padding:8px 10px;border-radius:12px;border:2px solid rgba(255,243,223,.5);background:#fff8ea;color:#3a281a;pointer-events:auto;box-sizing:border-box}
+.lgrid input{flex:1 1 100%;font-size:17px;padding:11px;border-radius:12px;border:2px solid rgba(255,243,223,.5);background:#fff8ea;color:#3a281a;-webkit-user-select:text;user-select:text;box-sizing:border-box;pointer-events:auto}
+.wrow{margin:2px 0 6px}.wrow label{display:flex;justify-content:space-between;font-size:14px;margin:0 2px 0}.wrow input[type=range]{width:100%;height:30px;margin:0;touch-action:pan-y;pointer-events:auto}.wh{margin:10px 0 2px;font-size:15px;color:#ffd9a8}
+#labCarn{position:fixed;left:648px;top:16px;display:flex;flex-direction:column;gap:3px;background:rgba(40,27,17,.9);border:2px solid rgba(255,243,223,.4);border-radius:14px;padding:5px 14px;font-size:14px;white-space:nowrap;pointer-events:none}#labCarn .cr{display:flex;gap:11px}#labCarn .stg{font-size:13px;color:#ffd9a8}#labCarn b{color:#ffd23a}#labCarn .cs{color:#ffd9a8}@media (max-width:1180px){#labCarn{left:50%;top:104px;transform:translateX(-50%)}}
+.verdict{font-size:20px;font-weight:800;margin:6px 0 8px;color:#bff0b6}.verdict.bad{color:#ff9a8a}
+.lnote{font-size:13px;opacity:.85;margin:4px 0 8px;line-height:1.35}.lrow{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:15px}.lrow span{flex:1}
+#labBar{position:fixed;left:8px;right:8px;bottom:10px;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
+.labrow{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:100%}.labrow .btn,.labrow .lnote{pointer-events:auto}.lsep{width:10px}
+.lt{border-collapse:collapse;width:100%;font-size:13px;margin:2px 0 8px}.lt td,.lt th{padding:3px 5px;border-bottom:1px solid rgba(255,243,223,.15);text-align:left}.lt td:last-child{text-align:right}.lt.wide td:last-child{text-align:left}
+#labRead h4{margin:8px 0 2px;font-size:15px;color:#ffd9a8}.ls{margin:4px 0;padding-left:18px;font-size:14px}.ls li.ok{color:#bff0b6}.ls li.crit{color:#ff9a8a;font-weight:800}.ls li.gone{color:#aaa;text-decoration:line-through}
+.labcover{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(30,18,10,.55);pointer-events:auto;overflow:auto}.labcover .card{max-width:min(92vw,720px);max-height:88vh;overflow:auto;text-align:left}.labcover .card h2{margin:0 0 8px}.labcover ul{padding-left:20px;font-size:16px;line-height:1.5}
+#labJsonText{width:min(80vw,600px);height:38vh;font:12px ui-monospace,Menlo,monospace;-webkit-user-select:text;user-select:text;pointer-events:auto}
+@media (max-width:760px){#labPanel{width:calc(100vw - 20px);top:120px;bottom:190px}#labTop{max-width:calc(100vw - 20px)}}
+@media (max-width:700px){.pill{font-size:14px;padding:6px 11px}.btn{font-size:15px;padding:9px 13px}.meter{min-width:110px}}
+</style></head><body>
+<div id="ui">
+<div id="hud"><div class="pill meter" id="mA" style="display:none"><span></span><div class="m"><i></i></div></div><div class="pill" id="hTeam"></div><div class="pill" id="hTime">2:00</div><div class="pill" id="hCount"></div><div class="pill meter" id="mB" style="display:none"><span></span><div class="m"><i></i></div></div></div>
+<div id="pops"></div><div id="say"></div><div id="big"></div><button class="btn" id="bCam">🎥 Whole table</button><div id="side"><button class="btn" id="bMute">🔊</button><button class="btn" id="bPause2">⏸</button><button class="btn" id="bTilt" style="display:none;font-size:13px">📐 0°</button><button class="btn" id="bReplace" style="display:none;font-size:13px">📍 Re-place table</button><button class="btn" id="bExit" style="display:none;font-size:13px">✖ Exit AR</button><button class="btn" id="bLog" style="display:none;font-size:13px">📋 Copy AR log</button></div>
+<div class="bar" id="bar"><button class="btn" id="bL">⟲ Turn</button><button class="btn" id="bR">Turn ⟳</button><button class="btn" id="bUndo">Undo</button><button class="btn go" id="bDone">Done</button></div>
+<div class="bar" id="fbar"><button class="btn on" id="b_squad">👉 Send squad</button><button class="btn" id="b_lobber">🔮 Lobber</button><button class="btn" id="b_mend">🔨 Mend</button><button class="btn" id="bPause">⏸ Pause</button></div>
+<div class="bar" id="nrow" style="bottom:70px"><button class="btn" id="n0">0</button><button class="btn" id="n1">1</button><button class="btn" id="n2">2</button><button class="btn" id="n3">3</button><button class="btn" id="n4">4</button><button class="btn" id="n5">5</button></div>
+<div class="bar" id="fbar2"><button class="btn" id="o_hill">🚩 Hill</button><button class="btn" id="o_raid">⚔️ Raid</button><button class="btn" id="o_guard">🛡 Guard</button><button class="btn" id="o_mend">🔨 Mend</button><button class="btn" id="b2_lobber">🔮 Lobber</button><button class="btn" id="bPauseB">⏸</button></div>
+<div class="bar" id="arow"><button class="btn" id="b_lsel">Lobber 1 / 2</button><button class="btn" id="b_high">⤴ High lob</button></div>
+<div class="cover" id="start"><div class="card"><h1>Round Table Kingdom</h1><p id="subTitle">Practice table</p>
+  <div class="row"><button class="btn on" id="m_solo">1 player (against a robot)</button><button class="btn" id="m_table">2 players (iPad flat between you)</button></div>
+  <div class="row"><button class="btn" id="m_lab">🎯 Shooting range (sandbox)</button></div>
+  <div id="soloOpts"><div class="row"><button class="btn on" id="tBlue">🪶 Blue</button><button class="btn" id="tRed">⚙️ Red</button></div>
+  <div class="row"><button class="btn on" id="l_easy">Easy</button><button class="btn" id="l_normal">Normal</button><button class="btn" id="l_hard">Hard</button></div></div>
+  <div class="row" id="zRow" style="font-size:14px;align-items:center">Pieces: <button class="btn on" id="z_small" style="font-size:14px;padding:6px 10px">small</button><button class="btn" id="z_medium" style="font-size:14px;padding:6px 10px">medium</button><button class="btn" id="z_large" style="font-size:14px;padding:6px 10px">large</button></div>
+  <div class="row" id="designRow" style="display:none;font-size:14px;align-items:center">My camp in a match: <select id="designSel" style="font-size:15px;padding:6px;border-radius:10px;background:#3a281a;color:#fff3df;border:2px solid rgba(255,243,223,.5)"><option value="">Build it myself</option></select></div>
+  <div class="row"><button class="btn" id="bCards" style="display:none">🃏 Use my card layout</button></div>
+  <p id="layoutNote" style="display:none;color:#ffd9a8"></p>
+  <p id="tableNote" style="display:none">Lay the iPad flat. Blue sits at this edge, red at the far edge.<br>Each of you has your own buttons.</p>
+  <p>Build your camp, then hold the hill in the middle.<br>Tap a piece on the mat, then tap the table.</p><div class="row"><button class="btn go" id="bPlay" style="font-size:22px;padding:13px 40px">Play</button><button class="btn go" id="bAR" style="display:none;font-size:18px">📱 Play on my table (AR)</button></div><p id="arNote" style="display:none;font-size:13px;opacity:.8;margin:4px 0 0"></p></div></div>
+<div class="cover" id="end" style="display:none;background:none;align-items:flex-start;padding-top:120px;pointer-events:none"><div class="card" style="padding:14px 30px"><h1 style="font-size:34px">Camp ready</h1><p id="endText" style="margin-bottom:10px"></p><button class="btn go" id="bStart" style="pointer-events:auto;font-size:20px">Start battle</button></div></div>
+<div class="cover" id="win" style="display:none;background:none;align-items:flex-start;padding-top:110px;pointer-events:none"><div class="card" style="pointer-events:auto;padding:16px 32px"><h1 style="font-size:38px" id="winTitle"></h1><p id="winText" style="margin-bottom:10px"></p><button class="btn go" id="bAgain">Play again</button></div></div>
+<div id="tag">Practice table</div>
+<div class="bar" id="arbar" style="bottom:14px"><div class="pill" id="arText" style="font-size:15px">Find your table</div>
+  <button class="btn" id="arL">⟲</button><button class="btn" id="arR">⟳</button>
+  <label class="pill" style="font-size:14px;pointer-events:auto">Size <input type="range" id="arSize" min="60" max="140" step="5" value="100" style="width:120px;vertical-align:middle"> <span id="arSizeText">100 cm</span></label>
+  <button class="btn go" id="arLock">Lock table</button><button class="btn" id="arLeave">Leave AR</button></div>
+<div class="cover" id="arAsk" style="display:none;background:none;pointer-events:none"><div class="card" style="padding:14px 24px;pointer-events:auto"><p style="margin:0 0 10px">You have a card layout saved.</p><div class="row"><button class="btn go" id="arCards">🃏 Use my card layout</button><button class="btn" id="arPlain">Usual table</button></div></div></div>
+<div class="cover" id="arJump" style="display:none;background:none;pointer-events:none"><div class="card" style="padding:14px 24px;pointer-events:auto"><p style="margin:0 0 10px">The view jumped. Is the table still in place?</p><div class="row"><button class="btn go" id="jFine">Table is fine</button><button class="btn" id="jReplace">📍 Re-place table</button></div></div></div>
+<textarea id="logText" readonly style="display:none;position:fixed;left:10%;top:15%;width:80%;height:55%;font:12px ui-monospace,Menlo,monospace;pointer-events:auto;-webkit-user-select:text;user-select:text;z-index:60"></textarea>
+<div id="dev"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="models.js"></script>
+<script src="game.js"></script>
+</body></html>
