@@ -24,3 +24,26 @@ E. Bait and range holes (5, 6) last.
 - Do posts need a crew mouse (yes, this plan) or run alone?
 - Should traps be visible to the raider (a fair puzzle) or hidden (a surprise)?
 - One-use traps that you reset, or permanent?
+
+## Addendum (20 Nov, Harry): economy and more weapon families
+Harry: an economy that makes the weapons and keeps them firing; more styles of weapon so the different defences matter.
+
+### Economy (small, one loop)
+- One currency: **acorns**. Earned from the hill, from mice working in a **Workshop** piece (slow trickle), and from raid stars later.
+- Spend: build pieces, buy ammo, restock, oil and mend (upkeep from idea 2), unlock a weapon family for the match.
+- A **Stockpile** crate holds your acorns. If it falls, you lose some. So where you put it is a defence choice.
+- Mice are the workforce: gunner, mender, carrier, workshop hand. One mouse, one job at a time.
+
+### Weapon families, each with a counter (this is what makes defences matter)
+| Weapon | How it hits | Best counter |
+| Lobber (have) | high arc over walls | roofs, awnings |
+| Flat flinger | straight, low, fast | thick walls, shield boards |
+| Roller / acorn drum (Lab) | rolls along the ground | ditch, ramp, spike-free log barrier |
+| Scatter popper (beads, Lab) | wide cloud, slows mice | net, covered paths |
+| Tether (Lab) | hooks and yanks a part | cutter post, net |
+| Thumper / quake (Lab) | shakes loose pieces | extra fasteners, braces |
+| Fan / gust | pushes shots and mice sideways | heavy pieces, low walls |
+Rule: every weapon has one cheap counter and one thing it is great against, so no single layout beats everything.
+
+### Order
+After auto-defences and upkeep: economy v0 (acorns, Workshop, Stockpile), then promote Flat flinger and Roller to match use, then the counters (roofs, ditch, net). Prove the balance with the bots before Harry plays it.
