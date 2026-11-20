@@ -864,6 +864,8 @@ var SOUNDS={
   tap:function(){noise(.05,.5,0,1900);tone(190,.07,'triangle',.25,0,120);},                                   /* hammer */
   knock:function(){tone(520,.07,'square',.16,0,300);tone(360,.1,'square',.14,.06,200);noise(.09,.35,0,800);},   /* a plank comes off */
   twang:function(){tone(170,.34,'sawtooth',.2,0,70);tone(340,.22,'triangle',.12,0,150);},                       /* the lobber lets go */
+  snap:function(){noise(.05,.5,0,2600);tone(620,.09,'triangle',.22,0,240);tone(210,.2,'sawtooth',.14,.02,90);},   /* the band lets go */
+  tick:function(){tone(1100,.05,'square',.08,0);},warn:function(){tone(260,.08,'sawtooth',.12,0);},   /* the meter enters the sweet band; over-pull */
   thud:function(){tone(120,.2,'sine',.5,0,45);noise(.07,.3,0,300);},                                           /* a marble lands */
   twinkle:function(){[1320,1760,1480,1980].forEach(function(f,i){tone(f,.12,'sine',.13,i*.07);});},             /* dizzy */
   hill:function(){tone(523,.16,'triangle',.22,0);tone(784,.3,'triangle',.22,.13);},                             /* the hill changes hands */
@@ -1013,7 +1015,7 @@ function ui(){if(!hasDom||!E('start'))return;var ph=SG.phase,fight=ph==='fight'|
     var inL=me.tool==='lobber'&&!me.pick&&!table&&ph!=='fall',nL=lobbersOf(0).length;E('arow').style.display=inL?'flex':'none';
     AMMO_ORDER.forEach(function(a){var b=E('a_'+a);if(!b)return;b.className='btn ammo'+(me.ammo===a?' on':'')+(ammoReady(me,a)?'':(AMMO[a].store?' none':' wait'));b.querySelector('.ac').textContent=ammoCount(me,a);b.title=ammoLabel(me,a);});
     E('b_lsel').style.display=nL>1?'inline-block':'none';E('b_lsel').textContent='Lobber '+((me.lsel||0)+1)+' / '+nL;E('b_lsel').className='btn on';
-    E('b_high').className='btn'+(me.high&&!AMMO[me.ammo].w.flat?' on':'');E('b_high').disabled=!!AMMO[me.ammo].w.flat;
+    E('b_easy').className='btn'+(SG.easyAim?' on':'');E('b_easy').textContent=SG.easyAim?'Easy aim: on':'Easy aim: off';E('b_high').className='btn'+(me.high&&!AMMO[me.ammo].w.flat?' on':'');E('b_high').disabled=!!AMMO[me.ammo].w.flat;
     E('arow').style.bottom=(E('fbar2').offsetHeight+22)+'px';E('bPauseB').textContent=SG.paused?'▶ Go on':'⏸';}
   else{E('nrow').style.display='none';E('arow').style.display='none';}E('bCam').textContent='🎥 '+CAMNAME[SG.cam];E('bMute').textContent=SG.muted?'🔇':'🔊';lastHud='';if(SG.mode==='lab'&&ph!=='start')labUi();else if(ph==='start')labUiHide();}
 /* what to tell a player about why the chosen lobber cannot fire yet (or how to fire it) */
@@ -1059,7 +1061,7 @@ function hud(){if(!hasDom||!SG.sides.length)return;if(SG.mode==='lab'){labHud();
   E('bPause').textContent=SG.paused?'▶ Go on':'⏸ Pause';}
 /* a collapse plays in slow motion for a moment (real time only: SG.step itself never slows) */
 function slowed(dt){if(SG.slowT>0&&(SG.speed||1)<=4){SG.slowT-=dt;return dt*.3;}return dt;}
-function render(){if(!V.on)return;syncAll();if(!AR.on){moveCamera();if(SG.shake>.02){var sk=SG.shake*.05;C.position.x+=(Math.random()-.5)*sk;C.position.y+=(Math.random()-.5)*sk;SG.shake*=.88;}else SG.shake=0;}SS.wave(hill,SG.clock);hud();R.render(SCN,C);}
+function render(){if(!V.on)return;syncAll();pullView();if(!AR.on){moveCamera();if(SG.shake>.02){var sk=SG.shake*.05;C.position.x+=(Math.random()-.5)*sk;C.position.y+=(Math.random()-.5)*sk;SG.shake*=.88;}else SG.shake=0;}SS.wave(hill,SG.clock);hud();R.render(SCN,C);}
 SG.render=render;
 
 function initView(){
@@ -1180,7 +1182,8 @@ SG.arLock=function(){
   else if(AR.replacePaused){SG.paused=false;AR.replacePaused=false;}
   ui();return true;};
 /* in AR the pieces keep their size on the real table: under 80 cm across it is always the small ones */
-function arBegin(){E('arAsk').style.display='none';var pk=SG.pick?SG.pick():{team:'blue',level:'easy'};SG.paused=false;SG.cam=0;SG.start(pk.team,{level:pk.level,mode:'solo',pieces:AR.size<80?'small':undefined});ui();}
+function arBegin(){E('arAsk').style.display='none';var pk=SG.pick?SG.pick():{team:'blue',level:'easy'};SG.paused=false;SG.cam=0;SG.setEasyAim(AR.size<CONFIG.pull.easyAr);   /* a small AR table is far away or tiny on the screen: a pull of 1.5 table units is a few pixels there, so start with Easy aim */
+  SG.start(pk.team,{level:pk.level,mode:'solo',pieces:AR.size<80?'small':undefined});ui();}
 SG.arBegin=arBegin;
 /* move the table again: the match waits, and nothing in it is lost */
 SG.arReplace=function(){if(!AR.on||AR.state!=='locked')return;arEvent('re-place table');AR.jumped=false;if(hasDom)E('arJump').style.display='none';AR.state='placed';AR.anchor=null;AR.anchorKind='none';if(SG.phase!=='start'&&!SG.paused){SG.paused=true;AR.replacePaused=true;}else if(SG.paused)AR.replacePaused=true;arText();arPublic();ui();};
@@ -1255,7 +1258,7 @@ function sceneButtons(){var ph=SG.phase,o=[],me=SG.sides[0];function b(id,label,
   else if(ph==='over'){b('again','Play again');}
   else if(V2()&&me){if(me.tool==='lobber'){   /* aiming: the lobber, its ammo (short and compact), then back to the orders */
       if(lobbersOf(0).length>1)b('lsel','Lobber '+((me.lsel||0)+1)+'/'+lobbersOf(0).length,true);AMMO_ORDER.forEach(function(id){var st=AMMO[id].store?' x'+(me[AMMO[id].store]||0):((AMMO[id].w.cd>0&&(me.cd[id]||0)>0)?' '+Math.ceil(me.cd[id])+'s':'');b('am_'+id,AMMO[id].short+st,me.ammo===id);});
-      if(!AMMO[me.ammo].w.flat)b('high','High lob',me.high);b('lobber','Orders');}
+      if(!AMMO[me.ammo].w.flat)b('high','High lob',me.high);b('easy','Easy aim '+(SG.easyAim?'on':'off'),SG.easyAim);b('lobber','Orders');}
     else{b('o_hill','Hill '+me.plan.hill);b('o_raid','Raid '+me.plan.raid);b('o_guard','Guard '+me.plan.guard);b('o_mend','Mend '+me.plan.mend);b('lobber','Lobber');}
     b('pause',SG.paused?'Go on':'Pause',SG.paused);if(SG.paused)b('replace','Re-place table');}
   else{b('squad','Squad',me&&me.tool==='squad');b('lobber','Lobber',me&&me.tool==='lobber');b('mend','Mend',me&&me.tool==='mend');b('pause',SG.paused?'Go on':'Pause',SG.paused);if(SG.paused)b('replace','Re-place table');}
@@ -1264,7 +1267,7 @@ function sceneAct(id){arEvent('scene button '+id);
   if(id==='exit')SG.arLeave();else if(id==='lock')SG.arLock();else if(id==='arL')SG.arTurn(PI/12);else if(id==='arR')SG.arTurn(-PI/12);else if(id==='smaller')SG.arResize(AR.size-10);else if(id==='bigger')SG.arResize(AR.size+10);
   else if(id==='fine')SG.arJumpFine();else if(id==='replace')SG.arReplace();else if(id==='cards')E('arCards').onclick();else if(id==='plain')arBegin();
   else if(id==='bL')SG.turn(PI/12);else if(id==='bR')SG.turn(-PI/12);else if(id==='undo')SG.undo();else if(id==='done')SG.done();else if(id==='start')SG.begin();else if(id==='again')SG.arAgain();
-  else if(id==='high')SG.sides[0].high=!SG.sides[0].high;else if(id.indexOf('o_')===0)SG.bumpPlan(0,id.slice(2));else if(id==='lsel')SG.nextLobber(0);else if(id.indexOf('am_')===0)SG.setAmmo(0,id.slice(3));else if(id==='lobber'&&V2())SG.setTool(SG.sides[0].tool==='lobber'?'squad':'lobber');
+  else if(id==='high')SG.sides[0].high=!SG.sides[0].high;else if(id==='easy')SG.setEasyAim(!SG.easyAim);else if(id.indexOf('o_')===0)SG.bumpPlan(0,id.slice(2));else if(id==='lsel')SG.nextLobber(0);else if(id.indexOf('am_')===0)SG.setAmmo(0,id.slice(3));else if(id==='lobber'&&V2())SG.setTool(SG.sides[0].tool==='lobber'?'squad':'lobber');
   else if(id==='squad'||id==='lobber'||id==='mend')SG.setTool(id);else if(id==='pause'){SG.paused=!SG.paused;lastHud='';}else if(id==='log')SG.arCopyLog();ui();}
 SG.arJumpFine=function(){AR.jumped=false;arEvent('player says the table is fine');if(hasDom)E('arJump').style.display='none';if(AR.replacePaused){SG.paused=false;AR.replacePaused=false;}ui();};
 /* after a match in AR: the table stays locked, the title choices are skipped */
@@ -1311,8 +1314,78 @@ function slotAt(px,py,s){var best=-1,bd=38;SG.sides[s].kit.forEach(function(k,i)
 SG.setTool=function(t,s){var side=SG.sides[s||0];if(!side)return;side.tool=t;side.aim.on=false;ui();};
 function sideAt(g){return SG.mode==='table'?campAt(g.x,g.z):0;}
 function mineDown(s,skip){var o=[];for(var k in ptr)if(ptr[k].s===s&&k!==String(skip))o.push(ptr[k]);return o;}
-function pullTarget(s,from,g){var l=lobberOf(s);if(!l||!from)return null;var dx=from.x-g.x,dz=from.z-g.z,d=Math.sqrt(dx*dx+dz*dz);if(d<.12)return null;var pw=Math.min(6.2,d*2.6);return {x:l.x+dx/d*pw,z:l.z+dz/d*pw};}
+function pullTarget(s,from,g){var l=lobberOf(s);if(!l||!from)return null;return pullCalc(l,from,g);}
 function damagedAt(g,s){var best=null,bd=.45;SG.damaged(s).forEach(function(p){var d=boxDist(p,g.x,g.z);p.ps.forEach(function(q){if(q.st==='off')d=Math.min(d,dist(q.rx,q.rz,g.x,g.z));});if(d<bd){bd=d;best=p;}});return best;}
+/* ================= PULL-BACK AIMING (slingshot) =================
+   Press on a lobber, drag AWAY from where you want to hit, let go. The drag angle picks the direction; the pull LENGTH picks the power,
+   and the power picks how far the marble goes. A power meter has a SWEET BAND: inside it the shot goes exactly where you aimed,
+   under it the shot is short (and a little loose), over it the marble wobbles about the spot more and more.
+   Drag back to the little ring where you pressed to cancel. High or flat lob is still the High lob button (a finger cannot also pick that).
+   SG.fireLobber(side, x, z, power01, opts) is the plain call that tests and bots use. power01 null means: land exactly on (x, z), the old way.
+   "Easy aim" (SG.easyAim) puts back the old tap-and-drag aim: exact, no sweet band. */
+CONFIG.pull={
+  min:.2,full:1.5,                       /* table units: the shortest pull that counts (less is a cancel); the pull that is 100% power */
+  rangeMin:.7,rangeMax:5.6,              /* how far a 0% and a 100% shot goes (table units) */
+  sweetLo:.65,sweetHi:.85,               /* the sweet band, as a part of full power */
+  weakScatter:.25,overScatter:1.2,       /* loose shots: radius at 0% power (fading to 0 at the band) and at 100% power (growing from 0 at the band's top) */
+  easyAr:80                              /* AR tables narrower than this (cm) start with Easy aim ON */
+};
+SG.easyAim=false;
+SG.setEasyAim=function(v){SG.easyAim=!!v;if(hasDom)ui();return SG.easyAim;};
+function pullZone(p){var P=CONFIG.pull;return p<P.sweetLo?'weak':(p<=P.sweetHi?'sweet':'over');}
+SG.pullPower=function(len){var P=CONFIG.pull;if(!(len>=P.min))return null;var p=Math.min(1,len/P.full);return {p:p,zone:pullZone(p),range:P.rangeMin+p*(P.rangeMax-P.rangeMin),scatter:SG.pullScatter(p)};};
+SG.pullScatter=function(p){var P=CONFIG.pull;if(p<P.sweetLo)return P.weakScatter*(1-p/P.sweetLo);if(p<=P.sweetHi)return 0;return P.overScatter*Math.min(1,(p-P.sweetHi)/(1-P.sweetHi));};
+/* from the drag: where the shot is aimed (before any wobble), and the pull's numbers. null = no shot (too short a pull) */
+function pullCalc(l,from,g){var dx=from.x-g.x,dz=from.z-g.z,len=Math.sqrt(dx*dx+dz*dz),P=CONFIG.pull;
+  if(SG.easyAim){if(len<.12)return null;var pw=Math.min(6.2,len*2.6);return {x:l.x+dx/len*pw,z:l.z+dz/len*pw,len:len,p:null,zone:'easy',scatter:0,from:from,g:g};}
+  var q=SG.pullPower(len);if(!q)return null;return {x:l.x+dx/len*q.range,z:l.z+dz/len*q.range,len:len,p:q.p,zone:q.zone,scatter:q.scatter,from:from,g:g};}
+/* a drag step: store the aim on the side (the preview arc reads it) */
+function pullSet(sd,t,P){if(t){if(sd.pull&&sd.pull.zone!==t.zone&&t.p!=null)snd(t.zone==='sweet'?'tick':(t.zone==='over'?'warn':'tick'));sd.aim.on=true;sd.aim.tx=t.x;sd.aim.tz=t.z;sd.aim.pw=t.p;sd.pull=t;if(P)P.pulled=true;}else{sd.aim.on=false;sd.pull=null;}}
+SG.fireLobber=function(s,tx,tz,pw,opts){opts=opts||{};var side=SG.sides[s];if(!side)return null;var li=opts.li==null?(side.lsel||0):opts.li,l=lobberOf(s,li);if(!l)return null;
+  var info=null,ax=tx,az=tz;
+  if(pw!=null&&!opts.exact){var P=CONFIG.pull,p=Math.max(0,Math.min(1,pw)),dx=tx-l.x,dz=tz-l.z,d=Math.sqrt(dx*dx+dz*dz);if(d<1e-6){dx=0;dz=l.z>0?-1:1;d=1;}
+    var rg=P.rangeMin+p*(P.rangeMax-P.rangeMin),sc=opts.scatter!=null?opts.scatter:SG.pullScatter(p),rf=opts.rand||rand,an=rf()*PI*2,rd=sc*Math.sqrt(rf());
+    ax=l.x+dx/d*rg+Math.cos(an)*rd;az=l.z+dz/d*rg+Math.sin(an)*rd;
+    info={power:p,zone:pullZone(p),range:rg,scatter:sc,aimX:l.x+dx/d*rg,aimZ:l.z+dz/d*rg,missX:ax-(l.x+dx/d*rg),missZ:az-(l.z+dz/d*rg)};}
+  var wasHigh=side.high;if(opts.high!=null)side.high=!!opts.high;
+  var a=SG.mode==='lab'&&SG.lab?SG.labFire(s,li,ax,az,opts):SG.fire(s,ax,az,li);
+  if(opts.high!=null)side.high=wasHigh;
+  if(a&&info){info.miss=Math.sqrt(info.missX*info.missX+info.missZ*info.missZ);a.pull=info;snd('snap');}return a;};
+/* letting go: fire from the stored aim, or nothing */
+function pullRelease(s,sd,li,opts){var ax=sd.aim.tx,az=sd.aim.tz,pw=sd.aim.pw;sd.aim.on=false;sd.pull=null;return SG.fireLobber(s,ax,az,pw,Object.assign({li:li},opts||{}));}
+/* --- what you see: a rubber band from the lobber to a pouch that follows the finger (set back from it), a power ring round the lobber,
+   the cancel ring where you pressed, and a power meter beside the thumb (above it, to the side the screen has room on) --- */
+var PV=null;
+function pullViewInit(){if(PV||!S)return;var M=function(c,o){return new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,depthWrite:false});};
+  PV={bands:[0,1].map(function(){var m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),M(0xffe29a,.95));m.visible=false;S.add(m);return m;}),
+    pouch:new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),M(0xffd23a,1)),ring:new THREE.Mesh(new THREE.RingGeometry(.9,1,40),M(0xffd23a,.9)),cancel:new THREE.Mesh(new THREE.RingGeometry(.9,1,28),M(0xff9a7a,.8)),
+    q:new THREE.Quaternion(),z:new THREE.Vector3(0,0,1),d:new THREE.Vector3(),el:null,zone:''};
+  PV.ring.rotation.x=PV.cancel.rotation.x=-PI/2;[PV.pouch,PV.ring,PV.cancel].forEach(function(o){o.visible=false;S.add(o);});
+  if(hasDom){var el=document.createElement('div');el.id='pullMeter';el.style.cssText='position:fixed;display:none;pointer-events:none;z-index:6;width:30px;height:132px;border-radius:15px;border:3px solid #fff3df;background:#3a2a1c;box-shadow:0 3px 10px rgba(0,0,0,.5);overflow:visible;font:700 12px system-ui,sans-serif;color:#fff3df';
+    var P=CONFIG.pull;el.innerHTML='<div class="pz" style="position:absolute;left:0;right:0;bottom:'+(P.sweetLo*100)+'%;height:'+((P.sweetHi-P.sweetLo)*100)+'%;background:#5fd04a;opacity:.55"></div><div class="pz" style="position:absolute;left:0;right:0;bottom:'+(P.sweetHi*100)+'%;top:0;background:#e0503a;opacity:.4"></div><div class="pf" style="position:absolute;left:3px;right:3px;bottom:0;height:0;background:#ffd23a;border-radius:10px"></div><div class="pt" style="position:absolute;left:40px;top:50%;white-space:nowrap;text-shadow:0 1px 3px #000"></div>';
+    (E('ui')||document.body).appendChild(el);PV.el=el;}}
+function pullBar(m,a,b,w){PV.d.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]);var L=PV.d.length()||.001;m.position.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2);m.quaternion.setFromUnitVectors(PV.z,PV.d.multiplyScalar(1/L));m.scale.set(w,w,L);m.visible=true;}
+var PULLN=0;
+function pullView(){if(!V.on||!S)return;var act=null,as=-1;SG.sides.forEach(function(sd,s){if(sd.pull&&sd.aim.on&&!act){act=sd;as=s;}});
+  if(!act){if(PV){PV.bands.forEach(function(m){m.visible=false;});PV.pouch.visible=PV.ring.visible=PV.cancel.visible=false;if(PV.el)PV.el.style.display='none';PV.zone='';}return;}
+  pullViewInit();var t=act.pull,li=act.aim.li!=null?act.aim.li:act.lsel,l=lobberOf(as,li);if(!l||!t||t.p==null){if(PV){PV.bands.forEach(function(m){m.visible=false;});PV.pouch.visible=PV.ring.visible=PV.cancel.visible=false;if(PV.el)PV.el.style.display='none';}return;}
+  var P=CONFIG.pull,over=t.zone==='over'?Math.min(1,(t.p-P.sweetHi)/(1-P.sweetHi)):0,sh=over*.03*Math.sin(SG.clock*70+PULLN++*0),ux=t.g.x-t.from.x,uz=t.g.z-t.from.z,ul=Math.sqrt(ux*ux+uz*uz)||1,k=Math.min(1,P.full/ul)*.85,
+    px=l.x+ux*k,pz=l.z+uz*k,y=.4*U(),nx=-uz/ul,nz=ux/ul,aw=.11;
+  pullBar(PV.bands[0],[l.x+nx*aw,y,l.z+nz*aw],[px+nx*sh,y*.9,pz+nz*sh],.018+.012*t.p);pullBar(PV.bands[1],[l.x-nx*aw,y,l.z-nz*aw],[px+nx*sh,y*.9,pz+nz*sh],.018+.012*t.p);
+  var col=t.zone==='sweet'?0x7fe05a:(t.zone==='over'?0xff5a3a:0xffd23a);PV.bands.forEach(function(m){m.material.color.set(t.zone==='sweet'?0xd6ff9a:(t.zone==='over'?0xff9a7a:0xffe29a));});
+  PV.pouch.position.set(px+nx*sh,y*.9,pz+nz*sh);PV.pouch.visible=true;PV.pouch.material.color.set(col);
+  PV.ring.position.set(l.x,.011,l.z);PV.ring.scale.setScalar((.3+.5*t.p)*(1+(over?.05*Math.sin(SG.clock*60):0)));PV.ring.material.color.set(col);PV.ring.visible=true;
+  PV.cancel.position.set(t.from.x,.012,t.from.z);PV.cancel.scale.setScalar(P.min);PV.cancel.visible=true;
+  /* the preview lands wobbling when over-pulled */
+  var G=GH[as];if(over&&G&&G.land){G.land.position.x+=Math.sin(SG.clock*37)*P.overScatter*over*.35;G.land.position.z+=Math.cos(SG.clock*41)*P.overScatter*over*.35;}
+  /* the lobber leans back while the band is drawn, and quivers when over-pulled */
+  var v=V.pieces[l.id];if(v&&v.obj&&v.obj.userData.pivot){var pv=v.obj.userData.pivot;pv.rotation.x+=-.2*t.p;pv.rotation.z+=over*.04*Math.sin(SG.clock*80);pv.position.z+=.02*t.p;}
+  if(PV.el&&hasDom){var sp=SG.screen(l.x,l.z,.2),fx=act.pull.sx!=null?act.pull.sx:sp.x,fy=act.pull.sy!=null?act.pull.sy:sp.y,mx=fx+70,my=fy-150;if(mx>W-60)mx=fx-100;if(my>H-150)my=H-150;if(my<10)my=10;
+    PV.el.style.display='block';PV.el.style.left=mx+'px';PV.el.style.top=my+'px';PV.el.style.transform=over?'translate('+(Math.sin(SG.clock*90)*3*over)+'px,'+(Math.cos(SG.clock*77)*3*over)+'px)':'none';
+    PV.el.querySelector('.pf').style.height=Math.round(t.p*100)+'%';PV.el.querySelector('.pf').style.background=t.zone==='sweet'?'#7fe05a':(t.zone==='over'?'#ff5a3a':'#ffd23a');
+    PV.el.querySelector('.pt').textContent=t.zone==='sweet'?'Sweet!':(t.zone==='over'?'Too far!':'Pull more');}}
+SG.pullState=function(s){var sd=SG.sides[s||0];return sd&&sd.pull&&sd.aim.on?{p:sd.pull.p,zone:sd.pull.zone,len:sd.pull.len,scatter:sd.pull.scatter,meter:!!(PV&&PV.el&&PV.el.style.display==='block'),band:!!(PV&&PV.bands[0].visible)}:null;};
+/* ================= end of pull-back aiming ================= */
 function initInput(){
   ray=new THREE.Raycaster();plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);v2=new THREE.Vector2();v3=new THREE.Vector3();var el=R.domElement;
   function down(e){soundOn();if(e.target!==el&&e.target!==E('ui'))return;if(AR.on&&!e.xr){if(!AR.domInput)arEvent('touches arrive through the page');AR.domInput=true;AR.inputPath='page touches';}
@@ -1331,18 +1404,18 @@ function initInput(){
     P.x=e.clientX;P.y=e.clientY;var s=P.s,side=SG.sides[s],g=ground(e.clientX,e.clientY);
     if(ph==='build'){if(P.kind==='twist'){var o=mineDown(s,e.pointerId)[0];if(o&&side.sel>=0){var a=Math.atan2(P.y-o.y,P.x-o.x),d=a-side.twist;while(d>PI)d-=2*PI;while(d<-PI)d+=2*PI;side.twist=a;SG.turn(-d,s);}return;}
       if(P.kind==='ghost'&&side.sel>=0&&g)SG.moveGhost(g.x,g.z,s);}
-    else if(ph==='fight'&&P.kind==='aim'&&g){var t=pullTarget(s,P.from,g);if(t){side.aim.on=true;side.aim.tx=t.x;side.aim.tz=t.z;}else side.aim.on=false;}}
+    else if(ph==='fight'&&P.kind==='aim'&&g){var t=pullTarget(s,P.from,g);if(t){t.sx=e.clientX;t.sy=e.clientY;}pullSet(side,t,P);}}
   function up(e){if(AR.btnDown&&AR.btnDown.ptr===e.pointerId){var bid=AR.btnDown.id;AR.btnDown=null;if(sceneButtonAt(e.clientX,e.clientY)===bid)sceneAct(bid);return;}
     if(AR.on&&AR.state!=='locked'){arUp(e);return;}if(SG.mode==='lab'&&SG.phase!=='start'){labUp(e);return;}var P=ptr[e.pointerId];if(!P)return;delete ptr[e.pointerId];var ph=SG.phase,s=P.s,side=SG.sides[s];if(SG.paused||!side||!side.human)return;var g=ground(e.clientX,e.clientY);
     if(ph==='build'){if(P.kind!=='ghost'||side.ready)return;var sl=slotAt(e.clientX,e.clientY,s);if(sl>=0){SG.select(sl,s);return;}if(side.sel>=0&&g)SG.tryPlace(g.x,g.z,null,s);return;}
     if(ph!=='fight'&&ph!=='mend'&&ph!=='count')return;
-    if(P.kind==='aim'){var was=side.aim.on;side.aim.on=false;if(was){var blk=SG.lobberBlock(s);if(blk)say('wait',({winding:'Still winding…',crew:'No mouse at the lobber yet',broken:'The lobber is broken',none:'No lobber'})[blk]||blockText(blk,s),true,s);else SG.fire(s,side.aim.tx,side.aim.tz);return;}if(side.tool==='lobber')return;}
+    if(P.kind==='aim'){var was=side.aim.on;side.aim.on=false;if(was){var blk=SG.lobberBlock(s);if(blk){side.pull=null;say('wait',({winding:'Still winding…',crew:'No mouse at the lobber yet',broken:'The lobber is broken',none:'No lobber'})[blk]||blockText(blk,s),true,s);}else pullRelease(s,side,side.lsel||0);return;}side.pull=null;if(P.pulled||side.tool==='lobber')return;}   /* a pull taken back to the ring is a cancel: no shot, no order */
     if(!g)return;if(SG.mode==='table'&&sideAt(g)!==s){var lo=P.from,hi=g;for(var bi=0;bi<12;bi++){var md={x:(lo.x+hi.x)/2,z:(lo.z+hi.z)/2};if(sideAt(md)===s)lo=md;else hi=md;}g=lo;}   /* in the two-player game an order stays in your own half */
     var dp=damagedAt(g,s);
     if(side.tool==='mend'){if(dp){if(SG.mend(s,dp.id))say('mend','A mouse is going to mend it',false,s);else say('nomend','No free mouse, or nothing left to mend',true,s);}else say('nomend','Tap a piece with a part knocked off',true,s);return;}
     if(dp&&SG.mend(s,dp.id)){say('mend','A mouse is going to mend it',false,s);return;}
     SG.order(s,g.x,g.z);}
-  function cancel(e){if(SG.mode==='lab'){labCancel(e);}var P=ptr[e.pointerId];if(P&&SG.sides[P.s])SG.sides[P.s].aim.on=false;delete ptr[e.pointerId];delete AR.ptr[e.pointerId];}
+  function cancel(e){if(SG.mode==='lab'){labCancel(e);}var P=ptr[e.pointerId];if(P&&SG.sides[P.s]){SG.sides[P.s].aim.on=false;SG.sides[P.s].pull=null;}delete ptr[e.pointerId];delete AR.ptr[e.pointerId];}
   AR.h={down:down,move:move,up:up};
   [el,E('ui')].forEach(function(t){t.addEventListener('pointerdown',down);t.addEventListener('pointermove',move);t.addEventListener('pointerup',up);t.addEventListener('pointercancel',cancel);});
   addEventListener('keydown',function(e){if(SG.mode==='lab'&&SG.phase!=='start'){labKey(e);return;}var k=e.key.toLowerCase();if(k==='q')SG.turn(PI/12);else if(k==='e')SG.turn(-PI/12);else if(k==='z')SG.undo();else if(k==='escape')SG.select(-1);else if(k==='enter'&&SG.sel>=0)SG.tryPlace(SG.ghost.x,SG.ghost.z);
@@ -1352,7 +1425,7 @@ function initInput(){
   E('bCam').onclick=function(){SG.setCam(SG.cam+1);};E('bStart').onclick=function(){SG.begin();};
   ORDERS.forEach(function(o){E('o_'+o).onclick=function(){var me=SG.sides[0];me.pick=me.pick===o?'':o;ui();};});
   [0,1,2,3,4,5].forEach(function(nn){E('n'+nn).onclick=function(){var me=SG.sides[0];if(me.pick){SG.setPlan(0,me.pick,nn);me.pick='';ui();}};});
-  E('b_high').onclick=function(){var me=SG.sides[0];me.high=!me.high;ui();};
+  E('b_easy').onclick=function(){SG.setEasyAim(!SG.easyAim);};E('b_high').onclick=function(){var me=SG.sides[0];me.high=!me.high;ui();};
   E('b2_lobber').onclick=function(){SG.setTool(SG.sides[0].tool==='lobber'?'squad':'lobber');};E('b_lsel').onclick=function(){SG.nextLobber(0);};
   AMMO_ORDER.forEach(function(id){var b=document.createElement('button');b.className='btn ammo';b.id='a_'+id;b.innerHTML='<span class="ai">'+AMMO[id].icon+'</span><span class="an">'+AMMO[id].name+'</span><span class="ac"></span>';E('arow').insertBefore(b,E('b_high'));b.onclick=function(){SG.setAmmo(0,id);};});E('bPauseB').onclick=function(){SG.paused=!SG.paused;lastHud='';ui();};
   E('bMute').onclick=function(){soundOn();SG.setMute(!SG.muted);};E('bTilt').onclick=function(){SG.setTilt(SG.tilt?0:18);};E('bPause2').onclick=function(){SG.paused=!SG.paused;};
@@ -1904,7 +1977,7 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   if(L.tool==='build'||L.tool==='move'){sub=LAB_KINDS.map(function(k){return '<button class="btn lb'+(L.kind===k&&L.tool==='build'?' on':'')+'" data-a="k_'+k+'">'+(LAB_ICON[k]||'🧩')+' '+labName(k)+'</button>';}).join('');if(L.carry)sub+='<button class="btn lb go" data-a="drop">Drop here</button><button class="btn lb" data-a="cancelcarry">Put it back</button>';}
   else if(L.tool==='fire'||L.tool==='gun'){var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;}));
     sub=ids.map(function(id){return '<button class="btn lb ammo'+(L.ammo===id?' on':'')+'" data-a="am_'+id+'" id="lab_a_'+id+'"><span class="ai">'+labEsc(AMMO[id].icon)+'</span><span class="an">'+labEsc(AMMO[id].name)+'</span><span class="ac"></span></button>';}).join('')+
-      '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
+      '<button class="btn lb'+(L.high?' on':'')+'" data-a="high">⤴ High lob</button>'+'<button class="btn lb'+(SG.easyAim?' on':'')+'" data-a="easy">Easy aim</button>'+(L.tool==='gun'?'<button class="btn lb go big" data-a="gunfire">🔥 Fire!</button>':'')+'<button class="btn lb" data-a="replay">⟲ Replay</button>';}
   else if(L.tool==='inspect')sub='<span class="lnote">Tap a piece to see what holds it up. Turn on "Show supports" to see the links.</span>';
   else if(L.tool==='erase')sub='<span class="lnote">Tap a piece to take it away. Undo brings it back.</span>';
   else if(L.tool==='spot')sub='<span class="lnote">Tap the table where the range report should aim.</span>';
@@ -1944,7 +2017,7 @@ function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a.indexOf('tool_')===0){SG.labTool(a.slice(5));return;}
   if(a.indexOf('k_')===0){L.kind=a.slice(2);if(L.tool!=='build')SG.labTool('build');L.ghost.on=false;labUi();return;}
   if(a.indexOf('am_')===0){SG.labSetAmmo(a.slice(3));return;}
-  if(a==='high'){SG.labSetHigh(!L.high);return;}
+  if(a==='high'){SG.labSetHigh(!L.high);return;}if(a==='easy'){SG.setEasyAim(!SG.easyAim);labUi();return;}
   if(a==='turnL'||a==='turnR'){L.ghost.rot+=(a==='turnL'?1:-1)*PI/12;return;}
   if(a==='undo'){if(L.carry)SG.labCancelCarry();SG.labUndo();return;}if(a==='redo'){SG.labRedo();return;}
   if(a==='drop'){SG.labDrop();return;}if(a==='cancelcarry'){SG.labCancelCarry();labUi();return;}
@@ -1988,7 +2061,7 @@ SG.labTool=function(t){var L=SG.lab;if(!L)return false;if(L.carry&&t!=='move')SG
 
 /* ---- touches in the Lab: one finger at a time ---- */
 var LP=null;
-function labPull(l,from,g){var dx=from.x-g.x,dz=from.z-g.z,d=Math.sqrt(dx*dx+dz*dz);if(d<.12)return null;var pw=Math.min(6.2,d*2.6);return {x:l.x+dx/d*pw,z:l.z+dz/d*pw};}
+function labPull(l,from,g){return pullCalc(l,from,g);}
 function labDown(e){var L=SG.lab;if(!L)return;if(LP&&LP.id!==e.pointerId)return;var g=ground(e.clientX,e.clientY);if(!g)return;e.preventDefault();try{e.target.setPointerCapture(e.pointerId);}catch(err){}
   LP={id:e.pointerId,x:e.clientX,y:e.clientY,from:g,kind:'tap',moved:0,off:{x:0,z:0}};var t=L.tool;
   if(t==='build'){L.ghost.on=true;L.ghost.x=g.x;L.ghost.z=g.z;LP.kind='ghost';}
@@ -2002,7 +2075,7 @@ function labGunSet(g){var L=SG.lab,tx=Math.max(-3.2,Math.min(3.2,g.x)),tz=Math.m
 function labMove(e){if(!LP||LP.id!==e.pointerId||!SG.lab)return;var L=SG.lab,g=ground(e.clientX,e.clientY);LP.moved+=Math.abs(e.clientX-LP.x)+Math.abs(e.clientY-LP.y);LP.x=e.clientX;LP.y=e.clientY;if(!g)return;
   if(LP.kind==='lift'&&LP.moved>14)LP.kind='ghost';
   if(LP.kind==='ghost'){L.ghost.x=g.x+LP.off.x;L.ghost.z=g.z+LP.off.z;}
-  else if(LP.kind==='aim'){var l=lobberOf(L.fire.s,L.fire.li),t=l?labPull(l,LP.from,g):null,sd=SG.sides[L.fire.s];if(t)sd.aim={on:true,tx:t.x,tz:t.z,li:L.fire.li};else sd.aim.on=false;}
+  else if(LP.kind==='aim'){var l=lobberOf(L.fire.s,L.fire.li),t=l?labPull(l,LP.from,g):null,sd=SG.sides[L.fire.s];if(t){LP.pulled=true;t.sx=e.clientX;t.sy=e.clientY;sd.aim={on:true,tx:t.x,tz:t.z,li:L.fire.li,pw:t.p};sd.pull=t;}else{sd.aim.on=false;sd.pull=null;}}
   else if(LP.kind==='gun')labGunSet(g);}
 function labUp(e){if(!LP||LP.id!==e.pointerId||!SG.lab)return;var L=SG.lab,P=LP;LP=null;var g=ground(e.clientX,e.clientY)||P.from,t=L.tool,tap=P.moved<12;
   if(t==='build'&&P.kind==='ghost'){var r=SG.labPlace(L.kind,L.ghost.x,L.ghost.z,L.ghost.rot);if(!r.ok)labMsg(r.text,true);else{snd('tap');L.ghost.on=false;}ui();}
@@ -2010,8 +2083,8 @@ function labUp(e){if(!LP||LP.id!==e.pointerId||!SG.lab)return;var L=SG.lab,P=LP;
   else if(t==='erase'){var p=labPieceAt(g);if(p){SG.labErase(p);labMsg(labName(p.kind)+' removed',false);}ui();}
   else if(t==='inspect'){SG.labSelect(labPieceAt(g));}
   else if(t==='spot'){L.spot={x:g.x,z:g.z};labUi();}
-  else if(t==='fire'&&P.kind==='aim'){var sd=SG.sides[L.fire.s];if(sd.aim.on&&!tap){var ax=sd.aim.tx,az=sd.aim.tz;sd.aim.on=false;SG.labFire(L.fire.s,L.fire.li,ax,az);}else{sd.aim.on=false;SG.labSelect(labPieceAt(g));}}}
-function labCancel(e){if(LP&&LP.id===e.pointerId){LP=null;if(SG.lab)SG.sides.forEach(function(sd){if(SG.lab.tool==='fire')sd.aim.on=false;});}}
+  else if(t==='fire'&&P.kind==='aim'){var sd=SG.sides[L.fire.s];if(sd.aim.on&&!tap){pullRelease(L.fire.s,sd,L.fire.li);}else{sd.aim.on=false;sd.pull=null;if(!P.pulled)SG.labSelect(labPieceAt(g));}}}
+function labCancel(e){if(LP&&LP.id===e.pointerId){LP=null;if(SG.lab)SG.sides.forEach(function(sd){if(SG.lab.tool==='fire')sd.aim.on=false;sd.pull=null;});}}
 function labKey(e){var L=SG.lab;if(!L||(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName||'')))return;var k=e.key.toLowerCase();
   if(k==='q')L.ghost.rot+=PI/12;else if(k==='e')L.ghost.rot-=PI/12;else if(k==='z'&&!e.shiftKey)SG.labUndo();else if(k==='y'||(k==='z'&&e.shiftKey))SG.labRedo();
   else if(k==='escape'){if(L.carry)SG.labCancelCarry();L.card=false;labUi();}else if(k==='p'){SG.paused=!SG.paused;labUi();}else if(k==='c')SG.setCam(SG.cam+1);else if(k==='r')SG.labReset(1);
