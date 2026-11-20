@@ -46,11 +46,11 @@ var CONFIG={
   },
   /* ---- the Lab's Weapon Workshop, carnage tools and big targets. Lab only: no match ever reads this block. ---- */
   workshop:{
-    caps:{blast:[0,.6],hiMul:[.2,1],falloff:[0,2],cap:[0,12],speed:[.5,2],arcMul:[.5,2.5],bounces:[0,3],hop:[.3,1.4],hopH:[.2,1.2],hopT:[.3,.8],scatter:[1,8],spread:[0,.8],fuse:[0,2],stick:[0,20],splash:[0,.5],slowTo:[.2,1],slowSecs:[0,10],puddle:[0,12],dizzyR:[-1,.6],dizzySecs:[0,8],tether:[0,6],yank:[.1,1],quake:[0,1.2],roll:[0,3],cd:[0,12]},   /* the safe range of every parameter: [least, most]. A weapon outside them is clamped, never refused. dizzyR -1 = the same as the blast */
+    caps:{blast:[0,.6],hiMul:[.2,1],falloff:[0,2],cap:[0,12],speed:[.5,2],arcMul:[.5,2.5],bounces:[0,3],hop:[.3,1.4],hopH:[.2,1.2],hopT:[.3,.8],scatter:[1,8],spread:[0,.8],fuse:[0,2],stick:[0,20],splash:[0,.5],slowTo:[.2,1],slowSecs:[0,10],puddle:[0,12],dizzyR:[-1,.6],dizzySecs:[0,8],tether:[0,3],quake:[0,1.2],roll:[0,3],cd:[0,12]},   /* the safe range of every parameter: [least, most]. A weapon outside them is clamped, never refused. dizzyR -1 = the same as the blast */
     decay:.75,                                  /* each further bounce is this much shorter and lower */
     hookR:.1,hookY:.45,                         /* tether: how near a part the marble must pass (across, and up and down) to snag it */
     rollSpeed:1.6,rollR:.07,rollBase:.3,rollEvery:.14,rollMax:8,   /* roller: units a second, how near a part it must be, the highest part it can knock (its base), seconds between knocks, most knocks */
-    price:{blast:10,leg:1,legForce:2,speed:1,arc:1.5,bounce:1.5,scatter:.45,fuse:.4,stick:.1,slow:.5,puddle:.1,splash:4,dizzy:4,dizzySecs:.15,tether:2,tetherLen:.15,yank:2,quake:3,roll:1.2,cd:.15,floor:.5},   /* the budget points of a weapon: see wPrice */
+    price:{blast:10,leg:1,legForce:2,speed:1,arc:1.5,bounce:1.5,scatter:.45,fuse:.4,stick:.1,slow:.5,puddle:.1,splash:4,dizzy:4,dizzySecs:.15,tether:2,tetherLen:.8,quake:3,roll:1.2,cd:.15,floor:.5},   /* the budget points of a weapon: see wPrice */
     topple:{max:8,reach:1.1,hit:3,throwFar:.12},   /* chain reactions (Lab option): most topples a shot can start; how far a falling piece reaches (times its height); parts it knocks off what it falls on; how far they fly */
     rate:{salvo:5,single:1,salvoShare:.3,parts:1,collapse:4,keep:15,dizzy:.5,little:.25,likeLo:.8,likeHi:1.25,much:1.5},   /* Rate it: shots in a salvo; how much a salvo counts beside a single shot; the points of each result; the verdict thresholds (shares of a Marble's and a Big Marble's score) */
     carnage:{part:1,collapse:5,keep:25,chain:3,dizzy:.5},   /* the carnage score: points for each part off, collapse, Keep felled, step of chain beyond the first, mouse dizzy */
@@ -69,19 +69,29 @@ function U(){return PS/.88;}
    w (distances at piece scale 1, seconds): blast (radius, 0 = none) hiMul (blast share when lobbed high) falloff (1 = as in a match; 0 = every part flies as far as the nearest; 2 = the edge barely moves) cap (most parts one landing takes off, 0 = no limit)
    leg (can break a Keep leg) legForce (breaks the nearest leg outright, braced or not) flat (too heavy to lob) speed (flight speed, 1 = usual) arcMul (arc height) arc ([a,b] own arc) bounces (0 to 3) hop, hopH, hopT (each hop: distance, height, seconds)
    popEach (a blast at every touchdown) scatter (balls thrown, 1 to 8) spread (how far they scatter) fuse (seconds before it pops after landing) stick (seconds a glued part cannot be mended) splash (radius of stick, slow and puddle)
-   slowTo, slowSecs (mice in the splash walk at this share of their speed, for this long) puddle (seconds the puddle stays) dizzyR (mice this near go dizzy; -1 = the blast radius) dizzySecs (0 = the usual) tether (0, or the string's reach), yank (how far a snagged part is dragged to the shooter)
+   slowTo, slowSecs (mice in the splash walk at this share of their speed, for this long) puddle (seconds the puddle stays) dizzyR (mice this near go dizzy; -1 = the blast radius) dizzySecs (0 = the usual) tether (0, or the string's length: the ball snags the first part it passes and drags it this far toward the shooter)
    quake (radius: parts held by one fastener fall) roll (distance it rolls on after landing) cd (seconds before the next of this kind). The five that matches use read their numbers from CONFIG.v2, so a prototype that changes CONFIG still works. Where they land is the code below, the same for every record. ---- */
-var WDEF={blast:0,hiMul:1,falloff:1,cap:0,leg:false,legForce:false,flat:false,speed:1,arcMul:1,arc:null,bounces:0,hop:.9,hopH:.7,hopT:.5,popEach:false,scatter:1,spread:.42,fuse:0,stick:0,splash:0,slowTo:1,slowSecs:0,puddle:0,dizzyR:-1,dizzySecs:0,tether:0,yank:.5,quake:0,roll:0,cd:0};
+var WDEF={blast:0,hiMul:1,falloff:1,cap:0,leg:false,legForce:false,flat:false,speed:1,arcMul:1,arc:null,bounces:0,hop:.9,hopH:.7,hopT:.5,popEach:false,scatter:1,spread:.42,fuse:0,stick:0,splash:0,slowTo:1,slowSecs:0,puddle:0,dizzyR:-1,dizzySecs:0,tether:0,quake:0,roll:0,cd:0};
 /* a record: the defaults, then plain numbers, then numbers that follow CONFIG (a getter; setting one turns it into a plain number) */
 function wRec(over,live){var w={},k;for(k in WDEF)w[k]=WDEF[k];for(k in over)w[k]=over[k];
   if(live)Object.keys(live).forEach(function(k2){Object.defineProperty(w,k2,{enumerable:true,configurable:true,get:live[k2],set:function(v){Object.defineProperty(w,k2,{value:v,writable:true,enumerable:true,configurable:true});}});});return w;}
-var AMMO={
+var AMMOT={
   marble:{name:'Marble',icon:'🔵',short:'Marble',tint:'team',w:wRec({leg:true},{blast:function(){return C2.blast;},hiMul:function(){return C2.highBlast;}})},
   big:{name:'Big Marble',icon:'⚫',short:'Big',tint:0x2a2a30,store:'big',scale:2,w:wRec({flat:true,leg:true,legForce:true},{blast:function(){return C2.bigBlast;}})},
   corks:{name:'Corks',icon:'🍾',short:'Corks',tint:'cork',scale:.8,w:wRec({},{scatter:function(){return C2.corkCount;},spread:function(){return C2.corkSpread;},dizzyR:function(){return C2.corkHit;},cd:function(){return C2.corkCd;}})},
   bouncer:{name:'Bouncer',icon:'🏀',short:'Bounce',tint:0xff7a2e,w:wRec({flat:true,bounces:1,dizzyR:-1},{blast:function(){return C2.bouncer.blast;},hop:function(){return C2.bouncer.hop;},hopH:function(){return C2.bouncer.hopH;},hopT:function(){return C2.bouncer.hopT;},arc:function(){return C2.bouncer.arc;},speed:function(){return 1/C2.bouncer.slow;},cd:function(){return C2.bouncer.cd;}})},
   glue:{name:'Glue blob',icon:'🍯',short:'Glue',tint:0x86d23c,scale:1.4,w:wRec({dizzyR:0},{splash:function(){return C2.glue.reach;},stick:function(){return C2.glue.lock;},slowTo:function(){return C2.glue.slowTo;},slowSecs:function(){return C2.glue.slow;},puddle:function(){return C2.glue.puddle;},cd:function(){return C2.glue.cd;}})}
 };
+/* an entry added the old way (R(hi), cd(), flat, noLeg, bounce(), store as functions and flags) is turned into a record when it is put on the table; R(hi) stays as a way to read the ring radius at scale 1 */
+function wNorm(A){if(!A||typeof A!=='object')return A;
+  if(!A.w){var w={},hv=function(f){try{return typeof f==='function'?f():f;}catch(e){return undefined;}};
+    if(A.R){var r0=+hv(function(){return A.R(false);}),r1=+hv(function(){return A.R(true);});if(isFinite(r0)){w.blast=r0;w.hiMul=r0>0&&isFinite(r1)?r1/r0:1;}}
+    if(A.cd)w.cd=+hv(A.cd)||0;if(A.flat)w.flat=true;w.leg=!A.noLeg;
+    if(A.bounce){var b=hv(A.bounce)||{};w.bounces=1;w.hop=b.hop;w.hopH=b.hopH;w.hopT=b.hopT;w.arc=b.arc;w.speed=b.slow?1/b.slow:1;}
+    A.w=wRec(w);}
+  if(!A.R)A.R=function(hi){var W=A.w;return W.blast>0?W.blast*(hi?W.hiMul:1):(W.scatter>1?W.spread:W.splash);};return A;}
+Object.keys(AMMOT).forEach(function(k){wNorm(AMMOT[k]);});
+var AMMO=typeof Proxy==='function'?new Proxy(AMMOT,{set:function(t,k,v){t[k]=wNorm(v);return true;}}):AMMOT;
 var AMMO_ORDER=['marble','big','corks','bouncer','glue'];
 /* the ring a shot is drawn with: the blast, or the scatter, or the splash */
 function ammoR(id,hi){var W=(AMMO[id]||AMMO.marble).w,r=W.blast>0?W.blast*(hi?W.hiMul:1):(W.scatter>1?W.spread:W.splash);return r*U();}
@@ -244,7 +254,7 @@ SG.start=function(team,opts){
       var dl=dist(o[0],o[1],w[0],w[1])||1,pk=[w[0]+(o[0]-w[0])/dl*.39,w[1]+(o[1]-w[1])/dl*.39];side.kit.push({kind:kind,a:a,x:w[0],z:w[1],px:pk[0],pz:pk[1],used:false,picked:false});});
     for(var i=0;i<5;i++){var h=w2(s,(i-2)*.42,2.3-Math.abs(i-2)*.1);SG.mice.push({side:s,i:i,state:'idle',x:h[0],z:h[1],rot:phiOf(s)+PI,tx:h[0],tz:h[1],hx:h[0],hz:h[1],job:0,part:-1,t:0,wait:.5+i*.4,speed:0,
       slack:.3,q:0,asked:-9,path:null,pi:0,pver:-1,ptx:0,ptz:0,cd:1+i*.5,act:0,moved:0,goal:false,daze:false});}}
-  SG.kit=SG.sides[0].kit;for(var bs=0;bs<2;bs++)if(V2()&&!SG.sides[bs].preset&&SG.sides[bs].bot)SG.sides[bs].preset=LEVELS[SG.sides[bs].level].preset||'average';fitPreset(0);fitPreset(1);viewStart();if(SG.mode==='solo'||SG.mode==='table')labProtosOff();if(V2())for(var hs=0;hs<2;hs++)if(SG.sides[hs].human)SG.select(towerSlot(hs),hs);   /* the Keep goes first, so it is already in hand */
+  SG.kit=SG.sides[0].kit;for(var bs=0;bs<2;bs++)if(V2()&&!SG.sides[bs].preset&&SG.sides[bs].bot)SG.sides[bs].preset=LEVELS[SG.sides[bs].level].preset||'average';fitPreset(0);fitPreset(1);viewStart();if(SG.mode==='solo'||SG.mode==='table'){labProtosOff();labWeaponsOff();}if(V2())for(var hs=0;hs<2;hs++)if(SG.sides[hs].human)SG.select(towerSlot(hs),hs);   /* the Keep goes first, so it is already in hand */
   if(SG.mode==='lab')labInit();else if(opts.design)labDesignToBuild(opts.design);
   ui();};
 SG.auto=function(side,level){var s=SG.sides[side];if(!s)return;s.bot=true;s.human=false;if(LEVELS[level])s.level=level;if(V2()&&!s.preset&&SG.phase==='build'&&!SG.pieces.some(function(q){return q.side===side;})){s.preset=LEVELS[s.level].preset||'average';fitPreset(side);}s.sel=-1;ui();};
@@ -449,7 +459,7 @@ function pieceAt(x,y,z,skip){for(var j=0;j<SG.pieces.length;j++){var p=SG.pieces
 /* A wall or gate that has lost every plank, rail, door and lintel is only a frame (posts, and a gate's braces): a flat shot passes between them and stops only where a post stands. Anything with a plank, rail, door or lintel left still stops a shot as it always did. */
 function bareFrame(p){if(p.kind!=='wall'&&p.kind!=='gate')return false;var re=p.kind==='wall'?/plank|rail/:/lintel|door/;for(var i=0;i<p.ps.length;i++)if(p.ps[i].st==='on'&&re.test(p.ps[i].id))return false;return true;}
 function nearFrame(p,x,z){var r=C2.frameR*U();for(var i=0;i<p.ps.length;i++){var q=p.ps[i];if(q.st==='on'&&dist(q.wx,q.wz,x,z)<r)return true;}return false;}
-SG.pieceAt=pieceAt;
+SG.pieceAt=pieceAt;SG.overlap=overlap;
 function marblePos(a,k){return [a.x0+(a.x1-a.x0)*k,a.y0*(1-k)+4*a.h*k*(1-k),a.z0+(a.z1-a.z0)*k];}
 /* where between two points of its flight a marble first touches a piece, so the spot shown, the spot the bot reckons with and the real landing agree */
 function entryK(a,k0,k1,skip){for(var i=0;i<8;i++){var km=(k0+k1)/2,q=marblePos(a,km);if(pieceAt(q[0],q[1],q[2],skip))k1=km;else k0=km;}return k1;}
@@ -471,7 +481,7 @@ SG.arc=function(s,tx,tz,li){var l=lobberOf(s,li);if(!l)return null;var side=SG.s
       b2.hit=scanArc(b2,s,l.id,.03);prev.next=b2;prev=b2;sx=ex;sz=ez;if(b2.hit){a.hit=b2.hit;break;}}}
   return a;};
 SG.fire=function(s,tx,tz,li){var side=SG.sides[s];if(li==null)li=side.lsel||0;if(SG.phase!=='fight'||SG.lobberBlock(s,li))return null;var a=SG.arc(s,tx,tz,li);if(!a)return null;var l=lobberOf(s,li);
-  if(V2()){a.ammo=side.ammo;var A=AMMO[a.ammo],W=A.w;ammoSpend(side,a.ammo);SG.stats.ammoShots[a.ammo]=(SG.stats.ammoShots[a.ammo]||0)+1;a.tw=W.tether>0?W.tether*U():0;a.sx=a.x0;a.sz=a.z0;
+  if(V2()){a.ammo=side.ammo;var A=AMMO[a.ammo],W=A.w;ammoSpend(side,a.ammo);SG.stats.ammoShots[a.ammo]=(SG.stats.ammoShots[a.ammo]||0)+1;a.tw=W.tether>0?1:0;a.sx=a.x0;a.sz=a.z0;
     /* a scatter: more balls thrown round the aimed spot, each a shot of its own */
     for(var ci2=1;ci2<W.scatter;ci2++){var an=ci2/(W.scatter-1)*PI*2+rand(),rd=W.spread*U()*(.45+rand()*.55),c2=SG.arc(s,a.x1+Math.cos(an)*rd,a.z1+Math.sin(an)*rd,li);c2.id=SG.nextId++;c2.side=s;c2.t=-ci2*.04;c2.live=true;c2.ammo=a.ammo;c2.tw=a.tw;c2.sx=a.sx;c2.sz=a.sz;SG.marbles.push(c2);}
     if(a.ammo!=='marble'&&!(A.store&&side[A.store]>0))side.ammo='marble';}
@@ -635,7 +645,7 @@ function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,n0=SG.stats.par
 /* what a landing does, in the order: a tether yanks its part, the blast, mice made dizzy, glue and slowing, a quake. Returns {R, n (mice), knocked (parts off by the blast)}. */
 function boom(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,u=U(),n=0,knocked=0,R=labProto('blastR',ammoR(a.ammo,a.high),a),en=1-a.side;
   if(SG.mode==='lab'&&SG.lab){var dl=Math.sqrt((a.x1-a.x0)*(a.x1-a.x0)+(a.z1-a.z0)*(a.z1-a.z0))||1;SG.lastDir={x:(a.x1-a.x0)/dl,z:(a.z1-a.z0)/dl};}
-  if(a.snag){var sp=a.snag.p,sq=sp.ps[a.snag.i];if(sq&&sq.st==='on'){SG.att=a.side;SG.cause='tether';knock(sp,a.snag.i,a.sx-sq.wx,a.sz-sq.wz,'tether',W.yank*u);pop(sq.wx,sq.wz,'Snagged!',false,sq.wy+.2);settle(sp,a.side);}}
+  if(a.snag){var sp=a.snag.p,sq=sp.ps[a.snag.i];if(sq&&sq.st==='on'){SG.att=a.side;SG.cause='tether';knock(sp,a.snag.i,a.sx-sq.wx,a.sz-sq.wz,'tether',W.tether*u);pop(sq.wx,sq.wz,'Snagged!',false,sq.wy+.2);settle(sp,a.side);}}
   if(W.blast>0){knocked=blastAt(pos[0],pos[1],pos[2],R,a.side,W.legForce,a.x1-a.x0,a.z1-a.z0,a.from,false,hit?hit.id:0,a.ammo,W.cap,W.falloff);if(hit&&hit.side===a.side)SG.stats.ownHits++;if(knocked>=3||W.legForce)SG.shake=Math.max(SG.shake,.6);}
   var dr=W.dizzyR<0?R:W.dizzyR*u;
   if(dr>0)SG.mice.forEach(function(m){if(m.side!==a.side&&dist(m.x,m.z,pos[0],pos[2])<dr&&dizzy(m,W.dizzySecs))n++;});
@@ -652,8 +662,8 @@ function boom(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,u=U(),n=0,knocked
 function tickPuddles(dt){for(var i=SG.puddles.length-1;i>=0;i--){var pd=SG.puddles[i];if(SG.clock-pd.t0>pd.life){SG.puddles.splice(i,1);continue;}SG.mice.forEach(function(m){if(m.side!==pd.side&&dist(m.x,m.z,pd.x,pd.z)<pd.r&&!(m.slowT>pd.secs-.3)){m.slowT=pd.secs;m.slowK=pd.k;}});}}
 /* fuses: a ball that landed with a delay pops when its time is up */
 function tickFuses(){var F=SG.fuses;if(!F||!F.length)return;for(var i=F.length-1;i>=0;i--){var f=F[i];if(SG.clock<f.t)continue;F.splice(i,1);f.a.pend=false;landV2(f.a,f.pos,f.hit);}}
-/* a tether: the first part of the other side's camp the ball passes, within the string's reach of the shooter */
-function tetherFind(a,pos){var u=U(),best=null,bd=C3.hookR*u;if(dist(pos[0],pos[2],a.sx,a.sz)>a.tw)return null;
+/* a tether: the first part of the other side's camp the ball passes */
+function tetherFind(a,pos){var u=U(),best=null,bd=C3.hookR*u;
   SG.pieces.forEach(function(p){if(p.side===a.side||!p.built||p.down||!p.total||p.parts<=0||Math.abs(p.x-pos[0])>.9||Math.abs(p.z-pos[2])>.9)return;
     p.ps.forEach(function(q,i){if(q.st!=='on'||Math.abs(q.wy-pos[1])>C3.hookY*u)return;var d=dist(q.wx,q.wz,pos[0],pos[2]);if(d<bd){bd=d;best={p:p,i:i};}});});return best;}
 /* a roller: after landing it rolls on in the direction of travel, knocking off parts at its base and making mice dizzy */
@@ -877,9 +887,13 @@ function viewSite(p){if(!V.on)return;var gh=ghostOf(p.kind,SG.sides[p.side].team
 function viewDrop(p){var v=V.pieces[p.id];if(!v)return;if(v.ghost)world.remove(v.ghost);if(v.obj)world.remove(v.obj);if(v.cap)world.remove(v.cap);delete V.pieces[p.id];}
 function rank(name,y){return (/post/.test(name)?0:(/brace|floor|pole|bench/.test(name)?1:(/plank|door|wall/.test(name)?2:(/roof|flap|ridge|chimney/.test(name)?4:3))))*10+y;}
 /* makes the real model of a piece; returns its parts in building order with world positions */
+var VCACHE={};   /* the parts of a model by kind, team and look: a camp rebuilt while nothing is drawn (the Lab's range tests) need not build models */
 function viewObj(p){
-  var team=SG.sides[p.side].team,o=SS.piece(p.kind,team,{solid:false,variant:p.vari!=null?p.vari:p.id%3}),parts=SS.parts(o),c=Math.cos(p.rot),s=Math.sin(p.rot),out=[];
-  parts.forEach(function(m){var h=m.userData.home;out.push({id:m.userData.partId,x:p.x+(h[0]*c+h[2]*s)*PS,y:h[1]*PS,z:p.z+(-h[0]*s+h[2]*c)*PS,rank:rank(m.userData.partId,h[1])});});
+  var team=SG.sides[p.side].team,vr=p.vari!=null?p.vari:p.id%3,ck=p.kind+'|'+team+'|'+vr,cc=VCACHE[ck],o=null,parts=null,c=Math.cos(p.rot),s=Math.sin(p.rot),out=[];
+  if(!V.on&&cc)cc.forEach(function(e){var h=e.h;out.push({id:e.id,x:p.x+(h[0]*c+h[2]*s)*PS,y:h[1]*PS,z:p.z+(-h[0]*s+h[2]*c)*PS,rank:e.rank});});
+  else{o=SS.piece(p.kind,team,{solid:false,variant:vr});parts=SS.parts(o);
+    parts.forEach(function(m){var h=m.userData.home;out.push({id:m.userData.partId,x:p.x+(h[0]*c+h[2]*s)*PS,y:h[1]*PS,z:p.z+(-h[0]*s+h[2]*c)*PS,rank:rank(m.userData.partId,h[1])});});
+    if(!cc)VCACHE[ck]=parts.map(function(m){return {id:m.userData.partId,h:m.userData.home.slice?m.userData.home.slice():m.userData.home,rank:rank(m.userData.partId,m.userData.home[1])};});}
   if(V.on){var v=V.pieces[p.id]||(V.pieces[p.id]={ghost:null,obj:null,order:[]});if(v.ghost){world.remove(v.ghost);v.ghost=null;}
     o.scale.setScalar(PS);o.position.set(p.x,0,p.z);o.rotation.y=p.rot;world.add(o);v.obj=o;
     if(V2()&&p.kind==='tower'){var kf=SS.piece('flag',team);kf.scale.setScalar(.55);kf.position.set(0,1.2,0);o.add(kf);v.flag=kf;}   /* the Keep carries the team flag */
@@ -1384,11 +1398,11 @@ function labProtosOn(){var sv=labStore(LAB_FLAGSKEY)||{};Object.keys(sv).forEach
 
 /* ---- state ---- */
 function labFresh(){var P=labStore(LAB_PREFS)||{};function pv(k,d){return P[k]==null?d:P[k];}
-  return {instant:pv('instant',true),quick:pv('quick',true),crew:pv('crew',false),strict:pv('strict',false),supports:pv('supports',false),panel:pv('panel',innerWidth>=1000),read:pv('read',innerWidth>=900),slow:false,   /* on a narrow screen the panel and the readout start folded away */
+  return {instant:pv('instant',true),quick:pv('quick',true),crew:pv('crew',false),strict:pv('strict',false),supports:pv('supports',false),panel:pv('panel',innerWidth>=1000),read:pv('read',innerWidth>=900),topple:pv('topple',true),debris:pv('debris',true),fxShake:pv('fxShake',true),fxSlow:pv('fxSlow',true),fxSound:pv('fxSound',true),lastBurst:0,wk:null,frame:{ms:0,worst:0,n:0,calls:0,tris:0,t:0},slow:false,   /* on a narrow screen the panel and the readout start folded away */
     tool:'build',kind:'wall',ammo:'marble',high:false,ghost:{on:false,x:0,z:2,rot:PI,ok:false,code:'',text:'',sx:0,sz:0,kind:'wall',side:0},carry:null,sel:0,fire:{s:0,li:0},
     gun:{id:-7,kind:'lobber',x:0,z:LAB_GUNR,rot:PI,built:true,ps:[],total:0,parts:0,side:0,reload:0,crew:-1,fired:-9,aim:null,x1:0},gunAim:null,spot:null,
-    undo:[],redo:[],uid:0,target:'empty',saved:[[],[]],snap:null,last:null,cur:null,landings:[],fellLog:[],msg:{text:'',until:0,bad:false},sess:{keeps:0},base:{partsOff:0,collapses:0,dizzies:0,shots:0},rkey:'',card:false};}
-function labPrefs(){var L=SG.lab;labStore(LAB_PREFS,{instant:L.instant,quick:L.quick,crew:L.crew,strict:L.strict,supports:L.supports,panel:L.panel,read:L.read});}
+    undo:[],redo:[],uid:0,target:'empty',saved:[[],[]],snap:null,last:null,cur:null,landings:[],fellLog:[],msg:{text:'',until:0,bad:false},sess:{keeps:0,score:0,chain:0},base:{partsOff:0,collapses:0,dizzies:0,shots:0},rkey:'',card:false};}
+function labPrefs(){var L=SG.lab;labStore(LAB_PREFS,{instant:L.instant,quick:L.quick,crew:L.crew,strict:L.strict,supports:L.supports,panel:L.panel,read:L.read,topple:L.topple,debris:L.debris,fxShake:L.fxShake,fxSlow:L.fxSlow,fxSound:L.fxSound});}
 function labMsg(text,bad){var L=SG.lab;if(!L)return;L.msg={text:text,until:SG.clock+2.8,bad:!!bad};}
 function labInit(){
   SG.lab=labFresh();var L=SG.lab;SG.clearLayout();
@@ -1402,7 +1416,7 @@ function labInit(){
   SG.lab.onKey=function(){};ui();}
 SG.labDraw=function(){return V.lab;};   /* the Lab's own three.js objects, for tests */
 SG.labStart=function(){SG.start('blue',{mode:'lab',seed:777});};
-SG.labBack=function(){SG.lab=null;labProtosOff();SG.speed=1;SG.paused=false;SG.reset();};
+SG.labBack=function(){SG.lab=null;labProtosOff();labWeaponsOff();SG.speed=1;SG.paused=false;SG.reset();};
 function labBase(){var st=SG.stats;return {partsOff:st.partsOff,collapses:st.collapses,dizzies:st.dizzies,shots:st.shots};}
 
 /* ---- pieces: records, placing, removing ---- */
@@ -1427,7 +1441,7 @@ function labByUid(u){for(var i=0;i<SG.pieces.length;i++)if(SG.pieces[i].uid===u)
 /* the intact layout of each side: what Reset target and Heal all rebuild to */
 function labSaveSides(){var L=SG.lab;for(var s=0;s<2;s++)L.saved[s]=SG.pieces.filter(function(p){return p.side===s;}).map(labRec);}
 /* mice go back to their camp's resting places, steady on their feet */
-function labHomeMice(s){fixGrid();SG.mice.forEach(function(m){if(s!=null&&m.side!==s)return;var w=freeSpot(m.side,m.i);m.x=w[0];m.z=w[1];m.tx=w[0];m.tz=w[1];m.hx=w[0];m.hz=w[1];m.path=null;m.state='idle';m.job=0;m.part=-1;m.t=0;m.slowT=0;m.q=0;m.crewing=false;m.goal=false;m.speed=0;m.rot=phiOf(m.side)+PI;});}
+function labHomeMice(s){fixGrid();SG.mice.forEach(function(m){if(s!=null&&m.side!==s)return;var w=freeSpot(m.side,m.i);m.x=w[0];m.z=w[1];m.tx=w[0];m.tz=w[1];m.hx=w[0];m.hz=w[1];m.path=null;m.state='idle';m.job=0;m.part=-1;m.t=0;m.slowT=0;m.slowK=0;m.q=0;m.crewing=false;m.goal=false;m.speed=0;m.rot=phiOf(m.side)+PI;});}
 function labSettleView(){labRepoint();fixGrid();}
 /* replace one side's pieces by these records, all built at once */
 function labSetSide(s,recs,instant){labRemoveSide(s);var order=recs.filter(function(r){return r.kind!=='brace';}).concat(recs.filter(function(r){return r.kind==='brace';}));
@@ -1473,7 +1487,7 @@ function labSetUndoable(s,recs){var L=SG.lab,before=L.saved[s].map(function(r){r
 SG.labStarter=function(){labSetUndoable(0,labStarter());labMsg('My camp: a Keep and two lobbers',false);};
 SG.labClearCamp=function(s){labSetUndoable(s,[]);labMsg((s?'Target':'My')+' camp cleared',false);};
 /* ---- the target camps ---- */
-var LAB_TARGETS=[['empty','Empty'],['walled','Walled Keep'],['braced','Braced Keep'],['longwall','Long wall'],['workshops','Workshop cluster'],['fortress','Fortress'],['glass','Glass house'],['copy','My camp copy']];
+var LAB_TARGETS=[['empty','Empty'],['walled','Walled Keep'],['braced','Braced Keep'],['longwall','Long wall'],['workshops','Workshop cluster'],['fortress','Fortress'],['glass','Glass house'],['copy','My camp copy'],['castle','Castle'],['village','Village'],['maze','Wall maze'],['domino','Domino row'],['stack','Tower stack']];
 /* each template is a list of [kind, x, z, turn] in a camp's own frame (x across, z toward the camp's back; the Keep stands at z 2.42, facing the hill is turn PI). Sizes follow the piece scale. */
 function labTemplate(id,s){var F=FOOT,T=PI,out=[],i;
   if(id==='empty')return [];
@@ -1484,6 +1498,7 @@ function labTemplate(id,s){var F=FOOT,T=PI,out=[],i;
   if(id==='glass')return labCampRecs(s,[['tower',0,2.3,T]]);
   if(id==='fortress'){var P=PRESETS.good,l2=[];P.forEach(function(q){var kind=KIT2[q[0]];if(kind==='brace')l2.push([kind,q[1],q[2],q[3]]);else l2.push([kind,Math.sin(q[2])*q[1],Math.cos(q[2])*q[1],q[2]+q[3]]);});return labCampRecs(s,l2);}
   if(id==='copy')return labMirror(0,s);
+  if(id==='castle'||id==='village'||id==='maze'||id==='domino'||id==='stack')return labBigTemplate(id,s);
   return [];}
 /* my camp, copied across the table onto the other camp: the same place in that camp's own frame */
 function labMirror(from,to){return labFromDesign(labToDesign(from,'copy'),to);}
@@ -1531,7 +1546,7 @@ function tickLab(dt){var L=SG.lab;if(!L)return;SG.time=1e6;SG.stats.fightTime+=d
   for(var s=0;s<2;s++){var side=SG.sides[s];side.big=99;side.ammo=L.ammo;side.high=L.high;   /* every kind of ammunition, as many as you like */
     lobbersOf(s).concat(s===0?[L.gun]:[]).forEach(function(l,li){if(L.quick&&(l.reload||0)>.3)l.reload=.3;if((l.reload||0)>0&&(l===L.gun||crewOK(s,li)))l.reload=Math.max(0,l.reload-dt);});
     for(var ck in side.cd){if(L.quick)side.cd[ck]=0;else if(side.cd[ck]>0)side.cd[ck]=Math.max(0,side.cd[ck]-dt);}}
-  tickMarbles(dt);tickDebris();tickPuddles(dt);trapsTick();tickMice(dt);
+  tickMarbles(dt);tickDebris();tickPuddles(dt);trapsTick();tickMice(dt);labDebris();
   if(SG.pieces.some(function(p){return !p.built;})||SG.mice.some(function(m){return m.state==='toMat'||m.state==='carry'||m.state==='hammer';}))buildMice(dt,true);
   labTrack();}
 /* a mouse in the Lab stands at its camp's resting place; a dizzy one is dealt with by tickMice as in a match */
@@ -1541,7 +1556,7 @@ function labMouse(m,dt){goTo(m,m.hx,m.hz,.3);if(walk(m,dt,WALK())){m.state='idle
 function labNote(kind,a,b,c,d){var L=SG.lab,cur=L&&L.cur;if(!cur||cur.done)return;
   if(kind==='part')cur.parts.push({piece:a.id,kind:a.kind,side:a.side,part:b.id});
   else if(kind==='collapse'){cur.fell.push(labName(a.kind)+(a.side?' (target)':' (mine)'));cur.chain=Math.max(cur.chain||0,b||1);}
-  else if(kind==='keep'){cur.keep=true;cur.fell.push('Keep'+(a.side?' (target)':' (mine)'));L.sess.keeps++;cur.chain=Math.max(cur.chain||0,b||1);}
+  else if(kind==='keep'){cur.keep=true;cur.fell.push('Keep'+(a.side?' (target)':' (mine)'));L.sess.keeps++;cur.keeps=(cur.keeps||0)+1;cur.chain=Math.max(cur.chain||0,b||1);}
   else if(kind==='land')cur.landings.push({x:b[0],y:b[1],z:b[2],r:c,ammo:a.ammo,high:!!a.high,hit:d?d.kind:'',hitSide:d?d.side:-1});}
 /* screen shake, the slow-motion beat and the sounds scale with the parts that fell at once (n), if the Lab's switches for them are on. Without them a landing shakes and slows as in a match. */
 function labFx(n){var L=SG.lab,cur=L&&L.cur;if(!L||n<=0)return;var F=C3.fx;if(cur&&!cur.done)cur.burst=Math.max(cur.burst||0,n);L.lastBurst=n;
@@ -1551,7 +1566,7 @@ function labFx(n){var L=SG.lab,cur=L&&L.cur;if(!L||n<=0)return;var F=C3.fx;if(cu
 /* a shot is over when nothing is in the air and no thrown part is still to land */
 function labTrack(){var L=SG.lab,cur=L.cur;if(!cur||cur.done)return;if(SG.marbles.some(function(m){return m.live||m.pend;})||SG.debris.length||SG.fuses.length)return;
   var st=SG.stats;cur.done=true;cur.partsOff=st.partsOff-cur.b.partsOff;cur.collapses=st.collapses-cur.b.collapses;cur.dizzies=st.dizzies-cur.b.dizzies;cur.glued=st.glued-cur.b.glued;cur.bounces=st.bounces-cur.b.bounces;cur.secs=+(SG.clock-cur.b.t).toFixed(2);
-  cur.fellOne=cur.fell.slice();L.landings=cur.landings.slice();cur.fell.forEach(function(f){L.fellLog.unshift(f);});L.fellLog=L.fellLog.slice(0,8);L.rkey='';}
+  L.sess.score=(L.sess.score||0)+labCarnageOf(cur);L.sess.chain=Math.max(L.sess.chain||0,cur.chain||0);cur.fellOne=cur.fell.slice();L.landings=cur.landings.slice();cur.fell.forEach(function(f){L.fellLog.unshift(f);});L.fellLog=L.fellLog.slice(0,8);L.rkey='';}
 function labNewCur(rec){var st=SG.stats;return {rec:rec,done:false,parts:[],fell:[],keep:false,landings:[],b:{partsOff:st.partsOff,collapses:st.collapses,dizzies:st.dizzies,glued:st.glued,bounces:st.bounces,t:SG.clock}};}
 
 /* ---- shooting ---- */
@@ -1567,7 +1582,7 @@ SG.labFire=function(s,li,tx,tz,opt){var L=SG.lab;if(!L)return null;opt=opt||{};v
   if(opt.force){l.reload=0;side.cd[L.ammo]=0;}
   var blk=SG.lobberBlock(s,li);if(blk){labMsg(blockText(blk,s),true);return null;}
   var rec={s:s,li:li,ammo:L.ammo,high:L.high&&!A.w.flat,tx:tx,tz:tz,gx:l.x,gz:l.z,seed:SG.seed};if(opt.seed!=null)SG.seed=opt.seed;
-  var cur=labNewCur(rec);L.cur=cur;
+  var cur=labNewCur(rec);L.cur=cur;SG.topN=0;
   var a=SG.fire(s,tx,tz,li);side.ammo=L.ammo;
   if(!a){L.cur=null;return null;}
   rec.seed=opt.seed!=null?opt.seed:rec.seed;L.last=rec;L.landings=[];L.rkey='';return a;};
@@ -1578,8 +1593,8 @@ SG.labReplay=function(){var L=SG.lab,r=L&&L.last;if(!r){labMsg('Nothing to repla
 SG.labSettle=function(max){var L=SG.lab,t=0;max=max||12;while(t<max&&L.cur&&!L.cur.done){SG.step(STEP);t+=STEP;}SG.step(STEP);return L.cur;};
 
 /* ---- readouts ---- */
-SG.labSession=function(){var L=SG.lab,st=SG.stats,b=L.base;return {shots:st.shots-b.shots,partsOff:st.partsOff-b.partsOff,collapses:st.collapses-b.collapses,keeps:L.sess.keeps,dizzies:st.dizzies-b.dizzies};};
-SG.labResetCounters=function(){var L=SG.lab;L.base=labBase();L.sess={keeps:0};L.fellLog=[];L.rkey='';};
+SG.labSession=function(){var L=SG.lab,st=SG.stats,b=L.base;return {shots:st.shots-b.shots,partsOff:st.partsOff-b.partsOff,collapses:st.collapses-b.collapses,keeps:L.sess.keeps,dizzies:st.dizzies-b.dizzies,score:Math.round(L.sess.score||0),chain:L.sess.chain||0};};
+SG.labResetCounters=function(){var L=SG.lab;L.base=labBase();L.sess={keeps:0,score:0,chain:0};L.fellLog=[];L.rkey='';};
 var LAB_WHY={keep:'brings the Keep down',roof:'drops the roof','wall-all':'brings the whole wall down','wall-planks':'drops the planks',gate:'brings the gate down'};
 /* for each attached part: would losing it alone bring something down? Asked of the real rule (holdFail), one part at a time. */
 function labCritical(p){var out={};if(p.down||!p.built)return out;
@@ -1600,38 +1615,206 @@ SG.labSupports=function(p){if(typeof p==='number')p=pieceById(p);if(!p)return nu
 SG.labSelect=function(p){var L=SG.lab;L.sel=p?p.id:0;L.rkey='';};
 
 /* ---- snapshot and restore of the whole table, damage and all ---- */
-SG.labSnapshot=function(){var L=SG.lab;return {pieces:SG.pieces.map(function(p){return {rec:labRec(p),aim:p.aim,sprung:!!p.sprung,down:!!p.down,fallDir:p.fallDir||0,ps:p.ps.map(function(q){return {st:q.st,rx:q.rx,rz:q.rz,used:!!q.used};})};}),
+SG.labSnapshot=function(){var L=SG.lab;return {pieces:SG.pieces.map(function(p){return {rec:labRec(p),aim:p.aim,sprung:!!p.sprung,down:!!p.down,fallDir:p.fallDir||0,ps:p.ps.map(function(q){return {st:q.st,rx:q.rx,rz:q.rz,used:!!q.used,swept:!!q.swept};})};}),
   saved:[L.saved[0].slice(),L.saved[1].slice()],target:L.target,uid:L.uid};};
 SG.labRestore=function(sn){var L=SG.lab;if(!sn)return false;SG.pieces.slice().forEach(labRemove);
   sn.pieces.forEach(function(e){var p=labPutRaw(Object.assign({},e.rec),true);p.aim=e.aim;p.sprung=e.sprung;
-    e.ps.forEach(function(sq,i){var q=p.ps[i];if(!q||sq.st==='on')return;q.st=sq.st;q.rx=sq.rx;q.rz=sq.rz;q.t0=-99;q.used=sq.used;});
+    e.ps.forEach(function(sq,i){var q=p.ps[i];if(!q||sq.st==='on')return;q.st=sq.st;q.rx=sq.rx;q.rz=sq.rz;q.t0=-99;q.used=sq.used;q.swept=!!sq.swept;});
     if(p.ps.length)p.parts=p.ps.filter(function(q){return q.st==='on';}).length;if(e.down){p.down=true;p.fallT=SG.clock-99;p.fallDir=e.fallDir;p.parts=0;}});
   L.saved=[sn.saved[0].slice(),sn.saved[1].slice()];L.target=sn.target;SG.debris=[];SG.fuses=[];SG.puddles=[];SG.marbles=[];labRepoint();fixGrid();labHomeMice();L.cur=null;L.landings=[];L.rkey='';return true;};
 SG.labTakeSnapshot=function(){SG.lab.snap=SG.labSnapshot();labMsg('Snapshot taken',false);ui();};
 SG.labRestoreSnapshot=function(){var L=SG.lab;if(!L.snap){labMsg('Take a snapshot first',true);return false;}SG.labRestore(L.snap);labMsg('Table restored',false);ui();return true;};
 
+/* ---- the Weapon Workshop ----
+   A weapon is a plain record of numbers (WDEF in the ammunition table above). The Workshop makes one from a base (Marble, Ball, Acorn, Cork), clamps every number to CONFIG.workshop.caps, shows a price, and puts it
+   in the ammo row at once. It can be saved (localStorage), copied as JSON and pasted back, and "Rate it" fires it at every target. The six presets below are made with it; each is also a prototype, so
+   switching it on in the Prototypes panel lists it in the ammo row. Ideas and their makers are named at each preset (see LAB.md). Lab only: leaving the Lab takes every one of them off the AMMO table. */
+var LAB_WKEY='rtk.lab.weapons.v1',LAB_BOOLS=['leg','legForce','flat','popEach'];
+function wCopy(w){var o={},k;for(k in WDEF)o[k]=w[k];if(o.arc)o.arc=o.arc.slice();return o;}
+/* every number held to its range (CONFIG.workshop.caps); missing numbers take the default; notes say what was held */
+function wClamp(src){var o={},notes=[],caps=C3.caps,k;src=src||{};
+  for(k in WDEF){var v=src[k],d=WDEF[k];
+    if(LAB_BOOLS.indexOf(k)>=0){o[k]=v==null?d:!!v;continue;}
+    if(k==='arc'){o.arc=Array.isArray(v)&&v.length===2&&isFinite(+v[0])&&isFinite(+v[1])?[Math.max(0,Math.min(1,+v[0])),Math.max(0,Math.min(1,+v[1]))]:null;continue;}
+    var n=+v;if(v==null||v===''||!isFinite(n)){o[k]=d;if(v!=null&&v!=='')notes.push(k+' is not a number, set to '+d);continue;}
+    var c=caps[k];if(k==='bounces'||k==='scatter'||k==='cap')n=Math.round(n);
+    if(c){var m=Math.max(c[0],Math.min(c[1],n));if(m!==n)notes.push(k+' '+n+' held to '+m+' (range '+c[0]+' to '+c[1]+')');n=m;}
+    o[k]=n;}
+  return {w:o,notes:notes};}
+/* the price in budget points, from the numbers: what a weapon can do costs, what holds it back (a long wait) takes a little off */
+function wPrice(w){var P=C3.price,p=w.blast*P.blast*(w.cap>0?Math.min(1,.5+w.cap/16):1)*(1+(w.scatter-1)*P.scatter)*(w.popEach?1+w.bounces:1);
+  p+=(w.leg?P.leg:0)+(w.legForce?P.legForce:0)+Math.max(0,w.speed-1)*P.speed+Math.max(0,w.arcMul-1)*P.arc+w.bounces*P.bounce+w.fuse*P.fuse+w.stick*P.stick+(1-w.slowTo)*w.slowSecs*P.slow+w.puddle*P.puddle+w.splash*P.splash;
+  p+=(w.dizzyR>0?w.dizzyR*P.dizzy:0)+w.dizzySecs*P.dizzySecs+(w.tether>0?P.tether+w.tether*P.tetherLen:0)+w.quake*P.quake+w.roll*P.roll-w.cd*P.cd;
+  return Math.round(Math.max(P.floor,p)*10)/10;}
+SG.wPrice=wPrice;SG.wClamp=wClamp;SG.wCopy=wCopy;
+var LAB_BASES={
+  marble:{label:'Marble',icon:'🔵',tint:'team',scale:1.25,w:function(){return wCopy(AMMO.marble.w);}},
+  ball:{label:'Ball',icon:'⚪',tint:0xd8d8e0,scale:1.7,w:function(){return {blast:.25,leg:true,flat:true,speed:.85};}},
+  acorn:{label:'Acorn',icon:'🌰',tint:0x9c6b30,scale:1.1,w:function(){return {blast:.1,roll:1.6};}},
+  cork:{label:'Cork',icon:'🍾',tint:'cork',scale:.8,w:function(){return wCopy(AMMO.corks.w);}}};
+/* a weapon's sliders: [key, label, step]; the range of each is in CONFIG.workshop.caps */
+var LAB_WPARAMS=[['blast','Blast radius',.01],['hiMul','High-lob blast (share)',.05],['falloff','Blast falloff (1 = a match)',.05],['cap','Parts per hit (0 = no limit)',1],['speed','Flight speed',.05],['arcMul','Arc height',.05],['bounces','Bounces',1],['hop','Bounce distance',.05],['hopH','Bounce height',.05],
+  ['scatter','Scatter count',1],['spread','Scatter spread',.02],['fuse','Fuse (seconds)',.1],['stick','Stick (seconds)',.5],['splash','Splash radius',.01],['slowTo','Mice slowed to (share)',.05],['slowSecs','Slow for (seconds)',.5],['puddle','Puddle (seconds)',.5],['dizzyR','Dizzy radius (-1 = the blast)',.02],['dizzySecs','Dizzy for (0 = usual)',.5],
+  ['tether','Tether length (0 = none)',.1],['quake','Quake radius',.05],['roll','Roll distance',.1],['cd','Cooldown (seconds)',.5]];
+var LAB_WBOOLS=[['leg','Can break a Keep leg'],['legForce','Always breaks the nearest leg'],['flat','Flat shot only'],['popEach','Pops at every bounce']];
+function labSlug(n){return String(n||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24)||'weapon';}
+/* put a weapon record on the AMMO table (Lab only); returns its id */
+function labWkInstall(rec,id){var c=wClamp(rec.params),base=LAB_BASES[rec.base]||LAB_BASES.marble;id=id||('w_'+labSlug(rec.name));var old=AMMO[id];
+  AMMO[id]={name:String(rec.name||'My weapon').slice(0,40),icon:rec.icon||base.icon,short:String(rec.name||'Mine').slice(0,9),tint:rec.tint!=null?rec.tint:base.tint,scale:rec.scale||base.scale,w:c.w,workshop:true,base:rec.base||'marble',maker:rec.maker||''};
+  if(old&&old.workshop)AMMO[id].w=c.w;SG.sides.forEach(function(sd){if(sd.cd)sd.cd[id]=0;});return id;}
+function labWkRemove(id){var A=AMMO[id];if(!A||!A.workshop)return;delete AMMO[id];var L=SG.lab;if(L&&L.ammo===id)SG.labSetAmmo('marble');if(L&&L.wk&&L.wk.id===id)L.wk.id='';}
+function labWeaponsOff(){Object.keys(AMMO).forEach(function(k){if(AMMO[k].workshop)delete AMMO[k];});}
+/* the record that is saved, copied and pasted */
+SG.labWeaponRec=function(id){var A=AMMO[id];if(!A)return null;return {schema:'rtk.weapon',version:1,name:A.name,base:A.base||'marble',icon:A.icon,tint:A.tint,scale:A.scale||1.25,maker:A.maker||'',params:wCopy(A.w)};};
+/* is this a weapon we can read? {ok, text, rec (clean), notes} */
+SG.labWeaponCheck=function(r){if(typeof r==='string'){try{r=JSON.parse(r);}catch(e){return {ok:false,text:'That is not readable JSON'};}}
+  if(!r||typeof r!=='object'||r.schema!=='rtk.weapon')return {ok:false,text:'It is not a weapon record (schema must be rtk.weapon)'};if(!r.params||typeof r.params!=='object')return {ok:false,text:'The weapon has no params'};
+  var name=String(r.name||'').replace(/^\s+|\s+$/g,'').slice(0,40);if(!name)return {ok:false,text:'The weapon has no name'};var c=wClamp(r.params);
+  return {ok:true,text:c.notes.length?'Loaded, with '+c.notes.length+' number'+(c.notes.length>1?'s':'')+' held to the range':'Loaded',notes:c.notes,rec:{schema:'rtk.weapon',version:1,name:name,base:LAB_BASES[r.base]?r.base:'marble',icon:typeof r.icon==='string'?r.icon.slice(0,4):'',tint:r.tint!=null?r.tint:null,scale:+r.scale>0&&+r.scale<4?+r.scale:null,maker:String(r.maker||'').slice(0,80),params:c.w}};};
+SG.labWeapons=function(){var o=labStore(LAB_WKEY);return o&&typeof o==='object'?o:{};};
+SG.labWeaponSave=function(rec){var k=SG.labWeaponCheck(rec);if(!k.ok)return k;var all=SG.labWeapons();all[k.rec.name]=k.rec;labStore(LAB_WKEY,all);return {ok:true,text:'Saved "'+k.rec.name+'"',rec:k.rec};};
+SG.labWeaponDelete=function(name){var all=SG.labWeapons();delete all[name];labStore(LAB_WKEY,all);};
+/* the editor: L.wk = {base, name, w (plain numbers), id (the ammo id once it is in the ammo row, or '')} */
+function labWkState(){var L=SG.lab;if(!L.wk)L.wk={base:'marble',name:'My weapon',w:wCopy(wRec(LAB_BASES.marble.w())),id:''};return L.wk;}
+function labWkPush(){var L=SG.lab,k=labWkState();if(!k.id||!AMMO[k.id])return;var c=wClamp(k.w);AMMO[k.id].w=c.w;AMMO[k.id].name=k.name||'My weapon';AMMO[k.id].short=String(k.name||'Mine').slice(0,9);}
+SG.labWkBase=function(key){var k=labWkState(),b=LAB_BASES[key];if(!b)return false;k.base=key;k.w=wClamp(Object.assign(wCopy(WDEF),b.w())).w;if(k.id&&AMMO[k.id]){AMMO[k.id].base=key;AMMO[k.id].icon=b.icon;AMMO[k.id].tint=b.tint;AMMO[k.id].scale=b.scale;}labWkPush();labUi();return true;};
+SG.labWkSet=function(key,v){var k=labWkState();if(typeof WDEF[key]==='undefined'||key==='arc')return false;var t={};t[key]=v;var c=wClamp(Object.assign({},k.w,t));k.w=c.w;labWkPush();labWkSync();return c.w[key];};
+SG.labWkName=function(n){var k=labWkState();k.name=String(n||'').slice(0,40);labWkPush();};
+/* "Use it": the weapon goes in the ammo row, chosen */
+SG.labWkUse=function(){var k=labWkState(),b=LAB_BASES[k.base],nm=(k.name||'').replace(/^\s+|\s+$/g,'')||'My weapon';k.name=nm;
+  var rec={name:nm,base:k.base,icon:b.icon,tint:b.tint,scale:b.scale,params:k.w},id=labWkInstall(rec,k.id||undefined);k.id=id;SG.labSetAmmo(id);labMsg(nm+' is in the ammo row',false);return id;};
+SG.labWkLoad=function(rec){var k=SG.labWeaponCheck(rec);if(!k.ok)return k;var L=SG.lab,w=labWkState();w.base=k.rec.base;w.name=k.rec.name;w.w=k.rec.params;w.id=labWkInstall(k.rec,'w_'+labSlug(k.rec.name));w.maker=k.rec.maker;SG.labSetAmmo(w.id);k.id=w.id;labUi();return k;};
+SG.labWkSaveNow=function(){var k=labWkState(),b=LAB_BASES[k.base];return SG.labWeaponSave({schema:'rtk.weapon',version:1,name:k.name||'My weapon',base:k.base,icon:b.icon,tint:b.tint,scale:b.scale,params:k.w});};
+/* the six presets, made with the Workshop (each also a prototype that lists it in the ammo row) */
+var LAB_PRESETS=[
+  {key:'tether',name:'Tether marble',icon:'🧵',tint:0xe8c070,base:'marble',maker:'ChatGPT #18, Grok #16, Gemini #13',note:'A marble on a string: it snags the first part it passes and yanks it loose toward you.',w:{blast:.05,tether:1.5,cd:3}},
+  {key:'quake',name:'Pocket Earthquake',icon:'🌍',tint:0x7a6a55,base:'ball',maker:'ChatGPT #12',note:'A heavy ball that loosens things without striking: parts held by one fastener fall.',w:{blast:0,leg:false,quake:1,dizzyR:.3,cd:4}},
+  {key:'roller',name:'Acorn drum',icon:'🌰',tint:0x9c6b30,base:'acorn',maker:'Gemini #11 (also Gemini #18, Grok #19, ChatGPT #19)',note:'Lands, then rolls on along the table, knocking parts off at its base.',w:{blast:.1,roll:2.4,cd:3}},
+  {key:'beads',name:'Bead shot',icon:'📿',tint:0xe05fa8,base:'cork',maker:'Gemini #20',note:'Eight tiny beads scatter; mice they land near are slowed.',w:{blast:.05,scatter:8,spread:.5,dizzyR:0,splash:.12,slowTo:.5,slowSecs:3,cd:2}},
+  {key:'pop',name:'Pop bomb',icon:'🎈',tint:0xf06a8a,base:'marble',maker:'the Lab (a toy "pop"; fire and powder are out)',note:'Lies a second, then goes pop: a large blast that takes parts off and only makes mice dizzy.',w:{fuse:1,blast:.5,falloff:.8,dizzyR:.4,cap:8,leg:false,hiMul:.6,cd:6}},
+  {key:'triple',name:'Triple bouncer',icon:'🎾',tint:0xc8e03a,base:'ball',maker:'the Lab (from the Bouncer)',note:'Three bounces, a small blast at each.',w:{blast:.17,leg:false,flat:true,bounces:3,hop:.8,hopH:.5,popEach:true,speed:1/1.35,arc:[.3,.24],cd:4}}];
+function labPresetRec(pr){var b=LAB_BASES[pr.base],w=Object.assign(wCopy(WDEF),b.w(),pr.w);return {schema:'rtk.weapon',version:1,name:pr.name,base:pr.base,icon:pr.icon,tint:pr.tint,scale:b.scale,maker:pr.maker,params:wClamp(w).w};}
+SG.labPresets=LAB_PRESETS;SG.labPresetRec=function(key){var pr=LAB_PRESETS.filter(function(q){return q.key===key;})[0];return pr?labPresetRec(pr):null;};
+LAB_PRESETS.forEach(function(pr){LAB_PROTOS['p_'+pr.key]={name:pr.name+' (weapon)',note:pr.note+' Made by: '+pr.maker+'.',on:function(){labWkInstall(labPresetRec(pr),'p_'+pr.key);},off:function(){labWkRemove('p_'+pr.key);}};});
+SG.labWkPreset=function(key){var r=SG.labPresetRec(key);if(!r)return false;var k=labWkState();k.base=r.base;k.name=r.name;k.w=r.params;k.id='';labUi();return true;};
+
 /* ---- the range report: every kind of ammunition, in turn, at a fresh copy of the target ---- */
 var LAB_SEED=424242,LAB_CARPET=[[0,0],[.22,0],[-.22,0],[0,.22],[0,-.22],[.22,.22],[-.22,.22],[.22,-.22],[-.22,-.22],[0,0]];   /* the ten aim points of a salvo, round the spot, in units that follow the piece scale */
-SG.labRange=function(o){var L=SG.lab;o=o||{};var spot=o.spot||L.spot||SG.labDefaultSpot(),keepTable=SG.labSnapshot(),keepStats=JSON.parse(JSON.stringify(SG.stats)),keepLast=L.last,keepCur=L.cur,keepSeed=SG.seed,keepAim=SG.sides[0].aim,keepUndo=[L.undo,L.redo],keepSess=L.sess,keepBase=L.base,keepFell=L.fellLog,keepLand=L.landings,quick=L.quick,keepAmmo=L.ammo,keepHigh=L.high;
-  var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})),variants=[],rows=[];
+/* run fn with my camp off the table, nothing drawn, no sound, and everything (table, counters, ammunition, undo) put back as it was */
+function labSandbox(fn){var L=SG.lab,keep={table:SG.labSnapshot(),stats:JSON.parse(JSON.stringify(SG.stats)),last:L.last,cur:L.cur,seed:SG.seed,aim:SG.sides[0].aim,undo:[L.undo,L.redo],sess:L.sess,base:L.base,fell:L.fellLog,land:L.landings,quick:L.quick,ammo:L.ammo,high:L.high,hold:SG.hold,von:V.on,burst:L.lastBurst,msg:L.msg},out;
+  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;SG.marbles=[];SG.debris=[];SG.fuses=[];SG.puddles=[];SG.hold=true;V.on=false;   /* nothing still flying from before can land on the test */
+  try{out=fn();}finally{
+    V.on=keep.von;SG.hold=keep.hold;L.quick=keep.quick;SG.labRestore(keep.table);SG.stats=keep.stats;L.last=keep.last;L.cur=keep.cur;SG.seed=keep.seed;SG.sides[0].aim=keep.aim;SG.pops=[];L.undo=keep.undo[0];L.redo=keep.undo[1];L.sess=keep.sess;L.base=keep.base;L.fellLog=keep.fell;L.landings=keep.land;L.lastBurst=keep.burst;L.msg=keep.msg;
+    SG.shake=0;SG.slowT=0;SG.topN=0;SG.lastDir=null;chainDepth=0;L.ammo=keep.ammo;L.high=keep.high;SG.sides.forEach(function(sd){sd.ammo=L.ammo;sd.high=L.high;});L.rkey='';}
+  return out;}
+/* one shot (and a salvo of N) of one kind of ammunition at a fresh copy of the target (saved[1]); v = {id, high, after, label} */
+function labVariant(v,spot,N){var L=SG.lab;SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.after||v.id;L.high=v.high;L.sess={keeps:0,score:0,chain:0};SG.topN=0;
+  if(v.after){L.ammo=v.after;L.high=false;SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED});SG.labSettle(10);SG.topN=0;}
+  L.ammo=v.id;L.high=v.high;SG.sides.forEach(function(sd){sd.ammo=v.id;sd.high=v.high;});
+  var a=SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED}),cur=SG.labSettle(10),hit=cur&&cur.landings[0],A=AMMO[v.id];
+  var row={ammo:v.id,name:v.label||(A.name+(v.high?' (high lob)':'')),high:v.high,after:v.after||'',fired:!!a,partsOff:cur?cur.partsOff:0,collapses:cur?cur.collapses:0,keep:!!(cur&&cur.keep),dizzies:cur?cur.dizzies:0,glued:cur?cur.glued:0,bounces:cur?cur.bounces:0,
+    landed:hit?(hit.hit?labName(hit.hit)+(hit.hitSide===1?'':' (mine)'):'ground'):'-',fell:cur?cur.fell.slice():[]};
+  /* then a salvo: the same ammunition again and again, spread over the camp round the spot (LAB_CARPET), nothing mended in between. A single shot rarely brings anything down; a salvo shows what the ammunition can do. */
+  if(N>0&&(!v.after||v.salvoAfter)){var tot={shots:N,parts:0,collapses:0,keepAt:0,firstCollapse:0,dizzies:0};SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.id;L.high=v.high;
+    for(var i=1;i<=N;i++){var of=LAB_CARPET[(i-1)%LAB_CARPET.length],u=U();SG.topN=0;
+      if(v.after){L.ammo=v.after;L.high=false;SG.labFire(0,'gun',spot.x+of[0]*u,spot.z+of[1]*u,{force:true,seed:LAB_SEED+i});SG.labSettle(10);SG.topN=0;L.ammo=v.id;L.high=v.high;SG.sides.forEach(function(sd){sd.ammo=v.id;sd.high=v.high;});}   /* a weapon that needs damage to work on (a quake) follows a Marble each time */
+      SG.labFire(0,'gun',spot.x+of[0]*u,spot.z+of[1]*u,{force:true,seed:LAB_SEED+i});var c=SG.labSettle(10);if(!c)continue;tot.parts+=c.partsOff;tot.collapses+=c.collapses;tot.dizzies+=c.dizzies;if(c.collapses&&!tot.firstCollapse)tot.firstCollapse=i;if(c.keep&&!tot.keepAt)tot.keepAt=i;}
+    row.salvo=tot;}
+  return row;}
+SG.labRange=function(o){var L=SG.lab;o=o||{};var spot=o.spot||L.spot||SG.labDefaultSpot(),N=o.salvo==null?10:o.salvo;
+  var ids=o.ammo||AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})),variants=[];
   ids.forEach(function(id){variants.push({id:id,high:false});if(!AMMO[id].w.flat)variants.push({id:id,high:true});});
-  variants.push({id:'glue',high:false,after:'marble',label:'Glue blob (after a Marble)'});
-  /* my camp is taken off the table for the test, so nothing of mine stands in the way of the free gun */
-  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;SG.marbles=[];SG.debris=[];SG.fuses=[];SG.puddles=[];   /* nothing still flying from before can land on the test */
-  variants.forEach(function(v){SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.after||v.id;L.high=v.high;L.sess={keeps:0};
-    if(v.after){L.ammo=v.after;L.high=false;SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED});SG.labSettle(10);}
-    L.ammo=v.id;L.high=v.high;SG.sides.forEach(function(sd){sd.ammo=v.id;sd.high=v.high;});
-    var before=SG.stats.glued,a=SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED}),cur=SG.labSettle(10),hit=cur&&cur.landings[0];
-    var A=AMMO[v.id];rows.push({ammo:v.id,name:v.label||(A.name+(v.high?' (high lob)':'')),high:v.high,after:v.after||'',fired:!!a,partsOff:cur?cur.partsOff:0,collapses:cur?cur.collapses:0,keep:!!(cur&&cur.keep),dizzies:cur?cur.dizzies:0,glued:cur?cur.glued:0,bounces:cur?cur.bounces:0,
-      landed:hit?(hit.hit?labName(hit.hit)+(hit.hitSide===1?'':' (mine)'):'ground'):'-',fell:cur?cur.fell.slice():[]});
-    /* then a salvo: the same ammunition again and again, spread over the camp round the spot (LAB_CARPET), nothing mended in between. A single shot rarely brings anything down; a salvo shows what the ammunition can do. */
-    var N=o.salvo==null?10:o.salvo;if(N>0&&!v.after){var row=rows[rows.length-1],tot={shots:N,parts:0,collapses:0,keepAt:0,firstCollapse:0,dizzies:0};SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.id;L.high=v.high;
-      for(var i=1;i<=N;i++){var of=LAB_CARPET[(i-1)%LAB_CARPET.length],u=U();SG.labFire(0,'gun',spot.x+of[0]*u,spot.z+of[1]*u,{force:true,seed:LAB_SEED+i});var c=SG.labSettle(10);if(!c)continue;tot.parts+=c.partsOff;tot.collapses+=c.collapses;tot.dizzies+=c.dizzies;if(c.collapses&&!tot.firstCollapse)tot.firstCollapse=i;if(c.keep&&!tot.keepAt)tot.keepAt=i;}
-      row.salvo=tot;}});
-  var out={spot:spot,from:'free gun',seed:LAB_SEED,target:L.target,pieceScale:SG.pieceSize,rows:rows,settings:{salvo:o.salvo==null?10:o.salvo,reload:'quick (0.3 s)',crew:'not needed',aim:'free gun on the near rim, aimed at ('+spot.x.toFixed(2)+', '+spot.z.toFixed(2)+')',seed:LAB_SEED,note:'Each shot is fired at a fresh copy of the target. Only the Keep, mice and pieces of the target camp are on the table.'}};
-  /* put everything back as it was */
-  L.quick=quick;SG.labRestore(keepTable);SG.stats=keepStats;L.last=keepLast;L.cur=keepCur;SG.seed=keepSeed;SG.sides[0].aim=keepAim;SG.pops=[];L.undo=keepUndo[0];L.redo=keepUndo[1];L.sess=keepSess;L.base=keepBase;L.fellLog=keepFell;L.landings=keepLand;
-  L.ammo=keepAmmo;L.high=keepHigh;SG.sides.forEach(function(sd){sd.ammo=L.ammo;sd.high=L.high;});L.rkey='';return out;};
+  if(!o.ammo||ids.indexOf('glue')>=0)variants.push({id:'glue',high:false,after:'marble',label:'Glue blob (after a Marble)'});
+  var rows=labSandbox(function(){return variants.map(function(v){return labVariant(v,spot,N);});});
+  return {spot:spot,from:'free gun',seed:LAB_SEED,target:L.target,pieceScale:SG.pieceSize,rows:rows,settings:{salvo:N,reload:'quick (0.3 s)',crew:'not needed',aim:'free gun on the near rim, aimed at ('+spot.x.toFixed(2)+', '+spot.z.toFixed(2)+')',seed:LAB_SEED,topple:!!L.topple,note:'Each shot is fired at a fresh copy of the target. Only the Keep, mice and pieces of the target camp are on the table.'}};};
+/* ---- Rate it: one weapon (and, for comparison, a Marble and a Big Marble) against every target, one shot and a short salvo each ---- */
+var LAB_RATE_T=['walled','braced','longwall','workshops','fortress','glass','castle','village','maze','domino','stack'];
+function labScore(t,R){return (t.parts*R.parts+t.collapses*R.collapse+t.keeps*R.keep+t.dizzies*R.dizzy)*R.single+(t.sParts*R.parts+t.sCollapses*R.collapse+t.sKeeps*R.keep+t.sDizzies*R.dizzy)*R.salvoShare;}
+SG.labRate=function(wid,o){var L=SG.lab,R=C3.rate;o=o||{};if(!AMMO[wid])return null;var N=o.salvo==null?R.salvo:o.salvo,ids=[wid].concat(['marble','big'].filter(function(x){return x!==wid;})),tg=o.targets||LAB_RATE_T;
+  return labSandbox(function(){var res={weapon:wid,name:AMMO[wid].name,price:wPrice(AMMO[wid].w),salvo:N,ids:ids,targets:[],totals:{}};
+    ids.forEach(function(id){res.totals[id]={parts:0,collapses:0,keeps:0,dizzies:0,sParts:0,sCollapses:0,sKeeps:0,sDizzies:0,oneShotKeeps:0,keepTargets:0,score:0};});
+    tg.forEach(function(tid){labSetSide(1,labTemplate(tid,1),true);L.target=tid;var ps=SG.pieces.filter(function(q){return q.side===1&&q.built;}),hasKeep=ps.some(function(q){return q.kind==='tower';}),spot=SG.labDefaultSpot(),item={id:tid,title:labTargetName(tid),keep:hasKeep,pieces:ps.length,rows:{}};
+      ids.forEach(function(id){var r=labVariant(AMMO[id].w.quake>0?{id:id,high:false,after:'marble',salvoAfter:true}:{id:id,high:false},spot,N),t=res.totals[id];item.rows[id]={partsOff:r.partsOff,collapses:r.collapses,keep:r.keep,dizzies:r.dizzies,salvo:r.salvo};
+        t.parts+=r.partsOff;t.collapses+=r.collapses;t.keeps+=r.keep?1:0;t.dizzies+=r.dizzies;if(hasKeep){t.keepTargets++;if(r.keep)t.oneShotKeeps++;}
+        if(r.salvo){t.sParts+=r.salvo.parts;t.sCollapses+=r.salvo.collapses;t.sKeeps+=r.salvo.keepAt?1:0;t.sDizzies+=r.salvo.dizzies;}});res.targets.push(item);});
+    ids.forEach(function(id){res.totals[id].score=Math.round(labScore(res.totals[id],R)*10)/10;});
+    var t0=res.totals[wid],M=Math.max(1,res.totals.marble.score),B=Math.max(1,res.totals.big.score),sc=t0.score;
+    res.tooStrong=t0.keepTargets>0&&t0.oneShotKeeps===t0.keepTargets;
+    res.verdict=res.tooStrong?'too strong: it fells a Keep in one shot against every target':(sc>=R.much*B?'much stronger than Big Marble':(sc>=R.likeHi*B?'stronger than Big Marble':(sc>=R.likeLo*B?'about like a Big Marble':(sc>=R.likeHi*M?'stronger than a Marble':(sc>=R.likeLo*M?'about like a Marble':(sc>=R.little*M?'weaker than a Marble':'does little'))))));
+    res.verdicts={};ids.forEach(function(id){var s2=res.totals[id].score;res.verdicts[id]=s2>=R.much*B?'much stronger than Big Marble':(s2>=R.likeHi*B?'stronger than Big Marble':(s2>=R.likeLo*B?'about like a Big Marble':(s2>=R.likeHi*M?'stronger than a Marble':(s2>=R.likeLo*M?'about like a Marble':(s2>=R.little*M?'weaker than a Marble':'does little')))));});
+    return res;});};
+
+/* ---- big targets (Lab only): Castle, Village, Wall maze, Domino row, Tower stack. Each is a list of [kind, x, z, turn] in the camp's frame, sized by the piece scale (laid out for small and medium pieces; large ones crowd the table). ---- */
+function labBigTemplate(id,s){var F=FOOT,T=PI,l=[],i,k;
+  if(id==='castle'){   /* a Keep with four corner towers, long walls, a gate, a courtyard with workshops, tents, lobbers and traps: about 38 pieces */
+    var sp=F.wall[0]*2+.004,gx=F.gate[0]+F.wall[0]+.01,zf=1.15,xe=gx+sp+F.wall[0],xc=xe+F.tower[0]+.01,zs=zf+F.tower[1]+F.wall[0]+.01,zb=zs+sp+F.wall[0]+F.tower[1]+.01,bx=F.tower[0]+F.brace[1]+.015;
+    l.push(['gate',0,zf,T]);for(i=0;i<2;i++)l.push(['wall',-(gx+i*sp),zf,T],['wall',gx+i*sp,zf,T]);
+    [-1,1].forEach(function(sx){l.push(['tower',sx*xc,zf,T],['tower',sx*xc,zb,T]);for(var j=0;j<2;j++)l.push(['wall',sx*xc,zs+j*sp,T+sx*PI/2]);});
+    for(i=0;i<5;i++)l.push(['wall',(i-2)*sp,zb,T]);
+    l.push(['tower',0,2.15,T],['brace',-bx,2.15,-PI/2],['brace',bx,2.15,PI/2],['workshop',-.6,1.55,T],['workshop',.6,1.55,T],['lobber',-.2,1.6,T],['lobber',.2,1.6,T],['tent',-.8,2.2,T],['tent',.8,2.2,T],['tent',-1.05,1.6,T],['tent',1.05,1.6,T]);
+    for(i=-1;i<=1;i++)l.push(['wall',i*.5,1.88,T]);
+    l.push(['trap',-.3,.95,T],['trap',.3,.95,T],['trap',-1.1,1.3,T],['trap',1.1,1.3,T]);}
+  else if(id==='village'){   /* many small camps across the far half: a tent with a wall, or a workshop, or a trap beside it, and a chief's hall at the back */
+    var cs=[[-1.55,1.15],[-.55,1.05],[.55,1.15],[1.55,1.05],[-1.35,2.0],[-.4,1.95],[.5,2.05],[1.4,1.95],[-.85,2.7],[.9,2.65]],tx=F.tent[0];
+    cs.forEach(function(c,n){var x=c[0],z=c[1];l.push(['tent',x,z,T+(n%3-1)*.35]);
+      if(n%3===0)l.push(['wall',x,z+tx+.12,T]);else if(n%3===1)l.push(['workshop',x+tx+F.workshop[0]+.04,z,T]);else l.push(['trap',x+tx+.15,z,T],['wall',x,z-tx-.12,T]);});
+    l.push(['tower',0,2.45,T]);}
+  else if(id==='maze'){   /* three rings of walls round a Keep, a gate in each ring, the gates on opposite sides so a way in is a way round */
+    var cz=1.85,rings=[[.46,Math.PI],[.78,0],[1.1,Math.PI]];l.push(['tower',0,cz,T]);
+    rings.forEach(function(rg){var R=rg[0],n=Math.floor(Math.PI/Math.asin(F.wall[0]/R)),done=false;for(k=0;k<n;k++){var th=rg[1]+k*2*Math.PI/n;l.push([k===0?'gate':'wall',R*Math.sin(th),cz+R*Math.cos(th),th]);}});}
+  else if(id==='domino'){   /* three lines of unbraced walls, each wall a little behind the one before: topple the first and it falls on the next */
+    var pitch=F.wall[1]*2+.17;for(var c2=-1;c2<=1;c2++)for(i=0;i<8;i++)l.push(['wall',c2*1.0,1.0+i*pitch,T]);}
+  else if(id==='stack'){   /* seven Keeps close together, two rows, with braces in the gaps: each leans on its neighbour */
+    var pc=F.tower[0]*2+F.brace[1]*2+.03;for(i=0;i<4;i++)l.push(['tower',(i-1.5)*pc,2.45,T]);for(i=0;i<3;i++)l.push(['tower',(i-1)*pc,1.85,T]);
+    for(i=0;i<3;i++)l.push(['brace',(i-1)*pc,2.45,PI/2]);for(i=0;i<2;i++)l.push(['brace',(i-.5)*pc,1.85,PI/2]);l.push(['brace',-1.5*pc-F.tower[0]-F.brace[1]-.015,2.45,PI/2],['brace',1.5*pc+F.tower[0]+F.brace[1]+.015,2.45,-PI/2]);}
+  return labCampRecs(s,l);}
+function labTargetName(id){var nm=LAB_TARGETS.filter(function(t){return t[0]===id;})[0];return nm?nm[1]:id;}
+/* which pieces of a template overlap each other (by the real overlap rule): [] means it is laid out cleanly */
+SG.labTemplateOverlaps=function(id){var recs=labTemplate(id,1),out=[];for(var i=0;i<recs.length;i++)for(var j=i+1;j<recs.length;j++)if(overlap(recs[i],recs[j]))out.push([recs[i].kind+' '+i,recs[j].kind+' '+j]);return out;};
+/* ---- carnage: the counter, sweeping up, debris, the frame time ---- */
+function labCarnageOf(c){var K=C3.carnage;return (c.partsOff||0)*K.part+(c.collapses||0)*K.collapse+(c.keeps||0)*K.keep+Math.max(0,(c.chain||0)-1)*K.chain+(c.dizzies||0)*K.dizzy;}
+/* the counter: this shot so far (parts off, collapses, the chain, the most parts that fell at once), and the session (longest chain, carnage score) */
+SG.labCarnage=function(){var L=SG.lab,cur=L.cur,st=SG.stats,live=!!cur;
+  var parts=live?(cur.done?cur.partsOff:Math.max(0,st.partsOff-cur.b.partsOff)):0,col=live?(cur.done?cur.collapses:Math.max(0,st.collapses-cur.b.collapses)):0,diz=live?(cur.done?cur.dizzies:Math.max(0,st.dizzies-cur.b.dizzies)):0;
+  var shot=Math.round(labCarnageOf({partsOff:parts,collapses:col,keeps:cur&&cur.keeps||0,chain:cur&&cur.chain||0,dizzies:diz}));
+  return {parts:parts,collapses:col,chain:cur?(cur.chain||0):0,burst:cur?(cur.burst||0):0,shot:shot,longest:Math.max(L.sess.chain||0,cur?(cur.chain||0):0),score:Math.round((L.sess.score||0)+(cur&&!cur.done?shot:0))};};
+/* "Sweep up": loose parts leave the table; the camps stay as damaged as they are (nothing is reset) */
+SG.labSweep=function(){var n=0;SG.pieces.forEach(function(p){p.ps.forEach(function(q){if(q.st==='off'){q.st='gone';q.swept=true;n++;}});});if(SG.lab)labMsg(n?('Swept up '+n+' loose part'+(n>1?'s':'')):'Nothing to sweep up',!n);return n;};
+/* debris must not slow the page: only so many fallen parts lie about, the oldest go first; with "Leave debris" off they go a few seconds after they land */
+function labDebris(){var L=SG.lab;L.dbT=(L.dbT||0)+1;if(L.dbT<30)return;L.dbT=0;var off=[],i;SG.pieces.forEach(function(p){p.ps.forEach(function(q){if(q.st==='off')off.push(q);});});
+  if(!L.debris){off.forEach(function(q){if(SG.clock-q.t0>C3.debrisSecs){q.st='gone';q.swept=true;}});}
+  else if(off.length>C3.debrisMax){off.sort(function(a,b){return a.t0-b.t0;});for(i=0;i<off.length-C3.debrisMax;i++){off[i].st='gone';off[i].swept=true;}}}
+SG.labDebrisCount=function(){var n=0;SG.pieces.forEach(function(p){p.ps.forEach(function(q){if(q.st==='off')n++;});});return n;};
+/* the frame time of the page as drawn: the gap between frames and the time render() takes, with the draw calls and triangles of the last frame */
+function labFrame(raw,rms){var L=SG.lab;if(!L||!(raw>0)||raw>1000)return;var f=L.frame;f.n++;f.ms=f.n===1?raw:f.ms*.92+raw*.08;f.rms=f.n===1?rms:(f.rms||0)*.92+rms*.08;f.worst=Math.max(f.worst*.995,raw);f.all=(f.all||0)+raw;f.rall=(f.rall||0)+rms;if(V.on&&R&&R.info){f.calls=R.info.render.calls;f.tris=R.info.render.triangles;}}
+SG.labFrameStats=function(){var f=SG.lab?SG.lab.frame:null;if(!f)return null;return {frames:f.n,msAvg:f.n?+(f.all/f.n).toFixed(1):0,renderMsAvg:f.n?+(f.rall/f.n).toFixed(1):0,msSmooth:+f.ms.toFixed(1),worstMs:+f.worst.toFixed(1),calls:f.calls,triangles:f.tris,pieces:SG.pieces.length,parts:SG.pieces.reduce(function(n,p){return n+p.ps.length;},0)};};
+SG.labFrameReset=function(){if(SG.lab)SG.lab.frame={ms:0,worst:0,n:0,calls:0,tris:0,rms:0,all:0,rall:0,t:0};};
+
+/* ---- the Workshop's panel, the Rate it table, the carnage counter ---- */
+function labWkDom(){var caps=C3.caps,h='<div class="lnote">Pick a base, move the sliders, name it, press Use it: it joins the ammo row at once. Every number is held to a safe range.</div><div class="lgrid">'+Object.keys(LAB_BASES).map(function(k){return '<button class="btn lb" data-a="wb_'+k+'">'+LAB_BASES[k].icon+' '+LAB_BASES[k].label+'</button>';}).join('')+'</div>'+
+  '<div class="lgrid"><input id="labWkName" type="text" placeholder="Name your weapon" maxlength="40"></div><div id="labWkPrice" class="lnote"></div>';
+  LAB_WPARAMS.forEach(function(q){var c=caps[q[0]];h+='<div class="wrow"><label for="wk_'+q[0]+'">'+q[1]+' <b id="wv_'+q[0]+'"></b></label><input type="range" id="wk_'+q[0]+'" data-w="'+q[0]+'" min="'+c[0]+'" max="'+c[1]+'" step="'+q[2]+'"></div>';});
+  h+='<div class="lgrid">'+LAB_WBOOLS.map(function(q){return '<button class="btn lb" data-a="wt_'+q[0]+'">'+q[1]+'</button>';}).join('')+'</div>'+
+  '<div class="lgrid"><button class="btn lb go" data-a="wuse">Use it</button><button class="btn lb go" data-a="wrate">📊 Rate it</button><button class="btn lb" data-a="wsave">Save</button><button class="btn lb" data-a="wcopy">Copy JSON</button><button class="btn lb" data-a="wpaste">Paste JSON</button></div>'+
+  '<h4 class="wh">Presets</h4><div id="labWkPresets"></div><h4 class="wh">Saved weapons</h4><div id="labWkSaved"></div>';return h;}
+function labWkFmt(v){return String(Math.round(v*100)/100);}
+function labWkSync(){if(!hasDom||SG.mode!=='lab'||!SG.lab||!E('labWkPrice'))return;var k=labWkState(),w=k.w,ae=document.activeElement;
+  LAB_WPARAMS.forEach(function(q){var inp=E('wk_'+q[0]),v=w[q[0]];if(inp&&inp!==ae&&+inp.value!==v)inp.value=v;var lb=E('wv_'+q[0]);if(lb){var t=labWkFmt(v);if(lb.textContent!==t)lb.textContent=t;}});
+  LAB_WBOOLS.forEach(function(q){var b=E('lab').querySelector('[data-a="wt_'+q[0]+'"]');if(b)b.className='btn lb'+(w[q[0]]?' on':'');});
+  Object.keys(LAB_BASES).forEach(function(bk){var b=E('lab').querySelector('[data-a="wb_'+bk+'"]');if(b)b.className='btn lb'+(k.base===bk?' on':'');});
+  var nm=E('labWkName');if(nm&&nm!==ae&&nm.value!==k.name)nm.value=k.name||'';
+  E('labWkPrice').textContent='Price: '+wPrice(wClamp(w).w)+' points'+(k.id?' · in the ammo row':' · not in the ammo row yet')+(k.maker?' · idea: '+k.maker:'');}
+function labWkLists(){if(!E('labWkPresets'))return;
+  E('labWkPresets').innerHTML=LAB_PRESETS.map(function(pr){var on=!!LAB_FLAGS['p_'+pr.key];return '<div class="lrow"><button class="btn lb" data-a="wpre_'+pr.key+'">'+pr.icon+' '+labEsc(pr.name)+'</button><span><small>'+(on?'in the ammo row · ':'')+labEsc(pr.note)+' <i>Idea: '+labEsc(pr.maker)+'</i></small></span></div>';}).join('');
+  var sv=SG.labWeapons(),names=Object.keys(sv);E('labWkSaved').innerHTML=names.length?names.map(function(n,i){return '<div class="lrow"><span>'+labEsc(n)+' ('+wPrice(wClamp(sv[n].params).w)+' pts)</span><button class="btn lb" data-a="wload_'+i+'">Load</button><button class="btn lb" data-a="wdel_'+i+'">✕</button></div>';}).join(''):'<div class="lnote">No saved weapons yet.</div>';}
+/* the Rate it table: this weapon beside a Marble and a Big Marble, then this weapon target by target */
+function labRateHtml(r){var N=r.salvo,h='<div class="lnote">One flat shot, and a salvo of '+N+', at each of '+r.targets.length+' targets, each a fresh copy, free gun, fixed seed. Totals over all targets. Price '+r.price+' points.</div>';
+  h+='<div class="verdict'+(r.tooStrong?' bad':'')+'">'+labEsc(r.name)+': '+labEsc(r.verdict)+'</div>';
+  h+='<table class="lt wide"><tr><th>Ammo</th><th>Parts off</th><th>Collapses</th><th>Keeps felled</th><th>Mice dizzy</th><th>Salvos: parts · collapses · Keeps</th><th>Verdict</th></tr>';
+  r.ids.forEach(function(id){var t=r.totals[id],nm=(AMMO[id]||{name:id}).name;h+='<tr><td>'+labEsc(nm)+(id===r.weapon?' (this)':'')+'</td><td>'+t.parts+'</td><td>'+t.collapses+'</td><td>'+t.keeps+' of '+t.keepTargets+'</td><td>'+t.dizzies+'</td><td>'+t.sParts+' · '+t.sCollapses+' · '+t.sKeeps+' of '+t.keepTargets+'</td><td>'+labEsc(id===r.weapon?r.verdict:r.verdicts[id])+'</td></tr>';});
+  h+='</table><h4 class="wh">'+labEsc(r.name)+', target by target</h4><table class="lt wide"><tr><th>Target</th><th>Parts off</th><th>Collapses</th><th>Keep fell</th><th>Mice dizzy</th><th>Salvo: parts · collapses · Keep</th></tr>';
+  r.targets.forEach(function(t){var x=t.rows[r.weapon],sv=x.salvo;h+='<tr><td>'+labEsc(t.title)+'</td><td>'+x.partsOff+'</td><td>'+x.collapses+'</td><td>'+(t.keep?(x.keep?'yes':'no'):'-')+'</td><td>'+x.dizzies+'</td><td>'+(sv?sv.parts+' · '+sv.collapses+' · '+(sv.keepAt?'down at '+sv.keepAt:'stands'):'-')+'</td></tr>';});
+  return h+'</table>';}
 
 /* ---- the Lab's own drawing: ghost, camp zones, free gun, aim spot, blast rings, support lines ---- */
 function labFlat(geo,col,op){var o=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,depthWrite:false}));o.rotation.x=-PI/2;o.visible=false;S.add(o);return o;}
@@ -1682,20 +1865,23 @@ var LAB_HELP='<h2>How to use the Lab</h2><ul><li><b>Build</b>: pick a piece, tap
 function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='lab';
   var tg=LAB_TARGETS.map(function(t){return '<button class="btn lb" data-a="tg_'+t[0]+'">'+t[1]+'</button>';}).join('');
   d.innerHTML='<div id="labTop" class="labp"><button class="btn lb" data-a="back">⬅ Back to menu</button><span class="pill" id="labTitle">🎯 Shooting range</span><button class="btn lb" data-a="help">? How to use</button><button class="btn lb" data-a="panel" id="labPanelBtn">☰ Panel</button></div>'+
-  '<div id="labReadCard" class="labp"><button class="btn lb" data-a="readtog" id="labReadBtn">Readout ▾</button><div id="labReadBody"><div id="labRead"></div><div class="lgrid"><button class="btn lb" data-a="clear">Clear counters</button></div></div></div>'+
+  '<div id="labReadCard" class="labp"><button class="btn lb" data-a="readtog" id="labReadBtn">Readout ▾</button><div id="labReadBody"><div id="labRead"></div><div id="labFrameTxt" class="lnote"></div><div class="lgrid"><button class="btn lb" data-a="clear">Clear counters</button></div></div></div><div id="labCarn" class="labp"></div>'+
   '<div id="labPanel" class="labp">'+
   '<details open><summary>Target camp</summary><div class="lgrid">'+tg+'</div><div class="lgrid"><button class="btn lb go big" data-a="reset">⟳ Reset target</button><button class="btn lb" data-a="heal">Heal all</button><button class="btn lb" data-a="snap">📷 Snapshot</button><button class="btn lb" data-a="restore">⏪ Restore</button></div></details>'+
   '<details><summary>My camp</summary><div class="lgrid"><button class="btn lb" data-a="mine_starter">Keep + 2 lobbers</button><button class="btn lb" data-a="mine_clear">Clear my camp</button><button class="btn lb" data-a="tgt_clear">Clear target</button></div></details>'+
-  '<details open><summary>Settings</summary><div class="lgrid"><button class="btn lb" data-a="t_instant"></button><button class="btn lb" data-a="t_quick"></button><button class="btn lb" data-a="t_crew"></button><button class="btn lb" data-a="t_strict"></button><button class="btn lb" data-a="t_supports"></button><button class="btn lb" data-a="t_slow"></button><button class="btn lb" data-a="t_pause"></button></div></details>'+
+  '<details open><summary>Settings</summary><div class="lgrid"><button class="btn lb" data-a="t_instant"></button><button class="btn lb" data-a="t_quick"></button><button class="btn lb" data-a="t_crew"></button><button class="btn lb" data-a="t_strict"></button><button class="btn lb" data-a="t_supports"></button><button class="btn lb" data-a="t_topple"></button><button class="btn lb" data-a="t_debris"></button><button class="btn lb" data-a="sweep">🧹 Sweep up</button><button class="btn lb" data-a="t_fxshake"></button><button class="btn lb" data-a="t_fxslow"></button><button class="btn lb" data-a="t_fxsound"></button><button class="btn lb" data-a="t_slow"></button><button class="btn lb" data-a="t_pause"></button></div></details>'+
     '<details><summary>Range report</summary><div class="lgrid"><button class="btn lb go" data-a="range">Test all ammo</button><button class="btn lb" data-a="t_spot">Set aim spot</button><button class="btn lb" data-a="spotclr">Aim at the Keep</button></div><div id="labSpotTxt" class="lnote"></div></details>'+
+  '<details><summary>Weapon Workshop</summary><div id="labWk">'+labWkDom()+'</div></details>'+
   '<details><summary>Designs</summary><div class="lgrid"><input id="labName" type="text" placeholder="Name your camp" maxlength="40"><button class="btn lb go" data-a="dsave">Save design</button></div><div id="labList"></div><div class="lgrid"><button class="btn lb" data-a="dcopy">Copy JSON</button><button class="btn lb" data-a="dpaste">Paste JSON</button></div><div class="lnote">In a match: choose "My camp in a match" on the title screen.</div></details>'+
   '<details><summary>Prototypes</summary><div id="labProtos"></div></details></div>'+
   '<div id="labBar" class="labp"><div class="labrow" id="labTools"></div><div class="labrow" id="labSub"></div></div>'+
   '<div class="labcover" id="labCard"><div class="card"><div id="labHelp"></div><div class="row"><button class="btn lb go" data-a="cardok">Got it</button></div><p class="lnote">You can bring this back with "? How to use".</p></div></div>'+
   '<div class="labcover" id="labRangeBox"><div class="card"><h2>Range report</h2><div id="labRangeTxt"></div><div class="row"><button class="btn lb go" data-a="rangeok">Close</button></div></div></div>'+
+  '<div class="labcover" id="labRateBox"><div class="card"><h2>Rate it</h2><div id="labRateTxt"></div><div class="row"><button class="btn lb go" data-a="rateok">Close</button></div></div></div>'+
   '<div class="labcover" id="labJsonBox"><div class="card"><h2 id="labJsonTitle">Design</h2><textarea id="labJsonText" spellcheck="false"></textarea><div class="row" id="labJsonRow"></div></div></div>';
   E('ui').appendChild(d);E('labHelp').innerHTML=LAB_HELP;
   d.addEventListener('click',function(ev){var b=ev.target.closest?ev.target.closest('[data-a]'):null;if(!b)return;ev.stopPropagation();soundOn();labAct(b.getAttribute('data-a'),b);});
+  d.addEventListener('input',function(ev){var t=ev.target,wk=t&&t.getAttribute?t.getAttribute('data-w'):null;if(wk)SG.labWkSet(wk,t.value);else if(t&&t.id==='labWkName')SG.labWkName(t.value);});
   d.addEventListener('pointerdown',function(ev){ev.stopPropagation();});}
 function labUiHide(){var d=E('lab');if(d)d.style.display='none';var sel=E('designSel');if(!sel||!SG.labDesigns)return;var names=Object.keys(SG.labDesigns()),cur=sel.value||SG.designChoice||'';
   while(sel.options.length>1)sel.remove(1);names.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=names.indexOf(cur)>=0?cur:'';E('designRow').style.display=names.length?'flex':'none';}
@@ -1712,17 +1898,19 @@ function labUi(){if(!hasDom||SG.mode!=='lab'||!SG.lab||SG.phase==='start')return
   else if(L.tool==='erase')sub='<span class="lnote">Tap a piece to take it away. Undo brings it back.</span>';
   else if(L.tool==='spot')sub='<span class="lnote">Tap the table where the range report should aim.</span>';
   E('labSub').innerHTML=sub;
-  var T={t_instant:['Build: '+(L.instant?'instantly':'mice build it'),L.instant],t_quick:['Reload: '+(L.quick?'quick (0.3 s)':'real'),L.quick],t_crew:['Crew: '+(L.crew?'needed':'not needed'),L.crew],t_strict:['Zones: '+(L.strict?'match rules':'anywhere'),L.strict],t_supports:['Show supports: '+(L.supports?'on':'off'),L.supports],t_slow:['Slow-mo '+(L.slow?'on':'off'),L.slow],t_pause:[SG.paused?'▶ Go on':'⏸ Pause',SG.paused]};
+  var T={t_instant:['Build: '+(L.instant?'instantly':'mice build it'),L.instant],t_quick:['Reload: '+(L.quick?'quick (0.3 s)':'real'),L.quick],t_crew:['Crew: '+(L.crew?'needed':'not needed'),L.crew],t_strict:['Zones: '+(L.strict?'match rules':'anywhere'),L.strict],t_supports:['Show supports: '+(L.supports?'on':'off'),L.supports],t_topple:['Chain topple: '+(L.topple?'on':'off'),L.topple],t_debris:['Leave debris: '+(L.debris?'on':'off'),L.debris],t_fxshake:['Shake by size: '+(L.fxShake?'on':'off'),L.fxShake],t_fxslow:['Slow-mo beat by size: '+(L.fxSlow?'on':'off'),L.fxSlow],t_fxsound:['Sound by size: '+(L.fxSound?'on':'off'),L.fxSound],t_slow:['Slow-mo '+(L.slow?'on':'off'),L.slow],t_pause:[SG.paused?'▶ Go on':'⏸ Pause',SG.paused]};
   Object.keys(T).forEach(function(k){var b=d.querySelector('[data-a="'+k+'"]');if(b){b.textContent=T[k][0];b.className='btn lb'+(T[k][1]?' on':'');}});
   LAB_TARGETS.forEach(function(t){var b=d.querySelector('[data-a="tg_'+t[0]+'"]');if(b)b.className='btn lb'+(L.target===t[0]?' on':'');});
   var sp=L.spot||SG.labDefaultSpot();E('labSpotTxt').textContent='Aim spot: '+(L.spot?'tapped':'the target Keep')+' ('+sp.x.toFixed(2)+', '+sp.z.toFixed(2)+')';
   var dz=SG.labDesigns(),names=Object.keys(dz);E('labList').innerHTML=names.length?names.map(function(n){return '<div class="lrow"><span>'+labEsc(n)+' ('+dz[n].placements.length+')</span><button class="btn lb" data-a="dload_'+names.indexOf(n)+'">Load</button><button class="btn lb" data-a="ddel_'+names.indexOf(n)+'">✕</button></div>';}).join(''):'<div class="lnote">No saved designs yet.</div>';
   E('labProtos').innerHTML=Object.keys(LAB_PROTOS).map(function(id){var p=LAB_PROTOS[id];return '<div class="lrow"><button class="btn lb'+(LAB_FLAGS[id]?' on':'')+'" data-a="pr_'+id+'">'+(LAB_FLAGS[id]?'On':'Off')+'</button><span>'+labEsc(p.name)+'<br><small>'+labEsc(p.note||'')+'</small></span></div>';}).join('');
   E('labPanel').style.display=L.panel?'block':'none';E('labReadBody').style.display=L.read?'block':'none';E('labReadBtn').textContent=L.read?'Readout ▾':'Readout ▸';E('labCard').style.display=L.card?'flex':'none';
-  E('bPause2').textContent=SG.paused?'▶':'⏸';L.rkey='';labHud();}
+  E('bPause2').textContent=SG.paused?'▶':'⏸';labWkLists();labWkSync();L.rkey='';labHud();}
 function labEsc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 /* every frame: the message line, the ammo buttons' waits, and the readout when something changed */
 function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('say'),m=L.msg,vis=m.text&&SG.clock<m.until;sy.style.display=vis?'block':'none';sy.textContent=vis?m.text:'';sy.className=m.bad?'bad':'';sy.style.top='62px';
+  var cg=SG.labCarnage(),ck=[cg.parts,cg.collapses,cg.chain,cg.longest,cg.score,cg.burst].join('/');if(ck!==L.ckey2&&E('labCarn')){L.ckey2=ck;E('labCarn').innerHTML='<span>Parts off <b>'+cg.parts+'</b></span><span>Collapses <b>'+cg.collapses+'</b></span><span>Chain <b>'+cg.chain+'</b> (longest <b>'+cg.longest+'</b>)</span><span class="cs">Carnage <b>'+cg.score+'</b></span>';}
+  if((L.fk=(L.fk||0)+1)%20===0&&E('labFrameTxt')){var fs=SG.labFrameStats();E('labFrameTxt').textContent=fs&&fs.frames?'Frame '+fs.msSmooth+' ms (worst '+fs.worstMs+'), drawing '+fs.renderMsAvg+' ms, '+fs.calls+' draw calls, '+Math.round(fs.triangles/1000)+'k triangles, '+fs.pieces+' pieces':'';}
   var s0=SG.sides[0];AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})).forEach(function(id){var b=E('lab_a_'+id);if(!b)return;var ac=b.querySelector('.ac'),t=L.quick?'∞':ammoCount({big:99,cd:s0.cd},id).replace('×99','∞');if(ac&&ac.textContent!==t)ac.textContent=t;});
   var ss=SG.labSession(),cur=L.cur,sel=L.sel?pieceById(L.sel):null,key=[ss.shots,ss.partsOff,ss.collapses,ss.keeps,ss.dizzies,cur?cur.done+'|'+cur.parts.length:'-',sel?sel.id+'|'+sel.parts+'|'+(sel.down?1:0)+'|'+SG.stats.partsOff:'-',L.fellLog.join(),L.read].join('/');if(key===L.rkey)return;L.rkey=key;
   var h='',r=L.last;
@@ -1736,8 +1924,8 @@ function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('sa
   E('labRead').innerHTML=h;}
 function labRangeHtml(out){var h='<div class="lnote">Target: '+labEsc(out.target)+' · '+labEsc(out.settings.aim)+' · '+labEsc(out.settings.reload)+', crew '+labEsc(out.settings.crew)+'. Each row is a fresh copy of the target.</div><table class="lt wide"><tr><th>Ammo</th><th>Parts off</th><th>Collapses</th><th>Keep fell</th><th>Mice dizzy</th><th>Glued</th><th>Landed on</th><th>After a salvo of '+out.settings.salvo+': parts off · collapses · Keep</th></tr>';
   out.rows.forEach(function(r){h+='<tr><td>'+labEsc(r.name)+'</td><td>'+r.partsOff+'</td><td>'+r.collapses+'</td><td>'+(r.keep?'yes':'no')+'</td><td>'+r.dizzies+'</td><td>'+r.glued+'</td><td>'+labEsc(r.landed)+'</td><td>'+(r.salvo?r.salvo.parts+' · '+r.salvo.collapses+' · '+(r.salvo.keepAt?'down at shot '+r.salvo.keepAt:'stands'):'-')+'</td></tr>';});return h+'</table>';}
-function labShowJson(title,text,paste){E('labJsonTitle').textContent=title;E('labJsonText').value=text;E('labJsonText').readOnly=!paste;
-  E('labJsonRow').innerHTML=(paste?'<button class="btn lb go" data-a="jload">Load this design</button>':'<button class="btn lb go" data-a="jcopy">Copy</button>')+'<button class="btn lb" data-a="jclose">Close</button>';E('labJsonBox').style.display='flex';}
+function labShowJson(title,text,paste,mode){SG.lab.jmode=mode||'design';E('labJsonTitle').textContent=title;E('labJsonText').value=text;E('labJsonText').readOnly=!paste;
+  E('labJsonRow').innerHTML=(paste?'<button class="btn lb go" data-a="jload">Load this '+(mode==='weapon'?'weapon':'design')+'</button>':'<button class="btn lb go" data-a="jcopy">Copy</button>')+'<button class="btn lb" data-a="jclose">Close</button>';E('labJsonBox').style.display='flex';}
 function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a==='back'){SG.labBack();return;}
   if(a==='help'){L.card=true;labUi();return;}if(a==='cardok'){L.card=false;labStore(LAB_SEEN,1);labUi();return;}
@@ -1768,7 +1956,21 @@ function labAct(a,b){var L=SG.lab;if(!L)return;var x;
   if(a==='dpaste'){labShowJson('Paste a design here',' ',true);E('labJsonText').value='';return;}
   if(a==='jclose'){E('labJsonBox').style.display='none';return;}
   if(a==='jcopy'){var ta=E('labJsonText');ta.focus();ta.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(function(){labMsg('Copied',false);},function(){labMsg(ok?'Copied':'Select all, then copy',!ok);});}else labMsg(ok?'Copied':'Select all, then copy',!ok);return;}
+  if(a==='jload'&&L.jmode==='weapon'){x=SG.labWkLoad(E('labJsonText').value);labMsg(x.text,!x.ok);if(x.ok){E('labJsonBox').style.display='none';labUi();}return;}
   if(a==='jload'){x=SG.labLoadDesign(E('labJsonText').value,0);labMsg(x.text,!x.ok);if(x.ok)E('labJsonBox').style.display='none';return;}
+  if(a==='t_topple'){L.topple=!L.topple;labPrefs();labUi();return;}if(a==='t_debris'){L.debris=!L.debris;labPrefs();labUi();return;}if(a==='sweep'){SG.labSweep();labUi();return;}
+  if(a==='t_fxshake'){L.fxShake=!L.fxShake;labPrefs();labUi();return;}if(a==='t_fxslow'){L.fxSlow=!L.fxSlow;labPrefs();labUi();return;}if(a==='t_fxsound'){L.fxSound=!L.fxSound;labPrefs();labUi();return;}
+  if(a.indexOf('wb_')===0){SG.labWkBase(a.slice(3));return;}
+  if(a.indexOf('wt_')===0){var wk=labWkState(),key=a.slice(3);SG.labWkSet(key,!wk.w[key]);labWkSync();return;}
+  if(a==='wuse'){SG.labWkUse();return;}
+  if(a==='wrate'){var wk2=labWkState();if(!wk2.id)SG.labWkUse();x=SG.labRate(wk2.id);L.rateOut=x;E('labRateTxt').innerHTML=labRateHtml(x);E('labRateBox').style.display='flex';return;}
+  if(a==='rateok'){E('labRateBox').style.display='none';return;}
+  if(a==='wsave'){x=SG.labWkSaveNow();labMsg(x.text,!x.ok);labUi();return;}
+  if(a==='wcopy'){var wk3=labWkState(),b3=LAB_BASES[wk3.base];labShowJson('Copy this weapon',JSON.stringify({schema:'rtk.weapon',version:1,name:wk3.name||'My weapon',base:wk3.base,icon:b3.icon,tint:b3.tint,scale:b3.scale,maker:wk3.maker||'',params:wClamp(wk3.w).w},null,1),false,'weapon');return;}
+  if(a==='wpaste'){labShowJson('Paste a weapon here',' ',true,'weapon');E('labJsonText').value='';return;}
+  if(a.indexOf('wpre_')===0){SG.labWkPreset(a.slice(5));return;}
+  if(a.indexOf('wload_')===0){var wn=Object.keys(SG.labWeapons())[+a.slice(6)];x=wn?SG.labWkLoad(SG.labWeapons()[wn]):null;if(x)labMsg(x.text,!x.ok);return;}
+  if(a.indexOf('wdel_')===0){var wn2=Object.keys(SG.labWeapons())[+a.slice(5)];if(wn2)SG.labWeaponDelete(wn2);labUi();return;}
   if(a.indexOf('pr_')===0){var id=a.slice(3);SG.setProto(id,!LAB_FLAGS[id]);labMsg(LAB_PROTOS[id].name+(LAB_FLAGS[id]?' is on':' is off'),false);return;}}
 SG.labTool=function(t){var L=SG.lab;if(!L)return false;if(L.carry&&t!=='move')SG.labCancelCarry();L.tool=t;L.ghost.on=t==='build';SG.sides.forEach(function(sd){sd.aim.on=false;});
   if(t==='gun'&&L.gunAim){SG.sides[0].aim={on:true,tx:L.gunAim.tx,tz:L.gunAim.tz,li:'gun'};}labUi();return true;};
@@ -1815,7 +2017,7 @@ SG.boot=function(){
   if(Q.auto)autoRun(Q);
   SG.rulesDefault=Q.rules==='1'||window.__RULES===1?1:2;SG.dev=Q.dev==='1';arCheck();if(Q.lab==='1'){SG.paused=false;SG.cam=0;SG.labStart();}
   var last=performance.now();(function loop(){var now=performance.now(),raw=now-last,dt=Math.min(.1,raw/1000);last=now;if(AR.on){window.__done=true;requestAnimationFrame(loop);return;}   /* in AR the XR session drives the frames */
-    if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(slowed(dt)*(SG.speed||1));render();if(SG.dev)devLine(raw);if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
+    if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(slowed(dt)*(SG.speed||1));var r0=performance.now();render();if(SG.lab&&SG.mode==='lab')labFrame(raw,performance.now()-r0);if(SG.dev)devLine(raw);if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
 /* ?auto=both|blue|red&level=easy|normal|hard&report=1 : bots play a match with no title screen, drawn normally, and the page
    measures itself. auto=both: bots on both sides. auto=blue or auto=red: the bot plays that team and you play the other.
    Extra, for tests: &speed=8 runs the clock faster, &skipbuild=1 starts from preset camps. Not part of the normal game. */
