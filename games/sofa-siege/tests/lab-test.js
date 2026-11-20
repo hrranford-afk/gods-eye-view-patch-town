@@ -312,6 +312,7 @@ const run = async () => {
   /* 11g. the Building Yard: six buildings of 15 to 40 parts that come apart in stages (trim, walls, frame, collapse) by the same support rule */
   const BLD = [['cottage', 'Cottage'], ['barn', 'Barn'], ['lookout', 'Watch tower house'], ['bridge', 'Bridge + gatehouse'], ['windmill', 'Windmill'], ['market', 'Market row']];
   const byb = await ev((list) => {
+    SG.setRolling(false); /* the yard checks are about where a shot lands; rolling shots are tested in roll-test.js */
     SG.hold = true; SG.lab.card = false; SG.lab.quick = true; SG.lab.topple = true; const out = {};
     const shot = (id, high, x, z, seed) => { SG.lab.ammo = id; SG.lab.high = !!high; SG.sides.forEach((s) => { s.ammo = id; s.high = !!high; }); SG.labFire(0, 'gun', x, z, { force: true, seed }); const c = SG.labSettle(10), st = SG.labStages(); return { off: c.partsOff, col: c.collapses, trim: st.trim, walls: st.walls, frame: st.frame }; };
     list.forEach(([t]) => {
@@ -335,7 +336,7 @@ const run = async () => {
       SG.labReset(1); const p0 = SG.pieces.filter((q) => q.side === 1)[0], sp = SG.labSupports(p0); o.crit = sp.rows.filter((r) => r.crit).length; o.rows = sp.rows.length; o.state = sp.state;
       out[t] = o;
     });
-    return out; }, BLD);
+    SG.setRolling(true); return out; }, BLD);
   for (const [t, nm] of BLD) {
     const o = byb[t], per = o.perPiece;
     ok('Building Yard, ' + nm + ': it is ' + o.pieces + ' piece' + (o.pieces > 1 ? 's' : '') + ' of ' + per.join(' + ') + ' parts (15 to 40 each... the market row 13 a stall, 39 in all), with parts in all three stages: trim, walls and frame', (t === 'market' ? o.parts >= 15 && o.parts <= 40 : per.every((n) => n >= 15 && n <= 40)) && o.stages.every((g) => g.every((n) => n > 0)), JSON.stringify(o.stages) + ' ' + per);
