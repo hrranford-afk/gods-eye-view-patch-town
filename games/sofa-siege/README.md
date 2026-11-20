@@ -2,6 +2,8 @@
 
 Open `index.html`. Model viewer: `viewer.html`. Tests are in `tests/` (run each with `NODE_PATH=$(npm root -g) node tests/<name>.js`).
 
+**The Lab:** `index.html?lab=1`, or "Shooting range (sandbox)" on the title screen, is a sandbox with a free kit, free ammunition, target camps, replays and a range report. It uses the real game code. See `LAB.md`.
+
 The game plays rules v2 ("Break the camp") by default; `?rules=1` plays the first rules. The v2 rules as built are at the end of `DESIGN.md`.
 
 | Test | What it covers | Rules |
@@ -11,6 +13,8 @@ The game plays rules v2 ("Break the camp") by default; `?rules=1` plays the firs
 | `ar-test.js` | AR mode against a fake WebXR device | v2; `RULES=1` for the first rules |
 | `layout-test.js` | tables laid out from the picture cards | v2 |
 | `build-test.js`, `fight-test.js` | the first rules' build step and fight | first rules only |
+| `lab-test.js` | the Lab (shooting range): entering it, free building on both camps, erase and move, the target menu, every ammunition, the same results as a match for the same shots, reset and replay, saving designs, prototype hooks, ten simulated minutes | v2 |
+| `range.js` | the range report: every ammunition at every target template, headless; writes `RANGE_REPORT.md` (`node tests/range.js`; `--print` only prints it) | v2 |
 | `proof.js` | v2 proof by bots: writes `BOT_REPORT.md` (`node tests/proof.js 200`, about an hour; `node tests/proof.js 60 mode=v2b` runs the v2b checks (second lobber, ammunition) and writes the "v2b" part of the report, about five minutes; `only=even,build,aim` runs some; `key=value` tries a number without writing the report) | v2 |
 | `sweep.js` | the first rules' balance sweep: writes `BOT_REPORT_V1.md` | first rules |
 

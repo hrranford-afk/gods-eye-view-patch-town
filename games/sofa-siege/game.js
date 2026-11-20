@@ -771,7 +771,7 @@ SG.audio=function(){return {started:!!AC,muted:SG.muted};};
 /* ================= drawing ================= */
 var R,S,SCN,ROOMG,SUN,arCam,C,W,H,world,hill,GH=[{obj:null,kind:''},{obj:null,kind:''}],GM,camNow=null,hasDom=typeof document!=='undefined';
 function E(id){return document.getElementById(id);}
-function viewClear(){if(!V.on)return;while(world.children.length)world.remove(world.children[0]);V.pieces={};V.mice=[];V.slots=[[],[]];V.marbles={};V.corks={};V.puffs=[];V.flashes=[];V.rings=[];GH.forEach(function(g){if(g.obj){S.remove(g.obj);g.obj=null;g.kind='';}});
+function viewClear(){if(!V.on)return;if(V.lab)labViewHide();while(world.children.length)world.remove(world.children[0]);V.pieces={};V.mice=[];V.slots=[[],[]];V.marbles={};V.corks={};V.puffs=[];V.flashes=[];V.rings=[];GH.forEach(function(g){if(g.obj){S.remove(g.obj);g.obj=null;g.kind='';}});
   var pl=E('pops');if(pl)pl.innerHTML='';V.popEls={};}
 function viewStart(){if(!V.on)return;
   SG.sides.forEach(function(side,s){side.kit.forEach(function(k,i){var o=SS.piece(k.kind,side.team);o.scale.setScalar(MAT.scale);o.position.set(k.x,.012,k.z);o.rotation.y=k.a+phiOf(s);world.add(o);V.slots[s].push(o);});});
@@ -790,7 +790,7 @@ function viewDrop(p){var v=V.pieces[p.id];if(!v)return;if(v.ghost)world.remove(v
 function rank(name,y){return (/post/.test(name)?0:(/brace|floor|pole|bench/.test(name)?1:(/plank|door|wall/.test(name)?2:(/roof|flap|ridge|chimney/.test(name)?4:3))))*10+y;}
 /* makes the real model of a piece; returns its parts in building order with world positions */
 function viewObj(p){
-  var team=SG.sides[p.side].team,o=SS.piece(p.kind,team,{solid:false,variant:p.id%3}),parts=SS.parts(o),c=Math.cos(p.rot),s=Math.sin(p.rot),out=[];
+  var team=SG.sides[p.side].team,o=SS.piece(p.kind,team,{solid:false,variant:p.vari!=null?p.vari:p.id%3}),parts=SS.parts(o),c=Math.cos(p.rot),s=Math.sin(p.rot),out=[];
   parts.forEach(function(m){var h=m.userData.home;out.push({id:m.userData.partId,x:p.x+(h[0]*c+h[2]*s)*PS,y:h[1]*PS,z:p.z+(-h[0]*s+h[2]*c)*PS,rank:rank(m.userData.partId,h[1])});});
   if(V.on){var v=V.pieces[p.id]||(V.pieces[p.id]={ghost:null,obj:null,order:[]});if(v.ghost){world.remove(v.ghost);v.ghost=null;}
     o.scale.setScalar(PS);o.position.set(p.x,0,p.z);o.rotation.y=p.rot;world.add(o);v.obj=o;
@@ -1312,18 +1312,19 @@ function labInit(){
   SG.lab.onKey=function(){};ui();}
 SG.labDraw=function(){return V.lab;};   /* the Lab's own three.js objects, for tests */
 SG.labStart=function(){SG.start('blue',{mode:'lab',seed:777});};
-SG.labBack=function(){SG.lab=null;labProtosOff();SG.reset();};
+SG.labBack=function(){SG.lab=null;labProtosOff();SG.speed=1;SG.paused=false;SG.reset();};
 function labBase(){var st=SG.stats;return {partsOff:st.partsOff,collapses:st.collapses,dizzies:st.dizzies,shots:st.shots};}
 
 /* ---- pieces: records, placing, removing ---- */
-function labRec(p){return {kind:p.kind,x:p.x,z:p.z,rot:p.rot,side:p.side,uid:p.uid};}
+/* vari: which of the three looks of a piece it has (in a match it follows the piece's id). The Lab keeps it with the piece's uid, so a rebuilt camp is the same camp, plank for plank. */
+function labRec(p){return {kind:p.kind,x:p.x,z:p.z,rot:p.rot,side:p.side,uid:p.uid,vari:p.vari};}
 /* where a camp-frame spot is on the table: the same frame the presets use (x across, z toward the camp's back) */
 function labCampRecs(s,list){return list.map(function(q){var w=w2(s,q[1],q[2]);return {kind:q[0],side:s,x:w[0],z:w[1],rot:q[3]+phiOf(s)};});}
 /* a slot in the side's kit, so a piece placed in the Lab has a place the mice fetch it from while they build it */
 function labSlot(s,kind){var side=SG.sides[s],L=SG.lab,w=w2(s,((L.uid%5)-2)*.34,2.72),sl={kind:kind,a:0,x:w[0],z:w[1],px:w[0],pz:w[1],used:true,picked:false};side.kit.push(sl);return side.kit.length-1;}
 /* make a piece with no questions asked about where (the caller has checked); instant: the mice have already built it */
 function labPutRaw(rec,instant){var s=rec.side,p={crew:-1,reload:0,fired:-9,cost:0,id:SG.nextId++,side:s,kind:rec.kind,x:rec.x,z:rec.z,rot:rec.rot,built:false,parts:0,progress:0,slot:0,mouse:-1,picked:false,ps:[],total:0,open:[],uid:rec.uid||++SG.lab.uid};
-  p.slot=labSlot(s,rec.kind);SG.pieces.push(p);viewSite(p);if(instant){startObj(p);completePiece(p,false);}gridDirty=true;return p;}
+  p.vari=rec.vari!=null?rec.vari:p.uid%3;p.slot=labSlot(s,rec.kind);SG.pieces.push(p);viewSite(p);if(instant){startObj(p);completePiece(p,false);}gridDirty=true;return p;}
 /* which of a side's pieces are its lobbers, tower, tent and workshop: the same assignments completePiece makes, redone after pieces come and go */
 function labRepoint(){SG.sides.forEach(function(sd){sd.lobber=sd.lobber2=sd.tent=sd.workshop=sd.keep=0;});
   SG.pieces.forEach(function(p){if(!p.built)return;var sd=SG.sides[p.side];if(p.kind==='lobber'){if(sd.lobber&&sd.lobber!==p.id)sd.lobber2=p.id;else sd.lobber=p.id;}if(p.kind==='tent')sd.tent=p.id;if(p.kind==='workshop')sd.workshop=p.id;if(p.kind==='tower')sd.keep=p.id;});
@@ -1515,20 +1516,24 @@ SG.labTakeSnapshot=function(){SG.lab.snap=SG.labSnapshot();labMsg('Snapshot take
 SG.labRestoreSnapshot=function(){var L=SG.lab;if(!L.snap){labMsg('Take a snapshot first',true);return false;}SG.labRestore(L.snap);labMsg('Table restored',false);ui();return true;};
 
 /* ---- the range report: every kind of ammunition, in turn, at a fresh copy of the target ---- */
-var LAB_SEED=424242;
+var LAB_SEED=424242,LAB_CARPET=[[0,0],[.22,0],[-.22,0],[0,.22],[0,-.22],[.22,.22],[-.22,.22],[.22,-.22],[-.22,-.22],[0,0]];   /* the ten aim points of a salvo, round the spot, in units that follow the piece scale */
 SG.labRange=function(o){var L=SG.lab;o=o||{};var spot=o.spot||L.spot||SG.labDefaultSpot(),keepTable=SG.labSnapshot(),keepStats=JSON.parse(JSON.stringify(SG.stats)),keepLast=L.last,keepCur=L.cur,keepSeed=SG.seed,keepAim=SG.sides[0].aim,keepUndo=[L.undo,L.redo],keepSess=L.sess,keepBase=L.base,keepFell=L.fellLog,keepLand=L.landings,quick=L.quick,keepAmmo=L.ammo,keepHigh=L.high;
   var ids=AMMO_ORDER.concat(Object.keys(AMMO).filter(function(k){return AMMO_ORDER.indexOf(k)<0;})),variants=[],rows=[];
   ids.forEach(function(id){variants.push({id:id,high:false});if(!AMMO[id].flat)variants.push({id:id,high:true});});
   variants.push({id:'glue',high:false,after:'marble',label:'Glue blob (after a Marble)'});
   /* my camp is taken off the table for the test, so nothing of mine stands in the way of the free gun */
-  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;
-  variants.forEach(function(v){SG.labReset(1);SG.step(.1);L.ammo=v.after||v.id;L.high=v.high;L.sess={keeps:0};
+  labRemoveSide(0);labRepoint();fixGrid();L.quick=true;SG.marbles=[];SG.debris=[];SG.puddles=[];   /* nothing still flying from before can land on the test */
+  variants.forEach(function(v){SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.after||v.id;L.high=v.high;L.sess={keeps:0};
     if(v.after){L.ammo=v.after;L.high=false;SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED});SG.labSettle(10);}
     L.ammo=v.id;L.high=v.high;SG.sides.forEach(function(sd){sd.ammo=v.id;sd.high=v.high;});
     var before=SG.stats.glued,a=SG.labFire(0,'gun',spot.x,spot.z,{force:true,seed:LAB_SEED}),cur=SG.labSettle(10),hit=cur&&cur.landings[0];
     var A=AMMO[v.id];rows.push({ammo:v.id,name:v.label||(A.name+(v.high?' (high lob)':'')),high:v.high,after:v.after||'',fired:!!a,partsOff:cur?cur.partsOff:0,collapses:cur?cur.collapses:0,keep:!!(cur&&cur.keep),dizzies:cur?cur.dizzies:0,glued:cur?cur.glued:0,bounces:cur?cur.bounces:0,
-      landed:hit?(hit.hit?labName(hit.hit)+(hit.hitSide===1?'':' (mine)'):'ground'):'-',fell:cur?cur.fell.slice():[]});});
-  var out={spot:spot,from:'free gun',seed:LAB_SEED,target:L.target,pieceScale:SG.pieceSize,rows:rows,settings:{reload:'quick (0.3 s)',crew:'not needed',aim:'free gun on the near rim, aimed at ('+spot.x.toFixed(2)+', '+spot.z.toFixed(2)+')',seed:LAB_SEED,note:'Each shot is fired at a fresh copy of the target. Only the Keep, mice and pieces of the target camp are on the table.'}};
+      landed:hit?(hit.hit?labName(hit.hit)+(hit.hitSide===1?'':' (mine)'):'ground'):'-',fell:cur?cur.fell.slice():[]});
+    /* then a salvo: the same ammunition again and again, spread over the camp round the spot (LAB_CARPET), nothing mended in between. A single shot rarely brings anything down; a salvo shows what the ammunition can do. */
+    var N=o.salvo==null?10:o.salvo;if(N>0&&!v.after){var row=rows[rows.length-1],tot={shots:N,parts:0,collapses:0,keepAt:0,firstCollapse:0,dizzies:0};SG.labReset(1);SG.acc=0;SG.step(.1);L.ammo=v.id;L.high=v.high;
+      for(var i=1;i<=N;i++){var of=LAB_CARPET[(i-1)%LAB_CARPET.length],u=U();SG.labFire(0,'gun',spot.x+of[0]*u,spot.z+of[1]*u,{force:true,seed:LAB_SEED+i});var c=SG.labSettle(10);if(!c)continue;tot.parts+=c.partsOff;tot.collapses+=c.collapses;tot.dizzies+=c.dizzies;if(c.collapses&&!tot.firstCollapse)tot.firstCollapse=i;if(c.keep&&!tot.keepAt)tot.keepAt=i;}
+      row.salvo=tot;}});
+  var out={spot:spot,from:'free gun',seed:LAB_SEED,target:L.target,pieceScale:SG.pieceSize,rows:rows,settings:{salvo:o.salvo==null?10:o.salvo,reload:'quick (0.3 s)',crew:'not needed',aim:'free gun on the near rim, aimed at ('+spot.x.toFixed(2)+', '+spot.z.toFixed(2)+')',seed:LAB_SEED,note:'Each shot is fired at a fresh copy of the target. Only the Keep, mice and pieces of the target camp are on the table.'}};
   /* put everything back as it was */
   L.quick=quick;SG.labRestore(keepTable);SG.stats=keepStats;L.last=keepLast;L.cur=keepCur;SG.seed=keepSeed;SG.sides[0].aim=keepAim;SG.pops=[];L.undo=keepUndo[0];L.redo=keepUndo[1];L.sess=keepSess;L.base=keepBase;L.fellLog=keepFell;L.landings=keepLand;
   L.ammo=keepAmmo;L.high=keepHigh;SG.sides.forEach(function(sd){sd.ammo=L.ammo;sd.high=L.high;});L.rkey='';return out;};
@@ -1565,6 +1570,8 @@ function labView(){var L=SG.lab;if(!L||!V.on)return;if(!V.lab)labViewInit();var 
     sel.ps.forEach(function(q){if(cr[q.id]&&n<Lv.hl.length){var h=Lv.hl[n++];h.visible=true;h.position.set(q.wx,q.wy+.02,q.wz);h.scale.setScalar(1+.15*Math.sin(SG.clock*7));}});}
   /* the support links, thin lines: green holds, red is a part that alone would bring the piece down */
   Lv.lines.visible=!!L.supports;if(L.supports)labLines(Lv);}
+/* the Lab's drawings are put away when the Lab is left, so a match never shows them */
+function labViewHide(){var Lv=V.lab;if(!Lv)return;Lv.rings.concat(Lv.hl,[Lv.sel,Lv.spot,Lv.spot2,Lv.gun,Lv.gunRing,Lv.lines]).forEach(function(o){o.visible=false;});}
 function labLines(Lv){var key=SG.pieces.length+'|'+SG.stats.partsOff+'|'+SG.stats.collapses+'|'+SG.clock.toFixed(1),pos=Lv.lines.geometry.attributes.position,col=Lv.lines.geometry.attributes.color,n=0;
   if(Lv.ckey!==key){Lv.ckey=key;Lv.crit={};SG.pieces.forEach(function(p){if(p.built&&!p.down&&(p.kind==='wall'||p.kind==='gate'||p.kind==='tower'))Lv.crit[p.id]=labCritical(p);});}
   function seg(a,b,red){if(n>=899)return;pos.setXYZ(n*2,a[0],a[1],a[2]);pos.setXYZ(n*2+1,b[0],b[1],b[2]);var c=red?[1,.25,.18]:[.35,.95,.4];col.setXYZ(n*2,c[0],c[1],c[2]);col.setXYZ(n*2+1,c[0],c[1],c[2]);n++;}
@@ -1632,8 +1639,8 @@ function labHud(){var L=SG.lab;if(!L||!hasDom||!E('labRead'))return;var sy=E('sa
   if(sel){var sp=SG.labSupports(sel);h+='<h4>'+labEsc(sp.title)+(sp.state==='stands'?' · stands':(sp.state==='down'?' · down':' · '+LAB_WHY[sp.state]))+'</h4><div class="lnote">'+labEsc(sp.rule)+'</div><ul class="ls">'+sp.rows.map(function(q){return '<li class="'+(q.crit?'crit':(q.on?'ok':'gone'))+'">'+labEsc(q.text)+(q.crit?' · alone it '+q.why:'')+'</li>';}).join('')+'</ul>';}
   else h+='<h4>Tapped piece</h4><div class="lnote">Tap a piece (Inspect or Lobber tool) to see what holds it up.</div>';
   E('labRead').innerHTML=h;}
-function labRangeHtml(out){var h='<div class="lnote">Target: '+labEsc(out.target)+' · '+labEsc(out.settings.aim)+' · '+labEsc(out.settings.reload)+', crew '+labEsc(out.settings.crew)+'. Each row is a fresh copy of the target.</div><table class="lt wide"><tr><th>Ammo</th><th>Parts off</th><th>Collapses</th><th>Keep fell</th><th>Mice dizzy</th><th>Glued</th><th>Landed on</th></tr>';
-  out.rows.forEach(function(r){h+='<tr><td>'+labEsc(r.name)+'</td><td>'+r.partsOff+'</td><td>'+r.collapses+'</td><td>'+(r.keep?'yes':'no')+'</td><td>'+r.dizzies+'</td><td>'+r.glued+'</td><td>'+labEsc(r.landed)+'</td></tr>';});return h+'</table>';}
+function labRangeHtml(out){var h='<div class="lnote">Target: '+labEsc(out.target)+' · '+labEsc(out.settings.aim)+' · '+labEsc(out.settings.reload)+', crew '+labEsc(out.settings.crew)+'. Each row is a fresh copy of the target.</div><table class="lt wide"><tr><th>Ammo</th><th>Parts off</th><th>Collapses</th><th>Keep fell</th><th>Mice dizzy</th><th>Glued</th><th>Landed on</th><th>After a salvo of '+out.settings.salvo+': parts off · collapses · Keep</th></tr>';
+  out.rows.forEach(function(r){h+='<tr><td>'+labEsc(r.name)+'</td><td>'+r.partsOff+'</td><td>'+r.collapses+'</td><td>'+(r.keep?'yes':'no')+'</td><td>'+r.dizzies+'</td><td>'+r.glued+'</td><td>'+labEsc(r.landed)+'</td><td>'+(r.salvo?r.salvo.parts+' · '+r.salvo.collapses+' · '+(r.salvo.keepAt?'down at shot '+r.salvo.keepAt:'stands'):'-')+'</td></tr>';});return h+'</table>';}
 function labShowJson(title,text,paste){E('labJsonTitle').textContent=title;E('labJsonText').value=text;E('labJsonText').readOnly=!paste;
   E('labJsonRow').innerHTML=(paste?'<button class="btn lb go" data-a="jload">Load this design</button>':'<button class="btn lb go" data-a="jcopy">Copy</button>')+'<button class="btn lb" data-a="jclose">Close</button>';E('labJsonBox').style.display='flex';}
 function labAct(a,b){var L=SG.lab;if(!L)return;var x;

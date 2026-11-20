@@ -139,3 +139,8 @@ Harry: "We've got two catapults. Only one works. Do we need some different types
 The aiming bot throws a Glue blob where a mender is at work among fallen parts, and a Bouncer when its blast, reckoned from where the hop really comes down, is worth more than a marble. The second lobber does not aim where the first has just fired.
 
 **What is still true.** The old numbers for everything that was not touched still stand. Four things moved in the tuning, see `BOT_REPORT.md`: the second lobber 3 to 5, a Big Marble every 22 s of holding the hill (was 24), the Big Marble's blast 0.33 (was 0.36), red's walk 1.05 (was 1.17).
+
+
+## The Lab (20 Nov): a shooting range
+
+Harry asked for "more of a sandbox, more just like a shooting range version of this to help with development". It is built as a mode of the same page (`SG.mode === 'lab'`), reusing the real pieces, `AMMO` table, blast, supports and collapse code, so what is learned there is true in a match. How to use it, the design record, how to add a prototype and what is not done are in `LAB.md`; the measured results of every ammunition against every target are in `RANGE_REPORT.md`.
