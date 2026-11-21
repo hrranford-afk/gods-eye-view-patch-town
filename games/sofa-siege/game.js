@@ -2164,7 +2164,7 @@ var DK={pop:{name:'Pop-gun post',icon:'🔫',cat:'post',tip:'Fast, short range. 
   warden:{name:'Mender (wall)',icon:'🛠️',cat:'warden',tip:'A mender mouse on a wall section. Mends one part every few seconds when it is calm.'}};
 var DK_ORDER=['pop','sling','counter','spring','glue','log','cord','snap','warden'];
 SG.defKinds=DK;SG.defOrder=DK_ORDER;
-function defNew(kind,s,x,z){var K=DK[kind],C=CD()[kind],it={id:DEF.next++,kind:kind,cat:K.cat,side:s,x:x,z:z,crewM:-1,ammo:K.cat==='post'?C.ammo:0,jam:0,jammed:false,cd:.6,calm:0,manned:false,sprung:false,rst:false,fetch:false,rep:0,idle:0,n:{shots:0,hits:0,swat:0,sprung:0,restocks:0,jams:0,repairs:0}};return it;}
+function defNew(kind,s,x,z){var K=DK[kind],C=CD()[kind],it={id:DEF.next++,kind:kind,cat:K.cat,side:s,x:x,z:z,crewM:-1,ammo:K.cat==='post'?C.ammo:0,jam:0,jammed:false,cd:.6,cdS:0,calm:0,manned:false,sprung:false,rst:false,fetch:false,rep:0,idle:0,n:{shots:0,hits:0,swat:0,sprung:0,restocks:0,jams:0,repairs:0}};return it;}
 function defRec(it){return {kind:it.kind,side:it.side,x:+it.x.toFixed(4),z:+it.z.toFixed(4)};}
 function defById(id){for(var i=0;i<DEF.items.length;i++)if(DEF.items[i].id===id)return DEF.items[i];return null;}
 function defCrewMouse(it){return it.crewM>=0?SG.mice[it.side*5+it.crewM]:null;}
@@ -2192,7 +2192,7 @@ function defRemove(it){var i=DEF.items.indexOf(it);if(i<0)return false;DEF.items
 function defSideReset(s){DEF.items=DEF.items.filter(function(i){return i.side!==s;}).concat(DEF.saved[s].map(function(r){return defNew(r.kind,s,r.x,r.z);}));
   SG.mice.forEach(function(m){if(m.side===s&&m.dj&&m.dj.k!=='raid'){m.dj=null;m.dat=false;}});DEF.logs=DEF.logs.filter(function(g){return g.side!==s;});DEF.seen[s]=[];DEF.sel=0;}
 function defClear(){DEF.items=[];DEF.saved=[[],[]];DEF.logs=[];DEF.pend=[];DEF.seen=[[],[]];DEF.stats=defStats();DEF.spent=[0,0];DEF.sel=0;DEF.t=0;DEF.at=0;DEF.test=null;if(SG.mice)SG.mice.forEach(function(m){m.dj=null;m.dat=false;});}
-function defOff(){if(!DEF.on&&!DEF.match&&!DEF.arsOwn)return;if(DEF.arsOwn){ARS_W.forEach(arsRemove);DEF.arsOwn=false;}DEF.on=false;DEF.match=false;DEF.fort=[false,false];defClear();SG.gusts=[];if(SG.sides)SG.sides.forEach(function(sd){sd.defRot=0;});}
+function defOff(){delete LAB_FLAGS.defences;if(!DEF.on&&!DEF.match&&!DEF.arsOwn)return;if(DEF.arsOwn){ARS_W.forEach(arsRemove);DEF.arsOwn=false;}DEF.on=false;DEF.match=false;DEF.fort=[false,false];defClear();SG.gusts=[];if(SG.sides)SG.sides.forEach(function(sd){sd.defRot=0;});}
 function defSnap(){if(!DEF.on)return null;return {items:DEF.items.map(function(i){return Object.assign({},i,{n:Object.assign({},i.n)});}),saved:[DEF.saved[0].slice(),DEF.saved[1].slice()],next:DEF.next,sel:DEF.sel};}
 function defRestore(sn){if(!DEF.on||!sn)return;DEF.items=sn.items.map(function(i){var c=Object.assign({},i,{n:Object.assign({},i.n)});c.crewM=-1;c.manned=false;c.fetch=false;c.rst=false;return c;});DEF.saved=[sn.saved[0].slice(),sn.saved[1].slice()];DEF.next=sn.next;DEF.sel=sn.sel;DEF.logs=[];DEF.pend=[];DEF.seen=[[],[]];
   SG.mice.forEach(function(m){m.dj=null;m.dat=false;});}
@@ -2237,11 +2237,12 @@ function defCork(x0,z0,x1,z1){SG.corks.push({id:SG.nextId++,x0:x0,z0:z0,x1:x1,z1
 function defShell(it,tx,tz,r){var u=U(),C=CD()[it.kind],dx=tx-it.x,dz=tz-it.z,d=Math.max(.3,Math.sqrt(dx*dx+dz*dz));if(C.over){tx+=dx/d*C.over*u;tz+=dz/d*C.over*u;}   /* aim a little past the target so the shell comes down on it, not on its near edge */
   var a={rb:(C.r||0)*u,x0:it.x,y0:.4*u,z0:it.z,x1:tx,z1:tz,h:C2.arcHigh[0]*u+d*C2.arcHigh[1],T:.65+d*.17,from:0,hit:null,high:false,fx:tx,fz:tz,li:0,ammo:'marble',side:it.side,id:SG.nextId++,t:0,live:true,tw:0,sx:it.x,sz:it.z,k0:.3,def:it.id};SG.marbles.push(a);snd('twang');return a;}
 function defFlyPos(a){return marblePos(a,Math.min(1,a.t/a.T));}
-function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,i,a,best=null,bd,mn=C.min,mx=C.max;
+function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,i,a,best=null,bd,mn=C.min,mx=C.max;if(it.kind!=='pop'&&it.cd>0)return false;
   function spend(){it.ammo--;it.n.shots++;it.jam+=1/C.jamAfter;if(it.jam>=1){it.jam=1;it.jammed=true;it.n.jams++;DEF.stats.jams++;pop(it.x,it.z,'Jammed!',false,.35,it.side);}it.cd=C.every;m.act=.45;}
   if(it.kind==='pop'){
-    for(i=0;i<SG.marbles.length;i++){a=SG.marbles[i];if(!a.rolling||a.side===it.side)continue;var rp=a.rm||a.rl;if(!rp)continue;var d=dist(x,z,rp.x,rp.z);if(d>mx)continue;
-      if(a.rm)a.rm.E=0;else a.rl.left=0;it.ammo--;it.n.shots++;it.n.swat++;it.n.hits++;it.jam+=1/C.jamAfter;if(it.jam>=1){it.jam=1;it.jammed=true;it.n.jams++;DEF.stats.jams++;}it.cd=C.swatEvery;m.act=.3;DEF.stats.swats++;defCork(x,z,rp.x,rp.z);pop(rp.x,rp.z,'Swatted!',true,.2,it.side);snd('tap');viewPuff(rp.x,rp.z,.5);return true;}
+    for(i=0;it.cdS<=0&&i<SG.marbles.length;i++){a=SG.marbles[i];if(!a.rolling||a.side===it.side)continue;var rp=a.rm||a.rl;if(!rp)continue;var d=dist(x,z,rp.x,rp.z);if(d>mx)continue;
+      if(a.rm)a.rm.E=0;else a.rl.left=0;it.ammo--;it.n.shots++;it.n.swat++;it.n.hits++;it.jam+=1/C.jamAfter;if(it.jam>=1){it.jam=1;it.jammed=true;it.n.jams++;DEF.stats.jams++;}it.cdS=C.swatEvery;m.act=.3;DEF.stats.swats++;defCork(x,z,rp.x,rp.z);pop(rp.x,rp.z,'Swatted!',true,.2,it.side);snd('tap');viewPuff(rp.x,rp.z,.5);return true;}
+    if(it.cd>0)return false;
     bd=mx;SG.mice.forEach(function(o){if(o.side!==en||o.state==='dizzy')return;var d=dist(x,z,o.x,o.z);if(d<bd&&d>=mn&&sightClear(x,z,o.x,o.z)){bd=d;best=o;}});
     if(best){var dx=best.x-x,dz=best.z-z,l=Math.sqrt(dx*dx+dz*dz)||1,nx=best.x+dx/l*C.knock*u,nz=best.z+dz/l*C.knock*u;if(isOpen(best.side,nx,nz)){best.x=nx;best.z=nz;}
       best.slowT=Math.max(best.slowT||0,C.slow);best.slowK=C.slowTo;spend();it.n.hits++;DEF.stats.pops++;defCork(x,z,best.x,best.z);m.rot=Math.atan2(dx,dz);snd('tap');viewPuff(best.x,best.z,.4);return true;}
@@ -2261,12 +2262,12 @@ function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,
     else it.n.hits++;
     return true;}
   return false;}
-function defPostTick(it,dt){var C=CD()[it.kind],m=defCrewMouse(it);it.cd=Math.max(0,it.cd-dt);
+function defPostTick(it,dt){var C=CD()[it.kind],m=defCrewMouse(it);it.cd=Math.max(0,it.cd-dt);it.cdS=Math.max(0,it.cdS-dt);
   var manned=!!m&&m.state!=='dizzy'&&m.dat&&m.dj&&m.dj.id===it.id&&m.dj.k==='crew';it.manned=manned;if(!manned){it.calm=0;return;}
   if(it.jammed){it.jam=Math.max(0,it.jam-dt/CD().oilSecs);m.act=.2;if(it.jam<=.02){it.jammed=false;it.jam=0;pop(it.x,it.z,'Cleared',true,.35,it.side);}return;}
   var shoot=SG.mode==='lab'||SG.phase==='fight',acted=false;
-  if(shoot&&it.ammo>0&&it.cd<=0)acted=defPostFire(it,m);
-  if(acted){it.calm=0;it.idle=0;}else{it.calm+=dt;if(it.ammo<=0)it.idle+=dt;if(it.calm>.6&&it.jam>0)it.jam=Math.max(0,it.jam-CD().jamOil*dt);}}
+  if(shoot&&it.ammo>0)acted=defPostFire(it,m);
+  if(acted){it.calm=0;it.idle=0;}else{it.calm+=dt;if(it.ammo<=0)it.idle+=dt;if(it.calm>C.every+1&&it.jam>0)it.jam=Math.max(0,it.jam-CD().jamOil*dt);}}   /* oiling needs a lull longer than the gap between shots */
 
 /* ---- hidden traps ---- */
 function defDaze(m,secs){if(m.state==='dizzy'||!dizzy(m,secs))return false;m.daze=true;return true;}
@@ -2382,7 +2383,9 @@ LAB_PROTOS.defences={name:'Defences: posts, traps, upkeep, mender, Test my base'
   off:function(){var was=DEF.arsOwn;if(was){ARS_W.forEach(arsRemove);DEF.arsOwn=false;}DEF.on=false;DEF.match=false;defClear();defViewHide();for(var i=LAB_TARGETS.length-1;i>=0;i--)if(LAB_TARGETS[i][0]==='courtyard'||LAB_TARGETS[i][0]==='rooms')LAB_TARGETS.splice(i,1);
     var L=SG.lab;if(L&&L.tool==='def')L.tool='build';if(V.def){Object.keys(V.def.g).forEach(function(k){world.remove(V.def.g[k]);});V.def=null;}}};
 var DEF_BAR=function(v,n){var k=Math.round(v*n),s='';for(var i=0;i<n;i++)s+=i<k?'#':'.';return '['+s+']';};
-function defUi(){if(!hasDom||!SG.lab||!E('labDef'))return;var L=SG.lab,on=DEF.on,h='<div class="lnote">Posts with a crew mouse that shoot for you, traps the attacker cannot see, a mender on a wall, and Test my base. Off by default.</div>'+
+function defUi(){if(!hasDom||!SG.lab||!E('labDef'))return;var L=SG.lab,on=DEF.on;
+  if(L.tgN!==LAB_TARGETS.length){L.tgN=LAB_TARGETS.length;E('labTg').innerHTML=LAB_TARGETS.map(function(t){return '<button class="btn lb'+(L.target===t[0]?' on':'')+'" data-a="tg_'+t[0]+'">'+t[1]+'</button>';}).join('');}
+  var h='<div class="lnote">Posts with a crew mouse that shoot for you, traps the attacker cannot see, a mender on a wall, and Test my base. Off by default.</div>'+
   '<div class="lgrid"><button class="btn lb'+(on?' on':'')+'" data-a="def_toggle">Defences: '+(on?'on':'off')+'</button></div>';
   if(on){var s1=DEF.items.filter(function(i){return i.side===1;}).length,s0=DEF.items.length-s1;
     h+='<h4 class="wh">Items (tap the table to place; the Defences tool)</h4><div class="lgrid">'+DK_ORDER.map(function(k){return '<button class="btn lb'+(DEF.kind===k&&L.tool==='def'?' on':'')+'" data-a="def_k_'+k+'" title="'+labEsc(DK[k].tip)+'">'+DK[k].icon+' '+labEsc(DK[k].name)+' ('+defCost(k)+')</button>';}).join('')+'</div>';
@@ -2405,7 +2408,7 @@ function defAct(a){var L=SG.lab,it=DEF.sel?defById(DEF.sel):null,go;
   if(a==='def_remove'){if(it)defRemove(it);labUi();return;}
   if(a==='def_view'){DEF.view=DEF.view==='attacker'?'builder':'attacker';labUi();return;}if(a==='def_crew'){DEF.crewAuto=!DEF.crewAuto;labUi();return;}
   if(a.indexOf('def_tpl_')===0){labLoadTarget(a.slice(8));labUi();return;}
-  if(a==='def_test'||a==='def_testmine'){labMsg('Firing the whole Arsenal at the camp...',false);go=function(){var r=a==='def_test'?SG.defTest():SG.defTestMine();L.defOut=r;E('labDefTxt').innerHTML=defReportHtml(r);E('labDefText').value=defReportText(r);E('labDefBox').style.display='flex';labUi();};if(typeof setTimeout==='function')setTimeout(go,30);else go();return;}
+  if(a==='def_test'||a==='def_testmine'){labMsg('Firing the whole Arsenal at the camp...',false);go=function(){var r=a==='def_test'?SG.defTest():SG.defTestMine();L.defOut=r;E('labDefTxt').innerHTML=defReportHtml(r);E('labDefText').value=SG.defReportText(r);E('labDefBox').style.display='flex';labUi();};if(typeof setTimeout==='function')setTimeout(go,30);else go();return;}
   if(a==='def_ok'){E('labDefBox').style.display='none';return;}
   if(a==='def_copy'){var t=E('labDefText');t.select();try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value);else document.execCommand('copy');labMsg('Report copied',false);}catch(e){labMsg('Select the text and copy it',true);}return;}}
 
@@ -2783,7 +2786,7 @@ function labDom(){if(E('lab'))return;var d=document.createElement('div');d.id='l
   d.innerHTML='<div id="labTop" class="labp"><button class="btn lb" data-a="back">⬅ Back to menu</button><span class="pill" id="labTitle">🎯 Shooting range</span><button class="btn lb" data-a="help">? How to use</button><button class="btn lb" data-a="panel" id="labPanelBtn">☰ Panel</button></div>'+
   '<div id="labReadCard" class="labp"><button class="btn lb" data-a="readtog" id="labReadBtn">Readout ▾</button><div id="labReadBody"><div id="labRead"></div><div id="labFrameTxt" class="lnote"></div><div class="lgrid"><button class="btn lb" data-a="clear">Clear counters</button></div></div></div><div id="labCarn" class="labp"></div>'+
   '<div id="labPanel" class="labp">'+
-  '<details open><summary>Target camp</summary><div class="lgrid">'+tg+'</div><div class="lgrid"><button class="btn lb go big" data-a="reset">⟳ Reset target</button><button class="btn lb" data-a="heal">Heal all</button><button class="btn lb" data-a="snap">📷 Snapshot</button><button class="btn lb" data-a="restore">⏪ Restore</button></div></details>'+
+  '<details open><summary>Target camp</summary><div class="lgrid" id="labTg">'+tg+'</div><div class="lgrid"><button class="btn lb go big" data-a="reset">⟳ Reset target</button><button class="btn lb" data-a="heal">Heal all</button><button class="btn lb" data-a="snap">📷 Snapshot</button><button class="btn lb" data-a="restore">⏪ Restore</button></div></details>'+
   '<details><summary>My camp</summary><div class="lgrid"><button class="btn lb" data-a="mine_starter">Keep + 2 lobbers</button><button class="btn lb" data-a="mine_clear">Clear my camp</button><button class="btn lb" data-a="tgt_clear">Clear target</button></div></details>'+
   '<details open id="labYardDet"><summary>Building Yard</summary><div class="lnote">Real little buildings. Trim comes off first, then walls, then the frame, then it all comes down.</div><div class="lgrid"><button class="btn lb go" data-a="rebuild">🔧 Rebuild selected</button></div><div class="lnote"><b>Build your own yard:</b> pick three.</div><div class="lgrid">'+labYardSel(0)+labYardSel(1)+labYardSel(2)+'</div><div class="lgrid"><button class="btn lb go" data-a="yard_t">Place in target camp</button><button class="btn lb" data-a="yard_m">Place in my camp</button></div></details>'+
   '<details open><summary>Settings</summary><div class="lgrid"><button class="btn lb" data-a="t_instant"></button><button class="btn lb" data-a="t_quick"></button><button class="btn lb" data-a="t_crew"></button><button class="btn lb" data-a="t_strict"></button><button class="btn lb" data-a="t_supports"></button><button class="btn lb" data-a="t_topple"></button><button class="btn lb" data-a="t_debris"></button><button class="btn lb" data-a="sweep">🧹 Sweep up</button><button class="btn lb" data-a="t_fxshake"></button><button class="btn lb" data-a="t_fxslow"></button><button class="btn lb" data-a="t_fxsound"></button><button class="btn lb" data-a="t_slow"></button><button class="btn lb" data-a="t_pause"></button></div></details>'+

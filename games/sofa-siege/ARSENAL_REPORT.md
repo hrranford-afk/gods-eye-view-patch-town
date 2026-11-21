@@ -41,7 +41,7 @@ Made by `tests/lab-test.js` (`SG.labMatrix()`), written every run. Same camp eve
 | Tether hook | 5.0 | 5.0 | 5.0 | 4.0 | **13.8** | 13.8 |
 | Thumper | 17.4 | 0.3 | **19.0** | 0.0 | 4.3 | 14.4 |
 | Fan | 0.0 | **3.3** | 1.8 | 0.0 | 2.3 | 2.8 |
-| Lobber, high lob (variant) | 0.0 | 0.0 | **2.0** | 1.0 | 0.0 | 0.0 |
+| Lobber, high lob (variant) | 0.0 | 0.0 | **2.0** | 1.5 | 0.0 | 0.0 |
 
 Bold is the weapon's best camp of the six.
 
