@@ -22,7 +22,7 @@ Status key: DONE live | RUNNING builder on it | NEXT | LATER | PARKED (Harry sai
 - Home town (solo, offline): economy, Workshop, Stockpile, mice jobs, mini-games, bases defend while away
 - Raid a base by pasted text (RAID_MODE_PLAN.md), stars, replay as text
 - Match balance re-proof for rolling shots and new weapons
-- AR for friends in the room (Harry's iPad AR test still to do)
+- AR for friends in the room (Harry reported 21 Nov: AR works through HelloXR; which game and what felt rough still to record)
 
 ## PARKED: online play (Harry, 20 Nov: "hold off, put it on the roadmap")
 Real online raiding needs a server = money + security. Not started. If ever: nickname only, no chat, no personal details, nothing identifying stored, Harry's explicit yes first. Until then bases travel as pasted text.
