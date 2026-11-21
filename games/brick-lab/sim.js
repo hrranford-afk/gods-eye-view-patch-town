@@ -205,6 +205,25 @@
     return sim;
   }
 
-  var BL = { UNIT_MM: UNIT_MM, GRAV: GRAV, DT: DT, TABLE_R: TABLE_R, KIT: KIT, BALLS: BALLS, KINDS: KINDS, PRESETS: PRESETS, rng: rng, makeSim: makeSim, toText: toText, fromText: fromText, qy: qy, qx: qx, qmul: qmul };
+  /* the velocity that lands a ball on (tx,ty,tz) from a point at a given speed (flat ballistic solution, no drag) */
+  function aimAt(tx, ty, tz, from, speed) {
+    var dx = tx - from.x, dz = tz - from.z, h = Math.sqrt(dx * dx + dz * dz), t = h / speed;
+    return { x: dx / t, y: (ty - from.y) / t - 0.5 * GRAV * t, z: dz / t };
+  }
+  /* the determinism run: wall, settle, three seeded shots, 300 more steps; returns the hash of every piece. Same code in Node and in the bench page. */
+  function detRun(R, seed) {
+    var s = makeSim(R), rnd = rng(seed);
+    s.build(PRESETS.wall.make(0, 0)); s.settle(90);
+    for (var shot = 0; shot < 3; shot++) {
+      var from = { x: (rnd() - 0.5) * 1.5, y: 0.4 + rnd() * 0.4, z: 3 }, v = aimAt((rnd() - 0.5) * 2, 0.3 + rnd() * 0.8, 0, from, 12 + rnd() * 5);
+      s.addBall(shot === 1 ? 'big' : 'marble', from, v);
+      for (var i = 0; i < 120; i++) s.step();
+    }
+    for (i = 0; i < 300; i++) s.step();
+    var h = s.hash(), sn = s.pieces.map(function (p) { var t = p.body.translation(); return t.x.toFixed(9) + ',' + t.y.toFixed(9) + ',' + t.z.toFixed(9); }).join(';');
+    s.dispose(); return { hash: h, exact: sn };
+  }
+
+  var BL = { aimAt: aimAt, detRun: detRun, UNIT_MM: UNIT_MM, GRAV: GRAV, DT: DT, TABLE_R: TABLE_R, KIT: KIT, BALLS: BALLS, KINDS: KINDS, PRESETS: PRESETS, rng: rng, makeSim: makeSim, toText: toText, fromText: fromText, qy: qy, qx: qx, qmul: qmul };
   if (typeof module !== 'undefined' && module.exports) module.exports = BL; else root.BL = BL;
 })(typeof window !== 'undefined' ? window : globalThis);

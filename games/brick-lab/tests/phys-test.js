@@ -11,11 +11,7 @@ function now() { return Number(process.hrtime.bigint()) / 1e6; }
 function mm(u) { return (u * MM).toFixed(2) + ' mm'; }
 
 /* the same fixed volley the browser benchmark fires, from the front of the table (z = +3), at the middle of the structure */
-function aimAt(tx, ty, tz, from, speed) {
-  var dx = tx - from.x, dz = tz - from.z, h = Math.sqrt(dx * dx + dz * dz), t = h / speed;
-  var vy = (ty - from.y) / t - 0.5 * BL.GRAV * t;           /* ballistic solution so the shot lands on (tx,ty,tz) */
-  return { x: dx / t, y: vy, z: dz / t };
-}
+var aimAt = BL.aimAt;
 
 async function main() {
   await R.init();
@@ -74,19 +70,7 @@ async function main() {
   check('a small marble at 14 u/s moves some bricks but only a few (honest: lighter shot, smaller effect)', results.numbers.hits['marble@14'].piecesMoved >= 1 && results.numbers.hits['marble@14'].piecesMoved < 30, results.numbers.hits['marble@14'].piecesMoved + ' moved');
 
   /* 3. determinism: same seed, same steps, twice (and three times) */
-  function run(seed) {
-    var s = BL.makeSim(R), rnd = BL.rng(seed);
-    s.build(BL.PRESETS.wall.make(0, 0)); s.settle(90);
-    var hashes = [];
-    for (var shot = 0; shot < 3; shot++) {
-      var from = { x: (rnd() - 0.5) * 1.5, y: 0.4 + rnd() * 0.4, z: 3 }, v = aimAt((rnd() - 0.5) * 2, 0.3 + rnd() * 0.8, 0, from, 12 + rnd() * 5);
-      s.addBall(shot === 1 ? 'big' : 'marble', from, v);
-      for (var i = 0; i < 120; i++) s.step();
-    }
-    for (i = 0; i < 300; i++) s.step();
-    var h = s.hash(), sn = s.pieces.map(function (p) { var t = p.body.translation(); return t.x.toFixed(9) + ',' + t.y.toFixed(9) + ',' + t.z.toFixed(9); }).join(';');
-    s.dispose(); return { hash: h, exact: sn };
-  }
+  function run(seed) { return BL.detRun(R, seed); }
   var a = run(1234), b2 = run(1234), c2 = run(1234), d = run(99);
   check('determinism: same seed, same steps, 3 runs, identical hash and identical positions to 1e-9', a.hash === b2.hash && b2.hash === c2.hash && a.exact === b2.exact && b2.exact === c2.exact, a.hash + ' / ' + b2.hash + ' / ' + c2.hash);
   check('a different seed gives a different result (the hash is not trivially constant)', d.hash !== a.hash, d.hash + ' vs ' + a.hash);
