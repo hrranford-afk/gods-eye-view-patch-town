@@ -1,0 +1,137 @@
+{
+ "done": true,
+ "quick": true,
+ "results": [
+  {
+   "key": "wall",
+   "name": "Brick wall",
+   "pieces": 120,
+   "buildMs": 259.60000000009313,
+   "settleSagMm": 0,
+   "standMax": 0.003318925720438193,
+   "asleepAt": 0.6333333333333333,
+   "stand": {
+    "physAvg": 0.2555000000035701,
+    "physMax": 3.8999999999068677,
+    "frameAvg": 366.65,
+    "frameMax": 1149.8,
+    "maxDispMm": 0.6637851440876386,
+    "awakeEnd": 0,
+    "asleepAt": 0.6333333333333333
+   },
+   "awakePeak": 125,
+   "volley": {
+    "physAvg": 1.284791666668995,
+    "physMax": 5.5,
+    "frameAvg": 297.4875,
+    "frameMax": 483.3999999999978,
+    "awakePeak": 125,
+    "moved": 54,
+    "fallen": 51,
+    "awakeEnd": 25
+   },
+   "bodiesMax": 125
+  },
+  {
+   "key": "tower",
+   "name": "Tower",
+   "pieces": 153,
+   "buildMs": 442.29999999981374,
+   "settleSagMm": 0,
+   "standMax": 0.0012425361023884916,
+   "asleepAt": 2.1333333333333333,
+   "stand": {
+    "physAvg": 1.4061666666693053,
+    "physMax": 34.6999999997206,
+    "frameAvg": 408.65,
+    "frameMax": 783.4000000000015,
+    "maxDispMm": 0.24850722047769833,
+    "awakeEnd": 0,
+    "asleepAt": 2.1333333333333333
+   },
+   "awakePeak": 158,
+   "volley": {
+    "physAvg": 2.0343750000029104,
+    "physMax": 51.10000000009313,
+    "frameAvg": 419.15250000000015,
+    "frameMax": 650.0999999999985,
+    "awakePeak": 158,
+    "moved": 95,
+    "fallen": 91,
+    "awakeEnd": 18
+   },
+   "bodiesMax": 158
+  },
+  {
+   "key": "cottage",
+   "name": "Cottage",
+   "pieces": 234,
+   "buildMs": 592.5,
+   "settleSagMm": 0,
+   "standMax": 0.00469223064957635,
+   "asleepAt": 6.816666666666666,
+   "stand": {
+    "physAvg": 4.54566666665875,
+    "physMax": 42,
+    "frameAvg": 531.3119999999998,
+    "frameMax": 1066.5999999999913,
+    "maxDispMm": 0.93844612991527,
+    "awakeEnd": 0,
+    "asleepAt": 6.816666666666666
+   },
+   "awakePeak": 239,
+   "volley": {
+    "physAvg": 3.570625000002716,
+    "physMax": 12.899999999906868,
+    "frameAvg": 435.3975000000002,
+    "frameMax": 650,
+    "awakePeak": 239,
+    "moved": 138,
+    "fallen": 125,
+    "awakeEnd": 20
+   },
+   "bodiesMax": 239
+  },
+  {
+   "key": "castle",
+   "name": "Castle gate",
+   "pieces": 383,
+   "buildMs": 1258.2999999998137,
+   "settleSagMm": 0,
+   "standMax": 0.006451301780773953,
+   "asleepAt": 8.233333333333333,
+   "stand": {
+    "physAvg": 10.611499999995964,
+    "physMax": 17.09999999962747,
+    "frameAvg": 432.65,
+    "frameMax": 1533.300000000003,
+    "maxDispMm": 1.2902603561547905,
+    "awakeEnd": 0,
+    "asleepAt": 8.233333333333333
+   },
+   "awakePeak": 388,
+   "volley": {
+    "physAvg": 8.873333333334692,
+    "physMax": 35.39999999990687,
+    "frameAvg": 450.81500000000017,
+    "frameMax": 700.1000000000058,
+    "awakePeak": 388,
+    "moved": 36,
+    "fallen": 30,
+    "awakeEnd": 13
+   },
+   "bodiesMax": 388
+  }
+ ],
+ "errors": [],
+ "device": {
+  "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+  "dpr": 1,
+  "cores": 4,
+  "w": 1180,
+  "h": 820,
+  "gl": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+ },
+ "determinismHash": "9f08783c",
+ "finishedAt": "2026-11-21T15:07:47.481Z"
+}

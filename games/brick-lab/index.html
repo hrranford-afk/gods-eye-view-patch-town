@@ -16,7 +16,7 @@ canvas{display:block;touch-action:none}
 #pull{position:fixed;display:none;pointer-events:none;width:30px;height:132px;border-radius:15px;border:3px solid #fff3df;background:#3a2a1c;box-shadow:0 3px 10px rgba(0,0,0,.5);font:700 13px system-ui,sans-serif;color:#fff3df}
 #pull .sw{position:absolute;left:0;right:0;background:#5fd04a;opacity:.55}#pull .fl{position:absolute;left:3px;right:3px;bottom:0;height:0;background:#ffd23a;border-radius:10px}
 #pull .tx{position:absolute;left:40px;top:50%;white-space:nowrap;text-shadow:0 1px 3px #000}
-#bench{position:fixed;inset:0;display:none;background:rgba(30,18,10,.93);overflow:auto;z-index:20}
+#bench{position:fixed;inset:0;display:none;background:#241710;overflow:auto;z-index:20}
 #bench .in{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
 #bench h1{font-size:46px;margin:6px 0 4px}
 #bench .sub{font-size:22px;opacity:.9;margin:2px 0 12px}
@@ -294,7 +294,7 @@ import RAPIER from './vendor/rapier/rapier.es.js';
   function Bench() {
     var self = this, list = ['wall', 'tower', 'cottage', 'castle'], idx = 0, phase = 'start', stepsIn = 0, res = [], cur = null, frameBuf = [];
     var aimY = { wall: 0.8, tower: 0.7, cottage: 0.6, castle: 0.8 }, SHOTS = [['marble', -0.8], ['big', 0.2], ['big', -0.3], ['marble', 0.7], ['big', 0.0]];
-    var STAND = 600, VOLLEY = 480, perFrame = QUICK ? 12 : 4;
+    var STAND = 600, VOLLEY = 480, accB = 0;
     var out = document.querySelector('#bench .in'); $('bench').style.display = 'block';
     window.__bench = { done: false, quick: QUICK, results: res, errors: errors, device: { ua: navigator.userAgent, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency || 0, w: W, h: H, gl: glName() } };
     function glName() { try { var gl = R3.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'hidden'; } catch (x) { return '?'; } }
@@ -315,7 +315,8 @@ import RAPIER from './vendor/rapier/rapier.es.js';
       el.textContent = 'Now: ' + (cur ? cur.name : '...') + ' (' + (idx + 1) + ' of ' + list.length + ') ' + (phase === 'stand' ? 'standing still ' + Math.floor(stepsIn / 6) / 10 + ' s of 10' : phase === 'volley' ? 'shots and crumbling ' + Math.floor(stepsIn / 6) / 10 + ' s of 8' : phase); }
     self.frame = function (dtMs) {
       frameBuf.push(dtMs); if (phase === 'start') { startPreset(); return; } if (phase === 'done') return;
-      var n = perFrame, k;
+      var n = 0, k;
+      if (QUICK) n = 12; else { accB += Math.min(dtMs, 100) / 1000; while (accB >= DT && n < 4) { accB -= DT; n++; } if (accB > DT * 4) accB = 0; }
       for (k = 0; k < n; k++) {
         if (phase === 'volley') {
           for (var s = 0; s < SHOTS.length; s++) if (stepsIn === s * 40) { var f = { x: 0, y: 0.5, z: 3 }; sim.addBall(SHOTS[s][0], f, BL.aimAt(SHOTS[s][1], aimY[cur.key], -0.2, f, 15)); }
@@ -345,15 +346,13 @@ import RAPIER from './vendor/rapier/rapier.es.js';
     function cls(v, g, y) { return v <= g ? 'g' : v <= y ? 'y' : 'r'; }
     function finish() {
       phase = 'done'; window.__bench.done = true; window.__bench.finishedAt = new Date().toISOString();
-      var h = '<h1>Brick Lab: results</h1><div class="sub">' + (QUICK ? 'QUICK mode (12 steps per frame): the frame numbers do not mean much. ' : '') + 'Read each row: pieces, how many are moving, time per physics step, time per picture.</div><table><tr><th>Build</th><th>Pieces</th><th>Still 10 s: moved</th><th>Physics ms avg</th><th>Physics ms worst</th><th>Frame ms</th><th>Pictures/s</th></tr>';
+      var worst = res.reduce(function (m, r) { return Math.max(m, r.volley.frameAvg); }, 0), cast = res[res.length - 1];
+      var h = '<h1>Brick Lab: results</h1>'+(worst <= 18 ? '<div class="big" style="color:#bff0b6">Smooth on this device.</div>' : worst <= 36 ? '<div class="big" style="color:#ffe27a">Playable, not silky, on this device.</div>' : '<div class="big" style="color:#ff9a8a">Too slow on this device.</div>')+'<div class="big">Biggest build ('+cast.pieces+' pieces) while crumbling: '+fixed(cast.volley.frameAvg,1)+' ms per picture = '+fixed(1000/cast.volley.frameAvg,0)+' pictures a second. Worst physics step '+fixed(cast.volley.physMax,1)+' ms. Up to '+cast.volley.awakePeak+' pieces awake at once.</div><div class="sub">' + (QUICK ? 'QUICK mode (12 steps per frame): the frame numbers do not mean much. ' : '') + 'Read each row: pieces, how many are moving, time per physics step, time per picture.</div><table><tr><th>Build</th><th>Pieces</th><th>Still 10 s: moved</th><th>Physics ms avg</th><th>Physics ms worst</th><th>Frame ms</th><th>Pictures/s</th></tr>';
       res.forEach(function (r) {
         h += '<tr><td>' + r.name + ' (standing)</td><td>' + r.pieces + '</td><td class="' + (r.stand.maxDispMm < 2 ? 'g' : r.stand.maxDispMm < 6 ? 'y' : 'r') + '">' + fixed(r.stand.maxDispMm, 1) + ' mm</td><td class="' + cls(r.stand.physAvg, 3, 6) + '">' + fixed(r.stand.physAvg, 2) + '</td><td>' + fixed(r.stand.physMax, 1) + '</td><td class="' + cls(r.stand.frameAvg, 18, 36) + '">' + fixed(r.stand.frameAvg, 1) + '</td><td>' + fixed(1000 / r.stand.frameAvg, 0) + '</td></tr>';
         h += '<tr><td>' + r.name + ' (5 shots, crumbling)</td><td>' + r.pieces + '</td><td>' + r.volley.moved + ' moved, ' + r.volley.fallen + ' fell</td><td class="' + cls(r.volley.physAvg, 3, 6) + '">' + fixed(r.volley.physAvg, 2) + '</td><td class="' + cls(r.volley.physMax, 8, 16) + '">' + fixed(r.volley.physMax, 1) + '</td><td class="' + cls(r.volley.frameAvg, 18, 36) + '">' + fixed(r.volley.frameAvg, 1) + '</td><td>' + fixed(1000 / r.volley.frameAvg, 0) + '</td></tr>';
       });
       h += '</table>';
-      var worst = res.reduce(function (m, r) { return Math.max(m, r.volley.frameAvg); }, 0), cast = res[res.length - 1];
-      h += '<div class="big">Biggest build (' + cast.pieces + ' pieces) while crumbling: ' + fixed(cast.volley.frameAvg, 1) + ' ms per picture = ' + fixed(1000 / cast.volley.frameAvg, 0) + ' pictures a second; worst physics step ' + fixed(cast.volley.physMax, 1) + ' ms; up to ' + cast.volley.awakePeak + ' pieces awake at once.</div>';
-      h += '<div class="big">' + (worst <= 18 ? 'Smooth on this device.' : worst <= 36 ? 'Playable, not silky, on this device.' : 'Too slow on this device.') + '</div>';
       h += '<div class="note">Green is good, yellow is borderline, red is too slow. Physics ms is the time of one step (60 steps make one second). Frame ms is the whole picture including drawing. Determinism check: the number <b>' + window.__bench.determinismHash + '</b> should be the same on every device (the Node test prints the same number).</div>';
       h += '<div class="note">Device: ' + window.__bench.device.ua + ' | pixel ratio ' + window.__bench.device.dpr + ' | cores ' + window.__bench.device.cores + ' | graphics: ' + window.__bench.device.gl + ' | errors: ' + errors.length + '</div>';
       h += '<div style="margin:12px 0"><button class="btn go" id="bCopy" style="font-size:24px;padding:14px 28px">Copy numbers</button> <button class="btn" id="bRun" style="font-size:24px;padding:14px 28px">Run again</button> <button class="btn" id="bPlay" style="font-size:24px;padding:14px 28px">Play</button></div><pre id="bjson"></pre>';
