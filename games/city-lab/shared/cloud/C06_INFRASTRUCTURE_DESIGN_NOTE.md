@@ -1,5 +1,5 @@
-# C06: infrastructure design note v0 (CLOUD, 21 Nov 2026). DESIGN ONLY: nothing is built.
-Status: WORKING (note). The owner asked for the note first and for a co-design review by ChatGPT. Nothing below is approved.
+# C06: infrastructure design note v0.1 (CLOUD, 21 Nov 2026). DESIGN ONLY: nothing is built.
+Status: WORKING (note), reviewed by ChatGPT on 21 Nov (section 10). Nothing below is approved; the owner decides go or no-go and answers section 8.
 
 ## 1 What is true today (read from `district.js`, 21 Nov)
 - Roads: each road cell is open or blocked. No type, capacity or wear. Customers and carts use shortest open paths.
@@ -36,5 +36,22 @@ Scope creep (three systems at once): mitigated by the order above. Readability i
 3. Should one dark street be possible (local brownouts), or keep the city-wide brownout and add generators only?
 4. Is a city budget (income against infrastructure cost) wanted now, or later?
 
-## 9 Paper test first (cheap, no code)
-Before any build: three hand calculations on a 6-building tree (one source of 6 kW, a cable of 4 kW capacity to a street of 3 homes drawing 2.8 kW in total, a bakery on the main feeder drawing 6 kW): who browns out, by how much, and what one extra 3 kW generator changes. The numbers must come out the same by hand and by the code later.
+## 9 Paper tests (corrected after review)
+My first example had 6 kW of supply for 8.8 kW of demand and no rule for who gets less: that was my mistake (found by ChatGPT). The rule is now defined in 10.1. The paper tests are P1 (a cable limits one street), P2 (a pipe limits the bakery's water), P3 (congestion), P4 (a SHORT source) and P5 (a second generator). Every expected number is checked by `shared/tools/c06-paper-tests.mjs` (a reference calculator, not the feature); saved output: `evidence/C06_paper_tests.txt` (8 of 8 match the hand numbers).
+
+## 10 Review by ChatGPT, 21 Nov (its file, untouched: `inputs/chatgpt_c06_review.md`)
+Verdict: the optional `city_infra` sidecar is sound; keep recipes and the district format unchanged. Design only. CAIRN's response, point by point:
+1. ACCEPTED, the rule that was missing. Shared shortage and a second source need a rule before any code. Proposed rule A, "proportional to capped demand" (a short source scales every branch below it by the same factor): P4: 6 kW against capped demand 8.0 gives homes 1.5 (54 percent of 2.8) and bakery 4.5 (75 percent). Alternative rule B, priority classes (homes first): kinder to residents, but it needs a priority list. Recommendation: A for v0 (one number, no list). A second source must sit at the root of a tree and its output adds (P5); a source elsewhere is a separate tree. Owner may choose B.
+2. ACCEPTED, simplifications: no network losses, no fuel, no wear, no automatic rerouting in v0. KEPT: disconnections (a building with no path is dark), per-branch limits, costs, visible consequences. Generator output is fixed in v0; the repeating wind profile is a first follow-up experiment, not v0.
+3. ACCEPTED, a feature: tap a dim building and the page highlights its limiting connection and says why ("Homes cable 2.0 kW; the street wants 2.8 kW").
+4. ACCEPTED, a precondition: investigate the two C03 oddities (a short brownout raising net; reopening a road lowering net) BEFORE building C06, otherwise the player can be rewarded for the wrong fix. Added as job C03b.
+5. ACCEPTED, build one at a time. ChatGPT gives options only; recommendation unchanged: power first (the clearest local failure and the direct follow-on from C03's power limit).
+6. ACCEPTED as proposed test rules, not yet code: P2 partial pipe (cart top-up stays a separate design choice) and P3 congestion (effective distance = cells x max(1, trips / capacity) using LAST tick's trips). P3 carries risk 4 below.
+7. Risks, ranked by ChatGPT, adopted as is: (1) undefined allocation maths (now defined, 10.1); (2) misleading economics from C03's oddities (C03b); (3) double counting of pipe and cart supply or of generated power (the design must say a unit of water or power is counted once: by pipe while it reaches, else by cart); (4) unstable traffic and demand feedback (use last tick's trips and test for oscillation); (5) AR readability and performance with many networks and labels (one network visible at a time).
+8. REJECTED: nothing.
+
+## 11 The owner's four questions, with ChatGPT's options (CAIRN adds a recommendation)
+1. First: power (clearest shortage; CAIRN recommends), water (simplest logistics contrast), roads (strongest spatial puzzle, hardest feedback).
+2. Generators: fixed output (predictable; CAIRN recommends for v0), wind profile (a scheduling challenge), fuel (deeper economy, needs delivery rules).
+3. Brownouts: city-wide only (simplest, few location decisions), local (better engineering, more maths; CAIRN recommends since it is the point of cables), or staged (test both in sequence).
+4. Budget: full costs now (meaningful investment choices, more balancing), display-only (easy, weak stakes), or a read-only cost comparison first (CAIRN recommends as a compromise).
