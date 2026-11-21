@@ -52,7 +52,7 @@
       power: { state: S.power ? 'ok' : 'none', factor: S.power ? 1 : 1, draw_kw: 0, kwh: 0 },
       sales: { acc: 0, sold: 0, lost: 0, income: 0, mult: 1, pending: 0, pendingMoney: 0, nextLog: 10, nextNoise: 0, soldOut: false },
       deliv: [], costs: { power: 0, wages: 0, ingredients: 0, repairs: 0 }, spoiled: {}, spoilAcc: {}, spoilLog: {},
-      repairs: { done: 0, failed: 0 }, destroyed: 0, hist: [], log: [], logN: 0
+      assign: {}, repairs: { done: 0, failed: 0 }, destroyed: 0, hist: [], log: [], logN: 0
     };
     st.rng = st.seed | 0;
     R.parts.forEach(function (p) { st.present[p.id] = true; });
@@ -89,7 +89,7 @@
   }
 
   /* ---- repair orders: the missing parts a repair needs first come first in the queue ---- */
-  function orderRepair(R, S, id) {
+  function orderRepair(R, S, id, worker) {
     var q = [], seen = {};
     function add(pid) {
       if (seen[pid]) return; seen[pid] = true;
@@ -99,7 +99,7 @@
       if (S.orders.indexOf(pid) < 0 && !S.workers.some(function (w) { return w.target === pid; })) q.push(pid);
     }
     add(id);
-    q.forEach(function (pid) { S.orders.push(pid); });
+    q.forEach(function (pid) { S.orders.push(pid); if (worker != null && worker >= 0 && worker < S.workers.length) S.assign[pid] = worker; });
     if (q.length) log(S, 'repair', 'Repair ordered: ' + q.map(function (i) { return label(R, i); }).join(', '));
     return q;
   }
@@ -179,11 +179,12 @@
         var b = SUP.aabb(p2), px = (b.min[0] + b.max[0]) / 2, pz = (b.min[2] + b.max[2]) / 2, best = -1, bd = 1e9;
         for (j = 0; j < S.workers.length; j++) {
           var w2 = S.workers[j];
+          if (S.assign[id] != null && S.assign[id] !== j) continue;
           if (w2.state !== 'station' || rp.worker_roles.indexOf(w2.role) < 0) continue;
           var d2 = Math.sqrt((w2.x - px) * (w2.x - px) + (w2.z - pz) * (w2.z - pz));
           if (d2 < bd - 1e-9) { bd = d2; best = j; }
         }
-        if (best >= 0) { var wk = S.workers[best]; wk.state = 'walking'; wk.target = id; wk.tx = r6(px); wk.tz = r6(pz); wk.task = 'repair ' + label(R, id); S.orders.splice(i, 1); i--; }
+        if (best >= 0) { var wk = S.workers[best]; wk.state = 'walking'; wk.target = id; wk.tx = r6(px); wk.tz = r6(pz); wk.task = 'repair ' + label(R, id); delete S.assign[id]; S.orders.splice(i, 1); i--; }
       }
     }
 

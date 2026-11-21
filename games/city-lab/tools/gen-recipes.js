@@ -55,8 +55,8 @@ function bakery() {
   A(P('ridge', 'ridge', [0, 1.52, 0], [2.1, 0.06, 0.1], 'wood_dark', 'frame', ['rafter.f0', 'rafter.f1', 'rafter.f2', 'rafter.b0', 'rafter.b1', 'rafter.b2'], 'ridge', { min: 1 }));
   A(P('chimney', 'chimney', [-0.35, 1.3, -0.24], [0.3, 0.55, 0.26], 'brick', 'trim', ['tile.b10', 'tile.b11'], 'chimney', { rep: true }));
   /* front: awning and sign */
-  A(P('awning', 'awning', [0, 0.72, 1.115], [2.0, 0.3, 0.55], 'canvas', 'trim', ['beam.f'], 'awning', { rep: true, variant: 1 }));
-  A(P('sign', 'sign', [0.62, 0.48, 1.34], [0.6, 0.22, 0.04], 'wood_pale', 'trim', ['awning'], 'sign', { rep: true, label: 'BAKERY' }));
+  A(P('awning', 'awning', [0, 0.72, 1.04], [2.0, 0.3, 0.4], 'canvas', 'trim', ['beam.f'], 'awning', { rep: true, variant: 1 }));
+  A(P('sign', 'sign', [0.62, 0.48, 1.22], [0.6, 0.22, 0.04], 'wood_pale', 'trim', ['awning'], 'sign', { rep: true, label: 'BAKERY' }));
   /* inside */
   A(P('oven', 'oven', [-0.55, pt, -0.5], [0.7, 0.6, 0.5], 'brick', 'walls', ['floor'], 'oven', { rep: true }));
   A(P('counter', 'counter', [0.45, pt, 0.45], [1.0, 0.4, 0.3], 'wood', 'walls', ['floor'], 'counter', { rep: true }));
