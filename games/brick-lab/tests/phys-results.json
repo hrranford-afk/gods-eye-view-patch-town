@@ -1,0 +1,219 @@
+{
+ "when": "2026-11-21T14:52:45.579Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "wall of 120 bricks stands still 10 s (max displacement < 2 mm equivalent)",
+   "ok": true,
+   "detail": "max 0.70 mm after the first 1.5 s settle; the settle itself sagged 7.76 mm"
+  },
+  {
+   "name": "Brick wall (120 pieces) stands still 10 s: displacement under 2 mm equivalent",
+   "ok": true,
+   "detail": "max 0.70 mm, sag in settle 7.76 mm, all asleep at 0.6 s"
+  },
+  {
+   "name": "Tower (153 pieces) stands still 10 s: displacement under 2 mm equivalent",
+   "ok": true,
+   "detail": "max 0.10 mm, sag in settle 2.78 mm, all asleep at 0.6 s"
+  },
+  {
+   "name": "Cottage (234 pieces) stands still 10 s: displacement under 2 mm equivalent",
+   "ok": true,
+   "detail": "max 0.97 mm, sag in settle 15.71 mm, all asleep at not within 10 s"
+  },
+  {
+   "name": "Castle gate (383 pieces) stands still 10 s: displacement under 2 mm equivalent",
+   "ok": true,
+   "detail": "max 1.18 mm, sag in settle 11.50 mm, all asleep at 5.4 s"
+  },
+  {
+   "name": "one big marble at 16 u/s knocks a breach (15 or more of 120 bricks moved)",
+   "ok": true,
+   "detail": "20 moved"
+  },
+  {
+   "name": "a volley of three big marbles brings most of the wall down (60 or more of 120 bricks moved)",
+   "ok": true,
+   "detail": "77 moved"
+  },
+  {
+   "name": "a small marble at 14 u/s moves some bricks but only a few (honest: lighter shot, smaller effect)",
+   "ok": true,
+   "detail": "5 moved"
+  },
+  {
+   "name": "determinism: same seed, same steps, 3 runs, identical hash and identical positions to 1e-9",
+   "ok": true,
+   "detail": "9f08783c / 9f08783c / 9f08783c"
+  },
+  {
+   "name": "a different seed gives a different result (the hash is not trivially constant)",
+   "ok": true,
+   "detail": "5c48181c vs 9f08783c"
+  },
+  {
+   "name": "cost table produced for 120/250/400/1000 bodies",
+   "ok": true
+  },
+  {
+   "name": "bodies fall asleep by themselves when still (tower, 153 pieces)",
+   "ok": true,
+   "detail": "all asleep after 2.0 s"
+  },
+  {
+   "name": "sleeping bodies do not move at all (hash unchanged over 2 s)",
+   "ok": true
+  },
+  {
+   "name": "a ball hitting a sleeping tower wakes it",
+   "ok": true,
+   "detail": "awake after hit: 154"
+  },
+  {
+   "name": "a sleeping scene costs far less than an awake one",
+   "ok": true,
+   "detail": "0.027 ms vs 2.400 ms per step"
+  },
+  {
+   "name": "a base saved as text (3 decimals) loads back to the same shape (12331 bytes for 234 pieces)",
+   "ok": true,
+   "detail": "text bytes 12331"
+  }
+ ],
+ "numbers": {
+  "wall": {
+   "bodies": 120,
+   "settleSagMm": 7.76,
+   "standMaxDispMm": 0.699,
+   "sleptAtS": 0.6333333333333333
+  },
+  "presets": {
+   "wall": {
+    "bodies": 120,
+    "settleSagMm": 7.8,
+    "standMaxDispMm": 0.7,
+    "allAsleepAtS": 0.6333333333333333
+   },
+   "tower": {
+    "bodies": 153,
+    "settleSagMm": 2.8,
+    "standMaxDispMm": 0.1,
+    "allAsleepAtS": 0.55
+   },
+   "cottage": {
+    "bodies": 234,
+    "settleSagMm": 15.7,
+    "standMaxDispMm": 0.97,
+    "allAsleepAtS": -1
+   },
+   "castle": {
+    "bodies": 383,
+    "settleSagMm": 11.5,
+    "standMaxDispMm": 1.18,
+    "allAsleepAtS": 5.383333333333334
+   }
+  },
+  "hits": {
+   "marble@14": {
+    "piecesMoved": 5,
+    "of": 120,
+    "highestPieceY": 1.24
+   },
+   "big@12": {
+    "piecesMoved": 11,
+    "of": 120,
+    "highestPieceY": 1.24
+   },
+   "big@16": {
+    "piecesMoved": 20,
+    "of": 120,
+    "highestPieceY": 1.24
+   },
+   "big@20": {
+    "piecesMoved": 22,
+    "of": 120,
+    "highestPieceY": 1.24
+   },
+   "big@24": {
+    "piecesMoved": 21,
+    "of": 120,
+    "highestPieceY": 1.24
+   },
+   "acorn@14": {
+    "piecesMoved": 1,
+    "of": 120,
+    "highestPieceY": 1.24
+   }
+  },
+  "volley": {
+   "piecesMoved": 77,
+   "of": 120,
+   "onTheTable": 108
+  },
+  "determinism": {
+   "runs": [
+    "9f08783c",
+    "9f08783c",
+    "9f08783c"
+   ],
+   "differentSeed": "5c48181c",
+   "note": "same machine, same wasm binary, same Node. Cross-device (iPad vs this machine) identity is NOT tested."
+  },
+  "cost": {
+   "120": {
+    "bodies": 120,
+    "settleMsPerStep": 2.534,
+    "sleepingMsPerStep": 0.035,
+    "collapseAvgMs": 1.414,
+    "collapseP95Ms": 2.064,
+    "collapseMaxMs": 3.661,
+    "collapseStepsPerSec": 707,
+    "peakAwake": 123,
+    "piecesMoved": 65
+   },
+   "250": {
+    "bodies": 234,
+    "settleMsPerStep": 6.225,
+    "sleepingMsPerStep": 0.099,
+    "collapseAvgMs": 3.152,
+    "collapseP95Ms": 5.16,
+    "collapseMaxMs": 9.716,
+    "collapseStepsPerSec": 317,
+    "peakAwake": 237,
+    "piecesMoved": 202
+   },
+   "400": {
+    "bodies": 383,
+    "settleMsPerStep": 14.601,
+    "sleepingMsPerStep": 0.084,
+    "collapseAvgMs": 7.469,
+    "collapseP95Ms": 12.308,
+    "collapseMaxMs": 14.546,
+    "collapseStepsPerSec": 134,
+    "peakAwake": 386,
+    "piecesMoved": 126
+   },
+   "1000": {
+    "bodies": 1000,
+    "settleMsPerStep": 21.78,
+    "sleepingMsPerStep": 0.273,
+    "collapseAvgMs": 14.26,
+    "collapseP95Ms": 18.805,
+    "collapseMaxMs": 29.768,
+    "collapseStepsPerSec": 70,
+    "peakAwake": 977,
+    "piecesMoved": 841
+   }
+  },
+  "sleep": {
+   "tower": 153,
+   "sleepingMsPerStep": 0.027,
+   "afterHitMsPerStep": 2.4
+  },
+  "textBytes": {
+   "cottagePieces": 234,
+   "bytes": 12331
+  }
+ }
+}
