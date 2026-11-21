@@ -1,5 +1,5 @@
 {
- "when": "2026-11-21T18:01:12.933Z",
+ "when": "2026-11-21T18:17:33.892Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -88,7 +88,7 @@
   {
    "name": "a sleeping scene costs far less than an awake one",
    "ok": true,
-   "detail": "0.036 ms vs 2.664 ms per step"
+   "detail": "0.032 ms vs 2.274 ms per step"
   },
   {
    "name": "a base saved as text (3 decimals) loads back to the same shape (12331 bytes for 234 pieces)",
@@ -135,9 +135,9 @@
     "settleSagMm": 5.9,
     "standMaxDispMm": 0.9,
     "allAsleepAtS": 8.55,
-    "standMsPerStep": 10.1,
-    "volleyAvgMs": 7.57,
-    "volleyMaxMs": 38.6,
+    "standMsPerStep": 9.74,
+    "volleyAvgMs": 7.74,
+    "volleyMaxMs": 21.2,
     "moved": 301
    },
    "pile1000": {
@@ -145,9 +145,9 @@
     "settleSagMm": 6,
     "standMaxDispMm": 1.24,
     "allAsleepAtS": -1,
-    "standMsPerStep": 22.92,
-    "volleyAvgMs": 22.5,
-    "volleyMaxMs": 43.2,
+    "standMsPerStep": 23.67,
+    "volleyAvgMs": 23.43,
+    "volleyMaxMs": 39.2,
     "moved": 673
    },
    "pile2000": {
@@ -155,9 +155,9 @@
     "settleSagMm": 14.1,
     "standMaxDispMm": 13.32,
     "allAsleepAtS": -1,
-    "standMsPerStep": 34.21,
-    "volleyAvgMs": 67.02,
-    "volleyMaxMs": 118.9,
+    "standMsPerStep": 33.54,
+    "volleyAvgMs": 70.68,
+    "volleyMaxMs": 164.1,
     "moved": 349
    }
   },
@@ -210,53 +210,53 @@
   "cost": {
    "120": {
     "bodies": 120,
-    "settleMsPerStep": 2.747,
-    "sleepingMsPerStep": 0.031,
-    "collapseAvgMs": 1.539,
-    "collapseP95Ms": 2.87,
-    "collapseMaxMs": 5.227,
-    "collapseStepsPerSec": 650,
+    "settleMsPerStep": 2.409,
+    "sleepingMsPerStep": 0.035,
+    "collapseAvgMs": 1.323,
+    "collapseP95Ms": 1.862,
+    "collapseMaxMs": 3.281,
+    "collapseStepsPerSec": 756,
     "peakAwake": 123,
     "piecesMoved": 65
    },
    "250": {
     "bodies": 234,
-    "settleMsPerStep": 6.497,
-    "sleepingMsPerStep": 0.047,
-    "collapseAvgMs": 1.968,
-    "collapseP95Ms": 2.848,
-    "collapseMaxMs": 5.841,
-    "collapseStepsPerSec": 508,
+    "settleMsPerStep": 6.46,
+    "sleepingMsPerStep": 0.058,
+    "collapseAvgMs": 2.42,
+    "collapseP95Ms": 3.625,
+    "collapseMaxMs": 7.3,
+    "collapseStepsPerSec": 413,
     "peakAwake": 237,
     "piecesMoved": 202
    },
    "400": {
     "bodies": 383,
-    "settleMsPerStep": 15.941,
-    "sleepingMsPerStep": 0.117,
-    "collapseAvgMs": 7.1,
-    "collapseP95Ms": 12.331,
-    "collapseMaxMs": 23.058,
-    "collapseStepsPerSec": 141,
+    "settleMsPerStep": 15.092,
+    "sleepingMsPerStep": 0.107,
+    "collapseAvgMs": 6.637,
+    "collapseP95Ms": 11.802,
+    "collapseMaxMs": 16.306,
+    "collapseStepsPerSec": 151,
     "peakAwake": 386,
     "piecesMoved": 126
    },
    "1000": {
     "bodies": 1000,
-    "settleMsPerStep": 20.743,
-    "sleepingMsPerStep": 0.273,
-    "collapseAvgMs": 14.337,
-    "collapseP95Ms": 17.395,
-    "collapseMaxMs": 19.267,
-    "collapseStepsPerSec": 70,
+    "settleMsPerStep": 21.238,
+    "sleepingMsPerStep": 0.269,
+    "collapseAvgMs": 15.318,
+    "collapseP95Ms": 19.058,
+    "collapseMaxMs": 23.465,
+    "collapseStepsPerSec": 65,
     "peakAwake": 977,
     "piecesMoved": 841
    }
   },
   "sleep": {
    "tower": 153,
-   "sleepingMsPerStep": 0.036,
-   "afterHitMsPerStep": 2.664
+   "sleepingMsPerStep": 0.032,
+   "afterHitMsPerStep": 2.274
   },
   "textBytes": {
    "cottagePieces": 234,
