@@ -231,7 +231,7 @@
   function fxFlashRoad(c) { var p = pos(c), r = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.42, 32), new THREE.MeshBasicMaterial({ color: 0xe04a3a, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide })); r.rotation.x = -Math.PI / 2; r.position.set(p.x, 0.14, p.z); world.add(r); fxList.push({ m: r, t: 0, life: 2.4 }); }
 
   /* ---------------- experiments, in the page ---------------- */
-  function table(rows, cols) {
+  function htmlTable(rows, cols) {
     var h = '<table class="res"><tr>' + cols.map(function (c) { return '<th>' + esc(c.h) + '</th>'; }).join('') + '</tr>';
     rows.forEach(function (r) { h += '<tr>' + cols.map(function (c) { var v = c.f ? c.f(r) : r[c.k]; return '<td>' + esc(v == null ? '-' : v) + '</td>'; }).join('') + '</tr>'; });
     return h + '</table>';
@@ -240,19 +240,19 @@
   function runExpNow(n) {
     var E = DI['exp' + n](D, files), h = '<div class="card"><b>' + esc(E.title) + '</b> <span class="small">(identical on every run)</span>';
     if (n === 1) {
-      h += table(E.rows, [{ h: 'Homes', k: 'homes' }, { h: 'Residents', k: 'residents' }, { h: 'Demand /min', f: function (r) { return f1(r.bakery_demand_pm); } }, { h: 'Sold /min', f: function (r) { return f1(r.bakery_sold_pm); } },
+      h += htmlTable(E.rows, [{ h: 'Homes', k: 'homes' }, { h: 'Residents', k: 'residents' }, { h: 'Demand /min', f: function (r) { return f1(r.bakery_demand_pm); } }, { h: 'Sold /min', f: function (r) { return f1(r.bakery_sold_pm); } },
         { h: 'Lost /min', f: function (r) { return f1(r.bakery_lost_pm); } }, { h: 'Net /min', f: function (r) { return f1(r.bakery_net_pm); } }, { h: 'Grid kW', f: function (r) { return f1(r.grid_draw_kw) + '/' + f1(r.grid_supply_kw); } }, { h: 'Limit', f: function (r) { return r.limiter.split(' (')[0]; } }]);
       h += expl(DI.explain1(E));
     } else if (n === 2) {
       var rows = [];
       Object.keys(E.upgrades).forEach(function (v) { var u = E.upgrades[v]; [E.few, E.many].forEach(function (k) { var x = u.by_homes[k]; rows.push({ up: v.replace(/_/g, ' '), homes: k, base: x.net_base, upg: x.net_upgrade, gain: x.gain_pm, coins: u.coins, be: u.break_even_homes_payback_within_60_min }); }); });
-      h += table(rows, [{ h: 'Upgrade', k: 'up' }, { h: 'Homes', k: 'homes' }, { h: 'Net before', f: function (r) { return f1(r.base); } }, { h: 'Net after', f: function (r) { return f1(r.upg); } }, { h: 'Gain /min', f: function (r) { return f1(r.gain); } }, { h: 'Cost', k: 'coins' }, { h: 'Pays back at', f: function (r) { return r.be == null ? 'never' : r.be + ' homes'; } }]);
+      h += htmlTable(rows, [{ h: 'Upgrade', k: 'up' }, { h: 'Homes', k: 'homes' }, { h: 'Net before', f: function (r) { return f1(r.base); } }, { h: 'Net after', f: function (r) { return f1(r.upg); } }, { h: 'Gain /min', f: function (r) { return f1(r.gain); } }, { h: 'Cost', k: 'coins' }, { h: 'Pays back at', f: function (r) { return r.be == null ? 'never' : r.be + ' homes'; } }]);
       h += expl(DI.explain2(E));
     } else {
       var ks = ['A', 'B', 'control_1', 'control_2'];
-      h += table(ks.map(function (k) { var r = E.runs[k]; return { name: k, d: r.bakery_demand_pm, s: r.bakery_sold_pm, m: r.deliveries_missed_visits, n: r.bakery_net_pm, h: r.homes_reaching != null ? r.homes_reaching : r.access_homes }; }),
+      h += htmlTable(ks.map(function (k) { var r = E.runs[k]; return { name: k, d: r.bakery_demand_pm, s: r.bakery_sold_pm, m: r.deliveries_missed_visits, n: r.bakery_net_pm, h: r.homes_reaching != null ? r.homes_reaching : r.access_homes }; }),
         [{ h: 'Run', k: 'name' }, { h: 'Demand /min', f: function (r) { return f1(r.d); } }, { h: 'Sold /min', f: function (r) { return f1(r.s); } }, { h: 'Missed carts', k: 'm' }, { h: 'Net /min', f: function (r) { return f1(r.n); } }]);
-      h += table(E.causes, [{ h: 'Change B to match A in', k: 'change' }, { h: 'Net /min', f: function (r) { return f1(r.net_pm); } }, { h: 'Change', f: function (r) { return (r.delta_net_pm >= 0 ? '+' : '') + f1(r.delta_net_pm); } }]);
+      h += htmlTable(E.causes, [{ h: 'Change B to match A in', k: 'change' }, { h: 'Net /min', f: function (r) { return f1(r.net_pm); } }, { h: 'Change', f: function (r) { return (r.delta_net_pm >= 0 ? '+' : '') + f1(r.delta_net_pm); } }]);
       h += expl(DI.explain3(E)) + '<div class="row"><button class="btn" id="vA">View neighbourhood A</button><button class="btn" id="vB">View neighbourhood B</button><button class="btn" id="vBase">Back to Patch Row</button></div>';
     }
     h += '</div>'; $('expOut').innerHTML = h; A.expResults[n] = E;
