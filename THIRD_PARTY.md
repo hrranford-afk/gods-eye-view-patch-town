@@ -9,3 +9,6 @@
 
 The full licence texts are in the headers of `webxr-polyfill.js`. The game only loads it inside an AR app on iPad
 (see the "iPad fix" comment in `index.html`). The rest of the game is our own code.
+
+## Rapier physics engine (brick-lab/vendor/rapier)
+@dimforge/rapier3d-compat 0.14.0, Apache-2.0, https://github.com/dimforge/rapier.js . Unmodified. Licence text in brick-lab/vendor/rapier/LICENSE.

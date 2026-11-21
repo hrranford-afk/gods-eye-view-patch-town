@@ -1,0 +1,415 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Brick Lab</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;}body{background:#2a1c12;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff3df;-webkit-user-select:none;user-select:none}
+canvas{display:block;touch-action:none}
+.btn{background:rgba(58,40,26,.92);color:#fff3df;border:2px solid rgba(255,243,223,.5);border-radius:14px;padding:11px 16px;font-weight:700;font-size:17px;cursor:pointer;font-family:inherit;min-height:48px;touch-action:manipulation}
+.btn.on{background:#e8842c;border-color:#ffd9a8}.btn.go{background:#e8842c;border-color:#ffd9a8}
+#top{position:fixed;left:8px;right:8px;top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;pointer-events:none}
+#top .btn,#top .pill{pointer-events:auto}
+.pill{background:rgba(58,40,26,.9);border-radius:16px;padding:8px 14px;font-weight:700;font-size:16px}
+#stats{position:fixed;right:8px;top:8px;text-align:right;font:700 15px ui-monospace,Menlo,monospace;background:rgba(40,27,17,.85);border-radius:12px;padding:8px 12px;pointer-events:none;white-space:pre;line-height:1.35}
+#bot{position:fixed;left:8px;right:8px;bottom:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;pointer-events:none}
+#bot .btn{pointer-events:auto}
+#buildbar{display:none}
+#msg{position:fixed;left:50%;top:38%;transform:translateX(-50%);font-size:92px;font-weight:800;color:#fff3df;text-shadow:0 5px 0 #3a281a,0 0 24px rgba(0,0,0,.5);pointer-events:none;display:none;white-space:nowrap}
+#hint{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:#fff8ea;color:#3a281a;border:3px solid #3a281a;border-radius:14px;padding:8px 16px;font-size:18px;font-weight:800;pointer-events:none;text-align:center;max-width:86vw}
+#pull{position:fixed;display:none;pointer-events:none;width:30px;height:132px;border-radius:15px;border:3px solid #fff3df;background:#3a2a1c;box-shadow:0 3px 10px rgba(0,0,0,.5);font:700 13px system-ui,sans-serif;color:#fff3df}
+#pull .sw{position:absolute;left:0;right:0;background:#5fd04a;opacity:.55}#pull .fl{position:absolute;left:3px;right:3px;bottom:0;height:0;background:#ffd23a;border-radius:10px}
+#pull .tx{position:absolute;left:40px;top:50%;white-space:nowrap;text-shadow:0 1px 3px #000}
+#bench{position:fixed;inset:0;display:none;background:#241710;overflow:auto;z-index:20}
+#bench .in{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
+#bench h1{font-size:46px;margin:6px 0 4px}
+#bench .sub{font-size:22px;opacity:.9;margin:2px 0 12px}
+#bench table{border-collapse:collapse;width:100%;font-size:30px}
+#bench th{font-size:20px;text-align:right;padding:6px 8px;color:#ffd9a8;border-bottom:3px solid #ffd9a8}
+#bench th:first-child,#bench td:first-child{text-align:left}
+#bench td{padding:10px 8px;text-align:right;border-bottom:1px solid rgba(255,243,223,.25);font-weight:800}
+#bench td.g{color:#bff0b6}#bench td.y{color:#ffe27a}#bench td.r{color:#ff9a8a}
+#bench .big{font-size:34px;font-weight:800;margin:14px 0 6px}
+#bench .note{font-size:19px;opacity:.85;margin:8px 0;line-height:1.35}
+#bench .prog{font-size:30px;font-weight:800;color:#ffd23a;margin:10px 0}
+#bench pre{font-size:13px;white-space:pre-wrap;word-break:break-all;background:rgba(0,0,0,.4);padding:8px;border-radius:8px;-webkit-user-select:text;user-select:text}
+#txt{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(30,18,10,.7);z-index:15}
+#txt .card{background:rgba(58,40,26,.97);border:3px solid #ffd9a8;border-radius:20px;padding:16px;width:min(92vw,640px)}
+#txt textarea{width:100%;height:42vh;box-sizing:border-box;font:12px ui-monospace,Menlo,monospace;-webkit-user-select:text;user-select:text}
+@media (max-width:760px){.btn{font-size:15px;padding:9px 11px}#stats{font-size:12px}#msg{font-size:60px}}
+</style></head><body>
+<div id="top"><button class="btn" data-p="wall">Brick wall</button><button class="btn" data-p="tower">Tower</button><button class="btn" data-p="cottage">Cottage</button><button class="btn" data-p="castle">Castle gate</button><button class="btn" id="bHand">Build by hand</button><button class="btn" id="bAgain">Rebuild</button><button class="btn" id="bText">Base as text</button><span class="pill" id="count">...</span></div>
+<div id="stats"></div>
+<div id="msg"></div><div id="hint">Press, drag back, let go.</div>
+<div id="pull"><div class="sw"></div><div class="fl"></div><div class="tx"></div></div>
+<div id="bot"><div id="aimbar" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn on" data-a="marble">Marble</button><button class="btn" data-a="big">Big marble</button><button class="btn" data-a="acorn">Acorn</button><button class="btn on" id="bFlat">Flat shot</button><button class="btn" id="bLob">Lob</button><button class="btn on" id="bSweet">Sweet band: on</button></div>
+<div id="buildbar" style="display:none;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn on" data-k="brick">Brick</button><button class="btn" data-k="plank">Plank</button><button class="btn" data-k="post">Post</button><button class="btn" data-k="beam">Beam</button><button class="btn" data-k="tile">Roof tile</button><button class="btn" data-k="crate">Crate</button><button class="btn" id="bRot">Turn</button><button class="btn" id="bUndo">Undo</button><button class="btn" id="bClear">Clear</button><button class="btn go" id="bSettle">Settle</button></div>
+<div style="display:flex;gap:8px"><button class="btn" id="cL">&#9664;</button><button class="btn" id="cR">&#9654;</button><button class="btn" id="cIn">+</button><button class="btn" id="cOut">&minus;</button></div></div>
+<div id="txt"><div class="card"><div style="font-size:20px;font-weight:800;margin-bottom:6px">A base as text: one piece per line, type x y z rotation(qx qy qz qw)</div><textarea id="ta"></textarea><div style="display:flex;gap:8px;margin-top:8px;justify-content:center"><button class="btn go" id="tLoad">Load this text</button><button class="btn" id="tClose">Close</button></div></div></div>
+<div id="bench"><div class="in"></div></div>
+<script src="vendor/three/three.min.js"></script>
+<script src="sim.js"></script>
+<script type="module">
+import RAPIER from './vendor/rapier/rapier.es.js';
+(async function () {
+  var Q = new URLSearchParams(location.search), BENCH = Q.get('bench') === '1', QUICK = Q.get('quick') === '1', MANUAL = Q.get('manual') === '1';
+  var errors = []; window.__errors = errors;
+  window.addEventListener('error', function (e) { errors.push(String(e.message || e.error)); });
+  window.addEventListener('unhandledrejection', function (e) { errors.push('promise: ' + String(e.reason)); });
+  await RAPIER.init();
+  var BL = window.BL, KIT = BL.KIT, BALLS = BL.BALLS, DT = BL.DT, PI = Math.PI;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- renderer, scene, the warm room and the round table (as in the toy game) ---------- */
+  var W = innerWidth, H = innerHeight, touch = 'ontouchstart' in window;
+  var R3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  R3.setPixelRatio(Math.min(2, devicePixelRatio || 1)); R3.setSize(W, H); R3.outputEncoding = THREE.sRGBEncoding;
+  R3.shadowMap.enabled = true; R3.shadowMap.type = THREE.PCFSoftShadowMap; document.body.insertBefore(R3.domElement, document.body.firstChild);
+  var scene = new THREE.Scene(); scene.background = new THREE.Color(0x3b2a1c); scene.fog = new THREE.Fog(0x4a3320, 11, 26);
+  var cam = new THREE.PerspectiveCamera(40, W / H, 0.1, 60);
+  scene.add(new THREE.HemisphereLight(0xfff0dc, 0x6a4a30, 0.7));
+  var sun = new THREE.DirectionalLight(0xffd9a6, 1.35); sun.position.set(-5, 6, 3); sun.castShadow = true; sun.shadow.mapSize.set(touch ? 1024 : 2048, touch ? 1024 : 2048);
+  var sc = sun.shadow.camera; sc.left = -4.2; sc.right = 4.2; sc.top = 4.2; sc.bottom = -4.2; sc.near = 1; sc.far = 20; sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.012; scene.add(sun); scene.add(sun.target);
+  var rim = new THREE.DirectionalLight(0x9db8ff, 0.25); rim.position.set(4, 3, -3); scene.add(rim);
+  function M(c, r) { return new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.85 : r }); }
+  function addMesh(g, m, x, y, z, cast) { var o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = cast !== false; o.receiveShadow = true; scene.add(o); return o; }
+  var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  var fl = addMesh(new THREE.PlaneGeometry(40, 40), M(0x5b3d28), 0, -1.9, 0, false); fl.rotation.x = -PI / 2;
+  var tc = document.createElement('canvas'); tc.width = tc.height = 1024; var g2 = tc.getContext('2d'), i;
+  for (i = 0; i < 16; i++) { g2.fillStyle = ['#b27238', '#c08347', '#a96a33', '#bd7d41'][i % 4]; g2.fillRect(0, i * 64, 1024, 62); g2.fillStyle = '#8a5428'; g2.fillRect(0, i * 64 + 62, 1024, 2); }
+  g2.globalAlpha = 0.16; for (i = 0; i < 900; i++) { g2.fillStyle = rnd() < 0.5 ? '#6b3d18' : '#e0a968'; g2.fillRect(rnd() * 1024, rnd() * 1024, 30 + rnd() * 130, 1.5); } g2.globalAlpha = 1;
+  var tt = new THREE.CanvasTexture(tc); tt.encoding = THREE.sRGBEncoding; tt.anisotropy = 4;
+  var top = addMesh(new THREE.CylinderGeometry(3.25, 3.25, 0.2, 64), [M(0x8a5428), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.8 }), M(0x8a5428)], 0, -0.1, 0, false);
+  addMesh(new THREE.CylinderGeometry(3.32, 3.2, 0.1, 64), M(0x7c4a22), 0, -0.25, 0); addMesh(new THREE.CylinderGeometry(0.3, 0.38, 1.7, 14), M(0x6b3f1e), 0, -1.1, 0);
+
+  /* ---------- instanced meshes: one per piece kind, one per ball kind ---------- */
+  var CAP = 1600, texLoader = new THREE.TextureLoader(), texCache = {};
+  function tex(n) { if (!texCache[n]) { var t = texLoader.load('tex/' + n + '.jpg'); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; texCache[n] = t; } return texCache[n]; }
+  var IM = {}, tmpM = new THREE.Matrix4(), tmpP = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3(1, 1, 1), tmpC = new THREE.Color();
+  BL.KINDS.forEach(function (k) {
+    var K = KIT[k], m = new THREE.InstancedMesh(new THREE.BoxGeometry(K.hx * 2, K.hy * 2, K.hz * 2), new THREE.MeshStandardMaterial({ map: tex(K.tex), roughness: 0.85 }), CAP);
+    m.count = 0; m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3); m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); IM[k] = m;
+  });
+  var BM = {};
+  Object.keys(BALLS).forEach(function (k) {
+    var B = BALLS[k], m = new THREE.InstancedMesh(new THREE.SphereGeometry(B.r, 20, 14), new THREE.MeshStandardMaterial({ color: B.col, roughness: k === 'acorn' ? 0.8 : 0.25, metalness: k === 'acorn' ? 0 : 0.35 }), 48);
+    m.count = 0; m.castShadow = true; m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); BM[k] = m;
+  });
+
+  /* ---------- the simulation ---------- */
+  var sim = null, currentList = [], currentName = '', mode = 'aim';
+  var stat = { physMs: [], frameMs: [], moved: 0, fallen: 0, shots: 0 };
+  function newSim() { if (sim) sim.dispose(); sim = BL.makeSim(RAPIER, { events: true }); window.__sim = sim; }
+  function syncInstances() {
+    var cnt = {}, k; BL.KINDS.forEach(function (n) { cnt[n] = 0; });
+    sim.pieces.forEach(function (p) {
+      p.k = p.t; p.i = cnt[p.t]++; var jr = BL.rng(p.id * 7919 + 13)();
+      tmpC.setRGB(0.62 + jr * 0.5, 0.58 + jr * 0.42, 0.55 + jr * 0.4); IM[p.t].setColorAt(p.i, tmpC); p.drawn = false;
+    });
+    BL.KINDS.forEach(function (n) { IM[n].count = cnt[n]; if (IM[n].instanceColor) IM[n].instanceColor.needsUpdate = true; });
+  }
+  function writeMatrices() {
+    var dirty = {}, i, p, t, q;
+    for (i = 0; i < sim.pieces.length; i++) {
+      p = sim.pieces[i]; var sl = p.body.isSleeping() || p.body.bodyType() !== 0;
+      if (sl && p.drawn) continue;
+      t = p.body.translation(); q = p.body.rotation(); tmpP.set(t.x, t.y, t.z); tmpQ.set(q.x, q.y, q.z, q.w); tmpM.compose(tmpP, tmpQ, tmpS);
+      IM[p.k].setMatrixAt(p.i, tmpM); dirty[p.k] = 1; p.drawn = sl;
+    }
+    for (var k in dirty) IM[k].instanceMatrix.needsUpdate = true;
+    var bc = {}; Object.keys(BALLS).forEach(function (n) { bc[n] = 0; });
+    for (i = 0; i < sim.balls.length; i++) {
+      var b = sim.balls[i]; t = b.body.translation(); q = b.body.rotation(); tmpP.set(t.x, t.y, t.z); tmpQ.set(q.x, q.y, q.z, q.w); tmpM.compose(tmpP, tmpQ, tmpS);
+      if (bc[b.t] < 48) BM[b.t].setMatrixAt(bc[b.t]++, tmpM);
+    }
+    Object.keys(BALLS).forEach(function (n) { BM[n].count = bc[n]; BM[n].instanceMatrix.needsUpdate = true; });
+  }
+  function resetCounters() { stat.moved = 0; stat.fallen = 0; stat.shots = 0; }
+  function buildList(list, name, noSettle) {
+    newSim(); currentList = list; currentName = name; sim.build(list);
+    if (!noSettle) sim.settle(90);
+    syncInstances(); resetCounters(); writeMatrices(); updateCount();
+  }
+  function buildPreset(key) { buildList(BL.PRESETS[key].make(0, -0.2), key); }
+  function updateCount() { $('count').textContent = (currentName ? (BL.PRESETS[currentName] ? BL.PRESETS[currentName].name : 'Your base') : '') + ': ' + sim.pieces.length + ' pieces'; }
+
+  /* ---------- dust puffs, shake, slow-mo ---------- */
+  var dc = document.createElement('canvas'); dc.width = dc.height = 64; var dg = dc.getContext('2d'), gr = dg.createRadialGradient(32, 32, 2, 32, 32, 30);
+  gr.addColorStop(0, 'rgba(235,215,185,.85)'); gr.addColorStop(1, 'rgba(235,215,185,0)'); dg.fillStyle = gr; dg.fillRect(0, 0, 64, 64);
+  var dtex = new THREE.CanvasTexture(dc), puffs = [], puffBudget = 0, shake = 0, slow = { t: 0, scale: 1, cool: 0 };
+  for (i = 0; i < 40; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dtex, transparent: true, depthWrite: false, opacity: 0 })); sp.visible = false; scene.add(sp); puffs.push({ s: sp, life: 0, max: 1, vy: 0, size: 0.3 }); }
+  function puff(x, y, z, size) {
+    for (var j = 0; j < puffs.length; j++) if (puffs[j].life <= 0) { var p = puffs[j]; p.life = p.max = 0.7 + Math.random() * 0.3; p.size = size; p.vy = 0.25 + Math.random() * 0.2; p.s.position.set(x + (Math.random() - 0.5) * 0.1, y + 0.05, z + (Math.random() - 0.5) * 0.1); p.s.visible = true; return; }
+  }
+  function updatePuffs(dt) {
+    for (var j = 0; j < puffs.length; j++) { var p = puffs[j]; if (p.life <= 0) continue; p.life -= dt; if (p.life <= 0) { p.s.visible = false; continue; }
+      var f = 1 - p.life / p.max; p.s.position.y += p.vy * dt; p.s.scale.setScalar(p.size * (0.5 + f * 1.3)); p.s.material.opacity = 0.7 * (1 - f) * (1 - f); }
+  }
+  var zero = { x: 0, y: 0, z: 0 };
+  function drainEvents() {
+    puffBudget = 6;
+    sim.eq.drainCollisionEvents(function (h1, h2, started) {
+      if (!started) return;
+      var a = sim.handleMap[h1], b = sim.handleMap[h2]; if (!a && !b) return;
+      var va = a ? a.body.linvel() : zero, vb = b ? b.body.linvel() : zero, dx = va.x - vb.x, dy = va.y - vb.y, dz = va.z - vb.z, sp = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (sp < 1.4) return;
+      var ball = (a && a.kind === 'ball') || (b && b.kind === 'ball');
+      shake = Math.min(0.1, shake + sp * (ball ? 0.004 : 0.0012));
+      if (sp > 2.2 && puffBudget > 0) { var pa = (a || b).body.translation(); puff(pa.x, Math.max(0, pa.y - 0.05), pa.z, 0.25 + Math.min(0.4, sp * 0.03)); puffBudget--; }
+    });
+  }
+  function stepOnce() {
+    var t0 = performance.now(); sim.step(); drainEvents(); var ms = performance.now() - t0;
+    stat.physMs.push(ms); if (stat.physMs.length > 90) stat.physMs.shift();
+    if (bench) bench.onStep(ms);
+    return ms;
+  }
+
+  /* ---------- camera and the catapult ---------- */
+  var camS = { yaw: 0, dist: 7.8, el: 0.62 }, TARGET = new THREE.Vector3(0, 0.3, 0.55);
+  function placeCamera() {
+    var ce = Math.cos(camS.el), se = Math.sin(camS.el), d = camS.dist;
+    var off = shake > 0.001 ? shake : 0;
+    cam.position.set(Math.sin(camS.yaw) * ce * d + (Math.random() - 0.5) * off, se * d + TARGET.y + (Math.random() - 0.5) * off, Math.cos(camS.yaw) * ce * d + (Math.random() - 0.5) * off);
+    cam.lookAt(TARGET);
+  }
+  var cat = new THREE.Group(), arm, CATR = 2.7;
+  (function () {
+    var wood = M(0x8a5428, 0.8), dark = M(0x5a3418, 0.8), tin = M(0xb8b8b8, 0.4);
+    function bx(w, h, d, m, x, y, z) { var o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; cat.add(o); return o; }
+    bx(0.5, 0.08, 0.8, wood, 0, 0.04, 0); bx(0.06, 0.4, 0.06, dark, -0.2, 0.26, 0.05); bx(0.06, 0.4, 0.06, dark, 0.2, 0.26, 0.05); bx(0.5, 0.05, 0.05, dark, 0, 0.46, 0.05);
+    bx(0.14, 0.06, 0.14, wood, -0.28, 0.02, 0.3).rotation.y = 0.2;
+    arm = new THREE.Group(); arm.position.set(0, 0.46, 0.05); cat.add(arm);
+    var ab = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.8), dark); ab.position.set(0, 0, -0.3); ab.castShadow = true; arm.add(ab);
+    var cup = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.07, 0.06, 14), tin); cup.position.set(0, 0.02, -0.7); cup.castShadow = true; arm.add(cup);
+    scene.add(cat);
+  })();
+  var aim = { active: false, x0: 0, y0: 0, pull: 0, dir: new THREE.Vector3(0, 0, -1), kind: 'marble', flat: true, sweet: true, cool: 0, armAnim: 0 };
+  function launchParams(pull) { return aim.flat ? { el: 11 * PI / 180, v: 7 + 11 * pull } : { el: 38 * PI / 180, v: 5 + 9 * pull }; }
+  function catPos() { return new THREE.Vector3(Math.sin(camS.yaw) * CATR, 0, Math.cos(camS.yaw) * CATR); }
+  function fwd() { return new THREE.Vector3(-Math.sin(camS.yaw), 0, -Math.cos(camS.yaw)); }
+  function rgt() { return new THREE.Vector3(Math.cos(camS.yaw), 0, -Math.sin(camS.yaw)); }
+  function updateCat() {
+    cat.position.copy(catPos());
+    cat.rotation.y = Math.atan2(aim.dir.x, aim.dir.z) + PI;
+    var back = aim.active ? aim.pull * 0.9 : aim.armAnim; arm.rotation.x = -back;
+  }
+  var dots = []; for (i = 0; i < 18; i++) { var dm = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff3d0 })); dm.visible = false; scene.add(dm); dots.push(dm); }
+  function muzzle() { var cp = catPos(); return new THREE.Vector3(cp.x + aim.dir.x * 0.3, 0.55, cp.z + aim.dir.z * 0.3); }
+  function showArc(show) {
+    if (!show) { dots.forEach(function (d) { d.visible = false; }); return; }
+    var lp = launchParams(aim.pull), m = muzzle(), vx = aim.dir.x * Math.cos(lp.el) * lp.v, vz = aim.dir.z * Math.cos(lp.el) * lp.v, vy = Math.sin(lp.el) * lp.v, g = BL.GRAV;
+    for (var j = 0; j < dots.length; j++) { var t = (j + 1) * 0.055, y = m.y + vy * t + 0.5 * g * t * t; dots[j].visible = y > 0; dots[j].position.set(m.x + vx * t, y, m.z + vz * t); }
+  }
+  var shotRnd = BL.rng(4242);
+  function fireShot(kind, dir, pull, forceNoSpread) {
+    var lp = launchParams(pull), spread = 0, sweet = pull >= 0.55 && pull <= 0.8;
+    if (!(aim.sweet && sweet) && !forceNoSpread) spread = (shotRnd() - 0.5) * 0.08;
+    var cs = Math.cos(spread), sn = Math.sin(spread), d = { x: dir.x * cs - dir.z * sn, z: dir.x * sn + dir.z * cs }, m = muzzle();
+    if (sim.balls.length > 40) sim.removeBall(sim.balls[0]);
+    sim.addBall(kind, m, { x: d.x * Math.cos(lp.el) * lp.v, y: Math.sin(lp.el) * lp.v, z: d.z * Math.cos(lp.el) * lp.v });
+    stat.shots++; aim.armAnim = -0.5; aim.cool = 0.35;
+  }
+  window.__fireAt = function (kind, tx, ty, tz, speed, from) {
+    var f = from || { x: 0, y: 0.5, z: 3 }; if (sim.balls.length > 40) sim.removeBall(sim.balls[0]);
+    stat.shots++; return sim.addBall(kind, f, BL.aimAt(tx, ty, tz, f, speed));
+  };
+
+  /* ---------- pointer: pull back to aim (and place pieces in build mode) ---------- */
+  var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  var pullEl = $('pull'), PXMAX = function () { return Math.min(W, H) * 0.3; };
+  (function () { var s = pullEl.querySelector('.sw'); s.style.bottom = '55%'; s.style.height = '25%'; })();
+  function onUI(e) { return e.target !== R3.domElement; }
+  var ghost = null, bt = { kind: 'brick', rot: 0, ok: false, x: 0, z: 0, y: 0, down: null };
+  function ghostUpdate(e) {
+    ndc.set(e.clientX / W * 2 - 1, -(e.clientY / H) * 2 + 1); ray.setFromCamera(ndc, cam);
+    var hit = new THREE.Vector3(); if (!ray.ray.intersectPlane(plane, hit)) { ghost.visible = false; bt.ok = false; return; }
+    var K = KIT[bt.kind], ex = bt.rot ? K.hz : K.hx, ez = bt.rot ? K.hx : K.hz, G = 0.15;
+    var cx = Math.round(hit.x / G) * G, cz = Math.round(hit.z / G) * G, base = 0;
+    sim.pieces.forEach(function (p) { if (p.fx !== undefined && Math.abs(p.x0 - cx) < p.fx + ex - 1e-4 && Math.abs(p.z0 - cz) < p.fz + ez - 1e-4) base = Math.max(base, p.y0 + p.fy); });
+    bt.x = cx; bt.z = cz; bt.y = base + K.hy + 0.0002; bt.ex = ex; bt.ez = ez;
+    bt.ok = Math.sqrt(cx * cx + cz * cz) + Math.max(ex, ez) < 3.2 && sim.pieces.length < 1500;
+    ghost.scale.set(ex * 2, K.hy * 2, ez * 2); ghost.position.set(cx, bt.y, cz); ghost.visible = true; ghost.material.color.setHex(bt.ok ? 0x8fd0ff : 0xff5a44);
+  }
+  function placePiece() {
+    if (!bt.ok) return; var K = KIT[bt.kind];
+    var rec = sim.addPiece({ t: bt.kind, x: bt.x, y: bt.y, z: bt.z, q: bt.rot ? BL.qy(PI / 2) : [0, 0, 0, 1] }, true);
+    rec.fx = bt.ex; rec.fy = K.hy; rec.fz = bt.ez; rec.hand = bt.rot ? 1 : 0; currentList = sim.pieces.map(function (p) { var t = p.body.translation(), q = p.body.rotation(); return { t: p.t, x: t.x, y: t.y, z: t.z, q: [q.x, q.y, q.z, q.w] }; });
+    syncInstances(); writeMatrices(); updateCount(); ghostUpdate(bt.last);
+  }
+  R3.domElement.addEventListener('pointerdown', function (e) {
+    if (bench) return; bt.last = e;
+    if (mode === 'build') { ghostUpdate(e); bt.down = { x: e.clientX, y: e.clientY }; return; }
+    aim.active = true; aim.x0 = e.clientX; aim.y0 = e.clientY; aim.pull = 0; $('hint').style.display = 'none';
+    pullEl.style.display = 'block'; pullEl.style.left = Math.max(6, e.clientX - 70) + 'px'; pullEl.style.top = Math.max(6, e.clientY - 66) + 'px';
+    try { R3.domElement.setPointerCapture(e.pointerId); } catch (x) { }
+  });
+  R3.domElement.addEventListener('pointermove', function (e) {
+    bt.last = e;
+    if (mode === 'build') { ghostUpdate(e); return; }
+    if (!aim.active) return;
+    var dx = e.clientX - aim.x0, dy = e.clientY - aim.y0, len = Math.sqrt(dx * dx + dy * dy); aim.pull = Math.min(1, len / PXMAX());
+    if (len > 6) { var h = rgt().multiplyScalar(-dx).add(fwd().multiplyScalar(dy)); h.y = 0; h.normalize(); aim.dir.copy(h); }
+    showArc(true); var sw = aim.pull >= 0.55 && aim.pull <= 0.8;
+    pullEl.querySelector('.fl').style.height = Math.round(aim.pull * 100) + '%'; pullEl.querySelector('.fl').style.background = sw ? '#7fe05a' : '#ffd23a'; pullEl.querySelector('.tx').textContent = sw ? 'Sweet!' : '';
+  });
+  function endPointer(e) {
+    if (mode === 'build') { if (bt.down && Math.abs(e.clientX - bt.down.x) + Math.abs(e.clientY - bt.down.y) < 14) placePiece(); bt.down = null; return; }
+    if (!aim.active) return; aim.active = false; pullEl.style.display = 'none'; showArc(false);
+    if (aim.pull > 0.08 && aim.cool <= 0) fireShot(aim.kind, aim.dir, aim.pull);
+    aim.pull = 0;
+  }
+  R3.domElement.addEventListener('pointerup', endPointer); R3.domElement.addEventListener('pointercancel', function () { aim.active = false; pullEl.style.display = 'none'; showArc(false); });
+  R3.domElement.addEventListener('wheel', function (e) { camS.dist = Math.max(4, Math.min(13, camS.dist * (1 + Math.sign(e.deltaY) * 0.08))); e.preventDefault(); }, { passive: false });
+  addEventListener('keydown', function (e) { if (e.key === 'ArrowLeft') camS.yaw -= 0.15; if (e.key === 'ArrowRight') camS.yaw += 0.15; });
+
+  /* ---------- buttons ---------- */
+  function group(sel, cb) { var bs = document.querySelectorAll(sel); bs.forEach(function (b) { b.addEventListener('click', function () { bs.forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); cb(b); }); }); }
+  document.querySelectorAll('[data-p]').forEach(function (b) { b.addEventListener('click', function () { setMode('aim'); buildPreset(b.dataset.p); }); });
+  group('[data-a]', function (b) { aim.kind = b.dataset.a; });
+  group('[data-k]', function (b) { bt.kind = b.dataset.k; if (bt.last) ghostUpdate(bt.last); });
+  $('bFlat').onclick = function () { aim.flat = true; $('bFlat').classList.add('on'); $('bLob').classList.remove('on'); };
+  $('bLob').onclick = function () { aim.flat = false; $('bLob').classList.add('on'); $('bFlat').classList.remove('on'); };
+  $('bSweet').onclick = function () { aim.sweet = !aim.sweet; $('bSweet').textContent = 'Sweet band: ' + (aim.sweet ? 'on' : 'off'); $('bSweet').classList.toggle('on', aim.sweet); };
+  $('cL').onclick = function () { camS.yaw -= 0.25; }; $('cR').onclick = function () { camS.yaw += 0.25; };
+  $('cIn').onclick = function () { camS.dist = Math.max(4, camS.dist - 0.8); }; $('cOut').onclick = function () { camS.dist = Math.min(13, camS.dist + 0.8); };
+  $('bAgain').onclick = function () { if (currentName && BL.PRESETS[currentName]) buildPreset(currentName); else if (currentList.length) buildList(currentList.map(function (p) { return p; }), currentName); };
+  $('bRot').onclick = function () { bt.rot = bt.rot ? 0 : 1; if (bt.last) ghostUpdate(bt.last); };
+  $('bUndo').onclick = function () { var p = sim.pieces[sim.pieces.length - 1]; if (p) { sim.removePiece(p); syncInstances(); writeMatrices(); updateCount(); } };
+  $('bClear').onclick = function () { newSim(); currentList = []; syncInstances(); writeMatrices(); updateCount(); };
+  $('bSettle').onclick = function () { sim.makeDynamic(); setMode('aim'); settling = 100; };
+  $('bHand').onclick = function () { newSim(); currentList = []; currentName = 'hand'; syncInstances(); writeMatrices(); updateCount(); setMode('build'); };
+  var settling = 0;
+  function setMode(m) {
+    mode = m; $('aimbar').style.display = m === 'aim' ? 'flex' : 'none'; $('buildbar').style.display = m === 'build' ? 'flex' : 'none';
+    $('bHand').classList.toggle('on', m === 'build'); $('hint').style.display = 'block';
+    $('hint').textContent = m === 'build' ? 'Tap the table to place a piece. It snaps to a grid and stacks. Press Settle when done.' : 'Press, drag back, let go.';
+    if (!ghost) { ghost = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.5, depthWrite: false })); scene.add(ghost); }
+    ghost.visible = false;
+  }
+  $('bText').onclick = function () { var list = sim.pieces.map(function (p) { var t = p.body.translation(), q = p.body.rotation(); return { t: p.t, x: t.x, y: t.y, z: t.z, q: [q.x, q.y, q.z, q.w] }; }); if (!sim.pieces.length) list = currentList; $('ta').value = BL.toText(list); $('txt').style.display = 'flex'; };
+  $('tClose').onclick = function () { $('txt').style.display = 'none'; };
+  $('tLoad').onclick = function () { var l = BL.fromText($('ta').value).filter(function (p) { return BL.KIT[p.t]; }); $('txt').style.display = 'none'; if (l.length) { setMode('aim'); buildList(l, 'text'); } };
+  addEventListener('resize', function () { W = innerWidth; H = innerHeight; R3.setSize(W, H); cam.aspect = W / H; cam.updateProjectionMatrix(); fitCamera(); });
+  function fitCamera() { var a = W / H; camS.dist = Math.max(camS.dist, a < 1 ? 11 : camS.dist); cam.aspect = W / H; cam.updateProjectionMatrix(); }
+
+  /* ---------- the benchmark ---------- */
+  var bench = null;
+  function Bench() {
+    var self = this, list = ['wall', 'tower', 'cottage', 'castle'], idx = 0, phase = 'start', stepsIn = 0, res = [], cur = null, frameBuf = [];
+    var aimY = { wall: 0.8, tower: 0.7, cottage: 0.6, castle: 0.8 }, SHOTS = [['marble', -0.8], ['big', 0.2], ['big', -0.3], ['marble', 0.7], ['big', 0.0]];
+    var STAND = 600, VOLLEY = 480, accB = 0;
+    var out = document.querySelector('#bench .in'); $('bench').style.display = 'block';
+    window.__bench = { done: false, quick: QUICK, results: res, errors: errors, device: { ua: navigator.userAgent, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency || 0, w: W, h: H, gl: glName() } };
+    function glName() { try { var gl = R3.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'hidden'; } catch (x) { return '?'; } }
+    function avg(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; }
+    function mx(a) { return a.length ? Math.max.apply(null, a) : 0; }
+    function fixed(v, n) { return Number(v).toFixed(n); }
+    var phys = [], mark = 0;
+    self.onStep = function (ms) { phys.push(ms); };
+    function startPreset() {
+      var key = list[idx], t0 = performance.now();
+      newSim(); currentName = key; sim.build(BL.PRESETS[key].make(0, -0.2)); syncInstances(); resetCounters(); updateCount();
+      cur = { key: key, name: BL.PRESETS[key].name, pieces: sim.pieces.length, buildMs: 0 };
+      for (var i = 0; i < 90; i++) sim.step(); sim.rebase();           /* the first 1.5 s: courses press down; not timed */
+      cur.settleSagMm = 0; cur.buildMs = performance.now() - t0; sim.pieces.forEach(function (p) { p.drawn = false; });
+      phase = 'stand'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cur.standMax = 0; cur.asleepAt = -1; progress();
+    }
+    function progress() { var el = out.querySelector('.prog'); if (!el) { out.innerHTML = '<h1>Brick Lab benchmark</h1><div class="sub">Do not touch the screen. About ' + (QUICK ? '1' : '2') + ' minutes.</div><div class="prog"></div><div class="note">Each build: 10 seconds standing still, then five shots, then 8 seconds of crumbling.</div>'; el = out.querySelector('.prog'); }
+      el.textContent = 'Now: ' + (cur ? cur.name : '...') + ' (' + (idx + 1) + ' of ' + list.length + ') ' + (phase === 'stand' ? 'standing still ' + Math.floor(stepsIn / 6) / 10 + ' s of 10' : phase === 'volley' ? 'shots and crumbling ' + Math.floor(stepsIn / 6) / 10 + ' s of 8' : phase); }
+    self.frame = function (dtMs) {
+      frameBuf.push(dtMs); if (phase === 'start') { startPreset(); return; } if (phase === 'done') return;
+      var n = 0, k;
+      if (QUICK) n = 12; else { accB += Math.min(dtMs, 100) / 1000; while (accB >= DT && n < 4) { accB -= DT; n++; } if (accB > DT * 4) accB = 0; }
+      for (k = 0; k < n; k++) {
+        if (phase === 'volley') {
+          for (var s = 0; s < SHOTS.length; s++) if (stepsIn === s * 40) { var f = { x: 0, y: 0.5, z: 3 }; sim.addBall(SHOTS[s][0], f, BL.aimAt(SHOTS[s][1], aimY[cur.key], -0.2, f, 15)); }
+        }
+        stepOnce(); stepsIn++;
+        if (phase === 'stand') {
+          if (stepsIn % 10 === 0) cur.standMax = Math.max(cur.standMax, sim.maxDisp());
+          if (cur.asleepAt < 0 && sim.awake() === 0) cur.asleepAt = stepsIn / 60;
+          if (stepsIn >= STAND) {
+            cur.stand = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), maxDispMm: cur.standMax * BL.UNIT_MM, awakeEnd: sim.awake(), asleepAt: cur.asleepAt };
+            phase = 'volley'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cur.awakePeak = 0; break;
+          }
+        } else if (phase === 'volley') {
+          cur.awakePeak = Math.max(cur.awakePeak, sim.awake());
+          if (stepsIn >= VOLLEY) {
+            sim.countMoved(); var mv = 0, fl2 = 0; sim.pieces.forEach(function (p) { var t = p.body.translation(); if (p.moved) { mv++; if (t.y < p.y0 - 0.12) fl2++; } });
+            cur.volley = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), awakePeak: cur.awakePeak, moved: mv, fallen: fl2, awakeEnd: sim.awake() };
+            cur.bodiesMax = sim.pieces.length + 5; res.push(cur); idx++;
+            if (idx >= list.length) { phase = 'det'; } else { phase = 'start'; }
+            break;
+          }
+        }
+      }
+      if (phase === 'det') { var d1 = BL.detRun(RAPIER, 1234); window.__bench.determinismHash = d1.hash; finish(); return; }
+      progress();
+    };
+    function cls(v, g, y) { return v <= g ? 'g' : v <= y ? 'y' : 'r'; }
+    function finish() {
+      phase = 'done'; window.__bench.done = true; window.__bench.finishedAt = new Date().toISOString();
+      var worst = res.reduce(function (m, r) { return Math.max(m, r.volley.frameAvg); }, 0), cast = res[res.length - 1];
+      var h = '<h1>Brick Lab: results</h1>'+(worst <= 18 ? '<div class="big" style="color:#bff0b6">Smooth on this device.</div>' : worst <= 36 ? '<div class="big" style="color:#ffe27a">Playable, not silky, on this device.</div>' : '<div class="big" style="color:#ff9a8a">Too slow on this device.</div>')+'<div class="big">Biggest build ('+cast.pieces+' pieces) while crumbling: '+fixed(cast.volley.frameAvg,1)+' ms per picture = '+fixed(1000/cast.volley.frameAvg,0)+' pictures a second. Worst physics step '+fixed(cast.volley.physMax,1)+' ms. Up to '+cast.volley.awakePeak+' pieces awake at once.</div><div class="sub">' + (QUICK ? 'QUICK mode (12 steps per frame): the frame numbers do not mean much. ' : '') + 'Read each row: pieces, how many are moving, time per physics step, time per picture.</div><table><tr><th>Build</th><th>Pieces</th><th>Still 10 s: moved</th><th>Physics ms avg</th><th>Physics ms worst</th><th>Frame ms</th><th>Pictures/s</th></tr>';
+      res.forEach(function (r) {
+        h += '<tr><td>' + r.name + ' (standing)</td><td>' + r.pieces + '</td><td class="' + (r.stand.maxDispMm < 2 ? 'g' : r.stand.maxDispMm < 6 ? 'y' : 'r') + '">' + fixed(r.stand.maxDispMm, 1) + ' mm</td><td class="' + cls(r.stand.physAvg, 3, 6) + '">' + fixed(r.stand.physAvg, 2) + '</td><td>' + fixed(r.stand.physMax, 1) + '</td><td class="' + cls(r.stand.frameAvg, 18, 36) + '">' + fixed(r.stand.frameAvg, 1) + '</td><td>' + fixed(1000 / r.stand.frameAvg, 0) + '</td></tr>';
+        h += '<tr><td>' + r.name + ' (5 shots, crumbling)</td><td>' + r.pieces + '</td><td>' + r.volley.moved + ' moved, ' + r.volley.fallen + ' fell</td><td class="' + cls(r.volley.physAvg, 3, 6) + '">' + fixed(r.volley.physAvg, 2) + '</td><td class="' + cls(r.volley.physMax, 8, 16) + '">' + fixed(r.volley.physMax, 1) + '</td><td class="' + cls(r.volley.frameAvg, 18, 36) + '">' + fixed(r.volley.frameAvg, 1) + '</td><td>' + fixed(1000 / r.volley.frameAvg, 0) + '</td></tr>';
+      });
+      h += '</table>';
+      h += '<div class="note">Green is good, yellow is borderline, red is too slow. Physics ms is the time of one step (60 steps make one second). Frame ms is the whole picture including drawing. Determinism check: the number <b>' + window.__bench.determinismHash + '</b> should be the same on every device (the Node test prints the same number).</div>';
+      h += '<div class="note">Device: ' + window.__bench.device.ua + ' | pixel ratio ' + window.__bench.device.dpr + ' | cores ' + window.__bench.device.cores + ' | graphics: ' + window.__bench.device.gl + ' | errors: ' + errors.length + '</div>';
+      h += '<div style="margin:12px 0"><button class="btn go" id="bCopy" style="font-size:24px;padding:14px 28px">Copy numbers</button> <button class="btn" id="bRun" style="font-size:24px;padding:14px 28px">Run again</button> <button class="btn" id="bPlay" style="font-size:24px;padding:14px 28px">Play</button></div><pre id="bjson"></pre>';
+      out.innerHTML = h; $('bjson').textContent = JSON.stringify(window.__bench);
+      $('bCopy').onclick = function () { try { navigator.clipboard.writeText(JSON.stringify(window.__bench)); } catch (x) { var r = document.createRange(); r.selectNode($('bjson')); getSelection().removeAllRanges(); getSelection().addRange(r); } };
+      $('bRun').onclick = function () { location.reload(); }; $('bPlay').onclick = function () { location.href = location.pathname; };
+    }
+    window.__benchRef = self;
+  }
+
+  /* ---------- the loop ---------- */
+  var acc = 0, last = performance.now(), hudT = 0, msgT = 0, movedRecent = [];
+  function msg(t, secs) { var m = $('msg'); m.textContent = t; m.style.display = 'block'; msgT = secs; }
+  function frame(now) {
+    var dtMs = now - last; last = now; var dt = Math.min(0.1, dtMs / 1000);
+    stat.frameMs.push(dtMs); if (stat.frameMs.length > 60) stat.frameMs.shift();
+    if (bench) { bench.frame(dtMs); }
+    else {
+      if (aim.cool > 0) aim.cool -= dt;
+      /* slow-mo: a sudden wave of moved pieces slows time for a moment */
+      slow.cool -= dt; if (slow.t > 0) { slow.t -= dt; if (slow.t <= 0) slow.scale = 1; }
+      slow.cur = (slow.cur || 1) + ((slow.t > 0 ? 0.28 : 1) - (slow.cur || 1)) * Math.min(1, dt * 8);
+      acc += dt * slow.cur; var n = 0;
+      while (acc >= DT && n < 3) { stepOnce(); acc -= DT; n++; } if (acc > DT * 3) acc = 0;
+      if (settling > 0) { settling -= n; if (settling <= 0) { sim.rebase(); resetCounters(); } }
+      var mv = sim.countMoved(); movedRecent.push([now, mv]); while (movedRecent.length > 1 && now - movedRecent[0][0] > 400) movedRecent.shift();
+      if (mv - movedRecent[0][1] >= 22 && slow.cool <= 0 && mv > stat.moved) { slow.t = 1.4; slow.cool = 5; msg(mv >= 100 ? 'CRASH!' : 'Crumble!', 1.2); }
+      stat.moved = mv; if (frame.fc++ % 6 === 0) { var f = 0; sim.pieces.forEach(function (p) { if (p.moved && p.body.translation().y < p.y0 - 0.12) f++; }); stat.fallen = f; }
+      if (msgT > 0) { msgT -= dt; if (msgT <= 0) $('msg').style.display = 'none'; }
+      aim.armAnim += (0 - aim.armAnim) * Math.min(1, dt * 7);
+      for (var bi = sim.balls.length - 1; bi >= 0; bi--) { var b = sim.balls[bi]; b.age += dt; if (b.body.translation().y < -3 || (b.age > 25 && b.body.isSleeping())) sim.removeBall(b); }
+    }
+    shake *= Math.exp(-5 * dt); updatePuffs(dt); updateCat(); placeCamera(); writeMatrices(); R3.render(scene, cam);
+    hudT += dt; if (hudT > 0.25) { hudT = 0; hud(); }
+    if (!MANUAL) requestAnimationFrame(frame);
+  }
+  frame.fc = 0;
+  function hud() {
+    var pa = stat.physMs.length ? stat.physMs.reduce(function (a, b) { return a + b; }, 0) / stat.physMs.length : 0, pm = stat.physMs.length ? Math.max.apply(null, stat.physMs) : 0;
+    var fa = stat.frameMs.length ? stat.frameMs.reduce(function (a, b) { return a + b; }, 0) / stat.frameMs.length : 0;
+    $('stats').textContent = 'pieces ' + sim.pieces.length + '   awake ' + sim.awake() + '\nmoved ' + stat.moved + '   fallen ' + stat.fallen + '\nphysics ' + pa.toFixed(2) + ' ms (max ' + pm.toFixed(1) + ')\nframe ' + fa.toFixed(1) + ' ms  ' + (1000 / Math.max(1, fa)).toFixed(0) + ' fps' + (slow.cur < 0.9 ? '\nSLOW-MO' : '');
+  }
+
+  /* test hooks for the Playwright script and the screenshots */
+  window.__lab = {
+    build: function (k) { setMode('aim'); buildPreset(k); },
+    advance: function (n, render) { for (var i = 0; i < n; i++) { stepOnce(); } updatePuffs(n * DT); aim.armAnim = 0; stat.moved = sim.countMoved(); if (render !== false) { updateCat(); placeCamera(); writeMatrices(); R3.render(scene, cam); } hud(); },
+    render: function () { aim.armAnim = 0; updateCat(); placeCamera(); writeMatrices(); R3.render(scene, cam); hud(); },
+    camera: function (o) { for (var k in o) camS[k] = o[k]; },
+    state: function () { return { pieces: sim.pieces.length, awake: sim.awake(), moved: stat.moved, shots: stat.shots, hash: sim.hash(), errors: errors.slice() }; },
+    shake: function (v) { shake = v; }, puff: puff, setMode: setMode, sim: function () { return sim; }, hud: hud
+  };
+  fitCamera(); setMode('aim');
+  if (BENCH) { bench = new Bench(); }
+  else buildPreset(Q.get('preset') && BL.PRESETS[Q.get('preset')] ? Q.get('preset') : 'wall');
+  window.__ready = true;
+  if (MANUAL) { frame(performance.now()); } else requestAnimationFrame(frame);
+})();
+</script>
+</body></html>
