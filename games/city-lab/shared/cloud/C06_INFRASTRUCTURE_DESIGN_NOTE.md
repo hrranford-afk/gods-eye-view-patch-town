@@ -55,3 +55,15 @@ Verdict: the optional `city_infra` sidecar is sound; keep recipes and the distri
 2. Generators: fixed output (predictable; CAIRN recommends for v0), wind profile (a scheduling challenge), fuel (deeper economy, needs delivery rules).
 3. Brownouts: city-wide only (simplest, few location decisions), local (better engineering, more maths; CAIRN recommends since it is the point of cables), or staged (test both in sequence).
 4. Budget: full costs now (meaningful investment choices, more balancing), display-only (easy, weak stakes), or a read-only cost comparison first (CAIRN recommends as a compromise).
+
+## 12 Provisional options chosen by the owner (21 Nov), and what C03b changes
+Provisional (not yet final): POWER first (C06a); FIXED-OUTPUT generators; LOCAL brownouts; READ-ONLY cost comparisons (the page shows what a change would cost and earn; it does not charge a budget yet). Shortage rule A (proportional) is assumed unless the owner picks B.
+C03b (`C03b_ODDITIES.md`) adds four rules for C06a:
+1. Measure at steady state: a warm-up of at least 1800 s and whole delivery cycles (70 s), because ingredients are charged on delivery and the first minutes include filling the shelves.
+2. A short local brownout WILL show a profit gain again (shelf stock covers sales while less electricity is spent). The page must show "shelf stock" and "energy saved" in its explanation so players are not misled; a test must show the gain reverses when the cut is long or deep.
+3. Owner decision needed before outages are made cheaper or dearer: should wages be paid when a blocked road or a dark street empties the work places? Today they are not (only filled places are paid).
+4. Cost comparisons are read-only: for each proposed generator or cable, show build cost, upkeep per minute, and the steady-state net change over 30 simulated minutes, from the same code the experiments use.
+
+## 13 C06a APPROVAL REQUEST (not started)
+Scope: sources (fixed kW) and radial cables with capacity; rule A allocation; local brownouts with a dark-street state; `city_infra` v0 file, validator and 20+ hostile tests; the infra layer inside the district code (no new building engine, recipes unchanged, one new optional hook at most); page: cable thickness and colour by load, a generator glow, tap a dim building to see the limiting cable and why; a read-only "what would this cost and earn" panel; experiments E4 (does one more generator pay for itself, at steady state) and E5 (an overloaded cable dims only its street); every figure repeatable (three runs identical) and checked against the paper tests `C06_paper_tests` (8 of 8 already match by hand); regression tests; screenshots; honest report. Out of scope: water, roads, fuel, wind, losses, wear, rerouting, a real budget, iPad testing, hardware, new art.
+Size: about as large as C03 (one careful session; roughly 400,000 to 600,000 tokens). One build at a time. Owner approval needed before it starts.

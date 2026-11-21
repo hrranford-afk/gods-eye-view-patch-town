@@ -157,7 +157,10 @@ Cause by cause (start from B, change one thing to A's value):
 - The cart delivery has no travel time; only "is there an open road" matters.
 - Windows are 10 simulated minutes. The first minutes of EXP3 include the start-up transient (stock filling); EXP1 and EXP2 skip the first 5 minutes.
 - The cool store room cost includes a one-off while the bigger flour shelf fills; the wage rise is permanent.
-- Software run time of the whole experiment set: 13.4 s for 3 repeats.
+- Software run time of the whole experiment set: 14.9 s for 3 repeats.
 
 ## Addendum: the hand-made buildings (CLOUD, 21 Nov)
 The four neighbourhood recipes were then redrawn by hand (home, market, workshop, power shed: 50 to 53 parts each, the same detail as the 57-part bakery) in recipes/, with districts/patch_row_hand.json. Their simulation data is copied unchanged from the ChatGPT recipes, and node tools/compare-looks.mjs shows all three experiments give IDENTICAL figures on both districts (only the internal state fingerprint differs, because it includes the file names). The in-page experiments (district.html) equal the headless figures exactly (tests/district-page-test.js, 29 checks).
+
+## Erratum (C03b, 21 Nov)
+The windows above include the one-off cost of filling the shelves (ingredients are charged on delivery), so absolute net figures are low by about 5 to 7 a minute (experiments 1 and 2) and about 16 (experiment 3). At steady state the three conclusions hold in sign and ranking; bakery B is break-even (-0.1), not -15.7; the store room loses about 3.0, not 6 to 11; the road cause is -0.2 (B) and -4.7 (A), not -1.5. Full explanation, numbers and tests: shared/cloud/C03b_ODDITIES.md.
