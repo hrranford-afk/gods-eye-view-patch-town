@@ -216,4 +216,4 @@ Error feedback line format for a retry (one per problem, at most 8): `$.parts[12
 
 ## Final checks
 
-(Filled in at the end of the build: see below.)
+Final run of everything on this branch, headless: validate 171 of 171, sim 72 of 72, support 23 of 23, page 56 of 56, e2e 10 of 10 (332 checks, no failures). The sofa-siege `tests/lab-test.js` (194 checks), run unmodified with only the CDN request for three.js sent to the local r128 file, passed **ALL 194**, and `git status` shows no change under `games/sofa-siege/` (the test rewrites `ARSENAL_REPORT.md`; it came out byte-identical). The other sofa-siege suites were not run: I did not touch that folder.
