@@ -440,6 +440,12 @@ Button in the Defences panel (and `SG.defTest()`, headless). It fires the whole 
 
 `shots/defence-1-courtyard.png` to `defence-8-report.png` (made by `tests/lab-shots.js`): the Walled courtyard with a Counter-lobber selected, a Pop-gun knocking a raider back, a Counter-lobber's shell in the air, traps springing, a post out of ammunition and another jammed, Three rooms, a mender at work, and the Test my base card.
 
+### Frame time and tests
+
+Same machine and method as the Yard and the Arsenal (headless Chromium, software GL, 1280 by 800, 8 seconds, the real loop): the **Walled courtyard with Defences on** (16 pieces, 143 parts, 8 items, 5 crew mice walking and standing) is **101 draw calls, 29 thousand triangles and about 550 ms a frame**, against the walled Keep with Defences off at 506 ms (69 calls) and the Castle at 674 to 698 ms (137 calls, 58 thousand triangles): about **80% of a Castle**. Three rooms (19 pieces): 553 ms. Software GL, so read the ratio only; nobody has timed it on an iPad. The simulation itself is cheap: Test my base runs about twenty full tests (seven weapons and a raid each) in **3.6 to 4.9 seconds** on a desktop with nothing drawn, and a whole 3-round bot match about a second.
+
+`tests/defence-test.js`: 33 checks (flag off by default and put away; posts, crew, ammo, jam, oil, restock; Pop-gun, Slinger, Counter-lobber and its band; the five traps and their reset; the two camps; the mender; Test my base and its determinism; the match flag, budget and determinism; the panel). All other suites pass unchanged on this branch: lab 194, v2 73, pull 28, roll 16, clarity 20, table 36, layout 37, build 24, fight 48, ar 84. `tests/defence-proof.js [games] [key=value] --report` plays the bot matches and writes `DEFENCE_REPORT.md`.
+
 ### What is wrong or untested
 
 - **Nobody has played it, and not on an iPad.** Desktop browser, headless, mouse events and bots only.
