@@ -3,7 +3,7 @@ ORDER
 id:        epic-1
 from:      game session
 date:      2026-11-21
-goal:      The residents' own ideas for one epic game played on a real table, seen through an iPad: a small living world (an island or a town) on any table shape.
+goal:      The residents' own ideas for one epic game played on a real table, seen through an iPad, on any table shape. Nobody has decided what the game is.
 done:      Every resident's answers to two short sittings, each with its maker; the Town Brain's 3 game concepts, 10 picks and 3 warnings.
 priority:  after the nightly almanac
 budget:    3 hours of Dell, 30 minutes of Radeon, 30 minutes of Mill; 0 GB of downloads
@@ -42,7 +42,7 @@ NEEDS HARRY
 
 ## Context (the same for every model)
 
-We make games played on a real table, seen through an iPad. Tables are round, square or rectangular, and people sit or stand all round them. The game is a small world on the table: a toy island or town where little mice live, work and build. We already have toy buildings that come apart bit by bit, mice with jobs, weapons you design with sliders, bases saved as short text you can send to a friend, and a hill to hold. Nothing may copy an existing game. No real brands. Nobody gets hurt.
+We make games played on a real table, seen through an iPad. Tables are round, square or rectangular, and people sit or stand all round them. We want to make one epic game, and we do not know yet what it is. What we can already build: small toy-like worlds, pieces that come apart bit by bit, little characters with jobs, things you design with sliders, a design saved as short text you can send to a friend, and a version where every brick is its own object. Nothing may copy an existing game. No real brands or people.
 
 ## Rules
 - Answer from your own head. Short is fine.
@@ -50,30 +50,30 @@ We make games played on a real table, seen through an iPad. Tables are round, sq
 
 ## Sitting 1 (stage 1): four questions, about 220 words
 
-1. One rule so the world looks right from every seat at a round, a square and a rectangular table. How should it turn: any angle, quarter turns or half turns?
-2. Say the whole game in one sentence, as a person would to a friend.
-3. Name three things that would make someone lean in and walk round the table.
-4. What would make a visitor want to play again tomorrow?
+1. Invent a game that does not exist yet, and say it in one sentence.
+2. Why does it need a real table and an iPad you can walk round with, and not just a flat screen?
+3. One rule so it looks right from every seat at a round, a square and a rectangular table.
+4. What would a player tell a friend about it the next day?
 
 ```json
-{"table_rule": "", "turns": "", "one_sentence": "", "lean_in": ["", "", ""], "again_tomorrow": ""}
+{"game": "", "why_real_table": "", "table_rule": "", "told_a_friend": ""}
 ```
 
 ## Sitting 2 (stage 2): four questions, about 220 words
 
-1. What does one mouse do in a day, and what makes you care about it?
-2. Describe one disaster or surprise that is fun, not nasty, and how the player reacts.
-3. How do two friends at the same table play together, or against each other?
-4. What is the first five minutes like for someone who has never played?
+1. Give two more game ideas that are very different from each other and from your first.
+2. What would make one of them hard to stop playing?
+3. How do two friends play it together, or against each other?
+4. What is the first five minutes like for someone new?
 
 ```json
-{"mouse_day": "", "surprise": {"what": "", "reaction": ""}, "friends": "", "first_five": ""}
+{"other_games": ["", ""], "hard_to_stop": "", "friends": "", "first_five": ""}
 ```
 
 ## Sparks (stage 3)
 
-Three themes: A. a small island that changes with the weather. B. mice who run a busy town. C. a world that reacts to the room it is placed in.
+Three themes: A. what the table is. B. what the player does with their hands. C. what happens when two friends want different things.
 Sentence openings, two per theme:
-A1. "On the island, the tide brings..."  A2. "The best storm is the one that..."
-B1. "The mice are happiest when..."  B2. "The worst traffic jam is caused by..."
-C1. "When the table is round, the world..."  C2. "The room itself becomes..."
+A1. "The table is really a..."  A2. "Everyone around the table can see..."
+B1. "The best thing to do with your hands is..."  B2. "The most satisfying moment is when..."
+C1. "When two friends want different things, the game..."  C2. "The funniest way to lose is..."
