@@ -1,0 +1,580 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "house",
+ "name": "Small House",
+ "footprint": {
+  "w": 1.6,
+  "d": 1.2
+ },
+ "parts": [
+  {
+   "id": "floor",
+   "kind": "floor",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    1.6,
+    0.05,
+    1.2
+   ],
+   "material": "wood_pale",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "post.fl",
+   "kind": "post",
+   "pos": [
+    -0.76,
+    0.05,
+    0.56
+   ],
+   "size": [
+    0.08,
+    0.85,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "post.fr",
+   "kind": "post",
+   "pos": [
+    0.76,
+    0.05,
+    0.56
+   ],
+   "size": [
+    0.08,
+    0.85,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "post.bl",
+   "kind": "post",
+   "pos": [
+    -0.76,
+    0.05,
+    -0.56
+   ],
+   "size": [
+    0.08,
+    0.85,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "post.br",
+   "kind": "post",
+   "pos": [
+    0.76,
+    0.05,
+    -0.56
+   ],
+   "size": [
+    0.08,
+    0.85,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "beam.f",
+   "kind": "beam",
+   "pos": [
+    0,
+    0.85,
+    0.56
+   ],
+   "size": [
+    1.44,
+    0.07,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "post.fl",
+    "post.fr"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "beam.b",
+   "kind": "beam",
+   "pos": [
+    0,
+    0.85,
+    -0.56
+   ],
+   "size": [
+    1.44,
+    0.07,
+    0.08
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "post.bl",
+    "post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "beam.l",
+   "kind": "beam",
+   "pos": [
+    -0.76,
+    0.85,
+    0
+   ],
+   "size": [
+    0.08,
+    0.07,
+    1.2
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "post.fl",
+    "post.bl"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "beam.r",
+   "kind": "beam",
+   "pos": [
+    0.76,
+    0.85,
+    0
+   ],
+   "size": [
+    0.08,
+    0.07,
+    1.2
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "post.fr",
+    "post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "panel.b",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    -0.56
+   ],
+   "size": [
+    1.44,
+    0.8,
+    0.05
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "beam.b"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "panel.l",
+   "kind": "panel",
+   "pos": [
+    -0.76,
+    0.05,
+    0
+   ],
+   "size": [
+    1.04,
+    0.8,
+    0.05
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "beam.l"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571
+  },
+  {
+   "id": "panel.r",
+   "kind": "panel",
+   "pos": [
+    0.76,
+    0.05,
+    0
+   ],
+   "size": [
+    1.04,
+    0.8,
+    0.05
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "beam.r"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571
+  },
+  {
+   "id": "panel.f0",
+   "kind": "panel",
+   "pos": [
+    -0.5,
+    0.05,
+    0.56
+   ],
+   "size": [
+    0.44,
+    0.8,
+    0.05
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "beam.f"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "panel.f1",
+   "kind": "panel",
+   "pos": [
+    0.5,
+    0.05,
+    0.56
+   ],
+   "size": [
+    0.44,
+    0.8,
+    0.05
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "beam.f"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "door",
+   "kind": "door",
+   "pos": [
+    0,
+    0.05,
+    0.56
+   ],
+   "size": [
+    0.56,
+    0.8,
+    0.05
+   ],
+   "material": "paint_blue",
+   "stage": "walls",
+   "needs": [
+    "beam.f"
+   ],
+   "tag": "door",
+   "replaceable": true
+  },
+  {
+   "id": "window",
+   "kind": "window",
+   "pos": [
+    -0.5,
+    0.3,
+    0.61
+   ],
+   "size": [
+    0.34,
+    0.32,
+    0.05
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [
+    "panel.f0"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "shutter.a",
+   "kind": "shutter",
+   "pos": [
+    -0.72,
+    0.3,
+    0.63
+   ],
+   "size": [
+    0.1,
+    0.32,
+    0.03
+   ],
+   "material": "paint_red",
+   "stage": "trim",
+   "needs": [
+    "window"
+   ],
+   "tag": "shutter",
+   "replaceable": true
+  },
+  {
+   "id": "shutter.b",
+   "kind": "shutter",
+   "pos": [
+    -0.28,
+    0.3,
+    0.63
+   ],
+   "size": [
+    0.1,
+    0.32,
+    0.03
+   ],
+   "material": "paint_red",
+   "stage": "trim",
+   "needs": [
+    "window"
+   ],
+   "tag": "shutter",
+   "replaceable": true
+  },
+  {
+   "id": "rafter.f",
+   "kind": "rafter",
+   "pos": [
+    0,
+    0.92,
+    0.3
+   ],
+   "size": [
+    0.08,
+    0.42,
+    0.6
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "beam.f"
+   ],
+   "tag": "rafter",
+   "replaceable": false
+  },
+  {
+   "id": "rafter.b",
+   "kind": "rafter",
+   "pos": [
+    0,
+    0.92,
+    -0.3
+   ],
+   "size": [
+    0.08,
+    0.42,
+    0.6
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "beam.b"
+   ],
+   "tag": "rafter",
+   "replaceable": false,
+   "rotY": 3.142
+  },
+  {
+   "id": "tile.f",
+   "kind": "roof_tile",
+   "pos": [
+    0,
+    0.92,
+    0.3
+   ],
+   "size": [
+    1.4,
+    0.42,
+    0.6
+   ],
+   "material": "paint_blue",
+   "stage": "trim",
+   "needs": [
+    "rafter.f"
+   ],
+   "tag": "roof",
+   "replaceable": true
+  },
+  {
+   "id": "tile.b",
+   "kind": "roof_tile",
+   "pos": [
+    0,
+    0.92,
+    -0.3
+   ],
+   "size": [
+    1.4,
+    0.42,
+    0.6
+   ],
+   "material": "paint_blue",
+   "stage": "trim",
+   "needs": [
+    "rafter.b"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "rotY": 3.142
+  },
+  {
+   "id": "chimney",
+   "kind": "chimney",
+   "pos": [
+    0.5,
+    1.12,
+    -0.3
+   ],
+   "size": [
+    0.2,
+    0.5,
+    0.2
+   ],
+   "material": "brick",
+   "stage": "trim",
+   "needs": [
+    "tile.b"
+   ],
+   "tag": "chimney",
+   "replaceable": true
+  },
+  {
+   "id": "meter",
+   "kind": "meter_box",
+   "pos": [
+    0.4,
+    0.45,
+    -0.51
+   ],
+   "size": [
+    0.14,
+    0.2,
+    0.08
+   ],
+   "material": "tin",
+   "stage": "walls",
+   "needs": [
+    "panel.b"
+   ],
+   "tag": "meter",
+   "replaceable": true
+  },
+  {
+   "id": "wire",
+   "kind": "wire",
+   "pos": [
+    0.15,
+    0.55,
+    -0.51
+   ],
+   "size": [
+    0.4,
+    0.03,
+    0.03
+   ],
+   "material": "iron",
+   "stage": "walls",
+   "needs": [
+    "meter"
+   ],
+   "tag": "wire",
+   "replaceable": true
+  }
+ ],
+ "systems": {
+  "power": {
+   "demand_kw": 0.4,
+   "supply_kw": 2,
+   "wire_part": "wire",
+   "meter_part": "meter"
+  },
+  "jobs": [],
+  "storage": {
+   "coal": 20
+  },
+  "start_stock": {
+   "coal": 10
+  },
+  "costs": {
+   "power_per_kwh": 24,
+   "wage_per_worker_per_minute": 0,
+   "ingredient_prices": {
+    "coal": 1
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": []
+  },
+  "inspect": {
+   "labels": {
+    "door": "Front door",
+    "chimney": "Chimney",
+    "meter": "Meter box",
+    "wire": "Cable"
+   }
+  }
+ }
+}
