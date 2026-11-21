@@ -1,0 +1,281 @@
+{
+ "schema": "city_district",
+ "version": 0,
+ "id": "patch_row_hand",
+ "name": "Patch Row (hand-made buildings)",
+ "seed": 7,
+ "grid": {
+  "cols": 8,
+  "rows": 6
+ },
+ "roads": [
+  {
+   "cell": [
+    0,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    1,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    2,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    3,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    4,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    5,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    6,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    7,
+    2
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    3,
+    3
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    3,
+    4
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    0,
+    4
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    1,
+    4
+   ],
+   "open": true
+  },
+  {
+   "cell": [
+    2,
+    4
+   ],
+   "open": true
+  }
+ ],
+ "depot": [
+  0,
+  2
+ ],
+ "power": {
+  "supply_kw": 13,
+  "home_base_kw": 0.2,
+  "per_resident_kw": 0.05
+ },
+ "coefficients": {
+  "per_resident_per_min": {
+   "loaf": 1.2,
+   "fruit": 0.5
+  },
+  "wage_spend_boost": 0.25,
+  "work_fraction": 0.5,
+  "decay_per_cell": 0.85,
+  "max_reach_cells": 10,
+  "max_commute_cells": 10,
+  "footfall": {
+   "market_bonus": 0.15,
+   "decay_per_cell": 0.8,
+   "cap": 0.4
+  },
+  "market_visitors_per_min": {
+   "loaf": 3
+  }
+ },
+ "home_template": {
+  "recipe": "recipes/home_cottage.json",
+  "capacity": 4
+ },
+ "home_slots": [
+  [
+   2,
+   3
+  ],
+  [
+   2,
+   1
+  ],
+  [
+   1,
+   3
+  ],
+  [
+   1,
+   1
+  ],
+  [
+   0,
+   3
+  ],
+  [
+   0,
+   1
+  ],
+  [
+   1,
+   5
+  ],
+  [
+   2,
+   5
+  ],
+  [
+   0,
+   5
+  ],
+  [
+   3,
+   1
+  ]
+ ],
+ "buildings": [
+  {
+   "id": "bakery",
+   "recipe": "recipes/bakery.json",
+   "cell": [
+    5,
+    3
+   ],
+   "kind": "shop",
+   "sidecars": [],
+   "employs": true,
+   "hire_priority": 1
+  },
+  {
+   "id": "workshop",
+   "recipe": "recipes/workshop.json",
+   "cell": [
+    7,
+    3
+   ],
+   "kind": "workshop",
+   "sidecars": [],
+   "employs": true,
+   "hire_priority": 2
+  },
+  {
+   "id": "market",
+   "recipe": "recipes/market_hall.json",
+   "cell": [
+    6,
+    1
+   ],
+   "kind": "market",
+   "sidecars": []
+  },
+  {
+   "id": "shed",
+   "recipe": "recipes/power_shed.json",
+   "cell": [
+    4,
+    1
+   ],
+   "kind": "shed",
+   "sidecars": []
+  },
+  {
+   "id": "home_1",
+   "recipe": "recipes/home_cottage.json",
+   "cell": [
+    2,
+    3
+   ],
+   "kind": "home",
+   "sidecars": [],
+   "residents": {
+    "capacity": 4,
+    "now": 4
+   }
+  },
+  {
+   "id": "home_2",
+   "recipe": "recipes/home_cottage.json",
+   "cell": [
+    2,
+    1
+   ],
+   "kind": "home",
+   "sidecars": [],
+   "residents": {
+    "capacity": 4,
+    "now": 4
+   }
+  },
+  {
+   "id": "home_3",
+   "recipe": "recipes/home_cottage.json",
+   "cell": [
+    1,
+    3
+   ],
+   "kind": "home",
+   "sidecars": [],
+   "residents": {
+    "capacity": 4,
+    "now": 4
+   }
+  },
+  {
+   "id": "home_4",
+   "recipe": "recipes/home_cottage.json",
+   "cell": [
+    1,
+    1
+   ],
+   "kind": "home",
+   "sidecars": [],
+   "residents": {
+    "capacity": 4,
+    "now": 4
+   }
+  }
+ ],
+ "events": []
+}
