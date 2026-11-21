@@ -1,0 +1,396 @@
+{
+ "when": "2026-11-21T19:10:06.095Z",
+ "rapier": "0.21.0 SIMD",
+ "bodies": 27,
+ "standsStill": true,
+ "singleRemovalAgreement": "19 of 27",
+ "ruleOnly": [
+  [
+   "post.fl",
+   []
+  ],
+  [
+   "post.fr",
+   []
+  ],
+  [
+   "post.bl",
+   []
+  ],
+  [
+   "post.br",
+   []
+  ],
+  [
+   "beam.f",
+   []
+  ],
+  [
+   "beam.b",
+   []
+  ],
+  [
+   "beam.l",
+   [
+    "plank.0",
+    "plank.1",
+    "plank.4",
+    "plank.5",
+    "tile.00",
+    "tile.01",
+    "tile.02",
+    "tile.12",
+    "tile.22",
+    "tile.30",
+    "tile.31",
+    "tile.32"
+   ]
+  ],
+  [
+   "beam.r",
+   [
+    "plank.0",
+    "plank.1",
+    "plank.4",
+    "plank.5",
+    "tile.00",
+    "tile.01",
+    "tile.02",
+    "tile.10",
+    "tile.20",
+    "tile.30",
+    "tile.31",
+    "tile.32"
+   ]
+  ]
+ ],
+ "physOnly": [
+  [
+   "post.fl",
+   [
+    "post.fr"
+   ]
+  ],
+  [
+   "post.fr",
+   [
+    "beam.b",
+    "post.bl",
+    "post.br",
+    "post.fl"
+   ]
+  ],
+  [
+   "post.bl",
+   [
+    "beam.f",
+    "post.br",
+    "post.fl",
+    "post.fr"
+   ]
+  ],
+  [
+   "post.br",
+   [
+    "beam.f",
+    "post.bl",
+    "post.fl",
+    "post.fr"
+   ]
+  ],
+  [
+   "beam.f",
+   [
+    "beam.b",
+    "post.bl",
+    "post.br",
+    "post.fl",
+    "post.fr"
+   ]
+  ],
+  [
+   "beam.b",
+   [
+    "beam.f",
+    "post.bl",
+    "post.br",
+    "post.fl",
+    "post.fr"
+   ]
+  ],
+  [
+   "beam.l",
+   []
+  ],
+  [
+   "beam.r",
+   []
+  ]
+ ],
+ "rows": [
+  {
+   "removed": "post.fl",
+   "rule": 21,
+   "physics": 22,
+   "same": false
+  },
+  {
+   "removed": "post.fr",
+   "rule": 21,
+   "physics": 25,
+   "same": false
+  },
+  {
+   "removed": "post.bl",
+   "rule": 21,
+   "physics": 25,
+   "same": false
+  },
+  {
+   "removed": "post.br",
+   "rule": 21,
+   "physics": 25,
+   "same": false
+  },
+  {
+   "removed": "beam.f",
+   "rule": 20,
+   "physics": 25,
+   "same": false
+  },
+  {
+   "removed": "beam.b",
+   "rule": 20,
+   "physics": 25,
+   "same": false
+  },
+  {
+   "removed": "beam.l",
+   "rule": 18,
+   "physics": 6,
+   "same": false
+  },
+  {
+   "removed": "beam.r",
+   "rule": 18,
+   "physics": 6,
+   "same": false
+  },
+  {
+   "removed": "plank.0",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "plank.1",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "plank.2",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "plank.3",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "plank.4",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "plank.5",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.00",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.01",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.02",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.10",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.11",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.12",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.20",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.21",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.22",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.30",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.31",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "tile.32",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  },
+  {
+   "removed": "crate",
+   "rule": 0,
+   "physics": 0,
+   "same": true
+  }
+ ],
+ "shots": {
+  "post.fl": {
+   "moved": 27,
+   "ids": [
+    "post.fl",
+    "post.fr",
+    "post.bl",
+    "post.br",
+    "beam.f",
+    "beam.b",
+    "beam.l",
+    "beam.r",
+    "plank.0",
+    "plank.1",
+    "plank.2",
+    "plank.3",
+    "plank.4",
+    "plank.5",
+    "tile.00",
+    "tile.01",
+    "tile.02",
+    "tile.10",
+    "tile.11",
+    "tile.12",
+    "tile.20",
+    "tile.21",
+    "tile.22",
+    "tile.30",
+    "tile.31",
+    "tile.32",
+    "crate"
+   ],
+   "stillStanding": 0,
+   "hash": "3e6f5a62"
+  },
+  "beam.f": {
+   "moved": 26,
+   "ids": [
+    "post.fl",
+    "post.fr",
+    "post.bl",
+    "post.br",
+    "beam.f",
+    "beam.b",
+    "beam.l",
+    "beam.r",
+    "plank.0",
+    "plank.1",
+    "plank.2",
+    "plank.3",
+    "plank.4",
+    "plank.5",
+    "tile.00",
+    "tile.01",
+    "tile.02",
+    "tile.10",
+    "tile.11",
+    "tile.12",
+    "tile.20",
+    "tile.21",
+    "tile.22",
+    "tile.30",
+    "tile.31",
+    "tile.32"
+   ],
+   "stillStanding": 1,
+   "hash": "3b078534"
+  },
+  "crate-side (a roof tile)": {
+   "moved": 26,
+   "ids": [
+    "post.fl",
+    "post.fr",
+    "post.bl",
+    "post.br",
+    "beam.f",
+    "beam.b",
+    "beam.l",
+    "beam.r",
+    "plank.0",
+    "plank.1",
+    "plank.2",
+    "plank.3",
+    "plank.4",
+    "plank.5",
+    "tile.00",
+    "tile.01",
+    "tile.02",
+    "tile.10",
+    "tile.11",
+    "tile.12",
+    "tile.20",
+    "tile.21",
+    "tile.22",
+    "tile.30",
+    "tile.31",
+    "tile.32"
+   ],
+   "stillStanding": 1,
+   "hash": "bf70f4a1"
+  }
+ }
+}
