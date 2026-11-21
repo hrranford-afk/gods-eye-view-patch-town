@@ -241,3 +241,23 @@ Next three steps:
 - Sound.
 - The real-time (non-quick) benchmark was not run to the end for all seven builds or all three Rapier builds here (software GL makes it very slow); the quick mode was, for every build and scene listed above.
 - Whether Rapier 0.21 sleeps pieces too eagerly during a collapse (only counts of moved bricks were compared).
+
+## Harry's iPad results, 21 Nov 2026 (REAL DEVICE)
+Device: iPad in Safari 26.6.3 (desktop user agent), Apple GPU, 8 cores, 834 x 1062 at dpr 2. Full (not quick) benchmark, all three builds, no errors. Runs at 17:33, 17:57 (old test, 0.14 only) and 18:32 (all three). The 0.14 numbers were identical across the runs (repeatable).
+Replay codes on the iPad equal the cloud's, for ALL THREE builds: 0.14 = 9f08783c, 0.21 = dd9f66ff, 0.21 SIMD = 4b748a06. So cross-device determinism holds for the same build (this iPad against Node and Chromium in the cloud).
+Fastest on this device: 0.21 SIMD.
+
+Physics ms per step while crumbling (average), and the frame verdict (Smooth <= 18 ms, OK <= 26, Slow <= 40):
+| Scene (bodies) | 0.14 | 0.21 | 0.21 SIMD |
+|---|---|---|---|
+| Wall 120 | 2.2 Smooth | 1.5 Smooth | 1.1 Smooth |
+| Tower 153 | 3.1 OK | 1.3 Smooth | 1.1 Smooth |
+| Cottage 234 | 5.1 Slow | 2.7 Smooth | 1.9 Smooth |
+| Castle 383 | 12.5 Too slow (44 ms frames) | 2.1 Smooth | 1.5 Smooth |
+| Block 460 | 10.2 Too slow (41 ms) | 4.3 Smooth (18 ms) | 2.5 Smooth (17 ms) |
+| Block 1035 | 28.6 Too slow (134 ms) | 13.5 Too slow (58 ms) | 6.6 OK (24 ms) |
+| Block 1955 | 81.3 Too slow (344 ms) | 35.1 Too slow (133 ms) | 15.8 Too slow (64 ms) |
+Drawing is cheap: a drawing-only pass costs about 0.7 to 2 ms of CPU even for 1955 bodies, so physics is the limit, not rendering.
+Collapse results are consistent across builds (block 460: 301 / 303 / 305 bricks moved), so the newer builds' faster sleeping is not distorting the physics. Both 0.21 builds put a resting scene to sleep in under 0.1 s, so "stands still" is 0 mm there.
+Load cost on the iPad: about 0.03 s (0.14, 2 MB), 1.0 s (0.21, 4.3 MB), 0.9 s (SIMD, 4.6 MB).
+Conclusion: use 0.21 SIMD as the standard build (fall back to 0.21 plain if the device lacks SIMD) and record the build with every replay. Smooth at about 460 awake bodies, about 40 fps at about 1000, about 15 fps at about 2000. First-second spikes at build time still exist for big scenes (up to about 1 s at 1955).
