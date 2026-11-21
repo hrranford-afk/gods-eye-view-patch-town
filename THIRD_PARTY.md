@@ -12,3 +12,6 @@ The full licence texts are in the headers of `webxr-polyfill.js`. The game only 
 
 ## Rapier physics engine (brick-lab/vendor/rapier)
 @dimforge/rapier3d-compat 0.14.0, Apache-2.0, https://github.com/dimforge/rapier.js . Unmodified. Licence text in brick-lab/vendor/rapier/LICENSE.
+
+## Rapier 0.21.0 builds (brick-lab/vendor/rapier-0.21-compat and rapier-0.21-simd-compat)
+@dimforge/rapier3d-compat and @dimforge/rapier3d-simd-compat 0.21.0, Apache-2.0, https://github.com/dimforge/rapier . Unmodified. Licence text beside each build.

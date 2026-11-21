@@ -34,7 +34,7 @@ canvas{display:block;touch-action:none}
 #txt textarea{width:100%;height:42vh;box-sizing:border-box;font:12px ui-monospace,Menlo,monospace;-webkit-user-select:text;user-select:text}
 @media (max-width:760px){.btn{font-size:15px;padding:9px 11px}#stats{font-size:12px}#msg{font-size:60px}}
 </style></head><body>
-<div id="top"><button class="btn" data-p="wall">Brick wall</button><button class="btn" data-p="tower">Tower</button><button class="btn" data-p="cottage">Cottage</button><button class="btn" data-p="castle">Castle gate</button><button class="btn" id="bHand">Build by hand</button><button class="btn" id="bAgain">Rebuild</button><button class="btn" id="bText">Base as text</button><span class="pill" id="count">...</span></div>
+<div id="top"><button class="btn" data-p="wall">Brick wall</button><button class="btn" data-p="tower">Tower</button><button class="btn" data-p="cottage">Cottage</button><button class="btn" data-p="castle">Castle gate</button><button class="btn" data-p="pile500">Block 460</button><button class="btn" data-p="pile1000">Block 1035</button><button class="btn" data-p="pile2000">Block 1955</button><button class="btn" id="bHand">Build by hand</button><button class="btn" id="bAgain">Rebuild</button><button class="btn" id="bText">Base as text</button><span class="pill" id="count">...</span></div>
 <div id="stats"></div>
 <div id="msg"></div><div id="hint">Press, drag back, let go.</div>
 <div id="pull"><div class="sw"></div><div class="fl"></div><div class="tx"></div></div>
@@ -46,13 +46,24 @@ canvas{display:block;touch-action:none}
 <script src="vendor/three/three.min.js"></script>
 <script src="sim.js"></script>
 <script type="module">
-import RAPIER from './vendor/rapier/rapier.es.js';
 (async function () {
   var Q = new URLSearchParams(location.search), BENCH = Q.get('bench') === '1', QUICK = Q.get('quick') === '1', MANUAL = Q.get('manual') === '1';
   var errors = []; window.__errors = errors;
   window.addEventListener('error', function (e) { errors.push(String(e.message || e.error)); });
   window.addEventListener('unhandledrejection', function (e) { errors.push('promise: ' + String(e.reason)); });
-  await RAPIER.init();
+  var BL = window.BL, $ = function (id) { return document.getElementById(id); };
+  var RAPIER = null, RKEY = Q.get('rapier') || '014', RINFO = null;
+  function showCover(html) { var o = $('bench'); o.style.display = 'block'; o.querySelector('.in').innerHTML = html; }
+  if (BENCH && !Q.get('rapier')) {
+    /* chooser: one big button per physics build; the SIMD one is greyed out if this device cannot run it */
+    var simdOK = BL.simdSupported(), qs = location.search.replace(/[?&]rapier=[^&]*/, '').replace(/^\?/, '');
+    function lnk(k, t, dis) { return '<a class="btn' + (dis ? '' : ' go') + '" style="display:block;font-size:28px;padding:18px;margin:12px 0;text-decoration:none;text-align:center;' + (dis ? 'opacity:.4;pointer-events:none' : '') + '" href="?' + qs + (qs ? '&' : '') + 'rapier=' + k + '">' + t + '</a>'; }
+    showCover('<h1>Brick Lab benchmark</h1><div class="sub">Pick which physics engine build to test. Each run takes about ' + (QUICK ? '2' : '4') + ' minutes. Do not touch the screen while it runs.</div>' + lnk('014', 'Run Rapier 0.14 (the one used so far, 2 MB)') + lnk('021', 'Run Rapier 0.21 (newer, 4.3 MB)') + lnk('021simd', 'Run Rapier 0.21 SIMD (4.6 MB)' + (simdOK ? '' : ' (this device cannot run it)'), !simdOK) + lnk('all', 'Run all three, then compare (about ' + (QUICK ? 6 : 12) + ' minutes)') + '<div class="note">SIMD = the engine uses the processor\'s vector instructions. This device says SIMD is ' + (simdOK ? 'supported.' : 'NOT supported.') + '</div>');
+    return;
+  }
+  var BKEYS = RKEY === 'all' ? ['014', '021'].concat(BL.simdSupported() ? ['021simd'] : []) : [RKEY];
+  try { RINFO = await BL.loadRapier(BKEYS[0]); RAPIER = RINFO.R; }
+  catch (e) { showCover('<h1>Cannot start</h1><div class="big" style="color:#ff9a8a">' + String(e.message || e) + '</div><div class="note"><a style="color:#ffd9a8" href="' + location.pathname + '">Back</a></div>'); return; }
   var BL = window.BL, KIT = BL.KIT, BALLS = BL.BALLS, DT = BL.DT, PI = Math.PI;
   var $ = function (id) { return document.getElementById(id); };
 
@@ -79,7 +90,7 @@ import RAPIER from './vendor/rapier/rapier.es.js';
   addMesh(new THREE.CylinderGeometry(3.32, 3.2, 0.1, 64), M(0x7c4a22), 0, -0.25, 0); addMesh(new THREE.CylinderGeometry(0.3, 0.38, 1.7, 14), M(0x6b3f1e), 0, -1.1, 0);
 
   /* ---------- instanced meshes: one per piece kind, one per ball kind ---------- */
-  var CAP = 1600, texLoader = new THREE.TextureLoader(), texCache = {};
+  var CAP = 2200, texLoader = new THREE.TextureLoader(), texCache = {};
   function tex(n) { if (!texCache[n]) { var t = texLoader.load('tex/' + n + '.jpg'); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; texCache[n] = t; } return texCache[n]; }
   var IM = {}, tmpM = new THREE.Matrix4(), tmpP = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3(1, 1, 1), tmpC = new THREE.Color();
   BL.KINDS.forEach(function (k) {
@@ -224,7 +235,7 @@ import RAPIER from './vendor/rapier/rapier.es.js';
     var cx = Math.round(hit.x / G) * G, cz = Math.round(hit.z / G) * G, base = 0;
     sim.pieces.forEach(function (p) { if (p.fx !== undefined && Math.abs(p.x0 - cx) < p.fx + ex - 1e-4 && Math.abs(p.z0 - cz) < p.fz + ez - 1e-4) base = Math.max(base, p.y0 + p.fy); });
     bt.x = cx; bt.z = cz; bt.y = base + K.hy + 0.0002; bt.ex = ex; bt.ez = ez;
-    bt.ok = Math.sqrt(cx * cx + cz * cz) + Math.max(ex, ez) < 3.2 && sim.pieces.length < 1500;
+    bt.ok = Math.sqrt(cx * cx + cz * cz) + Math.max(ex, ez) < 3.2 && sim.pieces.length < 2100;
     ghost.scale.set(ex * 2, K.hy * 2, ez * 2); ghost.position.set(cx, bt.y, cz); ghost.visible = true; ghost.material.color.setHex(bt.ok ? 0x8fd0ff : 0xff5a44);
   }
   function placePiece() {
@@ -290,76 +301,113 @@ import RAPIER from './vendor/rapier/rapier.es.js';
   function fitCamera() { var a = W / H; camS.dist = Math.max(camS.dist, a < 1 ? 11 : camS.dist); cam.aspect = W / H; cam.updateProjectionMatrix(); }
 
   /* ---------- the benchmark ---------- */
-  var bench = null;
-  function Bench() {
-    var self = this, list = ['wall', 'tower', 'cottage', 'castle'], idx = 0, phase = 'start', stepsIn = 0, res = [], cur = null, frameBuf = [];
-    var aimY = { wall: 0.8, tower: 0.7, cottage: 0.6, castle: 0.8 }, SHOTS = [['marble', -0.8], ['big', 0.2], ['big', -0.3], ['marble', 0.7], ['big', 0.0]];
-    var STAND = 600, VOLLEY = 480, accB = 0;
+  var bench = null, lastRenderCpu = 0, QUICKLIST = Q.get('list') ? Q.get('list').split(',').filter(function (k) { return BL.PRESETS[k]; }) : null;
+  function Bench(keys) {
+    var self = this, bi = 0, allBuilds = [], curB = null, list = QUICKLIST || ['wall', 'tower', 'cottage', 'castle', 'pile500', 'pile1000', 'pile2000'], idx = 0, phase = 'loading', stepsIn = 0, res = [], cur = null, frameBuf = [], cpuBuf = [];
+    var aimY = { wall: 0.8, tower: 0.7, cottage: 0.6, castle: 0.8, pile500: 0.8, pile1000: 0.8, pile2000: 0.8 };
+    var SHOTS = [['marble', -0.8], ['big', 0.2], ['big', -0.3], ['marble', 0.7], ['big', 0.0]], SHOTS_BIG = [['big', -1.0], ['big', -0.5], ['big', 0.0], ['big', 0.5], ['big', 1.0]];
+    var STAND = 600, VOLLEY = 480, RFRAMES = QUICK ? 10 : 60, accB = 0;
     var out = document.querySelector('#bench .in'); $('bench').style.display = 'block';
-    window.__bench = { done: false, quick: QUICK, results: res, errors: errors, device: { ua: navigator.userAgent, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency || 0, w: W, h: H, gl: glName() } };
+    window.__bench = { done: false, quick: QUICK, builds: {}, results: res, errors: errors, device: { ua: navigator.userAgent, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency || 0, w: W, h: H, gl: glName() } };
     function glName() { try { var gl = R3.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'hidden'; } catch (x) { return '?'; } }
     function avg(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; }
     function mx(a) { return a.length ? Math.max.apply(null, a) : 0; }
     function fixed(v, n) { return Number(v).toFixed(n); }
-    var phys = [], mark = 0;
+    function verdict(ms) { return ms <= 18 ? 'Smooth' : ms <= 26 ? 'OK' : ms <= 40 ? 'Slow' : 'Too slow'; }
+    var phys = [];
     self.onStep = function (ms) { phys.push(ms); };
     function startPreset() {
       var key = list[idx], t0 = performance.now();
       newSim(); currentName = key; sim.build(BL.PRESETS[key].make(0, -0.2)); syncInstances(); resetCounters(); updateCount();
       cur = { key: key, name: BL.PRESETS[key].name, pieces: sim.pieces.length, buildMs: 0 };
       for (var i = 0; i < 90; i++) sim.step(); sim.rebase();           /* the first 1.5 s: courses press down; not timed */
-      cur.settleSagMm = 0; cur.buildMs = performance.now() - t0; sim.pieces.forEach(function (p) { p.drawn = false; });
-      phase = 'stand'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cur.standMax = 0; cur.asleepAt = -1; progress();
+      cur.buildMs = performance.now() - t0; sim.pieces.forEach(function (p) { p.drawn = false; });
+      phase = 'stand'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cpuBuf.length = 0; cur.standMax = 0; cur.asleepAt = -1; progress();
     }
-    function progress() { var el = out.querySelector('.prog'); if (!el) { out.innerHTML = '<h1>Brick Lab benchmark</h1><div class="sub">Do not touch the screen. About ' + (QUICK ? '1' : '2') + ' minutes.</div><div class="prog"></div><div class="note">Each build: 10 seconds standing still, then five shots, then 8 seconds of crumbling.</div>'; el = out.querySelector('.prog'); }
-      el.textContent = 'Now: ' + (cur ? cur.name : '...') + ' (' + (idx + 1) + ' of ' + list.length + ') ' + (phase === 'stand' ? 'standing still ' + Math.floor(stepsIn / 6) / 10 + ' s of 10' : phase === 'volley' ? 'shots and crumbling ' + Math.floor(stepsIn / 6) / 10 + ' s of 8' : phase); }
+    function progress() { var el = out.querySelector('.prog'); if (!el) { out.innerHTML = '<h1>Brick Lab benchmark</h1><div class="sub">Do not touch the screen. About ' + (QUICK ? '2' : '4') + ' minutes.</div><div class="prog"></div><div class="note">Each build: 10 seconds standing still, then five shots, then 8 seconds of crumbling, then a drawing-only pass.</div>'; el = out.querySelector('.prog'); }
+      el.textContent = 'Now: ' + (cur ? cur.name : '...') + ' (' + (idx + 1) + ' of ' + list.length + ') ' + (phase === 'stand' ? 'standing still ' + Math.floor(stepsIn / 6) / 10 + ' s of 10' : phase === 'volley' ? 'shots and crumbling ' + Math.floor(stepsIn / 6) / 10 + ' s of 8' : phase === 'render' ? 'drawing only' : phase); }
     self.frame = function (dtMs) {
-      frameBuf.push(dtMs); if (phase === 'start') { startPreset(); return; } if (phase === 'done') return;
+      frameBuf.push(dtMs); cpuBuf.push(lastRenderCpu); if (phase === 'loading') return; if (phase === 'start') { startPreset(); return; } if (phase === 'done') return;
       var n = 0, k;
-      if (QUICK) n = 12; else { accB += Math.min(dtMs, 100) / 1000; while (accB >= DT && n < 4) { accB -= DT; n++; } if (accB > DT * 4) accB = 0; }
-      for (k = 0; k < n; k++) {
-        if (phase === 'volley') {
-          for (var s = 0; s < SHOTS.length; s++) if (stepsIn === s * 40) { var f = { x: 0, y: 0.5, z: 3 }; sim.addBall(SHOTS[s][0], f, BL.aimAt(SHOTS[s][1], aimY[cur.key], -0.2, f, 15)); }
+      if (phase === 'render') {
+        if (frameBuf.length > 2 && ++stepsIn >= RFRAMES + 2) {
+          cur.render = { frameAvg: avg(frameBuf.slice(2)), frameMax: mx(frameBuf.slice(2)), cpuAvg: avg(cpuBuf.slice(2)) };
+          cur.verdict = verdict(Math.max(cur.stand.frameAvg, cur.volley.frameAvg)); res.push(cur); idx++; phase = idx >= list.length ? 'det' : 'start';
         }
-        stepOnce(); stepsIn++;
-        if (phase === 'stand') {
-          if (stepsIn % 10 === 0) cur.standMax = Math.max(cur.standMax, sim.maxDisp());
-          if (cur.asleepAt < 0 && sim.awake() === 0) cur.asleepAt = stepsIn / 60;
-          if (stepsIn >= STAND) {
-            cur.stand = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), maxDispMm: cur.standMax * BL.UNIT_MM, awakeEnd: sim.awake(), asleepAt: cur.asleepAt };
-            phase = 'volley'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cur.awakePeak = 0; break;
+      } else {
+        if (QUICK) n = 12; else { accB += Math.min(dtMs, 100) / 1000; while (accB >= DT && n < 4) { accB -= DT; n++; } if (accB > DT * 4) accB = 0; }
+        for (k = 0; k < n; k++) {
+          if (phase === 'volley') {
+            var SH = BL.PRESETS[cur.key].stress ? SHOTS_BIG : SHOTS;
+            for (var s = 0; s < SH.length; s++) if (stepsIn === s * 40) { var f = { x: 0, y: 0.5, z: 3 }; sim.addBall(SH[s][0], f, BL.aimAt(SH[s][1], aimY[cur.key], -0.2, f, 15)); }
           }
-        } else if (phase === 'volley') {
-          cur.awakePeak = Math.max(cur.awakePeak, sim.awake());
-          if (stepsIn >= VOLLEY) {
-            sim.countMoved(); var mv = 0, fl2 = 0; sim.pieces.forEach(function (p) { var t = p.body.translation(); if (p.moved) { mv++; if (t.y < p.y0 - 0.12) fl2++; } });
-            cur.volley = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), awakePeak: cur.awakePeak, moved: mv, fallen: fl2, awakeEnd: sim.awake() };
-            cur.bodiesMax = sim.pieces.length + 5; res.push(cur); idx++;
-            if (idx >= list.length) { phase = 'det'; } else { phase = 'start'; }
-            break;
+          stepOnce(); stepsIn++;
+          if (phase === 'stand') {
+            if (stepsIn % 10 === 0) cur.standMax = Math.max(cur.standMax, sim.maxDisp());
+            if (cur.asleepAt < 0 && sim.awake() === 0) cur.asleepAt = stepsIn / 60;
+            if (stepsIn >= STAND) {
+              cur.stand = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), maxDispMm: cur.standMax * BL.UNIT_MM, awakeEnd: sim.awake(), asleepAt: cur.asleepAt };
+              phase = 'volley'; stepsIn = 0; phys.length = 0; frameBuf.length = 0; cpuBuf.length = 0; cur.awakePeak = 0; break;
+            }
+          } else if (phase === 'volley') {
+            cur.awakePeak = Math.max(cur.awakePeak, sim.awake());
+            if (stepsIn >= VOLLEY) {
+              sim.countMoved(); var mv = 0, fl2 = 0; sim.pieces.forEach(function (p) { var t = p.body.translation(); if (p.moved) { mv++; if (t.y < p.y0 - 0.12) fl2++; } });
+              cur.volley = { physAvg: avg(phys), physMax: mx(phys), frameAvg: avg(frameBuf), frameMax: mx(frameBuf), cpuAvg: avg(cpuBuf), awakePeak: cur.awakePeak, moved: mv, fallen: fl2, awakeEnd: sim.awake() };
+              phase = 'render'; stepsIn = 0; frameBuf.length = 0; cpuBuf.length = 0; break;
+            }
           }
         }
       }
-      if (phase === 'det') { var d1 = BL.detRun(RAPIER, 1234); window.__bench.determinismHash = d1.hash; finish(); return; }
+      if (phase === 'det') { var d1 = BL.detRun(RAPIER, 1234); finishBuild(d1.hash); return; }
       progress();
     };
-    function cls(v, g, y) { return v <= g ? 'g' : v <= y ? 'y' : 'r'; }
-    function finish() {
-      phase = 'done'; window.__bench.done = true; window.__bench.finishedAt = new Date().toISOString();
-      var worst = res.reduce(function (m, r) { return Math.max(m, r.volley.frameAvg); }, 0), cast = res[res.length - 1];
-      var h = '<h1>Brick Lab: results</h1>'+(worst <= 18 ? '<div class="big" style="color:#bff0b6">Smooth on this device.</div>' : worst <= 36 ? '<div class="big" style="color:#ffe27a">Playable, not silky, on this device.</div>' : '<div class="big" style="color:#ff9a8a">Too slow on this device.</div>')+'<div class="big">Biggest build ('+cast.pieces+' pieces) while crumbling: '+fixed(cast.volley.frameAvg,1)+' ms per picture = '+fixed(1000/cast.volley.frameAvg,0)+' pictures a second. Worst physics step '+fixed(cast.volley.physMax,1)+' ms. Up to '+cast.volley.awakePeak+' pieces awake at once.</div><div class="sub">' + (QUICK ? 'QUICK mode (12 steps per frame): the frame numbers do not mean much. ' : '') + 'Read each row: pieces, how many are moving, time per physics step, time per picture.</div><table><tr><th>Build</th><th>Pieces</th><th>Still 10 s: moved</th><th>Physics ms avg</th><th>Physics ms worst</th><th>Frame ms</th><th>Pictures/s</th></tr>';
-      res.forEach(function (r) {
-        h += '<tr><td>' + r.name + ' (standing)</td><td>' + r.pieces + '</td><td class="' + (r.stand.maxDispMm < 2 ? 'g' : r.stand.maxDispMm < 6 ? 'y' : 'r') + '">' + fixed(r.stand.maxDispMm, 1) + ' mm</td><td class="' + cls(r.stand.physAvg, 3, 6) + '">' + fixed(r.stand.physAvg, 2) + '</td><td>' + fixed(r.stand.physMax, 1) + '</td><td class="' + cls(r.stand.frameAvg, 18, 36) + '">' + fixed(r.stand.frameAvg, 1) + '</td><td>' + fixed(1000 / r.stand.frameAvg, 0) + '</td></tr>';
-        h += '<tr><td>' + r.name + ' (5 shots, crumbling)</td><td>' + r.pieces + '</td><td>' + r.volley.moved + ' moved, ' + r.volley.fallen + ' fell</td><td class="' + cls(r.volley.physAvg, 3, 6) + '">' + fixed(r.volley.physAvg, 2) + '</td><td class="' + cls(r.volley.physMax, 8, 16) + '">' + fixed(r.volley.physMax, 1) + '</td><td class="' + cls(r.volley.frameAvg, 18, 36) + '">' + fixed(r.volley.frameAvg, 1) + '</td><td>' + fixed(1000 / r.volley.frameAvg, 0) + '</td></tr>';
+    function vcls(v) { return v === 'Smooth' ? 'g' : v === 'OK' ? 'g' : v === 'Slow' ? 'y' : 'r'; }
+    function buildCard(B) {
+      var rs = B.results, h = '<h2 style="font-size:34px;margin:26px 0 4px;border-top:3px solid #ffd9a8;padding-top:14px">Rapier ' + B.label + '</h2>';
+      var okMax = 0, smoothMax = 0; rs.forEach(function (r) { if (r.verdict === 'Smooth') smoothMax = Math.max(smoothMax, r.pieces); if (r.verdict === 'Smooth' || r.verdict === 'OK') okMax = Math.max(okMax, r.pieces); });
+      B.summary = { smoothUpTo: smoothMax, okUpTo: okMax };
+      h += '<div class="big" style="color:' + (smoothMax ? '#bff0b6' : okMax ? '#ffe27a' : '#ff9a8a') + '">' + (smoothMax ? 'Smooth up to ' + smoothMax + ' pieces. ' : 'Nothing was fully smooth. ') + (okMax > smoothMax ? 'OK up to ' + okMax + '.' : '') + '</div>';
+      h += '<table><tr><th>Build</th><th>Pieces</th><th>Stood still 10 s</th><th>Physics ms avg / worst</th><th>Frame ms</th><th>Pictures/s</th><th>Draw only ms</th><th>Limit</th><th>Verdict</th></tr>';
+      rs.forEach(function (r) {
+        var lim = r.volley.physAvg > r.render.frameAvg ? 'physics' : 'drawing';
+        h += '<tr><td>' + r.name + '</td><td>' + r.pieces + '</td><td class="' + (r.stand.maxDispMm < 2 ? 'g' : r.stand.maxDispMm < 6 ? 'y' : 'r') + '">' + fixed(r.stand.maxDispMm, 1) + ' mm</td><td>' + fixed(r.volley.physAvg, 1) + ' / ' + fixed(r.volley.physMax, 0) + '</td><td>' + fixed(r.volley.frameAvg, 1) + '</td><td>' + fixed(1000 / r.volley.frameAvg, 0) + '</td><td>' + fixed(r.render.frameAvg, 1) + '</td><td>' + lim + '</td><td class="' + vcls(r.verdict) + '">' + r.verdict + '</td></tr>';
       });
-      h += '</table>';
-      h += '<div class="note">Green is good, yellow is borderline, red is too slow. Physics ms is the time of one step (60 steps make one second). Frame ms is the whole picture including drawing. Determinism check: the number <b>' + window.__bench.determinismHash + '</b> should be the same on every device (the Node test prints the same number).</div>';
-      h += '<div class="note">Device: ' + window.__bench.device.ua + ' | pixel ratio ' + window.__bench.device.dpr + ' | cores ' + window.__bench.device.cores + ' | graphics: ' + window.__bench.device.gl + ' | errors: ' + errors.length + '</div>';
-      h += '<div style="margin:12px 0"><button class="btn go" id="bCopy" style="font-size:24px;padding:14px 28px">Copy numbers</button> <button class="btn" id="bRun" style="font-size:24px;padding:14px 28px">Run again</button> <button class="btn" id="bPlay" style="font-size:24px;padding:14px 28px">Play</button></div><pre id="bjson"></pre>';
+      h += '</table><div class="note">While standing still (first 10 s): ' + rs.map(function (r) { return r.name + ' physics ' + fixed(r.stand.physAvg, 1) + ' ms, frame ' + fixed(r.stand.frameAvg, 1) + ' ms, asleep after ' + (r.stand.asleepAt < 0 ? 'more than 10 s' : fixed(r.stand.asleepAt, 1) + ' s'); }).join('; ') + '.</div>';
+      h += '<div class="note">Loading this build took ' + B.loadMs + ' ms. Determinism check: <b>' + B.determinismHash + '</b>' + (B.key === '014' ? ' (should be 9f08783c on every device)' : '') + '.</div>';
+      return h;
+    }
+    function nextBuild() {
+      phase = 'loading';
+      BL.loadRapier(keys[bi]).then(function (L) {
+        RAPIER = L.R; curB = { key: keys[bi], label: L.label, loadMs: L.loadMs, results: [] }; res = curB.results; if (bi === 0) window.__bench.results = res;
+        window.__bench.builds[keys[bi]] = curB; idx = 0; phase = 'start';
+      }).catch(function (e) { window.__bench.builds[keys[bi]] = { key: keys[bi], error: String(e.message || e), results: [] }; allBuilds.push(window.__bench.builds[keys[bi]]); bi++; if (bi < keys.length) nextBuild(); else finishAll(); });
+    }
+    function finishBuild(hash) {
+      curB.determinismHash = hash; if (bi === 0) window.__bench.determinismHash = hash; allBuilds.push(curB); bi++;
+      if (bi < keys.length) nextBuild(); else finishAll();
+    }
+    function finishAll() {
+      phase = 'done'; window.__bench.done = true; window.__bench.finishedAt = new Date().toISOString();
+      var ok = allBuilds.filter(function (B) { return !B.error; }), h = '<h1>Brick Lab: results</h1>';
+      /* one line: which build is fastest on this device (lowest total physics time per step while crumbling, summed over the builds) */
+      if (ok.length > 1) {
+        ok.forEach(function (B) { B.physTotal = B.results.reduce(function (a, r) { return a + r.volley.physAvg; }, 0); });
+        var best = ok.slice().sort(function (a, b) { return a.physTotal - b.physTotal; })[0], base = ok[0];
+        h += '<div class="big" style="color:#bff0b6">Fastest on this device: Rapier ' + best.label + '. ' + ok.map(function (B) { return B.label + ' ' + fixed(B.physTotal, 1) + ' ms'; }).join(', ') + ' (sum of the physics ms per step of the ' + best.results.length + ' scenes while crumbling, lower is better).</div>';
+        window.__bench.fastest = best.key;
+      }
+      allBuilds.forEach(function (B) { if (B.error) h += '<h2 style="font-size:34px;margin:26px 0 4px;border-top:3px solid #ffd9a8;padding-top:14px">Rapier ' + B.key + '</h2><div class="big" style="color:#ff9a8a">' + B.error + '</div>'; else h += buildCard(B); });
+      h += '<div class="sub" style="margin-top:14px">' + (QUICK ? 'QUICK mode (12 steps per picture): the frame numbers and verdicts do not mean much. ' : '') + 'Verdict uses the picture time on this device: Smooth is 18 ms or less (60 pictures a second), OK is up to 26, Slow up to 40, above that Too slow.</div>';
+      h += '<div class="note"><b>How to read it.</b> Physics ms is the time of one physics step (60 make one second), average and worst, while shots are crumbling the build. Frame ms is the whole picture with physics running. Draw only ms is the same scene drawn with physics stopped; on a screen that refreshes at 60 per second it cannot go below 16.7, so if it shows 16.7 drawing is not your limit. Limit says which is bigger: physics time per step, or drawing-only time per picture.</div>';
+      h += '<div class="note">Device: ' + window.__bench.device.ua + ' | pixel ratio ' + window.__bench.device.dpr + ' | cores ' + window.__bench.device.cores + ' | graphics: ' + window.__bench.device.gl + ' | SIMD supported: ' + BL.simdSupported() + ' | errors: ' + errors.length + '</div>';
+      h += '<div style="margin:12px 0"><button class="btn go" id="bCopy" style="font-size:24px;padding:14px 28px">Copy numbers</button> <a class="btn" style="font-size:24px;padding:14px 28px;text-decoration:none;display:inline-block" href="?bench=1' + (QUICK ? '&quick=1' : '') + '">Choose again</a> <button class="btn" id="bPlay" style="font-size:24px;padding:14px 28px">Play</button></div><pre id="bjson"></pre>';
       out.innerHTML = h; $('bjson').textContent = JSON.stringify(window.__bench);
       $('bCopy').onclick = function () { try { navigator.clipboard.writeText(JSON.stringify(window.__bench)); } catch (x) { var r = document.createRange(); r.selectNode($('bjson')); getSelection().removeAllRanges(); getSelection().addRange(r); } };
-      $('bRun').onclick = function () { location.reload(); }; $('bPlay').onclick = function () { location.href = location.pathname; };
+      $('bPlay').onclick = function () { location.href = location.pathname; };
     }
+    self.start = function () { if (RINFO) { curB = { key: RINFO.key, label: RINFO.label, loadMs: RINFO.loadMs, results: [] }; res = curB.results; window.__bench.results = res; window.__bench.builds[RINFO.key] = curB; phase = 'start'; } else nextBuild(); };
     window.__benchRef = self;
   }
 
@@ -385,7 +433,7 @@ import RAPIER from './vendor/rapier/rapier.es.js';
       aim.armAnim += (0 - aim.armAnim) * Math.min(1, dt * 7);
       for (var bi = sim.balls.length - 1; bi >= 0; bi--) { var b = sim.balls[bi]; b.age += dt; if (b.body.translation().y < -3 || (b.age > 25 && b.body.isSleeping())) sim.removeBall(b); }
     }
-    shake *= Math.exp(-5 * dt); updatePuffs(dt); updateCat(); placeCamera(); writeMatrices(); R3.render(scene, cam);
+    shake *= Math.exp(-5 * dt); updatePuffs(dt); updateCat(); placeCamera(); var rc0 = performance.now(); writeMatrices(); R3.render(scene, cam); lastRenderCpu = performance.now() - rc0;
     hudT += dt; if (hudT > 0.25) { hudT = 0; hud(); }
     if (!MANUAL) requestAnimationFrame(frame);
   }
@@ -406,9 +454,9 @@ import RAPIER from './vendor/rapier/rapier.es.js';
     shake: function (v) { shake = v; }, puff: puff, setMode: setMode, sim: function () { return sim; }, hud: hud
   };
   fitCamera(); setMode('aim');
-  if (BENCH) { bench = new Bench(); }
+  if (BENCH) { bench = new Bench(BKEYS); bench.start(); }
   else buildPreset(Q.get('preset') && BL.PRESETS[Q.get('preset')] ? Q.get('preset') : 'wall');
-  window.__ready = true;
+  window.__ready = true; window.__rapier = RINFO && RINFO.label;
   if (MANUAL) { frame(performance.now()); } else requestAnimationFrame(frame);
 })();
 </script>
