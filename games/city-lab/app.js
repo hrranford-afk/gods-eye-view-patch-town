@@ -176,6 +176,8 @@
     if (!r.ok) { A.errors = r.errors; showMsg('rcMsg', 'err', 'This recipe was refused and nothing changed (' + r.errors.length + ' problem' + (r.errors.length > 1 ? 's' : '') + ')', r.errors.slice(0, 8).concat(r.errors.length > 8 ? ['... and ' + (r.errors.length - 8) + ' more'] : [])); return r; }
     A.errors = []; setRecipe(r.recipe, text); showMsg('rcMsg', 'ok', 'Loaded ' + r.recipe.name + ': ' + r.recipe.parts.length + ' parts, checked.'); return r;
   };
+  A.screenOf = function (id) { var c = B.center(id).clone(); camera.updateMatrixWorld(); c.project(camera); var r = $('view').getBoundingClientRect(); return { x: r.left + (c.x + 1) / 2 * r.width, y: r.top + (1 - c.y) / 2 * r.height }; };
+  A.camera = function () { return { az: cam.az, el: cam.el, dist: cam.dist }; };
   A.setCamera = function (az, el, dist) { cam.az = az; cam.el = el; if (dist) cam.dist = dist; A.auto = false; };
   A.state = function () { return S; }; A.recipe = function () { return R; }; A.builder = function () { return B; };
   A.summary = function () { return SIM.summary(R, S); }; A.hash = function () { return SIM.hash(S); };
