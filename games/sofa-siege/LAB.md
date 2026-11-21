@@ -372,6 +372,88 @@ Same machine and method as the Yard (headless Chromium, software GL, 1280 by 800
 - The new sounds are synthesised noises I could not hear; the pictures were looked at, the sounds were not.
 - `SG.labMatrix` takes the Lab's rules (Chain topple off, quick reload, no crew): it is not a match.
 
+## Defences: posts, upkeep, hidden traps, rooms, a mender, Test my base (21 Nov) (Lab only, off by default)
+
+Harry, 21 Nov: "defences are limited; a fortified base does not pay off, because today defences only absorb hits. Fortifying must make the attacker PAY." **All of this is Lab only.** It is the prototype **Defences** (Prototypes panel, or the Defences panel; off by default). With it off nothing here runs, and a match is untouched. With it on, the seven Arsenal weapons are on the table too (the posts need something to shoot at). A match only sees it with the flag `?defence=front|far|both` (bots, for the proof). The numbers are `CONFIG.defence`. The win rates are in `DEFENCE_REPORT.md`, made by `tests/defence-proof.js`.
+
+Items are small things on the table, not pieces: they have no parts and cannot be knocked off. A shell that lands near one makes its crew mouse dizzy, and a dizzy crew mouse does not fire. That is the weakness: the crew.
+
+### The three posts (a crew mouse stands in the slot behind each; no crew, no fire)
+
+| Post (cost) | Range (table units) | Rate, load, jams after | What it does |
+|---|---|---|---|
+| **Pop-gun** (1.5 points) | .08 to .9 | a cork every 1.4 s, 14 corks, jams after 9 shots | Knocks the other side's mice back .8 and slows them (2.5 s at half speed); swats a small rolling shot (a Roller, a rolling Marble) that comes within range (every .5 s). Corks need a clear line (a wall stops them). |
+| **Slinger** (2) | .9 to 2.7 | a lob every 4.5 s, 6 marbles, jams after 5 | Priority: a shell in the air whose landing is within 1.1 of the post (40% to knock it out of the air, less for a heavy ball), then a marble lobbed at an enemy lobber in range (blast .3), then a roller on the ground (stops it). |
+| **Counter-lobber** (2.5) | **min 1.5, max 3.7** | a lob every 9 s, 4 marbles, jams after 4 | Fires only at the lobber **it saw fire** (within 3.5 s), and only if that lobber is inside the band: too close or too far and it does nothing. Its shell has a blast of .3 (a Marble's is .3) and is aimed a little past the lobber so it comes down on it: it knocks the lobber's parts off and its crew dizzy. In the Lab the free gun is hit instead and is out for 6 s. |
+
+Each post draws its **range rings when selected** (an inner ring for a minimum), shows a tag (ammo, jam meter, "no crew"), and has a crew slot (a pale disc). Post ranges are in table units: the camps do not shrink with the pieces.
+
+### Upkeep
+
+- **Ammo.** Out of ammunition the post stops. **Restock** is a mouse trip (a free mouse goes to the store spot by the Keep for 1.2 s, then to the post and refills it in 3 s; if no mouse is free the crew goes itself), or **bought** with build points (.5 a restock, at once). In a match a bot uses the trip.
+- **Jam.** Every shot adds 1/N to a jam meter. At 1 the post **jams**: it will not shoot for 3 s while its crew clears it. A crew mouse oils (.3 a second) only in a **lull longer than the gap between shots**, so a post that shoots without a rest jams and one that gets lulls does not.
+- **Traps** are set again by a mouse (2.5 s on the spot).
+- The mice are the cost: one mouse, one job. A lobber's crew, a post's crew, a mender and the hill squad all come out of the same five.
+
+### Hidden traps (one use; the builder sees them, the attacker does not until they spring)
+
+| Trap (cost) | Springs when an enemy mouse is within .24 | What it does |
+|---|---|---|
+| **Spring plank** (.5) | | Flings the mouse 1.0 back toward its own camp and dazes it 1.8 s. |
+| **Glue puddle** (.5) | | A puddle (.32 across, 9 s) that slows every mouse in it to .4 speed for 7 s. |
+| **Rolling log** (.75) | | A log rolls 1.7 along its lane toward the hill, dazing each mouse it touches (1.4 s). |
+| **Trip cord** (.75) | | Drops a crate: mice within .22 are dazed 2.4 s. |
+| **Snap board** (.5) | | Stuns mice within .17 for 2 s. |
+
+"Attacker's view" (Defences panel) hides the unsprung ones; in a match against a bot your side sees the other side's traps only when they spring. Nobody dies: a daze is a short sit, a fling is a push.
+
+### Rooms (compartments)
+
+Inner walls with gates split a camp into rooms: the normal wall and gate pieces, so the support rules are the real ones. Two ready-made camps (Target camp list while Defences is on): **Walled courtyard** (a ring of walls with a gate in the front, a Keep at the back, a tent and a workshop, with a Counter-lobber, a Slinger, two Pop-guns, a mender and three traps) and **Three rooms** (a front line of three gates, two inner partitions, each a wall and a gate, side walls; the Keep in the middle room).
+
+### The mender
+
+The **Mender (wall)** item puts a mouse by a wall section. When it is calm (no shell has landed within 1.1 for 3.5 s and no enemy mouse is within 1.1) it mends **one part every 4 s**, from the section or the walls and gates beside it, nearest support first. A part can only be mended once (the match rule), so it saves parts, not the camp for ever.
+
+### TEST MY BASE
+
+Button in the Defences panel (and `SG.defTest()`, headless). It fires the whole Arsenal at the **target camp** (or "Test my camp", which copies yours across first): the seven weapons, a volley of 5 each (the aim spot and four round it), one shot every 2.5 s from a free gun that stands 1.35 from the middle (where a lobber stands, so a Counter-lobber can reach it), fixed seeds, 7 s of calm after each; then a **raid** of 3 mice walking in from the hill for 28 s. Then it takes every defence and every piece out in turn and runs it all again, to see what each was worth. The card (a page, and the same as text for pasting; `SG.defReportText`): **a score out of 7 weapons survived** (the Keep stands and the weapon took 6 points or fewer: a part 1, a collapse 3, a Keep felled 10), a small map of the camp, a bar for each weapon beside the bare camp's, **the weapon that hurt most**, **which defences earned their place** (the points and parts the camp loses without them), **which did nothing**, which pieces did nothing (what the *other* pieces lose when it is taken out), and what the raid cost. It takes 3 to 5 seconds on a desktop (about twenty full runs), leaves the table, items, ammo and jam as they were, and gives the same card every time.
+
+### In a match (flag, bots only)
+
+`SG.start(team,{defence:{fort:[true,false]}})` or `?auto=both&defence=front|far|both`: the Defences flag turns on, the seven Arsenal weapons are on the table and the bots fire them in turn (Marble, Flinger, Roller, Popper, Hook, Thumper, Fan), and the fortified side builds the **'goodF'** camp: the 'good' camp without its trap piece, its workshop and one wall (5 points) and spends those 5 on a Counter-lobber, a Pop-gun, a Spring plank and a mender (`CONFIG.defence.plan`). The other side builds the plain 'good' camp: the same 12 points. The posts' crew come from the raid, guard and hill mice, in that order (`botCrew`). Nothing in a normal match changes.
+
+### The hooks
+
+| Where | What |
+|---|---|
+| `isFree`, `tickMice` | A mouse with a post or trap job (`m.dj`) is not free; `defMouse` runs it. Only when `DEF.on`. |
+| `tickLab`, `tickFight`, `tickMend`, the count-in | `defTick(dt)`: assign crew, tick posts, traps, logs and menders. |
+| `SG.fire` | `defSeen`: the lobber that fired is noted for the other side's Counter-lobber. |
+| `boom` | `a.rb`: a post's shell has a blast of its own (undefined on every other shot). |
+| `arsMode()` | The Arsenal's landing rules (`arsBoom`, `arsPierce`, `arsRoll`, `arsGustAt`) run in the Lab as before, and in a defence match. |
+| `SG.start`, `finishBuild`, `botShoot` | `defOff` and `defMatchInit`; the fortified bot buys its items; the seven weapons in turn. All behind `DEF.match`. |
+| `labSetSide`, `labSnapshot`, `labRestore`, `labFire`, `labLoadTarget`, `labTemplate` | The Lab keeps items with the camp: reset, heal and the test's sandbox put them back; the free gun may be silenced; the two camps. |
+| the view | `defView`, `defLabels`: items, rings, logs, tags. |
+
+### Pictures
+
+`shots/defence-1-courtyard.png` to `defence-8-report.png` (made by `tests/lab-shots.js`): the Walled courtyard with a Counter-lobber selected, a Pop-gun knocking a raider back, a Counter-lobber's shell in the air, traps springing, a post out of ammunition and another jammed, Three rooms, a mender at work, and the Test my base card.
+
+### What is wrong or untested
+
+- **Nobody has played it, and not on an iPad.** Desktop browser, headless, mouse events and bots only.
+- **The Counter-lobber is the whole defence.** In the first tuning it knocked the other lobber out for the match and the fortified side won 20 of 20. At the numbers above it is about two in three. The other items matter less: see the "earned its place" lines of the card and `DEFENCE_REPORT.md`.
+- **The fortified bot gives up the hill.** Its mice are on posts, so it holds the hill about half as long as the bare side; it wins on shots and parts, not the hill.
+- **Seat bias.** The 'good' camp against itself, with the seven weapons, is won by the far side four times in five (see the report). The defence rates are read against that.
+- **Leave-one-out is noisy for the raid.** Taking out one trap changes how three mice pull at a wall and whether it collapses (7 parts at once), so an item can score a few points up or down from chance alone. The card rounds nothing; read 1 or 2 points as nothing.
+- **A mouse is a long way off.** Crew mice walk 6 to 8 s to a post. The Test teleports them to their slots first.
+- **The posts cannot be hit**, only their crew dizzied. A camp can be fortified with no way to knock the posts out other than shells on the crew. Not tuned.
+- **Slinger and Pop-gun are weak in matches** (the Pop-gun mostly knocks mice about; no bot raid is stopped by it). The Slinger rarely finds a target.
+- **The bot places its items at fixed spots** of the 'good' camp; the Lab's templates were placed by eye.
+- **Sounds** reuse the old ones (twang, tap, mend); not heard.
+- No **human** match with posts: the flag is for bots. A person can build posts in the Lab only.
+
 ## How the Lab is wired into the game (the hooks in the real code)
 
 A match never takes these branches, because each starts with `SG.mode === 'lab'` (or the Lab's own `labFree`, `crewOK`, `a.k0`).
