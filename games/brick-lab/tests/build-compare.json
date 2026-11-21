@@ -1,0 +1,240 @@
+{
+ "when": "2026-11-21T17:56:50.525Z",
+ "node": "v22.22.0",
+ "builds": {
+  "014": {
+   "label": "0.14.0",
+   "loadMs": 90,
+   "hashes": [
+    "9f08783c",
+    "9f08783c",
+    "9f08783c"
+   ],
+   "scenes": {
+    "wall": {
+     "bodies": 120,
+     "sagMm": 7.7,
+     "driftMm": 0.66,
+     "asleepAtS": 0.6333333333333333,
+     "standAvgMs": 0.17,
+     "volleyAvgMs": 1.19,
+     "volleyWorstMs": 4.4,
+     "stepsPerSec": 838,
+     "moved": 71
+    },
+    "cottage": {
+     "bodies": 234,
+     "sagMm": 15.7,
+     "driftMm": 0.94,
+     "asleepAtS": 6.816666666666666,
+     "standAvgMs": 4.81,
+     "volleyAvgMs": 3,
+     "volleyWorstMs": 8.8,
+     "stepsPerSec": 334,
+     "moved": 200
+    },
+    "castle": {
+     "bodies": 383,
+     "sagMm": 11.5,
+     "driftMm": 1.29,
+     "asleepAtS": 8.233333333333333,
+     "standAvgMs": 11.44,
+     "volleyAvgMs": 7.17,
+     "volleyWorstMs": 16.1,
+     "stepsPerSec": 139,
+     "moved": 147
+    },
+    "pile500": {
+     "bodies": 460,
+     "sagMm": 5.9,
+     "driftMm": 0.9,
+     "asleepAtS": 8.55,
+     "standAvgMs": 10.2,
+     "volleyAvgMs": 7.51,
+     "volleyWorstMs": 15.9,
+     "stepsPerSec": 133,
+     "moved": 301
+    },
+    "pile1000": {
+     "bodies": 1035,
+     "sagMm": 6,
+     "driftMm": 1.24,
+     "asleepAtS": -1,
+     "standAvgMs": 24.03,
+     "volleyAvgMs": 23.42,
+     "volleyWorstMs": 50.5,
+     "stepsPerSec": 43,
+     "moved": 673
+    },
+    "pile2000": {
+     "bodies": 1955,
+     "sagMm": 14.1,
+     "driftMm": 13.32,
+     "asleepAtS": -1,
+     "standAvgMs": 33.46,
+     "volleyAvgMs": 67.85,
+     "volleyWorstMs": 125.2,
+     "stepsPerSec": 15,
+     "moved": 349
+    }
+   },
+   "repeatable": true
+  },
+  "021": {
+   "label": "0.21.0",
+   "loadMs": 79,
+   "hashes": [
+    "dd9f66ff",
+    "dd9f66ff",
+    "dd9f66ff"
+   ],
+   "scenes": {
+    "wall": {
+     "bodies": 120,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.03,
+     "volleyAvgMs": 0.44,
+     "volleyWorstMs": 1.4,
+     "stepsPerSec": 2276,
+     "moved": 87
+    },
+    "cottage": {
+     "bodies": 234,
+     "sagMm": 6.5,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.05,
+     "volleyAvgMs": 1.03,
+     "volleyWorstMs": 3.2,
+     "stepsPerSec": 974,
+     "moved": 187
+    },
+    "castle": {
+     "bodies": 383,
+     "sagMm": 10.6,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.08,
+     "volleyAvgMs": 1.36,
+     "volleyWorstMs": 4.4,
+     "stepsPerSec": 736,
+     "moved": 136
+    },
+    "pile500": {
+     "bodies": 460,
+     "sagMm": 3.9,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.1,
+     "volleyAvgMs": 3.15,
+     "volleyWorstMs": 8.4,
+     "stepsPerSec": 318,
+     "moved": 303
+    },
+    "pile1000": {
+     "bodies": 1035,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.28,
+     "volleyAvgMs": 11.12,
+     "volleyWorstMs": 21.8,
+     "stepsPerSec": 90,
+     "moved": 651
+    },
+    "pile2000": {
+     "bodies": 1955,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.55,
+     "volleyAvgMs": 30.46,
+     "volleyWorstMs": 54,
+     "stepsPerSec": 33,
+     "moved": 218
+    }
+   },
+   "repeatable": true
+  },
+  "021simd": {
+   "label": "0.21.0 SIMD",
+   "loadMs": 66,
+   "hashes": [
+    "4b748a06",
+    "4b748a06",
+    "4b748a06"
+   ],
+   "scenes": {
+    "wall": {
+     "bodies": 120,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.03,
+     "volleyAvgMs": 0.31,
+     "volleyWorstMs": 1.5,
+     "stepsPerSec": 3248,
+     "moved": 87
+    },
+    "cottage": {
+     "bodies": 234,
+     "sagMm": 6.5,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.07,
+     "volleyAvgMs": 0.73,
+     "volleyWorstMs": 5,
+     "stepsPerSec": 1374,
+     "moved": 184
+    },
+    "castle": {
+     "bodies": 383,
+     "sagMm": 10.6,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.14,
+     "volleyAvgMs": 1.1,
+     "volleyWorstMs": 3.4,
+     "stepsPerSec": 909,
+     "moved": 142
+    },
+    "pile500": {
+     "bodies": 460,
+     "sagMm": 3.9,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.09,
+     "volleyAvgMs": 1.6,
+     "volleyWorstMs": 3.9,
+     "stepsPerSec": 627,
+     "moved": 305
+    },
+    "pile1000": {
+     "bodies": 1035,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.26,
+     "volleyAvgMs": 4.8,
+     "volleyWorstMs": 11.9,
+     "stepsPerSec": 208,
+     "moved": 685
+    },
+    "pile2000": {
+     "bodies": 1955,
+     "sagMm": 4,
+     "driftMm": 0,
+     "asleepAtS": 0.016666666666666666,
+     "standAvgMs": 0.37,
+     "volleyAvgMs": 13.19,
+     "volleyWorstMs": 24.3,
+     "stepsPerSec": 76,
+     "moved": 222
+    }
+   },
+   "repeatable": true
+  }
+ }
+}

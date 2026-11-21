@@ -53,13 +53,28 @@ function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL '
   var bh = await p.evaluate(async function () { var m = await import('./vendor/rapier/rapier.es.js'); await m.default.init(); return window.BL.detRun(m.default, 1234).hash; });
   check('determinism across engines: browser hash equals Node hash', bh === nodeHash, 'browser ' + bh + ' / node ' + nodeHash);
   if (process.argv.indexOf('--bench') > 0) {
-    var p2 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p2.goto(base + '?bench=1&quick=1');
+    var p2 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p2.goto(base + '?bench=1&quick=1&rapier=014');
     await p2.waitForFunction('window.__bench&&window.__bench.done===true', null, { timeout: 1500000 });
     var bj = await p2.evaluate(function () { return window.__bench; });
     await p2.screenshot({ path: path.join(ROOT, 'shots/brick-6.png') });
     fs.writeFileSync(path.join(__dirname, 'bench-quick.json'), JSON.stringify(bj, null, 1));
     check('bench page finishes with all seven builds and no errors', bj.results.length === 7 && bj.errors.length === 0 && bj.determinismHash === nodeHash, 'hash ' + bj.determinismHash);
     bj.results.forEach(function (r) { console.log('  ' + r.name + ': ' + r.pieces + ' pieces, stand max ' + r.stand.maxDispMm.toFixed(2) + ' mm, phys avg ' + r.stand.physAvg.toFixed(2) + ' / ' + r.volley.physAvg.toFixed(2) + ' ms, worst ' + r.volley.physMax.toFixed(1) + ', frame ' + r.volley.frameAvg.toFixed(0) + ' ms (software GL), draw-only ' + r.render.frameAvg.toFixed(0) + ' ms, verdict ' + r.verdict + ', moved ' + r.volley.moved); });
+  }
+  if (process.argv.indexOf('--bench') > 0) {
+    /* all three builds in one page (two scenes each), their hashes against Node's; the chooser; the error path */
+    var p4 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p4.goto(base + '?bench=1&quick=1');
+    var links = await p4.evaluate(function () { return document.querySelectorAll('#bench a.btn').length; });
+    check('bench chooser shows four buttons (three builds and all)', links === 4, links + ' buttons');
+    await p4.goto(base + '?bench=1&quick=1&rapier=nope'); await p4.waitForTimeout(1500);
+    check('an unknown Rapier build gives a plain message, not a blank page', /Cannot start/.test(await p4.evaluate(function () { return document.body.innerText; })));
+    await p4.goto(base + '?bench=1&quick=1&rapier=all&list=wall,castle'); await p4.waitForFunction('window.__bench&&window.__bench.done===true', null, { timeout: 1500000 });
+    var ab = await p4.evaluate(function () { return window.__bench; }), ok3 = true, det = [];
+    for (var key of ['014', '021', '021simd']) { var L = await BL.loadRapier(key, ROOT), nh = BL.detRun(L.R, 1234).hash, bb = ab.builds[key]; det.push(key + ' ' + nh + '/' + (bb && bb.determinismHash)); if (!bb || bb.determinismHash !== nh) ok3 = false; }
+    check('all three builds run in the page, and each page hash equals the Node hash', ok3 && ab.fastest, det.join('  ') + '  fastest ' + ab.fastest);
+    fs.writeFileSync(path.join(__dirname, 'bench-quick-all.json'), JSON.stringify(ab, null, 1));
+    await p4.screenshot({ path: path.join(ROOT, 'shots/brick-8-compare.png') });
+    await p4.close();
   }
   await b.close(); srv.close();
   console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

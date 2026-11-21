@@ -395,7 +395,7 @@ canvas{display:block;touch-action:none}
       if (ok.length > 1) {
         ok.forEach(function (B) { B.physTotal = B.results.reduce(function (a, r) { return a + r.volley.physAvg; }, 0); });
         var best = ok.slice().sort(function (a, b) { return a.physTotal - b.physTotal; })[0], base = ok[0];
-        h += '<div class="big" style="color:#bff0b6">Fastest on this device: Rapier ' + best.label + '. ' + ok.map(function (B) { return B.label + ' ' + fixed(B.physTotal, 1) + ' ms'; }).join(', ') + ' (sum of physics ms per step over all ' + best.results.length + ' builds, lower is better).</div>';
+        h += '<div class="big" style="color:#bff0b6">Fastest on this device: Rapier ' + best.label + '. ' + ok.map(function (B) { return B.label + ' ' + fixed(B.physTotal, 1) + ' ms'; }).join(', ') + ' (sum of the physics ms per step of the ' + best.results.length + ' scenes while crumbling, lower is better).</div>';
         window.__bench.fastest = best.key;
       }
       allBuilds.forEach(function (B) { if (B.error) h += '<h2 style="font-size:34px;margin:26px 0 4px;border-top:3px solid #ffd9a8;padding-top:14px">Rapier ' + B.key + '</h2><div class="big" style="color:#ff9a8a">' + B.error + '</div>'; else h += buildCard(B); });
