@@ -40,6 +40,23 @@ async function main() {
     s.dispose();
   });
 
+  /* 1c. the three stress blocks: stand-still, then a volley of five big marbles; cost reported, stand-still NOT asserted (honest) */
+  results.numbers.stress = {};
+  ['pile500', 'pile1000', 'pile2000'].forEach(function (k) {
+    var s = BL.makeSim(R), n = s.build(BL.PRESETS[k].make(0, -0.2)), i, t0;
+    for (i = 0; i < 90; i++) s.step();
+    var sag = s.maxDisp(); s.rebase(); var peak = 0, slept = -1; t0 = now();
+    for (i = 1; i <= 600; i++) { s.step(); if (i % 10 === 0) peak = Math.max(peak, s.maxDisp()); if (slept < 0 && s.awake() === 0) slept = i / 60; }
+    var standMs = (now() - t0) / 600, ts = [], f = { x: 0, y: 0.5, z: 3 };
+    for (var q = 0; q < 5; q++) { s.addBall('big', f, aimAt((q - 2) * 0.5, 0.8, -0.2, f, 15)); for (i = 0; i < 40; i++) { t0 = now(); s.step(); ts.push(now() - t0); } }
+    for (i = 0; i < 280; i++) { t0 = now(); s.step(); ts.push(now() - t0); }
+    var avg = ts.reduce(function (a, b) { return a + b; }, 0) / ts.length;
+    results.numbers.stress[k] = { bodies: n, settleSagMm: +(sag * MM).toFixed(1), standMaxDispMm: +(peak * MM).toFixed(2), allAsleepAtS: slept, standMsPerStep: +standMs.toFixed(2), volleyAvgMs: +avg.toFixed(2), volleyMaxMs: +Math.max.apply(null, ts).toFixed(1), moved: s.countMoved() };
+    console.log('  ' + n + ' block: sag ' + mm(sag) + ', 10 s drift ' + mm(peak) + ', asleep at ' + slept + ' s, standing ' + standMs.toFixed(1) + ' ms/step, volley avg ' + avg.toFixed(1) + ' max ' + Math.max.apply(null, ts).toFixed(0) + ' ms, moved ' + s.countMoved());
+    check(BL.PRESETS[k].name + ' builds with the expected size', n > 400 && n < 2100, n + ' bodies');
+    s.dispose();
+  });
+
   /* 2. a ball at fixed speed topples it */
   results.numbers.hits = {};
   [['marble', 14], ['big', 12], ['big', 16], ['big', 20], ['big', 24], ['acorn', 14]].forEach(function (c) {

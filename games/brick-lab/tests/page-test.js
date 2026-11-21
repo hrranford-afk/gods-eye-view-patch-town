@@ -24,7 +24,7 @@ function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL '
   p.on('pageerror', function (e) { errs.push(e.message); }); p.on('console', function (m) { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errs.push(m.text()); });
   await p.goto(base + '?manual=1'); await p.waitForFunction('window.__ready===true', null, { timeout: 30000 });
   check('page loads, Rapier starts, first preset is built', (await p.evaluate(function () { return __lab.state().pieces; })) === 120);
-  var want = { wall: [120, 120], tower: [150, 160], cottage: [220, 280], castle: [370, 420] };
+  var want = { wall: [120, 120], tower: [150, 160], cottage: [220, 280], castle: [370, 420], pile500: [440, 480], pile1000: [1000, 1060], pile2000: [1900, 2000] };
   for (var k in want) {
     var st = await p.evaluate(function (k) { __lab.build(k); __lab.advance(60, false); __lab.render(); return __lab.state(); }, k);
     check(k + ' builds (' + st.pieces + ' pieces) and stands (nothing awake after 1 s of extra steps counted: moved ' + st.moved + ')', st.pieces >= want[k][0] && st.pieces <= want[k][1] && st.moved === 0, 'awake ' + st.awake);
@@ -54,12 +54,12 @@ function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL '
   check('determinism across engines: browser hash equals Node hash', bh === nodeHash, 'browser ' + bh + ' / node ' + nodeHash);
   if (process.argv.indexOf('--bench') > 0) {
     var p2 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p2.goto(base + '?bench=1&quick=1');
-    await p2.waitForFunction('window.__bench&&window.__bench.done===true', null, { timeout: 900000 });
+    await p2.waitForFunction('window.__bench&&window.__bench.done===true', null, { timeout: 1500000 });
     var bj = await p2.evaluate(function () { return window.__bench; });
     await p2.screenshot({ path: path.join(ROOT, 'shots/brick-6.png') });
     fs.writeFileSync(path.join(__dirname, 'bench-quick.json'), JSON.stringify(bj, null, 1));
-    check('bench page finishes with all four presets and no errors', bj.results.length === 4 && bj.errors.length === 0 && bj.determinismHash === nodeHash, 'hash ' + bj.determinismHash);
-    bj.results.forEach(function (r) { console.log('  ' + r.name + ': ' + r.pieces + ' pieces, stand max ' + r.stand.maxDispMm.toFixed(2) + ' mm, phys avg ' + r.stand.physAvg.toFixed(2) + ' / ' + r.volley.physAvg.toFixed(2) + ' ms, worst ' + r.volley.physMax.toFixed(1) + ', frame ' + r.volley.frameAvg.toFixed(0) + ' ms (software GL), moved ' + r.volley.moved); });
+    check('bench page finishes with all seven builds and no errors', bj.results.length === 7 && bj.errors.length === 0 && bj.determinismHash === nodeHash, 'hash ' + bj.determinismHash);
+    bj.results.forEach(function (r) { console.log('  ' + r.name + ': ' + r.pieces + ' pieces, stand max ' + r.stand.maxDispMm.toFixed(2) + ' mm, phys avg ' + r.stand.physAvg.toFixed(2) + ' / ' + r.volley.physAvg.toFixed(2) + ' ms, worst ' + r.volley.physMax.toFixed(1) + ', frame ' + r.volley.frameAvg.toFixed(0) + ' ms (software GL), draw-only ' + r.render.frameAvg.toFixed(0) + ' ms, verdict ' + r.verdict + ', moved ' + r.volley.moved); });
   }
   await b.close(); srv.close();
   console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

@@ -100,11 +100,25 @@
     for (r = 6; r < rows; r++) { }          /* wall above the lintel is already in the rows above */
     return out;
   }
+  /* stress piles: a thick brick block, rows alternating 12 and 11 bricks across, several walls deep */
+  function pile(rows, layers) {
+    return function (ox, oz) {
+      var out = [], K = KIT.brick, L = K.hx * 2 + 0.004, D = K.hz * 2 + 0.004, r, i, l, n, y;
+      for (r = 0; r < rows; r++) {
+        n = r % 2 ? 11 : 12; y = K.hy + GAP + r * (K.hy * 2 + GAP);
+        for (l = 0; l < layers; l++) for (i = 0; i < n; i++) out.push(P('brick', ox + (i - (n - 1) / 2) * L, y, oz + (l - (layers - 1) / 2) * D));
+      }
+      return out;
+    };
+  }
   var PRESETS = {
     wall: { name: 'Brick wall', make: presetWall },
     tower: { name: 'Tower', make: presetTower },
     cottage: { name: 'Cottage', make: presetCottage },
-    castle: { name: 'Castle gate', make: presetCastle }
+    castle: { name: 'Castle gate', make: presetCastle },
+    pile500: { name: 'Block 460', make: pile(10, 4), stress: true },
+    pile1000: { name: 'Block 1035', make: pile(10, 9), stress: true },
+    pile2000: { name: 'Block 1955', make: pile(10, 17), stress: true }
   };
 
   /* a base saved as text: one piece per line, "type x y z qx qy qz qw" */
@@ -130,6 +144,8 @@
     /* 6 solver iterations and 2 internal PGS iterations: found by trial, stacks only stay put with this much solver (see BRICKLAB.md) */
     world.integrationParameters.numSolverIterations = opts.solverIters || 6;
     world.integrationParameters.numInternalPgsIterations = opts.pgs || 2;
+    /* Rapier 0.21 changed two defaults (allowed error 0.001 -> 0.005, prediction distance 0.002 -> 0.02); set the 0.14 values so every build is tuned alike. opts.keepDefaults leaves the build's own. */
+    if (!opts.keepDefaults) { try { world.integrationParameters.normalizedAllowedLinearError = 0.001; world.integrationParameters.normalizedPredictionDistance = 0.002; } catch (e) { } }
     var eq = opts.events ? new R.EventQueue(true) : null;
     var sim = { opts: opts, R: R, world: world, pieces: [], balls: [], eq: eq, steps: 0, handleMap: {} };
 
@@ -224,6 +240,27 @@
     s.dispose(); return { hash: h, exact: sn };
   }
 
-  var BL = { aimAt: aimAt, detRun: detRun, UNIT_MM: UNIT_MM, GRAV: GRAV, DT: DT, TABLE_R: TABLE_R, KIT: KIT, BALLS: BALLS, KINDS: KINDS, PRESETS: PRESETS, rng: rng, makeSim: makeSim, toText: toText, fromText: fromText, qy: qy, qx: qx, qmul: qmul };
+  /* the three Rapier builds: key -> files (relative to the games/brick-lab folder) */
+  var BUILDS = {
+    '014': { label: '0.14.0', mb: 2.0, browser: 'vendor/rapier/rapier.es.js', node: 'vendor/rapier/rapier.cjs.js' },
+    '021': { label: '0.21.0', mb: 4.3, browser: 'vendor/rapier-0.21-compat/rapier.mjs', node: 'vendor/rapier-0.21-compat/rapier.cjs' },
+    '021simd': { label: '0.21.0 SIMD', mb: 4.6, browser: 'vendor/rapier-0.21-simd-compat/rapier.mjs', node: 'vendor/rapier-0.21-simd-compat/rapier.cjs', simd: true }
+  };
+  /* true when this JS engine can run wasm simd128 (the standard small test module) */
+  function simdSupported() {
+    try { return typeof WebAssembly === 'object' && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11])); } catch (e) { return false; }
+  }
+  /* load and start one build. Browser: dynamic import (resolved against the page). Node: require. Resolves to {R, key, label, loadMs}; rejects with a plain message. */
+  async function loadRapier(key, base) {
+    var b = BUILDS[key]; if (!b) throw new Error('Unknown Rapier build "' + key + '" (use 014, 021 or 021simd).');
+    if (b.simd && !simdSupported()) throw new Error('This device cannot run the SIMD build (no wasm simd128). Use 021 or 014.');
+    var t0 = Date.now(), R;
+    if (typeof module !== 'undefined' && module.exports && typeof require === 'function') R = require((base || __dirname) + '/' + b.node);
+    else { var m = await import(new URL(b.browser, base || document.baseURI).href); R = m.default || m; }
+    await R.init();
+    return { R: R, key: key, label: b.label, loadMs: Date.now() - t0 };
+  }
+
+  var BL = { BUILDS: BUILDS, simdSupported: simdSupported, loadRapier: loadRapier, aimAt: aimAt, detRun: detRun, UNIT_MM: UNIT_MM, GRAV: GRAV, DT: DT, TABLE_R: TABLE_R, KIT: KIT, BALLS: BALLS, KINDS: KINDS, PRESETS: PRESETS, rng: rng, makeSim: makeSim, toText: toText, fromText: fromText, qy: qy, qx: qx, qmul: qmul };
   if (typeof module !== 'undefined' && module.exports) module.exports = BL; else root.BL = BL;
 })(typeof window !== 'undefined' ? window : globalThis);
