@@ -1,0 +1,15 @@
+base bakery (b4999aeb0ce8): made 120, sold 91, income/min 80.0, cost/min 47.0, net/min 33.0
+
+games/city-lab/shared/cloud/examples/bakery.stone_deck_oven.json
+  branch stone_deck_oven (cost 40 coins): made 144 (+24), sold 94, cost/min 46.5, net/min 33.5 (base 33.0)  | drawback: Draws all 8 kW of the city supply, so any brownout stops baking, and oven repairs take half as long again.
+  => PASS: links to the recipe, v1 untouched, patched recipe validates, deterministic
+
+games/city-lab/shared/cloud/examples/bakery.cool_store_room.json
+  branch cool_store_room (cost 30 coins): made 120 (+0), sold 91, cost/min 50.0, net/min 30.0 (base 33.0)  | drawback: More flour on the shelves means more flour spoils when the roof is damaged, and wages rise by 1 a minute per worker.
+  => PASS: links to the recipe, v1 untouched, patched recipe validates, deterministic
+
+games/city-lab/shared/cloud/examples/bakery.slate_roof.json
+  branch slate_roof (cost 55 coins): made 120 (+0), sold 91, cost/min 47.0, net/min 33.0 (base 33.0)  | drawback: Roof tiles take twice as long to repair.
+  => PASS: links to the recipe, v1 untouched, patched recipe validates, deterministic
+
+all sidecars pass

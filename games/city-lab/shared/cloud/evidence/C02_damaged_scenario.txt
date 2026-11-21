@@ -1,0 +1,3 @@
+base, roof lost at 20 s            made 120 sold 91 flour spoiled {"flour":16.922019} net/min 33.0
+slate roof, roof lost at 20 s      made 120 sold 91 flour spoiled {"flour":4.818811} net/min 33.0
+cool store room (spoil only)       made 120 sold 91 flour spoiled {"flour":19.575628} net/min 33.0

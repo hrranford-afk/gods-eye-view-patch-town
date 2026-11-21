@@ -1,0 +1,107 @@
+{
+ "schema": "city_evolution",
+ "version": 0,
+ "id": "bakery.slate_roof",
+ "recipe": {
+  "id": "bakery",
+  "version": 1,
+  "sha256": "b4999aeb0ce8de890e0d711da6561c31b546e92727c3da4e87b716a8b63e559e"
+ },
+ "context": {
+  "era": "any",
+  "climate": "wet",
+  "purpose": "keep the flour dry in bad weather"
+ },
+ "branches": [
+  {
+   "id": "slate_roof",
+   "name": "Slate roof",
+   "kind": "gameplay",
+   "requires": {
+    "tech": [
+     "roofing"
+    ],
+    "wealth_min": 80
+   },
+   "cost": {
+    "coins": 55
+   },
+   "drawback": "Roof tiles take twice as long to repair.",
+   "effects": [
+    {
+     "path": "systems.effects.spoil[0].items.flour",
+     "op": "mul",
+     "value": 0.2
+    },
+    {
+     "path": "systems.repair.seconds_by_tag.roof",
+     "op": "mul",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "id": "slate_look",
+   "name": "Slate roof, the look",
+   "kind": "cosmetic",
+   "pairs_with": "slate_roof",
+   "requires": {
+    "tech": [],
+    "wealth_min": 0
+   },
+   "cost": {
+    "coins": 0
+   },
+   "cosmetic": [
+    {
+     "part": "tile.f00",
+     "material": "tin"
+    },
+    {
+     "part": "tile.f10",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b00",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b10",
+     "material": "tin"
+    },
+    {
+     "part": "tile.f01",
+     "material": "tin"
+    },
+    {
+     "part": "tile.f11",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b01",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b11",
+     "material": "tin"
+    },
+    {
+     "part": "tile.f02",
+     "material": "tin"
+    },
+    {
+     "part": "tile.f12",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b02",
+     "material": "tin"
+    },
+    {
+     "part": "tile.b12",
+     "material": "tin"
+    }
+   ]
+  }
+ ]
+}
