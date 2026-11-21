@@ -58,15 +58,15 @@ var CONFIG={
     debrisMax:160,debrisSecs:3,                 /* most fallen parts left lying; seconds before they vanish when "Leave debris" is off */
     yard:{perHit:4,bigHit:9,sturdy:[1,.55,.32],deep:.4,high:.5,collapseShare:.08,delay:.2,fall:[.08,.2],reach:.22}   /* the Building Yard: parts a Marble takes off one building (a bigger blast takes more, by its area); the Big Marble's; how far a blow runs on into a building (share of the way to its middle) and how high up (share of its height, at least); how near the hit a trim, wall and frame part must be (share of the blast); the share of a building's parts that must fall in one go (at least 2) for it to count as a collapse; seconds between rounds of a collapse; how far a part falls (scale 1); how near a neighbour must be for a falling building to land on it */
   },
-  /* ---- DEFENCES (Lab prototype, and a match only with ?defence=): posts with a crew mouse, hidden traps, upkeep, a mender, Test my base. Distances are at piece scale 0.88 and follow the pieces. Nothing here is read unless the Defences switch is on. ---- */
+  /* ---- DEFENCES (Lab prototype, and a match only with ?defence=): posts with a crew mouse, hidden traps, upkeep, a mender, Test my base. Post ranges are in table units; blast, knock and trap reaches follow the piece scale. Nothing here is read unless the Defences switch is on. ---- */
   defence:{
     cost:{pop:1.5,sling:2,counter:2.5,spring:.5,glue:.5,log:.75,cord:.75,snap:.5,warden:.5},   /* build points of each item (a wall is 1, a second lobber 5) */
     restockCost:.5,restockSecs:3,fetchSecs:1.2,oilSecs:3,resetSecs:2.5,   /* points for a bought restock; seconds a mouse takes to refill a post once there; to fetch the ammo; to clear a jam; to set a trap again */
     jamOil:.3,crewReach:.3,                     /* jam meter points a second a crew mouse oils while the post has nothing to shoot at; how near its slot a crew mouse must stand */
     pop:{min:.08,max:.9,every:1.4,ammo:14,jamAfter:9,knock:.5,slow:1.6,slowTo:.5,swatEvery:.5},   /* Pop-gun post: range min and max, seconds between corks, corks in a full load, shots before it jams, how far a mouse is knocked back, seconds slowed and speed then; it swats a small rolling shot in range */
-    sling:{min:.9,max:2.7,every:4.5,ammo:6,jamAfter:5,r:.17,err:.12,intercept:.4,protect:1.1},   /* Slinger post: range, seconds between lobs, marbles in a full load, shots before it jams, blast reach (a Marble's is .3), aim wobble, chance to knock a shell out of the air (less for heavy ones), how near its landing must be to the post */
-    counter:{min:1.5,max:3.7,every:7,ammo:4,jamAfter:4,r:.2,err:.1,window:3.5,silence:6},   /* Counter-lobber: it fires at the lobber it saw fire (seen within this many seconds), in this range band only; the Lab's free gun is silenced this long by a hit */
-    trap:{reach:.17,spring:{fling:1.0,daze:1.8},glue:{r:.32,secs:7,slowTo:.4,life:9},log:{len:1.7,speed:1.5,w:.1,daze:1.4},cord:{r:.22,daze:2.4},snap:{r:.17,daze:2.0}},   /* a mouse this near (to a hidden trap) springs it. spring: how far it flings a mouse back, seconds it sits dazed; glue: puddle reach, seconds slowed, seconds the puddle stays; log: how far it rolls, speed, lane half-width; cord: crate reach; snap: reach */
+    sling:{min:.9,max:2.7,every:4.5,ammo:6,jamAfter:5,r:.3,over:.3,err:.12,intercept:.4,protect:1.1},   /* Slinger post: range, seconds between lobs, marbles in a full load, shots before it jams, blast reach (a Marble's is .3), aim wobble, chance to knock a shell out of the air (less for heavy ones), how near its landing must be to the post */
+    counter:{min:1.5,max:3.7,every:9,ammo:4,jamAfter:4,r:.3,over:.3,err:.2,window:3.5,silence:6},   /* Counter-lobber: it fires at the lobber it saw fire (seen within this many seconds), in this range band only; the Lab's free gun is silenced this long by a hit */
+    trap:{reach:.24,spring:{fling:1.0,daze:1.8},glue:{r:.32,secs:7,slowTo:.4,life:9},log:{len:1.7,speed:1.5,w:.1,daze:1.4},cord:{r:.22,daze:2.4},snap:{r:.17,daze:2.0}},   /* a mouse this near (to a hidden trap) springs it. spring: how far it flings a mouse back, seconds it sits dazed; glue: puddle reach, seconds slowed, seconds the puddle stays; log: how far it rolls, speed, lane half-width; cord: crate reach; snap: reach */
     repair:{every:5,calmSecs:3.5,calmR:1.1,reach:.6},   /* a mender on a wall section mends one part every this many seconds, once nothing has landed within calmR for calmSecs and no enemy mouse is near; reach: pieces this near the section count as part of it */
     test:{gunR:1.35,gap:2.5,calm:7,raid:3,raidSecs:28,pass:6,shots:5,seed:424242},   /* Test my base: where the free gun stands (it must be in range of a counter-lobber), seconds between shots, seconds of calm after each weapon, mice in the raid and its length, points above which a weapon is not survived, shots of a volley */
     plan:['counter','pop','spring','warden'],botCrew:['raid','guard','hill','mend'],   /* what a bot buys with what its camp leaves unspent, in order; which of its mice it takes for the posts first */
@@ -683,6 +683,7 @@ function landV2(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,n0=SG.stats.par
   if(W.roll>0)rollStart(a,pos);else if(!hit)momentumLands(a,pos);}
 /* what a landing does, in the order: a tether yanks its part, the blast, mice made dizzy, glue and slowing, a quake. Returns {R, n (mice), knocked (parts off by the blast)}. */
 function boom(a,pos,hit){var A=AMMO[a.ammo]||AMMO.marble,W=A.w,u=U(),n=0,knocked=0,R=labProto('blastR',ammoR(a.ammo,a.high),a),en=1-a.side;
+  if(a.rb>0)R=a.rb;   /* DEFENCES: a post's shell has a blast of its own */
   if((SG.mode==='lab'&&SG.lab)||DEF.match){R=arsBoom(a,pos,hit,R);if(a.caught)return {R:0,n:0,knocked:0};}   /* ARSENAL: a counter may cut the blast, catch the ball or cut the tether */
   if(SG.mode==='lab'&&SG.lab){var dl=Math.sqrt((a.x1-a.x0)*(a.x1-a.x0)+(a.z1-a.z0)*(a.z1-a.z0))||1;SG.lastDir={x:(a.x1-a.x0)/dl,z:(a.z1-a.z0)/dl};}
   if(a.snag){var sp=a.snag.p,sq=sp.ps[a.snag.i];if(sq&&sq.st==='on'){SG.att=a.side;SG.cause='tether';knock(sp,a.snag.i,a.sx-sq.wx,a.sz-sq.wz,'tether',W.tether*u);pop(sq.wx,sq.wz,'Snagged!',false,sq.wy+.2);settle(sp,a.side);}}
@@ -1974,6 +1975,8 @@ function segDist(px,pz,x0,z0,x1,z1){var dx=x1-x0,dz=z1-z0,l=dx*dx+dz*dz,t=l>0?((
 /* pieceAt asks about the counter kinds only: a trench is flat, a roof or a net hangs over a low shot's head, a net lets a heavy ball through */
 function arsSkip(p,y){var k=p.kind;if(k==='ditch'||k==='cutter')return true;if(k==='awning')return y<ARS.clear*PS;if(k==='net')return y<ARS.clear*PS||!(ARSF==='scatter'||ARSF==='tether');return false;}
 /* tickMarbles: which shot is being looked at (its family, and the pieces it has already gone through) */
+/* ARSENAL rules run in the Lab, and in a defence match (flag) */
+function arsMode(){return SG.mode==='lab'||DEF.match;}
 function arsIn(a){var A=AMMO[a.ammo];ARSF=A?famOf(A.w):'';IGN=a.ign||null;}
 /* a flat shot with pierce punches through a thin piece (a wall, a gate): one part comes off and it flies on, a little weaker */
 function arsPierce(a,hit,pos){var A=AMMO[a.ammo],W=A&&A.w;if(!W||!(W.pierce>0)||!ARS.thin[hit.kind]||hit.side===a.side)return false;a.pn=a.pn|0;if(a.pn>=W.pierce)return false;
@@ -2144,7 +2147,7 @@ SG.labMatrix=function(o){var L=SG.lab;if(!L)return null;o=o||{};var wasOn=!!LAB_
    UPKEEP: every post has ammo and a jam meter. It jams after N shots unless its crew oils it in the lulls; restock is a mouse trip (or build points). A sprung trap is set again by a mouse.
    TRAPS (the builder sees them; the attacker does not until they spring): spring plank, glue puddle, rolling log, trip cord, snap board. One use.
    WARDEN: a mender mouse on a wall section who mends one part every few seconds when it is calm.
-   Distances in CONFIG.defence are at piece scale 0.88 and follow the pieces (U()). */
+   Post ranges are in table units (the camps do not shrink with the pieces); blast reaches, knocks and trap reaches follow the piece scale (U()). */
 var DEF={on:false,match:false,fort:[false,false],items:[],saved:[[],[]],sel:0,view:'builder',next:1,logs:[],pend:[],seen:[[],[]],stats:null,spent:[0,0],t:0,at:0,crewAuto:true,arsOwn:false,kind:'',test:null};
 SG.def=DEF;
 function CD(){return CONFIG.defence;}
@@ -2231,9 +2234,10 @@ function defMend(p,i){var q=p.ps[i];q.st='on';q.used=true;q.mender=-1;p.parts++;
 /* ---- the posts ---- */
 function defCork(x0,z0,x1,z1){SG.corks.push({id:SG.nextId++,x0:x0,z0:z0,x1:x1,z1:z1,t:0});}
 /* a real marble from a post: it flies, lands and blasts like any other (the same landV2) */
-function defShell(it,tx,tz,r){var u=U(),d=Math.max(.3,dist(it.x,it.z,tx,tz)),a={x0:it.x,y0:.4*u,z0:it.z,x1:tx,z1:tz,h:C2.arcHigh[0]*u+d*C2.arcHigh[1],T:.65+d*.17,from:0,hit:null,high:false,fx:tx,fz:tz,li:0,ammo:'marble',side:it.side,id:SG.nextId++,t:0,live:true,tw:0,sx:it.x,sz:it.z,k0:.3,def:it.id};SG.marbles.push(a);snd('twang');return a;}
+function defShell(it,tx,tz,r){var u=U(),C=CD()[it.kind],dx=tx-it.x,dz=tz-it.z,d=Math.max(.3,Math.sqrt(dx*dx+dz*dz));if(C.over){tx+=dx/d*C.over*u;tz+=dz/d*C.over*u;}   /* aim a little past the target so the shell comes down on it, not on its near edge */
+  var a={rb:(C.r||0)*u,x0:it.x,y0:.4*u,z0:it.z,x1:tx,z1:tz,h:C2.arcHigh[0]*u+d*C2.arcHigh[1],T:.65+d*.17,from:0,hit:null,high:false,fx:tx,fz:tz,li:0,ammo:'marble',side:it.side,id:SG.nextId++,t:0,live:true,tw:0,sx:it.x,sz:it.z,k0:.3,def:it.id};SG.marbles.push(a);snd('twang');return a;}
 function defFlyPos(a){return marblePos(a,Math.min(1,a.t/a.T));}
-function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,i,a,best=null,bd,mn=C.min*u,mx=C.max*u;
+function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,i,a,best=null,bd,mn=C.min,mx=C.max;
   function spend(){it.ammo--;it.n.shots++;it.jam+=1/C.jamAfter;if(it.jam>=1){it.jam=1;it.jammed=true;it.n.jams++;DEF.stats.jams++;pop(it.x,it.z,'Jammed!',false,.35,it.side);}it.cd=C.every;m.act=.45;}
   if(it.kind==='pop'){
     for(i=0;i<SG.marbles.length;i++){a=SG.marbles[i];if(!a.rolling||a.side===it.side)continue;var rp=a.rm||a.rl;if(!rp)continue;var d=dist(x,z,rp.x,rp.z);if(d>mx)continue;
@@ -2243,7 +2247,7 @@ function defPostFire(it,m){var C=CD()[it.kind],u=U(),en=1-it.side,x=it.x,z=it.z,
       best.slowT=Math.max(best.slowT||0,C.slow);best.slowK=C.slowTo;spend();it.n.hits++;DEF.stats.pops++;defCork(x,z,best.x,best.z);m.rot=Math.atan2(dx,dz);snd('tap');viewPuff(best.x,best.z,.4);return true;}
     return false;}
   if(it.kind==='sling'){
-    var fb=null;bd=1e9;SG.marbles.forEach(function(q){if(!q.live||q.rolling||q.side===it.side||q.t<.2||q.t>q.T-.2||q.def)return;var P=defFlyPos(q);if(dist(x,z,P[0],P[2])>mx)return;var dl=dist(x,z,q.x1,q.z1);if(dl<=C.protect*u&&dl<bd){bd=dl;fb=q;}});
+    var fb=null;bd=1e9;SG.marbles.forEach(function(q){if(!q.live||q.rolling||q.side===it.side||q.t<.2||q.t>q.T-.2||q.def)return;var P=defFlyPos(q);if(dist(x,z,P[0],P[2])>mx)return;var dl=dist(x,z,q.x1,q.z1);if(dl<=C.protect&&dl<bd){bd=dl;fb=q;}});
     if(fb){var P2=defFlyPos(fb),mass=(AMMO[fb.ammo]&&AMMO[fb.ammo].w.mass)||1;spend();DEF.stats.lobs++;defCork(x,z,P2[0],P2[2]);m.rot=Math.atan2(P2[0]-x,P2[2]-z);
       if(rand()<C.intercept/mass){fb.live=false;fb.T=fb.t;it.n.hits++;DEF.stats.intercepts++;pop(P2[0],P2[2],'Knocked out of the air!',true,.5,it.side);viewPuff(P2[0],P2[2],1);}return true;}
     var lb=null;bd=1e9;lobbersOf(en).forEach(function(l){if(!l.built||l.down)return;var d=dist(x,z,l.x,l.z);if(d>=mn&&d<=mx&&d<bd){bd=d;lb=l;}});
@@ -2308,8 +2312,8 @@ function defTemplate(id){var F=FOOT,T=PI,H=PI/2,g=F.gate[0]*2+.012,w=F.wall[0]*2
     l.push(['tower',0,kz+.1,T],['tent',xs[0]+.12,p0+w*1.25,T],['workshop',xs[4]-.12,p0+w*1.25,T]);return l;}
   return [];}
 /* where the posts and traps of a ready-made camp stand (camp frame) */
-var DEF_TPL_ITEMS={courtyard:[['counter',.5,2.1],['pop',-.5,1.7],['sling',.45,1.7],['warden',-.54,1.32],['spring',0,1.0],['snap',.3,1.05],['glue',-.3,1.05]],
-  rooms:[['counter',0,1.95],['pop',-1.0,1.75],['pop',1.0,1.75],['warden',-.54,1.3],['spring',0,.98],['glue',-1.0,1.0],['snap',1.0,1.0]]};
+var DEF_TPL_ITEMS={courtyard:[['counter',.5,2.1],['sling',-.45,1.8],['pop',-.55,1.1],['pop',.55,1.1],['warden',-.54,1.32],['spring',0,1.1],['snap',.28,1.1],['glue',-.28,1.1]],
+  rooms:[['counter',0,2.0],['sling',-.9,1.9],['pop',-.7,1.08],['pop',.7,1.08],['warden',-.54,1.3],['spring',0,1.08],['glue',-1.1,1.08],['snap',1.1,1.08]]};
 function defTemplateItems(id,s){var o=[];(DEF_TPL_ITEMS[id]||[]).forEach(function(q){var w=w2(s,q[1],q[2]);o.push({kind:q[0],side:s,x:+w[0].toFixed(4),z:+w[1].toFixed(4)});});return o;}
 
 /* ---- a bot's fortified camp: the 'good' camp without the trap, the workshop and one wall, and what that frees spent on posts and traps ---- */
@@ -2346,13 +2350,13 @@ function defView(){if(!V.on||!DEF.on)return;var D=V.def||(V.def={g:{},logs:[]}),
     if(it.id===DEF.sel){g.scale.setScalar(1+.06*Math.sin(SG.clock*6));}else g.scale.setScalar(1);});
   Object.keys(D.g).forEach(function(k){if(!ids[k]){world.remove(D.g[k]);delete D.g[k];}});
   var sel=DEF.sel?defById(DEF.sel):null,C=sel&&sel.cat==='post'?CD()[sel.kind]:null;
-  R.max.visible=R.fill.visible=!!C;R.min.visible=!!C&&C.min*u>.12;
-  if(C){var y=.012;R.max.position.set(sel.x,y,sel.z);R.max.scale.setScalar(C.max*u);R.fill.position.set(sel.x,y-.002,sel.z);R.fill.scale.setScalar(C.max*u);R.min.position.set(sel.x,y+.001,sel.z);R.min.scale.setScalar(Math.max(.01,C.min*u));}
+  R.max.visible=R.fill.visible=!!C;R.min.visible=!!C&&C.min>.12;
+  if(C){var y=.012;R.max.position.set(sel.x,y,sel.z);R.max.scale.setScalar(C.max);R.fill.position.set(sel.x,y-.002,sel.z);R.fill.scale.setScalar(C.max);R.min.position.set(sel.x,y+.001,sel.z);R.min.scale.setScalar(Math.max(.01,C.min));}
   for(i=0;i<R.lg.length;i++){var g2=DEF.logs[i],m=R.lg[i];m.visible=!!g2;if(g2){m.position.set(g2.x,.04*u,g2.z);m.rotation.y=Math.atan2(g2.dx,g2.dz)+PI/2;m.rotation.z=PI/2;}}}
 function defViewHide(){if(V.dr){V.dr.min.visible=V.dr.max.visible=V.dr.fill.visible=false;V.dr.lg.forEach(function(m){m.visible=false;});}}
 /* a small tag over each post (ammo, jam), and over a sprung trap while it waits to be set again */
 function defLabels(show){if(!DEF.on||!V.on)return;DEF.items.forEach(function(it){var K=DK[it.kind],txt='';
-  if(it.cat==='post'){var jb=it.jammed?'JAMMED':'jam '+['▯▯▯▯','▮▯▯▯','▮▮▯▯','▮▮▮▯','▮▮▮▮'][Math.min(4,Math.round(it.jam*4))];txt=K.icon+' '+it.ammo+' · '+jb+(it.manned?'':' · no crew');show('df'+it.id+'|'+txt,'pop lobtag'+(it.id===DEF.sel?' sel':''),txt,it.x,it.z,.3,it.side,it.manned?1:.75);}
+  if(it.cat==='post'){var jb=it.jammed?'JAMMED':'jam '+['....','#...','##..','###.','####'][Math.min(4,Math.round(it.jam*4))];txt=K.icon+' '+it.ammo+' · '+jb+(it.manned?'':' · no crew');show('df'+it.id+'|'+txt,'pop lobtag'+(it.id===DEF.sel?' sel':''),txt,it.x,it.z,.3,it.side,it.manned?1:.75);}
   else if(it.cat==='trap'&&it.sprung){txt=K.icon+' sprung';show('df'+it.id+'|'+txt,'pop lobtag',txt,it.x,it.z,.12,it.side,.85);}
   else if(it.cat==='trap'&&SG.mode==='lab'&&DEF.view==='builder'&&it.id===DEF.sel){txt=K.icon+' '+K.name;show('df'+it.id+'|'+txt,'pop lobtag sel',txt,it.x,it.z,.14,it.side,1);}});}
 
@@ -2377,7 +2381,7 @@ LAB_PROTOS.defences={name:'Defences: posts, traps, upkeep, mender, Test my base'
     [['courtyard','Walled courtyard'],['rooms','Three rooms']].forEach(function(t){if(!LAB_TARGETS.some(function(q){return q[0]===t[0];}))LAB_TARGETS.push(t);});SG.gusts=SG.gusts||[];if(SG.lab){SG.lab.defKey='';labUi();}},
   off:function(){var was=DEF.arsOwn;if(was){ARS_W.forEach(arsRemove);DEF.arsOwn=false;}DEF.on=false;DEF.match=false;defClear();defViewHide();for(var i=LAB_TARGETS.length-1;i>=0;i--)if(LAB_TARGETS[i][0]==='courtyard'||LAB_TARGETS[i][0]==='rooms')LAB_TARGETS.splice(i,1);
     var L=SG.lab;if(L&&L.tool==='def')L.tool='build';if(V.def){Object.keys(V.def.g).forEach(function(k){world.remove(V.def.g[k]);});V.def=null;}}};
-var DEF_BAR=function(v,n){var k=Math.round(v*n),s='';for(var i=0;i<n;i++)s+=i<k?'▮':'▯';return s;};
+var DEF_BAR=function(v,n){var k=Math.round(v*n),s='';for(var i=0;i<n;i++)s+=i<k?'#':'.';return '['+s+']';};
 function defUi(){if(!hasDom||!SG.lab||!E('labDef'))return;var L=SG.lab,on=DEF.on,h='<div class="lnote">Posts with a crew mouse that shoot for you, traps the attacker cannot see, a mender on a wall, and Test my base. Off by default.</div>'+
   '<div class="lgrid"><button class="btn lb'+(on?' on':'')+'" data-a="def_toggle">Defences: '+(on?'on':'off')+'</button></div>';
   if(on){var s1=DEF.items.filter(function(i){return i.side===1;}).length,s0=DEF.items.length-s1;
@@ -2414,8 +2418,9 @@ function defFam(id){return ARS_FAMS.filter(function(f){return f.id===id;})[0];}
 function defCrewNow(s){var was=DEF.crewAuto;DEF.crewAuto=true;defAssign(s);DEF.crewAuto=was;
   DEF.items.forEach(function(it){if(it.side!==s||it.cat==='trap')return;var m=defCrewMouse(it);if(!m||!m.dj||m.dj.id!==it.id)return;var p=it.cat==='post'?defSlot(it):(function(){var wp=defWallAt(s,it.x,it.z);return wp?workSpot(wp,m):[it.x,it.z];})();
     m.x=p[0];m.z=p[1];m.tx=p[0];m.tz=p[1];m.path=null;m.state='hold';m.dat=true;m.speed=0;m.goal=false;});}
-function defScoreOf(st0){var camp=0,keep=0,i;SG.pieces.forEach(function(p){if(p.side!==1||!p.total)return;if(p.down){keep++;return;}camp+=p.ps.filter(function(q){return q.st!=='on';}).length;});
-  var col=SG.stats.collapses-st0.c;return {parts:camp,collapses:col,keep:keep,score:camp*ARS_SCORE.part+col*ARS_SCORE.collapse+keep*ARS_SCORE.keep};}
+function defPKey(p){return p.kind+'@'+p.x.toFixed(3)+','+p.z.toFixed(3);}
+function defScoreOf(st0){var camp=0,keep=0,per={};SG.pieces.forEach(function(p){if(p.side!==1||!p.total)return;if(p.down){keep++;per[defPKey(p)]=ARS_SCORE.keep;return;}var n=p.ps.filter(function(q){return q.st!=='on';}).length;camp+=n;per[defPKey(p)]=n;});
+  var col=SG.stats.collapses-st0.c;return {parts:camp,collapses:col,keep:keep,per:per,score:camp*ARS_SCORE.part+col*ARS_SCORE.collapse+keep*ARS_SCORE.keep};}
 function defAimSpot(famId){var sp=SG.labDefaultSpot(),u=U();if(famId==='roller'){var front=9;SG.pieces.forEach(function(p){if(p.side===1&&p.built)front=Math.min(front,Math.abs(p.z));});return {x:sp.x-ARS_LANE.roller,z:-(Math.max(.9,front-.5))};}return sp;}
 function defVolley(famId,recs,seed){var L=SG.lab,C=CD().test,u=U(),f=defFam(famId)||ARS_EXTRA[0];labSetSide(1,recs.map(function(r){return Object.assign({},r);}),true);
   SG.marbles=[];SG.debris=[];SG.fuses=[];SG.puddles=[];SG.gusts=[];DEF.logs=[];DEF.pend=[];DEF.seen=[[],[]];DEF.stats=defStats();L.gunDown=0;defCrewNow(1);SG.acc=0;SG.step(.1);
@@ -2437,13 +2442,14 @@ function defRunAll(recs,items,skipItem,seed){DEF.saved[1]=items.filter(function(
 function defTestRun(o){var L=SG.lab,C=CD().test,seed=o.seed||C.seed,recs=L.saved[1].map(function(r){return Object.assign({},r);}),items=DEF.saved[1].slice(),oldR=LAB_GUNR,res;
   var wasTop=L.topple;LAB_GUNR=C.gunR;L.topple=false;
   try{var full=defRunAll(recs,items,-1,seed),bare=items.length?defRunAll(recs,[],-1,seed):full,out={score:full.survived,of:DEF_FAMS.length,pass:C.pass,seed:seed,weapons:[],items:[],pieces:[],camp:null};
-    DEF_FAMS.forEach(function(id,i){var v=full.w[i],f=defFam(id),A=AMMO[f.ammo];out.weapons.push({id:id,name:f.name,icon:A.icon,score:v.score,parts:v.parts,collapses:v.collapses,keep:!!v.keep,survived:v.ok,fired:v.fired,lost:v.lost,bare:bare.w[i].score});});
+    DEF_FAMS.forEach(function(id,i){var v=full.w[i],f=defFam(id),A=AMMO[f.ammo];out.weapons.push({id:id,name:f.name,icon:A.icon,score:v.score,parts:v.parts,collapses:v.collapses,keep:!!v.keep,survived:v.ok,fired:v.fired,lost:v.lost,bare:bare.w[i].score,stats:v.stats,acts:v.acts});});
     var worst=out.weapons.slice().sort(function(a,b){return b.score-a.score;})[0];out.worst=worst&&worst.score>0?{id:worst.id,name:worst.name,score:worst.score}:null;
-    out.raid={parts:full.raid.parts,pulls:full.raid.pulls,sentBack:full.raid.sentBack,bareParts:bare.raid.parts,bareSent:bare.raid.sentBack,held:full.raid.parts<=1};
+    out.raid={parts:full.raid.parts,pulls:full.raid.pulls,sentBack:full.raid.sentBack,bareParts:bare.raid.parts,bareSent:bare.raid.sentBack,held:full.raid.parts<=3};
     out.total=full.total;out.bareTotal=bare.total;
     items.forEach(function(r,j){var w=defRunAll(recs,items,j,seed),acted=0;full.w.concat([full.raid]).forEach(function(v){var a=v.acts[j];if(a)acted+=a.shots+a.sprung+a.repairs;});
       var saved=Math.round((w.total-full.total)*100)/100;out.items.push({kind:r.kind,name:DK[r.kind].name,icon:DK[r.kind].icon,x:r.x,z:r.z,saved:saved,savedParts:w.parts-full.parts,acted:acted,earned:saved>=1,verdict:saved>=1?'earned its place':(acted?'acted, saved nothing':'did nothing')});});
-    recs.forEach(function(r,j){if(r.kind==='tower')return;var rr=recs.filter(function(q,i){return i!==j;});DEF.saved[1]=items;var w=defRunAll(rr,items,-1,seed),saved=Math.round((full.total-w.total)*-1*100)/100;
+    var sumPer=function(o,skip){var t=0;o.w.concat([o.raid]).forEach(function(v){for(var k in v.per)if(k!==skip)t+=v.per[k];});return t;};
+    recs.forEach(function(r,j){if(r.kind==='tower')return;var rr=recs.filter(function(q,i){return i!==j;}),key=r.kind+'@'+r.x.toFixed(3)+','+r.z.toFixed(3);DEF.saved[1]=items;var w=defRunAll(rr,items,-1,seed),saved=Math.round((sumPer(w,key)-sumPer(full,key))*100)/100;   /* what the others lose without it, beside what they lose with it */
       out.pieces.push({kind:r.kind,name:labName(r.kind),x:r.x,z:r.z,saved:saved,earned:saved>=1});});
     DEF.saved[1]=items;out.camp={recs:recs.map(function(r){var c=toCamp(1,r.x,r.z);return {kind:r.kind,x:c[0],z:c[1],rot:r.rot-phiOf(1)};}),items:items.map(function(r){var c=toCamp(1,r.x,r.z);return {kind:r.kind,x:c[0],z:c[1]};})};
     out.cost=defCostOf(1);out.nPieces=recs.length;out.target=labTargetName(L.target);res=out;}
@@ -2480,6 +2486,23 @@ function defReportHtml(r){if(!r)return '';var W=190,Hh=128,sx=function(x){return
   h+='<p><b>Earned its place:</b> '+(ea.length?ea.map(function(i){return i.icon+' '+labEsc(i.name)+' <small>(saved '+i.saved+' pts, '+i.savedParts+' parts)</small>';}).join(' · '):'no defence did')+'</p>';
   h+='<p><b>Did nothing:</b> '+(no.length?no.map(function(i){return i.icon+' '+labEsc(i.name)+' <small>('+i.verdict+')</small>';}).join(' · '):'every defence did something')+(pn.length?'<br><small>Pieces whose loss changed nothing: '+pn.map(function(i){return labEsc(i.name);}).join(', ')+'</small>':'')+'</p>';
   h+='<p><b>Raid of mice:</b> lost '+r.raid.parts+' parts (bare camp '+r.raid.bareParts+'), sent '+r.raid.sentBack+' mice back. '+(r.raid.held?'Held.':'Not held.')+'</p><textarea id="labDefText" readonly style="width:100%;height:90px;font-size:12px"></textarea>';return h;}
+/* ---- screenshots: defence-1 to defence-8 (made by tests/lab-shots.js) ---- */
+SG.defShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab;L.card=false;L.panel=false;L.read=false;L.topple=false;SG.setProto('defences',true,false);SG.cam=3;L.tool='def';
+  function focus(cx,cz,zoom,y,el,yaw){L.focus={x:cx,z:-cz,zoom:zoom,y:y||0,el:el,yaw:yaw||0};SG.camSnap=true;}
+  function sel(kind){var it=DEF.items.filter(function(i){return i.side===1&&i.kind===kind;})[0];DEF.sel=it?it.id:0;return it;}
+  function run(secs){for(var i=0;i<secs*60;i++)SG.step(STEP);}
+  function crew(){defCrewNow(1);}
+  function raid(n,lat){var out=[];for(var k=1;k<=n;k++){var m=SG.mice[k],w=hillSpot(1,(k-(n+1)/2)*(lat||.3),.55);m.x=w[0];m.z=w[1];m.tx=w[0];m.tz=w[1];m.path=null;m.state='go';m.cd=0;m.dj={k:'raid',pulls:0};out.push(m);}return out;}
+  var u=U();
+  if(name==='defence-1-courtyard'){labLoadTarget('courtyard',true);SG.step(.1);crew();sel('counter');run(.5);focus(0,1.9,.5,.1,.62,0);}
+  else if(name==='defence-2-popgun'){labLoadTarget('courtyard',true);SG.step(.1);crew();raid(3,.3);var it=sel('pop');for(var t=0;t<900&&!DEF.stats.pops;t++)SG.step(STEP);run(.25);focus(0,1.15,.55,.05,.6,0);}
+  else if(name==='defence-3-counter'){labLoadTarget('courtyard',true);SG.step(.1);crew();L.gunDown=0;SG.labSetAmmo('marble');var sp=SG.labDefaultSpot();LAB_GUNR=CD().test.gunR;SG.labFire(0,'gun',sp.x,sp.z,{force:true,seed:5});LAB_GUNR=3.15;for(var t2=0;t2<300&&!SG.marbles.some(function(a){return a.def&&a.live&&a.t>.5;});t2++)SG.step(STEP);sel('counter');focus(0,.2,1.1,.2,.55,0);}
+  else if(name==='defence-4-traps'){labLoadTarget('courtyard',true);SG.step(.1);crew();raid(3,.34);for(var t3=0;t3<1500&&DEF.stats.sprung<2;t3++)SG.step(STEP);run(.3);DEF.view='builder';focus(0,1.1,.55,.05,.65,0);}
+  else if(name==='defence-5-upkeep'){labLoadTarget('courtyard',true);SG.step(.1);crew();var it5=sel('pop');it5.ammo=0;it5.jam=.75;var sl=DEF.items.filter(function(i){return i.kind==='sling';})[0];sl.jam=1;sl.jammed=true;run(3);focus(-.2,1.5,.5,.1,.62,0);}
+  else if(name==='defence-6-rooms'){labLoadTarget('rooms',true);SG.step(.1);crew();sel('pop');run(.3);focus(0,2.0,.8,.1,.9,0);}
+  else if(name==='defence-7-warden'){labLoadTarget('courtyard',true);SG.step(.1);crew();var tp=SG.pieces.filter(function(p){return p.side===1&&p.kind==='wall';});tp.slice(0,3).forEach(function(p){for(var i=0;i<3;i++)knock(p,nearestPart(p,p.x,0,p.z,true),0,1,'debug');});fixGrid();run(14);sel('warden');focus(0,1.4,.6,.1,.65,0);}
+  else if(name==='defence-8-report'){labLoadTarget('courtyard',true);SG.step(.1);L.panel=true;var r=SG.defTest();L.defOut=r;if(hasDom){labUi();E('labDefTxt').innerHTML=defReportHtml(r);E('labDefText').value=SG.defReportText(r);E('labDefBox').style.display='flex';}focus(0,1.9,.5,.1,.62,0);}
+  SG.step(.2);if(hasDom)labUi();};
 /* ================= end of DEFENCES ================= */
 
 /* ---- the Arsenal panel, the matrix table, the report text, the drawing, the screenshots ---- */
@@ -2996,6 +3019,7 @@ SG.labShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab,sp
 SG.shot=function(name,team){
   if(name.indexOf('lab-')===0){SG.labShot(name);return;}
   if(name.indexOf('arsenal-')===0){SG.arsShot(name);return;}
+  if(name.indexOf('defence-')===0){SG.defShot(name);return;}
   if(name==='v2-4-build'){SG.start(team,{seed:777,level:'hard',rules:2});SG.sides[0].preset='good';var P0=PRESETS.good;for(var qi=0;qi<7;qi++)botPlace(0,P0[qi][0]);SG.sides[0].preset='';SG.step(26);SG.select(3,0);var gs=w2(0,Math.sin(-.3)*1.55,Math.cos(-.3)*1.55);SG.turn(PI-SG.sides[0].ghost.rot,0);SG.moveGhost(gs[0],gs[1],0);SG.sides[0].msg.t=0;return;}
   if(name.indexOf('v2b')===0){ /* two lobbers (blue's second lobber, chosen), the ammo row, a Bouncer over a wall, a Glue blob on fallen parts; the other camp is the good one, with its wall in front of the Keep */
     PRESETS.wallOnly=[[7,2.42,0,PI],[13,-.29,2.42,-PI/2],[14,.29,2.42,PI/2],[0,2.06,0,PI],[1,2.06,-.5,PI],[2,2.06,.5,PI],[8,2.2,1.2,PI]];   /* a Keep, its braces and one wall across the front: just enough to show a Bouncer or a Glue blob */
