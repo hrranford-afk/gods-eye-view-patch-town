@@ -27,3 +27,10 @@ Not copied: name, characters, art, music, map, missions, look. Our rules stand: 
 ## Taste questions for Harry
 - Caper-comedy tone (my pick) or something grittier?
 - Solo free-roam first, or two-player (friends) races/chases first?
+
+## Update 21 Nov, Harry: "make it 18 plus"
+The earlier "no crime, nobody dies, toy weapons" were Harry's standing project rules for the toy/kids games, not a limit on this idea. For THIS game Harry has asked for an 18+ edition. Decisions pending with Harry:
+- Scope of the loosened rules: this new game only (CAIRN's recommendation); the toy games keep the old rules.
+- Tone: stylised, fictional, our own city and characters (crime caper, chases, gunplay with stylised consequences). No real people, brands, landmarks or town names (unchanged). No real-world how-to detail (real weapon or crime instructions): not needed for a game and not something CAIRN will write.
+- Publishing: the repo and the gh-pages site are PUBLIC. An 18+ build should stay off the public site until Harry decides (age gate, private hosting, or a store with age rating). Harry's call (security).
+- Look and name: our own. Not the look, names, characters or map of any existing game.
