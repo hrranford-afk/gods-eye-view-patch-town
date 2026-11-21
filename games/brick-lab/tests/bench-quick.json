@@ -1,126 +1,510 @@
 {
  "done": true,
  "quick": true,
+ "builds": {
+  "014": {
+   "key": "014",
+   "label": "0.14.0",
+   "loadMs": 53,
+   "results": [
+    {
+     "key": "wall",
+     "name": "Brick wall",
+     "pieces": 120,
+     "buildMs": 291.6999999997206,
+     "standMax": 0.003318925720438193,
+     "asleepAt": 0.6333333333333333,
+     "stand": {
+      "physAvg": 0.18666666666201007,
+      "physMax": 7,
+      "frameAvg": 206.99272000000002,
+      "frameMax": 833.336,
+      "maxDispMm": 0.6637851440876386,
+      "awakeEnd": 0,
+      "asleepAt": 0.6333333333333333
+     },
+     "awakePeak": 125,
+     "volley": {
+      "physAvg": 1.2062500000009702,
+      "physMax": 5.2999999998137355,
+      "frameAvg": 219.575,
+      "frameMax": 383.39999999999964,
+      "cpuAvg": 1.2,
+      "awakePeak": 125,
+      "moved": 54,
+      "fallen": 51,
+      "awakeEnd": 25
+     },
+     "render": {
+      "frameAvg": 191.64999999999995,
+      "frameMax": 250,
+      "cpuAvg": 0.6916666667287549
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "tower",
+     "name": "Tower",
+     "pieces": 153,
+     "buildMs": 499.60000000009313,
+     "standMax": 0.0012425361023884916,
+     "asleepAt": 2.1333333333333333,
+     "stand": {
+      "physAvg": 1.2539999999990687,
+      "physMax": 12.299999999813735,
+      "frameAvg": 246.98999999999992,
+      "frameMax": 683.2999999999993,
+      "maxDispMm": 0.24850722047769833,
+      "awakeEnd": 0,
+      "asleepAt": 2.1333333333333333
+     },
+     "awakePeak": 158,
+     "volley": {
+      "physAvg": 1.8916666666724875,
+      "physMax": 7.199999999720603,
+      "frameAvg": 231.24000000000015,
+      "frameMax": 299.90000000000146,
+      "cpuAvg": 0.8675000000279397,
+      "awakePeak": 158,
+      "moved": 95,
+      "fallen": 91,
+      "awakeEnd": 18
+     },
+     "render": {
+      "frameAvg": 204.15833333333345,
+      "frameMax": 250,
+      "cpuAvg": 0.6916666666123396
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "cottage",
+     "name": "Cottage",
+     "pieces": 234,
+     "buildMs": 567.2999999998137,
+     "standMax": 0.00469223064957635,
+     "asleepAt": 6.816666666666666,
+     "stand": {
+      "physAvg": 4.206333333333799,
+      "physMax": 13.100000000093132,
+      "frameAvg": 302.6540000000001,
+      "frameMax": 783.3000000000029,
+      "maxDispMm": 0.93844612991527,
+      "awakeEnd": 0,
+      "asleepAt": 6.816666666666666
+     },
+     "awakePeak": 239,
+     "volley": {
+      "physAvg": 3.362083333330035,
+      "physMax": 7.7999999998137355,
+      "frameAvg": 279.98999999999995,
+      "frameMax": 350.09999999999854,
+      "cpuAvg": 0.9949999999953434,
+      "awakePeak": 239,
+      "moved": 138,
+      "fallen": 125,
+      "awakeEnd": 20
+     },
+     "render": {
+      "frameAvg": 231.93333333333308,
+      "frameMax": 266.59999999999127,
+      "cpuAvg": 0.8833333333798995
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "castle",
+     "name": "Castle gate",
+     "pieces": 383,
+     "buildMs": 1138.7000000001863,
+     "standMax": 0.006451301780773953,
+     "asleepAt": 8.233333333333333,
+     "stand": {
+      "physAvg": 10.824333333332712,
+      "physMax": 21.100000000093132,
+      "frameAvg": 434.6479999999999,
+      "frameMax": 1383.300000000003,
+      "maxDispMm": 1.2902603561547905,
+      "awakeEnd": 0,
+      "asleepAt": 8.233333333333333
+     },
+     "awakePeak": 388,
+     "volley": {
+      "physAvg": 8.69999999999418,
+      "physMax": 21.800000000279397,
+      "frameAvg": 383.7375,
+      "frameMax": 500,
+      "cpuAvg": 0.8699999999837018,
+      "awakePeak": 388,
+      "moved": 36,
+      "fallen": 30,
+      "awakeEnd": 13
+     },
+     "render": {
+      "frameAvg": 266.65833333333285,
+      "frameMax": 316.6999999999971,
+      "cpuAvg": 1.1916666667287548
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "pile500",
+     "name": "Block 460",
+     "pieces": 460,
+     "buildMs": 941.4000000003725,
+     "standMax": 0.004516962450924343,
+     "asleepAt": 8.55,
+     "stand": {
+      "physAvg": 9.490166666662166,
+      "physMax": 26.700000000186265,
+      "frameAvg": 401.9819999999998,
+      "frameMax": 1166.5,
+      "maxDispMm": 0.9033924901848687,
+      "awakeEnd": 0,
+      "asleepAt": 8.55
+     },
+     "awakePeak": 465,
+     "volley": {
+      "physAvg": 6.826250000001164,
+      "physMax": 29.699999999720603,
+      "frameAvg": 350.82000000000045,
+      "frameMax": 516.5999999999767,
+      "cpuAvg": 0.9749999999883585,
+      "awakePeak": 465,
+      "moved": 301,
+      "fallen": 272,
+      "awakeEnd": 125
+     },
+     "render": {
+      "frameAvg": 236.10000000000096,
+      "frameMax": 266.6000000000058,
+      "cpuAvg": 1.5666666666899498
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "pile1000",
+     "name": "Block 1035",
+     "pieces": 1035,
+     "buildMs": 2066.100000000093,
+     "standMax": 0.0061993251184988855,
+     "asleepAt": -1,
+     "stand": {
+      "physAvg": 21.884166666656576,
+      "physMax": 55.200000000186265,
+      "frameAvg": 701.9740000000003,
+      "frameMax": 2499.9000000000233,
+      "maxDispMm": 1.239865023699777,
+      "awakeEnd": 920,
+      "asleepAt": -1
+     },
+     "awakePeak": 1040,
+     "volley": {
+      "physAvg": 20.698333333345364,
+      "physMax": 40.5,
+      "frameAvg": 607.0574999999997,
+      "frameMax": 749.9000000000233,
+      "cpuAvg": 1.1225000000209548,
+      "awakePeak": 1040,
+      "moved": 673,
+      "fallen": 536,
+      "awakeEnd": 1026
+     },
+     "render": {
+      "frameAvg": 349.9916666666686,
+      "frameMax": 433.4000000000233,
+      "cpuAvg": 1.3416666666744277
+     },
+     "verdict": "Too slow"
+    },
+    {
+     "key": "pile2000",
+     "name": "Block 1955",
+     "pieces": 1955,
+     "buildMs": 4151.5,
+     "standMax": 0.06659479896361616,
+     "asleepAt": -1,
+     "stand": {
+      "physAvg": 30.44833333332557,
+      "physMax": 52.59999999962747,
+      "frameAvg": 1020.6260000000003,
+      "frameMax": 4799.799999999988,
+      "maxDispMm": 13.31895979272323,
+      "awakeEnd": 1265,
+      "asleepAt": -1
+     },
+     "awakePeak": 1960,
+     "volley": {
+      "physAvg": 60.98562499999437,
+      "physMax": 125.5,
+      "frameAvg": 1337.8625,
+      "frameMax": 1566.600000000035,
+      "cpuAvg": 1.7025000000139698,
+      "awakePeak": 1960,
+      "moved": 349,
+      "fallen": 165,
+      "awakeEnd": 1956
+     },
+     "render": {
+      "frameAvg": 602.7583333333314,
+      "frameMax": 716.7000000000116,
+      "cpuAvg": 2
+     },
+     "verdict": "Too slow"
+    }
+   ],
+   "determinismHash": "9f08783c",
+   "summary": {
+    "smoothUpTo": 0,
+    "okUpTo": 0
+   }
+  }
+ },
  "results": [
   {
    "key": "wall",
    "name": "Brick wall",
    "pieces": 120,
-   "buildMs": 259.60000000009313,
-   "settleSagMm": 0,
+   "buildMs": 291.6999999997206,
    "standMax": 0.003318925720438193,
    "asleepAt": 0.6333333333333333,
    "stand": {
-    "physAvg": 0.2555000000035701,
-    "physMax": 3.8999999999068677,
-    "frameAvg": 366.65,
-    "frameMax": 1149.8,
+    "physAvg": 0.18666666666201007,
+    "physMax": 7,
+    "frameAvg": 206.99272000000002,
+    "frameMax": 833.336,
     "maxDispMm": 0.6637851440876386,
     "awakeEnd": 0,
     "asleepAt": 0.6333333333333333
    },
    "awakePeak": 125,
    "volley": {
-    "physAvg": 1.284791666668995,
-    "physMax": 5.5,
-    "frameAvg": 297.4875,
-    "frameMax": 483.3999999999978,
+    "physAvg": 1.2062500000009702,
+    "physMax": 5.2999999998137355,
+    "frameAvg": 219.575,
+    "frameMax": 383.39999999999964,
+    "cpuAvg": 1.2,
     "awakePeak": 125,
     "moved": 54,
     "fallen": 51,
     "awakeEnd": 25
    },
-   "bodiesMax": 125
+   "render": {
+    "frameAvg": 191.64999999999995,
+    "frameMax": 250,
+    "cpuAvg": 0.6916666667287549
+   },
+   "verdict": "Too slow"
   },
   {
    "key": "tower",
    "name": "Tower",
    "pieces": 153,
-   "buildMs": 442.29999999981374,
-   "settleSagMm": 0,
+   "buildMs": 499.60000000009313,
    "standMax": 0.0012425361023884916,
    "asleepAt": 2.1333333333333333,
    "stand": {
-    "physAvg": 1.4061666666693053,
-    "physMax": 34.6999999997206,
-    "frameAvg": 408.65,
-    "frameMax": 783.4000000000015,
+    "physAvg": 1.2539999999990687,
+    "physMax": 12.299999999813735,
+    "frameAvg": 246.98999999999992,
+    "frameMax": 683.2999999999993,
     "maxDispMm": 0.24850722047769833,
     "awakeEnd": 0,
     "asleepAt": 2.1333333333333333
    },
    "awakePeak": 158,
    "volley": {
-    "physAvg": 2.0343750000029104,
-    "physMax": 51.10000000009313,
-    "frameAvg": 419.15250000000015,
-    "frameMax": 650.0999999999985,
+    "physAvg": 1.8916666666724875,
+    "physMax": 7.199999999720603,
+    "frameAvg": 231.24000000000015,
+    "frameMax": 299.90000000000146,
+    "cpuAvg": 0.8675000000279397,
     "awakePeak": 158,
     "moved": 95,
     "fallen": 91,
     "awakeEnd": 18
    },
-   "bodiesMax": 158
+   "render": {
+    "frameAvg": 204.15833333333345,
+    "frameMax": 250,
+    "cpuAvg": 0.6916666666123396
+   },
+   "verdict": "Too slow"
   },
   {
    "key": "cottage",
    "name": "Cottage",
    "pieces": 234,
-   "buildMs": 592.5,
-   "settleSagMm": 0,
+   "buildMs": 567.2999999998137,
    "standMax": 0.00469223064957635,
    "asleepAt": 6.816666666666666,
    "stand": {
-    "physAvg": 4.54566666665875,
-    "physMax": 42,
-    "frameAvg": 531.3119999999998,
-    "frameMax": 1066.5999999999913,
+    "physAvg": 4.206333333333799,
+    "physMax": 13.100000000093132,
+    "frameAvg": 302.6540000000001,
+    "frameMax": 783.3000000000029,
     "maxDispMm": 0.93844612991527,
     "awakeEnd": 0,
     "asleepAt": 6.816666666666666
    },
    "awakePeak": 239,
    "volley": {
-    "physAvg": 3.570625000002716,
-    "physMax": 12.899999999906868,
-    "frameAvg": 435.3975000000002,
-    "frameMax": 650,
+    "physAvg": 3.362083333330035,
+    "physMax": 7.7999999998137355,
+    "frameAvg": 279.98999999999995,
+    "frameMax": 350.09999999999854,
+    "cpuAvg": 0.9949999999953434,
     "awakePeak": 239,
     "moved": 138,
     "fallen": 125,
     "awakeEnd": 20
    },
-   "bodiesMax": 239
+   "render": {
+    "frameAvg": 231.93333333333308,
+    "frameMax": 266.59999999999127,
+    "cpuAvg": 0.8833333333798995
+   },
+   "verdict": "Too slow"
   },
   {
    "key": "castle",
    "name": "Castle gate",
    "pieces": 383,
-   "buildMs": 1258.2999999998137,
-   "settleSagMm": 0,
+   "buildMs": 1138.7000000001863,
    "standMax": 0.006451301780773953,
    "asleepAt": 8.233333333333333,
    "stand": {
-    "physAvg": 10.611499999995964,
-    "physMax": 17.09999999962747,
-    "frameAvg": 432.65,
-    "frameMax": 1533.300000000003,
+    "physAvg": 10.824333333332712,
+    "physMax": 21.100000000093132,
+    "frameAvg": 434.6479999999999,
+    "frameMax": 1383.300000000003,
     "maxDispMm": 1.2902603561547905,
     "awakeEnd": 0,
     "asleepAt": 8.233333333333333
    },
    "awakePeak": 388,
    "volley": {
-    "physAvg": 8.873333333334692,
-    "physMax": 35.39999999990687,
-    "frameAvg": 450.81500000000017,
-    "frameMax": 700.1000000000058,
+    "physAvg": 8.69999999999418,
+    "physMax": 21.800000000279397,
+    "frameAvg": 383.7375,
+    "frameMax": 500,
+    "cpuAvg": 0.8699999999837018,
     "awakePeak": 388,
     "moved": 36,
     "fallen": 30,
     "awakeEnd": 13
    },
-   "bodiesMax": 388
+   "render": {
+    "frameAvg": 266.65833333333285,
+    "frameMax": 316.6999999999971,
+    "cpuAvg": 1.1916666667287548
+   },
+   "verdict": "Too slow"
+  },
+  {
+   "key": "pile500",
+   "name": "Block 460",
+   "pieces": 460,
+   "buildMs": 941.4000000003725,
+   "standMax": 0.004516962450924343,
+   "asleepAt": 8.55,
+   "stand": {
+    "physAvg": 9.490166666662166,
+    "physMax": 26.700000000186265,
+    "frameAvg": 401.9819999999998,
+    "frameMax": 1166.5,
+    "maxDispMm": 0.9033924901848687,
+    "awakeEnd": 0,
+    "asleepAt": 8.55
+   },
+   "awakePeak": 465,
+   "volley": {
+    "physAvg": 6.826250000001164,
+    "physMax": 29.699999999720603,
+    "frameAvg": 350.82000000000045,
+    "frameMax": 516.5999999999767,
+    "cpuAvg": 0.9749999999883585,
+    "awakePeak": 465,
+    "moved": 301,
+    "fallen": 272,
+    "awakeEnd": 125
+   },
+   "render": {
+    "frameAvg": 236.10000000000096,
+    "frameMax": 266.6000000000058,
+    "cpuAvg": 1.5666666666899498
+   },
+   "verdict": "Too slow"
+  },
+  {
+   "key": "pile1000",
+   "name": "Block 1035",
+   "pieces": 1035,
+   "buildMs": 2066.100000000093,
+   "standMax": 0.0061993251184988855,
+   "asleepAt": -1,
+   "stand": {
+    "physAvg": 21.884166666656576,
+    "physMax": 55.200000000186265,
+    "frameAvg": 701.9740000000003,
+    "frameMax": 2499.9000000000233,
+    "maxDispMm": 1.239865023699777,
+    "awakeEnd": 920,
+    "asleepAt": -1
+   },
+   "awakePeak": 1040,
+   "volley": {
+    "physAvg": 20.698333333345364,
+    "physMax": 40.5,
+    "frameAvg": 607.0574999999997,
+    "frameMax": 749.9000000000233,
+    "cpuAvg": 1.1225000000209548,
+    "awakePeak": 1040,
+    "moved": 673,
+    "fallen": 536,
+    "awakeEnd": 1026
+   },
+   "render": {
+    "frameAvg": 349.9916666666686,
+    "frameMax": 433.4000000000233,
+    "cpuAvg": 1.3416666666744277
+   },
+   "verdict": "Too slow"
+  },
+  {
+   "key": "pile2000",
+   "name": "Block 1955",
+   "pieces": 1955,
+   "buildMs": 4151.5,
+   "standMax": 0.06659479896361616,
+   "asleepAt": -1,
+   "stand": {
+    "physAvg": 30.44833333332557,
+    "physMax": 52.59999999962747,
+    "frameAvg": 1020.6260000000003,
+    "frameMax": 4799.799999999988,
+    "maxDispMm": 13.31895979272323,
+    "awakeEnd": 1265,
+    "asleepAt": -1
+   },
+   "awakePeak": 1960,
+   "volley": {
+    "physAvg": 60.98562499999437,
+    "physMax": 125.5,
+    "frameAvg": 1337.8625,
+    "frameMax": 1566.600000000035,
+    "cpuAvg": 1.7025000000139698,
+    "awakePeak": 1960,
+    "moved": 349,
+    "fallen": 165,
+    "awakeEnd": 1956
+   },
+   "render": {
+    "frameAvg": 602.7583333333314,
+    "frameMax": 716.7000000000116,
+    "cpuAvg": 2
+   },
+   "verdict": "Too slow"
   }
  ],
  "errors": [],
@@ -133,5 +517,5 @@
   "gl": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
  },
  "determinismHash": "9f08783c",
- "finishedAt": "2026-11-21T15:07:47.481Z"
+ "finishedAt": "2026-11-21T18:09:49.807Z"
 }

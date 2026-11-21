@@ -6,7 +6,7 @@
 var http = require('http'), fs = require('fs'), path = require('path');
 var pw = require('playwright'), ROOT = path.join(__dirname, '..');
 var R = require(path.join(ROOT, 'vendor/rapier/rapier.cjs.js')), BL = require(path.join(ROOT, 'sim.js'));
-var TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.jpg': 'image/jpeg', '.json': 'application/json', '.wasm': 'application/wasm' };
+var TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.cjs': 'text/javascript', '.jpg': 'image/jpeg', '.json': 'application/json', '.wasm': 'application/wasm' };
 var fails = 0;
 function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d ? '   [' + d + ']' : '')); }
 (async function () {
@@ -52,7 +52,7 @@ function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL '
   /* the same determinism procedure in the browser (Chromium wasm) against Node: */
   var bh = await p.evaluate(async function () { var m = await import('./vendor/rapier/rapier.es.js'); await m.default.init(); return window.BL.detRun(m.default, 1234).hash; });
   check('determinism across engines: browser hash equals Node hash', bh === nodeHash, 'browser ' + bh + ' / node ' + nodeHash);
-  if (process.argv.indexOf('--bench') > 0) {
+  if (process.argv.indexOf('--bench') > 0 && process.argv.indexOf('--only-all') < 0) {
     var p2 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p2.goto(base + '?bench=1&quick=1&rapier=014');
     await p2.waitForFunction('window.__bench&&window.__bench.done===true', null, { timeout: 1500000 });
     var bj = await p2.evaluate(function () { return window.__bench; });
@@ -61,7 +61,7 @@ function check(n, ok, d) { if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL '
     check('bench page finishes with all seven builds and no errors', bj.results.length === 7 && bj.errors.length === 0 && bj.determinismHash === nodeHash, 'hash ' + bj.determinismHash);
     bj.results.forEach(function (r) { console.log('  ' + r.name + ': ' + r.pieces + ' pieces, stand max ' + r.stand.maxDispMm.toFixed(2) + ' mm, phys avg ' + r.stand.physAvg.toFixed(2) + ' / ' + r.volley.physAvg.toFixed(2) + ' ms, worst ' + r.volley.physMax.toFixed(1) + ', frame ' + r.volley.frameAvg.toFixed(0) + ' ms (software GL), draw-only ' + r.render.frameAvg.toFixed(0) + ' ms, verdict ' + r.verdict + ', moved ' + r.volley.moved); });
   }
-  if (process.argv.indexOf('--bench') > 0) {
+  if (process.argv.indexOf('--bench') > 0 || process.argv.indexOf('--only-all') > 0) {
     /* all three builds in one page (two scenes each), their hashes against Node's; the chooser; the error path */
     var p4 = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p4.goto(base + '?bench=1&quick=1');
     var links = await p4.evaluate(function () { return document.querySelectorAll('#bench a.btn').length; });

@@ -22,8 +22,12 @@ open http://localhost:8765/index.html
 |---|---|
 | `index.html` | The game. Pick Brick wall / Tower / Cottage / Castle gate, press, drag back, let go. |
 | `index.html?preset=castle` | Start on a preset. |
-| `index.html?bench=1` | The benchmark for the iPad. Runs by itself, about 1.5 minutes, then shows a big plain result card. Numbers are also in `window.__bench` (JSON) and there is a Copy numbers button. |
-| `index.html?bench=1&quick=1` | Same, but 12 physics steps per picture so it finishes fast on a slow machine. Frame numbers mean little in this mode. Used by the tests. |
+| `index.html?bench=1` | The benchmark for the iPad. Shows four big buttons first: Rapier 0.14, Rapier 0.21, Rapier 0.21 SIMD (greyed out, with a reason, if the device has no wasm simd128), or all three. A run does seven builds (wall 120, tower 153, cottage 234, castle 383, and three stress blocks of about 460, 1035 and 1955 bricks); each is 10 s standing still, five shots, 8 s crumbling, then a drawing-only pass. About 4 minutes per physics build in real time. The card for each build has, per row: pieces, how far it moved standing still, physics ms (avg / worst), frame ms, pictures a second, draw-only ms, which one limits (physics or drawing), and a plain verdict from the frame ms on that device (Smooth 18 ms or less, OK to 26, Slow to 40, Too slow above). With "all three" a one-line comparison at the top says which build is fastest on this device. Numbers are also in `window.__bench` (JSON) and there is a Copy numbers button. |
+| `index.html?bench=1&rapier=014` (or `021`, `021simd`, `all`) | Skip the chooser. Add `&list=wall,castle` to run only some builds. |
+| `index.html?bench=1&quick=1&rapier=...` | Same, but 12 physics steps per picture so it finishes fast on a slow machine. Frame numbers and verdicts mean little in this mode. Used by the tests. |
+| `index.html?rapier=021` | The game itself on another physics build. |
+
+The server must send `.mjs` files as JavaScript (`text/javascript`); a server that does not will make the 0.21 builds fail with a plain "cannot start" message (this bit the test server once).
 
 In the game: top row builds a preset, "Build by hand" lets you tap the table to place a brick, plank, post, beam, tile or crate on a snapped grid (pieces stack, Turn rotates them, Undo, Clear), and Settle makes them real bodies so gravity takes over. "Base as text" shows and loads a base as plain text. Bottom row: ammo, Flat shot or Lob, a sweet band on the pull meter (green: no wobble; outside: a few degrees of random spread), camera turn and zoom. A sudden wave of fallen pieces gives slow-mo ("Crumble!" / "CRASH!"), impacts shake the camera and puff dust, the corner panel counts pieces, awake, moved and fallen.
 
@@ -40,8 +44,8 @@ NODE_PATH=$(npm root -g) node tests/page-test.js [--bench]  (Playwright, softwar
 |---|---|
 | `sim.js` | The simulation layer, shared by the page and by Node. Kit, presets, world, text format, hash, the determinism run. No three.js, no DOM. |
 | `index.html` | Page: three.js r128 (same as the toy game), instanced meshes, catapult, input, HUD, benchmark. |
-| `vendor/rapier/`, `vendor/three/`, `tex/` | Rapier (unmodified), three.js r128 (copy of the file the toy game loads from its CDN), the toy game's wood/red/blue/tin textures. |
-| `tests/phys-test.js`, `tests/page-test.js` | The tests. Results are written to `tests/phys-results.json` and `tests/bench-quick.json`. |
+| `vendor/rapier/`, `vendor/rapier-0.21-compat/`, `vendor/rapier-0.21-simd-compat/`, `vendor/three/`, `tex/` | Three builds of Rapier (all unmodified, Apache-2.0: 0.14.0 about 2 MB, 0.21.0 4.3 MB, 0.21.0 SIMD 4.6 MB), three.js r128 (copy of the file the toy game loads from its CDN), the toy game's wood/red/blue/tin textures. |
+| `tests/phys-test.js`, `tests/page-test.js`, `tests/build-compare.js` | The tests. Results go to `tests/phys-results.json`, `tests/bench-quick.json`, `tests/bench-quick-all.json` and `tests/build-compare.json`. |
 | `shots/brick-1..6.png` | Screenshots (software GL, 1180x820). |
 
 ## The build kit (all numbers in world units, 1 unit = 20 cm, so the table is 65 cm across)
@@ -58,7 +62,7 @@ NODE_PATH=$(npm root -g) node tests/page-test.js [--bench]  (Playwright, softwar
 | big marble | radius 0.16 | 20 |
 | acorn | radius 0.07 | 3 |
 
-Presets: Brick wall 120 bricks (12 and 11 alternating, 10 courses plus a 5-brick cap), Tower 153 (round, 17 per course, 9 courses), Cottage 234 (brick shell with a door and a lintel beam, 12 beams across the top, 45 roof tiles), Castle gate 383 (two crenellated round towers with a gate wall between, a beam lintel over the opening).
+Presets: three stress blocks (10 courses, rows of 12 and 11 bricks, 4, 9 and 17 walls deep: 460, 1035 and 1955 bricks) and the four below. Brick wall 120 bricks (12 and 11 alternating, 10 courses plus a 5-brick cap), Tower 153 (round, 17 per course, 9 courses), Cottage 234 (brick shell with a door and a lintel beam, 12 beams across the top, 45 roof tiles), Castle gate 383 (two crenellated round towers with a gate wall between, a beam lintel over the opening).
 
 ## Results
 
@@ -88,7 +92,7 @@ One ball punches a hole and shakes loose the bricks around it. More speed does n
 
 ### Determinism (Node, and Node against Chromium)
 
-Same seed, same steps: three runs give the same hash (`9f08783c`) and the same positions to 1e-9. A different seed gives a different hash. The browser (Chromium, wasm) gives the same hash as Node, checked in `page-test.js`. All on one machine. A real iPad (Safari, ARM) has not been tested; the bench card prints the same hash so that Harry can compare it by eye (`9f08783c`).
+Same seed, same steps: three runs give the same hash (`9f08783c`) and the same positions to 1e-9. A different seed gives a different hash. The browser (Chromium, wasm) gives the same hash as Node, checked in `page-test.js`. All on one machine. A real iPad (Safari, ARM) has not been tested; the bench card prints the same hash so that Harry can compare it by eye (`9f08783c` for Rapier 0.14; the newer builds have their own hashes, see the build comparison).
 
 ### Cost (Node, ms per 60 Hz step, one thread)
 
@@ -113,6 +117,68 @@ The budget for 60 pictures a second is 16.7 ms for everything. Rule of thumb fro
 The page runs the same four builds as the benchmark card for Harry: 10 s standing, then five shots (marble, big, big, marble, big) 0.67 s apart, then crumbling to 8 s. The "standing" physics average includes the seconds before the structure falls asleep (cottage: about 7 s, castle: about 8 s), which is why it is higher than the crumbling average for those. Worst-step outliers (tower 51 ms, cottage 42 ms) are single spikes on a shared, loaded CPU while SwiftShader draws; I have not tried to explain them. Determinism line on the card: `9f08783c`, equal to Node.
 
 (Quick mode ran 12 steps per picture. The real-time mode, which the iPad will run, was only started, not run to the end: after 15 s on software GL it had simulated 2.2 s of the first 10 s stand (the page runs slower than real time when pictures are slow, by design, so the physics result is the same and the benchmark just takes longer). A full pass would take about 8 minutes here and says nothing about an iPad.)
+
+### Stress blocks and the three Rapier builds
+
+Harry asked how we know it is too much for an iPad: we do not. So there are now three stress blocks (about 460, 1035 and 1955 bricks) in the page and in the benchmark, and two newer Rapier builds saved next to the old one. **Node numbers are not iPad numbers. Harry's iPad physics was about twice as slow as this cloud core**, so double every millisecond below as a first guess, and use the benchmark card on the iPad for real figures.
+
+Node, same scenes, `tests/build-compare.js`. Physics ms per step while five big marbles crumble each scene, average / worst, with steps per second in brackets (one thread on this shared cloud core; 60 steps a second is real time):
+
+| Scene | Bodies | Rapier 0.14.0 | Rapier 0.21.0 | Rapier 0.21.0 SIMD |
+|---|---|---|---|---|
+| Brick wall | 120 | 1.19 / 4.4 (838) | 0.44 / 1.4 (2276) | 0.31 / 1.5 (3248) |
+| Cottage | 234 | 3.00 / 8.8 (334) | 1.03 / 3.2 (974) | 0.73 / 5.0 (1374) |
+| Castle gate | 383 | 7.17 / 16.1 (139) | 1.36 / 4.4 (736) | 1.10 / 3.4 (909) |
+| Block 460 | 460 | 7.51 / 15.9 (133) | 3.15 / 8.4 (318) | 1.60 / 3.9 (627) |
+| Block 1035 | 1035 | 23.42 / 50.5 (43) | 11.12 / 21.8 (90) | 4.80 / 11.9 (208) |
+| Block 1955 | 1955 | 67.85 / 125.2 (15) | 30.46 / 54.0 (33) | 13.19 / 24.3 (76) |
+
+Stand-still behaviour per build: sag in the first 1.5 s (mm) / biggest move over the next 10 s (mm) / all asleep at:
+
+| Scene | Rapier 0.14.0 | Rapier 0.21.0 | Rapier 0.21.0 SIMD |
+|---|---|---|---|
+| Brick wall | 7.7 / 0.66 / 0.6 s | 4.0 / 0.00 / 0.0 s | 4.0 / 0.00 / 0.0 s |
+| Cottage | 15.7 / 0.94 / 6.8 s | 6.5 / 0.00 / 0.0 s | 6.5 / 0.00 / 0.0 s |
+| Castle gate | 11.5 / 1.29 / 8.2 s | 10.6 / 0.00 / 0.0 s | 10.6 / 0.00 / 0.0 s |
+| Block 460 | 5.9 / 0.90 / 8.6 s | 3.9 / 0.00 / 0.0 s | 3.9 / 0.00 / 0.0 s |
+| Block 1035 | 6.0 / 1.24 / not in 10 s | 4.0 / 0.00 / 0.0 s | 4.0 / 0.00 / 0.0 s |
+| Block 1955 | 14.1 / 13.32 / not in 10 s | 4.0 / 0.00 / 0.0 s | 4.0 / 0.00 / 0.0 s |
+
+Build comparison:
+
+| | 0.14.0 | 0.21.0 | 0.21.0 SIMD |
+|---|---|---|---|
+| File to download | about 2 MB | 4.3 MB | 4.6 MB |
+| Time to load and start | Node 90 ms, Chromium page 53 ms | Node 79 ms, Chromium page about 970 ms | Node 66 ms, Chromium page about 840 ms |
+| Determinism hash (`detRun`, seed 1234) | `9f08783c` | `dd9f66ff` | `4b748a06` |
+| Same hash on 3 runs in a row | yes | yes | yes |
+| Same hash in Chromium as in Node | yes | yes | yes |
+| Speed against 0.14 (collapse average over the six scenes) | 1x | 2.1 to 5.3 times faster | 3.8 to 6.5 times faster (1.3 to 2.3 times faster than plain 0.21) |
+| Biggest scene that stands | 1035 (the 1955 block drifts 13 mm and never sleeps) | 1955 (4 mm sag, no later movement) | 1955 (same) |
+
+The page load times are Chromium over local http, where the 4 MB wasm is decoded and compiled: about a second for the new builds, a possible extra cost on a tablet and on a slow network (twice the download). The Node numbers are the same decode on a faster path.
+
+**Determinism: the three builds give three different hashes** (`9f08783c`, `dd9f66ff`, `4b748a06`). So 0.21 does not reproduce 0.14, and the SIMD build does not reproduce the plain 0.21 build. Each build is exactly repeatable against itself (3 runs equal, and Node equals Chromium). The page and the bench card print the hash of the build that is running. A replay must therefore record which build made it, and two devices must run the same build. Whether an iPad gives the same hash as this machine for the same build is still untested (the card prints it so Harry can read it out). SIMD arithmetic may legitimately give different last digits from the plain build, which is probably why they differ, but I have not confirmed the cause.
+
+**API changes between 0.14 and 0.21.** `sim.js` needed no code change to run: `World`, `RigidBodyDesc`, `ColliderDesc`, `EventQueue`, `setBodyType`, `isSleeping`, `lengthUnit`, `numSolverIterations` and `numInternalPgsIterations` all work the same. What I found: the defaults `normalizedAllowedLinearError` (0.001 to 0.005) and `normalizedPredictionDistance` (0.002 to 0.02) were changed in 0.21, so `sim.js` now sets the 0.14 values on every build, so all are tuned alike (`keepDefaults` leaves the build's own; I ran both and the results were within a millimetre). `numAdditionalFrictionIterations` and `minIslandSize` no longer exist, and 0.21 has soft-body settings we do not use. All three builds load through `BL.loadRapier(key)` in `sim.js` (dynamic import in the page, `require` in Node, with a plain error for an unknown key). The SIMD build is checked first with `BL.simdSupported()` (it validates a tiny wasm module that uses simd128): on a device without it the bench chooser greys the button and says why, and `?rapier=021simd` shows "This device cannot run the SIMD build" with a Back link, not a blank page. In this sandbox the check says yes for both Node and Chromium.
+
+**Does the stability tuning (gravity -9.81, 6 solver and 2 PGS iterations, damping) still hold?** Yes on all three, and 0.21 needs less. On 0.21 and 0.21 SIMD every scene stands with 4 to 11 mm sag and no later movement. On 0.21 the wall, castle and 1955 block also stand with Rapier's default solver (4 and 1, so cheaper) and with gravity -20, where on 0.14 gravity -20 collapses the wall and the 1955 block. So with 0.21 gravity could go up toward real toy scale and the solver effort down, which would be faster again; I did not retune or time that. One caution: on 0.21 everything is asleep within the first 1.5 s, so the "10 s still" figure there is 0 mm largely because nothing is awake any more. The sag and the crumbling results are the real tests. Worth checking by eye on the iPad that 0.21 does not put pieces to sleep too eagerly in the middle of a collapse; in these runs the volleys moved about the same number of bricks as on 0.14 (wall 87 against 71, castle 136 against 147).
+
+**What this means for the iPad question.** On 0.14 with a 2x slower iPad, the 383-piece castle would cost about 14 ms per step while crumbling (7 ms here) and the 1035 block about 47 ms: Slow to Too slow. On 0.21 SIMD (if the iPad supports simd128) the same figures are about 2 ms and 10 ms, and even the 1955 block would be about 26 ms. That would put the big blocks in play. The iPad has to say so: run `?bench=1`, pick "all three", and read the line at the top and each card.
+
+### Stress blocks in the page (Chromium, software GL, `?bench=1&quick=1&rapier=014`: relative only, not iPad)
+
+| Build | Pieces | Stood 10 s | Physics ms avg / worst | Frame ms (SwiftShader) | Draw-only ms |
+|---|---|---|---|---|---|
+| Brick wall | 120 | 0.66 mm | 1.2 / 5 | 220 | 192 |
+| Tower | 153 | 0.25 mm | 1.9 / 7 | 231 | 204 |
+| Cottage | 234 | 0.94 mm | 3.4 / 8 | 280 | 232 |
+| Castle gate | 383 | 1.29 mm | 8.7 / 22 | 384 | 267 |
+| Block 460 | 460 | 0.90 mm | 6.8 / 30 | 351 | 236 |
+| Block 1035 | 1035 | 1.24 mm | 20.7 / 40 | 607 | 350 |
+| Block 1955 | 1955 | 13.32 mm | 61.0 / 126 | 1338 | 603 |
+
+Here drawing (software GL on the same CPU) costs 190 to 600 ms a picture and dwarfs physics, so every verdict says Too slow and the Limit column says drawing; that is the software renderer, not the iPad. The point of these rows is that the card works: it measures drawing alone (physics stopped) separately from drawing plus physics, so on the iPad one can see which is the limit. On a 60 Hz screen the draw-only figure cannot go below 16.7 ms, so a draw-only figure of 16.7 means drawing is not the limit.
 
 ## Honest assessment
 
@@ -151,7 +217,7 @@ Design rules found on the way: corners need interlocking courses (thickness must
 | Mice | The toy game's mice build, mend and fight. They are not in this spike. Mending a physical wall would mean picking up a brick and placing it back, which is possible (set a body's position, zero its speed) but it is new game design. |
 | Cost and platform | The toy game is cheap and runs anywhere. This one needs wasm, fixed step handling, and the speed numbers above. |
 
-**Recommendation.** Continue, but as a second mode with a clear role, not a replacement. It looks good and it feels good (the collapse, the dust, the slow-mo are hard to get from rules), it passes a real stand-still test, and the code is small: `sim.js` is 229 lines and the page 415. The open risks are the iPad speed, cross-device determinism, and design effort for pieces that must hold up as real structures (roofs, arches, overhangs), which the toy rules never needed.
+**Recommendation.** Use Rapier 0.21 (SIMD where the device allows it, plain 0.21 otherwise) in any next step: it is 2 to 6 times faster here, stands bigger structures, and needs less solver effort, at the price of a 4.3 to 4.6 MB download and a different determinism hash. Continue, but as a second mode with a clear role, not a replacement. It looks good and it feels good (the collapse, the dust, the slow-mo are hard to get from rules), it passes a real stand-still test, and the code is small: `sim.js` is 229 lines and the page 415. The open risks are the iPad speed, cross-device determinism, and design effort for pieces that must hold up as real structures (roofs, arches, overhangs), which the toy rules never needed.
 
 Next three steps:
 
@@ -161,7 +227,7 @@ Next three steps:
 
 ## What is not tested
 
-- **A real iPad. Nothing here has run on one.** All frame times are software GL on a shared cloud core.
+- **A real iPad. Nothing here has run on one** (that includes the wasm SIMD build, and whether an iPad gives the same hashes as this machine for any of the three Rapier builds). All frame times are software GL on a shared cloud core.
 - Real GPU rendering cost (instancing, shadows at 2048 or 1024, pixel ratio 2).
 - Memory and thermal behaviour on a phone or tablet over a long session.
 - Determinism between devices (iPad against desktop, Safari against Chromium); only Node against Chromium on one machine.
@@ -173,3 +239,5 @@ Next three steps:
 - Pitched roofs and any shapes other than boxes and balls (round pieces, arches, an acorn that looks like an acorn).
 - Other browsers (only Chromium).
 - Sound.
+- The real-time (non-quick) benchmark was not run to the end for all seven builds or all three Rapier builds here (software GL makes it very slow); the quick mode was, for every build and scene listed above.
+- Whether Rapier 0.21 sleeps pieces too eagerly during a collapse (only counts of moved bricks were compared).
