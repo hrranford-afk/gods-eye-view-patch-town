@@ -1,0 +1,189 @@
+{
+ "task": "C01",
+ "owner": "CLOUD (game session)",
+ "status": "PASS for the stated check: real CityValidate.parse accepted 10 of 10 on first try, no edits",
+ "date": "2026-11-21",
+ "source": "ChatGPT (made by ChatGPT; words untouched)",
+ "pack_zip_sha256": "8b9d3162570d37aac52d026508ab7d723c73ba433389bf9f962c786f20485c7c",
+ "validator": "games/city-lab/validate.js at branch game/city-lab (commit 2d64076)",
+ "recipes": [
+  {
+   "file": "recipe_01.json",
+   "name": "Side Street Bakery",
+   "parts": 19,
+   "sha256": "55c63740eb4d4b08ae6d9a880529969a3c85ab616e4446bc62774b3f0644527d",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "working",
+    "made": "50",
+    "sold_lost": "32(3)",
+    "income_per_min": "35.0",
+    "cost_per_min": "4.1",
+    "net_per_min": "30.9",
+    "balance": "103.7",
+    "power": "ok"
+   }
+  },
+  {
+   "file": "recipe_02.json",
+   "name": "Windmill Store",
+   "parts": 17,
+   "sha256": "01c29a1cafa82c3ff0cfce60b2707632ae72752ebe0aed96532298e36658a5cb",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "working",
+    "made": "16",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "12.0",
+    "net_per_min": "-12.0",
+    "balance": "-38.0",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_03.json",
+   "name": "Canvas Market Stall",
+   "parts": 8,
+   "sha256": "524dc11326b9687fe2f9362419afddfb692dcb169fb5b1075bc4560e99cc4d5b",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "55(0)",
+    "income_per_min": "33.0",
+    "cost_per_min": "14.2",
+    "net_per_min": "18.8",
+    "balance": "107.2",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_04.json",
+   "name": "Blue Cottage",
+   "parts": 15,
+   "sha256": "94701ae445bcf8155d9ee9a3d1a3f074c5636db1a790174d4b7673c375449e83",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "0.0",
+    "net_per_min": "0.0",
+    "balance": "0.0",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_05.json",
+   "name": "Tool Workshop",
+   "parts": 18,
+   "sha256": "815830ba1823f3b869365cca5e1ee6bc98d171a716fe9b1f6cb11fa8d5e90ac7",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "working",
+    "made": "14",
+    "sold_lost": "14(1)",
+    "income_per_min": "21.0",
+    "cost_per_min": "24.3",
+    "net_per_min": "-3.3",
+    "balance": "14.9",
+    "power": "ok"
+   }
+  },
+  {
+   "file": "recipe_06.json",
+   "name": "Coastal Light Tower",
+   "parts": 16,
+   "sha256": "82b78408a176d89da24be9d2c7f56a32395e3fb9f49c4f3aee7a75721e59bca5",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "1.0",
+    "net_per_min": "-1.0",
+    "balance": "-5.0",
+    "power": "ok"
+   }
+  },
+  {
+   "file": "recipe_07.json",
+   "name": "Blue Boathouse",
+   "parts": 16,
+   "sha256": "767b2f1652f96b9ecf9f4c7fcb97a0806fafeb978949f690f3aff697f06c0946",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "30(0)",
+    "income_per_min": "24.0",
+    "cost_per_min": "1.4",
+    "net_per_min": "22.6",
+    "balance": "64.4",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_08.json",
+   "name": "Supply Barn",
+   "parts": 16,
+   "sha256": "8ab17978e9ea64903482b86d8f930aa032741b1f274ed2c7098c0cbc1a0fbafe",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "13.3",
+    "net_per_min": "-13.3",
+    "balance": "-29.3",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_09.json",
+   "name": "Little School",
+   "parts": 16,
+   "sha256": "bdf796684f6d2fadb88705770418812ed51db605d30fc1a146d81caed8871e38",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "3.0",
+    "net_per_min": "-3.0",
+    "balance": "-15.0",
+    "power": "none"
+   }
+  },
+  {
+   "file": "recipe_10.json",
+   "name": "Power Control Shed",
+   "parts": 17,
+   "sha256": "59bba005c7f03a3073ec5a69ede93bb0fd52dfd3825a635ada6f0c26308dbb63",
+   "validator_ok": true,
+   "sim_5min_seed1": {
+    "status": "none",
+    "made": "0",
+    "sold_lost": "0(0)",
+    "income_per_min": "0.0",
+    "cost_per_min": "2.0",
+    "net_per_min": "-2.0",
+    "balance": "-16.0",
+    "power": "ok"
+   }
+  }
+ ],
+ "visual_review": "All ten build and render in City Lab with no errors. They are plain: open-sided boxes with a three-panel roof, a door and one or two props. Windmill and lighthouse are tall boxes (no rotating parts). Far less detailed than the hand-made 57-part bakery. Validity does not mean good looking.",
+ "not_done": [
+  "iPad or AR",
+  "Hardware or town (nothing was sent)",
+  "Economy balance (numbers are illustrative; 5 of 10 produce nothing by design)",
+  "Any check by a second validator"
+ ],
+ "note": "Original ten recipes are immutable test inputs. Fixes go in proposals/ with the original hash."
+}
