@@ -41,6 +41,26 @@ const run = async () => {
   if (f.length) { out.fortified = { wins: tw, games: tg, pct: Math.round(100 * tw / tg) }; console.log('FORTIFIED OVERALL', tw + '/' + tg, out.fortified.pct + '%'); }
   if (errs.length) console.log('PAGE ERRORS', errs.slice(0, 3));
   if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(out, null, 1));
+  if (args.includes('--report') && out.bare && out.fortFront && out.fortFar) {
+    const c = await p.evaluate(() => JSON.parse(JSON.stringify(SG.CONFIG.defence))), r = (k) => out[k];
+    const row = (k, label, who) => '| ' + label + ' | ' + r(k).wins + ' of ' + r(k).games + ' (' + r(k).pct + '%) | ' + who + ' | ' + r(k).avgScore.join(' / ') + ' | ' + r(k).avgPartsLost.join(' / ') + ' | ' + r(k).avgHill.join(' / ') + ' | ' + r(k).avgShots.join(' / ') + ' | ' + r(k).keepFelled + ' |';
+    const d = (k) => Object.entries(r(k).def).filter(([, v]) => v).map(([a, v]) => a + ' ' + v).join(', ');
+    const md = ['# Defence report: does a fortified camp pay?', '',
+      'Made by `tests/defence-proof.js --report` (' + new Date().toISOString().slice(0, 10) + '). **Lab flag mode: nothing here is in a match unless `?defence=` / `defence:{fort:[..]}` is set.** Bot against bot, level `' + level + '`, whole matches (3 rounds of 60 s), stepped without drawing, ' + N + ' games for each case, seeds ' + seed0 + ' + 97 a game (the same seeds for every case), teams and seats swapped from game to game.', '',
+      '## What is being compared', '',
+      '- **Bare**: the \'good\' camp (Keep at the back, braced, a wall in front of it, a gate, a first lobber, a workshop, a trap piece): exactly the 12 build points.',
+      '- **Fortified**: the same camp **without the trap piece, the workshop and one wall** (5 points) and with that 5 points spent on a **Counter-lobber (2.5), a Pop-gun post (1.5), a Spring plank (.5) and a Mender on the front wall (.5)**. Same budget. Its crew mice are taken from its raid, guard and hill mice (the first two roles first), so the fortified side **holds the hill with fewer mice**: that is the price, and it shows in the hill seconds below.',
+      '- **Both sides fire the seven Arsenal weapons in turn** (Marble, Flat flinger, Roller, Scatter popper, Tether hook, Thumper, Fan); aim is the usual bot\'s best Marble spot. The counter pieces (roof, shield, ditch...) are in no kit, so neither camp has one.', '',
+      '## Win rates', '',
+      '| Case | Wins | Of | Score (front / far) | Parts lost (front / far) | Hill seconds (front / far) | Shots (front / far) | Keeps felled |', '|---|---|---|---|---|---|---|---|',
+      row('bare', 'No defences either side: front seat wins', 'front seat'), row('fortFront', 'Fortified side in the **front** seat wins', 'fortified'), row('fortFar', 'Fortified side in the **far** seat wins', 'fortified'), '',
+      '**Fortified overall: ' + out.fortified.wins + ' of ' + out.fortified.games + ' (' + out.fortified.pct + '%).** Target 60 to 75%.', '',
+      'The bare baseline is not 50%: the front seat wins ' + r('bare').pct + '% of the plain \'good\' against \'good\' games with the seven weapons (the far side\'s mice walk 5% quicker, and the weapons are not seat-neutral). So read the fortified wins **by seat**: in the front seat a fortified side wins ' + r('fortFront').pct + '% where a bare one wins ' + r('bare').pct + '%; in the far seat ' + r('fortFar').pct + '% where a bare one wins ' + (100 - r('bare').pct) + '%.', '',
+      '## What the defences did (mean per match)', '', '- Fortified in the front seat: ' + d('fortFront'), '- Fortified in the far seat: ' + d('fortFar'), '',
+      '## The numbers behind it (`CONFIG.defence`)', '', '```json', JSON.stringify(c, null, 1), '```', ''];
+    fs.writeFileSync(path.resolve(__dirname, '..', 'DEFENCE_REPORT.md'), md.join('\n'));
+    console.log('wrote DEFENCE_REPORT.md');
+  }
   console.log('JSON ' + JSON.stringify(Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.rows ? { games: v.games, wins: v.wins, pct: v.pct } : v]))));
   await b.close();
 };

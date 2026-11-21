@@ -63,11 +63,11 @@ var CONFIG={
     cost:{pop:1.5,sling:2,counter:2.5,spring:.5,glue:.5,log:.75,cord:.75,snap:.5,warden:.5},   /* build points of each item (a wall is 1, a second lobber 5) */
     restockCost:.5,restockSecs:3,fetchSecs:1.2,oilSecs:3,resetSecs:2.5,   /* points for a bought restock; seconds a mouse takes to refill a post once there; to fetch the ammo; to clear a jam; to set a trap again */
     jamOil:.3,crewReach:.3,                     /* jam meter points a second a crew mouse oils while the post has nothing to shoot at; how near its slot a crew mouse must stand */
-    pop:{min:.08,max:.9,every:1.4,ammo:14,jamAfter:9,knock:.5,slow:1.6,slowTo:.5,swatEvery:.5},   /* Pop-gun post: range min and max, seconds between corks, corks in a full load, shots before it jams, how far a mouse is knocked back, seconds slowed and speed then; it swats a small rolling shot in range */
+    pop:{min:.08,max:.9,every:1.4,ammo:14,jamAfter:9,knock:.8,slow:2.5,slowTo:.5,swatEvery:.5},   /* Pop-gun post: range min and max, seconds between corks, corks in a full load, shots before it jams, how far a mouse is knocked back, seconds slowed and speed then; it swats a small rolling shot in range */
     sling:{min:.9,max:2.7,every:4.5,ammo:6,jamAfter:5,r:.3,over:.3,err:.12,intercept:.4,protect:1.1},   /* Slinger post: range, seconds between lobs, marbles in a full load, shots before it jams, blast reach (a Marble's is .3), aim wobble, chance to knock a shell out of the air (less for heavy ones), how near its landing must be to the post */
     counter:{min:1.5,max:3.7,every:9,ammo:4,jamAfter:4,r:.3,over:.3,err:.2,window:3.5,silence:6},   /* Counter-lobber: it fires at the lobber it saw fire (seen within this many seconds), in this range band only; the Lab's free gun is silenced this long by a hit */
     trap:{reach:.24,spring:{fling:1.0,daze:1.8},glue:{r:.32,secs:7,slowTo:.4,life:9},log:{len:1.7,speed:1.5,w:.1,daze:1.4},cord:{r:.22,daze:2.4},snap:{r:.17,daze:2.0}},   /* a mouse this near (to a hidden trap) springs it. spring: how far it flings a mouse back, seconds it sits dazed; glue: puddle reach, seconds slowed, seconds the puddle stays; log: how far it rolls, speed, lane half-width; cord: crate reach; snap: reach */
-    repair:{every:5,calmSecs:3.5,calmR:1.1,reach:.6},   /* a mender on a wall section mends one part every this many seconds, once nothing has landed within calmR for calmSecs and no enemy mouse is near; reach: pieces this near the section count as part of it */
+    repair:{every:4,calmSecs:3.5,calmR:1.1,reach:.6},   /* a mender on a wall section mends one part every this many seconds, once nothing has landed within calmR for calmSecs and no enemy mouse is near; reach: pieces this near the section count as part of it */
     test:{gunR:1.35,gap:2.5,calm:7,raid:3,raidSecs:28,pass:6,shots:5,seed:424242},   /* Test my base: where the free gun stands (it must be in range of a counter-lobber), seconds between shots, seconds of calm after each weapon, mice in the raid and its length, points above which a weapon is not survived, shots of a volley */
     plan:['counter','pop','spring','warden'],botCrew:['raid','guard','hill','mend'],   /* what a bot buys with what its camp leaves unspent, in order; which of its mice it takes for the posts first */
     drop:[17,10,4]                              /* the kit slots the fortified preset gives up to pay for them: the trap, the workshop, a wall */
@@ -2499,11 +2499,11 @@ SG.defShot=function(name){SG.start('blue',{mode:'lab',seed:777});var L=SG.lab;L.
   var u=U();
   if(name==='defence-1-courtyard'){labLoadTarget('courtyard',true);SG.step(.1);crew();sel('counter');run(.5);focus(0,1.9,.5,.1,.62,0);}
   else if(name==='defence-2-popgun'){labLoadTarget('courtyard',true);SG.step(.1);crew();raid(3,.3);var it=sel('pop');for(var t=0;t<900&&!DEF.stats.pops;t++)SG.step(STEP);run(.25);focus(0,1.15,.55,.05,.6,0);}
-  else if(name==='defence-3-counter'){labLoadTarget('courtyard',true);SG.step(.1);crew();L.gunDown=0;SG.labSetAmmo('marble');var sp=SG.labDefaultSpot();LAB_GUNR=CD().test.gunR;SG.labFire(0,'gun',sp.x,sp.z,{force:true,seed:5});LAB_GUNR=3.15;for(var t2=0;t2<300&&!SG.marbles.some(function(a){return a.def&&a.live&&a.t>.5;});t2++)SG.step(STEP);sel('counter');focus(0,.2,1.1,.2,.55,0);}
+  else if(name==='defence-3-counter'){labLoadTarget('courtyard',true);DEF.items.filter(function(i){return i.kind==='sling';}).forEach(defRemove);SG.step(.1);crew();L.gunDown=0;SG.labSetAmmo('marble');var sp=SG.labDefaultSpot();LAB_GUNR=CD().test.gunR;SG.labFire(0,'gun',sp.x,sp.z,{force:true,seed:5});LAB_GUNR=3.15;for(var t2=0;t2<600&&!SG.marbles.some(function(a){return a.def&&a.live&&a.t>.7;});t2++)SG.step(STEP);sel('counter');focus(.3,.7,.85,.25,.75,0);}
   else if(name==='defence-4-traps'){labLoadTarget('courtyard',true);SG.step(.1);crew();raid(3,.34);for(var t3=0;t3<1500&&DEF.stats.sprung<2;t3++)SG.step(STEP);run(.3);DEF.view='builder';focus(0,1.1,.55,.05,.65,0);}
   else if(name==='defence-5-upkeep'){labLoadTarget('courtyard',true);SG.step(.1);crew();var it5=sel('pop');it5.ammo=0;it5.jam=.75;var sl=DEF.items.filter(function(i){return i.kind==='sling';})[0];sl.jam=1;sl.jammed=true;run(3);focus(-.2,1.5,.5,.1,.62,0);}
   else if(name==='defence-6-rooms'){labLoadTarget('rooms',true);SG.step(.1);crew();sel('pop');run(.3);focus(0,2.0,.8,.1,.9,0);}
-  else if(name==='defence-7-warden'){labLoadTarget('courtyard',true);SG.step(.1);crew();var tp=SG.pieces.filter(function(p){return p.side===1&&p.kind==='wall';});tp.slice(0,3).forEach(function(p){for(var i=0;i<3;i++)knock(p,nearestPart(p,p.x,0,p.z,true),0,1,'debug');});fixGrid();run(14);sel('warden');focus(0,1.4,.6,.1,.65,0);}
+  else if(name==='defence-7-warden'){labLoadTarget('courtyard',true);SG.step(.1);crew();var wd=sel('warden'),wpc=defWallAt(1,wd.x,wd.z);for(var i7=0;i7<3;i7++)knock(wpc,nearestPart(wpc,wpc.x,0,wpc.z,true),0,1,'debug');fixGrid();run(8.6);focus(.54,1.35,.35,.05,.7,.4);}
   else if(name==='defence-8-report'){labLoadTarget('courtyard',true);SG.step(.1);L.panel=true;var r=SG.defTest();L.defOut=r;if(hasDom){labUi();E('labDefTxt').innerHTML=defReportHtml(r);E('labDefText').value=SG.defReportText(r);E('labDefBox').style.display='flex';}focus(0,1.9,.5,.1,.62,0);}
   SG.step(.2);if(hasDom)labUi();};
 /* ================= end of DEFENCES ================= */
@@ -2954,13 +2954,14 @@ SG.boot=function(){
     if(SG.phase!=='start'&&!SG.paused&&!SG.hold)SG.step(slowed(dt)*(SG.speed||1));var r0=performance.now();render();if(SG.lab&&SG.mode==='lab')labFrame(raw,performance.now()-r0);if(SG.dev)devLine(raw);if(PERF)perfFrame(raw);window.__done=true;requestAnimationFrame(loop);})();};
 /* ?auto=both|blue|red&level=easy|normal|hard&report=1 : bots play a match with no title screen, drawn normally, and the page
    measures itself. auto=both: bots on both sides. auto=blue or auto=red: the bot plays that team and you play the other.
-   Extra, for tests: &speed=8 runs the clock faster, &skipbuild=1 starts from preset camps. Not part of the normal game. */
+   Extra, for tests: &speed=8 runs the clock faster, &skipbuild=1 starts from preset camps, &defence=front|far|both turns the Defences flag on (Lab flag mode: the seven Arsenal weapons, and posts and traps for the side named). Not part of the normal game. */
 var PERF=null;
 function autoRun(Q){
   var lvl=LEVELS[Q.level]?Q.level:'easy',both=Q.auto==='both',team=Q.auto==='blue'?'red':'blue';
   PERF={frames:[],calls:0,tris:0,errors:[],show:Q.report==='1',done:false,t0:performance.now(),auto:Q.auto,level:lvl};window.SG_REPORT=null;
   window.onerror=function(msg,src,line){PERF.errors.push(String(msg)+(line?' (line '+line+')':''));};window.addEventListener('unhandledrejection',function(e){PERF.errors.push('promise: '+String(e.reason));});
-  SG.speed=Math.max(1,Math.min(40,+(Q.speed||1)));SG.start(team,{level:lvl,seed:Q.seed?+Q.seed:Math.floor(performance.now()*7919)%1000000+1});if(both)SG.auto(0,lvl);if(Q.skipbuild==='1')SG.skipBuild();}
+  SG.speed=Math.max(1,Math.min(40,+(Q.speed||1)));var dq=Q.defence,dopt=dq?{fort:[dq==='front'||dq==='both',dq==='far'||dq==='both']}:undefined;   /* ?defence=front|far|both: the Defences flag, with those sides fortified (both camps are the 12-point 'good' camp) */
+  SG.start(team,{level:lvl,seed:Q.seed?+Q.seed:Math.floor(performance.now()*7919)%1000000+1,defence:dopt,presets:dopt?['good','good']:undefined});if(both)SG.auto(0,lvl);if(Q.skipbuild==='1')SG.skipBuild();}
 function perfFrame(ms){
   if(PERF.done)return;if(PERF.frames.length<60000&&PERF.frames.length+1>3)PERF.frames.push(ms);else if(PERF.frames.length<=3)PERF.frames.push(-1);   /* the first frames are warm-up */
   var inf=R.info.render;if(inf.calls>PERF.calls)PERF.calls=inf.calls;if(inf.triangles>PERF.tris)PERF.tris=inf.triangles;
