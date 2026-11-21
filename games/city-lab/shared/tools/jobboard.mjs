@@ -22,7 +22,7 @@ for (const s of SIDES) {
   if (!r) { console.log(s.name + ': no job record on branch ' + s.ref + ' yet (' + s.file + ')'); continue; }
   for (const line of r.text.split('\n')) {
     const c = line.split('|').map((x) => x.trim());
-    if (c.length < 7 || !/^[CHU]\d\d$/.test(c[1])) continue;
+    if (c.length < 7 || !/^[CHU]\d\d[a-z]?$/.test(c[1])) continue;
     rows.push({ side: s.name, id: c[1], owner: c[2], status: c[3], updated: c[4], evidence: c[5], next: c[6], ref: r.ref });
   }
 }
