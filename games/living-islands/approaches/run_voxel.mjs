@@ -1,0 +1,20 @@
+// Renders voxel_three.html in headless chromium (software GL) and saves shots/appr-4.png. three.js r128 is read from THREE_JS or /tmp/three.js, else the CDN.
+import { createRequire } from 'node:module'; import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const require = createRequire(import.meta.url); const { chromium } = require('playwright');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const types = { '.json': 'application/json', '.png': 'image/png', '.html': 'text/html' };
+const srv = http.createServer((q, r) => { const u = q.url.split('?')[0]; const f = path.join(here, u === '/' ? 'voxel_three.html' : u); if (!f.startsWith(here) || !fs.existsSync(f)) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': types[path.extname(f)] || 'text/plain' }); fs.createReadStream(f).pipe(r); }).listen(0);
+await new Promise(r => srv.on('listening', r)); const port = srv.address().port;
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+const local = process.env.THREE_JS || '/tmp/three.js';
+if (fs.existsSync(local)) await page.route(/three\.min\.js/, r => r.fulfill({ body: fs.readFileSync(local), contentType: 'application/javascript' }));
+page.on('console', m => { if (m.type() === 'error') console.log('console:', m.text().slice(0, 500)); });
+page.on('pageerror', e => console.log('pageerror', e.message.slice(0, 500)));
+await page.goto(`http://127.0.0.1:${port}/` + (process.argv[3] || ''));
+await page.waitForFunction(() => window.__ready, null, { timeout: 240000 });
+const tris = await page.evaluate(() => window.__tris);
+const out = process.argv[2] || path.join(here, 'shots', 'appr-4.png');
+const data = await page.evaluate(() => document.querySelector('canvas').toDataURL('image/png'));
+fs.writeFileSync(out, Buffer.from(data.split(',')[1], 'base64')); console.log('wrote', out, 'tris', tris);
+await browser.close(); srv.close();

@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><title>Approach 4: voxel islands</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(async()=>{
+const J=await (await fetch('island.json')).json(), V=await (await fetch('voxels.json')).json();
+const qs=new URLSearchParams(location.search);const W=+(qs.get('w')||1200),Hh=+(qs.get('h')||800);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(W,Hh);renderer.setPixelRatio(1);document.body.appendChild(renderer.domElement);
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const a=J.sun.az*Math.PI/180,e=J.sun.el*Math.PI/180;const sunDir=new THREE.Vector3(Math.sin(a)*Math.cos(e),Math.sin(e),Math.cos(a)*Math.cos(e));
+const haze=new THREE.Color(.62,.46,.40);
+scene.fog=new THREE.FogExp2(haze.getHex(),.0021);
+// ---------- sky dome
+const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,uniforms:{uSun:{value:sunDir}},
+vertexShader:'varying vec3 vd;void main(){vd=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+fragmentShader:`varying vec3 vd;uniform vec3 uSun;void main(){vec3 d=normalize(vd);float y=clamp(d.y,0.,1.);vec3 zen=vec3(.10,.22,.52),hor=vec3(.82,.68,.62);vec3 c=mix(hor,zen,1.-pow(1.-y,2.6));float s=clamp(dot(d,uSun),0.,1.);c+=vec3(1.,.6,.3)*(pow(s,8.)*.35+pow(s,80.)*.9+pow(s,1500.)*20.);gl_FragColor=vec4(c,1.);}`});
+const sky=new THREE.Mesh(new THREE.SphereGeometry(900,32,16),skyMat);scene.add(sky);
+// ---------- voxel mesh
+const vs=V.vs,nx=V.nx,nz=V.nz,x0=V.x0,z0=V.z0,top=V.top,colp=V.col,prop=V.prop,flame=V.flame;
+const idx=(i,j)=>i*nx+j;
+const T=(i,j)=>(i<0||j<0||i>=nz||j>=nx)?-99:top[idx(i,j)];
+function hash(a,b,c){let h=(a*374761393+b*668265263+c*2147483647)|0;h=(h^(h>>>13))*1274126177|0;return((h^(h>>>16))>>>0)/4294967296;}
+const pos=[],nor=[],col=[],flames=[];
+const c3=new THREE.Color();
+function lin(p){c3.setRGB(((p>>16)&255)/255,((p>>8)&255)/255,(p&255)/255).convertSRGBToLinear();const m=(c3.r+c3.g+c3.b)/3;return [Math.max(m+(c3.r-m)*1.25,0),Math.max(m+(c3.g-m)*1.25,0),Math.max(m+(c3.b-m)*1.25,0)];}
+function quad(p0,p1,p2,p3,n,c0,c1,c2,c3_){ // ccw
+  pos.push(...p0,...p1,...p2,...p0,...p2,...p3);for(let k=0;k<6;k++)nor.push(...n);col.push(...c0,...c1,...c2,...c0,...c2,...c3_);}
+const mul=(c,f)=>[c[0]*f,c[1]*f,c[2]*f];
+for(let i=0;i<nz;i++)for(let j=0;j<nx;j++){
+  const k=idx(i,j),t=top[k];if(flame[k])continue; // fire is drawn separately
+  const base=lin(colp[k]);const jit=.93+.14*hash(i,j,t);const isProp=prop[k];
+  const x=x0+j*vs,z=z0+i*vs,y=t*vs;
+  const under=t<=0;
+  // top face with corner AO
+  const hN=T(i-1,j),hS=T(i+1,j),hW=T(i,j-1),hE=T(i,j+1),hNW=T(i-1,j-1),hNE=T(i-1,j+1),hSW=T(i+1,j-1),hSE=T(i+1,j+1);
+  const ao=(s1,s2,c)=>{const n=(s1>t?1:0)+(s2>t?1:0);const cc=(c>t?1:0);const v=(n===2)?3:n+cc;return 1-.17*v;};
+  const aNW=ao(hN,hW,hNW),aNE=ao(hN,hE,hNE),aSE=ao(hS,hE,hSE),aSW=ao(hS,hW,hSW);
+  const tc=mul(base,jit*(isProp?1:1));
+  quad([x,y,z],[x,y,z+vs],[x+vs,y,z+vs],[x+vs,y,z],[0,1,0],mul(tc,aNW),mul(tc,aSW),mul(tc,aSE),mul(tc,aNE));
+  // side faces
+  const nb=[[hN,0,-1],[hS,0,1],[hW,-1,0],[hE,1,0]];
+  for(const [h,dx,dz] of nb){ if(h>=t)continue; const lo=Math.max(h,t-14);
+    for(let l=t-1;l>=lo;l--){
+      const y1=(l+1)*vs,y0=l*vs; const dirt=isProp?1:(under?.9:(.78-.05*(t-l)));
+      let sc=isProp?mul(base,jit*.85):(base[1]>base[0]&&base[1]>base[2]?[.36*jit*(.8+.2*hash(i+l,j,l)),.24*jit,.14*jit]:mul(base,jit*dirt*(.85+.15*hash(i,j+l,l))));
+      if(!isProp&&!under&&l>=t-1&&base[1]>base[0]&&base[1]>base[2]) sc=mul(base,.62*jit); // grass lip
+      const lowc=mul(sc,.82);
+      let p0,p1,p2,p3,n;
+      if(dz===-1){p0=[x,y0,z];p1=[x+vs,y0,z];p2=[x+vs,y1,z];p3=[x,y1,z];n=[0,0,-1];quad(p1,p0,p3,p2,n,lowc,lowc,sc,sc);}
+      else if(dz===1){p0=[x,y0,z+vs];p1=[x+vs,y0,z+vs];p2=[x+vs,y1,z+vs];p3=[x,y1,z+vs];n=[0,0,1];quad(p0,p1,p2,p3,n,lowc,lowc,sc,sc);}
+      else if(dx===-1){p0=[x,y0,z];p1=[x,y0,z+vs];p2=[x,y1,z+vs];p3=[x,y1,z];n=[-1,0,0];quad(p0,p1,p2,p3,n,lowc,lowc,sc,sc);}
+      else {p0=[x+vs,y0,z];p1=[x+vs,y0,z+vs];p2=[x+vs,y1,z+vs];p3=[x+vs,y1,z];n=[1,0,0];quad(p1,p0,p3,p2,n,lowc,lowc,sc,sc);}
+    }
+  }
+  if(flame[k]){}
+}
+const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+const mat=new THREE.MeshLambertMaterial({vertexColors:true});
+const mesh=new THREE.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+window.__tris=pos.length/9;
+// fire voxels (unlit, glowing) + glow sprite
+const fm=new THREE.MeshBasicMaterial({color:new THREE.Color(1.0,.62,.18)});const fg=new THREE.BoxGeometry(vs,vs,vs);
+const fp=J.camp.fire;
+for(let i=0;i<nz;i++)for(let j=0;j<nx;j++){const k=idx(i,j);if(!flame[k])continue;const t=top[k];const x=x0+(j+.5)*vs,z=z0+(i+.5)*vs;
+  for(let l=Math.max(t-3,Math.floor(fp.y/vs)+1);l<t;l++){const b=new THREE.Mesh(fg,fm.clone());b.material.color.setRGB(1,.45+.5*hash(i,j,l),.1+.2*hash(j,l,i));b.position.set(x,(l+.5)*vs,z);scene.add(b);}}
+const fl=new THREE.PointLight(0xff8a30,2.4,22,1.6);fl.position.set(fp.x,fp.y+1.4,fp.z);scene.add(fl);
+const cv=document.createElement('canvas');cv.width=cv.height=128;const cx=cv.getContext('2d');const gr=cx.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(255,200,110,.9)');gr.addColorStop(.3,'rgba(255,140,50,.35)');gr.addColorStop(1,'rgba(255,100,20,0)');cx.fillStyle=gr;cx.fillRect(0,0,128,128);
+const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,fog:false}));spr.scale.set(8,8,1);spr.position.set(fp.x,fp.y+1.3,fp.z);scene.add(spr);
+// smoke: a few translucent cubes drifting up
+const sm=new THREE.MeshBasicMaterial({color:0xb9b3ad,transparent:true,opacity:.28,depthWrite:false});
+for(let k=0;k<9;k++){const s=.7+k*.16;const b=new THREE.Mesh(new THREE.BoxGeometry(s,s,s),sm);b.position.set(fp.x+.25*k+Math.sin(k*2)*.3,fp.y+2.4+k*.95,fp.z-.12*k);b.rotation.y=k;scene.add(b);}
+// ---------- lights
+scene.add(new THREE.HemisphereLight(new THREE.Color(.45,.58,.95),new THREE.Color(.55,.38,.24),1.2));
+const sun=new THREE.DirectionalLight(new THREE.Color(1.0,.66,.36),2.0);const tgt=new THREE.Vector3(0,0,55);sun.position.copy(tgt).addScaledVector(sunDir,260);sun.target.position.copy(tgt);scene.add(sun,sun.target);const fill=new THREE.DirectionalLight(new THREE.Color(.95,.78,.62),.7);fill.position.set(80,60,160);scene.add(fill);
+sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);const sc_=sun.shadow.camera;sc_.left=-100;sc_.right=100;sc_.top=100;sc_.bottom=-100;sc_.near=20;sc_.far=600;sun.shadow.bias=-.0004;sun.shadow.normalBias=.06;
+// ---------- water
+const wimg=new Image();wimg.src='water.png';await wimg.decode();const wt=new THREE.Texture(wimg);wt.needsUpdate=true;wt.minFilter=wt.magFilter=THREE.LinearFilter;wt.generateMipmaps=false;wt.flipY=false;
+const wmat=new THREE.ShaderMaterial({transparent:true,fog:false,uniforms:{uW:{value:wt},uSun:{value:sunDir},uBox:{value:new THREE.Vector4(x0,z0,nx*vs,nz*vs)},uTime:{value:3.},uHaze:{value:new THREE.Vector3(haze.r,haze.g,haze.b)}},
+vertexShader:'varying vec3 wp;void main(){vec4 w=modelMatrix*vec4(position,1.);wp=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+fragmentShader:`varying vec3 wp;uniform sampler2D uW;uniform vec3 uSun,uHaze;uniform vec4 uBox;uniform float uTime;
+float hs(vec2 p){p=fract(p*vec2(.1031,.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1,0)),f.x),mix(hs(i+vec2(0,1)),hs(i+vec2(1,1)),f.x),f.y);}
+vec3 sky(vec3 d){float y=clamp(d.y,0.,1.);vec3 c=mix(vec3(.82,.68,.62),vec3(.10,.22,.52),1.-pow(1.-y,2.6));float s=clamp(dot(d,uSun),0.,1.);return c+vec3(1.,.6,.3)*(pow(s,8.)*.35+pow(s,80.)*.9);}
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
+void main(){
+  vec2 uv=(wp.xz-uBox.xy)/uBox.zw; bool inside=uv.x>=0.&&uv.x<=1.&&uv.y>=0.&&uv.y<=1.;
+  vec4 w=texture2D(uW,uv); float depth=inside?w.r*16.:16.; float sd=inside?w.g*12.:12.;
+  vec3 V=normalize(cameraPosition-wp);
+  vec2 q=wp.xz; vec2 g=vec2(cos(q.x*.4+q.y*.15+uTime*.8)*.05+cos(q.x*1.3-q.y*.7+uTime*1.3)*.025+(vn(q*1.6)-.5)*.05, cos(q.y*.35-q.x*.2+uTime*.7)*.05+cos(q.y*1.1+q.x*.8+uTime*1.1)*.025+(vn(q*1.6+9.)-.5)*.05);
+  float dist=length(cameraPosition-wp); g*=clamp(1.2-dist/220.,.2,1.);
+  vec3 N=normalize(vec3(-g.x,1.,-g.y));
+  float F=clamp((.02+.98*pow(1.-clamp(dot(N,V),0.,1.),5.))*.75,0.,1.);
+  vec3 R=reflect(-V,N);R.y=abs(R.y);
+  vec3 H=normalize(uSun+V);float sp=clamp(dot(H,N),0.,1.);
+  vec3 glint=(pow(sp,900.)*34.+pow(sp,120.)*2.+pow(sp,14.)*.22)*vec3(1.,.62,.34);
+  vec3 turq=vec3(.05,.58,.58),deep=vec3(.012,.08,.26);float k=1.-exp(-depth*.26);
+  vec3 body=mix(turq,deep,k)*(vec3(.95,.8,.7)*.55+.15);
+  float a=clamp(.4+.6*(1.-exp(-depth*.7)),0.,1.); if(!inside)a=1.;
+  float nz=vn(wp.xz*1.3),nz2=vn(wp.xz*.35+5.);
+  float edge=clamp(1.-(sd-.1+(nz-.5)*.9)/1.0,0.,1.);
+  float pulse=pow(.5+.5*sin(sd*2.2-uTime*1.2+nz2*4.),3.)*exp(-sd/3.)*step(.5,sd)*step(.45,nz2);
+  float foam=clamp(pow(edge,1.3)+pulse*.5,0.,1.)*(inside?1.:0.);
+  vec3 col=body*(1.-F)+sky(normalize(R))*F+glint;
+  col=mix(col,vec3(.95,.88,.8)*.8,foam*.9); a=max(a,foam);
+  col=pow(aces(col*.8),vec3(1./2.2));
+  float f=1.-exp(-dist*dist*.0021*.0021); col=mix(col,vec3(.82,.68,.62)*.97,f);
+  gl_FragColor=vec4(col,a);
+}`});
+const water=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400),wmat);water.rotation.x=-Math.PI/2;water.position.y=-.02;water.renderOrder=2;scene.add(water);
+// ---------- camera
+const cam=new THREE.PerspectiveCamera(J.camera.fov,W/Hh,.5,3000);cam.position.set(...J.camera.pos);cam.lookAt(...J.camera.target);
+sky.position.copy(cam.position);
+renderer.render(scene,cam);renderer.render(scene,cam);
+window.__ready=true;
+})();
+</script>
