@@ -80,7 +80,7 @@ dirv = Vector(tuple(tgt - np.array(co.location)))
 co.rotation_euler = dirv.to_track_quat('-Z', 'Y').to_euler()
 cam.dof.focus_distance = dirv.length * 0.95
 if a.view == 'top':
-    co.location = (0, -0.1, 60); co.rotation_euler = (0, 0, 0); cam.lens = 60
+    co.location = (0, -0.1, 60); co.rotation_euler = (0, 0, 0); cam.lens = 26
 if a.view == 'close':
     co.location = (cx + 3.5, cy - 9.0, 3.2); tgt = np.array([cx - 1.0, cy + 2.5, 0.8]); cam.lens = 40
     dirv = Vector(tuple(tgt - np.array(co.location))); co.rotation_euler = dirv.to_track_quat('-Z', 'Y').to_euler(); cam.dof.focus_distance = dirv.length

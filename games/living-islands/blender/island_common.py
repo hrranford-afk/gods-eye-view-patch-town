@@ -37,22 +37,45 @@ def ridged(x, z, seed, octs=5):
 def smooth(a, b, x):
     t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
 
+LEGACY_SEED = 1122   # this seed keeps the original island exactly (the cloud's pilot renders and tests)
+
+def shape_params(seed):
+    """Seed-derived island shape. Seed 1122 gives the legacy values. Other seeds vary size, aspect, tilt, a second lobe and
+    which side is the high rocky back, so different seeds give visibly different islands (the camp clearing is kept)."""
+    if seed == LEGACY_SEED:
+        return dict(a=17.5, b=12.5, tilt=0.35, lobe=0.0, lob_u=0.0, lob_v=0.0, lob_r=1.0, back_ang=np.arctan2(0.8, -0.55), rough=0.16)
+    r = np.random.default_rng(seed * 7919 + 13)
+    a = float(r.uniform(13.5, 20.0)); b = float(r.uniform(9.0, 14.5))
+    return dict(a=a, b=b, tilt=float(r.uniform(-0.6, 0.9)),
+                lobe=float(r.uniform(0.0, 1.0) > 0.45),               # about half the seeds get a second lobe (a headland or islet joined to the main land)
+                lob_u=float(r.uniform(-12, 12)), lob_v=float(r.uniform(-4, 11)), lob_r=float(r.uniform(0.45, 0.8)),
+                back_ang=float(r.uniform(0, 2 * np.pi)), rough=float(r.uniform(0.10, 0.30)))
+
+def _dist(wu, wv, P):
+    ca, sa = np.cos(P['tilt']), np.sin(P['tilt'])
+    pu = wu * ca + wv * sa; pv = -wu * sa + wv * ca
+    d = np.sqrt((pu / P['a']) ** 2 + (pv / P['b']) ** 2)
+    if P['lobe']:
+        d2 = np.sqrt(((wu - P['lob_u']) / (P['a'] * P['lob_r'])) ** 2 + ((wv - P['lob_v']) / (P['b'] * P['lob_r'])) ** 2)
+        d = np.minimum(d, d2 * 1.05)
+    return d, pu, pv
+
 def _base(u, v, seed):
     """returns dict of arrays: h (metres), rock (0..1 rockiness), slope-free fields; all deterministic."""
     # domain warp for a ragged rocky coast
     wu = u + 3.2 * (fbm(u * .09, v * .09, seed + 1, 4) - .5) * 2
     wv = v + 3.2 * (fbm(u * .09 + 9, v * .09 - 4, seed + 2, 4) - .5) * 2
-    # elongated island, long axis tilted
-    ca, sa = np.cos(.35), np.sin(.35)
-    pu = wu * ca + wv * sa; pv = -wu * sa + wv * ca
-    d = np.sqrt((pu / 17.5) ** 2 + (pv / 12.5) ** 2)            # 1 at nominal coast
-    d = d * (1 + 0.16 * (fbm(u * .21, v * .21, seed + 3, 4) - .5))
+    # elongated island, long axis tilted (seed-derived; seed 1122 = legacy)
+    P = shape_params(seed)
+    d, pu, pv = _dist(wu, wv, P)                                  # 1 at nominal coast
+    d_nom = d
+    d = d * (1 + P['rough'] * (fbm(u * .21, v * .21, seed + 3, 4) - .5))
     dome = np.clip(1 - d * d, -2, 1)
     rid = ridged(u * .11, v * .11, seed + 5, 5)
     det = fbm(u * .5, v * .5, seed + 7, 4)
     inland = smooth(0.15, 0.95, 1 - d)
     # high rocky back (north-west), gentle toward camp
-    back = smooth(-2, 12, -(u * .55) + v * .8)
+    back = smooth(-2, 12, u * np.cos(P['back_ang']) * 0.69 + v * np.sin(P['back_ang']) * 0.69) if seed != LEGACY_SEED else smooth(-2, 12, -(u * .55) + v * .8)
     h = dome * 3.0 + inland * (rid * 3.4 * (0.35 + back) + det * 0.5) - 0.35
     # rocky shoulder: a ragged cliff-and-ledge rim on the north, east and west coasts (the camp side stays beach)
     rockyside = smooth(-8, -1, v * 0.9 + 3.0 * (fbm(u * .17, v * .17, seed + 15, 3) - .5))
@@ -64,11 +87,11 @@ def _base(u, v, seed):
     wc = smooth(9.5, 3.5, dc)
     land = h > 0
     h = np.where(land, h * (1 - wc) + np.maximum(bench, 0) * wc * (h > -0.2), h)
-    return h, wc, pu, pv, rockyside
+    return h, wc, pu, pv, rockyside, d_nom
 
 def height_fields(u, v, seed):
     """returns dict of arrays: h (metres), rock (0..1 rockiness); point-evaluable (no grid dependence)."""
-    h, wc, pu, pv, rockyside = _base(u, v, seed)
+    h, wc, pu, pv, rockyside, d_nom = _base(u, v, seed)
     e = 0.3
     hx = (_base(u + e, v, seed)[0] - _base(u - e, v, seed)[0]) / (2 * e)
     hy = (_base(u, v + e, seed)[0] - _base(u, v - e, seed)[0]) / (2 * e)
@@ -82,7 +105,7 @@ def height_fields(u, v, seed):
     hm = np.where(h > -0.15, h * (1 - 0.6 * rock) + terr * 0.6 * rock, h)
     hm = hm + (fbm(u * 1.7, v * 1.7, seed + 13, 3) - .5) * 0.06 * rock
     # seabed shelf: shallow ring, then drop
-    dist = np.sqrt((pu / 17.5) ** 2 + (pv / 12.5) ** 2)
+    dist = d_nom
     sea_floor = -0.12 - 0.9 * smooth(0.9, 1.45, dist) - 2.9 * smooth(1.35, 2.3, dist)
     t = smooth(0.0, -0.8, hm)
     hm = np.where(hm < 0, hm * (1 - t) + (0.6 * hm + 0.4 * sea_floor) * t, hm)
