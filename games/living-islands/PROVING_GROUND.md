@@ -16,6 +16,8 @@ Same seed every round. Reference for comparison: the owner's approved pictures (
 6. People (shape, pose, readable at game distance)
 7. Buildings and props (tents, boat, fire, jetty)
 8. "Feels real" (does it look like it rose out of the sea?)
+9. Detail density (no flat areas: fine ripples, grain, clusters, texture everywhere)
+10. Palette restraint (muted natural colours; blue against olive/moss; no primary-colour props)
 Scales: 1 = looks like code, 3 = a good game, 5 = could be mistaken for the approved picture.
 
 ## Judging
