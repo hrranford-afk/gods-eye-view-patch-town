@@ -41,6 +41,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <div id="info"></div>
 <div id="boot">Raising the islands...</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');</script>
 <script>
 (function(){
 'use strict';
@@ -50,7 +51,8 @@ const SEED=(parseInt(Q.get('seed')||'1122',10)>>>0);
 const NOPOST=Q.get('post')==='0';
 const LAND=Q.get('pass')==='landing';
 const FLOW=Q.get('flow')==='1';         /* the flow pass: tidal current field, flow-advected sea, drifting flotsam (see FLOW_PASS.md); implies the sea=2 look */
-const SEA2=Q.get('sea')==='2'||FLOW;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const SBX=Q.get('seabed')==='1';        /* the seabed pass: a seeded bathymetry field (seabed.js) drives depth, exposure, stream speed, sea colour, foam and drift (see SEABED_PASS.md) */
+const SEA2=Q.get('sea')==='2'||FLOW||SBX;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
@@ -84,12 +86,12 @@ function mix3(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2
 
 /* ============ the world: islands, bars, pads ============ */
 const ISL=[
- {id:'pine',   x:-42,z:-26,rx:15,rz:12.5,rot:.6, peak:7.4,sb:.55,bw:1.4,Rin:10,under:.34,rough:1.5,crag:1.3,lump:1.1,lcell:4.2,surf:.55,warp:4.6},
- {id:'sand',   x:39, z:-43,rx:9, rz:6.5, rot:-.3,peak:1.5,sb:.12,bw:5.0,Rin:5, under:.20,rough:.32,lump:0,  surf:.20,warp:1.6},
- {id:'grass',  x:6,  z:-50,rx:15,rz:12,  rot:.2, peak:4.3,sb:.20,bw:3.0,Rin:11,under:.26,rough:.7, lump:.25,surf:.20,warp:3.0},
- {id:'skerry', x:58, z:4,  rx:6.5,rz:5,   rot:.9, peak:3.3,sb:.80,bw:1.0,Rin:4, under:.50,rough:1.0,crag:1.8,lump:1.5,lcell:3.8,surf:1.0,warp:1.8},
- {id:'camp',   x:28, z:30, rx:13,rz:11,   rot:-.4,peak:3.4,sb:.16,bw:5.0,Rin:7, under:.24,rough:.5, lump:.20,surf:.25,warp:3.0},
- {id:'harbour',x:-30,z:40, cres:1,Ra:24,Rb:12.5,peak:8.6,sb:.22,bw:5.0,Rin:11,under:.28,rough:.6,lump:.35,surf:.25,warp:2.8}
+ {id:'pine',   x:-42,z:-26,rx:15,rz:12.5,rot:.6, peak:7.4,sb:.55,bw:1.4,Rin:10,under:.34,rough:1.5,crag:1.3,lump:1.1,lcell:4.2,surf:.55,warp:4.6,r:0.85,Dm:9.0},
+ {id:'sand',   x:39, z:-43,rx:9, rz:6.5, rot:-.3,peak:1.5,sb:.12,bw:5.0,Rin:5, under:.20,rough:.32,lump:0,  surf:.20,warp:1.6,r:0.05,Dm:3.6},
+ {id:'grass',  x:6,  z:-50,rx:15,rz:12,  rot:.2, peak:4.3,sb:.20,bw:3.0,Rin:11,under:.26,rough:.7, lump:.25,surf:.20,warp:3.0,r:0.3,Dm:5.5},
+ {id:'skerry', x:58, z:4,  rx:6.5,rz:5,   rot:.9, peak:3.3,sb:.80,bw:1.0,Rin:4, under:.50,rough:1.0,crag:1.8,lump:1.5,lcell:3.8,surf:1.0,warp:1.8,r:1.0,Dm:8.0},
+ {id:'camp',   x:28, z:30, rx:13,rz:11,   rot:-.4,peak:3.4,sb:.16,bw:5.0,Rin:7, under:.24,rough:.5, lump:.20,surf:.25,warp:3.0,r:0.35,Dm:5.0},
+ {id:'harbour',x:-30,z:40, cres:1,Ra:24,Rb:12.5,peak:8.6,sb:.22,bw:5.0,Rin:11,under:.28,rough:.6,lump:.35,surf:.25,warp:2.8,r:0.4,Dm:6.0}
 ];
 ISL.forEach((I,i)=>{I.i=i;I.s=(SEED*7+i*101)|0;I.c=Math.cos(I.rot||0);I.sn=Math.sin(I.rot||0);
   if(I.cres){const dir=[.55,.835];I.dir=dir;I.bx=I.x+dir[0]*14.5;I.bz=I.z+dir[1]*14.5;I.rm=I.Ra;I.mR=I.Ra;}
@@ -99,6 +101,9 @@ const BARS=[
  {ax:19,az:-48.5,bx:33,bz:-44,w:3.4,peak:-.5,s:SEED+501},
  {ax:36,az:24,bx:53,bz:7,w:2.6,peak:-.62,s:SEED+517}
 ];
+/* the seabed (?seabed=1): rule set and measures live in seabed.js; it shares this page's shoreline function so both draw the same shores */
+const SB=SBX?LI_SEABED.create({islands:ISL,start:4,authored:true,landingDir:[Math.cos(Math.atan2(.52,.85)),Math.sin(Math.atan2(.52,.85))]},SEED,{sd:(I,x,z)=>islSd(I,x,z)}):null;
+const _sbS=SB?new Float64Array(ISL.length):null;
 const PADS=[]; /* {x,z,r,y} */
 let gI=-1,gSd=-99,gExpo=0;
 function islSd(I,x,z){let sd;
@@ -112,7 +117,16 @@ function islH(I,x,z,sd){let h;
   if(I.crag){const q=1-Math.abs(2*fbm(x*.27,z*.27,I.s+31,3)-1);h+=I.crag*q*q*sm((sd+3)/5)*(1.2-.4*sm((sd-4)/6));}
   if(I.lump>0)h+=I.lump*domes(x,z,I.lcell||3.3,I.s+9)*sm((sd+4)/4.5)*(1-.75*sm((sd-2.5)/7));
   return h;}
-function baseH(x,z){let best=SEABED,bi=-1,bsd=-1e9,ex=0;
+function baseHsb(x,z){let bi=-1,bsd=-1e9,ex=0;
+  for(let k=0;k<ISL.length;k++)_sbS[k]=islSd(ISL[k],x,z);
+  const dep=SB.depthFromSd(_sbS,x,z);let best=-dep;
+  for(let k=0;k<ISL.length;k++){const I=ISL[k];const dd=Math.hypot(x-I.x,z-I.z);if(dd>I.br+(I.cres?20:0))continue;
+    const sd=_sbS[k];if(sd>bsd){bsd=sd;bi=k;}
+    let h=islH(I,x,z,sd);if(sd<=0)h+=Math.min(4.8,-sd*I.under*1.7)-dep;   /* under water the bathymetry replaces the old skirt; only the rock crags and lumps are kept on top of it */
+    if(h>best)best=h;
+    const e=I.surf*Math.exp(-Math.abs(Math.min(sd,0))/9);if(e>ex)ex=e;}
+  gI=bi;gSd=bsd;gExpo=ex;return best;}
+function baseH(x,z){if(SB)return baseHsb(x,z);let best=SEABED,bi=-1,bsd=-1e9,ex=0;
   for(let k=0;k<ISL.length;k++){const I=ISL[k];const dd=Math.hypot(x-I.x,z-I.z);if(dd>I.br+(I.cres?20:0))continue;
     const sd=islSd(I,x,z);if(sd>bsd){bsd=sd;bi=k;}
     const h=islH(I,x,z,sd);if(h>best)best=h;
@@ -258,7 +272,7 @@ function placeLanding(){
   LD.fireside=F;
   LD.avoid=[{x:L.x,z:L.z,r:6.5},{x:F.x,z:F.z,r:2.6},{x:T.x,z:T.z,r:3.8},{x:BC.x,z:BC.z,r:3}];
   /* shingle: instanced pebbles, denser at the water's edge */
-  for(let tries=0;LD.pebbles.length<1000&&tries<20000;tries++){
+  for(let tries=0;LD.pebbles.length<(SB?650:1000)&&tries<20000;tries++){   /* seabed pass: 650 pebbles, not 1000, to pay for the wider shelf mesh (triangle budget) */
     const a=(R()+R()+R()-1.5)*2.2*3.1,b=-4.6+R()*8.2;const x=L.x+tg[0]*a+dir[0]*b,z=L.z+tg[1]*a+dir[1]*b;const h=H(x,z);
     if(h<-.55||h>1.15)continue;const edge=Math.exp(-Math.abs(h-.05)/.7);if(R()>.25+.75*edge)continue;
     if(a*a/42+(b+.4)*(b+.4)/30>1)continue;
@@ -479,6 +493,12 @@ function terrainColor(x,z,h,ny,sd,I,pd){
   const slope=1-ny,n1=fbm(x*.16,z*.16,SEED+41,3),n2=fbm(x*.5,z*.5,SEED+43,2),n3=fbm(x*.05,z*.05,SEED+47,3);
   const rockMix=(a)=>{let c=mix3(mix3(PL.rockA,PL.rockB,sm((n2-.3)*2.2)),PL.rockC,sm((n1-.55)*3)*.8);const st=.9+.12*Math.sin(h*4.6+n1*5);const cr=Math.abs(fbm(x*.4,z*.4,SEED+61,3)-.5)<.03?.7:1;c=c.map(v=>v*st*cr);return zone(c,h,n1,n2,x,z);};
   const kind=I?I.id:'sand';let c;
+  if(h<-.15&&SB){ /* seabed pass: sand on soft bed, dark rock and kelp on hard bed, from the bathymetry's own hardness */
+    const hd=SB.gbil(SB.G.hard,x,z);c=mix3(PL.seabed,PL.seabed2,sm((-h-1.2)/3.2));c=mix3(c,mix3(PL.sand2,PL.sand,.4),(1-sm(hd/.45))*(1-sm((-h-.2)/1.4))*.8);
+    if(LD.on){const w=landW(x,z,h,n2);if(w>0)c=mix3(c,mix3(PL.shingle,PL.rockA,.35),w*.8);}
+    c=mix3(c,mix3(rockMix(),PL.seabed2,.45),sm((hd-.5)/.35)*.75);
+    if(-h>LI_SEABED.P.kelpLo&&-h<LI_SEABED.P.kelpHi&&hd>.5&&n2>.5)c=mix3(c,PL.kelp,sm((n2-.5)*5)*.85);
+    return c;}
   if(h<-.15){ /* seabed */
     c=mix3(PL.seabed,PL.seabed2,sm((-h-1.2)/3.2));
     if(LD.on){const w=landW(x,z,h,n2);if(w>0)c=mix3(c,mix3(PL.shingle,PL.rockA,.35),w*.8);}
@@ -533,7 +553,7 @@ function buildTerrain(cell){const half=96;const n=4*Math.round(2*half/(4*cell)),
   const hs=new Float32Array(nv*nv),isl=new Int8Array(nv*nv),sds=new Float32Array(nv*nv);
   for(let j=0;j<nv;j++)for(let i=0;i<nv;i++){const x=-half+i*step,z=-half+j*step;const k=j*nv+i;hs[k]=H(x,z);isl[k]=gI;sds[k]=gSd;}
   const map=new Int32Array(nv*nv).fill(-1);const P=[],N=[],C=[],IDX=[];let cnt=0;
-  const SKIP=-4.35;
+  const SKIP=SB?-3.0:-4.35,MERGE=SB?-1.1:-1.7;   /* the seabed has a wide shelf: skip what is under 3 m (the sea is opaque there), merge 2 m blocks under 1.1 m (a spring low tide is 1.0 m) */
   const vtx=(i,j)=>{const k=j*nv+i;if(map[k]>=0)return map[k];const x=-half+i*step,z=-half+j*step,h=hs[k];
     const hl=hs[j*nv+Math.max(0,i-1)],hr=hs[j*nv+Math.min(n,i+1)],hd=hs[Math.max(0,j-1)*nv+i],hu=hs[Math.min(n,j+1)*nv+i];
     const dx=(hr-hl)/((Math.min(n,i+1)-Math.max(0,i-1))*step),dz=(hu-hd)/((Math.min(n,j+1)-Math.max(0,j-1))*step);const l=Math.hypot(dx,1,dz);
@@ -546,7 +566,7 @@ function buildTerrain(cell){const half=96;const n=4*Math.round(2*half/(4*cell)),
     for(let j=bj;j<=bj+4;j++)for(let i=bi;i<=bi+4;i++){const h=hs[j*nv+i];if(h>mx)mx=h;if(h<mn)mn=h;}
     const cx=-half+(bi+2)*step,cz=-half+(bj+2)*step;if(Math.hypot(cx,cz)>TABLE_R+3)continue;
     if(mx<SKIP)continue;
-    if(mx<-1.7){quad(bi,bj,4,((bi+bj)>>2)&1);continue;}
+    if(mx<MERGE){quad(bi,bj,4,((bi+bj)>>2)&1);continue;}
     for(let j=bj;j<bj+4;j++)for(let i=bi;i<bi+4;i++)quad(i,j,1,(i+j)&1);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
   g.setIndex(new THREE.Uint32BufferAttribute(IDX,1));g.computeBoundingSphere();return g;}
@@ -627,10 +647,13 @@ function hAt(x,z){let fx=(x+TS)/GC-.5,fz=(z+TS)/GC-.5;let i=Math.floor(fx),j=Mat
 function flowParams(){const r=mulberry32(((SEED*2654435761)>>>0)^0x51ed);
   const ang=.55+r()*.7;
   const isl=ISL.map(I=>{let x=I.x,z=I.z,a;if(I.cres){a=I.Ra*.66;x=I.x-I.dir[0]*3;z=I.z-I.dir[1]*3;}else a=Math.sqrt(I.rx*I.rz)*.9;
-    return{id:I.id,x:+x.toFixed(2),z:+z.toFixed(2),a:+a.toFixed(2),g:+((r()<.5?-1:1)*(.3+.35*r())).toFixed(3)};});
+    return{id:I.id,x:+x.toFixed(2),z:+z.toFixed(2),a:+a.toFixed(2),g:+((r()<.5?-1:1)*(.3+.35*r())).toFixed(3),mU:SB?+sbIslM(x,z,a).toFixed(3):1};});
   return{version:1,kind:'potential-flow-tide',seed:SEED,period:FL.P,tideAmp:+FL.A.toFixed(4),axis:+ang.toFixed(4),U0:1.1,
     residual:{speed:.22,ang:+(ang+.9+r()*.6).toFixed(4),psiAmp:7,psiScale:55,psiSeed:SEED+88},
     wake:{sep:1.35,lat:.62,rc:.5,vp:.6},shallow:{min:.25,depth:1.2},islands:isl,grid:{n:FN,half:TS},leewayWind:[.45,-.89]};}
+/* seabed pass: stream multiplier from the cross-section (width x depth) at a point, and its mean around an island (sets how strong the lee eddies are) */
+function sbIslM(x,z,a){let s=0,n=0;for(let k=0;k<8;k++){const q=k/8*TAU2,m=SB.spdAt(x+Math.cos(q)*a*1.5,z+Math.sin(q)*a*1.5);if(m>0){s+=m;n++;}}return n?s/n:1;}
+function sbF(x,z,lev,rho){const m0=SB.spdAt(x,z),d0=Math.max(SB.depthG(x,z),.3),f=clamp(d0/Math.max(d0+lev,.3),.6,2.2);return clamp(m0*f,SB.P.uMin,3.6)/clamp(rho,.6,1.9);}
 /* seeded residual (steady) field on a 65 x 65 grid: mean drift + a gentle curl-of-streamfunction gyre (divergence free) */
 function flowResidual(F){const n=65,half=TS,cell=2*half/(n-1),R=new Float32Array(n*n*2),rs=F.residual,psi=(x,z)=>rs.psiAmp*(fbm(x/rs.psiScale+9,z/rs.psiScale+9,rs.psiSeed,2)-.5)*2,e=1.5;
   const dx=Math.cos(rs.ang)*rs.speed,dz=Math.sin(rs.ang)*rs.speed;
@@ -651,12 +674,13 @@ function flowRaw(F,x,z,T,out,pure){
     const R2c=R2>a2?R2:a2,dr=dx*rx+dz*rz,kk=U0*a2/(R2c*R2c);
     tx-=kk*(2*dr*rx-R2c*dx);tz-=kk*(2*dr*rz-R2c*dz);
     const q=(R/a)*Math.exp(.5*(1-R2/a2)),s=I.g*U0*q/R;tx+=-rz*s;tz+=rx*s;
-    if(R<3.6*a){const rc=wk.rc*a,vp=wk.vp*U0;
+    if(R<3.6*a){const eg=SB?sm((U0*I.mU*(c<0?-c:c)*a/10-.5)/.6):1,rc=wk.rc*a,vp=wk.vp*U0*eg;   /* seabed: lee eddies only when stream x island size passes a threshold (10 m2/s, TUNING) */
       for(let m=0;m<4;m++){const sg=m<2?1:-1,ln=(m&1?-1:1);               /* m 0,1: flood pair downstream (+axis); 2,3: ebb pair on the other side */
         const cx=I.x+sg*wk.sep*a*dx+ln*wk.lat*a*nx,cz=I.z+sg*wk.sep*a*dz+ln*wk.lat*a*nz;
         const sign=sg>0?(ln>0?-1:1):(ln>0?1:-1);
         const vx=x-cx,vz=z-cz,r2=vx*vx+vz*vz;if(r2>(5*rc)*(5*rc))continue;const rr=Math.sqrt(r2)+1e-9,qq=(rr/rc)*Math.exp(.5*(1-r2/(rc*rc))),ss=sign*vp*qq/rr;
         if(sg>0){wx+=-vz*ss;wz+=vx*ss;}else{ex+=-vz*ss;ez+=vx*ss;}}}}
+  if(SB){const sf=sbF(x,z,flowTideAt(T),Math.hypot(tx,tz)/U0);tx*=sf;tz*=sf;}   /* seabed: the stream follows the continuity rule u = U0 refA / (w D), narrow and shallow is fast */
   let ux=c*tx+cp*wx+cn*ex,uz=c*tz+cp*wz+cn*ez;
   out[0]=ux;out[1]=uz;flowResAt(x,z,out);
   if(!pure){const dep=flowTideAt(T)-hAt(x,z),sh=F.shallow;const f=sh.min+(1-sh.min)*sm(dep/sh.depth);const g=mask*(dep>0?f:sh.min*sm((dep+.4)/.4));out[0]*=g;out[1]*=g;}
@@ -685,8 +709,10 @@ const FK={n:['shell','driftwood','kelp','crate','bottle','whelk','branch'],wind:
 function flotCreate(N){const F=FL.F,S={N,step:0,ck:new Map(),kind:new Uint8Array(N),sc:new Float64Array(N),tint:new Float64Array(N),px:new Float64Array(N),pz:new Float64Array(N),st:new Uint8Array(N),tb:new Float64Array(N),nr:new Uint16Array(N),yawB:new Float64Array(N),vx:new Float64Array(N),vz:new Float64Array(N),cnt:new Float64Array(4)};
   for(let i=0;i<N;i++){const r=mulberry32((SEED*977+i*131+5)>>>0),k=r();S.kind[i]=k<.18?0:k<.33?5:k<.50?1:k<.60?6:k<.92?2:k<.97?3:4;S.sc[i]=.8+.45*r();S.tint[i]=r();S.yawB[i]=r()*6.283;flotSpawn(S,i,0,true);}
   flotSnap(S);return S;}
+function sbKelp(x,z){const d=SB.depthG(x,z);return d>=SB.P.kelpLo&&d<=SB.P.kelpHi&&SB.gbil(SB.G.hard,x,z)>.5;}   /* kelp strands start over kelp beds: hard bed, 0 to 15 m real */
+function sbBeachOK(x,z){return SB.gbil(SB.G.expo,x,z)<.62&&SB.spdFAt(x,z)*SB.P.U0<1.8;}   /* wrack lands on sheltered shores out of the fast channels */
 function flotSpawn(S,i,T,initial){const nr=S.nr[i],r=mulberry32((hash2(i,nr,SEED)*4294967296)>>>0);let x=0,z=0;
-  if(initial){const near=r()<.7;for(let t=0;t<500;t++){const a=r()*TAU2,d=Math.sqrt(r())*74;x=Math.cos(a)*d;z=Math.sin(a)*d;const h=hAt(x,z);if(near?(h<-.2&&h>-1.6):h<-1.8)break;}}
+  if(initial){const near=r()<.7;for(let t=0;t<500;t++){const a=r()*TAU2,d=Math.sqrt(r())*74;x=Math.cos(a)*d;z=Math.sin(a)*d;const h=hAt(x,z);if(SB&&S.kind[i]===2?sbKelp(x,z):near?(h<-.2&&h>-1.6):h<-1.8)break;}}
   else{const ra=FL.F.residual.ang+Math.PI+(r()-.5)*1.7;for(let t=0;t<60;t++){const d=84+r()*3;x=Math.cos(ra)*d+(r()-.5)*6;z=Math.sin(ra)*d+(r()-.5)*6;if(hAt(x,z)<-1)break;}}
   S.px[i]=x;S.pz[i]=z;S.st[i]=0;S.tb[i]=0;S.vx[i]=0;S.vz[i]=0;S.yawB[i]=r()*6.283;}
 function flotSnap(S){S.ck.set(S.step,{step:S.step,px:S.px.slice(),pz:S.pz.slice(),st:S.st.slice(),tb:S.tb.slice(),nr:S.nr.slice(),yawB:S.yawB.slice(),vx:S.vx.slice(),vz:S.vz.slice(),cnt:S.cnt.slice()});}
@@ -700,6 +726,7 @@ function flotStep(S){const F=FL.F,dt=FL.DT,T=S.step*dt,L=flowTideAt(T+dt),c=Math
     let dep=L-hAt(x,z);
     if(dep<.03){const g=hGrad(x,z),mg=Math.hypot(g[0],g[1])+1e-6;const m=Math.min(.5,(.03-dep)/mg+.05);x-=g[0]/mg*m;z-=g[1]/mg*m;dep=L-hAt(x,z);}
     flowRaw(F,x,z,T,_fv,false);let vx=_fv[0],vz=_fv[1];vx+=wnd[0]*FK.wind[k];vz+=wnd[1]*FK.wind[k];
+    if(SB){const ge=1.2,gx=(SB.spdFAt(x+ge,z)-SB.spdFAt(x-ge,z))/(2*ge),gz=(SB.spdFAt(x,z+ge)-SB.spdFAt(x,z-ge))/(2*ge);let qx=-.3*gx,qz=-.3*gz;const ql=Math.hypot(qx,qz);if(ql>.1){qx*=.1/ql;qz*=.1/ql;}vx+=qx;vz+=qz;}   /* seabed: drift leaves the fast channels and gathers where the stream slows (fronts, lee eddies) */
     const g=hGrad(x,z),mg=Math.hypot(g[0],g[1]);
     if(dep<.9&&cp>0&&mg>1e-3){const gentle=mg<.45?1:.2,sw=.8*cp*(1-clamp(dep,0,.9)/.9)*gentle*FK.sw[k];vx+=g[0]/mg*sw;vz+=g[1]/mg*sw;}
     let nx=x+vx*dt,nz=z+vz*dt;
@@ -708,7 +735,7 @@ function flotStep(S){const F=FL.F,dt=FL.DT,T=S.step*dt,L=flowTideAt(T+dt),c=Math
       if(L-hAt(nx,nz)<.03){nx=x;nz=z;}}
     S.vx[i]=(nx-S.px[i])/dt;S.vz[i]=(nz-S.pz[i])/dt;S.px[i]=nx;S.pz[i]=nz;
     const d2=L-hAt(nx,nz),g2=hGrad(nx,nz),m2=Math.hypot(g2[0],g2[1]);
-    if(L>.8&&d2<.12&&m2<.45&&m2>1e-3){S.st[i]=1;S.tb[i]=T+dt;S.cnt[2]++;S.vx[i]=0;S.vz[i]=0;const ty=Math.atan2(g2[0],-g2[1]);
+    if(L>.8&&d2<.12&&m2<.45&&m2>1e-3&&(!SB||sbBeachOK(nx,nz))){S.st[i]=1;S.tb[i]=T+dt;S.cnt[2]++;S.vx[i]=0;S.vz[i]=0;const ty=Math.atan2(g2[0],-g2[1]);
       {const jr=mulberry32((hash2(i,S.nr[i]+77,SEED)*4294967296)>>>0),sh=(jr()-.5)*3.2,ux=g2[0]/m2,uz=g2[1]/m2,jx=nx-uz*sh,jz=nz+ux*sh;const dj=L-hAt(jx,jz);if(dj>-.08&&dj<.2){S.px[i]=jx;S.pz[i]=jz;}}
       {const tgt=FL.A*.93+(jr2(i,S.nr[i])-.5)*.12;let qx=S.px[i],qz=S.pz[i];for(let it=0;it<48&&hAt(qx,qz)<tgt;it++){const gg=hGrad(qx,qz),mm=Math.hypot(gg[0],gg[1]);if(mm<1e-3||mm>.6)break;qx+=gg[0]/mm*.2;qz+=gg[1]/mm*.2;}S.px[i]=qx;S.pz[i]=qz;}   /* the swash leaves the wrack at the high-water mark */
          /* spread along the strandline so items do not stack on one point */
@@ -1074,11 +1101,74 @@ const SEAF_FS=`precision highp float;
     #include <encodings_fragment>
     #endif
     }`;
+/* ============ seabed pass (?seabed=1, see SEABED_PASS.md): sea colour from depth, shoal and overfall foam, calm coves, debug overlay ============ */
+let SBTEX=null;
+function sbTex(){if(SBTEX)return SBTEX;const G=SB.G,n=G.n,d=new Uint8Array(n*n*4);
+  for(let k=0;k<n*n;k++){const dp=G.depth[k],hd=G.hard[k],ex=G.expo[k];
+    d[k*4]=clamp(Math.round(dp/12*255),0,255);                                              /* R depth (12 m full scale) */
+    d[k*4+1]=Math.round(255*sm((hd-.4)/.35)*sm((1.3-dp)/1.3)*(.55+.45*Math.min(1,ex*1.6)));  /* G reef and shoal foam weight: hard bed, shallow, not sheltered */
+    d[k*4+2]=Math.round(255*clamp(1-ex/.45,0,1));                                           /* B shelter (1 in a cove, 0 in the open) */
+    let sill=0;const i=k%n,j=(k/n)|0,x=-G.half+(i+.5)*G.cell,z=-G.half+(j+.5)*G.cell;
+    for(const C of SB.chans)for(let q=0;q<2;q++){const rx=x-C.sills[q][0],rz=z-C.sills[q][1];if(Math.abs(rx)>C.sl*2.2&&Math.abs(rz)>C.sl*2.2)continue;const lat=rx*C.lat[0]+rz*C.lat[1],al=rx*C.perp[0]+rz*C.perp[1];sill+=Math.exp(-(lat*lat)/(C.sl*C.sl)-(al*al)/(C.sa*C.sa));}
+    d[k*4+3]=Math.round(255*Math.min(1,sill));}                                              /* A sill weight: 1 on the crest of a channel-mouth sill */
+  const t=new THREE.DataTexture(d,n,n,THREE.RGBAFormat);t.minFilter=t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;t.needsUpdate=true;SBTEX=t;return t;}
+function sbPatch(src,flow){
+  const R=(a,b)=>{if(!src.includes(a))throw new Error('seabed shader patch failed: '+a.slice(0,48));src=src.replace(a,b);};
+  R('uniform sampler2D uH,uN','uniform sampler2D uB;uniform sampler2D uH,uN');
+  R('if(depth<-0.02)discard;','if(depth<-0.02)discard;vec4 bt=texture2D(uB,p/(2.0*TS)+0.5);if(depth>4.6)depth=uTide+bt.r*12.0;'+(flow?'':'float race=0.0;'));
+  if(flow)R('float fs=smoothstep(0.06,0.6,sp);','float fs=smoothstep(0.06,0.6,sp);float race=smoothstep(1.6,2.4,sp)*smoothstep(0.12,0.55,bt.a)*(1.0-smoothstep(1.4,3.2,depth));');
+  R('float calm=1.0-0.6*lee;','float calm=1.0-0.6*lee;calm*=1.0-0.5*smoothstep(0.55,0.9,bt.b)*smoothstep(0.3,1.2,depth);');
+  R('g*=calm;hh*=calm;hf*=calm;','g*=(1.0+1.5*race)*calm;hh*=(1.0+1.0*race)*calm;hf*=calm;');
+  R('float sh=1.0-smoothstep(0.04,0.20+0.7*nz*nz,depth+(nz2-0.5)*0.12);','float sh=1.0-smoothstep(0.04,0.20+0.7*nz*nz,depth+(nz2-0.5)*0.12);float shelf=(1.0-smoothstep(0.35,2.3+0.9*nz*nz,depth+(nz2-0.5)*0.4))*(1.0-0.5*smoothstep(0.0,0.6,bt.g));sh=max(sh,shelf*0.7);');
+  R('vec3 body=mix(midC,deepC,bm);','vec3 body=mix(midC,deepC,bm);body=mix(body,deepC*0.38,smoothstep(2.2,6.5,depth)*0.85);');
+  R('col=mix(col,sk,fres);','col=mix(col,sk,fres);col=mix(col,col*1.12+vec3(0.003,0.008,0.012),smoothstep(0.55,0.9,bt.b)*0.5*smoothstep(0.3,1.2,depth));');
+  R('float alpha=1.0-0.95*exp(-depth*3.2);','float alpha=1.0-0.95*exp(-depth*1.7);');
+  R('float foam=clamp(','float shoalF=bt.g*smoothstep(1.1,0.10,depth)*(0.45+0.55*lap)*smoothstep(0.52,0.74,nz2+0.45*lap-0.12)*0.75;float raceF='+(flow?'race*smoothstep(0.64,0.94,strk+0.25*brk+(nz2-0.5)*0.5)*(0.6+0.3*lap);':'0.0;')+'fo=max(fo,max(shoalF,raceF));float foam=clamp(');
+  return src;}
+/* debug overlay: depth contours, sills, scour holes, sand links, landing candidates, haul-outs, skerries, kelp, coves (2D canvas over the view; off by default: ?sbdbg=1 or __li.seabed.overlay(true)) */
+const SBO={on:Q.get('sbdbg')==='1',cv:null,pn:null,M:null,cont:null,lv:[.5,1,2,3.5,5],drawn:false};
+function sbOverlayInit(){if(!SB||SBO.cv)return;SBO.M=SB.measures();SBO.cont=SB.contours(SBO.lv);
+  const cv=document.createElement('canvas');cv.id='sbOverlay';cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;display:'+(SBO.on?'block':'none');document.body.appendChild(cv);SBO.cv=cv;
+  const pn=document.createElement('div');pn.id='sbpanel';pn.style.cssText='position:fixed;left:10px;bottom:10px;z-index:6;background:rgba(251,246,236,.93);border:2px solid #cdbb98;border-radius:10px;padding:6px 9px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#2b2118;white-space:pre;display:'+(SBO.on?'block':'none');
+  const M=SBO.M;pn.textContent=`seabed  seed ${SEED}\nland ${(M.landFraction*100).toFixed(1)}%  gaps ${M.gaps}  channels ${M.channels}  sand links ${M.bars}\nsills ${M.sills} (${M.shallowSills} channels with a sill under 1.2 m)  deepest hole ${M.deepestHole} m\nfastest throat ${M.fastest} m/s  race cells ${M.races}\nlanding sites ${M.landingCandidates}  haul-outs ${M.haulOuts}  skerries ${M.skerries}\nkelp ${M.kelpArea} m2  coves ${M.coves}\ndry flat at landing ${M.dryFlatAtLanding} m\ncontours: 0.5 1 2 3.5 5 m\n(green tri landing, orange sq haul-out, violet ring skerry,\n red ellipse scour, yellow diamond sill, cyan ring cove, dots kelp)`;
+  document.body.appendChild(pn);SBO.pn=pn;}
+function sbOverlaySet(on){SBO.on=!!on;if(!SBO.cv)return;SBO.cv.style.display=on?'block':'none';SBO.pn.style.display=on?'block':'none';if(!on)SBO.cv.getContext('2d').clearRect(0,0,SBO.cv.width,SBO.cv.height);}
+function sbOverlayFrame(){if(!SBO.on||!SBO.cv)return;const cv=SBO.cv,w=cv.clientWidth,h=cv.clientHeight;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  const x=cv.getContext('2d');x.clearRect(0,0,w,h);camera.updateMatrixWorld();
+  const proj=(px,py,pz)=>{_pv.set(px,py,pz).project(camera);return[(_pv.x*.5+.5)*w,(1-(_pv.y*.5+.5))*h,_pv.z];};
+  const cols=['rgba(255,255,255,.85)','rgba(190,240,255,.8)','rgba(120,205,255,.8)','rgba(70,150,235,.75)','rgba(60,100,210,.7)'];
+  x.lineWidth=1.3;SBO.cont.forEach((c,ci)=>{x.strokeStyle=cols[ci];x.beginPath();for(const s of c.seg){const a=proj(s[0],-c.level,s[1]),b=proj(s[2],-c.level,s[3]);if(a[2]>1||b[2]>1)continue;x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);}x.stroke();});
+  const lab=(t,p,col)=>{x.font='bold 11px ui-monospace,Menlo,monospace';x.lineWidth=3;x.strokeStyle='rgba(20,20,30,.8)';x.strokeText(t,p[0]+8,p[1]-6);x.fillStyle=col;x.fillText(t,p[0]+8,p[1]-6);};
+  const M=SBO.M,L=M._lists;
+  x.setLineDash([5,4]);x.lineWidth=2;for(const b of SB.bars){x.strokeStyle='rgba(255,150,60,.95)';const a=proj(b.a[0],b.peak,b.a[1]),c=proj(b.b[0],b.peak,b.b[1]);if(a[2]>1||c[2]>1)continue;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(c[0],c[1]);x.stroke();lab('sand link, dry below '+(b.peak).toFixed(2)+' m tide',[(a[0]+c[0])/2,(a[1]+c[1])/2],'#ffb060');}x.setLineDash([]);
+  for(const C of SB.chans){x.strokeStyle='rgba(255,90,80,.95)';x.lineWidth=2;x.beginPath();let first=true;for(let k=0;k<=24;k++){const t=k/24*6.2832,u=Math.cos(t)*C.sx*.9,v=Math.sin(t)*C.sy*.7,wx=C.hole[0]+C.lat[0]*u+C.perp[0]*v,wz=C.hole[1]+C.lat[1]*u+C.perp[1]*v,q=proj(wx,-.05,wz);if(first){x.moveTo(q[0],q[1]);first=false;}else x.lineTo(q[0],q[1]);}x.stroke();
+    if(C.S>2){const q=proj(C.hole[0],-.05,C.hole[1]);lab('scour '+SB.depthAt(C.hole[0],C.hole[1]).toFixed(1)+' m',q,'#ff9088');}}
+  for(const s of L.sills){const q=proj(s.x,-s.depth,s.z);if(q[2]>1)continue;x.fillStyle='rgba(255,226,70,.95)';x.beginPath();x.moveTo(q[0],q[1]-6);x.lineTo(q[0]+6,q[1]);x.lineTo(q[0],q[1]+6);x.lineTo(q[0]-6,q[1]);x.closePath();x.fill();lab('sill '+s.depth.toFixed(1)+' m',q,'#ffe246');}
+  L.landing.forEach((c,i)=>{const q=proj(c.x,.3,c.z);if(q[2]>1)return;x.fillStyle='rgba(90,235,120,.95)';x.beginPath();x.moveTo(q[0],q[1]-8);x.lineTo(q[0]+7,q[1]+5);x.lineTo(q[0]-7,q[1]+5);x.closePath();x.fill();lab('landing '+(c.fromStart?c.fromStart+' m away':'home'),q,'#7af58c');});
+  L.hauls.forEach(c=>{const q=proj(c.x,.3,c.z);if(q[2]>1)return;x.fillStyle='rgba(255,160,40,.95)';x.fillRect(q[0]-5,q[1]-5,10,10);lab('seals',q,'#ffb040');});
+  ISL.forEach(I=>{if(I.cres||Math.sqrt(I.rx*I.rz)>7.5||I.peak>4.2)return;const q=proj(I.x,I.peak,I.z);x.strokeStyle='rgba(190,130,255,.95)';x.lineWidth=2;x.beginPath();x.arc(q[0],q[1],14,0,6.2832);x.stroke();lab('skerry',q,'#c8a0ff');});
+  for(const c of L.coves){const q=proj(c.x,0,c.z);if(q[2]>1)continue;x.strokeStyle='rgba(90,235,235,.9)';x.lineWidth=2;x.beginPath();x.arc(q[0],q[1],11,0,6.2832);x.stroke();lab('cove',q,'#7ef0f0');}
+  if(LD.on&&LD.L){ /* the home landing by tide: waterline now, and how far out a rowing boat and a work boat can float (draft + 0.3 m) */
+    const Lg=LD.L,dd=Lg.dir,at=d=>[Lg.x+dd[0]*d,Lg.z+dd[1]*d],bed=d=>H(Lg.x+dd[0]*d,Lg.z+dd[1]*d);
+    let wl=-6;for(let d=-6;d<40;d+=.1){if(bed(d)<tide){wl=d;break;}}
+    const pt=(d,y)=>{const a=at(d);return proj(a[0],y,a[1]);};
+    const stand=need=>{for(let d=-6;d<40;d+=.1){if(tide-bed(d)>=need)return d;}return 40;};
+    const dr=SB.P.drafts,mg=SB.P.margin;
+    x.lineWidth=4;x.strokeStyle='rgba(120,240,255,.95)';let a=pt(wl,tide+.05),b=pt(stand(dr.row+mg),tide+.05);x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();
+    x.fillStyle='#7ef0f0';x.beginPath();x.arc(a[0],a[1],5,0,6.2832);x.fill();lab('waterline',a,'#7ef0f0');
+    const sr=stand(dr.row+mg),sw=stand(dr.work+mg);
+    const q1=pt(sr,tide+.05);x.fillStyle='#8cf58c';x.beginPath();x.arc(q1[0],q1[1],6,0,6.2832);x.fill();lab('rowing boat floats here ('+Math.max(0,sr-wl).toFixed(1)+' m wade)',[q1[0],q1[1]+22],'#8cf58c');
+    const q2=pt(sw,tide+.05);x.fillStyle='#ffd060';x.beginPath();x.arc(q2[0],q2[1],6,0,6.2832);x.fill();lab(sw>=40?'work boat: no room at this tide':'work boat floats here ('+Math.max(0,sw-wl).toFixed(1)+' m out)',[q2[0],q2[1]-4],'#ffd060');
+    const lw=sbLanding();if(lw){const q=pt(-6,2.2);lab('tide '+(tide>=0?'+':'')+tide.toFixed(2)+' m   window/tide: row '+lw.byDraft.row.minutes+' min, small sail '+lw.byDraft.sail.minutes+', work boat '+lw.byDraft.work.minutes,q,'#ffffff');}}
+  x.fillStyle='rgba(110,230,110,.65)';const km=L.kelpMask,n=SB.N;for(let k=0;k<n*n;k+=1){if(!km[k])continue;const i=k%n,j=(k/n)|0;if(((i*7+j*13)&3)!==0)continue;const q=proj(-SB.half+(i+.5)*SB.cell,-1,-SB.half+(j+.5)*SB.cell);if(q[2]>1)continue;x.fillRect(q[0]-1.5,q[1]-1.5,3,3);}
+}
+/* the tide-dependent numbers of the home landing: wade distance and windows by boat draft, read from the real height field */
+function sbLanding(){if(!LD.on||!LD.L)return null;const L=LD.L,prof=d=>-H(L.x+L.dir[0]*d,L.z+L.dir[1]*d);return SB.landingWindows(prof,8);}
 function buildSea(){
   const nmap=makeSeaNormal();
-  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)}},defines:NOPOST?{NOPOST:1}:{},
+  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null}},defines:NOPOST?{NOPOST:1}:{},
   vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-  fragmentShader:FLOW?SEAF_FS:SEA2?SEA2_FS:`precision highp float;
+  fragmentShader:FLOW?(SB?sbPatch(SEAF_FS,true):SEAF_FS):SEA2?(SB?sbPatch(SEA2_FS,false):SEA2_FS):`precision highp float;
   uniform float uTime,uTide,uQ,uTideV,uLand;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];varying vec3 vW;
   #define TS 100.0
   vec4 hs(vec2 p){return texture2D(uH,p/(2.0*TS)+0.5);}
@@ -1563,7 +1653,7 @@ function build(){const t0=performance.now();
   buildTable();
   const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
-  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();
+  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB)sbOverlayInit();
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
@@ -1577,7 +1667,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  if(FLOW)FL.Tcur=flowTime();applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);
+  if(FLOW)FL.Tcur=flowTime();applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1635,6 +1725,14 @@ function init(){
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
   window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality,renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
     setTide:v=>{tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
+    depthAt:SB?(x,z)=>-H(x,z):null,bathy:SB?()=>SB.bathy():null,
+    seabed:SB?{params:()=>JSON.parse(JSON.stringify(SB.P)),measures:()=>{const M=SB.measures();delete M._lists;return JSON.parse(JSON.stringify(M));},lists:()=>{const M=SB.measures(),o=M._lists;return JSON.parse(JSON.stringify({sills:o.sills,landing:o.landing,hauls:o.hauls,coves:o.coves,throats:o.throats}));},
+      overlay:on=>sbOverlaySet(on===undefined?!SBO.on:on),exposedArea:l=>SB.exposedArea(l),linked:(a,b,l)=>SB.linked(a,b,l),minutesAbove:l=>SB.minutesAbove(l),landing:sbLanding,landingWindows:(prof,carry)=>SB.landingWindows(prof,carry),
+      streamSpeed:(w,D)=>SB.streamSpeed(w,D),mAt:(x,z)=>SB.spdAt(x,z),uAt:(x,z)=>SB.spdFAt(x,z)*SB.P.U0,widthAt:(x,z)=>SB.widthAt(x,z),core:(x,z)=>SB.depthAt(x,z),hardAt:(x,z)=>SB.gbil(SB.G.hard,x,z),exposureAt:(x,z)=>SB.gbil(SB.G.expo,x,z),
+      bars:()=>JSON.parse(JSON.stringify(SB.bars.map(b=>({i:b.i,j:b.j,peak:b.peak})))),gaps:()=>SB.gaps.map(g=>({a:ISL[g.i].id,b:ISL[g.j].id,w:g.w,bar:!!g.bar})),
+      race:(x,z,T)=>{if(!FLOW)return null;const o=flowAt(x,z,T),u=Math.hypot(o[0],o[1]),D=SB.depthG(x,z)+flowTideAt(T);return clamp(u-SB.P.ovU,0,1)*clamp((SB.P.ovDepth-D)/1.6,0,1);},
+      shaderTaps:()=>{const m=waterMesh.material.fragmentShader;return(m.match(/texture2D\(/g)||[]).length;}}:null,
+    triParts:()=>{const o=[];scene.traverse(m=>{if(m.isMesh&&m!==floorMesh&&m.visible){const g=m.geometry;o.push([m.isInstancedMesh?'inst':m.type,Math.round((g.index?g.index.count/3:g.attributes.position.count/3)*(m.isInstancedMesh?m.count:1))]);}});return o.sort((a,b)=>b[1]-a[1]).slice(0,10);},
     setView:(o)=>{Object.assign(cam,o);clampCam();snap=true;},home:()=>{Object.assign(cam,HOME);snap=true;},
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
