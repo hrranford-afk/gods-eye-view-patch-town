@@ -1,0 +1,13 @@
+{
+ "request_id": "ASSET-LI-ROCK-01",
+ "recipe_path": "rock_recipe.json",
+ "recipe_sha256": "8e34ac72eec9bd0675f71e1452ee9cfdd15a99c64a42c56ccff79218d5f3a533",
+ "validator_commit": "pilot",
+ "class": "prop",
+ "wanted_outputs": [
+  "glb",
+  "preview_png"
+ ],
+ "machine_run_approved": true,
+ "notes": "Living Islands Blender pilot; run approved by the pilot task instruction, not by the owner through the order form"
+}

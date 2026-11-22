@@ -1,0 +1,3 @@
+{"id": "rock", "version": 1, "class": "prop", "footprint": {"w": 2.4, "d": 1.8}, "height": 1.3,
+ "kind": "layered coastal rock", "strata": "saw-tooth ledges every ~0.3 m", "joints": "voronoi grooves", "lichen": "yellow-green crust on up-facing faces",
+ "note": "Recipe is the size/class target for the pilot; the converter is rock_asset.py (seeded)."}

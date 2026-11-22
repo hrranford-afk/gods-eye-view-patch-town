@@ -1,0 +1,22 @@
+{
+ "seed": 1122,
+ "grid": 129,
+ "tex": 2048,
+ "samples": 48,
+ "bake_seconds": 410.8,
+ "total_seconds": 414.7,
+ "tris": {
+  "land": 32768,
+  "trunks": 476,
+  "foliage": 4080,
+  "boulders": 10240
+ },
+ "sun_dir_blender": [
+  -0.604022773555054,
+  0.719846310392954,
+  0.3420201433256687
+ ],
+ "half": 28.0,
+ "depth_decode": "h = r*12 - 6",
+ "glb_bytes": 1804736
+}

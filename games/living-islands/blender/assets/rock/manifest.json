@@ -1,0 +1,96 @@
+{
+ "schema": "asset_manifest",
+ "version": 0,
+ "asset_id": "rock_01",
+ "recipe": {
+  "id": "rock",
+  "version": 1,
+  "sha256": "8e34ac72eec9bd0675f71e1452ee9cfdd15a99c64a42c56ccff79218d5f3a533"
+ },
+ "class": "prop",
+ "units": "m",
+ "up": "y",
+ "front": "+z",
+ "files": {
+  "glb": {
+   "path": "rock_01.glb",
+   "sha256": "f1ffd5fc92022df58f80f5b0aad397015977c8fe79b261b11605a746769ae1ea",
+   "bytes": 525964
+  },
+  "lods": [
+   {
+    "path": "rock_01.lod1.glb",
+    "sha256": "802f0771c8d31aa5c97f519bf2b5d4123790a815a3b485d1338d7392fe9329d5",
+    "bytes": 575112
+   }
+  ],
+  "preview_png": {
+   "path": "rock_01.preview.png",
+   "sha256": "80a5630c3273c71ac2c0ddcea61864a158bd7bc5dad63e4a4e3f2fcbb1faeaa8",
+   "bytes": 805255
+  }
+ },
+ "footprint": {
+  "w": 2.4,
+  "d": 1.8
+ },
+ "bounds": {
+  "min": [
+   -1.1815,
+   -0.0031,
+   -0.8858
+  ],
+  "max": [
+   1.1773,
+   1.293,
+   0.8861
+  ]
+ },
+ "lods": [
+  {
+   "triangles": 1900
+  },
+  {
+   "triangles": 700
+  }
+ ],
+ "materials": 1,
+ "textures": [
+  {
+   "name": "rock_normal",
+   "w": 1024,
+   "h": 1024,
+   "format": "jpeg"
+  },
+  {
+   "name": "rock_color",
+   "w": 1024,
+   "h": 1024,
+   "format": "jpeg"
+  }
+ ],
+ "sockets": [],
+ "collider": {
+  "box": [
+   2.4,
+   1.3,
+   1.8
+  ]
+ },
+ "producer": {
+  "machine_class": "cloud sandbox, 4 CPU cores, Blender 5.3 as python module",
+  "converter_id": "rock_asset.py",
+  "converter_sha256": "3d5feff73219a524aa0e4a4e27608c52730415751e77b2ab474b193e05cd0b19",
+  "seconds": 100.0
+ },
+ "inspection": {
+  "checks_total": 5,
+  "checks_passed": 5,
+  "failed": []
+ },
+ "run_approved_by_owner": true,
+ "warnings": [
+  "PILOT: made by a Cloud session with Blender as a python module; the owner has not approved this run through the order form",
+  "Class is prop (2,000 triangle budget): detail comes from a baked normal map, not geometry"
+ ]
+}
