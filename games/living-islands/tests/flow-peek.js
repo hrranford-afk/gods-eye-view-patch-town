@@ -1,4 +1,4 @@
-/* dev helper: peek at flotsam. NODE_PATH=$(npm root -g) node tests/flow-peek.js out=/tmp/x.png kind=wood [beached=1] [qs=..] */
+/* dev helper: peek at flotsam. NODE_PATH=$(npm root -g) node tests/flow-peek.js out=/tmp/x.png kind=driftwood [beached=1] [qs=..] */
 import path from 'node:path';
 import { launch, open } from './shoot.js';
 const arg = k => (process.argv.find(a => a.startsWith(k + '=')) || '').split('=').slice(1).join('=');

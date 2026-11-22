@@ -27,7 +27,11 @@ let SH;
     return { tx: cx, tz: cz, dist: 19, phi: 0.52, theta: Math.atan2(cx - I.x, cz - I.z), n: best.length }; });
   await page.close(); console.log('shore', JSON.stringify(SH)); }
 if (arg('shore')) SH = JSON.parse(arg('shore'));
-if (only.includes('1')) await shot('', 'flow-1.png', { fn: () => { __li.setTideDir(1); __li.setTide(0.1); __li.home(); } });
+/* flow-1: mid-wide view centred on the busiest patch of open water, so streaks and drifting items both read */
+if (only.includes('1')) await shot('', 'flow-1.png', { fn: () => { __li.setTideDir(1); __li.setTide(0.1); const P = __li.flow.positions(__li.flow.time()).filter(p => !p.beached && Math.hypot(p.x, p.z) < 55); let best = null;
+  for (const a of P) { const g = P.filter(b => Math.hypot(a.x - b.x, a.z - b.z) < 14); if (!best || g.length > best.length) best = g; }
+  const cx = best.reduce((s, p) => s + p.x, 0) / best.length, cz = best.reduce((s, p) => s + p.z, 0) / best.length;
+  __li.setView({ tx: cx, tz: cz, dist: 82, phi: 0.58, theta: 0.52 }); } });
 if (only.includes('2')) await shot('', 'flow-2.png', { fn: v => { __li.setTideDir(-1); __li.setTide(0.97); __li.setView(v); }, arg: SH });
 if (only.includes('3')) await shot('', 'flow-3.png', { fn: v => { __li.setTideDir(-1); __li.setTide(-0.97); __li.setView(v); }, arg: SH });
 if (only.includes('a')) await shot('&arrows=1&flowdbg=1', 'flow-arrows.png', { fn: () => { __li.setTideDir(1); __li.setTide(0); __li.home(); } });

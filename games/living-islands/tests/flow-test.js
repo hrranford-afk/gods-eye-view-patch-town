@@ -87,8 +87,8 @@ const last = bt.sums[bt.sums.length - 1];
 ok(bt.sums.every(c => c.floating + c.beached === c.total), 'counters add up (floating + beached = ' + last.total + ') at every checkpoint; lost off the map and respawned by T=400: ' + last.lostRespawned + ', beached items recycled: ' + last.beachRecycled);
 
 /* 6 render side: counts in the meshes, tide dependent scene, boat set, panel */
-const rs = await A.page.evaluate(async () => { __li.setTideDir(-1); __li.setTide(0.97); await new Promise(r => setTimeout(r, 1200)); const hi = __li.flow.meshCounts().reduce((a, b) => a + b, 0); const t = __li.stats().tris; return { hi, tris: t, N: __li.flow.N() }; });
-ok(rs.hi === rs.N, 'every flotsam item is drawn (instanced): ' + rs.hi + ' of ' + rs.N + ' in 5 draw calls');
+const rs = await A.page.evaluate(async () => { __li.setTideDir(-1); __li.setTide(0.97); await new Promise(r => setTimeout(r, 1200)); const hi = __li.flow.meshCounts().reduce((a, b) => a + b, 0); const t = __li.stats().tris; return { hi, tris: t, N: __li.flow.N(), nm: __li.flow.meshCounts().length }; });
+ok(rs.hi === rs.N, 'every flotsam item is drawn (instanced): ' + rs.hi + ' of ' + rs.N + ' in ' + rs.nm + ' draw calls');
 const boat = await (async () => { const r = await o('&q=high&pass=landing&flow=1&auto=1'); await r.page.waitForTimeout(2500); const b = await r.page.evaluate(() => __li.flow.boat()); await r.page.close(); return b; })();
 ok(boat && isFinite(boat.ut) && isFinite(boat.setx), 'sailing boat reads the current (along-track ' + (boat ? boat.ut.toFixed(2) : '?') + ' m/s, set ' + (boat ? Math.hypot(boat.setx, boat.setz).toFixed(2) : '?') + ' m)');
 await A.page.close();
