@@ -1,0 +1,54 @@
+{
+ "schema": "city_evolution",
+ "version": 0,
+ "id": "bakery.cool_store_room",
+ "recipe": {
+  "id": "bakery",
+  "version": 1,
+  "sha256": "b4999aeb0ce8de890e0d711da6561c31b546e92727c3da4e87b716a8b63e559e"
+ },
+ "context": {
+  "era": "any",
+  "climate": "warm",
+  "purpose": "hold more stock between deliveries"
+ },
+ "branches": [
+  {
+   "id": "cool_store_room",
+   "name": "Cool store room",
+   "kind": "gameplay",
+   "requires": {
+    "tech": [
+     "storage"
+    ],
+    "wealth_min": 40
+   },
+   "cost": {
+    "coins": 30
+   },
+   "drawback": "More flour on the shelves means more flour spoils when the roof is damaged, and wages rise by 1 a minute per worker.",
+   "effects": [
+    {
+     "path": "systems.storage.flour",
+     "op": "set",
+     "value": 100
+    },
+    {
+     "path": "systems.storage.loaf",
+     "op": "set",
+     "value": 100
+    },
+    {
+     "path": "systems.effects.spoil[0].items.flour",
+     "op": "mul",
+     "value": 1.3
+    },
+    {
+     "path": "systems.costs.wage_per_worker_per_minute",
+     "op": "add",
+     "value": 1
+    }
+   ]
+  }
+ ]
+}

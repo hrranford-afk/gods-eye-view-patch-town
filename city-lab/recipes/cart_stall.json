@@ -1,0 +1,328 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "cart_stall",
+ "name": "Apple Cart Stall",
+ "footprint": {
+  "w": 1.4,
+  "d": 0.7
+ },
+ "parts": [
+  {
+   "id": "bed",
+   "kind": "floor",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    1.4,
+    0.05,
+    0.7
+   ],
+   "material": "wood",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "post.l",
+   "kind": "post",
+   "pos": [
+    -0.6,
+    0.05,
+    -0.25
+   ],
+   "size": [
+    0.07,
+    0.7,
+    0.07
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "bed"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "post.r",
+   "kind": "post",
+   "pos": [
+    0.6,
+    0.05,
+    -0.25
+   ],
+   "size": [
+    0.07,
+    0.7,
+    0.07
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "bed"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "beam",
+   "kind": "beam",
+   "pos": [
+    0,
+    0.75,
+    -0.25
+   ],
+   "size": [
+    1.27,
+    0.07,
+    0.07
+   ],
+   "material": "wood_dark",
+   "stage": "frame",
+   "needs": [
+    "post.l",
+    "post.r"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "back",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    -0.31
+   ],
+   "size": [
+    1.27,
+    0.7,
+    0.04
+   ],
+   "material": "paint_blue",
+   "stage": "walls",
+   "needs": [
+    "post.l",
+    "post.r"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "needsMin": 1
+  },
+  {
+   "id": "counter",
+   "kind": "counter",
+   "pos": [
+    0,
+    0.05,
+    0.05
+   ],
+   "size": [
+    1.2,
+    0.3,
+    0.3
+   ],
+   "material": "wood_pale",
+   "stage": "walls",
+   "needs": [
+    "bed"
+   ],
+   "tag": "counter",
+   "replaceable": true
+  },
+  {
+   "id": "awning",
+   "kind": "awning",
+   "pos": [
+    0,
+    0.82,
+    0.1
+   ],
+   "size": [
+    1.5,
+    0.3,
+    0.7
+   ],
+   "material": "canvas",
+   "stage": "trim",
+   "needs": [
+    "beam"
+   ],
+   "tag": "awning",
+   "replaceable": true,
+   "variant": 2
+  },
+  {
+   "id": "sign",
+   "kind": "sign",
+   "pos": [
+    0,
+    0.6,
+    0.45
+   ],
+   "size": [
+    0.6,
+    0.2,
+    0.04
+   ],
+   "material": "wood_pale",
+   "stage": "trim",
+   "needs": [
+    "awning"
+   ],
+   "tag": "sign",
+   "replaceable": true,
+   "label": "APPLES"
+  },
+  {
+   "id": "crate.a",
+   "kind": "crate",
+   "pos": [
+    -0.45,
+    0.35,
+    0.05
+   ],
+   "size": [
+    0.2,
+    0.2,
+    0.2
+   ],
+   "material": "wood",
+   "stage": "walls",
+   "needs": [
+    "counter"
+   ],
+   "tag": "crate",
+   "replaceable": true
+  },
+  {
+   "id": "crate.b",
+   "kind": "crate",
+   "pos": [
+    0.45,
+    0.35,
+    0.05
+   ],
+   "size": [
+    0.2,
+    0.2,
+    0.2
+   ],
+   "material": "wood",
+   "stage": "walls",
+   "needs": [
+    "counter"
+   ],
+   "tag": "crate",
+   "replaceable": true
+  },
+  {
+   "id": "sack",
+   "kind": "sack",
+   "pos": [
+    0,
+    0.35,
+    0.05
+   ],
+   "size": [
+    0.18,
+    0.22,
+    0.14
+   ],
+   "material": "flour",
+   "stage": "walls",
+   "needs": [
+    "counter"
+   ],
+   "tag": "sack",
+   "replaceable": true
+  },
+  {
+   "id": "barrel",
+   "kind": "barrel",
+   "pos": [
+    0.85,
+    0,
+    0.1
+   ],
+   "size": [
+    0.2,
+    0.28,
+    0.2
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [],
+   "tag": "barrel",
+   "replaceable": true
+  }
+ ],
+ "systems": {
+  "jobs": [
+   {
+    "role": "seller",
+    "count": 1,
+    "station_part": "counter"
+   }
+  ],
+  "storage": {
+   "apple": 30
+  },
+  "start_stock": {
+   "apple": 12
+  },
+  "deliveries": [
+   {
+    "item": "apple",
+    "amount": 10,
+    "every_seconds": 60,
+    "via": "cart",
+    "drop_part": "barrel"
+   }
+  ],
+  "sales": {
+   "item": "apple",
+   "price": 2,
+   "demand_per_minute": 9,
+   "role": "seller",
+   "noise": 0
+  },
+  "costs": {
+   "power_per_kwh": 0,
+   "wage_per_worker_per_minute": 3,
+   "ingredient_prices": {
+    "apple": 0.8
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": [
+    "seller"
+   ]
+  },
+  "effects": {
+   "demand": [
+    {
+     "tag": "awning",
+     "loss": 0.2
+    }
+   ]
+  },
+  "inspect": {
+   "labels": {
+    "counter": "Sales counter",
+    "awning": "Awning",
+    "sign": "Apple sign",
+    "barrel": "Cart barrel"
+   }
+  }
+ }
+}
