@@ -1,0 +1,1760 @@
+{
+ "schema": "foundry_shortlist",
+ "version": 1,
+ "size_m": 400,
+ "K": 24,
+ "method": "playability is a hard gate; then score = weighted mean of band desirabilities; then greedy diversity (score - lambda * similarity to those already chosen)",
+ "weights": [
+  {
+   "key": "land_fraction",
+   "w": 1,
+   "band": [
+    0.04,
+    0.09,
+    0.16,
+    0.26
+   ],
+   "why": "enough land to matter, enough sea to row across"
+  },
+  {
+   "key": "island_count",
+   "w": 1,
+   "band": [
+    4,
+    7,
+    11,
+    16
+   ],
+   "why": "a few to a dozen islands"
+  },
+  {
+   "key": "size_spread",
+   "w": 1,
+   "band": [
+    0.3,
+    0.6,
+    1,
+    1.5
+   ],
+   "why": "one or two big islands among small ones"
+  },
+  {
+   "key": "coast_complexity",
+   "w": 0.75,
+   "band": [
+    1.05,
+    1.12,
+    1.3,
+    1.8
+   ],
+   "why": "ragged enough to have coves, not a fractal"
+  },
+  {
+   "key": "sheltered_landings",
+   "w": 1.5,
+   "band": [
+    0,
+    2,
+    6,
+    40
+   ],
+   "why": "sheltered places to land"
+  },
+  {
+   "key": "home_landings",
+   "w": 1,
+   "band": [
+    0,
+    2,
+    6,
+    30
+   ],
+   "why": "a choice of landings on the start island"
+  },
+  {
+   "key": "nearest_neighbour_row_min",
+   "w": 1.5,
+   "band": [
+    0.2,
+    0.5,
+    2.5,
+    6
+   ],
+   "why": "a first voyage worth a short row"
+  },
+  {
+   "key": "reachable_fraction",
+   "w": 1.5,
+   "band": [
+    0.3,
+    0.75,
+    1,
+    1.01
+   ],
+   "why": "most islands can be rowed to"
+  },
+  {
+   "key": "resource_spread",
+   "w": 1,
+   "band": [
+    0.3,
+    0.8,
+    5,
+    12
+   ],
+   "why": "fresh water on a few islands"
+  },
+  {
+   "key": "detail",
+   "w": 0.75,
+   "band": [
+    0.003,
+    0.009,
+    0.022,
+    0.05
+   ],
+   "why": "enough edge energy to read as varied"
+  },
+  {
+   "key": "contrast",
+   "w": 0.5,
+   "band": [
+    0.03,
+    0.06,
+    0.2,
+    0.4
+   ],
+   "why": "land separates from sea"
+  },
+  {
+   "key": "palette",
+   "w": 0.5,
+   "band": [
+    0.5,
+    0.8,
+    1.01,
+    1.02
+   ],
+   "why": "stays inside the muted olive/grey/navy target"
+  }
+ ],
+ "diversity": {
+  "lambda": 0.3,
+  "sigma": 0.7
+ },
+ "playable_of_total": "58/200",
+ "failed_check_counts": {
+  "start_island_big_enough": 59,
+  "start_has_fresh_water": 59,
+  "start_has_timber": 134,
+  "resource_reachable_water": 9,
+  "resource_reachable_timber": 28,
+  "resource_reachable_stone": 26,
+  "neighbour_reachable": 4,
+  "start_has_landing": 1
+ },
+ "shortlist": [
+  {
+   "rank": 1,
+   "seed": 142,
+   "manifest_hash": "b848e94fcbd7a4f5",
+   "score": 0.9931,
+   "adjusted": 0.9931,
+   "diversity_penalty": 0,
+   "home_kind": "grass",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "size_spread"
+   ],
+   "weakest": [
+    "palette 1",
+    "home_landings 0.92"
+   ]
+  },
+  {
+   "rank": 2,
+   "seed": 174,
+   "manifest_hash": "d4f5becd62468c77",
+   "score": 0.9764,
+   "adjusted": 0.9441,
+   "diversity_penalty": 0.108,
+   "home_kind": "harbour",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.92",
+    "island_count 0.8"
+   ]
+  },
+  {
+   "rank": 3,
+   "seed": 51,
+   "manifest_hash": "8bf6e6d741f1a8d7",
+   "score": 0.9799,
+   "adjusted": 0.9235,
+   "diversity_penalty": 0.188,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.96",
+    "island_count 0.8"
+   ]
+  },
+  {
+   "rank": 4,
+   "seed": 196,
+   "manifest_hash": "04a985f96aa48302",
+   "score": 0.9489,
+   "adjusted": 0.8733,
+   "diversity_penalty": 0.252,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.88",
+    "island_count 0.6"
+   ]
+  },
+  {
+   "rank": 5,
+   "seed": 149,
+   "manifest_hash": "e41c9da9badd4b30",
+   "score": 0.8843,
+   "adjusted": 0.8719,
+   "diversity_penalty": 0.041,
+   "home_kind": "shingle",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "nearest_neighbour_row_min"
+   ],
+   "weakest": [
+    "coast_complexity 0.66",
+    "sheltered_landings 0.5"
+   ]
+  },
+  {
+   "rank": 6,
+   "seed": 114,
+   "manifest_hash": "42ae801f4029339e",
+   "score": 0.9722,
+   "adjusted": 0.8629,
+   "diversity_penalty": 0.364,
+   "home_kind": "shingle",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "land_fraction 0.84",
+    "contrast 0.74"
+   ]
+  },
+  {
+   "rank": 7,
+   "seed": 129,
+   "manifest_hash": "06a1620f81d72dde",
+   "score": 0.981,
+   "adjusted": 0.8459,
+   "diversity_penalty": 0.45,
+   "home_kind": "shingle",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "sheltered_landings 0.94",
+    "land_fraction 0.86"
+   ]
+  },
+  {
+   "rank": 8,
+   "seed": 8,
+   "manifest_hash": "f4a25eff52f60886",
+   "score": 0.9526,
+   "adjusted": 0.8363,
+   "diversity_penalty": 0.388,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "island_count 0.8",
+    "resource_spread 0.71"
+   ]
+  },
+  {
+   "rank": 9,
+   "seed": 46,
+   "manifest_hash": "345962a37d6c2504",
+   "score": 0.9604,
+   "adjusted": 0.8193,
+   "diversity_penalty": 0.47,
+   "home_kind": "harbour",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "size_spread"
+   ],
+   "weakest": [
+    "home_landings 0.83",
+    "sheltered_landings 0.79"
+   ]
+  },
+  {
+   "rank": 10,
+   "seed": 69,
+   "manifest_hash": "d7401fc89b13c3ec",
+   "score": 0.9107,
+   "adjusted": 0.8159,
+   "diversity_penalty": 0.316,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "nearest_neighbour_row_min"
+   ],
+   "weakest": [
+    "size_spread 0.83",
+    "sheltered_landings 0.5"
+   ]
+  },
+  {
+   "rank": 11,
+   "seed": 138,
+   "manifest_hash": "1b60a5fb8459b99e",
+   "score": 0.9603,
+   "adjusted": 0.8092,
+   "diversity_penalty": 0.504,
+   "home_kind": "harbour",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "contrast 0.82",
+    "land_fraction 0.74"
+   ]
+  },
+  {
+   "rank": 12,
+   "seed": 93,
+   "manifest_hash": "567b4210b878d57e",
+   "score": 0.9576,
+   "adjusted": 0.8022,
+   "diversity_penalty": 0.518,
+   "home_kind": "harbour",
+   "strongest": [
+    "land_fraction",
+    "coast_complexity",
+    "sheltered_landings"
+   ],
+   "weakest": [
+    "island_count 0.8",
+    "home_landings 0.79"
+   ]
+  },
+  {
+   "rank": 13,
+   "seed": 85,
+   "manifest_hash": "e228a3e8077364b9",
+   "score": 0.9594,
+   "adjusted": 0.8016,
+   "diversity_penalty": 0.526,
+   "home_kind": "harbour",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.83",
+    "land_fraction 0.68"
+   ]
+  },
+  {
+   "rank": 14,
+   "seed": 42,
+   "manifest_hash": "9b862e815a4beb63",
+   "score": 0.9597,
+   "adjusted": 0.7987,
+   "diversity_penalty": 0.537,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.92",
+    "island_count 0.6"
+   ]
+  },
+  {
+   "rank": 15,
+   "seed": 107,
+   "manifest_hash": "58c9a79b16bf58d5",
+   "score": 0.8826,
+   "adjusted": 0.7902,
+   "diversity_penalty": 0.308,
+   "home_kind": "grass",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.67",
+    "sheltered_landings 0.5"
+   ]
+  },
+  {
+   "rank": 16,
+   "seed": 143,
+   "manifest_hash": "d65bf80c23e919b7",
+   "score": 0.9297,
+   "adjusted": 0.7887,
+   "diversity_penalty": 0.47,
+   "home_kind": "grass",
+   "strongest": [
+    "size_spread",
+    "coast_complexity",
+    "home_landings"
+   ],
+   "weakest": [
+    "sheltered_landings 0.85",
+    "island_count 0.6"
+   ]
+  },
+  {
+   "rank": 17,
+   "seed": 171,
+   "manifest_hash": "5a49688f0c8eb05c",
+   "score": 0.9833,
+   "adjusted": 0.7779,
+   "diversity_penalty": 0.685,
+   "home_kind": "grass",
+   "strongest": [
+    "land_fraction",
+    "size_spread",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "palette 1",
+    "island_count 0.8"
+   ]
+  },
+  {
+   "rank": 18,
+   "seed": 9,
+   "manifest_hash": "d05a267a3b1c8949",
+   "score": 0.9258,
+   "adjusted": 0.7774,
+   "diversity_penalty": 0.495,
+   "home_kind": "harbour",
+   "strongest": [
+    "size_spread",
+    "coast_complexity",
+    "sheltered_landings"
+   ],
+   "weakest": [
+    "island_count 0.67",
+    "land_fraction 0.62"
+   ]
+  },
+  {
+   "rank": 19,
+   "seed": 112,
+   "manifest_hash": "c8a8e5a3e781c515",
+   "score": 0.9639,
+   "adjusted": 0.7752,
+   "diversity_penalty": 0.629,
+   "home_kind": "shingle",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "coast_complexity"
+   ],
+   "weakest": [
+    "home_landings 0.83",
+    "size_spread 0.73"
+   ]
+  },
+  {
+   "rank": 20,
+   "seed": 156,
+   "manifest_hash": "5251bf754d76f66a",
+   "score": 0.9826,
+   "adjusted": 0.7652,
+   "diversity_penalty": 0.725,
+   "home_kind": "harbour",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "size_spread"
+   ],
+   "weakest": [
+    "palette 1",
+    "home_landings 0.79"
+   ]
+  },
+  {
+   "rank": 21,
+   "seed": 66,
+   "manifest_hash": "3599972f4865c07a",
+   "score": 0.9678,
+   "adjusted": 0.7612,
+   "diversity_penalty": 0.689,
+   "home_kind": "shingle",
+   "strongest": [
+    "island_count",
+    "coast_complexity",
+    "sheltered_landings"
+   ],
+   "weakest": [
+    "size_spread 0.9",
+    "resource_spread 0.86"
+   ]
+  },
+  {
+   "rank": 22,
+   "seed": 70,
+   "manifest_hash": "c67d43a8129bc819",
+   "score": 0.9618,
+   "adjusted": 0.7584,
+   "diversity_penalty": 0.678,
+   "home_kind": "grass",
+   "strongest": [
+    "land_fraction",
+    "island_count",
+    "size_spread"
+   ],
+   "weakest": [
+    "resource_spread 0.86",
+    "home_landings 0.79"
+   ]
+  },
+  {
+   "rank": 23,
+   "seed": 162,
+   "manifest_hash": "1f8b53a7ad22f3fd",
+   "score": 0.8836,
+   "adjusted": 0.7583,
+   "diversity_penalty": 0.418,
+   "home_kind": "shingle",
+   "strongest": [
+    "island_count",
+    "size_spread",
+    "sheltered_landings"
+   ],
+   "weakest": [
+    "land_fraction 0.48",
+    "coast_complexity 0.29"
+   ]
+  },
+  {
+   "rank": 24,
+   "seed": 124,
+   "manifest_hash": "c0e39b60f2e69b00",
+   "score": 0.8949,
+   "adjusted": 0.753,
+   "diversity_penalty": 0.473,
+   "home_kind": "grass",
+   "strongest": [
+    "island_count",
+    "coast_complexity",
+    "sheltered_landings"
+   ],
+   "weakest": [
+    "size_spread 0.66",
+    "land_fraction 0.44"
+   ]
+  }
+ ],
+ "rejected": [
+  {
+   "seed": 1,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 2,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 3,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 4,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 5,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 6,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 7,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 11,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 12,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 14,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 15,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 16,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 17,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 19,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 22,
+   "failed": [
+    "start_has_fresh_water"
+   ]
+  },
+  {
+   "seed": 23,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 24,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 26,
+   "failed": [
+    "neighbour_reachable"
+   ]
+  },
+  {
+   "seed": 27,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 28,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 29,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 30,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 31,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 32,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 33,
+   "failed": [
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 34,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 35,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 36,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 37,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 38,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 39,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 40,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 41,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 43,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 44,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 47,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 48,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 49,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 50,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 53,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 54,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 55,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 56,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 58,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 59,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 60,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 62,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 63,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 64,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 65,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 67,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 68,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 71,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 72,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 73,
+   "failed": [
+    "start_has_timber",
+    "neighbour_reachable",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 74,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 75,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 76,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 77,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 78,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 79,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 80,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 81,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 82,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 83,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 84,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 87,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_landing",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "neighbour_reachable",
+    "resource_reachable_water",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 88,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 89,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 90,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 91,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 92,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 94,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 95,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 97,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 98,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 99,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 102,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 103,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 104,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 105,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 106,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 108,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 110,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 113,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 115,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 116,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 117,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 118,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 119,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 120,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 122,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 123,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 126,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 127,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 128,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_water",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 132,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 133,
+   "failed": [
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 134,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 135,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 136,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 139,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 140,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 141,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 144,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 145,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 146,
+   "failed": [
+    "start_island_big_enough"
+   ]
+  },
+  {
+   "seed": 147,
+   "failed": [
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 148,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 150,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 151,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 152,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 153,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 154,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 157,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 158,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 160,
+   "failed": [
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 163,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 164,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 165,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 166,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 168,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 169,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 170,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 173,
+   "failed": [
+    "neighbour_reachable"
+   ]
+  },
+  {
+   "seed": 175,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 178,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 180,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 181,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 184,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 185,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 186,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber",
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 187,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 188,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 189,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 191,
+   "failed": [
+    "start_has_timber",
+    "resource_reachable_timber"
+   ]
+  },
+  {
+   "seed": 192,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 195,
+   "failed": [
+    "start_island_big_enough",
+    "start_has_fresh_water",
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 197,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 198,
+   "failed": [
+    "start_has_timber"
+   ]
+  },
+  {
+   "seed": 199,
+   "failed": [
+    "resource_reachable_stone"
+   ]
+  },
+  {
+   "seed": 200,
+   "failed": [
+    "start_has_timber"
+   ]
+  }
+ ],
+ "not_shortlisted_playable": [
+  {
+   "seed": 10,
+   "score": 0.8859
+  },
+  {
+   "seed": 13,
+   "score": 0.8446
+  },
+  {
+   "seed": 18,
+   "score": 0.9353
+  },
+  {
+   "seed": 20,
+   "score": 0.8852
+  },
+  {
+   "seed": 21,
+   "score": 0.885
+  },
+  {
+   "seed": 25,
+   "score": 0.8654
+  },
+  {
+   "seed": 45,
+   "score": 0.7764
+  },
+  {
+   "seed": 52,
+   "score": 0.8797
+  },
+  {
+   "seed": 57,
+   "score": 0.9606
+  },
+  {
+   "seed": 61,
+   "score": 0.8667
+  },
+  {
+   "seed": 86,
+   "score": 0.8983
+  },
+  {
+   "seed": 96,
+   "score": 0.9517
+  },
+  {
+   "seed": 100,
+   "score": 0.881
+  },
+  {
+   "seed": 101,
+   "score": 0.9324
+  },
+  {
+   "seed": 109,
+   "score": 0.9213
+  },
+  {
+   "seed": 111,
+   "score": 0.9041
+  },
+  {
+   "seed": 121,
+   "score": 0.789
+  },
+  {
+   "seed": 125,
+   "score": 0.8576
+  },
+  {
+   "seed": 130,
+   "score": 0.7772
+  },
+  {
+   "seed": 131,
+   "score": 0.8038
+  },
+  {
+   "seed": 137,
+   "score": 0.9792
+  },
+  {
+   "seed": 155,
+   "score": 0.8819
+  },
+  {
+   "seed": 159,
+   "score": 0.8985
+  },
+  {
+   "seed": 161,
+   "score": 0.899
+  },
+  {
+   "seed": 167,
+   "score": 0.8001
+  },
+  {
+   "seed": 172,
+   "score": 0.8613
+  },
+  {
+   "seed": 176,
+   "score": 0.902
+  },
+  {
+   "seed": 177,
+   "score": 0.9003
+  },
+  {
+   "seed": 179,
+   "score": 0.8906
+  },
+  {
+   "seed": 182,
+   "score": 0.9135
+  },
+  {
+   "seed": 183,
+   "score": 0.8969
+  },
+  {
+   "seed": 190,
+   "score": 0.8272
+  },
+  {
+   "seed": 193,
+   "score": 0.8516
+  },
+  {
+   "seed": 194,
+   "score": 0.8381
+  }
+ ]
+}

@@ -1,0 +1,1181 @@
+{
+ "schema": "living_islands_world_manifest",
+ "version": 1,
+ "world_seed": 149,
+ "arrival_seed": 2010586408,
+ "play_style": null,
+ "units": {
+  "length": "m",
+  "sea_level_m": 0,
+  "y": "up",
+  "origin": "map centre",
+  "x": "east",
+  "z": "south"
+ },
+ "size_m": 400,
+ "cell_m": 2,
+ "generator": {
+  "game_terrain_hash": "2b300c55c8ae2172",
+  "layout_params": {
+   "density": 0.597,
+   "gap": 14.477,
+   "big": 0.093,
+   "rocky": 1.45,
+   "ragged": 2.205,
+   "cluster": 0.508,
+   "aspect": 0.955
+  }
+ },
+ "tide": {
+  "range_m": 1.1,
+  "rocky_landing_window_min": 9,
+  "stage_landing_window_min": 30
+ },
+ "rowing": {
+  "speed_m_min": 66.7,
+  "draft_m": 0.3
+ },
+ "spec_hash": "6b0d0201fb64786d",
+ "islands": [
+  {
+   "id": "I0",
+   "spec_island": 1,
+   "kind": "grass",
+   "is_home": false,
+   "x": 26.5,
+   "z": 93.4,
+   "bbox": [
+    -13,
+    71,
+    75,
+    113
+   ],
+   "area_m2": 2084,
+   "coast_m": 272,
+   "complexity": 1.68,
+   "h_max_m": 2.57,
+   "h_mean_m": 0.77,
+   "resources": {
+    "woodland_m2": 0,
+    "rock_face_m2": 0,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 7,
+   "sheltered_landings": 0,
+   "row_min_from_home": 1.28,
+   "row_min_to_coast": 1.29,
+   "reachable": true,
+   "landable": true
+  },
+  {
+   "id": "I1",
+   "spec_island": 0,
+   "kind": "shingle",
+   "is_home": true,
+   "x": 7.5,
+   "z": -22.9,
+   "bbox": [
+    -19,
+    -47,
+    35,
+    -3
+   ],
+   "area_m2": 2016,
+   "coast_m": 195,
+   "complexity": 1.23,
+   "h_max_m": 5.82,
+   "h_mean_m": 2.47,
+   "resources": {
+    "woodland_m2": 536,
+    "rock_face_m2": 472,
+    "springs": [
+     {
+      "x": -11,
+      "z": -19,
+      "catchment_m2": 848
+     },
+     {
+      "x": 25,
+      "z": -27,
+      "catchment_m2": 800
+     }
+    ],
+    "fresh_water": true
+   },
+   "landings": 8,
+   "sheltered_landings": 0,
+   "row_min_from_home": 0,
+   "row_min_to_coast": 0,
+   "reachable": true,
+   "landable": true
+  },
+  {
+   "id": "I2",
+   "spec_island": 2,
+   "kind": "grass",
+   "is_home": false,
+   "x": -94.9,
+   "z": 32,
+   "bbox": [
+    -127,
+    -3,
+    -63,
+    71
+   ],
+   "area_m2": 1884,
+   "coast_m": 253,
+   "complexity": 1.64,
+   "h_max_m": 2.27,
+   "h_mean_m": 0.72,
+   "resources": {
+    "woodland_m2": 4,
+    "rock_face_m2": 0,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 8,
+   "sheltered_landings": 1,
+   "row_min_from_home": 0.65,
+   "row_min_to_coast": 0.67,
+   "reachable": true,
+   "landable": true
+  },
+  {
+   "id": "I3",
+   "spec_island": 6,
+   "kind": "grass",
+   "is_home": false,
+   "x": 22.5,
+   "z": -115.8,
+   "bbox": [
+    -1,
+    -137,
+    43,
+    -95
+   ],
+   "area_m2": 1488,
+   "coast_m": 157,
+   "complexity": 1.15,
+   "h_max_m": 4.25,
+   "h_mean_m": 1.43,
+   "resources": {
+    "woodland_m2": 52,
+    "rock_face_m2": 4,
+    "springs": [
+     {
+      "x": 37,
+      "z": -111,
+      "catchment_m2": 272
+     }
+    ],
+    "fresh_water": true
+   },
+   "landings": 5,
+   "sheltered_landings": 0,
+   "row_min_from_home": 1.7,
+   "row_min_to_coast": 1.63,
+   "reachable": true,
+   "landable": true
+  },
+  {
+   "id": "I4",
+   "spec_island": 4,
+   "kind": "pine",
+   "is_home": false,
+   "x": 136.2,
+   "z": 95.4,
+   "bbox": [
+    109,
+    77,
+    171,
+    117
+   ],
+   "area_m2": 1328,
+   "coast_m": 202,
+   "complexity": 1.56,
+   "h_max_m": 9.45,
+   "h_mean_m": 3.2,
+   "resources": {
+    "woodland_m2": 368,
+    "rock_face_m2": 756,
+    "springs": [
+     {
+      "x": 149,
+      "z": 85,
+      "catchment_m2": 576
+     }
+    ],
+    "fresh_water": true
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 2.54,
+   "reachable": true,
+   "landable": false
+  },
+  {
+   "id": "I5",
+   "spec_island": 3,
+   "kind": "pine",
+   "is_home": false,
+   "x": 122.8,
+   "z": -62.3,
+   "bbox": [
+    101,
+    -93,
+    147,
+    -41
+   ],
+   "area_m2": 1068,
+   "coast_m": 205,
+   "complexity": 1.77,
+   "h_max_m": 5.38,
+   "h_mean_m": 2.13,
+   "resources": {
+    "woodland_m2": 300,
+    "rock_face_m2": 300,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 2.12,
+   "reachable": true,
+   "landable": false
+  },
+  {
+   "id": "I6",
+   "spec_island": 5,
+   "kind": "shingle",
+   "is_home": false,
+   "x": -69.9,
+   "z": -61.4,
+   "bbox": [
+    -87,
+    -89,
+    -55,
+    -35
+   ],
+   "area_m2": 712,
+   "coast_m": 176,
+   "complexity": 1.86,
+   "h_max_m": 1.28,
+   "h_mean_m": 0.38,
+   "resources": {
+    "woodland_m2": 0,
+    "rock_face_m2": 0,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 0.68,
+   "reachable": true,
+   "landable": false
+  },
+  {
+   "id": "I7",
+   "spec_island": 7,
+   "kind": "shingle",
+   "is_home": false,
+   "x": -128.8,
+   "z": 138.9,
+   "bbox": [
+    -153,
+    123,
+    -105,
+    155
+   ],
+   "area_m2": 704,
+   "coast_m": 138,
+   "complexity": 1.46,
+   "h_max_m": 2.04,
+   "h_mean_m": 0.45,
+   "resources": {
+    "woodland_m2": 0,
+    "rock_face_m2": 0,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 2,
+   "sheltered_landings": 0,
+   "row_min_from_home": 2.63,
+   "row_min_to_coast": 2.61,
+   "reachable": true,
+   "landable": true
+  },
+  {
+   "id": "I8",
+   "spec_island": 8,
+   "kind": "sand",
+   "is_home": false,
+   "x": -156.7,
+   "z": -27.4,
+   "bbox": [
+    -169,
+    -37,
+    -145,
+    -17
+   ],
+   "area_m2": 424,
+   "coast_m": 77,
+   "complexity": 1.05,
+   "h_max_m": 1.21,
+   "h_mean_m": 0.38,
+   "resources": {
+    "woodland_m2": 0,
+    "rock_face_m2": 0,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 1.98,
+   "reachable": true,
+   "landable": false
+  },
+  {
+   "id": "I9",
+   "spec_island": 9,
+   "kind": "skerry",
+   "is_home": false,
+   "x": 79.5,
+   "z": -160.1,
+   "bbox": [
+    71,
+    -163,
+    87,
+    -155
+   ],
+   "area_m2": 100,
+   "coast_m": 48,
+   "complexity": 1.35,
+   "h_max_m": 3.18,
+   "h_mean_m": 1.27,
+   "resources": {
+    "woodland_m2": 0,
+    "rock_face_m2": 44,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 2.93,
+   "reachable": true,
+   "landable": false
+  },
+  {
+   "id": "I10",
+   "spec_island": 4,
+   "kind": "pine",
+   "is_home": false,
+   "x": 112.9,
+   "z": 123,
+   "bbox": [
+    105,
+    119,
+    121,
+    127
+   ],
+   "area_m2": 92,
+   "coast_m": 48,
+   "complexity": 1.41,
+   "h_max_m": 3.14,
+   "h_mean_m": 1.03,
+   "resources": {
+    "woodland_m2": 4,
+    "rock_face_m2": 28,
+    "springs": [],
+    "fresh_water": false
+   },
+   "landings": 0,
+   "sheltered_landings": 0,
+   "row_min_from_home": null,
+   "row_min_to_coast": 2.67,
+   "reachable": true,
+   "landable": false
+  }
+ ],
+ "landing_sites": [
+  {
+   "id": "L0",
+   "island": "I0",
+   "x": 37,
+   "z": 81,
+   "approach": [
+    0.98,
+    -0.19
+   ],
+   "slope": 0.095,
+   "sheltered": false,
+   "shelter": 0.25,
+   "backing_m": 2.3,
+   "row_min_from_home": 1.67,
+   "home": false
+  },
+  {
+   "id": "L1",
+   "island": "I1",
+   "x": -17,
+   "z": -7,
+   "approach": [
+    -0.83,
+    0.55
+   ],
+   "slope": 0.111,
+   "sheltered": false,
+   "shelter": 0.25,
+   "backing_m": 5.8,
+   "row_min_from_home": 0,
+   "home": true
+  },
+  {
+   "id": "L2",
+   "island": "I2",
+   "x": -67,
+   "z": 3,
+   "approach": [
+    0.64,
+    -0.77
+   ],
+   "slope": 0.111,
+   "sheltered": false,
+   "shelter": 0.25,
+   "backing_m": 1.4,
+   "row_min_from_home": 0.65,
+   "home": false
+  },
+  {
+   "id": "L3",
+   "island": "I2",
+   "x": -79,
+   "z": 27,
+   "approach": [
+    0.01,
+    1
+   ],
+   "slope": 0.164,
+   "sheltered": true,
+   "shelter": 0.33,
+   "backing_m": 1.4,
+   "row_min_from_home": 1.09,
+   "home": false
+  },
+  {
+   "id": "L4",
+   "island": "I0",
+   "x": 57,
+   "z": 91,
+   "approach": [
+    0.99,
+    -0.17
+   ],
+   "slope": 0.119,
+   "sheltered": false,
+   "shelter": 0.17,
+   "backing_m": 1.6,
+   "row_min_from_home": 1.95,
+   "home": false
+  },
+  {
+   "id": "L5",
+   "island": "I1",
+   "x": 19,
+   "z": -45,
+   "approach": [
+    0.73,
+    -0.69
+   ],
+   "slope": 0.098,
+   "sheltered": false,
+   "shelter": 0.08,
+   "backing_m": 5.6,
+   "row_min_from_home": 1.32,
+   "home": false
+  },
+  {
+   "id": "L6",
+   "island": "I0",
+   "x": 15,
+   "z": 105,
+   "approach": [
+    -0.55,
+    0.83
+   ],
+   "slope": 0.1,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 1.8,
+   "row_min_from_home": 2.03,
+   "home": false
+  },
+  {
+   "id": "L7",
+   "island": "I1",
+   "x": 31,
+   "z": -3,
+   "approach": [
+    0.54,
+    0.84
+   ],
+   "slope": 0.107,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 5.8,
+   "row_min_from_home": 0.85,
+   "home": false
+  },
+  {
+   "id": "L8",
+   "island": "I2",
+   "x": -89,
+   "z": 9,
+   "approach": [
+    -0.72,
+    -0.69
+   ],
+   "slope": 0.138,
+   "sheltered": false,
+   "shelter": 0.08,
+   "backing_m": 1.4,
+   "row_min_from_home": 1.14,
+   "home": false
+  },
+  {
+   "id": "L9",
+   "island": "I2",
+   "x": -113,
+   "z": 35,
+   "approach": [
+    -0.74,
+    -0.67
+   ],
+   "slope": 0.12,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.1,
+   "row_min_from_home": 1.68,
+   "home": false
+  },
+  {
+   "id": "L10",
+   "island": "I3",
+   "x": 7,
+   "z": -129,
+   "approach": [
+    -0.98,
+    -0.18
+   ],
+   "slope": 0.128,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.4,
+   "row_min_from_home": 2.08,
+   "home": false
+  },
+  {
+   "id": "L11",
+   "island": "I2",
+   "x": -101,
+   "z": 59,
+   "approach": [
+    0.2,
+    0.98
+   ],
+   "slope": 0.137,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 1.8,
+   "row_min_from_home": 1.62,
+   "home": false
+  },
+  {
+   "id": "L12",
+   "island": "I1",
+   "x": 35,
+   "z": -19,
+   "approach": [
+    1,
+    -0.08
+   ],
+   "slope": 0.139,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 5.5,
+   "row_min_from_home": 1.17,
+   "home": false
+  },
+  {
+   "id": "L13",
+   "island": "I2",
+   "x": -89,
+   "z": 41,
+   "approach": [
+    0.93,
+    0.38
+   ],
+   "slope": 0.17,
+   "sheltered": false,
+   "shelter": 0.08,
+   "backing_m": 2,
+   "row_min_from_home": 1.26,
+   "home": false
+  },
+  {
+   "id": "L14",
+   "island": "I0",
+   "x": -13,
+   "z": 81,
+   "approach": [
+    -0.84,
+    -0.54
+   ],
+   "slope": 0.148,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.1,
+   "row_min_from_home": 1.28,
+   "home": false
+  },
+  {
+   "id": "L15",
+   "island": "I2",
+   "x": -101,
+   "z": 19,
+   "approach": [
+    -0.84,
+    -0.55
+   ],
+   "slope": 0.151,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 1.5,
+   "row_min_from_home": 1.4,
+   "home": false
+  },
+  {
+   "id": "L16",
+   "island": "I1",
+   "x": -17,
+   "z": -27,
+   "approach": [
+    -1,
+    -0.08
+   ],
+   "slope": 0.236,
+   "sheltered": false,
+   "shelter": 0.25,
+   "backing_m": 5.6,
+   "row_min_from_home": 0.33,
+   "home": false
+  },
+  {
+   "id": "L17",
+   "island": "I3",
+   "x": -1,
+   "z": -109,
+   "approach": [
+    -0.96,
+    0.29
+   ],
+   "slope": 0.167,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 4.2,
+   "row_min_from_home": 1.7,
+   "home": false
+  },
+  {
+   "id": "L18",
+   "island": "I3",
+   "x": 27,
+   "z": -137,
+   "approach": [
+    -0.37,
+    -0.93
+   ],
+   "slope": 0.18,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.2,
+   "row_min_from_home": 2.54,
+   "home": false
+  },
+  {
+   "id": "L19",
+   "island": "I1",
+   "x": -11,
+   "z": -43,
+   "approach": [
+    -0.6,
+    -0.8
+   ],
+   "slope": 0.259,
+   "sheltered": false,
+   "shelter": 0.25,
+   "backing_m": 5.6,
+   "row_min_from_home": 0.77,
+   "home": false
+  },
+  {
+   "id": "L20",
+   "island": "I0",
+   "x": -7,
+   "z": 95,
+   "approach": [
+    -0.75,
+    0.66
+   ],
+   "slope": 0.185,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.5,
+   "row_min_from_home": 1.62,
+   "home": false
+  },
+  {
+   "id": "L21",
+   "island": "I2",
+   "x": -69,
+   "z": 17,
+   "approach": [
+    1,
+    -0.01
+   ],
+   "slope": 0.194,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 1.4,
+   "row_min_from_home": 0.8,
+   "home": false
+  },
+  {
+   "id": "L22",
+   "island": "I3",
+   "x": 31,
+   "z": -99,
+   "approach": [
+    0.69,
+    0.72
+   ],
+   "slope": 0.201,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 3.9,
+   "row_min_from_home": 1.79,
+   "home": false
+  },
+  {
+   "id": "L23",
+   "island": "I7",
+   "x": -135,
+   "z": 143,
+   "approach": [
+    -0.94,
+    0.33
+   ],
+   "slope": 0.229,
+   "sheltered": false,
+   "shelter": 0.08,
+   "backing_m": 1.5,
+   "row_min_from_home": 3.23,
+   "home": false
+  },
+  {
+   "id": "L24",
+   "island": "I0",
+   "x": 17,
+   "z": 71,
+   "approach": [
+    -0.18,
+    -0.98
+   ],
+   "slope": 0.209,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 1.5,
+   "row_min_from_home": 1.32,
+   "home": false
+  },
+  {
+   "id": "L25",
+   "island": "I3",
+   "x": 43,
+   "z": -119,
+   "approach": [
+    1,
+    -0.06
+   ],
+   "slope": 0.235,
+   "sheltered": false,
+   "shelter": 0.08,
+   "backing_m": 4.2,
+   "row_min_from_home": 2.22,
+   "home": false
+  },
+  {
+   "id": "L26",
+   "island": "I1",
+   "x": -3,
+   "z": -3,
+   "approach": [
+    0.21,
+    0.98
+   ],
+   "slope": 0.228,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 5.4,
+   "row_min_from_home": 0.34,
+   "home": false
+  },
+  {
+   "id": "L27",
+   "island": "I0",
+   "x": 1,
+   "z": 77,
+   "approach": [
+    -0.24,
+    -0.97
+   ],
+   "slope": 0.237,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2.6,
+   "row_min_from_home": 1.29,
+   "home": false
+  },
+  {
+   "id": "L28",
+   "island": "I7",
+   "x": -115,
+   "z": 137,
+   "approach": [
+    0.73,
+    -0.69
+   ],
+   "slope": 0.24,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 2,
+   "row_min_from_home": 2.63,
+   "home": false
+  },
+  {
+   "id": "L29",
+   "island": "I1",
+   "x": 17,
+   "z": -5,
+   "approach": [
+    0.37,
+    0.93
+   ],
+   "slope": 0.286,
+   "sheltered": false,
+   "shelter": 0,
+   "backing_m": 5.6,
+   "row_min_from_home": 0.65,
+   "home": false
+  }
+ ],
+ "sheltered_coves": 1,
+ "channels": [
+  {
+   "a": "I4",
+   "b": "I10",
+   "width_m": 2.8,
+   "mid": [
+    120,
+    118
+   ],
+   "flow_ms_proxy": 1.02,
+   "hard": true
+  },
+  {
+   "a": "I2",
+   "b": "I6",
+   "width_m": 34.5,
+   "mid": [
+    -68,
+    -20
+   ],
+   "flow_ms_proxy": 0.66,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I4",
+   "width_m": 35.4,
+   "mid": [
+    92,
+    102
+   ],
+   "flow_ms_proxy": 0.65,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I10",
+   "width_m": 37.9,
+   "mid": [
+    93,
+    117
+   ],
+   "flow_ms_proxy": 0.62,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I6",
+   "width_m": 38.5,
+   "mid": [
+    -36,
+    -32
+   ],
+   "flow_ms_proxy": 0.62,
+   "hard": false
+  },
+  {
+   "a": "I3",
+   "b": "I9",
+   "width_m": 42.5,
+   "mid": [
+    55,
+    -147
+   ],
+   "flow_ms_proxy": 0.57,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I3",
+   "width_m": 48,
+   "mid": [
+    17,
+    -71
+   ],
+   "flow_ms_proxy": 0.51,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I2",
+   "width_m": 53.1,
+   "mid": [
+    -40,
+    2
+   ],
+   "flow_ms_proxy": 0.45,
+   "hard": false
+  },
+  {
+   "a": "I2",
+   "b": "I7",
+   "width_m": 53.4,
+   "mid": [
+    -131,
+    97
+   ],
+   "flow_ms_proxy": 0.45,
+   "hard": false
+  },
+  {
+   "a": "I2",
+   "b": "I8",
+   "width_m": 62.2,
+   "mid": [
+    -123,
+    -3
+   ],
+   "flow_ms_proxy": 0.35,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I5",
+   "width_m": 69.6,
+   "mid": [
+    68,
+    -36
+   ],
+   "flow_ms_proxy": 0.27,
+   "hard": false
+  },
+  {
+   "a": "I3",
+   "b": "I6",
+   "width_m": 72.7,
+   "mid": [
+    -28,
+    -82
+   ],
+   "flow_ms_proxy": 0.23,
+   "hard": false
+  },
+  {
+   "a": "I6",
+   "b": "I8",
+   "width_m": 73.5,
+   "mid": [
+    -111,
+    -43
+   ],
+   "flow_ms_proxy": 0.22,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I1",
+   "width_m": 74.2,
+   "mid": [
+    16,
+    34
+   ],
+   "flow_ms_proxy": 0.21,
+   "hard": false
+  },
+  {
+   "a": "I3",
+   "b": "I5",
+   "width_m": 77.2,
+   "mid": [
+    72,
+    -84
+   ],
+   "flow_ms_proxy": 0.18,
+   "hard": false
+  },
+  {
+   "a": "I5",
+   "b": "I9",
+   "width_m": 84.4,
+   "mid": [
+    105,
+    -121
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I2",
+   "width_m": 84.9,
+   "mid": [
+    -39,
+    49
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I7",
+   "width_m": 112.6,
+   "mid": [
+    -58,
+    120
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I4",
+   "b": "I5",
+   "width_m": 120.6,
+   "mid": [
+    121,
+    19
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I2",
+   "b": "I3",
+   "width_m": 122.8,
+   "mid": [
+    -34,
+    -52
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I6",
+   "width_m": 122.9,
+   "mid": [
+    -32,
+    22
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I9",
+   "width_m": 125.2,
+   "mid": [
+    45,
+    -103
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I4",
+   "width_m": 127.3,
+   "mid": [
+    80,
+    36
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I1",
+   "b": "I8",
+   "width_m": 128,
+   "mid": [
+    -81,
+    -29
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I0",
+   "b": "I5",
+   "width_m": 139.3,
+   "mid": [
+    80,
+    22
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  },
+  {
+   "a": "I7",
+   "b": "I8",
+   "width_m": 140.2,
+   "mid": [
+    -153,
+    53
+   ],
+   "flow_ms_proxy": 0.15,
+   "hard": false
+  }
+ ],
+ "home": {
+  "island": "I1",
+  "landing": "L1"
+ },
+ "manifest_hash": "e41c9da9badd4b30"
+}

@@ -49,7 +49,8 @@ const Q=new URLSearchParams(location.search);
 const SEED=(parseInt(Q.get('seed')||'1122',10)>>>0);
 const NOPOST=Q.get('post')==='0';
 const LAND=Q.get('pass')==='landing';
-const SEA2=Q.get('sea')==='2';          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const FLOW=Q.get('flow')==='1';         /* the flow pass: tidal current field, flow-advected sea, drifting flotsam (see FLOW_PASS.md); implies the sea=2 look */
+const SEA2=Q.get('sea')==='2'||FLOW;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
@@ -445,6 +446,9 @@ function makeSeaNormal(){const S=256,h1=tileNoise(S,4,SEED+11,5),low=tileNoise(S
   for(let j=0;j<S;j++)for(let i=0;i<S;i++){const gx=(g(i+1,j)-g(i-1,j))*S*.05,gz=(g(i,j+1)-g(i,j-1))*S*.05;
     d[(j*S+i)*4]=clamp(128+gx*127,0,255);d[(j*S+i)*4+1]=clamp(128+gz*127,0,255);d[(j*S+i)*4+2]=128;d[(j*S+i)*4+3]=low[j*S+i]*255;}
   const t=new THREE.DataTexture(d,S,S,THREE.RGBAFormat);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;}
+function makeFlowNoise(){const S=256,a=tileNoise(S,8,SEED+41,4),b=tileNoise(S,6,SEED+53,4),c=tileNoise(S,5,SEED+67,3),d=new Uint8Array(S*S*4);
+  for(let i=0;i<S*S;i++){d[i*4]=a[i]*255;d[i*4+1]=b[i]*255;d[i*4+2]=c[i]*255;d[i*4+3]=255;}
+  const t=new THREE.DataTexture(d,S,S,THREE.RGBAFormat);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;}
 function makeWood(){const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');
   x.fillStyle='#a06c3a';x.fillRect(0,0,512,256);const r=mulberry32(SEED+77);
   for(let i=0;i<700;i++){const y=r()*256,a=r()*.35,l=60+r()*300,xs=r()*512;x.strokeStyle=r()<.5?`rgba(40,22,10,${a})`:`rgba(190,130,70,${a*.8})`;x.lineWidth=.5+r()*1.6;
@@ -611,6 +615,178 @@ function buildFire(){if(!W.camp)return;const f=W.camp.fire;
   smoke=new THREE.Points(g,m);smoke.frustumCulled=false;smoke.renderOrder=7;smoke.userData={N,seed:mulberry32(SEED+99)};
   smoke.userData.ph=Array.from({length:N},(_,i)=>i/N);smoke.userData.rr=Array.from({length:N},()=>smoke.userData.seed());scene.add(smoke);}
 
+/* ============ flow field + flotsam (?flow=1, see FLOW_PASS.md) ============
+   A SIMPLE potential-flow tide stream, NOT a hydrodynamic simulation: uniform tidal stream along one axis, a doublet (cylinder flow) and a compact vortex ring per island,
+   a pair of lee eddies on whichever side is downstream, a weak seeded residual drift + gyre, and a shallow-water slowdown. Everything is analytic in (x,z,T) and seeded. */
+const FL={P:55,A:TIDE_RANGE*.92,VMAX:3,base:2,F:null,tex:null,texData:null,texT:NaN,fld:null,sim:null,geo:null,meshes:null,tideDir:Q.get('ebb')==='1'?-1:1,
+  arrows:Q.get('arrows')==='1',dbg:Q.get('flowdbg')==='1',LIFE:150,DT:.5,CK:110};
+const TAU2=Math.PI*2, FN=64;
+function flowTideAt(T){return FL.A*Math.sin(TAU2*T/FL.P);}
+function hAt(x,z){let fx=(x+TS)/GC-.5,fz=(z+TS)/GC-.5;let i=Math.floor(fx),j=Math.floor(fz);const tx=fx-i,tz=fz-j;i=clamp(i,0,GN-2);j=clamp(j,0,GN-2);
+  const a=hgrid[j*GN+i],b=hgrid[j*GN+i+1],c=hgrid[(j+1)*GN+i],d=hgrid[(j+1)*GN+i+1];return a+(b-a)*tx+(c-a)*tz+(a-b-c+d)*tx*tz;}
+function flowParams(){const r=mulberry32(((SEED*2654435761)>>>0)^0x51ed);
+  const ang=.55+r()*.7;
+  const isl=ISL.map(I=>{let x=I.x,z=I.z,a;if(I.cres){a=I.Ra*.66;x=I.x-I.dir[0]*3;z=I.z-I.dir[1]*3;}else a=Math.sqrt(I.rx*I.rz)*.9;
+    return{id:I.id,x:+x.toFixed(2),z:+z.toFixed(2),a:+a.toFixed(2),g:+((r()<.5?-1:1)*(.3+.35*r())).toFixed(3)};});
+  return{version:1,kind:'potential-flow-tide',seed:SEED,period:FL.P,tideAmp:+FL.A.toFixed(4),axis:+ang.toFixed(4),U0:1.1,
+    residual:{speed:.22,ang:+(ang+.9+r()*.6).toFixed(4),psiAmp:7,psiScale:55,psiSeed:SEED+88},
+    wake:{sep:1.35,lat:.62,rc:.5,vp:.6},shallow:{min:.25,depth:1.2},islands:isl,grid:{n:FN,half:TS},leewayWind:[.45,-.89]};}
+/* seeded residual (steady) field on a 65 x 65 grid: mean drift + a gentle curl-of-streamfunction gyre (divergence free) */
+function flowResidual(F){const n=65,half=TS,cell=2*half/(n-1),R=new Float32Array(n*n*2),rs=F.residual,psi=(x,z)=>rs.psiAmp*(fbm(x/rs.psiScale+9,z/rs.psiScale+9,rs.psiSeed,2)-.5)*2,e=1.5;
+  const dx=Math.cos(rs.ang)*rs.speed,dz=Math.sin(rs.ang)*rs.speed;
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const x=-half+i*cell,z=-half+j*cell;
+    R[(j*n+i)*2]=dx+(psi(x,z+e)-psi(x,z-e))/(2*e)*.5;R[(j*n+i)*2+1]=dz-(psi(x+e,z)-psi(x-e,z))/(2*e)*.5;}
+  return{n,cell,R};}
+function flowResAt(x,z,o){const f=FL.fld,n=f.n;let fx=(x+TS)/f.cell,fz=(z+TS)/f.cell;fx=clamp(fx,0,n-1.001);fz=clamp(fz,0,n-1.001);const i=Math.floor(fx),j=Math.floor(fz),tx=fx-i,tz=fz-j,R=f.R;
+  for(let k=0;k<2;k++){const a=R[(j*n+i)*2+k],b=R[(j*n+i+1)*2+k],c=R[((j+1)*n+i)*2+k],d=R[((j+1)*n+i+1)*2+k];o[k]+=a+(b-a)*tx+(c-a)*tz+(a-b-c+d)*tx*tz;}}
+/* the field: out=[u,v] in metres per second (world, 1 s = 1 s of game time; tide period 55 s). pure=true leaves out the land mask and the shallow slowdown (that part is a potential flow). */
+function flowRaw(F,x,z,T,out,pure){
+  const c=Math.cos(TAU2*T/F.period),cp=c>0?c:0,cn=c<0?-c:0;
+  const dx=Math.cos(F.axis),dz=Math.sin(F.axis),nx=-dz,nz=dx,U0=F.U0,wk=F.wake;
+  let tx=U0*dx,tz=U0*dz,wx=0,wz=0,ex=0,ez=0,mask=1;
+  for(let k=0;k<F.islands.length;k++){const I=F.islands[k],rx=x-I.x,rz=z-I.z,R2=rx*rx+rz*rz,a=I.a,a2=a*a;
+    if(R2>3600)continue;
+    const R=Math.sqrt(R2)+1e-9;
+    if(!pure&&R<1.15*a)mask*=sm((R/a-.8)/.35);
+    const R2c=R2>a2?R2:a2,dr=dx*rx+dz*rz,kk=U0*a2/(R2c*R2c);
+    tx-=kk*(2*dr*rx-R2c*dx);tz-=kk*(2*dr*rz-R2c*dz);
+    const q=(R/a)*Math.exp(.5*(1-R2/a2)),s=I.g*U0*q/R;tx+=-rz*s;tz+=rx*s;
+    if(R<3.6*a){const rc=wk.rc*a,vp=wk.vp*U0;
+      for(let m=0;m<4;m++){const sg=m<2?1:-1,ln=(m&1?-1:1);               /* m 0,1: flood pair downstream (+axis); 2,3: ebb pair on the other side */
+        const cx=I.x+sg*wk.sep*a*dx+ln*wk.lat*a*nx,cz=I.z+sg*wk.sep*a*dz+ln*wk.lat*a*nz;
+        const sign=sg>0?(ln>0?-1:1):(ln>0?1:-1);
+        const vx=x-cx,vz=z-cz,r2=vx*vx+vz*vz;if(r2>(5*rc)*(5*rc))continue;const rr=Math.sqrt(r2)+1e-9,qq=(rr/rc)*Math.exp(.5*(1-r2/(rc*rc))),ss=sign*vp*qq/rr;
+        if(sg>0){wx+=-vz*ss;wz+=vx*ss;}else{ex+=-vz*ss;ez+=vx*ss;}}}}
+  let ux=c*tx+cp*wx+cn*ex,uz=c*tz+cp*wz+cn*ez;
+  out[0]=ux;out[1]=uz;flowResAt(x,z,out);
+  if(!pure){const dep=flowTideAt(T)-hAt(x,z),sh=F.shallow;const f=sh.min+(1-sh.min)*sm(dep/sh.depth);const g=mask*(dep>0?f:sh.min*sm((dep+.4)/.4));out[0]*=g;out[1]*=g;}
+  return out;}
+const _fo=[0,0];
+function flowAt(x,z,T){flowRaw(FL.F,x,z,T,_fo,false);return[_fo[0],_fo[1]];}
+function flowInit(){FL.F=flowParams();FL.fld=flowResidual(FL.F);
+  FL.texData=new Uint8Array(FN*FN*4);for(let i=0;i<FN*FN;i++){FL.texData[i*4]=128;FL.texData[i*4+1]=128;FL.texData[i*4+2]=128;FL.texData[i*4+3]=128;}
+  const t=new THREE.DataTexture(FL.texData,FN,FN,THREE.RGBAFormat);t.minFilter=t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;t.needsUpdate=true;FL.tex=t;
+  FL.U=new Float32Array(FN*FN*2);flowTexUpdate(flowTime(),true);}
+function flowTexUpdate(T,force){if(!force&&Math.abs(T-FL.texT)<1e-4)return;FL.texT=T;
+  const F=FL.F,U=FL.U,cell=2*TS/FN,o=[0,0];
+  for(let j=0;j<FN;j++)for(let i=0;i<FN;i++){flowRaw(F,-TS+(i+.5)*cell,-TS+(j+.5)*cell,T,o,false);U[(j*FN+i)*2]=o[0];U[(j*FN+i)*2+1]=o[1];}
+  const enc=(v,s)=>Math.round(clamp(v/s*.5+.5,0,1)*255),d=FL.texData;
+  for(let j=0;j<FN;j++)for(let i=0;i<FN;i++){const il=Math.max(i-1,0),ir=Math.min(i+1,FN-1),jl=Math.max(j-1,0),jr=Math.min(j+1,FN-1),k=(j*FN+i)*4;
+    const dudx=(U[(j*FN+ir)*2]-U[(j*FN+il)*2])/((ir-il)*cell),dvdz=(U[(jr*FN+i)*2+1]-U[(jl*FN+i)*2+1])/((jr-jl)*cell);
+    const dvdx=(U[(j*FN+ir)*2+1]-U[(j*FN+il)*2+1])/((ir-il)*cell),dudz=(U[(jr*FN+i)*2]-U[(jl*FN+i)*2])/((jr-jl)*cell);
+    d[k]=enc(U[(j*FN+i)*2],FL.VMAX);d[k+1]=enc(U[(j*FN+i)*2+1],FL.VMAX);
+    d[k+2]=enc(-(dudx+dvdz),.5);d[k+3]=enc(dvdx-dudz,.5);}
+  FL.tex.needsUpdate=true;}
+/* tide-time T (seconds). Auto: the page clock. Manual: the phase that gives the slider level, on the rising (flood) or falling (ebb) branch. FL.base whole cycles are added so the drift has already spread. */
+function flowTime(){if(tideAuto)return tideT+FL.P*FL.base;const s=clamp(tide/FL.A,-1,1),a=Math.asin(s);return FL.P*FL.base+(FL.tideDir>0?a:Math.PI-a)/TAU2*FL.P;}
+
+/* ---- flotsam: kinds 0 shell(cuttlebone), 1 driftwood, 2 kelp strand, 3 crate, 4 bottle ---- */
+const FK={n:['shell','driftwood','kelp','crate','bottle'],wind:[0,.06,0,.05,.14],sw:[1,.9,1.1,.7,.8],len:[.6,2.3,3.0,.85,.8]};
+function flotCreate(N){const F=FL.F,S={N,step:0,ck:new Map(),kind:new Uint8Array(N),sc:new Float64Array(N),tint:new Float64Array(N),px:new Float64Array(N),pz:new Float64Array(N),st:new Uint8Array(N),tb:new Float64Array(N),nr:new Uint16Array(N),yawB:new Float64Array(N),vx:new Float64Array(N),vz:new Float64Array(N),cnt:new Float64Array(4)};
+  for(let i=0;i<N;i++){const r=mulberry32((SEED*977+i*131+5)>>>0),k=r();S.kind[i]=k<.33?0:k<.60?1:k<.92?2:k<.97?3:4;S.sc[i]=.8+.45*r();S.tint[i]=r();S.yawB[i]=r()*6.283;flotSpawn(S,i,0,true);}
+  flotSnap(S);return S;}
+function flotSpawn(S,i,T,initial){const nr=S.nr[i],r=mulberry32((hash2(i,nr,SEED)*4294967296)>>>0);let x=0,z=0;
+  if(initial){const near=r()<.7;for(let t=0;t<500;t++){const a=r()*TAU2,d=Math.sqrt(r())*74;x=Math.cos(a)*d;z=Math.sin(a)*d;const h=hAt(x,z);if(near?(h<-.2&&h>-1.6):h<-1.8)break;}}
+  else{const ra=FL.F.residual.ang+Math.PI+(r()-.5)*1.7;for(let t=0;t<60;t++){const d=84+r()*3;x=Math.cos(ra)*d+(r()-.5)*6;z=Math.sin(ra)*d+(r()-.5)*6;if(hAt(x,z)<-1)break;}}
+  S.px[i]=x;S.pz[i]=z;S.st[i]=0;S.tb[i]=0;S.vx[i]=0;S.vz[i]=0;S.yawB[i]=r()*6.283;}
+function flotSnap(S){S.ck.set(S.step,{step:S.step,px:S.px.slice(),pz:S.pz.slice(),st:S.st.slice(),tb:S.tb.slice(),nr:S.nr.slice(),yawB:S.yawB.slice(),vx:S.vx.slice(),vz:S.vz.slice(),cnt:S.cnt.slice()});}
+function flotRestore(S,c){S.step=c.step;S.px.set(c.px);S.pz.set(c.pz);S.st.set(c.st);S.tb.set(c.tb);S.nr.set(c.nr);S.yawB.set(c.yawB);S.vx.set(c.vx);S.vz.set(c.vz);S.cnt.set(c.cnt);}
+const _fv=[0,0];
+/* one fixed step of FL.DT seconds of tide time. cnt: 0 lost off the map and respawned, 1 beached items recycled, 2 beaching events, 3 unused */
+function flotStep(S){const F=FL.F,dt=FL.DT,T=S.step*dt,L=flowTideAt(T+dt),c=Math.cos(TAU2*T/F.period),cp=c>0?c:0,wnd=F.leewayWind;
+  for(let i=0;i<S.N;i++){
+    if(S.st[i]===1){if(T-S.tb[i]>FL.LIFE){S.cnt[1]++;S.nr[i]++;flotSpawn(S,i,T,false);}continue;}
+    let x=S.px[i],z=S.pz[i];const k=S.kind[i];
+    let dep=L-hAt(x,z);
+    if(dep<.03){const g=hGrad(x,z),mg=Math.hypot(g[0],g[1])+1e-6;const m=Math.min(.5,(.03-dep)/mg+.05);x-=g[0]/mg*m;z-=g[1]/mg*m;dep=L-hAt(x,z);}
+    flowRaw(F,x,z,T,_fv,false);let vx=_fv[0],vz=_fv[1];vx+=wnd[0]*FK.wind[k];vz+=wnd[1]*FK.wind[k];
+    const g=hGrad(x,z),mg=Math.hypot(g[0],g[1]);
+    if(dep<.9&&cp>0&&mg>1e-3){const gentle=mg<.45?1:.2,sw=.8*cp*(1-clamp(dep,0,.9)/.9)*gentle*FK.sw[k];vx+=g[0]/mg*sw;vz+=g[1]/mg*sw;}
+    let nx=x+vx*dt,nz=z+vz*dt;
+    if(L-hAt(nx,nz)<.03){ /* would run onto land: slide along the shore, else stay */
+      if(mg>1e-3){const tx=-g[1]/mg,tz=g[0]/mg,vt=vx*tx+vz*tz;nx=x+tx*vt*dt;nz=z+tz*vt*dt;}
+      if(L-hAt(nx,nz)<.03){nx=x;nz=z;}}
+    S.vx[i]=(nx-S.px[i])/dt;S.vz[i]=(nz-S.pz[i])/dt;S.px[i]=nx;S.pz[i]=nz;
+    const d2=L-hAt(nx,nz),g2=hGrad(nx,nz),m2=Math.hypot(g2[0],g2[1]);
+    if(L>.8&&d2<.12&&m2<.45&&m2>1e-3){S.st[i]=1;S.tb[i]=T+dt;S.cnt[2]++;S.vx[i]=0;S.vz[i]=0;const ty=Math.atan2(g2[0],-g2[1]);
+      {const jr=mulberry32((hash2(i,S.nr[i]+77,SEED)*4294967296)>>>0),sh=(jr()-.5)*3.2,ux=g2[0]/m2,uz=g2[1]/m2,jx=nx-uz*sh,jz=nz+ux*sh;const dj=L-hAt(jx,jz);if(dj>-.08&&dj<.2){S.px[i]=jx;S.pz[i]=jz;}}
+      {const tgt=FL.A*.93+(jr2(i,S.nr[i])-.5)*.12;let qx=S.px[i],qz=S.pz[i];for(let it=0;it<48&&hAt(qx,qz)<tgt;it++){const gg=hGrad(qx,qz),mm=Math.hypot(gg[0],gg[1]);if(mm<1e-3||mm>.6)break;qx+=gg[0]/mm*.2;qz+=gg[1]/mm*.2;}S.px[i]=qx;S.pz[i]=qz;}   /* the swash leaves the wrack at the high-water mark */
+         /* spread along the strandline so items do not stack on one point */
+      S.yawB[i]=k===1||k===2?ty+(S.tint[i]-.5)*.9:S.yawB[i];}
+    else if(nx*nx+nz*nz>(TABLE_R-2.5)*(TABLE_R-2.5)){S.cnt[0]++;S.nr[i]++;flotSpawn(S,i,T,false);}}
+  S.step++;if(S.step%FL.CK===0&&!S.ck.has(S.step))flotSnap(S);}
+function jr2(i,n){return hash2(i,n+191,SEED);}
+function hGrad(x,z){const e=.8;return[(hAt(x+e,z)-hAt(x-e,z))/(2*e),(hAt(x,z+e)-hAt(x,z-e))/(2*e)];}
+/* bring the state to tide time T (any T >= 0; going backwards restores the last cycle checkpoint). Returns the step index. */
+function flotAdvance(S,T){const n=Math.max(0,Math.min(200000,Math.floor(T/FL.DT+1e-9)));
+  if(n<S.step){const kc=Math.floor(n/FL.CK)*FL.CK;flotRestore(S,S.ck.get(kc));}
+  while(S.step<n)flotStep(S);return n;}
+/* positions at T for the debug/test API: [{id,kind,x,z,beached,yaw}] plus counters */
+function flotPositions(T){const S=FL.sim;flotAdvance(S,T);const f=T-S.step*FL.DT,out=[];
+  for(let i=0;i<S.N;i++)out.push({id:i,kind:FK.n[S.kind[i]],x:S.px[i]+S.vx[i]*f,z:S.pz[i]+S.vz[i]*f,beached:S.st[i]===1});
+  return out;}
+function flotCounts(){const S=FL.sim;let fl=0,bc=0;const kinds={};for(let i=0;i<S.N;i++){if(S.st[i])bc++;else fl++;}return{total:S.N,floating:fl,beached:bc,lostRespawned:S.cnt[0],beachRecycled:S.cnt[1],beachings:S.cnt[2]};}
+function flotGeo(){if(FL.geo)return FL.geo;
+  const parts=(list)=>{const P=[],Nn=[],C=[];for(const q of list){let g=q.g.index?q.g.toNonIndexed():q.g;g=g.clone();if(q.m)g.applyMatrix4(q.m);g.computeVertexNormals();const p=g.attributes.position,nm=g.attributes.normal,col=lin(q.c);
+      for(let i=0;i<p.count;i++){P.push(p.getX(i),p.getY(i),p.getZ(i));Nn.push(nm.getX(i),nm.getY(i),nm.getZ(i));C.push(col[0],col[1],col[2]);}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g;};
+  const M=new THREE.Matrix4(),E=new THREE.Euler(),Q4=new THREE.Quaternion(),V3=new THREE.Vector3(),S3=new THREE.Vector3();
+  const mat=(px,py,pz,rx,ry,rz,sx,sy,sz)=>{E.set(rx,ry,rz);Q4.setFromEuler(E);return new THREE.Matrix4().compose(V3.set(px,py,pz),Q4,S3.set(sx,sy,sz));};
+  /* unit length along +x, base on y=0 */
+  const shell=parts([{g:new THREE.SphereGeometry(.5,6,2,0,TAU2,0,Math.PI/2),m:mat(0,0,0,0,0,0,1,.5,.8),c:[.92,.86,.74]}]);
+  const wood=parts([{g:new THREE.CylinderGeometry(.5,.38,1,6),m:mat(0,.035,0,0,0,Math.PI/2,.075,1,.075),c:[.56,.51,.44]},
+    {g:new THREE.CylinderGeometry(.35,.22,.30,5),m:mat(.14,.07,.045,.9,0,Math.PI/2+.5,.04,1,.04),c:[.48,.43,.36]},{g:new THREE.CylinderGeometry(.2,.5,.16,5),m:mat(-.5,.035,0,0,0,Math.PI/2,.06,1,.08),c:[.36,.31,.25]}]);
+  const kelp=(()=>{const list=[];const rib=(len,zo,ph,amp,wd,c)=>{const g=new THREE.PlaneGeometry(len,wd,6,1);const p=g.attributes.position;for(let q=0;q<p.count;q++){const x=p.getX(q),y=p.getY(q);const u=x/len;p.setXYZ(q,x,Math.sin(x*9+ph)*.012+.02,zo+y+Math.sin(u*5.5+ph)*amp);}
+      g.rotateX(0);list.push({g,c});};
+    rib(1,0,0,.07,.075,[.22,.21,.09]);rib(.78,.1,1.7,.06,.055,[.17,.19,.08]);rib(.62,-.12,3.1,.06,.05,[.27,.23,.10]);
+    for(const[bx,bz]of[[-.3,.0],[.25,.03]])list.push({g:new THREE.SphereGeometry(.028,4,3),m:mat(bx,.04,bz,0,0,0,1,1,1),c:[.30,.25,.10]});
+    return parts(list);})();
+  const crate=parts([{g:new THREE.BoxGeometry(1,.7,.8),m:mat(0,.35,0,0,0,0,1,1,1),c:[.50,.37,.22]},{g:new THREE.BoxGeometry(1.04,.12,.84),m:mat(0,.12,0,0,0,0,1,1,1),c:[.36,.26,.16]},{g:new THREE.BoxGeometry(1.04,.12,.84),m:mat(0,.58,0,0,0,0,1,1,1),c:[.36,.26,.16]},{g:new THREE.BoxGeometry(.1,.74,.84),m:mat(.3,.35,0,0,0,0,1,1,1),c:[.38,.28,.18]}]);
+  const bottle=parts([{g:new THREE.CylinderGeometry(.14,.14,.5,8),m:mat(-.12,.14,0,0,0,Math.PI/2,1,1,1),c:[.10,.30,.17]},{g:new THREE.CylinderGeometry(.045,.07,.3,6),m:mat(.3,.14,0,0,0,Math.PI/2,1,1,1),c:[.12,.34,.2]},{g:new THREE.CylinderGeometry(.05,.05,.05,6),m:mat(.47,.14,0,0,0,Math.PI/2,1,1,1),c:[.62,.50,.30]}]);
+  FL.geo=[shell,wood,kelp,crate,bottle];return FL.geo;}
+function flotBuildMeshes(){const G=flotGeo(),N=FL.sim.N;
+  const mat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});mat.customProgramCacheKey=()=>'flotsam';
+  FL.meshes=G.map((g,k)=>{const im=new THREE.InstancedMesh(g,mat,N);im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(N*3).fill(1),3);im.count=0;im.frustumCulled=false;im.castShadow=false;im.receiveShadow=false;im.renderOrder=4;scene.add(im);return im;});
+  flotRender(FL.simT||flowTime(),0);}
+const _o3=new THREE.Object3D();
+/* write instance matrices for tide-time T. bobT is the cosmetic clock (frozen with ?seat=). */
+function flotRender(T,bobT){const S=FL.sim;if(!S||!FL.meshes)return;flotAdvance(S,T);FL.simT=T;const f=T-S.step*FL.DT,cnt=[0,0,0,0,0],col=new THREE.Color(),lv=tide;
+  for(let i=0;i<S.N;i++){const k=S.kind[i],im=FL.meshes[k],idx=cnt[k]++,s=S.sc[i]*FK.len[k],ph=i*2.399;
+    let x,z,y,yaw,rx=0,rz=0;
+    if(S.st[i]===1){x=S.px[i];z=S.pz[i];const h=hAt(x,z);yaw=S.yawB[i];y=h+(k===1?.04:.01);rz=k===3?(S.tint[i]-.5)*.5:k===1?.08:0;
+      if(k===2)y=h+.015;}
+    else{x=S.px[i]+S.vx[i]*f;z=S.pz[i]+S.vz[i]*f;const w=bobT*(.9+.5*S.tint[i])+ph;
+      yaw=S.yawB[i]+Math.sin(T*.07+ph)*.7+(k===2?Math.sin(bobT*.5+ph)*.15:0);
+      const amp=k===3?.045:k===1?.03:k===4?.04:.02;
+      y=lv+(k===3?-.26:k===1?-.1:k===4?-.1:0)*S.sc[i]+(k===2?.02:.012)+Math.sin(w)*amp;rx=Math.sin(w*.8+1)*(k===3?.1:.06);rz=Math.sin(w*1.1)*(k===3?.1:.06);}
+    _o3.position.set(x,y,z);_o3.rotation.set(rx,yaw,rz);_o3.scale.set(s,s*(k===2?1:1),s);_o3.updateMatrix();im.setMatrixAt(idx,_o3.matrix);
+    im.setColorAt(idx,k===0?(S.tint[i]<.4?col.setRGB(1,1,1):S.tint[i]<.75?col.setRGB(1.03,.84,.82):col.setRGB(.86,.88,.92)):col.setRGB(1+(S.tint[i]-.5)*.5,1+(S.tint[i]-.5)*.4,1+(S.tint[i]-.5)*.3));}
+  for(let k=0;k<5;k++){const im=FL.meshes[k];im.count=cnt[k];im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;}}
+function flowFrame(dt){const T=flowTime();FL.Tcur=T;flowTexUpdate(T);
+  FL.sim.step>=0&&flotRender(T,SEAT===null?clock.t:SEAT);
+  if(FL.dbgEl)flowDbgUpdate(T);if(FL.arrows)flowArrows(T);}
+function flowEnsure(){if(!FL.F)flowInit();const N=quality==='high'?260:120;if(!FL.sim||FL.sim.N!==N)FL.sim=flotCreate(N);}
+/* ---- debug panel + arrow overlay (both off unless ?flowdbg=1 / ?arrows=1) ---- */
+function flowDbgInit(){if(!FL.dbg&&!FL.arrows)return;
+  const cv=document.createElement('canvas');cv.id='flowArrows';cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4';document.body.appendChild(cv);FL.cv=cv;
+  if(FL.dbg){const d=document.createElement('div');d.id='flowdbg';d.style.cssText='position:fixed;right:10px;top:70px;z-index:6;background:rgba(251,246,236,.92);border:2px solid #cdbb98;border-radius:10px;padding:6px 9px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#2b2118;min-width:190px';
+    d.innerHTML='<b>flow debug</b> <label style="float:right"><input type="checkbox" id="flowArrChk"> arrows</label><div id="flowTxt" style="white-space:pre"></div>';document.body.appendChild(d);FL.dbgEl=d.querySelector('#flowTxt');
+    const chk=d.querySelector('#flowArrChk');chk.checked=FL.arrows;chk.addEventListener('change',()=>{FL.arrows=chk.checked;if(!FL.arrows)flowArrowClear();});}}
+function flowDbgUpdate(T){const c=flotCounts(),ph=Math.cos(TAU2*T/FL.P);FL.dbgEl.textContent=`T ${T.toFixed(1)} s  tide ${tide.toFixed(2)} m\nstream ${ph>0.05?'flood':ph<-0.05?'ebb':'slack'}  ${(Math.abs(ph)*100).toFixed(0)}%\nfloating ${c.floating}  beached ${c.beached}\nlost+respawned ${c.lostRespawned}\nbeach recycled ${c.beachRecycled}\nbeachings ${c.beachings}`;}
+function flowArrowClear(){if(!FL.cv)return;const x=FL.cv.getContext('2d');x.clearRect(0,0,FL.cv.width,FL.cv.height);}
+const _pv=new THREE.Vector3();
+function flowArrows(T){const cv=FL.cv;if(!cv)return;const w=cv.clientWidth,h=cv.clientHeight;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  const x=cv.getContext('2d');x.clearRect(0,0,w,h);if(!FL.arrows)return;const F=FL.F,L=flowTideAt(T),o=[0,0];
+  const proj=(px,py,pz)=>{_pv.set(px,py,pz).project(camera);return[(_pv.x*.5+.5)*w,(1-(_pv.y*.5+.5))*h,_pv.z];};
+  x.lineWidth=2;x.lineCap='round';
+  x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=1.5;x.setLineDash([4,4]);for(const I of F.islands){x.beginPath();let first=true;for(let a=0;a<=32;a++){const q=proj(I.x+Math.cos(a/32*6.2832)*I.a,L,I.z+Math.sin(a/32*6.2832)*I.a);if(first){x.moveTo(q[0],q[1]);first=false;}else x.lineTo(q[0],q[1]);}x.stroke();}x.setLineDash([]);
+  for(let j=-9;j<=9;j++)for(let i=-9;i<=9;i++){const wx=i*9.5,wz=j*9.5;if(wx*wx+wz*wz>86*86)continue;if(L-hAt(wx,wz)<.15)continue;
+    flowRaw(F,wx,wz,T,o,false);const sp=Math.hypot(o[0],o[1]);if(sp<.02)continue;
+    const a=proj(wx,L+.1,wz),len=Math.min(9,sp*4.2),b=proj(wx+o[0]/sp*len,L+.1,wz+o[1]/sp*len);if(a[2]>1||b[2]>1)continue;
+    const dx=b[0]-a[0],dy=b[1]-a[1],dl=Math.hypot(dx,dy);if(dl<1.5)continue;const t=clamp(sp/2.2,0,1);
+    x.strokeStyle=`rgb(${Math.round(255*t)},${Math.round(230-90*t)},${Math.round(255-215*t)})`;x.lineWidth=1.2+2*t;
+    x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);const ux=dx/dl,uy=dy/dl,hs=Math.min(10,3+dl*.3);x.moveTo(b[0],b[1]);x.lineTo(b[0]-ux*hs+uy*hs*.5,b[1]-uy*hs-ux*hs*.5);x.moveTo(b[0],b[1]);x.lineTo(b[0]-ux*hs-uy*hs*.5,b[1]-uy*hs+ux*hs*.5);x.stroke();}}
+
 const SEA2_FS=`precision highp float;
   uniform float uTime,uSeaT,uTide,uQ,uTideV,uLand,uPix,uDbg;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];uniform vec2 uWind;varying vec3 vW;
   #define TS 100.0
@@ -719,11 +895,161 @@ const SEA2_FS=`precision highp float;
     #include <encodings_fragment>
     #endif
     }`;
+/* flow-aware sea (?flow=1): the sea2 look plus a tidal flow texture. Ripple, chop, streak and glitter coordinates ride the local current with the two-phase flow-map blend. */
+const SEAF_FS=`precision highp float;
+  uniform float uTime,uSeaT,uTide,uQ,uTideV,uLand,uPix,uDbg;uniform sampler2D uH,uN,uFlow,uK;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];uniform vec2 uWind,uAxis;varying vec3 vW;
+  #define TS 100.0
+  #define VMAX 3.0
+  #define FTAU 7.0
+  vec4 hs(vec2 p){return texture2D(uH,p/(2.0*TS)+0.5);}
+  vec4 fl(vec2 p){return texture2D(uFlow,p/(2.0*TS)+0.5);}
+  float ign(vec2 p){return fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715))));}
+  float h12(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  vec2 rot2(vec2 v,float a){float c=cos(a),s=sin(a);return vec2(c*v.x-s*v.y,s*v.x+c*v.y);}
+  void rip(vec2 p,vec2 d,float wl,float steep,float t,float warp,float fp,inout vec2 g,inout float hh,inout float hf){
+    float fd=1.0-smoothstep(0.3*wl,0.95*wl,fp);if(fd<0.004)return;
+    float k=6.2832/wl;float ph=dot(d,p)*k+t*0.75*sqrt(wl)*k+warp;float s=sin(ph);float e=exp(1.7*(s-1.0));
+    float a=steep*fd;g+=d*(a*1.7*e*cos(ph));hh+=a*e;if(wl<1.0)hf+=a*e;}
+  /* the same train evaluated at two flow-displaced positions and cross-faded (flow map) */
+  void ripA(vec2 p,vec2 D0,vec2 D1,float w0,float w1,vec2 d,float wl,float steep,float t,float warp,float fp,inout vec2 g,inout float hh,inout float hf){
+    vec2 ga=vec2(0.0),gb=vec2(0.0);float ha=0.0,hb=0.0,fa=0.0,fb=0.0;
+    rip(p-D0,d,wl,steep,t,warp,fp,ga,ha,fa);rip(p-D1,d,wl,steep,t,warp,fp,gb,hb,fb);
+    float nr=inversesqrt(w0*w0+w1*w1);g+=(ga*w0+gb*w1)*nr;hh+=(ha*w0+hb*w1)*nr;hf+=(fa*w0+fb*w1)*nr;}
+  vec3 sky(vec3 r){float y=max(r.y,0.0);vec3 hor=vec3(0.20,0.30,0.44),zen=vec3(0.02,0.075,0.26);vec3 c=mix(hor,zen,pow(y,0.55));c+=uSunCol*0.03*pow(max(dot(r,uSun),0.0),8.0);return c;}
+  vec2 gW,gWp;
+  vec2 chopS(vec2 pa,float tt,float hi){vec2 q=vec2(dot(pa,gW),dot(pa,gWp));
+    vec2 c1=texture2D(uN,vec2(q.x*0.8-tt*0.25,q.y*0.5)).rg-0.5;vec2 c=c1*0.5;
+    if(hi>0.5){vec2 c3=texture2D(uN,vec2(q.x*3.1-tt*0.5,q.y*2.4+0.71)).rg-0.5;c+=c3*0.42;}
+    return (gW*c.x+gWp*c.y)*1.9;}
+  vec2 chopI(vec2 pa,float hi){vec2 c=(texture2D(uN,pa*0.83+vec2(0.37,0.11)).rg-0.5)*0.5;if(hi>0.5)c+=(texture2D(uN,pa*2.3+vec2(0.52,0.83)).rg-0.5)*0.5;return c*1.3;}
+  void main(){
+    vec2 p=vW.xz;vec4 s=hs(p);float th=s.r*8.0-5.0;float depth=uTide-th;
+    if(depth<-0.02)discard;
+    vec3 Vv=cameraPosition-vW;float dist=length(Vv);vec3 V=Vv/dist;
+    float t=uSeaT;float fp=dist*uPix;
+    /* wind direction drifts slowly with place (regional), so the fan of trains is not parallel everywhere */
+    float wa=(texture2D(uN,p*0.0071+vec2(0.43,0.77)).a-0.5)*1.1+(texture2D(uN,p*0.0043+vec2(0.11,0.31)).a-0.5)*0.7;
+    vec2 W=rot2(uWind,wa),Wp=vec2(-W.y,W.x);gW=W;gWp=Wp;
+    /* local current and two-phase flow map */
+    vec4 f0=fl(p);vec2 uc=(f0.rg-0.5)*(2.0*VMAX);float sp=length(uc);
+    float conv=f0.b-0.5,vort=f0.a-0.5;float fs=smoothstep(0.06,0.6,sp);
+    float ph0=fract(t/FTAU),ph1=fract(t/FTAU+0.5);float w0=1.0-abs(1.0-2.0*ph0),w1=1.0-w0;float nrm=inversesqrt(w0*w0+w1*w1);
+    vec2 D0=uc*(FTAU*ph0),D1=uc*(FTAU*ph1);
+    vec2 axn=vec2(-uAxis.y,uAxis.x);
+    float hi=uQ;
+    /* lee slicks: land upwind of the wind, and land up-current */
+    float lee=0.0;
+    {float a0=smoothstep(0.05,0.6,hs(p-W*3.0).r*8.0-5.0-uTide);float a1=smoothstep(0.05,0.6,hs(p-W*7.0).r*8.0-5.0-uTide);float a2=uQ>0.5?smoothstep(0.05,0.6,hs(p-W*13.0).r*8.0-5.0-uTide):0.0;
+     lee=max(a0*0.95,max(a1*0.8,a2*0.55));
+     vec2 fd=uc/(sp+0.05);float c0=smoothstep(0.05,0.6,hs(p-fd*4.0).r*8.0-5.0-uTide);float c1=uQ>0.5?smoothstep(0.05,0.6,hs(p-fd*9.0).r*8.0-5.0-uTide):0.0;
+     lee=max(lee,max(c0,c1*0.8)*fs*0.85);}
+    float calm=1.0-0.6*lee;
+    /* regional amplitude patches per train, medium and fine domain warps */
+    vec4 wn=texture2D(uN,p*0.021+vec2(0.31,0.17)+W*t*0.002);
+    float gust=0.55+0.9*texture2D(uN,p*0.012+0.6).a;
+    vec2 pw=p+vec2(wn.a-0.5,texture2D(uN,p*0.017+vec2(0.55,0.83)).a-0.5)*(uQ>0.5?11.0:4.0);
+    if(uQ>0.5)pw+=(texture2D(uN,p*0.33+vec2(0.7,0.2)).rg-0.5)*1.8;
+    /* streaks and slicks: noise stretched along the tidal axis, carried by the flow, so they bend round islands and fade at slack water */
+    vec2 wrp=pw-p;vec2 qa=p-D0+wrp*0.9,qb=p-D1+wrp*0.9;
+    float k1=0.5*(texture2D(uK,vec2(dot(qa,uAxis)*0.030,dot(qa,axn)*0.55)+vec2(0.19,0.43)).r+texture2D(uK,vec2(dot(qa,uAxis)*0.021,dot(qa,axn)*0.83)+vec2(0.71,0.12)).g);
+    float k2=0.5*(texture2D(uK,vec2(dot(qb,uAxis)*0.030,dot(qb,axn)*0.55)+vec2(0.19,0.43)).r+texture2D(uK,vec2(dot(qb,uAxis)*0.021,dot(qb,axn)*0.83)+vec2(0.71,0.12)).g);
+    float strk=0.5+(k1*w0+k2*w1-0.5)*nrm*1.9;
+    float b1=texture2D(uK,vec2(dot(qa,uAxis)*0.085,dot(qa,axn)*0.31)+vec2(0.37,0.81)).b,b2=texture2D(uK,vec2(dot(qb,uAxis)*0.085,dot(qb,axn)*0.31)+vec2(0.37,0.81)).b;
+    float brk=smoothstep(0.34,0.62,0.5+(b1*w0+b2*w1-0.5)*nrm*1.6);
+    float sl=0.5,sl1=0.5;
+    if(uQ>0.5){sl=texture2D(uK,vec2(dot(qa,uAxis)*0.010,dot(qa,axn)*0.19)+vec2(0.63,0.05)).b;sl1=texture2D(uK,vec2(dot(qb,uAxis)*0.010,dot(qb,axn)*0.19)+vec2(0.63,0.05)).b;}
+    float slk=0.5+(sl*w0+sl1*w1-0.5)*nrm*1.8;
+    float cvs=clamp(conv/0.12,-1.0,1.0),shr=clamp(abs(vort)/0.25,0.0,1.0);
+    float slick=smoothstep(0.50,0.64,slk+0.12*cvs+0.10*shr)*(0.35+0.65*fs);
+    calm*=1.0-0.55*slick*smoothstep(0.2,0.9,depth);
+    float pwr=(wn.a-0.5)*3.2;
+    float m1=texture2D(uN,p*0.037+vec2(0.9,0.2)).a,m2=texture2D(uN,p*0.061+vec2(0.15,0.65)).a;
+    float am1=0.35+0.95*smoothstep(0.36,0.64,m1),am2=0.35+0.95*smoothstep(0.36,0.64,m2),am3=0.35+0.95*smoothstep(0.36,0.64,1.0-0.5*(m1+m2));
+    vec2 g=vec2(0.0);float hh=0.0,hf=0.0;
+    rip(p,normalize(W+0.35*Wp),19.0,0.075*gust,t,pwr,fp,g,hh,hf);
+    rip(p,normalize(W-0.45*Wp),9.3,0.085*gust*am1,t,pwr*1.3,fp,g,hh,hf);
+    rip(pw,normalize(W+0.5*Wp),4.7,0.090*gust*am2,t,pwr*1.7,fp,g,hh,hf);
+    rip(pw,normalize(W-0.7*Wp),2.45,0.095*gust*am3,t,pwr*2.1,fp,g,hh,hf);
+    ripA(pw,D0,D1,w0,w1,normalize(W+1.4*Wp),1.31,0.105*am1,t,pwr*2.6,fp,g,hh,hf);
+    vec2 pa0=pw-D0,pa1=pw-D1;
+    if(uQ>0.5){
+    ripA(pw,D0,D1,w0,w1,normalize(W-1.1*Wp),0.71,0.105*am2,t,pwr*3.1,fp,g,hh,hf);
+    rip(pw-D0*0.5,normalize(W+2.6*Wp),0.40,0.10*am3,t,pwr*3.7,fp,g,hh,hf);
+    rip(pw-D1*0.5,normalize(W-1.9*Wp),0.23,0.085*am1,t,pwr*4.3,fp,g,hh,hf);
+    }
+    /* chop: wind-stretched plus isotropic, both carried by the current */
+    vec2 cs=(chopS(pa0,t,hi)*w0+chopS(pa1,t,hi)*w1)*nrm*(0.55+0.9*smoothstep(0.3,0.7,m2));
+    vec2 ci=(chopI(pa0,hi)*w0+chopI(pa1,hi)*w1)*nrm*(0.35+1.0*smoothstep(0.3,0.7,m1));
+    g+=cs+ci;
+    g*=calm;hh*=calm;hf*=calm;
+    g*=mix(0.25,1.0,smoothstep(0.0,0.6,depth));
+    vec3 N=normalize(vec3(-g.x,1.0,-g.y));
+    float ndv=max(dot(N,V),0.0);float fres=0.02+0.98*pow(1.0-ndv,5.0);
+    vec3 L=uSun;vec3 R=reflect(-V,N);
+    float shadow=1.0;vec2 ld=normalize(L.xz);float tanE=L.y/length(L.xz);float jit=ign(gl_FragCoord.xy);
+    for(int i=1;i<=7;i++){float tt=(float(i)-0.5+jit)*4.0;float h2=texture2D(uH,(p+ld*tt)/(2.0*TS)+0.5).b*14.0;float ray=uTide+tt*tanE;shadow=min(shadow,1.0-smoothstep(-0.2,0.8,h2-ray));}
+    shadow=mix(1.0,shadow,0.85);
+    float nz=texture2D(uN,p*0.17+vec2(t*0.012,-t*0.008)).a;
+    float nz2=0.5+(texture2D(uN,vec2(dot(qa,W)*0.55,dot(qa,Wp)*1.5)+vec2(0.2,0.0)).a*w0+texture2D(uN,vec2(dot(qb,W)*0.55,dot(qb,Wp)*1.5)+vec2(0.2,0.0)).a*w1-0.5)*nrm;
+    vec3 deepC=vec3(0.005,0.048,0.100),midC=vec3(0.011,0.092,0.158),shalC=vec3(0.03,0.30,0.33);
+    float sh=1.0-smoothstep(0.04,0.20+0.7*nz*nz,depth+(nz2-0.5)*0.12);
+    float bm=smoothstep(0.2,1.1,depth);
+    vec3 body=mix(midC,deepC,bm);
+    body=mix(body,shalC,sh*(0.55+0.45*nz2));
+    float crest=smoothstep(0.35,1.0,hh/(0.28*gust+0.1));
+    body+=vec3(0.0,0.02,0.014)*crest*(0.35+0.65*shadow)*smoothstep(0.5,2.0,depth)*calm;
+    float sunl=0.22+0.7*L.y*shadow+2.8*pow(max(dot(N,L),0.0),2.5)*shadow;
+    vec3 col=body*(0.4+0.85*sunl)*vec3(1.0,0.95,0.88)*(0.68+0.34*smoothstep(0.55,1.45,gust));
+    vec3 sk=sky(R)*mix(1.0,0.9,lee);
+    col=mix(col,sk,fres);
+    col=mix(col,col*1.15+vec3(0.004,0.010,0.016),slick*0.5*smoothstep(0.2,0.9,depth));
+    /* glitter: facet jitter cells ride the current too */
+    float spread=0.34*smoothstep(8.0,110.0,dist)+0.08;float cs0=max(fp*1.6,0.05);
+    float tq=floor(t*1.7);
+    vec2 cl0=floor(qa/cs0),cl1=floor(qb/cs0);
+    vec2 cj=((vec2(h12(cl0+tq),h12(cl0+31.7+tq))-0.5)*w0+(vec2(h12(cl1+tq),h12(cl1+31.7+tq))-0.5)*w1)*nrm;
+    vec3 Ns=normalize(N+vec3(cj.x,0.0,cj.y)*spread*calm);
+    vec3 Rs=reflect(-V,Ns);
+    float sd=max(dot(R,L),0.0),sd2=max(dot(Rs,L),0.0);
+    float glit=pow(sd,1500.0)*50.0+pow(sd2,420.0)*(40.0*uQ+14.0)+pow(sd,300.0)*0.35+pow(sd,40.0)*0.03;
+    glit=min(glit,4.0)*(0.35+0.65*smoothstep(0.1,0.6,hh/(0.28*gust+0.1)+0.3));
+    if(uDbg>1.5)glit=0.0;col+=vec3(2.2,1.9,1.55)*glit*shadow*calm*smoothstep(0.1,0.8,depth);
+    float alpha=1.0-0.95*exp(-depth*3.2);alpha=max(alpha,fres);
+    float gpatch=smoothstep(0.35,0.75,texture2D(uN,p*0.016+0.2).a);
+    float hn=hh/(0.28*gust+0.1);
+    float tiny=smoothstep(0.92,1.1,hf*3.2/gust+(nz2-0.5)*0.35)*(0.2+0.8*gpatch);
+    float big=smoothstep(1.05,1.35,hn+(strk-0.5)*0.9)*gpatch;
+    float cap=max(tiny*0.5,big*0.6)*calm*smoothstep(0.4,1.4,depth);if(mod(uDbg,2.0)>0.5)cap=0.0;
+    /* current foam: streaks along the stream where it is fast, collecting on convergence and shear lines and in slow eddies */
+    float eddy=smoothstep(0.08,0.28,abs(vort))*(1.0-fs);
+    float fstr=smoothstep(0.74,1.04,strk+0.10*cvs+0.10*shr)*brk*(0.2+0.8*fs)*(1.0-0.6*lee)*smoothstep(0.35,1.2,depth);
+    float fedd=smoothstep(0.74,0.9,strk+0.06*cvs)*eddy*smoothstep(0.35,1.2,depth);
+    float cfoam=max(fstr*0.34,fedd*0.5);if(mod(uDbg,2.0)>0.5)cfoam=0.0;
+    float expo=s.g;float lap=0.5+0.5*sin(t*1.25+nz*9.0);float pulse=1.0+1.4*clamp(abs(uTideV)*40.0,0.0,1.0);
+    float edge=smoothstep((0.045+0.05*lap+0.10*expo)*pulse*mix(1.0,0.5,uLand),0.0,depth+(nz-0.5)*0.10);
+    float ph=depth*(3.4/(0.6+expo))+t*(0.4+0.3*expo)+nz*1.6;
+    float band=smoothstep(0.80,0.99,0.5+0.5*sin(ph*6.2832))*smoothstep(0.20+0.7*expo,0.08,depth)*expo*0.55;
+    float wake=0.0;
+    if(uQ>0.5){for(int i=0;i<24;i++){vec4 w=uWake[i];if(w.z<1.0){float d=length(p-w.xy);float wd0=0.2+w.z*0.8;wake+=(1.0-w.z)*(smoothstep(wd0,0.0,d)*0.9+smoothstep(wd0*3.0,wd0*0.6,d)*0.18*step(0.5,nz2+0.2));}}}
+    float fo=max(edge,band);
+    fo*=smoothstep(0.30,0.55,nz2+0.5*fo+0.1)*(1.0-0.5*lee);
+    float foam=clamp(max(max(max(fo,cap),wake),cfoam)*(0.95+0.5*expo),0.0,1.0);
+    float tintD=smoothstep(60.0,260.0,dist);
+    vec3 foamC=vec3(0.93,0.96,0.97)*(0.5+0.9*shadow)*vec3(1.0,0.96,0.9);
+    col=mix(col,foamC,foam);alpha=max(alpha,foam*0.95);
+    col+=vec3(0.010,0.016,0.020)*tintD*(gpatch*0.8+0.2)*calm;
+    float r=length(p);float rimL=smoothstep(92.5,94.0,r);col=mix(col,col*1.8+vec3(0.05,0.07,0.07),rimL*0.6);
+    gl_FragColor=vec4(col,alpha);
+    #ifdef NOPOST
+    #include <tonemapping_fragment>
+    #include <encodings_fragment>
+    #endif
+    }`;
 function buildSea(){
   const nmap=makeSeaNormal();
-  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()}},defines:NOPOST?{NOPOST:1}:{},
+  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)}},defines:NOPOST?{NOPOST:1}:{},
   vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-  fragmentShader:SEA2?SEA2_FS:`precision highp float;
+  fragmentShader:FLOW?SEAF_FS:SEA2?SEA2_FS:`precision highp float;
   uniform float uTime,uTide,uQ,uTideV,uLand;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];varying vec3 vW;
   #define TS 100.0
   vec4 hs(vec2 p){return texture2D(uH,p/(2.0*TS)+0.5);}
@@ -1208,7 +1534,7 @@ function build(){const t0=performance.now();
   buildTable();
   const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
-  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();buildSea();buildGulls();
+  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
@@ -1222,7 +1548,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  applyCam(dt);animate(dt);
+  if(FLOW)FL.Tcur=flowTime();applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1232,10 +1558,13 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   if(NOPOST){renderer.render(scene,camera);}else{renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}
   window.__liFrames=(window.__liFrames||0)+1;}
 function animate(dt){const t=clock.t;
-  for(const w of WAKE)if(w.z<1)w.z=Math.min(1,w.z+dt/4.8);
+  for(const w of WAKE)if(w.z<1){w.z=Math.min(1,w.z+dt/4.8);if(FLOW){const u=flowAt(w.x,w.y,FL.Tcur);w.x+=u[0]*dt;w.y+=u[1]*dt;}}
   waterMesh.material.uniforms.uTideV.value=(tide-(animate.lastTide===undefined?tide:animate.lastTide))/Math.max(dt,.001);animate.lastTide=tide;
   boatObjs.forEach(o=>{const b=o.b,m=o.mesh;let y,roll=0,pitch=0;
-    if(b.sail){const a=t*.2,S=b.sail;const nx=S.cx+Math.cos(a)*S.r,nz=S.cz+Math.sin(a)*S.r;const vx=-Math.sin(a),vz=Math.cos(a);b.x=nx;b.z=nz;b.yaw=Math.atan2(-vz,vx);y=tide-.18+Math.sin(t*1.7)*.03;roll=Math.sin(t*1.1)*.04;pitch=.02;
+    if(b.sail){const S=b.sail;let a=t*.2,sx=0,sz=0;
+      if(FLOW){const T=FL.Tcur;if(b.ang===undefined){b.ang=a;b.sx=0;b.sz=0;}const ca=Math.cos(b.ang),sa=Math.sin(b.ang),u=flowAt(S.cx+ca*S.r,S.cz+sa*S.r,T),ut=u[0]*-sa+u[1]*ca;   /* tidal stream along the track speeds the boat up or slows it, and sets it sideways */
+        b.ang+=dt*.2*(1+.2*ut);a=b.ang;const lx=u[0]-ut*-sa,lz=u[1]-ut*ca,k=1-Math.exp(-dt*.8);b.sx+=(lx*2.2-b.sx)*k;b.sz+=(lz*2.2-b.sz)*k;sx=b.sx;sz=b.sz;FL.boat={ut:ut,setx:sx,setz:sz};}
+      const nx=S.cx+Math.cos(a)*S.r+sx,nz=S.cz+Math.sin(a)*S.r+sz;const vx=-Math.sin(a),vz=Math.cos(a);b.x=nx;b.z=nz;b.yaw=Math.atan2(-(vz+sz*.12),vx+sx*.12);y=tide-.18+Math.sin(t*1.7)*.03;roll=Math.sin(t*1.1)*.04;pitch=.02;
       wakeT+=dt;if(wakeT>.2){wakeT=0;const W2=WAKE[wakeI];W2.set(nx-vx*b.L*.45,nz-vz*b.L*.45,0,0);wakeI=(wakeI+1)%24;}}
     else if(b.kind==='moored'){y=tide-.18+Math.sin(t*1.1+b.ph)*.05;roll=Math.sin(t*.9+b.ph)*.03;pitch=Math.sin(t*.7+b.ph*2)*.02;}
     else{const gy=H(b.x,b.z)+(b.lift!==undefined?b.lift:.1);y=Math.max(gy,tide-.12+Math.sin(t*1.1)*.03);roll=(b.tilt||0)+(y>gy+.02?Math.sin(t)*.03:0);pitch=b.heel||0;}
@@ -1276,7 +1605,7 @@ function init(){
   requestAnimationFrame(frame);
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
   window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality,renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
-    setTide:v=>{tideAuto=false;tideManual=v;el.tide.value=v;},setQuality,
+    setTide:v=>{tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
     setView:(o)=>{Object.assign(cam,o);clampCam();snap=true;},home:()=>{Object.assign(cam,HOME);snap=true;},
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
