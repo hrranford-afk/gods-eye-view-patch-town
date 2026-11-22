@@ -1,0 +1,142 @@
+<!doctype html><meta charset="utf-8"><title>Style C: pre-rendered isometric sprites</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/GLTFLoader.js"></script>
+<script src="kit.js"></script><script src="people_kit.js"></script><script src="world.js"></script>
+<script>
+(async()=>{
+const [W_,H_]=World.size();const qs=new URLSearchParams(location.search);const SHEET=qs.get('sheet')==='1';
+await World.load({water:false});
+const L=World.layout();
+/* ---------- iso camera: looks NW from the SE, 2:1 ground diamonds. S = pixels per metre along the screen axes ---------- */
+const S=+(qs.get('s')||18),EL=30*Math.PI/180,SQ=Math.SQRT1_2;
+const proj=(x,y,z)=>[S*(x-z)*SQ,S*Math.sin(EL)*(x+z)*SQ-S*Math.cos(EL)*y];
+/* style-C sun: from the upper-left of the screen (west), 42 deg; baked shadows fall to the right and toward the viewer */
+const SUNAZ=-90*Math.PI/180,SUNEL=42*Math.PI/180,SUN=new THREE.Vector3(Math.sin(SUNAZ)*Math.cos(SUNEL),Math.sin(SUNEL),Math.cos(SUNAZ)*Math.cos(SUNEL));
+/* ---------- the sprite renderer ---------- */
+const SS=2;const rr=new THREE.WebGLRenderer({antialias:false,alpha:true,preserveDrawingBuffer:true,premultipliedAlpha:true});rr.setPixelRatio(1);rr.outputEncoding=THREE.sRGBEncoding;rr.setClearColor(0,0);
+const rs=new THREE.Scene();rs.add(new THREE.HemisphereLight(new THREE.Color(.62,.74,1.0),new THREE.Color(.50,.40,.28),1.05));
+const rsun=new THREE.DirectionalLight(new THREE.Color(1,.86,.66),2.1);rsun.position.copy(SUN).multiplyScalar(50);rs.add(rsun);
+const rfill=new THREE.DirectionalLight(new THREE.Color(.95,.85,.78),.75);rfill.position.set(30,25,45);rs.add(rfill);
+const camDir=new THREE.Vector3(Math.cos(EL)*SQ,Math.sin(EL),Math.cos(EL)*SQ);
+function viewCam(cw,ch,ax,ay){const c=new THREE.OrthographicCamera(-ax/S,(cw-ax)/S,ay/S,-(ch-ay)/S,.1,200);c.position.copy(camDir).multiplyScalar(80);c.lookAt(0,0,0);return c;}
+/* orthographic frustum measures along the camera axes, so a world point projects exactly like proj() */
+function render(obj,cell,facing){const g=new THREE.Group();g.add(obj);obj.rotation.y=facing*Math.PI/4;rs.add(g);
+  const cam=viewCam(cell.w,cell.h,cell.ax,cell.ay);rr.setSize(cell.w*SS,cell.h*SS,false);rr.render(rs,cam);
+  const cv=document.createElement('canvas');cv.width=cell.w;cv.height=cell.h;const x=cv.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(rr.domElement,0,0,cell.w,cell.h);
+  /* baked shadow: the same mesh flattened onto the ground along the sun, in black */
+  const sh=document.createElement('canvas');sh.width=cell.sw;sh.height=cell.sh;
+  const sg=new THREE.Group();const clone=obj.clone(true);sg.add(clone);const ms=[];
+  clone.traverse(o=>{if(o.isMesh){const old=o.material;o.material=new THREE.MeshBasicMaterial({color:0x000000,map:old.alphaTest>0?old.map:null,alphaTest:old.alphaTest||0,side:THREE.DoubleSide});}});
+  const m=new THREE.Matrix4();const lx=SUN.x/SUN.y,lz=SUN.z/SUN.y;m.set(1,-lx,0,0, 0,0,0,0, 0,-lz,1,0, 0,0,0,1);
+  const flat=new THREE.Group();flat.matrixAutoUpdate=false;flat.matrix.copy(m);flat.add(sg);sg.rotation.y=0;clone.rotation.y=facing*Math.PI/4;
+  rs.remove(g);rs.add(flat);flat.updateMatrixWorld(true);
+  const cam2=viewCam(cell.sw,cell.sh,cell.sax,cell.say);rr.setSize(cell.sw*SS,cell.sh*SS,false);rr.render(rs,cam2);
+  const sx=sh.getContext('2d');sx.drawImage(rr.domElement,0,0,cell.sw,cell.sh);rs.remove(flat);
+  return{cv,sh};}
+/* ---------- the asset list: one pre-render per facing, once ---------- */
+const CELL={tree:{w:176,h:236,ax:88,ay:198,sw:210,sh:130,sax:105,say:14},broad:{w:176,h:200,ax:88,ay:172,sw:200,sh:110,sax:100,say:14},bush:{w:64,h:56,ax:32,ay:46,sw:96,sh:46,sax:48,say:6},rock:{w:84,h:68,ax:42,ay:54,sw:104,sh:46,sax:52,say:6},tent:{w:120,h:116,ax:60,ay:96,sw:140,sh:66,sax:70,say:8},canoe:{w:150,h:96,ax:75,ay:64,sw:170,sh:60,sax:85,say:8},fire:{w:64,h:76,ax:32,ay:58,sw:64,sh:34,sax:32,say:6},person:{w:60,h:84,ax:30,ay:68,sw:96,sh:44,sax:48,say:6}};
+const flame=()=>{const f=new THREE.Group();[[.30,.95,0xff8a1e],[.22,1.25,0xffb02e],[.12,1.55,0xffe27a]].forEach(([r,h,c],i)=>{const cn=new THREE.Mesh(new THREE.ConeGeometry(r,h,7),new THREE.MeshBasicMaterial({color:c}));cn.position.y=h/2+.1;cn.rotation.y=i;f.add(cn);});return f;};
+const norm=(o,h)=>{o.scale.setScalar(h);return o;};
+const ASSETS={};const add=(name,cellKey,nf,mk)=>{ASSETS[name]={cell:CELL[cellKey],nf,mk};};
+for(let k=0;k<3;k++)add('conifer'+k,'tree',4,()=>norm(Kit.conifer(k),8));
+for(let k=0;k<3;k++)add('broad'+k,'broad',4,()=>norm(Kit.broadleaf(k),k==2?4.2:5.5));
+add('bush','bush',4,()=>norm(Kit.bush(),1.5));
+for(let k=0;k<6;k++)add('rock'+k,'rock',4,()=>norm(Kit.rock(k),[1.3,1.3,1.3,1.1,1.5,.8][k]*1.1));
+add('tent_orange','tent',8,()=>norm(Kit.tent('orange'),2.5));add('tent_blue','tent',8,()=>norm(Kit.tent('blue'),2.5));
+add('canoe','canoe',8,()=>norm(Kit.canoe(),4.2));
+add('fire','fire',1,()=>{const g=new THREE.Group();g.add(norm(Kit.campfire(),1.5));g.add(flame());return g;});
+['woman','man','fish'].forEach(k=>add(k,'person',8,()=>{const p=PeopleKit.make(k,.4);const g=new THREE.Group();g.add(p.root);return g;}));
+const SPR={};let nr=0;
+for(const n in ASSETS){const a=ASSETS[n];SPR[n]=[];for(let f=0;f<a.nf;f++){const o=a.mk();const fr=a.nf===4?f*2:f;const r=render(o,a.cell,fr);r.f=fr;SPR[n].push(r);rs.remove(o.parent||o);nr++;}}
+const nearest=(n,yaw)=>{const a=ASSETS[n];const f=((Math.round(yaw/(Math.PI/4))%8)+8)%8;if(a.nf===8)return SPR[n][f];if(a.nf===1)return SPR[n][0];return SPR[n][Math.round(f/2)%4];};
+/* ---------- sheet image ---------- */
+function sheet(){const cols=8,pad=6;const rows=Object.keys(ASSETS);const rh=rows.map(n=>ASSETS[n].cell.h+pad);const wide=Math.max(...rows.map(n=>ASSETS[n].cell.w*ASSETS[n].nf+pad*ASSETS[n].nf));
+  /* pack: trees 4 per row, other 8 per row; arrange rows in a column of two groups to keep the image near 16:10 */
+  const cv=document.createElement('canvas');const items=[];let x=0,y=0,col=0;const maxW=2040;let rowH=0;
+  for(const n of rows){const a=ASSETS[n];const need=a.nf*(a.cell.w+pad);if(x+need>maxW){x=0;y+=rowH+pad;rowH=0;}items.push({n,x,y});x+=need;rowH=Math.max(rowH,a.cell.h+16);}
+  cv.width=maxW;cv.height=y+rowH+pad+30;const c=cv.getContext('2d');c.fillStyle='#d9d4c8';c.fillRect(0,0,cv.width,cv.height);
+  for(let yy=0;yy<cv.height;yy+=16)for(let xx=0;xx<cv.width;xx+=16)if(((xx+yy)/16)%2===0){c.fillStyle='#cfc9bb';c.fillRect(xx,yy,16,16);}
+  c.font='bold 12px sans-serif';
+  for(const it of items){const a=ASSETS[it.n];SPR[it.n].forEach((s,f)=>{const ox=it.x+f*(a.cell.w+pad),oy=it.y;c.strokeStyle='rgba(60,50,40,.35)';c.strokeRect(ox+.5,oy+.5,a.cell.w-1,a.cell.h-1);
+    c.globalAlpha=.4;c.drawImage(s.sh,ox+a.cell.ax-a.cell.sax,oy+a.cell.ay-a.cell.say);c.globalAlpha=1;c.drawImage(s.cv,ox,oy);});
+    c.fillStyle='#2a2118';c.fillText(it.n+'  ('+a.nf+' facing'+(a.nf>1?'s':'')+')',it.x+4,it.y+a.cell.h+12);}
+  return cv;}
+/* ---------- the 2D isometric scene: painted ground tiles, sea, then sprites in depth order ---------- */
+const cv=document.createElement('canvas');cv.width=W_;cv.height=H_;document.body.appendChild(cv);const c=cv.getContext('2d');
+const CX=+(qs.get('cx')||20),CZ=+(qs.get('cz')||42),CY=3;const [px0,py0]=proj(CX,CY,CZ);const OX=W_*.5-px0,OY=H_*.55-py0;
+const P=(x,y,z)=>{const q=proj(x,y,z);return[q[0]+OX,q[1]+OY];};
+const hash=World.noise.hash,vn=World.noise.vnoise;
+/* sky/sea backdrop */
+{const g=c.createLinearGradient(0,0,0,H_);g.addColorStop(0,'#2a6f9a');g.addColorStop(.5,'#1d5a86');g.addColorStop(1,'#1a4f7a');c.fillStyle=g;c.fillRect(0,0,W_,H_);}
+const cs=.5,X0=-130,X1=130,Z0=-110,Z1=125,ni=Math.round((Z1-Z0)/cs),nj=Math.round((X1-X0)/cs);
+/* vertex grid heights + screen positions (water level clamps the sea quads) */
+const VH=new Float32Array((ni+1)*(nj+1)),VX=new Float32Array((ni+1)*(nj+1)),VY=new Float32Array((ni+1)*(nj+1)),WX=new Float32Array((ni+1)*(nj+1)),WY=new Float32Array((ni+1)*(nj+1));
+for(let i=0;i<=ni;i++)for(let j=0;j<=nj;j++){const x=X0+j*cs,z=Z0+i*cs,h=World.h(x,z),k=i*(nj+1)+j;VH[k]=h;const a=P(x,Math.max(h,-6),z),w=P(x,0,z);VX[k]=a[0];VY[k]=a[1];WX[k]=w[0];WY[k]=w[1];}
+const LV=new THREE.Vector3(Math.sin(SUNAZ),.0,Math.cos(SUNAZ)).normalize();
+const pal=(r,g,b)=>`rgb(${Math.max(0,Math.min(255,r*255))|0},${Math.max(0,Math.min(255,g*255))|0},${Math.max(0,Math.min(255,b*255))|0})`;
+function quadColor(i,j){const k=i*(nj+1)+j,k2=k+1,k3=k+nj+1,k4=k3+1;const x=X0+(j+.5)*cs,z=Z0+(i+.5)*cs;const h0=VH[k],h1=VH[k2],h2=VH[k3],h3=VH[k4];
+  const gx=((h1+h3)-(h0+h2))/(2*cs),gz=((h2+h3)-(h0+h1))/(2*cs);const nl=Math.hypot(gx,1,gz);const n=[-gx/nl,1/nl,-gz/nl];
+  const dif=Math.max(0,n[0]*SUN.x+n[1]*SUN.y+n[2]*SUN.z);const lit=.80+.46*dif;
+  let a=World.albedo(x,z);const m=(a[0]+a[1]+a[2])/3;a=a.map(v=>m+(v-m)*1.32);
+  /* painted-tile look: each tile gets its own small colour drift, plus low-frequency wash */
+  const j1=(hash(i,j,7)-.5)*.05,wash=(vn(x*.12,z*.12,2)-.5)*.12;const f=lit*(1+j1+wash);return[a[0]*f,a[1]*f*1.0,a[2]*f*.97];}
+const inside=(xs,ys)=>{for(let t=0;t<4;t++)if(xs[t]>-30&&xs[t]<W_+30&&ys[t]>-60&&ys[t]<H_+60)return true;return false;};
+/* sprite instances */
+const inst=[];const R=Kit.mulberry(77);
+const Hh=(x,z)=>World.h(x,z);
+L.conifers.forEach(t=>inst.push({n:'conifer'+t.k,x:t.x,z:t.z,s:t.h/8,f:(t.ry*4/6.28)|0,tree:true}));
+L.broad.forEach(t=>inst.push({n:'broad'+t.k,x:t.x,z:t.z,s:t.h/(t.k==2?4.2:5.5),f:(t.ry*4/6.28)|0,tree:true}));
+L.bushes.forEach(t=>inst.push({n:'bush',x:t.x,z:t.z,s:t.h/1.5,f:(t.ry*4/6.28)|0}));
+L.rocks.forEach(t=>{const k=t.k%6;const ref=[1.3,1.3,1.3,1.1,1.5,.8][k]*1.1;inst.push({n:'rock'+k,x:t.x,z:t.z,s:t.h*([1.4,1.4,1.4,.9,1.1,.7][k])/ref,f:(t.ry*4/6.28)|0});});
+L.tents.forEach(t=>inst.push({n:'tent_'+t.color,x:t.x,z:t.z,yaw:-t.rot*Math.PI/180,s:1}));
+inst.push({n:'canoe',x:L.boat.x,z:L.boat.z,yaw:-L.boat.rot*Math.PI/180,s:1});
+inst.push({n:'fire',x:L.fire.x,z:L.fire.z,s:1,fire:true});
+L.people.forEach(p=>inst.push({n:p.key,x:p.x,z:p.z,yaw:p.ry,s:1}));
+inst.forEach(o=>{o.y=Hh(o.x,o.z);o.key=o.x+o.z;});
+inst.sort((a,b)=>a.key-b.key);
+/* occlusion: is the sprite's mid-height point hidden by terrain nearer the viewer? march toward the viewer along the view ray */
+const vis=(o,ht)=>{let x=o.x,z=o.z,y=o.y+ht;const dx=Math.cos(EL)*SQ,dz=dx,dy=Math.sin(EL);for(let t=.5;t<70;t+=.5){const px=x+dx*t/Math.cos(EL)*1,pz=z+dz*t/Math.cos(EL),py=y+dy*t/Math.cos(EL)*1;if(Hh(px,pz)>py+.15)return false;}return true;};
+const drawSprite=(o)=>{const a=ASSETS[o.n];const s=nearest(o.n,o.yaw!==undefined?o.yaw:(o.f||0)*Math.PI/4);const [bx,by]=P(o.x,o.y,o.z);const k=o.s||1;
+  c.save();c.translate(bx,by);c.scale(k,k);c.imageSmoothingQuality='high';c.drawImage(s.cv,-a.cell.ax,-a.cell.ay);c.restore();};
+const drawShadow=(o)=>{const a=ASSETS[o.n];const s=nearest(o.n,o.yaw!==undefined?o.yaw:(o.f||0)*Math.PI/4);const [bx,by]=P(o.x,Math.max(o.y,0),o.z);const k=o.s||1;
+  c.save();c.translate(bx,by);c.scale(k,k);c.globalAlpha=.30;c.drawImage(s.sh,-a.cell.sax,-a.cell.say);c.restore();};
+/* pass 1: ground, diagonal by diagonal, back to front; sprites are interleaved so a ridge hides what is behind it */
+let ii=0;const sorted=inst.filter(o=>{const ht=o.tree?3:o.n.startsWith('rock')||o.n==='bush'?.3:1;return vis(o,ht);});
+const groundOnly=qs.get('ground')==='1';
+const ground=document.createElement('canvas');ground.width=W_;ground.height=H_;const gc=ground.getContext('2d');
+const sc=c;
+for(let kk=0;kk<=ni+nj;kk++){const lo=Math.max(0,kk-nj+1),hi=Math.min(kk,ni);
+  for(let i=lo;i<=hi;i++){const j=kk-i;if(j<0||j>=nj)continue;const k=i*(nj+1)+j,k2=k+1,k3=k+nj+1,k4=k3+1;
+    const xs=[VX[k],VX[k2],VX[k4],VX[k3]],ys=[VY[k],VY[k2],VY[k4],VY[k3]];if(!inside(xs,ys))continue;
+    const hm=(VH[k]+VH[k2]+VH[k3]+VH[k4])/4;const col=quadColor(i,j);
+    if(hm<0){ // seabed, then the water sheet above it
+      const d=-hm,f=Math.min(1,d/9);c.fillStyle=pal(.20+(.04-.20)*f+col[0]*.0,.52+(.26-.52)*f,.54+(.40-.54)*f);
+      c.beginPath();c.moveTo(xs[0],ys[0]);c.lineTo(xs[1],ys[1]);c.lineTo(xs[2],ys[2]);c.lineTo(xs[3],ys[3]);c.closePath();c.fill();c.strokeStyle=c.fillStyle;c.lineWidth=.8;c.stroke();
+      continue;}
+    c.fillStyle=pal(col[0],col[1],col[2]);c.beginPath();c.moveTo(xs[0],ys[0]);c.lineTo(xs[1],ys[1]);c.lineTo(xs[2],ys[2]);c.lineTo(xs[3],ys[3]);c.closePath();c.fill();c.strokeStyle=c.fillStyle;c.lineWidth=.8;c.stroke();}
+}
+/* water sheet: tiles whose mean height is below 0 painted at sea level with depth colour; shallow cells get foam and sparkle */
+for(let kk=0;kk<=ni+nj;kk++){const lo=Math.max(0,kk-nj+1),hi=Math.min(kk,ni);
+  for(let i=lo;i<=hi;i++){const j=kk-i;if(j<0||j>=nj)continue;const k=i*(nj+1)+j,k2=k+1,k3=k+nj+1,k4=k3+1;
+    const hm=(VH[k]+VH[k2]+VH[k3]+VH[k4])/4;if(hm>.15)continue;const xs=[WX[k],WX[k2],WX[k4],WX[k3]],ys=[WY[k],WY[k2],WY[k4],WY[k3]];if(!inside(xs,ys))continue;
+    const d=Math.max(0,-hm),f=1-Math.exp(-d*.3);const x=X0+(j+.5)*cs,z=Z0+(i+.5)*cs;const rip=vn(x*.5+3,z*.5,1);
+    const r=.30+(.07-.30)*f+.03*rip,g=.76+(.30-.76)*f+.04*rip,b=.74+(.52-.74)*f;
+    c.globalAlpha=Math.min(.94,.42+d*.5);c.fillStyle=pal(r,g,b);c.beginPath();c.moveTo(xs[0],ys[0]);c.lineTo(xs[1],ys[1]);c.lineTo(xs[2],ys[2]);c.lineTo(xs[3],ys[3]);c.closePath();c.fill();c.strokeStyle=c.fillStyle;c.lineWidth=.8;c.stroke();c.globalAlpha=1;
+    // foam: a wobbling white band where the sea is shallower than ~0.6 m
+    const wob=(vn(x*.8,z*.8,5)-.5)*.5;if(d+wob*.5<.2){c.fillStyle='rgba(255,252,240,'+(Math.min(.8,(.2-d-wob*.5)*3.5))+')';c.beginPath();c.moveTo(xs[0],ys[0]);c.lineTo(xs[1],ys[1]);c.lineTo(xs[2],ys[2]);c.lineTo(xs[3],ys[3]);c.closePath();c.fill();}}}
+// sparkles and wave dashes on open water
+for(let t=0;t<1800;t++){const x=CX-45+hash(t,1,9)*90,z=CZ-10+hash(t,2,9)*70;if(Hh(x,z)>-1.2)continue;const [qx,qy]=P(x,0,z);const len=6+hash(t,3,9)*12;c.strokeStyle='rgba(235,250,250,'+(.18+.25*hash(t,4,9))+')';c.lineWidth=1.3;c.beginPath();c.moveTo(qx,qy);c.lineTo(qx+len,qy+(hash(t,5,9)-.5)*1.5);c.stroke();}
+/* a light dabbing of brush texture across the finished ground so tiles read as painted */
+for(let t=0;t<7000;t++){const qx=hash(t,11,3)*W_,qy=hash(t,12,3)*H_;const px=c.getImageData(qx|0,qy|0,1,1).data;const tone=hash(t,13,3)>.5?1.08:.92;c.strokeStyle=`rgba(${Math.min(255,px[0]*tone)|0},${Math.min(255,px[1]*tone)|0},${Math.min(255,px[2]*tone)|0},.35)`;c.lineWidth=2+hash(t,14,3)*2.5;c.beginPath();c.moveTo(qx,qy);c.lineTo(qx+4+hash(t,15,3)*8,qy+(hash(t,16,3)-.5)*3);c.stroke();}
+/* pass 2: shadows on the finished ground, then sprites back to front */
+if(!groundOnly){sorted.forEach(drawShadow);
+  // fire glow on the sand
+  {const f=L.fire,[fx,fy]=P(f.x,f.y,f.z);const g=c.createRadialGradient(fx,fy,2,fx,fy,70);g.addColorStop(0,'rgba(255,190,90,.55)');g.addColorStop(1,'rgba(255,150,50,0)');c.fillStyle=g;c.globalCompositeOperation='lighter';c.fillRect(fx-80,fy-80,160,160);c.globalCompositeOperation='source-over';}
+  sorted.forEach(drawSprite);}
+/* painterly grade + vignette */
+{const g=c.createRadialGradient(W_/2,H_/2,H_*.35,W_/2,H_/2,H_*.95);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(20,10,0,.25)');c.fillStyle=g;c.fillRect(0,0,W_,H_);}
+window.__canvas=()=>SHEET?sheet():cv;
+window.__info={sprites:nr,placed:sorted.length,total:inst.length};window.__ready=true;
+})();
+</script>

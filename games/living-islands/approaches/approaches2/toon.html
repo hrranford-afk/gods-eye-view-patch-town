@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>Style A: toon cel</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/GLTFLoader.js"></script>
+<script src="kit.js"></script><script src="people_kit.js"></script><script src="world.js"></script>
+<script>
+(async()=>{
+const [W_,H_]=World.size();const qs=new URLSearchParams(location.search);const NOINK=qs.get('ink')==='0';
+await World.load();World.detail=0;
+const renderer=World.renderer(W_,H_);renderer.shadowMap.type=THREE.PCFShadowMap;
+const scene=new THREE.Scene();scene.fog=new THREE.Fog(new THREE.Color(.95,.78,.62).getHex(),160,520);
+scene.add(World.sky({zen:[.22,.48,.92],hor:[1.0,.86,.64],band:6,glow:1}));
+/* flat saturated-but-muted palette: posterise the ground into a few paint colours */
+const Q=(v,n)=>Math.round(v*n)/n;
+const PAL=[[.80,.64,.38],[.70,.54,.33],[.31,.52,.19],[.42,.60,.22],[.50,.38,.43],[.41,.44,.21],[.43,.42,.43],[.57,.47,.38],[.16,.34,.36],[.37,.49,.16]];
+const SRC=[[.80,.64,.42],[.52,.40,.27],[.30,.43,.15],[.42,.48,.18],[.40,.24,.31],[.30,.27,.14],[.30,.27,.26],[.52,.40,.32],[.18,.26,.22],[.36,.46,.17]];
+const terrain=World.terrain((c,x,z)=>{let b=0,bd=9;for(let i=0;i<SRC.length;i++){const d=(c[0]-SRC[i][0])**2+(c[1]-SRC[i][1])**2+(c[2]-SRC[i][2])**2;if(d<bd){bd=d;b=i;}}return PAL[b];},1024);
+scene.add(terrain);
+const P=World.props();scene.add(P.root);
+World.lights(scene,{hemi:0,sun:1.3,fill:1.0,shadow:4096});scene.add(new THREE.AmbientLight(0xffe9d6,.50));World.fireLight(scene);
+/* stepped light ramp: 4 tones, then converted onto every material */
+const ramp=new THREE.DataTexture(new Uint8Array([70,70,70,255, 140,140,140,255, 205,205,205,255, 255,255,255,255]),4,1,THREE.RGBAFormat);ramp.minFilter=ramp.magFilter=THREE.NearestFilter;ramp.generateMipmaps=false;ramp.needsUpdate=true;
+const boost=c=>{const m=(c.r+c.g+c.b)/3;c.r=Math.max(m+(c.r-m)*1.25,0);c.g=Math.max(m+(c.g-m)*1.25,0);c.b=Math.max(m+(c.b-m)*1.25,0);return c;};
+World.convert(scene,(old,mesh)=>{ if(old.isMeshBasicMaterial||old.isShaderMaterial)return old;
+  const m=new THREE.MeshToonMaterial({gradientMap:ramp,map:old.map||null,vertexColors:!!old.vertexColors,side:old.side,alphaTest:old.alphaTest||0});
+  if(old.color)m.color.copy(old.color);boost(m.color);if(old.alphaTest>0){m.transparent=false;}return m;});
+/* toon water: banded depth colours, white foam contours that wobble, a few foam dashes */
+const WATER=`varying vec3 wp;uniform sampler2D uW;uniform vec3 uSun;uniform vec4 uBox;uniform float uTime;
+float hs(vec2 p){p=fract(p*vec2(.1031,.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1,0)),f.x),mix(hs(i+vec2(0,1)),hs(i+vec2(1,1)),f.x),f.y);}
+void main(){vec2 uv=(wp.xz-uBox.xy)/uBox.zw;bool inside=uv.x>=0.&&uv.x<=1.&&uv.y>=0.&&uv.y<=1.;vec4 w=texture2D(uW,uv);float depth=inside?w.r*16.:16.;float sd=inside?w.g*12.:12.;
+ float wob=(vn(wp.xz*.5)-.5)*1.1+(vn(wp.xz*1.7)-.5)*.35;float dd=depth+wob*.6;
+ vec3 c0=vec3(.36,.86,.80),c1=vec3(.18,.68,.78),c2=vec3(.10,.46,.70),c3=vec3(.10,.40,.70);
+ vec3 col=dd<.9?c0:dd<2.6?c1:dd<6.?c2:c3;
+ // soft bands of light inside each colour: two shifted ripples, stepped
+ float rip=sin(wp.x*.9+wp.z*.5+(vn(wp.xz*.4)*6.))*.5+.5;col*=1.+.06*step(.72,rip);
+ // foam contour lines at fixed shore distances, wobbling, travelling outward with time
+ float s=sd+wob*.55;float foam=0.;foam+=step(abs(s-.35),.20);foam+=step(abs(s-1.6-.25*sin(uTime)),.11);foam+=step(abs(s-3.1),.08)*step(.55,vn(wp.xz*.9));foam=min(foam,1.)*(inside?1.:0.);
+ float dash=step(.84,vn(wp.xz*vec2(.55,1.3)+5.))*step(5.,sd)*.5;
+ col=mix(col,vec3(.97,.97,.93),max(foam,dash));
+ float a=inside?clamp(.65+.35*step(1.,depth),0.,1.):1.;a=max(a,foam);
+ gl_FragColor=vec4(col,a);}`;
+const water=World.water(WATER);if(qs.get('nowater')!=='1')scene.add(water);
+const cam=World.camera(W_/H_);
+/* flat cartoon clouds: one canvas shape, a few sprites on the sky dome */
+{const cv=document.createElement('canvas');cv.width=256;cv.height=128;const x=cv.getContext('2d');x.fillStyle='#fff7ea';x.beginPath();[[60,86,34],[100,64,44],[148,70,40],[186,88,30],[120,96,40]].forEach(([a,b,r])=>{x.moveTo(a+r,b);x.arc(a,b,r,0,6.3);});x.fill();x.globalCompositeOperation='source-atop';x.fillStyle='rgba(238,196,186,.95)';x.fillRect(0,100,256,28);
+ const tx=new THREE.CanvasTexture(cv);tx.encoding=THREE.sRGBEncoding;const dir=new THREE.Vector3();
+ [[-.55,.30,.7,50],[.20,.40,.55,38],[.62,.26,.7,56],[-.15,.20,.5,30]].forEach(([ax,ay,az,sz])=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,fog:false,depthWrite:false,transparent:true}));dir.set(ax,ay,-az).normalize();sp.position.copy(cam.position).addScaledVector(dir,800);sp.scale.set(sz*2,sz,1);sp.renderOrder=-1;scene.add(sp);});}
+/* ---- ink: edge detect on depth (silhouettes) and on flat colour (inner lines) ---- */
+const rt=new THREE.WebGLRenderTarget(W_*2,H_*2,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,encoding:THREE.sRGBEncoding});
+rt.depthTexture=new THREE.DepthTexture(W_*2,H_*2);rt.depthTexture.type=THREE.UnsignedIntType;
+const fs=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:{tC:{value:rt.texture},tD:{value:rt.depthTexture},uRes:{value:new THREE.Vector2(rt.width,rt.height)},uNF:{value:new THREE.Vector2(cam.near,cam.far)},uInk:{value:NOINK?0:1}},
+vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
+fragmentShader:`varying vec2 vUv;uniform sampler2D tC,tD;uniform vec2 uRes,uNF;uniform float uInk;
+float lin(float d){float z=d*2.-1.;return 2.*uNF.x*uNF.y/(uNF.y+uNF.x-z*(uNF.y-uNF.x));}
+float D(vec2 o){return lin(texture2D(tD,vUv+o/uRes).r);}
+vec3 C(vec2 o){return texture2D(tC,vUv+o/uRes).rgb;}
+void main(){vec3 col=C(vec2(0.));float d0=D(vec2(0.));
+ float t=2.3; // line half-width in render pixels (output is half size): about 1.6 px at 1200 wide
+ float dx=0.,dy=0.;float dd=0.;
+ vec2 k[8];k[0]=vec2(t,0.);k[1]=vec2(-t,0.);k[2]=vec2(0.,t);k[3]=vec2(0.,-t);k[4]=vec2(t,t)*.7;k[5]=vec2(-t,t)*.7;k[6]=vec2(t,-t)*.7;k[7]=vec2(-t,-t)*.7;
+ float e=0.;vec3 ce=vec3(0.);
+ for(int i=0;i<4;i++){vec2 o=k[i];float dp=D(o),dm=D(-o);e=max(e,abs(dp+dm-2.*d0)/(d0*.008+.04));}
+ for(int i=4;i<8;i+=1){vec2 o=k[i];float dp=D(o),dm=D(-o);e=max(e,abs(dp+dm-2.*d0)/(d0*.008+.04));}
+ float edge=smoothstep(.8,1.5,e)*(d0<700.?1.:0.);
+ float cedge=smoothstep(.28,.5,max(ce.r,max(ce.g,ce.b)))*.0;
+ vec3 ink=vec3(.10,.07,.12);
+ // distance-weighted: thinner lines far away is automatic since the depth gap scales with distance
+ col=mix(col,ink,max(edge,cedge)*uInk*.95);
+ // gentle vignette + warm grade
+ vec2 q=vUv-.5;col*=1.-dot(q,q)*.35;
+ gl_FragColor=vec4(col,1.);}`}));
+fs.frustumCulled=false;const post=new THREE.Scene();post.add(fs);const pc=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+renderer.setRenderTarget(rt);renderer.render(scene,cam);renderer.setRenderTarget(null);renderer.render(post,pc);
+window.__info={ink:!NOINK};window.__ready=true;
+})();
+</script>
