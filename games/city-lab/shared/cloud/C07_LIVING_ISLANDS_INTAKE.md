@@ -31,3 +31,6 @@ CLOUD (this branch): engine, simulation, page, tests, eventual AR integration. H
 2. Start LI-1a now (paper, cheap), then LI-1b?
 3. Are the pack's pictures private? (They show a room and a table.) I have kept them out of the repository; say if any may be published.
 4. Which opening should be the default for you to test first: invite the carpenter and build a bunk, or build the landing stage?
+
+## 8 Owner clarification (22 Nov 2026), and what it changes
+The owner explained that Living Islands is a continuation of City Lab, not a separate game: it came out of a brainstorm after ChatGPT was sent the bakery, district and economy work. So: (a) City Lab is the economic core and a settlement later becomes districts on the same rules; (b) "the existing suite" most likely means the set of our games, so the module is a page beside City Lab that reuses its code by relative path (as City Lab reuses the siege models), and section 2's failed premise is largely resolved (a host launcher is still UNKNOWN); (c) the first tide is built on the same ledger, jobs and demand rules as the bakery, with the C03b lesson (warm-up and whole cycles when measuring); (d) C06 infrastructure becomes something a grown settlement needs, not a separate next step. Open choice for the owner: start LI-1a (paper first tide) or C06a (power network).
