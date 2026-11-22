@@ -10,5 +10,6 @@ Updated 21 Nov 2026. Hardware rows live in `../hardware/JOBS_HARDWARE.md` on bra
 | C05 | CLOUD | PLANNED | 2026-11-21 | none yet | table fit and an iPad measurement page; real iPad numbers stay PENDING until the owner measures |
 | C06 | CLOUD | WORKING | 2026-11-21 | shared/cloud/C06_INFRASTRUCTURE_DESIGN_NOTE.md v0.1 (sections 12 and 13: provisional options and the C06a approval request); shared/cloud/inputs/chatgpt_c06_review.md; shared/cloud/evidence/C06_paper_tests.txt | design only. C06a NOT started: awaiting the owner's approval. |
 | C03b | CLOUD | PASSED | 2026-11-21 | games/city-lab/shared/cloud/C03b_ODDITIES.md; shared/cloud/evidence/C03b_investigation.txt and .json; shared/cloud/evidence/C03b_test_run.txt; tests/c03b-test.js (28 of 28); tools/c03b-investigate.mjs | owner decisions: pay wages when places are unreachable? keep cash costing? Then approve or decline C06a. |
+| C07 | CLOUD | WORKING | 2026-11-22 | shared/cloud/C07_LIVING_ISLANDS_INTAKE.md (review and plan only; nothing built) | owner: answer 4 questions, then approve LI-1a (paper) |
 
 Notes: no hardware-side work existed on GitHub when this file was written (checked with `shared/tools/jobboard.mjs`). Details of the home machines are not published here by rule (see `../PROTOCOL.md`).
