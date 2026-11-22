@@ -1,6 +1,6 @@
 """Scene building blocks shared by the hero render and the land bake. Needs bpy (Blender as a python module) + numpy.
 Everything is seeded: same seed -> same meshes. Frame: Blender X east, Y north, Z up, metres."""
-import math
+import math, os
 import bpy
 import numpy as np
 import island_common as IC
@@ -15,6 +15,25 @@ def reset():
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'
     sc.cycles.device = 'CPU'
+    if os.environ.get('LI_DEVICE', 'CPU').upper() == 'GPU':
+        # optional GPU rendering (set LI_DEVICE=GPU); falls back to CPU if no GPU backend is usable
+        try:
+            prefs = bpy.context.preferences.addons['cycles'].preferences
+            for kind in ('METAL', 'OPTIX', 'CUDA', 'HIP', 'ONEAPI'):
+                try:
+                    prefs.compute_device_type = kind
+                    prefs.get_devices()
+                    gpus = [d for d in prefs.devices if d.type != 'CPU']
+                    if gpus:
+                        for d in prefs.devices:
+                            d.use = (d.type != 'CPU')
+                        sc.cycles.device = 'GPU'
+                        print('LI_DEVICE_USED', kind, [d.name for d in gpus])
+                        break
+                except Exception:
+                    continue
+        except Exception as e:
+            print('LI_DEVICE_FALLBACK_CPU', e)
     return sc
 
 def mesh_obj(name, verts, faces, smooth=True, col=None, collection=None):
@@ -513,11 +532,19 @@ def render_settings(sc, w, h, samples, denoise=True, exposure=0.0, look='AgX - P
     sc.cycles.sample_clamp_indirect = 8.0; sc.cycles.sample_clamp_direct = 0
     sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
     sc.render.threads_mode = 'AUTO'
-    sc.view_settings.view_transform = 'AgX'
     try:
-        sc.view_settings.look = look
-    except Exception:
-        pass
+        sc.view_settings.view_transform = 'AgX'
+        try:
+            sc.view_settings.look = look
+        except Exception:
+            pass
+    except TypeError:
+        # Blender before 4.0 has no AgX: use Filmic so the same script runs on 3.x (colours differ a little)
+        sc.view_settings.view_transform = 'Filmic'
+        try:
+            sc.view_settings.look = 'Medium High Contrast'
+        except Exception:
+            pass
     sc.view_settings.exposure = exposure
     sc.render.image_settings.file_format = 'PNG'
     sc.render.image_settings.color_mode = 'RGB'
