@@ -1,0 +1,976 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "cottage_07",
+ "name": "Jettied Half-Timber",
+ "footprint": {
+  "w": 1.84,
+  "d": 1.4
+ },
+ "parts": [
+  {
+   "id": "g.floor",
+   "kind": "floor",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    1.58,
+    0.05,
+    1.18
+   ],
+   "material": "stone",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "g.post.fl",
+   "kind": "post",
+   "pos": [
+    -0.71,
+    0.05,
+    0.51
+   ],
+   "size": [
+    0.08,
+    0.64,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "g.post.fr",
+   "kind": "post",
+   "pos": [
+    0.71,
+    0.05,
+    0.51
+   ],
+   "size": [
+    0.08,
+    0.64,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "g.post.bl",
+   "kind": "post",
+   "pos": [
+    -0.71,
+    0.05,
+    -0.51
+   ],
+   "size": [
+    0.08,
+    0.64,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "g.post.br",
+   "kind": "post",
+   "pos": [
+    0.71,
+    0.05,
+    -0.51
+   ],
+   "size": [
+    0.08,
+    0.64,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "g.beam.f",
+   "kind": "beam",
+   "pos": [
+    0,
+    0.62,
+    0.51
+   ],
+   "size": [
+    1.5,
+    0.07,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.post.fl",
+    "g.post.fr"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "g.beam.b",
+   "kind": "beam",
+   "pos": [
+    0,
+    0.62,
+    -0.51
+   ],
+   "size": [
+    1.5,
+    0.07,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.post.bl",
+    "g.post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "g.beam.l",
+   "kind": "beam",
+   "pos": [
+    -0.71,
+    0.62,
+    0
+   ],
+   "size": [
+    0.08,
+    0.07,
+    0.94
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.post.fl",
+    "g.post.bl"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "g.beam.r",
+   "kind": "beam",
+   "pos": [
+    0.71,
+    0.62,
+    0
+   ],
+   "size": [
+    0.08,
+    0.07,
+    0.94
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.post.fr",
+    "g.post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "g.wall.f",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    0.51
+   ],
+   "size": [
+    1.34,
+    0.57,
+    0.05
+   ],
+   "material": "stone",
+   "stage": "walls",
+   "needs": [
+    "g.beam.f"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "variant": 3
+  },
+  {
+   "id": "g.wall.b",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    -0.51
+   ],
+   "size": [
+    1.34,
+    0.57,
+    0.05
+   ],
+   "material": "stone",
+   "stage": "walls",
+   "needs": [
+    "g.beam.b"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 3.142,
+   "variant": 3
+  },
+  {
+   "id": "g.wall.l",
+   "kind": "panel",
+   "pos": [
+    -0.71,
+    0.05,
+    0
+   ],
+   "size": [
+    0.94,
+    0.57,
+    0.05
+   ],
+   "material": "stone",
+   "stage": "walls",
+   "needs": [
+    "g.beam.l"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": -1.571,
+   "variant": 3
+  },
+  {
+   "id": "g.wall.r",
+   "kind": "panel",
+   "pos": [
+    0.71,
+    0.05,
+    0
+   ],
+   "size": [
+    0.94,
+    0.57,
+    0.05
+   ],
+   "material": "stone",
+   "stage": "walls",
+   "needs": [
+    "g.beam.r"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571,
+   "variant": 3
+  },
+  {
+   "id": "u.floor",
+   "kind": "floor",
+   "pos": [
+    0,
+    0.69,
+    0.05
+   ],
+   "size": [
+    1.8,
+    0.05,
+    1.3
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "g.beam.f",
+    "g.beam.b",
+    "g.beam.l",
+    "g.beam.r"
+   ],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "u.post.fl",
+   "kind": "post",
+   "pos": [
+    -0.86,
+    0.74,
+    0.66
+   ],
+   "size": [
+    0.08,
+    0.62,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "u.post.fr",
+   "kind": "post",
+   "pos": [
+    0.86,
+    0.74,
+    0.66
+   ],
+   "size": [
+    0.08,
+    0.62,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "u.post.bl",
+   "kind": "post",
+   "pos": [
+    -0.86,
+    0.74,
+    -0.56
+   ],
+   "size": [
+    0.08,
+    0.62,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "u.post.br",
+   "kind": "post",
+   "pos": [
+    0.86,
+    0.74,
+    -0.56
+   ],
+   "size": [
+    0.08,
+    0.62,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.floor"
+   ],
+   "tag": "post",
+   "replaceable": false
+  },
+  {
+   "id": "u.beam.f",
+   "kind": "beam",
+   "pos": [
+    0,
+    1.29,
+    0.66
+   ],
+   "size": [
+    1.8,
+    0.07,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.post.fl",
+    "u.post.fr"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "u.beam.b",
+   "kind": "beam",
+   "pos": [
+    0,
+    1.29,
+    -0.56
+   ],
+   "size": [
+    1.8,
+    0.07,
+    0.08
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.post.bl",
+    "u.post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "u.beam.l",
+   "kind": "beam",
+   "pos": [
+    -0.86,
+    1.29,
+    0.05
+   ],
+   "size": [
+    0.08,
+    0.07,
+    1.14
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.post.fl",
+    "u.post.bl"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "u.beam.r",
+   "kind": "beam",
+   "pos": [
+    0.86,
+    1.29,
+    0.05
+   ],
+   "size": [
+    0.08,
+    0.07,
+    1.14
+   ],
+   "material": "oak_dark",
+   "stage": "frame",
+   "needs": [
+    "u.post.fr",
+    "u.post.br"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "u.wall.f",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.74,
+    0.66
+   ],
+   "size": [
+    1.64,
+    0.55,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.beam.f"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "variant": 1
+  },
+  {
+   "id": "u.wall.b",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.74,
+    -0.56
+   ],
+   "size": [
+    1.64,
+    0.55,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.beam.b"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 3.142,
+   "variant": 1
+  },
+  {
+   "id": "u.wall.l",
+   "kind": "panel",
+   "pos": [
+    -0.86,
+    0.74,
+    0.05
+   ],
+   "size": [
+    1.14,
+    0.55,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.beam.l"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": -1.571,
+   "variant": 1
+  },
+  {
+   "id": "u.wall.r",
+   "kind": "panel",
+   "pos": [
+    0.86,
+    0.74,
+    0.05
+   ],
+   "size": [
+    1.14,
+    0.55,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.beam.r"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571,
+   "variant": 1
+  },
+  {
+   "id": "bracket",
+   "kind": "beam",
+   "pos": [
+    -0.6,
+    0.6,
+    0.62
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.1
+   ],
+   "material": "oak_dark",
+   "stage": "trim",
+   "needs": [
+    "g.beam.f"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "bracket.2",
+   "kind": "beam",
+   "pos": [
+    -0.2,
+    0.6,
+    0.62
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.1
+   ],
+   "material": "oak_dark",
+   "stage": "trim",
+   "needs": [
+    "g.beam.f"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "bracket.3",
+   "kind": "beam",
+   "pos": [
+    0.2,
+    0.6,
+    0.62
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.1
+   ],
+   "material": "oak_dark",
+   "stage": "trim",
+   "needs": [
+    "g.beam.f"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "bracket.4",
+   "kind": "beam",
+   "pos": [
+    0.6,
+    0.6,
+    0.62
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.1
+   ],
+   "material": "oak_dark",
+   "stage": "trim",
+   "needs": [
+    "g.beam.f"
+   ],
+   "tag": "beam",
+   "replaceable": false
+  },
+  {
+   "id": "gable",
+   "kind": "gable",
+   "pos": [
+    -0.86,
+    1.36,
+    0.05
+   ],
+   "size": [
+    0.05,
+    0.5,
+    1.3
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.post.fl",
+    "u.post.bl",
+    "u.beam.f",
+    "u.beam.b"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "variant": 2
+  },
+  {
+   "id": "gable.2",
+   "kind": "gable",
+   "pos": [
+    0.86,
+    1.36,
+    0.05
+   ],
+   "size": [
+    0.05,
+    0.5,
+    1.3
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "u.post.fr",
+    "u.post.br",
+    "u.beam.f",
+    "u.beam.b"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "variant": 2
+  },
+  {
+   "id": "roof",
+   "kind": "roof_tile",
+   "pos": [
+    0,
+    1.283,
+    0.425
+   ],
+   "size": [
+    2,
+    0.577,
+    0.75
+   ],
+   "material": "slate",
+   "stage": "trim",
+   "needs": [
+    "u.post.fl",
+    "u.post.fr",
+    "u.beam.f",
+    "u.beam.l",
+    "u.beam.r",
+    "gable",
+    "gable.2"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "roof.2",
+   "kind": "roof_tile",
+   "pos": [
+    0,
+    1.283,
+    -0.325
+   ],
+   "size": [
+    2,
+    0.577,
+    0.75
+   ],
+   "material": "slate",
+   "stage": "trim",
+   "needs": [
+    "u.post.bl",
+    "u.post.br",
+    "u.beam.b",
+    "u.beam.l",
+    "u.beam.r",
+    "gable",
+    "gable.2"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "rotY": 3.142,
+   "needsMin": 1
+  },
+  {
+   "id": "ridge",
+   "kind": "ridge",
+   "pos": [
+    0,
+    1.828,
+    0.05
+   ],
+   "size": [
+    2.04,
+    0.07,
+    0.12
+   ],
+   "material": "iron",
+   "stage": "trim",
+   "needs": [
+    "roof",
+    "roof.2",
+    "gable",
+    "gable.2"
+   ],
+   "tag": "ridge",
+   "replaceable": false,
+   "needsMin": 2
+  },
+  {
+   "id": "door",
+   "kind": "door",
+   "pos": [
+    0,
+    0.05,
+    0.55
+   ],
+   "size": [
+    0.32,
+    0.47,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "g.wall.f"
+   ],
+   "tag": "door",
+   "replaceable": true
+  },
+  {
+   "id": "window",
+   "kind": "window",
+   "pos": [
+    -0.5,
+    0.29,
+    0.555
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "g.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "window.2",
+   "kind": "window",
+   "pos": [
+    0.5,
+    0.29,
+    0.555
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "g.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "window.3",
+   "kind": "window",
+   "pos": [
+    -0.5,
+    0.89,
+    0.705
+   ],
+   "size": [
+    0.3,
+    0.26,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "u.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "window.4",
+   "kind": "window",
+   "pos": [
+    0,
+    0.89,
+    0.705
+   ],
+   "size": [
+    0.3,
+    0.26,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "u.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "window.5",
+   "kind": "window",
+   "pos": [
+    0.5,
+    0.89,
+    0.705
+   ],
+   "size": [
+    0.3,
+    0.26,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "u.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "chimney",
+   "kind": "chimney",
+   "pos": [
+    -0.6,
+    1.46,
+    -0.15
+   ],
+   "size": [
+    0.2,
+    0.72,
+    0.2
+   ],
+   "material": "stone",
+   "stage": "trim",
+   "needs": [
+    "roof.2"
+   ],
+   "tag": "chimney",
+   "replaceable": true,
+   "needsMin": 1
+  }
+ ],
+ "systems": {
+  "jobs": [],
+  "storage": {
+   "coal": 10
+  },
+  "start_stock": {
+   "coal": 5
+  },
+  "costs": {
+   "power_per_kwh": 24,
+   "wage_per_worker_per_minute": 0,
+   "ingredient_prices": {
+    "coal": 1
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": []
+  },
+  "inspect": {
+   "labels": {
+    "door": "Front door",
+    "chimney": "Chimney",
+    "roof": "Roof",
+    "window": "Window"
+   }
+  }
+ }
+}

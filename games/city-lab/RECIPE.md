@@ -98,3 +98,7 @@ Every number the simulation uses is one of these. Nothing about bread, ovens or 
 ## Example recipes
 
 `recipes/bakery.json` (57 parts, the Phase 1 building), `shed.json` (22), `cart_stall.json` (12, sells apples, no power), `house.json` (25). They are written by `tools/gen-recipes.js` (a developer's script, not part of the page) and read as plain JSON.
+
+## Added for the cottage contact sheet (backward compatible)
+
+Kinds `roof_hip` (hipped roof, variant 1 = pyramid), `roof_cone` (pointed roof for a tower) and `tower` (round wall). Materials `paint_sage, paint_ochre, paint_rose, paint_teal, paint_butter, plaster, oak_dark, clay, slate, thatch, roof_green, roof_seam` (thatch, slate and roof_seam also change how a roof is drawn). Variants (0 is the old look): `panel` 1 half-timber, 2 clapboard, 3 stone or brick courses; `gable` 1 right-angled one-slope end, 2 no round window; `chimney` 1 two pots, 2 stepped taper; `roof_tile` 1 thatch, 2 shingle, 3 standing seam. The 24 cottages are `recipes/variants/cottage_01..24.json`, made by `tools/gen-cottage-variants.js`, shown by `contact.html`, checked by `tests/contact-test.js`.

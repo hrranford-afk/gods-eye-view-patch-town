@@ -1,0 +1,505 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "cottage_22",
+ "name": "Butterfly Blocks",
+ "footprint": {
+  "w": 2.36,
+  "d": 1.26
+ },
+ "parts": [
+  {
+   "id": "a.floor",
+   "kind": "floor",
+   "pos": [
+    -0.6,
+    0,
+    0
+   ],
+   "size": [
+    1.28,
+    0.05,
+    1.38
+   ],
+   "material": "stone",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "a.wall.f",
+   "kind": "panel",
+   "pos": [
+    -0.6,
+    0.05,
+    0.625
+   ],
+   "size": [
+    1.2,
+    0.87,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "a.wall.b",
+   "kind": "panel",
+   "pos": [
+    -0.6,
+    0.05,
+    -0.625
+   ],
+   "size": [
+    1.2,
+    0.87,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 3.142
+  },
+  {
+   "id": "a.wall.l",
+   "kind": "panel",
+   "pos": [
+    -1.175,
+    0.05,
+    0
+   ],
+   "size": [
+    1.2,
+    0.87,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": -1.571
+  },
+  {
+   "id": "a.wall.r",
+   "kind": "panel",
+   "pos": [
+    -0.025,
+    0.05,
+    0
+   ],
+   "size": [
+    1.2,
+    0.87,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571
+  },
+  {
+   "id": "b.floor",
+   "kind": "floor",
+   "pos": [
+    0.6,
+    0,
+    0
+   ],
+   "size": [
+    1.28,
+    0.05,
+    1.38
+   ],
+   "material": "stone",
+   "stage": "frame",
+   "needs": [
+    "a.floor"
+   ],
+   "tag": "floor",
+   "replaceable": false,
+   "needsMin": 1
+  },
+  {
+   "id": "b.wall.f",
+   "kind": "panel",
+   "pos": [
+    0.6,
+    0.05,
+    0.625
+   ],
+   "size": [
+    1.2,
+    0.55,
+    0.05
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "b.wall.b",
+   "kind": "panel",
+   "pos": [
+    0.6,
+    0.05,
+    -0.625
+   ],
+   "size": [
+    1.2,
+    0.55,
+    0.05
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 3.142
+  },
+  {
+   "id": "b.wall.l",
+   "kind": "panel",
+   "pos": [
+    0.025,
+    0.05,
+    0
+   ],
+   "size": [
+    1.2,
+    0.55,
+    0.05
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": -1.571
+  },
+  {
+   "id": "b.wall.r",
+   "kind": "panel",
+   "pos": [
+    1.175,
+    0.05,
+    0
+   ],
+   "size": [
+    1.2,
+    0.55,
+    0.05
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571
+  },
+  {
+   "id": "a.roof",
+   "kind": "roof_tile",
+   "pos": [
+    -0.59,
+    0.885,
+    0
+   ],
+   "size": [
+    1.46,
+    0.483,
+    1.38
+   ],
+   "material": "roof_seam",
+   "stage": "trim",
+   "needs": [
+    "a.wall.f",
+    "a.wall.b",
+    "a.wall.l",
+    "a.wall.r"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "rotY": 1.571,
+   "variant": 3,
+   "needsMin": 2
+  },
+  {
+   "id": "a.end",
+   "kind": "gable",
+   "pos": [
+    -0.6,
+    0.92,
+    -0.61
+   ],
+   "size": [
+    0.05,
+    0.42,
+    1.2
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.wall.f",
+    "a.roof"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "rotY": 1.571,
+   "variant": 1,
+   "needsMin": 1
+  },
+  {
+   "id": "a.end.2",
+   "kind": "gable",
+   "pos": [
+    -0.6,
+    0.92,
+    0.61
+   ],
+   "size": [
+    0.05,
+    0.42,
+    1.2
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "a.wall.f",
+    "a.roof"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "rotY": 1.571,
+   "variant": 1,
+   "needsMin": 1
+  },
+  {
+   "id": "b.roof",
+   "kind": "roof_tile",
+   "pos": [
+    0.59,
+    0.572,
+    0
+   ],
+   "size": [
+    1.46,
+    0.391,
+    1.38
+   ],
+   "material": "roof_seam",
+   "stage": "trim",
+   "needs": [
+    "b.wall.f",
+    "b.wall.b",
+    "a.wall.f",
+    "a.wall.b",
+    "a.wall.r",
+    "b.wall.l",
+    "b.wall.r",
+    "a.roof",
+    "a.end",
+    "a.end.2"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "rotY": -1.571,
+   "variant": 3,
+   "needsMin": 2
+  },
+  {
+   "id": "b.end",
+   "kind": "gable",
+   "pos": [
+    0.6,
+    0.6,
+    -0.61
+   ],
+   "size": [
+    0.05,
+    0.34,
+    1.2
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.wall.f",
+    "a.roof",
+    "b.roof"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "rotY": -1.571,
+   "variant": 1,
+   "needsMin": 1
+  },
+  {
+   "id": "b.end.2",
+   "kind": "gable",
+   "pos": [
+    0.6,
+    0.6,
+    0.61
+   ],
+   "size": [
+    0.05,
+    0.34,
+    1.2
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "b.wall.f",
+    "a.roof",
+    "b.roof"
+   ],
+   "tag": "gable",
+   "replaceable": false,
+   "rotY": -1.571,
+   "variant": 1,
+   "needsMin": 1
+  },
+  {
+   "id": "door",
+   "kind": "door",
+   "pos": [
+    0.75,
+    0.05,
+    0.665
+   ],
+   "size": [
+    0.3,
+    0.45,
+    0.05
+   ],
+   "material": "paint_teal",
+   "stage": "walls",
+   "needs": [
+    "b.wall.f"
+   ],
+   "tag": "door",
+   "replaceable": true
+  },
+  {
+   "id": "window",
+   "kind": "window",
+   "pos": [
+    -0.6,
+    0.27,
+    0.67
+   ],
+   "size": [
+    0.4,
+    0.42,
+    0.05
+   ],
+   "material": "paint_teal",
+   "stage": "walls",
+   "needs": [
+    "a.wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "window.2",
+   "kind": "window",
+   "pos": [
+    1.22,
+    0.29,
+    0
+   ],
+   "size": [
+    0.3,
+    0.26,
+    0.05
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [
+    "b.wall.r"
+   ],
+   "tag": "window",
+   "replaceable": true,
+   "rotY": 1.571
+  },
+  {
+   "id": "chimney",
+   "kind": "chimney",
+   "pos": [
+    -1,
+    1.02,
+    -0.4
+   ],
+   "size": [
+    0.16,
+    0.5,
+    0.16
+   ],
+   "material": "iron",
+   "stage": "trim",
+   "needs": [
+    "a.roof"
+   ],
+   "tag": "chimney",
+   "replaceable": true,
+   "needsMin": 1
+  }
+ ],
+ "systems": {
+  "jobs": [],
+  "storage": {
+   "coal": 10
+  },
+  "start_stock": {
+   "coal": 5
+  },
+  "costs": {
+   "power_per_kwh": 24,
+   "wage_per_worker_per_minute": 0,
+   "ingredient_prices": {
+    "coal": 1
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": []
+  },
+  "inspect": {
+   "labels": {
+    "door": "Front door",
+    "chimney": "Chimney",
+    "window": "Window"
+   }
+  }
+ }
+}

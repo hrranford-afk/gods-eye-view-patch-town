@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City Lab: cottage contact sheet</title>
+<style>
+:root{--bg:#efe6d3;--card:#fbf6ea;--ink:#2b2118;--mute:#74634f;--line:#d9c9a6;--acc:#b5532b}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:14px 18px 6px}
+h1{margin:0;font-size:22px}
+.sub{color:var(--mute);font-size:13px;margin-top:2px}
+nav{padding:4px 18px 8px;display:flex;gap:8px;flex-wrap:wrap}
+nav a{display:inline-block;padding:6px 12px;border-radius:99px;border:2px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700;font-size:13px}
+nav a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#grid{display:grid;gap:12px;padding:6px 18px 24px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+#grid.c3{grid-template-columns:repeat(3,1fr)}
+.card{position:relative;background:var(--card);border:2px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer}
+.card canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;background:#e6dcc4}
+.num{position:absolute;left:8px;top:6px;font-weight:900;font-size:30px;line-height:1;color:#fff;background:var(--acc);border-radius:10px;padding:4px 9px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.cap{padding:7px 12px 9px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.cap b{font-size:16px}.cap span{color:var(--mute);font-size:12px}
+.tip{padding:0 18px 12px;color:var(--mute);font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>Cottage contact sheet</h1><div class="sub">24 data recipes (rtk.building v1), each checked by the real validator before it is built. Tap a card to turn it a quarter. Use ?page=1 to 4 for six at a time, ?cols=3 for three columns.</div></header>
+<nav id="nav"></nav>
+<div id="grid"></div>
+<div class="tip" id="tip"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../sofa-siege/models.js"></script>
+<script src="whitelist.js"></script>
+<script src="supports.js"></script>
+<script src="validate.js"></script>
+<script src="parts.js"></script>
+<script src="build.js"></script>
+<script>
+(function () {
+  'use strict';
+  var q = new URLSearchParams(location.search), page = parseInt(q.get('page') || '0', 10), cols = q.get('cols');
+  var N = 24, W = 800, H = 600, recipes = [], cards = [], renderer, scene, camera;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* navigation links */
+  var nav = document.getElementById('nav'), links = [['All 24', ''], ['1 to 6', '?page=1'], ['7 to 12', '?page=2'], ['13 to 18', '?page=3'], ['19 to 24', '?page=4']];
+  links.forEach(function (l, i) { var a = document.createElement('a'); a.href = 'contact.html' + l[1]; a.textContent = l[0]; if ((i === 0 && !page) || i === page) a.className = 'on'; nav.appendChild(a); });
+  var grid = document.getElementById('grid'); if (cols === '3' || page) grid.className = 'c3';
+  if (cols && cols !== '3') grid.style.gridTemplateColumns = 'repeat(' + parseInt(cols, 10) + ',1fr)';
+
+  function initScene() {
+    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(W, H, false); renderer.setPixelRatio(1);
+    renderer.outputEncoding = THREE.sRGBEncoding; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0xdbe6e2);
+    camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 60);
+    scene.add(new THREE.HemisphereLight(0xfff6e4, 0x8a6c4a, 0.5));
+    var sun = new THREE.DirectionalLight(0xffefd2, 0.72); sun.position.set(-3.5, 6.5, 4.5); sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048); var s = sun.shadow.camera; s.left = -3; s.right = 3; s.top = 3; s.bottom = -3; s.near = 1; s.far = 18; sun.shadow.bias = -0.0006;
+    scene.add(sun);
+    var fill = new THREE.DirectionalLight(0xdfe8ff, 0.28); fill.position.set(4, 3, -3); scene.add(fill);
+    /* a grassy plot on a pale cloth, the same for every cottage */
+    var cloth = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0xc9b998, roughness: 1 })); cloth.rotation.x = -Math.PI / 2; cloth.position.y = -0.021; cloth.receiveShadow = true; scene.add(cloth);
+    var plot = new THREE.Mesh(new THREE.BoxGeometry(80, 0.04, 80), new THREE.MeshStandardMaterial({ color: 0x6c9446, roughness: 1 })); plot.position.y = -0.0; plot.receiveShadow = true; plot.position.y = -0.002; scene.add(plot);
+    var path = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.012, 1.1), new THREE.MeshStandardMaterial({ color: 0xb9a57c, roughness: 1 })); path.position.set(0, 0.022, 2.1); path.receiveShadow = true; scene.add(path);
+  }
+
+  function frameCamera(group, az) {
+    var box = new THREE.Box3().setFromObject(group), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+    var r = Math.max(Math.sqrt(sz.x * sz.x + sz.z * sz.z) * 0.52, sz.y * 0.8, 1.0), el = 0.42, dist = r / Math.sin(camera.fov * Math.PI / 360) * 1.02;
+    var tx = c.x, ty = Math.max(0.35, sz.y * 0.42), tz = c.z;
+    camera.position.set(tx + Math.sin(az) * Math.cos(el) * dist, ty + Math.sin(el) * dist, tz + Math.cos(az) * Math.cos(el) * dist);
+    camera.lookAt(tx, ty, tz);
+  }
+  function draw(card) {
+    var rec = card.rec, b = CityBuild.create(rec); scene.add(b.group);
+    frameCamera(b.group, card.az);
+    renderer.render(scene, camera);
+    var g = card.canvas.getContext('2d'); g.drawImage(renderer.domElement, 0, 0, card.canvas.width, card.canvas.height);
+    scene.remove(b.group); b.dispose();
+  }
+  function load(i) {
+    return fetch('recipes/variants/cottage_' + pad(i) + '.json').then(function (r) { return r.json(); }).then(function (j) {
+      var v = CityValidate.validate(j);
+      if (!v.ok) throw new Error('cottage_' + pad(i) + ' failed the validator: ' + v.errors.slice(0, 3).join('; '));
+      return j;
+    });
+  }
+  function start() {
+    initScene();
+    var ids = []; for (var i = 1; i <= N; i++) if (!page || (i > (page - 1) * 6 && i <= page * 6)) ids.push(i);
+    Promise.all(ids.map(load)).then(function (rs) {
+      rs.forEach(function (rec, k) {
+        var n = ids[k], el = document.createElement('div'); el.className = 'card'; el.id = 'c' + n;
+        var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        var nm = document.createElement('div'); nm.className = 'num'; nm.textContent = pad(n);
+        var cap = document.createElement('div'); cap.className = 'cap'; cap.innerHTML = '<b></b><span></span>'; cap.firstChild.textContent = rec.name; cap.lastChild.textContent = rec.parts.length + ' parts';
+        el.appendChild(cv); el.appendChild(nm); el.appendChild(cap); grid.appendChild(el);
+        var card = { rec: rec, canvas: cv, az: 0.6 }; cards.push(card);
+        el.addEventListener('click', function () { card.az += Math.PI / 2; draw(card); });
+      });
+      cards.forEach(draw);
+      document.getElementById('tip').textContent = cards.length + ' cottages drawn. Every one passed validate.js (rtk.building v1).';
+      window.__cards = cards.length; window.__done = true;
+    }).catch(function (e) { document.getElementById('tip').textContent = 'Problem: ' + e.message; window.__error = e.message; });
+  }
+  SS.texPath = '../sofa-siege/tex/';
+  SS.materials(); SS.whenTextures(start, 3000);
+})();
+</script>
+</body>
+</html>

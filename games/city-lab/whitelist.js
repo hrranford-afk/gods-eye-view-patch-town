@@ -29,11 +29,17 @@
     wire:       { size: [0.8, 0.03, 0.03], note: 'power cable' },
     meter_box:  { size: [0.14, 0.2, 0.08], note: 'meter box' },
     barrel:     { size: [0.2, 0.28, 0.2], note: 'barrel' },
-    shelf:      { size: [0.6, 0.05, 0.2], note: 'shelf' }
+    shelf:      { size: [0.6, 0.05, 0.2], note: 'shelf' },
+    /* added for the cottage contact sheet (backward compatible: no older recipe uses them) */
+    roof_hip:   { size: [1.4, 0.4, 1.0], note: 'hipped roof (variant 1: pyramid)', slope: true },
+    roof_cone:  { size: [0.6, 0.5, 0.6], note: 'conical or pointed roof for a tower', slope: true },
+    tower:      { size: [0.5, 0.8, 0.5], note: 'round tower wall' }
   };
   /* atlas material names: each is a tile and a colour of the toy library's texture atlas (parts.js holds the tile and colour) */
   var MATERIALS = ['wood', 'wood_dark', 'wood_pale', 'paint_cream', 'paint_blue', 'paint_red', 'tin', 'brick', 'canvas',
-    'flour', 'bread', 'iron', 'glass', 'stone'];
+    'flour', 'bread', 'iron', 'glass', 'stone',
+    /* warm cottage colours added for the contact sheet (appended: the older names keep their places) */
+    'paint_sage', 'paint_ochre', 'paint_rose', 'paint_teal', 'paint_butter', 'plaster', 'oak_dark', 'clay', 'slate', 'thatch', 'roof_green', 'roof_seam'];
   var STAGES = ['trim', 'walls', 'frame'];
   var LIMITS = {
     maxText: 400000, maxDepth: 12, maxParts: 120, minParts: 1, idRe: '^[a-z][a-z0-9_.-]{0,31}$', itemRe: '^[a-z][a-z_]{0,23}$',

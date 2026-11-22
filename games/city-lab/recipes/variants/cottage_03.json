@@ -1,0 +1,374 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "cottage_03",
+ "name": "Low Wide Hip",
+ "footprint": {
+  "w": 2.5,
+  "d": 1.7
+ },
+ "parts": [
+  {
+   "id": "floor",
+   "kind": "floor",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    2.38,
+    0.05,
+    1.58
+   ],
+   "material": "stone",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "wall.f",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    0.725
+   ],
+   "size": [
+    2.3,
+    0.57,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "floor"
+   ],
+   "tag": "wall",
+   "replaceable": false
+  },
+  {
+   "id": "wall.b",
+   "kind": "panel",
+   "pos": [
+    0,
+    0.05,
+    -0.725
+   ],
+   "size": [
+    2.3,
+    0.57,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 3.142
+  },
+  {
+   "id": "wall.l",
+   "kind": "panel",
+   "pos": [
+    -1.125,
+    0.05,
+    0
+   ],
+   "size": [
+    1.4,
+    0.57,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": -1.571
+  },
+  {
+   "id": "wall.r",
+   "kind": "panel",
+   "pos": [
+    1.125,
+    0.05,
+    0
+   ],
+   "size": [
+    1.4,
+    0.57,
+    0.05
+   ],
+   "material": "plaster",
+   "stage": "walls",
+   "needs": [
+    "floor"
+   ],
+   "tag": "wall",
+   "replaceable": false,
+   "rotY": 1.571
+  },
+  {
+   "id": "roof",
+   "kind": "roof_hip",
+   "pos": [
+    0,
+    0.54,
+    0
+   ],
+   "size": [
+    2.7,
+    0.38,
+    1.9
+   ],
+   "material": "roof_green",
+   "stage": "trim",
+   "needs": [
+    "wall.f",
+    "wall.b",
+    "wall.l",
+    "wall.r"
+   ],
+   "tag": "roof",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "door",
+   "kind": "door",
+   "pos": [
+    0,
+    0.05,
+    0.765
+   ],
+   "size": [
+    0.34,
+    0.47,
+    0.05
+   ],
+   "material": "paint_ochre",
+   "stage": "walls",
+   "needs": [
+    "wall.f"
+   ],
+   "tag": "door",
+   "replaceable": true
+  },
+  {
+   "id": "window",
+   "kind": "window",
+   "pos": [
+    -0.62,
+    0.29,
+    0.77
+   ],
+   "size": [
+    0.32,
+    0.26,
+    0.05
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [
+    "wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "shutter",
+   "kind": "shutter",
+   "pos": [
+    -0.855,
+    0.28,
+    0.78
+   ],
+   "size": [
+    0.12,
+    0.28,
+    0.03
+   ],
+   "material": "paint_ochre",
+   "stage": "trim",
+   "needs": [
+    "window",
+    "roof"
+   ],
+   "tag": "shutter",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "shutter.2",
+   "kind": "shutter",
+   "pos": [
+    -0.385,
+    0.28,
+    0.78
+   ],
+   "size": [
+    0.12,
+    0.28,
+    0.03
+   ],
+   "material": "paint_ochre",
+   "stage": "trim",
+   "needs": [
+    "window",
+    "roof"
+   ],
+   "tag": "shutter",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "window.2",
+   "kind": "window",
+   "pos": [
+    0.62,
+    0.29,
+    0.77
+   ],
+   "size": [
+    0.32,
+    0.26,
+    0.05
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [
+    "wall.f"
+   ],
+   "tag": "window",
+   "replaceable": true
+  },
+  {
+   "id": "shutter.3",
+   "kind": "shutter",
+   "pos": [
+    0.385,
+    0.28,
+    0.78
+   ],
+   "size": [
+    0.12,
+    0.28,
+    0.03
+   ],
+   "material": "paint_ochre",
+   "stage": "trim",
+   "needs": [
+    "window.2",
+    "roof"
+   ],
+   "tag": "shutter",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "shutter.4",
+   "kind": "shutter",
+   "pos": [
+    0.855,
+    0.28,
+    0.78
+   ],
+   "size": [
+    0.12,
+    0.28,
+    0.03
+   ],
+   "material": "paint_ochre",
+   "stage": "trim",
+   "needs": [
+    "window.2",
+    "roof"
+   ],
+   "tag": "shutter",
+   "replaceable": true,
+   "needsMin": 1
+  },
+  {
+   "id": "window.3",
+   "kind": "window",
+   "pos": [
+    1.17,
+    0.29,
+    0
+   ],
+   "size": [
+    0.28,
+    0.26,
+    0.05
+   ],
+   "material": "wood_dark",
+   "stage": "walls",
+   "needs": [
+    "wall.r"
+   ],
+   "tag": "window",
+   "replaceable": true,
+   "rotY": 1.571
+  },
+  {
+   "id": "chimney",
+   "kind": "chimney",
+   "pos": [
+    -0.2,
+    0.62,
+    0
+   ],
+   "size": [
+    0.28,
+    0.52,
+    0.24
+   ],
+   "material": "brick",
+   "stage": "trim",
+   "needs": [
+    "roof"
+   ],
+   "tag": "chimney",
+   "replaceable": true,
+   "variant": 1,
+   "needsMin": 1
+  }
+ ],
+ "systems": {
+  "jobs": [],
+  "storage": {
+   "coal": 10
+  },
+  "start_stock": {
+   "coal": 5
+  },
+  "costs": {
+   "power_per_kwh": 24,
+   "wage_per_worker_per_minute": 0,
+   "ingredient_prices": {
+    "coal": 1
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": []
+  },
+  "inspect": {
+   "labels": {
+    "door": "Front door",
+    "chimney": "Chimney",
+    "roof": "Roof",
+    "window": "Window"
+   }
+  }
+ }
+}
