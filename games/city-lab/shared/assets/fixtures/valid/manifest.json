@@ -1,0 +1,98 @@
+{
+ "schema": "asset_manifest",
+ "version": 0,
+ "asset_id": "shed_01",
+ "recipe": {
+  "id": "shed",
+  "version": 1,
+  "sha256": "3633668fe5b3cf5c77177d0c33554c061ddedd36045fdd5bd777f8e631169438"
+ },
+ "class": "building",
+ "units": "m",
+ "up": "y",
+ "front": "+z",
+ "files": {
+  "glb": {
+   "path": "shed_01.glb",
+   "sha256": "4ff119cc3f338a7571329270122ed737f9de158e005b570858668d15f79cca91",
+   "bytes": 10140
+  },
+  "lods": [
+   {
+    "path": "shed_01.lod1.glb",
+    "sha256": "49507df24fc5e4b66ba78b15490e71d4ea4b5d39c44bd9504da9ff925b94bec6",
+    "bytes": 3676
+   }
+  ],
+  "preview_png": {
+   "path": "shed_01.preview.png",
+   "sha256": "9581c265dcb4d71f87115e9ca2cfab0028ab699935ed7316717eece6225132b7",
+   "bytes": 353
+  }
+ },
+ "footprint": {
+  "w": 1.2,
+  "d": 1
+ },
+ "bounds": {
+  "min": [
+   -0.6,
+   0,
+   -0.5
+  ],
+  "max": [
+   0.6,
+   0.93,
+   0.5
+  ]
+ },
+ "lods": [
+  {
+   "triangles": 120
+  },
+  {
+   "triangles": 36
+  }
+ ],
+ "materials": 1,
+ "textures": [
+  {
+   "name": "shed_01_base",
+   "w": 64,
+   "h": 64,
+   "format": "png"
+  }
+ ],
+ "sockets": [
+  {
+   "name": "door",
+   "pos": [
+    0,
+    0.4,
+    0.5
+   ]
+  }
+ ],
+ "collider": {
+  "box": [
+   1.2,
+   0.93,
+   1
+  ]
+ },
+ "producer": {
+  "machine_class": "cloud test fixture",
+  "converter_id": "fixture_writer_v0",
+  "converter_sha256": "d2b5b2f8376236979fdd015cf244569f995aa5229e53e8cfbe227de64f47079e",
+  "seconds": 0
+ },
+ "inspection": {
+  "checks_total": 12,
+  "checks_passed": 12,
+  "failed": []
+ },
+ "run_approved_by_owner": true,
+ "warnings": [
+  "TEST FIXTURE: not produced by the workshop"
+ ]
+}

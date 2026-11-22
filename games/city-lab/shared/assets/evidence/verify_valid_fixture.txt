@@ -1,0 +1,14 @@
+PASS 1 manifest shape: strict keys, ids, units, class
+PASS 2 the manifest answers the request (recipe id, sha256, class)
+PASS 3 files: present, inside the folder, sha256 and size match  [3 files]
+PASS 4 GLB is well formed (header, chunks, JSON)
+PASS 5 static, self-contained: no extensions, cameras, lights, animation, external links, odd names
+PASS 6 triangles within the class budget and equal to the claim  [120 triangles]
+PASS 7 detail levels get strictly lighter and keep the same size
+PASS 8 materials and textures within budget, power-of-two sizes  [1 materials, 1 textures]
+PASS 9 file size within the class cap  [10140 bytes]
+PASS 10 base on the ground, origin at the base centre, footprint equals the recipe
+PASS 11 sockets and collider present, named and placed as claimed  [1 sockets]
+PASS 12 the producer's inspection record is consistent and the run was approved
+
+ASSET ACCEPTED: all checks passed
