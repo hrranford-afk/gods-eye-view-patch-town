@@ -1,0 +1,109 @@
+{
+ "schema": "city_infra",
+ "version": 0,
+ "id": "patch_row_power_net",
+ "name": "Patch Row power network (illustrative numbers)",
+ "district": {
+  "id": "patch_row_power",
+  "version": 0,
+  "sha256": "58ccc4b74f3bb02109c666747e46bb7f90d7fb9679b7854feb70b554e16c5f01"
+ },
+ "root": "root",
+ "junctions": [
+  {
+   "id": "root",
+   "name": "the generator junction",
+   "cell": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": "main",
+   "name": "the workshops street",
+   "cell": [
+    5,
+    2
+   ]
+  },
+  {
+   "id": "homes_j",
+   "name": "the homes street",
+   "cell": [
+    1,
+    2
+   ]
+  }
+ ],
+ "sources": [
+  {
+   "id": "gen_a",
+   "building": "gen_1",
+   "kw": 13.5,
+   "build_cost": 300,
+   "upkeep_per_min": 2.7
+  }
+ ],
+ "cables": [
+  {
+   "id": "main_feeder",
+   "name": "Main feeder",
+   "from": "root",
+   "to": "main",
+   "capacity_kw": 12,
+   "build_cost": 120,
+   "upkeep_per_min": 1
+  },
+  {
+   "id": "bakery_line",
+   "name": "Bakery line",
+   "from": "main",
+   "to": "bakery",
+   "capacity_kw": 7,
+   "build_cost": 40,
+   "upkeep_per_min": 0.3
+  },
+  {
+   "id": "workshop_line",
+   "name": "Workshop line",
+   "from": "main",
+   "to": "workshop",
+   "capacity_kw": 3.5,
+   "build_cost": 25,
+   "upkeep_per_min": 0.2
+  },
+  {
+   "id": "market_line",
+   "name": "Market line",
+   "from": "main",
+   "to": "market",
+   "capacity_kw": 1,
+   "build_cost": 10,
+   "upkeep_per_min": 0.1
+  },
+  {
+   "id": "shed_line",
+   "name": "Shed line",
+   "from": "main",
+   "to": "shed",
+   "capacity_kw": 2,
+   "build_cost": 15,
+   "upkeep_per_min": 0.1
+  },
+  {
+   "id": "homes_branch",
+   "name": "Homes cable",
+   "from": "root",
+   "to": "homes_j",
+   "capacity_kw": 3,
+   "build_cost": 40,
+   "upkeep_per_min": 0.3
+  }
+ ],
+ "home_cable": {
+  "to": "homes_j",
+  "capacity_kw": 0.6,
+  "build_cost": 6,
+  "upkeep_per_min": 0.05
+ }
+}

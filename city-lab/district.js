@@ -5,9 +5,9 @@
    C02 sidecar applied to a patched COPY of the recipe (same rules as shared/tools/sidecar-check.mjs).
    State is plain JSON: W.S. Same district file + same seed + same calls = byte-identical state (hash). */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sim.js'), require('./validate.js'));
-  else root.CityDistrict = factory(root.CitySim, root.CityValidate);
-})(typeof self !== 'undefined' ? self : this, function (SIM, VAL) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sim.js'), require('./validate.js'), require('./infra.js'));
+  else root.CityDistrict = factory(root.CitySim, root.CityValidate, root.CityInfra);
+})(typeof self !== 'undefined' ? self : this, function (SIM, VAL, INFRA) {
   'use strict';
   var LOG_MAX = 300;
 
@@ -55,6 +55,13 @@
     opts = opts || {};
     var S = { v: 0, id: D.id, seed: opts.seed != null ? opts.seed | 0 : D.seed | 0, t: 0, acc: 0, steps: 0, scale: 1, roads: {}, depot: D.depot.slice(), b: [], nextEvent: 0, nextHome: 1, capex: 0, env: null, log: [], logN: 0, brown_s: 0, fsum: 0, minFactor: 1 };
     var W = { D: D, files: files, R: {}, S: S, errors: [] };
+    /* optional power network (city_infra v0, see INFRA.md): a plain object, already validated by the caller. A district without it behaves exactly as before. */
+    if (opts.infra) {
+      var missing = [];
+      opts.infra.sources.forEach(function (x) { if (!D.buildings.some(function (b) { return b.id === x.building; })) missing.push(x.building); });
+      if (missing.length) return { ok: false, errors: ['infra sources name buildings that are not in the district: ' + missing.join(', ')] };
+      W.I = Object.assign({}, opts.infra, { srcB: INFRA.sourceBuildings(opts.infra) }); S.infra = { caps: {}, cut: {} };
+    }
     D.roads.forEach(function (r) { S.roads[key(r.cell[0], r.cell[1])] = r.open ? 1 : 0; });
     D.buildings.forEach(function (bd) {
       var b = { id: bd.id, kind: bd.kind, cell: bd.cell.slice(), recipe: bd.recipe, sidecars: (bd.sidecars || []).slice(), label: '', sim: null, hire: bd.hire_priority == null ? 5 : bd.hire_priority, employs: !!bd.employs, draw_kw: bd.draw_kw || 0, residents: 0, cap: 0, acc: { demand: 0, brown_s: 0, blocked_s: 0 } };
@@ -115,13 +122,17 @@
     var depotField = field(S, [key(S.depot[0], S.depot[1])]);
 
     /* shared electricity: nominal draws (a machine's demand_kw whether or not it is baking this second, so the brownout cannot flicker with the load) */
-    var draw = {}, total = 0;
+    var draw = {}, total = 0, srcB = W.I ? W.I.srcB : null;
     bs.forEach(function (b) {
       var R = W.R[b.id], kw = b.kind === 'home' ? P.home_base_kw + P.per_resident_kw * b.residents : ((R.systems.power ? R.systems.power.demand_kw : 0) + b.draw_kw);
-      draw[b.id] = r6(kw); total += kw;
+      draw[b.id] = r6(kw); if (!(srcB && srcB[b.id])) total += kw;   /* a generator shed powers itself: its own draw is not on the network */
     });
-    var supply = r6(P.supply_kw * S.scale), factor = total > 0 ? Math.min(1, supply / total) : 1;
+    var supply, factor, ia = null;
+    if (W.I) {   /* the power network replaces the one city number: sources, a tree of cables, rule A (infra.js) */
+      ia = INFRA.allocate(W.I, bs, draw, S.infra, S.scale); supply = ia.source_kw; factor = ia.min_factor;
+    } else { supply = r6(P.supply_kw * S.scale); factor = total > 0 ? Math.min(1, supply / total) : 1; }
     env.power = { supply: supply, draw: r6(total), factor: r6(factor), margin: r6(supply - total), by: draw };
+    if (ia) env.infra = ia;
 
     /* residents and work: a share of each home's residents work; they fill places at employers they can reach, nearest home first, employers in hire_priority order */
     var avail = {}, empl = {}, slots = {};
@@ -177,7 +188,7 @@
     /* per building: power state, delivery road, staffing */
     bs.forEach(function (b) {
       var e = env.b[b.id] || (env.b[b.id] = {}), R = W.R[b.id];
-      e.draw = draw[b.id]; e.factor = env.power.factor;
+      e.draw = draw[b.id]; e.factor = ia ? ia.factor[b.id] : env.power.factor;
       if (b.kind === 'home') { e.residents = b.residents; e.employed = empl[b.id]; return; }
       e.reach_depot = reach(accOf[b.id], depotField);
       e.deliveries = !(R.systems.deliveries && R.systems.deliveries.length) || e.reach_depot != null;
@@ -204,13 +215,13 @@
     S.b.forEach(function (b) {
       if (!b.sim) return;
       var R = W.R[b.id], e = env.b[b.id], o = { deliveries: e.deliveries };
-      if (R.systems.power) o.supply_kw = r6(R.systems.power.demand_kw * env.power.factor);
+      if (R.systems.power) o.supply_kw = r6(R.systems.power.demand_kw * e.factor);
       if (R.systems.sales && e.demand != null) o.demand_per_minute = e.demand;
       if (e.staff != null) { o.staff = {}; R.systems.jobs.forEach(function (jb) { o.staff[jb.role] = e.staff; }); }
       SIM.setExternal(b.sim, o);
       SIM.run(R, b.sim, 1);
       if (e.demand != null) b.acc.demand = r6(b.acc.demand + e.demand / 60);
-      if (R.systems.power && env.power.factor < 1 - 1e-9) b.acc.brown_s++;
+      if (R.systems.power && e.factor < 1 - 1e-9) b.acc.brown_s++;
       if (!e.deliveries) b.acc.blocked_s++;
     });
     if (env.power.factor < 1 - 1e-9) S.brown_s++;
@@ -234,6 +245,11 @@
       if (e.demand != null) out.shops[b.id] = { label: b.label, demand: e.demand, homes: e.from_homes };
       out.deliveries[b.id] = e.deliveries;
     });
+    if (W.I) {   /* power network: each building's share of its demand and each cable's numbers */
+      out.fac = {}; out.edges = {}; var ia = env.infra;
+      W.S.b.forEach(function (b) { out.fac[b.id] = ia.factor[b.id]; });
+      ia.edges.forEach(function (x) { out.edges[x.id] = { name: x.name, cap: x.cap, want: x.want, flow: x.flow, state: x.state, synth: x.synthesized, cut: x.cut }; });
+    }
     return out;
   }
   function diffText(W, A, B) {
@@ -245,13 +261,59 @@
     });
     if (A.employed !== B.employed || A.jobs !== B.jobs) p.push('workers in jobs ' + A.employed + ' to ' + B.employed + ' of ' + B.jobs + ' places');
     if (Math.abs(A.draw - B.draw) >= 0.05 || Math.abs(A.supply - B.supply) >= 0.05) p.push('grid draw ' + f1(A.draw) + ' to ' + f1(B.draw) + ' kW against ' + f1(B.supply) + ' kW supply');
-    if (A.factor >= 1 - 1e-9 && B.factor < 1 - 1e-9) p.push('BROWNOUT started, every building runs at ' + Math.round(B.factor * 100) + '% power');
+    if (W.I) infraDiff(W, A, B, p);
+    else if (A.factor >= 1 - 1e-9 && B.factor < 1 - 1e-9) p.push('BROWNOUT started, every building runs at ' + Math.round(B.factor * 100) + '% power');
     else if (A.factor < 1 - 1e-9 && B.factor >= 1 - 1e-9) p.push('brownout ended, power back to 100%');
     else if (A.factor < 1 - 1e-9 && B.factor < 1 - 1e-9 && Math.abs(A.factor - B.factor) >= 0.005) p.push('brownout ' + Math.round(A.factor * 100) + '% to ' + Math.round(B.factor * 100) + '% power');
     Object.keys(B.deliveries).forEach(function (id) {
       if (A.deliveries[id] !== B.deliveries[id]) p.push((B.deliveries[id] ? 'carts can reach ' : 'deliveries to ') + byId(W, id).label + (B.deliveries[id] ? ' again' : ' are suspended (no open road from the depot)'));
     });
-    return p.length ? p.join('; ') : 'no other number changed';
+    var txt = p.length ? p.join('; ') : 'no other number changed';
+    if (W.I) { var bn = brownNote(W, A, B); if (bn) txt += '. ' + bn.replace(/\.$/, ''); }
+    return txt;
+  }
+  /* ---- power network wording: cables first (numbers before and after), then each building's share; every number comes from infra.js ---- */
+  function pcs(f) { return Math.round(f * 100) + '%'; }
+  function infraDiff(W, A, B, p) {
+    Object.keys(B.edges).forEach(function (id) {
+      var b = B.edges[id], a = A.edges[id]; if (b.synth || !a) return;
+      if (Math.abs(a.want - b.want) >= 0.05 || Math.abs(a.flow - b.flow) >= 0.05 || a.state !== b.state || a.cap !== b.cap)
+        p.push(b.name + ' wants ' + f1(a.want) + ' to ' + f1(b.want) + ' kW and carries ' + f1(a.flow) + ' to ' + f1(b.flow) + ' kW (capacity ' + (a.cap !== b.cap ? f1(a.cap) + ' to ' : '') + f1(b.cap) + ' kW, ' + (a.state === b.state ? b.state : a.state + ' to ' + b.state) + ')');
+    });
+    var homes = [], seen = {};
+    W.S.b.forEach(function (b) {
+      var fa = A.fac[b.id], fb = B.fac[b.id]; if (fa === undefined) { if (b.kind === 'home' && fb < 1 - 0.005) homes.push([fa === undefined ? 1 : fa, fb]); return; } if (Math.abs(fa - fb) < 0.005) return;
+      if (b.kind === 'home') { homes.push([fa, fb]); return; }
+      p.push(b.label + ' power ' + pcs(fa) + ' to ' + pcs(fb) + (fb <= 0 ? ' (DARK, no power)' : ''));
+    });
+    if (homes.length) {
+      var lo = homes.reduce(function (m, h) { return Math.min(m, h[1]); }, 1), hi = homes.reduce(function (m, h) { return Math.max(m, h[0]); }, 0);
+      p.push((homes.length === 1 ? 'a home' : homes.length + ' homes') + ' power ' + pcs(hi) + ' to ' + pcs(lo) + (lo <= 0 ? ' (DARK, no power)' : '') + '; homes have no machine, so this changes no money in this version');
+    }
+  }
+  /* The C03b lesson, in the log: a short brownout raises a shop's profit only because shelf stock covers sales while less electricity is spent. Say it, with the stock and the saving. */
+  function shopNote(W, id, fa, fb) {
+    var b = byId(W, id), R = W.R[id], Y = R.systems, pr = Y.production, sl = Y.sales, e = W.S.env.b[id];
+    if (pr && !sl && Y.power && b.sim && Object.keys(pr.outputs).length) {   /* a maker with no shop window (the workshop): energy and purchases, no sales to cover */
+      var o2 = Object.keys(pr.outputs)[0], st2 = e.staff == null ? 1 : e.staff, bp2 = function (f) { return 60 * f * st2 / pr.batch_seconds; }, sv2 = Math.max(0, (bp2(fa) - bp2(fb)) * Y.power.demand_kw * pr.batch_seconds / 3600 * (Y.costs.power_per_kwh || 0));
+      return 'Stock at ' + b.label + ' (' + o2 + '): ' + Math.round(b.sim.stock[o2]) + '. Energy saved: up to ' + f2(sv2) + ' coins a minute; it also takes less ' + Object.keys(pr.inputs)[0] + ' while it works slower, a temporary saving that ends when its stock is rebuilt.';
+    }
+    if (!pr || !sl || !Y.power || !b.sim || e.demand == null) return '';
+    var outs = 0; Object.keys(pr.outputs).forEach(function (k) { outs += pr.outputs[k]; });
+    var staff = e.staff == null ? 1 : e.staff, bpm = function (f) { return 60 * f * staff / pr.batch_seconds; }, kwhb = Y.power.demand_kw * pr.batch_seconds / 3600, price = Y.costs.power_per_kwh || 0;
+    var stock = b.sim.stock[sl.item], saved = Math.max(0, (bpm(fa) - bpm(fb)) * kwhb * price), made = bpm(fb) * outs, drain = e.demand - made;
+    var t = 'Shelf stock at ' + b.label + ' (' + sl.item + '): ' + Math.round(stock) + '. Energy saved: up to ' + f2(saved) + ' coins a minute (it makes ' + f1(bpm(fa) * outs) + ' to ' + f1(made) + ' a minute against ' + f1(e.demand) + ' wanted). ';
+    if (drain > 0.05) t += 'The shelf covers sales for about ' + f1(stock / drain) + ' minutes: a short brownout can look profitable only for that reason (stock covers sales, less electricity is spent, fewer ingredients are bought), a longer one loses sales.';
+    else t += 'Baking still keeps up with sales, so nothing is lost while the shelf holds.';
+    return t;
+  }
+  function brownNote(W, A, B) {
+    var out = [];
+    W.S.b.forEach(function (b) {
+      var fa = A.fac[b.id], fb = B.fac[b.id]; if (!b.sim || fa === undefined || !(fb < fa - 0.005)) return;
+      var t = shopNote(W, b.id, fa, fb); if (t) out.push(t);
+    });
+    return out.join(' ');
   }
   function change(W, cause, before, ids) {
     W.S.env = computeEnv(W);
@@ -269,6 +331,21 @@
   function setScale(W, v, cause) {
     var before = headline(W); W.S.scale = v;
     return { ok: true, text: change(W, cause || ('Grid supply set to ' + Math.round(v * 100) + '%'), before, []) };
+  }
+  /* ---- the power network's own changes (each writes one sentence with before and after numbers; nothing here charges a budget) ---- */
+  function cableOf(W, id) { var r = null; if (W.I) W.I.cables.forEach(function (c) { if (c.id === id) r = c; }); return r; }
+  function setCable(W, id, kw, cause) {
+    var c = cableOf(W, id); if (!c) return { ok: false, error: 'no such cable' };
+    if (typeof kw !== 'number' || !isFinite(kw) || kw < 0.1 || kw > 500) return { ok: false, error: 'capacity must be between 0.1 and 500 kW' };
+    var old = W.S.infra.caps[id] != null ? W.S.infra.caps[id] : c.capacity_kw; if (old === kw) return { ok: true, text: 'already ' + f1(kw) + ' kW' };
+    var before = headline(W); W.S.infra.caps[id] = kw;
+    return { ok: true, text: change(W, cause || (c.name + ' capacity set from ' + f1(old) + ' to ' + f1(kw) + ' kW (an edit: no money is charged)'), before, []) };
+  }
+  function cutCable(W, id, cut, cause) {
+    var c = cableOf(W, id); if (!c) return { ok: false, error: 'no such cable' };
+    var was = !!W.S.infra.cut[id]; if (was === !!cut) return { ok: true, text: 'already ' + (cut ? 'cut' : 'connected') };
+    var before = headline(W); if (cut) W.S.infra.cut[id] = 1; else delete W.S.infra.cut[id];
+    return { ok: true, text: change(W, cause || (c.name + (cut ? ' cut: everything below it loses its connection' : ' reconnected')), before, []) };
   }
   function homeCells(W) { return W.S.b.filter(function (b) { return b.kind === 'home'; }); }
   function addHome(W) {
@@ -309,6 +386,7 @@
     var S = W.S, out = { t: S.t, brown_s: S.brown_s, fsum: S.fsum, b: {} };
     S.b.forEach(function (b) {
       if (!b.sim) return;
+      if (W.I && W.I.srcB[b.id]) return;   /* a generator shed's own running cost is the upkeep in the infra file, not counted twice */
       var m = b.sim, Y = W.R[b.id].systems, miss = 0; if (m.ext) Object.keys(m.ext.missed).forEach(function (k) { miss = Math.max(miss, m.ext.missed[k]); });
       out.b[b.id] = { income: m.sales.income, cost: SIM.cost(m), wages: m.costs.wages, power_cost: m.costs.power, ingredients: m.costs.ingredients, sold: m.sales.sold, lost: m.sales.lost, made: m.prod.made,
         demand: b.acc.demand, spoiled: sumVals(m.spoiled), missed: miss, brown_s: b.acc.brown_s, blocked_s: b.acc.blocked_s, kwh: m.power.kwh };
@@ -348,7 +426,7 @@
   }
   function find(E, kind) { return E.buildings.filter(function (b) { return b.kind === kind; }); }
   function run1(D, files, o) {   /* one deterministic run: warm up, then measure. Returns the report between the two snapshots. */
-    var m = make(D, files, { seed: o.seed }); if (!m.ok) throw new Error(m.errors.join('; '));
+    var m = make(D, files, { seed: o.seed, infra: o.infra }); if (!m.ok) throw new Error(m.errors.join('; '));
     var W = m.W; if (o.before) o.before(W);
     run(W, o.warm || 0); var a = snap(W); run(W, o.measure); var b = snap(W);
     var rep = between(W, o.warm ? a : null, b); rep.hash = hash(W); rep.world = W; return rep;
@@ -484,5 +562,5 @@
   }
 
   return { make: make, run: run, step: stepOnce, snap: snap, between: between, hash: hash, headline: headline, setRoad: setRoad, setScale: setScale, addHome: addHome, removeHome: removeHome, applySidecar: applySidecar,
-    refresh: function (W) { W.S.env = computeEnv(W); return W.S.env; }, withHomes: withHomes, settlement: settlement, applyBranches: applyBranches, run1: run1, exp1: exp1, exp2: exp2, exp3: exp3, explain1: explain1, explain2: explain2, explain3: explain3, COND: COND, clock: clock, byId: byId, note: note };
+    setCable: setCable, cutCable: cutCable, refresh: function (W) { W.S.env = computeEnv(W); return W.S.env; }, withHomes: withHomes, settlement: settlement, applyBranches: applyBranches, run1: run1, exp1: exp1, exp2: exp2, exp3: exp3, explain1: explain1, explain2: explain2, explain3: explain3, COND: COND, clock: clock, byId: byId, note: note };
 });
