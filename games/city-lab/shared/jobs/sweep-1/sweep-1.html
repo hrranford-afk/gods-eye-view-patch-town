@@ -1,0 +1,1377 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>City Lab sweep job: sweep-1</title>
+<style>body{font:16px/1.4 -apple-system,system-ui,sans-serif;margin:0;padding:18px;background:#fbf6ec;color:#2b2118}h1{font-size:20px;margin:0 0 8px}.big{font:700 34px/1.2 ui-monospace,Menlo,monospace;background:#fff;border:3px solid #cdbb98;border-radius:14px;padding:14px;margin:12px 0}
+.ok{color:#1d5a30}.bad{color:#8a2a1e}.small{font-size:13px;color:#6f6253}pre{white-space:pre-wrap;font-size:12px}</style></head><body>
+<h1>City Lab sweep job: sweep-1</h1><div class="small">Data only. This page runs a fixed simulation grid and shows a fingerprint. It reads nothing, sends nothing and never changes. Do not touch the screen while it runs.</div>
+<div id="state" class="big">running...</div><div id="detail"></div><pre id="rows"></pre>
+<script>
+/* City Lab: the whitelist. Plain data, no THREE, runs in Node and in the browser.
+   A recipe may only name part kinds and materials that are listed here. The builders for the kinds live in parts.js (normal code, never data). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.CityWhitelist = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  /* size is [w, h, d] in table units (a mouse is about 0.3 tall). slope: the part is a sloped piece inside its box:
+     at rotY 0 it faces +z, so it is high at the back (-z) and low at the front (+z). ground: may stand on the ground without needs. */
+  var KINDS = {
+    floor:      { size: [2.4, 0.05, 1.8], note: 'floor slab', ground: true },
+    post:       { size: [0.08, 1.0, 0.08], note: 'frame post', ground: true },
+    beam:       { size: [1.0, 0.07, 0.08], note: 'frame beam' },
+    panel:      { size: [0.6, 0.9, 0.05], note: 'wall panel' },
+    door:       { size: [0.34, 0.65, 0.05], note: 'door' },
+    window:     { size: [0.3, 0.28, 0.05], note: 'window frame' },
+    shutter:    { size: [0.14, 0.28, 0.03], note: 'shutter' },
+    rafter:     { size: [0.06, 0.5, 0.9], note: 'roof rafter', slope: true },
+    roof_tile:  { size: [0.3, 0.12, 0.3], note: 'roof tile', slope: true },
+    ridge:      { size: [1.0, 0.06, 0.1], note: 'roof ridge cap' },
+    gable:      { size: [0.05, 0.5, 1.7], note: 'gable end', slope: true },
+    chimney:    { size: [0.16, 0.5, 0.16], note: 'chimney' },
+    awning:     { size: [1.2, 0.25, 0.5], note: 'awning', slope: true },
+    sign:       { size: [0.6, 0.2, 0.04], note: 'sign board' },
+    crate:      { size: [0.2, 0.2, 0.2], note: 'crate' },
+    sack:       { size: [0.18, 0.22, 0.14], note: 'sack' },
+    oven:       { size: [0.6, 0.55, 0.5], note: 'oven' },
+    counter:    { size: [1.0, 0.4, 0.3], note: 'counter' },
+    wire:       { size: [0.8, 0.03, 0.03], note: 'power cable' },
+    meter_box:  { size: [0.14, 0.2, 0.08], note: 'meter box' },
+    barrel:     { size: [0.2, 0.28, 0.2], note: 'barrel' },
+    shelf:      { size: [0.6, 0.05, 0.2], note: 'shelf' }
+  };
+  /* atlas material names: each is a tile and a colour of the toy library's texture atlas (parts.js holds the tile and colour) */
+  var MATERIALS = ['wood', 'wood_dark', 'wood_pale', 'paint_cream', 'paint_blue', 'paint_red', 'tin', 'brick', 'canvas',
+    'flour', 'bread', 'iron', 'glass', 'stone'];
+  var STAGES = ['trim', 'walls', 'frame'];
+  var LIMITS = {
+    maxText: 400000, maxDepth: 12, maxParts: 120, minParts: 1, idRe: '^[a-z][a-z0-9_.-]{0,31}$', itemRe: '^[a-z][a-z_]{0,23}$',
+    maxStr: 80, maxLabel: 40, maxItems: 12, maxJobs: 8, maxDeliveries: 12, maxNeeds: 12,
+    footprintMin: 0.4, footprintMax: 4.0, sizeMin: 0.01, sizeMax: 4.0, posMax: 5.0, margin: 0.9,
+    overlapTol: 0.02, contactTol: 0.04, groundTol: 0.03, maxRounds: 14
+  };
+  return { KINDS: KINDS, MATERIALS: MATERIALS, STAGES: STAGES, LIMITS: LIMITS };
+});
+
+</script>
+<script>
+/* City Lab: the support rule and the plain geometry rules. Pure JS, no THREE, no DOM, runs in Node and in the browser.
+
+   THE SUPPORT RULE (the same one the Building Yard uses, bFloating / bSettle in games/sofa-siege/game.js):
+   a part that has a needs list falls when fewer than min of the parts it needs are still standing (min is needsMin, all of them if absent).
+   After anything comes off, the parts whose support is gone fall, and then whatever hung on those, round after round, at most 14 rounds
+   (the game stops after 14 as well). A part with an empty needs list stands on the ground and never falls from this rule.
+   tests/support-test.js loads the game and compares this function with the game's own rule on the Cottage and the Market stall. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./whitelist.js'));
+  else root.CitySupports = factory(root.CityWhitelist);
+})(typeof self !== 'undefined' ? self : this, function (WL) {
+  'use strict';
+  var L = WL.LIMITS;
+
+  function needsOf(p) { return p.needs || []; }
+  function minOf(p) { var n = needsOf(p).length; return p.needsMin == null ? n : p.needsMin; }
+
+  /* fall(parts, removed, opts): parts is [{id, needs, needsMin}], removed is a list of ids taken off directly,
+     opts.gone is a list of ids that are already off, opts.maxRounds defaults to 14.
+     Returns {direct, fallen, rounds, all}: direct = the removed ids that were on, fallen = every part that fell by the rule (in order),
+     rounds = the fallen ids grouped by round, all = direct then fallen. */
+  function fall(parts, removed, opts) {
+    opts = opts || {};
+    var gone = Object.create(null), known = Object.create(null), i, j, direct = [], fallen = [], rounds = [];
+    for (i = 0; i < parts.length; i++) known[parts[i].id] = true;
+    (opts.gone || []).forEach(function (id) { gone[id] = true; });
+    (removed || []).forEach(function (id) { if (known[id] && !gone[id]) { gone[id] = true; direct.push(id); } });
+    var maxR = opts.maxRounds == null ? L.maxRounds : opts.maxRounds, round = 0, drop;
+    while (round < maxR) {
+      drop = [];
+      for (i = 0; i < parts.length; i++) {
+        var p = parts[i], nd = needsOf(p);
+        if (gone[p.id] || !nd.length) continue;
+        var n = 0;
+        for (j = 0; j < nd.length; j++) if (known[nd[j]] && !gone[nd[j]]) n++;
+        if (n < minOf(p)) drop.push(p.id);
+      }
+      if (!drop.length) break;
+      drop.forEach(function (id) { gone[id] = true; fallen.push(id); });
+      rounds.push(drop);
+      round++;
+    }
+    return { direct: direct, fallen: fallen, rounds: rounds, all: direct.concat(fallen) };
+  }
+
+  /* the parts that stand on something that is gone right now (one look, no rounds): [] means everything left is held (the game's bFloating) */
+  function floating(parts, gone) {
+    var g = Object.create(null), out = [];
+    (gone || []).forEach(function (id) { g[id] = true; });
+    var known = Object.create(null);
+    parts.forEach(function (p) { known[p.id] = true; });
+    parts.forEach(function (p) {
+      var nd = needsOf(p);
+      if (g[p.id] || !nd.length) return;
+      var n = 0;
+      nd.forEach(function (id) { if (known[id] && !g[id]) n++; });
+      if (n < minOf(p)) out.push(p.id);
+    });
+    return out;
+  }
+
+  /* how many other parts would fall if this one part alone came off (the game's bCascade) */
+  function cascade(parts, id, gone) { return fall(parts, [id], { gone: gone, maxRounds: 99 }).fallen.length; }
+
+  /* ids of the parts that need this one directly, and the parts it needs */
+  function neededBy(parts, id) { return parts.filter(function (p) { return needsOf(p).indexOf(id) >= 0; }).map(function (p) { return p.id; }); }
+
+  /* is the needs graph free of cycles? returns the id of a part on a cycle, or null */
+  function findCycle(parts) {
+    var by = Object.create(null), state = Object.create(null), hit = null;
+    parts.forEach(function (p) { by[p.id] = p; });
+    function visit(id) {
+      if (hit) return;
+      if (state[id] === 2) return;
+      if (state[id] === 1) { hit = id; return; }
+      state[id] = 1;
+      var p = by[id];
+      if (p) needsOf(p).forEach(function (n) { if (by[n]) visit(n); });
+      state[id] = 2;
+    }
+    parts.forEach(function (p) { visit(p.id); });
+    return hit;
+  }
+
+  /* ---- plain geometry rules (table units, the plot is centred on the origin, the ground is y = 0) ---- */
+  function effSize(p) {
+    var k = WL.KINDS[p.kind], s = p.size;
+    if (!s) { var d = k ? k.size : [0.1, 0.1, 0.1], c = p.scale == null ? 1 : p.scale; s = [d[0] * c, d[1] * c, d[2] * c]; }
+    return s;
+  }
+  /* world box of a part: pos is the middle of its base, rotY turns it about the vertical */
+  function aabb(p) {
+    var s = effSize(p), r = p.rotY || 0, c = Math.abs(Math.cos(r)), n = Math.abs(Math.sin(r));
+    var hx = (c * s[0] + n * s[2]) / 2, hz = (n * s[0] + c * s[2]) / 2;
+    return { min: [p.pos[0] - hx, p.pos[1], p.pos[2] - hz], max: [p.pos[0] + hx, p.pos[1] + s[1], p.pos[2] + hz] };
+  }
+  function centre(p) { var b = aabb(p); return [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2]; }
+  /* how far two boxes overlap on each axis (negative = a gap on that axis) */
+  function pen(a, b) { return [0, 1, 2].map(function (i) { return Math.min(a.max[i], b.max[i]) - Math.max(a.min[i], b.min[i]); }); }
+  /* the overlap rule: two parts overlap when they sink into each other by more than tol on every axis,
+     unless one of them needs the other (a part that hangs on another sits against or into it) or one is a cable */
+  function overlaps(p, q, tol) {
+    tol = tol == null ? L.overlapTol : tol;
+    if (p.kind === 'wire' || q.kind === 'wire') return false;
+    if (needsOf(p).indexOf(q.id) >= 0 || needsOf(q).indexOf(p.id) >= 0) return false;
+    var d = pen(aabb(p), aabb(q));
+    return d[0] > tol && d[1] > tol && d[2] > tol;
+  }
+  /* distance between two boxes (0 when they touch or overlap) */
+  function gap(a, b) {
+    var s = 0;
+    for (var i = 0; i < 3; i++) { var g = Math.max(a.min[i] - b.max[i], b.min[i] - a.max[i], 0); s += g * g; }
+    return Math.sqrt(s);
+  }
+  /* does the part stand at the start? on the ground, or touching at least one of the parts it needs */
+  function standsAtStart(p, byId) {
+    var nd = needsOf(p), b = aabb(p);
+    if (!nd.length) return b.min[1] <= L.groundTol;
+    for (var i = 0; i < nd.length; i++) { var q = byId[nd[i]]; if (q && gap(b, aabb(q)) <= L.contactTol) return true; }
+    return false;
+  }
+  /* parts hit by a sphere (a blast): every part whose box the sphere touches, nearest first */
+  function blastHits(parts, centreXYZ, radius, gone) {
+    var g = Object.create(null), out = [];
+    (gone || []).forEach(function (id) { g[id] = true; });
+    parts.forEach(function (p) {
+      if (g[p.id]) return;
+      var b = aabb(p), d = 0;
+      for (var i = 0; i < 3; i++) { var v = centreXYZ[i], o = Math.max(b.min[i] - v, v - b.max[i], 0); d += o * o; }
+      d = Math.sqrt(d);
+      if (d <= radius) out.push({ id: p.id, d: d });
+    });
+    out.sort(function (a, b) { return a.d - b.d || (a.id < b.id ? -1 : 1); });
+    return out;
+  }
+  return { fall: fall, floating: floating, cascade: cascade, neededBy: neededBy, findCycle: findCycle, effSize: effSize, aabb: aabb,
+    centre: centre, overlaps: overlaps, gap: gap, standsAtStart: standsAtStart, blastHits: blastHits, needsMin: minOf };
+});
+
+</script>
+<script>
+/* City Lab: the recipe validator (schema rtk.building, version 1). Pure JS, no DOM, runs in Node and in the browser.
+   A recipe is DATA. It is read with JSON.parse only and checked here before anything is built. It is never executed, never evaluated, never fetched.
+   validate(obj) and parse(text) never throw: they return {ok, errors, details, recipe?}. errors is a list of readable strings, each starting with its JSON path. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./whitelist.js'), require('./supports.js'));
+  else root.CityValidate = factory(root.CityWhitelist, root.CitySupports);
+})(typeof self !== 'undefined' ? self : this, function (WL, SUP) {
+  'use strict';
+  var L = WL.LIMITS, ID_RE = new RegExp(L.idRe), ITEM_RE = new RegExp(L.itemRe), TAG_RE = /^[a-z][a-z0-9_]{0,23}$/, ROLE_RE = /^[a-z][a-z_]{0,23}$/;
+  var TEXT_RE = /^[A-Za-z0-9 .,'!&()\/+-]*$/;
+  /* anything that looks like code, markup, a link or a prototype trick is refused in every string and every key */
+  var BAD = /(<|>|`|\$\{|=>|__proto__|constructor|prototype|eval|function|javascript|script|https?:|ftp:|data:|:\/\/|www\.|\bimport\b|\brequire\b|document\.|cookie|localstorage|innerhtml|onerror|onload|\.\.\/|\\|[\u0000-\u001f\u007f])/i;
+  var HEAD = ['schema', 'version', 'id', 'name', 'footprint', 'parts', 'systems'];
+  var PART_KEYS = ['id', 'kind', 'pos', 'size', 'scale', 'rotY', 'material', 'stage', 'needs', 'needsMin', 'tag', 'replaceable', 'variant', 'label'];
+  var PART_REQ = ['id', 'kind', 'pos', 'material', 'stage', 'needs', 'tag', 'replaceable'];
+  var SYS_KEYS = ['power', 'jobs', 'production', 'storage', 'start_stock', 'deliveries', 'sales', 'costs', 'repair', 'effects', 'inspect'];
+  var SYS_REQ = ['jobs', 'storage', 'costs', 'repair', 'inspect'];
+
+  function isPlain(o) {
+    if (o === null || typeof o !== 'object' || Array.isArray(o)) return false;
+    var pr = Object.getPrototypeOf(o);
+    return pr === Object.prototype || pr === null;
+  }
+
+  function validate(recipe) {
+    var details = [];
+    var cap = 60;
+    function E(path, msg) { if (details.length < cap) details.push({ path: path, msg: msg }); else if (details.length === cap) details.push({ path: '$', msg: 'more errors not shown' }); }
+    try { run(recipe); } catch (e) { E('$', 'could not be read safely (' + String(e && e.message).slice(0, 80).replace(BAD, '?') + ')'); }
+    var errors = details.map(function (d) { return d.path + ': ' + d.msg; });
+    return { ok: details.length === 0, errors: errors, details: details, recipe: details.length === 0 ? recipe : null };
+
+    /* ---- small checkers ---- */
+    function keys(o, allowed, required, path) {
+      if (!isPlain(o)) { E(path, 'must be an object'); return false; }
+      var ks = Object.keys(o);
+      if (ks.length > 200) { E(path, 'too many keys'); return false; }
+      ks.forEach(function (k) { if (allowed.indexOf(k) < 0) E(path + '.' + safe(k), 'unknown key'); });
+      (required || []).forEach(function (k) { if (!Object.prototype.hasOwnProperty.call(o, k)) E(path + '.' + k, 'is required'); });
+      return true;
+    }
+    function safe(s) { s = String(s).slice(0, 30); return BAD.test(s) ? '(refused key)' : s; }
+    function num(v, path, lo, hi, intOnly) {
+      if (typeof v !== 'number' || !isFinite(v)) { E(path, 'must be a finite number'); return false; }
+      if (v < lo || v > hi) { E(path, 'must be between ' + lo + ' and ' + hi + ' (got ' + v + ')'); return false; }
+      if (intOnly && Math.floor(v) !== v) { E(path, 'must be a whole number'); return false; }
+      return true;
+    }
+    function str(v, path, re, maxLen) {
+      if (typeof v !== 'string') { E(path, 'must be a string'); return false; }
+      if (v.length > (maxLen || L.maxStr)) { E(path, 'is too long (limit ' + (maxLen || L.maxStr) + ')'); return false; }
+      if (BAD.test(v)) { E(path, 'looks like code, a link or markup, which a recipe may not contain'); return false; }
+      if (re && !re.test(v)) { E(path, 'has characters or a shape that is not allowed'); return false; }
+      return true;
+    }
+    function arr(v, path, max) {
+      if (!Array.isArray(v)) { E(path, 'must be a list'); return false; }
+      if (v.length > max) { E(path, 'has too many entries (limit ' + max + ')'); return false; }
+      return true;
+    }
+    /* every string and every key anywhere in the tree, with a depth limit and a size limit; refuses anything code-like */
+    function scan(v, path, depth, budget) {
+      if (budget.n++ > 20000) { if (!budget.hit) { E('$', 'too large (more than 20000 values)'); budget.hit = true; } return; }
+      if (depth > L.maxDepth) { if (!budget.deep) { E(path, 'is nested too deeply (limit ' + L.maxDepth + ')'); budget.deep = true; } return; }
+      var t = typeof v;
+      if (t === 'string') { if (BAD.test(v)) E(path, 'a string looks like code, a link or markup'); else if (v.length > 400) E(path, 'a string is too long'); return; }
+      if (t === 'function' || t === 'symbol' || t === 'bigint' || t === 'undefined') { E(path, 'a value of type ' + t + ' is not data'); return; }
+      if (v === null || t === 'number' || t === 'boolean') return;
+      if (Array.isArray(v)) { if (v.length > 2000) { E(path, 'list too long'); return; } for (var i = 0; i < v.length; i++) scan(v[i], path + '[' + i + ']', depth + 1, budget); return; }
+      if (!isPlain(v)) { E(path, 'is not a plain object'); return; }
+      var ks = Object.keys(v);
+      if (ks.length > 2000) { E(path, 'too many keys'); return; }
+      ks.forEach(function (k) { if (BAD.test(k)) E(path, 'a key looks like code or a prototype trick (' + safe(k) + ')'); else scan(v[k], path + '.' + k, depth + 1, budget); });
+    }
+
+    function run(r) {
+      if (!isPlain(r)) { E('$', 'a recipe must be a JSON object'); return; }
+      scan(r, '$', 0, { n: 0 });
+      if (details.length) return;   /* hostile shape: stop before reading anything else */
+      keys(r, HEAD, HEAD, '$');
+      if (r.schema !== 'rtk.building') E('$.schema', "must be the text 'rtk.building'");
+      if (r.version !== 1) E('$.version', 'must be the number 1');
+      str(r.id, '$.id', ID_RE, 32);
+      str(r.name, '$.name', TEXT_RE, L.maxLabel);
+      var fp = r.footprint, fpOk = false;
+      if (keys(fp, ['w', 'd'], ['w', 'd'], '$.footprint')) fpOk = num(fp.w, '$.footprint.w', L.footprintMin, L.footprintMax) & num(fp.d, '$.footprint.d', L.footprintMin, L.footprintMax);
+      if (!arr(r.parts, '$.parts', L.maxParts)) return;
+      if (r.parts.length < L.minParts) { E('$.parts', 'needs at least ' + L.minParts + ' part'); return; }
+      var ids = Object.create(null), good = [], byId = Object.create(null);
+      r.parts.forEach(function (p, i) {
+        var path = '$.parts[' + i + ']';
+        if (!keys(p, PART_KEYS, PART_REQ, path)) return;
+        var ok = true;
+        if (!str(p.id, path + '.id', ID_RE, 32)) ok = false;
+        else if (ids[p.id]) { E(path + '.id', "duplicate id '" + p.id + "'"); ok = false; } else ids[p.id] = true;
+        if (typeof p.kind !== 'string' || !Object.prototype.hasOwnProperty.call(WL.KINDS, p.kind)) { E(path + '.kind', 'unknown kind (allowed: ' + Object.keys(WL.KINDS).join(', ') + ')'); ok = false; }
+        if (typeof p.material !== 'string' || WL.MATERIALS.indexOf(p.material) < 0) { E(path + '.material', 'unknown material (allowed: ' + WL.MATERIALS.join(', ') + ')'); ok = false; }
+        if (typeof p.stage !== 'string' || WL.STAGES.indexOf(p.stage) < 0) { E(path + '.stage', "must be 'trim', 'walls' or 'frame'"); ok = false; }
+        if (!str(p.tag, path + '.tag', TAG_RE, 24)) ok = false;
+        if (typeof p.replaceable !== 'boolean') { E(path + '.replaceable', 'must be true or false'); ok = false; }
+        if (!arr(p.pos, path + '.pos', 3) || p.pos.length !== 3) { if (Array.isArray(p.pos)) E(path + '.pos', 'must be [x, y, z]'); ok = false; }
+        else { for (var a = 0; a < 3; a++) if (!num(p.pos[a], path + '.pos[' + a + ']', a === 1 ? -0.001 : -L.posMax, L.posMax)) ok = false; }
+        if (p.size != null && p.scale != null) { E(path, 'give size or scale, not both'); ok = false; }
+        if (p.size != null) {
+          if (!arr(p.size, path + '.size', 3) || p.size.length !== 3) { if (Array.isArray(p.size)) E(path + '.size', 'must be [w, h, d]'); ok = false; }
+          else for (var b = 0; b < 3; b++) if (!num(p.size[b], path + '.size[' + b + ']', L.sizeMin, L.sizeMax)) ok = false;
+        }
+        if (p.scale != null && !num(p.scale, path + '.scale', 0.25, 3)) ok = false;
+        if (p.rotY != null && !num(p.rotY, path + '.rotY', -7, 7)) ok = false;
+        if (p.variant != null && !num(p.variant, path + '.variant', 0, 3, true)) ok = false;
+        if (p.label != null) { if (!str(p.label, path + '.label', TEXT_RE, L.maxLabel)) ok = false; else if (p.kind !== 'sign') { E(path + '.label', 'only a sign can have a label'); ok = false; } }
+        if (!arr(p.needs, path + '.needs', L.maxNeeds)) ok = false;
+        else p.needs.forEach(function (n, j) { if (!str(n, path + '.needs[' + j + ']', ID_RE, 32)) ok = false; });
+        if (ok) { good.push(p); byId[p.id] = p; }
+      });
+      /* references and the needs graph */
+      good.forEach(function (p) {
+        var i = r.parts.indexOf(p), path = '$.parts[' + i + ']', seen = Object.create(null), n = p.needs.length;
+        p.needs.forEach(function (id, j) {
+          if (id === p.id) E(path + '.needs[' + j + ']', 'a part cannot need itself');
+          else if (!ids[id]) E(path + '.needs[' + j + ']', "needs '" + id + "', which is not a part of this recipe");
+          if (seen[id]) E(path + '.needs[' + j + ']', "'" + id + "' is listed twice"); seen[id] = true;
+        });
+        if (p.needsMin != null) { if (num(p.needsMin, path + '.needsMin', 1, Math.max(1, n), true) && n === 0) E(path + '.needsMin', 'a part with no needs cannot have needsMin'); }
+      });
+      if (good.length === r.parts.length && !details.length) {
+        var cyc = SUP.findCycle(good);
+        if (cyc) E('$.parts', "the needs graph has a cycle through '" + cyc + "' (a part cannot hold up what holds it up)");
+      }
+      /* the geometry rules: inside the plot, no overlaps, everything stands at the start */
+      if (fpOk && good.length === r.parts.length && !details.length) {
+        var hw = fp.w / 2 + L.margin, hd = fp.d / 2 + L.margin;
+        good.forEach(function (p, i) {
+          var b = SUP.aabb(p), path = '$.parts[' + i + ']';
+          if (b.min[0] < -hw || b.max[0] > hw || b.min[2] < -hd || b.max[2] > hd) E(path, "'" + p.id + "' sticks out of the plot by more than " + L.margin);
+          if (b.max[1] > 4) E(path, "'" + p.id + "' is taller than 4");
+          if (!SUP.standsAtStart(p, byId)) E(path, "'" + p.id + "' does not stand: " + (p.needs.length ? 'it touches none of the parts it needs' : 'it needs nothing and is not on the ground'));
+        });
+        for (var x = 0; x < good.length && details.length < cap; x++) for (var y = x + 1; y < good.length; y++) if (SUP.overlaps(good[x], good[y])) E('$.parts[' + x + ']', "'" + good[x].id + "' overlaps '" + good[y].id + "'");
+      }
+      systems(r.systems, ids, byId);
+    }
+
+    function itemMap(o, path, itemsOk, lo, hi) {
+      if (!isPlain(o)) { E(path, 'must be an object of item: number'); return; }
+      var ks = Object.keys(o);
+      if (ks.length > L.maxItems) { E(path, 'too many items'); return; }
+      ks.forEach(function (k) {
+        if (!ITEM_RE.test(k) || BAD.test(k)) { E(path + '.' + safe(k), 'is not a good item name'); return; }
+        if (itemsOk && !itemsOk[k]) E(path + '.' + k, "item '" + k + "' is not in storage");
+        num(o[k], path + '.' + k, lo, hi);
+      });
+    }
+
+    function systems(S, ids, byId) {
+      var P = '$.systems';
+      if (!keys(S, SYS_KEYS, SYS_REQ, P)) return;
+      var roles = Object.create(null), items = Object.create(null), tags = Object.create(null);
+      Object.keys(byId).forEach(function (k) { tags[byId[k].tag] = true; });
+      function partRef(v, path) { if (str(v, path, ID_RE, 32) && !ids[v]) E(path, "'" + v + "' is not a part of this recipe"); }
+      if (S.power != null && keys(S.power, ['demand_kw', 'supply_kw', 'wire_part', 'meter_part'], ['demand_kw', 'supply_kw', 'wire_part', 'meter_part'], P + '.power')) {
+        num(S.power.demand_kw, P + '.power.demand_kw', 0, 50); num(S.power.supply_kw, P + '.power.supply_kw', 0, 100);
+        partRef(S.power.wire_part, P + '.power.wire_part'); partRef(S.power.meter_part, P + '.power.meter_part');
+      }
+      if (arr(S.jobs, P + '.jobs', L.maxJobs)) S.jobs.forEach(function (j, i) {
+        var p = P + '.jobs[' + i + ']';
+        if (!keys(j, ['role', 'count', 'station_part'], ['role', 'count', 'station_part'], p)) return;
+        if (str(j.role, p + '.role', ROLE_RE, 24)) { if (roles[j.role]) E(p + '.role', 'role listed twice'); roles[j.role] = true; }
+        num(j.count, p + '.count', 1, 6, true); partRef(j.station_part, p + '.station_part');
+      });
+      if (isPlain(S.storage)) {
+        var sk = Object.keys(S.storage);
+        if (sk.length > L.maxItems) E(P + '.storage', 'too many items');
+        else sk.forEach(function (k) { if (!ITEM_RE.test(k) || BAD.test(k)) E(P + '.storage.' + safe(k), 'is not a good item name'); else { items[k] = true; num(S.storage[k], P + '.storage.' + k, 0, 10000); } });
+      } else E(P + '.storage', 'must be an object of item: capacity');
+      if (S.start_stock != null) {
+        itemMap(S.start_stock, P + '.start_stock', items, 0, 10000);
+        Object.keys(S.start_stock).forEach(function (k) { if (items[k] && typeof S.start_stock[k] === 'number' && S.start_stock[k] > S.storage[k]) E(P + '.start_stock.' + k, 'is more than the storage capacity'); });
+      }
+      var pr = S.production;
+      if (pr != null && keys(pr, ['role', 'inputs', 'outputs', 'batch_seconds', 'needs_power', 'needs_parts'], ['role', 'inputs', 'outputs', 'batch_seconds', 'needs_power', 'needs_parts'], P + '.production')) {
+        if (str(pr.role, P + '.production.role', ROLE_RE, 24) && !roles[pr.role]) E(P + '.production.role', "no job has the role '" + pr.role + "'");
+        itemMap(pr.inputs, P + '.production.inputs', items, 0, 1000); itemMap(pr.outputs, P + '.production.outputs', items, 0, 1000);
+        if (isPlain(pr.outputs) && !Object.keys(pr.outputs).length) E(P + '.production.outputs', 'needs at least one output');
+        num(pr.batch_seconds, P + '.production.batch_seconds', 1, 3600);
+        if (typeof pr.needs_power !== 'boolean') E(P + '.production.needs_power', 'must be true or false');
+        else if (pr.needs_power && !S.power) E(P + '.production.needs_power', 'needs a systems.power block');
+        if (arr(pr.needs_parts, P + '.production.needs_parts', 12)) pr.needs_parts.forEach(function (n, i) { partRef(n, P + '.production.needs_parts[' + i + ']'); });
+      }
+      if (S.deliveries != null && arr(S.deliveries, P + '.deliveries', L.maxDeliveries)) S.deliveries.forEach(function (d, i) {
+        var p = P + '.deliveries[' + i + ']';
+        if (!keys(d, ['item', 'amount', 'every_seconds', 'via', 'drop_part'], ['item', 'amount', 'every_seconds', 'via'], p)) return;
+        if (str(d.item, p + '.item', ITEM_RE, 24) && !items[d.item]) E(p + '.item', "item '" + d.item + "' is not in storage");
+        num(d.amount, p + '.amount', 0, 10000); num(d.every_seconds, p + '.every_seconds', 5, 3600);
+        if (d.via !== 'cart') E(p + '.via', "must be 'cart'");
+        if (d.drop_part != null) partRef(d.drop_part, p + '.drop_part');
+      });
+      if (S.sales != null && keys(S.sales, ['item', 'price', 'demand_per_minute', 'role', 'noise'], ['item', 'price', 'demand_per_minute'], P + '.sales')) {
+        var s = S.sales;
+        if (str(s.item, P + '.sales.item', ITEM_RE, 24) && !items[s.item]) E(P + '.sales.item', "item '" + s.item + "' is not in storage");
+        num(s.price, P + '.sales.price', 0, 1000); num(s.demand_per_minute, P + '.sales.demand_per_minute', 0, 600);
+        if (s.role != null && str(s.role, P + '.sales.role', ROLE_RE, 24) && !roles[s.role]) E(P + '.sales.role', "no job has the role '" + s.role + "'");
+        if (s.noise != null) num(s.noise, P + '.sales.noise', 0, 0.5);
+      }
+      var c = S.costs;
+      if (keys(c, ['power_per_kwh', 'wage_per_worker_per_minute', 'ingredient_prices', 'repair_material_price'], ['power_per_kwh', 'wage_per_worker_per_minute', 'ingredient_prices', 'repair_material_price'], P + '.costs')) {
+        num(c.power_per_kwh, P + '.costs.power_per_kwh', 0, 1000); num(c.wage_per_worker_per_minute, P + '.costs.wage_per_worker_per_minute', 0, 1000);
+        num(c.repair_material_price, P + '.costs.repair_material_price', 0, 1000); itemMap(c.ingredient_prices, P + '.costs.ingredient_prices', items, 0, 1000);
+      }
+      var rp = S.repair;
+      if (keys(rp, ['seconds', 'material_units', 'walk_speed', 'worker_roles', 'seconds_by_tag'], ['seconds', 'material_units', 'walk_speed', 'worker_roles'], P + '.repair')) {
+        num(rp.seconds, P + '.repair.seconds', 0.5, 600); num(rp.material_units, P + '.repair.material_units', 0, 100); num(rp.walk_speed, P + '.repair.walk_speed', 0.05, 5);
+        if (arr(rp.worker_roles, P + '.repair.worker_roles', L.maxJobs)) rp.worker_roles.forEach(function (n, i) { if (str(n, P + '.repair.worker_roles[' + i + ']', ROLE_RE, 24) && !roles[n]) E(P + '.repair.worker_roles[' + i + ']', "no job has the role '" + n + "'"); });
+        if (rp.seconds_by_tag != null) {
+          if (!isPlain(rp.seconds_by_tag)) E(P + '.repair.seconds_by_tag', 'must be an object of tag: seconds');
+          else Object.keys(rp.seconds_by_tag).slice(0, 40).forEach(function (k) { if (!TAG_RE.test(k)) E(P + '.repair.seconds_by_tag.' + safe(k), 'is not a tag'); else { if (!tags[k]) E(P + '.repair.seconds_by_tag.' + k, "no part has the tag '" + k + "'"); num(rp.seconds_by_tag[k], P + '.repair.seconds_by_tag.' + k, 0.5, 600); } });
+        }
+      }
+      if (S.effects != null && keys(S.effects, ['spoil', 'demand'], [], P + '.effects')) {
+        var ef = S.effects;
+        if (ef.spoil != null && arr(ef.spoil, P + '.effects.spoil', 4)) ef.spoil.forEach(function (e, i) {
+          var p = P + '.effects.spoil[' + i + ']';
+          if (!keys(e, ['tag', 'items'], ['tag', 'items'], p)) return;
+          if (str(e.tag, p + '.tag', TAG_RE, 24) && !tags[e.tag]) E(p + '.tag', "no part has the tag '" + e.tag + "'");
+          itemMap(e.items, p + '.items', items, 0, 1);
+        });
+        if (ef.demand != null && arr(ef.demand, P + '.effects.demand', 4)) ef.demand.forEach(function (e, i) {
+          var p = P + '.effects.demand[' + i + ']';
+          if (!keys(e, ['tag', 'loss'], ['tag', 'loss'], p)) return;
+          if (str(e.tag, p + '.tag', TAG_RE, 24) && !tags[e.tag]) E(p + '.tag', "no part has the tag '" + e.tag + "'");
+          num(e.loss, p + '.loss', 0, 1);
+        });
+      }
+      if (keys(S.inspect, ['labels'], ['labels'], P + '.inspect')) {
+        var lb = S.inspect.labels;
+        if (!isPlain(lb)) E(P + '.inspect.labels', 'must be an object of part id: text');
+        else { var lk = Object.keys(lb); if (lk.length > L.maxParts) E(P + '.inspect.labels', 'too many labels');
+          else lk.forEach(function (k) { if (!ids[k]) E(P + '.inspect.labels.' + safe(k), 'is not a part of this recipe'); else str(lb[k], P + '.inspect.labels.' + k, TEXT_RE, L.maxLabel); }); }
+      }
+    }
+  }
+
+  /* text -> recipe, with JSON.parse only (never eval, never Function). Checks the size and the nesting before parsing. */
+  function parse(text) {
+    function bad(msg) { return { ok: false, errors: ['$: ' + msg], details: [{ path: '$', msg: msg }], recipe: null }; }
+    if (typeof text !== 'string') return bad('the recipe text must be a string');
+    if (text.length > L.maxText) return bad('the recipe text is too long (limit ' + L.maxText + ' characters)');
+    var depth = 0, inStr = false, esc = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text.charCodeAt(i);
+      if (inStr) { if (esc) esc = false; else if (ch === 92) esc = true; else if (ch === 34) inStr = false; continue; }
+      if (ch === 34) inStr = true; else if (ch === 91 || ch === 123) { if (++depth > L.maxDepth) return bad('nested too deeply (limit ' + L.maxDepth + ')'); } else if (ch === 93 || ch === 125) depth--;
+    }
+    var obj;
+    try { obj = JSON.parse(text); } catch (e) { return bad('not valid JSON (' + String(e.message).slice(0, 80).replace(BAD, '?') + ')'); }
+    return validate(obj);
+  }
+
+  /* a change to one part (replace): only these keys, the same checks as a whole part */
+  function validatePatch(recipe, id, patch) {
+    var errs = [];
+    function e(m) { errs.push('$.patch: ' + m); }
+    try {
+      if (!isPlain(patch)) return ['$.patch: must be an object'];
+      var allowed = ['kind', 'material', 'variant', 'label', 'size', 'scale', 'tag'];
+      Object.keys(patch).forEach(function (k) { if (allowed.indexOf(k) < 0) e('unknown key ' + safe(k)); else if (typeof patch[k] === 'string' && BAD.test(patch[k])) e(k + ' looks like code'); });
+      var part = (recipe.parts || []).filter(function (p) { return p.id === id; })[0];
+      if (!part) return ['$.patch: no part ' + safe(id)];
+      if (!part.replaceable) e("part '" + id + "' is not replaceable");
+      if (patch.kind != null && (typeof patch.kind !== 'string' || !Object.prototype.hasOwnProperty.call(WL.KINDS, patch.kind))) e('unknown kind');
+      if (patch.material != null && WL.MATERIALS.indexOf(patch.material) < 0) e('unknown material');
+      if (patch.variant != null && !(typeof patch.variant === 'number' && patch.variant >= 0 && patch.variant <= 3 && Math.floor(patch.variant) === patch.variant)) e('variant must be 0 to 3');
+      if (patch.label != null && !(typeof patch.label === 'string' && patch.label.length <= L.maxLabel && TEXT_RE.test(patch.label))) e('bad label');
+      if (patch.tag != null && !(typeof patch.tag === 'string' && TAG_RE.test(patch.tag))) e('bad tag');
+      if (patch.size != null && !(Array.isArray(patch.size) && patch.size.length === 3 && patch.size.every(function (v) { return typeof v === 'number' && isFinite(v) && v >= L.sizeMin && v <= L.sizeMax; }))) e('bad size');
+      if (patch.scale != null && !(typeof patch.scale === 'number' && isFinite(patch.scale) && patch.scale >= 0.25 && patch.scale <= 3)) e('bad scale');
+      if (patch.size != null && patch.scale != null) e('size or scale, not both');
+      if (!errs.length) {
+        /* the patched part must still stand and not overlap anything */
+        var np = Object.assign({}, part, patch);
+        if (patch.size != null) delete np.scale; if (patch.scale != null) delete np.size;
+        var byId = {};
+        recipe.parts.forEach(function (p) { byId[p.id] = p.id === id ? np : p; });
+        if (!SUP.standsAtStart(np, byId)) e('the replaced part would not stand');
+        recipe.parts.forEach(function (q) { if (q.id !== id && SUP.overlaps(np, q)) e('the replaced part would overlap ' + q.id); });
+      }
+    } catch (x) { e('could not be checked'); }
+    return errs;
+  }
+  return { validate: validate, parse: parse, validatePatch: validatePatch, isPlain: isPlain };
+});
+
+</script>
+<script>
+/* City Lab: the building as an economic machine. Pure JS, deterministic, fixed step (0.1 s), seedable, no DOM, no THREE.
+   Every number comes from the recipe (systems block); nothing about bread, ovens or money is hard-coded here: roles, items, stations,
+   tags and the effects of a missing part are all read from the recipe. State is plain JSON (create() makes it, step() changes it),
+   so it can be saved, copied and replayed. Same recipe + same seed + same calls = byte-identical state (hash()). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./supports.js'));
+  else root.CitySim = factory(root.CitySupports);
+})(typeof self !== 'undefined' ? self : this, function (SUP) {
+  'use strict';
+  var DT = 0.1, LOG_MAX = 400;
+
+  /* ---- small helpers ---- */
+  function rnd(s) {   /* mulberry32 on the state's own integer */
+    s.rng = (s.rng + 0x6D2B79F5) | 0;
+    var t = Math.imul(s.rng ^ (s.rng >>> 15), 1 | s.rng);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function r6(v) { return Math.round(v * 1e6) / 1e6; }
+  function part(R, id) { for (var i = 0; i < R.parts.length; i++) if (R.parts[i].id === id) return R.parts[i]; return null; }
+  function label(R, id) { var l = R.systems.inspect && R.systems.inspect.labels && R.systems.inspect.labels[id]; return l || id; }
+  function log(S, type, text) {
+    S.logN++;
+    S.log.push({ t: r6(S.t), type: type, text: text });
+    if (S.log.length > LOG_MAX) S.log.splice(0, S.log.length - LOG_MAX);
+  }
+  function fmt(v) { return (Math.round(v * 100) / 100).toString(); }
+  function tagParts(R, tag) { return R.parts.filter(function (p) { return p.tag === tag; }); }
+  function missingShare(R, S, tag) {
+    var ps = tagParts(R, tag);
+    if (!ps.length) return 0;
+    var m = 0;
+    ps.forEach(function (p) { if (!S.present[p.id]) m++; });
+    return m / ps.length;
+  }
+  function isOn(S, id) { return !!S.present[id]; }
+  function homeOf(R, j, k) {   /* a worker's own spot: in front of the station part, on the side of the plot's middle */
+    var st = part(R, j.station_part), b = SUP.aabb(st), cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2, hd = (b.max[2] - b.min[2]) / 2;
+    var dir = cz > 0 ? -1 : 1;
+    return [cx + (k - (j.count - 1) / 2) * 0.22, cz + dir * (hd + 0.12)];
+  }
+  function repairSeconds(R, p) { var rp = R.systems.repair, bt = rp.seconds_by_tag; return bt && bt[p.tag] != null ? bt[p.tag] : rp.seconds; }
+
+  /* ---- create ---- */
+  function create(R, opts) {
+    opts = opts || {};
+    var S = R.systems, st = {
+      v: 1, id: R.id, seed: opts.seed == null ? 1 : opts.seed | 0, rng: 0, step: 0, acc: 0, t: 0,
+      present: {}, supply_kw: S.power ? (opts.supply_kw != null ? opts.supply_kw : S.power.supply_kw) : 0,
+      stock: {}, workers: [], orders: [],
+      prod: { running: false, progress: 0, batches: 0, made: 0, status: S.production ? 'starting' : 'none', blocked: '' },
+      power: { state: S.power ? 'ok' : 'none', factor: S.power ? 1 : 1, draw_kw: 0, kwh: 0 },
+      sales: { acc: 0, sold: 0, lost: 0, income: 0, mult: 1, pending: 0, pendingMoney: 0, nextLog: 10, nextNoise: 0, soldOut: false },
+      deliv: [], costs: { power: 0, wages: 0, ingredients: 0, repairs: 0 }, spoiled: {}, spoilAcc: {}, spoilLog: {},
+      assign: {}, repairs: { done: 0, failed: 0 }, destroyed: 0, hist: [], log: [], logN: 0
+    };
+    st.rng = st.seed | 0;
+    R.parts.forEach(function (p) { st.present[p.id] = true; });
+    Object.keys(S.storage).forEach(function (k) { st.stock[k] = (S.start_stock && S.start_stock[k]) || 0; });
+    (S.deliveries || []).forEach(function (d) { st.deliv.push(d.every_seconds); });
+    S.jobs.forEach(function (j) {
+      for (var k = 0; k < j.count; k++) {
+        var h = homeOf(R, j, k);
+        st.workers.push({ role: j.role, station: j.station_part, x: r6(h[0]), z: r6(h[1]), hx: r6(h[0]), hz: r6(h[1]), state: 'station', target: null, timer: 0, task: '' });
+      }
+    });
+    log(st, 'info', R.name + ' opens (seed ' + st.seed + ')');
+    return st;
+  }
+
+  /* ---- damage: take parts off, then the support rule drops what hung on them ---- */
+  function destroy(R, S, ids, cause) {
+    var gone = Object.keys(S.present).filter(function (k) { return !S.present[k]; });
+    var f = SUP.fall(R.parts, ids, { gone: gone });
+    f.all.forEach(function (id) { S.present[id] = false; });
+    S.destroyed += f.all.length;
+    f.direct.forEach(function (id) { log(S, 'part', label(R, id) + ' destroyed' + (cause ? ' (' + cause + ')' : '')); });
+    if (f.fallen.length) log(S, 'part', f.fallen.length + ' more part' + (f.fallen.length > 1 ? 's' : '') + ' fell with nothing to hold them' + (f.fallen.length <= 4 ? ': ' + f.fallen.map(function (i) { return label(R, i); }).join(', ') : ''));
+    /* a worker whose repair target just fell, or who was repairing something that now has no support, drops the job */
+    S.workers.forEach(function (w) { if (w.target && f.all.indexOf(w.target) >= 0) { /* fine: still missing, still wanted */ } });
+    return f;
+  }
+  function blast(R, S, centre, radius, cause) {
+    var gone = Object.keys(S.present).filter(function (k) { return !S.present[k]; });
+    var hits = SUP.blastHits(R.parts, centre, radius, gone).map(function (h) { return h.id; });
+    log(S, 'blast', 'Blast at (' + fmt(centre[0]) + ', ' + fmt(centre[1]) + ', ' + fmt(centre[2]) + ') radius ' + fmt(radius) + ': ' + hits.length + ' part' + (hits.length === 1 ? '' : 's') + ' hit');
+    var f = destroy(R, S, hits, cause || 'blast');
+    return f;
+  }
+
+  /* ---- repair orders: the missing parts a repair needs first come first in the queue ---- */
+  function orderRepair(R, S, id, worker) {
+    var q = [], seen = {};
+    function add(pid) {
+      if (seen[pid]) return; seen[pid] = true;
+      var p = part(R, pid);
+      if (!p || S.present[pid]) return;
+      (p.needs || []).forEach(add);
+      if (S.orders.indexOf(pid) < 0 && !S.workers.some(function (w) { return w.target === pid; })) q.push(pid);
+    }
+    add(id);
+    q.forEach(function (pid) { S.orders.push(pid); if (worker != null && worker >= 0 && worker < S.workers.length) S.assign[pid] = worker; });
+    if (q.length) log(S, 'repair', 'Repair ordered: ' + q.map(function (i) { return label(R, i); }).join(', '));
+    return q;
+  }
+  function orderAll(R, S) {
+    var ids = R.parts.filter(function (p) { return !S.present[p.id]; }).map(function (p) { return p.id; }), n = 0;
+    ids.forEach(function (id) { n += orderRepair(R, S, id).length; });
+    return n;
+  }
+  function canRestore(R, S, p) {
+    var nd = p.needs || [];
+    if (!nd.length) return true;
+    var n = 0;
+    nd.forEach(function (i) { if (S.present[i]) n++; });
+    return n >= SUP.needsMin(p);
+  }
+
+  /* ---- one fixed step ---- */
+  function tick(R, S) {
+    var Y = R.systems, dt = DT, i, j;
+    S.step++; S.t = r6(S.step * dt);
+
+    /* deliveries: a cart brings an item into storage; it needs the drop crate to be standing, and only what fits is taken */
+    (Y.deliveries || []).forEach(function (d, k) {
+      if (S.t + 1e-9 < S.deliv[k]) return;
+      S.deliv[k] += d.every_seconds;
+      /* hook (district layer): an outside road check may suspend the carts; the missed drop is counted and the road is named in the log */
+      if (S.ext && S.ext.deliveries === false) { S.ext.missed[d.item] = (S.ext.missed[d.item] || 0) + 1; log(S, 'delivery', 'Cart could not deliver ' + d.item + ': the road to this building is blocked'); return; }
+      if (d.drop_part && !isOn(S, d.drop_part)) { log(S, 'delivery', 'Cart could not deliver ' + d.item + ': ' + label(R, d.drop_part) + ' is gone'); return; }
+      var room = Math.max(0, Y.storage[d.item] - S.stock[d.item]), take = Math.min(d.amount, room), price = (Y.costs.ingredient_prices && Y.costs.ingredient_prices[d.item]) || 0;
+      S.stock[d.item] = r6(S.stock[d.item] + take);
+      S.costs.ingredients = r6(S.costs.ingredients + take * price);
+      log(S, 'delivery', 'Cart arrived: +' + fmt(take) + ' ' + d.item + (take < d.amount ? ' (' + fmt(d.amount - take) + ' did not fit)' : ''));
+    });
+
+    /* power: the cable and the meter box must stand; the city supplies supply_kw; demand only counts while the machine runs */
+    var pw = S.power, demand = Y.power ? Y.power.demand_kw : 0, wired = !Y.power || (isOn(S, Y.power.wire_part) && isOn(S, Y.power.meter_part)), factor = 1, pstate = 'none';
+    if (Y.power) {
+      if (!wired) { factor = 0; pstate = 'cut'; }
+      else if (demand > 0 && S.supply_kw < demand) { factor = S.supply_kw / demand; pstate = factor <= 0 ? 'cut' : 'low'; }
+      else pstate = 'ok';
+      if (pstate !== pw.state) {
+        log(S, 'power', pstate === 'cut' ? (wired ? 'Power cut: the city supplies nothing' : 'Power cut: the ' + (isOn(S, Y.power.wire_part) ? label(R, Y.power.meter_part) : label(R, Y.power.wire_part)) + ' is gone') : (pstate === 'low' ? 'Power low: ' + fmt(S.supply_kw) + ' kW of ' + fmt(demand) + ' kW' : 'Power restored'));
+        pw.state = pstate;
+      }
+      pw.factor = r6(factor);
+    }
+
+    /* workers: walk to a repair, repair, walk home */
+    var rp = Y.repair;
+    S.workers.forEach(function (w, wi) {
+      var sp = rp.walk_speed * dt;
+      if (w.state === 'walking' || w.state === 'returning') {
+        var tx = w.state === 'walking' ? w.tx : w.hx, tz = w.state === 'walking' ? w.tz : w.hz, dx = tx - w.x, dz = tz - w.z, dd = Math.sqrt(dx * dx + dz * dz);
+        if (dd <= sp + 1e-9) {
+          w.x = r6(tx); w.z = r6(tz);
+          if (w.state === 'walking') { w.state = 'repairing'; w.timer = repairSeconds(R, part(R, w.target)); log(S, 'repair', 'Repair started: ' + label(R, w.target) + ' (' + w.role + ', ' + fmt(w.timer) + ' s)'); }
+          else { w.state = 'station'; w.task = ''; }
+        } else { w.x = r6(w.x + dx / dd * sp); w.z = r6(w.z + dz / dd * sp); }
+      } else if (w.state === 'repairing') {
+        w.timer = r6(w.timer - dt);
+        if (w.timer <= 1e-9) {
+          var p = part(R, w.target);
+          if (canRestore(R, S, p) && !S.present[w.target]) {
+            S.present[w.target] = true;
+            var cost = rp.material_units * Y.costs.repair_material_price;
+            S.costs.repairs = r6(S.costs.repairs + cost); S.repairs.done++;
+            log(S, 'repair', 'Repair finished: ' + label(R, w.target) + ' (material ' + fmt(cost) + ')');
+          } else if (!S.present[w.target]) { S.repairs.failed++; log(S, 'repair', 'Repair of ' + label(R, w.target) + ' failed: what holds it is gone'); S.orders.push(w.target); }
+          w.target = null; w.state = 'returning';
+        }
+      }
+    });
+    /* hand out waiting repairs to free workers (those standing at their station or idle), nearest worker first, in queue order */
+    if (S.orders.length) {
+      for (i = 0; i < S.orders.length; i++) {
+        var id = S.orders[i], p2 = part(R, id);
+        if (!p2 || S.present[id]) { S.orders.splice(i, 1); i--; continue; }
+        if (!canRestore(R, S, p2)) continue;
+        var b = SUP.aabb(p2), px = (b.min[0] + b.max[0]) / 2, pz = (b.min[2] + b.max[2]) / 2, best = -1, bd = 1e9;
+        for (j = 0; j < S.workers.length; j++) {
+          var w2 = S.workers[j];
+          if (S.assign[id] != null && S.assign[id] !== j) continue;
+          if (w2.state !== 'station' || rp.worker_roles.indexOf(w2.role) < 0) continue;
+          var d2 = Math.sqrt((w2.x - px) * (w2.x - px) + (w2.z - pz) * (w2.z - pz));
+          if (d2 < bd - 1e-9) { bd = d2; best = j; }
+        }
+        if (best >= 0) { var wk = S.workers[best]; wk.state = 'walking'; wk.target = id; wk.tx = r6(px); wk.tz = r6(pz); wk.task = 'repair ' + label(R, id); delete S.assign[id]; S.orders.splice(i, 1); i--; }
+      }
+    }
+
+    /* staffing: share of a role's places that are filled by a worker standing at a station that still exists */
+    function staffing(role) {
+      var n = 0, tot = 0;
+      Y.jobs.forEach(function (jb) { if (jb.role === role) tot += jb.count; });
+      S.workers.forEach(function (w) { if (w.role === role && w.state === 'station' && isOn(S, w.station)) n++; });
+      /* hook (district layer): ext.staff[role] is the share of that role's places that residents actually fill */
+      var sh = S.ext && S.ext.staff && S.ext.staff[role] != null ? S.ext.staff[role] : 1;
+      return tot ? Math.min(1, n / tot) * sh : 0;
+    }
+
+    /* production: batches. A batch takes its inputs when it starts and gives its outputs when it ends */
+    var pr = Y.production, pd = S.prod, drawing = 0;
+    if (pr) {
+      var blockedBy = '', staff = staffing(pr.role), partsOk = pr.needs_parts.every(function (id) { return isOn(S, id); });
+      var canStart = function () {
+        for (var k in pr.inputs) if (S.stock[k] + 1e-9 < pr.inputs[k]) return 'no ' + k;
+        for (var o in pr.outputs) if (S.stock[o] + pr.outputs[o] > Y.storage[o] + 1e-9) return 'storage full';
+        return '';
+      };
+      var startBatch = function () {
+        var why = canStart();
+        if (why) { pd.blocked = why; return false; }
+        for (var k in pr.inputs) S.stock[k] = r6(S.stock[k] - pr.inputs[k]);
+        pd.running = true; return true;
+      };
+      var prate = (pr.needs_power ? factor : 1) * staff;
+      if (!partsOk) blockedBy = 'no ' + label(R, pr.needs_parts.filter(function (id) { return !isOn(S, id); })[0]).toLowerCase();
+      else if (pr.needs_power && factor <= 0) blockedBy = 'power cut';
+      else if (staff <= 0) blockedBy = 'no worker at the station';
+      if (!pd.running && !blockedBy) { if (!startBatch()) blockedBy = pd.blocked; }
+      if (pd.running && !blockedBy) {
+        pd.progress += dt * prate / pr.batch_seconds;
+        if (pr.needs_power) drawing = Math.min(S.supply_kw, demand);
+        if (pd.progress >= 1 - 1e-9) {
+          pd.progress -= 1;
+          for (var o2 in pr.outputs) S.stock[o2] = r6(Math.min(Y.storage[o2], S.stock[o2] + pr.outputs[o2]));
+          pd.batches++;
+          var made = 0; for (var o3 in pr.outputs) made += pr.outputs[o3];
+          pd.made = r6(pd.made + made);
+          pd.running = false;
+          log(S, 'batch', 'Batch finished: +' + Object.keys(pr.outputs).map(function (k) { return fmt(pr.outputs[k]) + ' ' + k; }).join(', '));
+          if (!startBatch()) { pd.progress = 0; blockedBy = pd.blocked; }
+        }
+      }
+      pd.status = blockedBy ? blockedBy : (pr.needs_power && factor < 1 ? 'baking slowly (power low)' : 'working');
+      pd.blocked = blockedBy;
+    }
+    var kwh = drawing * dt / 3600;
+    pw.draw_kw = r6(drawing); pw.kwh = r6(pw.kwh + kwh);
+    S.costs.power = r6(S.costs.power + kwh * Y.costs.power_per_kwh);
+
+    /* spoilage: the share of a tagged part set that is gone makes stored items spoil */
+    ((Y.effects && Y.effects.spoil) || []).forEach(function (e, k) {
+      var sh = missingShare(R, S, e.tag);
+      if (sh <= 0) return;
+      Object.keys(e.items).forEach(function (item) {
+        var lost = S.stock[item] * e.items[item] * sh * dt / 60;
+        if (lost <= 0) return;
+        S.stock[item] = r6(S.stock[item] - lost);
+        S.spoiled[item] = r6((S.spoiled[item] || 0) + lost);
+        S.spoilAcc[item] = (S.spoilAcc[item] || 0) + lost;
+        if (S.spoilAcc[item] >= 1) { log(S, 'spoil', 'Spoiled ' + fmt(S.spoilAcc[item]) + ' ' + item + ' (' + e.tag + ' open)'); S.spoilAcc[item] = 0; }
+      });
+    });
+
+    /* sales: customers arrive at demand_per_minute (less what a missing awning costs); each takes one if there is stock, otherwise leaves */
+    var sl = Y.sales, sa = S.sales;
+    if (sl) {
+      var dm = S.ext && S.ext.demand_per_minute != null ? S.ext.demand_per_minute : sl.demand_per_minute;   /* hook: the district passes the demand its residents make */
+      ((Y.effects && Y.effects.demand) || []).forEach(function (e) { dm *= 1 - e.loss * missingShare(R, S, e.tag); });
+      if (sl.noise > 0 && S.t >= sa.nextNoise) { sa.mult = r6(1 + sl.noise * (rnd(S) * 2 - 1)); sa.nextNoise = S.t + 5; }
+      var sf = sl.role ? staffing(sl.role) : 1;
+      sa.acc += dm * sa.mult * sf * dt / 60;
+      while (sa.acc >= 1 - 1e-9) {
+        sa.acc -= 1;
+        if (S.stock[sl.item] >= 1 - 1e-9) { S.stock[sl.item] = r6(S.stock[sl.item] - 1); sa.sold++; sa.income = r6(sa.income + sl.price); sa.pending++; sa.pendingMoney += sl.price; sa.soldOut = false; }
+        else { sa.lost++; if (!sa.soldOut) { sa.soldOut = true; log(S, 'sold', 'Sold out of ' + sl.item + ': customers leave empty-handed'); } }
+      }
+      if (S.t >= sa.nextLog) { if (sa.pending) { log(S, 'sold', 'Sold ' + sa.pending + ' ' + sl.item + ' (+' + fmt(sa.pendingMoney) + ')'); sa.pending = 0; sa.pendingMoney = 0; } sa.nextLog = S.t + 10; }
+    }
+
+    /* wages: every worker is paid every minute they are employed, standing at the station or not */
+    var paid = S.workers.length;
+    if (S.ext && S.ext.staff) { paid = 0; S.workers.forEach(function (w) { paid += S.ext.staff[w.role] != null ? S.ext.staff[w.role] : 1; }); }   /* hook: only filled places are paid */
+    S.costs.wages = r6(S.costs.wages + paid * Y.costs.wage_per_worker_per_minute * dt / 60);
+
+    /* a snapshot every 5 s, for the per-minute rates */
+    if (S.step % 50 === 0) { S.hist.push({ t: S.t, income: S.sales.income, cost: r6(cost(S)) }); if (S.hist.length > 14) S.hist.shift(); }
+  }
+  function cost(S) { return S.costs.power + S.costs.wages + S.costs.ingredients + S.costs.repairs; }
+
+  /* advance by `seconds` of simulated time (any amount: the remainder is kept) */
+  function run(R, S, seconds) {
+    S.acc += seconds;
+    var n = 0;
+    while (S.acc >= DT - 1e-9) { tick(R, S); S.acc -= DT; n++; }
+    if (Math.abs(S.acc) < 1e-9) S.acc = 0;
+    return n;
+  }
+
+  function ratePerMin(S, key) {   /* over the last minute (or the time so far, if less) */
+    var now = key === 'income' ? S.sales.income : cost(S), t = S.t, ref = null, i;
+    for (i = S.hist.length - 1; i >= 0; i--) if (S.hist[i].t <= t - 60 + 1e-9) { ref = S.hist[i]; break; }
+    var base = ref ? (key === 'income' ? ref.income : ref.cost) : 0, span = ref ? t - ref.t : t;
+    return span > 0 ? (now - base) * 60 / span : 0;
+  }
+
+  /* everything the Inspect panel shows, as plain numbers and text */
+  function summary(R, S) {
+    var Y = R.systems, out = {
+      t: S.t, power: { state: S.power.state, supply: S.supply_kw, demand: Y.power ? Y.power.demand_kw : 0, draw: S.power.draw_kw, factor: S.power.factor, kwh: S.power.kwh },
+      workers: S.workers.map(function (w) { return { role: w.role, state: w.state, text: w.role + ': ' + (w.state === 'station' ? (isOn(S, w.station) ? 'at the ' + label(R, w.station).toLowerCase() : 'idle (' + label(R, w.station).toLowerCase() + ' is gone)') : (w.state === 'walking' ? 'walking to repair ' + label(R, w.target) : (w.state === 'repairing' ? 'repairing ' + label(R, w.target) + ' (' + fmt(w.timer) + ' s left)' : 'walking back'))) }; }),
+      stock: S.stock, capacity: Y.storage, produced: S.prod.made, batches: S.prod.batches, status: S.prod.status, progress: S.prod.progress,
+      sold: S.sales.sold, lost: S.sales.lost, income: S.sales.income, costs: { power: S.costs.power, wages: S.costs.wages, ingredients: S.costs.ingredients, repairs: S.costs.repairs, total: r6(cost(S)) },
+      income_per_min: ratePerMin(S, 'income'), cost_per_min: ratePerMin(S, 'cost'), balance: r6(S.sales.income - cost(S)), spoiled: S.spoiled,
+      missing: R.parts.filter(function (p) { return !S.present[p.id]; }).length, parts: R.parts.length, orders: S.orders.length, events: S.log.slice(-8).reverse()
+    };
+    out.net_per_min = out.income_per_min - out.cost_per_min;
+    if (Y.sales) { var dm = S.ext && S.ext.demand_per_minute != null ? S.ext.demand_per_minute : Y.sales.demand_per_minute; ((Y.effects && Y.effects.demand) || []).forEach(function (e) { dm *= 1 - e.loss * missingShare(R, S, e.tag); }); out.demand_per_min = dm; }
+    return out;
+  }
+
+  function hash(S) {   /* FNV-1a over the JSON text of the state */
+    var s = JSON.stringify(S), h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+  /* optional per-tick outside inputs, all silent (no log line each time): {supply_kw, demand_per_minute, deliveries (false = carts suspended), staff {role: 0..1}}.
+     A state that never calls this behaves exactly as before (no ext key is ever created). */
+  function setExternal(S, o) {
+    if (!S.ext) S.ext = { missed: {} };
+    if (o.supply_kw != null) S.supply_kw = o.supply_kw;
+    ['demand_per_minute', 'deliveries', 'staff'].forEach(function (k) { if (o[k] !== undefined) S.ext[k] = o[k]; });
+    return S.ext;
+  }
+  function setSupply(R, S, kw) { S.supply_kw = kw; log(S, 'power', 'City supply set to ' + fmt(kw) + ' kW'); }
+
+  return { DT: DT, create: create, run: run, tick: tick, destroy: destroy, blast: blast, orderRepair: orderRepair, orderAll: orderAll, summary: summary, hash: hash,
+    setSupply: setSupply, setExternal: setExternal, canRestore: canRestore, missingShare: missingShare, cost: cost };
+});
+
+</script>
+<script>
+/* City Lab: the district layer (schema city_district, version 0). Pure JS, deterministic, fixed step (1 s of district time = ten sim ticks), seedable, plain-JSON state,
+   no DOM, no THREE. It does NOT make a second building engine: every shop, the workshop, the market and the shed run the existing per-building machine (sim.js).
+   This file only decides what goes INTO each machine every second (the demand its residents make, the power the grid gives it, whether its carts can drive, how many
+   of its places residents fill) and keeps the city-level records. Every coefficient is in the district file (see DISTRICT.md). Recipes stay unchanged; an upgrade is a
+   C02 sidecar applied to a patched COPY of the recipe (same rules as shared/tools/sidecar-check.mjs).
+   State is plain JSON: W.S. Same district file + same seed + same calls = byte-identical state (hash). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sim.js'), require('./validate.js'));
+  else root.CityDistrict = factory(root.CitySim, root.CityValidate);
+})(typeof self !== 'undefined' ? self : this, function (SIM, VAL) {
+  'use strict';
+  var LOG_MAX = 300;
+
+  /* ---------------- small helpers ---------------- */
+  function r6(v) { return Math.round(v * 1e6) / 1e6; }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function key(c, r) { return c + ',' + r; }
+  function f1(v) { return (Math.round(v * 10) / 10).toString(); }
+  function f2(v) { return (Math.round(v * 100) / 100).toString(); }
+  function tokens(p) { return p.replace(/\[(\d+)\]/g, '.$1').split('.'); }
+  function getRef(obj, p) { var t = tokens(p), o = obj, i; for (i = 0; i < t.length - 1; i++) { o = o && o[t[i]]; if (o === undefined || o === null) return null; } return { o: o, k: t[t.length - 1] }; }
+  function isSim(b) { return b.kind !== 'home'; }
+  function clock(t) { return Math.floor(t / 60) + ':' + ('0' + Math.floor(t % 60)).slice(-2); }
+
+  /* ---------------- sidecars: the C02 rules, applied to a copy ---------------- */
+  /* branches are applied in id order; 'set' on one path by two branches is an error; every path must exist and be a number. Mirrors shared/tools/sidecar-check.mjs. */
+  function applyBranches(recipe, branches) {
+    var R = clone(recipe), seen = {};
+    branches.slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; }).forEach(function (b) {
+      (b.effects || []).forEach(function (e) {
+        var r = getRef(R, e.path);
+        if (!r || typeof r.o[r.k] !== 'number') throw new Error(b.id + ': ' + e.path + ' is not a number in the recipe');
+        if (e.op === 'set') { if (seen[e.path]) throw new Error('two branches both set ' + e.path); seen[e.path] = 1; }
+        r.o[r.k] = e.op === 'mul' ? r.o[r.k] * e.value : (e.op === 'add' ? r.o[r.k] + e.value : e.value);
+        r.o[r.k] = Math.round(r.o[r.k] * 1e6) / 1e6;
+      });
+      (b.cosmetic || []).forEach(function (c) { var p = R.parts.filter(function (x) { return x.id === c.part; })[0]; if (!p) throw new Error(b.id + ': no part ' + c.part); p.material = c.material; });
+    });
+    return R;
+  }
+  function branchesOf(W, paths) {
+    var out = [];
+    paths.forEach(function (p) { var sc = W.files[p]; if (!sc) throw new Error('sidecar file not loaded: ' + p); (sc.branches || []).forEach(function (b) { out.push(b); }); });
+    return out;
+  }
+  function patchedRecipe(W, b) {
+    var base = W.files[b.recipe];
+    if (!base) throw new Error('recipe file not loaded: ' + b.recipe);
+    return b.sidecars.length ? applyBranches(base, branchesOf(W, b.sidecars)) : clone(base);
+  }
+
+  /* ---------------- make a world ---------------- */
+  /* files: {path: parsed JSON} for every recipe and sidecar the district names. Returns {ok, W} or {ok:false, errors}. W = {D, files, R:{buildingId: recipe}, S: plain-JSON state}. */
+  function make(D, files, opts) {
+    opts = opts || {};
+    var S = { v: 0, id: D.id, seed: opts.seed != null ? opts.seed | 0 : D.seed | 0, t: 0, acc: 0, steps: 0, scale: 1, roads: {}, depot: D.depot.slice(), b: [], nextEvent: 0, nextHome: 1, capex: 0, env: null, log: [], logN: 0, brown_s: 0, fsum: 0, minFactor: 1 };
+    var W = { D: D, files: files, R: {}, S: S, errors: [] };
+    D.roads.forEach(function (r) { S.roads[key(r.cell[0], r.cell[1])] = r.open ? 1 : 0; });
+    D.buildings.forEach(function (bd) {
+      var b = { id: bd.id, kind: bd.kind, cell: bd.cell.slice(), recipe: bd.recipe, sidecars: (bd.sidecars || []).slice(), label: '', sim: null, hire: bd.hire_priority == null ? 5 : bd.hire_priority, employs: !!bd.employs, draw_kw: bd.draw_kw || 0, residents: 0, cap: 0, acc: { demand: 0, brown_s: 0, blocked_s: 0 } };
+      if (bd.kind === 'home') { b.cap = bd.residents.capacity; b.residents = bd.residents.now; S.nextHome = Math.max(S.nextHome, parseInt(String(bd.id).replace(/\D/g, ''), 10) + 1 || S.nextHome); }
+      S.b.push(b);
+    });
+    try {
+      S.b.forEach(function (b, i) {
+        var R = patchedRecipe(W, b), v = VAL.validate(R);
+        if (!v.ok) throw new Error(b.id + ': recipe fails the v1 validator after sidecars (' + v.errors[0] + ')');
+        W.R[b.id] = R;
+        b.label = b.kind === 'home' ? 'Home ' + (S.b.filter(function (x, j) { return j <= i && x.kind === 'home'; }).length) : R.name;
+        if (isSim(b)) b.sim = SIM.create(R, { seed: S.seed + i });
+      });
+    } catch (e) { return { ok: false, errors: [String(e.message)] }; }
+    S.events = (D.events || []).map(function (e) { return clone(e); }).sort(function (a, b) { return a.t - b.t; });
+    S.env = computeEnv(W);
+    note(W, 'info', 'District opens: ' + S.b.length + ' buildings, ' + S.env.residents + ' residents, grid ' + f1(S.env.power.supply) + ' kW (seed ' + S.seed + ').', []);
+    return { ok: true, W: W };
+  }
+
+  function note(W, type, text, ids) {
+    var S = W.S; S.logN++;
+    S.log.push({ t: r6(S.t), type: type, text: text, ids: ids || [] });
+    if (S.log.length > LOG_MAX) S.log.splice(0, S.log.length - LOG_MAX);
+  }
+  function byId(W, id) { for (var i = 0; i < W.S.b.length; i++) if (W.S.b[i].id === id) return W.S.b[i]; return null; }
+
+  /* ---------------- roads ---------------- */
+  function accessCells(S, cell) {
+    var out = [], d = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    d.forEach(function (o) { var k = key(cell[0] + o[0], cell[1] + o[1]); if (S.roads[k] === 1) out.push(k); });
+    return out;
+  }
+  /* steps over OPEN road cells from the source cells (breadth first). Blocked and missing cells stop the walk. */
+  function field(S, sources) {
+    var dist = {}, q = [], h = 0, d = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    sources.forEach(function (k) { if (dist[k] == null && S.roads[k] === 1) { dist[k] = 0; q.push(k); } });
+    while (h < q.length) {
+      var k = q[h++], p = k.split(','), c = +p[0], r = +p[1];
+      d.forEach(function (o) { var n = key(c + o[0], r + o[1]); if (S.roads[n] === 1 && dist[n] == null) { dist[n] = dist[k] + 1; q.push(n); } });
+    }
+    return dist;
+  }
+  /* road distance (cells, counting the step onto the road) from a set of access cells to a building whose field is given; null if no open path */
+  function reach(acc, fld) {
+    var best = null;
+    acc.forEach(function (k) { if (fld[k] != null && (best == null || fld[k] < best)) best = fld[k]; });
+    return best == null ? null : best + 1;
+  }
+
+  /* ---------------- the environment: everything the machines are told this second ---------------- */
+  function computeEnv(W) {
+    var D = W.D, C = D.coefficients, P = D.power, S = W.S, bs = S.b, env = { power: {}, b: {}, residents: 0, employed: 0, jobs: 0, unemployed: 0 }, i, j;
+    var homes = bs.filter(function (b) { return b.kind === 'home'; });
+    var fieldOf = {}, accOf = {};
+    bs.forEach(function (b) { accOf[b.id] = accessCells(S, b.cell); if (isSim(b)) fieldOf[b.id] = field(S, accOf[b.id]); });
+    var depotField = field(S, [key(S.depot[0], S.depot[1])]);
+
+    /* shared electricity: nominal draws (a machine's demand_kw whether or not it is baking this second, so the brownout cannot flicker with the load) */
+    var draw = {}, total = 0;
+    bs.forEach(function (b) {
+      var R = W.R[b.id], kw = b.kind === 'home' ? P.home_base_kw + P.per_resident_kw * b.residents : ((R.systems.power ? R.systems.power.demand_kw : 0) + b.draw_kw);
+      draw[b.id] = r6(kw); total += kw;
+    });
+    var supply = r6(P.supply_kw * S.scale), factor = total > 0 ? Math.min(1, supply / total) : 1;
+    env.power = { supply: supply, draw: r6(total), factor: r6(factor), margin: r6(supply - total), by: draw };
+
+    /* residents and work: a share of each home's residents work; they fill places at employers they can reach, nearest home first, employers in hire_priority order */
+    var avail = {}, empl = {}, slots = {};
+    homes.forEach(function (h) { avail[h.id] = Math.floor(h.residents * C.work_fraction + 0.5); empl[h.id] = 0; env.residents += h.residents; });
+    var employers = bs.filter(function (b) { return isSim(b) && b.employs; }).sort(function (a, b) { return a.hire - b.hire; });
+    employers.forEach(function (e) {
+      var tot = 0; W.R[e.id].systems.jobs.forEach(function (jb) { tot += jb.count; });
+      var cands = [];
+      homes.forEach(function (h) { var d = reach(accOf[h.id], fieldOf[e.id]); if (d != null && d <= C.max_commute_cells && avail[h.id] > 0) cands.push({ h: h, d: d }); });
+      cands.sort(function (a, b) { return a.d - b.d || (a.h.id < b.h.id ? -1 : 1); });
+      var left = tot, filled = 0;
+      cands.forEach(function (c) { var take = Math.min(left, avail[c.h.id]); avail[c.h.id] -= take; empl[c.h.id] += take; left -= take; filled += take; });
+      slots[e.id] = { slots: tot, filled: filled }; env.jobs += tot; env.employed += filled;
+    });
+    env.unemployed = env.residents - env.employed;
+
+    /* market footfall sources */
+    var markets = bs.filter(function (b) { return b.kind === 'market'; });
+    /* demand for each shop: residents who can reach it, spending, distance decay, shared between reachable shops of the same item, plus the market's footfall */
+    var shops = bs.filter(function (b) { return b.kind === 'shop' || b.kind === 'market'; });
+    var itemOf = {}; shops.forEach(function (s) { itemOf[s.id] = W.R[s.id].systems.sales.item; });
+    var wt = {};   /* wt[homeId][shopId] = decay weight */
+    homes.forEach(function (h) {
+      wt[h.id] = {};
+      shops.forEach(function (s) { var d = reach(accOf[h.id], fieldOf[s.id]); wt[h.id][s.id] = d != null && d <= C.max_reach_cells ? Math.pow(C.decay_per_cell, d) : 0; });
+    });
+    var visW = {};   /* visitor weights market -> shop */
+    markets.forEach(function (m) {
+      visW[m.id] = {};
+      shops.forEach(function (s) { if (s.id === m.id) { visW[m.id][s.id] = 0; return; } var d = reach(accOf[s.id], fieldOf[m.id]); visW[m.id][s.id] = d != null ? Math.pow(C.footfall.decay_per_cell, d) : 0; });
+    });
+    shops.forEach(function (s) {
+      var item = itemOf[s.id], per = C.per_resident_per_min[item] || 0, res = 0, nh = 0, i2;
+      homes.forEach(function (h) {
+        var w = wt[h.id][s.id]; if (w <= 0) return;
+        var sum = 0; shops.forEach(function (o) { if (itemOf[o.id] === item) sum += wt[h.id][o.id]; });
+        var spend = ((h.residents - empl[h.id]) + empl[h.id] * (1 + C.wage_spend_boost)) * per;
+        res += spend * w / Math.max(1, sum); nh++;
+      });
+      var foot = 0, vis = 0;
+      if (s.kind !== 'market') {
+        markets.forEach(function (m) { foot += visW[m.id][s.id]; });
+        foot = Math.min(C.footfall.cap, C.footfall.market_bonus * foot);
+      }
+      markets.forEach(function (m) {
+        var v = C.market_visitors_per_min[item]; if (!v || s.id === m.id) return;
+        var sum = 0; shops.forEach(function (o) { if (itemOf[o.id] === item && o.id !== m.id) sum += visW[m.id][o.id]; });
+        vis += v * visW[m.id][s.id] / Math.max(1, sum);
+      });
+      env.b[s.id] = { demand: r6(res * (1 + foot) + vis), from_homes: nh, resident_part: r6(res), footfall: r6(foot), visitors: r6(vis) };
+    });
+
+    /* per building: power state, delivery road, staffing */
+    bs.forEach(function (b) {
+      var e = env.b[b.id] || (env.b[b.id] = {}), R = W.R[b.id];
+      e.draw = draw[b.id]; e.factor = env.power.factor;
+      if (b.kind === 'home') { e.residents = b.residents; e.employed = empl[b.id]; return; }
+      e.reach_depot = reach(accOf[b.id], depotField);
+      e.deliveries = !(R.systems.deliveries && R.systems.deliveries.length) || e.reach_depot != null;
+      e.access = accOf[b.id].length > 0;
+      if (slots[b.id]) { e.slots = slots[b.id].slots; e.filled = slots[b.id].filled; e.staff = slots[b.id].slots ? slots[b.id].filled / slots[b.id].slots : 1; }
+    });
+    return env;
+  }
+
+  /* ---------------- one second of district time ---------------- */
+  function fireEvents(W) {
+    var S = W.S;
+    while (S.nextEvent < S.events.length && S.events[S.nextEvent].t <= S.t + 1e-9) {
+      var e = S.events[S.nextEvent++];
+      if (e.action === 'block_road') setRoad(W, e.cell, false, 'Scheduled: road at ' + e.cell.join(',') + ' is blocked');
+      else if (e.action === 'open_road') setRoad(W, e.cell, true, 'Scheduled: road at ' + e.cell.join(',') + ' is open again');
+      else if (e.action === 'supply_scale') setScale(W, e.value, 'Scheduled: the city grid supply is now ' + Math.round(e.value * 100) + '% of normal');
+    }
+  }
+  function stepOnce(W) {
+    var S = W.S;
+    fireEvents(W);
+    var env = computeEnv(W); S.env = env;
+    S.b.forEach(function (b) {
+      if (!b.sim) return;
+      var R = W.R[b.id], e = env.b[b.id], o = { deliveries: e.deliveries };
+      if (R.systems.power) o.supply_kw = r6(R.systems.power.demand_kw * env.power.factor);
+      if (R.systems.sales && e.demand != null) o.demand_per_minute = e.demand;
+      if (e.staff != null) { o.staff = {}; R.systems.jobs.forEach(function (jb) { o.staff[jb.role] = e.staff; }); }
+      SIM.setExternal(b.sim, o);
+      SIM.run(R, b.sim, 1);
+      if (e.demand != null) b.acc.demand = r6(b.acc.demand + e.demand / 60);
+      if (R.systems.power && env.power.factor < 1 - 1e-9) b.acc.brown_s++;
+      if (!e.deliveries) b.acc.blocked_s++;
+    });
+    if (env.power.factor < 1 - 1e-9) S.brown_s++;
+    S.fsum = r6(S.fsum + env.power.factor);
+    S.minFactor = Math.min(S.minFactor, env.power.factor);
+    S.steps++; S.t = r6(S.steps);
+  }
+  function run(W, seconds) {
+    var S = W.S; S.acc += seconds;
+    var n = 0;
+    while (S.acc >= 1 - 1e-9) { stepOnce(W); S.acc -= 1; n++; }
+    if (Math.abs(S.acc) < 1e-9) S.acc = 0;
+    return n;
+  }
+
+  /* ---------------- changes the player (or an event) makes. Each writes one plain sentence: cause, effect, before and after ---------------- */
+  function headline(W) {
+    var env = W.S.env, out = { residents: env.residents, employed: env.employed, jobs: env.jobs, draw: env.power.draw, supply: env.power.supply, factor: env.power.factor, shops: {}, deliveries: {} };
+    W.S.b.forEach(function (b) {
+      var e = env.b[b.id]; if (!b.sim) return;
+      if (e.demand != null) out.shops[b.id] = { label: b.label, demand: e.demand, homes: e.from_homes };
+      out.deliveries[b.id] = e.deliveries;
+    });
+    return out;
+  }
+  function diffText(W, A, B) {
+    var p = [], d;
+    if (A.residents !== B.residents) p.push('residents ' + A.residents + ' to ' + B.residents);
+    Object.keys(B.shops).forEach(function (id) {
+      var a = A.shops[id], b = B.shops[id];
+      if (a && Math.abs(a.demand - b.demand) >= 0.05) p.push(b.label + ' demand ' + f1(a.demand) + ' to ' + f1(b.demand) + ' a minute (' + b.homes + ' home' + (b.homes === 1 ? '' : 's') + ' reach it)');
+    });
+    if (A.employed !== B.employed || A.jobs !== B.jobs) p.push('workers in jobs ' + A.employed + ' to ' + B.employed + ' of ' + B.jobs + ' places');
+    if (Math.abs(A.draw - B.draw) >= 0.05 || Math.abs(A.supply - B.supply) >= 0.05) p.push('grid draw ' + f1(A.draw) + ' to ' + f1(B.draw) + ' kW against ' + f1(B.supply) + ' kW supply');
+    if (A.factor >= 1 - 1e-9 && B.factor < 1 - 1e-9) p.push('BROWNOUT started, every building runs at ' + Math.round(B.factor * 100) + '% power');
+    else if (A.factor < 1 - 1e-9 && B.factor >= 1 - 1e-9) p.push('brownout ended, power back to 100%');
+    else if (A.factor < 1 - 1e-9 && B.factor < 1 - 1e-9 && Math.abs(A.factor - B.factor) >= 0.005) p.push('brownout ' + Math.round(A.factor * 100) + '% to ' + Math.round(B.factor * 100) + '% power');
+    Object.keys(B.deliveries).forEach(function (id) {
+      if (A.deliveries[id] !== B.deliveries[id]) p.push((B.deliveries[id] ? 'carts can reach ' : 'deliveries to ') + byId(W, id).label + (B.deliveries[id] ? ' again' : ' are suspended (no open road from the depot)'));
+    });
+    return p.length ? p.join('; ') : 'no other number changed';
+  }
+  function change(W, cause, before, ids) {
+    W.S.env = computeEnv(W);
+    var after = headline(W), text = cause + ': ' + diffText(W, before, after) + '.';
+    note(W, 'change', text, ids || []);
+    return text;
+  }
+  function setRoad(W, cell, open, cause) {
+    var S = W.S, k = key(cell[0], cell[1]);
+    if (S.roads[k] == null) return { ok: false, error: 'no road at ' + cell.join(',') };
+    var was = S.roads[k] === 1; if (was === !!open) return { ok: true, text: 'already ' + (open ? 'open' : 'blocked') };
+    var before = headline(W); S.roads[k] = open ? 1 : 0;
+    return { ok: true, text: change(W, cause || ('Road at ' + cell.join(',') + (open ? ' reopened' : ' blocked')), before, []) };
+  }
+  function setScale(W, v, cause) {
+    var before = headline(W); W.S.scale = v;
+    return { ok: true, text: change(W, cause || ('Grid supply set to ' + Math.round(v * 100) + '%'), before, []) };
+  }
+  function homeCells(W) { return W.S.b.filter(function (b) { return b.kind === 'home'; }); }
+  function addHome(W) {
+    var S = W.S, D = W.D, T = D.home_template, used = {};
+    S.b.forEach(function (b) { used[key(b.cell[0], b.cell[1])] = 1; });
+    var slot = null; D.home_slots.forEach(function (c) { if (!slot && !used[key(c[0], c[1])]) slot = c; });
+    if (!slot) return { ok: false, error: 'no free home plot' };
+    var before = headline(W), id = 'home_' + S.nextHome++, b = { id: id, kind: 'home', cell: slot.slice(), recipe: T.recipe, sidecars: [], label: '', sim: null, hire: 5, employs: false, draw_kw: 0, residents: T.capacity, cap: T.capacity, acc: { demand: 0, brown_s: 0, blocked_s: 0 } };
+    S.b.push(b); W.R[id] = clone(W.files[T.recipe]); b.label = 'Home ' + homeCells(W).length;
+    return { ok: true, id: id, text: change(W, 'Home added at ' + slot.join(',') + ' (' + T.capacity + ' residents move in)', before, [id]) };
+  }
+  function removeHome(W) {
+    var hs = homeCells(W); if (!hs.length) return { ok: false, error: 'no home to remove' };
+    var h = hs[hs.length - 1], before = headline(W);
+    W.S.b.splice(W.S.b.indexOf(h), 1); delete W.R[h.id];
+    return { ok: true, id: h.id, text: change(W, 'Home removed at ' + h.cell.join(',') + ' (' + h.residents + ' residents leave)', before, []) };
+  }
+  function applySidecar(W, buildingId, path) {
+    var b = byId(W, buildingId); if (!b || !b.sim) return { ok: false, error: 'no such machine building' };
+    var sc = W.files[path]; if (!sc) return { ok: false, error: 'sidecar not loaded: ' + path };
+    if (b.sidecars.indexOf(path) >= 0) return { ok: false, error: 'already applied' };
+    var oldR = W.R[b.id], list = b.sidecars.concat([path]), R2;
+    try { R2 = applyBranches(W.files[b.recipe], branchesOf(W, list)); } catch (e) { return { ok: false, error: String(e.message) }; }
+    var v = VAL.validate(R2); if (!v.ok) return { ok: false, error: 'patched recipe fails the v1 validator: ' + v.errors[0] };
+    var before = headline(W), coins = 0, bits = [];
+    sc.branches.forEach(function (br) {
+      coins += br.cost && br.cost.coins || 0;
+      (br.effects || []).forEach(function (e) { var a = getRef(oldR, e.path), n = getRef(R2, e.path); if (a && n) bits.push(e.path.replace(/^systems\./, '') + ' ' + f2(a.o[a.k]) + ' to ' + f2(n.o[n.k])); });
+    });
+    b.sidecars = list; W.R[b.id] = R2; W.S.capex = r6(W.S.capex + coins);
+    var cause = 'Upgrade ' + sc.branches.map(function (x) { return x.name; }).join(', ') + ' applied to ' + b.label + ' (costs ' + coins + ' coins once; ' + bits.join(', ') + ')';
+    return { ok: true, coins: coins, text: change(W, cause, before, [b.id]) };
+  }
+
+  /* ---------------- records ---------------- */
+  function sumVals(o) { var s = 0; Object.keys(o || {}).forEach(function (k) { s += o[k]; }); return s; }
+  function snap(W) {
+    var S = W.S, out = { t: S.t, brown_s: S.brown_s, fsum: S.fsum, b: {} };
+    S.b.forEach(function (b) {
+      if (!b.sim) return;
+      var m = b.sim, Y = W.R[b.id].systems, miss = 0; if (m.ext) Object.keys(m.ext.missed).forEach(function (k) { miss = Math.max(miss, m.ext.missed[k]); });
+      out.b[b.id] = { income: m.sales.income, cost: SIM.cost(m), wages: m.costs.wages, power_cost: m.costs.power, ingredients: m.costs.ingredients, sold: m.sales.sold, lost: m.sales.lost, made: m.prod.made,
+        demand: b.acc.demand, spoiled: sumVals(m.spoiled), missed: miss, brown_s: b.acc.brown_s, blocked_s: b.acc.blocked_s, kwh: m.power.kwh };
+    });
+    return out;
+  }
+  /* per-minute rates and totals between two snapshots (a is null for "since the start") */
+  function between(W, a, b) {
+    var t0 = a ? a.t : 0, mins = (b.t - t0) / 60, out = { from: t0, to: b.t, minutes: r6(mins), b: {}, d: { income: 0, cost: 0, net: 0, demand: 0, sold: 0, lost: 0, made: 0, spoiled: 0, missed: 0 } }, env = W.S.env;
+    Object.keys(b.b).forEach(function (id) {
+      var x = b.b[id], y = a ? a.b[id] || {} : {}, g = function (k) { return x[k] - (y[k] || 0); }, mm = mins > 0 ? mins : 1;
+      var r = { income: r6(g('income')), cost: r6(g('cost')), net: r6(g('income') - g('cost')), demand: r6(g('demand')), sold: g('sold'), lost: g('lost'), made: r6(g('made')), spoiled: r6(g('spoiled')), missed_visits: g('missed'),
+        brown_s: g('brown_s'), blocked_s: g('blocked_s'), wages: r6(g('wages')), power_cost: r6(g('power_cost')), ingredients: r6(g('ingredients')) };
+      r.income_pm = r6(r.income / mm); r.cost_pm = r6(r.cost / mm); r.net_pm = r6(r.net / mm); r.demand_pm = r6(r.demand / mm); r.sold_pm = r6(r.sold / mm); r.lost_pm = r6(r.lost / mm); r.made_pm = r6(r.made / mm);
+      r.brown_share = mins > 0 ? r6(r.brown_s / (mins * 60)) : 0;
+      out.b[id] = r;
+      ['income', 'cost', 'demand', 'sold', 'lost', 'made', 'spoiled', 'missed_visits'].forEach(function (k) { var kk = k === 'missed_visits' ? 'missed' : k; out.d[kk] = r6(out.d[kk] + r[k]); });
+    });
+    out.d.net = r6(out.d.income - out.d.cost);
+    ['income', 'cost', 'net', 'demand', 'sold', 'lost', 'made'].forEach(function (k) { out.d[k + '_pm'] = r6(out.d[k] / (mins > 0 ? mins : 1)); });
+    out.d.residents = env.residents; out.d.employed = env.employed; out.d.jobs = env.jobs; out.d.unemployed = env.unemployed;
+    out.d.draw_kw = env.power.draw; out.d.supply_kw = env.power.supply; out.d.factor = env.power.factor; out.d.min_factor = W.S.minFactor;
+    out.d.brown_s = r6(b.brown_s - (a ? a.brown_s : 0)); out.d.avg_factor = b.t - t0 > 0 ? r6((b.fsum - (a ? a.fsum : 0)) / (b.t - t0)) : 1; out.d.capex = W.S.capex;
+    return out;
+  }
+  function hash(W) {   /* FNV-1a over the JSON text of the state */
+    var s = JSON.stringify(W.S), h = 0x811c9dc5, i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+
+  /* ---------------- building a settlement from the base district file (data in, data out) ---------------- */
+  function withHomes(D, k) {
+    var E = clone(D); E.buildings = E.buildings.filter(function (b) { return b.kind !== 'home'; });
+    for (var i = 0; i < k && i < E.home_slots.length; i++) E.buildings.push({ id: 'home_' + (i + 1), recipe: E.home_template.recipe, cell: E.home_slots[i].slice(), kind: 'home', sidecars: [], residents: { capacity: E.home_template.capacity, now: E.home_template.capacity } });
+    return E;
+  }
+  function find(E, kind) { return E.buildings.filter(function (b) { return b.kind === kind; }); }
+  function run1(D, files, o) {   /* one deterministic run: warm up, then measure. Returns the report between the two snapshots. */
+    var m = make(D, files, { seed: o.seed }); if (!m.ok) throw new Error(m.errors.join('; '));
+    var W = m.W; if (o.before) o.before(W);
+    run(W, o.warm || 0); var a = snap(W); run(W, o.measure); var b = snap(W);
+    var rep = between(W, o.warm ? a : null, b); rep.hash = hash(W); rep.world = W; return rep;
+  }
+  function limiterOf(rep, bakeryId, W) {
+    var e = W.S.env, bb = e.b[bakeryId], r = rep.b[bakeryId], R = W.R[bakeryId], pr = R.systems.production, cap = 0;
+    if (pr) { var o = 0; Object.keys(pr.outputs).forEach(function (k) { o += pr.outputs[k]; }); cap = o * 60 / pr.batch_seconds; }
+    if (r.brown_share >= 0.5) return 'power (brownout, average ' + Math.round(rep.d.avg_factor * 100) + '% power)';
+    if (bb.staff != null && bb.staff < 0.999) return 'workers (' + bb.filled + ' of ' + bb.slots + ' places filled)';
+    if (r.demand_pm >= cap * 0.98) return 'bakery capacity (' + f1(cap) + ' loaves a minute)';
+    return 'demand (not enough customers)';
+  }
+  function slim(rep, W, bakeryId) {   /* the plain numbers an experiment keeps (no world object) */
+    var r = rep.b[bakeryId], e = W.S.env, R = W.R[bakeryId], pr = R.systems.production, cap = 0;
+    if (pr) { var o = 0; Object.keys(pr.outputs).forEach(function (k) { o += pr.outputs[k]; }); cap = o * 60 / pr.batch_seconds; }
+    var staff = {}; W.S.b.forEach(function (b) { if (e.b[b.id] && e.b[b.id].slots) staff[b.id] = e.b[b.id].filled + '/' + e.b[b.id].slots; });
+    return { residents: e.residents, employed: e.employed, jobs: e.jobs, staff: staff, bakery_demand_pm: r.demand_pm, bakery_sold_pm: r.sold_pm, bakery_lost_pm: r.lost_pm, bakery_made_pm: r.made_pm, bakery_capacity_pm: r6(cap),
+      bakery_income_pm: r.income_pm, bakery_cost_pm: r.cost_pm, bakery_wages_pm: r6(r.wages / (rep.minutes || 1)), bakery_ingredients_pm: r6(r.ingredients / (rep.minutes || 1)), bakery_power_cost_pm: r6(r.power_cost / (rep.minutes || 1)), bakery_net_pm: r.net_pm, district_net_pm: rep.d.net_pm, grid_draw_kw: e.power.draw, grid_supply_kw: e.power.supply, brownout_avg_factor: rep.d.avg_factor,
+      brownout_share: r.brown_share, deliveries_missed_visits: r.missed_visits, spoiled: r.spoiled, delivery_blocked_s: r.blocked_s, hash: rep.hash };
+  }
+
+  /* ---- EXPERIMENT 1: more homes ---- */
+  function exp1(D, files, o) {
+    o = o || {}; var rows = [];
+    (o.homes || [2, 4, 6, 8, 10]).forEach(function (k) {
+      var E = withHomes(D, k), bk = find(E, 'shop')[0].id, rep = run1(E, files, { warm: 300, measure: 600, seed: D.seed }), row = slim(rep, rep.world, bk);
+      row.homes = k; row.limiter = limiterOf(rep, bk, rep.world); delete row.hash; row.state_hash = rep.hash; rows.push(row);
+    });
+    return { id: 'exp1', title: 'More homes', warm_s: 300, measure_s: 600, rows: rows };
+  }
+
+  /* ---- EXPERIMENT 2: upgrade the bakery ---- */
+  function exp2(D, files, o) {
+    o = o || {}; var out = { id: 'exp2', title: 'Upgrade the bakery', warm_s: 300, measure_s: 600, upgrades: {}, sweep_homes: o.sweep || [1, 2, 3, 4, 5, 6, 7, 8], few: o.few || 2, many: o.many || 8 };
+    var paths = o.sidecars || { stone_deck_oven: 'shared/cloud/examples/bakery.stone_deck_oven.json', cool_store_room: 'shared/cloud/examples/bakery.cool_store_room.json' };
+    var variants = { base: null }; Object.keys(paths).forEach(function (k) { variants[k] = paths[k]; });
+    var grid = {};
+    Object.keys(variants).forEach(function (v) {
+      grid[v] = {};
+      out.sweep_homes.forEach(function (k) {
+        var E = withHomes(D, k), bk = find(E, 'shop')[0]; if (variants[v]) bk.sidecars = [variants[v]];
+        var rep = run1(E, files, { warm: 300, measure: 600, seed: D.seed }), row = slim(rep, rep.world, bk.id); row.limiter = limiterOf(rep, bk.id, rep.world); delete row.hash; row.state_hash = rep.hash; grid[v][k] = row;
+      });
+    });
+    out.grid = grid;
+    /* sensitivity, NOT the base data: what if residents ate more bread? (the owner can change per_resident_per_min.loaf in the district file; this shows what the answer would then be) */
+    out.sensitivity = [];
+    (o.sens || [1.8, 2.4, 3.0]).forEach(function (loaf) {
+      var rows = [], coins = 0; files[paths.stone_deck_oven].branches.forEach(function (b) { coins += b.cost.coins; });
+      var be = null;
+      [2, 4, 6, 8, 10].forEach(function (k) {
+        var res = {};
+        ['base', 'stone_deck_oven'].forEach(function (v) {
+          var E = withHomes(D, k), bk = find(E, 'shop')[0]; E.coefficients.per_resident_per_min.loaf = loaf; if (v !== 'base') bk.sidecars = [paths.stone_deck_oven];
+          var rep = run1(E, files, { warm: 300, measure: 600, seed: D.seed }); res[v] = slim(rep, rep.world, bk.id);
+        });
+        var gain = r6(res.stone_deck_oven.bakery_net_pm - res.base.bakery_net_pm);
+        if (be == null && gain > 0.01 && coins / gain <= 60) be = k;
+        rows.push({ homes: k, demand_pm: res.base.bakery_demand_pm, sold_base: res.base.bakery_sold_pm, sold_upgrade: res.stone_deck_oven.bakery_sold_pm, net_base: res.base.bakery_net_pm, net_upgrade: res.stone_deck_oven.bakery_net_pm, gain_pm: gain, brownout_avg_base: res.base.brownout_avg_factor, brownout_avg_upgrade: res.stone_deck_oven.brownout_avg_factor, payback_minutes: gain > 0.01 ? r6(coins / gain) : null });
+      });
+      out.sensitivity.push({ per_resident_loaf: loaf, stone_deck_oven_break_even_homes_payback_within_60_min: be, rows: rows });
+    });
+    Object.keys(paths).forEach(function (v) {
+      var coins = 0; files[paths[v]].branches.forEach(function (b) { coins += b.cost.coins; });
+      var u = { coins: coins, headline: {}, by_homes: {} }, be60 = null;
+      out.sweep_homes.forEach(function (k) {
+        var a = grid.base[k], b = grid[v][k], gain = r6(b.bakery_net_pm - a.bakery_net_pm);
+        u.by_homes[k] = { demand_pm: a.bakery_demand_pm, net_base: a.bakery_net_pm, net_upgrade: b.bakery_net_pm, gain_pm: gain, made_base: a.bakery_made_pm, made_upgrade: b.bakery_made_pm, sold_base: a.bakery_sold_pm, sold_upgrade: b.bakery_sold_pm, extra_cost_pm: r6(b.bakery_cost_pm - a.bakery_cost_pm), extra_wages_pm: r6(b.bakery_wages_pm - a.bakery_wages_pm), extra_ingredients_pm: r6(b.bakery_ingredients_pm - a.bakery_ingredients_pm), extra_power_pm: r6(b.bakery_power_cost_pm - a.bakery_power_cost_pm), brownout_base: a.brownout_avg_factor, brownout_upgrade: b.brownout_avg_factor, payback_minutes: gain > 0.01 ? r6(coins / gain) : null };
+        if (be60 == null && gain > 0.01 && coins / gain <= 60) be60 = k;
+      });
+      u.break_even_homes_payback_within_60_min = be60;
+      u.headline = { few: u.by_homes[out.few], many: u.by_homes[out.many] };
+      out.upgrades[v] = u;
+    });
+    return out;
+  }
+
+  /* ---- EXPERIMENT 3: two identical bakeries in two neighbourhoods ---- */
+  /* conditions are DATA edits of the base district file: homes, where the bakery and the market stand, the scheduled events (a blocked road, a grid dip) and the grid supply */
+  var COND = {
+    A: { homes: 4, bakery: [5, 3], market: [6, 1], supply: 12, events: [{ t: 200, action: 'supply_scale', value: 0.8 }, { t: 400, action: 'supply_scale', value: 1 }] },
+    B: { homes: 2, bakery: [7, 3], market: [0, 1], supply: 7.4, events: [{ t: 150, action: 'block_road', cell: [5, 2] }, { t: 330, action: 'open_road', cell: [5, 2] }, { t: 200, action: 'supply_scale', value: 0.8 }, { t: 400, action: 'supply_scale', value: 1 }] }
+  };
+  function settlement(D, c) {
+    var E = withHomes(D, c.homes);
+    E.buildings = E.buildings.filter(function (b) { return b.kind === 'home' || b.kind === 'shop' || b.kind === 'market'; });
+    find(E, 'shop').slice(1).forEach(function (x) { E.buildings.splice(E.buildings.indexOf(x), 1); });
+    find(E, 'shop')[0].cell = c.bakery.slice(); find(E, 'market')[0].cell = c.market.slice();
+    E.power.supply_kw = c.supply; E.events = clone(c.events);
+    return E;
+  }
+  function exp3(D, files, o) {
+    o = o || {}; var out = { id: 'exp3', title: 'Two identical bakeries', measure_s: 600, cond: COND, runs: {}, causes: [] };
+    function one(c) { var E = settlement(D, c), bk = find(E, 'shop')[0].id, rep = run1(E, files, { warm: 0, measure: 600, seed: D.seed }), row = slim(rep, rep.world, bk); row.limiter = limiterOf(rep, bk, rep.world); row.access_homes = rep.world.S.env.b[bk].from_homes; row.market_footfall = rep.world.S.env.b[bk].footfall; delete row.hash; row.state_hash = rep.hash; return row; }
+    out.runs.A = one(COND.A); out.runs.B = one(COND.B); out.runs.control_1 = one(COND.A); out.runs.control_2 = one(COND.A);
+    /* cause by cause: start from B and change ONE thing to A's value at a time (the effects interact, so the pieces do not have to add up) */
+    var flips = { homes: function (c) { c.homes = COND.A.homes; }, location: function (c) { c.bakery = COND.A.bakery.slice(); c.market = COND.A.market.slice(); }, road: function (c) { c.events = c.events.filter(function (e) { return !/road/.test(e.action); }); }, power: function (c) { c.supply = COND.A.supply; } };
+    Object.keys(flips).forEach(function (k) { var c = clone(COND.B); flips[k](c); var r = one(c); out.causes.push({ change: k, net_pm: r.bakery_net_pm, delta_net_pm: r6(r.bakery_net_pm - out.runs.B.bakery_net_pm), demand_pm: r.bakery_demand_pm, sold_pm: r.bakery_sold_pm, missed_visits: r.deliveries_missed_visits, brownout_share: r.brownout_share }); });
+    var all = clone(COND.B); Object.keys(flips).forEach(function (k) { flips[k](all); }); var ra = one(all);
+    out.causes.push({ change: 'all four (should equal A)', net_pm: ra.bakery_net_pm, delta_net_pm: r6(ra.bakery_net_pm - out.runs.B.bakery_net_pm), demand_pm: ra.bakery_demand_pm, sold_pm: ra.bakery_sold_pm, missed_visits: ra.deliveries_missed_visits, brownout_share: ra.brownout_share });
+    return out;
+  }
+
+  /* ---------------- plain-language explanations built from the numbers (the page and the results file both use these) ---------------- */
+  function explain1(r) {
+    var R = r.rows, a = R[0], z = R[R.length - 1], out = [], i;
+    out.push('Demand rises with every home added: ' + R.map(function (x) { return x.bakery_demand_pm.toFixed(1); }).join(', ') + ' loaves a minute at ' + R.map(function (x) { return x.homes; }).join(', ') + ' homes.');
+    out.push('It rises more slowly than the number of residents: demand per resident falls from ' + (a.bakery_demand_pm / a.residents).toFixed(2) + ' to ' + (R[3].bakery_demand_pm / R[3].residents).toFixed(2) + ' (2 to 8 homes), because each new home stands further from the bakery and distance decay cuts what it buys.');
+    out.push('Workers are the first limit, but not for the bakery: with ' + a.homes + ' homes only ' + a.employed + ' of ' + a.jobs + ' job places can be filled (half of each home works). The bakery is hired first and is fully staffed (' + a.staff.bakery + '); the workshop runs on ' + a.staff.workshop + '. From ' + R[1].homes + ' homes every place is filled and more homes add customers, not staff.');
+    for (i = 0; i < R.length; i++) if (R[i].brownout_avg_factor < 0.999) { out.push('Power is the next limit: at ' + R[i].homes + ' homes the grid draw is ' + R[i].grid_draw_kw.toFixed(1) + ' kW against a ' + R[i].grid_supply_kw.toFixed(1) + ' kW supply, so every building runs at ' + Math.round(R[i].brownout_avg_factor * 100) + '% power and the bakery bakes slower.'); break; }
+    for (i = 0; i < R.length; i++) if (R[i].bakery_lost_pm >= 0.5) { out.push('The bakery itself is the last limit: at ' + R[i].homes + ' homes demand (' + R[i].bakery_demand_pm.toFixed(1) + ') is above what it can sell (' + R[i].bakery_sold_pm.toFixed(1) + ') and ' + R[i].bakery_lost_pm.toFixed(1) + ' customers a minute leave empty-handed (its capacity is ' + R[i].bakery_capacity_pm.toFixed(1) + ' a minute and power already slows it).'); break; }
+    out.push('Income per minute at the bakery: ' + R.map(function (x) { return x.bakery_income_pm.toFixed(1); }).join(', ') + '; net per minute: ' + R.map(function (x) { return x.bakery_net_pm.toFixed(1); }).join(', ') + '.');
+    return out;
+  }
+  function explain2(r) {
+    var out = [], u = r.upgrades.stone_deck_oven, c = r.upgrades.cool_store_room, f = u.by_homes[r.few], m = u.by_homes[r.many], cf = c.by_homes[r.few], cm = c.by_homes[r.many];
+    out.push('Stone deck oven (40 coins): at ' + r.few + ' homes net per minute ' + f.net_base.toFixed(2) + ' to ' + f.net_upgrade.toFixed(2) + ', at ' + r.many + ' homes ' + m.net_base.toFixed(2) + ' to ' + m.net_upgrade.toFixed(2) + '. The extra baking capacity is not used: the bakery sells ' + f.sold_base.toFixed(1) + ' and ' + m.sold_base.toFixed(1) + ' a minute and its original capacity is 25.7, so the faster oven finds no extra customers.');
+    out.push('The oven also draws 2 kW more, which deepens the brownout (' + r.many + ' homes: average power ' + (m.brownout_base * 100).toFixed(0) + '% to ' + (m.brownout_upgrade * 100).toFixed(0) + '%). Answer from the numbers: NO, it does not become profitable with this district data. ' + (u.break_even_homes_payback_within_60_min == null ? 'There is no break-even number of homes between 1 and 8.' : 'Break-even at ' + u.break_even_homes_payback_within_60_min + ' homes.'));
+    out.push('Cool store room (30 coins): net per minute ' + cf.net_base.toFixed(2) + ' to ' + cf.net_upgrade.toFixed(2) + ' (' + r.few + ' homes) and ' + cm.net_base.toFixed(2) + ' to ' + cm.net_upgrade.toFixed(2) + ' (' + r.many + ' homes). It adds ' + cf.extra_wages_pm.toFixed(1) + ' a minute in wages and buys flour that is stockpiled, not baked (part of that is a one-off while the bigger shelf fills). Sales do not change. Answer: NO at any size of settlement tried.');
+    r.sensitivity.forEach(function (s) { out.push('Sensitivity (not the base data): if each resident wanted ' + s.per_resident_loaf + ' loaves a minute, the oven would repay its cost within 60 minutes ' + (s.stone_deck_oven_break_even_homes_payback_within_60_min == null ? 'at no homes count tried' : 'from ' + s.stone_deck_oven_break_even_homes_payback_within_60_min + ' homes') + '. It only pays when demand is above the old capacity.'); });
+    return out;
+  }
+  function explain3(r) {
+    var A = r.runs.A, B = r.runs.B, out = [], cz = {}; r.causes.forEach(function (c) { cz[c.change] = c; });
+    out.push('Control: two bakeries in condition A give the same numbers to the last digit (net ' + r.runs.control_1.bakery_net_pm.toFixed(2) + ' each), so every difference below comes from the neighbourhood, not from luck or the recipe.');
+    out.push('Result: bakery A nets ' + A.bakery_net_pm.toFixed(1) + ' a minute, bakery B ' + B.bakery_net_pm.toFixed(1) + '. Demand ' + A.bakery_demand_pm.toFixed(1) + ' against ' + B.bakery_demand_pm.toFixed(1) + '; sold ' + A.bakery_sold_pm.toFixed(1) + ' against ' + B.bakery_sold_pm.toFixed(1) + '; missed cart visits ' + A.deliveries_missed_visits + ' against ' + B.deliveries_missed_visits + '; brownout time ' + Math.round(A.brownout_share * 100) + '% against ' + Math.round(B.brownout_share * 100) + '%; spoiled ' + A.spoiled + ' and ' + B.spoiled + '.');
+    out.push('Cause 1, homes: A has 4 homes (16 residents), B has 2 (8). Giving B the 4 homes alone moves its net by ' + cz.homes.delta_net_pm.toFixed(1) + ' a minute (demand ' + cz.homes.demand_pm.toFixed(1) + ').');
+    out.push('Cause 2, location: A stands next to the market and the homes, B at the far end of the street. Moving only the bakery and the market to A\'s places moves B\'s net by ' + cz.location.delta_net_pm.toFixed(1) + ' (demand ' + cz.location.demand_pm.toFixed(1) + '): shorter road distance, more footfall and market visitors.');
+    out.push('Cause 3, the blocked road: for 180 s B is cut off, its customers cannot come (demand is 0 then) and ' + B.deliveries_missed_visits + ' cart visits are missed. Opening it alone moves B\'s net by ' + cz.road.delta_net_pm.toFixed(1) + ' (demand ' + cz.road.demand_pm.toFixed(1) + ' against ' + B.bakery_demand_pm.toFixed(1) + '). The missed carts did not starve the oven: B still made ' + B.bakery_made_pm.toFixed(1) + ' loaves a minute against ' + B.bakery_sold_pm.toFixed(1) + ' sold, so the shelves held enough flour for the gap. The cost of the road is lost customers.');
+    out.push('Cause 4, the power margin: both are hit by the same 20% grid dip; A has a ' + (A.grid_supply_kw - A.grid_draw_kw).toFixed(1) + ' kW margin and does not feel it, B browns out for ' + Math.round(B.brownout_share * 100) + '% of the run. Giving B A\'s margin alone changes its net by ' + cz.power.delta_net_pm.toFixed(2) + ': B sells so little that slower baking still keeps up. Power matters only to a bakery that is close to its capacity.');
+    out.push('The four changes are not additive (they interact): ' + ['homes', 'location', 'road', 'power'].map(function (k) { return k + ' ' + (cz[k].delta_net_pm >= 0 ? '+' : '') + cz[k].delta_net_pm.toFixed(1); }).join(', ') + '; all four together ' + (cz['all four (should equal A)'].delta_net_pm >= 0 ? '+' : '') + cz['all four (should equal A)'].delta_net_pm.toFixed(1) + ' and B becomes A exactly.');
+    return out;
+  }
+
+  return { make: make, run: run, step: stepOnce, snap: snap, between: between, hash: hash, headline: headline, setRoad: setRoad, setScale: setScale, addHome: addHome, removeHome: removeHome, applySidecar: applySidecar,
+    refresh: function (W) { W.S.env = computeEnv(W); return W.S.env; }, withHomes: withHomes, settlement: settlement, applyBranches: applyBranches, run1: run1, exp1: exp1, exp2: exp2, exp3: exp3, explain1: explain1, explain2: explain2, explain3: explain3, COND: COND, clock: clock, byId: byId, note: note };
+});
+
+</script>
+<script>
+/* Job type SWEEP (v0): a deterministic parameter sweep of the City Lab district. Pure JS, no DOM, no network, no randomness, no generated code: it only calls the existing
+   district code (district.js, sim.js, validate.js). The SAME file runs in Node (the cloud, to make the expected figures) and in a browser (a robot browser on any machine,
+   or an iPad). A task is DATA: {id, district, seed, warm_s, measure_s, grid:{homes:[..], loaf_rate:[..], supply_kw:[..]}}. The result is a table of rows plus a result hash.
+   Anything outside the task's fields is ignored; the task is never evaluated. Same task + same code = byte-identical result on every machine. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('../../district.js'), require('../../validate.js'));
+  else root.SweepCore = factory(root.CityDistrict, root.CityValidate);
+})(typeof self !== 'undefined' ? self : this, function (DI, VAL) {
+  'use strict';
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function r6(v) { return Math.round(v * 1e6) / 1e6; }
+  function fnv(s) { var h = 0x811c9dc5, i; for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return ('00000000' + (h >>> 0).toString(16)).slice(-8); }
+  function sum(o) { var s = 0; Object.keys(o || {}).forEach(function (k) { s += o[k]; }); return s; }
+  function shopOf(W) { return W.S.b.filter(function (b) { return b.kind === 'shop'; })[0]; }
+  function grab(W) { var b = shopOf(W), m = b.sim; return { t: W.S.t, income: m.sales.income, sold: m.sales.sold, made: m.prod.made, power: m.costs.power, wages: m.costs.wages, ingr: m.costs.ingredients, demand: b.acc.demand }; }
+  function checkInvariants(W, row) {   /* things that must always hold; any breach is reported, never hidden */
+    var bad = [], b = shopOf(W), m = b.sim;
+    Object.keys(m.stock).forEach(function (k) { if (!(m.stock[k] >= -1e-9)) bad.push('negative stock ' + k); if (m.stock[k] > W.R[b.id].systems.storage[k] + 1e-6) bad.push('stock over capacity ' + k); });
+    Object.keys(row).forEach(function (k) { if (typeof row[k] === 'number' && !isFinite(row[k])) bad.push('not finite: ' + k); });
+    if (W.S.env.power.factor < 0 || W.S.env.power.factor > 1 + 1e-9) bad.push('power factor out of range');
+    return bad;
+  }
+  function one(task, data, homes, loaf, supply) {
+    var D = clone(data.districts[task.district]);
+    var E = DI.withHomes(D, homes); E.coefficients.per_resident_per_min.loaf = loaf; E.power.supply_kw = supply;
+    var mk = DI.make(E, data.files, { seed: task.seed });
+    if (!mk.ok) return { homes: homes, loaf_rate: loaf, supply_kw: supply, error: mk.errors.join('; ') };
+    var W = mk.W; DI.run(W, task.warm_s); var a = grab(W); DI.run(W, task.measure_s); var z = grab(W), mins = (z.t - a.t) / 60;
+    var cost = (z.power - a.power + z.wages - a.wages + z.ingr - a.ingr) / mins;
+    var row = { homes: homes, loaf_rate: loaf, supply_kw: supply, demand_pm: r6((z.demand - a.demand) / mins), sold_pm: r6((z.sold - a.sold) / mins), made_pm: r6((z.made - a.made) / mins), income_pm: r6((z.income - a.income) / mins),
+      cost_pm: r6(cost), net_pm: r6((z.income - a.income) / mins - cost), power_factor: r6(W.S.env.power.factor), state_hash: DI.hash(W) };
+    var bad = checkInvariants(W, row); if (bad.length) row.invariant_breach = bad;
+    return row;
+  }
+  /* the canary: the first cell is run twice and must be identical (determinism on THIS machine); then the full grid */
+  function run(task, data, progress) {
+    var cells = [], g = task.grid; g.homes.forEach(function (h) { g.loaf_rate.forEach(function (l) { g.supply_kw.forEach(function (s) { cells.push([h, l, s]); }); }); });
+    var c1 = one(task, data, cells[0][0], cells[0][1], cells[0][2]), c2 = one(task, data, cells[0][0], cells[0][1], cells[0][2]);
+    var canary = JSON.stringify(c1) === JSON.stringify(c2);
+    var rows = [], breaches = 0, i;
+    for (i = 0; i < cells.length; i++) { var r = one(task, data, cells[i][0], cells[i][1], cells[i][2]); if (r.invariant_breach || r.error) breaches++; rows.push(r); if (progress && i % 10 === 0) progress(i + 1, cells.length); }
+    var text = JSON.stringify(rows);
+    return { job: 'sweep', task_id: task.id, cells: rows.length, canary_identical: canary, rows_with_breach_or_error: breaches, result_hash: fnv(text), rows: rows };
+  }
+  return { run: run, one: one, fnv: fnv };
+});
+
+</script>
+<script>
+(function () {
+  var TASK = {"id":"sweep-1","district":"patch_row_hand","district_path":"districts/patch_row_hand.json","seed":7,"warm_s":1800,"measure_s":600,"grid":{"homes":[1,2,3,4,5,6,7,8,9,10,11,12],"loaf_rate":[1,1.2,1.5,1.8,2.4,3],"supply_kw":[10,13,16]}}; var DATA = {"districts":{"patch_row_hand":{"schema":"city_district","version":0,"id":"patch_row_hand","name":"Patch Row (hand-made buildings)","seed":7,"grid":{"cols":8,"rows":6},"roads":[{"cell":[0,2],"open":true},{"cell":[1,2],"open":true},{"cell":[2,2],"open":true},{"cell":[3,2],"open":true},{"cell":[4,2],"open":true},{"cell":[5,2],"open":true},{"cell":[6,2],"open":true},{"cell":[7,2],"open":true},{"cell":[3,3],"open":true},{"cell":[3,4],"open":true},{"cell":[0,4],"open":true},{"cell":[1,4],"open":true},{"cell":[2,4],"open":true}],"depot":[0,2],"power":{"supply_kw":13,"home_base_kw":0.2,"per_resident_kw":0.05},"coefficients":{"per_resident_per_min":{"loaf":1.2,"fruit":0.5},"wage_spend_boost":0.25,"work_fraction":0.5,"decay_per_cell":0.85,"max_reach_cells":10,"max_commute_cells":10,"footfall":{"market_bonus":0.15,"decay_per_cell":0.8,"cap":0.4},"market_visitors_per_min":{"loaf":3}},"home_template":{"recipe":"recipes/home_cottage.json","capacity":4},"home_slots":[[2,3],[2,1],[1,3],[1,1],[0,3],[0,1],[1,5],[2,5],[0,5],[3,1]],"buildings":[{"id":"bakery","recipe":"recipes/bakery.json","cell":[5,3],"kind":"shop","sidecars":[],"employs":true,"hire_priority":1},{"id":"workshop","recipe":"recipes/workshop.json","cell":[7,3],"kind":"workshop","sidecars":[],"employs":true,"hire_priority":2},{"id":"market","recipe":"recipes/market_hall.json","cell":[6,1],"kind":"market","sidecars":[]},{"id":"shed","recipe":"recipes/power_shed.json","cell":[4,1],"kind":"shed","sidecars":[]},{"id":"home_1","recipe":"recipes/home_cottage.json","cell":[2,3],"kind":"home","sidecars":[],"residents":{"capacity":4,"now":4}},{"id":"home_2","recipe":"recipes/home_cottage.json","cell":[2,1],"kind":"home","sidecars":[],"residents":{"capacity":4,"now":4}},{"id":"home_3","recipe":"recipes/home_cottage.json","cell":[1,3],"kind":"home","sidecars":[],"residents":{"capacity":4,"now":4}},{"id":"home_4","recipe":"recipes/home_cottage.json","cell":[1,1],"kind":"home","sidecars":[],"residents":{"capacity":4,"now":4}}],"events":[]}},"files":{"recipes/bakery.json":{"schema":"rtk.building","version":1,"id":"bakery","name":"Miniature Bakery","footprint":{"w":2.4,"d":1.8},"parts":[{"id":"floor","kind":"floor","pos":[0,0,0],"size":[2.4,0.05,1.8],"material":"wood_pale","stage":"frame","needs":[],"tag":"floor","replaceable":false},{"id":"post.fl","kind":"post","pos":[-1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.fr","kind":"post","pos":[1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.bl","kind":"post","pos":[-1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.br","kind":"post","pos":[1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"beam.f","kind":"beam","pos":[0,0.95,0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.fl","post.fr"],"tag":"beam","replaceable":false},{"id":"beam.b","kind":"beam","pos":[0,0.95,-0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.bl","post.br"],"tag":"beam","replaceable":false},{"id":"beam.l","kind":"beam","pos":[-1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fl","post.bl"],"tag":"beam","replaceable":false},{"id":"beam.r","kind":"beam","pos":[1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fr","post.br"],"tag":"beam","replaceable":false},{"id":"panel.f0","kind":"panel","pos":[-0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.f1","kind":"panel","pos":[0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.b0","kind":"panel","pos":[-0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.b1","kind":"panel","pos":[0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.l0","kind":"panel","pos":[-1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.l1","kind":"panel","pos":[-1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r0","kind":"panel","pos":[1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r1","kind":"panel","pos":[1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"door","kind":"door","pos":[0,0.05,0.8],"size":[0.38,0.9,0.05],"material":"paint_blue","stage":"walls","needs":["beam.f"],"tag":"door","replaceable":true},{"id":"window.0","kind":"window","pos":[-0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f0"],"tag":"window","replaceable":true},{"id":"window.1","kind":"window","pos":[0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f1"],"tag":"window","replaceable":true},{"id":"shutter.0","kind":"shutter","pos":[-0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_blue","stage":"trim","needs":["window.0"],"tag":"shutter","replaceable":true},{"id":"shutter.1","kind":"shutter","pos":[0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_blue","stage":"trim","needs":["window.1"],"tag":"shutter","replaceable":true},{"id":"gable.l","kind":"gable","pos":[-1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"gable","replaceable":false,"rotY":0},{"id":"gable.r","kind":"gable","pos":[1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"gable","replaceable":false},{"id":"rafter.f0","kind":"rafter","pos":[-0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b0","kind":"rafter","pos":[-0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f1","kind":"rafter","pos":[0,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b1","kind":"rafter","pos":[0,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f2","kind":"rafter","pos":[0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b2","kind":"rafter","pos":[0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"tile.f00","kind":"roof_tile","pos":[-0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.f10","kind":"roof_tile","pos":[-0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.b00","kind":"roof_tile","pos":[-0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b10","kind":"roof_tile","pos":[-0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f01","kind":"roof_tile","pos":[0,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.f11","kind":"roof_tile","pos":[0,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.b01","kind":"roof_tile","pos":[0,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b11","kind":"roof_tile","pos":[0,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f02","kind":"roof_tile","pos":[0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.f12","kind":"roof_tile","pos":[0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.b02","kind":"roof_tile","pos":[0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b12","kind":"roof_tile","pos":[0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"ridge","kind":"ridge","pos":[0,1.52,0],"size":[2.1,0.06,0.1],"material":"wood_dark","stage":"frame","needs":["rafter.f0","rafter.f1","rafter.f2","rafter.b0","rafter.b1","rafter.b2"],"tag":"ridge","replaceable":false,"needsMin":1},{"id":"chimney","kind":"chimney","pos":[-0.35,1.3,-0.24],"size":[0.3,0.55,0.26],"material":"brick","stage":"trim","needs":["tile.b10","tile.b11"],"tag":"chimney","replaceable":true},{"id":"awning","kind":"awning","pos":[0,0.72,1.04],"size":[2,0.3,0.4],"material":"canvas","stage":"trim","needs":["beam.f"],"tag":"awning","replaceable":true,"variant":1},{"id":"sign","kind":"sign","pos":[0.62,0.48,1.22],"size":[0.6,0.22,0.04],"material":"wood_pale","stage":"trim","needs":["awning"],"tag":"sign","replaceable":true,"label":"BAKERY"},{"id":"oven","kind":"oven","pos":[-0.55,0.05,-0.5],"size":[0.7,0.6,0.5],"material":"brick","stage":"walls","needs":["floor"],"tag":"oven","replaceable":true},{"id":"counter","kind":"counter","pos":[0.45,0.05,0.45],"size":[1,0.4,0.3],"material":"wood","stage":"walls","needs":["floor"],"tag":"counter","replaceable":true},{"id":"sack.a","kind":"sack","pos":[0.85,0.05,-0.55],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true},{"id":"sack.b","kind":"sack","pos":[0.62,0.05,-0.6],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true},{"id":"sack.c","kind":"sack","pos":[0.85,0.27,-0.55],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["sack.a"],"tag":"sack","replaceable":true},{"id":"barrel","kind":"barrel","pos":[0.3,0.05,-0.6],"size":[0.2,0.28,0.2],"material":"wood_dark","stage":"walls","needs":["floor"],"tag":"barrel","replaceable":true},{"id":"meter","kind":"meter_box","pos":[0.3,0.5,-0.735],"size":[0.14,0.2,0.08],"material":"tin","stage":"walls","needs":["panel.b1"],"tag":"meter","replaceable":true},{"id":"wire","kind":"wire","pos":[0.04,0.62,-0.735],"size":[0.45,0.03,0.03],"material":"iron","stage":"walls","needs":["meter"],"tag":"wire","replaceable":true},{"id":"crate.a","kind":"crate","pos":[1,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"crate","replaceable":true},{"id":"crate.b","kind":"crate","pos":[1,0.2,1.05],"size":[0.2,0.2,0.2],"material":"wood_pale","stage":"walls","needs":["crate.a"],"tag":"crate","replaceable":true},{"id":"crate.c","kind":"crate","pos":[0.74,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"crate","replaceable":true}],"systems":{"power":{"demand_kw":6,"supply_kw":8,"wire_part":"wire","meter_part":"meter"},"jobs":[{"role":"baker","count":2,"station_part":"oven"},{"role":"seller","count":1,"station_part":"counter"}],"production":{"role":"baker","inputs":{"flour":3,"water":2,"fuel":1},"outputs":{"loaf":12},"batch_seconds":28,"needs_power":true,"needs_parts":["oven"]},"storage":{"flour":60,"water":40,"fuel":30,"loaf":60},"start_stock":{"flour":20,"water":12,"fuel":6},"deliveries":[{"item":"flour","amount":12,"every_seconds":70,"via":"cart","drop_part":"crate.a"},{"item":"water","amount":8,"every_seconds":70,"via":"cart","drop_part":"crate.a"},{"item":"fuel","amount":4,"every_seconds":70,"via":"cart","drop_part":"crate.a"}],"sales":{"item":"loaf","price":4,"demand_per_minute":20,"role":"seller","noise":0},"costs":{"power_per_kwh":24,"wage_per_worker_per_minute":5,"ingredient_prices":{"flour":1.5,"water":0.2,"fuel":2.5},"repair_material_price":3},"repair":{"seconds":6,"material_units":2,"walk_speed":0.35,"worker_roles":["baker","seller"],"seconds_by_tag":{"oven":20,"roof":3,"awning":8,"wire":5,"meter":5,"post":12,"beam":12}},"effects":{"spoil":[{"tag":"roof","items":{"flour":0.25}}],"demand":[{"tag":"awning","loss":0.15}]},"inspect":{"labels":{"floor":"Floor slab","post.fl":"Front left post","post.fr":"Front right post","post.bl":"Back left post","post.br":"Back right post","beam.f":"Front beam","beam.b":"Back beam","beam.l":"Left beam","beam.r":"Right beam","panel.f0":"Front wall left","panel.f1":"Front wall right","panel.b0":"Back wall left","panel.b1":"Back wall right","panel.l0":"Left wall back","panel.l1":"Left wall front","panel.r0":"Right wall back","panel.r1":"Right wall front","door":"Shop door","window.0":"Left window","window.1":"Right window","shutter.0":"Left shutter","shutter.1":"Right shutter","gable.l":"Left gable","gable.r":"Right gable","ridge":"Roof ridge","chimney":"Chimney","awning":"Awning","sign":"Shop sign","oven":"Bread oven","counter":"Sales counter","sack.a":"Flour sack 1","sack.b":"Flour sack 2","sack.c":"Flour sack 3","barrel":"Water barrel","meter":"Meter box","wire":"Power cable","crate.a":"Delivery crate 1","crate.b":"Delivery crate 2","crate.c":"Delivery crate 3","rafter.f0":"Rafter F1","tile.f00":"Eave tile F1","tile.f10":"Upper tile F1","rafter.b0":"Rafter B1","tile.b00":"Eave tile B1","tile.b10":"Upper tile B1","rafter.f1":"Rafter F2","tile.f01":"Eave tile F2","tile.f11":"Upper tile F2","rafter.b1":"Rafter B2","tile.b01":"Eave tile B2","tile.b11":"Upper tile B2","rafter.f2":"Rafter F3","tile.f02":"Eave tile F3","tile.f12":"Upper tile F3","rafter.b2":"Rafter B3","tile.b02":"Eave tile B3","tile.b12":"Upper tile B3"}}}},"recipes/workshop.json":{"schema":"rtk.building","version":1,"id":"workshop","name":"Workshop","footprint":{"w":2.4,"d":1.8},"parts":[{"id":"floor","kind":"floor","pos":[0,0,0],"size":[2.4,0.05,1.8],"material":"wood","stage":"frame","needs":[],"tag":"floor","replaceable":false},{"id":"post.fl","kind":"post","pos":[-1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.fr","kind":"post","pos":[1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.bl","kind":"post","pos":[-1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.br","kind":"post","pos":[1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"beam.f","kind":"beam","pos":[0,0.95,0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.fl","post.fr"],"tag":"beam","replaceable":false},{"id":"beam.b","kind":"beam","pos":[0,0.95,-0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.bl","post.br"],"tag":"beam","replaceable":false},{"id":"beam.l","kind":"beam","pos":[-1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fl","post.bl"],"tag":"beam","replaceable":false},{"id":"beam.r","kind":"beam","pos":[1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fr","post.br"],"tag":"beam","replaceable":false},{"id":"panel.f0","kind":"panel","pos":[-0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.f1","kind":"panel","pos":[0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.b0","kind":"panel","pos":[-0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.b1","kind":"panel","pos":[0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.l0","kind":"panel","pos":[-1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.l1","kind":"panel","pos":[-1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r0","kind":"panel","pos":[1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r1","kind":"panel","pos":[1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"wood","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"door","kind":"door","pos":[0,0.05,0.8],"size":[0.38,0.9,0.05],"material":"paint_red","stage":"walls","needs":["beam.f"],"tag":"door","replaceable":true},{"id":"window.0","kind":"window","pos":[-0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f0"],"tag":"window","replaceable":true},{"id":"window.1","kind":"window","pos":[0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f1"],"tag":"window","replaceable":true},{"id":"shutter.0","kind":"shutter","pos":[-0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"wood_dark","stage":"trim","needs":["window.0"],"tag":"shutter","replaceable":true},{"id":"shutter.1","kind":"shutter","pos":[0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"wood_dark","stage":"trim","needs":["window.1"],"tag":"shutter","replaceable":true},{"id":"gable.l","kind":"gable","pos":[-1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"wood","stage":"walls","needs":["beam.l"],"tag":"gable","replaceable":false,"rotY":0},{"id":"gable.r","kind":"gable","pos":[1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"wood","stage":"walls","needs":["beam.r"],"tag":"gable","replaceable":false},{"id":"rafter.f0","kind":"rafter","pos":[-0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b0","kind":"rafter","pos":[-0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f1","kind":"rafter","pos":[0,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b1","kind":"rafter","pos":[0,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f2","kind":"rafter","pos":[0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b2","kind":"rafter","pos":[0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"tile.f00","kind":"roof_tile","pos":[-0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.f10","kind":"roof_tile","pos":[-0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.b00","kind":"roof_tile","pos":[-0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b10","kind":"roof_tile","pos":[-0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f01","kind":"roof_tile","pos":[0,1.02,0.713],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.f11","kind":"roof_tile","pos":[0,1.27,0.238],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.b01","kind":"roof_tile","pos":[0,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b11","kind":"roof_tile","pos":[0,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f02","kind":"roof_tile","pos":[0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.f12","kind":"roof_tile","pos":[0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.b02","kind":"roof_tile","pos":[0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b12","kind":"roof_tile","pos":[0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"tin","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"ridge","kind":"ridge","pos":[0,1.52,0],"size":[2.1,0.06,0.1],"material":"wood_dark","stage":"frame","needs":["rafter.f0","rafter.f1","rafter.f2","rafter.b0","rafter.b1","rafter.b2"],"tag":"ridge","replaceable":false,"needsMin":1},{"id":"chimney","kind":"chimney","pos":[-0.35,1.3,-0.24],"size":[0.3,0.55,0.26],"material":"brick","stage":"trim","needs":["tile.b10","tile.b11"],"tag":"chimney","replaceable":true},{"id":"bench","kind":"counter","pos":[-0.5,0.05,-0.5],"size":[1,0.4,0.35],"material":"wood","stage":"walls","needs":["floor"],"tag":"bench","replaceable":true},{"id":"tool_crate","kind":"crate","pos":[0.55,0.05,0],"size":[0.3,0.25,0.25],"material":"wood","stage":"walls","needs":["floor"],"tag":"stock","replaceable":true},{"id":"sign","kind":"sign","pos":[0,0.62,0.85],"size":[0.5,0.2,0.04],"material":"wood_pale","stage":"trim","needs":["door"],"tag":"sign","replaceable":true,"label":"WORKS"},{"id":"meter","kind":"meter_box","pos":[0.3,0.5,-0.735],"size":[0.14,0.2,0.08],"material":"tin","stage":"walls","needs":["panel.b1"],"tag":"meter","replaceable":true},{"id":"cable","kind":"wire","pos":[0.04,0.62,-0.735],"size":[0.45,0.03,0.03],"material":"iron","stage":"walls","needs":["meter"],"tag":"wire","replaceable":true},{"id":"barrel","kind":"barrel","pos":[0.3,0.05,-0.6],"size":[0.2,0.28,0.2],"material":"wood_dark","stage":"walls","needs":["floor"],"tag":"barrel","replaceable":true},{"id":"crate.c","kind":"crate","pos":[0.74,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"stock","replaceable":true},{"id":"sack.a","kind":"sack","pos":[0.85,0.05,-0.55],"size":[0.18,0.22,0.14],"material":"wood_pale","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true}],"systems":{"jobs":[{"role":"maker","count":1,"station_part":"bench"},{"role":"helper","count":1,"station_part":"tool_crate"}],"storage":{"wood":60,"tools":36},"costs":{"power_per_kwh":2,"wage_per_worker_per_minute":2.5,"ingredient_prices":{"wood":1.6},"repair_material_price":3},"repair":{"seconds":15,"material_units":1,"walk_speed":1,"worker_roles":["maker","helper"]},"inspect":{"labels":{"floor":"Floor slab","post.fl":"Post FL","post.fr":"Post FR","post.bl":"Post BL","post.br":"Post BR","beam.f":"Beam F","beam.b":"Beam B","beam.l":"Beam L","beam.r":"Beam R","panel.f0":"Wall F0","panel.f1":"Wall F1","panel.b0":"Wall B0","panel.b1":"Wall B1","panel.l0":"Wall L0","panel.l1":"Wall L1","panel.r0":"Wall R0","panel.r1":"Wall R1","door":"Door","window.0":"Window 0","window.1":"Window 1","shutter.0":"Shutter 0","shutter.1":"Shutter 1","gable.l":"Gable L","gable.r":"Gable R","rafter.f0":"Rafter F0","rafter.b0":"Rafter B0","rafter.f1":"Rafter F1","rafter.b1":"Rafter B1","rafter.f2":"Rafter F2","rafter.b2":"Rafter B2","tile.f00":"Roof tile F00","tile.f10":"Roof tile F10","tile.b00":"Roof tile B00","tile.b10":"Roof tile B10","tile.f01":"Roof tile F01","tile.f11":"Roof tile F11","tile.b01":"Roof tile B01","tile.b11":"Roof tile B11","tile.f02":"Roof tile F02","tile.f12":"Roof tile F12","tile.b02":"Roof tile B02","tile.b12":"Roof tile B12","ridge":"Roof ridge","chimney":"Chimney","bench":"Counter","tool_crate":"Crate","sign":"Sign","meter":"Meter box","cable":"Power cable","barrel":"Barrel","crate.c":"Crate C","sack.a":"Sack A"}},"start_stock":{"wood":16},"production":{"role":"maker","inputs":{"wood":3},"outputs":{"tools":2},"batch_seconds":38,"needs_power":true,"needs_parts":["bench"]},"deliveries":[{"item":"wood","amount":12,"every_seconds":100,"via":"cart","drop_part":"door"}],"sales":{"item":"tools","price":7,"demand_per_minute":3,"role":"helper"},"power":{"demand_kw":3,"supply_kw":3,"wire_part":"cable","meter_part":"meter"}}},"recipes/market_hall.json":{"schema":"rtk.building","version":1,"id":"market_hall","name":"Market Hall","footprint":{"w":2.4,"d":1.8},"parts":[{"id":"floor","kind":"floor","pos":[0,0,0],"size":[2.4,0.05,1.8],"material":"wood","stage":"frame","needs":[],"tag":"floor","replaceable":false},{"id":"post.fl","kind":"post","pos":[-1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.fr","kind":"post","pos":[1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.bl","kind":"post","pos":[-1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.br","kind":"post","pos":[1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"beam.f","kind":"beam","pos":[0,0.95,0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.fl","post.fr"],"tag":"beam","replaceable":false},{"id":"beam.b","kind":"beam","pos":[0,0.95,-0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.bl","post.br"],"tag":"beam","replaceable":false},{"id":"beam.l","kind":"beam","pos":[-1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fl","post.bl"],"tag":"beam","replaceable":false},{"id":"beam.r","kind":"beam","pos":[1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fr","post.br"],"tag":"beam","replaceable":false},{"id":"panel.f0","kind":"panel","pos":[-0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.f1","kind":"panel","pos":[0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.b0","kind":"panel","pos":[-0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.b1","kind":"panel","pos":[0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.l0","kind":"panel","pos":[-1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.l1","kind":"panel","pos":[-1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r0","kind":"panel","pos":[1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r1","kind":"panel","pos":[1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"wood_pale","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"door","kind":"door","pos":[0,0.05,0.8],"size":[0.38,0.9,0.05],"material":"paint_red","stage":"walls","needs":["beam.f"],"tag":"door","replaceable":true},{"id":"window.0","kind":"window","pos":[-0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f0"],"tag":"window","replaceable":true},{"id":"window.1","kind":"window","pos":[0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f1"],"tag":"window","replaceable":true},{"id":"shutter.0","kind":"shutter","pos":[-0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_red","stage":"trim","needs":["window.0"],"tag":"shutter","replaceable":true},{"id":"shutter.1","kind":"shutter","pos":[0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_red","stage":"trim","needs":["window.1"],"tag":"shutter","replaceable":true},{"id":"gable.l","kind":"gable","pos":[-1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"wood_pale","stage":"walls","needs":["beam.l"],"tag":"gable","replaceable":false,"rotY":0},{"id":"gable.r","kind":"gable","pos":[1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"wood_pale","stage":"walls","needs":["beam.r"],"tag":"gable","replaceable":false},{"id":"rafter.f0","kind":"rafter","pos":[-0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b0","kind":"rafter","pos":[-0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f1","kind":"rafter","pos":[0,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b1","kind":"rafter","pos":[0,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f2","kind":"rafter","pos":[0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b2","kind":"rafter","pos":[0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"tile.f00","kind":"roof_tile","pos":[-0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.f10","kind":"roof_tile","pos":[-0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.b00","kind":"roof_tile","pos":[-0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b10","kind":"roof_tile","pos":[-0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f01","kind":"roof_tile","pos":[0,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.f11","kind":"roof_tile","pos":[0,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.b01","kind":"roof_tile","pos":[0,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b11","kind":"roof_tile","pos":[0,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f02","kind":"roof_tile","pos":[0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.f12","kind":"roof_tile","pos":[0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.b02","kind":"roof_tile","pos":[0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b12","kind":"roof_tile","pos":[0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_blue","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"ridge","kind":"ridge","pos":[0,1.52,0],"size":[2.1,0.06,0.1],"material":"wood_dark","stage":"frame","needs":["rafter.f0","rafter.f1","rafter.f2","rafter.b0","rafter.b1","rafter.b2"],"tag":"ridge","replaceable":false,"needsMin":1},{"id":"chimney","kind":"chimney","pos":[-0.35,1.3,-0.24],"size":[0.3,0.55,0.26],"material":"brick","stage":"trim","needs":["tile.b10","tile.b11"],"tag":"chimney","replaceable":true},{"id":"awning","kind":"awning","pos":[0,0.72,1.04],"size":[2,0.3,0.4],"material":"canvas","stage":"trim","needs":["beam.f"],"tag":"awning","replaceable":true,"variant":2},{"id":"sign","kind":"sign","pos":[0.62,0.48,1.22],"size":[0.6,0.22,0.04],"material":"wood_pale","stage":"trim","needs":["awning"],"tag":"sign","replaceable":true,"label":"MARKET"},{"id":"counter","kind":"counter","pos":[0.45,0.05,0.45],"size":[1,0.4,0.3],"material":"wood","stage":"walls","needs":["floor"],"tag":"counter","replaceable":true},{"id":"fruit_crate","kind":"crate","pos":[1,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"stock","replaceable":true},{"id":"fruit_crate2","kind":"crate","pos":[1,0.2,1.05],"size":[0.2,0.2,0.2],"material":"wood_pale","stage":"walls","needs":["fruit_crate"],"tag":"stock","replaceable":true},{"id":"fruit_crate3","kind":"crate","pos":[0.74,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"stock","replaceable":true},{"id":"barrel","kind":"barrel","pos":[0.3,0.05,-0.6],"size":[0.2,0.28,0.2],"material":"wood_dark","stage":"walls","needs":["floor"],"tag":"barrel","replaceable":true},{"id":"sack.a","kind":"sack","pos":[0.85,0.05,-0.55],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true},{"id":"sack.b","kind":"sack","pos":[0.62,0.05,-0.6],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true}],"systems":{"jobs":[{"role":"trader","count":1,"station_part":"counter"}],"storage":{"fruit":45},"costs":{"power_per_kwh":2,"wage_per_worker_per_minute":1,"ingredient_prices":{"fruit":1.1},"repair_material_price":3},"repair":{"seconds":15,"material_units":1,"walk_speed":1,"worker_roles":["trader"]},"inspect":{"labels":{"floor":"Floor slab","post.fl":"Post FL","post.fr":"Post FR","post.bl":"Post BL","post.br":"Post BR","beam.f":"Beam F","beam.b":"Beam B","beam.l":"Beam L","beam.r":"Beam R","panel.f0":"Wall F0","panel.f1":"Wall F1","panel.b0":"Wall B0","panel.b1":"Wall B1","panel.l0":"Wall L0","panel.l1":"Wall L1","panel.r0":"Wall R0","panel.r1":"Wall R1","door":"Door","window.0":"Window 0","window.1":"Window 1","shutter.0":"Shutter 0","shutter.1":"Shutter 1","gable.l":"Gable L","gable.r":"Gable R","rafter.f0":"Rafter F0","rafter.b0":"Rafter B0","rafter.f1":"Rafter F1","rafter.b1":"Rafter B1","rafter.f2":"Rafter F2","rafter.b2":"Rafter B2","tile.f00":"Roof tile F00","tile.f10":"Roof tile F10","tile.b00":"Roof tile B00","tile.b10":"Roof tile B10","tile.f01":"Roof tile F01","tile.f11":"Roof tile F11","tile.b01":"Roof tile B01","tile.b11":"Roof tile B11","tile.f02":"Roof tile F02","tile.f12":"Roof tile F12","tile.b02":"Roof tile B02","tile.b12":"Roof tile B12","ridge":"Roof ridge","chimney":"Chimney","awning":"Awning","sign":"Sign","counter":"Counter","fruit_crate":"Crate","fruit_crate2":"Crate","fruit_crate3":"Crate","barrel":"Barrel","sack.a":"Sack A","sack.b":"Sack B"}},"start_stock":{"fruit":18},"deliveries":[{"item":"fruit","amount":12,"every_seconds":70,"via":"cart","drop_part":"fruit_crate"}],"sales":{"item":"fruit","price":3,"demand_per_minute":11,"role":"trader"},"effects":{"demand":[{"tag":"awning","loss":0.25}]}}},"recipes/power_shed.json":{"schema":"rtk.building","version":1,"id":"power_shed","name":"Power Shed","footprint":{"w":2.4,"d":1.8},"parts":[{"id":"floor","kind":"floor","pos":[0,0,0],"size":[2.4,0.05,1.8],"material":"wood_pale","stage":"frame","needs":[],"tag":"floor","replaceable":false},{"id":"post.fl","kind":"post","pos":[-1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.fr","kind":"post","pos":[1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.bl","kind":"post","pos":[-1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.br","kind":"post","pos":[1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"beam.f","kind":"beam","pos":[0,0.95,0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.fl","post.fr"],"tag":"beam","replaceable":false},{"id":"beam.b","kind":"beam","pos":[0,0.95,-0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.bl","post.br"],"tag":"beam","replaceable":false},{"id":"beam.l","kind":"beam","pos":[-1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fl","post.bl"],"tag":"beam","replaceable":false},{"id":"beam.r","kind":"beam","pos":[1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fr","post.br"],"tag":"beam","replaceable":false},{"id":"panel.f0","kind":"panel","pos":[-0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.f1","kind":"panel","pos":[0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.b0","kind":"panel","pos":[-0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.b1","kind":"panel","pos":[0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.l0","kind":"panel","pos":[-1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.l1","kind":"panel","pos":[-1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r0","kind":"panel","pos":[1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r1","kind":"panel","pos":[1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"tin","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"door","kind":"door","pos":[0,0.05,0.8],"size":[0.38,0.9,0.05],"material":"paint_blue","stage":"walls","needs":["beam.f"],"tag":"door","replaceable":true},{"id":"window.0","kind":"window","pos":[-0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f0"],"tag":"window","replaceable":true},{"id":"window.1","kind":"window","pos":[0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f1"],"tag":"window","replaceable":true},{"id":"shutter.0","kind":"shutter","pos":[-0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"wood_dark","stage":"trim","needs":["window.0"],"tag":"shutter","replaceable":true},{"id":"shutter.1","kind":"shutter","pos":[0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"wood_dark","stage":"trim","needs":["window.1"],"tag":"shutter","replaceable":true},{"id":"gable.l","kind":"gable","pos":[-1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"tin","stage":"walls","needs":["beam.l"],"tag":"gable","replaceable":false,"rotY":0},{"id":"gable.r","kind":"gable","pos":[1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"tin","stage":"walls","needs":["beam.r"],"tag":"gable","replaceable":false},{"id":"rafter.f0","kind":"rafter","pos":[-0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b0","kind":"rafter","pos":[-0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f1","kind":"rafter","pos":[0,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b1","kind":"rafter","pos":[0,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f2","kind":"rafter","pos":[0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b2","kind":"rafter","pos":[0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"tile.f00","kind":"roof_tile","pos":[-0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.f10","kind":"roof_tile","pos":[-0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.b00","kind":"roof_tile","pos":[-0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b10","kind":"roof_tile","pos":[-0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f01","kind":"roof_tile","pos":[0,1.02,0.713],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.f11","kind":"roof_tile","pos":[0,1.27,0.238],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.b01","kind":"roof_tile","pos":[0,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b11","kind":"roof_tile","pos":[0,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f02","kind":"roof_tile","pos":[0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.f12","kind":"roof_tile","pos":[0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.b02","kind":"roof_tile","pos":[0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b12","kind":"roof_tile","pos":[0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"wood_dark","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"ridge","kind":"ridge","pos":[0,1.52,0],"size":[2.1,0.06,0.1],"material":"wood_dark","stage":"frame","needs":["rafter.f0","rafter.f1","rafter.f2","rafter.b0","rafter.b1","rafter.b2"],"tag":"ridge","replaceable":false,"needsMin":1},{"id":"chimney","kind":"chimney","pos":[-0.35,1.3,-0.24],"size":[0.3,0.55,0.26],"material":"brick","stage":"trim","needs":["tile.b10","tile.b11"],"tag":"chimney","replaceable":true},{"id":"control","kind":"counter","pos":[-0.4,0.05,-0.5],"size":[0.9,0.4,0.3],"material":"wood","stage":"walls","needs":["floor"],"tag":"control","replaceable":true},{"id":"meter","kind":"meter_box","pos":[0.3,0.5,-0.735],"size":[0.14,0.2,0.08],"material":"tin","stage":"walls","needs":["panel.b1"],"tag":"meter","replaceable":true},{"id":"cable","kind":"wire","pos":[0.04,0.62,-0.735],"size":[0.45,0.03,0.03],"material":"iron","stage":"walls","needs":["meter"],"tag":"wire","replaceable":true},{"id":"sign","kind":"sign","pos":[0,0.62,0.85],"size":[0.5,0.2,0.04],"material":"tin","stage":"trim","needs":["door"],"tag":"sign","replaceable":true,"label":"POWER"},{"id":"barrel","kind":"barrel","pos":[0.3,0.05,-0.6],"size":[0.2,0.28,0.2],"material":"wood_dark","stage":"walls","needs":["floor"],"tag":"barrel","replaceable":true},{"id":"crate.c","kind":"crate","pos":[0.74,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"stock","replaceable":true}],"systems":{"jobs":[{"role":"engineer","count":1,"station_part":"control"}],"storage":{"spares":18},"costs":{"power_per_kwh":2,"wage_per_worker_per_minute":2,"ingredient_prices":{"spares":2},"repair_material_price":3},"repair":{"seconds":15,"material_units":1,"walk_speed":1,"worker_roles":["engineer"]},"inspect":{"labels":{"floor":"Floor slab","post.fl":"Post FL","post.fr":"Post FR","post.bl":"Post BL","post.br":"Post BR","beam.f":"Beam F","beam.b":"Beam B","beam.l":"Beam L","beam.r":"Beam R","panel.f0":"Wall F0","panel.f1":"Wall F1","panel.b0":"Wall B0","panel.b1":"Wall B1","panel.l0":"Wall L0","panel.l1":"Wall L1","panel.r0":"Wall R0","panel.r1":"Wall R1","door":"Door","window.0":"Window 0","window.1":"Window 1","shutter.0":"Shutter 0","shutter.1":"Shutter 1","gable.l":"Gable L","gable.r":"Gable R","rafter.f0":"Rafter F0","rafter.b0":"Rafter B0","rafter.f1":"Rafter F1","rafter.b1":"Rafter B1","rafter.f2":"Rafter F2","rafter.b2":"Rafter B2","tile.f00":"Roof tile F00","tile.f10":"Roof tile F10","tile.b00":"Roof tile B00","tile.b10":"Roof tile B10","tile.f01":"Roof tile F01","tile.f11":"Roof tile F11","tile.b01":"Roof tile B01","tile.b11":"Roof tile B11","tile.f02":"Roof tile F02","tile.f12":"Roof tile F12","tile.b02":"Roof tile B02","tile.b12":"Roof tile B12","ridge":"Roof ridge","chimney":"Chimney","control":"Counter","meter":"Meter box","cable":"Power cable","sign":"Sign","barrel":"Barrel","crate.c":"Crate C"}},"start_stock":{"spares":7},"deliveries":[{"item":"spares","amount":3,"every_seconds":200,"via":"cart","drop_part":"door"}],"power":{"demand_kw":1.5,"supply_kw":6,"wire_part":"cable","meter_part":"meter"}}},"recipes/home_cottage.json":{"schema":"rtk.building","version":1,"id":"home_cottage","name":"Home Cottage","footprint":{"w":2.4,"d":1.8},"parts":[{"id":"floor","kind":"floor","pos":[0,0,0],"size":[2.4,0.05,1.8],"material":"wood_pale","stage":"frame","needs":[],"tag":"floor","replaceable":false},{"id":"post.fl","kind":"post","pos":[-1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.fr","kind":"post","pos":[1.1,0.05,0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.bl","kind":"post","pos":[-1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"post.br","kind":"post","pos":[1.1,0.05,-0.8],"size":[0.08,0.9,0.08],"material":"wood_dark","stage":"frame","needs":["floor"],"tag":"post","replaceable":false},{"id":"beam.f","kind":"beam","pos":[0,0.95,0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.fl","post.fr"],"tag":"beam","replaceable":false},{"id":"beam.b","kind":"beam","pos":[0,0.95,-0.8],"size":[2.12,0.07,0.08],"material":"wood_dark","stage":"frame","needs":["post.bl","post.br"],"tag":"beam","replaceable":false},{"id":"beam.l","kind":"beam","pos":[-1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fl","post.bl"],"tag":"beam","replaceable":false},{"id":"beam.r","kind":"beam","pos":[1.1,0.95,0],"size":[0.08,0.07,1.68],"material":"wood_dark","stage":"frame","needs":["post.fr","post.br"],"tag":"beam","replaceable":false},{"id":"panel.f0","kind":"panel","pos":[-0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.f1","kind":"panel","pos":[0.625,0.05,0.8],"size":[0.87,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.f"],"tag":"wall","replaceable":false},{"id":"panel.b0","kind":"panel","pos":[-0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.b1","kind":"panel","pos":[0.53,0.05,-0.8],"size":[1.06,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.b"],"tag":"wall","replaceable":false},{"id":"panel.l0","kind":"panel","pos":[-1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.l1","kind":"panel","pos":[-1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r0","kind":"panel","pos":[1.1,0.05,-0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"panel.r1","kind":"panel","pos":[1.1,0.05,0.38],"size":[0.76,0.9,0.05],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"wall","replaceable":false,"rotY":1.571},{"id":"door","kind":"door","pos":[0,0.05,0.8],"size":[0.38,0.9,0.05],"material":"paint_blue","stage":"walls","needs":["beam.f"],"tag":"door","replaceable":true},{"id":"window.0","kind":"window","pos":[-0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f0"],"tag":"window","replaceable":true},{"id":"window.1","kind":"window","pos":[0.625,0.3,0.85],"size":[0.5,0.38,0.05],"material":"wood_dark","stage":"walls","needs":["panel.f1"],"tag":"window","replaceable":true},{"id":"shutter.0","kind":"shutter","pos":[-0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_blue","stage":"trim","needs":["window.0"],"tag":"shutter","replaceable":true},{"id":"shutter.1","kind":"shutter","pos":[0.93,0.3,0.87],"size":[0.12,0.38,0.03],"material":"paint_blue","stage":"trim","needs":["window.1"],"tag":"shutter","replaceable":true},{"id":"gable.l","kind":"gable","pos":[-1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"paint_cream","stage":"walls","needs":["beam.l"],"tag":"gable","replaceable":false,"rotY":0},{"id":"gable.r","kind":"gable","pos":[1.1,1.02,0],"size":[0.05,0.5,1.7],"material":"paint_cream","stage":"walls","needs":["beam.r"],"tag":"gable","replaceable":false},{"id":"rafter.f0","kind":"rafter","pos":[-0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b0","kind":"rafter","pos":[-0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f1","kind":"rafter","pos":[0,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b1","kind":"rafter","pos":[0,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"rafter.f2","kind":"rafter","pos":[0.7,1.02,0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.f"],"tag":"rafter","replaceable":false},{"id":"rafter.b2","kind":"rafter","pos":[0.7,1.02,-0.475],"size":[0.06,0.5,0.95],"material":"wood_dark","stage":"frame","needs":["beam.b"],"tag":"rafter","replaceable":false,"rotY":3.142},{"id":"tile.f00","kind":"roof_tile","pos":[-0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.f10","kind":"roof_tile","pos":[-0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f0"],"tag":"roof","replaceable":true},{"id":"tile.b00","kind":"roof_tile","pos":[-0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b10","kind":"roof_tile","pos":[-0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b0"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f01","kind":"roof_tile","pos":[0,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.f11","kind":"roof_tile","pos":[0,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f1"],"tag":"roof","replaceable":true},{"id":"tile.b01","kind":"roof_tile","pos":[0,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b11","kind":"roof_tile","pos":[0,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b1"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.f02","kind":"roof_tile","pos":[0.7,1.02,0.713],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.f12","kind":"roof_tile","pos":[0.7,1.27,0.238],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.f2"],"tag":"roof","replaceable":true},{"id":"tile.b02","kind":"roof_tile","pos":[0.7,1.02,-0.712],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"tile.b12","kind":"roof_tile","pos":[0.7,1.27,-0.237],"size":[0.7,0.25,0.475],"material":"paint_red","stage":"trim","needs":["rafter.b2"],"tag":"roof","replaceable":true,"rotY":3.142},{"id":"ridge","kind":"ridge","pos":[0,1.52,0],"size":[2.1,0.06,0.1],"material":"wood_dark","stage":"frame","needs":["rafter.f0","rafter.f1","rafter.f2","rafter.b0","rafter.b1","rafter.b2"],"tag":"ridge","replaceable":false,"needsMin":1},{"id":"chimney","kind":"chimney","pos":[-0.35,1.3,-0.24],"size":[0.3,0.55,0.26],"material":"brick","stage":"trim","needs":["tile.b10","tile.b11"],"tag":"chimney","replaceable":true},{"id":"hearth","kind":"oven","pos":[-0.55,0.05,-0.5],"size":[0.7,0.6,0.5],"material":"brick","stage":"walls","needs":["floor"],"tag":"hearth","replaceable":true},{"id":"table","kind":"counter","pos":[0.45,0.05,0.45],"size":[0.8,0.35,0.3],"material":"wood","stage":"walls","needs":["floor"],"tag":"table","replaceable":true},{"id":"sign","kind":"sign","pos":[0,0.62,0.85],"size":[0.5,0.2,0.04],"material":"wood_pale","stage":"trim","needs":["door"],"tag":"sign","replaceable":true,"label":"HOME"},{"id":"wood_box","kind":"crate","pos":[1,0,1.05],"size":[0.2,0.2,0.2],"material":"wood","stage":"walls","needs":[],"tag":"stock","replaceable":true},{"id":"wood_box2","kind":"crate","pos":[1,0.2,1.05],"size":[0.2,0.2,0.2],"material":"wood_pale","stage":"walls","needs":["wood_box"],"tag":"stock","replaceable":true},{"id":"rain_barrel","kind":"barrel","pos":[-1,0.05,1],"size":[0.2,0.28,0.2],"material":"wood_dark","stage":"walls","needs":["floor"],"tag":"barrel","replaceable":true},{"id":"grain_sack","kind":"sack","pos":[0.85,0.05,-0.55],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true},{"id":"grain_sack2","kind":"sack","pos":[0.62,0.05,-0.6],"size":[0.18,0.22,0.14],"material":"flour","stage":"walls","needs":["floor"],"tag":"sack","replaceable":true}],"systems":{"jobs":[],"storage":{"firewood":16},"costs":{"power_per_kwh":2,"wage_per_worker_per_minute":0,"ingredient_prices":{"firewood":0.5},"repair_material_price":3},"repair":{"seconds":15,"material_units":1,"walk_speed":1,"worker_roles":[]},"inspect":{"labels":{"floor":"Floor slab","post.fl":"Post FL","post.fr":"Post FR","post.bl":"Post BL","post.br":"Post BR","beam.f":"Beam F","beam.b":"Beam B","beam.l":"Beam L","beam.r":"Beam R","panel.f0":"Wall F0","panel.f1":"Wall F1","panel.b0":"Wall B0","panel.b1":"Wall B1","panel.l0":"Wall L0","panel.l1":"Wall L1","panel.r0":"Wall R0","panel.r1":"Wall R1","door":"Door","window.0":"Window 0","window.1":"Window 1","shutter.0":"Shutter 0","shutter.1":"Shutter 1","gable.l":"Gable L","gable.r":"Gable R","rafter.f0":"Rafter F0","rafter.b0":"Rafter B0","rafter.f1":"Rafter F1","rafter.b1":"Rafter B1","rafter.f2":"Rafter F2","rafter.b2":"Rafter B2","tile.f00":"Roof tile F00","tile.f10":"Roof tile F10","tile.b00":"Roof tile B00","tile.b10":"Roof tile B10","tile.f01":"Roof tile F01","tile.f11":"Roof tile F11","tile.b01":"Roof tile B01","tile.b11":"Roof tile B11","tile.f02":"Roof tile F02","tile.f12":"Roof tile F12","tile.b02":"Roof tile B02","tile.b12":"Roof tile B12","ridge":"Roof ridge","chimney":"Chimney","hearth":"Hearth","table":"Counter","sign":"Sign","wood_box":"Crate","wood_box2":"Crate","rain_barrel":"Barrel","grain_sack":"Sack","grain_sack2":"Sack"}},"start_stock":{"firewood":6},"deliveries":[{"item":"firewood","amount":3,"every_seconds":600,"via":"cart","drop_part":"door"}]}}}}; var EXPECTED = {"result_hash":"c25b12c9","cells":216};
+  window.__sweep = { done: false };
+  function show(r, secs) {
+    var ok = r.result_hash === EXPECTED.result_hash && r.cells === EXPECTED.cells && r.canary_identical && r.rows_with_breach_or_error === 0;
+    document.getElementById('state').innerHTML = (ok ? '<span class="ok">MATCH</span> ' : '<span class="bad">DIFFERENT</span> ') + r.result_hash;
+    document.getElementById('detail').innerHTML = 'cells ' + r.cells + ' | canary identical ' + r.canary_identical + ' | breaches or errors ' + r.rows_with_breach_or_error + ' | expected hash ' + EXPECTED.result_hash + ' | seconds ' + secs + '<br><span class="small">' + navigator.userAgent + '</span>';
+    document.getElementById('rows').textContent = JSON.stringify(r.rows.slice(0, 3), null, 1) + '\n... (' + r.rows.length + ' rows in window.__sweep.result)';
+    window.__sweep = { done: true, match: ok, result: r, seconds: secs, userAgent: navigator.userAgent };
+  }
+  setTimeout(function () { try { var t0 = Date.now(), r = SweepCore.run(TASK, DATA, function (i, n) { document.getElementById('state').textContent = 'running ' + i + ' of ' + n; }); show(r, (Date.now() - t0) / 1000); } catch (e) { document.getElementById('state').innerHTML = '<span class="bad">ERROR</span>'; document.getElementById('detail').textContent = String(e && e.message); window.__sweep = { done: true, match: false, error: String(e && e.message) }; } }, 50);
+})();
+</script></body></html>
