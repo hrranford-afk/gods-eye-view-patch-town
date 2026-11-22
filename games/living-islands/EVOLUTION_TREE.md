@@ -53,14 +53,13 @@ Currents and tides carry things past and onto shores. The same flow field that m
 - **Rules:** finite supply, a ledger with idempotent event keys (a find is claimed once), people counted not tracked, hopeful tone, no gore.
 - **Measure first:** how many items per tide a shore catches, and whether the choices have a real trade-off.
 
-## Wildlife (owner idea, 22 Nov: a giant turtle that lays eggs and has babies)
-Living things use the same tide, seabed and flow as everything else, so the world feels alive and the player's choices matter to them.
-- **The giant tide-turtle (our own animal, not a real species):** a huge, slow, old sea turtle that returns to the same gentle sandy or shingle beach each season. It comes ashore at night at high tide, digs a nest above the strandline and lays eggs; later the hatchlings crawl to the sea, and the current carries them away. Some return years later, bigger. Counted as a few animals and nests, never tracked as individuals.
-- **Why it works with the sea system:** nest sites are gentle, sheltered, sandy shores (the same places drift collects). Whether nests survive depends on tide height, storms and where the player builds.
-- **Player choices (hopeful tone, no gore):** protect a nesting beach (keep it clear, build a watch post), share the beach (some nests are lost), or build there and lose the turtles. Turtles can bring things: old shells, a story, a sign the sea is healthy; a protected colony can feed tourism, trade or song later.
-- **Other wildlife, same rules:** seabirds on skerries (nest, gather in storms), seals hauled out on rocks at low tide, fish shoals riding the currents, kelp beds by depth band. Each is a small rule set driven by the seed, tide and seabed.
-- **Rules:** deterministic from the seed, finite, ledger events with idempotent keys, nothing cruel on screen, people and animals counted not tracked.
-- **Measure first:** how many suitable nesting beaches a seed offers, nest survival per season under different player choices, and whether protecting is a real trade-off.
+## Wildlife (owner decision 22 Nov: real wildlife of this cool Atlantic sea, plus a rare turtle legend)
+Real species, true to the Hebrides-style coast we chose. They use the same tide, seabed and flow as everything else, so the world feels alive and the player's choices matter to them.
+- **Real wildlife (the base):** seals hauling out on rocks at low tide, seabirds nesting on skerries and cliffs (puffins, gannets, terns, gulls), otters along the shore, fish shoals riding the currents, kelp beds by depth band, basking sharks and dolphins passing, sea eagles overhead. Behaviour, seasons and habitat come from real research (see research/WILDLIFE.md when written).
+- **The legend (rare, glimpsed):** a giant tide-turtle that is part of the island's stories. It is seen only rarely, at certain tides and seasons, and the settlers talk about it. A real leatherback turtle can be the believable seed of the legend (real leatherbacks visit these waters to feed but do not nest here). Whether the legend is ever more than a glimpse is left open and mysterious.
+- **Player choices (hopeful tone, nothing cruel on screen):** protect a skerry or a seal haul-out (keep boats and building away), share the shore (some are disturbed), or build there and lose them. Healthy wildlife can feed fishing, trade, stories and song later.
+- **Rules:** deterministic from the seed, finite, ledger events with idempotent keys, nothing cruel on screen, animals counted not tracked.
+- **Measure first:** how many suitable haul-outs, skerries and kelp beds a seed offers, how disturbance and seasons change numbers, and whether protecting is a real trade-off.
 
 ## Household loop (era 3 detail)
 Grow at home (garden, plot, place) / shop (nearest open shop with stock) / cook at home (hearth, fuel, ingredients, time) / eat out (cheap, close, short on time). Needs push; trade and temperament nudge. People are counted, never tracked.
