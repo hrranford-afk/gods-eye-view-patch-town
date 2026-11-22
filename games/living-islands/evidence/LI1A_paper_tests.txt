@@ -1,0 +1,24 @@
+PASS trip time: 60 m = 60/60 + 60/90 + 0.5 = 2.166667 min; 25 m = 25/60 + 25/90 + 0.5 = 1.194444 min
+PASS P1a three hands, rocky landing: ceil(10/3) = 4 rounds x 2.166667 = 8.666667 min; two jobs slip (firewood and lookout)
+PASS P1b two hands: 5 rounds = 10.833333 min; one job slips (lookout)
+PASS P1c three hands, landing stage: 4 rounds x 1.194444 = 4.777778 min (3.888889 min saved)
+PASS P1d two hands, landing stage: 5 x 1.194444 = 5.972222 min
+PASS P2a build the bunk: reserve 8 boards once, 8 left, 2 workers x 90 min = 180 worker-minutes
+PASS P2b build the landing stage: reserve 12 boards, 4 left, 3 workers x 120 min = 360 worker-minutes
+PASS P2c after the bunk (8 left) the stage is refused with a reason: only one project fits the first load, so the choice is real
+PASS P3a rocky landing, 9 minute window, 3 hands, 24 units: floor(9/2.166667) = 4 rounds, 12 landed, 12 stay aboard for the next tide
+PASS P3b landing stage, 30 minute window: 8 rounds x 1.194444 = 9.555556 min, all 24 landed, none left
+PASS P3c landing stage with only 2 hands: 12 rounds = 14.333333 min, all landed, and four jobs stay covered (one slips)
+PASS P4a opening A (bunk built): berth 2 + work 1 + provisions 1 = 4: stays
+PASS P4b opening B (landing stage built): work 1 + provisions 1 + safe landing 1 = 3: sleeps aboard and decides next tide (a third response)
+PASS P4c neither built: 2: sails away, may return on a later voyage
+PASS P4d both built (a later state): 5: stays, with room to spare
+PASS P5a hour 5: truth usable, nothing delivered yet, believed unknown
+PASS P5b hour 7: the slipway is already broken (hour 6) but the colony still knows nothing (report not delivered)
+PASS P5c hour 9: the colony believes "usable" from a report dated hour 2, delivered at hour 8; the truth is broken: a decision is made under uncertainty
+PASS P5d hour 16: fresh evidence (dated hour 14, delivered hour 16) corrects the belief
+PASS P6a ten units loaded, landed and stored: 10 in stores, none elsewhere
+PASS P6b the same "store u3" event arriving twice (a save and reload mid-transfer) adds it ONCE: still 10 in stores, never 11
+PASS P6c a save halfway (6 landed, none stored): 6 on the beach and 4 aboard, 10 in all: nothing created or lost
+
+all paper tests match the hand numbers
