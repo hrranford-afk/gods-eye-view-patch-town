@@ -3,7 +3,8 @@
 Status: PLANNED. Owner decisions recorded 22 Nov 2026.
 
 ## Owner decisions
-1. **Tone: hopeful and gentle.** Rebuilding, not fighting. Nobody dies. No weapons.
+1. **Tone: hopeful, but with real stakes (updated 22 Nov).** Rebuilding, not fighting. No weapons, no violence between people.
+   **Neglect has consequences: settlers can fall ill, starve, or be lost, and a colony can fail and you start again.** It is not a game where everyone just survives. Handled quietly, never graphic.
 2. **The old world appears as ruins and salvage.** Small finds give story moments and unlock ideas.
 3. **Look and geography: Hebrides-style Atlantic coast, plus one sheltered harbour island.**
    Real places are reference statistics only. No real names in code, assets or recipes.
@@ -28,9 +29,18 @@ A single "what you need next" card is shown; never a wall of numbers.
 
 Eras 3 and 5 reuse City Lab work (district economy, power network). Era 1 is drawn in the owner's reference pack. Eras 2 and 4 need their own design.
 
+## Stakes: how failing works (fair, quiet, never cruel)
+- **Slow, visible decline, never a sudden death.** Needs drop in stages (tired, hungry, ill, failing) and each stage is shown early on the "what you need next" card.
+- **Always a way back until late.** Rescue options exist (a visiting skipper, a rest day, a ration) until a colony is truly lost.
+- **Stuck and sad is a real state:** a colony that survives but never grows shows it (idle people, bare camp, no new ideas unlocked) and the card says why.
+- **Loss is a counted number, not a tracked person's story:** people are counted, never tracked.
+- **Dial:** Guided warns early and softens; Free lets it run. Same rules.
+- **Age rating is undecided** (see open questions). Death stays implied and off-screen either way.
+
 ## Ruins and salvage (hopeful tone rules)
 - Finds are quiet: a washed-up crate, a rusted frame, a radio that still has a battery.
-- No bodies, no violence, no fear. Ruins are places to learn from.
+- No gore, no violence. Ruins are places to learn from.
+- **A failed colony becomes the next game's ruin.** Start again and your earlier settlement is out there on the map as salvage, with its own finds. Failure feeds the next run.
 - A find unlocks an idea or a part, never a weapon. Each find has a place, a story line, and a reward you can use.
 
 ## Household loop (era 3 detail)
@@ -44,6 +54,7 @@ See `research/HOUSE_BILL_OF_MATERIALS.md` (figures are estimates; confidence tag
 
 ## Open questions (not decided)
 - Exact unlock thresholds per era (to be measured, not guessed).
+- Age rating / who plays it (stakes may affect the family-safe rule that applies to the toy games).
 - How much of the old-world story is shown vs left to find.
 - Harbour island: which of the reference coasts sets its tide and boats.
 
