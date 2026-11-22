@@ -63,6 +63,13 @@ table.res th{font-size:10.5px;color:var(--mute);vertical-align:bottom}
 .why.change b{color:#7a4a00}.why.fresh{background:#fff7da}
 ul.expl{margin:4px 0 4px 16px;padding:0;font-size:13px}
 .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:4px 0}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+[hidden]{display:none!important}
+table.cab td.st{font-weight:800;text-align:center}
+table.cab td.st.green{color:#1d8a45}table.cab td.st.amber{color:#b46a00}table.cab td.st.red{color:#c93c2c}table.cab td.st.cut,table.cab td.st.dark{color:#6b6b6b}
+table.cab tr.hl{background:#fff7da}table.cab tr{cursor:pointer}
+.why-card{background:#fff7da;border:2px solid #e6c77a;border-radius:12px;padding:8px 10px;margin:6px 0;font-weight:600}
+.inrow{display:flex;gap:6px;align-items:stretch;margin:6px 0}.inrow input{flex:0 0 84px;width:84px;text-align:center}.inrow .btn{flex:1 1 auto}
+.lb.dark{background:#3a3a3a;color:#fff;border-color:#222}
 </style>
 </head>
 <body>
@@ -102,12 +109,32 @@ ul.expl{margin:4px 0 4px 16px;padding:0;font-size:13px}
     <label class="sm">Upgrade the bakery</label><select id="upSel"><option value="shared/cloud/examples/bakery.stone_deck_oven.json">Stone deck oven (40 coins)</option><option value="shared/cloud/examples/bakery.cool_store_room.json">Cool store room (30 coins)</option></select>
     <div class="row"><button class="btn go" id="aUp">Apply upgrade</button><button class="btn bad" id="aReset">Reset the neighbourhood</button></div>
 
+    <div id="netPanel" hidden>
+      <h3>Power network</h3>
+      <div class="legend"><span><i style="background:#2fbf5e"></i>cable under 90%</span><span><i style="background:#f2a21f"></i>90 to 100%</span><span><i style="background:#e04a3a"></i>over capacity</span><span><i style="background:#777"></i>cut / dark</span><span><i style="background:#ffd24a"></i>generator</span></div>
+      <div class="card" id="netCard"></div>
+      <label class="sm">Generator output</label>
+      <div class="row"><button class="btn" data-gen="1">100%</button><button class="btn" data-gen="0.6">60%</button><button class="btn" data-gen="0.3">30%</button></div>
+      <label class="sm">Cable</label><select id="cabSel"></select>
+      <div class="inrow"><input type="text" inputmode="decimal" id="cabKw" value="3" aria-label="capacity in kW"><button class="btn" id="aCapSet">Set capacity (kW)</button><button class="btn bad" id="aCut">Cut / reconnect</button></div>
+      <div class="small">A capacity edit changes the network now but charges no money: costs are only shown, never paid, in this version.</div>
+      <h3>What would it cost and earn? (read-only)</h3>
+      <select id="cmpKind"><option value="generator">Add a generator</option><option value="cable">Upgrade a cable</option></select>
+      <div class="inrow"><input type="text" inputmode="decimal" id="cmpKw" value="3" aria-label="kW"><select id="cmpCable" hidden></select><button class="btn go" id="aCmp">Compare</button></div>
+      <div class="small">Runs the same deterministic code as the experiments in a separate copy (1800 s warm-up, 35 simulated minutes measured, whole delivery cycles). The live neighbourhood is not touched.</div>
+      <div id="cmpOut"></div>
+      <h3>Power experiments (repeatable)</h3>
+      <div class="row"><button class="btn go" id="e4">E4. Does one more generator pay?</button><button class="btn go" id="e5">E5. One dim street</button></div>
+    </div>
+
     <h3>Inspect: building</h3>
     <div class="card" id="selCard">Tap a building.</div>
 
+    <div id="oldExp">
     <h3>Experiments (repeatable)</h3>
     <div class="small">Each runs the same deterministic simulation, 15 simulated minutes per case. Same numbers every time.</div>
     <div class="row"><button class="btn go" id="x1">1. More homes</button><button class="btn go" id="x2">2. Upgrade bakery</button><button class="btn go" id="x3">3. Two bakeries</button></div>
+    </div>
     <div id="expOut"></div>
   </div>
 </div>
@@ -124,8 +151,11 @@ Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,get:d.
 <script src="sim.js"></script>
 <script src="parts.js"></script>
 <script src="build.js"></script>
+<script src="infra.js"></script>
+<script src="infra-validate.js"></script>
 <script src="district.js"></script>
 <script src="district-validate.js"></script>
+<script src="infra-exp.js"></script>
 <script src="district-app.js"></script>
 </body>
 </html>

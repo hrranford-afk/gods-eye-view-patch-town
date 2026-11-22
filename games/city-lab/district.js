@@ -60,7 +60,7 @@
       var missing = [];
       opts.infra.sources.forEach(function (x) { if (!D.buildings.some(function (b) { return b.id === x.building; })) missing.push(x.building); });
       if (missing.length) return { ok: false, errors: ['infra sources name buildings that are not in the district: ' + missing.join(', ')] };
-      W.I = opts.infra; W.I.srcB = INFRA.sourceBuildings(opts.infra); S.infra = { caps: {}, cut: {} };
+      W.I = Object.assign({}, opts.infra, { srcB: INFRA.sourceBuildings(opts.infra) }); S.infra = { caps: {}, cut: {} };
     }
     D.roads.forEach(function (r) { S.roads[key(r.cell[0], r.cell[1])] = r.open ? 1 : 0; });
     D.buildings.forEach(function (bd) {
@@ -294,12 +294,16 @@
   /* The C03b lesson, in the log: a short brownout raises a shop's profit only because shelf stock covers sales while less electricity is spent. Say it, with the stock and the saving. */
   function shopNote(W, id, fa, fb) {
     var b = byId(W, id), R = W.R[id], Y = R.systems, pr = Y.production, sl = Y.sales, e = W.S.env.b[id];
+    if (pr && !sl && Y.power && b.sim && Object.keys(pr.outputs).length) {   /* a maker with no shop window (the workshop): energy and purchases, no sales to cover */
+      var o2 = Object.keys(pr.outputs)[0], st2 = e.staff == null ? 1 : e.staff, bp2 = function (f) { return 60 * f * st2 / pr.batch_seconds; }, sv2 = Math.max(0, (bp2(fa) - bp2(fb)) * Y.power.demand_kw * pr.batch_seconds / 3600 * (Y.costs.power_per_kwh || 0));
+      return 'Stock at ' + b.label + ' (' + o2 + '): ' + Math.round(b.sim.stock[o2]) + '. Energy saved: up to ' + f2(sv2) + ' coins a minute; it also takes less ' + Object.keys(pr.inputs)[0] + ' while it works slower, a temporary saving that ends when its stock is rebuilt.';
+    }
     if (!pr || !sl || !Y.power || !b.sim || e.demand == null) return '';
     var outs = 0; Object.keys(pr.outputs).forEach(function (k) { outs += pr.outputs[k]; });
     var staff = e.staff == null ? 1 : e.staff, bpm = function (f) { return 60 * f * staff / pr.batch_seconds; }, kwhb = Y.power.demand_kw * pr.batch_seconds / 3600, price = Y.costs.power_per_kwh || 0;
     var stock = b.sim.stock[sl.item], saved = Math.max(0, (bpm(fa) - bpm(fb)) * kwhb * price), made = bpm(fb) * outs, drain = e.demand - made;
     var t = 'Shelf stock at ' + b.label + ' (' + sl.item + '): ' + Math.round(stock) + '. Energy saved: up to ' + f2(saved) + ' coins a minute (it makes ' + f1(bpm(fa) * outs) + ' to ' + f1(made) + ' a minute against ' + f1(e.demand) + ' wanted). ';
-    if (drain > 0.05) t += 'The shelf covers sales for about ' + f1(stock / drain) + ' minutes: a short brownout can look profitable only for that reason, a longer one loses sales.';
+    if (drain > 0.05) t += 'The shelf covers sales for about ' + f1(stock / drain) + ' minutes: a short brownout can look profitable only for that reason (stock covers sales, less electricity is spent, fewer ingredients are bought), a longer one loses sales.';
     else t += 'Baking still keeps up with sales, so nothing is lost while the shelf holds.';
     return t;
   }

@@ -21,3 +21,6 @@ Files: `district.js` (pure, deterministic, fixed step, plain-JSON state), `distr
 
 ## Reproduce
 `node tests/district-test.js` (70), `node tests/district-e2e.js` (11), `NODE_PATH=$(npm root -g) node tests/district-page-test.js` (29), `node tools/c03-experiments.js` (writes the figures), `node tools/compare-looks.mjs` (hand-made recipes give identical figures), `node tools/check-district-recipes.mjs` (the four hand-made recipes pass the v1 validator).
+
+## Power network (C06a)
+An optional `city_infra` file (sources, a tree of cables with capacities, local brownouts) can sit beside a district: see `INFRA.md`. A district without it behaves exactly as described above.
