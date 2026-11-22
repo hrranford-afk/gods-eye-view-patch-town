@@ -5,6 +5,22 @@ import bpy
 import numpy as np
 import island_common as IC
 
+# ---------------------------------------------------------------- Blender 3.6 compatibility (added by Hardware Claude, 22 Nov 2026)
+# In Blender 3.6 the Mix node (ShaderNodeMix) has Float, Vector and Color sockets that SHARE the names A, B, Factor and Result;
+# a lookup by name returns the Float one even when data_type is 'RGBA'. Pick by identifier instead (works on 3.6 and newer).
+# Principled BSDF 'Emission Color' was called 'Emission' before Blender 4.0.
+def S(n, side, name):
+    socks = getattr(n, side)
+    if n.bl_idname == 'ShaderNodeMix' and name in ('A', 'B', 'Result', 'Factor'):
+        suffix = {'RGBA': 'Color', 'FLOAT': 'Float', 'VECTOR': 'Vector'}.get(getattr(n, 'data_type', ''), '')
+        if name == 'Factor' and suffix != 'Vector': suffix = 'Float'
+        for s in socks:
+            if s.identifier == name + '_' + suffix:
+                return s
+    if name not in socks.keys() and name == 'Emission Color' and 'Emission' in socks.keys():
+        return socks['Emission']
+    return socks[name]
+
 # ---------------------------------------------------------------- helpers
 def reset():
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -108,10 +124,10 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
     grain.inputs['Scale'].default_value = 14 / scale; grain.inputs['Detail'].default_value = 8; grain.inputs['Roughness'].default_value = 0.65
     link(nt, off.outputs[0], grain.inputs['Vector'])
     gm = node(nt, 'ShaderNodeMix', (x + 1250, y), data_type='RGBA', blend_type='MULTIPLY')
-    gm.inputs['Factor'].default_value = 0.55
-    link(nt, layer.outputs['Color'], gm.inputs['A'])
+    S(gm, 'inputs', 'Factor').default_value = 0.55
+    link(nt, layer.outputs['Color'], S(gm, 'inputs', 'A'))
     gr = ramp(nt, grain.outputs['Fac'], [(0.3, (0.78, 0.78, 0.78, 1)), (0.7, (1.12, 1.1, 1.08, 1))], (x + 1100, y - 350))
-    link(nt, gr.outputs['Color'], gm.inputs['B'])
+    link(nt, gr.outputs['Color'], S(gm, 'inputs', 'B'))
     # cracks: distance-to-edge voronoi, two scales
     v1 = node(nt, 'ShaderNodeTexVoronoi', (x + 900, y - 650), feature='DISTANCE_TO_EDGE', voronoi_dimensions='3D')
     v1.inputs['Scale'].default_value = 1.9 / scale; link(nt, off.outputs[0], v1.inputs['Vector'])
@@ -121,14 +137,14 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
     brk = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 1500), noise_dimensions='3D'); brk.inputs['Scale'].default_value = 1.7 / scale; brk.inputs['Detail'].default_value = 3
     link(nt, off.outputs[0], brk.inputs['Vector'])
     brkr = ramp(nt, brk.outputs['Fac'], [(0.45, (1, 1, 1, 1)), (0.58, (0, 0, 0, 1))], (x + 1100, y - 1500))
-    c1m = node(nt, 'ShaderNodeMix', (x + 1250, y - 700), data_type='RGBA'); link(nt, brkr.outputs['Color'], c1m.inputs['Factor'])
-    link(nt, c1raw.outputs['Color'], c1m.inputs['A']); c1m.inputs['B'].default_value = (1, 1, 1, 1)
+    c1m = node(nt, 'ShaderNodeMix', (x + 1250, y - 700), data_type='RGBA'); link(nt, brkr.outputs['Color'], S(c1m, 'inputs', 'Factor'))
+    link(nt, c1raw.outputs['Color'], S(c1m, 'inputs', 'A')); S(c1m, 'inputs', 'B').default_value = (1, 1, 1, 1)
     c1 = c1m
     c2 = ramp(nt, v2.outputs['Distance'], [(0.0, (0.62, 0.62, 0.62, 1)), (0.05, (1, 1, 1, 1))], (x + 1100, y - 850))
-    cm = node(nt, 'ShaderNodeMix', (x + 1350, y - 700), data_type='RGBA', blend_type='MULTIPLY'); cm.inputs['Factor'].default_value = 1.0
-    link(nt, c1.outputs['Result'], cm.inputs['A']); link(nt, c2.outputs['Color'], cm.inputs['B'])
-    rm = node(nt, 'ShaderNodeMix', (x + 1500, y), data_type='RGBA', blend_type='MULTIPLY'); rm.inputs['Factor'].default_value = 1.0
-    link(nt, gm.outputs['Result'], rm.inputs['A']); link(nt, cm.outputs['Result'], rm.inputs['B'])
+    cm = node(nt, 'ShaderNodeMix', (x + 1350, y - 700), data_type='RGBA', blend_type='MULTIPLY'); S(cm, 'inputs', 'Factor').default_value = 1.0
+    link(nt, S(c1, 'outputs', 'Result'), S(cm, 'inputs', 'A')); link(nt, c2.outputs['Color'], S(cm, 'inputs', 'B'))
+    rm = node(nt, 'ShaderNodeMix', (x + 1500, y), data_type='RGBA', blend_type='MULTIPLY'); S(rm, 'inputs', 'Factor').default_value = 1.0
+    link(nt, S(gm, 'outputs', 'Result'), S(rm, 'inputs', 'A')); link(nt, S(cm, 'outputs', 'Result'), S(rm, 'inputs', 'B'))
     # lichen: patchy, favours up-facing surfaces
     ln = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 1050), noise_dimensions='3D')
     ln.inputs['Scale'].default_value = 3.4 / scale; ln.inputs['Detail'].default_value = 6; ln.inputs['Roughness'].default_value = 0.7
@@ -141,11 +157,11 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
     link(nt, off.outputs[0], lcol_n.inputs['Vector'])
     lcol = ramp(nt, lcol_n.outputs['Fac'], [(0.3, (0.40, 0.42, 0.10, 1)), (0.55, (0.52, 0.46, 0.13, 1)), (0.8, (0.58, 0.58, 0.42, 1))], (x + 1300, y - 1300))
     lx = node(nt, 'ShaderNodeMix', (x + 1700, y - 100), data_type='RGBA')
-    link(nt, lmask.outputs['Color'], lx.inputs['Factor']); link(nt, rm.outputs['Result'], lx.inputs['A']); link(nt, lcol.outputs['Color'], lx.inputs['B'])
+    link(nt, lmask.outputs['Color'], S(lx, 'inputs', 'Factor')); link(nt, S(rm, 'outputs', 'Result'), S(lx, 'inputs', 'A')); link(nt, lcol.outputs['Color'], S(lx, 'inputs', 'B'))
     # height for bump: strata ridges + grain - cracks
     hh = node(nt, 'ShaderNodeMath', (x + 1500, y - 400), operation='ADD')
-    link(nt, grain.outputs['Fac'], hh.inputs[0]); link(nt, c1.outputs['Result'], hh.inputs[1])
-    return lx.outputs['Result'], hh.outputs[0]
+    link(nt, grain.outputs['Fac'], hh.inputs[0]); link(nt, S(c1, 'outputs', 'Result'), hh.inputs[1])
+    return S(lx, 'outputs', 'Result'), hh.outputs[0]
 
 # ---------------------------------------------------------------- land
 def land_vertex_data(u, v, f, seed):
@@ -205,12 +221,12 @@ def land_material(ob, seed, bake_colour_only=False):
     link(nt, geo.outputs['Position'], gn.inputs['Vector'])
     gn2 = node(nt, 'ShaderNodeTexNoise', (-800, 850), noise_dimensions='3D'); gn2.inputs['Scale'].default_value = 90; gn2.inputs['Detail'].default_value = 3
     link(nt, geo.outputs['Position'], gn2.inputs['Vector'])
-    gm = node(nt, 'ShaderNodeMix', (-500, 450), data_type='RGBA', blend_type='MULTIPLY'); gm.inputs['Factor'].default_value = 0.65
-    link(nt, vc.outputs['Color'], gm.inputs['A'])
-    gr = ramp(nt, gn.outputs['Fac'], [(0.25, (0.55, 0.55, 0.5, 1)), (0.75, (1.35, 1.3, 1.2, 1))], (-700, 450)); link(nt, gr.outputs['Color'], gm.inputs['B'])
-    gm2 = node(nt, 'ShaderNodeMix', (-300, 450), data_type='RGBA', blend_type='MULTIPLY'); gm2.inputs['Factor'].default_value = 0.4
-    link(nt, gm.outputs['Result'], gm2.inputs['A'])
-    gr2 = ramp(nt, gn2.outputs['Fac'], [(0.3, (0.7, 0.7, 0.7, 1)), (0.7, (1.25, 1.25, 1.25, 1))], (-500, 800)); link(nt, gr2.outputs['Color'], gm2.inputs['B'])
+    gm = node(nt, 'ShaderNodeMix', (-500, 450), data_type='RGBA', blend_type='MULTIPLY'); S(gm, 'inputs', 'Factor').default_value = 0.65
+    link(nt, vc.outputs['Color'], S(gm, 'inputs', 'A'))
+    gr = ramp(nt, gn.outputs['Fac'], [(0.25, (0.55, 0.55, 0.5, 1)), (0.75, (1.35, 1.3, 1.2, 1))], (-700, 450)); link(nt, gr.outputs['Color'], S(gm, 'inputs', 'B'))
+    gm2 = node(nt, 'ShaderNodeMix', (-300, 450), data_type='RGBA', blend_type='MULTIPLY'); S(gm2, 'inputs', 'Factor').default_value = 0.4
+    link(nt, S(gm, 'outputs', 'Result'), S(gm2, 'inputs', 'A'))
+    gr2 = ramp(nt, gn2.outputs['Fac'], [(0.3, (0.7, 0.7, 0.7, 1)), (0.7, (1.25, 1.25, 1.25, 1))], (-500, 800)); link(nt, gr2.outputs['Color'], S(gm2, 'inputs', 'B'))
     # rock factor sharpened by noise
     rn = node(nt, 'ShaderNodeTexNoise', (-800, 150), noise_dimensions='3D'); rn.inputs['Scale'].default_value = 2.2; rn.inputs['Detail'].default_value = 5
     link(nt, geo.outputs['Position'], rn.inputs['Vector'])
@@ -219,11 +235,11 @@ def land_material(ob, seed, bake_colour_only=False):
     rsum = node(nt, 'ShaderNodeMath', (-600, 150), operation='ADD'); link(nt, rk2.outputs[0], rsum.inputs[0]); link(nt, rn2.outputs[0], rsum.inputs[1])
     rr = ramp(nt, rsum.outputs[0], [(0.45, (0, 0, 0, 1)), (0.8, (1, 1, 1, 1))], (-400, 150))
     mix = node(nt, 'ShaderNodeMix', (0, 300), data_type='RGBA')
-    link(nt, rr.outputs['Color'], mix.inputs['Factor'])
+    link(nt, rr.outputs['Color'], S(mix, 'inputs', 'Factor'))
     # underwater and sand stay ground colour (rock only above -0.2)
-    link(nt, gm2.outputs['Result'], mix.inputs['A']); link(nt, rcol, mix.inputs['B'])
+    link(nt, S(gm2, 'outputs', 'Result'), S(mix, 'inputs', 'A')); link(nt, rcol, S(mix, 'inputs', 'B'))
     bsdf = principled(nt, (1300, 0))
-    link(nt, mix.outputs['Result'], bsdf.inputs['Base Color'])
+    link(nt, S(mix, 'outputs', 'Result'), bsdf.inputs['Base Color'])
     pin(bsdf, 'Roughness', 0.92)
     for nm in ('Specular IOR Level',):
         pin(bsdf, nm, 0.25)
@@ -501,9 +517,9 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
     w = bpy.data.worlds.new('Sky'); bpy.context.scene.world = w
     w.use_nodes = True; nt = w.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputWorld', (400, 0)); bg = node(nt, 'ShaderNodeBackground', (200, 0)); sk = node(nt, 'ShaderNodeTexSky', (-100, 0))
-    sk.sky_type = 'MULTIPLE_SCATTERING'; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
+    sk.sky_type = 'MULTIPLE_SCATTERING' if 'MULTIPLE_SCATTERING' in [i.identifier for i in sk.bl_rna.properties['sky_type'].enum_items] else 'NISHITA'; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
     sk.sun_elevation = math.radians(sun_elev_deg); sk.sun_rotation = math.radians(sun_az_deg)
-    sk.air_density = 2.3; sk.aerosol_density = 0.35; sk.ozone_density = 2.5; sk.altitude = 20.0
+    sk.air_density = 2.3; setattr(sk, 'aerosol_density' if hasattr(sk, 'aerosol_density') else 'dust_density', 0.35); sk.ozone_density = 2.5; sk.altitude = 20.0
     # glossy rays (the sea's mirror) see a bluer, cleaner sky than the sunset-pink camera sky: keeps the water deep blue
     lp = node(nt, 'ShaderNodeLightPath', (-400, 200)); tcg = node(nt, 'ShaderNodeTexCoord', (-700, -200))
     sp = node(nt, 'ShaderNodeSeparateXYZ', (-500, -200)); link(nt, tcg.outputs['Generated'], sp.inputs[0])
@@ -512,9 +528,9 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
     sz = node(nt, 'ShaderNodeSeparateXYZ', (-450, -400)); link(nt, gc.outputs['Incoming'], vz.inputs[0]); link(nt, vz.outputs[0], sz.inputs[0])
     neg = node(nt, 'ShaderNodeMath', (-300, -400), operation='MULTIPLY'); link(nt, sz.outputs['Z'], neg.inputs[0]); neg.inputs[1].default_value = -1.0
     blue = ramp(nt, neg.outputs[0], [(0.0, (2.2, 2.8, 3.4, 1)), (0.25, (0.8, 1.6, 3.2, 1)), (1.0, (0.2, 0.6, 2.4, 1))], (-100, -400))
-    mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA'); link(nt, lp.outputs['Is Glossy Ray'], mix.inputs['Factor'])
-    link(nt, sk.outputs['Color'], mix.inputs['A']); link(nt, blue.outputs['Color'], mix.inputs['B'])
-    link(nt, mix.outputs['Result'], bg.inputs['Color']); bg.inputs['Strength'].default_value = strength
+    mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA'); link(nt, lp.outputs['Is Glossy Ray'], S(mix, 'inputs', 'Factor'))
+    link(nt, sk.outputs['Color'], S(mix, 'inputs', 'A')); link(nt, blue.outputs['Color'], S(mix, 'inputs', 'B'))
+    link(nt, S(mix, 'outputs', 'Result'), bg.inputs['Color']); bg.inputs['Strength'].default_value = strength
     link(nt, bg.outputs['Background'], out.inputs['Surface'])
     return sk
 

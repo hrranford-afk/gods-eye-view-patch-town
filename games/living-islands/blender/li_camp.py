@@ -3,7 +3,7 @@ import math
 import bpy
 import numpy as np
 import island_common as IC
-from li_scene import mesh_obj, node, link, ramp, principled, pin, boulder
+from li_scene import mesh_obj, node, link, ramp, principled, pin, boulder, S
 
 def mat_simple(name, rgb, rough=0.8, nodes_fn=None):
     m = bpy.data.materials.new(name); m.use_nodes = True
@@ -18,10 +18,10 @@ def canvas_material(name, rgb, seed=1):
     link(nt, tc.outputs['Object'], wv.inputs['Vector'])
     nz = node(nt, 'ShaderNodeTexNoise', (-600, -100), noise_dimensions='3D'); nz.inputs['Scale'].default_value = 6; nz.inputs['Detail'].default_value = 6
     link(nt, tc.outputs['Object'], nz.inputs['Vector'])
-    mx = node(nt, 'ShaderNodeMix', (-200, 100), data_type='RGBA', blend_type='MULTIPLY'); mx.inputs['Factor'].default_value = 0.7
-    mx.inputs['A'].default_value = (*rgb, 1)
-    cr = ramp(nt, nz.outputs['Fac'], [(0.25, (0.55, 0.52, 0.48, 1)), (0.7, (1.1, 1.08, 1.0, 1))], (-450, -100)); link(nt, cr.outputs['Color'], mx.inputs['B'])
-    link(nt, mx.outputs['Result'], bs.inputs['Base Color']); pin(bs, 'Roughness', 0.95)
+    mx = node(nt, 'ShaderNodeMix', (-200, 100), data_type='RGBA', blend_type='MULTIPLY'); S(mx, 'inputs', 'Factor').default_value = 0.7
+    S(mx, 'inputs', 'A').default_value = (*rgb, 1)
+    cr = ramp(nt, nz.outputs['Fac'], [(0.25, (0.55, 0.52, 0.48, 1)), (0.7, (1.1, 1.08, 1.0, 1))], (-450, -100)); link(nt, cr.outputs['Color'], S(mx, 'inputs', 'B'))
+    link(nt, S(mx, 'outputs', 'Result'), bs.inputs['Base Color']); pin(bs, 'Roughness', 0.95)
     bm = node(nt, 'ShaderNodeBump', (300, -200)); bm.inputs['Strength'].default_value = 0.25; bm.inputs['Distance'].default_value = 0.01
     link(nt, wv.outputs['Fac'], bm.inputs['Height']); link(nt, bm.outputs['Normal'], bs.inputs['Normal'])
     link(nt, bs.outputs['BSDF'], out.inputs['Surface'])
@@ -170,13 +170,13 @@ def rowboat(base, yaw, tilt, seed, length=3.4, beam=1.35, depth=0.5):
     link(nt, tc.outputs['Object'], pl.inputs['Vector'])
     paint = ramp(nt, nz.outputs['Fac'], [(0.35, (0.07, 0.14, 0.20, 1)), (0.6, (0.10, 0.20, 0.27, 1)), (0.8, (0.45, 0.38, 0.28, 1))], (-200, 200))
     seam = ramp(nt, pl.outputs['Fac'], [(0.0, (0.5, 0.5, 0.5, 1)), (0.2, (1, 1, 1, 1))], (-200, -100))
-    mx = node(nt, 'ShaderNodeMix', (150, 100), data_type='RGBA', blend_type='MULTIPLY'); mx.inputs['Factor'].default_value = 1
-    link(nt, paint.outputs['Color'], mx.inputs['A']); link(nt, seam.outputs['Color'], mx.inputs['B'])
+    mx = node(nt, 'ShaderNodeMix', (150, 100), data_type='RGBA', blend_type='MULTIPLY'); S(mx, 'inputs', 'Factor').default_value = 1
+    link(nt, paint.outputs['Color'], S(mx, 'inputs', 'A')); link(nt, seam.outputs['Color'], S(mx, 'inputs', 'B'))
     # inside is wood: flip on backfacing
     inside = mat_simple('x', (0.45, 0.33, 0.2))
-    wd = node(nt, 'ShaderNodeMix', (400, 100), data_type='RGBA'); wd.inputs['B'].default_value = (0.30, 0.20, 0.11, 1)
-    link(nt, geo.outputs['Backfacing'], wd.inputs['Factor']); link(nt, mx.outputs['Result'], wd.inputs['A'])
-    link(nt, wd.outputs['Result'], bs.inputs['Base Color']); pin(bs, 'Roughness', 0.65)
+    wd = node(nt, 'ShaderNodeMix', (400, 100), data_type='RGBA'); S(wd, 'inputs', 'B').default_value = (0.30, 0.20, 0.11, 1)
+    link(nt, geo.outputs['Backfacing'], S(wd, 'inputs', 'Factor')); link(nt, S(mx, 'outputs', 'Result'), S(wd, 'inputs', 'A'))
+    link(nt, S(wd, 'outputs', 'Result'), bs.inputs['Base Color']); pin(bs, 'Roughness', 0.65)
     bm = node(nt, 'ShaderNodeBump', (300, -250)); bm.inputs['Strength'].default_value = 0.3; bm.inputs['Distance'].default_value = 0.02
     link(nt, pl.outputs['Fac'], bm.inputs['Height']); link(nt, bm.outputs['Normal'], bs.inputs['Normal'])
     link(nt, bs.outputs['BSDF'], out.inputs['Surface'])
@@ -222,7 +222,7 @@ def campfire(center, seed, rock_mat=None):
     nz = node(nt, 'ShaderNodeTexNoise', (-300, 0), noise_dimensions='3D'); nz.inputs['Scale'].default_value = 30; nz.inputs['Detail'].default_value = 4
     tc = node(nt, 'ShaderNodeTexCoord', (-600, 0)); link(nt, tc.outputs['Object'], nz.inputs['Vector'])
     cr = ramp(nt, nz.outputs['Fac'], [(0.35, (0.01, 0.01, 0.01, 1)), (0.55, (0.7, 0.12, 0.02, 1)), (0.8, (1.0, 0.45, 0.08, 1))], (-100, 0))
-    link(nt, cr.outputs['Color'], bs.inputs['Base Color']); link(nt, cr.outputs['Color'], bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value = 6.0
+    link(nt, cr.outputs['Color'], bs.inputs['Base Color']); link(nt, cr.outputs['Color'], S(bs, 'inputs', 'Emission Color')); bs.inputs['Emission Strength'].default_value = 6.0
     link(nt, bs.outputs['BSDF'], out.inputs['Surface']); emb.data.materials.append(m); objs.append(emb)
     # logs in a tepee
     wm = wood_material('Log', (0.20, 0.13, 0.07), scale=0.7)
