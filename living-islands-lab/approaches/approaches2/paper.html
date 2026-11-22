@@ -1,0 +1,82 @@
+<!doctype html><meta charset="utf-8"><title>Style D: paper-cut diorama</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/GLTFLoader.js"></script>
+<script src="kit.js"></script><script src="people_kit.js"></script><script src="world.js"></script>
+<script>
+(async()=>{
+const [W_,H_]=World.size();const qs=new URLSearchParams(location.search);
+await World.load({water:false});const L=World.layout();const hash=World.noise.hash,vn=World.noise.vnoise,fbm=World.noise.fbm;
+const S=+(qs.get('s')||9.6),LIFT=.95,OBL=.56,CX=+(qs.get('cx')||8),CZ=+(qs.get('cz')||34);
+const sx=(x)=>W_/2+(x-CX)*S,sy=(z,h)=>H_*.56+(z-CZ)*S*OBL-h*S*LIFT;
+const cv=document.createElement('canvas');cv.width=W_;cv.height=H_;document.body.appendChild(cv);const c=cv.getContext('2d');
+/* ---------- paper: base cream sheet with fibre grain, reused as texture on every layer ---------- */
+const grain=document.createElement('canvas');grain.width=256;grain.height=256;{const g=grain.getContext('2d'),im=g.createImageData(256,256);for(let i=0;i<256;i++)for(let j=0;j<256;j++){const v=.5*hash(i,j,1)+.3*vn(i*.5,j*.5,2)+.2*vn(i*.08,j*.8,3);const o=(i*256+j)*4;const t=225+30*(v-.5);im.data[o]=im.data[o+1]=im.data[o+2]=t;im.data[o+3]=255;}g.putImageData(im,0,0);}
+const gpat=c.createPattern(grain,'repeat');
+/* ---------- layers: [level, colour, wobble m, edge colour] sea first, then land ---------- */
+const LAYERS=[[-99,[.10,.22,.42],0,.5],[-9,[.13,.32,.56],.9,.5],[-5.5,[.16,.43,.66],.8,.5],[-3,[.21,.57,.74],.7,.5],[-1.4,[.33,.72,.80],.6,.5],[-.55,[.60,.88,.86],.5,.5],[-.22,[.98,.96,.90],.35,.5],
+ [.12,[.93,.81,.57],.35,.6],[1.5,[.66,.77,.38],.5,.6],[3,[.50,.70,.33],.55,.6],[5,[.38,.60,.31],.6,.6],[7.5,[.30,.50,.28],.6,.6],[10.5,[.52,.42,.30],.6,.6],[13.5,[.66,.46,.52],.6,.6],[16.5,[.78,.70,.66],.5,.6]];
+const bwOf=(x,z)=>Math.pow(Math.max(0,Math.min(1,1-Math.hypot((x-4)/1.5,z-60)/52)),1.3);
+const liftOf=l=>l<-90?0:l<0?l*.3:l;
+function layerCanvas(Lv,lvl,col,wob){const a=document.createElement('canvas');a.width=W_;a.height=H_;const g=a.getContext('2d'),im=g.createImageData(W_,H_),d=im.data;
+  for(let py=0;py<H_;py++){const z=CZ+(py-H_*.56+liftOf(lvl)*S*LIFT)/(S*OBL);
+    for(let px=0;px<W_;px++){const x=CX+(px-W_/2)/S;let h=World.h(x,z);
+      if(lvl>=1.4){h-=2.8*bwOf(x,z)*(h<3.4?1:0);}
+      h+=(fbm(x*.07,z*.07,11,3)-.5)*wob*2.2+(vn(x*.8,z*.8,4)-.5)*wob*.7;     /* hand-cut wobble */
+      const f=h-lvl;const al=lvl<-90?1:Math.max(0,Math.min(1,f*S*.9/(.5+Math.abs(f)*0+.35)+.5));
+      if(al>0){const o=(py*W_+px)*4;d[o]=col[0]*255;d[o+1]=col[1]*255;d[o+2]=col[2]*255;d[o+3]=al*255;}}}
+  g.putImageData(im,0,0);return a;}
+c.fillStyle='#e9dfc9';c.fillRect(0,0,W_,H_);
+const tint=(cv_,col)=>{const t=document.createElement('canvas');t.width=cv_.width;t.height=cv_.height;const g=t.getContext('2d');g.drawImage(cv_,0,0);g.globalCompositeOperation='source-in';g.fillStyle=col;g.fillRect(0,0,t.width,t.height);return t;};
+for(const [lvl,col,wob] of LAYERS){
+  // vertical position of a layer: lifted by its level (sea layers stay flat so they read as stacked blue sheets)
+  const lift=Math.max(lvl,0)*0+lvl;const A=layerCanvas(null,lvl,col,wob);
+  // cut edge (paper core) + grain on top
+  const g=A.getContext('2d');g.globalCompositeOperation='source-atop';g.globalAlpha=.30;g.fillStyle=gpat;g.fillRect(0,0,W_,H_);g.globalAlpha=1;g.globalCompositeOperation='source-over';
+  const E=tint(A,'rgb(250,244,230)'),th=Math.max(2,Math.min(5,Math.round(S*.35*(lvl<-90?0:(lvl<0?.8:1)))));
+  c.save();c.shadowColor='rgba(30,22,16,.5)';c.shadowBlur=14;c.shadowOffsetX=5;c.shadowOffsetY=8;if(lvl>-90)c.drawImage(E,0,th);c.restore();
+  for(let k=th-1;k>=1;k--)c.drawImage(E,0,k);c.drawImage(A,0,0);}
+/* ---------- card sprites: the kit models rendered flat (3-step toon) from the front, then given a white cut border ---------- */
+const rr=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});rr.setPixelRatio(1);rr.outputEncoding=THREE.sRGBEncoding;rr.setClearColor(0,0);
+const rs=new THREE.Scene();const ramp=new THREE.DataTexture(new Uint8Array([120,120,120,255,190,190,190,255,255,255,255,255]),3,1,THREE.RGBAFormat);ramp.minFilter=ramp.magFilter=THREE.NearestFilter;ramp.needsUpdate=true;
+rs.add(new THREE.AmbientLight(0xfff0dd,.75));const ld=new THREE.DirectionalLight(0xffffff,1.3);ld.position.set(-6,10,12);rs.add(ld);
+const PX=22;
+function card(mk,wm,hm,yaw){const o=mk();const g=new THREE.Group();g.add(o);o.rotation.y=yaw||0;World.convert(g,(old)=>{if(old.isMeshBasicMaterial)return old;const m=new THREE.MeshToonMaterial({gradientMap:ramp,map:old.map||null,vertexColors:!!old.vertexColors,side:old.side,alphaTest:old.alphaTest||0});if(old.color)m.color.copy(old.color);const gr=(m.color.r+m.color.g+m.color.b)/3;m.color.r=Math.max(gr+(m.color.r-gr)*1.2,0);m.color.g=Math.max(gr+(m.color.g-gr)*1.2,0);m.color.b=Math.max(gr+(m.color.b-gr)*1.2,0);return m;});
+  rs.add(g);const w=Math.round(wm*PX),h=Math.round(hm*PX);rr.setSize(w,h,false);const cam=new THREE.OrthographicCamera(-wm/2,wm/2,hm,0,.1,100);cam.position.set(0,hm*.18+1.2,30);cam.lookAt(0,hm*.18+1.2,0);cam.rotation.x=-.0;
+  const cm=new THREE.OrthographicCamera(-wm/2,wm/2,hm*.97,-hm*.03,.1,100);cm.position.set(0,0,30);cm.lookAt(0,0,0);rr.render(rs,cm);rs.remove(g);
+  const out=document.createElement('canvas');const b=5;out.width=w+2*b;out.height=h+2*b;const x=out.getContext('2d');const wh=tint((()=>{const t=document.createElement('canvas');t.width=w;t.height=h;t.getContext('2d').drawImage(rr.domElement,0,0,w,h);return t;})(),'rgb(252,248,238)');
+  for(let a=0;a<16;a++){const an=a/16*6.2832,r=b*(.75+.25*hash(a,5,5));x.drawImage(wh,b+Math.cos(an)*r,b+Math.sin(an)*r);}
+  x.drawImage(rr.domElement,0,0,rr.domElement.width,rr.domElement.height,b,b,w,h);return out;}
+const norm=(o,h)=>{o.scale.setScalar(h);return o;};
+const CARDS={};
+for(let k=0;k<3;k++){CARDS['c'+k]=card(()=>norm(Kit.conifer(k),8),6.5,8.3,k*.7);CARDS['b'+k]=card(()=>norm(Kit.broadleaf(k),k==2?4.4:5.6),6,6.2,k*.9);}
+CARDS.bush=card(()=>norm(Kit.bush(),1.6),2.6,1.7);CARDS.to=card(()=>norm(Kit.tent('orange'),2.6),3.8,2.8,.55);CARDS.tb=card(()=>norm(Kit.tent('blue'),2.6),3.8,2.8,-.55);
+CARDS.canoe=card(()=>norm(Kit.canoe(),4.4),4.8,1.6,.4);CARDS.fire=card(()=>{const g=new THREE.Group();g.add(norm(Kit.campfire(),1.5));[[.30,.95,0xff8a1e],[.22,1.25,0xffb02e],[.12,1.55,0xffe27a]].forEach(([r,h,col],i)=>{const cn=new THREE.Mesh(new THREE.ConeGeometry(r,h,7),new THREE.MeshBasicMaterial({color:col}));cn.position.y=h/2+.1;g.add(cn);});return g;},2.2,2.1);
+['woman','man','fish'].forEach(k=>{CARDS[k]=card(()=>{const p=PeopleKit.make(k,.4);const g=new THREE.Group();g.add(p.root);return g;},1.4,2.0,k=='man'?.5:-.3);});
+/* ---------- place cards back to front; each is a standing pop-up with its own soft shadow ---------- */
+const inst=[];const hz=(o)=>{o.y=World.h(o.x,o.z);return o;};
+L.conifers.forEach(t=>inst.push(hz({k:'c'+t.k,x:t.x,z:t.z,sc:t.h/8*1.9,h:8.3})));L.broad.forEach(t=>inst.push(hz({k:'b'+t.k,x:t.x,z:t.z,sc:t.h/(t.k==2?4.4:5.6)*1.9,h:6.2})));
+L.bushes.forEach(t=>inst.push(hz({k:'bush',x:t.x,z:t.z,sc:t.h/1.6*1.7,h:1.7})));
+L.tents.forEach(t=>inst.push(hz({k:t.color==='orange'?'to':'tb',x:t.x,z:t.z,sc:2.3,h:2.8})));inst.push(hz({k:'canoe',x:L.boat.x,z:L.boat.z,sc:2.5,h:1.6}));inst.push(hz({k:'fire',x:L.fire.x,z:L.fire.z,sc:2.8,h:2.1}));
+L.people.forEach(p=>inst.push(hz({k:p.key,x:p.x,z:p.z,sc:3.6,h:2.0})));
+inst.sort((a,b)=>a.z-b.z);
+/* rocks are not cards: two or three stacked cut-paper pebbles */
+const rocks=L.rocks.map(r=>hz({x:r.x,z:r.z,r:r.h*1.5,i:r.k}));
+const pebble=(x,y,r,col,seed)=>{c.beginPath();for(let a=0;a<=12;a++){const an=a/12*6.2832,rr_=r*(.85+.3*hash(seed,a%12,3));const px=x+Math.cos(an)*rr_*1.2,py=y+Math.sin(an)*rr_*.62;a?c.lineTo(px,py):c.moveTo(px,py);}c.closePath();c.fillStyle=col;c.fill();};
+for(const r of rocks.sort((a,b)=>a.z-b.z)){if(r.y<-.3)continue;const bx=sx(r.x),by=sy(r.z,Math.max(r.y,0));const R=Math.max(3,r.r*S*.35);c.save();c.shadowColor='rgba(30,22,16,.5)';c.shadowBlur=6;c.shadowOffsetX=3;c.shadowOffsetY=4;
+  pebble(bx,by,R,'rgb(238,232,220)',r.i+1);c.restore();pebble(bx,by-1,R*.9,'rgb(146,142,140)',r.i+1);c.save();c.shadowColor='rgba(30,22,16,.4)';c.shadowBlur=4;c.shadowOffsetY=2;pebble(bx+R*.1,by-R*.35,R*.6,'rgb(176,172,168)',r.i+9);c.restore();}
+for(const o of inst){const cd=CARDS[o.k];if(o.y<-.4)continue;const w=cd.width/PX*S*.9*o.sc/ (1),h=cd.height/PX*S*LIFT*o.sc;const bx=sx(o.x),by=sy(o.z,Math.max(o.y,0));
+  c.save();c.shadowColor='rgba(30,22,16,.55)';c.shadowBlur=9;c.shadowOffsetX=5;c.shadowOffsetY=6;c.drawImage(cd,bx-w/2,by-h+h*.04,w,h);c.restore();}
+/* fire glow */
+{const f=L.fire,fx=sx(f.x),fy=sy(f.z,f.y)-10;const g=c.createRadialGradient(fx,fy,2,fx,fy,60);g.addColorStop(0,'rgba(255,200,100,.5)');g.addColorStop(1,'rgba(255,160,60,0)');c.globalCompositeOperation='lighter';c.fillStyle=g;c.fillRect(fx-70,fy-70,140,140);c.globalCompositeOperation='source-over';}
+/* sun and paper clouds hanging from the top edge */
+const cloud=(x,y,s,seed)=>{c.save();c.shadowColor='rgba(30,22,16,.4)';c.shadowBlur=8;c.shadowOffsetX=4;c.shadowOffsetY=6;c.fillStyle='#fffaf0';c.beginPath();for(let k=0;k<6;k++){const bx=x+k*s*.5,r=s*(.45+.25*hash(seed,k,1))*(k%5==0?.7:1);c.moveTo(bx+r,y);c.arc(bx,y,r,0,6.3);}c.fill();c.fillRect(x-s*.2,y,s*2.9,s*.4);c.restore();};
+c.save();c.shadowColor='rgba(30,22,16,.4)';c.shadowBlur=10;c.shadowOffsetX=4;c.shadowOffsetY=6;c.fillStyle='#f6c35a';c.beginPath();c.arc(150,86,54,0,6.3);c.fill();c.fillStyle='#fbd77f';c.beginPath();c.arc(150,86,38,0,6.3);c.fill();c.restore();
+cloud(330,50,34,1);cloud(760,76,40,2);cloud(1010,40,30,3);
+/* page frame: a cream mat with a hand-cut window, shadowing into the scene; paper grain over everything */
+{const m=document.createElement('canvas');m.width=W_;m.height=H_;const g=m.getContext('2d');g.fillStyle='#efe6d2';g.fillRect(0,0,W_,H_);g.globalCompositeOperation='destination-out';g.beginPath();const pad=18;for(let t=0;t<=200;t++){const u=t/200;let x,y;const per=2*(W_-2*pad)+2*(H_-2*pad);const d=u*per;const w=W_-2*pad,h=H_-2*pad;if(d<w){x=pad+d;y=pad;}else if(d<w+h){x=W_-pad;y=pad+d-w;}else if(d<2*w+h){x=W_-pad-(d-w-h);y=H_-pad;}else{x=pad;y=H_-pad-(d-2*w-h);}x+=(vn(t*.31,1,6)-.5)*7;y+=(vn(t*.31,2,6)-.5)*7;t?g.lineTo(x,y):g.moveTo(x,y);}g.closePath();g.fill();
+  c.save();c.shadowColor='rgba(30,22,16,.55)';c.shadowBlur=16;c.shadowOffsetX=4;c.shadowOffsetY=6;c.drawImage(m,0,0);c.restore();}
+c.globalCompositeOperation='multiply';c.globalAlpha=.5;c.fillStyle=gpat;c.fillRect(0,0,W_,H_);c.globalAlpha=1;c.globalCompositeOperation='source-over';
+window.__canvas=()=>cv;window.__info={layers:LAYERS.length,cards:inst.length};window.__ready=true;
+})();
+</script>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Baked land, live sea</title>
+<style>html,body{margin:0;height:100%;background:#0b1a2a;overflow:hidden;font:12px/1.4 system-ui,sans-serif;color:#e8e2d4}
+canvas{display:block}#hud{position:fixed;left:10px;bottom:8px;opacity:.75;pointer-events:none;text-shadow:0 1px 2px #000}</style>
+</head><body>
+<div id="hud">Baked Cycles land (AO + sun shadow + bounce, 2048 texture) under a live three.js sea. Drag to look around.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+/* Baked land (Cycles) + live sea. The land texture already holds the light: it is drawn UNLIT (MeshBasicMaterial). The sea is a live shader:
+   depth tint from land_depth.png (R = (h+6)/12 over +-28 m), animated wave normals, sun glitter, fresnel sky, lapping shoreline foam.
+   Blender (x,y,z up) became glTF (x, z, -y): north (+y) is -z here. */
+const Q = new URLSearchParams(location.search);
+const BASE = Q.get('base') || 'assets/';
+const HALF = 28;
+window.__bl = { ready: false, frames: 0, errors: [] };
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const sky = new THREE.Color(0.55, 0.62, 0.70);
+scene.background = sky;
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 2000);
+const target = new THREE.Vector3(0, 0.6, 2);
+let yaw = +(Q.get('yaw') || 0.0), pitch = +(Q.get('pitch') || 0.36), dist = +(Q.get('dist') || 46);
+function placeCamera(t) {
+  const y = yaw + Math.sin(t * 0.07) * 0.05;
+  camera.position.set(target.x + Math.sin(y) * Math.cos(pitch) * dist, target.y + Math.sin(pitch) * dist, target.z + Math.cos(y) * Math.cos(pitch) * dist);
+  camera.lookAt(target);
+}
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.005; pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - drag[1]) * 0.004)); drag = [e.clientX, e.clientY]; });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+/* sun: same direction as the bake. Blender (sx,sy,sz) -> three (sx, sz, -sy) */
+const SUN = new THREE.Vector3(Math.sin(5.585) * Math.cos(0.349), Math.sin(0.349), -Math.cos(5.585) * Math.cos(0.349)).normalize(); /* az 320 deg, el 20 deg */
+scene.add(new THREE.HemisphereLight(0xaac4e0, 0x3a3326, 0.55));
+const dl = new THREE.DirectionalLight(0xffc88a, 1.1); dl.position.copy(SUN).multiplyScalar(100); scene.add(dl);
+/* sea */
+const depthTex = new THREE.TextureLoader().load(BASE + 'land_depth.png', () => { depthReady = true; }, undefined, () => window.__bl.errors.push('depth map failed'));
+let depthReady = false;
+depthTex.wrapS = depthTex.wrapT = THREE.ClampToEdgeWrapping; depthTex.minFilter = depthTex.magFilter = THREE.LinearFilter; depthTex.generateMipmaps = false;
+const seaMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uTime: { value: 0 }, uDepth: { value: depthTex }, uSun: { value: SUN }, uHalf: { value: HALF } },
+  vertexShader: 'varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+  fragmentShader: `precision highp float;
+  uniform float uTime,uHalf;uniform sampler2D uDepth;uniform vec3 uSun;varying vec3 vW;
+  float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+  float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec2(7.1,3.7);a*=.5;}return s;}
+  vec2 grad(vec2 p,float t){ /* sum of travelling sines: gradient of the height field */
+    vec2 g=vec2(0.);
+    vec2 d1=normalize(vec2(.91,.41));float k1=6.2832/17.;g+=d1*.05*k1*cos(dot(d1,p)*k1+t*1.6);
+    vec2 d2=normalize(vec2(-.28,.96));float k2=6.2832/8.;g+=d2*.03*k2*cos(dot(d2,p)*k2+t*1.9+fbm(p*.07)*4.);
+    vec2 d3=normalize(vec2(.68,-.73));float k3=6.2832/3.6;g+=d3*.012*k3*cos(dot(d3,p)*k3+t*2.4);
+    vec2 d4=normalize(vec2(-.9,-.43));float k4=6.2832/1.7;g+=d4*.005*k4*cos(dot(d4,p)*k4+t*2.9+fbm(p*.3)*6.);
+    return g;}
+  void main(){
+    vec2 p=vW.xz;
+    vec2 uv=vec2(p.x/(2.*uHalf)+.5,-p.y/(2.*uHalf)+.5);
+    float h=texture2D(uDepth,uv).r*12.-6.;
+    float inTile=step(abs(p.x),uHalf)*step(abs(p.y),uHalf);
+    float depth=mix(5.,-h,inTile);
+    if(depth<-0.03)discard;
+    vec3 V=normalize(cameraPosition-vW);float dist=length(cameraPosition-vW);
+    vec2 g=grad(p,uTime);g*=mix(.35,1.,smoothstep(0.,.8,depth));
+    vec3 N=normalize(vec3(-g.x,1.,-g.y));
+    float fres=.02+.98*pow(1.-max(dot(N,V),0.),5.);
+    vec3 R=reflect(-V,N);
+    float y=max(R.y,0.);vec3 skyc=mix(vec3(.62,.66,.72),vec3(.10,.24,.55),pow(y,.45));
+    skyc+=vec3(1.,.62,.3)*.35*pow(max(dot(R,uSun),0.),8.);
+    /* body: turquoise shallows -> deep blue; the baked seabed shows through the alpha */
+    vec3 shal=vec3(.10,.55,.55),deep=vec3(.01,.07,.17);
+    vec3 body=mix(shal,deep,smoothstep(.15,2.6,depth));
+    float lit=.55+.45*max(dot(N,uSun),0.);
+    vec3 col=body*lit;
+    col=mix(col,skyc,fres*.9);
+    float glit=pow(max(dot(R,uSun),0.),400.)*40.+pow(max(dot(R,uSun),0.),40.)*.5;
+    col+=vec3(1.,.8,.55)*glit*(.4+.6*smoothstep(0.,.6,depth));
+    float alpha=clamp(1.-.93*exp(-depth*1.5),0.,1.);alpha=max(alpha,fres);
+    /* shoreline foam that laps with the swell, plus a broken surf line */
+    float nz=fbm(p*.9+vec2(uTime*.05,-uTime*.03)),lap=.5+.5*sin(uTime*1.2+nz*8.);
+    float edge=smoothstep(.12+.14*lap,0.,depth+(nz-.5)*.18);
+    float band=smoothstep(.7,.97,.5+.5*sin(depth*14.-uTime*.9+nz*3.))*smoothstep(.7,.1,depth)*.55;
+    float foam=clamp(max(edge,band)*smoothstep(.25,.6,fbm(p*2.7-uTime*.04)+.35),0.,1.);
+    col=mix(col,vec3(.96,.97,.95)*lit,foam);alpha=max(alpha,foam*.95);
+    float far=smoothstep(120.,700.,dist);col=mix(col,vec3(.55,.62,.70),far*.7);
+    gl_FragColor=vec4(col,alpha);
+    #include <tonemapping_fragment>
+    #include <encodings_fragment>
+  }`
+});
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1).rotateX(-Math.PI / 2), seaMat);
+sea.renderOrder = 5; scene.add(sea);
+/* land */
+new THREE.GLTFLoader().load(BASE + 'island_land.glb', gltf => {
+  let tris = 0;
+  gltf.scene.traverse(o => {
+    if (!o.isMesh) return;
+    tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    const old = o.material;
+    if (old.map) { old.map.anisotropy = 8; o.material = new THREE.MeshBasicMaterial({ map: old.map }); }   /* baked light: no live lighting */
+    else o.material = new THREE.MeshLambertMaterial({ color: old.color });
+  });
+  scene.add(gltf.scene);
+  window.__bl.tris = tris; window.__bl.ready = true;
+}, undefined, e => { window.__bl.errors.push('glb: ' + (e && e.message || e)); });
+const clock = new THREE.Clock();
+function frame() {
+  const t = clock.getElapsedTime(); seaMat.uniforms.uTime.value = t; placeCamera(t);
+  renderer.render(scene, camera); window.__bl.frames++; requestAnimationFrame(frame);
+}
+frame();
+</script></body></html>

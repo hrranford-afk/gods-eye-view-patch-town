@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Tree and rock kit lineup</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/GLTFLoader.js"></script>
+<script src="kit.js"></script>
+<script>
+(async()=>{
+const W=1200,H=800;const cv=document.createElement('canvas');cv.width=W;cv.height=H;document.body.appendChild(cv);
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(W,H,false);
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(.78,.86,.92);
+await Kit.load('assets/');
+scene.add(new THREE.HemisphereLight(0xcfe4ff,0x7a6a4a,.95));const sun=new THREE.DirectionalLight(0xfff0d8,1.7);sun.position.set(-8,14,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-14,right:14,top:10,bottom:-10,near:1,far:60});scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,30),new THREE.MeshLambertMaterial({color:new THREE.Color(.42,.52,.28).convertSRGBToLinear()}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const place=(g,x,z,h,ry)=>{g.scale.setScalar(h);g.position.set(x,0,z);g.rotation.y=ry||0;scene.add(g);return g;};
+const labels=[];const lab=(t,x,z)=>labels.push({t,x,z});
+const Z1=-11,Z2=-3,Z3=5.6,sp=2.9,X=i=>-12.6+i*sp;
+/* row 1: the old stacked cones, then the two procedural generators */
+for(let i=0;i<3;i++)place(Kit.oldCone(),X(i),Z1,4.4,i);lab('OLD cones (first showcase)',X(1),Z1);
+for(let i=0;i<3;i++)place(Kit.procConifer(i+1),X(3+i),Z1,4.8,i*2);lab('PROCEDURAL conifer',X(4),Z1);
+for(let i=0;i<3;i++)place(Kit.procBroadleaf(i+3),X(6+i)+.3,Z1,4.4,i*2);lab('PROCEDURAL broadleaf',X(7)+.3,Z1);
+/* row 2: the CC0 kit */
+for(let i=0;i<3;i++)place(Kit.conifer(i),X(i),Z2,5.0,i*2);lab('KIT pines (Quaternius CC0)',X(1),Z2);
+for(let i=0;i<3;i++)place(Kit.broadleaf(i),X(3+i),Z2,i==2?3.6:4.4,i);lab('KIT common + twisted tree',X(4),Z2);
+place(Kit.bush(),X(6)+.3,Z2,1.4,0);place(Kit.bush(),X(7)+.5,Z2+.5,1.0,1);place(Kit.bush(),X(8)+.4,Z2-.4,1.2,2);lab('KIT bush',X(7)+.4,Z2);
+/* row 3: rocks and camp props */
+for(let i=0;i<6;i++)place(Kit.rock(i),-12.4+i*2.3,Z3,[1.5,1.5,1.5,1.2,1.7,.8][i],i*1.3);lab('KIT rocks (Quaternius + Kenney)',-7,Z3);
+place(Kit.tent('orange'),1.2,Z3,2.4,.4);place(Kit.tent('blue'),5,Z3+.2,2.4,-.5);place(Kit.canoe(),9.6,Z3+.4,3.4,.3);place(Kit.campfire(),13,Z3,1.2,0);lab('KIT tents, canoe, campfire (Kenney CC0)',7.2,Z3);
+const cam=new THREE.PerspectiveCamera(30,W/H,.1,200);cam.position.set(0,16.5,29);cam.lookAt(0,-.2,-1.5);
+renderer.render(scene,cam);renderer.render(scene,cam);
+const out=document.createElement('canvas');out.width=W;out.height=H;const x=out.getContext('2d');x.drawImage(cv,0,0);x.font='bold 15px sans-serif';x.textAlign='center';
+for(const l of labels){const v=new THREE.Vector3(l.x,0,l.z+1.4).project(cam);const px=(v.x+1)/2*W,py=(1-v.y)/2*H+16;x.lineWidth=4;x.strokeStyle='rgba(255,255,255,.85)';x.strokeText(l.t,px,py);x.fillStyle='#25201a';x.fillText(l.t,px,py);}
+window.__canvas=()=>out;
+window.__info={kit:Object.keys(Kit.src).length};window.__ready=true;
+})();
+</script>

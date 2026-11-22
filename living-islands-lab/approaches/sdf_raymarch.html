@@ -1,0 +1,258 @@
+<!doctype html><meta charset="utf-8"><title>Approach 2: SDF raymarch</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="c" width="1200" height="800"></canvas>
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float; precision highp int;
+out vec4 outc;
+uniform vec4 uTile;           // x0,y0,w,h in pixels
+uniform vec2 uRes;
+uniform sampler2D uH;         // R32F heights 256x256
+uniform vec3 uCam, uTgt; uniform float uFov;
+uniform vec3 uSun;
+uniform vec4 uTree[40]; uniform int uNT;
+uniform vec4 uRock[40]; uniform int uNR;
+uniform vec4 uTent[2];        // x,z,rot,color ; y comes from heightmap
+uniform vec4 uBoat; uniform vec3 uFire; uniform vec4 uPeople[3];
+uniform float uTime;
+const float SIZE=320.0, NN=256.0;
+float hash(vec2 p){p=fract(p*vec2(.1031,.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vnoise(p);p=p*2.03+17.1;a*=.5;}return s;}
+float hbase(vec2 xz){
+  vec2 q=(xz+SIZE*.5)/SIZE*NN-.5; q=clamp(q,vec2(0),vec2(NN-1.001)); ivec2 i=ivec2(q); vec2 f=q-vec2(i);
+  float a=texelFetch(uH,ivec2(i.x,i.y),0).r,b=texelFetch(uH,ivec2(i.x+1,i.y),0).r,c=texelFetch(uH,ivec2(i.x,i.y+1),0).r,d=texelFetch(uH,ivec2(i.x+1,i.y+1),0).r;
+  f=f*f*(3.-2.*f); return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+}
+float hdetail(vec2 xz,float hb){
+  float bw=pow(clamp(1.-length(vec2((xz.x-4.)/1.5,xz.y-60.))/52.,0.,1.),1.3);
+  float rocky=(clamp(1.-abs(hb-.7)/2.0,0.,1.)*.6+.35)*(1.-.8*clamp(bw*2.,0.,1.));
+  return (fbm(xz*.55)-.5)*1.6*rocky + (fbm(xz*2.1)-.5)*.22*rocky;
+}
+float hfull(vec2 xz){float h=hbase(xz);return h+hdetail(xz,h);}
+// ---------- primitives
+float sdCapCone(vec3 p,float h,float r1,float r2){vec2 q=vec2(length(p.xz),p.y);vec2 k1=vec2(r2,h),k2=vec2(r2-r1,2.*h);vec2 ca=vec2(q.x-min(q.x,(q.y<0.)?r1:r2),abs(q.y)-h);vec2 cb=q-k1+k2*clamp(dot(k1-q,k2)/dot(k2,k2),0.,1.);float s=(cb.x<0.&&ca.y<0.)?-1.:1.;return s*sqrt(min(dot(ca,ca),dot(cb,cb)));}
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+float sdTree(vec3 p,vec4 t){
+  vec3 q=p-vec3(t.x,t.y,t.z); float H=t.w; float R=.21*H;
+  float d=1e9;
+  float y0=H*.12;
+  d=min(d,sdCapCone(q-vec3(0,y0+H*.17,0),H*.17,R,R*.62));
+  d=min(d,sdCapCone(q-vec3(0,y0+H*.42,0),H*.17,R*.78,R*.40));
+  d=min(d,sdCapCone(q-vec3(0,y0+H*.66,0),H*.17,R*.56,R*.18));
+  d=min(d,sdCapCone(q-vec3(0,y0+H*.86,0),H*.14,R*.32,.02));
+  d=min(d,sdCap(q,vec3(0,0,0),vec3(0,y0+.5,0),.18));
+  return d*.85;
+}
+float sdRock(vec3 p,vec4 r){vec3 q=p-r.xyz+vec3(0,.2*r.w,0);q.y*=1.5;return (length(q)-r.w*.9+.25*sin(q.x*3.1+q.z*2.3)*r.w*.3+.12*sin(q.z*5.))*.7;}
+vec2 mapCamp(vec3 p){
+  vec2 r=vec2(1e9,0.);
+  for(int i=0;i<2;i++){
+    vec3 c=vec3(uTent[i].x,hbase(uTent[i].xy)+.15,uTent[i].y);
+    vec3 q=p-c; q.xz*=rot(radians(uTent[i].z)); float W=1.7,H=1.75;
+    float d=max((abs(q.x)*H+q.y*W)/sqrt(H*H+W*W)-W*H/sqrt(H*H+W*W),max(-q.y,abs(q.z)-2.0));
+    if(d<r.x)r=vec2(d,uTent[i].w);
+  }
+  { vec3 c=vec3(uBoat.x,hbase(uBoat.xy)+.15,uBoat.y); vec3 q=p-c; q.xz*=rot(radians(uBoat.z));
+    vec3 a=vec3(q.x/2.4,(q.y-.45)/.62,q.z/.85); float o=(length(a)-1.)*.5;
+    vec3 b=vec3(q.x/2.2,(q.y-.6)/.6,q.z/.72); float inn=(length(b)-1.)*.5;
+    float d=max(max(o,-inn),q.y-.62); d=min(d,sdBox(vec3(q.x-1.4*clamp(floor((q.x+.2)/1.4+.5),-1.,1.)+.2,q.y-.3,q.z),vec3(.06,.04,.6))*1.0);
+    if(d<r.x)r=vec2(d,5.); }
+  { vec3 f=vec3(uFire.x,hbase(uFire.xy)+.1,uFire.y); vec3 q=p-f;
+    float fl=length(vec3(q.x,(q.y-.65)*.75,q.z))-.38; if(fl<r.x)r=vec2(fl,6.);
+    float ang=atan(q.z,q.x); float rr=length(q.xz); float ring=length(vec2(rr-.7,q.y-.15))-.16+.05*sin(ang*9.); if(ring<r.x)r=vec2(ring,8.);
+    for(int k=0;k<3;k++){float a=radians(float(k)*115.+20.);vec3 lc=vec3(cos(a)*2.4,.18,sin(a)*2.6);vec3 qq=q-lc;qq.xz*=rot(a+1.2);float lg=sdBox(qq,vec3(1.0,.2,.2))-.0;if(lg<r.x)r=vec2(lg,9.);}
+  }
+  for(int i=0;i<3;i++){
+    vec3 c=vec3(uPeople[i].x,hbase(uPeople[i].xy),uPeople[i].y); vec3 q=p-c; float hh=uPeople[i].z;
+    float d=min(sdCap(q,vec3(0,.2,0),vec3(0,hh*.7,0),.3),length(q-vec3(0,hh*.88,0))-.2);
+    if(d<r.x)r=vec2(d,10.+uPeople[i].w);
+  }
+  return r;
+}
+vec2 mapScene(vec3 p,bool trees){
+  float ht=hfull(p.xz);
+  vec2 r=vec2((p.y-ht)*.55,0.);
+  if(trees){
+    for(int i=0;i<40;i++){ if(i>=uNT)break; vec2 dv=p.xz-uTree[i].xz; float bd=length(dv)-uTree[i].w*.3-.2; if(bd>3.){ if(bd<r.x)r.x=min(r.x,r.x);continue;} float d=sdTree(p,vec4(uTree[i].x,uTree[i].y,uTree[i].z,uTree[i].w)); if(d<r.x)r=vec2(d,1.); }
+    for(int i=0;i<40;i++){ if(i>=uNR)break; vec2 dv=p.xz-uRock[i].xz; if(length(dv)>uRock[i].w+2.5)continue; float d=sdRock(p,uRock[i]); if(d<r.x)r=vec2(d,2.); }
+    vec2 dc=p.xz-vec2(uFire.x,uFire.y);
+    if(length(dc)<32.&&p.y<10.){ vec2 c=mapCamp(p); if(c.x<r.x)r=c; }
+  }
+  return r;
+}
+// ---------- sky, light
+vec3 sky(vec3 d){
+  float y=clamp(d.y,0.,1.); vec3 zen=vec3(.14,.32,.70),hor=vec3(.88,.68,.55);
+  vec3 c=mix(hor,zen,1.-pow(1.-y,2.2));
+  float s=clamp(dot(d,uSun),0.,1.); c+=vec3(1.,.55,.25)*(pow(s,8.)*.55+pow(s,80.)*1.2+pow(s,2000.)*30.);
+  return c;
+}
+vec3 terrAlbedo(vec3 p,vec3 n,float hb){
+  float nn=fbm(p.xz*.3),nm=fbm(p.xz*.8+3.);
+  vec3 grass=mix(vec3(.30,.43,.15),vec3(.42,.48,.18),nn),heath=mix(vec3(.40,.24,.31),vec3(.30,.27,.14),nm);
+  float hm=clamp((p.y-6.)/8.+(nn-.5)*1.2,0.,1.);
+  vec3 a=mix(grass,heath,hm);
+  float slope=1.-n.y; float band=.5+.5*sin(p.y*3.1+nn*6.);
+  vec3 rc=mix(vec3(.30,.27,.26),vec3(.52,.40,.32),band);
+  float rw=clamp((slope-.28)*4.,0.,1.)+clamp(1.-(p.y-.2)*(p.y-.2)/3.5,0.,1.)*.4;
+  a=mix(a,rc,clamp(rw+(nn-.5)*.6,0.,1.));
+  vec2 bd=vec2((p.x-4.)/1.5,p.z-60.); float bw=pow(clamp(1.-length(bd)/52.,0.,1.),1.3);
+  float sw=clamp(bw*step(p.y,3.2)*clamp(1.-slope*3.,0.,1.)*1.4,0.,1.);
+  vec3 sand=mix(vec3(.84,.70,.48),vec3(.52,.40,.27),clamp((.45-p.y)/.5,0.,1.));
+  a=mix(a,sand,sw);
+  return a;
+}
+vec3 matColor(float id,vec3 p,vec3 n){
+  if(id<.5) return terrAlbedo(p,n,0.);
+  if(id<1.5){float sh=.55+.45*sin(atan(p.z,p.x)*5.+p.y*3.);return vec3(.07,.20,.10)*sh+vec3(.02,.04,.02);}
+  if(id<2.5) return vec3(.42,.36,.31)+.05*sin(p.x*4.+p.z*3.);
+  if(id<3.5) return vec3(.88,.40,.10)*(.8+.2*cos(p.x*9.));
+  if(id<4.5) return vec3(.12,.26,.62)*(.8+.2*cos(p.x*9.));
+  if(id<5.5) return p.y>hbase(p.xz)+.5?vec3(.13,.25,.55):vec3(.55,.38,.22);
+  if(id<6.5) return vec3(1.,.65,.2);
+  if(id<8.5) return vec3(.4,.38,.36);
+  if(id<9.5) return vec3(.4,.26,.14);
+  float k=id-10.; return k<.5?vec3(.2,.35,.75):(k<1.5?vec3(.9,.75,.1):vec3(.8,.15,.1));
+}
+vec3 calcN(vec3 p){vec2 e=vec2(.05,-.05);return normalize(e.xyy*mapScene(p+e.xyy,true).x+e.yyx*mapScene(p+e.yyx,true).x+e.yxy*mapScene(p+e.yxy,true).x+e.xxx*mapScene(p+e.xxx,true).x);}
+float softShadow(vec3 ro,vec3 rd){
+  float res=1.,t=.12;
+  for(int i=0;i<56;i++){
+    float h=mapScene(ro+rd*t,true).x; res=min(res,10.*h/t); t+=clamp(h,.1,3.); if(res<.002||t>90.)break;
+  }
+  res=clamp(res,0.,1.); return res*res*(3.-2.*res);
+}
+float terrShadow(vec3 ro,vec3 rd){ // cheap heightfield-only shadow for the haze
+  float res=1.; float t=1.;
+  for(int i=0;i<14;i++){ vec3 p=ro+rd*t; float h=p.y-hbase(p.xz); res=min(res,clamp(h/(t*.12)+0.,0.,1.)); t*=1.45; }
+  return res;
+}
+float calcAO(vec3 p,vec3 n){float o=0.,s=1.;for(int i=0;i<6;i++){float h=.08+.5*float(i)/5.;float d=mapScene(p+n*h,true).x;o+=(h-d)*s;s*=.8;}return clamp(1.-1.4*o,0.,1.);}
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
+void main(){
+  vec2 px=gl_FragCoord.xy-vec2(0.); px.y=uRes.y-px.y;           // y down
+  vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0,1,0))),up=cross(rt,fw);
+  float th=tan(radians(uFov)*.5),asp=uRes.x/uRes.y;
+  vec3 acc=vec3(0.);
+  const vec3 SUNC=vec3(1.0,.60,.30)*3.6, SKYA=vec3(.26,.38,.62)*1.25;
+  for(int s=0;s<4;s++){
+    vec2 o=vec2(float(s&1),float(s>>1))*.5+.25;
+    vec2 uv=(px+o)/uRes*2.-1.; vec3 rd=normalize(fw+rt*uv.x*th*asp+up*(-uv.y)*th);
+    vec3 ro=uCam; float tw=(rd.y<-1e-4)?-ro.y/rd.y:1e9; float tmax=min(tw,4000.);
+    float t=0.; float hit=-1.; vec2 m=vec2(0.); vec3 col=vec3(0.);
+    // start at the island bounding slab to skip empty air
+    float t0=max((30.-ro.y)/min(rd.y,-1e-4),0.); t=t0;
+    for(int i=0;i<300;i++){ vec3 p=ro+rd*t; m=mapScene(p,true); if(m.x<.012+.0006*t){hit=1.;break;} t+=m.x; if(t>tmax)break; }
+    if(hit<0.){ t=tmax; }
+    vec3 P=ro+rd*t;
+    if(hit>0.){
+      vec3 n=calcN(P); vec3 alb=matColor(m.y,P,n);
+      float sh=softShadow(P+n*.04,uSun); float ao=calcAO(P,n);
+      float ndl=clamp(dot(n,uSun),0.,1.);
+      vec3 sunl=SUNC*ndl*sh; vec3 sk=SKYA*(.45+.45*n.y)*ao*.85;
+      vec3 bounce=vec3(.5,.34,.2)*.35*(1.-n.y)*ao;
+      vec3 fv=vec3(uFire.x,hbase(uFire.xy)+.7,uFire.y)-P; float fd=length(fv); float fl=clamp(dot(n,fv/fd),0.,1.)*26./(1.+fd*fd*.5);
+      vec3 fire=fl*vec3(1.,.45,.14);
+      col=alb*(sunl+sk+bounce+fire);
+      if(m.y>5.5&&m.y<6.5)col=vec3(4.,2.,.6);
+      // wet sand/foam at the waterline from the same SDF
+      float dd=P.y; float foam=clamp(1.-abs(P.y+.05)/.22,0.,1.)*(.5+.5*vnoise(P.xz*3.)); col=mix(col,vec3(1.,.98,.95)*(sunl*.4+.5+sk*.3),foam*.8*step(m.y,.5));
+    } else if(tw<tmax+1.&&rd.y<0.){
+      // ---- water
+      vec3 pw=ro+rd*tw; vec2 xz=pw.xz;
+      float sc=clamp(1.15-tw/260.,.18,1.);
+      vec2 w=.5*vec2(cos(xz.x*.35+xz.y*.12+uTime*.8)*.06+cos(xz.x*.9-xz.y*.5+uTime*1.3)*.03+cos(xz.x*2.4+xz.y*1.7+uTime*2.2)*.012+(vnoise(xz*2.)-.5)*.05,
+                     cos(xz.y*.3-xz.x*.15+uTime*.7)*.06+cos(xz.y*.8+xz.x*.6+uTime*1.1)*.03+cos(xz.y*2.1-xz.x*1.9+uTime*2.)*.012+(vnoise(xz*2.+7.)-.5)*.05)*sc;
+      vec3 N=normalize(vec3(-w.x,1.,-w.y));
+      float ci=clamp(-dot(rd,N),.02,1.); float F=clamp((.02+.98*pow(1.-ci,5.))*.75,0.,1.);
+      vec3 rv=reflect(rd,N); rv.y=abs(rv.y);
+      vec3 refl=sky(normalize(rv));
+      // island reflection: short heightfield march of the reflected ray
+      { float tr=1.; for(int i=0;i<40;i++){ vec3 q=pw+rv*tr; float hq=hbase(q.xz); if(q.y<hq){ refl=mix(refl,terrAlbedo(q,vec3(0,1,0),0.)*(SUNC*.12+SKYA*.4),.85); break;} tr+=max(.5,(q.y-hq)*.6)+tr*.04; if(tr>140.)break; } }
+      vec3 hv=normalize(uSun-rd); float spec=clamp(dot(hv,N),0.,1.);
+      float shw=terrShadow(pw+vec3(0,.05,0),uSun);
+      vec3 glint=(pow(spec,900.)*38.+pow(spec,120.)*2.2+pow(spec,14.)*.25)*vec3(1.,.62,.34)*(.5+.5*shw);
+      float depth=max(-hbase(xz),.03);
+      vec3 rr=normalize(vec3(rd.x*.75,-sqrt(max(1.-pow(.75*length(rd.xz),2.),.01)),rd.z*.75));
+      float path=depth/abs(rr.y); vec2 fxz=xz+rr.xz*path;
+      float fh=hbase(fxz); vec3 fp=vec3(fxz.x,fh,fxz.y);
+      vec3 floorc=mix(terrAlbedo(fp,vec3(0,1,0),0.),vec3(.18,.26,.22),clamp(-fh/5.,0.,1.));
+      vec3 sig=vec3(.30,.07,.045); vec3 tr=exp(-path*sig);
+      vec3 floorlit=floorc*((uSun.y*(.85*terrShadow(vec3(fxz.x,0.,fxz.y)+vec3(0,.05,0),uSun)+.15))*SUNC*.55+SKYA*.55)*tr;
+      vec3 bodyl=(.45+.55*shw)*SUNC*.22+SKYA*.45;
+      float k=1.-exp(-depth*.26);
+      vec3 body=mix(vec3(.05,.56,.55),vec3(.012,.08,.24),k)*bodyl;
+      float bl=exp(-path*.55);
+      vec3 refr=floorlit*bl+body*(1.-bl*.55);
+      col=refr*(1.-F)+refl*F+glint;
+      // foam: distance-to-coast from the terrain SDF evaluated on the sea plane
+      float sd=max(mapScene(vec3(xz.x,0.,xz.y),false).x/.55,0.);
+      float nz=vnoise(xz*4.),nz2=vnoise(xz*.8+5.);
+      float edge=clamp(1.-(sd-.15+(nz-.5)*.8)/1.1,0.,1.);
+      float pulse=pow(.5+.5*sin(sd*2.1-uTime*1.2+nz2*4.),3.)*exp(-sd/3.2)*step(.6,sd)*step(.45,nz2);
+      float foam=clamp(pow(edge,1.3)+pulse*.55,0.,1.);
+      vec3 fl=(SKYA*.6+SUNC*.22*(.4+.6*shw))*1.1;
+      col=mix(col,min(fl,vec3(2.2)),foam);
+    } else { col=sky(rd); t=2000.; }
+    // ---- volumetric haze: height fog integrated with sun in-scatter + shadowed shafts
+    { float tt=min(t,700.); float steps=16.; float dt=tt/steps; vec3 scat=vec3(0.); float trans=1.; 
+      float ph=pow(clamp(dot(rd,uSun),0.,1.),4.)*.9+.25;
+      float jit=hash(px+float(s)*7.3);
+      for(int i=0;i<16;i++){ float ti=(float(i)+jit)*dt; vec3 q=ro+rd*ti; float dens=.0015*exp(-max(q.y,0.)*.055)+.00018;
+        float vis=terrShadow(q+vec3(0,.5,0),uSun); trans*=exp(-dens*dt);
+        scat+=trans*dens*dt*(SUNC*.22*vis*ph+vec3(.30,.34,.46)*.5); }
+      col=col*trans+scat*vec3(1.,.93,.88);
+      float ff=1.-exp(-min(t,4000.)*.0011); ff=ff*ff*(3.-2.*ff); col=mix(col,sky(normalize(vec3(rd.x,.02,rd.z)))*.92,ff);
+    }
+    acc+=col;
+  }
+  acc/=4.;
+  vec2 q=(gl_FragCoord.xy/uRes-.5); float vg=1.-.28*dot(q,q)*2.;
+  vec3 l=aces(acc*.50*vg); l=pow(l,vec3(1./2.2));
+  float lum=dot(l,vec3(1./3.)); l=clamp(l+(l-lum)*.12+vec3(.012,0.,-.006)*(1.-lum),0.,1.);
+  outc=vec4(l,1.);
+}
+</script>
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+in vec2 p; void main(){gl_Position=vec4(p,0,1);}</script>
+<script>
+(async()=>{
+const J=await (await fetch('island.json')).json();
+const c=document.getElementById('c');const qs=new URLSearchParams(location.search);if(qs.get('w')){c.width=+qs.get('w');c.height=+qs.get('h');}
+const gl=c.getContext('webgl2',{preserveDrawingBuffer:true,antialias:false});
+if(!gl){window.__err='no webgl2';return;}
+gl.getExtension('EXT_color_buffer_float');
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){window.__err=gl.getShaderInfoLog(o);console.error(window.__err);}return o;}
+const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,document.getElementById('vs').text));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,document.getElementById('fs').text.trim()));gl.linkProgram(pr);
+if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){window.__err=gl.getProgramInfoLog(pr);return;}
+gl.useProgram(pr);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const loc=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+const n=J.n,H=new Float32Array(n*n);for(let i=0;i<n*n;i++)H[i]=J.heights_cm[i]/100;
+const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,n,n,0,gl.RED,gl.FLOAT,H);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+const U=k=>gl.getUniformLocation(pr,k);
+gl.uniform1i(U('uH'),0);
+const W=c.width,Ht=c.height;window.__size=[W,Ht];gl.uniform2f(U('uRes'),W,Ht);
+gl.uniform3fv(U('uCam'),J.camera.pos);gl.uniform3fv(U('uTgt'),J.camera.target);gl.uniform1f(U('uFov'),J.camera.fov);
+const a=J.sun.az*Math.PI/180,e=J.sun.el*Math.PI/180;gl.uniform3f(U('uSun'),Math.sin(a)*Math.cos(e),Math.sin(e),Math.cos(a)*Math.cos(e));
+gl.uniform1f(U('uTime'),3.0);
+// props within reach of the camera frame only (keeps the SDF loop short)
+const cam=J.camera.pos, tg=J.camera.target;
+const near=o=>Math.hypot(o.x-tg[0],o.z-tg[2])<95 && o.z>-10;
+const trees=J.conifers.filter(near).slice(0,40), rocks=J.rocks.filter(o=>near(o)&&o.z>30).slice(0,40);
+const flat=(arr,f)=>{const o=new Float32Array(40*4);arr.forEach((v,i)=>o.set(f(v),i*4));return o;};
+gl.uniform4fv(U('uTree[0]'),flat(trees,t=>[t.x,t.y,t.z,t.h]));gl.uniform1i(U('uNT'),trees.length);
+gl.uniform4fv(U('uRock[0]'),flat(rocks,r=>[r.x,r.y,r.z,r.s]));gl.uniform1i(U('uNR'),rocks.length);
+const cp=J.camp;
+gl.uniform4fv(U('uTent[0]'),new Float32Array(cp.tents.flatMap(t=>[t.x,t.z,t.rot,t.color==='orange'?3:4])));
+gl.uniform4f(U('uBoat'),cp.boat.x,cp.boat.z,cp.boat.rot,0);gl.uniform3f(U('uFire'),cp.fire.x,cp.fire.z,0);
+gl.uniform4fv(U('uPeople[0]'),new Float32Array([cp.fire.x-14.5,cp.fire.z+4,1.7,0, cp.fire.x-12.8,cp.fire.z+5.6,1.6,1, cp.fire.x+3,cp.fire.z+1.6,1.2,2]));
+gl.viewport(0,0,W,Ht);gl.enable(gl.SCISSOR_TEST);
+const TS=+(qs.get('ts')||200);let done=0;const total=(W/TS)*(Ht/TS);const t0=performance.now();
+for(let y=0;y<Ht;y+=TS)for(let x=0;x<W;x+=TS){gl.scissor(x,y,TS,TS);gl.drawArrays(gl.TRIANGLES,0,3);gl.finish();done++;window.__progress=done+'/'+total;await new Promise(r=>setTimeout(r,0));}
+window.__ms=performance.now()-t0;window.__done=true;
+})();
+</script>
