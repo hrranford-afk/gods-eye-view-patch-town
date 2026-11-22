@@ -43,6 +43,16 @@ Eras 3 and 5 reuse City Lab work (district economy, power network). Era 1 is dra
 - **A failed colony becomes the next game's ruin.** Start again and your earlier settlement is out there on the map as salvage, with its own finds. Failure feeds the next run.
 - A find unlocks an idea or a part, never a weapon. Each find has a place, a story line, and a reward you can use.
 
+## The sea brings things (owner idea, 22 Nov: the flow system is a key part of the game)
+Currents and tides carry things past and onto shores. The same flow field that moves the visible sea decides where things go.
+- **What drifts:** shoals of fish (counted as shoals, never tracked as individuals), driftwood, shells, seaweed, crates, bottles with messages, and wreck debris from the old world. Storms bring more.
+- **Where it comes from:** other islands, the open sea, and old-world wrecks. Seeded and deterministic, never pre-placed.
+- **Where it lands:** gentle shores and coves catch it at high tide as a strandline (wrack). Headlands and fast channels lose it.
+- **What the player does:** watch the water (the "Eyes on the water" idea: spot a clue, go ashore, bring news home), set nets or a catch line in a cove, build a jetty or watch post where things collect, send a boat to meet a floating find before it drifts away.
+- **Why it matters:** fishing, timber, salvage and story finds all arrive this way, so geography and tide set the economy. It ties into era 6 (Remembering): ruins and salvage.
+- **Rules:** finite supply, a ledger with idempotent event keys (a find is claimed once), people counted not tracked, hopeful tone, no gore.
+- **Measure first:** how many items per tide a shore catches, and whether the choices have a real trade-off.
+
 ## Household loop (era 3 detail)
 Grow at home (garden, plot, place) / shop (nearest open shop with stock) / cook at home (hearth, fuel, ingredients, time) / eat out (cheap, close, short on time). Needs push; trade and temperament nudge. People are counted, never tracked.
 
