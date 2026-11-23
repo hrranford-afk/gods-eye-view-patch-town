@@ -25,13 +25,15 @@ const d = await info('?ui=0&q=high&seed=1122');
 ok(d.st.hash === GOLD && d.st.tris === GOLD_TRIS, 'default scene (no ?boats): hash ' + d.st.hash + ' tris ' + d.st.tris);
 ok(d.errs.length === 0, 'default scene 0 console errors');
 ok(d.st.boats.every(b => !b.mask), 'default scene: no hull mask meshes');
-const defPos = d.st.boats.map(b => [b.kind, +b.x.toFixed(2), +b.z.toFixed(2)]);
+/* clock-independent read: a sailing boat's position is a function of the page clock (it differs between two loads by however long each took to start), so only the kind and flag are compared for it; moored and beached boats are fixed in the world and compared to 0.01 m (same idea as hashStatic) */
+const boatKey = b => b.sail ? [b.kind, 'sail'] : [b.kind, +b.x.toFixed(2), +b.z.toFixed(2)];
+const defPos = d.st.boats.map(boatKey);
 await d.page.close();
 const b2 = await info('?ui=0&q=high&seed=1122&boats=2');
 ok(b2.errs.length === 0, '?boats=2 0 console errors (' + b2.errs.slice(0, 2).join(' | ') + ')');
 ok(b2.st.hash === GOLD, '?boats=2 leaves the world state hash alone (' + b2.st.hash + ')');
 ok(b2.st.boats.length > 0 && b2.st.boats.every(b => b.mask), '?boats=2: every boat (' + b2.st.boats.length + ') has a hull mask mesh');
-ok(JSON.stringify(b2.st.boats.map(b => [b.kind, +b.x.toFixed(2), +b.z.toFixed(2)])) === JSON.stringify(defPos), '?boats=2: boat kinds and positions unchanged');
+ok(JSON.stringify(b2.st.boats.map(boatKey)) === JSON.stringify(defPos), '?boats=2: boat kinds and fixed-boat positions unchanged (sailing boats compared by kind: their position follows the page clock)');
 const mk = await b2.page.evaluate(() => __li.maskInfo());
 ok(mk.length === b2.st.boats.length && mk.every(m => m.colorWrite === false && m.depthWrite === true && m.depthTest === true && m.renderOrder < m.seaOrder && m.hullOrder < m.renderOrder), 'mask: colorWrite false, depthWrite true, depthTest true, renderOrder ' + mk.map(m => m.renderOrder).join(',') + ' after the hull (' + mk[0].hullOrder + ') and before the sea (' + mk[0].seaOrder + ')');
 ok(b2.st.boats.every(b => b.Wd > 0) && (await b2.page.evaluate(() => __li.boatBeam())).every(r => r.ratio >= 3), 'skiff length to beam is at least 3 for every boat (' + (await b2.page.evaluate(() => __li.boatBeam())).map(r => r.ratio.toFixed(2)).join(', ') + ')');

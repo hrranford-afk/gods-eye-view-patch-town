@@ -257,7 +257,7 @@
     const lum = c => .3 * c[0] + .59 * c[1] + .11 * c[2];
     const aces = x => { x *= .9 * .95; return Math.pow(clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0, 1), 1 / 2.2); };
     function target() {   /* the parameter set for this instant */
-      if (rt.auto) { const hr = rt.hour0 + rt.t / rt.hourSec; const p = at(seed, hr); return p; }
+      if (rt.auto) { const hr = rt.hour0 + rt.t / rt.hourSec; const p = opt.atFn ? (opt.atFn(seed, hr) || at(seed, hr)) : at(seed, hr); return p; }   /* opt.atFn: the macro sea supplies the parameter set (islands_look.html ?macro=1); absent = the Markov schedule */
       if (rt.k < 1 && rt.from) return lerpParams(rt.from, rt.to, sm(rt.k));
       return rt.to;
     }

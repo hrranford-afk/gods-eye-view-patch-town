@@ -41,7 +41,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <div id="info"></div>
 <div id="boot">Raising the islands...</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');</script>
+<script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');</script>
 <script>
 (function(){
 'use strict';
@@ -56,7 +56,8 @@ const WXS=Q.get('weather');             /* the weather pass (weather.js): clear 
 const WXON=!!WXS&&!!window.LI_WEATHER&&window.LI_WEATHER.create!==undefined;
 let WXR=null;
 const BOATS2=Q.get('boats')==='2';      /* the boats pass: slim lapstrake hulls, dry floors, a depth-only hull mask so the sea never shows inside, boot-top line and contact shadow (see BOATS_PASS.md); absent = unchanged */
-const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_sea.js, see MACRO_WIRE.md): tide, swell, whitecaps, drift, weather and boat heave from a pure function of (seed, game hour); implies the sea=2 look; absent = unchanged */
+const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
@@ -699,6 +700,7 @@ function flowRaw(F,x,z,T,out,pure){
   if(SB){const sf=sbF(x,z,flowTideAt(T),Math.hypot(tx,tz)/U0);tx*=sf;tz*=sf;}   /* seabed: the stream follows the continuity rule u = U0 refA / (w D), narrow and shallow is fast */
   let ux=c*tx+cp*wx+cn*ex,uz=c*tz+cp*wz+cn*ez;
   out[0]=ux;out[1]=uz;flowResAt(x,z,out);
+  if(MC.on&&!pure){out[0]+=MC.nx;out[1]+=MC.nz;}   /* macro: drift and wind setup nudge (masked by land below) */
   if(!pure){const dep=flowTideAt(T)-hAt(x,z),sh=F.shallow;const f=sh.min+(1-sh.min)*sm(dep/sh.depth);const g=mask*(dep>0?f:sh.min*sm((dep+.4)/.4));out[0]*=g;out[1]*=g;}
   return out;}
 const _fo=[0,0];
@@ -718,7 +720,7 @@ function flowTexUpdate(T,force){if(!force&&Math.abs(T-FL.texT)<1e-4)return;FL.te
     d[k+2]=enc(-(dudx+dvdz),.5);d[k+3]=enc(dvdx-dudz,.5);}
   FL.tex.needsUpdate=true;}
 /* tide-time T (seconds). Auto: the page clock. Manual: the phase that gives the slider level, on the rising (flood) or falling (ebb) branch. FL.base whole cycles are added so the drift has already spread. */
-function flowTime(){if(tideAuto)return tideT+FL.P*FL.base;const s=clamp(tide/FL.A,-1,1),a=Math.asin(s);return FL.P*FL.base+(FL.tideDir>0?a:Math.PI-a)/TAU2*FL.P;}
+function flowTime(){if(tideAuto)return tideT+FL.P*FL.base;if(MC.on&&!MC.tideTouched)return FL.P*FL.base+MC.flowT;const s=clamp(tide/FL.A,-1,1),a=Math.asin(s);return FL.P*FL.base+(FL.tideDir>0?a:Math.PI-a)/TAU2*FL.P;}
 
 /* ---- flotsam: kinds 0 shell(cuttlebone), 1 driftwood, 2 kelp strand, 3 crate, 4 bottle ---- */
 const FK={n:['shell','driftwood','kelp','crate','bottle','whelk','branch'],wind:[0,.06,0,.05,.14,0,.06],sw:[1,.9,1.1,.7,.8,1,.9],len:[.30,1.5,1.7,.8,.5,.26,1.1],wood:[0,1,0,0,0,0,1]};
@@ -859,6 +861,65 @@ function flowArrows(T){const cv=FL.cv;if(!cv)return;const w=cv.clientWidth,h=cv.
     x.strokeStyle=`rgb(${Math.round(255*t)},${Math.round(230-90*t)},${Math.round(255-215*t)})`;x.lineWidth=1.2+2*t;
     x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);const ux=dx/dl,uy=dy/dl,hs=Math.min(10,3+dl*.3);x.moveTo(b[0],b[1]);x.lineTo(b[0]-ux*hs+uy*hs*.5,b[1]-uy*hs-ux*hs*.5);x.moveTo(b[0],b[1]);x.lineTo(b[0]-ux*hs-uy*hs*.5,b[1]-uy*hs+ux*hs*.5);x.stroke();}}
 
+/* ============ macro sea wiring (?macro=1, see MACRO_WIRE.md) ============
+   macro_sea.js is a pure function of (seed, game hour). This block owns the CLOCK (the game hour is an accumulator, so a speed change never jumps anything),
+   the smoothed window forcing, one PHASE ACCUMULATOR per wave component (phase = seed phase - integral of w dt, so changing speed or the state never makes the crests jump),
+   and what the rest of the page reads: tide level, flow time and drift nudge, weather parameters, the sea uniforms, the height function for boats. Everything is off unless ?macro=1. */
+const MC={on:MCON,seed:SEED,windowM:200,gain:parseFloat(Q.get('mgain')||'1.5'),hourSec:(parseFloat(Q.get('wsec')||'')>0?parseFloat(Q.get('wsec')):20),speed:parseFloat(Q.get('mspeed')||'1')||1,
+  h0:Q.get('mh')!==null?parseFloat(Q.get('mh')):6,fixed:Q.get('mt')!==null?parseFloat(Q.get('mt')):null,hour:0,st:null,acc:1,tideTouched:Q.get('tide')!==null,snap:true,dirty:false,
+  N:MCON?MacroSea.NCOMP:8,A:new Float32Array(32),B:new Float32Array(16),k:new Float32Array(8),dx:new Float32Array(8),dz:new Float32Array(8),a:new Float32Array(8),phi:new Float32Array(8),ph:new Float64Array(8),
+  uA:null,uB:null,uC:null,target:null,ampSum:0,tide:0,flowT:0,flowCyc:0,flowLast:null,nx:0,nz:0,lnx:0,lnz:0,dirtyFlow:false,wx:null,heave:{h:0,pitch:0,roll:0,n:0,maxH:0,maxP:0,maxR:0}};
+MC.hour=MC.fixed!==null?MC.h0+MC.fixed/MC.hourSec:MC.h0;
+if(MC.on){MC.uA=Array.from({length:8},()=>new THREE.Vector4(1,0,.01,0));MC.uB=Array.from({length:8},()=>new THREE.Vector2(0,0));MC.uC=new THREE.Vector4(MC.gain,.002,.5,1);}
+const MC_G=9.81,MC_HEAVE=.25,MC_ANG=.12;   /* TUNING: boat heave cap in game metres, tilt cap in radians */
+/* the sea clock a frozen page uses (shots, tests): ?seat= first, then ?mt= */
+function mcFrozenT(){return SEAT!==null?SEAT:MC.fixed;}
+function mcWeather(st){   /* weather.js parameters from the macro state: storm when a vortex passes (blended on the storm index), otherwise the macro's own fair, clear, overcast or rain; wind from the macro */
+  if(!WXON)return null;const L=LI_WEATHER;let base=st.weatherState==='storm'?'rain':st.weatherState;if(L.STATES.indexOf(base)<0)base='fair';
+  const mk=n=>{const p=L.params(n);p.windMs=st.wind.speed;p.angle=st.compat.angle;Object.assign(p,L.seaOf(p.windMs));return p;};
+  const k=sm((st.storm.index-.3)/.4),A=mk(base),o=k>0?L.lerpParams(A,mk('storm'),k):A;
+  o.name=k>=.5?'storm':base;o.index=L.STATES.indexOf(o.name);o.segment=-1;o.storm=k>0?0:-1;o.from=base;o.to=k>0?'storm':base;o.k=k;o.hour=st.hour;o.macroStorm=st.storm.index;return o;}
+function mcRecompute(){const st=MacroSea.macro(SEED,MC.hour,{arrivals:false});MC.st=st;
+  MC.target=MacroSea.seaComponents(st,{windowM:MC.windowM});MC.tide=st.tide.level;
+  /* flow time follows the macro tide on its rising or falling branch, unwrapped by whole cycles so the flotsam sim never runs backwards at low water */
+  {const s=clamp(MC.tide/FL.A,-1,1),a=Math.asin(s),rising=st.tide.stream>=0;let f=(rising?a:Math.PI-a)/TAU2;if(f<-.25)f+=1;
+   if(MC.flowLast!==null){const d=f-MC.flowLast;if(d<-.5)MC.flowCyc++;else if(d>.5)MC.flowCyc--;}MC.flowLast=f;MC.flowT=FL.P*(f+MC.flowCyc);}
+  /* drift nudge for the flow field: macro drift (current plus 3 percent of the wind) plus wind setup pushing along the wind (0.6 m/s per metre of setup, TUNING) */
+  const w=st.wind,sp=Math.max(w.speed,.01);MC.nx=st.drift.x+.6*st.surgeWind*(w.x/sp);MC.nz=st.drift.z+.6*st.surgeWind*(w.z/sp);
+  MC.wx=mcWeather(st);}
+/* advance by dt real seconds. The hour moves with MC.speed; the phases move with real time only (w dt), never with the speed. */
+function mcUpdate(dt){if(!MC.on)return;
+  const fz=mcFrozenT();if(MC.fixed===null)MC.hour+=dt*MC.speed/MC.hourSec;
+  MC.acc+=dt;if(!MC.st||MC.acc>=.1||fz!==null||MC.dirty){MC.acc=0;MC.dirty=false;mcRecompute();}
+  const T=MC.target,snap=fz!==null||MC.snap,r=snap?1:1-Math.exp(-dt/1.5);MC.snap=false;let ampSum=0;
+  for(let i=0;i<MC.N;i++){const c=T[i];
+    MC.k[i]+=(c.k-MC.k[i])*r;MC.a[i]+=(c.a-MC.a[i])*r;MC.dx[i]+=(c.dx-MC.dx[i])*r;MC.dz[i]+=(c.dz-MC.dz[i])*r;
+    const l=Math.hypot(MC.dx[i],MC.dz[i])||1,dx=MC.dx[i]/l,dz=MC.dz[i]/l;MC.phi[i]=c.phi;
+    const w=Math.sqrt(MC_G*MC.k[i]);
+    if(fz!==null)MC.ph[i]=w*fz;else MC.ph[i]+=w*dt;
+    MC.ph[i]%=TAU2*1000;   /* keep the double small; the shader gets the wrapped value */
+    const A=MC.A,B=MC.B;A[i*4]=dx;A[i*4+1]=dz;A[i*4+2]=MC.k[i];A[i*4+3]=w;B[i*2]=MC.a[i];
+    B[i*2+1]=((MC.phi[i]-MC.ph[i])%TAU2+TAU2)%TAU2;ampSum+=MC.a[i];
+    MC.uA[i].set(dx,dz,MC.k[i],w);MC.uB[i].set(MC.a[i],B[i*2+1]);}
+  MC.ampSum=ampSum;MC.uC.set(MC.gain,MacroSea.monahan(MC.st.wind.speed),Math.max(.05,ampSum),1);
+  if(waterMesh&&waterMesh.material.uniforms.uMsC&&!WXR){waterMesh.material.uniforms.uWind.value.set(Math.cos(MC.st.compat.angle),Math.sin(MC.st.compat.angle));}
+  if(FLOW&&(Math.abs(MC.nx-MC.lnx)>.01||Math.abs(MC.nz-MC.lnz)>.01)){MC.lnx=MC.nx;MC.lnz=MC.nz;MC.dirtyFlow=true;}}
+/* the sea height at a world point: the same arrays and formula as the shader (seaHGlslPort is the line-for-line mirror of msSeaH; t = 0 because the phase is accumulated) */
+function mcH(x,z){return MacroSea.seaHGlslPort(x,z,0,MC.A,MC.B);}
+/* boat motion from the sea under the hull: heave at the centre, bow-stern and port-starboard slopes for tilt, all capped (small angles) */
+function mcBoat(b,y,roll,pitch){const c=Math.cos(b.yaw),s=Math.sin(b.yaw),hl=b.L*.5,hw=Math.min(b.Wd||b.L/3,b.L/3)*.5;
+  const h0=mcH(b.x,b.z),hb=mcH(b.x+c*hl,b.z-s*hl),hs=mcH(b.x-c*hl,b.z+s*hl),hp=mcH(b.x+s*hw,b.z+c*hw),hq=mcH(b.x-s*hw,b.z-c*hw);
+  const hv=MC_HEAVE*Math.tanh(h0/.8),pi=MC_ANG*Math.tanh(Math.atan((hb-hs)/(2*hl))/MC_ANG),ro=MC_ANG*Math.tanh(-Math.atan((hp-hq)/(2*hw))/MC_ANG);   /* soft caps: a calm sea moves the boat a little, a storm saturates at the cap */
+  const H=MC.heave;H.h=hv;H.pitch=pi;H.roll=ro;H.n++;H.maxH=Math.max(H.maxH,Math.abs(hv));H.maxP=Math.max(H.maxP,Math.abs(pi));H.maxR=Math.max(H.maxR,Math.abs(ro));
+  return{y:y+hv,roll:roll+pi,pitch:pitch+ro,hv};}
+/* shader patch: swell gradient and crest whitecaps from msSeaH, inserted after anchors the weather patch also uses (it keeps working because the anchor text stays) */
+const MS_DECL=MC.on?MacroSea.SEA_GLSL+'uniform vec4 uMsC; /* gain, whitecap fraction W, sum of amplitudes, on */\n':'';
+function msPatch(src){
+  const R=(a,b)=>{if(src.split(a).length!==2)throw new Error('macro shader patch failed: '+a.slice(0,48));src=src.replace(a,b);};
+  R('varying vec3 vW;','varying vec3 vW;\n'+MS_DECL);
+  R('g*=mix(0.25,1.0,smoothstep(0.0,0.6,depth));','g*=mix(0.25,1.0,smoothstep(0.0,0.6,depth));float msh=msSeaH(p,0.0);vec2 msg=vec2(msSeaH(p+vec2(1.0,0.0),0.0)-msh,msSeaH(p+vec2(0.0,1.0),0.0)-msh);g+=msg*(uMsC.x*mix(1.0,calm,0.35)*mix(0.35,1.0,smoothstep(0.0,0.8,depth)));hh+=max(msh,0.0)*uMsC.x*0.1;');
+  R('if(mod(uDbg,2.0)>0.5)cap=0.0;','if(mod(uDbg,2.0)>0.5)cap=0.0;{float wc=uMsC.y;float cr=clamp(0.5+0.5*msh/max(uMsC.z*0.5,0.05),0.0,1.0);float sc=0.55*cr+0.45*(0.5*nz2+0.5*gpatch);float thr=1.0-0.45*pow(clamp(wc*4.0,0.0,1.0),0.55);float mc=smoothstep(thr,thr+0.12,sc)*clamp(wc/0.003,0.0,1.0)*calm*smoothstep(0.4,1.4,depth);cap=max(cap*clamp(sqrt(wc/0.0023),0.2,1.8),mc*0.85);}');
+  return src;}
 const SEA2_FS=`precision highp float;
   uniform float uTime,uSeaT,uTide,uQ,uTideV,uLand,uPix,uDbg;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];uniform vec2 uWind;varying vec3 vW;
   #define TS 100.0
@@ -1182,7 +1243,7 @@ function sbOverlayFrame(){if(!SBO.on||!SBO.cv)return;const cv=SBO.cv,w=cv.client
 function sbLanding(){if(!LD.on||!LD.L)return null;const L=LD.L,prof=d=>-H(L.x+L.dir[0]*d,L.z+L.dir[1]*d);return SB.landingWindows(prof,8);}
 function buildSea(){
   const nmap=makeSeaNormal();
-  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null}},defines:NOPOST?{NOPOST:1}:{},
+  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null},...(MC.on?{uMsA:{value:MC.uA},uMsB:{value:MC.uB},uMsC:{value:MC.uC}}:{})},defines:NOPOST?{NOPOST:1}:{},
   vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
   fragmentShader:FLOW?(SB?sbPatch(SEAF_FS,true):SEAF_FS):SEA2?(SB?sbPatch(SEA2_FS,false):SEA2_FS):`precision highp float;
   uniform float uTime,uTide,uQ,uTideV,uLand;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];varying vec3 vW;
@@ -1263,6 +1324,7 @@ function buildSea(){
     #include <encodings_fragment>
     #endif
     }`});
+  if(MC.on)mat.fragmentShader=msPatch(mat.fragmentShader);
   if(WXR){mat.fragmentShader=LI_WEATHER.patchSea(mat.fragmentShader);WXR.attachSea(mat);}
   waterMesh=new THREE.Mesh(new THREE.CircleGeometry(TABLE_R+.4,128).rotateX(-Math.PI/2),mat);waterMesh.renderOrder=5;scene.add(waterMesh);}
 
@@ -1772,11 +1834,12 @@ const clock={t:0,last:0,frames:0,fps:60,acc:0};
 function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt;clock.acc+=dt;clock.frames++;
   if(clock.acc>.5){clock.fps=clock.frames/clock.acc;clock.frames=0;clock.acc=0;updateInfo();autoQ();}
-  if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else tide=tideManual;
+  if(MC.on)mcUpdate(dt);
+  if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else if(MC.on&&!MC.tideTouched){tide=MC.tide;el.tide.value=tide;}else tide=tideManual;
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  if(FLOW)FL.Tcur=flowTime();applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
+  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1796,6 +1859,7 @@ function animate(dt){const t=clock.t;
       wakeT+=dt;if(wakeT>.2){wakeT=0;const W2=WAKE[wakeI];W2.set(nx-vx*b.L*.45,nz-vz*b.L*.45,0,0);wakeI=(wakeI+1)%24;}}
     else if(b.kind==='moored'){y=tide-.18+Math.sin(t*1.1+b.ph)*.05;roll=Math.sin(t*.9+b.ph)*.03;pitch=Math.sin(t*.7+b.ph*2)*.02;}
     else{const gy=H(b.x,b.z)+(b.lift!==undefined?b.lift:.1);y=Math.max(gy,tide-.12+Math.sin(t*1.1)*.03);roll=(b.tilt||0)+(y>gy+.02?Math.sin(t)*.03:0);pitch=b.heel||0;}
+    if(MC.on&&BOATS2&&b.kind!=='beached'){const r=mcBoat(b,y,roll,pitch);y=r.y;roll=r.roll;pitch=r.pitch;}   /* macro: heave and small tilt from the sea under the hull */
     m.position.set(b.x,y,b.z);m.rotation.set(0,b.yaw,0);m.rotateZ(roll);m.rotateX(pitch);
     if(o.ring){const afloat=b.kind!=='beached'||y>H(b.x,b.z)+.1;o.ring.visible=afloat;o.ring.position.set(b.x,tide+.02,b.z);o.ring.rotation.set(0,b.yaw,0);}});
   people.forEach(p=>{const ph=t*1.3+p.i*2;p.g.position.y=p.y0+(p.pose==='stand'?Math.abs(Math.sin(ph))*.015:0);
@@ -1826,14 +1890,15 @@ function init(){
   renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance',alpha:false});
   if(NOPOST){renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;}else renderer.outputEncoding=THREE.LinearEncoding;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor(0x000000,1);
   camera=new THREE.PerspectiveCamera(30,1,4,1400);
+  if(MC.on)mcUpdate(0);
   if(WXON){const hs=parseFloat(Q.get('wsec')||''),wt=Q.get('wt');
-    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
+    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,atFn:MC.on?(()=>MC.wx):undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
       baseSun:LAND?{i:2.0,c:[1.0,.95,.86]}:{i:2.9,c:[1.0,.64,.34]},baseHemi:LAND?{i:.85,c:[.36,.46,.62],g:[.26,.23,.18]}:{i:1.1,c:[.24,.32,.50],g:[.22,.15,.09]}});
     wxChipInit();}
   build();buildPost();size();setupControls(cv);
   el.qBtn.textContent='Quality: '+(quality==='high'?'High':'Low');el.qBtn.classList.toggle('on',quality==='low');
-  el.tide.addEventListener('input',()=>{tideAuto=false;el.auto.classList.remove('on');tideManual=parseFloat(el.tide.value);});
-  el.auto.addEventListener('click',()=>{tideAuto=!tideAuto;el.auto.classList.toggle('on',tideAuto);if(tideAuto)tideT=Math.asin(clamp(tide/(TIDE_RANGE*.92),-1,1))*55/(2*Math.PI);});
+  el.tide.addEventListener('input',()=>{MC.tideTouched=true;tideAuto=false;el.auto.classList.remove('on');tideManual=parseFloat(el.tide.value);});
+  el.auto.addEventListener('click',()=>{MC.tideTouched=true;tideAuto=!tideAuto;el.auto.classList.toggle('on',tideAuto);if(tideAuto)tideT=Math.asin(clamp(tide/(TIDE_RANGE*.92),-1,1))*55/(2*Math.PI);});
   el.qBtn.addEventListener('click',()=>setQuality(quality==='high'?'low':'high'));
   document.getElementById('homeBtn').addEventListener('click',()=>Object.assign(cam,HOME));
   addEventListener('resize',size);
@@ -1842,7 +1907,7 @@ function init(){
   requestAnimationFrame(frame);
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
   window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality,renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
-    setTide:v=>{tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
+    setTide:v=>{MC.tideTouched=true;tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
     depthAt:SB?(x,z)=>-H(x,z):null,bathy:SB?()=>SB.bathy():null,
     seabed:SB?{params:()=>JSON.parse(JSON.stringify(SB.P)),measures:()=>{const M=SB.measures();delete M._lists;return JSON.parse(JSON.stringify(M));},lists:()=>{const M=SB.measures(),o=M._lists;return JSON.parse(JSON.stringify({sills:o.sills,landing:o.landing,hauls:o.hauls,coves:o.coves,throats:o.throats}));},
       overlay:on=>sbOverlaySet(on===undefined?!SBO.on:on),exposedArea:l=>SB.exposedArea(l),linked:(a,b,l)=>SB.linked(a,b,l),minutesAbove:l=>SB.minutesAbove(l),landing:sbLanding,landingWindows:(prof,carry)=>SB.landingWindows(prof,carry),
@@ -1853,6 +1918,8 @@ function init(){
     triParts:()=>{const o=[];scene.traverse(m=>{if(m.isMesh&&m!==floorMesh&&m.visible){const g=m.geometry;o.push([m.isInstancedMesh?'inst':m.type,Math.round((g.index?g.index.count/3:g.attributes.position.count/3)*(m.isInstancedMesh?m.count:1))]);}});return o.sort((a,b)=>b[1]-a[1]).slice(0,10);},
     setView:(o)=>{Object.assign(cam,o);clampCam();snap=true;},home:()=>{Object.assign(cam,HOME);snap=true;},
     weather:WXR?()=>WXR.snapshot():null,weatherRT:WXR?{raw:()=>WXR.raw(),set:n=>WXR.set(n),uniforms:()=>WXR.uniformsDebug(),parts:()=>WXR.parts(),params:n=>WXR.params(n)}:null,
+    macro:MC.on?{hour:()=>MC.hour,setHour:h=>{MC.hour=h;MC.dirty=true;MC.snap=true;},setSpeed:m=>{MC.speed=m;},speed:()=>MC.speed,advance:dt=>{mcUpdate(dt);},state:()=>JSON.parse(JSON.stringify({hour:MC.st.hour,wind:MC.st.wind,pressure:MC.st.pressure,seaHs:MC.st.seaHs,tide:MC.st.tide,surge:MC.st.surge,surgeWind:MC.st.surgeWind,level:MC.st.level,storm:MC.st.storm,weatherState:MC.st.weatherState,whitecap:MC.st.whitecap,swell:MC.st.swell.map(t=>({Hs:t.Hs,T:t.T,dirFrom:t.dirFrom}))})),
+      phases:()=>Array.from(MC.ph),wave:()=>({A:Array.from(MC.A),B:Array.from(MC.B)}),seaH:(x,z)=>mcH(x,z),tide:()=>MC.tide,tideTouched:()=>MC.tideTouched,flowT:()=>MC.flowT,nudge:()=>[MC.nx,MC.nz],heave:()=>JSON.parse(JSON.stringify(MC.heave)),resetHeave:()=>{Object.assign(MC.heave,{n:0,maxH:0,maxP:0,maxR:0});},weather:()=>MC.wx&&{name:MC.wx.name,k:MC.wx.k,windMs:MC.wx.windMs,angle:MC.wx.angle},uC:()=>MC.uC.toArray(),gain:MC.gain,windowM:MC.windowM}:null,
     maskInfo:()=>boatObjs.filter(o=>o.mask).map(o=>({colorWrite:o.mask.material.colorWrite,depthWrite:o.mask.material.depthWrite,depthTest:o.mask.material.depthTest,renderOrder:o.mask.renderOrder,hullOrder:o.mesh.renderOrder,seaOrder:waterMesh.renderOrder,tris:o.maskTris})),
     boatBeam:()=>boatObjs.map(o=>{o.mesh.geometry.computeBoundingBox();const bb=o.mesh.geometry.boundingBox;return{ratio:(bb.max.x-bb.min.x)/(bb.max.z-bb.min.z)};}),
     boatProject:()=>{const o=boatObjs.find(q=>q.b.kind==='moored'&&!q.b.sail);o.mesh.updateMatrixWorld(true);const XH=o.b.L*.465,Bm=Math.min(o.b.Wd,o.b.L/3.25);
