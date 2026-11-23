@@ -1,0 +1,48 @@
+# Land formation tool v0 (Living Islands, branch citylab/cloud-islands)
+Do not put real place names into game code or assets. Status: v0, numpy only (PIL for images). Files: `world.py`, `checks.py`, `sheet.py`, `tests/test_world.py`, `out/` (3 sample exports, manifest, the 20-seed check table), `contact_sheet.png`, `world-1122-{plan,section,tides}.png`.
+
+## 1 The idea
+The owner's rule: each island is a different peak of the land under the sea. So the world is ONE height field `h(x,y)` over the whole 512 m region, seabed included (metres, sea level 0, seabed negative). Nothing is placed. Sea level is a plane; islands are the connected components of `h > level`; skerries are the small ones; shelves, sills, channels, sheltered bays and reefs are the same surface below the plane. The tide only moves the cut (`+-1.1 m`, the seabed pass amplitude; `world.TIDE_AMP`): `find_islands(w, tide=...)`, `land_mask(w,'low'|'mid'|'high')`. Each island record carries `area_low_tide_m2`, `joins_at_low_tide` (other islands it merges with) and `pieces_at_high_tide`.
+
+Shared structure is what makes neighbours relate. One `structure` dict (dip direction and angle, ice-flow vector, tilt, a set of fault lines with throw, wave direction) is drawn once per seed and used by every step over the whole field. Province A: knolls are noise stretched along the ice-flow vector, so every whaleback and skerry points the same way, troughs run along the flow with a lip at the mouth, foliation bands and faults shift the rock across the whole world. B: dip-aligned cuesta ridges (steep scarp up-dip, long dip slope) broken into strike-aligned islands, benches (terraces) whose edge sharpness follows rock hardness, faults throwing the beds sideways so ridges are offset across a fault. C: flat-lying trap steps, a dyke swarm of parallel trenches that cuts the seabed too (geos where it meets the sea), stacks and arches on exposed cliffs.
+
+## 2 Pipeline as implemented (`world.make_world`)
+Order in code (research numbering): 2 rock map, 1+3 uplift/tilt/streamlining, 5a choose the cut, 4 erosion, 6+7 waves and deposition, features, 8 soil/veg/wetness, 5b islands.
+1. Uplift: low-frequency noise + tilt + edge taper. 2. Rock map: bands along the dip coordinate (random widths, wiggled), fault shifts, fault breccia lines; C takes rock from the lava-stack height (bole foot, vesicular top, columnar middle). Rock hardness also imprints on relief (hard stands up, soft hollows; glacial scour of soft rock smeared along the flow in A). 3. Streamlining by anisotropic noise (not a blur). Fine-scale relief is scaled by an envelope that is strong near the cut and subdued on high ground (gives many skerries with sane slopes; TUNING trick). 5a. The datum is a quantile: land fraction (A 13-20%, B 17-25%, C 12-18%, seeded) sets where 0 falls; below 0 a soft shelf break (`-D tanh(-h/D)`, D = 26/20/36 m). 4. D8 flow accumulation (sorted pass), stream power `dh = K * erodibility(rock) * sqrt(A) * S`, then thermal relaxation with a rock slope cap; 24-28 iterations. 6. Exposure = weighted open-water run over 16 bearings (stepped ray march, fetch capped at 40% of the world, weight peaking on the wave direction); wave erosion = band around sea level scaled by exposure, erodibility and a joint-spacing factor; 5 rounds. 7. Deposition: eroded matter plus a province shell-sand supply, drifted a few cells to the lee, laid where exposure is low and depth under 4 m, boosted between close islands (partial-height bars and tombolos, not full joins). Deposits become rock id `shell_sand`; storm-ridge `cobble_shingle` at exposed cliff feet (B, C). 8. Wetness (flow accumulation + flatness + lakes), loch depth by priority flood on land only, soil/vegetation by rock + slope + inland wind exposure + wetness (legend in `VEG_LEGEND`), `surface_colour()` for RGB.
+Outputs on the `World` object: `height` (float32), `rock` (uint8 id), `exposure`, `wetness`, `veg`, `lake_depth`, `island_label`, `islands` (id, area, centroid, peak, max height, coast length, rock mix, size class, tide behaviour, landing candidates = gentle lee shore with depth offshore), `features` (stacks, arches with `needs_mesh_opening`, geos), `rocks` table (hardness, joint spacing, colour fresh/weathered/lichen, soil, vegetation, slope cap), `timings`. Arrays are `[row=y, col=x]`, row 0 south, x east, y north, z up.
+Determinism: `world_bytes_hash` of height+rock+exposure is identical for the same (seed, province, size, n); tested. The terrain is defined in metres, so n=513 is the same world at finer cells (noise octaves finer than 6 m are dropped so nothing aliases).
+
+## 3 Numbers (this machine, 4 cores, single thread used)
+Time per world: n=257 about 0.9-1.2 s; n=513 about 4.8-5.5 s (budget 5 s / 15 s). Biggest costs: erosion 45%, waves 25%.
+Realism table, 20 seeds per province at n=257 (`out/checks_20seeds.txt`, `python3 checks.py 20`). Share of worlds inside the target band (mean in brackets):
+| metric | target (status) | A gneiss | B sandstone | C basalt |
+|---|---|---|---|---|
+| Korcak K | 0.5-0.85 (0.65 VERIFIED figure; band TUNING) | 75% (0.54) | 20% (0.47) | 20% (0.45) |
+| largest/20th area | 30-300 (PLAUSIBLE) | 35% (189) | 15% (233) | 5% (81) |
+| coast box dimension | 1.10-1.35 (1.2-1.3 rocky VERIFIED; band TUNING) | 90% (1.15) | 100% (1.18) | 70% (1.11) |
+| median land slope deg | A 8-30, B 10-35, C 10-40 (UNVERIFIED, TUNING) | 0% (37) | 60% (34) | 0% (48) |
+| land above 60 deg | <=3% (UNVERIFIED) | 0% (9%) | 5% (5%) | 5% (8%) |
+| sand+shingle share of shore | A 5-25, B 0-15, C 0-8 (TUNING) | 90% (19%) | 75% (13%) | 100% (0%) |
+| land below 10 m | A 35-80, B 25-65, C 0-40 (TUNING) | 45% (80%) | 0% (88%) | 0% (58%) |
+| shelf 0-30 m of field | 10-90% (PLAUSIBLE) | 100% (86%) | 100% (83%) | 100% (43%) |
+| coves / landing candidates | >=1 / >=2 (TUNING) | 7.2 / 18 | 9.7 / 20 | 2.5 / 2.1 |
+| islands >= 4 cells | 8-400 (TUNING) | 23 | 20 | 15 |
+Also in `checks.measure`: nearest-neighbour edge gap (median 23-36 m; the research spacing numbers are km-scale, so this is TUNING at 512 m), relief ratio, slope histogram, stacks/arches/geos, sand share by lee and exposed shore.
+
+## 4 Tuning, not fact
+Every amplitude, wavelength, hardness ratio, slope cap, erosion constant, shelf depth, land fraction, shell-sand supply, tide amplitude and envelope rule is TUNING. Verified only as figures: Korcak 0.65, coast dimension 1.2-1.3, the Hebridean tilt, the machair mechanism, the stream-power form. The 512 m world compresses real archipelago scale by roughly 20-50x horizontally, so slopes read steeper than the research's real-scale ranges; do not read the slope rows as failures of geology.
+
+## 5 Honest gaps
+- Median land slope is 37 (A) and 48 (C) degrees, above the 5-25 research range; B is in band. Land below 10 m is too high for A/B (low relief). Korcak K is 0.45-0.54, below 0.65: too few small islands relative to large ones, worst for B and C. Share of worlds with K in band is 20% for B and C.
+- Heightfield cannot hold overhangs: arches are a saddle just above high water plus a flag; notches, caves and column faces are for the mesh builder. Cliff notches in B are not in the field.
+- Hand-rolled D8 does not route flow across land pits, so valleys do not breach lochs; no sediment transport model (deposition is a rule); rock is a 2-D map (strata are not 3-D, C derives rock from height).
+- Island coast length uses a 0.785 staircase correction; islands under 4 cells are ignored; the largest island often dominates (largest share about 0.5).
+- Province A colour reads dull grey-brown on the sheet (heather/lichen palette needs an art pass). Provinces P4-P8 are not implemented.
+- Dry tidal bars exist only as partial-height deposits; no explicit sill/scour hole painting (sills fall out of saddles between peaks; scour holes are absent).
+
+## 6 How it connects
+- Seabed (`seabed.js`, `blender/island_common.py`): depth is now the field itself. `seabed.js` pieces that become unnecessary: the shelf curve `Dmax*prod(1-exp(-d/L))`, the distance-to-island transforms, the probabilistic union, channel-gap and sill construction, the sand-link (tombolo) rule (replaced by deposition + saddles), and the hand `BARS`. Still needed on top of the field: scour holes at narrow gaps (add after the field, from the gap width), the flow continuity rule (read depth and width from the field), kelp bands (rock id `hard bed` and depth 0.5-4.5 m on the game scale), landing windows (`dry_flat_width_m` and slope are already on each landing candidate). The page's tide level maps straight onto `land_mask`.
+- Blender: `island_window(w, id, size_m=128 or None)` returns the island-centred sub-field (height, rock, exposure, wetness, veg, island mask, origin, cell size) and `island_camera(w, id, lens_mm)` returns position, target, lens, distance that frame the whole island (Blender axes = world axes). Rock id to material through the rock table (`colour_*`, `joint_m` for column or bedding scale, `soil`, `vegetation`).
+- Page: `surface_colour(w)` is a ready RGB texture; `veg` and `lake_depth` drive planting and water; `out/world_*.npz` holds height/rock/exposure.
+- Foundry: `checks.measure` returns the same kind of per-seed numbers as the foundry table (coves, landing candidates, shelf share) and could be a drop-in measure set. Wildlife/flow: `exposure` is the fetch input for wave and foam, lee low-exposure water for seals and drift collection, `rock` + depth for kelp, `wetness`/`lake_depth` for freshwater.
+Run: `python3 landform/tests/test_world.py` (39 checks); `python3 landform/checks.py 20`; `python3 landform/sheet.py sheet|views|export`.
