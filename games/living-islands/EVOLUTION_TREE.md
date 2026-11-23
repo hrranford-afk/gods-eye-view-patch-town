@@ -21,14 +21,14 @@ A single "what you need next" card is shown; never a wall of numbers.
 ## Eras
 | # | Era | You do | New ideas (max 3) | Unlocked by |
 |---|---|---|---|---|
-| 1 | Landing | shelter, fresh water, fire, food | camp, tide, first stores | arriving |
-| 2 | Foothold | gather timber and stone, build a landing stage | jetty in stages, rowboat, jobs | tents up + stores filled |
+| 1 | Landing | shelter (lean-to from driftwood and salvaged cloth), fresh water, fire, food | camp, tide, first stores | arriving |
+| 2 | Foothold | gather timber and stone, build a landing stage, raise a turf-and-stone hut | jetty in stages, rowboat, jobs | tents up + stores filled |
 | 3 | Village | houses, gardens, a shop | homes, household (grow / shop / cook / eat out), shop economy | a landing stage works |
 | 4 | Trade | boats to other islands, meet a skipper | imports and exports, materials (stone, slate, lime, paint), freight | a surplus worth shipping |
 | 5 | Craft | workshops, power, better houses | generator and cables, architects (plans), upgrades | a working village |
 | 6 | Remembering | salvage, relearn old knowledge | ruins, finds, old-world know-how (radio, glass, medicine) | trade routes reach ruins |
 
-Eras 3 and 5 reuse City Lab work (district economy, power network). Era 1 is drawn in the owner's reference pack. Eras 2 and 4 need their own design.
+Eras 1 and 2 follow the scavenged-materials ladder (lean-to, turf-and-stone hut, thatched cottage, slate cottage) in research/FIRST_SHELTER_AND_MATERIALS.md; City Lab houses are showcase buildings, not what a new colony starts with. Eras 3 and 5 reuse City Lab work (district economy, power network). Era 1 is drawn in the owner's reference pack. Eras 2 and 4 need their own design.
 
 ## Stakes: how failing works (fair, quiet, never cruel)
 - **Slow, visible decline, never a sudden death.** Needs drop in stages (tired, hungry, ill, failing) and each stage is shown early on the "what you need next" card.

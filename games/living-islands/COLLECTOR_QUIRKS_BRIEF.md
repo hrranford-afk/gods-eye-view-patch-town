@@ -36,3 +36,28 @@ One markdown file per list in a new folder. No paths, no personal details. Quant
 CAIRN checks each quirk against the rails and drops any that break one, with the reason listed (nothing is rewritten). The owner picks. The picks become slots on the model: decals, small parts and behaviours, drawn by CAIRN's scripts and judged by the variety judge.
 
 End of brief.
+
+
+## Addendum (23 Nov 2026): what the maintenance robot made from the island's junk
+
+A second invitation, same spirit. Somewhere on the island there is a maintenance robot, a fixed routine from the old world with no thoughts. Over the decades it has kept doing its rounds with whatever it could reach, and left behind small contraptions made from the island's junk: things that half work, work oddly, or work in a way nobody asked for. The settlers meet these as odd little finds that quietly say "the island has been looked after, after a fashion". They also tie to the first shelters (scavenged materials), because a few of them are things a new colony could use or copy.
+
+Examples to set the tone: a tap bolted to a buoy; a lamp wired to a gull perch; a gate made of oars.
+
+### What to write
+30 contraptions. For each, one short block with these fields:
+- `name`: a short plain name
+- `parts`: what it is made of (island junk: buoys, oars, rope, crates, tin, glass floats, planks, bottles, netting, panels, cable, tyres, pipe)
+- `where`: where on the island (strandline, dune edge, harbour wall, cliff path, a hut, a skerry you can walk to at low tide)
+- `does`: what it does or fails to do (one or two lines; a failure can be the charm)
+- `cost`: how hard to draw: easy (a few shapes and colours), medium (a small assembly with a moving or lit part), hard (needs a new animation)
+- `source`: which resident wrote it
+
+### Rails (same as above)
+- Hopeful, quiet tone. Danger only if the story justifies it, and nothing gory or cruel. Nothing that works as a weapon.
+- No brands, no real company or place names, no legible writing (a faded stripe or a scratched-off label is fine).
+- No real places, no real people.
+- The robot is a fixed routine with no thoughts or feelings: the contraptions come from repetition, available parts and wear, never from wishes, jokes or intentions. It does not speak and it is never seen to decide.
+
+### Output
+One markdown file in the same new folder. Quantity over polish. CAIRN checks each against the rails (dropping and listing any that break one, never rewriting) and the owner picks.
