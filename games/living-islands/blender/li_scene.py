@@ -639,7 +639,10 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
     w = bpy.data.worlds.new('Sky'); bpy.context.scene.world = w
     w.use_nodes = True; nt = w.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputWorld', (400, 0)); bg = node(nt, 'ShaderNodeBackground', (200, 0)); sk = node(nt, 'ShaderNodeTexSky', (-100, 0))
-    sk.sky_type = 'MULTIPLE_SCATTERING' if 'MULTIPLE_SCATTERING' in [i.identifier for i in sk.bl_rna.properties['sky_type'].enum_items] else 'NISHITA'; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
+    kinds = [i.identifier for i in sk.bl_rna.properties['sky_type'].enum_items]
+    # single-scattering sky = 'NISHITA' before Blender 4.0 and 'SINGLE_SCATTERING' after; 'moody' look uses the multiple-scattering sky where it exists
+    want = 'MULTIPLE_SCATTERING' if (os.environ.get('LI_LOOK', 'bright').lower() == 'moody' and 'MULTIPLE_SCATTERING' in kinds) else ('NISHITA' if 'NISHITA' in kinds else 'SINGLE_SCATTERING')
+    sk.sky_type = want; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
     sk.sun_elevation = math.radians(sun_elev_deg); sk.sun_rotation = math.radians(sun_az_deg)
     sk.air_density = 2.3; setattr(sk, 'aerosol_density' if hasattr(sk, 'aerosol_density') else 'dust_density', 0.35); sk.ozone_density = 2.5; sk.altitude = 20.0
     # glossy rays (the sea's mirror) see a bluer, cleaner sky than the sunset-pink camera sky: keeps the water deep blue
@@ -671,11 +674,19 @@ def render_settings(sc, w, h, samples, denoise=True, exposure=0.0, look='AgX - P
     sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
     sc.render.threads_mode = 'AUTO'
     try:
-        sc.view_settings.view_transform = 'AgX'
-        try:
-            sc.view_settings.look = look
-        except Exception:
-            pass
+        if os.environ.get('LI_LOOK', 'bright').lower() == 'bright':
+            # LI_LOOK=bright (default): the softer, brighter look the owner preferred on the Blender 3.6 renders; the same on every Blender version. LI_LOOK=moody gives the darker AgX look
+            sc.view_settings.view_transform = 'Filmic'
+            try:
+                sc.view_settings.look = 'Medium High Contrast'
+            except Exception:
+                pass
+        else:
+            sc.view_settings.view_transform = 'AgX'
+            try:
+                sc.view_settings.look = look
+            except Exception:
+                pass
     except TypeError:
         # Blender before 4.0 has no AgX: use Filmic so the same script runs on 3.x (colours differ a little)
         sc.view_settings.view_transform = 'Filmic'
