@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>Volcano cutaway</title>
+<style>
+  :root{--bg1:#e9eef0;--bg2:#b9c8d0;--ink:#1d2327;--panel:rgba(255,255,255,.86);--line:#9fb0b8;--acc:#c2410c}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#2b3338;--bg2:#161b1e;--ink:#e8eef0;--panel:rgba(24,30,34,.86);--line:#46555c;--acc:#fb923c}}
+  :root[data-theme="dark"]{--bg1:#2b3338;--bg2:#161b1e;--ink:#e8eef0;--panel:rgba(24,30,34,.86);--line:#46555c;--acc:#fb923c}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2);color:var(--ink);font:13px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  body{background:linear-gradient(180deg,var(--bg1),var(--bg2))}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  .panel{position:fixed;left:16px;top:16px;max-width:calc(100vw - 32px);width:260px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(4px)}
+  .panel h1{font-size:14px;margin:0 0 6px;font-weight:650}
+  .row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+  .row label{min-width:44px;color:inherit}
+  input[type=range]{flex:1;min-width:90px;accent-color:var(--acc)}
+  button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:7px;padding:5px 9px;min-height:32px;cursor:pointer}
+  button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .read{position:fixed;left:16px;bottom:16px;right:16px;pointer-events:none;display:flex;gap:10px;flex-wrap:wrap}
+  .read span{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-variant-numeric:tabular-nums}
+  #legend{margin-top:6px;display:none;font-size:11.5px}
+  #legend div{display:flex;align-items:center;gap:6px}
+  #legend i{width:12px;height:12px;border:1px solid #0006;display:inline-block}
+  #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px}
+  @media (max-width:520px){.panel{width:auto;right:16px}}
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="Volcano island cut off at the table edge, drag to orbit"></canvas>
+<div class="panel" id="ui">
+  <h1>Volcano on a block</h1>
+  <div class="row"><label for="tide">Tide</label><input id="tide" type="range" min="-1.1" max="1.1" step="0.05" value="0"><span id="tideV">0.0 m</span></div>
+  <div class="row"><span>Quality</span><button id="qLow">Low</button><button id="qHigh" class="on">High</button><button id="cl" class="on">Clouds</button></div>
+  <div class="row"><button data-v="front">Front</button><button data-v="tq">Three-quarter</button><button data-v="low">Far side</button><button data-v="high">High</button><button id="lg">Legend</button></div>
+  <div id="legend"></div>
+</div>
+<div class="read"><span id="rVE">vertical x -</span><span id="rSum">summit -</span><span id="rTier">tier -</span><span id="rHint">drag: orbit, two fingers: zoom and pan</span></div>
+<div id="msg">Loading the volcano...</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+'use strict';
+const qs = new URLSearchParams(location.search);
+const POST = qs.get('post') !== '0';                 // post=0: AR-safe path, no tone mapping, no fog, low pixel ratio (there is no screen-space effect in this page either way)
+let QUALITY = (qs.get('q') || 'high').toLowerCase() === 'low' ? 'low' : 'high';
+const BASE = qs.get('base') || 'landform/volcano/';
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+function fail(m) { const e = $('msg'); e.style.display = 'flex'; e.textContent = m; }
+if (!window.THREE) { fail('three.js did not load (needs network for the pinned cdnjs r128 file).'); return; }
+if (location.protocol === 'file:') { fail('Serve this folder over http (for example: python3 -m http.server) so the heightfield and wall textures can load.'); return; }
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: POST, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: qs.get('shot') === '1' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, POST ? 2 : 1.25));
+renderer.setClearColor(0x000000, 0);
+if (POST) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; }
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, 1, 4, 9000);
+const root = new THREE.Group(); scene.add(root);
+
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x7a6a58, 0.62); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.05); sun.position.set(-900, 700, 700); scene.add(sun);
+
+// ---------------------------------------------------------------- data
+let M = null, HF = null, COL = null, TEX = {}, built = null;
+const state = { tide: 0, clouds: qs.get('clouds') !== '0', t0: performance.now() };
+
+async function loadAll() {
+  const r = await fetch(BASE + 'manifest.json'); if (!r.ok) throw new Error('manifest ' + r.status);
+  M = await r.json();
+  const hb = await (await fetch(BASE + M.heights_file)).arrayBuffer();
+  HF = new Float32Array(hb);
+  if (HF.length !== M.n * M.n) throw new Error('heightfield size ' + HF.length);
+  await new Promise((res, rej) => {
+    const im = new Image(); im.onload = () => {
+      const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0); COL = g.getImageData(0, 0, im.width, im.height).data; res();
+    }; im.onerror = () => rej(new Error('colour.png')); im.src = BASE + M.colour_file;
+  });
+}
+function loadTex(url) {
+  return new Promise((res, rej) => new THREE.TextureLoader().load(url, t => {
+    t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true;
+    t.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; res(t);
+  }, undefined, () => rej(new Error('texture ' + url))));
+}
+const WALLS = ['s', 'e', 'n', 'w'];
+const SHADE = { s: 1.0, e: 0.93, n: 0.86, w: 0.96 };
+
+// ---------------------------------------------------------------- geometry
+function hAt(x, y) {                                  // bilinear world metres (x east, y north)
+  const n = M.n, half = M.size_m / 2, d = M.cell_m;
+  let gx = (x + half) / d, gy = (y + half) / d;
+  if (gx < 0 || gy < 0 || gx > n - 1 || gy > n - 1) return 0;
+  const j = Math.min(Math.floor(gx), n - 2), i = Math.min(Math.floor(gy), n - 2), fx = gx - j, fy = gy - i;
+  const a = HF[i * n + j], b = HF[i * n + j + 1], c = HF[(i + 1) * n + j], e = HF[(i + 1) * n + j + 1];
+  return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + e * fx) * fy;
+}
+function surfaceRGB(i, j, h) {
+  const n = M.n;
+  if (h <= 0.0) {                                     // sea floor: pale volcanic sand to dark basalt by depth
+    const t = Math.min(Math.max(-h / 130, 0), 1), k = 1 - t;
+    return [(150 * k + 38 * t) / 255, (142 * k + 52 * t) / 255, (124 * k + 72 * t) / 255];
+  }
+  const row = n - 1 - i, o = (row * n + j) * 4;       // PNG row 0 = north
+  return [COL[o] / 255, COL[o + 1] / 255, COL[o + 2] / 255];
+}
+function build(q) {
+  if (built) { root.remove(built.group); built.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose && !o.material.__shared) o.material.dispose(); }); }
+  const S = q === 'low' ? 2 : 1, n = M.n, nn = (n - 1) / S + 1, half = M.size_m / 2, d = M.cell_m * S;
+  const z0 = M.z0, zmax = M.zmax, group = new THREE.Group();
+  // terrain
+  const pos = new Float32Array(nn * nn * 3), col = new Float32Array(nn * nn * 3), th = new Float32Array(nn * nn);
+  for (let a = 0; a < nn; a++) for (let b = 0; b < nn; b++) {
+    const i = a * S, j = b * S, h = HF[i * n + j], o = (a * nn + b);
+    pos[o * 3] = -half + j * M.cell_m; pos[o * 3 + 1] = h; pos[o * 3 + 2] = -(-half + i * M.cell_m);
+    const c = surfaceRGB(i, j, h); col[o * 3] = c[0]; col[o * 3 + 1] = c[1]; col[o * 3 + 2] = c[2]; th[o] = h;
+  }
+  const idx = new Uint32Array((nn - 1) * (nn - 1) * 6); let k = 0;
+  for (let a = 0; a < nn - 1; a++) for (let b = 0; b < nn - 1; b++) {
+    const p = a * nn + b, r = p + nn;
+    idx[k++] = p; idx[k++] = p + 1; idx[k++] = r; idx[k++] = p + 1; idx[k++] = r + 1; idx[k++] = r;
+  }
+  const tg = new THREE.BufferGeometry();
+  tg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  tg.setIndex(new THREE.BufferAttribute(idx, 1)); tg.computeVertexNormals();
+  const terrain = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  group.add(terrain);
+  // walls (rock) and water walls share the edge vertices of the terrain
+  const wallInfo = {}, linePts = [];
+  const wallTex = q === 'low' ? 'file_1024' : 'file_2048';
+  for (const nm of WALLS) {
+    const wp = new Float32Array(nn * 2 * 3), wu = new Float32Array(nn * 2 * 2), wi = [], prof = new Float32Array(nn);
+    const wwp = new Float32Array(nn * 2 * 3), wwtop = new Float32Array(nn * 2);
+    for (let t = 0; t < nn; t++) {
+      let i, j;
+      if (nm === 's') { i = 0; j = t * S; } else if (nm === 'e') { j = n - 1; i = t * S; } else if (nm === 'n') { i = n - 1; j = n - 1 - t * S; } else { j = 0; i = n - 1 - t * S; }
+      const h = HF[i * n + j], x = -half + j * M.cell_m, y = -half + i * M.cell_m; prof[t] = h;
+      wp.set([x, h, -y, x, z0, -y], t * 6); wu.set([t / (nn - 1), (h - z0) / (zmax - z0), t / (nn - 1), 0], t * 4);
+      wwp.set([x, h, -y, x, h, -y], t * 6); wwtop[t * 2] = 1; wwtop[t * 2 + 1] = 0;
+      if (t < nn - 1) { const a = t * 2; wi.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(wp, 3)); g.setAttribute('uv', new THREE.BufferAttribute(wu, 2)); g.setIndex(wi);
+    const tex = TEX[nm + wallTex] || (TEX[nm + wallTex] = null);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, toneMapped: false, color: new THREE.Color(SHADE[nm], SHADE[nm], SHADE[nm]) });
+    const wall = new THREE.Mesh(g, mat); group.add(wall);
+    // water cut face
+    const gw = new THREE.BufferGeometry(); gw.setAttribute('position', new THREE.BufferAttribute(wwp, 3)); gw.setAttribute('isTop', new THREE.BufferAttribute(wwtop, 1)); gw.setIndex(wi);
+    const water = new THREE.Mesh(gw, waterWallMat()); water.renderOrder = 3; group.add(water);
+    wallInfo[nm] = { prof, geom: g, mesh: wall, nn };
+    for (let t = 0; t < nn - 1; t++) { const o = (nm === 's' ? 0.2 : 0); linePts.push(wp[t * 6], wp[t * 6 + 1] + 0.05, wp[t * 6 + 2], wp[(t + 1) * 6], wp[(t + 1) * 6 + 1] + 0.05, wp[(t + 1) * 6 + 2]); }
+  }
+  // outline: base rectangle and corner verticals
+  const c4 = [[-half, half, n - 1, 0], [half, half, n - 1, n - 1], [half, -half, 0, n - 1], [-half, -half, 0, 0]];   // x, y, row, col
+  for (let e = 0; e < 4; e++) {
+    const a = c4[e], b = c4[(e + 1) % 4];
+    linePts.push(a[0], z0, -a[1], b[0], z0, -b[1]);
+    linePts.push(a[0], z0, -a[1], a[0], HF[a[2] * n + a[3]], -a[1]);
+  }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(linePts, 3));
+  const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x050505, toneMapped: false })); group.add(lines);
+  // plinth
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(M.size_m + 22, 26, M.size_m + 22), new THREE.MeshLambertMaterial({ color: 0x3a2c22 }));
+  plinth.position.set(0, z0 - 13, 0); group.add(plinth);
+  // sea surface: subdivided quad, depth from the terrain heights, waves fade to 0 at the block edges
+  const SN = q === 'low' ? 96 : 192, sp = new Float32Array((SN + 1) * (SN + 1) * 3), sth = new Float32Array((SN + 1) * (SN + 1)), si = [];
+  for (let a = 0; a <= SN; a++) for (let b = 0; b <= SN; b++) {
+    const x = -half + b / SN * M.size_m, y = -half + a / SN * M.size_m, o = a * (SN + 1) + b;
+    sp.set([x, 0, -y], o * 3); sth[o] = hAt(Math.min(Math.max(x, -half + 0.01), half - 0.01), Math.min(Math.max(y, -half + 0.01), half - 0.01));
+    if (a < SN && b < SN) { const p = o, r = o + SN + 1; si.push(p, r, p + 1, p + 1, r, r + 1); }
+  }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('th', new THREE.BufferAttribute(sth, 1)); sg.setIndex(si);
+  const sea = new THREE.Mesh(sg, seaMat()); sea.renderOrder = 4; group.add(sea);
+  const clouds = makeClouds(); group.add(clouds); clouds.visible = state.clouds;
+  root.add(group);
+  built = { group, terrain, wallInfo, sea, clouds, nn, S, tris: ((nn - 1) * (nn - 1) * 2) };
+  updateTide();
+}
+
+// ---------------------------------------------------------------- water shaders (unmanaged colour, no screen-space)
+const U = { uTide: { value: 0 }, uTime: { value: 0 }, uSize: { value: 1536 } };
+const WATER_COMMON = `
+uniform float uTide; uniform float uTime; uniform float uSize;
+vec3 waterCol(float depth){
+  vec3 cy = vec3(.50,.86,.88), dp = vec3(.03,.16,.40);
+  return mix(cy, dp, 1.0 - exp(-depth/55.0));
+}`;
+function seaMat() {
+  return new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: U,
+    vertexShader: WATER_COMMON + `
+attribute float th; varying float vD; varying vec3 vW;
+void main(){
+  vec3 p = position;
+  float edge = min(min(p.x + uSize*.5, uSize*.5 - p.x), min(p.z + uSize*.5, uSize*.5 - p.z));
+  float fade = smoothstep(0.0, 22.0, edge);
+  float w = sin(p.x*.045 + uTime*1.3) * .22 + sin(p.z*.061 - uTime*1.1) * .18 + sin((p.x+p.z)*.11 + uTime*1.9) * .09;
+  p.y = uTide + w * fade; vD = uTide - th; vW = p;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.0);
+}`,
+    fragmentShader: WATER_COMMON + `
+varying float vD; varying vec3 vW;
+void main(){
+  if (vD <= 0.0) discard;
+  vec3 c = waterCol(vD);
+  float a = mix(.40, .90, 1.0 - exp(-vD/22.0));
+  float foam = smoothstep(2.2, 0.0, vD) * (.55 + .45*sin(vW.x*.6 + uTime*2.0) * sin(vW.z*.5 - uTime*1.6));
+  c = mix(c, vec3(.96,.98,.98), clamp(foam,0.,1.)*.8);
+  a = max(a, foam*.9);
+  gl_FragColor = vec4(c, a);
+}` });
+}
+function waterWallMat() {
+  return new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: U,
+    vertexShader: WATER_COMMON + `
+attribute float isTop; varying float vY;
+void main(){
+  vec3 p = position;
+  if (isTop > .5) p.y = max(uTide, position.y);
+  vY = p.y;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.0);
+}`,
+    fragmentShader: WATER_COMMON + `
+varying float vY;
+void main(){
+  float depth = max(uTide - vY, 0.0);
+  vec3 c = waterCol(depth);
+  float a = .62;
+  if (abs(vY) < .55) { c = vec3(.04,.09,.2); a = .96; }           // the tide stripe: mean sea level
+  if (depth < .6) { c = mix(c, vec3(.9,.97,.98), .7); }            // bright top edge
+  gl_FragColor = vec4(c, a);
+}` });
+}
+
+// ---------------------------------------------------------------- the volcano's own cloud: deck at 0.25 to 0.4 H, summit above it, clear lee wedge
+function makeClouds() {
+  const g = new THREE.Group(), N = 256, H = M.summit_m, half = M.size_m / 2;
+  const vx = M.vent[0], vy = M.vent[1], wt = M.wind_from_rad + Math.PI, wx = Math.cos(wt), wy = Math.sin(wt);
+  let sd = 12345; const rnd = () => (sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296;
+  function fieldFn(seed) {
+    const L = 33; const lat = new Float32Array(L * L); sd = seed; for (let i = 0; i < L * L; i++) lat[i] = rnd();
+    return (u, v) => {
+      let s = 0, a = 1, tot = 0, f = 4;
+      for (let o = 0; o < 4; o++) {
+        const x = (u * f) % (L - 1), y = (v * f) % (L - 1), i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+        const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+        const A = lat[j * L + i], B = lat[j * L + i + 1], C = lat[(j + 1) * L + i], D = lat[(j + 1) * L + i + 1];
+        s += a * ((A * (1 - sx) + B * sx) * (1 - sy) + (C * (1 - sx) + D * sx) * sy); tot += a; a *= .5; f *= 2;
+      }
+      return s / tot;
+    };
+  }
+  [0.26, 0.33, 0.40].forEach((fr, li) => {
+    const c = document.createElement('canvas'); c.width = c.height = N; const ctx = c.getContext('2d'); const im = ctx.createImageData(N, N), fn = fieldFn(77 + li * 31);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const u = i / N, v = 1 - j / N, x = -half + u * M.size_m, y = -half + v * M.size_m;
+      let dens = fn(u * 0.98, v * 0.98);
+      const dx = x - vx, dy = y - vy, along = dx * wx + dy * wy, perp = Math.abs(-dx * wy + dy * wx);
+      const wedge = along > 0 ? (1 - smoothstep(0, 1, (perp - (0.18 * along + 70)) / -90 + 1)) : 0;   // clear lee wedge widening downwind
+      const clear = along > 0 && along < 1100 ? Math.max(0, 1 - Math.max(0, (perp - (0.22 * along + 60))) / 120) * (1 - Math.max(0, along - 800) / 300) : 0;
+      const windward = Math.max(0, -along) / 700;                     // a thicker deck on the windward side
+      dens = dens + 0.12 * Math.min(windward, 1) - 0.62 * clear;
+      const a = Math.max(0, Math.min(1, (dens - 0.52) * 4.5));
+      const o = (j * N + i) * 4; im.data[o] = 250; im.data[o + 1] = 252; im.data[o + 2] = 255; im.data[o + 3] = Math.round(a * 235);
+    }
+    ctx.putImageData(im, 0, 0);
+    const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(M.size_m, M.size_m), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.5, toneMapped: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = H * fr; m.renderOrder = 5 + li; m.userData.base = H * fr; g.add(m);
+  });
+  return g;
+}
+function smoothstep(a, b, x) { const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); }
+
+// ---------------------------------------------------------------- orbit controls (own, no extra scripts): drag, pinch, two-finger pan, all the way round
+const cam = { az: 0.6, el: 0.26, dist: 2500, tx: 0, ty: 30, tz: 0 };
+const VIEWS = {
+  front: { az: 0, el: 0.13, dist: 1700, tx: -150, ty: 60, tz: 520 },
+  tq: { az: 0.7, el: 0.32, dist: 2300, tx: -100, ty: 20, tz: 300 },
+  low: { az: 2.45, el: 0.16, dist: 1900, tx: -150, ty: 70, tz: 430 },
+  high: { az: 0.5, el: 1.0, dist: 2300, tx: -50, ty: 0, tz: 250 }
+};
+function applyCam() {
+  cam.el = Math.min(Math.max(cam.el, 0.03), 1.5); cam.dist = Math.min(Math.max(cam.dist, 60), 6000);
+  const ce = Math.cos(cam.el);
+  let px = cam.tx + cam.dist * Math.sin(cam.az) * ce, py = cam.ty + cam.dist * Math.sin(cam.el), pz = cam.tz + cam.dist * Math.cos(cam.az) * ce;
+  if (M) { const gh = hAt(px, -pz); if (py < Math.max(gh, 0) + 8 && Math.abs(px) < M.size_m / 2 && Math.abs(pz) < M.size_m / 2) py = Math.max(gh, 0) + 8; }
+  camera.position.set(px, py, pz); camera.lookAt(cam.tx, cam.ty, cam.tz);
+}
+const ptrs = new Map(); let lastPinch = 0, lastMid = null;
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button, sh: e.shiftKey }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); lastMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; } });
+canvas.addEventListener('pointerup', e => { ptrs.delete(e.pointerId); lastMid = null; });
+canvas.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); lastMid = null; });
+function pan(dxp, dyp) {
+  const k = cam.dist * 0.0016, rx = Math.cos(cam.az), rz = -Math.sin(cam.az);      // screen right in the ground plane
+  cam.tx -= (rx * dxp) * k; cam.tz -= (rz * dxp) * k;
+  const fx = -Math.sin(cam.az), fz = -Math.cos(cam.az);                           // forward on the ground
+  cam.tx += fx * dyp * k; cam.tz += fz * dyp * k;
+  cam.tx = Math.min(Math.max(cam.tx, -900), 900); cam.tz = Math.min(Math.max(cam.tz, -900), 900);
+}
+canvas.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dxp = e.clientX - p.x, dyp = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size === 1) {
+    if (p.b === 2 || e.shiftKey || p.b === 1) pan(dxp, dyp); else { cam.az -= dxp * 0.0065; cam.el += dyp * 0.0055; }
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (lastPinch > 0) cam.dist *= lastPinch / d; lastPinch = d;
+    if (lastMid) pan(mid.x - lastMid.x, mid.y - lastMid.y); lastMid = mid;
+  }
+});
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist *= Math.exp(e.deltaY * 0.0012); }, { passive: false });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('keydown', e => { const s = 0.06; if (e.key === 'ArrowLeft') cam.az -= s; if (e.key === 'ArrowRight') cam.az += s; if (e.key === 'ArrowUp') cam.el += s; if (e.key === 'ArrowDown') cam.el -= s; if (e.key === '+') cam.dist *= 0.9; if (e.key === '-') cam.dist *= 1.1; });
+
+// ---------------------------------------------------------------- UI
+function updateTide() { U.uTide.value = state.tide; $('tideV').textContent = (state.tide >= 0 ? '+' : '') + state.tide.toFixed(2) + ' m'; }
+$('tide').addEventListener('input', e => { state.tide = +e.target.value; updateTide(); });
+async function setQuality(q) {
+  QUALITY = q; $('qLow').classList.toggle('on', q === 'low'); $('qHigh').classList.toggle('on', q === 'high');
+  const k = q === 'low' ? 'file_1024' : 'file_2048';
+  for (const nm of WALLS) if (!TEX[nm + k]) TEX[nm + k] = await loadTex(BASE + M.walls[nm][k]);
+  build(q);
+  for (const nm of WALLS) built.wallInfo[nm].mesh.material.map = TEX[nm + k], built.wallInfo[nm].mesh.material.needsUpdate = true;
+  $('rTier').textContent = 'tier ' + q + (POST ? '' : ' (AR-safe)') + ' - ' + Math.round(built.tris / 1000) + 'k terrain triangles, walls ' + (q === 'low' ? '1024x512' : '2048x1024');
+}
+$('qLow').onclick = () => setQuality('low'); $('qHigh').onclick = () => setQuality('high');
+$('cl').onclick = () => { state.clouds = !state.clouds; $('cl').classList.toggle('on', state.clouds); if (built) built.clouds.visible = state.clouds; };
+$('lg').onclick = () => { const l = $('legend'); l.style.display = l.style.display === 'block' ? 'none' : 'block'; };
+document.querySelectorAll('button[data-v]').forEach(b => b.onclick = () => Object.assign(cam, VIEWS[b.dataset.v]));
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; if (w / h < 0.9) camera.fov = 52; else camera.fov = 36; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+// ---------------------------------------------------------------- loop and test hooks
+window.__liFrames = 0;
+function frame() {
+  const t = (performance.now() - state.t0) / 1000; U.uTime.value = t;
+  if (built && built.clouds.visible) built.clouds.children.forEach((m, i) => { m.position.y = m.userData.base + Math.sin(t * 0.3 + i * 2) * 0.8; });
+  if (!ptrs.size && !window.__cvFreeze && qs.get('spin') === '1') cam.az += 0.0015;
+  applyCam(); renderer.render(scene, camera); window.__liFrames++; requestAnimationFrame(frame);
+}
+window.__cv = {
+  ready: false,
+  setView(v) { Object.assign(cam, v); applyCam(); }, view(n) { Object.assign(cam, VIEWS[n]); applyCam(); },
+  setTide(t) { state.tide = t; $('tide').value = t; updateTide(); }, setQuality, setClouds(b) { state.clouds = b; $('cl').classList.toggle('on', b); if (built) built.clouds.visible = b; },
+  stats() { const r = renderer.info; return { calls: r.render.calls, triangles: r.render.triangles, quality: QUALITY, post: POST, tide: state.tide, terrainTris: built.tris, cam: Object.assign({}, cam) }; },
+  edgeCheck() {                                         // wall profile heights vs the heightfield edge rows/columns (should be identical)
+    const n = M.n, S = built.S; let maxd = 0, cnt = 0;
+    for (const nm of WALLS) { const wi = built.wallInfo[nm]; for (let t = 0; t < wi.nn; t++) {
+      let i, j; if (nm === 's') { i = 0; j = t * S; } else if (nm === 'e') { j = n - 1; i = t * S; } else if (nm === 'n') { i = n - 1; j = n - 1 - t * S; } else { j = 0; i = n - 1 - t * S; }
+      const pos = wi.geom.attributes.position.array; const d = Math.abs(pos[t * 6 + 1] - HF[i * n + j]); maxd = Math.max(maxd, d); cnt++;
+      // and the terrain vertex at the same place must be the same height
+      const tp = built.terrain.geometry.attributes.position.array; const a = i / S, b = j / S; const ty = tp[(a * built.nn + b) * 3 + 1]; maxd = Math.max(maxd, Math.abs(ty - pos[t * 6 + 1]));
+    } }
+    return { maxDiff: maxd, samples: cnt, straight: WALLS.every(nm => { const pos = built.wallInfo[nm].geom.attributes.position.array; const c = (nm === 's' || nm === 'n') ? 2 : 0; const v0 = pos[c]; for (let t = 0; t < built.wallInfo[nm].nn; t++) { if (Math.abs(pos[t * 6 + c] - (nm === 'e' || nm === 'w' ? v0 : pos[t * 6 + c])) > 1e-4) return false; if (nm === 's' || nm === 'n') { if (Math.abs(pos[t * 6 + 2] - v0) > 1e-4) return false; } } return true; }) };
+  },
+  colAt(i, j) { const n = M.n, o = ((n - 1 - i) * n + j) * 4; return [COL[o], COL[o + 1], COL[o + 2], HF[i * n + j]]; },
+  info() { return { M, vexag: M.vertical_exaggeration }; }
+};
+
+(async function main() {
+  try {
+    await loadAll();
+    $('rVE').textContent = 'vertical exaggeration x' + M.vertical_exaggeration.toFixed(1) + ' (summit ' + Math.round(M.summit_m) + ' m on a ' + Math.round(M.size_m) + ' m block; real proportion would be about ' + Math.round(M.summit_m / M.vertical_exaggeration) + ' m)';
+    $('rSum').textContent = 'sea floor drops to ' + Math.round(-M.min_height_m) + ' m at the edge';
+    const lg = $('legend'); lg.innerHTML = M.legend.filter(l => l.id > 1).map(l => '<div><i style="background:rgb(' + l.rgb.join(',') + ')"></i>' + l.name + '</div>').join('');
+    await setQuality(QUALITY);
+    Object.assign(cam, VIEWS.tq);
+    $('msg').style.display = 'none';
+    window.__cv.ready = true;
+    requestAnimationFrame(frame);
+  } catch (e) { fail('Could not load: ' + e.message); console.error(e); }
+})();
+})();
+</script>
+</body>
+</html>

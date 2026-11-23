@@ -1,0 +1,37 @@
+seed 100 done 8.2 s
+seed 107 done 8.0 s
+seed 114 done 8.3 s
+seed 121 done 10.9 s
+seed 128 done 11.6 s
+seed 135 done 9.2 s
+seed 142 done 9.3 s
+seed 149 done 7.3 s
+seed 156 done 8.6 s
+seed 163 done 8.1 s
+seed 170 done 7.9 s
+seed 177 done 8.6 s
+seed 184 done 7.3 s
+seed 191 done 8.6 s
+seed 198 done 8.1 s
+seed 205 done 8.7 s
+seed 212 done 8.2 s
+seed 219 done 8.5 s
+seed 226 done 8.6 s
+seed 233 done 8.9 s
+
+Province D realism, 20 seeds.  columns: median [min..max]; share of worlds in band; status of the band
+metric               band      median [min..max]        in band   status
+summit_m             200-280   265.74 [218.97..281.92]     90%   measured in band | TUNING (note 1.4: 200 to 280 m)
+vexag                2-3.2     2.78 [2.26..3.17]          100%   measured in band | TUNING (note: 2.5 to 3x)
+skirt_slope_med      3-12      6.16 [2.61..7.26]           85%   measured in band | TUNING (note: shield 6 to 10 deg; USGS 3 to 12 for real shields)
+cone_slope_med       20-35     33.89 [30.75..37.50]        65%   mostly in band | TUNING (NPS cinder 25 to 32; composite 20 to 35)
+n_cones              12-30     16.50 [11.00..24.00]        95%   measured in band | TUNING (note: 12 to 30)
+barrancos_per_360    8-30      13.94 [8.93..20.77]        100%   measured in band | TUNING (note: 8 to 16 major; tributaries add)
+shelf_to_50m_m       20-160    84.75 [60.00..201.00]       95%   measured in band | TUNING (note: shelf break within 1-5 km real = 25-125 m here)
+coast_black_sand     0.02-0.35 0.18 [0.02..0.33]           95%   measured in band | TUNING
+coast_boulder        0-0.3     0.03 [0.00..0.13]          100%   measured in band | TUNING
+coast_rock           0.35-0.95 0.78 [0.58..0.89]          100%   measured in band | TUNING
+flows_reach_sea      1-9       1.00 [0.00..4.00]           85%   measured in band | TUNING (>=1 lava delta)
+belts_present        4-6       6.00 [6.00..6.00]          100%   measured in band | TUNING (note: 4 to 5 belts)
+wet_dry_split        0.05-1    0.53 [0.41..0.61]          100%   measured in band | TUNING (windward wetter)
+time_s               0-15      8.53 [7.26..11.57]         100%   measured in band | budget (n=513 under 15 s)
