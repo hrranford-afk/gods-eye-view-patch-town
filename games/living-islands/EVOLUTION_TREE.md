@@ -128,6 +128,14 @@ Keep gameplay fluid: instead of one fixed path, different islands can carry diff
 - **How we graduate one:** build it behind a switch, test it headless first (the ecosystem sim), show it to the owner, keep it or drop it. Nothing is locked.
 - **Play it your way still holds:** the player picks which islands' games to lean into.
 
+### Our own globe: where the sea's gifts come from (owner idea, 23 Nov; research first)
+The table is a window onto a bigger world, so let the bigger world be real: a seeded procedural planet (continents, ocean basins, climate zones) with large-scale ocean circulation (gyres and currents). Our island table sits at one place on it. Drift, animals, ships and people arrive from other places, along routes the currents really carry them, over days to years.
+- **What it adds:** flotsam and wreck debris that has a *source* and a journey; warm-water and cool-water species that wander in on currents (a tropical seed pod or a stray turtle from the south); storms that start somewhere; ships and survivors arriving from specific shores; seasons and climate that make sense. It replaces "items appear locally" with "items arrive".
+- **How it ties in:** the existing macro sea state (storm tracks, swell trains, tide, keyed arrivals) becomes the boundary of the globe's flow at our window. The rich-catch islands (shore catch) then depend on what the currents bring, not only the local shape.
+- **Scale:** a coarse globe is cheap (a few degrees per cell); drift is a particle simulation, so it fits headless runs on the hardware. A spinning-globe view page could show where a find came from.
+- **Stage it:** (1) research note (ocean circulation, real drift speeds and times, leeway of floating objects, climate zones); (2) headless globe: continents, a gyre-like flow field, source regions, drift particles, and an "arrival table" per world seed (what arrives, when, from where); (3) feed arrivals into the macro sea and flow passes; (4) a globe view.
+- **Risks:** scope (keep it coarse and deterministic), and plausibility traps (do not pretend to be real geography; no real names). Measure whether it changes the player's choices before any drawing.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
