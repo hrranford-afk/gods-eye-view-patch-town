@@ -119,6 +119,13 @@ One possible reason the old world fell: people got comfortable and handed more a
 - **Rules:** finite, seeded old-world slots (as for ruins and wrecks); ledger events with idempotent keys; no brands.
 - **Research first:** how tidal stream turbines really work (flow speed needed, rotor size, cable landfall, maintenance, how they fail), then simulate in the headless sim before drawing.
 
+### Each island can host its own small game (owner idea, 23 Nov; experiment, not a course)
+Keep gameplay fluid: instead of one fixed path, different islands can carry different small games or loops, and we learn which are fun by trying them. The world, the sea and the ledger are the shared spine; the games sit on top.
+- **Examples that follow the island types we already draw:** harbour island (trade and boats), lagoon (fishing and gardens), lighthouse island (signalling and arrivals), volcanic island (geology and tinkering), ruins island (salvage and relearning), turbine island (finish the old project and bring power), collector beach (the relic family and the rubbish limit).
+- **Rule to keep it from sprawling:** every island game follows the one-visible-loop rule, uses the shared ledger (idempotent keys), the same sea, tide and weather, and must be fun in its first five minutes before it gets more. Experiments that are not fun are parked, not forced.
+- **How we graduate one:** build it behind a switch, test it headless first (the ecosystem sim), show it to the owner, keep it or drop it. Nothing is locked.
+- **Play it your way still holds:** the player picks which islands' games to lean into.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
