@@ -1,0 +1,210 @@
+{
+ "lightmap": {
+  "png_bytes": 2361266,
+  "jpg_bytes": 352588,
+  "jpg420_bytes": 286255,
+  "jpeg_q": 92,
+  "k": 1.0,
+  "jpeg_max_abs_err_linear": 0.04467564719856387,
+  "jpeg_mean_abs_err_linear": 0.0038418055093021593,
+  "p5_p50_p95_lum": [
+   0.3093419100458071,
+   0.5471715005982866,
+   0.6546249009907951
+  ]
+ },
+ "normal": {
+  "png_bytes": 8588099,
+  "jpg_q80_bytes": 783542,
+  "jpeg_mean_abs_err": 0.029368264600634575,
+  "std_xy": 0.053326208144426346,
+  "note": "noisy bump from the 3.6 cm texel grain: PNG is huge, JPEG q80 keeps the shading"
+ },
+ "sunmask": {
+  "png_bytes": 941404,
+  "mean_rgb": [
+   0.8955453814142506,
+   0.9110670959448399,
+   0.934981875785574
+  ]
+ },
+ "sh": {
+  "20": {
+   "sun_azimuth_found_deg": 320.0,
+   "sun_azimuth_expected_deg": 320.0,
+   "L_mean_upper_rgb": [
+    0.5618991255760193,
+    0.6697746515274048,
+    0.6640018224716187
+   ],
+   "E_up_over_pi_rgb_integral": [
+    0.4601,
+    0.6213,
+    0.6952
+   ],
+   "E_up_over_pi_rgb_from_sh": [
+    0.4795,
+    0.6275,
+    0.6856
+   ]
+  },
+  "35": {
+   "sun_azimuth_found_deg": 320.0,
+   "sun_azimuth_expected_deg": 320.0,
+   "L_mean_upper_rgb": [
+    0.6566126346588135,
+    0.8291966319084167,
+    0.9351476430892944
+   ],
+   "E_up_over_pi_rgb_integral": [
+    0.5637,
+    0.7806,
+    0.9698
+   ],
+   "E_up_over_pi_rgb_from_sh": [
+    0.5821,
+    0.7873,
+    0.9591
+   ]
+  },
+  "50": {
+   "sun_azimuth_found_deg": 320.0,
+   "sun_azimuth_expected_deg": 320.0,
+   "L_mean_upper_rgb": [
+    0.6956362724304199,
+    0.9053336381912231,
+    1.09617280960083
+   ],
+   "E_up_over_pi_rgb_integral": [
+    0.6143,
+    0.8631,
+    1.1334
+   ],
+   "E_up_over_pi_rgb_from_sh": [
+    0.6321,
+    0.87,
+    1.1232
+   ]
+  }
+ },
+ "tone": {
+  "grey_fit_max_abs_srgb": 0.0008069597691425789,
+  "rows": {
+   "per_channel": {
+    "grey": {
+     "mean_abs_srgb": 0.0001614785687957475,
+     "max_abs_srgb": 0.0008069583339706532
+    },
+    "red": {
+     "mean_abs_srgb": 0.0312986608332805,
+     "max_abs_srgb": 0.6091096289455891
+    },
+    "green": {
+     "mean_abs_srgb": 0.031298660833280506,
+     "max_abs_srgb": 0.6091096289455891
+    },
+    "blue": {
+     "mean_abs_srgb": 0.0312986608332805,
+     "max_abs_srgb": 0.6091096289455891
+    },
+    "sand": {
+     "mean_abs_srgb": 0.0005456922411709135,
+     "max_abs_srgb": 0.007553216302767396
+    },
+    "grass": {
+     "mean_abs_srgb": 0.0018070393643905447,
+     "max_abs_srgb": 0.008499275660142303
+    },
+    "sky": {
+     "mean_abs_srgb": 0.0004009474509682059,
+     "max_abs_srgb": 0.007095445645973086
+    },
+    "sun": {
+     "mean_abs_srgb": 0.00023864664698127998,
+     "max_abs_srgb": 0.0049286645371466875
+    }
+   },
+   "desat": {
+    "grey": {
+     "mean_abs_srgb": 0.0001614785687957475,
+     "max_abs_srgb": 0.0008069583339706532
+    },
+    "red": {
+     "mean_abs_srgb": 0.025780865802778122,
+     "max_abs_srgb": 0.4960358291807616
+    },
+    "green": {
+     "mean_abs_srgb": 0.02396964770996342,
+     "max_abs_srgb": 0.14995343067120417
+    },
+    "blue": {
+     "mean_abs_srgb": 0.030856303839955843,
+     "max_abs_srgb": 0.5938705388377316
+    },
+    "sand": {
+     "mean_abs_srgb": 0.000562567371654136,
+     "max_abs_srgb": 0.007553216302767396
+    },
+    "grass": {
+     "mean_abs_srgb": 0.001834319933671914,
+     "max_abs_srgb": 0.008499275660142303
+    },
+    "sky": {
+     "mean_abs_srgb": 0.00044327149263504226,
+     "max_abs_srgb": 0.007095445645973086
+    },
+    "sun": {
+     "mean_abs_srgb": 0.00026064532319301266,
+     "max_abs_srgb": 0.0049286645371466875
+    }
+   },
+   "aces_0.9": {
+    "grey": {
+     "mean_abs_srgb": 0.0280548721945988
+    },
+    "red": {
+     "mean_abs_srgb": 0.1358399685686783
+    },
+    "green": {
+     "mean_abs_srgb": 0.205235384422602
+    },
+    "blue": {
+     "mean_abs_srgb": 0.11009201129918599
+    },
+    "sand": {
+     "mean_abs_srgb": 0.028703393902352475
+    },
+    "grass": {
+     "mean_abs_srgb": 0.02976110448593221
+    },
+    "sky": {
+     "mean_abs_srgb": 0.030136373928111106
+    },
+    "sun": {
+     "mean_abs_srgb": 0.028573234228968142
+    }
+   },
+   "aces_grey_mid": {
+    "mid_grey_in_0.18": {
+     "blender": 0.4980239570140839,
+     "aces_0.9": 0.46868187825040036
+    }
+   }
+  },
+  "use_desat": false
+ },
+ "sky_pano": {
+  "jpg_bytes": 21051
+ },
+ "bytes": {
+  "bridge.json": 2404,
+  "whitecard_blender.json": 485,
+  "bake_info.json": 752,
+  "island_bridge.glb": 1767596,
+  "pack_report.json": 4518,
+  "normal.jpg": 783542,
+  "lightmap.jpg": 352588,
+  "sunmask.png": 941404,
+  "sky_pano.jpg": 21051
+ }
+}

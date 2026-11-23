@@ -1,0 +1,5 @@
+{"_note": "polygons in 1200x800 image pixels of the hero camera, hand drawn once on the Blender reference: ground = open ground (no trees, boulders, foam); sea_far / sea_near = two sea rectangles; sky = the strip above the horizon",
+ "ground": [[[240,440],[330,400],[560,372],[780,362],[900,392],[990,440],[1030,470],[960,560],[840,602],[700,650],[520,688],[350,688],[240,640],[150,560]]],
+ "sea_far": [[[0,60],[1200,60],[1200,100],[0,100]]],
+ "sea_near": [[[850,620],[1200,620],[1200,800],[850,800]]],
+ "sky": [[[0,0],[1200,0],[1200,36],[0,36]]]}

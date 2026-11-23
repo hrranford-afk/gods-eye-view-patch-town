@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>White card</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style></head><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* WHITE-CARD test, page half (research/BAKE_BRIDGE.md 2.2). Query: rgb=r,g,b (linear value of the light map, from whitecard_blender.json 'sky_bake_rgb'),
+   sun=S (W/m2) with col=r,g,b and el=deg. Renders a white MeshStandardMaterial card, no tone mapping, linear output, and reports the linear value it
+   shows (scaled by 0.5 so values up to 2 fit 8 bits). Expectation: lightMap texel L gives albedo * L (the PI factor of r128 cancels the Lambert 1/PI);
+   a DirectionalLight of intensity S/PI gives albedo * S * cos / PI, the same as Cycles. */
+const Q = new URLSearchParams(location.search);
+const L = (Q.get('rgb') || '0.3,0.3,0.3').split(',').map(Number), S = +(Q.get('sun') || 0), COL = (Q.get('col') || '1,0.76,0.5').split(',').map(Number), EL = +(Q.get('el') || 20);
+const r = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true }); r.setSize(64, 64); r.outputEncoding = THREE.LinearEncoding;
+r.toneMapping = THREE.LinearToneMapping; r.toneMappingExposure = 0.5; document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0, 0, 0);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50); cam.position.set(0, 10, 0); cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0);
+/* light map: a 4x4 sRGB-coded 8-bit texture holding L (quantised to 8 bits in sRGB, as the shipped JPEG/PNG would be) */
+const enc = x => x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+const data = new Uint8Array(4 * 4 * 4); for (let i = 0; i < 16; i++) { for (let c = 0; c < 3; c++) data[i * 4 + c] = Math.round(255 * enc(Math.min(1, L[c]))); data[i * 4 + 3] = 255; }
+const tex = new THREE.DataTexture(data, 4, 4, THREE.RGBAFormat); tex.encoding = THREE.sRGBEncoding; tex.needsUpdate = true;
+const geo = new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2); geo.setAttribute('uv2', geo.attributes.uv.clone());
+const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 });
+if (!S) { m.lightMap = tex; m.lightMapIntensity = 1; }
+sc.add(new THREE.Mesh(geo, m));
+if (S) { const dl = new THREE.DirectionalLight(new THREE.Color().setRGB(COL[0], COL[1], COL[2]), S / Math.PI); const e = EL * Math.PI / 180; dl.position.set(Math.cos(e) * 20, Math.sin(e) * 20, 0); sc.add(dl); }
+r.render(sc, cam);
+const gl = r.getContext(), px = new Uint8Array(4); gl.readPixels(32, 32, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+window.__wc = { rgb_linear: [px[0] / 255 * 2, px[1] / 255 * 2, px[2] / 255 * 2], texel_linear: L.map(v => { const y = enc(Math.min(1, v)); const q = Math.round(255 * y) / 255; return q <= 0.04045 ? q / 12.92 : Math.pow((q + 0.055) / 1.055, 2.4); }), ready: true };
+</script></body></html>

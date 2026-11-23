@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bake bridge pilot: Cycles light in the live page</title>
+<style>html,body{margin:0;height:100%;background:#0b1a2a;overflow:hidden;font:12px/1.4 system-ui,sans-serif;color:#e8e2d4}
+canvas{display:block}#hud{position:fixed;left:10px;bottom:8px;opacity:.75;pointer-events:none;text-shadow:0 1px 2px #000}</style>
+</head><body>
+<div id="hud">Bake bridge pilot: split Cycles bake (albedo, sky light map, sun mask, normal) lit live, fitted Filmic curve, live sea. Drag to look around.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+/* BAKE BRIDGE pilot (research/BAKE_BRIDGE.md section 6). A copy of baked_land.html with the land lit LIVE from split Cycles bakes:
+     map      albedo (sRGB, in the GLB, UV0)                               lightMap  sky GI + AO, sun off (scene-linear, sRGB-coded JPEG, UV1 = uv2)
+     normalMap tangent-space bump (Linear)                                 sun mask  R,G,B = shadow of the sun at three baked elevations (Linear, uv2)
+   Sun and weather stay live: one DirectionalLight whose land shadow comes from the mask (blended by sun elevation, faded out of range, and
+   handed to the live shadow map there), the sky colour is a SphericalHarmonics LightProbe from the Cycles panorama (trees and boulders) and a tint
+   of the light map (land). Tone: r128's ACES chunk is REPLACED by a table fitted from a Filmic 'Medium High Contrast' step wedge, so the same
+   look is applied by every material, with or without post. Sea: the live shader of baked_land.html, unchanged (not tone mapped, as there).
+   Query: mode=bridge|live (live = today's lighting recipe on the same mesh: hemisphere + sun + shadow map + ACES), sun=0 (sun off), el=<deg>, az=<deg>,
+          exp=<EV>, t=<sea time, fixes the animation>, view=hero|orbit, dbg=albedo|light|mask|normal|none, hud=0, base=<assets folder>.
+   Blender (x,y,z up) became glTF (x, z, -y): north (+y) is -z here. */
+const Q = new URLSearchParams(location.search);
+const BASE = Q.get('base') || 'assets/';
+const BR = BASE + 'bridge/';
+const MODE = Q.get('mode') || 'bridge';
+const HALF = 28;
+const DBG = Q.get('dbg') || 'none';
+if (Q.get('hud') === '0') document.getElementById('hud').style.display = 'none';
+window.__bl = { ready: false, frames: 0, errors: [], info: {} };
+const RAD = Math.PI / 180;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;       /* switches the tone mapping chunk on; in bridge mode its body is replaced below */
+document.body.appendChild(renderer.domElement);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0.55, 0.62, 0.70);
+const camera = new THREE.PerspectiveCamera(36.87, innerWidth / innerHeight, 0.5, 2500);
+/* the hero camera of hero_render.py: Blender (-9,-29,10) looking at (0,-2,1.2), 36 mm lens on a 36 mm sensor -> 36.87 deg vertical at 3:2 */
+const HERO = { pos: new THREE.Vector3(-9, 10, 29), tgt: new THREE.Vector3(0, 1.2, 2) };
+const orbitView = Q.get('view') === 'orbit';
+let yaw = 0.0, pitch = 0.36, dist = 46; const target = new THREE.Vector3(0, 0.6, 2);
+function placeCamera(t) {
+  if (!orbitView && !drag0) { camera.position.copy(HERO.pos); camera.lookAt(HERO.tgt); return; }
+  const y = yaw;
+  camera.position.set(target.x + Math.sin(y) * Math.cos(pitch) * dist, target.y + Math.sin(pitch) * dist, target.z + Math.cos(y) * Math.cos(pitch) * dist);
+  camera.lookAt(target);
+}
+let drag = null, drag0 = false;
+renderer.domElement.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; if (!orbitView && !drag0) { drag0 = true; const d = camera.position.clone().sub(HERO.tgt); dist = d.length(); yaw = Math.atan2(d.x, d.z); pitch = Math.asin(d.y / dist); target.copy(HERO.tgt); } });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.005; pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - drag[1]) * 0.004)); drag = [e.clientX, e.clientY]; });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+
+/* sun: Blender (sx,sy,sz) -> three (sx, sz, -sy). az clockwise from north (+y), el above the horizon. */
+const SUN_EL = +(Q.get('el') || 20), SUN_AZ = +(Q.get('az') || 320);
+function sunVec(el, az) { const e = el * RAD, a = az * RAD; return new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e)).normalize(); }
+const SUN = sunVec(SUN_EL, SUN_AZ);
+const SUN_ON = Q.get('sun') !== '0';
+
+/* ------------------------------------------------------------------ helpers */
+const fetchJSON = u => fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
+const loadTex = (u, srgb, anis) => new Promise((res, rej) => new THREE.TextureLoader().load(u, t => {
+  t.flipY = false; t.encoding = srgb ? THREE.sRGBEncoding : THREE.LinearEncoding; t.anisotropy = anis || 8; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; res(t);
+}, undefined, () => rej(new Error('texture ' + u))));
+
+/* ------------------------------------------------------------------ the tone chunk (fitted from the Blender wedge, bridge.json -> tone) */
+function installFilmicFit(tone) {
+  const tab = tone.table.map(v => v.toFixed(6)).join(','), n = tone.table.length;
+  const des = tone.desat.map(v => v.toFixed(4)).join(','), nd = tone.desat.length;
+  const fn = `
+const float FT_EV0 = ${tone.ev0.toFixed(2)}; const float FT_STEP = ${tone.step.toFixed(4)};
+const float FT[${n}] = float[${n}](${tab});
+const float FD[${nd}] = float[${nd}](${des});
+float filmicCurve( float x ) {
+	float e = log2( max( x, 1e-6 ) );
+	float f = clamp( ( e - FT_EV0 ) / FT_STEP, 0.0, ${(n - 1.001).toFixed(3)} );
+	int i = int( floor( f ) ); float t = f - float( i );
+	return mix( FT[ i ], FT[ i + 1 ], t );
+}
+vec3 ACESFilmicToneMapping( vec3 color ) {      /* name kept so every material that includes tonemapping_fragment picks it up; the body is the Filmic fit */
+	color *= toneMappingExposure;
+	vec3 p = vec3( filmicCurve( color.r ), filmicCurve( color.g ), filmicCurve( color.b ) );
+	${tone.use_desat ? `
+	float lp = dot( p, vec3( 0.2126, 0.7152, 0.0722 ) );
+	float e = log2( max( dot( color, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-6 ) );
+	float f = clamp( ( e - ${tone.desat_ev0.toFixed(2)} ) / ${((tone.desat_ev1 - tone.desat_ev0) / (nd - 1)).toFixed(5)}, 0.0, ${(nd - 1.001).toFixed(3)} );
+	int j = int( floor( f ) ); float s = mix( FD[ j ], FD[ j + 1 ], f - float( j ) );
+	p = vec3( lp ) + s * ( p - vec3( lp ) );` : ''}
+	return saturate( p );                         /* linear display values: three applies the sRGB OETF next (outputEncoding) */
+}
+`;
+  const orig = THREE.ShaderChunk.tonemapping_pars_fragment;
+  THREE.ShaderChunk.tonemapping_pars_fragment = orig.split('vec3 RRTAndODTFit')[0] + fn + 'vec3 CustomToneMapping( vec3 color ) { return color; }\n';
+}
+
+/* ------------------------------------------------------------------ the sea (live shader of baked_land.html, unchanged) */
+let depthReady = false;
+const depthTex = new THREE.TextureLoader().load(BASE + 'land_depth.png', () => { depthReady = true; }, undefined, () => window.__bl.errors.push('depth map failed'));
+depthTex.wrapS = depthTex.wrapT = THREE.ClampToEdgeWrapping; depthTex.minFilter = depthTex.magFilter = THREE.LinearFilter; depthTex.generateMipmaps = false;
+const seaMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, toneMapped: false,
+  uniforms: { uTime: { value: 0 }, uDepth: { value: depthTex }, uSun: { value: SUN.clone() }, uHalf: { value: HALF } },
+  vertexShader: 'varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+  fragmentShader: `precision highp float;
+  uniform float uTime,uHalf;uniform sampler2D uDepth;uniform vec3 uSun;varying vec3 vW;
+  float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+  float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec2(7.1,3.7);a*=.5;}return s;}
+  vec2 grad(vec2 p,float t){
+    vec2 g=vec2(0.);
+    vec2 d1=normalize(vec2(.91,.41));float k1=6.2832/17.;g+=d1*.05*k1*cos(dot(d1,p)*k1+t*1.6);
+    vec2 d2=normalize(vec2(-.28,.96));float k2=6.2832/8.;g+=d2*.03*k2*cos(dot(d2,p)*k2+t*1.9+fbm(p*.07)*4.);
+    vec2 d3=normalize(vec2(.68,-.73));float k3=6.2832/3.6;g+=d3*.012*k3*cos(dot(d3,p)*k3+t*2.4);
+    vec2 d4=normalize(vec2(-.9,-.43));float k4=6.2832/1.7;g+=d4*.005*k4*cos(dot(d4,p)*k4+t*2.9+fbm(p*.3)*6.);
+    return g;}
+  void main(){
+    vec2 p=vW.xz;
+    vec2 uv=vec2(p.x/(2.*uHalf)+.5,-p.y/(2.*uHalf)+.5);
+    float h=texture2D(uDepth,uv).r*12.-6.;
+    float inTile=step(abs(p.x),uHalf)*step(abs(p.y),uHalf);
+    float depth=mix(5.,-h,inTile);
+    if(depth<-0.03)discard;
+    vec3 V=normalize(cameraPosition-vW);float dist=length(cameraPosition-vW);
+    vec2 g=grad(p,uTime);g*=mix(.35,1.,smoothstep(0.,.8,depth));
+    vec3 N=normalize(vec3(-g.x,1.,-g.y));
+    float fres=.02+.98*pow(1.-max(dot(N,V),0.),5.);
+    vec3 R=reflect(-V,N);
+    float y=max(R.y,0.);vec3 skyc=mix(vec3(.62,.66,.72),vec3(.10,.24,.55),pow(y,.45));
+    skyc+=vec3(1.,.62,.3)*.35*pow(max(dot(R,uSun),0.),8.);
+    vec3 shal=vec3(.10,.55,.55),deep=vec3(.01,.07,.17);
+    vec3 body=mix(shal,deep,smoothstep(.15,2.6,depth));
+    float lit=.55+.45*max(dot(N,uSun),0.);
+    vec3 col=body*lit;
+    col=mix(col,skyc,fres*.9);
+    float glit=pow(max(dot(R,uSun),0.),400.)*40.+pow(max(dot(R,uSun),0.),40.)*.5;
+    col+=vec3(1.,.8,.55)*glit*(.4+.6*smoothstep(0.,.6,depth));
+    float alpha=clamp(1.-.93*exp(-depth*1.5),0.,1.);alpha=max(alpha,fres);
+    float nz=fbm(p*.9+vec2(uTime*.05,-uTime*.03)),lap=.5+.5*sin(uTime*1.2+nz*8.);
+    float edge=smoothstep(.12+.14*lap,0.,depth+(nz-.5)*.18);
+    float band=smoothstep(.7,.97,.5+.5*sin(depth*14.-uTime*.9+nz*3.))*smoothstep(.7,.1,depth)*.55;
+    float foam=clamp(max(edge,band)*smoothstep(.25,.6,fbm(p*2.7-uTime*.04)+.35),0.,1.);
+    col=mix(col,vec3(.96,.97,.95)*lit,foam);alpha=max(alpha,foam*.95);
+    float far=smoothstep(120.,700.,dist);col=mix(col,vec3(.55,.62,.70),far*.7);
+    gl_FragColor=vec4(col,alpha);
+    #include <encodings_fragment>
+  }`
+});
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1).rotateX(-Math.PI / 2), seaMat);
+sea.renderOrder = 5; scene.add(sea);
+
+/* ------------------------------------------------------------------ the land material: bridge (split bake lit live) */
+function makeBridgeLandMaterial(B, albedo, lightTex, normalTex, maskTex) {
+  const m = new THREE.MeshStandardMaterial({ map: albedo, normalMap: normalTex, roughness: 1.0, metalness: 0.0, lightMap: lightTex, lightMapIntensity: B.light_intensity });
+  m.normalScale.set(+(Q.get('ns') || 0.45), +(Q.get('ns') || 0.45));
+  const U = { uSunMask: { value: maskTex }, uMaskW: { value: new THREE.Vector3(1, 0, 0) }, uMaskAmt: { value: 1 }, uSkyTint: { value: new THREE.Vector3(1, 1, 1) } };
+  m.userData.U = U;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D uSunMask; uniform vec3 uMaskW; uniform float uMaskAmt; uniform vec3 uSkyTint;');
+    let begin = THREE.ShaderChunk.lights_fragment_begin;
+    /* (1) the land takes its sky light from the baked light map only: no hemisphere/probe term */
+    begin = begin.replace('irradiance += getLightProbeIrradiance( lightProbe, geometry );', '/* land: sky light = baked lightMap * uSkyTint */');
+    /* (2) sun visibility from the baked mask (weights by sun elevation); where the mask does not apply (uMaskAmt -> 0) the live shadow map takes over */
+    begin = begin.replace('IncidentLight directLight;', 'IncidentLight directLight;\n\tfloat sunVisMask = dot( texture2D( uSunMask, vUv2 ).rgb, uMaskW );');
+    begin = begin.replace(/directLight\.color \*= (all\( bvec2\( directLight\.visible, receiveShadow \) \) \? getShadow\( directionalShadowMap[^;]*?: 1\.0);/, 'directLight.color *= mix( $1, 1.0, uMaskAmt );');
+    begin = begin.replace('getDirectionalDirectLightIrradiance( directionalLight, geometry, directLight );', 'getDirectionalDirectLightIrradiance( directionalLight, geometry, directLight );\n\t\tdirectLight.color *= mix( 1.0, sunVisMask, uMaskAmt );');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>', begin);
+    let maps = THREE.ShaderChunk.lights_fragment_maps;
+    maps = maps.replace('* lightMapIntensity;', '* lightMapIntensity * uSkyTint;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_maps>', maps);
+    window.__bl.info.patched = begin.includes('sunVisMask') && begin.includes('mix( all(') && maps.includes('uSkyTint');
+  };
+  m.customProgramCacheKey = () => 'bridge-land-v1';
+  return m;
+}
+
+/* ------------------------------------------------------------------ main */
+const clock = new THREE.Clock();
+const T_FIX = Q.get('t');
+let landMat = null, dl = null;
+function frame() {
+  const t = T_FIX !== null ? +T_FIX : clock.getElapsedTime(); seaMat.uniforms.uTime.value = t; placeCamera(t);
+  renderer.render(scene, camera); window.__bl.frames++;
+  if (window.__bl.ready && !window.__bl.info.render) { const i = renderer.info; window.__bl.info.render = { calls: i.render.calls, triangles: i.render.triangles, textures: i.memory.textures, geometries: i.memory.geometries, programs: i.programs.length }; }
+  requestAnimationFrame(frame);
+}
+
+async function main() {
+  const B = await fetchJSON(BR + 'bridge.json');
+  window.__bl.info.mode = MODE;
+  const bridge = MODE === 'bridge';
+  if (bridge) { installFilmicFit(B.tone); renderer.toneMappingExposure = Math.pow(2, +(Q.get('exp') || B.exposure_ev_hero)); }
+  else renderer.toneMappingExposure = +(Q.get('exp') || 0.95);       /* what islands_look.html uses with NOPOST: ACES at 0.95 */
+  const anis = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  /* first paint needs only the GLB (geometry + albedo) and the light map; the normal map and the sun mask arrive afterwards (1x1 placeholders until then) */
+  const ph = (r, g, b) => { const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1, THREE.RGBAFormat); t.needsUpdate = true; return t; };
+  const lazy = bridge && DBG === 'none' && Q.get('lazy') !== '0';
+  const lightTex = (bridge || DBG !== 'none') ? await loadTex(BR + B.files.lightmap, true, anis) : null;
+  let normalTex = null, maskTex = null;
+  if (lazy) { normalTex = ph(128, 128, 255); maskTex = ph(255, 255, 255); }
+  else if (bridge || DBG !== 'none') [normalTex, maskTex] = await Promise.all([loadTex(BR + B.files.normal, false, anis), loadTex(BR + B.files.sunmask, false, 4)]);
+  /* lights */
+  const sunLinear = new THREE.Color(); sunLinear.setRGB(B.sun_color_linear[0], B.sun_color_linear[1], B.sun_color_linear[2]);
+  const sunI = B.sun_strength_w_m2 / Math.PI;         /* r128 non-physical lights: reflected = albedo * intensity * N.L, Cycles: albedo * S * N.L / pi -> I = S / pi */
+  dl = new THREE.DirectionalLight(bridge ? sunLinear : new THREE.Color(0xffc88a), bridge ? sunI : 1.1);
+  if (!SUN_ON) dl.intensity = 0;
+  dl.position.copy(SUN).multiplyScalar(100); dl.target.position.set(0, 0, 0); scene.add(dl); scene.add(dl.target);
+  dl.castShadow = true; dl.shadow.mapSize.set(2048, 2048); dl.shadow.bias = -0.0004; dl.shadow.normalBias = 0.12;
+  const sc = dl.shadow.camera; sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 20; sc.far = 220; sc.updateProjectionMatrix();
+  /* sky: SH9 from the panorama (interpolated between the baked sun elevations) */
+  let tint = new THREE.Vector3(1, 1, 1);
+  if (bridge) {
+    const els = B.sun_els, key = e => String(e);
+    const e = Math.min(els[els.length - 1], Math.max(els[0], SUN_EL));
+    let i = 0; while (i < els.length - 2 && e > els[i + 1]) i++;
+    const w = (e - els[i]) / (els[i + 1] - els[i]);
+    const a = B.sh[key(els[i])], b = B.sh[key(els[i + 1])], ref = B.sh[key(els[0])];
+    const flat = []; for (let k = 0; k < 9; k++) for (let c = 0; c < 3; c++) flat.push(a[k][c] * (1 - w) + b[k][c] * w);
+    const probe = new THREE.LightProbe(); probe.sh.fromArray(flat); probe.intensity = 1; scene.add(probe);
+    tint.set(flat[0] / ref[0][0], flat[1] / ref[0][1], flat[2] / ref[0][2]);
+    window.__bl.info.sh = { el: e, l00: flat.slice(0, 3), tint: tint.toArray() };
+  } else {
+    scene.add(new THREE.HemisphereLight(new THREE.Color(0.36, 0.46, 0.62), new THREE.Color(0.26, 0.23, 0.18), 0.85));
+  }
+  /* sun mask weights: triangular in elevation between the baked ones, faded out over 25 deg of azimuth away from the baked azimuth */
+  const els = B.sun_els; let W3 = [0, 0, 0], wsum = 0;
+  els.forEach((el, k) => { const w = Math.max(0, 1 - Math.abs(SUN_EL - el) / 15); W3[k] = w; wsum += w; });
+  let azd = Math.abs(((SUN_AZ - B.sun_az + 540) % 360) - 180);
+  const maskAmt = Math.min(1, wsum) * Math.max(0, 1 - Math.max(0, azd - 5) / 25);
+  if (wsum > 0) W3 = W3.map(w => w / wsum);
+  window.__bl.info.mask = { weights: W3, amount: maskAmt };
+  /* land + trees + boulders */
+  const gltf = await new Promise((res, rej) => new THREE.GLTFLoader().load(BR + B.files.glb, res, undefined, rej));
+  let tris = 0, uv2 = null;
+  gltf.scene.traverse(o => {
+    if (!o.isMesh) return;
+    tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    const old = o.material;
+    if (old.map) {                                       /* the land */
+      const g = o.geometry; uv2 = !!g.attributes.uv2;
+      window.__bl.info.attributes = Object.keys(g.attributes);
+      if (!g.attributes.uv2 && g.attributes.uv) { g.setAttribute('uv2', g.attributes.uv.clone()); window.__bl.info.uv2_copied_from_uv = true; }
+      old.map.anisotropy = anis;
+      if (DBG !== 'none') {
+        const tx = { albedo: old.map, light: lightTex, mask: maskTex, normal: normalTex }[DBG];
+        o.material = new THREE.MeshBasicMaterial({ map: tx });
+      } else if (bridge) {
+        o.material = landMat = makeBridgeLandMaterial(B, old.map, lightTex, normalTex, maskTex);
+        const U = landMat.userData.U; U.uMaskW.value.set(W3[0], W3[1], W3[2]); U.uMaskAmt.value = maskAmt; U.uSkyTint.value.copy(tint);
+      } else {                                          /* live: today's recipe, same albedo, no light map, no mask */
+        o.material = new THREE.MeshStandardMaterial({ map: old.map, roughness: 1, metalness: 0 });
+      }
+      o.castShadow = true; o.receiveShadow = true;
+    } else {
+      /* trees and boulders are flat colours here (not baked yet: no AO, no mossy rock): darkened by hand toward what Cycles shows (TUNING) */
+      const k = { Needles: 0.62, Bark: 0.8, BoulderGrey: 0.5 }[old.name.split('.')[0]] || 1;
+      const col = old.color.clone().multiplyScalar(k); if (old.name === 'BoulderGrey') col.setRGB(col.r * 1.0, col.g * 1.05, col.b * 0.85);
+      o.material = new THREE.MeshStandardMaterial({ color: col, roughness: 0.92, metalness: 0 });
+      o.castShadow = true; o.receiveShadow = true;
+    }
+  });
+  scene.add(gltf.scene);
+  window.__bl.info.uv2 = uv2; window.__bl.tris = tris; window.__bl.depthReady = () => depthReady;
+  window.__bl.ready = true;
+  if (lazy) {
+    const [n, m] = await Promise.all([loadTex(BR + B.files.normal, false, anis), loadTex(BR + B.files.sunmask, false, 4)]);
+    landMat.normalMap = n; landMat.userData.U.uSunMask.value = m; landMat.needsUpdate = false;
+  }
+  window.__bl.full = true;
+}
+main().catch(e => { window.__bl.errors.push(String(e && e.message || e)); console.error(e); });
+frame();
+</script></body></html>

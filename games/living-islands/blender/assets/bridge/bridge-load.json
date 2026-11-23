@@ -1,0 +1,345 @@
+{
+ "A": {
+  "load_ms": 1697,
+  "first_paint_bytes": 1822270,
+  "first_paint_files": [
+   "baked_bridge.html",
+   "assets/bridge/bridge.json",
+   "assets/land_depth.png",
+   "assets/bridge/island_bridge.glb"
+  ],
+  "served_bytes": 1822270,
+  "files": [
+   [
+    "baked_bridge.html",
+    20341
+   ],
+   [
+    "assets/bridge/bridge.json",
+    2404
+   ],
+   [
+    "assets/land_depth.png",
+    31929
+   ],
+   [
+    "assets/bridge/island_bridge.glb",
+    1767596
+   ]
+  ],
+  "console_errors": [],
+  "info": {
+   "mode": "live",
+   "mask": {
+    "weights": [
+     1,
+     0,
+     0
+    ],
+    "amount": 1
+   },
+   "attributes": [
+    "position",
+    "normal",
+    "uv",
+    "uv2"
+   ],
+   "uv2": true,
+   "render": {
+    "calls": 5,
+    "triangles": 47566,
+    "textures": 3,
+    "geometries": 5,
+    "programs": 4
+   }
+  },
+  "tris": 47564,
+  "errors": [],
+  "frames": 21
+ },
+ "C": {
+  "load_ms": 2058,
+  "first_paint_bytes": 3899804,
+  "first_paint_files": [
+   "baked_bridge.html",
+   "assets/bridge/bridge.json",
+   "assets/land_depth.png",
+   "assets/bridge/lightmap.jpg",
+   "assets/bridge/island_bridge.glb",
+   "assets/bridge/normal.jpg",
+   "assets/bridge/sunmask.png"
+  ],
+  "served_bytes": 3899804,
+  "files": [
+   [
+    "baked_bridge.html",
+    20341
+   ],
+   [
+    "assets/bridge/bridge.json",
+    2404
+   ],
+   [
+    "assets/land_depth.png",
+    31929
+   ],
+   [
+    "assets/bridge/lightmap.jpg",
+    352588
+   ],
+   [
+    "assets/bridge/island_bridge.glb",
+    1767596
+   ],
+   [
+    "assets/bridge/normal.jpg",
+    783542
+   ],
+   [
+    "assets/bridge/sunmask.png",
+    941404
+   ]
+  ],
+  "console_errors": [],
+  "info": {
+   "mode": "bridge",
+   "sh": {
+    "el": 20,
+    "l00": [
+     1.60836,
+     1.8101,
+     1.55414
+    ],
+    "tint": [
+     1,
+     1,
+     1
+    ]
+   },
+   "mask": {
+    "weights": [
+     1,
+     0,
+     0
+    ],
+    "amount": 1
+   },
+   "attributes": [
+    "position",
+    "normal",
+    "uv",
+    "uv2"
+   ],
+   "uv2": true,
+   "patched": true,
+   "render": {
+    "calls": 5,
+    "triangles": 47566,
+    "textures": 6,
+    "geometries": 5,
+    "programs": 4
+   }
+  },
+  "tris": 47564,
+  "errors": [],
+  "frames": 21
+ },
+ "D": {
+  "load_ms": 2310,
+  "first_paint_bytes": 3899804,
+  "first_paint_files": [
+   "baked_bridge.html",
+   "assets/bridge/bridge.json",
+   "assets/land_depth.png",
+   "assets/bridge/lightmap.jpg",
+   "assets/bridge/island_bridge.glb",
+   "assets/bridge/normal.jpg",
+   "assets/bridge/sunmask.png"
+  ],
+  "served_bytes": 3899804,
+  "files": [
+   [
+    "baked_bridge.html",
+    20341
+   ],
+   [
+    "assets/bridge/bridge.json",
+    2404
+   ],
+   [
+    "assets/land_depth.png",
+    31929
+   ],
+   [
+    "assets/bridge/lightmap.jpg",
+    352588
+   ],
+   [
+    "assets/bridge/island_bridge.glb",
+    1767596
+   ],
+   [
+    "assets/bridge/normal.jpg",
+    783542
+   ],
+   [
+    "assets/bridge/sunmask.png",
+    941404
+   ]
+  ],
+  "console_errors": [],
+  "info": {
+   "mode": "bridge",
+   "sh": {
+    "el": 20,
+    "l00": [
+     1.60836,
+     1.8101,
+     1.55414
+    ],
+    "tint": [
+     1,
+     1,
+     1
+    ]
+   },
+   "mask": {
+    "weights": [
+     1,
+     0,
+     0
+    ],
+    "amount": 1
+   },
+   "attributes": [
+    "position",
+    "normal",
+    "uv",
+    "uv2"
+   ],
+   "uv2": true,
+   "patched": true,
+   "render": {
+    "calls": 5,
+    "triangles": 47566,
+    "textures": 6,
+    "geometries": 5,
+    "programs": 4
+   }
+  },
+  "tris": 47564,
+  "errors": [],
+  "frames": 20
+ },
+ "E": {
+  "load_ms": 2322,
+  "first_paint_bytes": 3899804,
+  "first_paint_files": [
+   "baked_bridge.html",
+   "assets/bridge/bridge.json",
+   "assets/land_depth.png",
+   "assets/bridge/lightmap.jpg",
+   "assets/bridge/island_bridge.glb",
+   "assets/bridge/normal.jpg",
+   "assets/bridge/sunmask.png"
+  ],
+  "served_bytes": 3899804,
+  "files": [
+   [
+    "baked_bridge.html",
+    20341
+   ],
+   [
+    "assets/bridge/bridge.json",
+    2404
+   ],
+   [
+    "assets/land_depth.png",
+    31929
+   ],
+   [
+    "assets/bridge/lightmap.jpg",
+    352588
+   ],
+   [
+    "assets/bridge/island_bridge.glb",
+    1767596
+   ],
+   [
+    "assets/bridge/normal.jpg",
+    783542
+   ],
+   [
+    "assets/bridge/sunmask.png",
+    941404
+   ]
+  ],
+  "console_errors": [],
+  "info": {
+   "mode": "bridge",
+   "sh": {
+    "el": 35,
+    "l00": [
+     1.84345,
+     2.1942,
+     2.14428
+    ],
+    "tint": [
+     1.1461675246835286,
+     1.2121982210927573,
+     1.3797212606328904
+    ]
+   },
+   "mask": {
+    "weights": [
+     0,
+     1,
+     0
+    ],
+    "amount": 1
+   },
+   "attributes": [
+    "position",
+    "normal",
+    "uv",
+    "uv2"
+   ],
+   "uv2": true,
+   "patched": true,
+   "render": {
+    "calls": 5,
+    "triangles": 47566,
+    "textures": 6,
+    "geometries": 5,
+    "programs": 4
+   }
+  },
+  "tris": 47564,
+  "errors": [],
+  "frames": 21
+ },
+ "B": {
+  "load_ms": 1758,
+  "first_paint_bytes": 1836665,
+  "first_paint_files": [
+   "assets/island_land.glb",
+   "assets/land_depth.png"
+  ],
+  "served_bytes": 1836665,
+  "files": [
+   [
+    "assets/island_land.glb",
+    1804736
+   ],
+   [
+    "assets/land_depth.png",
+    31929
+   ]
+  ],
+  "console_errors": [],
+  "info": {},
+  "tris": 47564,
+  "errors": [],
+  "frames": 25
+ }
+}

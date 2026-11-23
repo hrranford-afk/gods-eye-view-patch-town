@@ -1,0 +1,49 @@
+{
+ "seed": 1122,
+ "grid": 129,
+ "tex": 2048,
+ "pad_px": 16,
+ "samples": 64,
+ "shadow_samples": 16,
+ "sun_els": [
+  20.0,
+  35.0,
+  50.0
+ ],
+ "sun_az": 320.0,
+ "sky_strength": 0.22,
+ "sun_strength": 12.0,
+ "sun_color": [
+  1.0,
+  0.76,
+  0.5
+ ],
+ "bake_seconds": {
+  "bridge_shadow_20": 528.4,
+  "bridge_shadow_35": 631.5,
+  "bridge_shadow_50": 647.5
+ },
+ "total_seconds": 1821.8,
+ "tris": {
+  "land": 32768,
+  "trunks": 476,
+  "foliage": 4080,
+  "boulders": 10240
+ },
+ "half": 28.0,
+ "mesh_hash": "112f334a6479a1dd",
+ "glb_attributes": [
+  "NORMAL",
+  "POSITION",
+  "TEXCOORD_0",
+  "TEXCOORD_1"
+ ],
+ "glb_bytes": 1767596,
+ "blender": "5.3.0",
+ "look": "bright",
+ "sun_dir_blender": [
+  -0.604022773555054,
+  0.719846310392954,
+  0.3420201433256687
+ ]
+}
