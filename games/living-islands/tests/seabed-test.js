@@ -75,7 +75,7 @@ ok(gridTest.nm > gridTest.wm * 1.4 && gridTest.n1 > 20 && gridTest.n2 > 20, "pag
 ok(gridTest.shallow > gridTest.deep * 1.2 && gridTest.ns > 5 && gridTest.nd > 5, "page grid: shallower water streams faster than deep water in channels of equal width: x" + gridTest.shallow.toFixed(2) + ' vs x' + gridTest.deep.toFixed(2) + ' (' + gridTest.ns + '/' + gridTest.nd + ' cells)');
 /* shader taps */
 const taps = await A.page.evaluate(() => __li.seabed.shaderTaps());
-const srcHtml = (await import('node:fs')).readFileSync(new URL('../islands_look.html', import.meta.url), 'utf8'), tapsOf = n => { const i = srcHtml.indexOf('const ' + n + '=`'); return (srcHtml.slice(i, srcHtml.indexOf('`;', i)).match(/texture2D\(/g) || []).length; };
+const srcHtml = (await import('node:fs')).readFileSync(new URL('../li_sea.js', import.meta.url), 'utf8'), tapsOf = n => { const i = srcHtml.indexOf('const ' + n + '=`'); return (srcHtml.slice(i, srcHtml.indexOf('`;', i)).match(/texture2D\(/g) || []).length; };
 ok(taps === tapsOf('SEA2_FS') + 1, 'seabed adds exactly one texture tap to the sea shader (SEA2_FS ' + tapsOf('SEA2_FS') + ' -> ' + taps + '; the flow shader SEAF_FS has ' + tapsOf('SEAF_FS') + ' -> ' + (tapsOf('SEAF_FS') + 1) + ')');
 /* overlay off by default and toggles */
 ok(await A.page.evaluate(() => getComputedStyle(document.getElementById('sbOverlay')).display === 'none' && getComputedStyle(document.getElementById('sbpanel')).display === 'none'), 'debug overlay and panel are off by default');

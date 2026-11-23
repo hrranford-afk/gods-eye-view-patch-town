@@ -70,7 +70,7 @@ Height 2.3 to 3.2x taller than true; horizontal 30 to 50x shrunk; one erosion pa
 * Sediment: rock ids black_sand, cobble, lava_flow and the delta fringe give the `SEDIMENT_PHYSICS` grain classes; `w.delta` marks fresh delta benches (unstable: no building); barranco mouths (`acc` > threshold) are the sand sources.
 * Wildlife and landing: `w.landing_candidates`, `w.islands`, the coves (black sand, low exposure), boulder beaches (rowboat only), the lee coves; veg belts give the habitat rows (seabirds on the cliffs, seals on the black-sand coves).
 * Cloud layers: the deck at 0.25 to 0.4 H pierced by the summit is the deliberate exception in `CLOUD_PHYSICS_FOR_VISUALS.md` (a tall mountain pierces the deck); the small-island world keeps its 150 to 300 m fog bases.
-* Look match: the page uses ACES at 1.05 with Lambert and one sun; walls and water ignore tone mapping so the block-diagram colours read true. The Filmic fit of `BAKE_BRIDGE.md` is not applied.
+* Look match: the page uses ACES at 1.05 with Lambert and one sun; walls and water ignore tone mapping so the block-diagram colours read true. The Filmic fit of `BAKE_BRIDGE.md` is not applied in the default page; `cutaway.html?finish=1` applies it, with the baked light, the islands page's sea / flow / weather, kit trees and real-material cut faces (see `../CUTAWAY_FINISH.md`).
 * Fresh water: `rock3d` lens thickness (40 x head) gives well depth; springs would sit where the lens meets a dike or a flow contact (not computed).
 
 ## 9 What a Blender render would add

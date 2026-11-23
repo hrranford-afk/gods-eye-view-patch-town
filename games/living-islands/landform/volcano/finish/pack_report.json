@@ -1,0 +1,48 @@
+{
+ "lightmap": {
+  "png_bytes": 438500,
+  "jpg_bytes": 70427,
+  "k": 1.0,
+  "jpeg_max_abs_err_linear": 0.048144038907865006,
+  "jpeg_mean_abs_err_linear": 0.004193184608559989,
+  "p5_p50_p95_lum": [
+   0.6479024883343685,
+   0.6886436683017061,
+   0.7724974453614736
+  ]
+ },
+ "sunmask": {
+  "jpg_bytes": 46609,
+  "mean": 0.8489014777707062,
+  "shadowed_fraction_below_0.5": 0.1504201889038086,
+  "method": "heightfield ray march, soft edge +-0.50 deg"
+ },
+ "sky": {
+  "sky_up_E_over_pi_rgb": [
+   0.538,
+   0.7402,
+   0.8952
+  ],
+  "horizon_rgb": [
+   1.3194999694824219,
+   0.973800003528595,
+   0.41530001163482666
+  ],
+  "zenith_rgb": [
+   0.28139999508857727,
+   0.44859999418258667,
+   0.66839998960495
+  ],
+  "ground_bounce_rgb": [
+   0.1453,
+   0.1799,
+   0.1772
+  ]
+ },
+ "bytes": {
+  "sunmask.jpg": 46609,
+  "lightmap.jpg": 70427,
+  "finish.json": 776,
+  "sky_pano.jpg": 18587
+ }
+}
