@@ -89,6 +89,7 @@ Not commitments: small design habits so the machines layer, wildlife, weather an
 - **Old-world slots per seed:** a few seeded places where ruins, wrecks or beacons can appear (era 6), chosen by shore type and flow, not hand-placed.
 - **Routes follow the real sea:** boats, drift and machines all use the same current, tide and depth field.
 - **Weather is a seeded schedule,** not random per frame, so storms, sea state, sediment events and wildlife seasons agree.
+- **The table is a window onto a bigger world (owner, 23 Nov).** Storms, swell, tides, currents, drift, animals and ships come in from outside and are far bigger than the window. They come from a seeded macro state (storm track, swell trains with arrival times, tide boundary, large-scale current) that the window reads as boundary conditions, so the weather schedule, sea state, flow and arrivals all agree. Research first: research/SEA_STATE_AND_OUTER_WORLD.md.
 
 ## Household loop (era 3 detail)
 Grow at home (garden, plot, place) / shop (nearest open shop with stock) / cook at home (hearth, fuel, ingredients, time) / eat out (cheap, close, short on time). Needs push; trade and temperament nudge. People are counted, never tracked.
