@@ -30,6 +30,9 @@ ap.add_argument('--bake-samples', type=int, default=32)
 ap.add_argument('--hero-w', type=int, default=1200); ap.add_argument('--hero-h', type=int, default=800)
 ap.add_argument('--tex', type=int, default=2048)
 ap.add_argument('--no-bake', action='store_true')
+ap.add_argument('--gpu-name', default='', help='only use a GPU whose name contains this text (case-insensitive), e.g. Radeon')
+ap.add_argument('--require-gpu', action='store_true', help='stop instead of falling back to the CPU, and check every job log shows the wanted GPU')
+ap.add_argument('--list-devices', action='store_true', help='read-only: list the compute devices Blender can see, then exit')
 ap.add_argument('--phases', default='previews,bakes', help='comma list from: previews,bakes,hires,rocks,landform')
 ap.add_argument('--hi-seeds', default='', help='comma list for the hires phase (default: first 6 of --seeds)')
 ap.add_argument('--hi-w', type=int, default=2400); ap.add_argument('--hi-h', type=int, default=1600); ap.add_argument('--hi-samples', type=int, default=256)
@@ -46,7 +49,10 @@ if a.deadline:
     dl = now.replace(hour=h, minute=m, second=0, microsecond=0)
     if dl <= now:
         dl += datetime.timedelta(days=1)
-env = dict(os.environ, LI_DEVICE=a.device)
+env = dict(os.environ, LI_DEVICE=a.device, LI_GPU_NAME=a.gpu_name, LI_REQUIRE_GPU='1' if a.require_gpu else '')
+if a.list_devices:
+    rc = subprocess.run([a.blender, '-b', '--python', os.path.join(HERE, 'list_devices.py')], env=env).returncode
+    sys.exit(rc)
 
 def sha(path):
     h = hashlib.sha256()
@@ -64,11 +70,19 @@ def run(label, script, args, outputs):
     with open(log, 'w') as lf:
         rc = subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT, env=env).returncode
     sec = round(time.time() - t, 1)
+    device_line = ''
+    try:
+        with open(log) as lf:
+            for line in lf:
+                if line.startswith('LI_DEVICE_USED') or line.startswith('LI_DEVICE_FALLBACK_CPU') or line.startswith('LI_DEVICE_CPU'):
+                    device_line = line.strip()
+    except OSError:
+        pass
     files = {}
     for o in outputs:
         if os.path.exists(o):
             files[os.path.relpath(o, a.out)] = {'bytes': os.path.getsize(o), 'sha256': sha(o)}
-    return {'label': label, 'returncode': rc, 'seconds': sec, 'files': files}
+    return {'label': label, 'returncode': rc, 'seconds': sec, 'device': device_line, 'files': files}
 
 results = {'started': datetime.datetime.now().isoformat(timespec='seconds'), 'device_requested': a.device, 'seeds': seeds, 'jobs': [], 'stopped_because': 'finished'}
 def save():
@@ -116,6 +130,8 @@ for label, script, args, outputs in queue():
         stop('max-minutes')
     r = run(label, script, args, outputs)
     results['jobs'].append(r); save()
+    if a.require_gpu and a.device == 'GPU' and not (r['device'].startswith('LI_DEVICE_USED') and (not a.gpu_name or a.gpu_name.lower() in r['device'].lower())):
+        stop('wrong device in ' + label + ': ' + (r['device'] or 'no device line in the log'))
     if r['returncode'] != 0 or not r['files']:
         stop('failure in ' + label)
 results['finished'] = datetime.datetime.now().isoformat(timespec='seconds')
