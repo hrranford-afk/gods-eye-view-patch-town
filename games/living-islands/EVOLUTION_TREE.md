@@ -61,6 +61,16 @@ Real species, true to the Hebrides-style coast we chose. They use the same tide,
 - **Rules:** deterministic from the seed, finite, ledger events with idempotent keys, nothing cruel on screen, animals counted not tracked.
 - **Measure first:** how many suitable haul-outs, skerries and kelp beds a seed offers, how disturbance and seasons change numbers, and whether protecting is a real trade-off.
 
+## The machines that kept working (owner idea, 23 Nov: an optional later layer, era 6)
+The old world's automation survived without people: boats, buoys, lights, weather stations and freight routes still run their jobs, crewed by machines that follow old schedules. Nobody is home. This is a discovery layer for later, not the premise.
+- **Tone:** quiet, eerie-hopeful, never a villain. The machines are not enemies and carry no weapons. They are indifferent routine, like a clock still ticking in an empty house. Nothing here is violent.
+- **What the player meets:** an unmanned supply boat that still calls at a port with nobody in it; a lit beacon with a solar panel; a weather buoy that keeps reporting; cargo containers that drift in on our tide-and-flow field (the flotsam system); a maintenance craft repairing a pier no one uses.
+- **What the player can do:** watch and learn the schedules, salvage, borrow or trade (repair a machine and it brings supplies), restore a route, or leave it be. How far to 'wake' them is a player choice, not a threat.
+- **Why it fits the systems:** routes follow the currents and tides, deliveries use the ledger with idempotent event keys, machines need fuel/parts/sun so they can slowly fail, and everything is deterministic from the seed. Era 6 (Remembering) already holds ruins and salvage; this is the living version.
+- **Rules:** no real brands, companies or product names; original machine designs; people counted not tracked; hopeful tone. Whether any machine has a faint 'personality' is undecided (owner taste).
+- **Risks to watch:** if the machines do all the work, the player's struggle disappears (so they are scarce, slow, rule-bound and wearing out); avoid the 'AI turns on us' cliche.
+- **Measure first:** how many routes and machines a seed supports, and whether a found machine opens a real trade-off for the player.
+
 ## Household loop (era 3 detail)
 Grow at home (garden, plot, place) / shop (nearest open shop with stock) / cook at home (hearth, fuel, ingredients, time) / eat out (cheap, close, short on time). Needs push; trade and temperament nudge. People are counted, never tracked.
 
