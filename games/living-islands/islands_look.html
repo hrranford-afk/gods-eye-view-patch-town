@@ -45,6 +45,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="li_kit.js"></script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');</script>
 <script>if(/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/index.js"><\/script><script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/world.js"><\/script><script src="world_view.js"><\/script>');}</script>
+<script>if(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/life.js"><\/script><script src="vendor/GLTFLoader.r128.js"><\/script><script src="assets/collector/collector_live_b64.js"><\/script><script src="animals.js"><\/script><script src="robots.js"><\/script>');}</script>
 <script>
 (function(){
 'use strict';
@@ -53,6 +54,8 @@ const Q=new URLSearchParams(location.search);
 const WQ=Q.get('world');                /* the world view (world_view.js, see WORLD_VIEW.md): ?world=NNN draws one exported world of the land formation tool instead of the six hand-placed islands; absent = unchanged */
 const WID=(WQ!==null&&/^\d+$/.test(WQ))?(parseInt(WQ,10)>>>0):null;
 const WORLD=WID!==null&&!!window.LI_WORLD&&window.LI_WORLD.has(WID);
+const LIFE=Q.get('life')==='1'&&WORLD&&!!window.LI_ANIMALS&&!!(window.LI_LIFE&&window.LI_LIFE[WID]);   /* the life layer (animals.js, robots.js, see LIFE_VIEW.md): ?world=NNN&life=1; absent = nothing changes */
+let LIFE_RT=null;
 let WV=null;
 const SEED=WORLD?WID:(parseInt(Q.get('seed')||'1122',10)>>>0);
 const NOPOST=Q.get('post')==='0';
@@ -1487,6 +1490,7 @@ function build(){const t0=performance.now();
   const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
   buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
+  LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0',boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
   if(WXR)WXR.attach(scene,sun,hemi);
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
@@ -1502,7 +1506,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
+  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1602,6 +1606,7 @@ function init(){
       for(const x of[-1.6,-.8,0,.8,1.6])for(const z of[1,-1])refs.push(proj(x,0,z*(Bm/2+1.4)));return{pts,refs};},
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
+    get life(){return LIFE_RT?LIFE_RT.api:null;},
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};

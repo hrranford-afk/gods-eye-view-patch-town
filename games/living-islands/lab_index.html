@@ -7,17 +7,19 @@
 h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:22px 0 6px}p{margin:4px 0 10px;opacity:.8}
 a.w{display:flex;gap:10px;align-items:baseline;min-height:44px;padding:8px 12px;margin:6px 0;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-decoration:none}
 a.w b{min-width:64px;color:var(--acc)}a.w span.s{opacity:.65;margin-left:auto;font-size:12px}
-a.p{color:var(--acc)}
+a.p{color:var(--acc)}a.l{margin-left:8px;font-size:12px;padding:2px 8px;border:1px solid var(--line);border-radius:8px;color:var(--ink);text-decoration:none;background:#f4ecdc;white-space:nowrap}
 </style></head><body>
 <h1>Living Islands: Lab index</h1>
 <p>Pages of this branch. The default page draws the six hand-placed islands; the world pages draw one island group from the land formation tool per seed.</p>
 <h2>World picker (islands_look.html?world=NNN)</h2>
-<p>Twelve exported worlds, three per rock province. Add <code>&amp;q=low</code> for the handheld triangle budget.</p>
+<p>Twelve exported worlds, three per rock province. Add <code>&amp;q=low</code> for the handheld triangle budget. The <b>life</b> link adds <code>&amp;life=1</code>: seals on haul-outs, gannets, puffins, kelp, fish shoals and the beach robots (LIFE_VIEW.md); without it nothing changes.</p>
 <div id="list"></div>
 <h2>Other pages</h2>
 <p><a class="p" href="islands_look.html">islands_look.html</a> (default six islands) &middot; <a class="p" href="islands_look.html?sea=2">sea=2</a> &middot; <a class="p" href="islands_look.html?flow=1&amp;seabed=1&amp;weather=auto&amp;macro=1&amp;boats=2">full stack</a> &middot; <a class="p" href="cutaway.html">cutaway</a> &middot; <a class="p" href="macro_sea_view.html">macro sea view</a></p>
 <script src="landform/worlds/index.js"></script>
 <script>
 (window.LI_WORLD_INDEX||[]).forEach(function(w){var a=document.createElement('a');a.className='w';a.href='islands_look.html?world='+w.seed;
- a.innerHTML='<b>'+w.seed+'</b><span>'+w.rock+', '+w.island_type+'</span><span class="s">'+w.n_islands+' islands</span>';document.getElementById('list').appendChild(a);});
+ a.innerHTML='<b>'+w.seed+'</b><span>'+w.rock+', '+w.island_type+'</span><span class="s">'+w.n_islands+' islands</span>';
+ var l=document.createElement('a');l.className='l';l.href='islands_look.html?world='+w.seed+'&life=1';l.textContent='life';l.addEventListener('click',function(e){e.stopPropagation();});
+ var row=document.createElement('div');row.style.cssText='display:flex;align-items:center';a.style.flex='1';row.appendChild(a);row.appendChild(l);document.getElementById('list').appendChild(row);});
 </script></body></html>
