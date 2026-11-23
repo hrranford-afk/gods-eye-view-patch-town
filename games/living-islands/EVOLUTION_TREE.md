@@ -91,6 +91,15 @@ The litter collectors have a reason to be there: a larger old-world tender ship 
 - **Rules:** finite supply, ledger events with idempotent keys (a delivery is claimed once), people counted not tracked, no brands, hopeful tone.
 - **Measure first (headless):** how much a collector gathers per tide, deliveries per tender visit, the build-versus-pile-up balance, and whether the player can always recover.
 
+### Light, fog and the lighthouse (owner idea, 23 Nov)
+Fog and night are the time to play with light. A lighthouse (or any signal fire) tells other people you are here, and more people arrive.
+- **Signal ladder:** a fire on the headland, then a lamp on a post, then a built lighthouse with a lens. The lens needs glass, which ties to scavenging (litter collector, ruins, trade). Each step reaches further and shines through thicker fog.
+- **Arrivals:** new settlers and visiting boats come on the existing seeded arrival schedule. Light range, fog, weather and tide set how many see you and how many make landfall safely (counted, never tracked).
+- **Stakes, quiet:** more people means more mouths. A light also draws boats into a reef if the harbour is not marked. Hopeful tone, nothing graphic, always a way back.
+- **Machines:** old beacons that keep flashing for no one fit the relic layer (hard-coded, no thinking). The player can restore or ignore one.
+- **Look:** fog with a visible beam, night glow, warm windows, sea glitter, flash patterns that identify each light. Must work in AR (no screen-space tricks; cheap beam cards) and on handheld budgets.
+- **Research first (RESEARCH_FIRST.md):** how far a light can be seen (height, power, atmosphere), flash characters, how fog scatters light, lens optics, fuels, so the numbers are real before any build. Depends on the sky clock and the weather.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
