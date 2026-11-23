@@ -1,0 +1,278 @@
+{
+ "seed": 100,
+ "province": "D",
+ "n": 513,
+ "size_m": 1536.0,
+ "cell_m": 3.0,
+ "heights_file": "height.f32",
+ "heights_format": "float32 little endian, n*n, row 0 = south edge, column 0 = west edge, metres, sea level 0",
+ "colour_file": "colour.png",
+ "colour_note": "surface colour (rock + belts); PNG row 0 is the north edge",
+ "z0": -238.80310075125774,
+ "zmax": 260.0,
+ "sea_level": 0.0,
+ "tide_amp": 1.1,
+ "summit_m": 236.72164916992188,
+ "min_height_m": -211.34744262695312,
+ "walls": {
+  "s": {
+   "file_2048": "wall_s_2048.png",
+   "file_1024": "wall_s_1024.png",
+   "size": [
+    2048,
+    1024
+   ],
+   "direction": "west to east",
+   "origin_world": [
+    -768.0,
+    -768.0
+   ],
+   "top_height_max_m": 227.32005310058594
+  },
+  "e": {
+   "file_2048": "wall_e_2048.png",
+   "file_1024": "wall_e_1024.png",
+   "size": [
+    2048,
+    1024
+   ],
+   "direction": "south to north",
+   "origin_world": [
+    768.0,
+    -768.0
+   ],
+   "top_height_max_m": -179.82022094726562
+  },
+  "n": {
+   "file_2048": "wall_n_2048.png",
+   "file_1024": "wall_n_1024.png",
+   "size": [
+    2048,
+    1024
+   ],
+   "direction": "east to west",
+   "origin_world": [
+    768.0,
+    768.0
+   ],
+   "top_height_max_m": -105.62677764892578
+  },
+  "w": {
+   "file_2048": "wall_w_2048.png",
+   "file_1024": "wall_w_1024.png",
+   "size": [
+    2048,
+    1024
+   ],
+   "direction": "north to south",
+   "origin_world": [
+    -768.0,
+    768.0
+   ],
+   "top_height_max_m": 10.323770523071289
+  }
+ },
+ "legend": [
+  {
+   "id": 0,
+   "name": "air",
+   "rgb": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": 1,
+   "name": "sea water",
+   "rgb": [
+    62,
+    150,
+    200
+   ]
+  },
+  {
+   "id": 2,
+   "name": "soil",
+   "rgb": [
+    118,
+    82,
+    50
+   ]
+  },
+  {
+   "id": 3,
+   "name": "lava beds",
+   "rgb": [
+    120,
+    104,
+    96
+   ]
+  },
+  {
+   "id": 4,
+   "name": "ash and tuff",
+   "rgb": [
+    216,
+    180,
+    112
+   ]
+  },
+  {
+   "id": 5,
+   "name": "scoria",
+   "rgb": [
+    178,
+    74,
+    52
+   ]
+  },
+  {
+   "id": 6,
+   "name": "old basement",
+   "rgb": [
+    92,
+    80,
+    108
+   ]
+  },
+  {
+   "id": 7,
+   "name": "oceanic crust",
+   "rgb": [
+    60,
+    72,
+    102
+   ]
+  },
+  {
+   "id": 8,
+   "name": "sea-floor sediment",
+   "rgb": [
+    240,
+    228,
+    192
+   ]
+  },
+  {
+   "id": 9,
+   "name": "dike (pale)",
+   "rgb": [
+    222,
+    222,
+    214
+   ]
+  },
+  {
+   "id": 10,
+   "name": "magma",
+   "rgb": [
+    255,
+    112,
+    20
+   ]
+  },
+  {
+   "id": 11,
+   "name": "feeder conduit",
+   "rgb": [
+    150,
+    38,
+    30
+   ]
+  },
+  {
+   "id": 12,
+   "name": "baked contact rock",
+   "rgb": [
+    124,
+    72,
+    62
+   ]
+  },
+  {
+   "id": 13,
+   "name": "hydrothermal zone",
+   "rgb": [
+    190,
+    180,
+    72
+   ]
+  },
+  {
+   "id": 14,
+   "name": "fresh-water lens",
+   "rgb": [
+    168,
+    226,
+    242
+   ]
+  },
+  {
+   "id": 15,
+   "name": "caldera fill (flat beds)",
+   "rgb": [
+    196,
+    186,
+    154
+   ]
+  },
+  {
+   "id": 16,
+   "name": "young lava flow",
+   "rgb": [
+    48,
+    42,
+    48
+   ]
+  },
+  {
+   "id": 17,
+   "name": "dike (dark)",
+   "rgb": [
+    40,
+    38,
+    44
+   ]
+  }
+ ],
+ "vent": [
+  -215.79834188410135,
+  -760.8385391573067
+ ],
+ "caldera_centre": [
+  -244.54398815010774,
+  -690.5425528752049
+ ],
+ "caldera_radius_m": 199.85863886916616,
+ "conduit_radius_m": 15.924582590196485,
+ "chamber": {
+  "z": -50.97658778873783,
+  "a": 123.79104538796368,
+  "b": 85.21168066738585,
+  "c": 26.13405736830729,
+  "az": 0.4970752285730378
+ },
+ "wind_from_rad": 3.3562809166852534,
+ "wave_from_rad": 3.408755894774389,
+ "Dfloor": 175.80310075125774,
+ "cutaway_wall_distance_m": 7.161460842693278,
+ "vertical_exaggeration": 2.486215353012085,
+ "time_world_s": 10.42,
+ "time_walls_s": {
+  "s": 2.82,
+  "e": 2.55,
+  "n": 2.47,
+  "w": 2.47
+ },
+ "bytes": {
+  "wall_s_2048.png": 108156,
+  "wall_s_1024.png": 66394,
+  "wall_e_2048.png": 5279,
+  "wall_e_1024.png": 3507,
+  "wall_n_2048.png": 14143,
+  "wall_n_1024.png": 9705,
+  "wall_w_2048.png": 16268,
+  "wall_w_1024.png": 11462
+ }
+}
