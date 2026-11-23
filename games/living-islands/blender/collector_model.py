@@ -1,11 +1,11 @@
-"""BEACH COLLECTOR, HERO MODEL (design A, the low tortoise, with design D's tip-up shell). See COLLECTOR_MODEL.md.
-Headless:  blender -b --python collector_model.py -- --out DIR [--lod hero|live|far|all] [--pose rest|sun|grab|park]
-Pure python + numpy: the geometry, the weathering (baked into vertex colours and one small detail texture) and the glTF 2.0 binary writer are all in this file, so it also runs under plain python3 (python3 collector_model.py --out DIR). Blender is only needed for the pictures (collector_shots.py).
+"""BEACH COLLECTOR, HERO MODEL, version 2 (design A, the low tortoise, with design D's tip-up shell). See COLLECTOR_MODEL.md.
+Headless:  blender -b --python collector_model.py -- --out DIR [--lod hero|live|far|all] [--pose rest|sun|grab|park|all]
+Pure python + numpy: the geometry, the baked textures (collector_tex.py: charts, atlas, wear, normal map; collector_jpeg.py: the JPEG writer), the animation clips and the glTF 2.0 binary writer, so it also runs under plain python3 (python3 collector_model.py --out DIR). Blender is only needed for the pictures (collector_shots.py).
 Frame while building: +X forward, +Y left, +Z up, metres, ground at z = 0. The GLB is written in the glTF frame (Y up, +Z forward, +X left): (x, y, z) -> (y, z, x).
-Every moving part is its own named node with its pivot at the joint, so the live page can rotate it by name (see NODES and AXES). Parts that other family members reuse are separate functions:
-part_tracks, part_lamp, part_shell_half (and shell_cells), part_hopper, part_head, part_arm, part_chassis; the weathering is bake_colour().
-Original design, no maker names, no lettering, no eyes: a head pod with one dark visor band, a small side sensor and one amber lamp. Deterministic (seeded)."""
-import sys, os, math, json, struct, zlib, argparse
+Every moving part is its own named node with its pivot at the joint, so the live page can rotate it by name (see NODES and AXES), and seven named clips move them (clip_table). Four optional quirk parts are nodes named quirk_*.
+Parts that other family members reuse are separate functions: part_tracks, part_lamp, part_shell_half (and shell_cells), part_hopper, part_head, part_arm, part_chassis, part_quirk_*; the far level's weathering is bake_colour().
+Original design, no maker names, no lettering, no round eyes: a head pod with one dark visor band with a faint glow strip, a small square sensor window and one status lamp. Deterministic (seeded)."""
+import sys, os, math, json, struct, argparse
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,69 +19,57 @@ SIZE_KB = {'hero': 1500, 'live': 400, 'far': 100}
 LEN_M, TALL_M = 1.0, 0.58
 
 # ------------------------------------------------------------------------------------------------- level of detail settings
+# tex: None (vertex colours, the far level) or the atlas plan: groups -> dict(n = atlas size, nrm = normal map size, orm = occlusion/roughness/metal size, q = jpeg qualities (colour, normal, orm),
+# dens = texels per metre at most, swatch = material keys that share a tiny swatch instead of a chart, bump = normal map gain)
 LOD = {
-    'hero': dict(pitch=0.034, links=True, guide=True, hub_bolts=8, dome=(28, 15), dome_in=(8, 4), cells=(0, 0, 2), rim_bolts=13, litter=12, tex=True, seg=12, wear_decals=True, rods=8, fingers=True, fine=True, circ=40, simple=False, texn=512),
-    'live': dict(pitch=0.075, links=False, guide=False, hub_bolts=0, dome=(16, 10), dome_in=(0, 0), cells=(0, 0, 1), rim_bolts=0, litter=0, tex=True, seg=8, wear_decals=False, rods=5, fingers=True, fine=False, circ=16, simple=False, texn=256),
-    'far': dict(pitch=0.0, links=False, guide=False, hub_bolts=0, dome=(9, 5), dome_in=(0, 0), cells=(0, 0, 0), rim_bolts=0, litter=0, tex=False, seg=6, wear_decals=False, rods=4, fingers=False, fine=False, circ=8, simple=True, texn=0),
+    'hero': dict(pitch=0.034, links=True, guide=True, hub_bolts=8, dome=(28, 15), dome_in=(8, 4), cells=(0, 0, 2), rim_bolts=13, litter=12, tex=True, seg=12, wear_decals=True, rods=8, fingers=True, fine=True, circ=40, simple=False,
+                 atlas={'body': dict(n=1024, nrm=512, orm=512, q=(70, 76, 52), dens=700, bump=5.0), 'metal': dict(n=1024, nrm=512, orm=512, q=(70, 76, 52), dens=560, bump=5.0), 'glass': dict(n=512, nrm=512, orm=256, q=(74, 78, 55), dens=560, bump=3.5)}),
+    'live': dict(pitch=0.075, links=False, guide=False, hub_bolts=0, dome=(16, 10), dome_in=(0, 0), cells=(0, 0, 1), rim_bolts=0, litter=0, tex=True, seg=8, wear_decals=False, rods=5, fingers=True, fine=False, circ=16, simple=False,
+                 atlas={'all': dict(n=512, nrm=512, orm=256, q=(68, 74, 50), dens=420, bump=6.0, hidden=0.16)}),
+    'far': dict(pitch=0.0, links=False, guide=False, hub_bolts=0, dome=(9, 5), dome_in=(0, 0), cells=(0, 0, 0), rim_bolts=0, litter=0, tex=False, seg=6, wear_decals=False, rods=4, fingers=False, fine=False, circ=8, simple=True, atlas=None),
 }
 
-# ------------------------------------------------------------------------------------------------- materials: key -> (glTF material, base colour (linear rgb))
+# ------------------------------------------------------------------------------------------------- materials: key -> (glTF material for the far level, base colour (linear rgb))
 MATS = {
-    'paint': ('Paint', (0.085, 0.185, 0.130)), 'paint2': ('Paint', (0.070, 0.155, 0.112)), 'patch': ('Paint', (0.50, 0.27, 0.06)), 'arm': ('Paint', (0.62, 0.34, 0.07)), 'mark': ('Paint', (0.62, 0.60, 0.52)),
+    'paint': ('Paint', (0.112, 0.150, 0.100)), 'paint2': ('Paint', (0.092, 0.128, 0.088)), 'patch': ('Paint', (0.50, 0.27, 0.06)), 'arm': ('Paint', (0.62, 0.34, 0.07)), 'mark': ('Paint', (0.62, 0.60, 0.52)),
+    'patch2': ('Paint', (0.14, 0.20, 0.25)),
     'decal': ('Paint', (0.28, 0.095, 0.035)),
-    'guard': ('Metal', (0.11, 0.115, 0.12)), 'metal': ('Metal', (0.15, 0.15, 0.155)), 'hub': ('Metal', (0.22, 0.22, 0.22)), 'bolt': ('Metal', (0.115, 0.098, 0.088)),
+    'guard': ('Metal', (0.11, 0.115, 0.12)), 'metal': ('Metal', (0.15, 0.15, 0.155)), 'hub': ('Metal', (0.13, 0.13, 0.135)), 'bolt': ('Metal', (0.115, 0.098, 0.088)),
     'link': ('Rubber', (0.04, 0.04, 0.045)), 'rubber': ('Rubber', (0.026, 0.026, 0.03)),
     'grime': ('Grime', (0.012, 0.012, 0.013)), 'frame': ('Grime', (0.020, 0.024, 0.030)),
-    'cell': ('Cell', (0.018, 0.038, 0.090)), 'visor': ('Lens', (0.012, 0.016, 0.02)), 'lens': ('Lens', (0.02, 0.028, 0.034)), 'lamp': ('Lamp', (0.9, 0.45, 0.05)),
+    'cell': ('Cell', (0.018, 0.038, 0.090)), 'visor': ('Lens', (0.012, 0.016, 0.02)), 'lens': ('Lens', (0.02, 0.028, 0.034)), 'cap': ('Lens', (0.03, 0.025, 0.02)), 'lamp': ('Lamp', (0.9, 0.45, 0.05)), 'glow': ('Glow', (0.9, 0.45, 0.05)),
+    'mirror': ('Lens', (0.30, 0.32, 0.33)), 'bead': ('Plastic', (0.03, 0.20, 0.30)), 'shellc': ('Plastic', (0.55, 0.45, 0.34)),
     'tape': ('Cord', (0.52, 0.47, 0.33)), 'twine': ('Cord', (0.30, 0.20, 0.10)), 'sand': ('Cord', (0.26, 0.19, 0.10)),
     'lit_blue': ('Plastic', (0.04, 0.12, 0.30)), 'lit_orange': ('Plastic', (0.55, 0.2, 0.04)), 'lit_white': ('Plastic', (0.55, 0.55, 0.5)),
     'lit_glass': ('Plastic', (0.04, 0.22, 0.14)), 'lit_red': ('Plastic', (0.40, 0.05, 0.04)),
 }
-GLTF_MATS = {   # name: (metallic, roughness, texture name or None, emissive rgb or None)
-    'Paint': (0.0, 0.78, 'paint', None), 'Metal': (0.55, 0.58, 'dirt', None), 'Rubber': (0.0, 0.95, 'dirt', None), 'Grime': (0.0, 0.95, None, None),
-    'Cell': (0.05, 0.55, None, None), 'Lens': (0.0, 0.28, None, None), 'Lamp': (0.0, 0.3, None, (1.0, 0.52, 0.06)), 'Cord': (0.0, 1.0, None, None), 'Plastic': (0.0, 0.5, 'dirt', None),
+GLTF_MATS = {   # far level: name: (metallic, roughness, emissive rgb or None); vertex colours carry the colour
+    'Paint': (0.0, 0.70, None), 'Metal': (0.55, 0.55, None), 'Rubber': (0.0, 0.95, None), 'Grime': (0.0, 0.95, None),
+    'Cell': (0.05, 0.45, None), 'Lens': (0.0, 0.28, None), 'Lamp': (0.0, 0.3, (1.0, 0.52, 0.06)), 'Glow': (0.0, 0.3, (1.0, 0.52, 0.06)), 'Cord': (0.0, 1.0, None), 'Plastic': (0.0, 0.5, None),
 }
+# which baked texture group a material key belongs to (hero: three atlases; live: one atlas for all three)
+KEYGROUP = {'paint': 'body', 'paint2': 'body', 'patch': 'body', 'patch2': 'body', 'arm': 'body', 'mark': 'body', 'decal': 'body', 'tape': 'body', 'twine': 'body', 'sand': 'body',
+            'guard': 'metal', 'metal': 'metal', 'hub': 'metal', 'bolt': 'metal', 'link': 'metal', 'rubber': 'metal', 'grime': 'metal', 'frame': 'metal',
+            'cell': 'glass', 'visor': 'glass', 'lens': 'glass', 'cap': 'glass', 'mirror': 'glass', 'bead': 'glass', 'shellc': 'glass',
+            'lit_blue': 'glass', 'lit_orange': 'glass', 'lit_white': 'glass', 'lit_glass': 'glass', 'lit_red': 'glass'}
+UNTEXTURED = ('lamp', 'glow')
+TEX_MATERIAL = {'body': 'Body', 'metal': 'Metal', 'glass': 'Glass', 'all': 'Collector'}
+SWATCH_KEYS = ('bolt',)          # tiny parts: one shared swatch, shaded smooth (a domed bolt head), so they cost few vertices
+SMOOTH_KEYS = ('bolt', 'cell')   # shaded smooth in the textured levels (shared vertices): bolts and the raised solar cells
 # the fixed look of the one machine; seed changes the dirt per machine, not the design
 SEED = 7
 SAND = np.array((0.26, 0.19, 0.10)); RUST = np.array((0.28, 0.095, 0.035)); SALT = np.array((0.80, 0.79, 0.72)); BARE = np.array((0.30, 0.29, 0.27))
 
 
-# ------------------------------------------------------------------------------------------------- noise (value noise, vectorised, deterministic)
-def _h3(ix, iy, iz, seed):
-    h = (ix.astype(np.int64) * 374761393 + iy.astype(np.int64) * 668265263 + iz.astype(np.int64) * 2147483629 + int(seed) * 1442695041) & 0xFFFFFFFF
-    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
-    h = h ^ (h >> 16)
-    return (h & 0xFFFFFF) / float(0xFFFFFF)
-
-def vnoise(P, seed=0):
-    P = np.asarray(P, float); fl = np.floor(P); f = P - fl; u = f * f * (3 - 2 * f); ix, iy, iz = fl[:, 0], fl[:, 1], fl[:, 2]
-    out = 0.0
-    for dx in (0, 1):
-        for dy in (0, 1):
-            for dz in (0, 1):
-                w = (u[:, 0] if dx else 1 - u[:, 0]) * (u[:, 1] if dy else 1 - u[:, 1]) * (u[:, 2] if dz else 1 - u[:, 2])
-                out = out + w * _h3(ix + dx, iy + dy, iz + dz, seed)
-    return out
-
-def fbm(P, seed=0, octaves=3):
-    P = np.asarray(P, float); a = 0.5; tot = 0.0; norm = 0.0
-    for o in range(octaves):
-        tot = tot + a * vnoise(P * (2.0 ** o), seed + 17 * o); norm += a; a *= 0.5
-    return tot / norm
-
-def sstep(a, b, x):
-    t = np.clip((x - a) / (b - a), 0.0, 1.0); return t * t * (3 - 2 * t)
-
-def mixc(a, b, t):
-    t = np.asarray(t, float)[:, None] if np.ndim(t) else t
-    return a * (1 - t) + b * t
+# ------------------------------------------------------------------------------------------------- noise and small helpers live in collector_tex.py
+from collector_tex import vnoise, fbm, sstep, mixc
 
 
 # ------------------------------------------------------------------------------------------------- the builder: the concept sheet's Builder plus per-vertex extras
 class MB(CS.Builder):
     """collects geometry per (material key, smooth). Besides the vertices it remembers for every vertex an edge value (0 flat, 1 sharp rim, used for paint wear) and a UV mode."""
     def __init__(self):
-        super().__init__(); self.x = {}; self._kind = 'box'; self._mode = 0
+        super().__init__(); self.x = {}; self._kind = 'box'; self._mode = 0; self.fix = []
 
     def _put(self, mat, smooth, v, f, M):
         super()._put(mat, smooth, v, f, M)
@@ -101,7 +89,9 @@ class MB(CS.Builder):
         """a box; skip = indices of faces not to build (0 -z, 1 +z, 2 -y, 3 +x, 4 +y, 5 -x of the box's own frame), for faces nobody can see"""
         v, f = CS.unit_cube(); f = [q for i, q in enumerate(f) if i not in skip]; self._kind = 'box'; self._put(mat, False, v, f, CS.XF(p, s, r, **kw))
     def sq(self, *a, **kw): self._k('sq', super().sq, *a, **kw)
-    def cyl(self, *a, **kw): self._k('cyl', super().cyl, *a, **kw)
+    def cyl(self, *a, **kw):
+        if a and a[0] == 'bolt': self.fix.append(np.array(a[1], float))           # the fixings: where rust runs and chips start
+        self._k('cyl', super().cyl, *a, **kw)
     def rod(self, *a, **kw): self._k('cyl', super().rod, *a, **kw)
     def prism(self, *a, **kw): self._k('box', super().prism, *a, **kw)
 
@@ -116,7 +106,7 @@ class MB(CS.Builder):
 
 class Node:
     def __init__(self, name, parent, pivot, axes=None, note=''):
-        self.name = name; self.parent = parent; self.pivot = np.array(pivot, float); self.b = MB(); self.axes = axes or {}; self.note = note; self.q = (0.0, 0.0, 0.0, 1.0); self.cells = 0; self.centres = []
+        self.name = name; self.parent = parent; self.pivot = np.array(pivot, float); self.b = MB(); self.axes = axes or {}; self.note = note; self.q = (0.0, 0.0, 0.0, 1.0); self.cells = 0; self.centres = []; self.feats = []
 
 
 # ------------------------------------------------------------------------------------------------- small maths
@@ -177,9 +167,6 @@ def part_tracks(nd, side, L, wheels=WHEELS, yc=TRACK_Y, width=TRACK_W, dent=0.0)
             c2 = p + nrm * cleat / 2 - nrm * 0.002; tv = np.array([t[0], t[1]])
             for sg_ in (-1, 1):
                 c2b = c2 + tv * sg_ * pitch * 0.24; b.box('rubber', (c2b[0], y, c2b[1]), (pitch * 0.15, width * 0.94, cleat), (0, ang, 0), skip=(1,))
-            if L['guide']:
-                c3 = p - nrm * (thick + 0.007)
-                b.box('metal', (c3[0], y, c3[1]), (pitch * 0.30, 0.026, 0.014), (0, ang, 0), skip=(0,))
     else:
         # a solid belt: the hull outline as a slab between two thin plates, with a cleat every few pitches on the outside (live) or none (far)
         inner = CS.hull2d([(x + (r - 0.012) * math.cos(a), z + (r - 0.012) * math.sin(a)) for x, z, r in wheels for a in np.linspace(0, 2 * math.pi, 18, endpoint=False)])
@@ -217,14 +204,17 @@ def part_tracks(nd, side, L, wheels=WHEELS, yc=TRACK_Y, width=TRACK_W, dent=0.0)
         b.sq('sand', (wheels[0][0] - 0.07, y + side * 0.03, 0.025), (0.16, 0.12, 0.06), (0, 0, 20 * side), e1=0.9, e2=0.9, nu=4, nv=8, smooth=True, half=True)
 
 # ------------------------------------------------------------------------------------------------- part: lamp (the one status lamp, shared)
-def part_lamp(nd, at, L, stalk=0.032, d=0.05):
-    """the lamp: a short stalk, a bezel ring, one amber dome (the only emissive material). nd pivot is the base."""
-    b = nd.b; x, y, z = at
+def part_lamp(nd, nd_dome, at, L, stalk=0.032, d=0.05):
+    """the lamp: nd = stalk, bezel and a dark smoky cap dome; nd_dome = the emissive dome, a hair larger than the cap, its pivot at its base. The page blinks the lamp by scaling nd_dome between 1.0 and 0.88
+    (at 0.88 it sits inside the cap, so the lamp looks off but the housing stays): no emissive animation is needed. Far level: one dome only."""
+    b = nd.b; x, y, z = at; bd = nd_dome.b; base = (x, y, z + stalk + 0.007); nd_dome.pivot = np.array(base, float)
     if L['simple']:
-        b.sq('lamp', (x, y, z + stalk), (d * 1.3, d * 1.3, d * 1.6), e1=0.9, e2=0.9, nu=2, nv=5, smooth=True, half=True); return
+        bd.sq('lamp', (x, y, z + stalk), (d * 1.3, d * 1.3, d * 1.6), e1=0.9, e2=0.9, nu=2, nv=5, smooth=True, half=True); return
     b.rod('metal', (x, y, z), (x, y, z + stalk), 0.02, 0.02, seg=6)
     b.cyl('metal', (x, y, z + stalk), d * 1.3, 0.014, seg=L['seg'])
-    b.sq('lamp', (x, y, z + stalk + 0.007), (d, d, d * 1.4), e1=0.9, e2=0.9, nu=5 if L['fine'] else (2 if L['simple'] else 3), nv=10 if L['fine'] else (6 if L['simple'] else 7), smooth=True, half=True)
+    nu = 5 if L['fine'] else 3; nv = 10 if L['fine'] else 7
+    b.sq('cap', base, (d, d, d * 1.4), e1=0.9, e2=0.9, nu=nu, nv=nv, smooth=True, half=True)
+    bd.sq('lamp', base, (d * 1.04, d * 1.04, d * 1.46), e1=0.9, e2=0.9, nu=nu, nv=nv, smooth=True, half=True)
 
 # ------------------------------------------------------------------------------------------------- part: shell (two tip-up halves)
 def dome_z(x, y, S=SHELL, gd=0.16, gw=0.05):
@@ -343,7 +333,7 @@ def part_shell_half(nd, side, L, seed, patch=False, crack=False, tape_strip=Fals
     if tape_strip:
         p = surf(S['xc'] + 0.08, 0.20, 0.003); b.box('tape', tuple(p), (0.19, 0.045, 0.004), (side * 9, 14, 24))
     if crack and nd.centres:
-        cx, cy = nd.centres[min(len(nd.centres) // 2 + 1, len(nd.centres) - 1)]; p = surf(cx, abs(cy), 0.009)
+        cx, cy = nd.centres[min(len(nd.centres) // 2 + 1, len(nd.centres) - 1)]; p = surf(cx, abs(cy), 0.009); nd.feats.append(('crack', tuple(p)))
         for a in (20, 75, 130, 170):
             r = math.radians(a); q = p + np.array([0.034 * math.cos(r), side * 0.026 * math.sin(r), 0.0]); b.rod('grime', tuple(p), tuple(q), 0.0035, 0.0025, seg=3)
         b.box('tape', tuple(p + np.array([0, 0, 0.002])), (0.07, 0.016, 0.003), (0, 0, 35))
@@ -386,7 +376,7 @@ def part_hopper(nd_bin, nd_lid, L, seed, hop=HOP, mat='paint2'):
         b.cyl_y('metal', (x1 - 0.004, 0, z1 + 0.004), 0.02, w * 0.92, seg=8)
         for sy in (-1, 1): b.box('metal', (cx, sy * (w / 2 + 0.002), z0 + 0.05), (sx - 0.02, 0.006, 0.014))
     if L['litter']:
-        CS.litter_bits(b, (cx, 0, z0 + 0.06), (sx / 2 - 0.045, w / 2 - 0.06, 0.20), L['litter'], 11 + seed)
+        CS.litter_bits(b, (cx, 0, z0 + 0.06), (0.012, w / 2 - 0.115, 0.20), L['litter'], 11 + seed)      # kept well inside the walls (a bottle lies up to 6 cm either way)
         b.cyl('lit_glass', (cx + 0.01, 0.06, z0 + 0.12), 0.07, 0.15, r=(0, 78, 20), seg=9, taper=0.5)            # a bottle sticks up under the lid
     # the lid in its own node: hinged at the front edge (next to the shell), opens up and back
     lb = nd_lid.b; px = nd_lid.pivot[0]; lz = z1 + 0.012
@@ -401,24 +391,103 @@ def part_hopper(nd_bin, nd_lid, L, seed, hop=HOP, mat='paint2'):
 
 
 # ------------------------------------------------------------------------------------------------- part: head pod (visor, side sensor, lamp base)
+POD = dict(c=(0.425, 0.0, 0.306), s=(0.150, 0.205, 0.128), e1=0.6, e2=0.62)
+
+def pod_front_x(y, z):
+    """x of the pod's front surface at (y, z) (the superellipsoid of the pod, before its small tilt)"""
+    a, b_, c_ = POD['s'][0] / 2, POD['s'][1] / 2, POD['s'][2] / 2; e1, e2 = POD['e1'], POD['e2']
+    zn = np.clip(np.abs((np.asarray(z) - POD['c'][2]) / c_), 0, 0.999); sinu = zn ** (1.0 / e1); cu = (1 - sinu ** 2) ** (e1 / 2.0)
+    yn = np.clip(np.abs(np.asarray(y) / np.maximum(b_ * cu, 1e-6)), 0, 0.999); r = (1 - yn ** (2.0 / e2)) ** (e2 / 2.0)
+    return POD['c'][0] + a * cu * r
+
+def _strip_grid(b, mat, ys, zlo, zhi, nz, lift, smooth=True):
+    """a curved strip hugging the pod front: columns ys, rows from zlo(y) to zhi(y); returns nothing, draws into b"""
+    V = []; F = []; nz = max(nz, 1)
+    for y in ys:
+        for k in range(nz + 1):
+            z = zlo(y) + (zhi(y) - zlo(y)) * k / nz; V.append((float(pod_front_x(y, z)) + lift, y, z))
+    for i in range(len(ys) - 1):
+        for k in range(nz):
+            a_ = i * (nz + 1) + k; F.append((a_, a_ + nz + 1, a_ + nz + 2, a_ + 1))
+    V = np.array(V); p = V[F[0][1]] - V[F[0][0]]; q = V[F[0][3]] - V[F[0][0]]
+    if np.cross(p, q)[0] < 0: F = [tuple(reversed(f)) for f in F]
+    b.raw(mat, smooth, V, F)
+
 def part_head(nd, L, seed):
-    """a small head pod on a short neck. One wide dark visor band under a brow hood, a small round side sensor; nothing round and staring in the middle. nd pivot = the neck."""
-    b = nd.b
-    for k in range(4 if not L['simple'] else 1):                                              # the bellows of the neck: four ribs of rubber
-        b.cyl('rubber', (0.318 + 0.019 * k, 0, 0.300), 0.092 if k % 2 == 0 else 0.080, 0.016 if not L['simple'] else 0.07, r=(0, 90, 0), seg=L['seg'])
-    b.sq('paint', (0.425, 0, 0.306), (0.150, 0.205, 0.128), (0, -3, 0), e1=0.6, e2=0.62, nu=6 if L['fine'] else (2 if L['simple'] else 3), nv=18 if L['fine'] else (6 if L['simple'] else 8), smooth=True)
-    b.box('visor', (0.4985, 0.0, 0.304), (0.012, 0.15, 0.048), (0, -3, 0))                    # the visor band
-    b.box('metal', (0.4965, 0.0, 0.3375), (0.040, 0.17, 0.012), (0, -3, 0))                    # brow hood above it
-    if L['fine']:
-        b.box('metal', (0.495, 0.0, 0.2735), (0.026, 0.15, 0.008), (0, -3, 0))
-        b.cyl('lens', (0.480, 0.088, 0.330), 0.026, 0.02, r=(0, 90, 0), seg=10); b.cyl('metal', (0.4755, 0.088, 0.330), 0.036, 0.016, r=(0, 90, 0), seg=10)   # side sensor
+    """a small head pod on a short neck, asymmetric and a little cocked. One wide dark visor band, narrower and drooping on the right, under a tilted brow hood; a faint glow strip along the inner lower edge of the visor
+    (the colour of the status lamp, about 8 per cent of its strength); one small rounded-square sensor window low on the right. Nothing round and staring. nd pivot = the neck (the head tilts about it)."""
+    b = nd.b; fine = L['fine']; simple = L['simple']
+    for k in range(4 if not simple else 1):                                              # the bellows of the neck: four ribs of rubber
+        b.cyl('rubber', (0.318 + 0.019 * k, 0, 0.300), 0.092 if k % 2 == 0 else 0.080, 0.016 if not simple else 0.07, r=(0, 90, 0), seg=L['seg'])
+    b.sq('paint', POD['c'], POD['s'], (1.5, -3, -2), e1=POD['e1'], e2=POD['e2'], nu=6 if fine else (2 if simple else 3), nv=18 if fine else (6 if simple else 8), smooth=True)
+    if simple:
+        b.box('visor', (0.4985, -0.004, 0.304), (0.012, 0.15, 0.048), (0, -3, 0)); b.box('metal', (0.4965, 0.0, 0.3375), (0.040, 0.17, 0.012), (0, -3, 0)); return nd
+    # visor: left end (y > 0) taller than the right end, which droops (a cut corner of the band)
+    n_y = 15 if fine else 7; ys = np.linspace(-0.080, 0.071, n_y)
+    zhi = lambda y: 0.3265 - 0.0105 * (1 - (y + 0.080) / 0.151) ** 1.5 - 0.0 * y
+    zlo = lambda y: 0.2885 + 0.0040 * (1 - (y + 0.080) / 0.151) + 0.0095 * np.clip((-y - 0.050) / 0.030, 0, 1)
+    _strip_grid(b, 'visor', ys, zlo, zhi, 4 if fine else 2, 0.0035)
+    ys2 = np.linspace(-0.040, 0.056, 9 if fine else 5)
+    _strip_grid(b, 'glow', ys2, lambda y: zlo(y) + 0.0040, lambda y: zlo(y) + 0.0112, 1, 0.0046)
+    b.box('metal', (0.4965, 0.012, 0.3385), (0.040, 0.17, 0.012), (3, -3, 0))                    # brow hood, tilted
+    b.box('metal', (0.495, -0.002, 0.2735), (0.026, 0.15, 0.008), (0, -3, 0))                    # lower lip
+    sx, sy_, sz = float(pod_front_x(-0.056, 0.270)) - 0.001, -0.056, 0.270
+    b.sq('metal', (sx, sy_, sz), (0.014, 0.038, 0.030), (0, -3, 4), e1=0.25, e2=0.25, nu=2, nv=8, smooth=True)            # sensor bezel, a rounded square
+    b.sq('lens', (sx + 0.0045, sy_, sz), (0.010, 0.026, 0.020), (0, -3, 4), e1=0.25, e2=0.25, nu=2, nv=8, smooth=True)    # sensor window
+    if fine:
         for sy in (-1, 1):
             b.box('metal', (0.405, sy * 0.1015, 0.296), (0.07, 0.006, 0.05)); bolts_y(b, [(0.385, sy * 0.106, 0.296), (0.425, sy * 0.106, 0.296)], 0.011, 0.006)
+        for k in range(3): b.box('grime', (0.40, 0.1055, 0.322 - 0.008 * k), (0.05, 0.003, 0.0035))     # hearing slits on the left side
         b.cyl('hub', (0.352, 0.0, 0.300), 0.052, 0.012, r=(0, 90, 0), seg=10)
         for k in range(4): b.box('grime', (0.43 + 0.012 * k, 0.0, 0.372 - 0.001 * k), (0.006, 0.12, 0.003))        # vent slits in the top of the pod
         bolts(b, [(0.46, 0.07, 0.368), (0.46, -0.07, 0.368), (0.39, 0.07, 0.366), (0.39, -0.07, 0.366)], 0.011, 0.006)
         b.box('tape', (0.40, 0.04, 0.3705), (0.07, 0.05, 0.003), (0, 0, 30))                  # tape over a crack in the lid
         CS.twine(b, (0.50, -0.06, 0.280), 0.11)
+    return nd
+
+
+# ------------------------------------------------------------------------------------------------- the quirk slots: optional parts, one node each (named quirk_*), so that a pick can plug in or out
+QUIRKS = {
+    'quirk_patch': dict(parent='hopper', category='repair', note='a riveted repair plate in the wrong colour with sealant and crossed tape, on the right (-y) wall of the hopper'),
+    'quirk_mirror': dict(parent='head', category='accessory', note='a small mirror taped to a bent wire on the head, turned to see behind'),
+    'quirk_trinket': dict(parent='hopper_lid', category='keepsake', note='a blue glass bead and a pale spiral shell, tied to the lid handle and kept there'),
+    'quirk_panel': dict(parent='hopper', category='damage', note='a cover panel hanging by one top bolt, leaning out from the left (+y) wall of the hopper'),
+}
+
+def part_quirk_patch(nd, L, seed):
+    b = nd.b; c = np.array((HOP['x0'] + 0.085, -0.1935, 0.255))
+    if L['fine']: b.box('grime', tuple(c + np.array([0, 0.0012, 0])), (0.126, 0.0045, 0.106), (0, 0, -2))                       # the sealant bead round it, seen as a dark rim
+    b.box('patch2', tuple(c + np.array([0, -0.0030, 0])), (0.112, 0.005, 0.092), (0, 0, -2))
+    if not L['simple']:
+        for dx in (-0.045, 0.0, 0.045):
+            for dz in (-0.036, 0.036): b.cyl('bolt', tuple(c + np.array([dx, -0.0075, dz])), 0.011, 0.006, r=(90, 0, 0), seg=6)
+        b.box('tape', tuple(c + np.array([0.0, -0.0065, 0.0])), (0.095, 0.002, 0.016), (0, 0, 34)); b.box('tape', tuple(c + np.array([0.0, -0.0066, 0.0])), (0.095, 0.002, 0.016), (0, 0, -34))
+    return nd
+
+def part_quirk_mirror(nd, L, seed):
+    b = nd.b; base = np.array((0.455, 0.078, 0.368)); tip = base + np.array([0.010, 0.014, 0.046]); b.rod('metal', tuple(base), tuple(tip), 0.007, 0.007, seg=5)
+    m = tip + np.array([0.006, 0.006, 0.012]); rot = (0, -28, 14)
+    if L['fine']: b.box('metal', tuple(m), (0.005, 0.060, 0.044), rot)                                    # the frame of the little mirror
+    b.box('mirror', tuple(m + np.array([0.0035, 0.0, 0.0012])), (0.004, 0.052, 0.036), rot)
+    b.cyl('tape', tuple(base + np.array([0, 0, 0.012])), 0.018, 0.016, seg=7)
+    return nd
+
+def part_quirk_trinket(nd, L, seed):
+    b = nd.b; lz = HOP['z1'] + 0.012 + 0.0225; p = np.array((HOP['x0'] + 0.085, -0.075, lz))
+    b.sq('bead', tuple(p + np.array([0, 0, 0.013])), (0.030, 0.030, 0.030), e1=1.0, e2=1.0, nu=5 if L['fine'] else 3, nv=10 if L['fine'] else 6, smooth=True)
+    q = np.array((HOP['x0'] + 0.045, 0.02, lz))
+    b.cyl('shellc', tuple(q + np.array([0, 0, 0.011])), 0.030, 0.022, r=(0, 0, 0), seg=9 if L['fine'] else 6, taper=0.25, smooth=True)
+    if L['fine']:
+        b.rod('twine', (HOP['x0'] + 0.03, -0.05, lz + 0.003), tuple(p + np.array([0, 0.012, 0.006])), 0.003, 0.003, seg=4)
+        b.rod('twine', (HOP['x0'] + 0.03, -0.05, lz + 0.003), tuple(q + np.array([0.01, -0.008, 0.002])), 0.003, 0.003, seg=4)
+    return nd
+
+def part_quirk_panel(nd, L, seed):
+    b = nd.b; c = np.array((HOP['x0'] + 0.085, 0.1985, 0.255)); piv = c + np.array([0, 0, 0.046])
+    b.box('paint2', tuple(c), (0.112, 0.006, 0.092), (0, 0, 0), pivot=tuple(piv), prot=(17, 0, 0))
+    if not L['simple']:
+        b.cyl('bolt', tuple(piv + np.array([0.0, 0.0035, -0.003])), 0.013, 0.007, r=(90, 0, 0), seg=6)
+        b.box('tape', tuple(c + np.array([0.02, 0.004, -0.02])), (0.05, 0.002, 0.014), (0, 0, 20), pivot=tuple(piv), prot=(17, 0, 0))
     return nd
 
 
@@ -534,20 +603,34 @@ def part_chassis(nd, L, seed):
 
 
 # ------------------------------------------------------------------------------------------------- the whole machine
-NODES = ['collector', 'chassis', 'track_l', 'track_r', 'shell_l', 'shell_r', 'head', 'lamp', 'arm_base', 'arm_mid', 'arm_tip', 'finger_l', 'finger_r', 'hopper', 'hopper_lid']
+NODES = ['collector', 'chassis', 'track_l', 'track_r', 'shell_l', 'shell_r', 'head', 'lamp', 'lamp_dome', 'arm_base', 'arm_mid', 'arm_tip', 'finger_l', 'finger_r', 'hopper', 'hopper_lid',
+         'quirk_patch', 'quirk_mirror', 'quirk_trinket', 'quirk_panel']
 AXES = {
     'shell_l': dict(axis='y', rest=0, range=[0, 32], note='rotate about the hinge at the front; positive lifts the rear (tips the cells to the sun)'),
     'shell_r': dict(axis='y', rest=0, range=[0, 32], note='as shell_l; the two halves are tipped by slightly different angles'),
-    'head': dict(axis='y then x', rest=0, range=[-14, 16], note='pitch about y (negative looks up), then roll about x for the head tilt (+-18)'),
+    'head': dict(axis='y then x then z', rest=0, range=[-14, 16], note='pitch about y (negative looks up), roll about x for the head tilt (+-18), a little yaw about z (+-20); the visor, its glow strip and the lamp move with it'),
     'arm_base': dict(axis='z then y', rest=0, range=[-60, 60], pitch_range=[0, 180], note='yaw about z (to the sides, +-60), then pitch about y; pitch 0 = stowed pointing back, about 175 = swung up and over, reaching forward and down'),
     'arm_mid': dict(axis='y', rest=0, range=[-200, 10], note='elbow, relative to the upper arm; the stowed forearm lies folded forward'),
     'arm_tip': dict(axis='y', rest=0, range=[-40, 80], note='wrist, relative to the forearm'),
     'finger_l': dict(axis='z', rest=0, range=[-5, 30], note='gripper finger, positive opens'),
     'finger_r': dict(axis='z', rest=0, range=[-30, 5], note='gripper finger, negative opens'),
     'hopper_lid': dict(axis='y', rest=0, range=[0, 70], note='hinged at the front edge, positive lifts the back edge'),
-    'track_l': dict(axis=None, note='rigid tread (hero has real links); the page scrolls the tread by moving the sand and rocking the body, or swaps UV on live'),
+    'track_l': dict(axis=None, note='rigid tread (hero has real links); see scene extras tread_scroll for how the page shows motion'),
     'track_r': dict(axis=None, note='as track_l'),
-    'lamp': dict(axis=None, note='the emissive amber dome; set the material emissive strength (or colour, per the status code) from the page'),
+    'lamp': dict(axis=None, note='stalk, bezel and the dark smoky cap of the status lamp'),
+    'lamp_dome': dict(axis='scale', rest=1.0, range=[0.88, 1.0], note='the emissive dome (material Lamp): scale 1.0 = lit, 0.88 = hidden inside the cap = off; the lamp_blink clip does this with STEP keys'),
+}
+for _q, _d in QUIRKS.items(): AXES[_q] = dict(axis=None, quirk=True, category=_d['category'], slot=_q, optional=True, default_visible=True, note=_d['note'] + '; hide or delete the node to take the quirk off')
+
+# the status lamp code: one colour at a time on the lamp (the dome); the visor glow strip follows it at a small fraction. The page sets material Lamp emissiveFactor and KHR emissive strength (Glow: the same colour, ratio).
+LAMP_CODE = {
+    'emissive_strength_range': [0.3, 8.0], 'default_strength': 6.0, 'glow_ratio': 0.08,
+    'states': {
+        'search': {'colour': [1.0, 0.62, 0.08], 'strength': 4.0, 'pattern': 'slow blink, 1 s period, half on (clip lamp_blink)', 'meaning': 'amber: searching the strandline'},
+        'found': {'colour': [0.30, 0.95, 0.32], 'strength': 6.0, 'pattern': 'steady with a 2 s flicker (the page jitters the strength 4 to 8)', 'meaning': 'green: item found and held'},
+        'low_charge': {'colour': [1.0, 0.45, 0.04], 'strength': 0.6, 'pattern': 'dim, slow pulse of 4 s between 0.3 and 0.9', 'meaning': 'dim amber: low charge, heading for the charge spot'},
+    },
+    'research_note_states': 'the colour code of research/BEACH_COLLECTOR.md (steady pale green working, amber blinks for full or waiting) can be mapped onto the same three colours; the code is old and not logical, on purpose',
 }
 
 def pose_rotations(pose):
@@ -572,18 +655,19 @@ def build(lod='hero', pose='rest', seed=SEED):
     root = N('collector', None, (0, 0, 0)); ch = N('chassis', 'collector', (0, 0, 0))
     tl = N('track_l', 'collector', (0, TRACK_Y, 0.112)); tr = N('track_r', 'collector', (0, -TRACK_Y, 0.112))
     sl = N('shell_l', 'collector', HINGE + np.array([0, 0.175, 0])); sr = N('shell_r', 'collector', HINGE + np.array([0, -0.175, 0]))
-    hd = N('head', 'collector', HEAD_PIVOT); lp = N('lamp', 'head', LAMP_AT)
+    hd = N('head', 'collector', HEAD_PIVOT); lp = N('lamp', 'head', LAMP_AT); ld = N('lamp_dome', 'lamp', LAMP_AT)
     ab = N('arm_base', 'collector', SHOULDER); am = N('arm_mid', 'arm_base', ELBOW_STOW + np.array([0, 0, 0])); at = N('arm_tip', 'arm_mid', WRIST_STOW + np.array([0, -ARM_DY, 0]))
     fl = N('finger_l', 'arm_tip', WRIST_STOW); fr = N('finger_r', 'arm_tip', WRIST_STOW)
     hp = N('hopper', 'collector', (HOP['x1'], 0, HOP['z1'])); hl = N('hopper_lid', 'hopper', (HOP['x1'], 0, HOP['z1'] + 0.012))
     part_chassis(ch, L, seed)
     part_tracks(tl, 1, L, dent=0.0); part_tracks(tr, -1, L, dent=(-13 if L['fine'] else 0.0))
     part_shell_half(sl, 1, L, seed, patch=False, crack=True, tape_strip=True); part_shell_half(sr, -1, L, seed, patch=True, crack=False, tape_strip=False)
-    part_head(hd, L, seed); part_lamp(lp, LAMP_AT, L)
+    part_head(hd, L, seed); part_lamp(lp, ld, LAMP_AT, L)
     part_arm(ab, am, at, fl, fr, L, seed)
     part_hopper(hp, hl, L, seed)
-    if lod == 'far':                                         # far: the same shapes, merged parts and nothing small
-        pass
+    qp = {'quirk_patch': (HOP['x0'] + 0.085, -0.1935, 0.255), 'quirk_mirror': (0.455, 0.078, 0.368), 'quirk_trinket': (HOP['x0'] + 0.085, -0.075, HOP['z1'] + 0.0345), 'quirk_panel': (HOP['x0'] + 0.085, 0.1985, 0.30)}
+    for q, d in QUIRKS.items(): N(q, d['parent'], qp[q])
+    part_quirk_patch(nodes['quirk_patch'], L, seed); part_quirk_mirror(nodes['quirk_mirror'], L, seed); part_quirk_trinket(nodes['quirk_trinket'], L, seed); part_quirk_panel(nodes['quirk_panel'], L, seed)
     for k, seq in pose_rotations(pose).items(): nodes[k].q = rot_seq(seq)
     return nodes
 
@@ -602,7 +686,7 @@ def bake_colour(key, P, N, edge, tvar, seed, pivots, ao=None):
         return col
     if gname == 'Lens':
         haze = fbm(P * 11, sd + 3); return mixc(np.array(base), np.array((0.26, 0.27, 0.26)), (sstep(0.35, 0.85, haze) * 0.55))
-    if gname == 'Lamp': return np.tile(base, (n, 1))
+    if gname in ('Lamp', 'Glow'): return np.tile(base, (n, 1))
     if gname == 'Cell':
         q = np.round(P / 0.055) * 0.055; r = fbm(q * 9, sd + 5, 2); fade = fbm(P * 3.5, sd + 8)
         col = base[None] * (0.7 + 1.7 * r[:, None]) * (0.8 + 1.1 * fade[:, None]); dust = sstep(0.40, 0.85, fbm(P * 12, sd + 9)) * 0.55
@@ -654,70 +738,9 @@ def bake_colour(key, P, N, edge, tvar, seed, pivots, ao=None):
     return np.clip(col, 0.0, 1.0)
 
 
-# ------------------------------------------------------------------------------------------------- the detail textures (tiny PNGs, white = no change, multiplied with the vertex colour)
-def png_bytes(arr):
-    """8-bit PNG (grey for a 2-d array, RGB for a 3-d one) with a per-row filter picked by the smallest sum of absolute values (none, sub or up)"""
-    h, w = arr.shape[:2]; ch = 3 if arr.ndim == 3 else 1; a = np.clip(arr, 0, 255).astype(np.uint8).reshape(h, w * ch).astype(np.int16)
-    rows = []; prev = np.zeros(w * ch, np.int16)
-    for y in range(h):
-        cur = a[y]; sub = cur.copy(); sub[ch:] = cur[ch:] - cur[:-ch]; up = cur - prev
-        cand = [(0, cur), (1, sub), (2, up)]; best = min(cand, key=lambda c: int(np.abs(((c[1] + 128) % 256) - 128).sum()))
-        rows.append(bytes([best[0]]) + (best[1] % 256).astype(np.uint8).tobytes()); prev = cur
-    raw = b''.join(rows)
-    def chunk(t, d): c = struct.pack('>I', len(d)) + t + d; return c + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
-    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2 if ch == 3 else 0, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
-
-def tile_noise(n, cells, rng):
-    g = rng.random((cells, cells)); xs = np.arange(n) * cells / n; i0 = np.floor(xs).astype(int); f = xs - i0; u = f * f * (3 - 2 * f)
-    i1 = (i0 + 1) % cells; i0 = i0 % cells
-    a = g[np.ix_(i0, i0)]; b_ = g[np.ix_(i0, i1)]; c = g[np.ix_(i1, i0)]; d = g[np.ix_(i1, i1)]
-    uu = u[:, None]; vv = u[None, :]
-    return (a * (1 - uu) + c * uu) * (1 - vv) + (b_ * (1 - uu) + d * uu) * vv
-
-def make_texture(kind, n=512, seed=3):
-    """tileable multiply maps (white = no change), 512 x 512, about 1 mm per texel at the 2 tiles per metre of the box projection. v grows downward in the image, the same as down in the world.
-    paint: grain, bare-metal chips, scratches, faint dirt streaks that run down and a few dark specks. dirt (rubber, metal, plastic): grain, scratches, soot."""
-    rng = np.random.default_rng(seed + (0 if kind == 'paint' else 100))
-    grain = tile_noise(n, n // 2, rng); mid = tile_noise(n, 16, rng); low = tile_noise(n, 4, rng)
-    t = 0.95 + 0.05 * (grain - 0.5) + 0.06 * (mid - 0.5) + 0.05 * (low - 0.5)
-    img = np.stack([t, t, t], -1)
-    # scratches: thin random lines, a little darker
-    lines = np.zeros((n, n))
-    for k in range(150 if kind == 'paint' else 90):
-        x0 = rng.uniform(0, n); y0 = rng.uniform(0, n); a = rng.uniform(0, math.pi); ln = rng.uniform(n * 0.03, n * 0.16); ts = np.arange(0, ln, 0.7)
-        xs = (x0 + ts * math.cos(a)).astype(int) % n; ys = (y0 + ts * math.sin(a)).astype(int) % n; lines[ys, xs] = np.maximum(lines[ys, xs], rng.uniform(0.3, 1.0))
-    img *= (1 - 0.20 * lines)[..., None]
-    if kind == 'paint':
-        blob = np.clip((tile_noise(n, 70, rng) * tile_noise(n, 18, rng) - 0.30) * 9, 0, 1)               # chips: bare metal and primer showing
-        edge = np.clip(blob - np.roll(blob, 2, axis=0) * 0.7, 0, 1)
-        blob = (blob + np.roll(blob, 1, 0) + np.roll(blob, -1, 0) + np.roll(blob, 1, 1) + np.roll(blob, -1, 1)) / 5.0; img *= (1 - 0.11 * blob)[..., None]; img += (0.05 * edge)[..., None]
-        streak = np.zeros((n, n))
-        for k in range(12):
-            x0 = rng.integers(0, n); w = rng.integers(3, 9); y0 = rng.integers(0, n); ln = rng.integers(n // 5, n * 3 // 5); a = rng.uniform(0.3, 0.8)
-            yy = (y0 + np.arange(ln)) % n; prof = a * (1 - np.arange(ln) / ln) ** 1.3
-            for dx in range(-w, w + 1): streak[yy, (x0 + dx) % n] = np.maximum(streak[yy, (x0 + dx) % n], prof * (1 - abs(dx) / (w + 1)))
-        streak *= (0.5 + 0.9 * mid)
-        for c, tgt in enumerate((0.94, 0.80, 0.68)): img[..., c] = img[..., c] * (1 - 0.30 * streak) + img[..., c] * tgt * 0.30 * streak
-        spk = np.clip((tile_noise(n, 90, rng) - 0.74) * 9, 0, 1); img *= (1 - 0.20 * spk)[..., None]
-    else:
-        soot = np.clip((mid - 0.35) * 1.6, 0, 1); img *= (1 - 0.15 * soot)[..., None]
-        pits = np.clip((tile_noise(n, 70, rng) - 0.76) * 9, 0, 1); img *= (1 - 0.18 * pits)[..., None]
-    return np.clip(img.mean(2) * 255.0 + 0.5, 0, 255)                                         # grey: colour comes from the vertices
-
-
-# ------------------------------------------------------------------------------------------------- glTF 2.0 binary writer
-def _box_uv(P, N, mode, scale=2.0):
-    """per-vertex box projection by the dominant normal axis (mode 0), planar from above (mode 1, the dome) or from below (mode 2). v runs down the image, so down in the world."""
-    uv = np.zeros((len(P), 2)); a = np.abs(N)
-    ax = np.argmax(a, axis=1)
-    x_, y_, z_ = P[:, 0], P[:, 1], P[:, 2]
-    uv[:, 0] = np.where(ax == 0, y_, np.where(ax == 1, x_, x_)); uv[:, 1] = np.where(ax == 2, -y_, -z_)
-    top = (mode == 1) | (mode == 3); uv[top, 0] = x_[top]; uv[top, 1] = -y_[top]
-    bot = mode == 2; uv[bot, 0] = x_[bot]; uv[bot, 1] = y_[bot]
-    return uv * scale
-
-def _geometry(nd):
-    """per material key: world vertices, normals, edge, mode, triangles (flat buckets are split per face, smooth ones keep shared vertices)"""
+# ------------------------------------------------------------------------------------------------- the geometry as the writer needs it
+def _geometry(nd, smooth_keys=()):
+    """per material key: world vertices, normals, edge, mode, triangles (flat buckets are split per face, smooth ones keep shared vertices; keys in smooth_keys are shaded smooth even when built flat)"""
     out = []
     for (mat, smooth), (vs, fs, _) in nd.b.buckets.items():
         V = np.concatenate(vs); ex = nd.b.x[(mat, smooth)]
@@ -727,7 +750,8 @@ def _geometry(nd):
         for q in fs:
             for k in range(1, len(q) - 1): tris.append((q[0], q[k], q[k + 1]))
         T = np.array(tris, int)
-        if given is not None or smooth:
+        sm = smooth or mat in smooth_keys
+        if given is not None or sm:
             if given is not None: Nv = given
             else:
                 Nv = np.zeros_like(V); fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
@@ -742,25 +766,34 @@ def _geometry(nd):
     return out
 
 AO_CELL = 0.012
-def occupancy(geoms):
-    """a voxel grid (12 mm cells) of every surface in the machine, for the baked ambient occlusion"""
+SKIP_AO = ('decal', 'mark', 'sand', 'twine', 'lamp', 'glow')
+def occ_points(glist):
+    """surface sample points (about one per 12 mm cell) of a list of geometry entries, for the occupancy grid"""
     pts = []
-    for g in geoms:
-        for mat, Pv, Nv, Ev, Mv, Tv in g:
-            if mat in ('decal', 'mark', 'sand', 'twine'): continue
-            A, B, C = Pv[Tv[:, 0]], Pv[Tv[:, 1]], Pv[Tv[:, 2]]; area = 0.5 * np.linalg.norm(np.cross(B - A, C - A), axis=1)
-            k = np.clip((area / (AO_CELL * AO_CELL * 0.8)).astype(int) + 1, 1, 60)
-            for ki in np.unique(k):
-                m = k == ki; r = np.random.default_rng(int(ki)).random((int(m.sum()), int(ki), 2)); r = np.where(r.sum(2, keepdims=True) > 1, 1 - r, r)
-                w = np.concatenate([r, 1 - r.sum(2, keepdims=True)], 2)
-                pp = w[..., 0:1] * A[m][:, None] + w[..., 1:2] * B[m][:, None] + w[..., 2:3] * C[m][:, None]; pts.append(pp.reshape(-1, 3))
-    pts = np.concatenate(pts); lo = pts.min(0) - 0.15; hi = pts.max(0) + 0.15; dims = np.ceil((hi - lo) / AO_CELL).astype(int) + 1
-    grid = np.zeros(dims, bool); ix = ((pts - lo) / AO_CELL).astype(int); grid[ix[:, 0], ix[:, 1], ix[:, 2]] = True
-    return grid, lo
+    for mat, Pv, Nv, Ev, Mv, Tv in glist:
+        if mat in SKIP_AO: continue
+        A, B, C = Pv[Tv[:, 0]], Pv[Tv[:, 1]], Pv[Tv[:, 2]]; area = 0.5 * np.linalg.norm(np.cross(B - A, C - A), axis=1)
+        k = np.clip((area / (AO_CELL * AO_CELL * 0.8)).astype(int) + 1, 1, 60)
+        for ki in np.unique(k):
+            m = k == ki; r = np.random.default_rng(int(ki)).random((int(m.sum()), int(ki), 2)); r = np.where(r.sum(2, keepdims=True) > 1, 1 - r, r)
+            w = np.concatenate([r, 1 - r.sum(2, keepdims=True)], 2)
+            pp = w[..., 0:1] * A[m][:, None] + w[..., 1:2] * B[m][:, None] + w[..., 2:3] * C[m][:, None]; pts.append(pp.reshape(-1, 3))
+    return np.concatenate(pts) if pts else np.zeros((0, 3))
+
+def voxelise(pts, lo, dims):
+    grid = np.zeros(dims, bool)
+    if len(pts):
+        ix = ((pts - lo) / AO_CELL).astype(int); ok = (ix >= 0).all(1) & (ix < dims).all(1); ix = ix[ok]; grid[ix[:, 0], ix[:, 1], ix[:, 2]] = True
+    return grid
+
+def occupancy(geoms):
+    """a voxel grid (12 mm cells) of every surface in the machine (far level vertex occlusion)"""
+    pts = np.concatenate([occ_points(g) for g in geoms]); lo = pts.min(0) - 0.15; hi = pts.max(0) + 0.15; dims = np.ceil((hi - lo) / AO_CELL).astype(int) + 1
+    return voxelise(pts, lo, dims), lo
 
 def vertex_ao(P, N, occ, strength=0.62, reach=(0.016, 0.03, 0.05, 0.08, 0.12)):
     grid, lo = occ; rng = np.random.default_rng(5)
-    base = []; 
+    base = []
     for k in range(12):
         el = math.radians(rng.uniform(32, 88)); az = rng.uniform(0, 2 * math.pi); base.append((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)))
     base = np.array(base)
@@ -774,37 +807,146 @@ def vertex_ao(P, N, occ, strength=0.62, reach=(0.016, 0.03, 0.05, 0.08, 0.12)):
         hit += blocked
     return 1.0 - strength * (hit / len(base))
 
-def _mesh_arrays(nd, geom, ao_list, seed, pivots, use_tex):
-    """returns {gltf material: (P local, N, UV, C u8, idx)} for one node"""
-    tmp = {}
-    for (mat, Pv, Nv, Ev, Mv, Tv), ao in zip(geom, ao_list):
-        C = bake_colour(mat, Pv, Nv, Ev, Mv, seed, pivots, ao)
-        tmp.setdefault(MATS[mat][0], []).append((Pv, Nv, Mv, C, Tv))
+
+# ------------------------------------------------------------------------------------------------- the baked textures of the textured levels
+STATIC_NODES = ('chassis', 'track_l', 'track_r', 'hopper')
+
+def bake_textures(nodes, geoms, lod, seed):
+    """unwrap and bake the atlas of every texture group of this level. Returns (uv per (node, geometry index) as (ntri, 3, 2) float32, {group: {'color', 'normal', 'orm': float images}}, stats)"""
+    import collector_tex as TX
+    L = LOD[lod]; keys = list(MATS.keys()); kgroup = np.array([('body', 'metal', 'glass').index(KEYGROUP[k]) if k in KEYGROUP else 0 for k in keys])
+    base = [MATS[k][1] for k in keys]
+    allpts = np.concatenate([occ_points(g) for g in geoms.values()]); lo = allpts.min(0) - 0.15; hi = allpts.max(0) + 0.15; dims = np.ceil((hi - lo) / AO_CELL).astype(int) + 1
+    g_all = voxelise(allpts, lo, dims)
+    g_static = voxelise(np.concatenate([occ_points(geoms[n]) for n in STATIC_NODES if n in geoms]), lo, dims); cache = {}
+    def node_grid(name):
+        if name not in cache:
+            cache[name] = (g_static if name in STATIC_NODES else (g_static | voxelise(occ_points(geoms[name]), lo, dims)), lo, AO_CELL)
+        return cache[name]
+    fixes = [p for n in nodes.values() for p in n.b.fix]; fg = TX.make_fixgrid(fixes, lo, hi) if fixes else None
+    cracks = [(f[1][0], f[1][1], f[1][2], 0.034) for n in nodes.values() for f in n.feats if f[0] == 'crack']
+    voxel = {'all': (g_all, lo, AO_CELL), 'node': node_grid, 'fixgrid': fg}
+    # collect the triangles per atlas group
+    groups = {}
+    for ni, name in enumerate(NODES):
+        if name not in geoms: continue
+        for gi, (mat, Pv, Nv, Ev, Mv, Tv) in enumerate(geoms[name]):
+            if mat in UNTEXTURED: continue
+            gname = 'all' if 'all' in L['atlas'] else KEYGROUP[mat]
+            groups.setdefault(gname, []).append((name, gi, ni, mat, Pv[Tv], Nv[Tv], Ev[Tv], Mv[Tv]))
+    uvs = {}; images = {}; stats = {}
+    for gname in sorted(groups):
+        spec = dict(L['atlas'][gname]); items = groups[gname]; ntri = [len(it[4]) for it in items]; off = np.concatenate([[0], np.cumsum(ntri)])
+        tri = dict(V=np.concatenate([it[4] for it in items]), Nn=np.concatenate([it[5] for it in items]), E=np.concatenate([it[6] for it in items]), M=np.concatenate([it[7] for it in items]),
+                   kidx=np.concatenate([np.full(len(it[4]), keys.index(it[3])) for it in items]), node=np.concatenate([np.full(len(it[4]), it[0]) for it in items]),
+                   piece=np.concatenate([np.full(len(it[4]), j) for j, it in enumerate(items)]))
+        spec['swatch_keys'] = SWATCH_KEYS; spec['hidden_below'] = spec.get('hidden', 0.08); spec['fixed_keys'] = ('link',)
+        shader = TX.shade_all if gname == 'all' else TX.SHADERS[gname]
+        uv, imgs, st = TX.bake_group(tri, spec['n'], spec, keys, base, kgroup, seed, voxel, fixes, cracks, shader)
+        for j, it in enumerate(items): uvs[(it[0], it[1])] = uv[off[j]:off[j + 1]]
+        images[gname] = imgs; stats[gname] = st
+    return uvs, images, stats
+
+
+def _encode_images(images, L):
+    """float atlas images -> {group: (colour jpeg, normal jpeg, orm jpeg)}"""
+    import collector_jpeg as J
     out = {}
-    for g, items in tmp.items():
-        off = 0; P = []; N = []; M = []; C = []; T = []
-        for Pv, Nv, Mv, Cv, Tv in items: P.append(Pv); N.append(Nv); M.append(Mv); C.append(Cv); T.append(Tv + off); off += len(Pv)
-        P = np.concatenate(P); N = np.concatenate(N); M = np.concatenate(M); C = np.concatenate(C); T = np.concatenate(T)
-        uv = _box_uv(P - nd.pivot, N, M) if (use_tex and GLTF_MATS[g][2]) else None
-        out[g] = (P - nd.pivot, N, uv, C, T)
+    for g, im in images.items():
+        sp = L['atlas'][g]; n = sp['n']; qc, qn, qo = sp['q']
+        def to8(a, size):
+            if size != n: a = TXdown(a, n // size)
+            return (np.clip(a, 0, 1) * 255.0 + 0.5).astype(np.uint8)
+        out[g] = (J.jpeg_bytes(to8(im['color'], n), qc, subsample=True), J.jpeg_bytes(to8(im['normal'], sp['nrm']), qn, chroma_scale=0.6), J.jpeg_bytes(to8(im['orm'], sp['orm']), qo, chroma_scale=0.6))
     return out
 
+def TXdown(a, f):
+    import collector_tex as TX
+    return TX.downsample(a, f)
+
+
+# ------------------------------------------------------------------------------------------------- animation clips (glTF animations: node rotation and scale keyframes)
+def _ease(x): x = min(1.0, max(0.0, x)); return x * x * (3 - 2 * x)
+
+def _qdot(a, b): return sum(x * y for x, y in zip(a, b))
+
+def _track(seq_fn, spans, duration, n=7):
+    """keyframes for one node. seq_fn(s) -> rotation sequence at progress s (0 to 1); spans = (t0, t1) over which s eases from 0 to 1. Returns times and quaternions (builder xyzw, hemisphere-continuous)"""
+    t0, t1 = spans; times = [0.0]; 
+    if t0 > 0: times.append(t0)
+    for k in range(1, n): times.append(t0 + (t1 - t0) * k / n)
+    times.append(t1)
+    if duration > t1: times.append(duration)
+    qs = []
+    for t in times:
+        q = rot_seq(seq_fn(_ease((t - t0) / max(t1 - t0, 1e-6))))
+        if qs and _qdot(q, qs[-1]) < 0: q = tuple(-c for c in q)
+        qs.append(q)
+    return times, qs
+
+def clip_table(lod):
+    """name -> dict(duration, note, channels = [(node, path, times, values, interpolation)]); rotations are builder quaternions (xyzw), scale values are triples"""
+    C = {}
+    sun = pose_rotations('sun'); sl = sun['shell_l'][0][1]; sr = sun['shell_r'][0][1]; hy = sun['head'][0][1]; hx = sun['head'][1][1]
+    def sun_chan(rev):
+        ch = []
+        for node, fn, sp in (('shell_l', lambda s: [('y', sl * s)], (0.0, 2.0)), ('shell_r', lambda s: [('y', sr * s)], (0.35, 2.4)), ('head', lambda s: [('y', hy * s), ('x', hx * s)], (0.8, 2.5))):
+            t, q = _track(fn, sp, 2.6)
+            if rev: t = [2.6 - x for x in reversed(t)]; q = list(reversed(q))
+            ch.append((node, 'rotation', t, q, 'LINEAR'))
+        return ch
+    C['sun_open'] = dict(duration=2.6, note='rest to the sun pose: shell halves tip up (the left one first, a little clumsy), the head lifts and cocks', channels=sun_chan(False))
+    C['sun_close'] = dict(duration=2.6, note='the sun pose back to rest', channels=sun_chan(True))
+    yaw, a1, a2, a3 = arm_ik(GRAB_TARGET, grip_down=-82.0); y, t1, t2, t3 = arm_pose_angles(yaw, a1, a2, a3)
+    def arm_chan(rev):
+        dur = 3.6; ch = []
+        specs = (('shell_l', lambda s: [('y', 12 * s)], (0.0, 0.8)), ('arm_base', None, None), ('arm_mid', lambda s: [('y', t2 * s)], (1.0, 2.9)), ('arm_tip', lambda s: [('y', t3 * s)], (1.7, 3.2)),
+                 ('finger_l', lambda s: [('z', 14 * s)], (2.9, 3.5)), ('finger_r', lambda s: [('z', -14 * s)], (2.9, 3.5)))
+        for node, fn, sp in specs:
+            if node == 'arm_base':
+                tt = sorted(set([0.0, 0.6, 1.0, 1.4, 1.8, 2.2, 2.6, 3.0, dur])); qs = []
+                for t in tt:
+                    sp_ = _ease((t - 0.6) / 1.8); sy_ = _ease((t - 1.8) / 1.2); q = rot_seq([('z', y * sy_), ('y', t1 * sp_)])
+                    if qs and _qdot(q, qs[-1]) < 0: q = tuple(-c for c in q)
+                    qs.append(q)
+                t_, q_ = tt, qs
+            else: t_, q_ = _track(fn, sp, dur)
+            if rev: t_ = [dur - x for x in reversed(t_)]; q_ = list(reversed(q_))
+            ch.append((node, 'rotation', t_, q_, 'LINEAR'))
+        return ch
+    C['arm_unfold'] = dict(duration=3.6, note='the arm unfolds out of the slot between the shell halves (the left half tips 12 degrees to let it out) and reaches down to the left front, then the fingers open', channels=arm_chan(False))
+    C['arm_stow'] = dict(duration=3.6, note='the reverse of arm_unfold', channels=arm_chan(True))
+    C['lamp_blink'] = dict(duration=2.0, note='the lamp dome blinks: scale 1.0 (lit) and 0.88 (inside the cap, off), 1 s period, STEP keys; loop it. The page sets colour and strength by the status code', channels=[('lamp_dome', 'scale', [0.0, 0.5, 1.0, 1.5, 2.0], [(1.0,) * 3, (0.88,) * 3, (1.0,) * 3, (0.88,) * 3, (1.0,) * 3], 'STEP')])
+    hq = lambda yv, xv, zv: rot_seq([('z', zv), ('y', yv), ('x', xv)])
+    hk = [(0.0, 0, 0, 0), (0.7, -2, 9, 8), (1.1, -3, 10, 9), (1.8, -2, 9, 8), (2.4, 1, -4, -3), (3.0, 0, 0, 0)]; qs = []
+    for t, yv, xv, zv in hk:
+        q = hq(yv, xv, zv)
+        if qs and _qdot(q, qs[-1]) < 0: q = tuple(-c for c in q)
+        qs.append(q)
+    C['head_tilt'] = dict(duration=3.0, note='a small curious head tilt and back (roll about 9 degrees, a little yaw), loopable', channels=[('head', 'rotation', [k[0] for k in hk], qs, 'LINEAR')])
+    t, q = _track(lambda s: [('y', 38 * s)], (0.0, 1.2), 1.4); C['lid_open'] = dict(duration=1.4, note='the hopper lid lifts at the back', channels=[('hopper_lid', 'rotation', t, q, 'LINEAR')])
+    return C
+
+
+# ------------------------------------------------------------------------------------------------- glTF 2.0 binary writer
 def to_gltf_xyz(a):
     a = np.asarray(a, float); return np.stack([a[..., 1], a[..., 2], a[..., 0]], -1)
 
 def weld(P, N, uv, C, T, tol=1e-5):
     """merge identical vertices (same position, normal, uv, colour) so flat boxes and smooth meshes share what they can"""
-    q = [np.round(P / tol).astype(np.int64), np.round(N * 200).astype(np.int64), np.round(C * 255).astype(np.int64)]
-    if uv is not None: q.append(np.round(uv * 4000).astype(np.int64))
+    q = [np.round(P / tol).astype(np.int64), np.round(N * 200).astype(np.int64)]
+    if C is not None: q.append(np.round(C * 255).astype(np.int64))
+    if uv is not None: q.append(np.round(uv * 8000).astype(np.int64))
     key = np.concatenate(q, axis=1); _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
     inv = inv.ravel(); order = np.argsort(first); remap = np.empty(len(first), int); remap[order] = np.arange(len(first)); idx = remap[inv]
     keep = first[order]
-    return P[keep], N[keep], (uv[keep] if uv is not None else None), C[keep], idx[T]
+    return P[keep], N[keep], (uv[keep] if uv is not None else None), (C[keep] if C is not None else None), idx[T]
 
 def write_glb(path, nodes, lod, pose, seed=SEED):
-    L = LOD[lod]; use_tex = L['tex']
-    pivots = [n.pivot for n in nodes.values() if n.name in ('shell_l', 'shell_r', 'arm_base', 'arm_mid', 'arm_tip', 'hopper_lid', 'head')]
-    binbuf = bytearray(); views = []; accs = []; images = []; textures = []; samplers = [{'magFilter': 9729, 'minFilter': 9987, 'wrapS': 10497, 'wrapT': 10497}]
+    L = LOD[lod]; textured = bool(L['atlas'])
+    smooth_keys = SMOOTH_KEYS if textured else ()
+    geoms = {n: _geometry(nodes[n], smooth_keys) for n in NODES if n in nodes and nodes[n].b.buckets}
+    binbuf = bytearray(); views = []; accs = []; images = []; textures = []; samplers = [{'magFilter': 9729, 'minFilter': 9987, 'wrapS': 33071, 'wrapT': 33071}]
     def add_view(data, target=None):
         while len(binbuf) % 4: binbuf.append(0)
         views.append({'buffer': 0, 'byteOffset': len(binbuf), 'byteLength': len(data), **({'target': target} if target else {})}); binbuf.extend(data); return len(views) - 1
@@ -812,22 +954,38 @@ def write_glb(path, nodes, lod, pose, seed=SEED):
         a = np.ascontiguousarray(arr); vi = add_view(a.tobytes(), target)
         d = {'bufferView': vi, 'componentType': ctype, 'count': int(len(a)), 'type': {1: 'SCALAR', 2: 'VEC2', 3: 'VEC3', 4: 'VEC4'}[ncomp]}
         if normalized: d['normalized'] = True
-        if minmax: d['min'] = [float(v) for v in a.min(0)]; d['max'] = [float(v) for v in a.max(0)]
+        if minmax: d['min'] = [float(v) for v in np.atleast_1d(a.min(0))]; d['max'] = [float(v) for v in np.atleast_1d(a.max(0))]
         accs.append(d); return len(accs) - 1
-    tex_index = {}
-    if use_tex:
-        for k in ('paint', 'dirt'):
-            vi = add_view(png_bytes(make_texture(k, L['texn'] if k == 'paint' else min(256, L['texn']), seed))); images.append({'bufferView': vi, 'mimeType': 'image/png', 'name': 'detail_' + k}); textures.append({'sampler': 0, 'source': len(images) - 1}); tex_index[k] = len(textures) - 1
-    mats = []; mat_index = {}
-    for g, (met, rough, tex, em) in GLTF_MATS.items():
-        m = {'name': g, 'pbrMetallicRoughness': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': met, 'roughnessFactor': rough}, 'doubleSided': False}
-        if g == 'Lamp': m['pbrMetallicRoughness']['baseColorFactor'] = [0.9, 0.45, 0.05, 1.0]
-        if tex and use_tex: m['pbrMetallicRoughness']['baseColorTexture'] = {'index': tex_index[tex]}
-        if em: m['emissiveFactor'] = list(em); m['extensions'] = {'KHR_materials_emissive_strength': {'emissiveStrength': 6.0}}
-        mat_index[g] = len(mats); mats.append(m)
-    geoms = {n: _geometry(nodes[n]) for n in nodes if nodes[n].b.buckets}; occ = occupancy(list(geoms.values()))
-    aos = {n: [vertex_ao(g[1], g[2], occ) if (g[0] not in ('decal', 'mark', 'lamp')) else np.ones(len(g[1])) for g in geoms[n]] for n in geoms}
-    meshes = []; gnodes = []; name_idx = {}; stats = {'triangles': 0, 'vertices': 0, 'per_node': {}}
+    mats = []; mat_index = {}; stats = {'triangles': 0, 'vertices': 0, 'per_node': {}}
+    LAMP_RGB = [1.0, 0.52, 0.06]
+    def add_emissive(name, strength, extras):
+        m = {'name': name, 'pbrMetallicRoughness': {'baseColorFactor': [0.05, 0.03, 0.01, 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 0.3}, 'emissiveFactor': LAMP_RGB, 'doubleSided': False,
+             'extensions': {'KHR_materials_emissive_strength': {'emissiveStrength': strength}}, 'extras': extras}
+        mat_index[name] = len(mats); mats.append(m)
+    uvs = {}; tex_stats = {}
+    if textured:
+        uvs, atlas_imgs, tex_stats = bake_textures(nodes, geoms, lod, seed); enc = _encode_images(atlas_imgs, L)
+        for g in sorted(enc):
+            ids = []
+            for kind, data in zip(('color', 'normal', 'orm'), enc[g]):
+                vi = add_view(data); images.append({'bufferView': vi, 'mimeType': 'image/jpeg', 'name': 'collector_%s_%s' % (g, kind)}); textures.append({'sampler': 0, 'source': len(images) - 1}); ids.append(len(textures) - 1)
+            m = {'name': TEX_MATERIAL[g], 'pbrMetallicRoughness': {'baseColorFactor': [1, 1, 1, 1], 'baseColorTexture': {'index': ids[0]}, 'metallicFactor': 1.0, 'roughnessFactor': 1.0, 'metallicRoughnessTexture': {'index': ids[2]}},
+                 'normalTexture': {'index': ids[1], 'scale': 1.0}, 'occlusionTexture': {'index': ids[2], 'strength': 1.0}, 'doubleSided': False,
+                 'extras': {'maps': 'baseColor sRGB jpeg, normal jpeg (OpenGL, +Y up the image), occlusion R / roughness G / metal B packed jpeg', 'atlas_px': L['atlas'][g]['n']}}
+            mat_index[TEX_MATERIAL[g]] = len(mats); mats.append(m)
+        add_emissive('Lamp', 6.0, {'intensity_range': LAMP_CODE['emissive_strength_range'], 'note': 'set emissiveFactor (colour) and the emissive strength from the lamp code in scene extras'})
+        add_emissive('Glow', 0.5, {'follows': 'Lamp', 'ratio': LAMP_CODE['glow_ratio'], 'note': 'the visor glow strip: the colour of Lamp at about 8 per cent of its strength'})
+    else:
+        for g, (met, rough, em) in GLTF_MATS.items():
+            if g in ('Lamp', 'Glow'): continue
+            m = {'name': g, 'pbrMetallicRoughness': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': met, 'roughnessFactor': rough}, 'doubleSided': False}
+            mat_index[g] = len(mats); mats.append(m)
+        add_emissive('Lamp', 6.0, {'intensity_range': LAMP_CODE['emissive_strength_range'], 'note': 'set emissiveFactor (colour) and the emissive strength from the lamp code in scene extras'})
+        add_emissive('Glow', 0.5, {'follows': 'Lamp', 'ratio': LAMP_CODE['glow_ratio']})
+    pivots = [n.pivot for n in nodes.values() if n.name in ('shell_l', 'shell_r', 'arm_base', 'arm_mid', 'arm_tip', 'hopper_lid', 'head')]
+    if not textured:
+        occ = occupancy(list(geoms.values()))
+    gnodes = []; name_idx = {}; meshes = []
     order = [n for n in NODES if n in nodes]
     for name in order: name_idx[name] = len(gnodes); gnodes.append({'name': name})
     for name in order:
@@ -839,27 +997,58 @@ def write_glb(path, nodes, lod, pose, seed=SEED):
         if nd.note: ex['note'] = nd.note
         gn['extras'] = ex
         if nd.parent: gnodes[name_idx[nd.parent]].setdefault('children', []).append(name_idx[name])
-        if nd.b.buckets:
-            prims = []; tri_n = 0
-            for g, (P, N, uv, C, T) in _mesh_arrays(nd, geoms[name], aos[name], seed, pivots, use_tex).items():
-                P, N, uv, C, T = weld(P, N, uv, C, T)
-                T = T.astype(np.uint16) if len(P) < 65536 else T.astype(np.uint32)
-                at = {'POSITION': add_acc(to_gltf_xyz(P).astype(np.float32), 5126, 3, 34962, minmax=True), 'NORMAL': add_acc(to_gltf_xyz(N).astype(np.float32), 5126, 3, 34962)}
-                if uv is not None: at['TEXCOORD_0'] = add_acc(uv.astype(np.float32), 5126, 2, 34962)
-                c8 = np.concatenate([np.clip(C, 0, 1), np.ones((len(C), 1))], 1); at['COLOR_0'] = add_acc((c8 * 255.0 + 0.5).astype(np.uint8), 5121, 4, 34962, normalized=True)
-                ia = add_acc(T.reshape(-1), 5123 if T.dtype == np.uint16 else 5125, 1, 34963)
-                prims.append({'attributes': at, 'indices': ia, 'material': mat_index[g], 'mode': 4}); tri_n += len(T); stats['vertices'] += len(P)
-            meshes.append({'name': name + '_mesh', 'primitives': prims}); gn['mesh'] = len(meshes) - 1; stats['triangles'] += tri_n; stats['per_node'][name] = tri_n
+        if name not in geoms: continue
+        tmp = {}
+        for gi, (mat, Pv, Nv, Ev, Mv, Tv) in enumerate(geoms[name]):
+            if textured:
+                gm = mat if mat in UNTEXTURED else None
+                mname = {'lamp': 'Lamp', 'glow': 'Glow'}[mat] if mat in UNTEXTURED else TEX_MATERIAL['all' if 'all' in L['atlas'] else KEYGROUP[mat]]
+                if gm: tmp.setdefault(mname, []).append((Pv[Tv].reshape(-1, 3), Nv[Tv].reshape(-1, 3), None, None))
+                else: tmp.setdefault(mname, []).append((Pv[Tv].reshape(-1, 3), Nv[Tv].reshape(-1, 3), uvs[(name, gi)].reshape(-1, 2), None))
+            else:
+                ao = vertex_ao(Pv, Nv, occ) if mat not in ('decal', 'mark', 'lamp', 'glow') else np.ones(len(Pv))
+                C = bake_colour(mat, Pv, Nv, Ev, Mv, seed, pivots, ao)
+                tmp.setdefault(MATS[mat][0], []).append((Pv[Tv].reshape(-1, 3), Nv[Tv].reshape(-1, 3), None, C[Tv].reshape(-1, 3)))
+        prims = []; tri_n = 0
+        for g, items in tmp.items():
+            P = np.concatenate([i[0] for i in items]) - nd.pivot; Nn = np.concatenate([i[1] for i in items])
+            uv = None if items[0][2] is None else np.concatenate([i[2] for i in items]); C = None if items[0][3] is None else np.concatenate([i[3] for i in items])
+            T = np.arange(len(P)).reshape(-1, 3)
+            P, Nn, uv, C, T = weld(P, Nn, uv, C, T)
+            T = T.astype(np.uint16) if len(P) < 65536 else T.astype(np.uint32)
+            at = {'POSITION': add_acc(to_gltf_xyz(P).astype(np.float32), 5126, 3, 34962, minmax=True), 'NORMAL': add_acc(to_gltf_xyz(Nn).astype(np.float32), 5126, 3, 34962)}
+            if uv is not None: at['TEXCOORD_0'] = add_acc(np.rint(np.clip(uv, 0, 1) * 65535.0).astype(np.uint16), 5123, 2, 34962, normalized=True)
+            if C is not None: at['COLOR_0'] = add_acc((np.concatenate([np.clip(C, 0, 1), np.ones((len(C), 1))], 1) * 255.0 + 0.5).astype(np.uint8), 5121, 4, 34962, normalized=True)
+            ia = add_acc(T.reshape(-1), 5123 if T.dtype == np.uint16 else 5125, 1, 34963)
+            prims.append({'attributes': at, 'indices': ia, 'material': mat_index[g], 'mode': 4}); tri_n += len(T); stats['vertices'] += len(P)
+        meshes.append({'name': name + '_mesh', 'primitives': prims}); gn['mesh'] = len(meshes) - 1; stats['triangles'] += tri_n; stats['per_node'][name] = tri_n
+    # animation clips
+    anims = []; clip_info = {}
+    for cname, cl in clip_table(lod).items():
+        samplers_a = []; channels = []
+        for node, path_, times, vals, interp in cl['channels']:
+            tin = add_acc(np.array(times, np.float32), 5126, 1, None, minmax=True)
+            if path_ == 'rotation': arr = np.array([[q[1], q[2], q[0], q[3]] for q in vals], np.float32); nc = 4
+            else: arr = np.array([[v[1], v[2], v[0]] for v in vals], np.float32); nc = 3
+            tout = add_acc(arr, 5126, nc, None)
+            samplers_a.append({'input': tin, 'output': tout, 'interpolation': interp}); channels.append({'sampler': len(samplers_a) - 1, 'target': {'node': name_idx[node], 'path': path_}})
+        anims.append({'name': cname, 'samplers': samplers_a, 'channels': channels, 'extras': {'note': cl['note']}})
+        clip_info[cname] = {'duration': cl['duration'], 'nodes': sorted(set(c[0] for c in cl['channels'])), 'note': cl['note']}
     doc = {'asset': {'version': '2.0', 'generator': 'collector_model.py (living-islands)'}, 'extensionsUsed': ['KHR_materials_emissive_strength'], 'scene': 0, 'scenes': [{'name': 'collector', 'nodes': [name_idx['collector']]}],
-           'nodes': gnodes, 'meshes': meshes, 'materials': mats, 'accessors': accs, 'bufferViews': views, 'buffers': [{'byteLength': len(binbuf)}]}
+           'nodes': gnodes, 'meshes': meshes, 'materials': mats, 'accessors': accs, 'bufferViews': views, 'buffers': [{'byteLength': len(binbuf)}], 'animations': anims}
     if images: doc['images'] = images; doc['textures'] = textures; doc['samplers'] = samplers
     doc['scenes'][0]['extras'] = {'lod': lod, 'pose': pose, 'frame': 'glTF: +Y up, +Z forward (the machine faces +Z), +X left; metres', 'length_m': LEN_M, 'triangles': stats['triangles'],
-                                  'poses': {p: {k: v for k, v in pose_rotations(p).items()} for p in POSES}, 'status_lamp': 'node lamp, material Lamp (emissive amber)'}
+                                  'poses': {p: {k: v for k, v in pose_rotations(p).items()} for p in POSES}, 'status_lamp': 'node lamp_dome, material Lamp (emissive); the visor glow strip is material Glow',
+                                  'lamp_code': LAMP_CODE, 'clips': clip_info,
+                                  'quirk_slots': {q: {'parent': d['parent'], 'category': d['category'], 'note': d['note']} for q, d in QUIRKS.items()},
+                                  'tread_scroll': 'the tread is baked into the atlas and the links are real geometry, so a UV offset cannot move it; the page shows motion by rocking the body, moving the sand and tracks marks (track_l and track_r are rigid)',
+                                  'textures': {'groups': {g: {'atlas_px': L['atlas'][g]['n'], 'normal_px': L['atlas'][g]['nrm'], 'orm_px': L['atlas'][g]['orm']} for g in (L['atlas'] or {})}, 'uv': 'one atlas per group, planar charts, no tiling (clamp to edge)'} if textured else 'vertex colours only'}
     js = json.dumps(doc, separators=(',', ':')).encode()
     js += b' ' * ((4 - len(js) % 4) % 4); bb = bytes(binbuf) + b'\x00' * ((4 - len(binbuf) % 4) % 4)
     data = struct.pack('<4sII', b'glTF', 2, 12 + 8 + len(js) + 8 + len(bb)) + struct.pack('<I4s', len(js), b'JSON') + js + struct.pack('<I4s', len(bb), b'BIN\x00') + bb
     with open(path, 'wb') as f: f.write(data)
-    stats['bytes'] = len(data); return stats
+    stats['bytes'] = len(data); stats['textures'] = tex_stats; stats['image_bytes'] = sum(v['byteLength'] for v, i in zip([views[i['bufferView']] for i in images], images)) if images else 0
+    return stats
 
 
 # ------------------------------------------------------------------------------------------------- command line
@@ -880,12 +1069,15 @@ def parse_args(argv=None):
 def out_name(lod, pose): return 'collector_%s%s.glb' % (lod, '' if pose == 'rest' else '_' + pose)
 
 def main():
-    a = parse_args(); os.makedirs(a.out, exist_ok=True); rep = {}
+    a = parse_args(); os.makedirs(a.out, exist_ok=True); rep = {}; rp = os.path.join(a.out, 'collector_report.json')
+    if os.path.exists(rp):
+        try: rep = json.load(open(rp))
+        except Exception: rep = {}
     for lod in a.lods:
         for pose in a.poses:
             nodes = build(lod, pose, a.seed); fn = os.path.join(a.out, out_name(lod, pose)); st = write_glb(fn, nodes, lod, pose, a.seed)
             rep[out_name(lod, pose)] = st; print('GLB', fn, 'triangles', st['triangles'], 'vertices', st['vertices'], 'KB', round(st['bytes'] / 1024.0, 1))
-    with open(os.path.join(a.out, 'collector_report.json'), 'w') as f: json.dump({k: {kk: vv for kk, vv in v.items()} for k, v in rep.items()}, f, indent=1)
+    with open(rp, 'w') as f: json.dump({k: {kk: vv for kk, vv in v.items()} for k, v in sorted(rep.items())}, f, indent=1)
 
 
 if __name__ == '__main__':

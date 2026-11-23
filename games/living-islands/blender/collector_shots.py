@@ -1,8 +1,8 @@
-"""PICTURES OF THE BEACH COLLECTOR HERO MODEL, rendered from the GLB files (not from the builder), so what is seen is what ships.
-Headless:  blender -b --python collector_shots.py -- --glb DIR --out DIR [--w 1200 --h 800 --samples 64] [--only 1,2,3,4,lods]
-DIR for --glb holds the files written by collector_model.py (collector_hero.glb, collector_hero_sun.glb, collector_hero_grab.glb, collector_live.glb, collector_far.glb).
-Writes collector-hero-1.png (three-quarter, rest, on sand), -2 (sun pose, shell tipped), -3 (close-up of the wear and the tracks), -4 (grab pose with a bottle), collector-lods.png (hero, live and far side by side, shaded and wire).
-Same sky, sand, light and look as the other Living Islands pictures (li_scene.make_sky and render_settings, the concept sheet's sand with real tread prints). Blender 3.6 patterns, CPU Cycles, fixed seed."""
+"""PICTURES OF THE BEACH COLLECTOR HERO MODEL (version 2), rendered from the GLB files (not from the builder), so what is seen is what ships.
+Headless:  blender -b --python collector_shots.py -- --glb DIR --out DIR [--w 1200 --h 800 --samples 64] [--only 1,2,3,4,face,quirks,lods] [--prefix collector-v2]
+DIR for --glb holds the files written by collector_model.py (collector_hero.glb, collector_hero_sun.glb, collector_hero_grab.glb, collector_live.glb, collector_far.glb, collector_report.json).
+Writes <prefix>-1.png (three-quarter, rest, on sand), -2 (sun pose, shell tipped), -3 (close-up of the wear and the tracks), -4 (grab pose with a bottle), -face (the head close up), -quirks (the quirk parts, two views), -lods (hero, live and far side by side, shaded and wire).
+Same sky, sand, light and look as the other Living Islands pictures (li_scene.make_sky and render_settings, the concept sheet's sand with real tread prints). Blender 3.6 patterns, CPU Cycles, fixed seed. The status lamp is set to strength 3.2 here so that it reads amber."""
 import sys, os, math, argparse
 import numpy as np
 
@@ -15,7 +15,7 @@ def parse_args(argv=None):
     ap = argparse.ArgumentParser(description='Beach collector hero pictures from the GLB files.')
     ap.add_argument('--glb', required=True, help='folder with the GLB files'); ap.add_argument('--out', required=True, help='output folder')
     ap.add_argument('--w', type=int, default=1200); ap.add_argument('--h', type=int, default=800); ap.add_argument('--samples', type=int, default=64)
-    ap.add_argument('--only', default='1,2,3,4,lods')
+    ap.add_argument('--only', default='1,2,3,4,face,quirks,lods'); ap.add_argument('--prefix', default='collector-v2', help='picture file prefix')
     a = ap.parse_args(argv); a.only = [s.strip() for s in a.only.split(',') if s.strip()]
     return a
 
@@ -54,7 +54,7 @@ def fix_materials(objs, extra_emission=None):
             for n in m.node_tree.nodes:
                 if n.bl_idname == 'ShaderNodeBsdfPrincipled' and m.name.startswith('Lamp'):
                     try:
-                        n.inputs['Emission Strength'].default_value = 12.0 if extra_emission is None else extra_emission
+                        n.inputs['Emission Strength'].default_value = 3.2 if extra_emission is None else extra_emission
                     except Exception: pass
 
 
@@ -115,7 +115,7 @@ def shot_hero_1(a, out, glb):
     root, objs = import_glb(os.path.join(glb, 'collector_hero.glb')); fix_materials(objs)
     bottle(LS, M, (1.0, -0.46, 0), 20); litter_on_sand(LS, M)
     cam = CS._cam(sc, 'Cam', (1.55, -1.75, 0.66), (0.0, 0.0, 0.29), 46.0)
-    render(sc, cam, os.path.join(out, 'collector-hero-1.png'))
+    render(sc, cam, os.path.join(out, a.prefix + '-1.png'))
 
 def shot_hero_2(a, out, glb):
     import collector_sheet as CS
@@ -123,7 +123,7 @@ def shot_hero_2(a, out, glb):
     root, objs = import_glb(os.path.join(glb, 'collector_hero_sun.glb')); fix_materials(objs)
     bottle(LS, M, (1.0, -0.5, 0), 25); litter_on_sand(LS, M)
     cam = CS._cam(sc, 'Cam', (1.45, -1.6, 0.52), (-0.02, 0.0, 0.30), 44.0)
-    render(sc, cam, os.path.join(out, 'collector-hero-2.png'))
+    render(sc, cam, os.path.join(out, a.prefix + '-2.png'))
 
 def shot_hero_3(a, out, glb):
     import collector_sheet as CS
@@ -131,7 +131,7 @@ def shot_hero_3(a, out, glb):
     root, objs = import_glb(os.path.join(glb, 'collector_hero.glb')); fix_materials(objs)
     litter_on_sand(LS, M)
     cam = CS._cam(sc, 'Cam', (0.80, -0.78, 0.32), (-0.02, -0.14, 0.23), 40.0)
-    render(sc, cam, os.path.join(out, 'collector-hero-3.png'))
+    render(sc, cam, os.path.join(out, a.prefix + '-3.png'))
 
 def shot_hero_4(a, out, glb):
     import collector_sheet as CS
@@ -142,7 +142,28 @@ def shot_hero_4(a, out, glb):
     bottle(LS, M, (tgt[0] - 0.01 * math.cos(math.radians(yaw)), tgt[1] - 0.01 * math.sin(math.radians(yaw)), 0), yaw, lift=tgt[2] - 0.04)
     litter_on_sand(LS, M)
     cam = CS._cam(sc, 'Cam', (1.55, -1.1, 0.62), (0.18, 0.1, 0.24), 44.0)
-    render(sc, cam, os.path.join(out, 'collector-hero-4.png'))
+    render(sc, cam, os.path.join(out, a.prefix + '-4.png'))
+
+
+def shot_face(a, out, glb):
+    """close-up of the head: the visor with its glow strip, the sensor window, the lamp, the mirror quirk"""
+    import collector_sheet as CS
+    LS, sc, M = scene(a, sun_el=22.0, sun_az=112.0, exposure=-0.15)
+    root, objs = import_glb(os.path.join(glb, 'collector_hero_sun.glb')); fix_materials(objs)
+    cam = CS._cam(sc, 'Cam', (0.95, -0.52, 0.52), (0.45, 0.0, 0.31), 34.0)
+    render(sc, cam, os.path.join(out, a.prefix + '-face.png'))
+
+def shot_quirks(a, out, glb):
+    """two views side by side: rear left (the leaning panel, the trinket on the hopper lid) and rear right (the repair patch, the trinket); the mirror is on the head and shows in the face picture"""
+    import bpy
+    import collector_sheet as CS
+    cells = []
+    for i, (cpos, look) in enumerate((((-1.30, 1.00, 0.72), (-0.15, 0.05, 0.28)), ((-1.35, -0.95, 0.72), (-0.15, -0.05, 0.28)))):
+        LS, sc, M = scene(a, sun_el=26.0, sun_az=(60.0 if i == 0 else 60.0))
+        sc.render.resolution_x = a.w // 2; sc.render.resolution_y = a.h
+        root, objs = import_glb(os.path.join(glb, 'collector_hero.glb')); fix_materials(objs); litter_on_sand(LS, M)
+        cam = CS._cam(sc, 'Cam', cpos, look, 40.0); p = os.path.join(out, 'quirk-%d.png' % i); render(sc, cam, p); cells.append(CS.read_png(p))
+    CS.write_png(os.path.join(out, a.prefix + '-quirks.png'), np.concatenate(cells, 1))
 
 
 def shot_dbg(a, out, glb):
@@ -207,12 +228,12 @@ def shot_lods(a, out, glb):
     for i, (name, fn) in enumerate((('hero', 'collector_hero.glb'), ('live', 'collector_live.glb'), ('far', 'collector_far.glb'))):
         tri = rep.get(fn, {}).get('triangles', 0); kb = rep.get(fn, {}).get('bytes', 0) / 1024.0
         CS.draw_text(img, 12 + i * cw, 10, '%s %d TRI' % (name.upper(), tri), 2, (0.97, 0.96, 0.9), bg=0.08); CS.draw_text(img, 12 + i * cw, 36, '%d KB GLB' % round(kb), 2, (0.97, 0.96, 0.9), bg=0.08)
-    CS.write_png(os.path.join(out, 'collector-lods.png'), img)
+    CS.write_png(os.path.join(out, a.prefix + '-lods.png'), img)
 
 
 def main():
     a = parse_args(); os.makedirs(a.out, exist_ok=True)
-    jobs = {'1': shot_hero_1, '2': shot_hero_2, '3': shot_hero_3, '4': shot_hero_4, 'lods': shot_lods, 'dbg': shot_dbg}
+    jobs = {'1': shot_hero_1, '2': shot_hero_2, '3': shot_hero_3, '4': shot_hero_4, 'face': shot_face, 'quirks': shot_quirks, 'lods': shot_lods, 'dbg': shot_dbg}
     for k in a.only:
         if k in jobs: jobs[k](a, a.out, a.glb)
 

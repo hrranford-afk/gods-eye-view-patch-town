@@ -1,49 +1,7 @@
 {
- "collector_hero.glb": {
-  "triangles": 18644,
-  "vertices": 33555,
-  "per_node": {
-   "chassis": 1536,
-   "track_l": 4056,
-   "track_r": 4068,
-   "shell_l": 2908,
-   "shell_r": 2944,
-   "head": 836,
-   "lamp": 172,
-   "arm_base": 440,
-   "arm_mid": 312,
-   "arm_tip": 96,
-   "finger_l": 64,
-   "finger_r": 64,
-   "hopper": 960,
-   "hopper_lid": 188
-  },
-  "bytes": 1474028
- },
- "collector_live.glb": {
-  "triangles": 3338,
-  "vertices": 5197,
-  "per_node": {
-   "chassis": 284,
-   "track_l": 652,
-   "track_r": 652,
-   "shell_l": 492,
-   "shell_r": 432,
-   "head": 184,
-   "lamp": 98,
-   "arm_base": 104,
-   "arm_mid": 120,
-   "arm_tip": 44,
-   "finger_l": 40,
-   "finger_r": 40,
-   "hopper": 132,
-   "hopper_lid": 64
-  },
-  "bytes": 318708
- },
  "collector_far.glb": {
-  "triangles": 892,
-  "vertices": 1290,
+  "triangles": 1024,
+  "vertices": 1466,
   "per_node": {
    "chassis": 72,
    "track_l": 216,
@@ -51,15 +9,115 @@
    "shell_l": 108,
    "shell_r": 108,
    "head": 60,
-   "lamp": 20,
+   "lamp_dome": 20,
    "arm_base": 16,
    "arm_mid": 16,
    "arm_tip": 12,
    "finger_l": 12,
    "finger_r": 12,
    "hopper": 12,
-   "hopper_lid": 12
+   "hopper_lid": 12,
+   "quirk_patch": 12,
+   "quirk_mirror": 60,
+   "quirk_trinket": 48,
+   "quirk_panel": 12
   },
-  "bytes": 65480
+  "bytes": 93940,
+  "textures": {},
+  "image_bytes": 0
+ },
+ "collector_hero.glb": {
+  "triangles": 18268,
+  "vertices": 25210,
+  "per_node": {
+   "chassis": 1536,
+   "track_l": 3536,
+   "track_r": 3548,
+   "shell_l": 2908,
+   "shell_r": 2944,
+   "head": 940,
+   "lamp": 172,
+   "lamp_dome": 100,
+   "arm_base": 440,
+   "arm_mid": 312,
+   "arm_tip": 96,
+   "finger_l": 64,
+   "finger_r": 64,
+   "hopper": 960,
+   "hopper_lid": 188,
+   "quirk_patch": 192,
+   "quirk_mirror": 72,
+   "quirk_trinket": 148,
+   "quirk_panel": 48
+  },
+  "bytes": 1384560,
+  "textures": {
+   "body": {
+    "charts": 305,
+    "swatch_tris": 525,
+    "visible_tris": 2099,
+    "scale": 0.714,
+    "texels": 518671,
+    "fill": 0.495,
+    "dens": 500
+   },
+   "glass": {
+    "charts": 538,
+    "swatch_tris": 294,
+    "visible_tris": 3670,
+    "scale": 1.0,
+    "texels": 126233,
+    "fill": 0.482,
+    "dens": 560
+   },
+   "metal": {
+    "charts": 1562,
+    "swatch_tris": 8374,
+    "visible_tris": 3190,
+    "scale": 0.829,
+    "texels": 444808,
+    "fill": 0.424,
+    "dens": 464
+   }
+  },
+  "image_bytes": 512372
+ },
+ "collector_live.glb": {
+  "triangles": 3780,
+  "vertices": 6377,
+  "per_node": {
+   "chassis": 284,
+   "track_l": 652,
+   "track_r": 652,
+   "shell_l": 492,
+   "shell_r": 432,
+   "head": 248,
+   "lamp": 98,
+   "lamp_dome": 42,
+   "arm_base": 104,
+   "arm_mid": 120,
+   "arm_tip": 44,
+   "finger_l": 40,
+   "finger_r": 40,
+   "hopper": 132,
+   "hopper_lid": 64,
+   "quirk_patch": 180,
+   "quirk_mirror": 60,
+   "quirk_trinket": 48,
+   "quirk_panel": 48
+  },
+  "bytes": 333036,
+  "textures": {
+   "all": {
+    "charts": 763,
+    "swatch_tris": 1792,
+    "visible_tris": 1938,
+    "scale": 0.341,
+    "texels": 92126,
+    "fill": 0.351,
+    "dens": 143
+   }
+  },
+  "image_bytes": 92659
  }
 }
