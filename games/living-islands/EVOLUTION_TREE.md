@@ -73,6 +73,13 @@ The old world's automation survived without people: boats, buoys, lights, weathe
 - **Risks to watch:** if the machines do all the work the struggle disappears (so they are scarce, slow, brittle and wearing out); once understood they become predictable (so add wear, drift, weather and edge-case failures); avoid the 'AI turns on us' cliche.
 - **Measure first:** how many routes and machines a seed supports, and whether finding one opens a real trade-off for the player.
 
+### The first relic: the beach litter collector (owner idea, 23 Nov)
+The first old-world machine the settlers meet is a small, worn litter collector still working a beach: picking up bottle tops, glass and plastic bits on a fixed route, returning to charge in the sun. Hard-coded routine, no voice, no conversation; read by watching it (pauses, sticks on a rock, picks up a shell by mistake, works an empty beach).
+- **Early and optional:** appears in era 1 or 2 as the seed of the machines layer; never required, so the "shun the past" path still works. People, sea and wildlife stay the main cast.
+- **Why it earns its place:** teaches the pattern idea (its route shows where things wash up) and its hopper is a small believable first source of hard-to-get materials (glass, metal, plastic), feeding the scavenging ladder.
+- **Player choices:** leave it, keep it charged, move its charging spot, take it apart for parts. Each has a cost. Open: repair and keep it as a slow, brittle helper (CAIRN leans yes, never doing the work for the player).
+- **Rules:** no brands, no talking or emotional manipulation, quiet decline never violence. Research first (RESEARCH_FIRST.md) before any look or build.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
