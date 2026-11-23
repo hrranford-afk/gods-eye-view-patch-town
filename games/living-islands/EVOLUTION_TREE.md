@@ -75,6 +75,8 @@ The old world's automation survived without people: boats, buoys, lights, weathe
 
 ### The first relic: the beach litter collector (owner idea, 23 Nov)
 The first old-world machine the settlers meet is a small, worn litter collector still working a beach: picking up bottle tops, glass and plastic bits on a fixed route, returning to charge in the sun. Hard-coded routine, no voice, no conversation; read by watching it (pauses, sticks on a rock, picks up a shell by mistake, works an empty beach).
+- **Owner look decisions (23 Nov):** dog-sized (about 60 cm tall, 1 m long), on tracks that leave patterns in the sand which the tide washes away (a visible clean strip shows progress). Character comes from behaviour, light and sound, not speech.
+- **Some islands catch more than others:** where the flow and tide deliver things decides which shores are rich. A seed with a rich catch island can speed progression, a poor one slows it. Uses the existing flow and wrack model; measure per seed before relying on it.
 - **Early and optional:** appears in era 1 or 2 as the seed of the machines layer; never required, so the "shun the past" path still works. People, sea and wildlife stay the main cast.
 - **Why it earns its place:** teaches the pattern idea (its route shows where things wash up) and its hopper is a small believable first source of hard-to-get materials (glass, metal, plastic), feeding the scavenging ladder.
 - **Player choices:** leave it, keep it charged, move its charging spot, take it apart for parts. Each has a cost. Open: repair and keep it as a slow, brittle helper (CAIRN leans yes, never doing the work for the player).
