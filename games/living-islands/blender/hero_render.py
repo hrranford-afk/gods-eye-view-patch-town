@@ -110,7 +110,7 @@ for p in cont['props']:
 depth_img = LS.make_foam_depth_image(fields, seed=seed)
 LS.make_sea(seed, depth_img, density=recipe['sea']['density'])
 tm = recipe['time']; wx = recipe['weather']
-sky = LS.make_sky(sun_elev_deg=tm['sun_el_deg'], sun_az_deg=tm['sun_az_deg'], strength=tm['sky_strength'], overcast=wx['overcast'], haze=wx['haze'])
+sky = LS.make_sky(sun_elev_deg=tm['sun_el_deg'], sun_az_deg=tm['sun_az_deg'], strength=tm['sky_strength'], overcast=wx['overcast'], haze=wx['haze'], horizon_soften=tm.get('horizon_soften', 0.0))
 el = math.radians(tm['sun_el_deg']); th = math.radians(tm['sun_az_deg'])
 sd = np.array([math.sin(th) * math.cos(el), math.cos(th) * math.cos(el), math.sin(el)])
 bpy.ops.object.light_add(type='SUN'); sun = bpy.context.object
@@ -128,7 +128,10 @@ co.rotation_euler = dirv.to_track_quat('-Z', 'Y').to_euler()
 cam.dof.focus_distance = dirv.length * 0.95
 if a.view == 'top':
     co.location = (0, -0.1, 60); co.rotation_euler = (0, 0, 0); cam.lens = 26
-if a.view == 'close':
+if a.view == 'close' and recipe.get('camera_close'):      # recipe seeds: a close-up camera checked against the terrain by recipe.py
+    cc = recipe['camera_close']; co.location = tuple(cc['pos']); tgt = np.array(cc['target']); cam.lens = cc['lens']
+    dirv = Vector(tuple(tgt - np.array(co.location))); co.rotation_euler = dirv.to_track_quat('-Z', 'Y').to_euler(); cam.dof.focus_distance = dirv.length
+elif a.view == 'close':
     px, py = rot(3.5, -9.0)
     co.location = (px, py, 3.2 + (0.0 if recipe['legacy'] else hz(cx, cy) - 0.55)); tx, ty = rot(-1.0, 2.5); tgt = np.array([tx, ty, 0.8 + (0.0 if recipe['legacy'] else hz(cx, cy) - 0.55)]); cam.lens = 40
     dirv = Vector(tuple(tgt - np.array(co.location))); co.rotation_euler = dirv.to_track_quat('-Z', 'Y').to_euler(); cam.dof.focus_distance = dirv.length
@@ -140,3 +143,10 @@ if a.blend:
 t1 = time.time()
 bpy.ops.render.render(write_still=True)
 print('render s', round(time.time() - t1, 1), 'total s', round(time.time() - t0, 1))
+# ground truth: a written file is not a picture. Black or flat output fails the job (exit 3) so a batch never counts it as a success.
+import picture_guard as PG
+ok_, msg_, st_ = PG.check_picture(os.path.abspath(a.out))
+print(msg_)
+if not ok_:
+    print('RENDER_FAILED seed %d view %s: the picture is black or flat; camera %s target %s (see %s)' % (seed, a.view, list(co.location), list(tgt), rpath))
+    sys.exit(3)

@@ -219,6 +219,9 @@ def recipe_for(seed, legacy_scene=False):
     n = math.hypot(*sea_vec) or 1.0; f = (sea_vec[0] / n, sea_vec[1] / n)
     seaward = math.atan2(f[1], f[0]); theta = seaward + math.pi / 2
     site = [round(sx_, 3), round(sy_, 3)]
+    if not headland:
+        zn = _ground_z(style, (999.0, 999.0), seed, [tuple(site)])[0]      # the natural ground at the site: on a plateau the flat clearing stays at that level instead of digging a pit down to the beach (HW-4: 2004, 2005, 2029)
+        if zn > 1.0: style['bench'] = round(float(zn), 3)
     carve = site if not headland else [999.0, 999.0]      # camp, wreck, hut and empty beaches get the flat clearing; a lighthouse or ruin keeps the natural rock
     M = _maps(style, carve, seed)
     land = M['land']
@@ -278,13 +281,15 @@ def recipe_for(seed, legacy_scene=False):
     el = round(float(rng.uniform(e0, e1)), 2)
     # camera
     cam = _camera(rng, M, cont, island, f, dwater, M_seed=seed)
+    fr = frame_cameras(dict(seed=seed, island=island, trees=trees, rock=rockd, content=cont, camera=cam), M=M)      # checked and adjusted from geometry (no rng use)
+    cam, cam_close = fr['camera'], fr['camera_close']
     cam_az = math.degrees(math.atan2(cam['target'][0] - cam['pos'][0], cam['target'][1] - cam['pos'][1])) % 360.0
     rel = float(rng.choice([-1, 1]) * rng.uniform(25, 115)) if rng.random() < 0.8 else float(rng.choice([-1, 1]) * rng.uniform(140, 175))
     sun_energy = round(min(4.1 / math.sin(math.radians(el)), 18.0) * (1 - 0.72 * oc), 2)
     tm = dict(name=tname, sun_el_deg=el, sun_az_deg=round((cam_az + rel) % 360.0, 2), sun_rel_deg=round(rel, 2), sun_colour=[round(c, 3) for c in scol], sun_energy=sun_energy,
-              sun_angle_deg=round(1.0 + 7.0 * oc, 2), sky_strength=sstr, exposure=round(-0.4 + xexp + 0.5 * oc, 3))
+              sun_angle_deg=round(1.0 + 7.0 * oc, 2), sky_strength=sstr, exposure=round(-0.4 + xexp + 0.5 * oc, 3), horizon_soften=round(0.65 * min(max((36.0 - el) / 22.0, 0.0), 1.0), 2))
     return dict(version=VERSION, seed=seed, legacy=False, island=island, rock=rockd, trees=trees, tufts=tufts, boulders=boulders, content=cont,
-                time=tm, weather=dict(name=wname, overcast=oc, haze=hz_), camera=cam, sea=dict(density=round(float(rng.uniform(0.55, 0.9)), 3)))
+                time=tm, weather=dict(name=wname, overcast=oc, haze=hz_), camera=cam, camera_close=cam_close, sea=dict(density=round(float(rng.uniform(0.55, 0.9)), 3)))
 
 def _ground_z(style, carve, seed, pts):
     with _style(style, carve):
@@ -321,6 +326,170 @@ def _camera(rng, M, cont, island, f, dwater, M_seed):
     return dict(kind=kind, pos=[round(float(v), 3) for v in pos], target=[round(float(v), 3) for v in tgt], lens=lens, fstop=11.0)
 
 # ----------------------------------------------------------------------------------------------- tree planning (numpy only; li_trees item format)
+# ----------------------------------------------------------------------------------------------- framing (HW-4: cameras inside rock, down into the fire, one object filling the frame, island tiny)
+# Everything here works from geometry (terrain height function, the subject's bounding sphere, a pinhole camera 36 x 24 mm): no rendering.
+FRAME = dict(cam_clear=1.2,       # camera at least this far above terrain (and above the sea surface) over a 1 m footprint
+             ray_clear=0.2,       # the line of sight stays this far above terrain until the subject
+             tree_dist=2.4,       # camera at least this far (horizontally) from a planted tree
+             gap=1.5,             # camera outside the subject's bounding sphere by this much
+             sub_lo=0.25, sub_hi=0.70,       # subject's projected diameter as a fraction of frame height
+             isl_w=0.35,          # wide cameras: the island covers at least this fraction of the frame width
+             pitch={'low_beach': 30.0, 'from_sea': 30.0, 'high_wide': 50.0, 'close': 35.0},   # looking down no more than this (degrees)
+             lens_max=50.0, frame_ndc=0.7)    # subject centre inside +-0.7 of the half frame
+SENSOR_W, SENSOR_H = 36.0, 24.0       # 3:2, the hero picture is 1200 x 800
+
+def _terrain(style, carve, seed):
+    """z(x, y) of terrain or the sea surface (never below 0) for arrays of points."""
+    def f(x, y):
+        X = np.atleast_1d(np.asarray(x, float)).reshape(1, -1); Y = np.atleast_1d(np.asarray(y, float)).reshape(1, -1)
+        with _style(style, carve):
+            h = IC.height_fields(X, Y, seed)['h']
+        return np.maximum(h[0], 0.0)
+    return f
+
+def _subject(rec, zf):
+    """what the picture is about, as a bounding sphere: (centre xyz, radius). camp = fire and tents, wreck/hut/lighthouse/ruins = the prop, nothing = the island."""
+    c = rec['content']; k = c['kind']; isl = rec['island']
+    if k == 'camp':
+        pts = np.array([c['camp']['fire']] + [t['pos'] for t in c['camp']['tents']], float)
+        m = pts.mean(0); r = float(np.clip(0.55 * np.hypot(*(pts - m).T).max() + 1.2, 2.6, 4.5)); x, y = float(m[0]), float(m[1]); h = 0.9
+    elif k == 'nothing':
+        x, y = isl['centre']; r = 0.6 * isl['radius']; h = 0.8
+    else:
+        p = c['props'][0]; x, y = p['pos']
+        if k == 'wreck': r, h = 0.5 * p['length'] + 0.4, 1.0
+        elif k == 'hut': r, h = 2.8, 1.2
+        elif k == 'lighthouse': r, h = 0.5 * p['height'] + 0.6, 0.5 * p['height']
+        else: r, h = 0.5 * max(p['plan']) + 0.8, 1.0
+    z = float(zf(x, y)[0]) + h
+    return np.array([x, y, z]), float(r)
+
+def _view(P, T):
+    fwd = T - P; fwd = fwd / np.linalg.norm(fwd)
+    right = np.cross(fwd, [0.0, 0.0, 1.0]); n = np.linalg.norm(right)
+    right = right / n if n > 1e-6 else np.array([1.0, 0.0, 0.0])
+    return fwd, right, np.cross(right, fwd)
+
+def _ndc(P, T, lens, pts):
+    fwd, right, up = _view(P, T); v = np.atleast_2d(pts) - P; z = v @ fwd
+    z = np.where(z > 0.05, z, np.nan)
+    return (v @ right) / z / (0.5 * SENSOR_W / lens), (v @ up) / z / (0.5 * SENSOR_H / lens), z
+
+def _measure(ctx, P, T, lens, kind):
+    zf, S, R = ctx['zf'], ctx['S'], ctx['R']
+    fwd = (T - P) / np.linalg.norm(T - P)
+    foot = [(P[0], P[1])] + [(P[0] + math.cos(a) * 1.0, P[1] + math.sin(a) * 1.0) for a in np.linspace(0, 2 * math.pi, 8, endpoint=False)]
+    fz = zf([q[0] for q in foot], [q[1] for q in foot])
+    D = float(np.linalg.norm(S - P))
+    n = 24; tt = np.linspace(0.04, max((D - R - 0.5) / D, 0.05), n)
+    rx = P[0] + fwd[0] * tt * D; ry = P[1] + fwd[1] * tt * D; rz = P[2] + fwd[2] * tt * D
+    ray_min = float((rz - zf(rx, ry)).min())
+    trees = ctx['trees']; tmin = float(np.hypot(trees[:, 0] - P[0], trees[:, 1] - P[1]).min()) if len(trees) else 99.0
+    size = (math.tan(math.asin(min(R / D, 0.999))) / (0.5 * SENSOR_H / lens)) if D > R else 9.0
+    sx, sy, _ = _ndc(P, T, lens, S)
+    ix, _, _ = _ndc(P, T, lens, ctx['isl'])
+    ix = ix[~np.isnan(ix)]
+    isl_w = float((np.clip(ix.max(), -1, 1) - np.clip(ix.min(), -1, 1)) / 2) if len(ix) else 0.0
+    return dict(clear=float(P[2] - fz.max()), ray=ray_min, tree=tmin, gap=D - R, dist=D, size=size, sx=float(sx[0]), sy=float(sy[0]), isl_w=isl_w, pitch=float(math.degrees(math.asin(-fwd[2]))))
+
+def _violations(m, kind):
+    F = FRAME; v = []
+    if m['clear'] < F['cam_clear'] - 1e-9: v.append('clear')
+    if m['ray'] < F['ray_clear'] - 1e-9: v.append('ray')
+    if m['tree'] < F['tree_dist'] - 1e-9: v.append('tree')
+    if m['gap'] < F['gap'] - 1e-9: v.append('gap')
+    if m['size'] > F['sub_hi']: v.append('big')
+    if m['size'] < F['sub_lo']: v.append('small')
+    if m['pitch'] > F['pitch'][kind]: v.append('pitch')
+    if kind == 'high_wide' and m['isl_w'] < F['isl_w']: v.append('island')
+    if abs(m['sx']) > F['frame_ndc'] or abs(m['sy']) > F['frame_ndc'] or math.isnan(m['sx']): v.append('aim')
+    return v
+
+def _adjust(ctx, P, T, lens, kind):
+    F = FRAME; P = np.array(P, float); T = np.array(T, float); raised = 0.0
+    for it in range(90):
+        m = _measure(ctx, P, T, lens, kind); v = _violations(m, kind)
+        if not v: break
+        if 'clear' in v:
+            P[2] += F['cam_clear'] - m['clear'] + 0.05
+        elif 'aim' in v:
+            T = ctx['S'].copy() if kind != 'high_wide' else 0.5 * T + 0.5 * ctx['S']
+            if kind == 'high_wide' and it > 6: T = ctx['S'].copy()
+        elif 'big' in v or 'gap' in v:
+            P = T + (P - T) * max(1.08, min(m['size'] / 0.55, 1.6)) if 'big' in v else T + (P - T) * 1.1       # aim for the middle of the band, not its edge
+        elif 'pitch' in v:
+            hd = math.hypot(P[0] - T[0], P[1] - T[1]); zmax = T[2] + hd * math.tan(math.radians(F['pitch'][kind] - 1.0))
+            if zmax - 0.0 >= 0.0 and P[2] > zmax: P[2] = zmax
+            else: P[:2] = T[:2] + (P[:2] - T[:2]) * 1.1
+        elif 'small' in v:
+            k_ = min(0.92, max(m['size'] / 0.36, 0.6))
+            if m['dist'] * k_ - ctx['R'] >= F['gap'] + 0.5: P = T + (P - T) * k_
+            elif lens < F['lens_max']: lens = min(lens + 3.0, F['lens_max'])
+            else: break
+        elif 'island' in v:
+            if m['size'] < F['sub_hi'] * 0.85: P = T + (P - T) * 0.93
+            else: break
+        elif 'tree' in v:
+            tr = ctx['trees']; k = int(np.hypot(tr[:, 0] - P[0], tr[:, 1] - P[1]).argmin()); d = P[:2] - tr[k]; n_ = np.linalg.norm(d) or 1.0
+            P[:2] = P[:2] + d / n_ * (F['tree_dist'] - m['tree'] + 0.3)        # step away from the nearest tree
+            if raised > 8: break
+            raised += 0.5
+        elif 'ray' in v:
+            P[2] += 0.7
+            if raised > 8: break
+            raised += 0.7
+        else:
+            break
+    m = _measure(ctx, P, T, lens, kind)
+    return P, T, lens, m, _violations(m, kind), it
+
+def _fit_camera(ctx, P, T, lens, kind):
+    """deterministic: adjust distance, height, aim and lens until every check passes; if one cannot be met, swing the camera round the subject (0, +-10, +-20 ... +-90 degrees) and try again."""
+    P = np.array(P, float); T = np.array(T, float); best = None
+    for ang in [0.0] + [sg * a for a in range(10, 100, 10) for sg in (1, -1)]:
+        c, s_ = math.cos(math.radians(ang)), math.sin(math.radians(ang)); d = P[:2] - ctx['S'][:2]
+        Pr = np.array([ctx['S'][0] + c * d[0] - s_ * d[1], ctx['S'][1] + s_ * d[0] + c * d[1], P[2]])
+        r = _adjust(ctx, Pr, T, lens, kind)
+        if best is None or len(r[4]) < len(best[1][4]): best = (ang, r)
+        if not r[4]: break
+    return best
+
+def _frame_record(ang, r, init, S, R):
+    P, T, lens, m, v, it = r
+    return dict(ok=not v, failed=v, clearance_m=round(m['clear'], 2), sight_clearance_m=round(m['ray'], 2), tree_distance_m=round(min(m['tree'], 99.0), 2), pitch_deg=round(m['pitch'], 1),
+                subject_frac=round(m['size'], 3), island_width_frac=round(m['isl_w'], 3), distance_m=round(m['dist'], 2), yaw_swing_deg=ang, iterations=it,
+                adjusted=bool(init['v']), initial=dict(violations=init['v'], subject_frac=round(init['m']['size'], 3), pitch_deg=round(init['m']['pitch'], 1), clearance_m=round(init['m']['clear'], 2), distance_m=round(init['m']['dist'], 2)),
+                subject=dict(centre=[round(float(x), 2) for x in S], radius=round(R, 2)), band=[FRAME['sub_lo'], FRAME['sub_hi']])
+
+def frame_cameras(rec, trees_items=None, M=None):
+    """sets rec['camera'] (hero) and rec['camera_close'] to checked cameras and records 'framing' in each. rec needs seed, island, trees, rock, content, camera. Returns rec."""
+    isl = rec['island']; seed = rec['seed']
+    zf = _terrain(isl['style'], isl['carve'], seed)
+    S, R = _subject(rec, zf)
+    items = trees_items if trees_items is not None else plan_trees(rec)['items']
+    trees = np.array([[i['x'], i['y']] for i in items if i['kind'] in ('tree', 'wind')], float).reshape(-1, 2)
+    M = M if M is not None else _maps(isl['style'], isl['carve'], seed)
+    sel = (M['land'] & (M['H'] > 0.15))[::2, ::2]
+    ip = np.stack([M['X'][::2, ::2][sel], M['Y'][::2, ::2][sel], M['H'][::2, ::2][sel]], 1) if sel.any() else np.array([[0.0, 0.0, 0.0]])
+    ctx = dict(zf=zf, S=S, R=R, trees=trees, isl=ip)
+    c = rec['content']; cx, cy = c['site']; th = c['theta']
+    cam = rec['camera']; P0 = np.array(cam['pos'], float); T0 = np.array(cam['target'], float)
+    if cam['kind'] != 'high_wide':
+        T0 = S.copy()
+    init = dict(m=_measure(ctx, P0, T0, cam['lens'], cam['kind']), v=None); init['v'] = _violations(init['m'], cam['kind'])
+    ang, r = _fit_camera(ctx, P0, T0, cam['lens'], cam['kind'])
+    P, T, lens = r[0], r[1], r[2]
+    cam.update(pos=[round(float(v), 3) for v in P], target=[round(float(v), 3) for v in T], lens=float(round(lens, 1)), framing=_frame_record(ang, r, init, S, R))
+    # the close-up view: the old formula's spot (a few metres from the site, a little above it) as the start, then the same checks
+    cth, sth = math.cos(th), math.sin(th)
+    px, py = cx + cth * 3.5 - sth * -9.0, cy + sth * 3.5 + cth * -9.0
+    zc = float(zf(cx, cy)[0])
+    Pc = np.array([px, py, max(zc + 2.65, float(zf(px, py)[0]) + 1.5)]); Tc = S.copy()
+    initc = dict(m=_measure(ctx, Pc, Tc, 40.0, 'close'), v=None); initc['v'] = _violations(initc['m'], 'close')
+    angc, rc = _fit_camera(ctx, Pc, Tc, 40.0, 'close')
+    rec['camera_close'] = dict(kind='close', pos=[round(float(v), 3) for v in rc[0]], target=[round(float(v), 3) for v in rc[1]], lens=float(round(rc[2], 1)), fstop=11.0, framing=_frame_record(angc, rc, initc, S, R))
+    return rec
+
 def plan_trees(recipe, res=1.0, half=25.0):
     """species items for the Blender scene, from the island height map: slope, rock, shelter from the wind side, wetness near the water and the
     soil of the rock type go into li_trees.species_weights (the same rules the landform scenes use), times the recipe's mix. Deterministic.

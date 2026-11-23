@@ -13,12 +13,15 @@ Night plan (--phases): jobs are queued in phases so that if the deadline arrives
              (and a wide view with --lf-wide); the seed is the tool's world seed here, not the legacy island seed
   recipes  : (no Blender) write recipe_seed<N>.json for every seed from blender/recipe.py: island type, rock, trees, what is there, time, weather, camera
   variety  : (no Blender, run last) blender/variety_judge.py on the hero_seed*.png of this batch -> variety.json and variety.txt (similarity of pictures, look-alike pairs, recipe spread)
+Every picture job is checked after it runs (picture_guard.py: mean luminance, lit fraction, spread); a black or flat picture is a failed job (returncode 4, message in the log and results.json). --keep-going logs it and carries on.
 The previews, hires and top/close views are built from each seed's recipe (hero_render.py); --legacy-scene gives the old camp picture on every seed instead (the HW-3 look).
 Default --phases previews,bakes (the original behaviour was hero + bake per seed).
 """
 import argparse, hashlib, json, os, subprocess, sys, time, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import picture_guard as PG
 ap = argparse.ArgumentParser()
 ap.add_argument('--blender', required=True)
 ap.add_argument('--seeds', required=True, help='comma separated integers')
@@ -28,6 +31,7 @@ ap.add_argument('--max-minutes', type=float, default=480)
 ap.add_argument('--device', default='CPU', choices=['CPU', 'GPU'])
 ap.add_argument('--lf-provinces', default='A', help='landform phase: comma list from A,B,C (gneiss, sandstone, basalt)')
 ap.add_argument('--lf-samples', type=int, default=64); ap.add_argument('--lf-wide', action='store_true', help='landform phase: also a wide view of each world')
+ap.add_argument('--keep-going', action='store_true', help='a black or flat picture fails its job and is logged, but the batch carries on with the next job (default: stop at the first failure)')
 ap.add_argument('--hero-samples', type=int, default=100)
 ap.add_argument('--bake-samples', type=int, default=32)
 ap.add_argument('--hero-w', type=int, default=1200); ap.add_argument('--hero-h', type=int, default=800)
@@ -87,7 +91,16 @@ def run(label, script, args, outputs):
     for o in outputs:
         if os.path.exists(o):
             files[os.path.relpath(o, a.out)] = {'bytes': os.path.getsize(o), 'sha256': sha(o)}
-    return {'label': label, 'returncode': rc, 'seconds': sec, 'device': device_line, 'files': files}
+    # ground truth: a file that exists is not a good picture. Every png/jpg output is checked (mean luminance, lit fraction, spread); black or flat = failed job
+    bad_pic = ''
+    for o in outputs:
+        if o.lower().endswith(('.png', '.jpg', '.jpeg')) and os.path.exists(o):
+            ok, msg, st = PG.check_picture(o)
+            if not ok:
+                bad_pic = msg; rc = rc or 4
+                with open(log, 'a') as lf:
+                    lf.write('\n' + msg + '\n')
+    return {'label': label, 'returncode': rc, 'seconds': sec, 'device': device_line, 'files': files, 'picture_check': bad_pic or 'ok'}
 
 results = {'started': datetime.datetime.now().isoformat(timespec='seconds'), 'device_requested': a.device, 'seeds': seeds, 'jobs': [], 'stopped_because': 'finished'}
 def save():
@@ -147,7 +160,9 @@ for label, script, args, outputs in queue():
     if a.require_gpu and a.device == 'GPU' and not (r['device'].startswith('LI_DEVICE_USED') and (not a.gpu_name or a.gpu_name.lower() in r['device'].lower())):
         stop('wrong device in ' + label + ': ' + (r['device'] or 'no device line in the log'))
     if r['returncode'] != 0 or not r['files']:
-        stop('failure in ' + label)
+        if a.keep_going and r.get('picture_check', 'ok') != 'ok':
+            results.setdefault('bad_pictures', []).append({'label': label, 'message': r['picture_check']}); save(); continue
+        stop('failure in ' + label + (': ' + r['picture_check'] if r.get('picture_check', 'ok') != 'ok' else ''))
 if 'variety' in a.phases.split(','):
     vj = os.path.join(HERE, 'variety_judge.py'); vout = os.path.join(a.out, 'variety.txt')
     with open(vout, 'w') as vf:

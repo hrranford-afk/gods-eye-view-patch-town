@@ -103,7 +103,7 @@ def _base(u, v, seed):
         h = _style_height(h, d, d_nom, u, v, pu, pv, seed)
     # camp clearing: gentle bench near sea level, grass
     dc = np.sqrt((u - CAMP[0]) ** 2 + ((v - CAMP[1]) * 1.3) ** 2)
-    bench = 0.55 + 0.12 * (fbm(u * .3, v * .3, seed + 9, 3) - .5)
+    bench = (STYLE.get('bench', 0.55) if STYLE is not None else 0.55) + 0.12 * (fbm(u * .3, v * .3, seed + 9, 3) - .5)
     wc = smooth(9.5, 3.5, dc)
     land = h > 0
     h = np.where(land, h * (1 - wc) + np.maximum(bench, 0) * wc * (h > -0.2), h)

@@ -639,8 +639,11 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0, half=None, centre=(0.0, 0
     return ob
 
 # ---------------------------------------------------------------- sky and light
-def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, haze=0.0):
-    """overcast 0..1 greys the camera-ray sky (cloud cover without a cloud model); haze 0..1 adds aerosol and air (a whiter, flatter horizon). 0, 0 = original."""
+def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, haze=0.0, horizon_soften=0.0):
+    """overcast 0..1 greys the camera-ray sky (cloud cover without a cloud model); haze 0..1 adds aerosol and air (a whiter, flatter horizon). 0, 0 = original.
+    horizon_soften 0..1 (default 0 = original, bit for bit): on low-sun pictures the camera sees only the lowest few degrees of the sky, which is one saturated gold slab.
+    This blends the camera-ray sky toward a pale, slightly cool grey of the same brightness right at the horizon, fading out by about 20 degrees up.
+    Only Colour Ramp, RGB to BW and Mix nodes are used (all present in Blender 3.6 and later)."""
     w = bpy.data.worlds.new('Sky'); bpy.context.scene.world = w
     w.use_nodes = True; nt = w.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputWorld', (400, 0)); bg = node(nt, 'ShaderNodeBackground', (200, 0)); sk = node(nt, 'ShaderNodeTexSky', (-100, 0))
@@ -659,12 +662,21 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, ha
     neg = node(nt, 'ShaderNodeMath', (-300, -400), operation='MULTIPLY'); link(nt, sz.outputs['Z'], neg.inputs[0]); neg.inputs[1].default_value = -1.0
     blue = ramp(nt, neg.outputs[0], [(0.0, (2.2, 2.8, 3.4, 1)), (0.25, (0.8, 1.6, 3.2, 1)), (1.0, (0.2, 0.6, 2.4, 1))], (-100, -400))
     mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA'); link(nt, lp.outputs['Is Glossy Ray'], S(mix, 'inputs', 'Factor'))
+    sky_col = sk.outputs['Color']
+    if horizon_soften > 0:
+        bw = node(nt, 'ShaderNodeRGBToBW', (-300, 450)); link(nt, sky_col, bw.inputs['Color'])
+        tint = node(nt, 'ShaderNodeMix', (-100, 450), data_type='RGBA', blend_type='MULTIPLY'); S(tint, 'inputs', 'Factor').default_value = 1.0
+        link(nt, bw.outputs['Val'], S(tint, 'inputs', 'A')); S(tint, 'inputs', 'B').default_value = (0.93, 0.98, 1.07, 1)
+        hf = ramp(nt, neg.outputs[0], [(0.0, (float(horizon_soften),) * 3 + (1,)), (0.12, (0.6 * float(horizon_soften),) * 3 + (1,)), (0.35, (0.0, 0.0, 0.0, 1))], (-100, 650))
+        hm = node(nt, 'ShaderNodeMix', (100, 500), data_type='RGBA')
+        link(nt, hf.outputs['Color'], S(hm, 'inputs', 'Factor')); link(nt, sky_col, S(hm, 'inputs', 'A')); link(nt, S(tint, 'outputs', 'Result'), S(hm, 'inputs', 'B'))
+        sky_col = S(hm, 'outputs', 'Result')
     if overcast > 0:
         oc = node(nt, 'ShaderNodeMix', (-100, 300), data_type='RGBA'); S(oc, 'inputs', 'Factor').default_value = float(overcast)
         S(oc, 'inputs', 'B').default_value = (0.20, 0.215, 0.235, 1)
-        link(nt, sk.outputs['Color'], S(oc, 'inputs', 'A')); link(nt, S(oc, 'outputs', 'Result'), S(mix, 'inputs', 'A'))
+        link(nt, sky_col, S(oc, 'inputs', 'A')); link(nt, S(oc, 'outputs', 'Result'), S(mix, 'inputs', 'A'))
     else:
-        link(nt, sk.outputs['Color'], S(mix, 'inputs', 'A'))
+        link(nt, sky_col, S(mix, 'inputs', 'A'))
     link(nt, blue.outputs['Color'], S(mix, 'inputs', 'B'))
     link(nt, S(mix, 'outputs', 'Result'), bg.inputs['Color']); bg.inputs['Strength'].default_value = strength
     link(nt, bg.outputs['Background'], out.inputs['Surface'])
