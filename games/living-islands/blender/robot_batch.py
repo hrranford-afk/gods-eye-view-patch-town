@@ -8,6 +8,7 @@
 Default: 60 seeds (1 to 60), phases recipes,models,previews,variety. Fully deterministic: the same seeds give the same recipes, the same GLB bytes and (on the same renderer) the same pictures.
 It does not delete anything, use the network, or touch anything outside --out. Stops at the first failure unless --keep-going, at the deadline, or after --max-minutes. results.json holds timings, sizes and SHA-256.
   python3 robot_batch.py --blender /path/to/blender --out OUTDIR [--seeds 1,2,3 | --count 60] [--device GPU --gpu-name Radeon --require-gpu] [--phases recipes,models]
+--radical (default off) makes the same batch for the radical recipes (robot_recipe_for(seed, radical=True): the ear scout and the six new body plans, built by robot_radical.py, previews framed per plan); everything else is unchanged.
 An order for hardware would run: python3 robot_batch.py --phases recipes,models (any python3 with numpy), then the same command with --phases previews,variety,sheet and --blender (it reuses the GLBs already in --out)."""
 import argparse, hashlib, json, os, subprocess, sys, time, datetime
 
@@ -30,7 +31,8 @@ ap.add_argument('--gpu-name', default='', help='only use a GPU whose name contai
 ap.add_argument('--require-gpu', action='store_true', help='stop instead of falling back to the CPU, and check every job log shows the wanted GPU')
 ap.add_argument('--list-devices', action='store_true', help='read-only: list the compute devices Blender can see, then exit')
 ap.add_argument('--w', type=int, default=640); ap.add_argument('--h', type=int, default=420); ap.add_argument('--samples', type=int, default=24)
-ap.add_argument('--zoom', type=float, default=0.96, help='previews: camera distance factor (below 1 = further out); the same camera for every robot, so the size differences are real (the bottle on the sand is for scale)')
+ap.add_argument('--radical', action='store_true', help='make the radical recipes (the ear scout and the six new plans: walker, pontoon, spotter, roller, snail, crab) instead of the committed family; default off')
+ap.add_argument('--zoom', type=float, default=None, help='previews: camera distance factor (below 1 = further out; default 0.96, or with --radical a distance per plan: tall machines are framed further out); the same camera line for every robot, so the size differences are real (the bottle on the sand is for scale)')
 ap.add_argument('--keep-going', action='store_true', help='a black or flat picture or a failed job is logged and the batch carries on (default: stop at the first failure)')
 ap.add_argument('--deadline', default='', help='local time HH:MM; no new job starts after it')
 ap.add_argument('--max-minutes', type=float, default=480)
@@ -60,7 +62,7 @@ def sha(path):
     return h.hexdigest()
 
 
-results = {'started': datetime.datetime.now().isoformat(timespec='seconds'), 'device_requested': a.device, 'seeds': seeds, 'phases': phases, 'jobs': [], 'stopped_because': 'finished'}
+results = {'radical': a.radical, 'started': datetime.datetime.now().isoformat(timespec='seconds'), 'device_requested': a.device, 'seeds': seeds, 'phases': phases, 'jobs': [], 'stopped_because': 'finished'}
 def save():
     with open(os.path.join(a.out, 'results.json'), 'w') as f: json.dump(results, f, indent=1)
 
@@ -78,7 +80,7 @@ def file_info(paths):
 # ------------------------------------------------------------------------------------------------- recipes
 if 'recipes' in phases:
     for s in seeds:
-        RR.write_recipe(RR.robot_recipe_for(s), os.path.join(a.out, 'robot_recipe_seed%d.json' % s))
+        RR.write_recipe(RR.robot_recipe_for(s, radical=a.radical), os.path.join(a.out, 'robot_recipe_seed%d.json' % s))
     results['jobs'].append({'label': 'recipes', 'returncode': 0, 'seconds': 0, 'device': '', 'files': {'robot_recipe_seed%d.json' % s: {} for s in seeds}}); save()
 
 # ------------------------------------------------------------------------------------------------- models: python3 + numpy, a few robots at a time
@@ -86,7 +88,7 @@ if 'models' in phases:
     lods = [x.strip() for x in a.lods.split(',') if x.strip()]; todo = list(seeds); running = []; done_fail = None
     def launch(s):
         log = os.path.join(a.out, 'models_seed%d.log' % s); lf = open(log, 'w')
-        cmd = [sys.executable, os.path.join(HERE, 'robot_build.py'), '--seed', str(s), '--out', a.out, '--lods', ','.join(lods)]
+        cmd = [sys.executable, os.path.join(HERE, 'robot_radical.py' if a.radical else 'robot_build.py'), '--seed', str(s), '--out', a.out, '--lods', ','.join(lods)]
         if os.name == 'posix' and os.path.exists('/usr/bin/nice'): cmd = ['/usr/bin/nice', '-n', '10'] + cmd
         return (s, time.time(), lf, subprocess.Popen(cmd, stdout=lf, stderr=subprocess.STDOUT))
     while todo or running:
@@ -130,12 +132,16 @@ if 'previews' in phases:
     if not a.blender: print('previews need --blender'); stop('no blender given for the previews phase')
     empty = os.path.join(a.out, 'robot_empty.png')          # the same scene with no robot: the variety phase uses it to look at the robots alone
     if not os.path.exists(empty):
-        late(); r = run_blender('robot_empty', ['--glb', 'none', '--out', empty, '--w', str(a.w), '--h', str(a.h), '--samples', str(a.samples), '--zoom', str(a.zoom)], [empty]); results['jobs'].append(r); save()
+        late(); r = run_blender('robot_empty', ['--glb', 'none', '--out', empty, '--w', str(a.w), '--h', str(a.h), '--samples', str(a.samples), '--zoom', str(a.zoom if a.zoom is not None else 0.96)], [empty]); results['jobs'].append(r); save()
     for s in seeds:
         late()
         glb = os.path.join(a.out, 'robot_seed%d_%s.glb' % (s, a.preview_lod)); png = os.path.join(a.out, 'robot_seed%d.png' % s)
         if not os.path.exists(glb): stop('missing %s: run the models phase first' % os.path.basename(glb))
-        r = run_blender('robot_seed%d' % s, ['--glb', glb, '--out', png, '--w', str(a.w), '--h', str(a.h), '--samples', str(a.samples), '--zoom', str(a.zoom)], [png])
+        zoom, tz = (a.zoom if a.zoom is not None else 0.96), 0.30
+        if a.radical:
+            import robot_radical as RAD
+            vz, tz = RAD.preview_view(RR.robot_recipe_for(s, radical=True)); zoom = a.zoom if a.zoom is not None else vz
+        r = run_blender('robot_seed%d' % s, ['--glb', glb, '--out', png, '--w', str(a.w), '--h', str(a.h), '--samples', str(a.samples), '--zoom', str(zoom), '--target-z', str(tz)], [png])
         results['jobs'].append(r); save()
         if a.require_gpu and a.device == 'GPU' and not (r['device'].startswith('LI_DEVICE_USED') and (not a.gpu_name or a.gpu_name.lower() in r['device'].lower())):
             stop('wrong device in robot_seed%d: %s' % (s, r['device'] or 'no device line in the log'))
@@ -151,7 +157,7 @@ if 'variety' in phases:
     results['jobs'].append({'label': 'variety', 'returncode': rc, 'seconds': 0, 'device': '', 'files': {'variety.txt': {}, 'variety.json': {}}}); save()
     # the pictures are mostly the same sand and sky, so the headline number is high for any set of robots. Second number: only the pixels that differ from the empty scene (robot and its shadow), the rest flat grey.
     empty = os.path.join(a.out, 'robot_empty.png')
-    if os.path.exists(empty):
+    if os.path.exists(empty) and not a.radical:      # with --radical every plan has its own framing, so the empty scene is not the same picture: this second number is skipped
         from PIL import Image
         import numpy as np
         bg = np.asarray(Image.open(empty).convert('RGB')).astype(int)

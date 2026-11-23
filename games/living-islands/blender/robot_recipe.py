@@ -117,16 +117,25 @@ def legacy_recipe():
                 quirks=['patch', 'mirror', 'trinket', 'panel'], modules=[], parts=[])
 
 
-def robot_recipe_for(seed):
-    """the recipe of a seed: plain values only. Deterministic: the same seed gives the same recipe on every machine (python's random.Random seeded from the seed)."""
+def robot_recipe_for(seed, radical=False):
+    """the recipe of a seed: plain values only. Deterministic: the same seed gives the same recipe on every machine (python's random.Random seeded from the seed).
+    radical=False (the default) is the committed tortoise-plan family, unchanged. radical=True gives the new body plans (see ROBOT_RADICAL.md): a 'plan' field says which, and the legacy seed is not special."""
     seed = int(seed)
+    if radical:
+        return radical_recipe_for(seed)
     if seed == LEGACY_SEED:
         return legacy_recipe()
-    rng = random.Random('robot-recipe-%d-%d' % (VERSION, seed))
+    return _make_recipe(seed, random.Random('robot-recipe-%d-%d' % (VERSION, seed)))
+
+
+def _make_recipe(seed, rng, role_override=None, force=None):
+    """the body of robot_recipe_for for a non-legacy seed. role_override and force (drive, wheels_n, pal_w, p_part) are used only by the radical scout; with both None every draw is the committed one."""
+    force = force or {}
     u = lambda lo, hi: rng.uniform(lo, hi)
     pick = lambda items: items[rng.randrange(len(items))]
     wpick = lambda d: rng.choices(list(d.keys()), weights=list(d.values()), k=1)[0]
     role = ROLES[rng.randrange(len(ROLES))]
+    if role_override: role = role_override
     t = TPL[role]
     # body plan
     scale = u(*t['scale']); wid = u(*t['wid']); lenf = u(0.95, 1.08)
@@ -135,14 +144,15 @@ def robot_recipe_for(seed):
     tilt_l = u(*t['tilt']); tilt_r = max(0.0, tilt_l + u(-3.0, 3.0))
     finish = 'solar' if rng.random() < t['p_cells'] else 'painted'
     drive = 'tracks' if rng.random() < t['p_tracks'] else 'wheels'
-    axle = u(*t['track_axle']); tw = u(*t['track_w']); wheels_n = pick([2, 2, 3]); wheel_r = u(0.115, 0.135)
+    drive = force.get('drive', drive)
+    axle = u(*t['track_axle']); tw = u(*t['track_w']); wheels_n = pick([2, 2, 3]); wheels_n = force.get('wheels_n', wheels_n); wheel_r = u(0.115, 0.135)
     hs = u(*t['head']); head_scale = [_r(hs * u(0.92, 1.08)), _r(hs * u(0.86, 1.12)), _r(hs * u(0.92, 1.08))]
     shape = pick(list(HEAD_SHAPES)); roll = u(-8.0, 8.0); visor = pick(t['visor'])
     l1 = u(*t['arm1']); l2 = l1 * u(0.84, 1.0)
     joints = pick(t['joints']); grip = pick(t['gripper'])
     x0 = u(*t['hop_x0']); z1 = u(*t['hop_z1']); hw = u(0.34, 0.38); lid = pick(t['lid']); prop = pick([0.0, 0.0, 8.0, 16.0, 26.0]) if lid not in ('none',) else 0.0
     # paint, wear, lamp
-    pal = wpick(PALETTE_BY_ROLE[role]); lamp = wpick({k: (3 if k == 'amber_green' else 1.5) for k in LAMP_CODES})
+    pal = wpick(force.get('pal_w', PALETTE_BY_ROLE[role])); lamp = wpick({k: (3 if k == 'amber_green' else 1.5) for k in LAMP_CODES})
     age = u(*t['age']); salt = u(0.35, 1.7); rust = u(0.35, 1.8); chips = u(0.45, 1.8)
     age_f = min(2.0, 0.4 + 0.6 * (age / 14.0))
     # modules: the planter grows things; others now and then carry a compost tray; the sorter sometimes has a seedling bed in its bin
@@ -160,7 +170,7 @@ def robot_recipe_for(seed):
         if tot <= 0: break
         q = wpick({k: v for k, v in w.items() if v > 0}); quirks.append(q); w[q] = 0
     quirks = [q for q in QUIRK_NAMES if q in quirks]
-    parts = [PART_OF_ROLE[role]] if (role in PART_OF_ROLE and rng.random() < t['p_part']) else []
+    parts = [PART_OF_ROLE[role]] if (role in PART_OF_ROLE and rng.random() < force.get('p_part', t['p_part'])) else []
     return dict(version=VERSION, seed=seed, legacy=False, role=role, name=ROLE_NAMES[role], concept=CONCEPT[role],
                 body=dict(scale=_r(scale), length_f=_r(lenf), width_f=_r(wid),
                           shell=dict(dome_h=_r(dome), half_length=_r(half_len), half_width=_r(half_wid), shape_e2=_r(e2), split_count=int(split), slot_half=_r(slot), tilt_l_deg=_r(tilt_l, 2), tilt_r_deg=_r(tilt_r, 2), finish=finish),
@@ -175,11 +185,102 @@ def robot_recipe_for(seed):
                 quirks=quirks, modules=modules, parts=parts)
 
 
+# ----------------------------------------------------------------------------------------------- RADICAL body plans (robot_recipe_for(seed, radical=True); built by blender/robot_radical.py)
+# the scout is the committed tortoise-plan builder with the favourite look forced (small, three wheels a side, big ears, mustard paint most of the time); the other six are new plans.
+RADICAL_PLANS = ('scout', 'walker', 'pontoon', 'spotter', 'roller', 'snail', 'crab')
+NEW_PLANS = RADICAL_PLANS[1:]
+PLAN_WEIGHTS = {'scout': 4, 'walker': 2, 'pontoon': 2, 'spotter': 2, 'roller': 2, 'snail': 2, 'crab': 2}      # the ear scout is about a quarter of the set: one of the favourite looks, and the one that comes most often
+PLAN_ROLE = {'scout': 'scout', 'walker': 'maintainer', 'pontoon': 'cleaner', 'spotter': 'scout', 'roller': 'planter', 'snail': 'hauler', 'crab': 'sorter'}
+PLAN_NAMES = {'scout': 'ear scout', 'walker': 'legged walker', 'pontoon': 'pontoon boat-bot', 'spotter': 'tall spotter', 'roller': 'round roller', 'snail': 'snail hauler', 'crab': 'crab sorter'}
+PLAN_PALETTE = {      # plan -> weights over PALETTES (a family look, not a rule)
+    'scout': {'mustard_clay': 6, 'dune_ochre': 1.5, 'cream_salt': 1, 'brick_dust': 1, 'rose_lichen': 0.5},
+    'walker': {'tin_grey': 2, 'dune_ochre': 2, 'teal_moss': 2, 'mustard_clay': 1.5, 'brick_dust': 1},
+    'pontoon': {'harbour_navy': 3, 'cream_salt': 2, 'slate_sea': 2, 'brick_dust': 1, 'mustard_clay': 1},
+    'spotter': {'cream_salt': 2, 'rose_lichen': 2, 'plum_dusk': 1.5, 'mustard_clay': 1.5, 'teal_moss': 1},
+    'roller': {'brick_dust': 2, 'rose_lichen': 2, 'mustard_clay': 2, 'sage': 1, 'dune_ochre': 1},
+    'snail': {'teal_moss': 2, 'sage': 2, 'plum_dusk': 2, 'slate_sea': 1, 'dune_ochre': 1},
+    'crab': {'brick_dust': 3, 'rose_lichen': 2, 'dune_ochre': 1.5, 'slate_sea': 1, 'tin_grey': 1},
+}
+PLAN_PART = {'scout': 'ears', 'spotter': 'ears', 'walker': 'tool_rack', 'crab': 'side_bins'}      # the role part each plan may carry
+PLAN_PART_P = {'scout': 1.0, 'spotter': 0.55, 'walker': 0.6, 'crab': 0.7}
+PLAN_LIDS = {'walker': ['flat', 'slatted', 'grille'], 'pontoon': ['domed', 'grille', 'none', 'flat'], 'spotter': ['flat', 'slatted', 'domed'], 'roller': ['none', 'flat', 'domed'], 'snail': ['domed'], 'crab': ['flat', 'slatted', 'grille']}
+PLAN_HEAD = {'walker': (1.05, 1.30), 'pontoon': (0.95, 1.20), 'spotter': (1.25, 1.55), 'roller': (1.00, 1.25), 'snail': (1.00, 1.25), 'crab': (1.25, 1.55)}
+PLAN_VISORS = {'walker': ['band', 'trio', 'slit'], 'pontoon': ['band', 'twin', 'slit'], 'spotter': ['tall', 'twin', 'trio'], 'roller': ['band', 'twin', 'tall'], 'snail': ['slit', 'band', 'twin'], 'crab': ['twin', 'trio', 'band']}
+PLAN_AGE = {'walker': (12, 34), 'pontoon': (10, 30), 'spotter': (5, 18), 'roller': (6, 22), 'snail': (14, 40), 'crab': (8, 26)}
+PLAN_NQ = {'walker': [1, 2, 2, 3], 'pontoon': [0, 1, 2, 2], 'spotter': [0, 1, 1, 2], 'roller': [0, 1, 1, 2], 'snail': [1, 1, 2, 3], 'crab': [0, 1, 2, 2, 3]}
+
+
+def plan_for_seed(seed):
+    """the mix rule: seeds go in blocks of 16 (a shuffled bag of 4 ear scouts and 2 of each new plan, shuffled by the block number), so any 16 seeds in a row hold 4 scouts and 2 of every other plan, and the scout is about a quarter of the set"""
+    block, k = divmod(int(seed) - 1, sum(PLAN_WEIGHTS.values())); bag = [p for p, n in PLAN_WEIGHTS.items() for _ in range(n)]
+    random.Random('robot-radical-bag-%d-%d' % (VERSION, block)).shuffle(bag); return bag[k]
+
+
+def _plan_dims(plan, rng):
+    u = lambda lo, hi: round(rng.uniform(lo, hi), 4)
+    if plan == 'walker':
+        legs = rng.choice([4, 6, 6]); six = legs == 6      # six legs: a long low bug; four legs: a taller, shorter animal
+        return dict(legs=legs, gait='tripod' if six else 'trot', body_len=u(0.92, 1.02) if six else u(0.70, 0.80), knee_up=u(0.14, 0.20) if six else u(0.06, 0.12), stance=u(0.44, 0.50) if six else u(0.54, 0.62), splay=u(0.10, 0.16) if six else u(0.04, 0.08),
+                    limp=(rng.randrange(legs) if rng.random() < 0.55 else -1), stagger=u(0.02, 0.05))
+    if plan == 'pontoon':
+        return dict(drive=rng.choice(['paddle', 'paddle', 'prop']), float_len=u(1.15, 1.32), float_gap=u(0.28, 0.33), bow=rng.choice(['round', 'pointed']), float_h=u(0.19, 0.24), rail=rng.choice([0, 1]))
+    if plan == 'spotter':
+        v = rng.choice(['stilts', 'stilts', 'mast']); return dict(variant=v, legs=rng.choice([3, 4, 4]), hip_z=u(0.84, 1.02), pod_up=u(0.0, 0.06), brace=rng.choice([0, 1, 1]), mast_h=u(0.95, 1.2))
+    if plan == 'roller':
+        return dict(ball_r=u(0.31, 0.39), ball_w=u(0.46, 0.60), tail=u(0.34, 0.46), neck_h=u(0.78, 0.90), tread=rng.choice(['lugs', 'ribs']), style=rng.choice(['banded', 'tyre']))
+    if plan == 'snail':
+        return dict(coil_r=u(0.26, 0.33), turns=u(1.5, 2.0), body_len=u(0.98, 1.12), track_w=u(0.28, 0.34), head_up=u(0.06, 0.16), coil_style=rng.choice(['spiral', 'rings']))
+    return dict(body_w=u(0.62, 0.74), legs_per_side=rng.choice([2, 3, 3]), claw_scale=u(0.92, 1.12), claw_pose=rng.choice(['one_up', 'both_down', 'wide']), trays=rng.choice([0, 1, 1]))      # crab
+
+
+def radical_recipe_for(seed):
+    """a recipe of the radical set: the ear scout (the committed generic builder, favourite look forced) or one of six new plans. Plain values, deterministic."""
+    seed = int(seed); rng = random.Random('robot-radical-%d-%d' % (VERSION, seed))
+    plan = plan_for_seed(seed)
+    if plan == 'scout':
+        rec = _make_recipe(seed, random.Random('robot-radical-scout-%d-%d' % (VERSION, seed)), role_override='scout', force=dict(drive='wheels', wheels_n=3, pal_w=PLAN_PALETTE['scout'], p_part=1.0))
+        rec['plan'] = 'scout'; rec['radical'] = True; rec['name'] = PLAN_NAMES['scout']; rec['concept'] = 'ear scout (the favourite look)'
+        return rec
+    role = PLAN_ROLE[plan]; u = lambda lo, hi: rng.uniform(lo, hi); pick = lambda items: items[rng.randrange(len(items))]
+    wpick = lambda d: rng.choices(list(d.keys()), weights=list(d.values()), k=1)[0]
+    dims = _plan_dims(plan, rng)
+    split = pick([1, 2, 2, 4]); finish = 'solar' if rng.random() < 0.6 else 'painted'; tilt_l = pick([0.0, 0.0, 4.0, 8.0, 12.0]); tilt_r = max(0.0, tilt_l + u(-3.0, 3.0))
+    hs = u(*PLAN_HEAD[plan]); head_scale = [_r(hs * u(0.92, 1.08)), _r(hs * u(0.86, 1.12)), _r(hs * u(0.92, 1.08))]; shape = pick(list(HEAD_SHAPES)); visor = pick(PLAN_VISORS[plan]); roll = u(-8.0, 8.0)
+    lid = pick(PLAN_LIDS[plan]); prop = pick([0.0, 0.0, 8.0, 16.0]) if lid != 'none' else 0.0
+    modules = []
+    if plan == 'roller' and rng.random() < 0.5: modules = ['seedbed', 'grow_light']; lid = 'none'; prop = 0.0
+    elif plan in ('walker', 'pontoon') and rng.random() < 0.12: modules = ['compost_tray']
+    pal = wpick(PLAN_PALETTE[plan]); lamp = wpick({k: (3 if k == 'amber_green' else 1.5) for k in LAMP_CODES})
+    lo, hi = PLAN_AGE[plan]; age = u(lo, hi); salt = u(0.35, 1.7); rust = u(0.35, 1.8); chips = u(0.45, 1.8); age_f = min(2.0, 0.4 + 0.6 * (age / 14.0))
+    nq = pick(PLAN_NQ[plan]); w = dict(zip(QUIRK_NAMES, ROLE_QUIRK_BIAS[role])); quirks = []
+    for _ in range(nq):
+        for q in list(w):
+            if q in quirks or (lid == 'none' and q in ('trinket', 'plant_pot')) or ('seedbed' in modules and q == 'plant_pot'): w[q] = 0
+        if sum(w.values()) <= 0: break
+        q = wpick({k: v for k, v in w.items() if v > 0}); quirks.append(q); w[q] = 0
+    quirks = [q for q in QUIRK_NAMES if q in quirks]
+    parts = [PLAN_PART[plan]] if (plan in PLAN_PART and rng.random() < PLAN_PART_P[plan]) else []
+    scale = {'walker': u(0.92, 1.0), 'pontoon': u(0.84, 0.92), 'spotter': u(0.84, 0.94), 'roller': u(0.90, 1.0), 'snail': u(0.86, 0.94), 'crab': u(0.90, 1.0)}[plan]
+    return dict(version=VERSION, seed=seed, legacy=False, radical=True, plan=plan, role=role, name=PLAN_NAMES[plan], concept='radical plan',
+                body=dict(scale=_r(scale), length_f=1.0, width_f=1.0, dims=dims,
+                          shell=dict(split_count=int(split), tilt_l_deg=_r(tilt_l, 2), tilt_r_deg=_r(tilt_r, 2), finish=finish),
+                          drive=dict(type=plan),
+                          head=dict(scale=head_scale, shape=shape, e1=HEAD_SHAPES[shape][0], e2=HEAD_SHAPES[shape][1], roll_deg=_r(roll, 2), visor=visor),
+                          hopper=dict(lid=lid, lid_prop_deg=_r(prop, 1))),
+                paint=dict(palette=pal, **{k: _lin(v) for k, v in PALETTES[pal].items()}),
+                wear=dict(age_years=_r(age, 1), age_f=_r(age_f), salt=_r(salt), rust=_r(rust), chips=_r(chips)),
+                lamp=dict(code=lamp, **{k: _lin(v) for k, v in LAMP_CODES[lamp].items()}),
+                quirks=quirks, modules=modules, parts=parts)
+
+
 def name_of(rec):
     return '%s (seed %d)' % (rec['name'], rec['seed'])
 
 
 def summary(rec):
+    if rec.get('plan') and rec['plan'] != 'scout':
+        return '%s: plan %s (%s), role %s, dims %s, head %s %s, bin %s lid, %s, wear %.0f y, lamp %s, quirks %s, modules %s, parts %s' % (name_of(rec), rec['plan'], rec['body']['shell']['finish'], rec['role'], json.dumps(rec['body']['dims'], sort_keys=True), rec['body']['head']['shape'],
+            rec['body']['head']['visor'], rec['body']['hopper']['lid'], rec['paint']['palette'], rec['wear']['age_years'], rec['lamp']['code'], ','.join(rec['quirks']) or 'none', ','.join(rec['modules']) or 'none', ','.join(rec['parts']) or 'none')
     b = rec['body']
     return '%s: %s, %s, shell %.2f m high in %d plate(s), head %s %s, arm %.2f/%.2f m %d joints %s, bin %s lid, %s, wear %.0f y, lamp %s, quirks %s, modules %s' % (
         name_of(rec), b['drive']['type'], 'x%.2f' % b['scale'], b['shell']['dome_h'], b['shell']['split_count'], b['head']['shape'], b['head']['visor'], b['arm']['upper_m'], b['arm']['fore_m'],

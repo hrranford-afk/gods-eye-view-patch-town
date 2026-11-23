@@ -2,6 +2,8 @@
 
 The same idea as the island recipe layer (`RECIPE_LAYER.md`): a seed is turned into plain values that say what a machine is made of, before anything is built. The values then drive the part functions of the committed collector model (`COLLECTOR_MODEL.md`). Seed 1 is the committed v2 tortoise, byte for byte. Rails as in STORY_BRIEF and COLLECTOR_QUIRKS_BRIEF: hopeful, nothing gory, no brands, no legible writing, no real places; the robots are hard-coded machines with no speech or feelings, so no recipe field is a mood or a name.
 
+Radical body plans (a walker, a pontoon boat-bot, a tall spotter, a round roller, a snail hauler, a crab sorter and the ear scout) are the optional `robot_recipe_for(seed, radical=True)`: see `ROBOT_RADICAL.md`. The default stays the tortoise plan described here.
+
 ## Files
 - `blender/robot_recipe.py`: `robot_recipe_for(seed)`, pure python (no numpy, no Blender). Plain JSON-able values, deterministic (python `random.Random` seeded from the seed), a legacy seed unchanged.
 - `blender/robot_build.py`: `write_robot(recipe, path, lod)`; python3 + numpy only. Imports the part functions of `collector_model.py`; `python3 robot_build.py --seed N --out DIR` writes `robot_seedN_hero.glb` and `_live.glb`.

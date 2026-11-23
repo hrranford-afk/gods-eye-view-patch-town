@@ -37,6 +37,9 @@ def draw_text(img, x, y, text, scale, colour, bg=None):
 
 
 def label_lines(rec):
+    if rec.get('radical'):          # the radical plans: seed, plan, role, palette, quirks and parts
+        q = ','.join(rec['quirks']) if rec['quirks'] else 'no quirks'; m = rec['modules'] + rec.get('parts', [])
+        return ['SEED %d  %s' % (rec['seed'], rec['plan'].upper()), 'ROLE %s  %s' % (rec['role'].upper(), rec['paint']['palette'].upper()), q.upper() + (('  +' + '+'.join(m).upper()) if m else '')]
     q = ','.join(rec['quirks']) if rec['quirks'] else 'no quirks'
     m = ('  +' + '+'.join(rec['modules'] + rec.get('parts', []))) if (rec['modules'] or rec.get('parts')) else ''
     return ['SEED %d  %s' % (rec['seed'], rec['role'].upper()), '%s %s' % (rec['body']['drive']['type'].upper(), rec['paint']['palette'].upper()), q.upper() + m.upper()]

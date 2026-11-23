@@ -14,6 +14,8 @@ def parse_args(argv=None):
     ap.add_argument('--glb', required=True, help="a GLB file, or 'none' for the empty scene (used to mask the background for the robot-only variety measure)"); ap.add_argument('--out', required=True)
     ap.add_argument('--w', type=int, default=1200); ap.add_argument('--h', type=int, default=800); ap.add_argument('--samples', type=int, default=48)
     ap.add_argument('--zoom', type=float, default=1.0)
+    ap.add_argument('--az', type=float, default=0.0, help='turn the camera this many degrees about the vertical axis through the target (0 = the committed three-quarter view)')
+    ap.add_argument('--target-z', type=float, default=0.30, help='height the camera looks at (0.30 for the committed machine; taller plans look higher)')
     return ap.parse_args(argv)
 
 
@@ -25,7 +27,9 @@ def main():
     if a.glb != 'none':
         root, objs = SH.import_glb(a.glb); SH.fix_materials(objs)
     SH.bottle(LS, M, (1.0, -0.46, 0), 20); SH.litter_on_sand(LS, M)
-    z = 1.0 / max(a.zoom, 0.1); tgt = (0.04, 0.0, 0.30); pos = (1.55, -1.75, 0.66)
+    z = 1.0 / max(a.zoom, 0.1); tgt = (0.04, 0.0, a.target_z); pos = (1.55, -1.75, 0.66 + (a.target_z - 0.30))
+    if a.az:
+        ca, sa = math.cos(math.radians(a.az)), math.sin(math.radians(a.az)); dx, dy = pos[0] - tgt[0], pos[1] - tgt[1]; pos = (tgt[0] + dx * ca - dy * sa, tgt[1] + dx * sa + dy * ca, pos[2])
     cam = CS._cam(sc, 'Cam', tuple(tgt[i] + (pos[i] - tgt[i]) * z for i in range(3)), tgt, 46.0)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     SH.render(sc, cam, os.path.abspath(a.out))
