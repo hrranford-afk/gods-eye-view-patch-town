@@ -40,6 +40,7 @@
 <div class="read"><span id="rVE">vertical x -</span><span id="rSum">summit -</span><span id="rTier">tier -</span><span id="rHint">drag: orbit, two fingers: zoom and pan</span></div>
 <div id="msg">Loading the volcano...</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>if(/[?&]finish=1/.test(location.search))document.write('<script src="li_sea.js"><\/script><script src="li_kit.js"><\/script><script src="weather.js"><\/script><script src="blender/li_bridge.js"><\/script><script src="cutaway_finish.js"><\/script>');</script>
 <script>
 (function () {
 'use strict';
@@ -60,9 +61,15 @@ if (POST) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMap
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(36, 1, 4, 9000);
 const root = new THREE.Group(); scene.add(root);
+/* ?finish=1: the finish pass (CUTAWAY_FINISH.md): baked light, Filmic table, the islands page's sea / flow / weather, kit trees, real-material cut faces. Absent = this page exactly as before. */
+let FIN = null;   // created below, once the lights exist
 
 const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x7a6a58, 0.62); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.05); sun.position.set(-900, 700, 700); scene.add(sun);
+if (qs.get('finish') === '1') {
+  if (!window.LI_CUTFIN) { fail('finish pass scripts did not load'); return; }
+  FIN = window.LI_CUTFIN.create({ THREE, renderer, scene, camera, root, hemi, sun, qs, POST, BASE, $, fail, loadTex });
+}
 
 // ---------------------------------------------------------------- data
 let M = null, HF = null, COL = null, TEX = {}, built = null;
@@ -150,7 +157,7 @@ function build(q) {
     // water cut face
     const gw = new THREE.BufferGeometry(); gw.setAttribute('position', new THREE.BufferAttribute(wwp, 3)); gw.setAttribute('isTop', new THREE.BufferAttribute(wwtop, 1)); gw.setIndex(wi);
     const water = new THREE.Mesh(gw, waterWallMat()); water.renderOrder = 3; group.add(water);
-    wallInfo[nm] = { prof, geom: g, mesh: wall, nn };
+    wallInfo[nm] = { prof, geom: g, mesh: wall, nn, water };
     for (let t = 0; t < nn - 1; t++) { const o = (nm === 's' ? 0.2 : 0); linePts.push(wp[t * 6], wp[t * 6 + 1] + 0.05, wp[t * 6 + 2], wp[(t + 1) * 6], wp[(t + 1) * 6 + 1] + 0.05, wp[(t + 1) * 6 + 2]); }
   }
   // outline: base rectangle and corner verticals
@@ -174,9 +181,10 @@ function build(q) {
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('th', new THREE.BufferAttribute(sth, 1)); sg.setIndex(si);
   const sea = new THREE.Mesh(sg, seaMat()); sea.renderOrder = 4; group.add(sea);
-  const clouds = makeClouds(); group.add(clouds); clouds.visible = state.clouds;
+  const clouds = makeClouds(); group.add(clouds); clouds.visible = state.clouds && !FIN;
   root.add(group);
   built = { group, terrain, wallInfo, sea, clouds, nn, S, tris: ((nn - 1) * (nn - 1) * 2) };
+  if (FIN) FIN.dress(built, q, { M, HF, COL, hAt, surfaceRGB, state, WALLS, TEX });
   updateTide();
 }
 
@@ -287,7 +295,7 @@ function applyCam() {
   const ce = Math.cos(cam.el);
   let px = cam.tx + cam.dist * Math.sin(cam.az) * ce, py = cam.ty + cam.dist * Math.sin(cam.el), pz = cam.tz + cam.dist * Math.cos(cam.az) * ce;
   if (M) { const gh = hAt(px, -pz); if (py < Math.max(gh, 0) + 8 && Math.abs(px) < M.size_m / 2 && Math.abs(pz) < M.size_m / 2) py = Math.max(gh, 0) + 8; }
-  camera.position.set(px, py, pz); camera.lookAt(cam.tx, cam.ty, cam.tz);
+  if (FIN) FIN.placeCamera(px, py, pz, cam); else { camera.position.set(px, py, pz); camera.lookAt(cam.tx, cam.ty, cam.tz); }
 }
 const ptrs = new Map(); let lastPinch = 0, lastMid = null;
 canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button, sh: e.shiftKey }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); lastMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; } });
@@ -316,7 +324,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('keydown', e => { const s = 0.06; if (e.key === 'ArrowLeft') cam.az -= s; if (e.key === 'ArrowRight') cam.az += s; if (e.key === 'ArrowUp') cam.el += s; if (e.key === 'ArrowDown') cam.el -= s; if (e.key === '+') cam.dist *= 0.9; if (e.key === '-') cam.dist *= 1.1; });
 
 // ---------------------------------------------------------------- UI
-function updateTide() { U.uTide.value = state.tide; $('tideV').textContent = (state.tide >= 0 ? '+' : '') + state.tide.toFixed(2) + ' m'; }
+function updateTide() { U.uTide.value = state.tide; if (FIN) FIN.setTide(state.tide); $('tideV').textContent = (state.tide >= 0 ? '+' : '') + state.tide.toFixed(2) + ' m'; }
 $('tide').addEventListener('input', e => { state.tide = +e.target.value; updateTide(); });
 async function setQuality(q) {
   QUALITY = q; $('qLow').classList.toggle('on', q === 'low'); $('qHigh').classList.toggle('on', q === 'high');
@@ -327,7 +335,7 @@ async function setQuality(q) {
   $('rTier').textContent = 'tier ' + q + (POST ? '' : ' (AR-safe)') + ' - ' + Math.round(built.tris / 1000) + 'k terrain triangles, walls ' + (q === 'low' ? '1024x512' : '2048x1024');
 }
 $('qLow').onclick = () => setQuality('low'); $('qHigh').onclick = () => setQuality('high');
-$('cl').onclick = () => { state.clouds = !state.clouds; $('cl').classList.toggle('on', state.clouds); if (built) built.clouds.visible = state.clouds; };
+$('cl').onclick = () => { state.clouds = !state.clouds; $('cl').classList.toggle('on', state.clouds); if (built) built.clouds.visible = state.clouds && !FIN; if (FIN) FIN.setClouds(state.clouds); };
 $('lg').onclick = () => { const l = $('legend'); l.style.display = l.style.display === 'block' ? 'none' : 'block'; };
 document.querySelectorAll('button[data-v]').forEach(b => b.onclick = () => Object.assign(cam, VIEWS[b.dataset.v]));
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; if (w / h < 0.9) camera.fov = 52; else camera.fov = 36; camera.updateProjectionMatrix(); }
@@ -339,13 +347,21 @@ function frame() {
   const t = (performance.now() - state.t0) / 1000; U.uTime.value = t;
   if (built && built.clouds.visible) built.clouds.children.forEach((m, i) => { m.position.y = m.userData.base + Math.sin(t * 0.3 + i * 2) * 0.8; });
   if (!ptrs.size && !window.__cvFreeze && qs.get('spin') === '1') cam.az += 0.0015;
-  applyCam(); renderer.render(scene, camera); window.__liFrames++; requestAnimationFrame(frame);
+  applyCam(); if (FIN) FIN.frame(t); renderer.render(scene, camera); window.__liFrames++; requestAnimationFrame(frame);
 }
 window.__cv = {
   ready: false,
   setView(v) { Object.assign(cam, v); applyCam(); }, view(n) { Object.assign(cam, VIEWS[n]); applyCam(); },
-  setTide(t) { state.tide = t; $('tide').value = t; updateTide(); }, setQuality, setClouds(b) { state.clouds = b; $('cl').classList.toggle('on', b); if (built) built.clouds.visible = b; },
-  stats() { const r = renderer.info; return { calls: r.render.calls, triangles: r.render.triangles, quality: QUALITY, post: POST, tide: state.tide, terrainTris: built.tris, cam: Object.assign({}, cam) }; },
+  setTide(t) { state.tide = t; $('tide').value = t; updateTide(); }, setQuality, setClouds(b) { state.clouds = b; $('cl').classList.toggle('on', b); if (built) built.clouds.visible = b && !FIN; if (FIN) FIN.setClouds(b); },
+  stats() { const r = renderer.info; return { calls: r.render.calls, triangles: r.render.triangles, quality: QUALITY, post: POST, tide: state.tide, terrainTris: built.tris, cam: Object.assign({}, cam), finish: FIN ? FIN.stats() : null }; },
+  finish: () => FIN,
+  hash() {                                              // FNV-1a over the terrain vertices, the four wall profiles and the build counts (geometry only: no clock, no pixels)
+    let h = 2166136261 >>> 0; const mix = v => { h ^= v & 0xff; h = Math.imul(h, 16777619) >>> 0; };
+    const mixF = f => { const v = Math.round(f * 100); mix(v); mix(v >> 8); mix(v >> 16); };
+    const p = built.terrain.geometry.attributes.position.array; for (let i = 0; i < p.length; i += 97) mixF(p[i]);
+    for (const nm of WALLS) { const a = built.wallInfo[nm].prof; for (let i = 0; i < a.length; i += 7) mixF(a[i]); }
+    mixF(built.nn); mixF(built.tris); return (h >>> 0).toString(16).padStart(8, '0');
+  },
   edgeCheck() {                                         // wall profile heights vs the heightfield edge rows/columns (should be identical)
     const n = M.n, S = built.S; let maxd = 0, cnt = 0;
     for (const nm of WALLS) { const wi = built.wallInfo[nm]; for (let t = 0; t < wi.nn; t++) {
@@ -363,6 +379,7 @@ window.__cv = {
 (async function main() {
   try {
     await loadAll();
+    if (FIN) await FIN.load(M, HF);
     $('rVE').textContent = 'vertical exaggeration x' + M.vertical_exaggeration.toFixed(1) + ' (summit ' + Math.round(M.summit_m) + ' m on a ' + Math.round(M.size_m) + ' m block; real proportion would be about ' + Math.round(M.summit_m / M.vertical_exaggeration) + ' m)';
     $('rSum').textContent = 'sea floor drops to ' + Math.round(-M.min_height_m) + ' m at the edge';
     const lg = $('legend'); lg.innerHTML = M.legend.filter(l => l.id > 1).map(l => '<div><i style="background:rgb(' + l.rgb.join(',') + ')"></i>' + l.name + '</div>').join('');

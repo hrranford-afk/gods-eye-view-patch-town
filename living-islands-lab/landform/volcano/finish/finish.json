@@ -1,0 +1,51 @@
+{
+ "version": 1,
+ "sun_el": 30.0,
+ "sun_az": 235.0,
+ "sun_dir_three": [
+  -0.7094064799162223,
+  0.49999999999999994,
+  0.49673176489215437
+ ],
+ "sun_strength_w_m2": 12.0,
+ "sun_color_linear": [
+  1.0,
+  0.76,
+  0.5
+ ],
+ "sky_strength": 0.22,
+ "light_k": 1.0,
+ "light_intensity": 1.0,
+ "tex": 1024,
+ "pad_px": 8,
+ "sky_up": [
+  0.53798,
+  0.74021,
+  0.89516
+ ],
+ "sky_horizon": [
+  1.319540023803711,
+  0.9737799763679504,
+  0.4153299927711487
+ ],
+ "sky_zenith": [
+  0.2814300060272217,
+  0.44861000776290894,
+  0.6683599948883057
+ ],
+ "ground": [
+  0.14525,
+  0.17987,
+  0.17724
+ ],
+ "samples": 128,
+ "blender": "5.3.0",
+ "bake_seconds": {
+  "volcano_light": 182.7
+ },
+ "vol_hash": "dc085e36b73e1c37",
+ "files": {
+  "lightmap": "lightmap.jpg",
+  "sunmask": "sunmask.jpg"
+ }
+}
