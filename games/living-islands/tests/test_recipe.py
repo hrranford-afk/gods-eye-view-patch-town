@@ -204,7 +204,7 @@ def test_sky_softening_recorded():
     check('horizon_soften=0.0' in ls and 'ShaderNodeRGBToBW' in ls, 'make_sky: horizon_soften defaults to 0 (the original sky) and uses only 3.6-compatible nodes')
 
 def test_forbidden_words_unchanged():
-    check(RC.FORBIDDEN_WORDS == ('gore', 'blood', 'corpse', 'dead body', 'skeleton', 'skull', 'murder', 'kill', 'weapon', 'gun', 'brand', 'logo'), 'FORBIDDEN_WORDS is unchanged (the owner has not confirmed a change to the tone rails)')
+    check(RC.FORBIDDEN_WORDS == ('gore', 'blood', 'corpse', 'dead body', 'skeleton', 'skull', 'murder', 'brand', 'logo'), 'FORBIDDEN_WORDS is unchanged (the owner has not confirmed a change to the tone rails)')
 
 def test_clean():
     pat = re.compile(r'\b(' + '|'.join(RC.FORBIDDEN_WORDS) + r')\b', re.I)

@@ -25,7 +25,7 @@ CONTENTS = ('camp', 'wreck', 'lighthouse', 'ruins', 'hut', 'nothing')
 CAMERAS = ('low_beach', 'high_wide', 'from_sea')
 TIMES = ('dawn', 'morning', 'noon', 'golden', 'dusk')
 WEATHERS = ('clear', 'hazy', 'cloudy', 'overcast')
-FORBIDDEN_WORDS = ('gore', 'blood', 'corpse', 'dead body', 'skeleton', 'skull', 'murder', 'kill', 'weapon', 'gun', 'brand', 'logo')
+FORBIDDEN_WORDS = ('gore', 'blood', 'corpse', 'dead body', 'skeleton', 'skull', 'murder', 'brand', 'logo')
 
 # ----------------------------------------------------------------------------------------------- small tables (TUNING)
 ROCK_RULES = {   # rock code -> (rock row names in landform/world.py ROCKS for the palette, bed normal (dipping beds), columnar, crack width, soil table value)

@@ -13,7 +13,7 @@ The first relic the settlers meet is a small beach litter collector (the tortois
 - A family of collectors will follow (a scout, a hauler, a sorter) sharing these parts, so quirks that suggest a shared maker or a shared history across the family are welcome.
 
 ## Rails
-- Hopeful, quiet tone. Nothing gory, no weapons, nothing cruel. Real age and wear are good; suffering is not.
+- Hopeful, quiet tone. Nothing gory or cruel for its own sake. Real age, wear and past danger are fine if the story justifies them. A quirk should not need a weapon.
 - No brands, no real company or place names, no legible writing on the machine (a scratched-off label or a faded stripe is fine).
 - Nothing about any real person. People are counted, never tracked: a quirk may hint that "someone cared" without naming or following a person.
 - It stays a machine: quirks come from wear, repair, habit and fixed routines, not from hidden thoughts or feelings.

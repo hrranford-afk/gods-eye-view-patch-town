@@ -4,6 +4,7 @@ Status: PLANNED. Owner decisions recorded 22 Nov 2026.
 
 ## Owner decisions
 1. **Tone: hopeful, but with real stakes (updated 22 Nov).** Rebuilding, not fighting. No weapons, no violence between people.
+   **Owner update (23 Nov): violence is allowed if it is justified by the story** (real danger, not gratuitous). CAIRN's reading: it stays hopeful overall and nothing gory or cruel for its own sake. Owner to correct if that is wrong.
    **Neglect has consequences: settlers can fall ill, starve, or be lost, and a colony can fail and you start again.** It is not a game where everyone just survives. Handled quietly, never graphic.
 2. **The old world appears as ruins and salvage.** Small finds give story moments and unlock ideas.
 3. **Look and geography: Hebrides-style Atlantic coast, plus one sheltered harbour island.**

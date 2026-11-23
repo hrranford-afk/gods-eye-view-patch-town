@@ -6,7 +6,7 @@ Status: CONCEPT, not final. Written 23 Nov 2026 by CAIRN from the owner's ideas.
 A table of small islands in a cool Atlantic sea. It is a window onto a bigger world: storms, swell, tides, currents, drift, animals and ships come in from outside. The islands are the peaks of one landscape under the sea, so each is different and related to its neighbours. The old world ended. The first people arrive by boat as survivors and begin again. The tone is hopeful, with quiet real stakes.
 
 ## 2. Rails (non-negotiable)
-- Hopeful tone. No weapons, no violence between people, nothing graphic. Neglect has quiet consequences (illness, hunger, loss) and there is always a way back until late.
+- Hopeful tone overall. Owner update 23 Nov: violence and weapons are allowed when justified by the story (real danger, never gratuitous); nothing gory or cruel for its own sake. Neglect has quiet consequences (illness, hunger, loss) and there is always a way back until late.
 - People are counted, never tracked. Do not write stories that follow one named person's private life through the game's systems.
 - No real brands, companies, product names or real place names. Real geography only as inspiration inside research notes.
 - The machines are hard-coded relics, not thinking AI: fixed routines, no learning, no talking. Never an "AI turns on us" story.
