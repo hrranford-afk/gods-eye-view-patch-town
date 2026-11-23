@@ -100,6 +100,14 @@ Fog and night are the time to play with light. A lighthouse (or any signal fire)
 - **Look:** fog with a visible beam, night glow, warm windows, sea glitter, flash patterns that identify each light. Must work in AR (no screen-space tricks; cheap beam cards) and on handheld budgets.
 - **Research first (RESEARCH_FIRST.md):** how far a light can be seen (height, power, atmosphere), flash characters, how fog scatters light, lens optics, fuels, so the numbers are real before any build. Depends on the sky clock and the weather.
 
+### Weather needs beautiful days too (owner note, 23 Nov)
+The eight weather states lean grey (overcast, rain, fog, storm). Add the lovely ones, and let them be earned by the same seeded schedule, not random decoration.
+- **Candidates:** rainbow (and double rainbow) when sun is low behind the viewer and rain is ahead; sun showers (bright sun through a passing squall); crepuscular rays through broken cloud; frost mornings and sea smoke; first snow dusting; halo and sun dogs in high cloud; a clear starry night (and aurora as a rare treat); post-storm clearing with glittering wet shore; mist burning off.
+- **Region:** our coast is a cool Atlantic one, so a true tropical storm does not fit. The bright-sun-with-violent-squall look does (a sun and showers day). Whether another climate ever appears (a different world from the bigger world) is a taste question for the owner, not decided.
+- **Hooks:** these should tie to the sky clock, the macro sea (storm track clearing), wildlife, crops and moods. Rainbows need sun elevation under about 42 degrees and rain on the opposite side from the sun.
+- **AR:** there is no sky dome in AR, so skyline effects (rainbow, rays) need a table-scale version or a skip. Research that before building.
+- **Research first (RESEARCH_FIRST.md):** rainbow geometry and brightness, sun shower physics, frost and snow conditions at this climate, halo types, then the look in the page.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
