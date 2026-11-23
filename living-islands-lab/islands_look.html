@@ -44,12 +44,17 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');</script>
+<script>if(/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/index.js"><\/script><script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/world.js"><\/script><script src="world_view.js"><\/script>');}</script>
 <script>
 (function(){
 'use strict';
 /* ============ parameters ============ */
 const Q=new URLSearchParams(location.search);
-const SEED=(parseInt(Q.get('seed')||'1122',10)>>>0);
+const WQ=Q.get('world');                /* the world view (world_view.js, see WORLD_VIEW.md): ?world=NNN draws one exported world of the land formation tool instead of the six hand-placed islands; absent = unchanged */
+const WID=(WQ!==null&&/^\d+$/.test(WQ))?(parseInt(WQ,10)>>>0):null;
+const WORLD=WID!==null&&!!window.LI_WORLD&&window.LI_WORLD.has(WID);
+let WV=null;
+const SEED=WORLD?WID:(parseInt(Q.get('seed')||'1122',10)>>>0);
 const NOPOST=Q.get('post')==='0';
 const LAND=Q.get('pass')==='landing';
 const FLOW=Q.get('flow')==='1';         /* the flow pass: tidal current field, flow-advected sea, drifting flotsam (see FLOW_PASS.md); implies the sea=2 look */
@@ -59,16 +64,17 @@ const WXON=!!WXS&&!!window.LI_WEATHER&&window.LI_WEATHER.create!==undefined;
 let WXR=null;
 const BOATS2=Q.get('boats')==='2';      /* the boats pass: slim lapstrake hulls, dry floors, a depth-only hull mask so the sea never shows inside, boot-top line and contact shadow (see BOATS_PASS.md); absent = unchanged */
 const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_sea.js, see MACRO_WIRE.md): tide, swell, whitecaps, drift, weather and boat heave from a pure function of (seed, game hour); implies the sea=2 look; absent = unchanged */
-const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
   high:{cell:0.55,shadow:2048,pr:1.5,taps:22,msaa:4,hiWaves:1},
   low :{cell:0.90,shadow:1024,pr:1.0,taps:9, msaa:0,hiWaves:0}
 };
-const TS=100;            /* the height texture covers -TS..TS metres */
+const TS=WORLD?128:100;            /* the height texture covers -TS..TS metres (the world view uses a 256 m window) */
+const WS=TS/100;
 const GN=512, GC=2*TS/GN;/* grid cells */
-const SEABED=-4.8, TABLE_R=94, RIM_TOP=2.2;
+const SEABED=-4.8, TABLE_R=WORLD?122:94, RIM_TOP=2.2;
 const TIDE_RANGE=1.1;    /* metres either side of mean sea level 0 (assumption, not in the contract) */
 if(Q.get('ui')==='0')document.body.classList.add('noui');
 
@@ -100,6 +106,7 @@ const ISL=[
  {id:'camp',   x:28, z:30, rx:13,rz:11,   rot:-.4,peak:3.4,sb:.16,bw:5.0,Rin:7, under:.24,rough:.5, lump:.20,surf:.25,warp:3.0,r:0.35,Dm:5.0},
  {id:'harbour',x:-30,z:40, cres:1,Ra:24,Rb:12.5,peak:8.6,sb:.22,bw:5.0,Rin:11,under:.28,rough:.6,lump:.35,surf:.25,warp:2.8,r:0.4,Dm:6.0}
 ];
+if(WORLD){ISL.length=0;LI_WORLD.islandsFor(window.LI_WORLDS[WID]).forEach(o=>ISL.push(o));}   /* world view: the largest islands of the window, for the flow field, the gulls and the weather */
 ISL.forEach((I,i)=>{I.i=i;I.s=(SEED*7+i*101)|0;I.c=Math.cos(I.rot||0);I.sn=Math.sin(I.rot||0);
   if(I.cres){const dir=[.55,.835];I.dir=dir;I.bx=I.x+dir[0]*14.5;I.bz=I.z+dir[1]*14.5;I.rm=I.Ra;I.mR=I.Ra;}
   else{I.rm=Math.min(I.rx,I.rz);I.mR=Math.max(I.rx,I.rz);}
@@ -109,7 +116,7 @@ const BARS=[
  {ax:36,az:24,bx:53,bz:7,w:2.6,peak:-.62,s:SEED+517}
 ];
 /* the seabed (?seabed=1): rule set and measures live in seabed.js; it shares this page's shoreline function so both draw the same shores */
-const SB=SBX?LI_SEABED.create({islands:ISL,start:4,authored:true,landingDir:[Math.cos(Math.atan2(.52,.85)),Math.sin(Math.atan2(.52,.85))]},SEED,{sd:(I,x,z)=>islSd(I,x,z)}):null;
+let SB=SBX&&!WORLD?LI_SEABED.create({islands:ISL,start:4,authored:true,landingDir:[Math.cos(Math.atan2(.52,.85)),Math.sin(Math.atan2(.52,.85))]},SEED,{sd:(I,x,z)=>islSd(I,x,z)}):null;
 const _sbS=SB?new Float64Array(ISL.length):null;
 const PADS=[]; /* {x,z,r,y} */
 let gI=-1,gSd=-99,gExpo=0;
@@ -133,7 +140,7 @@ function baseHsb(x,z){let bi=-1,bsd=-1e9,ex=0;
     if(h>best)best=h;
     const e=I.surf*Math.exp(-Math.abs(Math.min(sd,0))/9);if(e>ex)ex=e;}
   gI=bi;gSd=bsd;gExpo=ex;return best;}
-function baseH(x,z){if(SB)return baseHsb(x,z);let best=SEABED,bi=-1,bsd=-1e9,ex=0;
+function baseH(x,z){if(WV){gI=-1;gSd=-99;gExpo=0;return WV.h(x,z);}if(SB)return baseHsb(x,z);let best=SEABED,bi=-1,bsd=-1e9,ex=0;
   for(let k=0;k<ISL.length;k++){const I=ISL[k];const dd=Math.hypot(x-I.x,z-I.z);if(dd>I.br+(I.cres?20:0))continue;
     const sd=islSd(I,x,z);if(sd>bsd){bsd=sd;bi=k;}
     const h=islH(I,x,z,sd);if(h>best)best=h;
@@ -152,6 +159,7 @@ function slopeAt(x,z){const e=.5;const dx=(H(x+e,z)-H(x-e,z))/(2*e),dz=(H(x,z+e)
 const W={tufts:[],rocks:[],conifers:[],broad:[],shrubs:[],houses:[],tents:[],jetty:null,camp:null,boats:[],people:[],logs:[],crates:[]};
 function placeWorld(){
   const R=mulberry32(SEED*131+7);
+  if(WV){WV.place({W,PADS,H,slopeAt,padDist,R,quality});return;}
   /* --- camp --- */
   {const I=ISL[4];const dir=[.12,.993];let rs=0;for(let r=0;r<30;r+=.25){if(H(I.x+dir[0]*r,I.z+dir[1]*r)<0.05){rs=r;break;}}
     let rf=rs;for(let r=rs;r>0;r-=.25){if(H(I.x+dir[0]*r,I.z+dir[1]*r)>=1.15){rf=r;break;}}
@@ -456,7 +464,7 @@ function setSun(el,az){const e=el*Math.PI/180,a=az*Math.PI/180;sunDir.set(Math.s
 setSun(parseFloat(Q.get('sun')||(LAND?(SEA2?'32':'50'):'24')),parseFloat(Q.get('az')||(LAND?(SEA2?'172':'-38'):'-132')));
 
 function buildGrid(){hgrid=new Float32Array(GN*GN);sgrid=new Float32Array(GN*GN);const ex=new Float32Array(GN*GN);
-  for(let j=0;j<GN;j++)for(let i=0;i<GN;i++){const x=-TS+(i+.5)*GC,z=-TS+(j+.5)*GC;const h=H(x,z);hgrid[j*GN+i]=h;sgrid[j*GN+i]=h;ex[j*GN+i]=gExpo*landCalm(x,z);}
+  for(let j=0;j<GN;j++)for(let i=0;i<GN;i++){const x=-TS+(i+.5)*GC,z=-TS+(j+.5)*GC;const h=H(x,z);hgrid[j*GN+i]=h;sgrid[j*GN+i]=h;ex[j*GN+i]=WV?WV.expo(x,z):gExpo*landCalm(x,z);}
   const stamp=(x,z,rx,rz,yc,ry,toSh)=>{const i0=Math.max(0,Math.floor((x-rx+TS)/GC)),i1=Math.min(GN-1,Math.floor((x+rx+TS)/GC)),j0=Math.max(0,Math.floor((z-rz+TS)/GC)),j1=Math.min(GN-1,Math.floor((z+rz+TS)/GC));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const px=-TS+(i+.5)*GC-x,pz=-TS+(j+.5)*GC-z;const q=(px*px)/(rx*rx)+(pz*pz)/(rz*rz);if(q>=1)continue;const v=yc+ry*Math.sqrt(1-q);
       if(!toSh&&v>hgrid[j*GN+i])hgrid[j*GN+i]=v;if(v>sgrid[j*GN+i])sgrid[j*GN+i]=v;}};
@@ -468,7 +476,7 @@ function buildGrid(){hgrid=new Float32Array(GN*GN);sgrid=new Float32Array(GN*GN)
   for(let k=0;k<GN*GN;k++){d[k*4]=clamp(Math.round((hgrid[k]+5)/8*255),0,255);d[k*4+1]=clamp(Math.round(ex[k]*255),0,255);d[k*4+2]=clamp(Math.round(sgrid[k]/14*255),0,255);d[k*4+3]=255;}
   heightTex=new THREE.DataTexture(d,GN,GN,THREE.RGBAFormat);heightTex.minFilter=heightTex.magFilter=THREE.LinearFilter;heightTex.generateMipmaps=false;heightTex.needsUpdate=true;}
 
-function buildTerrain(cell){const half=96;const n=4*Math.round(2*half/(4*cell)),step=2*half/n,nv=n+1;
+function buildTerrain(cell){if(WV)cell*=2.0;const half=WV?TABLE_R+4:96;const n=4*Math.round(2*half/(4*cell)),step=2*half/n,nv=n+1;
   const hs=new Float32Array(nv*nv),isl=new Int8Array(nv*nv),sds=new Float32Array(nv*nv);
   for(let j=0;j<nv;j++)for(let i=0;i<nv;i++){const x=-half+i*step,z=-half+j*step;const k=j*nv+i;hs[k]=H(x,z);isl[k]=gI;sds[k]=gSd;}
   const map=new Int32Array(nv*nv).fill(-1);const P=[],N=[],C=[],IDX=[];let cnt=0;
@@ -477,7 +485,7 @@ function buildTerrain(cell){const half=96;const n=4*Math.round(2*half/(4*cell)),
     const hl=hs[j*nv+Math.max(0,i-1)],hr=hs[j*nv+Math.min(n,i+1)],hd=hs[Math.max(0,j-1)*nv+i],hu=hs[Math.min(n,j+1)*nv+i];
     const dx=(hr-hl)/((Math.min(n,i+1)-Math.max(0,i-1))*step),dz=(hu-hd)/((Math.min(n,j+1)-Math.max(0,j-1))*step);const l=Math.hypot(dx,1,dz);
     const ny=1/l;P.push(x,h,z);N.push(-dx/l,ny,-dz/l);
-    const I=isl[k]>=0?ISL[isl[k]]:null;const pd=padDist(x,z);const col=terrainColor(x,z,h,ny,sds[k],(I&&sds[k]>-30)?I:null,pd);C.push(col[0],col[1],col[2]);
+    const I=isl[k]>=0?ISL[isl[k]]:null;const pd=padDist(x,z);const col=WV?WV.color(x,z,h,ny,pd):terrainColor(x,z,h,ny,sds[k],(I&&sds[k]>-30)?I:null,pd);C.push(col[0],col[1],col[2]);
     map[k]=cnt++;return map[k];};
   const quad=(i0,j0,s,flip)=>{const a=vtx(i0,j0),b=vtx(i0+s,j0),c=vtx(i0+s,j0+s),d=vtx(i0,j0+s);
     if(flip)IDX.push(a,c,b,a,d,c);else IDX.push(a,d,b,b,d,c);};
@@ -599,7 +607,7 @@ function flowRaw(F,x,z,T,out,pure){
   const dx=Math.cos(F.axis),dz=Math.sin(F.axis),nx=-dz,nz=dx,U0=F.U0,wk=F.wake;
   let tx=U0*dx,tz=U0*dz,wx=0,wz=0,ex=0,ez=0,mask=1;
   for(let k=0;k<F.islands.length;k++){const I=F.islands[k],rx=x-I.x,rz=z-I.z,R2=rx*rx+rz*rz,a=I.a,a2=a*a;
-    if(R2>3600)continue;
+    if(R2>Math.max(3600,12.96*a2))continue;
     const R=Math.sqrt(R2)+1e-9;
     if(!pure&&R<1.15*a)mask*=sm((R/a-.8)/.35);
     const R2c=R2>a2?R2:a2,dr=dx*rx+dz*rz,kk=U0*a2/(R2c*R2c);
@@ -639,8 +647,8 @@ function flotCreate(N){const F=FL.F,S={N,step:0,ck:new Map(),kind:new Uint8Array
 function sbKelp(x,z){const d=SB.depthG(x,z);return d>=SB.P.kelpLo&&d<=SB.P.kelpHi&&SB.gbil(SB.G.hard,x,z)>.5;}   /* kelp strands start over kelp beds: hard bed, 0 to 15 m real */
 function sbBeachOK(x,z){return SB.gbil(SB.G.expo,x,z)<.62&&SB.spdFAt(x,z)*SB.P.U0<1.8;}   /* wrack lands on sheltered shores out of the fast channels */
 function flotSpawn(S,i,T,initial){const nr=S.nr[i],r=mulberry32((hash2(i,nr,SEED)*4294967296)>>>0);let x=0,z=0;
-  if(initial){const near=r()<.7;for(let t=0;t<500;t++){const a=r()*TAU2,d=Math.sqrt(r())*74;x=Math.cos(a)*d;z=Math.sin(a)*d;const h=hAt(x,z);if(SB&&S.kind[i]===2?sbKelp(x,z):near?(h<-.2&&h>-1.6):h<-1.8)break;}}
-  else{const ra=FL.F.residual.ang+Math.PI+(r()-.5)*1.7;for(let t=0;t<60;t++){const d=84+r()*3;x=Math.cos(ra)*d+(r()-.5)*6;z=Math.sin(ra)*d+(r()-.5)*6;if(hAt(x,z)<-1)break;}}
+  if(initial){const near=r()<.7;for(let t=0;t<500;t++){const a=r()*TAU2,d=Math.sqrt(r())*74*WS;x=Math.cos(a)*d;z=Math.sin(a)*d;const h=hAt(x,z);if(SB&&S.kind[i]===2?sbKelp(x,z):near?(h<-.2&&h>-1.6):h<-1.8)break;}}
+  else{const ra=FL.F.residual.ang+Math.PI+(r()-.5)*1.7;for(let t=0;t<60;t++){const d=(84+r()*3)*WS;x=Math.cos(ra)*d+(r()-.5)*6;z=Math.sin(ra)*d+(r()-.5)*6;if(hAt(x,z)<-1)break;}}
   S.px[i]=x;S.pz[i]=z;S.st[i]=0;S.tb[i]=0;S.vx[i]=0;S.vz[i]=0;S.yawB[i]=r()*6.283;}
 function flotSnap(S){S.ck.set(S.step,{step:S.step,px:S.px.slice(),pz:S.pz.slice(),st:S.st.slice(),tb:S.tb.slice(),nr:S.nr.slice(),yawB:S.yawB.slice(),vx:S.vx.slice(),vz:S.vz.slice(),cnt:S.cnt.slice()});}
 function flotRestore(S,c){S.step=c.step;S.px.set(c.px);S.pz.set(c.pz);S.st.set(c.st);S.tb.set(c.tb);S.nr.set(c.nr);S.yawB.set(c.yawB);S.vx.set(c.vx);S.vz.set(c.vz);S.cnt.set(c.cnt);}
@@ -774,7 +782,7 @@ function flowArrows(T){const cv=FL.cv;if(!cv)return;const w=cv.clientWidth,h=cv.
    macro_sea.js is a pure function of (seed, game hour). This block owns the CLOCK (the game hour is an accumulator, so a speed change never jumps anything),
    the smoothed window forcing, one PHASE ACCUMULATOR per wave component (phase = seed phase - integral of w dt, so changing speed or the state never makes the crests jump),
    and what the rest of the page reads: tide level, flow time and drift nudge, weather parameters, the sea uniforms, the height function for boats. Everything is off unless ?macro=1. */
-const MC={on:MCON,seed:SEED,windowM:200,gain:parseFloat(Q.get('mgain')||'1.5'),hourSec:(parseFloat(Q.get('wsec')||'')>0?parseFloat(Q.get('wsec')):20),speed:parseFloat(Q.get('mspeed')||'1')||1,
+const MC={on:MCON,seed:SEED,windowM:WORLD?256:200,gain:parseFloat(Q.get('mgain')||'1.5'),hourSec:(parseFloat(Q.get('wsec')||'')>0?parseFloat(Q.get('wsec')):20),speed:parseFloat(Q.get('mspeed')||'1')||1,
   h0:Q.get('mh')!==null?parseFloat(Q.get('mh')):6,fixed:Q.get('mt')!==null?parseFloat(Q.get('mt')):null,hour:0,st:null,acc:1,tideTouched:Q.get('tide')!==null,snap:true,dirty:false,
   N:MCON?MacroSea.NCOMP:8,A:new Float32Array(32),B:new Float32Array(16),k:new Float32Array(8),dx:new Float32Array(8),dz:new Float32Array(8),a:new Float32Array(8),phi:new Float32Array(8),ph:new Float64Array(8),
   uA:null,uB:null,uC:null,target:null,ampSum:0,tide:0,flowT:0,flowCyc:0,flowLast:null,nx:0,nz:0,lnx:0,lnz:0,dirtyFlow:false,wx:null,heave:{h:0,pitch:0,roll:0,n:0,maxH:0,maxP:0,maxR:0}};
@@ -829,9 +837,10 @@ function msPatch(src){
   R('g*=mix(0.25,1.0,smoothstep(0.0,0.6,depth));','g*=mix(0.25,1.0,smoothstep(0.0,0.6,depth));float msh=msSeaH(p,0.0);vec2 msg=vec2(msSeaH(p+vec2(1.0,0.0),0.0)-msh,msSeaH(p+vec2(0.0,1.0),0.0)-msh);g+=msg*(uMsC.x*mix(1.0,calm,0.35)*mix(0.35,1.0,smoothstep(0.0,0.8,depth)));hh+=max(msh,0.0)*uMsC.x*0.1;');
   R('if(mod(uDbg,2.0)>0.5)cap=0.0;','if(mod(uDbg,2.0)>0.5)cap=0.0;{float wc=uMsC.y;float cr=clamp(0.5+0.5*msh/max(uMsC.z*0.5,0.05),0.0,1.0);float sc=0.55*cr+0.45*(0.5*nz2+0.5*gpatch);float thr=1.0-0.45*pow(clamp(wc*4.0,0.0,1.0),0.55);float mc=smoothstep(thr,thr+0.12,sc)*clamp(wc/0.003,0.0,1.0)*calm*smoothstep(0.4,1.4,depth);cap=max(cap*clamp(sqrt(wc/0.0023),0.2,1.8),mc*0.85);}');
   return src;}
-const SEA2_FS=LI_SEA.SEA2_FS;
+const TSFIX=s=>WORLD?s.replace(/#define TS 100\.0/g,'#define TS '+TS.toFixed(1)).replace('smoothstep(92.5,94.0,r)','smoothstep('+(TABLE_R-1.5).toFixed(1)+','+TABLE_R.toFixed(1)+',r)'):s;   /* world view: the sea shader reads a 256 m height texture and rims at the larger table */
+const SEA2_FS=TSFIX(LI_SEA.SEA2_FS);
 /* flow-aware sea (?flow=1): the sea2 look plus a tidal flow texture. Ripple, chop, streak and glitter coordinates ride the local current with the two-phase flow-map blend. */
-const SEAF_FS=LI_SEA.SEAF_FS;
+const SEAF_FS=TSFIX(LI_SEA.SEAF_FS);
 /* ============ seabed pass (?seabed=1, see SEABED_PASS.md): sea colour from depth, shoal and overfall foam, calm coves, debug overlay ============ */
 let SBTEX=null;
 function sbTex(){if(SBTEX)return SBTEX;const G=SB.G,n=G.n,d=new Uint8Array(n*n*4);
@@ -1429,13 +1438,13 @@ function makeRT(w,h){if(rt){rt.dispose();rt=null;}
   postMat.uniforms.tD.value=rt.texture;postMat.uniforms.uRes.value.set(w,h);}
 
 /* ============ camera control ============ */
-const HOME=LAND?{theta:.52,phi:.58,dist:124,tx:18,tz:12}:{theta:.42,phi:.93,dist:290,tx:0,tz:2};
+const HOME=LAND?{theta:.52,phi:.58,dist:124,tx:18,tz:12}:{theta:.42,phi:.93,dist:WORLD?390:290,tx:0,tz:2};
 const cam={...HOME},cur={...HOME};
 let snap=true;
 function applyCam(dt){const k=snap?1:1-Math.pow(.0005,dt);for(const key of['theta','phi','dist','tx','tz'])cur[key]+=(cam[key]-cur[key])*k;snap=false;
   const cp=Math.cos(cur.phi),sp=Math.sin(cur.phi);
   camera.position.set(cur.tx+Math.sin(cur.theta)*cp*cur.dist,sp*cur.dist,cur.tz+Math.cos(cur.theta)*cp*cur.dist);camera.lookAt(cur.tx,0,cur.tz);}
-function clampCam(){cam.phi=clamp(cam.phi,.2,1.5);cam.dist=clamp(cam.dist,9,420);const r=Math.hypot(cam.tx,cam.tz);if(r>82){cam.tx*=82/r;cam.tz*=82/r;}}
+function clampCam(){cam.phi=clamp(cam.phi,.2,1.5);cam.dist=clamp(cam.dist,9,WORLD?580:420);const r=Math.hypot(cam.tx,cam.tz),rl=82*WS;if(r>rl){cam.tx*=rl/r;cam.tz*=rl/r;}}
 function setupControls(el){const ptr=new Map();let last=null;
   el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,b:e.button,s:e.shiftKey});last=null;});
   el.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const p=ptr.get(e.pointerId);const dx=e.clientX-p.x,dy=e.clientY-p.y;
@@ -1477,7 +1486,7 @@ function build(){const t0=performance.now();
   buildTable();
   const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
-  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB)sbOverlayInit();
+  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
   if(WXR)WXR.attach(scene,sun,hemi);
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
@@ -1495,7 +1504,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
   if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   /* sun / shadow follow */
-  const s=clamp(cur.dist*.62,30,112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
+  const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
   /* tilt shift focus */
   const pv=tgt.clone().project(camera);postMat.uniforms.uFocus.value=clamp(pv.y*.5+.5,.2,.8)+.02;
@@ -1538,7 +1547,18 @@ let autoQDone=false;
 function autoQ(){if(autoQDone||Q.get('q')||navigator.webdriver||clock.t<3)return;if(clock.t>10){autoQDone=true;return;}if(clock.fps<18&&quality==='high'){autoQDone=true;setQuality('low');}}
 function setQuality(q){quality=q;el.qBtn.textContent='Quality: '+(q==='high'?'High':'Low');el.qBtn.classList.toggle('on',q==='low');
   const hold=hgrid;build();buildPost();size();}
+/* world view: build the world object (needs the page's palette and noise, so it cannot run at load), set the seabed adapter, add the seed selector */
+function wvInit(){if(WQ!==null&&!WORLD){document.getElementById('title').textContent='world '+WQ+' is not exported (see landform/worlds)';return;}
+  if(!WORLD)return;
+  WV=LI_WORLD.create(WID,{tableR:TABLE_R,lin,mix3,fbm,PL,zone});
+  if(SBX)SB=WV.seabed(LI_SEABED);
+  const man=WV.man;document.getElementById('title').textContent='world '+WID+' \u00b7 '+man.rock;document.getElementById('title').title=man.label;
+  const sel=document.createElement('select');sel.id='worldSel';sel.className='btn';sel.setAttribute('aria-label','world');
+  LI_WORLD.list().forEach(w=>{const o=document.createElement('option');o.value=w.seed;o.textContent=w.seed+' \u00b7 '+w.rock+' \u00b7 '+w.island_type;if(w.seed===WID)o.selected=true;sel.appendChild(o);});
+  sel.addEventListener('change',()=>{const u=new URLSearchParams(location.search);u.set('world',sel.value);location.search=u.toString();});
+  const top=document.getElementById('top');top.insertBefore(sel,document.getElementById('homeBtn'));}
 function init(){
+  wvInit();
   el.tide=document.getElementById('tide');el.tideLbl=document.getElementById('tideLbl');el.info=document.getElementById('info');el.qBtn=document.getElementById('qBtn');el.auto=document.getElementById('autoBtn');
   const cv=document.getElementById('view');
   renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance',alpha:false});
@@ -1581,6 +1601,7 @@ function init(){
       const pts=[],refs=[];for(const u of[-.55,-.4,-.25,-.1,.05,.2,.35,.5])for(const z of[-.3,-.15,0,.15,.3])pts.push(proj(u*XH,.1,z*Bm*.7));
       for(const x of[-1.6,-.8,0,.8,1.6])for(const z of[1,-1])refs.push(proj(x,0,z*(Bm/2+1.4)));return{pts,refs};},
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
+    world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};
