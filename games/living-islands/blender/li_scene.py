@@ -247,6 +247,10 @@ def land_vertex_data(u, v, f, seed):
     n3 = IC.fbm(u * 2.3, v * 2.3, seed + 25, 3)
     sand = np.array([0.50, 0.40, 0.26]); wet = np.array([0.20, 0.15, 0.10]); seabed = np.array([0.66, 0.60, 0.44]); deep = np.array([0.02, 0.05, 0.08])
     grass = np.array([0.075, 0.12, 0.030]); grass2 = np.array([0.14, 0.15, 0.045]); heather = np.array([0.15, 0.055, 0.10]); heather2 = np.array([0.10, 0.06, 0.07])
+    G = (IC.STYLE or {}).get('ground')      # per-seed recipe ground colours (linear rgb); None keeps the original palette exactly
+    if G:
+        sand = np.array(G.get('sand', sand)); wet = np.array(G.get('wet', wet)); grass = np.array(G.get('grass', grass)); grass2 = np.array(G.get('grass2', grass2))
+        heather = np.array(G.get('heather', heather)); heather2 = np.array(G.get('heather2', heather2)); seabed = np.array(G.get('seabed', seabed))
     # base: grass with patches of heather (higher, windier ground) and dry yellow tussock
     hz = np.clip(IC.smooth(.35, .7, n2 + (h - 1.2) * 0.08), 0, 1)[..., None]
     g = grass * (1 - n1[..., None]) + grass2 * n1[..., None]
@@ -635,7 +639,8 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0, half=None, centre=(0.0, 0
     return ob
 
 # ---------------------------------------------------------------- sky and light
-def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
+def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, haze=0.0):
+    """overcast 0..1 greys the camera-ray sky (cloud cover without a cloud model); haze 0..1 adds aerosol and air (a whiter, flatter horizon). 0, 0 = original."""
     w = bpy.data.worlds.new('Sky'); bpy.context.scene.world = w
     w.use_nodes = True; nt = w.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputWorld', (400, 0)); bg = node(nt, 'ShaderNodeBackground', (200, 0)); sk = node(nt, 'ShaderNodeTexSky', (-100, 0))
@@ -644,7 +649,7 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
     want = 'MULTIPLE_SCATTERING' if (os.environ.get('LI_LOOK', 'bright').lower() == 'moody' and 'MULTIPLE_SCATTERING' in kinds) else ('NISHITA' if 'NISHITA' in kinds else 'SINGLE_SCATTERING')
     sk.sky_type = want; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
     sk.sun_elevation = math.radians(sun_elev_deg); sk.sun_rotation = math.radians(sun_az_deg)
-    sk.air_density = 2.3; setattr(sk, 'aerosol_density' if hasattr(sk, 'aerosol_density') else 'dust_density', 0.35); sk.ozone_density = 2.5; sk.altitude = 20.0
+    sk.air_density = 2.3 + 1.2 * haze; setattr(sk, 'aerosol_density' if hasattr(sk, 'aerosol_density') else 'dust_density', 0.35 + 4.5 * haze); sk.ozone_density = 2.5; sk.altitude = 20.0
     # glossy rays (the sea's mirror) see a bluer, cleaner sky than the sunset-pink camera sky: keeps the water deep blue
     lp = node(nt, 'ShaderNodeLightPath', (-400, 200)); tcg = node(nt, 'ShaderNodeTexCoord', (-700, -200))
     sp = node(nt, 'ShaderNodeSeparateXYZ', (-500, -200)); link(nt, tcg.outputs['Generated'], sp.inputs[0])
@@ -654,7 +659,13 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0):
     neg = node(nt, 'ShaderNodeMath', (-300, -400), operation='MULTIPLY'); link(nt, sz.outputs['Z'], neg.inputs[0]); neg.inputs[1].default_value = -1.0
     blue = ramp(nt, neg.outputs[0], [(0.0, (2.2, 2.8, 3.4, 1)), (0.25, (0.8, 1.6, 3.2, 1)), (1.0, (0.2, 0.6, 2.4, 1))], (-100, -400))
     mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA'); link(nt, lp.outputs['Is Glossy Ray'], S(mix, 'inputs', 'Factor'))
-    link(nt, sk.outputs['Color'], S(mix, 'inputs', 'A')); link(nt, blue.outputs['Color'], S(mix, 'inputs', 'B'))
+    if overcast > 0:
+        oc = node(nt, 'ShaderNodeMix', (-100, 300), data_type='RGBA'); S(oc, 'inputs', 'Factor').default_value = float(overcast)
+        S(oc, 'inputs', 'B').default_value = (0.20, 0.215, 0.235, 1)
+        link(nt, sk.outputs['Color'], S(oc, 'inputs', 'A')); link(nt, S(oc, 'outputs', 'Result'), S(mix, 'inputs', 'A'))
+    else:
+        link(nt, sk.outputs['Color'], S(mix, 'inputs', 'A'))
+    link(nt, blue.outputs['Color'], S(mix, 'inputs', 'B'))
     link(nt, S(mix, 'outputs', 'Result'), bg.inputs['Color']); bg.inputs['Strength'].default_value = strength
     link(nt, bg.outputs['Background'], out.inputs['Surface'])
     return sk

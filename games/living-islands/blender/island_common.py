@@ -39,9 +39,20 @@ def smooth(a, b, x):
 
 LEGACY_SEED = 1122   # this seed keeps the original island exactly (the cloud's pilot renders and tests)
 
+# Island type from the per-seed recipe (recipe.py). STYLE=None keeps every earlier behaviour bit for bit (seed 1122 and the old batches).
+# STYLE is a plain dict: type (plain/sandbar/volcanic/cliffs/lagoon/archipelago), shape (overrides shape_params), blobs, peak, phase. set_style() also moves CAMP.
+STYLE = None
+
+def set_style(style=None, camp=None):
+    global STYLE, CAMP
+    STYLE = style
+    CAMP = tuple(camp) if camp is not None else (-1.5, -7.0)
+
 def shape_params(seed):
     """Seed-derived island shape. Seed 1122 gives the legacy values. Other seeds vary size, aspect, tilt, a second lobe and
     which side is the high rocky back, so different seeds give visibly different islands (the camp clearing is kept)."""
+    if STYLE is not None and 'shape' in STYLE:
+        return dict(STYLE['shape'])
     if seed == LEGACY_SEED:
         return dict(a=17.5, b=12.5, tilt=0.35, lobe=0.0, lob_u=0.0, lob_v=0.0, lob_r=1.0, back_ang=np.arctan2(0.8, -0.55), rough=0.16)
     r = np.random.default_rng(seed * 7919 + 13)
@@ -55,7 +66,14 @@ def _dist(wu, wv, P):
     ca, sa = np.cos(P['tilt']), np.sin(P['tilt'])
     pu = wu * ca + wv * sa; pv = -wu * sa + wv * ca
     d = np.sqrt((pu / P['a']) ** 2 + (pv / P['b']) ** 2)
-    if P['lobe']:
+    if STYLE is not None and STYLE.get('blobs'):
+        # archipelago: several separate islets, each an ellipse (u0, v0, ra, rb, tilt); d is the smallest normalised distance
+        d = None
+        for (bu, bv, ra, rb, bt) in STYLE['blobs']:
+            c_, s_ = np.cos(bt), np.sin(bt); du = wu - bu; dv = wv - bv
+            dd = np.sqrt(((du * c_ + dv * s_) / ra) ** 2 + ((-du * s_ + dv * c_) / rb) ** 2)
+            d = dd if d is None else np.minimum(d, dd)
+    if P['lobe'] and not (STYLE is not None and STYLE.get('blobs')):
         d2 = np.sqrt(((wu - P['lob_u']) / (P['a'] * P['lob_r'])) ** 2 + ((wv - P['lob_v']) / (P['b'] * P['lob_r'])) ** 2)
         d = np.minimum(d, d2 * 1.05)
     return d, pu, pv
@@ -81,6 +99,8 @@ def _base(u, v, seed):
     rockyside = smooth(-8, -1, v * 0.9 + 3.0 * (fbm(u * .17, v * .17, seed + 15, 3) - .5))
     rim = smooth(0.5, 0.85, d) * smooth(1.32, 0.95, d)
     h = h + rockyside * rim * (0.5 + 2.2 * ridged(u * .22, v * .22, seed + 31, 4))
+    if STYLE is not None:
+        h = _style_height(h, d, d_nom, u, v, pu, pv, seed)
     # camp clearing: gentle bench near sea level, grass
     dc = np.sqrt((u - CAMP[0]) ** 2 + ((v - CAMP[1]) * 1.3) ** 2)
     bench = 0.55 + 0.12 * (fbm(u * .3, v * .3, seed + 9, 3) - .5)
@@ -88,6 +108,29 @@ def _base(u, v, seed):
     land = h > 0
     h = np.where(land, h * (1 - wc) + np.maximum(bench, 0) * wc * (h > -0.2), h)
     return h, wc, pu, pv, rockyside, d_nom
+
+def _style_height(h, d, d_nom, u, v, pu, pv, seed):
+    """Island-type reshaping of the land height (sea stays as it is). Everything is smooth and deterministic."""
+    t = STYLE.get('type', 'plain')
+    land = h > 0
+    if t == 'sandbar':          # long, low, nearly flat sand with a soft crest
+        return np.where(land, np.minimum(h, 3.0) * 0.26 + 0.05 * fbm(u * .4, v * .4, seed + 41, 3), h)
+    if t == 'volcanic':         # a cone with a crater, steep upper flanks, rocky; the beach ring stays
+        pk = STYLE.get('peak', 10.0)
+        cone = pk * np.clip(1 - d_nom, 0, 1) ** 1.35 + 1.1 * (ridged(u * .16, v * .16, seed + 43, 4) - .4) * smooth(0.0, 0.7, 1 - d_nom)
+        crater = 0.6 * pk * smooth(0.20, 0.0, d_nom)
+        return np.where(land, np.maximum(h * 0.35 + cone - crater, 0.05), h)
+    if t == 'cliffs':           # a raised tableland with a steep ragged edge and a rough top
+        top = smooth(0.12, 0.7, h) * (STYLE.get('cliff_h', 5.0) + 1.2 * (fbm(u * .13, v * .13, seed + 47, 3) - .5))
+        return np.where(land, h * 0.3 + top, h)
+    if t == 'lagoon':           # a ring reef island: low ring with gaps, a shallow lagoon in the middle
+        ang = np.arctan2(pv, pu)
+        ring = smooth(0.50, 0.66, d_nom) * smooth(1.02, 0.84, d_nom)
+        gap = 1 - 0.85 * smooth(0.68, 0.97, np.sin(2 * ang + STYLE.get('phase', 0.0)) * 0.5 + 0.5 + 0.25 * (fbm(u * .2, v * .2, seed + 49, 2) - .5))
+        hh = -0.25 + ring * gap * (1.35 + 0.7 * fbm(u * .35, v * .35, seed + 51, 3))
+        lag = -0.45 * smooth(0.55, 0.30, d_nom)
+        return np.where(d_nom < 1.12, np.minimum(hh + lag, 1.7), np.minimum(h, 0.0) - 0.35)
+    return h
 
 def height_fields(u, v, seed):
     """returns dict of arrays: h (metres), rock (0..1 rockiness); point-evaluable (no grid dependence)."""

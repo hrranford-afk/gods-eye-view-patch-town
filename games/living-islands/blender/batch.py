@@ -11,6 +11,9 @@ Night plan (--phases): jobs are queued in phases so that if the deadline arrives
   rocks    : layered rock variations for seeds --rock-seeds (rock_asset.py)
   landform : for every seed, a hero of the best island of the land formation tool's world (landform_scene.py) for each province in --lf-provinces
              (and a wide view with --lf-wide); the seed is the tool's world seed here, not the legacy island seed
+  recipes  : (no Blender) write recipe_seed<N>.json for every seed from blender/recipe.py: island type, rock, trees, what is there, time, weather, camera
+  variety  : (no Blender, run last) blender/variety_judge.py on the hero_seed*.png of this batch -> variety.json and variety.txt (similarity of pictures, look-alike pairs, recipe spread)
+The previews, hires and top/close views are built from each seed's recipe (hero_render.py); --legacy-scene gives the old camp picture on every seed instead (the HW-3 look).
 Default --phases previews,bakes (the original behaviour was hero + bake per seed).
 """
 import argparse, hashlib, json, os, subprocess, sys, time, datetime
@@ -33,7 +36,9 @@ ap.add_argument('--no-bake', action='store_true')
 ap.add_argument('--gpu-name', default='', help='only use a GPU whose name contains this text (case-insensitive), e.g. Radeon')
 ap.add_argument('--require-gpu', action='store_true', help='stop instead of falling back to the CPU, and check every job log shows the wanted GPU')
 ap.add_argument('--list-devices', action='store_true', help='read-only: list the compute devices Blender can see, then exit')
-ap.add_argument('--phases', default='previews,bakes', help='comma list from: previews,bakes,hires,rocks,landform')
+ap.add_argument('--phases', default='previews,bakes', help='comma list from: recipes,previews,bakes,hires,rocks,landform,variety (variety last)')
+ap.add_argument('--legacy-scene', action='store_true', help='hero phases: the old camp picture on every seed (no recipe variety), for comparison')
+ap.add_argument('--variety-thr', type=float, default=0.90, help='variety phase: similarity at or above which two pictures are look-alikes')
 ap.add_argument('--hi-seeds', default='', help='comma list for the hires phase (default: first 6 of --seeds)')
 ap.add_argument('--hi-w', type=int, default=2400); ap.add_argument('--hi-h', type=int, default=1600); ap.add_argument('--hi-samples', type=int, default=256)
 ap.add_argument('--rock-seeds', default='', help='comma list for the rocks phase')
@@ -92,6 +97,8 @@ def save():
 def stop(reason):
     results['stopped_because'] = reason; save(); sys.exit(0 if reason in ('deadline', 'max-minutes') else 1)
 
+LEG = ['--legacy'] if a.legacy_scene else []
+
 def queue():
     phases = [x.strip() for x in a.phases.split(',') if x.strip()]
     hi = [int(x) for x in a.hi_seeds.split(',') if x.strip()] or seeds[:6]
@@ -100,10 +107,10 @@ def queue():
         if ph == 'previews':
             for s in seeds:
                 png = os.path.join(a.out, 'hero_seed%d.png' % s)
-                yield ('hero_seed%d' % s, 'hero_render.py', ['--seed', str(s), '--w', str(a.hero_w), '--h', str(a.hero_h), '--samples', str(a.hero_samples), '--grid', '257', '--out', png], [png])
+                yield ('hero_seed%d' % s, 'hero_render.py', ['--seed', str(s), '--w', str(a.hero_w), '--h', str(a.hero_h), '--samples', str(a.hero_samples), '--grid', '257', '--out', png] + LEG, [png])
                 for v in ('top', 'close'):
                     png = os.path.join(a.out, '%s_seed%d.png' % (v, s))
-                    yield ('%s_seed%d' % (v, s), 'hero_render.py', ['--seed', str(s), '--view', v, '--w', str(a.hero_w), '--h', str(a.hero_h), '--samples', str(a.hero_samples), '--grid', '257', '--out', png], [png])
+                    yield ('%s_seed%d' % (v, s), 'hero_render.py', ['--seed', str(s), '--view', v, '--w', str(a.hero_w), '--h', str(a.hero_h), '--samples', str(a.hero_samples), '--grid', '257', '--out', png] + LEG, [png])
         elif ph == 'bakes' and not a.no_bake:
             for s in seeds:
                 d = os.path.join(a.out, 'bake_seed%d' % s)
@@ -111,7 +118,7 @@ def queue():
         elif ph == 'hires':
             for s in hi:
                 png = os.path.join(a.out, 'hires_seed%d.png' % s)
-                yield ('hires_seed%d' % s, 'hero_render.py', ['--seed', str(s), '--w', str(a.hi_w), '--h', str(a.hi_h), '--samples', str(a.hi_samples), '--grid', '257', '--out', png], [png])
+                yield ('hires_seed%d' % s, 'hero_render.py', ['--seed', str(s), '--w', str(a.hi_w), '--h', str(a.hi_h), '--samples', str(a.hi_samples), '--grid', '257', '--out', png] + LEG, [png])
         elif ph == 'landform':
             for s in seeds:
                 for pv in [x.strip().upper() for x in a.lf_provinces.split(',') if x.strip()]:
@@ -122,6 +129,13 @@ def queue():
             for s in rocks:
                 d = os.path.join(a.out, 'rock_seed%d' % s)
                 yield ('rock_seed%d' % s, 'rock_asset.py', ['--seed', str(s), '--out', d, '--samples', '32'], [os.path.join(d, 'rock_01.glb')])
+
+if 'recipes' in a.phases.split(','):
+    sys.path.insert(0, HERE)
+    import recipe as RC
+    for s_ in seeds:
+        RC.write_recipe(RC.recipe_for(s_, legacy_scene=a.legacy_scene), os.path.join(a.out, 'recipe_seed%d.json' % s_))
+    results['jobs'].append({'label': 'recipes', 'returncode': 0, 'seconds': 0, 'device': '', 'files': {'recipe_seed%d.json' % s_: {} for s_ in seeds}}); save()
 
 for label, script, args, outputs in queue():
     if dl and datetime.datetime.now() >= dl:
@@ -134,6 +148,11 @@ for label, script, args, outputs in queue():
         stop('wrong device in ' + label + ': ' + (r['device'] or 'no device line in the log'))
     if r['returncode'] != 0 or not r['files']:
         stop('failure in ' + label)
+if 'variety' in a.phases.split(','):
+    vj = os.path.join(HERE, 'variety_judge.py'); vout = os.path.join(a.out, 'variety.txt')
+    with open(vout, 'w') as vf:
+        rc = subprocess.run([sys.executable, vj, a.out, '--glob', 'hero_seed*.png', '--thr', str(a.variety_thr), '--json', os.path.join(a.out, 'variety.json')], stdout=vf, stderr=subprocess.STDOUT).returncode
+    results['jobs'].append({'label': 'variety', 'returncode': rc, 'seconds': 0, 'device': '', 'files': {'variety.txt': {}, 'variety.json': {}}}); save()
 results['finished'] = datetime.datetime.now().isoformat(timespec='seconds')
 results['total_minutes'] = round((time.time() - t_start) / 60, 1)
 save()
