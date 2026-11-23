@@ -71,6 +71,15 @@ The old world's automation survived without people: boats, buoys, lights, weathe
 - **Risks to watch:** if the machines do all the work, the player's struggle disappears (so they are scarce, slow, rule-bound and wearing out); avoid the 'AI turns on us' cliche.
 - **Measure first:** how many routes and machines a seed supports, and whether a found machine opens a real trade-off for the player.
 
+## Hooks to keep in mind while building worlds (cheap now, so later ideas drop in)
+Not commitments: small design habits so the machines layer, wildlife, weather and the ledger can be added without rebuilding the world.
+- **One world data format** (seed, terrain field, rock map, tide, flow, weather seed) that everything reads; no feature draws its own private copy of the land.
+- **Every event goes through the ledger** with an idempotent key (find, delivery, storm, nesting season), so machines, wildlife and the player all share one history.
+- **Landing and harbour sites are first-class** (the foundry and seabed already list them), so a ruined jetty, a beacon or an unmanned boat's mooring can be placed at one later.
+- **Old-world slots per seed:** a few seeded places where ruins, wrecks or beacons can appear (era 6), chosen by shore type and flow, not hand-placed.
+- **Routes follow the real sea:** boats, drift and machines all use the same current, tide and depth field.
+- **Weather is a seeded schedule,** not random per frame, so storms, sea state, sediment events and wildlife seasons agree.
+
 ## Household loop (era 3 detail)
 Grow at home (garden, plot, place) / shop (nearest open shop with stock) / cook at home (hearth, fuel, ingredients, time) / eat out (cheap, close, short on time). Needs push; trade and temperament nudge. People are counted, never tracked.
 
