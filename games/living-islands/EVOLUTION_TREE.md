@@ -85,6 +85,7 @@ The litter collectors have a reason to be there: a larger old-world tender ship 
 - **The tender is a relic too:** hard-coded, brittle, on a fixed seeded schedule (it still calls whether or not anything is loaded, drifts late as its clock wears). Its route follows the real sea (tide, current, depth). Optional, never required.
 - **Player use:** the player can ask for deliveries (rubbish dropped at a chosen landing) and build from it: glass, metal, plastic, cloth. This feeds the scavenging ladder (a hopper, then a delivery, then a stockpile).
 - **The risk is the game:** deliver too much, or build too slowly, and the shore is buried in rubbish. Quiet stakes only: wrack and litter crowd the landing, harbour mouths silt up and foul, wildlife leaves (seals, nesting birds), boats get fouled, settlers fall ill slowly. Never graphic. Always a way back (clear it, sort it, ship it out, stop deliveries).
+- **Owner decision (23 Nov): piled rubbish drives the seals away.** Seals leaving is the clearest sign something went wrong, and it can be undone (clear the shore and they can return). All of these tender, relic and rubbish ideas are rough: to be tied to the island systems before anything is built.
 - **Rules:** finite supply, ledger events with idempotent keys (a delivery is claimed once), people counted not tracked, no brands, hopeful tone.
 - **Measure first (headless):** how much a collector gathers per tide, deliveries per tender visit, the build-versus-pile-up balance, and whether the player can always recover.
 
