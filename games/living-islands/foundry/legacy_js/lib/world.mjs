@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const GAME_HTML = path.resolve(HERE, '../../islands_look.html');
+export const GAME_HTML = path.resolve(HERE, '../../../islands_look.html');
 export const sha = (s, n = 16) => crypto.createHash('sha256').update(s).digest('hex').slice(0, n);
 
 function cut(src, from, to, what) {

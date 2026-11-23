@@ -1,0 +1,1988 @@
+{
+ "note": "DATA ONLY. Nothing was run. $BLENDER = a Blender 3.6+ executable, $OUT = an output folder. batch.py phase \"landform\" picks the island itself (choose_island); the sweep ran at n=257 and the render builds n=513, whose worlds differ in detail: where start_ok_n513 is false the order has replace_with (the next shortlisted world that still has a start island at n=513; its commands are the same shape). Where force_island_needed is true use the direct command. batch.py runs jobs one at a time; heroes are about 4.5 min each on 4 CPU cores (LANDFORM.md, 64 samples), so 100 samples is about 6 min and 256 samples about 15 min on that machine (estimates, not measured here).",
+ "n_world_for_render": 513,
+ "hero": {
+  "w": 1200,
+  "h": 800,
+  "samples": 100
+ },
+ "hires": {
+  "w": 2400,
+  "h": 1600,
+  "samples": 256
+ },
+ "world_py_hash": "2b3433504179929c",
+ "replacements_unused": [
+  {
+   "province": "A",
+   "seed": 14,
+   "rank_in_province": 9,
+   "score": 0.906,
+   "start_island_n513": 3,
+   "manifest_hash_n513": "b0220ba2f30b634a"
+  },
+  {
+   "province": "A",
+   "seed": 69,
+   "rank_in_province": 10,
+   "score": 0.9128,
+   "start_island_n513": 1,
+   "manifest_hash_n513": "e5cd8e415e2b01d0"
+  },
+  {
+   "province": "A",
+   "seed": 58,
+   "rank_in_province": 11,
+   "score": 0.924,
+   "start_island_n513": 4,
+   "manifest_hash_n513": "dc22a69f552dd154"
+  },
+  {
+   "province": "A",
+   "seed": 3,
+   "rank_in_province": 12,
+   "score": 0.8717,
+   "start_island_n513": 3,
+   "manifest_hash_n513": "f25e2c5be5efc462"
+  },
+  {
+   "province": "B",
+   "seed": 148,
+   "rank_in_province": 11,
+   "score": 0.9075,
+   "start_island_n513": 2,
+   "manifest_hash_n513": "5f8cc3898dbff045"
+  }
+ ],
+ "batch_groups_hero": {
+  "A": "python3 blender/batch.py --blender $BLENDER --seeds 153,117,147,175,62,116,146,24 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+  "C": "python3 blender/batch.py --blender $BLENDER --seeds 56,99,84,54,131,146,106,133 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+  "B": "python3 blender/batch.py --blender $BLENDER --seeds 139,174,36,8,155,23,126,86 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU"
+ },
+ "orders": [
+  {
+   "overall_rank": 1,
+   "province": "A",
+   "seed": 153,
+   "score": 0.9362,
+   "manifest_hash_n257": "57bc4f796e86ae2a",
+   "manifest_hash_n513": "1d36dcba0070c637",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 3,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 3,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 154.0,
+   "landing": {
+    "xy": [
+     -139.0,
+     44.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.285,
+    "exposure": 0.042,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -141.5,
+      -244.7,
+      243.6
+     ],
+     "target": [
+      -141.5,
+      56.0,
+      8.7
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 381.6,
+     "footprint_radius_m": 78.8
+    },
+    "landing_side": {
+     "position": [
+      99.9,
+      235.3,
+      243.6
+     ],
+     "target": [
+      -141.5,
+      56.0,
+      8.7
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 53.4,
+     "elevation_deg": 38.0,
+     "distance_m": 381.6,
+     "footprint_radius_m": 78.8
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_153",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 153 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 153 --island 3 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed153.png"
+    },
+    {
+     "id": "hires_A_153",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 153 --out $OUT/hires --phases landform --lf-provinces A --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 153 --island 3 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_A_seed153.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 2,
+   "province": "C",
+   "seed": 56,
+   "score": 0.9359,
+   "manifest_hash_n257": "4c0cb13f1a613d8d",
+   "manifest_hash_n513": "aeaf2ced38bfdfaa",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 2,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 144.0,
+   "landing": {
+    "xy": [
+     -6.0,
+     33.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.209,
+    "exposure": 0.008,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -17.5,
+      -288.5,
+      236.5
+     ],
+     "target": [
+      -17.5,
+      4.5,
+      7.5
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 371.9,
+     "footprint_radius_m": 76.9
+    },
+    "landing_side": {
+     "position": [
+      151.7,
+      -234.7,
+      236.5
+     ],
+     "target": [
+      -17.5,
+      4.5,
+      7.5
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 144.7,
+     "elevation_deg": 38.0,
+     "distance_m": 371.9,
+     "footprint_radius_m": 76.9
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_56",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 56 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 56 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed56.png"
+    },
+    {
+     "id": "hires_C_56",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 56 --out $OUT/hires --phases landform --lf-provinces C --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 56 --island 2 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_C_seed56.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 3,
+   "province": "A",
+   "seed": 117,
+   "score": 0.9331,
+   "manifest_hash_n257": "14425c87910d0155",
+   "manifest_hash_n513": "ab5aaaac524adf85",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 162.0,
+   "landing": {
+    "xy": [
+     -137.0,
+     21.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.946,
+    "exposure": 0.018,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -162.0,
+      -392.6,
+      312.5
+     ],
+     "target": [
+      -162.0,
+      -1.5,
+      7.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 496.4,
+     "footprint_radius_m": 103.1
+    },
+    "landing_side": {
+     "position": [
+      -58.2,
+      375.6,
+      312.5
+     ],
+     "target": [
+      -162.0,
+      -1.5,
+      7.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 15.4,
+     "elevation_deg": 38.0,
+     "distance_m": 496.4,
+     "footprint_radius_m": 103.1
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_117",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 117 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 117 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed117.png"
+    },
+    {
+     "id": "hires_A_117",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 117 --out $OUT/hires --phases landform --lf-provinces A --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 117 --island 1 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_A_seed117.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 4,
+   "province": "A",
+   "seed": 147,
+   "score": 0.9325,
+   "manifest_hash_n257": "9a0b8113b0569dae",
+   "manifest_hash_n513": "5d3c2455592dc806",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 168.0,
+   "landing": {
+    "xy": [
+     -180.0,
+     1.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.428,
+    "exposure": 0.163,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -169.5,
+      -422.9,
+      281.2
+     ],
+     "target": [
+      -169.5,
+      -71.5,
+      6.7
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 445.9,
+     "footprint_radius_m": 92.5
+    },
+    "landing_side": {
+     "position": [
+      150.7,
+      73.1,
+      281.2
+     ],
+     "target": [
+      -169.5,
+      -71.5,
+      6.7
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 65.7,
+     "elevation_deg": 38.0,
+     "distance_m": 445.9,
+     "footprint_radius_m": 92.5
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_147",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 147 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 147 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed147.png"
+    },
+    {
+     "id": "hires_A_147",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 147 --out $OUT/hires --phases landform --lf-provinces A --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 147 --island 2 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_A_seed147.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 5,
+   "province": "B",
+   "seed": 139,
+   "score": 0.9202,
+   "manifest_hash_n257": "eecc380bec373920",
+   "manifest_hash_n513": "719f97f620937220",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 4,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 147.0,
+   "landing": {
+    "xy": [
+     21.0,
+     168.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.665,
+    "exposure": 0.001,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -15.0,
+      -192.4,
+      288.3
+     ],
+     "target": [
+      -15.0,
+      164.5,
+      9.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 452.9,
+     "footprint_radius_m": 93.6
+    },
+    "landing_side": {
+     "position": [
+      214.2,
+      438.1,
+      288.3
+     ],
+     "target": [
+      -15.0,
+      164.5,
+      9.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 39.9,
+     "elevation_deg": 38.0,
+     "distance_m": 452.9,
+     "footprint_radius_m": 93.6
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_139",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 139 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 139 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed139.png"
+    },
+    {
+     "id": "hires_B_139",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 139 --out $OUT/hires --phases landform --lf-provinces B --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 139 --island 2 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_B_seed139.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 6,
+   "province": "B",
+   "seed": 174,
+   "score": 0.9129,
+   "manifest_hash_n257": "1b467896ad68a7a2",
+   "manifest_hash_n513": "c2f78f301d9e35cd",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 187.0,
+   "landing": {
+    "xy": [
+     65.0,
+     127.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.115,
+    "exposure": 0.095,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      142.0,
+      -452.3,
+      393.3
+     ],
+     "target": [
+      142.0,
+      42.0,
+      7.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 627.3,
+     "footprint_radius_m": 130.4
+    },
+    "landing_side": {
+     "position": [
+      494.8,
+      388.2,
+      393.3
+     ],
+     "target": [
+      142.0,
+      42.0,
+      7.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 45.5,
+     "elevation_deg": 38.0,
+     "distance_m": 627.3,
+     "footprint_radius_m": 130.4
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_174",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 174 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 174 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed174.png"
+    },
+    {
+     "id": "hires_B_174",
+     "spec": {
+      "w": 2400,
+      "h": 1600,
+      "samples": 256
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 174 --out $OUT/hires --phases landform --lf-provinces B --lf-samples 256 --hero-w 2400 --hero-h 1600 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 174 --island 1 --view hero --w 2400 --h 1600 --samples 256 --out $OUT/hires/landform_hero_B_seed174.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 7,
+   "province": "B",
+   "seed": 36,
+   "score": 0.9008,
+   "manifest_hash_n257": "0672786113b359b9",
+   "manifest_hash_n513": "550b9037ab6b2a37",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 170.0,
+   "landing": {
+    "xy": [
+     150.0,
+     -153.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.507,
+    "exposure": 0.023,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      129.5,
+      -512.9,
+      307.9
+     ],
+     "target": [
+      129.5,
+      -126.5,
+      6.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 490.4,
+     "footprint_radius_m": 101.9
+    },
+    "landing_side": {
+     "position": [
+      428.8,
+      118.0,
+      307.9
+     ],
+     "target": [
+      129.5,
+      -126.5,
+      6.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 50.8,
+     "elevation_deg": 38.0,
+     "distance_m": 490.4,
+     "footprint_radius_m": 101.9
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_36",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 36 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 36 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed36.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 8,
+   "province": "C",
+   "seed": 99,
+   "score": 0.8958,
+   "manifest_hash_n257": "c6b4756f0967b460",
+   "manifest_hash_n513": "aa9a3a52649b3ada",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 2,
+   "start_island_n513": 2,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "water"
+   ],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 169.0,
+   "landing": {
+    "xy": [
+     -12.0,
+     65.5
+    ],
+    "kind": "gentle rock/turf",
+    "score": 1.533,
+    "exposure": 0.117,
+    "source": "tool"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -60.0,
+      -259.8,
+      305.9
+     ],
+     "target": [
+      -60.0,
+      124.0,
+      6.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 487.1,
+     "footprint_radius_m": 101.2
+    },
+    "landing_side": {
+     "position": [
+      179.7,
+      423.7,
+      305.9
+     ],
+     "target": [
+      -60.0,
+      124.0,
+      6.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 38.7,
+     "elevation_deg": 38.0,
+     "distance_m": 487.1,
+     "footprint_radius_m": 101.2
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_99",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 99 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 99 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed99.png"
+    }
+   ],
+   "replace_with": {
+    "province": "C",
+    "seed": 199,
+    "rank_in_province": 9,
+    "score": 0.7787,
+    "start_island_n513": 1,
+    "manifest_hash_n513": "7ec333937bb6a56d"
+   }
+  },
+  {
+   "overall_rank": 9,
+   "province": "A",
+   "seed": 175,
+   "score": 0.8898,
+   "manifest_hash_n257": "b1188020d855d0ad",
+   "manifest_hash_n513": "99b8615f5d344d0b",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 4,
+   "start_island_n513": 3,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 3,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 120.0,
+   "landing": {
+    "xy": [
+     -114.0,
+     43.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.137,
+    "exposure": 0.007,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -169.5,
+      -200.2,
+      202.4
+     ],
+     "target": [
+      -169.5,
+      52.0,
+      5.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 320.0,
+     "footprint_radius_m": 66.3
+    },
+    "landing_side": {
+     "position": [
+      18.3,
+      -116.3,
+      202.4
+     ],
+     "target": [
+      -169.5,
+      52.0,
+      5.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 131.9,
+     "elevation_deg": 38.0,
+     "distance_m": 320.0,
+     "footprint_radius_m": 66.3
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_175",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 175 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 175 --island 3 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed175.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 10,
+   "province": "B",
+   "seed": 8,
+   "score": 0.8892,
+   "manifest_hash_n257": "7bf8d74fc214228c",
+   "manifest_hash_n513": "0d08b32cc31fc85b",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 2,
+   "start_island_n513": 5,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 5,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 91.0,
+   "landing": {
+    "xy": [
+     -67.0,
+     -43.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.124,
+    "exposure": 0.085,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -111.0,
+      -240.6,
+      148.4
+     ],
+     "target": [
+      -111.0,
+      -57.0,
+      5.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 232.9,
+     "footprint_radius_m": 48.1
+    },
+    "landing_side": {
+     "position": [
+      68.1,
+      -97.3,
+      148.4
+     ],
+     "target": [
+      -111.0,
+      -57.0,
+      5.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 102.7,
+     "elevation_deg": 38.0,
+     "distance_m": 232.9,
+     "footprint_radius_m": 48.1
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_8",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 8 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 8 --island 5 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed8.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 11,
+   "province": "A",
+   "seed": 62,
+   "score": 0.8873,
+   "manifest_hash_n257": "eeef92167dbde94e",
+   "manifest_hash_n513": "a4588a8354427f19",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 190.0,
+   "landing": {
+    "xy": [
+     57.0,
+     56.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.435,
+    "exposure": 0.129,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      94.0,
+      -360.9,
+      317.0
+     ],
+     "target": [
+      94.0,
+      35.5,
+      7.3
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 503.0,
+     "footprint_radius_m": 104.4
+    },
+    "landing_side": {
+     "position": [
+      473.6,
+      149.6,
+      317.0
+     ],
+     "target": [
+      94.0,
+      35.5,
+      7.3
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 73.3,
+     "elevation_deg": 38.0,
+     "distance_m": 503.0,
+     "footprint_radius_m": 104.4
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_62",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 62 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 62 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed62.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 12,
+   "province": "B",
+   "seed": 155,
+   "score": 0.8797,
+   "manifest_hash_n257": "cf3adc93fa4bdbcf",
+   "manifest_hash_n513": "dfaa3ece3bfd2f7b",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 197.0,
+   "landing": {
+    "xy": [
+     164.0,
+     40.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.245,
+    "exposure": 0.023,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      155.5,
+      -432.3,
+      351.3
+     ],
+     "target": [
+      155.5,
+      4.0,
+      10.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 553.7,
+     "footprint_radius_m": 114.6
+    },
+    "landing_side": {
+     "position": [
+      -92.9,
+      362.7,
+      351.3
+     ],
+     "target": [
+      155.5,
+      4.0,
+      10.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 325.3,
+     "elevation_deg": 38.0,
+     "distance_m": 553.7,
+     "footprint_radius_m": 114.6
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_155",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 155 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 155 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed155.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 13,
+   "province": "C",
+   "seed": 84,
+   "score": 0.8785,
+   "manifest_hash_n257": "36a5c2af0edb0c45",
+   "manifest_hash_n513": "767b004506b6b4e6",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "water"
+   ],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 191.0,
+   "landing": {
+    "xy": [
+     70.0,
+     -117.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.366,
+    "exposure": 0.069,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      1.0,
+      -526.7,
+      327.5
+     ],
+     "target": [
+      1.0,
+      -117.0,
+      7.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 520.0,
+     "footprint_radius_m": 107.9
+    },
+    "landing_side": {
+     "position": [
+      408.7,
+      -76.2,
+      327.5
+     ],
+     "target": [
+      1.0,
+      -117.0,
+      7.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 84.3,
+     "elevation_deg": 38.0,
+     "distance_m": 520.0,
+     "footprint_radius_m": 107.9
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_84",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 84 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 84 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed84.png"
+    }
+   ],
+   "replace_with": {
+    "province": "C",
+    "seed": 127,
+    "rank_in_province": 11,
+    "score": 0.8363,
+    "start_island_n513": 2,
+    "manifest_hash_n513": "63ce3d9126cefebd"
+   }
+  },
+  {
+   "overall_rank": 14,
+   "province": "B",
+   "seed": 23,
+   "score": 0.8778,
+   "manifest_hash_n257": "45e1a1a1a8d0c22a",
+   "manifest_hash_n513": "2d2f5f7d182cc8fe",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 3,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 3,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 106.0,
+   "landing": {
+    "xy": [
+     -139.0,
+     186.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.337,
+    "exposure": 0.032,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -165.5,
+      -80.2,
+      210.2
+     ],
+     "target": [
+      -165.5,
+      182.5,
+      4.9
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 333.3,
+     "footprint_radius_m": 69.2
+    },
+    "landing_side": {
+     "position": [
+      86.4,
+      257.0,
+      210.2
+     ],
+     "target": [
+      -165.5,
+      182.5,
+      4.9
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 73.5,
+     "elevation_deg": 38.0,
+     "distance_m": 333.3,
+     "footprint_radius_m": 69.2
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_23",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 23 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 23 --island 3 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed23.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 15,
+   "province": "C",
+   "seed": 54,
+   "score": 0.8581,
+   "manifest_hash_n257": "19edd555fde60b84",
+   "manifest_hash_n513": "bf915b4fd37d1a7d",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 2,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 86.0,
+   "landing": {
+    "xy": [
+     52.0,
+     77.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.208,
+    "exposure": 0.018,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      74.5,
+      -96.7,
+      164.5
+     ],
+     "target": [
+      74.5,
+      103.0,
+      8.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 253.5,
+     "footprint_radius_m": 51.8
+    },
+    "landing_side": {
+     "position": [
+      225.0,
+      234.3,
+      164.5
+     ],
+     "target": [
+      74.5,
+      103.0,
+      8.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 48.9,
+     "elevation_deg": 38.0,
+     "distance_m": 253.5,
+     "footprint_radius_m": 51.8
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_54",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 54 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 54 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed54.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 16,
+   "province": "B",
+   "seed": 126,
+   "score": 0.845,
+   "manifest_hash_n257": "69893feae75992f0",
+   "manifest_hash_n513": "1ad0cbba3427428c",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 1,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "size"
+   ],
+   "batch_would_pick": null,
+   "island_changed_between_grids": true,
+   "force_island_needed": true,
+   "extent_m": 285.0,
+   "landing": {
+    "xy": [
+     -170.0,
+     -47.5
+    ],
+    "kind": "rock ledge",
+    "score": 1.005,
+    "exposure": 0.005,
+    "source": "tool"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -78.0,
+      -705.8,
+      600.6
+     ],
+     "target": [
+      -78.0,
+      53.0,
+      7.8
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 962.9,
+     "footprint_radius_m": 200.4
+    },
+    "landing_side": {
+     "position": [
+      679.9,
+      90.8,
+      600.6
+     ],
+     "target": [
+      -78.0,
+      53.0,
+      7.8
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 87.1,
+     "elevation_deg": 38.0,
+     "distance_m": 962.9,
+     "footprint_radius_m": 200.4
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_126",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 126 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 126 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed126.png"
+    }
+   ],
+   "replace_with": {
+    "province": "B",
+    "seed": 183,
+    "rank_in_province": 10,
+    "score": 0.8989,
+    "start_island_n513": 2,
+    "manifest_hash_n513": "e76182b5da4335cb"
+   }
+  },
+  {
+   "overall_rank": 17,
+   "province": "B",
+   "seed": 86,
+   "score": 0.8449,
+   "manifest_hash_n257": "d6ee5579b9010121",
+   "manifest_hash_n513": "d6cb43a1c10b720a",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 198.0,
+   "landing": {
+    "xy": [
+     69.0,
+     -160.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.371,
+    "exposure": 0.012,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      97.5,
+      -564.6,
+      317.7
+     ],
+     "target": [
+      97.5,
+      -170.0,
+      9.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 500.8,
+     "footprint_radius_m": 103.7
+    },
+    "landing_side": {
+     "position": [
+      416.2,
+      62.7,
+      317.7
+     ],
+     "target": [
+      97.5,
+      -170.0,
+      9.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 53.9,
+     "elevation_deg": 38.0,
+     "distance_m": 500.8,
+     "footprint_radius_m": 103.7
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_B_86",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 86 --out $OUT/hero --phases landform --lf-provinces B --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province B --seed 86 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_B_seed86.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 18,
+   "province": "C",
+   "seed": 131,
+   "score": 0.8437,
+   "manifest_hash_n257": "172d5d19af43f7d9",
+   "manifest_hash_n513": "e0f96132c120354b",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 181.0,
+   "landing": {
+    "xy": [
+     -133.0,
+     146.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.76,
+    "exposure": 0.003,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -154.0,
+      -268.9,
+      325.5
+     ],
+     "target": [
+      -154.0,
+      139.0,
+      6.8
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 517.7,
+     "footprint_radius_m": 107.5
+    },
+    "landing_side": {
+     "position": [
+      68.7,
+      480.8,
+      325.5
+     ],
+     "target": [
+      -154.0,
+      139.0,
+      6.8
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 33.1,
+     "elevation_deg": 38.0,
+     "distance_m": 517.7,
+     "footprint_radius_m": 107.5
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_131",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 131 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 131 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed131.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 19,
+   "province": "A",
+   "seed": 116,
+   "score": 0.8391,
+   "manifest_hash_n257": "512316b525fbcd78",
+   "manifest_hash_n513": "fdb56bad86203eb8",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 3,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 3,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 91.0,
+   "landing": {
+    "xy": [
+     191.0,
+     102.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.003,
+    "exposure": 0.122,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      174.0,
+      -99.4,
+      164.3
+     ],
+     "target": [
+      174.0,
+      103.0,
+      6.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 256.9,
+     "footprint_radius_m": 53.0
+    },
+    "landing_side": {
+     "position": [
+      348.4,
+      205.8,
+      164.3
+     ],
+     "target": [
+      174.0,
+      103.0,
+      6.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 59.5,
+     "elevation_deg": 38.0,
+     "distance_m": 256.9,
+     "footprint_radius_m": 53.0
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_116",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 116 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 116 --island 3 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed116.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 20,
+   "province": "C",
+   "seed": 146,
+   "score": 0.8139,
+   "manifest_hash_n257": "d0ea8ad85a89dc50",
+   "manifest_hash_n513": "80f6b8b8d949aa29",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "water"
+   ],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 176.0,
+   "landing": {
+    "xy": [
+     -26.0,
+     4.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.088,
+    "exposure": 0.06,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -52.5,
+      -309.8,
+      308.8
+     ],
+     "target": [
+      -52.5,
+      74.5,
+      8.5
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 487.7,
+     "footprint_radius_m": 101.1
+    },
+    "landing_side": {
+     "position": [
+      -414.8,
+      202.7,
+      308.8
+     ],
+     "target": [
+      -52.5,
+      74.5,
+      8.5
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 289.5,
+     "elevation_deg": 38.0,
+     "distance_m": 487.7,
+     "footprint_radius_m": 101.1
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_146",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 146 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 146 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed146.png"
+    }
+   ],
+   "replace_with": {
+    "province": "C",
+    "seed": 74,
+    "rank_in_province": 12,
+    "score": 0.8141,
+    "start_island_n513": 2,
+    "manifest_hash_n513": "75dc9dc242f03e27"
+   }
+  },
+  {
+   "overall_rank": 21,
+   "province": "A",
+   "seed": 146,
+   "score": 0.8137,
+   "manifest_hash_n257": "b527f26760a239b9",
+   "manifest_hash_n513": "10b82e063988a75d",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 1,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 200.0,
+   "landing": {
+    "xy": [
+     70.0,
+     -182.0
+    ],
+    "kind": "sand",
+    "score": 1.745,
+    "exposure": 0.011,
+    "source": "tool"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      49.5,
+      -591.0,
+      374.1
+     ],
+     "target": [
+      49.5,
+      -122.5,
+      8.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 594.5,
+     "footprint_radius_m": 123.5
+    },
+    "landing_side": {
+     "position": [
+      509.1,
+      -31.9,
+      374.1
+     ],
+     "target": [
+      49.5,
+      -122.5,
+      8.1
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 78.8,
+     "elevation_deg": 38.0,
+     "distance_m": 594.5,
+     "footprint_radius_m": 123.5
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_146",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 146 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 146 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed146.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 22,
+   "province": "A",
+   "seed": 24,
+   "score": 0.8117,
+   "manifest_hash_n257": "331b236ff4b2448f",
+   "manifest_hash_n513": "769bf3f2a1fbe805",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 2,
+   "start_island_n513": 2,
+   "start_ok_n513": true,
+   "start_failed_n513": [],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": false,
+   "force_island_needed": false,
+   "extent_m": 88.0,
+   "landing": {
+    "xy": [
+     154.0,
+     -149.5
+    ],
+    "kind": "sand",
+    "score": 1.538,
+    "exposure": 0.078,
+    "source": "tool"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      124.0,
+      -378.4,
+      175.1
+     ],
+     "target": [
+      124.0,
+      -162.5,
+      6.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 274.0,
+     "footprint_radius_m": 56.5
+    },
+    "landing_side": {
+     "position": [
+      337.4,
+      -129.5,
+      175.1
+     ],
+     "target": [
+      124.0,
+      -162.5,
+      6.4
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 81.2,
+     "elevation_deg": 38.0,
+     "distance_m": 274.0,
+     "footprint_radius_m": 56.5
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_A_24",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 24 --out $OUT/hero --phases landform --lf-provinces A --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province A --seed 24 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_A_seed24.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 23,
+   "province": "C",
+   "seed": 106,
+   "score": 0.7844,
+   "manifest_hash_n257": "3cd734184f1c6437",
+   "manifest_hash_n513": "ac06bfb59b61cff5",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 1,
+   "start_island_n513": 1,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "size"
+   ],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": false,
+   "force_island_needed": true,
+   "extent_m": 203.0,
+   "landing": {
+    "xy": [
+     -124.0,
+     -108.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.401,
+    "exposure": 0.037,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -125.0,
+      -522.8,
+      346.9
+     ],
+     "target": [
+      -125.0,
+      -94.0,
+      11.9
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 544.2,
+     "footprint_radius_m": 112.4
+    },
+    "landing_side": {
+     "position": [
+      208.8,
+      -363.2,
+      346.9
+     ],
+     "target": [
+      -125.0,
+      -94.0,
+      11.9
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 128.9,
+     "elevation_deg": 38.0,
+     "distance_m": 544.2,
+     "footprint_radius_m": 112.4
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_106",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 106 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 106 --island 1 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed106.png"
+    }
+   ],
+   "replace_with": null
+  },
+  {
+   "overall_rank": 24,
+   "province": "C",
+   "seed": 133,
+   "score": 0.7672,
+   "manifest_hash_n257": "3832620127992390",
+   "manifest_hash_n513": "26bb5a74bbad59a1",
+   "world_py_hash": "2b3433504179929c",
+   "start_island_n257": 3,
+   "start_island_n513": 2,
+   "start_ok_n513": false,
+   "start_failed_n513": [
+    "water"
+   ],
+   "batch_would_pick": 2,
+   "island_changed_between_grids": true,
+   "force_island_needed": false,
+   "extent_m": 122.0,
+   "landing": {
+    "xy": [
+     -57.0,
+     180.0
+    ],
+    "kind": "scan (rock/turf shore)",
+    "score": 1.335,
+    "exposure": 0.007,
+    "source": "scan"
+   },
+   "cameras": {
+    "south": {
+     "position": [
+      -15.5,
+      -100.7,
+      216.6
+     ],
+     "target": [
+      -15.5,
+      167.5,
+      7.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 180.0,
+     "elevation_deg": 38.0,
+     "distance_m": 340.4,
+     "footprint_radius_m": 70.4
+    },
+    "landing_side": {
+     "position": [
+      252.7,
+      168.2,
+      216.6
+     ],
+     "target": [
+      -15.5,
+      167.5,
+      7.0
+     ],
+     "lens_mm": 50.0,
+     "azimuth_deg": 89.8,
+     "elevation_deg": 38.0,
+     "distance_m": 340.4,
+     "footprint_radius_m": 70.4
+    }
+   },
+   "jobs": [
+    {
+     "id": "hero_C_133",
+     "spec": {
+      "w": 1200,
+      "h": 800,
+      "samples": 100
+     },
+     "via_batch": "python3 blender/batch.py --blender $BLENDER --seeds 133 --out $OUT/hero --phases landform --lf-provinces C --lf-samples 100 --hero-w 1200 --hero-h 800 --device CPU",
+     "direct": "$BLENDER -b --python blender/landform_scene.py -- --province C --seed 133 --island 2 --view hero --w 1200 --h 800 --samples 100 --out $OUT/hero/landform_hero_C_seed133.png"
+    }
+   ],
+   "replace_with": null
+  }
+ ]
+}

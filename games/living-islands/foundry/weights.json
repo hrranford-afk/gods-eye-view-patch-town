@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "_doc": "Transparent score: each term maps a catalogue number to a desirability d in [0,1] with a trapezoid band [a,b,c,d] (0 outside a..d, rising a->b, 1 between b and c, falling c->d); score = sum(w*d)/sum(w). Edit here, then run: python3 foundry/sweep.py shortlist (never recomputes a world). Group totals are shown in shortlist.json. A world is DISQUALIFIED only when start_ok is false (playability), never for taste.",
+  "mmr": {"lambda": 0.25, "sigma": 0.9, "_doc": "greedy diversity: adjusted = score - lambda * max similarity to already chosen worlds of the same province"},
+  "terms": [
+    {"key": "korcak_K", "w": 2.0, "group": "realism", "band": [0.30, 0.50, 0.85, 1.10], "why": "island size slope in the Korcak band"},
+    {"key": "coast_D", "w": 2.0, "group": "realism", "band": [1.03, 1.10, 1.35, 1.50], "why": "coast roughness in the rocky band"},
+    {"key": "ratio_largest_20th", "w": 0.5, "group": "realism", "band": [8, 30, 300, 900], "why": "largest island vs the 20th"},
+    {"key": "slope_median_deg", "w": 1.0, "group": "realism", "band_by_prov": {"A": [2, 8, 30, 45], "B": [3, 10, 35, 48], "C": [3, 10, 40, 52]}, "why": "median land slope"},
+    {"key": "slope_gt60", "w": 0.5, "group": "realism", "band": [-0.01, 0.0, 0.03, 0.12], "why": "little land steeper than 60 degrees"},
+    {"key": "sand_share", "w": 0.75, "group": "realism", "band_by_prov": {"A": [0.0, 0.05, 0.25, 0.45], "B": [-0.01, 0.0, 0.15, 0.35], "C": [-0.01, 0.0, 0.08, 0.25]}, "why": "sandy share of the shore"},
+    {"key": "land_lt10", "w": 0.75, "group": "realism", "band_by_prov": {"A": [0.15, 0.35, 0.80, 0.97], "B": [0.10, 0.25, 0.65, 0.92], "C": [0.0, 0.10, 0.60, 0.95]}, "why": "share of land below 10 m"},
+    {"key": "shelf_frac", "w": 0.5, "group": "realism", "band": [0.05, 0.10, 0.90, 0.99], "why": "shelf 0-30 m share of the field"},
+    {"key": "n_islands", "w": 1.0, "group": "archipelago", "band": [5, 10, 40, 120], "why": "enough islands to have a map"},
+    {"key": "n_skerry", "w": 1.0, "group": "archipelago", "band": [0, 5, 20, 80], "why": "enough small islands and skerries"},
+    {"key": "start_score", "w": 3.0, "group": "start", "band": [0.3, 0.7, 1.0, 1.01], "why": "quality of the start island (size, landing, water, timber, lee)"},
+    {"key": "landings_start", "w": 1.0, "group": "start", "band": [0, 1, 4, 14], "why": "a choice of landings on the start island"},
+    {"key": "coves_n", "w": 1.0, "group": "start", "band": [0, 2, 8, 30], "why": "sheltered coves in the world"},
+    {"key": "coves_within_100m", "w": 0.75, "group": "start", "band": [0, 1, 2, 6], "why": "a sheltered cove close to the start"},
+    {"key": "landing_dist_other_m", "w": 1.5, "group": "start", "band": [4, 15, 90, 200], "why": "a landing on another island within a short row"},
+    {"key": "row_gap_start_m", "w": 1.5, "group": "start", "band": [2, 8, 45, 120], "why": "next island across a first-voyage strait"},
+    {"key": "n_merge_isl", "w": 0.5, "group": "tide", "band": [-1, 0.5, 5, 14], "why": "a few islands that join at low tide"},
+    {"key": "deepest_channel_m", "w": 0.5, "group": "seabed", "band": [1, 5, 22, 45], "why": "a real channel between islands"},
+    {"key": "strait_min_m", "w": 0.5, "group": "seabed", "band": [1, 5, 30, 80], "why": "a narrow strait somewhere"},
+    {"key": "palette_muted", "w": 0.5, "group": "visual", "band": [0.4, 0.75, 1.0, 1.01], "why": "muted palette (crude)"},
+    {"key": "contrast", "w": 0.5, "group": "visual", "band": [0.03, 0.08, 0.35, 0.6], "why": "land separates from sea in the plan view"},
+    {"key": "edge_energy", "w": 0.5, "group": "visual", "band": [0.004, 0.012, 0.04, 0.09], "why": "enough texture in the plan view"},
+    {"key": "veg_variety", "w": 0.5, "group": "visual", "band": [0.1, 0.35, 0.85, 1.01], "why": "mix of vegetation classes"}
+  ],
+  "diversity_features": [["land_frac", 0.15], ["n_islands", 25], ["korcak_K", 0.4], ["coast_D", 0.12], ["start_extent_m", 100], ["landings_start", 8], ["coves_n", 12], ["row_gap_start_m", 50], ["n_merge_isl", 5]]
+}
