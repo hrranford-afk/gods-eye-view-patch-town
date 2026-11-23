@@ -110,6 +110,15 @@ The eight weather states lean grey (overcast, rain, fog, storm). Add the lovely 
 - **AR:** there is no sky dome in AR, so skyline effects (rainbow, rays) need a table-scale version or a skip. Research that before building.
 - **Research first (RESEARCH_FIRST.md):** rainbow geometry and brightness, sun shower physics, frost and snow conditions at this climate, halo types, then the look in the page.
 
+### Unfinished projects and the old crews (owner idea, 23 Nov; rough)
+One possible reason the old world fell: people got comfortable and handed more and more to cheap automation, until little was left that anyone still knew how to do. This is a hint to find, never a lecture, and the cause stays mostly unexplained (the backstory remains one line).
+- **Unfinished works:** some islands hold projects the old world had started, with their machine crews still following the plan: a tidal or water turbine and its cable to shore, a causeway, a harbour wall, a signal mast. The crews are hard-coded relics that keep building to a stale plan (in the wrong place, for a sea level that has moved, with materials long run out).
+- **Player choices:** leave them, help finish a project (work with the crew to complete it), redirect them with a few fixed route cards, or salvage them for parts. A finished tidal turbine gives electricity, which fits the craft era (generator and cables) and the City Lab power network.
+- **The sea sets the site:** a turbine only works where the tidal stream is strong enough, so the flow field and macro sea decide where such a project makes sense. A group of islands can share one project (a cable between them).
+- **Stakes and tone:** quiet and hopeful. A half-built project can be a hazard or a gift. Never preachy, no villain, nothing graphic.
+- **Rules:** finite, seeded old-world slots (as for ruins and wrecks); ledger events with idempotent keys; no brands.
+- **Research first:** how tidal stream turbines really work (flow speed needed, rotor size, cable landfall, maintenance, how they fail), then simulate in the headless sim before drawing.
+
 ## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
 The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
 - **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
