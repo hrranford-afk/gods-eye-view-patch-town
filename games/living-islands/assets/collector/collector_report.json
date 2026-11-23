@@ -1,0 +1,65 @@
+{
+ "collector_hero.glb": {
+  "triangles": 18644,
+  "vertices": 33555,
+  "per_node": {
+   "chassis": 1536,
+   "track_l": 4056,
+   "track_r": 4068,
+   "shell_l": 2908,
+   "shell_r": 2944,
+   "head": 836,
+   "lamp": 172,
+   "arm_base": 440,
+   "arm_mid": 312,
+   "arm_tip": 96,
+   "finger_l": 64,
+   "finger_r": 64,
+   "hopper": 960,
+   "hopper_lid": 188
+  },
+  "bytes": 1474028
+ },
+ "collector_live.glb": {
+  "triangles": 3338,
+  "vertices": 5197,
+  "per_node": {
+   "chassis": 284,
+   "track_l": 652,
+   "track_r": 652,
+   "shell_l": 492,
+   "shell_r": 432,
+   "head": 184,
+   "lamp": 98,
+   "arm_base": 104,
+   "arm_mid": 120,
+   "arm_tip": 44,
+   "finger_l": 40,
+   "finger_r": 40,
+   "hopper": 132,
+   "hopper_lid": 64
+  },
+  "bytes": 318708
+ },
+ "collector_far.glb": {
+  "triangles": 892,
+  "vertices": 1290,
+  "per_node": {
+   "chassis": 72,
+   "track_l": 216,
+   "track_r": 216,
+   "shell_l": 108,
+   "shell_r": 108,
+   "head": 60,
+   "lamp": 20,
+   "arm_base": 16,
+   "arm_mid": 16,
+   "arm_tip": 12,
+   "finger_l": 12,
+   "finger_r": 12,
+   "hopper": 12,
+   "hopper_lid": 12
+  },
+  "bytes": 65480
+ }
+}
