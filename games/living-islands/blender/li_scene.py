@@ -31,25 +31,8 @@ def reset():
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'
     sc.cycles.device = 'CPU'
-    if os.environ.get('LI_DEVICE', 'CPU').upper() == 'GPU':
-        # optional GPU rendering (set LI_DEVICE=GPU); falls back to CPU if no GPU backend is usable
-        try:
-            prefs = bpy.context.preferences.addons['cycles'].preferences
-            for kind in ('METAL', 'OPTIX', 'CUDA', 'HIP', 'ONEAPI'):
-                try:
-                    prefs.compute_device_type = kind
-                    prefs.get_devices()
-                    gpus = [d for d in prefs.devices if d.type != 'CPU']
-                    if gpus:
-                        for d in prefs.devices:
-                            d.use = (d.type != 'CPU')
-                        sc.cycles.device = 'GPU'
-                        print('LI_DEVICE_USED', kind, [d.name for d in gpus])
-                        break
-                except Exception:
-                    continue
-        except Exception as e:
-            print('LI_DEVICE_FALLBACK_CPU', e)
+    import li_device
+    li_device.configure(sc)      # explicit device choice (LI_DEVICE, LI_GPU_NAME, LI_REQUIRE_GPU); see li_device.py
     return sc
 
 def mesh_obj(name, verts, faces, smooth=True, col=None, collection=None):
@@ -111,7 +94,7 @@ def _colour_in(nt, spec, loc):
         r = node(nt, 'ShaderNodeRGB', loc); r.outputs[0].default_value = (*spec[:3], 1.0); return r.outputs[0]
     return spec
 
-def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), palette=None, joint=None, bed_normal=None, columnar=False, wander=0.35, lichen=1.0, streaks=0.0):
+def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), palette=None, joint=None, bed_normal=None, columnar=False, wander=0.35, lichen=1.0, streaks=0.0, crack_w=0.03):
     """returns (color_socket, height_socket): strata colour bands, dark cracks, lichen patches. pos in metres.
     Optional (the landform scene uses them; the defaults keep the original look exactly):
       palette=(fresh, weathered, lichen) : each a linear (r,g,b) tuple, ('attr', 'Name') or a colour socket. Bands alternate weathered<->fresh
@@ -120,6 +103,7 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), pale
       bed_normal=(x,y,z) : bands follow planes with this normal (dipping beds / foliation) instead of horizontal ones;
       columnar=True : crack cells are vertical prisms (basalt columns): the crack Voronoi is squashed along z;
       wander : how far (in units of scale metres) the bands wander, so beds and foliation are wavy rather than ruled lines (default 0.35 = original);
+      crack_w : width of the dark crack lines (voronoi edge distance, 0.03 = original; basalt columns use ~0.09 so the joints between columns read at 7 px per metre);
       lichen : > 1 spreads the lichen patches (1 = original); streaks : 0..1 dark vertical water-staining on steep faces (0 = none, as the original)."""
     x, y = loc
     off = node(nt, 'ShaderNodeVectorMath', (x, y), operation='ADD')
@@ -190,10 +174,10 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), pale
     v1.inputs['Scale'].default_value = 1.9 / scale; link(nt, cpos, v1.inputs['Vector'])
     v2 = node(nt, 'ShaderNodeTexVoronoi', (x + 900, y - 850), feature='DISTANCE_TO_EDGE', voronoi_dimensions='3D')
     v2.inputs['Scale'].default_value = 6.5 / scale; link(nt, cpos, v2.inputs['Vector'])
-    c1raw = ramp(nt, v1.outputs['Distance'], [(0.0, (0, 0, 0, 1)), (0.03, (1, 1, 1, 1))], (x + 1100, y - 650))
+    c1raw = ramp(nt, v1.outputs['Distance'], [(0.0, (0, 0, 0, 1)), (crack_w, (1, 1, 1, 1))], (x + 1100, y - 650))
     brk = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 1500), noise_dimensions='3D'); brk.inputs['Scale'].default_value = 1.7 / scale; brk.inputs['Detail'].default_value = 3
     link(nt, off.outputs[0], brk.inputs['Vector'])
-    brkr = ramp(nt, brk.outputs['Fac'], [(0.45, (1, 1, 1, 1)), (0.58, (0, 0, 0, 1))], (x + 1100, y - 1500))
+    brkr = ramp(nt, brk.outputs['Fac'], [(0.45, (1, 1, 1, 1)), (0.58, (0, 0, 0, 1))] if not columnar else [(0.72, (1, 1, 1, 1)), (0.9, (0, 0, 0, 1))], (x + 1100, y - 1500))
     c1m = node(nt, 'ShaderNodeMix', (x + 1250, y - 700), data_type='RGBA'); link(nt, brkr.outputs['Color'], S(c1m, 'inputs', 'Factor'))
     link(nt, c1raw.outputs['Color'], S(c1m, 'inputs', 'A')); S(c1m, 'inputs', 'B').default_value = (1, 1, 1, 1)
     c1 = c1m
@@ -202,6 +186,15 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), pale
     link(nt, S(c1, 'outputs', 'Result'), S(cm, 'inputs', 'A')); link(nt, c2.outputs['Color'], S(cm, 'inputs', 'B'))
     rm = node(nt, 'ShaderNodeMix', (x + 1500, y), data_type='RGBA', blend_type='MULTIPLY'); S(rm, 'inputs', 'Factor').default_value = 1.0
     link(nt, S(gm, 'outputs', 'Result'), S(rm, 'inputs', 'A')); link(nt, S(cm, 'outputs', 'Result'), S(rm, 'inputs', 'B'))
+    col_tone = None
+    if columnar:
+        # every basalt column gets its own tone: a 2-D voronoi (z = 0, so the cells are infinite vertical prisms), cell colour -> value 0.6..1.2
+        zq = node(nt, 'ShaderNodeVectorMath', (x + 750, y - 2000), operation='MULTIPLY'); link(nt, off.outputs[0], zq.inputs[0]); zq.inputs[1].default_value = (1.0, 1.0, 0.0)
+        vq = node(nt, 'ShaderNodeTexVoronoi', (x + 900, y - 2000), feature='F1', voronoi_dimensions='3D'); vq.inputs['Scale'].default_value = 1.9 / scale; link(nt, zq.outputs[0], vq.inputs['Vector'])
+        vs = node(nt, 'ShaderNodeSeparateColor', (x + 1050, y - 2000)); link(nt, vq.outputs['Color'], vs.inputs['Color'])
+        vt = node(nt, 'ShaderNodeMath', (x + 1200, y - 2000), operation='MULTIPLY_ADD'); link(nt, vs.outputs['Red'], vt.inputs[0]); vt.inputs[1].default_value = 0.65; vt.inputs[2].default_value = 0.55
+        col_tone = node(nt, 'ShaderNodeCombineColor', (x + 1350, y - 2000))
+        for ch in ('Red', 'Green', 'Blue'): link(nt, vt.outputs[0], col_tone.inputs[ch])
     # lichen: patchy, favours up-facing surfaces
     ln = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 1050), noise_dimensions='3D')
     ln.inputs['Scale'].default_value = 3.4 / scale; ln.inputs['Detail'].default_value = 6; ln.inputs['Roughness'].default_value = 0.7
@@ -225,6 +218,9 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), pale
     hh = node(nt, 'ShaderNodeMath', (x + 1500, y - 400), operation='ADD')
     link(nt, grain.outputs['Fac'], hh.inputs[0]); link(nt, S(c1, 'outputs', 'Result'), hh.inputs[1])
     colour_out = S(lx, 'outputs', 'Result')
+    if col_tone is not None:
+        ct = node(nt, 'ShaderNodeMix', (x + 1900, y - 100), data_type='RGBA', blend_type='MULTIPLY'); S(ct, 'inputs', 'Factor').default_value = 1.0
+        link(nt, colour_out, S(ct, 'inputs', 'A')); link(nt, col_tone.outputs['Color'], S(ct, 'inputs', 'B')); colour_out = S(ct, 'outputs', 'Result')
     if streaks > 0:
         # run-off staining: noise stretched along z, strongest where the surface is steep (normal z small)
         sq = node(nt, 'ShaderNodeVectorMath', (x + 1500, y - 1700), operation='MULTIPLY'); link(nt, off.outputs[0], sq.inputs[0]); sq.inputs[1].default_value = (1.0, 1.0, 0.10)

@@ -56,9 +56,9 @@ ROCKS = [
           ['pasture', 'rush meadow'], 0.8, 'B'),
     _rock('mudstone', 0.40, 0.05, (120, 84, 80), (96, 72, 68), (110, 120, 90), 'clay loam', 0.5,
           ['rush meadow', 'pasture'], 0.7, 'B'),
-    _rock('basalt_columnar', 1.00, 0.8, (58, 58, 62), (100, 88, 78), (190, 150, 60), 'brown loam', 0.3,
+    _rock('basalt_columnar', 1.00, 0.8, (70, 72, 78), (104, 102, 104), (126, 126, 104), 'brown loam', 0.3,
           ['grass', 'thrift'], 3.0, 'C'),
-    _rock('basalt_vesicular_top', 0.75, 0.4, (84, 70, 66), (110, 88, 76), (200, 160, 70), 'brown loam', 0.4,
+    _rock('basalt_vesicular_top', 0.75, 0.4, (74, 68, 66), (100, 90, 80), (170, 150, 80), 'brown loam', 0.45,
           ['grass', 'heather'], 1.6, 'C'),
     _rock('bole_ash', 0.45, 0.1, (150, 76, 60), (130, 78, 62), (140, 130, 80), 'red clay', 0.4,
           ['rush meadow'], 0.7, 'C'),
@@ -395,6 +395,23 @@ def build_B(ctx, hard_s):
     return H
 
 
+# Province C relief constants (TUNING): unchanged from v0, so the coast, the islands and every statistic of the heightfield at the cut are the v0 ones.
+# C_RELIEF compresses the land above C_RELIEF_FROM metres after all the erosion (the 512 m world squeezes real relief into a few tens of metres horizontally,
+# which gave 48 degree median slopes: red cones). The shoreline contour does not move.
+C_RELIEF, C_RELIEF_FROM = 0.45, 1.5
+C_COARSE, CAMP_REL2, CAMP_REL3 = 28.0, 20.0, 10.0
+C_TREAD_M, C_RISER_W = 7.0, 0.10
+C_BOLE_BAND, C_BOLE_PATCH = (0.10, 0.12), 0.965     # patch share of the noise field that becomes bole soil on treads
+
+
+def rock_visible(fr, X, Y, seed, prov):
+    """province C output rock map from the lava-stack phase fr (0 on the flat tread = flow top, 0..1 up the riser): tread = vesicular flow top (brown
+    loam, grass), riser = columnar basalt (dark grey, joints), a thin red bole band at the foot of each riser, bole-soil patches on a few treads."""
+    rid = np.where(fr < 0.10, R_BAS_TOP, np.where(fr < C_BOLE_BAND[1], R_BOLE, R_BAS)).astype(np.uint8)
+    patch = fbm(np.random.default_rng([seed, ord(prov), 55]), X, Y, 26.0, 26.0, 3, 0.55)
+    return np.where((fr < 0.10) & (patch > np.quantile(patch, C_BOLE_PATCH)), R_BOLE, rid).astype(np.uint8)
+
+
 def build_C(ctx, hard_s):
     X, Y, st, rng = ctx['X'], ctx['Y'], ctx['st'], ctx['rng_h']
     s, t = rot(X, Y, st['dip_dir'])
@@ -403,8 +420,8 @@ def build_C(ctx, hard_s):
     P = fbm(rng, s, t, 300.0, 200.0, 4, 0.55)
     P2 = fbm(rng, s, t, 70.0, 48.0, 3, 0.7, lmin=12.0)
     P3 = fbm(rng, s, t, 34.0, 24.0, 2, 0.7, lmin=12.0)
-    coarse = 28.0 * P + tilt
-    H = coarse + fine_envelope(coarse, st['land_frac'], 5.0, 0.5) * (20.0 * P2 + 10.0 * P3)
+    coarse = C_COARSE * P + tilt
+    H = coarse + fine_envelope(coarse, st['land_frac'], 5.0, 0.5) * (CAMP_REL2 * P2 + CAMP_REL3 * P3)
     H -= _edge_taper(ctx, 30.0)
     return H
 
@@ -772,6 +789,7 @@ def classify_surface(w, dep, E):
     else:
         veg[:] = V_TURF
         veg[(slope < 0.35) & (Ew < 0.55)] = V_PASTURE
+        veg[(slope < 0.30) & (Ew < 0.78) & (hh > 1.2)] = V_PASTURE          # flat flow tops are grass (plateaus)
         veg[(wet > 0.75) & (slope < 0.25)] = V_RUSH
         veg[slope > 1.0] = V_LICHEN
         veg[slope > 1.8] = V_BARE
@@ -926,6 +944,7 @@ def make_world(seed, province='A', size_m=512, n=257, sea_level=0.0, timings=Non
     tick('1_3_uplift_structure', t0)
 
     # --- step 5a: choose the cut (land fraction is a seeded property of the province) --------
+    rid_vis = None
     t0 = time.perf_counter()
     H = H - np.quantile(H, 1.0 - st['land_frac'])
     if prov == 'B':
@@ -933,15 +952,18 @@ def make_world(seed, province='A', size_m=512, n=257, sea_level=0.0, timings=Non
         H = terrace(H, 2.8, wm, 1.0)
         H -= fault_trench(ctx, par["fault_depth"], par["fault_w"])
     elif prov == 'C':
-        wm = np.full(H.shape, 0.10)
-        H = terrace(H, 7.0, wm, 2.5)
-        # rock follows the lava stack: bole at the foot, vesicular top, columnar middle
-        zz = (H - 2.5) / 7.0
+        wm = np.full(H.shape, C_RISER_W)
+        H = terrace(H, C_TREAD_M, wm, 2.5)
+        # rock follows the lava stack: bole at the foot, vesicular top, columnar middle. The erosion passes use this v0 labelling (soft bole treads),
+        # so the heightfield is the v0 one; the rock map that is OUTPUT is rock_visible() below (v0 made the treads red clay, so plateaus and most of
+        # every island rendered as red cones with no columns).
+        zz = (H - 2.5) / C_TREAD_M
         fr = zz - np.floor(zz)
         rid = np.where(fr < 0.10, R_BOLE, np.where(fr > 0.90, R_BAS_TOP, R_BAS)).astype(np.uint8)
+        rid_vis = rock_visible(fr, X, Y, seed, prov)
         H -= fault_trench(ctx, par['fault_depth'], par['fault_w'])
         rid = stamp_faults(ctx, rid, 1.5)
-        rid = np.where(rid == R_FAULT, R_FAULT, rid).astype(np.uint8)
+        rid_vis = np.where(rid == R_FAULT, R_FAULT, rid_vis).astype(np.uint8)
     else:
         H -= fault_trench(ctx, par['fault_depth'], par['fault_w'])
     # the seabed is the same surface: flat shelf with a soft shelf break, troughs already carved above
@@ -976,6 +998,11 @@ def make_world(seed, province='A', size_m=512, n=257, sea_level=0.0, timings=Non
         H = thermal(H, np.full(H.shape, 3.0), dx, 4)      # stack walls stay inside the stable-slope cap
     feats['geos'] = find_geos(w, H)
     # deposits become sand / shingle rock cells
+    if prov == 'C':
+        H = np.where(H > C_RELIEF_FROM, C_RELIEF_FROM + (H - C_RELIEF_FROM) * C_RELIEF, H)
+        rid = rid_vis
+        gy_, gx_ = np.gradient(H, dx); sl_ = np.hypot(gx_, gy_)
+        rid = np.where((sl_ > 0.8) & (H > -1.0) & (rid != R_FAULT), R_BAS, rid).astype(np.uint8)       # every cliff face is columnar basalt
     rid = rid.copy()
     E = exposure(H > sea_level, dx, st['wave_from'], 0.4 * size_m)
     sand = (dep_total > 0.45) & (H < 4.0) & (E < 0.35)

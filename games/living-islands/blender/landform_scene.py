@@ -15,10 +15,13 @@ import island_common as IC
 import bpy
 import li_scene as LS
 import li_camp as LC
+import li_trees as LT
 
 MAX_EXTENT_M = 200.0     # biggest island (bounding box side) we draw as a hero: the owner's believable scale, a few tens of metres up to ~150-250
 MIN_AREA_M2 = 1500.0
 GOOD_LANDING = 0.85      # score a landing must reach to count as good (see _score)
+COLUMN_M, COLUMN_AMP = 1.7, 0.8   # basalt column width (m) and bulge amplitude (m) in the terrain mesh
+ROCK_SCALE_C = 3.0       # basalt: shader crack cells about 1.5 m across (matches COLUMN_M)
 ROCK_SCALE = 3.0         # rock texture scale: cracks, lichen and grain sized for a 0.2-0.3 m pixel (the boulders of the camp scenes use 1.0)
 
 # ---------------------------------------------------------------- small maths
@@ -208,6 +211,9 @@ def build_terrain(w, win, up=2, seed=0, rim=0.0, camp=None):
     other = np.where((veg == W.V_HEATHER)[..., None], lin((64, 96, 36)), lin((70, 54, 40)))
     G = np.where(pat, 0.55 * G + 0.45 * other, G)
     G = G * (0.78 + 0.5 * n3)[..., None] * (0.88 + 0.24 * n2)[..., None]
+    # red bole clay shows as a soil tint on the flat tops (province C), not as rock
+    bole = ((rock == W.R_BOLE) & (H > 0))[..., None]
+    G = np.where(bole, 0.62 * G + 0.38 * lin((138, 74, 54)) * (0.8 + 0.4 * n3)[..., None], G)
     # ---- rock amount: bare / lichen veg, steep ground, thin soil outcrops, exposed splash zone
     thin = np.clip(1 - soil / 0.45, 0, 1)
     out_ = smooth(0.62, 0.8, n2 * 0.55 + n1 * 0.45 + thin * 0.22 - 0.06)
@@ -249,6 +255,12 @@ def build_terrain(w, win, up=2, seed=0, rim=0.0, camp=None):
     ledge = (smooth(0.0, 0.25, saw) - 0.5) * np.minimum(np.maximum(joint, 0.8), 2.0) * 0.16
     rough = (IC.fbm(X / 1.6, Y / 1.6, seed + 331, 4) - 0.5) * 0.5 + (IC.fbm(X / 0.6, Y / 0.6, seed + 333, 2) - 0.5) * 0.12
     mic = rockamt * (rough + ledge * smooth(0.3, 0.9, slope)) * (H > -1.5)
+    # basalt columns: on steep columnar faces a hexagon-like bulge pattern (three sine families 60 degrees apart, period 1.7 m, wobbled) pushes the face in and out,
+    # so the vertical prisms catch the low sun and read at island framing (province C only: R_BAS exists only there)
+    isb = (rock == W.R_BAS) & (H > -1.0)
+    if isb.any():
+        vv = sum(np.abs(np.sin(math.pi * (X * math.cos(a) + Y * math.sin(a)) / COLUMN_M + 1.1 * (n1 - 0.5))) for a in (0.0, math.pi / 3, 2 * math.pi / 3)) / 3.0
+        mic = mic + isb * smooth(0.2, 0.7, slope) * (vv - 0.55) * COLUMN_AMP
     H = H + mic
     verts = np.stack([X.ravel(), Y.ravel(), H.ravel()], -1)
     idx = np.arange(ny_ * nx_).reshape(ny_, nx_)
@@ -289,23 +301,16 @@ def poisson(rng, cand, min_d, limit):
 def sample_map(T, A, x, y):
     return bilinear(A, T['X1'][0], T['Y1'][0], T['d'], x, y)
 
-def tree_sites(T, seed, limit, camp_xy, avoid_r=9.0):
-    """conifers only on soil that can carry them: deep enough soil (or the tool's scrub class), sheltered from the wind, gentle, drained,
-    above the splash zone, not on sand, shingle or rock outcrop, not on the camp."""
-    rng = np.random.default_rng(seed + 4101)
-    X, Y, H = T['X'], T['Y'], T['H']
-    deep = (T['soil'] >= 0.25) | (T['veg'] == W.V_SCRUB)
-    okm = deep & (T['wind'] < 0.34) & (T['slope'] < 0.42) & (T['wet'] < 0.62) & (H > 2.2) & (H < 22) & (T['rockamt'] < 0.35) & \
-        ~np.isin(T['veg'], [W.V_SAND, W.V_SHINGLE, W.V_LOCH, W.V_BARE, W.V_LICHEN, W.V_BOG, W.V_RUSH, W.V_MACHAIR])
-    if camp_xy is not None:
-        okm &= np.hypot(X - camp_xy[0], Y - camp_xy[1]) > avoid_r
-    rr, cc = np.nonzero(okm)
-    if len(rr) == 0:
-        return [], 0
-    sel = rng.permutation(len(rr))[:6000]
-    cand = np.stack([X[rr[sel], cc[sel]] + rng.uniform(-0.4, 0.4, len(sel)), Y[rr[sel], cc[sel]] + rng.uniform(-0.4, 0.4, len(sel))], -1)
-    pts = poisson(rng, cand, 4.6, limit)
-    return [(x, y, float(sample_map(T, H, x, y))) for x, y in pts], int(okm.sum())
+def tree_sites(T, seed, limit, camp_xy, province='A', wave_from=math.pi, wide=False):
+    """the planting plan (li_trees.plan): which species goes where, from the landform maps. Upright trees only where soil is deep enough, sheltered,
+    gentle, drained and above the splash zone; wind-shaped trees on the exposed band; none on rock, steep ground, bog, sand, shingle or the camp.
+    Returns the plan dict (items, counts, triangle totals, hash)."""
+    return LT.plan(T, seed, province, wave_from, camp_xy, wide, W, IC, limit_trees=limit)
+
+_LAST = {}
+
+def vegetation_plan(T, w, province, seed, camp_xy, wide):
+    return tree_sites(T, seed, 420 if wide else 150, camp_xy, province.upper(), float(w.structure['wave_from']), wide)
 
 def tuft_sites(T, seed, count, camp_xy):
     rng = np.random.default_rng(seed + 4201)
@@ -425,7 +430,7 @@ def look_at(co, pos, tgt):
 
 # ---------------------------------------------------------------- the scene
 def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, samples=80, out=None, blend=None, meta_only=False,
-          sea_density=None, tufts=None, up=None, exposure=-0.15, az_offset=0.0, el=None, lens=None):
+          sea_density=None, tufts=None, up=None, exposure=-0.15, az_offset=0.0, el=None, lens=None, zoom=1.0, aim=None):
     T0 = time.time(); meta = {'province': province, 'seed': seed, 'view': view, 'n': n}
     t = time.perf_counter(); w = W.make_world(seed, province, n=n); meta['t_world_s'] = round(time.perf_counter() - t, 2)
     meta['world_hash'] = W.world_bytes_hash(w); levels = W.tide_levels(w)
@@ -449,6 +454,11 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
         # the pad moves ground at the camp only; recompute boat position on the new surface
     meta.update(mesh_hash=T['hash'], verts=int(len(T['verts'])), camp=None if not camp else dict(fire=[round(v, 2) for v in camp['fire']], tent_a=[round(v, 2) for v in camp['tent_a']],
                 tent_b=[round(v, 2) for v in camp['tent_b']], boat=[round(v, 2) for v in camp['boat']], pad_level_m=round(camp['level'], 2)))
+    vp0 = vegetation_plan(T, w, province, seed, camp['fire'] if camp else None, wide)
+    global _LAST
+    _LAST = dict(T=T, plan=vp0, camp=camp, world=w)       # kept for the tests (placement rules are checked against the terrain maps)
+    meta.update(veg_hash=vp0['hash'], veg_items=vp0['n'], veg_trees=vp0['n_trees'], veg_counts=vp0['counts'], veg_tris_instanced=vp0['tris_instanced'], veg_tris_unique=vp0['tris_unique'],
+                veg_variants=vp0['variants_used'])
     if meta_only:
         meta['t_total_s'] = round(time.time() - T0, 1); return meta
     sc = LS.reset()
@@ -456,14 +466,15 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
     pal_rock = int(np.bincount(T['rock'][T['H'] > 0].ravel(), minlength=len(W.ROCKS)).argmax()) if (T['H'] > 0).any() else 0
     bn = bed_normal(w)
     LS.land_material(ob, seed, rock_kw=dict(palette=(('attr', 'Fresh'), ('attr', 'Weath'), ('attr', 'Lich')), joint=('attr', 'Joint'),
-                                          bed_normal=tuple(float(v) for v in bn), columnar=(province.upper() == 'C'), wander=1.2, lichen=1.7, streaks=0.65),
-                     rock_attr='RockAmt', tide=(levels['low'], levels['high']), loch_attr='Loch', rock_scale=ROCK_SCALE)
-    # trees on suitable soil
+                                          bed_normal=tuple(float(v) for v in bn), columnar=(province.upper() == 'C'), wander=1.2 if province.upper() != 'C' else 0.5, lichen=1.7 if province.upper() != 'C' else 0.85, streaks=0.65 if province.upper() != 'C' else 0.9,
+                                          crack_w=0.03 if province.upper() != 'C' else 0.085),
+                     rock_attr='RockAmt', tide=(levels['low'], levels['high']), loch_attr='Loch', rock_scale=ROCK_SCALE if province.upper() != 'C' else ROCK_SCALE_C)
+    # trees, shrubs and ground cover: the species plan from the landform maps (li_trees), linked duplicates of 3-8 mesh variants per species
     camp_xy = camp['fire'] if camp else None
-    tlimit = 420 if wide else 90
-    tpts, tsuit = tree_sites(T, seed, tlimit, camp_xy)
-    if tpts:
-        LS.make_conifers(None, seed, pts=tpts, size=(0.9, 1.7))
+    vp = vp0
+    tpts = vp['items']; tsuit = vp['n_trees']
+    LT.reset_cache()
+    LT.instantiate(tpts, seed, vp['detail'])
     # grass tufts and heather clumps where the soil map says grass / heather
     ntuft = tufts if tufts is not None else (0 if wide else 15000)
     nt_made = 0
@@ -471,7 +482,7 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
         xs, ys, hz, hth = tuft_sites(T, seed, ntuft, camp_xy)
         nt_made = len(xs)
         if nt_made:
-            LS.make_tufts(seed, sites=(xs, ys, hz, hth), heather=500, scale=2.0)
+            LS.make_tufts(seed, sites=(xs, ys, hz, hth), heather=0, scale=2.0)
     # boulders at the coast by exposure; the rock shader uses the rock's own palette
     mats = {}
     def rmat(rid):
@@ -483,7 +494,7 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
         return mats[rid]
     rocks = coast_rock_sites(T, seed, 14 if wide else 34, 6 if wide else 10)
     for k, r in enumerate(rocks):
-        rid = r['rock'] if r['rock'] not in (W.R_SAND,) else pal_rock
+        rid = r['rock'] if r['rock'] not in (W.R_SAND, W.R_BOLE) else pal_rock
         b = LS.boulder(seed + 13 * k, r['size'], (r['x'], r['y'], float(sample_map(T, T['H'], r['x'], r['y'])) - 0.12 * r['size']), r['rot'], 5 if r['big'] else 4)
         b.data.materials.append(rmat(rid))
     if camp:
@@ -516,6 +527,9 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
         cam_el, cam_lens = el or 33.0, lens or 50.0
         c0 = np.array(ic['target'])
     pos, tgt, dist = fit_camera(P, c0, cam_az, cam_el, cam_lens)
+    if zoom and zoom != 1.0:                      # close-up for checking detail: move in on the target (or on aim = (x, y) in metres)
+        a_ = np.array(tgt) if aim is None else np.array([aim[0], aim[1], float(sample_map(T, T['H'], aim[0], aim[1]))])
+        pos = tuple(float(v) for v in (a_ + (np.array(pos) - np.array(tgt)) / zoom)); tgt = tuple(float(v) for v in a_)
     if view == 'top':
         pos = (tgt[0], tgt[1] - 0.001, dist); cam_az = 180.0
     meta.update(camera=dict(pos=[round(v, 1) for v in pos], target=[round(v, 1) for v in tgt], distance_m=round(dist, 1), az_deg=round(cam_az, 1), el_deg=cam_el, lens_mm=cam_lens))
@@ -533,7 +547,7 @@ def build(province, seed, view='hero', n=513, island=None, w_px=1200, h_px=800, 
     from mathutils import Vector
     sun.rotation_euler = Vector(tuple(-sd)).to_track_quat('-Z', 'Y').to_euler()
     LS.render_settings(sc, w_px, h_px, samples, True, exposure=exposure)
-    meta.update(trees=len(tpts), tree_suitable_cells=tsuit, tufts=nt_made, boulders=len(rocks), sun_az_deg=round(sun_az, 1), sun_el_deg=sun_el, sea_density=dens)
+    meta.update(trees=vp['n_trees'], veg_items=len(tpts), tree_suitable_cells=tsuit, tufts=nt_made, boulders=len(rocks), sun_az_deg=round(sun_az, 1), sun_el_deg=sun_el, sea_density=dens)
     meta['t_build_s'] = round(time.time() - T0, 1)
     if out:
         sc.render.filepath = os.path.abspath(out)
@@ -553,8 +567,8 @@ if __name__ == '__main__':
     ap.add_argument('--w', type=int, default=1200); ap.add_argument('--h', type=int, default=800); ap.add_argument('--samples', type=int, default=80)
     ap.add_argument('--out', default=''); ap.add_argument('--blend', default=''); ap.add_argument('--grid', type=int, default=513); ap.add_argument('--island', type=int, default=0)
     ap.add_argument('--meta-only', action='store_true'); ap.add_argument('--sea-density', type=float, default=None); ap.add_argument('--tufts', type=int, default=None)
-    ap.add_argument('--exposure', type=float, default=-0.15); ap.add_argument('--az-offset', type=float, default=0.0); ap.add_argument('--el', type=float, default=None); ap.add_argument('--lens', type=float, default=None)
+    ap.add_argument('--exposure', type=float, default=-0.15); ap.add_argument('--az-offset', type=float, default=0.0); ap.add_argument('--el', type=float, default=None); ap.add_argument('--lens', type=float, default=None); ap.add_argument('--zoom', type=float, default=1.0); ap.add_argument('--aim', default='')
     a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:])
     m = build(a.province, a.seed, a.view, a.grid, a.island or None, a.w, a.h, a.samples, a.out or None, a.blend or None, a.meta_only, a.sea_density, a.tufts,
-              exposure=a.exposure, az_offset=a.az_offset, el=a.el, lens=a.lens)
+              exposure=a.exposure, az_offset=a.az_offset, el=a.el, lens=a.lens, zoom=a.zoom, aim=[float(v) for v in a.aim.split(',')] if a.aim else None)
     print('LANDFORM_META ' + json.dumps(m, sort_keys=True))
