@@ -46,3 +46,34 @@ Every amplitude, wavelength, hardness ratio, slope cap, erosion constant, shelf 
 - Page: `surface_colour(w)` is a ready RGB texture; `veg` and `lake_depth` drive planting and water; `out/world_*.npz` holds height/rock/exposure.
 - Foundry: `checks.measure` returns the same kind of per-seed numbers as the foundry table (coves, landing candidates, shelf share) and could be a drop-in measure set. Wildlife/flow: `exposure` is the fetch input for wave and foam, lee low-exposure water for seals and drift collection, `rock` + depth for kelp, `wetness`/`lake_depth` for freshwater.
 Run: `python3 landform/tests/test_world.py` (39 checks); `python3 landform/checks.py 20`; `python3 landform/sheet.py sheet|views|export`.
+
+## 7 The Blender link (landform render v0)
+`blender/landform_scene.py` draws islands from this tool instead of the invented island in `island_common.py`. Run (any Blender 3.6+ or the bpy module, CPU):
+`blender -b --python blender/landform_scene.py -- --province A --seed 2001 [--view hero|wide|top] [--w 1200 --h 800 --samples 64] --out shot.png` (`--meta-only` builds no scene and prints the hashes; `--island N` forces an island). It prints one `LANDFORM_META {...}` line (mesh hash, island, landing, camp, camera, counts, timings).
+How it works:
+- `make_world(seed, prov, n=513)` (1 m cells), then `island_window` (island bounding box x1.5 + 44 m, max 300 m) or the whole 512 m world for the wide view. ONE terrain mesh (Catmull-Rom up-sampled 2x to 0.5 m for hero windows, about 360k vertices) holds land and seabed; the sea plane at z = 0 cuts it, so islands are peaks of one surface and the shelf shows through the water. The window rim sinks to deep water so the block has no wall. Rock ids are warped a little so contacts are wavy.
+- Island choice (`choose_island`): largest island with bounding box <= 200 m, area >= 1500 m2, not touching the world edge, whose best landing scores >= 0.85. Landing (`pick_landing`) = the tool's candidates scored by kind (sand best), exposure, slope, length and dry room behind; if the tool has none (basalt) the island's shore cells are scanned with the same score. Camp (`layout_camp`): fire on the flattest dry ground 4-17 m behind the landing, two tents with doors to the fire, the rowboat above the high-tide line, a levelled 5-8.5 m pad (the only place the field is edited). Real metres: tent 3 m, boat 3.4 m.
+- Colour is the tool's maps: vertex colour from `veg` (heather, pasture, turf, scrub, machair, rush, bog, loch), sand where `rock == shell_sand` or `veg == sand`, shingle, rock colours from the rock table (fresh on steep faces and the wave-washed splash zone, weathered and dulled on gentle ground, lichen from the table), bedding spacing from `joint_m`, bedding/foliation planes from the structure dip (`bed_normal`), vertical crack prisms for basalt. The shared rock shader (`li_scene.rock_nodes`) gained `palette`, `joint`, `bed_normal`, `columnar`, `wander`, `lichen`, `streaks` options (defaults reproduce the old look). The tide levels from the world darken the wet band between low and high water.
+- Trees (conifers) only where soil depth >= 0.25 m or scrub, wind exposure < 0.34, slope < 0.42, drained, above the splash zone, not on sand, shingle, bog, rush, machair or outcrop; 4.6 m spacing. Grass tufts and heather clumps by veg class (merged mesh through `make_tufts(sites=...)`, not true instances). Boulders by exposure and steepness at the coast, big feature rocks on exposed shore, with the rock's own palette.
+- Sea: `li_scene.make_sea` with the depth image of the window (and wave exposure in G for a broader surf line on exposed shores), absorption plus a faint blue-green scatter so deep water is teal rather than black; sky and sun as the earlier hero (sun low, 125 degrees round from the camera). Camera: `island_camera` gives direction and lens, `fit_camera` then fits distance and centre to the projected island cells (the tool's own distance leaves the island small once foreshortened); it looks from the side the landing is on.
+- Tests: `python tests/landform-render-test.py` with the bpy python (mesh hash, island and camp determinism, rule checks for all six worlds, tiny render not blank, shots under 1.5 MB, old batch 1122 hero + bake and the new `landform` batch phase).
+
+### Render timings (this machine, 4 cores CPU Cycles, 1200x800, 64 samples adaptive + OpenImageDenoise, one job at a time)
+| shot | island (extent) | verts | world+scene build s | render s | total s | PNG |
+|---|---|---|---|---|---|---|
+| gneiss 2001 | 1 (193x155 m) | 361k | 8.8 (+4.5 world) | 263.9 | 272.7 | 1.44 MB |
+| gneiss 2005 | 3 (85x99 m) | 148k | 7.4 | 257.3 | 264.7 | 1.50 MB |
+| sandstone 2101 | 3 (88x113 m) | 184k | 7.0 | 244.6 | 251.6 | 1.37 MB |
+| sandstone 2105 | 2 (89x139 m) | 255k | 8.2 | 254.9 | 263.1 | 1.49 MB |
+| basalt 2201 | 2 (80x58 m) | 108k | 6.8 | 239.6 | 246.4 | 1.46 MB |
+| basalt 2205 | 2 (111x71 m) | 177k | 8.3 | 232.0 | 240.3 | 1.36 MB |
+| wide 2001 (whole world) | all | 263k | 7.5 | 236.6 | 244.2 | 1.26 MB |
+Total about 30 min for the seven finals. Previews: 480x320 at 10 samples about 10 s render, 20-25 s with build. Render time is nearly independent of mesh size (volume sea and transmission bounces dominate). Test suite: about 2 min.
+
+### Honest gaps of the Blender link (v0)
+- Basalt (C) reads worst: the tool's rock map puts 84% `bole_ash` (red clay) on the chosen basalt islands, so they render as red-brown lichen-crusted cones with no visible columns; the camp pad is a visible notch in a steep slope. This is a rock-map tuning issue in `world.py`, not a render one.
+- Gneiss/sandstone shores show blocky white/pale squares along the coast (sand, tide band and splash zone follow the 1 m cells of the tool, only softened by a domain warp). Cliff faces are smooth meshes with shader bump; no overhangs, caves or stack openings (heightfield). Steep compressed relief makes islands look like hills with straight slopes.
+- Grass tufts and heather are a merged mesh (about 2-4k tufts per hero), not true instances; they barely register at 7 px per metre. Conifers are the earlier low-poly tiers, uniform in look; their density follows the soil rule but the rule is mine (TUNING).
+- Lochs are dark glossy patches at ground level, not water surfaces. Boulders are lumpy ellipsoids with the rock shader; the large ones look like eggs.
+- Camp is tiny at island framing (tent 3 m is about 20 px). Gneiss 2001 chose a scanned landing (score 0.90), not a tool candidate; basalt worlds have no tool candidates at all. Basalt 2201 hero is island 2 because island 1 (232 m) is over the size cap.
+- Sea floor shows through shallows and shelf (teal), but steep coasts drop to dark water within a few metres. The sun/sky glow direction of the Nishita sky is not checked against the lamp. Mesh window beyond +-150 m is padded with the world's edge.

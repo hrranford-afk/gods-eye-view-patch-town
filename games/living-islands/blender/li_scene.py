@@ -65,6 +65,12 @@ def mesh_obj(name, verts, faces, smooth=True, col=None, collection=None):
     (collection or bpy.context.scene.collection).objects.link(ob)
     return ob
 
+def set_color_attr(me, name, rgb):
+    """extra per-vertex colour attribute (linear rgb, n x 3) next to the 'Col' one; read in shaders with an Attribute node."""
+    rgb = np.asarray(rgb, np.float32).reshape(-1, 3)
+    ca = me.color_attributes.new(name=name, type='FLOAT_COLOR', domain='POINT')
+    ca.data.foreach_set('color', np.concatenate([rgb, np.ones((len(rgb), 1), np.float32)], 1).ravel())
+
 def set_float_attr(me, name, arr):
     a = me.attributes.new(name, 'FLOAT', 'POINT')
     a.data.foreach_set('value', np.asarray(arr, np.float32).ravel())
@@ -97,8 +103,24 @@ def pin(bsdf, name, val):
         bsdf.inputs[name].default_value = val
 
 # ---------------------------------------------------------------- rock shader (strata, cracks, lichen)
-def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
-    """returns (color_socket, height_socket): strata colour bands, dark cracks, lichen patches. pos in metres."""
+def _colour_in(nt, spec, loc):
+    """a palette entry: an (r,g,b) tuple (linear), a ('attr', name) vertex/point attribute, or an existing colour socket."""
+    if isinstance(spec, tuple) and len(spec) == 2 and spec[0] == 'attr':
+        a = node(nt, 'ShaderNodeAttribute', loc, attribute_name=spec[1]); return a.outputs['Color']
+    if isinstance(spec, (tuple, list)):
+        r = node(nt, 'ShaderNodeRGB', loc); r.outputs[0].default_value = (*spec[:3], 1.0); return r.outputs[0]
+    return spec
+
+def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0), palette=None, joint=None, bed_normal=None, columnar=False, wander=0.35, lichen=1.0, streaks=0.0):
+    """returns (color_socket, height_socket): strata colour bands, dark cracks, lichen patches. pos in metres.
+    Optional (the landform scene uses them; the defaults keep the original look exactly):
+      palette=(fresh, weathered, lichen) : each a linear (r,g,b) tuple, ('attr', 'Name') or a colour socket. Bands alternate weathered<->fresh
+                                           and the lichen colour comes from the table instead of the fixed brown/olive ramp;
+      joint=('attr', 'Name') or float socket : bedding / foliation spacing in metres (band thickness; a coarser macro-banding rides on top);
+      bed_normal=(x,y,z) : bands follow planes with this normal (dipping beds / foliation) instead of horizontal ones;
+      columnar=True : crack cells are vertical prisms (basalt columns): the crack Voronoi is squashed along z;
+      wander : how far (in units of scale metres) the bands wander, so beds and foliation are wavy rather than ruled lines (default 0.35 = original);
+      lichen : > 1 spreads the lichen patches (1 = original); streaks : 0..1 dark vertical water-staining on steep faces (0 = none, as the original)."""
     x, y = loc
     off = node(nt, 'ShaderNodeVectorMath', (x, y), operation='ADD')
     link(nt, pos_sock, off.inputs[0]); off.inputs[1].default_value = (seed * 7.1, seed * 3.3, seed * 1.9)
@@ -108,31 +130,66 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
     warp.inputs['Scale'].default_value = 0.7 / scale; warp.inputs['Detail'].default_value = 3
     link(nt, off.outputs[0], warp.inputs['Vector'])
     zw = node(nt, 'ShaderNodeMath', (x + 300, y), operation='MULTIPLY_ADD')
-    link(nt, warp.outputs['Fac'], zw.inputs[0]); zw.inputs[1].default_value = 0.35 * scale
-    link(nt, sep.outputs['Z'], zw.inputs[2])
+    link(nt, warp.outputs['Fac'], zw.inputs[0]); zw.inputs[1].default_value = wander * scale
+    if bed_normal is not None:
+        bd = node(nt, 'ShaderNodeVectorMath', (x + 300, y + 150), operation='DOT_PRODUCT')
+        link(nt, off.outputs[0], bd.inputs[0]); bd.inputs[1].default_value = tuple(bed_normal)
+        link(nt, bd.outputs['Value'], zw.inputs[2])
+    else:
+        link(nt, sep.outputs['Z'], zw.inputs[2])
     band = node(nt, 'ShaderNodeMath', (x + 450, y), operation='MULTIPLY')
     link(nt, zw.outputs[0], band.inputs[0]); band.inputs[1].default_value = 3.1 / scale
+    macro = None
+    if joint is not None:
+        jsock = _colour_in(nt, joint, (x + 300, y + 300)) if isinstance(joint, tuple) else joint
+        jf = node(nt, 'ShaderNodeSeparateColor', (x + 380, y + 300)); link(nt, jsock, jf.inputs['Color'])
+        jm = node(nt, 'ShaderNodeMath', (x + 450, y + 300), operation='MAXIMUM'); link(nt, jf.outputs['Red'], jm.inputs[0]); jm.inputs[1].default_value = 0.6
+        ji = node(nt, 'ShaderNodeMath', (x + 520, y + 300), operation='DIVIDE'); ji.inputs[0].default_value = 1.0; link(nt, jm.outputs[0], ji.inputs[1])
+        link(nt, ji.outputs[0], band.inputs[1])
+        mb = node(nt, 'ShaderNodeMath', (x + 520, y + 450), operation='MULTIPLY'); link(nt, zw.outputs[0], mb.inputs[0]); link(nt, ji.outputs[0], mb.inputs[1])
+        mb2 = node(nt, 'ShaderNodeMath', (x + 600, y + 450), operation='MULTIPLY'); link(nt, mb.outputs[0], mb2.inputs[0]); mb2.inputs[1].default_value = 0.17
+        mfl = node(nt, 'ShaderNodeMath', (x + 680, y + 450), operation='FLOOR'); link(nt, mb2.outputs[0], mfl.inputs[0])
+        msn = node(nt, 'ShaderNodeMath', (x + 760, y + 450), operation='SINE'); link(nt, mfl.outputs[0], msn.inputs[0])
+        macro = node(nt, 'ShaderNodeMath', (x + 840, y + 450), operation='MULTIPLY_ADD'); link(nt, msn.outputs[0], macro.inputs[0]); macro.inputs[1].default_value = 0.16; macro.inputs[2].default_value = 1.0
     # layer index -> colour: hash each band with a fractional step
     fl = node(nt, 'ShaderNodeMath', (x + 600, y), operation='FLOOR'); link(nt, band.outputs[0], fl.inputs[0])
     rnd = node(nt, 'ShaderNodeMath', (x + 750, y), operation='SINE'); link(nt, fl.outputs[0], rnd.inputs[0])
     sh = node(nt, 'ShaderNodeMath', (x + 900, y), operation='MULTIPLY_ADD')
     link(nt, rnd.outputs[0], sh.inputs[0]); sh.inputs[1].default_value = 0.5; sh.inputs[2].default_value = 0.5
-    layer = ramp(nt, sh.outputs[0], [
-        (0.0, (0.17, 0.155, 0.14, 1)), (0.35, (0.27, 0.235, 0.20, 1)), (0.65, (0.36, 0.28, 0.21, 1)), (1.0, (0.24, 0.24, 0.235, 1))], (x + 1050, y))
+    if palette is None:
+        layer = ramp(nt, sh.outputs[0], [
+            (0.0, (0.17, 0.155, 0.14, 1)), (0.35, (0.27, 0.235, 0.20, 1)), (0.65, (0.36, 0.28, 0.21, 1)), (1.0, (0.24, 0.24, 0.235, 1))], (x + 1050, y))
+        layer_col = layer.outputs['Color']
+    else:
+        pf, pw, pl = [_colour_in(nt, c, (x + 900, y + 650 - 120 * i)) for i, c in enumerate(palette)]
+        shc = node(nt, 'ShaderNodeMath', (x + 980, y + 100), operation='MULTIPLY_ADD'); link(nt, sh.outputs[0], shc.inputs[0]); shc.inputs[1].default_value = 0.55; shc.inputs[2].default_value = 0.22   # softer fresh/weathered contrast
+        lay = node(nt, 'ShaderNodeMix', (x + 1050, y + 100), data_type='RGBA'); link(nt, shc.outputs[0], S(lay, 'inputs', 'Factor'))
+        link(nt, pw, S(lay, 'inputs', 'A')); link(nt, pf, S(lay, 'inputs', 'B'))
+        layer_col = S(lay, 'outputs', 'Result')
+        if macro is not None:
+            mm = node(nt, 'ShaderNodeMix', (x + 1150, y + 250), data_type='RGBA', blend_type='MULTIPLY'); S(mm, 'inputs', 'Factor').default_value = 1.0
+            link(nt, layer_col, S(mm, 'inputs', 'A'))
+            mcol = node(nt, 'ShaderNodeCombineColor', (x + 1050, y + 400))
+            for ch in ('Red', 'Green', 'Blue'): link(nt, macro.outputs[0], mcol.inputs[ch])
+            link(nt, mcol.outputs['Color'], S(mm, 'inputs', 'B')); layer_col = S(mm, 'outputs', 'Result')
     # fine grain
     grain = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 350), noise_dimensions='3D')
     grain.inputs['Scale'].default_value = 14 / scale; grain.inputs['Detail'].default_value = 8; grain.inputs['Roughness'].default_value = 0.65
     link(nt, off.outputs[0], grain.inputs['Vector'])
     gm = node(nt, 'ShaderNodeMix', (x + 1250, y), data_type='RGBA', blend_type='MULTIPLY')
     S(gm, 'inputs', 'Factor').default_value = 0.55
-    link(nt, layer.outputs['Color'], S(gm, 'inputs', 'A'))
+    link(nt, layer_col, S(gm, 'inputs', 'A'))
     gr = ramp(nt, grain.outputs['Fac'], [(0.3, (0.78, 0.78, 0.78, 1)), (0.7, (1.12, 1.1, 1.08, 1))], (x + 1100, y - 350))
     link(nt, gr.outputs['Color'], S(gm, 'inputs', 'B'))
     # cracks: distance-to-edge voronoi, two scales
+    cpos = off.outputs[0]
+    if columnar:
+        sq = node(nt, 'ShaderNodeVectorMath', (x + 750, y - 750), operation='MULTIPLY'); link(nt, off.outputs[0], sq.inputs[0]); sq.inputs[1].default_value = (1.0, 1.0, 0.04)
+        cpos = sq.outputs[0]
     v1 = node(nt, 'ShaderNodeTexVoronoi', (x + 900, y - 650), feature='DISTANCE_TO_EDGE', voronoi_dimensions='3D')
-    v1.inputs['Scale'].default_value = 1.9 / scale; link(nt, off.outputs[0], v1.inputs['Vector'])
+    v1.inputs['Scale'].default_value = 1.9 / scale; link(nt, cpos, v1.inputs['Vector'])
     v2 = node(nt, 'ShaderNodeTexVoronoi', (x + 900, y - 850), feature='DISTANCE_TO_EDGE', voronoi_dimensions='3D')
-    v2.inputs['Scale'].default_value = 6.5 / scale; link(nt, off.outputs[0], v2.inputs['Vector'])
+    v2.inputs['Scale'].default_value = 6.5 / scale; link(nt, cpos, v2.inputs['Vector'])
     c1raw = ramp(nt, v1.outputs['Distance'], [(0.0, (0, 0, 0, 1)), (0.03, (1, 1, 1, 1))], (x + 1100, y - 650))
     brk = node(nt, 'ShaderNodeTexNoise', (x + 900, y - 1500), noise_dimensions='3D'); brk.inputs['Scale'].default_value = 1.7 / scale; brk.inputs['Detail'].default_value = 3
     link(nt, off.outputs[0], brk.inputs['Vector'])
@@ -152,16 +209,37 @@ def rock_nodes(nt, pos_sock, normal_sock, seed=1, scale=1.0, loc=(-800, 0)):
     nz = node(nt, 'ShaderNodeSeparateXYZ', (x + 900, y - 1250)); link(nt, normal_sock, nz.inputs[0])
     lm = node(nt, 'ShaderNodeMath', (x + 1100, y - 1100), operation='MULTIPLY_ADD')
     link(nt, nz.outputs['Z'], lm.inputs[0]); lm.inputs[1].default_value = 0.30; link(nt, ln.outputs['Fac'], lm.inputs[2])
-    lmask = ramp(nt, lm.outputs[0], [(0.72, (0, 0, 0, 1)), (0.80, (1, 1, 1, 1))], (x + 1250, y - 1100))
+    lmask = ramp(nt, lm.outputs[0], [(0.72 - 0.10 * (lichen - 1), (0, 0, 0, 1)), (0.80 - 0.06 * (lichen - 1), (1, 1, 1, 1))], (x + 1250, y - 1100))
     lcol_n = node(nt, 'ShaderNodeTexNoise', (x + 1100, y - 1300), noise_dimensions='3D'); lcol_n.inputs['Scale'].default_value = 22 / scale
     link(nt, off.outputs[0], lcol_n.inputs['Vector'])
-    lcol = ramp(nt, lcol_n.outputs['Fac'], [(0.3, (0.40, 0.42, 0.10, 1)), (0.55, (0.52, 0.46, 0.13, 1)), (0.8, (0.58, 0.58, 0.42, 1))], (x + 1300, y - 1300))
+    if palette is None:
+        lcol = ramp(nt, lcol_n.outputs['Fac'], [(0.3, (0.40, 0.42, 0.10, 1)), (0.55, (0.52, 0.46, 0.13, 1)), (0.8, (0.58, 0.58, 0.42, 1))], (x + 1300, y - 1300))
+        lichen_col = lcol.outputs['Color']
+    else:
+        lg = ramp(nt, lcol_n.outputs['Fac'], [(0.3, (0.55, 0.55, 0.5, 1)), (0.8, (1.25, 1.2, 1.1, 1))], (x + 1300, y - 1300))
+        lmx = node(nt, 'ShaderNodeMix', (x + 1500, y - 1300), data_type='RGBA', blend_type='MULTIPLY'); S(lmx, 'inputs', 'Factor').default_value = 1.0
+        link(nt, pl, S(lmx, 'inputs', 'A')); link(nt, lg.outputs['Color'], S(lmx, 'inputs', 'B')); lichen_col = S(lmx, 'outputs', 'Result')
     lx = node(nt, 'ShaderNodeMix', (x + 1700, y - 100), data_type='RGBA')
-    link(nt, lmask.outputs['Color'], S(lx, 'inputs', 'Factor')); link(nt, S(rm, 'outputs', 'Result'), S(lx, 'inputs', 'A')); link(nt, lcol.outputs['Color'], S(lx, 'inputs', 'B'))
+    link(nt, lmask.outputs['Color'], S(lx, 'inputs', 'Factor')); link(nt, S(rm, 'outputs', 'Result'), S(lx, 'inputs', 'A')); link(nt, lichen_col, S(lx, 'inputs', 'B'))
     # height for bump: strata ridges + grain - cracks
     hh = node(nt, 'ShaderNodeMath', (x + 1500, y - 400), operation='ADD')
     link(nt, grain.outputs['Fac'], hh.inputs[0]); link(nt, S(c1, 'outputs', 'Result'), hh.inputs[1])
-    return S(lx, 'outputs', 'Result'), hh.outputs[0]
+    colour_out = S(lx, 'outputs', 'Result')
+    if streaks > 0:
+        # run-off staining: noise stretched along z, strongest where the surface is steep (normal z small)
+        sq = node(nt, 'ShaderNodeVectorMath', (x + 1500, y - 1700), operation='MULTIPLY'); link(nt, off.outputs[0], sq.inputs[0]); sq.inputs[1].default_value = (1.0, 1.0, 0.10)
+        sn = node(nt, 'ShaderNodeTexNoise', (x + 1650, y - 1700), noise_dimensions='3D'); sn.inputs['Scale'].default_value = 2.6 / scale; sn.inputs['Detail'].default_value = 4
+        link(nt, sq.outputs[0], sn.inputs['Vector'])
+        sm = ramp(nt, sn.outputs['Fac'], [(0.42, (0, 0, 0, 1)), (0.68, (1, 1, 1, 1))], (x + 1800, y - 1700))
+        stp = ramp(nt, nz.outputs['Z'], [(0.35, (1, 1, 1, 1)), (0.85, (0, 0, 0, 1))], (x + 1800, y - 1900))
+        sp = node(nt, 'ShaderNodeMath', (x + 1950, y - 1800), operation='MULTIPLY'); link(nt, sm.outputs['Color'], sp.inputs[0]); link(nt, stp.outputs['Color'], sp.inputs[1])
+        sd = node(nt, 'ShaderNodeMath', (x + 2100, y - 1800), operation='MULTIPLY_ADD'); link(nt, sp.outputs[0], sd.inputs[0]); sd.inputs[1].default_value = -streaks; sd.inputs[2].default_value = 1.0
+        sx2 = node(nt, 'ShaderNodeMix', (x + 2250, y - 1700), data_type='RGBA', blend_type='MULTIPLY'); S(sx2, 'inputs', 'Factor').default_value = 1.0
+        link(nt, colour_out, S(sx2, 'inputs', 'A'))
+        dc = node(nt, 'ShaderNodeCombineColor', (x + 2150, y - 1900))
+        for ch in ('Red', 'Green', 'Blue'): link(nt, sd.outputs[0], dc.inputs[ch])
+        link(nt, dc.outputs['Color'], S(sx2, 'inputs', 'B')); colour_out = S(sx2, 'outputs', 'Result')
+    return colour_out, hh.outputs[0]
 
 # ---------------------------------------------------------------- land
 def land_vertex_data(u, v, f, seed):
@@ -208,14 +286,16 @@ def make_land(seed, n=257, name='Land'):
     set_float_attr(ob.data, 'Rock', rock.ravel())
     return ob, (u, v, f)
 
-def land_material(ob, seed, bake_colour_only=False):
+def land_material(ob, seed, bake_colour_only=False, rock_kw=None, rock_attr='Rock', tide=None, loch_attr=None, rock_scale=1.0):
+    """rock_kw: extra rock_nodes arguments (palette / joint / bed_normal / columnar); rock_attr: float attribute giving the rock amount;
+    tide=(low, high) metres: darkens the wet intertidal band between the two levels; loch_attr: float attribute that makes the ground glossy."""
     m = bpy.data.materials.new('LandMat'); m.use_nodes = True
     nt = m.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputMaterial', (1800, 0))
     geo = node(nt, 'ShaderNodeNewGeometry', (-1500, 0))
     vc = node(nt, 'ShaderNodeAttribute', (-1500, 300), attribute_name='Col')
-    rk = node(nt, 'ShaderNodeAttribute', (-1500, 500), attribute_name='Rock')
-    rcol, rhgt = rock_nodes(nt, geo.outputs['Position'], geo.outputs['Normal'], seed + 3, 1.0, (-1400, -400))
+    rk = node(nt, 'ShaderNodeAttribute', (-1500, 500), attribute_name=rock_attr)
+    rcol, rhgt = rock_nodes(nt, geo.outputs['Position'], geo.outputs['Normal'], seed + 3, rock_scale, (-1400, -400), **(rock_kw or {}))
     # fine grass / ground texture
     gn = node(nt, 'ShaderNodeTexNoise', (-800, 600), noise_dimensions='3D'); gn.inputs['Scale'].default_value = 18; gn.inputs['Detail'].default_value = 8
     link(nt, geo.outputs['Position'], gn.inputs['Vector'])
@@ -239,8 +319,23 @@ def land_material(ob, seed, bake_colour_only=False):
     # underwater and sand stay ground colour (rock only above -0.2)
     link(nt, S(gm2, 'outputs', 'Result'), S(mix, 'inputs', 'A')); link(nt, rcol, S(mix, 'inputs', 'B'))
     bsdf = principled(nt, (1300, 0))
-    link(nt, S(mix, 'outputs', 'Result'), bsdf.inputs['Base Color'])
+    base_out = S(mix, 'outputs', 'Result')
+    if tide is not None:
+        # wet band: darker and a little saturated between low and high water (seaweed / wet rock / wet sand), blends to dry above
+        sz = node(nt, 'ShaderNodeSeparateXYZ', (400, 700)); link(nt, geo.outputs['Position'], sz.inputs[0])
+        tn = node(nt, 'ShaderNodeTexNoise', (400, 500), noise_dimensions='3D'); tn.inputs['Scale'].default_value = 0.35; tn.inputs['Detail'].default_value = 4
+        link(nt, geo.outputs['Position'], tn.inputs['Vector'])
+        tz = node(nt, 'ShaderNodeMath', (600, 700), operation='MULTIPLY_ADD'); link(nt, tn.outputs['Fac'], tz.inputs[0]); tz.inputs[1].default_value = 0.8; link(nt, sz.outputs['Z'], tz.inputs[2])
+        wetm = ramp(nt, tz.outputs[0], [(tide[0] - 0.4, (1, 1, 1, 1)), (tide[1] + 0.2, (1, 1, 1, 1)), (tide[1] + 1.0, (0, 0, 0, 1))], (800, 700))
+        wx = node(nt, 'ShaderNodeMix', (1000, 600), data_type='RGBA', blend_type='MULTIPLY'); link(nt, wetm.outputs['Color'], S(wx, 'inputs', 'Factor'))
+        link(nt, base_out, S(wx, 'inputs', 'A')); S(wx, 'inputs', 'B').default_value = (0.42, 0.40, 0.34, 1)
+        base_out = S(wx, 'outputs', 'Result')
+    link(nt, base_out, bsdf.inputs['Base Color'])
     pin(bsdf, 'Roughness', 0.92)
+    if loch_attr:
+        la = node(nt, 'ShaderNodeAttribute', (1000, -600), attribute_name=loch_attr)
+        lr = node(nt, 'ShaderNodeMath', (1150, -600), operation='MULTIPLY_ADD'); link(nt, la.outputs['Fac'], lr.inputs[0]); lr.inputs[1].default_value = -0.8; lr.inputs[2].default_value = 0.92
+        link(nt, lr.outputs[0], bsdf.inputs['Roughness'])
     for nm in ('Specular IOR Level',):
         pin(bsdf, nm, 0.25)
     # bump: rock strata+cracks, ground micro
@@ -270,12 +365,16 @@ def _cone(rng, cx, cy, z0, h, r0, r1, seg=11, rings=2, jitter=0.18, droop=0.0):
             faces.append((a, b, b + seg, a + seg))
     return verts, faces
 
-def make_conifers(land_fields, seed, count=17, n_avoid=None):
+def make_conifers(land_fields, seed, count=17, n_avoid=None, pts=None, size=(0.7, 1.35)):
+    """pts=[(x, y, ground_z), ...] places trees where the caller decided (the landform scene picks suitable soil); otherwise the
+    original island picks its own spots. size = (min, max) scale of the 3.9 m conifer."""
     rng = np.random.default_rng(seed + 400)
-    u, v, f = land_fields
-    pts = []
+    given = pts is not None
+    pts = list(pts) if given else []
+    if not given:
+        u, v, f = land_fields
     tries = 0
-    while len(pts) < count and tries < 6000:
+    while not given and len(pts) < count and tries < 6000:
         tries += 1
         x = rng.uniform(-15, 12); y = rng.uniform(-2, 13)
         h = IC.height_at(x, y, seed)[0, 0]
@@ -289,7 +388,7 @@ def make_conifers(land_fields, seed, count=17, n_avoid=None):
         pts.append((x, y, h))
     trunk_v = []; trunk_f = []; fol_v = []; fol_f = []
     for (x, y, h) in pts:
-        s = rng.uniform(0.7, 1.35)
+        s = rng.uniform(*size)
         H = 3.9 * s; z0 = h - 0.15
         # trunk
         tv, tf = _cone(rng, x, y, z0, H * 0.4, 0.20 * s, 0.10 * s, 7, 2, 0.1)
@@ -322,28 +421,35 @@ def make_conifers(land_fields, seed, count=17, n_avoid=None):
     fol.data.materials.append(mf)
     return [trunk, fol], pts
 
-def make_tufts(seed, count=5200, heather=520):
+def make_tufts(seed, count=5200, heather=520, sites=None, scale=1.0):
+    """sites=(xs, ys, zs, heather_ok) places the tufts where the caller decided (landform scene: grass areas from the soil map);
+    scale enlarges blades and clumps for a bigger scene. Without sites the original island picks its own spots."""
     rng = np.random.default_rng(seed + 500)
     verts = []; faces = []; cols = []
-    xs = rng.uniform(-18, 18, count * 3); ys = rng.uniform(-16, 16, count * 3)
-    F = IC.height_fields(xs.reshape(1, -1), ys.reshape(1, -1), seed)
-    hs = F['h'][0]; rk = F['rock'][0]
-    ok = np.where((hs > 0.35) & (rk < 0.45))[0]
-    sel = []
-    for i in ok:
-        if math.hypot(xs[i] - IC.CAMP[0], (ys[i] - IC.CAMP[1]) * 1.3) < 3.2:
-            continue
-        sel.append(i)
-        if len(sel) >= count:
-            break
+    if sites is None:
+        xs = rng.uniform(-18, 18, count * 3); ys = rng.uniform(-16, 16, count * 3)
+        F = IC.height_fields(xs.reshape(1, -1), ys.reshape(1, -1), seed)
+        hs = F['h'][0]; rk = F['rock'][0]
+        ok = np.where((hs > 0.35) & (rk < 0.45))[0]
+        sel = []
+        for i in ok:
+            if math.hypot(xs[i] - IC.CAMP[0], (ys[i] - IC.CAMP[1]) * 1.3) < 3.2:
+                continue
+            sel.append(i)
+            if len(sel) >= count:
+                break
+        heather_ok = None
+    else:
+        xs, ys, hs, heather_ok = sites
+        sel = list(range(len(xs)))
     cnt = 0
     for i in sel:
         x, y, z = xs[i], ys[i], hs[i] - 0.03
         blades = rng.integers(4, 7)
-        hgt = rng.uniform(0.18, 0.42)
+        hgt = rng.uniform(0.18, 0.42) * scale
         shade = rng.uniform(0.7, 1.25)
         for b in range(blades):
-            a = rng.uniform(0, 6.283); lean = rng.uniform(0.05, 0.28) * hgt; w = 0.022
+            a = rng.uniform(0, 6.283); lean = rng.uniform(0.05, 0.28) * hgt; w = 0.022 * scale
             bx = x + rng.uniform(-.05, .05); by = y + rng.uniform(-.05, .05)
             base = len(verts)
             ca, sa = math.cos(a), math.sin(a)
@@ -354,11 +460,12 @@ def make_tufts(seed, count=5200, heather=520):
     # heather clumps: squashed blobs
     hv = []; hf = []
     cnt = 0
-    for i in sel[::max(1, len(sel) // max(heather, 1))][:heather]:
+    hsel = [i for i in sel if heather_ok[i]] if heather_ok is not None else sel[::max(1, len(sel) // max(heather, 1))]
+    for i in hsel[:heather]:
         x, y, z = xs[i], ys[i], hs[i]
-        if hs[i] < 0.9:
+        if hs[i] < 0.9 or (heather_ok is not None and not heather_ok[i]):
             continue
-        r = rng.uniform(0.08, 0.18)
+        r = rng.uniform(0.08, 0.18) * scale
         for k in range(5):
             ox, oy = rng.uniform(-r, r, 2); rr = r * rng.uniform(.5, 1)
             base = len(hv)
@@ -396,7 +503,7 @@ def make_tufts(seed, count=5200, heather=520):
     return [ob, ob2]
 
 # ---------------------------------------------------------------- boulders (use rock_lib for shape)
-def rock_material(name='RockMat', seed=5, scale=1.0, coords='world'):
+def rock_material(name='RockMat', seed=5, scale=1.0, coords='world', **rock_kw):
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputMaterial', (2400, 0))
     geo = node(nt, 'ShaderNodeNewGeometry', (-1500, 0))
@@ -404,7 +511,7 @@ def rock_material(name='RockMat', seed=5, scale=1.0, coords='world'):
         tc = node(nt, 'ShaderNodeTexCoord', (-1500, -200)); pos = tc.outputs['Object']
     else:
         pos = geo.outputs['Position']
-    col, hgt = rock_nodes(nt, pos, geo.outputs['Normal'], seed, scale, (-1300, -300))
+    col, hgt = rock_nodes(nt, pos, geo.outputs['Normal'], seed, scale, (-1300, -300), **rock_kw)
     bs = principled(nt, (2000, 0)); link(nt, col, bs.inputs['Base Color']); pin(bs, 'Roughness', 0.88); pin(bs, 'Specular IOR Level', 0.3)
     bm = node(nt, 'ShaderNodeBump', (1800, -300)); bm.inputs['Strength'].default_value = 0.7; bm.inputs['Distance'].default_value = 0.1 * scale
     link(nt, hgt, bm.inputs['Height']); link(nt, bm.outputs['Normal'], bs.inputs['Normal'])
@@ -432,17 +539,26 @@ def boulder(seed, size, loc, rot=0.0, res=4):
     return ob
 
 # ---------------------------------------------------------------- sea
+def depth_image_from_grid(h2d, name='SeaDepth', exposure2d=None):
+    """float image of water depth (R,G,B = metres below sea level, -1 on land, clipped to 8 m; row 0 = south). Used by the sea
+    material for foam. If exposure2d is given, the G channel carries wave exposure (0..1) instead of the depth."""
+    h2d = np.asarray(h2d, float); ny, nx = h2d.shape
+    d = np.clip(-h2d, -1, 8)
+    img = bpy.data.images.new(name, nx, ny, alpha=False, float_buffer=True, is_data=True)
+    px = np.zeros((ny, nx, 4), np.float32); px[..., 0] = d; px[..., 1] = d if exposure2d is None else exposure2d; px[..., 2] = d; px[..., 3] = 1
+    img.pixels.foreach_set(px.ravel())
+    return img
+
 def make_foam_depth_image(land_fields, name='SeaDepth', n=512, seed=1122):
     xs = np.linspace(-IC.HALF, IC.HALF, n)
     u, v = np.meshgrid(xs, xs)
-    h = IC.height_fields(u, v, seed)['h']
-    d = np.clip(-h, -1, 8)          # depth below sea level (negative over land)
-    img = bpy.data.images.new(name, n, n, alpha=False, float_buffer=True, is_data=True)
-    px = np.zeros((n, n, 4), np.float32); px[..., 0] = d; px[..., 1] = d; px[..., 2] = d; px[..., 3] = 1
-    img.pixels.foreach_set(px.ravel()); img.pack() if False else None
-    return img
+    return depth_image_from_grid(IC.height_fields(u, v, seed)['h'], name)
 
-def make_sea(seed, depth_img, size=1800.0, floor=-7.0):
+def make_sea(seed, depth_img, size=1800.0, floor=-7.0, half=None, centre=(0.0, 0.0), density=0.7, foam_scale=5.5, wave_scale=1.0, exposure_foam=False, scatter=0.0):
+    """half/centre: the square (centre +- half, metres) that the depth image covers (default: the original island's +-IC.HALF);
+    density: absorption per metre (depth tint); foam_scale / wave_scale multiply the foam-noise and wave-bump frequencies
+    (smaller for big scenes seen from far away); scatter: density of a blue-green in-scattering volume (0 = pure absorption, as the original); exposure_foam: the image G channel is wave exposure, which widens the foam on exposed shores."""
+    half = IC.HALF if half is None else half
     # closed water box (top at z=0) so volume absorption makes depth colour; seabed/land poke through it.
     top = 0.0
     hs = size / 2
@@ -457,9 +573,9 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0):
     # waves: layered noise bump in world xy, stretched along the swell
     mp = node(nt, 'ShaderNodeMapping', (-1500, 100)); mp.inputs['Scale'].default_value = (1, 1, 1)
     link(nt, tc.outputs['Object'], mp.inputs['Vector'])
-    n1 = node(nt, 'ShaderNodeTexNoise', (-1200, 300), noise_dimensions='3D'); n1.inputs['Scale'].default_value = 0.35; n1.inputs['Detail'].default_value = 4; n1.inputs['Roughness'].default_value = 0.55
-    n2 = node(nt, 'ShaderNodeTexNoise', (-1200, 0), noise_dimensions='3D'); n2.inputs['Scale'].default_value = 2.2; n2.inputs['Detail'].default_value = 6; n2.inputs['Roughness'].default_value = 0.6
-    n3 = node(nt, 'ShaderNodeTexNoise', (-1200, -300), noise_dimensions='3D'); n3.inputs['Scale'].default_value = 11; n3.inputs['Detail'].default_value = 3
+    n1 = node(nt, 'ShaderNodeTexNoise', (-1200, 300), noise_dimensions='3D'); n1.inputs['Scale'].default_value = 0.35 * wave_scale; n1.inputs['Detail'].default_value = 4; n1.inputs['Roughness'].default_value = 0.55
+    n2 = node(nt, 'ShaderNodeTexNoise', (-1200, 0), noise_dimensions='3D'); n2.inputs['Scale'].default_value = 2.2 * wave_scale; n2.inputs['Detail'].default_value = 6; n2.inputs['Roughness'].default_value = 0.6
+    n3 = node(nt, 'ShaderNodeTexNoise', (-1200, -300), noise_dimensions='3D'); n3.inputs['Scale'].default_value = 11 * wave_scale; n3.inputs['Detail'].default_value = 3
     for n_ in (n1, n2, n3):
         link(nt, mp.outputs['Vector'], n_.inputs['Vector'])
     # animate-free: w input fixed
@@ -470,14 +586,14 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0):
     link(nt, s3.outputs[0], bm.inputs['Height'])
     # foam mask from depth image
     sep = node(nt, 'ShaderNodeSeparateXYZ', (-1500, -400)); link(nt, tc.outputs['Object'], sep.inputs[0])
-    ux = node(nt, 'ShaderNodeMath', (-1300, -450), operation='MULTIPLY_ADD'); link(nt, sep.outputs['X'], ux.inputs[0]); ux.inputs[1].default_value = 1 / (2 * IC.HALF); ux.inputs[2].default_value = 0.5
-    uy = node(nt, 'ShaderNodeMath', (-1300, -600), operation='MULTIPLY_ADD'); link(nt, sep.outputs['Y'], uy.inputs[0]); uy.inputs[1].default_value = 1 / (2 * IC.HALF); uy.inputs[2].default_value = 0.5
+    ux = node(nt, 'ShaderNodeMath', (-1300, -450), operation='MULTIPLY_ADD'); link(nt, sep.outputs['X'], ux.inputs[0]); ux.inputs[1].default_value = 1 / (2 * half); ux.inputs[2].default_value = 0.5 - centre[0] / (2 * half)
+    uy = node(nt, 'ShaderNodeMath', (-1300, -600), operation='MULTIPLY_ADD'); link(nt, sep.outputs['Y'], uy.inputs[0]); uy.inputs[1].default_value = 1 / (2 * half); uy.inputs[2].default_value = 0.5 - centre[1] / (2 * half)
     comb = node(nt, 'ShaderNodeCombineXYZ', (-1100, -500)); link(nt, ux.outputs[0], comb.inputs['X']); link(nt, uy.outputs[0], comb.inputs['Y'])
     it = node(nt, 'ShaderNodeTexImage', (-900, -500)); it.image = depth_img; it.interpolation = 'Linear'; it.extension = 'EXTEND'
     link(nt, comb.outputs[0], it.inputs['Vector'])
     sepd = node(nt, 'ShaderNodeSeparateColor', (-650, -500)); link(nt, it.outputs['Color'], sepd.inputs['Color'])
     # depth d (m below sea level). foam where d small, broken by noise, plus a few wave-lines further out
-    fn = node(nt, 'ShaderNodeTexNoise', (-900, -800), noise_dimensions='3D'); fn.inputs['Scale'].default_value = 5.5; fn.inputs['Detail'].default_value = 7
+    fn = node(nt, 'ShaderNodeTexNoise', (-900, -800), noise_dimensions='3D'); fn.inputs['Scale'].default_value = foam_scale; fn.inputs['Detail'].default_value = 7
     link(nt, mp.outputs['Vector'], fn.inputs['Vector'])
     add = node(nt, 'ShaderNodeMath', (-450, -600), operation='ADD'); link(nt, sepd.outputs['Red'], add.inputs[0])
     sc = node(nt, 'ShaderNodeMath', (-600, -800), operation='MULTIPLY_ADD'); link(nt, fn.outputs['Fac'], sc.inputs[0]); sc.inputs[1].default_value = -0.75; sc.inputs[2].default_value = 0.45
@@ -490,6 +606,11 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0):
     foam2 = ramp(nt, add2.outputs[0], [(0.38, (0, 0, 0, 1)), (0.5, (0.55, 0.55, 0.55, 1)), (0.62, (0, 0, 0, 1))], (-250, -900))
     fsum = node(nt, 'ShaderNodeMath', (50, -700), operation='ADD'); link(nt, foam.outputs['Color'], fsum.inputs[0]); link(nt, foam2.outputs['Color'], fsum.inputs[1])
     fclamp = node(nt, 'ShaderNodeMath', (200, -700), operation='MINIMUM'); link(nt, fsum.outputs[0], fclamp.inputs[0]); fclamp.inputs[1].default_value = 1.0
+    if exposure_foam:
+        # sheltered water gets a thin foam line, exposed shores (G = exposure) a broad surf zone
+        ef = node(nt, 'ShaderNodeMath', (-450, -300), operation='MULTIPLY_ADD'); link(nt, sepd.outputs['Green'], ef.inputs[0]); ef.inputs[1].default_value = 1.6; ef.inputs[2].default_value = 0.35
+        em = node(nt, 'ShaderNodeMath', (350, -700), operation='MULTIPLY'); link(nt, fclamp.outputs[0], em.inputs[0]); link(nt, ef.outputs[0], em.inputs[1])
+        fclamp = node(nt, 'ShaderNodeMath', (500, -700), operation='MINIMUM'); link(nt, em.outputs[0], fclamp.inputs[0]); fclamp.inputs[1].default_value = 1.0
     # water surface: glass-ish, slight roughness
     # no refraction (it darkens the lit seabed in Cycles): transparent + fresnel-weighted mirror, bump-lit
     gl = node(nt, 'ShaderNodeBsdfGlossy', (300, 300)); gl.inputs['Roughness'].default_value = 0.04
@@ -503,8 +624,13 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0):
     mix = node(nt, 'ShaderNodeMixShader', (900, 100)); link(nt, fclamp.outputs[0], mix.inputs['Fac']); link(nt, wmix.outputs[0], mix.inputs[1]); link(nt, fo.outputs['BSDF'], mix.inputs[2])
     link(nt, mix.outputs[0], out.inputs['Surface'])
     # volume: depth-tinted absorption (red dies first -> turquoise shallows, deep blue) + a touch of scatter
-    ab = node(nt, 'ShaderNodeVolumeAbsorption', (900, -400)); ab.inputs['Color'].default_value = (0.30, 0.82, 0.92, 1); ab.inputs['Density'].default_value = 0.7
-    link(nt, ab.outputs['Volume'], out.inputs['Volume'])
+    ab = node(nt, 'ShaderNodeVolumeAbsorption', (900, -400)); ab.inputs['Color'].default_value = (0.30, 0.82, 0.92, 1); ab.inputs['Density'].default_value = density
+    if scatter > 0:
+        sv = node(nt, 'ShaderNodeVolumeScatter', (900, -550)); sv.inputs['Color'].default_value = (0.10, 0.42, 0.55, 1); sv.inputs['Density'].default_value = scatter
+        av = node(nt, 'ShaderNodeAddShader', (1150, -450)); link(nt, ab.outputs['Volume'], av.inputs[0]); link(nt, sv.outputs['Volume'], av.inputs[1])
+        link(nt, av.outputs[0], out.inputs['Volume'])
+    else:
+        link(nt, ab.outputs['Volume'], out.inputs['Volume'])
     fm = bpy.data.materials.new('SeaFloor'); fm.use_nodes = True; b = fm.node_tree.nodes['Principled BSDF']
     b.inputs['Base Color'].default_value = (0.004, 0.03, 0.06, 1); b.inputs['Roughness'].default_value = 1.0
     ob.data.materials.append(m); ob.data.materials.append(fm)

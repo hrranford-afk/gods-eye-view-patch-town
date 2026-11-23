@@ -9,6 +9,8 @@ Night plan (--phases): jobs are queued in phases so that if the deadline arrives
   bakes    : for every seed, the baked land GLB
   hires    : a large, high-sample hero for the seeds in --hi-seeds (default: the first 6)
   rocks    : layered rock variations for seeds --rock-seeds (rock_asset.py)
+  landform : for every seed, a hero of the best island of the land formation tool's world (landform_scene.py) for each province in --lf-provinces
+             (and a wide view with --lf-wide); the seed is the tool's world seed here, not the legacy island seed
 Default --phases previews,bakes (the original behaviour was hero + bake per seed).
 """
 import argparse, hashlib, json, os, subprocess, sys, time, datetime
@@ -21,12 +23,14 @@ ap.add_argument('--out', required=True)
 ap.add_argument('--deadline', default='', help='local time HH:MM; no new job starts after it')
 ap.add_argument('--max-minutes', type=float, default=480)
 ap.add_argument('--device', default='CPU', choices=['CPU', 'GPU'])
+ap.add_argument('--lf-provinces', default='A', help='landform phase: comma list from A,B,C (gneiss, sandstone, basalt)')
+ap.add_argument('--lf-samples', type=int, default=64); ap.add_argument('--lf-wide', action='store_true', help='landform phase: also a wide view of each world')
 ap.add_argument('--hero-samples', type=int, default=100)
 ap.add_argument('--bake-samples', type=int, default=32)
 ap.add_argument('--hero-w', type=int, default=1200); ap.add_argument('--hero-h', type=int, default=800)
 ap.add_argument('--tex', type=int, default=2048)
 ap.add_argument('--no-bake', action='store_true')
-ap.add_argument('--phases', default='previews,bakes', help='comma list from: previews,bakes,hires,rocks')
+ap.add_argument('--phases', default='previews,bakes', help='comma list from: previews,bakes,hires,rocks,landform')
 ap.add_argument('--hi-seeds', default='', help='comma list for the hires phase (default: first 6 of --seeds)')
 ap.add_argument('--hi-w', type=int, default=2400); ap.add_argument('--hi-h', type=int, default=1600); ap.add_argument('--hi-samples', type=int, default=256)
 ap.add_argument('--rock-seeds', default='', help='comma list for the rocks phase')
@@ -94,6 +98,12 @@ def queue():
             for s in hi:
                 png = os.path.join(a.out, 'hires_seed%d.png' % s)
                 yield ('hires_seed%d' % s, 'hero_render.py', ['--seed', str(s), '--w', str(a.hi_w), '--h', str(a.hi_h), '--samples', str(a.hi_samples), '--grid', '257', '--out', png], [png])
+        elif ph == 'landform':
+            for s in seeds:
+                for pv in [x.strip().upper() for x in a.lf_provinces.split(',') if x.strip()]:
+                    for view in (['hero', 'wide'] if a.lf_wide else ['hero']):
+                        png = os.path.join(a.out, 'landform_%s_%s_seed%d.png' % (view, pv, s))
+                        yield ('landform_%s_%s_seed%d' % (view, pv, s), 'landform_scene.py', ['--province', pv, '--seed', str(s), '--view', view, '--w', str(a.hero_w), '--h', str(a.hero_h), '--samples', str(a.lf_samples), '--out', png], [png])
         elif ph == 'rocks':
             for s in rocks:
                 d = os.path.join(a.out, 'rock_seed%d' % s)
