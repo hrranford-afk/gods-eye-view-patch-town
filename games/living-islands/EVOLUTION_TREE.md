@@ -73,6 +73,14 @@ The old world's automation survived without people: boats, buoys, lights, weathe
 - **Risks to watch:** if the machines do all the work the struggle disappears (so they are scarce, slow, brittle and wearing out); once understood they become predictable (so add wear, drift, weather and edge-case failures); avoid the 'AI turns on us' cliche.
 - **Measure first:** how many routes and machines a seed supports, and whether finding one opens a real trade-off for the player.
 
+## Play it your way: embrace the past or keep life simple (owner principle, 23 Nov)
+The old world is a choice, never a requirement. The machines, ruins and salvage are a cherry on the cake: something to rediscover if you want.
+- **Embrace the past:** salvage, repair and restore routes, borrow what the old world left, rediscover lost know-how (radio, glass, medicine). Faster and richer, but it ties you to fragile relics, strange failures and what they cost to keep running.
+- **Shun it:** leave the relics alone and live by local craft: gardens, boats, timber and stone, the sea's own gifts. Slower and simpler, but sturdy, self-reliant and yours.
+- **Both paths must be viable and honest:** neither is the 'right' one and neither is a trap. Each has real costs and real rewards, and the game never scolds. A mix is allowed, and you can change your mind.
+- **Consistent with the rules:** no automatic upgrade is always better, the world is the same either way, and only how much the game steers changes (the Guided to Free dial).
+- **Measure first:** a headless run of each path to check that both reach a stable village, and that neither dominates.
+
 ## Hooks to keep in mind while building worlds (cheap now, so later ideas drop in)
 Not commitments: small design habits so the machines layer, wildlife, weather and the ledger can be added without rebuilding the world.
 - **One world data format** (seed, terrain field, rock map, tide, flow, weather seed) that everything reads; no feature draws its own private copy of the land.
