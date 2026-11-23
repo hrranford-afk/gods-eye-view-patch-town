@@ -106,7 +106,7 @@ class MB(CS.Builder):
 
 class Node:
     def __init__(self, name, parent, pivot, axes=None, note=''):
-        self.name = name; self.parent = parent; self.pivot = np.array(pivot, float); self.b = MB(); self.axes = axes or {}; self.note = note; self.q = (0.0, 0.0, 0.0, 1.0); self.cells = 0; self.centres = []; self.feats = []
+        self.name = name; self.parent = parent; self.pivot = np.array(pivot, float); self.b = MB(); self.axes = axes or {}; self.note = note; self.q = (0.0, 0.0, 0.0, 1.0); self.scale = None; self.cells = 0; self.centres = []; self.feats = []
 
 
 # ------------------------------------------------------------------------------------------------- small maths
@@ -136,6 +136,8 @@ ARM_DY = 0.022               # upper arm runs in the plane y = +ARM_DY, the fore
 HEAD_PIVOT = np.array([0.335, 0.0, 0.305])
 HOP = dict(x0=-0.55, x1=-0.385, w=0.38, z0=0.15, z1=0.40)
 LAMP_AT = np.array([0.395, 0.0, 0.370])
+LAMP_BASE = [1.0, 0.52, 0.06]       # the emissive colour of the Lamp and Glow materials (the robot recipes change it: blender/robot_build.py)
+EXTRA_SCENE = {}                    # extra keys for the scene extras (the robot recipes put the recipe there); empty for the committed collector
 GRAB_TARGET = (0.575, 0.25, 0.115)      # where the fingertips close in the grab pose (a lifted bottle)
 
 
@@ -149,6 +151,7 @@ def bolts_y(b, items, d=0.016, h=0.01, mat='bolt'):
     for p in items: b.cyl(mat, p, d, h, r=(90, 0, 0), seg=6)
 
 
+ROAD_X = (-0.135, -0.03, 0.075, 0.18)
 # ------------------------------------------------------------------------------------------------- part: tracks (shared by every family member)
 def track_loop(wheels, pitch, circ=40):
     pts = [(x + r * math.cos(a), z + r * math.sin(a)) for x, z, r in wheels for a in np.linspace(0, 2 * math.pi, circ, endpoint=False)]
@@ -184,20 +187,21 @@ def part_tracks(nd, side, L, wheels=WHEELS, yc=TRACK_Y, width=TRACK_W, dent=0.0)
         # the running gear seen through the open side: sprocket and idler drums, four road wheels, and a narrow frame bar on each side joining the axles
         (xs_, zs_, rs_), (xi_, zi_, ri_) = wheels[0], wheels[1]; seg = L['seg']; w_in = width - 0.036
         b.cyl_y('metal', (xs_, y, zs_), 2 * (rs_ - 0.016), w_in, seg=seg + 4); b.cyl_y('metal', (xi_, y, zi_), 2 * (ri_ - 0.016), w_in, seg=seg + 4)
-        for xr in (-0.135, -0.03, 0.075, 0.18):
+        RW = ROAD_X if (xs_, xi_) == (-0.26, 0.285) else tuple(xs_ + (xi_ - xs_) * (0.125 + 0.105 * k) / 0.545 for k in range(4))        # the robot recipes change the track length; the road wheels follow
+        for xr in RW:
             b.cyl_y('rubber', (xr, y, 0.065), 0.074, width - 0.05, seg=seg)
         for sg in (-1, 1):
             ys = y + sg * (width / 2 + 0.002)
             ang = math.degrees(math.atan2(zi_ - zs_, xi_ - xs_)); L_ = math.hypot(xi_ - xs_, zi_ - zs_)
             b.box('guard', ((xs_ + xi_) / 2, ys, (zs_ + zi_) / 2 - 0.012), (L_, 0.012, 0.034), (0, -ang, 0))
-            for xr in (-0.135, -0.03, 0.075, 0.18): b.cyl_y('hub', (xr, ys + sg * 0.003, 0.065), 0.044, 0.012, seg=10)
+            for xr in RW: b.cyl_y('hub', (xr, ys + sg * 0.003, 0.065), 0.044, 0.012, seg=10)
             for x, z, r in wheels:
                 b.cyl_y('hub', (x, ys + sg * 0.004, z), r * 1.05, 0.014, seg=seg)
                 for k in range(L['hub_bolts']):
                     a = 2 * math.pi * k / L['hub_bolts'] + (0.3 if sg > 0 else 0.0)
                     b.cyl_y('bolt', (x + 0.60 * r * 0.78 * math.cos(a), ys + sg * 0.010, z + 0.60 * r * 0.78 * math.sin(a)), 0.011, 0.009, seg=6)
                 b.cyl_y('bolt', (x, ys + sg * 0.010, z), r * 0.30, 0.012, seg=6 if seg > 6 else 5)
-            for xr in (-0.135, -0.03, 0.075, 0.18): b.cyl_y('metal', (xr, ys + sg * 0.009, 0.065), 0.018, 0.010, seg=6)
+            for xr in RW: b.cyl_y('metal', (xr, ys + sg * 0.009, 0.065), 0.018, 0.010, seg=6)
     if dent:
         b.box('guard', (wheels[1][0] + 0.02, y, wheels[1][1] + wheels[1][2] * 0.55), (0.12, width + 0.03, 0.022), (0, dent, 0))
     if L['fine']:                                               # sand packed against the sprocket end
@@ -957,7 +961,7 @@ def write_glb(path, nodes, lod, pose, seed=SEED):
         if minmax: d['min'] = [float(v) for v in np.atleast_1d(a.min(0))]; d['max'] = [float(v) for v in np.atleast_1d(a.max(0))]
         accs.append(d); return len(accs) - 1
     mats = []; mat_index = {}; stats = {'triangles': 0, 'vertices': 0, 'per_node': {}}
-    LAMP_RGB = [1.0, 0.52, 0.06]
+    LAMP_RGB = list(LAMP_BASE)
     def add_emissive(name, strength, extras):
         m = {'name': name, 'pbrMetallicRoughness': {'baseColorFactor': [0.05, 0.03, 0.01, 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 0.3}, 'emissiveFactor': LAMP_RGB, 'doubleSided': False,
              'extensions': {'KHR_materials_emissive_strength': {'emissiveStrength': strength}}, 'extras': extras}
@@ -993,6 +997,7 @@ def write_glb(path, nodes, lod, pose, seed=SEED):
         par = nodes.get(nd.parent) if nd.parent else None
         rel = nd.pivot - (par.pivot if par else np.zeros(3)); gn['translation'] = [float(v) for v in to_gltf_xyz(rel)]
         q = nd.q; gn['rotation'] = [float(q[1]), float(q[2]), float(q[0]), float(q[3])]
+        if nd.scale is not None: gn['scale'] = [float(v) for v in to_gltf_xyz(np.asarray(nd.scale, float))]
         ex = {'axes': {k: v for k, v in (nd.axes or {}).items()}}
         if nd.note: ex['note'] = nd.note
         gn['extras'] = ex
@@ -1043,6 +1048,7 @@ def write_glb(path, nodes, lod, pose, seed=SEED):
                                   'quirk_slots': {q: {'parent': d['parent'], 'category': d['category'], 'note': d['note']} for q, d in QUIRKS.items()},
                                   'tread_scroll': 'the tread is baked into the atlas and the links are real geometry, so a UV offset cannot move it; the page shows motion by rocking the body, moving the sand and tracks marks (track_l and track_r are rigid)',
                                   'textures': {'groups': {g: {'atlas_px': L['atlas'][g]['n'], 'normal_px': L['atlas'][g]['nrm'], 'orm_px': L['atlas'][g]['orm']} for g in (L['atlas'] or {})}, 'uv': 'one atlas per group, planar charts, no tiling (clamp to edge)'} if textured else 'vertex colours only'}
+    if EXTRA_SCENE: doc['scenes'][0]['extras'].update(EXTRA_SCENE)
     js = json.dumps(doc, separators=(',', ':')).encode()
     js += b' ' * ((4 - len(js) % 4) % 4); bb = bytes(binbuf) + b'\x00' * ((4 - len(binbuf) % 4) % 4)
     data = struct.pack('<4sII', b'glTF', 2, 12 + 8 + len(js) + 8 + len(bb)) + struct.pack('<I4s', len(js), b'JSON') + js + struct.pack('<I4s', len(bb), b'BIN\x00') + bb

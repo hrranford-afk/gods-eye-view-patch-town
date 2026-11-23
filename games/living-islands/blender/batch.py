@@ -41,6 +41,7 @@ ap.add_argument('--gpu-name', default='', help='only use a GPU whose name contai
 ap.add_argument('--require-gpu', action='store_true', help='stop instead of falling back to the CPU, and check every job log shows the wanted GPU')
 ap.add_argument('--list-devices', action='store_true', help='read-only: list the compute devices Blender can see, then exit')
 ap.add_argument('--phases', default='previews,bakes', help='comma list from: recipes,previews,bakes,hires,rocks,landform,variety (variety last)')
+ap.add_argument('--menu', default='', help='hero phases and recipes: put a menu item (fish_hut, seabird_hut, playset_wreck, boat_house, any) in every recipe (default: none)')
 ap.add_argument('--legacy-scene', action='store_true', help='hero phases: the old camp picture on every seed (no recipe variety), for comparison')
 ap.add_argument('--variety-thr', type=float, default=0.90, help='variety phase: similarity at or above which two pictures are look-alikes')
 ap.add_argument('--hi-seeds', default='', help='comma list for the hires phase (default: first 6 of --seeds)')
@@ -110,7 +111,7 @@ def save():
 def stop(reason):
     results['stopped_because'] = reason; save(); sys.exit(0 if reason in ('deadline', 'max-minutes') else 1)
 
-LEG = ['--legacy'] if a.legacy_scene else []
+LEG = (['--legacy'] if a.legacy_scene else []) + (['--menu', a.menu] if a.menu else [])
 
 def queue():
     phases = [x.strip() for x in a.phases.split(',') if x.strip()]
@@ -147,7 +148,7 @@ if 'recipes' in a.phases.split(','):
     sys.path.insert(0, HERE)
     import recipe as RC
     for s_ in seeds:
-        RC.write_recipe(RC.recipe_for(s_, legacy_scene=a.legacy_scene), os.path.join(a.out, 'recipe_seed%d.json' % s_))
+        RC.write_recipe(RC.recipe_for(s_, legacy_scene=a.legacy_scene, menu=(a.menu or None)), os.path.join(a.out, 'recipe_seed%d.json' % s_))
     results['jobs'].append({'label': 'recipes', 'returncode': 0, 'seconds': 0, 'device': '', 'files': {'recipe_seed%d.json' % s_: {} for s_ in seeds}}); save()
 
 for label, script, args, outputs in queue():

@@ -21,7 +21,9 @@ LEGACY_SEED = IC.LEGACY_SEED
 VERSION = 1
 ISLAND_TYPES = ('sandbar', 'volcanic', 'cliffs', 'lagoon', 'archipelago', 'plain')
 ROCK_CODES = {'A': 'gneiss', 'B': 'sandstone', 'C': 'basalt', 'D': 'volcanic'}
-CONTENTS = ('camp', 'wreck', 'lighthouse', 'ruins', 'hut', 'nothing')
+MENU_ITEMS = ('fish_hut', 'seabird_hut', 'playset_wreck', 'boat_house')        # the hardware residents' menu (task 37): chosen only when recipe_for(seed, menu=...) asks for them; the default pick below never returns one
+CONTENTS = ('camp', 'wreck', 'lighthouse', 'ruins', 'hut', 'nothing') + MENU_ITEMS
+FISH_COLOURS = ((0.18, 0.34, 0.36), (0.50, 0.26, 0.12), (0.30, 0.38, 0.40), (0.12, 0.28, 0.34), (0.55, 0.40, 0.20))
 CAMERAS = ('low_beach', 'high_wide', 'from_sea')
 TIMES = ('dawn', 'morning', 'noon', 'golden', 'dusk')
 WEATHERS = ('clear', 'hazy', 'cloudy', 'overcast')
@@ -196,8 +198,28 @@ def _choose_site(rng, M, headland):
     k = int(np.where(land, H, -1e9).argmax()); r, c = divmod(k, H.shape[1])
     return float(X[r, c]), float(Y[r, c]), float(dw[r, c]), (0.0, -1.0)
 
-def recipe_for(seed, legacy_scene=False):
-    """the recipe of a seed: plain values only. legacy_scene=True gives the old camp picture on that seed's own coastline (the HW-3 look)."""
+def _menu_choice(menu, seed):
+    """menu = one item name, 'any', or a list of item names -> the item (from its own generator, so the main recipe draws are not disturbed)"""
+    names = list(MENU_ITEMS) if menu == 'any' else ([menu] if isinstance(menu, str) else list(menu))
+    bad = [n for n in names if n not in MENU_ITEMS]
+    if bad or not names: raise ValueError('menu items are %s (or any); got %r' % (', '.join(MENU_ITEMS), menu))
+    return names[int(np.random.default_rng([int(seed), 6277, VERSION]).integers(0, len(names)))]
+
+def _menu_prop(item, site, sp, seaward, dwater, seed):
+    """the props entry of a menu item; drawn from its own generator (seed, 6277, VERSION, 1) so the stream of the ordinary recipe is the same whether or not the menu is on"""
+    r = np.random.default_rng([int(seed), 6277, VERSION, 1]); col = lambda tab: [round(c, 3) for c in tab[int(r.integers(0, len(tab)))]]
+    if item == 'fish_hut':
+        return dict(kind=item, pos=list(site), yaw=round(seaward - math.pi / 2, 4), colour=col(FISH_COLOURS), length=round(float(r.uniform(4.2, 5.4)), 2))
+    if item == 'seabird_hut':
+        return dict(kind=item, pos=list(site), yaw=round(seaward - math.pi / 2, 4), colour=col(TENT_COLOURS), size=[round(float(r.uniform(2.8, 3.4)), 2), round(float(r.uniform(2.3, 2.8)), 2)], height=round(float(r.uniform(1.2, 1.7)), 2))
+    if item == 'playset_wreck':
+        return dict(kind=item, pos=list(sp), yaw=round(seaward + math.pi / 2 + float(r.uniform(-0.5, 0.5)), 4), length=round(float(r.uniform(5.5, 7.5)), 2), tilt=round(float(r.uniform(0.14, 0.30)), 3))
+    return dict(kind=item, pos=list(sp), yaw=round(seaward + math.pi / 2 + float(r.uniform(-0.4, 0.4)), 4), length=round(float(r.uniform(6.5, 8.5)), 2), tilt=round(float(r.uniform(0.04, 0.10)), 3), colour=col(TENT_COLOURS))
+
+def recipe_for(seed, legacy_scene=False, menu=None):
+    """the recipe of a seed: plain values only. legacy_scene=True gives the old camp picture on that seed's own coastline (the HW-3 look).
+    menu=None (the default): nothing changes, every seed gives the recipe it always gave. menu='fish_hut' | 'seabird_hut' | 'playset_wreck' | 'boat_house' | 'any' | a list of those: the content of the recipe is that item
+    (beach site, same island, rock, trees, time, weather and camera logic) and the recipe gets a 'menu' field. The legacy seed and legacy_scene ignore the menu (they stay the old picture)."""
     seed = int(seed)
     if seed == LEGACY_SEED or legacy_scene:
         return legacy_recipe(seed)
@@ -213,6 +235,9 @@ def recipe_for(seed, legacy_scene=False):
         ground.update(SHELL_SAND)
     style['ground'] = {k: [round(float(x), 4) for x in v] for k, v in ground.items()}
     content = _pick(rng, [('camp', 0.30), ('wreck', 0.16), ('lighthouse', 0.13), ('ruins', 0.15), ('hut', 0.15), ('nothing', 0.11)])
+    menu_item = None
+    if menu is not None:
+        menu_item = _menu_choice(menu, seed); content = menu_item
     headland = content in ('lighthouse', 'ruins')
     M = _maps(style, (999.0, 999.0), seed)
     sx_, sy_, dwater, sea_vec = _choose_site(rng, M, headland)
@@ -262,6 +287,9 @@ def recipe_for(seed, legacy_scene=False):
                                    boat=(round(float(rng.choice([-5.5, 5.5, -4.5, 6.0])), 2), 0.0), boat_yaw_deg=float(rng.uniform(40, 110)))
         if rng.random() < 0.3:
             cont['camp']['boat'] = None      # the boat is away: the camp has no boat
+    elif content in MENU_ITEMS:
+        sp = [round(site[0] + f[0] * max(dwater - 1.4, 0.0), 3), round(site[1] + f[1] * max(dwater - 1.4, 0.0), 3)]
+        cont['props'] = [_menu_prop(content, site, sp, seaward, dwater, seed)]
     elif content in ('wreck', 'hut', 'lighthouse', 'ruins'):
         prop = dict(kind=content, pos=list(site), yaw=0.0)
         if content == 'wreck':
@@ -288,8 +316,10 @@ def recipe_for(seed, legacy_scene=False):
     sun_energy = round(min(4.1 / math.sin(math.radians(el)), 18.0) * (1 - 0.72 * oc), 2)
     tm = dict(name=tname, sun_el_deg=el, sun_az_deg=round((cam_az + rel) % 360.0, 2), sun_rel_deg=round(rel, 2), sun_colour=[round(c, 3) for c in scol], sun_energy=sun_energy,
               sun_angle_deg=round(1.0 + 7.0 * oc, 2), sky_strength=sstr, exposure=round(-0.4 + xexp + 0.5 * oc, 3), horizon_soften=round(0.65 * min(max((36.0 - el) / 22.0, 0.0), 1.0), 2))
-    return dict(version=VERSION, seed=seed, legacy=False, island=island, rock=rockd, trees=trees, tufts=tufts, boulders=boulders, content=cont,
-                time=tm, weather=dict(name=wname, overcast=oc, haze=hz_), camera=cam, camera_close=cam_close, sea=dict(density=round(float(rng.uniform(0.55, 0.9)), 3)))
+    out = dict(version=VERSION, seed=seed, legacy=False, island=island, rock=rockd, trees=trees, tufts=tufts, boulders=boulders, content=cont,
+               time=tm, weather=dict(name=wname, overcast=oc, haze=hz_), camera=cam, camera_close=cam_close, sea=dict(density=round(float(rng.uniform(0.55, 0.9)), 3)))
+    if menu_item: out['menu'] = dict(item=menu_item, requested=[menu] if isinstance(menu, str) else list(menu))
+    return out
 
 def _ground_z(style, carve, seed, pts):
     with _style(style, carve):
@@ -359,6 +389,10 @@ def _subject(rec, zf):
         p = c['props'][0]; x, y = p['pos']
         if k == 'wreck': r, h = 0.5 * p['length'] + 0.4, 1.0
         elif k == 'hut': r, h = 2.8, 1.2
+        elif k == 'fish_hut': r, h = 0.5 * p['length'] + 1.0, 1.3
+        elif k == 'seabird_hut': r, h = 3.0, 1.8
+        elif k == 'playset_wreck': r, h = 0.5 * p['length'] + 0.8, 1.2
+        elif k == 'boat_house': r, h = 0.5 * p['length'] + 0.6, 1.4
         elif k == 'lighthouse': r, h = 0.5 * p['height'] + 0.6, 0.5 * p['height']
         else: r, h = 0.5 * max(p['plan']) + 0.8, 1.0
     z = float(zf(x, y)[0]) + h

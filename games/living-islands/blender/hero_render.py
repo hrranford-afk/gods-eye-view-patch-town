@@ -14,14 +14,14 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--seed', type=int, default=1122); ap.add_argument('--w', type=int, default=1200); ap.add_argument('--h', type=int, default=800)
 ap.add_argument('--samples', type=int, default=256); ap.add_argument('--out', default='hero.png'); ap.add_argument('--grid', type=int, default=257)
 ap.add_argument('--blend', default=''); ap.add_argument('--view', default='hero')
-ap.add_argument('--legacy', action='store_true'); ap.add_argument('--recipe', default=''); ap.add_argument('--recipe-only', action='store_true')
+ap.add_argument('--legacy', action='store_true'); ap.add_argument('--menu', default='', help="a menu item for the recipe's content: fish_hut, seabird_hut, playset_wreck, boat_house or any (default: none, the ordinary recipe)"); ap.add_argument('--recipe', default=''); ap.add_argument('--recipe-only', action='store_true')
 a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:])
 t0 = time.time()
 seed = a.seed
 if a.recipe:
     recipe = json.load(open(a.recipe)); seed = int(recipe['seed'])
 else:
-    recipe = RC.recipe_for(seed, legacy_scene=a.legacy)
+    recipe = RC.recipe_for(seed, legacy_scene=a.legacy, menu=(a.menu or None))
 rpath = os.path.splitext(os.path.abspath(a.out))[0] + '.recipe.json'
 RC.write_recipe(recipe, rpath)
 print('RECIPE', seed, RC.summary(recipe) if not recipe['legacy'] else 'legacy camp picture')
@@ -102,6 +102,14 @@ for p in cont['props']:
         LP.wreck(pos, p['yaw'], hz, p['length'], p['tilt'], seed)
     elif k == 'hut':
         LP.hut(pos, p['yaw'], hz, tuple(p['colour']), tuple(p['size']), seed)
+    elif k == 'fish_hut':
+        LP.fish_hut(pos, p['yaw'], hz, tuple(p['colour']), p['length'], seed)
+    elif k == 'seabird_hut':
+        LP.seabird_hut(pos, p['yaw'], hz, tuple(p['colour']), tuple(p['size']), p['height'], seed)
+    elif k == 'playset_wreck':
+        LP.playset_wreck(pos, p['yaw'], hz, p['length'], p['tilt'], seed)
+    elif k == 'boat_house':
+        LP.boat_house(pos, p['yaw'], hz, p['length'], p['tilt'], tuple(p['colour']), seed)
     elif k == 'lighthouse':
         LP.lighthouse(pos, p['yaw'], hz, p['height'], p['bands'], rock_mat, seed)
     elif k == 'ruins':

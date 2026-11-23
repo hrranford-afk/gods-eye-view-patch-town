@@ -1,6 +1,6 @@
 """Tests for the per-seed recipe layer (blender/recipe.py) and the variety judge. Pure python + numpy (PIL for the judge test), no Blender.
 Run: python3 games/living-islands/tests/test_recipe.py        (also works under pytest)"""
-import collections, json, math, os, re, sys, tempfile
+import collections, hashlib, json, math, os, re, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BL = os.path.join(ROOT, 'blender')
@@ -223,6 +223,50 @@ def test_clean():
         if re.search(r'(api[_-]?key|secret|password|token)\s*=', t, re.I): leaks.append(os.path.basename(f) + ':secret')
     check(not leaks, 'new files hold no private paths or secrets %s' % leaks)
 
+# sha256 (first 12 hex) of json.dumps(recipe_for(seed), sort_keys=True) at commit 179e5d4, before the menu items were added (the legacy seed 1122 and the HW-3, HW-4 and HW-6 seeds 2001 to 2060)
+BASELINE_HASHES = {1122: 'dd412beca019', 2001: 'ac9111f7f696', 2002: 'b61c5265d9e5', 2003: '8a53e8290a47', 2004: 'ae16c0cdecf7', 2005: '77e2751f79a4', 2006: '28c64760d074', 2007: '194afe86816e', 2008:
+    '4b1c13bf263b', 2009: '3b162db13599', 2010: '0f3460a00b71', 2011: '22bd24ad7c72', 2012: 'ca994576cadf', 2013: 'd01762ff9892', 2014: '9b679c96cf01', 2015: '1b60ec83692e', 2016:
+    'e1ea87f71b60', 2017: '924efc2764e4', 2018: 'da21d5524752', 2019: '45e5af209c46', 2020: 'dd4b277493cf', 2021: 'f719170b0f40', 2022: '9adf00bd3a19', 2023: '2fc8887edaa3', 2024:
+    '082c6b2c3ebd', 2025: 'a6e0a41dc5c1', 2026: 'fce651b057a8', 2027: '78909a465753', 2028: 'ee2f0fb42976', 2029: '889f5cfe5bf9', 2030: '5892fc1156d8', 2031: '9857a0869c04', 2032:
+    '6c73e0a09308', 2033: '3d02c685bdcf', 2034: '377346753646', 2035: 'd46eabd026b8', 2036: '63430ef4e38c', 2037: '02caf76d9645', 2038: 'f75b9cd3a5b0', 2039: '4b11424ed08c', 2040:
+    '386026913d1d', 2041: '34c81438c188', 2042: '332a280630d8', 2043: 'f40388fe6dce', 2044: 'c73fb01faf1c', 2045: '390a6a7b3220', 2046: 'c3faf7550531', 2047: 'ee98b096ea38', 2048:
+    '855362745c86', 2049: 'b2f1a9eed620', 2050: '344dddee15a2', 2051: '1b378820c67b', 2052: 'c6afcd8accc5', 2053: '560dc42cd0e8', 2054: '0f1f6e38309a', 2055: 'c9442e9b4f67', 2056:
+    '4521d25d55c6', 2057: '1cedcdcb3d77', 2058: 'a7ff0078130e', 2059: '87e4b5e4aae3', 2060: '02b3d54d9bc3'}
+
+def test_menu():
+    """task 37: fish hut, seabird hut, playset wreck, house in a boat as a new optional 'menu' field; nothing changes for a recipe that does not ask"""
+    same = [s for s in SEEDS61 if hashlib.sha256(json.dumps(rec(s), sort_keys=True).encode()).hexdigest()[:12] != BASELINE_HASHES[s]]
+    check(not same, 'all 61 default recipes (legacy 1122 and the HW seeds 2001 to 2060) are unchanged by the menu code %s' % same[:3])
+    check(all('menu' not in rec(s) for s in SEEDS61) and RC.recipe_for(2005, menu=None) == rec(2005), "no 'menu' field unless asked (menu=None is the default)")
+    check(set(RC.MENU_ITEMS) == {'fish_hut', 'seabird_hut', 'playset_wreck', 'boat_house'} and set(RC.MENU_ITEMS) <= set(RC.CONTENTS) and len(RC.CONTENTS) == 10, 'CONTENTS has the four new values')
+    check(not any(rec(s)['content']['kind'] in RC.MENU_ITEMS for s in SEEDS61), 'the default pick never returns a menu item (61 seeds)')
+    check(RC.recipe_for(1122, menu='fish_hut') == RC.recipe_for(1122) and RC.recipe_for(2001, legacy_scene=True, menu='boat_house') == RC.recipe_for(2001, legacy_scene=True), 'the legacy seed and legacy_scene ignore the menu')
+    try: RC.recipe_for(2002, menu='castle'); bad = False
+    except ValueError: bad = True
+    check(bad, 'an unknown menu item is refused')
+    seeds = [2002, 2003, 2007, 2010, 2012, 2014, 2020, 2031]; fr_ok = 0; n = 0; kinds = set()
+    for it in RC.MENU_ITEMS:
+        for s in seeds:
+            r = RC.recipe_for(s, menu=it); c = r['content']; p = c['props'][0]; n += 1; kinds.add(p['kind'])
+            ok = c['kind'] == it and p['kind'] == it and r['menu']['item'] == it and c['placement'] == 'beach' and r['camera']['framing']['subject']['radius'] > 2.5
+            fr_ok += bool(r['camera']['framing']['ok'])
+            if not ok: check(False, 'menu %s seed %d content, prop, beach placement' % (it, s))
+            z = _ground(r, [p['pos']])[0]
+            if it in ('fish_hut', 'seabird_hut') and z < 0.15: check(False, 'menu %s seed %d stands on land (z %.2f)' % (it, s, z))
+    check(kinds == set(RC.MENU_ITEMS) and fr_ok >= 0.7 * n, 'every item builds a recipe on 8 seeds, the framing check passes on %d of %d' % (fr_ok, n))
+    a = json.dumps(RC.recipe_for(2007, menu='any'), sort_keys=True); b = json.dumps(RC.recipe_for(2007, menu='any'), sort_keys=True)
+    check(a == b and RC.recipe_for(2007, menu=['fish_hut', 'boat_house'])['menu']['item'] in ('fish_hut', 'boat_house'), "menu 'any' and a list are deterministic and choose from the list")
+    pick = collections.Counter(RC.recipe_for(s, menu='any')['content']['kind'] for s in range(2001, 2025))
+    check(len(pick) == 4, "menu 'any' reaches all four items over 24 seeds (%s)" % dict(pick))
+    # the rest of the recipe is the ordinary one for the same seed: same island, rock and trees
+    base = rec(2010); m = RC.recipe_for(2010, menu='fish_hut')
+    check(all(m[k] == base[k] for k in ('island', 'rock', 'trees', 'tufts', 'boulders')), 'a menu recipe keeps the same island, rock, trees, tufts and boulders as the ordinary recipe of that seed')
+    lp = open(os.path.join(BL, 'li_props.py')).read(); hr = open(os.path.join(BL, 'hero_render.py')).read(); bt = open(os.path.join(BL, 'batch.py')).read()
+    check(all(('def %s(' % it) in lp for it in RC.MENU_ITEMS) and all(("k == '%s'" % it) in hr for it in RC.MENU_ITEMS), 'li_props.py has the four props and hero_render.py builds them')
+    check("'--menu'" in bt and 'menu=(a.menu or None)' in bt and '--menu' in hr, 'batch.py and hero_render.py take --menu (default off)')
+    pat = re.compile(r'(' + '|'.join(RC.FORBIDDEN_WORDS) + r')', re.I)
+    check(not any(pat.search(json.dumps(RC.recipe_for(s, menu='any'))) for s in range(2001, 2021)), 'no forbidden words in menu recipes')
+
 def test_judge():
     try:
         from PIL import Image
@@ -247,7 +291,7 @@ def test_judge():
     check(same > 0.97 and mixed < same, 'judge: similar set scores higher than a varied set (%.3f vs %.3f)' % (same, mixed))
 
 def main():
-    for fn in (test_determinism, test_legacy_1122, test_spread, test_sites_and_cameras, test_framing, test_framing_unit, test_framing_deterministic, test_cliff_site_not_a_pit, test_picture_guard, test_sky_softening_recorded, test_forbidden_words_unchanged, test_clean, test_judge):
+    for fn in (test_determinism, test_legacy_1122, test_spread, test_sites_and_cameras, test_framing, test_framing_unit, test_framing_deterministic, test_cliff_site_not_a_pit, test_picture_guard, test_sky_softening_recorded, test_forbidden_words_unchanged, test_clean, test_menu, test_judge):
         fn()
     print('\n%s: %d failure(s)' % ('FAILED' if _fails else 'ALL PASSED', len(_fails)))
     return 1 if _fails else 0

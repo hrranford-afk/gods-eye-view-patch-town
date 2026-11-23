@@ -218,6 +218,9 @@ CORD_KEYS = ('tape', 'twine', 'sand')
 RUBBER_KEYS = ('link', 'rubber')
 GLASS_KEYS = ('cell', 'visor', 'lens', 'cap', 'lit_blue', 'lit_orange', 'lit_white', 'lit_glass', 'lit_red')
 
+# wear multipliers (1.0 = the committed collector). The robot recipes (blender/robot_build.py) set them per machine: age bleaches and streaks the paint, chips, rust and salt scale those effects.
+WEAR = {'age': 1.0, 'chips': 1.0, 'rust': 1.0, 'salt': 1.0}
+ORGANIC_KEYS = ('leaf', 'soil')      # plants and earth of the planter robots: no paint wear on them
 PRIMER = np.array((0.13, 0.052, 0.040), np.float32); STEEL = np.array((0.27, 0.27, 0.265), np.float32); RUSTC = np.array((0.23, 0.078, 0.030), np.float32)
 SALTC = np.array((0.74, 0.72, 0.64), np.float32); SANDC = np.array((0.30, 0.22, 0.12), np.float32); DIRT = np.array((0.045, 0.036, 0.028), np.float32)
 
@@ -260,23 +263,23 @@ def shade_body(S, seed):
     col = base.copy()
     fade = fbm(P * 2.6, sd + 1, 3); col = col * (0.88 + 0.26 * fade)[:, None]
     # sun-bleached chalk on the upward faces, patchy
-    bl = up * sstep(0.30, 0.80, fbm(P * 3.2, sd + 2, 3)) * 0.62
+    bl = up * sstep(0.30, 0.80, fbm(P * 3.2, sd + 2, 3)) * 0.62 * WEAR['age']
     col = mixc(col, base * 0.5 + np.array((0.20, 0.215, 0.18), np.float32), bl * 0.62)
     # rain runs: tall thin dirty streaks on the walls
     sw = fbm(P * np.array([34, 34, 1.7], np.float32), sd + 3, 3); sk = sstep(0.50, 0.76, sw) * np.clip(side + 0.1, 0, 1) * (0.45 + 0.55 * fbm(P * 5, sd + 4, 2))
-    col = mixc(col, col * np.array((0.52, 0.47, 0.40), np.float32), sk * 0.80)
+    col = mixc(col, col * np.array((0.52, 0.47, 0.40), np.float32), np.clip(sk * 0.80 * WEAR['age'], 0, 1))
     low = sstep(0.24, 0.04, z) * (0.45 + 0.55 * fbm(P * 7, sd + 21, 3)); col = mixc(col, np.array((0.05, 0.042, 0.032), np.float32), low * 0.42)       # splash and grime zone
     fine = fbm(P * 260, sd + 5, 2)
     # edge wear, chips, rust, scratches
     we = np.maximum(np.exp(-ed / 0.0030), sstep(0.35, 1.0, E))
     halo = S['halo']; fixs = S['streak']
     scour_z = sstep(0.16, 0.025, z)
-    chipn = fbm(P * 48, sd + 6, 3) + 0.45 * we + 0.38 * halo + 0.14 * scour_z + 0.10 * (1 - ao)
+    chipn = fbm(P * 48, sd + 6, 3) + 0.45 * we + 0.38 * halo + 0.14 * scour_z + 0.10 * (1 - ao) + (WEAR['chips'] - 1.0) * 0.22
     chip = sstep(0.72, 0.745, chipn); chip_halo = sstep(0.685, 0.72, chipn) * (1 - chip)
     bare = chip * sstep(0.38, 0.8, we * (0.4 + fine) + 0.35 * halo + 0.25 * fbm(P * 40, sd + 7, 2))
     primer = PRIMER * (0.8 + 0.5 * fine)[:, None]
     rustn = 0.55 + 0.9 * fbm(P * 90, sd + 8, 2)
-    rust = np.clip(chip_halo * 0.8 + fixs * 0.8 + halo * 0.25 * sstep(0.5, 0.8, fbm(P * 50, sd + 9, 2)), 0, 1) * np.clip(side + 0.35, 0, 1)
+    rust = np.clip((chip_halo * 0.8 + fixs * 0.8 + halo * 0.25 * sstep(0.5, 0.8, fbm(P * 50, sd + 9, 2))) * WEAR['rust'], 0, 1) * np.clip(side + 0.35, 0, 1)
     col = mixc(col, RUSTC[None] * rustn[:, None], np.clip(rust * 0.85, 0, 1))
     col = mixc(col, primer, chip)
     col = mixc(col, STEEL[None] * (0.7 + 0.6 * fine)[:, None], bare)
@@ -297,7 +300,7 @@ def shade_body(S, seed):
     col = mixc(col, SANDC[None] * (0.9 + 0.3 * fine)[:, None], np.clip(scour * 0.55, 0, 0.7))
     # salt crust: white, in the lowest 20 cm and in pale blooms on top
     sz = np.clip(1.0 - z / 0.16, 0, 1)
-    sn = fbm(P * 40, sd + 13, 3); salt = sstep(0.54 - 0.18 * sz, 0.72 - 0.18 * sz, sn) * sz ** 1.5
+    sn = fbm(P * 40, sd + 13, 3); salt = sstep(0.54 - 0.18 * sz, 0.72 - 0.18 * sz, sn) * sz ** 1.5 * WEAR['salt']
     bloom = sstep(0.66, 0.84, fbm(P * 9, sd + 14, 3)) * sstep(0.45, 0.85, fbm(P * 55, sd + 15, 2)) * up * 0.35
     salt = np.clip(salt + bloom, 0, 1) * (1 - 0.4 * chip)
     col = mixc(col, SALTC[None] * (0.88 + 0.22 * fine)[:, None], salt * 0.9)
@@ -335,6 +338,10 @@ def shade_body(S, seed):
     rough = np.where(cord, 0.96, rough); rough = np.where(backing, 0.45, rough)
     rough = np.clip(rough - 0.10 * groove * 0 + 0.05 * (fine - 0.5), 0.2, 1.0)
     metal = np.clip(bare * 0.95 * (1 - salt) * (1 - 0.8 * rust), 0, 1); metal = np.where(cord, 0.0, metal)
+    org = isk(*ORGANIC_KEYS)
+    if org.any():       # plants and earth: their own colour, soft, no paint wear
+        oc = base * (0.62 + 0.8 * fbm(P * 70, sd + 30, 3))[:, None]; oc = mixc(oc, DIRT[None] * 1.5, np.clip((0.8 - ao) * 0.8, 0, 0.6)[:, None])
+        col = np.where(org[:, None], oc, col); h = np.where(org, 0.0016 * (fbm(P * 130, sd + 31, 2) - 0.5), h); rough = np.where(org, 0.93, rough); metal = np.where(org, 0.0, metal)
     return col, h, rough, metal
 
 
@@ -359,14 +366,14 @@ def shade_metal(S, seed):
     col = np.where(rub[:, None], col * (1 - 0.45 * crack)[:, None], col)
     # rust blooms: from pits and edges, and under fixings
     rn = fbm(P * 20, sd + 7, 3) + 0.16 * wear + 0.30 * S['halo'] + 0.08 * (1 - ao)
-    rust = sstep(0.70, 0.88, rn) * np.where(rub, 0.0, 1.0); rust = np.clip(rust + S['streak'] * 0.8 * (~rub), 0, 1)
+    rust = sstep(0.70 - (WEAR['rust'] - 1.0) * 0.06, 0.88, rn) * np.where(rub, 0.0, 1.0); rust = np.clip(rust + S['streak'] * 0.8 * (~rub) * WEAR['rust'], 0, 1)
     col = mixc(col, RUSTC[None] * (0.45 + 0.7 * fbm(P * 100, sd + 8, 2))[:, None], rust * 0.80)
     # oil and grime near the joints and low parts
     grime = sstep(0.50, 0.82, fbm(P * np.array([30, 30, 5.0], np.float32), sd + 9, 3)) * 0.24
     col = mixc(col, col * 0.45, grime * (1 - rust) * np.where(rub, 0.0, 0.6))
     # salt crust, sand
     sz = np.clip(1.0 - z / 0.15, 0, 1); sn = fbm(P * 40, sd + 10, 3)
-    salt = sstep(0.56 - 0.18 * sz, 0.74 - 0.18 * sz, sn) * sz ** 1.5
+    salt = sstep(0.56 - 0.18 * sz, 0.74 - 0.18 * sz, sn) * sz ** 1.5 * WEAR['salt']
     bloom = sstep(0.68, 0.86, fbm(P * 8, sd + 11, 3)) * up * 0.22
     salt = np.clip(salt + bloom, 0, 1)
     col = mixc(col, SALTC[None] * (0.85 + 0.25 * fine)[:, None], np.clip(salt * np.where(rub, 0.10, 0.60), 0, 0.7))
@@ -393,7 +400,7 @@ def shade_glass(S, seed):
     P = S['P']; N = S['N']; nz = N[:, 2]; z = P[:, 2]; sd = seed * 13 + 9; kidx = S['kidx']; keys = S['keys']; base = S['base']
     up = np.clip(nz, 0, 1); side = 1.0 - np.abs(nz); ao = S['ao']; ed = S['ed']; cd = S['cd']; E = S['E']
     isk = lambda *names: np.isin(kidx, [keys.index(k) for k in names if k in keys])
-    cell = isk('cell'); lens = isk('visor', 'lens', 'cap'); lit = isk('lit_blue', 'lit_orange', 'lit_white', 'lit_glass', 'lit_red')
+    cell = isk('cell'); lens = isk('visor', 'lens', 'cap', 'glight'); lit = isk('lit_blue', 'lit_orange', 'lit_white', 'lit_glass', 'lit_red')
     q = np.round(P / 0.056) * 0.056; r = fbm(q * 9, sd + 1, 2); fade = fbm(P * 3.5, sd + 2, 3); fine = fbm(P * 300, sd + 3, 2)
     col = base * (0.70 + 1.5 * r)[:, None] * (0.80 + 1.0 * fade)[:, None]
     # fine cell structure: busbars (two thin lines) and a faint grid of fingers
