@@ -417,7 +417,7 @@ function create(o) {
     meshes.litter.push(addMesh(pb, false));
   });
   /* ---------------- the kit pieces ---------------- */
-  const kit = []; const lodThr = tier === 'high' ? 78 : tier === 'low' ? 46 : 36;
+  const kit = []; const lodThr = (tier === 'high' ? 78 : tier === 'low' ? 46 : 36) * (o.lodScale || 1);   /* o.lodScale and o.hero are the ultra tier's (ULTRA_TIER.md): absent = unchanged */
   function simpleShape(kind) {
     const g = new THREE.Group(), M = (c) => new THREE.MeshLambertMaterial({ color: c }), add = (geo, c, x, y, z, ry) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); m.rotation.y = ry || 0; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
     const bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
@@ -432,7 +432,17 @@ function create(o) {
   }
   function prepKit(t) { t.scene.traverse(n => { if (/^footprint/.test(n.name || '')) n.visible = false; if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; n.frustumCulled = true; } }); }
   /* a level of detail is hidden by hiding its meshes (not its parent), so the page's triangle count, which only looks at meshes, stays honest */
-  function setLod(k, lod) { k.lod = lod; if (!k.F) return; k.Lm.forEach(m => { m.visible = lod === 'live'; }); k.Fm.forEach(m => { m.visible = lod === 'far'; }); }
+  function setLod(k, lod) { k.lod = lod; if (!k.F) return; k.Lm.forEach(m => { m.visible = lod === 'live'; }); k.Fm.forEach(m => { m.visible = lod === 'far'; }); if (k.Hm) k.Hm.forEach(m => { m.visible = lod === 'hero'; }); }
+  /* the hero level of the kit pieces (assets/kit/kit_<kind>_hero.glb, 7 to 8 times the live triangles): only when the page asks (o.hero) and only over http(s), where a fetch can read the file; file:// keeps live */
+  const heroStat = { asked: !!o.hero, loaded: 0, failed: 0, kinds: [] };
+  function heroLoad() {
+    if (!o.hero || !THREE.GLTFLoader || !root.fetch || !/^https?:/.test(location.protocol)) return;
+    const kinds = []; kit.forEach(k => { if (!k.simple && kinds.indexOf(k.p.kind) < 0) kinds.push(k.p.kind); });
+    kinds.forEach(kind => fetch(o.base + 'assets/kit/kit_' + kind + '_hero.glb').then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); }).then(buf => new Promise((res, rej) => new THREE.GLTFLoader().parse(buf, '', res, rej))).then(g => {
+      prepKit(g); heroStat.loaded++; heroStat.kinds.push(kind);
+      kit.forEach(k => { if (k.p.kind !== kind || k.simple || k.H) return; k.H = g.scene.clone(true); k.g.add(k.H); k.Hm = []; k.H.traverse(m => { if (m.isMesh && !/^footprint/.test(m.name || '') && m.visible) k.Hm.push(m); }); if (o.onHero) o.onHero(k.H); setLod(k, k.lod); });
+    }).catch(() => { heroStat.failed++; }));
+  }
   function buildKit() {
     for (const p of pl.pieces) {
       const g = new THREE.Group(); g.name = 'kit_' + p.kind; g.position.set(p.x, p.y, p.z); g.rotation.y = p.yaw; g.scale.setScalar(p.sc);
@@ -444,7 +454,7 @@ function create(o) {
       const k = { p, g, L, F, simple, lod: F ? 'far' : 'live', Lm: meshesOf(L), Fm: F ? meshesOf(F) : [] };
       setLod(k, k.lod); group.add(g); kit.push(k);
     }
-    kitReady = true;
+    kitReady = true; heroLoad();
   }
   let kitReady = false;
   function kitLoad() {
@@ -578,8 +588,9 @@ function create(o) {
   let hudT = 0, camPos = new THREE.Vector3();
   function lodUpdate() {
     if (!cam) return; camPos.copy(cam.position);
-    for (const k of kit) { if (!k.F) continue; const d = Math.hypot(camPos.x - k.p.cx, camPos.y - 0, camPos.z - k.p.cz), want = k.lod === 'live' ? d < lodThr + 8 : d < lodThr - 8;
-      const lod = o.forceLod ? o.forceLod : want ? 'live' : 'far'; if (lod !== k.lod) setLod(k, lod); }
+    for (const k of kit) { if (!k.F) continue; const d = Math.hypot(camPos.x - k.p.cx, camPos.y - 0, camPos.z - k.p.cz), want = (k.lod === 'live' || k.lod === 'hero') ? d < lodThr + 8 : d < lodThr - 8;
+      const hd = o.heroDist || 0, wantHero = k.H && hd && (k.lod === 'hero' ? d < hd * 1.12 : d < hd);
+      const lod = o.forceLod ? o.forceLod : wantHero ? 'hero' : want ? 'live' : 'far'; if (lod !== k.lod) setLod(k, lod); }
   }
   let toff = 0;
   function frame(dt, T) {
@@ -603,6 +614,7 @@ function create(o) {
     counts, hud: hudText, plan: () => pl, sim: () => sim, group, kit: () => kit.map(k => ({ kind: k.p.kind, x: k.p.x, z: k.p.z, y: k.p.y, yaw: k.p.yaw, cx: k.p.cx, cz: k.p.cz, fr: k.p.fr, lod: k.lod, simple: k.simple, vis: true })),
     robots: () => robots.map(r => { const s = sim.robots[r.id]; return { id: r.id, kind: r.kind, role: s.role, state: s.state, charge: s.charge, x: s.x, z: s.z, yaw: s.yaw, bay: s.bay, lamp: r.lampCode, clip: r.clip, ready: r.ready, simple: !!r.simple, load: s.load, delivered: s.delivered, moving: s.moving, prints: (() => { const aT = r.tread.g.attributes.aT.array; let c = 0; for (let i = 0; i < aT.length; i += 4) if (aT[i] < 1e8) c++; return c; })(), y: r.node ? r.node.position.y : null, ground: H(s.x, s.z), size: r.size || null }; }),
     ready: () => kitReady && robots.every(r => r.ready), kitReady: () => kitReady, stat: () => Object.assign({}, stat), tris: triCount,
+    heroStat: () => Object.assign({}, heroStat, { kinds: heroStat.kinds.slice() }),
     force: v => { if (v.night !== undefined) forced.night = v.night; if (v.rain !== undefined) forced.rain = v.rain; }, forceLod: l => { o.forceLod = l; for (const k of kit) if (k.F && l) setLod(k, l); },
     /* run the routine forward by seconds (tests, pictures), then put the robots where it left them */
     advance(seconds) { const env = envNow(); let t = 0; const T0 = st.t + toff;
