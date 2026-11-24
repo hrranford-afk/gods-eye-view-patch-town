@@ -256,11 +256,13 @@
     if (rt.frozen) { rt.t = opt.wt; }
     const lum = c => .3 * c[0] + .59 * c[1] + .11 * c[2];
     const aces = x => { x *= .9 * .95; return Math.pow(clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0, 1), 1 / 2.2); };
-    function target() {   /* the parameter set for this instant */
+    function target0() {   /* the parameter set for this instant */
       if (rt.auto) { const hr = rt.hour0 + rt.t / rt.hourSec; const p = opt.atFn ? (opt.atFn(seed, hr) || at(seed, hr)) : at(seed, hr); return p; }   /* opt.atFn: the macro sea supplies the parameter set (islands_look.html ?macro=1); absent = the Markov schedule */
       if (rt.k < 1 && rt.from) return lerpParams(rt.from, rt.to, sm(rt.k));
       return rt.to;
     }
+    /* opt.tweak(P): the sky moods (moods.js, &moods=1) bend a COPY of the parameter set; absent = the set is used as it is */
+    function target() { const p = target0(); if (!opt.tweak) return p; const q = JSON.parse(JSON.stringify(p)); opt.tweak(q); return q; }
     function apply(P, dt) {
       const S = rt.state = P, ang = S.angle; const wv = windVec(ang);
       const seaU = seaMat && seaMat.uniforms; if (seaU) seaU.uWind.value.set(wv[0], wv[1]);
