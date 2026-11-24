@@ -1,0 +1,250 @@
+{
+ "seal_grey_female_far.glb": {
+  "bytes": 76128,
+  "dims": [
+   1.77,
+   0.383,
+   0.683
+  ],
+  "image_bytes": 0,
+  "path": "seal_grey_female_far.glb",
+  "per_material": {
+   "Coat": 504
+  },
+  "triangles": 504,
+  "vertices": 353
+ },
+ "seal_grey_female_hero.glb": {
+  "bytes": 565360,
+  "dims": [
+   1.794,
+   0.385,
+   0.7
+  ],
+  "image_bytes": 113618,
+  "path": "seal_grey_female_hero.glb",
+  "per_material": {
+   "Claw": 240,
+   "Coat": 10720,
+   "Dark": 152,
+   "Mouth": 1392,
+   "Tongue": 100,
+   "Tooth": 200,
+   "eye_l": 636,
+   "eye_r": 636,
+   "whisker_l": 264,
+   "whisker_r": 264
+  },
+  "triangles": 14604,
+  "vertices": 8640
+ },
+ "seal_grey_female_live.glb": {
+  "bytes": 190940,
+  "dims": [
+   1.792,
+   0.385,
+   0.7
+  ],
+  "image_bytes": 31687,
+  "path": "seal_grey_female_live.glb",
+  "per_material": {
+   "Claw": 80,
+   "Coat": 2160,
+   "Dark": 16,
+   "Mouth": 312,
+   "Tongue": 36,
+   "eye_l": 160,
+   "eye_r": 160,
+   "whisker_l": 48,
+   "whisker_r": 48
+  },
+  "triangles": 3020,
+  "vertices": 2004
+ },
+ "seal_grey_male_far.glb": {
+  "bytes": 76124,
+  "dims": [
+   2.272,
+   0.477,
+   0.855
+  ],
+  "image_bytes": 0,
+  "path": "seal_grey_male_far.glb",
+  "per_material": {
+   "Coat": 504
+  },
+  "triangles": 504,
+  "vertices": 353
+ },
+ "seal_grey_male_hero.glb": {
+  "bytes": 553228,
+  "dims": [
+   2.302,
+   0.48,
+   0.877
+  ],
+  "image_bytes": 98942,
+  "path": "seal_grey_male_hero.glb",
+  "per_material": {
+   "Claw": 240,
+   "Coat": 10720,
+   "Dark": 160,
+   "Mouth": 1488,
+   "Tongue": 100,
+   "Tooth": 200,
+   "eye_l": 636,
+   "eye_r": 636,
+   "whisker_l": 264,
+   "whisker_r": 264
+  },
+  "triangles": 14708,
+  "vertices": 8700
+ },
+ "seal_grey_male_live.glb": {
+  "bytes": 187120,
+  "dims": [
+   2.299,
+   0.48,
+   0.877
+  ],
+  "image_bytes": 27888,
+  "path": "seal_grey_male_live.glb",
+  "per_material": {
+   "Claw": 80,
+   "Coat": 2160,
+   "Dark": 16,
+   "Mouth": 312,
+   "Tongue": 36,
+   "eye_l": 160,
+   "eye_r": 160,
+   "whisker_l": 48,
+   "whisker_r": 48
+  },
+  "triangles": 3020,
+  "vertices": 2004
+ },
+ "seal_grey_pup_far.glb": {
+  "bytes": 76184,
+  "dims": [
+   0.982,
+   0.193,
+   0.374
+  ],
+  "image_bytes": 0,
+  "path": "seal_grey_pup_far.glb",
+  "per_material": {
+   "Coat": 504
+  },
+  "triangles": 504,
+  "vertices": 353
+ },
+ "seal_grey_pup_hero.glb": {
+  "bytes": 543900,
+  "dims": [
+   0.997,
+   0.195,
+   0.383
+  ],
+  "image_bytes": 100183,
+  "path": "seal_grey_pup_hero.glb",
+  "per_material": {
+   "Claw": 240,
+   "Coat": 10720,
+   "Dark": 144,
+   "Mouth": 1296,
+   "Tongue": 100,
+   "Tooth": 200,
+   "eye_l": 636,
+   "eye_r": 636,
+   "whisker_l": 184,
+   "whisker_r": 184
+  },
+  "triangles": 14340,
+  "vertices": 8380
+ },
+ "seal_grey_pup_live.glb": {
+  "bytes": 186188,
+  "dims": [
+   0.995,
+   0.195,
+   0.383
+  ],
+  "image_bytes": 28871,
+  "path": "seal_grey_pup_live.glb",
+  "per_material": {
+   "Claw": 80,
+   "Coat": 2160,
+   "Dark": 16,
+   "Mouth": 264,
+   "Tongue": 36,
+   "eye_l": 160,
+   "eye_r": 160,
+   "whisker_l": 36,
+   "whisker_r": 36
+  },
+  "triangles": 2948,
+  "vertices": 1940
+ },
+ "seal_harbour_far.glb": {
+  "bytes": 76164,
+  "dims": [
+   1.602,
+   0.339,
+   0.601
+  ],
+  "image_bytes": 0,
+  "path": "seal_harbour_far.glb",
+  "per_material": {
+   "Coat": 504
+  },
+  "triangles": 504,
+  "vertices": 353
+ },
+ "seal_harbour_hero.glb": {
+  "bytes": 557068,
+  "dims": [
+   1.625,
+   0.341,
+   0.616
+  ],
+  "image_bytes": 107830,
+  "path": "seal_harbour_hero.glb",
+  "per_material": {
+   "Claw": 240,
+   "Coat": 10720,
+   "Dark": 144,
+   "Mouth": 1296,
+   "Tongue": 100,
+   "Tooth": 200,
+   "eye_l": 636,
+   "eye_r": 636,
+   "whisker_l": 264,
+   "whisker_r": 264
+  },
+  "triangles": 14500,
+  "vertices": 8580
+ },
+ "seal_harbour_live.glb": {
+  "bytes": 188084,
+  "dims": [
+   1.622,
+   0.341,
+   0.616
+  ],
+  "image_bytes": 29996,
+  "path": "seal_harbour_live.glb",
+  "per_material": {
+   "Claw": 80,
+   "Coat": 2160,
+   "Dark": 16,
+   "Mouth": 264,
+   "Tongue": 36,
+   "eye_l": 160,
+   "eye_r": 160,
+   "whisker_l": 48,
+   "whisker_r": 48
+  },
+  "triangles": 2972,
+  "vertices": 1976
+ }
+}
