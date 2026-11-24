@@ -232,3 +232,26 @@ Harry: take the defaults on the seven food questions, and the defaults must be r
 7. Rain-fed garden: a real extra, slow. Hardy crops, a long wait to the first harvest, and a bad year can fail.
 
 To be revised when the real-world water and climate research lands (it sets how much rain and fresh water each island really gets).
+
+## Water and climate: owner decisions, 24 Nov (from research/WATER_AND_RAIN_REAL_WORLD.md)
+
+Harry: take CAIRN's defaults on all of them. Rule from the food decisions still holds: defaults should match how the real world works.
+
+1. Island wetness: properly wet and cool, as a real maritime island. The model's 52 N wet cell gives about 1,590 mm a year over about 225 rain days. Islands differ by seed, rain shadow and latitude (roughly 1,200 to 2,400 mm). Drizzle and fog are common, storms come with fronts.
+2. Floods and droughts: gentle floods several times a year in wet spells, a big flood every 5 to 10 years as a story event. Droughts are rare on a cool wet island and show up as low springs and low burns.
+3. Wells and the freshwater lens: real. Not every island has fresh water. Very small islands (under about 250 m wide) have no usable lens and depend on rain catchment and cisterns. A hard but fair problem, with warnings and fixes.
+4. Snow: a light dusting on hills in winter, more on high ground, rare at sea level on the coast.
+5. Planet-scale pattern: shown as an optional rain-belt map in the globe view. On the island you mostly feel it through the weather.
+6. Sea temperature: colder, like the real North Atlantic (about 8 to 10 C mean at 52 N), not the model's warm default. This changes frost, snow and fog, and needs a model retune.
+
+## Fortifications and skirmish: owner decisions, 24 Nov (from research/FORTIFICATIONS_THROUGH_THE_AGES.md)
+
+Harry: take CAIRN's defaults on all seven.
+
+1. First style: the star fort, because it is the one that matters to Harry (the forts he walked round in France). The cheap earth-and-timber hill fort is the first rung that leads there, and a trench-and-bunker style is the third starter.
+2. Skirmish damage resets between games. In the main world damage lasts.
+3. What you protect: the lighthouse.
+4. Raiders by sea: first as a separate co-op mode, not in the main game.
+5. The quiet walk-round-and-repair-ruins mode comes before any firing.
+6. Drones: left out for now.
+7. First screen: two friends on one tablet.
