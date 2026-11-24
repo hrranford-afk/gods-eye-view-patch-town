@@ -1,0 +1,6331 @@
+[
+ {
+  "area": {
+   "hoard": 2684.0,
+   "home": 9852.0,
+   "rock": 988.0,
+   "seals": 3388.0,
+   "woods": 11488.0,
+   "wreck": 216.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "hoard_pad"
+  ],
+  "flat": {
+   "hoard": 100,
+   "home": 1676,
+   "rock": 16,
+   "seals": 20,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "07543b7d0860a9ad",
+  "hoard_walk": {
+   "cross_s": 100.06,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 181.97,
+   "longest_min": 0,
+   "need_min": 85.05,
+   "tstar": -4.54,
+   "walk_total_s": 214.08,
+   "wet_m": 85.05,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 6,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C146.7",
+   "seals": "A147.3",
+   "woods": "B8.2",
+   "wreck": "C99.9"
+  },
+  "secs": 10.8,
+  "seed": 1,
+  "sight": {
+   "shares": {
+    "hoard": 0.45,
+    "rock": 0.74,
+    "seals": 0.39,
+    "woods": 0.43
+   },
+   "water": 0.74
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95844,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95844,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95844,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47483,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32814,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22969,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 63.536,
+   "supply_year1_m3": 9.2416,
+   "sustainable_m3_yr": 2.888,
+   "wood_ha": 0.5776
+  },
+  "trips": {
+   "home>hoard": 59,
+   "home>rock": 78,
+   "home>seals": 79,
+   "home>woods": 68,
+   "home>wreck": 39,
+   "woods>hoard": 36
+  },
+  "wildlife": {
+   "birds": 464,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 520,
+   "seal_island_capacity": 143
+  }
+ },
+ {
+  "area": {
+   "hoard": 2968.0,
+   "home": 9852.0,
+   "rock": 992.0,
+   "seals": 2140.0,
+   "woods": 11488.0,
+   "wreck": 824.0
+  },
+  "fails": [
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 328,
+   "home": 1676,
+   "rock": 4,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 28
+  },
+  "hash": "8cd353f33924c254",
+  "hoard_walk": {
+   "cross_s": 74.49,
+   "first_clock": "day 5 22:06",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 197.88,
+   "longest_min": 180.0,
+   "need_min": 65.87,
+   "tstar": -0.76,
+   "walk_total_s": 232.8,
+   "wet_m": 63.31,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 1,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.5",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C99.7"
+  },
+  "secs": 9.9,
+  "seed": 2,
+  "sight": {
+   "shares": {
+    "hoard": 0.6,
+    "rock": 0.67,
+    "seals": 0.71,
+    "woods": 0.42
+   },
+   "water": 0.7
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96215,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96215,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96215,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47665,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32917,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23041,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 67.32,
+   "supply_year1_m3": 9.792,
+   "sustainable_m3_yr": 3.06,
+   "wood_ha": 0.612
+  },
+  "trips": {
+   "home>hoard": 59,
+   "home>rock": 87,
+   "home>seals": 86,
+   "home>woods": 35,
+   "home>wreck": 31,
+   "woods>hoard": 49
+  },
+  "wildlife": {
+   "birds": 764,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 768,
+   "seal_island_capacity": 29
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 424.0,
+   "seals": 4224.0,
+   "woods": 11488.0,
+   "wreck": 280.0
+  },
+  "fails": [
+   "boat_trips_in_target"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 660,
+   "wreck": 4
+  },
+  "hash": "ac6be43a51d80a2a",
+  "hoard_walk": {
+   "cross_s": 71.9,
+   "first_clock": "day 5 21:53",
+   "first_day": 5,
+   "frac_days_9_40": 0.62,
+   "length_m": 178.02,
+   "longest_min": 192.0,
+   "need_min": 63.92,
+   "tstar": -0.72,
+   "walk_total_s": 209.44,
+   "wet_m": 61.11,
+   "windows_40d": 40
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C106.11",
+   "seals": "A117.4",
+   "woods": "B8.2",
+   "wreck": "C56.11"
+  },
+  "secs": 10.4,
+  "seed": 3,
+  "sight": {
+   "shares": {
+    "hoard": 0.42,
+    "rock": 0.58,
+    "seals": 0.66,
+    "woods": 0.44
+   },
+   "water": 0.76
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96855,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96855,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96855,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47979,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33304,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23312,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 69.344,
+   "supply_year1_m3": 10.0864,
+   "sustainable_m3_yr": 3.1519999999999997,
+   "wood_ha": 0.6304
+  },
+  "trips": {
+   "home>hoard": 52,
+   "home>rock": 76,
+   "home>seals": 77,
+   "home>woods": 38,
+   "home>wreck": 42,
+   "woods>hoard": 39
+  },
+  "wildlife": {
+   "birds": 768,
+   "kelp": 0.61,
+   "n_seal_sites": 12,
+   "peak_seals_table": 760,
+   "seal_island_capacity": 131
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 588.0,
+   "seals": 4204.0,
+   "woods": 13844.0,
+   "wreck": 208.0
+  },
+  "fails": [
+   "boat_trips_in_target"
+  ],
+  "flat": {
+   "hoard": 304,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 1300,
+   "wreck": 0
+  },
+  "hash": "26317a7c04979a71",
+  "hoard_walk": {
+   "cross_s": 102.49,
+   "first_clock": "day 6 10:10",
+   "first_day": 6,
+   "frac_days_9_40": 0.44,
+   "length_m": 202.02,
+   "longest_min": 176.0,
+   "need_min": 86.86,
+   "tstar": -0.77,
+   "walk_total_s": 237.68,
+   "wet_m": 87.11,
+   "windows_40d": 29
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C131.8",
+   "seals": "A117.4",
+   "woods": "B86.1",
+   "wreck": "C199.10"
+  },
+  "secs": 9.5,
+  "seed": 4,
+  "sight": {
+   "shares": {
+    "hoard": 0.41,
+    "rock": 0.72,
+    "seals": 0.6,
+    "woods": 0.38
+   },
+   "water": 0.74
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97563,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97563,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97563,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48326,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33716,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23601,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 81.004,
+   "supply_year1_m3": 11.7824,
+   "sustainable_m3_yr": 3.6820000000000004,
+   "wood_ha": 0.7364
+  },
+  "trips": {
+   "home>hoard": 80,
+   "home>rock": 96,
+   "home>seals": 79,
+   "home>woods": 114,
+   "home>wreck": 63,
+   "woods>hoard": 58
+  },
+  "wildlife": {
+   "birds": 835,
+   "kelp": 0.55,
+   "n_seal_sites": 12,
+   "peak_seals_table": 497,
+   "seal_island_capacity": 122
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 272.0,
+   "seals": 2152.0,
+   "woods": 13844.0,
+   "wreck": 208.0
+  },
+  "fails": [
+   "home_wrack_capacity",
+   "table_haul_capacity",
+   "lighthouse_sees_the_water"
+  ],
+  "flat": {
+   "hoard": 200,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 1300,
+   "wreck": 0
+  },
+  "hash": "aaf8c5c2d0b9dec5",
+  "hoard_walk": {
+   "cross_s": 80.57,
+   "first_clock": "day 5 21:59",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 195.88,
+   "longest_min": 186.0,
+   "need_min": 70.43,
+   "tstar": -0.74,
+   "walk_total_s": 230.45,
+   "wet_m": 68.49,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C106.14",
+   "seals": "A117.7",
+   "woods": "B86.1",
+   "wreck": "C199.10"
+  },
+  "secs": 15.3,
+  "seed": 5,
+  "sight": {
+   "shares": {
+    "hoard": 0.63,
+    "rock": 0.65,
+    "seals": 0.55,
+    "woods": 0.38
+   },
+   "water": 0.66
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95216,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95216,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95216,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47176,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32526,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22768,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 81.84,
+   "supply_year1_m3": 11.904,
+   "sustainable_m3_yr": 3.7199999999999998,
+   "wood_ha": 0.744
+  },
+  "trips": {
+   "home>hoard": 57,
+   "home>rock": 71,
+   "home>seals": 86,
+   "home>woods": 109,
+   "home>wreck": 78,
+   "woods>hoard": 73
+  },
+  "wildlife": {
+   "birds": 566,
+   "kelp": 0.46,
+   "n_seal_sites": 12,
+   "peak_seals_table": 548,
+   "seal_island_capacity": 87
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 948.0,
+   "seals": 3656.0,
+   "woods": 11488.0,
+   "wreck": 252.0
+  },
+  "fails": [
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 160,
+   "home": 1676,
+   "rock": 0,
+   "seals": 16,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "5a581c74905aa57f",
+  "hoard_walk": {
+   "cross_s": 58.99,
+   "first_clock": "day 5 21:56",
+   "first_day": 5,
+   "frac_days_9_40": 0.59,
+   "length_m": 184.02,
+   "longest_min": 188.0,
+   "need_min": 54.24,
+   "tstar": -0.73,
+   "walk_total_s": 216.5,
+   "wet_m": 50.14,
+   "windows_40d": 39
+  },
+  "n_failed_checks": 1,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C106.10",
+   "seals": "A62.4",
+   "woods": "B8.2",
+   "wreck": "C54.16"
+  },
+  "secs": 12.8,
+  "seed": 6,
+  "sight": {
+   "shares": {
+    "hoard": 0.39,
+    "rock": 0.15,
+    "seals": 0.27,
+    "woods": 0.55
+   },
+   "water": 0.74
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97339,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97339,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97339,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48216,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33628,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23539,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 75.02000000000001,
+   "supply_year1_m3": 10.912000000000003,
+   "sustainable_m3_yr": 3.41,
+   "wood_ha": 0.682
+  },
+  "trips": {
+   "home>hoard": 61,
+   "home>rock": 78,
+   "home>seals": 120,
+   "home>woods": 84,
+   "home>wreck": 40,
+   "woods>hoard": 67
+  },
+  "wildlife": {
+   "birds": 263,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 764,
+   "seal_island_capacity": 69
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 988.0,
+   "seals": 2200.0,
+   "woods": 11340.0,
+   "wreck": 948.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "placement_found",
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 344,
+   "home": 1676,
+   "rock": 16,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "ca65d81deba5ae79",
+  "hoard_walk": {
+   "cross_s": 74.89,
+   "first_clock": "day 5 22:03",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 186.08,
+   "longest_min": 183.0,
+   "need_min": 66.17,
+   "tstar": -0.75,
+   "walk_total_s": 218.92,
+   "wet_m": 63.66,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C146.7",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C106.10"
+  },
+  "secs": 23.7,
+  "seed": 7,
+  "sight": {
+   "shares": {
+    "hoard": 0.55,
+    "rock": 0.73,
+    "seals": 0.84,
+    "woods": 0.4
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94914,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94914,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94914,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47028,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32478,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22734,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 69.08,
+   "supply_year1_m3": 10.048,
+   "sustainable_m3_yr": 3.14,
+   "wood_ha": 0.628
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 74,
+   "home>seals": 111,
+   "home>woods": 75,
+   "home>wreck": 22,
+   "woods>hoard": 136
+  },
+  "wildlife": {
+   "birds": 868,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 768,
+   "seal_island_capacity": 102
+  }
+ },
+ {
+  "area": {
+   "hoard": 2616.0,
+   "home": 9852.0,
+   "rock": 424.0,
+   "seals": 3976.0,
+   "woods": 11488.0,
+   "wreck": 904.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "table_haul_capacity",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 116,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "c96d3cd53dcc5e2d",
+  "hoard_walk": {
+   "cross_s": 126.35,
+   "first_clock": "day 5 21:56",
+   "first_day": 5,
+   "frac_days_9_40": 0.5,
+   "length_m": 244.94,
+   "longest_min": 190.0,
+   "need_min": 104.76,
+   "tstar": -0.73,
+   "walk_total_s": 288.16,
+   "wet_m": 107.4,
+   "windows_40d": 34
+  },
+  "n_failed_checks": 6,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C106.11",
+   "seals": "A117.5",
+   "woods": "B8.2",
+   "wreck": "C54.11"
+  },
+  "secs": 14.5,
+  "seed": 8,
+  "sight": {
+   "shares": {
+    "hoard": 0.67,
+    "rock": 0.64,
+    "seals": 0.48,
+    "woods": 0.43
+   },
+   "water": 0.7
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 98283,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 98283,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 98283,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48679,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33991,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23793,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 80.52,
+   "supply_year1_m3": 11.712,
+   "sustainable_m3_yr": 3.66,
+   "wood_ha": 0.732
+  },
+  "trips": {
+   "home>hoard": 51,
+   "home>rock": 99,
+   "home>seals": 98,
+   "home>woods": 35,
+   "home>wreck": 15,
+   "woods>hoard": 51
+  },
+  "wildlife": {
+   "birds": 513,
+   "kelp": 0.51,
+   "n_seal_sites": 12,
+   "peak_seals_table": 744,
+   "seal_island_capacity": 380
+  }
+ },
+ {
+  "area": {
+   "hoard": 3316.0,
+   "home": 9852.0,
+   "rock": 1540.0,
+   "seals": 3068.0,
+   "woods": 14688.0,
+   "wreck": 304.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 356,
+   "home": 1676,
+   "rock": 8,
+   "seals": 36,
+   "woods": 888,
+   "wreck": 0
+  },
+  "hash": "c44af87812535147",
+  "hoard_walk": {
+   "cross_s": 151.42,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 266.11,
+   "longest_min": 0,
+   "need_min": 123.57,
+   "tstar": -2.5,
+   "walk_total_s": 313.07,
+   "wet_m": 128.71,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 7,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C131.4",
+   "seals": "A175.6",
+   "woods": "B174.1",
+   "wreck": "C133.6"
+  },
+  "secs": 18.2,
+  "seed": 9,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.59,
+    "seals": 0.52,
+    "woods": 0.51
+   },
+   "water": 0.72
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 100402,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 100402,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 100402,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 49717,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 35163,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 24614,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 94.028,
+   "supply_year1_m3": 13.6768,
+   "sustainable_m3_yr": 4.274,
+   "wood_ha": 0.8548
+  },
+  "trips": {
+   "home>hoard": 72,
+   "home>rock": 65,
+   "home>seals": 128,
+   "home>woods": null,
+   "home>wreck": 126,
+   "woods>hoard": null
+  },
+  "wildlife": {
+   "birds": 895,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 626,
+   "seal_island_capacity": 84
+  }
+ },
+ {
+  "area": {
+   "hoard": 2692.0,
+   "home": 9852.0,
+   "rock": 608.0,
+   "seals": 2544.0,
+   "woods": 11488.0,
+   "wreck": 632.0
+  },
+  "fails": [
+   "low_tide_detours_sane",
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "timber_for_five_builds",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 136,
+   "home": 1676,
+   "rock": 0,
+   "seals": 12,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "725872640bc1f435",
+  "hoard_walk": {
+   "cross_s": 333.6,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 461.24,
+   "longest_min": 0,
+   "need_min": 260.2,
+   "tstar": -1.76,
+   "walk_total_s": 542.64,
+   "wet_m": 283.56,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 7,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C131.9",
+   "seals": "A116.4",
+   "woods": "B8.2",
+   "wreck": "C54.10"
+  },
+  "secs": 16.9,
+  "seed": 10,
+  "sight": {
+   "shares": {
+    "hoard": 0.44,
+    "rock": 0.71,
+    "seals": 0.6,
+    "woods": 0.4
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94333,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94333,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94333,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46743,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32186,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22530,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 58.916,
+   "supply_year1_m3": 8.569600000000001,
+   "sustainable_m3_yr": 2.678,
+   "wood_ha": 0.5356
+  },
+  "trips": {
+   "home>hoard": 85,
+   "home>rock": 76,
+   "home>seals": 122,
+   "home>woods": 73,
+   "home>wreck": 45,
+   "woods>hoard": 157
+  },
+  "wildlife": {
+   "birds": 513,
+   "kelp": 0.55,
+   "n_seal_sites": 12,
+   "peak_seals_table": 597,
+   "seal_island_capacity": 57
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 336.0,
+   "seals": 2236.0,
+   "woods": 11488.0,
+   "wreck": 208.0
+  },
+  "fails": [
+   "low_tide_detours_sane"
+  ],
+  "flat": {
+   "hoard": 348,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "2622041f54774013",
+  "hoard_walk": {
+   "cross_s": 72.13,
+   "first_clock": "day 4 21:35",
+   "first_day": 4,
+   "frac_days_9_40": 0.69,
+   "length_m": 185.74,
+   "longest_min": 212.0,
+   "need_min": 64.1,
+   "tstar": -0.65,
+   "walk_total_s": 218.52,
+   "wet_m": 61.31,
+   "windows_40d": 47
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C54.13",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C199.10"
+  },
+  "secs": 20.1,
+  "seed": 11,
+  "sight": {
+   "shares": {
+    "hoard": 0.58,
+    "rock": 0.81,
+    "seals": 0.6,
+    "woods": 0.4
+   },
+   "water": 0.78
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93435,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93435,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93435,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46303,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31787,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22250,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 79.64,
+   "supply_year1_m3": 11.584,
+   "sustainable_m3_yr": 3.62,
+   "wood_ha": 0.724
+  },
+  "trips": {
+   "home>hoard": 61,
+   "home>rock": 75,
+   "home>seals": 86,
+   "home>woods": 73,
+   "home>wreck": 19,
+   "woods>hoard": 133
+  },
+  "wildlife": {
+   "birds": 790,
+   "kelp": 0.57,
+   "n_seal_sites": 12,
+   "peak_seals_table": 527,
+   "seal_island_capacity": 111
+  }
+ },
+ {
+  "area": {
+   "hoard": 2628.0,
+   "home": 9852.0,
+   "rock": 500.0,
+   "seals": 2780.0,
+   "woods": 11488.0,
+   "wreck": 900.0
+  },
+  "fails": [
+   "timber_for_five_builds",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 124,
+   "home": 1676,
+   "rock": 0,
+   "seals": 0,
+   "woods": 660,
+   "wreck": 4
+  },
+  "hash": "be7f4258d99acc92",
+  "hoard_walk": {
+   "cross_s": 120.67,
+   "first_clock": "day 6 10:00",
+   "first_day": 6,
+   "frac_days_9_40": 0.5,
+   "length_m": 227.14,
+   "longest_min": 186.0,
+   "need_min": 100.5,
+   "tstar": -0.74,
+   "walk_total_s": 267.22,
+   "wet_m": 102.57,
+   "windows_40d": 33
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C106.9",
+   "seals": "A175.8",
+   "woods": "B8.2",
+   "wreck": "C133.7"
+  },
+  "secs": 13.6,
+  "seed": 12,
+  "sight": {
+   "shares": {
+    "hoard": 0.71,
+    "rock": 0.62,
+    "seals": 0.63,
+    "woods": 0.42
+   },
+   "water": 0.76
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96630,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96630,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96630,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47868,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33113,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23179,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 58.25599999999999,
+   "supply_year1_m3": 8.4736,
+   "sustainable_m3_yr": 2.6479999999999997,
+   "wood_ha": 0.5296
+  },
+  "trips": {
+   "home>hoard": 68,
+   "home>rock": 92,
+   "home>seals": 92,
+   "home>woods": 68,
+   "home>wreck": 20,
+   "woods>hoard": 88
+  },
+  "wildlife": {
+   "birds": 458,
+   "kelp": 0.54,
+   "n_seal_sites": 12,
+   "peak_seals_table": 736,
+   "seal_island_capacity": 405
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 992.0,
+   "seals": 3108.0,
+   "woods": 11488.0,
+   "wreck": 208.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 340,
+   "home": 1676,
+   "rock": 4,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "50c3a3d4e968c7c3",
+  "hoard_walk": {
+   "cross_s": 74.08,
+   "first_clock": "day 5 21:55",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 187.88,
+   "longest_min": 190.0,
+   "need_min": 65.56,
+   "tstar": -0.73,
+   "walk_total_s": 221.04,
+   "wet_m": 62.97,
+   "windows_40d": 38
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C133.5",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C199.10"
+  },
+  "secs": 18.1,
+  "seed": 13,
+  "sight": {
+   "shares": {
+    "hoard": 0.57,
+    "rock": 0.65,
+    "seals": 0.46,
+    "woods": 0.39
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96303,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96303,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96303,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47708,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33098,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23168,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 70.136,
+   "supply_year1_m3": 10.2016,
+   "sustainable_m3_yr": 3.1879999999999997,
+   "wood_ha": 0.6376
+  },
+  "trips": {
+   "home>hoard": 66,
+   "home>rock": 117,
+   "home>seals": 92,
+   "home>woods": 52,
+   "home>wreck": 19,
+   "woods>hoard": 114
+  },
+  "wildlife": {
+   "birds": 819,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 696,
+   "seal_island_capacity": 106
+  }
+ },
+ {
+  "area": {
+   "hoard": 2908.0,
+   "home": 9852.0,
+   "rock": 336.0,
+   "seals": 4300.0,
+   "woods": 14688.0,
+   "wreck": 272.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "home_wrack_capacity",
+   "table_haul_capacity",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 212,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 888,
+   "wreck": 0
+  },
+  "hash": "db5f67b844b1f123",
+  "hoard_walk": {
+   "cross_s": 137.54,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 276.79,
+   "longest_min": 0,
+   "need_min": 113.16,
+   "tstar": -1.58,
+   "walk_total_s": 325.64,
+   "wet_m": 116.91,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 9,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C54.13",
+   "seals": "A117.4",
+   "woods": "B174.1",
+   "wreck": "C106.14"
+  },
+  "secs": 15.5,
+  "seed": 14,
+  "sight": {
+   "shares": {
+    "hoard": 0.59,
+    "rock": 0.64,
+    "seals": 0.66,
+    "woods": 0.51
+   },
+   "water": 0.75
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 99485,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 99485,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 99485,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 49267,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 34570,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 24199,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 92.928,
+   "supply_year1_m3": 13.5168,
+   "sustainable_m3_yr": 4.224,
+   "wood_ha": 0.8448
+  },
+  "trips": {
+   "home>hoard": 57,
+   "home>rock": 85,
+   "home>seals": 115,
+   "home>woods": 39,
+   "home>wreck": 48,
+   "woods>hoard": 37
+  },
+  "wildlife": {
+   "birds": 742,
+   "kelp": 0.65,
+   "n_seal_sites": 12,
+   "peak_seals_table": 693,
+   "seal_island_capacity": 200
+  }
+ },
+ {
+  "area": {
+   "hoard": 2980.0,
+   "home": 9852.0,
+   "rock": 304.0,
+   "seals": 2996.0,
+   "woods": 11488.0,
+   "wreck": 396.0
+  },
+  "fails": [
+   "home_wrack_capacity",
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 316,
+   "home": 1676,
+   "rock": 0,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "7669a844187354a6",
+  "hoard_walk": {
+   "cross_s": 58.42,
+   "first_clock": "day 5 09:51",
+   "first_day": 5,
+   "frac_days_9_40": 0.62,
+   "length_m": 180.57,
+   "longest_min": 196.0,
+   "need_min": 53.81,
+   "tstar": -0.71,
+   "walk_total_s": 212.43,
+   "wet_m": 49.66,
+   "windows_40d": 41
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.6",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C131.15"
+  },
+  "secs": 14.0,
+  "seed": 15,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.74,
+    "seals": 0.49,
+    "woods": 0.44
+   },
+   "water": 0.78
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93068,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93068,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93068,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46123,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31748,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22223,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 71.324,
+   "supply_year1_m3": 10.374400000000001,
+   "sustainable_m3_yr": 3.242,
+   "wood_ha": 0.6484
+  },
+  "trips": {
+   "home>hoard": 65,
+   "home>rock": 87,
+   "home>seals": 129,
+   "home>woods": 38,
+   "home>wreck": 32,
+   "woods>hoard": 61
+  },
+  "wildlife": {
+   "birds": 735,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 508,
+   "seal_island_capacity": 78
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 1032.0,
+   "seals": 4236.0,
+   "woods": 11488.0,
+   "wreck": 200.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "fast_boat_trips_worth_it",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "a8e170032f71073e",
+  "hoard_walk": {
+   "cross_s": 62.72,
+   "first_clock": "day 5 22:06",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 184.57,
+   "longest_min": 180.0,
+   "need_min": 57.04,
+   "tstar": -0.76,
+   "walk_total_s": 217.14,
+   "wet_m": 53.31,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C146.8",
+   "seals": "A117.4",
+   "woods": "B8.2",
+   "wreck": "C131.14"
+  },
+  "secs": 14.3,
+  "seed": 16,
+  "sight": {
+   "shares": {
+    "hoard": 0.39,
+    "rock": 0.67,
+    "seals": 0.66,
+    "woods": 0.39
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97273,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97273,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97273,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48184,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33486,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23440,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 65.252,
+   "supply_year1_m3": 9.4912,
+   "sustainable_m3_yr": 2.9659999999999997,
+   "wood_ha": 0.5932
+  },
+  "trips": {
+   "home>hoard": 54,
+   "home>rock": 81,
+   "home>seals": 79,
+   "home>woods": 71,
+   "home>wreck": 2,
+   "woods>hoard": 124
+  },
+  "wildlife": {
+   "birds": 770,
+   "kelp": 0.61,
+   "n_seal_sites": 12,
+   "peak_seals_table": 712,
+   "seal_island_capacity": 199
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 2052.0,
+   "seals": 3232.0,
+   "woods": 11488.0,
+   "wreck": 240.0
+  },
+  "fails": [
+   "home_wrack_capacity",
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 364,
+   "home": 1676,
+   "rock": 8,
+   "seals": 0,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "33e66faca3a0169c",
+  "hoard_walk": {
+   "cross_s": 68.4,
+   "first_clock": "day 5 22:11",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 179.74,
+   "longest_min": 176.0,
+   "need_min": 61.3,
+   "tstar": -0.77,
+   "walk_total_s": 211.46,
+   "wet_m": 58.14,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C84.7",
+   "seals": "A117.6",
+   "woods": "B8.2",
+   "wreck": "C199.9"
+  },
+  "secs": 17.7,
+  "seed": 17,
+  "sight": {
+   "shares": {
+    "hoard": 0.58,
+    "rock": 0.64,
+    "seals": 0.56,
+    "woods": 0.39
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 98343,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 98343,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 98343,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48708,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33976,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23783,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 67.012,
+   "supply_year1_m3": 9.7472,
+   "sustainable_m3_yr": 3.046,
+   "wood_ha": 0.6092
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 116,
+   "home>seals": 132,
+   "home>woods": 73,
+   "home>wreck": 15,
+   "woods>hoard": 135
+  },
+  "wildlife": {
+   "birds": 846,
+   "kelp": 0.62,
+   "n_seal_sites": 12,
+   "peak_seals_table": 873,
+   "seal_island_capacity": 90
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 936.0,
+   "seals": 3072.0,
+   "woods": 11488.0,
+   "wreck": 420.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "home_wrack_capacity",
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 172,
+   "home": 1676,
+   "rock": 0,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 4
+  },
+  "hash": "7a7fba7904d2db30",
+  "hoard_walk": {
+   "cross_s": 64.5,
+   "first_clock": "day 5 22:12",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 175.25,
+   "longest_min": 176.0,
+   "need_min": 58.38,
+   "tstar": -0.77,
+   "walk_total_s": 206.18,
+   "wet_m": 54.83,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C185.10",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C54.12"
+  },
+  "secs": 12.3,
+  "seed": 18,
+  "sight": {
+   "shares": {
+    "hoard": 0.66,
+    "rock": 0.73,
+    "seals": 0.49,
+    "woods": 0.4
+   },
+   "water": 0.77
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95909,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95909,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95909,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47515,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32898,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23028,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 70.18,
+   "supply_year1_m3": 10.208,
+   "sustainable_m3_yr": 3.19,
+   "wood_ha": 0.638
+  },
+  "trips": {
+   "home>hoard": 60,
+   "home>rock": 91,
+   "home>seals": 129,
+   "home>woods": 73,
+   "home>wreck": null,
+   "woods>hoard": 132
+  },
+  "wildlife": {
+   "birds": 528,
+   "kelp": 0.54,
+   "n_seal_sites": 12,
+   "peak_seals_table": 599,
+   "seal_island_capacity": 34
+  }
+ },
+ {
+  "area": {
+   "hoard": 2956.0,
+   "home": 9852.0,
+   "rock": 904.0,
+   "seals": 2216.0,
+   "woods": 11488.0,
+   "wreck": 216.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 208,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "f959baa2376726b0",
+  "hoard_walk": {
+   "cross_s": 70.76,
+   "first_clock": "day 5 22:09",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 197.4,
+   "longest_min": 178.0,
+   "need_min": 63.07,
+   "tstar": -0.76,
+   "walk_total_s": 232.23,
+   "wet_m": 60.14,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C54.11",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C99.9"
+  },
+  "secs": 9.3,
+  "seed": 19,
+  "sight": {
+   "shares": {
+    "hoard": 0.36,
+    "rock": 0.61,
+    "seals": 0.7,
+    "woods": 0.39
+   },
+   "water": 0.72
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95534,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95534,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95534,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47331,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32560,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22792,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 72.952,
+   "supply_year1_m3": 10.6112,
+   "sustainable_m3_yr": 3.316,
+   "wood_ha": 0.6632
+  },
+  "trips": {
+   "home>hoard": 60,
+   "home>rock": 69,
+   "home>seals": 93,
+   "home>woods": 71,
+   "home>wreck": null,
+   "woods>hoard": 130
+  },
+  "wildlife": {
+   "birds": 669,
+   "kelp": 0.53,
+   "n_seal_sites": 12,
+   "peak_seals_table": 508,
+   "seal_island_capacity": 71
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 992.0,
+   "seals": 3656.0,
+   "woods": 11488.0,
+   "wreck": 304.0
+  },
+  "fails": [
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 296,
+   "home": 1676,
+   "rock": 4,
+   "seals": 16,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "44bdccbc2fa6f937",
+  "hoard_walk": {
+   "cross_s": 83.09,
+   "first_clock": "day 5 21:57",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 193.54,
+   "longest_min": 188.0,
+   "need_min": 72.32,
+   "tstar": -0.73,
+   "walk_total_s": 227.69,
+   "wet_m": 70.63,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.5",
+   "seals": "A62.4",
+   "woods": "B8.2",
+   "wreck": "C133.6"
+  },
+  "secs": 12.6,
+  "seed": 20,
+  "sight": {
+   "shares": {
+    "hoard": 0.56,
+    "rock": 0.72,
+    "seals": 0.51,
+    "woods": 0.45
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95344,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95344,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95344,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47238,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32672,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22870,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 76.25200000000001,
+   "supply_year1_m3": 11.0912,
+   "sustainable_m3_yr": 3.466,
+   "wood_ha": 0.6932
+  },
+  "trips": {
+   "home>hoard": 56,
+   "home>rock": 116,
+   "home>seals": 91,
+   "home>woods": 29,
+   "home>wreck": 18,
+   "woods>hoard": 51
+  },
+  "wildlife": {
+   "birds": 756,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 432,
+   "seal_island_capacity": 74
+  }
+ },
+ {
+  "area": {
+   "hoard": 2972.0,
+   "home": 9852.0,
+   "rock": 900.0,
+   "seals": 2068.0,
+   "woods": 11488.0,
+   "wreck": 200.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "fast_boat_trips_worth_it",
+   "home_wrack_capacity",
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 304,
+   "home": 1676,
+   "rock": 4,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "c63cffd762c322c7",
+  "hoard_walk": {
+   "cross_s": 66.05,
+   "first_clock": "day 5 21:59",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 181.4,
+   "longest_min": 186.0,
+   "need_min": 59.54,
+   "tstar": -0.74,
+   "walk_total_s": 213.41,
+   "wet_m": 56.14,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.7",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C185.12"
+  },
+  "secs": 14.5,
+  "seed": 21,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.75,
+    "seals": 0.85,
+    "woods": 0.38
+   },
+   "water": 0.82
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93886,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93886,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93886,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46524,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32016,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22411,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 69.872,
+   "supply_year1_m3": 10.1632,
+   "sustainable_m3_yr": 3.176,
+   "wood_ha": 0.6352
+  },
+  "trips": {
+   "home>hoard": 66,
+   "home>rock": 63,
+   "home>seals": 110,
+   "home>woods": 57,
+   "home>wreck": 6,
+   "woods>hoard": 119
+  },
+  "wildlife": {
+   "birds": 731,
+   "kelp": 0.6,
+   "n_seal_sites": 12,
+   "peak_seals_table": 538,
+   "seal_island_capacity": 47
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 900.0,
+   "seals": 2172.0,
+   "woods": 14280.0,
+   "wreck": 1536.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "land_inside_table",
+   "placement_found",
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "fast_boat_trips_worth_it",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 4,
+   "seals": 4,
+   "woods": 896,
+   "wreck": 0
+  },
+  "hash": "e35ef17c41175851",
+  "hoard_walk": {
+   "cross_s": 55.66,
+   "first_clock": "day 5 22:07",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 178.57,
+   "longest_min": 180.0,
+   "need_min": 51.75,
+   "tstar": -0.76,
+   "walk_total_s": 210.08,
+   "wet_m": 47.31,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 7,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.7",
+   "seals": "A117.7",
+   "woods": "B174.1",
+   "wreck": "C131.6"
+  },
+  "secs": 17.5,
+  "seed": 22,
+  "sight": {
+   "shares": {
+    "hoard": 0.38,
+    "rock": 0.6,
+    "seals": 0.6,
+    "woods": 0.36
+   },
+   "water": 0.75
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94064,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94064,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94064,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46611,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32376,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22663,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 97.064,
+   "supply_year1_m3": 14.118400000000001,
+   "sustainable_m3_yr": 4.412,
+   "wood_ha": 0.8824
+  },
+  "trips": {
+   "home>hoard": 56,
+   "home>rock": 96,
+   "home>seals": 87,
+   "home>woods": 96,
+   "home>wreck": 9,
+   "woods>hoard": 150
+  },
+  "wildlife": {
+   "birds": 697,
+   "kelp": 0.54,
+   "n_seal_sites": 12,
+   "peak_seals_table": 360,
+   "seal_island_capacity": 111
+  }
+ },
+ {
+  "area": {
+   "hoard": 2968.0,
+   "home": 9852.0,
+   "rock": 632.0,
+   "seals": 3464.0,
+   "woods": 11488.0,
+   "wreck": 200.0
+  },
+  "fails": [
+   "boat_trips_in_target",
+   "timber_for_five_builds",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 224,
+   "home": 1676,
+   "rock": 0,
+   "seals": 20,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "007ddbffaa6c7864",
+  "hoard_walk": {
+   "cross_s": 61.34,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 219.68,
+   "longest_min": 184.0,
+   "need_min": 56.01,
+   "tstar": -0.74,
+   "walk_total_s": 258.45,
+   "wet_m": 52.14,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C54.10",
+   "seals": "A147.3",
+   "woods": "B8.2",
+   "wreck": "C185.12"
+  },
+  "secs": 15.0,
+  "seed": 23,
+  "sight": {
+   "shares": {
+    "hoard": 0.41,
+    "rock": 0.61,
+    "seals": 0.56,
+    "woods": 0.56
+   },
+   "water": 0.7
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94859,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94859,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94859,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47000,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32440,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22708,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 57.64,
+   "supply_year1_m3": 8.384,
+   "sustainable_m3_yr": 2.62,
+   "wood_ha": 0.524
+  },
+  "trips": {
+   "home>hoard": 83,
+   "home>rock": 65,
+   "home>seals": 78,
+   "home>woods": 125,
+   "home>wreck": 52,
+   "woods>hoard": 73
+  },
+  "wildlife": {
+   "birds": 683,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 543,
+   "seal_island_capacity": 168
+  }
+ },
+ {
+  "area": {
+   "hoard": 2956.0,
+   "home": 9852.0,
+   "rock": 608.0,
+   "seals": 3724.0,
+   "woods": 11488.0,
+   "wreck": 252.0
+  },
+  "fails": [
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 208,
+   "home": 1676,
+   "rock": 0,
+   "seals": 16,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "070eafed83a2dd61",
+  "hoard_walk": {
+   "cross_s": 72.13,
+   "first_clock": "day 5 22:03",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 198.57,
+   "longest_min": 183.0,
+   "need_min": 64.1,
+   "tstar": -0.75,
+   "walk_total_s": 233.61,
+   "wet_m": 61.31,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C131.9",
+   "seals": "A62.4",
+   "woods": "B8.2",
+   "wreck": "C54.16"
+  },
+  "secs": 12.7,
+  "seed": 24,
+  "sight": {
+   "shares": {
+    "hoard": 0.36,
+    "rock": 0.75,
+    "seals": 0.44,
+    "woods": 0.43
+   },
+   "water": 0.78
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96649,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96649,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96649,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47878,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33300,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23310,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 71.632,
+   "supply_year1_m3": 10.4192,
+   "sustainable_m3_yr": 3.2560000000000002,
+   "wood_ha": 0.6512
+  },
+  "trips": {
+   "home>hoard": 77,
+   "home>rock": 72,
+   "home>seals": 130,
+   "home>woods": 72,
+   "home>wreck": 17,
+   "woods>hoard": 77
+  },
+  "wildlife": {
+   "birds": 700,
+   "kelp": 0.61,
+   "n_seal_sites": 12,
+   "peak_seals_table": 783,
+   "seal_island_capacity": 90
+  }
+ },
+ {
+  "area": {
+   "hoard": 2696.0,
+   "home": 9852.0,
+   "rock": 1032.0,
+   "seals": 2604.0,
+   "woods": 11488.0,
+   "wreck": 588.0
+  },
+  "fails": [
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "hoard_pad",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 116,
+   "home": 1676,
+   "rock": 0,
+   "seals": 12,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "6acea8306eef3e16",
+  "hoard_walk": {
+   "cross_s": 97.54,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 190.99,
+   "longest_min": 0,
+   "need_min": 83.16,
+   "tstar": -3.41,
+   "walk_total_s": 224.7,
+   "wet_m": 82.91,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 5,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C146.8",
+   "seals": "A116.4",
+   "woods": "B8.2",
+   "wreck": "C131.8"
+  },
+  "secs": 14.4,
+  "seed": 25,
+  "sight": {
+   "shares": {
+    "hoard": 0.43,
+    "rock": 0.7,
+    "seals": 0.61,
+    "woods": 0.43
+   },
+   "water": 0.77
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94567,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94567,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94567,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46858,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32222,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22555,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 69.256,
+   "supply_year1_m3": 10.0736,
+   "sustainable_m3_yr": 3.148,
+   "wood_ha": 0.6296
+  },
+  "trips": {
+   "home>hoard": 86,
+   "home>rock": 77,
+   "home>seals": 85,
+   "home>woods": 66,
+   "home>wreck": 30,
+   "woods>hoard": 72
+  },
+  "wildlife": {
+   "birds": 235,
+   "kelp": 0.51,
+   "n_seal_sites": 12,
+   "peak_seals_table": 474,
+   "seal_island_capacity": 90
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 436.0,
+   "seals": 4180.0,
+   "woods": 11488.0,
+   "wreck": 200.0
+  },
+  "fails": [
+   "home_wrack_capacity",
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 8,
+   "seals": 64,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "f2d64b18a3b42f73",
+  "hoard_walk": {
+   "cross_s": 83.66,
+   "first_clock": "day 5 22:02",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 205.68,
+   "longest_min": 183.0,
+   "need_min": 72.75,
+   "tstar": -0.75,
+   "walk_total_s": 241.98,
+   "wet_m": 71.11,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C84.9",
+   "seals": "A24.2",
+   "woods": "B8.2",
+   "wreck": "C185.12"
+  },
+  "secs": 13.1,
+  "seed": 26,
+  "sight": {
+   "shares": {
+    "hoard": 0.32,
+    "rock": 0.82,
+    "seals": 0.59,
+    "woods": 0.43
+   },
+   "water": 0.81
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96121,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96121,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96121,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47619,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33002,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23101,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 73.48,
+   "supply_year1_m3": 10.688,
+   "sustainable_m3_yr": 3.3400000000000003,
+   "wood_ha": 0.668
+  },
+  "trips": {
+   "home>hoard": 62,
+   "home>rock": 82,
+   "home>seals": 122,
+   "home>woods": 72,
+   "home>wreck": 19,
+   "woods>hoard": 69
+  },
+  "wildlife": {
+   "birds": 783,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 561,
+   "seal_island_capacity": 153
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 1192.0,
+   "seals": 2240.0,
+   "woods": 14148.0,
+   "wreck": 336.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "land_inside_table",
+   "placement_found",
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "lighthouse_sees_the_water",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 272,
+   "home": 1676,
+   "rock": 4,
+   "seals": 4,
+   "woods": 876,
+   "wreck": 20
+  },
+  "hash": "4d4165707beb07c3",
+  "hoard_walk": {
+   "cross_s": 81.14,
+   "first_clock": "day 5 21:59",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 187.4,
+   "longest_min": 186.0,
+   "need_min": 70.86,
+   "tstar": -0.74,
+   "walk_total_s": 220.47,
+   "wet_m": 68.97,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 8,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C54.9",
+   "seals": "A117.7",
+   "woods": "B174.1",
+   "wreck": "C54.13"
+  },
+  "secs": 16.6,
+  "seed": 27,
+  "sight": {
+   "shares": {
+    "hoard": 0.67,
+    "rock": 0.5,
+    "seals": 0.71,
+    "woods": 0.36
+   },
+   "water": 0.7
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93320,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93320,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93320,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46247,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31964,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22374,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 84.392,
+   "supply_year1_m3": 12.2752,
+   "sustainable_m3_yr": 3.836,
+   "wood_ha": 0.7672
+  },
+  "trips": {
+   "home>hoard": 65,
+   "home>rock": 81,
+   "home>seals": 123,
+   "home>woods": 102,
+   "home>wreck": null,
+   "woods>hoard": 164
+  },
+  "wildlife": {
+   "birds": 746,
+   "kelp": 0.53,
+   "n_seal_sites": 12,
+   "peak_seals_table": 379,
+   "seal_island_capacity": 113
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 336.0,
+   "seals": 2160.0,
+   "woods": 11488.0,
+   "wreck": 208.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 204,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "3c474dceab007a52",
+  "hoard_walk": {
+   "cross_s": 68.4,
+   "first_clock": "day 5 21:55",
+   "first_day": 5,
+   "frac_days_9_40": 0.59,
+   "length_m": 185.54,
+   "longest_min": 190.0,
+   "need_min": 61.3,
+   "tstar": -0.72,
+   "walk_total_s": 218.28,
+   "wet_m": 58.14,
+   "windows_40d": 39
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C54.13",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C199.10"
+  },
+  "secs": 13.4,
+  "seed": 28,
+  "sight": {
+   "shares": {
+    "hoard": 0.67,
+    "rock": 0.71,
+    "seals": 0.64,
+    "woods": 0.42
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93676,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93676,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93676,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46421,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31642,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22149,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 65.428,
+   "supply_year1_m3": 9.5168,
+   "sustainable_m3_yr": 2.974,
+   "wood_ha": 0.5948
+  },
+  "trips": {
+   "home>hoard": 60,
+   "home>rock": 85,
+   "home>seals": 109,
+   "home>woods": 74,
+   "home>wreck": 20,
+   "woods>hoard": 83
+  },
+  "wildlife": {
+   "birds": 533,
+   "kelp": 0.49,
+   "n_seal_sites": 12,
+   "peak_seals_table": 429,
+   "seal_island_capacity": 101
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 632.0,
+   "seals": 4116.0,
+   "woods": 11488.0,
+   "wreck": 588.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 0,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "e0dd2621f890301a",
+  "hoard_walk": {
+   "cross_s": 55.09,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 195.4,
+   "longest_min": 184.0,
+   "need_min": 51.32,
+   "tstar": -0.74,
+   "walk_total_s": 229.88,
+   "wet_m": 46.83,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 0,
+  "ok": true,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C54.10",
+   "seals": "A175.4",
+   "woods": "B8.2",
+   "wreck": "C131.8"
+  },
+  "secs": 14.1,
+  "seed": 29,
+  "sight": {
+   "shares": {
+    "hoard": 0.39,
+    "rock": 0.63,
+    "seals": 0.43,
+    "woods": 0.56
+   },
+   "water": 0.73
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47523,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32898,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23028,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 73.65599999999999,
+   "supply_year1_m3": 10.7136,
+   "sustainable_m3_yr": 3.348,
+   "wood_ha": 0.6696
+  },
+  "trips": {
+   "home>hoard": 67,
+   "home>rock": 102,
+   "home>seals": 87,
+   "home>woods": 81,
+   "home>wreck": 42,
+   "woods>hoard": 72
+  },
+  "wildlife": {
+   "birds": 759,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 625,
+   "seal_island_capacity": 343
+  }
+ },
+ {
+  "area": {
+   "hoard": 2972.0,
+   "home": 9852.0,
+   "rock": 1164.0,
+   "seals": 2188.0,
+   "woods": 11488.0,
+   "wreck": 544.0
+  },
+  "fails": [
+   "timber_for_five_builds",
+   "lighthouse_sees_the_water"
+  ],
+  "flat": {
+   "hoard": 304,
+   "home": 1676,
+   "rock": 24,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "10105ef47ad2b55f",
+  "hoard_walk": {
+   "cross_s": 66.05,
+   "first_clock": "day 5 21:52",
+   "first_day": 5,
+   "frac_days_9_40": 0.62,
+   "length_m": 181.4,
+   "longest_min": 192.0,
+   "need_min": 59.54,
+   "tstar": -0.72,
+   "walk_total_s": 213.41,
+   "wet_m": 56.14,
+   "windows_40d": 40
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C56.5",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C56.10"
+  },
+  "secs": 14.1,
+  "seed": 30,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.54,
+    "seals": 0.79,
+    "woods": 0.56
+   },
+   "water": 0.69
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94927,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94927,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94927,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47034,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32349,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22644,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 59.444,
+   "supply_year1_m3": 8.6464,
+   "sustainable_m3_yr": 2.702,
+   "wood_ha": 0.5404
+  },
+  "trips": {
+   "home>hoard": 59,
+   "home>rock": 81,
+   "home>seals": 103,
+   "home>woods": 74,
+   "home>wreck": 41,
+   "woods>hoard": 59
+  },
+  "wildlife": {
+   "birds": 721,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 617,
+   "seal_island_capacity": 64
+  }
+ },
+ {
+  "area": {
+   "hoard": 2728.0,
+   "home": 9852.0,
+   "rock": 420.0,
+   "seals": 2756.0,
+   "woods": 11488.0,
+   "wreck": 340.0
+  },
+  "fails": [
+   "timber_for_five_builds"
+  ],
+  "flat": {
+   "hoard": 204,
+   "home": 1676,
+   "rock": 4,
+   "seals": 0,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "7a719c0b4f81fe4a",
+  "hoard_walk": {
+   "cross_s": 68.4,
+   "first_clock": "day 5 22:11",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 185.54,
+   "longest_min": 176.0,
+   "need_min": 61.3,
+   "tstar": -0.77,
+   "walk_total_s": 218.28,
+   "wet_m": 58.14,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C54.12",
+   "seals": "A175.8",
+   "woods": "B8.2",
+   "wreck": "C185.11"
+  },
+  "secs": 12.2,
+  "seed": 31,
+  "sight": {
+   "shares": {
+    "hoard": 0.66,
+    "rock": 0.81,
+    "seals": 0.62,
+    "woods": 0.42
+   },
+   "water": 0.8
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97187,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97187,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97187,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48142,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33199,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23239,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 58.080000000000005,
+   "supply_year1_m3": 8.448,
+   "sustainable_m3_yr": 2.64,
+   "wood_ha": 0.528
+  },
+  "trips": {
+   "home>hoard": 53,
+   "home>rock": 88,
+   "home>seals": 97,
+   "home>woods": 66,
+   "home>wreck": 23,
+   "woods>hoard": 69
+  },
+  "wildlife": {
+   "birds": 561,
+   "kelp": 0.5,
+   "n_seal_sites": 12,
+   "peak_seals_table": 744,
+   "seal_island_capacity": 385
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 420.0,
+   "seals": 3092.0,
+   "woods": 11488.0,
+   "wreck": 608.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 196,
+   "home": 1676,
+   "rock": 4,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "859b569a3cccf78a",
+  "hoard_walk": {
+   "cross_s": 76.44,
+   "first_clock": "day 5 22:08",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 190.71,
+   "longest_min": 179.0,
+   "need_min": 67.33,
+   "tstar": -0.76,
+   "walk_total_s": 224.37,
+   "wet_m": 64.97,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C54.12",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C131.9"
+  },
+  "secs": 13.4,
+  "seed": 32,
+  "sight": {
+   "shares": {
+    "hoard": 0.63,
+    "rock": 0.83,
+    "seals": 0.49,
+    "woods": 0.42
+   },
+   "water": 0.8
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95550,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95550,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95550,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47339,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32652,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22856,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 66.35199999999999,
+   "supply_year1_m3": 9.6512,
+   "sustainable_m3_yr": 3.016,
+   "wood_ha": 0.6032
+  },
+  "trips": {
+   "home>hoard": 58,
+   "home>rock": 77,
+   "home>seals": 120,
+   "home>woods": 69,
+   "home>wreck": 26,
+   "woods>hoard": 71
+  },
+  "wildlife": {
+   "birds": 544,
+   "kelp": 0.51,
+   "n_seal_sites": 12,
+   "peak_seals_table": 617,
+   "seal_island_capacity": 81
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 588.0,
+   "seals": 2264.0,
+   "woods": 11488.0,
+   "wreck": 272.0
+  },
+  "fails": [
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 296,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "76bf09273b69c593",
+  "hoard_walk": {
+   "cross_s": 72.7,
+   "first_clock": "day 5 21:57",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 176.71,
+   "longest_min": 188.0,
+   "need_min": 64.53,
+   "tstar": -0.73,
+   "walk_total_s": 207.89,
+   "wet_m": 61.8,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C131.8",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C106.14"
+  },
+  "secs": 13.2,
+  "seed": 33,
+  "sight": {
+   "shares": {
+    "hoard": 0.42,
+    "rock": 0.62,
+    "seals": 0.59,
+    "woods": 0.44
+   },
+   "water": 0.81
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 92329,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 92329,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 92329,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 45761,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31371,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 21959,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 62.919999999999995,
+   "supply_year1_m3": 9.152,
+   "sustainable_m3_yr": 2.86,
+   "wood_ha": 0.572
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 78,
+   "home>seals": 96,
+   "home>woods": 40,
+   "home>wreck": 42,
+   "woods>hoard": 59
+  },
+  "wildlife": {
+   "birds": 710,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 612,
+   "seal_island_capacity": 101
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 1516.0,
+   "seals": 3904.0,
+   "woods": 11488.0,
+   "wreck": 240.0
+  },
+  "fails": [
+   "lighthouse_sees_the_water",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 224,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "1bada2df0d13f25a",
+  "hoard_walk": {
+   "cross_s": 86.99,
+   "first_clock": "day 5 21:58",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 201.2,
+   "longest_min": 188.0,
+   "need_min": 75.24,
+   "tstar": -0.73,
+   "walk_total_s": 236.7,
+   "wet_m": 73.94,
+   "windows_40d": 36
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C146.5",
+   "seals": "A117.5",
+   "woods": "B8.2",
+   "wreck": "C199.9"
+  },
+  "secs": 12.8,
+  "seed": 34,
+  "sight": {
+   "shares": {
+    "hoard": 0.74,
+    "rock": 0.49,
+    "seals": 0.37,
+    "woods": 0.56
+   },
+   "water": 0.64
+  },
+  "soft_fails": [],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97255,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97255,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97255,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48175,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33656,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23559,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 65.604,
+   "supply_year1_m3": 9.5424,
+   "sustainable_m3_yr": 2.982,
+   "wood_ha": 0.5964
+  },
+  "trips": {
+   "home>hoard": 66,
+   "home>rock": 122,
+   "home>seals": 87,
+   "home>woods": 82,
+   "home>wreck": 69,
+   "woods>hoard": 70
+  },
+  "wildlife": {
+   "birds": 322,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 1060,
+   "seal_island_capacity": 354
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 436.0,
+   "seals": 3724.0,
+   "woods": 11288.0,
+   "wreck": 948.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "placement_found"
+  ],
+  "flat": {
+   "hoard": 288,
+   "home": 1676,
+   "rock": 8,
+   "seals": 16,
+   "woods": 656,
+   "wreck": 4
+  },
+  "hash": "a11cb6b1717ef6c0",
+  "hoard_walk": {
+   "cross_s": 58.02,
+   "first_clock": "day 5 22:00",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 175.4,
+   "longest_min": 185.0,
+   "need_min": 53.51,
+   "tstar": -0.74,
+   "walk_total_s": 206.35,
+   "wet_m": 49.31,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C84.9",
+   "seals": "A62.4",
+   "woods": "B8.2",
+   "wreck": "C106.10"
+  },
+  "secs": 18.1,
+  "seed": 35,
+  "sight": {
+   "shares": {
+    "hoard": 0.42,
+    "rock": 0.67,
+    "seals": 0.58,
+    "woods": 0.37
+   },
+   "water": 0.78
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94348,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94348,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94348,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46750,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32344,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22640,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 63.888,
+   "supply_year1_m3": 9.2928,
+   "sustainable_m3_yr": 2.904,
+   "wood_ha": 0.5808
+  },
+  "trips": {
+   "home>hoard": 61,
+   "home>rock": 71,
+   "home>seals": 119,
+   "home>woods": 41,
+   "home>wreck": 16,
+   "woods>hoard": 45
+  },
+  "wildlife": {
+   "birds": 763,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 467,
+   "seal_island_capacity": 75
+  }
+ },
+ {
+  "area": {
+   "hoard": 2972.0,
+   "home": 9852.0,
+   "rock": 740.0,
+   "seals": 2176.0,
+   "woods": 11488.0,
+   "wreck": 336.0
+  },
+  "fails": [
+   "lighthouse_sees_the_water"
+  ],
+  "flat": {
+   "hoard": 304,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "fd624f960e4a6cab",
+  "hoard_walk": {
+   "cross_s": 57.04,
+   "first_clock": "day 5 22:05",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 178.57,
+   "longest_min": 180.0,
+   "need_min": 52.78,
+   "tstar": -0.75,
+   "walk_total_s": 210.08,
+   "wet_m": 48.49,
+   "windows_40d": 36
+  },
+  "n_failed_checks": 2,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C106.12",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C54.13"
+  },
+  "secs": 12.4,
+  "seed": 36,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.52,
+    "seals": 0.52,
+    "woods": 0.56
+   },
+   "water": 0.69
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93741,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93741,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93741,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46453,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31741,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22218,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 65.604,
+   "supply_year1_m3": 9.5424,
+   "sustainable_m3_yr": 2.982,
+   "wood_ha": 0.5964
+  },
+  "trips": {
+   "home>hoard": 66,
+   "home>rock": 111,
+   "home>seals": 81,
+   "home>woods": 80,
+   "home>wreck": 45,
+   "woods>hoard": 69
+  },
+  "wildlife": {
+   "birds": 712,
+   "kelp": 0.57,
+   "n_seal_sites": 12,
+   "peak_seals_table": 522,
+   "seal_island_capacity": 87
+  }
+ },
+ {
+  "area": {
+   "hoard": 2980.0,
+   "home": 9852.0,
+   "rock": 1164.0,
+   "seals": 2240.0,
+   "woods": 11488.0,
+   "wreck": 608.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 304,
+   "home": 1676,
+   "rock": 24,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "2aca796276573a55",
+  "hoard_walk": {
+   "cross_s": 71.16,
+   "first_clock": "day 5 22:04",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 188.57,
+   "longest_min": 182.0,
+   "need_min": 63.37,
+   "tstar": -0.75,
+   "walk_total_s": 221.85,
+   "wet_m": 60.49,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C56.5",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C199.8"
+  },
+  "secs": 10.1,
+  "seed": 37,
+  "sight": {
+   "shares": {
+    "hoard": 0.61,
+    "rock": 0.59,
+    "seals": 0.79,
+    "woods": 0.56
+   },
+   "water": 0.72
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95892,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95892,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95892,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47507,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32777,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22943,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 64.02,
+   "supply_year1_m3": 9.312,
+   "sustainable_m3_yr": 2.9099999999999997,
+   "wood_ha": 0.582
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 76,
+   "home>seals": 102,
+   "home>woods": 78,
+   "home>wreck": 54,
+   "woods>hoard": 63
+  },
+  "wildlife": {
+   "birds": 747,
+   "kelp": 0.59,
+   "n_seal_sites": 12,
+   "peak_seals_table": 548,
+   "seal_island_capacity": 92
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 608.0,
+   "seals": 2316.0,
+   "woods": 13768.0,
+   "wreck": 424.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "land_inside_table",
+   "placement_found",
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 332,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 844,
+   "wreck": 0
+  },
+  "hash": "96758f0f4b43a032",
+  "hoard_walk": {
+   "cross_s": 74.25,
+   "first_clock": "day 5 22:11",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 173.2,
+   "longest_min": 176.0,
+   "need_min": 65.69,
+   "tstar": -0.76,
+   "walk_total_s": 203.76,
+   "wet_m": 63.11,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 8,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C199.8",
+   "seals": "A117.7",
+   "woods": "B174.1",
+   "wreck": "C106.11"
+  },
+  "secs": 16.2,
+  "seed": 38,
+  "sight": {
+   "shares": {
+    "hoard": 0.56,
+    "rock": 0.66,
+    "seals": 0.76,
+    "woods": 0.34
+   },
+   "water": 0.77
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93308,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93308,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93308,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46241,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32054,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22437,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 87.736,
+   "supply_year1_m3": 12.7616,
+   "sustainable_m3_yr": 3.988,
+   "wood_ha": 0.7976
+  },
+  "trips": {
+   "home>hoard": 93,
+   "home>rock": 66,
+   "home>seals": 83,
+   "home>woods": 93,
+   "home>wreck": 171,
+   "woods>hoard": null
+  },
+  "wildlife": {
+   "birds": 278,
+   "kelp": 0.51,
+   "n_seal_sites": 12,
+   "peak_seals_table": 552,
+   "seal_island_capacity": 88
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 900.0,
+   "seals": 3740.0,
+   "woods": 11488.0,
+   "wreck": 280.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 348,
+   "home": 1676,
+   "rock": 4,
+   "seals": 16,
+   "woods": 660,
+   "wreck": 4
+  },
+  "hash": "797b2d79a70e0366",
+  "hoard_walk": {
+   "cross_s": 73.51,
+   "first_clock": "day 5 22:11",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 186.91,
+   "longest_min": 176.0,
+   "need_min": 65.13,
+   "tstar": -0.77,
+   "walk_total_s": 219.9,
+   "wet_m": 62.49,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C133.7",
+   "seals": "A62.4",
+   "woods": "B8.2",
+   "wreck": "C56.11"
+  },
+  "secs": 18.7,
+  "seed": 39,
+  "sight": {
+   "shares": {
+    "hoard": 0.58,
+    "rock": 0.81,
+    "seals": 0.57,
+    "woods": 0.4
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97110,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97110,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97110,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48104,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33469,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23428,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 67.936,
+   "supply_year1_m3": 9.881600000000002,
+   "sustainable_m3_yr": 3.088,
+   "wood_ha": 0.6176
+  },
+  "trips": {
+   "home>hoard": 72,
+   "home>rock": 76,
+   "home>seals": 127,
+   "home>woods": 71,
+   "home>wreck": 19,
+   "woods>hoard": 141
+  },
+  "wildlife": {
+   "birds": 832,
+   "kelp": 0.61,
+   "n_seal_sites": 12,
+   "peak_seals_table": 861,
+   "seal_island_capacity": 78
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 336.0,
+   "seals": 4216.0,
+   "woods": 14396.0,
+   "wreck": 280.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "land_inside_table",
+   "placement_found",
+   "low_tide_detours_sane",
+   "lighthouse_sees_the_water",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 300,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 896,
+   "wreck": 4
+  },
+  "hash": "06328017cb0711c9",
+  "hoard_walk": {
+   "cross_s": 60.37,
+   "first_clock": "day 5 22:04",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 176.57,
+   "longest_min": 182.0,
+   "need_min": 55.28,
+   "tstar": -0.75,
+   "walk_total_s": 207.73,
+   "wet_m": 51.31,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 7,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C54.13",
+   "seals": "A117.4",
+   "woods": "B174.1",
+   "wreck": "C56.11"
+  },
+  "secs": 14.8,
+  "seed": 40,
+  "sight": {
+   "shares": {
+    "hoard": 0.41,
+    "rock": 0.71,
+    "seals": 0.57,
+    "woods": 0.35
+   },
+   "water": 0.63
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 97373,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 97373,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 97373,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 48232,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33448,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23413,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 92.17999999999999,
+   "supply_year1_m3": 13.408,
+   "sustainable_m3_yr": 4.1899999999999995,
+   "wood_ha": 0.838
+  },
+  "trips": {
+   "home>hoard": 55,
+   "home>rock": 71,
+   "home>seals": 83,
+   "home>woods": 93,
+   "home>wreck": 25,
+   "woods>hoard": 145
+  },
+  "wildlife": {
+   "birds": 812,
+   "kelp": 0.53,
+   "n_seal_sites": 12,
+   "peak_seals_table": 513,
+   "seal_island_capacity": 190
+  }
+ },
+ {
+  "area": {
+   "hoard": 2732.0,
+   "home": 9852.0,
+   "rock": 608.0,
+   "seals": 2556.0,
+   "woods": 11488.0,
+   "wreck": 500.0
+  },
+  "fails": [
+   "table_haul_capacity"
+  ],
+  "flat": {
+   "hoard": 184,
+   "home": 1676,
+   "rock": 0,
+   "seals": 12,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "a6ab1ce7eed9b35b",
+  "hoard_walk": {
+   "cross_s": 76.03,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 186.71,
+   "longest_min": 184.0,
+   "need_min": 67.02,
+   "tstar": -0.74,
+   "walk_total_s": 219.66,
+   "wet_m": 64.63,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C131.9",
+   "seals": "A116.4",
+   "woods": "B8.2",
+   "wreck": "C106.9"
+  },
+  "secs": 12.2,
+  "seed": 41,
+  "sight": {
+   "shares": {
+    "hoard": 0.63,
+    "rock": 0.72,
+    "seals": 0.63,
+    "woods": 0.44
+   },
+   "water": 0.75
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95065,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95065,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95065,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47102,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32398,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22678,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 61.864000000000004,
+   "supply_year1_m3": 8.9984,
+   "sustainable_m3_yr": 2.8120000000000003,
+   "wood_ha": 0.5624
+  },
+  "trips": {
+   "home>hoard": 69,
+   "home>rock": 99,
+   "home>seals": 93,
+   "home>woods": 38,
+   "home>wreck": 26,
+   "woods>hoard": 66
+  },
+  "wildlife": {
+   "birds": 535,
+   "kelp": 0.51,
+   "n_seal_sites": 12,
+   "peak_seals_table": 678,
+   "seal_island_capacity": 55
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 1164.0,
+   "seals": 3184.0,
+   "woods": 11488.0,
+   "wreck": 280.0
+  },
+  "fails": [
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 24,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 4
+  },
+  "hash": "a354232c1a209fb4",
+  "hoard_walk": {
+   "cross_s": 61.34,
+   "first_clock": "day 5 22:08",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 186.23,
+   "longest_min": 178.0,
+   "need_min": 56.01,
+   "tstar": -0.76,
+   "walk_total_s": 219.09,
+   "wet_m": 52.14,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 4,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C56.5",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C56.11"
+  },
+  "secs": 10.0,
+  "seed": 42,
+  "sight": {
+   "shares": {
+    "hoard": 0.39,
+    "rock": 0.59,
+    "seals": 0.5,
+    "woods": 0.44
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95702,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95702,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95702,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47414,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32805,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22963,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 66.924,
+   "supply_year1_m3": 9.7344,
+   "sustainable_m3_yr": 3.0420000000000003,
+   "wood_ha": 0.6084
+  },
+  "trips": {
+   "home>hoard": 64,
+   "home>rock": 81,
+   "home>seals": 118,
+   "home>woods": 31,
+   "home>wreck": 26,
+   "woods>hoard": 51
+  },
+  "wildlife": {
+   "birds": 736,
+   "kelp": 0.55,
+   "n_seal_sites": 12,
+   "peak_seals_table": 695,
+   "seal_island_capacity": 71
+  }
+ },
+ {
+  "area": {
+   "hoard": 2968.0,
+   "home": 9852.0,
+   "rock": 500.0,
+   "seals": 4072.0,
+   "woods": 11180.0,
+   "wreck": 948.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "placement_found",
+   "boat_trips_in_target",
+   "low_tide_detours_sane",
+   "home_wrack_capacity",
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 64,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "eda5141f500d15c1",
+  "hoard_walk": {
+   "cross_s": 107.02,
+   "first_clock": "day 6 10:09",
+   "first_day": 6,
+   "frac_days_9_40": 0.41,
+   "length_m": 211.54,
+   "longest_min": 176.0,
+   "need_min": 90.27,
+   "tstar": -0.77,
+   "walk_total_s": 248.87,
+   "wet_m": 90.97,
+   "windows_40d": 28
+  },
+  "n_failed_checks": 9,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C106.9",
+   "seals": "A24.2",
+   "woods": "B8.2",
+   "wreck": "C106.10"
+  },
+  "secs": 19.7,
+  "seed": 43,
+  "sight": {
+   "shares": {
+    "hoard": 0.52,
+    "rock": 0.7,
+    "seals": 0.41,
+    "woods": 0.36
+   },
+   "water": 0.78
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94950,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94950,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94950,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47045,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32620,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22834,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 78.056,
+   "supply_year1_m3": 11.3536,
+   "sustainable_m3_yr": 3.548,
+   "wood_ha": 0.7096
+  },
+  "trips": {
+   "home>hoard": 48,
+   "home>rock": 75,
+   "home>seals": 97,
+   "home>woods": 59,
+   "home>wreck": 15,
+   "woods>hoard": 105
+  },
+  "wildlife": {
+   "birds": 807,
+   "kelp": 0.55,
+   "n_seal_sites": 12,
+   "peak_seals_table": 535,
+   "seal_island_capacity": 158
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 436.0,
+   "seals": 2312.0,
+   "woods": 14396.0,
+   "wreck": 216.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "land_inside_table",
+   "placement_found",
+   "low_tide_detours_sane",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 300,
+   "home": 1676,
+   "rock": 8,
+   "seals": 4,
+   "woods": 896,
+   "wreck": 0
+  },
+  "hash": "6d30e21847496fb1",
+  "hoard_walk": {
+   "cross_s": 63.29,
+   "first_clock": "day 5 21:59",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 179.88,
+   "longest_min": 186.0,
+   "need_min": 57.47,
+   "tstar": -0.74,
+   "walk_total_s": 211.63,
+   "wet_m": 53.8,
+   "windows_40d": 37
+  },
+  "n_failed_checks": 6,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C84.9",
+   "seals": "A117.7",
+   "woods": "B174.1",
+   "wreck": "C99.9"
+  },
+  "secs": 16.1,
+  "seed": 44,
+  "sight": {
+   "shares": {
+    "hoard": 0.41,
+    "rock": 0.67,
+    "seals": 0.72,
+    "woods": 0.35
+   },
+   "water": 0.74
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93017,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93017,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93017,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46098,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31753,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22227,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 79.464,
+   "supply_year1_m3": 11.5584,
+   "sustainable_m3_yr": 3.612,
+   "wood_ha": 0.7224
+  },
+  "trips": {
+   "home>hoard": 64,
+   "home>rock": 79,
+   "home>seals": 122,
+   "home>woods": 95,
+   "home>wreck": 17,
+   "woods>hoard": 156
+  },
+  "wildlife": {
+   "birds": 766,
+   "kelp": 0.52,
+   "n_seal_sites": 12,
+   "peak_seals_table": 473,
+   "seal_island_capacity": 89
+  }
+ },
+ {
+  "area": {
+   "hoard": 3344.0,
+   "home": 9852.0,
+   "rock": 1192.0,
+   "seals": 3096.0,
+   "woods": 11488.0,
+   "wreck": 200.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 328,
+   "home": 1676,
+   "rock": 4,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "3bccbd0ba601925c",
+  "hoard_walk": {
+   "cross_s": 80.74,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 181.05,
+   "longest_min": 184.0,
+   "need_min": 70.55,
+   "tstar": -0.74,
+   "walk_total_s": 213.0,
+   "wet_m": 68.63,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 2,
+  "ok": true,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C54.9",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C131.14"
+  },
+  "secs": 13.1,
+  "seed": 45,
+  "sight": {
+   "shares": {
+    "hoard": 0.58,
+    "rock": 0.63,
+    "seals": 0.51,
+    "woods": 0.43
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "woods_sill_spring_only",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95989,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95989,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95989,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47554,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33035,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23124,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 66.572,
+   "supply_year1_m3": 9.6832,
+   "sustainable_m3_yr": 3.026,
+   "wood_ha": 0.6052
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 109,
+   "home>seals": 122,
+   "home>woods": 33,
+   "home>wreck": 19,
+   "woods>hoard": 57
+  },
+  "wildlife": {
+   "birds": 778,
+   "kelp": 0.53,
+   "n_seal_sites": 12,
+   "peak_seals_table": 772,
+   "seal_island_capacity": 83
+  }
+ },
+ {
+  "area": {
+   "hoard": 2684.0,
+   "home": 9852.0,
+   "rock": 992.0,
+   "seals": 4640.0,
+   "woods": 13492.0,
+   "wreck": 948.0
+  },
+  "fails": [
+   "no_overlap_gap",
+   "placement_found",
+   "boat_trips_in_target",
+   "hoard_bar_tide_window",
+   "robot_crossing_fits_window",
+   "hoard_pad",
+   "lighthouse_sees_the_water"
+  ],
+  "flat": {
+   "hoard": 168,
+   "home": 1676,
+   "rock": 4,
+   "seals": 72,
+   "woods": 1300,
+   "wreck": 0
+  },
+  "hash": "1c55992c42659375",
+  "hoard_walk": {
+   "cross_s": 95.43,
+   "first_clock": null,
+   "first_day": null,
+   "frac_days_9_40": 0.0,
+   "length_m": 187.68,
+   "longest_min": 0,
+   "need_min": 81.57,
+   "tstar": -4.02,
+   "walk_total_s": 220.8,
+   "wet_m": 81.11,
+   "windows_40d": 0
+  },
+  "n_failed_checks": 8,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C133.5",
+   "seals": "A116.3",
+   "woods": "B86.1",
+   "wreck": "C106.10"
+  },
+  "secs": 21.8,
+  "seed": 46,
+  "sight": {
+   "shares": {
+    "hoard": 0.63,
+    "rock": 0.72,
+    "seals": 0.56,
+    "woods": 0.38
+   },
+   "water": 0.68
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 99056,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 99056,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 99056,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 49057,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 34473,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 24131,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 75.02000000000001,
+   "supply_year1_m3": 10.912000000000003,
+   "sustainable_m3_yr": 3.41,
+   "wood_ha": 0.682
+  },
+  "trips": {
+   "home>hoard": 122,
+   "home>rock": 115,
+   "home>seals": 110,
+   "home>woods": 133,
+   "home>wreck": 25,
+   "woods>hoard": 135
+  },
+  "wildlife": {
+   "birds": 532,
+   "kelp": 0.48,
+   "n_seal_sites": 12,
+   "peak_seals_table": 532,
+   "seal_island_capacity": 105
+  }
+ },
+ {
+  "area": {
+   "hoard": 2976.0,
+   "home": 9852.0,
+   "rock": 1124.0,
+   "seals": 3092.0,
+   "woods": 11488.0,
+   "wreck": 208.0
+  },
+  "fails": [],
+  "flat": {
+   "hoard": 312,
+   "home": 1676,
+   "rock": 0,
+   "seals": 36,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "159b24ea29f48b80",
+  "hoard_walk": {
+   "cross_s": 61.75,
+   "first_clock": "day 5 22:12",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 183.4,
+   "longest_min": 176.0,
+   "need_min": 56.31,
+   "tstar": -0.77,
+   "walk_total_s": 215.76,
+   "wet_m": 52.49,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 1,
+  "ok": true,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C99.5",
+   "seals": "A175.6",
+   "woods": "B8.2",
+   "wreck": "C199.10"
+  },
+  "secs": 18.3,
+  "seed": 47,
+  "sight": {
+   "shares": {
+    "hoard": 0.6,
+    "rock": 0.64,
+    "seals": 0.48,
+    "woods": 0.42
+   },
+   "water": 0.79
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 55,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 93543,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 55,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 93543,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 55,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 93543,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 37,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46356,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 33,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32006,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 33,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22404,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 63.888,
+   "supply_year1_m3": 9.2928,
+   "sustainable_m3_yr": 2.904,
+   "wood_ha": 0.5808
+  },
+  "trips": {
+   "home>hoard": 65,
+   "home>rock": 67,
+   "home>seals": 119,
+   "home>woods": 40,
+   "home>wreck": 27,
+   "woods>hoard": 55
+  },
+  "wildlife": {
+   "birds": 749,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 541,
+   "seal_island_capacity": 88
+  }
+ },
+ {
+  "area": {
+   "hoard": 2728.0,
+   "home": 9852.0,
+   "rock": 336.0,
+   "seals": 4240.0,
+   "woods": 11488.0,
+   "wreck": 324.0
+  },
+  "fails": [
+   "timber_for_five_builds",
+   "timber_sustainable"
+  ],
+  "flat": {
+   "hoard": 200,
+   "home": 1676,
+   "rock": 0,
+   "seals": 8,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "e1ef12cb65e91b95",
+  "hoard_walk": {
+   "cross_s": 61.34,
+   "first_clock": "day 5 22:08",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 177.88,
+   "longest_min": 179.0,
+   "need_min": 56.01,
+   "tstar": -0.76,
+   "walk_total_s": 209.27,
+   "wet_m": 52.14,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B126.3",
+   "home": "B9001.1",
+   "rock": "C54.13",
+   "seals": "A117.4",
+   "woods": "B8.2",
+   "wreck": "C131.12"
+  },
+  "secs": 14.3,
+  "seed": 48,
+  "sight": {
+   "shares": {
+    "hoard": 0.64,
+    "rock": 0.67,
+    "seals": 0.58,
+    "woods": 0.42
+   },
+   "water": 0.76
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95546,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95546,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95546,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47337,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32756,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22929,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 49.236,
+   "supply_year1_m3": 7.1616,
+   "sustainable_m3_yr": 2.238,
+   "wood_ha": 0.4476
+  },
+  "trips": {
+   "home>hoard": 52,
+   "home>rock": 86,
+   "home>seals": 83,
+   "home>woods": 35,
+   "home>wreck": 56,
+   "woods>hoard": 42
+  },
+  "wildlife": {
+   "birds": 606,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 642,
+   "seal_island_capacity": 135
+  }
+ },
+ {
+  "area": {
+   "hoard": 3336.0,
+   "home": 9852.0,
+   "rock": 272.0,
+   "seals": 2116.0,
+   "woods": 11488.0,
+   "wreck": 304.0
+  },
+  "fails": [
+   "no_overlap_gap"
+  ],
+  "flat": {
+   "hoard": 316,
+   "home": 1676,
+   "rock": 0,
+   "seals": 4,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hash": "c9f595b75693c670",
+  "hoard_walk": {
+   "cross_s": 94.45,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.53,
+   "length_m": 206.02,
+   "longest_min": 184.0,
+   "need_min": 80.84,
+   "tstar": -0.74,
+   "walk_total_s": 242.38,
+   "wet_m": 80.28,
+   "windows_40d": 35
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B99.5",
+   "home": "B9001.1",
+   "rock": "C106.14",
+   "seals": "A117.7",
+   "woods": "B8.2",
+   "wreck": "C133.6"
+  },
+  "secs": 13.7,
+  "seed": 49,
+  "sight": {
+   "shares": {
+    "hoard": 0.7,
+    "rock": 0.65,
+    "seals": 0.75,
+    "woods": 0.42
+   },
+   "water": 0.78
+  },
+  "soft_fails": [
+   "hoard_walk_not_too_long",
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 94516,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 94516,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 94516,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 46833,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 31998,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 22398,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 77.0,
+   "supply_year1_m3": 11.2,
+   "sustainable_m3_yr": 3.5,
+   "wood_ha": 0.7
+  },
+  "trips": {
+   "home>hoard": 63,
+   "home>rock": 88,
+   "home>seals": 115,
+   "home>woods": 76,
+   "home>wreck": 23,
+   "woods>hoard": 73
+  },
+  "wildlife": {
+   "birds": 748,
+   "kelp": 0.56,
+   "n_seal_sites": 12,
+   "peak_seals_table": 403,
+   "seal_island_capacity": 54
+  }
+ },
+ {
+  "area": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 304.0,
+   "seals": 4204.0,
+   "woods": 13844.0,
+   "wreck": 304.0
+  },
+  "fails": [
+   "table_haul_capacity",
+   "lighthouse_sees_the_islands"
+  ],
+  "flat": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 64,
+   "woods": 1300,
+   "wreck": 0
+  },
+  "hash": "1397855ad6d47e31",
+  "hoard_walk": {
+   "cross_s": 58.42,
+   "first_clock": "day 5 21:58",
+   "first_day": 5,
+   "frac_days_9_40": 0.56,
+   "length_m": 178.91,
+   "longest_min": 187.0,
+   "need_min": 53.81,
+   "tstar": -0.73,
+   "walk_total_s": 210.48,
+   "wet_m": 49.66,
+   "windows_40d": 38
+  },
+  "n_failed_checks": 3,
+  "ok": false,
+  "roles": {
+   "hoard": "B174.4",
+   "home": "B9001.1",
+   "rock": "C133.6",
+   "seals": "A24.2",
+   "woods": "B86.1",
+   "wreck": "C133.6"
+  },
+  "secs": 7.5,
+  "seed": 50,
+  "sight": {
+   "shares": {
+    "hoard": 0.4,
+    "rock": 0.61,
+    "seals": 0.6,
+    "woods": 0.38
+   },
+   "water": 0.73
+  },
+  "soft_fails": [
+   "hoard_hidden_from_camp"
+  ],
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 96295,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 96295,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 96295,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47704,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 33258,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23280,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 86.988,
+   "supply_year1_m3": 12.6528,
+   "sustainable_m3_yr": 3.9539999999999997,
+   "wood_ha": 0.7908
+  },
+  "trips": {
+   "home>hoard": 53,
+   "home>rock": 73,
+   "home>seals": 121,
+   "home>woods": 99,
+   "home>wreck": 28,
+   "woods>hoard": 82
+  },
+  "wildlife": {
+   "birds": 751,
+   "kelp": 0.54,
+   "n_seal_sites": 12,
+   "peak_seals_table": 448,
+   "seal_island_capacity": 122
+  }
+ }
+]

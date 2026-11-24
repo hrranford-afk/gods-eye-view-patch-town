@@ -1,0 +1,52 @@
+{
+ "classes_per_year": {
+  "litter": {
+   "crate_lid": 0.243,
+   "net_scrap": 0.243
+  },
+  "ships": {
+   "drifting_hull": 0.243
+  },
+  "wreck_debris": {
+   "barrel": 0.243,
+   "spar": 0.487
+  }
+ },
+ "n_cells_considered": 45,
+ "n_sources": 1,
+ "per_year": {
+  "litter": 0.487,
+  "logs": 0.0,
+  "seeds": 0.0,
+  "ships": 0.243,
+  "strays": 0.0,
+  "wreck_debris": 0.73
+ },
+ "per_year_total": 1.46,
+ "planet_seed": 1,
+ "strays_per_year": 0.0,
+ "table": {
+  "band": "temperate",
+  "cell": [
+   28,
+   51
+  ],
+  "drift_from_deg": 220.4711786846251,
+  "drift_speed": 0.3342510358351502,
+  "drift_to_deg": 40.47117868462511,
+  "drift_u": 0.2169508028523639,
+  "drift_v": 0.2542756459014225,
+  "grid_cell_u": 0.2169508028523639,
+  "grid_cell_v": 0.2542756459014225,
+  "lat": 52.5,
+  "leeway3_u": 0.19401470182737024,
+  "leeway3_v": -0.04346666218300808,
+  "lon": 77.5,
+  "season_amplitude": 0.15,
+  "sst_c": 16.475180131414394,
+  "sst_swing_c": 5.23985722596617,
+  "wind_from_deg": 282.62790906802854
+ },
+ "table_hash": "546ff3a93130ee27",
+ "travel_median_days": 1.0
+}

@@ -1,0 +1,388 @@
+{
+ "arrays": {
+  "bed": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 305767
+  },
+  "exposure": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 218405
+  },
+  "height": {
+   "bytes": 87362,
+   "dtype": "int16",
+   "offset": 0
+  },
+  "rock": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 87362
+  },
+  "shore": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 174724
+  },
+  "veg": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 131043
+  },
+  "wetness": {
+   "bytes": 43681,
+   "dtype": "uint8",
+   "offset": 262086
+  }
+ },
+ "axes": "page x east, z south (z = -world y); row 0 = north edge, column 0 = west edge",
+ "bars": [
+  {
+   "a": [
+    -64.0,
+    -10.0
+   ],
+   "b": [
+    -88.0,
+    -18.0
+   ],
+   "crest_mid": -0.84629599970911,
+   "length_m": 25.298221281347036,
+   "name": "hoard bar",
+   "path": [
+    [
+     -64.0,
+     -10.0
+    ],
+    [
+     -68.0,
+     -12.0
+    ],
+    [
+     -72.0,
+     -12.0
+    ],
+    [
+     -76.0,
+     -12.0
+    ],
+    [
+     -80.0,
+     -14.0
+    ],
+    [
+     -84.0,
+     -16.0
+    ],
+    [
+     -88.0,
+     -18.0
+    ]
+   ]
+  },
+  {
+   "a": [
+    -36.0,
+    -10.0
+   ],
+   "b": [
+    -48.0,
+    -8.0
+   ],
+   "crest_mid": -0.1,
+   "length_m": 12.165525060596439,
+   "name": "skerry link",
+   "path": [
+    [
+     -36.0,
+     -10.0
+    ],
+    [
+     -40.0,
+     -10.0
+    ],
+    [
+     -44.0,
+     -8.0
+    ],
+    [
+     -48.0,
+     -8.0
+    ]
+   ]
+  },
+  {
+   "a": [
+    40.0,
+    18.0
+   ],
+   "b": [
+    40.0,
+    46.0
+   ],
+   "crest_mid": -0.987448076657784,
+   "length_m": 28.0,
+   "name": "woods sill",
+   "path": [
+    [
+     40.0,
+     18.0
+    ],
+    [
+     42.0,
+     22.0
+    ],
+    [
+     40.0,
+     26.0
+    ],
+    [
+     38.0,
+     30.0
+    ],
+    [
+     38.0,
+     34.0
+    ],
+    [
+     38.0,
+     38.0
+    ],
+    [
+     40.0,
+     42.0
+    ],
+    [
+     40.0,
+     46.0
+    ]
+   ]
+  }
+ ],
+ "bytes": 349448,
+ "data_sha": "41490fd09ffec571",
+ "depot": {
+  "cut_fill_m3": 492.414786798049,
+  "flat_before_cells": 38,
+  "pad_h": 3.9781689643859863,
+  "ramp_m3": 376.5662363516974,
+  "xy": [
+   -130.0,
+   -2.0
+  ]
+ },
+ "dx": 2.0,
+ "hash": "e0dd2621f890301a",
+ "height_scale": 256.0,
+ "landmarks": {
+  "cairns": [
+   [
+    -64.0,
+    -10.0
+   ],
+   [
+    -68.0,
+    -12.0
+   ],
+   [
+    -76.0,
+    -12.0
+   ],
+   [
+    -80.0,
+    -14.0
+   ],
+   [
+    -88.0,
+    -18.0
+   ]
+  ],
+  "lone_tree": [
+   138.0,
+   56.0
+  ],
+  "ribs": [
+   -108.0,
+   90.0
+  ]
+ },
+ "layout": "level1",
+ "ledges": [
+  [
+   -24.0,
+   -174.0
+  ],
+  [
+   62.0,
+   -146.0
+  ],
+  [
+   4.0,
+   -104.0
+  ]
+ ],
+ "nx": 209,
+ "reef": {
+  "angle": 2.3792744981640253,
+  "centre": [
+   -104.0,
+   88.0
+  ],
+  "heads": [
+   [
+    -86.0,
+    70.0
+   ],
+   [
+    -98.0,
+    82.0
+   ],
+   [
+    -108.0,
+    90.0
+   ],
+   [
+    -122.0,
+    102.0
+   ]
+  ]
+ },
+ "rocks": [
+  "gneiss_pink",
+  "gneiss_grey",
+  "schist_soft",
+  "dyke_hard",
+  "sandstone_red",
+  "sandstone_flag",
+  "siltstone_soft",
+  "mudstone",
+  "basalt_columnar",
+  "basalt_vesicular_top",
+  "bole_ash",
+  "fault_breccia",
+  "shell_sand",
+  "cobble_shingle",
+  "basalt_fresh",
+  "basalt_weathered",
+  "scoria_red",
+  "ash_soil",
+  "lava_flow",
+  "black_sand",
+  "obsidian_pumice"
+ ],
+ "roles": {
+  "hoard": {
+   "at": [
+    -121.3193397871662,
+    -7.944420890223778
+   ],
+   "flip": false,
+   "k": 3,
+   "key": "B174.4",
+   "prov": "B"
+  },
+  "home": {
+   "at": [
+    34.0,
+    -26.0
+   ],
+   "flip": false,
+   "k": 0,
+   "key": "B9001.1",
+   "prov": "B"
+  },
+  "rock": {
+   "at": [
+    140.23796390359672,
+    67.03156702944779
+   ],
+   "flip": false,
+   "k": 3,
+   "key": "C54.10",
+   "prov": "C"
+  },
+  "seals": {
+   "at": [
+    -4.627340936318831,
+    -127.77086767682809
+   ],
+   "flip": true,
+   "k": 0,
+   "key": "A175.4",
+   "prov": "A"
+  },
+  "woods": {
+   "at": [
+    7.102587696765607,
+    102.15753762662227
+   ],
+   "flip": false,
+   "k": 1,
+   "key": "B8.2",
+   "prov": "B"
+  },
+  "wreck": {
+   "at": [
+    -102.87982950432834,
+    87.61767983347924
+   ],
+   "flip": true,
+   "k": 0,
+   "key": "C131.8",
+   "prov": "C"
+  }
+ },
+ "sea_level": 0.0,
+ "seed": 29,
+ "spots": {
+  "beach": [
+   10.0,
+   17.0
+  ],
+  "hut": [
+   56.0,
+   -28.0
+  ],
+  "skerry_e": [
+   106.0,
+   20.0
+  ],
+  "skerry_w": [
+   -56.0,
+   -8.0
+  ],
+  "stump": [
+   86.0,
+   -60.0
+  ]
+ },
+ "table_radius_m": 196.0,
+ "tide_amp": 1.1,
+ "veg_legend": [
+  "water",
+  "bare rock",
+  "lichen rock",
+  "heather",
+  "peat bog",
+  "machair",
+  "pasture",
+  "turf / thrift",
+  "scrub",
+  "sand beach",
+  "shingle",
+  "rush meadow",
+  "loch",
+  "coastal scrub",
+  "woodland",
+  "pine / birch belt",
+  "high scrub",
+  "bare lava",
+  "summit rock",
+  "bare ash"
+ ],
+ "version": 1,
+ "wave_prev_from_deg": 345.0,
+ "wave_storm_from_deg": 240.0,
+ "window_m": 416.0
+}

@@ -1,0 +1,514 @@
+{
+ "hash": "e0dd2621f890301a",
+ "metrics": {
+  "area_m2": {
+   "hoard": 2984.0,
+   "home": 9852.0,
+   "rock": 632.0,
+   "seals": 4116.0,
+   "woods": 11488.0,
+   "wreck": 588.0
+  },
+  "builds": {
+   "cistern": 6000,
+   "cottage": 85000,
+   "hide": 9000,
+   "jetty": 18000,
+   "kiosk": 42000
+  },
+  "drift": {
+   "per_year": {
+    "litter": 0.487,
+    "logs": 0.0,
+    "seeds": 0.0,
+    "ships": 0.243,
+    "strays": 0.0,
+    "wreck_debris": 0.73
+   },
+   "table": {
+    "band": "temperate",
+    "cell": [
+     28,
+     51
+    ],
+    "drift_from_deg": 220.4711786846251,
+    "drift_speed": 0.3342510358351502,
+    "drift_to_deg": 40.47117868462511,
+    "drift_u": 0.2169508028523639,
+    "drift_v": 0.2542756459014225,
+    "grid_cell_u": 0.2169508028523639,
+    "grid_cell_v": 0.2542756459014225,
+    "lat": 52.5,
+    "leeway3_u": 0.19401470182737024,
+    "leeway3_v": -0.04346666218300808,
+    "lon": 77.5,
+    "season_amplitude": 0.15,
+    "sst_c": 16.475180131414394,
+    "sst_swing_c": 5.23985722596617,
+    "wind_from_deg": 282.62790906802854
+   },
+   "total": 1.46
+  },
+  "flat_m2": {
+   "hoard": 308,
+   "home": 1676,
+   "rock": 0,
+   "seals": 0,
+   "woods": 660,
+   "wreck": 0
+  },
+  "hoard_walk": {
+   "cross_s": 55.09226720558376,
+   "first_clock": "day 5 22:01",
+   "first_day": 5,
+   "frac_days_9_40": 0.5625,
+   "length_m": 195.39696961967,
+   "list": [
+    [
+     "day 5 22:01",
+     96
+    ],
+    [
+     "day 6 10:02",
+     122
+    ],
+    [
+     "day 6 22:13",
+     148
+    ],
+    [
+     "day 7 10:23",
+     160
+    ],
+    [
+     "day 7 22:39",
+     173
+    ],
+    [
+     "day 8 10:54",
+     178
+    ],
+    [
+     "day 8 23:12",
+     184
+    ],
+    [
+     "day 9 11:33",
+     182
+    ]
+   ],
+   "longest_min": 183.99999931454659,
+   "need_min": 51.319200404187825,
+   "tstar": -0.7406208157539368,
+   "walk_total_s": 229.87878778784705,
+   "wet_m": 46.82842712474619,
+   "windows_40d": 37
+  },
+  "hydrology": {
+   "hoard": {
+    "area_m2": 2984.0,
+    "channel_cells": 6,
+    "head_elev_m": 2.3,
+    "lakes": 0,
+    "lens_usable_m": 0.68,
+    "max_catch_m2": 352.0,
+    "mean_width_m": 29.24,
+    "q_max_m3_day": 1.22,
+    "rain_mm": 1712.89,
+    "runoff_m3_day": 9.8
+   },
+   "home": {
+    "area_m2": 9852.0,
+    "channel_cells": 53,
+    "head_elev_m": 2.61,
+    "lakes": 0,
+    "lens_usable_m": 1.57,
+    "max_catch_m2": 848.0,
+    "mean_width_m": 71.31,
+    "q_max_m3_day": 3.0,
+    "rain_mm": 1539.79,
+    "runoff_m3_day": 29.07
+   },
+   "rock": {
+    "area_m2": 632.0,
+    "channel_cells": 0,
+    "head_elev_m": 0.0,
+    "lakes": 0,
+    "lens_usable_m": 0.4,
+    "max_catch_m2": 24.0,
+    "mean_width_m": 16.43,
+    "q_max_m3_day": 0.0,
+    "rain_mm": 1857.46,
+    "runoff_m3_day": 2.25
+   },
+   "seals": {
+    "area_m2": 4116.0,
+    "channel_cells": 16,
+    "head_elev_m": 1.91,
+    "lakes": 2,
+    "lens_usable_m": 0.92,
+    "max_catch_m2": 756.0,
+    "mean_width_m": 39.13,
+    "q_max_m3_day": 2.35,
+    "rain_mm": 1745.84,
+    "runoff_m3_day": 13.77
+   },
+   "woods": {
+    "area_m2": 11488.0,
+    "channel_cells": 26,
+    "head_elev_m": 6.59,
+    "lakes": 1,
+    "lens_usable_m": 0.85,
+    "max_catch_m2": 1124.0,
+    "mean_width_m": 35.52,
+    "q_max_m3_day": 3.1,
+    "rain_mm": 1822.34,
+    "runoff_m3_day": 40.12
+   },
+   "wreck": {
+    "area_m2": 588.0,
+    "channel_cells": 0,
+    "head_elev_m": 0.0,
+    "lakes": 0,
+    "lens_usable_m": 0.5,
+    "max_catch_m2": 20.0,
+    "mean_width_m": 20.24,
+    "q_max_m3_day": 0.0,
+    "rain_mm": 1924.42,
+    "runoff_m3_day": 2.17
+   }
+  },
+  "reef_to_route_m": 7.0710678118654755,
+  "robots": {
+   "hoard": {
+    "length_m": 195.39696961967,
+    "tstar": -0.7406208157539368,
+    "wet_m": 46.82842712474619
+   },
+   "woods": {
+    "length_m": 89.31370849898477,
+    "tstar": -0.884713077545166,
+    "wet_m": 32.0
+   },
+   "wrack": {
+    "length_m": 91.59797974644667,
+    "tstar": 0.834375,
+    "wet_m": 0.0
+   }
+  },
+  "seal_sites_by_role": {
+   "home": 384,
+   "rock": 40,
+   "seals": 343,
+   "woods": 119,
+   "wreck": 191
+  },
+  "shores": {
+   "hoard": {
+    "E_prev": 0.25,
+    "E_storm": 0.034,
+    "best_rate": 0.0,
+    "coast_m": 204.1,
+    "collectable_m": 0,
+    "haul_pieces": 0,
+    "items_per_tide": 0,
+    "lee_m": 204.1
+   },
+   "home": {
+    "E_prev": 0.224,
+    "E_storm": 0.096,
+    "best_rate": 2.691,
+    "coast_m": 276.32,
+    "collectable_m": 180.55,
+    "haul_pieces": 945.152,
+    "items_per_tide": 308.319,
+    "lee_m": 276.32
+   },
+   "rock": {
+    "E_prev": 0.275,
+    "E_storm": 0.001,
+    "best_rate": 0.0,
+    "coast_m": 76.93,
+    "collectable_m": 0,
+    "haul_pieces": 0,
+    "items_per_tide": 0,
+    "lee_m": 76.93
+   },
+   "seals": {
+    "E_prev": 0.195,
+    "E_storm": 0.147,
+    "best_rate": 0.0,
+    "coast_m": 210.38,
+    "collectable_m": 0,
+    "haul_pieces": 0,
+    "items_per_tide": 0,
+    "lee_m": 160.14
+   },
+   "woods": {
+    "E_prev": 0.134,
+    "E_storm": 0.074,
+    "best_rate": 0.0,
+    "coast_m": 646.84,
+    "collectable_m": 0,
+    "haul_pieces": 0,
+    "items_per_tide": 0,
+    "lee_m": 574.62
+   },
+   "wreck": {
+    "E_prev": 0.242,
+    "E_storm": 0.043,
+    "best_rate": 0.0,
+    "coast_m": 58.09,
+    "collectable_m": 0,
+    "haul_pieces": 0,
+    "items_per_tide": 0,
+    "lee_m": 58.09
+   }
+  },
+  "sight": {
+   "eye_m": 14.2734375,
+   "hoard_hidden_from_beach": true,
+   "hoard_hidden_from_yard": true,
+   "island_shares": {
+    "hoard": 0.3941018766756032,
+    "rock": 0.6329113924050633,
+    "seals": 0.4330097087378641,
+    "woods": 0.5571030640668524
+   },
+   "key": {
+    "hoard depot": true,
+    "reef head": true,
+    "seal ring": true
+   },
+   "land_share": 0.627159501807955,
+   "stump_ground_m": 5.2734375,
+   "water_share": 0.730028735632184
+  },
+  "tiers": {
+   "T0 desktop big": {
+    "calls": 58,
+    "calls_cap": 120,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 250000
+   },
+   "T1 desktop": {
+    "calls": 58,
+    "calls_cap": 80,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 150000
+   },
+   "T2 iPad high": {
+    "calls": 58,
+    "calls_cap": 60,
+    "ok": true,
+    "tris": 95926,
+    "tris_cap": 150000
+   },
+   "T3 iPad low": {
+    "calls": 39,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 47523,
+    "tris_cap": 90000
+   },
+   "T4 AR": {
+    "calls": 34,
+    "calls_cap": 40,
+    "ok": true,
+    "tris": 32898,
+    "tris_cap": 90000
+   },
+   "T5 phone small": {
+    "calls": 34,
+    "calls_cap": 30,
+    "ok": false,
+    "tris": 23028,
+    "tris_cap": 60000
+   }
+  },
+  "timber": {
+   "need_five_builds_m3": 8.9,
+   "stock_m3": 73.65599999999999,
+   "supply_year1_m3": 10.7136,
+   "sustainable_m3_yr": 3.348,
+   "wood_ha": 0.6696
+  },
+  "trips": {
+   "home>hoard": {
+    "hi": 130,
+    "high_fast_s": 27.9688118901118,
+    "high_m": 117.46900993846957,
+    "high_s": 58.734504969234784,
+    "lo": 15,
+    "low_fast_s": 83.15592256880208,
+    "low_m": 349.2548747889688,
+    "low_s": 174.6274373944844,
+    "mid_fast_s": 31.716911792734674,
+    "mid_m": 133.21102952948564,
+    "mid_s": 66.60551476474282,
+    "path": null
+   },
+   "home>rock": {
+    "hi": 140,
+    "high_fast_s": 46.33569127857003,
+    "high_m": 194.60990336999413,
+    "high_s": 97.30495168499706,
+    "lo": 45,
+    "low_fast_s": 144.2561999413996,
+    "low_m": 605.8760397538783,
+    "low_s": 302.93801987693917,
+    "mid_fast_s": 48.41011564511603,
+    "mid_m": 203.32248570948732,
+    "mid_s": 101.66124285474366,
+    "path": null
+   },
+   "home>seals": {
+    "hi": 135,
+    "high_fast_s": 27.80540915177484,
+    "high_m": 116.78271843745434,
+    "high_s": 58.39135921872717,
+    "lo": 35,
+    "low_fast_s": 93.74035159987572,
+    "low_m": 393.70947671947806,
+    "low_s": 196.85473835973903,
+    "mid_fast_s": 41.478067408676374,
+    "mid_m": 174.20788311644077,
+    "mid_s": 87.10394155822038,
+    "path": null
+   },
+   "home>woods": {
+    "hi": 110,
+    "high_fast_s": 36.75671757130671,
+    "high_m": 154.37821379948818,
+    "high_s": 77.18910689974409,
+    "lo": 25,
+    "low_fast_s": 70.67925107986082,
+    "low_m": 296.8528545354155,
+    "low_s": 148.42642726770774,
+    "mid_fast_s": 38.491817014284514,
+    "mid_m": 161.66563145999496,
+    "mid_s": 80.83281572999748,
+    "path": null
+   },
+   "home>wreck": {
+    "hi": 90,
+    "high_fast_s": 19.109042954519982,
+    "high_m": 80.25798040898393,
+    "high_s": 40.12899020449196,
+    "lo": 15,
+    "low_fast_s": 18.831141937852713,
+    "low_m": 79.0907961389814,
+    "low_s": 39.5453980694907,
+    "mid_fast_s": 20.11658809035473,
+    "mid_m": 84.48966997948986,
+    "mid_s": 42.24483498974493,
+    "path": null
+   },
+   "woods>hoard": {
+    "hi": 170,
+    "high_fast_s": 32.327878009523005,
+    "high_m": 135.77708763999664,
+    "high_s": 67.88854381999832,
+    "lo": 40,
+    "low_fast_s": 82.48979216855996,
+    "low_m": 346.45712710795186,
+    "low_s": 173.22856355397593,
+    "mid_fast_s": 34.23263991428491,
+    "mid_m": 143.77708763999664,
+    "mid_s": 71.88854381999832,
+    "path": null
+   }
+  },
+  "wildlife": {
+   "birds": 759,
+   "kelp": 0.58,
+   "n_seal_sites": 12,
+   "peak_seals_table": 625,
+   "seal_island_capacity": 343
+  },
+  "woods_sill": {
+   "days": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    36,
+    37,
+    38,
+    39,
+    40
+   ],
+   "length_m": 89.31370849898477,
+   "tstar": -0.884713077545166,
+   "windows_40d": 19
+  }
+ },
+ "ok": true,
+ "roles": {
+  "hoard": {
+   "at": [
+    -121.3193397871662,
+    -7.944420890223778
+   ],
+   "flip": false,
+   "k": 3,
+   "key": "B174.4",
+   "prov": "B"
+  },
+  "home": {
+   "at": [
+    34.0,
+    -26.0
+   ],
+   "flip": false,
+   "k": 0,
+   "key": "B9001.1",
+   "prov": "B"
+  },
+  "rock": {
+   "at": [
+    140.23796390359672,
+    67.03156702944779
+   ],
+   "flip": false,
+   "k": 3,
+   "key": "C54.10",
+   "prov": "C"
+  },
+  "seals": {
+   "at": [
+    -4.627340936318831,
+    -127.77086767682809
+   ],
+   "flip": true,
+   "k": 0,
+   "key": "A175.4",
+   "prov": "A"
+  },
+  "woods": {
+   "at": [
+    7.102587696765607,
+    102.15753762662227
+   ],
+   "flip": false,
+   "k": 1,
+   "key": "B8.2",
+   "prov": "B"
+  },
+  "wreck": {
+   "at": [
+    -102.87982950432834,
+    87.61767983347924
+   ],
+   "flip": true,
+   "k": 0,
+   "key": "C131.8",
+   "prov": "C"
+  }
+ },
+ "seed": 29
+}
