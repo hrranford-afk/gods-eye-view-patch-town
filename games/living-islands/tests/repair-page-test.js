@@ -20,7 +20,7 @@ async function open(qs, size = [480, 320]) {
   page.on('pageerror', e => errs.push('pageerror: ' + e.message));
   await page.goto('file://' + ROOT + '/islands_look.html' + (qs || ''));
   await page.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 });
-  if (/repair=/.test(qs)) await page.waitForFunction(() => __li.repair && (__li.repair.ready() || __li.repair.failed()), null, { timeout: 120000 });
+  if (/repair=[^0]/.test(qs)) await page.waitForFunction(() => __li.repair && (__li.repair.ready() || __li.repair.failed()), null, { timeout: 120000 });
   await page.waitForTimeout(1000);
   return { page, errs: () => errs.filter(e => !noise(e)) };
 }
@@ -111,7 +111,7 @@ if (want('hand')) {
   const d2 = await drag(page, rest[0].id, far);
   const s2 = await st(page); ok(s2.c.fitted === 1 && s2.b.find(b => b.id === rest[0].id).state === 'dyn', 'a plank dropped on the sand away from the slots does not hold (' + s2.c.fitted + ' of ' + s2.c.total + ')');
   /* c) turned a quarter turn over its slot: wrong angle, does not hold */
-  const d3 = await drag(page, rest[0].id, 'deck2', { turn: true });
+  const d3 = await drag(page, rest[0].id, 'deck1', { turn: true });
   const s3 = await st(page); ok(s3.c.fitted === 1 && /Wrong way round/.test(d3.msg), 'a plank turned a quarter turn over a slot does not hold: "' + d3.msg + '"');
   /* d) tap to pick, tap the slot */
   const pid = rest[0].id; const p1 = await page.evaluate(id => __li.repair.screen(id), pid);
@@ -119,8 +119,9 @@ if (want('hand')) {
   const p1b = await page.evaluate(id => __li.repair.screen(id), pid);
   await page.mouse.click(p1b[0], p1b[1]); await page.waitForTimeout(200);
   const sel = await page.evaluate(() => __li.repair.sel()); ok(sel === pid, 'a tap picks the plank (selected, glowing)');
-  const t2 = await page.evaluate(() => __li.repair.screenSock('deck2')); await page.mouse.click(t2[0], t2[1]); await page.evaluate(() => __li.repair.step(120)); await page.waitForTimeout(300);
-  const s4 = await st(page); ok(s4.c.fitted === 2 && s4.s.find(s => s.id === 'deck2').filled, 'tap the plank, then tap its slot: fitted (' + s4.c.fitted + ' of ' + s4.c.total + ')');
+  await page.evaluate(() => __li.repair.tapMs(60000));   /* software GL takes seconds per event; a real tap is under 1.5 s */
+  const t2 = await page.evaluate(() => __li.repair.screenSock('deck1')); await page.mouse.click(t2[0], t2[1]); await page.evaluate(() => __li.repair.step(120)); await page.waitForTimeout(300);
+  const s4 = await st(page); ok(s4.c.fitted === 2 && s4.s.find(s => s.id === 'deck1').filled, 'tap the plank, then tap its slot: fitted (' + s4.c.fitted + ' of ' + s4.c.total + ')');
   /* e) the wrong kind: a plank sent to the post socket does not hold */
   const o = (await st(page)).b.filter(b => b.kind === 'plank' && b.state === 'dyn' && !b.lost)[0];
   const r5 = await page.evaluate(id => { const a = __li.repair.place(id, 'post'); return { ok: a.ok, reason: a.reason }; }, o.id); ok(!r5.ok && r5.reason === 'kind', 'a plank offered to the post socket is refused (wrong kind)');
