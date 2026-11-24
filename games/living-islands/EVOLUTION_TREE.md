@@ -266,3 +266,15 @@ So the order changes:
 3. Reading the ground: slope, aspect, viewshed, defilade (dead ground), cover and concealment, drainage and water table (links to the hydrology note).
 4. Play: a quiet builder mode first (dig a base, explore, repair old works), skirmish later. Tone rails unchanged.
 5. The star fort kit stays as built, parked until it is wanted as a found ruin.
+
+## The Gift: a possible v1 premise (owner idea, 24 Nov)
+
+Harry: 'The Gift'. You are left one million pounds (in-game money) and a small group of islands, and it is up to you what you do: a holiday island, conservation, a business, fortifications, or something else. A sandbox with a vision the player chooses.
+
+CAIRN's reading, for correction:
+- It fits what exists: map making, geography, weather, boats, wildlife and the sanctuary loop, food choices, the kit and repair parts, digging in.
+- Shape: one shared core (the islands, a money ledger, a build tool, visitors counted as numbers and never tracked, weather, wildlife that reacts to what you do) plus several 'visions' that are different sets of buildings, goals and scoring: Holiday Island (guests, ratings, income), Conservation (wildlife counts, grants, wardens, hides), Homestead and Fishing (food, trade, tender ship), Fortress and Skirmish (digging in, later).
+- Nothing is forced: a year-end report card scores the same run through several lenses (profit, wildlife, happiness, resilience) so a player can aim at any of them.
+- The first vertical slice is two visions on one island group: Holiday Island and Conservation, because they share the most (boats, jetty, cottages and chalets built from the kit, wildlife and rubbish, weather, guests as counts).
+- All money is in-game. People are counted, never tracked.
+- Open: tycoon numbers or cosy and calm? Are there locals or only you? Is fortification a vision or a later mode? Name and trademark check on 'The Gift' before any public use.
