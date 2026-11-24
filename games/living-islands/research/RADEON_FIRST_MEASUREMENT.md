@@ -27,3 +27,20 @@ Source: the owner pasted the ultra bench panel report from Chrome on the Radeon 
 - Same benchmark full-screen on the 1080p desk TV.
 - Same on the 4K lounge TV with the TV 4K profile.
 - The aftermath debris sweep when it lands.
+
+## Second report: iPad running the radeon preset (24 Nov, owner paste)
+Not a Radeon number. Preset device=radeon (tier ultra) opened on an iPad.
+
+| Item | Value |
+|---|---|
+| GPU line | Apple GPU (integrated) |
+| Screen | 834x1062 css px, dpr 2.00, real pixels 1668x2124 |
+| Render target | 1043x1328 (scale 0.625, dynamic range 0.60 to 1.00), msaa 4, shadow 2048 |
+| Triangles, draw calls | 338,014 / 305 |
+| Frames | 286 in 10 s, 28.6 fps average |
+| Frame ms | 35.02 average, 41.00 p95, 48.0 worst |
+| GPU time | 1.35 ms (sampled finish: untrustworthy, the iPad has no timer query) |
+| Verdict | too heavy: lower the scale |
+| Page notes | built-in chip: scale limited to 1.25; 4 samples |
+
+Reading: the page protected itself by dropping scale to 0.625, but the radeon preset is far too heavy for a tablet. Fix to do: when device=radeon or desktop is chosen on a built-in or mobile GPU, step down to the ipad preset and say so on screen. Wanted next: the same bench with device=ipad (link in the play page) for the real iPad number.
