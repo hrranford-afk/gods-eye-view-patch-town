@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU sim: ocean waves (WebGL2 shallow water)</title>
+<style>
+:root{--ink:#e8eef2;--bg:#0c1a22}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.35 -apple-system,Segoe UI,Roboto,sans-serif}
+#wrap{display:flex;gap:16px;flex-wrap:wrap;padding:16px;align-items:flex-start}
+canvas{width:min(768px,calc(100vw - 32px));height:auto;aspect-ratio:1;border-radius:10px;background:#000;display:block}
+#hud{min-width:240px;max-width:360px}
+#hud b{display:block;margin-bottom:6px;font-size:16px}
+pre{white-space:pre-wrap;margin:8px 0;font-size:12px;opacity:.9}
+a{color:#8cc8ff}
+</style></head><body>
+<div id="wrap"><canvas id="c" width="768" height="768"></canvas>
+<div id="hud"><b>Ocean: GPU shallow water (prototype)</b>
+Virtual-pipes shallow-water model on float textures. A moving rain cell and a boat wake (a moving dipole) disturb a 256 m square of sea, 2 m deep, with closed walls.
+<pre id="st">starting</pre>
+<div>Add <code>?n=1024</code> for the 1024 grid. <code>?auto=0</code> stops the animation (tests drive it). This is a feel simulation, not gameplay state.</div></div></div>
+<script src="pipe_sim.js"></script>
+<script>
+(function(){
+'use strict';
+const Q = new URLSearchParams(location.search);
+const N = parseInt(Q.get('n') || '256', 10), AUTO = Q.get('auto') !== '0';
+const DOMAIN = 256, DX = DOMAIN / N, DT = 1 / 60, G = 9.81, DAMP = 0.9995, D0 = 2.0;
+const canvas = document.getElementById('c'); const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+if (!gl) { document.getElementById('st').textContent = 'WebGL2 not available'; return; }
+/* sources are pure functions of the step number */
+const RAIN_SIGMA_M = 10, RAIN_RATE = 0.05, BOAT_SIGMA_M = 3, BOAT_AMP = 0.3, RAIN_STEPS = 1500;
+function sources(step) {
+  const u = (step % 1500) / 1500;                              /* the rain cell crosses the sea from the west to the east */
+  const rain = step < RAIN_STEPS ? [(0.12 + 0.76 * u) * N, (0.35 + 0.1 * Math.sin(u * 6.2831853)) * N, RAIN_SIGMA_M / DX, RAIN_RATE] : [0, 0, 1, 0];
+  const a = step * 0.01;                                       /* the boat circles at radius 40 m */
+  const bx = 0.5 * N + (40 / DX) * Math.cos(a), by = 0.5 * N + (40 / DX) * Math.sin(a);
+  const boat = [bx, by, BOAT_SIGMA_M / DX, BOAT_AMP], boatDir = [-Math.sin(a), Math.cos(a)];   /* direction of travel */
+  return { rain, boat, boatDir, rainAll: 0 };
+}
+const bed = new Float32Array(N * N), d0 = new Float32Array(N * N).fill(D0);
+const sim = PipeSim.createSim({ gl, n: N, dx: DX, dt: DT, g: G, damp: DAMP, bed, depth0: d0, sources });
+/* exact (float64) volume bookkeeping: what the sources have put in, from the same gaussians, over a +-6 sigma window */
+let srcVolume = 0, srcSteps = 0;
+function gaussSum(cx, cy, sg) { const r = Math.ceil(6 * sg); let s = 0; const i0 = Math.max(0, Math.floor(cx - r)), i1 = Math.min(N - 1, Math.ceil(cx + r)), j0 = Math.max(0, Math.floor(cy - r)), j1 = Math.min(N - 1, Math.ceil(cy + r));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = i + 0.5 - cx, dy = j + 0.5 - cy; s += Math.exp(-(dx * dx + dy * dy) / (2 * sg * sg)); } return s; }
+function trackStep(step) { const s = sources(step); let m3 = 0; if (s.rain[3] !== 0) m3 += s.rain[3] * gaussSum(s.rain[0], s.rain[1], s.rain[2]);
+  if (s.boat[3] !== 0) { const sg = s.boat[2], dx = s.boatDir[0] * 1.5 * sg, dy = s.boatDir[1] * 1.5 * sg; m3 += s.boat[3] * (gaussSum(s.boat[0] + dx, s.boat[1] + dy, sg) - gaussSum(s.boat[0] - dx, s.boat[1] - dy, sg)); }
+  srcVolume += m3 * DT * DX * DX; }
+/* display: normals of the surface (exaggerated), sky reflection, sun glint */
+const VS = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position = vec4(p*2.0-1.0,0.0,1.0); }`;
+const FS = `#version 300 es
+precision highp float; uniform sampler2D uD; uniform int uN; uniform float uD0, uDx, uExag; uniform vec4 uMark; uniform float uPx; out vec4 o;
+float eta(ivec2 p){ p = clamp(p, ivec2(0), ivec2(uN-1)); return texelFetch(uD, p, 0).r - uD0; }
+void main(){ vec2 uv = gl_FragCoord.xy / uPx; ivec2 p = ivec2(uv * float(uN));
+  float e = eta(p); float ex = (eta(p+ivec2(1,0)) - eta(p-ivec2(1,0))) / (2.0*uDx), ey = (eta(p+ivec2(0,1)) - eta(p-ivec2(0,1))) / (2.0*uDx);
+  vec3 n = normalize(vec3(-ex*uExag, 1.0, -ey*uExag)); vec3 v = normalize(vec3(0.0,1.0,0.6)); vec3 L = normalize(vec3(-0.4,0.8,0.35));
+  float fr = pow(1.0 - max(dot(n, v), 0.0), 4.0); vec3 sky = mix(vec3(0.45,0.58,0.68), vec3(0.8,0.86,0.9), fr);
+  vec3 deep = vec3(0.02,0.09,0.14); vec3 col = mix(deep, sky, 0.12 + 0.88*fr);
+  float sp = pow(max(dot(reflect(-L, n), v), 0.0), 120.0); col += vec3(1.0,0.92,0.75) * sp;
+  col += vec3(0.05,0.07,0.06) * clamp(e*6.0, -1.0, 1.0);
+  vec2 q = uv*float(uN); if (abs(length(q-uMark.xy)-uMark.z) < 1.2) col = mix(col, vec3(0.9,0.95,1.0), 0.35);
+  o = vec4(pow(col, vec3(1.0/2.2)), 1.0); }`;
+function prog(){ const p = gl.createProgram(); [[gl.VERTEX_SHADER, VS],[gl.FRAGMENT_SHADER, FS]].forEach(([t,s])=>{const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(h));gl.attachShader(p,h);}); gl.linkProgram(p); return p; }
+const dp = prog(), U = n => gl.getUniformLocation(dp, n);
+function render() { const s = sources(sim.steps); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); gl.useProgram(dp);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sim.depthTex()); gl.uniform1i(U('uD'), 0); gl.uniform1i(U('uN'), N); gl.uniform1f(U('uD0'), D0); gl.uniform1f(U('uDx'), DX); gl.uniform1f(U('uExag'), 90.0); gl.uniform1f(U('uPx'), canvas.width);
+  gl.uniform4f(U('uMark'), s.rain[0], s.rain[1], s.rain[3] ? 3 * s.rain[2] : 0, 0); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+function dbg() { const e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'unknown'; }
+const API = window.GPUSIM = {
+  kind: 'ocean', ready: true, n: N,
+  config() { return { kind: 'ocean', n: N, dx: DX, dt: DT, g: G, damp: DAMP, d0: D0, domain: DOMAIN, rainSigmaM: RAIN_SIGMA_M, rainRate: RAIN_RATE, rainSteps: RAIN_STEPS, boatSigmaM: BOAT_SIGMA_M, boatAmp: BOAT_AMP, boatRadiusM: 40, boatOmega: 0.01 }; },
+  step(k, opts) { const track = !opts || opts.track !== false; if (track) for (let i = 0; i < k; i++) trackStep(sim.steps + i); const r = sim.step(k); srcSteps += k; return r; },
+  setTrack() {},
+  readDepth() { const s = sim.readState(), o = new Float32Array(N * N); for (let i = 0; i < N * N; i++) o[i] = s[4 * i]; return o; },
+  readFlux() { return sim.readFlux(); },
+  stats() { const st = PipeSim.summarise(sim.readState(), N); const t = sim.timing(); return { kind: 'ocean', n: N, steps: sim.steps, volumeM3: st.sumDepth * DX * DX, expectedVolumeM3: N * N * D0 * DX * DX + srcVolume, sourceVolumeM3: srcVolume, maxDepth: st.maxDepth, nan: st.nan, wetCells: st.wetCells, lastStepMs: t.lastStepMs, meanStepMs: t.meanStepMs, renderer: dbg() }; },
+  reset() { sim.reset(); srcVolume = 0; srcSteps = 0; render(); },
+  render
+};
+render();
+const st = document.getElementById('st');
+function hud() { const s = API.stats(); st.textContent = 'grid ' + N + 'x' + N + '  cell ' + DX.toFixed(3) + ' m\nsteps ' + s.steps + '\nvolume ' + s.volumeM3.toFixed(1) + ' m3 (expected ' + s.expectedVolumeM3.toFixed(1) + ')\nmax depth ' + s.maxDepth.toFixed(3) + ' m\nNaN cells ' + s.nan + '\nstep ' + s.meanStepMs.toFixed(2) + ' ms (' + s.renderer + ')'; }
+hud();
+if (AUTO) { const spf = N >= 1024 ? 1 : 3; (function loop(){ API.step(spf); render(); if (sim.steps % 30 < spf) hud(); requestAnimationFrame(loop); })(); }
+})();
+</script></body></html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU sim: river and flood on a real world heightfield</title>
+<style>
+:root{--ink:#eef0e8;--bg:#14170f}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.35 -apple-system,Segoe UI,Roboto,sans-serif}
+#wrap{display:flex;gap:16px;flex-wrap:wrap;padding:16px;align-items:flex-start}
+canvas{width:min(768px,calc(100vw - 32px));height:auto;aspect-ratio:1;border-radius:10px;background:#000;display:block}
+#hud{min-width:240px;max-width:360px}#hud b{display:block;margin-bottom:6px;font-size:16px}
+pre{white-space:pre-wrap;margin:8px 0;font-size:12px;opacity:.9}
+</style></head><body>
+<div id="wrap"><canvas id="c" width="768" height="768"></canvas>
+<div id="hud"><b>River and flood: GPU shallow water (prototype)</b>
+The exported world heightfield (seed in <code>?seed=153</code>, grid in <code>?n=256</code>) with the sea at rest. A rain pulse falls on the highest ground for 900 steps. Water runs downhill, gathers in valleys and reaches the sea. Blue is water; brighter means deeper on land; light streaks are fast flow.
+<pre id="st">starting</pre>
+<div><code>?auto=0</code> stops the animation (tests drive it). Feel simulation only.</div></div></div>
+<script src="pipe_sim.js"></script>
+<script>
+const Q0 = new URLSearchParams(location.search), SEED = parseInt(Q0.get('seed') || '153', 10);
+document.write('<scr' + 'ipt src="../landform/worlds/seed' + String(SEED).padStart(4, '0') + '/world.js"></scr' + 'ipt>');
+</script>
+<script>
+(function(){
+'use strict';
+const Q = new URLSearchParams(location.search);
+const N = parseInt(Q.get('n') || '256', 10), AUTO = Q.get('auto') !== '0', SEED = parseInt(Q.get('seed') || '153', 10);
+const canvas = document.getElementById('c'); const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+const st = document.getElementById('st');
+if (!gl) { st.textContent = 'WebGL2 not available'; return; }
+const man = window.LI_WORLDS && window.LI_WORLDS[SEED]; if (!man) { st.textContent = 'world ' + SEED + ' not found'; return; }
+/* decode world.js: base64 of world.bin, int16 height / height_scale metres, row 0 = north */
+const bin = Uint8Array.from(atob(man.b64), c => c.charCodeAt(0)); const nx = man.nx;
+const hI = new Int16Array(bin.buffer, man.arrays.height.offset, nx * nx);
+const h64 = new Float64Array(nx * nx); for (let k = 0; k < nx * nx; k++) h64[k] = hI[k] / man.height_scale;
+const SEA_FLOOR_CAP = -8.0, DT = 0.04, G = 9.81, DAMP = 0.995, DX = man.window_m / (N - 1);
+const RAIN_SIGMA_M = 60, RAIN_RATE = 0.012, RAIN_STEPS = 900;
+/* bilinear, corner aligned (same as flood_cpu.py) */
+const bed = new Float32Array(N * N), d0 = new Float32Array(N * N);
+{ const i0 = new Int32Array(N), t = new Float64Array(N); for (let i = 0; i < N; i++) { const u = i * (nx - 1) / (N - 1); i0[i] = Math.min(Math.floor(u), nx - 2); t[i] = u - i0[i]; }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = h64[i0[j] * nx + i0[i]], b = h64[i0[j] * nx + i0[i] + 1], c = h64[(i0[j] + 1) * nx + i0[i]], d = h64[(i0[j] + 1) * nx + i0[i] + 1];
+    const top = a * (1 - t[i]) + b * t[i], bot = c * (1 - t[i]) + d * t[i]; const v = Math.max(top * (1 - t[j]) + bot * t[j], SEA_FLOOR_CAP); bed[j * N + i] = v; d0[j * N + i] = Math.max(0, -Math.fround(v)); } }
+let hi = 0; for (let k = 1; k < N * N; k++) if (bed[k] > bed[hi]) hi = k;     /* first highest cell, row-major */
+const RCX = (hi % N) + 0.5, RCY = Math.floor(hi / N) + 0.5;
+const sources = step => ({ rain: step < RAIN_STEPS ? [RCX, RCY, RAIN_SIGMA_M / DX, RAIN_RATE] : [0, 0, 1, 0], rainAll: 0 });
+const sim = PipeSim.createSim({ gl, n: N, dx: DX, dt: DT, g: G, damp: DAMP, bed, depth0: d0, sources });
+let srcVolume = 0, initVol = 0; for (let k = 0; k < N * N; k++) initVol += d0[k]; initVol *= DX * DX;
+function gaussSum(cx, cy, sg) { const r = Math.ceil(6 * sg); let s = 0; const i0 = Math.max(0, Math.floor(cx - r)), i1 = Math.min(N - 1, Math.ceil(cx + r)), j0 = Math.max(0, Math.floor(cy - r)), j1 = Math.min(N - 1, Math.ceil(cy + r));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const a = i + 0.5 - cx, b = j + 0.5 - cy; s += Math.exp(-(a * a + b * b) / (2 * sg * sg)); } return s; }
+let gsCache = null;
+function trackStep(step) { const s = sources(step); if (s.rain[3] === 0) return; if (!gsCache) gsCache = gaussSum(s.rain[0], s.rain[1], s.rain[2]); srcVolume += s.rain[3] * gsCache * DT * DX * DX; }
+const VS = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position = vec4(p*2.0-1.0,0.0,1.0); }`;
+const FS = `#version 300 es
+precision highp float; uniform sampler2D uD, uF; uniform int uN; uniform float uDx, uPx; out vec4 o;
+vec2 hb(ivec2 p){ p = clamp(p, ivec2(0), ivec2(uN-1)); vec4 c = texelFetch(uD, p, 0); return vec2(c.g, c.r); }
+void main(){ vec2 uv = gl_FragCoord.xy / uPx; ivec2 p = ivec2(uv * float(uN));
+  vec2 c = hb(p); float b = c.x, d = c.y;
+  float ex = (hb(p+ivec2(1,0)).x - hb(p-ivec2(1,0)).x)/(2.0*uDx), ey = (hb(p+ivec2(0,1)).x - hb(p-ivec2(0,1)).x)/(2.0*uDx);
+  vec3 n = normalize(vec3(-ex*1.5, 1.0, -ey*1.5)); float sh = clamp(dot(n, normalize(vec3(-0.5,0.8,0.4))), 0.0, 1.0);
+  vec3 land = mix(vec3(0.36,0.42,0.25), vec3(0.62,0.58,0.46), clamp(b/18.0, 0.0, 1.0)); vec3 sea = mix(vec3(0.55,0.5,0.38), vec3(0.18,0.24,0.22), clamp(-b/8.0, 0.0, 1.0));
+  vec3 col = (b > 0.0 ? land : sea) * (0.45 + 0.7*sh);
+  vec4 f = texelFetch(uF, clamp(p, ivec2(0), ivec2(uN-1)), 0); float vx = (f.y - f.x), vy = (f.w - f.z); float sp = length(vec2(vx, vy)) / (uDx * max(d, 0.02));
+  if (d > 0.004) { float depthShade = b > 0.0 ? clamp(d/0.35, 0.0, 1.0) : clamp(d/8.0, 0.0, 1.0);
+    vec3 w = b > 0.0 ? mix(vec3(0.45,0.75,0.95), vec3(0.04,0.22,0.7), depthShade) : mix(vec3(0.2,0.45,0.6), vec3(0.03,0.12,0.25), depthShade);
+    col = mix(col, w, b > 0.0 ? 0.88 : 0.82); col += vec3(0.5,0.55,0.55) * clamp(sp*0.6, 0.0, 0.6) * (b > 0.0 ? 1.0 : 0.3); }
+  o = vec4(pow(col, vec3(1.0/2.2)), 1.0); }`;
+const dp = gl.createProgram(); [[gl.VERTEX_SHADER, VS],[gl.FRAGMENT_SHADER, FS]].forEach(([t,s])=>{const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(h));gl.attachShader(dp,h);}); gl.linkProgram(dp);
+const U = n => gl.getUniformLocation(dp, n);
+function render() { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); gl.useProgram(dp);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sim.depthTex()); gl.uniform1i(U('uD'), 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, sim.fluxTex()); gl.uniform1i(U('uF'), 1);
+  gl.uniform1i(U('uN'), N); gl.uniform1f(U('uDx'), DX); gl.uniform1f(U('uPx'), canvas.width); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+function dbg() { const e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'unknown'; }
+const API = window.GPUSIM = {
+  kind: 'flood', ready: true, n: N,
+  config() { return { kind: 'flood', seed: SEED, n: N, dx: DX, dt: DT, g: G, damp: DAMP, rainSigmaM: RAIN_SIGMA_M, rainRate: RAIN_RATE, rainSteps: RAIN_STEPS, rainCx: RCX, rainCy: RCY, seaFloorCap: SEA_FLOOR_CAP }; },
+  step(k, opts) { if (!opts || opts.track !== false) for (let i = 0; i < k; i++) trackStep(sim.steps + i); return sim.step(k); },
+  readDepth() { const s = sim.readState(), o = new Float32Array(N * N); for (let i = 0; i < N * N; i++) o[i] = s[4 * i]; return o; },
+  readBed() { return bed.slice(); },
+  readFlux() { return sim.readFlux(); },
+  stats() { const s = sim.readState(); const r = PipeSim.summarise(s, N); let landMax = 0; for (let k = 0; k < N * N; k++) if (bed[k] > 0 && s[4 * k] > landMax) landMax = s[4 * k]; const t = sim.timing();
+    return { kind: 'flood', n: N, steps: sim.steps, volumeM3: r.sumDepth * DX * DX, expectedVolumeM3: initVol + srcVolume, sourceVolumeM3: srcVolume, maxDepth: r.maxDepth, landMaxDepth: landMax, nan: r.nan, wetCells: r.wetCells, lastStepMs: t.lastStepMs, meanStepMs: t.meanStepMs, renderer: dbg() }; },
+  reset() { sim.reset(); srcVolume = 0; render(); },
+  render
+};
+render();
+function hud() { const s = API.stats(); st.textContent = 'world ' + SEED + '  grid ' + N + 'x' + N + '  cell ' + DX.toFixed(3) + ' m\nsteps ' + s.steps + '\nvolume ' + s.volumeM3.toFixed(0) + ' m3 (expected ' + s.expectedVolumeM3.toFixed(0) + ')\nmax water on land ' + s.landMaxDepth.toFixed(3) + ' m\nNaN cells ' + s.nan + '\nstep ' + s.meanStepMs.toFixed(2) + ' ms (' + s.renderer + ')'; }
+hud();
+if (AUTO) (function loop(){ API.step(2); render(); if (sim.steps % 20 < 2) hud(); requestAnimationFrame(loop); })();
+})();
+</script></body></html>

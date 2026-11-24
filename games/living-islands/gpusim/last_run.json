@@ -1,0 +1,140 @@
+{
+ "when": "run by test_gpusim.js",
+ "quick": false,
+ "results": [
+  {
+   "name": "ocean renderer reported",
+   "ok": true,
+   "detail": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  {
+   "name": "ocean GPU vs numpy after 300 steps (tolerances in cpu_compare.py)",
+   "ok": true,
+   "detail": "ocean n=256 steps=300: max abs err 3.815e-06 m, mean abs err 8.117e-08 m, field range 1.9742..2.1034, tolerance max 1e-03 mean 1e-05"
+  },
+  {
+   "name": "ocean volume conserved (|V - (V0 + sources)| / V < 1e-4)",
+   "ok": true,
+   "detail": "V=131229.05 expected=131229.07 rel=1.14e-7"
+  },
+  {
+   "name": "ocean deterministic on this machine (two fresh runs byte-identical)",
+   "ok": true
+  },
+  {
+   "name": "ocean no NaN or Inf over 2000 steps",
+   "ok": true,
+   "detail": "max depth 2.091"
+  },
+  {
+   "name": "ocean volume still conserved at 2000 steps (worst rel over checks < 1e-4)",
+   "ok": true,
+   "detail": "worst=4.94e-7"
+  },
+  {
+   "name": "ocean step cost recorded (software GL)",
+   "ok": true,
+   "detail": "7.31 ms per step, n=256, ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver), wall 12.6 s for the stability run"
+  },
+  {
+   "name": "ocean page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "flood renderer reported",
+   "ok": true,
+   "detail": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  {
+   "name": "flood GPU vs numpy after 300 steps (tolerances in cpu_compare.py)",
+   "ok": true,
+   "detail": "flood n=256 steps=300: max abs err 9.537e-06 m, mean abs err 1.109e-06 m, field range 0.0000..8.2157, tolerance max 2e-03 mean 2e-05"
+  },
+  {
+   "name": "flood volume conserved (|V - (V0 + sources)| / V < 1e-4)",
+   "ok": true,
+   "detail": "V=375239.25 expected=375239.24 rel=7.71e-10"
+  },
+  {
+   "name": "flood deterministic on this machine (two fresh runs byte-identical)",
+   "ok": true
+  },
+  {
+   "name": "flood no NaN or Inf over 2000 steps",
+   "ok": true,
+   "detail": "max depth 8.158"
+  },
+  {
+   "name": "flood volume still conserved at 2000 steps (worst rel over checks < 1e-4)",
+   "ok": true,
+   "detail": "worst=8.53e-9"
+  },
+  {
+   "name": "flood step cost recorded (software GL)",
+   "ok": true,
+   "detail": "8.80 ms per step, n=256, ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver), wall 15.1 s for the stability run"
+  },
+  {
+   "name": "flood page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "ocean renderer reported",
+   "ok": true,
+   "detail": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  {
+   "name": "ocean GPU vs numpy after 60 steps (tolerances in cpu_compare.py)",
+   "ok": true,
+   "detail": "ocean n=1024 steps=60: max abs err 1.669e-06 m, mean abs err 9.122e-09 m, field range 1.9597..2.0790, tolerance max 1e-03 mean 1e-05"
+  },
+  {
+   "name": "ocean volume conserved (|V - (V0 + sources)| / V < 1e-4)",
+   "ok": true,
+   "detail": "V=131103.40 expected=131103.40 rel=1.92e-8"
+  },
+  {
+   "name": "ocean deterministic on this machine (two fresh runs byte-identical)",
+   "ok": true
+  },
+  {
+   "name": "ocean no NaN or Inf over 2000 steps",
+   "ok": true,
+   "detail": "max depth 2.092"
+  },
+  {
+   "name": "ocean volume still conserved at 2000 steps (worst rel over checks < 1e-4)",
+   "ok": true,
+   "detail": "worst=5.06e-7"
+  },
+  {
+   "name": "ocean step cost recorded (software GL)",
+   "ok": true,
+   "detail": "117.19 ms per step, n=1024, ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver), wall 233.1 s for the stability run"
+  },
+  {
+   "name": "ocean page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "runs": [
+  {
+   "page": "ocean",
+   "n": 256,
+   "stepMs": 7.310700000001118
+  },
+  {
+   "page": "flood",
+   "n": 256,
+   "stepMs": 8.795999999998138
+  },
+  {
+   "page": "ocean",
+   "n": 1024,
+   "stepMs": 117.18659999999963
+  }
+ ]
+}
