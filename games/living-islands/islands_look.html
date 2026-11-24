@@ -52,6 +52,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script>if(/[?&]mood(s=1|=)/.test(location.search)){document.write('<script src="moods.js"><\/script>');if(!/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');if(!/[?&]weather=/.test(location.search)&&!/[?&]light=1/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
 <script>if(/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/index.js"><\/script><script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/world.js"><\/script><script src="world_view.js"><\/script>');}</script>
 <script>if(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/life.js"><\/script><script src="vendor/GLTFLoader.r128.js"><\/script><script src="assets/collector/collector_live_b64.js"><\/script><script src="animals.js"><\/script><script src="robots.js"><\/script>');}</script>
+<script>if(/[?&]start=camp/.test(location.search)){document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]campkit=fail/.test(location.search))document.write('<script src="assets/camp/kit_b64.js"><\/script>');document.write('<script src="camp_start.js"><\/script>');if(/[?&]world=\d/.test(location.search)&&!/[?&]life=1/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/life.js"><\/script>');}}</script>
 <script>
 (function(){
 'use strict';
@@ -80,6 +81,7 @@ const CKDOME=CKON&&Q.get('clockdome')!=='0';   /* ?clockdome=0 is the AR profile
 const LTON=Q.get('light')==='1'&&!!window.LightRange;   /* the lighthouse and fog layer (light_range.js, see LIGHTHOUSE_BUILD.md): one lighthouse, a rotating beam, a ring of sight, arrivals that see the light; absent = unchanged */
 const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
+const CPON=Q.get('start')==='camp'&&!!window.LI_CAMP;   /* the camp start (camp_start.js, see CAMP_START.md): day one of the shelter ladder, no village; kit pieces, the robot yard and robots with a day routine; absent = unchanged */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
   high:{cell:0.55,shadow:2048,pr:1.5,taps:22,msaa:4,hiWaves:1},
@@ -655,6 +657,57 @@ function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
   return out;}
 bkLoad();
 let RP_ADDBOAT=null;
+/* ============ the camp start (&start=camp, see CAMP_START.md) ============
+   Day one of the shelter ladder: no cottages, no village jetty, no moored harbour boats. The settler camp stays (tents, fire, flame, settlers). camp_start.js plans, by seed and on the page's own
+   height function, the robot yard, the kit pieces and the shore work sites; here the page clears what stands in the way, levels a small pad under each piece and then builds the pieces, the yard and the robots.
+   The village code is not deleted: it is skipped here, and LI_CAMP.shelterHook(rung) is where a rung-2 or rung-3 shelter will be drawn later. Off unless &start=camp. */
+const CP={on:CPON,plan:null,rt:null,hook:null,notes:[],clearedN:0,jetty:null,bots:null,err:null};
+function campTier(){return(Q.get('tier')==='ar'||(CKON&&!CKDOME))?'ar':quality==='low'?'low':'high';}
+function campPlace(){
+  if(!CPON)return;
+  /* the later step: the page can ask for a rung-2 or rung-3 shelter here; day one draws none */
+  CP.hook=LI_CAMP.shelterHook(1,{note:'day one'});
+  W.houses.length=0;W.jetty=null;W.boats=W.boats.filter(b=>b.sail||b.kind!=='moored');
+  if(!W.camp)return;
+  const f=W.camp.fire,rt=W.camp.rt,d=W.camp.dir;
+  const hard=[{x:f.x,z:f.z,r:4.2}];W.tents.forEach(t=>hard.push({x:t.x,z:t.z,r:3.9}));
+  {let sr=0;for(let r=0;r<20;r+=.25){if(H(f.x+rt[0]*-6.5+d[0]*r,f.z+rt[1]*-6.5+d[1]*r)<.1){sr=r;break;}}
+   hard.push({x:f.x+rt[0]*-6.5+d[0]*(sr-1.4),z:f.z+rt[1]*-6.5+d[1]*(sr-1.4),r:3.2});   /* the beached boat of the camp */
+   hard.push({x:f.x+rt[0]*-6.5+d[0]*(Math.max(0,sr-.6)),z:f.z+rt[1]*-6.5+d[1]*(Math.max(0,sr-.6)),r:2.2});}   /* the settler on the shore */
+  const clear=[];W.conifers.forEach(t=>clear.push({x:t.x,z:t.z,r:1.6}));W.broad.forEach(t=>clear.push({x:t.x,z:t.z,r:2.2}));W.shrubs.forEach(t=>clear.push({x:t.x,z:t.z,r:.8}));
+  W.rocks.forEach(r=>{if(!r.keep)clear.push({x:r.x,z:r.z,r:Math.max(r.sx,r.sz)*.9});});
+  const nb=parseInt(Q.get('bots')||'',10);
+  const env={seed:SEED,H:(x,z)=>H(x,z),tableR:TABLE_R,tier:'high',camp:{fire:f,dir:d},hard,clear,bots:nb>=1&&nb<=4?nb:undefined,noJetty:true};
+  const pl=LI_CAMP.plan(env);CP.notes=pl.notes.slice();
+  /* clear what stands inside a footprint: trees, shrubs, tufts, logs and loose rocks (the fire ring stays) */
+  const inside=(x,z,r)=>pl.clearAll.some(c=>c.corridor?(r<.8&&Math.hypot(c.x-x,c.z-z)<c.r+r*.5):Math.hypot(c.x-x,c.z-z)<c.r+r);let n0=0;
+  const keep=(arr,rad)=>{const k=arr.filter(o=>!inside(o.x,o.z,typeof rad==='function'?rad(o):rad));n0+=arr.length-k.length;return k;};
+  W.conifers=keep(W.conifers,.5);W.broad=keep(W.broad,.7);W.shrubs=keep(W.shrubs,.3);W.tufts=keep(W.tufts,.1);W.logs=keep(W.logs,.4);
+  W.rocks=W.rocks.filter(r=>{if(r.keep)return true;const kill=inside(r.x,r.z,Math.max(r.sx,r.sz)*.7);if(kill)n0++;return!kill;});
+  CP.clearedN=n0;
+  /* the repair layer finds its own shore for the wrecked jetty; the camp pieces are told to it as obstacles (W.crates) so both layers agree */
+  for(const p of pl.pieces){W.crates.push({x:p.cx,z:p.cz,camp:1});if(p.fr>3.5)for(let k=0;k<4;k++)W.crates.push({x:p.cx+Math.cos(k*1.571)*p.fr*.7,z:p.cz+Math.sin(k*1.571)*p.fr*.7,camp:1});}
+  const Y=pl.yard;for(const q of Y.pads)for(let k=0;k<3;k++)W.crates.push({x:q.x+Math.cos(k*2.094)*q.r*.5,z:q.z+Math.sin(k*2.094)*q.r*.5,camp:1});
+  if(!RPON&&(Q.get('tier')!=='ar')){const S=rpFindSite();if(S){pl.pieces.push({kind:'wrecked_jetty',x:S.ox,z:S.oz,yaw:S.psi,sc:1,cx:S.ox,cz:S.oz,fr:4.9,y:S.y0,padR:0,zone:'jetty',site:true});CP.jetty={x:S.ox,z:S.oz};}else pl.notes.push('wrecked_jetty: no shore found');}
+  /* a small level pad under each piece and a terrace under the yard */
+  for(const p of pl.pieces){if(p.site||!(p.padR>0))continue;PADS.push({x:p.cx,z:p.cz,r:p.padR,y:H(p.cx,p.cz)});}
+  for(const q of Y.pads)PADS.push({x:q.x,z:q.z,r:q.r,y:Y.y});
+  CP.plan=pl;
+}
+function campBuild(){
+  CP.rt=null;if(!CPON||!CP.plan||typeof LI_CAMP==='undefined')return;
+  const tier=campTier(),pl=LI_CAMP.forTier(CP.plan,tier);
+  /* the robots: this world's own (life.json) when it has them, else recipes by seed; one bay each */
+  const life=WORLD&&window.LI_LIFE?window.LI_LIFE[WID]:null;
+  const bots=LI_CAMP.pickBots(SEED,life,CP.plan.nBays).slice(0,pl.nBays);
+  CP.bots=bots;
+  const wxRain=()=>!!(WXR&&WXR.state&&WXR.state.rain>.3);
+  const night=()=>!!(CKON&&CK.c&&CK.c.sun&&CK.c.sun.elev<2.5);
+  try{CP.rt=LI_CAMP.create({THREE,scene,camera,H:(x,z)=>H(x,z),tide:()=>tide,plan:pl,tier,bots,PB,blob,lin,propsMat:propsMesh.material,
+    mode:{kit:/^(fail|bad)$/.test(Q.get('campkit')||'')?Q.get('campkit'):'',bots:/^(fail|simple|fallback)$/.test(Q.get('campbots')||'')?(Q.get('campbots')==='fail'?'simple':Q.get('campbots')):''},
+    night,rain:wxRain,hud:true,base:'',warm:Q.get('campwarm')!==null?parseFloat(Q.get('campwarm')):14});}
+  catch(e){CP.err=String(e&&e.stack||e);console.log('camp start failed: '+CP.err);}
+}
 /* ============ the repair pilot (&repair=1, see REPAIR_PILOT.md) ============
    The wrecked jetty (assets/kit, committed GLB, page twin assets/repair/jetty_b64.js) stands on a shore found by a scan of the page's own height function. Its frame is static; the deck planks that
    storms took, a post and spare planks lie loose, settled by repair_physics.js at the start (not hand-placed), and float and drift in the shallows. The player drags a part onto a glowing socket (or taps
@@ -1889,6 +1942,7 @@ function stateHash(skipSail){let h=2166136261>>>0;const mix=v=>{h^=(v|0)&0xff;h=
   for(let j=0;j<48;j++)for(let i=0;i<48;i++)mix(Math.round(H(-94+i*3.92,-94+j*3.92)*100));
   [W.rocks,W.conifers,W.broad,W.shrubs,W.houses,W.tents,W.logs].forEach((a,k)=>{mix(a.length+k*1000);a.forEach(o=>{mix(q(o.x));mix(q(o.z));});});
   W.boats.forEach(b=>{if(skipSail&&b.sail)return;mix(q(b.x));mix(q(b.z));});if(W.camp){mix(q(W.camp.fire.x));mix(q(W.camp.fire.z));}
+  if(CPON&&CP.rt)mix(parseInt(CP.rt.hash(),16)|0);
   if(LD.on){mix(LD.pebbles.length);LD.pebbles.forEach(p=>{mix(q(p.x));mix(q(p.z));});mix(q(LD.boat.x));mix(q(LD.boat.z));mix(q(LD.tent.x));mix(q(LD.tent.z));}
   return('00000000'+h.toString(16)).slice(-8);}
 function sceneTris(){let t=0;scene.traverse(o=>{if(o.isMesh&&o.visible&&o!==floorMesh){const g=o.geometry;t+=(g.index?g.index.count/3:g.attributes.position.count/3)*(o.isInstancedMesh?o.count:g.isInstancedBufferGeometry?g.instanceCount:1);}if(o.isPoints)t+=0;});return Math.round(t);}
@@ -1899,7 +1953,7 @@ function build(){const t0=performance.now();
   scene=new THREE.Scene();
   if(!U.uGrain.value)U.uGrain.value=makeGrain();
   ISL.forEach(I=>{});
-  if(!hgrid){PADS.length=0;for(const k in W)Array.isArray(W[k])?W[k].length=0:(W[k]=null);W.rocks=[];placeWorld();if(LAND)placeLanding();buildGrid();}
+  if(!hgrid){PADS.length=0;for(const k in W)Array.isArray(W[k])?W[k].length=0:(W[k]=null);W.rocks=[];placeWorld();if(LAND)placeLanding();if(CPON)campPlace();buildGrid();}
   scene.add(sun=new THREE.DirectionalLight(0xffffff,1));scene.add(sun.target);
   if(LAND){sun.color.setRGB(1.0,.95,.86);sun.intensity=2.0;}else{sun.color.setRGB(1.0,.64,.34);sun.intensity=2.9;}
   hemi=new THREE.HemisphereLight(0x000000,0x000000,1);if(LAND){hemi.color.setRGB(.36,.46,.62);hemi.groundColor.setRGB(.26,.23,.18);hemi.intensity=.85;}else{hemi.color.setRGB(.24,.32,.50);hemi.groundColor.setRGB(.22,.15,.09);hemi.intensity=1.1;}scene.add(hemi);
@@ -1907,8 +1961,8 @@ function build(){const t0=performance.now();
   buildTable();
   const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
-  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
-  LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0',boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
+  buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();campBuild();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
+  LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0'&&!CPON,boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
   if(WXR)WXR.attach(scene,sun,hemi);
   if(CKON)ckBuild();
   if(LTON)ltBuild();
@@ -1930,7 +1984,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
+  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(CP.rt)CP.rt.frame(clock.hold?0:dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   if(CKON)ckFrame(dt);
   if(LTON)ltFrame(dt);
   if(MDON)mdFrame(dt);
@@ -2714,6 +2768,7 @@ function init(){
     get life(){return LIFE_RT?LIFE_RT.api:null;},
     clock:CKON?ckApi():null,
     repair:RPON?rpApi():null,
+    campstart:CPON?{village:()=>({houses:W.houses.length,jetty:!!W.jetty,moored:W.boats.filter(b=>b.kind==='moored'&&!b.sail).length,houseCode:'kept, skipped under start=camp'}),rt:()=>CP.rt&&CP.rt.api,plan:()=>CP.plan,notes:()=>CP.notes,cleared:()=>CP.clearedN,hook:()=>CP.hook,jetty:()=>CP.jetty,bots:()=>CP.bots,err:()=>CP.err,hash:()=>CP.rt?CP.rt.hash():null,tier:campTier}:null,
     light:LTON?ltApi():null,
     moods:MDON?mdApi():null,
     scenePoints:()=>{let n=0;scene.traverse(o=>{if(o.isPoints)n++;});return n;},
