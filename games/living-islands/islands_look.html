@@ -53,6 +53,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <div id="info"></div>
 <div id="gpuInfo"></div>
 <div id="boot">Raising the islands...</div>
+<script src="gift_day.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
@@ -2980,6 +2981,7 @@ function init(){
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};
+  if(window.LI_GIFT&&LI_GIFT.on)LI_GIFT.init({THREE,scene,camera,renderer,cam,W,people:()=>people,seed:SEED,H:(x,z)=>H(x,z),tide:()=>tide,ui:()=>(window.__li.ultra&&window.__li.ultra.ui())||1,li:()=>window.__li,man:()=>WV&&WV.man,tableR:()=>TABLE_R});   /* the Gift first day (gift_day.js, GIFT_FIRST_DAY.md) */
 }
 setTimeout(init,40);
 })();
