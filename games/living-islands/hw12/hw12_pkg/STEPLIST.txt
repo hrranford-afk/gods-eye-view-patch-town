@@ -1,0 +1,18 @@
+python3 run_all.py --out {OUT} --step init
+python3 run_all.py --out {OUT} --step inventory
+python3 run_all.py --out {OUT} --step opencl_basic
+python3 run_all.py --out {OUT} --step opencl_transfer
+python3 run_all.py --out {OUT} --step opencl_sim
+python3 run_all.py --out {OUT} --step opencl_parallel
+python3 run_all.py --out {OUT} --step opencl_vram
+python3 run_all.py --out {OUT} --step disk_check
+python3 run_all.py --out {OUT} --step blender_tri_1M --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tri_5M --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tri_20M --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tex_4K_x4 --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tex_4K_x16 --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tex_8K_x4 --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_tex_8K_x16 --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_glass_volume --blender {BLENDER}
+python3 run_all.py --out {OUT} --step blender_growth --blender {BLENDER}
+python3 run_all.py --out {OUT} --step finalize
