@@ -101,15 +101,15 @@
    "data_sha": "74b1c3bca07047e9"
   },
   {
-   "seed": 1,
+   "seed": 4,
    "province": "D",
    "rock": "volcanic",
    "island_type": "volcanic coast",
    "label": "volcanic, volcanic coast, gentle landing on the flank of a cone",
-   "n_islands": 1,
+   "n_islands": 2,
    "start_extent_m": null,
    "bytes": 60552,
-   "data_sha": "3340291c6748c951"
+   "data_sha": "1f6beabaa16f4d3f"
   },
   {
    "seed": 2,
@@ -120,7 +120,7 @@
    "n_islands": 1,
    "start_extent_m": null,
    "bytes": 60552,
-   "data_sha": "114700962c8ae24b"
+   "data_sha": "543e2840bca329c5"
   },
   {
    "seed": 5,
@@ -131,7 +131,7 @@
    "n_islands": 2,
    "start_extent_m": null,
    "bytes": 60552,
-   "data_sha": "32a80bcea282aacb"
+   "data_sha": "24f021c0b367ccda"
   }
  ]
 }
