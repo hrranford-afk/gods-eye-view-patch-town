@@ -60,4 +60,15 @@ spawnSync('python3', ['-c', 'import glob,os,sys\nfrom PIL import Image\nfor f in
 const judge = d => { const r = spawnSync('python3', [path.join(ROOT, 'blender/variety_judge.py'), d, '--glob', 'w*.png', '--json', path.join(d, 'v.json')], { encoding: 'utf8' }); return JSON.parse(fs.readFileSync(path.join(d, 'v.json'), 'utf8')); };
 const vfull = judge(dir), vr = judge(crop);
 ok(vr.images === 12 && vr.mean_pairwise < 0.6, 'variety: mean pairwise similarity of the 12 renders (terrain crop) is ' + vr.mean_pairwise + ' (under 0.6), nearest-neighbour mean ' + vr.mean_nearest + '; full frame with the table ring ' + vfull.mean_pairwise);
+/* ---- 5 the worlds fix (WORLD_VIEW.md, 'The fix'): volcanic worlds have a visible relief range and a dark, desaturated basalt colour, not the old green ramp; gneiss worlds are not mauve.
+   The old ramp, measured the same way before the fix (world 5): mean luma 0.38, saturation 0.43, 1 percent dark samples, relief 2.5 m. Old gneiss (153, 62): mauve share 6.6 and 13.4 percent, 5 and 2 percent dark. */
+for (const seed of idx.filter(w => w.province === 'D').map(w => w.seed)) {
+  const { page, errs } = await open('?world=' + seed + '&ui=0&q=low'); const st = await page.evaluate(() => LI_WORLD.last.stats(64)); const lum = .2126 * st.mean[0] + .7152 * st.mean[1] + .0722 * st.mean[2];
+  ok(st.relief98 >= 25 && st.reliefMax >= 30, 'volcanic world ' + seed + ' has a visible relief range: 98th percentile ' + st.relief98.toFixed(1) + ' m, top ' + st.reliefMax.toFixed(1) + ' m of land (old windows: 2.5 m)');
+  ok(st.dark >= .5 && lum <= .30 && st.sat <= .32, 'volcanic world ' + seed + ' ground is dark and unsaturated, not the green ramp: ' + (st.dark * 100).toFixed(0) + ' percent dark samples, mean luma ' + lum.toFixed(2) + ', saturation ' + st.sat.toFixed(2) + ' (old ramp 1 percent, 0.38, 0.43)');
+  ok(errs.length === 0, 'volcanic world ' + seed + ': 0 console errors'); await page.close(); }
+for (const seed of [153, 147, 62]) {
+  const { page } = await open('?world=' + seed + '&ui=0&q=low'); const st = await page.evaluate(() => LI_WORLD.last.stats(64));
+  ok(st.mauveShare <= .03 && (st.hue < 255 || st.hue > 345), 'gneiss world ' + seed + ' is not mauve: mean hue ' + st.hue.toFixed(0) + ' deg, ' + (st.mauveShare * 100).toFixed(1) + ' percent of the ground in the mauve hues 255-345 (old 6.6 to 13.4 percent)');
+  ok(st.dark >= .08 && st.greenShare >= .05, 'gneiss world ' + seed + ' has dark banded rock and green turf: ' + (st.dark * 100).toFixed(0) + ' percent dark samples, ' + (st.greenShare * 100).toFixed(0) + ' percent green samples'); await page.close(); }
 await browser.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);

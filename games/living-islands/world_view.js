@@ -29,7 +29,7 @@ function create(seed, K) {
     expM = view('exposure', Uint8Array), wetM = view('wetness', Uint8Array), bedM = view('bed', Uint8Array);
   const hF = new Float32Array(nx * nx); for (let k = 0; k < nx * nx; k++) hF[k] = hI[k] / man.height_scale;
   const prov = man.province;
-  const fadeR0 = K.tableR - 16;
+  const fadeR0 = K.tableR - (prov === 'D' ? 44 : 16);       /* province D: tall ground (a cone flank) rolls down into the rim over 44 m, not a 16 m wall */
   const wx = [0, 0, 0, 0], wz = [0, 0, 0, 0];
   function hRaw(x, z) {
     const fx = (x + half) / dx, fz = (z + half) / dx; let i = Math.floor(fx), j = Math.floor(fz); cr(fx - i, wx); cr(fz - j, wz);
@@ -92,6 +92,55 @@ function create(seed, K) {
   setVeg();
   const sandC = [PL.sand, PL.sand2], blackSand = [lin([.12, .12, .13]), lin([.17, .16, .17])];
   const rockOf = k => RGB[rockM[k]] || RGB[0];
+  /* ----- province materials (task 'worlds fix', see WORLD_VIEW.md section 'The fix') ----- */
+  /* D, volcanic: black basalt, brown weathered basalt, red scoria, dark and pale ash, hardy olive scrub and grass only low down. sRGB, converted once. */
+  const VD = { black: lin([.095, .097, .108]), grey: lin([.25, .255, .265]), brown: lin([.265, .25, .235]), scoria: lin([.44, .22, .14]), ashD: lin([.21, .195, .18]), ashP: lin([.47, .45, .42]),
+    pumice: lin([.58, .54, .47]), scrub: lin([.16, .20, .085]), grass: lin([.265, .31, .13]), moss: lin([.25, .285, .17]), gorse: lin([.32, .30, .12]) };
+  /* A, gneiss: banded light and dark grey, rust-brown iron staining, lichen; heather brown-olive with maroon, green turf in hollows. */
+  const VA = { light: lin([.50, .50, .495]), dark: lin([.30, .295, .29]), mid: lin([.43, .425, .42]), rust: lin([.46, .27, .165]), tan: lin([.50, .42, .33]), lichenO: lin([.74, .52, .14]), lichenG: lin([.52, .60, .30]),
+    heath: lin([.32, .29, .17]), heathM: lin([.38, .24, .19]), turf: lin([.28, .43, .15]), turfL: lin([.42, .52, .20]) };
+  /* the ground colour of province D from altitude, slope, the class maps and noise; slope g is the gradient magnitude (tan), (gx, gz) the gradient */
+  function colourD(x, z, hh, g, gx, gz, n1, n2, n3) {
+    const k = cell(x, z), v = vegM[k], rk = rockM[k], wet = wetM[k] / 255;
+    /* rock id colour: 14 basalt_fresh, 15 weathered, 16 scoria, 17 ash soil, 18 lava flow, 19 black sand, 20 pumice */
+    let base = rk === 16 ? mix3(VD.scoria, VD.brown, .25 + .5 * n2) : rk === 17 ? mix3(VD.ashD, VD.ashP, .2 + .55 * n1) : rk === 18 || v === V.dlava ? mix3(VD.black, VD.grey, n2 * .5)
+      : rk === 15 ? mix3(VD.brown, VD.grey, .3 + .5 * n2) : rk === 20 ? mix3(VD.ashP, VD.pumice, .5 + .5 * n2) : mix3(VD.black, VD.grey, .15 + .6 * n2);
+    /* downslope streaks (gullies, rain rills): noise stretched along the fall line */
+    const gl = Math.hypot(gx, gz) + 1e-6, ux = gx / gl, uz = gz / gl, across = x * -uz + z * ux, along = x * ux + z * uz;
+    const streak = fbm(across * .75, along * .07, seed + 71, 3);
+    const rockA = sm((g - .5) / .5), scree = sm((g - .26) / .22) * (1 - rockA);
+    /* scree: pale grey-brown ash and cinder below the steeper faces, banded by the streaks */
+    let c = mix3(mix3(VD.ashD, VD.ashP, .15 + .5 * n1), base, .55);
+    c = mix3(c, mix3(mix3(VD.grey, VD.ashP, .35 + .5 * streak), VD.brown, .25 * n3), scree * .85);
+    /* steep faces: dark basalt with pale and dark streaks */
+    const face = mix3(mix3(VD.black, VD.grey, .15 + .75 * smoothstep01(streak)), mix3(VD.brown, VD.scoria, .5 * n3), .18 + .3 * n2);
+    c = mix3(c, face, rockA);
+    /* lava beds and ash falls: broad darker and paler sheets (about 20 m across) so a flank is not one colour */
+    const sheet = fbm(x * .045 + 3, z * .045, seed + 83, 3); c = mix3(c, mix3(VD.black, VD.grey, .25), sm((sheet - .52) * 5) * .55 * (.4 + rockA + scree)); c = mix3(c, VD.ashP, sm((.42 - sheet) * 5) * .35 * (scree + .3 * (1 - soilMask(g))));
+    /* cinder reds on the higher cones, a pale ash fan in the streak lows */
+    c = mix3(c, VD.scoria, sm((n3 - .66) * 5) * sm((hh - 14) / 18) * (1 - rockA * .6) * .55);
+    /* hardy vegetation: only low and on soil; scrub in the wet hollows, grass and gorse on the gentle apron, moss on the cooler lower slopes */
+    const cls = v === V.dcoast ? .85 : v === V.dwood ? .95 : v === V.dpine ? .85 : v === V.dhigh ? .55 : (v === V.dlava || v === V.dsummit || v === V.dash || v === V.bare || v === V.lichen) ? .12 : .6;
+    const alt = 1 - sm((hh - 7) / 17), soil = 1 - sm((g - .3) / .3);
+    let veg = alt * soil * cls * (.35 + .5 * n3 + .25 * wet); veg = sm((veg * 1.4 + (n1 - .5) * 1.1 - .4) * 3);
+    const vc = mix3(mix3(VD.grass, VD.scrub, sm((n2 - .35) * 3) * .8 + wet * .3), mix3(VD.gorse, VD.moss, n1), sm((n3 - .55) * 4) * .55);
+    c = mix3(c, vc, veg * .85);
+    return c;
+  }
+  function soilMask(g) { return 1 - sm((g - .3) / .3); }
+  function smoothstep01(t) { return sm((t - .3) / .45); }
+  /* gneiss: banded rock from a foliation phase (contours, a plan direction and noise), iron-rust staining in wide zones, orange and green lichen on the gentle weathered faces */
+  function colourGneissRock(x, z, hh, slope, n1, n2, n3, fresh) {
+    const t = hh * .42 + (x * .45 + z * .89) * .085 + (n3 - .5) * 2.6 + (n1 - .5) * .9;
+    const s1 = Math.sin(t * 6.2832), s2 = Math.sin(t * 6.2832 * 2.7 + 1.3 + n2 * 2);
+    let c = mix3(VA.dark, VA.light, sm((s1 + .25 * s2) * 2.2 + .5));
+    c = mix3(c, VA.mid, .1);
+    const rustZone = sm((Math.sin(t * .83 + n3 * 3.1) - .05) * 1.8) * (.3 + .5 * sm((n1 - .4) * 3));
+    c = mix3(c, mix3(VA.rust, VA.tan, sm((s2 + .3) * 1.5) * .45), rustZone * (.55 + .3 * sm(s1 * 2)));
+    const lic = sm((fbm(x * .8, z * .8, seed + 73, 3) - .56) * 9) * (1 - sm((slope - .1) / .16)) * sm((hh - 1.1) / 1.2) * (1 - fresh);
+    c = mix3(c, mix3(VA.lichenG, VA.lichenO, sm((fbm(x * .35, z * .35, seed + 79, 2) - .45) * 4)), lic * .8);
+    return c;
+  }
   /* colour of one grid cell as the maps say (before the slope and the noise) */
   function cellColour(k, n1, n2, n3) {
     const v = vegM[k], sc = shM[k], rk = rockM[k];
@@ -100,7 +149,13 @@ function create(seed, K) {
     if (v === V.sand || sc === SH.sand) { const b = prov === 'D' ? blackSand : sandC; return mix3(b[0], b[1], sm((n2 - .4) * 3) * .7); }
     if (v === V.shingle || sc === SH.shingle) return mix3(mix3(PL.rockB, PL.shingle, .72), mix3(PL.rockA, PL.sand2, .5), sm((n1 - .35) * 2.5));
     if (v === V.dlava || v === V.dsummit || v === V.dash || v === V.bare) { return mix3(RK[1], RK[0], .35 + .4 * n2).map(c => c * (.8 + .4 * n1)); }
+    if (prov === 'A' && (v === V.bare || v === V.lichen)) return mix3(VA.mid, VA.rust, .12 + .2 * n2);
     if (v === V.lichen) { const b = mix3(RK[1], RK[0], .3); return mix3(b, RK[2], sm((n1 - .35) * 3) * .75); }
+    if (prov === 'A' && v === V.heather) {   /* gneiss moor: brown-olive heather with maroon, green turf where it is wet or sheltered */
+      const wet = wetM[k] / 255; let c = mix3(VA.heath, VA.heathM, sm((n1 - .42) * 3.5) * .8);
+      return mix3(c, mix3(VA.turf, VA.turfL, n2), clamp(sm((n3 - .46) * 4) * .7 + wet * .55, 0, .85));
+    }
+    if (prov === 'A' && (v === V.pasture || v === V.turf || v === V.machair || v === V.rush)) return mix3(VA.turf, VA.turfL, sm((n1 - .35) * 3));
     const vb = vegBase[v] || vegBase[V.pasture];
     let c = mix3(vb[0], vb[1], sm((n1 - .35) * 3));
     c = mix3(c, mix3(vegBase[V.bog][0], vegBase[V.scrub][0], .5), sm((n3 - .55) * 3) * .45);
@@ -113,7 +168,9 @@ function create(seed, K) {
     const slope = 1 - ny;
     const n1 = fbm(x * .16, z * .16, seed + 41, 3), n2 = fbm(x * .5, z * .5, seed + 43, 2), n3 = fbm(x * .05, z * .05, seed + 47, 3);
     /* rock colour: the tool's palette, fresh on the steep and the wave-washed, weathered on the gentle; the page's tide zoning on top */
-    const rockCol = (k) => { const RK = rockOf(k); let c = mix3(RK[1], RK[0], clamp(.1 + slope * 1.4 + (n2 - .5) * .5, 0, 1)); const st = .9 + .12 * Math.sin(hh * 4.6 + n1 * 5); const cr2 = Math.abs(fbm(x * .4, z * .4, seed + 61, 3) - .5) < .03 ? .7 : 1; c = c.map(v => v * st * cr2 * (.85 + .3 * n2)); const lum = (c[0] + c[1] + c[2]) / 3; c = [lerp(c[0], lum, .35) * 1.04, lerp(c[1], lum, .35), lerp(c[2], lum, .35) * .93]; return K.zone(c, hh, n1, n2, x, z); };
+    const rockCol = (k) => { if (prov === 'A') { const fr = clamp(.1 + slope * 1.4 + (n2 - .5) * .5, 0, 1); return K.zone(colourGneissRock(x, z, hh, slopeH(x, z), n1, n2, n3, fr).map(q => q * (.88 + .24 * n2)), hh, n1, n2, x, z); }
+      if (prov === 'D') { const st = .88 + .2 * Math.sin(hh * 3.1 + n1 * 5); return K.zone(mix3(mix3(VD.black, VD.grey, .12 + .5 * n2), VD.brown, .12 * n3).map(q => q * st * (.85 + .3 * n1)), hh, n1, n2, x, z); }
+      const RK = rockOf(k); let c = mix3(RK[1], RK[0], clamp(.1 + slope * 1.4 + (n2 - .5) * .5, 0, 1)); const st = .9 + .12 * Math.sin(hh * 4.6 + n1 * 5); const cr2 = Math.abs(fbm(x * .4, z * .4, seed + 61, 3) - .5) < .03 ? .7 : 1; c = c.map(v => v * st * cr2 * (.85 + .3 * n2)); const lum = (c[0] + c[1] + c[2]) / 3; c = [lerp(c[0], lum, .35) * 1.04, lerp(c[1], lum, .35), lerp(c[2], lum, .35) * .93]; return K.zone(c, hh, n1, n2, x, z); };
     if (hh < -.15) {   /* the sea floor: sand over soft bed, dark rock and kelp over hard bed */
       const kk = cell(x, z), bd = bedM[kk] / 255, dpt = -hh;
       let c = mix3(PL.seabed, PL.seabed2, sm((dpt - 1.2) / 3.2));
@@ -126,11 +183,20 @@ function create(seed, K) {
     const wxp = x + (fbm(x * .11 + 7, z * .11, seed + 5, 2) - .5) * 3.2, wzp = z + (fbm(x * .11, z * .11 + 9, seed + 6, 2) - .5) * 3.2;
     const fx = (wxp + half) / dx - 0, fz = (wzp + half) / dx - 0, i0 = clamp(Math.floor(fx), 0, nx - 2), j0 = clamp(Math.floor(fz), 0, nx - 2), tx = clamp(fx - i0, 0, 1), tz = clamp(fz - j0, 0, 1);
     const ws = [(1 - tx) * (1 - tz), tx * (1 - tz), (1 - tx) * tz, tx * tz], ks = [j0 * nx + i0, j0 * nx + i0 + 1, (j0 + 1) * nx + i0, (j0 + 1) * nx + i0 + 1];
-    let c = [0, 0, 0], rockAmt = 0;
-    for (let q = 0; q < 4; q++) { if (ws[q] < .001) continue; const kq = ks[q]; const cc = cellColour(kq, n1, n2, n3); c[0] += cc[0] * ws[q]; c[1] += cc[1] * ws[q]; c[2] += cc[2] * ws[q];
-      const v = vegM[kq]; rockAmt += ws[q] * (v === V.bare ? .9 : v === V.lichen ? .55 : (v === V.dlava || v === V.dsummit) ? .8 : 0); }
+    let c = [0, 0, 0], rockAmt = 0, sandW = 0;
+    for (let q = 0; q < 4; q++) { if (ws[q] < .001) continue; const kq = ks[q];
+      if (prov === 'D') { sandW += ws[q] * (vegM[kq] === V.sand || shM[kq] === SH.sand ? 1 : 0); continue; }
+      const cc = cellColour(kq, n1, n2, n3); c[0] += cc[0] * ws[q]; c[1] += cc[1] * ws[q]; c[2] += cc[2] * ws[q];
+      const v = vegM[kq]; rockAmt += ws[q] * (v === V.bare ? (prov === 'A' ? 1 : .9) : v === V.lichen ? (prov === 'A' ? .8 : .55) : (v === V.dlava || v === V.dsummit) ? .8 : 0); }
+    const shC = shM[cell(x, z)];
+    if (prov === 'D') {   /* volcanic ground from altitude, slope and the class maps (colourD); black sand on the beaches; tide-washed basalt on the ledges and cliffs */
+      const e = 1.0, gx = (h(x + e, z) - h(x - e, z)) / (2 * e), gz = (h(x, z + e) - h(x, z - e)) / (2 * e);
+      c = colourD(x, z, hh, Math.hypot(gx, gz), gx, gz, n1, n2, n3);
+      if (sandW > 0) c = mix3(c, mix3(blackSand[0], blackSand[1], sm((n2 - .4) * 3) * .7), sm(sandW * 1.4) * (1 - sm((hh - 2.5) / 1.5)));
+      rockAmt = (1 - sm((hh - .6) / 1.0)) * (shC === SH.ledge || shC === SH.cliff ? .85 : 0);
+    } else
     /* steep ground is rock whatever the vegetation class says; the tide-washed rim of the shore too */
-    rockAmt = clamp(rockAmt + sm((slope - .13) / .16) + (1 - sm((hh - .6) / 1.0)) * (shM[cell(x, z)] === SH.ledge || shM[cell(x, z)] === SH.cliff ? .85 : 0), 0, 1);
+    rockAmt = clamp(rockAmt + sm((slope - (prov === 'A' ? .1 : .13)) / .16) + (1 - sm((hh - .6) / 1.0)) * (shC === SH.ledge || shC === SH.cliff ? .85 : 0), 0, 1);
     if (rockAmt > 0) c = mix3(c, rockCol(cell(x, z)), rockAmt);
     /* the wet fringe and the dirt of the paths round the buildings */
     const sa = 1 - sm((hh - .15) / .35); if (sa > 0 && (vegM[cell(x, z)] === V.sand || shM[cell(x, z)] === SH.sand)) c = mix3(c, PL.sand, sa * .5);
@@ -217,7 +283,7 @@ function create(seed, K) {
     /* moored boats must float at the lowest tide: push them seaward until the bed is deeper than the hull */
     W.boats.forEach(bt => { if (bt.sail) return; for (let k = 0; k < 80 && h(bt.x, bt.z) > -1.5; k++) { bt.x += dir[0] * .8; bt.z += dir[1] * .8; } });
     /* --- rocks, trees, shrubs, tufts, driftwood from the maps --- */
-    const rockPal = (() => { const f = RGB.length ? man.rock_rgb : null; const rows = prov === 'A' ? [0, 1] : prov === 'B' ? [4, 5] : prov === 'C' ? [8, 9] : [14, 15]; const out = []; for (const r of rows) for (const t of [0, 1]) out.push(f[r][t].map(v => v / 255)); out.push([.47, .43, .39], [.40, .38, .37]); return out; })();
+    const rockPal = (() => { const f = RGB.length ? man.rock_rgb : null; const rows = prov === 'A' ? [0, 1] : prov === 'B' ? [4, 5] : prov === 'C' ? [8, 9] : [14, 15]; const out = []; for (const r of rows) for (const t of [0, 1]) out.push(f[r][t].map(v => v / 255)); if (prov === 'D') out.push([.11, .11, .12], [.19, .185, .19]); else if (prov === 'A') out.push([.40, .395, .39], [.31, .31, .32]); else out.push([.47, .43, .39], [.40, .38, .37]); return out; })();
     const radius = K.tableR - 10, bins = new Map(); const near = (x, z, r) => { const gx = Math.floor(x / 4), gz = Math.floor(z / 4); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = bins.get((gx + a) * 4096 + gz + b); if (l) for (const p of l) if (Math.hypot(p[0] - x, p[1] - z) < Math.max(r, p[2])) return true; } return false; };
     const reg = (x, z, r) => { const k = Math.floor(x / 4) * 4096 + Math.floor(z / 4); let l = bins.get(k); if (!l) bins.set(k, l = []); l.push([x, z, r]); };
     W.houses.forEach(o => reg(o.x, o.z, 3.6)); W.tents.forEach(o => reg(o.x, o.z, 3)); if (W.camp) reg(W.camp.fire.x, W.camp.fire.z, 3.6); reg(W.jetty.x, W.jetty.z, 3);
@@ -230,9 +296,9 @@ function create(seed, K) {
       if (padDist(x, z) < 2.4 || near(x, z, 1.2)) continue; if (Math.hypot(x, z) > radius) continue;
       const sx = 0.7 + Math.pow(R(), 1.8) * (shoreBand ? 1.9 : 2.4), sz = sx * (.7 + R() * .5), sy = sx * (.5 + R() * .4); let y = hh + sy * .15;
       if (shoreBand && hh < .3 && R() < .5) { const top = -.95 + R() * 1.95; y = top - sy * .9; }
-      W.rocks.push({ x, z, y, sx, sy, sz, ry: R() * 6.28, seed: (R() * 1e6) | 0, pal: rockPal[(R() * rockPal.length) | 0], lich: Math.min(.9, .2 + Math.max(0, hh) * .12) }); reg(x, z, sx * .9); got++;
+      W.rocks.push({ x, z, y, sx, sy, sz, ry: R() * 6.28, seed: (R() * 1e6) | 0, pal: rockPal[(R() * rockPal.length) | 0], lich: prov === 'D' ? .04 : Math.min(.9, .2 + Math.max(0, hh) * .12) }); reg(x, z, sx * .9); got++;
       if (sx > 1.2 && R() < .6) { const kk = 2 + ((R() * 3) | 0); for (let q = 0; q < kk; q++) { const a = R() * 6.28, d = sx * (.8 + R() * .9), s2 = sx * (.3 + R() * .35), x2 = x + Math.cos(a) * d, z2 = z + Math.sin(a) * d; if (h(x2, z2) < -2.6) continue;
-        W.rocks.push({ x: x2, z: z2, y: H(x2, z2) + s2 * .1, sx: s2, sy: s2 * (.5 + R() * .4), sz: s2 * (.7 + R() * .5), ry: R() * 6.28, seed: (R() * 1e6) | 0, pal: rockPal[(R() * rockPal.length) | 0], lich: .4 }); } }
+        W.rocks.push({ x: x2, z: z2, y: H(x2, z2) + s2 * .1, sx: s2, sy: s2 * (.5 + R() * .4), sz: s2 * (.7 + R() * .5), ry: R() * 6.28, seed: (R() * 1e6) | 0, pal: rockPal[(R() * rockPal.length) | 0], lich: prov === 'D' ? .04 : .4 }); } }
     }
     if (W.camp) { const f = W.camp.fire; for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; W.rocks.push({ x: f.x + Math.cos(a) * .75, z: f.z + Math.sin(a) * .75, y: f.y + .02, sx: .23, sy: .17, sz: .2, ry: a, seed: k * 13, pal: rockPal[k % rockPal.length], lich: 0, keep: 1 }); } }
     /* vegetation weights per class (per 4 m2 attempt): conifer, broadleaf, shrub; province multiplies. All TUNING. */
@@ -247,10 +313,11 @@ function create(seed, K) {
       const w = vw || [0, 0, 0], clump = K.fbm(x * .07, z * .07, SEEDX, 3), thr = clump > .42 ? 1 : clump > .34 ? .25 : .03, shel = 1 - sm((ex - .35) / .4), soil = 1 - sm((sl - .3) / .3);
       const r = R();
       let pc = w[0] * PM[0] * thr * shel * soil, pb = w[1] * PM[1] * thr * shel * soil, ps = w[2] * PM[2] * (.5 + .5 * soil) * (.6 + .4 * shel);
+      if (prov === 'D') { const alt = 1 - sm((hh - 9) / 15); pc *= alt * .5; pb *= alt * .5; ps *= .25 + .75 * alt; }   /* hardy and sparse: only the low apron carries trees */
       if (hh < 1.9) { pc = 0; pb = 0; ps *= .5; } if (vegM[k] === V.lichen || vegM[k] === V.bare) { pc = pb = 0; ps *= .15; }
       if (r < pc && nc < cap.c) { if (near(x, z, 2.6)) continue; W.conifers.push({ x, z, y: hh, s: R(), h: 0 }); reg(x, z, 2.6); nc++; }
       else if (r < pc + pb && nb < cap.b) { if (near(x, z, 3.4)) continue; W.broad.push({ x, z, y: hh, s: R(), h: 0 }); reg(x, z, 3.4); nb++; }
-      else if (r < pc + pb + ps && ns < cap.s) { if (near(x, z, 1.6)) continue; W.shrubs.push({ x, z, y: hh, s: R(), h: 0, heather: v === V.heather ? R() < .6 : R() < .15 }); reg(x, z, 1.6); ns++; }
+      else if (r < pc + pb + ps && ns < cap.s) { if (near(x, z, 1.6)) continue; W.shrubs.push({ x, z, y: hh, s: R(), h: 0, heather: v === V.heather ? R() < (prov === 'A' ? .3 : .6) : R() < .15 }); reg(x, z, 1.6); ns++; }
     }
     W.conifers.forEach(t => { const sh = 1 - sm((expM[cell(t.x, t.z)] / 255 - .3) / .5); t.h = (3.0 + t.s * 3.2) * (.75 + .3 * sh); });
     W.broad.forEach(t => { t.h = 3.6 + t.s * 2.4; }); W.shrubs.forEach(t => { t.h = .7 + t.s * .8; });
@@ -280,9 +347,23 @@ function create(seed, K) {
     return { P, G, N: n, half: halfG, cell: cellG, chans: [], bars: [], gaps: [], gbil, depthG, depthAt: depthG, spdAt, spdFAt, widthAt, streamSpeed: (w, D) => P.U0 * cont(P.refA / (Math.max(w, 1) * Math.max(D, .3))) * fric(D) };
   }
 
-  return { man, seed, nx, dx, half, h, hRaw, sd: sdAt, expo, slopeH, color, place, seabed, report, cell,
+  const API = { man, seed, nx, dx, half, h, hRaw, sd: sdAt, expo, slopeH, color, place, seabed, report, cell,
     maps: { rock: rockM, veg: vegM, shore: shM, exposure: expM, wetness: wetM, bed: bedM, height: hF, land, sd, lab },
     landFraction: () => { let n = 0; for (let k = 0; k < NN; k++) n += land[k]; return n / NN; } };
+  /* colour statistics for the tests: n x n samples of the page's own colour function over the land above 0.3 m (not the sea floor): mean sRGB, mean hue (deg), mean saturation, relief (98th percentile of the land height) */
+  API.stats = function (n) {
+    n = n || 64; let r = 0, g = 0, b = 0, cnt = 0, hs = [], sat = 0, cx = 0, cz = 0, dark = 0, green = 0, mauve = 0; const R = K.tableR - 20;
+    const enc = v => { v = v < 0 ? 0 : v > 1 ? 1 : v; return v <= .0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - .055; };
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const x = -R + (i + .5) / n * 2 * R, z = -R + (j + .5) / n * 2 * R; if (x * x + z * z > R * R) continue; const hh = h(x, z); if (hh < .3) continue;
+      const sl = slopeH(x, z), c = color(x, z, hh, 1 / Math.sqrt(1 + sl * sl), 99).map(enc); r += c[0]; g += c[1]; b += c[2]; cnt++; hs.push(hh);
+      const mx = Math.max(c[0], c[1], c[2]), mn = Math.min(c[0], c[1], c[2]); sat += mx > 0 ? (mx - mn) / mx : 0;
+      const lum = .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; if (lum < .3) dark++; if (c[1] > c[0] * 1.12 && c[1] > c[2] * 1.3) green++;
+      let hue = 0; if (mx > mn) { const d = mx - mn; hue = mx === c[0] ? ((c[1] - c[2]) / d + 6) % 6 : mx === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4; hue *= 60; } cx += Math.cos(hue * .01745) * (mx - mn); cz += Math.sin(hue * .01745) * (mx - mn); if (hue >= 255 && hue <= 345 && mx - mn > .05 * mx) mauve++; }
+    hs.sort((a, c) => a - c); const mean = [r / cnt, g / cnt, b / cnt];
+    return { n: cnt, mean, hue: ((Math.atan2(cz, cx) * 57.2958) + 360) % 360, sat: sat / cnt, dark: dark / cnt, greenShare: green / cnt, mauveShare: mauve / cnt, relief98: hs[Math.floor(cnt * .98)] || 0, reliefMax: hs[cnt - 1] || 0 };
+  };
+  window.LI_WORLD.last = API;
+  return API;
 }
 /* pseudo island records for the code that wants a list of islands (flow field, gulls, weather): the largest islands of the window, at least 6 entries */
 function islandsFor(man) {
@@ -290,5 +371,5 @@ function islandsFor(man) {
   for (let i = 0; o.length < 6; i++) { const q = o[i % Math.max(1, o.length)] || { id: 'w0', x: 0, z: 0, rx: 10, rz: 10, rot: 0, warp: 0, under: .3, surf: .5 }; o.push(Object.assign({}, q, { id: q.id + 'b' + o.length })); }
   return o;
 }
-window.LI_WORLD = { create, list, has, islandsFor, V, SH };
+window.LI_WORLD = { create, list, has, islandsFor, V, SH, last: null };
 })();

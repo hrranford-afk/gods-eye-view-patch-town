@@ -21,7 +21,8 @@ def recipe_hash(rec):
 
 def main():
     need = {}
-    for f in sorted(glob.glob(os.path.join(ROOT, 'landform', 'worlds', 'seed*', 'life.json'))):
+    listed = [w['seed'] for w in json.load(open(os.path.join(ROOT, 'landform', 'worlds', 'index.json')))['worlds']]      # the 12 listed worlds only (a retired folder such as seed0001 is not read)
+    for f in [os.path.join(ROOT, 'landform', 'worlds', 'seed%04d' % sd, 'life.json') for sd in sorted(listed)]:
         for r in json.load(open(f))['robots']:
             need.setdefault(r['recipe_hash'], (r['recipe_seed'], r['radical'], r['plan']))
     os.makedirs(OUT, exist_ok=True)

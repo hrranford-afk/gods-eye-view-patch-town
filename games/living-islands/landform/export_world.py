@@ -34,10 +34,25 @@ import shore_catch as SC     # noqa: E402
 OUT = os.path.join(HERE, 'worlds')
 WINDOW_M = 256.0
 # (province, seed): first three of each foundry province list that pass the start rules on the current world.py, then three volcano seeds
-WORLDS = [('A', 153), ('A', 147), ('A', 62), ('B', 139), ('B', 23), ('B', 174), ('C', 56), ('C', 99), ('C', 106), ('D', 1), ('D', 2), ('D', 5)]
+WORLDS = [('A', 153), ('A', 147), ('A', 62), ('B', 139), ('B', 23), ('B', 174), ('C', 56), ('C', 99), ('C', 106), ('D', 4), ('D', 2), ('D', 5)]
 SHORE = {'water': 0, 'sand': 1, 'shingle': 2, 'gentle': 3, 'ledge': 4, 'cliff': 5, 'land': 6}
 ROCK_WORD = {'A': 'gneiss', 'B': 'sandstone', 'C': 'basalt', 'D': 'volcanic'}
 SCALE_H = 256.0
+# Page colours of the rocks that the tool's own table paints too pink or too green-brown for the page (the tool's table in world.py is untouched; the manifest carries the corrected
+# [fresh, weathered, lichen] sRGB triples, which world_view.js reads for boulders and for the rock under the vegetation). Gneiss: grey and warm rust instead of mauve; volcanic: basalt black,
+# brown weathered basalt, red scoria, dark ash.
+PALETTE_FIX = {
+    'gneiss_pink': [[150, 138, 126], [112, 98, 86], [184, 150, 60]],
+    'gneiss_grey': [[150, 150, 148], [96, 94, 92], [190, 160, 70]],
+    'schist_soft': [[108, 106, 108], [84, 74, 64], [140, 150, 90]],
+    'fault_breccia': [[126, 98, 80], [102, 80, 66], [150, 130, 70]],
+    'basalt_fresh': [[28, 27, 31], [50, 46, 48], [112, 104, 70]],
+    'basalt_weathered': [[62, 50, 42], [88, 70, 58], [130, 120, 70]],
+    'scoria_red': [[112, 50, 32], [86, 44, 32], [120, 100, 60]],
+    'ash_soil': [[58, 48, 40], [74, 62, 50], [100, 100, 60]],
+    'lava_flow': [[24, 23, 26], [42, 38, 38], [110, 104, 80]],
+    'obsidian_pumice': [[150, 140, 122], [120, 110, 96], [140, 130, 90]],
+}
 
 
 def shore_class(w):
@@ -94,21 +109,39 @@ def window_slice(arr, r0, c0, nx, pad_val=None):
 
 
 def pick_d_window(w, nx, dx):
-    """Province D: the window is centred 40 m inland of the best landing candidate (low exposure, sand first) whose window is half sea."""
+    """Province D: the 258 m window is swept (6-cell steps, 36 cells either way) round every landing candidate that is a gentle shore. A window is kept when 30 to 65 percent of it is land,
+    the candidate lies 12 cells inside the edge and the field is not cut by the array edge; the score is the 98th percentile of the land height (so the window holds a real slope of the cone,
+    not the flat ash apron), plus a bonus for a gentle landing and a low-exposure shore. Returns (candidate, centre row, centre column, relief) or None."""
     best, bs = None, -1e9
-    land = w.height > 0
+    h = w.height.astype(np.float64)
+    land = h > w.sea_level
+    n = h.shape[0]
     half = nx // 2
+    jj, ii = np.mgrid[-half:half + 1, -half:half + 1]
+    rr = np.hypot(ii, jj) * dx
+    inner = rr <= 90.0                   # the page's table is a disc of radius 122 m: land outside about 80 m rolls down into the rim over 44 m (world_view.js, province D)
+    rim = rr > 100.0
     for c in w.landing_candidates:
+        if c['kind'] == 'rock ledge' and c['slope'] > 0.25:
+            continue
         x, y = c['xy']
         ci = int(round((x + w.size_m / 2) / w.dx))
         ri = int(round((y + w.size_m / 2) / w.dx))
-        r0, c0 = ri - half, ci - half
-        if r0 < 0 or c0 < 0 or r0 + nx > land.shape[0] or c0 + nx > land.shape[1]:
-            continue
-        frac = float(land[r0:r0 + nx, c0:c0 + nx].mean())
-        sc = (1.0 if c['kind'] == 'sand' else 0.4) - c['exposure'] - abs(frac - 0.45) * 2.0 + min(c['length_m'], 40) / 80.0
-        if sc > bs:
-            best, bs = c, sc
+        for dr in range(-45, 46, 3):
+            for dc in range(-45, 46, 3):
+                r0, c0 = ri + dr - half, ci + dc - half
+                if r0 < 0 or c0 < 0 or r0 + nx > n or c0 + nx > n or math.hypot(ci - c0 - half, ri - r0 - half) * dx > 80.0:
+                    continue
+                sub = h[r0:r0 + nx, c0:c0 + nx]
+                sl = land[r0:r0 + nx, c0:c0 + nx]
+                frac = float(sl[inner].mean())
+                if not 0.30 < frac < 0.70 or not sl[inner].any():
+                    continue
+                p98 = float(np.percentile(sub[inner & sl], 98))
+                rim_max = float(sub[rim].max())
+                sc = min(p98, 45.0) - 0.7 * max(0.0, rim_max - 45.0) - 30.0 * abs(frac - 0.5) + (12.0 if c['kind'].startswith('gentle') else 0.0) - 25.0 * c['exposure']
+                if sc > bs:
+                    best, bs = (c, ri + dr, ci + dc, p98), sc
     return best
 
 
@@ -132,11 +165,12 @@ def build_one(prov, seed):
         extent_m = best['extent_m']
     else:
         iid = 1
-        c = pick_d_window(w, nx, dx)
-        if c is None:
-            raise SystemExit('province D seed %d: no landing candidate with a full window' % seed)
+        pk = pick_d_window(w, nx, dx)
+        if pk is None:
+            raise SystemExit('province D seed %d: no window with a landing candidate and a cone slope' % seed)
+        c, rrow, ccol, _ = pk
+        cx, cy = -w.size_m / 2 + ccol * dx, -w.size_m / 2 + rrow * dx
         ang = math.radians(c['facing_deg'])
-        cx, cy = c['xy'][0] - 40.0 * math.cos(ang), c['xy'][1] - 40.0 * math.sin(ang)
         nrm = (math.cos(ang), math.sin(ang))
         landing = dict(xy=c['xy'], normal=nrm, kind=c['kind'], source='tool', score=0.0, exposure=c['exposure'], slope=c['slope'])
         extent_m = None
@@ -204,7 +238,7 @@ def build_one(prov, seed):
                nx=nx, dx=dx, window_m=round((nx - 1) * dx, 1), centre_world_xy=[round(float(ox), 2), round(float(oy), 2)], sea_level=float(w.sea_level), tide_amp=float(w.tide_amp),
                height_scale=SCALE_H, axes='page x east, z south (z = -world y); row 0 = north edge, column 0 = west edge',
                arrays=offs, bytes=len(blob), shore_legend={v: k for k, v in SHORE.items()}, veg_legend=list(W.VEG_LEGEND), rocks=[r['name'] for r in w.rocks],
-               rock_rgb=[[list(r['colour_fresh']), list(r['colour_weathered']), list(r['colour_lichen'])] for r in w.rocks],
+               rock_rgb=[PALETTE_FIX.get(r['name']) or [list(r['colour_fresh']), list(r['colour_weathered']), list(r['colour_lichen'])] for r in w.rocks],
                islands=islands, landing=dict(xy=P(lx, ly), normal=[round(nrm[0], 3), round(-nrm[1], 3)], kind=ln['kind'], source=ln['source'], score=round(ln['score'], 3),
                                              exposure=round(ln['exposure'], 3), slope=round(ln['slope'], 3)),
                landing_candidates=cands, shores=shores, wave_from_deg=round(math.degrees(float(w.structure.get('wave_from', math.pi))), 1),

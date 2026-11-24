@@ -1,14 +1,6 @@
 {
  "note": "live-LOD GLBs of the robot recipes of the 12 worlds (landform/build_world_robots.py)",
  "robots": {
-  "0d8fbfa16f": {
-   "bytes": 275740,
-   "plan": "walker",
-   "radical": true,
-   "seed": 13,
-   "sha256": "5b3b93e59ebc32b7c439a07a403e692ca2828beb506f0fb5c6b2e877ccf93f9b",
-   "triangles": 2680
-  },
   "32f3f6f8c2": {
    "bytes": 294712,
    "plan": "walker",
@@ -82,5 +74,5 @@
    "triangles": 3528
   }
  },
- "total_bytes": 3087144
+ "total_bytes": 2811404
 }
