@@ -1,0 +1,168 @@
+{
+ "schema": "rtk.building",
+ "version": 1,
+ "id": "cottage_18",
+ "name": "Round Cottage",
+ "footprint": {
+  "w": 1.45,
+  "d": 1.45
+ },
+ "parts": [
+  {
+   "id": "floor",
+   "kind": "floor",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    1.4,
+    0.05,
+    1.4
+   ],
+   "material": "stone",
+   "stage": "frame",
+   "needs": [],
+   "tag": "floor",
+   "replaceable": false
+  },
+  {
+   "id": "wall",
+   "kind": "tower",
+   "pos": [
+    0,
+    0.05,
+    0
+   ],
+   "size": [
+    1.3,
+    0.7,
+    1.3
+   ],
+   "material": "paint_cream",
+   "stage": "walls",
+   "needs": [
+    "floor"
+   ],
+   "tag": "wall",
+   "replaceable": true
+  },
+  {
+   "id": "roof",
+   "kind": "roof_cone",
+   "pos": [
+    0,
+    0.75,
+    0
+   ],
+   "size": [
+    1.65,
+    0.95,
+    1.65
+   ],
+   "material": "thatch",
+   "stage": "trim",
+   "needs": [
+    "wall"
+   ],
+   "tag": "roof",
+   "replaceable": true
+  },
+  {
+   "id": "door",
+   "kind": "door",
+   "pos": [
+    0,
+    0.05,
+    0.67
+   ],
+   "size": [
+    0.3,
+    0.5,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "wall"
+   ],
+   "tag": "door",
+   "replaceable": true
+  },
+  {
+   "id": "window",
+   "kind": "window",
+   "pos": [
+    -0.45,
+    0.31,
+    0.56
+   ],
+   "size": [
+    0.24,
+    0.22,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "wall"
+   ],
+   "tag": "window",
+   "replaceable": true,
+   "rotY": -0.7
+  },
+  {
+   "id": "window.2",
+   "kind": "window",
+   "pos": [
+    0.45,
+    0.31,
+    0.56
+   ],
+   "size": [
+    0.24,
+    0.22,
+    0.05
+   ],
+   "material": "oak_dark",
+   "stage": "walls",
+   "needs": [
+    "wall"
+   ],
+   "tag": "window",
+   "replaceable": true,
+   "rotY": 0.7
+  }
+ ],
+ "systems": {
+  "jobs": [],
+  "storage": {
+   "coal": 10
+  },
+  "start_stock": {
+   "coal": 5
+  },
+  "costs": {
+   "power_per_kwh": 24,
+   "wage_per_worker_per_minute": 0,
+   "ingredient_prices": {
+    "coal": 1
+   },
+   "repair_material_price": 2
+  },
+  "repair": {
+   "seconds": 5,
+   "material_units": 1,
+   "walk_speed": 0.3,
+   "worker_roles": []
+  },
+  "inspect": {
+   "labels": {
+    "door": "Front door",
+    "roof": "Roof",
+    "window": "Window"
+   }
+  }
+ }
+}

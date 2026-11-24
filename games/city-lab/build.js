@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
   var SUP = root.CitySupports, VAL = root.CityValidate, P = root.CityParts;
-  var GHOST_KINDS = { panel: 1, gable: 1, roof_tile: 1, door: 1, window: 1, shutter: 1, awning: 1, chimney: 1, ridge: 1 };
+  var GHOST_KINDS = { panel: 1, gable: 1, roof_tile: 1, door: 1, window: 1, shutter: 1, awning: 1, chimney: 1, ridge: 1, roof_hip: 1, roof_cone: 1 };
   var _ghost = null;
   function ghostMat() {
     if (!_ghost) { var base = root.SS.materials().mat; _ghost = base.clone(); _ghost.transparent = true; _ghost.opacity = 0.13; _ghost.depthWrite = false; }

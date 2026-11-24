@@ -1,0 +1,542 @@
+{
+ "job": "C06a",
+ "warm_s": 1800,
+ "measure_s": 2100,
+ "runs": 3,
+ "byte_identical": {
+  "E4": true,
+  "E5": true,
+  "dark_streets": true
+ },
+ "sha256_prefix": {
+  "E4": "4c07a6deec369220",
+  "E5": "736b5f9a554505e4"
+ },
+ "E4": {
+  "id": "E4",
+  "title": "Does one more generator pay for itself?",
+  "warm_s": 1800,
+  "measure_s": 2100,
+  "add_kw": 3,
+  "rows": [
+   {
+    "homes": 10,
+    "base_source_kw": 13.5,
+    "shipped": true,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 87.66,
+    "net_after_pm": 87.66,
+    "gain_gross_pm": 0,
+    "gain_net_pm": -0.6,
+    "payback_min": null,
+    "wanted_kw": 13.5,
+    "source_before_kw": 13.5,
+    "source_after_kw": 16.5,
+    "delivered_gain_kw": 0,
+    "min_factor_before": 0.75,
+    "min_factor_after": 0.75,
+    "hash_before": "549dcada",
+    "hash_after": "d8a9b683"
+   },
+   {
+    "homes": 4,
+    "base_source_kw": 13.5,
+    "shipped": true,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 39.498971,
+    "net_after_pm": 39.498971,
+    "gain_gross_pm": 0,
+    "gain_net_pm": -0.6,
+    "payback_min": null,
+    "wanted_kw": 12.1,
+    "source_before_kw": 13.5,
+    "source_after_kw": 16.5,
+    "delivered_gain_kw": 0,
+    "min_factor_before": 1,
+    "min_factor_after": 1,
+    "hash_before": "280358bf",
+    "hash_after": "c5cc3c15"
+   },
+   {
+    "homes": 8,
+    "base_source_kw": 13.5,
+    "shipped": true,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 69.379314,
+    "net_after_pm": 69.379314,
+    "gain_gross_pm": 0,
+    "gain_net_pm": -0.6,
+    "payback_min": null,
+    "wanted_kw": 13.5,
+    "source_before_kw": 13.5,
+    "source_after_kw": 16.5,
+    "delivered_gain_kw": 0,
+    "min_factor_before": 0.9375,
+    "min_factor_after": 0.9375,
+    "hash_before": "6d010bd2",
+    "hash_after": "724822a2"
+   },
+   {
+    "homes": 10,
+    "base_source_kw": 12,
+    "shipped": false,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 79.452086,
+    "net_after_pm": 87.66,
+    "gain_gross_pm": 8.207914,
+    "gain_net_pm": 7.607914,
+    "payback_min": 8.763243,
+    "wanted_kw": 13.5,
+    "source_before_kw": 12,
+    "source_after_kw": 15,
+    "delivered_gain_kw": 1.499997,
+    "min_factor_before": 0.666667,
+    "min_factor_after": 0.75,
+    "hash_before": "d7486005",
+    "hash_after": "c298ca8e"
+   },
+   {
+    "homes": 10,
+    "base_source_kw": 9,
+    "shipped": false,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 57.476257,
+    "net_after_pm": 79.452086,
+    "gain_gross_pm": 21.975829,
+    "gain_net_pm": 21.375829,
+    "payback_min": 3.118943,
+    "wanted_kw": 13.5,
+    "source_before_kw": 9,
+    "source_after_kw": 12,
+    "delivered_gain_kw": 3.000003,
+    "min_factor_before": 0.5,
+    "min_factor_after": 0.666667,
+    "hash_before": "d5aa9ac4",
+    "hash_after": "e1734e4b"
+   },
+   {
+    "homes": 4,
+    "base_source_kw": 9,
+    "shipped": false,
+    "build_cost": 66.67,
+    "upkeep_pm": 0.6,
+    "net_before_pm": 36.855414,
+    "net_after_pm": 39.497593,
+    "gain_gross_pm": 2.642179,
+    "gain_net_pm": 2.042179,
+    "payback_min": 32.646502,
+    "wanted_kw": 12.1,
+    "source_before_kw": 9,
+    "source_after_kw": 12,
+    "delivered_gain_kw": 2.999998,
+    "min_factor_before": 0.743802,
+    "min_factor_after": 0.991736,
+    "hash_before": "e6e680b3",
+    "hash_after": "146d303c"
+   }
+  ]
+ },
+ "E5": {
+  "id": "E5",
+  "title": "An overloaded cable dims only its own street",
+  "homes": 8,
+  "warm_s": 1800,
+  "measure_s": 2100,
+  "cases": {
+   "as_built": {
+    "net_pm": 69.379314,
+    "delivered_kw": 13.5,
+    "wanted_kw": 13.5,
+    "street": {
+     "homes_min": 0.9375,
+     "main_min": 1
+    },
+    "factor": {
+     "bakery": 1,
+     "workshop": 1,
+     "market": 1,
+     "shed": 1,
+     "gen_1": 1,
+     "home_1": 0.9375,
+     "home_2": 0.9375,
+     "home_3": 0.9375,
+     "home_4": 0.9375,
+     "home_5": 0.9375,
+     "home_6": 0.9375,
+     "home_7": 0.9375,
+     "home_8": 0.9375
+    },
+    "edges": {
+     "main_feeder": {
+      "cap": 12,
+      "want": 10.5,
+      "flow": 10.5,
+      "state": "green"
+     },
+     "homes_branch": {
+      "cap": 3,
+      "want": 3.2,
+      "flow": 3,
+      "state": "red"
+     },
+     "bakery_line": {
+      "cap": 7,
+      "want": 6,
+      "flow": 6,
+      "state": "green"
+     },
+     "workshop_line": {
+      "cap": 3.5,
+      "want": 3,
+      "flow": 3,
+      "state": "green"
+     },
+     "market_line": {
+      "cap": 1,
+      "want": 0,
+      "flow": 0,
+      "state": "green"
+     },
+     "shed_line": {
+      "cap": 2,
+      "want": 1.5,
+      "flow": 1.5,
+      "state": "green"
+     }
+    },
+    "shops": {
+     "bakery": {
+      "net_pm": 52.567886,
+      "income_pm": 82.171429,
+      "cost_pm": 29.603543,
+      "sold_pm": 20.542857,
+      "lost_pm": 0,
+      "made_pm": 20.571429,
+      "demand_pm": 20.5521,
+      "brown_share": 0
+     },
+     "workshop": {
+      "net_pm": 8.357143,
+      "income_pm": 21,
+      "cost_pm": 12.642857,
+      "sold_pm": 3,
+      "lost_pm": 0,
+      "made_pm": 3.142857,
+      "demand_pm": 0,
+      "brown_share": 0
+     },
+     "market": {
+      "net_pm": 10.454086,
+      "income_pm": 18.085714,
+      "cost_pm": 7.631629,
+      "sold_pm": 6.028571,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 6.02088,
+      "brown_share": 0
+     },
+     "shed": {
+      "net_pm": -1.9998,
+      "income_pm": 0,
+      "cost_pm": 1.9998,
+      "sold_pm": 0,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 0,
+      "brown_share": 0
+     }
+    },
+    "hash": "6d010bd2"
+   },
+   "homes_cable_upgraded": {
+    "net_pm": 69.375134,
+    "delivered_kw": 13.500003,
+    "wanted_kw": 13.7,
+    "street": {
+     "homes_min": 0.985401,
+     "main_min": 0.985401
+    },
+    "factor": {
+     "bakery": 0.985401,
+     "workshop": 0.985401,
+     "market": 1,
+     "shed": 0.985401,
+     "gen_1": 1,
+     "home_1": 0.985401,
+     "home_2": 0.985401,
+     "home_3": 0.985401,
+     "home_4": 0.985401,
+     "home_5": 0.985401,
+     "home_6": 0.985401,
+     "home_7": 0.985401,
+     "home_8": 0.985401
+    },
+    "edges": {
+     "main_feeder": {
+      "cap": 12,
+      "want": 10.5,
+      "flow": 10.346715,
+      "state": "green"
+     },
+     "homes_branch": {
+      "cap": 3.2,
+      "want": 3.2,
+      "flow": 3.153285,
+      "state": "amber"
+     },
+     "bakery_line": {
+      "cap": 7,
+      "want": 6,
+      "flow": 5.912409,
+      "state": "green"
+     },
+     "workshop_line": {
+      "cap": 3.5,
+      "want": 3,
+      "flow": 2.956204,
+      "state": "green"
+     },
+     "market_line": {
+      "cap": 1,
+      "want": 0,
+      "flow": 0,
+      "state": "green"
+     },
+     "shed_line": {
+      "cap": 2,
+      "want": 1.5,
+      "flow": 1.478102,
+      "state": "green"
+     }
+    },
+    "shops": {
+     "bakery": {
+      "net_pm": 52.561906,
+      "income_pm": 82.171429,
+      "cost_pm": 29.609523,
+      "sold_pm": 20.542857,
+      "lost_pm": 0,
+      "made_pm": 20.571429,
+      "demand_pm": 20.5521,
+      "brown_share": 1
+     },
+     "workshop": {
+      "net_pm": 8.358943,
+      "income_pm": 21,
+      "cost_pm": 12.641057,
+      "sold_pm": 3,
+      "lost_pm": 0,
+      "made_pm": 3.142857,
+      "demand_pm": 0,
+      "brown_share": 1
+     },
+     "market": {
+      "net_pm": 10.454086,
+      "income_pm": 18.085714,
+      "cost_pm": 7.631629,
+      "sold_pm": 6.028571,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 6.02088,
+      "brown_share": 0
+     },
+     "shed": {
+      "net_pm": -1.9998,
+      "income_pm": 0,
+      "cost_pm": 1.9998,
+      "sold_pm": 0,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 0,
+      "brown_share": 1
+     }
+    },
+    "hash": "17c9220e"
+   },
+   "main_feeder_overloaded": {
+    "net_pm": 63.823771,
+    "delivered_kw": 11.2,
+    "wanted_kw": 11.2,
+    "street": {
+     "homes_min": 1,
+     "main_min": 0.761905
+    },
+    "factor": {
+     "bakery": 0.761905,
+     "workshop": 0.761905,
+     "market": 1,
+     "shed": 0.761905,
+     "gen_1": 1,
+     "home_1": 1,
+     "home_2": 1,
+     "home_3": 1,
+     "home_4": 1,
+     "home_5": 1,
+     "home_6": 1,
+     "home_7": 1,
+     "home_8": 1
+    },
+    "edges": {
+     "main_feeder": {
+      "cap": 8,
+      "want": 10.5,
+      "flow": 8,
+      "state": "red"
+     },
+     "homes_branch": {
+      "cap": 3.2,
+      "want": 3.2,
+      "flow": 3.2,
+      "state": "amber"
+     },
+     "bakery_line": {
+      "cap": 7,
+      "want": 6,
+      "flow": 4.571429,
+      "state": "green"
+     },
+     "workshop_line": {
+      "cap": 3.5,
+      "want": 3,
+      "flow": 2.285714,
+      "state": "green"
+     },
+     "market_line": {
+      "cap": 1,
+      "want": 0,
+      "flow": 0,
+      "state": "green"
+     },
+     "shed_line": {
+      "cap": 2,
+      "want": 1.5,
+      "flow": 1.142857,
+      "state": "green"
+     }
+    },
+    "shops": {
+     "bakery": {
+      "net_pm": 49.405486,
+      "income_pm": 78.285714,
+      "cost_pm": 28.880229,
+      "sold_pm": 19.571429,
+      "lost_pm": 0.971429,
+      "made_pm": 19.885714,
+      "demand_pm": 20.5521,
+      "brown_share": 1
+     },
+     "workshop": {
+      "net_pm": 5.964,
+      "income_pm": 16.8,
+      "cost_pm": 10.836,
+      "sold_pm": 2.4,
+      "lost_pm": 0.6,
+      "made_pm": 2.4,
+      "demand_pm": 0,
+      "brown_share": 1
+     },
+     "market": {
+      "net_pm": 10.454086,
+      "income_pm": 18.085714,
+      "cost_pm": 7.631629,
+      "sold_pm": 6.028571,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 6.02088,
+      "brown_share": 0
+     },
+     "shed": {
+      "net_pm": -1.9998,
+      "income_pm": 0,
+      "cost_pm": 1.9998,
+      "sold_pm": 0,
+      "lost_pm": 0,
+      "made_pm": 0,
+      "demand_pm": 0,
+      "brown_share": 1
+     }
+    },
+    "hash": "f3496d0e"
+   }
+  },
+  "upgrade": {
+   "cable": "homes_branch",
+   "to_kw": 3.2,
+   "build_cost": 2.67,
+   "upkeep_pm": 0.02,
+   "payback_min": null
+  },
+  "main_feeder_kw": 8,
+  "money_change_pm": {
+   "homes_cable_upgrade": -0.00418,
+   "main_feeder_overload": -5.551363
+  },
+  "at_ten_homes": {
+   "homes": 10,
+   "to_kw": 4,
+   "build_cost": 13.33,
+   "upkeep_pm": 0.1,
+   "source_kw": 13.5,
+   "wanted_after_kw": 14.5,
+   "net_before_pm": 87.66,
+   "net_after_pm": 83.5528,
+   "money_change_pm": -4.1072,
+   "street_before": {
+    "homes_min": 0.75,
+    "main_min": 1
+   },
+   "street_after": {
+    "homes_min": 0.931034,
+    "main_min": 0.931034
+   },
+   "bakery_net_before_pm": 67.885714,
+   "bakery_net_after_pm": 63.622743,
+   "hash_before": "549dcada",
+   "hash_after": "08727df5"
+  }
+ },
+ "dark_streets_8_homes": {
+  "as built": {
+   "district_net_pm": 69.379314,
+   "income_pm": 121.257143,
+   "cost_pm": 51.877829,
+   "bakery_net_pm": 52.567886,
+   "bakery_sold_pm": 20.542857,
+   "bakery_cost_pm": 29.603543,
+   "hash": "6d010bd2"
+  },
+  "bakery line cut (a dark bakery)": {
+   "district_net_pm": 1.811429,
+   "income_pm": 39.085714,
+   "cost_pm": 37.274286,
+   "bakery_net_pm": -15,
+   "bakery_sold_pm": 0,
+   "bakery_cost_pm": 15,
+   "hash": "ca6f53c7"
+  },
+  "main feeder cut (bakery, workshop, market, shed dark)": {
+   "district_net_pm": -11.545514,
+   "income_pm": 18.085714,
+   "cost_pm": 29.631229,
+   "bakery_net_pm": -15,
+   "bakery_sold_pm": 0,
+   "bakery_cost_pm": 15,
+   "hash": "9f5a9c0e"
+  },
+  "homes cable cut (a dark homes street)": {
+   "district_net_pm": 69.379314,
+   "income_pm": 121.257143,
+   "cost_pm": 51.877829,
+   "bakery_net_pm": 52.567886,
+   "bakery_sold_pm": 20.542857,
+   "bakery_cost_pm": 29.603543,
+   "hash": "cf29cb25"
+  }
+ },
+ "note": "illustrative coins; cost scales linearly with size; homes have no machine, so a dim street changes no money; wages unchanged (unfilled places unpaid)"
+}

@@ -1,0 +1,49 @@
+{
+ "schema": "city_evolution",
+ "version": 0,
+ "id": "bakery.stone_deck_oven",
+ "recipe": {
+  "id": "bakery",
+  "version": 1,
+  "sha256": "b4999aeb0ce8de890e0d711da6561c31b546e92727c3da4e87b716a8b63e559e"
+ },
+ "context": {
+  "era": "early_masonry",
+  "climate": "any",
+  "purpose": "make more bread per minute"
+ },
+ "branches": [
+  {
+   "id": "stone_deck_oven",
+   "name": "Stone deck oven",
+   "kind": "gameplay",
+   "requires": {
+    "tech": [
+     "masonry"
+    ],
+    "wealth_min": 60
+   },
+   "cost": {
+    "coins": 40
+   },
+   "drawback": "Draws all 8 kW of the city supply, so any brownout stops baking, and oven repairs take half as long again.",
+   "effects": [
+    {
+     "path": "systems.production.batch_seconds",
+     "op": "mul",
+     "value": 0.75
+    },
+    {
+     "path": "systems.power.demand_kw",
+     "op": "add",
+     "value": 2
+    },
+    {
+     "path": "systems.repair.seconds_by_tag.oven",
+     "op": "mul",
+     "value": 1.5
+    }
+   ]
+  }
+ ]
+}

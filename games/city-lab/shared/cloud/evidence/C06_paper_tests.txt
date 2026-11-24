@@ -1,0 +1,10 @@
+PASS P1 power, local bottleneck: homes get 2.0 (71.43%), bakery 6.0, total 8.0
+PASS P1 after the homes cable is 4.0: homes get 2.8 (100%), bakery 6.0, total 8.8
+PASS P4 (the missing rule): a SHORT source. 6 kW for capped demand 8.0 scales both branches by 0.75: homes 1.5 (53.6% of 2.8), bakery 4.5 (75%)
+PASS P5 a second 3 kW generator at the root (6 + 3 = 9) gives exactly P1
+PASS P2 water, partial pipe: homes 2.0, bakery 1.0 (shortage 0.5), total 3.0
+PASS P2 with the bakery pipe raised to 2.0: bakery 1.5, shortage 0, total 3.5
+PASS P3 roads: 4 cells, 6 trips against capacity 4, decay 0.8: effective distance 6, weight 0.262144 against 0.4096 (36% lower)
+PASS P3 with capacity raised to 6 the weight returns to 0.4096
+
+all paper tests match the hand numbers

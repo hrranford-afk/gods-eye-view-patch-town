@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>City Lab: Living Neighbourhood</title>
+<style>
+:root{--bg:#dfe9f2;--panel:#fbf6ec;--ink:#2b2118;--mute:#6f6253;--line:#e2d6c0;--btn:#fff;--btnline:#cdbb98;--go:#2f8f4e;--warn:#d9822b;--bad:#c93c2c;--acc:#2f6fe6;--gold:#f2b73a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;touch-action:none;color-scheme:light}
+#app{position:fixed;inset:0;display:grid;grid-template-columns:1fr 380px;grid-template-rows:1fr}
+#stage{position:relative;min-width:0;min-height:0}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#panel{background:var(--panel);border-left:2px solid var(--line);overflow-y:auto;padding:10px 12px 28px;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+@media (max-aspect-ratio:1/1){#app{grid-template-columns:1fr;grid-template-rows:56vh 1fr}#panel{border-left:0;border-top:2px solid var(--line)}}
+#top{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;pointer-events:none}
+#top>*{pointer-events:auto}
+.title{font-weight:800;font-size:17px;background:rgba(251,246,236,.92);padding:8px 12px;border-radius:12px;border:2px solid var(--btnline)}
+.btn{min-height:44px;min-width:44px;padding:8px 12px;border-radius:12px;border:2px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.btn.bad{background:#fff0ec;border-color:#e0a79d;color:#8a2a1e}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.row .btn{flex:1 1 auto}
+#hint{position:absolute;left:10px;bottom:10px;background:rgba(251,246,236,.92);padding:6px 10px;border-radius:10px;border:2px solid var(--btnline);font-size:13px;max-width:70%}
+#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:#2b2118;color:#fff;padding:8px 14px;border-radius:12px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%}
+#toast.show{opacity:.95}
+h3{margin:14px 0 4px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+h3:first-child{margin-top:2px}
+.card{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;margin:6px 0}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv b{font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-weight:800;font-size:12px;color:#fff;background:var(--go)}
+.pill.low{background:var(--warn)}.pill.cut{background:var(--bad)}.pill.none{background:#9a9a9a}
+.list{margin:0;padding:0;list-style:none}
+.list li{padding:2px 0;border-bottom:1px dashed var(--line)}
+.list li:last-child{border-bottom:0}
+.ev{font-size:13px;display:grid;grid-template-columns:48px 1fr;gap:6px}
+.ev i{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;margin:2px 3px 2px 0;padding:6px 10px;border-radius:99px;border:2px solid var(--btnline);background:#fff;font-weight:700;font-size:13px;min-height:36px;cursor:pointer}
+.chip.off{border-color:#e0a79d;background:#fff0ec}
+select,input[type=text],textarea{width:100%;min-height:44px;border:2px solid var(--btnline);border-radius:10px;padding:8px;font:inherit;background:#fff;color:var(--ink);touch-action:auto}
+textarea{min-height:140px;font:12px/1.3 ui-monospace,Menlo,monospace;resize:vertical}
+.err{background:#fff0ec;border:2px solid #e0a79d;border-radius:10px;padding:8px;margin:6px 0;color:#7a2418;font-size:13px}
+.err ul{margin:4px 0 0 16px;padding:0}
+.ok{background:#eefaf0;border:2px solid #9fd2ac;border-radius:10px;padding:8px;margin:6px 0;color:#1d5a30;font-size:13px}
+.bar{height:10px;border-radius:6px;background:#eadfc9;overflow:hidden}.bar>i{display:block;height:100%;background:var(--gold)}
+label.sm{font-size:12px;color:var(--mute);display:block;margin-top:6px}
+.tools .btn.on{background:var(--warn);border-color:var(--warn)}
+details{margin:6px 0}summary{cursor:pointer;font-weight:800;min-height:36px;display:flex;align-items:center}
+.small{font-size:12px;color:var(--mute)}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lb{position:absolute;transform:translate(-50%,-100%);background:rgba(255,255,255,.93);border:2px solid var(--btnline);border-radius:10px;padding:1px 6px;font:700 10px/1.2 -apple-system,system-ui,sans-serif;white-space:pre;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.lb.warn{border-color:var(--warn)}.lb.bad{border-color:var(--bad);color:#7a2418;background:#fff0ec}
+table.res{width:100%;border-collapse:collapse;font-size:11.5px;margin:4px 0}
+table.res th,table.res td{border-bottom:1px dashed var(--line);padding:2px 3px;text-align:right;font-variant-numeric:tabular-nums}
+table.res th:first-child,table.res td:first-child{text-align:left}
+table.res th{font-size:10.5px;color:var(--mute);vertical-align:bottom}
+.why{font-size:13px;display:grid;grid-template-columns:44px 1fr;gap:6px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.why i{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+.why.change b{color:#7a4a00}.why.fresh{background:#fff7da}
+ul.expl{margin:4px 0 4px 16px;padding:0;font-size:13px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:4px 0}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+[hidden]{display:none!important}
+table.cab td.st{font-weight:800;text-align:center}
+table.cab td.st.green{color:#1d8a45}table.cab td.st.amber{color:#b46a00}table.cab td.st.red{color:#c93c2c}table.cab td.st.cut,table.cab td.st.dark{color:#6b6b6b}
+table.cab tr.hl{background:#fff7da}table.cab tr{cursor:pointer}
+.why-card{background:#fff7da;border:2px solid #e6c77a;border-radius:12px;padding:8px 10px;margin:6px 0;font-weight:600}
+.inrow{display:flex;gap:6px;align-items:stretch;margin:6px 0}.inrow input{flex:0 0 84px;width:84px;text-align:center}.inrow .btn{flex:1 1 auto}
+.lb.dark{background:#3a3a3a;color:#fff;border-color:#222}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="labels"></div>
+    <div id="top">
+      <div class="title" id="ttl">Patch Row</div>
+      <button class="btn on" id="bT1">x1</button><button class="btn" id="bT5">x5</button><button class="btn" id="bT20">x20</button><button class="btn" id="bP">Pause</button>
+    </div>
+    <div id="hint">Drag to turn the table. Pinch or scroll to zoom. Tap a building to inspect it.</div>
+    <div id="toast"></div>
+  </div>
+  <div id="panel">
+    <h3>The neighbourhood</h3>
+    <div class="card">
+      <div class="kv"><span>Time</span><b id="d-time">0:00</b></div>
+      <div class="kv"><span>Residents (working / job places)</span><b id="d-res">-</b></div>
+      <div class="kv"><span>Grid draw / supply</span><b id="d-grid">-</b></div>
+      <div class="kv"><span>Power</span><span><span class="pill" id="d-pill">ok</span></span></div>
+      <div class="kv"><span>Bakery demand / sold</span><b id="d-bak">-</b></div>
+      <div class="kv"><span>District income / costs per minute</span><b id="d-money">-</b></div>
+      <div class="kv"><span>District net per minute</span><b id="d-net">-</b></div>
+    </div>
+    <div class="legend"><span><i style="background:#2fbf5e"></i>power ok</span><span><i style="background:#f2a21f"></i>brownout</span><span><i style="background:#e04a3a"></i>cut / blocked</span><span><i style="background:#5aa2f0"></i>delivery route</span></div>
+
+    <h3>What changed and why</h3>
+    <div class="card"><div id="whylog"></div></div>
+
+    <h3>Change something</h3>
+    <div class="row"><button class="btn" id="aAdd">Add home</button><button class="btn" id="aDel">Remove home</button></div>
+    <label class="sm">Road</label><select id="roadSel"></select>
+    <div class="row"><button class="btn bad" id="aRoad">Block / open this road</button></div>
+    <label class="sm">Grid supply</label>
+    <div class="row"><button class="btn" data-sup="1">100%</button><button class="btn" data-sup="0.8">80%</button><button class="btn" data-sup="0.6">60%</button></div>
+    <label class="sm">Upgrade the bakery</label><select id="upSel"><option value="shared/cloud/examples/bakery.stone_deck_oven.json">Stone deck oven (40 coins)</option><option value="shared/cloud/examples/bakery.cool_store_room.json">Cool store room (30 coins)</option></select>
+    <div class="row"><button class="btn go" id="aUp">Apply upgrade</button><button class="btn bad" id="aReset">Reset the neighbourhood</button></div>
+
+    <div id="netPanel" hidden>
+      <h3>Power network</h3>
+      <div class="legend"><span><i style="background:#2fbf5e"></i>cable under 90%</span><span><i style="background:#f2a21f"></i>90 to 100%</span><span><i style="background:#e04a3a"></i>over capacity</span><span><i style="background:#777"></i>cut / dark</span><span><i style="background:#ffd24a"></i>generator</span></div>
+      <div class="card" id="netCard"></div>
+      <label class="sm">Generator output</label>
+      <div class="row"><button class="btn" data-gen="1">100%</button><button class="btn" data-gen="0.6">60%</button><button class="btn" data-gen="0.3">30%</button></div>
+      <label class="sm">Cable</label><select id="cabSel"></select>
+      <div class="inrow"><input type="text" inputmode="decimal" id="cabKw" value="3" aria-label="capacity in kW"><button class="btn" id="aCapSet">Set capacity (kW)</button><button class="btn bad" id="aCut">Cut / reconnect</button></div>
+      <div class="small">A capacity edit changes the network now but charges no money: costs are only shown, never paid, in this version.</div>
+      <h3>What would it cost and earn? (read-only)</h3>
+      <select id="cmpKind"><option value="generator">Add a generator</option><option value="cable">Upgrade a cable</option></select>
+      <div class="inrow"><input type="text" inputmode="decimal" id="cmpKw" value="3" aria-label="kW"><select id="cmpCable" hidden></select><button class="btn go" id="aCmp">Compare</button></div>
+      <div class="small">Runs the same deterministic code as the experiments in a separate copy (1800 s warm-up, 35 simulated minutes measured, whole delivery cycles). The live neighbourhood is not touched.</div>
+      <div id="cmpOut"></div>
+      <h3>Power experiments (repeatable)</h3>
+      <div class="row"><button class="btn go" id="e4">E4. Does one more generator pay?</button><button class="btn go" id="e5">E5. One dim street</button></div>
+    </div>
+
+    <h3>Inspect: building</h3>
+    <div class="card" id="selCard">Tap a building.</div>
+
+    <div id="oldExp">
+    <h3>Experiments (repeatable)</h3>
+    <div class="small">Each runs the same deterministic simulation, 15 simulated minutes per case. Same numbers every time.</div>
+    <div class="row"><button class="btn go" id="x1">1. More homes</button><button class="btn go" id="x2">2. Upgrade bakery</button><button class="btn go" id="x3">3. Two bakeries</button></div>
+    </div>
+    <div id="expOut"></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* models.js asks for its textures as tex/NAME.jpg, relative to the page. They live in ../sofa-siege/tex/ (not copied here), so those requests, and only those, are pointed there. */
+(function(){var d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');if(!d||!d.set)return;
+Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,get:d.get,set:function(v){d.set.call(this,typeof v==='string'&&/^tex\/[a-z]+\.jpg$/.test(v)?'../sofa-siege/'+v:v);}});})();
+</script>
+<script src="../sofa-siege/models.js"></script>
+<script src="whitelist.js"></script>
+<script src="supports.js"></script>
+<script src="validate.js"></script>
+<script src="sim.js"></script>
+<script src="parts.js"></script>
+<script src="build.js"></script>
+<script src="infra.js"></script>
+<script src="infra-validate.js"></script>
+<script src="district.js"></script>
+<script src="district-validate.js"></script>
+<script src="infra-exp.js"></script>
+<script src="district-app.js"></script>
+</body>
+</html>

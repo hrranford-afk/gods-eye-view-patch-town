@@ -14,7 +14,12 @@
     wood: { tile: 'wood', col: 0xd9ab6c }, wood_dark: { tile: 'wood', col: 0x8a5c34 }, wood_pale: { tile: 'wood', col: 0xe6c88e },
     paint_cream: { tile: null, col: 0xf6ecd6 }, paint_blue: { tile: 'paint', col: 0x2f6fe6 }, paint_red: { tile: 'paint', col: 0xd4502c },
     tin: { tile: 'rust', col: 0xa8a49e }, brick: { tile: 'rust', col: 0xb0683a }, canvas: { tile: 'cloth', col: 0xf3e7cc },
-    flour: { tile: null, col: 0xf7f3ea }, bread: { tile: null, col: 0xc98a48 }, iron: { tile: null, col: 0x3a3a40 }, glass: { tile: null, col: 0x86b8d8 }, stone: { tile: null, col: 0xb9b2a4 }
+    flour: { tile: null, col: 0xf7f3ea }, bread: { tile: null, col: 0xc98a48 }, iron: { tile: null, col: 0x3a3a40 }, glass: { tile: null, col: 0x86b8d8 }, stone: { tile: null, col: 0xb9b2a4 },
+    /* warm cottage colours (contact sheet). look: how a roof of this material is drawn (tile, thatch, shingle, seam) */
+    paint_sage: { tile: null, col: 0xa9b88f }, paint_ochre: { tile: null, col: 0xe1b050 }, paint_rose: { tile: null, col: 0xe6aa9a },
+    paint_teal: { tile: null, col: 0x6fa6a0 }, paint_butter: { tile: null, col: 0xf3d98b }, plaster: { tile: null, col: 0xece4d2 },
+    oak_dark: { tile: 'wood', col: 0x4a2f1b }, clay: { tile: null, col: 0xc4673c }, slate: { tile: null, col: 0x65707d, look: 'shingle' },
+    thatch: { tile: null, col: 0xcaa65e, look: 'thatch' }, roof_green: { tile: null, col: 0x6d8a52 }, roof_seam: { tile: null, col: 0x93a69b, look: 'seam' }
   };
   function rng(seed) { var s = (seed | 0) % 2147483647; if (s <= 0) s += 2147483646; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
   function hash(str) { var h = 7; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 2147483647; return h || 1; }
@@ -97,9 +102,27 @@
     b.box(w, h, d, m.col, m.tile, [0, h / 2, 0]);
     var n = Math.max(0, Math.floor(Math.max(w, d) / 0.5)), i; for (i = 0; i < n; i++) { var t = -0.5 + (i + 0.5) / n; if (w >= d) b.box(0.025, h * 1.05, d * 1.08, shade(m.col, 0.78), null, [t * w, h / 2, 0]); else b.box(w * 1.08, h * 1.05, 0.025, shade(m.col, 0.78), null, [0, h / 2, t * d]); }
   };
-  K.panel = function (b, w, h, d, m) {
+  K.panel = function (b, w, h, d, m, o) {
     b.box(w, h, d, m.col, m.tile, [0, h / 2, 0]);
-    var n = Math.max(2, Math.round(w / 0.1)), i; for (i = 0; i < n; i++) b.box(0.008, h * 0.98, d + 0.008, shade(m.col, 0.82), null, [-w / 2 + (i + 0.5) * w / n, h / 2, 0]);
+    var v = (o && o.variant) || 0, i, n;
+    if (v === 1) {   /* half-timber: dark studs, rails and braces on both faces */
+      var T = 0x4a2f1b, tt = 0.034, ns = Math.max(2, Math.round(w / 0.26));
+      for (i = 0; i <= ns; i++) b.box(tt, h, d + 0.016, T, null, [-w / 2 + tt / 2 + i * (w - tt) / ns, h / 2, 0]);
+      b.box(w, tt, d + 0.016, T, null, [0, tt / 2, 0]); b.box(w, tt, d + 0.016, T, null, [0, h - tt / 2, 0]); b.box(w, tt, d + 0.016, T, null, [0, h * 0.5, 0]);
+      for (i = 0; i < ns; i++) { var cx = -w / 2 + (i + 0.5) * w / ns, sg = i % 2 ? -1 : 1; b.box(tt * 0.8, h * 0.52, d + 0.012, T, null, [cx, h * 0.25, 0], [0, 0, sg * 0.75]); }
+      return;
+    }
+    if (v === 2) {   /* horizontal clapboard */
+      n = Math.max(3, Math.round(h / 0.07)); for (i = 1; i < n; i++) b.box(w, 0.012, d + 0.01, shade(m.col, 0.78), null, [0, i * h / n, 0]);
+      b.box(w, 0.035, d + 0.012, shade(m.col, 0.74), m.tile, [0, 0.025, 0]); return;
+    }
+    if (v === 3) {   /* stone or brick courses with staggered joints */
+      n = Math.max(3, Math.round(h / 0.09)); var j, cn = Math.max(3, Math.round(w / 0.2));
+      for (i = 1; i < n; i++) b.box(w, 0.01, d + 0.01, shade(m.col, 0.72), null, [0, i * h / n, 0]);
+      for (j = 0; j < n; j++) for (i = 1; i < cn; i++) b.box(0.01, h / n * 0.96, d + 0.01, shade(m.col, 0.74), null, [-w / 2 + (i + (j % 2 ? 0.5 : 0)) * w / cn, (j + 0.5) * h / n, 0]);
+      return;
+    }
+    n = Math.max(2, Math.round(w / 0.1)); for (i = 0; i < n; i++) b.box(0.008, h * 0.98, d + 0.008, shade(m.col, 0.82), null, [-w / 2 + (i + 0.5) * w / n, h / 2, 0]);
     b.box(w, 0.035, d + 0.012, shade(m.col, 0.74), m.tile, [0, 0.025, 0]);
   };
   K.door = function (b, w, h, d, m) {
@@ -122,14 +145,28 @@
     var n = Math.max(3, Math.round(h / 0.05)), i; for (i = 0; i < n; i++) b.box(w * 0.78, 0.012, d + 0.012, shade(m.col, 0.68), null, [0, 0.05 + i * (h - 0.1) / (n - 1), 0.004]);
   };
   K.rafter = function (b, w, h, d, m) { var L = Math.sqrt(h * h + d * d), a = Math.atan2(h, d); b.box(w, 0.05, L, m.col, m.tile, [0, h / 2 - 0.025, 0], [a, 0, 0]); };
-  K.gable = function (b, w, h, d, m) {
-    var sh = new THREE.Shape(); sh.moveTo(-d / 2, 0); sh.lineTo(d / 2, 0); sh.lineTo(0, h); sh.lineTo(-d / 2, 0);
+  K.gable = function (b, w, h, d, m, o) {
+    var v = (o && o.variant) || 0, sh = new THREE.Shape(); sh.moveTo(-d / 2, 0); sh.lineTo(d / 2, 0);
+    if (v === 1) sh.lineTo(-d / 2, h); else sh.lineTo(0, h);   /* variant 1: the right-angled end of a one-slope roof, tall at the back */
+    sh.lineTo(-d / 2, 0);
     var g = new THREE.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false, steps: 1 }); g.rotateY(-PI / 2); g.translate(w / 2, 0, 0);
     b.add(g, m.col, m.tile);
+    if (v) return;   /* variants 1 and 2 have no round attic window */
     b.cyl(0.07, 0.07, w + 0.016, 10, 0x2a2e3a, null, [0, h * 0.34, 0], [0, 0, PI / 2]); b.cyl(0.05, 0.05, w + 0.022, 10, 0x86b8d8, null, [0, h * 0.34, 0], [0, 0, PI / 2]);
   };
   K.ridge = function (b, w, h, d, m) { b.cyl(h * 0.62, h * 0.62, w, 8, m.col, m.tile, [0, h * 0.5, 0], [0, 0, PI / 2]); b.box(w, h * 0.5, d, shade(m.col, 0.85), m.tile, [0, h * 0.25, 0]); };
-  K.chimney = function (b, w, h, d, m) {
+  K.chimney = function (b, w, h, d, m, o) {
+    var cv = (o && o.variant) || 0;
+    if (cv === 1) {   /* stack with two clay pots */
+      b.box(w, h * 0.88, d, m.col, m.tile, [0, h * 0.44, 0]); b.box(w * 1.25, 0.05, d * 1.25, shade(m.col, 0.8), m.tile, [0, h * 0.88 - 0.025, 0]);
+      [-1, 1].forEach(function (sx) { b.cyl(w * 0.2, w * 0.24, h * 0.12, 10, 0xc4673c, null, [sx * w * 0.24, h * 0.94, 0]); b.cyl(w * 0.26, w * 0.2, 0.03, 10, 0xa8532e, null, [sx * w * 0.24, h - 0.015, 0]); });
+      return;
+    }
+    if (cv === 2) {   /* a stepped, tapering stone chimney */
+      b.box(w, h * 0.5, d, m.col, m.tile, [0, h * 0.25, 0]); b.box(w * 0.8, h * 0.3, d * 0.8, shade(m.col, 0.92), m.tile, [0, h * 0.65, 0]);
+      b.box(w * 0.62, h * 0.2, d * 0.62, shade(m.col, 0.88), m.tile, [0, h * 0.9, 0]); b.box(w * 0.78, 0.04, d * 0.78, shade(m.col, 0.75), m.tile, [0, h - 0.02, 0]);
+      b.box(w * 0.4, 0.02, d * 0.4, 0x2a1c14, null, [0, h + 0.002, 0]); return;
+    }
     b.box(w, h, d, m.col, m.tile, [0, h / 2, 0]);
     var i; for (i = 1; i < 5; i++) b.box(w * 1.02, 0.012, d * 1.02, shade(m.col, 0.7), null, [0, i * h / 5, 0]);
     b.box(w * 1.22, 0.05, d * 1.22, shade(m.col, 0.8), m.tile, [0, h - 0.025, 0]); b.box(w * 0.6, 0.02, d * 0.6, 0x2a1c14, null, [0, h + 0.002, 0]);
@@ -193,7 +230,10 @@
     b.cyl(w * 0.44, w * 0.44, 0.01, 12, 0x2a1c14, null, [0, h + 0.002, 0]);
   };
   /* the tile's strips (a second pass, so each strip sits along the slope at its own place across the width) */
-  K.roof_tile = function (b, w, h, d, m) {
+  var LOOKS = ['tile', 'thatch', 'shingle', 'seam'];
+  K.roof_tile = function (b, w, h, d, m, o) {
+    var look = o && o.variant ? LOOKS[o.variant] : (m.look || 'tile');
+    if (look !== 'tile') return roofLook(b, w, h, d, m, look);
     b.slab(w, h, d, 0.03, m.col, m.tile, 0, 0);
     var rows = Math.max(2, Math.round(d / 0.12)), cols = Math.max(2, Math.round(w / 0.17)), L = Math.sqrt(h * h + d * d), a = Math.atan2(h, d), i, j, rr = rng(hash(m.col + 'rt'));
     for (j = 0; j < rows; j++) {
@@ -204,6 +244,102 @@
       }
     }
     b.box(w, 0.04, 0.03, shade(m.col, 0.7), null, [0, 0.02, d / 2 - 0.01], [a, 0, 0]);
+  };
+
+  /* thatch, shingle and standing-seam looks for one sloped slab (same box as the tile look: low at the front, high at the back) */
+  function roofLook(b, w, h, d, m, look) {
+    var L = Math.sqrt(h * h + d * d), a = Math.atan2(h, d), i, j, rr = rng(hash(m.col + look));
+    if (look === 'thatch') {
+      b.slab(w, h, d, 0.07, shade(m.col, 0.9), m.tile, 0, 0);
+      var rows = Math.max(3, Math.round(L / 0.075)), cols = Math.max(3, Math.round(w / 0.11));
+      for (j = 0; j < rows; j++) {
+        var f = (j + 0.5) / rows, zz = d / 2 - f * d, yy = f * h;
+        for (i = 0; i < cols; i++) {
+          var x0 = -w / 2 + (i + 0.5) * w / cols + (rr() - 0.5) * 0.03, lift = 0.02 + rr() * 0.03;
+          b.box(w / cols * 0.92, 0.03 + rr() * 0.02, L / rows * 1.25, shade(m.col, 0.82 + rr() * 0.3), null, [x0, yy + lift, zz], [a + (rr() - 0.5) * 0.08, 0, (rr() - 0.5) * 0.05]);
+        }
+      }
+      b.cyl(0.06, 0.06, w, 8, shade(m.col, 1.02), null, [0, 0.035, d / 2 - 0.005], [0, 0, PI / 2]);
+      for (i = 0; i < cols; i++) b.box(w / cols * 0.7, 0.05, 0.05, shade(m.col, 0.78 + rr() * 0.25), null, [-w / 2 + (i + 0.5) * w / cols, 0.02 + rr() * 0.01, d / 2 + 0.01 + rr() * 0.02], [a, 0, 0]);
+    } else if (look === 'shingle') {
+      b.slab(w, h, d, 0.03, shade(m.col, 0.75), m.tile, 0, 0);
+      var rw = Math.max(3, Math.round(d / 0.1)), cw = Math.max(3, Math.round(w / 0.14));
+      for (j = 0; j < rw; j++) {
+        var f2 = (j + 0.5) / rw, z2 = d / 2 - f2 * d, y2 = f2 * h;
+        for (i = 0; i <= cw; i++) {
+          var x1 = -w / 2 + (i + (j % 2 ? 0.5 : 0)) * w / cw; if (x1 < -w / 2 + 0.02 || x1 > w / 2 - 0.02) continue;
+          var wd = w / cw * 0.92; b.box(wd, 0.022, L / rw * 1.1, shade(m.col, 0.88 + rr() * 0.26), null, [x1, y2 + 0.02, z2 + 0.004], [a, 0, 0]);
+          b.cyl(wd * 0.5, wd * 0.5, 0.022, 8, shade(m.col, 0.88 + rr() * 0.2), null, [x1, y2 + 0.012 - (h / rw) * 0.55, z2 + (d / rw) * 0.55], [a + PI / 2, 0, 0]);
+        }
+      }
+    } else {   /* standing seam: long ribs down the slope */
+      b.slab(w, h, d, 0.03, shade(m.col, 1.0), m.tile, 0, 0);
+      var rb = Math.max(4, Math.round(w / 0.17));
+      for (i = 0; i <= rb; i++) b.box(0.022, 0.036, L, shade(m.col, 0.72), null, [-w / 2 + 0.011 + i * (w - 0.022) / rb, h / 2 - 0.008, 0], [a, 0, 0]);
+      b.box(w, 0.04, 0.035, shade(m.col, 0.62), null, [0, 0.02, d / 2 - 0.01], [a, 0, 0]);
+    }
+  }
+  /* one planar face of a roof, cut into tiles that alternate in tone. p0,p1 are the eave corners (left, right), p3,p2 the ridge corners above them. out = the way the face looks. */
+  var _fa = new THREE.Vector3(), _fb = new THREE.Vector3(), _fn = new THREE.Vector3();
+  function lerp3(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]; }
+  function roofFace(b, p0, p1, p2, p3, out, col, tile, rows, cols, look, rr) {
+    var i, j;
+    function P(s, t) { return lerp3(lerp3(p0, p1, s), lerp3(p3, p2, s), t); }
+    for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
+      var A = P(i / cols, j / rows), B = P((i + 1) / cols, j / rows), C = P((i + 1) / cols, (j + 1) / rows), D = P(i / cols, (j + 1) / rows);
+      _fa.set(B[0] - A[0], B[1] - A[1], B[2] - A[2]); _fb.set(D[0] - A[0], D[1] - A[1], D[2] - A[2]);
+      var ord = [A, B, C, A, C, D];
+      _fn.crossVectors(_fa, _fb); if (_fn.dot(new THREE.Vector3(out[0], out[1], out[2])) < 0) ord = [A, C, B, A, D, C];
+      var pos = [], nm = [], uv = [], k;
+      var nrm = _fn.clone().normalize(); if (nrm.dot(new THREE.Vector3(out[0], out[1], out[2])) < 0) nrm.negate();
+      for (k = 0; k < 6; k++) { pos.push(ord[k][0], ord[k][1], ord[k][2]); nm.push(nrm.x, nrm.y, nrm.z); uv.push(0.5, 0.5); }
+      var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nm, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      var jit = look === 'thatch' ? 0.8 + rr() * 0.35 : (look === 'shingle' ? (((i + j) % 2) ? 0.9 : 1.05) * (0.94 + rr() * 0.12) : (((i + j) % 2) ? 0.9 : 1.04) * (1 + (rr() - 0.5) * 0.14));
+      b.add(g, look === 'seam' && i % 2 ? shade(col, 0.82) : shade(col, jit), null, null, null);
+    }
+  }
+  /* a hipped roof: eaves w x d at y 0, ridge at y h. Variant 1 is a pyramid (a point). Ridge along the long side. */
+  K.roof_hip = function (b, w, h, d, m, o) {
+    var pyr = ((o && o.variant) || 0) === 1, look = m.look || 'tile', rr = rng(hash(m.col + 'hip' + w + d));
+    var hx = w / 2, hz = d / 2, rx, rz;
+    if (pyr) { rx = 0; rz = 0; } else if (w >= d) { rx = (w - d) / 2; rz = 0; } else { rx = 0; rz = (d - w) / 2; }
+    var E0 = [-hx, 0, hz], E1 = [hx, 0, hz], E2 = [hx, 0, -hz], E3 = [-hx, 0, -hz];
+    var R0 = [-rx, h, rz], R1 = [rx, h, rz], R2 = [rx, h, -rz], R3 = [-rx, h, -rz];
+    var rows = Math.max(3, Math.round(Math.max(hx, hz) * 2 / 0.14)), cols = Math.max(3, Math.round(Math.max(w, d) / 0.17)), sk = 0.04;
+    roofFace(b, E0, E1, R1, R0, [0, 1, 1], m.col, m.tile, rows, cols, look, rr);   /* front, faces +z and up */
+    roofFace(b, E2, E3, R3, R2, [0, 1, -1], m.col, m.tile, rows, cols, look, rr);                                                /* back */
+    roofFace(b, E1, E2, R2, R1, [1, 1, 0], m.col, m.tile, rows, cols, look, rr);                                                 /* right */
+    roofFace(b, E3, E0, R0, R3, [-1, 1, 0], m.col, m.tile, rows, cols, look, rr);                                                /* left */
+    /* the underside and a thin fascia round the eaves so no light shows through */
+    b.box(w, 0.02, d, shade(m.col, 0.5), null, [0, 0.01, 0]);
+    b.box(w, sk, 0.03, shade(m.col, 0.7), null, [0, sk / 2, hz - 0.012]); b.box(w, sk, 0.03, shade(m.col, 0.7), null, [0, sk / 2, -hz + 0.012]);
+    b.box(0.03, sk, d, shade(m.col, 0.7), null, [hx - 0.012, sk / 2, 0]); b.box(0.03, sk, d, shade(m.col, 0.7), null, [-hx + 0.012, sk / 2, 0]);
+    if (pyr || (rx === 0 && rz === 0)) { b.sph(0.045, shade(m.col, 0.7), null, [0, h + 0.01, 0]); b.cyl(0.012, 0.012, 0.1, 6, 0x3a3a40, null, [0, h + 0.07, 0]); }
+    else if (rx > 0) b.cyl(0.04, 0.04, rx * 2 + 0.04, 8, shade(m.col, 0.78), null, [0, h + 0.005, 0], [0, 0, PI / 2]);
+    else b.cyl(0.04, 0.04, rz * 2 + 0.04, 8, shade(m.col, 0.78), null, [0, h + 0.005, 0], [PI / 2, 0, 0]);
+  };
+  /* a pointed roof for a round tower: stacked rings in two tones, a flared eave and a finial */
+  K.roof_cone = function (b, w, h, d, m) {
+    var R = w / 2, n = Math.max(4, Math.round(h / 0.07)), i, sc = [1, 1, d / w];
+    for (i = 0; i < n; i++) {
+      var r0 = R * (1 - i / n), r1 = R * (1 - (i + 1) / n);
+      b.cyl(r1, r0 * 1.0, h / n * 1.02, 14, shade(m.col, i % 2 ? 0.88 : 1.03), null, [0, (i + 0.5) * h / n, 0], null, sc);
+    }
+    b.cyl(R * 1.04, R * 1.04, 0.035, 14, shade(m.col, 0.7), null, [0, 0.0175, 0], null, sc);
+    b.sph(0.035, 0xe9b53a, null, [0, h + 0.005, 0]); b.cyl(0.01, 0.01, 0.08, 6, 0x3a3a40, null, [0, h + 0.03, 0]);
+  };
+  /* a round tower wall: stone-like rings, a plinth, a top band and narrow windows */
+  K.tower = function (b, w, h, d, m) {
+    var R = w / 2, sc = [1, 1, d / w], i, n = Math.max(2, Math.round(h / 0.1));
+    b.cyl(R, R, h, 16, m.col, m.tile, [0, h / 2, 0], null, sc);
+    for (i = 1; i < n; i++) b.cyl(R * 1.006, R * 1.006, 0.01, 16, shade(m.col, 0.78), null, [0, i * h / n, 0], null, sc);
+    b.cyl(R * 1.06, R * 1.06, 0.07, 16, shade(m.col, 0.8), m.tile, [0, 0.035, 0], null, sc);
+    b.cyl(R * 1.08, R * 1.08, 0.05, 16, shade(m.col, 0.85), m.tile, [0, h - 0.025, 0], null, sc);
+    [[0.0, 0.5], [0.9, 0.72], [-0.9, 0.35]].forEach(function (q) {
+      var s = Math.sin(q[0]), c = Math.cos(q[0]), y = h * q[1];
+      b.box(0.07, 0.16, 0.03, 0x2a2e3a, null, [s * R * 0.99, y, c * R * 0.99 * d / w], [0, q[0], 0]);
+      b.box(0.05, 0.13, 0.034, 0x86b8d8, null, [s * R * 1.0, y, c * R * 1.0 * d / w], [0, q[0], 0]);
+    });
   };
 
   /* ---- text on a sign: one canvas texture per text ---- */

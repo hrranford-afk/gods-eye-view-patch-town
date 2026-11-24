@@ -1,0 +1,41 @@
+# City Lab power network (schema `city_infra`, version 0), by CLOUD Claude, C06a
+
+An infra file is DATA beside a district: it says where electricity comes from and which cables carry it. It adds nothing to the building recipes (`rtk.building` v1 is unchanged) and nothing to the district file. It is read with `JSON.parse` only and checked by a strict validator. A district WITHOUT an infra file behaves byte-identically to before C06a (five recorded state hashes are asserted in `tests/infra-test.js`).
+
+Files: `infra.js` (the allocation arithmetic, pure), `infra-validate.js` (the strict file check, pure, Node and browser), `infra-exp.js` (read-only cost comparison and experiments E4, E5), `district.js` (calls `infra.js`; no second building engine), `recipes/generator_shed.json` (a hand-made generator building, 56 parts), `districts/patch_row_power.json`, `infra/patch_row_power.infra.json`, page: `district.html?district=districts/patch_row_power.json&infra=infra/patch_row_power.infra.json` (or `power.html`, which opens that address). Reproduce: `node tests/infra-test.js`, `node tests/infra-paper-test.js`, `NODE_PATH=$(npm root -g) node tests/infra-page-test.js [--shots]`, `node tests/infra-e2e.js`, `node tools/c06a-experiments.mjs`.
+
+## The file
+```
+{ schema: "city_infra", version: 0, id, name,
+  district: { id, version, sha256 },          linked to ONE district by id, version and the SHA-256 of its file
+  root: "<junction id>",
+  junctions: [ { id, name, cell?: [col,row] } ],                                  poles; cell is only for drawing
+  sources:   [ { id, building, kw, build_cost, upkeep_per_min, at? } ],           at the root only; `at`, if given, must be the root
+  cables:    [ { id, name, from, to, capacity_kw, build_cost, upkeep_per_min } ], a TREE
+  home_cable?: { to: "<junction id>", capacity_kw, build_cost, upkeep_per_min } }  homes the file does not list hang here, one small cable each
+```
+Strict validator (`CityInfraValidate.validate(infra, district, {districtSha})`, never throws): unknown keys refused; ranges (kw 0.1 to 200, capacity 0.1 to 500, costs 0 to 100000, at most 8 sources, 80 cables, 24 junctions); every building id must exist in the district; a source must stand in a `shed` building, once; a source elsewhere than the root is refused ("a source may only sit at the root junction"); a cable needs one `from` that is a junction (a building cannot feed another) and one `to` that has exactly ONE parent; nothing may point into the root; every junction must be reachable from the root (so a second root, an orphan or a cycle is refused: "v0 allows one tree"); strings must not look like code, markup or links; the SHA-256 must match the district file when the caller supplies it (the page does, with `crypto.subtle`). `tests/infra-test.js` throws 44 hostile or broken files at it: all rejected, none throws.
+
+## The rules (each one small)
+1. **Sources.** Every source adds its `kw` at the root. A second generator at the root adds (6 + 3 = 9, paper test P5). Output is FIXED (no wind, no fuel); the page's "generator output" buttons multiply it (`scale`). A source building powers itself: its own draw is not on the network, and its own wage and power are not counted in the district totals (its running cost is `upkeep_per_min` in the file, so nothing is counted twice).
+2. **Allocation, rule A (proportional to capped demand), top-down on the tree**, exactly as `shared/tools/c06-paper-tests.mjs`. Each node: `want = own demand + sum of its children's capped`; `capped = min(cable capacity, want)`. The root offers `min(sources, want)`; a node that gets `take` shares it out by the same factor `f = take / want` to its own demand and to every child (a child's offer is `child.capped x f`). Buildings are leaves.
+3. **Power factor of a building** `= delivered / demanded` for its own demand (homes included). A building with no path to a source, or under a cut cable, is DARK (factor 0). A connected building that draws nothing (the market) has factor 1.
+4. **Into the machines.** The factor goes into each building's existing machine through the existing hook: `setExternal(supply_kw = demand_kw x factor)`. Nominal demand, as before: a machine's `demand_kw` whether or not it is baking this second.
+5. **Per-edge numbers** (for the page): `want` (what everything below asks for before this cable clips it), `flow` (what it carries), `cap`, and a colour: GREEN under 90 percent, AMBER 90 to 100, RED over capacity (`want > cap`), CUT, DARK (below a cut). Per-building: the LIMITING cable = the one on its way to the root that clips the most (smallest `capped / want`); if none clips and the sources are short, the sources; both are named when both limit.
+6. **Edits** (each writes one sentence to the log, with before and after numbers): `setCable(W, id, kw)`, `cutCable(W, id, true|false)`, `setScale` (generator output), add or remove a home. No money is charged. A brownout line also gives the SHELF STOCK, the ENERGY SAVED and how long the shelf covers sales (the C03b lesson: a short brownout raises a shop's profit only because stock covers sales while less electricity is spent; a long one loses money).
+7. **Homes have no machine.** A dim or dark home changes no money in this version (residents spend the same). This is the largest known gap.
+
+## Formulas the page and the log use
+- Colour: `state = cut | dark | (want > cap: red) | (max(want, flow)/cap >= 0.9: amber) | green`.
+- Sentence for a building limited by a cable: `<Cable> <cap> kW; <what hangs below> wants <want> kW; <Label> gets <p> percent.` (example from the page: "Homes cable 3.0 kW; the homes street wants 3.2 kW; Home 3 gets 94 percent."). Limited by the sources: "The generators give 8.1 kW; the cables carry 13.5 kW of demand; every branch gets 60 percent, so ...".
+- Energy saved (log): `(batches/min before - batches/min after) x kWh per batch x price`, where `batches/min = 60 x factor x staff / batch_seconds` and `kWh per batch = demand_kw x batch_seconds / 3600`; "up to" because a full shelf pauses the oven anyway. Shelf cover = `stock / (demand - made per minute)`.
+- Cost comparison (read-only, `infra-exp.js`): a fresh copy of the neighbourhood (same homes, roads, upgrades, cable edits, scale) is built twice, with and without the option, each run 1800 s warm-up then 2100 s measured (35 minutes: whole cycles of the 70 s and 100 s carts); `gain = net after - net before` per minute; `net gain after upkeep = gain - upkeep`; `payback = build cost / net gain after upkeep` (never if not positive). Cost scales LINEARLY with size: a new generator costs `build_cost x kw / kw of the largest listed source`; a cable upgrade from `c` to `x` kW costs `build_cost x (x - c) / c`. These are illustrative. The live world is never touched.
+
+## How the page reads it
+`district-app.js` fetches the district file as text, computes its SHA-256, fetches the infra file, validates it, then starts the district with `DI.make(D, files, {infra})`. Cables are drawn between junction poles and buildings: thickness `0.012 + 0.010 x sqrt(capacity)`, colour by load; generators glow and show their kW; dark buildings get a grey overlay and "NO POWER"; dim buildings get an amber or red ring and "power 94%". Tapping a dim or dark building lights its limiting cable and shows the sentence; tapping a cable (or a row of the table) shows its numbers. The read-only comparison panel and the experiments call `infra-exp.js`, the same functions the tests call, so the page equals the headless figures exactly.
+
+## Illustrative numbers
+Every kW, capacity and cost in `infra/patch_row_power.infra.json` is illustrative (made up so that at 8 homes the homes cable, 3.0 kW against 3.2 kW wanted, overloads before the main feeder, 10.5 of 12 kW). The generator (13.5 kW) is sized to equal the capped demand at 8 or more homes, which is why E4 says NO on the shipped network; see `shared/cloud/C06a_RESULTS.md`. The owner can change any number in the file (then `node tools/make-infra-link.mjs` style relinking is needed: the SHA-256 of the district file must match).
+
+## Not in v0
+Water, roads, congestion, fuel, wind profiles, network losses, wear, rerouting, loops, a real budget, hardware, iPad testing.

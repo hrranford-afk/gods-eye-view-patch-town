@@ -1,0 +1,30 @@
+PASS ingredient cost = price x (change in stock + used + spoiled), item by item (purchases are cash, charged at delivery)
+PASS electricity cost = kWh drawn x price per kWh (the kWh counter is rounded each tick, so allow 0.5 percent: the real difference is about 0.1 percent, immaterial)
+PASS wages = filled places x wage per minute x time (here all 3 places filled for 1500 s)
+PASS income = loaves sold x price
+PASS short cut: baking falls roughly in proportion to power (made per minute at about the power factor)
+PASS short cut: SALES DO NOT CHANGE (the shelf covers them) and no customer is lost
+PASS short cut: loaves in stock fall (the buffer is being spent)
+PASS short cut: ingredient purchases are identical over whole delivery cycles, wages identical
+PASS short cut: electricity cost falls (a slow oven bakes less in the same time)
+PASS short cut: net rises by EXACTLY the electricity saved (the whole of the "surprise")
+PASS long cut (60%): in the first 5 minutes the shop already starts to lose customers as the shelf empties
+PASS long cut: once the shelf is empty (loaf stock under 1) sales stay below baseline
+PASS long cut: from the third 5-minute window the net is LOWER than baseline by more than 10 a minute, every window
+PASS long cut: costs fall (less baked, less electricity, fewer ingredients) but revenue falls by more
+PASS depth: steady-state net NEVER rises as the grid is cut deeper (non-increasing over 100, 90, ... 40 percent)
+PASS depth: a shallow cut costs nothing: baking capacity still exceeds demand, so 90 percent equals 100 percent
+PASS depth: sales fall once baking capacity drops below demand (at 70 percent of the grid)
+PASS during the block: the staff share is 0 (nobody can commute), so no wages are paid
+PASS during the block: no sales, no baking, no electricity
+PASS during the block: carts miss their drops, so no ingredients are bought either (cash accounting)
+PASS a 180 s block saves exactly 3 workers x 5 x 3 minutes = 45 in wages (over the run)
+PASS ingredient purchases in the first 10 minutes are at least 1.5 times the steady rate (the shelves are being filled)
+PASS steady state: bakery B is break-even (net within 1 of zero), not the -15.7 of the C03 experiment
+PASS steady state: a 180 s block in the PROFITABLE neighbourhood A lowers its net clearly (by more than 3 a minute over 15 minutes)
+PASS steady state: the same block in break-even B changes its net by less than 1 a minute: wages saved cancel sales lost
+PASS steady state: reopening a road does NOT raise B's profit: the "surprise" is gone once the start-up purchases are over (difference is zero or slightly negative)
+PASS the C03 experiment 3 headline for B (no warm-up) is more than 10 a minute worse than B's steady state
+PASS the brownout scenario is deterministic (same state hash twice)
+
+28 of 28 checks passed

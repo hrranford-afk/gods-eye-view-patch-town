@@ -1,0 +1,26 @@
+=== validate-test
+171 of 171 checks passed
+=== sim-test
+72 of 72 checks passed
+=== support-test
+23 of 23 checks passed
+=== page-test
+56 of 56 checks passed
+=== e2e
+10 of 10 checks passed
+=== district-test
+70 of 70 checks passed
+=== district-e2e
+11 of 11 checks passed
+=== district-page-test
+29 of 29 checks passed
+=== tools
+PASS home_cottage  parts=52  validator ok  systems equal to recipe_04 yes
+PASS market_hall  parts=53  validator ok  systems equal to recipe_03 yes
+PASS workshop  parts=52  validator ok  systems equal to recipe_05 yes
+PASS power_shed  parts=50  validator ok  systems equal to recipe_10 yes
+hand district validates: true
+IDENTICAL exp1 (3002 characters of figures)
+IDENTICAL exp2 (24383 characters of figures)
+IDENTICAL exp3 (3615 characters of figures)
+c03-experiments exit 0

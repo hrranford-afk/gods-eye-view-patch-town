@@ -1,0 +1,12 @@
+PASS recipe_01.json  Side Street Bakery  sha256 matches the record  validator ok
+PASS recipe_02.json  Windmill Store  sha256 matches the record  validator ok
+PASS recipe_03.json  Canvas Market Stall  sha256 matches the record  validator ok
+PASS recipe_04.json  Blue Cottage  sha256 matches the record  validator ok
+PASS recipe_05.json  Tool Workshop  sha256 matches the record  validator ok
+PASS recipe_06.json  Coastal Light Tower  sha256 matches the record  validator ok
+PASS recipe_07.json  Blue Boathouse  sha256 matches the record  validator ok
+PASS recipe_08.json  Supply Barn  sha256 matches the record  validator ok
+PASS recipe_09.json  Little School  sha256 matches the record  validator ok
+PASS recipe_10.json  Power Control Shed  sha256 matches the record  validator ok
+
+validator ok: 10 of 10; bytes identical to the record: 10 of 10

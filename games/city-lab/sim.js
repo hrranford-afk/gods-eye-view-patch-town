@@ -125,6 +125,8 @@
     (Y.deliveries || []).forEach(function (d, k) {
       if (S.t + 1e-9 < S.deliv[k]) return;
       S.deliv[k] += d.every_seconds;
+      /* hook (district layer): an outside road check may suspend the carts; the missed drop is counted and the road is named in the log */
+      if (S.ext && S.ext.deliveries === false) { S.ext.missed[d.item] = (S.ext.missed[d.item] || 0) + 1; log(S, 'delivery', 'Cart could not deliver ' + d.item + ': the road to this building is blocked'); return; }
       if (d.drop_part && !isOn(S, d.drop_part)) { log(S, 'delivery', 'Cart could not deliver ' + d.item + ': ' + label(R, d.drop_part) + ' is gone'); return; }
       var room = Math.max(0, Y.storage[d.item] - S.stock[d.item]), take = Math.min(d.amount, room), price = (Y.costs.ingredient_prices && Y.costs.ingredient_prices[d.item]) || 0;
       S.stock[d.item] = r6(S.stock[d.item] + take);
@@ -193,7 +195,9 @@
       var n = 0, tot = 0;
       Y.jobs.forEach(function (jb) { if (jb.role === role) tot += jb.count; });
       S.workers.forEach(function (w) { if (w.role === role && w.state === 'station' && isOn(S, w.station)) n++; });
-      return tot ? Math.min(1, n / tot) : 0;
+      /* hook (district layer): ext.staff[role] is the share of that role's places that residents actually fill */
+      var sh = S.ext && S.ext.staff && S.ext.staff[role] != null ? S.ext.staff[role] : 1;
+      return tot ? Math.min(1, n / tot) * sh : 0;
     }
 
     /* production: batches. A batch takes its inputs when it starts and gives its outputs when it ends */
@@ -254,7 +258,7 @@
     /* sales: customers arrive at demand_per_minute (less what a missing awning costs); each takes one if there is stock, otherwise leaves */
     var sl = Y.sales, sa = S.sales;
     if (sl) {
-      var dm = sl.demand_per_minute;
+      var dm = S.ext && S.ext.demand_per_minute != null ? S.ext.demand_per_minute : sl.demand_per_minute;   /* hook: the district passes the demand its residents make */
       ((Y.effects && Y.effects.demand) || []).forEach(function (e) { dm *= 1 - e.loss * missingShare(R, S, e.tag); });
       if (sl.noise > 0 && S.t >= sa.nextNoise) { sa.mult = r6(1 + sl.noise * (rnd(S) * 2 - 1)); sa.nextNoise = S.t + 5; }
       var sf = sl.role ? staffing(sl.role) : 1;
@@ -268,7 +272,9 @@
     }
 
     /* wages: every worker is paid every minute they are employed, standing at the station or not */
-    S.costs.wages = r6(S.costs.wages + S.workers.length * Y.costs.wage_per_worker_per_minute * dt / 60);
+    var paid = S.workers.length;
+    if (S.ext && S.ext.staff) { paid = 0; S.workers.forEach(function (w) { paid += S.ext.staff[w.role] != null ? S.ext.staff[w.role] : 1; }); }   /* hook: only filled places are paid */
+    S.costs.wages = r6(S.costs.wages + paid * Y.costs.wage_per_worker_per_minute * dt / 60);
 
     /* a snapshot every 5 s, for the per-minute rates */
     if (S.step % 50 === 0) { S.hist.push({ t: S.t, income: S.sales.income, cost: r6(cost(S)) }); if (S.hist.length > 14) S.hist.shift(); }
@@ -302,7 +308,7 @@
       missing: R.parts.filter(function (p) { return !S.present[p.id]; }).length, parts: R.parts.length, orders: S.orders.length, events: S.log.slice(-8).reverse()
     };
     out.net_per_min = out.income_per_min - out.cost_per_min;
-    if (Y.sales) { var dm = Y.sales.demand_per_minute; ((Y.effects && Y.effects.demand) || []).forEach(function (e) { dm *= 1 - e.loss * missingShare(R, S, e.tag); }); out.demand_per_min = dm; }
+    if (Y.sales) { var dm = S.ext && S.ext.demand_per_minute != null ? S.ext.demand_per_minute : Y.sales.demand_per_minute; ((Y.effects && Y.effects.demand) || []).forEach(function (e) { dm *= 1 - e.loss * missingShare(R, S, e.tag); }); out.demand_per_min = dm; }
     return out;
   }
 
@@ -311,8 +317,16 @@
     for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
     return ('00000000' + (h >>> 0).toString(16)).slice(-8);
   }
+  /* optional per-tick outside inputs, all silent (no log line each time): {supply_kw, demand_per_minute, deliveries (false = carts suspended), staff {role: 0..1}}.
+     A state that never calls this behaves exactly as before (no ext key is ever created). */
+  function setExternal(S, o) {
+    if (!S.ext) S.ext = { missed: {} };
+    if (o.supply_kw != null) S.supply_kw = o.supply_kw;
+    ['demand_per_minute', 'deliveries', 'staff'].forEach(function (k) { if (o[k] !== undefined) S.ext[k] = o[k]; });
+    return S.ext;
+  }
   function setSupply(R, S, kw) { S.supply_kw = kw; log(S, 'power', 'City supply set to ' + fmt(kw) + ' kW'); }
 
   return { DT: DT, create: create, run: run, tick: tick, destroy: destroy, blast: blast, orderRepair: orderRepair, orderAll: orderAll, summary: summary, hash: hash,
-    setSupply: setSupply, canRestore: canRestore, missingShare: missingShare, cost: cost };
+    setSupply: setSupply, setExternal: setExternal, canRestore: canRestore, missingShare: missingShare, cost: cost };
 });
