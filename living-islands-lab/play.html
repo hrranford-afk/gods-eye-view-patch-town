@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living Islands: pick your device</title>
+<style>
+:root{--bg:#0e1a24;--fg:#e8f0f4;--mut:#9db3c0;--card:#17293a;--acc:#6fd0c0}
+@media (prefers-color-scheme:light){:root{--bg:#f2f6f8;--fg:#13222e;--mut:#4d6575;--card:#fff;--acc:#0b7d6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.45 system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left))}
+main{max-width:640px;margin:auto}h1{font-size:1.5rem}
+a.b{display:block;background:var(--card);border:2px solid var(--acc);border-radius:14px;padding:16px 18px;margin:14px 0;color:var(--fg);text-decoration:none}
+a.b b{display:block;font-size:1.25rem;color:var(--acc)}a.b span{color:var(--mut);font-size:.95rem}
+p.s{color:var(--mut);font-size:.9rem}
+</style></head><body><main>
+<h1>Living Islands: pick your device</h1>
+<p class="s">Tap the one that matches what you are holding. Each is the same game with different graphics settings.</p>
+<a class="b" href="islands_look.html?device=desktop&start=camp&clock=1&ch=17&sea=2&flow=1&seabed=1&weather=auto"><b>1. Computer with a good graphics card</b><span>Ultra look, a little lighter than the Radeon one. Use Chrome.</span></a>
+<a class="b" href="islands_look.html?device=radeon&start=camp&clock=1&ch=17&sea=2&flow=1&seabed=1&weather=auto"><b>2. Radeon VII (the full works)</b><span>Everything on, with the GPU line and the benchmark panel. Please paste the report.</span></a>
+<a class="b" href="islands_look.html?device=ipad&start=camp&clock=1&ch=17&sea=2&flow=1&seabed=1&weather=auto"><b>3. iPad or phone</b><span>Light settings, big touch buttons.</span></a>
+<a class="b" href="islands_look.html?device=ar&start=camp&clock=1&clockdome=0&sea=2&flow=1&seabed=1"><b>4. AR table</b><span>Lightest. No sky dome, so it sits on a real table.</span></a>
+<p class="s">On a 4K TV, use the Profile menu in the ultra panel (TV 4K). Not speed-tested on real hardware yet: that is what the benchmark report is for.</p>
+</main></body></html>

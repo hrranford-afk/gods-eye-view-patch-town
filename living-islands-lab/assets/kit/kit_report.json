@@ -1,0 +1,582 @@
+{
+ "kit_cairn_far.glb": {
+  "triangles": 626,
+  "vertices": 565,
+  "per_node": {
+   "body": 504,
+   "stone_01": 20,
+   "stone_02": 20,
+   "stone_03": 20,
+   "stone_cap": 20,
+   "rag": 30,
+   "footprint": 12
+  },
+  "bytes": 34104,
+  "texel_density_per_m": 68.1,
+  "image_bytes": [
+   9769
+  ]
+ },
+ "kit_cairn_hero.glb": {
+  "triangles": 10004,
+  "vertices": 6373,
+  "per_node": {
+   "body": 9314,
+   "stone_01": 168,
+   "stone_02": 168,
+   "stone_03": 168,
+   "stone_cap": 144,
+   "rag": 30,
+   "footprint": 12
+  },
+  "bytes": 443976,
+  "texel_density_per_m": 139.0,
+  "image_bytes": [
+   138751,
+   68106,
+   39622
+  ]
+ },
+ "kit_cairn_live.glb": {
+  "triangles": 2228,
+  "vertices": 1748,
+  "per_node": {
+   "body": 2042,
+   "stone_01": 36,
+   "stone_02": 36,
+   "stone_03": 36,
+   "stone_cap": 36,
+   "rag": 30,
+   "footprint": 12
+  },
+  "bytes": 120276,
+  "texel_density_per_m": 80.3,
+  "image_bytes": [
+   38480,
+   12512,
+   10975
+  ]
+ },
+ "kit_crate_stack_far.glb": {
+  "triangles": 360,
+  "vertices": 413,
+  "per_node": {
+   "body": 32,
+   "crate_1": 12,
+   "crate_2": 12,
+   "crate_3": 12,
+   "crate_4": 12,
+   "crate_5": 12,
+   "crate_6": 12,
+   "crate_7": 12,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "drum": 192,
+   "footprint": 4
+  },
+  "bytes": 36624,
+  "texel_density_per_m": 48.2,
+  "image_bytes": [
+   9662
+  ]
+ },
+ "kit_crate_stack_hero.glb": {
+  "triangles": 12036,
+  "vertices": 10084,
+  "per_node": {
+   "body": 2180,
+   "crate_1": 1852,
+   "crate_2": 1852,
+   "crate_3": 1852,
+   "crate_4": 1468,
+   "crate_5": 1852,
+   "crate_6": 36,
+   "crate_7": 36,
+   "plank_01": 64,
+   "plank_02": 64,
+   "plank_03": 64,
+   "plank_04": 64,
+   "drum": 648,
+   "footprint": 4
+  },
+  "bytes": 535380,
+  "texel_density_per_m": 145.4,
+  "image_bytes": [
+   124600,
+   70498,
+   48173
+  ]
+ },
+ "kit_crate_stack_live.glb": {
+  "triangles": 2710,
+  "vertices": 4560,
+  "per_node": {
+   "body": 390,
+   "crate_1": 396,
+   "crate_2": 396,
+   "crate_3": 396,
+   "crate_4": 324,
+   "crate_5": 396,
+   "crate_6": 36,
+   "crate_7": 36,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "drum": 288,
+   "footprint": 4
+  },
+  "bytes": 184348,
+  "texel_density_per_m": 48.3,
+  "image_bytes": [
+   37681,
+   7446,
+   13625
+  ]
+ },
+ "kit_drying_rack_far.glb": {
+  "triangles": 572,
+  "vertices": 587,
+  "per_node": {
+   "body": 388,
+   "fish_01": 12,
+   "fish_02": 12,
+   "fish_03": 12,
+   "fish_04": 12,
+   "fish_05": 12,
+   "fish_06": 12,
+   "fish_07": 12,
+   "fish_08": 12,
+   "fish_09": 12,
+   "fish_10": 12,
+   "fish_11": 12,
+   "fish_12": 12,
+   "cover": 24,
+   "plank_01": 12,
+   "footprint": 4
+  },
+  "bytes": 42824,
+  "texel_density_per_m": 52.0,
+  "image_bytes": [
+   7985
+  ]
+ },
+ "kit_drying_rack_hero.glb": {
+  "triangles": 9030,
+  "vertices": 6250,
+  "per_node": {
+   "body": 5220,
+   "fish_01": 96,
+   "fish_02": 96,
+   "fish_03": 96,
+   "fish_04": 96,
+   "fish_05": 96,
+   "fish_06": 96,
+   "fish_07": 96,
+   "fish_08": 96,
+   "fish_09": 96,
+   "fish_10": 96,
+   "fish_11": 96,
+   "fish_12": 96,
+   "fish_13": 96,
+   "fish_14": 96,
+   "fish_15": 96,
+   "fish_16": 96,
+   "fish_17": 96,
+   "fish_18": 96,
+   "fish_19": 96,
+   "fish_20": 96,
+   "fish_21": 96,
+   "fish_22": 96,
+   "fish_23": 96,
+   "fish_24": 96,
+   "fish_25": 96,
+   "fish_26": 96,
+   "fish_27": 96,
+   "fish_28": 96,
+   "fish_29": 96,
+   "fish_30": 96,
+   "fish_31": 96,
+   "fish_32": 96,
+   "fish_33": 96,
+   "fish_34": 96,
+   "fish_35": 96,
+   "fish_36": 96,
+   "cover": 286,
+   "plank_01": 64,
+   "footprint": 4
+  },
+  "bytes": 414352,
+  "texel_density_per_m": 203.5,
+  "image_bytes": [
+   99020,
+   67417,
+   21683
+  ]
+ },
+ "kit_drying_rack_live.glb": {
+  "triangles": 1992,
+  "vertices": 1643,
+  "per_node": {
+   "body": 1360,
+   "fish_01": 36,
+   "fish_02": 36,
+   "fish_03": 36,
+   "fish_04": 36,
+   "fish_05": 36,
+   "fish_06": 36,
+   "fish_07": 36,
+   "fish_08": 36,
+   "fish_09": 36,
+   "fish_10": 36,
+   "fish_11": 36,
+   "fish_12": 36,
+   "fish_13": 36,
+   "fish_14": 36,
+   "fish_15": 36,
+   "fish_16": 36,
+   "cover": 40,
+   "plank_01": 12,
+   "footprint": 4
+  },
+  "bytes": 117396,
+  "texel_density_per_m": 103.7,
+  "image_bytes": [
+   28582,
+   13258,
+   5951
+  ]
+ },
+ "kit_lean_to_far.glb": {
+  "triangles": 491,
+  "vertices": 556,
+  "per_node": {
+   "body": 343,
+   "sail": 76,
+   "door": 8,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "plank_05": 12,
+   "footprint": 4
+  },
+  "bytes": 33388,
+  "texel_density_per_m": 41.1,
+  "image_bytes": [
+   7677
+  ]
+ },
+ "kit_lean_to_hero.glb": {
+  "triangles": 8970,
+  "vertices": 6125,
+  "per_node": {
+   "body": 7036,
+   "sail": 1226,
+   "door": 128,
+   "plank_01": 64,
+   "plank_02": 64,
+   "plank_03": 64,
+   "plank_04": 64,
+   "plank_05": 64,
+   "plank_06": 64,
+   "plank_07": 64,
+   "plank_08": 64,
+   "plank_09": 64,
+   "footprint": 4
+  },
+  "bytes": 374428,
+  "texel_density_per_m": 157.1,
+  "image_bytes": [
+   99247,
+   57630,
+   24477
+  ]
+ },
+ "kit_lean_to_live.glb": {
+  "triangles": 2055,
+  "vertices": 1796,
+  "per_node": {
+   "body": 1797,
+   "sail": 176,
+   "door": 18,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "plank_05": 12,
+   "footprint": 4
+  },
+  "bytes": 104572,
+  "texel_density_per_m": 81.8,
+  "image_bytes": [
+   28304,
+   9063,
+   6622
+  ]
+ },
+ "kit_lighthouse_stump_far.glb": {
+  "triangles": 586,
+  "vertices": 525,
+  "per_node": {
+   "body": 152,
+   "tower": 356,
+   "lantern": 64,
+   "footprint": 14
+  },
+  "bytes": 26604,
+  "texel_density_per_m": 17.4,
+  "image_bytes": [
+   5612
+  ]
+ },
+ "kit_lighthouse_stump_hero.glb": {
+  "triangles": 11448,
+  "vertices": 7452,
+  "per_node": {
+   "body": 3144,
+   "tower": 6978,
+   "lantern": 880,
+   "lens": 432,
+   "footprint": 14
+  },
+  "bytes": 383932,
+  "texel_density_per_m": 52.8,
+  "image_bytes": [
+   95721,
+   33676,
+   28213
+  ]
+ },
+ "kit_lighthouse_stump_live.glb": {
+  "triangles": 2310,
+  "vertices": 1836,
+  "per_node": {
+   "body": 430,
+   "tower": 1414,
+   "lantern": 356,
+   "lens": 96,
+   "footprint": 14
+  },
+  "bytes": 95100,
+  "texel_density_per_m": 30.8,
+  "image_bytes": [
+   24424,
+   4955,
+   6597
+  ]
+ },
+ "kit_rain_barrel_far.glb": {
+  "triangles": 504,
+  "vertices": 532,
+  "per_node": {
+   "body": 68,
+   "wall": 164,
+   "door": 12,
+   "gutter": 12,
+   "barrel": 84,
+   "lid": 80,
+   "bucket": 80,
+   "footprint": 4
+  },
+  "bytes": 32780,
+  "texel_density_per_m": 36.4,
+  "image_bytes": [
+   7579
+  ]
+ },
+ "kit_rain_barrel_hero.glb": {
+  "triangles": 8872,
+  "vertices": 6185,
+  "per_node": {
+   "body": 3140,
+   "wall": 3952,
+   "door": 368,
+   "gutter": 134,
+   "barrel": 846,
+   "lid": 160,
+   "bucket": 268,
+   "footprint": 4
+  },
+  "bytes": 380568,
+  "texel_density_per_m": 120.8,
+  "image_bytes": [
+   87205,
+   63406,
+   39908
+  ]
+ },
+ "kit_rain_barrel_live.glb": {
+  "triangles": 2646,
+  "vertices": 2282,
+  "per_node": {
+   "body": 588,
+   "wall": 1368,
+   "door": 108,
+   "gutter": 48,
+   "barrel": 338,
+   "lid": 80,
+   "bucket": 112,
+   "footprint": 4
+  },
+  "bytes": 124744,
+  "texel_density_per_m": 61.8,
+  "image_bytes": [
+   26098,
+   11834,
+   12229
+  ]
+ },
+ "kit_relic_hull_far.glb": {
+  "triangles": 456,
+  "vertices": 617,
+  "per_node": {
+   "body": 64,
+   "hull": 294,
+   "plate_1": 28,
+   "plate_2": 28,
+   "plate_3": 28,
+   "footprint": 14
+  },
+  "bytes": 36064,
+  "texel_density_per_m": 18.0,
+  "image_bytes": [
+   8917
+  ]
+ },
+ "kit_relic_hull_hero.glb": {
+  "triangles": 10758,
+  "vertices": 8852,
+  "per_node": {
+   "body": 2344,
+   "hull": 7856,
+   "hatch": 160,
+   "plate_1": 128,
+   "plate_2": 128,
+   "plate_3": 128,
+   "footprint": 14
+  },
+  "bytes": 367052,
+  "texel_density_per_m": 44.7,
+  "image_bytes": [
+   69991,
+   11213,
+   29759
+  ]
+ },
+ "kit_relic_hull_live.glb": {
+  "triangles": 2510,
+  "vertices": 2615,
+  "per_node": {
+   "body": 364,
+   "hull": 1948,
+   "hatch": 64,
+   "plate_1": 40,
+   "plate_2": 40,
+   "plate_3": 40,
+   "footprint": 14
+  },
+  "bytes": 119080,
+  "texel_density_per_m": 26.1,
+  "image_bytes": [
+   24203,
+   2215,
+   10863
+  ]
+ },
+ "kit_wrecked_jetty_far.glb": {
+  "triangles": 668,
+  "vertices": 895,
+  "per_node": {
+   "body": 496,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "plank_05": 12,
+   "plank_06": 12,
+   "plank_07": 12,
+   "plank_08": 12,
+   "plank_09": 12,
+   "bollard": 60,
+   "footprint": 4
+  },
+  "bytes": 47844,
+  "texel_density_per_m": 28.5,
+  "image_bytes": [
+   10647
+  ]
+ },
+ "kit_wrecked_jetty_hero.glb": {
+  "triangles": 8356,
+  "vertices": 5867,
+  "per_node": {
+   "body": 7016,
+   "plank_01": 64,
+   "plank_02": 64,
+   "plank_03": 64,
+   "plank_04": 64,
+   "plank_05": 64,
+   "plank_06": 64,
+   "plank_07": 64,
+   "plank_08": 64,
+   "plank_09": 64,
+   "plank_10": 64,
+   "plank_11": 64,
+   "plank_12": 64,
+   "plank_13": 64,
+   "plank_14": 64,
+   "plank_15": 64,
+   "plank_16": 64,
+   "plank_17": 64,
+   "plank_18": 64,
+   "plank_19": 64,
+   "bollard": 120,
+   "footprint": 4
+  },
+  "bytes": 429596,
+  "texel_density_per_m": 116.7,
+  "image_bytes": [
+   145299,
+   56124,
+   33411
+  ]
+ },
+ "kit_wrecked_jetty_live.glb": {
+  "triangles": 1802,
+  "vertices": 1897,
+  "per_node": {
+   "body": 1510,
+   "plank_01": 12,
+   "plank_02": 12,
+   "plank_03": 12,
+   "plank_04": 12,
+   "plank_05": 12,
+   "plank_06": 12,
+   "plank_07": 12,
+   "plank_08": 12,
+   "plank_09": 12,
+   "plank_10": 12,
+   "plank_11": 12,
+   "plank_12": 12,
+   "plank_13": 12,
+   "plank_14": 12,
+   "plank_15": 12,
+   "plank_16": 12,
+   "plank_17": 12,
+   "plank_18": 12,
+   "plank_19": 12,
+   "bollard": 60,
+   "footprint": 4
+  },
+  "bytes": 132720,
+  "texel_density_per_m": 50.8,
+  "image_bytes": [
+   39303,
+   7427,
+   10112
+  ]
+ }
+}

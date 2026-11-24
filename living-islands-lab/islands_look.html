@@ -20,8 +20,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:#2a1f16;color:var(--in
 #bar input[type=range]{flex:1;min-width:120px;height:32px}
 #tideLbl{font-weight:800;min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
 #info{position:fixed;left:12px;bottom:70px;font-size:11px;color:#fff;opacity:.7;text-shadow:0 1px 2px #000;pointer-events:none;white-space:pre}
+#gpuInfo{position:fixed;left:12px;bottom:56px;font-size:11px;color:#fff;opacity:.7;text-shadow:0 1px 2px #000;pointer-events:none;white-space:pre}
+#gpuInfo.warn{color:#ffd27a;opacity:.95}
+#bench{position:fixed;right:10px;bottom:70px;width:340px;max-width:calc(100vw - 20px);font-size:11px;z-index:5}
+#bench .bh{font-weight:800;display:flex;justify-content:space-between;margin-bottom:4px}
+#bench pre{margin:0 0 6px;white-space:pre-wrap;font:11px/1.35 ui-monospace,Menlo,Consolas,monospace}
+#bench .bb,#bench .bx{min-height:36px;padding:4px 10px;border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+#bench #benchGpu{font-size:11px;font-weight:700;margin:0 0 6px}
+#bench textarea{width:100%;margin-top:6px;font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
 #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#2a1f16;color:#f1e3c8;font-weight:700;font-size:18px;transition:opacity .6s}
-body.noui #top,body.noui #bar,body.noui #info{display:none}
+body.dev-touch .btn{min-height:52px;min-width:52px;font-size:16px}
+body.dev-touch #bar input[type=range]{height:44px}
+body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #bench{display:none}
 #ckChip{display:flex;align-items:center;gap:6px;min-height:44px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 #ckChip small{font-weight:600;opacity:.7}
 </style>
@@ -41,10 +51,12 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
   <button class="btn" id="autoBtn">Animate</button>
 </div>
 <div id="info"></div>
+<div id="gpuInfo"></div>
 <div id="boot">Raising the islands...</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
+<script src="ultra.js"></script>
 <script>if(/[?&]boatkit=[^0&]/.test(location.search)){document.write('<script src="boat_motion.js"><\/script>');if(!(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)))document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]boatkit=fail/.test(location.search))document.write('<script src="assets/boatkit/boats_live_b64.js"><\/script><script src="assets/boatkit/boats_far_b64.js"><\/script>');}</script>
 <script>if(/[?&]repair=[^0&]/.test(location.search)){document.write('<script src="repair_physics.js"><\/script>');if(!/[?&]boatkit=[^0&]/.test(location.search)&&!(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)))document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]repair=fail/.test(location.search))document.write('<script src="assets/repair/jetty_b64.js"><\/script>');}</script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');</script>
@@ -58,6 +70,10 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 'use strict';
 /* ============ parameters ============ */
 const Q=new URLSearchParams(location.search);
+/* &device= presets (ULTRA_TIER.md): four named sets of DEFAULTS, filled in only where the URL has no value of its own, so an explicit &q= &tier= &post=0 ... always wins; no &device= = nothing changes */
+const DEV_PRESETS={ar:{tier:'ar',clockdome:'0',q:'low'},ipad:{q:'low'},desktop:{q:'ultra',ssaa:'1.25',msaa:'4',shadow:'2048',terrain:'0.55',bloom:'0'},radeon:{q:'ultra',bench:'1'}};
+const DEV=Object.prototype.hasOwnProperty.call(DEV_PRESETS,Q.get('device')||'')?Q.get('device'):'';
+if(DEV){const P=DEV_PRESETS[DEV];for(const k in P)if(!Q.has(k))Q.set(k,P[k]);if(DEV==='ipad')document.body.classList.add('dev-touch');}
 const WQ=Q.get('world');                /* the world view (world_view.js, see WORLD_VIEW.md): ?world=NNN draws one exported world of the land formation tool instead of the six hand-placed islands; absent = unchanged */
 const WID=(WQ!==null&&/^\d+$/.test(WQ))?(parseInt(WQ,10)>>>0):null;
 const WORLD=WID!==null&&!!window.LI_WORLD&&window.LI_WORLD.has(WID);
@@ -82,11 +98,17 @@ const LTON=Q.get('light')==='1'&&!!window.LightRange;   /* the lighthouse and fo
 const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 const CPON=Q.get('start')==='camp'&&!!window.LI_CAMP;   /* the camp start (camp_start.js, see CAMP_START.md): day one of the shelter ladder, no village; kit pieces, the robot yard and robots with a day routine; absent = unchanged */
-let quality=Q.get('q')==='low'?'low':'high';
+const ULO=window.LI_ULTRA?LI_ULTRA.options(Q.toString()):null;   /* the ultra tier (ultra.js, ULTRA_TIER.md): &q=ultra; AR never; absent = nothing changes */
+const UL_AR=Q.get('tier')==='ar'||(CKON&&!CKDOME);
+let ULS=null;try{if(!navigator.webdriver)ULS=localStorage.getItem('li.quality');}catch(e){}   /* the remembered choice (a tap on the Quality button), not read by automation */
+const TIER0=(ULO&&!UL_AR)?LI_ULTRA.tierFrom(Q.get('q'),ULS):(Q.get('q')==='low'?'low':'high');
+let quality=TIER0==='low'?'low':'high';
+const ULT={on:TIER0==='ultra',q:{cell:ULO?ULO.terrain:.4,shadow:4096,pr:2,taps:22,msaa:8,hiWaves:1},scale:1,scaleReal:1,maxScale:ULO?ULO.ssaa:1,msaaWant:ULO?ULO.msaa:0,msaaGot:0,shadow:ULO?ULO.shadow:4096,aniso:1,ctl:null,dynOn:false,gpuRaw:'',gpu:{name:'',kind:'unknown'},caps:null,plan:null,notes:[],fails:[],broken:false,needSize:false,work:0,workAvg:0,workSrc:'',shadowChecked:0,fitHalf:0,bigW:0,bigH:0};
 const QUAL={
   high:{cell:0.55,shadow:2048,pr:1.5,taps:22,msaa:4,hiWaves:1},
   low :{cell:0.90,shadow:1024,pr:1.0,taps:9, msaa:0,hiWaves:0}
 };
+function QL(){return ULT.on?ULT.q:QUAL[quality];}   /* the settings of the tier in use */
 const TS=WORLD?128:100;            /* the height texture covers -TS..TS metres (the world view uses a 256 m window) */
 const WS=TS/100;
 const GN=512, GC=2*TS/GN;/* grid cells */
@@ -596,8 +618,9 @@ function bkRig(L,k){if(L.nodes.boom)L.nodes.boom.quaternion.setFromAxisAngle(BK_
 function bkUpdate(o,dt,t,y0,rl0,pt0){const b=o.b,k=o.kit,M=LI_BOAT_MOTION;let y=y0,rl=rl0,pt=pt0;
   /* level of detail by the camera distance (a debug override); hero only over http, only for boats within 30 m of the camera */
   const dist=camera.position.distanceTo(o.mesh.position);
-  if(!BK_AR&&quality==='high'&&dist<30)bkFetchHero(k.kind);
-  let want=BK.force||M.lodFor(dist,BK_AR?'ar':quality,k.lod,!!BK.hero[k.kind]);
+  const UH=ULT.on&&ULO.herolod&&!BK_AR;   /* the ultra tier: hero models out to a generous distance */
+  if(!BK_AR&&quality==='high'&&(dist<30||(UH&&dist<ULO.herod+25)))bkFetchHero(k.kind);
+  let want=BK.force||(UH?ultraBoatLod(dist,k.lod,k.kind):M.lodFor(dist,BK_AR?'ar':quality,k.lod,!!BK.hero[k.kind]));
   if(want==='hero'){if(!BK.hero[k.kind])want='live';else if(!k.lods.hero){const r=BK.hero[k.kind].scene.clone(true);r.visible=false;r.position.z=-BK_L[k.kind]/2;k.lods.hero=bkLodOf(r,k.kind+'_hero');}}
   if(want!==k.lod){k.lod=want;for(const n in k.lods){const r=k.lods[n].root;if(n===want){if(!r.parent)k.inner.add(r);r.visible=true;}else{r.visible=false;if(r.parent)k.inner.remove(r);}}k.dirty=true;}   /* only the level in use is in the scene, so nothing else is drawn or counted */
   const L=k.lods[k.lod];
@@ -628,7 +651,7 @@ function bkUpdate(o,dt,t,y0,rl0,pt0){const b=o.b,k=o.kit,M=LI_BOAT_MOTION;let y=
 /* the hero level: over http only (0.6 to 0.9 MB each, no base64 twin); fetched the first time a boat is within 30 m of the camera */
 function bkFetchHero(kind){if(BK.heroTry[kind]!==undefined||!/^https?:/.test(location.protocol)||!window.fetch||BK.mode==='bad'||BK.failed||!BK.ready)return;BK.heroTry[kind]='loading';
   fetch('assets/boats/boat_'+kind+'_hero.glb').then(r=>{if(!r.ok)throw new Error('http');return r.arrayBuffer();}).then(buf=>new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',res,rej))).then(g=>{
-    bkPrepGltf(g,kind+'_hero');BK.hero[kind]=g;BK.heroTry[kind]='ok';},()=>{BK.heroTry[kind]='failed';}).catch(()=>{BK.heroTry[kind]='failed';});}
+    bkPrepGltf(g,kind+'_hero');if(ULT.on)ultraAniso(g.scene);BK.hero[kind]=g;BK.heroTry[kind]='ok';},()=>{BK.heroTry[kind]='failed';}).catch(()=>{BK.heroTry[kind]='failed';});}
 /* the wreck's berth, by seed: the gentlest dry-ish patch of the strand near the camp (the lowest slope under a 4 m hull, ground between 0.35 and 1.4 m above the mean sea), bow up the slope with a seeded turn */
 function bkAvoidSpots(){const out=[];if(!W.camp)return out;const f=W.camp.fire,rt=W.camp.rt,d=W.camp.dir;out.push([f.x,f.z,3.6]);   /* the fire and the three settlers of buildPeople */
   for(const df of[[1.9,.9],[-3.4,3.0],[-6.5,-1]]){let x=f.x+rt[0]*df[0]+d[0]*df[1],z=f.z+rt[1]*df[0]+d[1]*df[1];
@@ -705,7 +728,7 @@ function campBuild(){
   const night=()=>!!(CKON&&CK.c&&CK.c.sun&&CK.c.sun.elev<2.5);
   try{CP.rt=LI_CAMP.create({THREE,scene,camera,H:(x,z)=>H(x,z),tide:()=>tide,plan:pl,tier,bots,PB,blob,lin,propsMat:propsMesh.material,
     mode:{kit:/^(fail|bad)$/.test(Q.get('campkit')||'')?Q.get('campkit'):'',bots:/^(fail|simple|fallback)$/.test(Q.get('campbots')||'')?(Q.get('campbots')==='fail'?'simple':Q.get('campbots')):''},
-    night,rain:wxRain,hud:true,base:'',warm:Q.get('campwarm')!==null?parseFloat(Q.get('campwarm')):14});}
+    night,rain:wxRain,hud:true,base:'',hero:ULT.on&&ULO.herolod,heroDist:ULT.on&&ULO.herolod?ULO.kitd:0,lodScale:ULT.on?1.8:1,onHero:g=>{if(ULT.on)ultraAniso(g);},warm:Q.get('campwarm')!==null?parseFloat(Q.get('campwarm')):14});}
   catch(e){CP.err=String(e&&e.stack||e);console.log('camp start failed: '+CP.err);}
 }
 /* ============ the repair pilot (&repair=1, see REPAIR_PILOT.md) ============
@@ -777,7 +800,7 @@ function rpBuild(){if(!RPON||!scene)return;if(!RP.tpl&&!RP.failed)return;rpDispo
   const body=new THREE.Group();body.position.set(S.ox,S.y0,S.oz);body.rotation.y=S.psi;G.add(body);RP.body=body;
   /* the static part: the GLB frame with the damaged planks taken out, or boxes */
   const slotX=k=>RP_X0+k*RP_PITCH;
-  if(RP.tpl){const root=RP.tpl.scene.clone(true);root.traverse(o=>{const n=o.name||'';if(/^plank_(17|18|19)/.test(n)||/^footprint/.test(n)||CFG.hide.some(h=>n.indexOf(h)===0)){o.visible=false;}});body.add(root);RP.root=root;}
+  if(RP.tpl){const root=RP.tpl.scene.clone(true);root.traverse(o=>{const n=o.name||'';if(/^plank_(17|18|19)/.test(n)||/^footprint/.test(n)||CFG.hide.some(h=>n.indexOf(h)===0)){o.visible=false;}});body.add(root);RP.root=root;RP.heroOn=false;if(ULT.on&&ULO.herolod){rpFetchHero();if(RP.hero)rpUseHero(body,CFG);}}
   else{const fg=new THREE.Group();for(const b of RP_FRAME){const m=new THREE.Mesh(RP_BOX,M.frame);m.scale.set(b[1]-b[0],b[3]-b[2],b[5]-b[4]);m.position.set((b[0]+b[1])/2,(b[2]+b[3])/2,(b[4]+b[5])/2);m.castShadow=true;m.receiveShadow=true;fg.add(m);}
     RP_PLANKS.forEach((p,i)=>{if(CFG.hide.length&&i===3)return;const m=new THREE.Mesh(RP_BOX,M.plank);m.scale.set(.19,.046,1.66);m.position.set(p[0],p[1],0);m.castShadow=true;m.receiveShadow=true;fg.add(m);});body.add(fg);}
   /* static fills (the gaps this quality does not play) */
@@ -1378,7 +1401,7 @@ function sbOverlayFrame(){if(!SBO.on||!SBO.cv)return;const cv=SBO.cv,w=cv.client
 function sbLanding(){if(!LD.on||!LD.L)return null;const L=LD.L,prof=d=>-H(L.x+L.dir[0]*d,L.z+L.dir[1]*d);return SB.landingWindows(prof,8);}
 function buildSea(){
   const nmap=makeSeaNormal();
-  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QUAL[quality].hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null},...(MC.on?{uMsA:{value:MC.uA},uMsB:{value:MC.uB},uMsC:{value:MC.uC}}:{})},defines:NOPOST?{NOPOST:1}:{},
+  const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QL().hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null},...(MC.on?{uMsA:{value:MC.uA},uMsB:{value:MC.uB},uMsC:{value:MC.uC}}:{})},defines:NOPOST?{NOPOST:1}:{},
   vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
   fragmentShader:FLOW?(SB?sbPatch(SEAF_FS,true):SEAF_FS):SEA2?(SB?sbPatch(SEA2_FS,false):SEA2_FS):`precision highp float;
   uniform float uTime,uTide,uQ,uTideV,uLand;uniform sampler2D uH,uN;uniform vec3 uSun,uSunCol;uniform vec4 uWake[24];varying vec3 vW;
@@ -1875,12 +1898,177 @@ function buildSettlers(){settlerObjs.forEach(o=>scene.remove(o));settlerObjs=[];
   mk({skin:PL2.skinF,hair:PL2.beardF,top:PL2.oat,legs:PL2.slate,hat:'flat',beard:null,rolled:true},
      {ll:[-.05,.05],rl:[.08,.06],la:[.5,.2,1.0],ra:[.1,.2,.3],lean:-.02,headX:.1,headY:-.3,twist:-.05,hipTwist:.04},LD.settler2.x,LD.settler2.z,Math.atan2(LD.fireside.x-LD.settler2.x,LD.fireside.z-LD.settler2.z));}
 
+/* ============ the ULTRA tier (&q=ultra, see ULTRA_TIER.md) ============
+   A third quality state for a desktop with a real graphics card. Internally quality stays 'high' (every other module sees high); ULT.on adds: a big multisampled render target (render scale 1.0 to 2.0, set by
+   the dynamic resolution controller in ultra.js), a downsample pass that also adds a gentle bloom, a 4096 soft shadow map fitted to what the camera sees, the most anisotropy the GPU gives, finer terrain, and the hero
+   models (boats, kit pieces, the repair jetty) out to a generous distance. Every step that fails (a render target, a shadow map) falls back to the next lower setting. Low, High and the AR profile never touch any of it. */
+let rtBig=null,dsScene=null,dsMat=null;
+const UQ={ext:null,gl:null,pending:[],n:0,cpu:0};
+const UB={ring:[],ringN:180,active:false,t0:0,frames:0,iv:[],work:[],smin:9,smax:0,cam0:null,report:'',last:null,el:null,vis:false};
+function ultraOk(){return !!window.LI_ULTRA&&!UL_AR;}
+function ultraGpu(){const gl=renderer.getContext();let raw='';try{const e=gl.getExtension('WEBGL_debug_renderer_info');raw=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);}catch(x){}
+  ULT.gpuRaw=String(raw||'');ULT.gpu=window.LI_ULTRA?LI_ULTRA.classifyGpu(ULT.gpuRaw):{name:'',kind:'unknown',integrated:false};
+  try{ULT.caps={maxSamples:renderer.capabilities.isWebGL2?gl.getParameter(gl.MAX_SAMPLES):0,maxTexture:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxAniso:renderer.capabilities.getMaxAnisotropy()};}catch(x){ULT.caps={maxSamples:0,maxTexture:2048,maxAniso:1};}
+  try{UQ.gl=gl;UQ.ext=renderer.capabilities.isWebGL2?gl.getExtension('EXT_disjoint_timer_query_webgl2'):null;}catch(x){UQ.ext=null;}
+  if(window.LI_ULTRA){const p=LI_ULTRA.planFor(ULO,ULT.gpu.kind,ULT.caps);ULT.plan=p;ULT.maxScale=p.ssaa;ULT.msaaWant=p.msaa;ULT.shadow=p.shadow;ULT.notes=p.notes.slice();
+    ULT.q.shadow=p.shadow;ULT.q.cell=ULO.terrain;ULT.q.msaa=p.msaa;ULT.aniso=ULO.aniso>0?Math.min(ULO.aniso,ULT.caps.maxAniso):ULT.caps.maxAniso;ultraProfileApply();}}
+function ultraOutPx(){const d=Math.min(window.devicePixelRatio||1,ULT.q.pr);return innerWidth*innerHeight*d*d;}
+/* the scale range follows the display: a 1080p class screen runs 1.0 to 2.0 (supersampling); a 4K class screen (more than 4 megapixels out) may not supersample past the pixel budget and may run BELOW native (down to 0.5) when the frame time needs it, then the downsample pass upscales with a filter and a little sharpening */
+/* the viewing profiles (APPLY LIST 4): desk (a monitor at arm's length), tv (a 4K panel from a sofa: 1800p internal, MSAA 4, UI 1.5x), handheld (a tablet: no supersampling, MSAA 4, shadow 2048); auto picks by physical width and pointer */
+function ultraProfileAuto(){const d=Math.min(window.devicePixelRatio||1,ULT.q.pr),phys=innerWidth*d;let coarse=false;try{coarse=matchMedia('(pointer:coarse)').matches;}catch(e){}return coarse&&Math.min(innerWidth,innerHeight)<900?'handheld':phys>=3000?'tv':'desk';}
+function ultraProfile(){return ULT.profile||ULO.profile||ultraProfileAuto();}
+function ultraRange(){const d=Math.min(window.devicePixelRatio||1,ULT.q.pr),ph=innerHeight*d,px=innerWidth*d*ph,cap=Math.sqrt(ULO.maxpx/Math.max(1,px)),P=ultraProfile();
+  let lo=1,hi=Math.min(ULT.maxScale,cap);
+  if(P==='tv'){lo=.5;const tgt=ULO.render>0?ULO.render:(ULT.native?ph:1800);hi=Math.min(cap,tgt/ph);}
+  else if(P==='handheld'){lo=.6;hi=Math.min(1,cap);}
+  else if(px>4e6)lo=.5;
+  if(ULO.given.minscale)lo=ULO.minscale;
+  lo=Math.min(lo,1,hi);return{min:lo,max:Math.max(lo,hi),big:px>4e6,profile:P};}
+function ultraCtl(){const o=ULO,R=ultraRange();ULT.range=R;ULT.scale=Math.min(1,R.max);ULT.ctl=LI_ULTRA.createDynRes({min:R.min,max:R.max,step:.0625,start:o.dyn?ULT.scale:R.max,target:1000/o.fps});ULT.dynOn=o.dyn&&R.max>R.min;if(!ULT.dynOn)ULT.scale=Math.max(R.min,R.max);ULT.scale=Math.max(.25,ULT.scale);}
+/* the profile's samples and shadow map, unless the URL fixed them; then the render target and the shadow map are made again */
+function ultraProfileApply(){const P=ultraProfile(),pl=ULT.plan||{msaa:ULO.msaa,shadow:ULO.shadow};
+  ULT.msaaWant=ULO.given.msaa?pl.msaa:Math.min(pl.msaa,P==='desk'?8:4);ULT.shadow=ULO.given.shadow?pl.shadow:(P==='handheld'?Math.min(pl.shadow,2048):pl.shadow);ULT.q.shadow=ULT.shadow;ULT.q.msaa=ULT.msaaWant;}
+function ultraProfileSet(v){if(v==='tvnative'){ULT.profile='tv';ULT.native=true;}else{ULT.native=false;ULT.profile=v==='auto'?null:v;}ULT.range=null;ultraProfileApply();if(ULT.on)setQuality('ultra');else ultraUi();ultraSel();}
+function ultraSel(){const e=document.getElementById('uProfile');if(e)e.value=ULT.native?'tvnative':(ULT.profile||'auto');}
+/* the UI grows on a big display (readable from a sofa): CSS zoom of the bars and the HUD; the tv profile asks 1.5 times the 1080p look, and a 1x 4K window (3840 CSS px) is zoomed again by width/1920; &uiscale=N sets it outright */
+function ultraUiScale(){if(!ULT.on)return 1;if(ULO.uiscale>0)return ULO.uiscale;const f=ultraProfile()==='tv'?1.5:1;return Math.max(1,Math.min(3,f*Math.max(1,innerWidth/1920)));}
+function ultraUi(){const k=ultraUiScale();for(const id of['top','bar','info','gpuInfo','bench']){const e=document.getElementById(id);if(e)e.style.zoom=k===1?'':String(k);}{const i=document.getElementById('info'),g=document.getElementById('gpuInfo');if(i)i.style.bottom=ULT.on?'94px':'';if(g)g.style.bottom=ULT.on?'80px':'';}ULT.ui=k;}
+function ultraSwitch(){   /* a change of tier: soft PCF only in ultra (the 17 tap PCF with a radius), the controller and the render target start over */
+  if(!renderer)return;
+  renderer.shadowMap.type=ULT.on?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;renderer.shadowMap.needsUpdate=true;
+  if(ULT.on){ULT.q.shadow=ULT.shadow;ultraCtl();UQ.pending.length=0;}else{ULT.scale=1;ULT.range=null;ultraUi();}
+  renderer.info.autoReset=!(ULT.on||UB.vis);
+  ULT.sampleN=0;ULT.workAvg=0;ULT.shadowChecked=0;}
+function ultraProbe(t){const gl=renderer.getContext();let n=0;while(gl.getError()!==gl.NO_ERROR&&n++<8);
+  if(ULT.forceProbeFail>0){ULT.forceProbeFail--;return false;}   /* tests: pretend the next probes fail, to walk the fallback ladder */
+  renderer.setRenderTarget(t);const st=gl.checkFramebufferStatus(gl.FRAMEBUFFER),er=gl.getError();renderer.setRenderTarget(null);return st===gl.FRAMEBUFFER_COMPLETE&&er===gl.NO_ERROR;}
+function ultraRT(w,h,samples,depth){const gl2=renderer.capabilities.isWebGL2;
+  const base={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,depthBuffer:depth,stencilBuffer:false};
+  base.type=(gl2&&(renderer.extensions.get('EXT_color_buffer_float')||renderer.extensions.get('EXT_color_buffer_half_float')))?THREE.HalfFloatType:THREE.UnsignedByteType;
+  if(gl2&&samples>0&&THREE.WebGLMultisampleRenderTarget){const t=new THREE.WebGLMultisampleRenderTarget(w,h,base);t.samples=samples;return t;}
+  return new THREE.WebGLRenderTarget(w,h,base);}
+function makeRTUltra(w,h){
+  if(rt){rt.dispose();rt=null;}
+  const gl=renderer.getContext();let samples=ULT.msaaWant,s=ULT.scale;
+  let maxRB=4096;try{maxRB=gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)||4096;}catch(x){}
+  s=Math.max(.25,Math.min(s,Math.sqrt(ULO.maxpx/(w*h)),maxRB/w,maxRB/h));
+  const flat=s>.996&&s<1.004&&ULO.bloom<=0;   /* no supersample and no bloom: the multisampled target is the final one, no extra pass */
+  let ok=false;
+  for(let tries=0;tries<8&&!ok;tries++){
+    try{const big=ultraRT(flat?w:Math.round(w*s),flat?h:Math.round(h*s),samples,true);
+      if(ultraProbe(big)){ok=true;ULT.msaaGot=big.samples!==undefined?big.samples:0;if(flat){rt=big;rtBig=null;}else{rtBig=big;rt=ultraRT(w,h,0,false);}ULT.bigW=big.width;ULT.bigH=big.height;ULT.scaleReal=big.width/w;break;}
+      big.dispose();}catch(x){}
+    const why='render target '+Math.round(w*s)+'x'+Math.round(h*s)+' with '+samples+' samples failed';
+    if(samples>4)samples=4;else if(s>1.25)s=1.25;else if(samples>0)samples=samples>2?2:0;else if(s>1)s=1;else break;
+    ULT.fails.push(why+', trying '+samples+' samples at scale '+s.toFixed(2));ULT.msaaWant=samples;ULT.maxScale=Math.min(ULT.maxScale,Math.max(1,s));}
+  if(!ok){ULT.broken=true;rtBig=null;rt=ultraRT(w,h,0,true);ULT.msaaGot=0;ULT.bigW=w;ULT.bigH=h;ULT.scaleReal=1;}
+  postMat.uniforms.tD.value=rt.texture;postMat.uniforms.uRes.value.set(w,h);postMat.uniforms.uPxS.value=Math.max(1,Math.round(h/1080));   /* grain grows with the height (APPLY LIST 3); the blur radius already follows the height (hpx*.0085) and the vignette is in uv */
+  if(rtBig){dsMat.uniforms.tD.value=rtBig.texture;dsMat.uniforms.uTexel.value.set(1/w,1/h);dsMat.uniforms.uSp.value=Math.max(0,ULT.scaleReal-1)*.35;dsMat.uniforms.uUp.value=ULT.scaleReal<.996?1:0;dsMat.uniforms.uSrc.value.set(rtBig.width,rtBig.height);dsMat.uniforms.uSharp.value=ULT.scaleReal<.996?Math.min(1,.45+(1-ULT.scaleReal)):(ULT.scaleReal<1.5?.25:.0);dsMat.uniforms.uBloom.value=ULO.bloom;dsMat.uniforms.uBR.value=h/1080;}}
+function ultraBuildDS(){dsScene=new THREE.Scene();
+  dsMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:{tD:{value:null},uTexel:{value:new THREE.Vector2(1,1)},uSp:{value:0},uBloom:{value:0},uBR:{value:1},uThr:{value:.9},uSharp:{value:0},uUp:{value:0},uSrc:{value:new THREE.Vector2(1,1)}},
+    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`,
+    fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D tD;uniform vec2 uTexel;uniform float uSp,uBloom,uBR,uThr,uSharp,uUp;uniform vec2 uSrc;
+    vec3 cr(vec2 uv){vec2 p=uv*uSrc-0.5,f=fract(p),i=floor(p)+0.5;vec2 w0=f*(-0.5+f*(1.0-0.5*f)),w1=1.0+f*f*(-2.5+1.5*f),w2=f*(0.5+f*(2.0-1.5*f)),w3=f*f*(-0.5+0.5*f);   /* Catmull-Rom with bilinear taps: 9 fetches */
+      vec2 s12=w1+w2,o12=w2/s12,t0=(i-1.0)/uSrc,t3=(i+2.0)/uSrc,t12=(i+o12)/uSrc;
+      vec3 c=vec3(0.0);c+=texture2D(tD,vec2(t0.x,t0.y)).rgb*w0.x*w0.y;c+=texture2D(tD,vec2(t12.x,t0.y)).rgb*s12.x*w0.y;c+=texture2D(tD,vec2(t3.x,t0.y)).rgb*w3.x*w0.y;
+      c+=texture2D(tD,vec2(t0.x,t12.y)).rgb*w0.x*s12.y;c+=texture2D(tD,vec2(t12.x,t12.y)).rgb*s12.x*s12.y;c+=texture2D(tD,vec2(t3.x,t12.y)).rgb*w3.x*s12.y;
+      c+=texture2D(tD,vec2(t0.x,t3.y)).rgb*w0.x*w3.y;c+=texture2D(tD,vec2(t12.x,t3.y)).rgb*s12.x*w3.y;c+=texture2D(tD,vec2(t3.x,t3.y)).rgb*w3.x*w3.y;return max(c,0.0);}
+    void main(){vec3 c;if(uUp>0.5){c=cr(vUv);}else{vec2 o=uTexel*uSp;c=texture2D(tD,vUv).rgb*4.0;
+      c+=(texture2D(tD,vUv+vec2(o.x,0.0)).rgb+texture2D(tD,vUv-vec2(o.x,0.0)).rgb+texture2D(tD,vUv+vec2(0.0,o.y)).rgb+texture2D(tD,vUv-vec2(0.0,o.y)).rgb)*2.0;
+      c+=texture2D(tD,vUv+o).rgb+texture2D(tD,vUv-o).rgb+texture2D(tD,vUv+vec2(o.x,-o.y)).rgb+texture2D(tD,vUv+vec2(-o.x,o.y)).rgb;c*=0.0625;}
+      if(uSharp>0.0){   /* contrast adaptive sharpening (the idea of AMD's CAS, written from its description): the weight falls where a neighbour is near black or white, so there are no halos; done on x/(1+x) so values above 1 are safe */
+        vec2 t=uTexel;vec3 n1=texture2D(tD,vUv+vec2(0.0,t.y)).rgb,s1=texture2D(tD,vUv-vec2(0.0,t.y)).rgb,e1=texture2D(tD,vUv+vec2(t.x,0.0)).rgb,w1=texture2D(tD,vUv-vec2(t.x,0.0)).rgb;
+        vec3 C=c/(1.0+c),N=n1/(1.0+n1),S=s1/(1.0+s1),E=e1/(1.0+e1),Wv=w1/(1.0+w1);vec3 mn=min(C,min(min(N,S),min(E,Wv))),mx=max(C,max(max(N,S),max(E,Wv)));
+        vec3 amp=sqrt(clamp(min(mn,1.0-mx)/max(mx,1e-3),0.0,1.0));vec3 wgt=-amp*mix(0.125,0.2,uSharp);vec3 R=clamp((C+wgt*(N+S+E+Wv))/(1.0+4.0*wgt),0.0,0.999);c=R/(1.0-R);}
+      if(uBloom>0.0){vec3 b=vec3(0.0);for(int i=0;i<8;i++){float a=float(i)*0.785398;vec2 d=vec2(cos(a),sin(a))*uTexel*uBR;
+        b+=max(texture2D(tD,vUv+d*3.0).rgb-uThr,0.0)*0.6+max(texture2D(tD,vUv+d*10.0).rgb-uThr,0.0)*0.4;}c+=b*(uBloom/8.0);}
+      gl_FragColor=vec4(c,1.0);}`});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([-1,-1,0,3,-1,0,-1,3,0],3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,0,2],2));
+  const m=new THREE.Mesh(g,dsMat);m.frustumCulled=false;dsScene.add(m);}
+/* anisotropy: every texture in a root to the most the GPU gives (and back, remembering the first value) */
+function ultraAniso(root){if(!root)return;const A=ULT.on?ULT.aniso:0,seen=new Set();
+  root.traverse(o=>{const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];for(const m of ms)for(const k of['map','normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap','alphaMap']){const t=m[k];if(!t||seen.has(t))continue;seen.add(t);
+    if(t.liA0===undefined)t.liA0=t.anisotropy;const want=A>0?Math.max(t.liA0,A):t.liA0;if(t.anisotropy!==want){t.anisotropy=want;t.needsUpdate=true;}}});}
+/* the shadow frustum fitted to the ground the camera sees: the four corner rays met with the ground plane, kept inside the table, in the light's own frame, a square snapped to the shadow texels */
+const UF={a:new THREE.Vector3(),b:new THREE.Vector3(),c:new THREE.Vector3(),x:new THREE.Vector3(),y:new THREE.Vector3(),z:new THREE.Vector3(),up:new THREE.Vector3(0,1,0)};
+function ultraShadowFit(tgt){
+  camera.updateMatrixWorld();const z=UF.z.copy(sunDir).normalize(),x=UF.x.crossVectors(UF.up,z).normalize(),y=UF.y.crossVectors(z,x);
+  const R=TABLE_R*1.02;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;const o=camera.position;
+  const add=(px,pz)=>{const r=Math.hypot(px,pz);if(r>R){px*=R/r;pz*=R/r;}const lx=px*x.x+pz*x.z,ly=px*y.x+pz*y.z;if(lx<x0)x0=lx;if(lx>x1)x1=lx;if(ly<y0)y0=ly;if(ly>y1)y1=ly;};
+  const tfar=Math.hypot(o.x-tgt.x,o.y,o.z-tgt.z)*2.2+30;
+  for(const[sx,sy]of[[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]]){UF.a.set(sx,sy,.5).unproject(camera).sub(o).normalize();const t=UF.a.y<-.02?Math.min(-o.y/UF.a.y,tfar):tfar;add(o.x+UF.a.x*t,o.z+UF.a.z*t);}
+  add(tgt.x,tgt.z);
+  let hs=Math.max((x1-x0),(y1-y0))/2+3;hs=clamp(hs,10,96);
+  const tex=2*hs/ULT.q.shadow;let cx=(x0+x1)/2,cy=(y0+y1)/2;cx=Math.round(cx/tex)*tex;cy=Math.round(cy/tex)*tex;
+  const cw=UF.c.set(0,0,0).addScaledVector(x,cx).addScaledVector(y,cy);const dz=-cw.y/Math.max(.2,z.y);cw.addScaledVector(z,dz);   /* the centre, slid along the light onto the ground */
+  sun.target.position.copy(cw);sun.position.copy(cw).addScaledVector(z,230);sun.target.updateMatrixWorld();
+  const sc=sun.shadow.camera;sc.left=-hs;sc.right=hs;sc.top=hs;sc.bottom=-hs;sc.updateProjectionMatrix();ULT.fitHalf=hs;}
+function ultraShadowCheck(){   /* after the first frames in ultra: is the big shadow map complete? if not, one step down and rebuild it */
+  if(!sun||!sun.shadow||!sun.shadow.map||ULT.shadowChecked>=3)return;ULT.shadowChecked++;
+  if(ULT.shadowChecked<3)return;
+  if(!ultraProbe(sun.shadow.map)){const nx=LI_ULTRA.degrade({shadow:ULT.shadow,msaa:0,ssaa:1});ULT.fails.push('shadow map '+ULT.shadow+' failed'+(nx?', trying '+nx.shadow:''));if(nx){ULT.shadow=nx.shadow;ULT.q.shadow=nx.shadow;sun.shadow.mapSize.set(nx.shadow,nx.shadow);sun.shadow.map.dispose();sun.shadow.map=null;ULT.shadowChecked=0;}}}
+/* the work time of a frame: the GPU timer when the browser gives it, else a finish every few frames. Fed to the controller together with late frame intervals. */
+function ultraWork(ms,src){ULT.work=ms;ULT.workSrc=src;ULT.workAvg=ULT.workAvg?ULT.workAvg*.9+ms*.1:ms;if(UB.active){UB.work.push(ms);}
+  if(ULT.on&&ULT.dynOn&&!UB.active&&ULT.ctl){const prev=ULT.ctl.scale;const ns=ULT.ctl.push(ms,performance.now()/1000);if(ns!==prev){ULT.scale=ns;ULT.needSize=true;}}}
+function ultraTimed(fn){const e=UQ.ext,gl=UQ.gl,t0=performance.now();let q=null;
+  if(e&&UQ.pending.length<4&&(UQ.n++&1)===0){try{q=gl.createQuery();gl.beginQuery(e.TIME_ELAPSED_EXT,q);}catch(x){q=null;UQ.ext=null;}}
+  try{fn();}finally{if(q){try{gl.endQuery(e.TIME_ELAPSED_EXT);UQ.pending.push(q);}catch(x){}}}
+  const cpu=performance.now()-t0;UQ.cpu=cpu;
+  if(!UQ.ext){if(((UQ.n++)%4)===0){try{gl.finish();}catch(x){}ultraWork(performance.now()-t0,'sampled finish');}}
+  else{while(UQ.pending.length){const q0=UQ.pending[0];let av=false;try{av=gl.getQueryParameter(q0,gl.QUERY_RESULT_AVAILABLE);}catch(x){UQ.pending.length=0;break;}if(!av)break;
+    UQ.pending.shift();let dis=false,ms=0;try{dis=gl.getParameter(e.GPU_DISJOINT_EXT);ms=gl.getQueryParameter(q0,gl.QUERY_RESULT)/1e6;gl.deleteQuery(q0);}catch(x){}
+    if(!dis&&ms>0&&ms<400)ultraWork(Math.max(ms,UQ.cpu),'GPU timer');}}}
+function ultraTick(now,dt){   /* once a frame: intervals for the panel and the benchmark, late frames to the controller */
+  const iv=dt*1000;if(iv>200)return;UB.ring.push(iv);if(UB.ring.length>UB.ringN)UB.ring.shift();
+  if(UB.active){UB.iv.push(iv);UB.frames++;if(ULT.scaleReal){UB.smin=Math.min(UB.smin,ULT.scaleReal);UB.smax=Math.max(UB.smax,ULT.scaleReal);}}
+  const tms=1000/ULO.fps;if(ULT.on&&ULT.dynOn&&!UB.active&&ULT.ctl&&iv>tms*1.25){const prev=ULT.ctl.scale,ns=ULT.ctl.push(iv,now/1000);if(ns!==prev){ULT.scale=ns;ULT.needSize=true;}}}
+function renderScene(){
+  if(NOPOST){renderer.render(scene,camera);}
+  else if(rtBig){renderer.setRenderTarget(rtBig);renderer.render(scene,camera);renderer.setRenderTarget(rt);renderer.render(dsScene,postCam);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}
+  else{renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}}
+/* ---- the bench panel ---- */
+function ultraGpuLine(){return window.LI_ULTRA?LI_ULTRA.gpuLine(ULT.gpuRaw):{text:'GPU: unknown',warn:false};}
+function ultraStats(){const a=UB.ring,n=a.length;let s=0;for(const v of a)s+=v;const avg=n?s/n:0,p95=n?LI_ULTRA.percentile(a,.95):0;
+  return{avg,p95,fps:avg>0?1000/avg:0,calls:renderer.info.render.calls,tris:Math.round(renderer.info.render.triangles),scene:stats.tris};}
+function ultraInfo(){const T=tierName();return{tier:T,device:DEV,url:location.search,gpu:ULT.gpu.name||'unknown',gpuKind:ULT.gpu.kind,screen:innerWidth+'x'+innerHeight+' css px',dpr:window.devicePixelRatio||1,physical:Math.round(innerWidth*(window.devicePixelRatio||1))+'x'+Math.round(innerHeight*(window.devicePixelRatio||1)),canvas:renderer.domElement.width+'x'+renderer.domElement.height,minScale:ULT.on&&ULT.range?ULT.range.min:1,ui:ULT.on?ULT.ui||1:1,
+    bigRT:rtBig?rtBig.width+'x'+rtBig.height:'',scale:ULT.on?(ULT.scaleReal||1):1,dyn:ULT.on&&ULT.dynOn,maxScale:ULT.on&&ULT.range?ULT.range.max:1,msaa:ULT.on?ULT.msaaGot:(NOPOST?0:(renderer.capabilities.isWebGL2?4:0)),shadow:ULT.on?ULT.q.shadow:QUAL[quality].shadow,aniso:ULT.on?ULT.aniso:4,
+    tris:renderer.info.render.triangles?Math.round(renderer.info.render.triangles):stats.tris,calls:renderer.info.render.calls,notes:ULT.notes.concat(ULT.fails),run:UB.last};}
+function ultraPanelUpdate(){if(!UB.el||!UB.vis)return;const S=ultraStats(),g=ultraGpuLine();
+  UB.rows.textContent=`frame ${S.avg.toFixed(1)} ms avg   p95 ${S.p95.toFixed(1)} ms   (${S.fps.toFixed(0)} fps)\n`+`draw calls ${S.calls}   triangles ${S.tris.toLocaleString()}\n`+`canvas ${renderer.domElement.width}x${renderer.domElement.height} px   device pixel ratio ${(window.devicePixelRatio||1).toFixed(2)}${rtBig?'   big '+rtBig.width+'x'+rtBig.height:''}\n`+`tier ${tierName()}   render scale ${(ULT.on?ULT.scaleReal||1:1).toFixed(2)}${ULT.on&&ULT.dynOn?' (dynamic '+(ULT.range?ULT.range.min:1)+' to '+(ULT.range?ULT.range.max:ULT.maxScale)+')':''}\n`+`work ${ULT.work?ULT.work.toFixed(1)+' ms ('+ULT.workSrc+')':'not measured'}`;
+  UB.gpuEl.textContent=g.text;UB.gpuEl.style.color=g.warn?'#9a5200':'';}
+function ultraBenchStart(){if(UB.active)return;UB.active=true;UB.t0=performance.now();UB.frames=0;UB.iv=[];UB.work=[];UB.smin=9;UB.smax=0;UB.cam0=Object.assign({},cam);if(UB.btn)UB.btn.textContent='Running... 10 s';}
+function ultraBenchEnd(){UB.active=false;const iv=UB.iv,n=iv.length;let s=0;for(const v of iv)s+=v;const avg=n?s/n:0,p95=LI_ULTRA.percentile(iv,.95),mx=iv.reduce((a,b)=>Math.max(a,b),0);
+  let w=0;for(const v of UB.work)w+=v;const workMs=UB.work.length?w/UB.work.length:0;
+  const run={seconds:(performance.now()-UB.t0)/1000,frames:n,avgFps:avg>0?1000/avg:0,avgMs:avg,p95,max:mx,workMs,workSrc:ULT.workSrc,scaleMin:UB.smin>8?1:UB.smin,scaleMax:UB.smax<1?1:UB.smax};
+  run.verdict=LI_ULTRA.benchVerdict(run,1000/ULO.fps);UB.last=run;Object.assign(cam,UB.cam0);clampCam();
+  UB.report=LI_ULTRA.benchReport(ultraInfo());if(UB.ta){UB.ta.value=UB.report;UB.ta.style.display='block';UB.copy.style.display='inline-block';}if(UB.btn)UB.btn.textContent='Run benchmark (10 s)';ultraPanelUpdate();}
+function ultraPanelInit(){
+  const d=document.createElement('div');d.id='bench';d.className='pill';
+  d.innerHTML='<div class="bh">Bench <button class="bx" id="benchX" aria-label="close">x</button></div><pre id="benchRows"></pre><div id="benchGpu"></div><button class="bb" id="benchRun">Run benchmark (10 s)</button> <button class="bb" id="benchCopy" style="display:none">Copy report</button><textarea id="benchTa" readonly rows="9" style="display:none"></textarea>';
+  document.body.appendChild(d);UB.el=d;UB.rows=d.querySelector('#benchRows');UB.gpuEl=d.querySelector('#benchGpu');UB.btn=d.querySelector('#benchRun');UB.ta=d.querySelector('#benchTa');UB.copy=d.querySelector('#benchCopy');
+  UB.btn.addEventListener('click',ultraBenchStart);
+  d.querySelector('#benchX').addEventListener('click',()=>ultraPanelShow(false));
+  UB.copy.addEventListener('click',()=>{const t=UB.report;const done=()=>{UB.copy.textContent='Copied';setTimeout(()=>{UB.copy.textContent='Copy report';},1500);};
+    const fb=()=>{UB.ta.focus();UB.ta.select();try{document.execCommand('copy');done();}catch(x){}};
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,fb);else fb();}catch(x){fb();}});
+  ultraPanelShow(ULO.bench);}
+function ultraPanelShow(on){UB.vis=!!on;if(renderer)renderer.info.autoReset=!(ULT.on||UB.vis);if(UB.el)UB.el.style.display=on?'block':'none';const b=document.getElementById('benchBtn');if(b)b.classList.toggle('on',!!on);}
+function tierName(){return ULT.on?'ultra':quality;}
+function renderH(){return ULT.on&&rtBig?rtBig.height:renderer.domElement.height;}
+function ultraBoatLod(dist,prev,kind){if(BK.hero[kind]&&dist<ULO.herod*(prev==='hero'?1.12:1))return'hero';return dist<260*(prev==='far'?1:1.12)?'live':'far';}
+/* the repair jetty's hero level (kit_wrecked_jetty_hero.glb, over http only): swapped in for the live frame, the same node names and the same hidden planks */
+function rpFetchHero(){if(RP.heroTry||!/^https?:/.test(location.protocol)||!window.fetch||!THREE.GLTFLoader||RP.mode==='fail'||RP.mode==='bad')return;RP.heroTry=1;
+  fetch('assets/kit/kit_wrecked_jetty_hero.glb').then(r=>{if(!r.ok)throw new Error('http');return r.arrayBuffer();}).then(b=>new Promise((res,rej)=>new THREE.GLTFLoader().parse(b,'',res,rej))).then(g=>{
+    g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});RP.hero=g;RP.heroTry=2;ultraAniso(g.scene);if(ULT.on&&RP.body&&RP.root)rpUseHero(RP.body,quality==='low'?RP_LO:RP_HI);},()=>{RP.heroTry=3;}).catch(()=>{RP.heroTry=3;});}
+function rpUseHero(body,CFG){const root=RP.hero.scene.clone(true);root.traverse(o=>{const n=o.name||'';if(/^plank_(17|18|19)/.test(n)||/^footprint/.test(n)||CFG.hide.some(h=>n.indexOf(h)===0)){o.visible=false;}});
+  if(RP.root&&RP.root.parent)RP.root.parent.remove(RP.root);body.add(root);RP.root=root;RP.heroOn=true;}
+
 /* ============ post ============ */
 function buildPost(){
   postCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);postScene=new THREE.Scene();
-  postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,defines:{TAPS:QUAL[quality].taps},uniforms:{tD:{value:null},uRes:{value:new THREE.Vector2(1,1)},uFocus:{value:.45},uBand:{value:.16},uBlur:{value:6},uExp:{value:LAND?.88:1.0},uTilt:{value:LAND?0:1},uVig:{value:LAND?.14:.42}},
+  postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,defines:{TAPS:QL().taps},uniforms:{tD:{value:null},uRes:{value:new THREE.Vector2(1,1)},uFocus:{value:.45},uBand:{value:.16},uBlur:{value:6},uExp:{value:LAND?.88:1.0},uTilt:{value:LAND?0:1},uVig:{value:LAND?.14:.42},uPxS:{value:1}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`,
-  fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D tD;uniform vec2 uRes;uniform float uFocus,uBand,uBlur,uExp,uTilt,uVig;
+  fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D tD;uniform vec2 uRes;uniform float uFocus,uBand,uBlur,uExp,uTilt,uVig;uniform float uPxS;
   vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
   float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
   void main(){vec2 uv=vUv;float d=abs(uv.y-uFocus);float b=smoothstep(uBand,uBand+0.34,d)*uTilt;float rad=b*uBlur;
@@ -1895,14 +2083,14 @@ function buildPost(){
     float l2=dot(c,vec3(0.3,0.59,0.11));c=mix(vec3(l2),c,1.16);
     c*=mix(vec3(0.96,0.99,1.04),vec3(1.05,1.0,0.93),smoothstep(0.1,0.8,l2));
     vec2 q=(uv-0.5)*vec2(uRes.x/uRes.y,1.0);float v=1.0-uVig*smoothstep(0.42,1.05,length(q));c*=v;
-    c+=(hash(gl_FragCoord.xy)-0.5)/255.0;
+    c+=(hash(uPxS>1.01?floor(gl_FragCoord.xy/uPxS)+0.5:gl_FragCoord.xy)-0.5)/255.0;
     gl_FragColor=vec4(c,1.0);}`});
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([-1,-1,0,3,-1,0,-1,3,0],3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,0,2],2));
   if(WXR)WXR.attachPost(postMat);
-  const m=new THREE.Mesh(g,postMat);m.frustumCulled=false;postScene.add(m);}
-function makeRT(w,h){if(rt){rt.dispose();rt=null;}
+  const m=new THREE.Mesh(g,postMat);m.frustumCulled=false;postScene.add(m);if(ULT.on&&!NOPOST)ultraBuildDS();}
+function makeRT(w,h){if(rtBig){rtBig.dispose();rtBig=null;}if(ULT.on){makeRTUltra(w,h);return;}if(rt){rt.dispose();rt=null;}
   const base={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false};
-  const gl2=renderer.capabilities.isWebGL2;const ms=QUAL[quality].msaa;
+  const gl2=renderer.capabilities.isWebGL2;const ms=QL().msaa;
   try{
     if(gl2&&(renderer.extensions.get('EXT_color_buffer_float')||renderer.extensions.get('EXT_color_buffer_half_float'))){base.type=THREE.HalfFloatType;}else base.type=THREE.UnsignedByteType;
     rt=(gl2&&ms&&THREE.WebGLMultisampleRenderTarget)?new THREE.WebGLMultisampleRenderTarget(w,h,base):new THREE.WebGLRenderTarget(w,h,base);
@@ -1957,9 +2145,9 @@ function build(){const t0=performance.now();
   scene.add(sun=new THREE.DirectionalLight(0xffffff,1));scene.add(sun.target);
   if(LAND){sun.color.setRGB(1.0,.95,.86);sun.intensity=2.0;}else{sun.color.setRGB(1.0,.64,.34);sun.intensity=2.9;}
   hemi=new THREE.HemisphereLight(0x000000,0x000000,1);if(LAND){hemi.color.setRGB(.36,.46,.62);hemi.groundColor.setRGB(.26,.23,.18);hemi.intensity=.85;}else{hemi.color.setRGB(.24,.32,.50);hemi.groundColor.setRGB(.22,.15,.09);hemi.intensity=1.1;}scene.add(hemi);
-  sun.castShadow=true;sun.shadow.mapSize.set(QUAL[quality].shadow,QUAL[quality].shadow);sun.shadow.bias=-.0004;sun.shadow.normalBias=.25;sun.shadow.camera.near=1;sun.shadow.camera.far=520;
+  sun.castShadow=true;sun.shadow.mapSize.set(QL().shadow,QL().shadow);if(ULT.on)sun.shadow.radius=ULO.soft;sun.shadow.bias=-.0004;sun.shadow.normalBias=.25;sun.shadow.camera.near=1;sun.shadow.camera.far=520;
   buildTable();
-  const tg=buildTerrain(QUAL[quality].cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
+  const tg=buildTerrain(QL().cell);terrainMesh=new THREE.Mesh(tg,landMat('terrain',true));terrainMesh.castShadow=true;terrainMesh.receiveShadow=true;scene.add(terrainMesh);
   const pg=buildProps();const pm=landMat('props',true);pm.side=THREE.DoubleSide;propsMesh=new THREE.Mesh(pg,pm);propsMesh.castShadow=true;propsMesh.receiveShadow=true;scene.add(propsMesh);
   buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();campBuild();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
   LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0'&&!CPON,boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
@@ -1968,21 +2156,26 @@ function build(){const t0=performance.now();
   if(LTON)ltBuild();
   if(MDON)mdBuild();
   if(RPON)rpBuild();
+  if(ULT.on)ultraAniso(scene);
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
-function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
-  renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
+function size(){const dpr=Math.min(window.devicePixelRatio||1,QL().pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
+  if(ULT.on){const R=ultraRange();if(!ULT.range||Math.abs(R.min-ULT.range.min)>1e-6||Math.abs(R.max-ULT.range.max)>1e-6)ultraCtl();ultraUi();}   /* a new window or screen: the range and the UI size are worked out again */
+  let cw=w,ch=h;if(ULT.on&&NOPOST){const k=Math.max(.25,Math.min(ULT.scale,Math.sqrt(ULO.maxpx/(w*h))));cw=Math.round(w*k);ch=Math.round(h*k);ULT.scaleReal=cw/w;}   /* no post chain: the canvas itself is the big target, the browser scales it down */
+  renderer.setPixelRatio(1);renderer.setSize(cw,ch,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
   camera.aspect=w/h;camera.updateProjectionMatrix();if(!NOPOST)makeRT(w,h);
-  if(smoke)smoke.material.uniforms.uScale.value=h/(2*Math.tan(camera.fov*Math.PI/360));}
+  if(smoke)smoke.material.uniforms.uScale.value=(ULT.on&&rtBig?rtBig.height:ch)/(2*Math.tan(camera.fov*Math.PI/360));}
 const clock={t:0,last:0,frames:0,fps:60,acc:0};
 function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt*(clock.hold?0:1);clock.acc+=dt;clock.frames++;
+  if(ULT.broken){ULT.broken=false;setQuality('high');}if(ULT.needSize){ULT.needSize=false;size();}
+  if(ULT.on||UB.active||UB.vis){ultraTick(now,dt);if(UB.active){cam.theta+=dt*.6;if(now-UB.t0>10000)ultraBenchEnd();}if(ULT.on&&(clock.t-(ULT.anisoT||0)>3)){ULT.anisoT=clock.t;ultraAniso(scene);}}
   if(clock.acc>.5){clock.fps=clock.frames/clock.acc;clock.frames=0;clock.acc=0;updateInfo();autoQ();}
   if(MC.on)mcUpdate(dt);
   if(CKON)ckUpdate(dt);
   if(MDON)mdPre(dt);
   if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else if(MC.on&&!MC.tideTouched){tide=MC.tide;el.tide.value=tide;}else if(CKON&&!MC.on&&!MC.tideTouched){tide=CK.c.tide.level;el.tide.value=tide;}else tide=tideManual;
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
-  if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
+  if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderH());u.uQ.value=QL().hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
   if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(CP.rt)CP.rt.frame(clock.hold?0:dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   if(CKON)ckFrame(dt);
@@ -1991,11 +2184,12 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   if(RPON)rpFrame(dt);
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
-  const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
+  const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();if(ULT.on&&ULO.fit)ultraShadowFit(tgt);
   /* tilt shift focus */
   const pv=tgt.clone().project(camera);postMat.uniforms.uFocus.value=clamp(pv.y*.5+.5,.2,.8)+.02;
   const hpx=renderer.domElement.height;postMat.uniforms.uBlur.value=hpx*.0085*(quality==='high'?1:.8);postMat.uniforms.uBand.value=.13;
-  if(NOPOST){renderer.render(scene,camera);}else{renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}
+  if(ULT.on||UB.active||UB.vis){renderer.info.reset();ultraTimed(renderScene);if(ULT.on)ultraShadowCheck();}   /* the ultra tier and the bench panel: the same render, timed */
+  else if(NOPOST){renderer.render(scene,camera);}else{renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}
   window.__liFrames=(window.__liFrames||0)+1;}
 function animate(dt){const t=clock.t;
   for(const w of WAKE)if(w.z<1){w.z=Math.min(1,w.z+dt/4.8);if(FLOW){const u=flowAt(w.x,w.y,FL.Tcur);w.x+=u[0]*dt;w.y+=u[1]*dt;}}
@@ -2193,7 +2387,7 @@ function ckFrame(dt){
     if(o.sky){const u=o.sky.material.uniforms;u.uHs.value.set(...L.skyHs);u.uHa.value.set(...L.skyHa);u.uZ.value.set(...L.skyZ);u.uSunT.value.set(c.sun.dir[0],c.sun.dir[1],c.sun.dir[2]);
       u.uSunC.value.set(L.sunColor[0]*L.sunI*.55,L.sunColor[1]*L.sunI*.34,L.sunColor[2]*L.sunI*.2);u.uWide.value=SkyClock.smoothstep(14,-4,c.sun.elev);o.sky.position.copy(camera.position);}
     floorMesh.material.color.setRGB(L.floorK*(1-.25*L.dark),L.floorK*(1-.10*L.dark),L.floorK*(1+.15*L.dark));const fu=o.floorU;if(WXR){const v=WXR.raw().uSkyH.value;fu.uCkHs.value.copy(v);fu.uCkHa.value.copy(v);}else{fu.uCkHs.value.set(...L.skyHs);fu.uCkHa.value.set(...L.skyHa);}fu.uCkSun.value.set(c.sun.dir[0],c.sun.dir[1],c.sun.dir[2]);fu.uCkWide.value=SkyClock.smoothstep(14,-4,c.sun.elev);
-    const px=Math.max(1,renderer.domElement.height/760)*(quality==='low'?.9:1);
+    const px=Math.max(1,renderH()/760)*(quality==='low'?.9:1);
     const su=o.stars.material.uniforms;o.stars.position.copy(camera.position);su.uTheta.value=c.stars.angle;su.uSL.value=Math.sin(CK.lat*Math.PI/180);su.uCL.value=Math.cos(CK.lat*Math.PI/180);su.uLim.value=L.limMag;su.uAlpha.value=L.starAlpha*(1-cloudVeil);su.uPx.value=px;su.uTime.value=t;
     o.stars.visible=L.starAlpha*(1-cloudVeil)>.003&&L.limMag>.2;
     {const du=o.mw.material.uniforms;o.mw.position.copy(camera.position);du.uTheta.value=c.stars.angle;du.uSL.value=su.uSL.value;du.uCL.value=su.uCL.value;du.uAlpha.value=.026*SkyClock.smoothstep(-10,-18,c.sun.elev)*(1-.9*Math.min(1,L.moonI*4))*(1-cloudVeil);o.mw.visible=du.uAlpha.value>.0005;}   /* the band fades out with twilight, a bright moon and cloud */
@@ -2694,11 +2888,15 @@ function wxChipInit(){const b=document.createElement('button');b.className='btn'
   b.addEventListener('click',()=>{const L=LI_WEATHER.STATES.concat(['auto']);const i=L.indexOf(WXR.mode);WXR.set(L[(i+1)%L.length]);});}
 function wxChipUpdate(){const b=document.getElementById('wxChip');if(!b||!WXR.state)return;const t=WXR.auto?'auto: '+WXR.state.name:WXR.mode;if(b.textContent!==t)b.textContent=t;}
 const el={};
-function updateInfo(){el.info.textContent=`${clock.fps.toFixed(0)} fps  ${stats.tris.toLocaleString()} tris  ${quality}  seed ${SEED}  ${stateHash()}`;}
+function updateInfo(){el.info.textContent=`${clock.fps.toFixed(0)} fps  ${stats.tris.toLocaleString()} tris  ${tierName()}  seed ${SEED}  ${stateHash()}`+(DEV?`  device ${DEV}`:'')+(ULT.on?`  scale ${(ULT.scaleReal||1).toFixed(2)}  msaa ${ULT.msaaGot}  shadow ${ULT.q.shadow}  profile ${ultraProfile()}\ndpr ${(window.devicePixelRatio||1).toFixed(2)}  window ${innerWidth}x${innerHeight}  canvas ${renderer.domElement.width}x${renderer.domElement.height}${rtBig?'  render '+rtBig.width+'x'+rtBig.height:''}  ui x${(ULT.ui||1).toFixed(2)}`:'');
+  if(el.gpu&&window.LI_ULTRA){const g=ultraGpuLine();if(el.gpu.textContent!==g.text){el.gpu.textContent=g.text;el.gpu.classList.toggle('warn',g.warn);}}ultraPanelUpdate();}
 let autoQDone=false;
-function autoQ(){if(autoQDone||Q.get('q')||navigator.webdriver||clock.t<3)return;if(clock.t>10){autoQDone=true;return;}if(clock.fps<18&&quality==='high'){autoQDone=true;setQuality('low');}}
-function setQuality(q){quality=q;el.qBtn.textContent='Quality: '+(q==='high'?'High':'Low');el.qBtn.classList.toggle('on',q==='low');
-  const hold=hgrid;build();buildPost();size();}
+function autoQ(){if(autoQDone||Q.get('q')||navigator.webdriver||clock.t<3)return;if(clock.t>10){autoQDone=true;return;}if(clock.fps<18&&quality==='high'){autoQDone=true;setQuality(ULT.on?'high':'low');}}
+function qLabel(){const t=tierName();el.qBtn.textContent='Quality: '+(t==='ultra'?'Ultra':t==='high'?'High':'Low');el.qBtn.classList.toggle('on',t!=='high');const b=document.getElementById('benchBtn');if(b)b.style.display=(ULT.on||(ULO&&ULO.bench))?'':'none';const pe=document.getElementById('uProfile');if(pe)pe.style.display=ULT.on?'':'none';}
+function setQuality(q,user){if(q==='ultra'&&!ultraOk())q='high';const was=ULT.on;if(was&&q!=='ultra'&&scene)ultraAniso((ULT.on=false,scene));ULT.on=q==='ultra';quality=q==='low'?'low':'high';
+  qLabel();if(user){try{localStorage.setItem('li.quality',q);}catch(e){}}
+  if(renderer&&was!==ULT.on)ultraSwitch();
+  const hold=hgrid;build();buildPost();size();if(el.info)updateInfo();}
 /* world view: build the world object (needs the page's palette and noise, so it cannot run at load), set the seabed adapter, add the seed selector */
 function wvInit(){if(WQ!==null&&!WORLD){document.getElementById('title').textContent='world '+WQ+' is not exported (see landform/worlds)';return;}
   if(!WORLD)return;
@@ -2713,26 +2911,27 @@ function init(){
   wvInit();
   el.tide=document.getElementById('tide');el.tideLbl=document.getElementById('tideLbl');el.info=document.getElementById('info');el.qBtn=document.getElementById('qBtn');el.auto=document.getElementById('autoBtn');
   const cv=document.getElementById('view');
-  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance',alpha:false});
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:!!(ULT.on&&NOPOST&&ULO&&ULO.msaa>0),powerPreference:'high-performance',alpha:false});
   if(NOPOST){renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;}else renderer.outputEncoding=THREE.LinearEncoding;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor(0x000000,1);
+  if(window.LI_ULTRA){ultraGpu();if(ULT.on)ultraSwitch();}
   camera=new THREE.PerspectiveCamera(30,1,4,1400);
   if(MC.on)mcUpdate(0);
   if(WXON){const hs=parseFloat(Q.get('wsec')||''),wt=Q.get('wt');
-    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null&&!CKON,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,atFn:MC.on?(()=>MC.wx):MDON?((sd,h)=>LI_WEATHER.at(sd,ckHour())):undefined,tweak:MDON?mdTweak:undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
+    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null&&!CKON,camera,getCur:()=>cur,getH:()=>renderH(),atFn:MC.on?(()=>MC.wx):MDON?((sd,h)=>LI_WEATHER.at(sd,ckHour())):undefined,tweak:MDON?mdTweak:undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
       baseSun:CKON?{i:1,c:[1,1,1]}:LAND?{i:2.0,c:[1.0,.95,.86]}:{i:2.9,c:[1.0,.64,.34]},baseHemi:CKON?{i:1,c:[1,1,1],g:[1,1,1]}:LAND?{i:.85,c:[.36,.46,.62],g:[.26,.23,.18]}:{i:1.1,c:[.24,.32,.50],g:[.22,.15,.09]}});
     wxChipInit();}
   build();buildPost();size();setupControls(cv);if(CKON)ckChipInit();if(LTON)ltHudInit();if(MDON){mdHudInit();if(MD.forced)mdForce(MD.forced);}
-  el.qBtn.textContent='Quality: '+(quality==='high'?'High':'Low');el.qBtn.classList.toggle('on',quality==='low');
+  el.gpu=document.getElementById('gpuInfo');qLabel();if(ultraOk()){ultraPanelInit();const ps=document.createElement('select');ps.id='uProfile';ps.className='btn';ps.setAttribute('aria-label','display profile');[['auto','Profile: auto'],['desk','Desk 1080p'],['tv','TV 4K (1800p)'],['tvnative','TV 4K native'],['handheld','Handheld']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;ps.appendChild(o);});ps.addEventListener('change',()=>ultraProfileSet(ps.value));document.getElementById('top').insertBefore(ps,el.qBtn);ULT.native=ULO.render===2160;if(ULT.native&&!ULO.profile)ULT.profile='tv';ultraSel();ultraProfileApply();const bb=document.createElement('button');bb.className='btn';bb.id='benchBtn';bb.textContent='Bench';bb.addEventListener('click',()=>ultraPanelShow(!UB.vis));document.getElementById('top').insertBefore(bb,el.qBtn);qLabel();}
   el.tide.addEventListener('input',()=>{MC.tideTouched=true;tideAuto=false;el.auto.classList.remove('on');tideManual=parseFloat(el.tide.value);});
   el.auto.addEventListener('click',()=>{MC.tideTouched=true;tideAuto=!tideAuto;el.auto.classList.toggle('on',tideAuto);if(tideAuto)tideT=Math.asin(clamp(tide/(TIDE_RANGE*.92),-1,1))*55/(2*Math.PI);});
-  el.qBtn.addEventListener('click',()=>setQuality(quality==='high'?'low':'high'));
+  el.qBtn.addEventListener('click',()=>{const t=tierName();setQuality(t==='low'?'high':t==='high'?(ultraOk()?'ultra':'low'):'low',true);});   /* Low, High, Ultra, Low ...; two states where ultra is not allowed (AR) */
   document.getElementById('homeBtn').addEventListener('click',()=>Object.assign(cam,HOME));
   addEventListener('resize',size);
   const p=Q.get('tide');if(p!==null){tideManual=parseFloat(p);el.tide.value=p;}
   if(Q.get('auto')==='1'){tideAuto=true;el.auto.classList.add('on');}
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame);updateInfo();
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
-  window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality,renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
+  window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality:tierName(),renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
     setTide:v=>{MC.tideTouched=true;tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
     depthAt:SB?(x,z)=>-H(x,z):null,bathy:SB?()=>SB.bathy():null,
     seabed:SB?{params:()=>JSON.parse(JSON.stringify(SB.P)),measures:()=>{const M=SB.measures();delete M._lists;return JSON.parse(JSON.stringify(M));},lists:()=>{const M=SB.measures(),o=M._lists;return JSON.parse(JSON.stringify({sills:o.sills,landing:o.landing,hauls:o.hauls,coves:o.coves,throats:o.throats}));},
@@ -2766,6 +2965,12 @@ function init(){
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
+    ultra:{device:()=>DEV,on:()=>ULT.on,profile:ultraProfile,setProfile:ultraProfileSet,tier:tierName,opts:()=>JSON.parse(JSON.stringify(ULO)),gpu:()=>({raw:ULT.gpuRaw,name:ULT.gpu.name,kind:ULT.gpu.kind,line:ultraGpuLine().text,warn:ultraGpuLine().warn,hud:el.gpu?el.gpu.textContent:''}),
+      state:()=>({on:ULT.on,tier:tierName(),scale:ULT.scale,scaleReal:ULT.scaleReal,maxScale:ULT.maxScale,dynOn:ULT.dynOn,msaaWant:ULT.msaaWant,msaaGot:ULT.msaaGot,shadow:ULT.q.shadow,shadowType:renderer.shadowMap.type===THREE.PCFShadowMap?'PCF':'PCFSoft',shadowRadius:sun?sun.shadow.radius:0,fitHalf:ULT.fitHalf,aniso:ULT.aniso,maxAniso:ULT.caps&&ULT.caps.maxAniso,terrainCell:ULT.q.cell,bloom:ULO.bloom,
+        big:rtBig?[rtBig.width,rtBig.height]:null,canvas:[renderer.domElement.width,renderer.domElement.height],timer:!!UQ.ext,work:ULT.work,workSrc:ULT.workSrc,notes:ULT.notes.slice(),fails:ULT.fails.slice(),caps:ULT.caps,tris:sceneTris(),calls:renderer.info.render.calls,renderTris:renderer.info.render.triangles,
+        boatLods:boatObjs.filter(o=>o.kit).map(o=>o.kit.lod),campLods:CP.rt?CP.rt.api.kit().map(k=>k.lod):[],campHero:CP.rt?CP.rt.api.heroStat():null,repairHero:!!RP.heroOn}),
+      setScale:v=>{ULT.dynOn=false;ULT.scale=v;ULT.needSize=true;},ctl:()=>ULT.ctl&&ULT.ctl.state(),range:()=>ULT.range,ui:()=>ULT.ui||1,benchStart:ultraBenchStart,benchRunning:()=>UB.active,benchResult:()=>UB.last,report:()=>UB.report||LI_ULTRA.benchReport(ultraInfo()),panel:ultraPanelShow,panelVisible:()=>UB.vis,panelText:()=>UB.rows?UB.rows.textContent:'',forceFail:n=>{ULT.forceProbeFail=n;},remake:()=>{size();},
+      stats:ultraStats,quality:()=>tierName()},
     clock:CKON?ckApi():null,
     repair:RPON?rpApi():null,
     campstart:CPON?{village:()=>({houses:W.houses.length,jetty:!!W.jetty,moored:W.boats.filter(b=>b.kind==='moored'&&!b.sail).length,houseCode:'kept, skipped under start=camp'}),rt:()=>CP.rt&&CP.rt.api,plan:()=>CP.plan,notes:()=>CP.notes,cleared:()=>CP.clearedN,hook:()=>CP.hook,jetty:()=>CP.jetty,bots:()=>CP.bots,err:()=>CP.err,hash:()=>CP.rt?CP.rt.hash():null,tier:campTier}:null,
