@@ -1,0 +1,307 @@
+{
+ "boat_dinghy_far.glb": {
+  "triangles": 502,
+  "vertices": 670,
+  "per_node": {
+   "hull": 422,
+   "hullmask": 10,
+   "waterline": 24,
+   "oar_l": 40,
+   "oar_r": 40
+  },
+  "bytes": 40120,
+  "textures": {},
+  "hero_tris_masks": {
+   "hullmask": 10,
+   "waterline": 24
+  }
+ },
+ "boat_dinghy_hero.glb": {
+  "triangles": 16334,
+  "vertices": 14899,
+  "per_node": {
+   "hull": 15414,
+   "hullmask": 34,
+   "waterline": 116,
+   "oar_l": 460,
+   "oar_r": 460
+  },
+  "bytes": 615812,
+  "textures": {
+   "colour_px": [
+    1024,
+    1152
+   ],
+   "bytes": [
+    94235,
+    63241,
+    36412
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 34,
+   "waterline": 116
+  }
+ },
+ "boat_dinghy_live.glb": {
+  "triangles": 2754,
+  "vertices": 2906,
+  "per_node": {
+   "hull": 2202,
+   "hullmask": 34,
+   "waterline": 52,
+   "oar_l": 276,
+   "oar_r": 276
+  },
+  "bytes": 153260,
+  "textures": {
+   "colour_px": [
+    512,
+    576
+   ],
+   "bytes": [
+    27627,
+    14181,
+    11038
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 34,
+   "waterline": 52
+  }
+ },
+ "boat_sailer_far.glb": {
+  "triangles": 854,
+  "vertices": 1020,
+  "per_node": {
+   "hull": 566,
+   "hullmask": 10,
+   "waterline": 24,
+   "oar_l": 40,
+   "oar_r": 40,
+   "mast": 44,
+   "boom": 24,
+   "sail": 16,
+   "sail_furled": 24,
+   "rudder": 20,
+   "tiller": 80
+  },
+  "bytes": 74624,
+  "textures": {},
+  "hero_tris_masks": {
+   "hullmask": 10,
+   "waterline": 24
+  }
+ },
+ "boat_sailer_hero.glb": {
+  "triangles": 24714,
+  "vertices": 21832,
+  "per_node": {
+   "hull": 19300,
+   "hullmask": 34,
+   "waterline": 116,
+   "oar_l": 460,
+   "oar_r": 460,
+   "mast": 468,
+   "boom": 214,
+   "sail": 2776,
+   "sail_furled": 696,
+   "rudder": 140,
+   "tiller": 200
+  },
+  "bytes": 860896,
+  "textures": {
+   "colour_px": [
+    1024,
+    1152
+   ],
+   "bytes": [
+    113511,
+    70097,
+    39985
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 34,
+   "waterline": 116
+  }
+ },
+ "boat_sailer_live.glb": {
+  "triangles": 5584,
+  "vertices": 5190,
+  "per_node": {
+   "hull": 3466,
+   "hullmask": 34,
+   "waterline": 52,
+   "oar_l": 276,
+   "oar_r": 276,
+   "mast": 356,
+   "boom": 150,
+   "sail": 176,
+   "sail_furled": 624,
+   "rudder": 140,
+   "tiller": 120
+  },
+  "bytes": 249172,
+  "textures": {
+   "colour_px": [
+    512,
+    576
+   ],
+   "bytes": [
+    31790,
+    15542,
+    12376
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 34,
+   "waterline": 52
+  }
+ },
+ "boat_work_far.glb": {
+  "triangles": 924,
+  "vertices": 1225,
+  "per_node": {
+   "hull": 748,
+   "hullmask": 6,
+   "waterline": 24,
+   "rudder": 20,
+   "tiller": 80,
+   "davit": 76
+  },
+  "bytes": 53476,
+  "textures": {},
+  "hero_tris_masks": {
+   "hullmask": 6,
+   "waterline": 24
+  }
+ },
+ "boat_work_hero.glb": {
+  "triangles": 21394,
+  "vertices": 20505,
+  "per_node": {
+   "hull": 20550,
+   "hullmask": 20,
+   "waterline": 116,
+   "rudder": 140,
+   "tiller": 200,
+   "davit": 504
+  },
+  "bytes": 793680,
+  "textures": {
+   "colour_px": [
+    1024,
+    1152
+   ],
+   "bytes": [
+    109475,
+    76581,
+    44283
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 20,
+   "waterline": 116
+  }
+ },
+ "boat_work_live.glb": {
+  "triangles": 4258,
+  "vertices": 4567,
+  "per_node": {
+   "hull": 3634,
+   "hullmask": 20,
+   "waterline": 52,
+   "rudder": 140,
+   "tiller": 120,
+   "davit": 364
+  },
+  "bytes": 201864,
+  "textures": {
+   "colour_px": [
+    512,
+    576
+   ],
+   "bytes": [
+    30795,
+    16282,
+    13174
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 20,
+   "waterline": 52
+  }
+ },
+ "boat_wreck_far.glb": {
+  "triangles": 836,
+  "vertices": 875,
+  "per_node": {
+   "hull": 756,
+   "hullmask": 1,
+   "waterline": 24,
+   "oar_l": 40,
+   "oar_r": 40
+  },
+  "bytes": 47040,
+  "textures": {},
+  "hero_tris_masks": {
+   "hullmask": 1,
+   "waterline": 24
+  }
+ },
+ "boat_wreck_hero.glb": {
+  "triangles": 15570,
+  "vertices": 14322,
+  "per_node": {
+   "hull": 14650,
+   "hullmask": 1,
+   "waterline": 116,
+   "oar_l": 460,
+   "oar_r": 460
+  },
+  "bytes": 591732,
+  "textures": {
+   "colour_px": [
+    1024,
+    1152
+   ],
+   "bytes": [
+    85267,
+    66204,
+    34492
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 1,
+   "waterline": 116
+  }
+ },
+ "boat_wreck_live.glb": {
+  "triangles": 2934,
+  "vertices": 3005,
+  "per_node": {
+   "hull": 2382,
+   "hullmask": 1,
+   "waterline": 52,
+   "oar_l": 276,
+   "oar_r": 276
+  },
+  "bytes": 151136,
+  "textures": {
+   "colour_px": [
+    512,
+    576
+   ],
+   "bytes": [
+    23154,
+    14049,
+    10489
+   ]
+  },
+  "hero_tris_masks": {
+   "hullmask": 1,
+   "waterline": 52
+  }
+ }
+}
