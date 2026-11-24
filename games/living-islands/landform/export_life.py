@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import os
+import random
 import sys
 
 import numpy as np
@@ -44,6 +45,13 @@ KELP_GRID_M = 7.0
 SHOAL_MAX = 4
 PUFFIN_SITES_MAX = 5
 ROBOT_CANDIDATES = 5
+# The recipes of the robot sites come from a POOL of recipe seeds that were built as live GLBs (landform/build_world_robots.py): 10 distinct machines for the 12 worlds keep the whole set near 3 MB.
+# RAD_POOL: plan -> seeds of robot_recipe_for(seed, radical=True) (ROBOT_RADICAL.md); FAM_POOL: seeds of the family (robot_recipe_for(seed)). Changing a list changes which GLBs the worlds need.
+RAD_POOL = dict(walker=[13, 32], pontoon=[3], spotter=[5], roller=[7], snail=[11], crab=[20], scout=[18])
+FAM_POOL = [9, 6]
+RADICAL_SHARE = 2.0 / 3.0         # about two thirds of the sites get a radical plan
+SHELTER_MAX = 0.30                # pontoon: shore exposure (fetch rays, 0 sheltered to 1 open) at the site at most this
+WATER_NEAR_M = 12.0               # pontoon: open water (0.5 m deep at mean sea) within this distance of the site along the shore normal
 VILLAGE_CLEAR_M = 62.0            # the page puts up to 10 houses within 62 m of the landing: colonies and puffin turf keep out of that disc
 
 
@@ -262,6 +270,38 @@ def shoal_block(w, ox, oy, rr, seed, kelp):
             for i, (idx, x, z, d, dl) in enumerate(pick)]
 
 
+def recipe_hash(rec):
+    """10 hex digits of the recipe (plain values, sorted keys): the name of its GLB, so that two sites with the same machine share one file"""
+    return hashlib.sha256(json.dumps(rec, sort_keys=True, separators=(',', ':')).encode()).hexdigest()[:10]
+
+
+def assign_recipe(seed, i, feat, used):
+    """The recipe of robot site i of world `seed`: (recipe seed, radical, plan), deterministic from the world seed, the site id and the site features only.
+    About two thirds of the sites are radical (ROBOT_RADICAL.md), the rest family tortoises. Role to site rules: pontoon only on a sheltered shore with open water within WATER_NEAR_M;
+    walker, spotter and the ear scout anywhere; snail and crab on a beach (sand, shingle or gentle); roller on flat sand or gentle beach (slope under 0.15). `used` = (radical, plan) already given in this world: a repeat is made less likely."""
+    rng = random.Random('life-robot-%d-%d' % (seed, i))
+    radical = rng.random() < RADICAL_SHARE
+    if not radical:
+        pool = [(False, 'family', q) for q in FAM_POOL]
+        k = rng.randrange(len(pool))
+        return pool[k][2], False, 'family'
+    beach = feat['beach'] in ('sand', 'shingle', 'gentle')
+    sheltered = feat['beach'] != 'turf' and feat['slope'] < 0.35 and feat['exposure'] <= SHELTER_MAX and feat['water_m'] is not None and feat['water_m'] <= WATER_NEAR_M
+    plans = {'walker': 1.0, 'spotter': 1.0, 'scout': 0.8}
+    if beach:
+        plans['snail'] = 1.0
+        plans['crab'] = 1.0
+    if feat['beach'] in ('sand', 'gentle') and feat['slope'] < 0.15:
+        plans['roller'] = 1.0
+    if sheltered:
+        plans['pontoon'] = 3.0
+    names = sorted(plans)
+    wts = [plans[n] * ((0.0 if n == 'pontoon' else 0.25) if (True, n) in used else 1.0) for n in names]
+    plan = names[rng.choices(range(len(names)), weights=wts, k=1)[0]]
+    seeds = RAD_POOL[plan]
+    return seeds[rng.randrange(len(seeds))], True, plan
+
+
 def robot_block(w, man, ox, oy, rr, seed, seals):
     """1 to 3 collector robot sites (plus spare candidates) on gentle beach: sand, shingle or gentle shore class, slope under 0.35, 0.55 to 3.5 m over the sea (the page robot retreats up the beach when the tide covers it),
     within 16 m of water, away from the landing; each site gets a role and palette from blender/robot_recipe.py and a straight beach path along the shore to drive back and forth."""
@@ -329,12 +369,31 @@ def robot_block(w, man, ox, oy, rr, seed, seals):
     n_use = 1 + (seed % 3)
     n_use = min(n_use, max(1, len(sites)))
     res = []
+    used_ids = set()
     for i, s in enumerate(sites):
-        rseed = seed * 10 + i + 2          # never 1, so the recipe is a real seeded one for most (seed 1 would be the committed tortoise)
-        rec = RR.robot_recipe_for(rseed)
+        x, y = s['wx'], s['wy']
+        r0 = int(round((y - w.Y[0, 0]) / dx)); c0 = int(round((x - w.X[0, 0]) / dx))
+        expo = float(np.asarray(w.exposure)[max(0, r0 - 2):r0 + 3, max(0, c0 - 2):c0 + 3].mean())
+        slp = float(slope[max(0, r0 - 1):r0 + 2, max(0, c0 - 1):c0 + 2].mean())
+        water_m = None                      # distance along the shore normal to water at least 0.5 m deep (mean sea level)
+        for d in np.arange(1.0, 40.0, 1.0):
+            px, py = x + s['nrm'][0] * d, y + s['nrm'][1] * d
+            cc = int(round((px - w.X[0, 0]) / dx)); rw = int(round((py - w.Y[0, 0]) / dx))
+            if not (0 <= rw < h.shape[0] and 0 <= cc < h.shape[1]):
+                break
+            if h[rw, cc] < sea - 0.5:
+                water_m = float(d)
+                break
+        beach = 'sand' if s['kind'] == 1 else 'shingle' if s['kind'] == 2 else 'gentle' if s['kind'] == 3 else 'turf'
+        feat = dict(beach=beach, exposure=round(expo, 2), slope=round(slp, 2), water_m=None if water_m is None else round(water_m, 1))
+        rseed, radical, plan = assign_recipe(seed, i, feat, used_ids)
+        used_ids.add((radical, plan))
+        rec = RR.robot_recipe_for(rseed, radical=radical)
+        rh = recipe_hash(rec)
         res.append(dict(id=i, use=bool(i < n_use), xy=to_page(ox, oy, s['wx'], s['wy']), a=to_page(ox, oy, *s['a']), b=to_page(ox, oy, *s['b']),
-                        normal=[round(s['nrm'][0], 3), round(-s['nrm'][1], 3)], beach=('sand' if s['kind'] == 1 else 'shingle' if s['kind'] == 2 else 'gentle' if s['kind'] == 3 else 'turf'),
-                        recipe_seed=rseed, role=rec['role'], palette=rec['paint']['palette'], paint=rec['paint']['paint'], paint2=rec['paint']['paint2'], arm=rec['paint']['arm'],
+                        normal=[round(s['nrm'][0], 3), round(-s['nrm'][1], 3)], beach=beach, exposure=feat['exposure'], slope=feat['slope'], water_m=feat['water_m'],
+                        recipe_seed=rseed, radical=radical, plan=plan, recipe_hash=rh, glb='assets/collector/world_robots/robot_%s_live.glb' % rh,
+                        role=rec['role'], palette=rec['paint']['palette'], paint=rec['paint']['paint'], paint2=rec['paint']['paint2'], arm=rec['paint']['arm'],
                         lamp=rec['lamp']['code'], lamp_search=rec['lamp']['search'], lamp_found=rec['lamp']['found'], scale=rec['body']['scale'], drive=rec['body']['drive']['type'],
                         quirks=rec['quirks'], age_years=rec['wear']['age_years']))
     return res

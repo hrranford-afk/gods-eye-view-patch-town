@@ -1,0 +1,86 @@
+{
+ "note": "live-LOD GLBs of the robot recipes of the 12 worlds (landform/build_world_robots.py)",
+ "robots": {
+  "0d8fbfa16f": {
+   "bytes": 275740,
+   "plan": "walker",
+   "radical": true,
+   "seed": 13,
+   "sha256": "5b3b93e59ebc32b7c439a07a403e692ca2828beb506f0fb5c6b2e877ccf93f9b",
+   "triangles": 2680
+  },
+  "32f3f6f8c2": {
+   "bytes": 294712,
+   "plan": "walker",
+   "radical": true,
+   "seed": 32,
+   "sha256": "ef6ee5458e89b50e8588f7cfebd4bc040662b7b6b102d936676a0bdb75f74441",
+   "triangles": 3008
+  },
+  "4905097b64": {
+   "bytes": 330776,
+   "plan": "snail",
+   "radical": true,
+   "seed": 11,
+   "sha256": "7391f946df49d5211f56458372a5be8858476be187f2db85e65bc15bb31592e3",
+   "triangles": 3724
+  },
+  "4a928af14b": {
+   "bytes": 287412,
+   "plan": "roller",
+   "radical": true,
+   "seed": 7,
+   "sha256": "751205b5217032d4a72024b3568a441a2b7f6759491dc5b4e717c490627b86bb",
+   "triangles": 2812
+  },
+  "4dbef7cdea": {
+   "bytes": 333272,
+   "plan": "family",
+   "radical": false,
+   "seed": 6,
+   "sha256": "2e3edf7740b57b38e0f50f95f02166681ec8328dc207577ffc9457008f5ee937",
+   "triangles": 3732
+  },
+  "596e2ce906": {
+   "bytes": 252492,
+   "plan": "spotter",
+   "radical": true,
+   "seed": 5,
+   "sha256": "0b46c0b29913b8dc5950b658a34efef270e490d46b140bdb7ad65be3feb8d939",
+   "triangles": 2300
+  },
+  "bb1ec8a239": {
+   "bytes": 314996,
+   "plan": "crab",
+   "radical": true,
+   "seed": 20,
+   "sha256": "f8b7afde38fc57db8e299a604c0d60d33a850d2a16fdc1c34943bdacc5f955d7",
+   "triangles": 3208
+  },
+  "be8c3d6435": {
+   "bytes": 336656,
+   "plan": "pontoon",
+   "radical": true,
+   "seed": 3,
+   "sha256": "930ae321661fa7d181495fde43185438cce37b696069ae67a6aacd7eab25641b",
+   "triangles": 3708
+  },
+  "bf19c298c7": {
+   "bytes": 335816,
+   "plan": "scout",
+   "radical": true,
+   "seed": 18,
+   "sha256": "b22d308d6ce471baf62678654b88bb974c9b02f0776e2aff8720e2088a22e33b",
+   "triangles": 3880
+  },
+  "ef27bb5097": {
+   "bytes": 325272,
+   "plan": "family",
+   "radical": false,
+   "seed": 9,
+   "sha256": "9a64c750b98da681e3f6477af4a4fb646ef3b7abb3c089ff40b1e232ebcb568d",
+   "triangles": 3528
+  }
+ },
+ "total_bytes": 3087144
+}
