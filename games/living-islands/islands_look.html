@@ -22,6 +22,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#2a1f16;color:var(--in
 #info{position:fixed;left:12px;bottom:70px;font-size:11px;color:#fff;opacity:.7;text-shadow:0 1px 2px #000;pointer-events:none;white-space:pre}
 #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#2a1f16;color:#f1e3c8;font-weight:700;font-size:18px;transition:opacity .6s}
 body.noui #top,body.noui #bar,body.noui #info{display:none}
+#ckChip{display:flex;align-items:center;gap:6px;min-height:44px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+#ckChip small{font-weight:600;opacity:.7}
 </style>
 </head>
 <body>
@@ -43,7 +45,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
-<script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');</script>
+<script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');</script>
 <script>if(/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/index.js"><\/script><script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/world.js"><\/script><script src="world_view.js"><\/script>');}</script>
 <script>if(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/life.js"><\/script><script src="vendor/GLTFLoader.r128.js"><\/script><script src="assets/collector/collector_live_b64.js"><\/script><script src="animals.js"><\/script><script src="robots.js"><\/script>');}</script>
 <script>
@@ -67,7 +69,9 @@ const WXON=!!WXS&&!!window.LI_WEATHER&&window.LI_WEATHER.create!==undefined;
 let WXR=null;
 const BOATS2=Q.get('boats')==='2';      /* the boats pass: slim lapstrake hulls, dry floors, a depth-only hull mask so the sea never shows inside, boot-top line and contact shadow (see BOATS_PASS.md); absent = unchanged */
 const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_sea.js, see MACRO_WIRE.md): tide, swell, whitecaps, drift, weather and boat heave from a pure function of (seed, game hour); implies the sea=2 look; absent = unchanged */
-const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const CKON=Q.get('clock')==='1'&&!!window.SkyClock;   /* the sky clock (sky_clock.js, see SKY_CLOCK_BUILD.md): sun, moon, stars, tide, light and window glows from one game clock; implies the sea=2 look; absent = unchanged */
+const CKDOME=CKON&&Q.get('clockdome')!=='0';   /* ?clockdome=0 is the AR profile: lights, emissives and tide from the clock, but no sky dome, no stars, no floor tint and no exposure change */
+const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
 const QUAL={
@@ -992,6 +996,7 @@ function buildSea(){
     }`});
   if(MC.on)mat.fragmentShader=msPatch(mat.fragmentShader);
   if(WXR){mat.fragmentShader=LI_WEATHER.patchSea(mat.fragmentShader);WXR.attachSea(mat);}
+  if(CKON){mat.fragmentShader=ckSeaPatch(mat.fragmentShader);mat.uniforms.uCkB={value:CK.uB};mat.uniforms.uCkH={value:CK.uH};mat.uniforms.uCkZ={value:CK.uZ};mat.uniforms.uCkG={value:CK.uG};}   /* after the weather patch: it reads text the weather patch has already rewritten */
   waterMesh=new THREE.Mesh(new THREE.CircleGeometry(TABLE_R+.4,128).rotateX(-Math.PI/2),mat);waterMesh.renderOrder=5;scene.add(waterMesh);}
 
 function buildTable(){const wood=makeWood();
@@ -1442,12 +1447,13 @@ function makeRT(w,h){if(rt){rt.dispose();rt=null;}
 
 /* ============ camera control ============ */
 const HOME=LAND?{theta:.52,phi:.58,dist:124,tx:18,tz:12}:{theta:.42,phi:.93,dist:WORLD?390:290,tx:0,tz:2};
+if(CKON){HOME.ty=0;HOME.fov=30;}   /* clock: the camera can look up at the sky (ty = height of the look-at point) and widen (fov) */
 const cam={...HOME},cur={...HOME};
 let snap=true;
-function applyCam(dt){const k=snap?1:1-Math.pow(.0005,dt);for(const key of['theta','phi','dist','tx','tz'])cur[key]+=(cam[key]-cur[key])*k;snap=false;
+function applyCam(dt){const k=snap?1:1-Math.pow(.0005,dt);for(const key of(CKON?['theta','phi','dist','tx','tz','ty','fov']:['theta','phi','dist','tx','tz']))cur[key]+=(cam[key]-cur[key])*k;snap=false;
   const cp=Math.cos(cur.phi),sp=Math.sin(cur.phi);
-  camera.position.set(cur.tx+Math.sin(cur.theta)*cp*cur.dist,sp*cur.dist,cur.tz+Math.cos(cur.theta)*cp*cur.dist);camera.lookAt(cur.tx,0,cur.tz);}
-function clampCam(){cam.phi=clamp(cam.phi,.2,1.5);cam.dist=clamp(cam.dist,9,WORLD?580:420);const r=Math.hypot(cam.tx,cam.tz),rl=82*WS;if(r>rl){cam.tx*=rl/r;cam.tz*=rl/r;}}
+  camera.position.set(cur.tx+Math.sin(cur.theta)*cp*cur.dist,sp*cur.dist,cur.tz+Math.cos(cur.theta)*cp*cur.dist);if(CKON&&Math.abs(camera.fov-cur.fov)>1e-3){camera.fov=cur.fov;camera.updateProjectionMatrix();}camera.lookAt(cur.tx,CKON?cur.ty:0,cur.tz);}
+function clampCam(){cam.phi=clamp(cam.phi,CKON?.03:.2,1.5);cam.dist=clamp(cam.dist,9,WORLD?580:420);const r=Math.hypot(cam.tx,cam.tz),rl=82*WS;if(r>rl){cam.tx*=rl/r;cam.tz*=rl/r;}}
 function setupControls(el){const ptr=new Map();let last=null;
   el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,b:e.button,s:e.shiftKey});last=null;});
   el.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const p=ptr.get(e.pointerId);const dx=e.clientX-p.x,dy=e.clientY-p.y;
@@ -1492,6 +1498,7 @@ function build(){const t0=performance.now();
   buildBoats();if(LAND)buildSettlers();else buildPeople();buildPebbles();buildFire();if(FLOW)flowEnsure();buildSea();if(FLOW){flotBuildMeshes();if(!FL.cv)flowDbgInit();}buildGulls();if(SB&&!WV)sbOverlayInit();
   LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0',boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
   if(WXR)WXR.attach(scene,sun,hemi);
+  if(CKON)ckBuild();
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
@@ -1502,11 +1509,13 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt;clock.acc+=dt;clock.frames++;
   if(clock.acc>.5){clock.fps=clock.frames/clock.acc;clock.frames=0;clock.acc=0;updateInfo();autoQ();}
   if(MC.on)mcUpdate(dt);
-  if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else if(MC.on&&!MC.tideTouched){tide=MC.tide;el.tide.value=tide;}else tide=tideManual;
+  if(CKON)ckUpdate(dt);
+  if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else if(MC.on&&!MC.tideTouched){tide=MC.tide;el.tide.value=tide;}else if(CKON&&!MC.on&&!MC.tideTouched){tide=CK.c.tide.level;el.tide.value=tide;}else tide=tideManual;
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);u.uQ.value=QUAL[quality].hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
   if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
+  if(CKON)ckFrame(dt);
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1541,6 +1550,247 @@ function animate(dt){const t=clock.t;
       pa[i*3]=f.x+.9*a*7+Math.sin(a*5+rr*9)*.5*a*3+(rr-.5)*.5;pa[i*3+1]=f.y+1+a*9.5;pa[i*3+2]=f.z+.3*a*7*(rr-.4)+Math.cos(a*4+rr*7)*.5*a*3;
       aa[i*3]=.55+a*2.6;aa[i*3+1]=Math.sin(Math.PI*Math.pow(a,.7))*(LAND?.24:.22)*(1-a*.3);aa[i*3+2]=rr;}
     smoke.geometry.attributes.position.needsUpdate=true;smoke.geometry.attributes.aS.needsUpdate=true;}}
+/* ============ sky clock wiring (?clock=1, see SKY_CLOCK_BUILD.md, research/SKY_CLOCK.md) ============
+   sky_clock.js is a pure function of (seed, game hour). This block owns the CLOCK (one hour accumulator, so a speed change never jumps; with ?macro=1 the macro's hour is the clock),
+   the light (sun or moon as the one directional light, hemisphere fill, exposure), the sky dome with stars, sun and moon discs, the sea colour uniforms, window glows, the campfire light and the HUD chip.
+   Everything is off unless ?clock=1. ?clockdome=0 keeps lights, emissives and tide but draws no dome, stars or floor tint and leaves the exposure alone (the AR profile). */
+const CK={on:CKON,dome:CKDOME,seed:SEED,
+  lat:Q.get('clat')!==null?parseFloat(Q.get('clat')):(CKON?(Q.get('seed')===null&&!WORLD?SkyClock.DEFAULT_LAT:SkyClock.latitudeFor(SEED)):57.5),
+  moonDeg:parseFloat(Q.get('cmoon')||'1.5'),   /* apparent moon diameter on the dome in degrees: the real 0.52 is 14 px on a 30 degree view, too small to show a phase (TUNING, x2.5) */
+  sunDeg:1.6,                                   /* the sun disc, real 0.53 (TUNING, x3) */
+  nStars:Q.get("cstars")!==null?parseInt(Q.get("cstars"),10):(quality==="low"?2200:4500),
+  doy0:0,acc:null,hours:0,c:null,L:null,expo:1,snapExpo:true,obj:{},chipT:0,
+  uB:CKON?new THREE.Vector3(1,1,1):null,uG:CKON?new THREE.Vector3(1,1,1):null,uH:CKON?new THREE.Vector3(.2,.3,.44):null,uZ:CKON?new THREE.Vector3(.02,.075,.26):null,
+  litAvg:0,stats:{}};
+if(CKON){const cm=Math.round(parseFloat(Q.get('cm')||'4')),ch=Q.get('ch')!==null?parseFloat(Q.get('ch')):18,cd=parseFloat(Q.get('cd')||'121');
+  const h0=cm*24+ch-12;CK.doy0=MC.on?MacroSea.DOY0:cd-cm;
+  CK.acc=SkyClock.createAccumulator({hours0:MC.on?0:h0,speed:parseFloat(Q.get('cspeed')||'1')});CK.acc.frozen=Q.get('cfreeze')==='1';
+  CK.c=SkyClock.clock(SEED,MC.on?MC.hour:CK.acc.hours,{lat:CK.lat,doy0:CK.doy0});CK.L=SkyClock.light(CK.c);}
+const CK_MONTHS=[['Jan',31],['Feb',28],['Mar',31],['Apr',30],['May',31],['Jun',30],['Jul',31],['Aug',31],['Sep',30],['Oct',31],['Nov',30],['Dec',31]];
+function ckDateOf(doy){let d=doy;for(const m of CK_MONTHS){if(d<=m[1])return m[0]+' '+d;d-=m[1];}return 'Dec 31';}
+function ckHour(){return MC.on?MC.hour:CK.acc.hours;}
+function ckSetHours(h){if(MC.on){MC.hour=h;MC.dirty=true;MC.snap=true;}else CK.acc.set(h);CK.snapExpo=true;}
+function ckUpdate(dt){
+  if(!MC.on)CK.acc.advance(dt);
+  CK.hours=ckHour();CK.c=SkyClock.clock(SEED,CK.hours,{lat:CK.lat,doy0:CK.doy0});CK.L=SkyClock.light(CK.c);
+  const k=CK.snapExpo||!(dt>0)?1:1-Math.exp(-dt/2.5);CK.snapExpo=false;CK.expo+=(CK.L.exposure-CK.expo)*k;   /* the eye adapts over a couple of seconds, never a pop */
+  CK.chipT-=dt;if(CK.chipT<=0){CK.chipT=.25;ckChipUpdate();}}
+/* the sea shader: body and foam brightness and tint (night), and the sky it reflects when the weather pass is not driving it */
+function ckSeaPatch(src){
+  const R=(a,b)=>{if(!src.includes(a))throw new Error('clock shader patch failed: '+a.slice(0,48));src=src.replace(a,b);};
+  R('varying vec3 vW;','varying vec3 vW;uniform vec3 uCkB,uCkH,uCkZ,uCkG;');
+  if(!WXR)R('vec3 hor=vec3(0.20,0.30,0.44),zen=vec3(0.02,0.075,0.26);','vec3 hor=uCkH,zen=uCkZ;');
+  R('vec3 col=body*(0.4+0.85*sunl)','vec3 col=uCkB*body*(0.4+0.85*sunl)');
+  R('vec3 foamC=vec3(0.93,0.96,0.97)*(0.5+0.9*shadow)','vec3 foamC=uCkB*vec3(0.93,0.96,0.97)*(0.5+0.9*shadow)');
+  if(!src.includes('vec3(2.2,1.9,1.55)'))throw new Error('clock shader patch failed: glitter colour');src=src.split('vec3(2.2,1.9,1.55)').join('(uCkG*vec3(2.2,1.9,1.55))');   /* the glitter colour: sun or moon */
+  return src;}
+const CK_TONE='\n#ifdef NOPOST\n#include <tonemapping_fragment>\n#include <encodings_fragment>\n#endif\n';
+const CK_HASH='float ckh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}';
+function ckBuild(){
+  const o=CK.obj={};const defs=NOPOST?{NOPOST:1}:{};
+  if(CK.dome){
+    /* the sky: gradient from a sun-side horizon, an anti-sun horizon and a zenith colour (all from sky_clock.js light()), a glow round the sun; only when the weather pass has no dome of its own */
+    if(!WXR){const sk=new THREE.Mesh(new THREE.SphereGeometry(1200,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,defines:defs,
+      uniforms:{uHs:{value:new THREE.Vector3()},uHa:{value:new THREE.Vector3()},uZ:{value:new THREE.Vector3()},uSunT:{value:new THREE.Vector3(0,1,0)},uSunC:{value:new THREE.Vector3()},uWide:{value:1}},
+      vertexShader:'varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*viewMatrix*(modelMatrix*vec4(position,1.0));}',
+      fragmentShader:'precision highp float;varying vec3 vD;uniform vec3 uHs,uHa,uZ,uSunT,uSunC;uniform float uWide;'+CK_HASH+`
+      void main(){vec3 r=normalize(vD);float y=r.y;
+        vec2 sf=normalize(uSunT.xz+vec2(1e-4)),rf=normalize(r.xz+vec2(1e-4));float az=dot(rf,sf)*0.5+0.5;float lobe=pow(az,mix(3.4,1.7,uWide));
+        vec3 hor=mix(uHa,uHs,lobe);float t=pow(clamp(y,0.0,1.0),0.42);vec3 col=mix(hor,uZ,t);
+        col+=hor*0.16*exp(-max(y,0.0)*14.0);
+        if(y<0.0)col=hor*1.16;
+        float sd=max(dot(r,uSunT),0.0);col+=uSunC*(0.05*pow(sd,6.0)+0.30*pow(sd,60.0));
+        col+=(ckh(gl_FragCoord.xy)-0.5)/255.0;
+        gl_FragColor=vec4(col,1.0);${CK_TONE}}`}));sk.renderOrder=-101;sk.frustumCulled=false;scene.add(sk);o.sky=sk;}
+    /* stars: one THREE.Points, positions computed in the vertex shader from right ascension, declination and the clock's star angle (the pole is at altitude = latitude) */
+    const sf=SkyClock.starField(SEED,CK.nStars),g=new THREE.BufferGeometry();
+    const ard=new Float32Array(sf.n*2);for(let i=0;i<sf.n;i++){ard[i*2]=sf.ra[i];ard[i*2+1]=sf.dec[i];}
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(sf.n*3),3));g.setAttribute('aRD',new THREE.BufferAttribute(ard,2));g.setAttribute('aMag',new THREE.BufferAttribute(sf.mag,1));g.setAttribute('aCol',new THREE.BufferAttribute(sf.col,3));
+    const st=new THREE.Points(g,new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,defines:defs,
+      uniforms:{uTheta:{value:0},uSL:{value:.84},uCL:{value:.54},uLim:{value:0},uAlpha:{value:0},uPx:{value:1},uTime:{value:0},uOver:{value:1}},
+      vertexShader:`attribute vec2 aRD;attribute float aMag;attribute vec3 aCol;uniform float uTheta,uSL,uCL,uLim,uAlpha,uPx,uTime,uOver;varying vec3 vC;varying float vA;
+      void main(){float H=uTheta-aRD.x;float cd=cos(aRD.y),sd=sin(aRD.y);
+        float up=uSL*sd+uCL*cd*cos(H);float north=uCL*sd-uSL*cd*cos(H);float east=-cd*sin(H);
+        vec3 dir=vec3(east,up,-north);vec4 mv=modelViewMatrix*vec4(dir*1000.0,1.0);gl_Position=projectionMatrix*mv;
+        float am=1.0/max(up+0.08,0.08);float ext=exp(-0.07*(am-1.0));   /* extinction near the horizon */
+        float vis=(1.0-smoothstep(uLim-1.4,uLim,aMag))*smoothstep(-0.01,0.06,up)*ext;
+        float tw=1.0+(0.10+0.35*clamp(1.0-up,0.0,1.0))*sin(uTime*(3.0+aCol.g*5.0)+aRD.x*91.0+aRD.y*37.0);
+        float br=clamp((6.7-aMag)/6.7,0.0,1.0);
+        gl_PointSize=uPx*(1.45+2.3*pow(br,1.8));
+        vA=vis*uAlpha*uOver*tw*(0.50+0.50*br);vC=aCol;}`,
+      fragmentShader:`precision highp float;varying vec3 vC;varying float vA;
+      void main(){float d=length(gl_PointCoord-0.5)*2.0;float a=clamp(1.0-d,0.0,1.0);a*=a;gl_FragColor=vec4(vC*3.2,a*vA);}`}));
+    st.frustumCulled=false;st.renderOrder=-99;scene.add(st);o.stars=st;
+    /* the Milky Way: a faint band computed per pixel from the galactic latitude of the view direction (north galactic pole at RA 192.86, Dec 27.13), with dark lanes from two cheap sines; no texture, no overdraw of many sprites */
+    {const mw=new THREE.Mesh(new THREE.SphereGeometry(1100,24,12),new THREE.ShaderMaterial({side:THREE.BackSide,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,defines:defs,uniforms:{uTheta:{value:0},uSL:{value:.84},uCL:{value:.54},uAlpha:{value:0}},
+      vertexShader:'varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*viewMatrix*(modelMatrix*vec4(position,1.0));}',
+      fragmentShader:`precision highp float;varying vec3 vD;uniform float uTheta,uSL,uCL,uAlpha;
+      void main(){vec3 r=normalize(vD);float up=r.y,north=-r.z,east=r.x;
+        float sd=uSL*up+uCL*north,cc=uCL*up-uSL*north,cs=-east;float cdec=sqrt(max(1.0-sd*sd,0.0));float ra=uTheta-atan(cs,cc);
+        vec3 e=vec3(cdec*cos(ra),cdec*sin(ra),sd);
+        float sb=dot(e,vec3(-0.8676,-0.1985,0.4560));float l=atan(dot(e,vec3(-0.2231,0.9753,0.0001)),dot(e,vec3(0.4447,0.1017,0.8904)));
+        float b=asin(clamp(sb,-1.0,1.0));
+        float band=exp(-b*b/(2.0*0.17*0.17))*(0.5+0.5*cos(l));
+        float lane=0.72+0.28*sin(l*11.0+b*37.0)*sin(l*5.3-b*21.0);
+        float core=exp(-b*b/(2.0*0.07*0.07))*(0.4+0.6*cos(l)*cos(l));
+        float v=(band*lane*0.8+core*0.5)*smoothstep(0.0,0.12,up);
+        gl_FragColor=vec4(vec3(0.55,0.66,1.0)*v*uAlpha,1.0);}`}));
+     mw.frustumCulled=false;mw.renderOrder=-100;scene.add(mw);o.mw=mw;}
+    /* the moon and the sun: camera-facing quads on the dome. The moon is a shaded sphere lit from the sun's true direction (so the phase, and the tilt of the lit side, are right), with maria and a dim earthshine on the dark part. */
+    const mk=(frag,extra,blend)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,blending:blend,defines:defs,premultipliedAlpha:true,
+      uniforms:Object.assign({uVis:{value:0}},extra),vertexShader:'varying vec2 vUv;void main(){vUv=uv*2.0-1.0;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:frag});
+    const moonF='precision highp float;varying vec2 vUv;uniform float uVis,uEarth,uE;uniform vec3 uL,uC,uSky;'+CK_HASH+`
+      float blob(vec2 p,vec2 c,float r){return exp(-dot(p-c,p-c)/(r*r));}
+      void main(){vec2 p=vUv*uE;float d=length(p);
+        float disc=1.0-smoothstep(0.965,1.0,d);
+        vec3 n=vec3(p,sqrt(max(1.0-d*d,0.0)));
+        float lit=smoothstep(-0.03,0.12,dot(n,normalize(uL)));
+        float mar=0.55*blob(p,vec2(-0.30,0.22),0.30)+0.45*blob(p,vec2(0.12,0.30),0.24)+0.4*blob(p,vec2(0.32,-0.02),0.22)+0.35*blob(p,vec2(-0.12,-0.28),0.30)+0.30*blob(p,vec2(-0.45,-0.12),0.18)+0.22*blob(p,vec2(0.20,-0.40),0.15);
+        float tex=1.0-0.42*clamp(mar,0.0,1.0)+0.06*(ckh(floor(p*18.0))-0.5);
+        vec3 surf=uC*tex*mix(1.0,0.82,clamp(1.0-n.z,0.0,1.0));
+        vec3 dark=uSky*0.94*(0.97+0.05*tex)+vec3(0.006,0.010,0.022)*uEarth;
+        vec3 col=mix(dark,surf,lit)*disc;
+        float halo=exp(-max(d-1.0,0.0)*2.6)*0.11*(1.0-disc);
+        vec3 hc=uC*halo*0.55;
+        gl_FragColor=vec4((col+hc)*uVis,disc*uVis);${CK_TONE}}`;
+    const mm=new THREE.Mesh(new THREE.PlaneGeometry(2,2),mk(moonF,{uEarth:{value:1},uE:{value:3},uL:{value:new THREE.Vector3(1,0,0)},uC:{value:new THREE.Vector3(1,1,1)},uSky:{value:new THREE.Vector3(.02,.03,.08)}},THREE.NormalBlending));
+    mm.frustumCulled=false;mm.renderOrder=-98;scene.add(mm);o.moon=mm;
+    const sunF='precision highp float;varying vec2 vUv;uniform float uVis,uE;uniform vec3 uC;'+`
+      void main(){vec2 p=vUv*uE;float d=length(p);float disc=1.0-smoothstep(0.92,1.0,d);float halo=exp(-max(d-0.9,0.0)*2.2)*0.55+exp(-d*1.0)*0.2;
+        vec3 col=uC*(disc*3.2+halo*(1.0-disc)*0.7);gl_FragColor=vec4(col*uVis,0.0);${CK_TONE}}`;
+    const sm2=new THREE.Mesh(new THREE.PlaneGeometry(2,2),mk(sunF,{uE:{value:4},uC:{value:new THREE.Vector3(1,.8,.5)}},THREE.AdditiveBlending));
+    sm2.frustumCulled=false;sm2.renderOrder=-97;scene.add(sm2);o.sun=sm2;
+    /* the floor under the table: tinted by the light and faded into the horizon colour so the edge of the floor never shows */
+    const fm=floorMesh.material;o.floorU={uCkHs:{value:new THREE.Vector3(.2,.3,.44)},uCkHa:{value:new THREE.Vector3(.2,.3,.44)},uCkSun:{value:new THREE.Vector3(0,1,0)},uCkWide:{value:1}};
+    fm.onBeforeCompile=sh=>{Object.assign(sh.uniforms,o.floorU);
+      sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vCkW;').replace('#include <begin_vertex>','#include <begin_vertex>\nvCkW=(modelMatrix*vec4(position,1.0)).xyz;');
+      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vCkW;uniform vec3 uCkHs,uCkHa,uCkSun;uniform float uCkWide;').replace('#include <tonemapping_fragment>',`{vec3 rd=vCkW-cameraPosition;vec2 rf=normalize(rd.xz+vec2(1e-4)),sf=normalize(uCkSun.xz+vec2(1e-4));float lb=pow(dot(rf,sf)*0.5+0.5,mix(3.4,1.7,uCkWide));
+        vec3 hor=mix(uCkHa,uCkHs,lb)*1.16;gl_FragColor.rgb=mix(gl_FragColor.rgb,hor,smoothstep(170.0,440.0,length(vCkW.xz)));}
+#include <tonemapping_fragment>`);};
+    fm.needsUpdate=true;}
+  /* window glows: a warm quad on each window of each house (and the door of each tent), plus a soft pool of light on the ground in front; vertex colours carry the per-window brightness */
+  {const P=[],C=[],I=[],GP=[],GU=[],GC=[],GI=[];let vi=0,gi=0;o.win=[];
+   const quad=(a,b,c,d,hid)=>{for(const v of[a,b,c,d]){P.push(v[0],v[1],v[2]);C.push(0,0,0);}I.push(vi,vi+1,vi+2,vi,vi+2,vi+3);o.win.push({v:vi,h:hid});vi+=4;};
+   const gq=(cx,cy,cz,s,hid)=>{const q=[[-1,-1],[1,-1],[1,1],[-1,1]];for(const e of q){GP.push(cx+e[0]*s,cy,cz+e[1]*s);GU.push(e[0]*.5+.5,e[1]*.5+.5);GC.push(0,0,0);}GI.push(gi,gi+2,gi+1,gi,gi+3,gi+2);o.glo.push({v:gi,h:hid});gi+=4;};
+   o.glo=[];
+   W.houses.forEach((h,i)=>{const{x,z,y,yaw,w,d}=h,cs=Math.cos(yaw),sn=Math.sin(yaw),hd=d/2,T=(lx,ly,lz)=>[x+lx*cs+lz*sn,y+ly,z-lx*sn+lz*cs];
+     const win=(lx,lz,sz,face,hid)=>{const f=face>0?1:-1,zz=lz+f*.075,hw=sz/2;const A=T(lx-f*hw,1.35-hw,zz),B=T(lx+f*hw,1.35-hw,zz),Cc=T(lx+f*hw,1.35+hw,zz),D=T(lx-f*hw,1.35+hw,zz);quad(A,B,Cc,D,hid);};
+     win(w*.26,hd,.75,1,i*2);win(-w*.4,-hd,.7,-1,i*2+1);
+     const g1=T(w*.26,0,hd+1.3);gq(g1[0],Math.max(y,H(g1[0],g1[2]))+.09,g1[2],1.7,i*2);const g2=T(-w*.4,0,-hd-1.1);gq(g2[0],Math.max(y,H(g2[0],g2[2]))+.09,g2[2],1.3,i*2+1);});
+   W.tents.forEach((t,i)=>{const{x,z,y,yaw}=t,cs=Math.cos(yaw),sn=Math.sin(yaw),T=(lx,ly,lz)=>[x+lx*cs+lz*sn,y+ly,z-lx*sn+lz*cs],L=1.7;
+     const hid=1000+i;quad(T(-.45,0,L+.035),T(.45,0,L+.035),T(.45,.55,L+.035),T(-.45,.55,L+.035),hid);o.win[o.win.length-1].tent=true;
+     const g=T(0,0,L+1.2);gq(g[0],Math.max(y,H(g[0],g[2]))+.09,g[2],1.8,hid);o.glo[o.glo.length-1].tent=true;});
+   if(P.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setIndex(I);
+     const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));m.renderOrder=3;m.frustumCulled=false;scene.add(m);o.winMesh=m;
+     const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.Float32BufferAttribute(GP,3));g2.setAttribute('uv',new THREE.Float32BufferAttribute(GU,2));g2.setAttribute('color',new THREE.Float32BufferAttribute(GC,3));g2.setIndex(GI);
+     const m2=new THREE.Mesh(g2,new THREE.MeshBasicMaterial({map:makeGlow(),vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));m2.renderOrder=6;m2.frustumCulled=false;scene.add(m2);o.gloMesh=m2;}}
+  /* the campfire: one warm point light, flickering, on only in the evening (the only extra light of the pass) */
+  if(W.camp){const f=W.camp.fire,pl=new THREE.PointLight(0xff7324,0,34,2);pl.position.set(f.x,f.y+1.3,f.z);scene.add(pl);o.fire=pl;}
+  /* the dark colour of an unlit window by day (the page's own window colour) */
+  o.winDay=[.16,.2,.26];}
+const CK_V=new THREE.Vector3(),CK_M=new THREE.Matrix4();
+const ckH=n=>{const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+function ckFrame(dt){
+  const c=CK.c,L=CK.L,o=CK.obj,t=clock.t;
+  /* 1. the one lamp: the sun by day, the moon when it is brighter; never below 1.5 degrees (a flat ray would make shadows without end) */
+  const ld=L.lightIsMoon?c.moon.dir:c.sun.dir;let y=Math.max(ld[1],.026);const hl=Math.hypot(ld[0],ld[2])||1,k=Math.sqrt(Math.max(0,1-y*y))/hl;sunDir.set(ld[0]*k,y,ld[2]*k);
+  const lc=L.lightColor;
+  if(WXR){sun.intensity*=L.lightI;sun.color.r*=lc[0];sun.color.g*=lc[1];sun.color.b*=lc[2];hemi.intensity*=L.hemiI;hemi.color.r*=L.hemiSky[0];hemi.color.g*=L.hemiSky[1];hemi.color.b*=L.hemiSky[2];hemi.groundColor.r*=L.hemiGround[0];hemi.groundColor.g*=L.hemiGround[1];hemi.groundColor.b*=L.hemiGround[2];}
+  else{sun.intensity=L.lightI;sun.color.setRGB(lc[0],lc[1],lc[2]);hemi.intensity=L.hemiI;hemi.color.setRGB(...L.hemiSky);hemi.groundColor.setRGB(...L.hemiGround);}
+  sun.visible=L.lightI>.002;
+  /* 2. the sea: body brightness and tint, glitter colour (sun or moon), reflected sky */
+  const hsa=[(L.skyHs[0]+L.skyHa[0])/2,(L.skyHs[1]+L.skyHa[1])/2,(L.skyHs[2]+L.skyHa[2])/2];
+  CK.uB.set(L.bodyTint[0]*L.bodyK,L.bodyTint[1]*L.bodyK,L.bodyTint[2]*L.bodyK);CK.uH.set(...hsa);CK.uZ.set(...L.skyZ);
+  CK.uG.set(L.glitter[0],L.glitter[1],L.glitter[2]);   /* the sea's glitter colour (sun or moon, relative to the day value) */
+  /* 3. the sky */
+  const sd=CK.dome;
+  if(WXR){const u=WXR.raw(),R=SkyClock.SKY_DAY_REF,rh=[hsa[0]/R.H[0],hsa[1]/R.H[1],hsa[2]/R.H[2]],rz=[L.skyZ[0]/R.Z[0],L.skyZ[1]/R.Z[1],L.skyZ[2]/R.Z[2]];
+    if(sd){u.uSkyH.value.x*=rh[0];u.uSkyH.value.y*=rh[1];u.uSkyH.value.z*=rh[2];u.uSkyZ.value.x*=rz[0];u.uSkyZ.value.y*=rz[1];u.uSkyZ.value.z*=rz[2];u.uFogC.value.copy(u.uSkyH.value);
+      const ac=x=>{x*=.9*.95;return Math.pow(clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0,1),1/2.2);};
+      if(scene.fog){const v=u.uSkyH.value;scene.fog.color.setRGB(NOPOST?ac(v.x):v.x,NOPOST?ac(v.y):v.y,NOPOST?ac(v.z):v.z);}
+      if(postMat&&postMat.uniforms.uHazeC){const v=u.uSkyH.value;postMat.uniforms.uHazeC.value.set(ac(v.x),ac(v.y),ac(v.z));}
+      const dm=WXR.parts().dome.material.uniforms,sc=L.lightIsMoon?[0,0,0]:L.glitter;dm.uSunCol.value.set(3*sc[0],1.85*sc[1],1.05*sc[2]);
+      /* clouds: lit by the low sun (orange), by the moon (pale, dim) or not at all, shaded by what is left of the sky */
+      const sunK=Math.min(1.1,L.sunI/2.6),nk=[.035+L.moonI*.9*.70,.045+L.moonI*.9*.80,.07+L.moonI*.9],lit=[Math.max(L.sunColor[0]*sunK,nk[0]),Math.max(L.sunColor[1]*sunK,nk[1]),Math.max(L.sunColor[2]*sunK,nk[2])];
+      const sh=Math.min(1,.05+.95*SkyClock.smoothstep(-14,6,c.sun.elev)),parts=WXR.parts();
+      for(const m of[parts.dome.material.uniforms,parts.deck.material.uniforms,parts.puffs.material.uniforms]){m.uCl.value.set(m.uCl.value.x*lit[0],m.uCl.value.y*lit[1],m.uCl.value.z*lit[2]);m.uCs.value.multiplyScalar(sh).multiply(CK_V.set(.7+.3*sh,.8+.2*sh,1));}}}
+  const cloudVeil=WXR&&WXR.state?Math.min(1,Math.max(WXR.state.cover*1.1,WXR.state.deckOp||0)):0;
+  if(sd){
+    if(o.sky){const u=o.sky.material.uniforms;u.uHs.value.set(...L.skyHs);u.uHa.value.set(...L.skyHa);u.uZ.value.set(...L.skyZ);u.uSunT.value.set(c.sun.dir[0],c.sun.dir[1],c.sun.dir[2]);
+      u.uSunC.value.set(L.sunColor[0]*L.sunI*.55,L.sunColor[1]*L.sunI*.34,L.sunColor[2]*L.sunI*.2);u.uWide.value=SkyClock.smoothstep(14,-4,c.sun.elev);o.sky.position.copy(camera.position);}
+    floorMesh.material.color.setRGB(L.floorK*(1-.25*L.dark),L.floorK*(1-.10*L.dark),L.floorK*(1+.15*L.dark));const fu=o.floorU;if(WXR){const v=WXR.raw().uSkyH.value;fu.uCkHs.value.copy(v);fu.uCkHa.value.copy(v);}else{fu.uCkHs.value.set(...L.skyHs);fu.uCkHa.value.set(...L.skyHa);}fu.uCkSun.value.set(c.sun.dir[0],c.sun.dir[1],c.sun.dir[2]);fu.uCkWide.value=SkyClock.smoothstep(14,-4,c.sun.elev);
+    const px=Math.max(1,renderer.domElement.height/760)*(quality==='low'?.9:1);
+    const su=o.stars.material.uniforms;o.stars.position.copy(camera.position);su.uTheta.value=c.stars.angle;su.uSL.value=Math.sin(CK.lat*Math.PI/180);su.uCL.value=Math.cos(CK.lat*Math.PI/180);su.uLim.value=L.limMag;su.uAlpha.value=L.starAlpha*(1-cloudVeil);su.uPx.value=px;su.uTime.value=t;
+    o.stars.visible=L.starAlpha*(1-cloudVeil)>.003&&L.limMag>.2;
+    {const du=o.mw.material.uniforms;o.mw.position.copy(camera.position);du.uTheta.value=c.stars.angle;du.uSL.value=su.uSL.value;du.uCL.value=su.uCL.value;du.uAlpha.value=.026*SkyClock.smoothstep(-10,-18,c.sun.elev)*(1-.9*Math.min(1,L.moonI*4))*(1-cloudVeil);o.mw.visible=du.uAlpha.value>.0005;}   /* the band fades out with twilight, a bright moon and cloud */
+    /* the moon: a camera-facing quad at the moon's direction; bigger near the horizon (the moon illusion, x1.25 at the horizon, TUNING) */
+    const R=1000,mp=camera.position,md=c.moon.dir,mAng=CK.moonDeg*Math.PI/360*(1+.25*SkyClock.smoothstep(25,0,c.moon.elev)),E=3;
+    o.moon.position.set(mp.x+md[0]*R,mp.y+md[1]*R,mp.z+md[2]*R);o.moon.scale.setScalar(R*Math.tan(mAng*E));o.moon.lookAt(mp);o.moon.updateMatrixWorld();
+    CK_M.copy(o.moon.matrixWorld).invert();CK_V.set(c.sun.dir[0],c.sun.dir[1],c.sun.dir[2]).transformDirection(CK_M);
+    const mu=o.moon.material.uniforms;mu.uL.value.copy(CK_V);mu.uE.value=E;const mg=1.25/(.9*Math.max(CK.expo,1));   /* the disc keeps its brightness whatever the exposure (the post pass multiplies by it) */
+    const day=SkyClock.smoothstep(-8,4,c.sun.elev),mh=SkyClock.smoothstep(-2,2,c.moon.elev);
+    mu.uVis.value=mh*(1-.55*day)*(1-.85*cloudVeil);mu.uEarth.value=Math.max(0,1-c.moon.illum*2.2)*(1-day);
+    const lowRed=SkyClock.smoothstep(18,0,c.moon.elev);{const my=Math.max(0,Math.sin(c.moon.elev*Math.PI/180)),az=c.moon.az*Math.PI/180,sa=c.sun.az*Math.PI/180,lb=Math.pow((Math.sin(az)*Math.sin(sa)+Math.cos(az)*Math.cos(sa))*.5+.5,3.4-1.7*SkyClock.smoothstep(14,-4,c.sun.elev)),tq=Math.pow(my,.42);   /* the sky colour behind the moon, as the dome computes it */
+      for(let i=0;i<3;i++){const hor=L.skyHa[i]+(L.skyHs[i]-L.skyHa[i])*lb;mu.uSky.value.setComponent(i,(hor+(L.skyZ[i]-hor)*tq+hor*.16*Math.exp(-my*14))*mg*.9);}}mu.uC.value.set((1.0-.14*lowRed)*mg,(1.0-.3*lowRed)*mg,(1.0-.5*lowRed)*mg);o.moon.visible=mu.uVis.value>.003;
+    /* the sun disc (additive): only above the horizon, redder and flatter when low */
+    const sp=c.sun.dir,sA=CK.sunDeg*Math.PI/360,E2=4;o.sun.position.set(mp.x+sp[0]*R,mp.y+sp[1]*R,mp.z+sp[2]*R);o.sun.scale.setScalar(R*Math.tan(sA*E2));o.sun.lookAt(mp);
+    const su2=o.sun.material.uniforms;su2.uE.value=E2;su2.uC.value.set(L.sunColor[0]*.8,L.sunColor[1]*.62,L.sunColor[2]*.45);su2.uVis.value=L.sunDisc*(1-.9*(WXR&&WXR.state?Math.min(1,WXR.state.deckOp||0):0))*(1-.5*cloudVeil);o.sun.visible=su2.uVis.value>.003;
+    /* exposure: lift dark scenes (the eye adapts, smoothed in ckUpdate) */
+    if(postMat){postMat.uniforms.uExp.value=(LAND?.88:1.0)*CK.expo;postMat.uniforms.uTilt.value=(LAND?0:1)*SkyClock.smoothstep(.18,.6,cur.phi)*(cur.ty>1?0:1);}   /* the tilt-shift blur would smear the stars: it fades out as the camera comes down to look at the sky */
+    if(NOPOST)renderer.toneMappingExposure=.95*CK.expo;}
+  /* 4. window glows and the campfire */
+  const wg=L.windowGlow,lst=c.lst,tt=lst<12?lst+24:lst,sl=SkyClock.smoothstep(22,25,tt)*(1-SkyClock.smoothstep(29,30.6,tt));
+  let lit=0;
+  if(o.winMesh){const col=o.winMesh.geometry.attributes.color,gc=o.gloMesh.geometry.attributes.color,dayK=SkyClock.smoothstep(-12,4,c.sun.elev),ud=o.winDay,fl=L.fireGlow;
+    for(const w of o.win){const i=w.h,hs=ckH(i*1.7+.3),h2=ckH(i*3.1+c.dayIndex*5.3);let a;
+      if(w.tent)a=fl*.9;else a=SkyClock.smoothstep(.10+.45*hs,.28+.45*hs,wg)*(1-SkyClock.smoothstep(h2-.12,h2+.12,sl*.92));
+      const f=a*(.93+.07*Math.sin(t*.9+i*2.3)+(w.tent?.1*Math.sin(t*9+i):0));lit+=a;
+      const r=ud[0]*(.12+.88*dayK)+f*2.1,g=ud[1]*(.12+.88*dayK)+f*1.15,b=ud[2]*(.12+.88*dayK)+f*.42;
+      for(let j=0;j<4;j++)col.setXYZ(w.v+j,r,g,b);}
+    for(const w of o.glo){const i=w.h,hs=ckH(i*1.7+.3),h2=ckH(i*3.1+c.dayIndex*5.3);let a;
+      if(w.tent)a=fl*.9;else a=SkyClock.smoothstep(.10+.45*hs,.28+.45*hs,wg)*(1-SkyClock.smoothstep(h2-.12,h2+.12,sl*.92));
+      const f=a*(.55+.45*(1-dayK))*.26;for(let j=0;j<4;j++)gc.setXYZ(w.v+j,f*1.0,f*.52,f*.2);}
+    col.needsUpdate=true;gc.needsUpdate=true;o.winMesh.visible=true;o.gloMesh.visible=wg>.02||L.fireGlow>.02;}
+  CK.litAvg=o.win&&o.win.length?lit/o.win.length:0;
+  if(o.fire){const fl=.82+.18*Math.sin(t*11)*Math.sin(t*4.3+1)+.06*Math.sin(t*23);o.fire.intensity=46*L.fireGlow*fl;o.fire.visible=L.fireGlow>.01;}
+  if(glow)glow.material.opacity*=.3+.7*L.fireGlow;
+  if(flames.length)for(const f of flames)f.material.opacity=.35+.6*L.fireGlow;
+  if(smoke){const dk=.28+.72*SkyClock.smoothstep(-12,4,c.sun.elev);smoke.material.uniforms.uCol.value.set(.62*dk+.08*L.fireGlow,.6*dk+.04*L.fireGlow,.58*dk);}
+}
+/* the HUD chip: date, time, moon phase; a speed button; a skip to dusk button */
+const CK_SPEEDS=[0,1,4,16,60];
+function ckChipText(){const c=CK.c,m=Math.floor(c.lst),mi=Math.floor((c.lst-m)*60);return{t:ckDateOf(c.doy)+' · '+String(m).padStart(2,'0')+':'+String(mi).padStart(2,'0'),m:c.moon.name+' '+Math.round(c.moon.illum*100)+'%',s:c.season.name,tw:c.twilight.name};}
+function ckChipInit(){const top=document.getElementById('top');top.style.flexWrap='wrap';
+  const chip=document.createElement('div');chip.className='pill';chip.id='ckChip';chip.innerHTML='<span id="ckT"></span><small id="ckM"></small>';
+  const sp=document.createElement('button');sp.className='btn';sp.id='ckSpeed';sp.setAttribute('aria-label','time speed');
+  const du=document.createElement('button');du.className='btn';du.id='ckDusk';du.textContent='Dusk';du.setAttribute('aria-label','skip to dusk');
+  const sk=document.createElement('button');sk.className='btn';sk.id='ckSky';sk.textContent='Sky';sk.setAttribute('aria-label','sky view');
+  const home=document.getElementById('homeBtn');top.insertBefore(chip,home);top.insertBefore(sp,home);top.insertBefore(du,home);top.insertBefore(sk,home);
+  const spd=()=>MC.on?MC.speed:CK.acc.speed;
+  const setSp=s=>{if(MC.on)MC.speed=s;else CK.acc.setSpeed(s);};
+  sp.addEventListener('click',()=>{const i=CK_SPEEDS.indexOf(spd());setSp(CK_SPEEDS[(i+1)%CK_SPEEDS.length]);ckChipUpdate();});
+  sk.addEventListener('click',()=>ckSkyView());
+  du.addEventListener('click',()=>{ckSetHours(SkyClock.nextSunDown(SEED,ckHour(),-2.5,{lat:CK.lat,doy0:CK.doy0}));});
+  ckChipUpdate();}
+/* a camera that looks up at the sky: toward the moon when it is up at night, else toward the sun, else north; a second press returns home */
+function ckSkyView(){if(cam.fov>=40){Object.assign(cam,HOME);snap=true;return;}
+  const c=CK.c,night=c.sun.elev<-6,useMoon=night&&c.moon.elev>3,az=useMoon?c.moon.az:(c.sun.elev>-8?c.sun.az:35),el=useMoon?c.moon.elev:Math.max(c.sun.elev,0),pitch=clamp(el*.6,10,32),dist=190,phi=.1;
+  Object.assign(cam,{tx:0,tz:0,dist,phi,theta:-az*Math.PI/180,ty:Math.sin(phi)*dist+Math.cos(phi)*dist*Math.tan(pitch*Math.PI/180),fov:58});clampCam();snap=true;}
+function ckChipUpdate(){const a=document.getElementById('ckT');if(!a)return;const x=ckChipText();if(a.textContent!==x.t)a.textContent=x.t;const m=document.getElementById('ckM');if(m.textContent!==x.m)m.textContent=x.m;
+  const s=document.getElementById('ckSpeed'),v=MC.on?MC.speed:CK.acc.speed,tx=v===0?'Paused':'×'+v;if(s.textContent!==tx)s.textContent=tx;}
+function ckApi(){return{
+  state:()=>JSON.parse(JSON.stringify({hours:CK.hours,lat:CK.lat,doy0:CK.doy0,c:CK.c,expo:CK.expo,macro:MC.on})),light:()=>JSON.parse(JSON.stringify(CK.L)),hours:()=>CK.hours,
+  setHours:h=>{ckSetHours(h);ckUpdate(0);},
+  /* set the sky by date, local solar hour and (optionally) the moon age in days; the clock then runs on from there */
+  setSky:(doy,lst,moonAge)=>{ckSetHours(SkyClock.hoursFor(doy,lst,moonAge,{doy0:CK.doy0}));ckUpdate(0);},
+  speed:()=>MC.on?MC.speed:CK.acc.speed,setSpeed:s=>{if(MC.on)MC.speed=s;else CK.acc.setSpeed(s);},freeze:f=>{CK.acc.frozen=!!f;},
+  dusk:()=>{ckSetHours(SkyClock.nextSunDown(SEED,ckHour(),-2.5,{lat:CK.lat,doy0:CK.doy0}));ckUpdate(0);},
+  advance:dt=>{ckUpdate(dt);},phases:()=>CK.acc?{...CK.acc.phases}:null,
+  tide:()=>CK.c.tide.level,litFraction:()=>CK.litAvg,
+  parts:()=>({dome:!!CK.obj.sky,stars:!!CK.obj.stars,moon:!!CK.obj.moon,sun:!!CK.obj.sun,windows:CK.obj.win?CK.obj.win.length:0,fire:!!CK.obj.fire,starCount:CK.nStars}),
+  sunDir:()=>sunDir.toArray(),lightIsMoon:()=>CK.L.lightIsMoon,chip:()=>ckChipText(),exposure:()=>CK.expo,
+  cam:()=>({...cam}),sky:()=>ckSkyView(),
+  hash:()=>0};}
 /* weather chip: cycles the states by hand (then the schedule stops), the last tap returns to auto */
 function wxChipInit(){const b=document.createElement('button');b.className='btn';b.id='wxChip';b.style.minWidth='140px';const top=document.getElementById('top');top.insertBefore(b,document.getElementById('homeBtn'));
   b.addEventListener('click',()=>{const L=LI_WEATHER.STATES.concat(['auto']);const i=L.indexOf(WXR.mode);WXR.set(L[(i+1)%L.length]);});}
@@ -1570,10 +1820,10 @@ function init(){
   camera=new THREE.PerspectiveCamera(30,1,4,1400);
   if(MC.on)mcUpdate(0);
   if(WXON){const hs=parseFloat(Q.get('wsec')||''),wt=Q.get('wt');
-    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,atFn:MC.on?(()=>MC.wx):undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
-      baseSun:LAND?{i:2.0,c:[1.0,.95,.86]}:{i:2.9,c:[1.0,.64,.34]},baseHemi:LAND?{i:.85,c:[.36,.46,.62],g:[.26,.23,.18]}:{i:1.1,c:[.24,.32,.50],g:[.22,.15,.09]}});
+    WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null&&!CKON,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,atFn:MC.on?(()=>MC.wx):undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
+      baseSun:CKON?{i:1,c:[1,1,1]}:LAND?{i:2.0,c:[1.0,.95,.86]}:{i:2.9,c:[1.0,.64,.34]},baseHemi:CKON?{i:1,c:[1,1,1],g:[1,1,1]}:LAND?{i:.85,c:[.36,.46,.62],g:[.26,.23,.18]}:{i:1.1,c:[.24,.32,.50],g:[.22,.15,.09]}});
     wxChipInit();}
-  build();buildPost();size();setupControls(cv);
+  build();buildPost();size();setupControls(cv);if(CKON)ckChipInit();
   el.qBtn.textContent='Quality: '+(quality==='high'?'High':'Low');el.qBtn.classList.toggle('on',quality==='low');
   el.tide.addEventListener('input',()=>{MC.tideTouched=true;tideAuto=false;el.auto.classList.remove('on');tideManual=parseFloat(el.tide.value);});
   el.auto.addEventListener('click',()=>{MC.tideTouched=true;tideAuto=!tideAuto;el.auto.classList.toggle('on',tideAuto);if(tideAuto)tideT=Math.asin(clamp(tide/(TIDE_RANGE*.92),-1,1))*55/(2*Math.PI);});
@@ -1607,6 +1857,8 @@ function init(){
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
+    clock:CKON?ckApi():null,
+    scenePoints:()=>{let n=0;scene.traverse(o=>{if(o.isPoints)n++;});return n;},
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};
