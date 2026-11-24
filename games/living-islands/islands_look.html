@@ -46,6 +46,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
 <script>if(/[?&]boatkit=[^0&]/.test(location.search)){document.write('<script src="boat_motion.js"><\/script>');if(!(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)))document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]boatkit=fail/.test(location.search))document.write('<script src="assets/boatkit/boats_live_b64.js"><\/script><script src="assets/boatkit/boats_far_b64.js"><\/script>');}</script>
+<script>if(/[?&]repair=[^0&]/.test(location.search)){document.write('<script src="repair_physics.js"><\/script>');if(!/[?&]boatkit=[^0&]/.test(location.search)&&!(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)))document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]repair=fail/.test(location.search))document.write('<script src="assets/repair/jetty_b64.js"><\/script>');}</script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');</script>
 <script>if(/[?&]light=1/.test(location.search)){document.write('<script src="light_range.js"><\/script>');if(!/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(!/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
 <script>if(/[?&]mood(s=1|=)/.test(location.search)){document.write('<script src="moods.js"><\/script>');if(!/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');if(!/[?&]weather=/.test(location.search)&&!/[?&]light=1/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
@@ -639,7 +640,7 @@ function bkWreckSite(x0,z0,seedv){let best=null;const av=bkAvoidSpots();
     for(const o of[[2.2,0],[-2.2,0],[0,2.2],[0,-2.2]])if(H(x+o[0],z+o[1])<.1)sc+=1;   /* no hull end in the swash */
     if(!best||sc<best.sc)best={sc,x,z,yaw:Math.atan2(-gz,gx)};}
   if(!best)return null;best.yaw+=(hash2(Math.round(x0*3),Math.round(z0*3),seedv)-.5)*.8;return best;}
-function bkKindOf(b,nWork){return b.rowing?'dinghy':b.sail?'sailer':b.kind==='beached'?(b.row?'dinghy':'wreck'):(nWork>0?'dinghy':'work');}   /* the first plain moored boat is the work boat, any other a dinghy at its mooring */
+function bkKindOf(b,nWork){return b.forceKind?b.forceKind:b.rowing?'dinghy':b.sail?'sailer':b.kind==='beached'?(b.row?'dinghy':'wreck'):(nWork>0?'dinghy':'work');}   /* the first plain moored boat is the work boat, any other a dinghy at its mooring */
 /* kit-only extras: a bigger sailing circle (the six metre sailer cannot turn in a 4.6 m circle) and a dinghy rowing a circle beyond the jetty, both only where the sea is deep enough all round */
 function bkCircleOk(cx,cz,r,dp){for(let i=0;i<36;i++){const a=i*Math.PI/18;if(H(cx+Math.cos(a)*r,cz+Math.sin(a)*r)>-(dp||.8))return false;}return true;}
 function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
@@ -653,6 +654,272 @@ function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
   if(dn)out.push({kind:'moored',rowing:true,x:dn.cx+dn.r,z:dn.cz,yaw:0,L:4.4,Wd:1.5,Hh:.6,hull:[.8,.78,.72],stripe:[.3,.38,.42],ph:.7,sail:{cx:dn.cx,cz:dn.cz,r:dn.r,w:.85/dn.r}});
   return out;}
 bkLoad();
+let RP_ADDBOAT=null;
+/* ============ the repair pilot (&repair=1, see REPAIR_PILOT.md) ============
+   The wrecked jetty (assets/kit, committed GLB, page twin assets/repair/jetty_b64.js) stands on a shore found by a scan of the page's own height function. Its frame is static; the deck planks that
+   storms took, a post and spare planks lie loose, settled by repair_physics.js at the start (not hand-placed), and float and drift in the shallows. The player drags a part onto a glowing socket (or taps
+   it, then taps the socket); a right fit snaps with a soft click, a wrong one (wrong kind, too far, wrong angle) does not hold and the part drops. Fitted planks hold on a lashing or a nail with a
+   break load; a surge can wash loose planks away and break weak joints. All fitted: the jetty is usable, a boat moors at it and a settler marker walks to the end. Off unless &repair=1; if the GLB fails
+   the same game runs on simple box planks. */
+const RPON=Q.get('repair')!==null&&Q.get('repair')!=='0'&&!!window.LI_REPAIR;
+const RP={on:RPON,mode:Q.get('repair'),tpl:null,failed:false,err:null,built:false,site:null,w:null,g:null,body:null,loose:[],socks:[],pulses:[],hops:[],sel:null,drag:null,tap:null,near:null,msg:'',msgT:0,
+  surge:{on:false,t:0,T:12,peak:0},tideRate:0,lastTide:null,ms:{avg:0,max:0,n:0},usable:false,moored:false,boat:null,marker:null,walk:{state:'idle',s:0},hud:null,tris:0,tick:0,lostN:0,spare:0,ui:false,surgeEnv:0};
+const RP_PITCH=.205,RP_X0=-.39,RP_DECK=1.43,RP_HALF=[.095,.023,.83];   /* the deck grid of the GLB: planks across the deck every 0.205 m from x = -0.39 (slot k), deck level 1.43 m above the local ground */
+const RP_HI={slots:[1,2,3,4,5,7,8,23],fill:[11,17,19,20],hide:['plank_04'],spares:3,sand:3},RP_LO={slots:[2,3,5,8,23],fill:[1,7,11,17,19,20],hide:[],spares:1,sand:2};   /* TUNING: low quality simulates fewer planks */
+const RP_LASH=[1,2,3,4,5];   /* the landward run sits on the broken stringer end: those slots take a rope lashing, the others a nail */
+const RP_JOINT={lash:{type:'lash',strength:300},nail:{type:'nail',strength:780},post:{type:'lash',strength:330}};   /* TUNING GUESS in newtons: see REPAIR_PILOT.md */
+const RP_PLANKS=[[-.8,1.43],[-.595,1.43],[-.39,1.43],[.43,1.43],[.84,1.43],[1.455,1.43],[1.66,1.43],[2.07,1.43],[2.275,1.45],[2.48,1.45],[2.685,1.45],[2.89,1.45],[3.3,1.45],[3.915,1.45],[4.12,1.45],[4.53,1.45]];   /* the planks the GLB keeps on the deck (static) */
+/* the frame as boxes in the jetty frame [x0,x1,y0,y1,z0,z1]: posts, cross beams and stringers read from the GLB (a bounding box of each part) */
+const RP_FRAME=[[-4.21,-3.96,-.2,.56,-.84,-.63],[-4.18,-3.93,-.21,.9,.62,.84],[-2.85,-2.62,-.35,1.1,.59,.83],[-2.84,-2.61,-.35,1.1,-.85,-.61],[-1.5,-1.26,-.6,.7,.61,.83],[-1.49,-1.26,-.6,1.18,-.83,-.61],
+  [-.16,.07,-.9,1.2,-.84,-.61],[-.12,.11,-.9,1.2,.61,.82],[1.19,1.44,-1.15,1.25,.6,.85],[1.21,1.45,-1.15,1.15,-.84,-.62],[2.52,2.79,-1.4,.4,-.84,-.6],[2.54,2.78,-1.4,1.2,.62,.85],[3.88,4.13,-1.65,.8,.59,.84],[3.9,4.12,-1.65,1.25,-.83,-.61],
+  [-.45,4.25,1.28,1.4,-.58,-.42],[-.45,4.25,1.28,1.4,.42,.58],[-.13,.07,1.13,1.26,-.9,.9],[1.22,1.42,1.13,1.26,-.9,.9],[3.92,4.12,1.13,1.26,-.9,.9]];
+const RP_POST_AT=[4.3,RP_DECK+.45,-.9];   /* the mooring post socket: beside the deck corner at the sea end, the foot alongside the end beam */
+function rpB64(s){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
+function rpLoad(){if(!RPON)return;const src=window.LI_JETTY_GLB&&window.LI_JETTY_GLB.live;
+  if(RP.mode==='fail'||!src||!THREE.GLTFLoader){RP.failed=true;return;}
+  let buf;try{buf=RP.mode==='bad'?new Uint8Array(96).buffer:rpB64(src);}catch(e){buf=null;}
+  if(!buf){RP.failed=true;return;}
+  const fin=g=>{if(g){try{rpPrepare(g);RP.tpl=g;}catch(e){RP.failed=true;RP.err=String(e);}}else RP.failed=true;if(scene)rpBuild();};
+  try{new THREE.GLTFLoader().parse(buf,'',g=>fin(g),e=>{RP.err=String(e&&e.message||e);fin(null);});}catch(e){RP.err=String(e);fin(null);}}
+function rpPrepare(g){RP.src=[];g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+  for(let k=1;k<=16;k++){const nm='plank_'+('0'+k).slice(-2);let mesh=null;const nd=g.scene.getObjectByName(nm);if(!nd)throw new Error('no '+nm);
+    if(nd.isMesh)mesh=nd;else nd.traverse(o=>{if(o.isMesh&&!mesh)mesh=o;});if(!mesh)throw new Error('no mesh '+nm);
+    mesh.geometry.computeBoundingBox();const bb=mesh.geometry.boundingBox;RP.src.push({name:nm,geo:mesh.geometry,mat:mesh.material,zmid:(bb.min.z+bb.max.z)/2,len:bb.max.z-bb.min.z,wid:bb.max.x-bb.min.x,thick:bb.max.y-bb.min.y});}
+  RP.src=RP.src.filter(s=>s.thick<.06);}
+rpLoad();
+/* ---- where: a scan of the page's own height function for a shore that falls away to deep enough water ---- */
+function rpObjects(){const o=[];for(const k of['rocks','conifers','broad','shrubs','houses','tents','logs','crates']){const r=k==='houses'?7:k==='rocks'?2.4:k==='tents'?4:2.6;for(const q of W[k]||[])o.push([q.x,q.z,r]);}
+  for(const b of W.boats)o.push([b.x,b.z,6]);if(W.jetty){const j=W.jetty;for(let i=0;i<=4;i++)o.push([j.x+j.dx*j.len*i/4,j.z+j.dz*j.len*i/4,5]);}
+  for(const a of bkAvoidSpots())o.push(a);return o;}
+function rpFindSite(){const obj=rpObjects(),R=TABLE_R*.8,cf=W.camp?W.camp.fire:null;let best=null;
+  for(const pass of[0,1]){const h0lo=pass?.5:.78,tipHi=pass?.1:-.2;
+    for(let x=-R;x<=R;x+=2){for(let z=-R;z<=R;z+=2){if(x*x+z*z>R*R)continue;const h0=H(x,z);if(h0<h0lo||h0>1.9)continue;
+      for(let a=0;a<16;a++){const ang=a*Math.PI/8,dx=Math.cos(ang),dz=Math.sin(ang),hs=s=>H(x+dx*s,z+dz*s);
+        const ht=hs(5.4);if(ht>tipHi||ht<-1.8)continue;const h2=hs(2.8),h1=hs(1.4),h4=hs(4.2);if(h2<ht-.05||h1<h4-.1)continue;if(hs(6.6)>tipHi+.05)continue;
+        const nx=-dz,nz=dx;   /* the local +z side; the boat berth is the local -z side */
+        const lat=(s,k)=>H(x+dx*s+nx*k,z+dz*s+nz*k);let lv=0;for(const s of[1.4,4.2])for(const k of[-1.3,1.3])lv=Math.max(lv,Math.abs(lat(s,k)-hs(s)));if(lv>.7)continue;
+        let wet=0;for(const s of[2.6,3.9,5.2])wet=Math.max(wet,lat(s,-1.75));if(wet>(pass?.05:-.12))continue;
+        let bad=false;const cx=x+dx*2.4,cz=z+dz*2.4;for(const o of obj){const ddx=o[0]-cx,ddz=o[1]-cz,d=Math.hypot(ddx,ddz);if(d>9+o[2])continue;
+          const u=ddx*dx+ddz*dz,v=ddx*nx+ddz*nz;const du=Math.max(0,Math.abs(u-1)-4.6),dv=Math.max(0,Math.abs(v)-2.6);if(Math.hypot(du,dv)<o[2]+.8){bad=true;break;}}
+        if(bad)continue;
+        let sc=Math.abs(h0-1.15)*.7+lv*1.2+Math.abs(h2-(h0+ht)/2)*.5;if(cf)sc+=Math.max(0,Math.hypot(x-cf.x,z-cf.z)-10)*.02;else sc+=Math.hypot(x,z)*.003;
+        sc+=pass*3;if(!best||sc<best.sc)best={sc,ax:x,az:z,dx,dz,h0};}}}
+    if(best)break;}
+  if(!best)return null;
+  const psi=Math.atan2(-best.dz,best.dx),ox=best.ax+best.dx*1.4,oz=best.az+best.dz*1.4,y0=best.h0-.55;
+  return{ox,oz,y0,psi,c:Math.cos(psi),s:Math.sin(psi),dx:best.dx,dz:best.dz,deckY:y0+RP_DECK+.025,h0:best.h0};}
+const rpW=(S,x,y,z)=>[S.ox+x*S.c+z*S.s,S.y0+y,S.oz-x*S.s+z*S.c];   /* the jetty frame to the world */
+/* ---- materials ---- */
+function rpMats(){if(RP.mats)return RP.mats;const M={};
+  M.ghost=()=>new THREE.MeshBasicMaterial({color:0xffbf55,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
+  M.ring=()=>new THREE.MeshBasicMaterial({color:0xffe9b0,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const c3=a=>{const l=lin(a);return new THREE.Color(l[0],l[1],l[2]);};M.plank=new THREE.MeshLambertMaterial({color:c3([.5,.43,.34])});M.post=new THREE.MeshLambertMaterial({color:c3([.36,.31,.26])});M.rope=new THREE.MeshLambertMaterial({color:c3([.66,.54,.34])});
+  M.frame=new THREE.MeshLambertMaterial({color:c3([.36,.31,.26])});return RP.mats=M;}
+const RP_BOX=new THREE.BoxGeometry(1,1,1),RP_EDGES=new THREE.EdgesGeometry(RP_BOX);
+/* ---- build (also on every quality change: the scene is rebuilt) ---- */
+function rpDispose(){if(RP.g&&RP.g.parent)RP.g.parent.remove(RP.g);RP.built=false;RP.w=null;RP.loose=[];RP.socks=[];RP.pulses=[];RP.hops=[];RP.sel=null;RP.drag=null;RP.near=null;RP.usable=false;RP.moored=false;RP.boat=null;RP.marker=null;RP.walk={state:'idle',s:0};RP.lostN=0;RP.surge.on=false;RP.surgeEnv=0;}
+function rpBuild(){if(!RPON||!scene)return;if(!RP.tpl&&!RP.failed)return;rpDispose();
+  const S=rpFindSite();RP.site=S;if(!S){RP.g=null;return;}
+  const LO=quality==='low',CFG=LO?RP_LO:RP_HI,M=rpMats(),G=new THREE.Group();G.name='repair';RP.g=G;scene.add(G);
+  const body=new THREE.Group();body.position.set(S.ox,S.y0,S.oz);body.rotation.y=S.psi;G.add(body);RP.body=body;
+  /* the static part: the GLB frame with the damaged planks taken out, or boxes */
+  const slotX=k=>RP_X0+k*RP_PITCH;
+  if(RP.tpl){const root=RP.tpl.scene.clone(true);root.traverse(o=>{const n=o.name||'';if(/^plank_(17|18|19)/.test(n)||/^footprint/.test(n)||CFG.hide.some(h=>n.indexOf(h)===0)){o.visible=false;}});body.add(root);RP.root=root;}
+  else{const fg=new THREE.Group();for(const b of RP_FRAME){const m=new THREE.Mesh(RP_BOX,M.frame);m.scale.set(b[1]-b[0],b[3]-b[2],b[5]-b[4]);m.position.set((b[0]+b[1])/2,(b[2]+b[3])/2,(b[4]+b[5])/2);m.castShadow=true;m.receiveShadow=true;fg.add(m);}
+    RP_PLANKS.forEach((p,i)=>{if(CFG.hide.length&&i===3)return;const m=new THREE.Mesh(RP_BOX,M.plank);m.scale.set(.19,.046,1.66);m.position.set(p[0],p[1],0);m.castShadow=true;m.receiveShadow=true;fg.add(m);});body.add(fg);}
+  /* static fills (the gaps this quality does not play) */
+  const srcMesh=(i)=>{if(!RP.tpl||!RP.src.length)return null;return RP.src[i%RP.src.length];};
+  CFG.fill.forEach((k,i)=>{const sp=srcMesh(i*3+1);let m;if(sp){m=new THREE.Mesh(sp.geo,sp.mat);m.position.set(slotX(k),RP_DECK+.005,-sp.zmid);}else{m=new THREE.Mesh(RP_BOX,M.plank);m.scale.set(.19,.046,1.66);m.position.set(slotX(k),RP_DECK,0);}m.castShadow=true;m.receiveShadow=true;body.add(m);});
+  /* physics */
+  const gr=LI_REPAIR.heightGrid((x,z)=>H(x,z),S.ox+S.c*1.5,S.oz-S.s*1.5,17,.14);RP.ground=gr;
+  const w=LI_REPAIR.create({seed:SEED^0x5eed,ground:gr,water:rpWaterH,current:rpCurrent,origin:[S.ox+S.c*1.5,S.oz-S.s*1.5],lostR:RP_LOSTR});RP.w=w;
+  const qy=LI_REPAIR.qyaw(S.psi);
+  const addStatic=(cx,cy,cz,hx,hy,hz,name)=>{const p=rpW(S,cx,cy,cz);w.addStatic({p,q:qy,h:[hx,hy,hz],name});};
+  for(const b of RP_FRAME)addStatic((b[0]+b[1])/2,(b[2]+b[3])/2,(b[4]+b[5])/2,(b[1]-b[0])/2,(b[3]-b[2])/2,(b[5]-b[4])/2,'frame');
+  RP_PLANKS.forEach((p,i)=>{if(CFG.hide.length&&i===3)return;addStatic(p[0],p[1],0,.095,.03,.83,'deck');});
+  CFG.fill.forEach(k=>addStatic(slotX(k),RP_DECK,0,.095,.03,.83,'deck'));
+  /* sockets: where the planks go (the visual centre of a plank is the body centre raised by 0.017 m) */
+  CFG.slots.forEach((k,i)=>{const p=rpW(S,slotX(k),RP_DECK+.017,0),lash=RP_LASH.indexOf(k)>=0;
+    const sk=w.addSocket({id:'deck'+k,kind:'plank',p,q:qy,snapR:.27,snapAng:.52,joint:lash?RP_JOINT.lash:RP_JOINT.nail,name:'deck plank '+(i+1),tag:{k,x:slotX(k)}});RP.socks.push(sk);});
+  {const p=rpW(S,RP_POST_AT[0],RP_POST_AT[1],RP_POST_AT[2]);const sk=w.addSocket({id:'post',kind:'post',p,q:qy,snapR:.4,snapAng:.5,joint:RP_JOINT.post,name:'mooring post',tag:{k:-1,x:RP_POST_AT[0]}});RP.socks.push(sk);}
+  /* ghosts */
+  for(const sk of RP.socks){const post=sk.kind==='post',m=new THREE.Mesh(RP_BOX,M.ghost());m.scale.set(post?.2:.24,post?1.5:.09,post?.2:1.74);m.position.set(sk.p[0],sk.p[1]+(post?0:.01),sk.p[2]);m.rotation.y=S.psi;m.renderOrder=7;G.add(m);sk.ghost=m;const ln=new THREE.LineSegments(RP_EDGES,new THREE.LineBasicMaterial({color:0xffbf55,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));ln.renderOrder=8;m.add(ln);sk.line=ln;
+    const rg=new THREE.Mesh(new THREE.RingGeometry(.1,.14,24),M.ring());rg.rotation.x=-Math.PI/2;rg.position.set(sk.p[0],sk.p[1]+(post?-.7:.05),sk.p[2]);rg.visible=false;rg.renderOrder=7;G.add(rg);sk.ring=rg;}
+  /* loose parts: scattered by a seeded plan, then settled by the physics for six seconds (nothing is placed on the ground by hand) */
+  const R=mulberry32(SEED*7+11),nLoose=CFG.slots.length+CFG.spares,srcs=RP.src||[];
+  const loc=(x,z)=>rpW(S,x,0,z);
+  const mk=(kind,p,q,i,tag)=>{const sp=srcs.length&&kind==='plank'?srcs[(i*5+2)%srcs.length]:null;
+    const b=w.addBody(kind,{p,q,tag,len:sp?sp.len:1.66,width:sp?sp.wid:.19,thick:.046,name:kind+' '+i});
+    const hold=new THREE.Group();let mesh;
+    if(kind==='plank'){const mat=sp?sp.mat.clone():M.plank.clone();if(sp){mesh=new THREE.Mesh(sp.geo,mat);mesh.position.set(0,-.017,-sp.zmid);}else{mesh=new THREE.Mesh(RP_BOX,mat);mesh.scale.set(.19,.046,1.66);mesh.position.set(0,-.017,0);}}
+    else{mesh=new THREE.Group();const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.075,.082,1.4,9),M.post);mesh.add(cyl);for(const y of[-.55,.5]){const r=new THREE.Mesh(new THREE.CylinderGeometry(.088,.088,.07,9),M.rope);r.position.y=y;mesh.add(r);}
+      const mat=M.post.clone();cyl.material=mat;mesh.userData.mat=mat;mesh.traverse(o=>{o.castShadow=true;o.receiveShadow=true;});}
+    if(mesh.isMesh){mesh.castShadow=true;mesh.receiveShadow=true;}hold.add(mesh);G.add(hold);
+    const o={id:b.id,b,hold,mesh,mat:mesh.isMesh?mesh.material:mesh.userData.mat,kind,spare:!!(tag&&tag.spare)};RP.loose.push(o);return o;};
+  let n=0;
+  /* the spare pile on the sand at the landward end: three criss-crossed */
+  for(let i=0;i<CFG.spares;i++){const x=-2.7+(R()-.5)*.3,z=2.3+(R()-.5)*.3;const p=loc(x,z);const g=Math.max(H(p[0],p[2]),0.2);mk('plank',[p[0],g+.25+i*.14,p[2]],LI_REPAIR.qyaw(S.psi+(i%2?.9:-.15)+(R()-.5)*.2),n++,{spare:true});}
+  /* scattered: some on the dry sand beside the root, the rest in the shallows */
+  let tries=0;const need=CFG.slots.length;let sand=0,wet=0;
+  while((sand<CFG.sand||wet<need-CFG.sand)&&tries<400){tries++;const x=-3.4+R()*8.8,z=(R()<.5?-1:1)*(1.9+R()*3.6),pp=loc(x,z),g=H(pp[0],pp[2]);
+    const isSand=g>.25&&g<1.0&&x<1.6,isWet=g<-.02&&g>-.55&&x>.5;
+    if(isSand&&sand<CFG.sand){sand++;}else if(isWet&&wet<need-CFG.sand){wet++;}else continue;
+    const p=loc(x,z);const tilt=(R()-.5)*.35;mk('plank',[p[0],Math.max(g,tide)+.3+R()*.3,p[2]],LI_REPAIR.qmul(LI_REPAIR.qyaw(S.psi+(R()-.5)*3.0),LI_REPAIR.qaxis([1,0,0],tilt)),n++,null);}
+  while(RP.loose.length<nLoose){const x=-2+R()*3,z=-3.2+R()*.6,p=loc(x,z);mk('plank',[p[0],Math.max(H(p[0],p[2]),tide)+.3,p[2]],LI_REPAIR.qyaw(S.psi+R()*3),n++,null);}
+  {const x=-1.6,z=-2.6,p=loc(x,z),g=Math.max(H(p[0],p[2]),.2);mk('post',[p[0],g+.5,p[2]],LI_REPAIR.qmul(LI_REPAIR.qyaw(S.psi+.5),LI_REPAIR.qaxis([0,0,1],Math.PI/2+.1)),n++,null);}
+  RP.tideRateInit=true;for(let i=0;i<720;i++)w.step();   /* six seconds of settling */
+  rpSyncMeshes();
+  rpMarkerBuild(S);rpHud();RP.built=true;rpCount();RP.tris=rpTris();}
+const RP_LOSTR=34;
+function rpTris(){let n=0;if(!RP.g)return 0;RP.g.traverse(o=>{if(!o.isMesh)return;let a=o;while(a&&a!==RP.g.parent){if(!a.visible)return;a=a.parent;}const g=o.geometry;n+=g.index?g.index.count/3:g.attributes.position.count/3;});return Math.round(n);}
+/* ---- the sea under the parts ---- */
+function rpWaterH(x,z,t){let h=tide+RP.surgeEnv*RP.surge.peak;const T=clock.t;
+  if(MC.on)h+=mcH(x,z)*.8;else h+=.03*Math.sin(x*.9+z*.6+T*1.4)+.018*Math.sin(x*1.7-z*1.1-T*2.1);
+  if(RP.surge.on)h+=RP.surgeEnv*.085*Math.sin(2.7*T+x*.8);
+  return h;}
+function rpCurrent(x,z,t){const S=RP.site;let un=-clamp(RP.tideRate*14,-.5,.5)+.05*Math.sin(clock.t*.6);   /* a rising tide pushes the water up the beach (against the seaward direction) */
+  if(RP.surge.on)un+=-1.5*Math.sin(2*Math.PI*RP.surge.t/RP.surge.T);
+  return[S.dx*un,S.dz*un];}
+/* a surge: the level climbs to the underside of the deck plus peakD and falls back over about twelve seconds; a landward rush then a backwash */
+function rpSurge(peakD){if(!RP.built)return;const S=RP.site,under=S.deckY-.048+(peakD===undefined?.2:peakD);RP.surge.on=true;RP.surge.t=0;RP.surge.peak=Math.max(.3,under-tide-.06);RP.surgeEnv=0;rpToast('The sea is coming up the beach...');}
+function rpSurgeStep(dt){if(!RP.surge.on)return;RP.surge.t+=dt;const u=RP.surge.t/RP.surge.T;if(u>=1){RP.surge.on=false;RP.surgeEnv=0;rpToast('The surge has gone back.');}else RP.surgeEnv=Math.pow(Math.sin(Math.PI*u),2);}
+/* ---- physics each frame ---- */
+function rpFrame(dt){if(!RPON||!RP.built)return;const w=RP.w,S=RP.site;
+  if(RP.lastTide===null)RP.lastTide=tide;if(dt>0){RP.tideRate+=((tide-RP.lastTide)/dt-RP.tideRate)*Math.min(1,dt*2);}RP.lastTide=tide;
+  rpSurgeStep(dt);
+  rpDragUpdate(dt);rpHops(dt);
+  const t0=performance.now();w.advance(Math.min(dt,.1));const ms=performance.now()-t0;RP.ms.n++;RP.ms.avg+=(ms-RP.ms.avg)*.05;if(ms>RP.ms.max)RP.ms.max=ms;
+  rpEvents();rpSyncMeshes();rpGhosts(dt);rpPulses(dt);rpMarkerUpdate(dt);rpBoatUpdate(dt);rpHudUpdate(dt);RP.tick++;}
+function rpSyncMeshes(){for(const o of RP.loose){const b=o.b;if(b.lost){o.hold.visible=false;continue;}o.hold.visible=true;o.hold.position.set(b.p[0],b.p[1],b.p[2]);o.hold.quaternion.set(b.q[0],b.q[1],b.q[2],b.q[3]);
+    const pulse=RP.sel===o.id?.5+.25*Math.sin(clock.t*6):0,hot=RP.drag&&RP.drag.id===o.id?.35:0,e=Math.max(pulse,hot);if(o.mat&&o.mat.emissive){o.mat.emissive.setRGB(e*.9,e*.6,e*.2);}}}
+function rpCount(){const c=RP.w.count();RP.fitted=c.fitted;RP.total=c.total;const u=c.fitted===c.total&&RP.socks.every(s=>s.filled&&s.filled.state==='fitted');if(u&&!RP.usable){RP.usable=true;rpMoor();rpToast('The jetty is usable.');}if(!u)RP.usable=false;return c;}
+function rpEvents(){const w=RP.w;while(w.events.length){const e=w.events.shift();
+    if(e.type==='fit'){rpPulse(e.p,e.kind==='post'?-.7:.05,0xffe9b0);rpCount();rpToast(RP.usable?'The jetty is usable.':'Click: fitted.');}
+    else if(e.type==='break'){rpPulse(e.p,.05,0xff8a55);rpCount();rpToast(e.why==='overload'?'A joint gave way under the surge.':'A joint worked loose.');}
+    else if(e.type==='lost'){RP.lostN++;rpToast('A plank was washed away.');}}}
+/* ---- ghosts, pulses ---- */
+function rpGhosts(dt){const T=clock.t,drag=RP.drag?RP.w.bodyById(RP.drag.id):RP.sel!==null?RP.w.bodyById(RP.sel):null;let near=null,nd=1e9;
+  if(drag){for(const s of RP.socks){if(s.filled||s.kind!==drag.kind)continue;const d=Math.hypot(drag.p[0]-s.p[0],drag.p[1]-s.p[1],drag.p[2]-s.p[2]);if(d<nd){nd=d;near=s;}}}
+  RP.near=near&&nd<2.6?{s:near,d:nd,ok:RP.drag?RP.w.testFit(drag,near.id).ok:false}:null;
+  const anyLoose=RP.loose.some(o=>!o.b.lost&&o.b.state==='dyn'&&o.kind===(drag?drag.kind:'plank'));
+  RP.socks.forEach((s,i)=>{const g=s.ghost,filled=s.filled&&s.filled.state==='fitted';g.visible=!filled;if(filled)return;
+    let o=anyLoose?.045+.025*Math.sin(T*2+i*.8):.02,l=anyLoose?.5+.2*Math.sin(T*2+i*.8):.18,col=0xffbf55;
+    if(drag&&drag.kind!==s.kind){o=.015;l=.1;}
+    if(RP.near&&RP.near.s===s){const k=clamp(1-RP.near.d/2.6,0,1);o=.1+.25*k+(RP.near.ok?.2:0)+.04*Math.sin(T*8);l=.7+.3*k;col=RP.near.ok?0xd2ff9a:0xffcf70;}
+    g.material.opacity=o;g.material.color.setHex(col);s.line.material.opacity=Math.min(1,l);s.line.material.color.setHex(col);});}
+function rpPulse(p,dy,col){const m=new THREE.Mesh(new THREE.RingGeometry(.12,.18,28),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  m.rotation.x=-Math.PI/2;m.position.set(p[0],p[1]+dy+.04,p[2]);m.renderOrder=8;RP.g.add(m);RP.pulses.push({m,t:0});}
+function rpPulses(dt){for(let i=RP.pulses.length-1;i>=0;i--){const q=RP.pulses[i];q.t+=dt;const u=q.t/.65;q.m.scale.setScalar(1+u*5);q.m.material.opacity=.8*(1-u)*(1-u);if(u>=1){RP.g.remove(q.m);q.m.geometry.dispose();q.m.material.dispose();RP.pulses.splice(i,1);}}}
+/* ---- the player's hand: drag, tap to pick, tap to place ---- */
+const RP_MSG={far:'Too far from a socket',angle:'Wrong way round: turn it',kind:'That socket takes something else',filled:'That place is taken',none:''};
+function rpRay(e){const r=renderer.domElement.getBoundingClientRect(),nx=(e.clientX-r.left)/r.width*2-1,ny=-((e.clientY-r.top)/r.height*2-1);camera.updateMatrixWorld();
+  const v=new THREE.Vector3(nx,ny,.5).unproject(camera),o=camera.position,d=v.sub(o).normalize();return{o:[o.x,o.y,o.z],d:[d.x,d.y,d.z]};}
+function rpHoldY(x,z){const S=RP.site,dx=x-S.ox,dz=z-S.oz,lx=dx*S.c-dz*S.s,lz=dx*S.s+dz*S.c;   /* ground and sea level plus half a metre, rising to the deck as the hand comes within three metres of it */
+  const ox=Math.max(-1.2-lx,lx-4.9,0),oz=Math.max(Math.abs(lz)-1.3,0),dist=Math.hypot(ox,oz),k=sm(clamp((3.2-dist)/2.9,0,1));
+  return Math.max(RP.ground(x,z),tide)+.5+(S.deckY+.1-(Math.max(RP.ground(x,z),tide)+.5))*k;}
+function rpPlane(ray){if(ray.d[1]>=-.02)return null;let y=RP.site.deckY+.1,x=0,z=0;for(let i=0;i<4;i++){const t=(y-ray.o[1])/ray.d[1];x=ray.o[0]+ray.d[0]*t;z=ray.o[2]+ray.d[2]*t;y=rpHoldY(x,z);}return[x,y,z];}
+function rpGround(ray){if(ray.d[1]>=-.01)return null;let y=0,x=0,z=0;for(let i=0;i<8;i++){const t=(y-ray.o[1])/ray.d[1];x=ray.o[0]+ray.d[0]*t;z=ray.o[2]+ray.d[2]*t;y=Math.max(RP.ground(x,z),tide);}return[x,y,z];}
+function rpBodyYaw(b){const R=LI_REPAIR.qmat(b.q);return b.kind==='plank'?Math.atan2(R[2],R[8]):Math.atan2(R[2],R[8]);}   /* heading of the long axis of a plank (its z axis in the world) */
+function rpSelect(id){RP.sel=id;}
+function rpToast(m){RP.msg=m;RP.msgT=3.2;}
+function rpDown(e){if(!RP.built||e.target!==renderer.domElement||(e.pointerType==='mouse'&&e.button!==0)||RP.drag)return;
+  const ray=rpRay(e),hit=RP.w.raycast(ray.o,ray.d,e.pointerType==='touch'?.3:.14);
+  if(hit){e.stopPropagation();e.preventDefault();try{renderer.domElement.setPointerCapture(e.pointerId);}catch(x){}
+    const b=hit.body;RP.drag={id:b.id,pid:e.pointerId,x0:e.clientX,y0:e.clientY,t0:performance.now(),moved:false,cur:{clientX:e.clientX,clientY:e.clientY},yaw:rpBodyYaw(b),was:RP.sel===b.id};rpSelect(b.id);return;}
+  RP.tap={x:e.clientX,y:e.clientY,t:performance.now(),pid:e.pointerId};}
+function rpMove(e){const d=RP.drag;if(!d||e.pointerId!==d.pid)return;e.stopPropagation();d.cur={clientX:e.clientX,clientY:e.clientY};if(Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>7)d.moved=true;}
+function rpUp(e){const d=RP.drag;
+  if(d&&e.pointerId===d.pid){e.stopPropagation();RP.drag=null;const b=RP.w.bodyById(d.id);if(!b)return;
+    if(d.moved){rpDrop(b);}else{if(d.was){rpSelect(null);}else{rpSelect(d.id);rpToast(b.kind==='post'?'Post picked: tap its socket':'Plank picked: tap a glowing gap');}}return;}
+  const t=RP.tap;if(t&&e.pointerId===t.pid){RP.tap=null;if(Math.hypot(e.clientX-t.x,e.clientY-t.y)<9&&performance.now()-t.t<700&&RP.sel!==null)rpPlaceTap(rpRay(e));}}
+/* a drag ends: fit if the socket takes it, otherwise let it fall and say why */
+function rpDrop(b){const w=RP.w,r=w.testFit(b);w.release(b.id);
+  if(r.ok){w.fit(b);rpSelect(null);return;}
+  if(r.d<1.4&&RP_MSG[r.reason])rpToast(RP_MSG[r.reason]+'.');rpSelect(null);}
+/* the carried pose each frame */
+function rpDragUpdate(dt){const d=RP.drag;if(!d)return;const b=RP.w.bodyById(d.id);if(!b||b.lost||b.state!=='dyn'){RP.drag=null;return;}
+  const ray=rpRay(d.cur),p=rpPlane(ray);if(!p)return;
+  /* near a socket of its kind the carried yaw eases to the slot (when within 40 degrees of it), so a careful hand fits; a part turned the wrong way stays wrong */
+  let yaw=d.yaw;const near=RP.near;if(near&&near.s.kind===b.kind&&b.kind==='plank'){const sy=RP.site.psi,e=((yaw-sy+Math.PI/2)%Math.PI+Math.PI)%Math.PI-Math.PI/2;if(Math.abs(e)<.85&&near.d<2.2){const k=clamp((2.2-near.d)/1.4,0,1);yaw=yaw-e*k;}}
+  RP.w.holdBody(b.id,p,LI_REPAIR.qyaw(yaw));}
+function rpTurn(){const d=RP.drag;if(d){d.yaw+=Math.PI/2;return;}if(RP.sel!==null){const b=RP.w.bodyById(RP.sel);if(b&&b.state==='dyn'){RP.hops.push({id:b.id,p:[b.p[0],b.p[1]+.5,b.p[2]],yaw:rpBodyYaw(b)+Math.PI/2,t:0,T:.4,drop:true});}}}
+/* tap to place: a socket hit puts the selected part in it (kind and free state still count); the ground or sea puts it down there */
+function rpPlaceTap(ray){const w=RP.w,b=w.bodyById(RP.sel);if(!b||b.state!=='dyn'){RP.sel=null;return;}
+  let best=null;for(const s of RP.socks){const half=s.kind==='post'?[.14,.78,.14]:[.14,.06,.9],Rm=LI_REPAIR.qmat(s.q),oo=[ray.o[0]-s.p[0],ray.o[1]-s.p[1],ray.o[2]-s.p[2]],lo=[Rm[0]*oo[0]+Rm[3]*oo[1]+Rm[6]*oo[2],Rm[1]*oo[0]+Rm[4]*oo[1]+Rm[7]*oo[2],Rm[2]*oo[0]+Rm[5]*oo[1]+Rm[8]*oo[2]],
+      ld=[Rm[0]*ray.d[0]+Rm[3]*ray.d[1]+Rm[6]*ray.d[2],Rm[1]*ray.d[0]+Rm[4]*ray.d[1]+Rm[7]*ray.d[2],Rm[2]*ray.d[0]+Rm[5]*ray.d[1]+Rm[8]*ray.d[2]];let t0=0,t1=1e9;
+    for(let a=0;a<3;a++){const hh=half[a];if(Math.abs(ld[a])<1e-9){if(Math.abs(lo[a])>hh){t1=-1;break;}}else{let ta=(-hh-lo[a])/ld[a],tb=(hh-lo[a])/ld[a];if(ta>tb){const x=ta;ta=tb;tb=x;}if(ta>t0)t0=ta;if(tb<t1)t1=tb;if(t0>t1)break;}}
+    if(t1>=t0&&t1>0&&(!best||t0<best.t))best={s,t:t0};}
+  if(best){const s=best.s,r=w.place(b,s.id,18);
+    if(r.ok){rpSelect(null);return;}
+    /* it cannot go there: it hops to the socket, does not hold, and drops */
+    RP.hops.push({id:b.id,p:[s.p[0],s.p[1]+.35,s.p[2]],yaw:RP.site.psi,t:0,T:.55,drop:true});rpToast(RP_MSG[r.reason]+'.');rpSelect(null);return;}
+  const g=rpGround(ray);if(g){RP.hops.push({id:b.id,p:[g[0],g[1]+.45,g[2]],yaw:rpBodyYaw(b),t:0,T:.45,drop:true});rpSelect(null);}}
+function rpHops(dt){for(let i=RP.hops.length-1;i>=0;i--){const h=RP.hops[i],b=RP.w.bodyById(h.id);h.t+=dt;if(!b||b.state!=='dyn'||h.t>=h.T){if(b)RP.w.release(h.id);RP.hops.splice(i,1);continue;}RP.w.holdBody(h.id,h.p,LI_REPAIR.qyaw(h.yaw));}}
+/* ---- more planks: a fresh spare pile on the sand (planks washed away are gone, so this is the honest way back) ---- */
+function rpMore(){if(!RP.built)return;const S=RP.site,w=RP.w,M=rpMats();let n=0;
+  for(let i=0;i<3;i++){const x=-2.7+(i-1)*.2,z=2.3,p=rpW(S,x,0,z),g=Math.max(H(p[0],p[2]),.2),sp=RP.src&&RP.src.length?RP.src[(RP.loose.length*5+2)%RP.src.length]:null;
+    const b=w.addBody('plank',{p:[p[0],g+.3+i*.15,p[2]],q:LI_REPAIR.qyaw(S.psi+(i%2?.9:-.2)),len:sp?sp.len:1.66,width:sp?sp.wid:.19,thick:.046,name:'plank spare'});
+    const hold=new THREE.Group();let mesh;if(sp){mesh=new THREE.Mesh(sp.geo,sp.mat.clone());mesh.position.set(0,-.017,-sp.zmid);}else{mesh=new THREE.Mesh(RP_BOX,M.plank.clone());mesh.scale.set(.19,.046,1.66);mesh.position.set(0,-.017,0);}
+    mesh.castShadow=true;mesh.receiveShadow=true;hold.add(mesh);RP.g.add(hold);RP.loose.push({id:b.id,b,hold,mesh,mat:mesh.material,kind:'plank',spare:true});n++;}
+  rpToast('Three more planks on the sand.');return n;}
+/* ---- the settler marker and the boat ---- */
+function rpMarkerBuild(S){const mat=landMat('person',true);mat.side=THREE.DoubleSide;const col={skin:SKINS[1],shirt:[.95,.78,.2],pants:[.25,.22,.2],hair:[.08,.06,.05]};
+  const g=new THREE.Group(),bm=new THREE.Mesh(personGeo('stand',col).build(),mat);bm.castShadow=true;g.add(bm);const arms=[];
+  for(const s of[-1,1]){const piv=new THREE.Group();piv.position.set(s*.34,1.6,0);const am=new THREE.Mesh(armGeo(col,.7).build(),mat);am.castShadow=true;piv.add(am);g.add(piv);arms.push(piv);}
+  g.scale.setScalar(.82);RP.g.add(g);RP.marker={g,arms,x:-3.3,z:.4,y:0,yaw:0};rpMarkerPlace();}
+function rpGroundAtLocal(x,z){const p=rpW(RP.site,x,0,z);return Math.max(RP.ground(p[0],p[2]),0);}
+function rpMarkerPlace(){const m=RP.marker,S=RP.site;let y;
+  if(m.x<-1.1)y=rpGroundAtLocal(m.x,m.z);else if(m.x<-.5){const k=(m.x+1.1)/.6,y0=rpGroundAtLocal(-1.1,m.z);y=y0*(1-k)+S.deckY*k;}else y=S.deckY;
+  m.y=y;const p=rpW(S,m.x,0,m.z);m.g.position.set(p[0],y,p[2]);m.g.rotation.y=S.psi+m.yaw;}
+/* a simple check, no pathing: the settler walks along the deck axis and stops at the first open plank socket */
+function rpWalk(){if(!RP.built)return;const W2=RP.walk;if(W2.state==='walking')return;
+  const open=RP.socks.filter(s=>s.kind==='plank'&&!(s.filled&&s.filled.state==='fitted')).map(s=>s.tag.x).sort((a,b)=>a-b);
+  W2.limit=open.length?open[0]-.42:4.25;W2.blocked=open.length>0;W2.state='walking';rpToast(open.length?'The settler sets off...':'The settler walks out.');}
+function rpMarkerUpdate(dt){const m=RP.marker,W2=RP.walk;if(!m)return;
+  if(W2.state==='walking'){const sp=1.25*dt;if(m.x<W2.limit-.01){m.x=Math.min(W2.limit,m.x+sp);m.z+=(0-m.z)*Math.min(1,dt*2.5);m.yaw=0;}
+    else{W2.state=W2.blocked?'blocked':'arrived';if(W2.blocked)rpToast('A gap in the deck: the settler will not cross.');else rpToast('The settler is at the end of the jetty.');}
+    const ph=clock.t*7;m.arms[0].rotation.x=Math.sin(ph)*.6;m.arms[1].rotation.x=-Math.sin(ph)*.6;}
+  else{const ph=clock.t*1.2;m.arms[0].rotation.x=Math.sin(ph)*.06;m.arms[1].rotation.x=Math.sin(ph+1)*.06;if(W2.state==='arrived'){m.yaw+=((-Math.PI*.5)-m.yaw)*Math.min(1,dt*3);}}
+  rpMarkerPlace();if(W2.state==='walking')m.g.position.y+=Math.abs(Math.sin(clock.t*7))*.03;}
+function rpMoor(){if(RP.moored||!RP.built)return;const S=RP.site,p=rpW(S,2.7,0,-1.9);RP.moored=true;
+  const spec={kind:'moored',forceKind:'dinghy',x:p[0],z:p[2],yaw:S.psi,L:4.2,Wd:1.5,Hh:.6,hull:[.8,.78,.72],stripe:[.3,.38,.42],ph:1.3};
+  if(RP_ADDBOAT){const n0=boatObjs.length;RP_ADDBOAT(spec);RP.boat=boatObjs[n0]||null;}
+  const rope=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,1,5),rpMats().rope);rope.castShadow=true;RP.g.add(rope);RP.rope=rope;}
+function rpBoatUpdate(dt){if(!RP.rope||!RP.boat)return;const S=RP.site,b=RP.boat,m=b.mesh,post=rpW(S,RP_POST_AT[0]-.02,RP_POST_AT[1]-.1,RP_POST_AT[2]);
+  const bw=new THREE.Vector3(1.9,.55,0).applyMatrix4(m.matrixWorld);   /* the bow of the hull in the page frame (the boat's own x runs bow-ward) */
+  const a=new THREE.Vector3(post[0],post[1],post[2]),d=bw.clone().sub(a),L=d.length();RP.rope.position.copy(a).addScaledVector(d,.5);RP.rope.scale.set(1,L,1);RP.rope.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
+/* ---- HUD ---- */
+function rpHud(){if(RP.hud)return;const d=document.createElement('div');d.id='rpHud';
+  d.style.cssText='position:fixed;left:10px;top:64px;max-width:min(360px,calc(100vw - 20px));display:flex;flex-direction:column;gap:6px;pointer-events:none;z-index:5';
+  d.innerHTML='<div class="pill" id="rpChip" style="pointer-events:auto;display:flex;align-items:center;gap:8px;font-weight:800"><span id="rpCount">Jetty repaired 0 of 0</span><small id="rpState" style="font-weight:700;opacity:.7"></small></div>'+
+    '<div id="rpRow" style="display:flex;flex-wrap:wrap;gap:6px;pointer-events:none"></div><div id="rpMsg" class="pill" style="font-size:12px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none"></div>';
+  document.body.appendChild(d);RP.hud=d;const row=d.querySelector('#rpRow');
+  const mk=(id,txt,lab,fn)=>{const b=document.createElement('button');b.className='btn';b.id=id;b.textContent=txt;b.setAttribute('aria-label',lab);b.style.pointerEvents='auto';b.style.minHeight='40px';b.addEventListener('click',fn);row.appendChild(b);return b;};
+  mk('rpGo','Go to jetty','look at the wrecked jetty',()=>rpView());mk('rpTurn','Turn plank','turn the carried or picked plank a quarter turn',rpTurn);mk('rpSurge','Test surge','test surge: the sea comes up the beach',()=>rpSurge());mk('rpBig','Big surge','a big surge that can break the nails as well',()=>rpSurge(.55));
+  mk('rpWalk','Walk out','send the settler along the deck',rpWalk);mk('rpMore','More planks','three more planks on the sand',rpMore);
+  if(Q.get('ui')==='0'&&Q.get('rpui')!=='1'){/* pictures: keep the counter, hide the buttons */d.querySelector('#rpRow').style.display='none';}
+  const wanted=window.matchMedia&&matchMedia('(pointer:coarse)').matches;RP.coarse=!!wanted;
+  document.addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R')rpTurn();});
+  window.addEventListener('pointerdown',rpDown,true);window.addEventListener('pointermove',rpMove,true);window.addEventListener('pointerup',rpUp,true);window.addEventListener('pointercancel',rpUp,true);}
+function rpHudUpdate(dt){const c=RP.w.count(),a=document.getElementById('rpCount');if(!a)return;const txt='Jetty repaired '+c.fitted+' of '+c.total;if(a.textContent!==txt)a.textContent=txt;
+  const st=document.getElementById('rpState'),s=RP.usable?'usable':(RP.surge.on?'surge':'');if(st.textContent!==s)st.textContent=s;
+  const m=document.getElementById('rpMsg');if(RP.msgT>0){RP.msgT-=dt;if(m.textContent!==RP.msg)m.textContent=RP.msg;m.style.opacity=1;}else{m.style.opacity=0;}}
+function rpView(o){if(!RP.site)return;const S=RP.site,p=rpW(S,1.6,0,0);const v={tx:p[0],tz:p[2],dist:15,phi:.62,theta:S.psi+.9};for(const k in(o||{}))if(o[k]!==undefined&&o[k]!==null)v[k]=o[k];Object.assign(cam,v);if(CKON&&cam.ty===undefined)cam.ty=.8;clampCam();snap=true;}
+/* the API for tests and pictures */
+function rpApi(){const W2=()=>RP.w;const scr=(x,y,z)=>{const v=new THREE.Vector3(x,y,z);camera.updateMatrixWorld();v.project(camera);const r=renderer.domElement.getBoundingClientRect();return[r.left+(v.x*.5+.5)*r.width,r.top+(1-(v.y*.5+.5))*r.height];};
+  return{ready:()=>RP.built,failed:()=>RP.failed,err:()=>RP.err,glb:()=>!!RP.tpl,site:()=>RP.site&&{ox:RP.site.ox,oz:RP.site.oz,y0:RP.site.y0,psi:RP.site.psi,deckY:RP.site.deckY},view:rpView,
+    count:()=>({fitted:RP.fitted,total:RP.total,usable:RP.usable,lost:RP.lostN,moored:RP.moored}),tris:()=>rpTris(),ms:()=>({avg:RP.ms.avg,max:RP.ms.max,n:RP.ms.n,bodies:W2().bodies.length,awake:W2().stats.awake,contacts:W2().stats.contacts}),
+    bodies:()=>W2().bodies.map(b=>({id:b.id,kind:b.kind,state:b.state,p:b.p.slice(),lost:b.lost,asleep:b.asleep,sub:b.sub,spare:!!(b.tag&&b.tag.spare)})),
+    sockets:()=>RP.socks.map(s=>({id:s.id,kind:s.kind,p:s.p.slice(),filled:!!(s.filled&&s.filled.state==='fitted'),strength:s.joint.strength,type:s.joint.type,load:s.load||0,peak:s.peak||0,hits:s.hits})),
+    screen:id=>{const b=W2().bodyById(id);return b?scr(b.p[0],b.p[1],b.p[2]):null;},screenSock:id=>{const s=W2().socketById(id);return s?scr(s.p[0],s.p[1],s.p[2]):null;},
+    hash:()=>W2().hash(),step:n=>{for(let i=0;i<n;i++){rpSurgeStep(1/120);W2().step();rpEvents();}rpSyncMeshes();rpGhosts(0);},
+    hold:()=>RP.drag&&RP.drag.id,sel:()=>RP.sel,msg:()=>RP.msg,near:()=>RP.near&&{id:RP.near.s.id,d:RP.near.d,ok:RP.near.ok},
+    surge:rpSurge,surgeOn:()=>RP.surge.on,walk:rpWalk,walkState:()=>RP.walk.state,marker:()=>RP.marker&&{x:RP.marker.x,y:RP.marker.y},more:rpMore,turn:rpTurn,
+    teleport:(id,p,yawOff)=>{const b=W2().bodyById(id);if(!b)return false;b.p=p.slice();b.v=[0,0,0];b.w=[0,0,0];b.q=LI_REPAIR.qyaw(RP.site.psi+(yawOff||0));b.asleep=false;b.still=0;return true;},
+    place:(id,sid)=>W2().place(id,sid,50),fit:id=>W2().fit(id),testFit:id=>{const r=W2().testFit(id);return{ok:r.ok,reason:r.reason,d:r.d};},
+    fitAll:()=>{let n=0;for(const s of RP.socks){if(s.filled)continue;const o=RP.loose.find(q=>q.kind===s.kind&&q.b.state==='dyn'&&!q.b.lost);if(!o)continue;const b=o.b;b.p=s.p.slice();b.v=[0,0,0];b.w=[0,0,0];b.q=s.q.slice();W2().fit(b);n++;}return n;},
+    rope:()=>!!RP.rope,boat:()=>RP.boat?{x:RP.boat.mesh.position.x,z:RP.boat.mesh.position.z,kind:RP.boat.kit?RP.boat.kit.kind:'procedural'}:null,
+    surgeLevel:(x,z)=>rpWaterH(x,z,0),water:(x,z)=>rpWaterH(x,z,0),local:(x,y,z)=>rpW(RP.site,x,y,z),dbg:()=>RP};}
 function buildBoats(){boatObjs.forEach(b=>{scene.remove(b.mesh);if(b.ring)scene.remove(b.ring);});boatObjs=[];
   const mat=landMat(BOATS2?'boat2':'boat',true);mat.side=THREE.DoubleSide;
   /* boats pass: the shore-swash wetting, foam lace and underwater caustics of the land shader read as water inside a dry hull (the floor sits below the tide in world height); switch them off for boats */
@@ -666,7 +933,7 @@ function buildBoats(){boatObjs.forEach(b=>{scene.remove(b.mesh);if(b.ring)scene.
   if(LAND&&LD.boat)spec.push(LD.boat);
   if(KIT&&!LAND)spec=bkExtra(spec);
   let nWork=0;
-  spec.forEach(b=>{
+  const addOne=b=>{
     if(KIT){const kind=bkKindOf(b,nWork),k=bkMake(kind,b);if(kind==='work')nWork++;if(kind==='wreck'){const st=bkWreckSite(b.x,b.z,11);if(st){b.x=st.x;b.z=st.z;b.yaw=st.yaw;}else{k.yawAdd=Math.PI;}}   /* the wreck's berth by seed: bow up the gentlest slope of the strand */
       boatObjs.push({b,mesh:k.outer,tris:0,ring:bkRing(kind),kit:k});return;}
     if(BOATS2){const H2=hullV2(b);const m=new THREE.Mesh(H2.pb.build(),mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);
@@ -677,7 +944,8 @@ function buildBoats(){boatObjs.forEach(b=>{scene.remove(b.mesh);if(b.ring)scene.
       const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));rg.setAttribute('a',new THREE.Float32BufferAttribute(al,1));rg.setIndex(idx);
       const ring=new THREE.Mesh(rg,RING_MAT);ring.renderOrder=6;ring.frustumCulled=false;scene.add(ring);
       boatObjs.push({b,mesh:m,tris:H2.pb.tris,mask:mk,ring,maskTris:H2.mk.tris});return;}
-    const pb=b.row?rowboatGeo(b):boatGeo(b);const g=pb.build();const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);boatObjs.push({b,mesh:m,tris:pb.tris});});}
+    const pb=b.row?rowboatGeo(b):boatGeo(b);const g=pb.build();const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);boatObjs.push({b,mesh:m,tris:pb.tris});};
+  spec.forEach(addOne);RP_ADDBOAT=addOne;}
 const RING_MAT=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,vertexShader:'attribute float a;varying float vA;void main(){vA=a;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'varying float vA;void main(){gl_FragColor=vec4(0.0,0.01,0.02,vA*vA*0.9);}'});
 let gulls=[];
 function buildGulls(){gulls.forEach(g=>scene.remove(g.m));gulls=[];const R=mulberry32(SEED+313);
@@ -1637,6 +1905,7 @@ function build(){const t0=performance.now();
   if(CKON)ckBuild();
   if(LTON)ltBuild();
   if(MDON)mdBuild();
+  if(RPON)rpBuild();
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
@@ -1657,6 +1926,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   if(CKON)ckFrame(dt);
   if(LTON)ltFrame(dt);
   if(MDON)mdFrame(dt);
+  if(RPON)rpFrame(dt);
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -2435,6 +2705,7 @@ function init(){
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
     clock:CKON?ckApi():null,
+    repair:RPON?rpApi():null,
     light:LTON?ltApi():null,
     moods:MDON?mdApi():null,
     scenePoints:()=>{let n=0;scene.traverse(o=>{if(o.isPoints)n++;});return n;},
