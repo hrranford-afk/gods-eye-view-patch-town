@@ -1,0 +1,1176 @@
+{
+ "version": 1,
+ "frame": "glTF: +Y up, metres, y = 0 ground, centred on x = z = 0, front toward +Z; node footprint is the placement polygon",
+ "roles": [
+  "shelter",
+  "storage",
+  "food",
+  "fire",
+  "marker",
+  "wreck",
+  "garden"
+ ],
+ "island_types": [
+  "gneiss",
+  "sandstone",
+  "basalt",
+  "volcanic"
+ ],
+ "rarity": "0 = common .. 1 = rare",
+ "lods": [
+  "hero",
+  "live",
+  "far"
+ ],
+ "pieces": [
+  {
+   "name": "relic_hull",
+   "round": 1,
+   "role": "wreck",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.5,
+   "note": "half-buried old-world hull, machines that kept working",
+   "stems": {
+    "hero": "kit_relic_hull_hero",
+    "live": "kit_relic_hull_live",
+    "far": "kit_relic_hull_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_relic_hull_hero.glb",
+    "live": "assets/kit/kit_relic_hull_live.glb",
+    "far": "assets/kit/kit_relic_hull_far.glb"
+   },
+   "bytes": {
+    "hero": 367052,
+    "live": 119080,
+    "far": 36064
+   },
+   "triangles": {
+    "hero": 10758,
+    "live": 2510,
+    "far": 456
+   },
+   "footprint_m": {
+    "x": 10.0,
+    "z": 5.85,
+    "area": 45.56
+   },
+   "footprint_polygon_xz": [
+    [
+     5.0,
+     0.0
+    ],
+    [
+     4.505,
+     1.302
+    ],
+    [
+     3.117,
+     2.345
+    ],
+    [
+     1.113,
+     2.925
+    ],
+    [
+     -1.113,
+     2.925
+    ],
+    [
+     -3.117,
+     2.345
+    ],
+    [
+     -4.505,
+     1.302
+    ],
+    [
+     -5.0,
+     0.0
+    ],
+    [
+     -4.505,
+     -1.302
+    ],
+    [
+     -3.117,
+     -2.345
+    ],
+    [
+     -1.113,
+     -2.925
+    ],
+    [
+     1.113,
+     -2.925
+    ],
+    [
+     3.117,
+     -2.345
+    ],
+    [
+     4.505,
+     -1.302
+    ]
+   ],
+   "size_m": {
+    "x": 12.02,
+    "y": 3.34,
+    "z": 8.16
+   },
+   "nodes": [
+    "root",
+    "body",
+    "hull",
+    "hatch",
+    "plate_1",
+    "plate_2",
+    "plate_3",
+    "footprint"
+   ],
+   "movable": [
+    "hatch",
+    "plate_1",
+    "plate_2",
+    "plate_3"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "lighthouse_stump",
+   "round": 1,
+   "role": "marker",
+   "islands": [
+    "gneiss",
+    "basalt",
+    "sandstone"
+   ],
+   "rarity": 0.35,
+   "note": "collapsed tower base with toppled lantern and lens",
+   "stems": {
+    "hero": "kit_lighthouse_stump_hero",
+    "live": "kit_lighthouse_stump_live",
+    "far": "kit_lighthouse_stump_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_lighthouse_stump_hero.glb",
+    "live": "assets/kit/kit_lighthouse_stump_live.glb",
+    "far": "assets/kit/kit_lighthouse_stump_far.glb"
+   },
+   "bytes": {
+    "hero": 383932,
+    "live": 95100,
+    "far": 26604
+   },
+   "triangles": {
+    "hero": 11448,
+    "live": 2310,
+    "far": 586
+   },
+   "footprint_m": {
+    "x": 6.2,
+    "z": 6.04,
+    "area": 29.19
+   },
+   "footprint_polygon_xz": [
+    [
+     3.1,
+     0.0
+    ],
+    [
+     2.793,
+     1.345
+    ],
+    [
+     1.933,
+     2.424
+    ],
+    [
+     0.69,
+     3.022
+    ],
+    [
+     -0.69,
+     3.022
+    ],
+    [
+     -1.933,
+     2.424
+    ],
+    [
+     -2.793,
+     1.345
+    ],
+    [
+     -3.1,
+     0.0
+    ],
+    [
+     -2.793,
+     -1.345
+    ],
+    [
+     -1.933,
+     -2.424
+    ],
+    [
+     -0.69,
+     -3.022
+    ],
+    [
+     0.69,
+     -3.022
+    ],
+    [
+     1.933,
+     -2.424
+    ],
+    [
+     2.793,
+     -1.345
+    ]
+   ],
+   "size_m": {
+    "x": 10.08,
+    "y": 5.41,
+    "z": 8.21
+   },
+   "nodes": [
+    "root",
+    "body",
+    "tower",
+    "lantern",
+    "lens",
+    "footprint"
+   ],
+   "movable": [
+    "lantern",
+    "lens"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "crate_stack",
+   "round": 1,
+   "role": "storage",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.15,
+   "note": "washed-up crates, a drum, loose slats",
+   "stems": {
+    "hero": "kit_crate_stack_hero",
+    "live": "kit_crate_stack_live",
+    "far": "kit_crate_stack_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_crate_stack_hero.glb",
+    "live": "assets/kit/kit_crate_stack_live.glb",
+    "far": "assets/kit/kit_crate_stack_far.glb"
+   },
+   "bytes": {
+    "hero": 535380,
+    "live": 184348,
+    "far": 36624
+   },
+   "triangles": {
+    "hero": 12036,
+    "live": 2710,
+    "far": 360
+   },
+   "footprint_m": {
+    "x": 3.9,
+    "z": 2.8,
+    "area": 10.78
+   },
+   "footprint_polygon_xz": [
+    [
+     -1.9,
+     -1.35
+    ],
+    [
+     1.9,
+     -1.35
+    ],
+    [
+     2.0,
+     1.45
+    ],
+    [
+     -1.9,
+     1.45
+    ]
+   ],
+   "size_m": {
+    "x": 5.02,
+    "y": 1.57,
+    "z": 3.93
+   },
+   "nodes": [
+    "root",
+    "body",
+    "crate_1",
+    "crate_2",
+    "crate_3",
+    "crate_4",
+    "crate_5",
+    "crate_6",
+    "crate_7",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04",
+    "drum",
+    "footprint"
+   ],
+   "movable": [
+    "crate_1",
+    "crate_2",
+    "crate_3",
+    "crate_4",
+    "crate_5",
+    "crate_6",
+    "crate_7",
+    "drum",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "cairn",
+   "round": 1,
+   "role": "marker",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.1,
+   "note": "stone waymark with a rag on top",
+   "stems": {
+    "hero": "kit_cairn_hero",
+    "live": "kit_cairn_live",
+    "far": "kit_cairn_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_cairn_hero.glb",
+    "live": "assets/kit/kit_cairn_live.glb",
+    "far": "assets/kit/kit_cairn_far.glb"
+   },
+   "bytes": {
+    "hero": 443976,
+    "live": 120276,
+    "far": 34104
+   },
+   "triangles": {
+    "hero": 10004,
+    "live": 2228,
+    "far": 626
+   },
+   "footprint_m": {
+    "x": 2.2,
+    "z": 2.2,
+    "area": 3.63
+   },
+   "footprint_polygon_xz": [
+    [
+     1.1,
+     0.0
+    ],
+    [
+     0.953,
+     0.55
+    ],
+    [
+     0.55,
+     0.953
+    ],
+    [
+     0.0,
+     1.1
+    ],
+    [
+     -0.55,
+     0.953
+    ],
+    [
+     -0.953,
+     0.55
+    ],
+    [
+     -1.1,
+     0.0
+    ],
+    [
+     -0.953,
+     -0.55
+    ],
+    [
+     -0.55,
+     -0.953
+    ],
+    [
+     -0.0,
+     -1.1
+    ],
+    [
+     0.55,
+     -0.953
+    ],
+    [
+     0.953,
+     -0.55
+    ]
+   ],
+   "size_m": {
+    "x": 2.27,
+    "y": 2.35,
+    "z": 2.39
+   },
+   "nodes": [
+    "root",
+    "body",
+    "stone_01",
+    "stone_02",
+    "stone_03",
+    "stone_cap",
+    "rag",
+    "footprint"
+   ],
+   "movable": [
+    "rag",
+    "stone_01",
+    "stone_02",
+    "stone_03",
+    "stone_cap"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "drying_rack",
+   "round": 1,
+   "role": "food",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt"
+   ],
+   "rarity": 0.2,
+   "note": "fish-drying rack under a canvas cover",
+   "stems": {
+    "hero": "kit_drying_rack_hero",
+    "live": "kit_drying_rack_live",
+    "far": "kit_drying_rack_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_drying_rack_hero.glb",
+    "live": "assets/kit/kit_drying_rack_live.glb",
+    "far": "assets/kit/kit_drying_rack_far.glb"
+   },
+   "bytes": {
+    "hero": 414352,
+    "live": 117396,
+    "far": 42824
+   },
+   "triangles": {
+    "hero": 9030,
+    "live": 1992,
+    "far": 572
+   },
+   "footprint_m": {
+    "x": 5.1,
+    "z": 2.2,
+    "area": 11.22
+   },
+   "footprint_polygon_xz": [
+    [
+     -2.0,
+     -1.0
+    ],
+    [
+     3.1,
+     -1.0
+    ],
+    [
+     3.1,
+     1.2
+    ],
+    [
+     -2.0,
+     1.2
+    ]
+   ],
+   "size_m": {
+    "x": 7.14,
+    "y": 2.09,
+    "z": 3.3
+   },
+   "nodes": [
+    "root",
+    "body",
+    "fish_01",
+    "fish_02",
+    "fish_03",
+    "fish_04",
+    "fish_05",
+    "fish_06",
+    "fish_07",
+    "fish_08",
+    "fish_09",
+    "fish_10",
+    "fish_11",
+    "fish_12",
+    "fish_13",
+    "fish_14",
+    "fish_15",
+    "fish_16",
+    "fish_17",
+    "fish_18",
+    "fish_19",
+    "fish_20",
+    "fish_21",
+    "fish_22",
+    "fish_23",
+    "fish_24",
+    "fish_25",
+    "fish_26",
+    "fish_27",
+    "fish_28",
+    "fish_29",
+    "fish_30",
+    "fish_31",
+    "fish_32",
+    "fish_33",
+    "fish_34",
+    "fish_35",
+    "fish_36",
+    "cover",
+    "plank_01",
+    "footprint"
+   ],
+   "movable": [
+    "cover",
+    "fish_01",
+    "fish_02",
+    "fish_03",
+    "fish_04",
+    "fish_05",
+    "fish_06",
+    "fish_07",
+    "fish_08",
+    "fish_09",
+    "fish_10",
+    "fish_11",
+    "fish_12",
+    "fish_13",
+    "fish_14",
+    "fish_15",
+    "fish_16",
+    "fish_17",
+    "fish_18",
+    "fish_19",
+    "fish_20",
+    "fish_21",
+    "fish_22",
+    "fish_23",
+    "fish_24",
+    "fish_25",
+    "fish_26",
+    "fish_27",
+    "fish_28",
+    "fish_29",
+    "fish_30",
+    "fish_31",
+    "fish_32",
+    "fish_33",
+    "fish_34",
+    "fish_35",
+    "fish_36",
+    "plank_01"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "lean_to",
+   "round": 1,
+   "role": "shelter",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.15,
+   "note": "driftwood and sailcloth shelter with a fire ring",
+   "stems": {
+    "hero": "kit_lean_to_hero",
+    "live": "kit_lean_to_live",
+    "far": "kit_lean_to_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_lean_to_hero.glb",
+    "live": "assets/kit/kit_lean_to_live.glb",
+    "far": "assets/kit/kit_lean_to_far.glb"
+   },
+   "bytes": {
+    "hero": 374428,
+    "live": 104572,
+    "far": 33388
+   },
+   "triangles": {
+    "hero": 8970,
+    "live": 2055,
+    "far": 491
+   },
+   "footprint_m": {
+    "x": 4.1,
+    "z": 5.0,
+    "area": 20.5
+   },
+   "footprint_polygon_xz": [
+    [
+     -2.3,
+     -1.9
+    ],
+    [
+     1.8,
+     -1.9
+    ],
+    [
+     1.8,
+     3.1
+    ],
+    [
+     -2.3,
+     3.1
+    ]
+   ],
+   "size_m": {
+    "x": 4.87,
+    "y": 1.69,
+    "z": 5.35
+   },
+   "nodes": [
+    "root",
+    "body",
+    "sail",
+    "door",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04",
+    "plank_05",
+    "plank_06",
+    "plank_07",
+    "plank_08",
+    "plank_09",
+    "footprint"
+   ],
+   "movable": [
+    "door",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04",
+    "plank_05",
+    "plank_06",
+    "plank_07",
+    "plank_08",
+    "plank_09"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "rain_barrel",
+   "round": 1,
+   "role": "storage",
+   "islands": [
+    "gneiss",
+    "sandstone"
+   ],
+   "rarity": 0.3,
+   "note": "cottage wall corner, gutter and rain barrel",
+   "stems": {
+    "hero": "kit_rain_barrel_hero",
+    "live": "kit_rain_barrel_live",
+    "far": "kit_rain_barrel_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_rain_barrel_hero.glb",
+    "live": "assets/kit/kit_rain_barrel_live.glb",
+    "far": "assets/kit/kit_rain_barrel_far.glb"
+   },
+   "bytes": {
+    "hero": 380568,
+    "live": 124744,
+    "far": 32780
+   },
+   "triangles": {
+    "hero": 8872,
+    "live": 2646,
+    "far": 504
+   },
+   "footprint_m": {
+    "x": 3.7,
+    "z": 2.0,
+    "area": 7.4
+   },
+   "footprint_polygon_xz": [
+    [
+     -1.75,
+     -0.35
+    ],
+    [
+     1.95,
+     -0.35
+    ],
+    [
+     1.95,
+     1.65
+    ],
+    [
+     -1.75,
+     1.65
+    ]
+   ],
+   "size_m": {
+    "x": 4.34,
+    "y": 2.18,
+    "z": 3.52
+   },
+   "nodes": [
+    "root",
+    "body",
+    "wall",
+    "door",
+    "gutter",
+    "barrel",
+    "lid",
+    "bucket",
+    "footprint"
+   ],
+   "movable": [
+    "bucket",
+    "door",
+    "lid"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "wrecked_jetty",
+   "round": 1,
+   "role": "wreck",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt"
+   ],
+   "rarity": 0.4,
+   "note": "storm-broken landing stage",
+   "stems": {
+    "hero": "kit_wrecked_jetty_hero",
+    "live": "kit_wrecked_jetty_live",
+    "far": "kit_wrecked_jetty_far"
+   },
+   "status": "built",
+   "files": {
+    "hero": "assets/kit/kit_wrecked_jetty_hero.glb",
+    "live": "assets/kit/kit_wrecked_jetty_live.glb",
+    "far": "assets/kit/kit_wrecked_jetty_far.glb"
+   },
+   "bytes": {
+    "hero": 429596,
+    "live": 132720,
+    "far": 47844
+   },
+   "triangles": {
+    "hero": 8356,
+    "live": 1802,
+    "far": 668
+   },
+   "footprint_m": {
+    "x": 9.6,
+    "z": 2.1,
+    "area": 20.16
+   },
+   "footprint_polygon_xz": [
+    [
+     -4.8,
+     -1.05
+    ],
+    [
+     4.8,
+     -1.05
+    ],
+    [
+     4.8,
+     1.05
+    ],
+    [
+     -4.8,
+     1.05
+    ]
+   ],
+   "size_m": {
+    "x": 10.41,
+    "y": 3.32,
+    "z": 3.65
+   },
+   "nodes": [
+    "root",
+    "body",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04",
+    "plank_05",
+    "plank_06",
+    "plank_07",
+    "plank_08",
+    "plank_09",
+    "plank_10",
+    "plank_11",
+    "plank_12",
+    "plank_13",
+    "plank_14",
+    "plank_15",
+    "plank_16",
+    "plank_17",
+    "plank_18",
+    "plank_19",
+    "bollard",
+    "footprint"
+   ],
+   "movable": [
+    "bollard",
+    "plank_01",
+    "plank_02",
+    "plank_03",
+    "plank_04",
+    "plank_05",
+    "plank_06",
+    "plank_07",
+    "plank_08",
+    "plank_09",
+    "plank_10",
+    "plank_11",
+    "plank_12",
+    "plank_13",
+    "plank_14",
+    "plank_15",
+    "plank_16",
+    "plank_17",
+    "plank_18",
+    "plank_19"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "raised_beds",
+   "round": 2,
+   "role": "garden",
+   "islands": [
+    "gneiss",
+    "sandstone"
+   ],
+   "rarity": 0.3,
+   "note": "raised beds framed with salvaged boat planks",
+   "stems": {
+    "hero": "kit_raised_beds_hero",
+    "live": "kit_raised_beds_live",
+    "far": "kit_raised_beds_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.6,
+    "z": 3.4,
+    "area": 15.64
+   },
+   "nodes": [
+    "plank_01",
+    "plant_01",
+    "crate_1",
+    "bucket",
+    "footprint"
+   ],
+   "movable": [
+    "plank_01",
+    "plant_01",
+    "crate_1",
+    "bucket"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "seat_garden",
+   "round": 2,
+   "role": "garden",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt"
+   ],
+   "rarity": 0.6,
+   "note": "old vehicle seats and tubs grown over with plants",
+   "stems": {
+    "hero": "kit_seat_garden_hero",
+    "live": "kit_seat_garden_live",
+    "far": "kit_seat_garden_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.2,
+    "z": 3.4,
+    "area": 14.28
+   },
+   "nodes": [
+    "seat_1",
+    "plant_01",
+    "crate_1",
+    "pot",
+    "footprint"
+   ],
+   "movable": [
+    "seat_1",
+    "plant_01",
+    "crate_1",
+    "pot"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "kelp_garden",
+   "round": 2,
+   "role": "garden",
+   "islands": [
+    "gneiss",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.35,
+   "note": "seaweed drying garden on frames and stones",
+   "stems": {
+    "hero": "kit_kelp_garden_hero",
+    "live": "kit_kelp_garden_live",
+    "far": "kit_kelp_garden_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.4,
+    "z": 3.2,
+    "area": 14.08
+   },
+   "nodes": [
+    "plant_01",
+    "plank_01",
+    "crate_1",
+    "footprint"
+   ],
+   "movable": [
+    "plant_01",
+    "plank_01",
+    "crate_1"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "fish_hut",
+   "round": 2,
+   "role": "shelter",
+   "islands": [
+    "sandstone",
+    "gneiss"
+   ],
+   "rarity": 0.6,
+   "note": "fish-shaped hut of ribs and rusty tin scales with a chimney",
+   "stems": {
+    "hero": "kit_fish_hut_hero",
+    "live": "kit_fish_hut_live",
+    "far": "kit_fish_hut_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 5.4,
+    "z": 3.0,
+    "area": 16.2
+   },
+   "nodes": [
+    "door",
+    "chimney",
+    "plank_01",
+    "footprint"
+   ],
+   "movable": [
+    "door",
+    "chimney",
+    "plank_01"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "seabird_hut",
+   "round": 2,
+   "role": "shelter",
+   "islands": [
+    "basalt",
+    "volcanic",
+    "gneiss"
+   ],
+   "rarity": 0.55,
+   "note": "stone hut shared with nesting seabirds",
+   "stems": {
+    "hero": "kit_seabird_hut_hero",
+    "live": "kit_seabird_hut_live",
+    "far": "kit_seabird_hut_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.0,
+    "z": 3.4,
+    "area": 13.6
+   },
+   "nodes": [
+    "door",
+    "plank_01",
+    "footprint"
+   ],
+   "movable": [
+    "door",
+    "plank_01"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "tarp_hut",
+   "round": 2,
+   "role": "shelter",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.25,
+   "note": "double-layer tarpaulin hut with a swinging door",
+   "stems": {
+    "hero": "kit_tarp_hut_hero",
+    "live": "kit_tarp_hut_live",
+    "far": "kit_tarp_hut_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.4,
+    "z": 3.8,
+    "area": 16.72
+   },
+   "nodes": [
+    "door",
+    "plank_01",
+    "crate_1",
+    "footprint"
+   ],
+   "movable": [
+    "door",
+    "plank_01",
+    "crate_1"
+   ],
+   "emitters": []
+  },
+  {
+   "name": "campfire_ring",
+   "round": 2,
+   "role": "fire",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt",
+    "volcanic"
+   ],
+   "rarity": 0.1,
+   "note": "stone ring, cooking pot on a tripod, log seats",
+   "stems": {
+    "hero": "kit_campfire_ring_hero",
+    "live": "kit_campfire_ring_live",
+    "far": "kit_campfire_ring_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 3.8,
+    "z": 3.8,
+    "area": 14.44
+   },
+   "nodes": [
+    "pot",
+    "fire_emitter",
+    "footprint"
+   ],
+   "movable": [
+    "pot"
+   ],
+   "emitters": [
+    "fire_emitter"
+   ]
+  },
+  {
+   "name": "hearth_ruin",
+   "round": 2,
+   "role": "fire",
+   "islands": [
+    "gneiss",
+    "sandstone",
+    "basalt"
+   ],
+   "rarity": 0.45,
+   "note": "hearth with chimney in a stone ruin",
+   "stems": {
+    "hero": "kit_hearth_ruin_hero",
+    "live": "kit_hearth_ruin_live",
+    "far": "kit_hearth_ruin_far"
+   },
+   "status": "planned",
+   "files": {},
+   "footprint_m": {
+    "x": 4.6,
+    "z": 3.6,
+    "area": 16.56
+   },
+   "nodes": [
+    "pot",
+    "fire_emitter",
+    "footprint"
+   ],
+   "movable": [
+    "pot"
+   ],
+   "emitters": [
+    "fire_emitter"
+   ]
+  }
+ ]
+}
