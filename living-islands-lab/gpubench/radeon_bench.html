@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radeon Bench</title>
+<style>
+:root{--bg:#0b0f14;--panel:#141b24;--line:#2b3947;--tx:#f4f7fa;--dim:#aebccb;--ok:#46e08a;--bad:#ff6b6b;--warn:#ffd24a;--acc:#5cc8ff;--btn:#1f7aff}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f5f7fa;--panel:#ffffff;--line:#c4ced9;--tx:#0b121a;--dim:#41505f;--ok:#0a7a3c;--bad:#b3261e;--warn:#8a5a00;--acc:#005f9e;--btn:#0b5fd6}}
+:root[data-theme="light"]{--bg:#f5f7fa;--panel:#ffffff;--line:#c4ced9;--tx:#0b121a;--dim:#41505f;--ok:#0a7a3c;--bad:#b3261e;--warn:#8a5a00;--acc:#005f9e;--btn:#0b5fd6}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--tx);font:22px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:20px 16px 80px}
+main{max-width:1100px;margin:0 auto}
+h1{font-size:44px;margin:0 0 4px;letter-spacing:.5px}
+h2{font-size:30px;margin:34px 0 10px}
+p{margin:8px 0}
+.dim{color:var(--dim)}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:16px 20px;margin:14px 0}
+.big{font-size:26px}
+#smokeTag{display:none;background:#ffd24a;color:#000;font-weight:700;padding:8px 14px;border-radius:10px;margin:10px 0}
+#wrongGpu{display:none;background:#b00020;color:#fff;border-radius:14px;padding:18px 22px;margin:14px 0;font-size:26px;border:4px solid #ffb4b4}
+#wrongGpu b{font-size:34px;display:block;margin-bottom:6px}
+#gpuLine{font-size:28px;font-weight:700;margin:10px 0}
+.btns{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:14px 0}
+button{font:inherit;font-weight:700;color:#fff;background:var(--btn);border:0;border-radius:14px;padding:18px 30px;cursor:pointer;min-height:64px}
+button:hover{filter:brightness(1.12)}
+button:focus-visible,select:focus-visible{outline:4px solid var(--warn);outline-offset:2px}
+button.run{font-size:34px;padding:22px 40px}
+button.stop{background:#c62828}
+button.alt{background:#3a4a5c}
+button:disabled{opacity:.4;cursor:not-allowed}
+select{font:inherit;padding:12px 14px;border-radius:10px;background:var(--panel);color:var(--tx);border:2px solid var(--line);min-height:56px}
+.warnbox{border:3px solid var(--warn);border-radius:12px;padding:12px 16px;margin:12px 0;font-size:20px}
+#bar{height:30px;border-radius:15px;background:var(--panel);border:2px solid var(--line);overflow:hidden;margin:10px 0}
+#barFill{height:100%;width:0;background:var(--acc);transition:width .2s}
+#cur{font-size:26px;font-weight:700;min-height:40px}
+table{border-collapse:collapse;width:100%}
+td,th{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--dim);font-weight:600}
+td.v{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;word-break:break-word}
+.yes{color:var(--ok);font-weight:800}
+.no{color:var(--bad);font-weight:800}
+.unk{color:var(--warn);font-weight:800}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px 20px 14px;margin:14px 0}
+.card h3{margin:0;font-size:28px}
+.card .mean{color:var(--dim);margin:2px 0 8px}
+.badge{display:inline-block;font-size:18px;padding:2px 12px;border-radius:20px;margin-left:10px;vertical-align:middle;color:#000;background:var(--dim)}
+.badge.ok{background:var(--ok)}.badge.error{background:var(--bad)}.badge.unsupported,.badge.stopped{background:var(--warn)}.badge.running{background:var(--acc)}
+textarea{width:100%;height:340px;font:16px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--panel);color:var(--tx);border:2px solid var(--line);border-radius:10px;padding:12px}
+#copyMsg{font-weight:700;color:var(--ok);margin-left:10px}
+@media (max-width:640px){body{font-size:18px}h1{font-size:32px}button.run{font-size:26px;padding:18px 24px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Radeon Bench</h1>
+<p class="dim big">Tests what your graphics card can really do for the game: painting, triangles, maths, memory, and world simulation on the GPU. It runs on this page only. Nothing is stored or sent anywhere.</p>
+<div id="smokeTag">SMOKE MODE: tiny sizes, only checks that the page works. The numbers mean nothing.</div>
+<div id="wrongGpu"><b>WRONG GPU: Chrome picked the Intel chip, not the Radeon.</b>
+<span id="wrongGpuText"></span>
+<div style="font-size:20px;margin-top:10px">Fix on a Mac with an external GPU: quit Chrome. In Finder open Applications, click Google Chrome once, press Cmd+I, tick "Prefer External GPU". Plug the Core X in and, if it still fails, connect your screen to the Radeon. Open chrome://gpu to see which GPU Chrome is using. Then reload this page.</div></div>
+<div id="gpuLine" aria-live="polite">Checking the graphics card...</div>
+
+<div class="panel">
+<div class="btns">
+<button class="run" id="runQuick">RUN QUICK (about 40 seconds)</button>
+<button class="alt" id="runFull">Run FULL (about 3 minutes)</button>
+<button class="stop" id="stopBtn" disabled>STOP</button>
+</div>
+<div class="btns"><label for="cap">Memory test limit (test 5 stops here at the latest):</label>
+<select id="cap"><option value="1">1 GB</option><option value="2">2 GB</option><option value="4" selected>4 GB</option><option value="8">8 GB</option><option value="12">12 GB</option><option value="15">15 GB</option></select></div>
+<div class="warnbox"><b>Warning:</b> the memory test (5) fills the graphics memory step by step. If the card is pushed past its limit, Chrome may reload this tab or the screen may flicker for a moment. Nothing is damaged. Quick mode only goes up to 2 GB. Press STOP at any time. Keep this tab in front while it runs, and close other heavy tabs.</div>
+<div id="cur">Ready. Press the big blue button.</div>
+<div id="bar"><div id="barFill"></div></div>
+</div>
+
+<div id="sumWrap" style="display:none">
+<h2>9 SUMMARY: the verdict in plain words</h2>
+<div class="panel"><table id="sumTable"><thead><tr><th>Question</th><th>Answer</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
+<h2>Copy this report and paste it back</h2>
+<div class="panel"><div class="btns"><button id="copyBtn">COPY REPORT</button><span id="copyMsg" role="status"></span></div>
+<textarea id="report" readonly spellcheck="false"></textarea></div>
+</div>
+
+<h2>WHAT 16 GB GIVES US</h2>
+<div class="panel"><p class="dim">This is arithmetic from formulas (not measured). It assumes 85% of the memory is usable for the game, because the system and Chrome need the rest. The Intel column assumes about 1.5 GB of shared memory with 50% usable.</p><table id="memTable"><thead><tr><th>Thing</th><th>Size each</th><th>Fit in 16 GB card</th><th>Fit in Intel UHD 630</th></tr></thead><tbody></tbody></table></div>
+
+<h2>Details of every test</h2>
+<div id="cards"></div>
+</main>
+
+<script>
+'use strict';
+/* Radeon Bench: single file, plain WebGL2 plus WebGPU. No network use, nothing stored. */
+var SMOKE = /[?&]smoke(=1|&|$)/.test(location.search);
+var $ = function (id) { return document.getElementById(id); };
+var now = function () { return performance.now(); };
+var sleep0 = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+var tickCh = new MessageChannel(), tickRes = null;
+tickCh.port1.onmessage = function () { var r = tickRes; tickRes = null; if (r) r(); };
+var tick = function () { return new Promise(function (r) { tickRes = r; tickCh.port2.postMessage(0); }); };
+class Unsupported extends Error {}
+var MODES = { smoke: { b: 0.12, label: 'smoke' }, quick: { b: 0.55, label: 'quick' }, full: { b: 1.5, label: 'full' } };
+var HARD_LIMIT_S = 6; /* no single measurement runs longer than this */
+var RES = {}, M = {}, RUNNING = false, STOPPED = false, MODE = 'quick', GPUNAME = '', GPUDEV = null;
+
+/* ---------- formatting ---------- */
+function si(x, u) {
+  if (!isFinite(x)) return 'n/a';
+  var a = Math.abs(x);
+  if (a >= 1e12) return (x / 1e12).toFixed(2) + ' T' + u;
+  if (a >= 1e9) return (x / 1e9).toFixed(2) + ' G' + u;
+  if (a >= 1e6) return (x / 1e6).toFixed(1) + ' M' + u;
+  if (a >= 1e3) return (x / 1e3).toFixed(1) + ' k' + u;
+  return x.toFixed(1) + ' ' + u;
+}
+function fx(x, d) { return isFinite(x) ? x.toFixed(d === undefined ? 1 : d) : 'n/a'; }
+function mb(b) { return b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : (b / 1e6).toFixed(0) + ' MB'; }
+function browserName() {
+  var ua = navigator.userAgent, m = /(Chrome|Chromium|Edg|Firefox|Version)\/([\d.]+)/.exec(ua);
+  var os = /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'OS?';
+  return (m ? (m[1] === 'Version' ? 'Safari' : m[1]) + ' ' + m[2].split('.')[0] : 'browser?') + ' on ' + os;
+}
+
+/* ---------- GL helpers ---------- */
+var FS_VS = '#version 300 es\nvoid main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.-1.,0.,1.);}';
+function mkGL(ctx, pref) {
+  var c = document.createElement('canvas'); c.width = c.height = 8;
+  var gl = c.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: pref || 'high-performance' });
+  if (!gl) throw new Unsupported('WebGL2 is not available in this browser');
+  var g = { gl: gl, c: c, lost: false, px: new Uint8Array(4) };
+  c.addEventListener('webglcontextlost', function (e) { g.lost = true; e.preventDefault(); });
+  if (ctx) ctx.gls.push(g);
+  g.sTex = mkTex(gl, 4, 4, gl.RGBA8); g.sFbo = mkFbo(gl, [g.sTex]);
+  /* sync: wait until the GPU has finished everything queued so far */
+  g.sync = function () {
+    gl.finish();
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, g.sFbo);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, g.px);
+  };
+  return g;
+}
+function mkProg(gl, vs, fs) {
+  var p = gl.createProgram(), parts = [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]];
+  for (var i = 0; i < 2; i++) {
+    var sh = gl.createShader(parts[i][0]); gl.shaderSource(sh, parts[i][1]); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error('shader compile failed: ' + gl.getShaderInfoLog(sh));
+    gl.attachShader(p, sh);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('shader link failed: ' + gl.getProgramInfoLog(p));
+  return p;
+}
+function U(gl, p, n) { return gl.getUniformLocation(p, n); }
+function mkTex(gl, w, h, ifmt, filter) {
+  var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, ifmt, w, h);
+  var f = filter || gl.NEAREST;
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+function mkFbo(gl, texs) {
+  var f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  var bufs = [];
+  for (var i = 0; i < texs.length; i++) { gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, texs[i], 0); bufs.push(gl.COLOR_ATTACHMENT0 + i); }
+  gl.drawBuffers(bufs);
+  var s = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+  if (s !== gl.FRAMEBUFFER_COMPLETE) throw new Error('framebuffer incomplete (0x' + s.toString(16) + ')');
+  return f;
+}
+function glErr(gl, what) {
+  var e = gl.getError(), first = 0;
+  while (e !== 0) { if (!first) first = e; e = gl.getError(); }
+  if (first) throw new Error(what + ': GL error 0x' + first.toString(16) + (first === 0x505 ? ' (out of memory)' : ''));
+}
+function needFloat(gl) {
+  if (!gl.getExtension('EXT_color_buffer_float')) throw new Unsupported('this browser cannot draw into float textures (EXT_color_buffer_float missing)');
+}
+function lcg(seed) { var s = seed >>> 0; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+
+/* ---------- timed loop ---------- */
+async function runFor(ctx, budgetS, work) {
+  /* work(n) issues n units and waits until the GPU finished them. Returns units per second. */
+  ctx.resetDeadline();
+  if (ctx.stop()) return null;
+  await work(1); /* warm up: compiles shaders, allocates */
+  var n = 1, units = 0, ms = 0, t0 = now();
+  while (!ctx.stop() && now() - t0 < budgetS * 1000 && ctx.left() > 0) {
+    var b0 = now(); await work(n); var dt = now() - b0;
+    units += n; ms += dt;
+    n = Math.max(1, Math.min(n * 4, Math.round(n * 70 / Math.max(dt, 0.2))));
+    await sleep0();
+  }
+  if (!units) return null;
+  return { units: units, ms: ms, perSec: units / (ms / 1000), msPer: ms / units };
+}
+
+/* ---------- context for each test ---------- */
+function makeCtx(mode, idx, total) {
+  var cfg = MODES[mode], ctx = {
+    mode: mode, smoke: mode === 'smoke', b: cfg.b, gls: [], rows: [], notes: [], dl: 0, sub: 0, idx: idx,
+    capBytes: 0,
+    stop: function () { return STOPPED || ctx.lostAny(); },
+    lostAny: function () { return ctx.gls.some(function (g) { return g.lost; }); },
+    left: function () { return ctx.dl - now(); },
+    resetDeadline: function () { ctx.dl = now() + (ctx.smoke ? 3 : HARD_LIMIT_S) * 1000; },
+    row: function (k, v, n) { ctx.rows.push({ k: k, v: String(v), n: n === undefined ? null : n }); render(); },
+    note: function (s) { ctx.notes.push(s); },
+    prog: function (f) { ctx.sub = f; progress((idx + f) / total); },
+    cleanup: function () {
+      ctx.gls.forEach(function (g) {
+        try { var e = g.gl.getExtension('WEBGL_lose_context'); if (e && !g.lost) e.loseContext(); } catch (er) { /* ignore */ }
+      });
+      ctx.gls.length = 0;
+    }
+  };
+  ctx.resetDeadline();
+  var gb = Number($('cap').value) || 4;
+  ctx.capBytes = ctx.smoke ? 16e6 : Math.min(gb, mode === 'quick' ? 2 : 99) * 1e9;
+  return ctx;
+}
+
+/* ================= 0 SYSTEM ================= */
+function gpuInfoFrom(gl) {
+  var d = gl.getExtension('WEBGL_debug_renderer_info');
+  return { ren: d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), ven: d ? gl.getParameter(d.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR), masked: !d };
+}
+function classify(name) {
+  var intel = /intel/i.test(name), amd = /amd|radeon|\bati\b/i.test(name);
+  return { intel: intel, amd: amd, nv: /nvidia|geforce/i.test(name), soft: /swiftshader|llvmpipe|software|basic render/i.test(name) };
+}
+function showGpuBanner(name, where) {
+  var c = classify(name);
+  $('gpuLine').textContent = 'Graphics card Chrome gave this page: ' + name;
+  var wrong = c.intel && !c.amd;
+  $('wrongGpu').style.display = wrong ? 'block' : 'none';
+  if (wrong) $('wrongGpuText').textContent = 'This page is running on "' + name + '" (' + (where || 'WebGL') + '). That is the small chip inside the Mac, so every number below would describe the wrong card.';
+  return wrong;
+}
+async function tSys(ctx) {
+  var g = mkGL(ctx), gl = g.gl, gi = gpuInfoFrom(gl), c = classify(gi.ren);
+  GPUNAME = gi.ren; M.gpuName = gi.ren;
+  ctx.row('GPU Chrome gave this page', gi.ren);
+  ctx.row('GPU vendor string', gi.ven);
+  var kind = c.intel && !c.amd ? 'INTEGRATED Intel (probably the WRONG GPU)' : c.amd ? 'AMD (looks like the Radeon)' : c.nv ? 'NVIDIA' : c.soft ? 'SOFTWARE rendering (no real GPU)' : 'unknown';
+  ctx.row('Kind of GPU', kind); M.gpuKind = c.intel && !c.amd ? 'intel' : c.amd ? 'amd' : c.soft ? 'soft' : 'other';
+  showGpuBanner(gi.ren, 'WebGL2');
+  try {
+    var g2 = mkGL(ctx, 'low-power'); var n2 = gpuInfoFrom(g2.gl).ren;
+    ctx.row('GPU when a page asks for low power', n2);
+  } catch (e) { ctx.row('GPU when a page asks for low power', 'could not check'); }
+  ctx.row('WebGL version', gl.getParameter(gl.VERSION));
+  var lim = [['Max texture size', gl.MAX_TEXTURE_SIZE], ['Max renderbuffer size', gl.MAX_RENDERBUFFER_SIZE], ['Max 3D texture size', gl.MAX_3D_TEXTURE_SIZE], ['Max array texture layers', gl.MAX_ARRAY_TEXTURE_LAYERS],
+    ['Max draw buffers (MRT)', gl.MAX_DRAW_BUFFERS], ['Max colour attachments', gl.MAX_COLOR_ATTACHMENTS], ['Max texture units (fragment)', gl.MAX_TEXTURE_IMAGE_UNITS], ['Max MSAA samples', gl.MAX_SAMPLES],
+    ['Max vertex attributes', gl.MAX_VERTEX_ATTRIBS], ['Max uniform vectors (fragment)', gl.MAX_FRAGMENT_UNIFORM_VECTORS], ['Max transform feedback separate attribs', gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS]];
+  lim.forEach(function (l) { var v = gl.getParameter(l[1]); ctx.row(l[0], v, v); M['lim_' + l[0]] = v; });
+  var yn = function (b) { return b ? 'yes' : 'no'; };
+  var cbf = !!gl.getExtension('EXT_color_buffer_float'); M.colorBufferFloat = cbf;
+  ctx.row('Draw into float textures (EXT_color_buffer_float)', yn(cbf));
+  ctx.row('Draw into half-float textures', yn(cbf || !!gl.getExtension('EXT_color_buffer_half_float')));
+  ctx.row('Blend into float32 textures (EXT_float_blend)', yn(gl.getExtension('EXT_float_blend')));
+  ctx.row('Smooth filtering of float32 textures', yn(gl.getExtension('OES_texture_float_linear')));
+  var an = gl.getExtension('EXT_texture_filter_anisotropic');
+  var anv = an ? gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0;
+  ctx.row('Anisotropic filtering max', an ? anv + 'x' : 'not available', anv);
+  ctx.row('Parallel shader compile', yn(gl.getExtension('KHR_parallel_shader_compile')));
+  var dpr = window.devicePixelRatio || 1;
+  ctx.row('devicePixelRatio', dpr, dpr);
+  ctx.row('Screen size (CSS pixels / real pixels)', screen.width + 'x' + screen.height + ' / ' + Math.round(screen.width * dpr) + 'x' + Math.round(screen.height * dpr));
+  ctx.row('Page canvas if it filled this window (real pixels)', Math.round(innerWidth * dpr) + 'x' + Math.round(innerHeight * dpr));
+  ctx.row('CPU threads / device memory', (navigator.hardwareConcurrency || '?') + ' / ' + (navigator.deviceMemory ? navigator.deviceMemory + ' GB (capped by Chrome)' : '?'));
+  ctx.row('Browser', browserName());
+  /* WebGPU */
+  if (!navigator.gpu) { ctx.row('WebGPU', 'not available here (navigator.gpu missing). Needs a recent Chrome and https or file.'); M.webgpu = false; }
+  else {
+    var prefs = ['high-performance', 'low-power'];
+    for (var i = 0; i < prefs.length; i++) {
+      try {
+        var ad = await navigator.gpu.requestAdapter({ powerPreference: prefs[i] });
+        if (!ad) { ctx.row('WebGPU adapter (' + prefs[i] + ')', 'none given'); continue; }
+        var inf = ad.info || (ad.requestAdapterInfo ? await ad.requestAdapterInfo() : {});
+        var nm = [inf.vendor, inf.architecture, inf.device, inf.description].filter(Boolean).join(' / ') || 'adapter present, no name given';
+        ctx.row('WebGPU adapter (' + prefs[i] + ')', nm);
+        if (i === 0) {
+          M.webgpu = true; M.webgpuName = nm;
+          if (classify(nm).intel && !classify(nm).amd) showGpuBanner(nm, 'WebGPU');
+          var L = ad.limits, keys = ['maxBufferSize', 'maxStorageBufferBindingSize', 'maxUniformBufferBindingSize', 'maxComputeWorkgroupSizeX', 'maxComputeWorkgroupSizeY', 'maxComputeWorkgroupSizeZ',
+            'maxComputeInvocationsPerWorkgroup', 'maxComputeWorkgroupStorageSize', 'maxComputeWorkgroupsPerDimension', 'maxStorageBuffersPerShaderStage', 'maxTextureDimension2D', 'maxTextureDimension3D', 'maxBindGroups'];
+          keys.forEach(function (k) { if (L[k] !== undefined) ctx.row('WebGPU limit ' + k, L[k], L[k]); });
+          M.webgpuMaxBuf = L.maxBufferSize; M.webgpuMaxStorage = L.maxStorageBufferBindingSize;
+          ctx.row('WebGPU features', Array.from(ad.features || []).join(', ') || 'none listed');
+        }
+      } catch (e) { ctx.row('WebGPU adapter (' + prefs[i] + ')', 'request failed: ' + e.message); }
+    }
+  }
+}
+
+/* ================= 1 FILL RATE ================= */
+async function tFill(ctx) {
+  var g = mkGL(ctx), gl = g.gl, s = ctx.smoke ? 8 : 1;
+  var p = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform vec4 uC;out vec4 o;void main(){o=uC;}');
+  gl.useProgram(p); var uC = U(gl, p, 'uC');
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  var sizes = [[1920, 1080, '1080p'], [3840, 2160, '4K']];
+  for (var i = 0; i < sizes.length && !ctx.stop(); i++) {
+    var w = sizes[i][0] / s, h = sizes[i][1] / s;
+    ctx.prog(i / sizes.length);
+    var t = mkTex(gl, w, h, gl.RGBA8), f = mkFbo(gl, [t]); gl.viewport(0, 0, w, h);
+    var r = await runFor(ctx, ctx.b, function (n) {
+      for (var k = 0; k < n * 10; k++) { gl.uniform4f(uC, (k & 7) / 8, 0.5, 0.2, 0.3); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+      g.sync();
+    });
+    if (r) {
+      var pps = r.perSec * 10 * w * h;
+      ctx.row('Blended full-screen layers at ' + sizes[i][2] + (s > 1 ? ' (shrunk for smoke)' : '') + ' ' + w + 'x' + h, si(pps, 'pixels/s') + ' (' + fx(pps / (w * h), 0) + ' layers per second)', pps);
+      M['fill_' + sizes[i][2]] = pps;
+    }
+    gl.deleteFramebuffer(f); gl.deleteTexture(t);
+  }
+  glErr(gl, 'fill test');
+}
+
+/* ================= 2 TRIANGLES ================= */
+async function tTri(ctx) {
+  var g = mkGL(ctx), gl = g.gl, gN = ctx.smoke ? 16 : 224;
+  var W = ctx.smoke ? 160 : 1280, H = ctx.smoke ? 90 : 720;
+  var vs = new Float32Array((gN + 1) * (gN + 1) * 2), ix = new Uint32Array(gN * gN * 6), q = 0, j = 0;
+  for (var y = 0; y <= gN; y++) for (var x = 0; x <= gN; x++) { vs[q++] = x / gN * 2 - 1; vs[q++] = y / gN * 2 - 1; }
+  for (y = 0; y < gN; y++) for (x = 0; x < gN; x++) { var a = y * (gN + 1) + x, b = a + 1, c = a + gN + 1, d = c + 1; ix[j++] = a; ix[j++] = b; ix[j++] = c; ix[j++] = b; ix[j++] = d; ix[j++] = c; }
+  var trisPer = gN * gN * 2;
+  var vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  var vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, vs, gl.STATIC_DRAW);
+  var ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ix, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  var p = mkProg(gl, '#version 300 es\nlayout(location=0) in vec2 aP;out vec3 vN;void main(){float f=float(gl_InstanceID);vec2 o=(vec2(fract(f*0.6180339),fract(f*0.4142135))-0.5)*1.5;float z=fract(f*0.7548777)*1.6-0.8;vec2 q=aP*0.25+o;vN=normalize(vec3(cos(aP.x*20.+f)*.5,0.3,1.));gl_Position=vec4(q,z+sin(aP.x*20.+f)*0.02,1.);}',
+    '#version 300 es\nprecision mediump float;in vec3 vN;uniform float uLit;out vec4 o;void main(){if(uLit>0.5){vec3 n=normalize(vN);float d=max(dot(n,normalize(vec3(.4,.7,.6))),0.)*.8+max(dot(n,vec3(-.5,.2,.3)),0.)*.3;o=vec4(vec3(d)*vec3(.9,.8,.6)+.1,1.);}else o=vec4(.5,.6,.7,1.);}');
+  gl.useProgram(p); var uLit = U(gl, p, 'uLit');
+  var t = mkTex(gl, W, H, gl.RGBA8), f = mkFbo(gl, [t]);
+  var rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, W, H);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('depth framebuffer incomplete');
+  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 1);
+  var targets = ctx.smoke ? [2000, 8000, 30000] : [1e6, 5e6, 2e7], total = targets.length * 2, k = 0;
+  for (var ti = 0; ti < targets.length; ti++) {
+    var inst = Math.max(1, Math.round(targets[ti] / trisPer)), tris = inst * trisPer;
+    for (var dv = 0; dv < 2 && !ctx.stop(); dv++, k++) {
+      ctx.prog(k / total);
+      if (dv) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true); } else { gl.disable(gl.DEPTH_TEST); gl.depthMask(false); }
+      gl.uniform1f(uLit, dv);
+      gl.depthMask(true); /* so clear can clear depth */
+      var r = await runFor(ctx, ctx.b, function (n) {
+        for (var u = 0; u < n; u++) { gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); if (!dv) gl.depthMask(false); gl.drawElementsInstanced(gl.TRIANGLES, ix.length, gl.UNSIGNED_INT, 0, inst); gl.depthMask(true); }
+        g.sync();
+      });
+      if (r) {
+        var tps = r.perSec * tris;
+        ctx.row(si(tris, '').trim() + ' triangles, ' + (dv ? 'depth test + lit shader' : 'no depth, flat shader'), si(tps, 'triangles/s') + ' (' + fx(r.msPer, 1) + ' ms per frame)', tps);
+        M['tri_' + targets[ti] + '_' + dv] = tps; M['triFrameMs_' + targets[ti] + '_' + dv] = r.msPer;
+      }
+    }
+  }
+  glErr(gl, 'triangle test');
+}
+
+/* ================= 3 SHADER MATH ================= */
+async function tMath(ctx) {
+  var g = mkGL(ctx), gl = g.gl, W = ctx.smoke ? 64 : 1920, H = ctx.smoke ? 36 : 1080, ITER = ctx.smoke ? 32 : 1024;
+  var p = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform int uIter;uniform vec4 uA,uB;out vec4 o;void main(){vec4 v=vec4(gl_FragCoord.xy*0.001,0.5,0.25);vec4 a=uA,b=uB;for(int i=0;i<uIter;i++){v=v*a+b;v=v*b+a;}o=fract(v);}');
+  gl.useProgram(p); gl.uniform1i(U(gl, p, 'uIter'), ITER); gl.uniform4f(U(gl, p, 'uA'), 0.99, 0.98, 0.97, 0.96); gl.uniform4f(U(gl, p, 'uB'), 0.011, 0.012, 0.013, 0.014);
+  var t = mkTex(gl, W, H, gl.RGBA8), f = mkFbo(gl, [t]); gl.viewport(0, 0, W, H);
+  var r = await runFor(ctx, ctx.b * 1.5, function (n) { for (var i = 0; i < n; i++) gl.drawArrays(gl.TRIANGLES, 0, 3); g.sync(); });
+  if (r) {
+    var flops = W * H * ITER * 16 * r.perSec;
+    ctx.row('Rough fp32 speed (ROUGH FIGURE: multiply-add loop, counted as 2 operations each)', si(flops, 'FLOPS').replace('FLOPS', 'FLOPS') + ' = ' + fx(flops / 1e9, 0) + ' GFLOPS', flops / 1e9);
+    ctx.row('Frame of ' + W + 'x' + H + ' pixels, ' + ITER + ' loop turns', fx(r.msPer, 2) + ' ms');
+    ctx.note('Rough: real games mix memory and maths, and drivers may fuse or reorder. Use it to compare cards, not as a promise.');
+    M.gflops = flops / 1e9;
+  }
+  glErr(gl, 'math test');
+}
+
+/* ================= 4 MEMORY BANDWIDTH ================= */
+async function tBand(ctx) {
+  var g = mkGL(ctx), gl = g.gl; needFloat(gl);
+  var N = ctx.smoke ? 128 : 2048, bytes = N * N * 16;
+  var A = mkTex(gl, N, N, gl.RGBA32F), B = mkTex(gl, N, N, gl.RGBA32F), S = mkTex(gl, N / 4, N / 4, gl.RGBA8);
+  var fA = mkFbo(gl, [A]); gl.clearBufferfv(gl.COLOR, 0, [0.25, 0.5, 0.75, 1]);
+  var fB = mkFbo(gl, [B]); gl.clearBufferfv(gl.COLOR, 0, [0.5, 0.25, 0.75, 1]);
+  var fS = mkFbo(gl, [S]);
+  var rd = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform highp sampler2D uT;out vec4 o;void main(){ivec2 b=ivec2(gl_FragCoord.xy)*4;vec4 s=vec4(0.);for(int i=0;i<16;i++)s+=texelFetch(uT,b+ivec2(i&3,i>>2),0);o=s*(1./16.);}');
+  var cp = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform highp sampler2D uT;out vec4 o;void main(){o=texelFetch(uT,ivec2(gl_FragCoord.xy),0);}');
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, A);
+  var tests = [
+    ['Read speed (shader reads ' + mb(bytes) + ' texture)', bytes, function (n) { gl.useProgram(rd); gl.uniform1i(U(gl, rd, 'uT'), 0); gl.bindFramebuffer(gl.FRAMEBUFFER, fS); gl.viewport(0, 0, N / 4, N / 4); gl.bindTexture(gl.TEXTURE_2D, A); for (var i = 0; i < n; i++) gl.drawArrays(gl.TRIANGLES, 0, 3); g.sync(); }, 'band_read'],
+    ['Copy speed with a shader (reads and writes ' + mb(bytes) + ')', bytes * 2, function (n) { gl.useProgram(cp); gl.uniform1i(U(gl, cp, 'uT'), 0); gl.bindFramebuffer(gl.FRAMEBUFFER, fB); gl.viewport(0, 0, N, N); gl.bindTexture(gl.TEXTURE_2D, A); for (var i = 0; i < n; i++) gl.drawArrays(gl.TRIANGLES, 0, 3); g.sync(); }, 'band_copy'],
+    ['Copy speed with blitFramebuffer (reads and writes ' + mb(bytes) + ')', bytes * 2, function (n) { gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fA); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fB); for (var i = 0; i < n; i++) gl.blitFramebuffer(0, 0, N, N, 0, 0, N, N, gl.COLOR_BUFFER_BIT, gl.NEAREST); g.sync(); }, 'band_blit']
+  ];
+  for (var i = 0; i < tests.length && !ctx.stop(); i++) {
+    ctx.prog(i / tests.length);
+    var r = await runFor(ctx, ctx.b, tests[i][2]);
+    if (r) { var gbs = tests[i][1] * r.perSec / 1e9; ctx.row(tests[i][0], fx(gbs, 1) + ' GB/s', gbs); M[tests[i][3]] = gbs; }
+  }
+  glErr(gl, 'bandwidth test');
+}
+
+/* ================= 5 VRAM FILL ================= */
+async function tVram(ctx) {
+  var g = mkGL(ctx), gl = g.gl; needFloat(gl);
+  var tp = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform highp sampler2D uT;out vec4 o;void main(){o=texelFetch(uT,ivec2(0),0);}');
+  gl.useProgram(tp); gl.uniform1i(U(gl, tp, 'uT'), 0);
+  var D = ctx.smoke ? 256 : 4096;
+  var rnd = lcg(7);
+  var phases = [
+    { key: 'rgba8', name: (ctx.smoke ? D + 'x' + D : '4K') + ' RGBA8 texture with mipmaps', ifmt: gl.RGBA8, fmt: gl.RGBA, type: gl.UNSIGNED_BYTE, bpp: 4, mips: true },
+    { key: 'rgba32f', name: D + 'x' + D + ' RGBA32F field', ifmt: gl.RGBA32F, fmt: gl.RGBA, type: gl.FLOAT, bpp: 16, mips: false }
+  ];
+  for (var pi = 0; pi < phases.length && !ctx.stop(); pi++) {
+    var ph = phases[pi]; ctx.resetDeadline(); ctx.prog(pi / 2);
+    var levels = ph.mips ? Math.floor(Math.log2(D)) + 1 : 1, total = 0;
+    for (var l = 0, s = D; l < levels; l++, s = Math.max(1, s >> 1)) total += s * s * ph.bpp;
+    var rows = Math.max(1, Math.min(D, Math.floor(32e6 / (D * ph.bpp)))), chunk;
+    if (ph.type === gl.FLOAT) { chunk = new Float32Array(D * rows * 4); for (var i = 0; i < chunk.length; i += 7) chunk[i] = rnd(); }
+    else { chunk = new Uint8Array(D * rows * 4); for (i = 0; i < chunk.length; i++) chunk[i] = (rnd() * 256) | 0; }
+    var texs = [], upT = 0, upB = 0, speeds = [], why = '';
+    gl.bindFramebuffer(gl.FRAMEBUFFER, g.sFbo); gl.viewport(0, 0, 4, 4);
+    while (true) {
+      if (ctx.stop()) { why = STOPPED ? 'you pressed STOP' : 'the graphics context was lost'; break; }
+      if ((texs.length + 1) * total > ctx.capBytes) { why = 'reached your memory limit of ' + mb(ctx.capBytes); break; }
+      if (ctx.left() <= 0) { why = 'time budget of ' + (ctx.smoke ? 3 : HARD_LIMIT_S) + ' s used up (so "at least")'; break; }
+      var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, levels, ph.ifmt, D, D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      var e = gl.getError();
+      if (e) { gl.deleteTexture(t); why = 'GPU refused more memory (GL error 0x' + e.toString(16) + ')'; break; }
+      var t0 = now();
+      for (var y = 0; y < D; y += rows) { gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, y, D, Math.min(rows, D - y), ph.fmt, ph.type, chunk); }
+      gl.drawArrays(gl.TRIANGLES, 0, 3); g.sync();
+      var dt = now() - t0; e = gl.getError();
+      if (e || g.lost) { gl.deleteTexture(t); why = g.lost ? 'the graphics context was lost (GPU overcommitted)' : 'GPU error 0x' + e.toString(16) + ' while uploading'; break; }
+      if (levels > 1) { gl.generateMipmap(gl.TEXTURE_2D); g.sync(); }
+      texs.push(t); upT += dt; upB += D * D * ph.bpp; speeds.push(D * D * ph.bpp / dt / 1e6);
+      if (texs.length % 3 === 0) { $('cur').textContent = 'Test 5: holding ' + texs.length + ' ' + ph.key + ' textures (' + mb(texs.length * total) + ')'; await sleep0(); }
+    }
+    var gb = texs.length * total / 1e9;
+    ctx.row(ph.name + ' (' + mb(total) + ' each): how many fit', texs.length + ' (' + fx(gb, 2) + ' GB in total). Stopped because: ' + why, texs.length);
+    if (speeds.length) {
+      var avg = upB / upT / 1e6; speeds.sort(function (a, b) { return a - b; });
+      ctx.row(ph.name + ': upload speed CPU to GPU (the link, shows the Thunderbolt limit)', fx(avg, 2) + ' GB/s average (slowest ' + fx(speeds[0], 2) + ', fastest ' + fx(speeds[speeds.length - 1], 2) + ')', avg);
+      M['upload_' + ph.key] = avg;
+    }
+    M['vram_' + ph.key] = { count: texs.length, gb: gb, why: why, eachBytes: total, capped: /limit|time budget/.test(why) };
+    for (i = 0; i < texs.length; i++) gl.deleteTexture(texs[i]);
+    gl.finish(); chunk = null; await sleep0();
+  }
+}
+
+/* ================= 6 READBACK ================= */
+async function tRead(ctx) {
+  var g = mkGL(ctx), gl = g.gl; needFloat(gl);
+  var p = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform float uF;out vec4 o;void main(){o=vec4(gl_FragCoord.xy*0.001,uF,1.);}');
+  gl.useProgram(p); var uF = U(gl, p, 'uF');
+  var sizes = ctx.smoke ? [64, 128] : [1024, 2048], si_ = 0;
+  for (var si2 = 0; si2 < sizes.length && !ctx.stop(); si2++) {
+    var N = sizes[si2], bytes = N * N * 16, dst = new Float32Array(N * N * 4);
+    ctx.prog(si2 / sizes.length);
+    var t = mkTex(gl, N, N, gl.RGBA32F), f = mkFbo(gl, [t]); gl.viewport(0, 0, N, N);
+    var frame = 0;
+    var r = await runFor(ctx, ctx.b, function (n) {
+      for (var i = 0; i < n; i++) { gl.uniform1f(uF, (frame++) & 255); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, dst); }
+    });
+    if (r) {
+      ctx.row(N + 'x' + N + ' float texture, plain readPixels (CPU waits)', fx(r.msPer, 2) + ' ms per read = ' + fx(bytes / r.msPer / 1e6, 2) + ' GB/s', r.msPer);
+      M['read_sync_' + N] = r.msPer;
+    }
+    /* asynchronous: pixel pack buffers plus a fence, poll without blocking */
+    var pbos = [0, 1, 2].map(function () { var b = gl.createBuffer(); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, b); gl.bufferData(gl.PIXEL_PACK_BUFFER, bytes, gl.STREAM_READ); return b; });
+    var inflight = [], issued = 0, done = 0, cpuMs = 0, lat = [], ts = now(), tl = ts;
+    ctx.resetDeadline();
+    while (!ctx.stop() && now() - ts < ctx.b * 1000 && ctx.left() > 0) {
+      if (inflight.length < 3) {
+        var b0 = now(); gl.uniform1f(uF, (frame++) & 255); gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbos[issued % 3]); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, 0);
+        var fs = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); cpuMs += now() - b0;
+        inflight.push({ s: fs, i: issued % 3, t: now() }); issued++;
+      }
+      while (inflight.length) {
+        var fl = inflight[0], st = gl.clientWaitSync(fl.s, 0, 0);
+        if (st === gl.ALREADY_SIGNALED || st === gl.CONDITION_SATISFIED) {
+          var b1 = now(); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbos[fl.i]); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, dst);
+          cpuMs += now() - b1; lat.push(now() - fl.t); gl.deleteSync(fl.s); inflight.shift(); done++; tl = now();
+        } else break;
+      }
+      await tick();
+    }
+    var drain = now();
+    while (inflight.length && now() - drain < 1000 && !ctx.stop()) { await tick(); var q = inflight[0]; var s2 = gl.clientWaitSync(q.s, 0, 0); if (s2 === gl.ALREADY_SIGNALED || s2 === gl.CONDITION_SATISFIED) { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbos[q.i]); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, dst); lat.push(now() - q.t); gl.deleteSync(q.s); inflight.shift(); done++; tl = now(); } }
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    if (done > 0) {
+      var rate = done / ((tl - ts) / 1000); lat.sort(function (a, b) { return a - b; });
+      ctx.row(N + 'x' + N + ' float texture, async readback (PBO + fence, CPU keeps working)', fx(rate, 1) + ' reads/s = ' + fx(rate * bytes / 1e9, 2) + ' GB/s; result arrives ' + fx(lat[lat.length >> 1], 1) + ' ms after the request', rate);
+      ctx.row(N + 'x' + N + ' async: CPU time spent per read', fx(cpuMs / done, 2) + ' ms', cpuMs / done);
+      M['read_async_' + N] = rate; M['read_async_lat_' + N] = lat[lat.length >> 1]; M['read_async_cpu_' + N] = cpuMs / done;
+    } else ctx.row(N + 'x' + N + ' async readback', 'no read finished within the time budget', 0);
+    pbos.forEach(function (b) { gl.deleteBuffer(b); }); gl.deleteFramebuffer(f); gl.deleteTexture(t);
+  }
+}
+
+/* ================= 7a GPGPU WATER ================= */
+var WATER_COMMON = 'const float DT=0.2,G=1.0;\n';
+async function tWater(ctx) {
+  var g = mkGL(ctx), gl = g.gl; needFloat(gl);
+  var p = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform highp sampler2D s0;uniform highp sampler2D s1;uniform int uN;layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;\n' +
+    'vec4 L(ivec2 p){return texelFetch(s0,clamp(p,ivec2(0),ivec2(uN-1)),0);}\n' +
+    'void main(){ivec2 p=ivec2(gl_FragCoord.xy);vec4 c=L(p),l=L(p-ivec2(1,0)),r=L(p+ivec2(1,0)),d=L(p-ivec2(0,1)),u=L(p+ivec2(0,1));\n' +
+    'float h=c.x-0.2*0.5*((r.y-l.y)+(u.z-d.z));float qx=(c.y-0.2*0.5*(r.x-l.x))*0.998;float qy=(c.z-0.2*0.5*(u.x-d.x))*0.998;\n' +
+    'vec2 pc=vec2(0.3,0.6)*float(uN);vec2 dd=vec2(p)-pc;h+=0.02*exp(-dot(dd,dd)*0.002);\n' +
+    'vec2 vel=vec2(c.y,c.z)/max(c.x,0.2);ivec2 sp=p-ivec2(floor(vel*3.+0.5));float e1=L(sp).w;float foam=texelFetch(s1,p,0).r*0.98+length(vel)*0.02;\n' +
+    'o0=vec4(clamp(h,0.2,3.),clamp(qx,-2.,2.),clamp(qy,-2.,2.),e1);o1=vec4(foam,0.,0.,0.);}');
+  gl.useProgram(p); gl.uniform1i(U(gl, p, 's0'), 0); gl.uniform1i(U(gl, p, 's1'), 1);
+  var uN = U(gl, p, 'uN');
+  var sizes = ctx.smoke ? [64, 128, 256, 512] : [512, 1024, 2048, 4096], prev = Infinity;
+  M.water = {};
+  for (var si2 = 0; si2 < sizes.length && !ctx.stop(); si2++) {
+    var N = sizes[si2]; ctx.prog(si2 / sizes.length);
+    if (prev < 5) { ctx.row(N + 'x' + N + ' grid', 'skipped (the smaller grid was already too slow)', 0); continue; }
+    var T0 = [], T1 = [], F = [];
+    try {
+      for (var k = 0; k < 2; k++) { T0.push(mkTex(gl, N, N, gl.RGBA32F)); T1.push(mkTex(gl, N, N, gl.R32F)); F.push(mkFbo(gl, [T0[k], T1[k]])); gl.clearBufferfv(gl.COLOR, 0, [1, 0, 0, 0]); gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, 0]); }
+      glErr(gl, 'allocating the ' + N + ' grid');
+    } catch (e) { ctx.row(N + 'x' + N + ' grid (' + mb(N * N * 40) + ' with ping-pong)', 'could not allocate: ' + e.message, 0); break; }
+    gl.viewport(0, 0, N, N); gl.uniform1i(uN, N);
+    var cur = 0;
+    var r = await runFor(ctx, ctx.b, function (n) {
+      for (var i = 0; i < n; i++) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, F[1 - cur]);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T0[cur]); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T1[cur]);
+        gl.drawArrays(gl.TRIANGLES, 0, 3); cur = 1 - cur;
+      }
+      g.sync();
+    });
+    if (r) {
+      ctx.row(N + 'x' + N + ' grid, 5 fields (' + mb(N * N * 40) + ' with ping-pong)', fx(r.perSec, 1) + ' steps/s (' + fx(r.msPer, 2) + ' ms per step) ' + (r.perSec >= 60 ? 'holds 60' : 'below 60'), r.perSec);
+      M.water[N] = r.perSec; prev = r.perSec;
+    }
+    for (k = 0; k < 2; k++) { gl.deleteFramebuffer(F[k]); gl.deleteTexture(T0[k]); gl.deleteTexture(T1[k]); }
+    gl.finish();
+  }
+  var best = 0; Object.keys(M.water).forEach(function (n) { if (M.water[n] >= 60 && +n > best) best = +n; });
+  ctx.row('Largest grid that holds 60 steps per second', best ? best + 'x' + best : 'none of the tested sizes', best);
+  M.waterBest = best;
+  ctx.note('The physics is a stand-in with the same memory pattern as a real shallow-water step (5 neighbour reads, 5 fields written). The speed carries over; the picture would not look like water.');
+}
+
+/* ================= 7b WILDLIFE ================= */
+async function tWild(ctx) {
+  var g = mkGL(ctx), gl = g.gl; needFloat(gl);
+  var F = ctx.smoke ? 64 : 256, AW = 1024;
+  var splat = mkProg(gl, '#version 300 es\nprecision highp float;uniform highp sampler2D uA;uniform int uW;out vec4 vV;void main(){ivec2 q=ivec2(gl_VertexID%uW,gl_VertexID/uW);vec4 a=texelFetch(uA,q,0);gl_Position=vec4(a.xy*2.-1.,0.,1.);gl_PointSize=1.;vV=vec4(1.,a.zw*100.,0.);}',
+    '#version 300 es\nprecision highp float;in vec4 vV;out vec4 o;void main(){o=vV;}');
+  var upd = mkProg(gl, FS_VS, '#version 300 es\nprecision highp float;uniform highp sampler2D uA;uniform sampler2D uF;uniform float uInvF;uniform float uT;out vec4 o;\n' +
+    'float hs(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}\n' +
+    'void main(){ivec2 q=ivec2(gl_FragCoord.xy);vec4 a=texelFetch(uA,q,0);vec2 p=a.xy,v=a.zw;vec4 f=texture(uF,p);\n' +
+    'vec4 fl=texture(uF,p-vec2(uInvF,0.)),fr=texture(uF,p+vec2(uInvF,0.)),fd=texture(uF,p-vec2(0.,uInvF)),fu=texture(uF,p+vec2(0.,uInvF));\n' +
+    'vec2 gr=vec2(fr.x-fl.x,fu.x-fd.x);vec2 av=f.yz*0.01/max(f.x,1.);\n' +
+    'v+=(av-v)*0.05+gr*(f.x<8.?0.0004:-0.0006)+(vec2(hs(p+uT),hs(p.yx-uT))-0.5)*0.0004;float sp=length(v);if(sp>0.004)v*=0.004/sp;\n' +
+    'o=vec4(fract(p+v),v);}');
+  gl.useProgram(upd); gl.uniform1i(U(gl, upd, 'uA'), 0); gl.uniform1i(U(gl, upd, 'uF'), 1); gl.uniform1f(U(gl, upd, 'uInvF'), 1 / F);
+  gl.useProgram(splat); gl.uniform1i(U(gl, splat, 'uA'), 0); gl.uniform1i(U(gl, splat, 'uW'), AW);
+  var uT = U(gl, upd, 'uT');
+  var Ns = ctx.smoke ? [500, 2000, 8000] : [10000, 100000, 1000000], prev = Infinity; M.wild = {};
+  var ft = mkTex(gl, F, F, gl.RGBA16F, gl.LINEAR), ff = mkFbo(gl, [ft]);
+  for (var ni = 0; ni < Ns.length && !ctx.stop(); ni++) {
+    var N = Ns[ni], rows = Math.ceil(N / AW); ctx.prog(ni / Ns.length);
+    if (prev < 5) { ctx.row(N + ' agents', 'skipped (smaller count was already too slow)', 0); continue; }
+    var rnd = lcg(11 + ni), data = new Float32Array(AW * rows * 4);
+    for (var i = 0; i < N; i++) { data[i * 4] = rnd(); data[i * 4 + 1] = rnd(); data[i * 4 + 2] = (rnd() - 0.5) * 0.004; data[i * 4 + 3] = (rnd() - 0.5) * 0.004; }
+    var A = [], AF = [];
+    try {
+      for (var k = 0; k < 2; k++) { var t = mkTex(gl, AW, rows, gl.RGBA32F); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, AW, rows, gl.RGBA, gl.FLOAT, data); A.push(t); AF.push(mkFbo(gl, [t])); }
+      glErr(gl, 'allocating agents');
+    } catch (e) { ctx.row(N + ' agents', 'could not allocate: ' + e.message, 0); break; }
+    data = null; var cur = 0, step = 0;
+    var r = await runFor(ctx, ctx.b, function (n) {
+      for (var s = 0; s < n; s++) {
+        /* 1 clear the density field, 2 every agent adds itself, 3 every agent reads the field and moves */
+        gl.bindFramebuffer(gl.FRAMEBUFFER, ff); gl.viewport(0, 0, F, F); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+        gl.useProgram(splat); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, A[cur]); gl.drawArrays(gl.POINTS, 0, N);
+        gl.disable(gl.BLEND);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, AF[1 - cur]); gl.viewport(0, 0, AW, rows);
+        gl.useProgram(upd); gl.uniform1f(uT, (step++ & 255) * 0.01);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, A[cur]); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, ft);
+        gl.drawArrays(gl.TRIANGLES, 0, 3); cur = 1 - cur;
+      }
+      g.sync();
+    });
+    if (r) {
+      ctx.row(N.toLocaleString('en-US') + ' agents (flocking from a density field)', fx(r.perSec, 1) + ' steps/s = ' + si(r.perSec * N, 'agent updates/s') + (r.perSec >= 60 ? ', holds 60' : ', below 60'), r.perSec);
+      M.wild[N] = r.perSec; prev = r.perSec;
+    }
+    for (k = 0; k < 2; k++) { gl.deleteFramebuffer(AF[k]); gl.deleteTexture(A[k]); }
+    gl.finish();
+  }
+  ctx.note('Rule used: each agent reads a shared density and average-velocity field (cohesion, alignment, separation). This is the usual cheap way to flock a million agents; it is not exact nearest-neighbour search.');
+}
+
+/* ================= 8 WEBGPU ================= */
+async function getGpu(ctx) {
+  if (!navigator.gpu) throw new Unsupported('WebGPU is not available (navigator.gpu is missing)');
+  if (GPUDEV) return GPUDEV;
+  var ad = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+  if (!ad) throw new Unsupported('WebGPU has no adapter on this machine');
+  var L = ad.limits, req = {};
+  ['maxStorageBufferBindingSize', 'maxBufferSize'].forEach(function (k) { if (L[k] !== undefined) req[k] = L[k]; });
+  var dev;
+  try { dev = await ad.requestDevice({ requiredLimits: req }); } catch (e) { throw new Unsupported('WebGPU device could not be created: ' + e.message); }
+  dev.lost.then(function (i) { GPUDEV = null; M.gpuLost = i.message; });
+  GPUDEV = { ad: ad, dev: dev, L: L }; return GPUDEV;
+}
+async function gpuPipe(dev, layout, code, entry) {
+  dev.pushErrorScope('validation');
+  var mod = dev.createShaderModule({ code: code });
+  var info = mod.getCompilationInfo ? await mod.getCompilationInfo() : { messages: [] };
+  var errs = info.messages.filter(function (m) { return m.type === 'error'; }).map(function (m) { return 'line ' + m.lineNum + ': ' + m.message; });
+  var pl = dev.createComputePipeline({ layout: layout, compute: { module: mod, entryPoint: entry } });
+  var e = await dev.popErrorScope();
+  if (errs.length || e) throw new Error('WGSL ' + entry + ' failed: ' + (errs[0] || e.message));
+  return pl;
+}
+async function scoped(dev, fn) {
+  dev.pushErrorScope('out-of-memory'); dev.pushErrorScope('validation');
+  var v = fn(), e1 = await dev.popErrorScope(), e2 = await dev.popErrorScope();
+  if (e1 || e2) throw new Error((e1 || e2).message);
+  return v;
+}
+var ST = 0x80, CD = 0x08; /* GPUBufferUsage.STORAGE, COPY_DST */
+var WGSL_WATER = '' +
+  'struct Pm{n:u32,a:u32,b:u32,c:u32};\n@group(0) @binding(0) var<uniform> pm:Pm;\n@group(0) @binding(1) var<storage,read> s0:array<vec4<f32>>;\n@group(0) @binding(2) var<storage,read> s1:array<f32>;\n' +
+  '@group(0) @binding(3) var<storage,read_write> d0:array<vec4<f32>>;\n@group(0) @binding(4) var<storage,read_write> d1:array<f32>;\n' +
+  'fn ix(x:i32,y:i32)->u32{let n=i32(pm.n);return u32(clamp(y,0,n-1))*pm.n+u32(clamp(x,0,n-1));}\n' +
+  '@compute @workgroup_size(8,8)\nfn main(@builtin(global_invocation_id) g:vec3<u32>){\n if(g.x>=pm.n||g.y>=pm.n){return;}\n let x=i32(g.x);let y=i32(g.y);\n' +
+  ' let c=s0[ix(x,y)];let l=s0[ix(x-1,y)];let r=s0[ix(x+1,y)];let d=s0[ix(x,y-1)];let u=s0[ix(x,y+1)];\n' +
+  ' var h=c.x-0.2*0.5*((r.y-l.y)+(u.z-d.z));\n var qx=(c.y-0.2*0.5*(r.x-l.x))*0.998;\n var qy=(c.z-0.2*0.5*(u.x-d.x))*0.998;\n' +
+  ' let pc=vec2<f32>(0.3,0.6)*f32(pm.n);let dd=vec2<f32>(f32(x),f32(y))-pc;h=h+0.02*exp(-dot(dd,dd)*0.002);\n' +
+  ' let vel=vec2<f32>(c.y,c.z)/max(c.x,0.2);let sp=vec2<i32>(x,y)-vec2<i32>(floor(vel*3.0+vec2<f32>(0.5)));\n' +
+  ' let e1=s0[ix(sp.x,sp.y)].w;\n let foam=s1[ix(x,y)]*0.98+length(vel)*0.02;\n' +
+  ' d0[ix(x,y)]=vec4<f32>(clamp(h,0.2,3.0),clamp(qx,-2.0,2.0),clamp(qy,-2.0,2.0),e1);\n d1[ix(x,y)]=foam;\n}\n';
+async function tGpuWater(ctx) {
+  var G = await getGpu(ctx), dev = G.dev, L = G.L;
+  var bgl = dev.createBindGroupLayout({ entries: [
+    { binding: 0, visibility: 4, buffer: { type: 'uniform' } }, { binding: 1, visibility: 4, buffer: { type: 'read-only-storage' } }, { binding: 2, visibility: 4, buffer: { type: 'read-only-storage' } },
+    { binding: 3, visibility: 4, buffer: { type: 'storage' } }, { binding: 4, visibility: 4, buffer: { type: 'storage' } }] });
+  var pl = dev.createPipelineLayout({ bindGroupLayouts: [bgl] });
+  var pipe = await gpuPipe(dev, pl, WGSL_WATER, 'main');
+  var sizes = ctx.smoke ? [64, 128, 256, 512] : [512, 1024, 2048, 4096], prev = Infinity; M.gpuWater = {};
+  for (var si2 = 0; si2 < sizes.length && !ctx.stop(); si2++) {
+    var N = sizes[si2]; ctx.prog(si2 / sizes.length);
+    var need = N * N * 16;
+    if (need > L.maxStorageBufferBindingSize || need > L.maxBufferSize) { ctx.row(N + 'x' + N + ' grid', 'needs a ' + mb(need) + ' buffer; this adapter allows ' + mb(Math.min(L.maxStorageBufferBindingSize, L.maxBufferSize)), 0); continue; }
+    if (prev < 5) { ctx.row(N + 'x' + N + ' grid', 'skipped (smaller grid was already too slow)', 0); continue; }
+    var bufs;
+    try {
+      bufs = await scoped(dev, function () {
+        var u = dev.createBuffer({ size: 16, usage: 0x40 | CD }); dev.queue.writeBuffer(u, 0, new Uint32Array([N, 0, 0, 0]));
+        var a0 = dev.createBuffer({ size: need, usage: ST | CD }), b0 = dev.createBuffer({ size: need, usage: ST | CD });
+        var a1 = dev.createBuffer({ size: N * N * 4, usage: ST | CD }), b1 = dev.createBuffer({ size: N * N * 4, usage: ST | CD });
+        return { u: u, a0: a0, b0: b0, a1: a1, b1: b1 };
+      });
+    } catch (e) { ctx.row(N + 'x' + N + ' grid', 'could not allocate: ' + e.message, 0); break; }
+    var mk = function (s0, s1, d0, d1) { return dev.createBindGroup({ layout: bgl, entries: [{ binding: 0, resource: { buffer: bufs.u } }, { binding: 1, resource: { buffer: s0 } }, { binding: 2, resource: { buffer: s1 } }, { binding: 3, resource: { buffer: d0 } }, { binding: 4, resource: { buffer: d1 } }] }); };
+    var bgA = mk(bufs.a0, bufs.a1, bufs.b0, bufs.b1), bgB = mk(bufs.b0, bufs.b1, bufs.a0, bufs.a1), wg = Math.ceil(N / 8), par = 0;
+    var r = await runFor(ctx, ctx.b, async function (n) {
+      var enc = dev.createCommandEncoder(), pass = enc.beginComputePass(); pass.setPipeline(pipe);
+      for (var i = 0; i < n; i++) { pass.setBindGroup(0, par ? bgB : bgA); pass.dispatchWorkgroups(wg, wg); par ^= 1; }
+      pass.end(); dev.queue.submit([enc.finish()]); await dev.queue.onSubmittedWorkDone();
+    });
+    if (r) {
+      ctx.row(N + 'x' + N + ' grid, 5 fields, WebGPU compute', fx(r.perSec, 1) + ' steps/s (' + fx(r.msPer, 2) + ' ms per step) ' + (r.perSec >= 60 ? 'holds 60' : 'below 60'), r.perSec);
+      M.gpuWater[N] = r.perSec; prev = r.perSec;
+    }
+    Object.keys(bufs).forEach(function (k) { bufs[k].destroy(); });
+  }
+  var best = 0; Object.keys(M.gpuWater).forEach(function (n) { if (M.gpuWater[n] >= 60 && +n > best) best = +n; });
+  ctx.row('Largest grid that holds 60 steps per second (WebGPU)', best ? best + 'x' + best : 'none of the tested sizes', best);
+  M.gpuWaterBest = best;
+}
+var WGSL_AG = '' +
+  'struct Pm{n:u32,f:u32,t:u32,p:u32};\n@group(0) @binding(0) var<uniform> pm:Pm;\n@group(0) @binding(1) var<storage,read_write> ag:array<vec4<f32>>;\n@group(0) @binding(2) var<storage,read_write> fld:array<atomic<i32>>;\n' +
+  'fn cellOf(p:vec2<f32>)->vec2<i32>{let f=i32(pm.f);return vec2<i32>(clamp(i32(p.x*f32(f)),0,f-1),clamp(i32(p.y*f32(f)),0,f-1));}\n' +
+  'fn hs(p:vec2<f32>)->f32{return fract(sin(dot(p,vec2<f32>(12.9898,78.233)))*43758.5453);}\n' +
+  '@compute @workgroup_size(64)\nfn clearF(@builtin(global_invocation_id) g:vec3<u32>){let total=pm.f*pm.f*3u;if(g.x<total){atomicStore(&fld[g.x],0);}}\n' +
+  '@compute @workgroup_size(64)\nfn splat(@builtin(global_invocation_id) g:vec3<u32>){if(g.x>=pm.n){return;}let a=ag[g.x];let c=cellOf(a.xy);let b=u32(c.y*i32(pm.f)+c.x)*3u;\n atomicAdd(&fld[b],1);atomicAdd(&fld[b+1u],i32(a.z*100000.0));atomicAdd(&fld[b+2u],i32(a.w*100000.0));}\n' +
+  'fn dens(x:i32,y:i32)->f32{let f=i32(pm.f);return f32(atomicLoad(&fld[u32(clamp(y,0,f-1)*f+clamp(x,0,f-1))*3u]));}\n' +
+  '@compute @workgroup_size(64)\nfn update(@builtin(global_invocation_id) g:vec3<u32>){if(g.x>=pm.n){return;}var a=ag[g.x];let c=cellOf(a.xy);let f=i32(pm.f);\n' +
+  ' let d0=dens(c.x,c.y);let gr=vec2<f32>(dens(c.x+1,c.y)-dens(c.x-1,c.y),dens(c.x,c.y+1)-dens(c.x,c.y-1))*0.5;\n' +
+  ' let b=u32(c.y*f+c.x)*3u;let av=vec2<f32>(f32(atomicLoad(&fld[b+1u])),f32(atomicLoad(&fld[b+2u])))*0.00001/max(d0,1.0);\n' +
+  ' var v=a.zw;var k=-0.0006;if(d0<8.0){k=0.0004;}\n v=v+(av-v)*0.05+gr*k+(vec2<f32>(hs(a.xy+f32(pm.t)*0.01),hs(a.yx-f32(pm.t)*0.01))-vec2<f32>(0.5))*0.0004;\n' +
+  ' let sp=length(v);if(sp>0.004){v=v*(0.004/sp);}\n ag[g.x]=vec4<f32>(fract(a.xy+v),v);}\n';
+var WGSL_NB = '' +
+  'struct Pm{n:u32,a:u32,b:u32,c:u32};\n@group(0) @binding(0) var<uniform> pm:Pm;\n@group(0) @binding(1) var<storage,read> pin:array<vec4<f32>>;\n@group(0) @binding(2) var<storage,read_write> pout:array<vec4<f32>>;\n' +
+  'var<workgroup> tile:array<vec4<f32>,64>;\n' +
+  '@compute @workgroup_size(64)\nfn main(@builtin(global_invocation_id) g:vec3<u32>,@builtin(local_invocation_id) l:vec3<u32>){\n let i=g.x;var p=vec4<f32>(0.0);if(i<pm.n){p=pin[i];}\n var acc=vec2<f32>(0.0);\n' +
+  ' for(var t=0u;t<pm.n;t=t+64u){\n  let j=t+l.x;if(j<pm.n){tile[l.x]=pin[j];}else{tile[l.x]=vec4<f32>(1.0e9,1.0e9,0.0,0.0);}\n  workgroupBarrier();\n' +
+  '  for(var k=0u;k<64u;k=k+1u){let q=tile[k];let d=q.xy-p.xy;let r2=dot(d,d)+0.0001;let inv=inverseSqrt(r2);acc=acc+d*(inv*inv*inv);}\n  workgroupBarrier();\n }\n' +
+  ' if(i<pm.n){let v=p.zw+acc*0.000001;pout[i]=vec4<f32>(fract(p.xy+v),v);}\n}\n';
+async function tGpuAgents(ctx) {
+  var G = await getGpu(ctx), dev = G.dev, F = ctx.smoke ? 64 : 256;
+  var bgl = dev.createBindGroupLayout({ entries: [{ binding: 0, visibility: 4, buffer: { type: 'uniform' } }, { binding: 1, visibility: 4, buffer: { type: 'storage' } }, { binding: 2, visibility: 4, buffer: { type: 'storage' } }] });
+  var pl = dev.createPipelineLayout({ bindGroupLayouts: [bgl] });
+  var pc = await gpuPipe(dev, pl, WGSL_AG, 'clearF'), ps = await gpuPipe(dev, pl, WGSL_AG, 'splat'), pu = await gpuPipe(dev, pl, WGSL_AG, 'update');
+  var Ns = ctx.smoke ? [500, 2000, 8000] : [10000, 100000, 1000000], prev = Infinity; M.gpuWild = {};
+  for (var ni = 0; ni < Ns.length && !ctx.stop(); ni++) {
+    var N = Ns[ni]; ctx.prog(ni / (Ns.length + 3));
+    if (prev < 5) { ctx.row(N + ' agents', 'skipped (smaller count was already too slow)', 0); continue; }
+    var rnd = lcg(5 + ni), data = new Float32Array(N * 4);
+    for (var i = 0; i < N; i++) { data[i * 4] = rnd(); data[i * 4 + 1] = rnd(); data[i * 4 + 2] = (rnd() - 0.5) * 0.004; data[i * 4 + 3] = (rnd() - 0.5) * 0.004; }
+    var bufs;
+    try {
+      bufs = await scoped(dev, function () {
+        var u = dev.createBuffer({ size: 16, usage: 0x40 | CD }); dev.queue.writeBuffer(u, 0, new Uint32Array([N, F, 0, 0]));
+        var a = dev.createBuffer({ size: N * 16, usage: ST | CD }); dev.queue.writeBuffer(a, 0, data);
+        var f = dev.createBuffer({ size: F * F * 12, usage: ST | CD });
+        return { u: u, a: a, f: f };
+      });
+    } catch (e) { ctx.row(N + ' agents', 'could not allocate: ' + e.message, 0); break; }
+    data = null;
+    var bg = dev.createBindGroup({ layout: bgl, entries: [{ binding: 0, resource: { buffer: bufs.u } }, { binding: 1, resource: { buffer: bufs.a } }, { binding: 2, resource: { buffer: bufs.f } }] });
+    var r = await runFor(ctx, ctx.b, async function (n) {
+      var enc = dev.createCommandEncoder(), pass = enc.beginComputePass();
+      for (var s = 0; s < n; s++) {
+        pass.setBindGroup(0, bg);
+        pass.setPipeline(pc); pass.dispatchWorkgroups(Math.ceil(F * F * 3 / 64));
+        pass.setPipeline(ps); pass.dispatchWorkgroups(Math.ceil(N / 64));
+        pass.setPipeline(pu); pass.dispatchWorkgroups(Math.ceil(N / 64));
+      }
+      pass.end(); dev.queue.submit([enc.finish()]); await dev.queue.onSubmittedWorkDone();
+    });
+    if (r) {
+      ctx.row(N.toLocaleString('en-US') + ' agents, density-field flocking, WebGPU compute', fx(r.perSec, 1) + ' steps/s = ' + si(r.perSec * N, 'agent updates/s') + (r.perSec >= 60 ? ', holds 60' : ', below 60'), r.perSec);
+      M.gpuWild[N] = r.perSec; prev = r.perSec;
+    }
+    Object.keys(bufs).forEach(function (k) { bufs[k].destroy(); });
+  }
+  /* all pairs N-body: every agent looks at every other agent (the expensive exact way) */
+  var bgl2 = dev.createBindGroupLayout({ entries: [{ binding: 0, visibility: 4, buffer: { type: 'uniform' } }, { binding: 1, visibility: 4, buffer: { type: 'read-only-storage' } }, { binding: 2, visibility: 4, buffer: { type: 'storage' } }] });
+  var pn = await gpuPipe(dev, dev.createPipelineLayout({ bindGroupLayouts: [bgl2] }), WGSL_NB, 'main');
+  var Nb = ctx.smoke ? [256, 512, 1024] : [2048, 8192, 32768]; prev = Infinity; M.gpuNbody = {};
+  for (var bi = 0; bi < Nb.length && !ctx.stop(); bi++) {
+    var NN = Nb[bi]; ctx.prog((Ns.length + bi) / (Ns.length + 3));
+    if (prev < 2) { ctx.row('All-pairs N-body, ' + NN + ' bodies', 'skipped (smaller count was already too slow)', 0); continue; }
+    var dn = new Float32Array(NN * 4), rr = lcg(99);
+    for (var q = 0; q < NN; q++) { dn[q * 4] = rr(); dn[q * 4 + 1] = rr(); }
+    var bb;
+    try {
+      bb = await scoped(dev, function () {
+        var u = dev.createBuffer({ size: 16, usage: 0x40 | CD }); dev.queue.writeBuffer(u, 0, new Uint32Array([NN, 0, 0, 0]));
+        var a = dev.createBuffer({ size: NN * 16, usage: ST | CD }), b = dev.createBuffer({ size: NN * 16, usage: ST | CD }); dev.queue.writeBuffer(a, 0, dn);
+        return { u: u, a: a, b: b };
+      });
+    } catch (e) { ctx.row('All-pairs N-body, ' + NN + ' bodies', 'could not allocate: ' + e.message, 0); break; }
+    var mk2 = function (s, d) { return dev.createBindGroup({ layout: bgl2, entries: [{ binding: 0, resource: { buffer: bb.u } }, { binding: 1, resource: { buffer: s } }, { binding: 2, resource: { buffer: d } }] }); };
+    var g1 = mk2(bb.a, bb.b), g2 = mk2(bb.b, bb.a), par = 0;
+    var r2 = await runFor(ctx, ctx.b, async function (n) {
+      var enc = dev.createCommandEncoder(), pass = enc.beginComputePass(); pass.setPipeline(pn);
+      for (var s = 0; s < n; s++) { pass.setBindGroup(0, par ? g2 : g1); pass.dispatchWorkgroups(Math.ceil(NN / 64)); par ^= 1; }
+      pass.end(); dev.queue.submit([enc.finish()]); await dev.queue.onSubmittedWorkDone();
+    });
+    if (r2) {
+      var ips = r2.perSec * NN * NN;
+      ctx.row('All-pairs N-body, ' + NN.toLocaleString('en-US') + ' bodies (every body sees every other)', fx(r2.perSec, 1) + ' steps/s = ' + si(ips, 'pair interactions/s'), r2.perSec);
+      M.gpuNbody[NN] = r2.perSec; prev = r2.perSec;
+    }
+    Object.keys(bb).forEach(function (k) { bb[k].destroy(); });
+  }
+}
+
+/* ================= tests list ================= */
+var TESTS = [
+  { key: 'sys', name: '0 SYSTEM', mean: 'Which graphics card Chrome is using, and what it is allowed to do.', run: tSys },
+  { key: 'fill', name: '1 FILL RATE', mean: 'How many coloured pixels per second the card can paint, with see-through blending.', run: tFill },
+  { key: 'tri', name: '2 TRIANGLES', mean: 'How many small triangles per second it can draw, up to 20 million in one picture.', run: tTri },
+  { key: 'math', name: '3 SHADER MATH', mean: 'How fast the card does raw sums (a rough figure in GFLOPS).', run: tMath },
+  { key: 'band', name: '4 MEMORY BANDWIDTH', mean: 'How fast the card moves data inside its own memory, in GB per second.', run: tBand },
+  { key: 'vram', name: '5 VRAM FILL', mean: 'How much picture data fits in the card memory, and how fast the cable to the card is.', run: tVram },
+  { key: 'read', name: '6 READBACK', mean: 'What it costs to bring results from the card back to the processor each frame.', run: tRead },
+  { key: 'water', name: '7a GPGPU WORLD SIM (WebGL2 water)', mean: 'A wave and flow simulation on grids up to 4096 by 4096, running on the card.', run: tWater },
+  { key: 'wild', name: '7b GPGPU WILDLIFE (WebGL2 agents)', mean: 'Up to a million animals flocking, all moved by the card at once.', run: tWild },
+  { key: 'gwater', name: '8a WEBGPU COMPUTE: water', mean: 'The same water step written as a WebGPU compute shader, to compare with 7a.', run: tGpuWater },
+  { key: 'gagents', name: '8b WEBGPU COMPUTE: agents and N-body', mean: 'The same flocking as compute, plus the exact "everybody sees everybody" version.', run: tGpuAgents }
+];
+
+/* ================= WHAT 16 GB GIVES US (arithmetic) ================= */
+function memTable() {
+  var big = 16e9 * 0.85, intel = 1.5e9 * 0.5, MB = 1e6, D = 4096;
+  var items = [
+    ['4K texture RGBA8 with mipmaps (4096x4096x4 B x 4/3)', D * D * 4 * 4 / 3],
+    ['4K texture RGBA16F (half float, 8 B per pixel)', D * D * 8],
+    ['4K field RGBA32F (16 B per pixel)', D * D * 16],
+    ['8K height map R32F (8192x8192x4 B)', 8192 * 8192 * 4],
+    ['World sim 4096x4096, 5 fields, ping-pong (20 B per cell x 2)', D * D * 20 * 2],
+    ['World sim 8192x8192, 5 fields, ping-pong', 8192 * 8192 * 20 * 2],
+    ['1,000,000 triangles of mesh (32 B per vertex, 0.5 vertex per triangle, 12 B indices)', 1e6 * (0.5 * 32 + 12)],
+    ['20,000,000 triangles of mesh', 2e7 * (0.5 * 32 + 12)],
+    ['1,000,000 animals (16 B state, x2 for ping-pong)', 1e6 * 32],
+    ['Whole 1080p framebuffer set (colour+depth+3 G-buffers, 8 B each)', 1920 * 1080 * 8 * 5]
+  ];
+  return { big: big, intel: intel, rows: items.map(function (it) { return { name: it[0], bytes: it[1], big: Math.floor(big / it[1]), intel: Math.floor(intel / it[1]) }; }) };
+}
+function fmtCount(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e4 ? (n / 1e3).toFixed(0) + ' k' : String(n); }
+function memText() {
+  var t = memTable(), out = ['WHAT 16 GB GIVES US (arithmetic from formulas, not measured; assumes ' + mb(t.big) + ' usable on the 16 GB card, ' + mb(t.intel) + ' on the Intel chip)'];
+  t.rows.forEach(function (r) { out.push('  ' + r.name + ': ' + mb(r.bytes) + ' each | 16 GB card fits ' + fmtCount(r.big) + ' | Intel fits ' + fmtCount(r.intel)); });
+  return out.join('\n');
+}
+function renderMem() {
+  var tb = document.querySelector('#memTable tbody'); tb.textContent = '';
+  memTable().rows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    [r.name, mb(r.bytes), fmtCount(r.big), fmtCount(r.intel)].forEach(function (s, i) { var td = document.createElement('td'); if (i) td.className = 'v'; td.textContent = s; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+
+/* ================= verdicts and report ================= */
+function verdicts() {
+  var GB = SMOKE ? 512 : 4096, AB = SMOKE ? 8000 : 1000000, RB = SMOKE ? 64 : 1024, TB = SMOKE ? 30000 : 20000000;
+  var V = [], yn = function (b) { return b === null ? '?' : b ? 'YES' : 'NO'; };
+  var kind = M.gpuKind;
+  V.push(['Chrome is using the Radeon (not the Intel chip)', kind === 'amd' ? 'YES' : kind === 'intel' ? 'NO' : '?', M.gpuName || 'not checked']);
+  var wb = M.waterBest, gw = M.gpuWaterBest;
+  var full = M.water && M.water[GB] !== undefined ? M.water[GB] : null, fullG = M.gpuWater && M.gpuWater[GB] !== undefined ? M.gpuWater[GB] : null;
+  V.push(['Can hold a 4096 world grid at 60 steps per second (WebGL2)', full === null ? '?' : yn(full >= 60), full === null ? 'not measured' : fx(full, 1) + ' steps/s; largest grid holding 60: ' + (wb || 'none')]);
+  if (M.webgpu) V.push(['Same with WebGPU compute', fullG === null ? '?' : yn(fullG >= 60), fullG === null ? 'not measured' : fx(fullG, 1) + ' steps/s; largest grid holding 60: ' + (gw || 'none')]);
+  var w1 = M.wild && M.wild[AB] !== undefined ? M.wild[AB] : null;
+  V.push(['Can run 1,000,000 animals at 60 steps per second (WebGL2)', w1 === null ? '?' : yn(w1 >= 60), w1 === null ? 'not measured' : fx(w1, 1) + ' steps/s']);
+  var g1 = M.gpuWild && M.gpuWild[AB] !== undefined ? M.gpuWild[AB] : null;
+  if (M.webgpu) V.push(['Same with WebGPU compute', g1 === null ? '?' : yn(g1 >= 60), g1 === null ? 'not measured' : fx(g1, 1) + ' steps/s']);
+  var v = M.vram_rgba8;
+  V.push(['Room for 4K textures with mipmaps', v ? (v.count > 0 ? 'YES' : 'NO') : '?', v ? (v.capped ? 'at least ' : '') + v.count + ' fit (' + fx(v.gb, 2) + ' GB). Stopped: ' + v.why : 'not measured']);
+  var v2 = M.vram_rgba32f;
+  if (v2) V.push(['Room for 4096x4096 float fields (268 MB each)', v2.count > 0 ? 'YES' : 'NO', (v2.capped ? 'at least ' : '') + v2.count + ' fit (' + fx(v2.gb, 2) + ' GB). Stopped: ' + v2.why]);
+  var up = M.upload_rgba32f || M.upload_rgba8;
+  V.push(['Link speed CPU to GPU', up === undefined ? '?' : up >= 6 ? 'FAST' : up >= 1.5 ? 'OK' : 'SLOW', up === undefined ? 'not measured' : fx(up, 2) + ' GB/s. Thunderbolt 3 usually gives about 2 to 3 GB/s; a normal slot gives 10 or more.']);
+  var rs = M['read_sync_' + RB], ra = M['read_async_' + RB];
+  var okRead = ra !== undefined ? ra >= 60 : rs !== undefined ? rs <= 16 : null;
+  V.push(['Read results back to the CPU every frame (1024x1024 float)', okRead === null ? '?' : okRead ? 'OK' : 'TOO SLOW', (rs !== undefined ? 'plain ' + fx(rs, 1) + ' ms per read' : '') + (ra !== undefined ? '; async ' + fx(ra, 0) + ' reads/s, CPU ' + fx(M['read_async_cpu_' + RB], 2) + ' ms each, latency ' + fx(M['read_async_lat_' + RB], 1) + ' ms' : '')]);
+  var tr = M['tri_' + TB + '_1'];
+  V.push(['Can draw 20 million triangles per frame at 60 fps', tr === undefined ? '?' : yn(tr >= 1.2e9), tr === undefined ? 'not measured' : si(tr, 'triangles/s') + ' with depth and lit shader (60 fps needs 1.2 G)']);
+  return V;
+}
+function buildReport() {
+  var d = new Date(), pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var date = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  var L = ['RADEON-BENCH v1 | ' + (M.gpuName || 'GPU unknown') + ' | ' + browserName() + ' | ' + date + ' | mode ' + MODES[MODE].label + (STOPPED ? ' | STOPPED EARLY' : '')];
+  L.push('', 'VERDICTS');
+  verdicts().forEach(function (v) { L.push('  ' + v[0] + ': ' + v[1] + ' (' + v[2] + ')'); });
+  L.push('', 'TESTS');
+  TESTS.forEach(function (t) {
+    var r = RES[t.key]; if (!r) { L.push('[' + t.name + '] not run'); return; }
+    L.push('[' + t.name + '] ' + r.status + (r.reason ? ': ' + r.reason : '') + ' (' + fx(r.secs, 1) + ' s)');
+    r.rows.forEach(function (x) { L.push('  ' + x.k + ': ' + x.v); });
+    r.notes.forEach(function (x) { L.push('  note: ' + x); });
+  });
+  L.push('', memText());
+  return L.join('\n');
+}
+
+/* ================= UI ================= */
+function progress(f) { $('barFill').style.width = Math.max(0, Math.min(1, f)) * 100 + '%'; }
+function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
+function render() {
+  var box = $('cards'); box.textContent = '';
+  TESTS.forEach(function (t) {
+    var r = RES[t.key], card = el('div', 'card'), h = el('h3', null, t.name);
+    if (r) h.appendChild(el('span', 'badge ' + r.status, r.status === 'unsupported' ? 'UNSUPPORTED' : r.status.toUpperCase()));
+    card.appendChild(h); card.appendChild(el('div', 'mean', t.mean));
+    if (r) {
+      if (r.reason) card.appendChild(el('p', 'unk', (r.status === 'error' ? 'Error: ' : 'Reason: ') + r.reason));
+      if (r.rows.length) { var tb = el('table'); r.rows.forEach(function (x) { var tr = el('tr'); tr.appendChild(el('td', null, x.k)); tr.appendChild(el('td', 'v', x.v)); tb.appendChild(tr); }); card.appendChild(tb); }
+      r.notes.forEach(function (x) { card.appendChild(el('p', 'dim', x)); });
+    } else card.appendChild(el('p', 'dim', 'Not run yet.'));
+    box.appendChild(card);
+  });
+}
+function renderSummary() {
+  var tb = document.querySelector('#sumTable tbody'); tb.textContent = '';
+  verdicts().forEach(function (v) {
+    var tr = el('tr'), cls = /^(YES|OK|FAST)$/.test(v[1]) ? 'yes' : /^(NO|TOO SLOW|SLOW)$/.test(v[1]) ? 'no' : 'unk';
+    tr.appendChild(el('td', null, v[0])); tr.appendChild(el('td', cls, v[1])); tr.appendChild(el('td', 'dim', v[2])); tb.appendChild(tr);
+  });
+  $('report').value = buildReport(); $('sumWrap').style.display = 'block';
+}
+async function runAll(mode) {
+  if (RUNNING) return;
+  RUNNING = true; STOPPED = false; MODE = SMOKE ? 'smoke' : mode; RES = {}; M = {};
+  window.__bench = { done: false };
+  ['runQuick', 'runFull'].forEach(function (i) { $(i).disabled = true; }); $('stopBtn').disabled = false; $('cap').disabled = true;
+  $('sumWrap').style.display = 'none'; render();
+  var total = TESTS.length;
+  for (var i = 0; i < total; i++) {
+    var t = TESTS[i];
+    if (STOPPED) break;
+    $('cur').textContent = 'Running test ' + t.name + ' (' + (i + 1) + ' of ' + total + '): ' + t.mean; progress(i / total);
+    var ctx = makeCtx(MODE, i, total), t0 = now();
+    RES[t.key] = { status: 'running', rows: ctx.rows, notes: ctx.notes, secs: 0 }; render();
+    try {
+      await t.run(ctx);
+      RES[t.key].status = STOPPED ? 'stopped' : ctx.lostAny() ? 'stopped' : 'ok';
+      if (ctx.lostAny()) RES[t.key].reason = 'the graphics context was lost (the GPU was overcommitted or reset)';
+    } catch (e) {
+      if (e instanceof Unsupported) { RES[t.key].status = 'unsupported'; RES[t.key].reason = e.message; }
+      else { RES[t.key].status = 'error'; RES[t.key].reason = (e && e.message) || String(e); }
+    }
+    RES[t.key].secs = (now() - t0) / 1000;
+    ctx.cleanup(); render(); await sleep0();
+  }
+  if (GPUDEV) { try { GPUDEV.dev.destroy(); } catch (e) { /* ignore */ } GPUDEV = null; }
+  progress(1); $('cur').textContent = STOPPED ? 'Stopped. Partial report below.' : 'Done. The report is below: press COPY REPORT and paste it back.';
+  renderSummary();
+  RUNNING = false; ['runQuick', 'runFull'].forEach(function (i) { $(i).disabled = false; }); $('stopBtn').disabled = true; $('cap').disabled = false;
+  window.__bench = { done: true, results: RES, metrics: M, report: $('report').value, mode: MODE };
+}
+$('runQuick').onclick = function () { runAll('quick'); };
+$('runFull').onclick = function () { runAll('full'); };
+$('stopBtn').onclick = function () { STOPPED = true; $('cur').textContent = 'Stopping...'; };
+$('copyBtn').onclick = function () {
+  var ta = $('report'), ok = function () { $('copyMsg').textContent = 'Copied. Now paste it into the chat.'; };
+  var fb = function () { ta.focus(); ta.select(); try { document.execCommand('copy') ? ok() : ($('copyMsg').textContent = 'Press Cmd+C now (text is selected).'); } catch (e) { $('copyMsg').textContent = 'Press Cmd+C now (text is selected).'; } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(ok, fb); else fb();
+};
+if (SMOKE) { $('smokeTag').style.display = 'block'; $('runQuick').textContent = 'RUN SMOKE TEST (a few seconds)'; }
+renderMem(); render();
+/* first look at the GPU right away so the wrong-GPU warning shows before any run */
+(function () {
+  try {
+    var g = mkGL(null), gi = gpuInfoFrom(g.gl); GPUNAME = gi.ren; showGpuBanner(gi.ren, 'WebGL2');
+    var e = g.gl.getExtension('WEBGL_lose_context'); if (e) e.loseContext();
+  } catch (e) { $('gpuLine').textContent = 'WebGL2 is not available in this browser, so most tests cannot run.'; }
+})();
+window.__bench = { done: false };
+</script>
+</body>
+</html>
