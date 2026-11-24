@@ -198,3 +198,21 @@ Ideas to research before any build (research-first gate):
 Tone rails (unchanged): hopeful overall; violence allowed only when it is justified by the story and never gratuitous; nothing gory or cruel for its own sake. A friendly skirmish with crumbling walls and clouds of dust fits. Robots stay relics and take no part.
 
 Open questions for Harry (taste): is this a separate mode (a 'skirmish') or something that can happen inside the main world, for example raiders arriving by sea? Is the first version two friends on one screen, two devices, or you against the machine? Should damage last between games?
+
+## Bigger islands with rivers, lakes and a full water cycle (owner idea, 24 Nov)
+
+Harry: the little islands are perfect for one kind of play. Later you should be able to find bigger islands with rivers, lakes and a full rain-fed ecosystem.
+
+Where we are: the landform tool exports small world windows (a 256 m table) with relief, rock types and coast shapes. Rain, sky, tides and a food and wildlife model exist as separate pieces. There is no river, lake or watershed anywhere yet.
+
+What a bigger island needs, in order:
+1. Hydrology on the heightfield: fill the pits, find where water flows, carve rivers, make lakes in basins, mark springs and wetlands. This is a headless numbers job first (numpy), checked by tests: every river reaches the sea or a lake, no water runs uphill.
+2. Rain linked to the water: the weather rain cells feed rivers and lake levels, so a storm makes rivers rise and a dry spell lets them fall.
+3. Biomes from water: wet valleys, bog, meadow, woodland along rivers, dry ridges and bare rock, decided by moisture and altitude.
+4. Scale: a whole bigger island is much more than a 256 m window. It needs a larger window, a level-of-detail scheme and a budget for tablets.
+5. Life and food that follow water: fresh water at every settlement, salmon or trout runs, waterbirds, otters, reed beds, fields.
+6. How you find it: by boat, as a destination the tender or the drift table points to, so small islands stay the start and big islands are a later step.
+
+Honest notes: this is a large piece of work, so it comes after the camp start mode and the first food steps. A research note comes first, then a small headless hydrology test on one existing world before any page work.
+
+Open questions for Harry (taste): are big islands part of the same game (you sail to them) or a separate map type? Can you build on a river (mills, bridges, water wheels)? Do floods matter?
