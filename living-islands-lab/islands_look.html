@@ -46,6 +46,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');</script>
+<script>if(/[?&]light=1/.test(location.search)){document.write('<script src="light_range.js"><\/script>');if(!/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(!/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
 <script>if(/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/index.js"><\/script><script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/world.js"><\/script><script src="world_view.js"><\/script>');}</script>
 <script>if(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)){const m=location.search.match(/[?&]world=(\d+)/);document.write('<script src="landform/worlds/seed'+('0000'+m[1]).slice(-4)+'/life.js"><\/script><script src="vendor/GLTFLoader.r128.js"><\/script><script src="assets/collector/collector_live_b64.js"><\/script><script src="animals.js"><\/script><script src="robots.js"><\/script>');}</script>
 <script>
@@ -71,6 +72,7 @@ const BOATS2=Q.get('boats')==='2';      /* the boats pass: slim lapstrake hulls,
 const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_sea.js, see MACRO_WIRE.md): tide, swell, whitecaps, drift, weather and boat heave from a pure function of (seed, game hour); implies the sea=2 look; absent = unchanged */
 const CKON=Q.get('clock')==='1'&&!!window.SkyClock;   /* the sky clock (sky_clock.js, see SKY_CLOCK_BUILD.md): sun, moon, stars, tide, light and window glows from one game clock; implies the sea=2 look; absent = unchanged */
 const CKDOME=CKON&&Q.get('clockdome')!=='0';   /* ?clockdome=0 is the AR profile: lights, emissives and tide from the clock, but no sky dome, no stars, no floor tint and no exposure change */
+const LTON=Q.get('light')==='1'&&!!window.LightRange;   /* the lighthouse and fog layer (light_range.js, see LIGHTHOUSE_BUILD.md): one lighthouse, a rotating beam, a ring of sight, arrivals that see the light; absent = unchanged */
 const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 let quality=Q.get('q')==='low'?'low':'high';
@@ -1499,6 +1501,7 @@ function build(){const t0=performance.now();
   LIFE_RT=LIFE?LI_ANIMALS.create({scene,camera,quality,seed:WID,man:WV.man,life:window.LI_LIFE[WID],H:(x,z)=>H(x,z),tide:()=>tide,tableR:TABLE_R,tier:Q.get('tier'),robots:Q.get('robots')!=='0',boats:()=>boatObjs.map(o=>({x:o.b.x,z:o.b.z,sail:!!o.b.sail})),items:()=>W,jetty:()=>W.jetty,nopost:NOPOST,sunDir}):null;
   if(WXR)WXR.attach(scene,sun,hemi);
   if(CKON)ckBuild();
+  if(LTON)ltBuild();
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
 function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   renderer.setPixelRatio(1);renderer.setSize(w,h,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
@@ -1516,6 +1519,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
   if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   if(CKON)ckFrame(dt);
+  if(LTON)ltFrame(dt);
   /* sun / shadow follow */
   const s=clamp(cur.dist*.62,30,WORLD?150:112);const tgt=new THREE.Vector3(cur.tx,0,cur.tz);sun.target.position.copy(tgt);sun.position.copy(tgt).addScaledVector(sunDir,230);sun.target.updateMatrixWorld();
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();
@@ -1791,6 +1795,264 @@ function ckApi(){return{
   sunDir:()=>sunDir.toArray(),lightIsMoon:()=>CK.L.lightIsMoon,chip:()=>ckChipText(),exposure:()=>CK.expo,
   cam:()=>({...cam}),sky:()=>ckSkyView(),
   hash:()=>0};}
+/* ============ lighthouse and fog (?light=1, see LIGHTHOUSE_BUILD.md, research/LIGHT_FOG_AND_LIGHTHOUSE.md) ============
+   light_range.js is the pure part (range, flash characters, arrivals). This block draws ONE lighthouse built from a few simple original parts on the most exposed headland, a lamp sprite,
+   a rotating beam (a camera-facing fan plus a few soft discs along it, and a streak on the sea), a ring of sight on the sea and a small HUD chip. Beam alpha and halo size come from the weather's
+   visibility (weather.js vis) with exp(-3 d / V), there is no second fog model. In clock mode the lamp is lit from sunset (and by day in fog); without the clock ?lightnight=1 lights it.
+   Tiers: high = tower with railing, glowing lens dome, point light, 1 or 2 beams with 8 soft discs each, fade at the flash edges; low = on/off flash, crossed cards, 4 discs, no point light;
+   AR (?lightar=1) = short crossed cards only, no dome, no point light, no discs. Everything is off unless ?light=1. */
+const LT={on:LTON,rung:null,char:null,ring:Q.get('lring')==='1',night:Q.get('lightnight')==='1'?1:null,visO:Q.get('lvis')!==null?parseFloat(Q.get('lvis')):null,
+  freeze:Q.get('lfreeze')!==null?parseFloat(Q.get('lfreeze')):null,yawO:Q.get('lyaw')!==null?parseFloat(Q.get('lyaw'))*Math.PI/180:null,ar:Q.get('lightar')==='1',marked:Q.get('lmark')==='1',
+  hour:parseFloat(Q.get('lh')||'22'),site:null,obj:{},onS:0,snapOn:true,chipT:0,evT:-9,ev:null,forceSalv:false,st:null,range:0,visKm:40,vf:0,beamYaw:0,lamp:null,parts:{},hide:{}};
+if(LTON){LT.rung=LightRange.rungOf(Q.get('lrung')!==null?(/^\d$/.test(Q.get('lrung'))?parseInt(Q.get('lrung'),10):Q.get('lrung')):3)||LightRange.RUNGS[3];
+  LT.char=Q.get('lchar')||LightRange.defaultCharacter(LT.rung,SEED);}
+const ltTier=()=>LT.ar?'ar':quality==='low'?'low':'high';
+const LT_NO_BEAM={fire:1,post:1};
+function ltGlowTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');const g=x.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.1,'rgba(255,255,255,.62)');g.addColorStop(.3,'rgba(255,255,255,.2)');g.addColorStop(.62,'rgba(255,255,255,.045)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128);
+  const t=new THREE.CanvasTexture(c);return t;}
+function ltCrateTex(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='rgba(0,0,0,0)';x.fillRect(0,0,64,64);
+  x.fillStyle='#8a6a40';x.fillRect(10,16,44,34);x.strokeStyle='#4a361c';x.lineWidth=3;x.strokeRect(10,16,44,34);x.beginPath();x.moveTo(10,16);x.lineTo(54,50);x.moveTo(54,16);x.lineTo(10,50);x.stroke();
+  x.fillStyle='#b99a6a';x.fillRect(10,16,44,5);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;}
+/* the site: the most exposed headland: high ground with open water on most sides, clear of trees, houses, the camp and the jetty. A pure scan of the page's own height function, so it is the same on every load. */
+function ltSite(){
+  if(Q.get('lx')!==null&&Q.get('lz')!==null){const x=parseFloat(Q.get('lx')),z=parseFloat(Q.get('lz'));return ltSiteAt(x,z);}
+  const R=TABLE_R-10,obs=[],add=(x,z,r)=>obs.push([x,z,r]);
+  W.houses.forEach(h=>add(h.x,h.z,13));W.tents.forEach(t=>add(t.x,t.z,9));if(W.camp)add(W.camp.fire.x,W.camp.fire.z,11);
+  if(W.jetty){const j=W.jetty;for(let k=0;k<=4;k++)add(j.x+j.dx*j.len*k/4,j.z+j.dz*j.len*k/4,8);}
+  for(const a of[W.conifers,W.broad])for(const t of a)add(t.x,t.z,3.4);for(const t of W.shrubs)add(t.x,t.z,2.0);
+  for(const r of W.rocks)if(Math.max(r.sx,r.sz)>.45)add(r.x,r.z,Math.max(r.sx,r.sz)+2.2);
+  const cs=[];let hmax=.01;
+  for(let x=-R;x<=R;x+=2)for(let z=-R;z<=R;z+=2){if(x*x+z*z>R*R)continue;const h=H(x,z);if(h<1.1)continue;
+    if(slopeAt(x,z)>1.25)continue;let bad=false;for(const o of obs){const dx=x-o[0],dz=z-o[1];if(dx*dx+dz*dz<o[2]*o[2]){bad=true;break;}}if(bad)continue;
+    let wat=0;for(let k=0;k<16;k++){const a=k/16*6.2832;if(H(x+Math.cos(a)*15,z+Math.sin(a)*15)<-.15)wat++;}const open=wat/16;if(open<.3)continue;
+    const ex=WV?WV.expo(x,z):Math.max(0,gExpo);cs.push([x,z,h,open,ex]);if(h>hmax)hmax=h;}
+  let best=null,bs=-1;for(const c of cs){const s=c[3]*1.0+.55*Math.min(1,c[2]/hmax)+.4*c[4];if(s>bs+1e-9){bs=s;best=c;}}
+  if(!best){let bh=-9;for(let x=-R;x<=R;x+=2)for(let z=-R;z<=R;z+=2){const h=H(x,z);if(x*x+z*z<=R*R&&h>bh){bh=h;best=[x,z,h];}}}
+  return ltSiteAt(best[0],best[1]);}
+function ltSiteAt(x,z){let hmax=-99,hmin=99;for(let k=0;k<12;k++){const a=k/12*6.2832,h=H(x+Math.cos(a)*2.8,z+Math.sin(a)*2.8);hmax=Math.max(hmax,h);hmin=Math.min(hmin,h);}
+  const h0=H(x,z);let sx=0,sz=0;for(let k=0;k<16;k++){const a=k/16*6.2832;if(H(x+Math.cos(a)*15,z+Math.sin(a)*15)<-.15){sx+=Math.cos(a);sz+=Math.sin(a);}}
+  return{x,z,y:Math.max(hmax,h0),minH:hmin,seaward:Math.atan2(sz,sx),score:0};}
+/* the reef: a shallow spot (0.2 to 1 m below mean sea level) 14 to 45 m off the harbour mouth (the jetty tip) or the headland; the salvage crate drifts here */
+function ltReef(){const ref=W.jetty?{x:W.jetty.x+W.jetty.dx*W.jetty.len,z:W.jetty.z+W.jetty.dz*W.jetty.len}:{x:LT.site.x,z:LT.site.z};let best=null,bs=1e9;
+  for(let x=ref.x-46;x<=ref.x+46;x+=2)for(let z=ref.z-46;z<=ref.z+46;z+=2){const d=Math.hypot(x-ref.x,z-ref.z);if(d<14||d>45||x*x+z*z>(TABLE_R-6)**2)continue;const h=H(x,z);if(h>-.2||h<-1.0)continue;
+    const s=Math.abs(h+.45)+d*.01;if(s<bs){bs=s;best=[x,z,h];}}
+  if(!best)best=[ref.x+18,ref.z+18,-.5];return{x:best[0],z:best[1],h:best[2],ref};}
+/* merged coloured geometry: cylinders (tapered, open or capped), boxes, cones */
+function ltGeo(){const P=[],C=[],I=[];let n=0;const L=c=>lin(c);
+  const api={
+    cyl(x,y0,y1,z,r0,r1,seg,c,cap){c=L(c);const b=n;for(let i=0;i<=seg;i++){const a=i/seg*6.2832,ca=Math.cos(a),sa=Math.sin(a);P.push(x+ca*r0,y0,z+sa*r0,x+ca*r1,y1,z+sa*r1);C.push(...c,...c);n+=2;}
+      for(let i=0;i<seg;i++){const a=b+i*2;I.push(a,a+1,a+3,a,a+3,a+2);}
+      if(cap){for(const[y,r,up]of[[y1,r1,1],[y0,r0,0]]){if(r<=.001)continue;const ci=n;P.push(x,y,z);C.push(...c);n++;for(let i=0;i<=seg;i++){const a=i/seg*6.2832;P.push(x+Math.cos(a)*r,y,z+Math.sin(a)*r);C.push(...c);n++;}
+        for(let i=0;i<seg;i++){if(up)I.push(ci,ci+1+i+1,ci+1+i);else I.push(ci,ci+1+i,ci+1+i+1);}}}},
+    box(cx,cy,cz,sx,sy,sz,c,yaw){c=L(c);const cs=Math.cos(yaw||0),sn=Math.sin(yaw||0),hx=sx/2,hy=sy/2,hz=sz/2;const T=(a,b,d)=>[cx+a*cs-d*sn,cy+b,cz+a*sn+d*cs];
+      const F=[[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]],[[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]],[[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]],[[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]],[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]]];
+      for(const f of F){const b=n;for(const v of f){const p=T(v[0]*hx,v[1]*hy,v[2]*hz);P.push(p[0],p[1],p[2]);C.push(...c);n++;}I.push(b,b+1,b+2,b,b+2,b+3);}},
+    build(){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setIndex(I);g.computeVertexNormals();return g;}};
+  return api;}
+const LT_COL={white:[.93,.91,.85],red:[.68,.13,.10],stone:[.46,.43,.39],stone2:[.34,.32,.30],dark:[.12,.12,.14],roof:[.16,.18,.2],wood:[.36,.28,.2],grey:[.62,.64,.64],orange:[.86,.42,.12],iron:[.2,.2,.22]};
+/* the tower of each rung: original simple parts, base at local y = 0 (the ground), plinth reaching down below it so the tower never floats. Returns the lamp height. */
+function ltTowerGeo(rung,tier,S){const G=ltGeo(),T=rung.towerM,hi=tier==='high',seg=hi?14:9,f0=Math.max(0,S.y-S.minH)+.9;let lampY=T*.85,lampR=.5,domeR=.5;
+  const plinth=(r,h)=>{G.cyl(0,-f0,h,0,r*1.18,r,hi?14:8,LT_COL.stone2,true);};
+  if(rung.id==='fire'){plinth(1.5,.5);G.cyl(0,.5,1.6,0,1.35,.8,10,LT_COL.stone,true);G.cyl(0,1.6,2.1,0,.7,1.0,10,LT_COL.iron,true);   /* a cairn of stones with an iron basket on top */
+    for(let k=0;k<6;k++){const a=k/6*6.2832;G.cyl(Math.cos(a)*.95,2.1,2.9,Math.sin(a)*.95,.07,.07,4,LT_COL.iron,false);}
+    lampY=2.7;domeR=.0;}
+  else if(rung.id==='post'){plinth(.9,.4);G.cyl(0,.4,T-1.0,0,.22,.14,8,LT_COL.wood,true);G.box(0,T-1.7,0,.2,.2,1.5,LT_COL.wood,0);   /* a timber post with an arm and a lantern box */
+    G.box(0,T-.55,0,.7,.8,.7,LT_COL.dark,0);G.cyl(0,T-.14,T+.2,0,.55,.0,6,LT_COL.roof,true);lampY=T-.55;domeR=.28;}
+  else if(rung.id==='relic'){plinth(1.7,.8);G.cyl(0,.8,T*.78,0,.5,.3,hi?10:7,LT_COL.grey,true);   /* an old mast: pale pole, an orange band, a panel and an LED head */
+    G.cyl(0,T*.28,T*.38,0,.46,.42,hi?10:7,LT_COL.orange,false);G.cyl(0,T*.62,T*.7,0,.36,.33,hi?10:7,LT_COL.orange,false);
+    G.box(.0,T*.84,0,2.6,.12,1.7,[.10,.14,.24],.4);G.box(0,T*.78,0,.18,.4,.18,LT_COL.dark,0);G.cyl(0,T*.78,T*.9,0,.3,.34,hi?10:7,LT_COL.dark,true);lampY=T*.93;domeR=.34;}
+  else{const big=rung.id==='big',R0=big?2.3:1.85,Rt=big?1.5:1.2,yP=.9,yG=T*.8,yS=yG;plinth(R0*1.05,yP);
+    const bands=big?[[LT_COL.white,.2],[LT_COL.red,.14],[LT_COL.white,.2],[LT_COL.red,.14],[LT_COL.white,.32]]:[[LT_COL.stone,.4],[LT_COL.white,.18],[LT_COL.stone,.42]];   /* a white tower with two red bands, or a plain stone one with a white band */
+    let a=0;for(const[c,w]of bands){const y0=yP+(yS-yP)*a,y1=yP+(yS-yP)*(a+w),t0=a,t1=a+w;G.cyl(0,y0,y1,0,R0+(Rt-R0)*t0,R0+(Rt-R0)*t1,seg,c,false);a+=w;}
+    G.cyl(0,yS,yS+.34,0,Rt*1.5,Rt*1.5,seg,LT_COL.dark,true);G.cyl(0,yS-.25,yS,0,Rt*1.0,Rt*1.5,seg,LT_COL.dark,false);   /* the gallery slab and its corbel */
+    if(hi){const nr=12;for(let k=0;k<nr;k++){const a2=k/nr*6.2832;G.cyl(Math.cos(a2)*Rt*1.46,yS+.34,yS+1.2,Math.sin(a2)*Rt*1.46,.05,.05,4,LT_COL.dark,false);}G.cyl(0,yS+1.15,yS+1.25,0,Rt*1.48,Rt*1.48,seg,LT_COL.dark,false);}
+    else G.cyl(0,yS+.34,yS+1.0,0,Rt*1.46,Rt*1.46,seg,LT_COL.dark,false);
+    const lr=Rt*.82,yl0=yS+.34,yl1=yl0+(big?2.0:1.6);
+    for(let k=0;k<8;k++){const a2=k/8*6.2832;G.cyl(Math.cos(a2)*lr,yl0,yl1,Math.sin(a2)*lr,.07,.07,4,LT_COL.dark,false);}   /* the lamp room: eight mullions round the lens, open so the lens shows */
+    G.cyl(0,yl0-.02,yl0+.06,0,lr,lr,seg,LT_COL.dark,true);G.cyl(0,yl1,yl1+.25,0,lr*1.1,lr*1.1,seg,LT_COL.dark,true);
+    G.cyl(0,yl1+.25,T-.35,0,lr*1.1,.12,seg,LT_COL.roof,true);G.cyl(0,T-.35,T-.1,0,.1,.1,4,LT_COL.iron,false);G.box(0,T-.05,0,.34,.34,.34,LT_COL.iron,.4);
+    lampY=(yl0+yl1)/2;lampR=lr;domeR=lr*.58;}
+  return{geo:G.build(),lampY,domeR,foundation:f0};}
+function ltCardGeo(segs){const A=[],I=[];for(let i=0;i<=segs;i++){const x=i/segs;A.push(x,-1,x,0,x,1);}   /* three vertices across, so the centre line is a mesh edge: a trapezoid split on its diagonal would zigzag the hot core */
+  for(let i=0;i<segs;i++){const a=i*3,b=a+3;I.push(a,a+1,b+1,a,b+1,b,a+1,a+2,b+2,a+1,b+2,b+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array((segs+1)*9),3));g.setAttribute('aP',new THREE.Float32BufferAttribute(A,2));g.setIndex(I);return g;}
+const LT_BEAM_VS=`attribute vec2 aP;uniform vec3 uO,uAx;uniform float uL,uW0,uW1,uMode;varying vec2 vP;varying float vFace;
+  void main(){vec3 p=uO+uAx*(aP.x*uL);vec3 right;
+    if(uMode<0.5){vec3 tc=normalize(cameraPosition-(uO+uAx*(uL*0.5)));   vec3 cr=cross(uAx,tc);float cl=length(cr);right=cr/max(cl,1e-3);vFace=smoothstep(0.10,0.45,cl);}   /* an axial billboard: one facing for the whole card (no kinks), turning about the beam; seen end-on it fades out */
+    else if(uMode<1.5){right=vec3(0.0,1.0,0.0);vFace=1.0;}   /* a vertical card through the beam */
+    else{right=normalize(cross(uAx,vec3(0.0,1.0,0.0)));vFace=1.0;}   /* a flat card through the beam */
+    float w=mix(uW0,uW1,aP.x);p+=right*(aP.y*w);vP=aP;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.0);}`;
+const LT_BEAM_FS=`precision highp float;varying vec2 vP;varying float vFace;uniform float uL,uV,uK,uLev,uHot,uMode,uHaze;uniform vec3 uCol;
+  void main(){float d=vP.x*uL;float u=abs(vP.y);float prof=pow(1.0-u,2.0)*0.55+pow(1.0-u,7.0)*0.9;   /* soft edges, hot core */
+    if(uHaze>0.5)prof=exp(-3.4*u*u)*0.42*(1.0-smoothstep(0.2,0.92,u));   /* the haze card: a wide, soft glow round the sharp blade (the light the droplets scatter sideways) */
+    float fade=max(exp(-3.0*d/uV),0.02);   /* extinction in the fog: the weather's own visibility, exp(-3 d / V) */
+    float spread=1.0/(1.0+d*0.012);        /* the beam thins as it spreads */
+    float a=uK*uLev*prof*fade*(0.35+0.65*spread)*(1.0-smoothstep(0.6,1.0,vP.x))*smoothstep(0.0,0.025,vP.x);
+    a*=mix(1.0,0.75,step(0.5,uMode))*vFace;
+    vec3 c=uCol*(1.0+uHot*exp(-d*0.05));gl_FragColor=vec4(c*a,a);${CK_TONE}}`;
+function ltBeamMat(mode,extra){return new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false,defines:NOPOST?{NOPOST:1}:{},
+  uniforms:Object.assign({uO:{value:new THREE.Vector3()},uAx:{value:new THREE.Vector3(1,0,0)},uL:{value:100},uW0:{value:.3},uW1:{value:8},uMode:{value:mode},uV:{value:1e5},uK:{value:.1},uLev:{value:0},uHot:{value:1.2},uHaze:{value:0},uCol:{value:new THREE.Vector3(1,.9,.7)}},extra||{}),
+  vertexShader:LT_BEAM_VS,fragmentShader:LT_BEAM_FS});}
+const LT_STREAK_FS=`precision highp float;varying vec2 vP;uniform float uL,uV,uK,uLev;uniform vec3 uCol;
+  void main(){float d=vP.x*uL;float u=abs(vP.y);float prof=pow(1.0-u,2.2);float fade=max(exp(-d/(0.35*uV+60.0)),0.03);
+    float a=uK*uLev*prof*fade*(1.0-smoothstep(0.55,1.0,vP.x))*smoothstep(0.0,0.05,vP.x);gl_FragColor=vec4(uCol*a,a);${CK_TONE}}`;
+const LT_RING_FS=`precision highp float;varying vec3 vW;uniform vec3 uC;uniform float uR,uHw,uA,uT,uFill;
+  void main(){vec2 q=vW.xz-uC.xz;float d=length(q);float e=abs(d-uR);float ang=atan(q.y,q.x);
+    float ring=1.0-smoothstep(uHw*0.55,uHw,e);float glow=exp(-e/(uHw*3.5))*0.30;
+    float dash=0.5+0.5*smoothstep(-0.2,0.2,sin(ang*72.0+uT*0.0));   /* 72 dashes round the ring */
+    float sp=uR*0.7854;float ad=abs(mod(uR*ang+sp*0.5,sp)-sp*0.5);float tick=1.0-smoothstep(uHw*0.45,uHw*1.1,ad);   /* eight ticks, a few widths long */
+    float tk=tick*(1.0-smoothstep(uHw*1.6,uHw*4.0,abs(d-uR)))*0.8;
+    float fill=smoothstep(uR+uHw,uR-uHw*8.0,d)*uFill;
+    float a=uA*(ring*(0.45+0.55*dash)+glow+tk+fill);
+    vec3 col=vec3(0.45,0.88,1.0)*1.5;gl_FragColor=vec4(col*a,a);${CK_TONE}}`;
+function ltBuild(){
+  const o=LT.obj={};const tier=ltTier(),LR=LightRange;LT.site=ltSite();LT.reef=ltReef();const S=LT.site;
+  const glowT=ltGlowTex();o.glowT=glowT;
+  const spr=(color,renderOrder)=>{const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowT,color,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,depthTest:true,fog:false}));s.renderOrder=renderOrder||9;s.frustumCulled=false;scene.add(s);return s;};
+  /* the tower (rebuilt when the rung changes) */
+  o.tower=new THREE.Group();o.tower.position.set(S.x,S.y,S.z);scene.add(o.tower);
+  const dm=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,emissive:new THREE.Color(.004,.006,.01)});o.towerMat=dm;
+  o.domeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(.6,.6,.6),fog:false});
+  /* light */
+  o.core=spr(new THREE.Color(1,.88,.62),10);o.halo=spr(new THREE.Color(1,.8,.5),9);o.flame=[spr(new THREE.Color(1,.55,.18),10),spr(new THREE.Color(1,.35,.08),9)];
+  o.pl=null;if(tier==='high'){o.pl=new THREE.PointLight(0xffd29a,0,30,2);scene.add(o.pl);}
+  /* beams: up to two (opposite), each a camera-facing fan (high) or two crossed cards (low, AR), a few soft discs (high, low) and a streak on the sea */
+  o.beams=[];const cardG=ltCardGeo(7);const nDisc=0;   /* soft discs along the beam read as a string of beads at any count tried (4 to 10): a wide haze card replaced them */
+  for(let b=0;b<2;b++){const B={cards:[],discs:[],streak:null};
+    if(tier==='high')for(const hz of[0,1]){const m=ltBeamMat(0,{uHaze:{value:hz}});const c=new THREE.Mesh(cardG,m);c.frustumCulled=false;c.renderOrder=9;scene.add(c);B.cards.push(c);}
+    else for(const mode of[1,2]){const m=ltBeamMat(mode);const c=new THREE.Mesh(cardG,m);c.frustumCulled=false;c.renderOrder=9;scene.add(c);B.cards.push(c);}
+    for(let i=0;i<nDisc;i++)B.discs.push(spr(new THREE.Color(1,.92,.75),9));
+    const sm_=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false,defines:NOPOST?{NOPOST:1}:{},
+      uniforms:{uO:{value:new THREE.Vector3()},uAx:{value:new THREE.Vector3(1,0,0)},uL:{value:100},uW0:{value:.5},uW1:{value:6},uMode:{value:2},uV:{value:1e5},uK:{value:.3},uLev:{value:0},uCol:{value:new THREE.Vector3(1,.92,.75)}},
+      vertexShader:LT_BEAM_VS,fragmentShader:LT_STREAK_FS});
+    const st=new THREE.Mesh(cardG,sm_);st.frustumCulled=false;st.renderOrder=8;scene.add(st);B.streak=st;o.beams.push(B);}
+  /* ring of sight: one flat quad on the sea, a thin dashed ring with ticks and a faint fill, plus a label with the range */
+  {const half=TABLE_R*1.08;const g=new THREE.PlaneGeometry(2*half,2*half).rotateX(-Math.PI/2);
+   const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false,defines:NOPOST?{NOPOST:1}:{},
+     uniforms:{uC:{value:new THREE.Vector3()},uR:{value:50},uHw:{value:.5},uA:{value:1},uT:{value:0},uFill:{value:.05}},
+     vertexShader:'varying vec3 vW;void main(){vW=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(vW,1.0);}',fragmentShader:LT_RING_FS});
+   const r=new THREE.Mesh(g,m);r.frustumCulled=false;r.renderOrder=8;r.visible=false;scene.add(r);o.ring=r;
+   const cv=document.createElement('canvas');cv.width=256;cv.height=64;o.lblCv=cv;const tex=new THREE.CanvasTexture(cv);o.lblTex=tex;
+   const ls=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false,fog:false}));ls.renderOrder=12;ls.visible=false;ls.frustumCulled=false;scene.add(ls);o.lbl=ls;o.lblText='';}
+  /* the salvage crate (after a wreck at an unmarked mouth): one small sprite drifting near the reef */
+  {const cs=new THREE.Sprite(new THREE.SpriteMaterial({map:ltCrateTex(),transparent:true,depthWrite:false,fog:false}));cs.scale.set(2.2,2.2,1);cs.renderOrder=9;cs.visible=false;scene.add(cs);o.crate=cs;}
+  /* an optional second light on the harbour mouth: a lamp on a post at the jetty tip (?lmark=1), it marks the mouth */
+  if(LT.marked&&W.jetty){const j=W.jetty,tx=j.x+j.dx*(j.len+1.2),tz=j.z+j.dz*(j.len+1.2),yy=Math.max(H(tx,tz),1.5);const G=ltGeo();G.cyl(0,0,3.4,0,.12,.09,6,LT_COL.wood,true);G.box(0,3.7,0,.5,.55,.5,LT_COL.dark,0);
+    const m=new THREE.Mesh(G.build(),dm);m.position.set(tx,yy,tz);m.castShadow=true;scene.add(m);o.mark={x:tx,y:yy+3.7,z:tz};o.markCore=spr(new THREE.Color(1,.75,.4),10);o.markCore.position.set(tx,yy+3.7,tz);o.markHalo=spr(new THREE.Color(1,.6,.3),9);o.markHalo.position.copy(o.markCore.position);}
+  ltBuildTower();ltUpdate(0,true);}
+function ltBuildTower(){const o=LT.obj,rung=LT.rung,tier=ltTier(),S=LT.site;
+  if(o.mesh){o.tower.remove(o.mesh);o.mesh.geometry.dispose();o.mesh=null;}if(o.dome){o.tower.remove(o.dome);o.dome.geometry.dispose();o.dome=null;}
+  const T=ltTowerGeo(rung,tier,S);o.mesh=new THREE.Mesh(T.geo,o.towerMat);o.mesh.castShadow=true;o.mesh.receiveShadow=true;o.tower.add(o.mesh);o.lampY=T.lampY;o.domeR=T.domeR;o.foundation=T.foundation;
+  if(tier!=='ar'&&T.domeR>0){const g=new THREE.SphereGeometry(T.domeR,tier==='high'?14:8,tier==='high'?9:6);o.dome=new THREE.Mesh(g,o.domeMat);o.dome.position.set(0,T.lampY,0);o.dome.renderOrder=2;o.tower.add(o.dome);}
+  LT.lamp=new THREE.Vector3(S.x,S.y+T.lampY,S.z);LT.char=LT.char;
+  if(o.pl)o.pl.position.set(S.x,S.y+T.lampY+.4,S.z);
+  LT.snapOn=false;}
+function ltVisKm(){if(LT.visO!==null)return LT.visO;if(WXR&&WXR.state&&WXR.state.vis>0)return WXR.state.vis/1000;return 40;}
+function ltHourNow(){return CKON?ckHour():LT.hour;}
+const ltSm=(a,b,x)=>{let t=(x-a)/(b-a);t=t<0?0:t>1?1:t;return t*t*(3-2*t);};
+function ltOnTarget(c,visKm){const nightK=c?ltSm(1,-3,c.sun.elev):0,fogK=ltSm(5,2,visKm);
+  if(LT.night===0)return 0;return Math.max(LT.night===1?1:0,nightK,fogK);}
+const LT_UP=new THREE.Vector3(0,1,0),LT_V=new THREE.Vector3();
+function ltUpdate(dt,snap){
+  const o=LT.obj;if(!o.tower)return;const LR=LightRange,tier=ltTier(),rung=LT.rung,t=clock.t;
+  const visKm=ltVisKm(),Vm=visKm*1000;LT.visKm=visKm;LT.vf=clamp(Math.log(12/Math.max(visKm,.2))/Math.log(12/.4),0,1);const vf=LT.vf;
+  LT.range=LR.visibleNm(rung.I,rung.h,LR.EYE_M,visKm);
+  /* lit or not */
+  const c=CKON?CK.c:null,onT=ltOnTarget(c,visKm);
+  const k=snap||LT.snapOn||!(dt>0)?1:1-Math.exp(-dt/.9);LT.onS+=(onT-LT.onS)*k;const on=LT.onS;
+  /* the flash now: runs on real seconds so the pattern keeps its printed speed whatever the game clock does */
+  const tt=LT.freeze!==null?LT.freeze:t;const st=LR.lightState(LT.char,tt/3600,{fade:tier==='high'?.05:0});LT.st=st;
+  const lev=st.level*on,fl=LR.charOf(LT.char).fixed;
+  const fire=rung.id==='fire',flick=fire?(1+.14*Math.sin(t*11.3)*Math.sin(t*3.7+1)+.07*Math.sin(t*23)):(rung.id==='post'?1+.03*Math.sin(t*7):1);
+  /* day: the dome is a pale glass, lit by the sky; night: dark when off, hot when on */
+  const dayK=c?ltSm(-8,3,c.sun.elev):1;
+  if(o.dome){const g=.5+.3*dayK,hot=1.1+4.2*lev;o.domeMat.color.setRGB((g*.55*dayK+.025)*(1-lev)+1.0*hot*lev,(g*.6*dayK+.03)*(1-lev)+.83*hot*lev,(g*.62*dayK+.04)*(1-lev)+.52*hot*lev);}
+  /* the halo: radius from the weather's visibility, the core fades with the camera's distance through the same fog */
+  const dCam=camera.position.distanceTo(LT.lamp),camAtt=Math.max(Math.exp(-3*dCam/Math.max(Vm,60)),.12);
+  const haloR=(3.4+8.0*vf)*(rung.id==='post'?.8:rung.id==='fire'?.9:1)*(tier==='ar'?.6:1),coreR=(rung.id==='fire'?1.8:1.6)*(1+.3*vf);
+  const beamDir=[];const nb=LT_NO_BEAM[rung.id]?0:(tier==='high'&&(rung.id==='big'||rung.id==='relic')?2:1);
+  const period=Math.max(6,Math.min(14,LR.charOf(LT.char).period||8));const rot=LT.yawO!==null?LT.yawO:((tt%period)/period)*6.2832;LT.beamYaw=rot;
+  for(let b=0;b<2;b++){const y=rot+b*Math.PI;beamDir.push([Math.cos(y),Math.sin(y)]);}
+  /* how much the lamp faces the camera: a beam pointing at us makes a flare */
+  let face=0;{const cx=camera.position.x-LT.lamp.x,cz=camera.position.z-LT.lamp.z,cl=Math.hypot(cx,cz)||1;for(let b=0;b<Math.max(nb,1);b++)face=Math.max(face,Math.max(0,(beamDir[b][0]*cx+beamDir[b][1]*cz)/cl));}
+  const flare=nb?Math.pow(face,8):0;
+  const lampLev=nb?(.18+.82*st.level)*on:lev;   /* the lamp itself shows the pattern; a rotating lens shows it as flashes */
+  o.core.position.copy(LT.lamp);o.halo.position.copy(LT.lamp);
+  if(fire){for(let i=0;i<2;i++){const f=o.flame[i];f.visible=on>.01;f.position.set(LT.lamp.x,LT.lamp.y+.35+i*.5,LT.lamp.z);const s=(i?3.4:2.4)*flick*(1+.4*vf);f.scale.set(s*.7,s*1.35,1);f.material.opacity=Math.min(1,.85*on*camAtt)*(i?.55:1);}
+    o.core.visible=false;o.halo.visible=on>.01;o.halo.scale.setScalar(haloR*2.8*flick);o.halo.material.opacity=Math.min(1,(.14+.4*vf)*on)*(.55+.45*camAtt);o.halo.material.color.setRGB(1,.55,.22);}
+  else{for(const f of o.flame)f.visible=false;
+    o.core.visible=lampLev>.004;o.core.scale.setScalar(coreR*2*(1+.9*flare));o.core.material.opacity=Math.min(1,(.55+.45*(tier==='ar'?1:0)+.5*flare)*lampLev*camAtt*(rung.id==='post'?.8:1));
+    o.halo.visible=lampLev>.004;o.halo.scale.setScalar(haloR*2*(1+.6*flare));o.halo.material.opacity=Math.min(1,(.08+.34*vf)*lampLev*(1+1.2*flare)*(.5+.5*camAtt)*(rung.id==='post'?.9:1));o.halo.material.color.setRGB(1,.82,.55);}
+  /* the point light: the flash lights the gallery, the rock and the sea round it */
+  if(o.pl){o.pl.intensity=(fire?.8*flick:rung.id==='post'?.5:rung.id==='relic'?1.8:rung.id==='small'?1.5:2.2)*lev*(1-.6*vf)*(c?Math.max(.0,1-.9*dayK):1);o.pl.visible=o.pl.intensity>.02;}
+  /* the beams */
+  const kBeam=(.07+.88*vf)*(tier==='high'?1:1.1),L0=Math.max(60,Math.min(300,1.5*Vm)),Lb=tier==='ar'?Math.min(L0,TABLE_R*2*.4):L0,bg=rung.id==='small'?.65:rung.id==='relic'?.9:1;
+  const beamLev=(.12+.88*st.level)*on*bg;
+  o.beams.forEach((B,bi)=>{const act=bi<nb&&on>.01;const dir=beamDir[bi];const ax=LT_V.set(dir[0],0,dir[1]);
+    for(const cd of B.cards){const isHz=cd.material.uniforms.uHaze&&cd.material.uniforms.uHaze.value>.5;cd.visible=act&&beamLev>.003&&!(isHz?LT.hide.haze:LT.hide.card);if(!cd.visible)continue;const u=cd.material.uniforms;u.uO.value.copy(LT.lamp);u.uAx.value.copy(ax);u.uL.value=Lb;const hz=u.uHaze.value>.5;u.uW0.value=hz?1.0:.35;u.uW1.value=hz?1+Lb*(.2+.08*vf):.3+Lb*(.05+.025*vf);u.uV.value=Math.max(Vm,150);u.uK.value=hz?kBeam*.8:kBeam;u.uLev.value=beamLev;u.uHot.value=1.0+2.0*flare;u.uCol.value.set(1,.9,.7);}
+    const sm_=B.streak;sm_.visible=act&&beamLev>.003&&!LT.hide.streak;if(sm_.visible){const u=sm_.material.uniforms;u.uO.value.set(LT.lamp.x,tide+.12,LT.lamp.z);u.uAx.value.copy(ax);u.uL.value=Math.min(Lb,TABLE_R*1.6);u.uW0.value=.6;u.uW1.value=5+Lb*.03;u.uV.value=Math.max(Vm,150);u.uK.value=.34*(1-.6*vf);u.uLev.value=beamLev;}
+    B.discs.forEach((d,i)=>{d.visible=act&&beamLev>.003;if(!d.visible)return;const f=Math.pow((i+.5)/B.discs.length,1.35),dd=f*Lb;d.position.set(LT.lamp.x+dir[0]*dd,LT.lamp.y,LT.lamp.z+dir[1]*dd);
+      const wd=.3+dd*(.085+.03*vf);d.scale.setScalar(wd*2.1+1.2);d.material.opacity=Math.min(1,.5*kBeam*(.12+.88*vf)*beamLev*Math.max(Math.exp(-3*dd/Math.max(Vm,150)),.02)*(1.0+.5*flare));});});
+  /* the marked harbour mouth: a lamp on a post with its own pattern */
+  if(o.mark){const st2=LR.lightState('Fl5',tt/3600,{fade:tier==='high'?.05:0}),l2=st2.level*on;o.markCore.visible=o.markHalo.visible=l2>.004;o.markCore.scale.setScalar(1.3);o.markHalo.scale.setScalar(4+6*vf);o.markCore.material.opacity=Math.min(1,.9*l2);o.markHalo.material.opacity=Math.min(1,(.12+.3*vf)*l2);}
+  ltUpdateRing();ltUpdateSalvage(dt);
+  LT.chipT-=dt;if(LT.chipT<=0||snap){LT.chipT=.25;ltHudUpdate();}}
+function ltFrame(dt){ltUpdate(dt,false);}
+function ltRingRadius(rangeNm){return clamp(TABLE_R*.82*Math.sqrt(rangeNm/16),TABLE_R*.06,TABLE_R*.82);}   /* a compressed scale (TUNING): the real range is thousands of times the table */
+function ltUpdateRing(){const o=LT.obj,r=o.ring;if(!r)return;r.visible=!!LT.ring;o.lbl.visible=!!LT.ring;if(!LT.ring)return;
+  const R=ltRingRadius(LT.range),dist=camera.position.length(),hw=Math.max(.45,dist*.0042);const u=r.material.uniforms;
+  r.position.y=tide+.14;u.uC.value.set(0,0,0);u.uR.value=R;u.uHw.value=hw;u.uA.value=.62;u.uFill.value=.05;
+  const txt=(LT.range<10?LT.range.toFixed(1):Math.round(LT.range))+' nm';
+  if(txt!==o.lblText){o.lblText=txt;const g=o.lblCv.getContext('2d');g.clearRect(0,0,256,64);g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=7;g.strokeStyle='rgba(6,16,26,.85)';g.strokeText(txt,128,34);g.fillStyle='#bff0ff';g.fillText(txt,128,34);o.lblTex.needsUpdate=true;}
+  /* the label sits on the far side of the ring as seen from the camera, so it is always over the sea behind the island */
+  const fx=-camera.position.x,fz=-camera.position.z,fl=Math.hypot(fx,fz)||1;o.lbl.position.set(fx/fl*R,tide+1.2,fz/fl*R);const sz=Math.max(7,dist*.062);o.lbl.scale.set(sz*4,sz,1);}
+/* ---- arrivals: the keyed arrival boats, who sees the light, who lands, who is wrecked ---- */
+function ltArrOpts(o){o=o||{};const hasWx=!!window.LI_WEATHER&&LI_WEATHER.at;const MS=window.MacroSea;
+  return{rung:o.rung!==undefined?o.rung:LT.rung,marked:o.marked!==undefined?o.marked:LT.marked,macro:o.macro===false?null:MS,pBase:o.pBase,nightBoats:o.nightBoats,
+    visKmAt:o.visKm!=null?(()=>o.visKm):(hasWx?(h=>LI_WEATHER.at(SEED,h).vis/1000):(()=>30)),
+    windAt:hasWx?(h=>LI_WEATHER.at(SEED,h).windMs):undefined,
+    nightAt:CKON?(h=>SkyClock.clock(SEED,h,{lat:CK.lat,doy0:CK.doy0}).sun.elev<-3):undefined,
+    tideAt:CKON?(h=>SkyClock.clock(SEED,h,{lat:CK.lat,doy0:CK.doy0}).tide.level):(MS?(h=>MS.macro(SEED,h,{arrivals:false}).tide.level):undefined)};}
+function ltUpdateSalvage(dt){const o=LT.obj;if(!o.crate)return;const now=ltHourNow();
+  if(now-LT.evT>.25||now<LT.evT){LT.evT=now;try{LT.ev=LightRange.arrivalsFor(SEED,now-26,now,ltArrOpts());}catch(e){LT.ev=null;}}
+  let sv=null;if(LT.ev)for(const e of LT.ev.events)if(e.salvage&&e.salvage.hour<=now&&now<e.salvage.hour+24){sv=e.salvage;break;}
+  LT.salv=sv||(LT.forceSalv?{key:'forced',hour:now}:null);const on=!!LT.salv;o.crate.visible=on;if(!on)return;
+  const t=clock.t,r=LT.reef,ph=LightRange.hashStr(LT.salv.key)%628/100;
+  o.crate.position.set(r.x+Math.sin(t*.13+ph)*3.2,tide+.55+Math.sin(t*1.3+ph)*.1,r.z+Math.cos(t*.11+ph)*2.6);o.crate.material.rotation=Math.sin(t*.7+ph)*.18;}
+/* ---- HUD ---- */
+function ltChipText(){const ch=LightRange.charOf(LT.char),r=LT.rung,rg=LT.range;return{t:r.short+' · '+ch.abbr,m:'range '+(rg<10?rg.toFixed(1):Math.round(rg))+' nm · vis '+(LT.visKm<10?LT.visKm.toFixed(1):Math.round(LT.visKm))+' km',name:r.name+', '+ch.name};}
+function ltHudInit(){const top=document.getElementById('top');top.style.flexWrap='wrap';const home=document.getElementById('homeBtn');
+  const chip=document.createElement('div');chip.className='pill';chip.id='ltChip';chip.innerHTML='<span id="ltT"></span><small id="ltM" style="margin-left:8px"></small>';top.insertBefore(chip,home);
+  const mk=(id,txt,lab,fn)=>{const b=document.createElement('button');b.className='btn';b.id=id;b.textContent=txt;b.setAttribute('aria-label',lab);b.addEventListener('click',fn);top.insertBefore(b,home);return b;};
+  mk('ltRung','Rung','next light rung (fire, post lamp, small lens, big lens, relic)',()=>ltSetRung((LT.rung.index+1)%LightRange.RUNGS.length));
+  mk('ltPat','Pattern','next flash pattern',()=>{const L=LightRange.CHARACTERS.map(x=>x.id);ltSetChar(L[(L.indexOf(LT.char)+1)%L.length]);});
+  const rb=mk('ltRingB','Ring','ring of sight',()=>{LT.ring=!LT.ring;rb.classList.toggle('on',LT.ring);});rb.classList.toggle('on',LT.ring);
+  const nb=mk('ltNight','Lamp','lamp: auto, forced on, forced off',()=>{LT.night=LT.night===null?1:LT.night===1?0:null;LT.snapOn=true;nb.textContent='Lamp '+(LT.night===null?'auto':LT.night?'on':'off');});nb.textContent='Lamp '+(LT.night===null?'auto':LT.night?'on':'off');
+  ltHudUpdate();}
+function ltHudUpdate(){const a=document.getElementById('ltT');if(!a)return;const x=ltChipText();if(a.textContent!==x.t)a.textContent=x.t;const m=document.getElementById('ltM');if(m.textContent!==x.m)m.textContent=x.m;m.parentNode.title=x.name;}
+function ltSetRung(i){LT.rung=LightRange.rungOf(i);LT.char=LightRange.defaultCharacter(LT.rung,SEED);ltBuildTower();ltUpdate(0,true);}
+function ltSetChar(id){if(LightRange.CHARACTERS.some(x=>x.id===id)||id==='F'){LT.char=id;ltUpdate(0,true);}}
+/* a camera for the lighthouse: 'tower' looks at it from the sea side, 'wide' shows the whole table with the lamp, 'beam' looks along the beam */
+function ltView(name,o){o=o||{};const S=LT.site,sea=S.seaward,ty=LT.lamp.y-2;
+  const v={tower:{tx:S.x,tz:S.z,dist:o.dist||46,phi:o.phi||.34,theta:o.theta!==undefined?o.theta:(Math.PI/2-sea+(o.side!==undefined?o.side:.55)),ty:CKON?ty-S.y*0:0,fov:CKON?30:30},
+    wide:{tx:0,tz:2,dist:WORLD?390:290,phi:.93,theta:.42,ty:0,fov:30},
+    night:{tx:S.x*.5,tz:S.z*.5,dist:o.dist||150,phi:o.phi||.3,theta:o.theta!==undefined?o.theta:.5,ty:CKON?16:0,fov:CKON?40:30}}[name]||{};
+  Object.assign(cam,v);clampCam();snap=true;}
+function ltApi(){return{
+  state:()=>JSON.parse(JSON.stringify({rung:LT.rung.id,rungIndex:LT.rung.index,char:LT.char,on:LT.onS,onTarget:LT.onS,rangeNm:LT.range,horizonNm:LightRange.horizonNm(LT.rung.h,LightRange.EYE_M),visKm:LT.visKm,flash:LT.st,tier:ltTier(),ring:LT.ring,night:LT.night,
+    site:{x:LT.site.x,z:LT.site.z,y:LT.site.y,minH:LT.site.minH,seaward:LT.site.seaward},lamp:LT.lamp.toArray(),beamYaw:LT.beamYaw,towerH:LT.lamp.y-LT.site.y,marked:LT.marked,salvage:LT.salv||null,reef:LT.reef,foundation:LT.obj.foundation})),
+  rangeNm:()=>LT.range,visKm:()=>LT.visKm,on:()=>LT.onS,flash:()=>LT.st,site:()=>({...LT.site}),lamp:()=>LT.lamp.toArray(),reef:()=>({...LT.reef}),
+  setRung:i=>ltSetRung(i),setChar:id=>ltSetChar(id),setRing:b=>{LT.ring=!!b;const x=document.getElementById('ltRingB');if(x)x.classList.toggle('on',LT.ring);},setNight:v=>{LT.night=v;LT.snapOn=true;},setVis:km=>{LT.visO=km;},setFreeze:t=>{LT.freeze=t;},setYaw:deg=>{LT.yawO=deg===null?null:deg*Math.PI/180;},
+  ringRadius:()=>ltRingRadius(LT.range),dbg:()=>({LT,scene,camera}),hide:(k,b)=>{LT.hide[k]=!!b;},forceSalvage:b=>{LT.forceSalv=!!b;ltUpdateSalvage(0);},update:(dt,snap)=>ltUpdate(dt||0,snap),view:ltView,chip:()=>ltChipText(),
+  /* who sees the light, who lands: the keyed arrival boats between two game hours (macro_sea.js boats plus a seeded list of night boats), a pure function of the seed and the hours */
+  arrivals:(h0,h1,o)=>LightRange.arrivalsFor(SEED,h0,h1,ltArrOpts(o)),
+  arrivalSeen:(visKm,distNm,o)=>LightRange.arrivalSeen(o&&o.rung!==undefined?o.rung:LT.rung,visKm,distNm,o),
+  rungs:()=>JSON.parse(JSON.stringify(LightRange.RUNGS)),characters:()=>JSON.parse(JSON.stringify(LightRange.CHARACTERS)),
+  parts:()=>{const o=LT.obj;return{tier:ltTier(),tower:!!o.mesh,dome:!!o.dome,pointLight:!!o.pl,beams:o.beams.map(B=>({cards:B.cards.length,discs:B.discs.length,visible:B.cards.some(c=>c.visible)})),ring:!!o.ring&&o.ring.visible,crate:!!o.crate&&o.crate.visible,mark:!!o.mark,
+    sprites:(()=>{let n=0;scene.traverse(x=>{if(x.isSprite&&x.visible)n++;});return n;})(),towerTris:o.mesh?o.mesh.geometry.index.count/3:0,domeTris:o.dome?o.dome.geometry.index.count/3:0};},
+  tris:()=>{let n=0;const o=LT.obj;for(const m of[o.mesh,o.dome]){if(m)n+=m.geometry.index.count/3;}for(const B of o.beams)for(const c of B.cards)n+=c.geometry.index.count/3;return n;},
+  hash:()=>0};}
 /* weather chip: cycles the states by hand (then the schedule stops), the last tap returns to auto */
 function wxChipInit(){const b=document.createElement('button');b.className='btn';b.id='wxChip';b.style.minWidth='140px';const top=document.getElementById('top');top.insertBefore(b,document.getElementById('homeBtn'));
   b.addEventListener('click',()=>{const L=LI_WEATHER.STATES.concat(['auto']);const i=L.indexOf(WXR.mode);WXR.set(L[(i+1)%L.length]);});}
@@ -1823,7 +2085,7 @@ function init(){
     WXR=LI_WEATHER.create({seed:SEED,islands:ISL,mode:LI_WEATHER.STATES.includes(WXS)?WXS:'auto',nopost:NOPOST,quality,sunDir,setSun,sunFree:Q.get('sun')===null&&!CKON,camera,getCur:()=>cur,getH:()=>renderer.domElement.height,atFn:MC.on?(()=>MC.wx):undefined,hourSec:hs>0?hs:undefined,wt:wt!==null?parseFloat(wt):null,hour0:Q.get('wh')!==null?parseFloat(Q.get('wh')):6,
       baseSun:CKON?{i:1,c:[1,1,1]}:LAND?{i:2.0,c:[1.0,.95,.86]}:{i:2.9,c:[1.0,.64,.34]},baseHemi:CKON?{i:1,c:[1,1,1],g:[1,1,1]}:LAND?{i:.85,c:[.36,.46,.62],g:[.26,.23,.18]}:{i:1.1,c:[.24,.32,.50],g:[.22,.15,.09]}});
     wxChipInit();}
-  build();buildPost();size();setupControls(cv);if(CKON)ckChipInit();
+  build();buildPost();size();setupControls(cv);if(CKON)ckChipInit();if(LTON)ltHudInit();
   el.qBtn.textContent='Quality: '+(quality==='high'?'High':'Low');el.qBtn.classList.toggle('on',quality==='low');
   el.tide.addEventListener('input',()=>{MC.tideTouched=true;tideAuto=false;el.auto.classList.remove('on');tideManual=parseFloat(el.tide.value);});
   el.auto.addEventListener('click',()=>{MC.tideTouched=true;tideAuto=!tideAuto;el.auto.classList.toggle('on',tideAuto);if(tideAuto)tideT=Math.asin(clamp(tide/(TIDE_RANGE*.92),-1,1))*55/(2*Math.PI);});
@@ -1858,6 +2120,7 @@ function init(){
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
     clock:CKON?ckApi():null,
+    light:LTON?ltApi():null,
     scenePoints:()=>{let n=0;scene.traverse(o=>{if(o.isPoints)n++;});return n;},
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
