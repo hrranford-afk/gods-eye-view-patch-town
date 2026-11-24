@@ -1,0 +1,499 @@
+{
+ "autumn": {
+  "eggs": {
+   "S_end": 0.6094625944858846,
+   "S_min": 0.6094625944858846,
+   "build_h": 420.19765845092275,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 82.6,
+   "n": 60,
+   "people_kept": 1.3833333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "garden": {
+   "S_end": 0.6094625944858846,
+   "S_min": 0.6094625944858846,
+   "build_h": 380.8475215376547,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 75.03333333333333,
+   "n": 60,
+   "people_kept": 1.8833333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "line": {
+   "S_end": 0.5655590483006208,
+   "S_min": 0.5190803187452601,
+   "build_h": 660.0209398915656,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 69.1,
+   "n": 60,
+   "people_kept": 1.9333333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "mixed": {
+   "S_end": 0.4324260613703592,
+   "S_min": 0.4134154633688809,
+   "build_h": 701.4735460497775,
+   "colony": 1.0,
+   "fail_rate": 0.13333333333333333,
+   "hungry_days": 2.5833333333333335,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 7,
+    "shoal": 1
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "nets": {
+   "S_end": 0.5723677235080878,
+   "S_min": 0.4936514834680984,
+   "build_h": 718.8154315738929,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 63.93333333333333,
+   "n": 60,
+   "people_kept": 1.9333333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 0.5525499999999973,
+   "seals_gone_share": 0.0
+  },
+  "scav": {
+   "S_end": 0.6094625944858846,
+   "S_min": 0.6094625944858846,
+   "build_h": 519.7193606707735,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 75.83333333333333,
+   "n": 60,
+   "people_kept": 1.5166666666666666,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "shore": {
+   "S_end": 0.6094625944858846,
+   "S_min": 0.6094625944858846,
+   "build_h": 380.8475215376547,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 75.03333333333333,
+   "n": 60,
+   "people_kept": 1.8833333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "trader": {
+   "S_end": 0.6094625944858846,
+   "S_min": 0.6094625944858846,
+   "build_h": 269.46061855191823,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 65.65,
+   "n": 60,
+   "people_kept": 3.5,
+   "reasons": {
+    "hunger": 60,
+    "seals": 39
+   },
+   "seal_T": 0.45266666666666655,
+   "seals_gone_share": 0.65
+  }
+ },
+ "long": {
+  "eggs": {
+   "S_end": 0.9886754808505409,
+   "S_min": 0.5904398856765535,
+   "build_h": 1513.2114552564628,
+   "colony": 0.34664400000000245,
+   "fail_rate": 1.0,
+   "hungry_days": 272.8,
+   "n": 60,
+   "people_kept": 1.0,
+   "reasons": {
+    "colony": 60,
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "garden": {
+   "S_end": 0.9886754808505409,
+   "S_min": 0.5904398856765535,
+   "build_h": 1375.9244068215182,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 293.5833333333333,
+   "n": 60,
+   "people_kept": 1.0166666666666666,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "line": {
+   "S_end": 0.906858850088944,
+   "S_min": 0.48500859098239296,
+   "build_h": 3574.2902230791215,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 126.58333333333333,
+   "n": 60,
+   "people_kept": 1.35,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "mixed": {
+   "S_end": 0.8031674662144326,
+   "S_min": 0.3661317222668502,
+   "build_h": 4904.5328713385525,
+   "colony": 1.0,
+   "fail_rate": 0.43333333333333335,
+   "hungry_days": 10.2,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 26
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "nets": {
+   "S_end": 0.9829290352774857,
+   "S_min": 0.46403291653572765,
+   "build_h": 3103.0924821461326,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 270.35,
+   "n": 60,
+   "people_kept": 1.0333333333333334,
+   "reasons": {
+    "hunger": 60,
+    "seals": 60
+   },
+   "seal_T": 0.19999999999999993,
+   "seals_gone_share": 1.0
+  },
+  "scav": {
+   "S_end": 0.9886754808505409,
+   "S_min": 0.5904398856765535,
+   "build_h": 1580.8622719751158,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 276.1333333333333,
+   "n": 60,
+   "people_kept": 1.0,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "shore": {
+   "S_end": 0.9886754808505409,
+   "S_min": 0.5904398856765535,
+   "build_h": 1618.051746771051,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 197.51666666666668,
+   "n": 60,
+   "people_kept": 1.0166666666666666,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "trader": {
+   "S_end": 0.9886754808505409,
+   "S_min": 0.5904398856765535,
+   "build_h": 1341.0003722151582,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 193.85,
+   "n": 60,
+   "people_kept": 2.3833333333333333,
+   "reasons": {
+    "hunger": 60,
+    "seals": 10
+   },
+   "seal_T": 0.6281433333333325,
+   "seals_gone_share": 0.16666666666666666
+  }
+ },
+ "spring": {
+  "eggs": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 890.7224671617112,
+   "colony": 0.37220000000000136,
+   "fail_rate": 1.0,
+   "hungry_days": 43.55,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "colony": 60,
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "garden": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 812.8197282452818,
+   "colony": 1.0,
+   "fail_rate": 0.6333333333333333,
+   "hungry_days": 14.083333333333334,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 38
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "line": {
+   "S_end": 0.7190820776626171,
+   "S_min": 0.5503815503810419,
+   "build_h": 1644.2169502493568,
+   "colony": 1.0,
+   "fail_rate": 0.15,
+   "hungry_days": 5.316666666666666,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 9
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "mixed": {
+   "S_end": 0.8174030553828598,
+   "S_min": 0.5803195839126614,
+   "build_h": 1443.1845082012535,
+   "colony": 1.0,
+   "fail_rate": 0.0,
+   "hungry_days": 0.0,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {},
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "nets": {
+   "S_end": 0.6837616256921404,
+   "S_min": 0.5049706996325243,
+   "build_h": 1688.4832997723456,
+   "colony": 1.0,
+   "fail_rate": 0.03333333333333333,
+   "hungry_days": 2.3666666666666667,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 2
+   },
+   "seal_T": 0.5525499999999973,
+   "seals_gone_share": 0.0
+  },
+  "scav": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 976.7414891341144,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 38.35,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "shore": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 871.9198842543315,
+   "colony": 1.0,
+   "fail_rate": 0.75,
+   "hungry_days": 15.4,
+   "n": 60,
+   "people_kept": 4.0,
+   "reasons": {
+    "hunger": 45
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "trader": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 521.3314654088473,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 39.483333333333334,
+   "n": 60,
+   "people_kept": 3.8833333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  }
+ },
+ "village": {
+  "eggs": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 1490.7667793661408,
+   "colony": 0.37220000000000136,
+   "fail_rate": 1.0,
+   "hungry_days": 115.45,
+   "n": 60,
+   "people_kept": 10.0,
+   "reasons": {
+    "colony": 60,
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "garden": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 1386.5495896550049,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 115.71666666666667,
+   "n": 60,
+   "people_kept": 11.483333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "line": {
+   "S_end": 0.3423728236612356,
+   "S_min": 0.2208972684307736,
+   "build_h": 2761.6633268417377,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 57.03333333333333,
+   "n": 60,
+   "people_kept": 12.0,
+   "reasons": {
+    "hunger": 60,
+    "shoal": 38
+   },
+   "seal_T": 0.8141324999999972,
+   "seals_gone_share": 0.0
+  },
+  "mixed": {
+   "S_end": 0.3399752325561884,
+   "S_min": 0.22049242361978438,
+   "build_h": 2933.211018301825,
+   "colony": 1.0,
+   "fail_rate": 0.7166666666666667,
+   "hungry_days": 4.7,
+   "n": 60,
+   "people_kept": 12.0,
+   "reasons": {
+    "hunger": 4,
+    "shoal": 41
+   },
+   "seal_T": 0.8069083333333305,
+   "seals_gone_share": 0.0
+  },
+  "nets": {
+   "S_end": 0.30628483050178124,
+   "S_min": 0.1890498983073625,
+   "build_h": 2848.0348576135357,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 53.3,
+   "n": 60,
+   "people_kept": 12.0,
+   "reasons": {
+    "hunger": 60,
+    "seals": 60,
+    "shoal": 55
+   },
+   "seal_T": 0.19999999999999993,
+   "seals_gone_share": 1.0
+  },
+  "scav": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 1582.742280384589,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 111.25,
+   "n": 60,
+   "people_kept": 10.0,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "shore": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 1468.441994572665,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 115.91666666666667,
+   "n": 60,
+   "people_kept": 11.25,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  },
+  "trader": {
+   "S_end": 0.994428392071881,
+   "S_min": 0.781442285517323,
+   "build_h": 757.1120054878916,
+   "colony": 1.0,
+   "fail_rate": 1.0,
+   "hungry_days": 114.06666666666666,
+   "n": 60,
+   "people_kept": 10.883333333333333,
+   "reasons": {
+    "hunger": 60
+   },
+   "seal_T": 1.0,
+   "seals_gone_share": 0.0
+  }
+ }
+}
