@@ -177,3 +177,24 @@ See `research/HOUSE_BILL_OF_MATERIALS.md` (figures are estimates; confidence tag
 1. Household-loop balance test (small, headless).
 2. Era 2 and era 4 design notes.
 3. Look test (running) supplies the visual bar.
+
+## Fortifications and a head-to-head mode (owner idea, 24 Nov)
+
+Harry: big hills where settlers build fortifications into the ground, like the old forts he walked round in France with his parents when he was young. It could open a whole new kind of play: you and a friend each build a base and fire on each other's bunkers.
+
+What fits already:
+- The landform worlds have real relief (ridges, cones, cliffs), so there is something to dig into.
+- The repairable-parts method (repair_physics.js, the jetty pilot) is the same idea turned round: parts that stand, take damage, fall and can be rebuilt.
+- The kit approach (named parts, baked wear) can make earthworks, timber palisades, stone walls, bunkers and gun positions.
+- The repo already has a physics ballistics game (games/baguettes-and-ballistics, see its HANDOVER.md and AR.md). Read it first: it may have the firing and destruction feel Harry liked. Take lessons, not code, unless Harry says otherwise.
+
+Ideas to research before any build (research-first gate):
+- Real fortification shapes and why they work: ditches and ramparts, bastions and angled walls that deflect fire, covered ways, tunnels and casemates, hill forts. Sources go in the research note only, with no real place names in code.
+- Digging: a terrain edit on the landform mesh (trench, mound, cut) that keeps the water and sea logic honest.
+- Destructible structures from parts: walls, timber and earth that crumble in pieces, repairable afterwards.
+- Firing: arcs with wind, a few simple weapon types, range and reload, nothing gory.
+- Head-to-head rules: two sides, each builds for a set time, then a firing phase; or a co-op version against a storm or raiders. Both modes share the same parts.
+
+Tone rails (unchanged): hopeful overall; violence allowed only when it is justified by the story and never gratuitous; nothing gory or cruel for its own sake. A friendly skirmish with crumbling walls and clouds of dust fits. Robots stay relics and take no part.
+
+Open questions for Harry (taste): is this a separate mode (a 'skirmish') or something that can happen inside the main world, for example raiders arriving by sea? Is the first version two friends on one screen, two devices, or you against the machine? Should damage last between games?
