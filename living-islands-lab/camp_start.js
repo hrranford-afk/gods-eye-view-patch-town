@@ -152,6 +152,8 @@ function plan(env) {
     const via = route(ap.x, ap.z, c.x, c.z); if (!via) { dbg.wline = (dbg.wline || 0) + 1; continue; }
     { const pts = [[ap.x, ap.z]].concat(via, [[c.x, c.z]]); for (let q = 0; q + 1 < pts.length; q++) for (let k = 1; k <= 8; k++) { const u = k / 8; corridor.push({ x: pts[q][0] + (pts[q + 1][0] - pts[q][0]) * u, z: pts[q][1] + (pts[q + 1][1] - pts[q][1]) * u, r: 1.0 }); } }   /* small scrub and stones along the robots' way are cleared */
     work.push({ x: c.x, z: c.z, y: c.h, via, yaw: Math.atan2(-c.gx, -c.gz), kind: KINDS[work.length % 3], i: work.length }); }
+  /* the Gift first day (env.dryKinds): the driest sites carry the finds that matter most (timber, then metal, then the rest), so a frozen tide cannot flood out an order. Absent = unchanged. */
+  if (env.dryKinds && work.length) { const ord = work.map((w, i) => i).sort((a, b) => work[b].y - work[a].y), KO = ['wood', 'metal', 'plastic', 'wood', 'metal', 'plastic', 'plastic']; ord.forEach((wi, r) => { work[wi].kind = KO[r % KO.length]; }); }
   if (!work.length) { const q = toWorld(yard, 0, YARD_FRONT + 2.5); work.push({ x: q[0], z: q[1], y: H(q[0], q[1]), yaw: yard.yaw, kind: 'plastic', i: 0 }); notes.push('work: none on the shore, one beside the yard'); }
   /* clear list: what the pieces and the yard stand on (trees, rocks, shrubs inside are removed by the page) */
   const clearAll = yard.pads.map(p => ({ x: p.x, z: p.z, r: p.r + 1.1 })).concat(corridor.map(c => ({ x: c.x, z: c.z, r: c.r, corridor: 1 }))).concat(pieces.filter(p => !p.site).map(p => ({ x: p.cx, z: p.cz, r: p.fr + .3 })));
@@ -178,8 +180,8 @@ function dryNow(sim, w) { return w.y > sim.env.tide + .3; }
 function pickSite(sim, r, R) {
   const pl = sim.pl, k = pl.work.length; if (!k) return -1;
   /* the next dry site that no other robot is on, starting from a seeded rotation */
-  for (let q = 0; q < k; q++) { const i = (r.siteI + 1 + q + (r.trips === 0 ? r.id * 2 : 0)) % k, w = pl.work[i];
-    if (!dryNow(sim, w) || sim.litter[i].taken) continue; if (sim.robots.some(o => o !== r && (o.siteI === i && (o.state === ST.OUT || o.state === ST.WORK)))) continue; return i; }
+  for (let pass = 0; pass < (r.want ? 2 : 1); pass++) for (let q = 0; q < k; q++) { const i = (r.siteI + 1 + q + (r.trips === 0 ? r.id * 2 : 0)) % k, w = pl.work[i];
+    if (!dryNow(sim, w) || sim.litter[i].taken || (pass === 0 && r.want && w.kind !== r.want)) continue; if (sim.robots.some(o => o !== r && (o.siteI === i && (o.state === ST.OUT || o.state === ST.WORK)))) continue; return i; }
   return -1;
 }
 function setPath(r, pts) { r.path = pts; r.pi = 0; }
