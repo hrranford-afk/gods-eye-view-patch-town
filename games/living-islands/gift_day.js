@@ -306,6 +306,7 @@ body.dev-touch #gd .gd-btn{min-height:52px;min-width:52px;font-size:17px}
 @media (max-width:760px){#gd-left{bottom:214px}#gd-strip{top:62px}#gd-right{top:62px}}
 #gd-toast{position:absolute;left:50%;top:126px;transform:translateX(-50%);max-width:min(560px,calc(100vw - 24px));text-align:center;opacity:0;transition:opacity .4s;pointer-events:none}
 #gd-toast.on{opacity:1}
+#gd #gd-toast{pointer-events:none}   /* a pill class sets pointer-events:auto; the toast must never catch a tap meant for the island */
 #gd .gd-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 120px);overflow:auto;padding:18px 20px;pointer-events:auto;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 #gd .gd-card.gd-side{left:10px;top:150px;transform:none;width:min(470px,calc(100vw - 20px));max-height:calc(100vh - 250px)}
 #gd .gd-card h2{margin:0 0 8px;font-size:21px}
@@ -700,8 +701,8 @@ function activate(id) {
   if (id === 'wreck') return wreckCard();
   if (id.startsWith('find')) return takeFind(parseInt(id.slice(4), 10));
   if (id.startsWith('crate')) return deliveryCrate(parseInt(id.slice(5), 10));
-  if (id.startsWith('bot')) return robotCard(parseInt(id.slice(3), 10));
   if (id === 'bottle') return readBottle();
+  if (/^bot\d+$/.test(id)) return robotCard(parseInt(id.slice(3), 10));   /* 'bottle' also starts with 'bot': test it first */
 }
 /* (1) the crate, the letter, the ledger opening */
 function openKeyCrate() {

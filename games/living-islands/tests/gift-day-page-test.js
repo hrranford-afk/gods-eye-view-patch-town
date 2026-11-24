@@ -29,7 +29,7 @@ async function cam(p, x, z, dist = 16, phi = .75, theta = .6) { await p.evaluate
 async function tap(p, id, retry = 3) {
   for (let k = 0; k < retry; k++) {
     /* software GL is slow: wait until the target stops drifting on screen (the camera is still easing) before pressing */
-    let t = null, prev = null; for (let q = 0; q < 40; q++) { t = await p.evaluate(id => __gift.targets().find(t => t.id === id) || null, id); if (t && prev && Math.hypot(t.x - prev.x, t.y - prev.y) < 2) break; prev = t; await p.waitForTimeout(500); } if (t && t.x > 5 && t.y > 5) { await p.mouse.click(t.x, t.y); await p.waitForTimeout(500); return true; } await p.waitForTimeout(800); }
+    let t = null, prev = null; let calm = 0; for (let q = 0; q < 40; q++) { t = await p.evaluate(id => __gift.targets().find(t => t.id === id) || null, id); if (t && prev && Math.hypot(t.x - prev.x, t.y - prev.y) < 2) { if (++calm >= 2) break; } else calm = 0; prev = t; await p.waitForTimeout(1400); } if (t && t.x > 5 && t.y > 5) { await p.mouse.click(t.x, t.y); await p.waitForTimeout(500); return true; } await p.waitForTimeout(800); }
   return false;
 }
 const clickText = async (p, text) => { const b = p.locator('#gd button', { hasText: text }).first(); if (!(await b.count())) return false; await b.click(); await p.waitForTimeout(400); return true; };
@@ -164,9 +164,10 @@ if (want(3)) {
   const bp = await p.evaluate(() => __gift.objs().bottle.position); await cam(p, bp.x, bp.z, 14, .8, .6);
   const bottleOk = await tap(p, 'bottle'); ok(bottleOk, 'the bottle can be tapped');
   const bt = await cardText(p); const want = await p.evaluate(() => __gift.core.bottleMessage(__gift.state().seed));
-  ok(bt.includes(want), 'the bottle carries the message chosen by seed 9001: "' + want + '"'); ok(/Delivery credit lasts about (3|4|3\.5) years/.test(bt), 'the bottle card shows the ledger note about credit duration');
+  ok(bt.includes(want), 'the bottle carries the message chosen by seed 9001: "' + want + '" (card ' + (await G(p, 'card')) + ': ' + bt.slice(0, 50) + ')'); ok(/Delivery credit lasts about (3|4|3\.5) years/.test(bt), 'the bottle card shows the ledger note about credit duration');
   ok(await clickText(p, 'Keep it and rest'), 'keeping the bottle ends the day'); await p.waitForTimeout(800);
   ok((await stage(p)) === 'done', 'the first day is done');
+  await G(p, 'setHour', 22.2); await p.waitForTimeout(4000);
   const lamp = await p.evaluate(() => { const o = __gift.objs(); return o.stumpGlow ? { vis: o.stumpGlow.visible, op: o.stumpGlow.material.opacity } : null; });
   ok(lamp && lamp.vis && lamp.op > .2, 'the stump lamp is lit at night (opacity ' + (lamp && lamp.op.toFixed(2)) + ')');
   ok(await p.evaluate(() => localStorage.getItem('li.gift.day1')) === null, 'nothing was saved under automation (no &giftsave=1)');

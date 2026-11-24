@@ -90,8 +90,11 @@ To try a later beat without playing: `&stage=yard`, `&stage=evening`, `&stage=ni
 1. The tideline sites are low; with the clock frozen at the end of a stage the tide is frozen too, so an order for timber could find its sites under water for ever. Fix: sites are now given kinds by height (driest carry timber, then metal), and a robot takes what is dry if its ordered kind is flooded.
 2. Dusk fell inside the evening window, the robots went home for the night and the stock stopped before the build menu could be paid. Fix: the evening window ends at golden hour (19.3).
 3. A started robot used to run out with no order; with no order it now waits and the hint says "give it an order".
-4. A worktree on a sparse checkout dropped the island files after a rebase (not a game bug; the sparse list now names them).
-5. The notebook button was detached by constant redraws in one early run: could not be reproduced after the changes (see results).
+4. The toast (the short message strip) caught taps meant for the island: its CSS said pointer-events none but the pill class overrode it, so a robot or crate under the toast could not be tapped for as long as the page lived. Fix: `#gd #gd-toast{pointer-events:none}`. Found by a real click that did nothing.
+5. The bottle could not be tapped at all: its id `bottle` starts with `bot`, so it was sent to the robot card, which found no robot and quietly did nothing (the first night could not be finished by touch). Fix: the bottle is tested first and robot ids must be `bot<number>`.
+6. The HUD was rebuilt many times a second while it rained, because the barrel litre count was part of the redraw test; buttons were replaced under the player's finger. Fix: the barrel text is updated in place.
+7. The tap detector used the page clock between touch-down and touch-up; a slow frame in between could turn a tap into a miss. Fix: it uses the event time stamps.
+8. A worktree on a sparse checkout dropped the island files after a rebase (not a game bug; the sparse list now names them).
 
 ## Honest limits
 - Software GL only. No real GPU number. The pictures are software renders and look softer than a real device.
