@@ -4,6 +4,18 @@ Status: draft for the owner. Written 24 Nov. Plain words, short beats. Taste ite
 Built from things we already have: camp mode, the robot yard, the repair jetty, the tender boat, weather moods, the lighthouse, the ledger idea in THE_GIFT_DESIGN.md.
 Rails kept: hopeful tone, nothing gory, robots are relics (no faces, no speech, no feelings), people are counted not tracked.
 
+## The prologue: before the island (about 8 minutes, v0)
+Owner point (24 Nov): there has to be a story for how you get there, and the gift should feel like a gift. Nothing is earned, so the feeling is doubt and trust, not triumph.
+1. An ordinary day. A quiet place, a small choice (what to eat, what to tidy). Tired, not unhappy.
+2. A plain envelope: "You have been given something. Nothing to pay." It sounds like a trick on purpose.
+3. The test. A page shows a balance. Order one tiny thing (a kettle). It arrives next morning. Now it is real, and a bit scary.
+4. Background hints, easy to miss: radio talk of shortages and delays. Nobody panics.
+5. Pack one bag. Pick what to take (seeds, a book, a lamp). The island will not have it, so it matters.
+6. The journey: a train, then a small boat. A couple of other people carry the same envelope. They are counted, not followed, and nothing is explained.
+7. The boat leaves. The mainland shrinks. Cut to the arrival at dawn.
+Rails: no real brands or places, no violence, hopeful. TASK for later: the carried item changes one early option on the island (taste: owner picks how much).
+Taste question: how much of the wider world to show before the island. Default: a few quiet moments, no big city.
+
 ## The idea in one line
 You wake on a small island you were given. Deliveries keep arriving. Nobody says why. You choose what to do with it.
 
