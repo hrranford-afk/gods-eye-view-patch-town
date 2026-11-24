@@ -1,0 +1,39 @@
+PASS the valid fixture passes all 12 checks (with its request)
+PASS the numbers the fixture builder computed by construction (120 and 36 triangles) equal what the verifier counts from the bytes
+PASS hostile: the GLB was changed after the manifest was made (sha256 mismatch) is rejected by check 3
+PASS hostile: a listed LOD file is missing is rejected by check 3
+PASS hostile: a path leaves the folder (..) is rejected by check 3
+PASS hostile: the manifest links a different recipe than the request is rejected by check 2
+PASS hostile: an unknown key in the manifest is rejected by check 1
+PASS hostile: bad GLB magic is rejected by check 4
+PASS hostile: a truncated GLB is rejected by check 4
+PASS hostile: a glTF extension is declared is rejected by check 5
+PASS hostile: a camera is inside the file is rejected by check 5
+PASS hostile: an animation is inside the file (v0 is static) is rejected by check 5
+PASS hostile: an external image link is rejected by check 5
+PASS hostile: a code-like node name is rejected by check 5
+PASS hostile: too many triangles for the class (prop) is rejected by check 6
+PASS hostile: the manifest claims the wrong triangle count is rejected by check 6
+PASS hostile: LOD1 is not lighter than LOD0 is rejected by check 7
+PASS hostile: a texture that is not a power of two is rejected by check 8
+PASS hostile: a texture too large for the class is rejected by check 8
+PASS hostile: too many materials for the class is rejected by check 8
+PASS hostile: a file above the class size cap is rejected by check 9
+PASS hostile: geometry below the ground plane is rejected by check 10
+PASS hostile: the file is wider than the recipe footprint is rejected by check 10
+PASS hostile: the manifest footprint differs from the file is rejected by check 10
+PASS hostile: no collider is rejected by check 11
+PASS hostile: no socket on a building is rejected by check 11
+PASS hostile: a socket is not where the manifest says is rejected by check 11
+PASS hostile: inspection counts do not add up is rejected by check 12
+PASS hostile: the producer reports a failed check on an approved run is rejected by check 12
+PASS hostile: the run was not approved by the owner is rejected by check 12
+PASS hostile: a manifest that is not JSON is a FAIL line, not a crash
+PASS the fixture builder is deterministic (same GLB bytes twice)
+PASS the valid fixture still passes after all the hostile builds (nothing shared or mutated)
+PASS a real loader (three.js r128 GLTFLoader) reads the valid GLB without error and finds the collider
+PASS the real loader counts the same triangles as the verifier and the builder (120)
+PASS the real loader finds the same bounds as the manifest (each side within 0.001)
+PASS the real loader finds the door socket where the manifest says
+
+37 of 37 checks passed

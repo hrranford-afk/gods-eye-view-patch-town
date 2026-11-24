@@ -1,0 +1,14 @@
+{
+ "request_id": "ASSET-T01",
+ "recipe_path": "recipes/shed.json",
+ "recipe_sha256": "3633668fe5b3cf5c77177d0c33554c061ddedd36045fdd5bd777f8e631169438",
+ "validator_commit": "fixture",
+ "class": "building",
+ "wanted_outputs": [
+  "glb",
+  "preview_png",
+  "inspection_json"
+ ],
+ "machine_run_approved": false,
+ "notes": "test fixture request"
+}
