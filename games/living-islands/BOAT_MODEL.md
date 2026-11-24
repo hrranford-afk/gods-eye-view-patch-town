@@ -1,6 +1,6 @@
 # BOAT_MODEL: the boat kit (24 Nov 2026, version 1)
 
-Four original wooden boats of a cool Atlantic island coast as GLB files, built the way the collector robot was: a fixed script builds the geometry, bakes the textures and writes the files; a test checks them. Nothing here is a copy of a real boat plan; no maker names, no lettering. This is model files and pictures only: nothing is wired into the page yet.
+Four original wooden boats of a cool Atlantic island coast as GLB files, built the way the collector robot was: a fixed script builds the geometry, bakes the textures and writes the files; a test checks them. Nothing here is a copy of a real boat plan; no maker names, no lettering. The kit is wired into `islands_look.html` behind `&boatkit=1` (see the wiring section at the end); without the switch the page is unchanged.
 
 Files
 - `blender/boat_model.py` geometry, node tree, poses, clips and the GLB writer (pure python and numpy, runs under plain `python3`).
@@ -63,5 +63,55 @@ Water is a plane (a transmissive plane with noise, not a simulation). The mask i
 6. Textures are 1024 x 1152 and the normal map half that, so the closest camera (under 1 m) will see soft grain; rivets are drawn, not modelled.
 7. The work boat's cuddy interior is a dark box; no engine, no wheel, no lights.
 8. The wreck's sand fill is a smooth heap; weed is five ribbons.
-9. Nothing is wired into `islands_look.html`; page integration, the `?boats=3` switch and the colour variants come later.
+9. Page integration is done behind `&boatkit=1` (wiring section below); per-boat colour variants are not (one baked livery per boat).
 10. The pictures use a transmissive sea plane with a Boolean hole; the page will use the depth lid, so the pictures show the look, not the page cost.
+
+## Wiring into the page: `&boatkit=1` (24 Nov 2026)
+
+Files: `boat_motion.js` (pure helper: heave, pitch and roll from five sea heights, oar stroke clock, sail trim and heel from the wind angle, rudder from the turn rate, level of detail with hysteresis; tests in `tests/boatkit-test.js`, node, 31 checks); `assets/boatkit/boats_live_b64.js` and `boats_far_b64.js` (outside `assets/boats`, whose 4 MB cap the model test checks) (the live and far GLBs as base64 classic scripts so that `file://` pages can read them, 1.0 MB and 0.29 MB, rebuilt by `tools/boats_b64.py`, a test checks they match the GLBs); `vendor/GLTFLoader.r128.js` (already vendored for the robots); the code block `bk*` in `islands_look.html` just before `buildBoats`. Page tests: `tests/boatkit-page-test.js` (playwright). Pictures: `tests/boatkit-render.js` writes `shots/boatkit-sheet.png` (labelled 2 x 3) and `shots/boatkit-1..3.png` (1200 x 800).
+
+How it works
+- `&boatkit=1` writes the three scripts into the page head (only then), implies `&boats=2` as the fallback, and parses the eight live and far GLBs asynchronously. When all eight are ready `buildBoats()` runs again with the kit; until then, and for good if any file is missing or fails to parse (`&boatkit=fail` and `&boatkit=bad` test both paths), the procedural boats of the boats pass stay and nothing is logged. Without the switch nothing is loaded: default hash 8d962c0c and 88,790 triangles are unchanged (the test checks it).
+- Which boat is which: the first plain moored boat is the work boat (scale 0.75, 5.3 m), the old sailing boat is the sailer (0.85, 5.1 m) on a bigger circle (the old 4.6 m circle is kept only where no deeper circle of 6 to 14 m fits all round), the camp boat is the wreck (1.05), a dinghy (1.1, 4.4 m) rows a small circle beyond the jetty tip (kit only; skipped if no circle of deep water fits), any further plain moored boat in a world is a dinghy at its mooring, and the landing pass boat is a dinghy. Positions, yaw and the old orbit and arrival logic are reused (`b.sail` orbit; a per-boat angular rate `w` so a bigger circle keeps the same speed, 1.35 m/s for the sailer and 0.85 m/s for the dinghy); there are no arrival boats in the page to wire (the `&light=1` arrivals are pure data), so `&light=1`, `&clock=1`, `&mood=` and the night sky simply light the boats.
+- Frame: the file's bow is +Z and its origin is the stern, so each boat is an outer group (page position, yaw, pitch, roll; `rotateZ` is the pitch, `rotateX` the roll, as the page already does) holding an inner group (yaw +90 degrees to put the bow on +x, page scale) holding the level's root moved by half the length. The file's `y = 0` waterline is put on the tide height plus a small bob.
+- Levels: far (vertex colours) and live (atlas) are both in memory; only the one in use is in the scene, so nothing hidden is drawn or counted. By camera distance (`lodFor`, 12 percent hysteresis): high quality hero under 12 m, live under 90 m, far beyond; q=low live under 45 m and never hero; AR (`tier=ar`, or any `&clock=1&clockdome=0` page) live under 30 m and never hero. The default home view is 290 m away, so every boat there is far; zoomed in (the usual 40 to 80 m) they are live. Hero files are 0.6 to 0.9 MB each and have no base64 twin: they are fetched only over http(s), once, the first time a boat is within 30 m of the camera, and used under 12 m (a close-up). From `file://` the live level is the closest level.
+- Sea: pitch, roll and heave come from five heights under the hull (`mcH`, the macro sea's own formula) through `floatMotion` with soft caps (heave 16 cm because the sea mesh itself is a flat plane, angles 8.6 degrees). Without `&macro=1` there is no CPU sea height, so the page's gentle bob stays (about 3 cm, 2 degrees). The sailer adds its heel (up to 12 degrees, to leeward, from the wind speed) and the work boat and dinghy only the sea motion.
+- Oars: the dinghy's `oar_l` and `oar_r` are put in the `pose_rowing` rowlock positions read from the file's clips and swept about the vertical axis by 14 degrees each side of the 8 degree rest angle on a stroke clock (drive 40 percent, recovery 60 percent, blade dipped in the drive and lifted 11 degrees in the recovery); the stroke period follows the boat's speed over the ground (16 to 30 strokes a minute). Boats not rowing keep the oars shipped (`pose_rest`).
+- Sail: the sailer takes `pose_sailing` (sail filled, furled sail hidden), then the boom and sail yaw follow `sailTrim(wind angle off the bow, wind speed)`: 8 degrees of sheet close hauled up to about 80 downwind, on the lee side, eased over 0.7 s so a gybe is never a jump, a small flutter (a faster one head to wind). The wind is the macro wind when `&macro=1` runs, else a steady 6.5 m/s from the west-south-west. The rudder follows the smoothed turn rate (1.6 degrees per 0.01 rad/s, capped at 14 degrees), so on its circle the rudder is held over a few degrees.
+- The lid: the `hullmask` node of every level gets one shared depth-only material (colorWrite false, depthWrite true, depthTest true, renderOrder 1), the sea is renderOrder 5, the hull renders at 0: exactly BOATS_PASS.md's order. It is off for the wreck and for any boat on land (the landing dinghy turns it on when the tide floats it). `&nomask=1` is the debug switch that turns it off. The `waterline` node gets a translucent white material (0.42, renderOrder 6) as the foam line, and a soft dark ring (96 triangles, vertex alpha) lies on the water as a contact shadow.
+- The wreck's berth is chosen by seed from the camp's shore: the lowest slope under a 4 m hull on ground 0.35 to 1.4 m above mean sea, not near the fire, the settlers or a tent, with some fall line to lie along, bow up the slope with a seeded turn of up to 0.4 rad. It lies along the slope (pitch up to 29 degrees, roll up to 17) with its keel 9 cm in the sand.
+- Materials: the GLB's own PBR materials (MeshStandardMaterial with atlas, normal and occlusion/roughness maps), lit by the page's sun and hemisphere lights, shadow cast and received. They do not use the land shader, so the shore swash, caustics, frost and wet sheen of the moods do not touch them (a gain for the dry look, a gap for frost).
+
+Numbers (software GL, headless; all from `tests/boatkit-page-test.js`)
+| | triangles in the page |
+|---|---|
+| default page, no switch (gold) | 88,790 (hash 8d962c0c) |
+| `&boats=2` for comparison | 92,432 |
+| `&boatkit=1`, home view, high (all four boats far) | 91,344 (hidden levels are not in the scene) |
+| the same with every boat at the live level (worst case) | 103,928 |
+| `&boatkit=1&q=low`, far / all live | 63,306 / 75,890 |
+| `post=0` | 91,344 (same meshes) |
+| AR profile (`tier=ar`, low) | 63,334 |
+| landing pass | 125,315 |
+| world 153 / with `&life=1` | 57,153 / 76,770 |
+| `&clock=1&light=1` / `&clock=1&mood=rainbow` / macro sea | 93,216 / 98,630 / 92,082 |
+
+Rendered triangles per boat and level, with the lid and the waterline band (the sailer at live is 5,046 in use because the furled sail is hidden under sail, 5,670 with both sails): dinghy far 536, live 2,840; sailer far 864, live 5,670; work boat far 954, live 4,330; wreck far 836, live 2,934. Hero over http, measured in a close-up: work boat 21,530, dinghy 16,484. Draw calls: about 15 meshes per live boat (hull, lid, band, two oars, rig parts) plus the ring; far boats about 5. Every profile above has 0 console errors, including `&boatkit=fail` and `&boatkit=bad`, which fall back to the 92,432-triangle procedural boats.
+
+The dry-hull proof (`tests/boatkit-page-test.js`, top-down on the dinghy, the sea fragment shader swapped for pure magenta so any water is unmistakable, same mesh, order and depth state): 8 of 8 reference points beside the boat are magenta, 0 of 81 points inside the hull are magenta with the lid, 6 of 81 are with `&nomask=1` (the floorboards and thwarts hide most of the rest, so the control is small but not zero).
+
+
+What is faked
+The sea mesh is flat, so heave is a capped offset and not a ride on the wave; the pitch and roll read the real macro sea at five points but the hull does not displace water, throw spray or leave a wake except the existing sailer wake. The mask is still a lid under the inwale. The sail trim is a table, not aerodynamics (no luffing physics, no reefing). Rudder and oar angles are keyed formulas, not forces. The wind of non-macro pages is a constant. The stroke has no feathering. Hero is a distance switch, not a cross-fade. The wreck's berth is a search of a 19 by 19 m patch, not a boat that was dragged there. The boats have no crew and no lights.
+
+Gaps, ranked (honest)
+1. The sea does not move under the boats (flat plane, no wake, no splash, no drips from the oars, no bow wave on the rowing dinghy): the hulls sit on the water rather than in it. The waterline foam band and the contact ring carry the contact, and they read at 8 to 15 m but not close up.
+2. Hero is http-only and for the nearest boat only; from `file://` and in AR the closest picture is the live level (2.8 to 5.7 thousand triangles, 512 px atlas), which shows laps and rivets at 8 m but softens under 4 m. A base64 twin of the hero files would add about 4.9 MB to the page.
+3. One baked livery per boat: no colour variants by seed, and the old white and red page boats are gone from the picture (the page's `hull` and `stripe` colours are ignored).
+4. No night life: no navigation lights, no lit cuddy window, no lantern (the moored work boat is a dark shape at dusk; the light and clock layers cannot see it).
+5. The wind-less pages (no `&macro=1`) have no sea pitch and roll beyond the old bob, and a constant wind for the sail.
+6. The sailer's gybe is an eased swing through the centre line, not a real gybe with the sail passing over; it happens twice a lap on its circle. The sail does not luff on the tack.
+7. The davit of the work boat is stowed and never works; the dinghy's second oar is hidden from some angles by the hull, as it should be, but oars never splash.
+8. The wreck's berth can be a flat patch that no one would drag a boat to; it is not tied to a story (no tide line, no salvage hook to `&light=1` arrivals; the wreck of `light_range.js` is data only and still has no boat on the page).
+9. Materials are not the land shader: no frost, no wet sheen, no caustics on the hulls; the fog of the weather pass reaches the boats only through the scene fog.
+10. 1.3 MB of base64 script is parsed on start with the switch (about 0.1 s here); a binary fetch would be smaller but needs http.
