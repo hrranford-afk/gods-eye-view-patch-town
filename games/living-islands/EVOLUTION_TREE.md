@@ -218,3 +218,17 @@ Honest notes: this is a large piece of work, so it comes after the camp start mo
 Open questions for Harry (taste): are big islands part of the same game (you sail to them) or a separate map type? Can you build on a river (mills, bridges, water wheels)? Do floods matter?
 
 Owner answers, 24 Nov (bigger islands): (1) big islands are part of the same game, found by sailing to them; (2) you can build on rivers later (mills, bridges, water wheels); (3) floods matter, gently (they change the land and the settlement, they do not punish).
+
+## Food: owner decisions, 24 Nov (from research/FOOD_AND_WILDLIFE.md)
+
+Harry: take the defaults on the seven food questions, and the defaults must be real (they should match how the real world works, not a tidy game answer). Earlier he said every legitimate way of feeding yourself is allowed and it is up to the player. CAIRN's reading of 'real', open for correction:
+
+1. Sanctuary animals as food: allowed as a player choice, as it was in real island communities, but with real limits and real costs. Seabird and seal harvest is small and seasonal, the colony or herd visibly shrinks if you overtake it, and the sanctuary and the tender's trust fall. It is never the easy route.
+2. Gull and tern eggs: allowed in the small safe share. Over-taking collapses the colony (the model already shows this).
+3. Hunger: real, shown gently. Weakness, illness and slow work first. A settler can be lost to long hunger or cold as a real danger, shown without gore (they leave on the tender, or a quiet marker), within the tone rails.
+4. A rescued seal pup competes with people for fish: yes. It is a real choice with a real cost.
+5. The shoal: seen as a shadow in the water plus the birds working above it, like a real fisher would read it.
+6. Fresh water: not every island has a seep. Real small islands may have none, a thin freshwater lens, or only rain. Tiny islands depend on rain catchment and cisterns. This follows the real-world water note when it lands.
+7. Rain-fed garden: a real extra, slow. Hardy crops, a long wait to the first harvest, and a bad year can fail.
+
+To be revised when the real-world water and climate research lands (it sets how much rain and fresh water each island really gets).
