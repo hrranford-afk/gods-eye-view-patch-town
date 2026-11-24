@@ -45,6 +45,7 @@ body.noui #top,body.noui #bar,body.noui #info{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
+<script>if(/[?&]boatkit=[^0&]/.test(location.search)){document.write('<script src="boat_motion.js"><\/script>');if(!(/[?&]life=1/.test(location.search)&&/[?&]world=\d/.test(location.search)))document.write('<script src="vendor/GLTFLoader.r128.js"><\/script>');if(!/[?&]boatkit=fail/.test(location.search))document.write('<script src="assets/boatkit/boats_live_b64.js"><\/script><script src="assets/boatkit/boats_far_b64.js"><\/script>');}</script>
 <script>if(/[?&]seabed=1/.test(location.search))document.write('<script src="seabed.js"><\/script>');if(/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');if(/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');</script>
 <script>if(/[?&]light=1/.test(location.search)){document.write('<script src="light_range.js"><\/script>');if(!/[?&]macro=1/.test(location.search))document.write('<script src="macro_sea.js"><\/script>');if(!/[?&]weather=/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
 <script>if(/[?&]mood(s=1|=)/.test(location.search)){document.write('<script src="moods.js"><\/script>');if(!/[?&]clock=1/.test(location.search))document.write('<script src="sky_clock.js"><\/script>');if(!/[?&]weather=/.test(location.search)&&!/[?&]light=1/.test(location.search))document.write('<script src="weather.js"><\/script>');}</script>
@@ -70,7 +71,8 @@ const MDON=(Q.get('moods')==='1'||Q.get('mood')!==null)&&!!window.LI_MOODS&&!!wi
 const WXS=Q.get('weather')||(MDON?'auto':null);             /* the weather pass (weather.js): clear fair overcast showers rain fog storm goldenhour, or auto for the seeded schedule (see WEATHER_PASS.md); absent = unchanged */
 const WXON=!!WXS&&!!window.LI_WEATHER&&window.LI_WEATHER.create!==undefined;
 let WXR=null;
-const BOATS2=Q.get('boats')==='2';      /* the boats pass: slim lapstrake hulls, dry floors, a depth-only hull mask so the sea never shows inside, boot-top line and contact shadow (see BOATS_PASS.md); absent = unchanged */
+const BKON=Q.get('boatkit')!==null&&Q.get('boatkit')!=='0'&&!!window.LI_BOAT_MOTION&&!!THREE.GLTFLoader;   /* the boat kit (boat_motion.js, assets/boats, see BOAT_MODEL.md wiring section): the baked dinghy, sailer, work boat and wreck GLBs float on the sea instead of the procedural hulls; implies the boats pass as the fallback while loading or if a file fails; absent = unchanged */
+const BOATS2=Q.get('boats')==='2'||BKON;      /* the boats pass: slim lapstrake hulls, dry floors, a depth-only hull mask so the sea never shows inside, boot-top line and contact shadow (see BOATS_PASS.md); absent = unchanged */
 const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_sea.js, see MACRO_WIRE.md): tide, swell, whitecaps, drift, weather and boat heave from a pure function of (seed, game hour); implies the sea=2 look; absent = unchanged */
 const CKON=(Q.get('clock')==='1'||MDON)&&!!window.SkyClock;   /* the sky clock (sky_clock.js, see SKY_CLOCK_BUILD.md): sun, moon, stars, tide, light and window glows from one game clock; implies the sea=2 look; absent = unchanged */
 const CKDOME=CKON&&Q.get('clockdome')!=='0';   /* ?clockdome=0 is the AR profile: lights, emissives and tide from the clock, but no sky dome, no stars, no floor tint and no exposure change */
@@ -526,17 +528,147 @@ function buildProps(){const pb=new PB();const R=mulberry32(SEED*977+3);
     blob(pb,f.x,f.y+.62,f.z,.3,.22,.3,0,3,()=>lin([.12,.12,.13]),0,0);}
   const g=pb.build();stats.propTris=pb.tris;return g;}
 
+/* ============ the boat kit (&boatkit=1, see BOAT_MODEL.md wiring section) ============
+   Four baked GLB boats (assets/boats, built by blender/boat_model.py) replace the procedural hulls: the work boat at the jetty, the sailer under sail, a dinghy rowing in the bay, the wreck on the beach
+   (and the dinghy at the landing pass). Levels: far (vertex colours, about 500 to 950 triangles) and live (2.7 to 5.6 thousand), by camera distance; hero (16 to 25 thousand) only over http and only close
+   up. The page twin scripts boats_live_b64.js and boats_far_b64.js carry the files so that file:// works. Motion is pure (boat_motion.js): heave, pitch and roll from the macro sea under the hull, oars from
+   the stroke clock, sail trimmed to the wind, rudder from the turn rate. The hullmask node is a depth-only lid (no sea inside the hull). If anything fails to load or parse the page keeps the procedural
+   boats of the boats pass and logs nothing. */
+const BK={on:BKON,mode:Q.get('boatkit'),ready:false,failed:false,left:0,tpl:{},pose:{},maskMat:null,wlMat:null,hero:{},heroTry:{},force:null,err:null};
+const BK_L={dinghy:4.0,sailer:6.0,work:7.0,wreck:4.0},BK_B={dinghy:1.45,sailer:1.95,work:2.45,wreck:1.45},BK_G={dinghy:.15,sailer:.3,work:.38,wreck:.15};
+const BK_S={dinghy:1.1,sailer:.85,work:.75,wreck:1.05};   /* TUNING: page scale of each boat (the table is a diorama: the dinghy matches the old 4.4 m boat, the work boat fits beside the jetty) */
+const BK_NOMASK=Q.get('nomask')==='1';   /* debug: show what the sea does without the mask */
+const BK_AR=Q.get('tier')==='ar'||(CKON&&!CKDOME);
+function bkB64(s){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
+function bkFinish(){if(BK.left>0)return;if(BK.failed||Object.keys(BK.tpl).length<8){BK.failed=true;BK.ready=false;return;}
+  try{bkPrepare();BK.ready=true;}catch(e){BK.failed=true;BK.err=String(e);return;}
+  if(scene)buildBoats();}
+function bkLoad(){if(!BK.on)return;const src=window.LI_BOAT_GLB||{},keys=Object.keys(src);
+  if(keys.length<8){BK.failed=true;return;}
+  BK.left=keys.length;
+  keys.forEach(k=>{let buf;try{buf=BK.mode==='bad'?new Uint8Array(96).buffer:bkB64(src[k]);}catch(e){buf=null;}
+    const done=g=>{if(g)BK.tpl[k]=g;else BK.failed=true;BK.left--;bkFinish();};
+    if(!buf){done(null);return;}
+    try{new THREE.GLTFLoader().parse(buf,'',g=>done(g),e=>{BK.err=String(e&&e.message||e);done(null);});}catch(e){BK.err=String(e);done(null);}});}
+/* the clips become pose tables (node name to position, quaternion, scale) */
+function bkPoseOf(g,name){const c=(g.animations||[]).find(a=>a.name===name);if(!c)return null;const P={};
+  for(const t of c.tracks){const i=t.name.lastIndexOf('.');const n=t.name.slice(0,i),prop=t.name.slice(i+1);(P[n]=P[n]||{})[prop]=Array.from(t.values.slice(0,t.getValueSize()));}return P;}
+function bkNodeName(o){let n=o;while(n&&n.name&&/_mesh(_\d+)?$/.test(n.name)&&n.parent)n=n.parent;return n&&n.name||'';}
+const BK_POSES=['pose_rest','pose_sailing','pose_rowing','pose_beached','pose_working'];
+function bkPrepGltf(g,key){BK.pose[key]={};for(const pn of BK_POSES)BK.pose[key][pn]=bkPoseOf(g,pn);
+  g.scene.traverse(o=>{if(!o.isMesh)return;const nm=bkNodeName(o);
+    if(nm==='hullmask'){o.material=BK.maskMat;o.renderOrder=1;o.castShadow=false;o.receiveShadow=false;}
+    else if(nm==='waterline'){o.material=BK.wlMat;o.renderOrder=6;o.castShadow=false;o.receiveShadow=false;}
+    else{o.castShadow=true;o.receiveShadow=true;}});}
+function bkPrepare(){
+  BK.maskMat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:true,depthTest:true,side:THREE.DoubleSide});
+  BK.wlMat=new THREE.MeshBasicMaterial({color:0xdfeeee,transparent:true,opacity:.42,depthWrite:false,depthTest:true,side:THREE.DoubleSide});
+  for(const k in BK.tpl)bkPrepGltf(BK.tpl[k],k);}
+function bkLodOf(root,key){const nodes={};root.traverse(o=>{if(o.name&&!nodes[o.name])nodes[o.name]=o;});return{root,nodes,key,tris:0,posed:0};}
+/* one boat: outer group (page position, yaw, pitch, roll), inner group (kit frame to page frame: bow +Z to +X, scale), one clone per level */
+function bkMake(kind,b){const s=BK_S[kind],outer=new THREE.Group(),inner=new THREE.Group();inner.rotation.y=Math.PI/2;inner.scale.setScalar(s);outer.add(inner);
+  const lods={};for(const lod of['live','far']){const t=BK.tpl[kind+'_'+lod];const root=t.scene.clone(true);root.visible=false;root.position.z=-BK_L[kind]/2;lods[lod]=bkLodOf(root,kind+'_'+lod);}
+  scene.add(outer);return{kind,s,outer,inner,lods,lod:null,prevYaw:b.yaw,yawRate:0,sailA:0,heel:0,rud:0,spd:0,px:b.x,pz:b.z,afloat:true,maskOn:true,dirty:true,stroke:null,trim:null,yawAdd:0};}
+function bkApplyPose(L,poseName){const P=BK.pose[L.key][poseName];if(!P)return;
+  for(const n in P){const o=L.nodes[n];if(!o)continue;const p=P[n];if(p.position)o.position.fromArray(p.position);if(p.quaternion)o.quaternion.fromArray(p.quaternion);if(p.scale)o.scale.fromArray(p.scale);}
+  /* parts a pose scales to nothing (the furled sail under sail, the sail at rest) are hidden so they cost no triangles; the level root keeps its own visibility */
+  L.root.children.forEach(c=>c.traverse(o=>{if(o.isMesh||o.isGroup)o.visible=!(o.scale.x<.01);}));L.posed=1;L.tris=0;}
+function bkTris(L){let n=0;L.root.traverse(o=>{if(!o.isMesh)return;let a=o;while(a&&a!==L.root){if(!a.visible){return;}a=a.parent;}const g=o.geometry;n+=g.index?g.index.count/3:g.attributes.position.count/3;});return Math.round(n);}
+function bkRing(kind){const s=BK_S[kind],L=BK_L[kind]*s,B=BK_B[kind]*s,N=24,pos=[],col=[],idx=[];
+  for(const sd of[-1,1])for(let i=0;i<N;i++){const u=-1+2*i/(N-1),hw=.8*B/2*Math.pow(Math.max(1-Math.pow(Math.abs(u),2.3),0),.5)+.02,w=.3+.2*Math.pow(Math.abs(u),2);pos.push(u*L/2,0,sd*hw,u*L/2,0,sd*(hw+w));col.push(.01,.02,.03,.5,.01,.02,.03,0);}
+  for(const o of[0,N*2])for(let i=0;i<N-1;i++){const a=o+i*2;idx.push(a,a+1,a+3,a,a+3,a+2);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,4));g.setIndex(idx);
+  const r=new THREE.Mesh(g,BK_RING_MAT);r.renderOrder=6;r.frustumCulled=false;scene.add(r);return r;}
+const BK_RING_MAT=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,fog:false});
+/* the wind the sail trims to: the macro wind when it runs, else a steady breeze from the west-south-west (TUNING). The vector the wind comes FROM, and its speed. */
+function bkWind(){if(MC.on&&MC.st){const w=MC.st.wind;return{x:-w.x,z:-w.z,v:w.speed};}return{x:-.92,z:.38,v:6.5};}
+/* sea heights under the hull (macro sea only) into boat_motion.floatMotion; the sea plane is flat in the mesh, so the heave is capped at 14 cm */
+function bkSea(k,b){if(!MC.on)return null;const L=BK_L[k.kind]*k.s,B=BK_B[k.kind]*k.s,c=Math.cos(b.yaw),sn=Math.sin(b.yaw),hl=L*.5,hw=B*.5;
+  return LI_BOAT_MOTION.floatMotion({c:mcH(b.x,b.z),bow:mcH(b.x+c*hl,b.z-sn*hl),stern:mcH(b.x-c*hl,b.z+sn*hl),stbd:mcH(b.x+sn*hw,b.z+c*hw),port:mcH(b.x-sn*hw,b.z-c*hw)},L,B,{heave:.16,angle:.15});}
+const BK_Q1=new THREE.Quaternion(),BK_Q2=new THREE.Quaternion(),BK_ZA=new THREE.Vector3(0,0,1),BK_YA=new THREE.Vector3(0,1,0);
+function bkOars(L,st){const D2R=Math.PI/180,ol=L.nodes.oar_l,or=L.nodes.oar_r;   /* yaw sweep about the rowlock plus a lift of the blade over the wave */
+  if(ol){BK_Q1.setFromAxisAngle(BK_YA,(-8+14*st.sweep)*D2R);BK_Q2.setFromAxisAngle(BK_ZA,st.lift*11*D2R);ol.quaternion.copy(BK_Q2).multiply(BK_Q1);}
+  if(or){BK_Q1.setFromAxisAngle(BK_YA,(8-14*st.sweep)*D2R);BK_Q2.setFromAxisAngle(BK_ZA,-st.lift*11*D2R);or.quaternion.copy(BK_Q2).multiply(BK_Q1);}}
+function bkRig(L,k){if(L.nodes.boom)L.nodes.boom.quaternion.setFromAxisAngle(BK_YA,k.sailA);if(L.nodes.sail)L.nodes.sail.quaternion.setFromAxisAngle(BK_YA,k.sailA+k.flut);if(L.nodes.rudder_pin)L.nodes.rudder_pin.quaternion.setFromAxisAngle(BK_YA,k.rud);}
+function bkUpdate(o,dt,t,y0,rl0,pt0){const b=o.b,k=o.kit,M=LI_BOAT_MOTION;let y=y0,rl=rl0,pt=pt0;
+  /* level of detail by the camera distance (a debug override); hero only over http, only for boats within 30 m of the camera */
+  const dist=camera.position.distanceTo(o.mesh.position);
+  if(!BK_AR&&quality==='high'&&dist<30)bkFetchHero(k.kind);
+  let want=BK.force||M.lodFor(dist,BK_AR?'ar':quality,k.lod,!!BK.hero[k.kind]);
+  if(want==='hero'){if(!BK.hero[k.kind])want='live';else if(!k.lods.hero){const r=BK.hero[k.kind].scene.clone(true);r.visible=false;r.position.z=-BK_L[k.kind]/2;k.lods.hero=bkLodOf(r,k.kind+'_hero');}}
+  if(want!==k.lod){k.lod=want;for(const n in k.lods){const r=k.lods[n].root;if(n===want){if(!r.parent)k.inner.add(r);r.visible=true;}else{r.visible=false;if(r.parent)k.inner.remove(r);}}k.dirty=true;}   /* only the level in use is in the scene, so nothing else is drawn or counted */
+  const L=k.lods[k.lod];
+  if(b.kind==='beached'){   /* on the beach: the keel on the ground under the hull, tilted to the slope; a boat at the waterline floats when the tide lifts it */
+    const s=k.s,ya=b.yaw+k.yawAdd,c=Math.cos(ya),sn=Math.sin(ya),hl=BK_L[k.kind]*s*.4,hw=BK_B[k.kind]*s*.35;
+    const g0=H(b.x,b.z),gb=H(b.x+c*hl,b.z-sn*hl),gs=H(b.x-c*hl,b.z+sn*hl),gp=H(b.x-sn*hw,b.z-c*hw),gq=H(b.x+sn*hw,b.z+c*hw);
+    const gy=g0+BK_G[k.kind]*s-.09;
+    rl=clamp(Math.atan((gb-gs)/(2*hl)),-.5,.5);pt=clamp(Math.atan((gp-gq)/(2*hw)),-.3,.3);   /* the hull lies along the slope */
+    y=k.kind==='wreck'?gy:Math.max(gy,tide+.02);k.afloat=k.kind!=='wreck'&&y>gy+.05;}
+  else{y+=.18;k.afloat=true;const r=bkSea(k,b);if(r){y+=r.heave;rl+=r.pitch;pt+=r.roll;}}
+  const rate=dt>0?M.wrap(b.yaw-k.prevYaw)/dt:0;k.prevYaw=b.yaw;k.yawRate+=(rate-k.yawRate)*(dt>0?1-Math.exp(-dt/.6):1);
+  const lv=[L];if(k.lods.hero&&k.lods.hero!==L)lv.push(k.lods.hero);
+  if(k.kind==='sailer'){   /* sail trimmed to the wind (eased over about a second, never a jump), heel to leeward, rudder from the turn */
+    const w=bkWind(),fx=Math.cos(b.yaw),fz=-Math.sin(b.yaw),sx=Math.sin(b.yaw),sz=Math.cos(b.yaw);
+    const rel=Math.atan2(w.x*sx+w.z*sz,w.x*fx+w.z*fz),tr=M.sailTrim(rel,w.v),kk=dt>0?1-Math.exp(-dt/.7):1;
+    k.sailA+=(tr.boom-k.sailA)*kk;k.heel+=(tr.heel-k.heel)*kk;k.flut=tr.luff?Math.sin(t*9)*.05:Math.sin(t*1.3)*.012;k.rud=M.rudderAngle(k.yawRate);pt-=k.heel;k.trim={rel,boom:k.sailA,heel:k.heel,rud:k.rud,luff:tr.luff};
+    lv.forEach(Ln=>{if(!Ln.posed){bkApplyPose(Ln,'pose_sailing');k.dirty=true;}bkRig(Ln,k);});}
+  else if(b.rowing){   /* oars: stroke from the clock, period from the speed over the ground */
+    const sp=Math.hypot(b.x-k.px,b.z-k.pz)/Math.max(dt,1e-3);k.spd+=((dt>0?sp:k.spd)-k.spd)*(dt>0?1-Math.exp(-dt/.8):1);k.px=b.x;k.pz=b.z;
+    k.stroke=M.oarStroke(t,M.strokePeriod(k.spd||.9),1);
+    lv.forEach(Ln=>{if(!Ln.posed){bkApplyPose(Ln,'pose_rowing');k.dirty=true;}bkOars(Ln,k.stroke);});}
+  else lv.forEach(Ln=>{if(!Ln.posed){bkApplyPose(Ln,'pose_rest');k.dirty=true;}});
+  /* the mask lid and the waterline band only while afloat; the wreck never uses them */
+  if(k.afloat!==k.maskOn||k.dirty){k.maskOn=k.afloat;for(const n in k.lods){const N=k.lods[n].nodes;if(N.hullmask)N.hullmask.visible=k.afloat&&!BK_NOMASK;if(N.waterline)N.waterline.visible=k.afloat;}k.dirty=false;}
+  if(!L.tris)L.tris=bkTris(L);o.tris=L.tris;
+  k.rl=rl;k.pt=pt;o.mesh.position.set(b.x,y,b.z);o.mesh.rotation.set(0,b.yaw+k.yawAdd,0);o.mesh.rotateZ(rl);o.mesh.rotateX(pt);
+  if(o.ring){o.ring.visible=k.afloat;o.ring.position.set(b.x,tide+.02,b.z);o.ring.rotation.set(0,b.yaw,0);}}
+/* the hero level: over http only (0.6 to 0.9 MB each, no base64 twin); fetched the first time a boat is within 30 m of the camera */
+function bkFetchHero(kind){if(BK.heroTry[kind]!==undefined||!/^https?:/.test(location.protocol)||!window.fetch||BK.mode==='bad'||BK.failed||!BK.ready)return;BK.heroTry[kind]='loading';
+  fetch('assets/boats/boat_'+kind+'_hero.glb').then(r=>{if(!r.ok)throw new Error('http');return r.arrayBuffer();}).then(buf=>new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',res,rej))).then(g=>{
+    bkPrepGltf(g,kind+'_hero');BK.hero[kind]=g;BK.heroTry[kind]='ok';},()=>{BK.heroTry[kind]='failed';}).catch(()=>{BK.heroTry[kind]='failed';});}
+/* the wreck's berth, by seed: the gentlest dry-ish patch of the strand near the camp (the lowest slope under a 4 m hull, ground between 0.35 and 1.4 m above the mean sea), bow up the slope with a seeded turn */
+function bkAvoidSpots(){const out=[];if(!W.camp)return out;const f=W.camp.fire,rt=W.camp.rt,d=W.camp.dir;out.push([f.x,f.z,3.6]);   /* the fire and the three settlers of buildPeople */
+  for(const df of[[1.9,.9],[-3.4,3.0],[-6.5,-1]]){let x=f.x+rt[0]*df[0]+d[0]*df[1],z=f.z+rt[1]*df[0]+d[1]*df[1];
+    if(df[1]<0){let sr=0;for(let r=0;r<20;r+=.25){if(H(f.x+rt[0]*df[0]+d[0]*r,f.z+rt[1]*df[0]+d[1]*r)<.2){sr=r;break;}}x=f.x+rt[0]*df[0]+d[0]*(sr-.6)+rt[0]*1.6;z=f.z+rt[1]*df[0]+d[1]*(sr-.6)+rt[1]*1.6;}
+    out.push([x,z,3.2]);}
+  for(const t of W.tents)out.push([t.x,t.z,3.4]);return out;}
+function bkWreckSite(x0,z0,seedv){let best=null;const av=bkAvoidSpots();
+  for(let dx=-9;dx<=9;dx+=1)for(let dz=-9;dz<=9;dz+=1){const x=x0+dx,z=z0+dz,h=H(x,z);if(h<.35||h>1.4||av.some(a=>Math.hypot(x-a[0],z-a[1])<a[2]+2.2))continue;
+    const gx=(H(x+1.2,z)-H(x-1.2,z))/2.4,gz=(H(x,z+1.2)-H(x,z-1.2))/2.4,g=Math.hypot(gx,gz);if(g<.02)continue;   /* some fall line to lie along */
+    const c=gx/g,sn=gz/g,hl=2,hw=.6;let sc=Math.abs(H(x+c*hl,z+sn*hl)-H(x-c*hl,z-sn*hl))/(2*hl)+Math.abs(H(x-sn*hw,z+c*hw)-H(x+sn*hw,z-c*hw))/(2*hw)*1.5+Math.hypot(dx,dz)*.004;   /* slope along and across, a little preference for staying near the camp */
+    for(const o of[[2.2,0],[-2.2,0],[0,2.2],[0,-2.2]])if(H(x+o[0],z+o[1])<.1)sc+=1;   /* no hull end in the swash */
+    if(!best||sc<best.sc)best={sc,x,z,yaw:Math.atan2(-gz,gx)};}
+  if(!best)return null;best.yaw+=(hash2(Math.round(x0*3),Math.round(z0*3),seedv)-.5)*.8;return best;}
+function bkKindOf(b,nWork){return b.rowing?'dinghy':b.sail?'sailer':b.kind==='beached'?(b.row?'dinghy':'wreck'):(nWork>0?'dinghy':'work');}   /* the first plain moored boat is the work boat, any other a dinghy at its mooring */
+/* kit-only extras: a bigger sailing circle (the six metre sailer cannot turn in a 4.6 m circle) and a dinghy rowing a circle beyond the jetty, both only where the sea is deep enough all round */
+function bkCircleOk(cx,cz,r,dp){for(let i=0;i<36;i++){const a=i*Math.PI/18;if(H(cx+Math.cos(a)*r,cz+Math.sin(a)*r)>-(dp||.8))return false;}return true;}
+function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
+  if(J){const tx=J.x+J.dx*J.len,tz=J.z+J.dz*J.len,px=-J.dz,pz=J.dx;   /* the dinghy first: a small circle just beyond the jetty tip */
+    search:for(const dd of[7,9,11,5])for(const side of[1,-1,0])for(const rr of[4.5,3.6]){const cx=tx+J.dx*dd+px*side*4,cz=tz+J.dz*dd+pz*side*4;
+      if(!bkCircleOk(cx,cz,rr+1.2,.6))continue;dn={cx,cz,r:rr};break search;}}
+  for(const b of spec){if(b.sail&&b.kind==='moored'){const S=b.sail;let best={cx:S.cx,cz:S.cz,r:S.r};
+      search:for(const rr of[14,12,10,8,6])for(const off of[[0,0],[0,6],[0,-6],[6,0],[-6,0],[6,6],[-6,6],[6,-6],[-6,-6],[0,12],[12,0],[-12,0],[0,-12],[12,12],[-12,12],[12,-12],[-12,-12]]){
+        const cx=S.cx+off[0],cz=S.cz+off[1];if(dn&&Math.hypot(cx-dn.cx,cz-dn.cz)<rr+dn.r+4.5)continue;if(bkCircleOk(cx,cz,rr,.7)){best={cx,cz,r:rr};break search;}}
+      out.push(Object.assign({},b,{sail:{cx:best.cx,cz:best.cz,r:best.r,w:best.r>S.r?1.35/best.r:.2}}));}else out.push(b);}
+  if(dn)out.push({kind:'moored',rowing:true,x:dn.cx+dn.r,z:dn.cz,yaw:0,L:4.4,Wd:1.5,Hh:.6,hull:[.8,.78,.72],stripe:[.3,.38,.42],ph:.7,sail:{cx:dn.cx,cz:dn.cz,r:dn.r,w:.85/dn.r}});
+  return out;}
+bkLoad();
 function buildBoats(){boatObjs.forEach(b=>{scene.remove(b.mesh);if(b.ring)scene.remove(b.ring);});boatObjs=[];
   const mat=landMat(BOATS2?'boat2':'boat',true);mat.side=THREE.DoubleSide;
   /* boats pass: the shore-swash wetting, foam lace and underwater caustics of the land shader read as water inside a dry hull (the floor sits below the tide in world height); switch them off for boats */
   if(BOATS2){const ob=mat.onBeforeCompile;mat.onBeforeCompile=sh=>{ob(sh);sh.uniforms.uWet={value:0};sh.fragmentShader=sh.fragmentShader.replace('if(ab<0.0){float cd=-ab;','if(false){float cd=-ab;');};}
-  const spec=[...W.boats];
+  const KIT=BKON&&BK.ready;
+  let spec=[...W.boats];
   if(W.camp&&!LAND){const f=W.camp.fire,rt=W.camp.rt,d=W.camp.dir;const bx=f.x+d[0]*(W.camp.shoreR-0)+rt[0]*-6.5-d[0]*.5,bz=f.z+d[1]*(W.camp.shoreR-0)+rt[1]*-6.5;
     let sr=0;for(let r=0;r<20;r+=.25){if(H(f.x+rt[0]*-6.5+d[0]*r,f.z+rt[1]*-6.5+d[1]*r)<.1){sr=r;break;}}
     const x=f.x+rt[0]*-6.5+d[0]*(sr-1.4),z=f.z+rt[1]*-6.5+d[1]*(sr-1.4);
     spec.push({kind:'beached',x,z,yaw:Math.atan2(d[0],d[1])-Math.PI/2+.1,L:3.5,Wd:1.35,Hh:.55,hull:[.17,.38,.52],stripe:[.95,.9,.75],ph:1});}
   if(LAND&&LD.boat)spec.push(LD.boat);
+  if(KIT&&!LAND)spec=bkExtra(spec);
+  let nWork=0;
   spec.forEach(b=>{
+    if(KIT){const kind=bkKindOf(b,nWork),k=bkMake(kind,b);if(kind==='work')nWork++;if(kind==='wreck'){const st=bkWreckSite(b.x,b.z,11);if(st){b.x=st.x;b.z=st.z;b.yaw=st.yaw;}else{k.yawAdd=Math.PI;}}   /* the wreck's berth by seed: bow up the gentlest slope of the strand */
+      boatObjs.push({b,mesh:k.outer,tris:0,ring:bkRing(kind),kit:k});return;}
     if(BOATS2){const H2=hullV2(b);const m=new THREE.Mesh(H2.pb.build(),mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);
       /* depth-only hull mask: drawn right after the hull (renderOrder 1, still the opaque pass) and before the sea (transparent, order 5): the lid nearer than the sea plane makes the depth test reject the sea inside the hull; colour untouched */
       const mk=new THREE.Mesh(H2.mk.build(),new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:true,depthTest:true,side:THREE.DoubleSide}));mk.renderOrder=1;mk.castShadow=false;mk.receiveShadow=false;if(Q.get('nomask')!=='1')m.add(mk);   /* ?nomask=1 is a debug switch to show what the sea does without the mask */
@@ -1512,7 +1644,7 @@ function size(){const dpr=Math.min(window.devicePixelRatio||1,QUAL[quality].pr);
   if(smoke)smoke.material.uniforms.uScale.value=h/(2*Math.tan(camera.fov*Math.PI/360));}
 const clock={t:0,last:0,frames:0,fps:60,acc:0};
 function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
-  const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt;clock.acc+=dt;clock.frames++;
+  const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt*(clock.hold?0:1);clock.acc+=dt;clock.frames++;
   if(clock.acc>.5){clock.fps=clock.frames/clock.acc;clock.frames=0;clock.acc=0;updateInfo();autoQ();}
   if(MC.on)mcUpdate(dt);
   if(CKON)ckUpdate(dt);
@@ -1537,13 +1669,14 @@ function animate(dt){const t=clock.t;
   for(const w of WAKE)if(w.z<1){w.z=Math.min(1,w.z+dt/4.8);if(FLOW){const u=flowAt(w.x,w.y,FL.Tcur);w.x+=u[0]*dt;w.y+=u[1]*dt;}}
   waterMesh.material.uniforms.uTideV.value=(tide-(animate.lastTide===undefined?tide:animate.lastTide))/Math.max(dt,.001);animate.lastTide=tide;
   boatObjs.forEach(o=>{const b=o.b,m=o.mesh;let y,roll=0,pitch=0;
-    if(b.sail){const S=b.sail;let a=t*.2,sx=0,sz=0;
-      if(FLOW){const T=FL.Tcur;if(b.ang===undefined){b.ang=a;b.sx=0;b.sz=0;}const ca=Math.cos(b.ang),sa=Math.sin(b.ang),u=flowAt(S.cx+ca*S.r,S.cz+sa*S.r,T),ut=u[0]*-sa+u[1]*ca;   /* tidal stream along the track speeds the boat up or slows it, and sets it sideways */
-        b.ang+=dt*.2*(1+.2*ut);a=b.ang;const lx=u[0]-ut*-sa,lz=u[1]-ut*ca,k=1-Math.exp(-dt*.8);b.sx+=(lx*2.2-b.sx)*k;b.sz+=(lz*2.2-b.sz)*k;sx=b.sx;sz=b.sz;FL.boat={ut:ut,setx:sx,setz:sz};}
+    if(b.sail){const S=b.sail;let a=t*(S.w||.2),sx=0,sz=0;
+      if(FLOW&&!b.rowing){const T=FL.Tcur;if(b.ang===undefined){b.ang=a;b.sx=0;b.sz=0;}const ca=Math.cos(b.ang),sa=Math.sin(b.ang),u=flowAt(S.cx+ca*S.r,S.cz+sa*S.r,T),ut=u[0]*-sa+u[1]*ca;   /* tidal stream along the track speeds the boat up or slows it, and sets it sideways */
+        b.ang+=dt*(S.w||.2)*(1+.2*ut);a=b.ang;const lx=u[0]-ut*-sa,lz=u[1]-ut*ca,k=1-Math.exp(-dt*.8);b.sx+=(lx*2.2-b.sx)*k;b.sz+=(lz*2.2-b.sz)*k;sx=b.sx;sz=b.sz;FL.boat={ut:ut,setx:sx,setz:sz};}
       const nx=S.cx+Math.cos(a)*S.r+sx,nz=S.cz+Math.sin(a)*S.r+sz;const vx=-Math.sin(a),vz=Math.cos(a);b.x=nx;b.z=nz;b.yaw=Math.atan2(-(vz+sz*.12),vx+sx*.12);y=tide-.18+Math.sin(t*1.7)*.03;roll=Math.sin(t*1.1)*.04;pitch=.02;
-      wakeT+=dt;if(wakeT>.2){wakeT=0;const W2=WAKE[wakeI];W2.set(nx-vx*b.L*.45,nz-vz*b.L*.45,0,0);wakeI=(wakeI+1)%24;}}
+      if(!b.rowing)wakeT+=dt;if(wakeT>.2&&!b.rowing){wakeT=0;const W2=WAKE[wakeI];W2.set(nx-vx*b.L*.45,nz-vz*b.L*.45,0,0);wakeI=(wakeI+1)%24;}}
     else if(b.kind==='moored'){y=tide-.18+Math.sin(t*1.1+b.ph)*.05;roll=Math.sin(t*.9+b.ph)*.03;pitch=Math.sin(t*.7+b.ph*2)*.02;}
     else{const gy=H(b.x,b.z)+(b.lift!==undefined?b.lift:.1);y=Math.max(gy,tide-.12+Math.sin(t*1.1)*.03);roll=(b.tilt||0)+(y>gy+.02?Math.sin(t)*.03:0);pitch=b.heel||0;}
+    if(o.kit){bkUpdate(o,dt,t,y,roll,pitch);return;}
     if(MC.on&&BOATS2&&b.kind!=='beached'){const r=mcBoat(b,y,roll,pitch);y=r.y;roll=r.roll;pitch=r.pitch;}   /* macro: heave and small tilt from the sea under the hull */
     m.position.set(b.x,y,b.z);m.rotation.set(0,b.yaw,0);m.rotateZ(roll);m.rotateX(pitch);
     if(o.ring){const afloat=b.kind!=='beached'||y>H(b.x,b.z)+.1;o.ring.visible=afloat;o.ring.position.set(b.x,tide+.02,b.z);o.ring.rotation.set(0,b.yaw,0);}});
@@ -2287,6 +2420,17 @@ function init(){
       const proj=(x,y,z)=>{const v=new THREE.Vector3(x,y,z).applyMatrix4(o.mesh.matrixWorld).project(camera);return[(v.x*.5+.5)*innerWidth,(1-(v.y*.5+.5))*innerHeight];};
       const pts=[],refs=[];for(const u of[-.55,-.4,-.25,-.1,.05,.2,.35,.5])for(const z of[-.3,-.15,0,.15,.3])pts.push(proj(u*XH,.1,z*Bm*.7));
       for(const x of[-1.6,-.8,0,.8,1.6])for(const z of[1,-1])refs.push(proj(x,0,z*(Bm/2+1.4)));return{pts,refs};},
+    clockT:v=>{if(v!==undefined)clock.t=v;return clock.t;},holdClock:b=>{clock.hold=!!b;},
+    boatkit:BKON?{dbg:()=>({boatObjs,scene,waterMesh}),ready:()=>BK.ready,failed:()=>BK.failed,err:()=>BK.err,force:l=>{BK.force=l||null;},heroLoaded:()=>Object.keys(BK.hero),
+      boats:()=>boatObjs.filter(o=>o.kit).map(o=>({kind:o.kit.kind,lod:o.kit.lod,tris:o.tris,x:o.b.x,z:o.b.z,yaw:o.b.yaw,y:o.mesh.position.y,afloat:o.kit.afloat,sailA:o.kit.sailA,heel:o.kit.heel,rud:o.kit.rud,trim:o.kit.trim,stroke:o.kit.stroke,spd:o.kit.spd,scale:o.kit.s,pitch:o.kit.rl,roll:o.kit.pt,rowing:!!o.b.rowing,sail:!!o.b.sail})),
+      lodTris:()=>{const r={};for(const o of boatObjs)if(o.kit)for(const n in o.kit.lods){const L=o.kit.lods[n];const was=L.root.visible;L.root.visible=true;L.tris=0;const t=bkTris(L);L.root.visible=was;L.tris=0;(r[o.kit.kind]=r[o.kit.kind]||{})[n]=t;}return r;},
+      maskInfo:()=>boatObjs.filter(o=>o.kit).map(o=>{const L=o.kit.lods[o.kit.lod];const m=L&&L.nodes.hullmask;return{kind:o.kit.kind,visible:!!m&&m.visible,colorWrite:m?m.material.colorWrite:null,depthWrite:m?m.material.depthWrite:null,depthTest:m?m.material.depthTest:null,renderOrder:m?m.renderOrder:null,seaOrder:waterMesh.renderOrder,hullOrder:0};}),
+      pos:i=>{const o=boatObjs.filter(q=>q.kit)[i];return o?{x:o.b.x,z:o.b.z,y:o.mesh.position.y,yaw:o.b.yaw,kind:o.kit.kind}:null;},
+      project:i=>{const o=boatObjs.filter(q=>q.kit)[i],k=o.kit,L=k.lods[k.lod],Lk=BK_L[k.kind],Bk=BK_B[k.kind];o.mesh.updateMatrixWorld(true);camera.updateMatrixWorld();
+        const proj=(x,y,z)=>{const v=new THREE.Vector3(x,y,z);L.root.localToWorld(v);v.project(camera);return[(v.x*.5+.5)*innerWidth,(1-(v.y*.5+.5))*innerHeight];};
+        const pts=[],refs=[];for(let f=.3;f<=.701;f+=.05)for(let x=-.28;x<=.281;x+=.07)pts.push(proj(x*Bk,0,f*Lk));   /* plan points inside the hull at the design waterline, seen from above */
+        for(const f of[.2,.4,.6,.8])for(const sd of[-1,1])refs.push(proj(sd*(Bk/2+1.5),0,f*Lk));return{pts,refs};},
+      oarTip:i=>{const o=boatObjs.filter(q=>q.kit)[i];if(!o)return null;const L=o.kit.lods[o.kit.lod];o.mesh.updateMatrixWorld(true);const r=[];for(const n of['oar_l','oar_r']){const nd=L.nodes[n];if(!nd)continue;const bb=new THREE.Box3().setFromObject(nd),c=bb.getCenter(new THREE.Vector3());o.mesh.worldToLocal(c);r.push([n,c.x,c.y,c.z]);}return r;}}:null,
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
