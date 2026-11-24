@@ -701,7 +701,7 @@ function campPlace(){
   const clear=[];W.conifers.forEach(t=>clear.push({x:t.x,z:t.z,r:1.6}));W.broad.forEach(t=>clear.push({x:t.x,z:t.z,r:2.2}));W.shrubs.forEach(t=>clear.push({x:t.x,z:t.z,r:.8}));
   W.rocks.forEach(r=>{if(!r.keep)clear.push({x:r.x,z:r.z,r:Math.max(r.sx,r.sz)*.9});});
   const nb=parseInt(Q.get('bots')||'',10);
-  const env={seed:SEED,H:(x,z)=>H(x,z),tableR:TABLE_R,tier:'high',camp:{fire:f,dir:d},hard,clear,bots:nb>=1&&nb<=4?nb:undefined,noJetty:true};
+  const env={seed:SEED,H:(x,z)=>H(x,z),tableR:TABLE_R,tier:'high',camp:{fire:f,dir:d},hard,clear,bots:nb>=1&&nb<=4?nb:undefined,noJetty:true,dryKinds:!!(window.LI_GIFT&&LI_GIFT.on)};
   const pl=LI_CAMP.plan(env);CP.notes=pl.notes.slice();
   /* clear what stands inside a footprint: trees, shrubs, tufts, logs and loose rocks (the fire ring stays) */
   const inside=(x,z,r)=>pl.clearAll.some(c=>c.corridor?(r<.8&&Math.hypot(c.x-x,c.z-z)<c.r+r*.5):Math.hypot(c.x-x,c.z-z)<c.r+r);let n0=0;

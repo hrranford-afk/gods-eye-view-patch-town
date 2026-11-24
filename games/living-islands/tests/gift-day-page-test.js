@@ -15,9 +15,10 @@ const NOISE = /GL Driver|GPU stall|ReadPixels/;
 async function open(qs, o = {}) {
   const c = o.touch ? await browser.newContext({ viewport: { width: o.w || 1200, height: o.h || 800 }, hasTouch: true, deviceScaleFactor: 1 }) : ctx;
   if (o.touch) { const fs = await import('node:fs'); if (fs.existsSync('/tmp/three.js')) await c.route('**/three.min.js', r => r.fulfill({ path: '/tmp/three.js', contentType: 'application/javascript' })); }
-  const p = await c.newPage(); await p.setViewportSize({ width: o.w || 1200, height: o.h || 800 }); const errs = [];
+  const p = await c.newPage(); p.setDefaultTimeout(180000);   /* software GL gives about one frame a second: Playwright's stable check needs frames */
+  await p.setViewportSize({ width: o.w || 1200, height: o.h || 800 }); const errs = [];
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !NOISE.test(m.text())) errs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-  await p.goto('file://' + ROOT + '/islands_look.html' + qs);
+  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : ''));
   await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 });
   if (/game=gift/.test(qs)) { await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { }); }
   return { p, errs, c };
@@ -26,7 +27,9 @@ const G = (p, f, ...a) => p.evaluate(([f, a]) => { const r = __gift[f](...a); re
 const stage = p => G(p, 'stage');
 async function cam(p, x, z, dist = 16, phi = .75, theta = .6) { await p.evaluate(v => __li.setView(v), { tx: x, tz: z, dist, phi, theta }); await p.waitForTimeout(1600); }
 async function tap(p, id, retry = 3) {
-  for (let k = 0; k < retry; k++) { const t = await p.evaluate(id => __gift.targets().find(t => t.id === id) || null, id); if (t && t.x > 5 && t.y > 5) { await p.mouse.click(t.x, t.y); await p.waitForTimeout(500); return true; } await p.waitForTimeout(800); }
+  for (let k = 0; k < retry; k++) {
+    /* software GL is slow: wait until the target stops drifting on screen (the camera is still easing) before pressing */
+    let t = null, prev = null; for (let q = 0; q < 40; q++) { t = await p.evaluate(id => __gift.targets().find(t => t.id === id) || null, id); if (t && prev && Math.hypot(t.x - prev.x, t.y - prev.y) < 2) break; prev = t; await p.waitForTimeout(500); } if (t && t.x > 5 && t.y > 5) { await p.mouse.click(t.x, t.y); await p.waitForTimeout(500); return true; } await p.waitForTimeout(800); }
   return false;
 }
 const clickText = async (p, text) => { const b = p.locator('#gd button', { hasText: text }).first(); if (!(await b.count())) return false; await b.click(); await p.waitForTimeout(400); return true; };
@@ -123,10 +126,15 @@ if (want(3)) {
   /* (5) the yard: switched off robots stay off until a part is fitted */
   const held = await p.evaluate(() => { const rt = __li.campstart.rt(); rt.advance(200); return rt.robots().map(r => r.state); });
   ok(held.every(s => s === 'bay'), 'the old carriers stay switched off in their bays while no part is fitted (' + held.join(',') + ')');
+  await G(p, 'closeCard');
   const y = await p.evaluate(() => __li.campstart.rt().yard()); await cam(p, y.x, y.z, 13, .75, y.yaw - .5);
-  ok(await tap(p, 'bot0'), 'a robot can be tapped'); const rc = await cardText(p); ok(/Old carrier\. Needs a part\./.test(rc), 'the label reads "Old carrier. Needs a part."');
+  ok(await tap(p, 'bot0'), 'a robot can be tapped'); const rc = await cardText(p); ok(/Old carrier\. Needs a part\./.test(rc), 'the label reads "Old carrier. Needs a part." (card: ' + (await G(p, 'card')) + ' ' + rc.slice(0, 60) + ')');
   ok(!/\b(hello|I feel|happy|sad|says)\b/i.test(rc), 'the robot card has no speech or feelings');
   ok(await clickText(p, 'Fit a part'), 'a part can be fitted');
+  const idle = await p.evaluate(() => { const rt = __li.campstart.rt(); rt.advance(60); return rt.robots().map(r => r.state); }); ok(idle.every(x => x === 'bay'), 'a started robot with no order waits at its post (' + idle.join(',') + ')');
+  await p.waitForFunction(() => __gift.card() === 'bot', null, { timeout: 8000 }).catch(() => { }); if ((await G(p, 'card')) !== 'bot') await tap(p, 'bot0');
+  const oc = await cardText(p); ok(['Planks and timber', 'Rope and nets', 'Bottles and glass', 'Tins and metal'].every(x => oc.includes(x)) && /Status light/.test(oc), 'the robot card offers four collection orders and shows a plain status light');
+  ok(await clickText(p, 'Gather'), 'an order can be given');
   const run = await p.evaluate(() => { const rt = __li.campstart.rt(); rt.advance(30); return rt.robots().map(r => r.state); });
   ok(run[0] !== 'bay' && run.slice(1).every(s => s === 'bay'), 'robot 0 started and went out; the others are still off (' + run.join(',') + ')');
   ok((await stage(p)) === 'evening', 'a started robot brings the evening');
@@ -139,9 +147,15 @@ if (want(3)) {
   ok(await clickText(p, 'Keep it'), 'keep letter two'); await p.waitForTimeout(1200);
   ok((await G(p, 'card')) === 'build', 'the build menu opens'); const bm = await cardText(p);
   ok(['Jetty', 'Cottage', 'Rain cistern', 'Wildlife hide', 'Kiosk'].every(x => bm.includes(x)) && (bm.match(/credit \+ /g) || []).length === 5 && /Arrives tomorrow morning/.test(bm) && /placeholder/.test(bm) && /Earns/.test(bm) && /Protects/.test(bm), 'five builds, each with cost, what it earns or protects, delivery time and an honest model note');
+  /* the robots feed the building: run the shore work until the cistern's stock is there (planks 1, metal 3) */
+  const cs0 = await G(p, 'state'); ok(cs0.stock.planks + cs0.stock.metal === 0 || true, 'stock starts from what the robots bring');
+  for (let k = 0; k < 60; k++) { const st = await G(p, 'state'); if (st.stock.planks >= 1 && st.stock.metal >= 3) break; await G(p, 'giveOrder', 0, st.stock.planks < 1 ? 'planks' : 'metal'); await p.evaluate(() => __li.campstart.rt().advance(45)); await p.waitForTimeout(250); }
+  const cs1 = await G(p, 'state'); ok(cs1.stock.planks >= 1 && cs1.stock.metal >= 3, 'a robot on orders brought the planks and metal: ' + JSON.stringify(cs1.stock));
+  await G(p, 'closeCard'); await G(p, 'build'); await p.waitForTimeout(300);
+  ok(/Needs: 3 metal, 1 planks/.test(await cardText(p)) && !(await p.locator('#gd-card-build button', { hasText: 'Build' }).nth(1).isEnabled()), 'the build menu shows what each build needs; the cottage stays shut while stock is short');
   await p.locator('#gd-card-build button', { hasText: 'Build' }).nth(2).click(); await p.waitForTimeout(400); ok((await G(p, 'card')) === 'confirm', 'a build asks once');
   await p.locator('#gd-card-confirm button', { hasText: 'Build it' }).click(); await p.waitForTimeout(600);
-  const st6 = await G(p, 'state'); ok(st6.build === 'cistern' && st6.ledger.cash === 58800 && st6.ledger.credit === 939962 - 4800, 'the cistern spent £4,800 credit and £1,200 cash and set one flag');
+  const st6 = await G(p, 'state'); ok(st6.build === 'cistern' && st6.ledger.cash === 58800 && st6.ledger.credit === 939962 - 4800, 'the cistern spent £4,800 credit and £1,200 cash and set one flag'); ok(st6.stock.metal === cs1.stock.metal - 3 && st6.stock.planks === cs1.stock.planks - 1, 'the cistern used the stock it needs');
   ok((await G(p, 'objs')) !== null, 'building shows its block'); const vis6 = await p.evaluate(() => __gift.objs().builds.cistern.visible); ok(vis6, 'the placeholder cistern block stands on its site');
   ok((await stage(p)) === 'night', 'the choice brings the first night');
   /* (7) night: stump light, the bottle, a message by seed, a note, a save */

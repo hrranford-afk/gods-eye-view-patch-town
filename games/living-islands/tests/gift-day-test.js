@@ -73,12 +73,29 @@ ok(/tomorrow morning/.test(K.etaText(31, 12.5)) && /the morning after next/.test
 eq(K.BUILDS.map(b => b.id), ['jetty', 'cottage', 'cistern', 'hide', 'kiosk'], 'five builds: jetty, cottage, cistern, wildlife hide, kiosk');
 ok(K.BUILDS.every(b => b.credit + b.cash === b.total && b.cash === b.total - Math.round(b.total * .8) && b.earns && b.year && b.hours && b.kit), 'each build has cost split, what it earns or protects, the year effect, a delivery time and a model note');
 ok(K.BUILDS.every(b => b.cash <= K.START_CASH), 'every build is possible on the opening cash');
-let S = K.canned('evening', 1122); let br = K.doBuild(S, 'cottage');
+let S = K.canned('evening', 1122);
+ok(!K.doBuild(S, 'cottage').ok && /Short of stock/.test(K.doBuild(S, 'cottage').why), 'the cottage is refused while the yard stock is short (6 planks of 12)');
+ok(K.doBuild(S, 'cistern').ok && K.doBuild(S, 'cistern').state.stock.metal === S.stock.metal - 3, 'the cistern uses 3 metal and 1 plank from the stock');
+S = Object.assign({}, S, { stock: { planks: 20, rope: 5, glass: 5, metal: 9 } });
+let br = K.doBuild(S, 'cottage'); ok(br.ok && br.state.stock.planks === 8 && br.state.stock.metal === 5, 'the cottage uses 12 planks and 4 metal');
 ok(br.ok && br.state.build === 'cottage' && br.state.ledger.credit === S.ledger.credit - 68000 && br.state.ledger.cash === S.ledger.cash - 17000, 'building the cottage spends £68,000 credit and £17,000 cash, and sets one flag');
 ok(!K.doBuild(br.state, 'hide').ok && K.doBuild(br.state, 'hide').why, 'a second build is refused: one flag for the year');
 ok(S.build === null, 'building does not change the old state');
 const poor = Object.assign({}, S, { ledger: Object.assign({}, S.ledger, { cash: 1000 }) }); ok(!K.doBuild(poor, 'cottage').ok, 'not enough cash refuses a build');
 ok(K.BUILDS.find(b => b.id === 'jetty').kit.startsWith('real') && K.BUILDS.filter(b => /placeholder/.test(b.kit)).length === 4, 'the build list says honestly which are placeholders (4) and which is real (jetty)');
+
+/* ---- robots: orders, stock, save ---- */
+eq(K.STOCKS.map(x => x.id), ['planks', 'rope', 'glass', 'metal'], 'four things to gather: planks and timber, rope and nets, bottles and glass, tins and metal');
+ok(Object.keys(K.BUILD_NEEDS).length === 5 && K.BUILDS.every(b => Object.keys(b.needs).length >= 1), 'every build has a stock need');
+let rs = K.newState(1); eq(rs.stock, { planks: 0, rope: 0, glass: 0, metal: 0 }, 'stock starts empty');
+rs = K.setJob(rs, 0, 'metal'); eq(rs.jobs, ['metal'], 'an order is stored per robot'); eq(K.setJob(rs, 0, 'nonsense').jobs, [null], 'an unknown order clears it');
+rs = K.addHaul(rs, 'metal', 3); eq(rs.stock.metal, 3 * K.UNITS_PER_TRIP, 'each trip adds ' + K.UNITS_PER_TRIP + ' units'); ok(K.addHaul(rs, 'metal', 999).stock.metal === K.STOCK_CAP, 'the stock is capped');
+ok(K.addHaul(rs, 'planks', 0) === rs && K.addHaul(rs, 'bogus', 2) === rs, 'no trips or an unknown kind changes nothing');
+const rl = K.deserialize(K.serialize(K.setJob(Object.assign(K.canned('yard', 3), {}), 0, 'rope'))); ok(rl && rl.jobs[0] === 'rope', 'orders survive a save and load');
+const rl2 = K.deserialize(K.serialize(K.addHaul(K.canned('yard', 3), 'planks', 4))); ok(rl2 && rl2.stock.planks === 8, 'stock survives a save and load');
+const bad = JSON.parse(K.serialize(K.canned('yard', 3))); bad.stock = { planks: -5, rope: 'x', glass: 1e9, metal: 2 }; bad.jobs = ['zzz', 'planks', 'planks', 'planks', 'planks'];
+const rb = K.validState(bad); ok(rb && rb.stock.planks === 0 && rb.stock.rope === 0 && rb.stock.glass === K.STOCK_CAP && rb.jobs.length === 4 && rb.jobs[0] === null, 'a damaged stock or order list is clamped on load');
+ok(!/\b(feel|happy|sad|says|smile|face|eyes|hello)\b/i.test(K.STOCKS.map(x => x.name).join(' ') + JSON.stringify(K.BUILDS.map(b => b.needs))), 'robot and stock text has no speech, faces or feelings');
 
 /* ---- bottle by seed ---- */
 eq(K.BOTTLES.length, 6, 'six bottle messages');
