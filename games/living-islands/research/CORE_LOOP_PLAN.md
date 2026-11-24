@@ -12,6 +12,9 @@ Done when: the owner can take the small tender from the jetty and drive it round
 ## Job 3: Storm and the haul (the whirlpool)
 Done when: a storm builds (weather mood), a tidal swirl and surge sweep in, a haul of debris is left along the wrack line (reuse the aftermath debris work: planks, barrels, crates, rope, nets, one hulk later), and the robots can be told to gather it. A storm is foreshadowed by weather. Wreckage and cargo only, nothing gory.
 
+## Job 4: Robot life (after jobs 2 and 3)
+Owner point: the robots look plonked on one island with no real thought; they are a key part of the early game and need to move around and do different things. First day already adds: routines (dawn out, work the tideline, dusk charge, night off), visible work steps, a charging post, heading home before storms, two different job behaviours. Job 4 adds: crossing to other islands at low tide, getting stuck and rescue (status light, go and free it), body types with different jobs (hauler, sorter, stacker), working together on big loads, and wear, dust, moss and repainting. Rails: no faces, no speech, no feelings.
+
 ## After that (not now)
 Playthrough pass to find gaps; real waves; pole-drive skiff and tuning shop; the Hoard depot island; chart and buying land; activity islands.
 
