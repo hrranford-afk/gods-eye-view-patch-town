@@ -94,7 +94,8 @@ To try a later beat without playing: `&stage=yard`, `&stage=evening`, `&stage=ni
 5. The bottle could not be tapped at all: its id `bottle` starts with `bot`, so it was sent to the robot card, which found no robot and quietly did nothing (the first night could not be finished by touch). Fix: the bottle is tested first and robot ids must be `bot<number>`.
 6. The HUD was rebuilt many times a second while it rained, because the barrel litre count was part of the redraw test; buttons were replaced under the player's finger. Fix: the barrel text is updated in place.
 7. The tap detector used the page clock between touch-down and touch-up; a slow frame in between could turn a tap into a miss. Fix: it uses the event time stamps.
-8. A worktree on a sparse checkout dropped the island files after a rebase (not a game bug; the sparse list now names them).
+8. Night was never detected: the clock's light direction switches to the moon at night, so the test `sun y below zero` never fired and the stump lamp never lit. Fix: night is read from the sun's own elevation (below minus 3 degrees). The lamp sprite was also far too big up close and is smaller now.
+9. A worktree on a sparse checkout dropped the island files after a rebase (not a game bug; the sparse list now names them).
 
 ## Honest limits
 - Software GL only. No real GPU number. The pictures are software renders and look softer than a real device.
@@ -104,5 +105,12 @@ To try a later beat without playing: `&stage=yard`, `&stage=evening`, `&stage=ni
 - Prices, delivery times, trip yields and the credit pace are tuning guesses.
 - Pictures: see shots/day-0.png to day-5.png and day-3b.png and their captions below.
 
-## Pictures (captions and flaws)
-(Filled in after the final render; see the end of this file.)
+## Pictures (software GL, 2400 wide; not a device)
+- shots/day-0.png, the island plan with labels (made by tools/make_gift_world.py). Flaw: a flat plan, not a render; labels are ours.
+- shots/day-1.png, dawn arrival: the crate with the brass key on the lee shore, the tent and fire ring of the camp, the rusted hut frame bottom left, the jetty at the top. Flaws: the grass has a strong yellow-green wash from the sky clock at 05:06; the dark blobs near the crate and at the top are the soft hint rings, which read as holes; the Skip-to list is a test control and is always in view.
+- shots/day-2.png, the ledger (top right) and the catalogue open with ten items, prices and delivery words. Two numbered crates stand on the grass (the tender itself is out of frame). Flaws: the toast still says "A boat is coming in. Wait on the beach." although the crates have landed (stale text left over from the render driver skipping ahead; to check in play); the grass is washed out and blurred by the depth-of-field look; the card hides the beach and the tender; a dark hint ring top right.
+- shots/day-3.png, the yard with a started robot after an order. Flaw: the robot stands in front of the bay at its post, so the picture reads as parked; day-3b shows the work.
+- shots/day-3b.png, a hauler robot mid-job on the tideline carrying planks (a wake of track marks behind it, the green status lamp on top, the wreck behind). Flaws: one robot only in frame; the stock pill reads "Planks 0 ..." because the load has not reached the heap yet; the camera is close so the shore busy-ness (2.4 of 3 robots out) is not visible; the black outline top right is a hint ring.
+- shots/day-4.png, the build menu: five builds with cost, what each earns or protects, the stock it needs and what you have, delivery time and the model note; the cottage and kiosk are greyed (short of planks) and the jetty, cistern and hide can be built. Flaws: the left pills sit under the card; the card is long and needs scrolling on a phone.
+- shots/day-5.png, the first night: dark sea, the lit lamp on the headland stump, the camp fire glow. Flaws: the island land is still lit by a warm wash that does not look like moonlight (the sky clock's night light on this island: not fixed here); the stump lamp is a flat glowing disc; the stump model is the hand-built placeholder; no seal or bottle in frame; the stars are not visible at this camera angle.
+All were viewed after rendering. Zero console errors and zero gift errors in the render run.

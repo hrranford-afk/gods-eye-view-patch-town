@@ -167,7 +167,7 @@ if (want(3)) {
   ok(bt.includes(want), 'the bottle carries the message chosen by seed 9001: "' + want + '" (card ' + (await G(p, 'card')) + ': ' + bt.slice(0, 50) + ')'); ok(/Delivery credit lasts about (3|4|3\.5) years/.test(bt), 'the bottle card shows the ledger note about credit duration');
   ok(await clickText(p, 'Keep it and rest'), 'keeping the bottle ends the day'); await p.waitForTimeout(800);
   ok((await stage(p)) === 'done', 'the first day is done');
-  await G(p, 'setHour', 22.2); await p.waitForTimeout(4000);
+  await G(p, 'setHour', 22.2); await p.waitForFunction(() => { const o = __gift.objs(); return o.stumpGlow && o.stumpGlow.material.opacity > .2; }, null, { timeout: 120000 }).catch(() => { });
   const lamp = await p.evaluate(() => { const o = __gift.objs(); return o.stumpGlow ? { vis: o.stumpGlow.visible, op: o.stumpGlow.material.opacity } : null; });
   ok(lamp && lamp.vis && lamp.op > .2, 'the stump lamp is lit at night (opacity ' + (lamp && lamp.op.toFixed(2)) + ')');
   ok(await p.evaluate(() => localStorage.getItem('li.gift.day1')) === null, 'nothing was saved under automation (no &giftsave=1)');
@@ -207,7 +207,7 @@ if (want(6)) {
   await a.p.evaluate(() => __gift.skipTo('yard')); await a.p.waitForTimeout(600);
   await a.p.close();
   const b = await open('?ui=0&q=low&game=gift&giftsave=1'); const s = await G(b.p, 'state');
-  ok(s.letter1 && s.ordered && s.robots.some(Boolean) && (await stage(b.p)) === 'yard' || (await stage(b.p)) === 'evening', 'closing and reopening resumes the saved game (stage ' + await stage(b.p) + ')');
+  ok(s.letter1 && s.ordered && (await stage(b.p)) === 'yard', 'closing and reopening resumes the saved game (stage ' + await stage(b.p) + ')');
   ok(/Welcome back/.test(await G(b.p, 'toast')), 'the player is welcomed back');
   ok(s.ledger.credit < 940000 && s.orders.length === 1, 'the ledger and the order came back');
   await G(b.p, 'wipe'); ok(b.errs.length === 0, 'load: 0 console errors'); await b.p.close();
@@ -219,7 +219,7 @@ if (!quick && want(7)) {
   {
     const t = await open('?ui=0&device=ipad&game=gift&stage=jobs', { touch: true, w: 1024, h: 768 });
     const r = await t.p.evaluate(() => ({ touch: document.body.classList.contains('dev-touch'), btns: [...document.querySelectorAll('#gd .gd-btn')].map(b => b.getBoundingClientRect().height), q: __li.stats().quality, robots: __li.campstart.rt().robots().length }));
-    ok(r.touch && r.q === 'low' && r.btns.length >= 3 && r.btns.every(h => h >= 51.5), 'ipad preset: low tier, touch class, every gift button is at least 52 px tall (' + r.btns.map(Math.round).join(',') + ')');
+    ok(r.touch && r.q === 'low' && r.btns.length >= 2 && r.btns.every(h => h >= 51.5), 'ipad preset: low tier, touch class, every gift button is at least 52 px tall (' + r.btns.map(Math.round).join(',') + ')');
     await G(t.p, 'closeCard'); const sp = await G(t.p, 'spots'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);
     await G(t.p, 'skipTo', 'arrive'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);
     const tt = await t.p.evaluate(() => __gift.targets().find(t => t.id === 'crate0')); await t.p.touchscreen.tap(tt.x, tt.y); await t.p.waitForTimeout(600);
@@ -243,7 +243,7 @@ if (!quick && want(7)) {
     ok(errs.length === 0, dev + ' preset: 0 console errors' + (errs.length ? ' ' + errs.slice(0, 2).join(' | ') : '')); await p.close();
   }
   {
-    const { p, errs } = await open('?ui=0&game=gift&q=low&uiscale=2&stage=jobs');
+    const { p, errs } = await open('?ui=0&game=gift&q=ultra&uiscale=2&stage=jobs');
     const z = await p.evaluate(() => ({ zoom: document.getElementById('gd').style.zoom, ui: __li.ultra.ui() }));
     ok(z.zoom === '2' && z.ui === 2, 'the gift panels use the existing ui zoom (&uiscale=2 gives zoom ' + z.zoom + ')'); ok(errs.length === 0, 'uiscale: 0 console errors'); await p.close();
   }

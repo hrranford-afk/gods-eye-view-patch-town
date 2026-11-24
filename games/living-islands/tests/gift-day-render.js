@@ -48,7 +48,7 @@ if (only.includes(4)) {            /* the build menu */
   await view(cam(sp.crate.x, sp.crate.z, 60, .6, thetaSea + .5), 3000); await shot(4);
 }
 if (only.includes(5)) {            /* first night */
-  await G('closeCard'); await G('skipTo', 'night'); await p.waitForTimeout(500); await G('setHour', 22.2);
+  await G('closeCard'); await G('speedUp', 40); await G('skipTo', 'night'); await p.waitForTimeout(500); await G('setHour', 22.2);
   await p.waitForFunction(() => __gift.nightT() > 11, null, { timeout: 120000 }); await p.waitForTimeout(18000); await G('closeCard');
   await view(cam(sp.crate.x * .5 + sp.stump.x * .5, sp.crate.z * .5 + sp.stump.z * .5, 70, .55, thetaSea + .3), 3500); await shot(5);
 }

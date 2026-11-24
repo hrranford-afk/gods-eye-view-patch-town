@@ -383,7 +383,7 @@ function weatherTick() {
 }
 function weatherState() { try { const l = C.li(); if (USER_WEATHER && USER_WEATHER !== 'auto' && /^[a-z]+$/.test(USER_WEATHER)) return USER_WEATHER; return G.weather || 'fair'; } catch (e) { return 'fair'; } }
 function isRaining() { const w = weatherState(); return w === 'showers' || w === 'rain' || w === 'storm'; }
-function isNight() { const c = ck(); if (!c) return false; try { return c.sunDir()[1] < -0.04; } catch (e) { return false; } }
+function isNight() { const c = ck(); if (!c) return false; try { return c.light().elev < -3; } catch (e) { return false; } }   /* sunDir() is the light direction (the moon at night), so the sun's own elevation is read */
 function hhmm(g) { const hh = Math.floor(g % 24), mm = Math.floor((g % 1) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); }
 const dayNo = () => Math.floor(G.s.gh / 24) + 1;
 
@@ -587,7 +587,7 @@ function mkRing(col) { const m = new THREE.Mesh(new THREE.RingGeometry(.9, 1.15,
 function place(o, p, yaw, lift) { o.position.set(p.x, groundY(p.x, p.z) + (lift || 0), p.z); if (yaw !== undefined) o.rotation.y = yaw; return o; }
 
 /* ---------------- building the scene pieces ---------------- */
-function isAR() { try { const u = C.li().ultra; return !!(u && u.tier && u.tier() === 'ar'); } catch (e) { return false; } }
+function isAR() { return Q0.get('tier') === 'ar' || Q0.get('device') === 'ar' || Q0.get('clockdome') === '0'; }   /* the page's own AR rule: tier=ar, or the clock without its dome */
 function buildWorld() {
   const sites = computeSites(); if (!sites) return false; G.ar = isAR();
   if (G.ar) sites.finds = sites.finds.slice(0, 3);          /* AR refuses the heavy parts: no seals, no kit stump model, three finds */
@@ -612,7 +612,7 @@ function buildWorld() {
   O.seals = []; const M = C.man ? C.man() : null; if (!G.ar && M && M.gift) M.gift.skerries.forEach((s, i) => { for (let k = 0; k < 2; k++) { const sl = mkSeal(); const x = s[0] + (k ? 1.4 : -1), z = s[1] + (k ? -.8 : .9); sl.position.set(x, Math.max(C.H(x, z), 0.2) + 0.05, z); sl.rotation.y = i * 2 + k; sl.userData.base = sl.position.y; root.add(sl); O.seals.push(sl); } });
   /* the stump on the headland and its lamp */
   if (sites.stump) { const y = C.H(sites.stump.x, sites.stump.z); const st = new THREE.Group(); st.position.set(sites.stump.x, y, sites.stump.z); const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.8, 4.6, 10), lambert(0xa49b8a)); cone.position.y = 2.3; st.add(cone); const top = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.3, .4, 10), lambert(0x6b655a)); top.position.y = 4.8; st.add(top); shadowed(st); O.stumpFallback = st; root.add(st);
-    const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, depthTest: false })); gl.scale.set(14, 14, 1); gl.position.set(sites.stump.x, y + 5.4, sites.stump.z); gl.renderOrder = 18; root.add(gl); O.stumpGlow = gl; loadStump(sites.stump, y); }
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, depthTest: false })); gl.scale.set(5, 5, 1); gl.position.set(sites.stump.x, y + 5.4, sites.stump.z); gl.renderOrder = 18; root.add(gl); O.stumpGlow = gl; loadStump(sites.stump, y); }
   O.ring = mkRing(); root.add(O.ring);
   return true;
 }
