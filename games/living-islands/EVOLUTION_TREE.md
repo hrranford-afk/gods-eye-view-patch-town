@@ -255,3 +255,14 @@ Harry: take CAIRN's defaults on all seven.
 5. The quiet walk-round-and-repair-ruins mode comes before any firing.
 6. Drones: left out for now.
 7. First screen: two friends on one tablet.
+
+## Fighting is about digging in and geography: owner decision, 24 Nov
+
+Harry: leave the built forts for later, as something found in the game (old ruins to explore and repair). The fighting he pictures is geography-based: digging into hillsides, making little bases, using the lie of the land. The research already covers hill features, the trench-and-bunker style and the reverse-slope effect (a bunker behind a ridge takes no flat fire). What does not exist yet: the digging itself.
+
+So the order changes:
+1. Terrain digging first: cut, fill and mound on the landform heightfield with volume kept honest (what you dig out becomes a bank), rock type deciding the cost and the stability (gneiss and basalt are hard and hold a face, sandstone is easier, volcanic ash is soft and slumps, sand and peat collapse and flood).
+2. Dig-in parts: dugout, trench bays and traverses, timber and wicker revetment, sandbag or gabion walls, tunnel mouth, observation post, camouflage, hatch and door. Built from the same repairable parts method as the jetty.
+3. Reading the ground: slope, aspect, viewshed, defilade (dead ground), cover and concealment, drainage and water table (links to the hydrology note).
+4. Play: a quiet builder mode first (dig a base, explore, repair old works), skirmish later. Tone rails unchanged.
+5. The star fort kit stays as built, parked until it is wanted as a found ruin.
