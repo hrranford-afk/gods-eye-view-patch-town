@@ -216,3 +216,5 @@ What a bigger island needs, in order:
 Honest notes: this is a large piece of work, so it comes after the camp start mode and the first food steps. A research note comes first, then a small headless hydrology test on one existing world before any page work.
 
 Open questions for Harry (taste): are big islands part of the same game (you sail to them) or a separate map type? Can you build on a river (mills, bridges, water wheels)? Do floods matter?
+
+Owner answers, 24 Nov (bigger islands): (1) big islands are part of the same game, found by sailing to them; (2) you can build on rivers later (mills, bridges, water wheels); (3) floods matter, gently (they change the land and the settlement, they do not punish).
