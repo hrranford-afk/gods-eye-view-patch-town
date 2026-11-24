@@ -539,6 +539,9 @@ def boulder(seed, size, loc, rot=0.0, res=4):
     return ob
 
 # ---------------------------------------------------------------- sea
+# The water box used to be 1800 m across, so a camera 10 to 60 m up saw its far edge (900 m away) 0.6 to 4 degrees BELOW the true horizon, and between that edge and the
+# horizon it saw the sky texture's below-horizon half: one flat colour with a hard lower edge (the 'sky band', HW-6). 80 km puts the edge under 0.04 degrees from the horizon.
+SEA_REACH_M = 80000.0
 def depth_image_from_grid(h2d, name='SeaDepth', exposure2d=None):
     """float image of water depth (R,G,B = metres below sea level, -1 on land, clipped to 8 m; row 0 = south). Used by the sea
     material for foam. If exposure2d is given, the G channel carries wave exposure (0..1) instead of the depth."""
@@ -554,7 +557,7 @@ def make_foam_depth_image(land_fields, name='SeaDepth', n=512, seed=1122):
     u, v = np.meshgrid(xs, xs)
     return depth_image_from_grid(IC.height_fields(u, v, seed)['h'], name)
 
-def make_sea(seed, depth_img, size=1800.0, floor=-7.0, half=None, centre=(0.0, 0.0), density=0.7, foam_scale=5.5, wave_scale=1.0, exposure_foam=False, scatter=0.0):
+def make_sea(seed, depth_img, size=SEA_REACH_M, floor=-7.0, half=None, centre=(0.0, 0.0), density=0.7, foam_scale=5.5, wave_scale=1.0, exposure_foam=False, scatter=0.0):
     """half/centre: the square (centre +- half, metres) that the depth image covers (default: the original island's +-IC.HALF);
     density: absorption per metre (depth tint); foam_scale / wave_scale multiply the foam-noise and wave-bump frequencies
     (smaller for big scenes seen from far away); scatter: density of a blue-green in-scattering volume (0 = pure absorption, as the original); exposure_foam: the image G channel is wave exposure, which widens the foam on exposed shores."""
@@ -639,11 +642,16 @@ def make_sea(seed, depth_img, size=1800.0, floor=-7.0, half=None, centre=(0.0, 0
     return ob
 
 # ---------------------------------------------------------------- sky and light
-def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, haze=0.0, horizon_soften=0.0):
+SKY_LIFT = 0.06           # sine of the extra elevation (about 3.5 degrees) the camera-ray sky is read from at the horizon
+SKY_LIFT_WIDTH = 0.06     # the lift fades as exp(-sine of elevation / this)
+
+def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, haze=0.0, horizon_soften=0.0, sea_haze=1.0):
     """overcast 0..1 greys the camera-ray sky (cloud cover without a cloud model); haze 0..1 adds aerosol and air (a whiter, flatter horizon). 0, 0 = original.
     horizon_soften 0..1 (default 0 = original, bit for bit): on low-sun pictures the camera sees only the lowest few degrees of the sky, which is one saturated gold slab.
     This blends the camera-ray sky toward a pale, slightly cool grey of the same brightness right at the horizon, fading out by about 20 degrees up.
-    Only Colour Ramp, RGB to BW and Mix nodes are used (all present in Blender 3.6 and later)."""
+    Only Colour Ramp, RGB to BW and Mix nodes are used (all present in Blender 3.6 and later).
+    Sky band fix (HW-11): rays below the horizon see the mirrored sky, and (sea_haze > 0, if a sea made by make_sea already exists) the far sea fades into the horizon sky
+    colour with distance (aerial perspective), so the sea/sky line is a soft haze and not a hard edge under a flat slab. sea_haze 0 = no fade."""
     w = bpy.data.worlds.new('Sky'); bpy.context.scene.world = w
     w.use_nodes = True; nt = w.node_tree; nt.nodes.clear()
     out = node(nt, 'ShaderNodeOutputWorld', (400, 0)); bg = node(nt, 'ShaderNodeBackground', (200, 0)); sk = node(nt, 'ShaderNodeTexSky', (-100, 0))
@@ -652,6 +660,28 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, ha
     want = 'MULTIPLE_SCATTERING' if (os.environ.get('LI_LOOK', 'bright').lower() == 'moody' and 'MULTIPLE_SCATTERING' in kinds) else ('NISHITA' if 'NISHITA' in kinds else 'SINGLE_SCATTERING')
     sk.sky_type = want; sk.sun_disc = False; sk.sun_size = math.radians(1.2); sk.sun_intensity = 1.0
     sk.sun_elevation = math.radians(sun_elev_deg); sk.sun_rotation = math.radians(sun_az_deg)
+    # Rays that point below the horizon (past the end of any finite sea, or through gaps) get the MIRROR of the sky above the horizon instead of the texture's flat ground half,
+    # so there is no band whatever is, or is not, in the way. Only Geometry, Vector Math, Separate/Combine XYZ and Math nodes (all in Blender 3.6 and 5.x).
+    gm = node(nt, 'ShaderNodeNewGeometry', (-1000, 700)); dr = node(nt, 'ShaderNodeVectorMath', (-850, 700), operation='SCALE'); dr.inputs['Scale'].default_value = -1.0
+    link(nt, gm.outputs['Incoming'], dr.inputs[0])
+    ds = node(nt, 'ShaderNodeSeparateXYZ', (-700, 700)); link(nt, dr.outputs[0], ds.inputs[0])
+    az = node(nt, 'ShaderNodeMath', (-550, 650), operation='ABSOLUTE'); link(nt, ds.outputs['Z'], az.inputs[0])
+    # camera and glossy rays only: light from below the horizon on diffuse rays (through the see-through water) keeps the original dark ground half, or the seabed and shallows would be lit too bright
+    # (glossy rays too: a wave facet tilts a grazing reflection below the horizon, and it must not read the dark ground half of the texture, which made a dark purple band under the horizon)
+    lc = node(nt, 'ShaderNodeLightPath', (-700, 900))
+    vis = node(nt, 'ShaderNodeMath', (-600, 1000), operation='MAXIMUM'); link(nt, lc.outputs['Is Camera Ray'], vis.inputs[0]); link(nt, lc.outputs['Is Glossy Ray'], vis.inputs[1])
+    zd = node(nt, 'ShaderNodeMath', (-450, 850), operation='SUBTRACT'); link(nt, az.outputs[0], zd.inputs[0]); link(nt, ds.outputs['Z'], zd.inputs[1])
+    zm = node(nt, 'ShaderNodeMath', (-300, 850), operation='MULTIPLY'); link(nt, zd.outputs[0], zm.inputs[0]); link(nt, vis.outputs[0], zm.inputs[1])
+    za = node(nt, 'ShaderNodeMath', (-150, 850), operation='ADD'); link(nt, ds.outputs['Z'], za.inputs[0]); link(nt, zm.outputs[0], za.inputs[1])
+    # the single-scattering sky is darker and browner in its last 3 degrees above the horizon (its air path is longest there): camera rays look up SKY_LIFT further than they point, fading out by about 10 degrees,
+    # so the horizon shows the colour of about 3.5 degrees up and the sky brightens smoothly to the horizon instead of dipping into a dark brown band
+    lq = node(nt, 'ShaderNodeMath', (-300, 1000), operation='MULTIPLY'); link(nt, az.outputs[0], lq.inputs[0]); lq.inputs[1].default_value = -1.0 / SKY_LIFT_WIDTH
+    le = node(nt, 'ShaderNodeMath', (-150, 1000), operation='EXPONENT'); link(nt, lq.outputs[0], le.inputs[0])
+    lm = node(nt, 'ShaderNodeMath', (0, 1000), operation='MULTIPLY'); link(nt, le.outputs[0], lm.inputs[0]); lm.inputs[1].default_value = SKY_LIFT
+    lc2 = node(nt, 'ShaderNodeMath', (150, 1000), operation='MULTIPLY'); link(nt, lm.outputs[0], lc2.inputs[0]); link(nt, vis.outputs[0], lc2.inputs[1])
+    zl = node(nt, 'ShaderNodeMath', (300, 900), operation='ADD'); link(nt, za.outputs[0], zl.inputs[0]); link(nt, lc2.outputs[0], zl.inputs[1])
+    dc = node(nt, 'ShaderNodeCombineXYZ', (450, 700)); link(nt, ds.outputs['X'], dc.inputs['X']); link(nt, ds.outputs['Y'], dc.inputs['Y']); link(nt, zl.outputs[0], dc.inputs['Z'])
+    link(nt, dc.outputs[0], sk.inputs['Vector'])
     sk.air_density = 2.3 + 1.2 * haze; setattr(sk, 'aerosol_density' if hasattr(sk, 'aerosol_density') else 'dust_density', 0.35 + 4.5 * haze); sk.ozone_density = 2.5; sk.altitude = 20.0
     # glossy rays (the sea's mirror) see a bluer, cleaner sky than the sunset-pink camera sky: keeps the water deep blue
     lp = node(nt, 'ShaderNodeLightPath', (-400, 200)); tcg = node(nt, 'ShaderNodeTexCoord', (-700, -200))
@@ -661,7 +691,11 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, ha
     sz = node(nt, 'ShaderNodeSeparateXYZ', (-450, -400)); link(nt, gc.outputs['Incoming'], vz.inputs[0]); link(nt, vz.outputs[0], sz.inputs[0])
     neg = node(nt, 'ShaderNodeMath', (-300, -400), operation='MULTIPLY'); link(nt, sz.outputs['Z'], neg.inputs[0]); neg.inputs[1].default_value = -1.0
     blue = ramp(nt, neg.outputs[0], [(0.0, (2.2, 2.8, 3.4, 1)), (0.25, (0.8, 1.6, 3.2, 1)), (1.0, (0.2, 0.6, 2.4, 1))], (-100, -400))
-    mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA'); link(nt, lp.outputs['Is Glossy Ray'], S(mix, 'inputs', 'Factor'))
+    mix = node(nt, 'ShaderNodeMix', (100, 100), data_type='RGBA')
+    # HW-11: the bluer glossy sky blends back to the ordinary sky for reflections within about 5 degrees of the horizon, so the far sea reflects the same colour the camera sees above the horizon (before: a bright blue sea under a dark or gold sky, a hard edge)
+    gup = ramp(nt, neg.outputs[0], [(0.0, (0, 0, 0, 1)), (0.09, (1, 1, 1, 1))], (-100, -250))
+    gmx = node(nt, 'ShaderNodeMath', (-100, -150), operation='MULTIPLY'); link(nt, lp.outputs['Is Glossy Ray'], gmx.inputs[0]); link(nt, gup.outputs['Color'], gmx.inputs[1])
+    link(nt, gmx.outputs[0], S(mix, 'inputs', 'Factor'))
     sky_col = sk.outputs['Color']
     if horizon_soften > 0:
         bw = node(nt, 'ShaderNodeRGBToBW', (-300, 450)); link(nt, sky_col, bw.inputs['Color'])
@@ -680,7 +714,57 @@ def make_sky(sun_elev_deg=13.0, sun_az_deg=250.0, strength=1.0, overcast=0.0, ha
     link(nt, blue.outputs['Color'], S(mix, 'inputs', 'B'))
     link(nt, S(mix, 'outputs', 'Result'), bg.inputs['Color']); bg.inputs['Strength'].default_value = strength
     link(nt, bg.outputs['Background'], out.inputs['Surface'])
+    if sea_haze > 0:
+        add_sea_haze(sk, strength, overcast, horizon_soften, sea_haze)
     return sk
+
+SEA_HAZE_SINE = 0.04   # the haze fades as exp(-(sin(angle below the horizon) / this)^2): 99 percent at 0.3 degrees below the horizon, 83 at 1, 40 at 2, 7 at 3.5
+
+def add_sea_haze(sky_node, strength, overcast, horizon_soften, amount=1.0):
+    """Splice an aerial-perspective fade into every sea material (made by make_sea) in the file: surface = mix(old surface, emission of the horizon sky colour, exp(-(sin(angle below the horizon) / SEA_HAZE_SINE)^2): full at the horizon, 83 percent at 1 degree below it, 40 at 2, 7 at 3.5).
+    The colour is a second Sky Texture with the same settings, looked up just above the horizon in the viewing direction, then given the same horizon soften and overcast as the world.
+    Only Geometry, Vector Math, Math, Mix, Emission and Sky Texture nodes (all long-standing). Returns how many materials were changed."""
+    done = 0
+    for m in bpy.data.materials:
+        if not m.name.startswith('SeaMat') or not m.use_nodes or m.node_tree.nodes.get('SeaHazeMix') is not None:
+            continue
+        nt = m.node_tree
+        outs = [n for n in nt.nodes if n.bl_idname == 'ShaderNodeOutputMaterial']
+        if not outs or not outs[0].inputs['Surface'].links:
+            continue
+        out = outs[0]; src = out.inputs['Surface'].links[0].from_socket
+        sk = node(nt, 'ShaderNodeTexSky', (1000, 900))
+        for at in ('sky_type', 'sun_disc', 'sun_size', 'sun_intensity', 'sun_elevation', 'sun_rotation', 'air_density', 'aerosol_density', 'dust_density', 'ozone_density', 'altitude'):
+            if hasattr(sk, at) and hasattr(sky_node, at):
+                setattr(sk, at, getattr(sky_node, at))
+        gm = node(nt, 'ShaderNodeNewGeometry', (200, 1100)); dr = node(nt, 'ShaderNodeVectorMath', (350, 1100), operation='SCALE'); dr.inputs['Scale'].default_value = -1.0
+        link(nt, gm.outputs['Incoming'], dr.inputs[0])
+        ds = node(nt, 'ShaderNodeSeparateXYZ', (500, 1100)); link(nt, dr.outputs[0], ds.inputs[0])
+        lo = node(nt, 'ShaderNodeCombineXYZ', (700, 1100)); link(nt, ds.outputs['X'], lo.inputs['X']); link(nt, ds.outputs['Y'], lo.inputs['Y']); lo.inputs['Z'].default_value = 0.012 + SKY_LIFT * math.exp(-0.012 / SKY_LIFT_WIDTH)   # what the camera sky shows just above the horizon (0.7 degrees plus the lift)
+        link(nt, lo.outputs[0], sk.inputs['Vector'])
+        col = sk.outputs['Color']
+        if horizon_soften > 0:
+            bw = node(nt, 'ShaderNodeRGBToBW', (1200, 1000)); link(nt, col, bw.inputs['Color'])
+            tint = node(nt, 'ShaderNodeMix', (1350, 1000), data_type='RGBA', blend_type='MULTIPLY'); S(tint, 'inputs', 'Factor').default_value = 1.0
+            link(nt, bw.outputs['Val'], S(tint, 'inputs', 'A')); S(tint, 'inputs', 'B').default_value = (0.93, 0.98, 1.07, 1)
+            hm = node(nt, 'ShaderNodeMix', (1500, 1000), data_type='RGBA'); S(hm, 'inputs', 'Factor').default_value = float(horizon_soften)
+            link(nt, col, S(hm, 'inputs', 'A')); link(nt, S(tint, 'outputs', 'Result'), S(hm, 'inputs', 'B')); col = S(hm, 'outputs', 'Result')
+        if overcast > 0:
+            oc = node(nt, 'ShaderNodeMix', (1650, 1000), data_type='RGBA'); S(oc, 'inputs', 'Factor').default_value = float(overcast)
+            S(oc, 'inputs', 'B').default_value = (0.20, 0.215, 0.235, 1); link(nt, col, S(oc, 'inputs', 'A')); col = S(oc, 'outputs', 'Result')
+        em = node(nt, 'ShaderNodeEmission', (1800, 900)); link(nt, col, em.inputs['Color']); em.inputs['Strength'].default_value = float(strength)
+        dn = node(nt, 'ShaderNodeMath', (1000, 1300), operation='MULTIPLY'); link(nt, ds.outputs['Z'], dn.inputs[0]); dn.inputs[1].default_value = 1.0 / SEA_HAZE_SINE      # ray z over the fade width: negative below the horizon
+        dq = node(nt, 'ShaderNodeMath', (1100, 1300), operation='MULTIPLY'); link(nt, dn.outputs[0], dq.inputs[0]); link(nt, dn.outputs[0], dq.inputs[1])
+        dm = node(nt, 'ShaderNodeMath', (1150, 1300), operation='MULTIPLY'); link(nt, dq.outputs[0], dm.inputs[0]); dm.inputs[1].default_value = -1.0
+        e3 = node(nt, 'ShaderNodeMath', (1200, 1300), operation='EXPONENT'); link(nt, dm.outputs[0], e3.inputs[0])                                                  # exp(-(z / width)^2): e to the power of the first input
+        e4 = node(nt, 'ShaderNodeMath', (1650, 1300), operation='MULTIPLY'); link(nt, e3.outputs[0], e4.inputs[0]); e4.use_clamp = True; e4.inputs[1].default_value = float(amount)
+        lcr = node(nt, 'ShaderNodeLightPath', (1500, 1500))      # camera rays only: bounce light and reflections must not see a glowing water surface
+        e5 = node(nt, 'ShaderNodeMath', (1800, 1300), operation='MULTIPLY'); link(nt, e4.outputs[0], e5.inputs[0]); link(nt, lcr.outputs['Is Camera Ray'], e5.inputs[1]); e4 = e5
+        hz = node(nt, 'ShaderNodeMixShader', (2000, 0)); hz.name = 'SeaHazeMix'
+        link(nt, e4.outputs[0], hz.inputs['Fac']); link(nt, src, hz.inputs[1]); link(nt, em.outputs[0], hz.inputs[2])
+        link(nt, hz.outputs[0], out.inputs['Surface']); out.location = (2300, 0)
+        done += 1
+    return done
 
 def render_settings(sc, w, h, samples, denoise=True, exposure=0.0, look='AgX - Punchy'):
     sc.render.resolution_x = w; sc.render.resolution_y = h; sc.render.resolution_percentage = 100

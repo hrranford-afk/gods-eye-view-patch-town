@@ -1,0 +1,45 @@
+# SKY_FIX: the flat sky band with a hard lower edge (HW-6, Blender 3.6) - 24 Nov 2026
+
+Pictures: shots/sky-fix-sheet.png (old HW-6 hardware picture beside the new render, 6 seeds), shots/sky-fix-1.png, shots/sky-fix-2.png.
+Code: blender/li_scene.py (make_sea, make_sky, new add_sea_haze), blender/picture_guard.py (check_sky_smooth), tests/test_sky_smooth.py, hw11/ (the hardware canary), ORDER_HW-11_sky_canary.md.
+
+## Cause (found by reading the code and the pictures, reproduced on Blender 5.3)
+The band was not a Blender 3.6 quirk. The same hard edge renders on the cloud's Blender 5.3 (seed 2016 close-up reproduced before any change). Three things made it:
+1. **The sea was a water box only 1800 m across** (make_sea size=1800). A camera 10 to 60 m up sees that box's far edge (900 m away) 0.6 to 4 degrees BELOW the true horizon. Between that edge and the horizon the camera saw the sky texture's below-horizon half, which is one flat colour (gold on golden hour, beige or pink on others, black-brown on dusk). That is the "flat band with a hard lower edge" and, at 2009 and 1122 where the horizon is above the picture's top edge, a dark or gold strip across the top. The small steps in the band's lower edge on 2016 hero and 2017 close are the box's corner.
+2. **The horizon itself was a hard line**: the glossy rays that make the sea's reflection see a separate, much bluer and brighter sky (the 'keep the water deep blue' branch of make_sky), so the far sea stayed bright blue right up to a dark or gold sky. Even with a perfect sea edge, sea and sky met at one pixel row.
+3. **The single-scattering sky is darker and browner in its last 3 degrees above the horizon**, so on high-haze pictures (2005, 2008) the sky dipped into a dark brown band just above the horizon. The earlier 'horizon_soften' nodes (24dd681) only blend towards grey of the same brightness, so they could not remove it. They were also not 'failing to reach the edge on 3.6': the edge was a geometry edge, not a colour at all.
+Not the cause (tested): the camera far clip (cam.clip_end 100 vs 1e6 gave identical pictures; Cycles ignores it here).
+
+## Fix (all in li_scene.py; island, recipe and tree code untouched)
+- make_sea default size 1800 m to 80 km (SEA_REACH_M). The far edge is now under 0.04 degrees from the horizon. The wave and foam noise use Object coordinates and the depth image uses its own half-width, so the near sea looks the same.
+- make_sky: rays that point below the horizon read the MIRROR of the sky above it (Sky Texture vector = |z|), for camera and glossy rays only (diffuse light through the see-through water keeps the old dark lower half, otherwise the seabed is lit too bright).
+- make_sky: camera and glossy rays read the sky from SKY_LIFT (about 3.5 degrees) higher at the horizon, fading out by about 10 degrees, so the sky brightens smoothly down to the horizon.
+- make_sky: glossy (reflection) rays within about 5 degrees of the horizon blend back to the ordinary sky, so the far sea reflects the colour the camera sees above the horizon.
+- New add_sea_haze (called by make_sky when a make_sea sea already exists; sea_haze=0 turns it off): the sea's camera-ray surface fades into the horizon sky colour, exp(-(sin(angle below the horizon)/0.04)^2): 99 percent at 0.3 degrees below the horizon, 83 at 1, 40 at 2, 7 at 3.5. The colour comes from a second Sky Texture with the same settings, looked up just above the horizon, with the same horizon_soften and overcast as the world.
+- Every node used is long-standing (Sky Texture, Geometry, Light Path, Math (add, subtract, multiply, maximum, exponent), Vector Math (scale), Separate and Combine XYZ, Mix, Color Ramp, RGB to BW, Emission, Mix Shader). Mix sockets go through the existing S() helper, and the Sky Texture settings are copied by hasattr so Nishita (3.6) and single scattering (4.0+) both work. Note on Blender 5.x: the Math node's Exponent operation is e to the power of the FIRST input only (the first draft wired the second input and did nothing).
+- The look: golden hour stays gold, dusk stays dark, but the sea near the horizon is now hazy (greyer, less saturated blue) and the pictures are a little brighter. See gaps.
+
+## Sky smoothness check (blender/picture_guard.py: check_sky_smooth; python3 picture_guard.py --sky FILE ...)
+Take the top 35 percent of the rows (picture first resampled to 533 rows tall, so size does not matter), cut it into 8-pixel column strips; for each row and strip, the step is the colour distance (0-255) between the two rows below and the two rows above. The row step is the 20th percentile over the strips: a hard band or horizon runs across the width so almost every strip steps; an island, tree or tent covers only part of it. (First version used the median colour per row; it flagged land silhouettes, so it was replaced.)
+- **Thresholds: biggest row step under 14.0 levels (a hard edge), and no row step under 8.0 away from the horizon (a stripe inside the sky; rows within 8 of the horizon row are ignored for this one).**
+- Old HW-6 hardware pictures (32 jpgs): 17 fail. Every picture that shows the band fails by a wide margin: seed close-ups 2005 117, 2008 114, 2025 146, 2023 96, 2016 49, 2015 45, 2029 43, 2004 36, 2017 36, 2020 20, 2021 14.8 (weakest, just over), hero 1122 43, hero 2016 32, large 2009 173, 2014 81. Passes among the old ones are pictures whose horizon is lower than 35 percent of the height (see gaps) or that never had a band.
+- New renders (this commit, Blender 5.3, 16 samples, the 9 canary seeds hero and close plus large 2009 and 2014): all 20 pass. Biggest horizon step 11.9 (large 2009, dusk with a nearly black sky), then 10.1 (close 2025), 7.0 (close 2005), the rest under 6; biggest stripe inside the sky 4.9. The limit 14.0 sits between 11.9 and the weakest old band 14.8 for the narrow case and well above the typical (new under 8, old band 29 to 173); the 8.0 stripe limit is 3 above the worst new picture.
+- Tests: tests/test_sky_smooth.py (synthetic soft and hard horizons, island in front, size independence, a stripe, missing file, 8 old fixtures that must fail and 8 new fixtures that must pass, CLI exit codes, the black-picture guard unchanged) all pass; tests/test_recipe.py still passes. Fixtures are 400 px JPEGs in tests/fixtures/sky.
+
+## Untested on Blender 3.6 (cloud has 5.3 only) - be explicit
+Everything above was rendered and measured on Blender 5.3 (bpy module, CPU). Nothing was run on 3.6. What could still differ there:
+1. Sky Texture 'Vector' input on 3.6 (it exists since 2.8 but has been little used; the mirror, lift and haze all depend on it). If 3.6 ignored the link, the sky would be as before but the sea would still reach the horizon and fade, so the hard strip would be gone and only the dark-brown dip and the glossy blend might remain.
+2. Math 'Exponent' and 'Maximum', Vector Math 'Scale', Geometry 'Incoming', Light Path 'Is Glossy Ray' and 'Is Camera Ray' are all old nodes; I expect them to behave as on 5.3.
+3. Nishita (3.6) is not the 5.x single-scattering sky: its brightness near the horizon and its aerosol and ozone defaults differ, so the colours near the horizon may be a little different; the structure (soft, no edge) should hold.
+4. The Radeon VII (Metal) with an 80 km box: float precision at 40 km is fine in theory; if the sea shows banding at the horizon on the GPU, lower SEA_REACH_M to 20000.
+HW-11 (ORDER_HW-11_sky_canary.md, zip HW11_sky_canary_order.zip) is the test on the hardware.
+
+## Gaps, ranked
+1. Not tested on Blender 3.6 or on the GPU (above). This is the one that matters; HW-11 closes it.
+2. The sea looks hazier and greyer than before, and the island pictures are a touch brighter. Harry's earlier look choice was 'bright'; the haze strength (SEA_HAZE_SINE) and the glossy blend range are single constants in li_scene.py if he wants less.
+3. The check only sees the top 35 percent of the rows. Tall pictures or high-angle shots whose horizon is lower (hero 2004, 2005, 2008, 2012 and others) are only tested for stripes, so an edge there would pass. A full-width edge scan was tried for the deeper rows and gave a false alarm on a legitimate picture (2003), so it was left out.
+4. A hill or island covering nearly the whole width at a ridge in the top rows could give a false alarm (the percentile is 20, so it needs about 80 percent coverage).
+5. Sun glare: on close-ups that face the sun (2004, 2029) the white glitter patch on the sea is as bright as before and a little wider; not a regression of the band, left alone.
+6. Dusk pictures (2009) still show a near-black sky strip above the horizon when the camera looks away from the sun: it is now a smooth dusk sky, not an edge, but it is dark. That is the recipe's dusk exposure, not the sky nodes.
+7. Other scenes that call make_sky before make_sea (bridge, landform, collectors) get the mirror and lift but not the sea haze; landform passes its own 2400 m sea size and keeps it.
+8. Only 3 rounds of look iteration at 16 to 48 samples on CPU; the large renders on the hardware at 256 samples may look slightly different.

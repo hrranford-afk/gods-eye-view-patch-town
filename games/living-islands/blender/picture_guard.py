@@ -106,8 +106,62 @@ def _verdict(path, st):
         return False, 'PICTURE_GUARD FAIL %s: %s' % (path, '; '.join(why)), st
     return True, 'PICTURE_GUARD ok %s: mean %.1f, lit %.1f%%, spread %.1f' % (path, st['mean'], 100 * st['lit_fraction'], st['std']), st
 
+# ---------------------------------------------------------------- SKY SMOOTHNESS (HW-11)
+# HW-6 on Blender 3.6 showed a flat band at the top of many renders with a hard lower edge (the finite sea box's far edge, plus a horizon with nothing soft about it).
+# Measure: take the top SKY_TOP_FRAC of the rows (the picture is first resampled to SKY_REF_H rows tall, so the numbers do not depend on the render size) and cut it into columns SKY_COLS wide.
+# For every row and every column strip, the step is the RGB distance (0-255) between the two rows below and the two rows above. The ROW STEP is the SKY_PCT-th percentile of the step over the strips:
+# a hard band edge or hard horizon runs across the whole picture, so nearly every strip steps and the percentile is large; an island, tree, tent or hill covers only part of the width, so a
+# smooth sky between them keeps the percentile small. The horizon is the row of the biggest row step. Fail if that step is bigger than SKY_MAX_HORIZON_STEP (a hard edge), or if any row step
+# away from the horizon is bigger than SKY_MAX_SKY_STEP (a stripe in the sky). A picture whose land covers nearly the whole width at a ridge in the top rows can be a false alarm.
+# A picture whose horizon is lower than the top 35 percent is only checked for stripes in the rows it shows; the canary uses shots whose horizon is in the top 35 percent.
+# Calibrated in tests/test_sky_smooth.py on the HW-6 hardware JPEGs (old, must fail) and the HW-11 renders of the same seeds (new, must pass); the numbers are in SKY_FIX.md.
+SKY_TOP_FRAC = 0.35
+SKY_REF_H = 533
+SKY_COLS = 8
+SKY_PCT = 20
+SKY_MAX_HORIZON_STEP = 14.0
+SKY_MAX_SKY_STEP = 8.0
+SKY_HORIZON_SKIP = 8          # rows (of SKY_REF_H) either side of the horizon row that the 'stripe in the sky' test ignores
+
+def sky_steps(path):
+    """(steps, horizon_row): steps[i] = the row step between row i and row i+1 (see above) for the top SKY_TOP_FRAC of the picture; horizon_row = argmax of the steps. Needs PIL and numpy."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(path).convert('RGB')
+    w = min(im.size[0], 800) // SKY_COLS * SKY_COLS
+    a = np.asarray(im.resize((w, SKY_REF_H), Image.BOX), dtype=np.float64)
+    n = int(SKY_REF_H * SKY_TOP_FRAC)
+    a = a[:n + 2].reshape(n + 2, w // SKY_COLS, SKY_COLS, 3).mean(2)            # column strips
+    d = np.zeros(n)
+    for i in range(n):
+        lo = a[max(i - 1, 0):i + 1].mean(0); hi = a[i + 1:i + 3].mean(0)
+        d[i] = np.percentile(np.sqrt(((hi - lo) ** 2).sum(1)), SKY_PCT)
+    return d, int(d.argmax())
+
+def check_sky_smooth(path, max_horizon_step=None, max_sky_step=None):
+    """returns (ok, message, stats): a smooth sky has no hard single-row edge in the top 35 percent of the picture. Never raises for a bad picture."""
+    mh = SKY_MAX_HORIZON_STEP if max_horizon_step is None else max_horizon_step
+    ms = SKY_MAX_SKY_STEP if max_sky_step is None else max_sky_step
+    try:
+        import numpy as np
+        d, hr = sky_steps(path)
+    except Exception as e:
+        return False, 'SKY_SMOOTH FAIL %s: cannot measure (%s)' % (path, e), {}
+    far = np.concatenate([d[:max(0, hr - SKY_HORIZON_SKIP)], d[hr + SKY_HORIZON_SKIP + 1:]])
+    sky_max = float(far.max()) if len(far) else 0.0
+    st = dict(horizon_row=hr, horizon_step=round(float(d[hr]), 2), sky_step=round(sky_max, 2), rows=len(d))
+    why = []
+    if st['horizon_step'] > mh: why.append('a hard edge: one row steps %.1f levels at row %d of %d (limit %.1f)' % (st['horizon_step'], hr, SKY_REF_H, mh))
+    if sky_max > ms: why.append('a stripe in the sky: a row steps %.1f levels (limit %.1f)' % (sky_max, ms))
+    if why:
+        return False, 'SKY_SMOOTH FAIL %s: %s' % (path, '; '.join(why)), st
+    return True, 'SKY_SMOOTH ok %s: biggest row step %.1f at row %d, in the sky %.1f' % (path, st['horizon_step'], hr, sky_max), st
+
 if __name__ == '__main__':
+    args = sys.argv[1:]
+    sky = bool(args) and args[0] == '--sky'
+    if sky: args = args[1:]          # python3 picture_guard.py --sky FILE ...: the sky smoothness check instead of the black-picture check
     bad = 0
-    for p in sys.argv[1:]:
-        ok, msg, _ = check_picture(p); print(msg); bad += (not ok)
+    for p in args:
+        ok, msg, _ = (check_sky_smooth if sky else check_picture)(p); print(msg); bad += (not ok)
     sys.exit(3 if bad else 0)
