@@ -141,14 +141,14 @@ def shade_body(S, body, species, V):
     lipm = tl * (1 - sstep(body.t_comm - 0.006, body.t_comm + 0.014, t)) * 0.9; base = mix(base, COL['lipdark'], lipm); 
     ty = body.t_eye; eye_c = body.pt(np.array([ty]), np.array([math.radians(76.0)]))[0]; eye_c2 = eye_c * np.array([1, -1, 1], np.float32)
     de = np.minimum(np.linalg.norm(P - eye_c, axis=1), np.linalg.norm(P - (eye_c2 + np.array([0, 2 * body.yoff(np.array([ty]))[0], 0])), axis=1))
-    rim = 1 - sstep(body.sp['eye_r'] * 1.5, body.sp['eye_r'] * 3.0, de); base = mix(base, COL['rim'], rim * 0.88); rough = np.where(rim > 0.6, 0.55, rough)
+    rim = 1 - sstep(body.sp['eye_r'] * 1.3, body.sp['eye_r'] * (2.2 if kind == 'pup' else 2.7), de); base = mix(base, COL['rim'], rim * (0.55 if kind == 'pup' else 0.85)); rough = np.where(rim > 0.6, 0.55, rough)
     tear = 1 - sstep(0.0, 1.0, np.abs((P[:, 1] - np.sign(P[:, 1]) * (abs(eye_c[1]) + 0.005)) / 0.010)); tear = tear * sstep(0.0, 0.012, eye_c[2] - z) * (1 - sstep(0.05, 0.11, eye_c[2] - z)) * (np.abs(P[:, 1]) > 0.02)
     tear = tear * (1 - sstep(0.05, 0.11, xm - (body.xn - eye_c[0]))) * sstep(-0.01, 0.02, (body.xn - eye_c[0]) + 0.012 - xm * 0 - np.abs(xm - (body.xn - eye_c[0])) * 0) * 0.6
     base = mix(base, base * 0.55, np.clip(tear, 0, 1)); rough = np.where(tear > 0.3, 0.55, rough)
     # whisker pad: paler skin with dark follicle dots
-    padc = body.pt(np.array([0.055 * body.k + 0.01]), np.array([math.radians(108.0)]))[0]
+    padc = body.pt(np.array([body.t_pad]), np.array([math.radians(108.0)]))[0]
     for sg in (1, -1):
-        pc = padc * np.array([1, sg, 1.0], np.float32) + np.array([0, (2 * body.yoff(np.array([0.055 * body.k + 0.01]))[0]) if sg < 0 else 0, 0])
+        pc = padc * np.array([1, sg, 1.0], np.float32) + np.array([0, (2 * body.yoff(np.array([body.t_pad]))[0]) if sg < 0 else 0, 0])
         dp = np.linalg.norm((P - pc) * np.array([1.0, 1.0, 1.4], np.float32), axis=1); pmask = 1 - sstep(0.030 * body.sl ** 0.6 * 1.2, 0.050 * body.sl ** 0.6 * 1.2, dp)
         base = mix(base, COL['pad'], pmask * 0.35)
         q = (np.stack([xm * 1.0, np.arctan2(P[:, 2] - pc[2], P[:, 1] - pc[1]) * 0.06, dp], 1)); cellp = np.stack([P[:, 0], P[:, 1] * sg, P[:, 2]], 1) / 0.0058

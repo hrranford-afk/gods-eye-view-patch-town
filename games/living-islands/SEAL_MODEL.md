@@ -28,7 +28,7 @@ Sources (the same as `research/ANIMALS_LOOK_AND_MOTION.md` section 3.1): the pin
 | the head joins the body through a thick neck with transverse skin folds | sinusoidal rolls across the neck (amplitude 5 percent male, 1.8 female), deeper underneath and on the sides, dark creases baked into the colour and the normal map, a skin fold wave along the flank | Medium |
 | front flippers: short paddles with five digits and five claws, held back along the flanks at rest | height-field plate with five scalloped digit tips (digit I longest), claws as bent cones, 0.34 m (male) to 0.16 m (pup) | Medium |
 | hind flippers trail together and are fused into a fan, soles up when the animal lies prone | two plates, five scalloped toes, turned soles up, pivoting from one `flipper_hind` joint with a splay joint each, a short tail between | Medium |
-| nostrils are slits that close; large dark eyes, no white; no external ear, only a small hole behind the eye; whiskers (vibrissae) on the muzzle pad and above the eyes, undulating, up to about 12 cm on the male | slit decals, glossy near-black eye spheres with a clear coat in a dark lid collar and a baked tear streak, ear hole decals, 30 vibrissae a side on the male (flat curved ribbons, 4 segments) and 4 brow ones | Medium |
+| nostrils are slits that close; large dark eyes, no white; no external ear, only a small hole behind the eye; whiskers (vibrissae) on the muzzle pad and above the eyes, pale, up to about 13 cm on the male (FAO: grey seal vibrissae are not beaded) | slit decals, glossy near-black eye spheres with a clear coat in a dark lid collar and a baked tear streak, ear hole decals, 42 vibrissae a side on the male (7 rows of 6, flat curved ribbons, 3 segments) and 4 brow ones (see section 11 for the face pass) | Medium |
 | resting seals are never symmetrical: the belly spreads and sags to one side, the spine curves (the "banana") | the lower ring spreads by 11 percent on the left and less on the right, the spine bends 4.5 cm sideways, the head end more | Medium |
 | males carry scars on the neck and chest and are darker with pale blotches; females are paler silver with dark blotches; pups are white and moult; harbour seals are spotted with rings | baked coat, see section 3 | VERIFIED (research note colour starting points), Medium for the patterns |
 
@@ -49,7 +49,7 @@ The mesh node `seal_skin` is skinned (a real glTF skin) to the joints below; the
 
 `root` (whole animal) > `body` (mid trunk) > `chest` > `neck` > `head` > `jaw`; `body` > `hips` > `tail` > `flipper_hind` > `flipper_hind_l`, `flipper_hind_r`; `chest` > `flipper_fl_l`, `flipper_fl_r`; `head` > `eye_l`, `eye_r`, `whisker_l`, `whisker_r` (rigid mesh nodes; eyes close by scaling z to 0.15); `root` > `footprint` (an empty with the ground ellipse in its extras: semi-axes 0.8 m by 0.33 m for the male, which the page uses to pack haul-out slots). The scene extras hold the dimensions, the model mass, the pose table, the clip table (duration, loop, nodes, root motion) and the wet factors.
 
-## 5. Clips (all in every GLB, standard glTF animations, linear keys, 5 to 24 keys a channel)
+## 5. Clips (standard glTF animations, linear keys; the first nine below are in every GLB, the three face clips of section 11 too, except that the far level has no `blink_loop`)
 | clip | s | loop | what | when the page plays it |
 |---|---|---|---|---|
 | `rest` | 5.0 | yes | breathing (chest and body swell), a slow double blink, a small head drift | haul-out default; offset the phase per seal (period 5 s, as the life view's breathing hump) |
@@ -67,7 +67,7 @@ Poses (`scenes[0].extras.poses`, also writable as a file with `--pose NAME`): `r
 How the page uses them (the wiring is not in this change): one skinned instance per near seal (the live level, one mixer each, hero for the inspect view), the far level for the rest. Haul-out: `rest` with a random phase, an occasional `yawn` or `scratch`; a pup stays within a body length of its mother and plays `pup_cry` when she is away. Disturbance: `alert` at 26 m, `hump_crawl` towards the nearest open water at the flee distance, `slide_in` at the edge, then remove; the return after the quiet period plays `surface_look` (heads at the surface), then `swim`, then `hump_crawl` onto the rock, `rest`. Sanctuary pup care: the pup in care plays `rest`, `pup_cry` when the fish ration is late, `yawn` after feeding; release plays `slide_in` and then `swim`. Strip the `root` translation channel of `hump_crawl` and `swim` if the page moves the animal itself.
 
 ## 6. Budgets and measurements (committed files, rest pose)
-See `assets/seals/seal_report.json`. Hero about 14,300 to 14,700 triangles and 540 to 580 KB; live about 3,000 triangles and 185 to 210 KB; far 504 triangles and 74 KB; the set of 12 is about 3.3 MB. Limits tested: hero 8,000 to 15,000 triangles and under 1 MB, live 1,500 to 4,000 and under 300 KB, far 300 to 700 and under 80 KB, set under 4 MB. Vertex format: position and normal (float), texture coordinates (normalized 16-bit), joints (bytes) and weights (normalized bytes that sum to 255). The far level has vertex colours instead of texture coordinates.
+See `assets/seals/seal_report.json`. Hero 14,388 to 14,740 triangles and 648 to 673 KB; live 3,144 to 3,256 triangles and 242 to 249 KB; far 504 triangles and 65 KB; the set of 12 is 3.9 MB (3,896 KB; the limit is 4,096 KB). Numbers after the face pass (section 11). Limits tested: hero 8,000 to 15,000 triangles and under 1 MB, live 1,500 to 4,000 and under 300 KB, far 300 to 700 and under 80 KB, set under 4 MB. Vertex format: position and normal (float), texture coordinates (normalized 16-bit), joints (bytes) and weights (normalized bytes that sum to 255). The far level has vertex colours instead of texture coordinates.
 
 ## 7. What is faked
 - The coat is a baked picture: no individual hairs; the pup's fluff is a sheen material, a grain texture and a normal map (a real fur shell would cost a lot).
@@ -117,3 +117,51 @@ blender -b --python games/living-islands/blender/seal_shots.py -- --glb DIR --ou
 python3 games/living-islands/tests/test_seal_model.py
 ```
 The pictures are rendered from the GLB files with the shared Living Islands sky (the sea reaches the horizon and fades into it; no flat band), light and look, CPU Cycles, 64 samples, a fixed seed. The seals are posed by evaluating the clips stored in the GLB, which also proves the clips play. The committed pictures were made with the cloud `bpy` module through a wrapper that mimics `blender -b --python`.
+
+## 11. Face pass (24 Nov 2026, version 2)
+Harry's feedback on version 1: the seals look great at a glance but the faces have no personality. This pass is only the face (the coat, the body and the clips of version 1 are as before); all pictures of version 1 (`seal-1`, `-2`, `-3`, `-sheet`, `-variants`) show the old faces.
+
+### What gives a seal its face, and what the model does
+Sources for the face: the FAO species identification guide for the grey seal (Halichoerus grypus: eyes small in proportion to the head and set somewhat apart, nostrils widely spaced, pale vibrissae that are not beaded; VERIFIED as a description, no numbers), the Sea Mammal Research Unit leaflet "Identifying Seals" and the Dorset Wildlife Trust seal ID guide (harbour seal: rounder puppy-like face, V-shaped nostrils, a defined forehead, large frontal eyes; grey seal: long muzzle, parallel nostrils; VERIFIED as descriptions), and the Mammal Society pages used in version 1. A search for numbers (vibrissae per side, vibrissa length, eye diameter) found no page with the figures, so the numbers below are my own and tagged.
+| feature | model | confidence |
+|---|---|---|
+| eyes: large, dark, glossy, set forward with a wet highlight, a lid fold and a darker patch round each eye | eye sphere with a clear coat and an iris of vertex colours (black pupil, dark brown ring), a separate emissive highlight blob on the upper front of the eye, a dark collar and a lid cap, a dark baked patch round the eye (smaller on the pup) and a tear streak. Eye diameter against head width at the eye: bull 0.29, cow 0.37, harbour seal 0.44, pup 0.58 (the test pins the order) | Low for the numbers. The FAO account says the grey seal's eyes are SMALL in proportion to the head, which disagrees with "very large eyes"; I made the adults' eyes about 30 percent bigger than version 1 but kept the bull smallest, and gave the large frontal eyes to the harbour seal and the pup, as the sources do |
+| puffy whisker pad (mystacial pad) with dotted follicles, thick curved whiskers that fan out, a few brow whiskers | the pad is a bulge of the loft (13 mm outward on the bull), paler skin with dark follicle dots in the texture, 42 mystacial vibrissae a side on the bull (7 rows by 6), 42 on the cow, 30 on the pup, 42 on the harbour seal (hero level; fewer in the live level), in a fan with a droop, 4 brow vibrissae over each eye, length 13 cm bull, 10.5 cow, 9.5 harbour, 6 pup | Low: "about 40 a side" is from memory and UNVERIFIED here; lengths are guesses from photographs |
+| forehead brow bump | a bulge over each eye (bull 10 percent, cow 7, pup 5, harbour 3) | Medium |
+| nostrils as comma or V slits that can flare | slit decals, parallel on grey seals, tilted into a V on the pup and the harbour seal, bigger than version 1; the morph target `nostril_flare` widens them | VERIFIED (descriptions), Medium (shape) |
+| mouth line curving up at the corners, soft chin | the dark lip line rises 8 degrees of ring angle towards the corner (in the texture and in the decal), a chin bulge in the loft; the morph `content` lifts the corners 6.5 mm | Medium |
+| bull: long Roman nose; cow: finer face; pup: short blunt muzzle, huge round eyes; harbour: round dog-like face, concave brow | snout factor and bridge bump per species as in version 1 plus the eye sizes above; the harbour seal's bridge is dished | Medium |
+The lid cap is a thin shell over the top of the eye that moves down in the morph targets; the lid colour follows the species (dark on grey seals, pale on the pup).
+
+### Expressions (glTF morph targets, sparse accessors, default weights 0)
+Names are the same on every mesh that has them; a page sets a weight by name on each mesh and ignores meshes without the name.
+| mesh | targets |
+|---|---|
+| `seal_skin` (head, jaw, lips, mouth, nostrils) | `brow_raise`, `pad_puff`, `calling` (opens the jaw 24 degrees, the lining, tongue, teeth and lower lip line follow), `content` (corners of the mouth up), `nostril_flare` |
+| `eye_l`, `eye_r` | `blink` (lid cap to 152 degrees), `sleepy` (108), `wide` (20), `content` (68) |
+| `whisker_l`, `whisker_r` | `whiskers_forward`, `whiskers_back` |
+Expression table (also in the scene extras as `expressions`): `neutral` (all 0); `blink` (blink 1); `sleepy` (sleepy 1); `curious` (wide 0.45, brow_raise 1, pad_puff 1, whiskers_forward 1; pair it with the clip `curious_tilt`); `startled` (wide 1, nostril_flare 1, whiskers_back 1, brow_raise 0.6); `calling` (calling 1, sleepy 0.45, nostril_flare 0.35, whiskers_forward 0.5; the pup especially); `content` (content 1, sleepy 0.4, pad_puff 0.4); `nostril_flare` (alone). The far level has no morph targets and no eyes.
+
+### New clips and node
+- node `eye_target` (parent `root`): a marker the eyes look at in `look_around`; the page can move it and aim the eyes at it.
+- `look_around` (6 s, loop): the marker wanders left, up to the right, low, and back; the eyes turn towards it (limited to 18 degrees: the collar around the eye is part of the eye node and would leave the head if it turned more), the head follows part of the way.
+- `blink_loop` (4.2 s, loop): the idle layer, two slow blinks and a flick on the `blink` weights of both eyes (weights channels); play it over any other clip. Not in the far level.
+- `curious_tilt` (3.6 s, loop, ends at rest): head tilt of 16 degrees, neck lifts, brow raised, pad puffed, whiskers forward, eyes a little wider (morph weights).
+How the page plays them: `rest` plus `blink_loop` always; an occasional `look_around` or `curious_tilt` for a seal that has noticed something at alert distance; `startled` just before a flush (set the weights for 0.4 s, then `alert`); `calling` with `pup_cry`; `content` and `sleepy` for resting animals late in the day or after feeding.
+
+### Budgets after the face pass
+Hero 14,388 to 14,740 triangles, 647 to 673 KB; live 3,144 to 3,256, 242 to 248 KB; far 504, 65 KB (the far clips are sampled at half the key rate to stay under 80 KB); whole set 3,895 KB. Tests: 466 checks, 0 failures. To stay in budget the hero trunk has 29 rings (was 34) and the whiskers 3 segments.
+
+### Pictures
+`shots/seal-faces.png` (labelled 4 x 4: bull, cow, pup and harbour seal, each neutral, curious, sleepy and startled (calling for the pup)), `shots/seal-face-1.png` (bull, curious) and `shots/seal-face-2.png` (pup, calling), 1200 x 800. Rendered from the GLBs; the expressions are the morph targets set on the imported shape keys and the head poses are the clips evaluated in the GLB.
+
+### Honest face gaps (ranked)
+0. Seen in the pictures: the pup's eyes are very large and protruding (googly) with a glossy mirror of the sky; `sleepy` is clearly readable on the pup and the harbour seal but weak on the bull and the cow from the camera angle used; the brow whiskers stick up like lashes when the head is pitched up; the whiskers are flat pale ribbons that sweep forward along the cheek (fixed after four renders, they first stuck out as a comb); the look and feel is a stylised seal, closer to a cartoon than to a photograph.
+1. The faces now have eyes and attitude but still read smooth: the muzzle and cheeks are a smooth skin with a pattern, with no wrinkles at the nose, no lip folds, no real cheek muscle and no fur on the muzzle.
+2. The eye is a glossy sphere with a painted iris; the highlight is a fixed blob (it moves with the eye node, not with the light), the eye does not wet or tear, and the lid is a dark cap, not a fold of skin that wrinkles. Eye turns are limited to 18 degrees.
+3. Whiskers are flat ribbons, pale, straight-ish and a little stiff; no beads, no individual physics, and they read as fuzz at a distance.
+4. The grey adults' eyes are bigger than the FAO account suggests for their head size (the pup and the harbour seal are closer to it). Whisker numbers and lengths are not verified.
+5. Nostrils are small decals; the flare scales them, there is no real rim or inner shape, and they are not seen from the front.
+6. `calling` is a morph that rotates the jaw: with the jaw joint turned as well the mouth can open past 60 degrees and the cheek triangles stretch.
+7. Expressions have only been looked at on variant 0 at the beach; variants share the same morphs.
+8. Version 1 pictures are not re-rendered.

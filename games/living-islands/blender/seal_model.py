@@ -61,19 +61,19 @@ BASE_KNOTS = [
 
 SP = {
     'grey_male': dict(label='grey seal, adult male', total=2.30, trail=0.30, wfac=1.08, hfac=1.08, head_w=1.00, head_h=1.00, snout=1.00, bridge=1.0, fore=0.34, hind=0.31, roll=0.050, fold=0.022, sag=0.11, asy=0.30,
-                      eye_r=0.0195, bend=0.045, whisk=(6, 5), whisk_len=0.12, claw=0.028, mass=(170, 310), kind='grey', neck_extra=1.0),
+                      eye_r=0.0255, pad=0.30, brow=0.10, bend=0.045, whisk=(7, 6), whisk_len=0.13, claw=0.028, mass=(170, 310), kind='grey', neck_extra=1.0),
     'grey_female': dict(label='grey seal, adult female', total=1.80, trail=0.25, wfac=1.12, hfac=1.12, head_w=0.90, head_h=0.90, snout=0.86, bridge=0.35, fore=0.27, hind=0.25, roll=0.018, fold=0.014, sag=0.09, asy=0.28,
-                        eye_r=0.0185, bend=0.040, whisk=(6, 5), whisk_len=0.095, claw=0.022, mass=(103, 180), kind='grey', neck_extra=0.6),
+                        eye_r=0.0240, pad=0.24, brow=0.07, bend=0.040, whisk=(7, 6), whisk_len=0.105, claw=0.022, mass=(103, 180), kind='grey', neck_extra=0.6),
     'grey_pup': dict(label='grey seal, white-coated pup', total=1.00, trail=0.15, wfac=1.04, hfac=1.04, head_w=1.22, head_h=1.28, snout=0.60, bridge=-0.1, fore=0.16, hind=0.15, roll=0.030, fold=0.020, sag=0.07, asy=0.25,
-                     eye_r=0.0185, bend=0.030, whisk=(5, 4), whisk_len=0.05, claw=0.012, mass=(10, 18), kind='pup', neck_extra=0.5),
+                     eye_r=0.0255, pad=0.20, brow=0.05, bend=0.030, whisk=(6, 5), whisk_len=0.06, claw=0.012, mass=(10, 18), kind='pup', neck_extra=0.5),
     'harbour': dict(label='harbour seal, adult', total=1.62, trail=0.22, wfac=1.08, hfac=1.10, head_w=1.04, head_h=1.12, snout=0.58, bridge=-1.0, fore=0.24, hind=0.23, roll=0.016, fold=0.012, sag=0.08, asy=0.30,
-                    eye_r=0.0195, bend=0.040, whisk=(6, 5), whisk_len=0.085, claw=0.020, mass=(55, 170), kind='harbour', neck_extra=0.3),
+                    eye_r=0.0285, pad=0.30, brow=0.03, bend=0.040, whisk=(7, 6), whisk_len=0.095, claw=0.020, mass=(55, 170), kind='harbour', neck_extra=0.3),
 }
 T_HEAD = 0.17        # template t of the back of the cranium (before the snout factor)
 THETA_LIP = 97.5     # degrees from the dorsal midline: the lip line of the mouth
 
 LOD = {
-    'hero': dict(st_head=34, st_neck=10, st_trunk=34, cols=48, fl=(14, 20), hfl=(14, 20), claws=3, eye=(18, 12), whisk=True, whisk_seg=4, brow=True, mouth=True, teeth=True, nostril=True, ear=True, lipline=True,
+    'hero': dict(st_head=34, st_neck=10, st_trunk=29, cols=48, fl=(14, 20), hfl=(14, 20), claws=3, eye=(18, 12), whisk=True, whisk_seg=3, brow=True, mouth=True, teeth=True, nostril=True, ear=True, lipline=True,
                  tex=dict(atlas=(2048, 768), body=(1536, 768), q=(62, 70, 60), nrm_div=2, orm_div=4)),
     'live': dict(st_head=14, st_neck=5, st_trunk=14, cols=24, fl=(6, 9), hfl=(6, 9), claws=1, eye=(8, 6), whisk=True, whisk_seg=2, brow=False, mouth=True, teeth=False, nostril=True, ear=False, lipline=False,
                  tex=dict(atlas=(1024, 384), body=(768, 384), q=(60, 68, 58), nrm_div=2, orm_div=4)),
@@ -98,7 +98,7 @@ class Body:
             tt = t * k if t <= T_HEAD + 1e-9 else t
             kn.append((tt, zt, zb, a))
         tk = np.array([q[0] for q in kn]); self.f_zt = pchip(tk, [q[1] for q in kn]); self.f_zb = pchip(tk, [q[2] for q in kn]); self.f_a = pchip(tk, [q[3] for q in kn])
-        self.t_head = T_HEAD * k; self.t_comm = 0.098 * k; self.t_chin = 0.012; self.t_eye = 0.112 * k; self.t_ear = 0.162 * k
+        self.t_head = T_HEAD * k; self.t_comm = 0.098 * k; self.t_chin = 0.012; self.t_eye = 0.112 * k; self.t_ear = 0.162 * k; self.t_pad = 0.028 * k + 0.008
         self.xn = Lb / 2.0                       # nose x
         self.flat_floor = True
         self.asym = sp['asy']
@@ -141,6 +141,14 @@ class Body:
         lump = 0.018 * (np.sin(th * 3.0 + t * 17.0) * np.sin(t * 9.0 + 1.3)) * sstep(0.12, 0.3, t)
         m = 1.0 + roll + fold + lump
         dy = dy * m; dz = dz * m
+        # face: the puffy whisker pad (mystacial pad), the brow bump over the eye, a soft chin
+        a_lat = np.minimum(th, TAU - th)
+        tp = self.t_pad
+        pad = sp['pad'] * np.exp(-((t - tp) / (0.024 * max(self.k, 0.6))) ** 2) * np.exp(-((a_lat - 1.90) / 0.38) ** 2)
+        brow = sp['brow'] * np.exp(-((t - (self.t_eye - 0.004)) / (0.020 * max(self.k, 0.6))) ** 2) * np.exp(-((a_lat - 0.78) / 0.30) ** 2)
+        chin = 0.09 * np.exp(-((t - 0.05 * self.k) / (0.026 * max(self.k, 0.6))) ** 2) * np.exp(-((np.abs(a_lat - math.pi)) / 0.55) ** 2)
+        m2 = 1.0 + pad + brow + chin
+        dy = dy * m2; dz = dz * m2
         # the belly spreads when resting, a little more on the left (asymmetric)
         low = sstep(0.15, -0.75, c) * sstep(0.12, 0.34, t)
         spread = sp['sag'] * (np.sin(math.pi * np.clip((t - 0.2) / 0.7, 0, 1)) ** 0.8) * low
@@ -281,17 +289,17 @@ class Acc:
 
 
 # ------------------------------------------------------------------------------------------------- the rig
-JOINT_ORDER = ['root', 'body', 'chest', 'neck', 'head', 'jaw', 'hips', 'tail', 'flipper_fl_l', 'flipper_fl_r', 'flipper_hind', 'flipper_hind_l', 'flipper_hind_r', 'eye_l', 'eye_r', 'whisker_l', 'whisker_r', 'footprint']
+JOINT_ORDER = ['root', 'body', 'chest', 'neck', 'head', 'jaw', 'hips', 'tail', 'flipper_fl_l', 'flipper_fl_r', 'flipper_hind', 'flipper_hind_l', 'flipper_hind_r', 'eye_l', 'eye_r', 'whisker_l', 'whisker_r', 'eye_target', 'footprint']
 JOINTS_SKIN = ['root', 'body', 'chest', 'neck', 'head', 'jaw', 'hips', 'tail', 'flipper_fl_l', 'flipper_fl_r', 'flipper_hind', 'flipper_hind_l', 'flipper_hind_r']
 PARENT = {'body': 'root', 'chest': 'body', 'neck': 'chest', 'head': 'neck', 'jaw': 'head', 'hips': 'body', 'tail': 'hips', 'flipper_fl_l': 'chest', 'flipper_fl_r': 'chest', 'flipper_hind': 'tail',
-          'flipper_hind_l': 'flipper_hind', 'flipper_hind_r': 'flipper_hind', 'eye_l': 'head', 'eye_r': 'head', 'whisker_l': 'head', 'whisker_r': 'head', 'footprint': 'root', 'root': None}
+          'flipper_hind_l': 'flipper_hind', 'flipper_hind_r': 'flipper_hind', 'eye_l': 'head', 'eye_r': 'head', 'whisker_l': 'head', 'whisker_r': 'head', 'eye_target': 'root', 'footprint': 'root', 'root': None}
 SPINE = ['head', 'neck', 'chest', 'body', 'hips', 'tail']
 AXES = {
     'body': 'translation any; pitch y -20..25 (positive = nose down), roll x +-20, yaw z +-15', 'chest': 'pitch y -35..20, roll x +-18, yaw z +-25; scale for breathing', 'neck': 'pitch y -45..20, yaw z +-40, roll x +-20',
     'head': 'pitch y -35..30, yaw z +-45, roll x +-25', 'jaw': 'pitch y 0..42 (positive opens the mouth)', 'hips': 'pitch y -25..25, yaw z +-25, roll x +-20', 'tail': 'yaw z +-30, pitch y -30..30',
     'flipper_fl_l': 'yaw z (swing back/forward) -50..70, roll x (lift) 0..70, pitch y +-30', 'flipper_fl_r': 'mirror of flipper_fl_l', 'flipper_hind': 'yaw z +-35 (the beat), pitch y +-25',
     'flipper_hind_l': 'yaw z 0..20 (splay)', 'flipper_hind_r': 'yaw z -20..0 (splay)', 'eye_l': 'scale z 1 open to 0.15 shut', 'eye_r': 'scale z 1 open to 0.15 shut',
-    'whisker_l': 'yaw z +-25 (sweep), pitch y +-20 (droop)', 'whisker_r': 'yaw z +-25, pitch y +-20', 'root': 'the whole animal: translation and pitch for slide_in; leave at rest otherwise', 'footprint': 'marker only',
+    'whisker_l': 'yaw z +-25 (sweep), pitch y +-20 (droop)', 'whisker_r': 'yaw z +-25, pitch y +-20', 'root': 'the whole animal: translation and pitch for slide_in; leave at rest otherwise', 'footprint': 'marker only', 'eye_target': 'marker: the point the eyes look at in look_around (translate it, aim the eyes at it); parent root',
 }
 
 def joint_positions(body, sp, eye_at):
@@ -312,6 +320,7 @@ def joint_positions(body, sp, eye_at):
     J['eye_l'] = eye_at['l']; J['eye_r'] = eye_at['r']
     J['whisker_l'] = eye_at['wl']; J['whisker_r'] = eye_at['wr']
     J['footprint'] = np.array([0.0, 0.0, 0.0])
+    J['eye_target'] = np.array([body.xn + 1.1, 0.0, 0.40])
     return J
 
 
@@ -353,7 +362,7 @@ def build_geometry(species, lod, variant=0, wet=False, seed=SEED):
     te = body.t_eye; the = math.radians(76.0)
     pe_l = body.surf(np.array([te]), np.array([the]), lift=-0.004)[0]; pe_r = pe_l * np.array([1, -1, 1]) + np.array([0, 2 * body.yoff(np.array([te]))[0], 0])
     pad_t = body.t_chin + 0.012 + 0.0 * body.k; th_pad = math.radians(104.0)
-    pw_l = body.surf(np.array([0.055 * body.k + 0.01]), np.array([math.radians(108.0)]), lift=0.0)[0]; pw_r = pw_l * np.array([1, -1, 1]) + np.array([0, 2 * body.yoff(np.array([0.055 * body.k + 0.01]))[0], 0])
+    pw_l = body.surf(np.array([body.t_pad]), np.array([math.radians(108.0)]), lift=0.0)[0]; pw_r = pw_l * np.array([1, -1, 1]) + np.array([0, 2 * body.yoff(np.array([body.t_pad]))[0], 0])
     eye_at = dict(l=pe_l, r=pe_r, wl=pw_l, wr=pw_r)
     JP = joint_positions(body, sp, eye_at)
     jx = [JP[s][0] for s in SPINE]
@@ -379,6 +388,9 @@ def build_geometry(species, lod, variant=0, wet=False, seed=SEED):
     keep = np.linalg.norm(np.cross(Pf[tri[:, 1]] - Pf[tri[:, 0]], Pf[tri[:, 2]] - Pf[tri[:, 0]]), axis=1) > 1e-14
     tri = tri[keep]; kinds = kinds[keep]
     Jv, Wv = spine_weights(Pf[:, 0], jx)
+    if mouth:       # the ring at the corner of the mouth, below the lip line, belongs to the jaw as well, so that no crack opens when the jaw turns
+        rr_, cc_ = np.divmod(np.arange(len(Pf)), N_c + 1); sel = (rr_ == ic1) & (cc_ >= k_lip) & (cc_ <= N_c - k_lip)
+        Jv = Jv.copy(); Wv = Wv.copy(); Jv[sel] = 0; Wv[sel] = 0; Jv[sel, 0] = jid['jaw']; Wv[sel, 0] = 1.0
     Jj = np.zeros((len(Pf), 4), int); Jj[:, 0] = jid['jaw']; Wj = np.zeros((len(Pf), 4)); Wj[:, 0] = 1.0
     if lod == 'far': pass
     lay = layout(lod)
@@ -430,9 +442,10 @@ def finish_geometry(species, lod, acc, info, L, lay, variant):
         if L['lipline']:
             for sg, kl in ((1, k_lip), (-1, N_c - k_lip)):
                 for side_sel, jn in (('up', 'head'), ('lo', 'jaw')):
-                    ii = list(range(ic0 - 1 if ic0 > 0 else 0, ic1 + 1)); thc = TAU * kl / N_c; dth = (-1.4e-2 if side_sel == 'up' else 1.4e-2) * (1 if sg > 0 else -1)
-                    tt = ts[ii]; Pa = body.surf(tt, np.full(len(tt), thc), lift=0.0006); Pb = body.surf(tt, np.full(len(tt), thc + dth), lift=0.0010)
-                    Na = body.normal(tt, np.full(len(tt), thc)); n = len(tt); Pp = np.concatenate([Pa, Pb]); Np = np.concatenate([Na, Na]); tr = []
+                    ii = list(range(ic0 - 1 if ic0 > 0 else 0, ic1 + 1)); thc = TAU * kl / N_c - sg * 0.0; dth = (-1.4e-2 if side_sel == 'up' else 1.4e-2) * (1 if sg > 0 else -1)
+                    tt = ts[ii]; off = np.radians(8.0) * sstep(0.45 * body.t_comm, body.t_comm, tt) * sg; thv = thc - off
+                    Pa = body.surf(tt, thv, lift=0.0006); Pb = body.surf(tt, thv + dth, lift=0.0010)
+                    Na = body.normal(tt, thv); n = len(tt); Pp = np.concatenate([Pa, Pb]); Np = np.concatenate([Na, Na]); tr = []
                     for q in range(n - 1): tr += [(q, q + 1, n + q + 1), (q, n + q + 1, n + q)]
                     tr = np.array(tr, int)
                     if (sg > 0) != (side_sel == 'up'): tr = tr[:, [0, 2, 1]]
@@ -469,6 +482,7 @@ def finish_geometry(species, lod, acc, info, L, lay, variant):
         fn = np.cross(Pp[tr[0, 1]] - Pp[tr[0, 0]], Pp[tr[0, 2]] - Pp[tr[0, 0]])
         if np.dot(fn, N0) < 0: tr = tr[:, [0, 2, 1]]
         acc.add(name, Pp, Np, tr, jid[joint])
+        if name == 'Dark' and t0[0] < 0.05: info.setdefault('nostril_c', []).append(P0.copy())
     kind = sp['kind']
     if L['nostril']:
         tn = 0.011 + 0.006 * body.k
@@ -478,7 +492,7 @@ def finish_geometry(species, lod, acc, info, L, lay, variant):
                 # V shape: the nostrils meet at the bottom: slits tilted
                 rot = -sg * 42; thn = math.radians(sg * 8)
             else: rot = -sg * 12
-            patch('Dark', 'head', tn, thn % TAU, 0.0032 * body.sl ** 0.5 * 1.35, 0.0075 * body.sl ** 0.5 * 1.6, rot, 0.0006, nseg=8, shape='slit')
+            patch('Dark', 'head', tn, thn % TAU, 0.0042 * body.sl ** 0.5 * 1.35, 0.0105 * body.sl ** 0.5 * 1.6, rot, 0.0006, nseg=8, shape='slit')
     if L['ear']:
         for sg in (1, -1):
             patch('Dark', 'head', body.t_ear, math.radians(84.0 if sg > 0 else 276.0), 0.0045, 0.0045, 0, 0.0004, nseg=8)
@@ -542,29 +556,71 @@ def finish_geometry(species, lod, acc, info, L, lay, variant):
 def lod_is(L, name): return L is LOD[name]
 
 
+EYE_TARGETS = ['blink', 'sleepy', 'wide', 'content']                      # morph targets of the eye meshes (the lid shell moves)
+SEAL_TARGETS = ['brow_raise', 'pad_puff', 'calling', 'content', 'nostril_flare']   # morph targets of the head mesh (the skinned mesh)
+WHISKER_TARGETS = ['whiskers_forward', 'whiskers_back']
+LID_PSI = {'rest': 46.0, 'blink': 152.0, 'sleepy': 108.0, 'wide': 20.0, 'content': 68.0}      # degrees of the lid cap measured from the top of the eye
+EXPRESSIONS = {   # morph target weights by name (every mesh takes the names it has and ignores the others)
+    'neutral': {}, 'blink': {'blink': 1.0}, 'sleepy': {'sleepy': 1.0}, 'curious': {'wide': 0.45, 'brow_raise': 1.0, 'pad_puff': 1.0, 'whiskers_forward': 1.0},
+    'startled': {'wide': 1.0, 'nostril_flare': 1.0, 'whiskers_back': 1.0, 'brow_raise': 0.6}, 'calling': {'calling': 1.0, 'sleepy': 0.45, 'nostril_flare': 0.35, 'whiskers_forward': 0.5},
+    'content': {'content': 1.0, 'sleepy': 0.4, 'pad_puff': 0.4}, 'nostril_flare': {'nostril_flare': 1.0}}
+
+
+def lid_cap(radii, psi_deg, nu, nv):
+    """a thin shell over the top of the eye: u runs from the crown (0) to the rim (1); the rim angle psi decides how far the lid has come down"""
+    ph = np.linspace(0, TAU, nu + 1); uu = np.linspace(0, 1, nv + 1); U, PH = np.meshgrid(uu, ph, indexing='ij'); psi = np.radians(psi_deg) * U
+    d = np.stack([np.sin(psi) * np.cos(PH), np.sin(psi) * np.sin(PH), np.cos(psi)], -1).reshape(-1, 3)
+    return d * np.asarray(radii)
+
+def lid_mesh(radii, nu, nv):
+    P0 = lid_cap(radii, LID_PSI['rest'], nu, nv); d = unit(P0 / np.asarray(radii)); N = d
+    idx = np.arange((nu + 1) * (nv + 1)).reshape(nv + 1, nu + 1); tr = []
+    for i in range(nv):
+        for j in range(nu):
+            a, b, c, e = idx[i, j], idx[i + 1, j], idx[i + 1, j + 1], idx[i, j + 1]
+            tr += [(a, b, c), (a, c, e)] if i > 0 else [(a, b, c)]
+    tr = np.array(tr, int); fn = np.cross(P0[tr[:, 1]] - P0[tr[:, 0]], P0[tr[:, 2]] - P0[tr[:, 0]]); vn = N[tr[:, 0]] + N[tr[:, 1]] + N[tr[:, 2]]
+    ok = np.sum(fn * vn, -1); good = np.linalg.norm(fn, axis=1) > 1e-14
+    if np.sum(ok[good] < 0) > np.sum(ok[good] > 0): tr = tr[:, [0, 2, 1]]
+    tr = tr[np.linalg.norm(np.cross(P0[tr[:, 1]] - P0[tr[:, 0]], P0[tr[:, 2]] - P0[tr[:, 0]]), axis=1) > 1e-14]
+    morph = {k: lid_cap(radii, LID_PSI[k], nu, nv) - P0 for k in EYE_TARGETS}
+    return P0, N, tr, morph
+
+
 def eyes_and_whiskers(species, lod, info, L):
-    """separate small meshes in their own nodes (relative to the node pivot): returns dict node -> list of (material, P, N, T)"""
+    """separate small meshes in their own nodes (relative to the node pivot): returns dict node -> list of (material, P, N, T, extra); extra holds vertex colours and morph deltas"""
     body = info['body']; sp = body.sp; JP = info['JP']; out = {}
-    r = sp['eye_r']
+    r = sp['eye_r']; hero = lod == 'hero'
     if L['eye'][0] > 0:
         for sg, jn in ((1, 'eye_l'), (-1, 'eye_r')):
-            Pe, Ne, Te = uv_sphere((0, 0, 0), (r * 0.82, r * 1.0, r * 1.0), *L['eye'])
-            # the eye looks forward and out: turn the sphere so the pole faces forward-out
-            lid_r = r * 1.55
-            Pl = []; 
-            out[jn] = [('Eye', Pe, Ne, Te)]
-            # lid ring: a flattened torus-like collar of dark skin around the eye
-            nu, nv = (20, 6) if lod == 'hero' else (10, 4)
+            radii = (r * 0.84, r * 1.0, r * 1.0)
+            Pe, Ne, Te = uv_sphere((0, 0, 0), radii, *L['eye'])
+            dd = unit(Pe / np.asarray(radii)); ang = np.degrees(np.arccos(np.clip(dd[:, 0], -1, 1)))
+            pup = 1 - sstep(16.0, 24.0, ang); iris = sstep(16.0, 24.0, ang) * (1 - sstep(44.0, 62.0, ang))
+            C = np.array([0.004, 0.003, 0.002]) * pup[:, None] + np.array([0.040, 0.020, 0.010]) * iris[:, None] * (0.7 + 0.5 * sstep(44.0, 24.0, ang))[:, None] + np.array([0.016, 0.011, 0.008]) * (1 - pup - iris)[:, None]
+            Ph, Nh, Th = uv_sphere(np.array([0.74, 0.30, 0.50]) / np.linalg.norm([0.74, 0.30, 0.50]) * r * 0.93, (r * 0.13, r * 0.20, r * 0.16), 10 if hero else 6, 6 if hero else 4)
+            out[jn] = [('Eye', Pe, Ne, Te, dict(C=C)), ('Highlight', Ph, Nh, Th, {})]
+            # skin collar around the eye (the lid fold below and behind)
+            nu, nv = (20, 6) if hero else (10, 4)
             u = np.linspace(0, TAU, nu + 1); v = np.linspace(0, math.pi, nv + 1); U, V = np.meshgrid(u, v, indexing='ij')
-            R0 = r * 1.18; rr = r * 0.40
-            px = np.cos(V) * rr * 0.55 - r * 0.28; ang = U
+            R0 = r * 1.20; rr = r * 0.34; px = np.cos(V) * rr * 0.60 - r * 0.30
             Pq = np.stack([np.zeros_like(U) + px, (R0 + np.sin(V) * rr) * np.cos(U), (R0 + np.sin(V) * rr) * np.sin(U) * 1.0], -1).reshape(-1, 3)
             Nq = unit(np.stack([np.cos(V) * 0.55, np.sin(V) * np.cos(U), np.sin(V) * np.sin(U)], -1).reshape(-1, 3))
             idx = np.arange((nu + 1) * (nv + 1)).reshape(nu + 1, nv + 1); tr = []
             for i in range(nu):
                 for j in range(nv):
                     a, b, c, d = idx[i, j], idx[i + 1, j], idx[i + 1, j + 1], idx[i, j + 1]; tr += [(a, d, b), (b, d, c)]
-            out[jn].append(('Lid', Pq, Nq, np.array(tr, int)))
+            out[jn].append(('Lid', Pq, Nq, np.array(tr, int), {}))
+            Pl, Nl, Tl, mo = lid_mesh((r * 0.97, r * 1.10, r * 1.10), 16 if hero else 10, 5 if hero else 3)
+            out[jn].append(('Lid', Pl, Nl, Tl, dict(morph=mo)))
+    return out
+
+
+def whisker_morph(P):
+    """deltas that fan the strand forward (curious) or sweep it back (startled): a turn about the root of the strand (left side; the right side is mirrored)"""
+    n = len(P) // 2; root = (P[0] + P[n]) / 2.0; out = {}
+    for name, deg in (('whiskers_forward', -15.0), ('whiskers_back', 58.0)):
+        a = math.radians(deg); c, s_ = math.cos(a), math.sin(a); R = np.array([[c, -s_, 0], [s_, c, 0], [0, 0, 1.0]]); out[name] = (P - root) @ R.T + root - P
     return out
 
 
@@ -574,22 +630,23 @@ def whisker_strands(species, lod, info, L):
     if not L['whisk']: return []
     pivot = JP['whisker_l']; nrows, ncols = sp['whisk']; wl = sp['whisk_len']; rng = np.random.default_rng(31 + SPECIES.index(species))
     strands = []; seg = L['whisk_seg']
-    t0 = 0.055 * body.k + 0.01
+    t0 = body.t_pad
     nrow = nrows if lod == 'hero' else max(3, nrows - 2); ncol = ncols if lod == 'hero' else max(3, ncols - 2)
     for r_ in range(nrow):
         for c_ in range(ncol):
-            tt = t0 + (c_ - (ncol - 1) / 2) * 0.0055 - r_ * 0.0 + 0.0035 * (r_ % 2); thh = math.radians(96.0 + 14.0 * (r_ / max(nrow - 1, 1)) - 3.0 * (r_ % 2))
+            tt = t0 + (c_ - (ncol - 1) / 2) * 0.0062 + 0.0034 * (r_ % 2); thh = math.radians(96.0 + 14.0 * (r_ / max(nrow - 1, 1)) - 3.0 * (r_ % 2))
             p0 = body.surf(np.array([tt]), np.array([thh]), lift=0.0)[0]; n0 = body.normal(np.array([tt]), np.array([thh]))[0]
             frac = 1.0 - 0.45 * abs(c_ - (ncol - 1) / 2) / (ncol / 2.0) - 0.20 * (r_ / max(nrow - 1, 1))
-            ln = wl * frac * (0.9 + 0.2 * rng.random())
-            d0 = unit(n0 * 0.9 + np.array([1.0, 0, 0]) * (0.6 + 0.35 * (c_ / max(ncol - 1, 1))) + np.array([0, 0, 0.12 - 0.22 * (r_ / max(nrow - 1, 1))]))
+            ln = wl * frac * (0.8 + 0.4 * rng.random())
+            fan = (c_ - (ncol - 1) / 2) / max(ncol - 1, 1) * 2.0; rowf = r_ / max(nrow - 1, 1)
+            d0 = unit(n0 * 0.45 + np.array([1.0, 0, 0]) * (1.90 + 0.40 * (c_ / max(ncol - 1, 1))) + np.array([0, 0.42 * fan, 0.0]) + np.array([0, 0, 0.16 - 0.30 * rowf]))
             pts = [p0]; d = d0.copy()
             for s_ in range(seg):
                 step = ln / seg
-                d = unit(d + np.array([0.18, 0, -0.34]) * (1.0 / seg) + np.array([0, 0.06 * math.sin(2.4 * s_ + c_), 0]) * (1.0 / seg))
+                d = unit(d + np.array([0.10, 0, -0.45]) * (1.0 / seg) + np.array([0, 0.06 * math.sin(2.4 * s_ + c_), 0]) * (1.0 / seg))
                 pts.append(pts[-1] + d * step)
-            P, N, T = tube_ribbon(np.array(pts), 0.0032, 0.0007, np.array([0, 0, 1.0]))
-            strands.append((P - pivot, N, T))
+            P, N, T = tube_ribbon(np.array(pts), (0.0040 if lod == 'hero' else 0.0055) * (wl / 0.12) ** 0.6, 0.0008 * (wl / 0.12) ** 0.6, np.array([0, 0, 1.0]))
+            strands.append((P - pivot, N, T, whisker_morph(P - pivot)))
     if L['brow']:
         for q in range(4):
             tt = body.t_eye - 0.012 + 0.008 * q; thh = math.radians(52.0 - 3 * q)
@@ -597,7 +654,7 @@ def whisker_strands(species, lod, info, L):
             d = unit(n0 * 0.8 + np.array([0.9, 0.2, 0.2])); pts = [p0]
             for s_ in range(3):
                 d = unit(d + np.array([0.1, 0.0, -0.25])); pts.append(pts[-1] + d * 0.012)
-            P, N, T = tube_ribbon(np.array(pts), 0.0022, 0.0006, np.array([0, 0, 1.0])); strands.append((P - pivot, N, T))
+            P, N, T = tube_ribbon(np.array(pts), 0.0036 * (wl / 0.12) ** 0.6, 0.0008, np.array([0, 0, 1.0])); strands.append((P - pivot, N, T, whisker_morph(P - pivot)))
     return strands
 
 
@@ -610,7 +667,7 @@ def ease(x): x = min(1.0, max(0.0, x)); return x * x * (3 - 2 * x)
 def ramp(t, a, b): return ease((t - a) / (b - a))
 def pulse(t, a, b, c, d): return ramp(t, a, b) * (1 - ramp(t, c, d))
 
-def J(yaw=0.0, pitch=0.0, roll=0.0, t=None, s=None): return dict(r=(yaw, pitch, roll), t=t, s=s)
+def J(yaw=0.0, pitch=0.0, roll=0.0, t=None, s=None, w=None): return dict(r=(yaw, pitch, roll), t=t, s=s, w=w)
 
 def clip_rest(t, T=5.0):
     w = math.sin(TAU * t / T); w2 = math.sin(TAU * t / T - 0.5)
@@ -685,6 +742,33 @@ def clip_yawn(t, T=3.4):
             'eye_l': J(s=(1, 1, 1 - 0.88 * sq)), 'eye_r': J(s=(1, 1, 1 - 0.88 * sq)), 'whisker_l': J(yaw=8 * op, pitch=2 * op), 'whisker_r': J(yaw=-8 * op, pitch=2 * op),
             'flipper_fl_l': J(yaw=-10 * op, roll=8 * op), 'flipper_fl_r': J(yaw=10 * op, roll=-8 * op)}
 
+def gaze(t_world, eye_jn, rest_dir, JPv):
+    """yaw and pitch (degrees) that turn an eye from its rest direction towards a target, limited to 18 degrees"""
+    v = np.asarray(t_world, float) - JPv[eye_jn]; yaw = math.degrees(math.atan2(v[1], v[0])) - math.degrees(math.atan2(rest_dir[1], rest_dir[0]))
+    pit = math.degrees(math.atan2(v[2], math.hypot(v[0], v[1]))) - math.degrees(math.atan2(rest_dir[2], math.hypot(rest_dir[0], rest_dir[1])))
+    yaw = (yaw + 180.0) % 360.0 - 180.0
+    return max(-18.0, min(18.0, 0.5 * yaw)), max(-14.0, min(14.0, pit))
+
+_GAZE = {}
+def clip_look(t, T=6.0):
+    pts = [(1.0, 0.0, 0.45), (0.9, 0.85, 0.40), (0.95, 0.85, 0.40), (1.0, -0.9, 0.85), (1.05, -0.9, 0.85), (0.9, 0.1, 0.05), (1.0, 0.0, 0.45)]
+    tm = [0.0, 0.9, 1.7, 2.6, 3.5, 4.5, 6.0]
+    k = max(i for i in range(len(tm) - 1) if t >= tm[i] - 1e-9); u = ease((t - tm[k]) / (tm[k + 1] - tm[k])); a = np.array(pts[k]); b = np.array(pts[k + 1]); rel = a + (b - a) * u
+    base = _GAZE['base']; JPv = _GAZE['JP']; tw = base + rel * np.array([1.0, 1.0, 1.0]) - np.array([1.0, 0, 0.45]) * 0 - np.array([1.0, 0.0, 0.0]) * 0
+    tw = np.array([base[0] - 1.1 + rel[0], rel[1], rel[2]])
+    gl = gaze(tw, 'eye_l', _GAZE['dl'], JPv); gr = gaze(tw, 'eye_r', _GAZE['dr'], JPv)
+    return {'eye_target': J(t=tuple(tw - base)), 'eye_l': J(yaw=gl[0], pitch=gl[1]), 'eye_r': J(yaw=gr[0], pitch=gr[1]), 'head': J(yaw=0.45 * math.degrees(math.atan2(rel[1], rel[0])), pitch=0.4 * math.degrees(math.atan2(rel[2] - 0.35, rel[0]))),
+            'neck': J(yaw=0.2 * math.degrees(math.atan2(rel[1], rel[0]))), 'whisker_l': J(yaw=2.0 * math.sin(TAU * t / 1.5)), 'whisker_r': J(yaw=-2.0 * math.sin(TAU * t / 1.5))}
+
+def clip_blink(t, T=4.2):
+    b = pulse(t, 0.95, 1.03, 1.10, 1.22) + pulse(t, 2.60, 2.68, 2.75, 2.88) + 0.9 * pulse(t, 2.95, 3.01, 3.04, 3.12)
+    b = min(b, 1.0); return {'eye_l': J(w=[b, 0, 0, 0]), 'eye_r': J(w=[b, 0, 0, 0])}
+
+def clip_tilt(t, T=3.6):
+    up = pulse(t, 0.0, 0.8, 2.5, 3.5); cu = pulse(t, 0.2, 0.9, 2.5, 3.4)
+    return {'head': J(roll=16 * up, yaw=7 * up, pitch=3 * up), 'neck': J(pitch=9 * up, roll=3 * up), 'chest': J(pitch=3 * up),
+            'seal_skin': J(w=[1.0 * cu, 1.0 * cu, 0, 0, 0.25 * cu]), 'eye_l': J(w=[0, 0, 0.5 * cu, 0]), 'eye_r': J(w=[0, 0, 0.5 * cu, 0]), 'whisker_l': J(w=[cu, 0]), 'whisker_r': J(w=[cu, 0])}
+
 CLIPS = {   # name: (function, duration, loop, step in seconds, note)
     'rest': (clip_rest, 5.0, True, 0.5, 'resting: breathing (the chest and body swell and fall, period 5 s), a slow double blink, a small head drift'),
     'alert': (clip_alert, 6.0, True, 0.3, 'head up and looking around: the neck lifts, the head turns left then right, whiskers go forward and twitch, then it settles back (ends where it starts)'),
@@ -694,6 +778,9 @@ CLIPS = {   # name: (function, duration, loop, step in seconds, note)
     'swim': (clip_swim, 1.6, True, 0.2, 'undulating glide: a travelling side to side wave down the trunk with the hind flippers sculling (period 1.6 s), foreflippers tucked back'),
     'surface_look': (clip_surface, 5.0, True, 0.25, 'head up out of the water (spy hop): the front rises, the head looks round, whiskers droop and shake as the water runs off'),
     'pup_cry': (clip_cry, 3.0, True, 0.15, 'pup raises its head, opens its mouth three times, one foreflipper waves'),
+    'look_around': (clip_look, 6.0, True, 0.25, 'the eyes follow a marker (node eye_target) that wanders left, up right and low and back; the head follows a part of the way; eye turns are limited to 18 degrees'),
+    'blink_loop': (clip_blink, 4.2, True, 0.1, 'idle layer: two slow blinks and a flick, played on the blink morph target of eye_l and eye_r (weights channels); play it over any other clip'),
+    'curious_tilt': (clip_tilt, 3.6, True, 0.2, 'head tilt of 16 degrees with the neck lifting, brow raised, whisker pad puffed, whiskers fanned forward, eyes a little wider (morph weights); ends at rest'),
     'yawn': (clip_yawn, 3.4, False, 0.2, 'one-shot yawn: head tips back, the jaw opens 40 degrees and holds, eyes squeeze shut, then closes'),
 }
 ROOT_MOTION = {'hump_crawl': 'translation of root: 0.30 m forward each cycle (strip the channel to move the animal yourself)', 'slide_in': 'translation of root: 1.95 m forward and 0.68 m down; pitch nose down 41 degrees; the page puts the waterline where it likes',
@@ -711,19 +798,20 @@ POSES = {   # static joint rotations (yaw, pitch, roll) for the pose set
 }
 
 
-def sample_clip(name, JP):
+def sample_clip(name, JP, coarse=False):
     """keyframes: {(joint, path): (times, values)}; pruned to channels that move. values: quaternions (builder xyzw, continuous), translations (absolute local, builder frame) or scales"""
-    fn, T, loop, step, note = CLIPS[name]; n = int(round(T / step)); times = [min(T, i * step) for i in range(n + 1)]
+    _GAZE.update(base=JP['eye_target'], JP=JP, dl=unit([0.5, 0.85, 0.3]), dr=unit([0.5, -0.85, 0.3]))
+    fn, T, loop, step, note = CLIPS[name]; step = step * (2.0 if coarse else 1.0); n = max(2, int(round(T / step))); times = [float(x) for x in np.linspace(0.0, T, n + 1)]
     if loop: pass
     data = {}
     for t in times:
         d = fn(t)
         for jn, v in d.items():
-            ch = data.setdefault(jn, dict(r=[], t=[], s=[]))
-            ch['r'].append(Q(*v['r'])); ch['t'].append(v['t']); ch['s'].append(v['s'])
+            ch = data.setdefault(jn, dict(r=[], t=[], s=[], w=[]))
+            ch['r'].append(Q(*v['r'])); ch['t'].append(v['t']); ch['s'].append(v['s']); ch['w'].append(v.get('w'))
         for jn in data:
             if jn not in d:
-                data[jn]['r'].append(Q()); data[jn]['t'].append(None); data[jn]['s'].append(None)
+                data[jn]['r'].append(Q()); data[jn]['t'].append(None); data[jn]['s'].append(None); data[jn]['w'].append(None)
     out = {}
     parent_pos = lambda jn: (JP[jn] - (JP[PARENT[jn]] if PARENT[jn] else np.zeros(3)))
     for jn, ch in data.items():
@@ -742,6 +830,10 @@ def sample_clip(name, JP):
         if any(v is not None for v in ss_):
             vals = [tuple(v if v is not None else (1, 1, 1)) for v in ss_]
             if max(max(abs(c - 1) for c in v) for v in vals) > 1e-6: out[(jn, 'scale')] = (times, vals)
+        ws_ = ch['w']
+        if any(v is not None for v in ws_):
+            k = len(next(v for v in ws_ if v is not None)); vals = [tuple(v) if v is not None else (0.0,) * k for v in ws_]
+            if max(max(abs(c) for c in v) for v in vals) > 1e-6: out[(jn, 'weights')] = (times, vals)
     return out, T, loop, note
 
 
@@ -749,8 +841,9 @@ def sample_clip(name, JP):
 def lin(r, g, b): return [((c / 255.0 + 0.055) / 1.055) ** 2.4 if c / 255.0 > 0.04045 else c / 255.0 / 12.92 for c in (r, g, b)]
 SOLID = {   # name: (linear base colour, roughness, metallic, doubleSided)
     'Mouth': (lin(104, 38, 46), 0.38, 0.0, True), 'Tongue': (lin(176, 84, 92), 0.30, 0.0, False), 'Tooth': (lin(196, 188, 164), 0.40, 0.0, False), 'Claw': (lin(46, 38, 32), 0.45, 0.0, False),
-    'Dark': (lin(14, 12, 11), 0.55, 0.0, False), 'Eye': (lin(38, 20, 10), 0.10, 0.0, False), 'Lid': (lin(30, 26, 24), 0.75, 0.0, False), 'Whisker': (lin(226, 218, 196), 0.55, 0.0, True),
+    'Dark': (lin(14, 12, 11), 0.55, 0.0, False), 'Eye': ([1.0, 1.0, 1.0], 0.16, 0.0, False), 'Lid': (lin(30, 26, 24), 0.75, 0.0, False), 'Whisker': (lin(226, 218, 196), 0.55, 0.0, True), 'Highlight': (lin(255, 255, 255), 0.05, 0.0, False),
 }
+LID_COL = {'grey': lin(44, 40, 36), 'pup': lin(104, 96, 88), 'harbour': lin(62, 55, 47)}
 WET = dict(base=[0.66, 0.66, 0.66, 1.0], rough=0.50, clearcoat=0.10, clearcoat_rough=0.30)
 DRY = dict(base=[1.0, 1.0, 1.0, 1.0], rough=1.0)
 
@@ -770,9 +863,11 @@ def build(species, lod, variant=0, wet=False, seed=SEED, pose='rest', textures=T
     # orient the eyes: the collar ring lies on the surface, facing out and a little forward
     d = eye_axes(body, info); R = basis(d, np.array([0, 0, 1.0]))
     for jn, items in eyes.items():
-        sg = 1 if jn == 'eye_l' else -1; Mir = np.diag([1, sg, 1.0]); Rr = Mir @ R @ Mir if sg < 0 else R
-        new = []
-        for (mat, P, N, T) in items: new.append((mat, P @ R.T * np.array([1, sg, 1.0]) if False else (P @ R.T) * np.array([1, sg, 1.0]), (N @ R.T) * np.array([1, sg, 1.0]), T if sg > 0 else T[:, [0, 2, 1]]))
+        sg = 1 if jn == 'eye_l' else -1; Mi = np.array([1, sg, 1.0]); new = []
+        for (mat, P, N, T, ex) in items:
+            ex = dict(ex)
+            if 'morph' in ex: ex['morph'] = {k: (v @ R.T) * Mi for k, v in ex['morph'].items()}
+            new.append((mat, (P @ R.T) * Mi, (N @ R.T) * Mi, T if sg > 0 else T[:, [0, 2, 1]], ex))
         eyes[jn] = new
     tex = None
     if lay is not None and textures:
@@ -816,6 +911,13 @@ def write_glb(path, M):
         if normalized: d['normalized'] = True
         if minmax: d['min'] = [float(v) for v in np.atleast_1d(a.min(0))]; d['max'] = [float(v) for v in np.atleast_1d(a.max(0))]
         accs.append(d); return len(accs) - 1
+    def add_morph(delta):
+        """a morph target as a sparse POSITION accessor (glTF frame): only the vertices that move are stored"""
+        d = to_g(delta).astype(np.float32); nz = np.flatnonzero(np.abs(d).max(1) > 1e-7)
+        if len(nz) == 0: nz = np.array([0])
+        ind = nz.astype(np.uint16 if len(d) < 65536 else np.uint32); vi_ = add_view(np.ascontiguousarray(ind).tobytes()); vv_ = add_view(np.ascontiguousarray(d[nz]).tobytes())
+        accs.append({'componentType': 5126, 'count': int(len(d)), 'type': 'VEC3', 'sparse': {'count': int(len(nz)), 'indices': {'bufferView': vi_, 'componentType': 5123 if ind.dtype == np.uint16 else 5125}, 'values': {'bufferView': vv_}}})
+        return len(accs) - 1
     # ---- materials
     mats = []; mi = {}; ext_used = set(); embed = bool(lay) and L['tex'].get('embed', True)
     if embed:
@@ -842,8 +944,10 @@ def write_glb(path, M):
         mi['Coat'] = 0; mats.append(m); variants = None
     for name, (col, rough, met, ds) in SOLID.items():
         f = {'name': name, 'pbrMetallicRoughness': {'baseColorFactor': [col[0], col[1], col[2], 1.0], 'metallicFactor': met, 'roughnessFactor': rough}, 'doubleSided': ds}
-        if name == 'Eye': f['extensions'] = {'KHR_materials_clearcoat': {'clearcoatFactor': 1.0, 'clearcoatRoughnessFactor': 0.02}}; ext_used.add('KHR_materials_clearcoat')
+        if name == 'Eye': f['extensions'] = {'KHR_materials_clearcoat': {'clearcoatFactor': 0.6, 'clearcoatRoughnessFactor': 0.08}}; ext_used.add('KHR_materials_clearcoat')
         if name == 'Whisker': f['emissiveFactor'] = [0.30, 0.28, 0.24]
+        if name == 'Highlight': f['emissiveFactor'] = [1.0, 1.0, 1.0]; f['extensions'] = {'KHR_materials_emissive_strength': {'emissiveStrength': 2.5}}; ext_used.add('KHR_materials_emissive_strength')
+        if name == 'Lid': f['pbrMetallicRoughness']['baseColorFactor'] = LID_COL[sp['kind']] + [1.0]
         mi[name] = len(mats); mats.append(f)
     # ---- nodes
     order = JOINT_ORDER[:]; idx = {n: i for i, n in enumerate(order)}; gnodes = [{'name': n} for n in order]
@@ -875,25 +979,32 @@ def write_glb(path, M):
         pr = {'attributes': at, 'indices': ia, 'material': mi[mat], 'mode': 4}
         if mat == 'Coat' and variants:
             alt = 1; pr['extensions'] = {'KHR_materials_variants': {'mappings': [{'materials': [mi['CoatAlt']], 'variants': [1]}, {'materials': [mi['Coat']], 'variants': [0]}]}}
+        if lod != 'far':
+            mo = head_morphs(M['info'], mat, P, Jn); pr['targets'] = [{'POSITION': add_morph(mo[k])} for k in SEAL_TARGETS]
         skin_mesh_prims.append(pr); tri_total += len(T); per_mat[mat] = len(T)
-    meshes.append({'name': 'seal_mesh', 'primitives': skin_mesh_prims})
+    meshes.append({'name': 'seal_mesh', 'primitives': skin_mesh_prims, **({'weights': [0.0] * len(SEAL_TARGETS), 'extras': {'targetNames': SEAL_TARGETS}} if lod != 'far' else {})})
     # rigid meshes for eyes and whiskers
-    def rigid_node(nname, items):
+    def rigid_node(nname, items, targets):
         prims = []; n = 0
-        for (mat, P, N, T) in items:
+        for (mat, P, N, T, ex) in items:
             at = {'POSITION': add_acc(to_g(P).astype(np.float32), 5126, 3, 34962, minmax=True), 'NORMAL': add_acc(to_g(N).astype(np.float32), 5126, 3, 34962)}
-            Ti = np.asarray(T).astype(np.uint16); ia = add_acc(Ti.reshape(-1), 5123, 1, 34963); prims.append({'attributes': at, 'indices': ia, 'material': mi[mat], 'mode': 4}); n += len(Ti)
-        meshes.append({'name': nname + '_mesh', 'primitives': prims}); gnodes[idx[nname]]['mesh'] = len(meshes) - 1; per_mat[nname] = n; return n
-    for jn, items in M['eyes'].items(): tri_total += rigid_node(jn, items)
+            if 'C' in ex: at['COLOR_0'] = add_acc((np.concatenate([np.clip(ex['C'], 0, 1), np.ones((len(P), 1))], 1) * 255.0 + 0.5).astype(np.uint8), 5121, 4, 34962, normalized=True)
+            Ti = np.asarray(T).astype(np.uint16); ia = add_acc(Ti.reshape(-1), 5123, 1, 34963); pr = {'attributes': at, 'indices': ia, 'material': mi[mat], 'mode': 4}
+            mo = ex.get('morph', {}); pr['targets'] = [{'POSITION': add_morph(mo.get(k, np.zeros((len(P), 3))))} for k in targets]
+            prims.append(pr); n += len(Ti)
+        meshes.append({'name': nname + '_mesh', 'primitives': prims, 'weights': [0.0] * len(targets), 'extras': {'targetNames': targets}}); gnodes[idx[nname]]['mesh'] = len(meshes) - 1; per_mat[nname] = n; return n
+    for jn, items in M['eyes'].items(): tri_total += rigid_node(jn, items, EYE_TARGETS)
     if M['strands']:
         for sg, jn in ((1, 'whisker_l'), (-1, 'whisker_r')):
             Ps = []; Ns = []; Ts = []; base = 0
-            for (P, N, T) in M['strands']:
+            Ms = {k: [] for k in WHISKER_TARGETS}
+            for (P, N, T, mo) in M['strands']:
                 Pm = P * np.array([1, sg, 1.0]); Nm = N * np.array([1, sg, 1.0]); Tm = T if sg > 0 else T[:, [0, 2, 1]]
                 Ps.append(Pm); Ns.append(Nm); Ts.append(Tm + base); base += len(P)
-            tri_total += rigid_node(jn, [('Whisker', np.concatenate(Ps), np.concatenate(Ns), np.concatenate(Ts))])
+                for k in WHISKER_TARGETS: Ms[k].append(mo[k] * np.array([1, sg, 1.0]))
+            tri_total += rigid_node(jn, [('Whisker', np.concatenate(Ps), np.concatenate(Ns), np.concatenate(Ts), dict(morph={k: np.concatenate(v) for k, v in Ms.items()}))], WHISKER_TARGETS)
     # skin
-    skin_idx = len(gnodes); gnodes.append({'name': 'seal_skin', 'mesh': 0, 'skin': 0})
+    skin_idx = len(gnodes); gnodes.append({'name': 'seal_skin', 'mesh': 0, 'skin': 0}); idx['seal_skin'] = skin_idx
     ibm = np.zeros((len(JOINTS_SKIN), 16), np.float32)
     for i, jn in enumerate(JOINTS_SKIN):
         g = to_g(JP[jn]); m = np.eye(4); m[:3, 3] = -g; ibm[i] = m.T.reshape(-1)
@@ -903,15 +1014,17 @@ def write_glb(path, M):
     # animations
     anims = []; clip_info = {}
     for cname in CLIPS:
-        ch, T, loop, note = sample_clip(cname, JP); samplers = []; channels = []
+        ch, T, loop, note = sample_clip(cname, JP, coarse=(lod == 'far')); samplers = []; channels = []
         blob = bytearray(); specs = []
         def put_arr(arr, ncomp, minmax=False):
             arr = np.ascontiguousarray(arr, np.float32); off = len(blob); blob.extend(arr.tobytes()); specs.append((off, arr, ncomp, minmax)); return len(specs) - 1
         tim = {}
         for (jn, path_), (times, vals) in sorted(ch.items()):
+            if path_ == 'weights' and lod == 'far': continue
             key = tuple(times)
             if key not in tim: tim[key] = put_arr(np.array(times, np.float32), 1, True)
             if path_ == 'rotation': arr = np.array([[v[1], v[2], v[0], v[3]] for v in vals], np.float32); nc = 4
+            elif path_ == 'weights': arr = np.array(vals, np.float32).reshape(-1); nc = 1
             else: arr = np.array([[v[1], v[2], v[0]] for v in vals], np.float32); nc = 3
             samplers.append((tim[key], put_arr(arr, nc), idx[jn], path_))
         vi = add_view(bytes(blob)) if blob else None; base_acc = len(accs); sam = []; chs = []
@@ -922,6 +1035,7 @@ def write_glb(path, M):
         for ti, oi, node, path_ in samplers:
             sam.append({'input': base_acc + ti, 'output': base_acc + oi, 'interpolation': 'LINEAR'}); chs.append({'sampler': len(sam) - 1, 'target': {'node': node, 'path': path_}})
         samplers, channels = sam, chs
+        if not channels: continue
         anims.append({'name': cname, 'samplers': samplers, 'channels': channels, 'extras': {'note': note, 'loop': loop}})
         clip_info[cname] = {'duration': T, 'loop': loop, 'nodes': sorted(set(j for j, p in ch)), 'note': note, **({'root_motion': ROOT_MOTION[cname]} if cname in ROOT_MOTION else {})}
     length, height, width = dims_of(M)
@@ -935,12 +1049,14 @@ def write_glb(path, M):
         'frame': 'glTF: +Y up, +Z forward (the nose points to +Z), +X left; metres; the ground is y = 0 and the origin is on the ground under the middle of the trunk', 'triangles': tri_total,
         'dimensions_m': {'length_with_flippers': round(length, 3), 'height': round(height, 3), 'width': round(width, 3), 'trunk_length': round(body.Lb, 3)},
         'model_mass_kg': round(body.mass_kg()), 'real_mass_range_kg': list(sp['mass']), 'footprint': footprint(body), 'clips': clip_info, 'poses': {k: {j: list(v) for j, v in p.items()} for k, p in POSES.items()},
+        'expressions': EXPRESSIONS, 'morph_targets': {'seal_mesh (the skinned head mesh)': SEAL_TARGETS, 'eye_l and eye_r': EYE_TARGETS, 'whisker_l and whisker_r': WHISKER_TARGETS},
+        'expression_note': 'set the weights of the morph targets by name on every mesh that has the name; the calling target also opens the jaw (24 degrees) without the jaw joint',
         'pose_convention': 'poses and clips use (yaw, pitch, roll) in degrees in the animal frame (x forward, y left, z up): yaw positive turns left, pitch positive lifts the front, roll positive lifts the left side',
         'wet_dry': {'method': 'KHR_materials_variants (dry, wet): the wet material is the same textures with a darker base factor and low roughness plus a clear coat (about 20 percent darker, glossy)', 'wet_factors': WET, 'dry_factors': DRY} if variants else 'far level: vertex colour only',
         'page_notes': {'skinned': 'the mesh node seal_skin is skinned to the named joints; play a clip by name with an AnimationMixer', 'footprint': 'node footprint holds the ground ellipse', 'eyes_whiskers': 'eye_l, eye_r, whisker_l, whisker_r are rigid mesh nodes under head'}}
     if lod == 'far':          # the far level keeps only what the page needs to place and animate it: no prose
         ex = doc['scenes'][0]['extras']
-        for k in ('poses', 'pose_convention', 'wet_dry', 'page_notes', 'frame'): ex.pop(k, None)
+        for k in ('poses', 'pose_convention', 'wet_dry', 'page_notes', 'frame', 'expressions', 'morph_targets', 'expression_note'): ex.pop(k, None)
         for c in ex['clips'].values(): c.pop('note', None); c.pop('root_motion', None)
         for an in doc['animations']: an['extras'] = {'loop': an['extras']['loop']}
         for nd in doc['nodes']:
@@ -950,6 +1066,45 @@ def write_glb(path, M):
     with open(path, 'wb') as f: f.write(data)
     return dict(path=os.path.basename(path), bytes=len(data), triangles=tri_total, per_material=per_mat, vertices=sum(a['count'] for a in accs if a.get('type') == 'VEC3' and a.get('min') is not None), image_bytes=sum(views[i['bufferView']]['byteLength'] for i in images),
                 dims=[round(length, 3), round(height, 3), round(width, 3)])
+
+
+def head_morphs(info, mat, P, Jn):
+    """morph target deltas (builder frame, metres) for one primitive of the skinned mesh: dict name -> (n, 3). brow_raise and pad_puff move the coat around the eye brow and the whisker pad; calling opens the jaw (24 degrees about the jaw joint, for
+    everything weighted to the jaw); content lifts the corners of the mouth; nostril_flare widens the nostril slits."""
+    body = info['body']; JP = info['JP']; n = len(P); out = {k: np.zeros((n, 3)) for k in SEAL_TARGETS}
+    ym = lambda pt: np.array([pt[0], -pt[1] + 2 * body.yoff(np.array([0.1]))[0] * 0 + 0.0, pt[2]])
+    def both(pt):
+        pt = np.asarray(pt, float); return [pt, np.array([pt[0], -pt[1], pt[2]])]
+    def pts(t, th_deg): return body.pt(np.array([t]), np.array([math.radians(th_deg)]))[0]
+    if mat == 'Coat':
+        yo = body.yoff(np.array([body.t_eye]))[0]
+        for c in both(pts(body.t_eye - 0.004, 52.0)):
+            d = np.linalg.norm(P - c, axis=1); wt = np.exp(-(d / 0.040) ** 2); out['brow_raise'] += np.stack([0.004 * wt, 0 * wt, 0.0075 * wt], 1)
+        tp = body.t_pad
+        for c in both(pts(tp, 108.0)):
+            d = np.linalg.norm(P - c, axis=1); wt = np.exp(-(d / 0.045) ** 2); outv = P - np.array([P[:, 0], P[:, 1] * 0 + 0.0, P[:, 2]]).T * 0
+            sgn = np.sign(c[1]) if abs(c[1]) > 1e-6 else 1.0
+            out['pad_puff'] += np.stack([0.003 * wt, 0.0045 * wt * sgn, 0.0030 * wt], 1)
+        for c in both(pts(body.t_comm, SM_THETA_LIP)):
+            d = np.linalg.norm(P - c, axis=1); wt = np.exp(-(d / 0.050) ** 2); sgn = np.sign(c[1])
+            out['content'] += np.stack([-0.002 * wt, 0.002 * wt * sgn, 0.0065 * wt], 1)
+    if mat == 'Dark':
+        lat = np.abs(P[:, 1] - body.yoff(np.array([0.1]))[0]) > 0.032; ear = P[:, 0] < body.xn - 0.30 * body.Lb * 0.5
+        lip = lat & ~ear
+        for c in both(pts(body.t_comm, SM_THETA_LIP)):
+            d = np.linalg.norm(P - c, axis=1); wt = np.exp(-(d / 0.050) ** 2) * lip; sgn = np.sign(c[1])
+            out['content'] += np.stack([-0.002 * wt, 0.002 * wt * sgn, 0.0065 * wt], 1)
+        for c in info.get('nostril_c', []):
+            d = np.linalg.norm(P - c, axis=1); wt = np.exp(-(d / 0.016) ** 2) * (~lat)
+            out['nostril_flare'] += (P - c) * 0.55 * wt[:, None] + np.stack([0 * wt, 0 * wt, 0.0007 * wt], 1)
+    jaw = JOINTS_SKIN.index('jaw'); isj = (Jn[:, 0] == jaw)
+    if isj.any():
+        a = math.radians(24.0); c, s_ = math.cos(a), math.sin(a); pv = JP['jaw']; R = np.array([[c, 0, s_], [0, 1, 0], [-s_, 0, c]])
+        out['calling'][isj] = (P[isj] - pv) @ R.T + pv - P[isj]
+    return out
+
+
+SM_THETA_LIP = THETA_LIP
 
 
 def footprint(body):

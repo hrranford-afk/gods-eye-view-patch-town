@@ -388,9 +388,70 @@ def shot_variants(a, out):
     CS.write_png(os.path.join(out, a.prefix + '-variants.png'), img)
 
 
+def set_expression(objs, weights):
+    """morph targets (shape keys) by name on every imported object that has them"""
+    for ob in objs:
+        sk = getattr(ob.data, 'shape_keys', None) if ob.type == 'MESH' else None
+        if sk is None: continue
+        for kb in sk.key_blocks:
+            if kb.name == 'Basis': continue
+            kb.value = float(weights.get(kb.name, 0.0))
+
+
+FACE_CAM = {'grey_male': 1.15, 'grey_female': 0.95, 'grey_pup': 0.58, 'harbour': 0.85}
+def face_cell(a, species, expr, clip, t, path, w, h, yaw=200.0, side=0.5, lens=70.0, lift=0.04, wet=False):
+    """a close portrait: the animal lies on the beach, the camera is in front of the head at eye height, 3/4 from the left"""
+    import seal_model as SM
+    LS, sc = beach_scene(a, 22.0, 300.0, w, h, exposure=-0.45)
+    root, arm, objs, acts = import_seal(glb_for(a, species, 'hero', 0, wet)); freeze_pose(arm, acts, clip, t); place_on_beach(root, 0.8, 0.0, yaw)
+    set_expression(objs, SM.EXPRESSIONS.get(expr, {}))
+    import bpy
+    bpy.context.view_layer.update(); hp = arm.matrix_world @ arm.pose.bones['head'].head
+    yw = math.radians(yaw); hv = np.array([math.cos(yw), math.sin(yw)]); lv = np.array([-math.sin(yw), math.cos(yw)])
+    sl = SM.Body(species).sl; tgt = np.array([hp[0], hp[1]]) + hv * 0.10 * sl; d = FACE_CAM[species]
+    pos = tgt + hv * d + lv * d * side
+    c = cam(sc, (pos[0], pos[1], hp[2] + lift), (tgt[0], tgt[1], hp[2] - 0.01 * sl), lens); render(sc, c, path)
+
+
+FACE_ROWS = [('grey_male', 'GREY BULL'), ('grey_female', 'GREY COW'), ('grey_pup', 'WHITE PUP'), ('harbour', 'HARBOUR SEAL')]
+FACE_COLS = [('neutral', 'rest', 1.2, 'NEUTRAL'), ('curious', 'curious_tilt', 1.5, 'CURIOUS'), ('sleepy', 'rest', 1.2, 'SLEEPY'), ('startled', 'alert', 1.4, 'STARTLED'), ('calling', 'pup_cry', 1.3, 'CALLING')]
+
+def shot_faces(a, out):
+    import collector_sheet as CS
+    cw, ch = 420, 420; sa = argparse.Namespace(**vars(a)); sa.samples = max(24, a.samples // 2); tmp = os.path.join(out, 'cells'); os.makedirs(tmp, exist_ok=True)
+    cells = []; labs = []
+    for sp, nm in FACE_ROWS:
+        cols = [FACE_COLS[0], FACE_COLS[1], FACE_COLS[2], FACE_COLS[4] if sp == 'grey_pup' else FACE_COLS[3]]
+        for expr, clip, t, lab in cols:
+            p = os.path.join(tmp, 'f-%s-%s.png' % (sp, expr))
+            if not (os.environ.get('SEAL_REUSE') and os.path.exists(p)): face_cell(sa, sp, expr, clip, t, p, cw, ch)
+            cells.append(CS.read_png(p)); labs.append('%s %s' % (nm, lab))
+    pad = 6; top = 6; W = pad + 4 * (cw + pad); H = top + 4 * (ch + pad); sheet = np.full((H, W, 3), 0.12, np.float32); CS.FONT.update(GLYPHS)
+    for k, im in enumerate(cells):
+        r, c = divmod(k, 4); y = top + r * (ch + pad); x = pad + c * (cw + pad); sheet[y:y + ch, x:x + cw] = im[:ch, :cw]
+        CS.draw_text(sheet, x + 8, y + 8, labs[k], 2, (0.97, 0.96, 0.9), bg=0.08)
+    CS.write_png(os.path.join(out, a.prefix + '-faces.png'), sheet)
+
+
+def shot_face1(a, out):
+    face_cell(a, 'grey_male', 'curious', 'curious_tilt', 1.5, os.path.join(out, a.prefix + '-face-1.png'), a.w, a.h, side=0.55, lens=75.0)
+
+def shot_face2(a, out):
+    face_cell(a, 'grey_pup', 'calling', 'pup_cry', 1.3, os.path.join(out, a.prefix + '-face-2.png'), a.w, a.h, yaw=205.0, side=0.5, lens=75.0)
+
+
+def shot_dev(a, out):
+    """quick look: SEAL_DEV=species:expr:clip:t,... renders each face at the given size and joins them in one row"""
+    import collector_sheet as CS
+    cells = []
+    for k, item in enumerate(os.environ.get('SEAL_DEV', 'grey_male:neutral:rest:1.2').split(',')):
+        sp, ex, cl, t = item.split(':'); p = os.path.join(out, 'dev%d.png' % k); face_cell(a, sp, ex, cl, float(t), p, a.w, a.h); cells.append(CS.read_png(p))
+    CS.write_png(os.path.join(out, 'dev.png'), np.concatenate(cells, 1))
+
+
 def main():
     a = parse_args(); os.makedirs(a.out, exist_ok=True)
-    jobs = {'dbg': shot_dbg, '1': lambda a, o: shot_1(a, o), '2': lambda a, o: shot_2(a, o), '3': lambda a, o: shot_3(a, o), 'sheet': shot_sheet, 'variants': shot_variants}
+    jobs = {'dbg': shot_dbg, '1': lambda a, o: shot_1(a, o), '2': lambda a, o: shot_2(a, o), '3': lambda a, o: shot_3(a, o), 'sheet': shot_sheet, 'variants': shot_variants, 'faces': shot_faces, 'dev': shot_dev, 'face1': shot_face1, 'face2': shot_face2}
     for k in a.only:
         if k in jobs: jobs[k](a, a.out)
 

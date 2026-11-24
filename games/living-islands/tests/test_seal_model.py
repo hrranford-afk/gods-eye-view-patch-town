@@ -12,9 +12,9 @@ import seal_model as SM
 SRC_PATHS = [os.path.join(BL, 'seal_model.py'), os.path.join(BL, 'seal_tex.py'), os.path.join(BL, 'seal_shots.py')]
 DOC_PATH = os.path.join(ROOT, 'SEAL_MODEL.md')
 ASSET_DIR = os.path.join(ROOT, 'assets', 'seals')
-NEEDED = ['root', 'body', 'chest', 'neck', 'head', 'jaw', 'hips', 'tail', 'eye_l', 'eye_r', 'whisker_l', 'whisker_r', 'flipper_fl_l', 'flipper_fl_r', 'flipper_hind', 'flipper_hind_l', 'flipper_hind_r', 'footprint', 'seal_skin']
-CLIPS = {'rest': 5.0, 'alert': 6.0, 'scratch': 4.2, 'hump_crawl': 2.8, 'slide_in': 3.8, 'swim': 1.6, 'surface_look': 5.0, 'pup_cry': 3.0, 'yawn': 3.4}
-LOOPING = ['rest', 'alert', 'hump_crawl', 'swim', 'surface_look', 'pup_cry']
+NEEDED = ['eye_target', 'root', 'body', 'chest', 'neck', 'head', 'jaw', 'hips', 'tail', 'eye_l', 'eye_r', 'whisker_l', 'whisker_r', 'flipper_fl_l', 'flipper_fl_r', 'flipper_hind', 'flipper_hind_l', 'flipper_hind_r', 'footprint', 'seal_skin']
+CLIPS = {'rest': 5.0, 'alert': 6.0, 'scratch': 4.2, 'hump_crawl': 2.8, 'slide_in': 3.8, 'swim': 1.6, 'surface_look': 5.0, 'pup_cry': 3.0, 'yawn': 3.4, 'look_around': 6.0, 'blink_loop': 4.2, 'curious_tilt': 3.6}
+LOOPING = ['rest', 'alert', 'hump_crawl', 'swim', 'surface_look', 'pup_cry', 'look_around', 'blink_loop', 'curious_tilt']
 LENGTH = {'grey_male': (2.2, 2.4), 'grey_female': (1.7, 1.9), 'grey_pup': (0.95, 1.05), 'harbour': (1.5, 1.75)}
 _fails = []
 def check(cond, msg):
@@ -81,16 +81,17 @@ def run_glb_checks(tag, path, sp, lod):
             if read_acc(g, pr['indices']).max() >= len(P): okb = False
     check(okb, '%s: accessor bounds and indices valid' % tag)
     an = {a['name']: a for a in js['animations']}
-    check(sorted(an) == sorted(CLIPS), '%s: clip names %s' % (tag, sorted(an)))
+    want = {k: v for k, v in CLIPS.items() if not (lod == 'far' and k == 'blink_loop')}      # blink_loop plays on morph targets, which the far level does not have
+    check(sorted(an) == sorted(want), '%s: clip names %s' % (tag, sorted(an)))
     ok = True
-    for cn, dur in CLIPS.items():
+    for cn, dur in want.items():
         a = an[cn]; mx = 0
         for s in a['samplers']: mx = max(mx, float(read_acc(g, s['input']).max()))
-        ok = ok and abs(mx - dur) < 1e-3 and len(a['channels']) > 3
+        ok = ok and abs(mx - dur) < 1e-3 and len(a['channels']) >= 2
         for ch in a['channels']:
             sm = a['samplers'][ch['sampler']]; o = read_acc(g, sm['output']); i = read_acc(g, sm['input'])
-            ok = ok and len(o) == len(i) and np.all(np.isfinite(o)) and np.all(np.diff(i[:, 0]) > 0)
-    check(ok, '%s: all nine clips, durations match, channels valid' % tag)
+            ok = ok and (len(o) == len(i) if ch['target']['path'] != 'weights' else len(o) % len(i) == 0) and np.all(np.isfinite(o)) and np.all(np.diff(i[:, 0]) > 0)
+    check(ok, '%s: all clips (%d), durations match, channels valid' % (tag, len(want)))
     lo_, hi_ = SM.LOD[lod], None
     ex = js['scenes'][0]['extras']; d = ex['dimensions_m']
     check(LENGTH[sp][0] <= d['length_with_flippers'] <= LENGTH[sp][1], '%s: length %.2f m in %s' % (tag, d['length_with_flippers'], LENGTH[sp]))
@@ -107,6 +108,44 @@ def run_glb_checks(tag, path, sp, lod):
         check(any('COLOR_0' in pr['attributes'] for pr in js['meshes'][0]['primitives']) and 'images' not in js, '%s: far level uses vertex colours, no images' % tag)
     return g
 
+
+def test_face():
+    # eye size relative to head width: pup > harbour > cow > bull (large round eyes on the pup and the dog-like harbour seal; the grey bull has the smallest in proportion)
+    ratio = {}
+    for sp in SM.SPECIES:
+        b = SM.Body(sp); zc, hh, a, cap = b.rings(np.array([b.t_eye])); ratio[sp] = 2 * SM.SP[sp]['eye_r'] / (2 * float(a[0]))
+    check(ratio['grey_pup'] > ratio['harbour'] > ratio['grey_female'] > ratio['grey_male'] > 0.2, 'eye diameter against head width: %s' % {k: round(v, 2) for k, v in ratio.items()})
+    for sp, lod in (('grey_male', 'live'), ('harbour', 'hero'), ('grey_pup', 'hero')):
+        g = read_glb(built()[(sp, lod)]); js = g['json']; names = {n['name']: n for n in js['nodes']}; tag = '%s %s' % (sp, lod)
+        want = {'seal_skin': SM.SEAL_TARGETS, 'eye_l': SM.EYE_TARGETS, 'eye_r': SM.EYE_TARGETS, 'whisker_l': SM.WHISKER_TARGETS, 'whisker_r': SM.WHISKER_TARGETS}
+        ok = True
+        for nn, tn in want.items():
+            m = js['meshes'][names[nn]['mesh']]; ok = ok and m['extras']['targetNames'] == tn and len(m['weights']) == len(tn) and all(len(pr['targets']) == len(tn) for pr in m['primitives'])
+            for pr in m['primitives']:
+                for tg in pr['targets']:
+                    a = js['accessors'][tg['POSITION']]; sp_ = a['sparse']; ok = ok and sp_['count'] >= 1 and 'bufferView' not in a
+                    iv = js['bufferViews'][sp_['indices']['bufferView']]; ct = {5123: np.uint16, 5125: np.uint32}[sp_['indices']['componentType']]
+                    ind = np.frombuffer(g['bin'], ct, sp_['count'], iv.get('byteOffset', 0)); ok = ok and ind.max() < a['count']
+        check(ok, '%s: morph targets by name on the head mesh, both eyes and both whisker meshes, sparse and valid' % tag)
+        mats = {m['name']: m for m in js['materials']}
+        check('Highlight' in mats and mats['Highlight']['emissiveFactor'] == [1.0, 1.0, 1.0] and 'Eye' in mats and 'Lid' in mats, '%s: eye materials: glossy eye, wet highlight (emissive), lid' % tag)
+        eyem = js['meshes'][names['eye_l']['mesh']]; check(any(js['materials'][pr['material']]['name'] == 'Highlight' for pr in eyem['primitives']) and any('COLOR_0' in pr['attributes'] for pr in eyem['primitives']), '%s: the eye has an iris (vertex colours) and a highlight primitive' % tag)
+        ex = js['scenes'][0]['extras']; allnames = set(SM.SEAL_TARGETS) | set(SM.EYE_TARGETS) | set(SM.WHISKER_TARGETS)
+        check(all(set(v) <= allnames for v in ex['expressions'].values()) and {'neutral', 'blink', 'sleepy', 'curious', 'startled', 'calling', 'content', 'nostril_flare'} <= set(ex['expressions']), '%s: the expression table uses real target names' % tag)
+        an = {a['name']: a for a in js['animations']}
+        ch = [(js['nodes'][c['target']['node']]['name'], c['target']['path']) for c in an['blink_loop']['channels']]
+        check(('eye_l', 'weights') in ch and ('eye_r', 'weights') in ch, '%s: blink_loop plays the blink weights on both eyes' % tag)
+        c0 = [c for c in an['blink_loop']['channels'] if js['nodes'][c['target']['node']]['name'] == 'eye_l'][0]; sm = an['blink_loop']['samplers'][c0['sampler']]
+        n_in = js['accessors'][sm['input']]['count']; n_out = js['accessors'][sm['output']]['count']
+        check(n_out == 4 * n_in, '%s: weights channel has four weights a key' % tag)
+        w = read_acc(g, sm['output']).reshape(-1, 4)[:, 0]; check(w.max() > 0.9 and w.min() == 0, '%s: the blink closes fully and opens' % tag)
+        # the lid moves further than 5 mm between open and shut, and the jaw morph moves the lower jaw
+        lid = [pr for pr in eyem['primitives'] if js['materials'][pr['material']]['name'] == 'Lid' and pr['targets']][-1]; ta = js['accessors'][lid['targets'][0]['POSITION']]
+        iv = js['bufferViews'][ta['sparse']['values']['bufferView']]; vals = np.frombuffer(g['bin'], np.float32, ta['sparse']['count'] * 3, iv.get('byteOffset', 0)).reshape(-1, 3)
+        check(np.abs(vals).max() > 0.004, '%s: the blink target moves the lid by %.1f mm' % (tag, np.abs(vals).max() * 1000))
+        coat = js['meshes'][0]['primitives'][0]; tc = js['accessors'][coat['targets'][2]['POSITION']]
+        check(tc['sparse']['count'] > 50, '%s: the calling target moves %d jaw vertices' % (tag, tc['sparse']['count']))
+    g = read_glb(built()[('grey_male', 'far')]); check('targets' not in g['json']['meshes'][0]['primitives'][0], 'far level has no morph targets')
 
 def test_args():
     a = SM.parse_args(['--out', 'x', '--species', 'harbour', '--lod', 'far', '--variant', '3', '--wet'])
@@ -194,7 +233,7 @@ def test_source_clean():
     check(os.path.exists(DOC_PATH) and not re.search(r'/(tmp|home|root|Users)/\w', open(DOC_PATH).read()), 'SEAL_MODEL.md exists and has no private paths')
     check('/*' not in open(SRC_PATHS[0]).read().replace('"""', ''), 'python comments only')
 
-TESTS = [test_args, test_source_clean, test_names_and_shape, test_clip_content, test_models, test_variants_and_determinism, test_committed_assets, test_bpy_import]
+TESTS = [test_args, test_face, test_source_clean, test_names_and_shape, test_clip_content, test_models, test_variants_and_determinism, test_committed_assets, test_bpy_import]
 if __name__ == '__main__':
     for t in TESTS: t()
     print('\n%d failures' % len(_fails)); sys.exit(1 if _fails else 0)
