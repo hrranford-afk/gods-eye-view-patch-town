@@ -87,13 +87,23 @@ for (const [k, seed] of [[3, 5], [5, 6], [7, 7], [9, 8], [4.2, 9], [6.5, 10]]) {
 /* steps are on the grid */
 { const x = sim(4, 90, { step: .125 }); ok(x.log.every(e => Math.abs(e.to * 8 - Math.round(e.to * 8)) < 1e-9), 'scales are multiples of the 0.125 step'); }
 
+/* a 4K-class range: the scale may fall below 1.0 (to 0.5) when the frame time needs it */
+{
+  const R = rng(21), c = U.createDynRes({ min: .5, max: 1, start: 1, target: 1000 / 60 }); let t = 0;
+  for (let i = 0; i < 60 * 60; i++) { t = i / 60; c.push(40 * c.scale * c.scale * (1 + (R() - .5) * .08), t); }   /* 40 ms at native: needs about 0.6 */
+  ok(c.scale < 1 && c.scale >= .5, '4K range: a heavy frame drops the scale below native, to ' + c.scale);
+  const c2 = U.createDynRes({ min: .5, max: 1, start: .5, target: 1000 / 60 }); for (let i = 0; i < 60 * 60; i++) c2.push(5 * c2.scale * c2.scale, i / 60);
+  ok(c2.scale === 1, '4K range: a light frame climbs back to native 1.0 and no further (' + c2.scale + ')');
+  ok(U.options('?minscale=0.6&uiscale=1.5').minscale === .6 && U.options('?minscale=0.6&uiscale=1.5').uiscale === 1.5 && U.options('').minscale === 1, '4K switches parse: &minscale and &uiscale');
+}
 /* ---- the bench verdict ---- */
 const T = 1000 / 60;
 ok(U.benchVerdict({ avgFps: 60, p95: 16.9, workMs: 6 }, T) === 'plenty of headroom', 'verdict: plenty of headroom');
 ok(U.benchVerdict({ avgFps: 58.5, p95: 18, workMs: 0 }, T) === 'near the limit', 'verdict: near the limit (a few dropped frames)');
 ok(U.benchVerdict({ avgFps: 60, p95: 17, workMs: 14 }, T) === 'near the limit', 'verdict: near the limit (work time 14 ms of 16.7)');
 ok(U.benchVerdict({ avgFps: 38, p95: 30, workMs: 0 }, T) === 'too heavy: lower the scale', 'verdict: too heavy');
-const rep = U.benchReport({ tier: 'ultra', gpu: 'AMD Radeon VII', gpuKind: 'discrete', screen: '1920x1080 @1x', canvas: '1920x1080', bigRT: '3840x2160', scale: 2, dyn: true, maxScale: 2, msaa: 8, shadow: 4096, aniso: 16, tris: 120000, calls: 210,
+const rep = U.benchReport({ tier: 'ultra', gpu: 'AMD Radeon VII', gpuKind: 'discrete', screen: '1920x1080 css px', dpr: 2, physical: '3840x2160', minScale: 0.5, canvas: '1920x1080', bigRT: '3840x2160', scale: 2, dyn: true, maxScale: 2, msaa: 8, shadow: 4096, aniso: 16, tris: 120000, calls: 210,
   run: { seconds: 10, frames: 600, avgFps: 60, avgMs: 16.67, p95: 16.9, max: 20, workMs: 7.1, workSrc: 'GPU timer', scaleMin: 2, scaleMax: 2, verdict: 'plenty of headroom' } });
+ok(/device pixel ratio: 2.00/.test(rep) && /real pixels: 3840x2160/.test(rep) && /range 0.50 to 2.00/.test(rep), 'bench report names the device pixel ratio, the real pixels and the scale range');
 ok(/GPU: AMD Radeon VII \(discrete\)/.test(rep) && /verdict: plenty of headroom/.test(rep) && /95th percentile 16.90 ms/.test(rep) && rep.split('\n').length >= 9, 'bench report is plain copyable text');
 process.exit(fails ? 1 : 0);

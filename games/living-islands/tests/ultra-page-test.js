@@ -82,8 +82,27 @@ await run('ultra-dynamic', '?q=ultra&ssaa=1.5&seed=1122', async p => {
 });
 await run('ultra-msaa0-ssaa1', '?q=ultra&ssaa=1&msaa=0&bloom=0&shadow=1024', async p => { const s = await U(p); ok(s.on && s.msaaGot === 0 && s.big === null && s.shadow === 1024, 'plain ultra settings: no multisampling, no big target, shadow 1024'); });
 await run('ultra-post0', '?q=ultra&post=0&ssaa=1.25&dyn=0&seed=1122', async p => { const s = await U(p); ok(s.on && s.canvas[0] === 800 && s.canvas[1] === 500, 'post=0 + ultra: the canvas itself is the big target (' + s.canvas.join('x') + ')'); });
+await run('high-moods', '?ui=0&q=high&moods=1&weather=auto&seed=1122', async p => { ok(await p.evaluate(() => !!__li.moods) && !(await U(p)).on, 'high + moods: the weather patch of the post shader still applies (uniform line untouched)'); });
 await run('post0', '?ui=0&post=0&q=high&seed=1122', async p => { const s = await U(p); ok(!s.on, 'post=0 high: ultra off'); });
 
+/* ---- a 4K-class window: the scale may go below native, the UI grows, the panel names the real pixels ---- */
+if (want('ultra-4k')) {
+  const c4 = await browser.newContext({ viewport: { width: 3840, height: 2160 }, deviceScaleFactor: 1 });
+  if (fs.existsSync(local)) await c4.route('**/three.min.js', r => r.fulfill({ path: local, contentType: 'application/javascript' }));
+  try {
+    const r = await open(c4, '?q=ultra&msaa=0&bloom=0&shadow=1024&bench=1&seed=1122');
+    ok(r.errs.length === 0, 'ultra-4k: 0 console errors/warnings' + (r.errs.length ? ': ' + r.errs[0] : ''));
+    const rg = await r.page.evaluate(() => __li.ultra.range()), ui = await r.page.evaluate(() => __li.ultra.ui()), st = await U(r.page);
+    ok(rg.min === 0.5 && Math.abs(rg.max - 1800 / 2160) < 1e-6 && rg.big && rg.profile === 'tv', 'ultra-4k: profile tv, range 0.5 to 0.833 (1800p internal): ' + JSON.stringify(rg));
+    ok(ui === 3 && await r.page.evaluate(() => document.getElementById('top').style.zoom === '3'), 'ultra-4k: UI scale 3 (tv profile 1.5 x 3840/1920 css) at 1x');
+    ok(st.canvas[0] === 3840 && st.canvas[1] === 2160 && st.big && st.big[0] === 3200 && st.big[1] === 1800, 'ultra-4k: canvas 3840x2160 real pixels, internal 3200x1800 (' + JSON.stringify(st.big) + ') upscaled by the present pass');
+    await r.page.evaluate(() => __li.ultra.setScale(0.5)); await r.page.waitForFunction(() => __li.ultra.state().big && __li.ultra.state().big[0] === 1920, null, { timeout: 240000 });
+    const s2 = await U(r.page); ok(s2.big[1] === 1080 && s2.canvas[0] === 3840, 'ultra-4k: scale 0.5 renders 1920x1080 and upscales to the 3840x2160 canvas');
+    const txt = await r.page.evaluate(() => __li.ultra.panelText()); ok(/canvas 3840x2160 px/.test(txt) && /device pixel ratio 1.00/.test(txt), 'ultra-4k: the panel shows canvas pixels and the device pixel ratio');
+    await r.page.close();
+  } catch (e) { ok(false, 'ultra-4k threw ' + String(e).slice(0, 200)); }
+  await c4.close();
+}
 /* ---- the AR profile caps itself at high ---- */
 await run('ar', '?tier=ar&q=ultra&seed=1122', async p => {
   const s = await U(p), h = await hud(p); ok(!s.on && h.btn === 'Quality: High', 'AR: q=ultra is refused, the tier is high');
@@ -137,6 +156,17 @@ await run('bench', '?q=ultra&bench=1&ssaa=1&seed=1122', async p => {
   ok(/too heavy|near the limit|plenty of headroom/.test(rep.r.verdict), 'bench: a verdict (' + rep.r.verdict + ')');
   ok(rep.text === rep.ta && /GPU: /.test(rep.text) && /verdict:/.test(rep.text), 'bench: the report is in a text box and starts "Living Islands bench"');
 });
+
+/* ---- the four &device= presets: defaults only, explicit params win, the readout names the preset ---- */
+const info = p => p.evaluate(() => document.getElementById('info').textContent);
+await run('device-ar', '?device=ar&seed=1122', async p => { const s = await U(p), st = await p.evaluate(() => __li.stats()); ok(!s.on && st.quality === 'low' && /device ar/.test(await info(p)), 'device=ar: low, ultra off, AR tier (readout: ' + (await info(p)).split('\n')[0].slice(-30) + ')'); ok(await p.evaluate(() => __li.ultra.device()) === 'ar' && await p.evaluate(() => new URLSearchParams(location.search).get('tier') === null), 'device=ar: the URL itself is untouched, the preset only fills defaults'); });
+await run('device-ipad', '?device=ipad&seed=1122', async p => { const s = await U(p), st = await p.evaluate(() => __li.stats()); ok(!s.on && st.quality === 'low' && /device ipad/.test(await info(p)), 'device=ipad: low, no ultra effects'); ok(await p.evaluate(() => document.body.classList.contains('dev-touch') && parseInt(getComputedStyle(document.getElementById('homeBtn')).minHeight) >= 52), 'device=ipad: bigger touch targets (52 px)'); });
+await run('device-desktop', '?device=desktop&seed=1122', async p => { const s = await U(p); ok(s.on && s.shadow === 2048 && s.bloom === 0 && s.terrainCell === 0.55 && s.maxScale <= 1.25 && /device desktop/.test(await info(p)), 'device=desktop: ultra effects, light: shadow 2048, no bloom, terrain 0.55, scale up to 1.25 (' + JSON.stringify({ sh: s.shadow, ms: s.maxScale, cell: s.terrainCell }) + ')'); ok(s.msaaGot > 0 && s.msaaGot <= 4, 'device=desktop: 4 samples at most'); });
+await run('device-radeon', '?device=radeon&ssaa=1.5&seed=1122', async p => { const s = await U(p); ok(s.on && s.shadow === 4096 && s.maxScale === 1.5 && /device radeon/.test(await info(p)), 'device=radeon: everything in ultra (shadow 4096), explicit &ssaa=1.5 wins'); ok(await p.evaluate(() => __li.ultra.panelVisible()), 'device=radeon: the bench panel is on'); ok(/^GPU: \S/.test((await hud(p)).gpu), 'device=radeon: the GPU readout is on'); });
+await run('device-explicit', '?device=radeon&q=high&seed=1122', async p => { const s = await U(p); ok(!s.on && s.tier === 'high' && await p.evaluate(() => __li.ultra.panelVisible()), 'device=radeon&q=high: the explicit q wins, the rest of the preset stays (bench panel)'); });
+await run('device-explicit2', '?device=desktop&post=0&q=high&seed=1122', async p => { const s = await U(p); ok(!s.on && s.canvas[0] === 640, 'device=desktop&post=0&q=high: both explicit values win'); });
+await run('device-none', '?seed=1122', async p => { ok(!/device/.test(await info(p)) && await p.evaluate(() => __li.ultra.device()) === '', 'no &device=: the readout has no device and nothing changed'); });
+await run('device-junk', '?device=toaster&seed=1122', async p => { ok(await p.evaluate(() => __li.ultra.device()) === '' && !(await U(p)).on, 'an unknown &device= is ignored'); });
 
 /* ---- the page's own features with ultra ---- */
 const feat = [

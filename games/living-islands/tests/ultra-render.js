@@ -1,4 +1,4 @@
-/* Pictures for ULTRA_TIER.md. Run: NODE_PATH=$(npm root -g) node games/living-islands/tests/ultra-render.js [only=1,2,3] [tiles=1] [w=2400] [h=1350]
+/* Pictures for ULTRA_TIER.md. Run: NODE_PATH=$(npm root -g) node games/living-islands/tests/ultra-render.js [only=1,2,3] [tiles=1] [compose=1] [w=2400] [h=1350]
    Three scenes, each drawn twice at 2400 x 1350 with the same view and the same frozen clocks: Quality High (&q=high) and Quality Ultra (&q=ultra&ssaa=2&dyn=0&msaa=8, forced to the full 2x because software GL would
    otherwise keep a built-in chip's small scale). The page is served over http from a small node server so that the hero models (boats, kit pieces, the repair jetty) load; over file:// ultra keeps the live level.
    Scenes: 1 camp day one (kit pieces, robot yard), 2 the dinghy close (boat kit hero), 3 the repair jetty (hero frame). Software GL: every frame of the ultra page takes a long time, so the script waits for the
@@ -23,18 +23,19 @@ const SC = {
   1: { base: '?ui=0&seed=1122&start=camp&campwarm=0&clock=1&cfreeze=1&seat=3', wait: p => p.waitForFunction(() => __li.campstart && __li.campstart.rt() && __li.campstart.rt().ready(), null, { timeout: 900000 }), ultraWait: p => p.waitForFunction(() => { const h = __li.campstart.rt().heroStat(); return h.loaded >= 1 && __li.campstart.rt().kit().some(k => k.lod === 'hero'); }, null, { timeout: 900000 }),
     view: async p => { const Y = await p.evaluate(() => { const y = __li.campstart.rt().yard(); return { x: y.x, z: y.z, yaw: y.yaw }; }); const c = await p.evaluate(() => __li.camp());
       const ks = await p.evaluate(() => __li.campstart.rt().kit().map(k => ({ kind: k.kind, x: k.cx, z: k.cz, yaw: k.yaw }))); const a = ks.find(k => k.kind === 'lean_to') || ks[0];
-      await p.evaluate(v => { __li.setView(v); }, { tx: (a.x * 2 + Y.x) / 3, tz: (a.z * 2 + Y.z) / 3, ty: .8, dist: 34, phi: .5, theta: (a.yaw || 1.4) + .55, fov: 30 }); } },
+      const mx = ks.reduce((t, k) => t + k.x, 0) / ks.length, mz = ks.reduce((t, k) => t + k.z, 0) / ks.length;
+      await p.evaluate(v => { __li.setView(v); }, { tx: (a.x * 3 + mx) / 4, tz: (a.z * 3 + mz) / 4, ty: .6, dist: 20, phi: .62, theta: (a.yaw || 1.4) + .55, fov: 30 }); } },
   2: { base: '?ui=0&seed=1122&boatkit=1&clock=1&cfreeze=1&seat=3', wait: p => p.waitForFunction(() => __li.boatkit && __li.boatkit.ready(), null, { timeout: 900000 }), ultraWait: p => p.waitForFunction(() => __li.boatkit.boats().some(b => b.lod === 'hero'), null, { timeout: 900000 }),
     view: async p => { await p.evaluate(() => { __li.holdClock(true); __li.clockT(20); __li.clock.setSky(121, 16.5, 4); __li.clock.setSpeed(0); const b = __li.boatkit.pos(3); __li.setView({ tx: b.x, tz: b.z, ty: .3, fov: 30, dist: 8.5, phi: .38, theta: 1.1 }); }); } },
   3: { base: '?ui=0&seed=1122&repair=1&boatkit=1', wait: async p => { await p.waitForFunction(() => __li.repair && __li.repair.ready() && __li.boatkit && __li.boatkit.ready(), null, { timeout: 900000 }); }, ultraWait: p => p.waitForFunction(() => __li.ultra.state().repairHero, null, { timeout: 900000 }),
     view: async p => { await p.evaluate(() => { __li.repair.step(120); const S = __li.repair.dbg().site, r = __li.repair.local(1.0, 0, .3); __li.repair.view({ theta: S.psi + 1.05, dist: 12.5, phi: .55, tx: r[0], tz: r[2] }); }); } }
 };
-const CROPS = { 1: [[900, 500, 200, 130], [1300, 700, 200, 130]], 2: [[1000, 450, 200, 130], [1250, 800, 200, 130]], 3: [[1000, 500, 200, 130], [1300, 750, 200, 130]] };
+const CROPS = { 1: [[380, 650, 200, 130], [330, 900, 200, 130]], 2: [[1500, 700, 200, 130], [620, 330, 200, 130]], 3: [[1060, 560, 200, 130], [840, 340, 200, 130]] };   /* roof edge and barrel shadow; hull edge and beach shadow; jetty posts and plank edges, jetty shadow lattice */
 fs.writeFileSync(path.join(TILE_DIR, 'crops.json'), JSON.stringify(CROPS));
 async function shootOne(i, tier) {
   const s = SC[i], p = await ctx.newPage(); await p.setViewportSize({ width: W, height: H }); const errs = [];
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !/GL Driver|GPU stall|ReadPixels/.test(m.text())) errs.push(m.text()); }); p.on('pageerror', e => errs.push(e.message));
-  await p.goto(`http://127.0.0.1:${PORT}/islands_look.html${s.base}${tier === 'ultra' ? ULTRA : '&q=high'}`);
+  await p.goto(`http://127.0.0.1:${PORT}/islands_look.html${s.base}${tier === 'ultra' ? ULTRA : '&q=high'}`, { timeout: 900000 });
   await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 1, null, { timeout: 900000 });
   await s.wait(p);
   if (tier === 'ultra') { await s.view(p); await s.ultraWait(p); } else { await s.view(p); await p.waitForTimeout(2000); }
@@ -46,8 +47,9 @@ async function shootOne(i, tier) {
   await p.close(); return info;
 }
 const INFO = {};
+if (arg('compose') === '1') only.length = 0;   /* compose=1: no shooting, only the sheets from the tiles already in TILE_DIR */
 for (const i of only) { INFO[i] = { high: await shootOne(i, 'high'), ultra: await shootOne(i, 'ultra') }; }
-fs.writeFileSync(path.join(TILE_DIR, 'info.json'), JSON.stringify(INFO));
+{ const f = path.join(TILE_DIR, 'info.json'); let old = {}; try { old = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { /* none yet */ } fs.writeFileSync(f, JSON.stringify(Object.assign(old, INFO))); }
 await browser.close(); server.close();
 if (arg('tiles') === '1') process.exit(0);
 const py = `

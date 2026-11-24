@@ -66,7 +66,7 @@
   const pick = (v, list, d) => { const x = Math.round(num(v, d)); let best = list[0]; for (const l of list) if (Math.abs(l - x) < Math.abs(best - x)) best = l; return best; };
   /* ssaa = the largest render scale (1 to 2), dyn = 0 pins the scale at ssaa, msaa = samples (0, 2, 4, 8), shadow = shadow map size, herolod = 0 turns the hero models off, herod = metres within which a hero shows
      (boats), kitd = same for the camp kit pieces, terrain = the terrain cell in metres (smaller = more triangles), aniso = anisotropy (0 = the most the GPU gives), bloom = strength (0 = off),
-     soft = shadow softness radius in shadow texels, fit = 0 turns the tight shadow frustum off, fps = target frame rate, maxpx = most pixels in the big render target, bench = 1 shows the bench panel. */
+     profile = desk | tv | handheld (the viewing profile; absent = chosen from the screen), render = internal height in pixels on the tv profile (default 1800, 2160 = native), minscale = lowest render scale (below 1 only helps a 4K screen), uiscale = UI size, soft = shadow softness radius in shadow texels, fit = 0 turns the tight shadow frustum off, fps = target frame rate, maxpx = most pixels in the big render target, bench = 1 shows the bench panel. */
   function options(search) {
     const P = new URLSearchParams(search || '');
     const g = k => P.get(k);
@@ -74,10 +74,10 @@
       ssaa: clamp(num(g('ssaa'), 2), 1, 2), dyn: g('dyn') !== '0', msaa: pick(g('msaa'), [0, 2, 4, 8], 8), shadow: pick(g('shadow'), [1024, 2048, 4096, 8192], 4096),
       herolod: g('herolod') !== '0', herod: clamp(num(g('herod'), 60), 12, 200), kitd: clamp(num(g('kitd'), 150), 40, 400), terrain: clamp(num(g('terrain'), .40), .25, .9),
       aniso: Math.max(0, Math.round(num(g('aniso'), 0))), bloom: clamp(num(g('bloom'), .10), 0, .5), soft: clamp(num(g('soft'), 1.5), .5, 4), fit: g('fit') !== '0',
-      fps: clamp(num(g('fps'), 60), 20, 240), maxpx: clamp(num(g('maxpx'), 8294400), 500000, 33177600), bench: g('bench') === '1',
+      fps: clamp(num(g('fps'), 60), 20, 240), render: clamp(num(g('render'), 0), 0, 4320), profile: ['desk', 'tv', 'handheld'].includes(g('profile')) ? g('profile') : '', minscale: clamp(num(g('minscale'), 1), .25, 1), uiscale: clamp(num(g('uiscale'), 0), 0, 3), maxpx: clamp(num(g('maxpx'), 8294400), 500000, 33177600), bench: g('bench') === '1',
       given: {}
     };
-    for (const k of ['ssaa', 'msaa', 'shadow', 'herolod', 'terrain', 'aniso', 'bloom', 'soft', 'fit', 'dyn']) o.given[k] = g(k) !== null;
+    for (const k of ['minscale', 'uiscale', 'ssaa', 'msaa', 'shadow', 'herolod', 'terrain', 'aniso', 'bloom', 'soft', 'fit', 'dyn']) o.given[k] = g(k) !== null;
     return o;
   }
   /* the tier asked for by the URL or by storage: 'low' | 'high' | 'ultra' */
@@ -156,8 +156,8 @@
   }
   function benchReport(d) {
     const f = (v, n) => (typeof v === 'number' && isFinite(v) ? v.toFixed(n === undefined ? 1 : n) : 'n/a');
-    const L = ['Living Islands bench', 'tier: ' + d.tier + (d.url ? '   url: ' + d.url : ''), 'GPU: ' + (d.gpu || 'unknown') + (d.gpuKind ? ' (' + d.gpuKind + ')' : ''),
-      'screen: ' + d.screen + '   canvas: ' + d.canvas + (d.bigRT ? '   big render target: ' + d.bigRT : ''), 'render scale: ' + f(d.scale, 3) + ' (dynamic ' + (d.dyn ? 'on' : 'off') + ', range 1.0 to ' + f(d.maxScale, 2) + ')   msaa: ' + d.msaa + '   shadow map: ' + d.shadow + '   aniso: ' + d.aniso,
+    const L = ['Living Islands bench', 'tier: ' + d.tier + (d.device ? '   device: ' + d.device : '') + (d.url ? '   url: ' + d.url : ''), 'GPU: ' + (d.gpu || 'unknown') + (d.gpuKind ? ' (' + d.gpuKind + ')' : ''),
+      'screen: ' + d.screen + '   device pixel ratio: ' + f(d.dpr, 2) + '   real pixels: ' + (d.physical || 'n/a') + '   canvas: ' + d.canvas + ' px' + (d.bigRT ? '   big render target: ' + d.bigRT : ''), 'render scale: ' + f(d.scale, 3) + ' (dynamic ' + (d.dyn ? 'on' : 'off') + ', range ' + f(d.minScale === undefined ? 1 : d.minScale, 2) + ' to ' + f(d.maxScale, 2) + ')   msaa: ' + d.msaa + '   shadow map: ' + d.shadow + '   aniso: ' + d.aniso + (d.ui ? '   UI scale: ' + f(d.ui, 2) : ''),
       'triangles: ' + d.tris + '   draw calls: ' + d.calls];
     if (d.run) {
       L.push('benchmark: ' + f(d.run.seconds, 0) + ' s, ' + d.run.frames + ' frames, camera spinning', 'average ' + f(d.run.avgFps, 1) + ' fps (' + f(d.run.avgMs, 2) + ' ms), 95th percentile ' + f(d.run.p95, 2) + ' ms, worst ' + f(d.run.max, 1) + ' ms',
