@@ -262,7 +262,17 @@ function doBuild(s, id) {
   const st = Object.assign({}, s.stock); for (const k in b.needs) st[k] -= b.needs[k];
   return { ok: true, state: Object.assign({}, s, { ledger: r.ledger, build: id, stock: st }) };
 }
-const CORE = { STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* HAND GATHERING (Job 6b). A hold on a pile or a heap, one unit every HAND_UNIT_S seconds of holding: about one robot's output per minute on a matching order (tests/night-test.js measures the robots from the camp routine). */
+const ROBOT_RATE = { metal: 1.4, planks: 1.3, rope: 1.3, glass: 1.3 };   /* units a minute, one robot, one order (measured, night-test.js) */
+const HAND_UNIT_S = 50, LITTER_UNITS = UNITS_PER_TRIP;
+const SITE_STOCK = { wood: 'planks', metal: 'metal' };
+const litterStock = (kind, i) => SITE_STOCK[kind] || (i % 2 ? 'glass' : 'rope');
+const rateStr = v => (Math.round(v * 10) / 10).toFixed(1);
+const handRate = () => 60 / HAND_UNIT_S;
+function rateText(stockId) { return 'By hand: about ' + rateStr(handRate()) + ' a minute.' + (stockId && ROBOT_RATE[stockId] ? ' This robot on ' + stockById(stockId).short + ': about ' + rateStr(ROBOT_RATE[stockId]) + ' a minute.' : ''); }
+/* one frame of a hold: progress seconds in, whole units out */
+function handStep(p, dt, holding) { if (!holding) return { p, units: 0 }; p += dt; let u = 0; while (p >= HAND_UNIT_S) { p -= HAND_UNIT_S; u++; } return { p, units: u }; }
+const CORE = { ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -689,6 +699,7 @@ function targets() {
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   bots.forEach(b => { if (b.ready) { const sc = screenOf(b.x, b.y + .9, b.z); if (sc) T.push({ id: 'bot' + b.id, x: sc.x, y: sc.y, r: 60 }); } });
   try { if (BDP() && BDP().targets) BDP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('boat targets ' + e.message); }
+  try { handTargets().forEach(t => T.push(t)); } catch (e) { G.err.push('hand targets ' + e.message); }
   try { if (PHYS()) PHYS().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('phys targets ' + e.message); }
   try { if (SHP()) SHP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('storm targets ' + e.message); }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
@@ -709,6 +720,7 @@ const INSPECT = [
   { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
   { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note); return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
   { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
+  { re: /^litter\d+$/, f: () => ({ name: 'Shore litter', use: 'Washed-up scraps. A robot on a matching order gathers them; you can too.', needs: 'Hold: ' + rateText(null), action: 'Hold to gather' }) },
   { re: /^(hulk|heap\d+)$/, f: () => ({ name: 'Washed-up stock', use: 'What the storm left on the shore.', needs: 'A robot with an order, or your hands', action: 'Look' }) },
   { re: /^boat$/, f: () => ({ name: 'Your rowing boat', use: 'Row to the supplies, the skerry and the landings.', needs: null, action: 'Board' }) }
 ];
@@ -759,13 +771,51 @@ function onTap(cx, cy) {
 }
 function wireInput() {
   const el = C.renderer.domElement, pts = new Map(); let down = null, multi = false;
-  el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; ensureAudio(); }, true);
-  el.addEventListener('pointerup', e => { pts.delete(e.pointerId); const d = down; if (!pts.size) { down = null; const was = multi; multi = false; if (d && !was && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.timeStamp - d.t < 700) onTap(e.clientX, e.clientY); } }, true);
-  el.addEventListener('pointercancel', e => { pts.delete(e.pointerId); if (!pts.size) { down = null; multi = false; } }, true);
-  el.addEventListener('pointermove', e => { try { inspectMove(e); } catch (x) { /* the layer is a courtesy */ } }, true);
+  el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; ensureAudio();
+    if (pts.size === 1 && !G.cardOpen) { try { const T = targets().filter(t => /^(litter|heap)\d+$/.test(t.id)); let best = null, bd = 1e9; for (const t of T) { const d = Math.hypot(t.x - e.clientX, t.y - e.clientY); if (d < t.r * 1.15 && d < bd) { bd = d; best = t; } } if (best) handStart(best.id, e.clientX, e.clientY); } catch (x) { /* a courtesy */ } } }, true);
+  el.addEventListener('pointerup', e => { handStop(); pts.delete(e.pointerId); const d = down; if (!pts.size) { down = null; const was = multi; multi = false; if (d && !was && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.timeStamp - d.t < 700) onTap(e.clientX, e.clientY); } }, true);
+  el.addEventListener('pointercancel', e => { handStop(); pts.delete(e.pointerId); if (!pts.size) { down = null; multi = false; } }, true);
+  el.addEventListener('pointermove', e => { if (G.hand && G.hand.down && Math.hypot(e.clientX - G.hand.sx, e.clientY - G.hand.sy) > 18) handStop(); try { inspectMove(e); } catch (x) { /* the layer is a courtesy */ } }, true);
   el.addEventListener('pointerleave', () => { if (INS.hov) { INS.hov = null; hideInspect(); } }, true);
 }
 
+/* ---------------- HAND GATHERING (Job 6b): hold on shore litter or a storm heap; works day or night (at night only inside the lit radius, with the lantern lit) ---------------- */
+function phaseNow() { if (G.phaseOverride) return G.phaseOverride; try { if (PHYS()) { const st = PHYS().state(); return st.phase || 'day'; } } catch (e) { /* fall through */ } const h = ((G.s.gh % 24) + 24) % 24; return h >= 20.5 || h < 5.3 ? 'night' : h >= 18.5 ? 'dusk' : 'day'; }
+const isDark = () => { const p = phaseNow(); return p === 'night' || p === 'dusk'; };
+function lanternOn() { try { if (PHYS()) return !!PHYS().state().ph.lantern; } catch (e) { /* none */ } return true; }
+function litCircle() { try { const rt = C.li().campstart.rt(), sim = rt.sim(), a = rt.yard().points.apron, LC = root.LI_CAMP; return { x: a.x, z: a.z, r: sim.nightR || (sim.nightR = LC.litRadius(sim)) }; } catch (e) { return null; } }
+function handOk(x, z, say) { if (!isDark()) return true; const c = litCircle(); if (!lanternOn()) { if (say) toast('Too dark to gather. Light the lantern at the post.', 3600); return false; } if (c && Math.hypot(x - c.x, z - c.z) > c.r) { if (say) toast('Too far from the lantern light. Gather inside the lit ring.', 3600); return false; } return true; }
+function litterNow() {   /* the shore litter a hand may take now: dry, not taken, no robot on it */
+  const out = []; try { const rt = C.li().campstart.rt(), sim = rt.sim(); sim.pl.work.forEach((w, i) => { if (w.dead || sim.litter[i].taken || w.haul !== undefined) return; if (!(w.y > sim.env.tide + .3) && w.y !== undefined) return; if (sim.robots.some(r => r.siteI === i && (r.state === 'out' || r.state === 'work') && G.s.robots[r.id])) return; out.push({ i, x: w.x, z: w.z, kind: w.kind, stock: litterStock(w.kind, i) }); }); } catch (e) { /* camp not ready */ }
+  return out;
+}
+function handTargets() {
+  const T = []; if (G.hand && G.hand.noTargets) return T; for (const q of litterNow()) { const sc = screenOf(q.x, groundY(q.x, q.z) + .3, q.z); if (sc) T.push({ id: 'litter' + q.i, x: sc.x, y: sc.y, r: 46 }); } return T;
+}
+function handInfo(id) {   /* what a pile or heap is, for the hand: { stock, x, z, units, take(), left } or null */
+  if (/^litter\d+$/.test(id)) { const i = parseInt(id.slice(6), 10), q = litterNow().find(z => z.i === i); if (!q) return null; return { id, stock: q.stock, x: q.x, z: q.z, units: LITTER_UNITS, kind: 'litter', i }; }
+  if (/^heap\d+$/.test(id) && SHP() && SHP().heaps) { const hp = SHP().heaps().find(z => 'heap' + z.id === id); if (!hp || hp.rem <= 0) return null; return { id, stock: hp.stock, x: hp.x, z: hp.z, units: hp.rem, kind: 'heap', i: hp.id }; }
+  return null;
+}
+function handStart(id, sx, sy) { const inf = handInfo(id); if (!inf) return false; if ((G.s.stock[inf.stock] || 0) >= STOCK_CAP) { toast(stockById(inf.stock).name + ': the stock is full (' + STOCK_CAP + '). Build something first.', 3600); return false; } if (!handOk(inf.x, inf.z, true)) return false;
+  const h0 = G.hand && G.hand.id === id ? G.hand : null; G.hand = { id, down: true, p: h0 ? h0.p : 0, got: h0 ? h0.got : 0, sx, sy, stock: inf.stock }; handHud(true); return true; }
+function handStop() { if (G.hand) G.hand.down = false; handHud(false); }
+function handHud(on) { let e = G.ui.handbar; if (!e) { e = G.ui.handbar = h('div', 'gd-pill'); e.id = 'gd-hand'; e.style.cssText = 'position:absolute;left:50%;bottom:210px;transform:translateX(-50%);display:none;font-size:15px;pointer-events:none;min-width:190px;text-align:center'; e.innerHTML = '<span id="gd-hand-t"></span><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin-top:5px"><div id="gd-hand-b" style="height:6px;border-radius:3px;background:#e8c070;width:0"></div></div>'; G.ui.root.appendChild(e); } e.style.display = on ? 'block' : 'none'; if (on && G.hand) { const t = document.getElementById('gd-hand-t'); if (t) t.textContent = 'Gathering ' + stockById(G.hand.stock).name.toLowerCase() + '. Keep holding.'; } }
+function handTick(dt) {
+  const H = G.hand; litRing(); if (!H || !H.down) return; const inf = handInfo(H.id); if (!inf || !handOk(inf.x, inf.z, true) || (G.s.stock[inf.stock] || 0) >= STOCK_CAP) { handStop(); return; }
+  const r = handStep(H.p, dt, true); H.p = r.p; const b = document.getElementById('gd-hand-b'); if (b) b.style.width = Math.round(100 * (H.p / HAND_UNIT_S)) + '%';
+  for (let u = 0; u < r.units; u++) {
+    if (inf.kind === 'heap') { const t = SHP().handUnit(inf.i); if (!t) { handStop(); return; } addStockUnits(t.stock, 1); toast('+1 ' + stockById(t.stock).short.toLowerCase() + ' by hand.', 1800); }
+    else { addStockUnits(inf.stock, 1); H.got++; toast('+1 ' + stockById(inf.stock).short.toLowerCase() + ' by hand.', 1800); if (H.got >= LITTER_UNITS) { try { const sim = C.li().campstart.rt().sim(); sim.litter[inf.i].taken = true; sim.litter[inf.i].back = 150; } catch (e) { /* none */ } H.got = 0; handStop(); G.hand = null; break; } }
+    G.hands = (G.hands || 0) + 1;
+  }
+  if (G.hand) { G.sig = null; }
+}
+function litRing() {   /* a soft ring on the shore marks the lit radius while the lantern is lit at dusk and night */
+  const on = isDark() && lanternOn() && !!G.root; if (!on && !G.ring) return; const c = on ? litCircle() : null;
+  if (on && c && !G.ring) { const pts = []; for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2, x = c.x + Math.cos(a) * c.r, z = c.z + Math.sin(a) * c.r; pts.push(new THREE.Vector3(x, groundY(x, z) + .25, z)); } const g = new THREE.BufferGeometry().setFromPoints(pts); G.ring = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .32, depthWrite: false })); G.ring.name = 'litRing'; G.ring.frustumCulled = false; G.root.add(G.ring); }
+  if (G.ring) G.ring.visible = on;
+}
 /* ---------------- audio: one fog horn, made in the browser ---------------- */
 function ensureAudio() { if (G.horn || !(window.AudioContext || window.webkitAudioContext)) return; try { G.horn = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { G.horn = null; } if (G.horn && G.horn.state === 'suspended') G.horn.resume().catch(() => { }); }
 function foghorn() {
@@ -810,6 +860,7 @@ function activate(id) {
   if (id === 'wreck') return wreckCard();
   if (id.startsWith('find')) return takeFind(parseInt(id.slice(4), 10));
   if (id.startsWith('crate')) return deliveryCrate(parseInt(id.slice(5), 10));
+  if (/^litter\d+$/.test(id)) { const inf = handInfo(id); toast(inf ? 'Hold on it to gather by hand. ' + rateText(null) : 'Nothing here now.', 4200); return; }
   if (id === 'hulk' || /^heap\d+$/.test(id)) { if (SHP()) SHP().activate(id); return; }
   if (id === 'bottle') return readBottle();
   if (/^bot\d+$/.test(id)) return robotCard(parseInt(id.slice(3), 10));   /* 'bottle' also starts with 'bot': test it first */
@@ -957,7 +1008,7 @@ function robotState(i) { try { const b = C.li().campstart.rt().robots()[i]; retu
 function robotCard(i) {
   const s = G.s, on = s.robots[i], b = robotState(i); if (!b) return; focus(b.x, b.z, 13);
   const job = (s.jobs || [])[i], jn = job ? stockById(job).name.toLowerCase() : null;
-  const c = card('bot', '<h2>' + (on ? 'Old carrier' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tideline and brings the pile to the yard.' : 'Running, but it has no order. It waits at its post.') : 'Switched off. Dust in the tracks, one worn link.') + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
+  const c = card('bot', '<h2>' + (on ? 'Old carrier' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tideline and brings the pile to the yard. <small>' + rateText(job) + '</small>' : 'Running, but it has no order. It waits at its post.') : 'Switched off. Dust in the tracks, one worn link.') + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
   if (on) STOCKS.forEach(k => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + k.name + '</b></div>'; d.appendChild(btn(job === k.id ? 'Ordered' : 'Gather', () => giveOrder(i, k.id), job === k.id ? '' : 'pri', job === k.id)); c.appendChild(d); });
   const bs = []; if (!on) bs.push(btn('Fit a part (' + s.parts + ')', () => startRobot(i), 'pri', s.parts < 1)); if (on) bs.push(btn('Stock and builds', robotsCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
 }
@@ -968,7 +1019,7 @@ function giveOrder(i, id) {
 }
 function stockLine(st) { return STOCKS.map(k => k.short + ' ' + (st[k.id] || 0)).join(' · '); }
 function robotsCard() {
-  const s = G.s, c = card('stock', '<h2>Robots and stock</h2><p><small>Stock in the yard: ' + stockLine(s.stock) + '. Each trip from the shore brings ' + UNITS_PER_TRIP + '.</small></p>'); c.appendChild(xbtn());
+  const s = G.s, c = card('stock', '<h2>Robots and stock</h2><p><small>Stock in the yard: ' + stockLine(s.stock) + '. Each trip from the shore brings ' + UNITS_PER_TRIP + '. ' + rateText(null) + ' Hold on a pile on the shore or a heap, day or night (at night, inside the lit ring).</small></p>'); c.appendChild(xbtn());
   const nb = (() => { try { return C.li().campstart.rt().robots().length; } catch (e) { return 0; } })();
   for (let i = 0; i < nb; i++) { const b = robotState(i), on = s.robots[i], job = (s.jobs || [])[i]; const d = h('div', 'gd-item'); d.innerHTML = '<div><b>Carrier ' + (i + 1) + '</b><small>' + (on ? (job ? 'Gathering ' + stockById(job).name.toLowerCase() + '. Light: ' + (b && b.lamp) + '.' : 'No order.') : 'Switched off. Needs a part.') + '</small></div>'; if (on) d.appendChild(btn('Order', () => robotCard(i))); c.appendChild(d); }
   const t = h('div'); t.innerHTML = '<p><small>What each build needs</small></p>' + BUILDS.map(b => '<p style="margin:2px 0"><b>' + b.name.replace(' (finish the repair)', '') + '</b>: ' + needText(b.needs) + (Object.keys(missing(s.stock, b.needs)).length ? '' : ' (ready)') + '</p>').join(''); c.appendChild(t);
@@ -1104,7 +1155,7 @@ function renderUi() {
   if (GD_CLEAN && (hasStock || s.water) && G.leftCollapsed) { const w = btn('Stock ' + tot, () => { G.leftCollapsed = false; G.sig = null; renderUi(); }); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; L.appendChild(w); }
   else {
     if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
-    if (hasStock) { const w = btn(stockLine(s.stock), robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
+    if (hasStock) { const w = btn(stockLine(s.stock) + '<small style="display:block;font-size:11px;font-weight:600;opacity:.75">' + rateText(null) + '</small>', robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
     if (GD_CLEAN && (hasStock || s.water)) { const c = btn('Hide', () => { G.leftCollapsed = true; G.sig = null; renderUi(); }); c.style.fontSize = '13px'; c.id = 'gd-left-hide'; L.appendChild(c); }
     if (s.parts) { const w = h('div', 'gd-pill', 'Parts: ' + s.parts); w.style.fontSize = '14px'; L.appendChild(w); }
   }
@@ -1160,7 +1211,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt); plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
@@ -1258,6 +1309,7 @@ function init(ctx) {
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
     focus, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
+    handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
   };
   return G;

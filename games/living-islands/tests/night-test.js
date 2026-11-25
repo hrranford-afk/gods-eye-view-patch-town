@@ -31,4 +31,12 @@ for (const nb of [2, 3, 4]) {
 { const sim = mk(3); sim.shifts = false; for (let t = 0; t < 400; t += .25) C.simStep(sim, .25, ENV(true)); ok(sim.robots.every(r => r.state === 'bay' || r.state === 'home'), 'without shifts (the old routine) every robot is home at night'); }
 { const sim = mk(3); const r = sim.robots[0]; for (let t = 0; t < 300; t += .25) C.simStep(sim, .25, { night: false, rain: true, tide: 0 }); ok(sim.robots.every(q => q.state === 'bay' || q.state === 'home'), 'rain still sends every robot home'); }
 
+/* ---- 2. hand versus robot rate ---- */
+{ const kinds = { metal: 'metal', planks: 'wood', rope: 'plastic', glass: 'plastic' }; let all = true; const rates = {};
+  for (const sid of Object.keys(kinds)) { const sim = mk(3); sim.robots.forEach(r => { r.want = kinds[sid]; }); C.simRun(sim, 3600, ENV(false)); const perMin = sim.robots.reduce((a, r) => a + r.delivered, 0) / 3 * K.UNITS_PER_TRIP / 60; rates[sid] = perMin; if (Math.abs(perMin - K.ROBOT_RATE[sid]) / perMin > .15) all = false; }
+  ok(all, 'the page constants match the camp routine per robot (' + Object.keys(rates).map(k => k + ' ' + rates[k].toFixed(2) + ' vs ' + K.ROBOT_RATE[k]).join(', ') + ')');
+  const ratio = K.handRate() / (Object.values(rates).reduce((a, b) => a + b, 0) / 4); ok(ratio > .8 && ratio < 1.2, 'by hand is about one robot a minute (ratio ' + ratio.toFixed(2) + ')'); }
+{ let p = 0, u = 0; for (let i = 0; i < 6000; i++) { const r = K.handStep(p, .1, true); p = r.p; u += r.units; } ok(u === 12, 'a ten minute hold gives ' + u + ' units (about ' + K.handRate().toFixed(1) + ' a minute)');
+  const r0 = K.handStep(10, 5, false); ok(r0.p === 10 && r0.units === 0, 'no hold, no progress: nothing gathers by itself');
+  ok(/By hand: about 1\.2 a minute\. This robot on Metal: about 1\.4 a minute\./.test(K.rateText('metal')), 'the readout reads: ' + K.rateText('metal')); }
 console.log('\n' + (fails ? fails + ' FAILED of ' + n : 'all ' + n + ' passed')); process.exit(fails ? 1 : 0);

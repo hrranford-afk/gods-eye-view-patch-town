@@ -702,8 +702,10 @@ function targets() {
 }
 function activate(id) {
   if (id === 'hulk') return hulkCard();
-  if (id.startsWith('heap')) { const i = parseInt(id.slice(4), 10); return startPick(i); }
+  if (id.startsWith('heap')) { const i = parseInt(id.slice(4), 10), e = heapsLeft().find(q => q.h.id === i); S.A.toast(e && e.rem > 0 ? 'Hold on the heap to gather it by hand: about 1.2 a minute. Or give a robot an order.' : 'This heap is cleared.', 4500); return; }   /* Job 6b: a hold, not a tap (gift_day.js handTick); startPick stays for the test hooks */
 }
+/* one unit by hand (a hold in gift_day.js adds it to the stock): the heap shrinks, the save and the pieces follow */
+function handUnit(i) { const e = heapsLeft().find(q => q.h.id === i); if (!e || e.rem <= 0) return null; S.st.taken[e.h.id] = (S.st.taken[e.h.id] || 0) + 1; commit(); applyVisibility(); return { stock: e.h.stock, left: e.rem - 1 }; }
 function startPick(i) {
   const e = heapsLeft().find(q => q.h.id === i); if (!e || e.rem <= 0) return; if (S.pick) return; const A = S.A, have = (A.S().stock || {})[e.h.stock] || 0;
   if (have >= A.STOCK_CAP) { A.toast(HEAP_LABEL[e.h.stock] + ': the stock is full (' + A.STOCK_CAP + '). Build something, or leave it for later.', 4500); return; }
@@ -896,6 +898,6 @@ function restoreCrates() { const st = S.st; if (st && st.l9 >= 1 && S.A) S.A.cra
 function hintTarget() { if (!S.ready || S.st.phase !== 'haul') return null; const c = S.A.camp(), e = heapsLeft().filter(q => q.rem > 0).sort((a, b) => Math.hypot(a.h.x - c.x, a.h.z - c.z) - Math.hypot(b.h.x - c.x, b.h.z - c.z))[0]; return e ? { x: e.h.x, z: e.h.z, r: 1.8 } : null; }
 function weatherWant() { return S.ready && S.st.phase === 'run' && S.m ? S.m.weather : null; }
 root.LI_STORM.attach = attach;
-root.LI_STORM.page = { attach, tick, targets, activate, hintTarget, weatherWant, tripStock, onLoad, restoreCrates, readL9, start, state: api2.state, quiet: () => S.quiet, skip: () => start({ build: S.opts.buildSec }) };
+root.LI_STORM.page = { handUnit, heaps: () => heapsLeft().map(e => ({ id: e.h.id, stock: e.h.stock, n0: e.h.n0, rem: e.rem, x: e.h.x, y: e.h.y, z: e.h.z })), attach, tick, targets, activate, hintTarget, weatherWant, tripStock, onLoad, restoreCrates, readL9, start, state: api2.state, quiet: () => S.quiet, skip: () => start({ build: S.opts.buildSec }) };
 root.__storm = api2;
 }(typeof window !== "undefined" ? window : (typeof globalThis !== "undefined" ? globalThis : this)));
