@@ -54,4 +54,17 @@ for (const nb of [2, 3, 4]) {
   ok(K.itemById('battery') && K.itemById('solar') && K.CATALOGUE.length === 10 && K.KITS.length === 2, 'two kits sit beside the ten small things');
   const pl = K.placeOrder(K.newLedger(), 'battery', 12); ok(pl.ok && pl.order.item === 'battery', 'a kit can be ordered like anything else');
   const sv = K.validState(JSON.parse(K.serialize(r1.state))); ok(sv && sv.mods[0].bat && sv.kits.battery === 0, 'mods and kits survive the save'); }
+/* ---- 4. wait for dawn ---- */
+{ const W = K.waitStep; let w = { mode: null, k: 0 }; const base = { night: true, dark: true, idle: 0, busy: false, act: false };
+  w = W(w, .1, Object.assign({}, base, { start: true })); ok(w.mode === 'manual' && w.speed < 2, 'the button starts a manual wait, eased in (speed ' + w.speed.toFixed(2) + ' at first)');
+  for (let i = 0; i < 100; i++) w = W(w, .1, base); ok(w.mode === 'manual' && Math.abs(w.speed - K.WAIT.manualSpeed) < 1e-6, 'it ramps to ' + K.WAIT.manualSpeed + ' times in ' + K.WAIT.rampS + ' s');
+  const c = W(w, .1, Object.assign({}, base, { act: true })); ok(c.mode === null && c.speed === 1, 'any player action cancels it at once');
+  const d = W(w, .1, Object.assign({}, base, { night: false, dark: false })); ok(d.mode === null && d.speed === 1, 'dawn ends it');
+  ok(W({ mode: null, k: 0 }, .1, Object.assign({}, base, { start: true, dark: false, night: false })).mode === null, 'it cannot start in daylight');
+  let a = { mode: null, k: 0 }; for (let t = 0; t < 40; t += .5) a = W(a, .5, Object.assign({}, base, { idle: t })); ok(a.mode === null, 'nothing speeds up before ' + K.WAIT.idleS + ' s of nothing to do');
+  a = W(a, .5, Object.assign({}, base, { idle: 46 })); ok(a.mode === 'auto' && a.speed < 1.5, 'after ' + K.WAIT.idleS + ' s idle at night the time starts to go by, gently');
+  for (let i = 0; i < 40; i++) a = W(a, .25, Object.assign({}, base, { idle: 60 })); ok(a.mode === 'auto' && a.speed <= K.WAIT.autoSpeed + 1e-9 && a.speed > 2.9, 'the automatic speed tops out at ' + K.WAIT.autoSpeed + ' times');
+  ok(W(a, .1, Object.assign({}, base, { idle: 60, busy: true })).mode === null, 'something that needs you (a card, a hold, a build step) stops it');
+  ok(W({ mode: null, k: 0 }, .1, Object.assign({}, base, { idle: 99, busy: true })).mode === null, 'and it does not start while something needs you');
+  ok(W({ mode: null, k: 0 }, .1, Object.assign({}, base, { idle: 99, night: false, dark: true })).mode === null, 'no automatic speed-up at dusk (only at night)'); }
 console.log('\n' + (fails ? fails + ' FAILED of ' + n : 'all ' + n + ' passed')); process.exit(fails ? 1 : 0);

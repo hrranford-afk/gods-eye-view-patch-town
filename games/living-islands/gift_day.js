@@ -287,7 +287,20 @@ const handRate = () => 60 / HAND_UNIT_S;
 function rateText(stockId) { return 'By hand: about ' + rateStr(handRate()) + ' a minute.' + (stockId && ROBOT_RATE[stockId] ? ' This robot on ' + stockById(stockId).short + ': about ' + rateStr(ROBOT_RATE[stockId]) + ' a minute.' : ''); }
 /* one frame of a hold: progress seconds in, whole units out */
 function handStep(p, dt, holding) { if (!holding) return { p, units: 0 }; p += dt; let u = 0; while (p >= HAND_UNIT_S) { p -= HAND_UNIT_S; u++; } return { p, units: u }; }
-const CORE = { KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* WAIT FOR DAWN (Job 6b). mode: null, 'manual' (the Menu button: the night goes by at 8 times speed, ramped in over RAMP_S) or 'auto' (nothing needs you for IDLE_S at night: a gentle 3 times, ramped). Any player action cancels either; dawn ends either. Pure: waitStep(w, dt, o) with
+   o = { start: the button, stop: the button again, night, dark (dusk or night), idle: seconds since the last action, busy: something needs the player, act: the player acted since the last step }. */
+const WAIT = { idleS: 45, manualSpeed: 8, autoSpeed: 3, rampS: 5 };
+function waitStep(w, dt, o) {
+  let mode = w && w.mode || null, k = w && w.k || 0;
+  if (o.act || o.stop) { mode = null; k = 0; }
+  else if (mode && !o.dark) { mode = null; k = 0; }
+  else if (mode === 'auto' && (o.busy || !o.night)) { mode = null; k = 0; }
+  if (!mode) { if (o.start && o.dark) mode = 'manual'; else if (o.night && !o.busy && !o.act && !o.stop && o.idle >= WAIT.idleS) mode = 'auto'; }
+  if (mode) k = Math.min(1, k + dt / WAIT.rampS); else k = 0;
+  const top = mode === 'manual' ? WAIT.manualSpeed : WAIT.autoSpeed;
+  return { mode, k, speed: mode ? 1 + (top - 1) * k : 1 };
+}
+const CORE = { WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -400,7 +413,7 @@ function buildDom() {
   const r = h('div'); r.id = 'gd'; document.body.appendChild(r); G.ui.root = r;
   r.innerHTML = '<div id="gd-fade"></div><div id="gd-strip" class="gd-pill"></div><div id="gd-left"></div><div id="gd-right"></div><div id="gd-hint" class="gd-pill"></div><div id="gd-toast" class="gd-pill"></div><div id="gd-plankhint" class="gd-pill">Tap a plank, then a yellow slot</div><div id="gd-layer"></div>';
   for (const k of ['strip', 'left', 'right', 'hint', 'toast', 'layer', 'fade']) G.ui[k] = document.getElementById('gd-' + k);
-  r.addEventListener('pointerdown', e => e.stopPropagation()); r.addEventListener('pointerup', e => e.stopPropagation());
+  r.addEventListener('pointerdown', e => { G.actAt = performance.now(); G.idle = 0; e.stopPropagation(); }); addEventListener('keydown', () => { G.actAt = performance.now(); G.idle = 0; }); r.addEventListener('pointerup', e => e.stopPropagation());
   ['wheel', 'touchstart', 'touchmove'].forEach(n => r.addEventListener(n, e => { if (e.target.closest('.gd-card,.gd-pill,.gd-btn')) e.stopPropagation(); }, { passive: true }));
   applyZoom(); addEventListener('resize', applyZoom);
 }
@@ -424,6 +437,7 @@ function clockTick(dt) {
   const c = ck(), s = G.s; if (!c) { s.gh += dt * 0.05; return; }
   if (G.clk0 === undefined) G.clk0 = clk0();
   s.gh = c.hours() - G.clk0;
+  if (G.waitSpeed > 1.01) { c.freeze(false); c.setSpeed(G.waitSpeed); G.clockMode = 'wait'; return; }   /* Job 6b: wait for dawn */
   const st = stageOf(s), w = WIN[st] || WIN.done; let lo = w[0];
   if (st === 'jobs') lo = Math.min(w[1] - 0.2, w[0] + 1.15 * jobsDone(s) + (s.plank ? 0.6 : 0));
   const dayOff = Math.floor(s.gh / 24) * 24;                         /* windows are for day 1; later days just run at the quiet pace */
@@ -787,7 +801,7 @@ function onTap(cx, cy) {
 }
 function wireInput() {
   const el = C.renderer.domElement, pts = new Map(); let down = null, multi = false;
-  el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; ensureAudio();
+  el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; G.actAt = performance.now(); G.idle = 0; ensureAudio();
     if (pts.size === 1 && !G.cardOpen) { try { const T = targets().filter(t => /^(litter|heap)\d+$/.test(t.id) || t.id === 'fitpost'); let best = null, bd = 1e9; for (const t of T) { const d = Math.hypot(t.x - e.clientX, t.y - e.clientY); if (d < t.r * 1.15 && d < bd) { bd = d; best = t; } } if (best) handStart(best.id, e.clientX, e.clientY); } catch (x) { /* a courtesy */ } } }, true);
   el.addEventListener('pointerup', e => { handStop(); pts.delete(e.pointerId); const d = down; if (!pts.size) { down = null; const was = multi; multi = false; if (d && !was && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.timeStamp - d.t < 700) onTap(e.clientX, e.clientY); } }, true);
   el.addEventListener('pointercancel', e => { handStop(); pts.delete(e.pointerId); if (!pts.size) { down = null; multi = false; } }, true);
@@ -834,6 +848,14 @@ function litRing() {   /* a soft ring on the shore marks the lit radius while th
   if (on && c && !G.ring) { const pts = []; for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2, x = c.x + Math.cos(a) * c.r, z = c.z + Math.sin(a) * c.r; pts.push(new THREE.Vector3(x, groundY(x, z) + .25, z)); } const g = new THREE.BufferGeometry().setFromPoints(pts); G.ring = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .32, depthWrite: false })); G.ring.name = 'litRing'; G.ring.frustumCulled = false; G.root.add(G.ring); }
   if (G.ring) G.ring.visible = on;
 }
+/* ---------------- wait for dawn (Job 6b) ---------------- */
+function waitBusy() { if (G.cardOpen || (G.hand && G.hand.down) || G.fit) return true; try { if (PHYS()) { const m = PHYS().state().marker; if (m && ['site', 'beam', 'beamA', 'crate', 'heavy', 'open', 'unload', 'float'].includes(m.tag)) return true; } } catch (e) { /* none */ } return false; }
+function waitTick(dt) {
+  const w = G.wait || (G.wait = { mode: null, k: 0, at: 0, speed: 1 }), ph = phaseNow(), act = (G.actAt || 0) > w.at; w.at = performance.now();
+  const r = waitStep(w, dt, { start: !!G.waitReq && G.waitReq === 'start', stop: G.waitReq === 'stop', night: ph === 'night', dark: ph === 'night' || ph === 'dusk', idle: G.idle, busy: waitBusy(), act: act && !G.waitReq });
+  G.waitReq = null; const was = w.mode; w.mode = r.mode; w.k = r.k; G.waitSpeed = r.speed; if (was !== w.mode) { if (w.mode === null && was) { G.idle = 0; } G.sig = null; renderUi(); }
+}
+function waitReq(v) { G.waitReq = v; G.actAt = 0; }
 /* ---------------- audio: one fog horn, made in the browser ---------------- */
 function ensureAudio() { if (G.horn || !(window.AudioContext || window.webkitAudioContext)) return; try { G.horn = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { G.horn = null; } if (G.horn && G.horn.state === 'suspended') G.horn.resume().catch(() => { }); }
 function foghorn() {
@@ -1160,25 +1182,26 @@ function sleepToMorning() {
 function pulse(which) { G.pulse = which; setTimeout(() => { if (G.pulse === which) G.pulse = null; renderUi(); }, 9000); renderUi(); }
 function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
-  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
+  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), phaseNow(), G.wait ? G.wait.mode : '', lanternOn(), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
   if (sig === G.sig) return; G.sig = sig; const P = progress(s);
-  const hintText = (PHYS() && PHYS().hint && PHYS().hint()) || (GD_CLEAN ? shortHint(s) : hintFor(s));
+  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
   G.ui.hint.innerHTML = ''; const sp = h('span', '', hintText); G.ui.hint.appendChild(sp);
   const mk = {};   /* every action button, made once; where it goes depends on the HUD mode */
   if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
   if (s.letter1 && stage === 'jobs') { const b = btn('Notebook', notebook); b.id = 'gd-notes-btn'; mk.notes = b; if (G.helpPlank && !s.plank) { const fb = btn('Fit one plank', fitOnePlank, 'pri'); fb.id = 'gd-plank-btn'; mk.plank = fb; } }
   if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; mk.cat = b; }
   if (s.letter2) { const bl = PHYS() && PHYS().buildLine && PHYS().buildLine(); const b = btn(bl ? 'Build<small style="display:block;font-weight:600;opacity:.75;font-size:11px;max-width:150px;white-space:normal">' + bl + '</small>' : (s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : GD_CLEAN ? 'Build' : 'Build menu'), buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
+  if (isDark()) { const b = btn(G.wait && G.wait.mode ? 'Stop waiting' : 'Wait for dawn', () => waitReq(G.wait && G.wait.mode ? 'stop' : 'start')); b.id = 'gd-wait-btn'; mk.wait = b; }
   if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; mk.sleep = b; }
   const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); });
   const R = G.ui.right; R.innerHTML = '';
   if (!GD_CLEAN) {
     G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
-    ['ledger', 'notes', 'plank', 'cat', 'build', 'sleep'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
+    ['ledger', 'notes', 'plank', 'cat', 'build', 'sleep', 'wait'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
   } else {
     /* top left: Day, the stage you are in, six dots, and one line of status */
     const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : (stage === 'dock' ? 'The dock' : 'Done')) + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
@@ -1189,7 +1212,7 @@ function renderUi() {
     if (main && mk[main]) R.appendChild(mk[main]);
     if (mk.build && main !== 'build') R.appendChild(mk.build);   /* OWNER 25 Nov: the Build button is permanent once the letter is read, not behind Menu */
     const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
-    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'sleep'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
+    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'sleep', 'wait'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
     const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
   }
   const L = G.ui.left; L.innerHTML = '';
@@ -1205,6 +1228,8 @@ function renderUi() {
 }
 
 /* one short imperative sentence for the bottom centre (under eight words). The long hintFor stays in the core for tests and the notebook. */
+/* the night hint: real choices, not one order (Job 6b). Only when the physical layer has nothing more urgent and the night's own story beat (the bottle) is not waiting. */
+function nightHint(s) { if (phaseNow() !== 'night') return null; if (stageOf(s) === 'night' && !s.bottle) return null; if (stageOf(s) === 'arrive' || stageOf(s) === 'dock') return null; return lanternOn() ? 'Robots charging. Work by lantern, or wait for dawn.' : 'Robots charging. Light the lantern, or wait for dawn.'; }
 function shortHint(s) {
   switch (stageOf(s)) {
     case 'dock': return 'Row to the glow.';
@@ -1254,7 +1279,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt); plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  waitTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
@@ -1354,6 +1379,7 @@ function init(ctx) {
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
     handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },
+    waitReq: v => waitReq(v), waitState: () => ({ mode: G.wait && G.wait.mode, speed: G.waitSpeed || 1, mode0: G.clockMode }), actNow: () => { G.actAt = performance.now(); G.idle = 0; }, idleSet: v => { G.idle = v; }, hintNow: () => (G.ui.hint && G.ui.hint.textContent) || '',
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
   };
   return G;

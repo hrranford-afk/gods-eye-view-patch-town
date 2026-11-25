@@ -52,6 +52,19 @@ for (const [name, w, h, dev] of SIZES) {
     await G(p, 'robotCardOpen', 0); ok(/Parts: bigger battery\./.test(await G(p, 'cardText')) && !/Short night shift/.test(await G(p, 'cardText')), name + ': the card shows the part and drops "Short night shift"');
     ok((await p.evaluate(() => __li.campstart.rt().sim().robots[0].cap)) === 2.5, name + ': the camp routine runs it with capacity 2.5');
   }
+  /* 4. the night hint and wait for dawn */
+  if (want(4)) {
+    await p.evaluate(() => { __gift.closeCard(); }); await G(p, 'setPhase', 'night'); await p.waitForFunction(() => /wait for dawn/.test(__gift.hintNow()), null, { timeout: 60000 }).catch(() => { });
+    ok(/Robots charging\. Work by lantern, or wait for dawn\./.test(await G(p, 'hintNow')), name + ': the night hint offers a real choice: "' + (await G(p, 'hintNow')) + '"');
+    await p.evaluate(() => { const mb = document.getElementById('gd-menu-btn'); if (mb && !document.body.classList.contains('gd-menuopen')) mb.click(); }); await p.waitForTimeout(300);
+    ok(await p.evaluate(() => !!document.getElementById('gd-wait-btn')), name + ': the Menu has "Wait for dawn"');
+    await p.evaluate(() => document.getElementById('gd-wait-btn').click()); await p.waitForTimeout(200); await p.evaluate(() => { for (let i = 0; i < 6; i++) { } });
+    ok((await G(p, 'waitState')).mode === 'manual', name + ': the button starts the wait');
+    await p.waitForFunction(() => __gift.waitState().speed > 4, null, { timeout: 120000 }); ok(true, name + ': time speeds up (x' + (await G(p, 'waitState')).speed.toFixed(1) + ')');
+    await G(p, 'actNow'); await p.waitForTimeout(600); const ws = await G(p, 'waitState'); ok(ws.mode === null && ws.speed === 1, name + ': a player action cancels it');
+    await G(p, 'idleSet', 60); await p.waitForTimeout(800); ok((await G(p, 'waitState')).mode === 'auto', name + ': a minute of nothing to do starts the gentle automatic speed-up');
+    await G(p, 'actNow'); await p.waitForTimeout(600); ok((await G(p, 'waitState')).mode === null, name + ': and any action cancels that too');
+    await G(p, 'setPhase', ''); }
   ok(errs.length === 0, name + ': zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await p.close();
 }
