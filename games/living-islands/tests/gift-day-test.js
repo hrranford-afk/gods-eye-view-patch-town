@@ -92,7 +92,7 @@ rs = K.setJob(rs, 0, 'metal'); eq(rs.jobs, ['metal'], 'an order is stored per ro
 rs = K.addHaul(rs, 'metal', 3); eq(rs.stock.metal, 3 * K.UNITS_PER_TRIP, 'each trip adds ' + K.UNITS_PER_TRIP + ' units'); ok(K.addHaul(rs, 'metal', 999).stock.metal === K.STOCK_CAP, 'the stock is capped');
 ok(K.addHaul(rs, 'planks', 0) === rs && K.addHaul(rs, 'bogus', 2) === rs, 'no trips or an unknown kind changes nothing');
 const rl = K.deserialize(K.serialize(K.setJob(Object.assign(K.canned('yard', 3), {}), 0, 'rope'))); ok(rl && rl.jobs[0] === 'rope', 'orders survive a save and load');
-const rl2 = K.deserialize(K.serialize(K.addHaul(K.canned('yard', 3), 'planks', 4))); ok(rl2 && rl2.stock.planks === 8, 'stock survives a save and load');
+const rl2 = K.deserialize(K.serialize(K.addHaul(K.canned('yard', 3), 'planks', 4))); ok(rl2 && rl2.stock.planks === K.STARTER.planks + 8, 'stock survives a save and load');
 const bad = JSON.parse(K.serialize(K.canned('yard', 3))); bad.stock = { planks: -5, rope: 'x', glass: 1e9, metal: 2 }; bad.jobs = ['zzz', 'planks', 'planks', 'planks', 'planks'];
 const rb = K.validState(bad); ok(rb && rb.stock.planks === 0 && rb.stock.rope === 0 && rb.stock.glass === K.STOCK_CAP && rb.jobs.length === 4 && rb.jobs[0] === null, 'a damaged stock or order list is clamped on load');
 ok(!/\b(feel|happy|sad|says|speaks|smile|mouth|hello)\b/i.test(K.STOCKS.map(x => x.name).join(' ') + JSON.stringify(K.BUILDS.map(b => b.needs))), 'robot and stock text has no speech, mouths or feelings (lamp eyes are allowed since 25 Nov)');

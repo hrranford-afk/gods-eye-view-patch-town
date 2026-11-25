@@ -67,4 +67,22 @@ for (const nb of [2, 3, 4]) {
   ok(W(a, .1, Object.assign({}, base, { idle: 60, busy: true })).mode === null, 'something that needs you (a card, a hold, a build step) stops it');
   ok(W({ mode: null, k: 0 }, .1, Object.assign({}, base, { idle: 99, busy: true })).mode === null, 'and it does not start while something needs you');
   ok(W({ mode: null, k: 0 }, .1, Object.assign({}, base, { idle: 99, night: false, dark: true })).mode === null, 'no automatic speed-up at dusk (only at night)'); }
+/* ---- 5. starter stock and the exact missing line ---- */
+ok(K.STARTER.metal === K.BUILD_NEEDS.cistern.metal && K.STARTER.planks === K.BUILD_NEEDS.cistern.planks && K.STARTER.metal === 3 && K.STARTER.planks === 1, 'the starter sack is metal 3, planks 1: exactly the cistern');
+{ const st0 = Object.assign({}, K.emptyStock()), st1 = Object.assign({}, st0, K.STARTER); ok(K.missing(st1, K.BUILD_NEEDS.cistern) && Object.keys(K.missing(st1, K.BUILD_NEEDS.cistern)).length === 0, 'with the starter sack the cistern is never blocked on stock');
+  ok(K.missingText(st0, { metal: 3 }) === 'Needs 3 metal: you have 0. Set a robot to Metal (daytime) or gather by hand.', 'the card line is exact: ' + K.missingText(st0, { metal: 3 }));
+  ok(K.missingText(st0, K.BUILD_NEEDS.cistern) === 'Needs 3 metal and 1 planks: you have 0 and 0. Set a robot to Metal or Planks (daytime) or gather by hand.', 'two things missing: ' + K.missingText(st0, K.BUILD_NEEDS.cistern));
+  ok(K.missingText({ metal: 3, planks: 1 }, K.BUILD_NEEDS.cistern) === '' && /you have 2\./.test(K.missingText({ metal: 2 }, { metal: 3 })), 'nothing when enough; the line shows what you have'); }
+/* ---- 6. skip-to stock: what a normal day would have produced, never an impossible state ---- */
+{ let allOk = true, why = []; const flag = (c, m) => { if (!c) { allOk = false; why.push(m); } };
+  for (const st of K.STAGES) { const s = K.canned(st, 9001), i = K.STAGES.indexOf(st);
+    flag(Object.values(s.stock).every(v => v >= 0 && v <= K.STOCK_CAP), st + ': stock within 0 and the cap');
+    flag(s.ledger.cash >= 0 && s.ledger.credit >= 0, st + ': ledger not negative');
+    flag(s.parts + s.robots.filter(Boolean).length === (i >= 3 ? 3 : 0) || i < 3, st + ': parts and started robots add up to the three links from crate one');
+    flag(s.robots.some(Boolean) ? (s.jobs || []).every(j => j === null || Object.keys(K.STARTER).concat(['planks']).includes(j)) : true, st + ': a started carrier has a sensible order');
+    if (i >= 3) flag(!Object.keys(K.missing(Object.assign({}, s.stock, s.build ? K.BUILD_NEEDS[s.build] : {}), K.BUILD_NEEDS.cistern)).length || s.build, st + ': from the yard on, the cistern is never blocked on stock');
+    if (i < 3) flag(Object.values(s.stock).every(v => v === 0), st + ': before crate one is opened the yard stock is empty');
+    if (i >= 4) flag(s.stock.planks >= 6 && s.stock.rope === 0 && s.stock.glass === 0, st + ': only what a carrier on planks could have brought'); }
+  const d2 = K.canned('done', 9001); flag(Object.values(d2.stock).every(v => v >= 0), 'done: stock sane');
+  ok(allOk, 'every Skip-to stage has the stock a normal day produces' + (why.length ? ' (' + why.join('; ') + ')' : '')); }
 console.log('\n' + (fails ? fails + ' FAILED of ' + n : 'all ' + n + ' passed')); process.exit(fails ? 1 : 0);
