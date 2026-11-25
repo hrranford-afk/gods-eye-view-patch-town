@@ -112,3 +112,12 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 9.8 | CHANGED | `a4_neighbour_return` and `a2_neighbour_gift_back`: the neighbour's return is explained by a ropewalk and a store that ran over, not by the player's virtue | same rule: a chain of things, not a moral ledger |
 | 9.9 | KEEP | the soft attitude points on events (trust, distrust, investigate, share) | they only lean draw weights; they never change a counter, the credit line or the weather |
 | 9.10 | CHANGED | the matching lines in `GIFT_LETTERS.md` and the spine warmth ladder | kept in sync |
+
+## Step 10. The mainland: one small thing worth missing
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 10.1 | CHANGED | `p0_street`: the cafe doorway with a strip of close grey diamond-weave carpet on the step, the smell of toast, and the woman's nod | the critic: the grey town needs one small thing a player could miss, so leaving it costs something; gentle, not bleak |
+| 10.2 | CHANGED | spine section 1: scene table row 2 and a new paragraph, "The mainland's one small good thing" | documents the object that travels |
+| 10.3 | KEEP | the loom hum, the shut shops, the sodium light, the kind nod | the town stays grey and kind |
+| 10.4 | CHANGED | the lens clue (`a2_clue_lens_carpet`, clue 59) now uses exactly that carpet, with a teal thread through it | the pattern is the thing that reappears; the teal is the island palette entering the town's weave |
+| 10.5 | NEW TEST | `test_mainland_carpet_returns` | keeps the two texts tied |

@@ -439,6 +439,11 @@ class Content(unittest.TestCase):
                 if e["kind"] == "wildlife" and e["id"].startswith(("a2_hide", "a3_seal_big", "a4_seals")):
                     self.assertRegex(e["text"] + e["cause"], r"clear|clean|drift|nets", e["id"] + " seals rise with no stated cause")
 
+    def test_mainland_carpet_returns(self):
+        # critic review v2: the grey town has one thing worth missing, a carpet pattern that reappears in the lens clue
+        self.assertIn("carpet", BY_ID["p0_street"]["text"]); self.assertIn("diamond", BY_ID["p0_street"]["text"])
+        self.assertIn("carpet", BY_ID["a2_clue_lens_carpet"]["text"]); self.assertIn("diamond", BY_ID["a2_clue_lens_carpet"]["text"]); self.assertIn("teal", BY_ID["a2_clue_lens_carpet"]["text"])
+
     def test_world_kindnesses(self):
         # critic review v2: five kindnesses with no letter, each with a physical cause
         for i in ("a1_kind_second_blanket", "a1_kind_crate_handles", "a1_kind_dry_shelf", "a1_kind_parcel_returned", "a4_kind_spare_mould"):
