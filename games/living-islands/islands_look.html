@@ -79,7 +79,7 @@ const DEV0=Object.prototype.hasOwnProperty.call(DEV_PRESETS,Q.get('device')||'')
 function earlyGpu(){if(Q.get('gpuname')!==null)return Q.get('gpuname');try{const c=document.createElement('canvas'),g=c.getContext('webgl')||c.getContext('experimental-webgl');if(!g)return'';const e=g.getExtension('WEBGL_debug_renderer_info'),r=e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER),l=g.getExtension('WEBGL_lose_context');if(l)l.loseContext();return String(r||'');}catch(x){return'';}}
 const STEP=(DEV0==='radeon'||DEV0==='desktop')&&window.LI_ULTRA&&LI_ULTRA.deviceStepDown?LI_ULTRA.deviceStepDown(DEV0,earlyGpu(),Q.get('fakeua')!==null?Q.get('fakeua'):navigator.userAgent,Q.get('fakeua')!==null?5:(navigator.maxTouchPoints||0),{off:Q.get('stepdown')==='0'}):{step:false};
 const DEV=STEP.step?STEP.to:DEV0;
-if(STEP.step){const n=document.createElement('div');n.id='stepnote';n.textContent=STEP.note;n.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:30;max-width:min(680px,calc(100vw - 24px));padding:7px 12px;border-radius:12px;background:rgba(251,246,236,.94);border:2px solid #cdbb98;color:#2b2118;font:14px/1.3 Georgia,serif;text-align:center;pointer-events:none;transition:opacity 1.2s';document.body.appendChild(n);setTimeout(()=>{n.style.opacity='0';},14000);setTimeout(()=>{if(n.parentNode)n.parentNode.removeChild(n);},16000);}
+if(STEP.step){const n=document.createElement('div');n.id='stepnote';n.textContent=STEP.note;n.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:30;max-width:min(680px,calc(100vw - 24px));padding:7px 12px;border-radius:12px;background:rgba(251,246,236,.94);border:2px solid #cdbb98;color:#2b2118;font:14px/1.3 Georgia,serif;text-align:center;pointer-events:none;transition:opacity 1.2s';document.body.appendChild(n);setTimeout(()=>{n.style.opacity='0';},14000);setTimeout(()=>{n.style.display='none';},16000);}
 if(DEV){const P=DEV_PRESETS[DEV];for(const k in P)if(!Q.has(k))Q.set(k,P[k]);if(DEV==='ipad')document.body.classList.add('dev-touch');}
 const WQ=Q.get('world');                /* the world view (world_view.js, see WORLD_VIEW.md): ?world=NNN draws one exported world of the land formation tool instead of the six hand-placed islands; absent = unchanged */
 const WID=(WQ!==null&&/^\d+$/.test(WQ))?(parseInt(WQ,10)>>>0):null;
@@ -690,7 +690,7 @@ function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
   return out;}
 bkLoad();
 let RP_ADDBOAT=null;
-const XB={specs:[],objs:[],alarm:null};   /* extra boats a layer drives itself (the gift's tender, boat_drive.js): re-added whenever the boats are rebuilt; the spec object IS the boat (b.x, b.z, b.yaw, b.dy, b.dpt, b.drl, b.rowing, b.oar are set from outside); absent = nothing */
+const XB={specs:[],objs:[],alarm:null,cam:null,noBlur:false};   /* extra boats a layer drives itself (the gift's tender, boat_drive.js): re-added whenever the boats are rebuilt; the spec object IS the boat (b.x, b.z, b.yaw, b.dy, b.dpt, b.drl, b.rowing, b.oar are set from outside); absent = nothing */
 /* ============ the camp start (&start=camp, see CAMP_START.md) ============
    Day one of the shelter ladder: no cottages, no village jetty, no moored harbour boats. The settler camp stays (tents, fire, flame, settlers). camp_start.js plans, by seed and on the page's own
    height function, the robot yard, the kit pieces and the shore work sites; here the page clears what stands in the way, levels a small pad under each piece and then builds the pieces, the yard and the robots.
@@ -2190,7 +2190,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
   if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderH());u.uQ.value=QL().hiWaves;}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
-  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(CP.rt)CP.rt.frame(clock.hold?0:dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
+  if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);if(XB.cam)XB.cam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(CP.rt)CP.rt.frame(clock.hold?0:dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   if(CKON)ckFrame(dt);
   if(LTON)ltFrame(dt);
   if(MDON)mdFrame(dt);
@@ -2200,7 +2200,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   const sc=sun.shadow.camera;sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.updateProjectionMatrix();if(ULT.on&&ULO.fit)ultraShadowFit(tgt);
   /* tilt shift focus */
   const pv=tgt.clone().project(camera);postMat.uniforms.uFocus.value=clamp(pv.y*.5+.5,.2,.8)+.02;
-  const hpx=renderer.domElement.height;postMat.uniforms.uBlur.value=hpx*.0085*(quality==='high'?1:.8);postMat.uniforms.uBand.value=.13;
+  const hpx=renderer.domElement.height;postMat.uniforms.uBlur.value=XB.noBlur?0:hpx*.0085*(quality==='high'?1:.8);postMat.uniforms.uBand.value=.13;
   if(ULT.on||UB.active||UB.vis){renderer.info.reset();ultraTimed(renderScene);if(ULT.on)ultraShadowCheck();}   /* the ultra tier and the bench panel: the same render, timed */
   else if(NOPOST){renderer.render(scene,camera);}else{renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam);}
   window.__liFrames=(window.__liFrames||0)+1;}
@@ -2976,7 +2976,7 @@ function init(){
         const pts=[],refs=[];for(let f=.3;f<=.701;f+=.05)for(let x=-.28;x<=.281;x+=.07)pts.push(proj(x*Bk,0,f*Lk));   /* plan points inside the hull at the design waterline, seen from above */
         for(const f of[.2,.4,.6,.8])for(const sd of[-1,1])refs.push(proj(sd*(Bk/2+1.5),0,f*Lk));return{pts,refs};},
       oarTip:i=>{const o=boatObjs.filter(q=>q.kit)[i];if(!o)return null;const L=o.kit.lods[o.kit.lod];o.mesh.updateMatrixWorld(true);const r=[];for(const n of['oar_l','oar_r']){const nd=L.nodes[n];if(!nd)continue;const bb=new THREE.Box3().setFromObject(nd),c=bb.getCenter(new THREE.Vector3());o.mesh.worldToLocal(c);r.push([n,c.x,c.y,c.z]);}return r;}}:null,
-    xboat:{add:spec=>{spec.drive=true;XB.specs.push(spec);if(!RP_ADDBOAT)return null;const n0=boatObjs.length;RP_ADDBOAT(spec);const o=boatObjs[n0];XB.objs.push(o);return o;},obj:i=>XB.objs[i||0]||null,ready:()=>!!RP_ADDBOAT&&(!BKON||BK.ready||BK.failed),kit:()=>BKON&&BK.ready,alarm:a=>{XB.alarm=a;},clear:()=>{XB.specs=[];XB.objs=[];if(scene)buildBoats();}},
+    xboat:{add:spec=>{spec.drive=true;XB.specs.push(spec);if(!RP_ADDBOAT)return null;const n0=boatObjs.length;RP_ADDBOAT(spec);const o=boatObjs[n0];XB.objs.push(o);return o;},obj:i=>XB.objs[i||0]||null,ready:()=>!!RP_ADDBOAT&&(!BKON||BK.ready||BK.failed),kit:()=>BKON&&BK.ready,alarm:a=>{XB.alarm=a;},camHook:fn=>{XB.cam=fn||null;},noBlur:v=>{XB.noBlur=!!v;},rim:v=>{if(rim)rim.visible=!!v;},camera:()=>camera,clear:()=>{XB.specs=[];XB.objs=[];if(scene)buildBoats();}},
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},

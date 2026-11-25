@@ -251,12 +251,14 @@ if (Q0.get('game') !== 'gift' || Q0.get('boat') === '0') { root.LI_BOAT_DRIVE.at
 const K = CORE;
 const FORCE_BOAT = Q0.get('boat') === '1';              /* the boat is there from the start (testing and a quick look); otherwise it comes with the first order, in the yard stage */
 const MOTOR_START = Q0.get('motor') === '1';              /* a new boat starts with the small motor already fitted (for trying the fast boat without the first trip) */
+const BOW_START = Q0.get('cam') === 'bow';               /* the low bow camera starts on (default off: the chase camera stays the default) */
+const NO_RIM = Q0.get('rim') === '0';                    /* in bow view also hide the table's wooden rim (see GIFT_BOAT.md, the bow camera) */
 const ERRAND_ON = Q0.get('errand') === '1';             /* the errand stub: off unless asked for */
 const WIND_MS = { clear: 3.5, fair: 6.5, overcast: 7, showers: 9.5, rain: 11, fog: 2, storm: 21, goldenhour: 3 };   /* the weather module's own wind speeds */
 const WIND_DIR = (() => { const x = .45, z = -.89, l = Math.hypot(x, z); return { x: x / l, z: z / l }; })();    /* the page's default wind vector (the sea shader's uWind), the way the wind blows TO */
 let A = null, C = null, THREE = null;
 const P = { ready: false, b: null, mode: 'idle', spec: null, obj: null, lands: [], berths: {}, inp: { steer: 0, throttle: 0 }, kb: { up: 0, down: 0, left: 0, right: 0 }, stick: { on: false, x: 0, y: 0, id: null }, goto: null, gotoMark: null, t: 0, err: [], dock: null,
-  fx: null, motor: null, loadG: null, loadSig: '', mounted: null, saveT: 0, hudT: 0, errand: null, firstSeen: false, noteT: 0, boarded: false, cacheMesh: null, cacheLoc: null, scrapeT: 0, lastBump: 0, forced: null, started: false, seals: [], mark: null, trailT: 0, ringT: 0, sprayT: 0, puffT: 0, wasStroke: 0 };
+  bow: BOW_START, bowOn: false, camYaw: 0, fx: null, motor: null, loadG: null, loadSig: '', mounted: null, saveT: 0, hudT: 0, errand: null, firstSeen: false, noteT: 0, boarded: false, cacheMesh: null, cacheLoc: null, scrapeT: 0, lastBump: 0, forced: null, started: false, seals: [], mark: null, trailT: 0, ringT: 0, sprayT: 0, puffT: 0, wasStroke: 0 };
 
 /* ---------------- the page's answers ---------------- */
 const tideNow = () => C.tide();
@@ -281,6 +283,8 @@ const CSS = `
 #bd-main{position:absolute;right:14px;bottom:14px;min-height:56px;min-width:116px;padding:8px 14px;line-height:1.15;display:none;pointer-events:auto}
 #bd-main small{display:block;font-weight:600;font-size:12px;opacity:.85}
 body.dev-touch #bd-main{min-height:60px;min-width:124px}
+#bd-cam{position:absolute;right:14px;bottom:86px;min-height:52px;min-width:52px;padding:6px 12px;display:none;pointer-events:auto;font-size:14px}
+body.dev-touch #bd-cam{min-height:52px}
 #bd-stick{position:absolute;left:16px;bottom:16px;width:132px;height:132px;border-radius:50%;background:rgba(251,246,236,.55);border:3px solid rgba(205,187,152,.95);display:none;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}
 #bd-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(47,111,230,.85);border:3px solid #fff;pointer-events:none;transition:transform .06s}
 #bd-stick i{position:absolute;font-style:normal;font-size:11px;color:#6a5a3e;opacity:.8}
@@ -292,9 +296,11 @@ body.bd-on #gd-left{bottom:164px}
 function buildHud() {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const r = document.createElement('div'); r.id = 'bd'; A.root().appendChild(r);
-  r.innerHTML = '<div id="bd-info" class="bd-pill"><svg id="bd-comp" viewBox="-32 -32 64 64" aria-label="Compass and wind"><g id="bd-rose"><circle r="29" fill="#fffaf0" stroke="#cdbb98" stroke-width="2"/><text y="-17" text-anchor="middle" font-size="10" font-weight="700" fill="#7a2a2a" font-family="Georgia,serif">N</text><g id="bd-wind"><path d="M0 -21 L0 9 M-4 -4 L0 -10 L4 -4" stroke="#2b8aa8" stroke-width="2.2" fill="none" stroke-linecap="round"/></g><g id="bd-head"><path d="M0 -24 L7 6 L0 2 L-7 6 Z" fill="#2f6fe6" stroke="#fff" stroke-width="1.2"/></g></g></svg><div class="bd-cell"><b id="bd-spd">0.0</b><small id="bd-spw">still, m/s</small></div><div class="bd-cell"><b id="bd-load">0 / 4</b><small id="bd-lw">load</small></div></div><div id="bd-st" class="bd-pill"></div><button id="bd-main" type="button" class="gd-btn pri"></button><div id="bd-stick" aria-label="Boat stick"><i class="u">ahead</i><i class="d">back</i><div id="bd-knob"></div></div>';
-  for (const k of ['info', 'st', 'main', 'stick', 'knob', 'spd', 'spw', 'load', 'lw', 'rose', 'wind', 'head']) P['e_' + k] = document.getElementById('bd-' + k);
+  r.innerHTML = '<div id="bd-info" class="bd-pill"><svg id="bd-comp" viewBox="-32 -32 64 64" aria-label="Compass and wind"><g id="bd-rose"><circle r="29" fill="#fffaf0" stroke="#cdbb98" stroke-width="2"/><text y="-17" text-anchor="middle" font-size="10" font-weight="700" fill="#7a2a2a" font-family="Georgia,serif">N</text><g id="bd-wind"><path d="M0 -21 L0 9 M-4 -4 L0 -10 L4 -4" stroke="#2b8aa8" stroke-width="2.2" fill="none" stroke-linecap="round"/></g><g id="bd-head"><path d="M0 -24 L7 6 L0 2 L-7 6 Z" fill="#2f6fe6" stroke="#fff" stroke-width="1.2"/></g></g></svg><div class="bd-cell"><b id="bd-spd">0.0</b><small id="bd-spw">still, m/s</small></div><div class="bd-cell"><b id="bd-load">0 / 4</b><small id="bd-lw">load</small></div></div><div id="bd-st" class="bd-pill"></div><button id="bd-cam" type="button" class="gd-btn" aria-label="Camera">Bow view</button><button id="bd-main" type="button" class="gd-btn pri"></button><div id="bd-stick" aria-label="Boat stick"><i class="u">ahead</i><i class="d">back</i><div id="bd-knob"></div></div>';
+  for (const k of ['info', 'st', 'main', 'cam', 'stick', 'knob', 'spd', 'spw', 'load', 'lw', 'rose', 'wind', 'head']) P['e_' + k] = document.getElementById('bd-' + k);
   const m = P.e_main; m.addEventListener('click', e => { e.stopPropagation(); mainPress(); });
+  P.e_cam.addEventListener('click', e => { e.stopPropagation(); P.bow = !P.bow; hudUpdate(); }); ['pointerdown', 'pointerup'].forEach(n => P.e_cam.addEventListener(n, e => e.stopPropagation()));
+  m.parentNode.removeChild(m); P.e_cam.parentNode.removeChild(P.e_cam);   /* the button joins the page only once there is a boat (an unused hidden button would only be noise for tests and readers of the page) */
   /* the stick: it gives the heading you want (on the screen) and the power; let go and the boat coasts */
   const s = P.e_stick, kn = P.e_knob;
   const upd = e => { const r2 = s.getBoundingClientRect(), R = r2.width / 2, dx = (e.clientX - (r2.left + R)) / R, dy = (e.clientY - (r2.top + R)) / R; let l = Math.hypot(dx, dy); const k = l > 1 ? 1 / l : 1; P.stick.x = dx * k; P.stick.y = -dy * k; kn.style.transform = 'translate(' + (P.stick.x * R * .72) + 'px,' + (-P.stick.y * R * .72) + 'px)'; };
@@ -347,7 +353,7 @@ function readInput(b) {
   const S = P.stick;
   if (P.forced) return P.forced;
   if (S.on && Math.hypot(S.x, S.y) > .1) {
-    const th = C.cam.theta, ux = -Math.sin(th), uz = -Math.cos(th), rx = Math.cos(th), rz = -Math.sin(th), wx = rx * S.x + ux * S.y, wz = rz * S.x + uz * S.y;
+    const dv = C.camera.getWorldDirection(new THREE.Vector3()), dl = Math.hypot(dv.x, dv.z) || 1, ux = dv.x / dl, uz = dv.z / dl, rx = -uz, rz = ux, wx = rx * S.x + ux * S.y, wz = rz * S.x + uz * S.y;   /* up on the stick is where the camera looks (chase or bow) */
     return K.headingControl(b, Math.atan2(-wz, wx), clamp(Math.hypot(S.x, S.y), 0, 1));
   }
   const k = P.kb; if (k.up || k.down || k.left || k.right) return { steer: (k.right - k.left), throttle: k.up - k.down };
@@ -364,7 +370,14 @@ function berthSearch(x0, z0, dx, dz, yaw, kmax) {   /* march seaward from a poin
 function computeLandings() {
   const S = A.spots(); if (!S) return false; const L = [], li = C.li(), W = C.W;
   const d = W.camp && W.camp.dir ? W.camp.dir : [1, 0], wp = S.tender.wp;
-  L.push({ id: 'beach', name: 'the beach landing', x: wp.x + d[0] * 3, z: wp.z + d[1] * 3, r: 12, sx: wp.x, sz: wp.z, dx: d[0], dz: d[1], yaw: Math.atan2(d[1], -d[0]) });
+  /* the beach landing: along the shore from the tender beach, at least 17 m from the repair jetty so the two berths never overlap */
+  let jx = null, jz = null; try { const s0 = li.repair && li.repair.site(); if (s0) { jx = s0.ox; jz = s0.oz; } } catch (e) { /* none */ }
+  let bw = { x: wp.x, z: wp.z }; const al = [-d[1], d[0]];
+  if (jx !== null && Math.hypot(wp.x - jx, wp.z - jz) < 17) for (const k of [16, -16, 22, -22, 28, -28, 34, -34]) {
+    let x = wp.x + al[0] * k - d[0] * 8, z = wp.z + al[1] * k - d[1] * 8, ok = false; for (let i = 0; i < 70; i++) { if (C.H(x, z) < .15) { ok = true; break; } x += d[0] * .5; z += d[1] * .5; }
+    if (ok && Math.hypot(x - jx, z - jz) >= 17) { bw = { x, z }; break; }
+  }
+  L.push({ id: 'beach', name: 'the beach landing', x: bw.x + d[0] * 3, z: bw.z + d[1] * 3, r: 12, sx: bw.x, sz: bw.z, dx: d[0], dz: d[1], yaw: Math.atan2(d[1], -d[0]) });
   try {
     const rp = li.repair, site = rp && rp.site(); if (site) {
       const cands = []; for (const lx of [2.4, 4.0, 5.6, 7.2, 9, 11, 13, 16]) for (const lz of [2.4, 4.5, 6.5, 8.5, 11, -2.7, -5, 0]) { if (lz === 0 && lx < 5.4) continue; if (lz < 0 && lx > 1.0 && lx < 4.8) continue; const p = rp.local(lx, 0, lz); cands.push({ x: p[0], z: p[2], lx, lz }); }   /* off the deck's far side (the repair mooring is on the near side), or beyond the tip: the jetty is a short stub on a shelving beach, so the berth is the nearest water that floats a rowing boat */
@@ -517,6 +530,8 @@ function nearestInfo() { return K.nearestLanding(P.b, P.lands); }
 function hudUpdate() {
   const b = P.b, sp = K.specOf(b), shown = P.b.avail && P.ready, mode = P.mode, driving = mode === 'drive' || mode === 'errand' || mode === 'docking';
   const info = P.e_info, main = P.e_main, stick = P.e_stick;
+  if (shown && !main.isConnected) { document.getElementById('bd').appendChild(main); document.getElementById('bd').appendChild(P.e_cam); }
+  P.e_cam.style.display = shown && (driving || mode === 'docked') ? 'block' : 'none'; P.e_cam.textContent = P.bow ? 'Chase view' : 'Bow view';
   document.body.classList.toggle('bd-on', driving && P.boarded);
   info.style.display = shown && (P.boarded || mode === 'docked') ? 'flex' : 'none';
   stick.style.display = shown && mode === 'drive' ? 'block' : 'none';
@@ -661,11 +676,23 @@ function reactions(dt) {
   const gl = moving ? (eng ? { r: 46, lift: 7 } : { r: 22, lift: 3 }) : null; P.alarm = gl ? { x: b.x, z: b.z, r: gl.r, lift: gl.lift } : null; try { C.li().xboat.alarm(P.alarm); } catch (e) { /* no gulls */ }
 }
 
+/* ---------------- the bow camera (&cam=bow or the button): eye level on the boat, off by default ---------------- */
+function bowActive() { return !!(P.bow && P.b.avail && (P.mode === 'drive' || P.mode === 'errand' || P.mode === 'docking' || P.mode === 'docked')); }
+function bowHook(dt) {
+  const b = P.b, cam = C.camera, r = P.spec || {}; P.camYaw += K.wrap(b.yaw - P.camYaw) * Math.min(1, dt * 3);   /* gentle smoothing of the heading */
+  const y = P.camYaw, c = Math.cos(y), s = -Math.sin(y), eyeY = Math.max(tideNow(), C.H(b.x, b.z) + .1) + 1.5 + (r.dpt || 0) * -.5;
+  cam.position.set(b.x - c * .35, eyeY, b.z - s * .35); cam.up.set(0, 1, 0); cam.lookAt(b.x + c * 30, eyeY - 1.9, b.z + s * 30); cam.rotateZ(-(r.drl || 0) * .5);
+}
+function bowApply(on) {
+  if (on === P.bowOn) return; P.bowOn = on; let xb = null; try { xb = C.li().xboat; } catch (e) { /* none */ } if (!xb) return;
+  if (on) { P.fovPrev = C.cam.fov; if (C.cam.fov !== undefined) C.cam.fov = 64; xb.noBlur(true); if (NO_RIM) xb.rim(false); P.camYaw = P.b.yaw; xb.camHook(bowHook); }
+  else { if (C.cam.fov !== undefined && P.fovPrev !== undefined) C.cam.fov = P.fovPrev; xb.noBlur(false); xb.rim(true); xb.camHook(null); }
+}
 /* ---------------- one frame ---------------- */
 function frame(dt) {
   const b = P.b; P.t += dt;
   const o = ensureObj(); if (!o || !P.spec) return;
-  const show = b.avail; o.mesh.visible = show; P.group.visible = show;
+  const show = b.avail; o.mesh.visible = show; P.group.visible = show; bowApply(bowActive());
   if (!show) { P.spec.x = 9999; P.spec.z = 9999; return; }   /* not given yet: parked far off the table (the contact ring is a separate object the kit shows for any afloat boat) */
   const e = envNow(), tide = tideNow();
   let inp = { steer: 0, throttle: 0 };
@@ -687,7 +714,7 @@ function frame(dt) {
   if (P.fx) { fxEmit(dt); fxUpdate(dt); }
   reactions(dt);
   /* the camera follows a driven boat (a gentle lead ahead); a card or a focus move is left alone */
-  if ((P.mode === 'drive' || P.mode === 'errand' || P.mode === 'docking') && !A.cardOpen() && !A.focusing() && !P.stickCam) { const lead = clamp(b.u, 0, 6) * .9, fx = b.x + Math.cos(b.yaw) * lead, fz = b.z - Math.sin(b.yaw) * lead, k = Math.min(1, dt * 2.6); const cam = C.cam; cam.tx += (fx - cam.tx) * k; cam.tz += (fz - cam.tz) * k; const rr = Math.hypot(cam.tx, cam.tz); if (rr > 100) { cam.tx *= 100 / rr; cam.tz *= 100 / rr; } }
+  if ((P.mode === 'drive' || P.mode === 'errand' || P.mode === 'docking') && !P.bowOn && !A.cardOpen() && !A.focusing() && !P.stickCam) { const lead = clamp(b.u, 0, 6) * .9, fx = b.x + Math.cos(b.yaw) * lead, fz = b.z - Math.sin(b.yaw) * lead, k = Math.min(1, dt * 2.6); const cam = C.cam; cam.tx += (fx - cam.tx) * k; cam.tz += (fz - cam.tz) * k; const rr = Math.hypot(cam.tx, cam.tz); if (rr > 100) { cam.tx *= 100 / rr; cam.tz *= 100 / rr; } }
   /* a goto marker follows the water */
   if (P.gotoMark) { if (!P.goto) P.gotoMark.visible = false; else { P.gotoMark.visible = true; const g = P.goto.pts[P.goto.pts.length - 1]; P.gotoMark.position.set(g[0], tide + .06, g[1]); P.gotoMark.scale.setScalar(1 + .12 * Math.sin(P.t * 5)); } }
   /* a save every few seconds while under way, and one when it comes to rest */
@@ -733,7 +760,8 @@ const page = {
   /* the testing handle: the page test and the pictures drive the boat with it */
   state: () => P.ready ? { ready: true, mode: P.mode, boarded: P.boarded, b: K.serializeBoat(P.b), u: P.b.u, yr: P.b.yr, roll: P.b.roll, pitch: P.b.pitch, grounded: P.b.grounded, sc: P.b.sc, avail: P.b.avail, landNow: P.landNow ? P.landNow.id : null, goto: !!P.goto, inp: P.inp, errand: P.errand ? P.errand.phase : null, cacheOn: !!(P.cacheMesh && P.cacheMesh.visible) } : { ready: false },
   err: () => P.err.slice(), landings: () => P.lands.map(l => Object.assign({}, l, { berth: berthFor(l) })), spec: () => P.spec && { x: P.spec.x, z: P.spec.z, yaw: P.spec.yaw, dy: P.spec.dy, dpt: P.spec.dpt, drl: P.spec.drl, rowing: P.spec.rowing, oar: P.spec.oar }, fx: () => ({ active: fxActive(), kinds: P.fx ? P.fx.parts.reduce((o, p) => { if (p.on) o[p.k] = (o[p.k] || 0) + 1; return o; }, {}) : {} }),
-  seals: () => P.sealState || [], hud: () => ({ spd: P.e_spd && P.e_spd.textContent, load: P.e_load && P.e_load.textContent, main: P.e_main && P.e_main.textContent, mainShown: P.e_main && getComputedStyle(P.e_main).display !== 'none', stick: P.e_stick && getComputedStyle(P.e_stick).display !== 'none', info: P.e_info && getComputedStyle(P.e_info).display !== 'none', note: P.noteText || '', rect: (id) => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; } }),
+  seals: () => P.sealState || [], hud: () => ({ spd: P.e_spd && P.e_spd.textContent, load: P.e_load && P.e_load.textContent, main: P.e_main && P.e_main.textContent, mainShown: !!(P.e_main && P.e_main.isConnected && getComputedStyle(P.e_main).display !== 'none'), stick: P.e_stick && getComputedStyle(P.e_stick).display !== 'none', info: P.e_info && getComputedStyle(P.e_info).display !== 'none', note: P.noteText || '', rect: (id) => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; } }),
+  bow: v => { if (v !== undefined) P.bow = !!v; return { want: P.bow, on: P.bowOn }; }, camInfo: () => { const c = C.camera; return { fov: c.fov, y: c.position.y, x: c.position.x, z: c.position.z, tide: tideNow() }; },
   press: mainPress, board: startDriving, dockHere: () => { const nl = nearestInfo(); if (nl && K.canDock(P.b, nl.landing)) { beginDock(nl.landing); return true; } return false; }, castOff, unload, fit, collect, loadKind, errand: startErrand, goTo, openLanding: () => openLanding(P.landNow || P.lands.find(l => l.id === P.b.at)),
   advance: (s, dt) => { dt = dt || .05; const n = Math.round(s / dt); let minD = 99, amp = 0; for (let i = 0; i < n; i++) { frame(dt); if (P.b.avail) { minD = Math.min(minD, K.hullDepth(P.b, envNow())); if (P.spec) amp = Math.max(amp, Math.abs(P.spec.dpt - P.b.pitch) + Math.abs(P.spec.drl - P.b.roll)); } } return { minDepth: minD, amp, u: P.b.u }; }, force: inp => { P.forced = inp; }, set: o => { Object.assign(P.b, o); }, teleport: (x, z, yaw, mode) => { const b = P.b; b.x = x; b.z = z; if (yaw !== undefined) b.yaw = yaw; b.u = 0; b.yr = 0; b.v = 0; if (mode) P.mode = mode; }, setMode: m => { P.mode = m; P.boarded = m === 'drive'; }, give: o => { Object.assign(P.b.load, o.load || {}); if (o.engine !== undefined) { P.b.engine = o.engine; if (P.motor) P.motor.visible = o.engine; } if (o.part !== undefined) P.b.part = o.part; commit(); },
   cost: () => { let calls = 0, tris = 0; const vis = o => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true; }; const add = root => root && root.traverse(o => { if (o.isMesh && vis(o)) { calls++; const g = o.geometry; tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3; } });

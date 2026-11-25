@@ -36,10 +36,11 @@ if (only.includes(5)) {            /* the landing card: a load aboard, the yard 
 }
 if (only.includes(2)) {            /* underway with the motor: wake, rings, spray, exhaust */
   await B(p, 'give', { engine: true, load: { planks: 0 } }); await p.evaluate(() => __gift.closeCard()); await B(p, 'castOff');
-  const o = { x: jetty.berth.x + dir[0] * 30, z: jetty.berth.z + dir[1] * 30 };   /* heading along the shore */
-  const along = [-dir[1], dir[0]]; const hy = Math.atan2(-along[1], along[0]);
-  await B(p, 'teleport', o.x - along[0] * 20, o.z - along[1] * 20, hy, 'drive'); await B(p, 'force', { steer: .12, throttle: 1 }); await B(p, 'advance', 9);
-  await view(p, { dist: 24, phi: .5, theta: Math.atan2(-Math.cos(hy), Math.sin(hy)) - .55 }, 600); await B(p, 'advance', 3); await shot(p, 2);
+  const o = { x: jetty.berth.x + dir[0] * 22, z: jetty.berth.z + dir[1] * 22 };   /* open water, then straight out to sea */
+  const hy = Math.atan2(-dir[1], dir[0]);
+  await B(p, 'teleport', o.x, o.z, hy, 'drive'); await B(p, 'force', { steer: .1, throttle: 1 }); await B(p, 'advance', 6);
+  const bs = (await B(p, 'state')).b;
+  await view(p, { tx: bs.x - Math.cos(bs.yaw) * 3, tz: bs.z + Math.sin(bs.yaw) * 3, dist: 18, phi: .5, theta: Math.atan2(-Math.cos(hy), Math.sin(hy)) - .55 }, 150); await shot(p, 2);
   await B(p, 'force', null);
 }
 if (only.includes(3)) {            /* landing at the beach with a load aboard */
