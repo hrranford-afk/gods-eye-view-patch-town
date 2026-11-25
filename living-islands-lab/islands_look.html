@@ -54,6 +54,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <div id="gpuInfo"></div>
 <div id="boot">Raising the islands...</div>
 <script src="gift_day.js"></script>
+<script>if(/[?&]game=gift/.test(location.search)&&!/[?&]physical=0/.test(location.search))document.write('<script src="physical.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]storm=0/.test(location.search))document.write('<script src="storm.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -997,7 +998,7 @@ function rpHud(){if(RP.hud)return;const d=document.createElement('div');d.id='rp
   const wanted=window.matchMedia&&matchMedia('(pointer:coarse)').matches;RP.coarse=!!wanted;
   document.addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R')rpTurn();});
   window.addEventListener('pointerdown',rpDown,true);window.addEventListener('pointermove',rpMove,true);window.addEventListener('pointerup',rpUp,true);window.addEventListener('pointercancel',rpUp,true);}
-function rpHudUpdate(dt){const c=RP.w.count(),a=document.getElementById('rpCount');if(!a)return;const txt='Jetty repaired '+c.fitted+' of '+c.total;if(a.textContent!==txt)a.textContent=txt;
+function rpHudUpdate(dt){const c=RP.w.count(),a=document.getElementById('rpCount');if(!a)return;document.body.classList.toggle('rp-held',!!(RP.sel||RP.drag));const txt='Jetty repaired '+c.fitted+' of '+c.total;if(a.textContent!==txt)a.textContent=txt;
   const st=document.getElementById('rpState'),s=RP.usable?'usable':(RP.surge.on?'surge':'');if(st.textContent!==s)st.textContent=s;
   const m=document.getElementById('rpMsg');if(RP.msgT>0){RP.msgT-=dt;if(m.textContent!==RP.msg)m.textContent=RP.msg;m.style.opacity=1;}else{m.style.opacity=0;}}
 function rpView(o){if(!RP.site)return;const S=RP.site,p=rpW(S,1.6,0,0);const v={tx:p[0],tz:p[2],dist:15,phi:.62,theta:S.psi+.9};for(const k in(o||{}))if(o[k]!==undefined&&o[k]!==null)v[k]=o[k];Object.assign(cam,v);if(CKON&&cam.ty===undefined)cam.ty=.8;clampCam();snap=true;}

@@ -164,7 +164,7 @@ function plan(env) {
 const KIND_V = { family: .55, scout: .55, snail: .42, walker: .5, spotter: .4, crab: .45, roller: .6 };
 const ROLE_BY_KIND = { family: 'cleaner', scout: 'scout', snail: 'sorter', walker: 'hauler', spotter: 'scout', crab: 'sorter', roller: 'hauler' };
 const SPEED_K = 1.5;                       /* the yard is small and the viewer is patient for seconds, not minutes (TUNING) */
-const ST = { BAY: 'bay', OUT: 'out', WORK: 'work', CARRY: 'carry', DROP: 'drop', SORT: 'sort', HOME: 'home' };
+const ST = { BAY: 'bay', OUT: 'out', WORK: 'work', CARRY: 'carry', DROP: 'drop', SORT: 'sort', HOME: 'home', TASK: 'task' };   /* TASK: a robot lent to the gift's physical layer (physical.js); never entered by the original routine */
 const DRAIN = { move: .0046, work: .0030 }, CHARGE = { sun: .020, rain: .009, night: .004 };
 function simCreate(pl, bots, opt) {
   opt = opt || {}; const YP = yardPoints(pl.yard), R = mulberry32((pl.seed >>> 0) * 31 + 7), n = Math.min(bots.length, YP.bays.length);
@@ -240,6 +240,9 @@ function simStep(sim, dt, env) {
         if (r.timer <= 0) { sim.heap[r.kindLoad] = (sim.heap[r.kindLoad] || 0) + 1; r.delivered++; r.trips++; r.load = false; r.kindLoad = null;
           if (r.role === 'sorter') { r.state = ST.SORT; r.timer = 6 + R() * 3; } else decide(sim, r, R); }
         break; }
+      case ST.TASK: {   /* lent out: the page drives x, z, yaw and the flags tmove and twork; treturn hands it back to the routine (walks home to its bay) */
+        if (r.treturn) { r.treturn = false; r.twork = false; r.tmove = false; r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
+        r.moving = !!r.tmove; r.charge = Math.max(0, r.charge - (r.tmove ? DRAIN.move : DRAIN.work) * dt); break; }
       case ST.SORT: {
         r.charge = Math.max(0, r.charge - DRAIN.work * dt); r.timer -= dt; if (r.timer <= 0) decide(sim, r, R); break; }
     }
@@ -546,6 +549,7 @@ function create(o) {
     const low = s.charge < LOW_CHARGE;
     if (s.state === ST.BAY) return s.charge < .55 ? 'dim' : 'green';
     if (low || s.state === ST.HOME) return low ? 'dim' : 'amber';
+    if (s.state === ST.TASK) return s.tstall ? 'amber' : 'green';
     if (s.state === ST.CARRY || s.state === ST.DROP) return 'green';
     if (s.state === ST.WORK) return s.since > 3.2 ? 'green' : 'amber';
     return 'amber';
@@ -557,7 +561,7 @@ function create(o) {
       for (const tr of trs) { const n = r.nodes[tr.node]; if (!n) continue; const v = tr.it.evaluate(tc); if (tr.prop === 'quaternion') n.quaternion.set(v[0], v[1], v[2], v[3]); else if (tr.prop === 'scale') n.scale.set(v[0], v[1], v[2]); else if (tr.prop === 'position') n.position.set(v[0], v[1], v[2]); } return true; };
     let clip = null; const arms = !!ARMS[r.kind], since = s.since;
     if (s.moving) { const mv = MOVE_CLIP[r.kind]; if (mv) { const dur = clips[mv] ? clips[mv].duration : 1; set(mv, T * (mv === 'roll' ? .5 : 1) + r.id * .37 * dur, true); clip = mv; } }
-    else if (s.state === ST.WORK) { if (arms) { set('arm_unfold', since, false); clip = 'arm_unfold'; } else if (r.kind === 'crab') { set('claw_sort', since, true); clip = 'claw_sort'; } else { set('lid_open', Math.min(since, 1.4), false); clip = 'lid_open'; } }
+    else if (s.state === ST.WORK || (s.state === ST.TASK && s.twork)) { if (arms) { set('arm_unfold', since, false); clip = 'arm_unfold'; } else if (r.kind === 'crab') { set('claw_sort', since, true); clip = 'claw_sort'; } else { set('lid_open', Math.min(since, 1.4), false); clip = 'lid_open'; } }
     else if (s.state === ST.DROP) { if (arms) { if (since < 1.4) set('arm_unfold', 3.6, false); else set('arm_stow', since - 1.4, false); clip = 'arm_unfold'; } else { set('lid_open', 1.4, false); clip = 'lid_open'; } }
     else if (s.state === ST.SORT) { if (r.kind === 'crab') { set('claw_sort', since, true); clip = 'claw_sort'; } else { set('head_tilt', since % 2.4, false); clip = 'head_tilt'; } }
     r.clip = clip;

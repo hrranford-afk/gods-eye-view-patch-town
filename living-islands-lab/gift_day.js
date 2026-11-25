@@ -165,13 +165,14 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], jobs: [], stock: emptyStock(), boat: null, storm: null, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
 const jobsDone = s => (s.dry ? 1 : 0) + (s.water ? 1 : 0) + (s.finds.length >= 2 ? 1 : 0);
 /* the stage from the flags alone (pure) */
 function stageOf(s) {
+  if (s.opening && !s.dockDone) return 'dock';   /* the physical opening: you arrive by boat and the dock is half built (only when physical.js set s.opening) */
   if (!s.letter1) return 'arrive';
   if (!(jobsDone(s) >= 3 && s.plank)) return 'jobs';
   if (!s.ordered) return 'delivery';
@@ -199,10 +200,12 @@ function State(o) {
   s.robots = Array.isArray(o.robots) ? o.robots.slice(0, 4).map(bool) : [];
   s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
   s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
+  s.opening = bool(o.opening); s.dockDone = bool(o.dockDone);
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
   s.stock = emptyStock(); if (o.stock && typeof o.stock === 'object') for (const k in s.stock) s.stock[k] = Math.round(num(o.stock[k], 0, 0, STOCK_CAP));
   s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered) })) : [];
   s.delivered = Array.isArray(o.delivered) ? o.delivered.filter(x => itemById(x)).slice(0, 40) : [];
+  { const PH = root.LI_PHYS; s.phys = PH && PH.sanitize ? PH.sanitize(o.phys) : null; if (s.phys && PH.restoreStock) s.stock = PH.restoreStock(s.stock, s.phys); }   /* the physical layer's part of the save (physical.js sanitises it; a unit in a robot's hand goes back on the heap) */
   const L = o.ledger;
   if (L && Number.isFinite(L.cash) && Number.isFinite(L.credit) && Array.isArray(L.entries)) {
     s.ledger = { cash: Math.round(L.cash), credit: Math.round(L.credit), spentCash: Math.round(num(L.spentCash, 0, 0, 1e9)), spentCredit: Math.round(num(L.spentCredit, 0, 0, 1e9)),
@@ -228,6 +231,7 @@ function canned(stage, seed) {
 /* a gentle hint for the player now (one short plain sentence, never an order) */
 function hintFor(s) {
   switch (stageOf(s)) {
+    case 'dock': return 'The robots wait for supplies. Row to the glow.';
     case 'arrive': return 'A crate sits above the tideline, with a paper label. Tap it.';
     case 'jobs': {
       const t = [];
@@ -270,13 +274,16 @@ const USER_WEATHER = Q0.has('weather') ? Q0.get('weather') : null;
 /* THE HOME ISLAND is one swap point: this world id (landform/worlds/seed<id>/) plus the page's own landing and camp scan, which place every story piece. A level can replace it with ?giftworld=<id> or by changing this one constant. */
 const GIFT_WORLD = Q0.get('giftworld') || '9001';
 if (GIFT) {
-  const need = { world: GIFT_WORLD, start: 'camp', repair: '1', clock: '1', weather: 'auto', cd: '121', ch: String(START_HOUR), cspeed: '0.2', cm: '9', clat: '46', boatkit: '1' };   /* boatkit: the kit dinghy is the boat you drive (boat_drive.js); &boatkit=0 keeps the old hulls */
+  const need = { world: GIFT_WORLD, start: 'camp', repair: '1', clock: '1', weather: 'auto', cd: '121', ch: String(START_HOUR), cspeed: '0.2', cm: '9', clat: '46', boatkit: '1' };
+  if (Q0.get('physical') !== '0') need.boat = '1';   /* the physical opening: the rowing boat is there from the first minute (boat_drive.js FORCE_BOAT) */   /* boatkit: the kit dinghy is the boat you drive (boat_drive.js); &boatkit=0 keeps the old hulls */
   let changed = false; for (const k in need) if (!Q0.has(k)) { Q0.set(k, need[k]); changed = true; }
   if (changed) { try { history.replaceState(null, '', location.pathname + '?' + Q0.toString() + location.hash); } catch (e) { /* the page still works on its own switches */ } }
 }
 root.LI_GIFT.on = GIFT;
 if (!GIFT) { root.LI_GIFT.init = function () { return null; }; return; }
 
+const DEV = Q0.get('dev') === '1';                  /* &dev=1 keeps the page's test chrome and the old crowded HUD (every pilot and test button) */
+const GD_CLEAN = !DEV;
 const AUTOMATION = !!(navigator.webdriver);
 const SAVE_OK = () => !AUTOMATION || Q0.get('giftsave') === '1';
 let C = null, THREE = null;                         /* the page context given by init() */
@@ -330,12 +337,37 @@ body.dev-touch #gd .gd-btn{min-height:52px;min-width:52px;font-size:17px}
 #gd .gd-x{position:absolute;right:8px;top:8px;min-height:44px;min-width:44px}
 #gd .gd-sel{min-height:44px;border-radius:12px;border:2px solid #cdbb98;background:#fff;font:inherit;padding:6px 8px}
 #gd-fade{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.6s;pointer-events:none}
+
+/* ---- the clean HUD (HUD pass): one owner per corner. top left: the day strip and one status line. top right: ledger, one contextual button, Menu. bottom left: stock and barrel. bottom centre: one short hint. bottom right: the boat's buttons. Everything else is behind Menu. &dev=1 turns this off. ---- */
+body.gd-clean:not(.gd-showdev) #top,body.gd-clean:not(.gd-showdev) #bar,body.gd-clean:not(.gd-showdev) #info,body.gd-clean:not(.gd-showdev) #gpuInfo,body.gd-clean:not(.gd-showdev) #campChip,body.gd-clean:not(.gd-showdev) #rpChip,body.gd-clean:not(.gd-showdev) #rpRow{display:none!important}
+body.gd-clean.gd-showdev #top{z-index:9;top:auto;bottom:110px;left:10px;right:10px}
+body.gd-clean #rpHud{left:50%;top:auto;bottom:130px;transform:translateX(-50%);align-items:center;max-width:calc(100vw - 20px)}
+body.gd-clean:not(.gd-showdev) #rpRow button:not(#rpTurn){display:none!important}
+body.gd-clean.rp-held #rpRow{display:flex!important}
+body.gd-clean #rpRow #rpTurn{min-height:52px;min-width:52px;font-size:17px}
+body.gd-clean #gd-strip{left:10px;top:10px;transform:none;max-width:calc(100vw - 196px);flex-wrap:wrap;gap:3px 5px;padding:6px 10px;overflow:visible;border-radius:14px}
+body.gd-clean #gd-strip .gd-dots{display:inline-flex;gap:3px;align-items:center}
+body.gd-clean #gd-strip .gd-dots u{width:8px;height:8px;border-radius:4px;background:#e0d4bb;display:inline-block}
+body.gd-clean #gd-strip .gd-dots u.done{background:#7fb36e}
+body.gd-clean #gd-strip .gd-dots u.cur{background:#2f6fe6}
+body.gd-clean #gd-strip .gd-line2{flex-basis:100%;font-size:12px;opacity:.8;margin:0;white-space:normal}
+body.gd-clean #gd-right{top:10px;right:10px}
+body.gd-clean #gd-right .gd-btn{min-height:52px}
+body.gd-clean #gd-left{bottom:84px;align-items:flex-start}
+body.gd-clean #gd-hint{bottom:28px;width:min(420px,calc(100vw - 24px));justify-content:center;text-align:center;font-size:18px;font-weight:700}
+body.gd-clean #gd-toast{top:96px}
+body.gd-clean #stormBaro{top:84px}
+#gd-menu{position:absolute;right:10px;top:76px;display:none;flex-direction:column;gap:8px;align-items:stretch;min-width:190px;padding:10px}
+body.gd-menuopen #gd-menu{display:flex}
+#gd-plankhint{position:absolute;left:50%;top:92px;transform:translateX(-50%);font-size:15px;font-weight:700;display:none}
+@media (max-width:760px){body.gd-clean #gd-left{bottom:84px}body.gd-clean #gd-strip{top:10px;max-width:calc(100vw - 200px)}body.gd-clean #gd-hint{left:10px;transform:none;width:calc(100vw - 150px);font-size:16px}body.gd-clean #gd-right{top:10px}}
 `;
 function h(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; }
 function buildDom() {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+  if (GD_CLEAN) document.body.classList.add('gd-clean');
   const r = h('div'); r.id = 'gd'; document.body.appendChild(r); G.ui.root = r;
-  r.innerHTML = '<div id="gd-fade"></div><div id="gd-strip" class="gd-pill"></div><div id="gd-left"></div><div id="gd-right"></div><div id="gd-hint" class="gd-pill"></div><div id="gd-toast" class="gd-pill"></div><div id="gd-layer"></div>';
+  r.innerHTML = '<div id="gd-fade"></div><div id="gd-strip" class="gd-pill"></div><div id="gd-left"></div><div id="gd-right"></div><div id="gd-hint" class="gd-pill"></div><div id="gd-toast" class="gd-pill"></div><div id="gd-plankhint" class="gd-pill">Tap a plank, then a yellow slot</div><div id="gd-layer"></div>';
   for (const k of ['strip', 'left', 'right', 'hint', 'toast', 'layer', 'fade']) G.ui[k] = document.getElementById('gd-' + k);
   r.addEventListener('pointerdown', e => e.stopPropagation()); r.addEventListener('pointerup', e => e.stopPropagation());
   ['wheel', 'touchstart', 'touchmove'].forEach(n => r.addEventListener(n, e => { if (e.target.closest('.gd-card,.gd-pill,.gd-btn')) e.stopPropagation(); }, { passive: true }));
@@ -352,7 +384,7 @@ function row(...bs) { const r = h('div', 'gd-row'); bs.forEach(b => r.appendChil
 function xbtn() { const b = btn('Close', closeCard, 'gd-x'); b.innerHTML = '&times;'; b.setAttribute('aria-label', 'Close'); b.classList.add('gd-x'); return b; }
 
 /* ---------------- clock and weather ---------------- */
-const WIN = { arrive: [5.0, 5.7], jobs: [6.0, 10.5], delivery: [11.6, 14.0], yard: [14.2, 17.4], evening: [18.1, 19.3], night: [21.6, 26.0], done: [23.4, 31.0] };
+const WIN = { dock: [5.0, 5.7], arrive: [5.0, 5.7], jobs: [6.0, 10.5], delivery: [11.6, 14.0], yard: [14.2, 17.4], evening: [18.1, 19.3], night: [21.6, 26.0], done: [23.4, 31.0] };
 function ck() { return C && C.li && C.li().clock; }
 function gameHour() { return G.s.gh; }
 /* page clock hours = moon age days * 24 + local solar hour - 12 (the page's own rule); game hours are local solar hours since midnight of day 1 */
@@ -373,7 +405,7 @@ function weatherWant() {
   const s = G.s, st = stageOf(s), gh = s.gh;
   try { const sw = SHP() && SHP().weatherWant(); if (sw) return sw; } catch (e) { /* no storm layer */ }   /* a storm builds over the game: the storm layer names the weather while it runs */
   if (Math.floor(gh / 24) >= 1 && st === 'done') return 'auto';
-  if (st === 'arrive') return 'clear';
+  if (st === 'arrive' || st === 'dock') return 'clear';
   if (st === 'jobs') return gh > 8.4 && gh < 10.2 ? 'showers' : 'overcast';
   if (st === 'delivery') return s.crate1 ? 'fair' : 'fog';
   if (st === 'yard') return 'fair';
@@ -394,7 +426,7 @@ const dayNo = () => Math.floor(G.s.gh / 24) + 1;
 /* ---------------- save and load ---------------- */
 function save(force) {
   if (!SAVE_OK() && !force) return false;
-  try { localStorage.setItem(SAVE_KEY, serialize(G.s)); G.savedAt = Date.now(); return true; } catch (e) { return false; }
+  try { if (PHYS()) G.s.phys = PHYS().snapshot(); localStorage.setItem(SAVE_KEY, serialize(G.s)); G.savedAt = Date.now(); return true; } catch (e) { return false; }
 }
 function load() {
   if (!SAVE_OK()) return null;
@@ -630,6 +662,7 @@ function loadStump(p, y) {   /* the kit's lighthouse stump (live level) from its
 }
 
 /* ---------------- targets and taps ---------------- */
+const PHYS = () => root.LI_PHYS && root.LI_PHYS.page && G.physOn ? root.LI_PHYS.page : null;   /* the physical layer (physical.js), when it is on the page */
 const SHP = () => root.LI_STORM && root.LI_STORM.page && G.stormOn ? root.LI_STORM.page : null;   /* the storm and haul layer (storm.js), when it is on the page */
 const BDP = () => root.LI_BOAT_DRIVE && root.LI_BOAT_DRIVE.page;   /* the boat layer, when boat_drive.js is on the page */
 const _v = () => new THREE.Vector3();
@@ -650,11 +683,13 @@ function targets() {
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   bots.forEach(b => { if (b.ready) { const sc = screenOf(b.x, b.y + .9, b.z); if (sc) T.push({ id: 'bot' + b.id, x: sc.x, y: sc.y, r: 60 }); } });
   try { if (BDP() && BDP().targets) BDP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('boat targets ' + e.message); }
+  try { if (PHYS()) PHYS().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('phys targets ' + e.message); }
   try { if (SHP()) SHP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('storm targets ' + e.message); }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
   return T;
 }
 function onTap(cx, cy) {
+  if (PHYS() && PHYS().swallowTap()) return;   /* a hold that just ended is not a tap */
   if (G.cardOpen && G.cardOpen !== 'tip') return;
   const T = targets(), coarse = document.body.classList.contains('dev-touch') || matchMedia('(pointer:coarse)').matches; let best = null, bd = 1e9;
   for (const t of T) { const d = Math.hypot(t.x - cx, t.y - cy), lim = t.r * (coarse ? 1.15 : 1) * (C.ui ? Math.max(1, C.ui()) : 1); if (d < lim && d < bd) { bd = d; best = t; } }
@@ -702,6 +737,7 @@ function onStage(now) {
 }
 function activate(id) {
   const s = G.s, S = G.spots;
+  if (PHYS() && PHYS().activate(id)) return;
   if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
   if (id === 'crate0') return openKeyCrate();
   if (id === 'hut') return hutCard();
@@ -723,7 +759,7 @@ function openKeyCrate() {
 function readLetter1() {
   const first = !G.s.letter1;
   const c = card('letter1', '<h2>Letter one</h2>' + LETTER1.map(l => '<p>' + l + '</p>').join('') + '<div class="sig">' + mark(30) + '</div>', 'gd-paper');
-  c.appendChild(row(btn('Keep it', () => { closeCard(); if (first) { G.crateDone = true; G.objs.crate.userData.lid.position.set(.2, .98, -.32); G.objs.crate.userData.lid.rotation.x = -.9; if (G.objs.key) G.objs.key.visible = false; setS({ letter1: true, keyUsed: false }); G.s.ledger = Object.assign({}, G.s.ledger); afterChange(); toast('The ledger is open. A tarp lay folded under the letter, and a brass key.', 6500); pulse('ledger'); focus(G.spots.hut.x, G.spots.hut.z, 34); } }, 'pri')));
+  c.appendChild(row(btn('Keep it', () => { closeCard(); if (first) { G.crateDone = true; if (PHYS()) PHYS().openLid(G.objs.crate); else { G.objs.crate.userData.lid.position.set(.2, .98, -.32); G.objs.crate.userData.lid.rotation.x = -.9; } if (G.objs.key) G.objs.key.visible = false; setS({ letter1: true, keyUsed: false }); G.s.ledger = Object.assign({}, G.s.ledger); afterChange(); toast('The ledger is open. A tarp lay folded under the letter, and a brass key.', 6500); pulse('ledger'); focus(G.spots.hut.x, G.spots.hut.z, 34); } }, 'pri')));
 }
 /* the ledger panel */
 function ledgerCard() {
@@ -804,7 +840,7 @@ function deliveryTick(dt) {
     if (k >= 1) { d.phase = 'drop'; d.t = 0; }
   } else if (d.phase === 'drop') {
     td.position.y = tide + .03 + bob; if (d.t > 2.2 && !d.dropped) { d.dropped = true; addDeliveryCrate(1, true); td.userData.cargo.visible = false; toast('Crate number 1. Nobody on the boat. It just knows the way.', 6500); focus(S.tender.drop.x, S.tender.drop.z, 22); }
-    if (d.t > 5) { d.phase = 'back'; d.t = 0; }
+    if (d.t > 5 && (!PHYS() || PHYS().unloaded())) { d.phase = 'back'; d.t = 0; }
   } else if (d.phase === 'back') {
     const p0 = [wp.x + dir[0] * 2.5, wp.z + dir[1] * 2.5], p1 = td.userData.p0, k = clamp(d.t / 14, 0, 1), e = k * k * (3 - 2 * k);
     td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]);
@@ -814,16 +850,17 @@ function deliveryTick(dt) {
     if (k >= 1) { sh.visible = false; G.dlv = null; }
   }
 }
-function addDeliveryCrate(n, fromTender) {
+function addDeliveryCrate(n, fromTender) {   /* with the physical layer on, a crate that comes in by boat is carried up the beach (physical.js onCrate) */
   const S = G.spots, r = C.W.camp.rt, i = G.crates.length, base = S.tender.drop;
   const m = mkCrate(n, false); const p = { x: base.x + r[0] * (i * 1.35), z: base.z + r[1] * (i * 1.35) }; place(m, p, .15 * (i % 3)); G.root.add(m); G.crates.push({ n, mesh: m, pos: p, opened: false });
+  if (PHYS()) PHYS().onCrate(G.crates[i], !!fromTender);
   return m;
 }
 function deliveryCrate(n) {
-  const cr = G.crates[n - 1]; if (!cr) return; focus(cr.pos.x, cr.pos.z, 15); const s = G.s;
+  const cr = G.crates[n - 1]; if (!cr) return; if (PHYS() && PHYS().crateTap(n)) return; focus(cr.pos.x, cr.pos.z, 15); const s = G.s;
   if (n === 1) {
     const c = card('c1', '<h2>Crate number 1</h2><p>' + (cr.opened ? 'Empty now, but for the card.' : 'Inside: three spare track links in oiled paper, and a card with the same small mark as the letter. The card is a catalogue.') + '</p>'); c.appendChild(xbtn());
-    const bs = []; if (!cr.opened) bs.push(btn('Take the track links', () => { cr.opened = true; closeCard(); setS({ crate1: true, parts: s.parts + 3, partFrom: s.partFrom || 'crate' }); cr.mesh.userData.lid.position.set(.2, .98, -.32); cr.mesh.userData.lid.rotation.x = -.9; toast('Three track links. The catalogue is open.', 5000); afterChange(); setTimeout(catalogueCard, 500); }, 'pri')); bs.push(btn('Catalogue', catalogueCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
+    const bs = []; if (!cr.opened) bs.push(btn('Take the track links', () => { cr.opened = true; closeCard(); setS({ crate1: true, parts: s.parts + 3, partFrom: s.partFrom || 'crate' }); if (PHYS()) PHYS().openLid(cr.mesh); else { cr.mesh.userData.lid.position.set(.2, .98, -.32); cr.mesh.userData.lid.rotation.x = -.9; } toast('Three track links. The catalogue is open.', 5000); afterChange(); setTimeout(catalogueCard, 500); }, 'pri')); bs.push(btn('Catalogue', catalogueCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
   } else if (cr.letter2) { readLetter2(); }
   else if (cr.l9) { if (SHP()) SHP().readL9(); }
   else {
@@ -848,7 +885,7 @@ function deliveriesTick() {
   const s = G.s; let changed = false; const w = weatherState(); if (!s.orders.length) return;
   const orders = s.orders.map(o => { if (o.delivered) return o; const r = resolveDelivery(o, s.gh, w); if (r.delayedBy) { toast('The boat could not land in this weather. ' + itemById(o.item).name + ' is late by ' + r.delayedBy + ' hours.', 6500); ledgerLine('Delivery late: ' + itemById(o.item).name + ' (weather, ' + r.delayedBy + ' h)', 0, 0); changed = true; } if (r.arrived) { changed = true; G.arrivals = (G.arrivals || []).concat([o.item]); } return r.order; });
   if (changed) { s.orders = orders; s.delivered = orders.filter(o => o.delivered).map(o => o.item); renderUi(); save(); }
-  if (G.arrivals && G.arrivals.length && !G.dlv && G.spots) { const it = G.arrivals.shift(), n = G.crates.length + 1; const m = addDeliveryCrate(n, true); G.crates[n - 1].item = it; toast('Crate number ' + n + ' came in: ' + itemById(it).name + '.', 6000); }
+  if (G.arrivals && G.arrivals.length && !G.dlv && G.spots) { const it = G.arrivals.shift(), n = G.crates.length + 1; const m = addDeliveryCrate(n, true); G.crates[n - 1].item = it; if (!PHYS()) toast('Crate number ' + n + ' came in: ' + itemById(it).name + '.', 6000); }
 }
 /* (5) the yard */
 const LAMP_WORDS = { green: 'green: charged and working', amber: 'amber: on its way', dim: 'dim: low battery, going to the post' };
@@ -915,8 +952,8 @@ function chargePost() {
 }
 /* (6) the evening */
 function startEvening() {
-  const S = G.spots; if (!S) return; const n = G.crates.length + 1; const m = addDeliveryCrate(n, true); G.crates[n - 1].letter2 = true;
-  toast('The evening boat left crate number ' + n + '. There is a letter on top.', 6500); focus(G.crates[n - 1].pos.x, G.crates[n - 1].pos.z, 24);
+  const S = G.spots; if (!S) return; const n = G.crates.length + 1; const m = addDeliveryCrate(n, true); G.crates[n - 1].letter2 = true; if (PHYS()) PHYS().onCrate(G.crates[n - 1], true);
+  if (!PHYS()) { toast('The evening boat left crate number ' + n + '. There is a letter on top.', 6500); focus(G.crates[n - 1].pos.x, G.crates[n - 1].pos.z, 24); }
 }
 function readLetter2() {
   const first = !G.s.letter2, c = card('letter2', '<h2>Letter two</h2>' + LETTER2.map(l => '<p>' + l + '</p>').join('') + '<div class="sig">' + mark(30) + '</div>', 'gd-paper');
@@ -924,8 +961,8 @@ function readLetter2() {
 }
 function buildCard() {
   const s = G.s, L = s.ledger, c = card('build', '<h2>What do you build first?</h2><p><small>One thing for the year ahead. Materials come by boat on delivery credit (80 percent), local work is paid in cash (20 percent). You have ' + pound(L.cash) + ' cash and ' + pound(L.credit) + ' credit.</small></p>'); c.appendChild(xbtn());
-  BUILDS.forEach(b => {
-    const ok = canBuild(s, b.id), d = h('div', 'gd-item'); const done = s.build === b.id;
+  BUILDS.filter(b => !(PHYS() && b.id === 'jetty')).forEach(b => {
+    const ok = PHYS() ? PHYS().canCommit(s, b.id) : canBuild(s, b.id), d = h('div', 'gd-item'); const done = s.build === b.id;
     d.innerHTML = '<div><b>' + b.name + '</b> &middot; ' + pound(b.total) + ' (' + pound(b.credit) + ' credit + ' + pound(b.cash) + ' cash)<small>' + b.earns + '</small><small>Year ahead: ' + b.year + '</small><small>Needs: ' + needText(b.needs) + ' (you have ' + stockLine(s.stock) + ').</small><small>Arrives ' + b.hours + '. Model: ' + b.kit + '.</small>' + (ok.ok || done ? '' : '<small>' + ok.why + '</small>') + '</div>';
     d.appendChild(btn(done ? 'Chosen' : 'Build', () => confirmBuild(b.id), 'pri', !ok.ok)); c.appendChild(d);
   });
@@ -933,7 +970,7 @@ function buildCard() {
 }
 function confirmBuild(id) {
   const b = BUILDS.find(x => x.id === id), c = card('confirm', '<h2>' + b.name + '</h2><p>' + b.earns + '</p><p>Cost: ' + pound(b.credit) + ' delivery credit, ' + pound(b.cash) + ' cash and ' + needText(b.needs) + ' from the yard stock.</p><p><small>You can only choose one this year.</small></p>');
-  c.appendChild(row(btn('Build it', () => { const r = doBuild(G.s, id); if (!r.ok) return toast(r.why); closeCard(); G.s = r.state; showBuilt(id); toast(b.name + ': materials arrive ' + b.hours + '. Your year: ' + b.year, 7500); afterChange(); pulse('ledger'); }, 'pri'), btn('Back', buildCard)));
+  c.appendChild(row(btn('Build it', () => { if (PHYS()) { closeCard(); PHYS().commitBuild(id); return; } const r = doBuild(G.s, id); if (!r.ok) return toast(r.why); closeCard(); G.s = r.state; showBuilt(id); toast(b.name + ': materials arrive ' + b.hours + '. Your year: ' + b.year, 7500); afterChange(); pulse('ledger'); }, 'pri'), btn('Back', buildCard)));
 }
 function showBuilt(id) {
   if (id === 'jetty') { try { const rp = C.li().repair; if (rp) { let n = 0; for (let k = 0; k < 12; k++) { const m = rp.fitAll(); n += m; if (!m) break; } rp.step(30); } } catch (e) { G.err.push('jetty ' + e.message); } const j = G.spots.S.jetty; if (j) focus(j.ox, j.oz, 26); return; }
@@ -966,24 +1003,60 @@ function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
   const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
+  const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
   if (sig === G.sig) return; G.sig = sig; const P = progress(s);
-  G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
-  G.ui.hint.innerHTML = ''; const sp = h('span', '', hintFor(s)); G.ui.hint.appendChild(sp);
-  const R = G.ui.right; R.innerHTML = '';
-  if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; R.appendChild(led); }
-  if (s.letter1 && stage === 'jobs') { const b = btn('Notebook', notebook); b.id = 'gd-notes-btn'; R.appendChild(b); if (G.helpPlank && !s.plank) { const fb = btn('Fit one plank', fitOnePlank, 'pri'); fb.id = 'gd-plank-btn'; R.appendChild(fb); } }
-  if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; R.appendChild(b); }
-  if (s.letter2) { const b = btn(s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : 'Build menu', buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; R.appendChild(b); }
-  if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; R.appendChild(b); }
+  const hintText = (PHYS() && PHYS().hint && PHYS().hint()) || (GD_CLEAN ? shortHint(s) : hintFor(s));
+  G.ui.hint.innerHTML = ''; const sp = h('span', '', hintText); G.ui.hint.appendChild(sp);
+  const mk = {};   /* every action button, made once; where it goes depends on the HUD mode */
+  if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
+  if (s.letter1 && stage === 'jobs') { const b = btn('Notebook', notebook); b.id = 'gd-notes-btn'; mk.notes = b; if (G.helpPlank && !s.plank) { const fb = btn('Fit one plank', fitOnePlank, 'pri'); fb.id = 'gd-plank-btn'; mk.plank = fb; } }
+  if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; mk.cat = b; }
+  if (s.letter2) { const b = btn(s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : 'Build menu', buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
+  if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; mk.sleep = b; }
   const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
-  sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); }); R.appendChild(sk);
+  sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); });
+  const R = G.ui.right; R.innerHTML = '';
+  if (!GD_CLEAN) {
+    G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
+    ['ledger', 'notes', 'plank', 'cat', 'build', 'sleep'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
+  } else {
+    /* top left: Day, the stage you are in, six dots, and one line of status */
+    const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : 'Done') + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
+    /* top right: the ledger, then the one button that fits this moment, then Menu. The rest live in the Menu. */
+    const main = stage === 'jobs' ? 'notes' : (stage === 'delivery' || stage === 'yard') ? 'cat' : stage === 'evening' ? 'build' : stage === 'done' ? 'sleep' : null;
+    if (mk.ledger) R.appendChild(mk.ledger);
+    if (mk.plank) R.appendChild(mk.plank);
+    if (main && mk[main]) R.appendChild(mk[main]);
+    const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
+    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'build', 'sleep'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
+    const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
+  }
   const L = G.ui.left; L.innerHTML = '';
-  if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
-  if (s.robots.some(Boolean) || STOCKS.some(k => (s.stock[k.id] || 0) > 0)) { const w = btn(stockLine(s.stock), robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
-  if (s.parts) { const w = h('div', 'gd-pill', 'Parts: ' + s.parts); w.style.fontSize = '14px'; L.appendChild(w); }
+  const hasStock = s.robots.some(Boolean) || STOCKS.some(k => (s.stock[k.id] || 0) > 0), tot = STOCKS.reduce((a, k) => a + (s.stock[k.id] || 0), 0);
+  if (G.leftCollapsed === undefined) G.leftCollapsed = GD_CLEAN && innerWidth < 600;
+  if (GD_CLEAN && (hasStock || s.water) && G.leftCollapsed) { const w = btn('Stock ' + tot, () => { G.leftCollapsed = false; G.sig = null; renderUi(); }); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; L.appendChild(w); }
+  else {
+    if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
+    if (hasStock) { const w = btn(stockLine(s.stock), robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
+    if (GD_CLEAN && (hasStock || s.water)) { const c = btn('Hide', () => { G.leftCollapsed = true; G.sig = null; renderUi(); }); c.style.fontSize = '13px'; c.id = 'gd-left-hide'; L.appendChild(c); }
+    if (s.parts) { const w = h('div', 'gd-pill', 'Parts: ' + s.parts); w.style.fontSize = '14px'; L.appendChild(w); }
+  }
 }
 
+/* one short imperative sentence for the bottom centre (under eight words). The long hintFor stays in the core for tests and the notebook. */
+function shortHint(s) {
+  switch (stageOf(s)) {
+    case 'dock': return 'Row to the glow.';
+    case 'arrive': return 'Tap the crate.';
+    case 'jobs': if (!s.dry) return 'Get dry.'; if (!s.water) return 'Find water.'; if (s.finds.length < 2) return 'Look along the shore.'; return 'Fit a jetty plank.';
+    case 'delivery': return s.crate1 ? 'Order something small.' : 'Wait for the boat.';
+    case 'yard': return s.robots.some(Boolean) ? 'Give the robot an order.' : s.parts > 0 ? 'Fit a part to a carrier.' : 'Find a track link.';
+    case 'evening': return s.letter2 ? 'Choose one thing to build.' : 'Open the new crate.';
+    case 'night': return 'Tap the bottle.';
+    default: return 'Day one is done.';
+  }
+}
 /* ---------------- skip to ---------------- */
 function applyWorldToState() {
   const s = G.s, O = G.objs, S = G.spots; if (!S || !O.crate) return;
@@ -998,6 +1071,7 @@ function applyWorldToState() {
   O.ship.visible = false; O.tender.visible = false; G.dlv = null; G.bottleOn = false; O.bottle.visible = false; G.bottleToast = false; G.nightT = 0;
   if (s.plank) { try { const rp = C.li().repair; if (rp && rp.count().fitted < 1) { const so = rp.sockets().filter(q => !q.filled && q.kind === 'plank'), bo = rp.bodies().filter(b => b.kind === 'plank' && b.state === 'dyn' && !b.lost); if (so.length && bo.length) { rp.teleport(bo[0].id, so[so.length - 1].p.slice()); rp.fit(bo[0].id); rp.step(30); } } } catch (e) { /* later */ } }
   G.weather = ''; clockSet(s.gh); renderUi();
+  try { if (PHYS()) PHYS().invalidate(s.phys); } catch (e) { G.err.push('phys resync ' + e.message); }
   try { if (SHP()) { SHP().onLoad(s.storm); SHP().restoreCrates(); } } catch (e) { G.err.push('storm resync ' + e.message); }
   try { const bd = BDP(); if (bd && bd.resync) { bd.resync(); G.boatRev = !!(s.ordered); } } catch (e) { G.err.push('boat resync ' + e.message); }
 }
@@ -1020,7 +1094,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt;
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); plankWatch(); deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
@@ -1037,6 +1111,14 @@ function tick(dt) {
   else ring.material.opacity += (0 - ring.material.opacity) * Math.min(1, dt * 4);
   ring.visible = ring.material.opacity > .02;
   G.hudT = (G.hudT || 0) + dt; if (G.hudT > 1) { G.hudT = 0; renderUi(); }
+  hudTick(dt);
+}
+/* HUD helpers: the one-time plank hint near the jetty, and no wooden rim above the horizon in portrait (cheap: the page's own rim switch) */
+function hudTick(dt) {
+  G.hT = (G.hT || 0) + dt; if (G.hT < .5) return; G.hT = 0;
+  const ph = document.getElementById('gd-plankhint');
+  if (ph) { const j = G.spots && G.spots.S && G.spots.S.jetty; const near = j && Math.hypot(C.cam.tx - j.ox, C.cam.tz - j.oz) < 40 && C.cam.dist < 70; ph.style.display = (GD_CLEAN && near && !G.s.plank && stageOf(G.s) === 'jobs' && !G.cardOpen) ? 'block' : 'none'; }
+  try { const port = innerHeight > innerWidth * 1.1, bow = BDP() && BDP().state && (BDP().state().mode === 'drive'); if (GD_CLEAN && port && !bow && Q0.get('rim') !== '1') C.li().xboat.rim(false); } catch (e) { /* the rim stays */ }
 }
 function hintTarget() {
   const s = G.s, S = G.spots, st = stageOf(s); if (!S) return null;
@@ -1066,6 +1148,12 @@ function stormCtx() {
     autoReset: () => !(U().on() || U().panelVisible()), setView: v => l.setView(v), getCam: () => Object.assign({}, C.cam),
     info: () => { const g = U().gpu(), r = C.renderer.domElement; return { gpu: g.name || g.raw, gpuKind: g.kind, screen: innerWidth + 'x' + innerHeight, canvas: r.width + 'x' + r.height }; } };
 }
+function attachPhys() {
+  const K = root.LI_PHYS; if (!K || !K.attach || G.physAttached || Q0.get('physical') === '0') return; G.physAttached = true;
+  const ok = K.attach({ C: () => C, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, focus, screenOf, spots: () => G.spots, groot: () => G.root, objs: () => G.objs, crates: () => G.crates, root: () => G.ui.root,
+    isAR, groundY, dlv: () => G.dlv && G.dlv.phase, H: (x, z) => C.H(x, z), slope: slopeAt, free: (x, z, r) => free(G.spots.S, x, z, r), renderUi, weatherState, isNight });
+  G.physOn = !!ok; if (ok && K.page && K.page.begin) K.page.begin();
+}
 function attachStorm() {
   const K = root.LI_STORM; if (!K || !K.attach || G.stormOn) return; if (Q0.get('storm') === '0') return;
   const ok = K.attach({ C: stormCtx, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, mark, focus, screenOf, root: () => G.ui.root, spots: () => G.spots, camp: () => C.W.camp.fire, tide: () => C.tide(), seed: () => C.seed,
@@ -1083,9 +1171,10 @@ function start() {
   else if (qd && parseInt(qd, 10) >= 2) { G.s = canned('done', seed); G.s.gh = 31.2; G.s.orders.forEach(o => { o.delivered = true; }); G.s.delivered = G.s.orders.map(o => o.item); }
   else if (loaded) G.s = loaded;
   G.s.seed = seed >>> 0; G.s.stage = stageOf(G.s);
-  G.ready = true; attachBoat(); attachStorm(); applyWorldToState();
-  const sp = G.spots, dd = C.W.camp.dir, th = Math.atan2(-dd[0], -dd[1]) + .55; if (!qs && !loaded && Q0.get('glide') === '0') Object.assign(C.cam, { tx: sp.crate.x, tz: sp.crate.z, dist: 30, phi: .5, theta: th });
-  else if (!qs && !loaded) { /* BOLD-1 dawn glide: the view starts out over the water and settles on the crate (switch off: &glide=0) */ Object.assign(C.cam, { tx: sp.shore.x + (sp.shore.x - sp.crate.x) * 1.2, tz: sp.shore.z + (sp.shore.z - sp.crate.z) * 1.2, dist: 85, phi: .95, theta: th }); focus(sp.crate.x, sp.crate.z, 30, th, .5); G.focusT.slow = true; } else focus(sp.crate.x, sp.crate.z, 36, th, .55);
+  if (!qs && !qd && !loaded && Q0.get('physical') !== '0' && root.LI_PHYS && root.LI_PHYS.attach) G.s.opening = true;   /* the physical opening: arrive by boat, the dock half built */
+  G.ready = true; attachBoat(); attachStorm(); attachPhys(); applyWorldToState();
+  const sp = G.spots, dd = C.W.camp.dir, th = Math.atan2(-dd[0], -dd[1]) + .55, portPhi = innerHeight > innerWidth * 1.1 ? .22 : 0;   /* portrait: a higher pitch keeps the table's rim off the horizon */ if (!qs && !loaded && Q0.get('glide') === '0') Object.assign(C.cam, { tx: sp.crate.x, tz: sp.crate.z, dist: 30, phi: .5 + portPhi, theta: th });
+  else if (!qs && !loaded) { /* BOLD-1 dawn glide: the view starts out over the water and settles on the crate (switch off: &glide=0) */ Object.assign(C.cam, { tx: sp.shore.x + (sp.shore.x - sp.crate.x) * 1.2, tz: sp.shore.z + (sp.shore.z - sp.crate.z) * 1.2, dist: 85, phi: .95, theta: th }); focus(sp.crate.x, sp.crate.z, 30, th, .5 + portPhi); G.focusT.slow = true; } else focus(sp.crate.x, sp.crate.z, 36, th, .55 + portPhi);
   if (G.s.stage === 'night' && !G.s.bottle) startNight();
   if (G.s.stage === 'evening' && !G.crates.some(c => c.letter2)) startEvening();
   if (G.s.stage === 'delivery' && !G.s.shipSeen) { setTimeout(() => { if (G.s.stage === 'delivery' && !G.s.shipSeen) startDelivery(); }, 600); }
@@ -1103,7 +1192,7 @@ function init(ctx) {
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
     focus, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
-    speedUp: k => { G.fast = k; }, setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
+    speedUp: k => { G.fast = k; }, setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
   };
   return G;
 }
