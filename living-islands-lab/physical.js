@@ -341,7 +341,8 @@ function borrow(i, legs, role, extra) {
   P.err[i] = Object.assign({ e: errandNew(x, z, pre.concat(legs), r.v), role }, extra || {}); return P.err[i];
 }
 function release(i) { const s = simR(); if (s) { const r = s.robots[i]; if (r && r.state === 'task') { r.treturn = true; r.tmove = false; r.twork = false; r.tstall = false; } } delete P.err[i]; }
-function applyRobot(i, e, stall) { const s = simR(), r = s.robots[i]; if (!r || r.state !== 'task') return; if (e.working && !r.twork && !stall) r.since = 0; r.x = e.x; r.z = e.z; r.yaw = e.yaw; r.tmove = e.moving; r.twork = e.working && !stall; r.tstall = !!stall; }
+function applyRobot(i, e, stall) { const s = simR(), r = s.robots[i]; if (!r || r.state !== 'task') return;
+  { const o = P.err[i]; r.why = stall ? (o && o.role === 'dock' && !o.kind ? 'wait_supplies' : 'wait_player') : null; r.at = o && o.role === 'dock' ? 'at the dock' : 'at the build site'; }   /* Job 6c: why a lent-out robot stands still, and where (camp_start.js stopReason) */ if (e.working && !r.twork && !stall) r.since = 0; r.x = e.x; r.z = e.z; r.yaw = e.yaw; r.tmove = e.moving; r.twork = e.working && !stall; r.tstall = !!stall; }
 const atHold = o => o.e.working && o.e.legs[Math.min(o.e.i, o.e.legs.length - 1)].act === 'hold';
 function loadsTick() {
   const V = P.V, s = simR(); if (!V || !s) return; let n = 0;
@@ -350,7 +351,7 @@ function loadsTick() {
 }
 function giveBack(o) { if (o.crate) { const c = crateOf(o.crate); if (c && c.phys.st !== 'yard') { c.phys.carrier = null; c.phys.st = 'beach'; } } if (!o.carry) return; const st = Object.assign({}, stockOf()); st[o.carry] = (st[o.carry] || 0) + 1; A.patch({ stock: st }); const b = ph().b; if (b) { const ab = abortUnit(b); if (ab.ok) ph().b = ab.b; } o.carry = null; }
 function returnToPost(i) { const L = layout(), s = simR(), r = s.robots[i], pos = L.dock.stand[i % 2]; P.err[i] = { e: errandNew(r.x, r.z, [{ x: pos.x, z: pos.z }, { x: pos.x, z: pos.z, act: 'hold', dur: 1e9, yaw: L.dock.psi }], r.v), role: 'dock' }; }
-function abortErrand(i) { const o = P.err[i]; if (!o) return; giveBack(o); if (o.role === 'dock') returnToPost(i); else release(i); }
+function abortErrand(i, why) { const o = P.err[i]; if (!o) return; SOFT(() => { const s = simR(), r = s.robots[i]; LC().noteStop(s, r, why || (isShelter(r) ? 'storm_home' : r.charge < .14 ? 'battery_low' : 'wait_supplies'), 'abort'); }, 'noteStop'); giveBack(o); if (o.role === 'dock') returnToPost(i); else release(i); }
 function errandsTick(dt) {
   const s = simR(); if (!s) return;
   Object.keys(P.err).forEach(k => { const i = +k, o = P.err[i], r = s.robots[i]; if (!r || r.state !== 'task') { if (o.carry) giveBack(o); delete P.err[i]; return; }

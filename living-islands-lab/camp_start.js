@@ -233,6 +233,7 @@ function simStep(sim, dt, env) {
   sim.litter.forEach((l, i) => { if (l.taken) { l.back -= dt; if (l.back <= 0) l.taken = false; } });
   const moving = [];
   for (const r of sim.robots) {
+    r.yield = false;
     if (r.state !== r.ps) { r.ps = r.state; r.since = 0; }
     r.since += dt; r.moving = false;
     const shelter = sheltered(sim, r), nt = nightOn(sim), cap = capOf(r), dk = (nt ? NIGHT.drain : r.solar ? SOLAR.drain : 1) / cap, wk = nt ? NIGHT.speed : 1;
@@ -242,7 +243,7 @@ function simStep(sim, dt, env) {
         const bay = sim.YP.bays[r.bay]; r.x = bay.x; r.z = bay.z; r.yaw = bay.yaw;
         r.charge = Math.min(1, r.charge + (sim.env.night ? (sim.shifts ? NIGHT.intake : CHARGE.night) : sim.env.rain ? CHARGE.rain : CHARGE.sun) * (1 + .5 * (cap - 1)) / cap * dt);
         r.timer -= dt;
-        if (r.timer <= 0 && !shelter && !r.fit && r.charge >= (nt ? NIGHT.workMin : .85)) { decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }
+        if (r.timer <= 0 && !shelter && !r.fit && r.charge >= (nt ? NIGHT.workMin : .85)) { if (wantHome(sim, r)) r.timer = 4; else decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }   /* Job 6c: a robot already in its bay with nothing to gather stays put; it used to walk to the apron and back every 14 s */
         break; }
       case ST.OUT: case ST.CARRY: case ST.HOME: {
         r.charge = Math.max(0, r.charge - DRAIN.move * dk * dt); r.moving = true;
@@ -270,7 +271,7 @@ function simStep(sim, dt, env) {
   for (const r of moving) {
     let stop = false;
     for (const o of moving) { if (o.id >= r.id) continue; const dx = o.x - r.x, dz = o.z - r.z, d = Math.hypot(dx, dz); if (d < 1.9 && dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw) > 0) { stop = true; break; } }
-    if (stop) { r.moving = false; continue; }
+    if (stop) { r.moving = false; r.yield = true; continue; }
     const arrived = advance(r, r.v * dt * (nightOn(sim) && r.state !== ST.HOME ? NIGHT.speed : 1));
     if (arrived) {
       if (r.state === ST.OUT) { r.state = ST.WORK; r.timer = (r.role === 'sorter' ? 6 : 9) + R() * 4; const w = sim.pl.work[r.siteI]; r.yaw = w.yaw; r.moving = false; }
@@ -278,7 +279,67 @@ function simStep(sim, dt, env) {
       else if (r.state === ST.HOME) { r.state = ST.BAY; r.timer = 2 + R() * 3; r.moving = false; const bay = sim.YP.bays[r.bay]; r.x = bay.x; r.z = bay.z; r.yaw = bay.yaw; r.since = 0; }
     }
   }
+  stopTrack(sim);
   return sim;
+}
+
+/* ROBOT STOPS (Job 6c; owner playtest 25 Nov: "the robots keep breaking down and nothing looks wrong with them"). Every robot that is not at work has ONE reason code, computed from the routine's own state, never invented:
+   stopReason(sim, r) is null while it works (walking out, gathering, carrying, dropping, sorting, lent out and moving) and a code from STOPS otherwise. stopTrack(sim) runs at the end of every step and logs each CHANGE of code
+   (sim.stops: when, which robot, code, place, battery, how long). The page draws the icon over the robot and says the sentence on its card; the notebook lists the last ten. The physical layer lends a robot out (state task) and says why it
+   stands still in r.why and where in r.at. icon names are drawn by gift_day.js (STOP_ICONS). 'stuck' is in the table for the rock-and-rescue job (Job 4) and is never raised yet. */
+const STOPS = {
+  battery_low: { icon: 'battery', label: 'Battery low', say: (p, w) => 'Stopped: battery low, ' + p + ' percent. Heading to the charger.' },
+  charging: { icon: 'bolt', label: 'Charging', say: p => 'Charging, ' + p + ' percent. Back to work at 85 percent.' },
+  night_shift: { icon: 'moon', label: 'Night shift', say: p => 'Night shift: charging, ' + p + ' percent. Back when it is full.' },
+  storm_home: { icon: 'cloud', label: 'Rain', say: () => 'Stopped: rain on the way. Heading home, then waiting under cover.' },
+  wait_player: { icon: 'hand', label: 'Needs you', say: () => 'Waiting for you. Tap it to give it an order, or hold the ring to help.' },
+  wait_supplies: { icon: 'box', label: 'Needs supplies', say: () => 'Waiting for supplies: planks and rope from your boat.' },
+  water_in_way: { icon: 'wave', label: 'Tide in the way', say: () => 'Stopped: the tide covers the shore piles. Waiting for the water to drop.' },
+  idle_nothing: { icon: 'zz', label: 'Nothing to do', say: () => 'Nothing to gather right now. Waiting for the shore to refill.' },
+  stuck: { icon: 'rock', label: 'Stuck', say: () => 'Stuck on a rock. It needs a hand.' },
+  switched_off: { icon: 'off', label: 'Switched off', say: () => 'Switched off. It needs a track link to start.' },
+  give_way: { icon: 'wait', label: 'Letting another pass', say: () => 'Letting another robot pass.' },
+  resting: { icon: 'zz', label: 'Pausing', say: () => 'Pausing a moment at the post.' }
+};
+const STOP_CODES = Object.keys(STOPS);
+function dryFree(sim) { return sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken && litSite(sim, w)); }
+function stopReason(sim, r) {
+  if (r.off) return 'switched_off';
+  const st = r.state;
+  if (st === ST.TASK) return r.tstall ? (r.why || 'wait_player') : null;
+  if (st === ST.WORK || st === ST.DROP || st === ST.SORT) return null;
+  if (st === ST.OUT || st === ST.CARRY) return r.yield ? 'give_way' : null;
+  const night = sim.env.night && (!sim.shifts || r.nc);
+  if (st === ST.HOME) {
+    if (sim.env.rain) return 'storm_home'; if (r.fit) return 'wait_player'; if (night) return 'night_shift'; if (r.charge < lowOf(sim)) return 'battery_low';
+    return dryFree(sim) ? 'idle_nothing' : sim.pl.work.some(w => !dryNow(sim, w)) ? 'water_in_way' : 'idle_nothing';
+  }
+  /* in the bay */
+  if (sim.env.rain) return 'storm_home'; if (r.fit) return 'wait_player'; if (night) return 'night_shift';
+  if (r.charge < (nightOn(sim) ? NIGHT.workMin : .85)) return 'charging';
+  if (r.timer > 1e8) return 'wait_player';
+  if (!dryFree(sim)) return sim.pl.work.some(w => !dryNow(sim, w)) ? 'water_in_way' : 'idle_nothing';
+  if (pickSite(sim, r, null) < 0) return 'idle_nothing';
+  return 'resting';
+}
+function placeOf(sim, r) {
+  if (r.state === ST.TASK) return r.at || 'on a job';
+  if (r.state === ST.BAY) return 'at the charging post';
+  const w = sim.pl.work[r.siteI]; if (w && r.state !== ST.HOME && Math.hypot(r.x - w.x, r.z - w.z) < 6) return 'at the ' + (w.kind === 'wood' ? 'wood' : w.kind === 'metal' ? 'metal' : 'shore') + ' pile';
+  if (inYard(sim, r)) return 'in the yard'; return r.state === ST.HOME ? 'on the way home' : 'on the shore';
+}
+function stopSay(sim, r, code) { const e = STOPS[code]; return e ? e.say(Math.round((r.charge || 0) * 100)) : null; }
+function noteStop(sim, r, code, kind) {   /* an instant stop the page decides (a lent-out errand aborted): logged like any other, with its code */
+  const L = sim.stops || (sim.stops = []); L.push({ t0: sim.t, id: r.id, code: STOPS[code] ? code : 'unknown', kind: kind || 'abort', place: placeOf(sim, r), pct: Math.round((r.charge || 0) * 100), dur: 0, open: false }); if (L.length > 3000) L.shift();
+}
+function stopTrack(sim) {
+  const L = sim.stops || (sim.stops = []);
+  for (const r of sim.robots) {
+    const code = stopReason(sim, r) || null, was = r.pw || null; if (code === was) continue;
+    if (r.pwe) { r.pwe.dur = sim.t - r.pwe.t0; r.pwe.open = false; r.pwe = null; }
+    r.pw = code; if (!code) continue;
+    const e = { t0: sim.t, id: r.id, code: STOPS[code] ? code : 'unknown', kind: 'stop', place: placeOf(sim, r), pct: Math.round((r.charge || 0) * 100), dur: null, open: true }; L.push(e); r.pwe = e; if (L.length > 3000) L.shift();
+  }
 }
 /* run the routine forward by seconds in fixed steps (deterministic: a frozen picture is a function of the seed and the seconds run) */
 function simRun(sim, seconds, env) { const h = .25; let t = 0; while (t < seconds - 1e-9) { const d = Math.min(h, seconds - t); simStep(sim, d, env); t += d; } return sim; }
@@ -654,7 +715,7 @@ function create(o) {
 /* the tier of a plan made for 'high': fewer pieces, bays and work sites for low and AR (the page plans once, so a quality change rebuilds from the same plan) */
 function forTier(pl, tier) { const mt = TIER_PIECES[tier] || 3, nb = Math.min(pl.nBays, TIER_BOTS[tier] || 3);
   return Object.assign({}, pl, { tier, nBays: nb, yard: Object.assign({}, pl.yard, { nBays: nb }), pieces: pl.pieces.filter(p => PIECES[p.kind].tier <= mt), work: pl.work.slice(0, { high: 7, low: 5, ar: 3 }[tier] || 7) }); }
-const API = { NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
+const API = { STOPS, STOP_CODES, stopReason, stopSay, placeOf, noteStop, stopTrack, NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 root.LI_CAMP = Object.assign(root.LI_CAMP || {}, API);
 })(typeof window !== 'undefined' ? window : globalThis);
