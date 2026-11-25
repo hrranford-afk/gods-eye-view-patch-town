@@ -1,0 +1,72 @@
+THE GIFT
+Visual targets. Prices, costs, counts, telemetry and times are illustrative. Touch targets need testing in the live UI.
+
+01_Dawn
+Art and implementation — Boats, camp and water have prototype references. The pearl dawn light is a finish target.
+Required UI — Show the first floating plank when steering begins.
+Clarity pass — Keep the finished deck clear of spare boards so the shortage reads.
+
+01b_Bright
+Art and implementation — The sea geometry carries the scene. The bright caustics are a lighting target.
+Required UI — Show the pickup affordance within rowing range.
+Clarity pass — Release the painter from the rock so the rowboat reads as free.
+
+01c_Drizzle
+Art and implementation — Use the existing coast and weather system. Fine droplet highlights are illustrative.
+Required UI — Keep the same input and pickup hint across weather changes.
+Clarity pass — Give the floating board one light edge against the grey water.
+
+02_Ferrying
+Art and implementation — Boat and yard are established assets. Loaded draft and the cargo procession are targets.
+Required UI — Show cargo aboard and confirm each unload.
+Clarity pass — Let the moving crates trace the route and retire the arrows after first use.
+
+03_Dock
+Art and implementation — Jetty repairs have a prototype. String tension, joinery and lantern detail are finish targets.
+Required UI — Advance the work stage only when stock arrives.
+Clarity pass — Keep the same shore landmark visible at every stage.
+
+04_Night
+Art and implementation — The scene builds on the night sky and lighthouse tests. The bottle glint is a flourish.
+Required UI — Offer a pickup only within reach of the bottle.
+Clarity pass — Keep the lamp the brightest point.
+
+05_Haul
+Art and implementation — The storm and shore have visual references. The full salvage strand and hulk are proposed placements.
+Required UI — Identify a selected find and its carrying limit.
+Clarity pass — Leave clear walking space between the high-tide line and the hulk.
+
+06_Mainland
+Art and implementation — These five mainland sets are proposed. Wet paving and sodium light link them.
+Required UI — Allow advance, pause and skip through the prelude.
+Clarity pass — Repeat the carpet pattern once at the office as a quiet visual link.
+
+07_First_day
+Art and implementation — Boat and sea come from the gameplay references. The gold ring and polished dock are visual targets.
+Required UI — Day, menu, stock, one hint, steering and contextual Dock.
+Clarity pass — Dim Dock while out of range and clear timber from beside the stalled carts.
+
+08_Catalogue
+Art and implementation — Paper, lamps and illustrated goods are interface art. The two balances follow the game rules.
+Required UI — Select a good, inspect price and arrival time, then order once.
+Clarity pass — State which balance will be charged before confirming.
+
+09_Letter
+Art and implementation — The island can sit behind a static paper layer. Paper grain and the brown stamp are art direction.
+Required UI — Readable letter and a large Close target.
+Clarity pass — Keep the short passage together at the chosen text size.
+
+10_Build
+Art and implementation — The five thumbnails are concepts for structures. Timber framing on the panel is decorative.
+Required UI — Each row needs cost, purpose, required stock and stage; only one active build.
+Clarity pass — Replace repeated material headings with a single column heading.
+
+11_Town
+Art and implementation — Island terrain has a prototype. Settlement density and the warm roof treatment are illustrative.
+Required UI — Show both balances, happiness, counted population, five goods and the arriving boat.
+Clarity pass — Use the approved title and fold secondary controls into Menu.
+
+12_Desk
+Art and implementation — Chart, camp and ledger are proposed as simultaneous views. Desk lighting is staged.
+Required UI — Keep the route at left, play at centre, ledger, frame times and events at right.
+Clarity pass — Label live versus sample readings and let the player enlarge the graph.

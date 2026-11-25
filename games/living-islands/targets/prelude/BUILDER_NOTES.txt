@@ -1,0 +1,67 @@
+THE GIFT — PRELUDE
+Concept targets. The mainland sets and interactions are proposed.
+
+Night workbench
+Art and build — Lamp bloom and wet reflections are finish targets. The bench can use static meshes and one hand animation.
+Interaction — Tap the loose belt to inspect its fit.
+Clarity or kindness — Leave room around the belt for a finger.
+
+Morning workbench
+Art and build — Use the same camera and meshes with cooler window light. Steam is optional.
+Interaction — Resume the same repair at its saved step.
+Clarity or kindness — Keep the work area bright enough to see the screw heads.
+
+Doormat
+Art and build — Use a parcel mesh and stamp decal. Wet fibres are close-up polish.
+Interaction — Tap the parcel to unfold its flap.
+Clarity or kindness — Let the spare part show before asking the player to pick it up.
+
+Neighbour
+Art and build — Sleeves and hands can carry the handover. Fine wool is illustrative.
+Interaction — Accept the hoover, then set it on the bench.
+Clarity or kindness — Leave the tea on the ledge so the exchange feels unhurried.
+
+Inheritance
+Art and build — Paper, key and tape can be layered sprites. Rain shine is illustrative.
+Interaction — Lift the key, then unfold either paper.
+Clarity or kindness — Keep the office and personal letters available to reread.
+
+Stamp close-up
+Art and build — One small decal can repeat on all three objects. Macro depth of field is optional.
+Interaction — Tap to inspect each impression.
+Clarity or kindness — Match size and gap across materials without prompting a conclusion.
+
+One bag
+Art and build — Four item meshes and a bag layer can carry this scene. Cloth creases are polish.
+Interaction — Choose a keepsake, then close the bag.
+Clarity or kindness — Allow the player to leave the last pocket empty.
+
+Street
+Art and build — Repeat the runner motif on the awning. Wet amber reflections are art direction.
+Interaction — Pause by the café or return the wave.
+Clarity or kindness — Hold the doorway in view long enough for a wave back.
+
+Station
+Art and build — Bench, holdall and kiosk can be a single set. Fine rain is a mood layer.
+Interaction — Pick up the bag when ready to board.
+Clarity or kindness — Leave time for one last look towards the kiosk.
+
+Quay
+Art and build — The prototype supplies a boat and sea vocabulary. Lantern reflections are a lighting target.
+Interaction — Tap the waiting boat to board.
+Clarity or kindness — Let teal enter at the waterline before filling the frame.
+
+Crossing
+Art and build — Island, boat and camp reference the game. Fine spray and dawn grading are polish.
+Interaction — Steer towards the missing deck section.
+Clarity or kindness — Keep the robot silhouette clear against the sand.
+
+Six stamps
+Art and build — All six can be flat single-colour decals. Worn edges are optional.
+Interaction — Use a zoomed inspection view when discovered.
+Clarity or kindness — Pick the broken oval. Its gap survives reduction and suggests an imperfect tool.
+
+Stationery
+Art and build — Typeset paper layers can be shown directly. Stock colour distinguishes the two voices.
+Interaction — Tap either letter to enlarge or close it.
+Clarity or kindness — Keep the handwriting generous and offer plain-text reading.
