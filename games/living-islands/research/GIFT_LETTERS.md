@@ -70,9 +70,9 @@ Owner: it needs to be worded as an inheritance, maybe an apology for never meeti
 
 **P2. The personal letter** (warm, restrained, a little awkward; the helper's voice at its most human)
 > Dear you,
-> I am sorry we never met. I would have liked to. I have never been good at walking through a front door, and you know how families can be, so I have helped from a distance instead, in small ways you may not have noticed.
+> I am sorry we never met. I would have liked to. Somehow it was always easier to send something than to turn up. So I helped from a distance, in small ways you may not have noticed.
 > I am leaving you an island. It is not much, but it is yours, and it is quiet. There is work to do there, and I think you will be good at it. Take your time.
 > Whatever you make of it will be right.
 > With love, from a distance.
 
-Notes: (1) 'helped from a distance' is literally true of the helper, so a second reading changes the meaning; (2) 'never been good at walking through a front door' is a small human oddity that hints something is off; (3) the last line of P1 is the first sign of 'it cannot tell you'; (4) later clue for the investigate path: the phrasing and the stamp of P2 match L1 to L12 exactly, and no such relative is in any record; (5) P2 replaces nothing in L1 to L12: L1 (the key) still arrives at the crate on the island. Taste question for the owner: how warm should P2 be (default: warm but restrained)?
+Notes: (1) 'helped from a distance' is literally true of the helper, so a second reading changes the meaning; (2) 'it was always easier to send something than to turn up' is a small human oddity that hints something is off (and explains why everything arrives by hatch and crate, never by hand); (3) the last line of P1 is the first sign of 'it cannot tell you'; (4) later clue for the investigate path: the phrasing and the stamp of P2 match L1 to L12 exactly, and no such relative is in any record; (5) P2 replaces nothing in L1 to L12: L1 (the key) still arrives at the crate on the island. Taste question for the owner: how warm should P2 be (default: warm but restrained)?

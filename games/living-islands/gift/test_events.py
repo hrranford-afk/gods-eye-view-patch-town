@@ -26,7 +26,7 @@ TOWN_BOTTLES = [
 
 # the two prelude letters, exactly as the owner worded them in research/GIFT_LETTERS.md (section Prelude letters)
 P1 = "Dear beneficiary,\nWe write on behalf of an estate that has named you. There is nothing for you to pay. Enclosed are a key, a deed to a small island, and a personal letter left for you. Please read the letter before you decide anything. If you choose to visit, a boat will be arranged. We regret that we are unable to answer questions about the estate.\nNew Life Inheritance"
-P2 = "Dear you,\nI am sorry we never met. I would have liked to. I have never been good at walking through a front door, and you know how families can be, so I have helped from a distance instead, in small ways you may not have noticed.\nI am leaving you an island. It is not much, but it is yours, and it is quiet. There is work to do there, and I think you will be good at it. Take your time.\nWhatever you make of it will be right.\nWith love, from a distance."
+P2 = "Dear you,\nI am sorry we never met. I would have liked to. Somehow it was always easier to send something than to turn up. So I helped from a distance, in small ways you may not have noticed.\nI am leaving you an island. It is not much, but it is yours, and it is quiet. There is work to do there, and I think you will be good at it. Take your time.\nWhatever you make of it will be right.\nWith love, from a distance."
 
 # ---------------------------------------------------------------- calendar, tide, credit
 def season_of(day):
@@ -370,7 +370,8 @@ class Content(unittest.TestCase):
         self.assertEqual(BY_ID["p0_P1"]["voice"], "office"); self.assertEqual(BY_ID["p0_P2"]["voice"], "helper")
         # the helper never lies and never says "I am your relative"
         self.assertIsNone(re.search(r"\bI am your\b|\bmy (nephew|niece|child|grandchild)\b|\byour (uncle|aunt|father|mother|grandfather|grandmother)\b", P2, re.I))
-        self.assertIn("families", P2)
+        self.assertIn("Somehow it was always easier to send something than to turn up.", P2)   # critic review v2, step 1
+        self.assertNotIn("front door", P2)
         scenes = [e for e in pre if "choices" in e]
         self.assertEqual(len(scenes), 5)
         for e in pre: self.assertTrue(e["force"])
