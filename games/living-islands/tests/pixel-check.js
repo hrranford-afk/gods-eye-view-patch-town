@@ -53,6 +53,7 @@ export function blackOvals(img, o = {}) {
     if (seen[s0] || !dark(s0)) continue; const q = [s0], px = []; seen[s0] = 1;
     while (q.length && px.length < 4000) { const k = q.pop(); px.push(k); const x = k % W, y = (k / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const j = ny * W + nx; if (!seen[j] && dark(j)) { seen[j] = 1; q.push(j); } } }
     if (px.length < minPx || px.length >= 4000) continue;
+    let mr = 0, mg = 0, mb = 0; for (const k of px) { mr += d[k * 4]; mg += d[k * 4 + 1]; mb += d[k * 4 + 2]; } mr /= px.length; mg /= px.length; mb /= px.length; if (Math.max(mr, mg, mb) - Math.min(mr, mg, mb) > 14) continue;   /* the open tops are neutral black; a dark rock or a pine is tinted */
     const inS = new Set(px); let ring = 0, bright = 0;
     for (const k of px) { const x = k % W, y = (k / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const j = ny * W + nx; if (inS.has(j)) continue; ring++; if (lum(d, j * 4) > .45) bright++; } }
     const xs0 = px.map(k => k % W), ys0 = px.map(k => (k / W) | 0), bw = Math.max(...xs0) - Math.min(...xs0) + 1, bh = Math.max(...ys0) - Math.min(...ys0) + 1, round = bw / bh > .5 && bw / bh < 2 && px.length / (bw * bh) > .6 && px.length < 900 * sc;   /* round and small: an open top, not a shadowed hull */
@@ -124,14 +125,14 @@ if (isMain) {
       await p.evaluate(() => { __gift.doBuild('cottage'); }); await p.locator('#gd button', { hasText: 'Build it' }).first().click({ force: true }); await p.evaluate(() => __gift.closeCard()); await adv(p, 3);
       const sp = await p.evaluate(() => __gift.spots().build.cottage);
       for (let i = 0; i < 60; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam) break; const need = await p.evaluate(() => { const P = __gift.phys(), x = P.state(), b = x.ph.b; if (!b) return null; const pl = P.planFor(b.id), a = b.stage - 1; return b.stage === 0 ? 'stake' : (a >= 0 && a < 4 && b.placed[a] >= pl.need[a] && b.hand.length === 0 && a !== 1) ? 'hold' : null; }); if (need) { await p.evaluate(() => { __gift.phys().startAct('site', true); __gift.phys().advance(3); }); continue; } await adv(p, 10); }
-      await view(p, sp.x, sp.z, 24, .8, .6); judge('build stage (frame)', await worldShot(p, 'build'), { maxDark: .08 });
+      await view(p, sp.x, sp.z, 24, .8, .6); judge('build stage (frame)', await worldShot(p, 'build'), { maxDark: .08, maxFlat: .05 });
     }
     ok(errs.length === 0, 'no console errors'); await p.close();
   }
   if (only.includes('storm')) {
     const { p, errs } = await open('?game=gift&q=high&device=desktop&stage=evening'); await hook(p);
     await p.waitForFunction(() => window.__storm, null, { timeout: 300000 }); await p.evaluate(() => { __gift.closeCard(); __storm.start({ build: 8 }); __storm.setTs(8 + 30 + 20); __storm.finish(); }); await p.waitForFunction(() => __storm.state().phase === 'haul', null, { timeout: 200000 }); await p.evaluate(() => __li.setTide(-.2)); await p.waitForTimeout(1500);
-    await adv(p, 6); const L = await p.evaluate(() => __gift.phys().layout()); await view(p, L.post.x, L.post.z, 24, .8, .4); judge('storm haul', await worldShot(p, 'storm')); ok(errs.length === 0, 'no console errors'); await p.close();
+    await adv(p, 6); const L = await p.evaluate(() => __gift.phys().layout()); await view(p, L.post.x, L.post.z, 24, .8, .4); judge('storm haul', await worldShot(p, 'storm'), { maxDark: .02 }); ok(errs.length === 0, 'no console errors'); await p.close();
   }
   if (only.includes('boat')) {
     const { p, errs } = await open('?game=gift&q=high&device=desktop&dev=0'); await hook(p); await adv(p, 2);

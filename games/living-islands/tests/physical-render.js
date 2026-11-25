@@ -12,14 +12,14 @@ async function open(qs, w, h) {
   await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { }); await p.waitForTimeout(3500); return { p, errs };
 }
 const adv = (p, s) => p.evaluate(s => __gift.phys().advance(s), s);
-const view = (p, x, z, dist, phi, theta) => p.evaluate(v => __li.setView(v), { tx: x, tz: z, dist, phi, theta });
+const view = (p, x, z, dist, phi, theta) => p.evaluate(v => { __li.setView(v); __gift.focus(v.tx, v.tz, v.dist, v.theta, v.phi); }, { tx: x, tz: z, dist, phi, theta });   /* focus too: a card or a robot start leaves a page focus move that would pull the camera away */
 const shot = async (p, name) => { await p.waitForTimeout(3500); await p.screenshot({ path: path.join(ROOT, 'shots', 'phys-' + name + '.png') }); console.log('wrote shots/phys-' + name + '.png'); };
 const G = (p, f, ...a) => p.evaluate(([f, a]) => { const r = __gift[f](...a); return r === undefined ? null : r; }, [f, a]);
 const stand = async p => p.evaluate(() => { const L = __gift.phys().layout(); return L; });
 if (only.includes('0') || only.includes('0b')) {
   const { p, errs } = await open('?game=gift&q=high&device=desktop&dev=0');
-  if (only.includes('0')) { const L = await stand(p), l = await p.evaluate(() => __boat.landings().find(l => l.id === 'beach')); await adv(p, 2); await view(p, (L.dock.tip.x + l.berth.x) / 2, (L.dock.tip.z + l.berth.z) / 2, 46, .75, .7); await shot(p, '0-arrival'); }
-  if (only.includes('0b')) { const f = await p.evaluate(() => __gift.phys().floats().filter(f => !f.gone)[0]); await p.evaluate(([x, z]) => { __boat.teleport(x - 3, z, 0, 'drive'); __gift.phys().advance(.3); __boat.teleport(x, z, 0.3, 'drive'); __gift.phys().advance(.6); }, [f.x, f.z]); await view(p, f.x, f.z, 22, .8, .5); await shot(p, '0b-ferrying'); }
+  if (only.includes('0')) { await adv(p, 3); await shot(p, '0-arrival'); }   /* the game's own arrival framing (frameDock in physical.js), no camera call here */
+  if (only.includes('0b')) { const f = await p.evaluate(() => __gift.phys().floats().filter(f => !f.gone)[0]); await p.evaluate(([x, z]) => { __boat.teleport(x - 3, z, 0, 'drive'); __gift.phys().advance(.3); __boat.teleport(x, z, 0.3, 'drive'); __gift.phys().advance(.6); }, [f.x, f.z]); await p.evaluate(([x, z]) => __gift.focus(x, z, 20, .7, .62), [f.x, f.z]); await shot(p, '0b-ferrying'); }
   console.log('errors', errs.length); await p.close();
 }
 if (only.includes('1') || only.includes('2')) {
@@ -33,10 +33,16 @@ if (only.includes('3') || only.includes('4')) {
   const { p, errs } = await open('?game=gift&q=high&device=desktop&stage=evening');
   await p.evaluate(() => { const s = __gift.state(); }); for (const [k, n] of [['planks', 12], ['metal', 4], ['rope', 2], ['glass', 2]]) await G(p, 'addStock', k, n);
   await p.evaluate(() => { __gift.doBuild('cottage'); }); await p.locator('#gd button', { hasText: 'Build it' }).first().click({ force: true }); await G(p, 'closeCard'); await adv(p, 3);
+  await p.evaluate(() => { __gift.startRobot(0); }); await p.waitForTimeout(800); await p.evaluate(() => __gift.closeCard());   /* one robot, started by the page's own handle, for the ferrying and the beam */
+  if (only.includes('3')) {   /* a frame-stage build with robots ferrying: stake it, start a robot, wait until one walks a unit to the site */
+    await p.evaluate(() => { __gift.closeCard(); __gift.phys().startAct('site', true); __gift.phys().advance(3); });
+    for (let i = 0; i < 60; i++) { const e = await p.evaluate(() => __gift.phys().state().err.filter(q => q.carry).length); if (e) break; await adv(p, 2); } await adv(p, 3); await p.evaluate(() => __gift.closeCard());
+    const sp0 = await p.evaluate(() => __gift.spots().build.cottage), rb = await p.evaluate(() => { const r = __li.campstart.rt().sim().robots[0]; return { x: r.x, z: r.z }; }); await view(p, (sp0.x + rb.x) / 2, (sp0.z + rb.z) / 2, Math.max(20, Math.hypot(sp0.x - rb.x, sp0.z - rb.z) * 1.35), .62, .6); await shot(p, '3');
+  }
   const needHold = () => p.evaluate(() => { const P = __gift.phys(), x = P.state(), b = x.ph.b; if (!b) return null; const pl = P.planFor(b.id), a = b.stage - 1; return b.stage === 0 ? 'stake' : (a >= 0 && a < 4 && b.placed[a] >= pl.need[a] && b.hand.length === 0 && a !== 1) ? 'hold' : null; });
   for (let i = 0; i < 60; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam) break; if (await needHold()) { await p.evaluate(() => { __gift.phys().startAct('site', true); __gift.phys().advance(3); }); continue; } await adv(p, 10); }
   const sp = await p.evaluate(() => { const b = __gift.state(); return __gift.spots().build.cottage; });
-  if (only.includes('3')) { await view(p, sp.x, sp.z, 24, .8, .6); await shot(p, '3'); }
+  if (only.includes('3')) { /* shot earlier, see above */ }
   if (only.includes('4')) { for (let i = 0; i < 40; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam && st.beam.robotAt) break; await adv(p, 10); } await p.evaluate(() => __gift.phys().hold('pbeamA')); await adv(p, 6); const bm = await p.evaluate(() => __gift.phys().state().beam); const st = await p.evaluate(() => __gift.phys().state()); await view(p, st.marker ? st.marker.x : sp.x, st.marker ? st.marker.z : sp.z, 20, .8, .5); await shot(p, '4'); await p.evaluate(() => __gift.phys().hold(null)); }
   console.log('errors', errs.length); await p.close();
 }
