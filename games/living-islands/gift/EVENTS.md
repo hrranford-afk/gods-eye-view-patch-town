@@ -5,7 +5,7 @@ Files: `events.json` (the deck), `test_events.py` (schema tests, tone tests, a f
 Run: `python3 gift/test_events.py` (tests, then a short simulation report) or `python3 gift/test_events.py --report`.
 
 ## What is in the deck
-195 events: 5 prelude scenes (act 0, scripted, never drawn) and 190 drawn events (act 1: 54, act 2: 51, act 3: 48, act 4: 37). 104 are repeatable, 28 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 30 are about the great-uncle and the office (papers, objects, a coat, a telephone, a filing cabinet: never a person). Mood split of the drawn events: 46 percent good, 37 percent mid, 17 percent mild trouble (the target was about a half, a third and a sixth).
+201 events: 7 prelude records (act 0, scripted, never drawn: the two prelude letters P1 and P2 quoted exactly from GIFT_LETTERS.md, and five scenes) and 194 drawn events (act 1: 54, act 2: 53, act 3: 49, act 4: 38). 104 are repeatable, 28 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 33 are about the inheritance thread (the office, the personal letter, an unseen relative) (papers, objects, a coat, a telephone, a filing cabinet: never a person). Mood split of the drawn events: 46 percent good, 38 percent mid, 16 percent mild trouble (the target was about a half, a third and a sixth).
 
 ## File shape
 ```
@@ -59,7 +59,7 @@ A seeded stand-in player with an attitude style walks 1,440 days, with a spring 
 Flaws: the sim player is crude (flags and builds follow fixed days, the stock is a random walk), weather by day not by hour, and the draw rate is set by hand. Treat the numbers as a smoke test for dead stretches and repeats, not a forecast.
 
 ## Rights
-Beats are patterns only (see `research/GIFT_STORY_SOURCES.md`). The `source` field names the beat. The six town bottles are quoted unedited and the test compares them with a copy of the six strings. No quoted line comes from a book. Letters L1 to L12 are the words of `research/GIFT_LETTERS.md`. Prelude and uncle text is new (owner idea, 25 Nov).
+Beats are patterns only (see `research/GIFT_STORY_SOURCES.md`). The `source` field names the beat. The six town bottles are quoted unedited and the test compares them with a copy of the six strings. No quoted line comes from a book. Letters L1 to L12 are the words of `research/GIFT_LETTERS.md`. The prelude letters P1 and P2 are the owner's wording, quoted exactly (the test compares them). Other prelude and inheritance-thread text is new.
 
 ## The office and the helper (voice rule)
 Two hands, one source. The office (New Life Inheritance) writes dull, formal, third person ("this office"), hedges, and says the one thing it keeps saying: it is not permitted to say. The helper's letters L1 to L12 are plain, short, second person and grow a little warmer; they never explain and never ask. The tests keep them apart: the helper never says office, uncle or inheritance; the office never speaks of the old machines. "New Life Inheritance" is an invented name: `registries.human_check_names` flags it for a human to check it is not a real company before any public use. Clue rule: hints only, never proof; clues may contradict each other.

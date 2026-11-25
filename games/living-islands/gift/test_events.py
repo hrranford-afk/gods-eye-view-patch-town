@@ -24,6 +24,10 @@ TOWN_BOTTLES = [
     "Someone is hoping this place is kind to you. That is all this note is for.",
 ]
 
+# the two prelude letters, exactly as the owner worded them in research/GIFT_LETTERS.md (section Prelude letters)
+P1 = "Dear beneficiary,\nWe write on behalf of an estate that has named you. There is nothing for you to pay. Enclosed are a key, a deed to a small island, and a personal letter left for you. Please read the letter before you decide anything. If you choose to visit, a boat will be arranged. We regret that we are unable to answer questions about the estate.\nNew Life Inheritance"
+P2 = "Dear you,\nI am sorry we never met. I would have liked to. I have never been good at walking through a front door, and you know how families can be, so I have helped from a distance instead, in small ways you may not have noticed.\nI am leaving you an island. It is not much, but it is yours, and it is quiet. There is work to do there, and I think you will be good at it. Take your time.\nWhatever you make of it will be right.\nWith love, from a distance."
+
 # ---------------------------------------------------------------- calendar, tide, credit
 def season_of(day):
     d = (day - 1) % 360 + 1
@@ -80,7 +84,7 @@ COMPANY = "New Life Inheritance"     # an invented name: a human must check it i
 
 def odd_capitals(text):
     """Capital words that are not at the start of a sentence (names of people or places)."""
-    text = text.replace(COMPANY, "the office")
+    text = text.replace(COMPANY, "the office").replace("\n", ". ")
     out = []
     for m in re.finditer(r"(?<![.!?:\"‘“] )(?<!^)\b([A-Z][a-z]+)\b", text):
         w = m.group(1)
@@ -318,7 +322,7 @@ class Content(unittest.TestCase):
 
     def test_text_rules(self):
         for e in EVENTS:
-            txt = e["text"]; lim = 330 if e["kind"] == "letter" else 260
+            txt = e["text"]; lim = 700 if e["act"] == 0 else (330 if e["kind"] == "letter" else 260)
             self.assertTrue(25 <= len(txt) <= lim, "%s text length %d" % (e["id"], len(txt)))
             self.assertTrue(10 <= len(e["cause"]) <= 280, e["id"] + " cause length")
             for v in e.get("variants", {}).values(): self.assertTrue(10 <= len(v) <= 130)
@@ -345,7 +349,7 @@ class Content(unittest.TestCase):
             if e["act"] <= 1: self.assertIsNone(re.search(r"\b(system|network|hidden|machine intelligence|someone is running)\b", e["text"], re.I), e["id"])
 
     def test_letters(self):
-        letters = {e["id"]: e for e in EVENTS if e["kind"] == "letter"}
+        letters = {e["id"]: e for e in EVENTS if e["kind"] == "letter" and e["act"] >= 1}
         flags = {f for e in letters.values() for f in e["effects"].get("flags_set", [])}
         for i in range(1, 13): self.assertIn("letter_L%d" % i, flags, "letter L%d missing" % i)
         for e in letters.values():
@@ -361,19 +365,26 @@ class Content(unittest.TestCase):
 
     def test_prelude(self):
         pre = [e for e in EVENTS if e["act"] == 0]
-        self.assertEqual([e["id"] for e in pre], ["p0_flat", "p0_street", "p0_office", "p0_station", "p0_quay"])
-        for e in pre:
-            self.assertGreaterEqual(len(e["choices"]), 2); self.assertTrue(e["force"])
-        self.assertEqual(len(pre[0]["choices"]), 3)
-        office = BY_ID["p0_office"]; self.assertEqual(office["voice"], "office"); self.assertEqual(BY_ID["p0_flat"]["voice"], "office")
-        self.assertIn(COMPANY, BY_ID["p0_flat"]["text"]); self.assertIn("not permitted to say", office["text"])
+        self.assertEqual([e["id"] for e in pre], ["p0_P1", "p0_P2", "p0_flat", "p0_street", "p0_office", "p0_station", "p0_quay"])
+        self.assertEqual(BY_ID["p0_P1"]["text"], P1, "P1 must be quoted exactly"); self.assertEqual(BY_ID["p0_P2"]["text"], P2, "P2 must be quoted exactly")
+        self.assertEqual(BY_ID["p0_P1"]["voice"], "office"); self.assertEqual(BY_ID["p0_P2"]["voice"], "helper")
+        # the helper never lies and never says "I am your relative"
+        self.assertIsNone(re.search(r"\bI am your\b|\bmy (nephew|niece|child|grandchild)\b|\byour (uncle|aunt|father|mother|grandfather|grandmother)\b", P2, re.I))
+        self.assertIn("families", P2)
+        scenes = [e for e in pre if "choices" in e]
+        self.assertEqual(len(scenes), 5)
+        for e in pre: self.assertTrue(e["force"])
+        self.assertEqual(len(BY_ID["p0_flat"]["choices"]), 3)
+        office = BY_ID["p0_office"]; self.assertEqual(office["voice"], "office")
+        self.assertIn(COMPANY, BY_ID["p0_P1"]["text"]); self.assertIn("unable to answer questions", office["text"])
+        self.assertIn("unable to answer questions", BY_ID["a3_office_cannot_say"]["text"])    # the late letter echoes P1
         self.assertIn(COMPANY, REG["human_check_names"])
         for e in EVENTS:
             if "Inheritance" in e["text"]: self.assertIn(COMPANY, e["text"])
         late = [e for e in EVENTS if e["voice"] == "office" and "not permitted to say" in e["text"] and e["act"] >= 2]
         self.assertGreaterEqual(len(late), 2, "the office rule 'not permitted to say' must be seen again later")
         coupled = {e["id"] for e in EVENTS if e["kind"] in ("uncle", "clue")}
-        for must in ("a1_letter_coordinates", "a2_postmarks", "a2_office_signers", "a2_lamp_phone", "a2_file_cabinet", "a3_cabinet_neighbours", "a3_cabinet_dates", "a3_office_cannot_say", "a1_robot_chassis_stamp"): self.assertIn(must, coupled)
+        for must in ("a2_P2_match", "a2_door_no_handle", "a3_hatches", "a4_P2_reread", "a1_letter_coordinates", "a2_postmarks", "a2_office_signers", "a2_lamp_phone", "a2_file_cabinet", "a3_cabinet_neighbours", "a3_cabinet_dates", "a3_office_cannot_say", "a1_robot_chassis_stamp"): self.assertIn(must, coupled)
         uncle = [e for e in EVENTS if e["kind"] == "uncle" and e["act"] >= 1]
         self.assertGreaterEqual(len(uncle), 20)
         # the uncle is only papers and objects: no event shows him
@@ -383,7 +394,7 @@ class Content(unittest.TestCase):
         # the office is formal and says "this office" or "we"; the helper's letters are plain, second person, never say "this office"
         for e in EVENTS:
             if e["voice"] == "helper": self.assertIsNone(re.search(r"\b(this office|we are|we cannot|not permitted)\b", e["text"], re.I), e["id"])
-        helper_len = [len(e["text"]) for e in EVENTS if e["kind"] == "letter"]
+        helper_len = [len(e["text"]) for e in EVENTS if e["kind"] == "letter" and e["act"] >= 1]
         self.assertLessEqual(max(helper_len), 240)    # short, plain
 
     def test_helper_not_explained(self):
