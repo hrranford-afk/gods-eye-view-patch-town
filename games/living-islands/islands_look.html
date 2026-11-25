@@ -54,6 +54,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <div id="gpuInfo"></div>
 <div id="boot">Raising the islands...</div>
 <script src="gift_day.js"></script>
+<script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
@@ -73,7 +74,12 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 const Q=new URLSearchParams(location.search);
 /* &device= presets (ULTRA_TIER.md): four named sets of DEFAULTS, filled in only where the URL has no value of its own, so an explicit &q= &tier= &post=0 ... always wins; no &device= = nothing changes */
 const DEV_PRESETS={ar:{tier:'ar',clockdome:'0',q:'low'},ipad:{q:'low'},desktop:{q:'ultra',ssaa:'1.25',msaa:'4',shadow:'2048',terrain:'0.55',bloom:'0'},radeon:{q:'ultra',bench:'1'}};
-const DEV=Object.prototype.hasOwnProperty.call(DEV_PRESETS,Q.get('device')||'')?Q.get('device'):'';
+const DEV0=Object.prototype.hasOwnProperty.call(DEV_PRESETS,Q.get('device')||'')?Q.get('device'):'';
+/* the preset step-down (research/RADEON_FIRST_MEASUREMENT.md, the owner's iPad running device=radeon at 28.6 fps): radeon or desktop opened on a built-in or mobile GPU becomes the ipad preset, with a one-line note. &stepdown=0 keeps the preset asked for; &gpuname= and &fakeua= stand in for the browser's answers in tests. */
+function earlyGpu(){if(Q.get('gpuname')!==null)return Q.get('gpuname');try{const c=document.createElement('canvas'),g=c.getContext('webgl')||c.getContext('experimental-webgl');if(!g)return'';const e=g.getExtension('WEBGL_debug_renderer_info'),r=e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER),l=g.getExtension('WEBGL_lose_context');if(l)l.loseContext();return String(r||'');}catch(x){return'';}}
+const STEP=(DEV0==='radeon'||DEV0==='desktop')&&window.LI_ULTRA&&LI_ULTRA.deviceStepDown?LI_ULTRA.deviceStepDown(DEV0,earlyGpu(),Q.get('fakeua')!==null?Q.get('fakeua'):navigator.userAgent,Q.get('fakeua')!==null?5:(navigator.maxTouchPoints||0),{off:Q.get('stepdown')==='0'}):{step:false};
+const DEV=STEP.step?STEP.to:DEV0;
+if(STEP.step){const n=document.createElement('div');n.id='stepnote';n.textContent=STEP.note;n.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:30;max-width:min(680px,calc(100vw - 24px));padding:7px 12px;border-radius:12px;background:rgba(251,246,236,.94);border:2px solid #cdbb98;color:#2b2118;font:14px/1.3 Georgia,serif;text-align:center;pointer-events:none;transition:opacity 1.2s';document.body.appendChild(n);setTimeout(()=>{n.style.opacity='0';},14000);setTimeout(()=>{if(n.parentNode)n.parentNode.removeChild(n);},16000);}
 if(DEV){const P=DEV_PRESETS[DEV];for(const k in P)if(!Q.has(k))Q.set(k,P[k]);if(DEV==='ipad')document.body.classList.add('dev-touch');}
 const WQ=Q.get('world');                /* the world view (world_view.js, see WORLD_VIEW.md): ?world=NNN draws one exported world of the land formation tool instead of the six hand-placed islands; absent = unchanged */
 const WID=(WQ!==null&&/^\d+$/.test(WQ))?(parseInt(WQ,10)>>>0):null;
@@ -639,6 +645,9 @@ function bkUpdate(o,dt,t,y0,rl0,pt0){const b=o.b,k=o.kit,M=LI_BOAT_MOTION;let y=
     const rel=Math.atan2(w.x*sx+w.z*sz,w.x*fx+w.z*fz),tr=M.sailTrim(rel,w.v),kk=dt>0?1-Math.exp(-dt/.7):1;
     k.sailA+=(tr.boom-k.sailA)*kk;k.heel+=(tr.heel-k.heel)*kk;k.flut=tr.luff?Math.sin(t*9)*.05:Math.sin(t*1.3)*.012;k.rud=M.rudderAngle(k.yawRate);pt-=k.heel;k.trim={rel,boom:k.sailA,heel:k.heel,rud:k.rud,luff:tr.luff};
     lv.forEach(Ln=>{if(!Ln.posed){bkApplyPose(Ln,'pose_sailing');k.dirty=true;}bkRig(Ln,k);});}
+  else if(b.drive){   /* a driven boat: the layer says whether the oars are out (b.rowing) and where they are (b.oar = {sweep, lift}); with the motor the oars are shipped */
+    const want=b.rowing?'pose_rowing':'pose_rest';lv.forEach(Ln=>{if(Ln.pn!==want){bkApplyPose(Ln,want);Ln.pn=want;k.dirty=true;}});
+    if(b.rowing&&b.oar)lv.forEach(Ln=>bkOars(Ln,b.oar));}
   else if(b.rowing){   /* oars: stroke from the clock, period from the speed over the ground */
     const sp=Math.hypot(b.x-k.px,b.z-k.pz)/Math.max(dt,1e-3);k.spd+=((dt>0?sp:k.spd)-k.spd)*(dt>0?1-Math.exp(-dt/.8):1);k.px=b.x;k.pz=b.z;
     k.stroke=M.oarStroke(t,M.strokePeriod(k.spd||.9),1);
@@ -681,6 +690,7 @@ function bkExtra(spec){const out=[];let dn=null;const J=W.jetty;
   return out;}
 bkLoad();
 let RP_ADDBOAT=null;
+const XB={specs:[],objs:[],alarm:null};   /* extra boats a layer drives itself (the gift's tender, boat_drive.js): re-added whenever the boats are rebuilt; the spec object IS the boat (b.x, b.z, b.yaw, b.dy, b.dpt, b.drl, b.rowing, b.oar are set from outside); absent = nothing */
 /* ============ the camp start (&start=camp, see CAMP_START.md) ============
    Day one of the shelter ladder: no cottages, no village jetty, no moored harbour boats. The settler camp stays (tents, fire, flame, settlers). camp_start.js plans, by seed and on the page's own
    height function, the robot yard, the kit pieces and the shore work sites; here the page clears what stands in the way, levels a small pad under each piece and then builds the pieces, the yard and the robots.
@@ -1030,9 +1040,11 @@ function buildBoats(){boatObjs.forEach(b=>{scene.remove(b.mesh);if(b.ring)scene.
       const ring=new THREE.Mesh(rg,RING_MAT);ring.renderOrder=6;ring.frustumCulled=false;scene.add(ring);
       boatObjs.push({b,mesh:m,tris:H2.pb.tris,mask:mk,ring,maskTris:H2.mk.tris});return;}
     const pb=b.row?rowboatGeo(b):boatGeo(b);const g=pb.build();const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);boatObjs.push({b,mesh:m,tris:pb.tris});};
-  spec.forEach(addOne);RP_ADDBOAT=addOne;}
+  spec.forEach(addOne);RP_ADDBOAT=addOne;
+  XB.objs=[];XB.specs.forEach(sp=>{const n0=boatObjs.length;addOne(sp);XB.objs.push(boatObjs[n0]);});}
 const RING_MAT=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,vertexShader:'attribute float a;varying float vA;void main(){vA=a;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'varying float vA;void main(){gl_FragColor=vec4(0.0,0.01,0.02,vA*vA*0.9);}'});
 let gulls=[];
+function xbGull(x,z){const a=XB.alarm;if(!a)return 0;const d=Math.hypot(x-a.x,z-a.z);return Math.max(0,Math.min(1,1-d/a.r))*a.lift;}   /* a boat close under a gull makes it climb (XB.alarm is set by the gift's boat layer; absent = 0) */
 function buildGulls(){gulls.forEach(g=>scene.remove(g.m));gulls=[];const R=mulberry32(SEED+313);
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,.35,-.9,.1,-.1,0,0,-.35, 0,0,.35,0,0,-.35,.9,.1,-.1],3));geo.computeVertexNormals();
   const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,1.5,1.45),side:THREE.DoubleSide});
@@ -2196,7 +2208,8 @@ function animate(dt){const t=clock.t;
   for(const w of WAKE)if(w.z<1){w.z=Math.min(1,w.z+dt/4.8);if(FLOW){const u=flowAt(w.x,w.y,FL.Tcur);w.x+=u[0]*dt;w.y+=u[1]*dt;}}
   waterMesh.material.uniforms.uTideV.value=(tide-(animate.lastTide===undefined?tide:animate.lastTide))/Math.max(dt,.001);animate.lastTide=tide;
   boatObjs.forEach(o=>{const b=o.b,m=o.mesh;let y,roll=0,pitch=0;
-    if(b.sail){const S=b.sail;let a=t*(S.w||.2),sx=0,sz=0;
+    if(b.drive){y=b.dy;roll=b.dpt;pitch=b.drl;}   /* a boat driven from outside (XB): height, bow-up trim and heel come from its layer */
+    else if(b.sail){const S=b.sail;let a=t*(S.w||.2),sx=0,sz=0;
       if(FLOW&&!b.rowing){const T=FL.Tcur;if(b.ang===undefined){b.ang=a;b.sx=0;b.sz=0;}const ca=Math.cos(b.ang),sa=Math.sin(b.ang),u=flowAt(S.cx+ca*S.r,S.cz+sa*S.r,T),ut=u[0]*-sa+u[1]*ca;   /* tidal stream along the track speeds the boat up or slows it, and sets it sideways */
         b.ang+=dt*(S.w||.2)*(1+.2*ut);a=b.ang;const lx=u[0]-ut*-sa,lz=u[1]-ut*ca,k=1-Math.exp(-dt*.8);b.sx+=(lx*2.2-b.sx)*k;b.sz+=(lz*2.2-b.sz)*k;sx=b.sx;sz=b.sz;FL.boat={ut:ut,setx:sx,setz:sz};}
       const nx=S.cx+Math.cos(a)*S.r+sx,nz=S.cz+Math.sin(a)*S.r+sz;const vx=-Math.sin(a),vz=Math.cos(a);b.x=nx;b.z=nz;b.yaw=Math.atan2(-(vz+sz*.12),vx+sx*.12);y=tide-.18+Math.sin(t*1.7)*.03;roll=Math.sin(t*1.1)*.04;pitch=.02;
@@ -2211,7 +2224,7 @@ function animate(dt){const t=clock.t;
     if(p.pose==='sit'){p.arms[0].rotation.x=-.9+Math.sin(ph)*.12;p.arms[1].rotation.x=-1.1+Math.sin(ph+1)*.1;}
     else if(p.face==='sea'){p.arms[0].rotation.z=-.6+Math.sin(ph)*.9*.5-.9;p.arms[0].rotation.x=0;p.arms[1].rotation.x=Math.sin(ph)*.1;}
     else{p.arms[0].rotation.x=-.5+Math.sin(ph)*.25;p.arms[1].rotation.x=.1+Math.sin(ph+1)*.1;}});
-  gulls.forEach(g=>{const a=g.ph+t*g.sp;const x=g.cx+Math.cos(a)*g.r,z=g.cz+Math.sin(a)*g.r;g.m.position.set(x,g.h+Math.sin(t*.7+g.ph)*1.2,z);g.m.rotation.y=Math.atan2(-Math.cos(a)*Math.sign(g.sp),-Math.sin(a)*Math.sign(g.sp))+1.57;g.m.scale.set(1,1,1).multiplyScalar(1.1);g.m.children.length;g.m.geometry.attributes.position;g.m.rotation.z=Math.sin(t*9+g.ph)*.35;});
+  gulls.forEach(g=>{const a=g.ph+t*g.sp;const x=g.cx+Math.cos(a)*g.r,z=g.cz+Math.sin(a)*g.r;g.m.position.set(x,g.h+Math.sin(t*.7+g.ph)*1.2+xbGull(x,z),z);g.m.rotation.y=Math.atan2(-Math.cos(a)*Math.sign(g.sp),-Math.sin(a)*Math.sign(g.sp))+1.57;g.m.scale.set(1,1,1).multiplyScalar(1.1);g.m.children.length;g.m.geometry.attributes.position;g.m.rotation.z=Math.sin(t*9+g.ph)*.35;});
   flames.forEach(f=>{const k=f.userData.k;const fl=.8+.35*Math.sin(t*9+k*2)*Math.sin(t*5.3+k);f.scale.set(1,fl,1);f.rotation.y=t*2+k;f.position.y=W.camp.fire.y+.3+.16*fl;});
   if(glow){glow.material.opacity=(.62+.16*Math.sin(t*7)*Math.sin(t*3.1))*(LAND?.4:1);}
   if(smoke){const u=smoke.userData,N=u.N,pa=smoke.geometry.attributes.position.array,aa=smoke.geometry.attributes.aS.array,f=W.camp.fire;
@@ -2963,10 +2976,11 @@ function init(){
         const pts=[],refs=[];for(let f=.3;f<=.701;f+=.05)for(let x=-.28;x<=.281;x+=.07)pts.push(proj(x*Bk,0,f*Lk));   /* plan points inside the hull at the design waterline, seen from above */
         for(const f of[.2,.4,.6,.8])for(const sd of[-1,1])refs.push(proj(sd*(Bk/2+1.5),0,f*Lk));return{pts,refs};},
       oarTip:i=>{const o=boatObjs.filter(q=>q.kit)[i];if(!o)return null;const L=o.kit.lods[o.kit.lod];o.mesh.updateMatrixWorld(true);const r=[];for(const n of['oar_l','oar_r']){const nd=L.nodes[n];if(!nd)continue;const bb=new THREE.Box3().setFromObject(nd),c=bb.getCenter(new THREE.Vector3());o.mesh.worldToLocal(c);r.push([n,c.x,c.y,c.z]);}return r;}}:null,
+    xboat:{add:spec=>{spec.drive=true;XB.specs.push(spec);if(!RP_ADDBOAT)return null;const n0=boatObjs.length;RP_ADDBOAT(spec);const o=boatObjs[n0];XB.objs.push(o);return o;},obj:i=>XB.objs[i||0]||null,ready:()=>!!RP_ADDBOAT&&(!BKON||BK.ready||BK.failed),kit:()=>BKON&&BK.ready,alarm:a=>{XB.alarm=a;},clear:()=>{XB.specs=[];XB.objs=[];if(scene)buildBoats();}},
     boats:()=>boatObjs.map(o=>({kind:o.b.kind,sail:!!o.b.sail,x:o.mesh.position.x,y:o.mesh.position.y,z:o.mesh.position.z,yaw:o.b.yaw,L:o.b.L,Wd:o.b.Wd,tris:o.tris,mask:!!o.mask})),
     world:WV?{seed:WID,label:WV.man.label,province:WV.man.province,dataSha:WV.man.data_sha,report:()=>JSON.parse(JSON.stringify(WV.report)),landFraction:WV.landFraction,landing:()=>WV.man.landing,tableR:TABLE_R,ts:TS,sd:(x,z)=>WV.sd(x,z),jetty:()=>W.jetty,camp:()=>W.camp&&W.camp.fire,items:()=>({trees:W.conifers.concat(W.broad).map(t=>[t.x,t.z,t.y]),shrubs:W.shrubs.map(t=>[t.x,t.z,t.y]),houses:W.houses.map(h=>[h.x,h.z,h.y]),moored:W.boats.filter(b=>!b.sail).map(b=>[b.x,b.z]),tents:W.tents.map(t=>[t.x,t.z,t.y]),rocks:W.rocks.map(r=>[r.x,r.z,r.y,r.sy])})}:null,
     get life(){return LIFE_RT?LIFE_RT.api:null;},
-    ultra:{device:()=>DEV,on:()=>ULT.on,profile:ultraProfile,setProfile:ultraProfileSet,tier:tierName,opts:()=>JSON.parse(JSON.stringify(ULO)),gpu:()=>({raw:ULT.gpuRaw,name:ULT.gpu.name,kind:ULT.gpu.kind,line:ultraGpuLine().text,warn:ultraGpuLine().warn,hud:el.gpu?el.gpu.textContent:''}),
+    ultra:{device:()=>DEV,asked:()=>DEV0,stepdown:()=>JSON.parse(JSON.stringify(STEP)),on:()=>ULT.on,profile:ultraProfile,setProfile:ultraProfileSet,tier:tierName,opts:()=>JSON.parse(JSON.stringify(ULO)),gpu:()=>({raw:ULT.gpuRaw,name:ULT.gpu.name,kind:ULT.gpu.kind,line:ultraGpuLine().text,warn:ultraGpuLine().warn,hud:el.gpu?el.gpu.textContent:''}),
       state:()=>({on:ULT.on,tier:tierName(),scale:ULT.scale,scaleReal:ULT.scaleReal,maxScale:ULT.maxScale,dynOn:ULT.dynOn,msaaWant:ULT.msaaWant,msaaGot:ULT.msaaGot,shadow:ULT.q.shadow,shadowType:renderer.shadowMap.type===THREE.PCFShadowMap?'PCF':'PCFSoft',shadowRadius:sun?sun.shadow.radius:0,fitHalf:ULT.fitHalf,aniso:ULT.aniso,maxAniso:ULT.caps&&ULT.caps.maxAniso,terrainCell:ULT.q.cell,bloom:ULO.bloom,
         big:rtBig?[rtBig.width,rtBig.height]:null,canvas:[renderer.domElement.width,renderer.domElement.height],timer:!!UQ.ext,work:ULT.work,workSrc:ULT.workSrc,notes:ULT.notes.slice(),fails:ULT.fails.slice(),caps:ULT.caps,tris:sceneTris(),calls:renderer.info.render.calls,renderTris:renderer.info.render.triangles,
         boatLods:boatObjs.filter(o=>o.kit).map(o=>o.kit.lod),campLods:CP.rt?CP.rt.api.kit().map(k=>k.lod):[],campHero:CP.rt?CP.rt.api.heroStat():null,repairHero:!!RP.heroOn}),
