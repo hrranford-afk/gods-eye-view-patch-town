@@ -223,6 +223,7 @@ if (!quick && want(7)) {
     await G(t.p, 'closeCard'); const sp = await G(t.p, 'spots'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);
     await G(t.p, 'skipTo', 'arrive'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);
     const tt = await t.p.evaluate(() => __gift.targets().find(t => t.id === 'crate0')); await t.p.touchscreen.tap(tt.x, tt.y); await t.p.waitForTimeout(600);
+    if ((await G(t.p, 'card')) !== 'crate') { const t2 = await t.p.evaluate(() => __gift.targets().find(t => t.id === 'crate0')); await t.p.touchscreen.tap(t2.x, t2.y); await t.p.waitForTimeout(600); }   /* Job 6: on touch the first tap shows what it is (inspect layer), the second does it */
     ok((await G(t.p, 'card')) === 'crate', 'a finger tap on the crate opens it (touchscreen)');
     await t.p.locator('#gd button', { hasText: 'Lift the lid' }).tap(); await t.p.waitForTimeout(300); await t.p.locator('#gd button', { hasText: 'Keep it' }).tap(); await t.p.waitForTimeout(500);
     ok((await stage(t.p)) === 'jobs', 'letter one by finger taps only'); await t.p.locator('#gd-ledger-btn').tap(); await t.p.waitForTimeout(300); ok((await G(t.p, 'card')) === 'ledger', 'the ledger opens by finger tap');
