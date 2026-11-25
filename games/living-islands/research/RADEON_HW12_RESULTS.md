@@ -36,8 +36,11 @@ Every scene was marked FAILED by a "render came out black" check. The renders ar
 6. **The basic test failure** is a test bug (a 4 GiB buffer), not a card fault. Fix: cap the bandwidth buffer below 4 GiB.
 7. **The disk floor stopped the last three steps**, not the card.
 
+## The cable number (Thunderbolt link, from opencl_transfer.json)
+Best host to card 1.93 GB/s, card to host 2.26 GB/s (ordinary pageable memory, 1 to 256 MB transfers; 1 GB = 1e9 bytes). That is the external-card link, not the card. At 60 fps it means about 30 MB per frame of fresh CPU-to-GPU data at most, and in practice less. So: keep world data, textures, the sea simulation and debris on the card; avoid per-frame uploads (big instance buffers rebuilt on the CPU every frame, large dynamic textures); read back small summaries only. This confirms the earlier design rule (gameplay state on the CPU, visual sim on the GPU, small summaries back).
+
 ## Not proven here
-Browser performance (our bench pages measure that), thermals over a long run, Thunderbolt link throughput (opencl_transfer.json holds a transfer number; not interpreted here), and the glass volume and growth steps.
+Browser performance (our bench pages measure that), thermals over a long run, the glass volume and growth steps.
 
 ## To do
 Fix picture_guard for the 3.6 thumbnail; cap the bandwidth buffer below 4 GiB in opencl_bench; re-issue the last three steps when the disk floor allows.
