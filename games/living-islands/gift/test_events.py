@@ -124,6 +124,7 @@ class Sim:
         self.last_storm = -999; self.log = []
         # flags that depend on the player's style (a guess at behaviour)
         self.skip = set()
+        if self.style in ("trust", "distrust"): self.flags.add("bag_toolbox")   # the prelude bag choice (owner idea: the mender prelude)
         for f in ("built_cistern", "built_hide", "built_cottage", "built_kiosk", "garden_started"):
             if self.rng.random() < .2: self.skip.add(f)
         if self.style == "distrust": self.skip.add("built_kiosk")
@@ -382,7 +383,8 @@ class Content(unittest.TestCase):
         scenes = [e for e in pre if "choices" in e]
         self.assertEqual(len(scenes), 5)
         for e in pre: self.assertTrue(e["force"])
-        self.assertEqual(len(BY_ID["p0_flat"]["choices"]), 3)
+        self.assertEqual(len(BY_ID["p0_flat"]["choices"]), 4)      # seeds, tide book, lamp, toolbox
+        self.assertIn("hoover", BY_ID["p0_flat"]["text"]); self.assertIn("post", BY_ID["p0_flat"]["text"])
         office = BY_ID["p0_office"]; self.assertEqual(office["voice"], "office")
         self.assertIn(COMPANY, BY_ID["p0_P1"]["text"]); self.assertIn("unable to answer questions", office["text"])
         self.assertIn("unable to answer questions", BY_ID["a3_office_cannot_say"]["text"])    # the late letter echoes P1

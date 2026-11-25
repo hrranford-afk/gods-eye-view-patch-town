@@ -159,13 +159,26 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 13.1 | CHANGED | `gift/test_events.py`: 29 tests, all green. New: P2 sentence, no official relation, no saving speech and five limits, five world kindnesses, refusal scene, no parental reassurance, causal seal counts, carpet reappears, one key, L9 only in year three, L3 early, small first storm | the rules cannot drift |
 | 13.2 | CHANGED | `gift/EVENTS.md` counts, mood split, simulation report (dead stretches 1.2 a run, 14 of 40 runs none, year three and four the thin spots), a v2 rules and tests section | kept in sync with the deck |
 | 13.3 | CHANGED | spine section 5 counts and simulation bullets, headline counts | same |
-| 13.4 | KEEP | mood split: 117 good (47 percent), 96 mid (38 percent), 37 mild trouble (15 percent) of 250 drawn events | the target of about a half, a third and a sixth holds, and the test bands (good 40 to 56, mid 28 to 40, mild 12 to 22) still pass |
+| 13.4 | KEEP | mood split: 119 good (47 percent), 97 mid (38 percent), 37 mild trouble (15 percent) of 253 drawn events | the target of about a half, a third and a sixth holds, and the test bands (good 40 to 56, mid 28 to 40, mild 12 to 22) still pass |
 
 ## Totals
-Deck: 257 records (7 prelude, 250 drawn: act 1 73, act 2 77, act 3 60, act 4 40), up from 201. Added 56 drawn events: 5 limits of kindness, 5 world kindnesses, 11 clues (10 from the critic and the unstamped plank), 6 goals for years two and three, 20 seasonal events, 3 refusal-scene events, 6 for the three questions. Clue map rows 62 (was 46). New tests: 9 (29 in all).
+Deck: 260 records (7 prelude, 253 drawn: act 1 76, act 2 77, act 3 60, act 4 40), up from 201. Added 56 drawn events: 5 limits of kindness, 5 world kindnesses, 11 clues (10 from the critic and the unstamped plank), 6 goals for years two and three, 20 seasonal events, 3 refusal-scene events, 6 for the three questions. Clue map rows 62 (was 46). New tests: 9 (29 in all).
 
 ## Open taste items for the owner (veto any line above)
 1. P2 "I think you will be good at it" and "Whatever you make of it will be right", and L2 "None of it is wrong" were kept (your words or a permission). Say the word and they go.
 2. P2 now has no family word at all. Restore "someone who has always thought of you as family" if you want that hint back.
 3. The decline in the refusal scene leans distrust by one point (soft). Say if it should lean nothing.
 4. The beach mark: four choices (stack, cairn, bench, painted board). Add or cut kinds.
+
+## Step 14. The mender prelude (owner idea, EVOLUTION_TREE.md)
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 14.1 | CHANGED | Prelude scene one (`p0_flat`) is the workbench: kitchen table, laptop, a robot hoover in pieces, one belt swapped by the player (a tiny hands-on repair that teaches the island's move). P1 and P2 are untouched and still exact | owner idea; the word computer is blocked by the AI-words test, so the card says laptop |
+| 14.2 | CHANGED | The player is a mender who fixes neighbours' things for tea; `p0_street` now has the neighbour's wave ("you mended her toaster for tea") beside the carpet | the one small thing worth missing, as the critic asked |
+| 14.3 | CHANGED | First fingerprint: for months the right spare part has come in the post unasked (said in scene one, no new letter text); it answers P2's "easier to send than to turn up" | woven, not stated |
+| 14.4 | CHANGED | The small plain mark is on the hoover's board (hint only), matching the crate and chassis marks; `a1_cousin_board` links it to the carrier's board | stays a hint: one maker or one copied pattern |
+| 14.5 | CHANGED | The bag gains a fourth choice, the toolbox (`bag_toolbox`, +1 investigate); `a1_toolbox_first_repair` is the early repair it unlocks | owner idea |
+| 14.6 | CHANGED | Three events link robots as the hoovers' older cousins: `a1_cousin_belt`, `a1_cousin_board`, `a1_toolbox_first_repair` | owner idea; robots stay relics, no feelings or faces |
+| 14.7 | CHANGED | Open taste question 16: neighbours' jobs (default) or a hobby | owner idea |
+| 14.8 | KEEP | helper unseen, unproven and not named as an AI; no brands | FIXED rules |
+| 14.9 | CHANGED | Tests: `p0_flat` has four choices; the stand-in player packs the toolbox when trusting or distrusting; deck now 260 records (253 drawn) | counts moved by 3 |
