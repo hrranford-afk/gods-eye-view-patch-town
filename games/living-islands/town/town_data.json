@@ -1,0 +1,61 @@
+{
+ "schema": "island_town_data", "version": 0,
+ "note": "Every number is a GUESS unless the field says otherwise. Money is in-game pounds. Units: see goods.mass_kg. Sources for the shapes are in research/TOWN_BUILDER_AUDIT_AND_DRAFT.md.",
+ "goods": {
+  "timber":  {"mass_kg": 150, "slots": 3.0,   "price": 9,   "decay": 0.0,    "cap": 300, "ship": true},
+  "planks":  {"mass_kg": 100, "slots": 2.0,   "price": 30,  "decay": 0.0002, "cap": 300, "ship": true},
+  "fish":    {"mass_kg": 1,   "slots": 0.02,  "price": 6,   "decay": 0.08,   "cap": 120, "ship": true},
+  "food":    {"mass_kg": 0.8, "slots": 0.016, "price": 18,  "decay": 0.004,  "cap": 400, "ship": true},
+  "water":   {"mass_kg": 10,  "slots": 0.2,   "price": 1,   "decay": 0.0,    "cap": 150, "ship": false},
+  "power":   {"mass_kg": 0,   "slots": 0,     "price": 0,   "decay": 0.0,    "cap": 200,   "ship": false},
+  "tools":   {"mass_kg": 5,   "slots": 0.1,   "price": 60,  "decay": 0.0,    "cap": 40,  "ship": true},
+  "metal":   {"mass_kg": 5,   "slots": 0.1,   "price": 40,  "decay": 0.0,    "cap": 40,  "ship": true},
+  "glass":   {"mass_kg": 20,  "slots": 0.4,   "price": 80,  "decay": 0.0,    "cap": 20,  "ship": true},
+  "rope":    {"mass_kg": 5,   "slots": 0.1,   "price": 20,  "decay": 0.0,    "cap": 40,  "ship": true}
+ },
+ "buildings": {
+  "tent_camp":   {"name":"Tent camp","kind":"home","cells":6,"jobs":0,"rank":99,"housing":{"cap":12,"quality":0.3},"build":{"cash":300,"days":2},"reuses":"first-shelter rung 1 (research/FIRST_SHELTER_AND_MATERIALS.md)"},
+  "hut":         {"name":"Turf and stone hut","kind":"home","cells":4,"jobs":0,"rank":99,"housing":{"cap":4,"quality":0.5},"build":{"cash":1500,"planks":10,"days":12},"reuses":"shelter rung 2; recipes/house.json for a drawn version"},
+  "cottage":     {"name":"Family cottage","kind":"home","cells":8,"jobs":0,"rank":99,"housing":{"cap":6,"quality":0.85},"build":{"credit":30000,"cash":8000,"days":14},"local":{"planks":30,"cash":10000,"days":40},"kit_until":620,"reuses":"recipes/home_cottage.json, rung 3 or 4"},
+  "guest_cottage":{"name":"Guest cottage","kind":"lodging","cells":8,"jobs":0.25,"rank":40,"beds":4,"power_in":1.2,"build":{"credit":60000,"cash":15000,"days":14},"local":{"planks":40,"glass":4,"cash":26000,"days":45},"kit_until":620,"reuses":"recipes/home_cottage.json plus Gift holiday vision"},
+  "woodcutter":  {"name":"Timber yard","kind":"source","source":"forest","stage":1,"cells":4,"jobs":3,"rank":20,"out":{"timber":9},"build":{"planks":6,"cash":4000,"days":10},"reuses":"recipes/shed.json (a timber stack is data)"},
+  "tree_nursery":{"name":"Tree nursery","kind":"support","cells":10,"jobs":1,"rank":30,"forest_regrow":0.0004,"build":{"planks":4,"cash":3000,"days":8},"reuses":"new; plants on the woods island"},
+  "sawmill":     {"name":"Sawmill","kind":"transform","stage":2,"cells":6,"jobs":3,"rank":22,"in":{"timber":9,"power":5},"out":{"planks":6},"build":{"credit":12000,"cash":4000,"days":12},"local":{"planks":20,"cash":8000,"days":30},"kit_until":780,"reuses":"recipes/workshop.json (wood in, planks out)"},
+  "workshop":    {"name":"Tool workshop","kind":"transform","stage":3,"cells":6,"jobs":2,"rank":25,"in":{"planks":2,"metal":0.3,"power":3},"out":{"tools":1},"build":{"credit":10000,"cash":3000,"days":12},"local":{"planks":16,"cash":7000,"days":30},"kit_until":780,"reuses":"recipes/workshop.json (City Lab wood to tools)"},
+  "fish_dock":   {"name":"Fishing slip","kind":"source","source":"shoal","weather":"sea","stage":1,"cells":6,"jobs":4,"rank":10,"out":{"fish":70},"in":{"tools":0.04},"soft":["tools"],"sets_flag":"has_boat","build":{"credit":14000,"cash":5000,"days":12},"local":{"planks":16,"cash":8000,"days":30},"kit_until":850,"reuses":"ecosystem/food_model.py boat line fishing and nets"},
+  "smokehouse":  {"name":"Smokehouse","kind":"transform","stage":2,"cells":4,"jobs":2,"rank":12,"in":{"fish":40,"timber":0.5},"soft":["timber"],"out":{"food":18},"build":{"planks":8,"cash":4000,"days":10},"reuses":"food_model drying route; recipes/bakery.json (inputs in, loaves out)"},
+  "garden":      {"name":"Polytunnel garden","kind":"source","source":"soil","weather":"growth","stage":1,"cells":40,"jobs":2,"rank":11,"out":{"food":1.5},"in":{"water":6,"tools":0.03},"soft":["tools"],"build":{"planks":10,"cash":3000,"days":10},"reuses":"food_model garden beds (yield per m2 boosted, GUESS)"},
+  "cistern":     {"name":"Rain cistern","kind":"source","source":"rain","stage":1,"cells":4,"jobs":0,"rank":5,"rain_catch_m2":150,"storage":{"water":300},"build":{"credit":4000,"cash":1500,"days":6},"local":{"planks":8,"cash":3000,"days":14},"kit_until":780,"reuses":"research/WATER_AND_RAIN_REAL_WORLD.md (0.8 litre per mm per m2)"},
+  "well":        {"name":"Lens well","kind":"source","source":"lens","stage":1,"cells":2,"jobs":0,"rank":6,"out":{"water":15},"in":{"power":1},"build":{"cash":5000,"planks":4,"days":10},"reuses":"water note: freshwater lens"},
+  "solar_shed":  {"name":"Solar shed","kind":"source","source":"sun","stage":1,"cells":6,"jobs":0,"rank":7,"out":{"power":20},"build":{"credit":10000,"cash":2000,"days":6},"local":null,"kit_until":780,"reuses":"City Lab infra.js source (kW at the root)"},
+  "wind_post":   {"name":"Wind post","kind":"source","source":"wind","stage":1,"cells":2,"jobs":0,"rank":8,"out":{"power":30},"build":{"credit":14000,"cash":3000,"days":8},"local":null,"kit_until":780,"reuses":"City Lab infra.js source; wind cuts out in a storm"},
+  "battery_shed":{"name":"Battery shed","kind":"storage","cells":4,"jobs":0,"rank":99,"storage":{"power":60},"build":{"credit":9000,"cash":1500,"days":6},"local":null,"kit_until":780,"reuses":"City Lab infra.js junction (a store)"},
+  "store_shed":  {"name":"Store shed","kind":"storage","cells":4,"jobs":0,"rank":99,"storage":{"timber":200,"planks":200,"food":300,"tools":30,"metal":30,"fish":60},"build":{"planks":8,"cash":3000,"days":8},"reuses":"recipes/shed.json"},
+  "kiosk":       {"name":"Kiosk and cafe","kind":"shop","cells":4,"jobs":2,"rank":45,"power_in":1.0,"shop":{"capacity":30,"spend":9,"food_per":0.3},"build":{"credit":25000,"cash":10000,"days":12},"local":{"planks":24,"cash":12000,"days":30},"kit_until":620,"reuses":"recipes/bakery.json, recipes/cart_stall.json (sales block)"},
+  "wildlife_hide":{"name":"Wildlife hide","kind":"service","cells":2,"jobs":0.5,"rank":50,"attract":0.15,"wild_protect":0.15,"build":{"planks":10,"cash":4000,"days":8},"reuses":"Gift conservation vision; shed recipe"},
+  "clinic":      {"name":"Clinic","kind":"service","cells":6,"jobs":2,"rank":15,"power_in":1.5,"health":60,"build":{"credit":20000,"cash":6000,"days":14},"local":{"planks":30,"cash":15000,"days":40},"kit_until":780,"reuses":"house recipe with a jobs block (nurse)"},
+  "community_hall":{"name":"Community hall","kind":"service","cells":8,"jobs":1,"rank":55,"leisure":80,"build":{"planks":40,"cash":12000,"days":30},"reuses":"recipes/market_hall.json"},
+  "lighthouse":  {"name":"Lamp and lighthouse","kind":"service","cells":2,"jobs":0.5,"rank":35,"safety":0.4,"build":{"planks":60,"cash":20000,"days":40},"reuses":"LIGHTHOUSE_BUILD.md, light_range.js"},
+  "jetty":       {"name":"Jetty","kind":"port","cells":4,"jobs":0,"rank":99,"port":{"level":1,"cap":40},"build":{"credit":12000,"cash":4000,"days":20},"local":{"planks":30,"cash":9000,"days":40},"kit_until":850,"reuses":"Gift landing stage; recipes/shed.json"},
+  "quay":        {"name":"Quay and crane","kind":"port","cells":10,"jobs":1,"rank":28,"requires":"jetty","port":{"level":2,"cap":90},"build":{"credit":60000,"cash":25000,"days":50},"local":{"planks":100,"cash":50000,"days":90},"kit_until":850,"reuses":"supports.js rule for the frame; research/BOATS.md"},
+  "cargo_boat":  {"name":"Cargo boat","kind":"boat","cells":0,"jobs":2,"rank":27,"requires":"jetty","boat":{"hold":100,"seats":8},"build":{"credit":40000,"cash":12000,"days":10},"local":null,"kit_until":850,"reuses":"research/BOATS.md; boat_motion.js"},
+  "robot_depot": {"name":"Relic robot depot","kind":"robots","cells":6,"jobs":0,"rank":99,"robots":4,"sets_flag":"robot_started","in":{"tools":0.05},"soft":["tools"],"build":{"cash":3000,"metal":5,"days":10},"reuses":"robots.js, ROBOT_RECIPES.md (relics as workers)"}
+ },
+ "start": {
+  "cash": 60000, "credit": 940000, "pop": {"child": 3, "adult": 8, "elder": 1},
+  "stock": {"planks": 30, "food": 90, "water": 100, "tools": 3, "metal": 4, "rope": 6, "glass": 2, "timber": 0, "fish": 0},
+  "buildings": {"tent_camp": 1}
+ },
+ "params": {
+  "flat_cells": 420, "wage_month": 350, "rent_month_per_head": 30, "upkeep_year": 0.025,
+  "bed_night": 31, "platform_share": 0.15, "clean_per_stay": 35, "stay_nights": 4,
+  "labour_adult": 0.85, "labour_elder": 0.15,
+  "need_food": 1.0, "need_water": 1.0, "need_power": 0.4,
+  "guest_food": 1.0, "guest_water": 1.5, "guest_power": 0.5,
+  "fish_per_food": 2.2, "export_factor": 0.8, "depth": {"timber":1500,"planks":300,"fish":1500,"food":500,"tools":60,"metal":60,"glass":30,"rope":60}, "import_cash_factor": 1.35,
+  "boat_running_month": 520, "shoal_k": 40000, "shoal_r": 0.01, "forest_stock": 4000, "forest_regrow": 0.0005,
+  "lens": 0.6, "seats": 4, "port_cap_landing": 12, "boat_hold_tender": 40,
+  "occupancy": [0.45,0.52,0.62,0.68,0.50,0.40,0.28,0.24,0.18,0.22,0.30,0.38],
+  "weights": {"food":0.22,"water":0.14,"housing":0.14,"power":0.06,"jobs":0.12,"health":0.08,"leisure":0.08,"wages":0.06,"beauty":0.10}
+ }
+}
