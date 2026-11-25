@@ -260,7 +260,7 @@ function simStep(sim, dt, env) {
         break; }
       case ST.DROP: {
         r.charge = Math.max(0, r.charge - DRAIN.work * dk * dt); r.timer -= dt * wk;
-        if (r.timer <= 0) { sim.heap[r.kindLoad] = (sim.heap[r.kindLoad] || 0) + 1; r.delivered++; r.trips++; r.load = false; r.kindLoad = null;
+        if (r.timer <= 0) { sim.heap[r.kindLoad] = (sim.heap[r.kindLoad] || 0) + 1; (sim.tripsBy || (sim.tripsBy = []))[r.siteI] = ((sim.tripsBy || [])[r.siteI] || 0) + 1; r.delivered++; r.trips++; r.load = false; r.kindLoad = null;
           if (r.role === 'sorter') { r.state = ST.SORT; r.timer = 6 + R() * 3; } else decide(sim, r, R); }
         break; }
       case ST.TASK: {   /* lent out: the page drives x, z, yaw and the flags tmove and twork; treturn hands it back to the routine (walks home to its bay) */
@@ -375,8 +375,10 @@ const ARMS = { family: 1, scout: 1 };
 const PRINT = { family: 'wheel', scout: 'wheel', snail: 'belt', walker: 'foot6', spotter: 'foot4', crab: 'foot2', roller: 'roll', pontoon: 'belt' };
 const kitCache = {}, botCache = {};         /* parsed GLB templates, kept across page rebuilds */
 function b64buf(s) { const bin = atob(s), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8.buffer; }
-const TREAD_VS = 'attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
-const TREAD_FS = 'uniform float uNow;uniform float uErase;uniform vec3 uCol;uniform float uAmp;varying float vT;void main(){float age=uNow-vT;float vis=step(0.0,age)*(1.0-smoothstep(0.4*uErase,uErase,age));float a=vis*uAmp;if(a<0.01)discard;gl_FragColor=vec4(uCol,a);}';
+/* Job 6d item 3: SOFT TRACKS. A track is a faint darker-green flattening of the grass with soft side edges that fades over about a game hour (TRACK.fadeS: a game hour is 20 s / 0.07 = about 290 s at the day's drift pace). It is never black. */
+const TRACK = { col: [.17, .25, .11], amp: .2, fadeS: 280, perBot: 20, edge: .42 };
+const TREAD_VS = 'attribute float aT;attribute float aS;varying float vT;varying float vS;void main(){vT=aT;vS=aS;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
+const TREAD_FS = 'uniform float uNow;uniform float uErase;uniform vec3 uCol;uniform float uAmp;varying float vT;varying float vS;void main(){float age=uNow-vT;float vis=step(0.0,age)*(1.0-smoothstep(0.08*uErase,uErase,age));float a=vis*uAmp*(1.0-smoothstep(0.42,1.0,abs(vS)));if(a<0.01)discard;gl_FragColor=vec4(uCol,a);}';
 /* print shapes in the robot frame: [x offset, z offset, width, length] per stamp (stamp spacing .55 m) */
 function printRects(kind, k) {
   const st = PRINT[kind] || 'wheel', sw = k % 2 ? 1 : -1;
@@ -608,8 +610,8 @@ function create(o) {
     const r = { id: i, site: b, kind: sim.robots[i].kind, ready: false, node: null, yawR: 0, lampCode: 'dim', clip: null, last: null, errCount: 0 };
     const g = new THREE.BufferGeometry(), pos = new Float32Array(NQ * 4 * 3), aT = new Float32Array(NQ * 4).fill(1e9), idx = [];
     for (let q = 0; q < NQ; q++) idx.push(q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3);
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.BufferAttribute(aT, 1)); g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(Y.x, 0, Y.z), 1e4);
-    const wake = new THREE.ShaderMaterial({ uniforms: { uNow: { value: 0 }, uErase: { value: 130 + i * 25 }, uCol: { value: new THREE.Vector3(.02, .016, .012) }, uAmp: { value: .6 } }, vertexShader: TREAD_VS, fragmentShader: TREAD_FS, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.BufferAttribute(aT, 1)); g.setAttribute('aS', new THREE.BufferAttribute(new Float32Array(NQ * 4).map((v, k) => (k % 4 === 0 || k % 4 === 3) ? 1 : -1), 1)); g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(Y.x, 0, Y.z), 1e4);
+    const wake = new THREE.ShaderMaterial({ uniforms: { uNow: { value: 0 }, uErase: { value: TRACK.fadeS + i * TRACK.perBot }, uCol: { value: new THREE.Vector3(TRACK.col[0], TRACK.col[1], TRACK.col[2]) }, uAmp: { value: TRACK.amp } }, vertexShader: TREAD_VS, fragmentShader: TREAD_FS, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     const mesh = new THREE.Mesh(g, wake); mesh.frustumCulled = false; mesh.renderOrder = 3; group.add(mesh); r.tread = { g, mesh, mat: wake, q: 0, last: null, k: 0 };
     robots.push(r);
     loadModel(b, gl => prepareBot(r, gl));
@@ -617,10 +619,30 @@ function create(o) {
   function stamp(r, x, z, yaw, T) {
     const t = r.tread; if (t.last && Math.hypot(x - t.last[0], z - t.last[1]) < .55) return;
     const rects = printRects(r.kind, t.k++), p = t.g.attributes.position.array, aT = t.g.attributes.aT.array, fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw);
-    for (const rc of rects) { const cx = x + lx * rc[0] + fx * rc[1], cz = z + lz * rc[0] + fz * rc[1], hw = rc[2] / 2, hl = rc[3] / 2;
+    for (const rc of rects) { const cx = x + lx * rc[0] + fx * rc[1], cz = z + lz * rc[0] + fz * rc[1], hw = rc[2] * .75, hl = rc[3] / 2;
       const c = [[cx + lx * hw - fx * hl, cz + lz * hw - fz * hl], [cx - lx * hw - fx * hl, cz - lz * hw - fz * hl], [cx - lx * hw + fx * hl, cz - lz * hw + fz * hl], [cx + lx * hw + fx * hl, cz + lz * hw + fz * hl]];
       const q = t.q % NQ; for (let k = 0; k < 4; k++) { p[(q * 4 + k) * 3] = c[k][0]; p[(q * 4 + k) * 3 + 1] = Math.max(H(c[k][0], c[k][1]), -.2) + .045; p[(q * 4 + k) * 3 + 2] = c[k][1]; aT[q * 4 + k] = T; } t.q++; }
     t.last = [x, z]; t.g.attributes.position.needsUpdate = true; t.g.attributes.aT.needsUpdate = true;
+  }
+  /* WORN PATHS (Job 6d item 3): the routes the robots walk most slowly wear a pale path. One mesh, a fixed number of segments (LI_WHERE.PATH.cap), alpha rewritten twice a second and only when a trip or the fade changed it: no allocation per frame. */
+  const PW = (function () {
+    const Wh = root.LI_WHERE; if (!Wh || !sim.YP) return null; const ap = sim.YP.apron, routes = pl.work.map(w => [[ap.x, ap.z]].concat(w.via || []).concat([[w.x, w.z]])), segs = Wh.pathPlan(routes, Wh.PATH.cap), nS = segs.reduce((a, b) => a + b.length, 0); if (!nS) return null;
+    const pos = new Float32Array(nS * 4 * 3), aA = new Float32Array(nS * 4), aS = new Float32Array(nS * 4), idx = [], own = [], base = []; let q = 0;
+    segs.forEach((sg, ri) => sg.forEach(S => { const dx = S[2] - S[0], dz = S[3] - S[1], d = Math.hypot(dx, dz) || 1, nx = -dz / d * .42, nz = dx / d * .42, c = [[S[0] + nx, S[1] + nz, 1], [S[0] - nx, S[1] - nz, -1], [S[2] - nx, S[3] - nz, -1], [S[2] + nx, S[3] + nz, 1]];
+      for (let k = 0; k < 4; k++) { pos[(q * 4 + k) * 3] = c[k][0]; pos[(q * 4 + k) * 3 + 1] = Math.max(H(c[k][0], c[k][1]), -.2) + .04; pos[(q * 4 + k) * 3 + 2] = c[k][1]; aS[q * 4 + k] = c[k][2]; }
+      idx.push(q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3); own.push(ri); q++; }));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aA', new THREE.BufferAttribute(aA, 1)); g.setAttribute('aS', new THREE.BufferAttribute(aS, 1)); g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(Y.x, 0, Y.z), 1e4);
+    const m = new THREE.ShaderMaterial({ uniforms: {}, vertexShader: 'attribute float aA;attribute float aS;varying float vA;varying float vS;void main(){vA=aA;vS=aS;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}', fragmentShader: 'varying float vA;varying float vS;void main(){float a=vA*(1.0-smoothstep(0.35,1.0,abs(vS)));if(a<0.01)discard;gl_FragColor=vec4(0.80,0.74,0.58,a);}', transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 2; mesh.name = 'worn_paths'; group.add(mesh);
+    return { W: Wh.wearNew(routes.length), g, mesh, own, nS, seen: [], acc: 0, tris: nS * 2, last: -1 };
+  })();
+  function wearSync(dt, tide) {
+    if (!PW) return; const Wh = root.LI_WHERE, tb = sim.tripsBy || []; let ch = false;
+    for (let i = 0; i < PW.W.w.length; i++) { const n = tb[i] || 0, was = PW.seen[i] || 0; if (n > was) { Wh.wearAdd(PW.W, i, n - was); PW.seen[i] = n; ch = true; } }
+    PW.acc += dt; if (PW.acc < 2 && !ch) return; const step = PW.acc; PW.acc = 0; Wh.wearDecay(PW.W, step);
+    const aA = PW.g.attributes.aA.array, p = PW.g.attributes.position.array; let any = 0;
+    for (let sI = 0; sI < PW.nS; sI++) { const al = Wh.wearAlpha(PW.W, PW.own[sI]); for (let k = 0; k < 4; k++) { const v = sI * 4 + k, a = p[v * 3 + 1] < tide + .06 ? 0 : al; aA[v] = a; if (a > 0) any++; } }
+    PW.g.attributes.aA.needsUpdate = true; PW.mesh.visible = any > 0;
   }
   let erased = 0;
   function eraseByTide(tide) {      /* a print under the water is gone for good */
@@ -693,6 +715,7 @@ function create(o) {
     const tide = o.tide();
     for (const r of robots) { const s = sim.robots[r.id]; r.tread.mat.uniforms.uNow.value = T; if (!r.ready) continue; place(r, s, dt); applyBot(r, s, T, dt); if (s.moving) stamp(r, s.x, s.z, r.yawR, T); }
     if (Math.abs(tide - lastTide) > .004) { eraseByTide(tide); lastTide = tide; }
+    wearSync(dt, tide);
     sim.litter.forEach((l, i) => { if (meshes.litter[i]) meshes.litter[i].visible = !l.taken; });
     for (const p of meshes.piles) { const cnt = sim.heap[p.kind] || 0, k = .78 + .05 * Math.min(cnt, 9); p.m.scale.set(1, k, 1); }
     lodUpdate();
@@ -710,7 +733,7 @@ function create(o) {
     advance(seconds) { const env = envNow(); let t = 0; const T0 = st.t + toff;
       while (t < seconds - 1e-9) { const d = Math.min(.25, seconds - t); simStep(sim, d, env); t += d; for (const r of robots) { const s = sim.robots[r.id]; if (r.ready && s.moving) stamp(r, s.x, s.z, s.yaw, T0 + t); } }
       toff += seconds; for (const r of robots) if (r.ready) r.yawR = sim.robots[r.id].yaw; syncVisual(.6, st.t + toff); return counts(); },
-    stampTrail(i, steps) { const r = robots[i]; if (!r) return 0; return r.tread.q; }, erased: () => erased, heap: () => Object.assign({}, sim.heap), hudEl: () => hudEl,
+    stampTrail(i, steps) { const r = robots[i]; if (!r) return 0; return r.tread.q; }, erased: () => erased, paths: () => PW ? { segments: PW.nS, tris: PW.tris, max: PW.W.w.reduce((a, b) => Math.max(a, b), 0), alphas: PW.W.w.map((v, i) => root.LI_WHERE.wearAlpha(PW.W, i)), visible: PW.mesh.visible } : null, heap: () => Object.assign({}, sim.heap), hudEl: () => hudEl,
     yard: () => ({ x: Y.x, z: Y.z, yaw: Y.yaw, y: Y.y, nBays: n, points: YP }), work: () => pl.work, litter: () => sim.litter.map(l => l.taken), lamp: LAMP, E_ROBOT
   };
   return { frame, api, group, hash: () => { let h = 2166136261 >>> 0; const mix = v => { v = Math.round(v * 100) | 0; for (let i = 0; i < 4; i++) { h ^= (v >>> (i * 8)) & 255; h = Math.imul(h, 16777619) >>> 0; } }; pl.pieces.forEach(p => { mix(p.x); mix(p.z); mix(p.yaw * 10); }); mix(Y.x); mix(Y.z); pl.work.forEach(w => { mix(w.x); mix(w.z); }); return ('00000000' + h.toString(16)).slice(-8); } };
@@ -719,7 +742,7 @@ function create(o) {
 /* the tier of a plan made for 'high': fewer pieces, bays and work sites for low and AR (the page plans once, so a quality change rebuilds from the same plan) */
 function forTier(pl, tier) { const mt = TIER_PIECES[tier] || 3, nb = Math.min(pl.nBays, TIER_BOTS[tier] || 3);
   return Object.assign({}, pl, { tier, nBays: nb, yard: Object.assign({}, pl.yard, { nBays: nb }), pieces: pl.pieces.filter(p => PIECES[p.kind].tier <= mt), work: pl.work.slice(0, { high: 7, low: 5, ar: 3 }[tier] || 7) }); }
-const API = { wrackOf, STOPS, STOP_CODES, stopReason, stopSay, placeOf, noteStop, stopTrack, NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
+const API = { TRACK, wrackOf, STOPS, STOP_CODES, stopReason, stopSay, placeOf, noteStop, stopTrack, NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 root.LI_CAMP = Object.assign(root.LI_CAMP || {}, API);
 })(typeof window !== 'undefined' ? window : globalThis);
