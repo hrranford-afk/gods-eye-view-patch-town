@@ -181,7 +181,7 @@ function pickSite(sim, r, R) {
   const pl = sim.pl, k = pl.work.length; if (!k) return -1;
   /* the next dry site that no other robot is on, starting from a seeded rotation */
   for (let pass = 0; pass < (r.want ? 2 : 1); pass++) for (let q = 0; q < k; q++) { const i = (r.siteI + 1 + q + (r.trips === 0 ? r.id * 2 : 0)) % k, w = pl.work[i];
-    if (!dryNow(sim, w) || sim.litter[i].taken || (pass === 0 && r.want && w.kind !== r.want)) continue; if (sim.robots.some(o => o !== r && (o.siteI === i && (o.state === ST.OUT || o.state === ST.WORK)))) continue; return i; }
+    if (!dryNow(sim, w) || !litSite(sim, w) || sim.litter[i].taken || (pass === 0 && r.want && w.kind !== r.want)) continue; if (sim.robots.some(o => o !== r && (o.siteI === i && (o.state === ST.OUT || o.state === ST.WORK)))) continue; return i; }
   return -1;
 }
 function setPath(r, pts) { r.path = pts; r.pi = 0; }
@@ -192,7 +192,25 @@ function pathHome(sim, r) { const bay = sim.YP.bays[r.bay], a = sim.YP.apron, w 
   if (w && w.via && w.via.length && (r.state === ST.OUT || r.state === ST.WORK) && Math.hypot(r.x - w.x, r.z - w.z) < Math.hypot(r.x - a.x, r.z - a.z)) return w.via.slice().reverse().concat(tail);
   return tail; }
 function pathToHeap(sim, r, kind) { const a = sim.YP.apron, d = sim.YP.drops[['metal', 'plastic', 'wood'].indexOf(kind)], w = sim.pl.work[r.siteI]; return ((w && w.via) || []).slice().reverse().concat([[a.x, a.z], [d.x, d.z]]); }
-function wantHome(sim, r) { return sim.env.night || sim.env.rain || r.charge < LOW_CHARGE || !sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken); }
+/* NIGHT SHIFTS (Job 6b, gift pages only: sim.shifts = true). At night at most half the robots charge at once (slots), the rest keep working at a night rate, within the lit shore near the yard. A charging robot stays until it is
+   full (leave), then the lowest-charge worker below enter takes its place: they take turns, so charge evens out. One robot alone charges only when it is below enter. Without sim.shifts every robot goes home at night (the old routine). */
+const NIGHT = { speed: .7, radius: 24, leave: .85, enter: .7, workMin: .45, floor: .16, drain: .6, intake: .008, enterOne: .4, slots: n => n >= 2 ? Math.floor(n / 2) : 1 };
+const CAP_BIG = 2.5, SOLAR = { drain: .7, top: .0016 };   /* the bigger battery holds 2.5 times the charge (drains slowly in fraction, charges a little faster: a heavier lead); the solar panel slows the day drain and tops up while out in daylight */
+const capOf = r => r.cap || 1;
+const nightOn = sim => !!(sim.shifts && sim.env.night);
+function litRadius(sim) { const a = sim.YP.apron, d = sim.pl.work.map(w => Math.hypot(w.x - a.x, w.z - a.z)).sort((p, q) => p - q); return Math.max(NIGHT.radius, d.length ? d[Math.min(2, d.length - 1)] + .5 : 0); }
+function litSite(sim, w) { if (!nightOn(sim)) return true; const a = sim.YP.apron; return Math.hypot(w.x - a.x, w.z - a.z) <= (sim.nightR || (sim.nightR = litRadius(sim))); }
+function shiftPlan(sim) {
+  const act = sim.robots.filter(r => !r.off), slots = NIGHT.slots(act.length);
+  const keep = act.filter(r => r.nc && r.charge < NIGHT.leave).sort((a, b) => a.charge - b.charge).slice(0, slots);
+  act.forEach(r => { r.nc = keep.indexOf(r) >= 0; });
+  const cand = act.filter(r => !r.nc && r.charge < (act.length >= 2 ? NIGHT.enter : NIGHT.enterOne) && r.state !== ST.TASK).sort((a, b) => a.charge - b.charge);
+  for (const r of cand) { if (act.filter(q => q.nc).length >= slots) break; r.nc = true; }
+  return act.filter(r => r.nc).map(r => r.id);
+}
+const lowOf = sim => nightOn(sim) ? NIGHT.floor : LOW_CHARGE;   /* at night the turn-taking sends them home; only an almost flat robot goes by itself */
+const sheltered = (sim, r) => !!(sim.env.rain || (sim.env.night && (!sim.shifts || r.nc)));
+function wantHome(sim, r) { return sheltered(sim, r) || r.charge < lowOf(sim) || !sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken && litSite(sim, w)); }
 function decide(sim, r, R) {
   if (wantHome(sim, r)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); return; }
   const i = pickSite(sim, r, R);
@@ -211,40 +229,41 @@ function advance(r, dist) {
 function simStep(sim, dt, env) {
   if (env) { if (env.night !== undefined) sim.env.night = !!env.night; if (env.rain !== undefined) sim.env.rain = !!env.rain; if (env.tide !== undefined) sim.env.tide = env.tide; }
   const R = sim.R || (sim.R = mulberry32((sim.pl.seed >>> 0) * 53 + 3));
-  sim.t += dt;
+  sim.t += dt; if (nightOn(sim)) shiftPlan(sim); else for (const r of sim.robots) r.nc = false;
   sim.litter.forEach((l, i) => { if (l.taken) { l.back -= dt; if (l.back <= 0) l.taken = false; } });
   const moving = [];
   for (const r of sim.robots) {
     if (r.state !== r.ps) { r.ps = r.state; r.since = 0; }
     r.since += dt; r.moving = false;
-    const shelter = sim.env.night || sim.env.rain;
+    const shelter = sheltered(sim, r), nt = nightOn(sim), cap = capOf(r), dk = (nt ? NIGHT.drain : r.solar ? SOLAR.drain : 1) / cap, wk = nt ? NIGHT.speed : 1;
+    if (r.solar && !nt && !sim.env.rain && r.state !== ST.BAY) r.charge = Math.min(1, r.charge + SOLAR.top * dt);
     switch (r.state) {
       case ST.BAY: {
         const bay = sim.YP.bays[r.bay]; r.x = bay.x; r.z = bay.z; r.yaw = bay.yaw;
-        r.charge = Math.min(1, r.charge + (sim.env.night ? CHARGE.night : sim.env.rain ? CHARGE.rain : CHARGE.sun) * dt);
+        r.charge = Math.min(1, r.charge + (sim.env.night ? (sim.shifts ? NIGHT.intake : CHARGE.night) : sim.env.rain ? CHARGE.rain : CHARGE.sun) * (1 + .5 * (cap - 1)) / cap * dt);
         r.timer -= dt;
-        if (r.timer <= 0 && !shelter && r.charge >= .85) { decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }
+        if (r.timer <= 0 && !shelter && r.charge >= (nt ? NIGHT.workMin : .85)) { decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }
         break; }
       case ST.OUT: case ST.CARRY: case ST.HOME: {
-        r.charge = Math.max(0, r.charge - DRAIN.move * dt); r.moving = true;
+        r.charge = Math.max(0, r.charge - DRAIN.move * dk * dt); r.moving = true;
         /* a robot out on the shore turns for home when the charge is low, at dusk or in rain; one that carries a load takes it to the heap first */
-        if (r.state === ST.OUT && wantHome(sim, r) && (shelter || r.charge < LOW_CHARGE)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); r.siteI = r.siteI; }
+        if (r.state === ST.OUT && wantHome(sim, r) && (shelter || r.charge < lowOf(sim))) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); r.siteI = r.siteI; }
         moving.push(r); break; }
       case ST.WORK: {
-        r.charge = Math.max(0, r.charge - DRAIN.work * dt); r.timer -= dt;
-        if (shelter || r.charge < LOW_CHARGE) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
+        r.charge = Math.max(0, r.charge - DRAIN.work * dk * dt); r.timer -= dt * wk;
+        if (shelter || r.charge < lowOf(sim)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
         if (r.timer <= 0) { const w = sim.pl.work[r.siteI]; r.load = true; r.kindLoad = w.kind; sim.litter[r.siteI].taken = true; sim.litter[r.siteI].back = 120 + R() * 60; r.state = ST.CARRY; setPath(r, pathToHeap(sim, r, w.kind)); }
         break; }
       case ST.DROP: {
-        r.charge = Math.max(0, r.charge - DRAIN.work * dt); r.timer -= dt;
+        r.charge = Math.max(0, r.charge - DRAIN.work * dk * dt); r.timer -= dt * wk;
         if (r.timer <= 0) { sim.heap[r.kindLoad] = (sim.heap[r.kindLoad] || 0) + 1; r.delivered++; r.trips++; r.load = false; r.kindLoad = null;
           if (r.role === 'sorter') { r.state = ST.SORT; r.timer = 6 + R() * 3; } else decide(sim, r, R); }
         break; }
       case ST.TASK: {   /* lent out: the page drives x, z, yaw and the flags tmove and twork; treturn hands it back to the routine (walks home to its bay) */
         if (r.treturn) { r.treturn = false; r.twork = false; r.tmove = false; r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
-        r.moving = !!r.tmove; r.charge = Math.max(0, r.charge - (r.tmove ? DRAIN.move : DRAIN.work) * dt); break; }
+        r.moving = !!r.tmove; r.charge = Math.max(0, r.charge - (r.tmove ? DRAIN.move : DRAIN.work) * dk * dt); break; }
       case ST.SORT: {
-        r.charge = Math.max(0, r.charge - DRAIN.work * dt); r.timer -= dt; if (r.timer <= 0) decide(sim, r, R); break; }
+        r.charge = Math.max(0, r.charge - DRAIN.work * dk * dt); r.timer -= dt; if (r.timer <= 0) decide(sim, r, R); break; }
     }
   }
   /* moving: a robot gives way to a lower-numbered one that is moving and close ahead of it */
@@ -252,7 +271,7 @@ function simStep(sim, dt, env) {
     let stop = false;
     for (const o of moving) { if (o.id >= r.id) continue; const dx = o.x - r.x, dz = o.z - r.z, d = Math.hypot(dx, dz); if (d < 1.9 && dx * Math.sin(r.yaw) + dz * Math.cos(r.yaw) > 0) { stop = true; break; } }
     if (stop) { r.moving = false; continue; }
-    const arrived = advance(r, r.v * dt);
+    const arrived = advance(r, r.v * dt * (nightOn(sim) && r.state !== ST.HOME ? NIGHT.speed : 1));
     if (arrived) {
       if (r.state === ST.OUT) { r.state = ST.WORK; r.timer = (r.role === 'sorter' ? 6 : 9) + R() * 4; const w = sim.pl.work[r.siteI]; r.yaw = w.yaw; r.moving = false; }
       else if (r.state === ST.CARRY) { r.state = ST.DROP; r.timer = 3; r.moving = false; const d = sim.YP.drops[['metal', 'plastic', 'wood'].indexOf(r.kindLoad)]; r.yaw = d.yaw; }
@@ -635,7 +654,7 @@ function create(o) {
 /* the tier of a plan made for 'high': fewer pieces, bays and work sites for low and AR (the page plans once, so a quality change rebuilds from the same plan) */
 function forTier(pl, tier) { const mt = TIER_PIECES[tier] || 3, nb = Math.min(pl.nBays, TIER_BOTS[tier] || 3);
   return Object.assign({}, pl, { tier, nBays: nb, yard: Object.assign({}, pl.yard, { nBays: nb }), pieces: pl.pieces.filter(p => PIECES[p.kind].tier <= mt), work: pl.work.slice(0, { high: 7, low: 5, ar: 3 }[tier] || 7) }); }
-const API = { rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
+const API = { NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 root.LI_CAMP = Object.assign(root.LI_CAMP || {}, API);
 })(typeof window !== 'undefined' ? window : globalThis);

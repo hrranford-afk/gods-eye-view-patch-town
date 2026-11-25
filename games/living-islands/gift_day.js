@@ -13,6 +13,7 @@ const SAVE_VERSION = 1;
 const SAVE_KEY = 'li.gift.day1';
 const STAGES = ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'];
 const STAGE_LABEL = { arrive: 'Arrive', jobs: 'First jobs', delivery: 'Delivery', yard: 'The yard', evening: 'Evening', night: 'Night' };
+const CAMP_CAP = 2.5;                    /* the bigger battery (camp_start.js CAP_BIG) */
 const START_HOUR = 5.0;                 /* game hours since midnight of day 1: first light */
 
 /* ten cheap things; price in delivery credit (pounds); extra = hours added to the usual next-morning arrival */
@@ -165,7 +166,7 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], jobs: [], mods: [], kits: { battery: 0, solar: 0 }, stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
@@ -201,6 +202,8 @@ function State(o) {
   s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
   s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
   s.opening = bool(o.opening); s.dockDone = bool(o.dockDone);
+  s.mods = Array.isArray(o.mods) ? o.mods.slice(0, 4).map(m => ({ bat: !!(m && m.bat), solar: !!(m && m.solar) })) : [];
+  s.kits = { battery: Math.round(num(o.kits && o.kits.battery, 0, 0, 9)), solar: Math.round(num(o.kits && o.kits.solar, 0, 0, 9)) };
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
   s.stock = emptyStock(); if (o.stock && typeof o.stock === 'object') for (const k in s.stock) s.stock[k] = Math.round(num(o.stock[k], 0, 0, STOCK_CAP));
   s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered) })) : [];
@@ -981,6 +984,7 @@ function holdRobots() {
   let rt = null; try { rt = C.li().campstart.rt(); } catch (e) { return; } if (!rt) return;
   try { const sim = rt.sim(); G.deliv = G.deliv || [];
     sim.robots.forEach((r, i) => {
+      sim.shifts = true; r.off = !G.s.robots[i]; { const m = (G.s.mods || [])[i] || {}; r.cap = m.bat ? CAMP_CAP : 1; r.solar = !!m.solar; }   /* Job 6b: night shifts and the fitted parts */
       if (!G.s.robots[i]) { r.state = 'bay'; r.timer = 1e9; r.charge = Math.min(r.charge, .3); r.load = false; r.want = undefined; G.deliv[i] = r.delivered; return; }
       const job = (G.s.jobs || [])[i], st = job && stockById(job);
       r.want = st ? st.site : undefined;
