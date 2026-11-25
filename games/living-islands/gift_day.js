@@ -318,7 +318,15 @@ function ambientStep(a, dt, visible) {
   a.q += dt; if (a.q >= AMBIENT.quietS) { const id = AMBIENT.order[a.k % AMBIENT.order.length]; a.k++; a.q = 0; a.active = AMBIENT.dur[id]; a.id = id; return { a, fire: id }; }
   return { a, fire: null };
 }
-const CORE = { AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* EXPLORATION (Job 6c item 1). Pure: the compass arrow in degrees clockwise from straight up on the screen, for a camera looking along (fx, fz) on the ground. */
+function arrowDeg(from, to, fx, fz) { const dx = to.x - from.x, dz = to.z - from.z, rx = -fz, rz = fx; return Math.atan2(dx * rx + dz * rz, dx * fx + dz * fz) * 180 / Math.PI; }
+/* the places the player knows: id, name, which landing marks it, when it is known, the one line when heading there */
+const PLACES = [
+  { id: 'home', name: 'Home: the jetty', land: 'jetty', known: () => true, line: 'Row home to the jetty.' },
+  { id: 'skerry', name: 'The outer skerry', land: 'skerry', known: () => true, line: 'Something is wedged on the skerry.' },
+  { id: 'woods', name: 'The woods', land: null, known: () => false, line: 'Row to the woods.' }   /* later: no woods in the world yet; the row is here so the chart grows with the map */
+];
+const CORE = { arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -419,6 +427,8 @@ body.gd-clean #bd-st{display:none!important}
 body.gd-clean #gd-hint{bottom:100px;width:min(420px,calc(100vw - 24px));justify-content:center;text-align:center;font-size:18px;font-weight:700}
 body.gd-clean #gd-toast{top:96px}
 body.gd-clean #stormBaro{top:84px}
+#gd-compass{position:absolute;left:10px;top:38%;display:none;align-items:center;gap:8px;min-height:52px;font-size:14px;font-weight:700;border-color:#d9a21c;cursor:pointer;max-width:min(200px,50vw)}
+#gd-compass svg{flex:none;transition:transform .25s}
 #gd-menu{position:absolute;right:10px;top:76px;display:none;flex-direction:column;gap:8px;align-items:stretch;min-width:190px;padding:10px}
 body.gd-menuopen #gd-menu{display:flex}
 #gd-plankhint{position:absolute;left:50%;top:92px;transform:translateX(-50%);font-size:15px;font-weight:700;display:none}
@@ -749,6 +759,7 @@ function targets() {
   try { if (G.fit && fitReady() && O.post) { const sc = screenOf(O.post.position.x, groundY(O.post.position.x, O.post.position.z) + 1.5, O.post.position.z); if (sc) T.push({ id: 'fitpost', x: sc.x, y: sc.y, r: 64 }); } handTargets().forEach(t => T.push(t)); } catch (e) { G.err.push('hand targets ' + e.message); }
   try { if (PHYS()) PHYS().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('phys targets ' + e.message); }
   try { if (SHP()) SHP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('storm targets ' + e.message); }
+  try { const xi = exploreInfo(); if (xi) { const sc = screenOf(xi.pos.x, C.tide() + 1.5, xi.pos.z); if (sc) T.push({ id: 'dest', x: sc.x, y: sc.y, r: 64 }); } } catch (e) { /* none */ }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
   return T;
 }
@@ -766,6 +777,7 @@ const INSPECT = [
   { re: /^wreck$/, f: s => ({ name: 'The old hull', use: 'An old hull on the shore. A track link may be inside.', needs: null, action: 'Look' }) },
   { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
   { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note); return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
+  { re: /^dest$/, f: () => { const i = exploreInfo(); return i ? { name: i.name, use: i.line, needs: 'A row of about ' + Math.round(i.dist) + ' m. Follow the gold arrow.', action: 'Show the way' } : null; } },
   { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
   { re: /^fitpost$/, f: () => ({ name: 'The charging post', use: 'The carrier stands in its bay. Hold here while the old part comes out and the new one goes in.', needs: 'Your hands, a few seconds', action: 'Hold to fit' }) },
   { re: /^litter\d+$/, f: () => ({ name: 'Shore litter', use: 'Washed-up scraps. A robot on a matching order gathers them; you can too.', needs: 'Hold: ' + rateText(null), action: 'Hold to gather' }) },
@@ -778,7 +790,7 @@ function inspectInfo(id) {
   if (!i) { const e = INSPECT.find(q => q.re.test(id)); if (e) { try { i = e.f(s, id); } catch (x) { i = null; } } }
   if (!i) return null; return Object.assign({ id, needs: null, action: null, locked: null }, i);
 }
-function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; return null; }
+function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; if (exploreInfo()) return 'dest'; return null; }
 const INS = { hov: null, hovT: 0, sel: null, el: null, ring: null, gring: null, mx: -1, my: -1, coarse: false };
 function inspectDom() {
   if (INS.el) return; const d = (cls, css) => { const e = document.createElement('div'); e.className = cls; e.style.cssText = css; document.body.appendChild(e); return e; };
@@ -923,6 +935,7 @@ function onStage(now) {
 function activate(id) {
   const s = G.s, S = G.spots;
   if (PHYS() && PHYS().activate(id)) return;
+  if (id === 'dest') { const i = exploreInfo(); if (i) toast(i.line + ' Follow the gold arrow, ' + Math.round(i.dist) + ' m.', 4800); return; }
   if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
   if (id === 'crate0') return openKeyCrate();
   if (id === 'hut') return hutCard();
@@ -1218,13 +1231,14 @@ function renderUi() {
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
   if (sig === G.sig) return; G.sig = sig; const P = progress(s);
-  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
+  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || exploreHint(s) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
   G.ui.hint.innerHTML = ''; const sp = h('span', '', hintText); G.ui.hint.appendChild(sp);
   const mk = {};   /* every action button, made once; where it goes depends on the HUD mode */
   if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
   if (s.letter1 && stage === 'jobs') { const b = btn('Notebook', notebook); b.id = 'gd-notes-btn'; mk.notes = b; if (G.helpPlank && !s.plank) { const fb = btn('Fit one plank', fitOnePlank, 'pri'); fb.id = 'gd-plank-btn'; mk.plank = fb; } }
   if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; mk.cat = b; }
   if (s.letter2) { const bl = PHYS() && PHYS().buildLine && PHYS().buildLine(); const b = btn(bl ? 'Build<small style="display:block;font-weight:600;opacity:.75;font-size:11px;max-width:150px;white-space:normal">' + bl + '</small>' : (s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : GD_CLEAN ? 'Build' : 'Build menu'), buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
+  if (exploreOn()) { const b = btn('Chart', chartCard); b.id = 'gd-chart-btn'; mk.chart = b; }
   if (isDark()) { const b = btn(G.wait && G.wait.mode ? 'Stop waiting' : 'Wait for dawn', () => waitReq(G.wait && G.wait.mode ? 'stop' : 'start')); b.id = 'gd-wait-btn'; mk.wait = b; }
   if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; mk.sleep = b; }
   const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Test: skip to'); sk.innerHTML = '<option value="">Test: skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
@@ -1232,7 +1246,7 @@ function renderUi() {
   const R = G.ui.right; R.innerHTML = '';
   if (!GD_CLEAN) {
     G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
-    ['ledger', 'notes', 'plank', 'cat', 'build', 'sleep', 'wait'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
+    ['ledger', 'notes', 'plank', 'cat', 'build', 'chart', 'sleep', 'wait'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
   } else {
     /* top left: Day, the stage you are in, six dots, and one line of status */
     const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : (stage === 'dock' ? 'The dock' : 'Done')) + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
@@ -1243,7 +1257,7 @@ function renderUi() {
     if (main && mk[main]) R.appendChild(mk[main]);
     if (mk.build && main !== 'build') R.appendChild(mk.build);   /* OWNER 25 Nov: the Build button is permanent once the letter is read, not behind Menu */
     const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
-    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'sleep', 'wait'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
+    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'chart', 'sleep', 'wait'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
     const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
   }
   const L = G.ui.left; L.innerHTML = '';
@@ -1312,6 +1326,7 @@ function tick(dt) {
   if (G.root.parent !== C.scene) C.scene.add(G.root);
   waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
+  try { exploreTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('explore ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
   if (s.water) { if (isRaining()) G.barrel = Math.min(40, (G.barrel || 0) + dt * 1.6); }
@@ -1349,6 +1364,51 @@ function hintTarget() {
   return null;
 }
 
+/* ---------------- EXPLORATION (Job 6c item 1; owner playtest 25 Nov: "it is not clear how to explore") ----------------
+   After the dock is finished the first destination is the outer skerry: a gold column and ring on the water there, a compass chip at the left edge (an arrow that turns with the camera and the distance in metres),
+   the one line 'Something is wedged on the skerry.' while you row, and a Chart in the Menu that lists the places you know; tap one to head for it. The marker clears when the boat gets within reach of a chosen place
+   or, by default, when the first skerry trip has been made (the motor is in the boat). */
+const EXPLORE = { reachM: 14, tick: 0 };
+function exploreOn() { try { const st = BDP().state(); return !!(G.ready && st.ready && st.avail && !(G.s.opening && !G.s.dockDone)); } catch (e) { return false; } }
+function placePos(p) { try { const l = p.land && BDP().landings().find(q => q.id === p.land); if (!l) return null; const b = l.berth || l; return { x: b.x, z: b.z }; } catch (e) { return null; } }
+function placesKnown() { return exploreOn() ? PLACES.filter(p => p.known(G.s) && placePos(p)) : []; }
+function destNow() { if (!exploreOn()) return null; if (G.destSet !== undefined) return G.destSet; try { const st = BDP().state(); if (st.b && !st.b.got.engine) return 'skerry'; } catch (e) { /* none */ } return null; }
+function camFwd() { const v = new THREE.Vector3(); C.camera.getWorldDirection(v); const l = Math.hypot(v.x, v.z); return l < 1e-4 ? { x: -Math.sin(C.cam.theta || 0), z: -Math.cos(C.cam.theta || 0) } : { x: v.x / l, z: v.z / l }; }
+function exploreInfo() {
+  const id = destNow(); if (!id) return null; const p = PLACES.find(q => q.id === id), pos = p && placePos(p); if (!pos) return null;
+  let from = pos; try { const st = BDP().state(); if (st.b) from = { x: st.b.x, z: st.b.z }; } catch (e) { /* none */ }
+  const f = camFwd(); return { id, name: p.name, line: p.line, pos, from, dist: Math.hypot(pos.x - from.x, pos.z - from.z), deg: arrowDeg(from, pos, f.x, f.z) };
+}
+function exploreHint(s) {   /* one line, only while you are out rowing or the day has nothing else for you */
+  const i = exploreInfo(); if (!i) return null; let drive = false; try { drive = BDP().state().mode === 'drive'; } catch (e) { drive = false; } return drive || stageOf(s) === 'done' ? i.line : null;
+}
+function exploreDom() {
+  if (G.ui.compass) return G.ui.compass; const c = h('div', 'gd-pill'); c.id = 'gd-compass'; c.setAttribute('role', 'button'); c.setAttribute('aria-label', 'Chart: the way to your destination');
+  c.innerHTML = '<svg id="gd-compass-a" width="40" height="40" viewBox="-20 -20 40 40" aria-hidden="true"><circle r="18" fill="rgba(255,208,80,.25)" stroke="#d9a21c" stroke-width="2"/><path d="M0 -14 L8 8 L0 4 L-8 8 Z" fill="#d9a21c" stroke="#7a5a00" stroke-width="1.2"/></svg><span id="gd-compass-t"></span>';
+  c.addEventListener('click', e => { e.stopPropagation(); chartCard(); }); G.ui.root.appendChild(c); G.ui.compass = c; return c;
+}
+function exploreMarker(info) {
+  const O = G.objs, T = THREE; let m = O.dest;
+  if (!m) { m = new T.Group(); m.name = 'destMarker'; const col = new T.Mesh(new T.CylinderGeometry(1, 1, 1, 12, 1, true), new T.MeshBasicMaterial({ color: 0xffd050, transparent: true, opacity: .26, depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending })); col.position.y = .5; m.add(col);
+    const ring = new T.Mesh(new T.RingGeometry(.8, 1, 40), new T.MeshBasicMaterial({ color: 0xffd050, transparent: true, opacity: .85, depthWrite: false, side: T.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = .06; m.add(ring); m.userData = { col, ring }; m.frustumCulled = false; G.root.add(m); O.dest = m; }
+  m.visible = !!info; if (!info) return; const k = Math.max(3.2, C.cam.dist * .045), pul = 1 + .06 * Math.sin(performance.now() / 380);
+  m.position.set(info.pos.x, C.tide(), info.pos.z); m.userData.col.scale.set(k * .55, 26 + k * 2, k * .55); m.userData.ring.scale.setScalar(k * pul);
+}
+function exploreTick(dt) {
+  EXPLORE.tick += dt; const info = exploreInfo(), O = G.objs;
+  if (info && G.destSet !== undefined && G.destSet !== null && info.dist < EXPLORE.reachM) { toast('You are at ' + info.name.toLowerCase() + '.', 4200); G.destSet = null; G.sig = null; }
+  exploreMarker(exploreInfo());
+  const c = exploreDom(), i2 = exploreInfo(); c.style.display = i2 ? 'flex' : 'none';
+  if (i2) { c.querySelector('#gd-compass-a').style.transform = 'rotate(' + Math.round(i2.deg) + 'deg)'; c.querySelector('#gd-compass-t').textContent = i2.name.replace(/^Home: /, '') + ', ' + Math.round(i2.dist) + ' m'; }
+  const key = (i2 ? i2.id : '') + '|' + (exploreHint(G.s) || '') + '|' + placesKnown().length; if (key !== G.exKey) { G.exKey = key; G.sig = null; }
+}
+function chartCard() {
+  closeCard(); const cur = destNow(), c = card('chart', '<h2>Chart</h2><p><small>The places you know. Tap one to set where you are headed.</small></p>');
+  placesKnown().forEach(p => { const pos = placePos(p); let d = null; try { const b = BDP().state().b; d = Math.hypot(pos.x - b.x, pos.z - b.z); } catch (e) { d = null; }
+    const b = btn(p.name + (d !== null ? ' (' + Math.round(d) + ' m)' : '') + (cur === p.id ? ' - heading here' : ''), () => { G.destSet = p.id; closeCard(); toast('Heading for ' + p.name.replace(/^Home: /, '').toLowerCase() + '. Follow the gold arrow.', 4200); G.sig = null; renderUi(); }, cur === p.id ? 'pri' : ''); b.dataset.place = p.id; b.style.cssText = 'display:block;width:100%;margin:6px 0;min-height:52px;text-align:left'; c.appendChild(b); });
+  c.appendChild(h('p', '', '<small>More places appear on the chart as you find them.</small>'));
+  c.appendChild(xbtn()); c.appendChild(row(btn('No destination', () => { G.destSet = null; closeCard(); G.sig = null; renderUi(); }), btn('Close', closeCard, 'pri')));
+}
 /* ---------------- the boat layer (boat_drive.js) gets a small handle on this page ---------------- */
 function attachBoat() {
   const K = root.LI_BOAT_DRIVE; if (!K || !K.attach || G.boatAttached) return; G.boatAttached = true;
@@ -1412,6 +1472,7 @@ function init(ctx) {
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },
     waitReq: v => waitReq(v), waitState: () => ({ mode: G.wait && G.wait.mode, speed: G.waitSpeed || 1, mode0: G.clockMode }), actNow: () => { G.actAt = performance.now(); G.idle = 0; }, idleSet: v => { G.idle = v; }, hintNow: () => (G.ui.hint && G.ui.hint.textContent) || '',
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
+    ,explore: () => { const i = exploreInfo(), c = G.ui.compass, m = G.objs.dest; return { on: exploreOn(), dest: destNow(), info: i, marker: !!(m && m.visible), compass: !!(c && c.style.display !== 'none'), compassText: c ? c.textContent : '', compassDeg: c ? c.querySelector('#gd-compass-a').style.transform : '', hint: exploreHint(G.s), places: placesKnown().map(p => p.id), gold: goldId() }; }, chart: () => chartCard(), setDest: v => { G.destSet = v; G.sig = null; renderUi(); }
   };
   return G;
 }
