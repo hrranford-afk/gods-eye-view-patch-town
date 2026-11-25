@@ -100,7 +100,7 @@ WEATHER_P = {
     "summer": {"fair": .38, "clear": .20, "overcast": .14, "showers": .10, "rain": .07, "fog": .09, "storm": .02},
     "autumn": {"fair": .15, "clear": .06, "overcast": .22, "showers": .10, "rain": .24, "fog": .13, "storm": .10},
     "winter": {"fair": .09, "clear": .13, "overcast": .28, "showers": .05, "rain": .20, "fog": .10, "storm": .15}}
-GAME_FLAG_DAYS = {"robot_started": 1, "has_boat": 1, "barrel_up": 1, "hut_patched": 2, "built_jetty": 4, "built_cistern": 9,
+GAME_FLAG_DAYS = {"parcel_returned": 12, "robot_started": 1, "has_boat": 1, "barrel_up": 1, "hut_patched": 2, "built_jetty": 4, "built_cistern": 9,
                   "built_hide": 40, "garden_started": 60, "built_cottage": 75, "built_kiosk": 140}
 DRAW_RATE = 0.62      # chance of one unforced draw on a day (a guess; see EVENTS.md)
 EXTRA_RATE = 0.12     # chance of a second draw the same day
@@ -402,6 +402,13 @@ class Content(unittest.TestCase):
             self.assertIsNone(re.search(r"no such (relative|man|person|uncle)", blob, re.I), e["id"])
         for t in ("p0_P1", "p0_P2"): self.assertNotIn("relative", BY_ID[t]["text"].lower())
         self.assertIn("incomplete", BY_ID["a2_uncle_reply"]["text"]); self.assertIn("either way", BY_ID["a2_uncle_reply"]["text"])
+
+    def test_world_kindnesses(self):
+        # critic review v2: five kindnesses with no letter, each with a physical cause
+        for i in ("a1_kind_second_blanket", "a1_kind_crate_handles", "a1_kind_dry_shelf", "a1_kind_parcel_returned", "a4_kind_spare_mould"):
+            self.assertIn(i, BY_ID)
+            self.assertNotEqual(BY_ID[i]["kind"], "letter")
+            self.assertNotIn("letter_", " ".join(BY_ID[i]["effects"].get("flags_set", [])))
 
     def test_no_saving_humanity_speech(self):
         # critic review v2: neither voice makes a speech about saving anyone; the helper's kindness has practical limits

@@ -34,3 +34,14 @@ FIXED rules kept in every step: hopeful; mild trouble only; robots are relics (n
 | 3.2 | KEEP | L1 to L12 wording | none contains such a speech already (the new test proves it) |
 | 3.3 | CHANGED | five new limits-of-kindness events: `a1_limit_hinge` (the shed door arrives with hinges a size too small), `a1_limit_thick_rope`, `a2_limit_late_nails`, `a2_limit_rain_label`, `a3_limit_old_chart` | kindness that is never wrong feels managed; small honest misfits make it feel like a person's hand. Two are mild trouble, three in-between; each costs an afternoon, none punishes |
 | 3.4 | NEW TEST | `test_no_saving_humanity_speech` (also counts the five `_limit_` events) | keeps the rule from drifting |
+
+## Step 4. Five world kindnesses without letters
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 4.1 | CHANGED | `a1_kind_second_blanket`: in rain the lidded box at the landing holds a second blanket under the first (clue 47) | kindness shown by an object that allowed for the first going wet; no words |
+| 4.2 | CHANGED | `a1_kind_crate_handles`: crates with a rope handle at both ends and runners beneath, so one person can drag one (clue 48) | the helper cares about one pair of hands; physical, testable cause |
+| 4.3 | CHANGED | `a1_kind_dry_shelf`: the collector's rack has a low dry shelf above the high-water mark where kindling gathers (clue 49) | a mechanical reason (the first bin the tide cannot reach); kindness without a face |
+| 4.4 | CHANGED | `a1_kind_parcel_returned`: a parcel handed back unopened is taken by the tender and the ordinary supplies still come next visit (clue 50). Needs a game action: hand a parcel back (flag `parcel_returned`) | shows the offer was never a test or a debt; mood in-between |
+| 4.5 | CHANGED | `a4_kind_spare_mould`: one of the last consignments holds a reusable mould for a replacement part, packed for a day nobody would come (clue 51) | the end of the gift is planned for; practical, and a spare of what L6 said was no longer made |
+| 4.6 | KEEP | none of these has a letter, a speaker or a face | the critic asked for kindness the world shows |
+| 4.7 | NEW TEST | `test_world_kindnesses`; the stand-in player in the simulation now returns a parcel on day 12 (`parcel_returned`) | tests that all five exist, and keeps the new event reachable |
