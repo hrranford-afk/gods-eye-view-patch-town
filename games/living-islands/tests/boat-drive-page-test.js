@@ -308,5 +308,24 @@ if (want(13)) {
   ok(cost.tris < 7000, 'and ' + cost.tris + ' triangles: under 7,000');
   ok(sc < 150000, 'the whole gift scene on the ipad preset is ' + sc + ' triangles (under 150,000)');
 }
+/* ================= 14. the bow camera (&cam=bow, default off) ================= */
+if (want(14)) {
+  const d = await open('?ui=0&q=low&game=gift&boat=1&device=ipad', { touch: true, w: 1180, h: 820 });
+  await B(d.p, 'castOff'); await B(d.p, 'advance', 1); await wait(d.p, 800);
+  ok(!(await B(d.p, 'bow')).on, 'default: the chase camera (bow view is off)');
+  const f0 = (await B(d.p, 'camInfo')).fov;
+  const btn = await d.p.evaluate(() => { const e = document.getElementById('bd-cam'); if (!e || !e.isConnected) return null; const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, t: e.textContent }; });
+  ok(btn && btn.h >= 52 && btn.w >= 52 && /Bow view/.test(btn.t), 'the camera button is on the HUD, 52 px or more under the ipad preset: ' + JSON.stringify(btn));
+  await d.p.locator('#bd-cam').click(); await B(d.p, 'advance', 1); await wait(d.p, 1200);
+  let ci = await B(d.p, 'camInfo'), bw = await B(d.p, 'bow'), tide = ci.tide;
+  ok(bw.on && ci.fov > 55 && ci.y > tide + 1.2 && ci.y < tide + 2.2, 'tap it: eye level on the boat (camera ' + (ci.y - tide).toFixed(2) + ' m above the sea, field of view ' + ci.fov.toFixed(0) + ' degrees)');
+  ok(/Chase view/.test(await d.p.evaluate(() => document.getElementById('bd-cam').textContent)), 'the button now offers the chase view');
+  await d.p.locator('#bd-cam').click(); await B(d.p, 'advance', 1); await wait(d.p, 2500); ci = await B(d.p, 'camInfo');
+  ok(!(await B(d.p, 'bow')).on && Math.abs(ci.fov - f0) < 6, 'tap again: back to the chase camera and the old field of view (' + ci.fov.toFixed(1) + ' against ' + f0.toFixed(1) + ')');
+  ok(d.errs.length === 0, 'bow view toggled: 0 console errors' + (d.errs.length ? ' ' + d.errs[0] : '')); await d.p.close(); await d.c.close();
+  const e = await open('?ui=0&q=low&game=gift&boat=1&cam=bow&motor=1&rim=0'); await B(e.p, 'castOff'); await B(e.p, 'force', { steer: 0, throttle: 1 }); await B(e.p, 'advance', 5); await wait(e.p, 1200);
+  ok((await B(e.p, 'bow')).on && (await B(e.p, 'state')).u > 4, '&cam=bow starts in bow view and the boat drives (' + (await B(e.p, 'state')).u.toFixed(1) + ' m/s)');
+  ok(e.errs.length === 0, '&cam=bow&rim=0: 0 console errors' + (e.errs.length ? ' ' + e.errs[0] : '')); await e.p.close();
+}
 console.log('\n' + (n - fails) + ' of ' + n + ' checks passed'); await browser.close(); if (fails) process.exit(1);
 function LIB_wrap(a) { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; }

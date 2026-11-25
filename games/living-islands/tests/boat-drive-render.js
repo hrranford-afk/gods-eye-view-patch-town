@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { launch, ROOT } from './shoot.js';
 const arg = k => (process.argv.find(a => a.startsWith(k + '=')) || '').split('=')[1];
-const only = (arg('only') || '1,2,3,4,5').split(',').map(Number), W = parseInt(arg('w') || '2400', 10), Hh = Math.round(W * 0.5625);
+const only = (arg('only') || '1,2,3,4,5,6').split(',').map(Number), W = parseInt(arg('w') || '2400', 10), Hh = Math.round(W * 0.5625);
 const OUT = path.join(ROOT, 'shots'); fs.mkdirSync(OUT, { recursive: true });
 const { browser, ctx } = await launch(); const errs = [];
 async function page(qs) {
@@ -18,7 +18,7 @@ async function page(qs) {
   await p.evaluate(() => __gift.skipTo('yard')); await p.waitForTimeout(1500); await p.evaluate(() => { __gift.closeCard(); __boat.set({ avail: true }); });
   return p;
 }
-const shot = async (p, n) => { const f = path.join(OUT, 'boatdrive-' + n + '.png'); await p.screenshot({ path: f }); console.log('wrote', f); };
+const shot = async (p, n) => { const f = path.join(OUT, (typeof n === 'string' ? n : 'boatdrive-' + n) + '.png'); await p.screenshot({ path: f }); console.log('wrote', f); };
 const view = async (p, v, wait = 2800) => { await p.evaluate(v => __li.setView(v), v); await p.waitForTimeout(wait); };
 const B = (p, f, ...a) => p.evaluate(([f, a]) => { const r = __boat[f](...a); return r === undefined ? null : r; }, [f, a]);
 const thetaFrom = (dx, dz) => Math.atan2(dx, dz);   /* the camera sits on the (dx, dz) side of its target */
@@ -56,6 +56,14 @@ if (only.includes(4)) {            /* storm mood: oars, more rocking, rain */
   await p.evaluate(() => __gift.closeCard()); await B(p, 'castOff'); await B(p, 'teleport', j2.berth.x + d2[0] * 22 - al2[0] * 8, j2.berth.z + d2[1] * 22 - al2[1] * 8, hy2, 'drive'); await B(p, 'force', { steer: 0, throttle: 1 }); await B(p, 'advance', 9);
   await view(p, { dist: 15, phi: .38, theta: Math.atan2(-Math.cos(hy2), Math.sin(hy2)) - .9 }, 700); await B(p, 'advance', 2); await shot(p, 4); await B(p, 'force', null);
   console.log('storm env', JSON.stringify(await B(p, 'env'))); await p.close();
+}
+if (only.includes(6)) {            /* the bow camera: eye level on the boat, two views: open bay and the edge of the table */
+  p = await page('&cam=bow&motor=1' + (arg('rim') === '0' ? '&rim=0' : '')); const L3 = await B(p, 'landings'), j3 = L3.find(l => l.id === 'jetty'), b3 = L3.find(l => l.id === 'beach'), d3 = [b3.dx, b3.dz], hy3 = Math.atan2(-d3[1], d3[0]);
+  await p.evaluate(() => __gift.closeCard()); await B(p, 'castOff'); await B(p, 'teleport', j3.berth.x + d3[0] * 18, j3.berth.z + d3[1] * 18, hy3 - .5, 'drive'); await B(p, 'force', { steer: 0, throttle: .6 }); await B(p, 'advance', 3);
+  await p.waitForTimeout(1500); console.log('bow cam', JSON.stringify(await B(p, 'camInfo'), null, 0), JSON.stringify(await B(p, 'bow'))); await shot(p, 'boat-bow');
+  /* toward the edge of the table: 8 m from the rim, looking outward */
+  const R = Math.hypot(j3.berth.x, j3.berth.z), ang = Math.atan2(j3.berth.z, j3.berth.x); await B(p, 'teleport', Math.cos(ang) * 106, Math.sin(ang) * 106, Math.atan2(-Math.sin(ang), Math.cos(ang)), 'drive'); await B(p, 'force', { steer: 0, throttle: 0 }); await B(p, 'advance', 1); await p.waitForTimeout(1500); await shot(p, arg('rim') === '0' ? 'boat-bow-rim0' : 'boat-bow-rim');
+  await p.close();
 }
 console.log('errors:', errs.length, errs.slice(0, 5));
 await browser.close();

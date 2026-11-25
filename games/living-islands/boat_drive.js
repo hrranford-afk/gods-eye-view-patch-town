@@ -681,11 +681,12 @@ function bowActive() { return !!(P.bow && P.b.avail && (P.mode === 'drive' || P.
 function bowHook(dt) {
   const b = P.b, cam = C.camera, r = P.spec || {}; P.camYaw += K.wrap(b.yaw - P.camYaw) * Math.min(1, dt * 3);   /* gentle smoothing of the heading */
   const y = P.camYaw, c = Math.cos(y), s = -Math.sin(y), eyeY = Math.max(tideNow(), C.H(b.x, b.z) + .1) + 1.5 + (r.dpt || 0) * -.5;
-  cam.position.set(b.x - c * .35, eyeY, b.z - s * .35); cam.up.set(0, 1, 0); cam.lookAt(b.x + c * 30, eyeY - 1.9, b.z + s * 30); cam.rotateZ(-(r.drl || 0) * .5);
+  cam.position.set(b.x + c * 1.7, eyeY, b.z + s * 1.7);   /* at the bow: the depth-only hull lid (which hides the sea inside the hull) stays behind the eye */
+   cam.up.set(0, 1, 0); cam.lookAt(b.x + c * 30, eyeY - 1.9, b.z + s * 30); cam.rotateZ(-(r.drl || 0) * .5);
 }
 function bowApply(on) {
   if (on === P.bowOn) return; P.bowOn = on; let xb = null; try { xb = C.li().xboat; } catch (e) { /* none */ } if (!xb) return;
-  if (on) { P.fovPrev = C.cam.fov; if (C.cam.fov !== undefined) C.cam.fov = 64; xb.noBlur(true); if (NO_RIM) xb.rim(false); P.camYaw = P.b.yaw; xb.camHook(bowHook); }
+  if (on) { P.fovPrev = C.cam.fov; if (C.cam.fov !== undefined) C.cam.fov = 64; xb.noBlur(true); if (NO_RIM) xb.rim(false);  /* hides the wooden rim and widens the sea and seabed three times */ P.camYaw = P.b.yaw; xb.camHook(bowHook); }
   else { if (C.cam.fov !== undefined && P.fovPrev !== undefined) C.cam.fov = P.fovPrev; xb.noBlur(false); xb.rim(true); xb.camHook(null); }
 }
 /* ---------------- one frame ---------------- */
