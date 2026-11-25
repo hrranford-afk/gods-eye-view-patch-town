@@ -74,3 +74,15 @@ Hint-only. None settles authorship. The plain mark stays rare (three of the elev
 | 6.5 | CHANGED | `a3_goal_neighbour_ferry` (repeatable): on quiet sailing days the player's boat carries a neighbour's crates, a handcart waiting at the water's edge | the player becomes the other end of a gift |
 | 6.6 | CHANGED | spine section 2.6 (new): the five goals as acts two and three spine goals | the critic asked for them as goals, not only events |
 | 6.7 | KEEP | the four reasons already in section 2.5 (the other end of a gift, one big project, a second home, a mystery that keeps its shape) | the new five add to them |
+
+## Step 7. Twenty seasonal events
+Rewritten lightly into our voice; ids unique; mood split ten good, seven in-between, three mild trouble. Each has a physical cause; none moves a counter without a thing happening on the map. Summary in spine section 5.
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 7.1 | CHANGED | Spring: `a1_spring_gutter_rain` (good), `a2_spring_bird_rack` (in-between; counts a bird), `a1_spring_second_oar` (good), `a3_spring_roof_gust` (mild; sailcloth already stored), `a2_spring_cuttings` (good) | small physical moments of the critic's list |
+| 7.2 | CHANGED | Summer: `a2_summer_seal_ledge` (good), `a1_summer_bench_halves` (in-between, join or two seats), `a2_summer_supper_boat` (good, six guests counted), `a2_summer_picnic_rock` (in-between), `a2_summer_speaker_tune` (good) | the seal event is causal: a cleared ledge, not a reward (see step 9) |
+| 7.3 | CHANGED | Autumn: `a2_autumn_gate_on_beach` (in-between), `a2_autumn_kelp_arc` (mild), `a3_autumn_crew_towline` (good, four guests counted), `a2_autumn_apple_swap` (in-between), `a2_autumn_hull_lifts` (good) | |
+| 7.4 | CHANGED | Winter: `a2_winter_warm_strip` (in-between), `a2_winter_far_light` (good), `a1_winter_butt_frozen` (mild), `a2_winter_fog_horn` (in-between), `a1_winter_last_sun` (good) | |
+| 7.5 | CHANGED | Needs-a-thing notes: the old speaker event is conditional on a new game flag `speaker_prop` and its `source` says "needs: speaker prop"; the picnic rock says "needs: a flat picnic rock below the landing (placeholder: any rock)"; the hull event says "needs: a repaired hull on a cradle (the skiff on the slip)" | the page does not have these props yet; the page builder can place them or leave them unlit |
+| 7.6 | KEEP | the two roof and tap troubles are mild: nothing breaks that cannot be mended by morning or noon | mild trouble only |
+| 7.7 | CHANGED | the stand-in player in the simulation gets `speaker_prop` on day 70 | so the conditional event can fire in the test |

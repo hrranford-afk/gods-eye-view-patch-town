@@ -295,6 +295,8 @@ Consistency with FIXED rules: the stamp is on crates, letters, papers, robots, f
 | of which repeatable | 22 | 30 | 25 | 27 | 104 |
 | Prelude records | 7 (act 0) | | | | 7 |
 | Good / mid / mild trouble | 46 / 38 / 16 percent overall | | | | |
+**v2 seasonal events (critic review, 20).** Four seasons, five each; ten good, seven in-between, three mild trouble. Spring: a1_spring_gutter_rain (good), a2_spring_bird_rack (mid), a1_spring_second_oar (good), a3_spring_roof_gust (mild), a2_spring_cuttings (good). Summer: a2_summer_seal_ledge (good), a1_summer_bench_halves (mid, two choices), a2_summer_supper_boat (good), a2_summer_picnic_rock (mid), a2_summer_speaker_tune (good; needs: speaker prop, conditional on flag `speaker_prop`). Autumn: a2_autumn_gate_on_beach (mid), a2_autumn_kelp_arc (mild), a3_autumn_crew_towline (good), a2_autumn_apple_swap (mid), a2_autumn_hull_lifts (good; needs: a repaired hull on a cradle, the skiff). Winter: a2_winter_warm_strip (mid), a2_winter_far_light (good), a1_winter_butt_frozen (mild), a2_winter_fog_horn (mid), a1_winter_last_sun (good). Every one has a physical cause; people and seals are counted, never followed.
+
 The letters L1 to L12 and where they fire:
 | Letter | Trigger | Deck id |
 |---|---|---|

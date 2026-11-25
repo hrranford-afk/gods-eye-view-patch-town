@@ -100,7 +100,7 @@ WEATHER_P = {
     "summer": {"fair": .38, "clear": .20, "overcast": .14, "showers": .10, "rain": .07, "fog": .09, "storm": .02},
     "autumn": {"fair": .15, "clear": .06, "overcast": .22, "showers": .10, "rain": .24, "fog": .13, "storm": .10},
     "winter": {"fair": .09, "clear": .13, "overcast": .28, "showers": .05, "rain": .20, "fog": .10, "storm": .15}}
-GAME_FLAG_DAYS = {"parcel_returned": 12, "robot_started": 1, "has_boat": 1, "barrel_up": 1, "hut_patched": 2, "built_jetty": 4, "built_cistern": 9,
+GAME_FLAG_DAYS = {"speaker_prop": 70, "parcel_returned": 12, "robot_started": 1, "has_boat": 1, "barrel_up": 1, "hut_patched": 2, "built_jetty": 4, "built_cistern": 9,
                   "built_hide": 40, "garden_started": 60, "built_cottage": 75, "built_kiosk": 140}
 DRAW_RATE = 0.62      # chance of one unforced draw on a day (a guess; see EVENTS.md)
 EXTRA_RATE = 0.12     # chance of a second draw the same day
