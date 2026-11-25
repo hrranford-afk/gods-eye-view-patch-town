@@ -546,7 +546,7 @@ function canCommit(s, id) {
   if (cur && !dockGoing) return { ok: false, why: 'One thing is going up already.' };
   if (bd.cash > s.ledger.cash) return { ok: false, why: 'Not enough cash for the local work.' }; if (bd.credit > s.ledger.credit) return { ok: false, why: 'Not enough delivery credit.' };
   const m = CG().missing(s.stock || {}, bd.needs);
-  if (Object.keys(m).length) { const st = s.stock || {}, cap = k => k.charAt(0).toUpperCase() + k.slice(1), have = Object.keys(bd.needs).map(k => (st[k] || 0) + ' ' + k).join(', '); return { ok: false, why: 'Needs ' + CG().needText(bd.needs) + ': you have ' + have + '. Set a robot to ' + Object.keys(m).map(cap).join(' and ') + ' (daytime), or gather it by hand.', short: m }; }
+  if (Object.keys(m).length) return { ok: false, why: CG().missingText(s.stock || {}, bd.needs), short: m };
   return { ok: true, queue: dockGoing };
 }
 function commitBuild(id) {

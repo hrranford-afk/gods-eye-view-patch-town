@@ -59,6 +59,14 @@ const stockById = id => STOCKS.find(x => x.id === id) || null;
 const emptyStock = () => ({ planks: 0, rope: 0, glass: 0, metal: 0 });
 const needText = n => Object.keys(n).map(k => n[k] + ' ' + stockById(k).short.toLowerCase()).join(', ');
 function missing(stock, needs) { const m = {}; for (const k in needs) if ((stock[k] || 0) < needs[k]) m[k] = needs[k] - (stock[k] || 0); return m; }
+/* STARTER BUFFER (Job 6b): the first crate holds a sack of tins and a plank, enough for the rain cistern (the cheapest build), so the first build is never blocked */
+const STARTER = { metal: BUILD_NEEDS.cistern.metal, planks: BUILD_NEEDS.cistern.planks };
+const joinAnd = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
+/* what is missing and exactly where to get it, from the whole need: 'Needs 3 metal: you have 0. Set a robot to Metal (daytime) or gather by hand.' */
+function missingText(stock, needs) {
+  const m = missing(stock, needs), ks = Object.keys(m); if (!ks.length) return '';
+  return 'Needs ' + joinAnd(ks.map(k => needs[k] + ' ' + stockById(k).short.toLowerCase())) + ': you have ' + joinAnd(ks.map(k => String((stock || {})[k] || 0))) + '. Set a robot to ' + joinAnd(ks.map(k => stockById(k).short), 'or') + ' (daytime) or gather by hand.';
+}
 /* a robot brought trips of one kind to the yard heap: pure, returns a new state */
 function addHaul(s, stockId, trips) {
   if (!stockById(stockId) || !(trips > 0)) return s; const st = Object.assign({}, s.stock); st[stockId] = Math.min(STOCK_CAP, (st[stockId] || 0) + Math.round(trips) * UNITS_PER_TRIP);
@@ -240,8 +248,8 @@ function canned(stage, seed) {
   const s = newState(seed), L0 = s.ledger, i = STAGES.indexOf(stage); if (i <= 0) return s;
   s.letter1 = true; s.keyUsed = true; s.hutOpen = true; s.gh = 6.4;
   if (i >= 2) { s.dry = 'leanto'; s.water = true; s.finds = pickFinds(seed, 2); s.plank = true; s.shipSeen = i >= 3; s.gh = 11.6; }
-  if (i >= 3) { const r = placeOrder(L0, 'rope', 12.2); s.ledger = r.ledger; s.orders.push(r.order); s.ordered = true; s.crate1 = true; s.parts = 3; s.partFrom = 'crate'; s.gh = 14.2; }
-  if (i >= 4) { s.robots = [true, false, false]; s.jobs = ['planks']; s.stock = { planks: 6, rope: 2, glass: 2, metal: 4 }; s.parts = 2; s.gh = 18.1; }
+  if (i >= 3) { const r = placeOrder(L0, 'rope', 12.2); s.ledger = r.ledger; s.orders.push(r.order); s.ordered = true; s.crate1 = true; s.parts = 3; s.partFrom = 'crate'; s.stock = Object.assign(emptyStock(), STARTER); s.gh = 14.2; }   /* crate one is open: its sack of tins and plank is in the yard (Job 6b) */
+  if (i >= 4) { s.robots = [true, false, false]; s.jobs = ['planks']; s.stock = Object.assign({}, s.stock, { planks: (s.stock.planks || 0) + 6 }); s.parts = 2; s.gh = 18.1; }   /* what a normal day makes: the starter sack, one carrier on planks for a few minutes, and a part used (Job 6b: the old canned rope and glass could not have come from a carrier on planks) */
   if (i >= 5) { s.letter2 = true; const b = BUILDS.find(x => x.id === 'cistern'), r = spend(s.ledger, { cash: b.cash, credit: b.credit, text: 'Build: ' + b.name }, 19); s.ledger = r.ledger; s.stock = Object.assign({}, s.stock); for (const k in b.needs) s.stock[k] -= b.needs[k]; s.build = 'cistern'; s.gh = 21.6; s.night = true; }
   if (i >= 6) { s.bottle = true; s.saved = true; s.gh = 23.4; }
   s.stage = stageOf(s); return s;
@@ -300,7 +308,17 @@ function waitStep(w, dt, o) {
   const top = mode === 'manual' ? WAIT.manualSpeed : WAIT.autoSpeed;
   return { mode, k, speed: mode ? 1 + (top - 1) * k : 1 };
 }
-const CORE = { WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* AMBIENT EVENTS (Job 6b): when nothing visible has happened for quietS seconds (no robot moving or working, no hold, no card), one small thing happens in turn: a boat passes far out, gulls wheel over the wrack line, the tender's horn sounds, a tide pool has something small in it.
+   They last dur seconds each. tests/deadtime-test.js holds the longest stretch of nothing visible and nothing doable under 120 s with them (and shows it fails without them). */
+const AMBIENT = { quietS: 55, order: ['boat', 'gulls', 'horn', 'pool'], dur: { boat: 50, gulls: 20, horn: 8, pool: 12 }, text: { boat: 'A small boat passes, far out.', gulls: 'Gulls wheel low over the wrack line.', horn: 'The tender sounds its horn, far out. Two long notes.', pool: 'A tide pool glitters at the edge of the shoal. Something small is in it.' } };
+function ambientStep(a, dt, visible) {
+  a = Object.assign({ q: 0, k: 0, active: 0, id: null }, a);
+  if (a.active > 0) { a.active -= dt; if (a.active <= 0) { a.active = 0; a.id = null; } return { a, fire: null }; }
+  if (visible) { a.q = 0; return { a, fire: null }; }
+  a.q += dt; if (a.q >= AMBIENT.quietS) { const id = AMBIENT.order[a.k % AMBIENT.order.length]; a.k++; a.q = 0; a.active = AMBIENT.dur[id]; a.id = id; return { a, fire: id }; }
+  return { a, fire: null };
+}
+const CORE = { AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -848,6 +866,19 @@ function litRing() {   /* a soft ring on the shore marks the lit radius while th
   if (on && c && !G.ring) { const pts = []; for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2, x = c.x + Math.cos(a) * c.r, z = c.z + Math.sin(a) * c.r; pts.push(new THREE.Vector3(x, groundY(x, z) + .25, z)); } const g = new THREE.BufferGeometry().setFromPoints(pts); G.ring = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .32, depthWrite: false })); G.ring.name = 'litRing'; G.ring.frustumCulled = false; G.root.add(G.ring); }
   if (G.ring) G.ring.visible = on;
 }
+/* ---------------- ambient events (Job 6b) ---------------- */
+function ambientVisible() { if (G.cardOpen || (G.hand && G.hand.down) || G.fit || G.dlv || (G.wait && G.wait.mode)) return true; try { return C.li().campstart.rt().robots().some((b, i) => G.s.robots[i] && (b.moving || b.state === 'work' || b.state === 'drop' || b.state === 'sort' || b.state === 'carry' || b.state === 'out' || b.state === 'task')); } catch (e) { return false; } }
+function ambientTick(dt) {
+  if (!G.ready || !G.s.letter1 || stageOf(G.s) === 'arrive') return; const r = ambientStep(G.amb, dt, ambientVisible()); G.amb = r.a; const O = G.objs;
+  if (r.fire) { G.ambN = (G.ambN || 0) + 1; G.ambLast = r.fire; if (r.fire === 'horn') foghorn(); else toast(AMBIENT.text[r.fire], 5200); if (r.fire === 'pool') { addStockUnits('glass', 1); } if (r.fire === 'boat') ambBoatStart(); }
+  if (O.ambBoat && O.ambBoat.visible) ambBoatMove(dt);
+}
+function ambBoatStart() {
+  const O = G.objs, T = THREE, S = G.spots; if (!S || !S.tender) return; if (!O.ambBoat) { const g = new T.Group(), hull = new T.Mesh(new T.BoxGeometry(5.5, 1.1, 2), new T.MeshLambertMaterial({ color: 0x3a3a40 })); hull.position.y = .55; g.add(hull); const sail = new T.Mesh(new T.ConeGeometry(1.6, 6, 3), new T.MeshLambertMaterial({ color: 0xe8e2d0, side: T.DoubleSide })); sail.position.set(0, 4, 0); g.add(sail); O.ambBoat = g; G.root.add(g); }
+  const d = C.W.camp.dir, rt = C.W.camp.rt, c = S.tender.drop, R = 150, a0 = (G.ambN % 2 ? -1 : 1);
+  G.ambB = { t: 0, x0: c.x + d[0] * R + rt[0] * 90 * a0, z0: c.z + d[1] * R + rt[1] * 90 * a0, x1: c.x + d[0] * R - rt[0] * 90 * a0, z1: c.z + d[1] * R - rt[1] * 90 * a0 }; O.ambBoat.visible = true; ambBoatMove(0);
+}
+function ambBoatMove(dt) { const O = G.objs, b = G.ambB; if (!b) return; b.t += dt; const k = Math.min(1, b.t / AMBIENT.dur.boat), x = b.x0 + (b.x1 - b.x0) * k, z = b.z0 + (b.z1 - b.z0) * k; O.ambBoat.position.set(x, Math.max(C.tide(), -0.2) + .1, z); O.ambBoat.rotation.y = Math.atan2(b.x1 - b.x0, b.z1 - b.z0) + Math.PI / 2; if (k >= 1) O.ambBoat.visible = false; }
 /* ---------------- wait for dawn (Job 6b) ---------------- */
 function waitBusy() { if (G.cardOpen || (G.hand && G.hand.down) || G.fit) return true; try { if (PHYS()) { const m = PHYS().state().marker; if (m && ['site', 'beam', 'beamA', 'crate', 'heavy', 'open', 'unload', 'float'].includes(m.tag)) return true; } } catch (e) { /* none */ } return false; }
 function waitTick(dt) {
@@ -1015,8 +1046,8 @@ function addDeliveryCrate(n, fromTender) {   /* with the physical layer on, a cr
 function deliveryCrate(n) {
   const cr = G.crates[n - 1]; if (!cr) return; if (PHYS() && PHYS().crateTap(n)) return; focus(cr.pos.x, cr.pos.z, 15); const s = G.s;
   if (n === 1) {
-    const c = card('c1', '<h2>Crate number 1</h2><p>' + (cr.opened ? 'Empty now, but for the card.' : 'Inside: three spare track links in oiled paper, and a card with the same small mark as the letter. The card is a catalogue.') + '</p>'); c.appendChild(xbtn());
-    const bs = []; if (!cr.opened) bs.push(btn('Take the track links', () => { cr.opened = true; closeCard(); setS({ crate1: true, parts: s.parts + 3, partFrom: s.partFrom || 'crate' }); if (PHYS()) PHYS().openLid(cr.mesh); else { cr.mesh.userData.lid.position.set(.2, .98, -.32); cr.mesh.userData.lid.rotation.x = -.9; } toast('Three track links. The catalogue is open.', 5000); afterChange(); setTimeout(catalogueCard, 500); }, 'pri')); bs.push(btn('Catalogue', catalogueCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
+    const c = card('c1', '<h2>Crate number 1</h2><p>' + (cr.opened ? 'Empty now, but for the card.' : 'Inside: three spare track links in oiled paper, a sack of tins and one plank for a first tank, and a card with the same small mark as the letter. The card is a catalogue.') + '</p>'); c.appendChild(xbtn());
+    const bs = []; if (!cr.opened) bs.push(btn('Take the track links', () => { cr.opened = true; closeCard(); { const st = Object.assign({}, G.s.stock); for (const k in STARTER) st[k] = Math.min(STOCK_CAP, (st[k] || 0) + STARTER[k]); setS({ crate1: true, parts: s.parts + 3, partFrom: s.partFrom || 'crate', stock: st }); } if (PHYS()) PHYS().openLid(cr.mesh); else { cr.mesh.userData.lid.position.set(.2, .98, -.32); cr.mesh.userData.lid.rotation.x = -.9; } toast('Three track links, a sack of tins and a plank. The catalogue is open.', 5000); afterChange(); setTimeout(catalogueCard, 500); }, 'pri')); bs.push(btn('Catalogue', catalogueCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
   } else if (cr.letter2) { readLetter2(); }
   else if (cr.l9) { if (SHP()) SHP().readL9(); }
   else {
@@ -1196,7 +1227,7 @@ function renderUi() {
   if (s.letter2) { const bl = PHYS() && PHYS().buildLine && PHYS().buildLine(); const b = btn(bl ? 'Build<small style="display:block;font-weight:600;opacity:.75;font-size:11px;max-width:150px;white-space:normal">' + bl + '</small>' : (s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : GD_CLEAN ? 'Build' : 'Build menu'), buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
   if (isDark()) { const b = btn(G.wait && G.wait.mode ? 'Stop waiting' : 'Wait for dawn', () => waitReq(G.wait && G.wait.mode ? 'stop' : 'start')); b.id = 'gd-wait-btn'; mk.wait = b; }
   if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; mk.sleep = b; }
-  const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
+  const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Test: skip to'); sk.innerHTML = '<option value="">Test: skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); });
   const R = G.ui.right; R.innerHTML = '';
   if (!GD_CLEAN) {
@@ -1265,7 +1296,7 @@ function skipTo(v) {
   if (!v) return; if (v === 'new') { wipeSave(); G.s = newState(G.s.seed); closeCard(); applyWorldToState(); toast('A new start. The save is forgotten.', 4000); return; }
   closeCard(); let st;
   if (v === 'storm') { closeCard(); if (SHP()) SHP().start(); return; }
-  if (v === 'day2') { st = canned('done', G.s.seed); st.gh = 31.2; st.orders.forEach(o => { o.delivered = true; }); st.delivered = st.orders.map(o => o.item); }
+  if (v === 'day2') { st = canned('done', G.s.seed); st.gh = 31.2; st.orders.forEach(o => { o.delivered = true; }); st.delivered = st.orders.map(o => o.item); st.stock = Object.assign({}, st.stock, { planks: (st.stock.planks || 0) + 4 }); }   /* the night shift brought a few more */
   else st = canned(v, G.s.seed);
   G.s = st; applyWorldToState();
   const f = G.spots; focus(f.shore.x - 4, f.shore.z, 40);
@@ -1279,7 +1310,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  waitTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
