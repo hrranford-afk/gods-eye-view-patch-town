@@ -51,10 +51,10 @@ Home places are always reachable. The Hoard needs a boat, or `spring_low` on day
 
 ## The simulation (in `test_events.py`)
 A seeded stand-in player with an attitude style walks 1,440 days, with a spring and neap tide model fitted to the Level 1 table (days 1 to 14) and a season weather table. It is a guess at a player, not a player. Over 40 seeded runs:
-- about 710 events per run (690 to 731; a mean of one every 2 days; most are small ambient moments and repeats);
-- events per season (mean of 40 runs): 47 to 63 in year one, 42 to 51 in year two, 32 to 41 in year three, 37 to 42 in year four (summer of year three is the thinnest);
+- about 713 events per run (690 to 728; a mean of one every 2 days; most are small ambient moments and repeats);
+- events per season (mean of 40 runs): 47 to 63 in year one, 42 to 53 in year two, 33 to 42 in year three, 36 to 42 in year four (summer of year three is the thinnest);
 - about 85 events fire more than once in a run; the most repeated are the robot and shore routines (a tin sorter about 25 times, shore finds 24, hulk salvage 20);
-- dead stretches (10 or more days with nothing): 1.7 per run on average, the longest 18 days, none before day 100 in any of 40 runs, and 10 of 40 runs had none. Over all 40 runs: 5 in year one, 11 in year two, 31 in year three, 22 in year four;
+- dead stretches (10 or more days with nothing): 1.6 per run on average, the longest 15 days, none before day 100 in any of 40 runs, and 8 of 40 runs had none. Over all 40 runs: 5 in year one, 19 in year two, 29 in year three, 10 in year four;
 - every drawn event fires in at least one of 40 runs.
 Flaws: the sim player is crude (flags and builds follow fixed days, the stock is a random walk), weather by day not by hour, and the draw rate is set by hand. Treat the numbers as a smoke test for dead stretches and repeats, not a forecast.
 
