@@ -18,7 +18,7 @@ async function open(qs, o = {}) {
   const p = await c.newPage(); p.setDefaultTimeout(180000);   /* software GL gives about one frame a second: Playwright's stable check needs frames */
   await p.setViewportSize({ width: o.w || 1200, height: o.h || 800 }); const errs = [];
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !NOISE.test(m.text())) errs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : ''));
+  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : '') + (/game=gift/.test(qs) && !/dev=/.test(qs) ? '&dev=1' : ''));
   await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 });
   if (/game=gift/.test(qs)) { await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { }); }
   return { p, errs, c };
