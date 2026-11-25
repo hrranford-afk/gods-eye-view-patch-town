@@ -736,14 +736,23 @@ function buildWorld() {
   /* the stump on the headland and its lamp */
   if (sites.stump) { const y = C.H(sites.stump.x, sites.stump.z); const st = new THREE.Group(); st.position.set(sites.stump.x, y, sites.stump.z); const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.8, 4.6, 10), lambert(0xa49b8a)); cone.position.y = 2.3; st.add(cone); const top = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.3, .4, 10), lambert(0x6b655a)); top.position.y = 4.8; st.add(top); shadowed(st); O.stumpFallback = st; root.add(st);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, depthTest: false })); gl.scale.set(5, 5, 1); gl.position.set(sites.stump.x, y + 5.4, sites.stump.z); gl.renderOrder = 18; root.add(gl); O.stumpGlow = gl; loadStump(sites.stump, y); }
+  if (sites.stump) stumpPlinth(sites.stump, C.H(sites.stump.x, sites.stump.z), 1.9);
   O.ring = mkRing(); root.add(O.ring);
   return true;
+}
+/* THE LIGHTHOUSE STUMP'S BASE (Job 6c item 5; owner: "looking underneath it, is that meant to look like that?"): the stump stands on its centre height, so on the sloping headland the downhill side hung in the air and the underside showed a gap.
+   A rock plinth (one mesh, a short wide cone about 50 triangles) is sunk below the lowest ground round the base and rises a little above the centre, so any slope meets stone. It is resized to the model when the kit stump loads. */
+function stumpPlinth(p, y, r0) {
+  const T = THREE, O = G.objs; let lo = y; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; for (const f of [1, 1.4]) lo = Math.min(lo, C.H(p.x + Math.cos(a) * r0 * f, p.z + Math.sin(a) * r0 * f)); }
+  const top = y + .3, bot = lo - .7, hgt = top - bot, drop = y - lo;
+  if (!O.stumpPlinth) { const m = new T.Mesh(new T.CylinderGeometry(1, 1, 1, 16, 1, false), lambert(0x8a8272)); m.name = 'stumpPlinth'; shadowed(m); G.root.add(m); O.stumpPlinth = m; }
+  const m = O.stumpPlinth; m.geometry.dispose(); m.geometry = new T.CylinderGeometry(r0 + .12, r0 + .5 + drop * .8, hgt, 16, 1, false); m.position.set(p.x, bot + hgt / 2, p.z); m.userData.plinth = { x: p.x, z: p.z, top, bot, r0, rBot: r0 + .5 + drop * .8 };
 }
 function loadStump(p, y) {   /* the kit's lighthouse stump (live level) from its base64 twin; the plain cone stands in until it loads and if it fails (and always under AR) */
   if (G.ar || !C.THREE.GLTFLoader || Q0.get('giftkit') === 'fail') return;
   const use = () => { try { const b64 = window.LI_KIT_GLB && window.LI_KIT_GLB.lighthouse_stump_live; if (!b64) return; const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
     new C.THREE.GLTFLoader().parse(u.buffer, '', gl => { try { const m = gl.scene; m.position.set(p.x, y - .03, p.z); m.scale.setScalar(1.3); shadowed(m); G.root.add(m); G.objs.stumpKit = m; if (G.objs.stumpFallback) G.objs.stumpFallback.visible = false;
-      const bb = new THREE.Box3().setFromObject(m); G.objs.stumpGlow.position.y = Math.max(bb.max.y - .5, y + 3); } catch (e) { G.err.push('stump ' + e.message); } }, () => { /* fallback stays */ }); } catch (e) { G.err.push('stump ' + e.message); } };
+      const bb = new THREE.Box3().setFromObject(m); G.objs.stumpGlow.position.y = Math.max(bb.max.y - .5, y + 3); stumpPlinth(p, y, Math.max(1.9, Math.min(3.2, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + .1))); } catch (e) { G.err.push('stump ' + e.message); } }, () => { /* fallback stays */ }); } catch (e) { G.err.push('stump ' + e.message); } };
   if (window.LI_KIT_GLB && window.LI_KIT_GLB.lighthouse_stump_live) { use(); return; }
   const s = document.createElement('script'); s.src = 'assets/gift/stump_b64.js'; s.onload = use; s.onerror = () => { /* the cone stays */ }; document.head.appendChild(s);
 }
@@ -789,7 +798,7 @@ const INSPECT = [
   { re: /^barrel$/, f: () => ({ name: 'Water barrel', use: 'Catches rain. Rain is the only water on this island.', needs: null, action: 'Check it' }) },
   { re: /^find\d+$/, f: () => ({ name: 'Something on the shore', use: 'A small find washed up by the tide.', needs: null, action: 'Pick it up' }) },
   { re: /^wreck$/, f: s => ({ name: 'The old hull', use: 'An old hull on the shore. A track link may be inside.', needs: null, action: 'Look' }) },
-  { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
+  { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together: tap to call one' : null, action: c.phys && c.phys.heavy ? 'Tap to call a robot' : c.letter2 && !s.letter2 ? 'Open it' : 'Open', locked: (() => { try { return PHYS() && PHYS().crateLock ? PHYS().crateLock(+n) : null; } catch (e) { return null; } })() }; } },
   { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; const sto = on ? stopOf(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note, sto ? { use: sto.say + ' ' + (note.use || '') } : {}); if (sto) return { name: 'Carrier ' + (i + 1), use: sto.say, needs: sto.code === 'wait_player' ? 'You: tap to give it an order' : sto.code === 'wait_supplies' ? 'Supplies from your boat' : 'Nothing from you: it handles this itself', action: 'Open its card' }; return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
   { re: /^dest$/, f: () => { const i = exploreInfo(); return i ? { name: i.name, use: i.line, needs: 'A row of about ' + Math.round(i.dist) + ' m. Follow the gold arrow.', action: 'Show the way' } : null; } },
   { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
@@ -804,7 +813,7 @@ function inspectInfo(id) {
   if (!i) { const e = INSPECT.find(q => q.re.test(id)); if (e) { try { i = e.f(s, id); } catch (x) { i = null; } } }
   if (!i) return null; return Object.assign({ id, needs: null, action: null, locked: null }, i);
 }
-function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; if (exploreInfo()) return 'dest'; return null; }
+function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; if (exploreInfo() && exploreHint(s)) return 'dest'; return null; }
 const INS = { hov: null, hovT: 0, sel: null, el: null, ring: null, gring: null, mx: -1, my: -1, coarse: false };
 function inspectDom() {
   if (INS.el) return; const d = (cls, css) => { const e = document.createElement('div'); e.className = cls; e.style.cssText = css; document.body.appendChild(e); return e; };
@@ -1242,12 +1251,12 @@ function sleepToMorning() {
 function pulse(which) { G.pulse = which; setTimeout(() => { if (G.pulse === which) G.pulse = null; renderUi(); }, 9000); renderUi(); }
 function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
-  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), phaseNow(), G.wait ? G.wait.mode : '', lanternOn(), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
+  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', (PHYS() && PHYS().hint && PHYS().hint()) || '', exploreHint(s) || '', fitHint() || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), phaseNow(), G.wait ? G.wait.mode : '', lanternOn(), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
   if (sig === G.sig) return; G.sig = sig; const P = progress(s);
-  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || exploreHint(s) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
+  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || fitHint() || exploreHint(s) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
   G.ui.hint.innerHTML = ''; const sp = h('span', '', hintText); G.ui.hint.appendChild(sp);
   const mk = {};   /* every action button, made once; where it goes depends on the HUD mode */
   if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
@@ -1354,7 +1363,7 @@ function tick(dt) {
   /* no person is drawn in the gift: the camp's three figures and the jetty marker stay hidden (people are counted, not shown) */
   G.pT = (G.pT || 0) + dt; if (G.pT > .4) { G.pT = 0; try { (C.people ? C.people() : []).forEach(p => { if (p.g) p.g.visible = false; }); const rp = C.li().repair && C.li().repair.dbg(); if (rp && rp.marker && rp.marker.g) rp.marker.g.visible = false; } catch (e) { /* not built yet */ } }
   /* hint ring: only after a quiet while, never a quest marker */
-  const ring = O.ring; let want = null; if (G.idle > 22 && !G.cardOpen) want = hintTarget();
+  const ring = O.ring; let want = null; if (G.idle > 22 && !G.cardOpen) want = hintTarget(); if (want && hintLocked(want)) want = null;   /* Job 6c: nothing glows that you cannot use yet */
   if (want) { ring.position.set(want.x, groundY(want.x, want.z) + .08, want.z); ring.scale.setScalar(want.r || 1.8); ring.material.opacity += (.55 + .25 * Math.sin(performance.now() / 400) - ring.material.opacity) * Math.min(1, dt * 3); }
   else ring.material.opacity += (0 - ring.material.opacity) * Math.min(1, dt * 4);
   ring.visible = ring.material.opacity > .02;
@@ -1368,6 +1377,7 @@ function hudTick(dt) {
   if (ph) { const j = G.spots && G.spots.S && G.spots.S.jetty; const near = j && Math.hypot(C.cam.tx - j.ox, C.cam.tz - j.oz) < 40 && C.cam.dist < 70; ph.style.display = (GD_CLEAN && near && !G.s.plank && stageOf(G.s) === 'jobs' && !G.cardOpen) ? 'block' : 'none'; }
   try { const port = innerHeight > innerWidth * 1.1, bow = BDP() && BDP().state && (BDP().state().mode === 'drive'); if (GD_CLEAN && port && !bow && Q0.get('rim') !== '1') C.li().xboat.rim(false); } catch (e) { /* the rim stays */ }
 }
+function hintLocked(w) { try { const sc = screenOf(w.x, groundY(w.x, w.z) + .5, w.z); if (!sc) return false; let best = null, bd = 1e9; for (const t of targets()) { const d = Math.hypot(t.x - sc.x, t.y - sc.y); if (d < t.r * 1.2 && d < bd) { bd = d; best = t; } } const i = best && inspectInfo(best.id); return !!(i && i.locked); } catch (e) { return false; } }
 function hintTarget() {
   const s = G.s, S = G.spots, st = stageOf(s); if (!S) return null;
   try { const bd = BDP(), t = bd && bd.hintTarget && bd.hintTarget(); if (t && st !== 'arrive' && st !== 'jobs') return t; } catch (e) { /* none */ }
@@ -1415,6 +1425,7 @@ function exploreInfo() {
   let from = pos; try { const st = BDP().state(); if (st.b) from = { x: st.b.x, z: st.b.z }; } catch (e) { /* none */ }
   const f = camFwd(); return { id, name: p.name, line: p.line, pos, from, dist: Math.hypot(pos.x - from.x, pos.z - from.z), deg: arrowDeg(from, pos, f.x, f.z) };
 }
+function fitHint() { return G.fit && fitReady() ? 'Hold on the charging post to fit the part.' : null; }   /* Job 6c: the kit fit says what to do before you do it */
 function exploreHint(s) {   /* one line, only while you are out rowing or the day has nothing else for you */
   const i = exploreInfo(); if (!i) return null; let drive = false; try { drive = BDP().state().mode === 'drive'; } catch (e) { drive = false; } return drive || stageOf(s) === 'done' ? i.line : null;
 }
@@ -1434,7 +1445,7 @@ function exploreTick(dt) {
   EXPLORE.tick += dt; const info = exploreInfo(), O = G.objs;
   if (info && G.destSet !== undefined && G.destSet !== null && info.dist < EXPLORE.reachM) { toast('You are at ' + info.name.toLowerCase() + '.', 4200); G.destSet = null; G.sig = null; }
   exploreMarker(exploreInfo());
-  const c = exploreDom(), i2 = exploreInfo(); c.style.display = i2 ? 'flex' : 'none';
+  const c = exploreDom(), i2 = exploreInfo(); c.style.display = i2 && !G.cardOpen ? 'flex' : 'none';   /* never over a card: it sat on top of the barrel card's button */
   if (i2) { c.querySelector('#gd-compass-a').style.transform = 'rotate(' + Math.round(i2.deg) + 'deg)'; c.querySelector('#gd-compass-t').textContent = i2.name.replace(/^Home: /, '') + ', ' + Math.round(i2.dist) + ' m'; }
   const key = (i2 ? i2.id : '') + '|' + (exploreHint(G.s) || '') + '|' + placesKnown().length; if (key !== G.exKey) { G.exKey = key; G.sig = null; }
 }
@@ -1509,6 +1520,10 @@ function init(ctx) {
     waitReq: v => waitReq(v), waitState: () => ({ mode: G.wait && G.wait.mode, speed: G.waitSpeed || 1, mode0: G.clockMode }), actNow: () => { G.actAt = performance.now(); G.idle = 0; }, idleSet: v => { G.idle = v; }, hintNow: () => (G.ui.hint && G.ui.hint.textContent) || '',
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
     ,stops: () => { const out = []; try { const sim = C.li().campstart.rt().sim(); (sim.robots || []).forEach((r, i) => out.push({ i, st: stopOf(i), chip: !!(G.ui.chips && G.ui.chips[i] && G.ui.chips[i].style.display !== 'none') })); } catch (e) { /* none */ } return out; }, stopLines: n => stopLines(n || 10), stopChips: () => stopChips(),
+    plinth: () => { const m = G.objs.stumpPlinth; return m && m.userData.plinth && Object.assign({ tris: m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3 }, m.userData.plinth); }, stumpAt: () => G.spots && G.spots.stump && { x: G.spots.stump.x, z: G.spots.stump.z },
+    refresh: () => { G.sig = null; renderUi(); },
+    startEvening: () => startEvening(), crateAdd: t => crateAdd(t, null), giveKit: k => { const kk = Object.assign({}, G.s.kits || {}); kk[k] = (kk[k] || 0) + 1; setS({ kits: kk }); }, setRobots: a => { setS({ robots: a }); },
+    hintRing: () => { const r = G.objs.ring; return { on: !!(r && r.visible), x: r && r.position.x, z: r && r.position.z }; }, glow: () => { const r = G.objs.ring, on = !!(r && r.visible); return { gold: goldId(), mk: PHYS() && PHYS().state().marker, hint: (G.ui.hint && G.ui.hint.textContent) || '', ring: on, ringLocked: on ? hintLocked({ x: r.position.x, z: r.position.z }) : false }; },
     explore: () => { const i = exploreInfo(), c = G.ui.compass, m = G.objs.dest; return { on: exploreOn(), dest: destNow(), info: i, marker: !!(m && m.visible), compass: !!(c && c.style.display !== 'none'), compassText: c ? c.textContent : '', compassDeg: c ? c.querySelector('#gd-compass-a').style.transform : '', hint: exploreHint(G.s), places: placesKnown().map(p => p.id), gold: goldId() }; }, chart: () => chartCard(), setDest: v => { G.destSet = v; G.sig = null; renderUi(); }
   };
   return G;

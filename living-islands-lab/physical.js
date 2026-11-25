@@ -16,6 +16,14 @@ const HEAP_CAP = 30;                         /* pieces drawn per kind on a full 
 const SPEED = { player: 2.0, robotMax: 0.9 };/* m/s: the player carries briskly; a pair moves at the robot's own pace (TUNING; robot speeds come from the camp routine) */
 const HOURS = { stake: 1, unit: 1.5, set: 1, beam: 2 };   /* person-hours: what each physical act adds to the readout (TUNING) */
 const HOLD = { stake: 1.0, set: 1.3, lift: 1.2, place: 4.5 };   /* seconds held (a press) or worked (a robot placing) (TUNING) */
+/* HOLD FEEDBACK (Job 6c item 4): every hold says what it does BEFORE (the hint line), shows the cause WHILE you hold (a bar with words) and says what happened AFTER (a toast). One table of words. */
+const HOLD_WORDS = {
+  stake: { before: 'Hold to drive the stakes.', doing: 'Driving the stakes' },
+  hold: { before: 'Hold to set this stage.', doing: 'Setting this stage' },
+  beam: { before: 'Hold to lift the beam.', doing: 'Lifting the beam with the robot' },
+  heavy: { before: 'Hold to lift the crate.', doing: 'Lifting the crate with the robot' },
+  crate: { before: 'Hold to carry the crate up.', doing: 'Carrying the crate up' }
+};
 const STOCK_IDS = ['planks', 'rope', 'glass', 'metal'];
 const BUILD_IDS = ['jetty', 'cottage', 'cistern', 'hide', 'kiosk'];
 /* which kind goes in first (the structure wants its metal and posts early, its cloth or glass last) */
@@ -406,6 +414,7 @@ function siteAction() {
 }
 function startAct(kind, auto) { P.act = { kind, t: 0, auto: !!auto, tick: 0 }; }
 function actTick(dt) {
+  if (!P.act && P.holdId === 'psite') { const w0 = siteWant(); if (w0 === 'stake' || w0 === 'hold') startAct('site', false); }   /* Job 6c: holding the glowing ring itself does the work (it used to need the card's button) */
   const a = P.act; if (!a || a.kind !== 'site') return; const w = siteWant(); if (!w || w === 'beam') { P.act = null; return; }
   const need = w === 'stake' ? HOLD.stake : HOLD.set, holding = a.auto || P.holdId === 'psite'; if (!holding) { a.t = Math.max(0, a.t - dt * 2); if (!a.t) P.act = null; return; }
   a.t += dt; a.tick -= dt; const b = ph().b, sp = siteOf(b.id); if (a.tick <= 0) { a.tick = .38; puff(sp.mark.x + Math.sin(a.t * 9) * .6, gy(sp.mark.x, sp.mark.z) + 1, sp.mark.z, 2, 'tick'); }
@@ -442,7 +451,7 @@ function beamTick(dt) {
   V.beam.position.set(p.x, gy(p.x, p.z) + .55 + (bm.phase === 'carry' ? .15 : 0), p.z); V.beam.rotation.y = bm.yaw;
 }
 function beamCard() {
-  const bm = P.beam, c = A.card('pbeam', '<h2>The frame beam</h2><p>' + (bm && bm.robotAt ? 'The robot has its end. Hold the glowing end to carry the beam to the marked spot. It moves only while you hold.' : 'A robot is on its way to the far end. It will wait for you.') + '</p>'); c.appendChild(A.xbtn());
+  const bm = P.beam, c = A.card('pbeam', '<h2>The frame beam</h2><p>' + (bm && bm.robotAt ? 'The robot has its end. Hold the glowing end to carry the beam to the marked spot. It moves only while you hold.' : (bm && bm.robot === null && robotWhy() ? robotWhy() : 'A robot is on its way to the far end. It will wait for you.')) + '</p>'); c.appendChild(A.xbtn());
   c.appendChild(A.row(A.btn('Carry it together', () => { A.closeCard(); P.act = { kind: 'beam' }; }, 'pri', !(bm && bm.robotAt)), A.btn('Close', A.closeCard)));
 }
 
@@ -483,6 +492,24 @@ function runsTick(dt) {
     if (ph_.carrier === 'p' && P.carry && P.carry.n === c.n) { const q = pathAt(P.carry.c.path, P.carry.c.d); c.mesh.position.set(q.x, gy(q.x, q.z) + .6 + Math.sin(P.t * 8) * .04, q.z); c.pos.x = q.x; c.pos.z = q.z; } });
 }
 const crateAway = c => c.phys && (c.phys.st === 'boat' || c.phys.st === 'beach');
+const crateDocked = c => c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : !!(P.run && P.run.phase === 'dock'));
+/* THE LIT-UP BOX (Job 6c item 3): a heavy crate (the evening letter crate, a kit crate) needs a robot at the far end. When no robot can come it must not glow, and it says why (the owner met a lit crate on the first evening with nothing to do). */
+function robotWhy() {   /* null when a robot can come, else one short sentence */
+  const sm = simR(); if (!sm) return 'The robots are not ready yet.';
+  if (!A.S().robots.some(Boolean)) return 'No robot is running yet. Fit a part to a carrier in the yard.';
+  const dockers = Object.keys(P.err).map(Number).filter(i => P.err[i].role === 'dock' && !P.err[i].kind && !P.err[i].busy);
+  if (dockers.length || freeRobots(true).length) return null;
+  if (sm.env.rain) return 'The robots are sheltering from the rain. Wait for it to pass.';
+  if (sm.env.night) return 'The robots are charging for the night. Wait for dawn, or carry light crates yourself.';
+  return 'Every robot is busy or charging. One will be free soon.';
+}
+function crateLock(n) { const c = crateOf(n); if (!c || !c.phys || c.phys.st === 'yard') return null; if (!crateDocked(c)) return 'The boat is still coming in.'; if (c.phys.heavy) { const h = heavyHelp(c); return h.ok ? null : h.why; } return c.phys.carrier ? 'A robot has it.' : null; }
+function heavyHelp(c) {   /* { ok, why } for a heavy crate */
+  if (!crateDocked(c)) return { ok: false, why: 'The boat is still coming in.' };
+  if (P.beam && P.beam.crate === c.n) return P.beam.robot !== null ? { ok: true } : (() => { const w = robotWhy(); return w ? { ok: false, why: w } : { ok: true }; })();
+  if (P.beam) return { ok: false, why: 'The frame beam is being carried first. Finish that one.' };
+  const w = robotWhy(); return w ? { ok: false, why: w } : { ok: true };
+}
 function crateFetchLegs(c) {
   const L = layout(), A0 = landingA(), slot = LC_slot(L, c.phys.k), from = c.phys.st === 'boat' ? A0.drop : { x: c.pos.x, z: c.pos.z };
   return [{ x: from.x, z: from.z }, { x: from.x, z: from.z, act: 'lift', dur: HOLD.lift }, { x: slot.x, z: slot.z }, { x: slot.x, z: slot.z, act: 'drop', dur: 1 }];
@@ -505,7 +532,7 @@ function makeHeavy(hc) {
 function crateTap(n) {
   const c = crateOf(n); if (!c || !c.phys || c.phys.st === 'yard') return false;
   if (c.phys.st === 'queued') { A.toast('It is still on the boat.', 2600); return true; }
-  if (c.phys.heavy) { const docked = c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock')); if (!docked) { A.toast('The boat is still coming in.', 2600); return true; } if (!P.beam) makeHeavy(c); beamCard(); return true; }   /* the partner robot is called when you tap: robots keep working until then */
+  if (c.phys.heavy) { const docked = c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock')); if (!docked) { A.toast('The boat is still coming in.', 2600); return true; } const hh = heavyHelp(c); if (!hh.ok && !(P.beam && P.beam.crate === c.n && P.beam.robot !== null)) { A.toast(hh.why, 4200); return true; } if (!P.beam) makeHeavy(c); beamCard(); return true; }   /* the partner robot is called when you tap: robots keep working until then */
   const docked = c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock'));
   const card = A.card('pcrate', '<h2>Crate number ' + n + '</h2><p>' + (docked ? (c.phys.carrier ? 'A robot has it.' : 'It sits where the boat left it. Hold it to carry it up to the yard, or press the button.') : 'The boat is still coming in.') + '</p>'); card.appendChild(A.xbtn());
   card.appendChild(A.row(A.btn('Carry it up', () => { A.closeCard(); startCarry(n, true); }, 'pri', !docked || !!c.phys.carrier), A.btn('Close', A.closeCard))); return true;
@@ -599,9 +626,9 @@ function markerPos() {
   const L = layout(), S = A.spots(), s = A.S(), op = ph().op; if (!L) return null; const b = ph().b, w = b ? siteWant() : null, bl = beachLanding() || S.tender.wp; let bd = null; try { bd = root.LI_BOAT_DRIVE.page.state(); } catch (e) { bd = null; }
   if (op && op.on && !s.dockDone) { const loaded = bd && bd.b && bd.b.load ? Object.values(bd.b.load).reduce((a, c) => a + c, 0) : 0, left = op.floats.filter(f => !f.gone);
     if (loaded > 0 && (!left.length || loaded >= 4)) return { x: bl.x, z: bl.z, r: 3.2, tag: 'unload' }; const bx = bd && bd.b ? bd.b.x : 0, bz = bd && bd.b ? bd.b.z : 0, f = left.slice().sort((p, q) => hypot(p.x - bx, p.z - bz) - hypot(q.x - bx, q.z - bz))[0]; if (f) return { x: f.x, z: f.z, r: 2.4, tag: 'float' }; if (loaded > 0) return { x: bl.x, z: bl.z, r: 3.2, tag: 'unload' }; }
-  if (P.beam) { if (!P.beam.robotAt) return { x: P.beam.pos.x, z: P.beam.pos.z, r: 1.8, tag: 'beam' }; const e = beamEnds(P.beam.pos, P.beam.yaw, P.beam.len); return { x: e.A.x, z: e.A.z, r: 1.6, tag: 'beamA' }; }
+  if (P.beam && P.beam.robotAt) { const e = beamEnds(P.beam.pos, P.beam.yaw, P.beam.len); return { x: e.A.x, z: e.A.z, r: 1.6, tag: 'beamA' }; }   /* Job 6c: no glow while no robot is at its end (the card and the hint say why) */
   if (b && (w === 'stake' || w === 'hold')) { const sp = siteOf(b.id); return { x: sp.mark.x, z: sp.mark.z, r: 2.4, tag: 'site' }; }
-  const cr = crateList().find(c => c.phys && crateAway(c) && !c.phys.carrier && (!c.phys.heavy || !P.beam) && c.mesh.visible && (c.phys.st === 'beach' || (c.phys.run === 'dlv' ? (A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock')))); if (cr) return { x: cr.pos.x, z: cr.pos.z, r: 1.8, tag: cr.phys.heavy ? 'heavy' : 'crate' };
+  const cr = crateList().find(c => c.phys && crateAway(c) && !c.phys.carrier && (!c.phys.heavy || !P.beam) && c.mesh.visible && (c.phys.st === 'beach' || (c.phys.run === 'dlv' ? (A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock'))) && (!c.phys.heavy || heavyHelp(c).ok)); if (cr) return { x: cr.pos.x, z: cr.pos.z, r: 1.8, tag: cr.phys.heavy ? 'heavy' : 'crate' };
   const sh = crateList().find(c => c.phys && c.phys.st === 'yard' && ((c.n === 1 && !A.S().crate1) || (c.letter2 && !A.S().letter2))); if (sh) return { x: sh.pos.x, z: sh.pos.z, r: 1.7, tag: 'open' };
   if ((P.phase === 'dusk' || P.phase === 'night') && !ph().lantern) return { x: L.post.x + .55, z: L.post.z, r: 1.3, tag: 'lantern' };
   return null;
@@ -626,9 +653,9 @@ const INFO_WORDS = {
 function info(id) {
   const W = INFO_WORDS;
   if (id === 'psite') { const b = ph().b; if (!b) return null; const w = siteWant(), nm = BUILD_NAME[b.id]; return { name: nm + ' site', use: W.site.use + ' Now: ' + progress(b, planFor(b.id)).name.toLowerCase() + '.', needs: w === 'stake' ? 'Your hands: hold to drive the stakes' : w === 'hold' ? 'Your hands: hold to set this stage' : w === 'beam' ? 'The frame beam first' : 'Robots are bringing the rest', action: W.site.action, locked: w === 'stake' || w === 'hold' ? null : w === 'beam' ? 'Carry the frame beam first.' : 'The robots are still bringing the rest.' }; }
-  if (id === 'pbeam' || id === 'pbeamA') { const bm = P.beam; return { name: bm && bm.crate ? 'The heavy crate' : W.beam.name, use: W.beam.use, needs: 'A robot at the far end', action: W.beam.action, locked: bm && bm.robotAt ? null : 'A robot is walking to the far end. Wait for it.' }; }
+  if (id === 'pbeam' || id === 'pbeamA') { const bm = P.beam; return { name: bm && bm.crate ? 'The heavy crate' : W.beam.name, use: W.beam.use, needs: 'A robot at the far end', action: W.beam.action, locked: bm && bm.robotAt ? null : (bm && bm.robot === null ? (robotWhy() || 'A robot is coming to the far end. Wait for it.') : 'A robot is walking to the far end. Wait for it.') }; }
   if (/^pfloat\d+$/.test(id)) { const f = (ph().op ? ph().op.floats : []).find(q => 'pfloat' + q.id === id); return { name: 'Floating ' + (f ? f.kind : 'supplies'), use: W.float.use, needs: W.float.needs, action: W.float.action }; }
-  if (/^pcrate\d+$/.test(id)) { const n = +id.slice(6), c = crateOf(n); if (!c || !c.phys) return null; const docked = c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock')); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : W.crate.use, needs: c.phys.heavy ? 'A robot and you together: tap to call one' : 'Your hands, or a free robot', action: c.phys.heavy ? 'Tap to call a robot' : W.crate.action, locked: docked ? null : 'The boat is still coming in.' }; }
+  if (/^pcrate\d+$/.test(id)) { const n = +id.slice(6), c = crateOf(n); if (!c || !c.phys) return null; const docked = c.phys.st === 'beach' || (c.phys.run === 'dlv' ? !!(A.dlv && A.dlv() === 'drop') : (P.run && P.run.phase === 'dock')); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : W.crate.use, needs: c.phys.heavy ? 'A robot and you together: tap to call one' : 'Your hands, or a free robot', action: c.phys.heavy ? 'Tap to call a robot' : W.crate.action, locked: !docked ? 'The boat is still coming in.' : c.phys.heavy ? (heavyHelp(c).ok ? null : heavyHelp(c).why) : (c.phys.carrier ? 'A robot has it.' : null) }; }
   if (id === 'plantern') return { name: W.lantern.name, use: W.lantern.use, needs: 'Dusk or night', action: W.lantern.action, locked: P.phase === 'day' || P.phase === 'dawn' ? 'It is too bright to need it.' : null };
   if (id.startsWith('pheap_')) { const k = id.slice(6); return { name: cap1(k) + ' heap (' + (stockOf()[k] || 0) + ')', use: W.heap.use, needs: W.heap.needs, action: W.heap.action }; }
   return null;
@@ -645,14 +672,14 @@ function goldId() {   /* the one next thing that needs you */
   const m = P.mk; if (!m || !P.ready) return null; const op = ph().op;
   if (m.tag === 'float') { const f = op && op.floats.filter(q => !q.gone).sort((a, b) => hypot(a.x - m.x, a.z - m.z) - hypot(b.x - m.x, b.z - m.z))[0]; return f ? 'pfloat' + f.id : null; }
   if (m.tag === 'beam') return 'pbeam'; if (m.tag === 'beamA') return 'pbeamA'; if (m.tag === 'site') return 'psite'; if (m.tag === 'lantern') return 'plantern';
-  if (m.tag === 'crate' || m.tag === 'heavy' || m.tag === 'open') { const c = crateList().find(q => q.pos && hypot(q.pos.x - m.x, q.pos.z - m.z) < .6); return c ? 'pcrate' + c.n : null; } return null;
+  if (m.tag === 'crate' || m.tag === 'heavy' || m.tag === 'open') { const c = crateList().find(q => q.pos && hypot(q.pos.x - m.x, q.pos.z - m.z) < .6); return c ? (c.phys && c.phys.heavy ? 'crate' : 'pcrate') + c.n : null; } return null;
 }
 /* one short line for the permanent Build button: what is going up, the stage, and what it needs now */
 function buildLine() {
   const b = ph() && ph().b; if (b && b.id === 'jetty' && ph().q) return BUILD_NAME[ph().q] + ': next, after the dock'; if (!b || b.id === 'jetty' || !P.ready) return null; const plan = planFor(b.id), pr = progress(b, plan), w = isDone(b) ? null : needsPlayer(b, plan), k = isDone(b) ? null : wantUnit(b, plan);
   return BUILD_NAME[b.id] + ': ' + pr.name.toLowerCase() + ' - ' + (w === 'stake' ? 'needs you' : w === 'hold' ? 'needs your hands' : w === 'beam' ? 'needs a beam carry' : k ? ((stockOf()[k] || 0) < 1 ? 'needs ' + k + ' on the heap' : 'robots bring ' + k) : 'robots at work');
 }
-function hint() { const m = P.mk; if (!P.ready || !m) return null; return { unload: 'Row to the beach and unload.', float: 'Row to the glow.', beam: 'Wait for the robot.', beamA: 'Hold the glowing end.', crate: 'Carry the crate up.', heavy: 'Tap the crate. It takes two.', open: 'Open the crate.', lantern: 'Tap the lantern to light it.', site: 'Hold the glowing ring.' }[m.tag] || null; }
+function hint() { if (P.ready && P.beam && !P.beam.robotAt && !(P.mk && P.mk.tag === 'unload')) return P.beam.robot === null && robotWhy() ? robotWhy() : 'Wait for the robot.'; const m = P.mk; if (!P.ready || !m) return null; const w = m.tag === 'site' ? siteWant() : null; return { unload: 'Row to the beach and unload.', float: 'Row to the glow.', beam: 'Wait for the robot.', beamA: P.beam && P.beam.crate ? HOLD_WORDS.heavy.before : HOLD_WORDS.beam.before, crate: HOLD_WORDS.crate.before, heavy: 'Tap the crate. It takes two.', open: 'Open the crate.', lantern: 'Tap the lantern to light it.', site: (HOLD_WORDS[w] || HOLD_WORDS.hold).before }[m.tag] || null; }
 
 /* ---- the lantern and the lights at dusk ---- */
 function lightsTick() {
@@ -669,6 +696,17 @@ function lightsTick() {
 function lightLantern() { if (P.phase === 'day' || P.phase === 'dawn') { A.toast('It is too bright to need a lantern.', 2600); return false; } ph().lantern = true; P.flare = P.t + 2.4; const L = layout(); if (L) { puff(L.post.x + .55, gy(L.post.x, L.post.z) + 1.9, L.post.z, 6, 'tick'); } A.toast('You lit the lantern. The light spreads across the camp.', 4200); A.renderUi(); return true; }
 
 /* ---- the little readout of the build: stage name and person-hours ---- */
+
+function holdStatus() {   /* the hold that is going on now: { id, label, p } or null */
+  if (P.act && P.act.kind === 'site') { const w = siteWant(); if (w === 'stake' || w === 'hold') return { id: w, label: HOLD_WORDS[w].doing, p: clamp(P.act.t / (w === 'stake' ? HOLD.stake : HOLD.set), 0, 1) }; }
+  const bm = P.beam; if (bm && bm.robotAt && bm.phase !== 'placed' && (P.holdId === 'pbeamA' || (P.act && P.act.kind === 'beam'))) { const k = bm.crate ? 'heavy' : 'beam'; return { id: k, label: HOLD_WORDS[k].doing, p: clamp(bm.c.d / bm.c.total, 0, 1) }; }
+  if (P.carry && P.carry.c && (P.holdId === 'pcrate' + P.carry.n || P.carry.auto)) return { id: 'crate', label: HOLD_WORDS.crate.doing + ' (crate ' + P.carry.n + ')', p: clamp(P.carry.c.d / P.carry.c.total, 0, 1) };
+  return null;
+}
+function holdBarTick() {
+  let el = document.getElementById('gd-holdbar'); if (!el) { el = document.createElement('div'); el.id = 'gd-holdbar'; el.className = 'gd-pill'; el.style.cssText = 'position:absolute;left:50%;bottom:210px;transform:translateX(-50%);display:none;font-size:15px;pointer-events:none;min-width:190px;text-align:center'; el.innerHTML = '<span id="gd-holdbar-t"></span><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin-top:5px"><div id="gd-holdbar-b" style="height:6px;border-radius:3px;background:#e8c070;width:0"></div></div>'; A.root().appendChild(el); }
+  const h = holdStatus(); if (!h) { el.style.display = 'none'; return; } el.style.display = 'block'; el.querySelector('#gd-holdbar-t').textContent = h.label + ' ' + Math.round(h.p * 100) + ' percent. Keep holding.'; el.querySelector('#gd-holdbar-b').style.width = Math.round(h.p * 100) + '%';
+}
 function readoutTick() {
   let el = document.getElementById('gd-phys'); if (!el) { el = document.createElement('div'); el.id = 'gd-phys'; el.className = 'gd-pill'; el.style.cssText = 'position:absolute;left:10px;top:84px;font-size:13px;max-width:min(260px,60vw);padding:6px 10px;display:none'; A.root().appendChild(el); }
   const b = ph().b; if (!b) { el.style.display = 'none'; return; } const pr = progress(b, planFor(b.id)), txt = '<b>' + BUILD_NAME[b.id] + '</b>: ' + pr.name + '<br>Work ' + pr.hours + ' of ' + pr.hoursTotal + ' person-hours<div style="height:6px;border-radius:4px;background:#e3d6b8;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + Math.round(pr.pct * 100) + '%;background:#2f6fe6"></div></div>';
@@ -708,7 +746,7 @@ function tick(dt) {
   if (!P.ready) return; if (!P.restoredOk) { if (!layout()) return; P.restoredOk = restore(P.pendingSaved !== undefined ? P.pendingSaved : A.S().phys); P.pendingSaved = undefined; if (!P.restoredOk) return; }
   P.t += dt; buildKit();
   SOFT(() => runsTick(dt), 'runs'); SOFT(() => cratesTick(dt), 'crates'); SOFT(() => lidsTick(dt), 'lids'); SOFT(() => arrivalTick(dt), 'arrival'); SOFT(holdPoll, 'hold'); SOFT(floatsTick, 'floats'); SOFT(ferryTick, 'ferry'); SOFT(() => beamTick(dt), 'beam'); SOFT(() => errandsTick(dt), 'errands'); SOFT(() => actTick(dt), 'act');
-  SOFT(() => heapsTick(dt), 'heaps'); SOFT(structureTick, 'structure'); SOFT(loadsTick, 'loads'); SOFT(() => dustTick(dt), 'dust'); SOFT(() => markerTick(dt), 'marker'); SOFT(lightsTick, 'lights'); SOFT(readoutTick, 'readout'); SOFT(() => sweepTick(dt), 'sweep'); SOFT(() => robotLooksTick(dt), 'looks');
+  SOFT(() => heapsTick(dt), 'heaps'); SOFT(structureTick, 'structure'); SOFT(loadsTick, 'loads'); SOFT(() => dustTick(dt), 'dust'); SOFT(() => markerTick(dt), 'marker'); SOFT(lightsTick, 'lights'); SOFT(readoutTick, 'readout'); SOFT(holdBarTick, 'holdbar'); SOFT(() => sweepTick(dt), 'sweep'); SOFT(() => robotLooksTick(dt), 'looks');
 }
 function snapshot() { const p = ph() || {}; return { v: VERSION, crates: crateList().filter(c => c.phys).map(c => ({ n: c.n, st: c.phys.st === 'yard' ? 'yard' : 'beach', x: c.pos.x, z: c.pos.z, shut: false })), b: p.b ? Object.assign({}, p.b, { hand: p.b.hand.slice() }) : null, partCarried: !!p.partCarried, lantern: !!p.lantern, op: p.op || null, q: p.q || null }; }
 function reset(saved) {
@@ -742,7 +780,7 @@ function placeBoat() {   /* your little rowing boat lies near the dock from the 
 }
 function attach(api) { A = api; T = A.THREE(); C = A.C(); scratch(); P.on = true; SOFT(wireInput, 'wire'); return true; }
 root.LI_PHYS.attach = attach;
-root.LI_PHYS.page = { onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, robotNote, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
+root.LI_PHYS.page = { HOLD_WORDS, holdStatus, forceBuild: (id, stage) => { if (!id) { ph().b = null; P.structSig = null; return true; } const plan = planFor(id), b = newBuild(id); b.stage = stage; for (let k = 0; k < stage - 1 && k < 4; k++) b.placed[k] = plan.need[k]; if (stage >= 1 && stage <= 4) b.placed[stage - 1] = plan.need[stage - 1]; ph().b = b; P.structSig = null; return true; }, crateLock, robotWhy, onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, robotNote, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
   state: () => ({ ph: ph(), err: Object.keys(P.err).map(i => ({ i: +i, role: P.err[i].role, carry: P.err[i].carry || null, kind: P.err[i].kind || null })), beam: P.beam && { phase: P.beam.phase, robotAt: P.beam.robotAt, d: P.beam.c.d, total: P.beam.c.total, robot: P.beam.robot }, marker: P.mk, phase: P.phase, act: P.act && P.act.kind, hold: P.holdId, errs: P.errs.slice(), counts: P.V && { heaps: Object.fromEntries(KINDS.map(k => [k, P.V.heaps[k].count])), stage: P.V.stage.count, floats: P.V.floats.count }, dockOpen0: P.dockOpen0 }),
   hold: id => { P.holdId = id || null; }, startAct, siteAction, beamCard, layout: () => { const L = layout(); return L && { stores: L.stores, pad: L.pad, post: L.post, dock: L.dock && { psi: L.dock.psi, root: L.dock.root, tip: L.dock.tip, stand: L.dock.stand } }; },
   advance(sec) { const h = .1; let t = 0; while (t < sec - 1e-9) { const d = Math.min(h, sec - t); SOFT(() => rt().advance(d), 'adv'); tick(d); t += d; } return true; }, planFor, siteOf, puff, errs: () => P.errs.slice(), floats: () => (ph().op ? ph().op.floats : []) };
