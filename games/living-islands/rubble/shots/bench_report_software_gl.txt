@@ -1,0 +1,18 @@
+RUBBLE bench report  2026-11-25T20:21:49.832Z
+page: rubble/index.html   three r128   rapier 0.21.0 compat (plain, no SIMD)
+device: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36
+screen 1180x760 @1  cores 4  tier radeon  shadows on
+gpu: ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+ground: island seed 9001, lee beach: real heights and ground classes + a stand-in sculpt (gully, hollow, berm, rocks, pad); mode island map
+replay code (250 pieces, fixed volley): 8ab9af4f   (Node gives see test_results.json)
+stop rule: frame over 100000 ms for 5 frames in a row
+
+pieces  built_ms  frame_avg  frame_p95  frame_max  fps  phys_ms/frame  steps/frame  awake_peak  tris  calls  rescued
+    60        70      420.8      883.3      883.3    2           1.72          3.0          23  19618     20        0
+   151       345      188.9      316.6      316.6    5           4.15          2.6          85  27590     21        0
+
+smooth (about 60 fps: avg 18 ms or less, p95 24 ms or less) up to: none of the levels
+knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels
+ran every level
+note: pieces include the brick block, cans and wash-up debris; the scripted volley fires rods, coconuts, marbles and acorns at the block.
+WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU.

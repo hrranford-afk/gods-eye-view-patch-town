@@ -1,0 +1,76 @@
+{
+ "when": "2026-11-25T20:22:30.130Z",
+ "results": [
+  {
+   "name": "page loads the island ground (not the procedural stand-in)",
+   "ok": true,
+   "detail": "island seed 9001, lee beach: real heights and ground classes + a stand-in sculpt (gully, hollow, berm, rocks, pad)"
+  },
+  {
+   "name": "page builds about 250 pieces",
+   "ok": true,
+   "detail": "250 bodies"
+  },
+  {
+   "name": "the page in Chromium gives the same replay code as Node",
+   "ok": true,
+   "detail": "page 8ab9af4f, node 8ab9af4f"
+  },
+  {
+   "name": "all seven ammo kinds fired and were logged",
+   "ok": true,
+   "detail": "{\"n\":264,\"awake\":127,\"ammo\":14,\"ev\":14}"
+  },
+  {
+   "name": "ground override and tide reach the physics (all rock, tide +0.80)",
+   "ok": true,
+   "detail": "{\"mode\":4,\"tide\":0.8,\"g\":4}"
+  },
+  {
+   "name": "iPad tier shows a cap of 250",
+   "ok": true,
+   "detail": "80 (tier cap 250)"
+  },
+  {
+   "name": "iPad tier at full slider builds about 250 pieces (no more)",
+   "ok": true,
+   "detail": "250 bodies"
+  },
+  {
+   "name": "Radeon tier at full slider builds about 4000 pieces",
+   "ok": true,
+   "detail": "{\"n\":3948,\"calls\":18,\"tris\":322850}"
+  },
+  {
+   "name": "replay started after pressing Replay slow (it may already be over on a slow machine)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "after the replay the scene has the same hash at the same step as before it",
+   "ok": true,
+   "detail": "9907496d before, 9907496d after, at step 27"
+  },
+  {
+   "name": "bench ran every level and wrote a report with a knee line",
+   "ok": true,
+   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
+  },
+  {
+   "name": "the knee finder stops by itself when frames are slow (software GL trips the 100 ms rule)",
+   "ok": true,
+   "detail": "   129       203      380.0      516.6      516.6    3           0.80          3.0          12  23926     21        0   <- stopped here | stopped early: frame time over 100 ms for 5 frames at 129 pieces"
+  },
+  {
+   "name": "procedural fallback loads and says so",
+   "ok": true,
+   "detail": "PROCEDURAL stand-in ground (asked for)"
+  },
+  {
+   "name": "zero console errors and zero page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

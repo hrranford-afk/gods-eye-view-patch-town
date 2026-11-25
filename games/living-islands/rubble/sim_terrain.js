@@ -76,8 +76,9 @@
     world.integrationParameters.numInternalPgsIterations = opts.pgs || 2;
     if (!opts.keepDefaults) { try { world.integrationParameters.normalizedAllowedLinearError = opts.err || 0.001; world.integrationParameters.normalizedPredictionDistance = opts.pred || 0.002; } catch (e) { } }
     if (opts.ip) for (var kk in opts.ip) { try { world.integrationParameters[kk] = opts.ip[kk]; } catch (e) { } }
+    var hooks = opts.hooks || null, track = !!opts.track;
     var sim = { R: R, world: world, site: site, opts: opts, bodies: [], ammoQ: [], nAmmo: 0, ammoCap: opts.ammoCap || 60, steps: 0, tide: opts.tide || 0, groundMode: -1,
-      tiles: [], msWorld: 0, msPost: 0, nextId: 1, removed: 0, rescued: 0, tideDirty: true, tideSeen: -999, floor: site.hMin - 6 };
+      tiles: [], nActive: 0, msWorld: 0, msPost: 0, nextId: 1, removed: 0, rescued: 0, tideDirty: true, tideSeen: -999, floor: site.hMin - 6 };
     var GR = TR.GROUND, nt = site.nt, tile = site.tile, per = site.per;
 
     /* the ground: one fixed body and one heightfield per 2 m tile */
@@ -100,7 +101,7 @@
     sim.groundAtPoint = function (x, z) { return site.groundAt(x, z, sim.tide, sim.groundMode); };
 
     /* add one dynamic body. p {x,y,z}, q [x,y,z,w], v {x,y,z}, w {x,y,z} */
-    sim.add = function (kind, p, q, v, w) {
+    sim.add = function (kind, p, q, v, w, asAmmo) {
       var K = KINDS[kind], i;
       q = q || [0, 0, 0, 1];
       var d = R.RigidBodyDesc.dynamic().setTranslation(p.x, p.y, p.z).setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] })
@@ -108,6 +109,7 @@
       if (v) d.setLinvel(v.x, v.y, v.z);
       if (w) d.setAngvel({ x: w.x, y: w.y, z: w.z });
       if (K.ccd) d.setCcdEnabled(true);
+      if (opts.soft) d.setSoftCcdPrediction(opts.soft);
       var b = world.createRigidBody(d), cds = [];
       switch (K.shape) {
         case 'ball': cds.push(R.ColliderDesc.ball(K.r)); break;
@@ -123,16 +125,19 @@
       }
       var rec = { id: sim.nextId++, kind: kind, K: K, body: b, vol: volOf(K), m: b.mass(), dead: false, age: 0, wet: 0, still: 0, rf: K.shape === 'ball' ? 1 / 1.4 : 1 / 1.5 };
       b.__rec = rec;
+      if (track) { rec.actStep = sim.steps; rec.final = false; rec.cx = p.x; rec.cy = p.y; rec.cz = p.z; rec.cq = q.slice(); rec.px = p.x; rec.py = p.y; rec.pz = p.z; rec.pq = q.slice(); }
+      if (hooks) hooks.add(rec);
       sim.bodies.push(rec);
-      if (K.role === 'ammo') { sim.ammoQ.push(rec); sim.nAmmo++; }
+      if (asAmmo) { rec.isAmmo = true; sim.ammoQ.push(rec); sim.nAmmo++; }
       return rec;
     };
     sim.remove = function (rec) {
       if (rec.dead) return; rec.dead = true;
       world.removeRigidBody(rec.body);
       var i = sim.bodies.indexOf(rec); if (i >= 0) { sim.bodies[i] = sim.bodies[sim.bodies.length - 1]; sim.bodies.pop(); }
-      if (rec.K.role === 'ammo') sim.nAmmo--;
+      if (rec.isAmmo) sim.nAmmo--;
       sim.removed++;
+      if (hooks) hooks.remove(rec);
     };
     sim.trimAmmo = function (cap) {
       while (sim.nAmmo > cap && sim.ammoQ.length) { var r = sim.ammoQ.shift(); if (!r.dead) sim.remove(r); }
@@ -150,10 +155,11 @@
       var n, i, rec, b, t, tide = sim.tide, K, gh, g, k, v, a, sp, s, f, vol, bodies;
       doomed.length = 0; act.length = 0;
       /* only the awake bodies are visited: a sleeping body costs nothing here */
-      world.forEachActiveRigidBody(collect); n = act.length;
+      world.forEachActiveRigidBody(collect); n = act.length; sim.nActive = n;
       for (i = 0; i < n; i++) {
         rec = act[i]; b = rec.body; K = rec.K;
         t = b.translation(); rec.age++;
+        if (track) { rec.px = rec.cx; rec.py = rec.cy; rec.pz = rec.cz; rec.pq = rec.cq; rec.cx = t.x; rec.cy = t.y; rec.cz = t.z; a = b.rotation(); rec.cq = [a.x, a.y, a.z, a.w]; rec.actStep = sim.steps; rec.final = false; }
         if (t.y < sim.floor || t.x < site.x0 - 3 || t.x > -site.x0 + 3 || t.z < site.x0 - 3 || t.z > -site.x0 + 3) { doomed.push(rec); continue; }
         /* guard: a centre below the ground surface means the body tunnelled (thin things can, the heightfield has no thickness). Put it back on top and count it. */
         gh = site.H(t.x, t.z);
@@ -222,6 +228,7 @@
     var K = KINDS.brick, bl = K.hx * 2 + 0.004, bd = K.hz * 2 + 0.004, bh = K.hy * 2 + 0.0004;
     var courses = nb <= 144 ? 6 : 8, layers = Math.ceil(nb / (courses * 12)), w = Math.min(12, Math.ceil(nb / (courses * layers))), placed = 0, c, l, cnt, yb = (site.padY !== undefined ? site.padY : site.H(L.wall.x, L.wall.z)) + K.hy + 0.002;
     sim.scene = { bricks: 0, cans: 0, debris: 0, wall: { x: L.wall.x, z: L.wall.z, w: w, layers: layers, courses: courses } };
+    if (cfg.noWall) nb = 0;
     for (c = 0; c < courses && placed < nb; c++) {
       cnt = c % 2 ? Math.max(1, w - 1) : w;
       for (l = 0; l < layers && placed < nb; l++) for (i = 0; i < cnt && placed < nb; i++) {
@@ -231,6 +238,7 @@
     sim.scene.bricks = placed;
     /* cans in rows of 10 up the slope, a little staggered */
     var C = KINDS.can, placedC = 0, row = 0;
+    if (cfg.noWall) nc = 0;
     while (placedC < nc) {
       for (i = 0; i < 10 && placedC < nc; i++) {
         var cx = L.cans.x + (i - 4.5) * 0.13 + (row % 2 ? 0.065 : 0), cz = L.cans.z - row * 0.14;
@@ -242,10 +250,12 @@
     /* wash-up along the wrack line: bottles, tins, lids, floats, sticks, crates, a few coconuts */
     var mix = [['bottle', 0.26], ['can', 0.14], ['lid', 0.20], ['float', 0.08], ['stick', 0.14], ['crate', 0.10], ['coconut', 0.08]];
     /* a jittered grid along the wrack line (0.7 m apart, extra layers dropped from 0.45 m higher when there are many), lying flat or standing, so nothing starts inside anything */
-    var gx = 0.8, gcols = Math.floor(34 / gx), grows = Math.floor(9 / gx), per = gcols * grows;
+    var gx = 0.8, depth = Math.min(20, 9 + Math.max(0, nd - 600) / 130), gcols = Math.floor(34 / gx), grows = Math.floor(depth / gx), per = gcols * grows;
     for (i = 0; i < nd; i++) {
       var u = r(), kk = 'bottle', acc = 0; for (j = 0; j < mix.length; j++) { acc += mix[j][1]; if (u <= acc) { kk = mix[j][0]; break; } }
-      var cell = i % per, layer = Math.floor(i / per), dx = -17 + (cell % gcols + 0.5 + (layer % 2) * 0.5) * gx + (r() - 0.5) * 0.1, dz = L.wrack.z - 2.5 + (Math.floor(cell / gcols) + 0.5 + (layer % 2) * 0.5) * gx + (r() - 0.5) * 0.1;
+      var cell = i % per, layer = Math.floor(i / per);
+      if (cell === 0 && layer > 0) { for (j = 0; j < 40; j++) sim.step(); }                 /* the layer below settles before the next one is dropped */
+      var dx = -17 + (cell % gcols + 0.5 + (layer % 2) * 0.5) * gx + (r() - 0.5) * 0.4, dz = L.wrack.z - 2.5 + (Math.floor(cell / gcols) + 0.5 + (layer % 2) * 0.5) * gx + (r() - 0.5) * 0.4;
       var KD = KINDS[kk], ha = r() * 2 * PI, qq = KD.shape === 'capsule' || KD.shape === 'bottle' ? qFromTo([Math.cos(ha), 0, Math.sin(ha)]) : KD.shape === 'ball' ? [0, 0, 0, 1] : qYaw(ha);
       sim.add(kk, { x: dx, y: site.H(dx, dz) + KD.lay + 0.03 + layer * 0.4, z: dz }, qq);
     }
@@ -260,18 +270,18 @@
 
   /* ---------- a session: scene + shots + replay log ---------- */
   function makeSession(R, site, cfg) {
-    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground };
+    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null };
     var ses = { R: R, site: site, cfg: cfg, events: [], sim: null, rnd: null, replay: null };
     function fresh() {
       if (ses.sim) ses.sim.dispose();
-      ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide });
+      ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks });
       ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
       ses.rnd = rng(cfg.seed * 7919 + 13);
       buildScene(ses.sim, cfg);
       ses.events = [];
     }
     fresh();
-    ses.rebuild = function (c2) { for (var k in c2) cfg[k] = c2[k]; ses.replay = null; fresh(); };
+    ses.rebuild = function (c2) { for (var k in c2) cfg[k] = c2[k]; ses.replay = null; if (cfg.hooks) cfg.hooks.reset(); fresh(); };
     ses.muzzle = function () { var L = site.layout.launcher; return { x: L.x, y: site.H(L.x, L.z) + 1.0, z: L.z }; };
     /* aim: yaw (0 = straight inland), elevation, power 0..1. Returns the body. The random part is drawn here and stored in the log, so a replay needs no random numbers. */
     ses.fire = function (kind, yaw, elev, power) {
@@ -286,7 +296,7 @@
     };
     function applyEvent(ev) {
       var sim = ses.sim;
-      if (ev.t === 'shot') { sim.trimAmmo(Math.max(0, sim.ammoCap - 1)); return sim.add(ev.k, { x: ev.p[0], y: ev.p[1], z: ev.p[2] }, ev.q, { x: ev.v[0], y: ev.v[1], z: ev.v[2] }, { x: ev.w[0], y: ev.w[1], z: ev.w[2] }); }
+      if (ev.t === 'shot') { sim.trimAmmo(Math.max(0, sim.ammoCap - 1)); return sim.add(ev.k, { x: ev.p[0], y: ev.p[1], z: ev.p[2] }, ev.q, { x: ev.v[0], y: ev.v[1], z: ev.v[2] }, { x: ev.w[0], y: ev.w[1], z: ev.w[2] }, true); }
       if (ev.t === 'tide') { sim.setTide(ev.v); return null; }
       if (ev.t === 'ground') { sim.setGroundMode(ev.v); return null; }
       if (ev.t === 'cap') { sim.ammoCap = ev.v; return null; }
@@ -300,13 +310,14 @@
       var rp = ses.replay;
       if (rp) { while (rp.i < rp.events.length && rp.events[rp.i].s <= ses.sim.steps) applyEvent(rp.events[rp.i++]); }
       var ms = ses.sim.step();
-      if (rp && ses.sim.steps >= rp.endStep) { ses.replay = null; ses.events = rp.events; }
+      if (rp && ses.sim.steps >= rp.endStep) { var hh = ses.sim.hash(); ses.lastReplay = { ok: hh === rp.hashAtEnd, expected: rp.hashAtEnd, got: hh, steps: ses.sim.steps }; ses.replay = null; ses.events = rp.events; }
       return ms;
     };
     /* start a replay: rebuild the same scene from the config and feed it the log again. The caller steps it at whatever speed it likes. */
     ses.startReplay = function () {
       var ev = ses.events.slice(), endStep = ses.sim.steps, hashNow = ses.sim.hash();
-      if (ses.sim) ses.sim.dispose(); ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide }); ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
+      if (cfg.hooks) cfg.hooks.reset();
+      if (ses.sim) ses.sim.dispose(); ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks }); ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
       buildScene(ses.sim, cfg);
       ses.replay = { events: ev, i: 0, endStep: endStep, hashAtEnd: hashNow };
       ses.events = [];
@@ -323,6 +334,14 @@
     return { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
   }
 
-  var API = { KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  /* a fixed scene and a fixed volley, to compare two machines: the hash must be equal on every device (same Rapier build) */
+  function determinismCode(R, site) {
+    var s = makeSession(R, site, { pieces: 250, seed: 1, ammoCap: 100 }), kinds = ['marble', 'rod', 'acorn', 'coconut', 'lid', 'bottle'], i, k, a, h;
+    for (i = 0; i < kinds.length; i++) { a = aimAt(s.muzzle(), { x: -1 + i * 0.4, y: site.padY + 0.3, z: -7 }, KINDS[kinds[i]].speed); s.fire(kinds[i], a.yaw, a.elev, 1); for (k = 0; k < 30; k++) s.step(); }
+    s.setTide(0.5); for (k = 0; k < 300; k++) s.step();
+    h = s.sim.hash(); s.sim.dispose(); return h;
+  }
+
+  var API = { determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

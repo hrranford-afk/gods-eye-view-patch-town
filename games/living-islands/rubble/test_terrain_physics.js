@@ -56,6 +56,8 @@ async function main() {
     var steps = a.sim.steps, rp = a.startReplay(), n = 0; while (a.replay) { a.step(); n++; }
     check('replay: rebuilding the scene and feeding the log gives the same hash at the same step', a.sim.hash() === ha && a.sim.steps === steps, a.sim.hash() + ' vs ' + ha + ', ' + n + ' steps');
     a.sim.dispose(); b.sim.dispose(); c.sim.dispose();
+    results.numbers.determinismCode = SIM.determinismCode(R, lee); console.log('INFO  the replay code the page prints (250 pieces, fixed volley): ' + results.numbers.determinismCode);
+    check('determinism code is repeatable', SIM.determinismCode(R, lee) === results.numbers.determinismCode, results.numbers.determinismCode);
   })();
 
   /* ---------- 2. energy sanity ---------- */
@@ -224,11 +226,11 @@ async function main() {
       for (var shot = 0; shot < 6; shot++) { a = SIM.aimAt(s.muzzle(), { x: (shot - 2.5) * 0.5, y: lee.padY + 0.3, z: -7 }, 17); s.fire(shot % 2 ? 'coconut' : 'rod', a.yaw, a.elev + (shot % 2 ? 0.2 : 0.3), 1);
         for (i = 0; i < 30; i++) { var ms = s.step(); tot += ms; if (ms > worst) worst = ms; peak = Math.max(peak, sim.awake()); } }
       for (i = 0; i < 360; i++) { var m2 = s.step(); tot += m2; if (m2 > worst) worst = m2; peak = Math.max(peak, sim.awake()); }
-      rows.push({ piecesBuilt: built, pieces: sim.bodies.length, buildMs: Math.round(buildMs), avgMsPerStep: +(tot / 540).toFixed(2), worstMs: +worst.toFixed(1), peakAwake: peak, awakeAtEnd: sim.awake(), fps60Budget: tot / 540 < 16.7 });
+      rows.push({ piecesBuilt: built, pieces: sim.bodies.length, buildMs: Math.round(buildMs), avgMsPerStep: +(tot / 540).toFixed(2), worstMs: +worst.toFixed(1), peakAwake: peak, awakeAtEnd: sim.awake(), rescuedByGuard: sim.rescued, settleSteps: sim.settleSteps, fps60Budget: tot / 540 < 16.7 });
       sim.dispose();
     });
     results.numbers.cost = rows;
-    console.log('INFO  cost per step (this shared cloud core, Node, one thread): ' + rows.map(function (r) { return r.piecesBuilt + ' pieces ' + r.avgMsPerStep + ' ms avg / ' + r.worstMs + ' worst / peak awake ' + r.peakAwake; }).join(' | '));
+    console.log('INFO  cost per step (this shared cloud core, Node, one thread): ' + rows.map(function (r) { return r.piecesBuilt + ' pieces ' + r.avgMsPerStep + ' ms avg / ' + r.worstMs + ' worst / peak awake ' + r.peakAwake + ' / rescued ' + r.rescuedByGuard; }).join(' | '));
     /* rapid shots: 300 acorns that do not collide with each other against 300 that do */
     function stream(solo) {
       var site = TR.functionSite({ size: 24, height: function () { return 0; } }), sim = SIM.makeSim(R, site, dry()), i, rnd = SIM.rng(5);

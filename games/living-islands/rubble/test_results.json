@@ -1,5 +1,5 @@
 {
- "when": "2026-11-25T20:02:03.057Z",
+ "when": "2026-11-25T20:18:30.037Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -10,17 +10,22 @@
   {
    "name": "determinism: same seed, same shots, same hash (two runs)",
    "ok": true,
-   "detail": "58bcee60 / 58bcee60"
+   "detail": "cb1494c0 / cb1494c0"
   },
   {
    "name": "determinism: a different seed gives a different hash",
    "ok": true,
-   "detail": "58bcee60 / 0108027b"
+   "detail": "cb1494c0 / 41c32fb3"
   },
   {
    "name": "replay: rebuilding the scene and feeding the log gives the same hash at the same step",
    "ok": true,
-   "detail": "58bcee60 vs 58bcee60, 560 steps"
+   "detail": "cb1494c0 vs cb1494c0, 560 steps"
+  },
+  {
+   "name": "determinism code is repeatable",
+   "ok": true,
+   "detail": "8ab9af4f"
   },
   {
    "name": "energy: a marble dropped on rock gains almost no energy (rise under 3 percent: soft-contact push-out)",
@@ -35,7 +40,7 @@
   {
    "name": "energy: a woken scene of 117 bodies does not gain energy (rise under 3 percent)",
    "ok": true,
-   "detail": "start 3870.29 J, max 3870.32 J"
+   "detail": "start 3859.90 J, max 3859.94 J"
   },
   {
    "name": "ball released high on a 11 degree ramp rolls downhill (travels more than 10 m)",
@@ -90,12 +95,12 @@
   {
    "name": "sleeping: a step with everything asleep costs under 10 percent of one with everything awake",
    "ok": true,
-   "detail": "asleep 0.786 ms, all awake 10.029 ms (972 awake)"
+   "detail": "asleep 0.620 ms, all awake 7.858 ms (975 awake)"
   },
   {
    "name": "sleeping: woken bodies go back to sleep by themselves within 10 s",
    "ok": true,
-   "detail": "awake after 10 s: 8 of 1000"
+   "detail": "awake after 10 s: 13 of 1000"
   },
   {
    "name": "1000 random drops on the island ground (30 percent thrown at 20 to 50 m/s): none ends below the ground",
@@ -145,7 +150,7 @@
   {
    "name": "rapid shots that do not collide with each other cost less than ones that do (300 acorns in a heap)",
    "ok": true,
-   "detail": "solo 0.738 ms/step, colliding 2.117 ms/step"
+   "detail": "solo 0.645 ms/step, colliding 2.293 ms/step"
   }
  ],
  "numbers": {
@@ -167,10 +172,11 @@
    "maxDiffM": 0.0161
   },
   "determinism": {
-   "seed11": "58bcee60",
-   "seed12": "0108027b",
-   "bodies": 219
+   "seed11": "cb1494c0",
+   "seed12": "41c32fb3",
+   "bodies": 224
   },
+  "determinismCode": "8ab9af4f",
   "ballToHollow": {
    "endX": 0.07,
    "endZ": 8.02,
@@ -227,10 +233,10 @@
   "sleeping": {
    "bodies": 1000,
    "awakeAfterSettle": 0,
-   "asleepMsPerStep": 0.786,
-   "allWokenMsPerStep": 10.029,
-   "awakeAfterWake": 972,
-   "awakeAfter10s": 8
+   "asleepMsPerStep": 0.62,
+   "allWokenMsPerStep": 7.858,
+   "awakeAfterWake": 975,
+   "awakeAfter10s": 13
   },
   "drops": {
    "dropped": 1000,
@@ -271,67 +277,79 @@
    {
     "piecesBuilt": 100,
     "pieces": 103,
-    "buildMs": 151,
-    "avgMsPerStep": 0.49,
-    "worstMs": 1.9,
+    "buildMs": 163,
+    "avgMsPerStep": 0.3,
+    "worstMs": 1.1,
     "peakAwake": 51,
     "awakeAtEnd": 1,
+    "rescuedByGuard": 0,
+    "settleSteps": 321,
     "fps60Budget": true
    },
    {
     "piecesBuilt": 250,
     "pieces": 253,
-    "buildMs": 292,
-    "avgMsPerStep": 0.57,
-    "worstMs": 3.7,
+    "buildMs": 414,
+    "avgMsPerStep": 0.69,
+    "worstMs": 4.6,
     "peakAwake": 118,
-    "awakeAtEnd": 0,
+    "awakeAtEnd": 1,
+    "rescuedByGuard": 1,
+    "settleSteps": 313,
     "fps60Budget": true
    },
    {
     "piecesBuilt": 500,
     "pieces": 503,
-    "buildMs": 583,
-    "avgMsPerStep": 1.66,
-    "worstMs": 6.9,
+    "buildMs": 631,
+    "avgMsPerStep": 1.31,
+    "worstMs": 6.6,
     "peakAwake": 230,
     "awakeAtEnd": 0,
+    "rescuedByGuard": 4,
+    "settleSteps": 351,
     "fps60Budget": true
    },
    {
     "piecesBuilt": 1000,
-    "pieces": 880,
-    "buildMs": 895,
-    "avgMsPerStep": 2.49,
-    "worstMs": 9.7,
-    "peakAwake": 489,
-    "awakeAtEnd": 2,
+    "pieces": 1003,
+    "buildMs": 1094,
+    "avgMsPerStep": 3.47,
+    "worstMs": 15.7,
+    "peakAwake": 487,
+    "awakeAtEnd": 5,
+    "rescuedByGuard": 23,
+    "settleSteps": 273,
     "fps60Budget": true
    },
    {
     "piecesBuilt": 2000,
-    "pieces": 1604,
-    "buildMs": 2731,
-    "avgMsPerStep": 4.85,
-    "worstMs": 26.4,
-    "peakAwake": 958,
-    "awakeAtEnd": 4,
+    "pieces": 2003,
+    "buildMs": 3179,
+    "avgMsPerStep": 4.64,
+    "worstMs": 20.1,
+    "peakAwake": 960,
+    "awakeAtEnd": 19,
+    "rescuedByGuard": 97,
+    "settleSteps": 582,
     "fps60Budget": true
    },
    {
     "piecesBuilt": 3948,
-    "pieces": 2864,
-    "buildMs": 16891,
-    "avgMsPerStep": 19.53,
-    "worstMs": 53.9,
-    "peakAwake": 1665,
-    "awakeAtEnd": 1521,
-    "fps60Budget": false
+    "pieces": 3951,
+    "buildMs": 8318,
+    "avgMsPerStep": 15.16,
+    "worstMs": 73.7,
+    "peakAwake": 1518,
+    "awakeAtEnd": 17,
+    "rescuedByGuard": 209,
+    "settleSteps": 600,
+    "fps60Budget": true
    }
   ],
   "rapidShotGroups": {
-   "soloMsPerStep": 0.738,
-   "collidingMsPerStep": 2.117
+   "soloMsPerStep": 0.645,
+   "collidingMsPerStep": 2.293
   }
  }
 }
