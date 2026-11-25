@@ -25,7 +25,8 @@ Owner played the first day: it is all happening automatically; things should mov
 4. No dead stretches over about two game minutes: small visible events and one always-doable 'what next'.
 5. A permanent Build button; a clear first destination marker for exploration.
 
-## Job 7: Robot parts and the Parcel Post magazine (after Job 6; owner playtest 25 Nov)
+## Job 7: Supply panel, robot parts and the Parcel Post magazine (after Job 6; owner playtest 25 Nov)
+FIRST, the SUPPLY PANEL (owner, 25 Nov): tap the stock strip to open one row per material (planks, rope, glass, metal): stock, in per hour, out per hour, net, and a problem flag ('runs out in 3 h', 'short', 'nobody collecting'); tap a row for the breakdown: IN by source (each robot by its job and rate, 'by hand'), OUT by project (each active build and its hours to finish at current rates); a marker on the bottleneck; rates are rolling averages over the last few game hours from a stock ledger where every change has a source or a sink (reuse the town prototype's ledger idea: nothing from nothing); people counted not tracked (robots as machines and 'you' only). Estimate 3 to 5 days. THEN:
 Robots get module slots and the catalogue sells modules (bigger battery, solar panel, hauling arm, sorting tray, builder arm, lamp, tracks or legs, charger); jobs need particular modules; wrong fit means visible downtime; a robot panel shows slots and what each job needs; swapping a part is a short hands-on job (hold the ring, a visible swap). A weekly in-fiction magazine panel arrives with the delivery (third voice, dry and warm, small jokes): new and coming parts with arrival days, items leaving the catalogue, a tip, a neighbour's letter; data in gift/events.json and the catalogue; one paper panel. Every glowing object states what it needs. Keep the pace reference by day and the night shifts from Job 6.
 
 ## After that (not now)
