@@ -423,6 +423,22 @@ class Content(unittest.TestCase):
         self.assertEqual(BY_ID["a1_refusal_tender_keeps"]["trigger"]["after"], ["a1_refusal_wet_boards"])
         self.assertNotIn("credit_delta", BY_ID["a1_refusal_tender_keeps"]["effects"])
 
+    def test_no_parental_reassurance(self):
+        # critic review v2: no 'not your fault', no 'you have the hands', no grading of the player in letters or narration
+        bad = r"not your fault|you have the hands|used what was given well|good thing to have noticed|you did well|well done|so can you|more than you think|good that it exists|proud of you"
+        for e in EVENTS:
+            blob = e["text"] + " " + " ".join(e.get("variants", {}).values())
+            if e["id"] in ("p0_P2", "a1_L2_evening"): continue        # the owner's words (flagged TASTE in STORY_REVISION_V2.md)
+            self.assertIsNone(re.search(bad, blob, re.I), e["id"] + " reassures like a parent")
+        self.assertIn("mould", BY_ID["a2_L6_thin"]["text"]); self.assertIn("empty", BY_ID["a2_L6_thin"]["text"])
+
+    def test_seal_counts_are_causal(self):
+        # a rising seal count must state a physical reason in its text (a cleaner shore), never a moral one
+        for e in EVENTS:
+            if e["effects"].get("counts", {}).get("seals", 0) >= 5:
+                if e["kind"] == "wildlife" and e["id"].startswith(("a2_hide", "a3_seal_big", "a4_seals")):
+                    self.assertRegex(e["text"] + e["cause"], r"clear|clean|drift|nets", e["id"] + " seals rise with no stated cause")
+
     def test_world_kindnesses(self):
         # critic review v2: five kindnesses with no letter, each with a physical cause
         for i in ("a1_kind_second_blanket", "a1_kind_crate_handles", "a1_kind_dry_shelf", "a1_kind_parcel_returned", "a4_kind_spare_mould"):

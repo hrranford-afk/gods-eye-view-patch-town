@@ -97,3 +97,18 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 8.5 | KEEP | the take choice: four planks at once | taking is equally right |
 | 8.6 | CHANGED | the simulation's stand-in player now applies a choice (a distrustful style declines; the others take the first); new test `test_refusal_scene` | so the follow-ups can fire in the test |
 | 8.7 | CHANGED | spine section 3: a short note on the refusal after day 7 | the week-one beats list |
+
+## Step 9. Cut parental reassurance; make consequences causal
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 9.1 | CHANGED | L6: "That is not your fault. ... you have the hands for it." becomes "Some things are no longer made. The slot on the shelf is empty now, and a used casting mould hangs by the yard door. It has made this part before." Variants (trust and distrust) become facts: "The ledger shows what was spent. The shelf shows what is gone." and "The ledger shows little spent. The shelf is empty all the same." | the critic: an empty catalogue slot and a used mould do the comfort without a parent's voice; "You have used what was given well" was a grade |
+| 9.2 | CHANGED | L10: "You have more than you think." becomes "The yard holds more than the ledger shows." | same reassurance, now a fact the player can check |
+| 9.3 | CHANGED | L11: cut "and so can you" | the island stands; the player is not coached |
+| 9.3b | CHANGED | L4: "The island rests, and so can you." becomes "The island rests." | the same coaching pattern as L11 |
+| 9.4 | CHANGED | L12: "it is good that it exists" becomes "it stands" | a plain closing; no praise |
+| 9.5 | CHANGED | `a2_third_stamp`: cut "but it is a good thing to have noticed" | narrator praise for investigating |
+| 9.6 | KEEP | P2 "Whatever you make of it will be right" and "I think you will be good at it"; L2 "None of it is wrong." | the owner's own wording and a permission, not a comfort; flagged TASTE: veto these two lines if you want the cut to go further |
+| 9.7 | CHANGED | seals: `a2_hide_counts`, `a3_seal_big_year`, `a4_seals_record` now say why: the nets and drift are cleared from the east ledge, so there is room and clean water | consequences must be causal (a cleaner shore), never a reward for a chosen attitude |
+| 9.8 | CHANGED | `a4_neighbour_return` and `a2_neighbour_gift_back`: the neighbour's return is explained by a ropewalk and a store that ran over, not by the player's virtue | same rule: a chain of things, not a moral ledger |
+| 9.9 | KEEP | the soft attitude points on events (trust, distrust, investigate, share) | they only lean draw weights; they never change a counter, the credit line or the weather |
+| 9.10 | CHANGED | the matching lines in `GIFT_LETTERS.md` and the spine warmth ladder | kept in sync |

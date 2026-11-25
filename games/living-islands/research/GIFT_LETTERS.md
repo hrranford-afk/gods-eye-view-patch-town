@@ -15,15 +15,15 @@ Voice rules: kind but not chatty; it never explains itself; it never asks for an
 > The sea gives and takes. What it leaves is not rubbish, only things that have not found a use yet. The old carriers know the shore. Let them work.
 
 **L4. The first season.** Trigger: first change of season.
-> Winter is not a punishment. The island rests, and so can you. Keep the lamp lit.
+> Winter is not a punishment. The island rests. Keep the lamp lit.
 
 **L5. The first guest.** Trigger: the first visitors count above zero (or a stranger after a storm).
 > Someone will arrive who did not plan to. Be kind first. The rest can be worked out later.
 
 ## Year two: choices and questions
 **L6. The thin edge.** Trigger: first catalogue item vanishes.
-> Some things are no longer made. That is not your fault. There is always another way to make a thing, and you have the hands for it.
-Variant (trust): *You have used what was given well.* Variant (distrust): *You have not spent much. That is fine. It will wait.*
+> Some things are no longer made. The slot on the shelf is empty now, and a used casting mould hangs by the yard door. It has made this part before.
+Variant (trust): *The ledger shows what was spent. The shelf shows what is gone.* Variant (distrust): *The ledger shows little spent. The shelf is empty all the same.*
 
 **L7. The stamp.** Trigger: the player inspects a stamp on a crate or robot, or finds three stamps.
 > You have noticed the mark. Many do, in the end. It means only that this came from a place that cares how it lands.
@@ -37,14 +37,14 @@ Variant (trust): *You have used what was given well.* Variant (distrust): *You h
 > Everything the sea has been holding came at once. It is a lot. You do not have to keep it all, and you do not have to decide today. Sort it slowly. Share what you cannot use.
 
 **L10. The quiet year.** Trigger: start of year three (or when deliveries reach basics only).
-> The boats come less often now. This was always going to happen. You have more than you think.
+> The boats come less often now. This was always going to happen. The yard holds more than the ledger shows.
 
 ## Year four: the edge of the gift
 **L11. The last big parcel.** Trigger: the last full delivery.
-> This is the last large parcel. After this, only small things come. The island can stand without them, and so can you. If you ever need anything, look at the shore.
+> This is the last large parcel. After this, only small things come. The island can stand without them. If you ever need anything, look at the shore.
 
 **L12. After.** Trigger: the year-four report is opened.
-> You made something. It does not matter what. It is yours, and it is good that it exists. The sea is still giving, if you are still looking.
+> You made something. It does not matter what. It is yours, and it stands. The sea is still giving, if you are still looking.
 
 ## Bottle messages (the town's own, kept separate)
 Bottle messages are separate from letters: different hands, different voices, a few slightly too well informed. They live with the drift table and were written earlier by the town. Letters never contradict them.
