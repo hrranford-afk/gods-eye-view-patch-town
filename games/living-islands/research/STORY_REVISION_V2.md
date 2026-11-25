@@ -63,3 +63,14 @@ Hint-only. None settles authorship. The plain mark stays rare (three of the elev
 | 5.11 | CHANGED | `a2_clue_unstamped_plank` (62): an unstamped replacement plank, rough cuts, wrong nails | someone else's hand: the island has had other visitors |
 | 5.12 | KEEP | the rule that clues hint and never prove, and may contradict each other (the tender fits the cradle, but the waterline is wrong) | the owner's rule; the test blocks the proof words |
 | 5.13 | KEEP | the plain mark rare: only clues 53, 55 and 61 carry it, none sets a `stamp_` flag | the critic: not on every object; the three-stamp letter L7 trigger is unchanged |
+
+## Step 6. Years two and three: the critic's five reasons
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 6.1 | CHANGED | `a2_goal_bigger_boat`: a bigger boat that carries repair timber and crossing provisions in one trip | a reason to keep building in year two; sets `bigger_boat` |
+| 6.2 | CHANGED | `a2_goal_visitor_weekend`: open the landing for one weekend and choose what visitors may do. Three choices (shore path, hide, supper); fourteen visitors counted, never named | a reason to play for others; FIXED rule 4 (counted, not tracked) holds |
+| 6.3 | CHANGED | `a3_goal_hull_chocked` then `a3_goal_hull_floats`: a sound hull section from the hulk is chocked across the spring-tide line and floats free over several tides into a shore workshop (flag `shore_workshop`) | hands-on use of the hulk; gives the long Great Wash project a visible middle |
+| 6.4 | CHANGED | `a3_goal_bad_copy`: a first locally cast part is bulky enough to foul the workshop door; file it, widen the door or fit it outside | a useful bad copy teaches making; three answers, none graded |
+| 6.5 | CHANGED | `a3_goal_neighbour_ferry` (repeatable): on quiet sailing days the player's boat carries a neighbour's crates, a handcart waiting at the water's edge | the player becomes the other end of a gift |
+| 6.6 | CHANGED | spine section 2.6 (new): the five goals as acts two and three spine goals | the critic asked for them as goals, not only events |
+| 6.7 | KEEP | the four reasons already in section 2.5 (the other end of a gift, one big project, a second home, a mystery that keeps its shape) | the new five add to them |

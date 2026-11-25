@@ -112,6 +112,16 @@ The third act has four reasons. Each is a thing the player wants, not a task.
 4. **A mystery that keeps its shape.** The cabinet of nine folders, the folder that matches the far light, the folder dated before the letter. None is proof, all are enough to want one more look.
 It is the year the player stops asking what the helper wants and starts asking what they want.
 
+### 2.6 Years two and three: five more reasons (critic review v2, added as spine goals)
+The critic's point: acts two and three need things the player wants, not only mysteries. Five goals, each hands-on first and each with a deck event (hint: each can also be handed to a robot or a worker later, FIXED rule 9). None scores the player.
+| Act | Goal (what the player wants) | Deck id | The physical step | Notes |
+|---|---|---|---|---|
+| 2 | **A bigger boat** that carries repair timber and crossing provisions in one trip | a2_goal_bigger_boat | a new hull in the slip; planks to port, sacks and kegs to starboard; sets `bigger_boat` | follows the motor and the jetty; opens the neighbour ferry |
+| 2 | **A visitor weekend**: open the landing for one weekend and choose what visitors may do (shore path, hide, supper on the beach) | a2_goal_visitor_weekend | two boats, a tally at the rail; fourteen visitors counted, never named or followed | FIXED rule 4: people counted, never tracked; the choice only sets which paths are open |
+| 3 | **A hull that floats into a workshop**: saw a sound hull section from the hulk, chock it across the spring-tide line, and let several tides float it free | a3_goal_hull_chocked, a3_goal_hull_floats | cut, roll on logs, chock, wait about three spring tides, roof and bench it | hands-on; links to the hulk of the Great Wash (a3_hulk_salvage) |
+| 3 | **The first useful bad copy**: a part cast locally is bulky enough to foul the workshop door; file it, widen the door or fit it elsewhere | a3_goal_bad_copy | the cast sticks in the doorway; three ways out, none better | teaches that a local copy is worth keeping even when it is clumsy; the later mould (a4_kind_spare_mould) is the helper's version |
+| 3 | **A neighbour's delivery boat**: on quiet sailing days carry a neighbour's crates, with a handcart waiting at their water's edge | a3_goal_neighbour_ferry | the player's boat lands at the neighbour's tideline, the cart already turned for loading | repeatable; the player is now the other end of a gift (section 2.5, reason 1) |
+
 ## 3 Week one, day by day (days 2 to 7) on the real Level 1 map
 The map is seed 29: home (the hut at (56,-28), the yard (48,-40), the landing (10,17), the lamp (86,-60)), the woods island (7,102), the Hoard (-121,-8), the wreck reef (-103,88), the seal island (-5,-128), the bare rock (140,67). Tide numbers are MEASURED from `level1/` (LEVEL1_DESIGN.md section 5); clock times marked "est" are my interpolation (low water shifts about 50 minutes later each day). Day 1 is the arrival and the 15-minute path (BUILD_PLAN.md): not repeated here.
 
