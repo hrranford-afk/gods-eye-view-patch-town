@@ -170,6 +170,13 @@ class Sim:
             if a == self.style or self.rng.random() < .3: self.att[a] += v
         self.cash += eff.get("cash_delta", 0)
         for k, v in eff.get("counts", {}).items(): self.counts[k] = max(0, self.counts[k] + v)
+        ch = e.get("choices")
+        if ch and e["act"] >= 1:     # the stand-in player picks: a distrustful style takes a 'decline' choice, the others the first choice
+            pick = next((c for c in ch if c["id"].startswith("decline")), ch[0]) if self.style == "distrust" else ch[0]
+            ce = pick["effects"]
+            for k, v in ce.get("stock", {}).items(): self.stock[k] = max(0, min(60, self.stock[k] + v))
+            self.flags |= set(ce.get("flags_set", []))
+            for a, v in ce.get("attitude", {}).items(): self.att[a] += v
         self.done.add(e["id"]); self.last[e["id"]] = day; self.fired.append((day, e["id"]))
 
     def run(self, days=1440):
@@ -402,6 +409,19 @@ class Content(unittest.TestCase):
             self.assertIsNone(re.search(r"no such (relative|man|person|uncle)", blob, re.I), e["id"])
         for t in ("p0_P1", "p0_P2"): self.assertNotIn("relative", BY_ID[t]["text"].lower())
         self.assertIn("incomplete", BY_ID["a2_uncle_reply"]["text"]); self.assertIn("either way", BY_ID["a2_uncle_reply"]["text"])
+
+    def test_refusal_scene(self):
+        # critic review v2: an early event lets the player decline a useful gift; it costs an afternoon, the tender keeps its next appointment, no moral scoring
+        o = BY_ID["a1_offer_dry_boards"]
+        self.assertTrue(o["trigger"]["day_min"] >= 2 and o["trigger"]["day_max"] <= 7, "the refusal offer belongs to week one")
+        ids = {c["id"]: c for c in o["choices"]}
+        self.assertIn("decline_dry_boards", ids); self.assertIn("take_dry_boards", ids)
+        self.assertIn("declined_gift", ids["decline_dry_boards"]["effects"]["flags_set"])
+        self.assertLessEqual(ids["decline_dry_boards"]["effects"].get("attitude", {}).get("distrust", 0), 1, "only a soft lean")
+        self.assertNotIn("credit_delta", ids["decline_dry_boards"]["effects"]); self.assertNotIn("cash_delta", ids["decline_dry_boards"]["effects"])
+        self.assertIn("afternoon", BY_ID["a1_refusal_wet_boards"]["text"])
+        self.assertEqual(BY_ID["a1_refusal_tender_keeps"]["trigger"]["after"], ["a1_refusal_wet_boards"])
+        self.assertNotIn("credit_delta", BY_ID["a1_refusal_tender_keeps"]["effects"])
 
     def test_world_kindnesses(self):
         # critic review v2: five kindnesses with no letter, each with a physical cause

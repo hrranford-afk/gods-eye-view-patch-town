@@ -206,6 +206,9 @@ Rule for every day: **every change on a counter has a visible cause**, written i
   - Refuse it. Make everything from the shore and the woods (distrust, +1). The slowest week, the stock is not missed in year four.
   The choice is shown as a ledger line, not a quiz.
 
+### The early refusal (v2, days 3 to 7)
+After the first storm the tender lands a stack of dry boards under a tarp, unasked (a1_offer_dry_boards). The wrack line is full of wet ones. The player may take the dry boards, or hand them back. If they hand them back, the cost is a real afternoon barrowing and stacking the wet boards (a1_refusal_wet_boards); two days later the tender comes on its usual day with the crates ordered, tied the same, with no note (a1_refusal_tender_keeps). That is the lesson: the offer was genuine, nothing was withheld, nothing was a test. No score. The decline sets only the soft flag `declined_gift` (it leans the distrust weights by a point and changes no credit or cash).
+
 ### The first season goal (day 30, the end of spring)
 A roof that holds in rain, a full barrel and a spare, one thing built (jetty, cistern, hide, cottage or bench), the boat with a motor, the Hoard seen, the woods spring visited, the tide table read at least once, and the first summer light on the strand. The season card has five marks on a slate; you need three. Deck: a1_summer_light.
 

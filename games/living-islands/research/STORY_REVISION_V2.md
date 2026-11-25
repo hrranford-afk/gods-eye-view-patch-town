@@ -86,3 +86,14 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 7.5 | CHANGED | Needs-a-thing notes: the old speaker event is conditional on a new game flag `speaker_prop` and its `source` says "needs: speaker prop"; the picnic rock says "needs: a flat picnic rock below the landing (placeholder: any rock)"; the hull event says "needs: a repaired hull on a cradle (the skiff on the slip)" | the page does not have these props yet; the page builder can place them or leave them unlit |
 | 7.6 | KEEP | the two roof and tap troubles are mild: nothing breaks that cannot be mended by morning or noon | mild trouble only |
 | 7.7 | CHANGED | the stand-in player in the simulation gets `speaker_prop` on day 70 | so the conditional event can fire in the test |
+
+## Step 8. The refusal scene (week one)
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 8.1 | CHANGED | `a1_offer_dry_boards` (days 3 to 7, forced, after the first storm): the tender lands dry boards unasked; two choices, take them or hand them back and salvage the wet ones from the wrack | the critic: an early honest refusal shows the gift is optional; the player chooses |
+| 8.2 | CHANGED | `a1_refusal_wet_boards`: the cost is a real afternoon barrowing wet boards up the beach; the stack ends up fine | the cost is time and raw hands, not a fine or a scolding |
+| 8.3 | CHANGED | `a1_refusal_tender_keeps`: two days later the tender comes on its usual day with the ordered crates; no note about the boards | teaches the offer was genuine: nothing was a test and nothing is withheld |
+| 8.4 | CHANGED | the decline choice sets the soft flag `declined_gift` and one point of the distrust lean; no reward and no penalty, no credit or cash change | the distrust counter may be fed only as a soft flag, as asked |
+| 8.5 | KEEP | the take choice: four planks at once | taking is equally right |
+| 8.6 | CHANGED | the simulation's stand-in player now applies a choice (a distrustful style declines; the others take the first); new test `test_refusal_scene` | so the follow-ups can fire in the test |
+| 8.7 | CHANGED | spine section 3: a short note on the refusal after day 7 | the week-one beats list |
