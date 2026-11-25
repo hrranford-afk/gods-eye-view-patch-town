@@ -1,0 +1,32 @@
+CASTLE SOUND • First playable
+On a Mac or PC with Python 3, open a terminal in this folder:
+    python3 server.py
+On Windows use: py server.py
+On the computer open http://localhost:8765 in a WebGL2-capable browser.
+On the same Wi-Fi, open http://YOUR-COMPUTER-LAN-IP:8765 in Safari or Chrome.
+Use the computer's Wi-Fi IP address in place of YOUR-COMPUTER-LAN-IP.
+
+One tablet: choose a fort and a repair-post location per player. Launch match.
+Aim moves the shot sideways. Pull changes range. Select a rig, then release.
+The flat flinger shoots a low arc. Scatter spends the hopper round for three acorns.
+Drop the other bell more than 0.32 model units to win. Both bells down is a draw.
+Sixteen shots with both bells holding is also a draw. Replay shows sampled poses.
+Grand ramparts adds physical outer walls for BOTH players.
+
+Two devices: both open the server address. Blue hosts a room, Gold enters its
+code. Blue sets up the match. Leave the host tab awake. The next player presses
+Take turn after a surviving shot. Both browsers see the host's simulation.
+The included server is a local Wi-Fi prototype. Rooms run in memory. Reloading
+loses the seat; a dropped event connection retries while the tab remains open.
+For the single-file pass-and-play edition open Castle_Sound_Play.html in a desktop browser.
+For an iPad use Safari via the server; Files preview may only show static content.
+
+Sources: hrranford-afk/gods-eye-view-patch-town
+game/brick-lab games/brick-lab: unchanged sim.js, original launcher geometry,
+Rapier 0.21 standard/SIMD and Three r128, wood texture.
+game/brick-lab games/sofa-siege: original models.js, lobber, popgun, flags,
+cottages, barrels, windmill and atlas textures. Rig behaviour adapted for Rapier.
+citylab/cloud-islands games/living-islands/storm.js: seeded scenery hash.
+New islands, water shader, forts, bell, match rules, replay, relay and controls.
+Rigid pieces can topple. Ground remains solid, the bell uses a box collider,
+and the repair post has three preset positions. Decorative scenery stays fixed.
