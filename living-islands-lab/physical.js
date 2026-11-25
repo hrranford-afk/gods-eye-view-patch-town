@@ -327,10 +327,10 @@ function fitPlanks(n) {
 const openSockets = () => { try { return C.li().repair.sockets().filter(q => !q.filled && q.kind === 'plank').length; } catch (e) { return 0; } };
 
 /* ---- robots: borrowed from the camp routine (state 'task'), given back when the errand ends ---- */
-const isShelter = () => { const s = simR(); return !!(s && (s.env.night || s.env.rain)); };
+const isShelter = r => { const s = simR(); return !!(s && (s.env.rain || (s.env.night && (!s.shifts || !r || r.nc)))); };   /* Job 6b: at night only the robots on the charging shift shelter (camp_start.js shiftPlan) */
 function freeRobots(any) {   /* robots with nothing in their hands: idle at the post, sorting, or walking out. any = a partner for a two-handed job takes one from the shore too (never one that carries a load). */
   const s = simR(), L = layout(); if (!s || !L) return []; const out = [];
-  s.robots.forEach((r, i) => { if (!A.S().robots[i] || r.state === 'task' || P.err[i]) return; if (isShelter()) return;
+  s.robots.forEach((r, i) => { if (!A.S().robots[i] || r.state === 'task' || P.err[i]) return; if (isShelter(r)) return;
     if ((r.state === 'bay' && r.charge > .5) || r.state === 'sort' || (r.state === 'out' && !r.load && (any || hypot(r.x - L.YP.apron.x, r.z - L.YP.apron.z) < 9)) || (any && (r.state === 'work' || r.state === 'home') && !r.load && r.charge > .5)) out.push(i); });
   return out;
 }
@@ -354,7 +354,7 @@ function abortErrand(i) { const o = P.err[i]; if (!o) return; giveBack(o); if (o
 function errandsTick(dt) {
   const s = simR(); if (!s) return;
   Object.keys(P.err).forEach(k => { const i = +k, o = P.err[i], r = s.robots[i]; if (!r || r.state !== 'task') { if (o.carry) giveBack(o); delete P.err[i]; return; }
-    if (o.role !== 'dock' && o.busy !== 'beam' && (isShelter() || r.charge < .14)) { abortErrand(i); return; }
+    if (o.role !== 'dock' && o.busy !== 'beam' && (isShelter(r) || r.charge < .14)) { abortErrand(i); return; }
     if (o.held) return;   /* the pair carrying a beam sets this robot's place itself */
     const e = errandStep(o.e, dt); o.e = e; applyRobot(i, e, atHold(o) && !o.holdActive); (e.ev || []).forEach(ev => errandEvent(i, o, ev)); });
 }
