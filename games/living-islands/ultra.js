@@ -169,16 +169,23 @@
   /* ---------- 5. the preset step-down (the owner's iPad measurement: device=radeon on an iPad ran at 28.6 fps; see research/RADEON_FIRST_MEASUREMENT.md) ----------
      device = the preset asked for, gpuRaw = the browser's GPU string (may be empty), ua = the user agent, touch = navigator.maxTouchPoints, o.off = the &stepdown=0 switch.
      Only radeon and desktop step down, and only on a built-in or mobile GPU (an iPad, a phone, an integrated chip): to the ipad preset, with a one-line note. A real graphics card, software rendering and every other preset are left alone. */
+  /* a name that says a real discrete card, whatever else the page learned (OWNER bug: Radeon VII on a dual-GPU Mac was probed as the Intel chip) */
+  const REAL_CARD = /radeon\s*(vii|rx|pro)|\brx\s*\d|\brtx\b|\bgtx\b|quadro|geforce|\barc\b.*intel|intel.*\barc\b/i;
+  const uaClass = u => /iPad|iPhone|iPod/i.test(u) ? 'iOS' : /Android/i.test(u) ? 'Android' : /Mobile/i.test(u) ? 'mobile' : /Macintosh/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : /Linux/.test(u) ? 'Linux' : 'other';
+  /* o.renderer = the string of the real renderer when it is known (a second opinion: a discrete card there always wins) */
   function deviceStepDown(device, gpuRaw, ua, touch, o) {
     const none = { step: false, to: device, note: '', why: '' };
     if ((device !== 'radeon' && device !== 'desktop') || (o && o.off)) return none;
-    const c = classifyGpu(gpuRaw), u = String(ua || '');
-    const phone = /iPad|iPhone|iPod|Android|Mobile/i.test(u) || (/Macintosh/.test(u) && (touch | 0) > 1);   /* an iPad that asks for the desktop site says Macintosh but has touch points */
+    const c = classifyGpu(gpuRaw), u = String(ua || ''), r = o && o.renderer ? classifyGpu(o.renderer) : null;
+    const detail = 'probe: ' + (c.name || 'unknown') + (r ? '; renderer: ' + (r.name || 'unknown') : '') + '; ' + uaClass(u) + '; touch ' + (touch | 0);
+    if (REAL_CARD.test(String(gpuRaw || '')) || (o && o.renderer && REAL_CARD.test(String(o.renderer))) || (r && r.kind === 'discrete')) return Object.assign({}, none, { detail });
+    /* a phone or tablet: the UA says so, or a Macintosh UA with touch points (an iPad asking for the desktop site). A Mac (also with an eGPU or a Sidecar display) has no touch points. */
+    const phone = /iPad|iPhone|iPod|Android|Mobile/i.test(u) || (/Macintosh/.test(u) && (touch | 0) > 1);
     const integrated = c.kind === 'integrated';
-    if (c.kind === 'software' || c.kind === 'discrete') return none;
-    if (!phone && !integrated) return none;
+    if (c.kind === 'software' || c.kind === 'discrete') return Object.assign({}, none, { detail });
+    if (!phone && !integrated) return Object.assign({}, none, { detail });
     const what = phone ? 'a mobile device' : 'a built-in GPU (' + (c.name || 'unknown') + ')';
-    return { step: true, to: 'ipad', why: phone ? 'mobile' : 'integrated', note: 'This looks like ' + what + ', so the iPad preset is used instead of ' + device + '. Add &stepdown=0 to keep ' + device + '.' };
+    return { step: true, to: 'ipad', why: phone ? 'mobile' : 'integrated', detail, note: 'This looks like ' + what + ', so the iPad preset is used instead of ' + device + ' (' + detail + '). Add &stepdown=0 to keep ' + device + '.' };
   }
-  return { cleanGpuName, classifyGpu, gpuLine, INTEGRATED_HINT, options, tierFrom, planFor, degrade, createDynRes, percentile, benchVerdict, benchReport, deviceStepDown };
+  return { cleanGpuName, classifyGpu, gpuLine, INTEGRATED_HINT, options, tierFrom, planFor, degrade, createDynRes, percentile, benchVerdict, benchReport, deviceStepDown, REAL_CARD };
 }));

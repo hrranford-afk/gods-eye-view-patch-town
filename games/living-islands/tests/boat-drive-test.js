@@ -175,6 +175,16 @@ const run = (b, inp, env, secs, dt = .05) => { for (let i = 0; i < secs / dt; i+
   ok(S('radeon', '', androidUA, 5).step, 'an Android phone steps down');
   ok(S('ipad', 'Apple GPU', ipadUA, 5).step === false && S('ar', 'Apple GPU', ipadUA, 5).step === false && S('', 'Apple GPU', ipadUA, 5).step === false, 'the ipad and ar presets and no preset are never changed');
   ok(S('radeon', 'Apple GPU', ipadUA, 5, { off: true }).step === false, 'a switch can turn the step-down off (&stepdown=0)');
-  const note = r1.note; ok(note.length < 160 && !/\n/.test(note), 'the note is one short line (' + note.length + ' characters)');
+  const note = r1.note; ok(note.length < 260 && !/\n/.test(note), 'the note is one short line (' + note.length + ' characters)');
+  /* OWNER bug: Radeon VII on a dual-GPU Mac, the probe saw the Intel chip */
+  const intelProbe = 'ANGLE (Intel Inc., Intel(R) UHD Graphics 630, OpenGL 4.1)', radeonMac = 'ANGLE (AMD, AMD Radeon VII Unknown Prefixed, OpenGL 4.1)', radeonWin = 'ANGLE (AMD, AMD Radeon VII Direct3D11 vs_5_0 ps_5_0, D3D11)';
+  ok(S('radeon', intelProbe, macUA, 0).step === true, 'a laptop with only the integrated Intel chip steps down');
+  ok(S('radeon', intelProbe, macUA, 0, { renderer: radeonMac }).step === false, 'probe says Intel UHD 630 but the renderer says Radeon VII: no step-down');
+  ok(S('radeon', radeonMac, macUA, 0).step === false && S('radeon', radeonWin, winUA, 0).step === false, 'ANGLE strings for the Radeon VII on a Mac and on Windows: no step-down');
+  ok(S('radeon', radeonMac, macUA, 0, {}).detail.indexOf('Radeon VII') >= 0 && /Mac/.test(S('radeon', radeonMac, macUA, 0).detail) && /touch 0/.test(S('radeon', radeonMac, macUA, 0).detail), 'the detail line names the raw GPU, the user agent class and the touch points');
+  ok(S('radeon', 'Apple GPU', macUA, 5).step === true && S('radeon', radeonMac, macUA, 0).step === false, 'an iPad on a desktop UA steps down but a Mac (touch 0, eGPU or not) never counts as a phone');
+  ok(S('radeon', intelProbe, macUA, 0, { off: true }).step === false, '&stepdown=0 overrides even an integrated probe');
+  ok(/probe: .*; .*; touch \d/.test(S('radeon', 'Apple GPU', ipadUA, 5).note), 'a step-down note shows the probe string, the user agent class and the touch points');
+  ok(S('radeon', 'ANGLE (NVIDIA, NVIDIA Quadro P2000 Direct3D11, D3D11)', winUA, 0).step === false && S('radeon', 'ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics, D3D11)', winUA, 0).step === false && S('radeon', 'AMD Radeon Pro 5500M', macUA, 0).step === false, 'Quadro, Intel Arc and Radeon Pro never step down');
 }
 console.log('\n' + (n - fails) + ' of ' + n + ' checks passed'); if (fails) process.exit(1);
