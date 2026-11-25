@@ -50,12 +50,12 @@ if (want(2) || want(3) || want(4) || want(5) || want(6)) {
   /* the swirl and the surge */
   await S(p, 'setTs', 20 + 8 + 12); await p.waitForTimeout(2500); s = await S(p, 'state'); ok(s.swirl, 'the tidal swirl is drawn');
   await S(p, 'setTs', 20 + 30 + 14); await p.waitForTimeout(2800); s = await S(p, 'state');
-  const tide0 = await p.evaluate(() => __li.setTide && 0); const lv = await p.evaluate(() => ({ lift: __storm.state().lift })); ok(s.surgeT >= 0 && s.lift > 0, 'the surge is up: lift ' + s.lift.toFixed(2) + ' m at ' + s.surgeT.toFixed(1) + ' s'); ok(s.group && s.instances > 0 && s.hulk, 'the haul and the hulk are shown once the water has come: ' + s.instances + ' pieces in ' + s.batches + ' batches');
+  const tide0 = await p.evaluate(() => __li.setTide && 0); const lv = await p.evaluate(() => ({ lift: __storm.state().lift })); ok(s.surgeT >= 0 && s.lift > 0, 'the surge is up: lift ' + s.lift.toFixed(2) + ' m at ' + s.surgeT.toFixed(1) + ' s'); ok(s.group && s.instances > 0 && !s.hulk, 'the haul is shown (no hulk after a small storm) once the water has come: ' + s.instances + ' pieces in ' + s.batches + ' batches');
   const wl = await p.evaluate(() => { const l = __li.stats(); return { tide: __gift.objs && 0 }; });
   await S(p, 'finish'); await wait(p, () => __storm.state().phase === 'haul'); await p.waitForTimeout(1500); s = await S(p, 'state');
   ok(s.phase === 'haul' && s.surgeT === -1 && s.lift === 0, 'the water recedes and the haul stays: phase ' + s.phase);
   const rest = await p.evaluate(() => { const t = document.getElementById('gd-toast').textContent; return t; }); ok(/haul|water has gone/i.test(rest) || true, 'a toast tells the player what happened');
-  let heaps = await S(p, 'heaps'); ok(heaps.length >= 20 && heaps.every(h => ['planks', 'rope', 'glass', 'metal'].includes(h.stock) && h.n0 >= 3 && h.rem === h.n0), heaps.length + ' heaps, each with a kind and a count (' + heaps.slice(0, 4).map(h => h.stock + ' ' + h.rem).join(', ') + ' ...)');
+  let heaps = await S(p, 'heaps'); ok(heaps.length === 8 && heaps.every(h => ['planks', 'rope', 'glass', 'metal'].includes(h.stock) && h.n0 >= 3 && h.rem === h.n0), heaps.length + ' heaps, each with a kind and a count (' + heaps.slice(0, 4).map(h => h.stock + ' ' + h.rem).join(', ') + ' ...)');
   const cost = await S(p, 'cost'); ok(s.instances <= s.cap, 'pieces drawn ' + s.instances + ' within the tier cap ' + s.cap + '; batches ' + s.batches);
   const wn = await p.evaluate(() => __gift.weather()); ok(true, 'weather after the storm: ' + wn);
   ok(errs.length === 0, '&game=gift&storm=1: 0 console errors through the whole storm' + (errs.length ? ' ' + errs.slice(0, 3).join(' | ') : ''));
@@ -100,11 +100,12 @@ if (want(2) || want(3) || want(4) || want(5) || want(6)) {
     await p.evaluate(() => { __gift.setHour(__storm.save().endGh + 24); }); await wait(p, () => __storm.save().l9 === 1, null, 30000); await p.waitForTimeout(1500);
     const cr = await p.evaluate(() => __gift.crates()); const l9c = cr.find(c => c.l9); ok(!!l9c, 'a letter crate came in the next morning (' + cr.length + ' crates)');
     await p.evaluate(n => __gift.act('crate' + n), l9c.n); await p.waitForTimeout(800);
-    const card = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; }); ok(/Letter nine/.test(card) && /do not have to keep it all/.test(card), 'its letter is a calm paper panel: ' + card.slice(0, 70));
+    const card = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; }); ok(/Letter three/.test(card) && /sea gives and takes/.test(card), 'its letter is a calm paper panel: ' + card.slice(0, 70));
     await p.evaluate(() => { const b = [...document.querySelectorAll('#gd-layer button')].find(x => /Keep it/.test(x.textContent)); if (b) b.click(); }); await p.waitForTimeout(600); ok((await S(p, 'save')).l9 === 2, 'keeping it is saved');
   }
-  /* ================= 6. the hulk ================= */
+  /* ================= 6. the hulk (STORY V2: not drawn after a small storm; the card still works for the Great Wash) ================= */
   if (want(6)) {
+    ok(!(await S(p, 'state')).hulk, 'after a small storm no hulk is drawn');
     const hp = await S(p, 'hulkPlan'); ok(hp && hp.units === 30, 'one hulk is planned at (' + (hp && hp.x.toFixed(0)) + ', ' + (hp && hp.z.toFixed(0)) + ')');
     const st0 = await p.evaluate(() => __gift.state().stock.planks); await S(p, 'hulkCard'); await p.waitForTimeout(800); const card = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; });
     ok(/old hulk/i.test(card) && /placeholder/i.test(card), 'the hulk card says it is a placeholder');
@@ -122,7 +123,7 @@ if (want(3) && saved) {
   await p.close();
   const r = await open('?ui=0&q=high&game=gift&giftsave=1'); const st = await S(r.p, 'save'); await r.p.waitForTimeout(1500);
   ok(st.phase === 'haul' || st.phase === 'none', 'a reload resumes the storm state (' + st.phase + ')');
-  if (st.phase === 'haul') { const hs = await S(r.p, 'heaps'); ok(JSON.stringify(st.taken) === JSON.stringify(saved.taken) && st.endGh === saved.endGh, 'taken counts and the time the water went survive the reload: ' + JSON.stringify(st.taken)); ok(hs.length === saved.rem.length && hs.every((h, i) => h.rem <= saved.rem[i] + 0) && hs.some(h => h.rem > 0) === saved.rem.some(v => v > 0), 'the same heaps remain after the reload (' + hs.filter(q => q.rem > 0).length + ' left, saved ' + saved.rem.filter(v => v > 0).length + '); a heap only shrinks with the clock'); const sd = await r.p.evaluate(() => __storm.state()); ok(sd.group && sd.instances > 0 && sd.hulk, 'the haul and the hulk are drawn again after the reload'); }
+  if (st.phase === 'haul') { const hs = await S(r.p, 'heaps'); ok(JSON.stringify(st.taken) === JSON.stringify(saved.taken) && st.endGh === saved.endGh, 'taken counts and the time the water went survive the reload: ' + JSON.stringify(st.taken)); ok(hs.length === saved.rem.length && hs.every((h, i) => h.rem <= saved.rem[i] + 0) && hs.some(h => h.rem > 0) === saved.rem.some(v => v > 0), 'the same heaps remain after the reload (' + hs.filter(q => q.rem > 0).length + ' left, saved ' + saved.rem.filter(v => v > 0).length + '); a heap only shrinks with the clock'); const sd = await r.p.evaluate(() => __storm.state()); ok(sd.group && sd.instances > 0 && !sd.hulk, 'the small haul is drawn again after the reload (no hulk)'); }
   ok(r.errs.length === 0, 'reload: 0 console errors' + (r.errs.length ? ' ' + r.errs[0] : '')); await r.p.evaluate(() => __gift.wipe()); await r.p.close();
 }
 /* ================= 7. device presets ================= */

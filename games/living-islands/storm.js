@@ -1,7 +1,7 @@
 /* Living Islands: THE STORM AND THE HAUL (the whirlpool). Loaded on a gift page only (islands_look.html?game=gift, see GIFT_STORM.md); &storm=0 keeps it out.
    A story moment and a core loop piece: a storm you can see coming (weather mood, a falling barometer line, gulls going quiet, robots home), a tidal swirl and a gentle surge that rises and
    recedes (nothing is swallowed), and the haul the water leaves along the wrack line: wreckage and cargo in a few instanced batches, in heaps you can gather by hand or order the robots to
-   gather, that the tide slowly takes back, and ONE big hulk (a labelled placeholder) to salvage over years. Letter nine arrives the next morning.
+   gather, that the tide slowly takes back, and ONE big hulk (a labelled placeholder) to salvage over years. Letter three (letter nine for the Great Wash only) arrives the next morning.
    Tone: hopeful. Planks, barrels, crates, rope, nets, bottles, tins, driftwood, seaweed. NO bodies, nothing gory or cruel, no faces, no people shown. Robots stay relics.
    PART 1 (pure, no THREE, no DOM, no Math.random, no wall clock): switches, tier caps, the ground sampler, the field of where a surge leaves things (wrack line at the highest water mark, drifts
      against rocks, trees, posts and the pieces of the camp, lee of the land, tapering inland), the heaps (kind, count, place), plan() = the same mess for the same seed, the storm timeline
@@ -66,6 +66,8 @@ const HEAP_LIGHT = { planks: [[1, 4], [3, 2], [7, 2]], metal: [[5, 2], [19, 3]],
 const HEAP_LABEL = { planks: 'Timber and planks', metal: 'Barrels and tins', rope: 'Rope and net', glass: 'Bottles' };
 const HEAP_N = { planks: [4, 9], metal: [3, 7], rope: [3, 6], glass: [3, 6] };   /* TUNING: units a heap holds (a unit is one stock unit; a robot trip carries 2, a hand pick up to 3) */
 const STOCK_W = [['planks', .4], ['metal', .25], ['rope', .2], ['glass', .15]];
+/* STORY V2 (Job 6e item 1): the first storm and the storms of the first seasons are SMALL (8 heaps, about 35 units, no hulk); only the Great Wash (autumn of year three, day 842 or later, once) is the big one */
+const NHEAP_SMALL = 8, HEAP_SMALL_MIN = 3, HEAP_SMALL_MAX = 5, GW_DAY0 = 842, GW_SPAN = 45, GW_END = 1080;
 const NHEAP = 24, HEAP_SHARE = .4, HAND_TAKE = 3, TRIP_TAKE = 2;
 /* weights per zone: 0 wrack line (the highest water mark), 1 the beach below it, 2 inland tail, 3 drift against something */
 const KW = [
@@ -195,11 +197,12 @@ const pickW = (list, r) => { let t = 0; for (const e of list) t += e[1]; r *= t;
 function planHeaps(env) {
   const F = buildField(env), seed = F.seed, out = []; if (F.total <= 0) return out;
   const focus = env.focus;
-  for (let h = 0; h < NHEAP; h++) {
+  const nh = env.small ? NHEAP_SMALL : NHEAP;
+  for (let h = 0; h < nh; h++) {
     let best = null, bd = 1e18;
     for (let c = 0; c < (focus ? 4 : 1); c++) { const P = samplePoint(F, env, 5000 + h, 100 + c * 41, hash(h, 90 + c, seed) < .3); if (!P) continue; const d = focus ? Math.hypot(P.x - focus.x, P.z - focus.z) : 0; if (d < bd) { bd = d; best = P; } }
     if (!best) continue;
-    const st = pickW(STOCK_W, hash(h, 91, seed)), rg = HEAP_N[st], n0 = rg[0] + Math.floor(hash(h, 92, seed) * (rg[1] - rg[0] + 1));
+    const st = pickW(STOCK_W, hash(h, 91, seed)), rg = HEAP_N[st], n0 = env.small ? HEAP_SMALL_MIN + Math.floor(hash(h, 92, seed) * (HEAP_SMALL_MAX - HEAP_SMALL_MIN + 1)) : rg[0] + Math.floor(hash(h, 92, seed) * (rg[1] - rg[0] + 1));
     out.push({ id: out.length, stock: st, n0, x: best.x, z: best.z, y: F.G.h(best.x, best.z), zone: best.zone, hwc: best.hwc, drift: best.drift, ox: best.ox, oz: best.oz, orad: best.orad, m: best.m, pile: best.pile, jit: hash(h, 93, seed) });
   }
   return out;
@@ -322,11 +325,15 @@ function baro(ts, B) { const hi = 1017, lo = 986, back = 1005; if (ts <= 0) retu
 function baroTrend(ts, B) { const d = baro(ts + 4, B) - baro(ts - 4, B); return d < -1.6 ? 'falling fast' : d < -.3 ? 'falling' : d > 1.2 ? 'rising fast' : d > .25 ? 'rising' : 'steady'; }
 /* the trigger. st = the storm part of the gift state; gh = game hours since midnight of day 1; night = the first night has passed (the bottle was read). The first storm comes on the morning of day 2;
    after that once a game season (90 days) at a seeded day, and never inside ten days of the last. */
+/* the Great Wash: the first storm that starts on day 842 or later (up to the end of year three) and only once; the day is seeded in days 842 to 886 */
+const gwDay = seed => GW_DAY0 + Math.floor(hash(77, 6, seed | 0) * GW_SPAN), gwAt = seed => (gwDay(seed) - 1) * 24 + 9;
+const isGreat = (st, startGh) => !st.gw && startGh >= (GW_DAY0 - 1) * 24 && startGh < GW_END * 24;
 const FIRST_GH = 32.5, SEASON_DAYS = 90, GAP_DAYS = 10;
 function nextDue(st, seed) {
   const n = st.n | 0; if (n === 0) return FIRST_GH;
-  const at = n * SEASON_DAYS * 24 + 24 * Math.floor(hash(n, 5, seed | 0) * 30) + 9, quiet = (st.endGh || 0) + GAP_DAYS * 24;
-  return Math.max(at, quiet);
+  const at = n * SEASON_DAYS * 24 + 24 * Math.floor(hash(n, 5, seed | 0) * 30) + 9, quiet = (st.endGh || 0) + GAP_DAYS * 24, base = Math.max(at, quiet);
+  if (!st.gw) { const g = gwAt(seed); if (base >= g) return Math.max(g, quiet); }   /* the Great Wash is due once, in autumn of year three */
+  return base;
 }
 function stormDue(st, gh, night, seed) { if (!st || st.phase !== 'none') return false; if (st.n === 0 && !night) return false; return gh >= nextDue(st, seed); }
 /* the tide takes back what is not gathered: nothing for GRACE hours after the water has gone, then over SPAN hours (about two game days all told), each heap on its own seeded clock */
@@ -335,17 +342,21 @@ function lostFrac(gh, endGh, jit) { const sp = TAKE.span * (.8 + .4 * (jit === u
 function remaining(heap, taken, gh, endGh) { const t = taken || 0, lost = Math.round(heap.n0 * sm01(lostFrac(gh, endGh, heap.jit))); return Math.max(0, heap.n0 - t - lost); }
 const sceneryGone = (gh, endGh) => sm01(lostFrac(gh, endGh, .5));   /* the loose scenery thins at the same pace (a share of the pieces, not a count) */
 function l9Due(endGh) { return (Math.floor(endGh / 24) + 1) * 24 + 7; }   /* the morning after the water has gone: 07:00 */
+/* the two storm letters, our own words (GIFT_LETTERS.md): L3 for the first storm and every small one, L9 for the Great Wash only */
+const L3 = ['The sea gives and takes.', 'What it leaves is not rubbish, only things that have not found a use yet.', 'The old carriers know the shore. Let them work.'];
+const L9 = ['Everything the sea has been holding came at once.', 'It is a lot. You do not have to keep it all, and you do not have to decide today.', 'Sort it slowly. Share what you cannot use.'];
+function letterOf(st) { return st && st.big ? { id: 'L9', title: 'Letter nine', lines: L9 } : { id: 'L3', title: 'Letter three', lines: L3 }; }
 /* hand and robot picks: how many units a pick takes (never more than is there, never past what a full stock can hold) */
 function pickUnits(rem, want, have, cap) { return Math.max(0, Math.min(rem, want, cap - have)); }
 
 /* ---------- 7. the save (a part of the gift's save; stored as state.storm) ---------- */
 const SAVE_V = 1;
-function newStorm() { return { v: SAVE_V, n: 0, phase: 'none', ts: 0, build: 150, startGh: 0, endGh: 0, taken: {}, hulk: HULK_UNITS, l9: 0, warn: 0 }; }
+function newStorm() { return { v: SAVE_V, n: 0, phase: 'none', ts: 0, build: 150, startGh: 0, endGh: 0, taken: {}, hulk: HULK_UNITS, l9: 0, warn: 0, big: false, gw: false }; }
 function sanitize(o) {
   const s = newStorm(); if (!o || typeof o !== 'object') return s;
   const num = (v, d, lo, hi) => (typeof v === 'number' && isFinite(v) ? clamp(v, lo, hi) : d);
   s.n = Math.round(num(o.n, 0, 0, 999)); s.phase = ['none', 'run', 'haul'].includes(o.phase) ? o.phase : 'none'; s.ts = num(o.ts, 0, 0, 3000); s.build = num(o.build, 150, 8, 600);
-  s.startGh = num(o.startGh, 0, 0, 1e6); s.endGh = num(o.endGh, 0, 0, 1e6); s.hulk = Math.round(num(o.hulk, HULK_UNITS, 0, HULK_UNITS)); s.l9 = Math.round(num(o.l9, 0, 0, 2)); s.warn = Math.round(num(o.warn, 0, 0, 9));
+  s.startGh = num(o.startGh, 0, 0, 1e6); s.endGh = num(o.endGh, 0, 0, 1e6); s.hulk = Math.round(num(o.hulk, HULK_UNITS, 0, HULK_UNITS)); s.l9 = Math.round(num(o.l9, 0, 0, 2)); s.warn = Math.round(num(o.warn, 0, 0, 9)); s.big = o.big === true; s.gw = o.gw === true || s.big;
   if (o.taken && typeof o.taken === 'object') for (const k of Object.keys(o.taken).slice(0, 200)) { const i = parseInt(k, 10); if (i >= 0 && i < 200) { const v = Math.round(num(o.taken[k], 0, 0, 99)); if (v > 0) s.taken[i] = v; } }
   if (s.phase === 'haul' && !(s.n > 0)) s.phase = 'none';
   return s;
@@ -521,8 +532,8 @@ function buildHulk() {
 const HULK_PLACEHOLDER = 'placeholder: a ribbed half hull built from boxes and strips (no old-boat model in the kit yet)';
 
 const geometryStats = lite => { const o = []; for (let i = 0; i < NK; i++) { const g = buildKind(i, lite); o.push({ id: i, name: KINDS[i].name, tris: g ? g.tris : 0 }); } return o; };
-const api = { TIER_CAP, MIN_COUNT, BENCH_STEPS, LITE_SET, KINDS, NK, KW, HEAP_POOL, HEAP_LIGHT, HEAP_LABEL, HEAP_N, STOCK_IDS, NHEAP, HEAP_SHARE, HAND_TAKE, TRIP_TAKE, SURGE, SURGE_HW, STORM_SEC, TAKE, KNEE, FIRST_GH, SEASON_DAYS, GAP_DAYS, HULK_UNITS, HULK_PLACEHOLDER,
-  options, tierCap, effectiveCount, defaultCount, isLite, makeGround, vnoise, buildField, samplePoint, planHeaps, plan, planHulk, planSwirl, visibility, surgeEnv, surgeLift, stormAt, stormEnd, baro, baroTrend, nextDue, stormDue, lostFrac, remaining, sceneryGone, l9Due, pickUnits,
+const api = { TIER_CAP, MIN_COUNT, BENCH_STEPS, LITE_SET, KINDS, NK, KW, HEAP_POOL, HEAP_LIGHT, HEAP_LABEL, HEAP_N, STOCK_IDS, NHEAP, NHEAP_SMALL, GW_DAY0, gwDay, gwAt, isGreat, HEAP_SHARE, HAND_TAKE, TRIP_TAKE, SURGE, SURGE_HW, STORM_SEC, TAKE, KNEE, FIRST_GH, SEASON_DAYS, GAP_DAYS, HULK_UNITS, HULK_PLACEHOLDER,
+  options, tierCap, effectiveCount, defaultCount, isLite, makeGround, vnoise, buildField, samplePoint, planHeaps, plan, planHulk, planSwirl, visibility, surgeEnv, surgeLift, stormAt, stormEnd, baro, baroTrend, nextDue, stormDue, lostFrac, remaining, sceneryGone, l9Due, pickUnits, letterOf,
   newStorm, sanitize, stormSeed, buildKind, buildHulk, geometryStats, benchSteps, kneeHit, percentile, stepStats, holds, benchVerdict, benchReport, hash, upper, planHash };
 if (typeof module === 'object' && module && module.exports) module.exports = api;
 root.LI_STORM = Object.assign(root.LI_STORM || {}, api);
@@ -633,7 +644,7 @@ function envFrom() {
   try { const sp = S.A.spots(); if (sp) { if (sp.crate) avoid.push({ x: sp.crate.x, z: sp.crate.z, r: 3 }); if (sp.tender) avoid.push({ x: sp.tender.drop.x, z: sp.tender.drop.z, r: 4 }); if (sp.hut) avoid.push({ x: sp.hut.x, z: sp.hut.z, r: 5 }); }
     const rt = C.li().campstart && C.li().campstart.rt(); if (rt) { const y = rt.yard(); avoid.push({ x: y.x, z: y.z, r: 10 }); } } catch (e) { S.err.push('avoid ' + e.message); }
   const half = Math.min(R + 2, 130);
-  return { seed: stormSeed(C.seed, Math.max(1, st.n), S.opts.seedAdd), H: C.H, half, step: .8, tableR: R, hw: SURGE_HW, obstacles: ob, cell: 1.0, dir: [Math.cos(ang), Math.sin(ang)], focus: f ? { x: f.x, z: f.z } : null, avoid };
+  return { seed: stormSeed(C.seed, Math.max(1, st.n), S.opts.seedAdd), H: C.H, half, step: .8, tableR: R, hw: SURGE_HW, obstacles: ob, cell: 1.0, dir: [Math.cos(ang), Math.sin(ang)], focus: f ? { x: f.x, z: f.z } : null, avoid, small: !S.st.big };
 }
 function scatter(n) {
   const t0 = performance.now(); S.env = envFrom(); S.plan = plan(S.env, n, liteNow()); S.planN = n; S.planMs = performance.now() - t0;
@@ -697,7 +708,7 @@ function heapsLeft() { const P = S.plan, st = S.st, gh = S.A.S().gh; if (!P || s
 function targets() {
   const T = [], st = S.st; if (!S.ready || !S.plan || st.phase !== 'haul') return T; const A = S.A;
   for (const e of heapsLeft()) { if (e.rem <= 0) continue; const sc = A.screenOf(e.h.x, e.h.y + .25, e.h.z); if (sc) T.push({ id: 'heap' + e.h.id, x: sc.x, y: sc.y, r: 46 }); }
-  if (S.hulk && S.hulk.visible && st.hulk > 0) { const hp = S.hulkPlan, sc = A.screenOf(hp.x, hp.y + .9, hp.z); if (sc) T.push({ id: 'hulk', x: sc.x, y: sc.y, r: 78 }); }
+  if (S.hulk && S.hulk.visible && st.big && st.hulk > 0) { const hp = S.hulkPlan, sc = A.screenOf(hp.x, hp.y + .9, hp.z); if (sc) T.push({ id: 'hulk', x: sc.x, y: sc.y, r: 78 }); }
   return T;
 }
 function activate(id) {
@@ -762,9 +773,8 @@ function robotTick() {
 function tripStock(i) { const q = S.pend[i]; if (!q || !q.length) return null; return q.shift(); }
 
 /* ---- letter nine, the Great Wash (our own words, short, a calm paper panel) ---- */
-const L9 = ['The sea has kept things for a long time. Last night it let go.', 'It is a great deal. You do not have to keep it all, and you do not have to decide today.', 'Sort a little each morning. What you cannot use, pass on.'];
 function readL9() {
-  const A = S.A, first = S.st.l9 < 2, c = A.card('letter9', '<h2>Letter nine</h2>' + L9.map(l => '<p>' + l + '</p>').join('') + '<div class="sig">' + (A.mark ? A.mark(30) : '') + '</div>', 'gd-paper');
+  const A = S.A, st = S.st, first = S.st.l9 < 2, LT = letterOf(st), c = A.card(LT.id === 'L9' ? 'letter9' : 'letter3', '<h2>' + LT.title + '</h2>' + LT.lines.map(l => '<p>' + l + '</p>').join('') + '<div class="sig">' + (A.mark ? A.mark(30) : '') + '</div>', 'gd-paper');
   c.appendChild(A.row(A.btn(first ? 'Keep it' : 'Close', () => { A.closeCard(); if (first) { S.st.l9 = 2; commit(); } }, 'pri')));
 }
 function l9Check() { const st = S.st; if (st.phase !== 'haul' || st.l9 !== 0) return; if (S.A.S().gh >= l9Due(st.endGh)) { st.l9 = 1; commit(); S.A.crateAdd('l9', 'A crate has come in on the morning boat. There is a letter on top.'); } }
@@ -773,7 +783,7 @@ function l9Check() { const st = S.st; if (st.phase !== 'haul' || st.l9 !== 0) re
 const FOCUS_ON = { swirl: false, haul: false };
 function start(opts) {
   opts = opts || {}; const st = S.st; if (st.phase === 'run') return false; const gh = S.A.S().gh;
-  st.n += 1; st.phase = 'run'; st.ts = 0; st.startGh = gh; st.build = opts.build || (S.opts.test ? S.opts.buildSec : S.opts.buildSec); st.endGh = 0; st.taken = {}; st.hulk = HULK_UNITS; st.l9 = 0; st.warn = 0; S.ts = 0; S.warned = {}; S.baroHist = []; FOCUS_ON.swirl = FOCUS_ON.haul = false;
+  st.n += 1; st.phase = 'run'; st.ts = 0; st.startGh = gh; st.build = opts.build || (S.opts.test ? S.opts.buildSec : S.opts.buildSec); st.endGh = 0; st.taken = {}; st.hulk = HULK_UNITS; st.l9 = 0; st.warn = 0; st.big = opts.big === true || (opts.big !== false && isGreat(st, gh)); if (st.big) st.gw = true; S.ts = 0; S.warned = {}; S.baroHist = []; FOCUS_ON.swirl = FOCUS_ON.haul = false;
   S.plan = null; S.lastVis = ''; S.sites = []; S.siteHeap = {}; S.pend = {}; S.shown = 0;
   ensurePlan(countNow()); S.shown = S.plan.n; applyCount(); S.group.visible = false; if (S.hulk) S.hulk.visible = false; commit();
   S.A.toast('The glass is dropping. Weather is coming in from the sea.', 6500); return true;
@@ -784,7 +794,7 @@ function endRun() {
   try { const e = heapsLeft().sort((a, b) => Math.hypot(a.h.x - (S.A.camp().x), a.h.z - (S.A.camp().z)) - Math.hypot(b.h.x - (S.A.camp().x), b.h.z - (S.A.camp().z)))[0]; if (e && !FOCUS_ON.haul) { FOCUS_ON.haul = true; S.A.focus(e.h.x, e.h.z, 24, undefined, .6); } } catch (er) { /* none */ }
 }
 function resumeHaul() {   /* after a load: the plan is made again from the same seed and the heaps are shown as they were left */
-  const st = S.st; if (st.phase === 'haul' || st.phase === 'run') { ensurePlan(countNow()); S.shown = S.plan.n; applyCount(); if (st.phase === 'haul') { S.group.visible = true; if (S.hulk) S.hulk.visible = true; applyVisibility(true); } else S.group.visible = false; }
+  const st = S.st; if (st.phase === 'haul' || st.phase === 'run') { ensurePlan(countNow()); S.shown = S.plan.n; applyCount(); if (st.phase === 'haul') { S.group.visible = true; if (S.hulk) S.hulk.visible = !!S.st.big; applyVisibility(true); } else S.group.visible = false; }
 }
 function tick(dt) {
   if (!S.ready) return; const A = S.A, st = S.st, now = performance.now(), iv = S.lastNow ? now - S.lastNow : 0; S.lastNow = now; if (iv > 0 && iv < 2000) { S.ring.push(iv); if (S.ring.length > 240) S.ring.shift(); }
@@ -794,7 +804,7 @@ function tick(dt) {
   if (st.phase === 'run') {
     st.ts += dt * S.opts.fast; S.ts = st.ts; m = stormAt(st.ts, st.build); S.m = m; S.surgeT = m.surgeT; S.quiet = m.quiet; k = m.swirlK;
     const peak = m.surgeT >= SURGE.rise;   /* once the water has peaked everything that came in stays */
-    if (m.surgeT >= 0 && S.group) { S.group.visible = true; if (S.hulk) S.hulk.visible = true; }
+    if (m.surgeT >= 0 && S.group) { S.group.visible = true; if (S.hulk) S.hulk.visible = !!S.st.big; }
     if (S.uSg) { S.uSg.value.set(m.surgeT, SURGE.travel, tide + S.lift, peak ? 1 : 0); S.uSg2.value.set(SURGE_HW, 0, 0, 0); }
     if (!FOCUS_ON.swirl && m.swirlK > .05 && S.swirlPlan) { FOCUS_ON.swirl = true; A.focus(S.swirlPlan.x, S.swirlPlan.z, 62, undefined, .72); }
     if (m.phase === 'build' && st.ts > .55 * st.build && !S.warned.boat && boatOut()) { S.warned.boat = 1; A.toast('The glass is falling fast. Bring the boat in and tie it up. Nothing will break, but it is safer.', 7500); }
@@ -803,7 +813,7 @@ function tick(dt) {
     hudUpdate(m, dt);
   } else { S.m = null; S.surgeT = -1; S.quiet = 0; if (S.uSg) S.uSg.value.set(-1, SURGE.travel, tide, 0); if (S.hud) S.hud.el.style.display = 'none'; }
   if (st.phase === 'haul') {
-    S.surgeT = -1; if (S.group && !S.group.visible) { S.group.visible = true; if (S.hulk) S.hulk.visible = true; }
+    S.surgeT = -1; if (S.group && !S.group.visible) { S.group.visible = true; if (S.hulk) S.hulk.visible = !!S.st.big; }
     S.visT += dt; if (S.visT > 5) { S.visT = 0; applyVisibility(); }
     const age = gh - st.endGh; if (st.warn < 1 && age > TAKE.warn1) { st.warn = 1; commit(); A.toast('The tide is starting to take the loose things back. Gather what you want.', 6500); } if (st.warn < 2 && age > TAKE.warn2) { st.warn = 2; commit(); A.toast('Most of the loose haul has gone back to the sea. Nothing is lost that you took.', 6500); }
     l9Check(); pickTick(dt); S.siteT += dt; if (S.siteT > 2) { S.siteT = 0; try { syncSites(); } catch (e) { S.err.push('sites ' + e.message); } }

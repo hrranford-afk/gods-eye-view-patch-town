@@ -99,7 +99,7 @@ ok(p1.hash !== p4.hash, 'another count gives another plan (and one more piece ch
   const s0 = A.newStorm(); ok(!A.stormDue(s0, 10, true, 1) && !A.stormDue(s0, 33, false, 1) && A.stormDue(s0, 33, true, 1) && A.stormDue(s0, 40, true, 1), 'the first storm waits for the morning of day 2 and for the first night to have passed');
   const s1 = Object.assign(A.newStorm(), { n: 1, endGh: 40 }), d1 = A.nextDue(s1, 7); ok(d1 >= 90 * 24 && d1 < 120 * 24 + 24, 'the next one is a game season away (day ' + (d1 / 24 + 1).toFixed(0) + '): rare'); ok(!A.stormDue(s1, 24 * 50, true, 7) && A.stormDue(s1, d1 + 1, true, 7), 'nothing in between, then one');
   const sr = Object.assign(A.newStorm(), { n: 1, phase: 'run' }); ok(!A.stormDue(sr, 1e5, true, 1), 'never while one is running');
-  const gaps = []; for (let n = 1; n < 12; n++) { const a = A.nextDue({ n, endGh: 0 }, 3), b = A.nextDue({ n: n + 1, endGh: 0 }, 3); gaps.push((b - a) / 24); } ok(gaps.every(g => g > 60 && g < 120), 'one a season: gaps between storms of ' + gaps.map(g => Math.round(g)).join(', ') + ' days');
+  const gaps = []; for (let n = 1; n < 12; n++) { const a = A.nextDue({ n, endGh: 0, gw: true }, 3), b = A.nextDue({ n: n + 1, endGh: 0, gw: true }, 3); gaps.push((b - a) / 24); } ok(gaps.every(g => g > 60 && g < 120), 'one a season: gaps between storms of ' + gaps.map(g => Math.round(g)).join(', ') + ' days');
 }
 /* ---- the tide takes heaps back: soft, fair, warned ---- */
 {
