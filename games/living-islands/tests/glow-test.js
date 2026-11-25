@@ -13,6 +13,7 @@ async function open(qs) {
 }
 /* one audit of the page as it is now */
 const audit = p => p.evaluate(() => {
+  __gift.refresh();   /* the HUD hint is rebuilt on a timer: rebuild it now so the audit reads the current line */
   const T = __gift.targetsNow(), out = { targets: [], problems: [] }, g = __gift.glow(), gold = g.gold;
   T.forEach(t => { const i = __gift.inspect(t.id); if (!i) { out.problems.push(t.id + ': no info'); return; } out.targets.push(t.id + (i.locked ? ' (locked)' : ''));
     if (!i.name || !i.use) out.problems.push(t.id + ': no name or use line'); if (!i.action && !i.locked) out.problems.push(t.id + ': no action and no stated reason'); if (i.locked && i.locked.length < 8) out.problems.push(t.id + ': reason too short'); });

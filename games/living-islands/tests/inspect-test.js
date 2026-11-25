@@ -63,7 +63,7 @@ if (want('touch')) {
     ok(c && c.btn && c.on, 'the first tap opens the card with an action button: "' + (c && c.text.slice(0, 110)) + '"'); ok(c && !c.stickHit, 'the card does not sit over the boat stick');
     await p.touchscreen.tap(innerWidthOf(834) / 2, 900).catch(() => { }); await p.waitForTimeout(500); const closed = await p.evaluate(() => { const e = document.querySelector('.gd-ins'); return !e || e.style.display === 'none'; }); ok(closed, 'a tap elsewhere closes the card');
     await p.touchscreen.tap(t.x, t.y); await p.waitForTimeout(500); const toast0 = await p.evaluate(() => (document.getElementById('gd-toast') || {}).textContent || ''); await p.locator('#gd-ins-act').tap({ timeout: 60000 }); await p.waitForTimeout(500);
-    const toast1 = await p.evaluate(() => (document.getElementById('gd-toast') || {}).textContent || ''); ok(/Row over it/i.test(toast1), 'the action button does the action (a floating supply says how to load it): "' + toast1 + '"'); }
+    const toast1 = await p.evaluate(() => (document.getElementById('gd-toast') || {}).textContent || ''); ok(/Row over it|Loaded (planks|rope|glass|metal)/i.test(toast1), 'the action button does the action (a floating supply says how to load it): "' + toast1 + '"'); }
   ok(S.errs.length === 0, 'zero console errors'); await S.ctx.close();
 }
 function innerWidthOf(w) { return w; }
