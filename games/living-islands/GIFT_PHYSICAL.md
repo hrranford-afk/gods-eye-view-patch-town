@@ -57,11 +57,49 @@ Findings: a column of jetty-pilot test buttons covered the barometer, the repair
 - Hand carrying of single stock units from the heap to the site (robots do the ferrying; the player does the stage presses and the two-handed carries).
 - Opening the lid of crate 1 is animated; the lantern flame is a glowing disc.
 
+## Left for the next page job (story revision v2, research/STORY_REVISION_V2.md step 11)
+None of these was built in this job (the physical layer, the HUD pass and the new opening used the whole budget; each needs its own test pass):
+1. storm.js and gift_day.js: the first storm small (about 8 heaps, about 35 units, no hulk) with letter L3; the Great Wash, letter nine and the hulk only in the year-three autumn big storm (day 842 or later, once). The physical layer is storm-safe: storm heaps still add to the same stock and the heaps at the yard follow it (checked by the storm page test).
+2. The 360-day calendar of four 90-day seasons (spring split, days 1 to 30 and 301 to 360) and the storm cadence that follows it.
+3. One brass key carried from the door: it opens the lidded dock crate first, then the hut door, then the hut drawer. Today the first crate still holds the key and letter one, the hut door takes it; there is no second key prop to remove, but the order is not the v2 order. The opening dock now comes before the crate.
+4. The tender's offer of dry boards in week one and a Decline button on a delivery card.
+5. Cheap props: a lidded blanket box with a second blanket, crates with carrying handles and runners, a low dry shelf on the collector rack, a hatch beside the hut door.
+6. Later (as listed by the coordinator): speaker, picnic rock, boat shed lock, carpet texture, mooring rings, notch, cave crate, thumb-scoop drawers, boxed stones, workbench prelude card, beach mark UI, first wet morning drip.
+
 ## Tests
 - `node tests/physical-test.js` (pure node): stage maths, heap maths, co-op carry rules, robot errand stepper, delivery run and berth choice, the day rhythm, the marker choice, gates that cannot advance on a timer (a long run of robots and clocks changes no stage), save round trip including mid-build and mid-carry (a unit in a robot's hand goes back on the heap), tone rails.
 - `NODE_PATH=$(npm root -g) node tests/physical-page-test.js [only=1,2,3]` (software GL): zero console errors with `&game=gift`, `&physical=0`, each device preset and AR light; the default page unchanged; the whole opening by scripted steps; the rest of the first day to the night with a list of every player action it needed.
 - `NODE_PATH=$(npm root -g) node tests/hud-test.js`: the HUD pass (overlaps, targets, hints).
 - Pictures: `NODE_PATH=$(npm root -g) node tests/physical-render.js [only=0,0b,1,2,3,4,5,hud]` writes shots/phys-*.png.
+
+## Numbers (software GL counts, not speed)
+Scene counts on the ipad preset (`&device=ipad`, canned evening stage, 12 of every stock kind on the heaps), from the page's own triangle count and a walk of the scene for visible renderable objects (an upper bound of draw calls in the scene pass, not the renderer's own count, which the page's post pass hides):
+| page | triangles | visible renderable objects | of which the physical layer |
+|---|---|---|---|
+| ipad, `&physical=0` | 68,701 | 239 | 0 |
+| ipad, physical, heaps full | 71,037 | 252 | 13 |
+| ipad, the opening (dock half built, floats, tools) | 75,129 | 249 | 17 |
+| AR, physical, heaps full | 55,695 | 199 | 13 |
+So the layer adds about 2,300 to 6,400 triangles and 13 to 17 objects (heaps: 4 instanced meshes, structure: 1, string: 1, loads: 1, floats: 1, beam and ghost: 2, markers: 2, tools: about 4 boxes, dust and glow: 2 point sets, lantern: 2). Crates are still the existing groups (about 10 meshes each). The default page is unchanged (88,790 triangles).
+
+## Pictures (software GL, 2400 wide; not a device). All were viewed after rendering.
+- shots/phys-0-arrival.png: arriving by boat. The rowing boat is at the beach landing in drive mode; a floating plank sits in the glowing ring; the half-built dock with a robot stalled at its end is top right. Flaws: the robot at the dock is small and hard to read at this distance; the marker is a flat yellow ring (large, not a glow); a second old dinghy lies on the beach (an existing prop); two black blobs are the old soft hint rings (known flaw); the dock reads as the old wrecked jetty with some planks fitted, not as new work.
+- shots/phys-0b-ferrying.png: one plank loaded (1 of 4 in the boat), a second plank floating near, the next marker ring top. Flaws: the loading is by driving over (no hand animation); the loaded plank is not drawn in the boat; HUD shows "Dock: jetty 12 m" because the dock is the nearest landing.
+- shots/phys-1.png: the first delivery at the yard. A crate stands at the yard slot and a second crate (crate number 1) is mid-carry, lifted off the grass. Flaws: the tender is out of frame; no robot is in the picture (no robot is started yet on that beat, so you carry it); the grass has the sky clock's wash.
+- shots/phys-2.png: the stock heaps (planks 14, rope 8, glass 8, metal 8). Flaws: the pieces look pale and flat in the fog; the dark shape top left is the shadow of the metal drums, which is far too large and hard-edged; the four heaps are spread wide because the layout keeps them clear of the robot paths.
+- shots/phys-3.png: a cottage in its foundation stage (stakes and string, foundation stones, readout "Foundation stones, Work 9.5 of 30 person-hours"). Flaws: no robot is in this frame, and a large cream parallelogram floats near the site: it is not part of the physical layer (it stays when the layer is hidden) and I did not find what it is; the camera sits among the island's tall pines.
+- shots/phys-4.png: the site with the glowing ring and the hint "Hold the glowing ring" (stage waiting for a held press). Flaws: it shows the press moment, not the beam carry; the same cream parallelogram is visible. A beam-carry picture was attempted; see the test for the carry itself.
+- shots/phys-5.png: dusk at the yard. The post lamp and the lantern glow, a robot sits in its bay, the stage readout shows the evening. Flaws: the glow disc was too large (reduced afterwards, not re-rendered); robots are parked, not seen returning; the sky clock's colours at 20:18 are still orange, not dusk blue.
+- shots/phys-ipad-hud.png: 834x1062, the clean HUD in the jobs stage: status top left, Ledger, Notebook and Menu top right, the hint above the boat's compass. Flaws: the hint is hidden behind the boat's compass in the version shown here (fixed afterwards: the hint now sits above it and the boat's own note is hidden under the clean HUD; the hud test covers it with the boat on); the page's own boat note was overlapping before the fix.
+
+## Test results (this job, software GL)
+- physical-test.js (pure): 92 of 92. gift-day-test 115 of 115, boat-drive-test 89 of 89, storm-test all passed, camp-test and ultra-test passed, look-test no failures.
+- physical-page-test.js: section 1 and 2 (clean runs, the opening): 29 of 29; section 3 (the rest of the day to the first night, 14 player actions listed by the run): 18 of 18.
+- hud-test.js: 66 of 66 (four sizes, the boat on).
+- gift-day-page-test.js (now run with `&dev=1&physical=0`, the legacy day): 126 of 127 before one check was made to ignore the storm bench panel's hidden buttons (they were counted as 0 px buttons); it then passes.
+- boat-drive-page-test.js and storm-page-test.js (now run with `&physical=0&dev=1` because the boat is there from minute zero under the physical opening, and the legacy HUD ids are used): 143 of 143 and all passed.
+- Known old failures not touched: camp-page-test world 4, repair-page-test jetty tap, world 153 tests in a sparse checkout, light-page-test (not re-run here).
+- The default page: hash 8d962c0c, 88,790 triangles (checked by the physical page test and the HUD test).
 
 ## Owner test steps
 iPad: open `islands_look.html?game=gift&device=ipad`. Check the corners (no test buttons, Menu top right). Tap the boat HUD if it is not already in drive mode, row to the glow, load, row to the beach landing, press Dock, Unload. Watch the robot walk a plank to the dock. When the beam appears, press and hold the glowing end. Press and hold the glowing ring to set the decking. Then do the day as before. Radeon desktop: the same with `&device=radeon&q=high`; look at the heaps and the dust. Use `&physical=0` to compare with the old day. `&dev=1` brings the old buttons back.
@@ -90,3 +128,6 @@ iPad: open `islands_look.html?game=gift&device=ipad`. Check the corners (no test
   5. A short step in the errand walker stopped 2.5 cm short of a leg (a gate that waited for an exact arrival). Fix: arrive within 1 micrometre.
   6. A hold that ends was also read as a tap on the thing under the finger (a card opened). Fix: the tap after a hold is swallowed for 0.45 s.
   7. (HUD) the left stack and the hint overlapped on a phone, and the hint overlapped the boat's Dock button. Fix: left stack sits above the hint row; on a narrow screen the hint is left-aligned and narrower.
+  8. Every instanced piece (heaps, stage pieces, floats) drew BLACK: the colour buffer is sized from `count` and was made after count was set to 0. Found only by looking at the first heap picture; the tests passed. Fix: the buffer is made first. Lesson: a pixel check belongs in the page test (not added; the pictures cover it).
+  9. (HUD) the boat's own note and compass sat on top of the hint once the boat was there from minute zero. Fix: the clean HUD hides the boat's note, the hint sits above the compass, and the HUD test runs with the boat on.
+

@@ -341,6 +341,7 @@ body.dev-touch #gd .gd-btn{min-height:52px;min-width:52px;font-size:17px}
 /* ---- the clean HUD (HUD pass): one owner per corner. top left: the day strip and one status line. top right: ledger, one contextual button, Menu. bottom left: stock and barrel. bottom centre: one short hint. bottom right: the boat's buttons. Everything else is behind Menu. &dev=1 turns this off. ---- */
 body.gd-clean:not(.gd-showdev) #top,body.gd-clean:not(.gd-showdev) #bar,body.gd-clean:not(.gd-showdev) #info,body.gd-clean:not(.gd-showdev) #gpuInfo,body.gd-clean:not(.gd-showdev) #campChip,body.gd-clean:not(.gd-showdev) #rpChip,body.gd-clean:not(.gd-showdev) #rpRow{display:none!important}
 body.gd-clean.gd-showdev #top{z-index:9;top:auto;bottom:110px;left:10px;right:10px}
+body.gd-clean #rpMsg{display:none!important}
 body.gd-clean #rpHud{left:50%;top:auto;bottom:130px;transform:translateX(-50%);align-items:center;max-width:calc(100vw - 20px)}
 body.gd-clean:not(.gd-showdev) #rpRow button:not(#rpTurn){display:none!important}
 body.gd-clean.rp-held #rpRow{display:flex!important}
@@ -353,14 +354,15 @@ body.gd-clean #gd-strip .gd-dots u.cur{background:#2f6fe6}
 body.gd-clean #gd-strip .gd-line2{flex-basis:100%;font-size:12px;opacity:.8;margin:0;white-space:normal}
 body.gd-clean #gd-right{top:10px;right:10px}
 body.gd-clean #gd-right .gd-btn{min-height:52px}
-body.gd-clean #gd-left{bottom:84px;align-items:flex-start}
-body.gd-clean #gd-hint{bottom:28px;width:min(420px,calc(100vw - 24px));justify-content:center;text-align:center;font-size:18px;font-weight:700}
+body.gd-clean #gd-left{bottom:160px;align-items:flex-start}
+body.gd-clean #bd-st{display:none!important}
+body.gd-clean #gd-hint{bottom:100px;width:min(420px,calc(100vw - 24px));justify-content:center;text-align:center;font-size:18px;font-weight:700}
 body.gd-clean #gd-toast{top:96px}
 body.gd-clean #stormBaro{top:84px}
 #gd-menu{position:absolute;right:10px;top:76px;display:none;flex-direction:column;gap:8px;align-items:stretch;min-width:190px;padding:10px}
 body.gd-menuopen #gd-menu{display:flex}
 #gd-plankhint{position:absolute;left:50%;top:92px;transform:translateX(-50%);font-size:15px;font-weight:700;display:none}
-@media (max-width:760px){body.gd-clean #gd-left{bottom:84px}body.gd-clean #gd-strip{top:10px;max-width:calc(100vw - 200px)}body.gd-clean #gd-hint{left:10px;transform:none;width:calc(100vw - 150px);font-size:16px}body.gd-clean #gd-right{top:10px}}
+@media (max-width:760px){body.gd-clean #gd-left{bottom:250px}body.gd-clean #gd-strip{top:10px;max-width:calc(100vw - 200px)}body.gd-clean #gd-hint{left:10px;transform:none;width:calc(100vw - 150px);font-size:16px;bottom:28px}body.gd-clean #gd-right{top:10px}}
 `;
 function h(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; }
 function buildDom() {
@@ -1022,7 +1024,7 @@ function renderUi() {
     ['ledger', 'notes', 'plank', 'cat', 'build', 'sleep'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
   } else {
     /* top left: Day, the stage you are in, six dots, and one line of status */
-    const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : 'Done') + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
+    const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : (stage === 'dock' ? 'The dock' : 'Done')) + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
     /* top right: the ledger, then the one button that fits this moment, then Menu. The rest live in the Menu. */
     const main = stage === 'jobs' ? 'notes' : (stage === 'delivery' || stage === 'yard') ? 'cat' : stage === 'evening' ? 'build' : stage === 'done' ? 'sleep' : null;
     if (mk.ledger) R.appendChild(mk.ledger);

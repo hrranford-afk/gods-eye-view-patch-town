@@ -18,7 +18,7 @@ async function open(qs, o = {}) {
   const p = await c.newPage(); p.setDefaultTimeout(180000);   /* software GL gives about one frame a second: Playwright's stable check needs frames */
   await p.setViewportSize({ width: o.w || 1200, height: o.h || 800 }); const errs = [];
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !NOISE.test(m.text())) errs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : '') + (/game=gift/.test(qs) && !/dev=/.test(qs) ? '&dev=1' : ''));
+  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : '') + (/game=gift/.test(qs) && !/dev=/.test(qs) ? '&dev=1' : '') + (/game=gift/.test(qs) && !/physical=/.test(qs) ? '&physical=0' : ''));
   await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 });
   if (/game=gift/.test(qs)) { await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { }); }
   return { p, errs, c };
@@ -218,7 +218,7 @@ if (!quick && want(7)) {
   /* ================= 7. device presets ================= */
   {
     const t = await open('?ui=0&device=ipad&game=gift&stage=jobs', { touch: true, w: 1024, h: 768 });
-    const r = await t.p.evaluate(() => ({ touch: document.body.classList.contains('dev-touch'), btns: [...document.querySelectorAll('#gd .gd-btn')].map(b => b.getBoundingClientRect().height), q: __li.stats().quality, robots: __li.campstart.rt().robots().length }));
+    const r = await t.p.evaluate(() => ({ touch: document.body.classList.contains('dev-touch'), btns: [...document.querySelectorAll('#gd .gd-btn')].map(b => b.getBoundingClientRect().height).filter(h => h > 0), q: __li.stats().quality, robots: __li.campstart.rt().robots().length }));
     ok(r.touch && r.q === 'low' && r.btns.length >= 2 && r.btns.every(h => h >= 51.5), 'ipad preset: low tier, touch class, every gift button is at least 52 px tall (' + r.btns.map(Math.round).join(',') + ')');
     await G(t.p, 'closeCard'); const sp = await G(t.p, 'spots'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);
     await G(t.p, 'skipTo', 'arrive'); await cam(t.p, sp.crate.x, sp.crate.z, 20, .6, .6);

@@ -230,7 +230,7 @@ function siteOf(id) {
 
 /* ---- the visual kit: every piece of a kind is one InstancedMesh ---- */
 function mat(col, o) { return new T.MeshStandardMaterial(Object.assign({ color: col, roughness: .85, metalness: .02, flatShading: true }, o || {})); }
-function inst(geo, m, n, shadow) { const im = new T.InstancedMesh(geo, m, n); im.frustumCulled = false; im.castShadow = !!shadow; im.receiveShadow = true; im.count = 0; im.setColorAt(0, new T.Color(1, 1, 1)); return im; }
+function inst(geo, m, n, shadow) { const im = new T.InstancedMesh(geo, m, n); im.frustumCulled = false; im.castShadow = !!shadow; im.receiveShadow = true; im.setColorAt(0, new T.Color(1, 1, 1)); im.count = 0; return im; }   /* the colour buffer is sized from count, so it is made before count is set to 0 */
 let _q, _e, _m, _s, _p, _c;   /* scratch objects, made when three.js is there (this file loads before it) */
 function scratch() { _q = new T.Quaternion(); _e = new T.Euler(); _m = new T.Matrix4(); _s = new T.Vector3(); _p = new T.Vector3(); _c = new T.Color(); }
 function setI(im, i, x, y, z, sx, sy, sz, ry, rx, rz, col) { _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); im.setMatrixAt(i, _m); if (col !== undefined) im.setColorAt(i, _c.setHex(col)); }
@@ -245,7 +245,7 @@ function buildKit() {
   const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.BufferAttribute(new Float32Array(8 * 3), 3)); V.stringsGeo = sg; V.strings = new T.LineSegments(sg, new T.LineBasicMaterial({ color: 0xf1e7c8 })); V.strings.frustumCulled = false; sg.setDrawRange(0, 0); V.group.add(V.strings);
   V.beam = new T.Mesh(new T.BoxGeometry(1, .13, .22), mat(0xa88a5c)); V.beam.visible = false; V.beam.castShadow = !lite(); V.group.add(V.beam);
   V.ghost = new T.Mesh(new T.BoxGeometry(1, .13, .22), new T.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: .35, depthTest: false })); V.ghost.visible = false; V.ghost.renderOrder = 17; V.group.add(V.ghost);
-  V.ring = []; for (let i = 0; i < 2; i++) { const m = new T.Mesh(new T.RingGeometry(.85, 1.1, 36), new T.MeshBasicMaterial({ color: i ? 0xbfe7ff : 0xffe9a8, transparent: true, opacity: 0, depthTest: false, side: T.DoubleSide })); m.rotation.x = -Math.PI / 2; m.renderOrder = 21; m.visible = false; V.group.add(m); V.ring.push(m); }
+  V.ring = []; for (let i = 0; i < 2; i++) { const m = new T.Mesh(new T.RingGeometry(.93, 1.05, 40), new T.MeshBasicMaterial({ color: i ? 0xbfe7ff : 0xffd34d, transparent: true, opacity: 0, depthTest: false, side: T.DoubleSide })); m.rotation.x = -Math.PI / 2; m.renderOrder = 21; m.visible = false; V.group.add(m); V.ring.push(m); }
   V.tools = new T.Group(); const tm = mat(0x6b5a44), tm2 = mat(0x8d9291, { metalness: .4 }); [[.5, .2, .3, 0, .1, 0, tm], [.7, .08, .12, .2, .3, .1, tm2], [.12, .5, .12, -.3, .3, .1, tm], [.4, .3, .4, .4, .15, -.3, tm]].forEach(a => { const m = new T.Mesh(new T.BoxGeometry(a[0], a[1], a[2]), a[6]); m.position.set(a[3], a[4], a[5]); m.rotation.y = a[3] * 3; V.tools.add(m); }); V.tools.visible = false; V.group.add(V.tools);
   V.lantern = new T.Group(); { const lm = new T.Mesh(new T.BoxGeometry(.22, .3, .22), new T.MeshBasicMaterial({ color: 0x4a4030 })); V.lantern.add(lm); const cp = new T.Mesh(new T.ConeGeometry(.2, .14, 4), mat(0x3a3028)); cp.position.y = .22; cp.rotation.y = .78; V.lantern.add(cp); V.lantern.userData.body = lm; V.group.add(V.lantern); }
   const N = 72, mkPts = (n, add) => { const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aSize', new T.BufferAttribute(new Float32Array(n), 1)); g.setAttribute('aA', new T.BufferAttribute(new Float32Array(n), 1)); g.setAttribute('aCol', new T.BufferAttribute(new Float32Array(n * 3), 3)); g.setDrawRange(0, 0);
@@ -606,7 +606,7 @@ function lightsTick() {
   V.lantern.position.set(L.post.x + .55, gy(L.post.x, L.post.z) + 1.7, L.post.z); V.lantern.userData.body.material.color.setHex(ph().lantern ? 0xffd890 : 0x4a4030);
   const gl = V.glow.geometry, pos = gl.attributes.position.array, sz = gl.attributes.aSize.array, al = gl.attributes.aA.array, co = gl.attributes.aCol.array; let n = 0; const fl = .85 + .15 * Math.sin(P.t * 7) * Math.sin(P.t * 3.1);
   const spot = (x, y, z, size, a, c) => { pos[n * 3] = x; pos[n * 3 + 1] = y; pos[n * 3 + 2] = z; sz[n] = size; al[n] = a; co[n * 3] = c[0]; co[n * 3 + 1] = c[1]; co[n * 3 + 2] = c[2]; n++; };
-  if (on) { spot(L.post.x, gy(L.post.x, L.post.z) + 1.9, L.post.z, 2.2, .55 * fl, [1, .78, .4]); if (ph().lantern) spot(L.post.x + .55, gy(L.post.x, L.post.z) + 1.7, L.post.z, 3.6, .75 * fl, [1, .72, .32]);
+  if (on) { spot(L.post.x, gy(L.post.x, L.post.z) + 1.9, L.post.z, 1.3, .5 * fl, [1, .78, .4]); if (ph().lantern) spot(L.post.x + .55, gy(L.post.x, L.post.z) + 1.7, L.post.z, 2.0, .7 * fl, [1, .72, .32]);
     const b = ph().b; if (b) { const sp = siteOf(b.id); if (sp) spot(sp.mark.x + 1, gy(sp.mark.x, sp.mark.z) + 1.3, sp.mark.z, 2.2, .5 * fl, [1, .8, .45]); } if (L.dock && A.S().dockDone) spot(L.dock.tip.x, gy(L.dock.tip.x, L.dock.tip.z) + 1.3, L.dock.tip.z, 2, .5 * fl, [1, .8, .45]); }
   gl.setDrawRange(0, n); gl.attributes.position.needsUpdate = gl.attributes.aSize.needsUpdate = gl.attributes.aA.needsUpdate = gl.attributes.aCol.needsUpdate = true;
 }

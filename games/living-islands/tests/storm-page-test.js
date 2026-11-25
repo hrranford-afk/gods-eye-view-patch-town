@@ -14,7 +14,7 @@ const NOISE = /GL Driver|GPU stall|ReadPixels/;
 async function open(qs, o = {}) {
   const p = await ctx.newPage(); p.setDefaultTimeout(240000); await p.setViewportSize({ width: o.w || 1100, height: o.h || 700 }); const errs = [];
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !NOISE.test(m.text())) errs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : ''));
+  await p.goto('file://' + ROOT + '/islands_look.html' + qs + (/game=gift/.test(qs) && !/glide=/.test(qs) ? '&glide=0' : '') + (/game=gift/.test(qs) && !/physical=/.test(qs) ? '&physical=0&dev=1' : ''));
   await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 });
   if (/game=gift/.test(qs)) { await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { }); if (!/storm=0/.test(qs)) await p.waitForFunction(() => window.__storm, null, { timeout: 60000 }); }
   return { p, errs };

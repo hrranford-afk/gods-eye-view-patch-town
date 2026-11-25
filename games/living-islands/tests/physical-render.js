@@ -22,9 +22,8 @@ if (only.includes('0') || only.includes('0b')) {
   if (only.includes('0b')) { const f = await p.evaluate(() => __gift.phys().floats().filter(f => !f.gone)[0]); await p.evaluate(([x, z]) => { __boat.teleport(x - 3, z, 0, 'drive'); __gift.phys().advance(.3); __boat.teleport(x, z, 0.3, 'drive'); __gift.phys().advance(.6); }, [f.x, f.z]); await view(p, f.x, f.z, 22, .8, .5); await shot(p, '0b-ferrying'); }
   console.log('errors', errs.length); await p.close();
 }
-if (only.includes('1') || only.includes('2') || only.includes('hud')) {
-  const { p, errs } = await open('?game=gift&q=high&device=desktop&stage=jobs');
-  await p.evaluate(() => { __gift.fitPlank && __gift.fitPlank(); }); await p.waitForFunction(() => __gift.state().plank, null, { timeout: 60000 }).catch(() => { });
+if (only.includes('1') || only.includes('2')) {
+  const { p, errs } = await open('?game=gift&q=high&device=desktop&stage=delivery');
   await G(p, 'speedUp', 40); await p.waitForFunction(() => __gift.crates().length >= 1, null, { timeout: 400000 }); await G(p, 'speedUp', 1); await p.waitForFunction(() => __gift.dlv() === 'drop', null, { timeout: 200000 }).catch(() => { });
   if (only.includes('1')) { await p.evaluate(() => __gift.phys().startCarry(1, true)); await adv(p, 9); const sp = await p.evaluate(() => __gift.spots()); await view(p, sp.tender.drop.x - 4, sp.tender.drop.z, 26, .75, .5); await shot(p, '1'); }
   if (only.includes('2')) { for (const k of ['planks', 'rope', 'glass', 'metal']) await G(p, 'addStock', k, k === 'planks' ? 14 : 8); await adv(p, 6); const L = await stand(p); const c = L.stores.reduce((a, s) => ({ x: a.x + s.x / 4, z: a.z + s.z / 4 }), { x: 0, z: 0 }); await view(p, c.x, c.z, 15, .8, .4); await shot(p, '2'); }
@@ -34,10 +33,10 @@ if (only.includes('3') || only.includes('4')) {
   const { p, errs } = await open('?game=gift&q=high&device=desktop&stage=evening');
   await p.evaluate(() => { const s = __gift.state(); }); for (const [k, n] of [['planks', 12], ['metal', 4], ['rope', 2], ['glass', 2]]) await G(p, 'addStock', k, n);
   await p.evaluate(() => { __gift.doBuild('cottage'); }); await p.locator('#gd button', { hasText: 'Build it' }).first().click({ force: true }); await G(p, 'closeCard'); await adv(p, 3);
-  await p.evaluate(() => { __gift.phys().startAct('site', true); __gift.phys().advance(3); });
-  for (let i = 0; i < 12; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.ph.b && st.ph.b.stage >= 2 || st.beam) break; await adv(p, 20); }
+  const needHold = () => p.evaluate(() => { const P = __gift.phys(), x = P.state(), b = x.ph.b; if (!b) return null; const pl = P.planFor(b.id), a = b.stage - 1; return b.stage === 0 ? 'stake' : (a >= 0 && a < 4 && b.placed[a] >= pl.need[a] && b.hand.length === 0 && a !== 1) ? 'hold' : null; });
+  for (let i = 0; i < 60; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam) break; if (await needHold()) { await p.evaluate(() => { __gift.phys().startAct('site', true); __gift.phys().advance(3); }); continue; } await adv(p, 10); }
   const sp = await p.evaluate(() => { const b = __gift.state(); return __gift.spots().build.cottage; });
-  if (only.includes('3')) { for (let i = 0; i < 6; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam || (st.err && st.err.some(e => e.kind) && st.ph.b.placed[0] > 0)) break; await adv(p, 8); } await view(p, sp.x, sp.z, 24, .8, .6); await shot(p, '3'); }
+  if (only.includes('3')) { await view(p, sp.x, sp.z, 24, .8, .6); await shot(p, '3'); }
   if (only.includes('4')) { for (let i = 0; i < 40; i++) { const st = await p.evaluate(() => __gift.phys().state()); if (st.beam && st.beam.robotAt) break; await adv(p, 10); } await p.evaluate(() => __gift.phys().hold('pbeamA')); await adv(p, 6); const bm = await p.evaluate(() => __gift.phys().state().beam); const st = await p.evaluate(() => __gift.phys().state()); await view(p, st.marker ? st.marker.x : sp.x, st.marker ? st.marker.z : sp.z, 20, .8, .5); await shot(p, '4'); await p.evaluate(() => __gift.phys().hold(null)); }
   console.log('errors', errs.length); await p.close();
 }

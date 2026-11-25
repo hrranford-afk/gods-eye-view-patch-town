@@ -30,7 +30,7 @@ const SIZES = [['ipad portrait', 834, 1062, '&device=ipad'], ['ipad landscape', 
 for (const [name, w, h, dev] of SIZES) {
   if (only && String(w) !== only) continue;
   for (const st of ['arrive', 'evening']) {
-    const { p, errs } = await open('?game=gift&glide=0&stage=' + st + dev, w, h);
+    const { p, errs } = await open('?game=gift&glide=0&boat=1&stage=' + st + dev, w, h);
     const bs = await boxes(p); const ov = overlaps(bs);
     ok(ov.length === 0, name + ' ' + w + 'x' + h + ' (' + st + '): no two visible controls overlap' + (ov.length ? ': ' + ov.slice(0, 4).join(' | ') : ''));
     const ctl = bs.filter(b => b.ctl && b.kids === 0), top = bs.filter(b => b.ctl); ok(top.length <= 8, name + ' (' + st + '): ' + top.length + ' visible buttons and selects (' + top.map(b => b.txt || b.id).join(', ') + ')');
