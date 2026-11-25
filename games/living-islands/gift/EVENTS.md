@@ -5,7 +5,7 @@ Files: `events.json` (the deck), `test_events.py` (schema tests, tone tests, a f
 Run: `python3 gift/test_events.py` (tests, then a short simulation report) or `python3 gift/test_events.py --report`.
 
 ## What is in the deck
-184 events: 5 prelude scenes (act 0, scripted, never drawn) and 179 drawn events (act 1: 52, act 2: 47, act 3: 45, act 4: 35). 104 are repeatable, 27 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 15 are about the great-uncle (papers and objects only). Mood split of the drawn events: 49 percent good, 34 percent mid, 18 percent mild trouble (the target was about a half, a third and a sixth).
+195 events: 5 prelude scenes (act 0, scripted, never drawn) and 190 drawn events (act 1: 54, act 2: 51, act 3: 48, act 4: 37). 104 are repeatable, 28 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 30 are about the great-uncle and the office (papers, objects, a coat, a telephone, a filing cabinet: never a person). Mood split of the drawn events: 46 percent good, 37 percent mid, 17 percent mild trouble (the target was about a half, a third and a sixth).
 
 ## File shape
 ```
@@ -20,7 +20,7 @@ Run: `python3 gift/test_events.py` (tests, then a short simulation report) or `p
 | `act` | 0 prelude, 1 to 4 (a year each: days 1-360, 361-720, 721-1080, 1081-1440) |
 | `season` | list of `spring summer autumn winter`, or `["any"]`. Calendar: 360-day year, game day 1 is 1 May, spring is days 1-30 and 301-360, summer 31-120, autumn 121-210, winter 211-300 |
 | `kind` | storm, find, stranger, neighbour, season, wildlife, robot, boat, letter, bottle, weather, clue, delivery, guest, uncle, build |
-| `voice` | who speaks: `narration`, `helper` (letters and the unread envelopes), `solicitor` (the mainland office), `bottle` |
+| `voice` | who speaks: `narration`, `helper` (letters L1 to L12 and the unread envelopes: plain, warm, never explains), `office` (the mainland business New Life Inheritance: formal, dull, a little suspicious, always incomplete, says what it is "not permitted to say"), `bottle` |
 | `trigger` | see below |
 | `weight` | relative chance among eligible events (1 is normal; strangers 0.25) |
 | `repeat`, `cooldown_days` | `once` or `repeatable`; a repeatable event needs a cooldown |
@@ -51,15 +51,18 @@ Home places are always reachable. The Hoard needs a boat, or `spring_low` on day
 
 ## The simulation (in `test_events.py`)
 A seeded stand-in player with an attitude style walks 1,440 days, with a spring and neap tide model fitted to the Level 1 table (days 1 to 14) and a season weather table. It is a guess at a player, not a player. Over 40 seeded runs:
-- about 700 events per run (a mean of one every 2 days; most are small ambient moments and repeats);
-- events per season: 47 to 62 in year one, 40 to 50 in year two, 32 to 40 in years three and four (summer of year three is the thinnest);
-- 84 to 87 events fire more than once in a run; the most repeated are the robot and shore routines (a tin sorter 27 times, shore finds 23, hulk salvage 19);
-- dead stretches (10 or more days with nothing): 2 per run on average, the longest 17 days, none in the first 40 days, most in years three and four. Four runs of 40 had none;
+- about 710 events per run (690 to 731; a mean of one every 2 days; most are small ambient moments and repeats);
+- events per season (mean of 40 runs): 47 to 63 in year one, 42 to 51 in year two, 32 to 41 in year three, 37 to 42 in year four (summer of year three is the thinnest);
+- about 85 events fire more than once in a run; the most repeated are the robot and shore routines (a tin sorter about 25 times, shore finds 24, hulk salvage 20);
+- dead stretches (10 or more days with nothing): 1.7 per run on average, the longest 18 days, none before day 100 in any of 40 runs, and 10 of 40 runs had none. Over all 40 runs: 5 in year one, 11 in year two, 31 in year three, 22 in year four;
 - every drawn event fires in at least one of 40 runs.
 Flaws: the sim player is crude (flags and builds follow fixed days, the stock is a random walk), weather by day not by hour, and the draw rate is set by hand. Treat the numbers as a smoke test for dead stretches and repeats, not a forecast.
 
 ## Rights
 Beats are patterns only (see `research/GIFT_STORY_SOURCES.md`). The `source` field names the beat. The six town bottles are quoted unedited and the test compares them with a copy of the six strings. No quoted line comes from a book. Letters L1 to L12 are the words of `research/GIFT_LETTERS.md`. Prelude and uncle text is new (owner idea, 25 Nov).
+
+## The office and the helper (voice rule)
+Two hands, one source. The office (New Life Inheritance) writes dull, formal, third person ("this office"), hedges, and says the one thing it keeps saying: it is not permitted to say. The helper's letters L1 to L12 are plain, short, second person and grow a little warmer; they never explain and never ask. The tests keep them apart: the helper never says office, uncle or inheritance; the office never speaks of the old machines. "New Life Inheritance" is an invented name: `registries.human_check_names` flags it for a human to check it is not a real company before any public use. Clue rule: hints only, never proof; clues may contradict each other.
 
 ## Taste items in the deck
 The letter L4 now triggers at the first winter (its words speak of winter), not at the first change of season. The L9 letter is the Great Wash of year three; the storm layer's day-3 "letter nine" text should be renamed or reused for L3. See `research/GIFT_WEEK_ONE_AND_SPINE.md`.

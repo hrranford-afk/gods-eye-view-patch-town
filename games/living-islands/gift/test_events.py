@@ -76,8 +76,11 @@ ALLOWED_CAPS = {"I", "Hoard"}
 
 def words(s): return re.findall(r"[A-Za-z']+", s)
 
+COMPANY = "New Life Inheritance"     # an invented name: a human must check it is not a real business (see registries.human_check_names)
+
 def odd_capitals(text):
     """Capital words that are not at the start of a sentence (names of people or places)."""
+    text = text.replace(COMPANY, "the office")
     out = []
     for m in re.finditer(r"(?<![.!?:\"‘“] )(?<!^)\b([A-Z][a-z]+)\b", text):
         w = m.group(1)
@@ -332,7 +335,10 @@ class Content(unittest.TestCase):
                 self.assertIsNone(re.search(r"\b(%s)\b" % FACE, blob, re.I), e["id"] + " robot with a face or voice word")
             # the helper never speaks of the uncle or the office, the office never of the helper
             if e["voice"] == "helper": self.assertIsNone(re.search(r"\b(uncle|solicitor|office|estate|inherit|inheritance)\b", blob, re.I), e["id"])
-            if e["voice"] == "solicitor": self.assertIsNone(re.search(r"\b(stamp|mark|crate|robot|carrier)\b", blob, re.I) if e["kind"] != "uncle" else None)
+            if e["voice"] == "office": self.assertIsNone(re.search(r"\b(robot|robots|carrier|carriers|helper|machine)\b", blob, re.I), e["id"] + " the office never speaks of the old machines")
+            if e["voice"] == "bottle": self.assertIsNone(re.search(r"\b(office|uncle)\b", blob, re.I), e["id"])
+            # hints only, never proof
+            if e["kind"] in ("clue", "uncle"): self.assertIsNone(re.search(r"\b(proof|proves|proved|proven|confirms|confirmed|certain|undeniable)\b", blob, re.I), e["id"] + " proves something")
 
     def test_no_ai_in_act_one(self):
         for e in EVENTS:
@@ -359,11 +365,26 @@ class Content(unittest.TestCase):
         for e in pre:
             self.assertGreaterEqual(len(e["choices"]), 2); self.assertTrue(e["force"])
         self.assertEqual(len(pre[0]["choices"]), 3)
-        office = BY_ID["p0_office"]; self.assertEqual(office["voice"], "solicitor")
+        office = BY_ID["p0_office"]; self.assertEqual(office["voice"], "office"); self.assertEqual(BY_ID["p0_flat"]["voice"], "office")
+        self.assertIn(COMPANY, BY_ID["p0_flat"]["text"]); self.assertIn("not permitted to say", office["text"])
+        self.assertIn(COMPANY, REG["human_check_names"])
+        for e in EVENTS:
+            if "Inheritance" in e["text"]: self.assertIn(COMPANY, e["text"])
+        late = [e for e in EVENTS if e["voice"] == "office" and "not permitted to say" in e["text"] and e["act"] >= 2]
+        self.assertGreaterEqual(len(late), 2, "the office rule 'not permitted to say' must be seen again later")
+        coupled = {e["id"] for e in EVENTS if e["kind"] in ("uncle", "clue")}
+        for must in ("a1_letter_coordinates", "a2_postmarks", "a2_office_signers", "a2_lamp_phone", "a2_file_cabinet", "a3_cabinet_neighbours", "a3_cabinet_dates", "a3_office_cannot_say", "a1_robot_chassis_stamp"): self.assertIn(must, coupled)
         uncle = [e for e in EVENTS if e["kind"] == "uncle" and e["act"] >= 1]
-        self.assertGreaterEqual(len(uncle), 8)
+        self.assertGreaterEqual(len(uncle), 20)
         # the uncle is only papers and objects: no event shows him
         for e in uncle: self.assertIsNone(re.search(r"\b(his face|he said|he smiled|he walked|he stood)\b", e["text"], re.I))
+
+    def test_helper_voice_vs_office(self):
+        # the office is formal and says "this office" or "we"; the helper's letters are plain, second person, never say "this office"
+        for e in EVENTS:
+            if e["voice"] == "helper": self.assertIsNone(re.search(r"\b(this office|we are|we cannot|not permitted)\b", e["text"], re.I), e["id"])
+        helper_len = [len(e["text"]) for e in EVENTS if e["kind"] == "letter"]
+        self.assertLessEqual(max(helper_len), 240)    # short, plain
 
     def test_helper_not_explained(self):
         for e in EVENTS:
