@@ -45,3 +45,21 @@ FIXED rules kept in every step: hopeful; mild trouble only; robots are relics (n
 | 4.5 | CHANGED | `a4_kind_spare_mould`: one of the last consignments holds a reusable mould for a replacement part, packed for a day nobody would come (clue 51) | the end of the gift is planned for; practical, and a spare of what L6 said was no longer made |
 | 4.6 | KEEP | none of these has a letter, a speaker or a face | the critic asked for kindness the world shows |
 | 4.7 | NEW TEST | `test_world_kindnesses`; the stand-in player in the simulation now returns a parcel on day 12 (`parcel_returned`) | tests that all five exist, and keeps the new event reachable |
+
+## Step 5. Ten clues from the critic, and the unstamped plank
+Hint-only. None settles authorship. The plain mark stays rare (three of the eleven). Clue numbers are the spine clue map rows 52 to 62.
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 5.1 | CHANGED | `a2_clue_boathouse_lock` (52): the brass key fits the boat shed lock, whose keyhole is worn smooth | the key is older than the gift, or the lock is |
+| 5.2 | CHANGED | `a2_clue_pile_marks` (53): oldest pile has the mark, newest timber the woods mill brand | the island started on the helper's stock and now makes its own |
+| 5.3 | CHANGED | `a2_clue_shed_bays` (54): every bay machine numbered except one in crooked pencil | one place was made by hand |
+| 5.4 | CHANGED | `a3_clue_cave_crate` (55): the mark inside the lid of an old crate in the tidal cave | only seen by opening, not by looking |
+| 5.5 | CHANGED | `a2_clue_cradle_waterline` (56): tender fits the old slipway cradle but floats a hand higher than its marks | the cradle was built for something heavier |
+| 5.6 | CHANGED | `a3_clue_sighting_notch` (57): a headland notch points at empty water until low tide uncovers an old landing | a place that was used before the jetty |
+| 5.7 | CHANGED | `a3_clue_thumb_scoops` (58): workshop drawers have thumb scoops the collector's claw cannot work | made for hands |
+| 5.8 | CHANGED | `a2_clue_lens_carpet` (59): the spare lens is packed in the loom town's diamond-weave carpet, a teal thread through it | the mainland and the island share a supplier; links to the mainland carpet of step 10 |
+| 5.9 | CHANGED | `a2_clue_cove_rings` (60): two sets of mooring rings at the far cove, one stop on the chart | a second stop that is not on the chart |
+| 5.10 | CHANGED | `a3_clue_stone_box` (61): a stamped box under the hut with stones packed to the weight of a parcel | someone weighed what a parcel is |
+| 5.11 | CHANGED | `a2_clue_unstamped_plank` (62): an unstamped replacement plank, rough cuts, wrong nails | someone else's hand: the island has had other visitors |
+| 5.12 | KEEP | the rule that clues hint and never prove, and may contradict each other (the tender fits the cradle, but the waterline is wrong) | the owner's rule; the test blocks the proof words |
+| 5.13 | KEEP | the plain mark rare: only clues 53, 55 and 61 carry it, none sets a `stamp_` flag | the critic: not on every object; the three-stamp letter L7 trigger is unchanged |
