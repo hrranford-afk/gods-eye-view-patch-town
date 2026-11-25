@@ -73,21 +73,23 @@ if (want(2) || want(3) || want(4) || want(5) || want(6)) {
     /* the heap a second time, till it is empty */
     for (let i = 0; i < 4; i++) { const cur = (await S(p, 'heaps')).find(q => q.id === h.id); if (cur.rem <= 0) break; await S(p, 'pick', h.id); await S(p, 'pickDone'); await p.waitForTimeout(1200); }
     const h2 = (await S(p, 'heaps')).find(q => q.id === h.id); ok(h2.rem === 0, 'a heap can be gathered to nothing'); const tg2 = await S(p, 'targets'); ok(!tg2.some(t => t.id === 'heap' + h.id), 'an empty heap is no longer a target');
-    const sv2 = await S(p, 'save'); saved = { taken: sv2.taken, id: h.id, rem: (await S(p, 'heaps')).map(q => q.rem), stock: await p.evaluate(() => __gift.state().stock) }; await p.evaluate(() => __gift.save());
+    await p.evaluate(() => __gift.save());
     /* the stock pill reads the new stock */
     const pill = await p.evaluate(() => (document.getElementById('gd-stock-btn') || {}).textContent || ''); ok(/Planks \d+/.test(pill), 'the stock pill shows the stock by kind: ' + pill);
   }
   /* ================= 4. the robots gather the haul ================= */
   if (want(4)) {
-    await p.evaluate(() => { __gift.skipTo('yard'); }); await p.waitForTimeout(1500); await p.evaluate(() => { __gift.closeCard(); });
+    await p.evaluate(() => { __gift.skipTo('evening'); }); await p.waitForTimeout(1500); await p.evaluate(() => { __gift.closeCard(); });
     /* skipTo replaced the state: the storm part is cleared; run the storm again fast */
     let s2 = await S(p, 'state'); ok(s2.phase === 'none' || s2.phase === 'run' || s2.phase === 'haul', 'skipping to another stage resets the storm state cleanly (' + s2.phase + ')');
     await S(p, 'start', { build: 8 }); await S(p, 'setTs', 8 + 30 + 20); await S(p, 'finish'); await wait(p, () => __storm.state().phase === 'haul'); await p.waitForTimeout(1500);
-    const g0 = await p.evaluate(() => ({ st: __gift.state(), rb: __gift.state().robots })); ok(g0.rb[0] === true, 'a started robot exists (the yard stage)');
+    const g0 = await p.evaluate(() => ({ st: __gift.state(), rb: __gift.state().robots })); ok(g0.rb[0] === true, 'a started robot exists (the evening stage)');
     await p.evaluate(() => { __gift.giveOrder(0, 'planks'); __gift.closeCard(); }); await p.waitForTimeout(3500);
     const sites = await S(p, 'sites'); ok(sites.length >= 1, 'with an order for planks the robots get ' + sites.length + ' haul site(s) beside the ordinary ones');
     const before = await p.evaluate(() => ({ stock: __gift.state().stock.planks, heaps: __storm.heaps().filter(h => h.stock === 'planks').reduce((s, h) => s + h.rem, 0) }));
-    await p.evaluate(() => { const rt = __li.campstart.rt(); rt.advance(600); }); await p.waitForTimeout(4000);
+    await p.evaluate(() => { __li.setTide(-.2); }); await p.waitForTimeout(1500);   /* the heaps lie above the wrack: the robots go out only when they are dry (tide + 0.3 m below them) */
+    for (let i = 0; i < 70; i++) { await p.evaluate(() => { __li.campstart.rt().advance(4); }); await p.waitForTimeout(900); const c = await p.evaluate(() => __gift.state().stock.planks); if (c > before.stock + 1) break; }
+    await p.waitForTimeout(1500);
     const after = await p.evaluate(() => ({ stock: __gift.state().stock.planks, heaps: __storm.heaps().filter(h => h.stock === 'planks').reduce((s, h) => s + h.rem, 0), trips: __li.campstart.rt().robots()[0].delivered }));
     ok(after.stock > before.stock && after.heaps < before.heaps, 'the robot gathers from the haul: stock planks ' + before.stock + ' > ' + after.stock + ', heaps ' + before.heaps + ' > ' + after.heaps + ' units (' + after.trips + ' trips)');
     ok(before.heaps - after.heaps === after.stock - before.stock || Math.abs((before.heaps - after.heaps) - (after.stock - before.stock)) <= 2, 'what leaves the heaps arrives in the stock (counted, not tracked)');
@@ -96,8 +98,8 @@ if (want(2) || want(3) || want(4) || want(5) || want(6)) {
   if (want(5)) {
     const e = await p.evaluate(() => { const st = __storm.save(); return { end: st.endGh, gh: __gift.state().gh, l9: st.l9 }; }); ok(e.l9 === 0, 'no letter yet on the day of the storm');
     await p.evaluate(() => { __gift.setHour(__storm.save().endGh + 24); }); await wait(p, () => __storm.save().l9 === 1, null, 30000); await p.waitForTimeout(1500);
-    const cr = await p.evaluate(() => __gift.crates()); ok(cr.length >= 1, 'a crate came in the next morning (' + cr.length + ' crates)');
-    const n = await p.evaluate(() => __gift.crates().length); await p.evaluate(n => __gift.act('crate' + n), n); await p.waitForTimeout(800);
+    const cr = await p.evaluate(() => __gift.crates()); const l9c = cr.find(c => c.l9); ok(!!l9c, 'a letter crate came in the next morning (' + cr.length + ' crates)');
+    await p.evaluate(n => __gift.act('crate' + n), l9c.n); await p.waitForTimeout(800);
     const card = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; }); ok(/Letter nine/.test(card) && /do not have to keep it all/.test(card), 'its letter is a calm paper panel: ' + card.slice(0, 70));
     await p.evaluate(() => { const b = [...document.querySelectorAll('#gd-layer button')].find(x => /Keep it/.test(x.textContent)); if (b) b.click(); }); await p.waitForTimeout(600); ok((await S(p, 'save')).l9 === 2, 'keeping it is saved');
   }
@@ -109,6 +111,7 @@ if (want(2) || want(3) || want(4) || want(5) || want(6)) {
     await p.evaluate(() => { const b = [...document.querySelectorAll('#gd-layer button')].find(x => /Strip some boards/.test(x.textContent)); if (b) b.click(); }); await p.waitForTimeout(800);
     const st1 = await p.evaluate(() => __gift.state().stock.planks), sv = await S(p, 'save'); ok(st1 === Math.min(60, st0 + 3) && sv.hulk === 27, 'stripping boards adds planks and the hulk keeps its state: ' + sv.hulk + ' of 30 bundles left');
   }
+  if (want(3)) { await p.evaluate(() => __gift.save()); const sv3 = await S(p, 'save'); saved = { taken: sv3.taken, phase: sv3.phase, endGh: sv3.endGh, rem: (await S(p, 'heaps')).map(q => q.rem), gh: await p.evaluate(() => __gift.state().gh) }; }
   await p.close();
 }
 /* ================= 3b. reload: the same heaps remain ================= */
@@ -119,7 +122,7 @@ if (want(3) && saved) {
   await p.close();
   const r = await open('?ui=0&q=high&game=gift&giftsave=1'); const st = await S(r.p, 'save'); await r.p.waitForTimeout(1500);
   ok(st.phase === 'haul' || st.phase === 'none', 'a reload resumes the storm state (' + st.phase + ')');
-  if (st.phase === 'haul') { const hs = await S(r.p, 'heaps'); ok(JSON.stringify(Object.keys(st.taken)) === JSON.stringify(Object.keys(saved.taken)) || true, 'taken counts survive the reload'); const h = hs.find(q => q.id === saved.id); ok(h && h.rem === 0, 'the heap gathered before the reload is still gone, the others remain (' + hs.filter(q => q.rem > 0).length + ' left)'); const sd = await r.p.evaluate(() => __storm.state()); ok(sd.group && sd.instances > 0 && sd.hulk, 'the haul and the hulk are drawn again after the reload'); }
+  if (st.phase === 'haul') { const hs = await S(r.p, 'heaps'); ok(JSON.stringify(st.taken) === JSON.stringify(saved.taken) && st.endGh === saved.endGh, 'taken counts and the time the water went survive the reload: ' + JSON.stringify(st.taken)); ok(hs.length === saved.rem.length && hs.every((h, i) => h.rem <= saved.rem[i] + 0) && hs.some(h => h.rem > 0) === saved.rem.some(v => v > 0), 'the same heaps remain after the reload (' + hs.filter(q => q.rem > 0).length + ' left, saved ' + saved.rem.filter(v => v > 0).length + '); a heap only shrinks with the clock'); const sd = await r.p.evaluate(() => __storm.state()); ok(sd.group && sd.instances > 0 && sd.hulk, 'the haul and the hulk are drawn again after the reload'); }
   ok(r.errs.length === 0, 'reload: 0 console errors' + (r.errs.length ? ' ' + r.errs[0] : '')); await r.p.evaluate(() => __gift.wipe()); await r.p.close();
 }
 /* ================= 7. device presets ================= */

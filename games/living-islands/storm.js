@@ -572,7 +572,7 @@ function capNow() { return tierCap(tierNow(), S.C.ar, deviceNow()); }
 function countNow() { return S.bench ? effectiveCount(S.request, tierNow(), S.C.ar, deviceNow()) : (S.opts.debris ? effectiveCount(S.opts.debris, tierNow(), S.C.ar, deviceNow()) : defaultCount(tierNow(), S.C.ar, deviceNow())); }
 
 function disposeBatches() {
-  for (const b of S.batches) for (const m of b.meshes) { if (m.parent) m.parent.remove(m); m.geometry.dispose(); }
+  for (const b of S.batches) { const m = b.mesh; if (m.parent) m.parent.remove(m); m.geometry.dispose(); }
   S.batches = [];
 }
 function geoFromBuild(THREE, g) {
@@ -849,10 +849,10 @@ function sweepStart() {
 function sweepFrame(iv, now) {
   const W = S.sweep; if (!W) return; const el = (now - W.t0) / 1000;
   if (el > W.warm && iv > 0) { W.iv.push(iv); W.all.push(iv); }
-  if (W.iv.length >= KNEE.run && kneeHit(W.all)) { const st = stepStats(W.iv); W.results.push(Object.assign({ count: W.steps[W.i], calls: S.calls, tris: S.tris }, st)); sweepEnd('the knee: frames over ' + KNEE.limitMs + ' ms five times in a row at ' + W.steps[W.i] + ' pieces'); return; }
+  if (kneeHit(W.all)) { const st = stepStats(W.iv); W.results.push(Object.assign({ count: W.steps[W.i], calls: S.calls, tris: S.tris }, st)); sweepEnd('the knee: frames over ' + KNEE.limitMs + ' ms five times in a row at ' + W.steps[W.i] + ' pieces'); return; }
   if ((now - W.t00) / 1000 > KNEE.hardSec) { sweepEnd('the two-minute limit'); return; }
   if (el >= W.warm + W.sec) {
-    const st = stepStats(W.iv); W.results.push(Object.assign({ count: W.steps[W.i], calls: S.calls, tris: S.tris }, st)); W.i++; W.iv = []; W.all = []; W.t0 = now;
+    const st = stepStats(W.iv); W.results.push(Object.assign({ count: W.steps[W.i], calls: S.calls, tris: S.tris }, st)); W.i++; W.iv = []; W.t0 = now;   /* W.all keeps the measured frames of earlier steps: the knee can span a step change when frames are slow */
     if (W.i >= W.steps.length) { sweepEnd(''); return; } S.shown = W.steps[W.i]; applyCount();
   }
 }
@@ -881,10 +881,14 @@ function attach(a) {
   S.st = sanitize(a.S().storm); S.uSg = { value: new THREE.Vector4(-1, SURGE.travel, 0, 0) }; S.uSg2 = { value: new THREE.Vector4(SURGE_HW, 0, 0, 0) }; S.uDir = { value: new THREE.Vector2(1, 0) }; S.visT = 0;
   S.request = S.opts.debris || 0; buildHud(); panelBuild();
   try { if (S.st.phase === 'run') { S.st.ts = Math.min(S.st.ts, 1); } resumeHaul(); } catch (e) { S.err.push('resume ' + e.message); }
-  if (S.opts.debris !== null && S.st.phase === 'none') { S.bench = true; S.request = S.opts.debris; try { const c = effectiveCount(S.request, tierNow(), S.C.ar, deviceNow()); ensurePlanFor(c); S.shown = c; S.group.visible = true; if (S.hulk) S.hulk.visible = true; applyCount(); } catch (e) { S.err.push('debris ' + e.message); } }
+  setupDebris();
   S.ready = true; return api2;
 }
-function onLoad(stormState) { if (!S.A) return; S.st = sanitize(stormState); S.plan = null; S.planN = 0; S.bench = false; S.pick = null; S.sites = []; S.siteHeap = {}; S.pend = {}; S.baroHist = []; try { resumeHaul(); } catch (e) { S.err.push('resume ' + e.message); } if (S.st.phase === 'none' && S.group) { S.group.visible = false; if (S.hulk) S.hulk.visible = false; } }
+function setupDebris() {   /* &debris=N: a stress scene at once, no storm needed (not saved) */
+  if (S.opts.debris === null || S.st.phase !== 'none') return; S.bench = true; S.request = S.opts.debris;
+  try { const c = effectiveCount(S.request, tierNow(), S.C.ar, deviceNow()); ensurePlanFor(c); S.shown = c; S.group.visible = true; if (S.hulk) S.hulk.visible = true; applyCount(); applyVisibility(true); } catch (e) { S.err.push('debris ' + e.message); }
+}
+function onLoad(stormState) { if (!S.A) return; S.st = sanitize(stormState); S.plan = null; S.planN = 0; S.bench = false; S.pick = null; S.sites = []; S.siteHeap = {}; S.pend = {}; S.baroHist = []; try { resumeHaul(); } catch (e) { S.err.push('resume ' + e.message); } if (S.st.phase === 'none' && S.group) { S.group.visible = false; if (S.hulk) S.hulk.visible = false; } setupDebris(); }
 function restoreCrates() { const st = S.st; if (st && st.l9 >= 1 && S.A) S.A.crateAdd('l9', null); }
 function hintTarget() { if (!S.ready || S.st.phase !== 'haul') return null; const c = S.A.camp(), e = heapsLeft().filter(q => q.rem > 0).sort((a, b) => Math.hypot(a.h.x - c.x, a.h.z - c.z) - Math.hypot(b.h.x - c.x, b.h.z - c.z))[0]; return e ? { x: e.h.x, z: e.h.z, r: 1.8 } : null; }
 function weatherWant() { return S.ready && S.st.phase === 'run' && S.m ? S.m.weather : null; }

@@ -17,7 +17,7 @@ await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 3000
 const shot = async n => { const f = path.join(OUT, 'storm-' + n + '.png'); await p.screenshot({ path: f }); console.log('wrote', f); };
 const view = async (v, wait = 3500) => { await p.evaluate(v => __li.setView(v), v); await p.waitForTimeout(wait); };
 const S = (f, ...a) => p.evaluate(([f, a]) => { const r = __storm[f](...a); return r === undefined ? null : r; }, [f, a]);
-await p.evaluate(() => { __gift.skipTo('yard'); }); await p.waitForTimeout(1500); await p.evaluate(() => __gift.closeCard());
+await p.evaluate(() => { __gift.skipTo('evening'); }); await p.waitForTimeout(1500); await p.evaluate(() => __gift.closeCard());
 const camp = await p.evaluate(() => __li.camp()), dir = await p.evaluate(() => __li.camp && null);
 await S('start', { build: 60 });
 const plan = await S('hulkPlan'), sw = await S('swirlPlan');
