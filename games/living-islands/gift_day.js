@@ -165,7 +165,7 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], jobs: [], stock: emptyStock(), boat: null, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], jobs: [], stock: emptyStock(), boat: null, storm: null, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
@@ -198,6 +198,7 @@ function State(o) {
   s.build = BUILDS.some(b => b.id === o.build) ? o.build : null;
   s.robots = Array.isArray(o.robots) ? o.robots.slice(0, 4).map(bool) : [];
   s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
+  s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
   s.stock = emptyStock(); if (o.stock && typeof o.stock === 'object') for (const k in s.stock) s.stock[k] = Math.round(num(o.stock[k], 0, 0, STOCK_CAP));
   s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered) })) : [];
@@ -370,6 +371,7 @@ function clockTick(dt) {
 }
 function weatherWant() {
   const s = G.s, st = stageOf(s), gh = s.gh;
+  try { const sw = SHP() && SHP().weatherWant(); if (sw) return sw; } catch (e) { /* no storm layer */ }   /* a storm builds over the game: the storm layer names the weather while it runs */
   if (Math.floor(gh / 24) >= 1 && st === 'done') return 'auto';
   if (st === 'arrive') return 'clear';
   if (st === 'jobs') return gh > 8.4 && gh < 10.2 ? 'showers' : 'overcast';
@@ -628,6 +630,7 @@ function loadStump(p, y) {   /* the kit's lighthouse stump (live level) from its
 }
 
 /* ---------------- targets and taps ---------------- */
+const SHP = () => root.LI_STORM && root.LI_STORM.page && G.stormOn ? root.LI_STORM.page : null;   /* the storm and haul layer (storm.js), when it is on the page */
 const BDP = () => root.LI_BOAT_DRIVE && root.LI_BOAT_DRIVE.page;   /* the boat layer, when boat_drive.js is on the page */
 const _v = () => new THREE.Vector3();
 function screenOf(x, y, z) {
@@ -647,6 +650,7 @@ function targets() {
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   bots.forEach(b => { if (b.ready) { const sc = screenOf(b.x, b.y + .9, b.z); if (sc) T.push({ id: 'bot' + b.id, x: sc.x, y: sc.y, r: 60 }); } });
   try { if (BDP() && BDP().targets) BDP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('boat targets ' + e.message); }
+  try { if (SHP()) SHP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('storm targets ' + e.message); }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
   return T;
 }
@@ -706,6 +710,7 @@ function activate(id) {
   if (id === 'wreck') return wreckCard();
   if (id.startsWith('find')) return takeFind(parseInt(id.slice(4), 10));
   if (id.startsWith('crate')) return deliveryCrate(parseInt(id.slice(5), 10));
+  if (id === 'hulk' || /^heap\d+$/.test(id)) { if (SHP()) SHP().activate(id); return; }
   if (id === 'bottle') return readBottle();
   if (/^bot\d+$/.test(id)) return robotCard(parseInt(id.slice(3), 10));   /* 'bottle' also starts with 'bot': test it first */
 }
@@ -820,6 +825,7 @@ function deliveryCrate(n) {
     const c = card('c1', '<h2>Crate number 1</h2><p>' + (cr.opened ? 'Empty now, but for the card.' : 'Inside: three spare track links in oiled paper, and a card with the same small mark as the letter. The card is a catalogue.') + '</p>'); c.appendChild(xbtn());
     const bs = []; if (!cr.opened) bs.push(btn('Take the track links', () => { cr.opened = true; closeCard(); setS({ crate1: true, parts: s.parts + 3, partFrom: s.partFrom || 'crate' }); cr.mesh.userData.lid.position.set(.2, .98, -.32); cr.mesh.userData.lid.rotation.x = -.9; toast('Three track links. The catalogue is open.', 5000); afterChange(); setTimeout(catalogueCard, 500); }, 'pri')); bs.push(btn('Catalogue', catalogueCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
   } else if (cr.letter2) { readLetter2(); }
+  else if (cr.l9) { if (SHP()) SHP().readL9(); }
   else {
     const it = itemById(cr.item); const c = card('cn', '<h2>Crate number ' + n + '</h2><p>' + (it ? it.name + '. ' + it.use : 'A parcel.') + '</p>'); c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
   }
@@ -884,7 +890,9 @@ function holdRobots() {
       if (st && r.state === 'bay' && r.timer > 1e5) r.timer = 0.4;
       G.kind = G.kind || []; if (r.kindLoad) G.kind[i] = r.kindLoad;
       const d0 = G.deliv[i] === undefined ? r.delivered : G.deliv[i];
-      if (r.delivered > d0) { const kd = G.kind[i], k = kd === 'wood' ? 'planks' : kd === 'metal' ? 'metal' : (job === 'rope' ? 'rope' : 'glass'); G.s = addHaul(G.s, k, r.delivered - d0); G.hauls = (G.hauls || 0) + (r.delivered - d0); }
+      if (r.delivered > d0) { const kd = G.kind[i], k = kd === 'wood' ? 'planks' : kd === 'metal' ? 'metal' : (job === 'rope' ? 'rope' : 'glass');
+        for (let q = d0; q < r.delivered; q++) { const tk = SHP() ? SHP().tripStock(i) : null; if (tk) { if (tk.units > 0) addStockUnits(tk.stock, tk.units); } else G.s = addHaul(G.s, k, 1); }   /* a trip from the storm haul adds what its heap held, by the heap's own kind */
+        G.hauls = (G.hauls || 0) + (r.delivered - d0); }
       G.deliv[i] = r.delivered;
     });
     const w = weatherState(); rt.force({ rain: (w === 'storm' || w === 'rain' || w === 'showers') ? true : null });
@@ -968,7 +976,7 @@ function renderUi() {
   if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; R.appendChild(b); }
   if (s.letter2) { const b = btn(s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : 'Build menu', buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; R.appendChild(b); }
   if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; R.appendChild(b); }
-  const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="new">New game (forget the save)</option>';
+  const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); }); R.appendChild(sk);
   const L = G.ui.left; L.innerHTML = '';
   if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
@@ -990,12 +998,14 @@ function applyWorldToState() {
   O.ship.visible = false; O.tender.visible = false; G.dlv = null; G.bottleOn = false; O.bottle.visible = false; G.bottleToast = false; G.nightT = 0;
   if (s.plank) { try { const rp = C.li().repair; if (rp && rp.count().fitted < 1) { const so = rp.sockets().filter(q => !q.filled && q.kind === 'plank'), bo = rp.bodies().filter(b => b.kind === 'plank' && b.state === 'dyn' && !b.lost); if (so.length && bo.length) { rp.teleport(bo[0].id, so[so.length - 1].p.slice()); rp.fit(bo[0].id); rp.step(30); } } } catch (e) { /* later */ } }
   G.weather = ''; clockSet(s.gh); renderUi();
+  try { if (SHP()) { SHP().onLoad(s.storm); SHP().restoreCrates(); } } catch (e) { G.err.push('storm resync ' + e.message); }
   try { const bd = BDP(); if (bd && bd.resync) { bd.resync(); G.boatRev = !!(s.ordered); } } catch (e) { G.err.push('boat resync ' + e.message); }
 }
 function clockSet(gh) { const c = ck(); if (!c) return; if (G.clk0 === undefined) G.clk0 = clk0(); c.setHours(G.clk0 + gh); c.freeze(true); G.clockMode = 'hold'; }
 function skipTo(v) {
   if (!v) return; if (v === 'new') { wipeSave(); G.s = newState(G.s.seed); closeCard(); applyWorldToState(); toast('A new start. The save is forgotten.', 4000); return; }
   closeCard(); let st;
+  if (v === 'storm') { closeCard(); if (SHP()) SHP().start(); return; }
   if (v === 'day2') { st = canned('done', G.s.seed); st.gh = 31.2; st.orders.forEach(o => { o.delivered = true; }); st.delivered = st.orders.map(o => o.item); }
   else st = canned(v, G.s.seed);
   G.s = st; applyWorldToState();
@@ -1010,7 +1020,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt;
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  clockTick(dt); weatherTick(); holdRobots(); chargePost(); plankWatch(); deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); plankWatch(); deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
@@ -1031,6 +1041,7 @@ function tick(dt) {
 function hintTarget() {
   const s = G.s, S = G.spots, st = stageOf(s); if (!S) return null;
   try { const bd = BDP(), t = bd && bd.hintTarget && bd.hintTarget(); if (t && st !== 'arrive' && st !== 'jobs') return t; } catch (e) { /* none */ }
+  try { const t = SHP() && SHP().hintTarget(); if (t && st === 'done') return t; } catch (e) { /* none */ }
   if (st === 'arrive') return { x: S.crate.x, z: S.crate.z, r: 1.7 };
   if (st === 'jobs') { if (!s.dry) return { x: S.hut.x, z: S.hut.z, r: 3 }; if (!s.water) return { x: S.barrel.x, z: S.barrel.z, r: 1.4 }; const f = S.finds.find(q => !q.taken); if (s.finds.length < 2 && f) return { x: f.x, z: f.z, r: 1.3 }; if (!s.plank && S.S.jetty) return { x: S.S.jetty.ox, z: S.S.jetty.oz, r: 3 }; }
   if (st === 'delivery' && G.crates[0]) return { x: G.crates[0].pos.x, z: G.crates[0].pos.z, r: 1.7 };
@@ -1046,6 +1057,21 @@ function attachBoat() {
   K.attach({ C: () => C, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, weatherState, isNight, isAR, dayNo, hhmm, spots: () => G.spots, seals: () => (G.objs.seals || []), root: () => G.ui.root,
     screenOf, focus, focusing: () => !!G.focusT, cardOpen: () => !!G.cardOpen, targets: () => targets(), stockLine, STOCKS: () => STOCKS });
 }
+/* ---------------- the storm and haul layer (storm.js) gets a handle on this page ---------------- */
+function addStockUnits(id, n) { if (!stockById(id) || !(n > 0)) return; const st = Object.assign({}, G.s.stock); st[id] = Math.min(STOCK_CAP, (st[id] || 0) + Math.round(n)); G.s = Object.assign({}, G.s, { stock: st }); renderUi(); }
+function crateAdd(tag, msg) { const n = G.crates.length + 1; addDeliveryCrate(n, true); G.crates[n - 1][tag] = true; if (msg) { toast(msg, 7000); focus(G.crates[n - 1].pos.x, G.crates[n - 1].pos.z, 22); } }
+function stormCtx() {
+  const l = C.li(), U = () => l.ultra;
+  return { THREE, scene: C.scene, camera: C.camera, renderer: C.renderer, cam: C.cam, W: C.W, H: C.H, tableR: () => C.tableR(), tier: () => U().tier(), device: () => U().device(), ar: isAR(), search: location.search, seed: C.seed, li: C.li,
+    autoReset: () => !(U().on() || U().panelVisible()), setView: v => l.setView(v), getCam: () => Object.assign({}, C.cam),
+    info: () => { const g = U().gpu(), r = C.renderer.domElement; return { gpu: g.name || g.raw, gpuKind: g.kind, screen: innerWidth + 'x' + innerHeight, canvas: r.width + 'x' + r.height }; } };
+}
+function attachStorm() {
+  const K = root.LI_STORM; if (!K || !K.attach || G.stormOn) return; if (Q0.get('storm') === '0') return;
+  const ok = K.attach({ C: stormCtx, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, mark, focus, screenOf, root: () => G.ui.root, spots: () => G.spots, camp: () => C.W.camp.fire, tide: () => C.tide(), seed: () => C.seed,
+    cardOpen: () => !!G.cardOpen, addStock: addStockUnits, STOCK_CAP, crateAdd });
+  G.stormOn = !!ok;
+}
 /* ---------------- start ---------------- */
 function start() {
   if (!G.s) { G.s = newState(C.seed); G.crates = []; G.barrel = 0; }
@@ -1057,7 +1083,7 @@ function start() {
   else if (qd && parseInt(qd, 10) >= 2) { G.s = canned('done', seed); G.s.gh = 31.2; G.s.orders.forEach(o => { o.delivered = true; }); G.s.delivered = G.s.orders.map(o => o.item); }
   else if (loaded) G.s = loaded;
   G.s.seed = seed >>> 0; G.s.stage = stageOf(G.s);
-  G.ready = true; attachBoat(); applyWorldToState();
+  G.ready = true; attachBoat(); attachStorm(); applyWorldToState();
   const sp = G.spots, dd = C.W.camp.dir, th = Math.atan2(-dd[0], -dd[1]) + .55; if (!qs && !loaded && Q0.get('glide') === '0') Object.assign(C.cam, { tx: sp.crate.x, tz: sp.crate.z, dist: 30, phi: .5, theta: th });
   else if (!qs && !loaded) { /* BOLD-1 dawn glide: the view starts out over the water and settles on the crate (switch off: &glide=0) */ Object.assign(C.cam, { tx: sp.shore.x + (sp.shore.x - sp.crate.x) * 1.2, tz: sp.shore.z + (sp.shore.z - sp.crate.z) * 1.2, dist: 85, phi: .95, theta: th }); focus(sp.crate.x, sp.crate.z, 30, th, .5); G.focusT.slow = true; } else focus(sp.crate.x, sp.crate.z, 36, th, .55);
   if (G.s.stage === 'night' && !G.s.bottle) startNight();
