@@ -1,0 +1,337 @@
+{
+ "when": "2026-11-25T20:02:03.057Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "heightfield tiles match the height grid (400 random rays, max difference under 2 cm)",
+   "ok": true,
+   "detail": "max 1.61 cm"
+  },
+  {
+   "name": "determinism: same seed, same shots, same hash (two runs)",
+   "ok": true,
+   "detail": "58bcee60 / 58bcee60"
+  },
+  {
+   "name": "determinism: a different seed gives a different hash",
+   "ok": true,
+   "detail": "58bcee60 / 0108027b"
+  },
+  {
+   "name": "replay: rebuilding the scene and feeding the log gives the same hash at the same step",
+   "ok": true,
+   "detail": "58bcee60 vs 58bcee60, 560 steps"
+  },
+  {
+   "name": "energy: a marble dropped on rock gains almost no energy (rise under 3 percent: soft-contact push-out)",
+   "ok": true,
+   "detail": "start 26.32 J, max 26.90 J, bounce apexes 0.41, 0.08, 0.01 m from 2.00 m"
+  },
+  {
+   "name": "energy: bounce heights shrink (each apex lower than the last and lower than the drop)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "energy: a woken scene of 117 bodies does not gain energy (rise under 3 percent)",
+   "ok": true,
+   "detail": "start 3870.29 J, max 3870.32 J"
+  },
+  {
+   "name": "ball released high on a 11 degree ramp rolls downhill (travels more than 10 m)",
+   "ok": true,
+   "detail": "z from -9 to 8.92"
+  },
+  {
+   "name": "ball stops in the hollow: within 0.7 m of the bowl centre, nearly still, asleep",
+   "ok": true,
+   "detail": "ends 0.07 m from centre after 16.3 s"
+  },
+  {
+   "name": "a rod laid across a 10 degree slope rolls straight: 6 s, drifts less than 0.4 m sideways, axis turns less than 8 degrees",
+   "ok": true,
+   "detail": "rolled 7.97 m, sideways -0.11 m, axis off by 1.6 deg"
+  },
+  {
+   "name": "a rod dropped across a narrow V gully wedges: bridges it, centre stays above the gully floor, asleep",
+   "ok": true,
+   "detail": "centre y 0.07 m (gully floor at -0.50, rim at 0.00)"
+  },
+  {
+   "name": "a rod rolling into a V trench settles in it (within 0.4 m of the trench line, asleep)",
+   "ok": true,
+   "detail": "ends at z 4.01 (trench at 4.00) after 5.0 s"
+  },
+  {
+   "name": "friction differs by material: a sliding crate stops at five clearly different distances (each pair differs by at least 4 percent)",
+   "ok": true,
+   "detail": "sand 0.30 m, wet 0.41 m, shingle 0.34 m, turf 0.46 m, rock 0.37 m"
+  },
+  {
+   "name": "friction: dry sand stops a sliding crate shortest, wet sand slides it furthest of the sands",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "rolling differs by material: a marble rolls farthest on rock, least on dry sand",
+   "ok": true,
+   "detail": "sand 1.85 m, wet 3.87 m, shingle 2.14 m, turf 2.91 m, rock 6.56 m"
+  },
+  {
+   "name": "bounce differs by material: rock bounces most, sand and wet sand least",
+   "ok": true,
+   "detail": "sand 0.067 m, wet 0.062 m, shingle 0.109 m, turf 0.096 m, rock 0.210 m"
+  },
+  {
+   "name": "sleeping: 1000 bodies settle to asleep after the build (0 awake)",
+   "ok": true,
+   "detail": "awake 0"
+  },
+  {
+   "name": "sleeping: a step with everything asleep costs under 10 percent of one with everything awake",
+   "ok": true,
+   "detail": "asleep 0.786 ms, all awake 10.029 ms (972 awake)"
+  },
+  {
+   "name": "sleeping: woken bodies go back to sleep by themselves within 10 s",
+   "ok": true,
+   "detail": "awake after 10 s: 8 of 1000"
+  },
+  {
+   "name": "1000 random drops on the island ground (30 percent thrown at 20 to 50 m/s): none ends below the ground",
+   "ok": true,
+   "detail": "0 below at the end; 3 tunnelled and were put back by the guard; 150 left the window over the edge"
+  },
+  {
+   "name": "1000 random drops: none is ever seen more than 10 cm below the ground at any sampled step",
+   "ok": true,
+   "detail": "0 samples, worst 0 m"
+  },
+  {
+   "name": "tide: a coconut floats at the surface (centre within 0.15 m of the water line)",
+   "ok": true,
+   "detail": "centre y -0.03"
+  },
+  {
+   "name": "tide: a driftwood log floats; a glass marble sinks to the bed",
+   "ok": true,
+   "detail": "log y -0.02, marble y -1.02 on bed -1.07"
+  },
+  {
+   "name": "tide: when the water rises 1.2 m the coconut rises with it",
+   "ok": true,
+   "detail": "centre y 1.17"
+  },
+  {
+   "name": "tide: when the water ebbs the coconut is left on the beach, resting on the ground and asleep (stranded)",
+   "ok": true,
+   "detail": "rests 0.11 m above the ground at z -2.48, water line at z -1.67"
+  },
+  {
+   "name": "the brick block (113 bricks) stands on the levelled pad for 10 s: nothing moves more than 1 cm",
+   "ok": true,
+   "detail": "max move 0.00 cm"
+  },
+  {
+   "name": "cans stand on the slope without sliding off (38 cans, none moved more than 5 cm)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wet sand follows the tide: a dry sand tile at +0.45 m turns wet when the tide reaches +0.9 m",
+   "ok": true,
+   "detail": "tile sand -> wet"
+  },
+  {
+   "name": "rapid shots that do not collide with each other cost less than ones that do (300 acorns in a heap)",
+   "ok": true,
+   "detail": "solo 0.738 ms/step, colliding 2.117 ms/step"
+  }
+ ],
+ "numbers": {
+  "site": {
+   "hMin": -1.47,
+   "hMax": 2.06,
+   "padY": 1.39,
+   "tiles": 400,
+   "samples": 6561
+  },
+  "groundTiles": {
+   "sand": 172,
+   "wet": 0,
+   "shingle": 40,
+   "turf": 178,
+   "rock": 10
+  },
+  "heightfieldVsGrid": {
+   "maxDiffM": 0.0161
+  },
+  "determinism": {
+   "seed11": "58bcee60",
+   "seed12": "0108027b",
+   "bodies": 219
+  },
+  "ballToHollow": {
+   "endX": 0.07,
+   "endZ": 8.02,
+   "distFromBowlCentre": 0.07,
+   "steps": 980,
+   "asleep": true
+  },
+  "rodRollsStraight": {
+   "travelM": 7.97,
+   "lateralM": -0.11,
+   "axisTurnedDeg": 1.6
+  },
+  "rodWedge": {
+   "centreY": 0.07,
+   "asleep": true
+  },
+  "rodTrench": {
+   "endZ": 4.01,
+   "asleep": true,
+   "steps": 300
+  },
+  "materials": [
+   {
+    "ground": "sand",
+    "brickSlideM": 0.3,
+    "marbleRollM": 1.85,
+    "reboundFromOneMetreM": 0.067
+   },
+   {
+    "ground": "wet",
+    "brickSlideM": 0.41,
+    "marbleRollM": 3.87,
+    "reboundFromOneMetreM": 0.062
+   },
+   {
+    "ground": "shingle",
+    "brickSlideM": 0.34,
+    "marbleRollM": 2.14,
+    "reboundFromOneMetreM": 0.109
+   },
+   {
+    "ground": "turf",
+    "brickSlideM": 0.46,
+    "marbleRollM": 2.91,
+    "reboundFromOneMetreM": 0.096
+   },
+   {
+    "ground": "rock",
+    "brickSlideM": 0.37,
+    "marbleRollM": 6.56,
+    "reboundFromOneMetreM": 0.21
+   }
+  ],
+  "sleeping": {
+   "bodies": 1000,
+   "awakeAfterSettle": 0,
+   "asleepMsPerStep": 0.786,
+   "allWokenMsPerStep": 10.029,
+   "awakeAfterWake": 972,
+   "awakeAfter10s": 8
+  },
+  "drops": {
+   "dropped": 1000,
+   "stillInWorld": 850,
+   "leftWindow": 150,
+   "rescuedByGuard": 3,
+   "belowGroundSamples": 0,
+   "belowGroundAtEnd": 0,
+   "worstGapM": 0,
+   "byKind": {}
+  },
+  "dropsNoGuard": {
+   "dropped": 1000,
+   "stillInWorld": 849,
+   "leftWindow": 151,
+   "rescuedByGuard": 0,
+   "belowGroundSamples": 88,
+   "belowGroundAtEnd": 2,
+   "worstGapM": -7.9,
+   "byKind": {
+    "lid": 88
+   }
+  },
+  "tide": {
+   "tide0": {
+    "coconutY": -0.03,
+    "marbleY": -1.02,
+    "logY": -0.02,
+    "bedAtMarble": -1.07
+   },
+   "stranded": {
+    "coconutZ": -2.48,
+    "gapAboveGround": 0.11,
+    "asleep": true
+   }
+  },
+  "cost": [
+   {
+    "piecesBuilt": 100,
+    "pieces": 103,
+    "buildMs": 151,
+    "avgMsPerStep": 0.49,
+    "worstMs": 1.9,
+    "peakAwake": 51,
+    "awakeAtEnd": 1,
+    "fps60Budget": true
+   },
+   {
+    "piecesBuilt": 250,
+    "pieces": 253,
+    "buildMs": 292,
+    "avgMsPerStep": 0.57,
+    "worstMs": 3.7,
+    "peakAwake": 118,
+    "awakeAtEnd": 0,
+    "fps60Budget": true
+   },
+   {
+    "piecesBuilt": 500,
+    "pieces": 503,
+    "buildMs": 583,
+    "avgMsPerStep": 1.66,
+    "worstMs": 6.9,
+    "peakAwake": 230,
+    "awakeAtEnd": 0,
+    "fps60Budget": true
+   },
+   {
+    "piecesBuilt": 1000,
+    "pieces": 880,
+    "buildMs": 895,
+    "avgMsPerStep": 2.49,
+    "worstMs": 9.7,
+    "peakAwake": 489,
+    "awakeAtEnd": 2,
+    "fps60Budget": true
+   },
+   {
+    "piecesBuilt": 2000,
+    "pieces": 1604,
+    "buildMs": 2731,
+    "avgMsPerStep": 4.85,
+    "worstMs": 26.4,
+    "peakAwake": 958,
+    "awakeAtEnd": 4,
+    "fps60Budget": true
+   },
+   {
+    "piecesBuilt": 3948,
+    "pieces": 2864,
+    "buildMs": 16891,
+    "avgMsPerStep": 19.53,
+    "worstMs": 53.9,
+    "peakAwake": 1665,
+    "awakeAtEnd": 1521,
+    "fps60Budget": false
+   }
+  ],
+  "rapidShotGroups": {
+   "soloMsPerStep": 0.738,
+   "collidingMsPerStep": 2.117
+  }
+ }
+}
